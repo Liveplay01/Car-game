@@ -86,7 +86,10 @@ public enum ScreenFlow {
         case .start:
             return ScreenContent(
                 title: Strings.gameTitle,
-                subtitle: save.highscore > 0 ? Strings.Menu.highscore(format.number(save.highscore)) : Strings.Menu.noHighscore,
+                subtitle: Strings.Menu.status(
+                    highscore: save.highscore > 0 ? format.number(save.highscore) : nil,
+                    money: save.money > 0 ? format.number(save.money) : nil
+                ),
                 items: [
                     MenuItem(.startShift, Strings.Menu.startShift, isPrimary: true),
                     MenuItem(.openSettings, Strings.Menu.settings),
@@ -109,7 +112,7 @@ public enum ScreenFlow {
         case .paused:
             return ScreenContent(
                 title: Strings.Menu.paused,
-                subtitle: Strings.Menu.pausedStatus(score: format.number(world.score.points), left: format.clock(world.remainingTime)),
+                subtitle: Strings.Menu.pausedStatus(score: format.number(world.score.points), cars: world.carsLeft ?? 0),
                 items: [
                     MenuItem(.resume, Strings.Menu.resume, isPrimary: true),
                     MenuItem(.restart, Strings.Menu.restart),

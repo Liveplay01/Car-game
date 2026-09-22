@@ -20,8 +20,8 @@ extension World {
         spawnRingCar(at: ringPositionAhead(ofMergeEnd: 0), exitArm: .west)
         tap(at: time)
         // Cars from an earlier crash may still be spinning out: wait for the new strike.
-        let strikes = score.strikes
-        events += run(steps: World.stepRate) { $0.score.strikes > strikes }
+        let (strikes, police) = (score.strikes, score.policeCrashes)
+        events += run(steps: World.stepRate) { $0.score.strikes > strikes || $0.score.policeCrashes > police }
         return events
     }
 
@@ -172,20 +172,74 @@ struct ScoringTests {
 
 @Suite("Strikes")
 struct StrikeTests {
-    @Test func thirdStrikeAbortsTheShift() {
-        var world = quietShift()
-        var events: [GameEvent] = []
-        for _ in 0..<3 {
-            events += world.crashNextCar()
-        }
-        #expect(world.score.strikes == 3)
+    @Test func aNormalCarsCrashEndsTheShift() {
+        var world = quietShift { $0.policeShare = 0 }
+        let events = world.crashNextCar()
+        #expect(world.score.strikes == 1)
         #expect(world.shift.outcome == .struckOut)
         let result = events.compactMap(\.shiftResult).first
         #expect(result?.outcome == .struckOut)
         #expect(result?.completionBonus == 0)
-        #expect(result?.crashes == 3)
+        #expect(result?.crashes == 1)
         // The shift ends in the same step as the crash that caused it.
         #expect(events.last?.shiftResult != nil)
+    }
+
+    @Test func threeStrikeModeEndsAtTheThirdCrash() {
+        var world = quietShift {
+            $0.policeShare = 0
+            $0.maxStrikes = 3
+        }
+        var events: [GameEvent] = []
+        for _ in 0..<2 {
+            events += world.crashNextCar()
+        }
+        #expect(world.shift.outcome == nil)
+        events += world.crashNextCar()
+        #expect(world.score.strikes == 3)
+        #expect(world.shift.outcome == .struckOut)
+        #expect(events.compactMap(\.shiftResult).first?.crashes == 3)
+    }
+
+    @Test func policeCarsSurviveThreeCrashesAndEndTheShiftAtTheFourth() {
+        var world = quietShift { $0.policeShare = 1 }
+        world.score.points = 5000
+        var events: [GameEvent] = []
+        for _ in 0..<3 {
+            events += world.crashNextCar()
+        }
+        let crashes = events.compactMap(\.crash).filter(\.isStrike)
+        let penalty = world.config.crashPenalty
+        let allPolice = crashes.allSatisfy { $0.isPoliceCrash }
+        let allPenalized = crashes.allSatisfy { $0.penalty == penalty }
+        #expect(crashes.count == 3)
+        #expect(allPolice)
+        #expect(crashes.map(\.policeCrashes) == [1, 2, 3])
+        // They cost points and the combo, but no strike.
+        #expect(allPenalized)
+        #expect(world.score.strikes == 0)
+        #expect(world.shift.outcome == nil)
+        events = world.crashNextCar()
+        #expect(world.score.policeCrashes == 4)
+        #expect(world.shift.outcome == .struckOut)
+        #expect(events.compactMap(\.shiftResult).first?.policeCrashes == 4)
+    }
+
+    @Test func aPoliceCarsMistakeIsNotANormalCarsStrike() {
+        // A police car merges into one of your normal cars that is already on the ring:
+        // the police car made the mistake, so the shift goes on.
+        var world = quietShift { $0.policeShare = 1 }
+        world.run(steps: 2 * World.stepRate) { $0.queue.isReady }
+        let own = world.spawnRingCar(at: world.ringPositionAhead(ofMergeEnd: 0), exitArm: .west)
+        if let index = world.index(of: own) {
+            world.vehicles[index].owner = .player
+        }
+        world.tap(at: world.time)
+        let events = world.run(steps: World.stepRate) { $0.score.policeCrashes > 0 || $0.score.strikes > 0 }
+        let crash = events.compactMap(\.crash).first
+        #expect(crash?.isPoliceCrash == true)
+        #expect(world.score.strikes == 0)
+        #expect(world.shift.outcome == nil)
     }
 
     @Test func oneStrikeModeEndsAtTheFirstCrash() {
@@ -210,99 +264,122 @@ struct StrikeTests {
 struct ShiftTests {
     let config = Config()
 
-    @Test(arguments: [(0.0, 3), (12, 3), (13, 4), (50, 5), (99, 7), (100, 9), (119, 9)])
-    func densityRisesThenJumpsForRushHour(time: Double, density: Int) {
-        #expect(ShiftCurves.density(at: time, config: config) == density)
+    @Test func densityRisesOverTheRampThenStays() {
+        #expect(ShiftCurves.density(at: 0, rushHour: false, config: config) == config.densityStart)
+        #expect(ShiftCurves.density(at: config.rampSeconds, rushHour: false, config: config) == config.densityEnd)
+        #expect(ShiftCurves.density(at: 10 * config.rampSeconds, rushHour: false, config: config) == config.densityEnd)
+        #expect(ShiftCurves.density(at: 0, rushHour: true, config: config) == config.densityStart + config.rushHourDensityBonus)
     }
 
-    @Test func tempoRisesSlowlyThenRampsForRushHour() {
-        #expect(ShiftCurves.tempo(at: 0, config: config) == 1)
-        #expect(abs(ShiftCurves.tempo(at: 50, config: config) - 1.05) < 1e-9)
-        #expect(abs(ShiftCurves.tempo(at: 100, config: config) - 1.1) < 1e-9)
-        let mid = ShiftCurves.tempo(at: 100.5, config: config)
-        #expect(mid > 1.1 && mid < 1.25)
-        #expect(abs(ShiftCurves.tempo(at: 101, config: config) - 1.25) < 1e-9)
-        #expect(abs(ShiftCurves.tempo(at: 120, config: config) - 1.25) < 1e-9)
+    @Test func tempoRisesOverTheRampThenRampsForRushHour() {
+        #expect(ShiftCurves.tempo(at: 0, rushHourSince: nil, config: config) == config.tempoStart)
+        let half = ShiftCurves.tempo(at: config.rampSeconds / 2, rushHourSince: nil, config: config)
+        #expect(abs(half - (config.tempoStart + config.tempoEnd) / 2) < 1e-9)
+        #expect(abs(ShiftCurves.tempo(at: 99, rushHourSince: nil, config: config) - config.tempoEnd) < 1e-9)
+        let mid = ShiftCurves.tempo(at: 30.5, rushHourSince: 30, config: config)
+        #expect(mid > config.tempoEnd && mid < config.rushHourTempo)
+        #expect(abs(ShiftCurves.tempo(at: 31, rushHourSince: 30, config: config) - config.rushHourTempo) < 1e-9)
     }
 
-    @Test func shiftRunsThroughRushHourToItsEnd() {
+    @Test func theShiftEndsOnceTheLastCarIsIn() {
         var world = quietShift {
-            $0.shiftSeconds = 4
-            $0.rushHourSeconds = 1
+            $0.shiftCars = 3
+            $0.rushHourCars = 0
         }
-        let events = world.run(steps: 5 * World.stepRate) { $0.shift.outcome != nil }
-        let rushTime = events.compactMap { event -> Double? in
-            if case let .rushHour(time) = event { return time }
-            return nil
+        var events: [GameEvent] = []
+        for _ in 0..<3 {
+            events += world.mergeNextCar()
         }
-        #expect(rushTime.count == 1)
-        #expect(rushTime.first.map { abs($0 - 3) < 0.01 } == true)
+        events += world.run(steps: World.stepRate) { $0.shift.outcome != nil }
         let result = events.compactMap(\.shiftResult).first
         #expect(result?.outcome == .completed)
-        #expect(result?.score == world.config.completionBonus)
-        #expect(result.map { abs($0.time - 4) < 0.02 } == true)
-        #expect(world.remainingTime == 0)
+        #expect(result?.cleanMerges == 3)
+        #expect(result?.score == 3 * world.config.pointsClean + world.config.completionBonus)
+        #expect(world.carsLeft == 0)
+        // It took as long as the player needed: no clock.
+        #expect(result.map { $0.time < 3 } == true)
+    }
+
+    @Test func withoutTapsTheShiftNeverEnds() {
+        var world = quietShift { $0.criminalFirst = 1e9...1e9 }
+        world.run(steps: 60 * World.stepRate)
+        #expect(world.shift.outcome == nil)
+        #expect(world.carsLeft == world.config.shiftCars)
+    }
+
+    @Test func theQueueHoldsOnlyTheCarsLeft() {
+        var world = quietShift { $0.shiftCars = 3 }
+        #expect(world.queue.vehicles.count == 3)
+        world.mergeNextCar()
+        #expect(world.queue.vehicles.count == 2)
+        #expect(world.carsLeft == 2)
+    }
+
+    @Test func theLastCarsAreRushHour() {
+        var world = quietShift {
+            $0.shiftCars = 4
+            $0.rushHourCars = 2
+        }
+        world.mergeNextCar()
+        world.mergeNextCar()
+        #expect(!world.shift.isRushHour)
+        // The first of the last two cars starts rush hour and is doubled already.
+        let events = world.mergeNextCar()
+        #expect(world.shift.isRushHour)
+        #expect(events.filter(\.isRushHour).count == 1)
+        #expect(events.compactMap(\.merge).first?.points == 2 * world.config.pointsClean)
+        world.run(steps: 2 * World.stepRate) { $0.ringSpeed >= $0.config.ringSpeed * $0.config.rushHourTempo - 1e-9 }
         #expect(abs(world.ringSpeed - world.config.ringSpeed * world.config.rushHourTempo) < 1e-9)
     }
 
-    @Test func mergeInFlightAtTheEndStillCountsDoubled() {
-        var world = quietShift {
-            $0.shiftSeconds = 2
-            $0.rushHourSeconds = 1
+    @Test func aShortShiftIsRushHourFromTheStart() {
+        let world = quietShift {
+            $0.shiftCars = 3
+            $0.rushHourCars = 4
         }
-        world.run(steps: Int(1.8 * Double(World.stepRate)))
-        world.tap(at: world.time)
-        let events = world.run(steps: 2 * World.stepRate) { $0.shift.outcome != nil }
-        let merge = events.compactMap(\.merge).first
-        let result = events.compactMap(\.shiftResult).first
-        #expect(merge?.points == 200)
-        #expect(result?.cleanMerges == 1)
-        #expect(result?.score == 200 + world.config.completionBonus)
-        #expect(result.map { $0.time > 2.2 } == true)
+        #expect(world.shift.isRushHour)
     }
 
     /// Found by the balancing bot (seed 779): the ring sped up during a merge, the car behind
     /// caught up and a well-timed Tight Fit became a crash. Merges now keep pace with the ring.
     @Test func tempoRampDuringAMergeKeepsTheTimedGap() {
+        // The second merge is the last car, the one that starts rush hour: the tempo rises
+        // while it runs.
         var world = quietShift {
-            $0.shiftSeconds = 3
-            $0.rushHourSeconds = 2
+            $0.shiftCars = 2
+            $0.rushHourCars = 1
         }
-        world.run(steps: Int(0.9 * Double(World.stepRate)))
+        world.mergeNextCar()
         let events = world.mergeNextCar(arc: -(world.config.carLength + 2))
         #expect(events.compactMap(\.crash).isEmpty)
         #expect(events.compactMap(\.merge).first?.rating == .tightFit)
-        #expect(world.ringSpeed > world.config.ringSpeed * world.config.tempoEnd)
+        #expect(world.shift.rushHourSince != nil)
+        #expect(world.ringSpeed > world.config.ringSpeed * world.config.tempoStart)
     }
 
-    @Test func tapsAfterTimeUpAreIgnored() {
-        var world = quietShift { $0.shiftSeconds = 1 }
-        world.run(steps: World.stepRate + 2)
+    @Test func tapsAfterTheLastCarAreIgnored() {
+        var world = quietShift { $0.shiftCars = 1 }
+        world.mergeNextCar()
         world.tap(at: world.time)
         let events = world.run(steps: World.stepRate)
         #expect(!events.contains { if case .launched = $0 { true } else { false } })
     }
 
-    /// A full default shift with AI traffic, including rush hour: the AI never crashes,
-    /// and a shift without taps earns exactly the completion bonus. No criminals here:
-    /// nobody would chase them.
+    /// The AI never crashes in a busy shift, and traffic builds up. `densityEnd` is a ceiling:
+    /// the ring fills only as far as the AI's safe gaps allow.
     @Test(arguments: [UInt64(1), 2, 3])
-    func fullShiftWithoutTaps(seed: UInt64) {
+    func busyTrafficNeverCrashes(seed: UInt64) {
         var config = self.config
         config.criminalFirst = 1e9...1e9
         var world = World(config: config, seed: seed)
         var events: [GameEvent] = []
         var peak = 0
-        while world.shift.outcome == nil && world.time < config.shiftSeconds + 5 {
+        for _ in 0..<(40 * World.stepRate) {
             world.step()
             events += world.takeEvents()
             peak = max(peak, world.roadCount)
         }
         #expect(events.compactMap(\.crash).isEmpty)
-        #expect(events.filter(\.isRushHour).count == 1)
-        let result = events.compactMap(\.shiftResult).first
-        #expect(result?.outcome == .completed)
-        #expect(result?.score == config.completionBonus)
-        #expect(peak >= config.densityEnd)
+        #expect(peak > config.densityStart)
     }
 }

@@ -36,6 +36,15 @@ struct TuningTests {
         #expect(throws: Tuning.Failure.self) { try load(#"{ "maxStrikes": 0 }"#) }
         #expect(throws: Tuning.Failure.self) { try load(#"{ "comboThresholds": [5, 10] }"#) }
         #expect(throws: Tuning.Failure.self) { try load(#"{ "comboThresholds": [10, 5, 20] }"#) }
+        #expect(throws: Tuning.Failure.self) { try load(#"{ "maxPoliceCrashes": -1 }"#) }
+        #expect(throws: Tuning.Failure.self) { try load(#"{ "policeChaseSpeedFactor": 0.8 }"#) }
+        #expect(throws: Tuning.Failure.self) { try load(#"{ "queueAdvanceDuration": -0.1 }"#) }
+    }
+
+    @Test func theDefaultsAreAlwaysLoadable() throws {
+        // No tap cooldown is a valid value, not a broken one.
+        let tuning = try load(#"{ "queueAdvanceDuration": 0 }"#)
+        #expect(tuning.config == Config())
     }
 
     @Test func generatedFileRoundTrips() throws {
@@ -51,10 +60,10 @@ struct TuningTests {
     @Test func listsDifferencesFromConfigSwift() {
         var config = Config()
         config.tightFitSeconds = 0.1
-        config.maxStrikes = 1
+        config.maxStrikes = 3
         #expect(Tuning.differences(config) == [
             "tightFitSeconds 0.1 (Config.swift 0.12)",
-            "maxStrikes 1 (Config.swift 3)",
+            "maxStrikes 3 (Config.swift 1)",
         ])
         #expect(Tuning.differences(Config()).isEmpty)
     }

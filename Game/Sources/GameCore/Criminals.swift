@@ -47,21 +47,25 @@ extension World {
 
     mutating func updateCriminals(now: Double) {
         guard mode == .shift else { return }
-        // Once time is up or the shift is over, a criminal on the road just drives off.
-        guard shift.acceptsTaps else {
+        // Once the shift is over, a criminal on the road just drives off.
+        guard isScoring else {
             if case let .active(id, _) = criminal.phase {
                 criminal.phase = .leaving(vehicle: id)
             }
             return
         }
+        // Your last car is in before the criminal is: it is called off and the pickup, if
+        // it already waits at its arm, drives through as ordinary traffic. One on the run
+        // must still be caught; the shift waits for that chase (`updateShift`).
+        if !shift.acceptsTaps {
+            switch criminal.phase {
+            case .warning, .arriving: criminal.phase = .idle(next: .infinity)
+            case .idle, .active, .leaving: break
+            }
+        }
         switch criminal.phase {
         case let .idle(next):
-            guard now >= next else { return }
-            // Never so late that the chase could outlast the shift.
-            guard remainingTime > config.criminalWarning + config.criminalTime + 3 else {
-                criminal.phase = .idle(next: .infinity)
-                return
-            }
+            guard shift.acceptsTaps, now >= next else { return }
             let arm = criminalRng.pick(Arm.ai)
             criminal.phase = .warning(arm: arm, until: now + config.criminalWarning)
             events.append(.criminalWarning(arm: arm, time: now))

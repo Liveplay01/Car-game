@@ -41,6 +41,19 @@ extension GameEvent {
     var takedown: TakedownReport? { if case let .takedown(r) = self { r } else { nil } }
 }
 
+extension World {
+    /// Puts one of the player's police cars on the ring, `gap` (surface to surface) behind
+    /// the vehicle `target`. Returns its id.
+    mutating func placePolice(behind target: Int, gap: Double) -> Int? {
+        guard let other = vehicle(id: target), case let .ring(r) = other.phase else { return nil }
+        let id = spawnRingCar(at: r.s - config.carLength - gap, exitArm: .east)
+        guard let index = index(of: id) else { return nil }
+        vehicles[index].type = .police
+        vehicles[index].owner = .player
+        return id
+    }
+}
+
 @Suite("Police and criminals")
 struct CriminalTests {
     @Test func aboutOneCarInFiveIsAPoliceCar() {
@@ -170,14 +183,45 @@ struct CriminalTests {
         #expect(world.score.combo == 3)
     }
 
-    @Test func noChaseThatCouldOutlastTheShift() {
+    @Test func aWarnedCriminalIsCalledOffOnceTheLastCarIsIn() {
         var world = chaseShift(police: false) {
-            $0.shiftSeconds = 30
-            $0.rushHourSeconds = 5
-            $0.criminalFirst = 20...20
+            $0.shiftCars = 1
+            $0.criminalFirst = 0.5...0.5
         }
-        let events = world.run(steps: 32 * World.stepRate)
-        #expect(!events.contains { if case .criminalWarning = $0 { true } else { false } })
+        world.run(steps: World.stepRate) { if case .warning = $0.criminal.phase { true } else { false } }
+        world.tap(at: world.time)
+        let events = world.run(steps: 3 * World.stepRate) { $0.shift.outcome != nil }
+        #expect(world.shift.outcome == .completed)
+        #expect(!events.contains { if case .criminalEntered = $0 { true } else { false } })
+        #expect(world.criminal.phase == .idle(next: .infinity))
+    }
+
+    @Test func aCriminalOnTheRunMustStillBeCaughtAfterTheLastCar() {
+        var world = chaseShift(police: false) { $0.shiftCars = 1 }
+        guard world.runUntilChase() != nil else {
+            Issue.record("no chase")
+            return
+        }
+        world.tap(at: world.time)
+        world.run(steps: World.stepRate)
+        // Every car is in, but the pickup is still out there: the shift waits for it.
+        #expect(world.shift.phase == .closing)
+        let events = world.run(steps: 15 * World.stepRate) { $0.shift.outcome != nil }
+        #expect(events.contains { if case .criminalEscaped = $0 { true } else { false } })
+        #expect(world.shift.outcome == .escaped)
+    }
+
+    @Test func aPoliceCarOnTheRingCanStillCatchItAfterTheLastCar() {
+        var world = chaseShift(police: false) { $0.shiftCars = 1 }
+        guard let pickup = world.runUntilChase() else {
+            Issue.record("no chase")
+            return
+        }
+        world.run(steps: World.stepRate) { $0.vehicle(id: pickup).map { if case .ring = $0.phase { true } else { false } } == true }
+        world.tap(at: world.time)
+        _ = world.placePolice(behind: pickup, gap: 60)
+        let events = world.run(steps: 10 * World.stepRate) { $0.shift.outcome != nil }
+        #expect(events.contains { $0.takedown != nil })
         #expect(world.shift.outcome == .completed)
     }
 
@@ -193,5 +237,77 @@ struct CriminalTests {
         #expect(!events.contains { if case .criminalEscaped = $0 { true } else { false } })
         #expect(world.criminal.phase == .leaving(vehicle: pickup))
         #expect(world.vehicle(id: pickup) == nil)
+    }
+
+    // MARK: - The chase on the ring
+
+    @Test func aPoliceCarRightBehindTheCriminalChasesAndRamsIt() {
+        var world = chaseShift(police: false)
+        guard let pickup = world.runUntilChase() else {
+            Issue.record("no chase")
+            return
+        }
+        world.run(steps: World.stepRate) { $0.vehicle(id: pickup).map { if case .ring = $0.phase { true } else { false } } == true }
+        guard let police = world.placePolice(behind: pickup, gap: 80) else {
+            Issue.record("pickup not on the ring")
+            return
+        }
+        var fastest = 0.0
+        var events: [GameEvent] = []
+        for _ in 0..<(8 * World.stepRate) {
+            world.step()
+            events += world.takeEvents()
+            fastest = max(fastest, world.speed(of: police) ?? 0)
+            if events.contains(where: { $0.takedown != nil }) { break }
+        }
+        let takedown = events.compactMap(\.takedown).first
+        #expect(takedown?.police == police)
+        #expect(fastest > world.ringSpeed * 1.2)
+        #expect(fastest <= world.ringSpeed * world.config.policeChaseSpeedFactor + 1e-9)
+        // A takedown is no crash of yours.
+        #expect(world.score.policeCrashes == 0)
+        #expect(world.shift.outcome == nil)
+    }
+
+    @Test func aPoliceCarWithAnotherCarInBetweenJustFlows() {
+        var world = chaseShift(police: false)
+        guard let pickup = world.runUntilChase() else {
+            Issue.record("no chase")
+            return
+        }
+        world.run(steps: World.stepRate) { $0.vehicle(id: pickup).map { if case .ring = $0.phase { true } else { false } } == true }
+        guard let pickupRing = world.vehicle(id: pickup), case let .ring(r) = pickupRing.phase else {
+            Issue.record("pickup not on the ring")
+            return
+        }
+        let between = world.spawnRingCar(at: r.s - world.config.carLength - 40, exitArm: .east)
+        // It stays on the ring for the whole test; once it leaves, the chase would be on.
+        if let index = world.index(of: between), case var .ring(ring) = world.vehicles[index].phase {
+            ring.distanceToExit = world.layout.ring.length
+            world.vehicles[index].phase = .ring(ring)
+        }
+        guard let police = world.placePolice(behind: between, gap: 40) else {
+            Issue.record("no police car")
+            return
+        }
+        for _ in 0..<(2 * World.stepRate) {
+            world.step()
+            _ = world.takeEvents()
+            #expect(world.speed(of: police).map { abs($0 - world.ringSpeed) < 1e-9 } ?? true)
+        }
+    }
+
+    @Test func afterAChaseTheDriverEasesBackIntoTheFlow() {
+        let world = chaseShift(police: false)
+        var drive = world.pursue(Drive(), dt: World.stepDuration)
+        for _ in 0..<(3 * World.stepRate) {
+            drive = world.pursue(drive, dt: World.stepDuration)
+        }
+        #expect(drive.speed == world.ringSpeed * world.config.policeChaseSpeedFactor)
+        for _ in 0..<(3 * World.stepRate) {
+            drive = world.drive(drive, lead: nil, id: 1, dt: World.stepDuration)
+        }
+        #expect(drive.isInFlow)
+        #expect(!drive.isPursuing)
     }
 }

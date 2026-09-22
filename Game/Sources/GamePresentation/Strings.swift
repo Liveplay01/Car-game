@@ -18,7 +18,12 @@ public enum Strings {
         public static let tagline = "Tap to send the front car into the roundabout."
 
         public static func highscore(_ score: String) -> String { "Highscore \(score)" }
-        public static func pausedStatus(score: String, left: String) -> String { "\(score) points · \(left) left" }
+        /// Highscore and banked money on the start screen.
+        public static func status(highscore: String?, money: String?) -> String {
+            let score = highscore.map(Self.highscore) ?? noHighscore
+            return money.map { "\(score) · \($0) money" } ?? score
+        }
+        public static func pausedStatus(score: String, cars: Int) -> String { "\(score) points · \(HUD.cars(cars)) left" }
     }
 
     /// The banner at the end of a shift.
@@ -30,8 +35,8 @@ public enum Strings {
         public static let tapToContinue = "Tap to play again"
 
         public static func best(_ score: String) -> String { "Best \(score)" }
-        public static func stats(combo: String, tightFits: String, busted: Int, transporters: Int, money: String) -> String {
-            let base = "Best combo \(combo) · \(tightFits) tight fits · \(busted) busted"
+        public static func stats(combo: String, tightFits: String, busted: Int, transporters: Int, money: String, time: String) -> String {
+            let base = "\(time) · best combo \(combo) · \(tightFits) tight fits · \(busted) busted"
             let extra = transporters > 0 ? " · \(transporters) paid · \(money) money" : ""
             return base + extra
         }
@@ -72,6 +77,8 @@ public enum Strings {
         public static func paid(_ amount: String) -> String { "PAID \(amount)" }
 
         public static func combo(_ value: Int) -> String { "COMBO \(value)" }
+        /// Cars still to send this shift: "12 cars", "1 car".
+        public static func cars(_ count: Int) -> String { count == 1 ? "1 car" : "\(count) cars" }
         /// Seconds left on the chase, rounded up.
         public static func wanted(_ seconds: Double) -> String { "\(wanted) \(Int(max(0, seconds).rounded(.up)))" }
         public static func rushFactor(_ value: Double) -> String { "\(rushHour) \(multiplier(value))" }
@@ -165,10 +172,9 @@ public struct TextFormat: Sendable, Equatable {
         value > 0 ? "+" + number(value) : number(value)
     }
 
-    /// Shift clock, "1:45". Rounds up, so "0:00" shows only when time is really up.
-    public func clock(_ seconds: Double) -> String {
-        let whole = Int(max(0, seconds).rounded(.up))
-        let rest = whole % 60
-        return "\(whole / 60):\(rest < 10 ? "0" : "")\(rest)"
+    /// How long a shift took, "18.4 s".
+    public func seconds(_ seconds: Double) -> String {
+        let tenths = Int((max(0, seconds) * 10).rounded())
+        return "\(number(tenths / 10)).\(tenths % 10) s"
     }
 }

@@ -3,7 +3,8 @@
 public enum GameEvent: Sendable, Equatable {
     /// The front car of the queue drove off.
     case launched(vehicle: Int, time: Double)
-    /// A tap came while the next car was still rolling up; it is ignored on purpose.
+    /// A tap came while the next car was still rolling up and another tap is already held
+    /// for it (`PlayerQueue.heldTap`); it is ignored, so a bouncing finger sends one car.
     case tapRejected(time: Double)
     /// A player car finished its merge without touching anyone, rated and scored.
     case merged(MergeReport)
@@ -11,9 +12,9 @@ public enum GameEvent: Sendable, Equatable {
     case exited(vehicle: Int, arm: Arm)
     /// The combo changed: up after a merge, back to 0 after a crash or a cut-off.
     case comboChanged(ComboChange)
-    /// The last part of the shift began: faster, denser, points ×2.
+    /// The last cars of the shift: faster, denser, points ×2.
     case rushHour(time: Double)
-    /// The shift is over: driven to the end, aborted by the last strike, or a criminal escaped.
+    /// The shift is over: driven to the end, aborted by a crash, or a criminal escaped.
     case shiftEnded(ShiftResult)
     /// "WANTED": a criminal pickup will show up at `arm` in `Config.criminalWarning` seconds.
     case criminalWarning(arm: Arm, time: Double)
@@ -75,15 +76,19 @@ public struct CrashReport: Sendable, Equatable {
     public var involvesPlayer: Bool
     /// Closing speed at the contact point (world units per second): how hard the hit was.
     public var impact: Double
-    /// A merging player car crashed: costs a strike and points. Follow-up crashes in the
-    /// traffic behind do not (unless `chainCrashesCostStrikes`).
+    /// The player's mistake: a merging player car crashed. Costs points and the combo, and a
+    /// strike, or for a police car one of its `maxPoliceCrashes`. Follow-up crashes in the
+    /// traffic behind cost nothing (unless `chainCrashesCostStrikes`).
     public var isStrike: Bool
+    /// The mistake was a police car's: it counts as a police crash, not as a strike.
+    public var isPoliceCrash: Bool
     /// A police car stopped the criminal: no strike, a reward (see `.takedown`).
     public var isTakedown: Bool
     /// Points actually taken off (never more than the score had).
     public var penalty: Int
-    /// Strikes after this crash.
+    /// Strikes and police crashes after this crash.
     public var strikes: Int
+    public var policeCrashes: Int
 }
 
 public struct ComboChange: Sendable, Equatable {

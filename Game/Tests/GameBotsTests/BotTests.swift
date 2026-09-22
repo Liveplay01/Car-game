@@ -14,19 +14,17 @@ struct BotTests {
         let result = ShiftRunner.play(&bot, config: config, seed: seed)
         #expect(result.crashes == 0, "replay with --seed \(seed)")
         #expect(result.outcome == .completed)
-        #expect(result.merges > 60)
-        #expect(result.tightFits > 0)
-        // It catches every criminal of the shift.
-        #expect(result.takedowns > 0)
+        // Every car of the shift is in: merged, or spent on a takedown.
+        #expect(result.merges + result.takedowns == config.shiftCars)
     }
 
-    @Test func randomTapperCrashesOften() {
-        var crashes = 0
+    /// Tapping without looking loses: a normal car's first crash ends the shift.
+    @Test func randomTapperLosesItsShifts() {
         for seed in UInt64(1)...3 {
             var bot = RandomBot(seed: seed)
-            crashes += ShiftRunner.play(&bot, config: config, seed: seed).crashes
+            let result = ShiftRunner.play(&bot, config: config, seed: seed)
+            #expect(result.outcome != .completed, "seed \(seed)")
         }
-        #expect(crashes >= 4)
     }
 
     @Test func sameSeedSameShift() {

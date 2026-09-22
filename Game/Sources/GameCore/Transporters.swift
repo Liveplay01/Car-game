@@ -44,19 +44,24 @@ extension World {
 
     mutating func updateTransporters(now: Double) {
         guard mode == .shift else { return }
-        guard shift.acceptsTaps else {
+        // A crash or an escape ended the shift: an active transporter drives off unpaid.
+        // (A completed shift pays it first, `updateShift`.)
+        guard isScoring else {
             if case let .active(id, _) = transporter.phase {
                 transporter.phase = .leaving(vehicle: id)
             }
             return
         }
+        // No new transporter after your last car; one on its way is called off.
+        if !shift.acceptsTaps {
+            switch transporter.phase {
+            case .warning, .arriving: transporter.phase = .idle(next: .infinity)
+            case .idle, .active, .seized, .leaving: break
+            }
+        }
         switch transporter.phase {
         case let .idle(next):
-            guard now >= next else { return }
-            guard remainingTime > config.transporterWarning + config.transporterTime + 3 else {
-                transporter.phase = .idle(next: .infinity)
-                return
-            }
+            guard shift.acceptsTaps, now >= next else { return }
             let arm = transporterRng.pick(Arm.ai)
             transporter.phase = .warning(arm: arm, until: now + config.transporterWarning)
             events.append(.transporterWarning(arm: arm, time: now))
@@ -90,9 +95,7 @@ extension World {
 
         case let .active(id, deadline):
             guard now >= deadline else { return }
-            transporter.phase = .leaving(vehicle: id)
-            events.append(.transporterEscaped(vehicle: id, time: now))
-            scoreTransporter(now: now)
+            transporterEscapes(id, now: now)
 
         case .seized:
             break
@@ -100,6 +103,13 @@ extension World {
         case .leaving:
             break
         }
+    }
+
+    /// The transporter got away safely: it takes its next exit, and you are paid.
+    mutating func transporterEscapes(_ id: Int, now: Double) {
+        transporter.phase = .leaving(vehicle: id)
+        events.append(.transporterEscaped(vehicle: id, time: now))
+        scoreTransporter(now: now)
     }
 
     /// A police car stopped the transporter inside a secure zone: seized, no money.
@@ -115,7 +125,7 @@ extension World {
         let escaped: Bool
         if case .leaving = transporter.phase { escaped = true } else { escaped = false }
         let money = escaped ? config.transporterPay : config.transporterSeized
-        let factor = now >= rushHourStartTime ? config.rushHourScoreFactor : 1
+        let factor = isRushHourScoring ? config.rushHourScoreFactor : 1
         let amount = Int((Double(money) * factor).rounded())
         score.money += amount
         if escaped { score.transporters += 1 }
@@ -146,9 +156,8 @@ extension World {
     /// A police car that hits the transporter: the seizure. Only a police car counts; a
     /// normal car bouncing off the transporter is a normal crash.
     func isSeizure(_ a: Vehicle, _ b: Vehicle) -> Bool {
-        func isPolice(_ v: Vehicle) -> Bool { v.type == .police && v.owner == .player && !v.isCrashed }
         func isTruck(_ v: Vehicle) -> Bool { v.type == .transporter && !v.isCrashed }
-        return (isTruck(a) && isPolice(b)) || (isTruck(b) && isPolice(a))
+        return (isTruck(a) && b.isPlayerPolice) || (isTruck(b) && a.isPlayerPolice)
     }
 
     /// Whether a live transporter is on the road.

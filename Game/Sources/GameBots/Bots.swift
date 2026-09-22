@@ -26,12 +26,16 @@ struct Chase {
     /// Position of the first police car in the queue; nil if there is none.
     var policeSlot: Int?
 
+    /// Nil while no criminal is announced or on the road.
     init?(_ world: World) {
         switch world.criminal.phase {
         case let .arriving(id), let .active(id, _):
             criminal = id
-        case .idle, .warning, .leaving:
+        case .warning:
+            // Announced: time to get a police car to the front.
             criminal = nil
+        case .idle, .leaving:
+            return nil
         }
         policeSlot = world.queue.vehicles.firstIndex { world.vehicle(id: $0)?.type == .police }
     }
@@ -41,32 +45,19 @@ struct Chase {
     var policeIsNext: Bool { policeSlot == 0 }
 }
 
-/// What a transporter needs to know.
-struct Transport {
-    var truck: Int?
-    var policeSlot: Int?
-
-    init?(_ world: World) {
-        switch world.transporter.phase {
-        case let .arriving(id), let .active(id, _):
-            truck = id
-        case .idle, .warning, .seized, .leaving:
-            return nil
-        }
-        policeSlot = world.queue.vehicles.firstIndex { world.vehicle(id: $0)?.type == .police }
+extension World {
+    /// A police car of yours is still merging while a criminal is out: it may be about to
+    /// ram it. Without a tap cooldown, a car sent right after it would drive into the wreck.
+    var isTakedownPending: Bool {
+        criminal.vehicle != nil && vehicles.contains { $0.isPlayerPolice && $0.activeMerge != nil }
     }
-
-    /// A police car is at the front and can seize the transporter.
-    var policeIsNext: Bool { policeSlot == 0 }
-    /// No police car near the front: the transporter will leave and pay.
-    var willPay: Bool { (policeSlot ?? .max) > 2 }
 }
 
 /// Perfect timing and perfect judgement: waits for a Tight Fit, takes a clean gap after a
-/// short while, never goes closer than `margin`, and lets a pile-up clear before it merges
-/// again. Hunts criminals: sends a police car exactly when it will hit the pickup and nobody
-/// else, and calls a dispatch if no police car is near the front. If it ever crashes, a
-/// crash was unfair.
+/// short while, never goes closer than `margin`, and lets a pile-up or a takedown clear
+/// before it merges again. Hunts criminals: sends a police car exactly when it will hit the
+/// pickup and nobody else, and calls a dispatch if no police car is near the front. Never
+/// touches the transporter. If it ever crashes, a crash was unfair.
 public struct PerfectBot: Bot {
     /// Samples per predicted merge. The smallest gap comes near the end of the merge, where
     /// both cars drive almost in parallel, so 30 samples err by well under 0.01 s.
@@ -90,7 +81,7 @@ public struct PerfectBot: Bot {
         if let chase, chase.needsDispatch {
             return .dispatch
         }
-        guard world.queue.isReady, !world.isTrafficDisturbed else {
+        guard world.queue.isReady, !world.isTrafficDisturbed, !world.isTakedownPending else {
             readySince = nil
             return nil
         }
@@ -171,7 +162,7 @@ public struct HumanBot: Bot {
             dispatchNoticed = nil
         }
         // Like any sensible player, it lets a crash scene at its entry clear first.
-        guard world.queue.isReady, !world.isTrafficDisturbed else {
+        guard world.queue.isReady, !world.isTrafficDisturbed, !world.isTakedownPending else {
             readySince = nil
             return nil
         }
@@ -181,14 +172,6 @@ public struct HumanBot: Bot {
             let gaps = world.predictedMergeGaps(from: Arm.player, launchDelay: lead, samples: PerfectBot.samples)
             let hits = (gaps[criminal] ?? .infinity) <= -aimDepth
             let clear = gaps.allSatisfy { $0.key == criminal || $0.value > boldGap }
-            guard hits && clear else { return nil }
-            return plannedTap(world)
-        }
-        if let transport = Transport(world), transport.policeIsNext, let truck = transport.truck {
-            // Aims for the middle of the hit window on the truck.
-            let gaps = world.predictedMergeGaps(from: Arm.player, launchDelay: lead, samples: PerfectBot.samples)
-            let hits = (gaps[truck] ?? .infinity) <= -aimDepth
-            let clear = gaps.allSatisfy { $0.key == truck || $0.value > boldGap }
             guard hits && clear else { return nil }
             return plannedTap(world)
         }
@@ -246,9 +229,12 @@ public struct RandomBot: Bot {
 
 /// Plays one complete shift.
 public enum ShiftRunner {
+    /// A shift has no clock; a bot that has not sent all its cars after this long is broken.
+    public static let timeLimit = 300.0
+
     public static func play<B: Bot>(_ bot: inout B, config: Config, seed: UInt64) -> ShiftResult {
         var world = World(config: config, seed: seed)
-        let limit = Int((config.shiftSeconds + 30) * Double(World.stepRate))
+        let limit = Int(timeLimit * Double(World.stepRate))
         for _ in 0..<limit {
             switch bot.decide(world) {
             case let .tap(time): world.tap(at: time)

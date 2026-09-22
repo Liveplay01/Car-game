@@ -158,6 +158,11 @@ public struct Vehicle: Sendable, Equatable {
         return false
     }
 
+    /// One of the player's police cars, still in one piece.
+    public var isPlayerPolice: Bool {
+        type == .police && owner == .player && !isCrashed
+    }
+
     /// A merge that is rated this step: still on the entry path, or finished in this very step.
     public var activeMerge: Merging? {
         switch phase {
@@ -181,6 +186,8 @@ public struct Drive: Sendable, Equatable {
     public var speed: Double?
     /// Seconds until the driver reacts to the hazard ahead; 0 once in control. Nil: all clear.
     public var reaction: Double?
+    /// A police car chasing the criminal right ahead of it (`World.pursue`).
+    public var isPursuing = false
 
     public init() {}
 

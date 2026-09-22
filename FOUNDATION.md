@@ -10,7 +10,8 @@ irgendein Zusatzsystem dazukommt:
 
 > Autos warten in einer Schlange. Ein Tap schickt das vorderste Auto in einen
 > rotierenden Kreisverkehr. Gutes Timing bringt Punkte und Combo, schlechtes
-> Timing einen Crash. Eine Schicht dauert 2 Minuten und endet mit einer Rush Hour.
+> Timing einen Crash. Eine Schicht ist eine feste Zahl Autos (15), die alle in den
+> Verkehr müssen; die letzten davon sind Rush Hour. Gut gespielt dauert das ≈ 20 s.
 
 Fühlt sich dieser Loop nicht gut an, retten ihn auch Verbrecher, Geldtransporter
 und Zollstellen nicht. Deshalb bauen wir ihn zuerst und spielen ihn auf dem
@@ -171,14 +172,16 @@ Im Testfenster ist ein Tap ein Linksklick oder die Leertaste.
 3. Während des Einfädelns misst die Simulation laufend den **kleinsten Abstand**
    zu jedem Auto im Ring.
 4. Am Ende wird bewertet (2.3).
-5. **Kein Tap-Cooldown – jeder Tap schickt sofort das nächste Auto los.** Das
-    nächste Auto rückt **sofort** nach, sobald das losgefahrene Auto einen vollen
-    Platz Vorsprung hat (queueSpacing). Taps werden **nicht mehr verworfen**:
-    drückt man schneller, fährt das nächste Auto los, sobald es an der Haltelinie
-    steht. Die Kollisionslogik (Kapsel-Abstands-Check in Collision.swift) verhindert
-    Crashes zwischen direkt aufeinanderfolgenden eigenen Autos – kein künstlicher Timer.
-    Schnelles, riskantes Spiel ist damit möglich und belohnbar. Implementierung:
-    Queue.swift setzt `queueAdvanceDuration = 0` (früher 0,2 s).
+5. **Kein Tap-Cooldown** *(M4+)*. Das nächste Auto fährt dem losgefahrenen direkt
+   hinterher und steht an der Haltelinie, sobald dieses einen vollen Platz Vorsprung
+   hat (`queueSpacing`, bei 100 % Tempo nach ≈ 0,3 s). Ein Tap, der früher kommt, wird
+   **gehalten** und schickt das Auto los, sobald es dort steht. Gehalten wird höchstens
+   einer, damit ein prellender Finger nicht fünf Autos schickt. So berühren sich eigene
+   Autos nie, und **eigene Autos bewerten sich nicht gegenseitig**: Der Abstand zum
+   eigenen Vorder- oder Hintermann zählt nicht für Tight Fit und Cut off, sonst wäre
+   schnelles Tippen ein Tight-Fit-Automat. Das Risiko liegt beim Spieler: Wer nachschiebt,
+   während sein Polizeiauto gleich den Pickup rammt, schickt das nächste Auto ins Wrack.
+   `queueAdvanceDuration` (Standard 0) gibt auf Wunsch wieder eine Nachrückzeit.
 6. Autos im Ring **verlassen ihn nach 1–3 Ausfahrten wieder**. So entstehen
    ständig neue Lücken.
 
@@ -189,7 +192,7 @@ bleibt die Bewertung fair, wenn das Tempo in der Rush Hour steigt.
 
 | Ergebnis | Bedingung | Punkte | Combo | Feedback |
 | --- | --- | --- | --- | --- |
-| **Crash** | Fahrzeuge berühren sich (beim Einfädeln oder bis 1 s danach) | −250 (nie unter 0) | auf 0 | Strike +1 |
+| **Crash** | Fahrzeuge berühren sich (beim Einfädeln oder bis 1 s danach) | −250 (nie unter 0) | auf 0 | normales Auto: Strike (Standard: Game Over), Polizeiauto: Polizei-Crash (2.6) |
 | **Tight Fit** | kleinster Abstand < 0,12 s | 200 × Multiplikator | +2 | Swoosh, auf dem iPhone ein scharfer Taptic-Klick |
 | **Sauber** | alles andere | 100 × Multiplikator | +1 | dezenter Ton |
 
@@ -208,25 +211,50 @@ Entschieden wird im Playtest.
 
 ### 2.5 Die Schicht
 
-- **Dauer 120 s**, der Timer steht oben.
-- **0–100 s:** Die Verkehrsdichte steigt von 3 auf 7 Autos im Ring, das Tempo von
-  100 % auf 110 %.
-- **Rush Hour, 100–120 s:** Tempo 125 %, Dichte +2, **Punkte ×2**. Der Timer
-  wechselt sichtbar seinen Zustand. Auf dem iPhone kommt ein Haptik-Signal dazu.
-- **Schichtende:** Taps werden nicht mehr angenommen. Einfädelungen, die gerade
-  laufen, werden noch gewertet. Nach 1,2 s erscheint oben in der Szene "GAME OVER"
-  bzw. "SHIFT COMPLETE" mit den Punkten. Es gibt kein Menü: Die Simulation läuft
-  weiter, man kann dem Geschehen zusehen, und **ein Tap startet die nächste
-  Schicht** (die ersten 0,4 s sind gesperrt, damit ein hektischer Tap nicht
-  versehentlich weiterschaltet).
-- **Abschlussbonus:** +1000 für eine vollständig gefahrene Schicht.
+*Stand M4+:* **Eine Schicht hat keine Uhr.** Man hat eine feste Zahl Autos
+(`shiftCars = 15`), die alle in den Verkehr müssen. Sobald das letzte eingefädelt ist,
+ist die Schicht geschafft. Gut gespielt dauert das ≈ 20 s, und leicht soll es nicht sein.
 
-### 2.6 Fehler: Strikes statt sofortigem Game Over
+- **Oben mittig** steht, wie viele Autos noch fehlen ("12 cars"). Die Warteschlange
+  zeigt nur noch diese Autos; gegen Ende sieht man sie leer werden.
+- **Druck ohne Uhr:** Dichte und Tempo steigen mit der Zeit (`rampSeconds = 20`) von
+  6 auf bis zu 10 Autos und von 105 % auf 120 % und bleiben dann oben. Wer lange auf
+  die perfekte Lücke wartet, bekommt mehr Verkehr, nicht weniger. Die Dichte ist eine
+  Obergrenze: Die KI füllt den Ring nur so weit, wie ihre Sicherheitslücken reichen.
+- **Rush Hour = die letzten 4 Autos** (`rushHourCars`): Tempo 135 %, Dichte +2,
+  **Punkte ×2**. Sie beginnt mit dem ersten dieser vier; der Zähler wechselt auf eine
+  Akzent-Pill. Auf dem iPhone kommt ein Haptik-Signal dazu.
+- **Verbrecher und Transporter** kommen früh (nach 4–8 s bzw. 8–14 s). Ein Verbrecher,
+  der beim letzten Auto noch angekündigt ist oder an seiner Zufahrt wartet, wird
+  abgeblasen. **Ist er schon unterwegs, muss er trotzdem gefasst werden:** Die Schicht
+  wartet auf die Jagd; ein Polizeiauto im Ring kann ihn noch rammen, sonst entkommt er
+  und die Schicht ist verloren. Ein Transporter, der beim letzten Auto noch kreist, wird
+  sofort ausgezahlt.
+- **Schichtende:** Taps werden nicht mehr angenommen. Die letzte Einfädelung wird noch
+  gewertet. Nach 1,2 s erscheint oben in der Szene "GAME OVER" bzw. "SHIFT COMPLETE"
+  mit den Punkten und der Zeit, die die Schicht gedauert hat. Es gibt kein Menü: Die
+  Simulation läuft weiter, und **ein Tap startet die nächste Schicht** (die ersten 0,4 s
+  sind gesperrt, damit ein hektischer Tap nicht versehentlich weiterschaltet).
+- **Abschlussbonus:** +1000 für eine geschaffte Schicht.
 
-- **Standard: 3 Strikes**, dann wird die Schicht abgebrochen (Hard Fail). Das ist
-  die Empfehlung aus IDEA.md.
-- Umschaltbar über `maxStrikes = 1`. Das ergibt den klassisch harten
-  "Car Circle"-Modus, damit wir im Playtest beides direkt vergleichen können.
+### 2.6 Fehler: Crashes
+
+*Stand M4+:* **Ein Crash deines normalen Autos beendet die Schicht sofort**
+(`maxStrikes = 1`, der klassisch harte "Car Circle"-Modus). **Polizeiautos haben ein
+eigenes Budget:** Drei Polizei-Crashes pro Schicht übersteht man (`maxPoliceCrashes = 3`),
+der vierte beendet sie. Ein Polizei-Crash kostet wie jeder Crash Punkte und die Combo,
+aber keinen Strike.
+
+- Die weiche Variante aus IDEA.md bleibt für den Vergleich umschaltbar:
+  `maxStrikes = 3`. Das HUD zeigt Strike-Punkte nur, wenn es mehr als einen gibt,
+  daneben blau umrandet die Polizei-Crashes; ein benutzter Punkt wird rot.
+- **Wer ist schuld:** Es zählt das Auto, das gerade einfädelt (oder in der Sekunde
+  danach). Fädelt ein Polizeiauto in dein eigenes normales Auto im Ring ein, ist das
+  ein Polizei-Crash. Ist ein normales Auto mitschuld, ist es ein Strike.
+- **Kein Crash im Sinne der Regel:** der Takedown (Polizei trifft Verbrecher: Punkte,
+  Slow-Mo) und die Beschlagnahme (Polizei trifft Transporter: kein Geld, aber auch
+  keine Strafe). Pickup und Transporter sind dabei "gepanzert": Alles andere prallt an
+  ihnen ab, sie fahren verbeult weiter.
 - **Crash-Physik (umgesetzt in M2):** Der Aufprall ist ein Starrkörper-Stoß am
   Kontaktpunkt: Impulserhaltung, 30 % Rückprall (der Rest geht in die
   Knautschzonen), Reibung beim Streifen. Ein Treffer neben dem Schwerpunkt bringt
@@ -239,25 +267,11 @@ Entschieden wird im Playtest.
   0,5–1,5 s (echte Bremsreaktionszeiten) und bremsen so stark wie nötig, höchstens
   0,9 g. Reicht der Platz nicht, fahren sie auf, und Kettenunfälle entstehen aus der
   Physik (`Drivers.swift`). Danach beschleunigen sie wieder in den Fluss.
-- **Strike-Regel:** Einen Strike kostet nur ein Crash deines eigenen Autos beim
-  Einfädeln oder in der ersten Sekunde danach. Wer in eine sichtbare Unfallstelle
-  einfädelt, macht also einen Fehler. Folgeunfälle im Verkehr dahinter kosten
-  nichts: Ein Fehler zählt einmal. Umschaltbar über `chainCrashesCostStrikes`.
-- **Abgebrochene Schicht:** Die Punkte bleiben, aber es gibt keinen
-    Abschlussbonus und keinen Highscore-Eintrag. Durchhalten soll sich lohnen.
-
-### 2.6.1 Unterschiedliche Crash-Regeln: Normale Autos vs. Polizeiautos (M4+)
-
-- **Normales Auto crash = sofort Game Over.** Ein Crash mit deinem normalen Auto
-  bricht die Schicht sofort ab (wie bei `maxStrikes = 1`). Keine 3 Strikes mehr
-  für normale Autos.
-- **Polizeiauto crash = Schicht geht weiter.** Polizeiautos dürfen bis zu
-  `maxPoliceCrashes = 3` Mal pro Schicht crashen. Erst beim 4. Crash ist Schluss.
-  Ein Police-Crash zählt **nicht** als Strike, sondern inkrementiert `policeCrashes`.
-- **Takedown (Polizei trifft Verbrecher) = kein Crash.** Das ist ein guter Crash,
-  gibt Punkte und Slow-Mo, keine Strafe.
-- **Transporter-Seizure (Polizei trifft Transporter in Secure-Zone) = kein Crash.**
-  Der Transporter wird festgenommen, keine Punkte/Gold, aber auch kein Strike.
+- **Folgeunfälle** im Verkehr dahinter kosten nichts: Ein Fehler zählt einmal. Wer in
+  eine sichtbare Unfallstelle einfädelt, macht dagegen einen Fehler. Umschaltbar über
+  `chainCrashesCostStrikes`.
+- **Abgebrochene Schicht:** Die Punkte bleiben, aber es gibt keinen Abschlussbonus und
+  keinen Highscore-Eintrag. Geld aus Transportern bleibt, es ist schon ausgezahlt.
 
 ### 2.7 KI-Verkehr
 
@@ -288,7 +302,7 @@ auf dem Mac die SwiftUI-Screens.
 | Screen | Inhalt | Wichtigste Aktion |
 | --- | --- | --- |
 | **Start** | Titel, Highscore, Einstellungen | **Start Shift** |
-| **Spiel (HUD)** | oben links Punkte, oben mittig Timer + 3 Strike-Punkte, oben rechts Pause; Combo auf der Mittelinsel; unten die Warteschlange | Tippen |
+| **Spiel (HUD)** | oben links Punkte, oben mittig die Autos, die noch fehlen ("12 cars"), darunter die Crash-Punkte (2.6), oben rechts Pause; Combo auf der Mittelinsel; unten die Warteschlange | Tippen |
 | **Pause** | Resume, Restart, Menu. Pausiert automatisch, wenn die App in den Hintergrund geht | **Resume** |
 | **Ergebnis** | kein Menü: oben in der Szene "GAME OVER" bzw. "SHIFT COMPLETE", Punkte groß, "New Highscore" oder Bestwert; auf der Mittelinsel "Tap to play again", beste Combo, Tight Fits | **Tap** (irgendwo) |
 | **Einstellungen** | Sound, Haptics, Reduce Motion (Standard: folgt iOS) | – |
@@ -311,7 +325,7 @@ Die Details legt der Look-&-Feel-Meilenstein M6 fest, das meiste davon schon im 
 - **Fahrzeugtypen sind immer über Farbe, Form und Symbol erkennbar.** Damit ist
   Farbenblind-Tauglichkeit Standard und kein Extra.
 - **Schrift:** In der App SF Pro, im Testfenster eine freie Platzhalterschrift.
-  Zahlen mit gleich breiten Ziffern, damit Punkte und Timer nicht zittern.
+  Zahlen mit gleich breiten Ziffern, damit Punkte und Zähler nicht zittern.
 - **In der App:** SF Symbols. **Liquid Glass sparsam**, nur für schwebende
   Bedienelemente wie Pause und Menü-Panels, nie über der Fahrbahn.
 - **Touch:** Die ganze Spielfläche ist Tap-Zone. Buttons haben mindestens 44 pt.
@@ -329,12 +343,12 @@ Testfenster sichtbar. Die Haptik-Spalte ist erst auf dem iPhone spürbar.
 
 | Ereignis | Häufigkeit | Bild | Haptik |
 | --- | --- | --- | --- |
-| Tap → Auto fährt los | ~100× pro Schicht | sofort, keine Animation davor | keine (die Bewegung ist das Feedback) |
+| Tap → Auto fährt los | 15× pro Schicht, oft kurz hintereinander | sofort, keine Animation davor | keine (die Bewegung ist das Feedback) |
 | Sauber eingefädelt | sehr oft | kein Text | keine |
 | Tight Fit | oft | Swoosh + kurzes "TIGHT!" (von 0,9 auf 1 skaliert mit Einblendung, < 250 ms, ease-out) | ein scharfer Transient |
 | Neue Combo-Stufe | gelegentlich | Spring auf dem Multiplikator (Dauer 0,35 s, Bounce 0,2), Glow | Doppel-Tick |
 | Crash | gelegentlich | Wracks mit Beulen, abreißende Teile, Splitter, Funken, Rauch; bei harten Treffern (≈ jeder 4.) Feuerball und Brand; Shake je nach Aufprallstärke. Wracks und Rauch liegen unter dem Verkehr, damit keine Lücke verdeckt wird | kräftiger Stoß + kurzes Rumpeln, nur beim eigenen Crash |
-| Rush Hour beginnt | 1× pro Schicht | Zustandswechsel am Timer | ansteigendes Muster |
+| Rush Hour beginnt | 1× pro Schicht | Zustandswechsel am Auto-Zähler (Akzent-Pill) | ansteigendes Muster |
 | Slow-Mo | nur beim Verbrecher-Takedown | nie für häufige Ereignisse | eigenes Muster |
 | Menüs (App, SwiftUI) | selten | ≤ 250 ms, `.timingCurve(0.23, 1, 0.32, 1, duration: 0.25)`; Buttons beim Drücken auf 0,97 skaliert | `.sensoryFeedback` nur bei Bestätigungen |
 
@@ -434,7 +448,7 @@ Car game/                          (Projektordner, lokal)
 │  │  ├─ Drivers.swift             Fahrer reagieren auf Crashes: bremsen, anhalten, auffahren
 │  │  ├─ Criminals.swift           Verbrecher-Pickup: Warnung, Countdown, Takedown, Einsatzfahrt (M3)
 │  │  ├─ Scoring.swift             Bewertung, Combo, Strikes
-│  │  ├─ Shift.swift               Timer, Dichtekurve, Rush Hour
+│  │  ├─ Shift.swift               Autos der Schicht, Dichte- und Tempokurve, Rush Hour
 │  │  ├─ Tuning.swift              tuning.json über die Config legen
 │  │  ├─ Events.swift              typisierte Events
 │  │  ├─ RNG.swift                 Seed-Zufall
@@ -444,7 +458,7 @@ Car game/                          (Projektordner, lokal)
 │  │  ├─ Camera.swift              Welt ins Fenster bzw. auf den Bildschirm einpassen
 │  │  ├─ Effects.swift             Crash-Effekte: Feuer, Rauch, Splitter, abreißende Teile, Shake
 │  │  ├─ CarArt.swift              Fahrzeug aus Teilen, verbeulbare Karosserie
-│  │  ├─ HUD.swift                 Punkte, Timer, Strikes, Combo, Popups, Ergebnis-Banner
+│  │  ├─ HUD.swift                 Punkte, Auto-Zähler, Crash-Punkte, Combo, Popups, Ergebnis-Banner
 │  │  ├─ Platform.swift            Protokolle (SaveStore …), Spielstand, JSON-Speicher
 │  │  ├─ Motion.swift              Easing-Kurven und Springs
 │  │  ├─ Theme.swift               Farb-Tokens, Maße
@@ -492,8 +506,8 @@ dient Testfenster und App gleich, nur der Speicherort unterscheidet sich.
 | Einsatzfahrt / Panic-Button | `World.dispatchPolice()` (M3); in der App ein Button und der Action Button |
 | Sperrzonen um den Geldtransporter | Regel-Hooks in der Bewertung (`onMerged`) |
 | Zollstellen und Stau | Pfade, dazu das Fahrermodell aus `Drivers.swift` (eigenes Tempo, Bremsen, Anfahren) |
-| Polizei-Chase-Speed (M4+) | `Drivers.swift`: Polizei hinter Wanted darf ×1,4 schneller fahren (`policeChaseSpeedFactor`) |
-| Blaulicht für Polizei im Ring (M4+) | `SceneBuilder.swift`: Polizeiautos im Ring blinken rot/blau |
+| Verfolgung im Ring (M4+) | `Drivers.swift`: Ein Polizeiauto, direkt hinter dem Verbrecher, beschleunigt auf ×1,4 (`policeChaseSpeedFactor`), bremst nicht für ihn und rammt ihn; es kreist, solange es jagt, danach reiht es sich wieder ein |
+| Blaulicht (M4+) | `SceneBuilder.swift`: Polizeiautos blinken, sobald sie losfahren; während einer Jagd alle, auch in der Warteschlange |
 | Gefahrenstufe und Upgrades | Die Config wird pro Schicht aus Basiswerten plus Modifikatoren gebaut |
 | Shop, Truhen, Straßeneditor | neue Screens in `ScreenFlow`, in der App als SwiftUI-Ansichten; Hauptnavigation als native Tab-Bar |
 | Trucks, Polizei, Transporter mit Schaden | eigene Teile-Modelle in `CarArt`, Masse pro Fahrzeugtyp in `CrashPhysics` |
@@ -588,12 +602,16 @@ Rauch, Splitter) und das Ergebnis als Banner statt Menü (Abschnitte 2.5 und 2.6
   Game, Shop, Upgrades) als native Tab-Bar
 - ✅ Crashes mit echter Physik, reagierendem Verkehr und Blechschaden (2.6)
 - ✅ Ergebnis ohne Menü: Banner in der Szene, ein Tap startet die nächste Schicht
+- ✅ Eine Schicht hat keine feste Zeit: Man bringt eine feste Zahl Autos in den Verkehr,
+  danach ist sie zu Ende. Gut gespielt ≈ 20 s, und das Spiel soll nicht leicht sein (2.5)
 
 **Entscheiden wir im Playtest nach M2:**
 
-1. 3 Strikes oder klassisch 1 (`maxStrikes`)
+1. ~~3 Strikes oder klassisch 1 (`maxStrikes`)~~ → in M4 entschieden: klassisch 1 für
+   normale Autos, dazu 3 Polizei-Crashes (2.6)
 2. Schwelle für Tight Fit (0,12 s) und ob "Cut off!" an oder aus ist (`sloppyWindow`)
-3. Schichtlänge 120 s und Stärke der Rush Hour
+3. ~~Schichtlänge 120 s~~ → in M4 entschieden: keine Uhr, 15 Autos pro Schicht (2.5).
+   Offen: Zahl der Autos und Stärke der Rush Hour
 4. Einfädeldauer 0,5 s
 5. Kommen Klick und Leertaste als Tap-Ersatz nah genug an das echte Gefühl heran?
    Das endgültige Timing-Feintuning passiert mit Touch in M7.

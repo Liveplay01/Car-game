@@ -20,7 +20,7 @@ public struct ScoreBoard: Sendable, Equatable {
     public internal(set) var transporters = 0
     /// Money earned this shift: paid transporters minus seized ones.
     public internal(set) var money = 0
-    /// Police car crashes this shift (maxPoliceCrashes allowed before game over).
+    /// Crashes of police cars this shift; `maxPoliceCrashes` of them are survived.
     public internal(set) var policeCrashes = 0
 
     public init() {}
@@ -84,7 +84,7 @@ extension World {
     /// Rates and scores a finished player merge. Returns the rating, points and new combo.
     mutating func scoreMerge(minGap: Double, gapBehind: Double, at time: Double) -> (MergeRating, Int, Int) {
         let rating = Scoring.rate(minGap: minGap, gapBehind: gapBehind, config: config)
-        let points = Scoring.points(for: rating, combo: score.combo, rushHour: time >= rushHourStartTime, config: config)
+        let points = Scoring.points(for: rating, combo: score.combo, rushHour: isRushHourScoring, config: config)
         score.points += points
         switch rating {
         case .clean: score.cleanMerges += 1
@@ -99,19 +99,28 @@ extension World {
         return (rating, points, score.combo)
     }
 
-    /// A crash with a player car: combo to 0, penalty, one strike. The last strike ends the shift.
-    /// Returns the penalty actually taken and the strikes after it.
-    mutating func scoreCrash() -> (Int, Int) {
+    /// The player's crash: combo to 0 and a penalty, plus a strike, or a police crash if it
+    /// was a police car's. Returns the penalty actually taken.
+    mutating func scoreCrash(byPolice: Bool) -> Int {
         let penalty = min(score.points, config.crashPenalty)
         score.points -= penalty
-        score.strikes += 1
+        if byPolice {
+            score.policeCrashes += 1
+        } else {
+            score.strikes += 1
+        }
         setCombo(0)
-        return (penalty, score.strikes)
+        return penalty
+    }
+
+    /// The last strike, or one police crash more than a shift survives.
+    var isStruckOut: Bool {
+        score.strikes >= config.maxStrikes || score.policeCrashes > config.maxPoliceCrashes
     }
 
     /// A police car stopped the criminal: points like a merge, the combo stays.
     mutating func scoreTakedown(at time: Double) -> Int {
-        let factor = Scoring.multiplier(combo: score.combo, config: config) * (time >= rushHourStartTime ? config.rushHourScoreFactor : 1)
+        let factor = Scoring.multiplier(combo: score.combo, config: config) * (isRushHourScoring ? config.rushHourScoreFactor : 1)
         let points = Int((Double(config.takedownPoints) * factor).rounded())
         score.points += points
         score.takedowns += 1
@@ -133,12 +142,13 @@ extension World {
         )))
     }
 
-    /// Free time (seconds) between the car at ring distance `s` and the nearest car behind it.
-    /// Merging cars count where they will join, like in the AI's safe-gap check.
+    /// Free time (seconds) between the player car at ring distance `s` and the nearest car
+    /// behind it. Merging cars count where they will join, like in the AI's safe-gap check.
+    /// Your own cars do not: the next one of your convoy is always right behind.
     func gapBehind(ringS s: Double, excluding id: Int) -> Double {
         let circumference = layout.ring.length
         var nearest = Double.infinity
-        for other in vehicles where other.id != id {
+        for other in vehicles where other.id != id && other.owner != .player {
             guard let otherS = virtualRingPosition(of: other, after: 0) else { continue }
             let behind = layout.ringDistance(from: otherS, to: s)
             if behind < circumference / 2 {

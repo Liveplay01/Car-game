@@ -31,22 +31,17 @@ public struct Config: Sendable, Equatable {
     public var queueSpacing: Double = 32
     /// Cars visible in the queue on a regular iPhone (the camera fits this many).
     public var queueVisible: Int = 4
-    /// Time the next car needs to roll up to the stop line. 0 = instant launch.
+    /// Extra time the next car needs to roll up once the launched one is a full slot ahead.
+    /// 0, the default, is no cooldown: the next car follows right behind the launched one
+    /// and is ready the moment that one has cleared the slot (FOUNDATION.md 2.2).
     public var queueAdvanceDuration: Double = 0
-
-    // MARK: Police (M4+)
-
-    /// How many times police cars may crash per shift before it's game over.
-    public var maxPoliceCrashes: Int = 3
-    /// Speed multiplier for police cars chasing a wanted criminal.
-    public var policeChaseSpeedFactor: Double = 1.4
 
     // MARK: AI traffic
 
     /// Cars on the road outside a shift: behind the start screen and in tests.
     public var freePlayDensity: Int = 5
     /// AI only enters with at least this much free time to the car ahead and behind.
-    public var aiSafeGap: Double = 0.35
+    public var aiSafeGap: Double = 0.25
     /// While driving its entry path the AI keeps at least this much distance (seconds) to everyone.
     public var aiPathClearance: Double = 0.1
     /// Pause between two AI spawns.
@@ -119,13 +114,14 @@ public struct Config: Sendable, Equatable {
     /// Share of police cars in the player's queue.
     public var policeShare: Double = 0.2
     /// Shift time of the first criminal warning, and the pause after one is caught.
-    public var criminalFirst: ClosedRange<Double> = 15...25
-    public var criminalInterval: ClosedRange<Double> = 18...30
+    public var criminalFirst: ClosedRange<Double> = 4...8
+    public var criminalInterval: ClosedRange<Double> = 10...16
     /// "WANTED" warning before the pickup shows up at its arm.
     public var criminalWarning: Double = 2
-    /// From the pickup's entry until it escapes and the shift is lost. One lap takes ~7 s,
-    /// so it passes the player's entry about twice.
-    public var criminalTime: Double = 15
+    /// From the pickup's entry until it escapes and the shift is lost. One lap takes ~6 s,
+    /// so it passes the player's entry about twice. It must be caught even once all your
+    /// cars are in: the shift waits for the chase.
+    public var criminalTime: Double = 12
     /// Points for a takedown, times combo multiplier and rush hour.
     public var takedownPoints: Int = 1000
     /// Mass of the pickup relative to a car once a police car stops it. Anything else
@@ -133,17 +129,21 @@ public struct Config: Sendable, Equatable {
     public var criminalMass: Double = 2.5
     /// Emergency dispatch turns the next car into a police car and multiplies the combo by this.
     public var dispatchComboFactor: Double = 0.5
+    /// A police car directly behind the criminal on the ring speeds up to this share of the
+    /// ring speed and rams it (`Drivers.swift`). It keeps circling while it chases.
+    public var policeChaseSpeedFactor: Double = 1.4
 
     // MARK: Money transporter (ROADMAP.md, M4)
 
     /// Time until the first transporter appears, and the pause after one is dealt with.
-    public var transporterFirst: ClosedRange<Double> = 25...40
-    public var transporterInterval: ClosedRange<Double> = 30...50
+    public var transporterFirst: ClosedRange<Double> = 8...14
+    public var transporterInterval: ClosedRange<Double> = 15...25
     /// "SECURED": warning before the transporter shows up at its arm.
     public var transporterWarning: Double = 2
-    /// From the transporter's entry until it leaves the ring safely. One lap takes ~7 s,
-    /// so it passes the player's entry about twice.
-    public var transporterTime: Double = 14
+    /// From the transporter's entry until it leaves the ring safely. One lap takes ~6 s,
+    /// so it passes the player's entry about twice. If your last car is in before, it is
+    /// paid right away.
+    public var transporterTime: Double = 10
     /// Arc along the ring, fore and aft of the transporter, that is a "secure zone".
     /// A police car inside either zone holds it; normal cars shield it and earn a bonus.
     public var transporterSecureArc: Double = 130
@@ -151,30 +151,39 @@ public struct Config: Sendable, Equatable {
     public var transporterPay: Int = 2500
     /// Bonus for a normal car standing in a secure zone while the transporter passes.
     public var shieldBonus: Int = 500
-/// Money for a transporter captured by a police car (it is seized, no money).
+    /// Money for a transporter captured by a police car (it is seized, no money).
     public var transporterSeized: Int = 0
-    /// Mass of the transporter relative to a car. Heavier than a normal car, so ramming it
-    /// costs the player a proper crash.
+    /// Mass of the transporter relative to a car once a police car seizes it. Anything else
+    /// bounces off it like off the criminal: it drives on, dented.
     public var transporterMass: Double = 1.6
 
     // MARK: Strikes (FOUNDATION.md 2.6)
 
-    /// The shift is aborted at this many crashes. 1 is the classic hard "Car Circle" mode.
-    public var maxStrikes: Int = 3
+    /// Crashes of normal cars that end the shift. 1, the default, is the classic hard
+    /// "Car Circle" mode: your first normal crash is game over. 3 is the soft variant.
+    public var maxStrikes: Int = 1
+    /// Crashes of police cars a shift survives; the next one ends it. They cost points and
+    /// the combo, but no strike.
+    public var maxPoliceCrashes: Int = 3
 
     // MARK: Shift (FOUNDATION.md 2.5)
 
-    public var shiftSeconds: Double = 120
-    /// The last this-many seconds of a shift are rush hour.
-    public var rushHourSeconds: Double = 20
-    /// Cars on the road (ring, merging, waiting) at the start and at the end of the build-up.
-    public var densityStart: Int = 3
-    public var densityEnd: Int = 7
+    /// Cars the player has to bring into traffic. There is no clock: the shift is done once
+    /// the last one is in. A good player needs about 20 s.
+    public var shiftCars: Int = 15
+    /// The last this-many cars are rush hour: faster, denser, points ×2.
+    public var rushHourCars: Int = 4
+    /// Density and tempo rise from their start to their end values over this time, and
+    /// stay there: whoever waits for the perfect gap gets more traffic, not an easier one.
+    public var rampSeconds: Double = 20
+    /// Cars on the road (ring, merging, waiting) at the start and at the end of the ramp.
+    public var densityStart: Int = 6
+    public var densityEnd: Int = 10
     public var rushHourDensityBonus: Int = 2
-    /// Tempo (share of `ringSpeed`) at the start and at the end of the build-up.
-    public var tempoStart: Double = 1
-    public var tempoEnd: Double = 1.1
-    public var rushHourTempo: Double = 1.25
+    /// Tempo (share of `ringSpeed`) at the start and at the end of the ramp.
+    public var tempoStart: Double = 1.05
+    public var tempoEnd: Double = 1.2
+    public var rushHourTempo: Double = 1.35
     /// Time over which the tempo rises to `rushHourTempo`, so the jump stays readable.
     public var rushHourRamp: Double = 1
     /// Points for merges during rush hour are multiplied by this.
@@ -186,6 +195,4 @@ public struct Config: Sendable, Equatable {
     public var gravity: Double { 9.81 * carLength / carLengthMeters }
     /// Length of every entry path. Chosen so that a merge at 100 % tempo drives at constant speed.
     public var mergePathLength: Double { ringSpeed * mergeDuration }
-    /// Shift time at which rush hour begins.
-    public var rushHourStart: Double { max(0, shiftSeconds - rushHourSeconds) }
 }

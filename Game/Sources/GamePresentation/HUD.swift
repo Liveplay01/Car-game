@@ -31,7 +31,7 @@ struct Popup: Sendable, Equatable {
     var age = 0.0
 }
 
-/// The in-game HUD (FOUNDATION.md 3): score top left, timer and strikes top centre, the
+/// The in-game HUD (FOUNDATION.md 3): score top left, cars left and crashes top centre, the
 /// combo on the centre island, where it never covers traffic. Screen space, points.
 enum HUD {
     static func add(world: World, format: TextFormat, showsKeys: Bool, timeScale: Double, to list: inout RenderList) {
@@ -48,25 +48,35 @@ enum HUD {
 
         add(.text(format.number(world.score.points), position: Vec2(margin, Metrics.hudRow), size: Metrics.scoreSize, alignment: .leading, weight: .bold), .primary)
 
-        // Timer; during rush hour it sits on an accent pill: a state change you notice at a glance.
-        let timer = Vec2(width / 2, Metrics.hudRow)
-        let clock = format.clock(world.remainingTime)
-        if world.shift.isRushHour || (world.shift.outcome != nil && world.time >= world.config.rushHourStart) {
-            add(.roundedRect(center: timer, size: Vec2(76, 32), cornerRadius: 16, rotation: 0), .accent)
-            add(.text(clock, position: timer, size: Metrics.timerSize, alignment: .center, weight: .bold), .accentInk)
+        // Cars still to send; during rush hour on an accent pill: a state change you notice
+        // at a glance. It stays there once the shift is over.
+        let counter = Vec2(width / 2, Metrics.hudRow)
+        let cars = Strings.HUD.cars(world.carsLeft ?? 0)
+        if world.shift.rushHourSince != nil {
+            add(.roundedRect(center: counter, size: Vec2(Metrics.counterPillWidth, 32), cornerRadius: 16, rotation: 0), .accent)
+            add(.text(cars, position: counter, size: Metrics.timerSize, alignment: .center, weight: .bold), .accentInk)
         } else {
-            add(.text(clock, position: timer, size: Metrics.timerSize, alignment: .center, weight: .bold), .primary)
+            add(.text(cars, position: counter, size: Metrics.timerSize, alignment: .center, weight: .bold), .primary)
         }
 
-        // One dot per strike: filled once used.
-        let count = world.config.maxStrikes
-        for index in 0..<count {
-            let x = width / 2 + (Double(index) - Double(count - 1) / 2) * Metrics.strikeSpacing
-            let center = Vec2(x, Metrics.strikeRow)
-            if index < world.score.strikes {
+        // Crashes the shift survives, under the car counter: one dot per strike (only if there is
+        // more than one) and one per police crash, ringed in police blue. Filled once used.
+        var dots: [(used: Bool, ring: ColorToken)] = []
+        if world.config.maxStrikes > 1 {
+            dots += (0..<world.config.maxStrikes).map { ($0 < world.score.strikes, .muted) }
+        }
+        let firstPolice = dots.count
+        dots += (0..<world.config.maxPoliceCrashes).map { ($0 < world.score.policeCrashes, .lightBlue) }
+        // Half a dot of extra room between the two groups.
+        let groupGap = firstPolice > 0 && dots.count > firstPolice ? 0.5 : 0
+        let span = Double(dots.count - 1) + groupGap
+        for (index, dot) in dots.enumerated() {
+            let slot = Double(index) + (index >= firstPolice ? groupGap : 0)
+            let center = Vec2(width / 2 + (slot - span / 2) * Metrics.strikeSpacing, Metrics.strikeRow)
+            if dot.used {
                 add(.circle(center: center, radius: Metrics.strikeRadius), .destructive)
             } else {
-                add(.arc(center: center, radius: Metrics.strikeRadius - 0.75, thickness: 1.5, startAngle: 0, endAngle: Angle.tau), .muted)
+                add(.arc(center: center, radius: Metrics.strikeRadius - 0.75, thickness: 1.5, startAngle: 0, endAngle: Angle.tau), dot.ring)
             }
         }
 
@@ -218,6 +228,19 @@ enum HUD {
             let label = list.camera.toScreen(pose.position) + Vec2(0, -list.camera.toScreen(length: 20) - 12)
             list.add(.text(String(Int((deadline - world.time).rounded(.up))), position: label, size: 14, alignment: .center, weight: .bold), color: .vehicleCargo, space: .screen, id: id)
             id += 1
+            // Its way out, marked ahead of time (IDEA.md: escape route). Short, right at the
+            // mouth of the exit: the side arms are barely on screen in portrait.
+            if let arm = exitArm(of: truck) {
+                let exit = world.layout.exit(arm)
+                let tip = exit.pose(at: min(30, exit.length))
+                let back = Vec2(angle: tip.heading) * -8
+                list.add(.line(from: exit.pose(at: min(4, exit.length)).position, to: tip.position, thickness: 2.5), color: .vehicleCargo, opacity: 0.7, space: .world, id: id)
+                id += 1
+                for side in [-1.0, 1.0] {
+                    list.add(.line(from: tip.position, to: tip.position + back + back.right * (side * 0.8), thickness: 2.5), color: .vehicleCargo, opacity: 0.55, space: .world, id: id)
+                    id += 1
+                }
+            }
             // The secure zones, fore and aft, as pale arcs on the ring.
             for zone in world.secureZones() {
                 list.add(.arc(center: .zero, radius: config.ringRadius + config.laneWidth / 2 - 3, thickness: 2,
@@ -227,6 +250,16 @@ enum HUD {
             }
         case .idle, .leaving, .seized:
             break
+        }
+    }
+
+    /// The arm a vehicle will leave by.
+    private static func exitArm(of vehicle: Vehicle) -> Arm? {
+        switch vehicle.phase {
+        case let .merging(m): m.exitArm
+        case let .ring(r): r.exitArm
+        case let .exiting(e): e.arm
+        case .queued, .waiting, .crashed: nil
         }
     }
 
@@ -311,7 +344,7 @@ enum ResultBanner {
         guard prompt > 0 else { return }
         let island = list.camera.toScreen(.zero)
         text(Strings.Result.tapToContinue, island, size: 17, color: .primary, opacity: prompt)
-        text(Strings.Result.stats(combo: format.number(result.bestCombo), tightFits: format.number(result.tightFits), busted: result.takedowns, transporters: result.transporters, money: format.number(result.money)), island + Vec2(0, 28), size: 13, weight: .regular, color: .muted, opacity: prompt)
+        text(Strings.Result.stats(combo: format.number(result.bestCombo), tightFits: format.number(result.tightFits), busted: result.takedowns, transporters: result.transporters, money: format.number(result.money), time: format.seconds(result.time)), island + Vec2(0, 28), size: 13, weight: .regular, color: .muted, opacity: prompt)
         if showsKeys {
             text(Strings.Result.keys(seed: result.seed), island + Vec2(0, 48), size: 12, weight: .regular, color: .muted, opacity: prompt)
         }

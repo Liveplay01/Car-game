@@ -86,6 +86,15 @@ extension Frame {
 }
 
 /// Puts a ring car exactly where the next merge ends and taps.
+/// Sends the cars of a quiet shift one by one until it is over.
+func finishShift(_ session: GameSession) {
+    for _ in 0..<(session.world.carsLeft ?? 0) {
+        session.run(seconds: 1) { $0.world.queue.isReady }
+        session.advance([.tap])
+    }
+    session.run(seconds: 2) { $0.world.shift.outcome != nil }
+}
+
 func crashNextCar(_ session: GameSession) {
     session.run(seconds: 1) { $0.world.queue.isReady }
     var world = session.world
@@ -172,23 +181,25 @@ struct SessionTests {
         #expect(frame.texts.contains(Strings.Debug.fps(60)))
     }
 
-    @Test func rushHourPutsTheTimerOnAnAccentPill() {
-        let session = makeSession(config: quietConfig { $0.shiftSeconds = 3; $0.rushHourSeconds = 1 })
+    @Test func rushHourPutsTheCarCounterOnAnAccentPill() {
+        let session = makeSession(config: quietConfig { $0.shiftCars = 3; $0.rushHourCars = 2 })
         session.advance([.confirm])
         let before = session.advance()
         #expect(!before.renderList.items.contains { $0.color == .accentInk })
-        session.run(seconds: 2.2)
+        session.advance([.tap])
+        session.run(seconds: 1) { $0.world.queue.isReady }
+        session.advance([.tap])
         let frame = session.advance()
-        #expect(frame.renderList.items.contains { $0.color == .accentInk && $0.primitive == .text("0:01", position: Vec2(viewport.x / 2, Metrics.hudRow), size: Metrics.timerSize, alignment: .center, weight: .bold) })
+        #expect(frame.renderList.items.contains { $0.color == .accentInk && $0.primitive == .text(Strings.HUD.cars(1), position: Vec2(viewport.x / 2, Metrics.hudRow), size: Metrics.timerSize, alignment: .center, weight: .bold) })
         #expect(frame.texts.contains(Strings.HUD.rushFactor(2)))
     }
 
-    @Test func hudShowsScoreTimerAndCombo() {
+    @Test func hudShowsScoreCarsLeftAndCombo() {
         let session = makeSession()
         session.advance([.confirm])
         let frame = session.advance()
         #expect(frame.texts.contains("0"))
-        #expect(frame.texts.contains("2:00"))
+        #expect(frame.texts.contains(Strings.HUD.cars(session.config.shiftCars)))
         #expect(frame.texts.contains("×1"))
     }
 }
@@ -250,11 +261,11 @@ struct ScreenFlowTests {
 
     @Test func completedShiftShowsTheBannerAndSavesTheHighscore() {
         let store = MemorySaveStore()
-        let session = makeSession(config: quietConfig { $0.shiftSeconds = 2; $0.rushHourSeconds = 1 }, store: store)
+        let session = makeSession(config: quietConfig { $0.shiftCars = 1; $0.rushHourCars = 0 }, store: store)
         session.advance([.confirm])
-        session.run(seconds: 2.2) { $0.world.shift.outcome != nil }
+        finishShift(session)
         // Saved at once; the banner follows a moment later.
-        #expect(store.game?.highscore == 1_000)
+        #expect(store.game?.highscore == 1_100)
         #expect(session.screen == .playing)
         session.run(seconds: GameSession.resultDelay + 0.1) { $0.isShowingResult }
         guard case let .result(summary) = session.screen else {
@@ -265,14 +276,15 @@ struct ScreenFlowTests {
         #expect(session.content == nil)
         let texts = session.advance().texts
         #expect(texts.contains(Strings.Result.shiftComplete))
-        #expect(texts.contains("1,000"))
+        #expect(texts.contains("1,100"))
         #expect(texts.contains(Strings.Result.newHighscore))
     }
 
     @Test func oneTapStartsTheNextShiftButNotRightAway() {
-        let session = makeSession(config: quietConfig { $0.shiftSeconds = 1 })
+        let session = makeSession(config: quietConfig { $0.shiftCars = 1 })
         session.advance([.confirm])
-        session.run(seconds: 1.2 + GameSession.resultDelay + 0.2) { $0.isShowingResult }
+        finishShift(session)
+        session.run(seconds: GameSession.resultDelay + 0.2) { $0.isShowingResult }
         #expect(session.isShowingResult)
         // A hurried tap in the first moment is ignored.
         session.advance([.tap])
@@ -307,8 +319,9 @@ struct ScreenFlowTests {
     }
 
     @Test func escapeLeadsFromTheResultToTheMenu() {
-        let session = makeSession(config: quietConfig { $0.shiftSeconds = 1 })
+        let session = makeSession(config: quietConfig { $0.shiftCars = 1 })
         session.advance([.confirm])
+        finishShift(session)
         session.run(seconds: 3) { $0.isShowingResult }
         session.advance([.back])
         #expect(session.screen == .start)
@@ -316,12 +329,12 @@ struct ScreenFlowTests {
 
     @Test func highscoreSurvivesARestartOfTheGame() {
         let store = MemorySaveStore()
-        let first = makeSession(config: quietConfig { $0.shiftSeconds = 1 }, store: store)
+        let first = makeSession(config: quietConfig { $0.shiftCars = 1; $0.rushHourCars = 0 }, store: store)
         first.advance([.confirm])
-        first.run(seconds: 1.5) { $0.world.shift.outcome != nil }
+        finishShift(first)
         let second = makeSession(store: store)
-        #expect(second.save.highscore == 1_000)
-        #expect(second.content?.subtitle == Strings.Menu.highscore("1,000"))
+        #expect(second.save.highscore == 1_100)
+        #expect(second.content?.subtitle == Strings.Menu.highscore("1,100"))
     }
 
 }
@@ -380,9 +393,9 @@ struct SessionTuningTests {
         let session = makeSession()
         session.advance([.confirm])
         session.run(seconds: 0.5)
-        session.loadTuning(Data(#"{ "tightFitSeconds": 0.2, "maxStrikes": 1 }"#.utf8))
+        session.loadTuning(Data(#"{ "tightFitSeconds": 0.2, "maxStrikes": 3 }"#.utf8))
         #expect(session.config.tightFitSeconds == 0.2)
-        #expect(session.world.config.maxStrikes == 1)
+        #expect(session.world.config.maxStrikes == 3)
         #expect(session.world.seed == 100)
         #expect(session.world.time < 0.1)
         #expect(session.advance().texts.contains(Strings.Notice.tuningLoaded(values: 2, changes: 2 + 4)))
@@ -410,14 +423,14 @@ struct TextFormatTests {
         #expect(TextFormat().signed(-250) == "−250")
     }
 
-    @Test func clockRoundsUp() {
+    @Test func shiftTimeInTenths() {
         let format = TextFormat()
-        #expect(format.clock(120) == "2:00")
-        #expect(format.clock(119.99) == "2:00")
-        #expect(format.clock(65) == "1:05")
-        #expect(format.clock(8.2) == "0:09")
-        #expect(format.clock(0) == "0:00")
-        #expect(format.clock(-3) == "0:00")
+        #expect(format.seconds(18.44) == "18.4 s")
+        #expect(format.seconds(18.46) == "18.5 s")
+        #expect(format.seconds(5) == "5.0 s")
+        #expect(format.seconds(-1) == "0.0 s")
+        #expect(Strings.HUD.cars(1) == "1 car")
+        #expect(Strings.HUD.cars(12) == "12 cars")
     }
 }
 

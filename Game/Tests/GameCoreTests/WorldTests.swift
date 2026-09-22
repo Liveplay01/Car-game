@@ -78,14 +78,55 @@ struct QueueTests {
         }
     }
 
-    @Test func tapWhileTheNextCarRollsUpIsIgnored() {
+    @Test func earlyTapLaunchesTheNextCarTheMomentItArrives() {
+        var world = emptyWorld()
+        world.tap(at: 0)
+        world.step()
+        let next = world.queue.vehicles[0]
+        world.tap(at: world.time)
+        world.step()
+        #expect(!world.takeEvents().contains { $0.isRejectedTap })
+        #expect(world.queue.heldTap != nil)
+        let events = world.run(steps: World.stepRate) { $0.vehicle(id: next)?.activeMerge != nil }
+        // It leaves right after the car ahead has cleared its slot: no cooldown.
+        let clearing = world.config.queueSpacing / world.config.ringSpeed
+        #expect(events.contains { if case .launched(next, _) = $0 { true } else { false } })
+        #expect(world.time <= clearing + 2 * World.stepDuration + 1e-9)
+        #expect(world.queue.heldTap == nil)
+    }
+
+    @Test func onlyOneEarlyTapIsHeld() {
         var world = emptyWorld()
         world.tap(at: 0)
         world.step()
         world.tap(at: world.time)
+        world.tap(at: world.time)
         world.step()
-        #expect(world.takeEvents().contains { $0.isRejectedTap })
-        #expect(!world.queue.isReady)
+        #expect(world.takeEvents().filter(\.isRejectedTap).count == 1)
+    }
+
+    @Test func theNextCarFollowsWithoutJumping() {
+        var world = emptyWorld()
+        world.tap(at: 0)
+        let next = world.queue.vehicles[1]
+        let limit = world.config.ringSpeed * World.stepDuration + 1e-6
+        for _ in 0..<World.stepRate {
+            world.step()
+            guard let car = world.vehicle(id: next) else { break }
+            #expect(car.position.x.isFinite && car.position.y.isFinite)
+            #expect(car.position.distance(to: car.previousPosition) <= limit)
+        }
+    }
+
+    @Test func anAdvanceDurationStillDelaysTheNextCar() {
+        var config = Config()
+        config.queueAdvanceDuration = 0.2
+        var world = emptyWorld(config: config)
+        world.tap(at: 0)
+        world.run(steps: 240) { $0.queue.isReady }
+        let clearing = config.queueSpacing / config.ringSpeed
+        #expect(world.time >= clearing + 0.2 - 0.02)
+        #expect(world.time <= clearing + 0.2 + 0.03)
     }
 
     @Test func queueIsReadyAgainAfterClearingAndRollingUp() {

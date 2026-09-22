@@ -112,8 +112,8 @@ In `TestWindow/tuning.json` stehen die wichtigsten Spielwerte, zum Beispiel:
   "tightFitSeconds": 0.12,
   "mergeDuration": 0.5,
   "ringSpeed": 110,
-  "maxStrikes": 3,
-  "shiftSeconds": 120
+  "maxStrikes": 1,
+  "shiftCars": 15
 }
 ```
 
@@ -129,7 +129,8 @@ In `TestWindow/tuning.json` stehen die wichtigsten Spielwerte, zum Beispiel:
 Die Datei wird beim Start automatisch geladen. Fehlt sie, schreibt **T** eine neue
 mit allen aktuellen Werten. Alle Schlüssel sind optional; was fehlt, kommt aus
 `Config.swift`. Tunbar sind u. a. `tightFitSeconds`, `sloppyWindow`, `mergeDuration`,
-`ringSpeed`, `maxStrikes`, `shiftSeconds`, `rushHourSeconds`, Dichte- und
+`ringSpeed`, `maxStrikes`, `maxPoliceCrashes`, `queueAdvanceDuration`,
+`policeChaseSpeedFactor`, `shiftCars`, `rushHourCars`, `rampSeconds`, Dichte- und
 Tempokurve, Punkte, `comboThresholds` und `comboMultipliers`.
 
 ---
@@ -147,7 +148,7 @@ Das prüft alles, was man ohne Bildschirm prüfen kann:
   Combo-Stufen, Strikes, Rush Hour, und ob gleicher Seed und gleiche Eingaben
   dasselbe Ergebnis liefern.
 - **Darstellungslogik:** Kamera-Einpassung, Effekt-Timings und der Screen-Ablauf
-  (z. B. dass nach dem dritten Strike der Ergebnis-Screen kommt).
+  (z. B. dass nach dem Crash, der die Schicht beendet, der Ergebnis-Screen kommt).
 
 In VS Code geht das auch über die Test-Ansicht (Kolben-Symbol).
 
@@ -157,17 +158,21 @@ In VS Code geht das auch über die Test-Ansicht (Kolben-Symbol).
 swift run -c release Sim --shifts 1000 --seed 42
 ```
 
-Drei Bots spielen je 1000 Schichten parallel auf allen Kernen (etwa 55 s; für
-schnelle Vergleiche `--shifts 200`, etwa 10 s). Stand M3:
+Drei Bots spielen je 1000 Schichten parallel auf allen Kernen (etwa 10 s; für
+schnelle Vergleiche `--shifts 200`). Stand M4 (Schicht = 15 Autos, keine Uhr):
 
 ```
-Bot       Score avg     p10  median     p90 Crashes Aborted Escaped Busted Best combo Tight fits  Merges
-Perfect      67,881  62,500  68,000  73,550    0.00      0%      0%    3.1       99.0       55.7   112.6
-Human        45,864  39,500  46,650  51,950    0.47      1%      1%    3.0       80.2       13.2   100.7
-Random        2,447       0   1,650   6,500    2.76     85%     15%    0.0       13.6        1.0    17.1
+Bot       Score avg     p10  median     p90  Done   Time Crashes Aborted Escaped Busted Best combo Tight fits  Merges
+Perfect       5,951   4,850   5,400   8,100  100%  6.0 s    0.00      0%      0%    0.3       18.5        4.6    14.7
+Human         5,994   4,450   6,150   8,250   92% 19.2 s    0.07      7%      0%    0.9       13.2        2.4    13.6
+Random          333       0       0     850    1% 14.9 s    0.98     98%      1%    0.0        3.2        0.7     2.7
 ```
 
-*Aborted* = drei Strikes, *Escaped* = ein Verbrecher ist entkommen, *Busted* =
+*Done* = Anteil geschaffter Schichten, *Time* = wie lange eine geschaffte Schicht im
+Median gedauert hat (Ziel: ≈ 20 s für einen guten Spieler).
+
+*Aborted* = durch einen Crash beendet (normales Auto oder der 4. Polizei-Crash),
+*Escaped* = ein Verbrecher ist entkommen, *Busted* =
 Takedowns pro Schicht.
 
 - **Perfect:** perfektes Timing, sieht die Autos so, wie ein Spieler sie sieht.

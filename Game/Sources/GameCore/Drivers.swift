@@ -5,12 +5,13 @@
 /// In normal traffic nothing here runs: every car flows at ring speed, exactly as before,
 /// so the merge timing stays exact and fair.
 extension World {
-    /// Something on the road is not flowing: a wreck, or a driver who brakes or is catching up.
+    /// Something on the road is not flowing: a wreck, a driver who brakes or is catching up,
+    /// or a police car chasing the criminal.
     public var isTrafficDisturbed: Bool {
         vehicles.contains { vehicle in
             switch vehicle.phase {
             case .crashed: true
-            case let .ring(r): !r.drive.isInFlow && vehicle.type != .transporter
+            case let .ring(r): !r.drive.isInFlow
             case let .exiting(e): !e.drive.isInFlow
             case .queued, .waiting, .merging: false
             }
@@ -19,6 +20,7 @@ extension World {
 
     /// The nearest thing ahead a driver has to mind.
     struct Lead {
+        var id: Int
         /// Surface to surface, along the road.
         var gap: Double
         /// Its speed along the road.
@@ -33,23 +35,24 @@ extension World {
     }
 
     mutating func updateDrivers(_ dt: Double) {
-        guard isTrafficDisturbed else { return }
+        let quarry = pursuitQuarry
+        guard isTrafficDisturbed || quarry != nil else { return }
         let lane = ringLaneOccupants()
         // Criminals and transporters do not brake for anything: they plough on.
         for i in vehicles.indices where vehicles[i].type != .pickup && vehicles[i].type != .transporter {
             let id = vehicles[i].id
-            let vehicle = vehicles[i]
-            // Police cars chasing a wanted criminal can go faster
-            let isPoliceChasing = vehicle.type == .police && vehicle.owner == .player && hasActiveWantedAhead(of: vehicle, in: lane)
-            let maxSpeed = isPoliceChasing ? ringSpeed * config.policeChaseSpeedFactor : ringSpeed
-            switch vehicle.phase {
+            switch vehicles[i].phase {
             case .ring(var r):
                 let lead = leadOnRing(from: r.s, occupants: lane, excluding: id)
-                r.drive = drive(r.drive, lead: lead, id: id, dt: dt, maxSpeed: maxSpeed)
+                if let quarry, lead?.id == quarry, vehicles[i].isPlayerPolice {
+                    r.drive = pursue(r.drive, dt: dt)
+                } else {
+                    r.drive = drive(r.drive, lead: lead, id: id, dt: dt)
+                }
                 vehicles[i].phase = .ring(r)
             case .exiting(var e):
                 let lead = leadOnExit(e.arm, from: e.s, excluding: id)
-                e.drive = drive(e.drive, lead: lead, id: id, dt: dt, maxSpeed: maxSpeed)
+                e.drive = drive(e.drive, lead: lead, id: id, dt: dt)
                 vehicles[i].phase = .exiting(e)
             case .queued, .waiting, .merging, .crashed:
                 break
@@ -57,9 +60,34 @@ extension World {
         }
     }
 
-    /// One driver, one step: notice, react, brake or catch up with the flow again.
-    func drive(_ current: Drive, lead: Lead?, id: Int, dt: Double, maxSpeed: Double) -> Drive {
+    /// The criminal, while it is on the ring and one of your police cars is too: a police
+    /// car right behind it gives chase.
+    var pursuitQuarry: Int? {
+        guard case let .active(id, _) = criminal.phase, let pickup = vehicle(id: id), case .ring = pickup.phase else { return nil }
+        let policeOnRing = vehicles.contains { vehicle in
+            guard vehicle.isPlayerPolice, case .ring = vehicle.phase else { return false }
+            return true
+        }
+        return policeOnRing ? id : nil
+    }
+
+    /// A police car with the criminal directly ahead: it speeds up to
+    /// `policeChaseSpeedFactor` and does not brake for the pickup, it rams it (the takedown).
+    /// It keeps circling while it chases (`moveVehicles`).
+    func pursue(_ current: Drive, dt: Double) -> Drive {
         var drive = current
+        let top = ringSpeed * config.policeChaseSpeedFactor
+        drive.speed = min(top, (drive.speed ?? ringSpeed) + config.driverAcceleration * config.gravity * dt)
+        drive.reaction = 0
+        drive.isPursuing = true
+        return drive
+    }
+
+    /// One driver, one step: notice, react, brake or get back into the flow, from below
+    /// after braking or from above after a chase.
+    func drive(_ current: Drive, lead: Lead?, id: Int, dt: Double) -> Drive {
+        var drive = current
+        drive.isPursuing = false
         let g = config.gravity
         var speed = drive.speed ?? ringSpeed
         var needed = 0.0
@@ -71,8 +99,7 @@ extension World {
         if alarmed && drive.reaction == nil {
             drive.reaction = reactionTime(of: id)
         }
-        guard let reaction = drive.reaction else { return drive }
-        if reaction > 0 {
+        if let reaction = drive.reaction, reaction > 0 {
             // Still taking it in: the car rolls on at its speed.
             drive.reaction = max(0, reaction - dt)
             drive.speed = speed
@@ -80,10 +107,12 @@ extension World {
         }
         if alarmed {
             speed = max(0, speed - min(needed * 1.1, config.driverBrake * g) * dt)
-        } else if canSpeedUp(speed, behind: lead, maxSpeed: maxSpeed) {
-            speed = min(maxSpeed, speed + config.driverAcceleration * g * dt)
+        } else if speed > ringSpeed {
+            speed = max(ringSpeed, speed - config.driverAcceleration * g * dt)
+        } else if canSpeedUp(speed, behind: lead) {
+            speed = min(ringSpeed, speed + config.driverAcceleration * g * dt)
         }
-        if speed >= maxSpeed - 1e-9 && !alarmed {
+        if abs(speed - ringSpeed) < 1e-9 && !alarmed {
             return Drive()
         }
         drive.speed = speed
@@ -91,7 +120,7 @@ extension World {
     }
 
     /// Enough room to pick up speed: the driver could still stop gently behind the lead.
-    func canSpeedUp(_ speed: Double, behind lead: Lead?, maxSpeed: Double) -> Bool {
+    func canSpeedUp(_ speed: Double, behind lead: Lead?) -> Bool {
         guard let lead else { return true }
         let comfortable = 0.3 * config.gravity
         let needed = max(0, speed * speed - lead.speed * lead.speed) / (2 * comfortable)
@@ -141,23 +170,10 @@ extension World {
             guard ahead > 0, ahead < circumference / 2 else { continue }
             let gap = ahead - config.carLength
             if nearest == nil || gap < nearest!.gap {
-                nearest = Lead(gap: gap, speed: occupant.speed)
+                nearest = Lead(id: occupant.id, gap: gap, speed: occupant.speed)
             }
         }
         return nearest
-    }
-
-    /// Whether there's an active wanted criminal ahead of the given vehicle in the lane.
-    func hasActiveWantedAhead(of policeCar: Vehicle, in lane: [Occupant]) -> Bool {
-        guard policeCar.type == .police && policeCar.owner == .player else { return false }
-        guard case let .ring(r) = policeCar.phase else { return false }
-        guard case .active = criminal.phase else { return false }
-        guard let criminalVehicle = criminal.vehicle,
-              let criminalVehicleData = self.vehicle(id: criminalVehicle),
-              case let .ring(criminalRing) = criminalVehicleData.phase else { return false }
-        // Check if criminal is ahead (in direction of travel) within half the ring
-        let ahead = layout.ringDistance(from: r.s, to: criminalRing.s)
-        return ahead > 0 && ahead < layout.ring.length / 2
     }
 
     /// Cars ahead on the same exit, and wrecks lying across it.
@@ -165,21 +181,21 @@ extension World {
         let path = layout.exit(arm)
         let halfLane = config.laneWidth / 2 + config.carWidth / 2
         var nearest: Lead?
-        func consider(_ gap: Double, _ speed: Double) {
+        func consider(_ id: Int, _ gap: Double, _ speed: Double) {
             if nearest == nil || gap < nearest!.gap {
-                nearest = Lead(gap: gap, speed: speed)
+                nearest = Lead(id: id, gap: gap, speed: speed)
             }
         }
         for vehicle in vehicles where vehicle.id != id {
             switch vehicle.phase {
             case let .exiting(e) where e.arm == arm && e.s > s:
-                consider(e.s - s - config.carLength, e.drive.speed ?? ringSpeed)
+                consider(vehicle.id, e.s - s - config.carLength, e.drive.speed ?? ringSpeed)
             case let .crashed(state):
                 let hits = wreckPoints(vehicle).map { path.nearest(to: $0) }
                 guard let (along, distance) = hits.min(by: { $0.distance < $1.distance }),
                       distance - config.carWidth / 2 < halfLane - config.carWidth / 2 + 1, along > s else { continue }
                 let tangent = Vec2(angle: path.pose(at: along).heading)
-                consider(along - s - config.carLength, max(0, state.velocity.dot(tangent)))
+                consider(vehicle.id, along - s - config.carLength, max(0, state.velocity.dot(tangent)))
             default:
                 break
             }

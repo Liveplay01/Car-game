@@ -12,7 +12,7 @@ Stand: 22.09.2026 · Die Details zur Basis (M0–M2) stehen in [FOUNDATION.md](F
 | M1 | Kreisverkehr & Einfädeln ✅ (Playtest offen) | M | endlos einfädeln und crashen |
 | M2 | Schicht & Punkte ✅ (Playtest offen) | M | komplette Schicht mit Punkten → **Basis spielbar** |
 | M3 | Polizei & Verbrecher ✅ (Playtest offen) | L | Verbrecher jagen, Einsatzfahrt |
-| M4 | Geldtransporter ✅ | M | Transporter abschirmen, erstes Geld |
+| M4 | Geldtransporter ✅ (Playtest offen) | M | Transporter abschirmen, erstes Geld |
 | M5 | Wirtschaft & Fortschritt | L | Geld verdienen und ausgeben, Gefahrenstufe |
 | M6 | Look & Feel | M | finale Farben, Formen, Effekte, HUD und Sounds |
 
@@ -52,7 +52,7 @@ Stand: 22.09.2026 · Die Details zur Basis (M0–M2) stehen in [FOUNDATION.md](F
 ## M0–M2 · Die Basis
 
 Schritt für Schritt beschrieben in [FOUNDATION.md, Abschnitt 5](FOUNDATION.md#5-bauschritte-der-basis-m0-bis-m2-alles-unter-windows).
-Am Ende steht eine komplette 2-Minuten-Schicht mit Combo, Tight Fit, Strikes und
+Am Ende steht eine komplette Schicht (damals 2 Minuten, seit M4 15 Autos ohne Uhr) mit Combo, Tight Fit, Strikes und
 Rush Hour, spielbar im Testfenster auf deinem PC.
 
 **In M2 zusätzlich umgesetzt (auf Wunsch vorgezogen):**
@@ -70,6 +70,7 @@ Rush Hour, spielbar im Testfenster auf deinem PC.
   Simulation läuft weiter, ein Tap startet die nächste Schicht.
 
 **Playtest-Tor nach M2:** 5 Schichten spielen, dann entscheiden: 3 Strikes oder 1?
+(In M4 entschieden: 1 für normale Autos, 3 Crashes für Polizeiautos.)
 Stimmt die Tight-Fit-Schwelle? Sind die Schichtlänge und die Rush Hour richtig?
 Sind die Combo-Stufen zu niedrig? (Der Balancing-Bot hält ×3 fast die ganze
 Schicht, siehe FOUNDATION.md, Abschnitt 7.) Sollen Folgeunfälle Strikes kosten?
@@ -84,7 +85,7 @@ Und die wichtigste Frage: *Will ich direkt noch eine Schicht spielen?*
 - **Fahrzeugtypen in der Schlange:** normale Autos und Polizeiautos, nach
   Gewichtung, über Farbe, Form und Symbol unterscheidbar.
 - **Verbrecher-Pickup:** vorher ~2 s Warnung (Banner und Sirenen-Ton), dann ein
-  sichtbarer Countdown am Fahrzeug. Startwert: **15 s**.
+  sichtbarer Countdown am Fahrzeug. Startwert: **15 s** (seit M4: 12 s).
 - **Takedown = ein Polizeiauto trifft beim Einfädeln den Pickup.** Der Pickup
   kommt pro Runde (~7 s) einmal an deiner Einfahrt vorbei. Bei 15 s bleiben also
   etwa 2 Chancen. Das ist die Spannung.
@@ -103,9 +104,9 @@ Playtest zu tunen).
 | Regel | Startwert |
 | --- | --- |
 | Anteil Polizeiautos in der Warteschlange | 20 % (`policeShare`) |
-| Erster Verbrecher / Pause nach einem Takedown | nach 15–25 s / 18–30 s |
+| Erster Verbrecher / Pause nach einem Takedown | nach 15–25 s / 18–30 s (seit M4: 4–8 s / 10–16 s) |
 | Warnung vor dem Auftauchen | 2 s: "WANTED", Sirene, pulsierender Ring an der Zufahrt |
-| Countdown ab der Einfahrt | 15 s; der Pickup dreht bis dahin Runden statt auszufahren |
+| Countdown ab der Einfahrt | 15 s (seit M4: 12 s); der Pickup dreht bis dahin Runden statt auszufahren |
 | Takedown | 1.000 Punkte × Multiplikator (× Rush Hour), Combo bleibt, 0,3 s Slow-Mo |
 | Einsatzfahrt (E / Rechtsklick) | vorderstes Auto wird Polizei, Combo × 0,5 |
 | Kein neuer Verbrecher | wenn die Jagd das Schichtende überdauern könnte |
@@ -141,15 +142,42 @@ an der Spitze den Einfädel-Rhythmus zu sehr?
   Verlässt er den Kreisverkehr sicher, gibt es **Geld**.
 - **Geld wird als Währung eingeführt** und gespeichert.
 
+**Umgesetzt** (`Transporters.swift`, `Queue.swift`, `Drivers.swift`, Startwerte in `Config.swift`):
+
+| Regel | Startwert |
+| --- | --- |
+| Erster Transporter / Pause danach | nach 8–14 s / 15–25 s, 2 s Warnung ("SECURED") |
+| Countdown ab der Einfahrt | 10 s; der Transporter kreist bis dahin und nimmt dann seine markierte Ausfahrt. Ist das letzte Auto vorher drin, wird er sofort ausgezahlt |
+| Sicher raus | 2.500 Geld (× Rush Hour); jedes normale Auto, das in eine Sperrzone einfädelt, +500 |
+| Polizei trifft den Transporter | beschlagnahmt: kein Geld, keine Strafe |
+| Geld | wird nach jeder Schicht im Spielstand gutgeschrieben, auch nach Game Over; Startbildschirm zeigt den Kontostand |
+
 **Neue Spielregeln (M4+):**
-- **Kein Tap-Cooldown mehr:** Mit jedem Tap sofort ein Auto in den Kreisverkehr schicken.
-  Die Schwierigkeit liegt darin, Kollisionen mit anderen Autos zu vermeiden.
-- **Polizeiautos haben Blaulicht**, sobald sie im Kreisverkehr sind.
-- **Polizei hinter Wanted:** Ein Polizeiauto hinter einem Wanted darf schneller fahren
-  (×1,4) und ihn crashen (Takedown).
-- **Normales Auto crash = sofort Game Over** (Schicht abgebrochen).
-- **Polizeiauto crash = Runde nicht rum**, Polizeiautos dürfen 3× pro Schicht crashen
-  (`maxPoliceCrashes = 3`), erst beim 4. ist Schluss.
+
+- **Kein Tap-Cooldown:** Das nächste Auto folgt direkt und steht nach ≈ 0,3 s an der
+  Haltelinie; ein früher Tap wird gehalten (FOUNDATION.md 2.2). Eigene Autos bewerten
+  sich nicht gegenseitig, schnelles Tippen gibt also keine geschenkten Tight Fits.
+- **Blaulicht:** Polizeiautos blinken, sobald sie losfahren.
+- **Verfolgung:** Ein Polizeiauto direkt hinter dem Verbrecher fährt bis zu ×1,4 so
+  schnell, bleibt im Kreis und rammt ihn (Takedown). Ist ein anderes Auto dazwischen,
+  fährt es normal mit.
+- **Normales Auto crasht = sofort Game Over** (`maxStrikes = 1`).
+- **Polizeiauto crasht = Schicht läuft weiter:** 3 Polizei-Crashes pro Schicht
+  (`maxPoliceCrashes`), der 4. beendet sie. Kostet Punkte und Combo.
+- **Schicht ohne Uhr:** 15 Autos, die alle in den Verkehr müssen; danach ist die
+  Schicht geschafft (FOUNDATION.md 2.5). Dichte und Tempo steigen mit der Zeit, die
+  letzten 4 Autos sind Rush Hour. Ein Verbrecher, der dann noch unterwegs ist, muss
+  trotzdem gefasst werden.
+
+**Balancing-Bot** (1000 Schichten, siehe TESTING.md): Der perfekte Bot ist in ≈ 6 s
+durch. Der menschenähnliche braucht ≈ 19 s und schafft 92 % der Schichten; blindes
+Tippen scheitert zu 98 %. Der Bot schätzt Lücken perfekt ein und wartet ohne Ungeduld.
+Wie schwer es sich für einen Menschen anfühlt, zeigt nur der Playtest.
+
+**Playtest-Fragen zu M4:** Sind 15 Autos und ≈ 20 s die richtige Länge? Ist es schwer
+genug (Stellschrauben: `shiftCars`, `densityStart`/`densityEnd`, `aiSafeGap`, Tempo)?
+Ist sofortiges Game Over fair? Ist die Verfolgung im Ring als zweite Takedown-Chance
+lesbar?
 
 **Beantwortet aus IDEA.md:** wie die Position des Transporters fair erkennbar ist.
 

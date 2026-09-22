@@ -1,26 +1,33 @@
 /// How a shift ended.
 public enum ShiftOutcome: Sendable, Equatable {
-    /// Driven to the end: completion bonus and a highscore entry.
+    /// Every car brought into traffic: completion bonus and a highscore entry.
     case completed
-    /// The last strike: points stay, but no bonus and no highscore (FOUNDATION.md 2.6).
+    /// A normal car crashed (the last strike), or a police car once too often: points stay,
+    /// but no bonus and no highscore (FOUNDATION.md 2.6).
     case struckOut
     /// A criminal got away: the shift is lost at once (hard fail, IDEA.md).
     case escaped
 }
 
-/// Timeline of a shift (FOUNDATION.md 2.5).
+/// Progress of a shift (FOUNDATION.md 2.5). There is no clock: a shift is a number of cars
+/// to bring into traffic, and it is done once the last one is in.
 public struct ShiftState: Sendable, Equatable {
     public enum Phase: Sendable, Equatable {
-        /// Build-up: density and tempo rise slowly.
+        /// Cars left to send; density and tempo rise with time.
         case running
-        /// The last part: faster, denser, points ×2.
+        /// The last `rushHourCars` cars: faster, denser, points ×2.
         case rushHour
-        /// Time is up. Taps are ignored, merges still in progress are rated.
+        /// Every car is launched. Taps are ignored; the shift is done once the last merge
+        /// is rated and no criminal is on the run any more.
         case closing
         case ended(ShiftOutcome)
     }
 
     public internal(set) var phase: Phase = .running
+    /// Cars not yet launched, the queue included. Nil in free play: its queue never ends.
+    public internal(set) var carsLeft: Int?
+    /// Shift time at which rush hour began.
+    public internal(set) var rushHourSince: Double?
 
     public var acceptsTaps: Bool {
         switch phase {
@@ -29,11 +36,9 @@ public struct ShiftState: Sendable, Equatable {
         }
     }
 
+    /// From the start of rush hour until the shift ends.
     public var isRushHour: Bool {
-        switch phase {
-        case .rushHour, .closing: true
-        case .running, .ended: false
-        }
+        rushHourSince != nil && outcome == nil
     }
 
     public var outcome: ShiftOutcome? {
@@ -59,7 +64,7 @@ public struct ShiftResult: Sendable, Equatable {
     /// Money earned this shift (paid transporters, none for seized ones).
     public var money: Int
     public var seed: UInt64
-    /// Shift time when it ended.
+    /// Shift time when it ended: how long the shift took.
     public var time: Double
 
     public var merges: Int { cleanMerges + tightFits + cutOffs }
@@ -67,40 +72,37 @@ public struct ShiftResult: Sendable, Equatable {
 
 /// The curves of a shift as pure functions of time.
 public enum ShiftCurves {
-    /// Cars the AI fills the road up to: rises from `densityStart` to `densityEnd` over the
-    /// build-up, then rush hour adds `rushHourDensityBonus`.
-    public static func density(at time: Double, config: Config) -> Int {
-        let start = config.rushHourStart
-        if time >= start {
-            return config.densityEnd + config.rushHourDensityBonus
-        }
-        let progress = start > 0 ? time / start : 1
-        let span = Double(config.densityEnd - config.densityStart)
-        return config.densityStart + Int((span * progress).rounded())
+    /// 0 at the start, 1 once `rampSeconds` have passed.
+    static func ramp(at time: Double, config: Config) -> Double {
+        config.rampSeconds > 0 ? min(max(time / config.rampSeconds, 0), 1) : 1
     }
 
-    /// Tempo as a share of `ringSpeed`: linear over the build-up, then a short smooth
-    /// ramp up to rush hour tempo.
-    public static func tempo(at time: Double, config: Config) -> Double {
-        let start = config.rushHourStart
-        if time < start {
-            let progress = start > 0 ? time / start : 1
-            return config.tempoStart + (config.tempoEnd - config.tempoStart) * progress
-        }
-        let x = config.rushHourRamp > 0 ? min(max((time - start) / config.rushHourRamp, 0), 1) : 1
+    /// Cars the AI fills the road up to: rises from `densityStart` to `densityEnd` over the
+    /// ramp and stays there; rush hour adds `rushHourDensityBonus`.
+    public static func density(at time: Double, rushHour: Bool, config: Config) -> Int {
+        let span = Double(config.densityEnd - config.densityStart)
+        let base = config.densityStart + Int((span * ramp(at: time, config: config)).rounded())
+        return base + (rushHour ? config.rushHourDensityBonus : 0)
+    }
+
+    /// Tempo as a share of `ringSpeed`: linear over the ramp, then from the start of rush
+    /// hour a short smooth rise to rush hour tempo.
+    public static func tempo(at time: Double, rushHourSince: Double?, config: Config) -> Double {
+        let base = config.tempoStart + (config.tempoEnd - config.tempoStart) * ramp(at: time, config: config)
+        guard let since = rushHourSince else { return base }
+        let x = config.rushHourRamp > 0 ? min(max((time - since) / config.rushHourRamp, 0), 1) : 1
         let smooth = x * x * (3 - 2 * x)
-        return config.tempoEnd + (config.rushHourTempo - config.tempoEnd) * smooth
+        return base + (max(config.rushHourTempo, base) - base) * smooth
     }
 }
 
 extension World {
-    /// Seconds left on the shift clock; 0 once time is up. Free play has no clock.
-    public var remainingTime: Double {
-        mode == .shift ? max(0, config.shiftSeconds - time) : 0
-    }
+    /// Cars still to send this shift; nil in free play.
+    public var carsLeft: Int? { mode == .shift ? shift.carsLeft : nil }
 
-    var rushHourStartTime: Double {
-        mode == .shift ? config.rushHourStart : .infinity
+    /// Points are doubled in rush hour, only in a shift.
+    var isRushHourScoring: Bool {
+        mode == .shift && shift.isRushHour
     }
 
     /// Sets tempo and density for `time`. Ring cars share one speed, and merges and exits
@@ -108,40 +110,63 @@ extension World {
     mutating func applyShiftCurves(at time: Double) {
         guard mode == .shift else { return }
         if isScoring {
-            targetDensity = ShiftCurves.density(at: time, config: config)
+            targetDensity = ShiftCurves.density(at: time, rushHour: shift.isRushHour, config: config)
         }
-        ringSpeed = config.ringSpeed * ShiftCurves.tempo(at: time, config: config)
+        ringSpeed = config.ringSpeed * ShiftCurves.tempo(at: time, rushHourSince: shift.rushHourSince, config: config)
     }
 
-    /// Runs at the end of each step: rush hour, time up, and the end once the last merge is rated.
+    /// Starts the shift: every car still to send, rush hour at once if there are only a few.
+    mutating func startShift() {
+        guard mode == .shift else { return }
+        shift.carsLeft = config.shiftCars
+        if config.shiftCars <= config.rushHourCars {
+            beginRushHour(at: 0)
+        }
+    }
+
+    /// A car of the shift drove off. Rush hour starts with the first of the last
+    /// `rushHourCars`, so exactly those are doubled; after the last one, the shift closes.
+    mutating func noteLaunch(at time: Double) {
+        guard mode == .shift, let left = shift.carsLeft else { return }
+        shift.carsLeft = max(0, left - 1)
+        let remaining = shift.carsLeft ?? 0
+        if shift.phase == .running && remaining < config.rushHourCars {
+            beginRushHour(at: time)
+        }
+        if remaining == 0 && shift.acceptsTaps {
+            shift.phase = .closing
+            pendingTaps.removeAll()
+            queue.heldTap = nil
+        }
+    }
+
+    private mutating func beginRushHour(at time: Double) {
+        shift.phase = .rushHour
+        shift.rushHourSince = time
+        events.append(.rushHour(time: time))
+    }
+
+    /// Runs at the end of each step: the curves, and the end once the last car is in.
     mutating func updateShift(now: Double) {
         guard mode == .shift else { return }
         applyShiftCurves(at: now)
-        switch shift.phase {
-        case .running:
-            if now >= config.rushHourStart - 1e-9 {
-                shift.phase = .rushHour
-                events.append(.rushHour(time: now))
-            }
-        case .rushHour:
-            if now >= config.shiftSeconds - 1e-9 {
-                shift.phase = .closing
-                pendingTaps.removeAll()
-            }
-        case .closing:
-            let merging = vehicles.contains { $0.owner == .player && $0.activeMerge != nil }
-            if !merging {
-                score.points += config.completionBonus
-                endShift(.completed, at: now)
-            }
-        case .ended:
-            break
+        guard case .closing = shift.phase else { return }
+        let merging = vehicles.contains { $0.owner == .player && $0.activeMerge != nil }
+        let chased: Bool
+        if case .active = criminal.phase { chased = true } else { chased = false }
+        guard !merging && !chased else { return }
+        // A transporter still on the road got through your whole shift: it is paid.
+        if case let .active(id, _) = transporter.phase {
+            transporterEscapes(id, now: now)
         }
+        score.points += config.completionBonus
+        endShift(.completed, at: now)
     }
 
     mutating func endShift(_ outcome: ShiftOutcome, at time: Double) {
         shift.phase = .ended(outcome)
         pendingTaps.removeAll()
+        queue.heldTap = nil
         events.append(.shiftEnded(result(outcome: outcome, at: time)))
     }
 

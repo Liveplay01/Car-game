@@ -30,6 +30,9 @@ struct SoundMaker {
             ("takedown", takedown(), 0.6),
             ("dispatch", dispatch(), 0.35),
             ("escaped", escaped(), 0.45),
+            ("secured", secured(), 0.35),
+            ("paid", paid(), 0.45),
+            ("seized", seized(), 0.45),
         ]
         for (name, samples, peak) in sounds {
             let url = folder.appendingPathComponent("\(name).wav")
@@ -164,6 +167,43 @@ struct SoundMaker {
             let wobble = Int(t / 0.18) % 2 == 0 ? 1.0 : 0.8
             phase += (820 - 420 * x) * wobble / rate
             return sin(2 * .pi * phase) * (1 - x) * envelope(t, attack: 0.02, hold: 1, release: 0.08) * 0.25
+        }
+    }
+
+    /// A money transporter is coming: a calm two-tone chime, twice. Not a siren, so it
+    /// never sounds like "WANTED".
+    static func secured() -> [Double] {
+        let notes = [659.25, 523.25, 659.25, 523.25]
+        return render(0.95) { t in
+            notes.enumerated().reduce(0) { sum, note in
+                let start = Double(note.offset) * 0.2
+                return t < start ? sum : sum + bell(note.element, t - start, length: 0.3) * 0.3
+            }
+        }
+    }
+
+    /// The transporter left safely: a bright cash-register ding with a coin shimmer.
+    static func paid() -> [Double] {
+        let notes = [1_046.5, 1_567.98]
+        return render(0.6) { t in
+            let ding = notes.enumerated().reduce(0) { sum, note in
+                let start = Double(note.offset) * 0.07
+                return t < start ? sum : sum + bell(note.element, t - start, length: 0.3) * 0.35
+            }
+            let shimmer = sine(3_520, t) * sine(29, t) * decay(t - 0.1, 0.12) * (t < 0.1 ? 0 : 0.08)
+            return ding + shimmer
+        }
+    }
+
+    /// The police seized the transporter: a thump and a falling "denied" tone.
+    static func seized() -> [Double] {
+        var phase = 0.0
+        return render(0.7) { t in
+            let thump = sine(62, t) * decay(t, 0.07) * 0.7
+            let x = min(t / 0.6, 1)
+            phase += (440 - 180 * x) / rate
+            let tone = (sin(2 * .pi * phase) + 0.3 * sin(4 * .pi * phase)) * envelope(t, attack: 0.03, hold: 0.45, release: 0.2) * 0.22
+            return thump + tone
         }
     }
 

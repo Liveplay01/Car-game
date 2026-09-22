@@ -38,12 +38,12 @@ struct TransporterTests {
         var warning: (arm: Arm, time: Double)?
         var entered: (id: Int, deadline: Double)?
         var escaped = false
-        for _ in 0..<(120 * World.stepRate) {
+        for _ in 0..<(130 * World.stepRate) {
             world.step()
             for event in world.takeEvents() {
                 switch event {
-                case let .transporterWarning(arm, time): warning = (arm, time)
-                case let .transporterEntered(id, deadline): entered = (id, deadline)
+                case let .transporterWarning(arm, time): warning = warning ?? (arm, time)
+                case let .transporterEntered(id, deadline): entered = entered ?? (id, deadline)
                 case .transporterEscaped: escaped = true
                 default: break
                 }
@@ -60,9 +60,39 @@ struct TransporterTests {
         #expect(entered.deadline - config.transporterTime >= warning.time + config.transporterWarning - 1e-9)
         #expect(entered.deadline - config.transporterTime < warning.time + config.transporterWarning + 0.1)
         #expect(escaped)
-        #expect(world.shift.outcome == .completed)
         #expect(world.score.money > 0)
         #expect(world.score.transporters >= 1)
+    }
+
+    @Test func itCirclesUntilItsTimeIsUpThenLeaves() {
+        var world = transporterShift(police: false)
+        guard let truck = world.runUntilTransporter(),
+              case let .active(_, deadline) = world.transporter.phase else {
+            Issue.record("no transporter")
+            return
+        }
+        // It passes its exit instead of taking it while its countdown runs.
+        world.run(steps: Int((deadline - world.time - 0.1) * Double(World.stepRate)))
+        let circling = world.vehicle(id: truck).map { if case .ring = $0.phase { true } else { false } }
+        #expect(circling == true)
+        // Paid, it takes its next exit.
+        world.run(steps: 8 * World.stepRate) { $0.vehicle(id: truck) == nil }
+        #expect(world.vehicle(id: truck) == nil)
+        #expect(world.score.transporters == 1)
+    }
+
+    @Test func aTransporterStillOnTheRoadIsPaidWhenTheLastCarIsIn() {
+        var world = transporterShift(police: false) { $0.shiftCars = 1 }
+        guard world.runUntilTransporter() != nil else {
+            Issue.record("no transporter")
+            return
+        }
+        world.tap(at: world.time)
+        let events = world.run(steps: 2 * World.stepRate) { $0.shift.outcome != nil }
+        #expect(world.shift.outcome == .completed)
+        #expect(events.contains { if case .transporterEscaped = $0 { true } else { false } })
+        #expect(world.score.transporters == 1)
+        #expect(world.score.money >= world.config.transporterPay)
     }
 
     @Test func policeCarSeizesTheTransporter() {

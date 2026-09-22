@@ -64,11 +64,14 @@ public struct Tuning: Sendable {
         }
         check(c.ringSpeed > 0, "ringSpeed must be > 0")
         check(c.mergeDuration > 0, "mergeDuration must be > 0")
-        check(c.queueAdvanceDuration > 0, "queueAdvanceDuration must be > 0")
+        check(c.queueAdvanceDuration >= 0, "queueAdvanceDuration must be ≥ 0")
         check(c.tightFitSeconds >= 0 && c.sloppyWindow >= 0, "tightFitSeconds and sloppyWindow must be ≥ 0")
         check(c.maxStrikes >= 1, "maxStrikes must be ≥ 1")
-        check(c.shiftSeconds > 0, "shiftSeconds must be > 0")
-        check(c.rushHourSeconds >= 0 && c.rushHourSeconds <= c.shiftSeconds, "rushHourSeconds must lie between 0 and shiftSeconds")
+        check(c.maxPoliceCrashes >= 0, "maxPoliceCrashes must be ≥ 0")
+        check(c.policeChaseSpeedFactor >= 1, "policeChaseSpeedFactor must be ≥ 1")
+        check(c.shiftCars >= 1, "shiftCars must be ≥ 1")
+        check(c.rushHourCars >= 0, "rushHourCars must be ≥ 0")
+        check(c.rampSeconds >= 0, "rampSeconds must be ≥ 0")
         check(c.densityStart >= 0 && c.densityEnd >= 0 && c.rushHourDensityBonus >= 0 && c.freePlayDensity >= 0, "densities must be ≥ 0")
         check(c.tempoStart > 0 && c.tempoEnd > 0 && c.rushHourTempo > 0, "tempos must be > 0")
         check(c.aiSafeGap >= 0 && c.aiPathClearance >= 0, "AI gaps must be ≥ 0")
@@ -144,8 +147,9 @@ public struct Tuning: Sendable {
             .double("queueAdvanceDuration", \.queueAdvanceDuration),
             .int("maxStrikes", \.maxStrikes),
             .int("maxPoliceCrashes", \.maxPoliceCrashes),
-            .double("shiftSeconds", \.shiftSeconds),
-            .double("rushHourSeconds", \.rushHourSeconds),
+            .int("shiftCars", \.shiftCars),
+            .int("rushHourCars", \.rushHourCars),
+            .double("rampSeconds", \.rampSeconds),
             .int("densityStart", \.densityStart),
             .int("densityEnd", \.densityEnd),
             .int("rushHourDensityBonus", \.rushHourDensityBonus),
@@ -161,6 +165,8 @@ public struct Tuning: Sendable {
             .doubles("comboMultipliers", \.comboMultipliers),
             .int("crashPenalty", \.crashPenalty),
             .double("policeShare", \.policeShare),
+            .range("criminalFirst", \.criminalFirst),
+            .range("criminalInterval", \.criminalInterval),
             .double("criminalWarning", \.criminalWarning),
             .double("criminalTime", \.criminalTime),
             .int("takedownPoints", \.takedownPoints),

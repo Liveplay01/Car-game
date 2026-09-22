@@ -130,7 +130,7 @@ struct Options {
 struct Report {
     static let columns: [(String, Int)] = [
         ("Bot", 9), ("Score avg", 10), ("p10", 8), ("median", 8), ("p90", 8),
-        ("Crashes", 8), ("Aborted", 8), ("Escaped", 8), ("Busted", 7), ("Best combo", 11), ("Tight fits", 11), ("Merges", 8),
+        ("Done", 6), ("Time", 7), ("Crashes", 8), ("Aborted", 8), ("Escaped", 8), ("Busted", 7), ("Best combo", 11), ("Tight fits", 11), ("Merges", 8),
     ]
 
     static var header: String {
@@ -150,11 +150,16 @@ struct Report {
         }
         let aborted = Double(results.count(where: { $0.outcome == .struckOut })) / Double(results.count)
         let escaped = Double(results.count(where: { $0.outcome == .escaped })) / Double(results.count)
+        // How long a shift takes when it is done: the median of the completed ones.
+        let done = results.filter { $0.outcome == .completed }.map(\.time).sorted()
+        let time = done.isEmpty ? "–" : String(format: "%.1f s", done[done.count / 2])
         let values = [
             grouped(Int(average(\.score).rounded())),
             grouped(percentile(0.1)),
             grouped(percentile(0.5)),
             grouped(percentile(0.9)),
+            String(format: "%.0f%%", Double(done.count) / Double(results.count) * 100),
+            time,
             String(format: "%.2f", average(\.crashes)),
             String(format: "%.0f%%", aborted * 100),
             String(format: "%.0f%%", escaped * 100),

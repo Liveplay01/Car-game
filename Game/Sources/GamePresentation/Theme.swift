@@ -130,6 +130,8 @@ public enum Metrics {
     public static let strikeRow = 54.0
     public static let scoreSize = 28.0
     public static let timerSize = 24.0
+    /// The rush hour pill behind the car counter; fits "15 cars".
+    public static let counterPillWidth = 112.0
     public static let strikeRadius = 4.0
     public static let strikeSpacing = 16.0
     public static let multiplierSize = 44.0

@@ -384,6 +384,8 @@ public final class GameSession {
             save.highscoreSeed = result.seed
         }
         save.shiftsPlayed += 1
+        // Money from transporters is banked whatever the outcome: it was paid out already.
+        save.money += result.money
         store.save(save)
         pendingSummary = ShiftSummary(result: result, isNewHighscore: isNew, previousHighscore: previous)
         resultCountdown = Self.resultDelay
