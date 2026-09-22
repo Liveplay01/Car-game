@@ -39,11 +39,16 @@ public enum SceneBuilder {
         )
     }
 
-    /// All vehicles on the road. Crashed ones are not drawn here: the crash effects draw
-    /// them as wrecks. Police lights flash while a criminal is on the run.
+/// All vehicles on the road. Crashed ones are not drawn here: the crash effects draw
+    /// them as wrecks. Police lights flash while a criminal is on the run, or while any
+    /// police car is on the ring.
     public static func addVehicles(of world: World, alpha: Double, to list: inout RenderList) {
         let chase = world.criminal.vehicle != nil
-        let lights = chase ? (world.time * 3).truncatingRemainder(dividingBy: 1) : nil
+        let hasPoliceOnRing = world.vehicles.contains { vehicle in
+            if case .ring = vehicle.phase { return true }
+            return false
+        }
+        let lights = (chase || hasPoliceOnRing) ? (world.time * 3).truncatingRemainder(dividingBy: 1) : nil
         for vehicle in world.vehicles where !vehicle.isCrashed {
             CarArt.add(
                 id: vehicle.id,

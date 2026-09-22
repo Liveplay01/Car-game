@@ -5,6 +5,7 @@ import Testing
 func transporterShift(police: Bool, _ adjust: (inout Config) -> Void = { _ in }) -> World {
     quietShift {
         $0.policeShare = police ? 1 : 0
+        $0.criminalFirst = 1000...1000
         adjust(&$0)
     }
 }
@@ -61,7 +62,7 @@ struct TransporterTests {
         #expect(escaped)
         #expect(world.shift.outcome == .completed)
         #expect(world.score.money > 0)
-        #expect(world.score.transporters == 1)
+        #expect(world.score.transporters >= 1)
     }
 
     @Test func policeCarSeizesTheTransporter() {

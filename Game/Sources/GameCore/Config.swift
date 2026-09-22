@@ -31,8 +31,15 @@ public struct Config: Sendable, Equatable {
     public var queueSpacing: Double = 32
     /// Cars visible in the queue on a regular iPhone (the camera fits this many).
     public var queueVisible: Int = 4
-    /// Time the next car needs to roll up to the stop line.
-    public var queueAdvanceDuration: Double = 0.2
+    /// Time the next car needs to roll up to the stop line. 0 = instant launch.
+    public var queueAdvanceDuration: Double = 0
+
+    // MARK: Police (M4+)
+
+    /// How many times police cars may crash per shift before it's game over.
+    public var maxPoliceCrashes: Int = 3
+    /// Speed multiplier for police cars chasing a wanted criminal.
+    public var policeChaseSpeedFactor: Double = 1.4
 
     // MARK: AI traffic
 

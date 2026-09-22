@@ -171,12 +171,14 @@ Im Testfenster ist ein Tap ein Linksklick oder die Leertaste.
 3. Während des Einfädelns misst die Simulation laufend den **kleinsten Abstand**
    zu jedem Auto im Ring.
 4. Am Ende wird bewertet (2.3).
-5. Das nächste Auto rückt in **0,2 s** nach, und zwar sobald das losgefahrene Auto
-   einen vollen Platz Vorsprung hat (`queueSpacing`). Taps während des Nachrückens
-   werden verworfen, damit nicht versehentlich zwei Autos losfahren. *Umgesetzt in M1:*
-   Ohne diese Wartezeit würden sich die eigenen Autos bei schnellem Doppeltipp
-   berühren oder man könnte Tight Fits an sich selbst „farmen“. So ist der
-   schnellstmögliche zweite Tap immer sauber.
+5. **Kein Tap-Cooldown – jeder Tap schickt sofort das nächste Auto los.** Das
+    nächste Auto rückt **sofort** nach, sobald das losgefahrene Auto einen vollen
+    Platz Vorsprung hat (queueSpacing). Taps werden **nicht mehr verworfen**:
+    drückt man schneller, fährt das nächste Auto los, sobald es an der Haltelinie
+    steht. Die Kollisionslogik (Kapsel-Abstands-Check in Collision.swift) verhindert
+    Crashes zwischen direkt aufeinanderfolgenden eigenen Autos – kein künstlicher Timer.
+    Schnelles, riskantes Spiel ist damit möglich und belohnbar. Implementierung:
+    Queue.swift setzt `queueAdvanceDuration = 0` (früher 0,2 s).
 6. Autos im Ring **verlassen ihn nach 1–3 Ausfahrten wieder**. So entstehen
    ständig neue Lücken.
 
@@ -242,7 +244,20 @@ Entschieden wird im Playtest.
   einfädelt, macht also einen Fehler. Folgeunfälle im Verkehr dahinter kosten
   nichts: Ein Fehler zählt einmal. Umschaltbar über `chainCrashesCostStrikes`.
 - **Abgebrochene Schicht:** Die Punkte bleiben, aber es gibt keinen
-  Abschlussbonus und keinen Highscore-Eintrag. Durchhalten soll sich lohnen.
+    Abschlussbonus und keinen Highscore-Eintrag. Durchhalten soll sich lohnen.
+
+### 2.6.1 Unterschiedliche Crash-Regeln: Normale Autos vs. Polizeiautos (M4+)
+
+- **Normales Auto crash = sofort Game Over.** Ein Crash mit deinem normalen Auto
+  bricht die Schicht sofort ab (wie bei `maxStrikes = 1`). Keine 3 Strikes mehr
+  für normale Autos.
+- **Polizeiauto crash = Schicht geht weiter.** Polizeiautos dürfen bis zu
+  `maxPoliceCrashes = 3` Mal pro Schicht crashen. Erst beim 4. Crash ist Schluss.
+  Ein Police-Crash zählt **nicht** als Strike, sondern inkrementiert `policeCrashes`.
+- **Takedown (Polizei trifft Verbrecher) = kein Crash.** Das ist ein guter Crash,
+  gibt Punkte und Slow-Mo, keine Strafe.
+- **Transporter-Seizure (Polizei trifft Transporter in Secure-Zone) = kein Crash.**
+  Der Transporter wird festgenommen, keine Punkte/Gold, aber auch kein Strike.
 
 ### 2.7 KI-Verkehr
 
@@ -477,6 +492,8 @@ dient Testfenster und App gleich, nur der Speicherort unterscheidet sich.
 | Einsatzfahrt / Panic-Button | `World.dispatchPolice()` (M3); in der App ein Button und der Action Button |
 | Sperrzonen um den Geldtransporter | Regel-Hooks in der Bewertung (`onMerged`) |
 | Zollstellen und Stau | Pfade, dazu das Fahrermodell aus `Drivers.swift` (eigenes Tempo, Bremsen, Anfahren) |
+| Polizei-Chase-Speed (M4+) | `Drivers.swift`: Polizei hinter Wanted darf ×1,4 schneller fahren (`policeChaseSpeedFactor`) |
+| Blaulicht für Polizei im Ring (M4+) | `SceneBuilder.swift`: Polizeiautos im Ring blinken rot/blau |
 | Gefahrenstufe und Upgrades | Die Config wird pro Schicht aus Basiswerten plus Modifikatoren gebaut |
 | Shop, Truhen, Straßeneditor | neue Screens in `ScreenFlow`, in der App als SwiftUI-Ansichten; Hauptnavigation als native Tab-Bar |
 | Trucks, Polizei, Transporter mit Schaden | eigene Teile-Modelle in `CarArt`, Masse pro Fahrzeugtyp in `CrashPhysics` |

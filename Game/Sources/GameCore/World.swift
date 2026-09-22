@@ -297,10 +297,20 @@ public struct World: Sendable {
         let second = vehicles[j]
         let takedown = isTakedown(first, second)
         let seizure = isSeizure(first, second)
-        // A live criminal shrugs off anything but the police: it keeps its course, the other
-        // car bounces off it as off something much heavier.
-        let armored: Int? = takedown ? nil : (isLiveCriminal(first) ? i : (isLiveCriminal(second) ? j : nil))
+        // A live criminal or transporter shrugs off anything but the police: it keeps its course,
+        // the other car bounces off it as off something much heavier.
+        let armored: Int? = (takedown || seizure) ? nil : (isLiveCriminal(first) ? i : (isLiveCriminal(second) ? j : (isLiveTransporter(first) ? i : (isLiveTransporter(second) ? j : nil))))
         let strike = !takedown && !seizure && (causesStrike(first) || causesStrike(second))
+        
+        // Determine crash type: normal car vs police car (player owned)
+        let firstIsPlayerNormal = first.owner == .player && first.type == .car
+        let secondIsPlayerNormal = second.owner == .player && second.type == .car
+        let firstIsPlayerPolice = first.owner == .player && first.type == .police
+        let secondIsPlayerPolice = second.owner == .player && second.type == .police
+        
+        let normalCarCrash = strike && (firstIsPlayerNormal || secondIsPlayerNormal)
+        let policeCarCrash = strike && (firstIsPlayerPolice || secondIsPlayerPolice)
+        
         let normal = contactNormal(contact, first: first, second: second)
         var a = body(of: first)
         var b = body(of: second)
@@ -322,6 +332,7 @@ public struct World: Sendable {
         vehicles[j].position -= normal * pushSecond
         if armored != i { makeWreck(i, contact.point, a) }
         if armored != j { makeWreck(j, contact.point, b) }
+
         let involvesPlayer = first.owner == .player || second.owner == .player
         var penalty = 0
         let comboEvents = events.count
@@ -349,6 +360,23 @@ public struct World: Sendable {
             let (truckID, policeID) = first.type == .transporter ? (first.id, second.id) : (second.id, first.id)
             transporterSeized(truckID, by: policeID, at: contact.point, now: now)
         }
+        
+        // Normal car crash = immediate game over
+        if normalCarCrash && isScoring && mode == .shift {
+            endShift(.struckOut, at: now)
+            return
+        }
+        
+        // Police car crash = count towards limit
+        if policeCarCrash && isScoring && mode == .shift {
+            score.policeCrashes += 1
+            if score.policeCrashes >= config.maxPoliceCrashes {
+                endShift(.struckOut, at: now)
+                return
+            }
+        }
+        
+        // Legacy: strikes-based game over (for backwards compat, but normal car crash handles it now)
         if strike && isScoring && mode == .shift && score.strikes >= config.maxStrikes {
             endShift(.struckOut, at: now)
         }
@@ -356,6 +384,10 @@ public struct World: Sendable {
 
     func isLiveCriminal(_ vehicle: Vehicle) -> Bool {
         vehicle.type == .pickup && !vehicle.isCrashed
+    }
+
+    func isLiveTransporter(_ vehicle: Vehicle) -> Bool {
+        vehicle.type == .transporter && !vehicle.isCrashed
     }
 
     /// One of the player's police cars hits the criminal: the good crash.

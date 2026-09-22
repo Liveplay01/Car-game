@@ -101,14 +101,6 @@ public struct PerfectBot: Bot {
             let clear = gaps.allSatisfy { $0.key == chase.criminal || $0.value > margin }
             return hits && clear ? .tap(world.time) : nil
         }
-        let transport = Transport(world)
-        if let transport, transport.policeIsNext {
-            // Hold the police car back until it would hit the truck, and only the truck.
-            let gaps = world.predictedMergeGaps(from: Arm.player, samples: Self.samples)
-            let hits = (gaps[transport.truck ?? -1] ?? .infinity) <= 0
-            let clear = gaps.allSatisfy { $0.key == transport.truck || $0.value > margin }
-            return hits && clear ? .tap(world.time) : nil
-        }
         let since = readySince ?? world.time
         readySince = since
         let gap = world.predictedMergeGap(from: Arm.player, samples: Self.samples)

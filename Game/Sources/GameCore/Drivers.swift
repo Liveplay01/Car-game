@@ -10,7 +10,7 @@ extension World {
         vehicles.contains { vehicle in
             switch vehicle.phase {
             case .crashed: true
-            case let .ring(r): !r.drive.isInFlow
+            case let .ring(r): !r.drive.isInFlow && vehicle.type != .transporter
             case let .exiting(e): !e.drive.isInFlow
             case .queued, .waiting, .merging: false
             }
@@ -38,14 +38,18 @@ extension World {
         // Criminals and transporters do not brake for anything: they plough on.
         for i in vehicles.indices where vehicles[i].type != .pickup && vehicles[i].type != .transporter {
             let id = vehicles[i].id
-            switch vehicles[i].phase {
+            let vehicle = vehicles[i]
+            // Police cars chasing a wanted criminal can go faster
+            let isPoliceChasing = vehicle.type == .police && vehicle.owner == .player && hasActiveWantedAhead(of: vehicle, in: lane)
+            let maxSpeed = isPoliceChasing ? ringSpeed * config.policeChaseSpeedFactor : ringSpeed
+            switch vehicle.phase {
             case .ring(var r):
                 let lead = leadOnRing(from: r.s, occupants: lane, excluding: id)
-                r.drive = drive(r.drive, lead: lead, id: id, dt: dt)
+                r.drive = drive(r.drive, lead: lead, id: id, dt: dt, maxSpeed: maxSpeed)
                 vehicles[i].phase = .ring(r)
             case .exiting(var e):
                 let lead = leadOnExit(e.arm, from: e.s, excluding: id)
-                e.drive = drive(e.drive, lead: lead, id: id, dt: dt)
+                e.drive = drive(e.drive, lead: lead, id: id, dt: dt, maxSpeed: maxSpeed)
                 vehicles[i].phase = .exiting(e)
             case .queued, .waiting, .merging, .crashed:
                 break
@@ -54,7 +58,7 @@ extension World {
     }
 
     /// One driver, one step: notice, react, brake or catch up with the flow again.
-    func drive(_ current: Drive, lead: Lead?, id: Int, dt: Double) -> Drive {
+    func drive(_ current: Drive, lead: Lead?, id: Int, dt: Double, maxSpeed: Double) -> Drive {
         var drive = current
         let g = config.gravity
         var speed = drive.speed ?? ringSpeed
@@ -76,10 +80,10 @@ extension World {
         }
         if alarmed {
             speed = max(0, speed - min(needed * 1.1, config.driverBrake * g) * dt)
-        } else if canSpeedUp(speed, behind: lead) {
-            speed = min(ringSpeed, speed + config.driverAcceleration * g * dt)
+        } else if canSpeedUp(speed, behind: lead, maxSpeed: maxSpeed) {
+            speed = min(maxSpeed, speed + config.driverAcceleration * g * dt)
         }
-        if speed >= ringSpeed - 1e-9 && !alarmed {
+        if speed >= maxSpeed - 1e-9 && !alarmed {
             return Drive()
         }
         drive.speed = speed
@@ -87,7 +91,7 @@ extension World {
     }
 
     /// Enough room to pick up speed: the driver could still stop gently behind the lead.
-    func canSpeedUp(_ speed: Double, behind lead: Lead?) -> Bool {
+    func canSpeedUp(_ speed: Double, behind lead: Lead?, maxSpeed: Double) -> Bool {
         guard let lead else { return true }
         let comfortable = 0.3 * config.gravity
         let needed = max(0, speed * speed - lead.speed * lead.speed) / (2 * comfortable)
@@ -141,6 +145,19 @@ extension World {
             }
         }
         return nearest
+    }
+
+    /// Whether there's an active wanted criminal ahead of the given vehicle in the lane.
+    func hasActiveWantedAhead(of policeCar: Vehicle, in lane: [Occupant]) -> Bool {
+        guard policeCar.type == .police && policeCar.owner == .player else { return false }
+        guard case let .ring(r) = policeCar.phase else { return false }
+        guard case .active = criminal.phase else { return false }
+        guard let criminalVehicle = criminal.vehicle,
+              let criminalVehicleData = self.vehicle(id: criminalVehicle),
+              case let .ring(criminalRing) = criminalVehicleData.phase else { return false }
+        // Check if criminal is ahead (in direction of travel) within half the ring
+        let ahead = layout.ringDistance(from: r.s, to: criminalRing.s)
+        return ahead > 0 && ahead < layout.ring.length / 2
     }
 
     /// Cars ahead on the same exit, and wrecks lying across it.

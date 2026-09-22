@@ -12,7 +12,7 @@ Stand: 22.09.2026 · Die Details zur Basis (M0–M2) stehen in [FOUNDATION.md](F
 | M1 | Kreisverkehr & Einfädeln ✅ (Playtest offen) | M | endlos einfädeln und crashen |
 | M2 | Schicht & Punkte ✅ (Playtest offen) | M | komplette Schicht mit Punkten → **Basis spielbar** |
 | M3 | Polizei & Verbrecher ✅ (Playtest offen) | L | Verbrecher jagen, Einsatzfahrt |
-| M4 | Geldtransporter | M | Transporter abschirmen, erstes Geld |
+| M4 | Geldtransporter ✅ | M | Transporter abschirmen, erstes Geld |
 | M5 | Wirtschaft & Fortschritt | L | Geld verdienen und ausgeben, Gefahrenstufe |
 | M6 | Look & Feel | M | finale Farben, Formen, Effekte, HUD und Sounds |
 
@@ -128,7 +128,7 @@ an der Spitze den Einfädel-Rhythmus zu sehr?
 
 ---
 
-## M4 · Geldtransporter
+## M4 · Geldtransporter ✅
 
 **Ziel:** Risiko mit Belohnung, im Konflikt mit der Polizei-Mechanik.
 
@@ -140,6 +140,16 @@ an der Spitze den Einfädel-Rhythmus zu sehr?
 - Seine **Ausfahrt ist vorher markiert** (Fluchtweg-Anzeige aus IDEA.md).
   Verlässt er den Kreisverkehr sicher, gibt es **Geld**.
 - **Geld wird als Währung eingeführt** und gespeichert.
+
+**Neue Spielregeln (M4+):**
+- **Kein Tap-Cooldown mehr:** Mit jedem Tap sofort ein Auto in den Kreisverkehr schicken.
+  Die Schwierigkeit liegt darin, Kollisionen mit anderen Autos zu vermeiden.
+- **Polizeiautos haben Blaulicht**, sobald sie im Kreisverkehr sind.
+- **Polizei hinter Wanted:** Ein Polizeiauto hinter einem Wanted darf schneller fahren
+  (×1,4) und ihn crashen (Takedown).
+- **Normales Auto crash = sofort Game Over** (Schicht abgebrochen).
+- **Polizeiauto crash = Runde nicht rum**, Polizeiautos dürfen 3× pro Schicht crashen
+  (`maxPoliceCrashes = 3`), erst beim 4. ist Schluss.
 
 **Beantwortet aus IDEA.md:** wie die Position des Transporters fair erkennbar ist.
 

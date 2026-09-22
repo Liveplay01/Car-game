@@ -53,6 +53,7 @@ public struct ShiftResult: Sendable, Equatable {
     public var tightFits: Int
     public var cutOffs: Int
     public var crashes: Int
+    public var policeCrashes: Int
     public var takedowns: Int
     public var transporters: Int
     /// Money earned this shift (paid transporters, none for seized ones).
@@ -154,6 +155,7 @@ extension World {
             tightFits: score.tightFits,
             cutOffs: score.cutOffs,
             crashes: score.strikes,
+            policeCrashes: score.policeCrashes,
             takedowns: score.takedowns,
             transporters: score.transporters,
             money: score.money,

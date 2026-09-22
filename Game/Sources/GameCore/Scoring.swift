@@ -20,6 +20,8 @@ public struct ScoreBoard: Sendable, Equatable {
     public internal(set) var transporters = 0
     /// Money earned this shift: paid transporters minus seized ones.
     public internal(set) var money = 0
+    /// Police car crashes this shift (maxPoliceCrashes allowed before game over).
+    public internal(set) var policeCrashes = 0
 
     public init() {}
 
