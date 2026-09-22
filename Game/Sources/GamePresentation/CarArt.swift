@@ -41,6 +41,7 @@ enum CarArt {
         static let ribs = 18
         static let cracks = 20
         static let flames = 24
+        static let outline = 32
     }
 
     struct Shape {
@@ -55,27 +56,46 @@ enum CarArt {
         var isVisible: Bool
     }
 
-    static func bodyColor(_ type: VehicleType) -> ColorToken {
+    /// The paint. Ordinary cars come in four, picked by their id, so the traffic looks like
+    /// traffic instead of one car copied fifteen times. Police, criminals and transporters
+    /// keep their one colour, because with them the colour is information.
+    static func bodyColor(_ type: VehicleType, id: Int = 0) -> ColorToken {
         switch type {
-        case .car: .vehicleCar
+        case .car: paints[paintIndex(id)]
+        case .truck: .vehicleTruck
         case .police: .vehiclePolice
         case .pickup: .vehicleCriminal
         case .transporter: .vehicleCargo
         }
     }
 
+    private static let paints: [ColorToken] = [.vehicleCar, .vehicleCarSilver, .vehicleCarGraphite, .vehicleCarSand]
+
+    private static func paintIndex(_ id: Int) -> Int {
+        var hash = UInt64(bitPattern: Int64(id)) &* 0x9E37_79B9_7F4A_7C15
+        hash ^= hash >> 29
+        return Int(hash % UInt64(paints.count))
+    }
+
     static func parts(_ type: VehicleType) -> [Part] {
         let common: [Part] = [.frontBumper, .rearBumper, .hood, .windscreen, .leftMirror, .rightMirror, .frontLeftWheel, .frontRightWheel, .rearLeftWheel, .rearRightWheel]
         switch type {
         case .car: return common + [.rearWindow]
+        // A lorry is a cab and a box; no rear window behind it.
+        case .truck: return [.cargo] + common
         case .police: return common + [.rearWindow, .roof, .lightBar]
         case .pickup: return [.bed] + common + [.rearWindow]
         case .transporter: return [.cargo] + common + [.rearWindow, .hazard]
         }
     }
 
+    /// How long this kind of vehicle is (`World.length(of:)`).
+    static func length(of type: VehicleType, config: Config) -> Double {
+        type == .truck ? config.truckLength : config.carLength
+    }
+
     static func shape(_ part: Part, type: VehicleType, config: Config) -> Shape {
-        let l = config.carLength
+        let l = length(of: type, config: config)
         let w = config.carWidth
         let body = bodyColor(type)
         switch part {
@@ -86,7 +106,10 @@ enum CarArt {
         case .hood:
             return Shape(center: Vec2(l * 0.3, 0), size: Vec2(l * 0.3, w - 3), cornerRadius: 1.5, color: body, breaksAt: 3.5, reach: 8, isVisible: false)
         case .windscreen:
-            return Shape(center: Vec2(l * 0.12, 0), size: Vec2(l * 0.22, w * 0.74), cornerRadius: 2, color: .vehicleGlass, breaksAt: 2.5, reach: 9, isVisible: true)
+            // The lorry's screen sits right at the nose, above the cab.
+            let x = type == .truck ? l * 0.39 : l * 0.12
+            let length = type == .truck ? l * 0.1 : l * 0.22
+            return Shape(center: Vec2(x, 0), size: Vec2(length, w * 0.74), cornerRadius: 2, color: .vehicleGlass, breaksAt: 2.5, reach: 9, isVisible: true)
         case .rearWindow:
             // The pickup's small cab window sits right behind the windscreen.
             let x = type == .pickup ? -l * 0.02 : -l * 0.3
@@ -107,6 +130,9 @@ enum CarArt {
         case .bed:
             return Shape(center: Vec2(-l * 0.26, 0), size: Vec2(l * 0.4, w - 3), cornerRadius: 1.5, color: .vehicleBed, breaksAt: .infinity, reach: 0, isVisible: true)
         case .cargo:
+            if type == .truck {
+                return Shape(center: Vec2(-l * 0.14, 0), size: Vec2(l * 0.62, w + 2), cornerRadius: 2, color: .vehicleTruckBox, breaksAt: 4, reach: 9, isVisible: true)
+            }
             return Shape(center: Vec2(-l * 0.12, 0), size: Vec2(l * 0.5, w + 6), cornerRadius: 2, color: .vehicleCargo, breaksAt: 4, reach: 9, isVisible: true)
         case .hazard:
             return Shape(center: Vec2(-l / 2 + 0.5, 0), size: Vec2(1.2, w + 4), cornerRadius: 0.5, color: .hazard, breaksAt: .infinity, reach: 0, isVisible: true)
@@ -125,8 +151,8 @@ enum CarArt {
 
     /// The body outline, counter-clockwise: a rounded rectangle with extra points along the
     /// sides, so a dent in the middle of a door can bend it too.
-    static func outline(config: Config) -> [Vec2] {
-        let hl = config.carLength / 2
+    static func outline(type: VehicleType = .car, config: Config) -> [Vec2] {
+        let hl = length(of: type, config: config) / 2
         let hw = config.carWidth / 2
         let r = Metrics.vehicleCornerRadius
         let corners = [Vec2(hl - r, hw - r), Vec2(-hl + r, hw - r), Vec2(-hl + r, -hw + r), Vec2(hl - r, -hw + r)]
@@ -176,8 +202,8 @@ enum CarArt {
         return point + inward / distance * moved
     }
 
-    static func deformedOutline(dents: [Dent], config: Config) -> [Vec2] {
-        outline(config: config).enumerated().map { index, point in
+    static func deformedOutline(type: VehicleType = .car, dents: [Dent], config: Config) -> [Vec2] {
+        outline(type: type, config: config).enumerated().map { index, point in
             deformed(point, dents: dents, config: config, crumple: index.isMultiple(of: 2) ? 0.35 : -0.35)
         }
     }
@@ -200,14 +226,23 @@ enum CarArt {
         to list: inout RenderList
     ) {
         let slot = { RenderID.vehicle(id, part: $0) }
-        let body = bodyColor(type)
+        let body = bodyColor(type, id: id)
+        let paintedInThisCar = bodyColor(type)
         if dents.isEmpty {
+            // A dark outline under the body: at the size a phone shows a car, this is what
+            // keeps it crisp against the asphalt (FOUNDATION.md 3).
             list.add(
-                .roundedRect(center: pose.position, size: Vec2(config.carLength, config.carWidth), cornerRadius: Metrics.vehicleCornerRadius, rotation: pose.heading),
+                .roundedRect(center: pose.position, size: Vec2(length(of: type, config: config) + 2.5, config.carWidth + 2.5), cornerRadius: Metrics.vehicleCornerRadius + 1, rotation: pose.heading),
+                color: .kerb, opacity: opacity, space: .world, id: slot(Slot.outline)
+            )
+            list.add(
+                .roundedRect(center: pose.position, size: Vec2(length(of: type, config: config), config.carWidth), cornerRadius: Metrics.vehicleCornerRadius, rotation: pose.heading),
                 color: body, opacity: opacity, space: .world, id: slot(Slot.body)
             )
         } else {
-            let outline = deformedOutline(dents: dents, config: config).map { world($0, pose) }
+            let local = deformedOutline(type: type, dents: dents, config: config)
+            list.add(.polygon(local.map { world($0 * 1.1, pose) }), color: .kerb, opacity: opacity, space: .world, id: slot(Slot.outline))
+            let outline = local.map { world($0, pose) }
             list.add(.polygon(outline), color: body, opacity: opacity * (1 - char), space: .world, id: slot(Slot.body))
             if char > 0 {
                 list.add(.polygon(outline), color: .wreck, opacity: opacity * char, space: .world, id: slot(Slot.char))
@@ -229,6 +264,8 @@ enum CarArt {
             let twist = dents.isEmpty ? 0 : min(push(at: shape.center, dents: dents), 3) * 0.08
             let rotation = pose.heading + twist
             let partOpacity = opacity * (broken ? 0.45 : 1)
+            // Parts cut from the body sheet wear this car's paint, not the type's.
+            let color = shape.color == paintedInThisCar ? body : shape.color
 
             if part == .lightBar {
                 // Two halves; while the lights flash, one side glows at a time.
@@ -241,7 +278,7 @@ enum CarArt {
             }
             list.add(
                 .roundedRect(center: world(center, pose), size: shape.size, cornerRadius: shape.cornerRadius, rotation: rotation),
-                color: shape.color, opacity: partOpacity, space: .world, id: slot(Slot.part(part))
+                color: color, opacity: partOpacity, space: .world, id: slot(Slot.part(part))
             )
             if part == .bed {
                 // Two ribs across the open bed.

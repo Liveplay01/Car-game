@@ -18,7 +18,8 @@ public struct ScoreBoard: Sendable, Equatable {
     public internal(set) var cutOffs = 0
     public internal(set) var takedowns = 0
     public internal(set) var transporters = 0
-    /// Money earned this shift: paid transporters minus seized ones.
+    /// Money earned this shift: paid transporters, shield bonuses and, at the end of a
+    /// completed shift, the shift pay.
     public internal(set) var money = 0
     /// Crashes of police cars this shift; `maxPoliceCrashes` of them are survived.
     public internal(set) var policeCrashes = 0

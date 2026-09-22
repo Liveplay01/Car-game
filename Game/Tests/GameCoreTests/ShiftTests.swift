@@ -17,7 +17,7 @@ extension World {
     @discardableResult
     mutating func crashNextCar() -> [GameEvent] {
         var events = run(steps: 2 * World.stepRate) { $0.queue.isReady }
-        spawnRingCar(at: ringPositionAhead(ofMergeEnd: 0), exitArm: .west)
+        spawnRingCar(at: ringPositionAhead(ofMergeEnd: 0), exitArm: west)
         tap(at: time)
         // Cars from an earlier crash may still be spinning out: wait for the new strike.
         let (strikes, police) = (score.strikes, score.policeCrashes)
@@ -31,7 +31,7 @@ extension World {
     mutating func mergeNextCar(arc: Double? = nil) -> [GameEvent] {
         var events = run(steps: 2 * World.stepRate) { $0.queue.isReady }
         if let arc {
-            spawnRingCar(at: ringPositionAhead(ofMergeEnd: arc), exitArm: .west)
+            spawnRingCar(at: ringPositionAhead(ofMergeEnd: arc), exitArm: west)
         }
         tap(at: time)
         let merges = score.merges
@@ -230,7 +230,7 @@ struct StrikeTests {
         // the police car made the mistake, so the shift goes on.
         var world = quietShift { $0.policeShare = 1 }
         world.run(steps: 2 * World.stepRate) { $0.queue.isReady }
-        let own = world.spawnRingCar(at: world.ringPositionAhead(ofMergeEnd: 0), exitArm: .west)
+        let own = world.spawnRingCar(at: world.ringPositionAhead(ofMergeEnd: 0), exitArm: world.west)
         if let index = world.index(of: own) {
             world.vehicles[index].owner = .player
         }
@@ -298,6 +298,41 @@ struct ShiftTests {
         #expect(world.carsLeft == 0)
         // It took as long as the player needed: no clock.
         #expect(result.map { $0.time < 3 } == true)
+    }
+
+    @Test func theNextShiftCarriesTheTrafficOn() {
+        var world = quietShift { $0.shiftCars = 1 }
+        world.mergeNextCar()
+        let ringCar = world.spawnRingCar(at: 300, exitArm: world.west)
+        world.run(steps: World.stepRate) { $0.shift.outcome != nil }
+        var next = Config()
+        next.shiftCars = 4
+        let following = world.nextShift(config: next, seed: 9)
+        let carried = following.vehicle(id: ringCar)
+        #expect(carried?.position == world.vehicle(id: ringCar)?.position)
+        #expect(carried?.owner == .ai)
+        #expect(following.shift.phase == .waiting)
+        #expect(following.queue.vehicles.count == 4)
+        #expect(Set(following.vehicles.map(\.id)).count == following.vehicles.count)
+        // The tempo glides from where it was; the new cars roll in from behind.
+        #expect(following.ringSpeed == world.ringSpeed)
+        if case .filling = following.queue.state {} else { Issue.record("the queue does not roll in") }
+    }
+
+    @Test func aWaitingShiftStartsWithItsFirstTap() {
+        var world = World(config: quietShift().config, seed: 3, prefill: false, startsOnFirstTap: true)
+        world.run(steps: 30 * World.stepRate)
+        // No criminal and no clock while it waits.
+        let announced: Bool
+        if case .idle = world.criminal.phase { announced = false } else { announced = true }
+        #expect(!announced)
+        #expect(world.shift.startedAt == nil)
+        world.tap(at: world.time)
+        world.step()
+        #expect(world.shift.startedAt != nil)
+        if case let .idle(next) = world.criminal.phase {
+            #expect(next > world.time)
+        }
     }
 
     @Test func withoutTapsTheShiftNeverEnds() {

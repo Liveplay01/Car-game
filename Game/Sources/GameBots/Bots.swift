@@ -87,14 +87,14 @@ public struct PerfectBot: Bot {
         }
         if let chase, chase.policeIsNext {
             // Hold the police car back until it would hit the pickup, and only the pickup.
-            let gaps = world.predictedMergeGaps(from: Arm.player, samples: Self.samples)
+            let gaps = world.predictedMergeGaps(from: world.layout.player, samples: Self.samples)
             let hits = (gaps[chase.criminal ?? -1] ?? .infinity) <= 0
             let clear = gaps.allSatisfy { $0.key == chase.criminal || $0.value > margin }
             return hits && clear ? .tap(world.time) : nil
         }
         let since = readySince ?? world.time
         readySince = since
-        let gap = world.predictedMergeGap(from: Arm.player, samples: Self.samples)
+        let gap = world.predictedMergeGap(from: world.layout.player, samples: Self.samples)
         guard gap > margin else { return nil }
         if gap < world.config.tightFitSeconds || world.time - since >= patience {
             return .tap(world.time)
@@ -105,7 +105,8 @@ public struct PerfectBot: Bot {
 
 /// A decent human: plans a tap a moment ahead, misses the planned moment by a random
 /// timing error, and only sometimes dares a Tight Fit. Chases criminals the same way, and
-/// calls a dispatch a second after it notices it needs one.
+/// calls a dispatch a second after it notices it needs one. Keeps playing through a
+/// pile-up elsewhere on the ring, with wider gaps.
 public struct HumanBot: Bot {
     public let name = "Human"
     /// How far ahead the tap is planned; also the largest timing error.
@@ -121,6 +122,8 @@ public struct HumanBot: Bot {
     public var patience: Double
     /// How deep into the pickup it aims (seconds of overlap), to hit despite its timing error.
     public var aimDepth = 0.08
+    /// With this many cars left or fewer it finishes the shift instead of hunting.
+    public var finishRatherThanHunt = 4
 
     private var rng: SeededRandom
     private var pendingTap: Double?
@@ -151,7 +154,7 @@ public struct HumanBot: Bot {
         pendingTap = nil
         guard world.shift.acceptsTaps else { return nil }
         let chase = Chase(world)
-        if let chase, chase.needsDispatch {
+        if let chase, chase.needsDispatch, (world.carsLeft ?? .max) > finishRatherThanHunt {
             let noticed = dispatchNoticed ?? world.time
             dispatchNoticed = noticed
             if world.time - noticed >= 1 {
@@ -161,17 +164,24 @@ public struct HumanBot: Bot {
         } else {
             dispatchNoticed = nil
         }
-        // Like any sensible player, it lets a crash scene at its entry clear first.
-        guard world.queue.isReady, !world.isTrafficDisturbed, !world.isTakedownPending else {
+        guard world.queue.isReady, !world.isTakedownPending else {
             readySince = nil
             return nil
         }
-        if let chase, chase.policeIsNext, let criminal = chase.criminal {
+        // While traffic brakes or a wreck lies around, it does not wait for the whole ring to
+        // flow again, as a player would not either: it only takes a gap twice as wide, and
+        // never a bold one. Braking cars move less predictably than flowing ones.
+        let disturbed = world.isTrafficDisturbed
+        let room = disturbed ? 2 * safeGap : boldGap
+        // With only a few cars left it does not hunt: it sends them in, and once the last
+        // one is in the shift is done and the criminal no longer matters.
+        let hunting = (world.carsLeft ?? .max) > finishRatherThanHunt
+        if hunting, let chase, chase.policeIsNext, let criminal = chase.criminal {
             // Aims for the middle of the hit window, not its edge: a timing error either
             // way still hits.
-            let gaps = world.predictedMergeGaps(from: Arm.player, launchDelay: lead, samples: PerfectBot.samples)
+            let gaps = world.predictedMergeGaps(from: world.layout.player, launchDelay: lead, samples: PerfectBot.samples)
             let hits = (gaps[criminal] ?? .infinity) <= -aimDepth
-            let clear = gaps.allSatisfy { $0.key == criminal || $0.value > boldGap }
+            let clear = gaps.allSatisfy { $0.key == criminal || $0.value > room }
             guard hits && clear else { return nil }
             return plannedTap(world)
         }
@@ -180,10 +190,12 @@ public struct HumanBot: Bot {
             isBold = rng.unit() < boldness
         }
         let waited = world.time - (readySince ?? world.time)
-        let gap = world.predictedMergeGap(from: Arm.player, launchDelay: lead, samples: PerfectBot.samples)
-        let wanted = isBold && waited < patience
-            ? gap > boldGap && gap < world.config.tightFitSeconds
-            : gap > safeGap
+        let gap = world.predictedMergeGap(from: world.layout.player, launchDelay: lead, samples: PerfectBot.samples)
+        let wanted = disturbed
+            ? gap > 2 * safeGap
+            : isBold && waited < patience
+                ? gap > boldGap && gap < world.config.tightFitSeconds
+                : gap > safeGap
         guard wanted else { return nil }
         return plannedTap(world)
     }

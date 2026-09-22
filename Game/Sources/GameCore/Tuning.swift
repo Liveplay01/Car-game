@@ -63,6 +63,11 @@ public struct Tuning: Sendable {
             if !ok { problems.append(message) }
         }
         check(c.ringSpeed > 0, "ringSpeed must be > 0")
+        check(c.armSlotCount >= 3 && c.armSlotSpacing >= 1, "armSlotCount must be ≥ 3 and armSlotSpacing ≥ 1")
+        check(c.builtArmSlots.count >= 3, "there must be at least three arms")
+        check(c.ringRadiusPerArm >= 0, "ringRadiusPerArm must be ≥ 0")
+        check(c.armBaseCost >= 0 && c.armCostGrowth >= 1, "armBaseCost must be ≥ 0 and armCostGrowth ≥ 1")
+        check(c.trafficPerArm >= 0 && c.payPerArm >= 0 && c.transporterPerArm >= 0, "per-arm steps must be ≥ 0")
         check(c.mergeDuration > 0, "mergeDuration must be > 0")
         check(c.queueAdvanceDuration >= 0, "queueAdvanceDuration must be ≥ 0")
         check(c.tightFitSeconds >= 0 && c.sloppyWindow >= 0, "tightFitSeconds and sloppyWindow must be ≥ 0")
@@ -70,6 +75,19 @@ public struct Tuning: Sendable {
         check(c.maxPoliceCrashes >= 0, "maxPoliceCrashes must be ≥ 0")
         check(c.policeChaseSpeedFactor >= 1, "policeChaseSpeedFactor must be ≥ 1")
         check(c.shiftCars >= 1, "shiftCars must be ≥ 1")
+        check(c.hardLevel >= 1, "hardLevel must be ≥ 1")
+        check(c.levelOneCars >= 1 && c.maxShiftCars >= c.levelOneCars, "levelOneCars must be ≥ 1 and ≤ maxShiftCars")
+        check(c.carsPerLevel >= 0 && c.shiftCarsSpread >= 0, "carsPerLevel and shiftCarsSpread must be ≥ 0")
+        check(c.easyTempoStart > 0 && c.easyTempoEnd > 0 && c.easyRushHourTempo > 0, "easy tempos must be > 0")
+        check(c.easyDensityStart >= 0 && c.easyDensityEnd >= 0 && c.easyAiSafeGap >= 0, "easy densities and gaps must be ≥ 0")
+        check(c.easyPoliceShare >= 0 && c.easyPoliceShare <= 1, "easyPoliceShare must lie between 0 and 1")
+        check(c.easyCriminalTime > 0 && c.minCriminalTime > 0, "easyCriminalTime and minCriminalTime must be > 0")
+        check(c.tempoPerLevel >= 0 && c.maxLevelTempoBonus >= 0 && c.criminalTimePerLevel >= 0, "per-level steps must be ≥ 0")
+        check(c.shiftPayBase >= 0 && c.shiftPayPerLevel >= 0 && c.upgradeBaseCost >= 0, "pay and prices must be ≥ 0")
+        check(c.upgradeCostGrowth >= 1, "upgradeCostGrowth must be ≥ 1")
+        check(c.highAlertCars >= 1 && c.highAlertCriminalTime > 0 && c.highAlertCriminalInterval > 0, "High Alert values must be ≥ 1 or > 0")
+        check(c.highAlertPay >= 1, "highAlertPay must be ≥ 1")
+        check([c.patrolsPerStep, c.pursuitPerStep, c.quietStreetsPerStep, c.interceptorPerStep, c.dispatchRadioPerStep, c.cashRoutePerStep, c.overtimePerStep].allSatisfy { $0 >= 0 } && c.backupPerStep >= 0, "upgrade steps must be ≥ 0")
         check(c.rushHourCars >= 0, "rushHourCars must be ≥ 0")
         check(c.rampSeconds >= 0, "rampSeconds must be ≥ 0")
         check(c.densityStart >= 0 && c.densityEnd >= 0 && c.rushHourDensityBonus >= 0 && c.freePlayDensity >= 0, "densities must be ≥ 0")
@@ -79,6 +97,7 @@ public struct Tuning: Sendable {
         check(c.policeShare >= 0 && c.policeShare <= 1, "policeShare must lie between 0 and 1")
         check(c.criminalTime > 0 && c.criminalWarning >= 0, "criminalTime must be > 0, criminalWarning ≥ 0")
         check(c.criminalMass > 0, "criminalMass must be > 0")
+        check(c.criminalChance >= 0 && c.criminalChance <= 1, "criminalChance must lie between 0 and 1")
         check(c.dispatchComboFactor >= 0 && c.dispatchComboFactor <= 1, "dispatchComboFactor must lie between 0 and 1")
         check(zip(c.comboThresholds, c.comboThresholds.dropFirst()).allSatisfy { $0 < $1 }, "comboThresholds must rise")
         return problems
@@ -147,8 +166,11 @@ public struct Tuning: Sendable {
             .double("queueAdvanceDuration", \.queueAdvanceDuration),
             .int("maxStrikes", \.maxStrikes),
             .int("maxPoliceCrashes", \.maxPoliceCrashes),
-            .int("shiftCars", \.shiftCars),
             .int("rushHourCars", \.rushHourCars),
+            .ints("armSlots", \.armSlots),
+            .int("armSlotCount", \.armSlotCount),
+            .int("armSlotSpacing", \.armSlotSpacing),
+            .double("ringRadiusPerArm", \.ringRadiusPerArm),
             .double("rampSeconds", \.rampSeconds),
             .int("densityStart", \.densityStart),
             .int("densityEnd", \.densityEnd),
@@ -165,6 +187,7 @@ public struct Tuning: Sendable {
             .doubles("comboMultipliers", \.comboMultipliers),
             .int("crashPenalty", \.crashPenalty),
             .double("policeShare", \.policeShare),
+            .double("criminalChance", \.criminalChance),
             .range("criminalFirst", \.criminalFirst),
             .range("criminalInterval", \.criminalInterval),
             .double("criminalWarning", \.criminalWarning),
@@ -182,6 +205,44 @@ public struct Tuning: Sendable {
             .int("shieldBonus", \.shieldBonus),
             .int("transporterSeized", \.transporterSeized),
             .double("transporterMass", \.transporterMass),
+            .int("hardLevel", \.hardLevel),
+            .int("levelOneCars", \.levelOneCars),
+            .double("carsPerLevel", \.carsPerLevel),
+            .int("shiftCarsSpread", \.shiftCarsSpread),
+            .int("maxShiftCars", \.maxShiftCars),
+            .int("easyDensityStart", \.easyDensityStart),
+            .int("easyDensityEnd", \.easyDensityEnd),
+            .double("easyTempoStart", \.easyTempoStart),
+            .double("easyTempoEnd", \.easyTempoEnd),
+            .double("easyRushHourTempo", \.easyRushHourTempo),
+            .double("easyAiSafeGap", \.easyAiSafeGap),
+            .double("easyCriminalTime", \.easyCriminalTime),
+            .double("easyPoliceShare", \.easyPoliceShare),
+            .double("tempoPerLevel", \.tempoPerLevel),
+            .double("maxLevelTempoBonus", \.maxLevelTempoBonus),
+            .double("criminalTimePerLevel", \.criminalTimePerLevel),
+            .double("minCriminalTime", \.minCriminalTime),
+            .double("highAlertCars", \.highAlertCars),
+            .double("highAlertCriminalTime", \.highAlertCriminalTime),
+            .double("highAlertCriminalInterval", \.highAlertCriminalInterval),
+            .double("highAlertPay", \.highAlertPay),
+            .int("shiftPayBase", \.shiftPayBase),
+            .int("shiftPayPerLevel", \.shiftPayPerLevel),
+            .int("armBaseCost", \.armBaseCost),
+            .double("armCostGrowth", \.armCostGrowth),
+            .double("trafficPerArm", \.trafficPerArm),
+            .double("payPerArm", \.payPerArm),
+            .double("transporterPerArm", \.transporterPerArm),
+            .int("upgradeBaseCost", \.upgradeBaseCost),
+            .double("upgradeCostGrowth", \.upgradeCostGrowth),
+            .double("patrolsPerStep", \.patrolsPerStep),
+            .double("pursuitPerStep", \.pursuitPerStep),
+            .double("quietStreetsPerStep", \.quietStreetsPerStep),
+            .double("interceptorPerStep", \.interceptorPerStep),
+            .double("dispatchRadioPerStep", \.dispatchRadioPerStep),
+            .int("backupPerStep", \.backupPerStep),
+            .double("cashRoutePerStep", \.cashRoutePerStep),
+            .double("overtimePerStep", \.overtimePerStep),
             .double("aiSafeGap", \.aiSafeGap),
             .double("aiPathClearance", \.aiPathClearance),
             .int("freePlayDensity", \.freePlayDensity),

@@ -61,20 +61,24 @@ swift run -c release TestWindow
 
 | Taste | Wirkung |
 | --- | --- |
-| **Leertaste** oder **Linksklick** | Tap: das vorderste Auto losschicken. Nach "GAME OVER" / "SHIFT COMPLETE": nächste Schicht |
-| **Enter** | Hauptaktion des Menüs: Schicht starten, Weiter, Zurück |
-| **Esc** | Pause bzw. weiter; im Ergebnis zurück zum Startmenü |
-| **1–9** | Menüpunkt wählen (die Nummern stehen im Menü) |
+| **Leertaste** oder **Linksklick** | Tap: schickt das vorderste Auto los und startet damit die Schicht. Nach "GAME OVER" / "LEVEL … COMPLETE": erstes Auto der nächsten Schicht |
+| **Klick auf die Leiste unten** oder **Tab** | Seite wechseln: Street Builder, Game, Shop, Upgrades (nur zwischen den Schichten) |
+| **Enter** | Schicht starten bzw. Hauptaktion eines Menüs |
+| **Esc** | Pause bzw. weiter; auf dem Game-Tab die Einstellungen; im Ergebnis und auf anderen Seiten zurück zum Game-Tab |
+| **1–9** | Menüpunkt wählen; auf der Upgrades-Seite eine Karte öffnen (Nummern stehen auf den Karten), **Enter** kauft sie |
+| **Doppelklick auf eine Karte** | Upgrade kaufen (ein einzelner Klick zeigt nur, was es tut) |
+| **H** | Gefahrenstufe umschalten: Normal Duty ↔ High Alert (dreifaches Geld) |
+| **Ziehen mit der Maus** | Street Builder: ein Teil aus der Palette auf einen freien Steckplatz ziehen; Doppelklick darauf baut es, ein Klick nimmt es weg |
 | **R** | Schicht neu starten (neuer Seed, außer mit `--seed`) |
 | **F1** | Debug-Overlay: Hitboxen (Kapseln, auch Wracks), gemessene Abstände, FPS, Seed |
 | **F2** | Zeitlupe umschalten: 1× → 0,5× → 0,25× |
 | **T** | Tuning-Werte aus `tuning.json` neu laden |
 | **E** oder **Rechtsklick** | Einsatzfahrt: das vorderste Auto wird zum Polizeiauto, die Combo halbiert sich |
 
-Das Fenster startet im Startmenü, dahinter läuft der Verkehr. Verliert das Fenster
+Das Fenster startet auf dem Game-Tab: kein Startmenü, ein Tap startet die Schicht. Verliert das Fenster
 den Fokus, pausiert die Schicht (wie die App im Hintergrund). Der Seed jeder Schicht
-steht in der Konsole und auf dem Ergebnis-Banner. Highscore und Einstellungen liegen
-in `TestWindow/savegame.json`; zum Zurücksetzen die Datei löschen.
+steht in der Konsole und auf dem Ergebnis-Banner. Highscore, Level, Geld, Upgrades und
+Einstellungen liegen in `TestWindow/savegame.json`; zum Zurücksetzen die Datei löschen.
 
 **Startparameter**
 
@@ -89,7 +93,11 @@ nachzustellen, der sich unfair angefühlt hat.
 Werkzeug-Optionen (für Demos und Screenshots):
 
 ```powershell
-swift run -c release TestWindow --play                           # ohne Startmenü direkt in die Schicht
+swift run -c release TestWindow --play                           # direkt in die Schicht, ohne ersten Tap
+swift run -c release TestWindow --level 8                        # zu Level 8 springen (wird gespeichert)
+swift run -c release TestWindow --tab upgrades                   # auf einer Seite starten
+swift run -c release TestWindow --duty high                      # mit High Alert starten
+swift run -c release TestWindow --tab streetBuilder               # direkt in den Street Builder
 swift run -c release TestWindow --debug                          # mit Debug-Overlay starten
 swift run -c release TestWindow --autotap 0.9                    # tippt alle 0,9 s automatisch (startet direkt)
 swift run -c release TestWindow --screenshot bild.png --at 4     # Screenshot nach 4 s, dann Ende
@@ -113,7 +121,7 @@ In `TestWindow/tuning.json` stehen die wichtigsten Spielwerte, zum Beispiel:
   "mergeDuration": 0.5,
   "ringSpeed": 110,
   "maxStrikes": 1,
-  "shiftCars": 15
+  "levelOneCars": 10
 }
 ```
 
@@ -130,7 +138,8 @@ Die Datei wird beim Start automatisch geladen. Fehlt sie, schreibt **T** eine ne
 mit allen aktuellen Werten. Alle Schlüssel sind optional; was fehlt, kommt aus
 `Config.swift`. Tunbar sind u. a. `tightFitSeconds`, `sloppyWindow`, `mergeDuration`,
 `ringSpeed`, `maxStrikes`, `maxPoliceCrashes`, `queueAdvanceDuration`,
-`policeChaseSpeedFactor`, `shiftCars`, `rushHourCars`, `rampSeconds`, Dichte- und
+`policeChaseSpeedFactor`, `rushHourCars`, `rampSeconds`, die Level-Kurve (`hardLevel`,
+`levelOneCars`, `carsPerLevel`, `easy…`), Dichte- und
 Tempokurve, Punkte, `comboThresholds` und `comboMultipliers`.
 
 ---
@@ -159,13 +168,17 @@ swift run -c release Sim --shifts 1000 --seed 42
 ```
 
 Drei Bots spielen je 1000 Schichten parallel auf allen Kernen (etwa 10 s; für
-schnelle Vergleiche `--shifts 200`). Stand M4 (Schicht = 15 Autos, keine Uhr):
+schnelle Vergleiche `--shifts 200`). Jede Schicht wird für ein Level gebaut, ohne
+Angabe für `hardLevel` (5); `--level 12` wählt ein anderes. `--curve` spielt die Level
+1–30 durch und zeigt pro Level, wie oft Mensch- und perfekter Bot es schaffen und wie
+lange sie brauchen. `--career 120` spielt ganze Laufbahnen ab Level 1 mit Kaufen
+zwischen den Schichten, `--duty high` alles auf Gefahrenstufe (ROADMAP.md, M5). Stand M5, Level 5 (12–16 Autos, keine Uhr):
 
 ```
 Bot       Score avg     p10  median     p90  Done   Time Crashes Aborted Escaped Busted Best combo Tight fits  Merges
-Perfect       5,951   4,850   5,400   8,100  100%  6.0 s    0.00      0%      0%    0.3       18.5        4.6    14.7
-Human         5,994   4,450   6,150   8,250   92% 19.2 s    0.07      7%      0%    0.9       13.2        2.4    13.6
-Random          333       0       0     850    1% 14.9 s    0.98     98%      1%    0.0        3.2        0.7     2.7
+Perfect       5,628   4,450   5,150   7,800  100%  5.7 s    0.00      0%      0%    0.3       17.7        4.5    13.8
+Human         5,298   2,300   5,550   7,850   82% 15.0 s    0.17     17%      1%    0.8       11.8        1.8    12.3
+Random          351       0       0     900    2% 13.4 s    0.96     97%      1%    0.0        3.2        0.7     2.7
 ```
 
 *Done* = Anteil geschaffter Schichten, *Time* = wie lange eine geschaffte Schicht im

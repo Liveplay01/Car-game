@@ -52,6 +52,8 @@ extension World {
             }
             return
         }
+        // Not before the first tap.
+        guard shift.startedAt != nil else { return }
         // No new transporter after your last car; one on its way is called off.
         if !shift.acceptsTaps {
             switch transporter.phase {
@@ -62,7 +64,10 @@ extension World {
         switch transporter.phase {
         case let .idle(next):
             guard shift.acceptsTaps, now >= next else { return }
-            let arm = transporterRng.pick(Arm.ai)
+            // Only where nobody waits: otherwise the warning would mark somebody else.
+            let candidates = layout.aiArms.filter { isFreeForWarning($0) }
+            guard !candidates.isEmpty else { return }
+            let arm = transporterRng.pick(candidates)
             transporter.phase = .warning(arm: arm, until: now + config.transporterWarning)
             events.append(.transporterWarning(arm: arm, time: now))
 
@@ -76,8 +81,8 @@ extension World {
                 id: makeID(),
                 type: .transporter,
                 owner: .ai,
-                phase: .waiting(Vehicle.Waiting(arm: arm, reaction: 0)),
-                pose: layout.stopPose(arm)
+                phase: .waiting(Vehicle.Waiting(arm: arm, reaction: 0, approach: config.aiApproachDistance)),
+                pose: approachPose(Vehicle.Waiting(arm: arm, reaction: 0, approach: config.aiApproachDistance))
             )
             vehicles.append(truck)
             transporter.phase = .arriving(vehicle: truck.id)
@@ -110,6 +115,18 @@ extension World {
         transporter.phase = .leaving(vehicle: id)
         events.append(.transporterEscaped(vehicle: id, time: now))
         scoreTransporter(now: now)
+    }
+
+    /// The transporter was wrecked in a crash: it is lost, and so is its money. A police
+    /// car hitting it is a seizure instead (`transporterSeized`).
+    mutating func transporterWrecked(_ truckID: Int, at point: Vec2, now: Double) {
+        switch transporter.phase {
+        case let .arriving(id) where id == truckID, let .active(id, _) where id == truckID:
+            transporter.phase = .idle(next: now + transporterRng.double(in: config.transporterInterval))
+            events.append(.transporterLost(vehicle: truckID, point: point, time: now))
+        default:
+            break
+        }
     }
 
     /// A police car stopped the transporter inside a secure zone: seized, no money.

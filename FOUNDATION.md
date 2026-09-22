@@ -105,8 +105,11 @@ externen Festplatte einrichten.
 
 ### 1.3 Zielgeräte und Sprache
 
-**Mindestversion ist iOS 27.** Das sind alle iPhones ab **iPhone 11** und das
-**iPhone SE ab der 2. Generation**, also dieselbe Liste wie bei iOS 26.
+**Mindestversion ist iOS 26.** Das sind alle iPhones ab **iPhone 11** und das
+**iPhone SE ab der 2. Generation**. iOS 27 wird ausdrücklich nicht vorausgesetzt:
+Alles, was die App braucht, gibt es schon in iOS 26. Neuere APIs nur hinter
+`if #available(iOS 27, *)`, und dann mit einem Weg, der ohne sie genauso
+funktioniert.
 
 | Grenze | Gerät | Was das für uns heißt |
 | --- | --- | --- |
@@ -157,6 +160,12 @@ beantwortet.
                [▮]
                 S
 ```
+
+*Stand M5:* Der Kreisverkehr hat **vier Zufahrten zum Start und bis zu acht**. Sie sitzen
+in **16 Steckplätzen** rund um den Ring (22,5° Raster); Platz 0 unten gehört immer dem
+Spieler. Zwei Zufahrten müssen mindestens zwei Plätze auseinander liegen, sonst stoßen ihre
+Ein- und Ausfahrten aneinander. Jede Zufahrt über die vierte hinaus macht den Ring um 18
+Einheiten weiter, damit alle Platz behalten. Gebaut wird im Street Builder (ROADMAP.md, M5).
 
 ### 2.2 Was bei einem Tap passiert
 
@@ -224,18 +233,37 @@ ist die Schicht geschafft. Gut gespielt dauert das ≈ 20 s, und leicht soll es 
 - **Rush Hour = die letzten 4 Autos** (`rushHourCars`): Tempo 135 %, Dichte +2,
   **Punkte ×2**. Sie beginnt mit dem ersten dieser vier; der Zähler wechselt auf eine
   Akzent-Pill. Auf dem iPhone kommt ein Haptik-Signal dazu.
-- **Verbrecher und Transporter** kommen früh (nach 4–8 s bzw. 8–14 s). Ein Verbrecher,
-  der beim letzten Auto noch angekündigt ist oder an seiner Zufahrt wartet, wird
-  abgeblasen. **Ist er schon unterwegs, muss er trotzdem gefasst werden:** Die Schicht
-  wartet auf die Jagd; ein Polizeiauto im Ring kann ihn noch rammen, sonst entkommt er
-  und die Schicht ist verloren. Ein Transporter, der beim letzten Auto noch kreist, wird
-  sofort ausgezahlt.
+- **Verbrecher und Transporter** kommen früh (nach 4–8 s bzw. 8–14 s). **Sobald alle Autos
+  drin sind, ist die Schicht geschafft** – ein Verbrecher, der dann noch unterwegs ist,
+  fährt einfach weg. Wer spät noch einen Verbrecher gemeldet bekommt, hat also die Wahl:
+  fassen (1.000 Punkte) oder die restlichen Autos schnell reinschicken. Ein Transporter,
+  der beim letzten Auto noch kreist, wird sofort ausgezahlt.
+- **Neue Autos fahren heran:** KI-Autos, Verbrecher und Transporter erscheinen außerhalb
+  des Bildes und fahren an ihre Haltelinie (`aiApproachDistance`), statt dort aufzutauchen.
+  Eine Warnung ("WANTED", "SECURED") wird nur an eine Zufahrt gelegt, an der niemand steht,
+  damit der Ring nicht ein fremdes Auto markiert.
+- **Schichtstart:** Die nächste Schicht steht schon auf dem Game-Tab: Der Verkehr fließt,
+  die Autos der Schicht rollen in die Warteschlange. **Der erste Tap schickt das vorderste
+  Auto los und startet damit die Schicht** (erst ab da laufen Verkehrsanstieg, Verbrecher
+  und Transporter). So ist der Übergang von Schicht zu Schicht fließend: Nach dem Ergebnis
+  bleibt der Verkehr im Ring, das Tempo gleitet zum neuen Start-Tempo, und die neuen Autos
+  rollen von hinten in die Schlange (`World.nextShift`).
 - **Schichtende:** Taps werden nicht mehr angenommen. Die letzte Einfädelung wird noch
   gewertet. Nach 1,2 s erscheint oben in der Szene "GAME OVER" bzw. "SHIFT COMPLETE"
   mit den Punkten und der Zeit, die die Schicht gedauert hat. Es gibt kein Menü: Die
   Simulation läuft weiter, und **ein Tap startet die nächste Schicht** (die ersten 0,4 s
   sind gesperrt, damit ein hektischer Tap nicht versehentlich weiterschaltet).
 - **Abschlussbonus:** +1000 für eine geschaffte Schicht.
+- **Gefahrenstufe (M5):** Vor jeder Schicht wählt man auf dem Game-Tab zwischen **Normal
+  Duty** und **High Alert**. High Alert bringt 15 % mehr Autos, einen um ein Fünftel
+  kürzeren Verbrecher-Countdown (nie unter `minCriminalTime`) und einen Verbrecher in
+  *jeder* Schicht – dafür zählt alles Geld dreifach. Der Verkehr selbst (Dichte, Tempo)
+  bleibt wie im Level: Dichter oder schneller obendrauf machte hohe Level unspielbar statt
+  riskanter.
+- **Level (M5):** Jede geschaffte Schicht ist ein Level höher, eine verlorene wird auf
+  demselben Level wiederholt. Mit dem Level wachsen die Autozahl (10 → höchstens 30,
+  je Versuch zufällig ±2) und ab Level 5 das Tempo; Level 1 bis 4 sind entschärft
+  (`Levels.swift`, ROADMAP.md M5).
 
 ### 2.6 Fehler: Crashes
 
@@ -253,8 +281,9 @@ aber keinen Strike.
   ein Polizei-Crash. Ist ein normales Auto mitschuld, ist es ein Strike.
 - **Kein Crash im Sinne der Regel:** der Takedown (Polizei trifft Verbrecher: Punkte,
   Slow-Mo) und die Beschlagnahme (Polizei trifft Transporter: kein Geld, aber auch
-  keine Strafe). Pickup und Transporter sind dabei "gepanzert": Alles andere prallt an
-  ihnen ab, sie fahren verbeult weiter.
+  keine Strafe). Der Pickup ist dabei "gepanzert": Alles andere prallt an ihm ab, er fährt
+  verbeult weiter. **Der Geldtransporter nicht:** Jeder Crash macht ihn zum Wrack, das Geld
+  ist weg ("LOST"). Dafür bremst er wie jeder andere Fahrer.
 - **Crash-Physik (umgesetzt in M2):** Der Aufprall ist ein Starrkörper-Stoß am
   Kontaktpunkt: Impulserhaltung, 30 % Rückprall (der Rest geht in die
   Knautschzonen), Reibung beim Streifen. Ein Treffer neben dem Schwerpunkt bringt
@@ -299,19 +328,28 @@ welcher Screen gerade aktiv ist, welche Daten er zeigt und welche Aktionen er
 anbietet. Das Testfenster zeigt das als schlichte Textseiten. Die App baut daraus
 auf dem Mac die SwiftUI-Screens.
 
+*Stand M5:* **Es gibt kein Startmenü.** Das Spiel öffnet auf dem Game-Tab mit dem
+Kreisverkehr; ein Tap startet die Schicht. Unten wechselt eine Tab-Bar zu den anderen
+Seiten (in der App die native `TabView`, im Testfenster eine schlichte Leiste). Während
+einer Schicht ist sie ausgeblendet.
+
 | Screen | Inhalt | Wichtigste Aktion |
 | --- | --- | --- |
-| **Start** | Titel, Highscore, Einstellungen | **Start Shift** |
+| **Game-Tab, bereit** | kein Menü: oben in der Szene "LEVEL 3", die Zahl der Autos, die Gefahrenstufe ("Normal duty" / "High alert · ×3 money"), Highscore und Geld; auf der Mittelinsel "Tap to start" | **Tap** (irgendwo) |
 | **Spiel (HUD)** | oben links Punkte, oben mittig die Autos, die noch fehlen ("12 cars"), darunter die Crash-Punkte (2.6), oben rechts Pause; Combo auf der Mittelinsel; unten die Warteschlange | Tippen |
-| **Pause** | Resume, Restart, Menu. Pausiert automatisch, wenn die App in den Hintergrund geht | **Resume** |
-| **Ergebnis** | kein Menü: oben in der Szene "GAME OVER" bzw. "SHIFT COMPLETE", Punkte groß, "New Highscore" oder Bestwert; auf der Mittelinsel "Tap to play again", beste Combo, Tight Fits | **Tap** (irgendwo) |
-| **Einstellungen** | Sound, Haptics, Reduce Motion (Standard: folgt iOS) | – |
+| **Pause** | Resume, Restart, End shift. Pausiert automatisch, wenn die App in den Hintergrund geht | **Resume** |
+| **Ergebnis** | kein Menü: oben in der Szene "GAME OVER" bzw. "LEVEL 3 COMPLETE", Punkte groß, "New Highscore" oder Bestwert; auf der Mittelinsel "Tap for level 4" bzw. "Tap to try level 3 again", Zeit, beste Combo, Tight Fits, Geld | **Tap** (irgendwo) |
+| **Einstellungen** | Sound, Haptics, Reduce Motion (Standard: folgt iOS); über dem Game-Tab (App: Zahnrad und Sheet, Testfenster: Esc) | – |
+| **Upgrades-Tab** | Kontostand und eine Karte je Upgrade: Bild, Name, gekaufte Stufen, Preis der nächsten. Ein Tap öffnet unten die Details, ein Doppel-Tap kauft | Stufe kaufen |
+| **Street-Builder-Tab** | der Kreisverkehr von oben, die freien Steckplätze und eine Palette mit Teilen. Ein Teil wird auf einen Platz gezogen, ein Doppel-Tap baut es, ein einzelner nimmt es wieder weg | Zufahrt bauen |
+| **Shop-Tab** | noch Platzhalter ("comes later") | – |
 
 Das HUD und das Ergebnis-Banner gehören zur Spielszene und kommen deshalb komplett
 aus der Render-Liste. Nur der Pause-Button liegt in der App als SwiftUI-Overlay darüber.
 
 **Navigation (ab M5):** Street Builder, Game, Shop und Upgrades wechselt man über
-eine **native iOS-Tab-Bar** (SwiftUI `TabView`).
+eine **native iOS-Tab-Bar** (SwiftUI `TabView`). `ScreenFlow` modelliert die Tabs
+(`Tab`, `Screen.page`), die App baut daraus nur noch die `TabView`.
 
 ### Design-Grundsätze
 
@@ -508,7 +546,7 @@ dient Testfenster und App gleich, nur der Speicherort unterscheidet sich.
 | Zollstellen und Stau | Pfade, dazu das Fahrermodell aus `Drivers.swift` (eigenes Tempo, Bremsen, Anfahren) |
 | Verfolgung im Ring (M4+) | `Drivers.swift`: Ein Polizeiauto, direkt hinter dem Verbrecher, beschleunigt auf ×1,4 (`policeChaseSpeedFactor`), bremst nicht für ihn und rammt ihn; es kreist, solange es jagt, danach reiht es sich wieder ein |
 | Blaulicht (M4+) | `SceneBuilder.swift`: Polizeiautos blinken, sobald sie losfahren; während einer Jagd alle, auch in der Warteschlange |
-| Gefahrenstufe und Upgrades | Die Config wird pro Schicht aus Basiswerten plus Modifikatoren gebaut |
+| Gefahrenstufe und Upgrades | Die Config wird pro Schicht aus Basiswerten plus Modifikatoren gebaut; das Level macht es schon so (`Config.forLevel`) |
 | Shop, Truhen, Straßeneditor | neue Screens in `ScreenFlow`, in der App als SwiftUI-Ansichten; Hauptnavigation als native Tab-Bar |
 | Trucks, Polizei, Transporter mit Schaden | eigene Teile-Modelle in `CarArt`, Masse pro Fahrzeugtyp in `CrashPhysics` |
 | Adaptive Musik | Events (`comboChanged`, `rushHour`) steuern die Audio-Layer |
@@ -592,7 +630,7 @@ Rauch, Splitter) und das Ergebnis als Banner statt Menü (Abschnitte 2.5 und 2.6
 
 - ✅ Swift, überall
 - ✅ Entwickelt und getestet wird unter Windows, der Mac dient nur zum Fertigmachen
-- ✅ Die App läuft auf jedem iPhone mit iOS 27 (ab iPhone 11 / SE 2. Gen.)
+- ✅ Die App läuft auf jedem iPhone ab iOS 26 (ab iPhone 11 / SE 2. Gen.)
 - ✅ Hochformat, einhändig
 - ✅ Spielsprache nur Englisch
 - ✅ Veröffentlichung weltweit über den App Store, deine Website ist die
@@ -602,6 +640,8 @@ Rauch, Splitter) und das Ergebnis als Banner statt Menü (Abschnitte 2.5 und 2.6
   Game, Shop, Upgrades) als native Tab-Bar
 - ✅ Crashes mit echter Physik, reagierendem Verkehr und Blechschaden (2.6)
 - ✅ Ergebnis ohne Menü: Banner in der Szene, ein Tap startet die nächste Schicht
+- ✅ Kein Startmenü: Das Spiel öffnet auf dem Game-Tab, ein Tap startet die Schicht;
+  die anderen Seiten erreicht man über die Tab-Bar unten (3)
 - ✅ Eine Schicht hat keine feste Zeit: Man bringt eine feste Zahl Autos in den Verkehr,
   danach ist sie zu Ende. Gut gespielt ≈ 20 s, und das Spiel soll nicht leicht sein (2.5)
 

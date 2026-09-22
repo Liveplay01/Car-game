@@ -4,6 +4,8 @@ import GameCore
 public enum SoundID: String, CaseIterable, Sendable {
     /// Clean merge: a quiet tick, it happens ~100 times a shift.
     case merge
+    /// A module on the ring earned something: a short, quiet tick.
+    case toll
     case tightFit
     case cutOff
     case comboUp
@@ -75,8 +77,11 @@ public enum Feedback {
         case .dispatched: .dispatch
         case .criminalEscaped: .escaped
         case .transporterWarning: .secured
-        case .transporterSeized: .seized
+        // The money is gone either way: seized by your police, or wrecked.
+        case .transporterSeized, .transporterLost: .seized
         case let .transporterPaid(_, amount, _): amount > 0 ? .paid : nil
+        // Modules pay many times a shift: a small tick, never the transporter's fanfare.
+        case .modulePaid: .toll
         case .launched, .tapRejected, .exited, .criminalEntered, .criminalEscaped, .dispatched, .transporterEntered, .transporterEscaped: nil
         }
     }
@@ -93,8 +98,11 @@ public enum Feedback {
         case .criminalWarning: .wanted
         case .takedown: .takedown
         case .transporterWarning: .secured
-        case .transporterSeized: .seized
+        // The money is gone either way: seized by your police, or wrecked.
+        case .transporterSeized, .transporterLost: .seized
         case let .transporterPaid(_, amount, _): amount > 0 ? .paid : nil
+        // Money that comes in by itself is not felt: the thumb is busy with the traffic.
+        case .modulePaid: nil
         case .launched, .tapRejected, .exited, .criminalEntered, .criminalEscaped, .dispatched, .transporterEntered, .transporterEscaped: nil
         }
     }

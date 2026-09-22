@@ -24,23 +24,25 @@ struct PathTests {
         #expect(!line.isClosed)
     }
 
-    @Test(arguments: Arm.allCases)
-    func entryHasTheMergeLength(arm: Arm) {
-        #expect(abs(layout.entry(arm).length - config.mergePathLength) < 0.01)
+    @Test(arguments: [0, 1, 2, 3])
+    func entryHasTheMergeLength(index: Int) {
+        #expect(abs(layout.entry(layout.arm(index)).length - config.mergePathLength) < 0.01)
     }
 
-    @Test(arguments: Arm.allCases)
-    func entryMeetsTheRingTangentially(arm: Arm) {
+    @Test(arguments: [0, 1, 2, 3])
+    func entryMeetsTheRingTangentially(index: Int) {
         let layout = self.layout
+        let arm = layout.arm(index)
         let end = layout.entry(arm).pose(at: layout.entry(arm).length)
         let ring = layout.ring.pose(at: layout.entryRingS(arm))
         #expect(end.position.distance(to: ring.position) < 1e-6)
         #expect(abs(Angle.delta(from: end.heading, to: ring.heading)) < 0.01)
     }
 
-    @Test(arguments: Arm.allCases)
-    func exitLeavesTheRingTangentially(arm: Arm) {
+    @Test(arguments: [0, 1, 2, 3])
+    func exitLeavesTheRingTangentially(index: Int) {
         let layout = self.layout
+        let arm = layout.arm(index)
         let start = layout.exit(arm).pose(at: 0)
         let ring = layout.ring.pose(at: layout.exitRingS(arm))
         #expect(start.position.distance(to: ring.position) < 1e-6)
@@ -49,7 +51,7 @@ struct PathTests {
 
     @Test func playerEntryIsRightOfTheSouthArm() {
         // Right-hand traffic: coming up from the south, the entry lane lies east (x > 0).
-        let stop = layout.stopPose(.south)
+        let stop = layout.stopPose(layout.player)
         #expect(stop.position.x > 0)
         #expect(stop.position.y < -config.ringRadius)
         #expect(abs(Angle.delta(from: stop.heading, to: .pi / 2)) < 1e-6)
@@ -59,7 +61,7 @@ struct PathTests {
         // A car at the stop line is clear of every ring position by more than a Tight Fit.
         let layout = self.layout
         let world = World(config: config, seed: 1, prefill: false)
-        let waiting = world.hitbox(at: layout.stopPose(.south))
+        let waiting = world.hitbox(at: layout.stopPose(layout.player))
         var smallest = Double.infinity
         for k in 0..<720 {
             let ringCar = world.hitbox(at: layout.ring.pose(at: layout.ring.length * Double(k) / 720))
@@ -69,13 +71,13 @@ struct PathTests {
     }
 
     @Test func queueSlotZeroIsTheStopLine() {
-        #expect(layout.queuePose(slot: 0) == layout.stopPose(.south))
+        #expect(layout.queuePose(slot: 0) == layout.stopPose(layout.player))
         #expect(layout.queuePose(slot: 1).position.y < layout.queuePose(slot: 0).position.y)
     }
 
     @Test func ringDistanceGoesForward() {
         let layout = self.layout
-        let d = layout.ringDistance(from: .south, toExit: .east)
+        let d = layout.ringDistance(from: layout.player, toExit: layout.arm(1))
         let expected = (Double.pi / 2 - 2 * config.mergeAngle) * config.ringRadius
         #expect(abs(d - expected) < 1e-6)
     }

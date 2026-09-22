@@ -8,7 +8,7 @@ public enum InputAction: Sendable, Equatable {
     case tap
     /// The screen's main action (Enter): start, resume, next shift.
     case confirm
-    /// Esc: pause while playing, resume while paused, back out of a menu.
+    /// Esc: back out of a menu. A running shift has nothing to back out of.
     case back
     /// Picks the n-th menu item, counting from 1 (number keys).
     case choose(Int)
@@ -20,8 +20,21 @@ public enum InputAction: Sendable, Equatable {
     case toggleDebug
     /// 1× → 0.5× → 0.25× (F2).
     case cycleSlowMotion
-    /// The window or app lost focus: a running shift pauses (FOUNDATION.md 3).
+    /// The window or app lost focus: a running shift freezes (FOUNDATION.md 3).
     case focusLost
+    /// The window or app is back: the frozen shift counts in and runs on.
+    case focusGained
+    /// A tap on an upgrade card: it opens its details, a second tap within
+    /// `GameSession.doubleTapWindow` buys it (the app's double tap, a double click here).
+    case tapUpgrade(Upgrade)
+    /// Dragging on a page: press, move, release (the Street Builder's drag and drop).
+    case pointerDown(Vec2)
+    case pointerMove(Vec2)
+    case pointerUp(Vec2)
+    /// A tab of the tab bar (the app's `TabView`, a click on the test window's strip).
+    case selectTab(Tab)
+    /// The next tab (Tab key in the test window).
+    case nextTab
     /// A menu button of the app.
     case perform(ScreenAction)
 }
@@ -61,9 +74,13 @@ public final class GameSession {
     public static let maxFrameDelta = 0.25
     /// Between the end of a shift and the result banner, so the last moment stays visible.
     public static let resultDelay = 1.2
+    /// How long the score takes to catch up with a scored merge.
+    static let scoreCatchUp = 0.28
+    /// How long the spring on the multiplier lasts when the combo reaches a new tier.
+    static let comboPop = 0.35
+    /// The count-in after an interruption: long enough to read the road again.
+    static let countInSeconds = 2.0
     public static let noticeDuration = 3.5
-    /// Traffic behind the start screen. Fixed, so it never uses up a shift seed.
-    static let backdropSeed: UInt64 = 1
 
     /// The config the platform started with; `tuning.json` is laid over it.
     public let baseConfig: Config
@@ -73,7 +90,7 @@ public final class GameSession {
     /// From `--time-scale`, multiplied with slow motion.
     public let baseTimeScale: Double
     public internal(set) var world: World
-    public private(set) var screen: Screen = .start
+    public private(set) var screen: Screen = .ready
     public private(set) var save: SaveGame
     public private(set) var slowMotionLevel = 0
     public var isDebugVisible = false
@@ -87,7 +104,7 @@ public final class GameSession {
     private let haptics: HapticsPlaying?
     private var clock = FixedStepClock()
     private var markers: [DebugMarker] = []
-    private var effects = CrashEffects(seed: GameSession.backdropSeed)
+    private var effects = CrashEffects(seed: 0)
     private var popups: [Popup] = []
     private var popupSerial = 0
     /// The finished shift, shown once `resultCountdown` has run out.
@@ -97,6 +114,28 @@ public final class GameSession {
     private var resultAge = 0.0
     /// Real time since the last takedown.
     private var sinceTakedown = Double.infinity
+    /// The score as the HUD shows it: it runs after the real one instead of jumping.
+    private var shownScore = 0.0
+    /// How long ago the combo reached a new tier, for the spring on the multiplier.
+    private var sinceComboTier = Double.infinity
+    /// A shift interrupted from outside (call, home screen): frozen until the player is back.
+    public private(set) var isInterrupted = false
+    /// Seconds left of the count-in after an interruption; the world stands still until 0.
+    public private(set) var countIn = 0.0
+    /// Real time the Game tab has been waiting for the first tap.
+    private var sinceReady = 0.0
+    /// A second tap on the same card within this long buys it.
+    public static let doubleTapWindow = 0.4
+    /// What the Upgrades tab shows and animates.
+    public private(set) var upgradePage = UpgradePage.State()
+    /// What the Street Builder tab shows and animates.
+    public private(set) var builderPage = StreetBuilderPage.State()
+    /// The last tap on a placed part, to tell a double tap from a single one.
+    private var lastPartTap = Double.infinity
+    /// Where the last viewport was, so the pages can hit-test what was drawn.
+    private var lastViewport = Vec2(430, 900)
+    /// The last tap on a card, to tell a double tap from two single ones.
+    private var lastCardTap: (upgrade: Upgrade, age: Double)?
     private var notice: (text: String, age: Double)?
 
     public init(
@@ -117,7 +156,12 @@ public final class GameSession {
         self.options = options
         baseTimeScale = timeScale
         save = store.load() ?? SaveGame()
-        world = World(config: config, seed: Self.backdropSeed, mode: .freePlay)
+        // The Game tab opens on the next shift, already flowing; the first tap starts it.
+        let seed = random.nextSeed()
+        playingLevel = save.career.level
+        playingDuty = save.career.duty
+        world = World(config: save.career.config(from: config, seed: seed), seed: seed, mode: .shift, startsOnFirstTap: true)
+        effects = CrashEffects(seed: seed)
     }
 
     /// Simulation speed: `--time-scale`, the debug slow motion (F2) and the short slow
@@ -145,27 +189,53 @@ public final class GameSession {
         }
     }
 
-    /// The current menu as data; nil while playing.
+    /// The current menu or page as data; nil on the Game tab.
     public var content: ScreenContent? {
-        ScreenFlow.content(for: screen, save: save, world: world, format: format)
+        ScreenFlow.content(for: screen, save: save, world: world, config: config, format: format)
     }
 
     // MARK: - Screen flow
 
     public func perform(_ action: ScreenAction) {
         switch action {
-        case .startShift, .restart:
-            startShift()
-        case .pause:
-            if screen == .playing { screen = .paused }
-        case .resume:
-            if screen == .paused { screen = .playing }
-        case .menu:
-            showStart()
+        case .startShift:
+            // The shift itself starts with its first car; this only leaves the waiting banner.
+            if screen == .ready { screen = .playing }
+        case .restart:
+            prepareShift(continuing: false)
         case .openSettings:
-            screen = .settings
+            if screen == .ready { screen = .settings }
         case .closeSettings:
-            screen = .start
+            if screen == .settings { screen = .ready }
+        case let .setDuty(duty):
+            guard save.career.duty != duty else { return }
+            save.career.duty = duty
+            store.save(save)
+            refreshWaitingShift()
+        case let .showTab(tab):
+            guard screen.showsTabBar, tab != screen.tab || screen.tab == .game else { return }
+            // The next shift already waits behind every page and behind the result.
+            screen = tab == .game ? .ready : .page(tab)
+        case let .pickUpPart(part):
+            builderPage.selected = part
+            builderPage.dragging = (part, StreetBuilderPage.cards(viewport: lastViewport, bottomInset: tabInset).first { $0.part == part }?.rect.center ?? .zero)
+        case let .placePart(slot):
+            guard let part = builderPage.dragging?.part ?? builderPage.selected else { return }
+            guard save.career.armSlots.allSatisfy({ $0 != slot }), config.canBuildArm(inSlot: slot, built: save.career.armSlots) else { return }
+            builderPage.pending = (part, slot)
+            builderPage.removing = 0
+            builderPage.dragging = nil
+            builderPage.target = nil
+        case .buildPart:
+            buildPart()
+        case .removePart:
+            builderPage.pending = nil
+            builderPage.removing = 0
+        case let .selectUpgrade(upgrade):
+            upgradePage.selected = upgrade
+            upgradePage.pressed = (upgrade, 0)
+        case let .buy(upgrade):
+            buy(upgrade)
         case .toggleSound:
             save.settings.sound.toggle()
             store.save(save)
@@ -192,10 +262,10 @@ public final class GameSession {
         }
         config = tuning.config
         switch screen {
-        case .playing, .paused:
-            startShift(seed: world.seed)
-        case .start, .settings:
-            showStart(keepScreen: true)
+        case .playing:
+            prepareShift(continuing: false, seed: world.seed, screen: .playing)
+        case .ready, .settings, .page:
+            prepareShift(continuing: false, seed: world.seed, screen: screen)
         case .result:
             break
         }
@@ -211,16 +281,133 @@ public final class GameSession {
         notice = (text, 0)
     }
 
-    private func startShift(seed: UInt64? = nil) {
-        world = World(config: config, seed: seed ?? random.nextSeed(), mode: .shift)
-        resetScene()
-        screen = .playing
+    /// The level the running shift is played at, and the duty it was started on.
+    public private(set) var playingLevel = 1
+    public private(set) var playingDuty = Duty.normal
+
+    /// Sets up the next shift for the saved career: its level (car count, traffic) and the
+    /// upgrades bought (`Career.config`). It waits, traffic flowing, for its first tap.
+    /// Continuing keeps the cars on the road and lets the new queue roll in (`World.nextShift`);
+    /// otherwise the roundabout starts afresh.
+    private func prepareShift(continuing: Bool, seed: UInt64? = nil, screen next: Screen = .ready) {
+        let seed = seed ?? random.nextSeed()
+        playingLevel = save.career.level
+        playingDuty = save.career.duty
+        let shiftConfig = save.career.config(from: config, seed: seed)
+        if continuing {
+            world = world.nextShift(config: shiftConfig, seed: seed)
+        } else {
+            world = World(config: shiftConfig, seed: seed, mode: .shift, startsOnFirstTap: true)
+            resetScene()
+        }
+        pendingSummary = nil
+        shownScore = 0
+        sinceComboTier = .infinity
+        screen = next
     }
 
-    private func showStart(keepScreen: Bool = false) {
-        world = World(config: config, seed: Self.backdropSeed, mode: .freePlay)
-        resetScene()
-        if !keepScreen { screen = .start }
+    /// Jumps to a level, e.g. `--level 8` in the test window. Saved at once.
+    public func setLevel(_ level: Int) {
+        save.career.level = max(1, level)
+        store.save(save)
+        refreshWaitingShift()
+    }
+
+    /// The shift waiting for its first tap is rebuilt after a purchase or a level jump, so it
+    /// already has what was just bought. Same seed, same traffic on the road — unless the
+    /// roundabout itself changed, then it starts over on the new one.
+    private func refreshWaitingShift() {
+        guard world.shift.phase == .waiting else { return }
+        playingLevel = save.career.level
+        playingDuty = save.career.duty
+        let next = save.career.config(from: config, seed: world.seed)
+        if next.builtArmSlots == world.config.builtArmSlots {
+            world = world.nextShift(config: next, seed: world.seed)
+        } else {
+            world = World(config: next, seed: world.seed, mode: .shift, startsOnFirstTap: true)
+            resetScene()
+        }
+    }
+
+
+    /// Buys the next step of an upgrade, or shows that it cannot be bought.
+    private func buy(_ upgrade: Upgrade) {
+        upgradePage.selected = upgrade
+        guard let price = save.career.price(of: upgrade, config: config) else { return }
+        let money = save.career.money
+        guard save.career.buy(upgrade, config: config) else {
+            upgradePage.denied = (upgrade, 0)
+            showNotice(Strings.Notice.notEnoughMoney(format.number(price)))
+            return
+        }
+        let steps = save.career.steps(of: upgrade)
+        upgradePage.purchase = (upgrade, steps - 1, 0)
+        upgradePage.moneyBefore = money
+        store.save(save)
+        refreshWaitingShift()
+        play(sounds: [.comboUp], haptics: [.comboUp])
+        showNotice(Strings.Notice.bought(Strings.Upgrades.name(upgrade), steps: steps, of: upgrade.maxSteps))
+    }
+
+    /// Builds the part that is waiting on the ring, or shows that it cannot be paid for.
+    private func buildPart() {
+        guard let pending = builderPage.pending else { return }
+        guard let price = save.career.armPrice(config: config) else { return }
+        let money = save.career.money
+        guard save.career.buildArm(inSlot: pending.slot, config: config) else {
+            builderPage.denied = 0.001
+            showNotice(Strings.Notice.notEnoughMoney(format.number(price)))
+            return
+        }
+        builderPage.pending = nil
+        builderPage.removing = 0
+        builderPage.built = (pending.slot, 0)
+        builderPage.moneyBefore = money
+        store.save(save)
+        // The roundabout itself is different now, so the waiting shift starts over on it.
+        refreshWaitingShift()
+        play(sounds: [.comboUp], haptics: [.comboUp])
+        showNotice(Strings.Notice.built(Strings.Builder.name(pending.part), arms: save.career.armSlots.count))
+    }
+
+    /// A press on the Street Builder: on a palette card it picks the part up, on the part
+    /// waiting on the ring it builds it (second tap) or takes it away (single tap).
+    private func builderPress(at point: Vec2) {
+        let inset = tabInset
+        if let part = StreetBuilderPage.card(at: point, viewport: lastViewport, bottomInset: inset) {
+            perform(.pickUpPart(part))
+            builderPage.dragging = (part, point)
+            return
+        }
+        let map = StreetBuilderPage.map(viewport: lastViewport, bottomInset: inset)
+        let slots = config.armSlotCount
+        if let pending = builderPage.pending,
+           StreetBuilderPage.slot(at: point, slots: slots, map: map) == pending.slot {
+            if lastPartTap <= Self.doubleTapWindow {
+                lastPartTap = .infinity
+                perform(.buildPart)
+            } else {
+                // It starts to go; a second tap in time builds it instead.
+                lastPartTap = 0
+                builderPage.removing = 0.001
+            }
+        }
+    }
+
+    /// The tab bar's height, where it shows.
+    private var tabInset: Double {
+        options.drawsMenus && screen.showsTabBar ? TabStrip.height : 0
+    }
+
+    /// A tap on a card: the first one opens the details, a second one right after buys.
+    private func tapUpgrade(_ upgrade: Upgrade) {
+        if let last = lastCardTap, last.upgrade == upgrade, last.age <= Self.doubleTapWindow {
+            lastCardTap = nil
+            perform(.buy(upgrade))
+        } else {
+            lastCardTap = (upgrade, 0)
+            perform(.selectUpgrade(upgrade))
+        }
     }
 
     private func resetScene() {
@@ -241,7 +428,12 @@ public final class GameSession {
     public func frame(delta: Double, actions: [InputAction], viewport: Vec2, fps: Int) -> Frame {
         let realDelta = min(max(delta, 0), Self.maxFrameDelta)
         let simDelta = realDelta * timeScale
-        if screen != .paused {
+        // An interrupted shift stands still, and counts back in before it runs again.
+        if countIn > 0 {
+            countIn = max(0, countIn - realDelta)
+        }
+        let runs = !isInterrupted && countIn == 0
+        if runs {
             clock.add(simDelta)
         }
         let present = world.time + clock.accumulator
@@ -250,7 +442,7 @@ public final class GameSession {
         }
 
         var events: [GameEvent] = []
-        if screen != .paused {
+        if runs {
             while clock.takeStep() {
                 world.step()
                 events += world.takeEvents()
@@ -262,6 +454,35 @@ public final class GameSession {
             resultAge += realDelta
         }
         sinceTakedown += realDelta
+        sinceComboTier += realDelta
+        // The score catches up with itself: it counts, never jumps (FOUNDATION.md 3).
+        let points = Double(world.score.points)
+        if abs(points - shownScore) < 1 || reduceMotion {
+            shownScore = points
+        } else {
+            shownScore += (points - shownScore) * min(1, realDelta / Self.scoreCatchUp)
+        }
+        sinceReady = screen == .ready ? sinceReady + realDelta : 0
+        if screen == .page(.upgrades) {
+            upgradePage.age(by: realDelta)
+        } else {
+            upgradePage = UpgradePage.State()
+        }
+        if screen == .page(.streetBuilder) {
+            builderPage.age(by: realDelta)
+            lastPartTap += realDelta
+            // A part that was tapped away is gone once it has faded out.
+            if builderPage.removing > StreetBuilderPage.removeDuration {
+                perform(.removePart)
+            }
+        } else {
+            builderPage = StreetBuilderPage.State()
+            lastPartTap = .infinity
+        }
+        if var last = lastCardTap {
+            last.age += realDelta
+            lastCardTap = last.age <= Self.doubleTapWindow ? last : nil
+        }
         if let current = notice {
             notice = current.age + realDelta < Self.noticeDuration ? (current.text, current.age + realDelta) : nil
         }
@@ -275,39 +496,83 @@ public final class GameSession {
             case .playing:
                 // Input is polled once per frame; the press happened on average half a frame ago.
                 world.tap(at: max(world.time, present - simDelta / 2))
+            case .ready:
+                // No start menu: the next shift is already on the road, and the first tap
+                // sends its front car.
+                screen = .playing
+                world.tap(at: max(world.time, present - simDelta / 2))
             case .result:
-                // One tap anywhere: the next shift. Not in the very first moment, so a tap
-                // meant for the last car does not skip the result.
+                // One tap anywhere: the first car of the next shift. Not in the very first
+                // moment, so a tap meant for the last car does not skip the result.
                 if resultAge >= ResultBanner.inputLock {
-                    perform(.startShift)
+                    screen = .playing
+                    world.tap(at: max(world.time, present - simDelta / 2))
                 }
-            case .start, .settings, .paused:
-                // Menus take no taps; they have their items.
+            case .settings, .page:
+                // Menus and pages take no taps; they have their items.
                 break
             }
         case .confirm:
-            if case .result = screen {
-                perform(.startShift)
-            } else if let primary = content?.items.first(where: \.isPrimary) {
-                perform(primary.action)
+            switch screen {
+            case .ready, .result:
+                screen = .playing
+                world.tap(at: max(world.time, present - simDelta / 2))
+            // Enter buys the upgrade whose details are open.
+            case .page(.upgrades):
+                if let upgrade = upgradePage.selected { perform(.buy(upgrade)) }
+            default:
+                if let primary = content?.items.first(where: \.isPrimary) {
+                    perform(primary.action)
+                }
             }
         case .back:
             switch screen {
-            case .playing: perform(.pause)
-            case .paused: perform(.resume)
+            // A shift runs to its end: there is no pause screen to open.
+            case .playing: break
             case .settings: perform(.closeSettings)
-            case .result: perform(.menu)
-            case .start: break
+            case .ready: perform(.openSettings)
+            case .result, .page: perform(.showTab(.game))
             }
         case let .choose(number):
-            if let items = content?.items, items.indices.contains(number - 1) {
+            // On the Upgrades tab the numbers pick a card, like a tap on it.
+            if screen == .page(.upgrades), Upgrade.allCases.indices.contains(number - 1) {
+                tapUpgrade(Upgrade.allCases[number - 1])
+            } else if let items = content?.items, items.indices.contains(number - 1) {
                 perform(items[number - 1].action)
             }
         case .restart:
             switch screen {
-            case .playing, .paused, .result: perform(.restart)
-            case .start, .settings: break
+            case .playing, .result: perform(.restart)
+            case .ready, .settings, .page: break
             }
+        case let .tapUpgrade(upgrade):
+            guard screen == .page(.upgrades) else { return }
+            tapUpgrade(upgrade)
+        case let .pointerDown(point):
+            guard screen == .page(.streetBuilder) else { return }
+            builderPress(at: point)
+        case let .pointerMove(point):
+            guard screen == .page(.streetBuilder), builderPage.dragging != nil else { return }
+            builderPage.dragging?.at = point
+            let map = StreetBuilderPage.map(viewport: lastViewport, bottomInset: tabInset)
+            let slot = StreetBuilderPage.slot(at: point, slots: config.armSlotCount, map: map)
+            builderPage.target = slot.flatMap { config.canBuildArm(inSlot: $0, built: save.career.armSlots) ? $0 : nil }
+        case let .pointerUp(point):
+            guard screen == .page(.streetBuilder), builderPage.dragging != nil else { return }
+            let map = StreetBuilderPage.map(viewport: lastViewport, bottomInset: tabInset)
+            if let slot = StreetBuilderPage.slot(at: point, slots: config.armSlotCount, map: map),
+               config.canBuildArm(inSlot: slot, built: save.career.armSlots) {
+                perform(.placePart(slot: slot))
+            } else {
+                builderPage.dragging = nil
+                builderPage.target = nil
+            }
+        case let .selectTab(tab):
+            perform(.showTab(tab))
+        case .nextTab:
+            let tabs = Tab.allCases
+            let index = tabs.firstIndex(of: screen.tab) ?? 0
+            perform(.showTab(tabs[(index + 1) % tabs.count]))
         case .toggleDebug:
             isDebugVisible.toggle()
         case .dispatch:
@@ -317,7 +582,13 @@ public final class GameSession {
         case .cycleSlowMotion:
             slowMotionLevel = (slowMotionLevel + 1) % Self.slowMotionScales.count
         case .focusLost:
-            perform(.pause)
+            // No menu: the world simply stands still until the player is back.
+            if screen == .playing { isInterrupted = true }
+        case .focusGained:
+            if isInterrupted {
+                isInterrupted = false
+                countIn = reduceMotion ? 0 : Self.countInSeconds
+            }
         case let .perform(screenAction):
             perform(screenAction)
         }
@@ -340,14 +611,16 @@ public final class GameSession {
                 if report.penalty > 0 {
                     addPopup(.penalty(report.penalty), at: report.point)
                 }
+            case let .comboChanged(change):
+                if change.isTierUp { sinceComboTier = 0 }
             case let .shiftEnded(result):
                 finish(result)
             case let .takedown(report):
                 addPopup(.busted(report.points), at: report.point)
                 sinceTakedown = 0
             case .dispatched:
-                addPopup(.dispatch, at: world.layout.stopPose(Arm.player).position)
-            case .launched, .tapRejected, .exited, .comboChanged, .rushHour, .criminalWarning, .criminalEntered, .criminalEscaped:
+                addPopup(.dispatch, at: world.layout.stopPose(world.layout.player).position)
+            case .launched, .tapRejected, .exited, .rushHour, .criminalWarning, .criminalEntered, .criminalEscaped:
                 break
             case .transporterWarning:
                 break
@@ -356,21 +629,31 @@ public final class GameSession {
             case let .transporterSeized(vehicle, police, point, time):
                 markers.append(DebugMarker(kind: .crash, position: point, age: 0))
                 addPopup(.seized, at: point)
+            case let .transporterLost(_, point, _):
+                addPopup(.lost, at: point)
             case .transporterEscaped:
                 break
             case let .transporterPaid(vehicle, amount, time):
                 if amount > 0 {
-                    addPopup(.paid(amount), at: world.layout.stopPose(Arm.player).position)
+                    addPopup(.paid(amount), at: world.layout.stopPose(world.layout.player).position)
                 }
+            case let .modulePaid(_, _, amount, point, _):
+                // Right where it was earned, so it is clear which module pays.
+                addPopup(.earned(amount), at: point)
             }
         }
         guard screen == .playing else { return }
         let cues = Feedback.cues(for: events)
+        play(sounds: cues.sounds, haptics: cues.haptics)
+    }
+
+    /// Sound and haptics, as far as the settings allow.
+    private func play(sounds: [SoundID], haptics feedback: [HapticID]) {
         if save.settings.sound, let audio {
-            cues.sounds.forEach(audio.play)
+            sounds.forEach(audio.play)
         }
         if save.settings.haptics, let haptics {
-            cues.haptics.forEach(haptics.play)
+            feedback.forEach(haptics.play)
         }
     }
 
@@ -384,10 +667,10 @@ public final class GameSession {
             save.highscoreSeed = result.seed
         }
         save.shiftsPlayed += 1
-        // Money from transporters is banked whatever the outcome: it was paid out already.
-        save.money += result.money
+        // Money is banked whatever the outcome; done is a level up, lost is the same level again.
+        save.career.record(result, playedAt: playingLevel)
         store.save(save)
-        pendingSummary = ShiftSummary(result: result, isNewHighscore: isNew, previousHighscore: previous)
+        pendingSummary = ShiftSummary(result: result, level: playingLevel, isNewHighscore: isNew, previousHighscore: previous)
         resultCountdown = Self.resultDelay
     }
 
@@ -409,9 +692,9 @@ public final class GameSession {
         if let summary = pendingSummary {
             resultCountdown -= delta
             if resultCountdown <= 0 {
-                pendingSummary = nil
                 resultAge = 0
-                screen = .result(summary)
+                // Level up (or not), and the next shift rolls in behind the result.
+                prepareShift(continuing: true, screen: .result(summary))
             }
         }
     }
@@ -419,6 +702,7 @@ public final class GameSession {
     // MARK: - Render list
 
     private func renderList(viewport: Vec2, fps: Int) -> RenderList {
+        lastViewport = viewport
         var camera = Camera.fit(
             world.layout.viewBounds,
             viewport: viewport,
@@ -430,37 +714,65 @@ public final class GameSession {
         var list = RenderList(camera: camera, background: .background)
         SceneBuilder.addRoad(world.layout, config: world.config, to: &list)
         effects.addGround(world: world, alpha: clock.alpha, to: &list)
+        SceneBuilder.addShadows(of: world, alpha: clock.alpha, to: &list)
         SceneBuilder.addVehicles(of: world, alpha: clock.alpha, to: &list)
         effects.addAir(to: &list)
 
         switch screen {
-        case .playing, .paused:
+        case .playing:
             HUD.addChase(world: world, alpha: clock.alpha, to: &list)
             HUD.addTransporter(world: world, alpha: clock.alpha, to: &list)
-            HUD.add(world: world, format: format, showsKeys: options.showsKeyHints, timeScale: timeScale, to: &list)
+            HUD.add(
+                world: world, level: playingLevel, duty: playingDuty,
+                score: Int(shownScore.rounded()),
+                comboPop: reduceMotion ? 0 : Ease.clamp01(sinceComboTier / Self.comboPop),
+                format: format, showsKeys: options.showsKeyHints, timeScale: timeScale, to: &list
+            )
             HUD.addPopups(popups, format: format, reduceMotion: reduceMotion, to: &list)
+            if countIn > 0 || isInterrupted {
+                HUD.addCountIn(secondsLeft: isInterrupted ? Self.countInSeconds : countIn, to: &list)
+            }
         case let .result(summary):
             ResultBanner.add(summary, age: resultAge, format: format, reduceMotion: reduceMotion, showsKeys: options.showsKeyHints, to: &list)
-        case .start, .settings:
+        case .ready:
+            let career = save.career
+            let status = Strings.Ready.status(
+                highscore: save.highscore > 0 ? format.number(save.highscore) : nil,
+                money: career.money > 0 ? format.number(career.money) : nil
+            )
+            ReadyBanner.add(level: playingLevel, cars: world.carsLeft ?? 0, duty: career.duty, dutyPay: config.highAlertPay, status: status, time: sinceReady, reduceMotion: reduceMotion, showsKeys: options.showsKeyHints, to: &list)
+        case .settings, .page:
             break
         }
         if isDebugVisible {
             let stats = DebugStats(fps: fps, timeScale: timeScale, tuningChanges: Tuning.differences(config).count)
             DebugOverlay.add(world: world, alpha: clock.alpha, markers: markers, stats: stats, to: &list)
         }
-        if options.drawsMenus, let content {
-            TextPage.add(content, showsKeys: options.showsKeyHints, to: &list)
+        // The app has a native tab bar; the test window draws a strip at the bottom.
+        let tabStrip = options.drawsMenus && screen.showsTabBar
+        let bottomInset = tabStrip ? TabStrip.height : 0
+        if options.drawsMenus, screen == .page(.streetBuilder) {
+            // Its own page: the roundabout from above, with the parts to build.
+            StreetBuilderPage.add(career: save.career, config: config, state: builderPage, format: format, reduceMotion: reduceMotion, showsKeys: options.showsKeyHints, bottomInset: bottomInset, to: &list)
+        } else if options.drawsMenus, screen == .page(.upgrades) {
+            // Its own page: cards with a picture of what they do (FOUNDATION.md 3).
+            UpgradePage.add(career: save.career, config: config, state: upgradePage, format: format, reduceMotion: reduceMotion, showsKeys: options.showsKeyHints, bottomInset: bottomInset, to: &list)
+        } else if options.drawsMenus, let content {
+            TextPage.add(content, showsKeys: options.showsKeyHints, bottomInset: bottomInset, to: &list)
+        }
+        if tabStrip {
+            TabStrip.add(selected: screen.tab, to: &list)
         }
         if let notice {
-            addNotice(notice.text, age: notice.age, to: &list)
+            addNotice(notice.text, age: notice.age, bottomInset: bottomInset, to: &list)
         }
         return list
     }
 
-    private func addNotice(_ text: String, age: Double, to list: inout RenderList) {
+    private func addNotice(_ text: String, age: Double, bottomInset: Double, to list: inout RenderList) {
         let viewport = list.camera.viewport
         let opacity = 1 - Ease.clamp01((age - (Self.noticeDuration - 0.5)) / 0.5)
-        let center = Vec2(viewport.x / 2, viewport.y - 64)
+        let center = Vec2(viewport.x / 2, viewport.y - bottomInset - 64)
         let width = min(viewport.x - 24, Double(text.count) * 7 + 32)
         list.add(.roundedRect(center: center, size: Vec2(width, 28), cornerRadius: 14, rotation: 0), color: .debugPanel, opacity: opacity, space: .screen, id: RenderID.notice)
         list.add(.text(text, position: center, size: Metrics.noticeSize, alignment: .center, weight: .regular), color: .primary, opacity: opacity, space: .screen, id: RenderID.notice + 1)

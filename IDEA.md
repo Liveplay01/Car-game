@@ -1,6 +1,6 @@
 # Idea.md – Car Circle-inspiriertes iOS-Spiel
 
-Stand: 21.09.2026
+Stand: 22.09.2026
 
 ## Inspiration
 
@@ -358,7 +358,7 @@ Jede Box-Art braucht eine eigene, klar sichtbare Odds-Tabelle.
 - iPhone-App: Spielszene (Kreisverkehr, Fahrzeuge, Timing) in SpriteKit,
   Menüs (Shop, Truhen, Straßeneditor/Stadt-Übersicht) in SwiftUI, Haptik über
   Core Haptics.
-- Läuft auf jedem iPhone mit iOS 27. Sprache im Spiel: nur Englisch.
+- Läuft auf jedem iPhone ab iOS 26. Sprache im Spiel: nur Englisch.
 - Veröffentlichung weltweit über den App Store, die eigene Website ist die
   Startseite des Spiels (siehe PLAN.md).
 - Mögliche native Anbindungen: GameKit (Leaderboards, Achievements,
@@ -367,9 +367,6 @@ Jede Box-Art braucht eine eigene, klar sichtbare Odds-Tabelle.
 
 ## Bestätigte nächste Features (zusätzlich zum Kernloop)
 
-- **Combo-/Streak-System**
-- **Verbrecher-Bots & Polizei-Mechanik** (Fahrzeugtyp: Pickup)
-- **Geldtransporter-Mechanik** inkl. Polizei-Ausschlusszonen davor/dahinter
 - **Zollstellen im Straßeneditor** als passive Einnahmequelle von Trucks,
   inkl. stauverursachendem Risiko, das Verbrechern das Entkommen erleichtert
 - **Map-Erweiterung über Geld**, inkl. steigender Bot-Anzahl bei größerer Map
@@ -388,157 +385,31 @@ Jede Box-Art braucht eine eigene, klar sichtbare Odds-Tabelle.
   MultipeerConnectivity für lokales Multiplayer
 - **Differenzierte Haptik-Muster** je Ereignis (Verbrecher gefasst,
   Geldtransporter gerettet, Truhe geöffnet, Kollision)
-- **Inhaltliche Abwechslung**: Tag/Nacht-Zyklus bzw. Wetter,
-  Krankenwagen/VIP-Konvoi (muss bevorzugt durchgelassen werden), temporäre
+- **Inhaltliche Abwechslung**: Krankenwagen/VIP-Konvoi (muss bevorzugt durchgelassen werden), temporäre
   Baustellen/Sperrungen, wöchentliches Boss-Event ("Kopf des Verbrechens")
 - **Langzeit-Progression**: Perfect-Run-Bonus, Prestige-System nach voll
   ausgebauter Karte
 - **Barrierefreiheit**: farbenblind-freundlicher Modus mit zusätzlichen
   Icons/Mustern statt reiner Farbcodierung für Fahrzeugtypen
-- **Panic-Button/Einsatzfahrt** zur Polizeiauto-Priorisierung (inkl. Action-
-  Button-Mapping auf unterstützten iPhones)
-- **Tight-Fit-Bonus** für knappe, unfallfreie Einfädelungen
-- **Rundenstruktur als Schicht** (fixe Länge, z. B. 2 Minuten) mit
-  Rush-Hour-Finale in den letzten ~20 Sekunden
-- **Gefahrenstufen-Wahl vor Rundenstart** ("Push Your Luck": mehr Risiko
-  gegen dreifachen Ertrag)
-- **Dynamisches Sound-Design**, das mit Combo und Rush-Hour mitwächst
-- **Funktionales Wetter-/Tag-Nacht-System** (kleine Timing-Verschiebung,
-  nicht nur optisch)
-
-## Weitere Ideen für später (noch nicht final entschieden)
-
-- **Tägliche/wöchentliche Challenges**: z. B. "Fasse 5 Verbrecher in einer
-  Runde", "Bring 3 Geldtransporter sicher raus".
-- **Leaderboards & Achievements über GameKit**, inkl. "Verbrecher gefasst",
-  "Geldtransporter gerettet" und "Zolleinnahmen gesamt" als eigene Werte.
-- **Zeitlich begrenzte Events**: saisonale Themes, Doppel-Punkte-Wochenenden.
-- **Comeback-Mechaniken**: dezente Push-Notifications bei ungenutzten
-  Truhen, wartendem Straßennetz oder vollen Zollstellen.
-- **Social Sharing**: Replay-Clips von knappen Einfädelungen, Verbrecher-
-  Takedowns oder geretteten Geldtransportern.
-- **Asynchroner Freundevergleich**: Bestzeit/Highscore eines Freundes
-  schlagen, statt Echtzeit-Multiplayer.
-- **Spezialeinheiten/Power-ups** (SWAT-Van, Hubschrauber-Marker, Nagelband).
-
-## Ökosystem-Integration, Abwechslung & Langzeit-Progression (bestätigt)
-
-### Tiefere Apple-Ökosystem-Integration
-
-Passt besonders gut zum Ziel "alles soll ins Apple-Ökosystem übergehen":
-
-- **Home-Screen-Widget**: zeigt z. B. aktuell aufgelaufene Zolleinnahmen
-  oder den Zustand des eigenen Straßennetzes, ohne die App zu öffnen.
-- **Live Activity / Dynamic Island**: z. B. ein laufender Countdown, wenn
-  gerade ein Verbrecher-Pickup gejagt werden muss, oder eine Live-Anzeige
-  für einen aktiven Geldtransporter – Spannung auch außerhalb der App.
-- **Apple Watch Companion-App**: schneller Blick auf Zolleinnahmen/
-  Fortschritt, evtl. Haptik-Benachrichtigung bei besonderen Ereignissen.
-- **Siri Shortcuts**: z. B. "Hey Siri, sammle meine Zolleinnahmen".
-- **SharePlay oder MultipeerConnectivity** für lokales Multiplayer/Vergleich
-  mit Freunden im selben Raum – ggf. einfachere/rechtlich unkompliziertere
-  Alternative oder Ergänzung zum Lootbox-gebundenen Online-Multiplayer.
-- **Action Button (iPhone 15 Pro / 16 Serie, bestätigt)**: direkt auf den
-  Panic-Button/"Einsatzfahrt"-Befehl mappen (siehe Verbrecher-Mechanik) –
-  fühlt sich für Besitzer dieser Geräte sehr haptisch/nativ an. Klassischer
-  Fallback-Button in der UI bleibt für alle anderen Geräte selbstverständlich
-  bestehen.
-- **Idee mit Einschränkung – "Pendler-Modus"**: ein Widget-/Fokus-Zustand,
-  der passive Zolleinnahmen erst meldet, wenn der Nutzer sein reales
-  Fahrtziel erreicht hat. Thematisch nett (Zolleinnahmen spiegeln die echte
-  Pendelfahrt), aber über CoreLocation umgesetzt wäre das eine Standort-
-  Berechtigung, die für ein Casual-Spiel unverhältnismäßig wirkt (schlecht
-  für Install-/Berechtigungs-Akzeptanz, potenziell auch für die
-  App-Review-Begründung). Leichtere Alternative: die iOS **Focus-Status-API**
-  nutzen, die nur meldet, ob z. B. der "Fahren"-Fokus aktiv ist – ganz ohne
-  Standortzugriff. Deutlich schlankere Umsetzung derselben Grundidee.
-- Durchgängige, unterschiedliche **Haptik-Muster** je Ereignis (Verbrecher
-  gefasst, Geldtransporter gerettet, Truhe geöffnet, Kollision) statt nur
-  eines generischen Feedbacks – verstärkt das "premium"-Gefühl spürbar.
-
-### Inhaltliche Abwechslung ohne neue Kernsysteme
-
-- **Tag/Nacht-Zyklus oder Wetter, funktional statt nur optisch (bestätigt,
-  konkretisiert)**: Regen/Glatteis verändert leicht den Anhalteweg bzw. den
-  Reaktionsabstand der KI-Fahrzeuge im Kreisverkehr – das Timing-Fenster für
-  eine "perfekte Einfädelung" verschiebt sich dadurch rhythmisch über eine
-  Schicht hinweg. Wichtig: Effekt bewusst klein/vorhersehbar halten, sonst
-  wird das exakte Timing-Gameplay unfair statt nur abwechslungsreich. Passt
-  gut zum Dark-Theme-Look, ohne neue Wirtschaftssysteme zu brauchen.
-- **Mehrspurige Kreisverkehre – automatisch statt zusätzlicher Eingabe**:
-  Spätere/größere Kreisverkehre bekommen eine Innen- und Außenspur (normale
-  Autos außen, Geldtransporter innen, Verbrecher-Pickups versuchen von innen
-  nach außen zu drängeln). Empfehlung zur Umsetzung: die Spurzuweisung
-  automatisch nach Fahrzeugtyp steuern, statt vom Spieler ein zweites,
-  separat getimtes Tippen pro Fahrzeug zu verlangen – sonst geht die
-  namensgebende Stärke des Genres verloren, nämlich dass die gesamte
-  Interaktion ein einziger, präzise getimter Tap bleibt. Die zweite Spur
-  bringt dann visuelle/räumliche Komplexität (mehr im Blick zu behalten),
-  ohne die Eingabe selbst zu verkomplizieren.
-- **Zusätzliche Sonderfahrzeuge**: z. B. ein Krankenwagen/VIP-Konvoi, der
-  nicht gejagt, sondern im Gegenteil **bevorzugt und ungehindert**
-  durchgelassen werden muss – umgekehrte Variante der Verbrecher-Mechanik,
-  gute Abwechslung mit wenig zusätzlichem System-Aufwand.
-- **Temporäre Baustellen/Sperrungen**: zufällige, kurzzeitige
-  Kapazitätsreduktion an einer Stelle im Kreisverkehr – Abwechslung
-  innerhalb einer bestehenden Karte, unabhängig vom Zollstellen-Stau.
-- **Wochen-Boss-Event**: ein selten auftauchender "Kopf des Verbrechens" -
-  Fahrzeug, das schwerer zu fassen ist (z. B. muss zweimal gerammt werden
-  oder erfordert zwei Polizeiautos gleichzeitig), mit eigener, exklusiver
-  Belohnung – guter wöchentlicher Wiederkehr-Anreiz zusätzlich zu Season Pass
-  und Daily-Login.
-
-### Langzeit-Progression
-
-- **Perfect-Run-Bonus**: zusätzliche Belohnung (Lootbox-Fragmente/Bonus-
-  Geld), wenn eine Runde ganz ohne Beinahe-Kollisionen oder Combo-Verlust
-  abgeschlossen wird – belohnt Skill zusätzlich zum reinen Punktesammeln.
-- **Prestige-System**: sobald die eigene Karte voll ausgebaut ist, optionaler
-  Reset gegen einen dauerhaften Bonus (z. B. permanenter Multiplikator) –
-  klassischer Kniff aus Idle-/Incremental-Games, um auch erfahrene Spieler
-  langfristig zu halten.
-
-### Barrierefreiheit (bestätigt)
-
-- Da sich sehr viel über **Fahrzeugtyp-Erkennung per Farbe/Form**
-  entscheidet (Verbrecher-Pickup, Geldtransporter, Polizei, normale Trucks),
-  lohnt sich früh ein **farbenblind-freundlicher Modus** (zusätzliche Icons/
-  Muster statt nur Farbcodierung) – sonst wird das Spiel für einen Teil der
-  Zielgruppe unnötig schwer bis unfair. Passt außerdem gut zum sonst schon
-  sehr durchdachten, cleanen Apple-Anspruch (Apple legt in den HIG selbst
-  großen Wert auf Barrierefreiheit).
-
-### Offene Design-Frage: Werbung ja/nein?
-
-- Bisher ist keine klassische Werbung (Rewarded Ads, Interstitials) geplant
-  – passt grundsätzlich gut zum "premium"-Anspruch, viele hochwertig wirkende
-  Casual-Spiele verzichten bewusst auf Werbung und monetarisieren nur über
-  Lootboxen/Season Pass. Falls doch gewünscht, würde sich am ehesten ein
-  optionaler "Rewarded Ad für einen Weiterspiel-Versuch nach Rundenverlust"
-  anbieten – sollte aber bewusst entschieden werden, da es dem
-  "premium, clean"-Gefühl potenziell widerspricht.
 
 ## Offene Punkte
 
-- [ ] Genauer Scope der ersten spielbaren Version (MVP): Kernloop +
-      Combo-System + Verbrecher-Mechanik + einfache Meta-Progression?
-      Geldtransporter, Zollstellen und Lootboxen evtl. erst in Version 2?
-- [ ] Anzahl und Art der Kreisverkehr-Typen für den Start
-- [ ] Konkrete Combo-Schwellenwerte und Multiplikatoren
-- [ ] Wie oft/nach welcher Logik erscheinen Verbrecher-Pickups, wie streng
-      ist das Zeitlimit?
-- [ ] Wie kommt der Spieler an das Polizeiauto (immer verfügbar vs.
-      Cooldown vs. begrenzte Anzahl pro Runde)?
-- [ ] Wie wird die Position des Geldtransporters im Kreis visuell klar genug
-      dargestellt, damit die "keine Polizei davor/dahinter"-Regel fair
-      spielbar ist?
-- [ ] Wie viele Zollstellen darf man maximal bauen, und wie skaliert die
-      Gebühr pro Truck mit Upgrades?
-- [ ] Wie stark/sichtbar soll der Stau-Effekt der Zollstellen konkret
-      ausfallen, und wie teuer soll das Verkehrsleitsystem-Gegen-Upgrade
-      sein, damit das Risiko spürbar, aber nicht frustrierend wird?
-- [ ] Genaue Kosten/Skalierung der Map-Erweiterung und der
-      Wahrscheinlichkeits-Upgrades
-- [ ] Odds und Preise der einzelnen Lootbox-Typen
-- [ ] Wie genau funktioniert der Multiplayer-Modus technisch (Echtzeit vs.
-      asynchroner Vergleich)
+- [ ] **Zollstellen**: Wie viele maximal bauen, wie skaliert die Gebühr pro
+  Truck mit Upgrades?
+- [ ] **Zollstellen-Stau**: Wie stark/sichtbar soll der Effekt ausfallen, und
+  wie teuer das Verkehrsleitsystem-Gegen-Upgrade?
+- [ ] **Map-Erweiterung & Wahrscheinlichkeits-Upgrades**: Genaue Kosten und
+  Skalierung.
+- [ ] **Lootboxen**: Odds und Preise der einzelnen Box-Typen.
+- [ ] **Multiplayer**: Wie genau funktioniert der Modus technisch (Echtzeit
+  vs. asynchroner Vergleich)?
+- [ ] **Trucks für Mautstellen**: Saubere Integration als Fahrzeugtyp
+  (länger, schwerer, eigenes Aussehen, Bremsverhalten).
+- [ ] **Blaulicht auf Boden**: Polizei-Blaulicht beleuchtet Fahrbahn (weicher
+  blauer/roter Schein unter und neben dem Auto, im Takt des Blinkens).
+- [ ] **Warnung im Innenteil**: Ankündigung von Verbrecher/Transporter als
+  Ring auf der Mittelinsel statt an der Zufahrt.
+- [ ] **Bug**: Geldtransporter am Schichtende wird in Folgeschicht als
+  normales Auto gezählt (TransporterState/CriminalState muss mitwandern).
+- [ ] **Balancing**: Level 14 fühlt sich noch zu leicht an – Kurve ab Level
+  10 nachziehen.

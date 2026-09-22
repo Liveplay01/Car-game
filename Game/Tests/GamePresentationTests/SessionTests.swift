@@ -30,13 +30,19 @@ final class RecordingHaptics: HapticsPlaying {
 
 let viewport = Vec2(430, 900)
 
-/// No AI traffic, so a test controls every car.
-func quietConfig(_ adjust: (inout Config) -> Void = { _ in }) -> Config {
+/// No AI traffic, so a test controls every car. Every level plays like the config: no
+/// easing, and `cars` cars per shift.
+func quietConfig(cars: Int = 15, _ adjust: (inout Config) -> Void = { _ in }) -> Config {
     var config = Config()
     config.freePlayDensity = 0
     config.densityStart = 0
     config.densityEnd = 0
     config.rushHourDensityBonus = 0
+    config.hardLevel = 1
+    config.levelOneCars = cars
+    config.maxShiftCars = cars
+    config.carsPerLevel = 0
+    config.shiftCarsSpread = 0
     adjust(&config)
     return config
 }
@@ -98,8 +104,8 @@ func finishShift(_ session: GameSession) {
 func crashNextCar(_ session: GameSession) {
     session.run(seconds: 1) { $0.world.queue.isReady }
     var world = session.world
-    let s = world.layout.entryRingS(.south) - world.ringSpeed * world.config.mergeDuration
-    world.spawnRingCar(at: s, exitArm: .west)
+    let s = world.layout.entryRingS(world.layout.player) - world.ringSpeed * world.config.mergeDuration
+    world.spawnRingCar(at: s, exitArm: world.layout.arm(3))
     session.world = world
     session.advance([.tap])
     session.run(seconds: 1) { $0.world.score.strikes > 0 }
@@ -109,16 +115,21 @@ func crashNextCar(_ session: GameSession) {
 
 @Suite("Session and scene")
 struct SessionTests {
-    @Test func startsOnTheStartScreenWithTrafficBehind() {
+    @Test func startsOnTheGameTabWithoutAMenu() {
         let session = makeSession(config: Config())
-        #expect(session.screen == .start)
-        #expect(session.world.mode == .freePlay)
+        #expect(session.screen == .ready)
+        #expect(session.content == nil)
+        // The Game tab already shows the next shift, flowing and waiting for its first tap.
+        #expect(session.world.mode == .shift)
+        #expect(session.world.shift.phase == .waiting)
         #expect(session.world.roadCount > 0)
+        let texts = session.advance().texts
+        #expect(texts.contains(Strings.Ready.tapToStart))
+        #expect(texts.contains(Strings.HUD.level(1)))
     }
 
     @Test func tapLaunchesTheCarWithinTheFrameAt60Hz() {
         let session = makeSession()
-        session.advance([.confirm])
         session.advance()
         let front = session.world.queue.vehicles[0]
         let frame = session.advance([.tap])
@@ -126,11 +137,22 @@ struct SessionTests {
         #expect(session.world.vehicle(id: front).map { if case .merging = $0.phase { true } else { false } } == true)
     }
 
-    @Test func menusTakeNoTaps() {
+    @Test func theFirstTapStartsTheShiftWithItsFrontCar() {
         let session = makeSession()
+        session.run(seconds: 3)
+        // Waiting: no criminal, no clock.
+        #expect(session.world.shift.startedAt == nil)
         let events = session.advance([.tap]).events + session.run(seconds: 0.5)
-        #expect(session.screen == .start)
-        #expect(!events.contains { if case .launched = $0 { true } else { false } })
+        #expect(session.screen == .playing)
+        #expect(session.world.shift.startedAt != nil)
+        #expect(events.contains { if case .launched = $0 { true } else { false } })
+    }
+
+    @Test func pagesTakeNoTaps() {
+        let session = makeSession()
+        session.advance([.selectTab(.upgrades)])
+        session.advance([.tap])
+        #expect(session.screen == .page(.upgrades))
     }
 
     @Test func slowMotionCycles() {
@@ -182,11 +204,11 @@ struct SessionTests {
     }
 
     @Test func rushHourPutsTheCarCounterOnAnAccentPill() {
-        let session = makeSession(config: quietConfig { $0.shiftCars = 3; $0.rushHourCars = 2 })
+        let session = makeSession(config: quietConfig(cars: 3) { $0.rushHourCars = 2 })
         session.advance([.confirm])
         let before = session.advance()
         #expect(!before.renderList.items.contains { $0.color == .accentInk })
-        session.advance([.tap])
+        // The second car is the first of the last two.
         session.run(seconds: 1) { $0.world.queue.isReady }
         session.advance([.tap])
         let frame = session.advance()
@@ -199,8 +221,9 @@ struct SessionTests {
         session.advance([.confirm])
         let frame = session.advance()
         #expect(frame.texts.contains("0"))
-        #expect(frame.texts.contains(Strings.HUD.cars(session.config.shiftCars)))
+        #expect(frame.texts.contains(Strings.HUD.cars(session.world.config.shiftCars - 1)))
         #expect(frame.texts.contains("×1"))
+        #expect(frame.texts.contains(Strings.HUD.level(1)))
     }
 }
 
@@ -208,23 +231,19 @@ struct SessionTests {
 
 @Suite("Screen flow")
 struct ScreenFlowTests {
-    @Test func startPauseResumeMenu() {
+    @Test func aShiftRunsOnWithNoPauseScreen() {
         let session = makeSession()
         session.advance([.confirm])
         #expect(session.screen == .playing)
         #expect(session.world.mode == .shift)
         #expect(session.world.seed == 100)
-        session.advance([.back])
-        #expect(session.screen == .paused)
+        // Esc has nothing to open: the shift keeps running.
         session.advance([.back])
         #expect(session.screen == .playing)
-        session.advance([.back])
-        session.advance([.choose(3)])
-        #expect(session.screen == .start)
-        #expect(session.world.mode == .freePlay)
+        #expect(session.content == nil)
     }
 
-    @Test func pauseFreezesTheShift() {
+    @Test func anInterruptionFreezesTheShiftAndCountsBackIn() {
         let session = makeSession()
         session.advance([.confirm])
         session.run(seconds: 0.5)
@@ -232,7 +251,17 @@ struct ScreenFlowTests {
         let time = session.world.time
         session.run(seconds: 1)
         #expect(session.world.time == time)
-        #expect(session.screen == .paused)
+        #expect(session.isInterrupted)
+        #expect(session.screen == .playing)
+
+        // Back again: it counts in, still frozen, then runs on by itself.
+        session.advance([.focusGained])
+        session.run(seconds: 0.5)
+        #expect(session.world.time == time)
+        #expect(session.countIn > 0)
+        session.run(seconds: GameSession.countInSeconds)
+        #expect(session.countIn == 0)
+        #expect(session.world.time > time)
     }
 
     @Test func restartStartsANewSeed() {
@@ -242,13 +271,14 @@ struct ScreenFlowTests {
         session.advance([.restart])
         #expect(session.world.seed == 101)
         #expect(session.world.time < 0.1)
-        #expect(session.screen == .playing)
+        #expect(session.screen == .ready)
     }
 
     @Test func settingsToggleAndPersist() {
         let store = MemorySaveStore()
         let session = makeSession(store: store)
-        session.advance([.choose(2)])
+        // Esc on the Game tab opens the settings (a gear button in the app).
+        session.advance([.back])
         #expect(session.screen == .settings)
         session.advance([.choose(1)])
         session.advance([.choose(3)])
@@ -256,12 +286,12 @@ struct ScreenFlowTests {
         #expect(store.game?.settings.reduceMotion == .on)
         #expect(session.reduceMotion)
         session.advance([.confirm])
-        #expect(session.screen == .start)
+        #expect(session.screen == .ready)
     }
 
     @Test func completedShiftShowsTheBannerAndSavesTheHighscore() {
         let store = MemorySaveStore()
-        let session = makeSession(config: quietConfig { $0.shiftCars = 1; $0.rushHourCars = 0 }, store: store)
+        let session = makeSession(config: quietConfig(cars: 1) { $0.rushHourCars = 0 }, store: store)
         session.advance([.confirm])
         finishShift(session)
         // Saved at once; the banner follows a moment later.
@@ -275,13 +305,13 @@ struct ScreenFlowTests {
         #expect(summary.isNewHighscore)
         #expect(session.content == nil)
         let texts = session.advance().texts
-        #expect(texts.contains(Strings.Result.shiftComplete))
+        #expect(texts.contains(Strings.Result.levelComplete(1)))
         #expect(texts.contains("1,100"))
         #expect(texts.contains(Strings.Result.newHighscore))
     }
 
     @Test func oneTapStartsTheNextShiftButNotRightAway() {
-        let session = makeSession(config: quietConfig { $0.shiftCars = 1 })
+        let session = makeSession(config: quietConfig(cars: 1))
         session.advance([.confirm])
         finishShift(session)
         session.run(seconds: GameSession.resultDelay + 0.2) { $0.isShowingResult }
@@ -289,9 +319,9 @@ struct ScreenFlowTests {
         // A hurried tap in the first moment is ignored.
         session.advance([.tap])
         #expect(session.isShowingResult)
-        #expect(!session.advance().texts.contains(Strings.Result.tapToContinue))
+        #expect(!session.advance().texts.contains(Strings.Result.nextLevel(2)))
         session.run(seconds: ResultBanner.inputLock + 0.3)
-        #expect(session.advance().texts.contains(Strings.Result.tapToContinue))
+        #expect(session.advance().texts.contains(Strings.Result.nextLevel(2)))
         session.advance([.tap])
         #expect(session.screen == .playing)
         #expect(session.world.seed == 101)
@@ -318,23 +348,68 @@ struct ScreenFlowTests {
         #expect(texts.contains(Strings.Result.best("500")))
     }
 
-    @Test func escapeLeadsFromTheResultToTheMenu() {
-        let session = makeSession(config: quietConfig { $0.shiftCars = 1 })
+    @Test func escapeLeadsFromTheResultBackToTheGameTab() {
+        let session = makeSession(config: quietConfig(cars: 1))
         session.advance([.confirm])
         finishShift(session)
         session.run(seconds: 3) { $0.isShowingResult }
         session.advance([.back])
-        #expect(session.screen == .start)
+        #expect(session.screen == .ready)
+        #expect(session.world.shift.phase == .waiting)
     }
 
     @Test func highscoreSurvivesARestartOfTheGame() {
         let store = MemorySaveStore()
-        let first = makeSession(config: quietConfig { $0.shiftCars = 1; $0.rushHourCars = 0 }, store: store)
+        let first = makeSession(config: quietConfig(cars: 1) { $0.rushHourCars = 0 }, store: store)
         first.advance([.confirm])
         finishShift(first)
         let second = makeSession(store: store)
         #expect(second.save.highscore == 1_100)
-        #expect(second.content?.subtitle == Strings.Menu.highscore("1,100"))
+        let texts = second.advance().texts
+        // The shift paid its level: base plus one level step.
+        let pay = Config().shiftPayBase + Config().shiftPayPerLevel
+        #expect(texts.contains(Strings.Ready.status(highscore: "1,100", money: "\(pay)")))
+        #expect(texts.contains(Strings.HUD.level(2)))
+    }
+
+    @Test func afterAShiftTheNextLevelRollsInBehindTheResult() {
+        let session = makeSession(config: quietConfig(cars: 1))
+        finishShift(session)
+        session.run(seconds: GameSession.resultDelay + 0.2) { $0.isShowingResult }
+        #expect(session.playingLevel == 2)
+        #expect(session.world.shift.phase == .waiting)
+        #expect(session.world.queue.vehicles.count == 1)
+        // The new cars roll into the queue before any tap.
+        if case .filling = session.world.queue.state {} else { Issue.record("the queue does not roll in") }
+    }
+
+    @Test func aCompletedShiftIsALevelUpALostOneIsPlayedAgain() {
+        let store = MemorySaveStore()
+        let session = makeSession(config: quietConfig(cars: 1) { $0.maxStrikes = 1; $0.policeShare = 0 }, store: store)
+        #expect(session.playingLevel == 1)
+        finishShift(session)
+        #expect(store.game?.career.level == 2)
+        session.run(seconds: GameSession.resultDelay + ResultBanner.inputLock + 0.5) { $0.isShowingResult }
+        session.run(seconds: ResultBanner.inputLock + 0.3)
+        // Behind the result the next level has rolled in already.
+        #expect(session.playingLevel == 2)
+        #expect(session.world.shift.phase == .waiting)
+        // Lost: level 2 again.
+        crashNextCar(session)
+        #expect(session.world.shift.outcome == .struckOut)
+        #expect(store.game?.career.level == 2)
+        session.run(seconds: GameSession.resultDelay + 0.2) { $0.isShowingResult }
+        session.run(seconds: ResultBanner.inputLock + 0.3)
+        #expect(session.advance().texts.contains(Strings.Result.retryLevel(2)))
+    }
+
+    @Test func eachShiftIsBuiltForTheSavedLevel() {
+        var saved = SaveGame()
+        saved.career.level = 7
+        let session = makeSession(store: MemorySaveStore(saved))
+        #expect(session.playingLevel == 7)
+        #expect(session.config.shiftCarsRange(atLevel: 7).contains(session.world.config.shiftCars))
+        #expect(session.world.carsLeft == session.world.config.shiftCars)
     }
 
 }
@@ -369,7 +444,6 @@ struct FeedbackTests {
         let audio = RecordingAudio()
         let haptics = RecordingHaptics()
         let session = makeSession(audio: audio, haptics: haptics)
-        session.advance([.confirm])
         session.advance([.tap])
         session.run(seconds: 1) { _ in !audio.played.isEmpty }
         #expect(audio.played == [.merge])
@@ -398,7 +472,8 @@ struct SessionTuningTests {
         #expect(session.world.config.maxStrikes == 3)
         #expect(session.world.seed == 100)
         #expect(session.world.time < 0.1)
-        #expect(session.advance().texts.contains(Strings.Notice.tuningLoaded(values: 2, changes: 2 + 4)))
+        // Two from the file, nine in which `quietConfig` differs from Config.swift.
+        #expect(session.advance().texts.contains(Strings.Notice.tuningLoaded(values: 2, changes: 2 + 9)))
     }
 
     @Test func brokenTuningChangesNothing() {
@@ -434,6 +509,294 @@ struct TextFormatTests {
     }
 }
 
+@Suite("Tabs and upgrades")
+struct TabTests {
+    @Test func theTabBarSwitchesPagesBetweenShiftsOnly() {
+        let session = makeSession()
+        session.advance([.selectTab(.upgrades)])
+        #expect(session.screen == .page(.upgrades))
+        #expect(session.content?.title == Strings.Upgrades.title)
+        session.advance([.nextTab])
+        #expect(session.screen == .page(.streetBuilder))
+        session.advance([.nextTab])
+        #expect(session.screen == .ready)
+        session.advance([.selectTab(.shop)])
+        session.advance([.back])
+        #expect(session.screen == .ready)
+        // During a shift the tab bar is hidden.
+        session.advance([.tap])
+        session.advance([.selectTab(.upgrades)])
+        #expect(session.screen == .playing)
+        #expect(!session.screen.showsTabBar)
+    }
+
+    @Test func fromTheResultToAPageAndBack() {
+        let session = makeSession(config: quietConfig(cars: 1))
+        session.advance([.confirm])
+        finishShift(session)
+        session.run(seconds: 3) { $0.isShowingResult }
+        session.advance([.selectTab(.upgrades)])
+        #expect(session.screen == .page(.upgrades))
+        session.advance([.selectTab(.game)])
+        #expect(session.screen == .ready)
+        #expect(session.world.shift.phase == .waiting)
+    }
+
+    @Test func buyingAStepCostsItsPriceAndIsSaved() {
+        var saved = SaveGame()
+        saved.career.money = 5_000
+        let store = MemorySaveStore(saved)
+        let session = makeSession(store: store)
+        let price = session.config.price(of: .morePatrols, step: 1)
+        session.advance([.selectTab(.upgrades)])
+        #expect(session.content?.items.first?.value == Strings.Upgrades.next(steps: 0, of: Upgrade.morePatrols.maxSteps, price: TextFormat(groupingSeparator: ",").number(price)))
+        // One tap opens the card, the second one buys it.
+        session.advance([.tapUpgrade(.morePatrols)])
+        #expect(store.game?.career.steps(of: .morePatrols) == 0)
+        session.advance([.tapUpgrade(.morePatrols)])
+        #expect(store.game?.career.steps(of: .morePatrols) == 1)
+        #expect(store.game?.career.money == 5_000 - price)
+        // The next shift has more police in its queue.
+        session.advance([.selectTab(.game)])
+        session.advance([.tap])
+        #expect(session.world.config.policeShare > session.config.policeShare)
+    }
+
+    @Test func withoutTheMoneyNothingIsBought() {
+        let store = MemorySaveStore()
+        let session = makeSession(store: store)
+        session.advance([.selectTab(.upgrades)])
+        session.advance([.tapUpgrade(.backup)])
+        let texts = session.advance([.tapUpgrade(.backup)]).texts
+        #expect(session.save.career.steps(of: .backup) == 0)
+        let price = TextFormat(groupingSeparator: ",").number(session.config.price(of: .backup, step: 1))
+        #expect(texts.contains(Strings.Notice.notEnoughMoney(price)))
+    }
+
+    @Test func oneTapOpensTheDetailsAndTwoBuy() {
+        var saved = SaveGame()
+        saved.career.money = 50_000
+        let session = makeSession(store: MemorySaveStore(saved))
+        session.advance([.selectTab(.upgrades)])
+        let texts = session.advance([.tapUpgrade(.interceptor)]).texts
+        // The details tell what it does and what the next step adds.
+        #expect(session.upgradePage.selected == .interceptor)
+        #expect(texts.contains(Strings.Upgrades.stepEffect(.interceptor, steps: 0, config: session.config)))
+        #expect(session.save.career.steps(of: .interceptor) == 0)
+        // A tap on another card only moves the details over.
+        session.advance([.tapUpgrade(.overtime)])
+        #expect(session.upgradePage.selected == .overtime)
+        #expect(session.save.career.steps(of: .overtime) == 0)
+        // Two taps in a row on the same card buy it.
+        session.advance([.tapUpgrade(.overtime)])
+        #expect(session.save.career.steps(of: .overtime) == 1)
+        #expect(session.upgradePage.purchase?.upgrade == .overtime)
+    }
+
+    @Test func aSlowSecondTapOnlyOpensItAgain() {
+        var saved = SaveGame()
+        saved.career.money = 50_000
+        let session = makeSession(store: MemorySaveStore(saved))
+        session.advance([.selectTab(.upgrades)])
+        session.advance([.tapUpgrade(.morePatrols)])
+        session.run(seconds: GameSession.doubleTapWindow + 0.2)
+        session.advance([.tapUpgrade(.morePatrols)])
+        #expect(session.save.career.steps(of: .morePatrols) == 0)
+    }
+
+    @Test func enterBuysTheOpenUpgrade() {
+        var saved = SaveGame()
+        saved.career.money = 50_000
+        let session = makeSession(store: MemorySaveStore(saved))
+        session.advance([.selectTab(.upgrades)])
+        // Numbers pick a card, like a tap.
+        session.advance([.choose(2)])
+        #expect(session.upgradePage.selected == .longerPursuit)
+        session.advance([.confirm])
+        #expect(session.save.career.steps(of: .longerPursuit) == 1)
+    }
+
+    @Test func thePurchaseAnimationRunsAndTheBalanceCountsDown() {
+        var saved = SaveGame()
+        saved.career.money = 50_000
+        let session = makeSession(store: MemorySaveStore(saved))
+        session.advance([.selectTab(.upgrades)])
+        session.advance([.tapUpgrade(.cashRoute)])
+        session.advance([.tapUpgrade(.cashRoute)])
+        let price = session.config.price(of: .cashRoute, step: 1)
+        // It counts from what was there down to what is left.
+        #expect(UpgradePage.countedMoney(career: session.save.career, state: session.upgradePage) > 50_000 - price / 4)
+        session.run(seconds: UpgradePage.countDuration / 2)
+        let midway = UpgradePage.countedMoney(career: session.save.career, state: session.upgradePage)
+        #expect(midway < 50_000 && midway > 50_000 - price)
+        session.run(seconds: UpgradePage.purchaseDuration)
+        #expect(session.upgradePage.purchase == nil)
+        #expect(UpgradePage.countedMoney(career: session.save.career, state: session.upgradePage) == 50_000 - price)
+    }
+
+    @Test func aRefusedPurchaseShakesTheCard() {
+        let session = makeSession()
+        session.advance([.selectTab(.upgrades)])
+        session.advance([.tapUpgrade(.backup)])
+        session.advance([.tapUpgrade(.backup)])
+        #expect(session.upgradePage.denied?.upgrade == .backup)
+        #expect(session.upgradePage.purchase == nil)
+    }
+
+    @Test func everyCardHasItsPlaceAndPicture() {
+        let viewport = Vec2(430, 900)
+        let cards = UpgradePage.cards(viewport: viewport, bottomInset: TabStrip.height)
+        #expect(cards.count == Upgrade.allCases.count)
+        // Cards do not overlap, and a click in one finds it.
+        for (upgrade, rect) in cards {
+            #expect(UpgradePage.card(at: rect.center, viewport: viewport, bottomInset: TabStrip.height) == upgrade)
+            #expect(rect.maxY <= viewport.y - TabStrip.height - UpgradePage.detailHeight)
+        }
+        // Every upgrade draws something.
+        for upgrade in Upgrade.allCases {
+            var list = RenderList(camera: Camera.fit(Rect(minX: -1, minY: -1, maxX: 1, maxY: 1), viewport: viewport, insets: Metrics.sceneInsets, verticalBias: 0), background: .background)
+            var id = 0
+            UpgradeArt.add(upgrade, in: Rect(minX: 0, minY: 0, maxX: 56, maxY: 56), opacity: 1, id: &id, to: &list)
+            #expect(list.items.count >= 2)
+        }
+    }
+
+    @Test func highAlertIsChosenBeforeTheShiftAndPaysTriple() {
+        let store = MemorySaveStore()
+        let session = makeSession(config: quietConfig(cars: 1) { $0.rushHourCars = 0 }, store: store)
+        let texts = session.advance().texts
+        #expect(texts.contains(Strings.Ready.duty(.normal, pay: session.config.highAlertPay)))
+        let normalPay = session.world.config.shiftPay
+
+        session.advance([.perform(.setDuty(.highAlert))])
+        #expect(store.game?.career.duty == .highAlert)
+        // The waiting shift is rebuilt at once, so it is the one that will be played.
+        #expect(session.world.config.shiftPay == Int((Double(normalPay) * session.config.highAlertPay).rounded()))
+        #expect(session.advance().texts.contains(Strings.Ready.duty(.highAlert, pay: session.config.highAlertPay)))
+        // The HUD says so while playing.
+        let alertPay = session.world.config.shiftPay
+        session.advance([.tap])
+        #expect(session.advance().texts.contains(Strings.HUD.level(1, duty: .highAlert)))
+
+        finishShift(session)
+        #expect(store.game?.career.money == alertPay)
+    }
+
+    @Test func theStripMapsClicksToTabs() {
+        let viewport = Vec2(400, 800)
+        #expect(TabStrip.tab(at: Vec2(10, 790), viewport: viewport) == .streetBuilder)
+        #expect(TabStrip.tab(at: Vec2(150, 780), viewport: viewport) == .game)
+        #expect(TabStrip.tab(at: Vec2(399, 799), viewport: viewport) == .upgrades)
+        #expect(TabStrip.tab(at: Vec2(200, 400), viewport: viewport) == nil)
+    }
+}
+
+@Suite("Street builder")
+struct StreetBuilderTests {
+    /// A session with money, open on the Street Builder tab.
+    func builder(money: Int = 200_000) -> GameSession {
+        var saved = SaveGame()
+        saved.career.money = money
+        let session = makeSession(store: MemorySaveStore(saved))
+        session.advance([.selectTab(.streetBuilder)])
+        session.advance()
+        return session
+    }
+
+    /// Where a free slot is drawn on the page.
+    func freeSlot(_ session: GameSession) -> (slot: Int, at: Vec2) {
+        let map = StreetBuilderPage.map(viewport: viewport, bottomInset: TabStrip.height)
+        let slot = (0..<session.config.armSlotCount).first {
+            session.config.canBuildArm(inSlot: $0, built: session.save.career.armSlots)
+        }!
+        return (slot, StreetBuilderPage.slotPosition(slot, slots: session.config.armSlotCount, map: map))
+    }
+
+    @Test func aPartIsDraggedOntoAFreeSlotAndBuiltWithASecondTap() {
+        let session = builder()
+        let card = StreetBuilderPage.cards(viewport: viewport, bottomInset: TabStrip.height)[0]
+        let target = freeSlot(session)
+        let price = session.save.career.armPrice(config: session.config)!
+
+        // Picking it up opens its details, dragging shows where it would land.
+        session.advance([.pointerDown(card.rect.center)])
+        #expect(session.builderPage.dragging?.part == .arm)
+        #expect(session.builderPage.selected == .arm)
+        session.advance([.pointerMove(target.at)])
+        #expect(session.builderPage.target == target.slot)
+        session.advance([.pointerUp(target.at)])
+        #expect(session.builderPage.dragging == nil)
+        #expect(session.builderPage.pending?.slot == target.slot)
+        // Not built yet, and nothing paid.
+        #expect(session.save.career.armSlots.count == 4)
+        #expect(session.save.career.money == 200_000)
+
+        // Two taps on it build it.
+        session.advance([.pointerDown(target.at)])
+        session.advance([.pointerDown(target.at)])
+        #expect(session.save.career.armSlots.contains(target.slot))
+        #expect(session.save.career.money == 200_000 - price)
+        #expect(session.builderPage.pending == nil)
+        #expect(session.builderPage.built?.slot == target.slot)
+        // The roundabout the next shift is played on has the new arm.
+        #expect(session.world.layout.arms.count == 5)
+        #expect(session.world.layout.arms.contains { $0.slot == target.slot })
+    }
+
+    @Test func oneTapTakesAPlacedPartAwayAgain() {
+        let session = builder()
+        let card = StreetBuilderPage.cards(viewport: viewport, bottomInset: TabStrip.height)[0]
+        let target = freeSlot(session)
+        session.advance([.pointerDown(card.rect.center)])
+        session.advance([.pointerUp(target.at)])
+        #expect(session.builderPage.pending != nil)
+
+        session.advance([.pointerDown(target.at)])
+        // It fades out first, in case a second tap follows.
+        #expect(session.builderPage.removing > 0)
+        session.run(seconds: StreetBuilderPage.removeDuration + 0.2)
+        #expect(session.builderPage.pending == nil)
+        #expect(session.save.career.armSlots.count == 4)
+    }
+
+    @Test func partsOnlyLandOnSlotsThatAreFarEnoughApart() {
+        let session = builder()
+        let map = StreetBuilderPage.map(viewport: viewport, bottomInset: TabStrip.height)
+        // Right next to the player's arm: too close.
+        let tooClose = StreetBuilderPage.slotPosition(1, slots: session.config.armSlotCount, map: map)
+        let card = StreetBuilderPage.cards(viewport: viewport, bottomInset: TabStrip.height)[0]
+        session.advance([.pointerDown(card.rect.center)])
+        session.advance([.pointerMove(tooClose)])
+        #expect(session.builderPage.target == nil)
+        session.advance([.pointerUp(tooClose)])
+        #expect(session.builderPage.pending == nil)
+    }
+
+    @Test func withoutTheMoneyTheRingStaysAsItIs() {
+        let session = builder(money: 100)
+        let card = StreetBuilderPage.cards(viewport: viewport, bottomInset: TabStrip.height)[0]
+        let target = freeSlot(session)
+        session.advance([.pointerDown(card.rect.center)])
+        session.advance([.pointerUp(target.at)])
+        let texts = session.advance([.pointerDown(target.at)]).texts
+        session.advance([.pointerDown(target.at)])
+        #expect(session.save.career.armSlots.count == 4)
+        #expect(session.builderPage.denied > 0 || texts.isEmpty == false)
+    }
+
+    @Test func aBiggerRoundaboutMeansMoreTrafficAndMorePay() {
+        var career = Career()
+        let config = Config()
+        let small = career.config(from: config, seed: 5)
+        career.armSlots = [0, 4, 8, 12, 2]
+        let big = career.config(from: config, seed: 5)
+        #expect(big.densityEnd > small.densityEnd)
+        #expect(big.shiftPay > small.shiftPay)
+        #expect(big.transporterInterval.upperBound < small.transporterInterval.upperBound)
+        #expect(RoundaboutLayout(config: big).ringRadius > RoundaboutLayout(config: small).ringRadius)
+    }
+}
+
 @Suite("Save game")
 struct SaveGameTests {
     @Test func olderSavesFillInDefaults() throws {
@@ -441,6 +804,21 @@ struct SaveGameTests {
         #expect(game.highscore == 4_200)
         #expect(game.version == SaveGame.currentVersion)
         #expect(game.settings == Settings())
+        #expect(game.career == Career())
+    }
+
+    @Test func moneyAndLevelFromBeforeTheCareerMoveIntoIt() throws {
+        let game = try JSONDecoder().decode(SaveGame.self, from: Data(#"{ "money": 1200, "level": 4 }"#.utf8))
+        #expect(game.career.money == 1_200)
+        #expect(game.career.level == 4)
+    }
+
+    @Test func theCareerRoundTrips() throws {
+        var game = SaveGame()
+        game.career = Career(level: 6, money: 900)
+        game.career.upgrades["backup"] = 1
+        let data = try JSONEncoder().encode(game)
+        #expect(try JSONDecoder().decode(SaveGame.self, from: data) == game)
     }
 
     @Test func fileStoreRoundTripsAndKeepsUnreadableFiles() throws {
@@ -473,7 +851,7 @@ struct CrashEffectTests {
         config.freePlayDensity = 0
         var world = World(config: config, seed: 1, mode: .freePlay, prefill: false)
         world.targetDensity = 0
-        world.spawnRingCar(at: world.layout.entryRingS(.south) - world.ringSpeed * config.mergeDuration, exitArm: .west)
+        world.spawnRingCar(at: world.layout.entryRingS(world.layout.player) - world.ringSpeed * config.mergeDuration, exitArm: world.layout.arm(3))
         world.tap(at: 0)
         for _ in 0..<90 {
             world.step()

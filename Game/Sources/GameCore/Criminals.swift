@@ -54,19 +54,25 @@ extension World {
             }
             return
         }
-        // Your last car is in before the criminal is: it is called off and the pickup, if
-        // it already waits at its arm, drives through as ordinary traffic. One on the run
-        // must still be caught; the shift waits for that chase (`updateShift`).
+        // Not before the first tap.
+        guard shift.startedAt != nil else { return }
+        // Your last car is in: the shift is done, the criminal gets away with it. One that
+        // is only announced is called off; a pickup already at its arm, or on the road,
+        // drives on as ordinary traffic.
         if !shift.acceptsTaps {
             switch criminal.phase {
             case .warning, .arriving: criminal.phase = .idle(next: .infinity)
-            case .idle, .active, .leaving: break
+            case let .active(id, _): criminal.phase = .leaving(vehicle: id)
+            case .idle, .leaving: break
             }
         }
         switch criminal.phase {
         case let .idle(next):
             guard shift.acceptsTaps, now >= next else { return }
-            let arm = criminalRng.pick(Arm.ai)
+            // Only where nobody waits: otherwise the warning would mark somebody else.
+            let candidates = layout.aiArms.filter { isFreeForWarning($0) }
+            guard !candidates.isEmpty else { return }
+            let arm = criminalRng.pick(candidates)
             criminal.phase = .warning(arm: arm, until: now + config.criminalWarning)
             events.append(.criminalWarning(arm: arm, time: now))
 
@@ -80,8 +86,8 @@ extension World {
                 id: makeID(),
                 type: .pickup,
                 owner: .ai,
-                phase: .waiting(Vehicle.Waiting(arm: arm, reaction: 0)),
-                pose: layout.stopPose(arm)
+                phase: .waiting(Vehicle.Waiting(arm: arm, reaction: 0, approach: config.aiApproachDistance)),
+                pose: approachPose(Vehicle.Waiting(arm: arm, reaction: 0, approach: config.aiApproachDistance))
             )
             vehicles.append(pickup)
             criminal.phase = .arriving(vehicle: pickup.id)

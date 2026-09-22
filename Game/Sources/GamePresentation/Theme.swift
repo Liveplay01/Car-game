@@ -28,6 +28,10 @@ public enum ColorToken: Sendable, Equatable, CaseIterable {
     // UI roles
     case background
     case surface
+    /// The kerb: the edge where the asphalt meets the ground, a shade darker than both.
+    case kerb
+    /// Under the cars: the ground darkened, never pure black.
+    case shadow
     case island
     case marking
     case primary
@@ -40,6 +44,10 @@ public enum ColorToken: Sendable, Equatable, CaseIterable {
     case scrim
     // Vehicles
     case vehicleCar
+    /// Ordinary cars come in four paints, picked by id (`CarArt.bodyColor`).
+    case vehicleCarSilver
+    case vehicleCarGraphite
+    case vehicleCarSand
     case vehicleGlass
     /// Bumpers.
     case vehicleTrim
@@ -56,6 +64,9 @@ public enum ColorToken: Sendable, Equatable, CaseIterable {
     case vehicleBed
     /// Money transporter: the cargo box on the flatbed, and its hazard stripes.
     case vehicleCargo
+    /// The lorry: dark cab, pale box.
+    case vehicleTruck
+    case vehicleTruckBox
     case hazard
     // Crash effects
     /// A burnt-out car body.
@@ -74,21 +85,31 @@ public enum ColorToken: Sendable, Equatable, CaseIterable {
     case debugPanel
 }
 
-/// Placeholder dark palette. The final design pass is milestone M6.
+/// The dark palette (M6). Night, asphalt and one accent.
+///
+/// The ground is the darkest surface, the asphalt sits a step above it, the kerb marks the
+/// edge between them. Text is checked against both: `primary` and `muted` clear 4.5:1 on
+/// `background` and on `surface`, so nothing has to be read twice. The accent is a mint that
+/// no vehicle ever wears, so "this is yours to touch" never reads as "this is a police car".
 public enum Theme {
     public static func color(_ token: ColorToken) -> ColorRGBA {
         switch token {
-        case .background: ColorRGBA(hex: 0x0E1013)
-        case .surface: ColorRGBA(hex: 0x252A31)
-        case .island: ColorRGBA(hex: 0x15181C)
-        case .marking: ColorRGBA(hex: 0x3D444E)
-        case .primary: ColorRGBA(hex: 0xF2F4F7)
-        case .muted: ColorRGBA(hex: 0x8B94A1)
+        case .background: ColorRGBA(hex: 0x0B0D10)
+        case .surface: ColorRGBA(hex: 0x23282F)
+        case .kerb: ColorRGBA(hex: 0x1B2028)
+        case .shadow: ColorRGBA(hex: 0x05070A, alpha: 120)
+        case .island: ColorRGBA(hex: 0x121519)
+        case .marking: ColorRGBA(hex: 0x454C56)
+        case .primary: ColorRGBA(hex: 0xF4F6F9)
+        case .muted: ColorRGBA(hex: 0x99A2AF)
         case .accent: ColorRGBA(hex: 0x9EE6CF)
         case .accentInk: ColorRGBA(hex: 0x0E1013)
         case .destructive: ColorRGBA(hex: 0xFF5A5F)
         case .scrim: ColorRGBA(hex: 0x0E1013, alpha: 214)
         case .vehicleCar: ColorRGBA(hex: 0xE3E6EA)
+        case .vehicleCarSilver: ColorRGBA(hex: 0xBFC6CF)
+        case .vehicleCarGraphite: ColorRGBA(hex: 0x8A94A1)
+        case .vehicleCarSand: ColorRGBA(hex: 0xC9BCA8)
         case .vehicleGlass: ColorRGBA(hex: 0x2B3139)
         case .vehicleTrim: ColorRGBA(hex: 0x9CA3AD)
         case .vehicleTire: ColorRGBA(hex: 0x16191D)
@@ -99,6 +120,8 @@ public enum Theme {
         case .vehicleCriminal: ColorRGBA(hex: 0xB45CF0)
         case .vehicleBed: ColorRGBA(hex: 0x35214A)
         case .vehicleCargo: ColorRGBA(hex: 0xD8A23A)
+        case .vehicleTruck: ColorRGBA(hex: 0x4E586A)
+        case .vehicleTruckBox: ColorRGBA(hex: 0xA9B2BE)
         case .hazard: ColorRGBA(hex: 0xFFD100)
         case .wreck: ColorRGBA(hex: 0x3A3F46)
         case .smoke: ColorRGBA(hex: 0x6B727C)
@@ -128,10 +151,11 @@ public enum Metrics {
     public static let hudRow = 28.0
     /// Vertical centre of the strike dots.
     public static let strikeRow = 54.0
-    public static let scoreSize = 28.0
-    public static let timerSize = 24.0
+    public static let scoreSize = 21.0
+    /// The cars still to send: the biggest thing in the HUD, because it is the shift's goal.
+    public static let timerSize = 30.0
     /// The rush hour pill behind the car counter; fits "15 cars".
-    public static let counterPillWidth = 112.0
+    public static let counterPillWidth = 138.0
     public static let strikeRadius = 4.0
     public static let strikeSpacing = 16.0
     public static let multiplierSize = 44.0

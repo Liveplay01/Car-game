@@ -32,10 +32,14 @@ public enum GameEvent: Sendable, Equatable {
     case transporterEntered(vehicle: Int, deadline: Double)
     /// A police car seized the transporter inside a secure zone: wrecked, no money.
     case transporterSeized(vehicle: Int, police: Int, point: Vec2, time: Double)
+    /// The transporter was wrecked in a crash: lost, no money.
+    case transporterLost(vehicle: Int, point: Vec2, time: Double)
     /// The countdown ran out: the transporter left safely and the player was paid.
     case transporterEscaped(vehicle: Int, time: Double)
     /// Money paid for a transporter, or nothing for a seized one.
     case transporterPaid(vehicle: Int?, amount: Int, time: Double)
+    /// A module on the ring earned money: a lorry paid its toll, a camera caught someone.
+    case modulePaid(module: RoadModule, slot: Int, amount: Int, point: Vec2, time: Double)
 }
 
 public struct TakedownReport: Sendable, Equatable {

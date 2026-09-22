@@ -5,6 +5,16 @@
 public struct Config: Sendable, Equatable {
     // MARK: Roundabout
 
+    /// Places around the ring an arm can sit in, from the player's at the bottom in driving
+    /// direction. The Street Builder puts arms in them (ROADMAP.md, M5).
+    public var armSlotCount: Int = 16
+    /// The slots that are built. Slot 0, the player's, is always there; four arms to start
+    /// with, the Street Builder adds more.
+    public var armSlots: [Int] = [0, 4, 8, 12]
+    /// Two arms must be at least this many slots apart, so entries and exits keep their room.
+    public var armSlotSpacing: Int = 2
+    /// Every arm beyond the first four widens the ring by this much, so they all keep room.
+    public var ringRadiusPerArm: Double = 18
     /// Radius of the ring lane's centre line. At `ringSpeed` one lap takes ~6.9 s.
     public var ringRadius: Double = 120
     /// Width of one lane. The ring has one lane, the arms two.
@@ -35,6 +45,11 @@ public struct Config: Sendable, Equatable {
     /// 0, the default, is no cooldown: the next car follows right behind the launched one
     /// and is ready the moment that one has cleared the slot (FOUNDATION.md 2.2).
     public var queueAdvanceDuration: Double = 0
+    /// Between two shifts the new cars drive up from this many slots behind, taking this long.
+    public var queueFillSlots: Double = 5
+    public var queueFillSeconds: Double = 1.5
+    /// Between two shifts the ring speed glides to the new shift's tempo over this time.
+    public var tempoGlideSeconds: Double = 1.5
 
     // MARK: AI traffic
 
@@ -48,6 +63,10 @@ public struct Config: Sendable, Equatable {
     public var aiSpawnDelay: ClosedRange<Double> = 0.4...1.2
     /// An AI car waits this long at its stop line before it looks for a gap.
     public var aiReaction: ClosedRange<Double> = 0.2...0.8
+    /// New cars appear this far behind their stop line, outside the picture, and drive up,
+    /// braking at this share of g.
+    public var aiApproachDistance: Double = 300
+    public var aiApproachBrake: Double = 1
     /// Every car leaves the ring 1–3 arms after the one it came from (never South).
     public var exitArmsAhead: ClosedRange<Int> = 1...3
 
@@ -113,14 +132,16 @@ public struct Config: Sendable, Equatable {
 
     /// Share of police cars in the player's queue.
     public var policeShare: Double = 0.2
+    /// Share of shifts with criminals at all.
+    public var criminalChance: Double = 1
     /// Shift time of the first criminal warning, and the pause after one is caught.
     public var criminalFirst: ClosedRange<Double> = 4...8
     public var criminalInterval: ClosedRange<Double> = 10...16
     /// "WANTED" warning before the pickup shows up at its arm.
     public var criminalWarning: Double = 2
     /// From the pickup's entry until it escapes and the shift is lost. One lap takes ~6 s,
-    /// so it passes the player's entry about twice. It must be caught even once all your
-    /// cars are in: the shift waits for the chase.
+    /// so it passes the player's entry about twice. Once your last car is in, it no longer
+    /// counts: the shift is done.
     public var criminalTime: Double = 12
     /// Points for a takedown, times combo multiplier and rush hour.
     public var takedownPoints: Int = 1000
@@ -148,14 +169,43 @@ public struct Config: Sendable, Equatable {
     /// A police car inside either zone holds it; normal cars shield it and earn a bonus.
     public var transporterSecureArc: Double = 130
     /// Money for a transporter that leaves safely, times rush hour.
-    public var transporterPay: Int = 2500
+    public var transporterPay: Int = 800
     /// Bonus for a normal car standing in a secure zone while the transporter passes.
-    public var shieldBonus: Int = 500
+    public var shieldBonus: Int = 100
     /// Money for a transporter captured by a police car (it is seized, no money).
     public var transporterSeized: Int = 0
-    /// Mass of the transporter relative to a car once a police car seizes it. Anything else
-    /// bounces off it like off the criminal: it drives on, dented.
+    /// Mass of the transporter relative to a car: heavy, but a crash wrecks it like any car,
+    /// and its money is lost.
     public var transporterMass: Double = 1.6
+
+    // MARK: Ring modules and trucks (FOUNDATION.md 2.9)
+
+    /// Slots for modules around the ring. A fixed number: once they are full, a module is
+    /// swapped for another, never added.
+    public var moduleSlotCount: Int = 6
+    /// The modules in play, by slot. Set from the career (`Career.config`).
+    public var modules: [Int: RoadModule] = [:]
+    /// Share of normal traffic that is a lorry.
+    public var truckChance: Double = 0.22
+    /// A lorry is longer than a car — harder to slip in front of, and it blocks more.
+    public var truckLength: Double = 36
+    /// And heavier: it pushes what it hits out of the way.
+    public var truckMass: Double = 2.2
+    /// What a lorry pays at a toll booth.
+    public var tollPerTruck: Int = 120
+    /// How far around the booth traffic is held back, and how fast it may still go there.
+    public var tollZoneArc: Double = 150
+    public var tollSpeedFactor: Double = 0.55
+    /// What a car over the limit pays.
+    public var cameraFine: Int = 45
+    /// The camera only earns above this share of the base ring speed: a calm shift pays
+    /// nothing, rush hour pays with every car.
+    public var cameraLimitFactor: Double = 1.08
+    /// Short and sharp: everyone snatches at the brakes right at the camera.
+    public var cameraZoneArc: Double = 44
+    public var cameraSpeedFactor: Double = 0.7
+    public var tollBoothCost: Int = 8_000
+    public var speedCameraCost: Int = 12_000
 
     // MARK: Strikes (FOUNDATION.md 2.6)
 
@@ -169,7 +219,8 @@ public struct Config: Sendable, Equatable {
     // MARK: Shift (FOUNDATION.md 2.5)
 
     /// Cars the player has to bring into traffic. There is no clock: the shift is done once
-    /// the last one is in. A good player needs about 20 s.
+    /// the last one is in. Set per shift from the level (`forLevel`); a good player needs
+    /// about 20 s for 15 cars.
     public var shiftCars: Int = 15
     /// The last this-many cars are rush hour: faster, denser, points ×2.
     public var rushHourCars: Int = 4
@@ -189,7 +240,96 @@ public struct Config: Sendable, Equatable {
     /// Points for merges during rush hour are multiplied by this.
     public var rushHourScoreFactor: Double = 2
 
+    // MARK: Levels (ROADMAP.md, M5; `Levels.swift`)
+
+    /// From this level on, the traffic values of this file apply in full: properly hard.
+    /// Below it they are eased towards the level 1 values, so you get into the game.
+    public var hardLevel: Int = 5
+    /// Cars per shift: about `levelOneCars` at level 1 and `carsPerLevel` more per level,
+    /// up to `maxShiftCars`. Every attempt draws a count within ± `shiftCarsSpread`.
+    public var levelOneCars: Int = 10
+    public var carsPerLevel: Double = 1.1
+    public var shiftCarsSpread: Int = 2
+    public var maxShiftCars: Int = 30
+    /// Level 1 traffic: fewer and slower cars, wider AI gaps, a longer chase, more police.
+    public var easyDensityStart: Int = 3
+    public var easyDensityEnd: Int = 6
+    public var easyTempoStart: Double = 0.95
+    public var easyTempoEnd: Double = 1.05
+    public var easyRushHourTempo: Double = 1.2
+    public var easyAiSafeGap: Double = 0.4
+    public var easyCriminalTime: Double = 16
+    public var easyPoliceShare: Double = 0.3
+    /// Beyond `hardLevel`, per level: faster, up to `maxLevelTempoBonus` on every tempo,
+    /// and a shorter chase, down to `minCriminalTime`.
+    public var tempoPerLevel: Double = 0.01
+    public var maxLevelTempoBonus: Double = 0.4
+    public var criminalTimePerLevel: Double = 0.25
+    public var minCriminalTime: Double = 8
+
+    // MARK: Duty (IDEA.md: push your luck; ROADMAP.md, M5)
+
+    /// High Alert: this many cars more to bring in, a chase this much shorter (never below
+    /// `minCriminalTime`) and a criminal in every shift. The traffic itself stays as the
+    /// level has it: denser or faster traffic on top of a high level made those levels
+    /// unplayable rather than riskier. Criminals closer together (a factor below 1) did the
+    /// same — it turned high levels into one long chase — so that one stays at 1.
+    public var highAlertCars: Double = 1.15
+    public var highAlertCriminalTime: Double = 0.8
+    public var highAlertCriminalInterval: Double = 1
+    public var highAlertPay: Double = 3
+
+    // MARK: Money and upgrades (ROADMAP.md, M5; `Upgrades.swift`)
+
+    /// Money for a completed shift; set per level by `forLevel`: `shiftPayBase` plus
+    /// `shiftPayPerLevel` for every level.
+    public var shiftPay: Int = 260
+    public var shiftPayBase: Int = 200
+    public var shiftPayPerLevel: Int = 60
+    /// Price of the first arm the Street Builder adds; every further one costs
+    /// `armCostGrowth` times as much.
+    public var armBaseCost: Int = 25_000
+    public var armCostGrowth: Double = 2
+    /// Every arm beyond the first four brings this much more traffic and this much more pay,
+    /// and lets transporters come this much sooner (IDEA.md: a bigger map spawns more bots).
+    public var trafficPerArm: Double = 0.25
+    public var payPerArm: Double = 0.3
+    public var transporterPerArm: Double = 0.15
+    /// Price of an upgrade's first step (times its price factor); every further step costs
+    /// `upgradeCostGrowth` times as much.
+    public var upgradeBaseCost: Int = 2000
+    public var upgradeCostGrowth: Double = 1.5
+    /// What one step of each upgrade does.
+    public var patrolsPerStep: Double = 0.03
+    public var pursuitPerStep: Double = 1
+    public var quietStreetsPerStep: Double = 0.1
+    public var interceptorPerStep: Double = 0.1
+    public var dispatchRadioPerStep: Double = 0.1
+    public var backupPerStep: Int = 1
+    public var cashRoutePerStep: Double = 1
+    public var overtimePerStep: Double = 0.2
+
     public init() {}
+
+    /// The slots that carry an arm: sorted in driving order, the player's first, and only
+    /// the ones far enough apart (`armSlotSpacing`).
+    public var builtArmSlots: [Int] {
+        var built = [0]
+        for slot in armSlots.sorted() where slot != 0 {
+            guard slot > 0, slot < max(3, armSlotCount) else { continue }
+            if built.allSatisfy({ Self.slotDistance($0, slot, slots: armSlotCount) >= armSlotSpacing }) {
+                built.append(slot)
+            }
+        }
+        return built
+    }
+
+    /// How many slots apart two slots are, the short way round.
+    public static func slotDistance(_ a: Int, _ b: Int, slots: Int) -> Int {
+        let slots = max(3, slots)
+        let raw = abs(a - b) % slots
+        return min(raw, slots - raw)
+    }
 
     /// 9.81 m/s² in world units per second².
     public var gravity: Double { 9.81 * carLength / carLengthMeters }

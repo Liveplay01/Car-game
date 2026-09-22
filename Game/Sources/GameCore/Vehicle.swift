@@ -9,6 +9,9 @@ public enum VehicleType: Sendable, Equatable {
     /// fore and aft on the ring. Only a police car inside those zones captures it.
     /// Escapes safely = money.
     case transporter
+    /// A lorry in normal traffic: longer, heavier, and the only vehicle a toll booth
+    /// charges (FOUNDATION.md 2.9).
+    case truck
 }
 
 /// Who sent the vehicle onto the road. Only player cars are rated and can cost strikes.
@@ -70,8 +73,11 @@ public struct Vehicle: Sendable, Equatable {
 
     public struct Waiting: Sendable, Equatable {
         public var arm: Arm
-        /// Time left before the car starts looking for a gap.
+        /// Time left before the car starts looking for a gap, once it stands at the line.
         public var reaction: Double
+        /// Distance still to drive up to the stop line: cars come from outside the picture
+        /// instead of appearing on it.
+        public var approach: Double = 0
     }
 
     public struct Merging: Sendable, Equatable {

@@ -1,4 +1,5 @@
 import Foundation
+import GameCore
 
 // Everything that touches hardware or storage goes through a protocol; each platform
 // brings its own implementation (FOUNDATION.md 4.5).
@@ -35,8 +36,9 @@ public struct SaveGame: Codable, Sendable, Equatable {
     public var highscoreSeed: UInt64?
     public var shiftsPlayed = 0
     public var settings = Settings()
-    /// Money earned and spent across shifts (M4/M5).
-    public var money = 0
+    /// Level, money and upgrades (M5). A completed shift is a level up, a lost one is
+    /// played again (`Career.record`).
+    public var career = Career()
 
     public init() {}
 
@@ -49,7 +51,21 @@ public struct SaveGame: Codable, Sendable, Equatable {
         highscoreSeed = try container.decodeIfPresent(UInt64.self, forKey: .highscoreSeed)
         shiftsPlayed = try container.decodeIfPresent(Int.self, forKey: .shiftsPlayed) ?? defaults.shiftsPlayed
         settings = try container.decodeIfPresent(Settings.self, forKey: .settings) ?? defaults.settings
-        money = try container.decodeIfPresent(Int.self, forKey: .money) ?? defaults.money
+        if let career = try container.decodeIfPresent(Career.self, forKey: .career) {
+            self.career = career
+        } else {
+            // Before the career, money and level were stored on their own.
+            let legacy = try decoder.container(keyedBy: LegacyKeys.self)
+            career = Career(
+                level: try legacy.decodeIfPresent(Int.self, forKey: .level) ?? 1,
+                money: try legacy.decodeIfPresent(Int.self, forKey: .money) ?? 0
+            )
+        }
+    }
+
+    private enum LegacyKeys: String, CodingKey {
+        case money
+        case level
     }
 }
 

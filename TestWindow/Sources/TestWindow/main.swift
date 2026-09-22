@@ -10,7 +10,11 @@ let options = LaunchOptions(arguments: CommandLine.arguments)
 SetConfigFlags(UInt32(FLAG_WINDOW_RESIZABLE.rawValue | FLAG_MSAA_4X_HINT.rawValue | FLAG_VSYNC_HINT.rawValue))
 SetTraceLogLevel(Int32(LOG_WARNING.rawValue))
 InitWindow(430, 900, Strings.windowTitle)
-fitWindowToMonitor()
+if let size = options.size {
+    SetWindowSize(Int32(size.width), Int32(size.height))
+} else {
+    fitWindowToMonitor()
+}
 // Esc pauses; the window closes only with its close button.
 SetExitKey(0)
 // Shapes are drawn as triangle fans in either winding.
@@ -25,10 +29,18 @@ let session = GameSession(
     timeScale: options.timeScale
 )
 session.isDebugVisible = options.startWithDebug
-print("Save game: \(ProjectFiles.saveGame.path)")
+if let level = options.level {
+    session.setLevel(level)
+}
+if let duty = options.duty {
+    session.perform(.setDuty(duty))
+}
+print("Save game: \(ProjectFiles.saveGame.path)  (level \(session.save.career.level), \(session.save.career.money) money)")
 loadTuning(into: session, createIfMissing: false)
 if options.startsShift {
     session.perform(.startShift)
+} else if let tab = options.tab {
+    session.perform(.showTab(tab))
 }
 
 var runTime = 0.0
@@ -39,8 +51,38 @@ var wasFocused = IsWindowFocused()
 while !WindowShouldClose() {
     runTime += Double(GetFrameTime())
     var actions: [InputAction] = []
-    if IsKeyPressed(key(KEY_SPACE)) || IsMouseButtonPressed(Int32(MOUSE_BUTTON_LEFT.rawValue)) {
+    let viewport = Vec2(Double(GetScreenWidth()), Double(GetScreenHeight()))
+    if IsKeyPressed(key(KEY_SPACE)) {
         actions.append(.tap)
+    }
+    let mouse = Vec2(Double(GetMousePosition().x), Double(GetMousePosition().y))
+    let tabBar = session.screen.showsTabBar ? TabStrip.height : 0
+    if IsMouseButtonPressed(Int32(MOUSE_BUTTON_LEFT.rawValue)) {
+        // A click on the tab strip switches the page; on a page it belongs to the page;
+        // anywhere else it is a tap into the game.
+        if session.screen.showsTabBar, let tab = TabStrip.tab(at: mouse, viewport: viewport) {
+            actions.append(.selectTab(tab))
+        } else if session.screen == .page(.upgrades),
+                  let upgrade = UpgradePage.card(at: mouse, viewport: viewport, bottomInset: tabBar) {
+            // One click opens the card, a second one right after buys it.
+            actions.append(.tapUpgrade(upgrade))
+        } else if session.screen == .page(.streetBuilder) {
+            actions.append(.pointerDown(mouse))
+        } else {
+            actions.append(.tap)
+        }
+    }
+    // Dragging a part across the Street Builder.
+    if session.screen == .page(.streetBuilder) {
+        if IsMouseButtonDown(Int32(MOUSE_BUTTON_LEFT.rawValue)) {
+            actions.append(.pointerMove(mouse))
+        }
+        if IsMouseButtonReleased(Int32(MOUSE_BUTTON_LEFT.rawValue)) {
+            actions.append(.pointerUp(mouse))
+        }
+    }
+    if IsKeyPressed(key(KEY_TAB)) {
+        actions.append(.nextTab)
     }
     if let interval = options.autotapInterval, runTime >= nextAutotap {
         actions.append(.tap)
@@ -67,6 +109,9 @@ while !WindowShouldClose() {
     if IsKeyPressed(key(KEY_F2)) {
         actions.append(.cycleSlowMotion)
     }
+    if IsKeyPressed(key(KEY_H)) {
+        actions.append(.perform(.setDuty(session.save.career.duty == .normal ? .highAlert : .normal)))
+    }
     if IsKeyPressed(key(KEY_T)) {
         loadTuning(into: session, createIfMissing: true)
     }
@@ -75,12 +120,15 @@ while !WindowShouldClose() {
     if wasFocused && !isFocused && options.screenshotFile == nil {
         actions.append(.focusLost)
     }
+    if !wasFocused && isFocused {
+        actions.append(.focusGained)
+    }
     wasFocused = isFocused
 
     let frame = session.frame(
         delta: Double(GetFrameTime()),
         actions: actions,
-        viewport: Vec2(Double(GetScreenWidth()), Double(GetScreenHeight())),
+        viewport: viewport,
         fps: Int(GetFPS())
     )
 

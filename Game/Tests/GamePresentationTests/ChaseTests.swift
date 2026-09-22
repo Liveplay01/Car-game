@@ -20,7 +20,7 @@ extension GameSession {
     /// Taps once a car launched now would hit the pickup; returns the events of that second.
     func launchIntoCriminal(_ pickup: Int) -> [GameEvent] {
         for _ in 0..<(12 * 60) {
-            if world.queue.isReady, (world.predictedMergeGaps(from: .south)[pickup] ?? .infinity) <= -0.05 {
+            if world.queue.isReady, (world.predictedMergeGaps(from: world.layout.player)[pickup] ?? .infinity) <= -0.05 {
                 return advance([.tap]).events + run(seconds: 1) { $0.world.vehicle(id: pickup)?.dents.isEmpty == false }
             }
             advance()

@@ -9,6 +9,13 @@ func emptyWorld(config: Config = Config(), seed: UInt64 = 1) -> World {
 }
 
 extension World {
+    /// The arms by the names the tests grew up with: the player's at the bottom, then in
+    /// driving direction. How many there are now depends on the roundabout (`Config.arms`).
+    var south: Arm { layout.player }
+    var east: Arm { layout.arm(1) }
+    var north: Arm { layout.arm(2) }
+    var west: Arm { layout.arm(3) }
+
     /// Steps until `condition` is true or `limit` steps have passed. Returns all events.
     @discardableResult
     mutating func run(steps limit: Int, until condition: (World) -> Bool = { _ in false }) -> [GameEvent] {
@@ -24,7 +31,7 @@ extension World {
     /// Ring position a car must have now to be at `arc` ahead of the player's merge point
     /// at the moment a merge launched now completes.
     func ringPositionAhead(ofMergeEnd arc: Double) -> Double {
-        layout.entryRingS(.south) + arc - ringSpeed * config.mergeDuration
+        layout.entryRingS(layout.player) + arc - ringSpeed * config.mergeDuration
     }
 }
 
@@ -155,6 +162,22 @@ struct QueueTests {
         }
     }
 
+    @Test func newCarsDriveUpToTheirStopLineFromOutsideThePicture() {
+        var world = emptyWorld()
+        world.spawnWaiting(at: world.north)
+        guard let car = world.vehicles.last else { return }
+        let stop = world.layout.stopPose(world.north).position
+        #expect(car.position.distance(to: stop) > 250)
+        world.run(steps: 8 * World.stepRate) { world in
+            guard case let .waiting(w)? = world.vehicle(id: car.id)?.phase else { return true }
+            return w.approach == 0
+        }
+        let arrived = world.vehicle(id: car.id)
+        let atTheLine = arrived.map { $0.position.distance(to: stop) < 1 } ?? false
+        let entering = arrived.map { if case .merging = $0.phase { true } else { false } } ?? false
+        #expect(atTheLine || entering)
+    }
+
     @Test func queueStaysFull() {
         var world = emptyWorld()
         let length = world.queue.vehicles.count
@@ -168,7 +191,7 @@ struct QueueTests {
 struct MergeTests {
     @Test func carStandingAtTheMergePointIsACrash() {
         var world = emptyWorld()
-        world.spawnRingCar(at: world.ringPositionAhead(ofMergeEnd: 0), exitArm: .west)
+        world.spawnRingCar(at: world.ringPositionAhead(ofMergeEnd: 0), exitArm: world.west)
         let player = world.queue.vehicles[0]
         world.tap(at: 0)
         let events = world.run(steps: 90)
@@ -182,7 +205,7 @@ struct MergeTests {
     @Test func justMissingTheCarAheadIsATightFit() {
         var world = emptyWorld()
         let arc = world.config.carLength + 6
-        world.spawnRingCar(at: world.ringPositionAhead(ofMergeEnd: arc), exitArm: .west)
+        world.spawnRingCar(at: world.ringPositionAhead(ofMergeEnd: arc), exitArm: world.west)
         world.tap(at: 0)
         let events = world.run(steps: 90)
         #expect(events.compactMap(\.crash).isEmpty)
@@ -197,7 +220,7 @@ struct MergeTests {
     @Test func justTouchingTheCarAheadIsACrash() {
         var world = emptyWorld()
         let arc = world.config.carLength - 2
-        world.spawnRingCar(at: world.ringPositionAhead(ofMergeEnd: arc), exitArm: .west)
+        world.spawnRingCar(at: world.ringPositionAhead(ofMergeEnd: arc), exitArm: world.west)
         world.tap(at: 0)
         let events = world.run(steps: 90)
         #expect(!events.compactMap(\.crash).isEmpty)
@@ -206,7 +229,7 @@ struct MergeTests {
     @Test func justMissingTheCarBehindIsATightFit() {
         var world = emptyWorld()
         let arc = -(world.config.carLength + 6)
-        world.spawnRingCar(at: world.ringPositionAhead(ofMergeEnd: arc), exitArm: .west)
+        world.spawnRingCar(at: world.ringPositionAhead(ofMergeEnd: arc), exitArm: world.west)
         world.tap(at: 0)
         let events = world.run(steps: 90)
         #expect(events.compactMap(\.crash).isEmpty)
@@ -216,7 +239,7 @@ struct MergeTests {
 
     @Test func wideGapIsCleanNotTight() {
         var world = emptyWorld()
-        world.spawnRingCar(at: world.ringPositionAhead(ofMergeEnd: 80), exitArm: .west)
+        world.spawnRingCar(at: world.ringPositionAhead(ofMergeEnd: 80), exitArm: world.west)
         world.tap(at: 0)
         let merge = world.run(steps: 90).compactMap(\.merge).first
         #expect(merge.map { $0.minGap > world.config.tightFitSeconds } == true)
@@ -224,7 +247,7 @@ struct MergeTests {
 
     @Test func crashedCarsLeaveCollisionsAndDisappear() {
         var world = emptyWorld()
-        world.spawnRingCar(at: world.ringPositionAhead(ofMergeEnd: 0), exitArm: .west)
+        world.spawnRingCar(at: world.ringPositionAhead(ofMergeEnd: 0), exitArm: world.west)
         world.tap(at: 0)
         world.run(steps: 90) { $0.vehicles.contains(where: \.isCrashed) }
         let crashed = world.vehicles.filter(\.isCrashed)
@@ -244,9 +267,9 @@ struct MergeTests {
 
     @Test func nobodyEverExitsSouth() {
         var world = emptyWorld()
-        for arm in Arm.allCases {
+        for arm in world.layout.arms {
             for _ in 0..<200 {
-                #expect(world.randomExit(from: arm) != .south)
+                #expect(!world.randomExit(from: arm).isPlayer)
             }
         }
     }

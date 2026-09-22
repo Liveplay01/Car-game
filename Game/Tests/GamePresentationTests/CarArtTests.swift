@@ -50,7 +50,7 @@ struct CarArtTests {
     @Test func tornOffPartsFlyAndAreNotDrawnOnTheWreck() {
         var world = World(config: quietWorldConfig(), seed: 1, mode: .freePlay, prefill: false)
         world.targetDensity = 0
-        world.spawnRingCar(at: 100, exitArm: .west)
+        world.spawnRingCar(at: 100, exitArm: world.layout.arm(3))
         guard let index = world.vehicles.indices.first(where: { world.vehicles[$0].owner == .ai }) else {
             Issue.record("no car")
             return

@@ -17,7 +17,7 @@ extension World {
     mutating func launch(into target: Int, within seconds: Double = 12) -> [GameEvent] {
         var events: [GameEvent] = []
         for _ in 0..<Int(seconds * Double(World.stepRate)) {
-            if queue.isReady, (predictedMergeGaps(from: .south)[target] ?? .infinity) <= -0.05 {
+            if queue.isReady, (predictedMergeGaps(from: layout.player)[target] ?? .infinity) <= -0.05 {
                 tap(at: time)
                 events += run(steps: World.stepRate) { $0.vehicles.contains(where: \.isCrashed) || $0.vehicle(id: target)?.dents.isEmpty == false }
                 return events
@@ -46,7 +46,7 @@ extension World {
     /// the vehicle `target`. Returns its id.
     mutating func placePolice(behind target: Int, gap: Double) -> Int? {
         guard let other = vehicle(id: target), case let .ring(r) = other.phase else { return nil }
-        let id = spawnRingCar(at: r.s - config.carLength - gap, exitArm: .east)
+        let id = spawnRingCar(at: r.s - config.carLength - gap, exitArm: east)
         guard let index = index(of: id) else { return nil }
         vehicles[index].type = .police
         vehicles[index].owner = .player
@@ -98,11 +98,12 @@ struct CriminalTests {
             return
         }
         let config = world.config
-        #expect(Arm.ai.contains(warning.arm))
+        #expect(world.layout.aiArms.contains(warning.arm))
         #expect(config.criminalFirst.contains(warning.time))
-        // It shows up after the warning and drives in right away on an empty ring.
+        // It shows up after the warning, drives up to its stop line from outside the picture
+        // and enters right away on an empty ring.
         #expect(entered.deadline - config.criminalTime >= warning.time + config.criminalWarning - 1e-9)
-        #expect(entered.deadline - config.criminalTime < warning.time + config.criminalWarning + 0.1)
+        #expect(entered.deadline - config.criminalTime < warning.time + config.criminalWarning + 5)
         #expect(escaped)
         #expect(world.shift.outcome == .escaped)
         #expect(abs(world.time - entered.deadline) < 0.02)
@@ -196,33 +197,18 @@ struct CriminalTests {
         #expect(world.criminal.phase == .idle(next: .infinity))
     }
 
-    @Test func aCriminalOnTheRunMustStillBeCaughtAfterTheLastCar() {
-        var world = chaseShift(police: false) { $0.shiftCars = 1 }
-        guard world.runUntilChase() != nil else {
-            Issue.record("no chase")
-            return
-        }
-        world.tap(at: world.time)
-        world.run(steps: World.stepRate)
-        // Every car is in, but the pickup is still out there: the shift waits for it.
-        #expect(world.shift.phase == .closing)
-        let events = world.run(steps: 15 * World.stepRate) { $0.shift.outcome != nil }
-        #expect(events.contains { if case .criminalEscaped = $0 { true } else { false } })
-        #expect(world.shift.outcome == .escaped)
-    }
-
-    @Test func aPoliceCarOnTheRingCanStillCatchItAfterTheLastCar() {
+    @Test func aCriminalOnTheRunDrivesOffOnceTheLastCarIsIn() {
         var world = chaseShift(police: false) { $0.shiftCars = 1 }
         guard let pickup = world.runUntilChase() else {
             Issue.record("no chase")
             return
         }
-        world.run(steps: World.stepRate) { $0.vehicle(id: pickup).map { if case .ring = $0.phase { true } else { false } } == true }
         world.tap(at: world.time)
-        _ = world.placePolice(behind: pickup, gap: 60)
-        let events = world.run(steps: 10 * World.stepRate) { $0.shift.outcome != nil }
-        #expect(events.contains { $0.takedown != nil })
+        let events = world.run(steps: 2 * World.stepRate) { $0.shift.outcome != nil }
+        // Every car is in: the shift is done, and the criminal gets away with it.
         #expect(world.shift.outcome == .completed)
+        #expect(!events.contains { if case .criminalEscaped = $0 { true } else { false } })
+        #expect(world.criminal.phase == .leaving(vehicle: pickup))
     }
 
     @Test func aCriminalDrivesOffQuietlyWhenTheShiftEndsFirst() {
@@ -280,7 +266,7 @@ struct CriminalTests {
             Issue.record("pickup not on the ring")
             return
         }
-        let between = world.spawnRingCar(at: r.s - world.config.carLength - 40, exitArm: .east)
+        let between = world.spawnRingCar(at: r.s - world.config.carLength - 40, exitArm: world.east)
         // It stays on the ring for the whole test; once it leaves, the chase would be on.
         if let index = world.index(of: between), case var .ring(ring) = world.vehicles[index].phase {
             ring.distanceToExit = world.layout.ring.length

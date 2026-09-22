@@ -6,7 +6,7 @@ import PackageDescription
 let package = Package(
     name: "Game",
     platforms: [
-        .iOS("27.0"),
+        .iOS("26.0"),
         .macOS("26.0"),
     ],
     products: [

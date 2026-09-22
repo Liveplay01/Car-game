@@ -1,0 +1,233 @@
+import Foundation
+
+/// What the player buys with money between shifts (ROADMAP.md, M5). Every step changes a
+/// value of every later shift's config; how much, and what a step costs, is in `Config`.
+public enum Upgrade: String, CaseIterable, Sendable {
+    /// More police cars in the queue.
+    case morePatrols
+    /// A longer countdown before the criminal gets away.
+    case longerPursuit
+    /// Fewer shifts with criminals. (Not later ones: late in a shift the traffic is at its
+    /// fastest, so a criminal would be harder to catch, not easier.)
+    case quietStreets
+    /// A police car behind the criminal chases it faster.
+    case interceptor
+    /// An emergency dispatch costs less of the combo.
+    case dispatchRadio
+    /// One more police crash per shift that the shift survives.
+    case backup
+    /// Money transporters come sooner and more often.
+    case cashRoute
+    /// More money for a completed shift.
+    case overtime
+
+    /// How many steps can be bought. The ones with small steps go a long way, so there is
+    /// always something to save up for.
+    public var maxSteps: Int {
+        switch self {
+        case .morePatrols, .overtime: 10
+        case .longerPursuit, .cashRoute: 8
+        case .quietStreets, .interceptor, .dispatchRadio: 5
+        case .backup: 3
+        }
+    }
+
+    /// Price relative to the others: the strongest ones cost more.
+    var priceFactor: Double {
+        switch self {
+        case .morePatrols, .cashRoute, .overtime: 1
+        case .longerPursuit, .dispatchRadio: 1.2
+        case .quietStreets, .interceptor: 1.5
+        case .backup: 3
+        }
+    }
+}
+
+extension Config {
+    /// Price of step `step` (1 = the first) of an upgrade, rounded to 50.
+    public func price(of upgrade: Upgrade, step: Int) -> Int {
+        let raw = Double(upgradeBaseCost) * upgrade.priceFactor * pow(upgradeCostGrowth, Double(max(1, step) - 1))
+        return Int((raw / 50).rounded()) * 50
+    }
+
+    /// This config with the bought steps applied.
+    public func upgraded(_ steps: (Upgrade) -> Int) -> Config {
+        var config = self
+        func step(_ upgrade: Upgrade) -> Double { Double(min(max(0, steps(upgrade)), upgrade.maxSteps)) }
+        config.policeShare = min(1, policeShare + step(.morePatrols) * patrolsPerStep)
+        config.criminalTime += step(.longerPursuit) * pursuitPerStep
+        config.criminalChance = max(0, criminalChance - step(.quietStreets) * quietStreetsPerStep)
+        config.policeChaseSpeedFactor += step(.interceptor) * interceptorPerStep
+        config.dispatchComboFactor = min(1, dispatchComboFactor + step(.dispatchRadio) * dispatchRadioPerStep)
+        config.maxPoliceCrashes += Int(step(.backup)) * backupPerStep
+        let sooner = step(.cashRoute) * cashRoutePerStep
+        config.transporterFirst = max(1, transporterFirst.lowerBound - sooner)...max(1, transporterFirst.upperBound - sooner)
+        config.transporterInterval = max(1, transporterInterval.lowerBound - sooner)...max(1, transporterInterval.upperBound - sooner)
+        config.shiftPay = Int((Double(shiftPay) * (1 + step(.overtime) * overtimePerStep)).rounded())
+        return config
+    }
+}
+
+/// How hard the next shift is played. Chosen before it starts and kept until it is changed
+/// (IDEA.md: push your luck).
+public enum Duty: String, Sendable, Equatable, CaseIterable, Codable {
+    /// The shift as the level has it.
+    case normal
+    /// More cars, a shorter chase and a criminal in every shift — for triple money.
+    case highAlert
+}
+
+extension Config {
+    /// This config as the chosen duty plays it.
+    public func forDuty(_ duty: Duty) -> Config {
+        guard duty == .highAlert else { return self }
+        var config = self
+        config.shiftCars = Int((Double(shiftCars) * highAlertCars).rounded())
+        // Never below the floor: at high levels the countdown is already at its shortest.
+        config.criminalTime = max(minCriminalTime, criminalTime * highAlertCriminalTime)
+        config.criminalChance = 1
+        config.criminalInterval = (criminalInterval.lowerBound * highAlertCriminalInterval)...(criminalInterval.upperBound * highAlertCriminalInterval)
+        config.shiftPay = Int((Double(shiftPay) * highAlertPay).rounded())
+        config.transporterPay = Int((Double(transporterPay) * highAlertPay).rounded())
+        config.shieldBonus = Int((Double(shieldBonus) * highAlertPay).rounded())
+        return config
+    }
+}
+
+extension Config {
+    /// A roundabout with more arms: its longer ring carries more traffic, transporters come
+    /// sooner, and the bigger job pays more (IDEA.md: a bigger map spawns more bots).
+    public func forArms() -> Config {
+        let extra = Double(max(0, builtArmSlots.count - 4))
+        guard extra > 0 else { return self }
+        var config = self
+        let traffic = 1 + extra * trafficPerArm
+        config.densityStart = Int((Double(densityStart) * traffic).rounded())
+        config.densityEnd = Int((Double(densityEnd) * traffic).rounded())
+        config.shiftPay = Int((Double(shiftPay) * (1 + extra * payPerArm)).rounded())
+        let sooner = max(0.2, 1 - extra * transporterPerArm)
+        config.transporterFirst = (transporterFirst.lowerBound * sooner)...(transporterFirst.upperBound * sooner)
+        config.transporterInterval = (transporterInterval.lowerBound * sooner)...(transporterInterval.upperBound * sooner)
+        return config
+    }
+
+    /// Price of the next arm; nil once no slot is free any more.
+    public func armPrice(built: [Int]) -> Int? {
+        var config = self
+        config.armSlots = built
+        let slots = config.builtArmSlots
+        guard slots.count < armSlotCount / max(1, armSlotSpacing) else { return nil }
+        let raw = Double(armBaseCost) * pow(armCostGrowth, Double(max(0, slots.count - 4)))
+        return Int((raw / 100).rounded()) * 100
+    }
+
+    /// Whether an arm can be built in `slot`: free, and far enough from the others.
+    public func canBuildArm(inSlot slot: Int, built: [Int]) -> Bool {
+        guard slot > 0, slot < armSlotCount, !built.contains(slot) else { return false }
+        return built.allSatisfy { Config.slotDistance($0, slot, slots: armSlotCount) >= armSlotSpacing }
+    }
+}
+
+/// The player's progress across shifts: level, money, the upgrades bought and the duty of
+/// the next shift (ROADMAP.md, M5). The game keeps it in the save game; the balancing bot
+/// plays whole careers with it.
+public struct Career: Sendable, Equatable, Codable {
+    /// The level the next shift is played at.
+    public var level = 1
+    public var money = 0
+    /// Bought steps by upgrade (`Upgrade.rawValue`).
+    public var upgrades: [String: Int] = [:]
+    /// Normal duty, or High Alert for triple money.
+    public var duty: Duty = .normal
+    /// The arm slots built so far; slot 0, the player's, is always one of them.
+    public var armSlots: [Int] = [0, 4, 8, 12]
+    /// Modules on the ring, by slot. There is a fixed number of slots: once they are all
+    /// taken, a module is swapped for another one (FOUNDATION.md 2.9).
+    public var modules: [Int: RoadModule] = [:]
+
+    public init(level: Int = 1, money: Int = 0) {
+        self.level = max(1, level)
+        self.money = max(0, money)
+    }
+
+    /// Missing keys fall back to their defaults, so an older save still loads.
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        level = max(1, try container.decodeIfPresent(Int.self, forKey: .level) ?? 1)
+        money = max(0, try container.decodeIfPresent(Int.self, forKey: .money) ?? 0)
+        upgrades = try container.decodeIfPresent([String: Int].self, forKey: .upgrades) ?? [:]
+        duty = (try? container.decodeIfPresent(Duty.self, forKey: .duty)) ?? .normal
+        armSlots = try container.decodeIfPresent([Int].self, forKey: .armSlots) ?? [0, 4, 8, 12]
+        modules = (try? container.decodeIfPresent([Int: RoadModule].self, forKey: .modules)) ?? [:]
+    }
+
+    public func steps(of upgrade: Upgrade) -> Int {
+        min(max(0, upgrades[upgrade.rawValue] ?? 0), upgrade.maxSteps)
+    }
+
+    /// Price of the next step; nil once every step is bought.
+    public func price(of upgrade: Upgrade, config: Config) -> Int? {
+        let next = steps(of: upgrade) + 1
+        return next <= upgrade.maxSteps ? config.price(of: upgrade, step: next) : nil
+    }
+
+    /// Buys the next step if there is one and the money is there.
+    @discardableResult
+    public mutating func buy(_ upgrade: Upgrade, config: Config) -> Bool {
+        guard let price = price(of: upgrade, config: config), money >= price else { return false }
+        money -= price
+        upgrades[upgrade.rawValue] = steps(of: upgrade) + 1
+        return true
+    }
+
+    /// The config of the next shift: the roundabout as it is built, then its level, the
+    /// upgrades and the duty.
+    public func config(from base: Config, seed: UInt64) -> Config {
+        var config = base
+        config.armSlots = armSlots
+        config.modules = modules
+        // The level sets the traffic, the roundabout scales it, then the upgrades and the duty.
+        return config.forLevel(level, seed: seed).forArms().upgraded { steps(of: $0) }.forDuty(duty)
+    }
+
+    /// Buys a module and puts it in `slot`. A slot that is taken is swapped: the old module
+    /// is gone, the new one is paid for in full.
+    @discardableResult
+    public mutating func build(_ module: RoadModule, inSlot slot: Int, config: Config) -> Bool {
+        guard slot >= 0, slot < config.moduleSlotCount else { return false }
+        let price = config.price(of: module)
+        guard money >= price else { return false }
+        money -= price
+        modules[slot] = module
+        return true
+    }
+
+    /// Takes a module out again. Nothing is paid back: it is torn down, not sold.
+    public mutating func removeModule(inSlot slot: Int) {
+        modules[slot] = nil
+    }
+
+    /// Price of the next arm, or nil once the ring is full.
+    public func armPrice(config: Config) -> Int? {
+        config.armPrice(built: armSlots)
+    }
+
+    /// Builds an arm in `slot` if it fits and the money is there.
+    @discardableResult
+    public mutating func buildArm(inSlot slot: Int, config: Config) -> Bool {
+        guard config.canBuildArm(inSlot: slot, built: armSlots), let price = armPrice(config: config), money >= price else { return false }
+        money -= price
+        armSlots = (armSlots + [slot]).sorted()
+        return true
+    }
+
+    /// Books a finished shift played at `level`: its money whatever the outcome (it was
+    /// paid out already), and a level up if it was completed. A lost shift is played
+    /// again at the same level.
+    public mutating func record(_ result: ShiftResult, playedAt level: Int) {
+        money += result.money
+        if result.outcome == .completed {
+            self.level = max(1, level) + 1
+        }
+    }
+}

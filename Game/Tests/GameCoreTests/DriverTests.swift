@@ -48,7 +48,7 @@ struct DriverTests {
         var world = lastingWrecks()
         // Slowest reaction (1.5 s) plus full braking needs ~330 wu at ring speed.
         world.spawnWreck(atRing: 400)
-        let car = world.spawnRingCar(at: 0, exitArm: .south)
+        let car = world.spawnRingCar(at: 0, exitArm: world.south)
         var events: [GameEvent] = []
         var reacted = false
         for _ in 0..<(6 * World.stepRate) {
@@ -68,7 +68,7 @@ struct DriverTests {
     @Test func carTooCloseToStopCrashesButCostsNoStrike() {
         var world = lastingWrecks()
         let wreck = world.spawnWreck(atRing: 120)
-        let car = world.spawnRingCar(at: 50, exitArm: .south)
+        let car = world.spawnRingCar(at: 50, exitArm: world.south)
         let events = world.run(steps: 2 * World.stepRate)
         let crash = events.compactMap(\.crash).first
         #expect(crash != nil)
@@ -85,7 +85,7 @@ struct DriverTests {
         config.crashDuration = 3
         var world = emptyWorld(config: config)
         world.spawnWreck(atRing: 400)
-        let car = world.spawnRingCar(at: 0, exitArm: .south)
+        let car = world.spawnRingCar(at: 0, exitArm: world.south)
         world.run(steps: 3 * World.stepRate)
         #expect(world.drive(of: car)?.isInFlow == false)
         world.run(steps: 8 * World.stepRate) { $0.drive(of: car)?.isInFlow == true }
@@ -96,8 +96,8 @@ struct DriverTests {
     @Test func driversBehindABrakingCarBrakeToo() {
         var world = lastingWrecks()
         world.spawnWreck(atRing: 500)
-        let first = world.spawnRingCar(at: 120, exitArm: .south)
-        let second = world.spawnRingCar(at: 30, exitArm: .south)
+        let first = world.spawnRingCar(at: 120, exitArm: world.south)
+        let second = world.spawnRingCar(at: 30, exitArm: world.south)
         var secondReacted = false
         for _ in 0..<(5 * World.stepRate) {
             world.step()
@@ -110,7 +110,7 @@ struct DriverTests {
     @Test func aiWaitsWhileTrafficIsDisturbed() {
         var world = lastingWrecks()
         world.spawnWreck(atRing: 700)
-        for arm in Arm.ai {
+        for arm in world.layout.aiArms {
             #expect(!world.canEnter(arm))
         }
     }
@@ -121,7 +121,7 @@ struct DriverTests {
         config.chainCrashesCostStrikes = true
         var world = emptyWorld(config: config)
         world.spawnWreck(atRing: 120)
-        let car = world.spawnRingCar(at: 50, exitArm: .south)
+        let car = world.spawnRingCar(at: 50, exitArm: world.south)
         if let index = world.index(of: car) {
             world.vehicles[index].owner = .player
         }
@@ -133,7 +133,7 @@ struct DriverTests {
     @Test func dentsStayWithinTheCrumpleRange() {
         func dentDepth(arc: Double) -> Double? {
             var world = emptyWorld()
-            world.spawnRingCar(at: world.ringPositionAhead(ofMergeEnd: arc), exitArm: .west)
+            world.spawnRingCar(at: world.ringPositionAhead(ofMergeEnd: arc), exitArm: world.west)
             let player = world.queue.vehicles[0]
             world.tap(at: 0)
             world.run(steps: 90) { $0.vehicles.contains(where: \.isCrashed) }

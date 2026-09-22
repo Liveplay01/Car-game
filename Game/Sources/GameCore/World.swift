@@ -44,10 +44,20 @@ public struct World: Sendable {
     var pendingTaps: [Double] = []
     var spawnCooldown = 0.0
     var events: [GameEvent] = []
+    /// After the shift before: the ring speed glides from `from`, starting at world time `since`.
+    var tempoGlide: (from: Double, since: Double)?
 
     public var time: Double { Double(stepCount) * Self.stepDuration }
 
-    public init(config: Config = Config(), seed: UInt64, mode: Mode = .shift, prefill: Bool = true) {
+    /// - Parameters:
+    ///   - prefill: spread the start density over the ring, so the first second is not empty.
+    ///   - startsOnFirstTap: the shift waits, traffic flowing, until its first tap sends the
+    ///     front car; the game does that. Tests and bots start the clock right away.
+    public init(config: Config = Config(), seed: UInt64, mode: Mode = .shift, prefill: Bool = true, startsOnFirstTap: Bool = false) {
+        self.init(config: config, seed: seed, mode: mode, prefill: prefill, startsOnFirstTap: startsOnFirstTap, firstVehicleID: 1)
+    }
+
+    init(config: Config, seed: UInt64, mode: Mode, prefill: Bool, startsOnFirstTap: Bool, firstVehicleID: Int) {
         self.config = config
         layout = RoundaboutLayout(config: config)
         self.seed = seed
@@ -58,16 +68,40 @@ public struct World: Sendable {
         transporterRng = SeededRandom(seed: seed ^ 0x9F31_4D7C_2E8B_0A56)
         ringSpeed = config.ringSpeed
         targetDensity = config.freePlayDensity
-        startShift()
+        nextVehicleID = firstVehicleID
+        startShift(waiting: startsOnFirstTap)
         applyShiftCurves(at: 0)
         if mode == .shift {
-            criminal.phase = .idle(next: criminalRng.double(in: config.criminalFirst))
+            let first = criminalRng.double(in: config.criminalFirst)
+            // Some shifts have no criminal at all (`criminalChance`, the Quiet Streets upgrade).
+            criminal.phase = .idle(next: criminalRng.unit() < config.criminalChance ? first : .infinity)
             transporter.phase = .idle(next: transporterRng.double(in: config.transporterFirst))
         }
         refillQueue()
         if prefill {
             prefillRing(count: targetDensity)
         }
+    }
+
+    /// The next shift, continuing this one's traffic (FOUNDATION.md 2.5): every car on the
+    /// road keeps driving and every wreck keeps skidding, the tempo glides to the new one,
+    /// and the new shift's cars roll into the queue from behind. It starts with its first tap.
+    /// Cars that were the player's are plain traffic now.
+    public func nextShift(config: Config, seed: UInt64) -> World {
+        var next = World(config: config, seed: seed, mode: .shift, prefill: false, startsOnFirstTap: true, firstVehicleID: nextVehicleID)
+        var carried = vehicles.filter { if case .queued = $0.phase { false } else { true } }
+        for index in carried.indices {
+            carried[index].owner = .ai
+            carried[index].previousPosition = carried[index].position
+            carried[index].previousHeading = carried[index].heading
+        }
+        // Ordered by creation: every carried car is older than the new queue.
+        next.vehicles.insert(contentsOf: carried, at: 0)
+        next.tempoGlide = (from: ringSpeed, since: 0)
+        next.applyShiftCurves(at: 0)
+        next.queue.state = .filling(elapsed: 0)
+        next.placeQueue()
+        return next
     }
 
     /// Registers a tap. `time` is when it happened; it takes effect inside the step that
@@ -116,12 +150,17 @@ public struct World: Sendable {
     }
 
     /// The hitbox of a vehicle at a given pose.
-    public func hitbox(at pose: Path.Pose) -> Capsule {
-        Capsule(center: pose.position, heading: pose.heading, length: config.carLength, width: config.carWidth)
+    public func hitbox(at pose: Path.Pose, type: VehicleType = .car) -> Capsule {
+        Capsule(center: pose.position, heading: pose.heading, length: length(of: type), width: config.carWidth)
     }
 
     public func hitbox(of vehicle: Vehicle) -> Capsule {
-        hitbox(at: Path.Pose(position: vehicle.position, heading: vehicle.heading))
+        hitbox(at: Path.Pose(position: vehicle.position, heading: vehicle.heading), type: vehicle.type)
+    }
+
+    /// How long a vehicle is. Only the lorry differs from a car.
+    public func length(of type: VehicleType) -> Double {
+        type == .truck ? config.truckLength : config.carLength
     }
 
     // MARK: - Movement
@@ -157,6 +196,7 @@ public struct World: Sendable {
             case .ring(var r):
                 r.sinceMerge += dt
                 let d = (r.drive.speed ?? ringSpeed) * dt
+                chargeModules(vehicleIndex: i, from: r.s, travelled: d, now: now)
                 r.s = Angle.wrap(r.s + d, period: layout.ring.length)
                 r.distanceToExit -= d
                 let id = vehicles[i].id
@@ -305,9 +345,11 @@ public struct World: Sendable {
         let second = vehicles[j]
         let takedown = isTakedown(first, second)
         let seizure = isSeizure(first, second)
-        // A live criminal or transporter shrugs off anything but the police: it keeps its
-        // course, the other car bounces off it as off something much heavier.
+        // A live criminal shrugs off anything but the police: it keeps its course, the other
+        // car bounces off it as off something much heavier.
         let armored: Int? = takedown || seizure ? nil : [i, j].first { isArmored(vehicles[$0]) }
+        // The money transporter is wrecked like any car, and its money with it.
+        let wreckedTruck = seizure ? nil : [first, second].first { $0.type == .transporter && !$0.isCrashed }
         let culprits = [first, second].filter(causesStrike)
         let strike = !takedown && !seizure && !culprits.isEmpty
         // Only if every car at fault is a police car; a normal car's mistake is a strike.
@@ -362,6 +404,9 @@ public struct World: Sendable {
             let (truckID, policeID) = first.type == .transporter ? (first.id, second.id) : (second.id, first.id)
             transporterSeized(truckID, by: policeID, at: contact.point, now: now)
         }
+        if let truck = wreckedTruck {
+            transporterWrecked(truck.id, at: contact.point, now: now)
+        }
         if strike && isScoring && mode == .shift && isStruckOut {
             endShift(.struckOut, at: now)
         }
@@ -371,9 +416,9 @@ public struct World: Sendable {
         vehicle.type == .pickup && !vehicle.isCrashed
     }
 
-    /// Criminal and transporter keep their course in a crash; only the police stop them.
+    /// The criminal keeps its course in a crash; only the police stop it.
     func isArmored(_ vehicle: Vehicle) -> Bool {
-        (vehicle.type == .pickup || vehicle.type == .transporter) && !vehicle.isCrashed
+        vehicle.type == .pickup && !vehicle.isCrashed
     }
 
     /// One of the player's police cars hits the criminal: the good crash.
@@ -461,8 +506,8 @@ public struct World: Sendable {
 
     /// Every car leaves 1–3 arms after the one it came from, never at South: that is the queue.
     mutating func randomExit(from arm: Arm) -> Arm {
-        let options = config.exitArmsAhead.map { arm.advanced(by: $0) }.filter { $0 != Arm.player }
-        return options.isEmpty ? arm.advanced(by: 1) : rng.pick(options)
+        let options = config.exitArmsAhead.map { layout.advance(arm, by: $0) }.filter { !$0.isPlayer }
+        return options.isEmpty ? layout.advance(arm, by: 1) : rng.pick(options)
     }
 }
 

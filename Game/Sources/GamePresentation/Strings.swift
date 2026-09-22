@@ -1,4 +1,5 @@
 import Foundation
+import GameCore
 
 /// Every text the game shows. English only, one source for test window and app.
 public enum Strings {
@@ -7,38 +8,189 @@ public enum Strings {
     public static let gameTitle = "Car Game"
 
     public enum Menu {
-        public static let startShift = "Start shift"
-        public static let settings = "Settings"
-        public static let resume = "Resume"
         public static let restart = "Restart"
-        public static let menu = "Menu"
         public static let back = "Back"
-        public static let paused = "Paused"
+    }
+
+    /// The Game tab between shifts: no menu, one tap starts.
+    public enum Ready {
+        public static let tapToStart = "Tap to start"
+
+        /// The duty of the next shift, and what it is worth.
+        public static func duty(_ duty: Duty, pay: Double) -> String {
+            switch duty {
+            case .normal: "Normal duty"
+            case .highAlert: "High alert · \(Strings.multiplier(pay)) pay"
+            }
+        }
         public static let noHighscore = "No highscore yet"
-        public static let tagline = "Tap to send the front car into the roundabout."
 
         public static func highscore(_ score: String) -> String { "Highscore \(score)" }
-        /// Highscore and banked money on the start screen.
+        /// Highscore and banked money.
         public static func status(highscore: String?, money: String?) -> String {
             let score = highscore.map(Self.highscore) ?? noHighscore
-            return money.map { "\(score) · \($0) money" } ?? score
+            return money.map { "\(score) · \(Strings.money($0))" } ?? score
         }
-        public static func pausedStatus(score: String, cars: Int) -> String { "\(score) points · \(HUD.cars(cars)) left" }
+        /// Test window only.
+        public static let keys = "Esc settings · Tab next page · H high alert"
+    }
+
+    /// The tab bar.
+    public enum Tabs {
+        public static func title(_ tab: Tab) -> String {
+            switch tab {
+            case .streetBuilder: "Street Builder"
+            case .game: "Game"
+            case .shop: "Shop"
+            case .upgrades: "Upgrades"
+            }
+        }
+    }
+
+    /// Pages that are still to come.
+    public enum Pages {
+        public static let shopLater = "Skins and chests come later."
+    }
+
+    /// The Street Builder tab.
+    public enum Builder {
+        public static let title = "Street Builder"
+        public static let ringFull = "Ring full"
+        public static let drag = "Drag onto the ring"
+        public static let pickOne = "Tap a part to see what it does."
+        public static let dragHint = "Drag it onto a free slot on the ring."
+        public static let buildHint = "Double-tap the part to build it · one tap takes it away."
+        /// Test window only.
+        public static let keys = "Drag with the mouse · double-click builds"
+
+        public static func name(_ part: StreetBuilderPage.Part) -> String {
+            switch part {
+            case .arm: "New arm"
+            }
+        }
+
+        /// What the part does, with the numbers from the config.
+        public static func explanation(_ part: StreetBuilderPage.Part, config: Config) -> String {
+            switch part {
+            case .arm:
+                let traffic = Upgrades.percent(config.trafficPerArm)
+                let pay = Upgrades.percent(config.payPerArm)
+                return "A wider ring with one more way in and out: \(traffic) more traffic, transporters more often, and \(pay) more pay per shift."
+            }
+        }
+    }
+
+    /// Money inside a sentence, where no note can be drawn: "2,000 cash". Standalone values
+    /// (balances, prices) carry the note icon instead (`Icons.moneyTag`).
+    public static func money(_ formatted: String) -> String { "\(formatted) cash" }
+
+    /// The Upgrades tab.
+    public enum Upgrades {
+        public static let title = "Upgrades"
+        public static let maxed = "Max"
+
+        /// The balance is drawn with the note beside it, so the number stands on its own.
+        public static func balance(_ money: String) -> String { money }
+        /// "2/10" under a card.
+        public static func steps(_ steps: Int, of maxSteps: Int) -> String { "\(steps)/\(maxSteps)" }
+        public static let pickOne = "Tap an upgrade to see what it does."
+        public static let buyHint = "Double-tap to buy."
+        /// Test window only.
+        public static let buyHintKeys = "Double-click or Enter to buy."
+        public static let keys = "1–8 pick · double-click buys"
+        public static let everyStepBought = "Every step bought."
+        /// "1,200 short".
+        public static func missing(_ money: String) -> String { "\(money) short" }
+        /// "2/4 · 1,600": steps bought, and the price of the next one.
+        public static func next(steps: Int, of maxSteps: Int, price: String) -> String { "\(steps)/\(maxSteps) · \(price)" }
+
+        public static func name(_ upgrade: Upgrade) -> String {
+            switch upgrade {
+            case .morePatrols: "More Patrols"
+            case .longerPursuit: "Longer Pursuit"
+            case .quietStreets: "Quiet Streets"
+            case .interceptor: "Interceptor"
+            case .dispatchRadio: "Dispatch Radio"
+            case .backup: "Backup"
+            case .cashRoute: "Cash Route"
+            case .overtime: "Overtime"
+            }
+        }
+
+        /// What the upgrade is good for, in plain words.
+        public static func explanation(_ upgrade: Upgrade) -> String {
+            switch upgrade {
+            case .morePatrols: "More police cars wait in your queue, so one is ready when a criminal shows up."
+            case .longerPursuit: "Criminals take longer to get away, which leaves you more time to catch them."
+            case .quietStreets: "Some shifts come with no criminal at all."
+            case .interceptor: "A police car right behind a criminal runs it down faster."
+            case .dispatchRadio: "Calling a police car to the front of the queue costs less of your combo."
+            case .backup: "Your shift survives one police car crash more."
+            case .cashRoute: "Money transporters show up sooner and more often."
+            case .overtime: "Every shift you finish pays more."
+            }
+        }
+
+        /// What the steps bought so far add up to, and what the next one adds.
+        public static func stepEffect(_ upgrade: Upgrade, steps: Int, config: Config) -> String {
+            let now = total(upgrade, steps: steps, config: config)
+            guard steps < upgrade.maxSteps else { return "Now \(now)" }
+            return "Now \(now) · next step \(total(upgrade, steps: steps + 1, config: config))"
+        }
+
+        /// The whole effect of `steps` steps, e.g. "+9 % police cars".
+        static func total(_ upgrade: Upgrade, steps: Int, config: Config) -> String {
+            let times = Double(steps)
+            switch upgrade {
+            case .morePatrols: return "+\(percent(times * config.patrolsPerStep)) police cars"
+            case .longerPursuit: return "+\(seconds(times * config.pursuitPerStep)) pursuit"
+            case .quietStreets: return "\(percent(times * config.quietStreetsPerStep)) fewer criminal shifts"
+            case .interceptor: return "+\(percent(times * config.interceptorPerStep)) chase speed"
+            case .dispatchRadio: return "+\(percent(times * config.dispatchRadioPerStep)) combo kept"
+            case .backup: return "+\(steps * config.backupPerStep) police crashes"
+            case .cashRoute: return "\(seconds(times * config.cashRoutePerStep)) sooner"
+            case .overtime: return "+\(percent(times * config.overtimePerStep)) pay"
+            }
+        }
+
+        /// What one step does, with the numbers from the config.
+        public static func detail(_ upgrade: Upgrade, config: Config) -> String {
+            switch upgrade {
+            case .morePatrols: "+\(percent(config.patrolsPerStep)) police cars in the queue"
+            case .longerPursuit: "+\(seconds(config.pursuitPerStep)) before a criminal gets away"
+            case .quietStreets: "Criminals in \(percent(config.quietStreetsPerStep)) fewer shifts"
+            case .interceptor: "Police chase \(percent(config.interceptorPerStep)) faster"
+            case .dispatchRadio: "Dispatch keeps \(percent(config.dispatchRadioPerStep)) more combo"
+            case .backup: config.backupPerStep == 1 ? "One more police crash per shift" : "\(config.backupPerStep) more police crashes per shift"
+            case .cashRoute: "Transporters come \(seconds(config.cashRoutePerStep)) sooner"
+            case .overtime: "+\(percent(config.overtimePerStep)) pay per shift"
+            }
+        }
+
+        static func percent(_ share: Double) -> String { "\(Int((share * 100).rounded())) %" }
+        static func seconds(_ value: Double) -> String {
+            value == value.rounded() ? "\(Int(value)) s" : "\(value) s"
+        }
     }
 
     /// The banner at the end of a shift.
     public enum Result {
         public static let gameOver = "GAME OVER"
         public static let escaped = "ESCAPED"
-        public static let shiftComplete = "SHIFT COMPLETE"
+        /// "LEVEL 3 COMPLETE".
+        public static func levelComplete(_ level: Int) -> String { "LEVEL \(level) COMPLETE" }
         public static let newHighscore = "New highscore"
-        public static let tapToContinue = "Tap to play again"
+        /// After a completed shift: on to the next level.
+        public static func nextLevel(_ level: Int) -> String { "Tap for level \(level)" }
+        /// After a lost one: the same level again.
+        public static func retryLevel(_ level: Int) -> String { "Tap to try level \(level) again" }
 
         public static func best(_ score: String) -> String { "Best \(score)" }
-        public static func stats(combo: String, tightFits: String, busted: Int, transporters: Int, money: String, time: String) -> String {
+        /// `money` is nil when the shift earned none.
+        public static func stats(combo: String, tightFits: String, busted: Int, transporters: Int, money: String?, time: String) -> String {
             let base = "\(time) · best combo \(combo) · \(tightFits) tight fits · \(busted) busted"
-            let extra = transporters > 0 ? " · \(transporters) paid · \(money) money" : ""
-            return base + extra
+            let paid = transporters > 0 ? " · \(transporters) paid" : ""
+            return base + paid + (money.map { " · +\(Strings.money($0))" } ?? "")
         }
         /// Test window only.
         public static func keys(seed: UInt64) -> String { "Seed \(seed) · Esc menu" }
@@ -73,10 +225,16 @@ public enum Strings {
         public static let dispatch = "DISPATCH"
         public static let secured = "SECURED"
         public static let seized = "SEIZED"
+        public static let lost = "LOST"
         /// "PAID +2,500".
         public static func paid(_ amount: String) -> String { "PAID \(amount)" }
 
         public static func combo(_ value: Int) -> String { "COMBO \(value)" }
+        public static func level(_ value: Int) -> String { "LEVEL \(value)" }
+        /// "LEVEL 12 · HIGH ALERT" while the shift is played on high alert.
+        public static func level(_ value: Int, duty: Duty) -> String {
+            duty == .highAlert ? "\(level(value)) · HIGH ALERT" : level(value)
+        }
         /// Cars still to send this shift: "12 cars", "1 car".
         public static func cars(_ count: Int) -> String { count == 1 ? "1 car" : "\(count) cars" }
         /// Seconds left on the chase, rounded up.
@@ -91,7 +249,7 @@ public enum Strings {
         public static let dispatch = "E  dispatch"
         public static let controls = [
             "Space / click  send car    E / right-click  dispatch    Esc  pause",
-            "R  restart    F1  debug    F2  slow motion    T  reload tuning.json",
+            "Tab  next page    R  restart    F1  debug    F2  slow motion    T  tuning",
         ]
 
         public static func number(_ value: Int) -> String { String(value) }
@@ -107,6 +265,11 @@ public enum Strings {
         }
         public static func tuningFailed(_ reason: String) -> String { "tuning.json not applied: \(reason)" }
         public static func unknownKeys(_ keys: [String]) -> String { "tuning.json: unknown \(keys.joined(separator: ", "))" }
+        public static func notEnoughMoney(_ price: String) -> String { "Not enough cash: \(price) needed" }
+        /// "New arm built · 5 arms".
+        public static func built(_ name: String, arms: Int) -> String { "\(name) built · \(arms) arms" }
+        /// "More Patrols 2/4".
+        public static func bought(_ name: String, steps: Int, of maxSteps: Int) -> String { "\(name) \(steps)/\(maxSteps)" }
     }
 
     /// Debug overlay (F1). Only in the test window.

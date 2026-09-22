@@ -11,8 +11,8 @@ extension World {
                 if case let .waiting(w) = vehicle.phase { return w.arm }
                 return nil
             }
-            // The arm a criminal was announced for stays free for it.
-            let free = Arm.ai.filter { !busy.contains($0) && $0 != reservedArm }
+            // An arm a criminal or a transporter was announced for stays free for it.
+            let free = layout.aiArms.filter { !busy.contains($0) && $0 != reservedArm && $0 != reservedTransporterArm }
             if !free.isEmpty {
                 spawnWaiting(at: rng.pick(free))
                 spawnCooldown = rng.double(in: config.aiSpawnDelay)
@@ -21,6 +21,12 @@ extension World {
 
         for i in vehicles.indices {
             guard case .waiting(var w) = vehicles[i].phase else { continue }
+            if w.approach > 0 {
+                w.approach = approachStep(w.approach, dt: dt)
+                vehicles[i].phase = .waiting(w)
+                vehicles[i].place(approachPose(w))
+                continue
+            }
             w.reaction -= dt
             if w.reaction <= 0 && canEnter(w.arm) {
                 let path = layout.entry(w.arm)
@@ -47,8 +53,37 @@ extension World {
     }
 
     mutating func spawnWaiting(at arm: Arm) {
-        let waiting = Vehicle.Waiting(arm: arm, reaction: rng.double(in: config.aiReaction))
-        vehicles.append(Vehicle(id: makeID(), owner: .ai, phase: .waiting(waiting), pose: layout.stopPose(arm)))
+        let waiting = Vehicle.Waiting(arm: arm, reaction: rng.double(in: config.aiReaction), approach: config.aiApproachDistance)
+        vehicles.append(Vehicle(id: makeID(), type: rollTrafficType(), owner: .ai, phase: .waiting(waiting), pose: approachPose(waiting)))
+    }
+
+    /// Normal traffic is cars and lorries; everything else is announced (`Criminals`,
+    /// `Transporters`).
+    mutating func rollTrafficType() -> VehicleType {
+        rng.unit() < config.truckChance ? .truck : .car
+    }
+
+    /// Where a car driving up to its stop line is: that far back along its lane.
+    func approachPose(_ waiting: Vehicle.Waiting) -> Path.Pose {
+        let stop = layout.stopPose(waiting.arm)
+        return Path.Pose(position: stop.position - Vec2(angle: stop.heading) * waiting.approach, heading: stop.heading)
+    }
+
+    /// One step of driving up: at ring speed, then braking so it stops right at the line.
+    func approachStep(_ distance: Double, dt: Double) -> Double {
+        let braking = (2 * config.aiApproachBrake * config.gravity * distance).squareRoot()
+        let speed = max(min(ringSpeed, braking), 8)
+        return max(0, distance - speed * dt)
+    }
+
+    /// Whether a criminal or a transporter can be announced for `arm`: nobody waits there
+    /// and nothing else is announced there, so the warning marks only the one that comes.
+    func isFreeForWarning(_ arm: Arm) -> Bool {
+        let waiting = vehicles.contains { vehicle in
+            if case let .waiting(w) = vehicle.phase { return w.arm == arm }
+            return false
+        }
+        return !waiting && arm != reservedArm && arm != reservedTransporterArm
     }
 
     /// Places a car directly on the ring. Used for the start of a shift and in tests.
@@ -61,7 +96,7 @@ extension World {
             distanceToExit: layout.ringDistance(from: s, to: layout.exitRingS(exitArm)),
             justMerged: nil
         )
-        let vehicle = Vehicle(id: makeID(), owner: .ai, phase: .ring(ring), pose: layout.ring.pose(at: s))
+        let vehicle = Vehicle(id: makeID(), type: rollTrafficType(), owner: .ai, phase: .ring(ring), pose: layout.ring.pose(at: s))
         vehicles.append(vehicle)
         return vehicle.id
     }
@@ -81,7 +116,7 @@ extension World {
             }
             if tooClose { continue }
             placed.append(s)
-            spawnRingCar(at: s, exitArm: rng.pick(Arm.ai))
+            spawnRingCar(at: s, exitArm: rng.pick(layout.aiArms))
         }
     }
 
@@ -127,7 +162,7 @@ extension World {
             let me = hitbox(at: path.pose(at: profile.distance(at: t)))
             for other in others {
                 guard let pose = predictedPose(of: other, after: launchDelay + t) else { continue }
-                smallest = min(smallest, Collision.gap(me, hitbox(at: pose)) / ringSpeed)
+                smallest = min(smallest, Collision.gap(me, hitbox(at: pose, type: other.type)) / ringSpeed)
                 if smallest < stopBelow { return smallest }
             }
         }
@@ -145,7 +180,7 @@ extension World {
             let me = hitbox(at: path.pose(at: profile.distance(at: t)))
             for other in vehicles where other.isCollidable || other.isCrashed {
                 guard let pose = predictedPose(of: other, after: launchDelay + t) else { continue }
-                let gap = Collision.gap(me, hitbox(at: pose)) / ringSpeed
+                let gap = Collision.gap(me, hitbox(at: pose, type: other.type)) / ringSpeed
                 gaps[other.id] = min(gaps[other.id] ?? .infinity, gap)
             }
         }

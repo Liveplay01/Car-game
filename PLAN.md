@@ -13,7 +13,7 @@ eigene Website ist die Startseite des Spiels.
 - **Swift, für alles:** Spiellogik, Testfenster, iPhone-App. Kein
   Cross-Plattform-Framework, keine Engine.
 - **iPhone-App:** SwiftUI für die Menüs, SpriteKit für die Spielszene, Core Haptics.
-- **Läuft auf jedem iPhone mit iOS 27** (ab iPhone 11 / SE 2. Gen.), im Hochformat.
+- **Läuft auf jedem iPhone ab iOS 26** (ab iPhone 11 / SE 2. Gen.), im Hochformat.
 - **Spielsprache:** nur Englisch.
 - **Kein GitHub:** Das Projekt liegt lokal.
 

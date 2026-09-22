@@ -24,7 +24,8 @@ Kreisverkehr-Timing-Spiel fürs iPhone (One-Tap, inspiriert von "Car Circle").
   Eingaben an und spielt Ton ab. Keine Spiellogik darin, kein Design-Aufwand.
 - **`App/`** (Xcode, Phase 2) enthält nur dünne Adapter (SpriteKit, Touch, Haptik,
   Audio) und die SwiftUI-Menüs.
-- **Zielgeräte:** jedes iPhone mit iOS 27 (ab iPhone 11 / SE 2. Gen.), Hochformat, einhändig.
+- **Zielgeräte:** jedes iPhone ab **iOS 26** (ab iPhone 11 / SE 2. Gen.), Hochformat,
+  einhändig. Nichts darf eine iOS-27-API voraussetzen.
 - **Spielsprache nur Englisch**, alle Texte zentral in `Strings.swift`. Die
   Projektdokumente sind auf Deutsch.
 - **Veröffentlichung:** App Store weltweit. Die eigene Website ist Landing Page
@@ -44,6 +45,8 @@ Kreisverkehr-Timing-Spiel fürs iPhone (One-Tap, inspiriert von "Car Circle").
 ```powershell
 cd Game;       swift test                                        # Logik-Tests
 cd Game;       swift run -c release Sim --shifts 1000 --seed 42  # Balancing-Bot
+cd Game;       swift run -c release Sim --curve --shifts 300     # Schwierigkeit pro Level
+cd Game;       swift run -c release Sim --career 120             # Laufbahnen: Level, Geld, Upgrades
 cd TestWindow; swift run -c release TestWindow                   # Spielen
 cd TestWindow; swift run SoundMaker                              # Platzhalter-Sounds neu erzeugen
 ```

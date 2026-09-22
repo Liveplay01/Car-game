@@ -13,7 +13,7 @@ Stand: 22.09.2026 · Die Details zur Basis (M0–M2) stehen in [FOUNDATION.md](F
 | M2 | Schicht & Punkte ✅ (Playtest offen) | M | komplette Schicht mit Punkten → **Basis spielbar** |
 | M3 | Polizei & Verbrecher ✅ (Playtest offen) | L | Verbrecher jagen, Einsatzfahrt |
 | M4 | Geldtransporter ✅ (Playtest offen) | M | Transporter abschirmen, erstes Geld |
-| M5 | Wirtschaft & Fortschritt | L | Geld verdienen und ausgeben, Gefahrenstufe |
+| M5 | Wirtschaft & Fortschritt (Level ✅, Geld & Upgrades ✅, Tab-Navigation ✅, fließender Übergang ✅, Gefahrenstufe ✅, Street Builder ✅) | L | Geld verdienen und ausgeben, Gefahrenstufe |
 | M6 | Look & Feel | M | finale Farben, Formen, Effekte, HUD und Sounds |
 
 ### Phase 2 · Mac: nur Fertigmachen
@@ -187,21 +187,225 @@ lesbar?
 
 **Ziel:** ein Grund, immer wieder zu spielen. Geld verdienen und sinnvoll ausgeben.
 
-- **Geldquellen:** Schichtabschluss (abhängig von den Punkten) und gerettete Transporter.
-- **Vor jeder Schicht:** "Normal Duty" oder "High Alert" (mehr Risiko, dreifacher Ertrag).
+- **Geldquellen:** Schichtabschluss (abhängig vom Level) und gerettete Transporter.
+- **Vor jeder Schicht:** "Normal Duty" oder "High Alert" (mehr Risiko, dreifacher Ertrag) ✅.
 - **Upgrade-Shop:** die Wahrscheinlichkeits-Upgrades aus IDEA.md (Transporter-Chance,
   weniger Verbrecher, längeres Zeitlimit, mehr Polizei), mit steigenden Kosten.
 - **Ausbau-Stufen des Kreisverkehrs** als vereinfachte Map-Erweiterung: größerer
-  Ring, mehr Zufahrten, mehr Bots. Der freie Straßennetz-Editor kommt nach v1.0.
+  Ring, mehr Zufahrten, mehr Bots ✅ (als Ziehen und Ablegen im Street Builder). Der freie
+  Straßennetz-Editor kommt nach v1.0.
 - **Spielstand versioniert**, damit spätere Updates alte Spielstände lesen können.
   Das ist wichtig, sobald echte Spieler das Spiel haben.
-- **Neue Screens** (Vor der Schicht, Shop) samt Inhalten in `ScreenFlow`, im
-  Testfenster als Textmenüs mit Zifferntasten.
+- **Kein Startmenü:** Ein Tap auf dem Game-Tab startet die Schicht. Neue Seiten
+  (Upgrades, Shop, Street Builder) samt Inhalten in `ScreenFlow`, im Testfenster als
+  Textseiten mit Zifferntasten.
 - **Hauptnavigation als native iOS-Tab-Bar** (SwiftUI `TabView`): Street Builder,
   Game, Shop, Upgrades. In `ScreenFlow` als Tabs modelliert, gebaut in M7.
 
 **Beantwortet aus IDEA.md:** erste Kosten und Skalierung der Upgrades. Der
 Balancing-Bot rechnet vor, wie schnell man sich was leisten kann.
+
+### Schritt 1 · Level ✅
+
+Jede geschaffte Schicht ist ein Level höher, eine verlorene wird **auf demselben Level
+wiederholt**, mit neu ausgeloster Autozahl. Das Level steht im Spielstand.
+(`Levels.swift`, Werte in `Config.swift`, alle auch in `tuning.json`)
+
+| Was | Level 1 | Level 5 (`hardLevel`) | darüber |
+| --- | --- | --- | --- |
+| Autos pro Schicht | 8–12 | 12–16 | +1,1 pro Level, je Versuch ±2, höchstens 30 |
+| Verkehr (Dichte, Tempo, KI-Lücken) | entschärft (`easy…`-Werte) | Werte aus `Config.swift` | Tempo +1,5 % pro Level, bis +30 % |
+| Verbrecher-Countdown | 16 s | 12 s | −0,25 s pro Level, bis 8 s |
+| Anteil Polizeiautos | 30 % | 20 % | 20 % |
+
+Level 1 ist bewusst machbar, damit man reinkommt; ab Level 5 wird es richtig schwer.
+Startbildschirm ("Start level 3"), Mittelinsel ("LEVEL 3") und Ergebnis ("LEVEL 3
+COMPLETE", "Tap for level 4" bzw. "Tap to try level 3 again") zeigen das Level. Im
+Testfenster springt `--level 8` direkt zu einem Level.
+
+**Schwierigkeitskurve** (`swift run -c release Sim --curve`, 500 Schichten pro Level):
+
+| Level | Autos | Mensch-Bot geschafft | Dauer | Perfekter Bot | Dauer |
+| --- | --- | --- | --- | --- | --- |
+| 1 | 8–12 | 95 % | 8 s | 100 % | 4 s |
+| 3 | 10–14 | 89 % | 12 s | 100 % | 5 s |
+| 5 | 12–16 | 84 % | 15 s | 100 % | 6 s |
+| 10 | 18–22 | 90 % | 21 s | 100 % | 15 s |
+| 15 | 23–27 | 71 % | 25 s | 99 % | 18 s |
+| 20 | 28–30 | 65 % | 33 s | 99 % | 19 s |
+| 25+ | 28–30 | 29 % | 31 s | 100 % | 19 s |
+
+Ab Level 25 flacht die Kurve ab: Autozahl und Tempo sind an ihrer Grenze (ohne Upgrades, mit gekauften Upgrades siehe Schritt 2). Der
+Mensch-Bot schätzt Lücken perfekt ein; wie schwer es sich wirklich anfühlt, zeigt der
+Playtest. Der perfekte Bot crasht auf keinem Level (Test `perfectBotNeverCrashesAtAnyLevel`).
+
+**Gefunden beim Messen:** Bei hohem Tempo staut sich der Ring nach einem Takedown lange
+(Fahrer brauchen aus dem Stand ≈ 8 s zurück aufs Tempo, der Pickup bremst für nichts).
+Der Mensch-Bot hat bis dahin gewartet, bis der ganze Ring wieder fließt, und so
+Verbrecher entkommen lassen. Jetzt spielt er wie ein Mensch weiter, nur mit doppelt so
+großen Lücken.
+
+**Playtest-Fragen:** Ist Level 1 zu leicht, Level 5 zu schwer? Soll die Kurve über
+Level 20 hinaus weiter steigen (z. B. zwei Verbrecher gleichzeitig, Eskalation aus
+IDEA.md)? Ist ein verlorenes Level zu wiederholen motivierend oder frustrierend?
+
+### Schritt 2 · Geld & Upgrades ✅ · Tab-Navigation ✅
+
+**Geld:** jede geschaffte Schicht zahlt 200 + 60 × Level (Level 10: 800), dazu
+Transporter (800, in der Rush Hour doppelt) und 100 pro Auto, das einen Transporter
+abschirmt. Die alten Beträge (2.500 und 500) stammten aus den 2-Minuten-Schichten und
+hätten alles in 20 Schichten bezahlt. Geld aus verlorenen Schichten bleibt.
+
+**Upgrades** (Upgrades-Tab, `Upgrades.swift`; Preise ab 2.000, jede Stufe doppelt so
+teuer, die starken mit Aufschlag):
+
+| Upgrade | Wirkung pro Stufe | Stufen | Erste Stufe |
+| --- | --- | --- | --- |
+| More Patrols | +3 % Polizeiautos in der Schlange | 10 | 2.000 |
+| Longer Pursuit | +1 s Verbrecher-Countdown | 8 | 2.400 |
+| Quiet Streets | 10 % der Schichten ohne Verbrecher | 5 | 3.000 |
+| Interceptor | Polizei jagt im Ring 10 % schneller | 5 | 3.000 |
+| Dispatch Radio | Einsatzfahrt behält 10 % mehr Combo | 5 | 2.400 |
+| Backup | ein Polizei-Crash mehr pro Schicht | 3 | 6.000 |
+| Cash Route | Transporter kommen 1 s früher und öfter | 8 | 2.000 |
+| Overtime | +20 % Lohn pro Schicht | 10 | 2.000 |
+
+Die langen Upgrades (bis 10 Stufen) haben kleine Schritte, damit es immer etwas zu sparen
+gibt; jede Stufe kostet das 1,5-fache der vorigen. Insgesamt sind es 54 Stufen.
+
+**"Quiet Streets" hieß erst "Verbrecher kommen später"** – gemessen war das ein
+Nachteil: Später heißt mitten in der Rush Hour, wo der Verkehr am dichtesten und
+schnellsten ist. Jetzt heißt es "weniger Schichten mit Verbrechern".
+
+**Karriere-Simulation** (`swift run -c release Sim --career 120`, 40 Spieler, der
+Mensch-Bot kauft nach jeder Schicht die billigste Stufe, die er sich leisten kann):
+
+| Schichten | Level | geschafft (letzte 10) | Verdienst/Schicht | Upgrade-Stufen |
+| --- | --- | --- | --- | --- |
+| 10 | 10 | 87 % | ≈ 1.000 | 4/27 |
+| 30 | 26 | 76 % | ≈ 2.600 | 15/27 |
+| 50 | 38 | 59 % | ≈ 3.400 | 21/27 |
+| 80 | 50 | 42 % | ≈ 3.500 | 27/27 |
+| 120 | 68 | 41 % | ≈ 4.600 | 27/27 |
+
+Damit das späte Spiel trotz aller Upgrades schwer bleibt, steigt das Tempo jetzt bis
++30 % (Level 25) statt +20 %. +45 % war eine Wand (12 % geschafft ab Level 28). Nach
+etwa 80 Schichten ist alles gekauft; danach sammelt sich Geld an. Das fangen später
+Shop und Street Builder auf.
+
+**Navigation:** kein Startmenü mehr. Der Game-Tab zeigt den Kreisverkehr mit "LEVEL 4 ·
+11–15 cars · Tap to start"; ein Tap startet. Die Tab-Bar (Street Builder, Game, Shop,
+Upgrades) ist zwischen den Schichten sichtbar und während einer Schicht ausgeblendet.
+Einstellungen liegen über dem Game-Tab (App: Zahnrad, Testfenster: Esc). Shop und
+Street Builder sind noch Platzhalter.
+
+### Schritt 3 · Fließender Übergang, Upgrade-Karten, Bugfixes ✅
+
+**Fließender Übergang zwischen Schichten** (FOUNDATION.md 2.5): Nach dem Ergebnis läuft der
+Verkehr weiter, das Level steigt, das Tempo gleitet zum neuen Start-Tempo und die Autos der
+nächsten Schicht rollen von hinten in die Warteschlange, noch bevor man tippt. Der erste Tap
+schickt das vorderste Auto los und startet damit die Schicht; Verbrecher, Transporter und
+Verkehrsanstieg zählen erst ab da.
+
+**Upgrade-Karten:** je Karte ein gezeichnetes Bild (Streifenwagen, Stoppuhr, Schild,
+Geldrolle …), Name, Stufenpunkte und Preis. Ein Tap öffnet unten die Details mit Wirkung
+und Gesamtwirkung, ein Doppel-Tap kauft. Beim Kauf federt die Karte, ein Ring läuft nach
+außen, die neue Stufe ploppt auf und der Kontostand zählt herunter; fehlt Geld, wackelt die
+Karte kurz und der Preis leuchtet rot. Mit Reduce Motion bleiben nur Farbe und Deckkraft.
+
+**Bugfixes aus dem Playtest:**
+
+| Gemeldet | Ursache | Behoben |
+| --- | --- | --- |
+| Transporter hinterlässt gelbe Linien | Der Fluchtweg-Pfeil stand dauerhaft an seiner Ausfahrt, obwohl er dort erst nach dem Countdown rausfährt | Pfeil entfernt; er kreist ohnehin bis zum Countdown-Ende |
+| Zerstörter Transporter fuhr weiter | Er galt als "gepanzert" | Jeder Crash macht ihn zum Wrack, das Geld ist weg; dafür bremst er wie andere Fahrer |
+| Autos erscheinen sichtbar am Bildrand | Sie wurden direkt an der Haltelinie erzeugt | Sie erscheinen außerhalb des Bildes und fahren heran |
+| Gelber Transporter-Effekt an einem normalen Auto | Die KI mied nur die Zufahrt des Verbrechers, nicht die des Transporters | Warnungen nur an freien Zufahrten, KI meidet beide |
+
+### Schritt 4 · Gefahrenstufe ✅
+
+Vor jeder Schicht wählt man auf dem Game-Tab (Testfenster: **H**, App später ein
+Segmented Control) zwischen **Normal Duty** und **High Alert**. Die Wahl steht im
+Spielstand und gilt, bis man sie ändert.
+
+| High Alert | Wert |
+| --- | --- |
+| Autos pro Schicht | ×1,15 |
+| Verbrecher-Countdown | ×0,8, aber nie unter `minCriminalTime` |
+| Verbrecher | in jeder Schicht (`criminalChance` = 1) |
+| Geld (Schichtlohn, Transporter, Abschirm-Bonus) | ×3 |
+
+**Was nicht geht, und warum:** Tempo ×1,1 oder +2 Autos im Ring klingen naheliegend,
+machen aber hohe Level unspielbar statt riskanter, weil beides sich mit der Level-Kurve
+multipliziert (Mensch-Bot auf Level 35: 82 % → 17 %). Auch kürzere Abstände zwischen
+Verbrechern kippen das Spiel (Level 35: 9 %, fast nur noch Fluchten). Die jetzige
+Mischung kostet auf Level 10 rund 2 Prozentpunkte und auf Level 35 rund 28 – früh ein
+guter Deal, spät eine echte Wette.
+
+| Gemessen (Mensch-Bot, 400 Schichten) | Normal | High Alert |
+| --- | --- | --- |
+| Level 10 geschafft | 92 % | 90 % |
+| Level 20 geschafft | 94 % | 92 % |
+| Level 35 geschafft | 82 % | 54 % |
+
+In der Karriere (`Sim --career 120 --duty high`) kauft man damit früh doppelt so schnell
+Upgrades (35 statt 18 Stufen nach 30 Schichten), bleibt aber im späten Spiel eher stecken.
+
+**Playtest-Fragen:** Ist ×3 zu großzügig, solange man die Schichten locker schafft? Soll
+High Alert zusätzlich mehr Punkte geben, nicht nur mehr Geld?
+
+### Schritt 5 · Street Builder ✅
+
+Der Kreisverkehr wird im Street-Builder-Tab ausgebaut, per Ziehen und Ablegen:
+
+- Unten die **Palette** mit dem Teil "New arm" und seinem Preis. Ein Tap darauf zeigt wie
+  bei den Upgrades, was es bringt.
+- **Ziehen:** Sobald man zieht, leuchten die freien Steckplätze auf, das Teil rastet am
+  nächsten passenden ein. Zu dicht an einer bestehenden Zufahrt ist kein Ziel.
+- **Doppel-Tap auf das abgelegte Teil:** bauen. Die Zufahrt wächst aus dem Ring heraus, der
+  Ring pulst kurz, der Kontostand zählt herunter.
+- **Ein Tap darauf:** Das Teil blendet aus und ist weg. Kommt in der Zeit ein zweiter Tap,
+  wird stattdessen gebaut.
+- Fehlt Geld, wackelt das Teil und der Preis wird rot.
+
+**Technisch:** Zufahrten sitzen jetzt in Steckplätzen statt gleichmäßig verteilt
+(`Arm` mit Slot, `RoundaboutLayout` aus `Config.armSlots`, FOUNDATION.md 2.1). Ein Ausbau
+ändert die Geometrie, deshalb beginnt die wartende Schicht danach auf dem neuen
+Kreisverkehr neu statt den Verkehr zu übernehmen.
+
+| Zufahrten | Preis | Wirkung |
+| --- | --- | --- |
+| 5. | 25.000 | je Zufahrt: Ring +18 breiter, +25 % Verkehr, Transporter 15 % öfter, +30 % Lohn |
+| 6. | 50.000 | |
+| 7. | 100.000 | |
+| 8. | 200.000 | (Vollausbau, 16 Plätze bei Mindestabstand 2) |
+
+Zusammen 375.000 – genau der Betrag, der sich im späten Spiel sonst nur anhäuft.
+
+**Gemessen** (Mensch-Bot, Level 20, 300 Schichten): 4 Zufahrten 93 % geschafft, 6 Zufahrten
+92 %, 8 Zufahrten 73 %. Der Ausbau bringt also mehr Geld, macht die Schichten länger und
+erst im Vollausbau deutlich schwerer.
+
+**Playtest-Fragen:** Fühlt sich der größere Ring besser oder unübersichtlicher an? Sind die
+Preise richtig? Soll man eine gebaute Zufahrt wieder abreißen können?
+
+**Weitere Upgrade-Ideen** (noch nicht gebaut):
+
+- **Insurance:** Der erste Crash eines normalen Autos pro Schicht beendet sie nicht.
+  Sehr stark, weil es die Kernregel aufweicht; nur eine Stufe, sehr teuer.
+- **Precision:** Tight-Fit-Fenster +0,01 s pro Stufe (mehr Punkte, nicht leichter).
+- **Hot Streak:** Combo-Stufen eine Einfädelung früher.
+- **Early Warning / Scanner:** "WANTED" kommt 1 s früher, mehr Zeit für ein Polizeiauto.
+- **Carpool:** ein Auto weniger pro Schicht.
+- **Road Crew:** Wracks räumen schneller (`crashDuration` kürzer), weniger Stau nach Crashes.
+- **Rush Bonus:** Rush Hour zählt ×2,25 statt ×2.
+- **Armored Escort:** Transporter zahlen +20 %.
+- **Sirens:** KI-Autos warten an ihrer Haltelinie, solange ein Polizeiauto einfädelt.
+- **Lucky Day:** kleine Chance, dass eine Schicht doppelt zahlt.
+
+**Playtest-Fragen:** Fühlen sich die Upgrades spürbar an? Sind die Preise richtig (erste
+Stufe nach 2–3 Schichten)? Ist ein kaufbares "Insurance" gut oder nimmt es dem Spiel die
+Härte?
 
 ---
 
@@ -229,6 +433,39 @@ Testfenster zu sehen und zu hören.
 
 **Fertig, wenn:** man ohne Erklärung sieht und hört, was gut und was schlecht war.
 
+### Offen – als Nächstes dran (Stand 22.09.2026)
+
+Aus dem Playtest und den Ansagen von Leo, in dieser Reihenfolge:
+
+1. **Bug – Geldtransporter über das Schichtende hinaus:** Fährt am Ende einer
+   Schicht noch ein Transporter ein, ist er in der Folgeschicht zwar da, zählt
+   dort aber als ganz normales Auto (keine Sperrzonen, kein Geld). `nextShift`
+   nimmt die Fahrzeuge mit, aber nicht den Zustand von `TransporterState` /
+   `CriminalState`. Beides muss mitwandern (Frist auf die neue Schichtzeit
+   umrechnen) oder das Fahrzeug wird beim Übergang sauber zum normalen Auto.
+2. **Schwierigkeit:** Level 14 fühlt sich noch einen Tick zu leicht an
+   (Playtest Leo). Kurve ab Level 10 nachziehen und mit
+   `swift run -c release Sim --curve --shifts 300` gegenmessen.
+3. **Warnung im Innenteil:** Die Ankündigung von Verbrecher und Geldtransporter
+   soll **nicht mehr an der Zufahrt** stehen, sondern als **Ring im Innenteil
+   des Kreisverkehrs** (auf der Insel) angezeigt werden — der Blick bleibt in
+   der Mitte. Betrifft `HUD.addChase` / `HUD.addTransporter`.
+4. **Blaulicht wirft Licht auf den Boden:** Das Polizei-Blaulicht soll die
+   Fahrbahn mitbeleuchten (weicher blauer/roter Schein unter und neben dem
+   Auto, im Takt des Blinkens).
+5. **Trucks fertig bauen:** Der LKW ist als Fahrzeugtyp da (länger, schwerer,
+   eigenes Aussehen) — er ist die Grundlage der Mautstelle und muss im Spiel
+   sauber aussehen und sich sauber anfühlen.
+
+**Gerade angefangen (M5-Nachzügler, Street Builder):** Ringmodule
+`GameCore/Modules.swift` — **Mautstelle** (LKW zahlen, Abschnitt staut) und
+**Blitzer** (Strafe oberhalb des Tempolimits, Autos bremsen kurz) auf einer
+**festen Zahl von Modulplätzen** am Ring; ist alles belegt, wird getauscht
+(`Career.build(_:inSlot:config:)`). Fertig: Kern, Zeichnen im Spiel, Laufbahn.
+Offen: Test `ModuleTests` stürzt noch ab (untersuchen), Palette und Modulplätze
+im Street Builder, Platzhalter-Sound `toll` im SoundMaker, Doku in
+FOUNDATION.md 2.9.
+
 ---
 
 # Phase 2 · Mac
@@ -238,7 +475,7 @@ Testfenster zu sehen und zu hören.
 **Ziel:** Das fertige Spiel aus Phase 1 läuft mit Touch und Haptik auf dem iPhone.
 
 - Projektordner auf den Mac umziehen, Xcode 27 installieren, Time Machine einrichten.
-- **Xcode-Projekt** (iOS-App, Mindestversion iOS 27, Hochformat) mit dem Paket `Game/`.
+- **Xcode-Projekt** (iOS-App, Mindestversion iOS 26, Hochformat) mit dem Paket `Game/`.
 - **Adapter:** SpriteKit zeichnet die Render-Liste, Touch mit Zeitstempel als
   Eingabe, AVAudioEngine spielt die Sounds, Core Haptics die `.ahap`-Muster.
   120 Hz auf ProMotion-Geräten.

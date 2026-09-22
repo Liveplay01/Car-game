@@ -118,7 +118,12 @@ extension World {
             velocity = state.velocity
             spin = state.spin
         }
-        let mass = vehicle.type == .pickup ? config.criminalMass : (vehicle.type == .transporter ? config.transporterMass : 1)
+        let mass = switch vehicle.type {
+        case .pickup: config.criminalMass
+        case .transporter: config.transporterMass
+        case .truck: config.truckMass
+        case .car, .police: 1.0
+        }
         return RigidBody(
             position: vehicle.position,
             velocity: velocity,

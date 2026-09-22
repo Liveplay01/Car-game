@@ -8,6 +8,8 @@ public struct PlayerQueue: Sendable, Equatable {
         case clearing(vehicle: Int)
         /// Only with a `queueAdvanceDuration`: the next car rolls up.
         case advancing(elapsed: Double)
+        /// A new shift's cars drive up from behind into their slots (`queueFillSeconds`).
+        case filling(elapsed: Double)
     }
 
     /// Queued vehicle ids, front first.
@@ -45,10 +47,10 @@ extension World {
         guard queue.isReady, let id = queue.vehicles.first, let i = index(of: id) else { return false }
         queue.vehicles.removeFirst()
         queue.state = .clearing(vehicle: id)
-        let path = layout.entry(Arm.player)
+        let path = layout.entry(layout.player)
         let merge = Vehicle.Merging(
-            arm: Arm.player,
-            exitArm: randomExit(from: Arm.player),
+            arm: layout.player,
+            exitArm: randomExit(from: layout.player),
             profile: MergeProfile(pathLength: path.length, duration: config.mergeDuration, ringSpeed: ringSpeed),
             // `moveVehicles` adds this step's dt afterwards.
             elapsed: driven - Self.stepDuration
@@ -75,6 +77,9 @@ extension World {
         case let .advancing(elapsed):
             let next = elapsed + dt
             queue.state = next >= config.queueAdvanceDuration ? .ready : .advancing(elapsed: next)
+        case let .filling(elapsed):
+            let next = elapsed + dt
+            queue.state = next >= config.queueFillSeconds ? .ready : .filling(elapsed: next)
         }
         placeQueue()
     }
@@ -99,6 +104,10 @@ extension World {
             let x = config.queueAdvanceDuration > 0 ? min(max(elapsed / config.queueAdvanceDuration, 0), 1) : 1
             let easeOut = 1 - (1 - x) * (1 - x) * (1 - x)
             return 1 - easeOut
+        case let .filling(elapsed):
+            // Pull away and brake: slow at both ends, never faster than about the ring.
+            let x = config.queueFillSeconds > 0 ? min(max(elapsed / config.queueFillSeconds, 0), 1) : 1
+            return config.queueFillSlots * (1 - x * x * (3 - 2 * x))
         }
     }
 

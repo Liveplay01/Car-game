@@ -14,8 +14,12 @@ struct Popup: Sendable, Equatable {
         case dispatch
         /// A police car seized the transporter: no money.
         case seized
+        /// A crash wrecked the transporter: no money.
+        case lost
         /// A transporter left safely and the player was paid.
         case paid(Int)
+        /// A module on the ring earned money: a toll, a fine.
+        case earned(Int)
     }
 
     static let lifetime = 0.9
@@ -34,7 +38,7 @@ struct Popup: Sendable, Equatable {
 /// The in-game HUD (FOUNDATION.md 3): score top left, cars left and crashes top centre, the
 /// combo on the centre island, where it never covers traffic. Screen space, points.
 enum HUD {
-    static func add(world: World, format: TextFormat, showsKeys: Bool, timeScale: Double, to list: inout RenderList) {
+    static func add(world: World, level: Int, duty: Duty, score: Int, comboPop: Double, format: TextFormat, showsKeys: Bool, timeScale: Double, to list: inout RenderList) {
         let width = list.camera.viewport.x
         let margin = Metrics.hudMargin
         var id = RenderID.hud
@@ -46,14 +50,14 @@ enum HUD {
 
         addBand(height: Metrics.hudBand, to: &list, id: &id)
 
-        add(.text(format.number(world.score.points), position: Vec2(margin, Metrics.hudRow), size: Metrics.scoreSize, alignment: .leading, weight: .bold), .primary)
+        add(.text(format.number(score), position: Vec2(margin, Metrics.hudRow), size: Metrics.scoreSize, alignment: .leading, weight: .bold), .primary)
 
         // Cars still to send; during rush hour on an accent pill: a state change you notice
         // at a glance. It stays there once the shift is over.
         let counter = Vec2(width / 2, Metrics.hudRow)
         let cars = Strings.HUD.cars(world.carsLeft ?? 0)
         if world.shift.rushHourSince != nil {
-            add(.roundedRect(center: counter, size: Vec2(Metrics.counterPillWidth, 32), cornerRadius: 16, rotation: 0), .accent)
+            add(.roundedRect(center: counter, size: Vec2(Metrics.counterPillWidth, 38), cornerRadius: 19, rotation: 0), .accent)
             add(.text(cars, position: counter, size: Metrics.timerSize, alignment: .center, weight: .bold), .accentInk)
         } else {
             add(.text(cars, position: counter, size: Metrics.timerSize, alignment: .center, weight: .bold), .primary)
@@ -81,19 +85,29 @@ enum HUD {
         }
 
         if showsKeys {
-            // The app has a SwiftUI pause button here; the test window shows the key.
-            let glyph = Vec2(width - margin - 10, Metrics.hudRow)
-            add(.roundedRect(center: glyph + Vec2(-4, 0), size: Vec2(4, 16), cornerRadius: 1.5, rotation: 0), .muted)
-            add(.roundedRect(center: glyph + Vec2(4, 0), size: Vec2(4, 16), cornerRadius: 1.5, rotation: 0), .muted)
-            add(.text(Strings.Keys.esc, position: Vec2(glyph.x, Metrics.strikeRow), size: 11, alignment: .center, weight: .regular), .muted)
             // The app gets a dispatch button (and the Action Button) in M7.
             add(.text(Strings.Keys.dispatch, position: Vec2(margin, Metrics.strikeRow), size: 11, alignment: .leading, weight: .regular), .muted)
             if timeScale != 1 {
-                add(.text(Strings.multiplier(timeScale), position: Vec2(glyph.x - 22, Metrics.strikeRow), size: 13, alignment: .trailing, weight: .bold), .muted)
+                add(.text(Strings.multiplier(timeScale), position: Vec2(width - margin, Metrics.strikeRow), size: 13, alignment: .trailing, weight: .bold), .muted)
             }
         }
 
-        addIsland(world: world, to: &list, id: &id)
+        addIsland(world: world, level: level, duty: duty, pop: comboPop, to: &list, id: &id)
+    }
+
+    /// Back after an interruption: the world stands still and counts in. No menu, no button
+    /// to find — the shift simply picks up where it was (FOUNDATION.md 3).
+    static func addCountIn(secondsLeft: Double, to list: inout RenderList) {
+        let viewport = list.camera.viewport
+        var id = RenderID.overlay
+        list.add(.roundedRect(center: viewport / 2, size: viewport, cornerRadius: 0, rotation: 0), color: .background, opacity: 0.55, space: .screen, id: id)
+        id += 1
+        let center = list.camera.toScreen(.zero)
+        let count = max(1, Int(secondsLeft.rounded(.up)))
+        // Each second lands: the number comes in a little large and settles.
+        let within = secondsLeft - Double(count - 1)
+        let size = 64.0 * (1 + 0.18 * (1 - Ease.outCubic(Ease.clamp01((1 - within) / 0.35))))
+        list.add(.text(String(count), position: center, size: size, alignment: .center, weight: .bold), color: .primary, space: .screen, id: id)
     }
 
     /// The north arm runs up under the HUD. A band in the background colour keeps the text
@@ -111,8 +125,9 @@ enum HUD {
         }
     }
 
-    /// Multiplier, combo count and the rush hour factor on the centre island.
-    private static func addIsland(world: World, to list: inout RenderList, id: inout Int) {
+    /// Multiplier, combo count, and above them the level, or in rush hour its factor, on
+    /// the centre island.
+    private static func addIsland(world: World, level: Int, duty: Duty, pop: Double, to list: inout RenderList, id: inout Int) {
         let config = world.config
         let center = list.camera.toScreen(.zero)
         let tier = Scoring.tier(combo: world.score.combo, config: config)
@@ -120,8 +135,10 @@ enum HUD {
         let color: ColorToken = tier == 0 ? .muted : (isTopTier ? .accent : .primary)
         let multiplier = Scoring.multiplier(tier: tier, config: config)
 
+        // A new tier lands with a short spring, so it is felt without looking for it.
+        let size = Metrics.multiplierSize * (1 + 0.16 * sin(.pi * Ease.outCubic(pop)))
         list.add(
-            .text(Strings.comboMultiplier(multiplier), position: center, size: Metrics.multiplierSize, alignment: .center, weight: .bold),
+            .text(Strings.comboMultiplier(multiplier), position: center, size: size, alignment: .center, weight: .bold),
             color: color, space: .screen, id: id
         )
         id += 1
@@ -136,6 +153,11 @@ enum HUD {
             list.add(
                 .text(Strings.HUD.rushFactor(config.rushHourScoreFactor), position: center + Vec2(0, -38), size: Metrics.comboLabelSize, alignment: .center, weight: .bold),
                 color: .accent, space: .screen, id: id
+            )
+        } else {
+            list.add(
+                .text(Strings.HUD.level(level, duty: duty), position: center + Vec2(0, -38), size: Metrics.comboLabelSize, alignment: .center, weight: .bold),
+                color: duty == .highAlert ? .destructive : .muted, space: .screen, id: id
             )
         }
         id += 1
@@ -196,7 +218,7 @@ enum HUD {
 
     /// The money transporter: a pulsing ring at the arm it will come from, then a countdown
     /// ring around the truck that empties as its time runs out, plus the secure zones as
-    /// pale arcs on the ring.
+    /// pale arcs on the ring. It circles until its time is up, so no exit is marked.
     static func addTransporter(world: World, alpha: Double, to list: inout RenderList) {
         let config = world.config
         var id = RenderID.hud + 600
@@ -228,19 +250,6 @@ enum HUD {
             let label = list.camera.toScreen(pose.position) + Vec2(0, -list.camera.toScreen(length: 20) - 12)
             list.add(.text(String(Int((deadline - world.time).rounded(.up))), position: label, size: 14, alignment: .center, weight: .bold), color: .vehicleCargo, space: .screen, id: id)
             id += 1
-            // Its way out, marked ahead of time (IDEA.md: escape route). Short, right at the
-            // mouth of the exit: the side arms are barely on screen in portrait.
-            if let arm = exitArm(of: truck) {
-                let exit = world.layout.exit(arm)
-                let tip = exit.pose(at: min(30, exit.length))
-                let back = Vec2(angle: tip.heading) * -8
-                list.add(.line(from: exit.pose(at: min(4, exit.length)).position, to: tip.position, thickness: 2.5), color: .vehicleCargo, opacity: 0.7, space: .world, id: id)
-                id += 1
-                for side in [-1.0, 1.0] {
-                    list.add(.line(from: tip.position, to: tip.position + back + back.right * (side * 0.8), thickness: 2.5), color: .vehicleCargo, opacity: 0.55, space: .world, id: id)
-                    id += 1
-                }
-            }
             // The secure zones, fore and aft, as pale arcs on the ring.
             for zone in world.secureZones() {
                 list.add(.arc(center: .zero, radius: config.ringRadius + config.laneWidth / 2 - 3, thickness: 2,
@@ -250,16 +259,6 @@ enum HUD {
             }
         case .idle, .leaving, .seized:
             break
-        }
-    }
-
-    /// The arm a vehicle will leave by.
-    private static func exitArm(of vehicle: Vehicle) -> Arm? {
-        switch vehicle.phase {
-        case let .merging(m): m.exitArm
-        case let .ring(r): r.exitArm
-        case let .exiting(e): e.arm
-        case .queued, .waiting, .crashed: nil
         }
     }
 
@@ -292,14 +291,47 @@ enum HUD {
             case .seized:
                 text = Strings.HUD.seized
                 color = .vehicleCargo
+            case .lost:
+                text = Strings.HUD.lost
+                color = .destructive
             case let .paid(amount):
                 text = Strings.HUD.paid(format.signed(amount))
                 color = .vehicleCargo
+            case let .earned(amount):
+                // Small, quiet money: it happens many times a shift.
+                text = format.signed(amount)
+                color = .accent
             }
             list.add(
                 .text(text, position: camera.toScreen(popup.position) + Vec2(0, -30 - rise), size: Metrics.popupSize * scale, alignment: .center, weight: .bold),
                 color: color, opacity: opacity, space: .screen, id: RenderID.popups + popup.serial % 1_000
             )
+        }
+    }
+}
+
+/// The Game tab between shifts: which level comes next, how many cars it has, and that one
+/// tap starts it. There is no start menu (FOUNDATION.md 3); the shift is already flowing
+/// behind it.
+enum ReadyBanner {
+    static func add(level: Int, cars: Int, duty: Duty, dutyPay: Double, status: String, time: Double, reduceMotion: Bool, showsKeys: Bool, to list: inout RenderList) {
+        let width = list.camera.viewport.x
+        var id = RenderID.hud
+        HUD.addBand(height: Metrics.resultBand, to: &list, id: &id)
+        func text(_ string: String, _ position: Vec2, size: Double, weight: FontWeight = .bold, color: ColorToken, opacity: Double = 1) {
+            list.add(.text(string, position: position, size: size, alignment: .center, weight: weight), color: color, opacity: opacity, space: .screen, id: id)
+            id += 1
+        }
+        text(Strings.HUD.level(level), Vec2(width / 2, 36), size: 24, color: .accent)
+        text(Strings.HUD.cars(cars), Vec2(width / 2, 72), size: 20, color: .primary)
+        text(Strings.Ready.duty(duty, pay: dutyPay), Vec2(width / 2, 100), size: 14, color: duty == .highAlert ? .destructive : .muted)
+        text(status, Vec2(width / 2, 124), size: 13, weight: .regular, color: .muted)
+        // The prompt breathes gently, so the waiting screen is alive; still with Reduce Motion.
+        let island = list.camera.toScreen(.zero)
+        let breath = reduceMotion ? 1 : 0.7 + 0.3 * (0.5 + 0.5 * cos(time * 2.4))
+        text(Strings.Ready.tapToStart, island, size: 17, color: .primary, opacity: breath)
+        if showsKeys {
+            text(Strings.Ready.keys, island + Vec2(0, 28), size: 12, weight: .regular, color: .muted)
         }
     }
 }
@@ -327,7 +359,7 @@ enum ResultBanner {
         }
 
         let (title, titleColor): (String, ColorToken) = switch result.outcome {
-        case .completed: (Strings.Result.shiftComplete, .accent)
+        case .completed: (Strings.Result.levelComplete(summary.level), .accent)
         case .struckOut: (Strings.Result.gameOver, .destructive)
         case .escaped: (Strings.Result.escaped, .vehicleCriminal)
         }
@@ -343,8 +375,9 @@ enum ResultBanner {
         let prompt = Ease.outCubic((age - inputLock) / Self.enter)
         guard prompt > 0 else { return }
         let island = list.camera.toScreen(.zero)
-        text(Strings.Result.tapToContinue, island, size: 17, color: .primary, opacity: prompt)
-        text(Strings.Result.stats(combo: format.number(result.bestCombo), tightFits: format.number(result.tightFits), busted: result.takedowns, transporters: result.transporters, money: format.number(result.money), time: format.seconds(result.time)), island + Vec2(0, 28), size: 13, weight: .regular, color: .muted, opacity: prompt)
+        let next = result.outcome == .completed ? Strings.Result.nextLevel(summary.level + 1) : Strings.Result.retryLevel(summary.level)
+        text(next, island, size: 17, color: .primary, opacity: prompt)
+        text(Strings.Result.stats(combo: format.number(result.bestCombo), tightFits: format.number(result.tightFits), busted: result.takedowns, transporters: result.transporters, money: result.money > 0 ? format.number(result.money) : nil, time: format.seconds(result.time)), island + Vec2(0, 28), size: 13, weight: .regular, color: .muted, opacity: prompt)
         if showsKeys {
             text(Strings.Result.keys(seed: result.seed), island + Vec2(0, 48), size: 12, weight: .regular, color: .muted, opacity: prompt)
         }

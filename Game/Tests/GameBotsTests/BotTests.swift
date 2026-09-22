@@ -19,6 +19,17 @@ struct BotTests {
     }
 
     /// Tapping without looking loses: a normal car's first crash ends the shift.
+    /// Faster and denser levels stay fair: the perfect bot never crashes on any of them.
+    @Test(arguments: [1, 10, 25])
+    func perfectBotNeverCrashesAtAnyLevel(level: Int) {
+        for seed in UInt64(1)...2 {
+            var bot = PerfectBot()
+            let result = ShiftRunner.play(&bot, config: config.forLevel(level, seed: seed), seed: seed)
+            #expect(result.crashes == 0, "replay with --level \(level) --seed \(seed)")
+            #expect(result.policeCrashes == 0)
+        }
+    }
+
     @Test func randomTapperLosesItsShifts() {
         for seed in UInt64(1)...3 {
             var bot = RandomBot(seed: seed)

@@ -55,10 +55,10 @@ struct TransporterTests {
             return
         }
         let config = world.config
-        #expect(Arm.ai.contains(warning.arm))
+        #expect(world.layout.aiArms.contains(warning.arm))
         #expect(config.transporterFirst.contains(warning.time))
         #expect(entered.deadline - config.transporterTime >= warning.time + config.transporterWarning - 1e-9)
-        #expect(entered.deadline - config.transporterTime < warning.time + config.transporterWarning + 0.1)
+        #expect(entered.deadline - config.transporterTime < warning.time + config.transporterWarning + 5)
         #expect(escaped)
         #expect(world.score.money > 0)
         #expect(world.score.transporters >= 1)
@@ -95,6 +95,22 @@ struct TransporterTests {
         #expect(world.score.money >= world.config.transporterPay)
     }
 
+    @Test func theWarningMarksOnlyTheTransporter() {
+        var config = Config()
+        config.criminalFirst = 1e9...1e9
+        var world = World(config: config, seed: 4)
+        var warned = false
+        for _ in 0..<(30 * World.stepRate) {
+            world.step()
+            _ = world.takeEvents()
+            guard case let .warning(arm, _) = world.transporter.phase else { continue }
+            warned = true
+            let waiting = world.vehicles.contains { if case let .waiting(w) = $0.phase { w.arm == arm } else { false } }
+            #expect(!waiting)
+        }
+        #expect(warned)
+    }
+
     @Test func policeCarSeizesTheTransporter() {
         var world = transporterShift(police: true)
         guard let truck = world.runUntilTransporter() else {
@@ -107,8 +123,8 @@ struct TransporterTests {
         #expect(world.vehicle(id: truck)?.isCrashed == true)
     }
 
-    @Test func aNormalCarBouncesOffTheTransporter() {
-        var world = transporterShift(police: false)
+    @Test func aCrashWrecksTheTransporterAndItsMoney() {
+        var world = transporterShift(police: false) { $0.maxStrikes = 3 }
         guard let truck = world.runUntilTransporter() else {
             Issue.record("no transporter")
             return
@@ -116,12 +132,12 @@ struct TransporterTests {
         let events = world.launch(into: truck)
         let crash = events.compactMap(\.crash).first
         #expect(crash?.isStrike == true)
-        #expect(crash?.isTakedown == false)
-        // The truck drives on, dented.
-        let criminal = world.vehicle(id: truck)
-        #expect(criminal?.isCrashed == false)
-        #expect(criminal?.dents.isEmpty == false)
-        #expect(world.transporter.vehicle == truck)
+        // It stops as a wreck, and nothing is paid for it.
+        #expect(world.vehicle(id: truck)?.isCrashed == true)
+        #expect(events.contains { if case .transporterLost(truck, _, _) = $0 { true } else { false } })
+        world.run(steps: 20 * World.stepRate)
+        #expect(world.score.transporters == 0)
+        #expect(world.score.money == 0)
     }
 
     @Test func shieldBonusForACarInASecureZone() {

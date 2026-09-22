@@ -32,14 +32,17 @@ extension World {
         var id: Int
         var s: Double
         var speed: Double
+        /// How long the body in the lane is: a lorry takes more room than a car.
+        var length: Double
     }
 
     mutating func updateDrivers(_ dt: Double) {
         let quarry = pursuitQuarry
-        guard isTrafficDisturbed || quarry != nil else { return }
+        guard isTrafficDisturbed || quarry != nil || !config.modules.isEmpty else { return }
         let lane = ringLaneOccupants()
-        // Criminals and transporters do not brake for anything: they plough on.
-        for i in vehicles.indices where vehicles[i].type != .pickup && vehicles[i].type != .transporter {
+        // Criminals do not brake for anything: they plough on. The transporter brakes like
+        // everybody else; a crash would wreck it.
+        for i in vehicles.indices where vehicles[i].type != .pickup {
             let id = vehicles[i].id
             switch vehicles[i].phase {
             case .ring(var r):
@@ -47,7 +50,7 @@ extension World {
                 if let quarry, lead?.id == quarry, vehicles[i].isPlayerPolice {
                     r.drive = pursue(r.drive, dt: dt)
                 } else {
-                    r.drive = drive(r.drive, lead: lead, id: id, dt: dt)
+                    r.drive = drive(r.drive, lead: lead, id: id, limit: speedLimit(atRingS: r.s), dt: dt)
                 }
                 vehicles[i].phase = .ring(r)
             case .exiting(var e):
@@ -85,10 +88,12 @@ extension World {
 
     /// One driver, one step: notice, react, brake or get back into the flow, from below
     /// after braking or from above after a chase.
-    func drive(_ current: Drive, lead: Lead?, id: Int, dt: Double) -> Drive {
+    /// - Parameter limit: how fast this driver may go where it is (a module's zone).
+    func drive(_ current: Drive, lead: Lead?, id: Int, limit: Double? = nil, dt: Double) -> Drive {
         var drive = current
         drive.isPursuing = false
         let g = config.gravity
+        let limit = limit ?? ringSpeed
         var speed = drive.speed ?? ringSpeed
         var needed = 0.0
         if let lead, speed > lead.speed {
@@ -107,10 +112,11 @@ extension World {
         }
         if alarmed {
             speed = max(0, speed - min(needed * 1.1, config.driverBrake * g) * dt)
-        } else if speed > ringSpeed {
-            speed = max(ringSpeed, speed - config.driverAcceleration * g * dt)
+        } else if speed > limit {
+            // Over the limit: off the gas, or braking for a module's zone.
+            speed = max(limit, speed - config.driverAcceleration * g * dt)
         } else if canSpeedUp(speed, behind: lead) {
-            speed = min(ringSpeed, speed + config.driverAcceleration * g * dt)
+            speed = min(limit, speed + config.driverAcceleration * g * dt)
         }
         if abs(speed - ringSpeed) < 1e-9 && !alarmed {
             return Drive()
@@ -143,18 +149,18 @@ extension World {
         for vehicle in vehicles {
             switch vehicle.phase {
             case let .ring(r):
-                occupants.append(Occupant(id: vehicle.id, s: r.s, speed: r.drive.speed ?? ringSpeed))
+                occupants.append(Occupant(id: vehicle.id, s: r.s, speed: r.drive.speed ?? ringSpeed, length: length(of: vehicle.type)))
             case let .exiting(e) where e.s < config.carLength:
                 // Still half in the ring lane.
                 let s = Angle.wrap(layout.exitRingS(e.arm) + e.s, period: circumference)
-                occupants.append(Occupant(id: vehicle.id, s: s, speed: e.drive.speed ?? ringSpeed))
+                occupants.append(Occupant(id: vehicle.id, s: s, speed: e.drive.speed ?? ringSpeed, length: length(of: vehicle.type)))
             case let .crashed(state):
                 // A wreck lying across the lane blocks it with its whole length.
                 let nearest = wreckPoints(vehicle).min { abs($0.length - layout.ringRadius) < abs($1.length - layout.ringRadius) } ?? vehicle.position
                 guard abs(nearest.length - layout.ringRadius) - config.carWidth / 2 < halfLane - config.carWidth / 2 + 1 else { continue }
                 let s = Angle.wrap(nearest.angle, period: Angle.tau) * layout.ringRadius
                 let tangent = Vec2(angle: nearest.angle + .pi / 2)
-                occupants.append(Occupant(id: vehicle.id, s: s, speed: max(0, state.velocity.dot(tangent))))
+                occupants.append(Occupant(id: vehicle.id, s: s, speed: max(0, state.velocity.dot(tangent)), length: length(of: vehicle.type)))
             case .queued, .waiting, .merging, .exiting:
                 break
             }
@@ -168,7 +174,7 @@ extension World {
         for occupant in occupants where occupant.id != id {
             let ahead = layout.ringDistance(from: s, to: occupant.s)
             guard ahead > 0, ahead < circumference / 2 else { continue }
-            let gap = ahead - config.carLength
+            let gap = ahead - occupant.length
             if nearest == nil || gap < nearest!.gap {
                 nearest = Lead(id: occupant.id, gap: gap, speed: occupant.speed)
             }
@@ -189,7 +195,7 @@ extension World {
         for vehicle in vehicles where vehicle.id != id {
             switch vehicle.phase {
             case let .exiting(e) where e.arm == arm && e.s > s:
-                consider(vehicle.id, e.s - s - config.carLength, e.drive.speed ?? ringSpeed)
+                consider(vehicle.id, e.s - s - length(of: vehicle.type), e.drive.speed ?? ringSpeed)
             case let .crashed(state):
                 let hits = wreckPoints(vehicle).map { path.nearest(to: $0) }
                 guard let (along, distance) = hits.min(by: { $0.distance < $1.distance }),

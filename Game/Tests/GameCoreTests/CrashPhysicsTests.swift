@@ -93,7 +93,7 @@ struct CrashPhysicsTests {
 struct WorldCrashTests {
     @Test func crashedCarsBounceApartAndSlowDown() {
         var world = emptyWorld()
-        world.spawnRingCar(at: world.ringPositionAhead(ofMergeEnd: 4), exitArm: .west)
+        world.spawnRingCar(at: world.ringPositionAhead(ofMergeEnd: 4), exitArm: world.west)
         world.tap(at: 0)
         let events = world.run(steps: 90) { $0.vehicles.contains(where: \.isCrashed) }
         guard let crash = events.compactMap(\.crash).first,
@@ -118,7 +118,7 @@ struct WorldCrashTests {
 
     @Test func wrecksNeverOverlapWhileTheySlide() {
         var world = emptyWorld()
-        world.spawnRingCar(at: world.ringPositionAhead(ofMergeEnd: 0), exitArm: .west)
+        world.spawnRingCar(at: world.ringPositionAhead(ofMergeEnd: 0), exitArm: world.west)
         world.tap(at: 0)
         world.run(steps: 90) { $0.vehicles.contains(where: \.isCrashed) }
         for _ in 0..<(2 * World.stepRate) {
@@ -133,7 +133,7 @@ struct WorldCrashTests {
     @Test func damageIsWhereTheCarWasHit() {
         var world = emptyWorld()
         // The ring car ahead is hit from behind, the merging car at its front.
-        world.spawnRingCar(at: world.ringPositionAhead(ofMergeEnd: world.config.carLength - 3), exitArm: .west)
+        world.spawnRingCar(at: world.ringPositionAhead(ofMergeEnd: world.config.carLength - 3), exitArm: world.west)
         let player = world.queue.vehicles[0]
         world.tap(at: 0)
         world.run(steps: 90) { $0.vehicles.contains(where: \.isCrashed) }
