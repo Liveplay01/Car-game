@@ -1,0 +1,33 @@
+# ─── Swift Package Manager ──────────────────────────────────────────
+.build/
+Game/.build/
+TestWindow/.build/
+*.o
+*.d
+
+# ─── Xcode ──────────────────────────────────────────────────────────
+*.xcworkspace/xcuserdata/
+*.xcodeproj/xcuserdata/
+*.xcodeproj/project.xcworkspace/xcuserdata/
+DerivedData/
+*.ipa
+*.xcarchive
+build/
+
+# ─── macOS ──────────────────────────────────────────────────────────
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# ─── Windows ────────────────────────────────────────────────────────
+Thumbs.db
+Desktop.ini
+*.lnk
+
+# ─── VS Code ────────────────────────────────────────────────────────
+.vscode/
+*.swp
+
+# ─── Tuning / Savegames (lokal, nicht versionieren) ─────────────────
+TestWindow/tuning.json
+TestWindow/savegame.json
