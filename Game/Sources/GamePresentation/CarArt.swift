@@ -41,6 +41,7 @@ enum CarArt {
         static let ribs = 18
         static let cracks = 20
         static let flames = 24
+        static let groundGlow = 28
         static let outline = 32
     }
 
@@ -228,6 +229,21 @@ enum CarArt {
         let slot = { RenderID.vehicle(id, part: $0) }
         let body = bodyColor(type, id: id)
         let paintedInThisCar = bodyColor(type)
+
+        // The light bar throws a soft glow onto the road beside the car, flashing side to
+        // side with the beacon itself (ROADMAP.md M6). Drawn first, so it sits under the body.
+        if let lights, type == .police {
+            let glow = lights < 0.5 ? (1.0, 0.3) : (0.3, 1.0)
+            let reach = config.carWidth * 1.5
+            let side = config.carWidth * 0.85
+            let redCenter = world(Vec2(0, side), pose)
+            list.add(.circle(center: redCenter, radius: reach), color: .lightRed, opacity: opacity * 0.18 * glow.0, space: .world, id: slot(Slot.groundGlow))
+            list.add(.circle(center: redCenter, radius: reach * 0.5), color: .lightRed, opacity: opacity * 0.4 * glow.0, space: .world, id: slot(Slot.groundGlow + 1))
+            let blueCenter = world(Vec2(0, -side), pose)
+            list.add(.circle(center: blueCenter, radius: reach), color: .lightBlue, opacity: opacity * 0.18 * glow.1, space: .world, id: slot(Slot.groundGlow + 2))
+            list.add(.circle(center: blueCenter, radius: reach * 0.5), color: .lightBlue, opacity: opacity * 0.4 * glow.1, space: .world, id: slot(Slot.groundGlow + 3))
+        }
+
         if dents.isEmpty {
             // A dark outline under the body: at the size a phone shows a car, this is what
             // keeps it crisp against the asphalt (FOUNDATION.md 3).

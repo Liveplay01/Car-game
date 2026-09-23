@@ -42,19 +42,21 @@ geschnitten, dass diese Systeme später ohne Umbau andocken (Abschnitt 4.6).
 | Audio | Sounddateien (`.wav`), im Testfenster über raylib, in der App über AVAudioEngine | dieselben Dateien auf beiden Seiten |
 | Texte | nur Englisch, zentral in `Strings.swift` | eine Quelle für Testfenster und App |
 | Speichern | `Codable` → JSON-Datei | einfach, versionierbar, überall gleich |
-| Tests | Swift Testing (unter Windows); in Phase 2 zusätzlich XCUITest | – |
-| Werkzeuge | VS Code + Swift-Erweiterung (Windows); Xcode 27 nur zum Fertigmachen (Mac) | – |
+| Tests | Swift Testing (unter Windows); ob XCUITest in Swift Playgrounds läuft, ist in M7 zu klären, sonst manuelles Playtesting | – |
+| Werkzeuge | VS Code + Swift-Erweiterung (Windows); Swift Playgrounds nur zum Fertigmachen (iPad) | – |
 | Fremdcode | In der App keiner, nur Apple-Frameworks. raylib nur im Testfenster | keine Abhängigkeiten in der App |
 
-**Kein Backend, kein eigener Server, kein GitHub.** Das Projekt und der Spielstand
-liegen lokal. Spätere Online-Funktionen laufen über Apples eigene Dienste (Game
-Center, CloudKit, StoreKit).
+**Kein Backend, kein eigener Server.** Das Projekt und der Spielstand liegen
+lokal; GitHub kommt ab Phase 2 nur als Sync-Kanal zwischen Windows und iPad dazu
+(Abschnitt 1.2). Spätere Online-Funktionen laufen über Apples eigene Dienste
+(Game Center, CloudKit, StoreKit).
 
-### 1.2 Arbeitsweise: Windows zuerst, Mac nur zum Fertigmachen
+### 1.2 Arbeitsweise: Windows zuerst, iPad nur zum Fertigmachen
 
-Swift läuft unter Windows, SpriteKit, SwiftUI und die Haptik aber nicht. Damit der
-Mac trotzdem nur zum Fertigmachen gebraucht wird, steckt **alles Plattformneutrale
-in einem Paket**, das unter Windows entsteht und getestet wird:
+Swift läuft unter Windows, SpriteKit, SwiftUI und die Haptik aber nicht. Damit
+kein Mac gebraucht wird, steckt **alles Plattformneutrale in einem Paket**, das
+unter Windows entsteht und getestet wird; zum Fertigmachen reicht später ein
+iPad mit Swift Playgrounds:
 
 ```
   ┌──────────────────────────────────────────────────────────────┐
@@ -64,12 +66,12 @@ in einem Paket**, das unter Windows entsteht und getestet wird:
   │   GamePresentation   was man sieht, hört, fühlt – als Daten  │
   └──────────────┬──────────────────────────────┬────────────────┘
                  │                              │
-   Testfenster · Windows · jetzt      iPhone-App · Mac · zum Fertigmachen
+   Testfenster · Windows · jetzt      iPhone-App · iPad · zum Fertigmachen
    raylib zeichnet die Daten          SpriteKit zeichnet dieselben Daten
    Maus / Leertaste = Tap             Touch, Haptik, SwiftUI-Menüs
 ```
 
-| Unter Windows im Testfenster fertig und testbar | Erst mit Mac und iPhone |
+| Unter Windows im Testfenster fertig und testbar | Erst mit iPad (und iPhone) |
 | --- | --- |
 | Timing, Fairness, Kollision, Combo, Schicht | wie sich ein echter Touch anfühlt |
 | alle Features: Polizei, Transporter, Wirtschaft | Haptik spüren (die Muster schreiben wir am PC) |
@@ -77,31 +79,31 @@ in einem Paket**, das unter Windows entsteht und getestet wird:
 | Ablauf der Screens und ihre Inhalte | Performance auf dem iPhone, Bildschirmgrößen |
 | Balancing (Bot spielt 1000 Schichten) | Signieren, TestFlight, App Store |
 
-**Was für den Mac übrig bleibt (Phase 2):**
+**Was für Phase 2 übrig bleibt (iPad, Swift Playgrounds):**
 
-1. Xcode-Projekt anlegen und das Paket `Game/` einbinden
+1. `App.swiftpm`-Projekt anlegen und das Paket `Game/` per lokalem Pfad einbinden
 2. SpriteKit-Adapter: zeichnet die Render-Liste aus `GamePresentation`
 3. Touch-, Haptik- und Audio-Adapter
 4. SwiftUI-Menüs als reine Ansichten des Screen-Ablaufs aus `GamePresentation`
-5. Tests auf echten Geräten und Timing-Feintuning mit Touch
-6. Signieren und veröffentlichen
+5. Tests auf dem echten Gerät und Timing-Feintuning mit Touch
+6. Über GitHub synchronisieren, App-Store-Einreichung direkt aus Playgrounds prüfen
 
-Alles andere kommt fertig und getestet aus Phase 1. Deshalb bleibt die Mac-Phase überschaubar.
+Alles andere kommt fertig und getestet aus Phase 1. Deshalb bleibt Phase 2 überschaubar.
 
 **Einschränkung:** Maus und Leertaste sind nur ein Ersatz für den Finger. Ob das
 Spiel Spaß macht, zeigt das Testfenster. Das letzte Timing-Feintuning passiert mit
-Touch auf dem iPhone.
+echtem Touch (iPad, später iPhone).
 
 **Risiko und Rückfallebene:** Die Swift-Pakete für raylib sind Community-Projekte.
 Baut keines mit der aktuellen Swift-Version, legen wir den raylib-Quellcode (C)
 direkt ins Projekt. Die Swift-Toolchain kompiliert ihn mit. Deshalb ist der erste
 Schritt in M0 ein kurzer Bautest.
 
-**Wenn der Mac kommt:** Xcode 27 braucht Apple Silicon und macOS 26.6 oder neuer.
-Der Projektordner zieht einmal komplett auf den Mac um (USB-Stick oder Netzwerk),
-denn ohne Sync-Dienst würden zwei Kopien auseinanderlaufen. Das Testfenster läuft
-auch auf dem Mac. Weil das Projekt nur lokal liegt, dort Time Machine mit einer
-externen Festplatte einrichten.
+**Für Phase 2:** Swift Playgrounds (App Store, kostenlos) auf dem iPad
+installieren, das Repo über eine Git-App (z. B. Working Copy) klonen oder über
+Playgrounds' eigenen Repo-Import laden, darin den Ordner `App.swiftpm` öffnen.
+Windows bleibt die Hauptkopie und pusht auf `origin`; das iPad zieht nur den
+Stand, es entsteht keine zweite Quelle der Wahrheit.
 
 ### 1.3 Zielgeräte und Sprache
 
@@ -471,7 +473,7 @@ aus IDEA.md sind dann nur neue Pfade und keine neue Logik.
 Car game/                          (Projektordner, lokal)
 ├─ CLAUDE.md                       feste Projektentscheidungen für Claude-Sessions
 ├─ IDEA.md · PLAN.md · FOUNDATION.md · ROADMAP.md · TESTING.md
-├─ Game/                           Swift Package – plattformneutral (Windows + Mac)
+├─ Game/                           Swift Package – plattformneutral (Windows + iPad)
 │  ├─ Package.swift
 │  ├─ Sources/GameCore/            Spielregeln
 │  │  ├─ Config.swift              ALLE Tuning-Werte an einem Ort
@@ -517,9 +519,9 @@ Car game/                          (Projektordner, lokal)
 │  ├─ Sources/SoundMaker/          erzeugt die Platzhalter-Sounds:  swift run SoundMaker
 │  ├─ tuning.json                  Werte zum Live-Tunen (Taste T)
 │  └─ savegame.json                Highscore und Einstellungen des Testfensters (entsteht beim Spielen)
-└─ App/                            Xcode-Projekt – entsteht erst auf dem Mac (Phase 2)
-   ├─ CarGame.xcodeproj
-   └─ CarGame/                     SpriteKit-, Touch-, Haptik-, Audio-Adapter, SwiftUI-Menüs
+└─ App.swiftpm/                    Swift-Playgrounds-App-Projekt – entsteht erst auf dem iPad (Phase 2)
+   ├─ Package.swift                iOSApplication-Produkt, lokale Abhängigkeit auf ../Game
+   └─ Sources/                     SpriteKit-, Touch-, Haptik-, Audio-Adapter, SwiftUI-Menüs
 ```
 
 ### 4.5 Schnittstellen (Protokolle)
@@ -629,13 +631,13 @@ Rauch, Splitter) und das Ergebnis als Banner statt Menü (Abschnitte 2.5 und 2.6
 **Entschieden:**
 
 - ✅ Swift, überall
-- ✅ Entwickelt und getestet wird unter Windows, der Mac dient nur zum Fertigmachen
+- ✅ Entwickelt und getestet wird unter Windows, Phase 2 läuft ohne Mac auf dem iPad (Swift Playgrounds)
 - ✅ Die App läuft auf jedem iPhone ab iOS 26 (ab iPhone 11 / SE 2. Gen.)
 - ✅ Hochformat, einhändig
 - ✅ Spielsprache nur Englisch
 - ✅ Veröffentlichung weltweit über den App Store, deine Website ist die
   Startseite des Spiels (PLAN.md, Phase 3)
-- ✅ Kein GitHub, das Projekt liegt lokal
+- ✅ GitHub erst ab Phase 2, nur als Sync-Kanal zwischen Windows und iPad
 - ✅ So viele native Apple-Elemente wie möglich; Hauptnavigation (Street Builder,
   Game, Shop, Upgrades) als native Tab-Bar
 - ✅ Crashes mit echter Physik, reagierendem Verkehr und Blechschaden (2.6)

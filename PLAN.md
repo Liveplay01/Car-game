@@ -1,6 +1,6 @@
 # Car Game – Build- & Release-Plan
 
-Stand: 21.09.2026 (aktualisiert)
+Stand: 23.09.2026 (aktualisiert)
 
 ## Ziel
 
@@ -15,7 +15,8 @@ eigene Website ist die Startseite des Spiels.
 - **iPhone-App:** SwiftUI für die Menüs, SpriteKit für die Spielszene, Core Haptics.
 - **Läuft auf jedem iPhone ab iOS 26** (ab iPhone 11 / SE 2. Gen.), im Hochformat.
 - **Spielsprache:** nur Englisch.
-- **Kein GitHub:** Das Projekt liegt lokal.
+- **GitHub erst ab Phase 2:** dann nur als privater Sync-Kanal zwischen Windows
+  und iPad (Remote `origin` ist bereits eingerichtet), kein Branch-/PR-Workflow.
 
 Details stehen in [FOUNDATION.md](FOUNDATION.md), die Meilensteine in [ROADMAP.md](ROADMAP.md).
 
@@ -29,15 +30,26 @@ Details stehen in [FOUNDATION.md](FOUNDATION.md), die Meilensteine in [ROADMAP.m
 - Kein Mac, kein iPhone und kein Apple-Account nötig.
 - Roadmap: **M0–M6**.
 
-## Phase 2 – Fertigstellung auf dem Mac
+## Phase 2 – Fertigstellung auf dem iPad (Swift Playgrounds)
 
-- **Der Mac (wird angeschafft) dient nur zum Fertigmachen:** Xcode-Projekt,
-  iPhone-Anbindung (Touch, Haptik, Ton, Menüs), Tests auf echten Geräten, Signieren.
-- **Voraussetzung:** Apple Silicon und macOS 26.6 oder neuer, weil Xcode 27 sonst
-  nicht läuft.
-- Der Projektordner zieht dafür einmal auf den Mac um.
-- **Zum Testen auf dem eigenen iPhone reicht die kostenlose Apple-ID.** Die App
-  läuft dann jeweils 7 Tage und wird danach einfach neu aus Xcode gestartet.
+- **Kein Mac nötig:** Swift Playgrounds auf dem iPad unterstützt vollwertige
+  SwiftUI-App-Projekte (`.swiftpm`) mit echtem Zugriff auf iOS-APIs (SpriteKit,
+  Core Haptics, AVFoundation) – Touch, Haptik, Ton, Menüs entstehen und laufen
+  direkt auf dem Gerät.
+- **Sync über GitHub:** Windows pusht auf den bestehenden Remote (`origin` →
+  github.com/Liveplay01/Car-game, Repo auf privat stellen), das iPad zieht sich
+  den Stand über eine Git-App (z. B. Working Copy) oder Playgrounds' eigenen
+  Repo-Import. Kein Kollaborations-Workflow – nur Sync für ein Ein-Personen-Projekt.
+- **Projektstruktur:** `App.swiftpm/` liegt als eigener Ordner neben `Game/` im
+  selben Repo und hängt per lokalem Pfad von `Game/` ab, das dadurch unverändert
+  unter Windows weiterbaut und -testet.
+- **Zum Testen reicht die kostenlose Apple-ID**, kein bezahlter Account nötig,
+  solange nur auf dem eigenen Gerät getestet wird.
+- **Offen, in M7 zu klären** (siehe [ROADMAP.md](ROADMAP.md)): ob ein iPad allein
+  für iPhone-genaues Touch-/Haptik-/Bildschirmgrößen-Testing reicht oder
+  zusätzlich ein echtes iPhone nötig ist, ob die lokale Pfad-Abhängigkeit auf
+  `Game/` in Playgrounds sauber auflöst, und ob sich M8 (App-Store-Einreichung)
+  direkt vom iPad aus erledigen lässt oder Xcode am Ende doch nötig wird.
 - Roadmap: **M7**.
 
 ## Phase 3 – Veröffentlichung
@@ -71,6 +83,8 @@ Download anbieten.
 - [x] Steuerung → ein Tap, Hochformat, einhändig
 - [x] Umfang der ersten Version → [ROADMAP.md](ROADMAP.md)
 - [x] Grafikstil → flache Vektorformen, Dark Theme; Platzhalter zuerst
+- [x] Testgerät für Phase 2 → iPad mit Swift Playgrounds statt Mac (23.09.2026,
+      siehe ROADMAP.md)
 - [ ] Geldmodell: komplett kostenlos, oder später Lootboxen/Season Pass mit
       Echtgeld? Das bräuchte In-App-Käufe und eine rechtliche Prüfung, betrifft
       aber erst die Zeit nach v1.0.

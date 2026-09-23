@@ -95,6 +95,27 @@ struct TransporterTests {
         #expect(world.score.money >= world.config.transporterPay)
     }
 
+    @Test func aTransporterStillArrivingBecomesAnOrdinaryCarWhenTheLastCarIsIn() {
+        // Regression for ROADMAP.md M6: a transporter already driving in when the last car
+        // launches must not linger as an untracked "ghost" transporter into the next shift
+        // (no secure zones, no payout, but still looking and driving like a transporter).
+        var world = transporterShift(police: false) {
+            $0.shiftCars = 1
+            $0.transporterFirst = 0.5...0.5
+        }
+        world.run(steps: 5 * World.stepRate) { if case .arriving = $0.transporter.phase { true } else { false } }
+        guard case let .arriving(id) = world.transporter.phase else {
+            Issue.record("no transporter arriving")
+            return
+        }
+        #expect(world.vehicle(id: id)?.type == .transporter)
+        world.tap(at: world.time)
+        world.run(steps: World.stepRate)
+        #expect(world.transporter.phase == .idle(next: .infinity))
+        // It keeps driving in, but now as an ordinary car instead of a transporter nobody tracks.
+        #expect(world.vehicle(id: id)?.type == .car)
+    }
+
     @Test func theWarningMarksOnlyTheTransporter() {
         var config = Config()
         config.criminalFirst = 1e9...1e9

@@ -5,7 +5,7 @@ Kreisverkehr-Timing-Spiel fürs iPhone (One-Tap, inspiriert von "Car Circle").
 | Dokument | Inhalt |
 | --- | --- |
 | [IDEA.md](IDEA.md) | Spielidee und Features |
-| [PLAN.md](PLAN.md) | Weg: Windows → Mac → Veröffentlichung |
+| [PLAN.md](PLAN.md) | Weg: Windows → iPad (Swift Playgrounds) → Veröffentlichung |
 | [FOUNDATION.md](FOUNDATION.md) | Basis: Technik, Regeln mit Startwerten, Architektur |
 | [ROADMAP.md](ROADMAP.md) | Meilensteine M0–M8 |
 | [TESTING.md](TESTING.md) | So wird getestet |
@@ -14,24 +14,29 @@ Kreisverkehr-Timing-Spiel fürs iPhone (One-Tap, inspiriert von "Car Circle").
 
 - **Swift, überall.** Kein Web-Stack, keine Engine (Unity, Godot …), kein
   Cross-Plattform-Framework.
-- **Entwickelt und getestet wird unter Windows** (Swift-Toolchain, VS Code). Der
-  **Mac dient nur zum Fertigmachen** (Phase 2).
+- **Entwickelt und getestet wird unter Windows** (Swift-Toolchain, VS Code). Für
+  Phase 2 (Touch, Haptik, SwiftUI-Menüs) wird **kein Mac angeschafft**: Das
+  App-Projekt läuft in **Swift Playgrounds auf einem iPad**.
 - **Alles Spielentscheidende und die Darstellungslogik** gehören in das
   plattformneutrale Paket `Game/` (`GameCore`, `GamePresentation`). Dort nur
   Swift-Standardbibliothek + Foundation, **kein** SpriteKit, UIKit, SwiftUI oder
   `simd`. Das Paket muss unter Windows bauen.
 - **`TestWindow/`** (raylib) ist ein Werkzeug, kein Produkt: Es zeichnet nur, nimmt
   Eingaben an und spielt Ton ab. Keine Spiellogik darin, kein Design-Aufwand.
-- **`App/`** (Xcode, Phase 2) enthält nur dünne Adapter (SpriteKit, Touch, Haptik,
-  Audio) und die SwiftUI-Menüs.
+- **`App.swiftpm/`** (Swift Playgrounds auf dem iPad, Phase 2) enthält nur dünne
+  Adapter (SpriteKit, Touch, Haptik, Audio) und die SwiftUI-Menüs. Es hängt per
+  lokalem Pfad von `Game/` ab.
 - **Zielgeräte:** jedes iPhone ab **iOS 26** (ab iPhone 11 / SE 2. Gen.), Hochformat,
   einhändig. Nichts darf eine iOS-27-API voraussetzen.
 - **Spielsprache nur Englisch**, alle Texte zentral in `Strings.swift`. Die
   Projektdokumente sind auf Deutsch.
 - **Veröffentlichung:** App Store weltweit. Die eigene Website ist Landing Page
   (App-Store-Link, TestFlight-Link, Datenschutz, Support).
-- **Kein GitHub, kein Remote.** Das Projekt liegt lokal. Keine Branch-, Push- oder
-  PR-Workflows vorschlagen.
+- **GitHub nur als Sync-Kanal ab Phase 2.** Ein privates Repo überträgt den Code
+  zwischen Windows und iPad (Swift Playgrounds) – Commits und Pushes direkt auf
+  `main`, kein Feature-Branch- oder PR-Workflow für dieses Ein-Personen-Projekt
+  (der PR-Workflow aus der globalen CLAUDE.md gilt hier weiterhin nicht). Bis
+  Phase 2 beginnt, bleibt es bei lokalen Commits ohne zu pushen.
 - **Kein Backend, kein eigener Server.** Online-Funktionen nur über Apple-Dienste.
 - **So viele native Apple-Elemente wie möglich** (Tab-Bar, NavigationStack,
   Listen, Sheets, SF Symbols). Die Hauptnavigation zwischen Street Builder, Game,

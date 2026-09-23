@@ -1,6 +1,6 @@
 # Roadmap – vom Testfenster zur App im App Store
 
-Stand: 22.09.2026 · Die Details zur Basis (M0–M2) stehen in [FOUNDATION.md](FOUNDATION.md), das Testen in [TESTING.md](TESTING.md), der Gesamtweg in [PLAN.md](PLAN.md).
+Stand: 23.09.2026 · Die Details zur Basis (M0–M2) stehen in [FOUNDATION.md](FOUNDATION.md), das Testen in [TESTING.md](TESTING.md), der Gesamtweg in [PLAN.md](PLAN.md).
 
 ## Überblick
 
@@ -16,7 +16,7 @@ Stand: 22.09.2026 · Die Details zur Basis (M0–M2) stehen in [FOUNDATION.md](F
 | M5 | Wirtschaft & Fortschritt (Level ✅, Geld & Upgrades ✅, Tab-Navigation ✅, fließender Übergang ✅, Gefahrenstufe ✅, Street Builder ✅) | L | Geld verdienen und ausgeben, Gefahrenstufe |
 | M6 | Look & Feel | M | finale Farben, Formen, Effekte, HUD und Sounds |
 
-### Phase 2 · Mac: nur Fertigmachen
+### Phase 2 · iPad: nur Fertigmachen (Swift Playgrounds)
 
 | # | Meilenstein | Umfang | Was du danach testen kannst |
 | --- | --- | --- | --- |
@@ -437,54 +437,77 @@ Testfenster zu sehen und zu hören.
 
 Aus dem Playtest und den Ansagen von Leo, in dieser Reihenfolge:
 
-1. **Bug – Geldtransporter über das Schichtende hinaus:** Fährt am Ende einer
-   Schicht noch ein Transporter ein, ist er in der Folgeschicht zwar da, zählt
-   dort aber als ganz normales Auto (keine Sperrzonen, kein Geld). `nextShift`
-   nimmt die Fahrzeuge mit, aber nicht den Zustand von `TransporterState` /
-   `CriminalState`. Beides muss mitwandern (Frist auf die neue Schichtzeit
-   umrechnen) oder das Fahrzeug wird beim Übergang sauber zum normalen Auto.
+1. **Bug – Geldtransporter über das Schichtende hinaus ✅ (23.09.2026 behoben):**
+   Fuhr am Ende einer Schicht noch ein Transporter oder Verbrecher-Pickup ein
+   (`.arriving`), wurde die Warnung beim letzten Auto der Schicht abgebrochen
+   (`transporter.phase`/`criminal.phase = .idle`), aber das schon gespawnte
+   Fahrzeug blieb vom Typ `.transporter`/`.pickup` und fuhr so unbemerkt in die
+   nächste Schicht weiter — sichtbar als Transporter/Pickup, aber ohne
+   Sperrzonen und ohne Auszahlung. Behoben, indem so ein verwaistes Fahrzeug an
+   genau der Stelle sauber zum normalen Auto wird (`World.demoteToOrdinaryTraffic`,
+   `Transporters.swift`, `Criminals.swift`), statt sein Aussehen zu behalten.
+   Regressionstests: `aTransporterStillArrivingBecomesAnOrdinaryCarWhenTheLastCarIsIn`,
+   `aCriminalStillArrivingBecomesAnOrdinaryCarWhenTheLastCarIsIn`.
 2. **Schwierigkeit:** Level 14 fühlt sich noch einen Tick zu leicht an
    (Playtest Leo). Kurve ab Level 10 nachziehen und mit
    `swift run -c release Sim --curve --shifts 300` gegenmessen.
-3. **Warnung im Innenteil:** Die Ankündigung von Verbrecher und Geldtransporter
-   soll **nicht mehr an der Zufahrt** stehen, sondern als **Ring im Innenteil
-   des Kreisverkehrs** (auf der Insel) angezeigt werden — der Blick bleibt in
-   der Mitte. Betrifft `HUD.addChase` / `HUD.addTransporter`.
-4. **Blaulicht wirft Licht auf den Boden:** Das Polizei-Blaulicht soll die
-   Fahrbahn mitbeleuchten (weicher blauer/roter Schein unter und neben dem
-   Auto, im Takt des Blinkens).
-5. **Trucks fertig bauen:** Der LKW ist als Fahrzeugtyp da (länger, schwerer,
-   eigenes Aussehen) — er ist die Grundlage der Mautstelle und muss im Spiel
-   sauber aussehen und sich sauber anfühlen.
+3. **Warnung im Innenteil ✅ (23.09.2026):** Die Ankündigung (WANTED/SECURED)
+   steht nicht mehr an der Zufahrt, sondern als pulsierender Keil auf dem
+   Rand der Insel, in Richtung der betroffenen Zufahrt gedreht — der Blick
+   bleibt in der Mitte, die Richtung bleibt trotzdem ablesbar. Nur die
+   `.warning`-Phase ist betroffen; Countdown-Ring am Fahrzeug selbst (sobald
+   es sichtbar ist) bleibt wie gewohnt am Fahrzeug. `HUD.addChase` /
+   `HUD.addTransporter`. Playtest offen: wirkt der Keil am richtigen Ort und
+   deutlich genug?
+4. **Blaulicht wirft Licht auf den Boden ✅ (23.09.2026):** Weicher blauer/
+   roter Schein links/rechts unter dem Polizeiauto, im Takt der Lichtbalken-
+   Blinkphase (`CarArt.add`, `Slot.groundGlow`). Playtest offen: Intensität/
+   Reichweite passend, oder zu dezent/zu stark?
+5. **Trucks fertig bauen:** Geprüft (23.09.2026) — Länge, Masse, Maut-Gebühr,
+   Kollisionsverhalten und eigene Farben (`vehicleTruck`/`vehicleTruckBox`)
+   sind sauber verdrahtet, kein konkreter Bug gefunden. Ob das Aussehen im
+   Spiel wirklich "fertig" wirkt, ist ein Playtest-Urteil, kein Code-Fix —
+   offen, bis das im Testfenster angeschaut wurde.
 
 **Gerade angefangen (M5-Nachzügler, Street Builder):** Ringmodule
 `GameCore/Modules.swift` — **Mautstelle** (LKW zahlen, Abschnitt staut) und
 **Blitzer** (Strafe oberhalb des Tempolimits, Autos bremsen kurz) auf einer
 **festen Zahl von Modulplätzen** am Ring; ist alles belegt, wird getauscht
 (`Career.build(_:inSlot:config:)`). Fertig: Kern, Zeichnen im Spiel, Laufbahn.
-Offen: Test `ModuleTests` stürzt noch ab (untersuchen), Palette und Modulplätze
+`ModuleTests` ✅ (23.09.2026 behoben): kein Bug in `Modules.swift` selbst — der
+Test `aSpeedCameraOnlyEarnsAboveTheLimit` setzte `world.ringSpeed` manuell,
+was `applyShiftCurves` im nächsten Schritt wieder überschrieb; der Blitzer
+feuerte nie, die fehlgeschlagene Erwartung griff danach auf ein leeres Array zu
+und crashte (`Index out of range`), was den ganzen Testlauf bei paralleler
+Ausführung hängen ließ. Jetzt setzt der Test das Tempo vor dem Bau der Welt
+über die Config statt danach über `ringSpeed`. Offen: Palette und Modulplätze
 im Street Builder, Platzhalter-Sound `toll` im SoundMaker, Doku in
 FOUNDATION.md 2.9.
 
 ---
 
-# Phase 2 · Mac
+# Phase 2 · iPad
 
 ## M7 · iPhone-App
 
-**Ziel:** Das fertige Spiel aus Phase 1 läuft mit Touch und Haptik auf dem iPhone.
+**Ziel:** Das fertige Spiel aus Phase 1 läuft mit Touch und Haptik auf dem iPhone –
+ohne Mac, über Swift Playgrounds auf dem iPad.
 
-- Projektordner auf den Mac umziehen, Xcode 27 installieren, Time Machine einrichten.
-- **Xcode-Projekt** (iOS-App, Mindestversion iOS 26, Hochformat) mit dem Paket `Game/`.
+- **`App.swiftpm`** neu anlegen (iOS-App-Projekt, Mindestversion iOS 26,
+  Hochformat), lokale Paket-Abhängigkeit auf `Game/`; Windows pusht auf den
+  bestehenden Remote (`origin`), das iPad zieht den Stand über eine Git-App.
+- **In Swift Playgrounds öffnen** (der Ordner `App.swiftpm` wird automatisch als
+  App-Projekt erkannt) und auf dem iPad bauen und ausführen.
 - **Adapter:** SpriteKit zeichnet die Render-Liste, Touch mit Zeitstempel als
   Eingabe, AVAudioEngine spielt die Sounds, Core Haptics die `.ahap`-Muster.
   120 Hz auf ProMotion-Geräten.
 - **SwiftUI-Menüs** nach den Entwürfen aus M6, als Ansichten von `ScreenFlow`,
   mit nativen Elementen (Tab-Bar für Street Builder, Game, Shop, Upgrades).
 - **Timing-Feintuning mit Touch** auf dem echten Gerät.
-- **Geräte-Tests:** alle Bildschirmgrößen im Simulator (SE bis Pro Max); 10
-  Schichten am Stück auf dem schwächsten Gerät (iPhone 11 oder SE 2. Gen., A13),
-  ohne Ruckler und ohne Hitze.
+- **Geräte-Tests:** so viele Bildschirmgrößen wie über Playgrounds' Vorschau
+  erreichbar (SE bis Pro Max); 10 Schichten am Stück auf dem schwächsten
+  unterstützten Gerät (iPhone 11 oder SE 2. Gen., A13), ohne Ruckler und ohne
+  Hitze. **Zu klären:** ob dafür ein echtes iPhone nötig ist oder das iPad reicht.
 - **Randfälle:** Anruf während einer Schicht, App-Wechsel, Stummschalter, Stromsparmodus.
 - **App-Icon** final (Icon Composer), Startbildschirm, VoiceOver und Dynamic Type in den Menüs.
 
@@ -501,6 +524,9 @@ Einschränkung so gut anfühlt wie geplant.
 Warum das nur über den App Store geht, steht in [PLAN.md, Phase 3](PLAN.md#phase-3--veröffentlichung).
 
 - **Apple Developer Program** beitreten (99 $/Jahr).
+- **Einreichung:** Swift Playgrounds kann Builds direkt an App Store Connect
+  übermitteln, kein Mac nötig; im Zweifel prüfen, ob das für dieses Projekt
+  reicht oder Xcode am Ende doch gebraucht wird.
 - **Deine Website:** Landing Page zum Spiel, **Privacy Policy** und
   **Support-Seite**. Beide URLs verlangt Apple.
 - **TestFlight-Beta:** öffentlicher Einladungslink auf deiner Website, bis zu

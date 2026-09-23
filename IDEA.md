@@ -354,7 +354,7 @@ Jede Box-Art braucht eine eigene, klar sichtbare Odds-Tabelle.
 - **Swift** – nativ, bewusst kein Cross-Plattform-Framework und keine Engine.
 - Spiellogik und Darstellungslogik liegen in einem plattformneutralen
   Swift-Paket. Es wird unter Windows entwickelt und dort in einem Testfenster
-  gespielt. Der Mac wird nur zum Fertigmachen genutzt.
+  gespielt. Fertiggemacht wird auf einem iPad mit Swift Playgrounds, kein Mac nötig.
 - iPhone-App: Spielszene (Kreisverkehr, Fahrzeuge, Timing) in SpriteKit,
   Menüs (Shop, Truhen, Straßeneditor/Stadt-Übersicht) in SwiftUI, Haptik über
   Core Haptics.

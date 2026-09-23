@@ -61,7 +61,14 @@ extension World {
         // drives on as ordinary traffic.
         if !shift.acceptsTaps {
             switch criminal.phase {
-            case .warning, .arriving: criminal.phase = .idle(next: .infinity)
+            case .warning:
+                criminal.phase = .idle(next: .infinity)
+            case let .arriving(id):
+                // Same fix as the transporter: it already left its stop line, so it becomes
+                // an ordinary car instead of a pickup nobody is chasing any more, which would
+                // otherwise still look and drive like one into the next shift (ROADMAP.md M6).
+                criminal.phase = .idle(next: .infinity)
+                demoteToOrdinaryTraffic(id)
             case let .active(id, _): criminal.phase = .leaving(vehicle: id)
             case .idle, .leaving: break
             }

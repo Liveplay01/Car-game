@@ -182,18 +182,21 @@ enum HUD {
         id += 1
     }
 
-    /// Marks the criminal in the scene: a pulsing ring at the arm it will come from, then a
-    /// countdown ring around the pickup that empties as its time runs out.
+    /// Marks the criminal in the scene: while it is only announced, a pulsing wedge on the
+    /// island's edge, facing the arm it will come from, so the warning reads without pulling
+    /// the eye off the middle of the ring (ROADMAP.md M6); then a countdown ring around the
+    /// pickup itself, which by then is on screen and worth looking at directly.
     static func addChase(world: World, alpha: Double, to list: inout RenderList) {
         let config = world.config
         var id = RenderID.hud + 500
         switch world.criminal.phase {
         case let .warning(arm, _):
             let pulse = (world.time * 1.6).truncatingRemainder(dividingBy: 1)
-            let stop = world.layout.stopPose(arm).position
-            list.add(.arc(center: stop, radius: 14 + 18 * pulse, thickness: 2.5, startAngle: 0, endAngle: Angle.tau), color: .vehicleCriminal, opacity: 1 - pulse, space: .world, id: id)
+            let radius = config.ringRadius - config.laneWidth / 2 - 14
+            let half = 0.35
+            list.add(.arc(center: .zero, radius: radius, thickness: 3 + 7 * pulse, startAngle: arm.angle - half, endAngle: arm.angle + half), color: .vehicleCriminal, opacity: 1 - pulse, space: .world, id: id)
             id += 1
-            list.add(.arc(center: stop, radius: 14, thickness: 2, startAngle: 0, endAngle: Angle.tau), color: .vehicleCriminal, space: .world, id: id)
+            list.add(.arc(center: .zero, radius: radius, thickness: 2.5, startAngle: arm.angle - half, endAngle: arm.angle + half), color: .vehicleCriminal, space: .world, id: id)
         case let .arriving(vehicleID):
             guard let pickup = world.vehicle(id: vehicleID) else { return }
             let pose = SceneBuilder.interpolatedPose(pickup, alpha: alpha)
@@ -216,9 +219,10 @@ enum HUD {
         }
     }
 
-    /// The money transporter: a pulsing ring at the arm it will come from, then a countdown
-    /// ring around the truck that empties as its time runs out, plus the secure zones as
-    /// pale arcs on the ring. It circles until its time is up, so no exit is marked.
+    /// The money transporter: while it is only announced, a pulsing wedge on the island's
+    /// edge, facing the arm it will come from (ROADMAP.md M6, same as `addChase`); then a
+    /// countdown ring around the truck that empties as its time runs out, plus the secure
+    /// zones as pale arcs on the ring. It circles until its time is up, so no exit is marked.
     static func addTransporter(world: World, alpha: Double, to list: inout RenderList) {
         let config = world.config
         var id = RenderID.hud + 600
@@ -229,10 +233,11 @@ enum HUD {
         switch world.transporter.phase {
         case let .warning(arm, _):
             let pulse = (world.time * 1.6).truncatingRemainder(dividingBy: 1)
-            let stop = world.layout.stopPose(arm).position
-            list.add(.arc(center: stop, radius: 14 + 18 * pulse, thickness: 2.5, startAngle: 0, endAngle: Angle.tau), color: .vehicleCargo, opacity: 1 - pulse, space: .world, id: id)
+            let radius = config.ringRadius - config.laneWidth / 2 - 14
+            let half = 0.35
+            list.add(.arc(center: .zero, radius: radius, thickness: 3 + 7 * pulse, startAngle: arm.angle - half, endAngle: arm.angle + half), color: .vehicleCargo, opacity: 1 - pulse, space: .world, id: id)
             id += 1
-            list.add(.arc(center: stop, radius: 14, thickness: 2, startAngle: 0, endAngle: Angle.tau), color: .vehicleCargo, space: .world, id: id)
+            list.add(.arc(center: .zero, radius: radius, thickness: 2.5, startAngle: arm.angle - half, endAngle: arm.angle + half), color: .vehicleCargo, space: .world, id: id)
         case let .arriving(vehicleID):
             guard let truck = world.vehicle(id: vehicleID) else { return }
             let pose = SceneBuilder.interpolatedPose(truck, alpha: alpha)

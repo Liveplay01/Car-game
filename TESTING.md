@@ -1,6 +1,6 @@
 # Testing – so testest du das Spiel
 
-Stand: 22.09.2026 · Gehört zu [FOUNDATION.md](FOUNDATION.md) und [ROADMAP.md](ROADMAP.md)
+Stand: 23.09.2026 · Gehört zu [FOUNDATION.md](FOUNDATION.md) und [ROADMAP.md](ROADMAP.md)
 
 > **Getestet wird unter Windows.** Die Befehle unten gibt es, sobald M0 gebaut
 > ist. Die Einrichtung (Abschnitt 0) kannst du schon jetzt machen.
@@ -11,7 +11,7 @@ Stand: 22.09.2026 · Gehört zu [FOUNDATION.md](FOUNDATION.md) und [ROADMAP.md](
 | --- | --- | --- |
 | **1 · Windows** | **Testfenster** | das Spiel selbst: Timing, Fairness, Combo, Schicht, alle Features, Look & Feel, Sounds |
 | **1 · Windows** | **Automatische Tests** | Spiellogik, Darstellungslogik, Balancing, in Sekunden und ohne Fenster |
-| 2 · Mac | Simulator und dein iPhone | Touch, Haptik, SwiftUI-Menüs, Performance, Bildschirmgrößen |
+| 2 · iPad (Swift Playgrounds) | dein iPad, evtl. zusätzlich ein iPhone | Touch, Haptik, SwiftUI-Menüs, Performance, Bildschirmgrößen |
 | 3 · Launch | TestFlight | Beta-Tester weltweit über einen Link auf deiner Website |
 
 ---
@@ -241,24 +241,26 @@ Ergebnisseite. Mit `--seed` lässt sich die Situation dann exakt nachstellen.
 
 ---
 
-## Phase 2 und 3 · Mac, iPhone, TestFlight (später)
+## Phase 2 und 3 · iPad, iPhone, TestFlight (später)
 
 Kurzüberblick, damit du weißt, was kommt. Die ausführliche Anleitung ergänzen wir,
-wenn der Mac da ist.
+wenn Phase 2 beginnt (M7).
 
-- **Einrichten:** Xcode 27 aus dem App Store; unter Xcode → Settings → Accounts
-  die Apple-ID hinzufügen.
-- **Simulator:** Projekt öffnen, iPhone-Modell wählen, **⌘R**. Mindestens auf
-  iPhone SE (kleinster Bildschirm), deinem Modell und 17 Pro Max prüfen.
-- **Auf dem iPhone:** per Kabel anschließen, unter Signing & Capabilities deine
-  Apple-ID als Team wählen, **⌘R**. Auf dem iPhone einmal den Entwicklermodus
-  einschalten (Einstellungen → Datenschutz & Sicherheit) und der App vertrauen
-  (Einstellungen → Allgemein → VPN & Geräteverwaltung).
-- **Mit kostenloser Apple-ID** läuft die App 7 Tage, danach einfach wieder aus
-  Xcode starten. Mit dem Developer-Account aus M8 fällt diese Grenze weg.
-- **Performance** nur auf dem echten iPhone mit Release-Build und Instruments
-  messen. Maßstab ist das schwächste unterstützte Gerät (iPhone 11 / SE 2. Gen.).
-- **TestFlight (M8):** Build aus Xcode hochladen, öffentlichen Einladungslink auf
-  deiner Website teilen. Tester installieren die App über Apples TestFlight-App,
-  bis zu 10.000 Personen.
-- **Das Testfenster** läuft auch auf dem Mac weiter, praktisch zum schnellen Tunen.
+- **Einrichten:** Swift Playgrounds (App Store, kostenlos) auf dem iPad; Repo per
+  Git-App (z. B. Working Copy) klonen oder über Playgrounds' Repo-Import laden,
+  Ordner `App.swiftpm` öffnen.
+- **Ausführen:** Play-Button in Playgrounds baut und startet die App direkt auf
+  dem iPad – kein separater Simulator nötig. **Zu klären:** ob sich darüber auch
+  andere Bildschirmgrößen (iPhone SE bis Pro Max) zuverlässig prüfen lassen oder
+  dafür ein echtes iPhone gebraucht wird.
+- **Mit kostenloser Apple-ID** läuft die App uneingeschränkt auf dem eigenen
+  Gerät (kein 7-Tage-Limit wie bei einem kostenlosen Xcode-Account). Für App
+  Store und TestFlight ist trotzdem das Developer Program aus M8 nötig.
+- **Performance** auf dem echten Gerät mit Release-Build messen. Maßstab bleibt
+  das schwächste unterstützte iPhone (iPhone 11 / SE 2. Gen.); ohne Instruments
+  (Xcode) reicht dafür vorerst ein Stoppuhr-/FPS-Overlay wie im Testfenster.
+- **TestFlight (M8):** Swift Playgrounds kann Builds direkt an App Store Connect
+  übermitteln; öffentlicher Einladungslink auf deiner Website, bis zu 10.000
+  Tester. Ob das für dieses Projekt ausreicht oder Xcode am Ende doch nötig wird,
+  klärt sich in M7/M8.
+- **Das Testfenster** läuft weiter unter Windows, praktisch zum schnellen Tunen.

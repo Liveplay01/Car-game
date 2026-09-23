@@ -499,6 +499,14 @@ public struct World: Sendable {
         vehicles.firstIndex { $0.id == id }
     }
 
+    /// Cleanly turns an abandoned criminal or transporter into a normal car: used once its
+    /// warning is called off after it already left its stop line, so it never lingers as a
+    /// vehicle that still looks special but does nothing (`updateCriminals`, `updateTransporters`).
+    mutating func demoteToOrdinaryTraffic(_ id: Int) {
+        guard let index = index(of: id) else { return }
+        vehicles[index].type = .car
+    }
+
     mutating func makeID() -> Int {
         defer { nextVehicleID += 1 }
         return nextVehicleID

@@ -197,6 +197,26 @@ struct CriminalTests {
         #expect(world.criminal.phase == .idle(next: .infinity))
     }
 
+    @Test func aCriminalStillArrivingBecomesAnOrdinaryCarWhenTheLastCarIsIn() {
+        // Regression for ROADMAP.md M6: a pickup already driving in when the last car
+        // launches must not linger as an untracked "ghost" pickup into the next shift.
+        var world = chaseShift(police: false) {
+            $0.shiftCars = 1
+            $0.criminalFirst = 0.5...0.5
+        }
+        world.run(steps: 5 * World.stepRate) { if case .arriving = $0.criminal.phase { true } else { false } }
+        guard case let .arriving(id) = world.criminal.phase else {
+            Issue.record("no chase arriving")
+            return
+        }
+        #expect(world.vehicle(id: id)?.type == .pickup)
+        world.tap(at: world.time)
+        world.run(steps: World.stepRate)
+        #expect(world.criminal.phase == .idle(next: .infinity))
+        // It keeps driving in, but now as an ordinary car instead of a pickup nobody chases.
+        #expect(world.vehicle(id: id)?.type == .car)
+    }
+
     @Test func aCriminalOnTheRunDrivesOffOnceTheLastCarIsIn() {
         var world = chaseShift(police: false) { $0.shiftCars = 1 }
         guard let pickup = world.runUntilChase() else {

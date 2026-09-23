@@ -57,7 +57,15 @@ extension World {
         // No new transporter after your last car; one on its way is called off.
         if !shift.acceptsTaps {
             switch transporter.phase {
-            case .warning, .arriving: transporter.phase = .idle(next: .infinity)
+            case .warning:
+                transporter.phase = .idle(next: .infinity)
+            case let .arriving(id):
+                // It already left its stop line: hand it over as an ordinary car instead of
+                // leaving a transporter nobody tracks any more, which would otherwise still
+                // look and drive like one — with no secure zones and no payout — well into
+                // the next shift (ROADMAP.md M6).
+                transporter.phase = .idle(next: .infinity)
+                demoteToOrdinaryTraffic(id)
             case .idle, .active, .seized, .leaving: break
             }
         }

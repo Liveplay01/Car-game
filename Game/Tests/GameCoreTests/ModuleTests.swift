@@ -49,8 +49,13 @@ struct ModuleTests {
         var slow = moduleShift(.speedCamera)
         #expect(drivePast(&slow, type: .car).compactMap(\.modulePaid).isEmpty)
 
-        var fast = moduleShift(.speedCamera)
-        fast.ringSpeed = fast.config.ringSpeed * (fast.config.cameraLimitFactor + 0.2)
+        // Set the tempo above the limit through the config, not by mutating `ringSpeed`
+        // after the world exists: every step recomputes it from the shift curve
+        // (`applyShiftCurves`), which would silently undo a one-off override.
+        var fast = moduleShift(.speedCamera) {
+            $0.tempoStart = $0.cameraLimitFactor + 0.2
+            $0.tempoEnd = $0.cameraLimitFactor + 0.2
+        }
         let fines = drivePast(&fast, type: .car).compactMap(\.modulePaid)
         #expect(fines.count == 1)
         #expect(fines[0].amount == fast.config.cameraFine)
