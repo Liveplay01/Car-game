@@ -7,6 +7,10 @@ public enum SoundID: String, CaseIterable, Sendable {
     /// A module on the ring earned something: a short, quiet tick.
     case toll
     case tightFit
+    /// Near Miss: a short, soft swoosh, quieter than the Tight Fit's (M6).
+    case nearMiss
+    /// Perfect Input: a small, high-quality click (M6).
+    case perfect
     case cutOff
     case comboUp
     case crash
@@ -31,6 +35,12 @@ public enum SoundID: String, CaseIterable, Sendable {
 public enum HapticID: String, CaseIterable, Sendable {
     /// One sharp transient.
     case tightFit
+    /// A light, soft transient: "that was close" (M6).
+    case nearMiss
+    /// A short, precise transient (M6).
+    case perfect
+    /// A barely felt rising pulse: the Perfect Chain reached the flow (M6).
+    case flow
     /// Double tick.
     case comboUp
     /// Strong hit plus a short rumble.
@@ -60,6 +70,8 @@ public enum Feedback {
             switch report.rating {
             case .clean: .merge
             case .tightFit: .tightFit
+            case .nearMiss: .nearMiss
+            case .perfect: .perfect
             case .cutOff: .cutOff
             }
         case let .crash(report): report.isTakedown ? nil : .crash
@@ -82,13 +94,21 @@ public enum Feedback {
         case let .transporterPaid(_, amount, _): amount > 0 ? .paid : nil
         // Modules pay many times a shift: a small tick, never the transporter's fanfare.
         case .modulePaid: .toll
+        // The flow is felt, not heard: the music layers come with the adaptive audio (M11).
+        case .flowChanged: nil
         case .launched, .tapRejected, .exited, .criminalEntered, .criminalEscaped, .dispatched, .transporterEntered, .transporterEscaped: nil
         }
     }
 
     public static func haptic(for event: GameEvent) -> HapticID? {
         switch event {
-        case let .merged(report): report.rating == .tightFit ? .tightFit : nil
+        case let .merged(report):
+            switch report.rating {
+            case .tightFit: .tightFit
+            case .nearMiss: .nearMiss
+            case .perfect: .perfect
+            case .clean, .cutOff: nil
+            }
         // Only the player's own crash is felt; the pile-up behind it is heard and seen.
         case let .crash(report): report.isStrike ? .crash : nil
         case let .comboChanged(change): change.isTierUp ? .comboUp : nil
@@ -103,6 +123,8 @@ public enum Feedback {
         case let .transporterPaid(_, amount, _): amount > 0 ? .paid : nil
         // Money that comes in by itself is not felt: the thumb is busy with the traffic.
         case .modulePaid: nil
+        // Only entering the flow is felt; leaving it is felt through the crash that ends it.
+        case let .flowChanged(change): change.isInFlow ? .flow : nil
         case .launched, .tapRejected, .exited, .criminalEntered, .criminalEscaped, .dispatched, .transporterEntered, .transporterEscaped: nil
         }
     }

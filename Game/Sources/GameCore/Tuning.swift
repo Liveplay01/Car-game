@@ -71,6 +71,9 @@ public struct Tuning: Sendable {
         check(c.mergeDuration > 0, "mergeDuration must be > 0")
         check(c.queueAdvanceDuration >= 0, "queueAdvanceDuration must be ≥ 0")
         check(c.tightFitSeconds >= 0 && c.sloppyWindow >= 0, "tightFitSeconds and sloppyWindow must be ≥ 0")
+        check(c.nearMissSeconds >= c.tightFitSeconds, "nearMissSeconds must be ≥ tightFitSeconds")
+        check(c.perfectBalance >= 0 && c.perfectMaxGap >= 0, "perfectBalance and perfectMaxGap must be ≥ 0")
+        check(c.flowChain >= 1, "flowChain must be ≥ 1")
         check(c.maxStrikes >= 1, "maxStrikes must be ≥ 1")
         check(c.maxPoliceCrashes >= 0, "maxPoliceCrashes must be ≥ 0")
         check(c.policeChaseSpeedFactor >= 1, "policeChaseSpeedFactor must be ≥ 1")
@@ -161,6 +164,10 @@ public struct Tuning: Sendable {
         [
             .double("tightFitSeconds", \.tightFitSeconds),
             .double("sloppyWindow", \.sloppyWindow),
+            .double("nearMissSeconds", \.nearMissSeconds),
+            .double("perfectBalance", \.perfectBalance),
+            .double("perfectMaxGap", \.perfectMaxGap),
+            .int("flowChain", \.flowChain),
             .double("mergeDuration", \.mergeDuration),
             .double("ringSpeed", \.ringSpeed),
             .double("queueAdvanceDuration", \.queueAdvanceDuration),
@@ -183,6 +190,10 @@ public struct Tuning: Sendable {
             .int("pointsTightFit", \.pointsTightFit),
             .int("comboClean", \.comboClean),
             .int("comboTightFit", \.comboTightFit),
+            .int("pointsNearMiss", \.pointsNearMiss),
+            .int("pointsPerfect", \.pointsPerfect),
+            .int("comboNearMiss", \.comboNearMiss),
+            .int("comboPerfect", \.comboPerfect),
             .ints("comboThresholds", \.comboThresholds),
             .doubles("comboMultipliers", \.comboMultipliers),
             .int("crashPenalty", \.crashPenalty),

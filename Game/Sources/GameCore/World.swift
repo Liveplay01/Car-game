@@ -379,7 +379,7 @@ public struct World: Sendable {
         var penalty = 0
         let comboEvents = events.count
         if strike && isScoring {
-            penalty = scoreCrash(byPolice: byPolice)
+            penalty = scoreCrash(byPolice: byPolice, at: now)
         }
         // The crash comes before the combo reset it causes.
         events.insert(.crash(CrashReport(
@@ -468,6 +468,7 @@ public struct World: Sendable {
             vehicles[i].phase = .ring(r)
             guard vehicles[i].owner == .player, isScoring else { continue }
             let behind = gapBehind(ringS: r.s, excluding: vehicles[i].id)
+            let ahead = gapAhead(ringS: r.s, excluding: vehicles[i].id)
             let merged = events.count
             var shielded = false
             // A normal car standing in a secure zone shields the transporter and earns a bonus.
@@ -476,7 +477,9 @@ public struct World: Sendable {
                 shielded = true
                 score.money += config.shieldBonus
             }
-            let (rating, points, combo) = scoreMerge(minGap: merge.minGap, gapBehind: behind, at: now)
+            let (rating, points, combo) = scoreMerge(minGap: merge.minGap, gapBehind: behind, gapAhead: ahead, at: now)
+            // Perfect Chain (M6): good merges build it, a plain clean one or a cut-off ends it.
+            setChain(rating.extendsChain ? score.chain + 1 : 0, at: now)
             // The merge comes before the combo change it causes.
             events.insert(.merged(MergeReport(
                 vehicle: vehicles[i].id,
@@ -488,7 +491,9 @@ public struct World: Sendable {
                 rating: rating,
                 points: points,
                 combo: combo,
-                shielded: shielded
+                shielded: shielded,
+                gapAhead: ahead,
+                chain: score.chain
             )), at: merged)
         }
     }

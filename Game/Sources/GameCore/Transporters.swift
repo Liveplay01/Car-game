@@ -153,7 +153,10 @@ extension World {
         let factor = isRushHourScoring ? config.rushHourScoreFactor : 1
         let amount = Int((Double(money) * factor).rounded())
         score.money += amount
-        if escaped { score.transporters += 1 }
+        if escaped {
+            score.transporters += 1
+            extendChain(at: now)
+        }
         events.append(.transporterPaid(vehicle: transporter.vehicle, amount: amount, time: now))
         transporter.phase = .idle(next: now + transporterRng.double(in: config.transporterInterval))
     }

@@ -40,6 +40,16 @@ public enum GameEvent: Sendable, Equatable {
     case transporterPaid(vehicle: Int?, amount: Int, time: Double)
     /// A module on the ring earned money: a lorry paid its toll, a camera caught someone.
     case modulePaid(module: RoadModule, slot: Int, amount: Int, point: Vec2, time: Double)
+    /// The Perfect Chain reached `Config.flowChain`, or the flow ended with it (M6). Only
+    /// feedback reacts: music, glow and haptics grow a little; nothing is shown as text.
+    case flowChanged(FlowChange)
+}
+
+public struct FlowChange: Sendable, Equatable {
+    public var isInFlow: Bool
+    /// The Perfect Chain at that moment.
+    public var chain: Int
+    public var time: Double
 }
 
 public struct TakedownReport: Sendable, Equatable {
@@ -68,6 +78,10 @@ public struct MergeReport: Sendable, Equatable {
     public var combo: Int
     /// True if the car ended in a transporter's secure zone and shielded it (M4).
     public var shielded = false
+    /// Free time left to the car ahead when the merge ended, `.infinity` if there is none.
+    public var gapAhead = Double.infinity
+    /// Perfect Chain after this merge (M6).
+    public var chain = 0
 }
 
 public struct CrashReport: Sendable, Equatable {

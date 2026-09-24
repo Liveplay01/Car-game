@@ -72,8 +72,12 @@ public struct ShiftResult: Sendable, Equatable {
     public var seed: UInt64
     /// Shift time when it ended: how long the shift took.
     public var time: Double
+    public var nearMisses = 0
+    public var perfects = 0
+    /// Longest Perfect Chain of the shift (M6).
+    public var bestChain = 0
 
-    public var merges: Int { cleanMerges + tightFits + cutOffs }
+    public var merges: Int { cleanMerges + tightFits + cutOffs + nearMisses + perfects }
 }
 
 /// The curves of a shift as pure functions of time.
@@ -224,7 +228,10 @@ extension World {
             transporters: score.transporters,
             money: score.money,
             seed: seed,
-            time: shiftTime(time)
+            time: shiftTime(time),
+            nearMisses: score.nearMisses,
+            perfects: score.perfects,
+            bestChain: score.bestChain
         )
     }
 }

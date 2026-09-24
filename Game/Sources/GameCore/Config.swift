@@ -113,13 +113,31 @@ public struct Config: Sendable, Equatable {
     /// "Cut off!": the car behind is left less than this (seconds) when the merge ends.
     /// Resets the combo, costs no strike. 0 = off, the default; decided in the playtest.
     public var sloppyWindow: Double = 0
+    /// Near Miss (ROADMAP.md, M6): closer than this, but no Tight Fit. "That was close."
+    public var nearMissSeconds: Double = 0.2
+    /// Perfect Input (M6): the car lands in the middle of its gap. The gaps ahead and behind
+    /// may differ by at most this share of their sum, both at least `nearMissSeconds`…
+    public var perfectBalance: Double = 0.25
+    /// …and together at most this long: centring a car in an empty ring is no feat.
+    public var perfectMaxGap: Double = 2
 
     // MARK: Scoring (FOUNDATION.md 2.3, 2.4)
 
     public var pointsClean: Int = 100
     public var pointsTightFit: Int = 200
+    public var pointsNearMiss: Int = 125
+    public var pointsPerfect: Int = 150
     public var comboClean: Int = 1
     public var comboTightFit: Int = 2
+    public var comboNearMiss: Int = 1
+    public var comboPerfect: Int = 1
+
+    // MARK: Perfect Chain and Flow State (IDEA.md; ROADMAP.md, M6)
+
+    /// Good actions in a row (Perfect Input, Near Miss, Tight Fit, takedown, a transporter
+    /// paid) build the chain; a plain clean merge, a cut-off or a crash ends it. From this
+    /// length on the player is in the flow: the feedback grows, nothing else changes.
+    public var flowChain: Int = 5
     /// Taken off the score per crash, never below 0.
     public var crashPenalty: Int = 250
     /// For a shift driven to the end.

@@ -6,6 +6,10 @@ import GameCore
 struct Popup: Sendable, Equatable {
     enum Kind: Sendable, Equatable {
         case tightFit
+        /// No text (IDEA.md: no popup), just a faint ring: "that was close" (M6).
+        case nearMiss
+        /// No text either: a short precision ring where the car landed (M6).
+        case perfect
         case cutOff
         case penalty(Int)
         /// A takedown and its points.
@@ -267,6 +271,36 @@ enum HUD {
         }
     }
 
+    /// Perfect Input and Near Miss (M6): a ring around the car that opens and fades within
+    /// a fraction of a second. The car's movement stays the reward; the ring only confirms it.
+    static func addPrecisionRing(_ popup: Popup, reduceMotion: Bool, to list: inout RenderList) {
+        let isPerfect = popup.kind == .perfect
+        let duration = isPerfect ? 0.45 : 0.3
+        guard popup.age < duration else { return }
+        let x = popup.age / duration
+        let radius = reduceMotion ? 16 : 9 + (isPerfect ? 16 : 9) * Ease.outCubic(x)
+        let opacity = (isPerfect ? 0.9 : 0.4) * (1 - x)
+        list.add(
+            .arc(center: popup.position, radius: radius, thickness: isPerfect ? 2.5 : 1.5, startAngle: 0, endAngle: 2 * .pi),
+            color: isPerfect ? .accent : .muted, opacity: opacity, space: .world, id: RenderID.popups + popup.serial % 1_000
+        )
+    }
+
+    /// The ring glow (IDEA.md): a soft light along the island's edge that grows a little
+    /// with the combo tier and more in the Flow State. `flow` runs 0…1, smoothed by the session.
+    static func addFlowGlow(world: World, flow: Double, to list: inout RenderList) {
+        let config = world.config
+        let tiers = min(config.comboThresholds.count, config.comboMultipliers.count)
+        let tier = Double(Scoring.tier(combo: world.score.combo, config: config)) / Double(max(1, tiers))
+        let glow = min(1, 0.3 * tier + 0.7 * flow)
+        guard glow > 0.01 else { return }
+        let radius = world.layout.ringRadius - config.laneWidth / 2 - 3
+        list.add(.arc(center: .zero, radius: radius, thickness: 12, startAngle: 0, endAngle: 2 * .pi),
+                 color: .accent, opacity: 0.12 * glow, space: .world, id: RenderID.flowGlow)
+        list.add(.arc(center: .zero, radius: radius, thickness: 3, startAngle: 0, endAngle: 2 * .pi),
+                 color: .accent, opacity: 0.45 * glow, space: .world, id: RenderID.flowGlow + 1)
+    }
+
     static func addPopups(_ popups: [Popup], format: TextFormat, reduceMotion: Bool, to list: inout RenderList) {
         let camera = list.camera
         for popup in popups {
@@ -278,6 +312,9 @@ enum HUD {
             let text: String
             let color: ColorToken
             switch popup.kind {
+            case .nearMiss, .perfect:
+                addPrecisionRing(popup, reduceMotion: reduceMotion, to: &list)
+                continue
             case .tightFit:
                 text = Strings.HUD.tight
                 color = .accent

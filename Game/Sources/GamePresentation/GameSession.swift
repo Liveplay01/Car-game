@@ -118,6 +118,10 @@ public final class GameSession {
     private var shownScore = 0.0
     /// How long ago the combo reached a new tier, for the spring on the multiplier.
     private var sinceComboTier = Double.infinity
+    /// Flow State as the ring glow shows it, 0…1: it fades in and out instead of switching.
+    private var flowLevel = 0.0
+    /// Seconds the flow glow needs to fade in or out.
+    static let flowFade = 0.6
     /// A shift interrupted from outside (call, home screen): frozen until the player is back.
     public private(set) var isInterrupted = false
     /// Seconds left of the count-in after an interruption; the world stands still until 0.
@@ -455,6 +459,8 @@ public final class GameSession {
         }
         sinceTakedown += realDelta
         sinceComboTier += realDelta
+        let flowTarget = screen == .playing && world.isInFlow ? 1.0 : 0.0
+        flowLevel += (flowTarget - flowLevel) * min(1, realDelta / Self.flowFade)
         // The score catches up with itself: it counts, never jumps (FOUNDATION.md 3).
         let points = Double(world.score.points)
         if abs(points - shownScore) < 1 || reduceMotion {
@@ -602,6 +608,8 @@ public final class GameSession {
                 markers.append(DebugMarker(kind: .merge(gap: report.minGap), position: report.position, age: 0))
                 switch report.rating {
                 case .tightFit: addPopup(.tightFit, at: report.position)
+                case .nearMiss: addPopup(.nearMiss, at: report.position)
+                case .perfect: addPopup(.perfect, at: report.position)
                 case .cutOff: addPopup(.cutOff, at: report.position)
                 case .clean: break
                 }
@@ -640,6 +648,9 @@ public final class GameSession {
             case let .modulePaid(_, _, amount, point, _):
                 // Right where it was earned, so it is clear which module pays.
                 addPopup(.earned(amount), at: point)
+            case .flowChanged:
+                // The glow follows `world.isInFlow` smoothly (`flowLevel`).
+                break
             }
         }
         guard screen == .playing else { return }
@@ -720,6 +731,7 @@ public final class GameSession {
 
         switch screen {
         case .playing:
+            HUD.addFlowGlow(world: world, flow: flowLevel, to: &list)
             HUD.addChase(world: world, alpha: clock.alpha, to: &list)
             HUD.addTransporter(world: world, alpha: clock.alpha, to: &list)
             HUD.add(

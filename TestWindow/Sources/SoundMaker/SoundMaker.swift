@@ -20,6 +20,8 @@ struct SoundMaker {
         let sounds: [(String, [Double], Double)] = [
             ("merge", merge(), 0.14),
             ("tightFit", tightFit(), 0.55),
+            ("nearMiss", nearMiss(), 0.28),
+            ("perfect", perfect(), 0.4),
             ("cutOff", cutOff(), 0.3),
             ("comboUp", comboUp(), 0.4),
             ("crash", crash(), 0.7),
@@ -46,6 +48,25 @@ struct SoundMaker {
     /// Clean merge, ~100 times a shift: a soft, short tick.
     static func merge() -> [Double] {
         render(0.06) { t in sine(1_320, t) * decay(t, 0.012) * 0.16 }
+    }
+
+    /// Near Miss (M6): a shorter, softer swoosh than the Tight Fit's, without the click.
+    static func nearMiss() -> [Double] {
+        var noise = Noise(seed: 7)
+        var filter = BandPass()
+        return render(0.14) { t in
+            let x = t / 0.14
+            return filter.process(noise.next(), center: 1_400 + 2_400 * x, q: 4) * sin(.pi * x) * 0.4
+        }
+    }
+
+    /// Perfect Input (M6): a small, clean two-tone click — precise, not loud.
+    static func perfect() -> [Double] {
+        render(0.12) { t in
+            let first = sine(1_760, t) * decay(t, 0.018) * 0.35
+            let second = t > 0.045 ? sine(2_637, t) * decay(t - 0.045, 0.025) * 0.3 : 0
+            return first + second
+        }
     }
 
     /// Tight Fit: a short airy swoosh that rises, then a bright click on top.
