@@ -357,9 +357,8 @@ nicht. Mehr Geld heißt ein schwererer Ring (IDEA.md, „Wirtschaft schafft Gefa
 | Tow Depot | 10.000 | nichts | 180 lang, kein Tempolimit | Wracks in der Zone verschwinden 30 % schneller, der Ring fließt früher wieder |
 
 - **Wer zahlt:** jedes Fahrzeug, das die Modulmitte passiert, außer Wracks und dem
-  Verbrecher-Pickup. High Alert vervielfacht Modul-Einnahmen zur Zeit **nicht** (nur
-  Schichtlohn, Transporter und Abschirm-Bonus); der Kommentar an `World.fee` behauptet das
-  Gegenteil – offen, was gewollt ist.
+  Verbrecher-Pickup. High Alert vervielfacht Modul-Einnahmen **nicht** (Entscheidung Leo,
+  24.09.2026), nur Schichtlohn, Transporter und Abschirm-Bonus.
 - **Daily Login:** Jede Mautstelle zahlt 600 pro Tag Abwesenheit, höchstens 3 Tage
   (`tollIncomePerDay`).
 - **Fahrer in der Zone** bremsen auf das Zonen-Tempo und beschleunigen danach wieder

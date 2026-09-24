@@ -375,7 +375,7 @@ public struct World: Sendable {
     mutating func crash(_ i: Int, _ j: Int, contact: Collision.Contact, now: Double) {
         let first = vehicles[i]
         let second = vehicles[j]
-        let takedown = isTakedown(first, second)
+        let takedown = isTakedown(first, second) && !criminalRanInto(first, second, at: contact.point)
         let seizure = isSeizure(first, second)
         // A live criminal shrugs off anything but the police: it keeps its course, the other
         // car bounces off it as off something much heavier.
@@ -457,9 +457,49 @@ public struct World: Sendable {
         vehicle.type == .pickup && !vehicle.isCrashed
     }
 
-    /// One of the player's police cars hits the criminal: the good crash.
+    /// One of the player's police cars and the criminal touch: the good crash, unless the
+    /// criminal drove into it (`criminalRanInto`).
     func isTakedown(_ a: Vehicle, _ b: Vehicle) -> Bool {
         (isLiveCriminal(a) && b.isPlayerPolice) || (isLiveCriminal(b) && a.isPlayerPolice)
+    }
+
+    /// The criminal drove into the police car, not the other way round: its front hit, the
+    /// police car's did not. Then it is no takedown (Leo): the police car bounces off the
+    /// heavy pickup like any car, and the criminal drives on.
+    func criminalRanInto(_ a: Vehicle, _ b: Vehicle, at point: Vec2) -> Bool {
+        let (criminal, police) = a.type == .pickup ? (a, b) : (b, a)
+        return criminalRanInto(
+            criminal: Path.Pose(position: criminal.position, heading: criminal.heading),
+            police: Path.Pose(position: police.position, heading: police.heading),
+            policeType: police.type,
+            at: point
+        )
+    }
+
+    func criminalRanInto(criminal: Path.Pose, police: Path.Pose, policeType: VehicleType = .police, at point: Vec2) -> Bool {
+        func front(_ pose: Path.Pose, _ type: VehicleType) -> Bool {
+            (point - pose.position).dot(Vec2(angle: pose.heading)) > length(of: type) * 0.25
+        }
+        return front(criminal, .pickup) && !front(police, policeType)
+    }
+
+    /// Whether a police car launched at `arm` (after `launchDelay`) would take the criminal
+    /// down during its merge: true if it hits it and that counts, false if the criminal
+    /// would drive into it, nil if they do not touch. Only what a player sees coming.
+    public func predictedTakedown(from arm: Arm, criminal id: Int, launchDelay: Double = 0, samples: Int = 60) -> Bool? {
+        guard let criminal = vehicle(id: id) else { return nil }
+        let path = layout.entry(arm)
+        let profile = MergeProfile(pathLength: path.length, duration: config.mergeDuration, ringSpeed: ringSpeed)
+        for k in 0...samples {
+            let t = profile.duration * Double(k) / Double(samples)
+            let me = path.pose(at: profile.distance(at: t))
+            guard let other = predictedPose(of: criminal, after: launchDelay + t) else { continue }
+            let contact = Collision.contact(hitbox(at: me), hitbox(at: other, type: criminal.type))
+            if contact.gap <= 0 {
+                return !criminalRanInto(criminal: other, police: me, at: contact.point)
+            }
+        }
+        return nil
     }
 
     /// The player's mistake: a player car crashing while it merges, or right after it

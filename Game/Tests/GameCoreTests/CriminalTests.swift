@@ -17,7 +17,8 @@ extension World {
     mutating func launch(into target: Int, within seconds: Double = 12) -> [GameEvent] {
         var events: [GameEvent] = []
         for _ in 0..<Int(seconds * Double(World.stepRate)) {
-            if queue.isReady, (predictedMergeGaps(from: layout.player)[target] ?? .infinity) <= -0.05 {
+            if queue.isReady, (predictedMergeGaps(from: layout.player)[target] ?? .infinity) <= -0.05,
+               target != criminal.vehicle || predictedTakedown(from: layout.player, criminal: target) == true {
                 tap(at: time)
                 events += run(steps: World.stepRate) { $0.vehicles.contains(where: \.isCrashed) || $0.vehicle(id: target)?.dents.isEmpty == false }
                 return events
@@ -316,4 +317,18 @@ struct CriminalTests {
         #expect(drive.isInFlow)
         #expect(!drive.isPursuing)
     }
+}
+
+/// Leo: every hit of a police car counts, unless the criminal drives into the police car.
+@Test func onlyTheCriminalRunningIntoThePoliceIsNoTakedown() {
+    let world = chaseShift(police: true)
+    let criminal = Path.Pose(position: Vec2(0, 0), heading: 0)
+    // The police car right ahead: the pickup's front meets its rear.
+    #expect(world.criminalRanInto(criminal: criminal, police: Path.Pose(position: Vec2(24, 0), heading: 0), at: Vec2(12, 0)))
+    // Rammed from behind: a takedown.
+    #expect(!world.criminalRanInto(criminal: criminal, police: Path.Pose(position: Vec2(-24, 0), heading: 0), at: Vec2(-12, 0)))
+    // Hit in the side while merging: a takedown.
+    #expect(!world.criminalRanInto(criminal: criminal, police: Path.Pose(position: Vec2(0, 20), heading: -.pi / 2), at: Vec2(0, 6)))
+    // Front to front: the police car hit it too, so it counts.
+    #expect(!world.criminalRanInto(criminal: criminal, police: Path.Pose(position: Vec2(24, 0), heading: .pi), at: Vec2(12, 0)))
 }

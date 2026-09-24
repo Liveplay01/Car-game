@@ -87,8 +87,9 @@ public struct PerfectBot: Bot {
         }
         if let chase, chase.policeIsNext {
             // Hold the police car back until it would hit the pickup, and only the pickup.
+            // Only a hit that counts: not one where the criminal drives into it.
             let gaps = world.predictedMergeGaps(from: world.layout.player, samples: Self.samples)
-            let hits = (gaps[chase.criminal ?? -1] ?? .infinity) <= 0
+            let hits = world.predictedTakedown(from: world.layout.player, criminal: chase.criminal ?? -1, samples: Self.samples) == true
             let clear = gaps.allSatisfy { $0.key == chase.criminal || $0.value > margin }
             return hits && clear ? .tap(world.time) : nil
         }
@@ -120,8 +121,9 @@ public struct HumanBot: Bot {
     public var boldGap: Double
     /// A bold attempt turns safe after this long without a Tight Fit chance.
     public var patience: Double
-    /// How deep into the pickup it aims (seconds of overlap), to hit despite its timing error.
-    public var aimDepth = 0.08
+    /// How much earlier the tap may come and still take the criminal down (seconds): it
+    /// aims behind the pickup, where its timing error does not turn a hit into being rammed.
+    public var aimMargin = 0.05
     /// With this many cars left or fewer it finishes the shift instead of hunting.
     public var finishRatherThanHunt = 4
 
@@ -180,7 +182,12 @@ public struct HumanBot: Bot {
             // Aims for the middle of the hit window, not its edge: a timing error either
             // way still hits.
             let gaps = world.predictedMergeGaps(from: world.layout.player, launchDelay: lead, samples: PerfectBot.samples)
-            let hits = (gaps[criminal] ?? .infinity) <= -aimDepth
+            // A hit only counts if the criminal does not drive into the police car, so it
+            // aims behind the pickup: the tap must still count if it comes a little early.
+            func takedown(_ delay: Double) -> Bool? {
+                world.predictedTakedown(from: world.layout.player, criminal: criminal, launchDelay: delay, samples: PerfectBot.samples)
+            }
+            let hits = (gaps[criminal] ?? .infinity) <= 0 && takedown(lead) == true && takedown(lead - aimMargin) != false
             let clear = gaps.allSatisfy { $0.key == criminal || $0.value > room }
             guard hits && clear else { return nil }
             return plannedTap(world)
