@@ -129,6 +129,7 @@ public enum Strings {
         public static let adHint = "Watch a short ad for a free Standard chest."
         public static let adReward = "Ad watched · Standard chest added"
         public static let noAdsLeft = "No more ad chests today. Back tomorrow."
+        public static let adNotReady = "No ad ready yet, or it was closed early. Try again in a moment."
         public static let adPlaceholder = "Ad"
         public static func adCountdown(_ seconds: Int) -> String { "Your chest in \(seconds) s" }
         public static func watchAd(_ left: Int) -> String { "Watch ad · \(left) left" }

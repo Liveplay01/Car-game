@@ -25,7 +25,7 @@ Stand: 24.09.2026 · Die Details zur Basis (M0–M2) stehen in [FOUNDATION.md](F
 
 | # | Meilenstein | Umfang | Was du danach testen kannst |
 | --- | --- | --- | --- |
-| M12 | iPhone-App | M | das komplette Spiel mit Touch und Haptik auf deinem iPhone |
+| M12 | iPhone-App (vorbereitet: `App.swiftpm` mit Canvas-Zeichnung, Touch, Sound, Haptik, Musik, AdMob, nativen Buttons; ungetestet, erster Build auf dem iPad offen) | M | das komplette Spiel mit Touch und Haptik auf deinem iPhone |
 
 ### Phase 3 · Veröffentlichung
 

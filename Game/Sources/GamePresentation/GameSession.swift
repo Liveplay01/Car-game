@@ -299,7 +299,11 @@ public final class GameSession {
             }
             if let adProvider {
                 adProvider.showRewardedAd { [weak self] watched in
-                    if watched { self?.adWatched() }
+                    if watched {
+                        self?.adWatched()
+                    } else {
+                        self?.showNotice(Strings.Shop.adNotReady)
+                    }
                 }
             } else {
                 // Test window: a placeholder ad that runs a few seconds.

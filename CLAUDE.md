@@ -38,7 +38,10 @@ Kreisverkehr-Timing-Spiel fürs iPhone (One-Tap, inspiriert von "Car Circle").
   `main`, kein Feature-Branch- oder PR-Workflow für dieses Ein-Personen-Projekt
   (der PR-Workflow aus der globalen CLAUDE.md gilt hier weiterhin nicht). Bis
   Phase 2 beginnt, bleibt es bei lokalen Commits ohne zu pushen.
-- **Kein Backend, kein eigener Server.** Online-Funktionen nur über Apple-Dienste.
+- **Kein Backend, kein eigener Server.** Online-Funktionen nur über Apple-Dienste –
+  **Ausnahme Werbung:** Standard-Truhen per Werbung laufen über **Google AdMob**
+  (Entscheidung Leo, 24.09.2026). Folge: App-Store-Datenschutzangaben mit Werbe-/
+  Tracking-Daten statt "Data Not Collected", ATT-Abfrage, Datenschutzerklärung erwähnt AdMob.
 - **So viele native Apple-Elemente wie möglich** (Tab-Bar, NavigationStack,
   Listen, Sheets, SF Symbols). Die Hauptnavigation zwischen Street Builder, Game,
   Shop und Upgrades ist eine native iOS-Tab-Bar (`TabView`). Eigenes Design nur für
@@ -55,6 +58,7 @@ cd Game;       swift run -c release Sim --curve --shifts 300     # Schwierigkeit
 cd Game;       swift run -c release Sim --career 120             # Laufbahnen: Level, Geld, Upgrades
 cd TestWindow; swift run -c release TestWindow                   # Spielen
 cd TestWindow; swift run SoundMaker                              # Platzhalter-Sounds neu erzeugen
+powershell -File sync-app-assets.ps1                            # Sounds/Haptik/Musik in App.swiftpm kopieren
 ```
 
 ## Arbeitsweise

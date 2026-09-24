@@ -1,0 +1,25 @@
+{
+  "Version": 1.0,
+  "Metadata": {
+    "Project": "Car Game",
+    "Description": "nearMiss"
+  },
+  "Pattern": [
+    {
+      "Event": {
+        "Time": 0,
+        "EventType": "HapticTransient",
+        "EventParameters": [
+          {
+            "ParameterID": "HapticIntensity",
+            "ParameterValue": 0.35
+          },
+          {
+            "ParameterID": "HapticSharpness",
+            "ParameterValue": 0.3
+          }
+        ]
+      }
+    }
+  ]
+}
