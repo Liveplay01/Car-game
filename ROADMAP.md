@@ -744,7 +744,7 @@ Windows im Paket `Game/`, der Mac wird nur für den Feinschliff und den Upload g
 
 ## Ideen-Abdeckung
 
-Jede Idee aus [IDEA.md](IDEA.md) und wo sie umgesetzt wird.
+Jede Idee aus der ursprünglichen IDEA.md (Stand 23.09.2026, siehe Git-Historie) und wo sie umgesetzt wird. IDEA.md selbst enthält seit 24.09.2026 nur noch die offenen Ideen.
 
 | Idee (IDEA.md) | Wo |
 | --- | --- |

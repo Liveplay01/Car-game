@@ -4,7 +4,7 @@ Kreisverkehr-Timing-Spiel fürs iPhone (One-Tap, inspiriert von "Car Circle").
 
 | Dokument | Inhalt |
 | --- | --- |
-| [IDEA.md](IDEA.md) | Spielidee und Features |
+| [IDEA.md](IDEA.md) | Offene Ideen (Umgesetztes und Gestrichenes wird entfernt) |
 | [PLAN.md](PLAN.md) | Weg: Windows → iPad (Swift Playgrounds) → Veröffentlichung |
 | [FOUNDATION.md](FOUNDATION.md) | Basis: Technik, Regeln mit Startwerten, Architektur |
 | [ROADMAP.md](ROADMAP.md) | Meilensteine M0–M13 |
