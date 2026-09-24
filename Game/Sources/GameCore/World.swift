@@ -225,7 +225,8 @@ public struct World: Sendable {
                 }
 
             case .crashed(var c):
-                c.elapsed += dt
+                // A tow depot nearby clears wrecks faster (M9).
+                c.elapsed += dt * wreckClearRate(at: vehicles[i].position)
                 var body = body(of: vehicles[i])
                 CrashPhysics.skid(&body, config: config, dt: dt)
                 vehicles[i].position = body.position

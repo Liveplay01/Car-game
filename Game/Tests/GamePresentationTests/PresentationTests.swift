@@ -44,3 +44,41 @@ struct CameraTests {
         #expect(third.y + config.carLength / 2 * camera.scale <= viewport.y)
     }
 }
+
+@Suite("Street Builder modules (M9)")
+struct BuilderModuleTests {
+    @Test func everyModuleIsAPart() {
+        for module in RoadModule.allCases {
+            #expect(StreetBuilderPage.Part.allCases.contains { $0.module == module })
+        }
+        #expect(StreetBuilderPage.Part.arm.module == nil)
+    }
+
+    @Test func modulesLandOnModuleSlotsAndArmsOnArmSlots() {
+        let config = Config()
+        let career = Career(level: 1, money: 100_000)
+        let map = (center: Vec2(200, 300), radius: 120.0)
+        let slotPoint = StreetBuilderPage.moduleSlotPosition(2, count: config.moduleSlotCount, map: map)
+        #expect(StreetBuilderPage.target(for: .towDepot, at: slotPoint, career: career, config: config, map: map) == 2)
+        #expect(StreetBuilderPage.canPlace(.tollBooth, inSlot: 5, career: career, config: config))
+        #expect(!StreetBuilderPage.canPlace(.tollBooth, inSlot: config.moduleSlotCount, career: career, config: config))
+        #expect(!StreetBuilderPage.canPlace(.arm, inSlot: 0, career: career, config: config))
+        #expect(StreetBuilderPage.price(of: .speedCamera, career: career, config: config) == config.speedCameraCost)
+    }
+}
+
+@Suite("City Evolution (M9)")
+struct CityTests {
+    @Test func theCityGrowsWithLevelsArmsAndModules() {
+        var config = Config()
+        let start = CityLayer.growth(config: config)
+        config.level = 10
+        let later = CityLayer.growth(config: config)
+        config.armSlots = [0, 2, 4, 8, 12]
+        config.modules = [0: .towDepot]
+        let built = CityLayer.growth(config: config)
+        #expect(start < later && later < built)
+        #expect(CityLayer.lots(growth: start) < CityLayer.lots(growth: built))
+        #expect(CityLayer.lots(growth: 10_000) == 64)
+    }
+}

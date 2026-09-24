@@ -72,6 +72,9 @@ public enum Strings {
         public static func name(_ part: StreetBuilderPage.Part) -> String {
             switch part {
             case .arm: "New arm"
+            case .tollBooth: "Toll Booth"
+            case .speedCamera: "Speed Camera"
+            case .towDepot: "Tow Depot"
             }
         }
 
@@ -82,6 +85,12 @@ public enum Strings {
                 let traffic = Upgrades.percent(config.trafficPerArm)
                 let pay = Upgrades.percent(config.payPerArm)
                 return "A wider ring with one more way in and out: \(traffic) more traffic, transporters more often, and \(pay) more pay per shift."
+            case .tollBooth:
+                return "Every lorry pays \(config.tollPerTruck) cash here. Traffic slows down around it, and so do your police cars."
+            case .speedCamera:
+                return "Fines every car over the limit: nothing in a calm shift, a lot in rush hour. Everyone brakes hard at it."
+            case .towDepot:
+                return "Wrecks near it are towed away \(Upgrades.percent(config.towSpeedup)) faster, so the ring flows again sooner."
             }
         }
     }
@@ -326,6 +335,8 @@ public enum Strings {
         public static func notEnoughMoney(_ price: String) -> String { "Not enough cash: \(price) needed" }
         /// "New arm built · 5 arms".
         public static func built(_ name: String, arms: Int) -> String { "\(name) built · \(arms) arms" }
+        /// "Tow Depot built on the ring".
+        public static func placed(_ name: String) -> String { "\(name) built on the ring" }
         /// "More Patrols 2/4".
         public static func bought(_ name: String, steps: Int, of maxSteps: Int) -> String { "\(name) \(steps)/\(maxSteps)" }
     }

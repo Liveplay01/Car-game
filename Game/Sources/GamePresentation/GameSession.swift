@@ -225,7 +225,7 @@ public final class GameSession {
             builderPage.dragging = (part, StreetBuilderPage.cards(viewport: lastViewport, bottomInset: tabInset).first { $0.part == part }?.rect.center ?? .zero)
         case let .placePart(slot):
             guard let part = builderPage.dragging?.part ?? builderPage.selected else { return }
-            guard save.career.armSlots.allSatisfy({ $0 != slot }), config.canBuildArm(inSlot: slot, built: save.career.armSlots) else { return }
+            guard StreetBuilderPage.canPlace(part, inSlot: slot, career: save.career, config: config) else { return }
             builderPage.pending = (part, slot)
             builderPage.removing = 0
             builderPage.dragging = nil
@@ -364,8 +364,12 @@ public final class GameSession {
     /// Builds the part that is waiting on the ring, or shows that it cannot be paid for.
     private func buildPart() {
         guard let pending = builderPage.pending else { return }
-        guard let price = save.career.armPrice(config: config) else { return }
+        guard let price = StreetBuilderPage.price(of: pending.part, career: save.career, config: config) else { return }
         let money = save.career.money
+        if let module = pending.part.module {
+            buildModule(module, pending: pending, price: price, money: money)
+            return
+        }
         guard save.career.buildArm(inSlot: pending.slot, config: config) else {
             builderPage.denied = 0.001
             showNotice(Strings.Notice.notEnoughMoney(format.number(price)))
@@ -382,6 +386,23 @@ public final class GameSession {
         showNotice(Strings.Notice.built(Strings.Builder.name(pending.part), arms: save.career.armSlots.count))
     }
 
+    /// A module goes onto its slot on the ring; a module already there is swapped (M9).
+    private func buildModule(_ module: RoadModule, pending: (part: StreetBuilderPage.Part, slot: Int), price: Int, money: Int) {
+        guard save.career.build(module, inSlot: pending.slot, config: config) else {
+            builderPage.denied = 0.001
+            showNotice(Strings.Notice.notEnoughMoney(format.number(price)))
+            return
+        }
+        builderPage.pending = nil
+        builderPage.removing = 0
+        builderPage.builtModule = (pending.slot, 0)
+        builderPage.moneyBefore = money
+        store.save(save)
+        refreshWaitingShift()
+        play(sounds: [.comboUp], haptics: [.comboUp])
+        showNotice(Strings.Notice.placed(Strings.Builder.name(pending.part)))
+    }
+
     /// A press on the Street Builder: on a palette card it picks the part up, on the part
     /// waiting on the ring it builds it (second tap) or takes it away (single tap).
     private func builderPress(at point: Vec2) {
@@ -394,7 +415,9 @@ public final class GameSession {
         let map = StreetBuilderPage.map(viewport: lastViewport, bottomInset: inset)
         let slots = config.armSlotCount
         if let pending = builderPage.pending,
-           StreetBuilderPage.slot(at: point, slots: slots, map: map) == pending.slot {
+           (pending.part.module == nil
+               ? StreetBuilderPage.slot(at: point, slots: slots, map: map)
+               : StreetBuilderPage.moduleSlot(at: point, count: config.moduleSlotCount, map: map)) == pending.slot {
             if lastPartTap <= Self.doubleTapWindow {
                 lastPartTap = .infinity
                 perform(.buildPart)
@@ -574,13 +597,14 @@ public final class GameSession {
             guard screen == .page(.streetBuilder), builderPage.dragging != nil else { return }
             builderPage.dragging?.at = point
             let map = StreetBuilderPage.map(viewport: lastViewport, bottomInset: tabInset)
-            let slot = StreetBuilderPage.slot(at: point, slots: config.armSlotCount, map: map)
-            builderPage.target = slot.flatMap { config.canBuildArm(inSlot: $0, built: save.career.armSlots) ? $0 : nil }
+            if let part = builderPage.dragging?.part {
+                builderPage.target = StreetBuilderPage.target(for: part, at: point, career: save.career, config: config, map: map)
+            }
         case let .pointerUp(point):
             guard screen == .page(.streetBuilder), builderPage.dragging != nil else { return }
             let map = StreetBuilderPage.map(viewport: lastViewport, bottomInset: tabInset)
-            if let slot = StreetBuilderPage.slot(at: point, slots: config.armSlotCount, map: map),
-               config.canBuildArm(inSlot: slot, built: save.career.armSlots) {
+            if let part = builderPage.dragging?.part,
+               let slot = StreetBuilderPage.target(for: part, at: point, career: save.career, config: config, map: map) {
                 perform(.placePart(slot: slot))
             } else {
                 builderPage.dragging = nil
@@ -741,12 +765,14 @@ public final class GameSession {
         // The crash shake moves the scene; the HUD (screen space) stays still.
         camera.focus += effects.shakeOffset
         var list = RenderList(camera: camera, background: .background)
+        CityLayer.add(world: world, to: &list)
         SceneBuilder.addRoad(world.layout, config: world.config, to: &list)
         WeatherLayer.addCityEvent(world: world, to: &list)
         WeatherLayer.addGround(world: world, to: &list)
         effects.addGround(world: world, alpha: clock.alpha, to: &list)
         SceneBuilder.addShadows(of: world, alpha: clock.alpha, to: &list)
         SceneBuilder.addVehicles(of: world, alpha: clock.alpha, to: &list)
+        SceneBuilder.addTowTrucks(of: world, to: &list)
         effects.addAir(to: &list)
         WeatherLayer.addAir(world: world, time: world.time, reduceMotion: reduceMotion, to: &list)
 

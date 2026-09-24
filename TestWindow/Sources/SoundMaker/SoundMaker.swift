@@ -35,6 +35,7 @@ struct SoundMaker {
             ("secured", secured(), 0.35),
             ("paid", paid(), 0.45),
             ("seized", seized(), 0.45),
+            ("toll", toll(), 0.12),
         ]
         for (name, samples, peak) in sounds {
             let url = folder.appendingPathComponent("\(name).wav")
@@ -48,6 +49,11 @@ struct SoundMaker {
     /// Clean merge, ~100 times a shift: a soft, short tick.
     static func merge() -> [Double] {
         render(0.06) { t in sine(1_320, t) * decay(t, 0.012) * 0.16 }
+    }
+
+    /// A module earned money (M9): a tiny, soft coin tick, quieter than a merge.
+    static func toll() -> [Double] {
+        render(0.07) { t in (sine(2_093, t) * 0.6 + sine(3_136, t) * 0.4) * decay(t, 0.015) * 0.2 }
     }
 
     /// Near Miss (M6): a shorter, softer swoosh than the Tight Fit's, without the click.

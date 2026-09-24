@@ -8,14 +8,20 @@ import GameCore
 /// The motion keeps to the rules in FOUNDATION.md 3: the free slots answer the moment a drag
 /// starts, the part snaps while it is dragged, and only the build itself celebrates.
 public enum StreetBuilderPage {
-    /// Parts to build. More follow later (toll booths, IDEA.md).
+    /// Parts to build: a new arm, or a module on one of the ring's module slots (M9).
     public enum Part: String, Sendable, Equatable, CaseIterable {
         case arm
+        case tollBooth
+        case speedCamera
+        case towDepot
+
+        /// The module this part puts on the ring; nil for an arm.
+        public var module: RoadModule? { RoadModule(rawValue: rawValue) }
     }
 
     static let gap = 12.0
     static let cardCorner = 14.0
-    static let paletteHeight = 96.0
+    static let paletteHeight = 112.0
     static let detailHeight = 116.0
     /// A slot answers a starting drag at once.
     static let slotFade = 0.15
@@ -43,6 +49,8 @@ public enum StreetBuilderPage {
         public var removing = 0.0
         /// A built arm: its slot and how long ago.
         public var built: (slot: Int, age: Double)?
+        /// A module just put on the ring: its module slot and how long ago (M9).
+        public var builtModule: (slot: Int, age: Double)?
         /// Money before the build, counted down from.
         public var moneyBefore: Int?
         /// A build that could not be paid for.
@@ -66,6 +74,11 @@ public enum StreetBuilderPage {
                 built.age += delta
                 self.built = built.age < StreetBuilderPage.buildDuration ? built : nil
                 if self.built == nil { moneyBefore = nil }
+            }
+            if var builtModule {
+                builtModule.age += delta
+                self.builtModule = builtModule.age < StreetBuilderPage.buildDuration ? builtModule : nil
+                if self.builtModule == nil, built == nil { moneyBefore = nil }
             }
         }
     }
@@ -99,16 +112,53 @@ public enum StreetBuilderPage {
         return nearest.1.distance(to: point) <= 46 ? nearest.0 : nil
     }
 
-    /// Where each palette card sits.
+    /// Where each palette card sits: two columns, two rows.
     public static func cards(viewport: Vec2, bottomInset: Double) -> [(part: Part, rect: Rect)] {
         let width = min(viewport.x - 2 * gap, 460)
         let left = (viewport.x - width) / 2
         let top = viewport.y - bottomInset - detailHeight - paletteHeight - gap
-        let cardWidth = Part.allCases.count == 1 ? width : min(200.0, (width - gap) / 2)
+        let columns = 2
+        let rows = (Part.allCases.count + columns - 1) / columns
+        let cardWidth = (width - gap) / Double(columns)
+        let cardHeight = (paletteHeight - gap * Double(rows - 1)) / Double(rows)
         return Part.allCases.enumerated().map { index, part in
-            let x = left + Double(index) * (cardWidth + gap)
-            return (part, Rect(minX: x, minY: top, maxX: x + cardWidth, maxY: top + paletteHeight))
+            let x = left + Double(index % columns) * (cardWidth + gap)
+            let y = top + Double(index / columns) * (cardHeight + gap)
+            return (part, Rect(minX: x, minY: y, maxX: x + cardWidth, maxY: y + cardHeight))
         }
+    }
+
+    /// Where a module slot sits on the map: on the ring itself, like in the game.
+    public static func moduleSlotPosition(_ slot: Int, count: Int, map: (center: Vec2, radius: Double)) -> Vec2 {
+        let angle = Angle.tau * (Double(slot) + 0.5) / Double(max(1, count))
+        return map.center + Vec2(angle: -angle) * map.radius
+    }
+
+    /// The module slot nearest to a point, if the point is close enough to it.
+    public static func moduleSlot(at point: Vec2, count: Int, map: (center: Vec2, radius: Double)) -> Int? {
+        let nearest = (0..<max(0, count)).min { moduleSlotPosition($0, count: count, map: map).distance(to: point) < moduleSlotPosition($1, count: count, map: map).distance(to: point) }
+        guard let nearest else { return nil }
+        return moduleSlotPosition(nearest, count: count, map: map).distance(to: point) <= 30 ? nearest : nil
+    }
+
+    /// The slot a part can be put down on under a point: a free arm slot for an arm, any
+    /// module slot for a module (a taken one is swapped).
+    public static func target(for part: Part, at point: Vec2, career: Career, config: Config, map: (center: Vec2, radius: Double)) -> Int? {
+        if part.module != nil {
+            return moduleSlot(at: point, count: config.moduleSlotCount, map: map)
+        }
+        return slot(at: point, slots: config.armSlotCount, map: map).flatMap { canPlace(part, inSlot: $0, career: career, config: config) ? $0 : nil }
+    }
+
+    public static func canPlace(_ part: Part, inSlot slot: Int, career: Career, config: Config) -> Bool {
+        if part.module != nil { return slot >= 0 && slot < config.moduleSlotCount }
+        return !career.armSlots.contains(slot) && config.canBuildArm(inSlot: slot, built: career.armSlots)
+    }
+
+    /// What the part costs; nil for an arm once the ring is full.
+    public static func price(of part: Part, career: Career, config: Config) -> Int? {
+        if let module = part.module { return config.price(of: module) }
+        return career.armPrice(config: config)
     }
 
     /// The palette card under a point.
@@ -148,8 +198,8 @@ public enum StreetBuilderPage {
     }
 
     static func countedMoney(career: Career, state: State) -> Int {
-        guard let before = state.moneyBefore, let built = state.built else { return career.money }
-        let x = Ease.outCubic(built.age / countDuration)
+        guard let before = state.moneyBefore, let age = state.built?.age ?? state.builtModule?.age else { return career.money }
+        let x = Ease.outCubic(age / countDuration)
         return before + Int((Double(career.money - before) * x).rounded())
     }
 
@@ -183,8 +233,8 @@ public enum StreetBuilderPage {
         id += 1
 
         // Free slots answer a drag: a socket with the stub of a road in it, brightest under
-        // the finger. Slots too close to an arm show as taken.
-        let dragging = state.dragging != nil
+        // the finger. Slots too close to an arm show as taken. Only while an arm is dragged.
+        let dragging = state.dragging.map { $0.part == .arm } ?? false
         let slotOpacity = dragging ? 1 : 0.45
         for slot in 0..<slots where !built.contains(slot) {
             let free = config.canBuildArm(inSlot: slot, built: built)
@@ -219,8 +269,10 @@ public enum StreetBuilderPage {
                 addArm(slot: build.slot, slots: slots, map: map, road: .accent, mark: nil, opacity: settle, grow: grow, id: &id, to: &list)
             }
         }
+        addModules(career: career, config: config, state: state, map: map, reduceMotion: reduceMotion, id: &id, to: &list)
+
         // The one put down but not paid for yet; it fades while it is being taken away.
-        if let pending = state.pending {
+        if let pending = state.pending, pending.part == .arm {
             var opacity = 0.6
             var grow = 1.0
             if state.removing > 0 {
@@ -233,6 +285,60 @@ public enum StreetBuilderPage {
             }
             addArm(slot: pending.slot, slots: slots, map: map, road: state.denied > 0 ? .destructive : .accent, mark: nil, opacity: opacity, grow: grow, id: &id, to: &list)
         }
+    }
+
+    /// The module slots on the ring (M9): what is built on them, and while a module is
+    /// dragged, where it can go. A taken slot shows that the old module would be swapped.
+    private static func addModules(career: Career, config: Config, state: State, map: (center: Vec2, radius: Double), reduceMotion: Bool, id: inout Int, to list: inout RenderList) {
+        let count = config.moduleSlotCount
+        let draggingModule = state.dragging?.part.module != nil
+        for slot in 0..<count {
+            let at = moduleSlotPosition(slot, count: count, map: map)
+            if let module = career.modules[slot] {
+                var scale = 1.0
+                if let build = state.builtModule, build.slot == slot, !reduceMotion {
+                    scale += 0.4 * (1 - Ease.outCubic(build.age / buildDuration))
+                }
+                addModuleIcon(module, at: at, scale: scale, opacity: 1, id: &id, to: &list)
+            }
+            if draggingModule {
+                let isTarget = state.target == slot
+                let taken = career.modules[slot] != nil
+                list.add(.arc(center: at, radius: isTarget && !reduceMotion ? 13 : 10, thickness: 2, startAngle: 0, endAngle: Angle.tau),
+                         color: isTarget ? .accent : (taken ? .hazard : .marking), opacity: isTarget ? 1 : 0.7, space: .screen, id: id)
+                id += 1
+            }
+        }
+        if let pending = state.pending, let module = pending.part.module {
+            var opacity = 0.7
+            if state.removing > 0 { opacity *= 1 - Ease.clamp01(state.removing / removeDuration) }
+            if state.denied > 0, !reduceMotion { opacity = 0.6 + 0.25 * sin(state.denied * 40) }
+            let at = moduleSlotPosition(pending.slot, count: count, map: map)
+            list.add(.arc(center: at, radius: 13, thickness: 2.5, startAngle: 0, endAngle: Angle.tau), color: state.denied > 0 ? .destructive : .accent, opacity: opacity, space: .screen, id: id)
+            id += 1
+            addModuleIcon(module, at: at, scale: 1, opacity: opacity, id: &id, to: &list)
+        }
+    }
+
+    /// A module as a small symbol: the toll barrier, the camera, the tow truck.
+    static func addModuleIcon(_ module: RoadModule, at center: Vec2, scale: Double, opacity: Double, id: inout Int, to list: inout RenderList) {
+        list.add(.circle(center: center, radius: 8 * scale), color: .background, opacity: opacity, space: .screen, id: id)
+        id += 1
+        switch module {
+        case .tollBooth:
+            list.add(.line(from: center - Vec2(6, 0) * scale, to: center + Vec2(6, 0) * scale, thickness: 2.5 * scale), color: .hazard, opacity: opacity, space: .screen, id: id)
+            id += 1
+            list.add(.roundedRect(center: center - Vec2(6, 0) * scale, size: Vec2(4, 4) * scale, cornerRadius: 1, rotation: 0), color: .hazard, opacity: opacity, space: .screen, id: id)
+        case .speedCamera:
+            list.add(.roundedRect(center: center, size: Vec2(10, 7) * scale, cornerRadius: 2, rotation: 0), color: .marking, opacity: opacity, space: .screen, id: id)
+            id += 1
+            list.add(.circle(center: center, radius: 2.2 * scale), color: .lightBlue, opacity: opacity, space: .screen, id: id)
+        case .towDepot:
+            list.add(.roundedRect(center: center + Vec2(-1.5, 0) * scale, size: Vec2(10, 6) * scale, cornerRadius: 1.5, rotation: 0), color: .hazard, opacity: opacity, space: .screen, id: id)
+            id += 1
+            list.add(.line(from: center + Vec2(3, -1) * scale, to: center + Vec2(7, -5) * scale, thickness: 1.5 * scale), color: .marking, opacity: opacity, space: .screen, id: id)
+        }
+        id += 1
     }
 
     /// One arm on the map: kerb, road and the stop line where it meets the ring.
@@ -265,7 +371,7 @@ public enum StreetBuilderPage {
         id: inout Int,
         to list: inout RenderList
     ) {
-        let price = career.armPrice(config: config)
+        let price = price(of: part, career: career, config: config)
         let isSelected = state.selected == part
         let enter = Ease.outCubic((state.age - Double(index) * 0.05) / 0.25)
         guard enter > 0 else { return }
@@ -304,6 +410,11 @@ public enum StreetBuilderPage {
     static func addPartPicture(_ part: Part, at center: Vec2, scale: Double, opacity: Double, id: inout Int, to list: inout RenderList) {
         list.add(.arc(center: center, radius: 16 * scale, thickness: 5 * scale, startAngle: 0, endAngle: Angle.tau), color: .surface, opacity: opacity, space: .screen, id: id)
         id += 1
+        if let module = part.module {
+            // A module: its symbol sitting on the bit of ring.
+            addModuleIcon(module, at: center + Vec2(16, 0) * scale, scale: scale * 1.1, opacity: opacity, id: &id, to: &list)
+            return
+        }
         list.add(.arc(center: center, radius: 16 * scale, thickness: 5 * scale, startAngle: -0.9, endAngle: 0.9), color: .marking, opacity: opacity, space: .screen, id: id)
         id += 1
         list.add(.line(from: center + Vec2(14, 0) * scale, to: center + Vec2(30, 0) * scale, thickness: 9 * scale), color: .accent, opacity: opacity, space: .screen, id: id)
@@ -349,7 +460,7 @@ public enum StreetBuilderPage {
             return
         }
         text(Strings.Builder.name(part), Vec2(left, y), size: 17, weight: .bold, color: .primary)
-        if let price = career.armPrice(config: config) {
+        if let price = price(of: part, career: career, config: config) {
             let priceColor: ColorToken = career.money >= price ? .accent : .muted
             Icons.moneyTag(format.number(price), at: Vec2(center.x + width / 2 - 16, y), size: 17, alignment: .trailing, color: priceColor, noteColor: priceColor, opacity: enter, id: &id, to: &list)
         }

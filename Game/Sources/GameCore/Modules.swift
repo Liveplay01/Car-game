@@ -1,3 +1,5 @@
+import Foundation
+
 /// Modules on the ring: bought in the Street Builder, placed in one of a fixed number of
 /// slots around the roundabout (FOUNDATION.md 2.9).
 ///
@@ -10,6 +12,9 @@ public enum RoadModule: String, Sendable, Equatable, CaseIterable, Codable {
     case tollBooth
     /// Pays a fine for every car over the limit, and cars brake hard right at it.
     case speedCamera
+    /// Abschlepp-Depot (IDEA.md; ROADMAP.md, M9): wrecks in its zone are towed away
+    /// `towSpeedup` faster, so the ring flows again sooner. It earns nothing and slows nobody.
+    case towDepot
 }
 
 extension Config {
@@ -18,6 +23,7 @@ extension Config {
         switch module {
         case .tollBooth: tollBoothCost
         case .speedCamera: speedCameraCost
+        case .towDepot: towDepotCost
         }
     }
 
@@ -29,6 +35,8 @@ extension Config {
         case .tollBooth: (tollZoneArc, tollSpeedFactor)
         // Short and sharp: everyone snatches at the brakes, then goes again.
         case .speedCamera: (cameraZoneArc, cameraSpeedFactor)
+        // Wide, and no speed limit: the tow truck works beside the traffic.
+        case .towDepot: (towZoneArc, 1)
         }
     }
 }
@@ -71,6 +79,26 @@ extension World {
         return limit
     }
 
+    /// The tow depot whose zone covers a point on or near the ring, if there is one (M9).
+    public func towDepot(covering point: Vec2) -> Int? {
+        let radius = layout.ringRadius
+        let distance = point.length
+        guard abs(distance - radius) <= config.laneWidth * 2 else { return nil }
+        let s = Angle.wrap(atan2(point.y, point.x), period: Angle.tau) * radius
+        for (slot, module) in config.modules.sorted(by: { $0.key < $1.key }) where module == .towDepot {
+            let centre = layout.moduleRingS(slot, of: config.moduleSlotCount)
+            let into = layout.ringDistance(from: Angle.wrap(centre - config.towZoneArc / 2, period: layout.ring.length), to: s)
+            if into <= config.towZoneArc { return slot }
+        }
+        return nil
+    }
+
+    /// How fast a wreck at `point` ages towards being cleared: 1, or faster by the depot.
+    func wreckClearRate(at point: Vec2) -> Double {
+        guard config.modules.values.contains(.towDepot), towDepot(covering: point) != nil else { return 1 }
+        return 1 / max(0.1, 1 - config.towSpeedup)
+    }
+
     /// Money a module pays for one vehicle passing it, or 0 if this one pays nothing.
     /// High Alert multiplies it like every other payout (`Config.forDuty`).
     func fee(of module: RoadModule, for vehicle: Vehicle) -> Int {
@@ -83,6 +111,8 @@ extension World {
             // earns nothing, in rush hour it earns with every car.
             guard ringSpeed > config.ringSpeed * config.cameraLimitFactor else { return 0 }
             return config.cameraFine
+        case .towDepot:
+            return 0
         }
     }
 

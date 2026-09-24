@@ -1,3 +1,4 @@
+import Foundation
 import GameCore
 
 /// Builds the game scene, roads and vehicles, as render items in world space.
@@ -104,7 +105,38 @@ public enum SceneBuilder {
                 let mast = pose.position - across * 1.25
                 add(.roundedRect(center: mast, size: Vec2(7, 5), cornerRadius: 1.5, rotation: pose.heading), .surface)
                 add(.circle(center: mast, radius: 1.6), .lightBlue, 0.9)
+            case .towDepot:
+                // A small fenced yard outside the ring, a parked wreck and the tow truck.
+                let yard = towYard(slot, layout: layout, config: config)
+                add(.roundedRect(center: yard, size: Vec2(34, 26), cornerRadius: 4, rotation: pose.heading), .kerb)
+                add(.roundedRect(center: yard, size: Vec2(30, 22), cornerRadius: 3, rotation: pose.heading), .surface)
+                add(.roundedRect(center: yard + Vec2(angle: pose.heading) * 7, size: Vec2(11, 7), cornerRadius: 2, rotation: pose.heading + 0.3), .vehicleCarGraphite, 0.8)
+                add(.roundedRect(center: yard - Vec2(angle: pose.heading) * 7, size: Vec2(12, 7), cornerRadius: 2, rotation: pose.heading), .hazard, 0.9)
             }
+        }
+    }
+
+    /// Where a tow depot's yard sits: just outside the ring at its module slot.
+    static func towYard(_ slot: Int, layout: RoundaboutLayout, config: Config) -> Vec2 {
+        let pose = layout.ring.pose(at: layout.moduleRingS(slot, of: config.moduleSlotCount))
+        return pose.position + pose.position.normalized * (layout.laneWidth / 2 + 24)
+    }
+
+    /// Tow trucks (M9): for every wreck a depot clears, a truck drives out of the yard to it
+    /// and stays while it is taken away. Short, beside the traffic, never in front of a gap.
+    public static func addTowTrucks(of world: World, to list: inout RenderList) {
+        guard world.config.modules.values.contains(.towDepot) else { return }
+        let duration = world.config.crashDuration
+        for wreck in world.vehicles {
+            guard case let .crashed(state) = wreck.phase, let slot = world.towDepot(covering: wreck.position) else { continue }
+            let yard = towYard(slot, layout: world.layout, config: world.config)
+            let out = Ease.outCubic(min(1, state.elapsed / (duration * 0.5)))
+            let target = wreck.position + wreck.position.normalized * (world.config.carWidth + 4)
+            let at = yard + (target - yard) * out
+            let heading = atan2(target.y - yard.y, target.x - yard.x)
+            let id = RenderID.towTrucks + (wreck.id % 500) * 2
+            list.add(.roundedRect(center: at, size: Vec2(16, 9), cornerRadius: 2, rotation: heading), color: .hazard, space: .world, id: id)
+            list.add(.roundedRect(center: at + Vec2(angle: heading) * 5, size: Vec2(5, 8), cornerRadius: 1.5, rotation: heading), color: .surface, space: .world, id: id + 1)
         }
     }
 

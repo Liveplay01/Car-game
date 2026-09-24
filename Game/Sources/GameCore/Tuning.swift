@@ -76,6 +76,7 @@ public struct Tuning: Sendable {
         check(c.flowChain >= 1, "flowChain must be ≥ 1")
         check(c.crashCosts.allSatisfy { $0 >= 0 } && c.escapeLoss >= 0 && c.crashCostLevel >= 1, "crash costs and escapeLoss must be ≥ 0, crashCostLevel ≥ 1")
         check(c.badWeatherPerLevel >= 0 && (0...1).contains(c.maxBadWeatherChance) && (0...1).contains(c.cityEventChance), "weather and event chances must lie between 0 and 1")
+        check(c.towSpeedup >= 0 && c.towSpeedup < 1 && c.towZoneArc >= 0, "towSpeedup must lie in 0..<1, towZoneArc ≥ 0")
         check(c.roadworksSpeedFactor > 0 && c.stormAiGapFactor > 0, "roadworksSpeedFactor and stormAiGapFactor must be > 0")
         check([c.insurancePerStep, c.freightPerStep, c.doubleRunPerStep, c.lateDensityPerLevel].allSatisfy { $0 >= 0 } && c.maxLateDensityBonus >= 0, "M7 steps must be ≥ 0")
         check(c.maxStrikes >= 1, "maxStrikes must be ≥ 1")
@@ -269,6 +270,9 @@ public struct Tuning: Sendable {
             .int("lateLevel", \.lateLevel),
             .double("lateDensityPerLevel", \.lateDensityPerLevel),
             .int("maxLateDensityBonus", \.maxLateDensityBonus),
+            .double("towZoneArc", \.towZoneArc),
+            .double("towSpeedup", \.towSpeedup),
+            .int("towDepotCost", \.towDepotCost),
             .int("lightRainLevel", \.lightRainLevel),
             .int("heavyRainLevel", \.heavyRainLevel),
             .int("stormLevel", \.stormLevel),

@@ -224,6 +224,11 @@ public struct Config: Sendable, Equatable {
     public var cameraSpeedFactor: Double = 0.7
     public var tollBoothCost: Int = 8_000
     public var speedCameraCost: Int = 12_000
+    /// Tow depot (M9): its zone along the ring, how much faster wrecks there are cleared,
+    /// and its price.
+    public var towZoneArc: Double = 180
+    public var towSpeedup: Double = 0.3
+    public var towDepotCost: Int = 10_000
 
     // MARK: Strikes (FOUNDATION.md 2.6)
 
