@@ -48,4 +48,13 @@ public enum Ease {
         let t = clamp01(x)
         return t * t * t
     }
+
+    public static func smoothstep(_ x: Double) -> Double {
+        let t = clamp01(x)
+        return t * t * (3 - 2 * t)
+    }
+
+    public static func inOutSine(_ x: Double) -> Double {
+        (1 - cos(.pi * clamp01(x))) / 2
+    }
 }

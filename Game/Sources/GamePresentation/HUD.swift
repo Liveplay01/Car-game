@@ -203,7 +203,7 @@ enum HUD {
         switch world.criminal.phase {
         case let .warning(arm, _):
             let pulse = (world.time * 1.6).truncatingRemainder(dividingBy: 1)
-            let radius = config.ringRadius - config.laneWidth / 2 - 14
+            let radius = world.layout.ringRadius - config.laneWidth / 2 - 14
             let half = 0.35
             list.add(.arc(center: .zero, radius: radius, thickness: 3 + 7 * pulse, startAngle: arm.angle - half, endAngle: arm.angle + half), color: .vehicleCriminal, opacity: 1 - pulse, space: .world, id: id)
             id += 1
@@ -244,7 +244,7 @@ enum HUD {
         switch world.transporter.phase {
         case let .warning(arm, _):
             let pulse = (world.time * 1.6).truncatingRemainder(dividingBy: 1)
-            let radius = config.ringRadius - config.laneWidth / 2 - 14
+            let radius = world.layout.ringRadius - config.laneWidth / 2 - 14
             let half = 0.35
             list.add(.arc(center: .zero, radius: radius, thickness: 3 + 7 * pulse, startAngle: arm.angle - half, endAngle: arm.angle + half), color: .vehicleCargo, opacity: 1 - pulse, space: .world, id: id)
             id += 1
@@ -266,10 +266,15 @@ enum HUD {
             let label = list.camera.toScreen(pose.position) + Vec2(0, -list.camera.toScreen(length: 20) - 12)
             list.add(.text(String(Int((deadline - world.time).rounded(.up))), position: label, size: 14, alignment: .center, weight: .bold), color: .vehicleCargo, space: .screen, id: id)
             id += 1
-            // The secure zones, fore and aft, as pale arcs on the ring.
+            // The secure zone, fore and aft, as a pale arc on the ring. Centred on the truck as
+            // it is drawn, and on the ring as it is built (it grows with its arms), so it
+            // moves exactly with the truck on every level.
+            let ringRadius = world.layout.ringRadius
             for zone in world.secureZones() {
-                list.add(.arc(center: .zero, radius: config.ringRadius + config.laneWidth / 2 - 3, thickness: 2,
-                              startAngle: zone.s / config.ringRadius, endAngle: (zone.s + zone.arc) / config.ringRadius),
+                let center = atan2(pose.position.y, pose.position.x)
+                let half = zone.arc / 2 / ringRadius
+                list.add(.arc(center: .zero, radius: ringRadius + config.laneWidth / 2 - 3, thickness: 2,
+                              startAngle: center - half, endAngle: center + half),
                          color: .vehicleCargo, opacity: 0.35, space: .world, id: id)
                 id += 1
             }

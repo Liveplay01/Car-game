@@ -107,3 +107,31 @@ struct LookAndFeelTests {
     #expect(first.left > 0.3 && first.right < 0.01)
     #expect(second.right > 0.3 && second.left < 0.05)
 }
+
+/// Leo: the light bar runs through changing patterns, every LED lights up, and the change
+/// from one pattern to the next never jumps.
+@Test func theLightBarCyclesPatternsSmoothly() {
+    #expect(PoliceLights.pattern(at: 0) == .doubleFlash)
+    #expect(PoliceLights.pattern(at: 2.1) == .sweep)
+    #expect(PoliceLights.pattern(at: 4.1) == .tripleFlash)
+    #expect(PoliceLights.pattern(at: 6.1) == .doubleFlash)
+    var brightest = Array(repeating: 0.0, count: PoliceLights.count)
+    var previous = PoliceLights.leds(0)
+    var largestJump = 0.0
+    // 240 samples per cycle, the way a fast display would show it.
+    for step in 1...(240 * 6) {
+        let lit = PoliceLights.leds(Double(step) / 240)
+        for index in lit.indices {
+            brightest[index] = max(brightest[index], lit[index])
+            #expect(lit[index] >= 0 && lit[index] <= 1.0001)
+        }
+        // Only a flash may switch on fast; nothing may drop to dark in one step.
+        largestJump = max(largestJump, zip(previous, lit).map { $0 - $1 }.max() ?? 0)
+        previous = lit
+    }
+    #expect(brightest.allSatisfy { $0 > 0.9 })
+    #expect(largestJump < 0.35)
+    // The road light trails the LEDs and is softer than their peak.
+    let spill = PoliceLights.spill(0.03 / CarArt.strobeCycle)
+    #expect(spill.left > 0 && spill.left < PoliceLights.sides(0.03 / CarArt.strobeCycle).left)
+}

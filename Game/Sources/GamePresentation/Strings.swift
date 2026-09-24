@@ -93,9 +93,9 @@ public enum Strings {
                 let pay = Upgrades.percent(config.payPerArm)
                 return "A wider ring with one more way in and out: \(traffic) more traffic, transporters more often, and \(pay) more pay per shift."
             case .tollBooth:
-                return "Every lorry pays \(config.tollPerTruck) cash here. Traffic slows down around it, and so do your police cars."
+                return "Every lorry pays \(config.tollPerTruck) cash here, in the first \(Int(config.moduleEarningSeconds)) s of a shift. Traffic slows down around it, and so do your police cars."
             case .speedCamera:
-                return "Fines every car over the limit: nothing in a calm shift, a lot in rush hour. Everyone brakes hard at it."
+                return "Fines every car over the limit \(config.cameraFine) cash in the first \(Int(config.moduleEarningSeconds)) s of a shift: nothing in a calm shift, a lot in rush hour. Everyone brakes hard at it."
             case .towDepot:
                 return "Wrecks near it are towed away \(Upgrades.percent(config.towSpeedup)) faster, so the ring flows again sooner."
             }

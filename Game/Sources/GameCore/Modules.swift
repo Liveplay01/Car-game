@@ -139,6 +139,8 @@ extension World {
         let vehicle = vehicles[i]
         // Wrecks and the criminal pay nothing; a pickup on the run does not stop at a booth.
         guard !vehicle.isCrashed, vehicle.type != .pickup else { return }
+        // Only the first minute of a started shift pays (`moduleEarningSeconds`).
+        guard shift.startedAt != nil, shiftTime(now) < config.moduleEarningSeconds else { return }
         for (slot, module) in config.modules {
             let centre = layout.moduleRingS(slot, of: config.moduleSlotCount)
             let ahead = layout.ringDistance(from: s, to: centre)

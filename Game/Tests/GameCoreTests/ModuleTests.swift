@@ -125,3 +125,28 @@ struct ModuleTests {
         #expect(career.config(from: base, seed: 1).modules == [1: .tollBooth])
     }
 }
+
+/// Leo (24.09.2026): toll 10 per lorry, camera 5 per flash, and both earn at most one
+/// minute per shift; they stay on the ring afterwards.
+@Test func modulesOnlyEarnInTheFirstMinuteOfAShift() {
+    var config = Config()
+    #expect(config.tollPerTruck == 10 && config.cameraFine == 5)
+    config.modules = [0: .tollBooth]
+    config.truckChance = 1
+    var world = World(config: config, seed: 5, mode: .shift, startsOnFirstTap: true)
+    world.tap(at: world.time)
+    var early = 0
+    var late = 0
+    for _ in 0..<(90 * World.stepRate) {
+        world.step()
+        for event in world.takeEvents() {
+            if case let .modulePaid(_, _, amount, _, _) = event {
+                if world.shiftTime(world.time) < config.moduleEarningSeconds { early += amount } else { late += amount }
+            }
+        }
+        if world.shift.outcome != nil { break }
+    }
+    #expect(early > 0)
+    #expect(late == 0)
+    #expect(world.config.modules[0] == .tollBooth)
+}

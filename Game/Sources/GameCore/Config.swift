@@ -225,8 +225,8 @@ public struct Config: Sendable, Equatable {
     public var truckLength: Double = 36
     /// And heavier: it pushes what it hits out of the way.
     public var truckMass: Double = 2.2
-    /// What a lorry pays at a toll booth.
-    public var tollPerTruck: Int = 120
+    /// What a lorry pays at a toll booth (Leo, 24.09.2026: 10 per lorry).
+    public var tollPerTruck: Int = 10
     /// Sports car (M10): length, mass, how much quicker its merge is, and its share of the
     /// player queue once unlocked (`sportsCarShare`, set by the career).
     public var sportsCarLength: Double = 21
@@ -237,8 +237,12 @@ public struct Config: Sendable, Equatable {
     /// How far around the booth traffic is held back, and how fast it may still go there.
     public var tollZoneArc: Double = 150
     public var tollSpeedFactor: Double = 0.55
-    /// What a car over the limit pays.
-    public var cameraFine: Int = 45
+    /// What a car over the limit pays (Leo, 24.09.2026: 5 per flash).
+    public var cameraFine: Int = 5
+    /// Toll booths and speed cameras only earn during the first this many seconds of a
+    /// shift (Leo, 24.09.2026: at most one minute per shift). They stay and keep slowing
+    /// the traffic afterwards; only the money stops.
+    public var moduleEarningSeconds: Double = 60
     /// The camera only earns above this share of the base ring speed: a calm shift pays
     /// nothing, rush hour pays with every car.
     public var cameraLimitFactor: Double = 1.08
@@ -431,7 +435,7 @@ public struct Config: Sendable, Equatable {
     /// Daily Shift: money for completing it, times the days in a row (up to 7).
     public var dailyPay: Int = 500
     /// Daily Login: what a toll booth earns per day away, for at most this many days.
-    public var tollIncomePerDay: Int = 600
+    public var tollIncomePerDay: Int = 50
     public var loginMaxDays: Int = 3
     /// Price of a Standard chest in the shop (in-game money only).
     public var standardChestPrice: Int = 20_000

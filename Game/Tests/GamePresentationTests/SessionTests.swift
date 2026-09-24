@@ -443,6 +443,33 @@ struct FeedbackTests {
         #expect(Feedback.sound(for: .comboChanged(sameTier)) == nil)
     }
 
+    func crash(impact: Double) -> GameEvent {
+        .crash(CrashReport(first: 1, second: 2, point: .zero, time: 0, involvesPlayer: true, impact: impact, isStrike: true, isPoliceCrash: false, isTakedown: false, penalty: 0, strikes: 1, policeCrashes: 0))
+    }
+
+    /// Leo: crashes sound as hard as they were; a pile-up is one crash, as heavy as its worst hit.
+    @Test func crashesSoundAsHardAsTheyHit() {
+        #expect(Feedback.sound(for: crash(impact: 40)) == .crashLight)
+        #expect(Feedback.sound(for: crash(impact: 100)) == .crash)
+        #expect(Feedback.sound(for: crash(impact: 150)) == .crashHeavy)
+        let pileUp = Feedback.cues(for: [crash(impact: 40), crash(impact: 150), crash(impact: 100)])
+        #expect(pileUp.sounds == [.crashHeavy])
+        #expect(Feedback.sound(for: .criminalEntered(vehicle: 1, deadline: 10)) == .screech)
+        #expect(Feedback.sound(for: .towed(vehicle: 1, slot: 0, time: 0)) == .tow)
+    }
+
+    @Test func menusAndTransitionsAreHeard() {
+        let audio = RecordingAudio()
+        let session = makeSession(audio: audio)
+        session.perform(.showTab(.shop))
+        session.perform(.showTab(.shop))
+        #expect(audio.played == [.uiTick])
+        audio.played.removeAll()
+        // Nothing saved yet: no money for a Premium chest.
+        session.perform(.buyChest(.premium))
+        #expect(audio.played == [.denied])
+    }
+
     @Test func eachCueOncePerFrame() {
         let cues = Feedback.cues(for: [merge(.clean), merge(.clean), merge(.tightFit)])
         #expect(cues.sounds == [.merge, .tightFit])
@@ -454,8 +481,9 @@ struct FeedbackTests {
         let haptics = RecordingHaptics()
         let session = makeSession(audio: audio, haptics: haptics)
         session.advance([.tap])
-        session.run(seconds: 1) { _ in !audio.played.isEmpty }
-        #expect(audio.played == [.merge])
+        session.run(seconds: 1) { _ in audio.played.contains(.merge) }
+        // The first tap leaves the waiting banner with a short "go", then the car merges.
+        #expect(audio.played == [.go, .merge])
         #expect(haptics.played.isEmpty)
 
         audio.played.removeAll()

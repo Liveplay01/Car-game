@@ -22,7 +22,7 @@ enum CarArt {
         case rearRightWheel
         /// Police: the white roof panel.
         case roof
-        /// Police: red and blue lights across the roof.
+        /// Police: the blue LED light bar across the roof (`PoliceLights`).
         case lightBar
         /// Pickup: the open load bed.
         case bed
@@ -38,15 +38,22 @@ enum CarArt {
         static let char = 1
         static let engineBay = 2
         static func part(_ part: Part) -> Int { 3 + part.rawValue }
-        static let blueLight = 17
         static let ribs = 18
         static let cracks = 20
         static let flames = 24
-        static let groundGlow = 28
         static let outline = 32
         static let stripes = 33
         static let sheen = 35
         static let glitter = 36
+        /// Police light bar (`PoliceLights`): the LED modules, their white cores, the light
+        /// streaks, the soft light on the road and the blue sheen on the roof.
+        static let leds = 39
+        static let ledCores = 45
+        static let streaks = 51
+        static let spill = 55
+        static let poolLayers = 5
+        static let roofSheen = 67
+        static let count = 69
     }
 
     struct Shape {
@@ -139,7 +146,7 @@ enum CarArt {
         case .roof:
             return Shape(center: Vec2(-l * 0.11, 0), size: Vec2(l * 0.24, w * 0.8), cornerRadius: 2, color: .vehiclePoliceRoof, breaksAt: .infinity, reach: 0, isVisible: true)
         case .lightBar:
-            return Shape(center: Vec2(-l * 0.07, 0), size: Vec2(2.6, w * 0.74), cornerRadius: 1, color: .lightRed, breaksAt: 2.5, reach: 8, isVisible: true)
+            return Shape(center: Vec2(-l * 0.07, 0), size: Vec2(2.8, w * 0.8), cornerRadius: 1, color: .lightBlue, breaksAt: 2.5, reach: 8, isVisible: true)
         case .bed:
             return Shape(center: Vec2(-l * 0.26, 0), size: Vec2(l * 0.4, w - 3), cornerRadius: 1.5, color: .vehicleBed, breaksAt: .infinity, reach: 0, isVisible: true)
         case .cargo:
@@ -249,17 +256,29 @@ enum CarArt {
         let body = bodyColor(type, id: id, skin: skin)
         let paintedInThisCar = bodyColor(type, skin: skin)
 
-        // The blue lights throw their flashes onto the road beside the car (ROADMAP.md M11),
-        // soft and wide, fading with each flash. Drawn first, so they sit under the body.
+        // The blue lights fill the road around the car (ROADMAP.md M11): a wide, faint halo
+        // and a softer pool on each side, trailing the flashes a little so they read as light
+        // rather than as discs. Drawn first, so they sit under the body.
         if let lights, type == .police {
-            let flash = strobe(lights)
-            let reach = config.carWidth * 1.7
-            let side = config.carWidth * 0.8
-            for (index, (y, glow)) in [(side, flash.left), (-side, flash.right)].enumerated() where glow > 0.01 {
-                let center = world(Vec2(-length(of: type, config: config) * 0.07, y), pose)
-                // Two soft layers plus the shared core below: light, not a disc.
-                list.add(.circle(center: center, radius: reach * 1.15), color: .lightBlue, opacity: opacity * 0.1 * glow, space: .world, id: slot(Slot.groundGlow + index * 2))
-                list.add(.circle(center: center, radius: reach * 0.6), color: .lightBlue, opacity: opacity * 0.2 * glow, space: .world, id: slot(Slot.groundGlow + index * 2 + 1))
+            let spill = PoliceLights.spill(lights)
+            let l = length(of: type, config: config)
+            let w = config.carWidth
+            let bar = Vec2(-l * 0.07, 0)
+            let halo = max(spill.left, spill.right)
+            for (layer, (radius, share)) in [(l * 1.1, 0.03), (l * 0.8, 0.035)].enumerated() where halo > 0.01 {
+                list.add(.circle(center: world(bar, pose), radius: radius), color: .lightBlue, opacity: opacity * share * halo, space: .world, id: slot(Slot.spill + layer))
+            }
+            // Many thin layers instead of a few strong ones: the edges fade like a gradient.
+            let layers = Slot.poolLayers
+            for (side, (y, glow)) in [(w * 0.7, spill.left), (-w * 0.7, spill.right)].enumerated() where glow > 0.01 {
+                for layer in 0..<layers {
+                    let k = Double(layer) / Double(layers - 1)
+                    let size = Vec2(l * (1.5 - 0.85 * k), w * (2.0 - 1.35 * k))
+                    list.add(
+                        .roundedRect(center: world(bar + Vec2(0, y * (1 - 0.25 * k)), pose), size: size, cornerRadius: min(size.x, size.y) / 2, rotation: pose.heading),
+                        color: .lightBlue, opacity: opacity * 0.045 * glow, space: .world, id: slot(Slot.spill + 2 + side * layers + layer)
+                    )
+                }
             }
         }
 
@@ -304,18 +323,7 @@ enum CarArt {
             let color = shape.color == paintedInThisCar || (part == .cargo && type == .transporter && skin != nil) ? body : shape.color
 
             if part == .lightBar {
-                // Two blue halves, like a German light bar. Dim lenses when off; while the
-                // lights run, each side strobes and a white-hot core flares on it.
-                let flash = lights.map(strobe) ?? (left: 0, right: 0)
-                let halfSize = Vec2(shape.size.x, shape.size.y / 2)
-                let offset = Vec2(0, shape.size.y / 4)
-                let halves = [(center + offset, flash.left, Slot.part(part), Slot.flames), (center - offset, flash.right, Slot.blueLight, Slot.flames + 1)]
-                for (at, glow, lens, flare) in halves {
-                    list.add(.roundedRect(center: world(at, pose), size: halfSize, cornerRadius: shape.cornerRadius, rotation: rotation), color: .lightBlue, opacity: partOpacity * (0.45 + 0.55 * glow), space: .world, id: slot(lens))
-                    if glow > 0.05, !broken {
-                        list.add(.circle(center: world(at, pose), radius: 1.2 + 2.6 * glow), color: .primary, opacity: partOpacity * 0.8 * glow, space: .world, id: slot(flare))
-                    }
-                }
+                addLightBar(shape: shape, center: center, rotation: rotation, pose: pose, lights: broken ? nil : lights, opacity: partOpacity, config: config, slot: slot, to: &list)
                 continue
             }
             list.add(
@@ -398,18 +406,56 @@ enum CarArt {
         }
     }
 
-    /// Blue lights as LED strobes (Leo: natürlicher): a double flash on the left, then on
-    /// the right, each a quick rise and a soft fade. `phase` counts 0 to 1 per 0.8 s cycle.
+    /// How brightly each side of the light bar shines at `phase` (cycles of `strobeCycle`).
     static func strobe(_ phase: Double) -> (left: Double, right: Double) {
-        func flash(_ t: Double) -> Double {
-            guard t >= 0 else { return 0 }
-            return t < 0.02 ? t / 0.02 : exp(-(t - 0.02) / 0.05)
-        }
-        let t = phase.truncatingRemainder(dividingBy: 1) * strobeCycle
-        return (max(flash(t), flash(t - 0.13)), max(flash(t - 0.4), flash(t - 0.53)))
+        PoliceLights.sides(phase)
     }
 
     static let strobeCycle = 0.8
+
+    /// The light bar: a dark housing with six LED modules. While the lights run, each lit
+    /// module gets a white-hot core, the brightest one on each side a streak of light across
+    /// the bar, and the white roof picks up the blue of its side.
+    private static func addLightBar(shape: Shape, center: Vec2, rotation: Double, pose: Path.Pose, lights: Double?, opacity: Double, config: Config, slot: (Int) -> Int, to list: inout RenderList) {
+        let lit = lights.map(PoliceLights.leds) ?? Array(repeating: 0, count: PoliceLights.count)
+        let local = { (offset: Vec2) in world(center + offset.rotated(by: rotation - pose.heading), pose) }
+        if let lights {
+            let spill = PoliceLights.spill(lights)
+            // The roof panel sits a little behind the bar.
+            let roof = Vec2(-length(of: .police, config: config) * 0.04, 0)
+            for (index, glow) in [spill.left, spill.right].enumerated() where glow > 0.01 {
+                let y = (index == 0 ? 1.0 : -1.0) * shape.size.y / 4
+                list.add(.roundedRect(center: local(roof + Vec2(0, y)), size: Vec2(shape.size.x * 2, shape.size.y / 2), cornerRadius: 1.5, rotation: rotation),
+                         color: .lightBlue, opacity: opacity * 0.35 * glow, space: .world, id: slot(Slot.roofSheen + index))
+            }
+        }
+        list.add(.roundedRect(center: world(center, pose), size: shape.size + Vec2(0.8, 0.8), cornerRadius: shape.cornerRadius, rotation: rotation),
+                 color: .vehicleTire, opacity: opacity, space: .world, id: slot(Slot.part(.lightBar)))
+        let pitch = shape.size.y / Double(PoliceLights.count)
+        let module = Vec2(shape.size.x - 0.5, pitch - 0.35)
+        // Left to right across the bar; the car's left is +y.
+        let at = { (index: Int) in Vec2(0, shape.size.y / 2 - pitch * (Double(index) + 0.5)) }
+        for index in 0..<PoliceLights.count {
+            let glow = lit[index]
+            list.add(.roundedRect(center: local(at(index)), size: module, cornerRadius: 0.4, rotation: rotation),
+                     color: .lightBlue, opacity: opacity * (0.32 + 0.68 * glow), space: .world, id: slot(Slot.leds + index))
+            if glow > 0.04 {
+                list.add(.circle(center: local(at(index)), radius: 0.35 + 1.0 * glow), color: .primary, opacity: opacity * 0.9 * glow, space: .world, id: slot(Slot.ledCores + index))
+            }
+        }
+        // A streak of light across the bar from the brightest module on each side: the flare
+        // a camera sees, blue around a white line.
+        for side in 0..<2 {
+            let range = side == 0 ? 0..<PoliceLights.perSide : PoliceLights.perSide..<PoliceLights.count
+            guard let brightest = range.max(by: { lit[$0] < lit[$1] }), lit[brightest] > 0.12 else { continue }
+            let glow = lit[brightest]
+            let half = Vec2(0, shape.size.y * (0.35 + 0.55 * glow))
+            let from = local(at(brightest) + half)
+            let to = local(at(brightest) - half)
+            list.add(.line(from: from, to: to, thickness: 1.6 * glow), color: .lightBlue, opacity: opacity * 0.4 * glow, space: .world, id: slot(Slot.streaks + side * 2))
+            list.add(.line(from: from, to: to, thickness: 0.45), color: .primary, opacity: opacity * 0.6 * glow, space: .world, id: slot(Slot.streaks + side * 2 + 1))
+        }
+    }
 
     /// A local point of the car in world space.
     static func world(_ local: Vec2, _ pose: Path.Pose) -> Vec2 {

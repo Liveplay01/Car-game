@@ -359,7 +359,7 @@ public enum UpgradeArt {
                 add(.roundedRect(center: at, size: Vec2(11, 12) * scale * unit, cornerRadius: 3 * scale * unit, rotation: 0), roof)
             }
             if lights {
-                add(.roundedRect(center: at - Vec2(2.6, 0) * scale * unit, size: Vec2(4, 3) * scale * unit, cornerRadius: 1, rotation: 0), .lightRed)
+                add(.roundedRect(center: at - Vec2(2.6, 0) * scale * unit, size: Vec2(4, 3) * scale * unit, cornerRadius: 1, rotation: 0), .lightBlue)
                 add(.roundedRect(center: at + Vec2(2.6, 0) * scale * unit, size: Vec2(4, 3) * scale * unit, cornerRadius: 1, rotation: 0), .lightBlue)
             }
         }

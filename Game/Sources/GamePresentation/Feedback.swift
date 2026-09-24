@@ -11,9 +11,14 @@ public enum SoundID: String, CaseIterable, Sendable {
     case nearMiss
     /// Perfect Input: a small, high-quality click (M6).
     case perfect
+    /// The car that was cut off honks.
     case cutOff
     case comboUp
+    /// Crashes in three weights, picked by how hard the hit was (`Feedback.crashSound`):
+    /// thump, crumpling metal, a ringing panel, parts; the heavy one adds glass and a second bang.
+    case crashLight
     case crash
+    case crashHeavy
     case rushHour
     case shiftComplete
     case shiftFailed
@@ -29,6 +34,32 @@ public enum SoundID: String, CaseIterable, Sendable {
     case secured
     /// Siren: a police car seized the transporter.
     case seized
+    /// The criminal's pickup races in: engine and squealing tyres.
+    case screech
+    /// A tow truck cleared a wreck: winch and hook.
+    case tow
+    /// Flow State began: a soft shimmer that opens into the flow layer of the music.
+    case flowIn
+
+    // Transitions and menus (M11): the moments between the driving.
+
+    /// A shift starts with its first tap: a short whoosh.
+    case go
+    /// The result slides in.
+    case swoosh
+    /// A tab or a card: a tiny tick.
+    case uiTick
+    /// An upgrade or a chest was bought: coins and a "ka-ching".
+    case purchase
+    /// A part was built on the ring: a thud and steel.
+    case build
+    /// Not enough money.
+    case denied
+    /// The chest charges up to its burst (`ShopPage.burstTime`).
+    case chestCharge
+    case chestBurst
+    /// Epic and legendary: a deeper burst with a fanfare.
+    case chestBurstRare
 }
 
 /// Haptic patterns. The raw value is the file name: `Assets/Haptics/<raw>.ahap` (M11).
@@ -76,7 +107,7 @@ public enum Feedback {
             case .perfect: .perfect
             case .cutOff: .cutOff
             }
-        case let .crash(report): report.isTakedown ? nil : .crash
+        case let .crash(report): report.isTakedown ? nil : crashSound(report)
         case let .comboChanged(change): change.isTierUp ? .comboUp : nil
         case .rushHour: .rushHour
         case let .shiftEnded(result):
@@ -96,11 +127,20 @@ public enum Feedback {
         case let .transporterPaid(_, amount, _): amount > 0 ? .paid : nil
         // Modules pay many times a shift: a small tick, never the transporter's fanfare.
         case .modulePaid: .toll
-        // The flow is felt, not heard: the music layers come with the adaptive audio (M11).
-        case .flowChanged: nil
-        case .towed: .toll
-        case .launched, .tapRejected, .exited, .criminalEntered, .criminalEscaped, .dispatched, .transporterEntered, .transporterEscaped: nil
+        // Entering the flow opens with a soft shimmer, then the music's flow layer carries it.
+        case let .flowChanged(change): change.isInFlow ? .flowIn : nil
+        case .towed: .tow
+        case .criminalEntered: .screech
+        case .launched, .tapRejected, .exited, .transporterEntered, .transporterEscaped: nil
         }
+    }
+
+    /// The weight of a crash sound follows the hit (`CrashEffects.severity`): a bump, a
+    /// crash, or a hard one with glass.
+    public static func crashSound(_ report: CrashReport) -> SoundID {
+        let severity = CrashEffects.severity(of: report)
+        if severity < 0.75 { return .crashLight }
+        return severity < CrashEffects.fireSeverity ? .crash : .crashHeavy
     }
 
     public static func haptic(for event: GameEvent) -> HapticID? {
@@ -144,6 +184,11 @@ public enum Feedback {
             if let haptic = haptic(for: event), !haptics.contains(haptic) {
                 haptics.append(haptic)
             }
+        }
+        // A pile-up is heard as one crash, as heavy as its hardest hit.
+        let weights: [SoundID] = [.crashLight, .crash, .crashHeavy]
+        if let heaviest = sounds.filter(weights.contains).max(by: { weights.firstIndex(of: $0)! < weights.firstIndex(of: $1)! }) {
+            sounds.removeAll { weights.contains($0) && $0 != heaviest }
         }
         return (sounds, haptics)
     }

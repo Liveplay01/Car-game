@@ -227,32 +227,44 @@ public final class GameSession {
         switch action {
         case .startShift:
             // The shift itself starts with its first car; this only leaves the waiting banner.
-            if screen == .ready { screen = .playing }
+            if screen == .ready { startPlaying() }
         case .restart:
             prepareShift(continuing: false)
         case .openSettings:
-            if screen == .ready { screen = .settings }
+            if screen == .ready {
+                screen = .settings
+                tick()
+            }
         case .closeSettings:
-            if screen == .settings { screen = .ready }
+            if screen == .settings {
+                screen = .ready
+                tick()
+            }
         case .toggleDaily:
             // Only between shifts, and only while today's is still open.
             guard screen == .ready, world.shift.phase == .waiting else { return }
             guard dailySelected || save.career.isDailyOpen(day: today) else {
+                play(sounds: [.denied], haptics: [])
                 showNotice(Strings.Daily.doneToday)
                 return
             }
+            tick()
             dailySelected.toggle()
             prepareShift(continuing: true, seed: dailySelected ? Career.dailySeed(day: today) : nil)
         case let .setDuty(duty):
             guard save.career.duty != duty else { return }
             save.career.duty = duty
             store.save(save)
+            tick()
             refreshWaitingShift()
         case let .showTab(tab):
             guard screen.showsTabBar, tab != screen.tab || screen.tab == .game else { return }
             // The next shift already waits behind every page and behind the result.
-            screen = tab == .game ? .ready : .page(tab)
+            let next: Screen = tab == .game ? .ready : .page(tab)
+            if next != screen { tick() }
+            screen = next
         case let .pickUpPart(part):
+            tick()
             builderPage.selected = part
             builderPage.dragging = (part, StreetBuilderPage.cards(viewport: lastViewport, bottomInset: tabInset).first { $0.part == part }?.rect.center ?? .zero)
         case let .placePart(slot):
@@ -268,6 +280,7 @@ public final class GameSession {
             builderPage.pending = nil
             builderPage.removing = 0
         case let .selectUpgrade(upgrade):
+            if upgradePage.selected != upgrade { tick() }
             upgradePage.selected = upgrade
             upgradePage.pressed = (upgrade, 0)
         case let .buy(upgrade):
@@ -279,21 +292,28 @@ public final class GameSession {
             // menus a short notice says what it was.
             if options.drawsMenus {
                 shopPage.opening = (opening, reduceMotion ? ShopPage.burstTime : 0)
-                play(sounds: [.dispatch], haptics: [.wanted])
+                // With Reduce Motion the chest opens at once and bursts right away.
+                if reduceMotion {
+                    play(sounds: [opening.item.rarity >= .epic ? .chestBurstRare : .chestBurst], haptics: [.chest])
+                } else {
+                    play(sounds: [.chestCharge], haptics: [.wanted])
+                }
             } else {
-                play(sounds: [.paid], haptics: [.chest])
+                play(sounds: [opening.item.rarity >= .epic ? .chestBurstRare : .chestBurst], haptics: [.chest])
                 showNotice(Strings.Shop.opened(opening))
             }
         case let .buyChest(kind):
             guard save.career.buyChest(kind, config: config) else {
                 shopPage.denied = 0.001
+                play(sounds: [.denied], haptics: [])
                 showNotice(Strings.Notice.notEnoughMoney(format.number(config.price(of: kind) ?? 0)))
                 return
             }
             store.save(save)
-            play(sounds: [.comboUp], haptics: [.comboUp])
+            play(sounds: [.purchase], haptics: [.comboUp])
         case .watchAd:
             guard save.career.adChestsLeft(day: today, config: config) > 0, shopPage.ad == nil else {
+                play(sounds: [.denied], haptics: [])
                 showNotice(Strings.Shop.noAdsLeft)
                 return
             }
@@ -317,17 +337,21 @@ public final class GameSession {
         case .toggleSound:
             save.settings.sound.toggle()
             store.save(save)
+            tick()
         case .toggleVehicleLabels:
             save.settings.vehicleLabels.toggle()
             store.save(save)
+            tick()
         case .toggleHaptics:
             save.settings.haptics.toggle()
             store.save(save)
+            tick()
         case .cycleReduceMotion:
             let all = ReduceMotion.allCases
             let index = all.firstIndex(of: save.settings.reduceMotion) ?? 0
             save.settings.reduceMotion = all[(index + 1) % all.count]
             store.save(save)
+            tick()
         }
     }
 
@@ -447,6 +471,7 @@ public final class GameSession {
         let money = save.career.money
         guard save.career.buy(upgrade, config: config) else {
             upgradePage.denied = (upgrade, 0)
+            play(sounds: [.denied], haptics: [])
             showNotice(Strings.Notice.notEnoughMoney(format.number(price)))
             return
         }
@@ -455,7 +480,7 @@ public final class GameSession {
         upgradePage.moneyBefore = money
         store.save(save)
         refreshWaitingShift()
-        play(sounds: [.comboUp], haptics: [.comboUp])
+        play(sounds: [.purchase], haptics: [.comboUp])
         showNotice(Strings.Notice.bought(Strings.Upgrades.name(upgrade), steps: steps, of: upgrade.maxSteps))
     }
 
@@ -470,6 +495,7 @@ public final class GameSession {
         }
         guard save.career.buildArm(inSlot: pending.slot, config: config) else {
             builderPage.denied = 0.001
+            play(sounds: [.denied], haptics: [])
             showNotice(Strings.Notice.notEnoughMoney(format.number(price)))
             return
         }
@@ -480,7 +506,7 @@ public final class GameSession {
         store.save(save)
         // The roundabout itself is different now, so the waiting shift starts over on it.
         refreshWaitingShift()
-        play(sounds: [.comboUp], haptics: [.comboUp])
+        play(sounds: [.build], haptics: [.comboUp])
         showNotice(Strings.Notice.built(Strings.Builder.name(pending.part), arms: save.career.armSlots.count))
     }
 
@@ -488,6 +514,7 @@ public final class GameSession {
     private func buildModule(_ module: RoadModule, pending: (part: StreetBuilderPage.Part, slot: Int), price: Int, money: Int) {
         guard save.career.build(module, inSlot: pending.slot, config: config) else {
             builderPage.denied = 0.001
+            play(sounds: [.denied], haptics: [])
             showNotice(Strings.Notice.notEnoughMoney(format.number(price)))
             return
         }
@@ -497,7 +524,7 @@ public final class GameSession {
         builderPage.moneyBefore = money
         store.save(save)
         refreshWaitingShift()
-        play(sounds: [.comboUp], haptics: [.comboUp])
+        play(sounds: [.build], haptics: [.comboUp])
         showNotice(Strings.Notice.placed(Strings.Builder.name(pending.part)))
     }
 
@@ -552,7 +579,7 @@ public final class GameSession {
         store.save(save)
         shopPage.ad = nil
         shopPage.selectedChest = .standard
-        play(sounds: [.paid], haptics: [.paid])
+        play(sounds: [.purchase], haptics: [.paid])
         showNotice(Strings.Shop.adReward)
     }
 
@@ -561,10 +588,13 @@ public final class GameSession {
     private func tapShop(_ target: ShopPage.Target) {
         switch target {
         case let .section(section):
+            if shopPage.section != section { tick() }
             shopPage.section = section
         case let .chest(kind):
             if shopPage.selectedChest == kind, save.career.count(of: kind) > 0 {
                 tapShop(.open(kind))
+            } else if shopPage.selectedChest != kind {
+                tick()
             }
             shopPage.selectedChest = kind
         case let .open(kind):
@@ -577,6 +607,8 @@ public final class GameSession {
         case let .item(id):
             if shopPage.selectedItem == id, save.career.owns(id) {
                 perform(.wear(id))
+            } else if shopPage.selectedItem != id {
+                tick()
             }
             shopPage.selectedItem = id
         case let .wear(id):
@@ -667,7 +699,7 @@ public final class GameSession {
             // The burst is felt and heard the moment it happens.
             if let before, let after = shopPage.opening?.age, before < ShopPage.burstTime, after >= ShopPage.burstTime {
                 let rare = (shopPage.opening?.opening.item.rarity ?? .common) >= .epic
-                play(sounds: rare ? [.takedown, .paid] : [.paid], haptics: [.chest])
+                play(sounds: [rare ? .chestBurstRare : .chestBurst], haptics: [.chest])
             }
             if let ad = shopPage.ad, ad >= ShopPage.adDuration {
                 adWatched()
@@ -706,13 +738,13 @@ public final class GameSession {
             case .ready:
                 // No start menu: the next shift is already on the road, and the first tap
                 // sends its front car.
-                screen = .playing
+                startPlaying()
                 world.tap(at: max(world.time, present - simDelta / 2))
             case .result:
                 // One tap anywhere: the first car of the next shift. Not in the very first
                 // moment, so a tap meant for the last car does not skip the result.
                 if resultAge >= ResultBanner.inputLock {
-                    screen = .playing
+                    startPlaying()
                     world.tap(at: max(world.time, present - simDelta / 2))
                 }
             case .settings, .page:
@@ -722,7 +754,7 @@ public final class GameSession {
         case .confirm:
             switch screen {
             case .ready, .result:
-                screen = .playing
+                startPlaying()
                 world.tap(at: max(world.time, present - simDelta / 2))
             // Enter buys the upgrade whose details are open.
             case .page(.upgrades):
@@ -871,6 +903,17 @@ public final class GameSession {
         play(sounds: cues.sounds, haptics: cues.haptics)
     }
 
+    /// Leaves the waiting banner or the result: the shift is on, with a short "go".
+    private func startPlaying() {
+        screen = .playing
+        play(sounds: [.go], haptics: [])
+    }
+
+    /// The small tick of a tab, a card or a switch.
+    private func tick() {
+        play(sounds: [.uiTick], haptics: [])
+    }
+
     /// Sound and haptics, as far as the settings allow.
     private func play(sounds: [SoundID], haptics feedback: [HapticID]) {
         if save.settings.sound, let audio {
@@ -938,6 +981,7 @@ public final class GameSession {
                 resultAge = 0
                 // Level up (or not), and the next shift rolls in behind the result.
                 prepareShift(continuing: true, screen: .result(summary))
+                play(sounds: [.swoosh], haptics: [])
             }
         }
     }
