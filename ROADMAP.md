@@ -483,6 +483,8 @@ Angst bekommt, etwas auszuprobieren.
 **Fertig, wenn:** Crash und Flucht ab Level 20 im Ergebnis sichtbar kosten, beide
 Versicherungen die Kosten sichtbar senken und die Karriere-Simulation stabil bleibt.
 
+**Fließender Verkehr (24.09.2026, Playtest Leo: zu wenig Bots, Stau an den Zufahrten):** Ab Level 6 fahren Bots ohne Anhalten ein, wenn sie mit Lücke ankommen (Rolling Merge), höchstens 2 stehen gleichzeitig an einer Linie, die Dichte zählt nur Autos im Ring, Bots drehen öfter Extrarunden (bis 95 %, 1–3 Runden) und fahren enger auf (bis 0,06 s). Gemessen (Mensch-Bot): Bots im Ring Level 10: 4,3 · Level 15: 5,3 · Level 25: 6,0 (vorher überall ≈ 4), stehend < 1; geschafft auf Level 15 und 25 nur noch ≈ 50 %.
+
 **Gemessen (24.09.2026, `Sim --curve --shifts 200`, jetzt mit Wetter und Events):** Der
 Mensch-Bot schafft ab Level 5 durchgehend 88–94 % – mit und ohne die dichteren späten
 Level (+1 Auto ab Level 15, bis +3). Der Bot schätzt Lücken perfekt und crasht kaum, deshalb
