@@ -67,6 +67,21 @@ public enum ColorToken: Sendable, Equatable, CaseIterable {
     /// The lorry: dark cab, pale box.
     case vehicleTruck
     case vehicleTruckBox
+    /// The sports car (M10): a red that no special vehicle uses.
+    case vehicleSports
+    // Car skins (M10): only ever on the player own normal cars, never on special vehicles.
+    case skinRacingRed
+    case skinMidnight
+    case skinMint
+    case skinSunset
+    case skinIce
+    case skinCarbon
+    case skinGold
+    // Map skins (M10): a tint on the centre island.
+    case mapDusk
+    case mapNeon
+    case mapAutumn
+    case mapAurora
     case hazard
     // Crash effects
     /// A burnt-out car body.
@@ -122,6 +137,18 @@ public enum Theme {
         case .vehicleCargo: ColorRGBA(hex: 0xD8A23A)
         case .vehicleTruck: ColorRGBA(hex: 0x4E586A)
         case .vehicleTruckBox: ColorRGBA(hex: 0xA9B2BE)
+        case .vehicleSports: ColorRGBA(hex: 0xE2553F)
+        case .skinRacingRed: ColorRGBA(hex: 0xD93A3A)
+        case .skinMidnight: ColorRGBA(hex: 0x2A3350)
+        case .skinMint: ColorRGBA(hex: 0x8FE3C4)
+        case .skinSunset: ColorRGBA(hex: 0xF08A4B)
+        case .skinIce: ColorRGBA(hex: 0xBFE6F5)
+        case .skinCarbon: ColorRGBA(hex: 0x2E3136)
+        case .skinGold: ColorRGBA(hex: 0xE3C15A)
+        case .mapDusk: ColorRGBA(hex: 0x6B5B95)
+        case .mapNeon: ColorRGBA(hex: 0x39E1D3)
+        case .mapAutumn: ColorRGBA(hex: 0xC8743A)
+        case .mapAurora: ColorRGBA(hex: 0x6EE7A8)
         case .hazard: ColorRGBA(hex: 0xFFD100)
         case .wreck: ColorRGBA(hex: 0x3A3F46)
         case .smoke: ColorRGBA(hex: 0x6B727C)

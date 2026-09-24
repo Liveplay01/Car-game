@@ -160,7 +160,11 @@ public struct World: Sendable {
 
     /// How long a vehicle is. Only the lorry differs from a car.
     public func length(of type: VehicleType) -> Double {
-        type == .truck ? config.truckLength : config.carLength
+        switch type {
+        case .truck: config.truckLength
+        case .sportsCar: config.sportsCarLength
+        case .car, .police, .pickup, .transporter: config.carLength
+        }
     }
 
     // MARK: - Movement

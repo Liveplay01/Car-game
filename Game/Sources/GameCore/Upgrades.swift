@@ -172,6 +172,17 @@ public struct Career: Sendable, Equatable, Codable {
     /// Modules on the ring, by slot. There is a fixed number of slots: once they are all
     /// taken, a module is swapped for another one (FOUNDATION.md 2.9).
     public var modules: [Int: RoadModule] = [:]
+    /// Mastery counters across the whole career, and the tiers reached per goal (M10).
+    public var mastery = MasteryStats()
+    public var masteryTiers: [String: Int] = [:]
+    /// Chests waiting in the shop, the items collected, and the skins worn (M10).
+    public var chests: [ChestKind] = []
+    public var collection: [String] = []
+    public var carSkin: String?
+    public var mapSkin: String?
+    /// For the odds and the pity counter.
+    public var chestsOpened = 0
+    public var chestsSinceEpic = 0
 
     public init(level: Int = 1, money: Int = 0) {
         self.level = max(1, level)
@@ -187,6 +198,16 @@ public struct Career: Sendable, Equatable, Codable {
         duty = (try? container.decodeIfPresent(Duty.self, forKey: .duty)) ?? .normal
         armSlots = try container.decodeIfPresent([Int].self, forKey: .armSlots) ?? [0, 4, 8, 12]
         modules = (try? container.decodeIfPresent([Int: RoadModule].self, forKey: .modules)) ?? [:]
+        mastery = (try? container.decodeIfPresent(MasteryStats.self, forKey: .mastery)) ?? MasteryStats()
+        masteryTiers = (try? container.decodeIfPresent([String: Int].self, forKey: .masteryTiers)) ?? [:]
+        // Chest kinds this version does not know are dropped, never the whole save.
+        let chestNames = (try? container.decodeIfPresent([String].self, forKey: .chests)) ?? []
+        chests = chestNames.compactMap(ChestKind.init(rawValue:))
+        collection = (try? container.decodeIfPresent([String].self, forKey: .collection)) ?? []
+        carSkin = try? container.decodeIfPresent(String.self, forKey: .carSkin)
+        mapSkin = try? container.decodeIfPresent(String.self, forKey: .mapSkin)
+        chestsOpened = (try? container.decodeIfPresent(Int.self, forKey: .chestsOpened)) ?? 0
+        chestsSinceEpic = (try? container.decodeIfPresent(Int.self, forKey: .chestsSinceEpic)) ?? 0
     }
 
     public func steps(of upgrade: Upgrade) -> Int {
@@ -219,6 +240,7 @@ public struct Career: Sendable, Equatable, Codable {
         config.armSlots = armSlots
         config.modules = modules
         // The level sets the traffic, the roundabout scales it, then the upgrades and the duty.
+        config.sportsCarShare = owns("sportsCar") ? base.sportsCarShareOwned : 0
         let shift = config.forLevel(level, seed: seed).forArms().upgraded { steps(of: $0) }.forDuty(duty)
         // The sky and the city come last: they change the traffic the level has set (M8).
         return shift

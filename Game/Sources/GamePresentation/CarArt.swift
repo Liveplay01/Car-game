@@ -60,9 +60,10 @@ enum CarArt {
     /// The paint. Ordinary cars come in four, picked by their id, so the traffic looks like
     /// traffic instead of one car copied fifteen times. Police, criminals and transporters
     /// keep their one colour, because with them the colour is information.
-    static func bodyColor(_ type: VehicleType, id: Int = 0) -> ColorToken {
+    static func bodyColor(_ type: VehicleType, id: Int = 0, skin: ColorToken? = nil) -> ColorToken {
         switch type {
-        case .car: paints[paintIndex(id)]
+        case .car: skin ?? paints[paintIndex(id)]
+        case .sportsCar: skin ?? .vehicleSports
         case .truck: .vehicleTruck
         case .police: .vehiclePolice
         case .pickup: .vehicleCriminal
@@ -81,7 +82,7 @@ enum CarArt {
     static func parts(_ type: VehicleType) -> [Part] {
         let common: [Part] = [.frontBumper, .rearBumper, .hood, .windscreen, .leftMirror, .rightMirror, .frontLeftWheel, .frontRightWheel, .rearLeftWheel, .rearRightWheel]
         switch type {
-        case .car: return common + [.rearWindow]
+        case .car, .sportsCar: return common + [.rearWindow]
         // A lorry is a cab and a box; no rear window behind it.
         case .truck: return [.cargo] + common
         case .police: return common + [.rearWindow, .roof, .lightBar]
@@ -92,7 +93,11 @@ enum CarArt {
 
     /// How long this kind of vehicle is (`World.length(of:)`).
     static func length(of type: VehicleType, config: Config) -> Double {
-        type == .truck ? config.truckLength : config.carLength
+        switch type {
+        case .truck: config.truckLength
+        case .sportsCar: config.sportsCarLength
+        case .car, .police, .pickup, .transporter: config.carLength
+        }
     }
 
     static func shape(_ part: Part, type: VehicleType, config: Config) -> Shape {
@@ -223,12 +228,13 @@ enum CarArt {
         char: Double = 0,
         opacity: Double = 1,
         lights: Double? = nil,
+        skin: ColorToken? = nil,
         config: Config,
         to list: inout RenderList
     ) {
         let slot = { RenderID.vehicle(id, part: $0) }
-        let body = bodyColor(type, id: id)
-        let paintedInThisCar = bodyColor(type)
+        let body = bodyColor(type, id: id, skin: skin)
+        let paintedInThisCar = bodyColor(type, skin: skin)
 
         // The light bar throws a soft glow onto the road beside the car, flashing side to
         // side with the beacon itself (ROADMAP.md M11). Drawn first, so it sits under the body.

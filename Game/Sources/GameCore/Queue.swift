@@ -42,6 +42,11 @@ extension World {
         }
     }
 
+    /// How long a merge of this vehicle takes: the sports car is quicker (M10).
+    public func mergeDuration(of type: VehicleType) -> Double {
+        type == .sportsCar ? config.mergeDuration * config.sportsCarMergeFactor : config.mergeDuration
+    }
+
     /// The front car starts right away, without wind-up or delay (FOUNDATION.md 2.2).
     mutating func launchFromQueue(driven: Double, at time: Double) -> Bool {
         guard queue.isReady, let id = queue.vehicles.first, let i = index(of: id) else { return false }
@@ -51,7 +56,7 @@ extension World {
         let merge = Vehicle.Merging(
             arm: layout.player,
             exitArm: randomExit(from: layout.player),
-            profile: MergeProfile(pathLength: path.length, duration: config.mergeDuration, ringSpeed: ringSpeed),
+            profile: MergeProfile(pathLength: path.length, duration: mergeDuration(of: vehicles[i].type), ringSpeed: ringSpeed),
             // `moveVehicles` adds this step's dt afterwards.
             elapsed: driven - Self.stepDuration
         )
@@ -127,7 +132,11 @@ extension World {
         let offset = queueSlotOffset()
         while queue.vehicles.count < length {
             let pose = layout.queuePose(slot: Double(queue.vehicles.count) + offset)
-            let type: VehicleType = queueRng.unit() < config.policeShare ? .police : .car
+            var type: VehicleType = queueRng.unit() < config.policeShare ? .police : .car
+            // Only drawn once unlocked, so every seed without it keeps its queue (M10).
+            if type == .car, config.sportsCarShare > 0, queueRng.unit() < config.sportsCarShare {
+                type = .sportsCar
+            }
             let vehicle = Vehicle(id: makeID(), type: type, owner: .player, phase: .queued, pose: pose)
             vehicles.append(vehicle)
             queue.vehicles.append(vehicle.id)

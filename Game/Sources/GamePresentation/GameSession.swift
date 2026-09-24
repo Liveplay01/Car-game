@@ -240,6 +240,14 @@ public final class GameSession {
             upgradePage.pressed = (upgrade, 0)
         case let .buy(upgrade):
             buy(upgrade)
+        case let .openChest(index):
+            guard let opening = save.career.openChest(at: index, seed: UInt64(save.shiftsPlayed)) else { return }
+            store.save(save)
+            play(sounds: [.paid], haptics: [.chest])
+            showNotice(Strings.Shop.opened(opening))
+        case let .wear(id):
+            save.career.wear(id)
+            store.save(save)
         case .toggleSound:
             save.settings.sound.toggle()
             store.save(save)
@@ -722,7 +730,12 @@ public final class GameSession {
         save.shiftsPlayed += 1
         // Money is banked whatever the outcome; done is a level up, lost is the same level again.
         save.career.record(result, playedAt: playingLevel)
+        // Mastery runs in the background; a reached goal is a short toast and a chest (M10).
+        let completed = save.career.recordMastery(result, duty: playingDuty)
         store.save(save)
+        if !completed.isEmpty {
+            showNotice(Strings.Mastery.toast(completed))
+        }
         pendingSummary = ShiftSummary(result: result, level: playingLevel, isNewHighscore: isNew, previousHighscore: previous)
         resultCountdown = Self.resultDelay
     }
@@ -767,11 +780,12 @@ public final class GameSession {
         var list = RenderList(camera: camera, background: .background)
         CityLayer.add(world: world, to: &list)
         SceneBuilder.addRoad(world.layout, config: world.config, to: &list)
+        CityLayer.addMapSkin(Skins.color(save.career.mapSkin), world: world, to: &list)
         WeatherLayer.addCityEvent(world: world, to: &list)
         WeatherLayer.addGround(world: world, to: &list)
         effects.addGround(world: world, alpha: clock.alpha, to: &list)
         SceneBuilder.addShadows(of: world, alpha: clock.alpha, to: &list)
-        SceneBuilder.addVehicles(of: world, alpha: clock.alpha, to: &list)
+        SceneBuilder.addVehicles(of: world, alpha: clock.alpha, carSkin: Skins.color(save.career.carSkin), to: &list)
         SceneBuilder.addTowTrucks(of: world, to: &list)
         effects.addAir(to: &list)
         WeatherLayer.addAir(world: world, time: world.time, reduceMotion: reduceMotion, to: &list)

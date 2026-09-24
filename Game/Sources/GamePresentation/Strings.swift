@@ -56,6 +56,7 @@ public enum Strings {
     /// Pages that are still to come.
     public enum Pages {
         public static let shopLater = "Skins and chests come later."
+
     }
 
     /// The Street Builder tab.
@@ -98,6 +99,102 @@ public enum Strings {
     /// Money inside a sentence, where no note can be drawn: "2,000 cash". Standalone values
     /// (balances, prices) carry the note icon instead (`Icons.moneyTag`).
     public static func money(_ formatted: String) -> String { "\(formatted) cash" }
+
+    /// The Shop tab (M10): chests, their odds, the collection.
+    public enum Shop {
+        public static let open = "Open"
+        public static let wear = "Wear"
+        public static let worn = "On"
+        public static let unlocked = "Unlocked"
+
+        public static func subtitle(chests: Int, owned: Int, pity: Int) -> String {
+            if chests == 0 && owned == 0 { return "Master the game to earn chests: perfect merges, takedowns, long chains." }
+            let waiting = chests == 1 ? "1 chest waiting" : "\(chests) chests waiting"
+            return "\(waiting) · \(owned) collected · Epic or better within \(pity) chests"
+        }
+
+        public static func chest(_ kind: ChestKind) -> String {
+            switch kind {
+            case .standard: "Standard Chest"
+            case .premium: "Premium Chest"
+            case .event: "Event Chest"
+            case .criminalHunt: "Criminal Hunt Chest"
+            }
+        }
+
+        /// "Common 70 % · Rare 22 % · Epic 7 % · Legendary 1 %": the odds are always public.
+        public static func odds(_ odds: [Double]) -> String {
+            zip(Rarity.allCases, odds).map { "\(rarity($0)) \(Upgrades.percent($1))" }.joined(separator: " · ")
+        }
+
+        public static func rarity(_ rarity: Rarity) -> String {
+            switch rarity {
+            case .common: "Common"
+            case .rare: "Rare"
+            case .epic: "Epic"
+            case .legendary: "Legendary"
+            }
+        }
+
+        public static func item(_ id: String) -> String {
+            switch id {
+            case "racingRed": "Racing Red"
+            case "midnight": "Midnight"
+            case "mint": "Mint"
+            case "dusk": "Dusk"
+            case "sunset": "Sunset"
+            case "ice": "Ice"
+            case "neon": "Neon"
+            case "carbon": "Carbon"
+            case "autumn": "Autumn"
+            case "sportsCar": "Sports Car"
+            case "gold": "Gold"
+            case "aurora": "Aurora"
+            default: id
+            }
+        }
+
+        /// "Rare car skin".
+        public static func kind(_ item: Cosmetic) -> String {
+            let kind = switch item.kind {
+            case .carSkin: "car skin"
+            case .mapSkin: "map skin"
+            case .vehicleType: "vehicle type · shorter, lighter, merges quicker"
+            }
+            return "\(rarity(item.rarity)) \(kind)"
+        }
+
+        /// "EPIC · Carbon" or "Duplicate: Mint · +250 cash".
+        public static func opened(_ opening: ChestOpening) -> String {
+            let name = item(opening.item.id)
+            if opening.isDuplicate { return "Duplicate: \(name) · +\(money(String(opening.money)))" }
+            return "\(rarity(opening.item.rarity).uppercased()) · \(name)"
+        }
+    }
+
+    /// Mastery toasts (M10): short, no screen of their own.
+    public enum Mastery {
+        public static func name(_ goal: MasteryGoal) -> String {
+            switch goal {
+            case .perfectTiming: "Perfect Timing"
+            case .tightSpots: "Tight Spots"
+            case .closeCalls: "Close Calls"
+            case .longChain: "Long Chain"
+            case .crimeFighter: "Crime Fighter"
+            case .secureRoute: "Secure Route"
+            case .comboMaster: "Combo Master"
+            case .veteran: "Veteran"
+            case .highAlertHero: "High Alert Hero"
+            }
+        }
+
+        /// "MASTERY COMPLETE · Perfect Timing II · CHEST EARNED".
+        public static func toast(_ completed: [MasteryCompletion]) -> String {
+            let names = completed.map { "\(name($0.goal)) \(String(repeating: "I", count: $0.tier + 1))" }
+            let chests = completed.count == 1 ? "CHEST EARNED" : "\(completed.count) CHESTS EARNED"
+            return "MASTERY COMPLETE · \(names.joined(separator: ", ")) · \(chests)"
+        }
+    }
 
     public static func weather(_ weather: Weather) -> String {
         switch weather {

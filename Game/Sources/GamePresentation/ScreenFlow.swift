@@ -80,6 +80,9 @@ public enum ScreenAction: Sendable, Equatable {
     case placePart(slot: Int)
     case buildPart
     case removePart
+    /// Shop (M10): open the chest at this place in the list, or wear a skin (again: take it off).
+    case openChest(Int)
+    case wear(String)
 }
 
 public struct MenuItem: Sendable, Equatable {
@@ -155,7 +158,21 @@ public enum ScreenFlow {
             )
 
         case .page(.shop):
-            return ScreenContent(title: Strings.Tabs.title(.shop), subtitle: Strings.Pages.shopLater)
+            let career = save.career
+            let chests = career.chests.enumerated().map { index, chest in
+                MenuItem(.openChest(index), Strings.Shop.chest(chest), detail: Strings.Shop.odds(chest.odds), value: Strings.Shop.open, isPrimary: index == 0)
+            }
+            let owned = Cosmetics.all.filter { career.owns($0.id) }.map { item in
+                let worn = career.carSkin == item.id || career.mapSkin == item.id
+                let value = item.kind == .vehicleType ? Strings.Shop.unlocked : (worn ? Strings.Shop.worn : Strings.Shop.wear)
+                return MenuItem(.wear(item.id), Strings.Shop.item(item.id), detail: Strings.Shop.kind(item), value: value)
+            }
+            let pity = Career.pityChests - career.chestsSinceEpic
+            return ScreenContent(
+                title: Strings.Tabs.title(.shop),
+                subtitle: Strings.Shop.subtitle(chests: career.chests.count, owned: owned.count, pity: pity),
+                items: chests + owned
+            )
 
         // The Street Builder draws its own map and palette (`StreetBuilderPage`).
         case .page(.streetBuilder):

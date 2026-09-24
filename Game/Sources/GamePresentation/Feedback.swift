@@ -41,6 +41,8 @@ public enum HapticID: String, CaseIterable, Sendable {
     case perfect
     /// A barely felt rising pulse: the Perfect Chain reached the flow (M6).
     case flow
+    /// A rich reward pattern: a chest was opened (M10).
+    case chest
     /// Double tick.
     case comboUp
     /// Strong hit plus a short rumble.

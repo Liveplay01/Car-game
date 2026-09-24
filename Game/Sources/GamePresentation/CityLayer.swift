@@ -5,7 +5,35 @@ import GameCore
 /// player's progress — more blocks and trees with every level, every arm and every module.
 /// Pure drawing, computed from the shift's config, the same on every device. Kept flat and
 /// quiet below the road, so it never competes with the traffic.
+public enum Skins {
+    /// The colour of a car or map skin by its id; nil for anything else.
+    public static func color(_ id: String?) -> ColorToken? {
+        switch id {
+        case "racingRed": .skinRacingRed
+        case "midnight": .skinMidnight
+        case "mint": .skinMint
+        case "sunset": .skinSunset
+        case "ice": .skinIce
+        case "carbon": .skinCarbon
+        case "gold": .skinGold
+        case "dusk": .mapDusk
+        case "neon": .mapNeon
+        case "autumn": .mapAutumn
+        case "aurora": .mapAurora
+        default: nil
+        }
+    }
+}
+
 enum CityLayer {
+    /// A map skin (M10): the centre island takes on its colour, faintly.
+    static func addMapSkin(_ skin: ColorToken?, world: World, to list: inout RenderList) {
+        guard let skin else { return }
+        let radius = world.layout.ringRadius - world.layout.laneWidth / 2
+        list.add(.circle(center: .zero, radius: radius), color: skin, opacity: 0.16, space: .world, id: RenderID.city + 200)
+        list.add(.arc(center: .zero, radius: radius - 6, thickness: 2, startAngle: 0, endAngle: Angle.tau), color: skin, opacity: 0.5, space: .world, id: RenderID.city + 201)
+    }
+
     /// Everything that counts as progress, as one number.
     static func growth(config: Config) -> Int {
         config.level + 4 * max(0, config.builtArmSlots.count - 4) + 3 * config.modules.count

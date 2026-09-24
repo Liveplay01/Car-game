@@ -12,6 +12,9 @@ public enum VehicleType: Sendable, Equatable {
     /// A lorry in normal traffic: longer, heavier, and the only vehicle a toll booth
     /// charges (FOUNDATION.md 2.9).
     case truck
+    /// From the player queue once unlocked (M10): shorter, lighter, and it merges quicker.
+    /// A fair difference, not a bonus: the quicker merge needs a different timing.
+    case sportsCar
 }
 
 /// Who sent the vehicle onto the road. Only player cars are rated and can cost strikes.

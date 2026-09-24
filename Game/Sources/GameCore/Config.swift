@@ -211,6 +211,13 @@ public struct Config: Sendable, Equatable {
     public var truckMass: Double = 2.2
     /// What a lorry pays at a toll booth.
     public var tollPerTruck: Int = 120
+    /// Sports car (M10): length, mass, how much quicker its merge is, and its share of the
+    /// player queue once unlocked (`sportsCarShare`, set by the career).
+    public var sportsCarLength: Double = 21
+    public var sportsCarMass: Double = 0.8
+    public var sportsCarMergeFactor: Double = 0.8
+    public var sportsCarShareOwned: Double = 0.15
+    public var sportsCarShare: Double = 0
     /// How far around the booth traffic is held back, and how fast it may still go there.
     public var tollZoneArc: Double = 150
     public var tollSpeedFactor: Double = 0.55
