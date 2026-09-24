@@ -41,6 +41,37 @@ einem Meilenstein oder einer Version nach v1.0 zugeordnet (siehe
 **vor** den Look-&-Feel-Pass, damit dieser alles auf einmal gestaltet. Aus dem alten
 M6 wurde M11, aus M7 wurde M12, aus M8 wurde M13.
 
+## ⚠️ Als Nächstes – wichtigster Punkt (Playtest Leo, 24.09.2026)
+
+**Das Spielprinzip ist: Der Spieler packt seine Autos in Lücken zwischen Bot-Autos.** Zur
+Zeit gibt es keine Lücken, weil oft keine Bots im Kreis sind – nur die Autos des Spielers.
+Der Spieler kann dann alle Autos hintereinander hineinschicken, während die Bots an ihren
+Zufahrten warten. Das muss sich ändern, bevor irgendetwas anderes gebaut wird.
+
+Anforderungen:
+
+1. **Immer mindestens 3 Bots im Kreis**, in jedem Level, jeder Schicht, von der ersten
+   Sekunde an (`minRingBots`, Startwert 3, in höheren Leveln mehr).
+2. **Sofortiger Ersatz:** Verlässt ein Bot den Kreis, ist im selben Moment ein neuer
+   drin – nicht danach. Ein Bot darf den Kreis erst verlassen, wenn sein Nachfolger
+   eingefädelt ist (sonst dreht er eine weitere Runde).
+3. **Bots warten nicht wegen des Spielers.** Der Kreis gehört den Bots; der Spieler muss
+   sich einfügen. Die Bots dürfen nicht an ihren Zufahrten stehen, während der Spieler
+   seine Kolonne hineinschickt.
+4. **Nie alle Autos am Stück:** Es darf praktisch nicht möglich sein, alle Autos der
+   Schicht direkt hintereinander einzufädeln. Zwischen den Bots entstehen Lücken
+   unterschiedlicher Größe; genau die muss der Spieler treffen.
+
+Umsetzungsideen: Bots von Anfang an im Kreis platzieren und im Kreis halten (Runden statt
+Ausfahrt, bis der Ersatz drin ist); Ersatz-Bots bevorzugt einfädeln lassen (die eigene
+Kolonne des Spielers zählt für sie nicht als Hindernis-Grund zum Warten, Sicherheit bleibt);
+Messung im Balancing-Bot: Bots im Kreis zu jedem Zeitpunkt ≥ 3, und wie oft der Spieler
+3+ Autos direkt hintereinander einfädeln kann (Ziel: sehr selten). Test
+`ringNeverHasFewerThanThreeBots` über viele Seeds und Level.
+
+Die bisherigen Änderungen (Rolling Merge, Extrarunden, engere Lücken, siehe M7) haben das
+nicht gelöst: gemessen waren im Schnitt nur 2–6 Bots im Kreis, oft weniger als 3.
+
 ## Grundsätze
 
 1. **Jeder Meilenstein endet mit etwas Spielbarem.** Kein Meilenstein ist "nur Technik".
