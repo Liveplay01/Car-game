@@ -279,6 +279,8 @@ public struct Tuning: Sendable {
             .int("tollIncomePerDay", \.tollIncomePerDay),
             .int("loginMaxDays", \.loginMaxDays),
             .int("standardChestPrice", \.standardChestPrice),
+            .int("premiumChestPrice", \.premiumChestPrice),
+            .int("adChestsPerDay", \.adChestsPerDay),
             .int("lightRainLevel", \.lightRainLevel),
             .int("heavyRainLevel", \.heavyRainLevel),
             .int("stormLevel", \.stormLevel),

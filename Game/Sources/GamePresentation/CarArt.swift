@@ -1,3 +1,4 @@
+import Foundation
 import GameCore
 
 /// How a vehicle looks and how it breaks. Parts are placed in its own frame (x forward,
@@ -44,6 +45,8 @@ enum CarArt {
         static let groundGlow = 28
         static let outline = 32
         static let stripes = 33
+        static let sheen = 35
+        static let glitter = 36
     }
 
     struct Shape {
@@ -231,6 +234,8 @@ enum CarArt {
         lights: Double? = nil,
         skin: ColorToken? = nil,
         stripe: ColorToken? = nil,
+        finish: Skins.Finish? = nil,
+        finishTime: Double? = nil,
         springTime: Double? = nil,
         config: Config,
         to list: inout RenderList
@@ -322,6 +327,34 @@ enum CarArt {
                         .line(from: world(center + crack.0, pose), to: world(center + crack.1, pose), thickness: 0.6),
                         color: .muted, opacity: opacity, space: .world, id: slot(Slot.cracks + index)
                     )
+                }
+            }
+        }
+        // A finish (LOOT.md): a sweep of light over the car now and then, and/or sparkles
+        // that twinkle. Only moving with a clock (not with Reduce Motion) and on intact cars.
+        if let finish, let time = finishTime, dents.isEmpty {
+            let half = length(of: type, config: config) / 2
+            let width = config.carWidth / 2
+            let seed = Double(id % 97)
+            if finish.isShiny {
+                let phase = (time * 0.45 + seed * 0.13).truncatingRemainder(dividingBy: 1)
+                if phase < 0.45 {
+                    let x = -half + 2 * half * (phase / 0.45)
+                    let glow = sin(.pi * phase / 0.45)
+                    list.add(.line(from: world(Vec2(x + 2.5, -width + 1), pose), to: world(Vec2(x - 2.5, width - 1), pose), thickness: 3),
+                             color: .primary, opacity: opacity * 0.6 * glow, space: .world, id: slot(Slot.sheen))
+                }
+            }
+            if finish.glitters {
+                for index in 0..<3 {
+                    let k = Double(index)
+                    let u = WeatherLayer.unitHash(id * 7 + index, 21)
+                    let v = WeatherLayer.unitHash(id * 7 + index, 22)
+                    let twinkle = pow(max(0, sin(time * 5 + k * 2.1 + seed)), 6)
+                    guard twinkle > 0.05 else { continue }
+                    let at = Vec2((u - 0.5) * 1.5 * half, (v - 0.5) * 1.3 * width)
+                    list.add(.circle(center: world(at, pose), radius: 0.7 + 0.8 * twinkle),
+                             color: .primary, opacity: opacity * twinkle, space: .world, id: slot(Slot.glitter + index))
                 }
             }
         }

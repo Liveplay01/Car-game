@@ -69,14 +69,53 @@ struct CollectionTests {
     @Test func onlyOwnedSkinsCanBeWorn() {
         var career = Career()
         career.wear("gold")
-        #expect(career.carSkin == nil)
+        #expect(career.carSkins.isEmpty)
         career.collection = ["gold", "neon"]
         career.wear("gold")
         career.wear("neon")
-        #expect(career.carSkin == "gold")
+        #expect(career.carSkins == ["gold"])
         #expect(career.mapSkin == "neon")
         career.wear("gold")
-        #expect(career.carSkin == nil)
+        #expect(career.carSkins.isEmpty)
+    }
+
+    @Test func upToFiveCarSkinsMix() {
+        var career = Career()
+        let skins = ["racingRed", "midnight", "mint", "pearl", "olive", "coral"]
+        career.collection = skins
+        for skin in skins.prefix(5) { career.wear(skin) }
+        let sixth = career.wear("coral")
+        #expect(!sixth)
+        #expect(career.carSkins.count == Career.maxCarSkins)
+    }
+
+    @Test func anOldSingleSkinLoadsAsTheFirstOfSeveral() throws {
+        let old = #"{ "level": 3, "collection": ["gold"], "carSkin": "gold" }"#
+        let career = try JSONDecoder().decode(Career.self, from: Data(old.utf8))
+        #expect(career.carSkins == ["gold"])
+    }
+
+    @Test func adsGiveAFewStandardChestsADay() {
+        let config = Config()
+        var career = Career()
+        for _ in 0..<config.adChestsPerDay {
+            let rewarded = career.rewardAd(day: 50, config: config)
+            #expect(rewarded)
+        }
+        let tooMany = career.rewardAd(day: 50, config: config)
+        #expect(!tooMany)
+        #expect(career.chests.count == config.adChestsPerDay)
+        #expect(career.adChestsLeft(day: 51, config: config) == config.adChestsPerDay)
+    }
+
+    @Test func standardAndPremiumAreForSale() {
+        let config = Config()
+        #expect(config.price(of: .standard) == 20_000)
+        #expect(config.price(of: .premium) == 40_000)
+        #expect(config.price(of: .criminalHunt) == nil)
+        var career = Career(level: 1, money: 40_000)
+        let bought = career.buyChest(.premium, config: config)
+        #expect(bought && career.money == 0)
     }
 
     @Test func theSportsCarJoinsTheQueueOnlyOnceUnlocked() {

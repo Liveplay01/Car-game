@@ -85,6 +85,8 @@ public enum ScreenAction: Sendable, Equatable {
     case openChest(Int)
     /// Buys a chest with in-game money (only the Standard chest is for sale).
     case buyChest(ChestKind)
+    /// Watch an ad for a Standard chest (a few a day).
+    case watchAd
     case wear(String)
     /// Game tab: the next shift is today's Daily Shift, or a normal one again (v1.2).
     case toggleDaily
@@ -168,9 +170,15 @@ public enum ScreenFlow {
             var chests = career.chests.enumerated().map { index, chest in
                 MenuItem(.openChest(index), Strings.Shop.chest(chest), detail: Strings.Shop.odds(chest.odds), value: Strings.Shop.open, isPrimary: index == 0)
             }
-            chests.append(MenuItem(.buyChest(.standard), Strings.Shop.chest(.standard), detail: Strings.Shop.odds(ChestKind.standard.odds), value: Strings.Shop.buy(format.number(config.standardChestPrice))))
+            for kind in ChestKind.allCases {
+                guard let price = config.price(of: kind) else { continue }
+                chests.append(MenuItem(.buyChest(kind), Strings.Shop.chest(kind), detail: Strings.Shop.odds(kind.odds), value: Strings.Shop.buy(format.number(price))))
+            }
+            if career.adChestsLeft(day: today, config: config) > 0 {
+                chests.append(MenuItem(.watchAd, Strings.Shop.chest(.standard), detail: Strings.Shop.adHint, value: Strings.Shop.watchAd(career.adChestsLeft(day: today, config: config))))
+            }
             let owned = Cosmetics.all.filter { career.owns($0.id) }.map { item in
-                let worn = career.carSkin == item.id || career.mapSkin == item.id
+                let worn = career.isWorn(item.id)
                 let value = item.kind == .vehicleType ? Strings.Shop.unlocked : (worn ? Strings.Shop.worn : Strings.Shop.wear)
                 return MenuItem(.wear(item.id), Strings.Shop.item(item.id), detail: Strings.Shop.kind(item), value: value)
             }

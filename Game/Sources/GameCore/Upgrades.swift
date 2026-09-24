@@ -178,8 +178,13 @@ public struct Career: Sendable, Equatable, Codable {
     /// Chests waiting in the shop, the items collected, and the skins worn (M10).
     public var chests: [ChestKind] = []
     public var collection: [String] = []
-    public var carSkin: String?
+    /// Car skins worn at once (up to `Career.maxCarSkins`): every normal car on the road
+    /// gets one of them. And the one map skin.
+    public var carSkins: [String] = []
     public var mapSkin: String?
+    /// Standard chests from watching an ad: how many on `adDay`.
+    public var adChests = 0
+    public var adDay = -1
     /// For the odds and the pity counter.
     public var chestsOpened = 0
     public var chestsSinceEpic = 0
@@ -197,6 +202,39 @@ public struct Career: Sendable, Equatable, Codable {
         self.money = max(0, money)
     }
 
+    enum CodingKeys: String, CodingKey {
+        case level, money, upgrades, duty, armSlots, modules, mastery, masteryTiers, chests, collection
+        case carSkins, mapSkin, adChests, adDay, chestsOpened, chestsSinceEpic
+        case dailyDone, lastLoginDay, dailyStreak, challengeDay, challengesDone
+        /// Read only: the single car skin of older saves.
+        case legacyCarSkin = "carSkin"
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(level, forKey: .level)
+        try c.encode(money, forKey: .money)
+        try c.encode(upgrades, forKey: .upgrades)
+        try c.encode(duty, forKey: .duty)
+        try c.encode(armSlots, forKey: .armSlots)
+        try c.encode(modules, forKey: .modules)
+        try c.encode(mastery, forKey: .mastery)
+        try c.encode(masteryTiers, forKey: .masteryTiers)
+        try c.encode(chests.map(\.rawValue), forKey: .chests)
+        try c.encode(collection, forKey: .collection)
+        try c.encode(carSkins, forKey: .carSkins)
+        try c.encodeIfPresent(mapSkin, forKey: .mapSkin)
+        try c.encode(adChests, forKey: .adChests)
+        try c.encode(adDay, forKey: .adDay)
+        try c.encode(chestsOpened, forKey: .chestsOpened)
+        try c.encode(chestsSinceEpic, forKey: .chestsSinceEpic)
+        try c.encode(dailyDone, forKey: .dailyDone)
+        try c.encode(lastLoginDay, forKey: .lastLoginDay)
+        try c.encode(dailyStreak, forKey: .dailyStreak)
+        try c.encode(challengeDay, forKey: .challengeDay)
+        try c.encode(challengesDone, forKey: .challengesDone)
+    }
+
     /// Missing keys fall back to their defaults, so an older save still loads.
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
@@ -212,7 +250,14 @@ public struct Career: Sendable, Equatable, Codable {
         let chestNames = (try? container.decodeIfPresent([String].self, forKey: .chests)) ?? []
         chests = chestNames.compactMap(ChestKind.init(rawValue:))
         collection = (try? container.decodeIfPresent([String].self, forKey: .collection)) ?? []
-        carSkin = try? container.decodeIfPresent(String.self, forKey: .carSkin)
+        // Saves from before several skins held one `carSkin`.
+        if let skins = try? container.decodeIfPresent([String].self, forKey: .carSkins) {
+            carSkins = skins
+        } else if let single = try? container.decodeIfPresent(String.self, forKey: .legacyCarSkin) {
+            carSkins = [single]
+        }
+        adChests = (try? container.decodeIfPresent(Int.self, forKey: .adChests)) ?? 0
+        adDay = (try? container.decodeIfPresent(Int.self, forKey: .adDay)) ?? -1
         mapSkin = try? container.decodeIfPresent(String.self, forKey: .mapSkin)
         chestsOpened = (try? container.decodeIfPresent(Int.self, forKey: .chestsOpened)) ?? 0
         chestsSinceEpic = (try? container.decodeIfPresent(Int.self, forKey: .chestsSinceEpic)) ?? 0

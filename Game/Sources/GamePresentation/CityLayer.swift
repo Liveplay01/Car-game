@@ -25,6 +25,11 @@ public enum Skins {
         case "nightMint": .vehicleCarGraphite
         case "gold": .skinGold
         case "lagoon": .skinLagoon
+        case "pearlShine": .skinPearl
+        case "chrome": .skinChrome
+        case "starlight": .skinMidnight
+        case "diamond": .skinIce
+        case "holo": .skinHolo
         case "dusk": .mapDusk
         case "sand": .mapSand
         case "neon": .mapNeon
@@ -44,8 +49,45 @@ public enum Skins {
         case "blackGold", "royal", "lagoon": .skinGold
         case "nightMint": .skinMint
         case "tiger": .vehicleTire
+        case "holo": .skinMint
         default: nil
         }
+    }
+
+    /// A special surface: a light sweep that runs over the car, sparkles, or both.
+    public enum Finish: Sendable, Equatable {
+        case shiny
+        case glitter
+        case shinyGlitter
+
+        var isShiny: Bool { self != .glitter }
+        var glitters: Bool { self != .shiny }
+    }
+
+    public static func finish(_ id: String?) -> Finish? {
+        switch id {
+        case "pearlShine", "chrome", "holo": .shiny
+        case "starlight": .glitter
+        case "diamond": .shinyGlitter
+        default: nil
+        }
+    }
+
+    /// The look of one car: its paint, stripe and finish.
+    public struct Look: Sendable, Equatable {
+        public var paint: ColorToken?
+        public var stripe: ColorToken?
+        public var finish: Finish?
+    }
+
+    /// Every normal car on the road wears one of the skins that are on, picked by its id,
+    /// so the traffic is a mix of them (up to five).
+    public static func look(forVehicle id: Int, skins: [String]) -> Look? {
+        guard !skins.isEmpty else { return nil }
+        var hash = UInt64(bitPattern: Int64(id)) &* 0xD6E8_FEB8_6659_FD93
+        hash ^= hash >> 32
+        let skin = skins[Int(hash % UInt64(skins.count))]
+        return Look(paint: color(skin), stripe: stripe(skin), finish: finish(skin))
     }
 }
 

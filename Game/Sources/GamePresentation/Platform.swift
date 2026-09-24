@@ -69,6 +69,12 @@ public struct SaveGame: Codable, Sendable, Equatable {
     }
 }
 
+/// Shows a rewarded ad (the app plugs an ad provider in here, M12). The game only asks for
+/// one and hands out a Standard chest if it was watched to the end.
+public protocol AdProviding: AnyObject {
+    func showRewardedAd(completion: @escaping (Bool) -> Void)
+}
+
 public struct Settings: Codable, Sendable, Equatable {
     public var sound = true
     public var haptics = true

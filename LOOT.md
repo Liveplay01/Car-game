@@ -8,31 +8,37 @@ Namen in `Strings.Shop.item`. Wird ein Item ergänzt, gehört es in alle drei un
 
 - **Nur Aussehen.** Kein Skin gibt einen Spielvorteil. Ein Fahrzeugtyp hat eigene, faire
   Eigenschaften (anders, nicht besser).
-- **Sonderfahrzeuge bleiben erkennbar.** Skins tragen nur die **eigenen normalen Autos**
-  des Spielers (und den Sportwagen). Polizei, Verbrecher-Pickup, Geldtransporter und der
-  KI-Verkehr behalten immer ihr Aussehen, denn ihre Farbe ist Spielinformation.
-  Deshalb gibt es keine Skins in Polizeiblau oder Verbrecher-Violett.
+- **Skins mischen:** Bis zu **5 Car Skins** gleichzeitig. Jedes normale Auto im Level –
+  eigenes und KI-Verkehr – trägt einen davon (fest pro Auto ausgewählt), dazu der eigene
+  Sportwagen. Map Skin: einer.
+- **Sonderfahrzeuge bleiben erkennbar.** Polizei, Verbrecher-Pickup, Geldtransporter und
+  Lkw tragen nie einen Skin, denn ihre Farbe und Form ist Spielinformation. Deshalb gibt es
+  keine Skins in Polizeiblau oder Verbrecher-Violett.
 - **Odds sind immer sichtbar**, direkt neben der Truhe im Shop.
 - **Pity:** Spätestens die 10. Truhe in Folge ohne Epic ist mindestens Epic.
 - **Duplikate** werden zu Geld: Common 250 · Rare 600 · Epic 1.500 · Legendary 4.000.
-- **Kein Echtgeld in v1.0.** Die Standard-Truhe kostet 5.000 Ingame-Geld
-  (`standardChestPrice`), alle anderen werden verdient.
+- **Kein Echtgeld in v1.0.** Standard-Truhe **20.000**, Premium-Truhe **40.000** Ingame-Geld
+  (`standardChestPrice`, `premiumChestPrice`).
+- **Werbung:** Eine Standard-Truhe gibt es auch für eine angesehene Werbung, bis zu
+  **3 pro Tag** (`adChestsPerDay`). Im Testfenster läuft eine 3-Sekunden-Platzhalter-Werbung;
+  die App bindet später einen Werbe-Anbieter über `AdProviding` an.
 
 ## Truhen
 
 | Truhe | Woher | Common | Rare | Epic | Legendary |
 | --- | --- | --- | --- | --- | --- |
-| Standard Chest | Shop (5.000), Mastery Stufe I, Daily Shift | 70 % | 22 % | 7 % | 1 % |
-| Premium Chest | Mastery Stufe II und III | 35 % | 35 % | 22 % | 8 % |
+| Standard Chest | Shop (20.000), Werbung (3/Tag), Mastery Stufe I, Daily Shift | 70 % | 22 % | 7 % | 1 % |
+| Premium Chest | Shop (40.000), Mastery Stufe II und III | 35 % | 35 % | 22 % | 8 % |
 | Criminal Hunt Chest | Mastery "Crime Fighter" (Takedowns) | 50 % | 30 % | 15 % | 5 % |
 | Event Chest | City-/Saison-Events (nach v1.0) | 40 % | 35 % | 20 % | 5 % |
 
 Innerhalb einer Seltenheit ist jedes Item gleich wahrscheinlich.
 
-## Car Skins (19)
+## Car Skins (24)
 
-Lackierung der eigenen Autos in der Schlange. Mit Streifen: zwei dünne Rennstreifen über
-Motorhaube, Dach und Heck.
+Lackierung der normalen Autos im Level. Mit Streifen: zwei dünne Rennstreifen über
+Motorhaube, Dach und Heck. Mit Effekt: **Shiny** – ein Lichtstreif läuft immer wieder über
+das Auto; **Glitter** – kleine Funkeln blitzen auf. Mit Reduce Motion ohne Effekt-Animation.
 
 | Item | ID | Seltenheit | Aussehen |
 | --- | --- | --- | --- |
@@ -48,13 +54,18 @@ Motorhaube, Dach und Heck.
 | Lime | `lime` | Rare | Limettengrün |
 | Copper | `copper` | Rare | Kupfer |
 | Red Stripe | `redStripe` | Rare | Rot mit weißen Streifen |
+| Pearl Shine | `pearlShine` | Rare | Perlweiß, **Shiny** |
 | Carbon | `carbon` | Epic | fast schwarz |
 | Black & Gold | `blackGold` | Epic | Carbon mit goldenen Streifen |
 | Night Mint | `nightMint` | Epic | Graphit mit Mint-Streifen |
 | Tiger | `tiger` | Epic | Orange mit schwarzen Streifen |
+| Chrome | `chrome` | Epic | Chrom-Silber, **Shiny** |
+| Starlight | `starlight` | Epic | Nachtblau, **Glitter** |
 | Gold | `gold` | Legendary | Gold |
 | Royal | `royal` | Legendary | Perlweiß mit goldenen Streifen |
 | Lagoon | `lagoon` | Legendary | Lagunen-Türkis mit goldenen Streifen |
+| Diamond | `diamond` | Legendary | Eisblau, **Shiny + Glitter** |
+| Holo | `holo` | Legendary | Holo-Flieder mit Mint-Streifen, **Shiny** |
 
 ## Map Skins (8)
 
@@ -82,10 +93,10 @@ Tönen die Mittelinsel des Kreisverkehrs mit einem Ring in der Skin-Farbe.
 | Seltenheit | Car Skins | Map Skins | Typen | Summe |
 | --- | --- | --- | --- | --- |
 | Common | 6 | 2 | – | 8 |
-| Rare | 6 | 2 | – | 8 |
-| Epic | 4 | 2 | 1 | 7 |
-| Legendary | 3 | 2 | – | 5 |
-| **Summe** | **19** | **8** | **1** | **28** |
+| Rare | 7 | 2 | – | 9 |
+| Epic | 6 | 2 | 1 | 9 |
+| Legendary | 5 | 2 | – | 7 |
+| **Summe** | **24** | **8** | **1** | **33** |
 
 ## Ideen für später (noch nicht im Spiel)
 

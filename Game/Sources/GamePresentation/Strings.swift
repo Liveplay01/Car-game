@@ -116,8 +116,8 @@ public enum Strings {
         /// Where a chest comes from, when none is waiting.
         public static func source(_ kind: ChestKind) -> String {
             switch kind {
-            case .standard: "For sale"
-            case .premium: "Earned by hard masteries"
+            case .standard: "For sale · or watch an ad"
+            case .premium: "For sale · or by hard masteries"
             case .event: "Comes with city events"
             case .criminalHunt: "Earned by catching criminals"
             }
@@ -125,6 +125,15 @@ public enum Strings {
         public static let pickItem = "Tap an item to see it."
         public static let lockedHint = "Not found yet: it comes out of chests."
         public static let tapToClose = "Tap to close"
+        public static let watchAdShort = "Watch ad"
+        public static let adHint = "Watch a short ad for a free Standard chest."
+        public static let adReward = "Ad watched · Standard chest added"
+        public static let noAdsLeft = "No more ad chests today. Back tomorrow."
+        public static let adPlaceholder = "Ad"
+        public static func adCountdown(_ seconds: Int) -> String { "Your chest in \(seconds) s" }
+        public static func watchAd(_ left: Int) -> String { "Watch ad · \(left) left" }
+        public static func skinsOn(_ count: Int, of max: Int) -> String { "\(count) of \(max) car skins on · they mix on the road" }
+        public static func skinsFull(_ max: Int) -> String { "\(max) car skins are on. Take one off first." }
 
         public static func section(_ section: ShopPage.Section) -> String {
             switch section {
@@ -141,7 +150,7 @@ public enum Strings {
 
         public static func ownedHint(_ item: Cosmetic) -> String {
             switch item.kind {
-            case .carSkin: "Paints your own cars. Only looks, never a bonus."
+            case .carSkin: "Paints the cars on the road. Mix up to five. Only looks, never a bonus."
             case .mapSkin: "Tints the centre island. Only looks, never a bonus."
             case .vehicleType: "Shows up in your queue now and then: shorter, lighter, merges quicker."
             }
@@ -205,6 +214,11 @@ public enum Strings {
             case "sakura": "Sakura"
             case "aurora": "Aurora"
             case "ember": "Ember"
+            case "pearlShine": "Pearl Shine"
+            case "chrome": "Chrome"
+            case "starlight": "Starlight"
+            case "diamond": "Diamond"
+            case "holo": "Holo"
             case "sportsCar": "Sports Car"
             default: id
             }

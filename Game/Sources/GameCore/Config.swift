@@ -418,7 +418,11 @@ public struct Config: Sendable, Equatable {
     public var tollIncomePerDay: Int = 600
     public var loginMaxDays: Int = 3
     /// Price of a Standard chest in the shop (in-game money only).
-    public var standardChestPrice: Int = 5_000
+    public var standardChestPrice: Int = 20_000
+    /// Price of a Premium chest (in-game money only).
+    public var premiumChestPrice: Int = 40_000
+    /// Standard chests a day for watching an ad.
+    public var adChestsPerDay: Int = 3
 
     // MARK: Late levels (ROADMAP.md, M7: level 14 felt too easy)
 

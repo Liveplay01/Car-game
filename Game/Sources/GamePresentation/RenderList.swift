@@ -91,7 +91,7 @@ enum RenderID {
     static let vehicles = 1_000_000
 
     /// Outline, body, parts, cracks and flames of one vehicle (`CarArt.Slot`).
-    static let partsPerVehicle = 35
+    static let partsPerVehicle = 39
 
     static func vehicle(_ id: Int, part: Int) -> Int { vehicles + id * partsPerVehicle + part }
     static func shadow(_ id: Int) -> Int { shadows + id }

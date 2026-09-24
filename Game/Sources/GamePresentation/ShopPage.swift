@@ -6,7 +6,7 @@ import GameCore
 /// switches between the three, like a native `Picker(.segmented)`.
 ///
 /// Fair and quiet on purpose: the odds are always on screen, the pity counter too, and an
-/// opened chest gets a frame in its rarity colour and a soft glow — no casino effects.
+/// opened chest gets a frame in its rarity colour and a soft glow â€” no casino effects.
 /// Reduce Motion keeps the reveal as a fade.
 public enum ShopPage {
     public enum Section: Int, Sendable, Equatable, CaseIterable {
@@ -21,6 +21,7 @@ public enum ShopPage {
         case chest(ChestKind)
         case open(ChestKind)
         case buy(ChestKind)
+        case watchAd
         case item(String)
         case wear(String)
         /// A tap anywhere closes the reveal of an opened chest.
@@ -37,6 +38,8 @@ public enum ShopPage {
         public var opening: (opening: ChestOpening, age: Double)?
         /// A refused purchase, and how long ago.
         public var denied = 0.0
+        /// The placeholder ad running (test window), and for how long.
+        public var ad: Double?
 
         public init() {}
 
@@ -51,6 +54,7 @@ public enum ShopPage {
                 opening.age += delta
                 self.opening = opening
             }
+            if let ad { self.ad = ad + delta }
             if denied > 0 {
                 denied += delta
                 if denied > 0.4 { denied = 0 }
@@ -63,6 +67,8 @@ public enum ShopPage {
     static let detailHeight = 128.0
     static let segmentHeight = 32.0
     static let revealDuration = 0.45
+    /// The placeholder ad of the test window.
+    public static let adDuration = 3.0
 
     // MARK: - Layout
 
@@ -111,7 +117,7 @@ public enum ShopPage {
         let height = 34.0
         let y = layout.detail.maxY - 16 - height
         func button(_ index: Int, _ target: Target) -> (Target, Rect) {
-            let width = 118.0
+            let width = 104.0
             let right = layout.detail.maxX - 14 - Double(index) * (width + 10)
             return (target, Rect(minX: right - width, minY: y, maxX: right, maxY: y + height))
         }
@@ -119,6 +125,7 @@ public enum ShopPage {
         case .chests:
             var list = [button(0, .open(state.selectedChest))]
             if state.selectedChest.isForSale { list.append(button(1, .buy(state.selectedChest))) }
+            if state.selectedChest == .standard { list.append(button(2, .watchAd)) }
             return list
         case .collection:
             guard let id = state.selectedItem, career.owns(id), Cosmetics.item(id)?.kind != .vehicleType else { return [] }
@@ -133,6 +140,7 @@ public enum ShopPage {
         if state.opening != nil {
             return [(.dismiss, Rect(minX: 0, minY: 0, maxX: viewport.x, maxY: viewport.y))]
         }
+        if state.ad != nil { return [] }
         let layout = layout(viewport: viewport, bottomInset: bottomInset)
         var list: [(Target, Rect)] = layout.segments.map { (.section($0.0), $0.1) }
         list += buttons(layout, career: career, state: state)
@@ -151,7 +159,7 @@ public enum ShopPage {
 
     // MARK: - Drawing
 
-    static func add(career: Career, config: Config, today: Int, state: State, format: TextFormat, reduceMotion: Bool, bottomInset: Double, to list: inout RenderList) {
+    static func add(career: Career, config: Config, today: Int, state: State, format: TextFormat, reduceMotion: Bool, bottomInset: Double, time: Double = 0, to list: inout RenderList) {
         let viewport = list.camera.viewport
         var id = RenderID.menu
         list.add(.roundedRect(center: viewport / 2, size: viewport, cornerRadius: 0, rotation: 0), color: .scrim, space: .screen, id: id)
@@ -169,6 +177,9 @@ public enum ShopPage {
         case .today: addToday(layout, career: career, today: today, format: format, enter: enter, id: &id, to: &list)
         }
         addDetail(layout, career: career, config: config, today: today, state: state, format: format, id: &id, to: &list)
+        if let ad = state.ad {
+            addAd(age: ad, id: &id, to: &list)
+        }
         if let opening = state.opening {
             addReveal(opening.opening, age: opening.age, format: format, reduceMotion: reduceMotion, id: &id, to: &list)
         }
@@ -197,7 +208,7 @@ public enum ShopPage {
                 id += 1
             }
             var label = Strings.Shop.section(section)
-            if section == .chests, !career.chests.isEmpty { label += " · \(career.chests.count)" }
+            if section == .chests, !career.chests.isEmpty { label += " Â· \(career.chests.count)" }
             text(label, rect.center, size: 13, weight: .bold, color: chosen ? .primary : .muted, alignment: .center, id: &id, to: &list)
         }
     }
@@ -250,7 +261,7 @@ public enum ShopPage {
     private static func addCollection(_ layout: Layout, career: Career, state: State, enter: Double, id: inout Int, to list: inout RenderList) {
         for (item, rect) in itemCells(layout) {
             let owned = career.owns(item.id)
-            let worn = career.carSkin == item.id || career.mapSkin == item.id
+            let worn = career.isWorn(item.id)
             let frame = rarityColor(item.rarity)
             let opacity = enter * (owned ? 1 : 0.4)
             list.add(.roundedRect(center: rect.center, size: Vec2(rect.width + 3, rect.height + 3), cornerRadius: corner + 1.5, rotation: 0),
@@ -287,6 +298,19 @@ public enum ShopPage {
             id += 1
             list.add(.roundedRect(center: center + Vec2(length * 0.08, 0), size: Vec2(length * 0.36, width * 0.72), cornerRadius: 4 * scale, rotation: 0), color: .vehicleGlass, opacity: opacity, space: .screen, id: id)
             id += 1
+            if let finish = Skins.finish(item.id) {
+                // A still picture of the finish: a sheen across, a few sparkles.
+                if finish.isShiny {
+                    list.add(.line(from: center + Vec2(4, -width / 2 + 2), to: center + Vec2(-4, width / 2 - 2), thickness: 3 * scale), color: .primary, opacity: 0.55 * opacity, space: .screen, id: id)
+                    id += 1
+                }
+                if finish.glitters {
+                    for offset in [Vec2(-12, -5), Vec2(8, 6), Vec2(14, -4)] {
+                        list.add(.circle(center: center + offset * scale, radius: 1.6 * scale), color: .primary, opacity: opacity, space: .screen, id: id)
+                        id += 1
+                    }
+                }
+            }
             if let stripe = isSports ? ColorToken.primary : Skins.stripe(item.id) {
                 for y in [-2.2, 2.2] {
                     list.add(.line(from: center + Vec2(-length / 2 + 3, y * scale), to: center + Vec2(length / 2 - 3, y * scale), thickness: 1.8 * scale), color: stripe, opacity: 0.9 * opacity, space: .screen, id: id)
@@ -356,6 +380,10 @@ public enum ShopPage {
             text(Strings.Shop.kind(item), Vec2(left, y), size: 11, color: rarityColor(item.rarity), id: &id, to: &list)
             y += 16
             text(career.owns(item.id) ? Strings.Shop.ownedHint(item) : Strings.Shop.lockedHint, Vec2(left, y), size: 11, color: .muted, id: &id, to: &list)
+            if item.kind == .carSkin {
+                y += 16
+                text(Strings.Shop.skinsOn(career.carSkins.count, of: Career.maxCarSkins), Vec2(left, y), size: 11, color: .accent, id: &id, to: &list)
+            }
         case .today:
             text(Strings.Daily.challengesTitle, Vec2(left, y), size: 16, weight: .bold, color: .primary, id: &id, to: &list)
             y += 20
@@ -375,10 +403,28 @@ public enum ShopPage {
     static func buttonStyle(_ target: Target, career: Career, config: Config, format: TextFormat) -> (String, Bool, Bool) {
         switch target {
         case let .open(kind): (Strings.Shop.open, career.count(of: kind) > 0, true)
-        case .buy: (Strings.Shop.buy(format.number(config.standardChestPrice)), career.money >= config.standardChestPrice, false)
-        case let .wear(id): (career.carSkin == id || career.mapSkin == id ? Strings.Shop.takeOff : Strings.Shop.wear, true, true)
+        case let .buy(kind):
+            (Strings.Shop.buy(format.number(config.price(of: kind) ?? 0)), career.money >= (config.price(of: kind) ?? .max), false)
+        case .watchAd:
+            (Strings.Shop.watchAdShort, true, false)
+        case let .wear(id): (career.isWorn(id) ? Strings.Shop.takeOff : Strings.Shop.wear, true, true)
         case .section, .chest, .item, .dismiss: ("", false, false)
         }
+    }
+
+    // MARK: Ad
+
+    /// The test window placeholder for a rewarded ad: a dark card and a countdown.
+    private static func addAd(age: Double, id: inout Int, to list: inout RenderList) {
+        let viewport = list.camera.viewport
+        list.add(.roundedRect(center: viewport / 2, size: viewport, cornerRadius: 0, rotation: 0), color: .background, opacity: 0.96, space: .screen, id: id)
+        id += 1
+        let left = max(0, Int((adDuration - age).rounded(.up)))
+        text(Strings.Shop.adPlaceholder, viewport / 2 - Vec2(0, 16), size: 18, weight: .bold, color: .primary, alignment: .center, id: &id, to: &list)
+        text(Strings.Shop.adCountdown(left), viewport / 2 + Vec2(0, 14), size: 13, color: .muted, alignment: .center, id: &id, to: &list)
+        let progress = min(1, age / adDuration)
+        list.add(.roundedRect(center: viewport / 2 + Vec2(-90 + 90 * progress, 44), size: Vec2(180 * progress, 4), cornerRadius: 2, rotation: 0), color: .accent, space: .screen, id: id)
+        id += 1
     }
 
     // MARK: Reveal

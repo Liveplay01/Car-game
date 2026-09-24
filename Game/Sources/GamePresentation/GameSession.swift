@@ -141,6 +141,8 @@ public final class GameSession {
     public private(set) var upgradePage = UpgradePage.State()
     /// What the Shop tab shows and animates (M10).
     public private(set) var shopPage = ShopPage.State()
+    /// Plays rewarded ads in the app; without one (test window) a placeholder ad runs.
+    public weak var adProvider: AdProviding?
     /// What the Street Builder tab shows and animates.
     public private(set) var builderPage = StreetBuilderPage.State()
     /// The last tap on a placed part, to tell a double tap from a single one.
@@ -283,13 +285,28 @@ public final class GameSession {
         case let .buyChest(kind):
             guard save.career.buyChest(kind, config: config) else {
                 shopPage.denied = 0.001
-                showNotice(Strings.Notice.notEnoughMoney(format.number(config.standardChestPrice)))
+                showNotice(Strings.Notice.notEnoughMoney(format.number(config.price(of: kind) ?? 0)))
                 return
             }
             store.save(save)
             play(sounds: [.comboUp], haptics: [.comboUp])
+        case .watchAd:
+            guard save.career.adChestsLeft(day: today, config: config) > 0, shopPage.ad == nil else {
+                showNotice(Strings.Shop.noAdsLeft)
+                return
+            }
+            if let adProvider {
+                adProvider.showRewardedAd { [weak self] watched in
+                    if watched { self?.adWatched() }
+                }
+            } else {
+                // Test window: a placeholder ad that runs a few seconds.
+                shopPage.ad = 0
+            }
         case let .wear(id):
-            save.career.wear(id)
+            if !save.career.wear(id), Cosmetics.item(id)?.kind == .carSkin, save.career.owns(id) {
+                showNotice(Strings.Shop.skinsFull(Career.maxCarSkins))
+            }
             store.save(save)
         case .toggleSound:
             save.settings.sound.toggle()
@@ -515,6 +532,16 @@ public final class GameSession {
         Upgrade.available(atLevel: save.career.level, config: config)
     }
 
+    /// A rewarded ad was watched to the end: a Standard chest.
+    public func adWatched() {
+        guard save.career.rewardAd(day: today, config: config) else { return }
+        store.save(save)
+        shopPage.ad = nil
+        shopPage.selectedChest = .standard
+        play(sounds: [.paid], haptics: [.paid])
+        showNotice(Strings.Shop.adReward)
+    }
+
     /// A tap on the Shop page. Tapping a selected chest again opens one; tapping an owned
     /// item again wears it — like the double tap on an upgrade.
     private func tapShop(_ target: ShopPage.Target) {
@@ -531,6 +558,8 @@ public final class GameSession {
             perform(.openChest(index))
         case let .buy(kind):
             perform(.buyChest(kind))
+        case .watchAd:
+            perform(.watchAd)
         case let .item(id):
             if shopPage.selectedItem == id, save.career.owns(id) {
                 perform(.wear(id))
@@ -615,6 +644,9 @@ public final class GameSession {
         }
         if screen == .page(.shop) {
             shopPage.age(by: realDelta)
+            if let ad = shopPage.ad, ad >= ShopPage.adDuration {
+                adWatched()
+            }
         } else {
             shopPage = ShopPage.State()
         }
@@ -902,7 +934,7 @@ public final class GameSession {
         WeatherLayer.addGround(world: world, to: &list)
         effects.addGround(world: world, alpha: clock.alpha, softBody: !reduceMotion, to: &list)
         SceneBuilder.addShadows(of: world, alpha: clock.alpha, to: &list)
-        SceneBuilder.addVehicles(of: world, alpha: clock.alpha, carSkin: Skins.color(save.career.carSkin), carStripe: Skins.stripe(save.career.carSkin), springTime: reduceMotion ? nil : world.time, to: &list)
+        SceneBuilder.addVehicles(of: world, alpha: clock.alpha, carSkins: save.career.carSkins, finishTime: reduceMotion ? nil : world.time, springTime: reduceMotion ? nil : world.time, to: &list)
         SceneBuilder.addTowTrucks(of: world, to: &list)
         if save.settings.vehicleLabels {
             SceneBuilder.addLabels(of: world, alpha: clock.alpha, to: &list)

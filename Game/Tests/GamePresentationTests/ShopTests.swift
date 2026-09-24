@@ -16,12 +16,12 @@ struct ShopTests {
         return (session, store)
     }
 
-    @Test func onlyTheStandardChestIsForSale() {
+    @Test func earnedChestsAreNotForSale() {
         let config = Config()
         var career = Career(level: 1, money: config.standardChestPrice)
-        let premium = career.buyChest(.premium, config: config)
+        let hunt = career.buyChest(.criminalHunt, config: config)
         let standard = career.buyChest(.standard, config: config)
-        #expect(!premium && standard)
+        #expect(!hunt && standard)
         #expect(career.money == 0)
         #expect(career.chests == [.standard])
         let broke = career.buyChest(.standard, config: config)
@@ -29,7 +29,8 @@ struct ShopTests {
     }
 
     @Test func buyingAndOpeningShowsTheReveal() {
-        let (session, store) = shopSession(money: 6_000)
+        let price = Config().standardChestPrice
+        let (session, store) = shopSession(money: price + 1_000)
         session.advance([.tapShop(.buy(.standard))])
         #expect(store.game?.career.chests == [.standard])
         #expect(store.game?.career.money == 1_000)
@@ -53,12 +54,12 @@ struct ShopTests {
         session.advance([.tapShop(.section(.collection))])
         #expect(session.shopPage.section == .collection)
         session.advance([.tapShop(.item("sunset"))])
-        #expect(store.game?.career.carSkin == nil)
+        #expect(store.game?.career.carSkins.isEmpty == true)
         session.advance([.tapShop(.item("sunset"))])
-        #expect(store.game?.career.carSkin == "sunset")
+        #expect(store.game?.career.carSkins == ["sunset"])
         // Items not owned are only shown.
         session.advance([.tapShop(.item("gold")), .tapShop(.item("gold"))])
-        #expect(store.game?.career.carSkin == "sunset")
+        #expect(store.game?.career.carSkins == ["sunset"])
     }
 
     @Test func theLayoutHitsWhatItDraws() {
@@ -81,5 +82,23 @@ struct ShopTests {
             let texts = session.advance().texts
             #expect(texts.contains { $0.hasPrefix(Strings.Shop.section(section)) })
         }
+    }
+
+    @Test func thePlaceholderAdPaysAChestAfterItRuns() {
+        let (session, store) = shopSession()
+        session.advance([.tapShop(.watchAd)])
+        #expect(session.shopPage.ad != nil)
+        session.run(seconds: ShopPage.adDuration + 0.2) { $0.shopPage.ad == nil }
+        #expect(store.game?.career.chests == [.standard])
+        #expect(session.shopPage.ad == nil)
+    }
+
+    @Test func skinsPaintEveryNormalCarButNeverTheSpecialOnes() {
+        let skins = ["gold", "mint"]
+        let looks = (1...40).compactMap { Skins.look(forVehicle: $0, skins: skins)?.paint }
+        #expect(Set(looks) == [.skinGold, .skinMint])
+        #expect(Skins.finish("diamond") == .shinyGlitter)
+        #expect(Skins.finish("chrome") == .shiny)
+        #expect(Skins.finish("gold") == nil)
     }
 }

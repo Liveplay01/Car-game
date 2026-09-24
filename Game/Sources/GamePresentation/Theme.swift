@@ -84,6 +84,8 @@ public enum ColorToken: Sendable, Equatable, CaseIterable {
     case skinLime
     case skinCopper
     case skinLagoon
+    case skinChrome
+    case skinHolo
     case mapSand
     case mapForest
     case mapSakura
@@ -168,6 +170,8 @@ public enum Theme {
         case .skinLime: ColorRGBA(hex: 0xB5E35A)
         case .skinCopper: ColorRGBA(hex: 0xB8703F)
         case .skinLagoon: ColorRGBA(hex: 0x2BB3A8)
+        case .skinChrome: ColorRGBA(hex: 0xC9D1DA)
+        case .skinHolo: ColorRGBA(hex: 0xB9A7F2)
         case .mapSand: ColorRGBA(hex: 0xD9C08C)
         case .mapForest: ColorRGBA(hex: 0x3F8F5A)
         case .mapSakura: ColorRGBA(hex: 0xF2A7C3)

@@ -13,9 +13,9 @@ public enum ChestKind: String, Sendable, Equatable, CaseIterable, Codable {
     /// Earned from the police masteries.
     case criminalHunt
 
-    /// Only the Standard chest is sold, for in-game money (IDEA.md). The others are earned;
-    /// real money is not part of v1.0.
-    public var isForSale: Bool { self == .standard }
+    /// Standard and Premium chests are sold for in-game money; the others are earned.
+    /// Real money is not part of v1.0.
+    public var isForSale: Bool { self == .standard || self == .premium }
 
     /// Chance of each rarity, common … legendary. Shown in the shop.
     public var odds: [Double] {
@@ -77,13 +77,18 @@ public enum Cosmetics {
         Cosmetic(id: "lime", kind: .carSkin, rarity: .rare),
         Cosmetic(id: "copper", kind: .carSkin, rarity: .rare),
         Cosmetic(id: "redStripe", kind: .carSkin, rarity: .rare),
+        Cosmetic(id: "pearlShine", kind: .carSkin, rarity: .rare),
         Cosmetic(id: "carbon", kind: .carSkin, rarity: .epic),
         Cosmetic(id: "blackGold", kind: .carSkin, rarity: .epic),
         Cosmetic(id: "nightMint", kind: .carSkin, rarity: .epic),
         Cosmetic(id: "tiger", kind: .carSkin, rarity: .epic),
+        Cosmetic(id: "chrome", kind: .carSkin, rarity: .epic),
+        Cosmetic(id: "starlight", kind: .carSkin, rarity: .epic),
         Cosmetic(id: "gold", kind: .carSkin, rarity: .legendary),
         Cosmetic(id: "royal", kind: .carSkin, rarity: .legendary),
         Cosmetic(id: "lagoon", kind: .carSkin, rarity: .legendary),
+        Cosmetic(id: "diamond", kind: .carSkin, rarity: .legendary),
+        Cosmetic(id: "holo", kind: .carSkin, rarity: .legendary),
         // Map skins
         Cosmetic(id: "dusk", kind: .mapSkin, rarity: .common),
         Cosmetic(id: "sand", kind: .mapSkin, rarity: .common),
@@ -98,6 +103,17 @@ public enum Cosmetics {
     ]
 
     public static func item(_ id: String) -> Cosmetic? { all.first { $0.id == id } }
+}
+
+extension Config {
+    /// What a chest costs in the shop; nil if it is not for sale.
+    public func price(of chest: ChestKind) -> Int? {
+        switch chest {
+        case .standard: standardChestPrice
+        case .premium: premiumChestPrice
+        case .event, .criminalHunt: nil
+        }
+    }
 }
 
 /// What one opened chest gave.
@@ -116,11 +132,35 @@ extension Career {
     /// Buys a chest with in-game money, if it is for sale and the money is there.
     @discardableResult
     public mutating func buyChest(_ kind: ChestKind, config: Config) -> Bool {
-        guard kind.isForSale, money >= config.standardChestPrice else { return false }
-        money -= config.standardChestPrice
+        guard let price = config.price(of: kind), money >= price else { return false }
+        money -= price
         chests.append(kind)
         return true
     }
+
+    /// Car skins worn at once, at most.
+    public static let maxCarSkins = 5
+
+    /// Whether today still allows a chest for watching an ad.
+    public func adChestsLeft(day: Int, config: Config) -> Int {
+        max(0, config.adChestsPerDay - (adDay == day ? adChests : 0))
+    }
+
+    /// A watched ad: one Standard chest, a few times a day.
+    @discardableResult
+    public mutating func rewardAd(day: Int, config: Config) -> Bool {
+        guard adChestsLeft(day: day, config: config) > 0 else { return false }
+        if adDay != day {
+            adDay = day
+            adChests = 0
+        }
+        adChests += 1
+        chests.append(.standard)
+        return true
+    }
+
+    /// Whether a skin is on.
+    public func isWorn(_ id: String) -> Bool { carSkins.contains(id) || mapSkin == id }
 
     /// How many chests of a kind wait in the shop.
     public func count(of kind: ChestKind) -> Int { chests.count(where: { $0 == kind }) }
@@ -154,14 +194,25 @@ extension Career {
         return ChestOpening(chest: kind, item: item, isDuplicate: false, money: 0)
     }
 
-    /// Puts on a skin the player owns, or takes it off if it is on already.
-    public mutating func wear(_ id: String) {
-        guard let item = Cosmetics.item(id), collection.contains(id) else { return }
+    /// Puts on a skin the player owns, or takes it off if it is on already. Car skins mix:
+    /// up to `maxCarSkins` at once. Returns false if nothing changed (not owned, or full).
+    @discardableResult
+    public mutating func wear(_ id: String) -> Bool {
+        guard let item = Cosmetics.item(id), collection.contains(id) else { return false }
         switch item.kind {
-        case .carSkin: carSkin = carSkin == id ? nil : id
-        case .mapSkin: mapSkin = mapSkin == id ? nil : id
-        case .vehicleType: break
+        case .carSkin:
+            if let index = carSkins.firstIndex(of: id) {
+                carSkins.remove(at: index)
+            } else {
+                guard carSkins.count < Self.maxCarSkins else { return false }
+                carSkins.append(id)
+            }
+        case .mapSkin:
+            mapSkin = mapSkin == id ? nil : id
+        case .vehicleType:
+            return false
         }
+        return true
     }
 
     /// Whether an item is in the collection, e.g. the vehicle type "sportsCar".
