@@ -165,7 +165,7 @@ extension World {
 
     /// Places a car directly on the ring. Used for the start of a shift and in tests.
     @discardableResult
-    mutating func spawnRingCar(at s: Double, exitArm: Arm) -> Int {
+    mutating func spawnRingCar(at s: Double, exitArm: Arm, type: VehicleType? = nil) -> Int {
         let s = Angle.wrap(s, period: layout.ring.length)
         let ring = Vehicle.Ring(
             s: s,
@@ -173,27 +173,30 @@ extension World {
             distanceToExit: layout.ringDistance(from: s, to: layout.exitRingS(exitArm)),
             justMerged: nil
         )
-        let vehicle = Vehicle(id: makeID(), type: rollTrafficType(), owner: .ai, phase: .ring(ring), pose: layout.ring.pose(at: s))
+        let vehicle = Vehicle(id: makeID(), type: type ?? rollTrafficType(), owner: .ai, phase: .ring(ring), pose: layout.ring.pose(at: s))
         vehicles.append(vehicle)
         return vehicle.id
     }
 
-    /// Spreads `count` cars over the ring with safe gaps, so the first shift second is not empty.
+    /// Spreads `count` cars over the ring with safe gaps, so the first shift second is not
+    /// empty. The gap counts from bumper to bumper: a lorry needs more room than a car.
     mutating func prefillRing(count: Int) {
         let circumference = layout.ring.length
-        let minimumArc = config.carLength + config.aiSafeGap * ringSpeed
-        var placed: [Double] = []
+        var placed: [(s: Double, length: Double)] = []
+        var type = rollTrafficType()
         var attempts = 0
         while placed.count < count && attempts < 200 {
             attempts += 1
             let s = rng.unit() * circumference
+            let size = length(of: type)
             let tooClose = placed.contains { other in
-                let ahead = layout.ringDistance(from: other, to: s)
-                return min(ahead, circumference - ahead) < minimumArc
+                let ahead = layout.ringDistance(from: other.s, to: s)
+                return min(ahead, circumference - ahead) < (size + other.length) / 2 + config.aiSafeGap * ringSpeed
             }
             if tooClose { continue }
-            placed.append(s)
-            spawnRingCar(at: s, exitArm: rng.pick(layout.aiArms))
+            placed.append((s, size))
+            spawnRingCar(at: s, exitArm: rng.pick(layout.aiArms), type: type)
+            type = rollTrafficType()
         }
     }
 

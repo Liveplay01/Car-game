@@ -125,3 +125,23 @@ struct RingBotTests {
         #expect(world.densityCount == bots)
     }
 }
+
+/// Regression: the ring was filled with a car's spacing for every vehicle, so a lorry could
+/// start bumper to bumper with the car ahead and crash as soon as anybody braked.
+@Test(arguments: [1, 10, 20, 30])
+func prefilledTrafficKeepsItsGapsWithLorries(level: Int) {
+    for seed in UInt64(1)...12 {
+        var config = Config().forLevel(level, seed: seed)
+        config.truckChance = 0.5
+        let world = World(config: config, seed: seed)
+        let ring = world.vehicles.compactMap { v -> (s: Double, length: Double)? in
+            if case let .ring(r) = v.phase { return (r.s, world.length(of: v.type)) }
+            return nil
+        }.sorted { $0.s < $1.s }
+        for (k, car) in ring.enumerated() {
+            let next = ring[(k + 1) % ring.count]
+            let gap = world.layout.ringDistance(from: car.s, to: next.s) - (car.length + next.length) / 2
+            #expect(gap >= config.aiSafeGap * world.ringSpeed - 1e-6, "level \(level), seed \(seed)")
+        }
+    }
+}
