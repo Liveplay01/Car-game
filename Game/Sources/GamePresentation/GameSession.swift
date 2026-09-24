@@ -275,11 +275,13 @@ public final class GameSession {
         case let .openChest(index):
             guard let opening = save.career.openChest(at: index, seed: UInt64(save.shiftsPlayed)) else { return }
             store.save(save)
-            play(sounds: [.paid], haptics: [.chest])
-            // The drawn shop reveals it; without drawn menus a short notice says what it was.
+            // The drawn shop reveals it and plays the burst with its animation; without drawn
+            // menus a short notice says what it was.
             if options.drawsMenus {
-                shopPage.opening = (opening, 0)
+                shopPage.opening = (opening, reduceMotion ? ShopPage.burstTime : 0)
+                play(sounds: [.dispatch], haptics: [.wanted])
             } else {
+                play(sounds: [.paid], haptics: [.chest])
                 showNotice(Strings.Shop.opened(opening))
             }
         case let .buyChest(kind):
@@ -532,6 +534,14 @@ public final class GameSession {
         Upgrade.available(atLevel: save.career.level, config: config)
     }
 
+    /// Test window (`--chest-preview`): plays a chest opening of this rarity on the Shop tab
+    /// without touching the save game.
+    public func previewChestOpening(_ rarity: Rarity) {
+        guard let item = Cosmetics.all.last(where: { $0.rarity == rarity }) else { return }
+        screen = .page(.shop)
+        shopPage.opening = (ChestOpening(chest: rarity >= .epic ? .premium : .standard, item: item, isDuplicate: false, money: 0), 0)
+    }
+
     /// A rewarded ad was watched to the end: a Standard chest.
     public func adWatched() {
         guard save.career.rewardAd(day: today, config: config) else { return }
@@ -568,7 +578,12 @@ public final class GameSession {
         case let .wear(id):
             perform(.wear(id))
         case .dismiss:
-            shopPage.opening = nil
+            // A tap during the build-up skips to the burst; after it, it closes.
+            if let opening = shopPage.opening, opening.age < ShopPage.burstTime {
+                shopPage.opening = (opening.opening, ShopPage.burstTime - 0.001)
+            } else {
+                shopPage.opening = nil
+            }
         }
     }
 
@@ -643,7 +658,13 @@ public final class GameSession {
             upgradePage = UpgradePage.State()
         }
         if screen == .page(.shop) {
+            let before = shopPage.opening?.age
             shopPage.age(by: realDelta)
+            // The burst is felt and heard the moment it happens.
+            if let before, let after = shopPage.opening?.age, before < ShopPage.burstTime, after >= ShopPage.burstTime {
+                let rare = (shopPage.opening?.opening.item.rarity ?? .common) >= .epic
+                play(sounds: rare ? [.takedown, .paid] : [.paid], haptics: [.chest])
+            }
             if let ad = shopPage.ad, ad >= ShopPage.adDuration {
                 adWatched()
             }

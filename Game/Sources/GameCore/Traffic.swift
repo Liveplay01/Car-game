@@ -6,7 +6,10 @@
 extension World {
     mutating func updateTraffic(_ dt: Double) {
         spawnCooldown -= dt
-        if spawnCooldown <= 0, roadCount < targetDensity {
+        // Only cars standing at a line count: several may roll up at once, but they never
+        // pile up waiting (`maxWaitingAI`).
+        let waitingNow = vehicles.count(where: { if case let .waiting(w) = $0.phase { w.approach == 0 } else { false } })
+        if spawnCooldown <= 0, densityCount < targetDensity, waitingNow < (config.maxWaitingAI ?? .max) {
             // An arm takes another car while its queue is short enough and the last one has
             // driven up a bit (`aiQueuePerArm`, more at higher levels). With one per arm, the
             // default, an arm is free only while nobody waits there.
@@ -31,7 +34,12 @@ extension World {
         for i in vehicles.indices {
             guard case .waiting(var w) = vehicles[i].phase else { continue }
             if w.approach > 0 {
-                w.approach = approachStep(w.approach, dt: dt)
+                w.approach = approachStep(w.approach, dt: dt, rolling: config.aiRollingMerge)
+                // Rolling merge (higher levels): a car that reaches its line with a gap goes
+                // straight in, no stop, no hesitation. Traffic flows instead of queuing.
+                if w.approach == 0, config.aiRollingMerge {
+                    w.reaction = 0
+                }
                 // Queued behind another car at the same arm: stop a car length behind it.
                 if let ahead = waitingAhead(of: i, at: w.arm) {
                     w.approach = max(w.approach, ahead + config.queueSpacing)
@@ -52,7 +60,8 @@ extension World {
                 // Higher levels: some AI cars stay a lap longer, so the ring fills up. Only
                 // drawn then, so the traffic of lower levels stays exactly as it was.
                 if config.aiLapChance > 0, rng.unit() < config.aiLapChance {
-                    merge.extraLaps = 1
+                    // Circling cars keep the ring full: often two laps, sometimes three.
+                    merge.extraLaps = 1 + (rng.unit() < 0.6 ? 1 : 0) + (rng.unit() < 0.3 ? 1 : 0)
                 }
                 vehicles[i].phase = .merging(merge)
             } else {
@@ -70,6 +79,18 @@ extension World {
             nearest = max(nearest ?? -.infinity, other.approach)
         }
         return nearest
+    }
+
+    /// What the density is measured on: every car on the road, or from higher levels on only
+    /// the cars on the ring and merging, so the ring itself really fills up.
+    var densityCount: Int {
+        guard !config.densityCountsWaiting else { return roadCount }
+        return vehicles.count(where: { vehicle in
+            switch vehicle.phase {
+            case .ring, .merging: true
+            case .queued, .waiting, .exiting, .crashed: false
+            }
+        })
     }
 
     /// Cars that count towards the density: on the ring, merging or about to enter.
@@ -100,9 +121,10 @@ extension World {
     }
 
     /// One step of driving up: at ring speed, then braking so it stops right at the line.
-    func approachStep(_ distance: Double, dt: Double) -> Double {
+    func approachStep(_ distance: Double, dt: Double, rolling: Bool = false) -> Double {
         let braking = (2 * config.aiApproachBrake * config.gravity * distance).squareRoot()
-        let speed = max(min(ringSpeed, braking), 8)
+        // Rolling up to the line keeps some speed, ready to go straight in.
+        let speed = max(min(ringSpeed, braking), rolling ? ringSpeed * 0.35 : 8)
         return max(0, distance - speed * dt)
     }
 

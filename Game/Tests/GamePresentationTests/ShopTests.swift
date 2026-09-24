@@ -38,6 +38,9 @@ struct ShopTests {
         #expect(session.shopPage.opening != nil)
         #expect(store.game?.career.chests.isEmpty == true)
         #expect(store.game?.career.collection.count == 1)
+        // The first tap skips the build-up to the burst, the second one closes.
+        session.advance([.tapShop(.dismiss)])
+        #expect(session.shopPage.opening != nil)
         session.advance([.tapShop(.dismiss)])
         #expect(session.shopPage.opening == nil)
     }

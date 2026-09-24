@@ -33,6 +33,9 @@ session.isDebugVisible = options.startWithDebug
 if let level = options.level {
     session.setLevel(level)
 }
+if let rarity = options.chestPreview {
+    session.previewChestOpening(rarity)
+}
 session.forcedWeather = options.weather
 session.forcedEvent = options.event
 if let duty = options.duty {

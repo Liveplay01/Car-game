@@ -11,6 +11,7 @@ import GamePresentation
 ///     --duty high          play on high alert (saved, like pressing H)
 ///     --weather storm      force the weather: clear, lightRain, heavyRain, storm, extreme
 ///     --event roadworks    force a city event: roadworks, roadClosure, concert, vipConvoy, policeOperation
+///     --chest-preview epic play a chest opening (common, rare, epic, legendary) on the Shop tab
 ///     --debug              start with the debug overlay (F1)
 ///     --autotap 0.9        tap every 0.9 s (input simulation for demos and visual checks; implies --play)
 ///     --size 375x667       open at this window size instead of fitting the monitor
@@ -25,6 +26,7 @@ struct LaunchOptions {
     var duty: Duty?
     var weather: Weather?
     var event: CityEvent?
+    var chestPreview: Rarity?
     var startWithDebug = false
     var autotapInterval: Double?
     var size: (width: Int, height: Int)?
@@ -94,6 +96,14 @@ struct LaunchOptions {
                     consumed = 2
                 } else {
                     print("--event needs one of: " + CityEvent.allCases.map(\.rawValue).joined(separator: ", "))
+                }
+            case "--chest-preview":
+                let names = ["common": Rarity.common, "rare": .rare, "epic": .epic, "legendary": .legendary]
+                if let rarity = value().flatMap({ names[$0] }) {
+                    chestPreview = rarity
+                    consumed = 2
+                } else {
+                    print("--chest-preview needs common, rare, epic or legendary")
                 }
             case "--debug":
                 startWithDebug = true

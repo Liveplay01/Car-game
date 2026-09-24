@@ -45,7 +45,12 @@ extension Config {
         config.densityStart += denser
         config.densityEnd += denser
         config.aiSafeGap = max(min(minAiSafeGap, config.aiSafeGap), config.aiSafeGap - late * lateAiGapPerLevel)
-        config.aiLapChance = min(maxAiLapChance, late * lateLapChancePerLevel)
+        config.aiLapChance = level >= lateLevel ? min(maxAiLapChance, 0.35 + late * lateLapChancePerLevel) : 0
+        if level >= lateLevel {
+            config.aiRollingMerge = true
+            config.maxWaitingAI = 2
+            config.densityCountsWaiting = false
+        }
         config.aiQueuePerArm = min(maxAiQueuePerArm, aiQueuePerArm + Int(late) / max(1, lateLevelsPerQueueCar))
         if level >= longerStayLevel, exitArmsAhead.upperBound >= 2 {
             config.exitArmsAhead = max(2, exitArmsAhead.lowerBound)...exitArmsAhead.upperBound

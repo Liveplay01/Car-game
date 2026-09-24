@@ -240,12 +240,7 @@ public enum ShopPage {
 
     /// A chest: a box with a lid and a band, in the kind's colour.
     static func addChestIcon(_ kind: ChestKind, at center: Vec2, scale: Double, opacity: Double, id: inout Int, to list: inout RenderList) {
-        let color: ColorToken = switch kind {
-        case .standard: .rarityCommon
-        case .premium: .rarityLegendary
-        case .event: .accent
-        case .criminalHunt: .vehicleCriminal
-        }
+        let color = chestColor(kind)
         list.add(.roundedRect(center: center + Vec2(0, 8) * scale, size: Vec2(54, 30) * scale, cornerRadius: 5 * scale, rotation: 0), color: color, opacity: opacity * 0.85, space: .screen, id: id)
         id += 1
         list.add(.roundedRect(center: center - Vec2(0, 12) * scale, size: Vec2(58, 16) * scale, cornerRadius: 6 * scale, rotation: 0), color: color, opacity: opacity, space: .screen, id: id)
@@ -429,35 +424,193 @@ public enum ShopPage {
 
     // MARK: Reveal
 
-    /// An opened chest: the item in a frame of its rarity colour, a soft glow that opens
-    /// once, and what it is. Tap anywhere to close.
+    /// The juicy chest opening (Leo: "sehr jucy, fast ein bisschen zu viel, aber smooth").
+    /// Build-up: the chest springs in, shakes harder and harder, a glow in the rarity colour
+    /// swells and sparks leak from the lid. Burst at `burstTime`: flash, the lid spins off,
+    /// a shockwave, confetti with gravity, radial sparks. Reveal: rays turn behind the item,
+    /// it pops in with an overshoot, the rarity slams in. Epic more, Legendary a second
+    /// burst and a gold rain. Everything is a pure function of the age, so it never stutters.
+    /// A tap during the build-up skips to the burst. Reduce Motion: a calm fade.
+    public static let burstTime = 0.9
+    static let confettiCount = 32
+
     private static func addReveal(_ opening: ChestOpening, age: Double, format: TextFormat, reduceMotion: Bool, id: inout Int, to list: inout RenderList) {
         let viewport = list.camera.viewport
-        let x = Ease.outCubic(age / revealDuration)
-        let fade = reduceMotion ? min(1, age / 0.2) : x
-        list.add(.roundedRect(center: viewport / 2, size: viewport, cornerRadius: 0, rotation: 0), color: .scrim, opacity: 0.8 * fade, space: .screen, id: id)
+        let center = viewport / 2 - Vec2(0, 20)
+        let rarity = opening.item.rarity
+        let color = rarityColor(rarity)
+        let power: Double = switch rarity {
+        case .common: 0.6
+        case .rare: 0.8
+        case .epic: 1.1
+        case .legendary: 1.5
+        }
+        let scrim = min(1, age / 0.25)
+        list.add(.roundedRect(center: viewport / 2, size: viewport, cornerRadius: 0, rotation: 0), color: .background, opacity: 0.9 * scrim, space: .screen, id: id)
         id += 1
-        let center = viewport / 2
-        let scale = reduceMotion ? 1 : 0.9 + 0.1 * x
-        let size = Vec2(250, 290) * scale
-        let color = rarityColor(opening.item.rarity)
-        if !reduceMotion {
-            // The glow opens once and settles; a legendary one a little wider.
-            let reach = (opening.item.rarity == .legendary ? 44.0 : 28.0) * x
-            list.add(.roundedRect(center: center, size: size + Vec2(reach, reach), cornerRadius: 24 + reach / 2, rotation: 0), color: color, opacity: 0.25 * (1 - 0.6 * x) * fade, space: .screen, id: id)
+
+        if reduceMotion {
+            addRevealCard(opening, center: center, pop: 1, slam: 1, fade: min(1, age / 0.3), color: color, format: format, id: &id, to: &list)
+            return
+        }
+
+        if age < burstTime {
+            addBuildUp(opening.chest, age: age, center: center, color: color, power: power, id: &id, to: &list)
+            return
+        }
+
+        let t = age - burstTime
+        // Rays turning behind everything, wider and brighter for rarer items.
+        let rayCount = rarity >= .epic ? 12 : 8
+        let rayFade = min(1, t / 0.3)
+        let rayLength = (160 + 60 * power) * Ease.outCubic(min(1, t / 0.5))
+        for index in 0..<rayCount {
+            let angle = Double(index) / Double(rayCount) * Angle.tau + t * 0.6
+            let half = 0.09 * power
+            let tip1 = center + Vec2(angle: angle - half) * rayLength
+            let tip2 = center + Vec2(angle: angle + half) * rayLength
+            list.add(.polygon([center, tip1, tip2]), color: color, opacity: 0.16 * rayFade, space: .screen, id: id)
             id += 1
         }
+        // A soft glow that breathes.
+        let breathe = 1 + 0.06 * sin(t * 4)
+        list.add(.circle(center: center, radius: (90 + 30 * power) * breathe), color: color, opacity: 0.18 * rayFade, space: .screen, id: id)
+        id += 1
+
+        // Shockwave rings: one, and for Legendary a second one a moment later.
+        for (delay, strength) in rarity == .legendary ? [(0.0, 1.0), (0.35, 0.8)] : [(0.0, 1.0)] {
+            let x = (t - delay) / 0.55
+            guard x >= 0, x < 1 else { continue }
+            list.add(.arc(center: center, radius: 30 + 260 * Ease.outCubic(x) * strength, thickness: 6 * (1 - x) + 1, startAngle: 0, endAngle: Angle.tau),
+                     color: delay == 0 ? .primary : color, opacity: 0.8 * (1 - x), space: .screen, id: id)
+            id += 1
+        }
+
+        // The lid flies off, spinning.
+        if t < 0.8 {
+            let x = t / 0.8
+            let lid = center + Vec2(70 * x, -40 - 260 * x + 380 * x * x)
+            list.add(.roundedRect(center: lid, size: Vec2(58, 16), cornerRadius: 6, rotation: 5 * x), color: chestColor(opening.chest), opacity: 1 - x, space: .screen, id: id)
+            id += 1
+        }
+
+        // Confetti: little cards with gravity, spinning, in the rarity colour and two more.
+        let palette: [ColorToken] = [color, .accent, .primary, color]
+        let count = Int(Double(confettiCount) * power)
+        for index in 0..<count {
+            let life = 1.6
+            guard t < life else { break }
+            let angle = -Double.pi / 2 + (unit(index, 1) - 0.5) * 2.6
+            let speed = 260 + 320 * unit(index, 2)
+            var at = center + Vec2(cos(angle), sin(angle)) * speed * t
+            at.y += 520 * t * t
+            let spin = (unit(index, 3) - 0.5) * 14
+            let size = Vec2(5 + 4 * unit(index, 4), 3 + 2 * unit(index, 5))
+            let fade = 1 - max(0, (t - life * 0.6) / (life * 0.4))
+            list.add(.roundedRect(center: at, size: size, cornerRadius: 1, rotation: spin * t), color: palette[index % palette.count], opacity: fade, space: .screen, id: id)
+            id += 1
+        }
+        // Sparks: fast radial streaks.
+        if t < 0.5 {
+            for index in 0..<Int(16 * power) {
+                let angle = Double(index) / (16 * power) * Angle.tau + unit(index, 6)
+                let x = Ease.outCubic(t / 0.5)
+                let from = center + Vec2(angle: angle) * (30 + 150 * x)
+                let to = from + Vec2(angle: angle) * 22 * (1 - x)
+                list.add(.line(from: from, to: to, thickness: 2), color: index.isMultiple(of: 3) ? .primary : color, opacity: 1 - x, space: .screen, id: id)
+                id += 1
+            }
+        }
+        // Legendary: gold rain from above.
+        if rarity == .legendary {
+            for index in 0..<24 {
+                let start = unit(index, 7) * 1.4
+                let fall = t - start
+                guard fall > 0, fall < 1.4 else { continue }
+                let x = unit(index, 8) * viewport.x
+                let y = -10 + fall * (viewport.y * 0.8)
+                list.add(.circle(center: Vec2(x + sin(fall * 5 + Double(index)) * 8, y), radius: 2), color: .rarityLegendary, opacity: 1 - fall / 1.4, space: .screen, id: id)
+                id += 1
+            }
+        }
+
+        // The card with the item: pops in with an overshoot, the rarity slams in.
+        let pop = spring(t / 0.45)
+        let slam = t < 0.15 ? 0 : spring((t - 0.15) / 0.35)
+        addRevealCard(opening, center: center, pop: pop, slam: slam, fade: min(1, t / 0.12), color: color, format: format, id: &id, to: &list)
+
+        // The flash, over everything, gone in a blink.
+        if t < 0.18 {
+            list.add(.roundedRect(center: viewport / 2, size: viewport, cornerRadius: 0, rotation: 0), color: .primary, opacity: 0.85 * (1 - t / 0.18), space: .screen, id: id)
+            id += 1
+        }
+    }
+
+    /// Before the burst: the chest springs in and shakes ever harder, its glow swelling.
+    private static func addBuildUp(_ chest: ChestKind, age: Double, center: Vec2, color: ColorToken, power: Double, id: inout Int, to list: inout RenderList) {
+        let x = age / burstTime
+        let enter = spring(age / 0.35)
+        let intensity = x * x
+        let shake = Vec2(sin(age * 55) * 7, cos(age * 47) * 3) * intensity
+        let tilt = sin(age * 38) * 0.12 * intensity
+        // The glow already hints at the colour.
+        list.add(.circle(center: center, radius: 40 + 70 * x), color: color, opacity: 0.1 + 0.3 * intensity, space: .screen, id: id)
+        id += 1
+        list.add(.circle(center: center, radius: 20 + 40 * x), color: .primary, opacity: 0.12 * intensity, space: .screen, id: id)
+        id += 1
+        let scale = 1.6 * enter * (1 + 0.08 * intensity)
+        let at = center + shake
+        addChestIcon(chest, at: at, scale: scale, opacity: 1, id: &id, to: &list)
+        _ = tilt
+        // Sparks leaking from the lid seam, more and more.
+        for index in 0..<Int(6 + 14 * x) {
+            let phase = (age * 2.2 + unit(index, 9)).truncatingRemainder(dividingBy: 1)
+            let side = unit(index, 10) - 0.5
+            let from = at + Vec2(side * 80, -18 * scale / 1.6)
+            let to = from + Vec2(side * 40, -50) * phase
+            list.add(.line(from: to, to: to + Vec2(side * 4, -6), thickness: 1.5), color: index.isMultiple(of: 2) ? color : .primary, opacity: (1 - phase) * intensity, space: .screen, id: id)
+            id += 1
+        }
+    }
+
+    /// The item on its card: frame and glow in the rarity colour, the rarity above, the name below.
+    private static func addRevealCard(_ opening: ChestOpening, center: Vec2, pop: Double, slam: Double, fade: Double, color: ColorToken, format: TextFormat, id: inout Int, to list: inout RenderList) {
+        let size = Vec2(250, 290) * max(0.01, pop)
         list.add(.roundedRect(center: center, size: size + Vec2(4, 4), cornerRadius: 22, rotation: 0), color: color, opacity: fade, space: .screen, id: id)
         id += 1
         list.add(.roundedRect(center: center, size: size, cornerRadius: 20, rotation: 0), color: .surface, opacity: fade, space: .screen, id: id)
         id += 1
-        text(Strings.Shop.rarity(opening.item.rarity).uppercased(), center - Vec2(0, 116) * scale, size: 14, weight: .bold, color: color, alignment: .center, opacity: fade, id: &id, to: &list)
-        addPreview(opening.item, at: center - Vec2(0, 30) * scale, scale: 1.8 * scale, opacity: fade, id: &id, to: &list)
-        text(Strings.Shop.item(opening.item.id), center + Vec2(0, 52) * scale, size: 20, weight: .bold, color: .primary, alignment: .center, opacity: fade, id: &id, to: &list)
-        text(Strings.Shop.kind(opening.item), center + Vec2(0, 76) * scale, size: 12, color: .muted, alignment: .center, opacity: fade, id: &id, to: &list)
+        guard pop > 0.3 else { return }
+        // The rarity punches in from big, with a small wobble.
+        let slamScale = 1 + 0.9 * (1 - slam)
+        text(Strings.Shop.rarity(opening.item.rarity).uppercased(), center - Vec2(0, 116) * pop, size: 16 * slamScale, weight: .bold, color: color, alignment: .center, opacity: fade * min(1, slam * 2), id: &id, to: &list)
+        addPreview(opening.item, at: center - Vec2(0, 30) * pop, scale: 1.9 * pop, opacity: fade, id: &id, to: &list)
+        text(Strings.Shop.item(opening.item.id), center + Vec2(0, 52) * pop, size: 20, weight: .bold, color: .primary, alignment: .center, opacity: fade, id: &id, to: &list)
+        text(Strings.Shop.kind(opening.item), center + Vec2(0, 76) * pop, size: 12, color: .muted, alignment: .center, opacity: fade, id: &id, to: &list)
         if opening.isDuplicate {
-            text(Strings.Shop.duplicate(format.number(opening.money)), center + Vec2(0, 100) * scale, size: 12, weight: .bold, color: .accent, alignment: .center, opacity: fade, id: &id, to: &list)
+            text(Strings.Shop.duplicate(format.number(opening.money)), center + Vec2(0, 100) * pop, size: 12, weight: .bold, color: .accent, alignment: .center, opacity: fade, id: &id, to: &list)
         }
-        text(Strings.Shop.tapToClose, center + Vec2(0, 128) * scale, size: 11, color: .muted, alignment: .center, opacity: fade * 0.8, id: &id, to: &list)
+        text(Strings.Shop.tapToClose, center + Vec2(0, 128) * pop, size: 11, color: .muted, alignment: .center, opacity: fade * 0.8, id: &id, to: &list)
+    }
+
+    static func chestColor(_ kind: ChestKind) -> ColorToken {
+        switch kind {
+        case .standard: .rarityCommon
+        case .premium: .rarityLegendary
+        case .event: .accent
+        case .criminalHunt: .vehicleCriminal
+        }
+    }
+
+    /// A springy 0 → 1 with a clear overshoot (about 25 %), settled at x = 1.
+    static func spring(_ x: Double) -> Double {
+        guard x > 0 else { return 0 }
+        guard x < 1 else { return 1 }
+        return 1 - exp(-6 * x) * cos(x * 10)
+    }
+
+    /// 0…1, the same on every device.
+    static func unit(_ index: Int, _ salt: UInt64) -> Double {
+        WeatherLayer.unitHash(index, salt &+ 101)
     }
 }

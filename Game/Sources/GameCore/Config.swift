@@ -432,12 +432,19 @@ public struct Config: Sendable, Equatable {
     public var maxLateDensityBonus: Int = 6
     /// …and the AI squeezes into smaller gaps, this much less per level down to a floor, so
     /// the gaps left for your cars get tighter too.
-    public var lateAiGapPerLevel: Double = 0.005
-    public var minAiSafeGap: Double = 0.15
+    public var lateAiGapPerLevel: Double = 0.01
+    public var minAiSafeGap: Double = 0.06
     /// …AI cars stay longer (a share drives one extra lap, up to a limit)…
     public var aiLapChance: Double = 0
-    public var lateLapChancePerLevel: Double = 0.03
-    public var maxAiLapChance: Double = 0.5
+    public var lateLapChancePerLevel: Double = 0.12
+    public var maxAiLapChance: Double = 0.95
+    /// Flowing traffic (Leo: "es muss fließen"): from `lateLevel` on AI cars merge without
+    /// stopping when they arrive with a gap, and the density counts only ring cars.
+    public var aiRollingMerge = false
+    /// AI cars that may stand at the lines at once (all arms together); nil = no limit.
+    /// From `lateLevel` on two: cars roll in and go, nobody queues.
+    public var maxWaitingAI: Int?
+    public var densityCountsWaiting = true
     /// …and come quicker: the pause between two AI cars shrinks per level, to a floor.
     public var lateSpawnFasterPerLevel: Double = 0.04
     public var minSpawnDelayFactor: Double = 0.4
@@ -447,7 +454,8 @@ public struct Config: Sendable, Equatable {
     /// From this level on no AI car leaves at the very next arm: they stay at least two.
     public var longerStayLevel: Int = 12
     public var lateLevelsPerQueueCar: Int = 6
-    public var maxAiQueuePerArm: Int = 3
+    /// Queues at the arms made traffic stop instead of flow (playtest Leo): one per arm.
+    public var maxAiQueuePerArm: Int = 1
 
     public init() {}
 

@@ -123,6 +123,13 @@ public struct ChestOpening: Sendable, Equatable {
     /// True if the player already had it; then `money` was paid instead.
     public var isDuplicate: Bool
     public var money: Int
+
+    public init(chest: ChestKind, item: Cosmetic, isDuplicate: Bool, money: Int) {
+        self.chest = chest
+        self.item = item
+        self.isDuplicate = isDuplicate
+        self.money = money
+    }
 }
 
 extension Career {
