@@ -62,7 +62,11 @@ public enum ColorToken: Sendable, Equatable, CaseIterable {
     /// (countdown ring, "WANTED"), so the two read as one.
     case vehicleCriminal
     case vehicleBed
-    /// Money transporter: the cargo box on the flatbed, and its hazard stripes.
+    /// Money transporter: an armoured van in armour green, its box a shade lighter. The
+    /// gold is its coin on the roof and the side stripes, and marks it in the HUD too
+    /// (warning, secure zones, countdown), so the two read as one.
+    case vehicleArmor
+    case vehicleArmorBox
     case vehicleCargo
     /// The lorry: dark cab, pale box.
     case vehicleTruck
@@ -165,6 +169,8 @@ public enum Theme {
         case .vehicleCriminal: ColorRGBA(hex: 0xB45CF0)
         case .vehicleBed: ColorRGBA(hex: 0x35214A)
         case .vehicleCargo: ColorRGBA(hex: 0xD8A23A)
+        case .vehicleArmor: ColorRGBA(hex: 0x3F6B58)
+        case .vehicleArmorBox: ColorRGBA(hex: 0x4F7D69)
         case .vehicleTruck: ColorRGBA(hex: 0x4E586A)
         case .vehicleTruckBox: ColorRGBA(hex: 0xA9B2BE)
         case .vehicleSports: ColorRGBA(hex: 0xE2553F)

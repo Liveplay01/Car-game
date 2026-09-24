@@ -711,6 +711,26 @@ Testfenster zu sehen und zu hören.
 
 **Fertig, wenn:** man ohne Erklärung sieht und hört, was gut und was schlecht war.
 
+### Umgesetzt am 24.09.2026 (Wünsche Leo)
+
+- **Truhenöffnung „splashy, fruity“:** Squash & Stretch mit Ducken vor dem Burst,
+  Frucht-Palette aus Apple-Systemfarben, glänzende Splash-Blobs, Saft-Tropfen, Konfetti,
+  zwei Strahlen-Ebenen, getönte Karte mit Halo und Jelly-Pop, gestaffelte Texte, Sterne
+  (`ShopPage`). Testfenster: `--chest-preview legendary`.
+- **Menüs Apple-artig** (`MenuKit`): Large Title links mit Geld-Chip, Segment-Control mit
+  erhabenem Thumb, gefüllte/getönte Buttons, Tab-Leiste mit Glyphen nach den SF Symbols,
+  leuchtende Upgrade-Icons, gestaffelte Karten. **Einstellungen** im Testfenster als
+  iOS-Sheet mit Schaltern und farbigen Icon-Kacheln (`SettingsPage`, `--settings`).
+  Die App bekommt dieselben Seiten nativ in M12.
+- **Geldtransporter** sieht aus wie einer: gepanzerter Kastenwagen in Panzergrün, Goldmünze
+  und Goldstreifen, Rundumleuchte, kein Heckfenster.
+- **Blaulicht** natürlicher: nur Blau (deutscher Lichtbalken), LED-Doppelblitze links/rechts
+  mit schnellem Anstieg und weichem Abklingen, weißer Blitzkern, weicher Schein auf der
+  Straße, jedes Polizeiauto in seinem eigenen Takt.
+- **Skins auf allen Fahrzeugen** (LOOT.md): Erkennbarkeit über die Form.
+- **Takedown:** zählt nicht, wenn der Verbrecher selbst ins Polizeiauto fährt; Bots zielen
+  hinter den Pickup (Mensch-Bot Level 10: 86 % geschafft, 3 % Fluchten).
+
 ### Offen – aus dem alten M6 (Stand 22.09.2026)
 
 Punkt 2 (Kurve ab Level 10) ist nach M7 gewandert, die Modulplätze im Street Builder

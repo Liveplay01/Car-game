@@ -47,6 +47,8 @@ if options.startsShift {
     session.perform(.startShift)
 } else if let tab = options.tab {
     session.perform(.showTab(tab))
+} else if options.opensSettings {
+    session.perform(.openSettings)
 }
 
 var runTime = 0.0
@@ -79,6 +81,11 @@ while !WindowShouldClose() {
             // A click beside everything on the shop does nothing.
         } else if session.screen == .page(.streetBuilder) {
             actions.append(.pointerDown(mouse))
+        } else if session.screen == .settings {
+            // A row changes its setting, "Done" closes; a click beside them does nothing.
+            if let content = session.content, let action = SettingsPage.action(at: mouse, content: content, viewport: viewport) {
+                actions.append(.perform(action))
+            }
         } else {
             actions.append(.tap)
         }

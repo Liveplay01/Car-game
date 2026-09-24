@@ -26,9 +26,9 @@ enum CarArt {
         case lightBar
         /// Pickup: the open load bed.
         case bed
-        /// Transporter: the cargo box on the flatbed.
+        /// Lorry: the box. Transporter: the armoured box behind the cab.
         case cargo
-        /// Transporter: the orange hazard stripes on the rear.
+        /// Transporter: the amber beacon on the cab roof.
         case hazard
     }
 
@@ -62,16 +62,18 @@ enum CarArt {
     }
 
     /// The paint. Ordinary cars come in four, picked by their id, so the traffic looks like
-    /// traffic instead of one car copied fifteen times. Police, criminals and transporters
-    /// keep their one colour, because with them the colour is information.
+    /// traffic instead of one car copied fifteen times. A skin repaints every type (Leo); the
+    /// special vehicles stay recognisable by their shape: the police car by its white roof
+    /// and light bar, the criminal by its open bed, the transporter by its gold coin.
     static func bodyColor(_ type: VehicleType, id: Int = 0, skin: ColorToken? = nil) -> ColorToken {
+        if let skin { return skin }
         switch type {
-        case .car: skin ?? paints[paintIndex(id)]
-        case .sportsCar: skin ?? .vehicleSports
-        case .truck: .vehicleTruck
-        case .police: .vehiclePolice
-        case .pickup: .vehicleCriminal
-        case .transporter: .vehicleCargo
+        case .car: return paints[paintIndex(id)]
+        case .sportsCar: return .vehicleSports
+        case .truck: return .vehicleTruck
+        case .police: return .vehiclePolice
+        case .pickup: return .vehicleCriminal
+        case .transporter: return .vehicleArmor
         }
     }
 
@@ -91,7 +93,8 @@ enum CarArt {
         case .truck: return [.cargo] + common
         case .police: return common + [.rearWindow, .roof, .lightBar]
         case .pickup: return [.bed] + common + [.rearWindow]
-        case .transporter: return [.cargo] + common + [.rearWindow, .hazard]
+        // An armoured van: no rear window, a box behind a short cab, a beacon on top.
+        case .transporter: return [.cargo] + common + [.hazard]
         }
     }
 
@@ -117,8 +120,8 @@ enum CarArt {
             return Shape(center: Vec2(l * 0.3, 0), size: Vec2(l * 0.3, w - 3), cornerRadius: 1.5, color: body, breaksAt: 3.5, reach: 8, isVisible: false)
         case .windscreen:
             // The lorry's screen sits right at the nose, above the cab.
-            let x = type == .truck ? l * 0.39 : l * 0.12
-            let length = type == .truck ? l * 0.1 : l * 0.22
+            let x = type == .truck ? l * 0.39 : (type == .transporter ? l * 0.33 : l * 0.12)
+            let length = type == .truck ? l * 0.1 : (type == .transporter ? l * 0.13 : l * 0.22)
             return Shape(center: Vec2(x, 0), size: Vec2(length, w * 0.74), cornerRadius: 2, color: .vehicleGlass, breaksAt: 2.5, reach: 9, isVisible: true)
         case .rearWindow:
             // The pickup's small cab window sits right behind the windscreen.
@@ -143,9 +146,10 @@ enum CarArt {
             if type == .truck {
                 return Shape(center: Vec2(-l * 0.14, 0), size: Vec2(l * 0.62, w + 2), cornerRadius: 2, color: .vehicleTruckBox, breaksAt: 4, reach: 9, isVisible: true)
             }
-            return Shape(center: Vec2(-l * 0.12, 0), size: Vec2(l * 0.5, w + 6), cornerRadius: 2, color: .vehicleCargo, breaksAt: 4, reach: 9, isVisible: true)
+            // The armoured box: flush with the body, from the cab to the rear doors.
+            return Shape(center: Vec2(-l * 0.13, 0), size: Vec2(l * 0.64, w - 2), cornerRadius: 1.5, color: .vehicleArmorBox, breaksAt: 4, reach: 9, isVisible: true)
         case .hazard:
-            return Shape(center: Vec2(-l / 2 + 0.5, 0), size: Vec2(1.2, w + 4), cornerRadius: 0.5, color: .hazard, breaksAt: .infinity, reach: 0, isVisible: true)
+            return Shape(center: Vec2(l * 0.2, 0), size: Vec2(2.2, w * 0.42), cornerRadius: 1, color: .hazard, breaksAt: 2.5, reach: 6, isVisible: true)
         }
     }
 
@@ -245,18 +249,18 @@ enum CarArt {
         let body = bodyColor(type, id: id, skin: skin)
         let paintedInThisCar = bodyColor(type, skin: skin)
 
-        // The light bar throws a soft glow onto the road beside the car, flashing side to
-        // side with the beacon itself (ROADMAP.md M11). Drawn first, so it sits under the body.
+        // The blue lights throw their flashes onto the road beside the car (ROADMAP.md M11),
+        // soft and wide, fading with each flash. Drawn first, so they sit under the body.
         if let lights, type == .police {
-            let glow = lights < 0.5 ? (1.0, 0.3) : (0.3, 1.0)
-            let reach = config.carWidth * 1.5
-            let side = config.carWidth * 0.85
-            let redCenter = world(Vec2(0, side), pose)
-            list.add(.circle(center: redCenter, radius: reach), color: .lightRed, opacity: opacity * 0.18 * glow.0, space: .world, id: slot(Slot.groundGlow))
-            list.add(.circle(center: redCenter, radius: reach * 0.5), color: .lightRed, opacity: opacity * 0.4 * glow.0, space: .world, id: slot(Slot.groundGlow + 1))
-            let blueCenter = world(Vec2(0, -side), pose)
-            list.add(.circle(center: blueCenter, radius: reach), color: .lightBlue, opacity: opacity * 0.18 * glow.1, space: .world, id: slot(Slot.groundGlow + 2))
-            list.add(.circle(center: blueCenter, radius: reach * 0.5), color: .lightBlue, opacity: opacity * 0.4 * glow.1, space: .world, id: slot(Slot.groundGlow + 3))
+            let flash = strobe(lights)
+            let reach = config.carWidth * 1.7
+            let side = config.carWidth * 0.8
+            for (index, (y, glow)) in [(side, flash.left), (-side, flash.right)].enumerated() where glow > 0.01 {
+                let center = world(Vec2(-length(of: type, config: config) * 0.07, y), pose)
+                // Two soft layers plus the shared core below: light, not a disc.
+                list.add(.circle(center: center, radius: reach * 1.15), color: .lightBlue, opacity: opacity * 0.1 * glow, space: .world, id: slot(Slot.groundGlow + index * 2))
+                list.add(.circle(center: center, radius: reach * 0.6), color: .lightBlue, opacity: opacity * 0.2 * glow, space: .world, id: slot(Slot.groundGlow + index * 2 + 1))
+            }
         }
 
         if dents.isEmpty {
@@ -295,16 +299,23 @@ enum CarArt {
             let twist = dents.isEmpty ? 0 : min(push(at: shape.center, dents: dents), 3) * 0.08
             let rotation = pose.heading + twist
             let partOpacity = opacity * (broken ? 0.45 : 1)
-            // Parts cut from the body sheet wear this car's paint, not the type's.
-            let color = shape.color == paintedInThisCar ? body : shape.color
+            // Parts cut from the body sheet wear this car's paint, not the type's; a skin
+            // repaints the transporter's box too.
+            let color = shape.color == paintedInThisCar || (part == .cargo && type == .transporter && skin != nil) ? body : shape.color
 
             if part == .lightBar {
-                // Two halves; while the lights flash, one side glows at a time.
-                let glow = lights.map { $0 < 0.5 ? (1.0, 0.35) : (0.35, 1.0) } ?? (0.75, 0.75)
+                // Two blue halves, like a German light bar. Dim lenses when off; while the
+                // lights run, each side strobes and a white-hot core flares on it.
+                let flash = lights.map(strobe) ?? (left: 0, right: 0)
                 let halfSize = Vec2(shape.size.x, shape.size.y / 2)
                 let offset = Vec2(0, shape.size.y / 4)
-                list.add(.roundedRect(center: world(center + offset, pose), size: halfSize, cornerRadius: shape.cornerRadius, rotation: rotation), color: .lightRed, opacity: partOpacity * glow.0, space: .world, id: slot(Slot.part(part)))
-                list.add(.roundedRect(center: world(center - offset, pose), size: halfSize, cornerRadius: shape.cornerRadius, rotation: rotation), color: .lightBlue, opacity: partOpacity * glow.1, space: .world, id: slot(Slot.blueLight))
+                let halves = [(center + offset, flash.left, Slot.part(part), Slot.flames), (center - offset, flash.right, Slot.blueLight, Slot.flames + 1)]
+                for (at, glow, lens, flare) in halves {
+                    list.add(.roundedRect(center: world(at, pose), size: halfSize, cornerRadius: shape.cornerRadius, rotation: rotation), color: .lightBlue, opacity: partOpacity * (0.45 + 0.55 * glow), space: .world, id: slot(lens))
+                    if glow > 0.05, !broken {
+                        list.add(.circle(center: world(at, pose), radius: 1.2 + 2.6 * glow), color: .primary, opacity: partOpacity * 0.8 * glow, space: .world, id: slot(flare))
+                    }
+                }
                 continue
             }
             list.add(
@@ -358,9 +369,27 @@ enum CarArt {
                 }
             }
         }
+        // The money transporter: gold stripes down both sides of the box and a gold coin on
+        // its roof, so it reads as "money" by shape as well as colour. Only while intact.
+        if type == .transporter, dents.isEmpty {
+            let box = shape(.cargo, type: type, config: config)
+            let from = box.center.x - box.size.x / 2 + 1
+            let to = box.center.x + box.size.x / 2 - 1
+            for (index, y) in [-1.0, 1.0].enumerated() {
+                let side = y * (config.carWidth / 2 - 1.1)
+                list.add(.line(from: world(Vec2(from, side), pose), to: world(Vec2(to, side), pose), thickness: 1.1),
+                         color: .vehicleCargo, opacity: opacity, space: .world, id: slot(Slot.stripes + index))
+            }
+            let coin = world(box.center, pose)
+            list.add(.circle(center: coin, radius: 3.4), color: .vehicleCargo, opacity: opacity, space: .world, id: slot(Slot.sheen))
+            list.add(.circle(center: coin, radius: 2.2), color: .vehicleArmor, opacity: opacity, space: .world, id: slot(Slot.glitter))
+            // The bar of the dollar sign, across the coin.
+            list.add(.line(from: world(box.center + Vec2(1.9, 0), pose), to: world(box.center - Vec2(1.9, 0), pose), thickness: 0.9),
+                     color: .vehicleCargo, opacity: opacity, space: .world, id: slot(Slot.glitter + 1))
+        }
         // A racing stripe (LOOT.md): two thin lines down the middle, over roof and glass.
         // Only on an intact car; a wreck shows its dents instead.
-        if let stripe, dents.isEmpty {
+        if let stripe, dents.isEmpty, type != .police, type != .transporter {
             let half = length(of: type, config: config) / 2 - 2
             for (index, y) in [-1.6, 1.6].enumerated() {
                 list.add(.line(from: world(Vec2(-half, y), pose), to: world(Vec2(half, y), pose), thickness: 1.3),
@@ -368,6 +397,19 @@ enum CarArt {
             }
         }
     }
+
+    /// Blue lights as LED strobes (Leo: natürlicher): a double flash on the left, then on
+    /// the right, each a quick rise and a soft fade. `phase` counts 0 to 1 per 0.8 s cycle.
+    static func strobe(_ phase: Double) -> (left: Double, right: Double) {
+        func flash(_ t: Double) -> Double {
+            guard t >= 0 else { return 0 }
+            return t < 0.02 ? t / 0.02 : exp(-(t - 0.02) / 0.05)
+        }
+        let t = phase.truncatingRemainder(dividingBy: 1) * strobeCycle
+        return (max(flash(t), flash(t - 0.13)), max(flash(t - 0.4), flash(t - 0.53)))
+    }
+
+    static let strobeCycle = 0.8
 
     /// A local point of the car in world space.
     static func world(_ local: Vec2, _ pose: Path.Pose) -> Vec2 {

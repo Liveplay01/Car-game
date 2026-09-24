@@ -1017,6 +1017,9 @@ public final class GameSession {
         } else if options.drawsMenus, screen == .page(.shop) {
             // Its own page: chests, collection and today's goals (M10, v1.2).
             ShopPage.add(career: save.career, config: config, today: today, state: shopPage, format: format, reduceMotion: reduceMotion, bottomInset: bottomInset, to: &list)
+        } else if options.drawsMenus, screen == .settings, let content {
+            // Like an iOS settings sheet: switches, grouped rows (`SettingsPage`).
+            SettingsPage.add(content, showsKeys: options.showsKeyHints, to: &list)
         } else if options.drawsMenus, let content {
             TextPage.add(content, showsKeys: options.showsKeyHints, bottomInset: bottomInset, to: &list)
         }

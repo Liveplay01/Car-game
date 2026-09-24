@@ -159,9 +159,8 @@ public enum SceneBuilder {
     /// The skin a vehicle wears, if it wears one.
     static func look(_ vehicle: Vehicle, _ skins: [String]) -> Skins.Look? {
         switch vehicle.type {
-        case .car: Skins.look(forVehicle: vehicle.id, skins: skins)
-        case .sportsCar: vehicle.owner == .player ? Skins.look(forVehicle: vehicle.id, skins: skins) : nil
-        case .police, .pickup, .transporter, .truck: nil
+        // Every vehicle wears the skins (Leo); the special ones keep their shape.
+        case .car, .sportsCar, .police, .pickup, .transporter, .truck: Skins.look(forVehicle: vehicle.id, skins: skins)
         }
     }
 
@@ -186,7 +185,6 @@ public enum SceneBuilder {
     /// car, the queue included, while a criminal is on the run.
     public static func addVehicles(of world: World, alpha: Double, carSkins: [String] = [], finishTime: Double? = nil, springTime: Double? = nil, to list: inout RenderList) {
         let chase = world.criminal.vehicle != nil
-        let lights = (world.time * 3).truncatingRemainder(dividingBy: 1)
         for vehicle in world.vehicles where !vehicle.isCrashed {
             var flashing = chase
             if case .queued = vehicle.phase {} else { flashing = true }
@@ -195,9 +193,8 @@ public enum SceneBuilder {
                 type: vehicle.type,
                 pose: interpolatedPose(vehicle, alpha: alpha),
                 dents: vehicle.dents,
-                lights: vehicle.type == .police && flashing ? lights : nil,
-                // Skins go on every normal car on the road, the player own sports car too;
-                // police, criminal, transporter and lorries keep their look (LOOT.md).
+                // Each police car strobes on its own beat, like real ones do.
+                lights: vehicle.type == .police && flashing ? world.time / CarArt.strobeCycle + Double(vehicle.id % 7) * 0.37 : nil,
                 skin: look(vehicle, carSkins)?.paint,
                 stripe: look(vehicle, carSkins)?.stripe,
                 finish: look(vehicle, carSkins)?.finish,

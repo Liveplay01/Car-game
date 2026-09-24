@@ -12,6 +12,7 @@ import GamePresentation
 ///     --weather storm      force the weather: clear, lightRain, heavyRain, storm, extreme
 ///     --event roadworks    force a city event: roadworks, roadClosure, concert, vipConvoy, policeOperation
 ///     --chest-preview epic play a chest opening (common, rare, epic, legendary) on the Shop tab
+///     --settings           open the settings
 ///     --debug              start with the debug overlay (F1)
 ///     --autotap 0.9        tap every 0.9 s (input simulation for demos and visual checks; implies --play)
 ///     --size 375x667       open at this window size instead of fitting the monitor
@@ -28,6 +29,7 @@ struct LaunchOptions {
     var event: CityEvent?
     var chestPreview: Rarity?
     var startWithDebug = false
+    var opensSettings = false
     var autotapInterval: Double?
     var size: (width: Int, height: Int)?
     var screenshotFile: String?
@@ -105,6 +107,8 @@ struct LaunchOptions {
                 } else {
                     print("--chest-preview needs common, rare, epic or legendary")
                 }
+            case "--settings":
+                opensSettings = true
             case "--debug":
                 startWithDebug = true
             case "--autotap":

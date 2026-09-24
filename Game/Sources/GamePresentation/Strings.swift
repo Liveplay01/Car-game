@@ -10,6 +10,7 @@ public enum Strings {
     public enum Menu {
         public static let restart = "Restart"
         public static let back = "Back"
+        public static let done = "Done"
     }
 
     /// The Game tab between shifts: no menu, one tap starts.
@@ -536,6 +537,8 @@ public enum Strings {
             "Space / click  send car    E / right-click  dispatch    Esc  pause",
             "Tab  next page    R  restart    F1  debug    F2  slow motion    T  tuning",
         ]
+
+        public static let settingsHint = "1–4 or click  change    Esc / Enter  done"
 
         public static func number(_ value: Int) -> String { String(value) }
     }

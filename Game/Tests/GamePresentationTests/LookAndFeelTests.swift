@@ -90,3 +90,20 @@ struct LookAndFeelTests {
         #expect(long == 2 * config.tollIncomePerDay * config.loginMaxDays)
     }
 }
+
+/// Leo: skins repaint every vehicle, the special ones keep their shape.
+@Test func skinsRepaintEveryVehicleType() {
+    for type in [VehicleType.car, .sportsCar, .police, .pickup, .transporter, .truck] {
+        let vehicle = Vehicle(id: 3, type: type, owner: .ai, phase: .queued, pose: Path.Pose(position: .zero, heading: 0))
+        #expect(SceneBuilder.look(vehicle, ["mint"])?.paint == .skinMint, "\(type)")
+        #expect(CarArt.bodyColor(type, skin: .skinMint) == .skinMint)
+    }
+}
+
+/// The blue lights strobe: a double flash on one side, then the other, never both at once.
+@Test func blueLightsStrobeSideToSide() {
+    let first = CarArt.strobe(0.01 / CarArt.strobeCycle)
+    let second = CarArt.strobe(0.41 / CarArt.strobeCycle)
+    #expect(first.left > 0.3 && first.right < 0.01)
+    #expect(second.right > 0.3 && second.left < 0.05)
+}

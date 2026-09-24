@@ -8,11 +8,14 @@ Namen in `Strings.Shop.item`. Wird ein Item ergänzt, gehört es in alle drei un
 
 - **Nur Aussehen.** Kein Skin gibt einen Spielvorteil. Ein Fahrzeugtyp hat eigene, faire
   Eigenschaften (anders, nicht besser).
-- **Skins mischen:** Bis zu **5 Car Skins** gleichzeitig. Jedes normale Auto im Level –
-  eigenes und KI-Verkehr – trägt einen davon (fest pro Auto ausgewählt), dazu der eigene
-  Sportwagen. Map Skin: einer.
-- **Sonderfahrzeuge bleiben erkennbar.** Polizei, Verbrecher-Pickup, Geldtransporter und
-  Lkw tragen nie einen Skin, denn ihre Farbe und Form ist Spielinformation. Deshalb gibt es
+- **Skins mischen:** Bis zu **5 Car Skins** gleichzeitig. **Jedes Fahrzeug** im Level –
+  eigenes und KI-Verkehr, auch Polizei, Verbrecher-Pickup, Geldtransporter und Lkw – trägt
+  einen davon (fest pro Fahrzeug ausgewählt; Entscheidung Leo, 24.09.2026). Map Skin: einer.
+- **Sonderfahrzeuge bleiben an der Form erkennbar**, nicht an der Farbe: Polizei am weißen
+  Dach mit Lichtbalken und Blaulicht, der Verbrecher an der offenen Ladefläche und seinem
+  lila Countdown-Ring, der Geldtransporter an Goldmünze, Goldstreifen und Rundumleuchte,
+  der Lkw am hellen Kofferaufbau (nur das Fahrerhaus trägt den Skin). Rennstreifen gibt es
+  auf Polizei und Transporter nicht, sie würden Lichtbalken und Münze verdecken. Weiterhin
   keine Skins in Polizeiblau oder Verbrecher-Violett.
 - **Odds sind immer sichtbar**, direkt neben der Truhe im Shop.
 - **Pity:** Spätestens die 10. Truhe in Folge ohne Epic ist mindestens Epic.
