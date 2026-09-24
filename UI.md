@@ -251,6 +251,91 @@ struct SettingsView: View {
 
 ---
 
+### 4.6 Game‑Tab vor der Schicht (M5, M8)
+
+Kein Startmenü: Der Kreisverkehr läuft, oben ein schmales Band, in der Inselmitte der Prompt.
+
+```
+┌──────────────────────────────┐
+│           LEVEL 14           │  .title2.bold, Akzentfarbe
+│           23 cars            │  .title3
+│  [ Normal duty | High alert ]│  Picker(.segmented), High Alert rot + "×3 pay"
+│  Highscore 48,200 · 19,240 ▣ │  .footnote, .secondary
+│                              │
+│      Heavy Rain · Roadworks  │  Ankündigung (M8), gelb, nur wenn etwas ansteht
+│         Tap to start         │  atmet sanft (nicht mit Reduce Motion)
+└──────────────────────────────┘
+```
+
+- Wetter und City Event stehen **vor** der Schicht da (Anticipation), nie als Sheet.
+- `ScreenContent`/`ReadyBanner` liefert alle Texte (`Strings.Ready.conditions`).
+
+### 4.7 Upgrades‑Tab (M5, M7)
+
+`ScrollView` mit `LazyVGrid` (2 Spalten), je Karte: gezeichnetes Bild, Name, Stufenpunkte, Preis.
+Ein Tap öffnet unten die Details (`.sheet` mit `presentationDetents([.height(160)])`), ein
+Doppel‑Tap kauft.
+
+- **Insurance** und **Robbery Insurance** erscheinen erst **ab Level 20** (`Upgrade.available`),
+  dann mit einer kurzen Einblendung "New: Insurance" als Badge auf dem Tab (`.badge`).
+- Gesamtwirkung als Text: "45 % covered", bei Stufe 7 "FULL COVERAGE".
+- Kauf: Karte federt (`.spring`), Kontostand zählt herunter (`contentTransition(.numericText())`).
+  Fehlt Geld: Karte wackelt, Preis rot. Reduce Motion: nur Farbe und Deckkraft.
+
+### 4.8 Street Builder (M5, M9)
+
+Oben die Karte des Kreisverkehrs, unten eine Palette mit vier Karten (2 × 2):
+**New arm · Toll Booth · Speed Camera · Tow Depot**, darunter die Details.
+
+- Ziehen und Ablegen (`.draggable` / `.dropDestination`): Arme rasten an freien Arm‑Plätzen
+  am Rand ein, Module an den **Modulplätzen auf dem Ring** (belegter Platz = gelber Ring,
+  "wird getauscht").
+- Doppel‑Tap auf das abgelegte Teil baut, ein Tap nimmt es weg.
+- Erfolg: `sensoryFeedback(.success)`, Hinweis "Tow Depot built on the ring".
+
+### 4.9 Shop‑Tab: Truhen & Sammlung (M10)
+
+`List` mit zwei Sections, alles nativ:
+
+```
+Section "Chests"                         (nur wenn welche warten)
+  ▸ Standard Chest            [Open]     .borderedProminent
+    Common 70 % · Rare 22 % · Epic 7 % · Legendary 1 %   (.caption, immer sichtbar)
+  ▸ Criminal Hunt Chest       [Open]
+Section "Collection"
+  ▸ Sunset       Rare car skin          [On] / [Wear]
+  ▸ Neon         Rare map skin          [Wear]
+  ▸ Sports Car   Epic vehicle type      Unlocked
+Footer: "Epic or better within 7 chests"   (Pity sichtbar)
+```
+
+- Öffnen: kurze, dezente Animation (Rahmen in Seltenheitsfarbe, leichter Glow,
+  `symbolEffect(.bounce)` auf `gift.fill`), Haptik `chest.ahap`. **Keine** Casino‑Effekte.
+- Duplikat: "Duplicate: Mint · +250 cash".
+- Kein Kauf mit Echtgeld in v1.0; die Odds stehen immer neben der Truhe.
+- Leer: `ContentUnavailableView("No chests yet", systemImage: "gift", description: "Master the game to earn chests: perfect merges, takedowns, long chains.")`
+
+### 4.10 Mastery‑Toast (M10)
+
+Kein eigener Screen. Nach dem Schichtende oben ein kurzer Toast (Capsule, `.thinMaterial`,
+3,5 s): "MASTERY COMPLETE · Perfect Timing I · CHEST EARNED". Tap darauf öffnet den Shop.
+Nie während einer laufenden Schicht.
+
+### 4.11 Ergebnis ab Level 20 (M7)
+
+Im Ergebnis‑Banner (4.4) eine zusätzliche Zeile über dem Prompt, nur wenn etwas anfiel:
+"CRASH COST −120 cash" bzw. "LOSS −350 cash" (rot) oder
+"FULL COVERAGE · 120 cash paid by insurance" (grau). Der Übergang zur nächsten Schicht
+bleibt flüssig: kein Freeze, kein Replay, keine zusätzliche Einblendung.
+
+### 4.12 Einstellungen, Ergänzung (M11)
+
+Im `Form` (4.5) unter Reduce Motion:
+- `Toggle("Vehicle labels")` – kleine Textlabels POLICE / CRIMINAL / SECURED an
+  Sonderfahrzeugen, damit Farbe nie die einzige Information ist.
+
+---
+
 ## 5. Referenzen & Quellen
 - **Apple HIG – Games** – <https://developer.apple.com/design/human-interface-guidelines/designing-for-games>
 - **Materials** – <https://developer.apple.com/design/human-interface-guidelines/materials>
