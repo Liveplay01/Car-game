@@ -100,7 +100,8 @@ public struct Tuning: Sendable {
         check(c.rampSeconds >= 0, "rampSeconds must be ≥ 0")
         check(c.densityStart >= 0 && c.densityEnd >= 0 && c.rushHourDensityBonus >= 0 && c.freePlayDensity >= 0, "densities must be ≥ 0")
         check(c.tempoStart > 0 && c.tempoEnd > 0 && c.rushHourTempo > 0, "tempos must be > 0")
-        check(c.aiSafeGap >= 0 && c.aiPathClearance >= 0, "AI gaps must be ≥ 0")
+        check(c.aiSafeGap >= 0 && c.aiPathClearance >= 0 && c.aiHazardAhead >= 0 && c.aiHazardBehind >= 0, "AI gaps must be ≥ 0")
+        check(c.minRingBots >= 0 && c.ringBotsPerLevel >= 0 && c.maxMinRingBots >= 0 && c.botExitNotice >= 0 && c.botJamPatience >= 0 && c.jamLookahead >= 0, "ring bot values must be ≥ 0")
         check(c.comboThresholds.count == c.comboMultipliers.count, "comboThresholds and comboMultipliers need the same number of entries")
         check(c.policeShare >= 0 && c.policeShare <= 1, "policeShare must lie between 0 and 1")
         check(c.criminalTime > 0 && c.criminalWarning >= 0, "criminalTime must be > 0, criminalWarning ≥ 0")
@@ -304,7 +305,15 @@ public struct Tuning: Sendable {
             .double("roadworksSpeedFactor", \.roadworksSpeedFactor),
             .double("aiSafeGap", \.aiSafeGap),
             .double("aiPathClearance", \.aiPathClearance),
+            .double("aiHazardAhead", \.aiHazardAhead),
+            .double("aiHazardBehind", \.aiHazardBehind),
             .int("freePlayDensity", \.freePlayDensity),
+            .int("minRingBots", \.minRingBots),
+            .double("ringBotsPerLevel", \.ringBotsPerLevel),
+            .int("maxMinRingBots", \.maxMinRingBots),
+            .double("botExitNotice", \.botExitNotice),
+            .double("botJamPatience", \.botJamPatience),
+            .double("jamLookahead", \.jamLookahead),
         ]
     }
 }

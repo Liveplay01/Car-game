@@ -61,6 +61,10 @@ public struct Config: Sendable, Equatable {
     public var aiPathClearance: Double = 0.1
     /// Pause between two AI spawns.
     public var aiSpawnDelay: ClosedRange<Double> = 0.4...1.2
+    /// The AI does not enter while a wreck or a car out of the flow is this close to where
+    /// it joins the ring (seconds of ring, downstream and upstream). Further away it goes on.
+    public var aiHazardAhead: Double = 2.5
+    public var aiHazardBehind: Double = 1.5
     /// An AI car waits this long at its stop line before it looks for a gap.
     public var aiReaction: ClosedRange<Double> = 0.2...0.8
     /// New cars appear this far behind their stop line, outside the picture, and drive up,
@@ -456,6 +460,26 @@ public struct Config: Sendable, Equatable {
     public var lateLevelsPerQueueCar: Int = 6
     /// Queues at the arms made traffic stop instead of flow (playtest Leo): one per arm.
     public var maxAiQueuePerArm: Int = 1
+
+    // MARK: Bots in the ring (ROADMAP.md, "Bots im Ring": the player fits cars between bots)
+
+    /// Bots always on the ring, from the first second of every shift. A bot leaves only once
+    /// its successor is in; until then it drives another lap. This is the value of level 1…
+    public var minRingBots: Int = 3
+    /// …with this many more per level, up to `maxMinRingBots` (`forLevel`). A bigger
+    /// roundabout scales it like the density (`forArms`).
+    public var ringBotsPerLevel: Double = 0.25
+    public var maxMinRingBots: Int = 5
+    /// A bot decides this long (seconds of ring) before its exit whether it takes it. Longer
+    /// than any look ahead at the traffic (a merge, a planned tap), so nobody is fooled.
+    public var botExitNotice: Double = 1.5
+    /// A bot that has had to brake for hazards this long is stuck in a jam: it may leave even
+    /// below the minimum, so the jam dissolves (seconds). With no wreck on the road and no
+    /// module queue it stands in, a bot out of the flow may leave right away: that jam has no cause.
+    public var botJamPatience: Double = 20
+    /// A module's slow zone within this many seconds of ring ahead explains a bot out of the
+    /// flow: it is queueing, not jammed.
+    public var jamLookahead: Double = 2.5
 
     public init() {}
 

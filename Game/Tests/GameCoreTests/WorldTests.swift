@@ -3,6 +3,9 @@ import Testing
 
 /// An empty roundabout without AI and without a shift clock, so a test controls every car.
 func emptyWorld(config: Config = Config(), seed: UInt64 = 1) -> World {
+    // Empty stays empty: no bots come in to keep the ring filled either.
+    var config = config
+    config.minRingBots = 0
     var world = World(config: config, seed: seed, mode: .freePlay, prefill: false)
     world.targetDensity = 0
     return world

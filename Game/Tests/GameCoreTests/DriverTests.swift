@@ -107,11 +107,21 @@ struct DriverTests {
         #expect(secondReacted)
     }
 
-    @Test func aiWaitsWhileTrafficIsDisturbed() {
-        var world = lastingWrecks()
-        world.spawnWreck(atRing: 700)
-        for arm in world.layout.aiArms {
+    @Test func aiWaitsWhileTrafficNearItsEntryIsDisturbed() {
+        for arm in lastingWrecks().layout.aiArms {
+            var world = lastingWrecks()
+            world.spawnWreck(atRing: world.layout.entryRingS(arm) + 60)
             #expect(!world.canEnter(arm))
+        }
+    }
+
+    /// Trouble on the far side of the ring does not keep the bots out (ROADMAP.md, bots in the ring).
+    @Test func aiKeepsComingWhileTroubleIsFarAway() {
+        for arm in lastingWrecks().layout.aiArms {
+            var world = lastingWrecks()
+            world.spawnWreck(atRing: world.layout.entryRingS(arm) + world.layout.ring.length / 2)
+            #expect(world.isTrafficDisturbed)
+            #expect(world.canEnter(arm))
         }
     }
 

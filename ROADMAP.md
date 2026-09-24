@@ -41,36 +41,92 @@ einem Meilenstein oder einer Version nach v1.0 zugeordnet (siehe
 **vor** den Look-&-Feel-Pass, damit dieser alles auf einmal gestaltet. Aus dem alten
 M6 wurde M11, aus M7 wurde M12, aus M8 wurde M13.
 
-## ⚠️ Als Nächstes – wichtigster Punkt (Playtest Leo, 24.09.2026)
+## Bots im Ring ✅ (24.09.2026, aus dem Playtest Leo)
 
-**Das Spielprinzip ist: Der Spieler packt seine Autos in Lücken zwischen Bot-Autos.** Zur
-Zeit gibt es keine Lücken, weil oft keine Bots im Kreis sind – nur die Autos des Spielers.
-Der Spieler kann dann alle Autos hintereinander hineinschicken, während die Bots an ihren
-Zufahrten warten. Das muss sich ändern, bevor irgendetwas anderes gebaut wird.
+**Das Spielprinzip ist: Der Spieler packt seine Autos in Lücken zwischen Bot-Autos.** Im
+Playtest waren oft keine Bots im Kreis, und der Spieler konnte alle Autos hintereinander
+hineinschicken. Gemessen (`Sim --ring`, vorher): Level 1–5 im Schnitt nur 1,2–1,5 Bots im
+Ring, 80–88 % der Zeit weniger als 3; die längste Kolonne des Spielers pro Schicht im
+Median 6–7 Autos, im Extremfall die ganze Schicht (30 von 30).
 
-Anforderungen:
+**Drei Ursachen, drei Änderungen** (`Traffic.swift`, `World.moveVehicles`):
 
-1. **Immer mindestens 3 Bots im Kreis**, in jedem Level, jeder Schicht, von der ersten
-   Sekunde an (`minRingBots`, Startwert 3, in höheren Leveln mehr).
-2. **Sofortiger Ersatz:** Verlässt ein Bot den Kreis, ist im selben Moment ein neuer
-   drin – nicht danach. Ein Bot darf den Kreis erst verlassen, wenn sein Nachfolger
-   eingefädelt ist (sonst dreht er eine weitere Runde).
-3. **Bots warten nicht wegen des Spielers.** Der Kreis gehört den Bots; der Spieler muss
-   sich einfügen. Die Bots dürfen nicht an ihren Zufahrten stehen, während der Spieler
-   seine Kolonne hineinschickt.
-4. **Nie alle Autos am Stück:** Es darf praktisch nicht möglich sein, alle Autos der
-   Schicht direkt hintereinander einzufädeln. Zwischen den Bots entstehen Lücken
-   unterschiedlicher Größe; genau die muss der Spieler treffen.
+1. **Die Dichte zählte die Autos des Spielers mit.** Schickte er eine Kolonne, erzeugte die
+   KI keine Bots mehr. Jetzt zählt die Dichte nur KI-Autos. (Gegenprobe: Zählen die Autos
+   des Spielers wieder mit, ändert sich an den Messwerten fast nichts; die Halteregel
+   trägt die Hauptlast.)
+2. **Bots fuhren raus, egal wie viele noch drin waren.** Jetzt gilt `minRingBots`
+   (Level 1–4: 3, ab Level 5: 4, ab Level 9: 5; `ringBotsPerLevel`, `maxMinRingBots`,
+   größerer Kreisverkehr skaliert mit): Ein Bot fährt erst raus, wenn danach noch genug
+   drin sind, sonst dreht er eine weitere Runde. Das entscheidet er 1,5 s vor seiner
+   Ausfahrt (`botExitNotice`), damit KI und Spieler nie in eine Lücke planen, die dann
+   doch nicht frei wird. Fehlen Bots, kommt sofort Ersatz, ohne Spawn-Pause. Jede Schicht
+   startet mit mindestens `minRingBots` im Ring.
+3. **Die KI fuhr nicht ein, sobald irgendwo im Ring etwas nicht floss** – nach einem
+   Crash, aber auch während jeder Verfolgungsjagd und in jeder Modul-Zone (Mautstelle,
+   Blitzer). Mit einer gebauten Mautstelle kam praktisch nie ein Bot herein. Jetzt wartet
+   sie nur, wenn die Störung nahe ihrer Einfahrt liegt (bis 2,5 s voraus, 1,5 s zurück;
+   `aiHazardAhead`, `aiHazardBehind`). Sicherheit bleibt: Sie fädelt weiter nur mit
+   sicherer Lücke ein und verursacht nie einen Crash.
 
-Umsetzungsideen: Bots von Anfang an im Kreis platzieren und im Kreis halten (Runden statt
-Ausfahrt, bis der Ersatz drin ist); Ersatz-Bots bevorzugt einfädeln lassen (die eigene
-Kolonne des Spielers zählt für sie nicht als Hindernis-Grund zum Warten, Sicherheit bleibt);
-Messung im Balancing-Bot: Bots im Kreis zu jedem Zeitpunkt ≥ 3, und wie oft der Spieler
-3+ Autos direkt hintereinander einfädeln kann (Ziel: sehr selten). Test
-`ringNeverHasFewerThanThreeBots` über viele Seeds und Level.
+**Zwei Funde unterwegs, beide behoben:**
 
-Die bisherigen Änderungen (Rolling Merge, Extrarunden, engere Lücken, siehe M7) haben das
-nicht gelöst: gemessen waren im Schnitt nur 2–6 Bots im Kreis, oft weniger als 3.
+- **Endlose Stauwelle:** Nach einem Crash auf hohem Level liefen die gehaltenen Bots in
+  einer Stop-and-go-Welle rund um den Ring, 45 s und länger; der perfekte Bot wartete
+  über 5 Minuten (Level 20, Seeds 62 und 221). Früher löste sich so eine Welle, weil
+  Autos rausfuhren. Jetzt darf ein Bot in einer Welle ohne Ursache (kein Wrack, keine
+  Modul-Schlange) trotz Minimum raus; Rückfallebene 20 s Bremsen (`botJamPatience`).
+  Test `aJamAfterACrashDissolves`.
+- **Module leerten den Ring:** Mit Mautstelle und Blitzer lag der Ring zeitweise 45–76 %
+  der Zeit unter dem Minimum, bis hinunter auf 0 Bots. Wer in der Schlange vor einem Modul
+  steht (`jamLookahead`, 2,5 s), gilt jetzt nicht als Stau und bleibt: 0–2 % unter dem
+  Minimum. Test `modulesDoNotEmptyTheRing`.
+
+**Gemessen** (`Sim --ring --shifts 200`: Mensch-Bot, Ketten aus 4 Schichten mit fließendem
+Übergang; *ruhig* = 5 s nach dem letzten Wrack bzw. bremsenden Auto):
+
+| Level | Minimum | Ø Bots im Ring | unter Minimum (gesamt / ruhig) | Kolonnen ≥ 3 pro Schicht (gesamt / ruhig) | längste Kolonne (Median / max) | geschafft |
+| --- | --- | --- | --- | --- | --- | --- |
+| 1 | 3 | 3,6 (vorher 1,2) | 1,1 % / 0,0 % (vorher 88 %) | 1,4 / 1,3 | 4 / 7 (vorher 6 / 12) | 91 % |
+| 5 | 4 | 4,6 (vorher 1,5) | 7,1 % / 0,0 % | 1,5 / 0,8 | 4 / 8 (vorher 6 / 14) | 86 % |
+| 10 | 5 | 6,1 | 6,6 % / 0,1 % | 1,2 / 0,3 | 3 / 6 | 84 % |
+| 20 | 5 | 7,2 | 3,2 % / 0,0 % | 0,9 / 0,4 | 3 / 6 (vorher 3 / 30) | 72 % |
+| 30 | 5 | 7,1 | 3,1 % / 0,0 % | 0,6 / 0,3 | 2 / 6 | 67 % |
+
+**Schwierigkeitskurve** (`Sim --curve --shifts 200`): Der perfekte Bot schafft jedes Level
+zu 100 % ohne Crash. Der Mensch-Bot: Level 1 94 %, Level 5 86 %, Level 10 89 %, Level 15
+82 %, Level 20 78 %, Level 25 76 %, Level 30 68 %. **Die Schichten werden länger**, weil
+man auf Lücken warten muss: Mensch-Bot Level 10 36 s, Level 20 68 s, Level 30 75 s (vorher
+≈ 20–35 s), perfekter Bot Level 15–30 ≈ 25–27 s (vorher ≈ 19 s). Das geht in Richtung der
+≈ 2 Minuten aus IDEA.md, ist aber eine Playtest-Frage.
+
+**Grenzen, ehrlich:** Direkt nach einem Crash, der Bots zu Wracks macht, ist der Ring
+kurz unter dem Minimum, bis der Ersatz eingefädelt ist – einen Bot aus dem Nichts in den
+Ring zu setzen wäre sichtbar. Kolonnen von 3 Autos gibt es auf Level 1–4 in ruhigem
+Verkehr noch gut einmal pro Schicht: Mit 3 Bots auf einer Runde von ≈ 8 s sind die Lücken
+≈ 2,5 s groß. Wer das seltener will, dreht `minRingBots` hoch; das macht Level 1 spürbar
+schwerer. Der Mensch-Bot tippt maschinell schnell; echte Spieler bilden eher kürzere
+Kolonnen. Mit Modulen gibt es zudem vereinzelt KI-Auffahrunfälle in der Schlange vor der
+Mautstelle (etwa ein bis zwei in 4 Minuten reiner KI-Fahrt); das war schon vorher so
+und ist nicht Teil dieser Änderung.
+
+**Tests:** `RingBotTests` (Minimum ab dem ersten Schritt auf Level 1–30, im fließenden
+Übergang, mit Modulen, Halteregel, frühe Ausfahrt-Entscheidung, Spielerautos zählen nicht
+zur Dichte), `ringNeverHasFewerThanThreeBotsWhilePlaying` (Mensch-Bot schickt Kolonnen,
+ruhiger Verkehr hat immer das Minimum), `aJamAfterACrashDissolves`,
+`aiKeepsComingWhileTroubleIsFarAway`, `normalTrafficNeverLeavesTheFlow` (fing den Fehler,
+dass ein Bot erst an der Ausfahrt über die Extrarunde entschied).
+
+**Playtest-Fragen:** Fühlt es sich jetzt wie Lücken-Treffen an? Sind 3 Bots auf Level 1
+genug, oder soll Level 1 schon mit 4 starten? Sind die großen Lücken (3 Autos am Stück)
+ein netter Moment oder ein Schlupfloch? Sind die längeren Schichten auf hohen Leveln gut?
+Fließt es mit gebauter Mautstelle?
+
+## Als Nächstes
+
+1. **Playtest im Testfenster** mit den Bots im Ring (Level 1, 5, 10, 20), Werte in
+   `tuning.json` (`minRingBots`, `ringBotsPerLevel`, `maxMinRingBots`).
+2. **M12: erster Build auf dem iPad** (`App.swiftpm` ist vorbereitet, aber ungetestet).
 
 ## Grundsätze
 
@@ -705,9 +761,9 @@ was `applyShiftCurves` im nächsten Schritt wieder überschrieb; der Blitzer
 feuerte nie, die fehlgeschlagene Erwartung griff danach auf ein leeres Array zu
 und crashte (`Index out of range`), was den ganzen Testlauf bei paralleler
 Ausführung hängen ließ. Jetzt setzt der Test das Tempo vor dem Bau der Welt
-über die Config statt danach über `ringSpeed`. Offen: Palette und Modulplätze
-im Street Builder, Platzhalter-Sound `toll` im SoundMaker, Doku in
-FOUNDATION.md 2.9.
+über die Config statt danach über `ringSpeed`. Palette und Modulplätze im Street
+Builder und der Platzhalter-Sound `toll` sind mit M9 gekommen, die Doku steht seit
+24.09.2026 in FOUNDATION.md 2.9.
 
 ---
 
@@ -757,8 +813,9 @@ Warum das nur über den App Store geht, steht in [PLAN.md, Phase 3](PLAN.md#phas
 - **TestFlight-Beta:** öffentlicher Einladungslink auf deiner Website, bis zu
   10.000 Tester. Feedback einarbeiten.
 - **App-Store-Eintrag** (auf Englisch): Name, Beschreibung, Screenshots,
-  Altersfreigabe, Datenschutz-Angaben (ohne Tracking und ohne Konto: "Data Not
-  Collected"), EU-Händlerstatus nach DSA.
+  Altersfreigabe, Datenschutz-Angaben (wegen Google AdMob mit Werbe- und
+  Tracking-Daten statt "Data Not Collected", dazu die ATT-Abfrage und AdMob in der
+  Datenschutzerklärung; Entscheidung 24.09.2026, siehe CLAUDE.md), EU-Händlerstatus nach DSA.
 - **Review** durch Apple, dann **Launch**. Auf der Website kommt der App-Store-Link dazu.
 
 **→ v1.0: das Spiel weltweit im App Store.**

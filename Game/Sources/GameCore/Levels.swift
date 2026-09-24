@@ -58,6 +58,10 @@ extension Config {
         let quicker = max(minSpawnDelayFactor, 1 - late * lateSpawnFasterPerLevel)
         config.aiSpawnDelay = (aiSpawnDelay.lowerBound * quicker)...(aiSpawnDelay.upperBound * quicker)
 
+        // Bots in the ring: always some, more at higher levels. The gaps between them are
+        // where the player's cars go.
+        config.minRingBots = max(minRingBots, min(maxMinRingBots, minRingBots + Int(Double(level - 1) * ringBotsPerLevel)))
+
         config.shiftPay = shiftPayBase + shiftPayPerLevel * level
         config.level = level
 

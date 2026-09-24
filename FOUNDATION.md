@@ -311,15 +311,64 @@ aber keinen Strike.
   Crash bekommt jeder Fahrer ein eigenes Tempo (2.6); sobald wieder alles fließt,
   gilt das gemeinsame Tempo wieder. Trucks und Stau docken später an dasselbe
   Fahrermodell an.
-- **Die KI fährt nur bei sicherer Lücke ein** (≥ 0,35 s nach vorn und hinten).
+- **Der Kreis gehört den Bots, der Spieler fügt sich ein.** Es sind immer mindestens
+  `minRingBots` KI-Autos im Ring (Level 1–4: 3, ab Level 5: 4, ab Level 9: 5; ein
+  größerer Kreisverkehr skaliert das wie die Dichte). Beim Start einer Schicht stehen sie
+  schon im Ring.
+- **Ein Bot fährt erst raus, wenn sein Nachfolger drin ist.** Würde der Ring unter das
+  Minimum fallen, dreht er eine weitere Runde. Das entscheidet er 1,5 s vor seiner
+  Ausfahrt (`botExitNotice`), also früher, als irgendwer den Verkehr vorausberechnet:
+  Niemand plant in eine Lücke, die dann doch nicht frei wird. Fehlen Bots (nach einem
+  Crash), kommt sofort Ersatz, ohne Spawn-Pause und unabhängig von der Dichte.
+  **Ausnahme Stau:** Nach einem Crash kann eine Stop-and-go-Welle einmal rund um den Ring
+  laufen, in der die Bots füreinander bremsen, und sie löst sich nur, wenn einer rausfährt.
+  Deshalb darf ein Bot trotz Minimum raus, wenn er außerhalb des Flusses fährt, kein Wrack
+  mehr auf der Straße liegt und er nicht in der Schlange vor einem Modul steht (bis 2,5 s
+  vor dessen Zone, `jamLookahead`). Als Rückfallebene gilt: Wer insgesamt 20 s für
+  Gefahren bremsen musste (`botJamPatience`), darf ebenfalls raus. Durch eine Zone zu
+  kriechen zählt dabei nicht als Bremsen.
+- **Die KI fährt nur bei sicherer Lücke ein** (≥ `aiSafeGap` nach vorn und hinten).
   Einfädelnde Spielerautos zählen dabei mit. **Die KI verursacht nie einen Crash.**
-  Solange der Verkehr nach einem Crash gestört ist, fährt sie gar nicht ein.
-- Die KI füllt nur bis zur aktuellen Ziel-Dichte auf. Füllst du den Ring selbst,
-  hält sich die KI automatisch zurück.
+  Liegt ein Wrack oder bremst ein Auto nahe ihrer Einfahrt (bis 2,5 s voraus, 1,5 s
+  zurück), wartet sie. Eine Störung auf der anderen Seite des Rings, eine
+  Verfolgungsjagd oder eine Modul-Zone anderswo hält sie nicht auf.
+- Die KI füllt mit **ihren eigenen** Autos bis zur Ziel-Dichte auf. Die Autos des
+  Spielers zählen nicht mit: Eine Kolonne des Spielers hält die Bots nicht zurück.
 - **Jedes Auto hat ein Ausfahrtziel**, zufällig 1–3 Zufahrten weiter. Süd ist nie
   ein Ziel, denn dort steht deine Schlange.
 - **Zufall über einen festen Seed.** Dieselbe Schicht lässt sich exakt
   wiederholen, für Tests und für Bug-Reports.
+
+### 2.9 Module am Ring
+
+Module werden im Street Builder gekauft und auf einen von **6 festen Modulplätzen**
+(`moduleSlotCount`) am Ring gesetzt. Die Plätze liegen gleichmäßig verteilt und um einen
+halben Schritt versetzt, damit nie ein Modul direkt in einer Einmündung steht. Sind alle
+Plätze belegt, wird getauscht: Das alte Modul ist weg, das neue wird voll bezahlt. Ein
+Abriss zahlt nichts zurück (`Career.build`, `Career.removeModule`).
+
+Jedes Modul verdient ohne Tap Geld und kostet dafür Fluss, denn Verkehr, der zahlt, fließt
+nicht. Mehr Geld heißt ein schwererer Ring (IDEA.md, „Wirtschaft schafft Gefahr“).
+
+| Modul | Preis | Verdient | Zone | Wirkung |
+| --- | --- | --- | --- | --- |
+| Toll Booth | 8.000 | 120 pro Lkw (Autos fahren durch) | 150 lang, Tempo × 0,55 | langer, milder Abschnitt: dahinter staut es sich |
+| Speed Camera | 12.000 | 45 pro Auto, nur wenn das Ring-Tempo über 108 % liegt (ruhiger Start: nichts, Rush Hour: jedes Auto) | 44 lang, Tempo × 0,7 | kurz und scharf: alle bremsen am Blitzer |
+| Tow Depot | 10.000 | nichts | 180 lang, kein Tempolimit | Wracks in der Zone verschwinden 30 % schneller, der Ring fließt früher wieder |
+
+- **Wer zahlt:** jedes Fahrzeug, das die Modulmitte passiert, außer Wracks und dem
+  Verbrecher-Pickup. High Alert vervielfacht Modul-Einnahmen zur Zeit **nicht** (nur
+  Schichtlohn, Transporter und Abschirm-Bonus); der Kommentar an `World.fee` behauptet das
+  Gegenteil – offen, was gewollt ist.
+- **Daily Login:** Jede Mautstelle zahlt 600 pro Tag Abwesenheit, höchstens 3 Tage
+  (`tollIncomePerDay`).
+- **Fahrer in der Zone** bremsen auf das Zonen-Tempo und beschleunigen danach wieder
+  (Fahrermodell aus 2.6). Die KI fädelt nicht ein, solange ein langsames Auto nahe ihrer
+  Einfahrt ist (2.7); eine Zone auf der anderen Seite des Rings hält sie nicht auf.
+- **Darstellung:** Das Modul steht am Ring, seine Zone ist als Abschnitt sichtbar, damit
+  man sieht, wo sich der Verkehr gleich staut. Ein Abschleppwagen fährt nach einem Crash
+  aus dem Depot-Hof.
+- Alle Werte stehen in `Config.swift` (Abschnitt „Ring modules and trucks“).
 
 ---
 

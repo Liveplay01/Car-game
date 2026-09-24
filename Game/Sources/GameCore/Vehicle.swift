@@ -112,6 +112,9 @@ public struct Vehicle: Sendable, Equatable {
         public var drive = Drive()
         /// Time on the ring since the merge; infinite for cars that were placed on the ring.
         public var sinceMerge = Double.infinity
+        /// A bot that has decided to take its exit (`Config.botExitNotice` before it). Until
+        /// then it may still drive another lap to keep `minRingBots` on the ring.
+        public var isLeaving = false
     }
 
     /// Leaving at ring speed, so cars never catch up with each other on an exit.
@@ -169,6 +172,12 @@ public struct Vehicle: Sendable, Equatable {
         return false
     }
 
+    /// Plain AI traffic: the bots whose gaps the player's cars have to hit. The criminal and
+    /// the transporter come and go by their own rules and do not count.
+    public var isBot: Bool {
+        owner == .ai && type != .pickup && type != .transporter
+    }
+
     /// One of the player's police cars, still in one piece.
     public var isPlayerPolice: Bool {
         type == .police && owner == .player && !isCrashed
@@ -199,6 +208,9 @@ public struct Drive: Sendable, Equatable {
     public var reaction: Double?
     /// A police car chasing the criminal right ahead of it (`World.pursue`).
     public var isPursuing = false
+    /// How long the driver has had to brake for a hazard since it left the flow. Crawling
+    /// through a module's slow zone does not count.
+    public var hazardTime = 0.0
 
     public init() {}
 

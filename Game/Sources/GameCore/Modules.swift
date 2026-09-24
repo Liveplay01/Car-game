@@ -55,6 +55,21 @@ extension World {
     /// The modules in play, by slot.
     public var modules: [Int: RoadModule] { config.modules }
 
+    /// A module's slow zone lies at `s` or within `jamLookahead` seconds of ring ahead of it:
+    /// a car out of the flow there is queueing for a toll booth or a camera, not jammed.
+    /// Roadworks do not count: they are a short event, and a jam there must still dissolve.
+    func isModuleQueue(at s: Double) -> Bool {
+        let slow = config.modules.filter { config.zone(of: $0.value).speedFactor < 1 }
+        guard !slow.isEmpty else { return false }
+        let reach = config.jamLookahead * ringSpeed
+        return slow.contains { slot, module in
+            let arc = config.zone(of: module).arc
+            let start = Angle.wrap(layout.moduleRingS(slot, of: config.moduleSlotCount) - arc / 2, period: layout.ring.length)
+            // From `reach` before the zone to its end.
+            return layout.ringDistance(from: Angle.wrap(start - reach, period: layout.ring.length), to: s) <= reach + arc
+        }
+    }
+
     /// How fast traffic may drive at this point of the ring. Ring speed where no module
     /// holds it back.
     public func speedLimit(atRingS s: Double) -> Double {

@@ -79,7 +79,7 @@ public struct World: Sendable {
         }
         refillQueue()
         if prefill {
-            prefillRing(count: targetDensity)
+            prefillRing(count: max(targetDensity, config.minRingBots))
         }
     }
 
@@ -170,6 +170,14 @@ public struct World: Sendable {
     // MARK: - Movement
 
     mutating func moveVehicles(_ dt: Double, now: Double) {
+        // Bots on the ring that have not decided to leave yet.
+        var stayingBots = vehicles.count { vehicle in
+            guard vehicle.isBot, case let .ring(r) = vehicle.phase else { return false }
+            return !r.isLeaving
+        }
+        // Once the wrecks are gone, a bot out of the flow and not queueing for a module is in a
+        // stop-and-go wave running round the ring.
+        let wrecksOnRoad = vehicles.contains(where: \.isCrashed)
         for i in vehicles.indices {
             switch vehicles[i].phase {
             case .queued, .waiting:
@@ -192,6 +200,7 @@ public struct World: Sendable {
                     )
                     vehicles[i].phase = .ring(ring)
                     vehicles[i].place(layout.ring.pose(at: ring.s))
+                    if vehicles[i].isBot { stayingBots += 1 }
                 } else {
                     vehicles[i].phase = .merging(m)
                     vehicles[i].place(layout.entry(m.arm).pose(at: m.distance))
@@ -208,6 +217,21 @@ public struct World: Sendable {
                     // The criminal on the run, the transporter until its time is up and a
                     // police car on a chase do not leave: another lap.
                     r.distanceToExit += layout.ring.length
+                }
+                if vehicles[i].isBot && !r.isLeaving && r.distanceToExit <= config.botExitNotice * ringSpeed {
+                    // The ring belongs to the bots: one leaves only once its successor is in.
+                    // Until then it drives another lap. Decided well before the exit, so
+                    // everyone who reads the traffic ahead (the AI, the player) sees it right.
+                    // Not stuck in a jam, though: after a crash bots can brake for each other all
+                    // the way round for good, and one leaving is what dissolves that.
+                    let inWave = !wrecksOnRoad && !r.drive.isInFlow && !isModuleQueue(at: r.s)
+                    let jammed = r.drive.hazardTime >= config.botJamPatience || inWave
+                    if !jammed && stayingBots <= config.minRingBots {
+                        r.distanceToExit += layout.ring.length
+                    } else {
+                        r.isLeaving = true
+                        stayingBots -= 1
+                    }
                 }
                 if r.distanceToExit <= 0 {
                     let exit = Vehicle.Exiting(arm: r.exitArm, s: -r.distanceToExit, drive: r.drive)
@@ -530,7 +554,7 @@ public struct World: Sendable {
         return nextVehicleID
     }
 
-    /// Every car leaves 1–3 arms after the one it came from, never at South: that is the queue.
+    /// Every car leaves 1â€“3 arms after the one it came from, never at South: that is the queue.
     mutating func randomExit(from arm: Arm) -> Arm {
         let options = config.exitArmsAhead.map { layout.advance(arm, by: $0) }.filter { !$0.isPlayer }
         return options.isEmpty ? layout.advance(arm, by: 1) : rng.pick(options)
@@ -558,7 +582,7 @@ public struct FixedStepClock: Sendable {
         return true
     }
 
-    /// 0…1 between the previous and the current step.
+    /// 0â€¦1 between the previous and the current step.
     public var alpha: Double { min(max(accumulator / step, 0), 1) }
 
     public mutating func reset() {

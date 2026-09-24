@@ -101,6 +101,7 @@ extension World {
             needed = room > 0.5 ? (speed * speed - lead.speed * lead.speed) / (2 * room) : .infinity
         }
         let alarmed = needed > config.hazardBraking * g
+        if alarmed { drive.hazardTime += dt }
         if alarmed && drive.reaction == nil {
             drive.reaction = reactionTime(of: id)
         }

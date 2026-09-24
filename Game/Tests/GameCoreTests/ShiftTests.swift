@@ -7,6 +7,7 @@ func quietShift(_ adjust: (inout Config) -> Void = { _ in }) -> World {
     config.densityStart = 0
     config.densityEnd = 0
     config.rushHourDensityBonus = 0
+    config.minRingBots = 0
     adjust(&config)
     return World(config: config, seed: 1, mode: .shift, prefill: false)
 }

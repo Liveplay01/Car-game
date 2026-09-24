@@ -1,15 +1,17 @@
 /// AI traffic on the East, North and West arms (FOUNDATION.md 2.7).
 ///
 /// The AI only enters with a safe gap (≥ `aiSafeGap` to the car ahead and behind),
-/// counts merging player cars and never causes a crash. It fills the road up to
-/// `targetDensity`; if the player fills the ring, the AI holds back by itself.
+/// counts merging player cars and never causes a crash. It fills the road with its own
+/// cars up to `targetDensity`, whatever the player sends, and keeps at least
+/// `minRingBots` on the ring: the player's cars go into the gaps between them.
 extension World {
     mutating func updateTraffic(_ dt: Double) {
         spawnCooldown -= dt
         // Only cars standing at a line count: several may roll up at once, but they never
         // pile up waiting (`maxWaitingAI`).
         let waitingNow = vehicles.count(where: { if case let .waiting(w) = $0.phase { w.approach == 0 } else { false } })
-        if spawnCooldown <= 0, densityCount < targetDensity, waitingNow < (config.maxWaitingAI ?? .max) {
+        let regular = spawnCooldown <= 0 && densityCount < targetDensity && waitingNow < (config.maxWaitingAI ?? .max)
+        if regular || needsReplacementBot {
             // An arm takes another car while its queue is short enough and the last one has
             // driven up a bit (`aiQueuePerArm`, more at higher levels). With one per arm, the
             // default, an arm is free only while nobody waits there.
@@ -81,16 +83,39 @@ extension World {
         return nearest
     }
 
-    /// What the density is measured on: every car on the road, or from higher levels on only
-    /// the cars on the ring and merging, so the ring itself really fills up.
+    /// What the density is measured on: the AI's cars on the road, or from higher levels on
+    /// only those on the ring and merging, so the ring itself really fills up. The player's
+    /// cars never count: the ring belongs to the bots, and the player fits in between.
     var densityCount: Int {
-        guard !config.densityCountsWaiting else { return roadCount }
-        return vehicles.count(where: { vehicle in
+        vehicles.count(where: { vehicle in
+            guard vehicle.owner == .ai else { return false }
             switch vehicle.phase {
-            case .ring, .merging: true
-            case .queued, .waiting, .exiting, .crashed: false
+            case .ring, .merging: return true
+            case .waiting: return config.densityCountsWaiting
+            case .queued, .exiting, .crashed: return false
             }
         })
+    }
+
+    /// Fewer bots on and into the ring than `minRingBots`: a replacement is due right away,
+    /// without the pause between spawns and whatever the density says.
+    var needsReplacementBot: Bool {
+        let incoming = vehicles.count { vehicle in
+            guard vehicle.isBot else { return false }
+            switch vehicle.phase {
+            case .merging, .waiting: return true
+            case .queued, .ring, .exiting, .crashed: return false
+            }
+        }
+        return ringBotCount + incoming < config.minRingBots
+    }
+
+    /// Bots on the ring right now: past their merge, not yet on an exit, in one piece.
+    public var ringBotCount: Int {
+        vehicles.count { vehicle in
+            guard vehicle.isBot, case .ring = vehicle.phase else { return false }
+            return true
+        }
     }
 
     /// Cars that count towards the density: on the ring, merging or about to enter.
@@ -178,8 +203,8 @@ extension World {
     /// everyone on its entry path with room to spare. Player cars launched later are the
     /// player's responsibility.
     func canEnter(_ arm: Arm) -> Bool {
-        // After a crash the AI waits until the traffic flows again.
-        guard !isTrafficDisturbed else { return false }
+        // After a crash the AI waits until the traffic near its entry flows again.
+        guard !isDisturbed(near: arm) else { return false }
         let profile = MergeProfile(pathLength: layout.entry(arm).length, duration: config.mergeDuration, ringSpeed: ringSpeed)
         let circumference = layout.ring.length
         let arrival = layout.entryRingS(arm)
@@ -191,6 +216,26 @@ extension World {
             if min(ahead, circumference - ahead) < minimumArc { return false }
         }
         return predictedMergeGap(from: arm, samples: 30, stopBelow: config.aiPathClearance) >= config.aiPathClearance
+    }
+
+    /// Something near where `arm` joins the ring is not flowing: a wreck, or a driver who
+    /// brakes, catches up or chases, up to `aiHazardAhead` seconds of ring downstream or
+    /// `aiHazardBehind` upstream. The AI waits for that, as a driver would. Trouble on the
+    /// far side of the ring, or a slow module zone elsewhere, is no reason: bots keep coming.
+    func isDisturbed(near arm: Arm) -> Bool {
+        let circumference = layout.ring.length
+        let join = layout.entryRingS(arm)
+        return vehicles.contains { vehicle in
+            switch vehicle.phase {
+            case .crashed: break
+            case let .ring(r) where !r.drive.isInFlow: break
+            case let .exiting(e) where !e.drive.isInFlow: break
+            default: return false
+            }
+            let s = Angle.wrap(vehicle.position.angle) * layout.ringRadius
+            let downstream = layout.ringDistance(from: join, to: s)
+            return downstream <= config.aiHazardAhead * ringSpeed || circumference - downstream <= config.aiHazardBehind * ringSpeed
+        }
     }
 
     /// Smallest gap (seconds, surface to surface) a car launched at `arm` would have to

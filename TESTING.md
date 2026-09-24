@@ -173,7 +173,10 @@ Drei Bots spielen je 1000 Schichten parallel auf allen Kernen (etwa 10 s; für
 schnelle Vergleiche `--shifts 200`). Jede Schicht wird für ein Level gebaut, ohne
 Angabe für `hardLevel` (5); `--level 12` wählt ein anderes. `--curve` (seit M8 mit Wetter und City Events, wie im Spiel ausgelost) spielt die Level
 1–30 durch und zeigt pro Level, wie oft Mensch- und perfekter Bot es schaffen und wie
-lange sie brauchen. `--career 120` spielt ganze Laufbahnen ab Level 1 mit Kaufen
+lange sie brauchen. `--ring --shifts 200` misst die Bots im Ring (Schnitt, Minimum,
+Zeitanteil unter dem Minimum, gesamt und in ruhigem Verkehr) und wie viele Autos der
+Mensch-Bot direkt hintereinander ohne Bot dazwischen einfädelt; gespielt werden Ketten von
+4 Schichten mit fließendem Übergang wie im Spiel. `--career 120` spielt ganze Laufbahnen ab Level 1 mit Kaufen
 zwischen den Schichten, `--duty high` alles auf Gefahrenstufe (ROADMAP.md, M5). Stand M5, Level 5 (12–16 Autos, keine Uhr):
 
 ```

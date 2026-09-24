@@ -56,6 +56,7 @@ cd Game;       swift test                                        # Logik-Tests
 cd Game;       swift run -c release Sim --shifts 1000 --seed 42  # Balancing-Bot
 cd Game;       swift run -c release Sim --curve --shifts 300     # Schwierigkeit pro Level
 cd Game;       swift run -c release Sim --career 120             # Laufbahnen: Level, Geld, Upgrades
+cd Game;       swift run -c release Sim --ring --shifts 200      # Bots im Ring, Kolonnen des Spielers
 cd TestWindow; swift run -c release TestWindow                   # Spielen
 cd TestWindow; swift run SoundMaker                              # Platzhalter-Sounds neu erzeugen
 powershell -File sync-app-assets.ps1                            # Sounds/Haptik/Musik in App.swiftpm kopieren

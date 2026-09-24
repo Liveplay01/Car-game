@@ -8,6 +8,7 @@ import GameCore
 ///     swift run -c release Sim --bot perfect --tuning ../TestWindow/tuning.json
 ///     swift run -c release Sim --level 12          one level (default: `hardLevel`)
 ///     swift run -c release Sim --curve --shifts 300 the difficulty curve, level by level
+///     swift run -c release Sim --ring --shifts 200  bots on the ring, runs of your cars
 ///     swift run -c release Sim --career 60          whole careers: levels, money, upgrades
 ///     swift run -c release Sim --duty high          every shift on high alert
 ///
@@ -41,6 +42,10 @@ struct Sim {
         let last = options.seed + UInt64(options.shifts - 1)
         if options.curve {
             await printCurve(options: options, config: config, source: source)
+            return
+        }
+        if options.ring {
+            await printRing(options: options, config: config, source: source)
             return
         }
         if let shifts = options.careerShifts {
@@ -189,7 +194,7 @@ enum BotKind: String, CaseIterable, Sendable {
 
 struct Options {
     static let usage = """
-        usage: swift run -c release Sim [--shifts 1000] [--seed 42] [--bot perfect|human|random|all] [--level 5 | --curve | --career 60 [--players 40]] [--duty high] [--tuning file.json]
+        usage: swift run -c release Sim [--shifts 1000] [--seed 42] [--bot perfect|human|random|all] [--level 5 | --curve | --ring | --career 60 [--players 40]] [--duty high] [--tuning file.json]
         """
 
     var shifts = 1000
@@ -198,6 +203,7 @@ struct Options {
     var tuningFile: String?
     var level: Int?
     var curve = false
+    var ring = false
     var careerShifts: Int?
     var players = 40
     var duty = Duty.normal
@@ -228,6 +234,9 @@ struct Options {
                 self.level = level
             case "--curve":
                 curve = true
+                index -= 1
+            case "--ring":
+                ring = true
                 index -= 1
             case "--career":
                 guard let shifts = value.flatMap({ Int($0) }), shifts >= 10 else { return nil }

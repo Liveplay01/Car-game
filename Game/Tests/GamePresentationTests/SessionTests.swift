@@ -38,6 +38,9 @@ func quietConfig(cars: Int = 15, _ adjust: (inout Config) -> Void = { _ in }) ->
     config.densityStart = 0
     config.densityEnd = 0
     config.rushHourDensityBonus = 0
+    // Quiet means no traffic at all: no bots kept on the ring either.
+    config.minRingBots = 0
+    config.maxMinRingBots = 0
     config.hardLevel = 1
     config.levelOneCars = cars
     config.maxShiftCars = cars
@@ -478,8 +481,8 @@ struct SessionTuningTests {
         #expect(session.world.config.maxStrikes == 3)
         #expect(session.world.seed == 100)
         #expect(session.world.time < 0.1)
-        // Two from the file, eleven in which `quietConfig` differs from Config.swift.
-        #expect(session.advance().texts.contains(Strings.Notice.tuningLoaded(values: 2, changes: 2 + 11)))
+        // Two from the file, thirteen in which `quietConfig` differs from Config.swift.
+        #expect(session.advance().texts.contains(Strings.Notice.tuningLoaded(values: 2, changes: 2 + 13)))
     }
 
     @Test func brokenTuningChangesNothing() {

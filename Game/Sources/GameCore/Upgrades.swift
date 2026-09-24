@@ -132,6 +132,7 @@ extension Config {
         let traffic = 1 + extra * trafficPerArm
         config.densityStart = Int((Double(densityStart) * traffic).rounded())
         config.densityEnd = Int((Double(densityEnd) * traffic).rounded())
+        config.minRingBots = Int((Double(minRingBots) * traffic).rounded())
         config.shiftPay = Int((Double(shiftPay) * (1 + extra * payPerArm)).rounded())
         let sooner = max(0.2, 1 - extra * transporterPerArm)
         config.transporterFirst = (transporterFirst.lowerBound * sooner)...(transporterFirst.upperBound * sooner)
