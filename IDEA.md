@@ -37,7 +37,7 @@ einer Stadt, die mit dem Spieler wächst.
 - **Animationen:** Spring-Easing, physisch, keine harten Schnitte, direkte Verbindung
   zwischen Input und Bewegung.
 - **Fahrzeugdarstellung final:** Farben und Formen vermitteln Spielinformation, Farbe
-  nie allein (Formen, Icons, Muster, Textlabels bei Sonderfahrzeugen).
+  nie allein (Formen, Icons, Muster). Textlabels gibt es als Einstellung "Vehicle labels".
 - **Finale Sounds und adaptive Musik als echte Stems:** Combo baut Layer auf (Rhythmus,
   Bass), Verbrecher bringt Sirenen-Impuls, Rush Hour zieht den Beat an, Flow State
   verdichtet den Rhythmus. Perfect Input: kurzer hochwertiger Sound. Takedown in
@@ -45,7 +45,7 @@ einer Stadt, die mit dem Spieler wächst.
   Mischpult dafür (`MusicMix`) existiert; es fehlen die Klänge.
 - **Haptik spüren und feinjustieren** auf dem iPhone (Muster liegen in `Assets/Haptics`);
   Takedown-Haptik mit der Wucht skalieren.
-- **Screen-Entwürfe** für die SwiftUI-Menüs und das **App-Icon**.
+- **App-Icon** (die Screen-Entwürfe stehen in UI.md, Abschnitt 4).
 
 ---
 
