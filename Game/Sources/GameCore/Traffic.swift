@@ -7,12 +7,21 @@ extension World {
     mutating func updateTraffic(_ dt: Double) {
         spawnCooldown -= dt
         if spawnCooldown <= 0, roadCount < targetDensity {
-            let busy = vehicles.compactMap { vehicle -> Arm? in
-                if case let .waiting(w) = vehicle.phase { return w.arm }
+            // An arm takes another car while its queue is short enough and the last one has
+            // driven up a bit (`aiQueuePerArm`, more at higher levels). With one per arm, the
+            // default, an arm is free only while nobody waits there.
+            let queues = Dictionary(grouping: vehicles.compactMap { vehicle -> Vehicle.Waiting? in
+                if case let .waiting(w) = vehicle.phase { return w }
                 return nil
+            }, by: \.arm)
+            func takesAnother(_ arm: Arm) -> Bool {
+                guard let queue = queues[arm], !queue.isEmpty else { return true }
+                guard queue.count < max(1, config.aiQueuePerArm) else { return false }
+                let last = queue.map(\.approach).max() ?? 0
+                return last < config.aiApproachDistance - 2 * config.queueSpacing
             }
             // An arm a criminal or a transporter was announced for stays free for it.
-            let free = openAIArms.filter { !busy.contains($0) && $0 != reservedArm && $0 != reservedTransporterArm }
+            let free = openAIArms.filter { takesAnother($0) && $0 != reservedArm && $0 != reservedTransporterArm }
             if !free.isEmpty {
                 spawnWaiting(at: rng.pick(free))
                 spawnCooldown = rng.double(in: config.aiSpawnDelay)
@@ -23,6 +32,10 @@ extension World {
             guard case .waiting(var w) = vehicles[i].phase else { continue }
             if w.approach > 0 {
                 w.approach = approachStep(w.approach, dt: dt)
+                // Queued behind another car at the same arm: stop a car length behind it.
+                if let ahead = waitingAhead(of: i, at: w.arm) {
+                    w.approach = max(w.approach, ahead + config.queueSpacing)
+                }
                 vehicles[i].phase = .waiting(w)
                 vehicles[i].place(approachPose(w))
                 continue
@@ -30,16 +43,33 @@ extension World {
             w.reaction -= dt
             if w.reaction <= 0 && canEnter(w.arm) {
                 let path = layout.entry(w.arm)
-                vehicles[i].phase = .merging(Vehicle.Merging(
+                var merge = Vehicle.Merging(
                     arm: w.arm,
                     exitArm: randomExit(from: w.arm),
                     profile: MergeProfile(pathLength: path.length, duration: config.mergeDuration, ringSpeed: ringSpeed),
                     elapsed: 0
-                ))
+                )
+                // Higher levels: some AI cars stay a lap longer, so the ring fills up. Only
+                // drawn then, so the traffic of lower levels stays exactly as it was.
+                if config.aiLapChance > 0, rng.unit() < config.aiLapChance {
+                    merge.extraLaps = 1
+                }
+                vehicles[i].phase = .merging(merge)
             } else {
                 vehicles[i].phase = .waiting(w)
             }
         }
+    }
+
+    /// How far the nearest car ahead in the same arm queue still has to its stop line; nil
+    /// if this car is the front one. Older cars are ahead.
+    func waitingAhead(of index: Int, at arm: Arm) -> Double? {
+        var nearest: Double?
+        for j in vehicles.indices where j < index {
+            guard case let .waiting(other) = vehicles[j].phase, other.arm == arm else { continue }
+            nearest = max(nearest ?? -.infinity, other.approach)
+        }
+        return nearest
     }
 
     /// Cars that count towards the density: on the ring, merging or about to enter.

@@ -98,6 +98,7 @@ public enum Feedback {
         case .modulePaid: .toll
         // The flow is felt, not heard: the music layers come with the adaptive audio (M11).
         case .flowChanged: nil
+        case .towed: .toll
         case .launched, .tapRejected, .exited, .criminalEntered, .criminalEscaped, .dispatched, .transporterEntered, .transporterEscaped: nil
         }
     }
@@ -127,6 +128,7 @@ public enum Feedback {
         case .modulePaid: nil
         // Only entering the flow is felt; leaving it is felt through the crash that ends it.
         case let .flowChanged(change): change.isInFlow ? .flow : nil
+        case .towed: nil
         case .launched, .tapRejected, .exited, .criminalEntered, .criminalEscaped, .dispatched, .transporterEntered, .transporterEscaped: nil
         }
     }

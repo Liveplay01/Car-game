@@ -28,6 +28,9 @@ struct Popup: Sendable, Equatable {
         case cost(Int)
         /// A crash the insurance paid for completely (M7).
         case covered
+        /// A module did its job (M9): a short pulse and a few sparks in its colour, so the
+        /// player sees it is worth something.
+        case modulePulse(ColorToken)
     }
 
     static let lifetime = 0.9
@@ -290,6 +293,24 @@ enum HUD {
         )
     }
 
+    /// A module paying or towing: a ring that opens and four sparks flying out, half a second.
+    static func addModulePulse(_ popup: Popup, color: ColorToken, reduceMotion: Bool, to list: inout RenderList) {
+        let duration = 0.5
+        guard popup.age < duration else { return }
+        let x = popup.age / duration
+        let fade = 1 - x
+        let base = RenderID.popups + (popup.serial % 1_000)
+        list.add(.arc(center: popup.position, radius: reduceMotion ? 12 : 6 + 14 * Ease.outCubic(x), thickness: 2, startAngle: 0, endAngle: Angle.tau),
+                 color: color, opacity: 0.85 * fade, space: .world, id: base)
+        guard !reduceMotion else { return }
+        for index in 0..<4 {
+            let angle = Double(index) * .pi / 2 + .pi / 4 + Double(popup.serial % 7) * 0.3
+            let from = popup.position + Vec2(angle: angle) * (5 + 14 * Ease.outCubic(x))
+            let to = from + Vec2(angle: angle) * 4 * fade
+            list.add(.line(from: from, to: to, thickness: 1.5), color: color, opacity: fade, space: .world, id: RenderID.moduleSparks + (popup.serial % 1_000) * 4 + index)
+        }
+    }
+
     /// The ring glow (IDEA.md): a soft light along the island's edge that grows a little
     /// with the combo tier and more in the Flow State. `flow` runs 0…1, smoothed by the session.
     static func addFlowGlow(world: World, flow: Double, to list: inout RenderList) {
@@ -318,6 +339,9 @@ enum HUD {
             switch popup.kind {
             case .nearMiss, .perfect:
                 addPrecisionRing(popup, reduceMotion: reduceMotion, to: &list)
+                continue
+            case let .modulePulse(color):
+                addModulePulse(popup, color: color, reduceMotion: reduceMotion, to: &list)
                 continue
             case .tightFit:
                 text = Strings.HUD.tight

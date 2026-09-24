@@ -186,7 +186,7 @@ public struct World: Sendable {
                     let ring = Vehicle.Ring(
                         s: Angle.wrap(layout.entryRingS(m.arm) + overflow, period: layout.ring.length),
                         exitArm: m.exitArm,
-                        distanceToExit: layout.ringDistance(from: m.arm, toExit: m.exitArm) - overflow,
+                        distanceToExit: layout.ringDistance(from: m.arm, toExit: m.exitArm) + Double(m.extraLaps) * layout.ring.length - overflow,
                         justMerged: m,
                         sinceMerge: 0
                     )
@@ -240,6 +240,9 @@ public struct World: Sendable {
                 vehicles[i].phase = .crashed(c)
                 if c.elapsed >= config.crashDuration {
                     vehicles[i].isRetired = true
+                    if let slot = towDepot(covering: vehicles[i].position) {
+                        events.append(.towed(vehicle: vehicles[i].id, slot: slot, time: now))
+                    }
                 }
             }
         }

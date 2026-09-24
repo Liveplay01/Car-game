@@ -424,12 +424,30 @@ public struct Config: Sendable, Equatable {
     /// Standard chests a day for watching an ad.
     public var adChestsPerDay: Int = 3
 
-    // MARK: Late levels (ROADMAP.md, M7: level 14 felt too easy)
+    // MARK: Late levels (ROADMAP.md, M7: level 14 felt too easy; Leo: more cars later on)
 
-    /// From this level on the traffic gets denser, by this many cars per level, up to a limit.
-    public var lateLevel: Int = 10
-    public var lateDensityPerLevel: Double = 0.2
-    public var maxLateDensityBonus: Int = 3
+    /// From this level on the ring fills up: this many cars more per level, up to a limit…
+    public var lateLevel: Int = 6
+    public var lateDensityPerLevel: Double = 0.3
+    public var maxLateDensityBonus: Int = 6
+    /// …and the AI squeezes into smaller gaps, this much less per level down to a floor, so
+    /// the gaps left for your cars get tighter too.
+    public var lateAiGapPerLevel: Double = 0.005
+    public var minAiSafeGap: Double = 0.15
+    /// …AI cars stay longer (a share drives one extra lap, up to a limit)…
+    public var aiLapChance: Double = 0
+    public var lateLapChancePerLevel: Double = 0.03
+    public var maxAiLapChance: Double = 0.5
+    /// …and come quicker: the pause between two AI cars shrinks per level, to a floor.
+    public var lateSpawnFasterPerLevel: Double = 0.04
+    public var minSpawnDelayFactor: Double = 0.4
+    /// AI cars that may queue at one arm: 1 below, one more every `lateLevelsPerQueueCar`
+    /// levels past `lateLevel`, up to a limit. More inflow, so the ring really fills up.
+    public var aiQueuePerArm: Int = 1
+    /// From this level on no AI car leaves at the very next arm: they stay at least two.
+    public var longerStayLevel: Int = 12
+    public var lateLevelsPerQueueCar: Int = 6
+    public var maxAiQueuePerArm: Int = 3
 
     public init() {}
 

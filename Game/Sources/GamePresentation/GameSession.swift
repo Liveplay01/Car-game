@@ -830,9 +830,12 @@ public final class GameSession {
                 if amount > 0 {
                     addPopup(.paid(amount), at: world.layout.stopPose(world.layout.player).position)
                 }
-            case let .modulePaid(_, _, amount, point, _):
+            case let .modulePaid(module, _, amount, point, _):
                 // Right where it was earned, so it is clear which module pays.
+                addPopup(.modulePulse(module == .speedCamera ? .lightBlue : .hazard), at: point)
                 addPopup(.earned(amount), at: point)
+            case let .towed(_, slot, _):
+                addPopup(.modulePulse(.hazard), at: SceneBuilder.towYard(slot, layout: world.layout, config: world.config))
             case .flowChanged:
                 // The glow follows `world.isInFlow` smoothly (`flowLevel`).
                 break

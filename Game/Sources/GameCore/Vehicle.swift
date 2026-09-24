@@ -93,6 +93,8 @@ public struct Vehicle: Sendable, Equatable {
         public var minGap: Double = .infinity
         /// The vehicle that came closest.
         public var closest: Int?
+        /// Laps an AI car drives past its exit before it leaves (higher levels: a fuller ring).
+        public var extraLaps = 0
 
         public var distance: Double { profile.distance(at: elapsed) }
         public var remaining: Double { profile.duration - elapsed }

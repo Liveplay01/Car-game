@@ -78,6 +78,8 @@ struct RiskTests {
         let ten = config.forLevel(10, seed: 1)
         let twenty = config.forLevel(20, seed: 1)
         #expect(twenty.densityEnd > ten.densityEnd)
+        #expect(twenty.aiSafeGap < ten.aiSafeGap)
+        #expect(config.forLevel(80, seed: 1).aiSafeGap >= config.minAiSafeGap)
         #expect(twenty.level == 20)
     }
 }

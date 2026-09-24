@@ -44,6 +44,14 @@ extension Config {
         let denser = min(Int(late * lateDensityPerLevel), maxLateDensityBonus)
         config.densityStart += denser
         config.densityEnd += denser
+        config.aiSafeGap = max(min(minAiSafeGap, config.aiSafeGap), config.aiSafeGap - late * lateAiGapPerLevel)
+        config.aiLapChance = min(maxAiLapChance, late * lateLapChancePerLevel)
+        config.aiQueuePerArm = min(maxAiQueuePerArm, aiQueuePerArm + Int(late) / max(1, lateLevelsPerQueueCar))
+        if level >= longerStayLevel, exitArmsAhead.upperBound >= 2 {
+            config.exitArmsAhead = max(2, exitArmsAhead.lowerBound)...exitArmsAhead.upperBound
+        }
+        let quicker = max(minSpawnDelayFactor, 1 - late * lateSpawnFasterPerLevel)
+        config.aiSpawnDelay = (aiSpawnDelay.lowerBound * quicker)...(aiSpawnDelay.upperBound * quicker)
 
         config.shiftPay = shiftPayBase + shiftPayPerLevel * level
         config.level = level

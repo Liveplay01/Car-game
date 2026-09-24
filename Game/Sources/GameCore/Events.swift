@@ -43,6 +43,8 @@ public enum GameEvent: Sendable, Equatable {
     /// The Perfect Chain reached `Config.flowChain`, or the flow ended with it (M6). Only
     /// feedback reacts: music, glow and haptics grow a little; nothing is shown as text.
     case flowChanged(FlowChange)
+    /// A tow depot cleared a wreck in its zone (M9): `point` is the depot yard's module slot.
+    case towed(vehicle: Int, slot: Int, time: Double)
 }
 
 public struct FlowChange: Sendable, Equatable {
