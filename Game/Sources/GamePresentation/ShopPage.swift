@@ -103,7 +103,7 @@ public enum ShopPage {
     }
 
     static func itemCells(_ layout: Layout) -> [(Cosmetic, Rect)] {
-        Array(zip(Cosmetics.all, grid(Cosmetics.all.count, columns: 3, in: layout.content, maxHeight: 118)))
+        Array(zip(Cosmetics.all, grid(Cosmetics.all.count, columns: 4, in: layout.content, maxHeight: 118)))
     }
 
     /// The buttons of the detail panel: up to two, right-aligned.
@@ -287,9 +287,11 @@ public enum ShopPage {
             id += 1
             list.add(.roundedRect(center: center + Vec2(length * 0.08, 0), size: Vec2(length * 0.36, width * 0.72), cornerRadius: 4 * scale, rotation: 0), color: .vehicleGlass, opacity: opacity, space: .screen, id: id)
             id += 1
-            if isSports {
-                list.add(.line(from: center - Vec2(length / 2 - 3, 0), to: center + Vec2(length / 2 - 3, 0), thickness: 3 * scale), color: .primary, opacity: 0.8 * opacity, space: .screen, id: id)
-                id += 1
+            if let stripe = isSports ? ColorToken.primary : Skins.stripe(item.id) {
+                for y in [-2.2, 2.2] {
+                    list.add(.line(from: center + Vec2(-length / 2 + 3, y * scale), to: center + Vec2(length / 2 - 3, y * scale), thickness: 1.8 * scale), color: stripe, opacity: 0.9 * opacity, space: .screen, id: id)
+                    id += 1
+                }
             }
         case .mapSkin:
             let tint = Skins.color(item.id) ?? .island

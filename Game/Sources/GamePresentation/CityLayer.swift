@@ -5,21 +5,45 @@ import GameCore
 /// player's progress — more blocks and trees with every level, every arm and every module.
 /// Pure drawing, computed from the shift's config, the same on every device. Kept flat and
 /// quiet below the road, so it never competes with the traffic.
+/// What each skin looks like (LOOT.md): a paint, and for some car skins a racing stripe.
 public enum Skins {
-    /// The colour of a car or map skin by its id; nil for anything else.
+    /// The paint of a car skin or the tint of a map skin; nil for anything else.
     public static func color(_ id: String?) -> ColorToken? {
         switch id {
-        case "racingRed": .skinRacingRed
+        case "racingRed", "redStripe": .skinRacingRed
         case "midnight": .skinMidnight
         case "mint": .skinMint
-        case "sunset": .skinSunset
+        case "pearl", "royal": .skinPearl
+        case "olive": .skinOlive
+        case "coral": .skinCoral
+        case "sunset", "tiger": .skinSunset
         case "ice": .skinIce
-        case "carbon": .skinCarbon
+        case "rose": .skinRose
+        case "lime": .skinLime
+        case "copper": .skinCopper
+        case "carbon", "blackGold": .skinCarbon
+        case "nightMint": .vehicleCarGraphite
         case "gold": .skinGold
+        case "lagoon": .skinLagoon
         case "dusk": .mapDusk
+        case "sand": .mapSand
         case "neon": .mapNeon
+        case "forest": .mapForest
         case "autumn": .mapAutumn
+        case "sakura": .mapSakura
         case "aurora": .mapAurora
+        case "ember": .mapEmber
+        default: nil
+        }
+    }
+
+    /// The racing stripe of a car skin, if it has one.
+    public static func stripe(_ id: String?) -> ColorToken? {
+        switch id {
+        case "redStripe": .primary
+        case "blackGold", "royal", "lagoon": .skinGold
+        case "nightMint": .skinMint
+        case "tiger": .vehicleTire
         default: nil
         }
     }

@@ -186,6 +186,8 @@ public struct Career: Sendable, Equatable, Codable {
     /// Daily Shift and Challenges (v1.2): the day last done, the days in a row, and which
     /// challenges of `challengeDay` are done.
     public var dailyDone = -1
+    /// The last day the game was opened, for the toll income collected at login.
+    public var lastLoginDay = -1
     public var dailyStreak = 0
     public var challengeDay = -1
     public var challengesDone: [String] = []
@@ -215,6 +217,7 @@ public struct Career: Sendable, Equatable, Codable {
         chestsOpened = (try? container.decodeIfPresent(Int.self, forKey: .chestsOpened)) ?? 0
         chestsSinceEpic = (try? container.decodeIfPresent(Int.self, forKey: .chestsSinceEpic)) ?? 0
         dailyDone = (try? container.decodeIfPresent(Int.self, forKey: .dailyDone)) ?? -1
+        lastLoginDay = (try? container.decodeIfPresent(Int.self, forKey: .lastLoginDay)) ?? -1
         dailyStreak = (try? container.decodeIfPresent(Int.self, forKey: .dailyStreak)) ?? 0
         challengeDay = (try? container.decodeIfPresent(Int.self, forKey: .challengeDay)) ?? -1
         challengesDone = (try? container.decodeIfPresent([String].self, forKey: .challengesDone)) ?? []

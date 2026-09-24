@@ -60,4 +60,33 @@ struct LookAndFeelTests {
         #expect(!old.vehicleLabels)
         #expect(!old.sound)
     }
+
+    @Test func everyItemHasANameALookAndItsLineInLootMd() throws {
+        let loot = try String(contentsOf: root.appendingPathComponent("LOOT.md"), encoding: .utf8)
+        #expect(Set(Cosmetics.all.map(\.id)).count == Cosmetics.all.count)
+        for item in Cosmetics.all {
+            #expect(Strings.Shop.item(item.id) != item.id, "\(item.id) has no name")
+            if item.kind != .vehicleType {
+                #expect(Skins.color(item.id) != nil, "\(item.id) has no colour")
+            }
+            #expect(loot.contains("`\(item.id)`"), "\(item.id) is missing in LOOT.md")
+        }
+        for rarity in Rarity.allCases {
+            #expect(Cosmetics.all.contains { $0.rarity == rarity })
+        }
+    }
+
+    @Test func theLoginPaysTheTollsOfTheDaysAway() {
+        let config = Config()
+        var career = Career()
+        career.modules = [0: .tollBooth, 1: .tollBooth, 2: .speedCamera]
+        let first = career.collectLoginIncome(day: 10, config: config)
+        let sameDay = career.collectLoginIncome(day: 10, config: config)
+        let twoDays = career.collectLoginIncome(day: 12, config: config)
+        // At most `loginMaxDays` days count.
+        let long = career.collectLoginIncome(day: 30, config: config)
+        #expect(first == nil && sameDay == nil)
+        #expect(twoDays == 2 * config.tollIncomePerDay * 2)
+        #expect(long == 2 * config.tollIncomePerDay * config.loginMaxDays)
+    }
 }

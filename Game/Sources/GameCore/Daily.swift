@@ -49,6 +49,21 @@ public enum Challenge: String, Sendable, Equatable, CaseIterable, Codable {
 }
 
 extension Career {
+    /// Daily Login (v1.2): the first launch of a new day collects what the toll booths
+    /// earned while the player was away, per booth and day, for at most `loginMaxDays`
+    /// days. Returns the money, or nil if there was nothing (first launch, same day, no booth).
+    @discardableResult
+    public mutating func collectLoginIncome(day: Int, config: Config) -> Int? {
+        defer { lastLoginDay = max(lastLoginDay, day) }
+        guard lastLoginDay >= 0, day > lastLoginDay else { return nil }
+        let days = min(day - lastLoginDay, config.loginMaxDays)
+        let booths = modules.values.count(where: { $0 == .tollBooth })
+        let income = booths * config.tollIncomePerDay * days
+        guard income > 0 else { return nil }
+        money += income
+        return income
+    }
+
     /// The Daily Shift of `day`: a seed everyone gets that day, and always a city event.
     public static func dailySeed(day: Int) -> UInt64 {
         UInt64(bitPattern: Int64(day)) &* 0xD1B5_4A32_D192_ED03 ^ 0xDA11_5A1F_7000_0001

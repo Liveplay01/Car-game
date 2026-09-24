@@ -61,19 +61,40 @@ public struct Cosmetic: Sendable, Equatable, Identifiable {
 }
 
 public enum Cosmetics {
+    /// Everything a chest can hold (LOOT.md). Only the player's own normal cars and the map
+    /// wear skins; police, criminal and transporter keep their look, it is information.
     public static let all: [Cosmetic] = [
+        // Car skins
         Cosmetic(id: "racingRed", kind: .carSkin, rarity: .common),
         Cosmetic(id: "midnight", kind: .carSkin, rarity: .common),
         Cosmetic(id: "mint", kind: .carSkin, rarity: .common),
-        Cosmetic(id: "dusk", kind: .mapSkin, rarity: .common),
+        Cosmetic(id: "pearl", kind: .carSkin, rarity: .common),
+        Cosmetic(id: "olive", kind: .carSkin, rarity: .common),
+        Cosmetic(id: "coral", kind: .carSkin, rarity: .common),
         Cosmetic(id: "sunset", kind: .carSkin, rarity: .rare),
         Cosmetic(id: "ice", kind: .carSkin, rarity: .rare),
-        Cosmetic(id: "neon", kind: .mapSkin, rarity: .rare),
+        Cosmetic(id: "rose", kind: .carSkin, rarity: .rare),
+        Cosmetic(id: "lime", kind: .carSkin, rarity: .rare),
+        Cosmetic(id: "copper", kind: .carSkin, rarity: .rare),
+        Cosmetic(id: "redStripe", kind: .carSkin, rarity: .rare),
         Cosmetic(id: "carbon", kind: .carSkin, rarity: .epic),
-        Cosmetic(id: "autumn", kind: .mapSkin, rarity: .epic),
-        Cosmetic(id: "sportsCar", kind: .vehicleType, rarity: .epic),
+        Cosmetic(id: "blackGold", kind: .carSkin, rarity: .epic),
+        Cosmetic(id: "nightMint", kind: .carSkin, rarity: .epic),
+        Cosmetic(id: "tiger", kind: .carSkin, rarity: .epic),
         Cosmetic(id: "gold", kind: .carSkin, rarity: .legendary),
+        Cosmetic(id: "royal", kind: .carSkin, rarity: .legendary),
+        Cosmetic(id: "lagoon", kind: .carSkin, rarity: .legendary),
+        // Map skins
+        Cosmetic(id: "dusk", kind: .mapSkin, rarity: .common),
+        Cosmetic(id: "sand", kind: .mapSkin, rarity: .common),
+        Cosmetic(id: "neon", kind: .mapSkin, rarity: .rare),
+        Cosmetic(id: "forest", kind: .mapSkin, rarity: .rare),
+        Cosmetic(id: "autumn", kind: .mapSkin, rarity: .epic),
+        Cosmetic(id: "sakura", kind: .mapSkin, rarity: .epic),
         Cosmetic(id: "aurora", kind: .mapSkin, rarity: .legendary),
+        Cosmetic(id: "ember", kind: .mapSkin, rarity: .legendary),
+        // Vehicle types
+        Cosmetic(id: "sportsCar", kind: .vehicleType, rarity: .epic),
     ]
 
     public static func item(_ id: String) -> Cosmetic? { all.first { $0.id == id } }

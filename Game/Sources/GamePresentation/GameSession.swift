@@ -175,6 +175,18 @@ public final class GameSession {
         playingDuty = save.career.duty
         world = World(config: save.career.config(from: config, seed: seed), seed: seed, mode: .shift, startsOnFirstTap: true)
         effects = CrashEffects(seed: seed)
+        collectLoginIncome()
+    }
+
+    /// Daily Login (v1.2): the first launch of a day banks what the toll booths earned
+    /// while the game was closed.
+    public func collectLoginIncome() {
+        guard let income = save.career.collectLoginIncome(day: today, config: config) else {
+            store.save(save)
+            return
+        }
+        store.save(save)
+        showNotice(Strings.Daily.welcomeBack(format.number(income)))
     }
 
     /// Simulation speed: `--time-scale`, the debug slow motion (F2) and the short slow
@@ -890,7 +902,7 @@ public final class GameSession {
         WeatherLayer.addGround(world: world, to: &list)
         effects.addGround(world: world, alpha: clock.alpha, softBody: !reduceMotion, to: &list)
         SceneBuilder.addShadows(of: world, alpha: clock.alpha, to: &list)
-        SceneBuilder.addVehicles(of: world, alpha: clock.alpha, carSkin: Skins.color(save.career.carSkin), springTime: reduceMotion ? nil : world.time, to: &list)
+        SceneBuilder.addVehicles(of: world, alpha: clock.alpha, carSkin: Skins.color(save.career.carSkin), carStripe: Skins.stripe(save.career.carSkin), springTime: reduceMotion ? nil : world.time, to: &list)
         SceneBuilder.addTowTrucks(of: world, to: &list)
         if save.settings.vehicleLabels {
             SceneBuilder.addLabels(of: world, alpha: clock.alpha, to: &list)

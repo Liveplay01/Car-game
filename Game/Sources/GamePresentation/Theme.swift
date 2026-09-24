@@ -77,6 +77,17 @@ public enum ColorToken: Sendable, Equatable, CaseIterable {
     case skinIce
     case skinCarbon
     case skinGold
+    case skinPearl
+    case skinOlive
+    case skinCoral
+    case skinRose
+    case skinLime
+    case skinCopper
+    case skinLagoon
+    case mapSand
+    case mapForest
+    case mapSakura
+    case mapEmber
     // Rarity frames in the shop (M10): quiet, one colour each.
     case rarityCommon
     case rarityRare
@@ -150,6 +161,17 @@ public enum Theme {
         case .skinIce: ColorRGBA(hex: 0xBFE6F5)
         case .skinCarbon: ColorRGBA(hex: 0x2E3136)
         case .skinGold: ColorRGBA(hex: 0xE3C15A)
+        case .skinPearl: ColorRGBA(hex: 0xF2EEE6)
+        case .skinOlive: ColorRGBA(hex: 0x7A8450)
+        case .skinCoral: ColorRGBA(hex: 0xF27B6B)
+        case .skinRose: ColorRGBA(hex: 0xE58FB0)
+        case .skinLime: ColorRGBA(hex: 0xB5E35A)
+        case .skinCopper: ColorRGBA(hex: 0xB8703F)
+        case .skinLagoon: ColorRGBA(hex: 0x2BB3A8)
+        case .mapSand: ColorRGBA(hex: 0xD9C08C)
+        case .mapForest: ColorRGBA(hex: 0x3F8F5A)
+        case .mapSakura: ColorRGBA(hex: 0xF2A7C3)
+        case .mapEmber: ColorRGBA(hex: 0xFF6A3D)
         case .rarityCommon: ColorRGBA(hex: 0x9AA3AE)
         case .rarityRare: ColorRGBA(hex: 0x4FA3FF)
         case .rarityEpic: ColorRGBA(hex: 0xB45CF0)

@@ -414,6 +414,9 @@ public struct Config: Sendable, Equatable {
     public var perfectRunPayFactor: Double = 0.5
     /// Daily Shift: money for completing it, times the days in a row (up to 7).
     public var dailyPay: Int = 500
+    /// Daily Login: what a toll booth earns per day away, for at most this many days.
+    public var tollIncomePerDay: Int = 600
+    public var loginMaxDays: Int = 3
     /// Price of a Standard chest in the shop (in-game money only).
     public var standardChestPrice: Int = 5_000
 

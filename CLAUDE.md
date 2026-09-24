@@ -9,6 +9,7 @@ Kreisverkehr-Timing-Spiel fürs iPhone (One-Tap, inspiriert von "Car Circle").
 | [FOUNDATION.md](FOUNDATION.md) | Basis: Technik, Regeln mit Startwerten, Architektur |
 | [ROADMAP.md](ROADMAP.md) | Meilensteine M0–M13 |
 | [TESTING.md](TESTING.md) | So wird getestet |
+| [LOOT.md](LOOT.md) | Was in den Truhen steckt: Skins, Fahrzeugtypen, Odds |
 
 ## Feste Entscheidungen – nicht neu vorschlagen
 

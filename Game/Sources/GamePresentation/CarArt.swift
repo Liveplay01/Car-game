@@ -43,6 +43,7 @@ enum CarArt {
         static let flames = 24
         static let groundGlow = 28
         static let outline = 32
+        static let stripes = 33
     }
 
     struct Shape {
@@ -229,6 +230,7 @@ enum CarArt {
         opacity: Double = 1,
         lights: Double? = nil,
         skin: ColorToken? = nil,
+        stripe: ColorToken? = nil,
         springTime: Double? = nil,
         config: Config,
         to list: inout RenderList
@@ -321,6 +323,15 @@ enum CarArt {
                         color: .muted, opacity: opacity, space: .world, id: slot(Slot.cracks + index)
                     )
                 }
+            }
+        }
+        // A racing stripe (LOOT.md): two thin lines down the middle, over roof and glass.
+        // Only on an intact car; a wreck shows its dents instead.
+        if let stripe, dents.isEmpty {
+            let half = length(of: type, config: config) / 2 - 2
+            for (index, y) in [-1.6, 1.6].enumerated() {
+                list.add(.line(from: world(Vec2(-half, y), pose), to: world(Vec2(half, y), pose), thickness: 1.3),
+                         color: stripe, opacity: opacity * 0.9, space: .world, id: slot(Slot.stripes + index))
             }
         }
     }
