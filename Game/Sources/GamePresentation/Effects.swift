@@ -220,7 +220,7 @@ struct CrashEffects {
     // MARK: - Drawing
 
     /// Below the moving cars: smoke, parts lying on the road and the wrecks.
-    func addGround(world: World, alpha: Double, to list: inout RenderList) {
+    func addGround(world: World, alpha: Double, softBody: Bool = true, to list: inout RenderList) {
         for particle in particles {
             let x = particle.age / particle.lifetime
             switch particle.kind {
@@ -236,7 +236,7 @@ struct CrashEffects {
         }
         for vehicle in world.vehicles {
             guard case let .crashed(state) = vehicle.phase else { continue }
-            addWreck(vehicle, state: state, pose: SceneBuilder.interpolatedPose(vehicle, alpha: alpha), config: world.config, to: &list)
+            addWreck(vehicle, state: state, pose: SceneBuilder.interpolatedPose(vehicle, alpha: alpha), config: world.config, springTime: softBody ? world.time : nil, to: &list)
         }
     }
 
@@ -281,11 +281,11 @@ struct CrashEffects {
     }
 
     /// The dented wreck (`CarArt`), charred if it burns, with flames at the point of impact.
-    private func addWreck(_ vehicle: Vehicle, state: Vehicle.Crashed, pose: Path.Pose, config: Config, to list: inout RenderList) {
+    private func addWreck(_ vehicle: Vehicle, state: Vehicle.Crashed, pose: Path.Pose, config: Config, springTime: Double?, to list: inout RenderList) {
         let fade = 1 - Ease.clamp01((state.elapsed - (config.crashDuration - Self.wreckFade)) / Self.wreckFade)
         let fire = fires[vehicle.id]
         let char = fire == nil ? 0.35 : Ease.outCubic(state.elapsed / 0.5)
-        CarArt.add(id: vehicle.id, type: vehicle.type, pose: pose, dents: vehicle.dents, char: char, opacity: fade, config: config, to: &list)
+        CarArt.add(id: vehicle.id, type: vehicle.type, pose: pose, dents: vehicle.dents, char: char, opacity: fade, springTime: springTime, config: config, to: &list)
 
         // Flames, strongest right after the crash, dying down.
         guard let strength = fire else { return }

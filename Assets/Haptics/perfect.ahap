@@ -1,0 +1,25 @@
+{
+  "Version": 1.0,
+  "Metadata": {
+    "Project": "Car Game",
+    "Description": "perfect"
+  },
+  "Pattern": [
+    {
+      "Event": {
+        "Time": 0,
+        "EventType": "HapticTransient",
+        "EventParameters": [
+          {
+            "ParameterID": "HapticIntensity",
+            "ParameterValue": 0.6
+          },
+          {
+            "ParameterID": "HapticSharpness",
+            "ParameterValue": 1.0
+          }
+        ]
+      }
+    }
+  ]
+}

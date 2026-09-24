@@ -229,9 +229,11 @@ enum CarArt {
         opacity: Double = 1,
         lights: Double? = nil,
         skin: ColorToken? = nil,
+        springTime: Double? = nil,
         config: Config,
         to list: inout RenderList
     ) {
+        let dents = SoftBody.dents(dents, type: type, at: springTime)
         let slot = { RenderID.vehicle(id, part: $0) }
         let body = bodyColor(type, id: id, skin: skin)
         let paintedInThisCar = bodyColor(type, skin: skin)

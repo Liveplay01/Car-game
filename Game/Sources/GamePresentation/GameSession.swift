@@ -120,6 +120,14 @@ public final class GameSession {
     private var sinceComboTier = Double.infinity
     /// Flow State as the ring glow shows it, 0…1: it fades in and out instead of switching.
     private var flowLevel = 0.0
+    /// The best moment of the running shift, and the one the result freezes on (M11).
+    private var highlight: Highlight?
+    private var shownHighlight: Highlight?
+
+    /// What the adaptive music should play right now (M11); the app fades its stems to it.
+    public var musicMix: MusicMix {
+        screen == .playing ? MusicMix.playing(world, flow: flowLevel) : .silent
+    }
     /// Seconds the flow glow needs to fade in or out.
     static let flowFade = 0.6
     /// A shift interrupted from outside (call, home screen): frozen until the player is back.
@@ -648,6 +656,9 @@ public final class GameSession {
     /// Popups, debug markers, sound, haptics and the end of the shift.
     private func react(to events: [GameEvent]) {
         for event in events {
+            if screen == .playing, let candidate = Highlight.candidate(for: event, in: world), candidate.isBetter(than: highlight) {
+                highlight = candidate
+            }
             switch event {
             case let .merged(report):
                 markers.append(DebugMarker(kind: .merge(gap: report.minGap), position: report.position, age: 0))
@@ -737,7 +748,16 @@ public final class GameSession {
             showNotice(Strings.Mastery.toast(completed))
         }
         pendingSummary = ShiftSummary(result: result, level: playingLevel, isNewHighscore: isNew, previousHighscore: previous)
+        shownHighlight = highlight
+        highlight = nil
         resultCountdown = Self.resultDelay
+    }
+
+    /// The result is showing and its first moments belong to the highlight. Not with
+    /// Reduce Motion: a sudden freeze is motion too.
+    private var freezesOnHighlight: Bool {
+        guard case .result = screen, !reduceMotion else { return false }
+        return resultAge < Highlight.duration
     }
 
     private func addPopup(_ kind: Popup.Kind, at position: Vec2) {
@@ -778,17 +798,21 @@ public final class GameSession {
         // The crash shake moves the scene; the HUD (screen space) stays still.
         camera.focus += effects.shakeOffset
         var list = RenderList(camera: camera, background: .background)
-        CityLayer.add(world: world, to: &list)
-        SceneBuilder.addRoad(world.layout, config: world.config, to: &list)
-        CityLayer.addMapSkin(Skins.color(save.career.mapSkin), world: world, to: &list)
-        WeatherLayer.addCityEvent(world: world, to: &list)
-        WeatherLayer.addGround(world: world, to: &list)
-        effects.addGround(world: world, alpha: clock.alpha, to: &list)
-        SceneBuilder.addShadows(of: world, alpha: clock.alpha, to: &list)
-        SceneBuilder.addVehicles(of: world, alpha: clock.alpha, carSkin: Skins.color(save.career.carSkin), to: &list)
-        SceneBuilder.addTowTrucks(of: world, to: &list)
+        // Right after a shift the scene freezes on its best moment for a breath (M11).
+        let frozen = freezesOnHighlight ? shownHighlight : nil
+        let scene = frozen?.world ?? world
+        CityLayer.add(world: scene, to: &list)
+        SceneBuilder.addRoad(scene.layout, config: scene.config, to: &list)
+        CityLayer.addMapSkin(Skins.color(save.career.mapSkin), world: scene, to: &list)
+        WeatherLayer.addCityEvent(world: scene, to: &list)
+        WeatherLayer.addGround(world: scene, to: &list)
+        effects.addGround(world: scene, alpha: clock.alpha, softBody: !reduceMotion, to: &list)
+        SceneBuilder.addShadows(of: scene, alpha: clock.alpha, to: &list)
+        SceneBuilder.addVehicles(of: scene, alpha: clock.alpha, carSkin: Skins.color(save.career.carSkin), springTime: reduceMotion ? nil : scene.time, to: &list)
+        SceneBuilder.addTowTrucks(of: scene, to: &list)
         effects.addAir(to: &list)
-        WeatherLayer.addAir(world: world, time: world.time, reduceMotion: reduceMotion, to: &list)
+        WeatherLayer.addAir(world: scene, time: scene.time, reduceMotion: reduceMotion, to: &list)
+        frozen?.addMarker(age: resultAge, reduceMotion: reduceMotion, to: &list)
 
         switch screen {
         case .playing:

@@ -14,12 +14,12 @@ Stand: 24.09.2026 · Die Details zur Basis (M0–M2) stehen in [FOUNDATION.md](F
 | M3 | Polizei & Verbrecher ✅ (Playtest offen) | L | Verbrecher jagen, Einsatzfahrt |
 | M4 | Geldtransporter ✅ (Playtest offen) | M | Transporter abschirmen, erstes Geld |
 | M5 | Wirtschaft & Fortschritt (Level ✅, Geld & Upgrades ✅, Tab-Navigation ✅, fließender Übergang ✅, Gefahrenstufe ✅, Street Builder ✅) | L | Geld verdienen und ausgeben, Gefahrenstufe |
-| M6 | Präzision & Flow | M | Perfect Input, Near Miss, Perfect Chain und Flow State spüren |
-| M7 | Risiko & Versicherung | M | Crash-Kosten ab Level 20, Verlust bei Flucht, Insurance, Robbery Insurance, neue Upgrades, Kurve ab Level 10 |
-| M8 | Wetter & City Events | L | Regen, Sturm und Ereignisse, die den Verkehr wirklich verändern |
-| M9 | Stadt & Module | M | Modulplätze im Street Builder, Abschlepp-Depot, sichtbar wachsende Stadt |
-| M10 | Fahrzeugtypen, Mastery & Truhen | L | Sportwagen & Co., unsichtbare Mastery, Truhen mit Skins im Shop |
-| M11 | Look & Feel | M | finale Farben, Formen, Effekte, Takedown-Deformation, Highlight, HUD, Sounds |
+| M6 | Präzision & Flow ✅ (Playtest offen) | M | Perfect Input, Near Miss, Perfect Chain und Flow State spüren |
+| M7 | Risiko & Versicherung ✅ (Playtest offen) | M | Crash-Kosten ab Level 20, Verlust bei Flucht, Insurance, Robbery Insurance, neue Upgrades, Kurve ab Level 10 |
+| M8 | Wetter & City Events ✅ (Playtest offen) | L | Regen, Sturm und Ereignisse, die den Verkehr wirklich verändern |
+| M9 | Stadt & Module ✅ (Playtest offen) | M | Modulplätze im Street Builder, Abschlepp-Depot, sichtbar wachsende Stadt |
+| M10 | Fahrzeugtypen, Mastery & Truhen ✅ (Playtest offen) | L | Sportwagen & Co., unsichtbare Mastery, Truhen mit Skins im Shop |
+| M11 | Look & Feel (Soft-Body ✅, Highlight ✅, Haptik-Muster ✅, Musik-Mix ✅; Sounds, Design-Pass, Screens, Icon offen) | M | finale Farben, Formen, Effekte, Takedown-Deformation, Highlight, HUD, Sounds |
 
 ### Phase 2 · iPad: nur Fertigmachen (Swift Playgrounds)
 
@@ -482,6 +482,13 @@ Angst bekommt, etwas auszuprobieren.
 
 **Fertig, wenn:** Crash und Flucht ab Level 20 im Ergebnis sichtbar kosten, beide
 Versicherungen die Kosten sichtbar senken und die Karriere-Simulation stabil bleibt.
+
+**Gemessen (24.09.2026, `Sim --curve --shifts 200`, jetzt mit Wetter und Events):** Der
+Mensch-Bot schafft ab Level 5 durchgehend 88–94 % – mit und ohne die dichteren späten
+Level (+1 Auto ab Level 15, bis +3). Der Bot schätzt Lücken perfekt und crasht kaum, deshalb
+spürt er weder Dichte noch Wetter (das wirkt vor allem nach einem Crash). Ob Level 14 jetzt
+schwer genug ist, entscheidet der Playtest; Stellschrauben: `lateDensityPerLevel`,
+`maxLateDensityBonus`, `tempoPerLevel`.
 
 ---
 

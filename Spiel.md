@@ -194,7 +194,15 @@ Plattform
   - Street Builder (Ziehen & Ablegen, 4→8 Arme, Preise, Ring-Geometrie ändert sich)
   - Ring-Module: **Toll Booth** (LKW zahlen, Stau) & **Speed Camera** (Strafe über Limit, Bremsen) – Kern, Zeichnen, Laufbahn fertig, Tests grün
 
-### 🟡 In Arbeit / Offen (M11 Look & Feel)
+### ✅ Neu umgesetzt (24.09.2026, M6–M10, Details in ROADMAP.md)
+- **M6 Präzision & Flow:** Near Miss, Perfect Input, Perfect Chain, Flow State (Ring-Glow, Haptik)
+- **M7 Risiko & Versicherung:** Crash-Kosten und Verlust bei Flucht ab Level 20, Insurance, Robbery Insurance, Freight, Double Run, dichtere Level ab 10
+- **M8 Wetter & City Events:** Light Rain bis Extreme als dritte Schwierigkeitsachse, Baustelle, Sperrung, Konzert, VIP-Konvoi, Polizeiaktion
+- **M9 Stadt & Module:** Module im Street Builder platzieren, Abschlepp-Depot, wachsende Stadt
+- **M10 Sammeln:** Sportwagen, unsichtbare Mastery, Truhen mit offenen Odds und Pity, Skins, Shop-Tab
+- **M11 (begonnen):** Soft-Body-Takedown, Highlight beim Schichtwechsel, `.ahap`-Haptikmuster, adaptiver Musik-Mix
+
+### 🟡 Offen aus dem alten M6 (jetzt M11 Look & Feel)
 1. **Bugfix:** Geldtransporter über Schichtende hinaus → **behoben** (verwaistes Fahrzeug wird sauber zum normalen Auto)
 2. **Balancing:** Level 14 noch zu leicht → Kurve ab Level 10 nachziehen
 3. **Warnung im Innenteil:** Keil auf Mittelinsel statt an Zufahrt → **im Code, Playtest offen**
@@ -232,6 +240,7 @@ Plattform
 
 | Phase | Meilenstein | Ziel |
 |---|---|---|
+| **Phase 1 (Windows)** | **M6–M10** ✅ neue Spielsysteme aus IDEA.md | siehe oben |
 | **Phase 1 (Windows)** | **M11 Look & Feel** | Finale Farben, Formen, Effekte, HUD, Sounds, Haptik-Muster (`.ahap`), Screen-Entwürfe für SwiftUI, App-Icon |
 | **Phase 2 (iPad)** | **M12 iPhone-App** | `App.swiftpm` anlegen, SpriteKit-Adapter, Touch/Haptik/Audio-Adapter, SwiftUI-Menüs aus `ScreenFlow`, Timing-Feintuning auf Gerät, Tests auf iPhone 11/SE (A13) |
 | **Phase 3** | **M13 v1.0 Launch** | Apple Developer Program (99 $), TestFlight-Beta (Website), App Store Einreichung, Privacy Policy & Support-Seite, Launch |

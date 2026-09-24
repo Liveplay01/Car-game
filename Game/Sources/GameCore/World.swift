@@ -464,8 +464,9 @@ public struct World: Sendable {
         if let near = vehicles[index].dents.firstIndex(where: { $0.point.distance(to: local) < 4 }) {
             let dent = vehicles[index].dents[near]
             vehicles[index].dents[near].depth = min(config.maxDent * 1.3, dent.depth + depth * 0.5)
+            vehicles[index].dents[near].time = time
         } else if vehicles[index].dents.count < 8 {
-            vehicles[index].dents.append(Dent(point: local, depth: depth))
+            vehicles[index].dents.append(Dent(point: local, depth: depth, time: time))
         }
     }
 

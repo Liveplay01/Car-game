@@ -209,4 +209,6 @@ public struct Dent: Sendable, Equatable {
     public var point: Vec2
     /// How deep, in world units.
     public var depth: Double
+    /// World time of the hit that made or deepened it, for the soft-body spring (M11).
+    public var time = 0.0
 }

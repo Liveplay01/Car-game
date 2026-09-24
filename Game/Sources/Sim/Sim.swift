@@ -71,7 +71,7 @@ struct Sim {
                 group.addTask {
                     let shiftSeed = seed + UInt64(index)
                     // Like the game builds a shift: level, then the roundabout, then the duty.
-                    return (index, kind.play(config: config.forLevel(level, seed: shiftSeed).forArms().forDuty(duty), seed: shiftSeed))
+                    return (index, kind.play(config: Self.shiftConfig(config, level: level, duty: duty, seed: shiftSeed), seed: shiftSeed))
                 }
             }
             var results: [(Int, ShiftResult)] = []
@@ -108,6 +108,15 @@ extension Sim {
     /// One player's career with the human-like bot: from level 1, shift after shift. After
     /// every shift it buys what it can afford, the cheapest step first. Returns the career
     /// after each shift and whether that shift was completed.
+    /// One shift of the curve as the game plays it: level, roundabout, duty, and the
+    /// weather and city event drawn for it (M8).
+    static func shiftConfig(_ config: Config, level: Int, duty: Duty, seed: UInt64) -> Config {
+        let shift = config.forLevel(level, seed: seed).forArms().forDuty(duty)
+        return shift
+            .forWeather(shift.drawWeather(level: level, seed: seed))
+            .forCityEvent(shift.drawCityEvent(level: level, seed: seed), seed: seed)
+    }
+
     static func career(shifts: Int, seed: UInt64, config: Config, duty: Duty) -> [(career: Career, completed: Bool, earned: Int)] {
         var career = Career()
         career.duty = duty

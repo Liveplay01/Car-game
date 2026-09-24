@@ -1,4 +1,41 @@
-/// Easing curves (FOUNDATION.md 3, motion rules). Springs come with the effects in M11.
+import Foundation
+import GameCore
+
+/// The soft-body layer of a takedown (IDEA.md; ROADMAP.md, M11): the metal gives way,
+/// springs back and keeps a rest dent. Only drawn, on top of the real rigid-body physics.
+public enum SoftBody {
+    /// How much of a dent shows `age` seconds after the hit: 0–30 ms the impact, 30–120 ms
+    /// the body gives way beyond the rest dent (`peak`), then a damped spring back to it (1).
+    public static let peak = 1.6
+
+    public static func factor(age: Double) -> Double {
+        guard age >= 0 else { return 1 }
+        if age < 0.03 { return 0.4 * age / 0.03 }
+        if age < 0.12 {
+            let x = (age - 0.03) / 0.09
+            return 0.4 + (peak - 0.4) * x * x * (3 - 2 * x)
+        }
+        let t = age - 0.12
+        return 1 + (peak - 1) * exp(-t / 0.08) * cos(t * 25)
+    }
+
+    /// Only the takedown pair gets the spring; every other crash dents at once.
+    static func springs(_ type: VehicleType) -> Bool {
+        type == .pickup || type == .police
+    }
+
+    /// The dents as they look at `time`; nil time (Reduce Motion) shows the rest dents.
+    static func dents(_ dents: [Dent], type: VehicleType, at time: Double?) -> [Dent] {
+        guard let time, springs(type) else { return dents }
+        return dents.map { dent in
+            var shown = dent
+            shown.depth *= factor(age: time - dent.time)
+            return shown
+        }
+    }
+}
+
+/// Easing curves (FOUNDATION.md 3, motion rules).
 public enum Ease {
     public static func clamp01(_ x: Double) -> Double { min(max(x, 0), 1) }
 

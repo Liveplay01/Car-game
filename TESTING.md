@@ -97,6 +97,8 @@ swift run -c release TestWindow --play                           # direkt in die
 swift run -c release TestWindow --level 8                        # zu Level 8 springen (wird gespeichert)
 swift run -c release TestWindow --tab upgrades                   # auf einer Seite starten
 swift run -c release TestWindow --duty high                      # mit High Alert starten
+swift run -c release TestWindow --weather storm                  # Wetter erzwingen: clear, lightRain, heavyRain, storm, extreme (M8)
+swift run -c release TestWindow --event roadworks                # City Event erzwingen: roadworks, roadClosure, concert, vipConvoy, policeOperation (M8)
 swift run -c release TestWindow --tab streetBuilder               # direkt in den Street Builder
 swift run -c release TestWindow --debug                          # mit Debug-Overlay starten
 swift run -c release TestWindow --autotap 0.9                    # tippt alle 0,9 s automatisch (startet direkt)
@@ -169,7 +171,7 @@ swift run -c release Sim --shifts 1000 --seed 42
 
 Drei Bots spielen je 1000 Schichten parallel auf allen Kernen (etwa 10 s; für
 schnelle Vergleiche `--shifts 200`). Jede Schicht wird für ein Level gebaut, ohne
-Angabe für `hardLevel` (5); `--level 12` wählt ein anderes. `--curve` spielt die Level
+Angabe für `hardLevel` (5); `--level 12` wählt ein anderes. `--curve` (seit M8 mit Wetter und City Events, wie im Spiel ausgelost) spielt die Level
 1–30 durch und zeigt pro Level, wie oft Mensch- und perfekter Bot es schaffen und wie
 lange sie brauchen. `--career 120` spielt ganze Laufbahnen ab Level 1 mit Kaufen
 zwischen den Schichten, `--duty high` alles auf Gefahrenstufe (ROADMAP.md, M5). Stand M5, Level 5 (12–16 Autos, keine Uhr):

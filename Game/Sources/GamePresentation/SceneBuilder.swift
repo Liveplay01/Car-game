@@ -159,7 +159,7 @@ public enum SceneBuilder {
     /// All vehicles on the road. Crashed ones are not drawn here: the crash effects draw
     /// them as wrecks. A police car's lights flash once it drives off, and on every police
     /// car, the queue included, while a criminal is on the run.
-    public static func addVehicles(of world: World, alpha: Double, carSkin: ColorToken? = nil, to list: inout RenderList) {
+    public static func addVehicles(of world: World, alpha: Double, carSkin: ColorToken? = nil, springTime: Double? = nil, to list: inout RenderList) {
         let chase = world.criminal.vehicle != nil
         let lights = (world.time * 3).truncatingRemainder(dividingBy: 1)
         for vehicle in world.vehicles where !vehicle.isCrashed {
@@ -173,6 +173,7 @@ public enum SceneBuilder {
                 lights: vehicle.type == .police && flashing ? lights : nil,
                 // Skins only ever go on the player own normal cars (M10).
                 skin: vehicle.owner == .player && (vehicle.type == .car || vehicle.type == .sportsCar) ? carSkin : nil,
+                springTime: springTime,
                 config: world.config,
                 to: &list
             )

@@ -1,0 +1,25 @@
+{
+  "Version": 1.0,
+  "Metadata": {
+    "Project": "Car Game",
+    "Description": "seized"
+  },
+  "Pattern": [
+    {
+      "Event": {
+        "Time": 0,
+        "EventType": "HapticTransient",
+        "EventParameters": [
+          {
+            "ParameterID": "HapticIntensity",
+            "ParameterValue": 0.9
+          },
+          {
+            "ParameterID": "HapticSharpness",
+            "ParameterValue": 1.0
+          }
+        ]
+      }
+    }
+  ]
+}
