@@ -182,3 +182,51 @@ struct TransporterTests {
         #expect(world.transporter.phase == .idle(next: .infinity))
     }
 }
+/// Regression: the secure zone check looked behind the zone, so a car merging right in
+/// front of or behind the transporter never counted as shielding it.
+@Test func theSecureZoneIsAroundTheTransporter() {
+    var world = transporterShift(police: false) { $0.transporterFirst = 0.5...0.5 }
+    guard let truck = world.runUntilTransporter() else {
+        Issue.record("no transporter")
+        return
+    }
+    world.run(steps: World.stepRate)
+    guard case let .ring(r) = world.vehicle(id: truck)?.phase else {
+        Issue.record("the transporter is not on the ring")
+        return
+    }
+    let half = world.config.transporterSecureArc / 2
+    func inZone(_ offset: Double) -> Bool { world.isInSecureZone(Angle.wrap(r.s + offset, period: world.layout.ring.length)) }
+    for offset in [-half + 2, -10, 0, 10, half - 2] {
+        #expect(inZone(offset), "\(offset)")
+    }
+    for offset in [-half - 30, half + 30, -2 * half] {
+        #expect(!inZone(offset), "\(offset)")
+    }
+}
+
+/// Leo: no criminal drives into the money transporter's area, neither when it enters nor
+/// on the ring. Many shifts where both are out at once.
+@Test(arguments: [8, 15, 25])
+func theCriminalKeepsOutOfTheTransportersArea(level: Int) {
+    for seed in UInt64(1)...10 {
+        var config = Config().forLevel(level, seed: seed)
+        config.criminalFirst = 1...2
+        config.transporterFirst = 1...2
+        config.policeShare = 0
+        var world = World(config: config, seed: seed)
+        var both = 0
+        for _ in 0..<(40 * World.stepRate) {
+            world.step()
+            _ = world.takeEvents()
+            guard let pickup = world.criminal.vehicle, let pv = world.vehicle(id: pickup), case let .ring(p) = pv.phase,
+                  let truck = world.vehicles.first(where: { $0.type == .transporter && !$0.isCrashed }), case let .ring(t) = truck.phase else { continue }
+            both += 1
+            let ahead = world.layout.ringDistance(from: p.s, to: t.s)
+            let distance = min(ahead, world.layout.ring.length - ahead)
+            #expect(distance >= world.config.transporterSecureArc / 2, "level \(level), seed \(seed), t \(world.time)")
+            if distance < world.config.transporterSecureArc / 2 { break }
+        }
+        _ = both
+    }
+}

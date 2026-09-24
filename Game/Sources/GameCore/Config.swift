@@ -101,6 +101,18 @@ public struct Config: Sendable, Equatable {
     public var driverAcceleration: Double = 0.4
     /// Room (surface to surface) drivers leave when they stop behind something.
     public var stopGap: Double = 6
+    /// Drivers following slow traffic keep this much more room (seconds of the lead's speed),
+    /// so they roll up gently instead of braking to the last metre.
+    public var followMargin: Double = 0.25
+    /// Behind a car that still moves faster than `standingSpeed`, drivers only brake once it
+    /// would take this much (share of g); a little slower is let be.
+    public var followBraking: Double = 0.15
+    public var standingSpeed: Double = 20
+    /// Braking harder than this (share of g) counts as stuck in a jam (`botJamPatience`).
+    public var jamBraking: Double = 0.25
+    /// With no wreck left, out of the flow this long without a break means a stop-and-go
+    /// wave (seconds): a slow zone or a queue lets a driver back into the flow sooner.
+    public var waveTime: Double = 6
     /// A driver reacts once keeping the speed would need at least this much braking (share of g).
     public var hazardBraking: Double = 0.05
     /// Follow-up crashes are the consequence of one mistake: by default only a crash of the

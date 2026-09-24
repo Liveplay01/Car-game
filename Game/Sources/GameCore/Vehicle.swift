@@ -208,9 +208,11 @@ public struct Drive: Sendable, Equatable {
     public var reaction: Double?
     /// A police car chasing the criminal right ahead of it (`World.pursue`).
     public var isPursuing = false
-    /// How long the driver has had to brake for a hazard since it left the flow. Crawling
-    /// through a module's slow zone does not count.
+    /// How long the driver has had to brake hard (`Config.jamBraking`) since it left the
+    /// flow. Rolling gently up to a queue or crawling through a slow zone does not count.
     public var hazardTime = 0.0
+    /// How long the driver has been out of the flow without a break.
+    public var outOfFlowTime = 0.0
 
     public init() {}
 

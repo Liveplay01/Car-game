@@ -61,33 +61,59 @@ struct BotTests {
         }
     }
 
-    /// Regression: after a crash the bots braked for each other all the way round the ring,
-    /// and the rule that holds them on it kept that jam going (level 20, seeds 62 and 221).
-    /// The human bot played on for good; the perfect bot, which waits for calm traffic,
-    /// waited for minutes. A bot in a jam with no cause left may leave, so it dissolves.
-    @Test(arguments: [UInt64(62), 221])
-    func aJamAfterACrashDissolves(seed: UInt64) {
-        // Built like the game and `Sim` build a shift.
+    /// Level 20 as the game builds it: level, roundabout, duty, weather, city event.
+    func levelTwenty(_ seed: UInt64) -> Config {
         let base = config.forLevel(20, seed: seed).forArms().forDuty(.normal)
-        let shift = base
+        return base
             .forWeather(base.drawWeather(level: 20, seed: seed))
             .forCityEvent(base.drawCityEvent(level: 20, seed: seed), seed: seed)
-        for perfect in [false, true] {
-            var world = World(config: shift, seed: seed)
-            var human = HumanBot(seed: seed)
-            var perfectBot = PerfectBot()
-            var ended = false
-            while !ended && world.time < 120 {
-                switch perfect ? perfectBot.decide(world) : human.decide(world) {
-                case let .tap(time): world.tap(at: time)
-                case .dispatch: world.dispatchPolice()
-                case nil: break
-                }
-                world.step()
-                ended = world.takeEvents().contains { if case .shiftEnded = $0 { true } else { false } }
+    }
+
+    /// Plays a shift until it ends or `limit` seconds pass. Returns the shift time and the
+    /// longest stretch of disturbed traffic with no wreck left on the road.
+    func play(_ shift: Config, seed: UInt64, perfect: Bool, limit: Double) -> (ended: Bool, calmAfterWrecks: Double) {
+        var world = World(config: shift, seed: seed)
+        var human = HumanBot(seed: seed)
+        var perfectBot = PerfectBot()
+        var since: Double?
+        var longest = 0.0
+        while world.time < limit {
+            switch perfect ? perfectBot.decide(world) : human.decide(world) {
+            case let .tap(time): world.tap(at: time)
+            case .dispatch: world.dispatchPolice()
+            case nil: break
             }
-            #expect(ended, "\(perfect ? "perfect" : "human") bot, seed \(seed)")
+            world.step()
+            if world.takeEvents().contains(where: { if case .shiftEnded = $0 { true } else { false } }) {
+                return (true, longest)
+            }
+            if world.isTrafficDisturbed && !world.vehicles.contains(where: \.isCrashed) {
+                since = since ?? world.time
+                longest = max(longest, world.time - (since ?? world.time))
+            } else {
+                since = nil
+            }
         }
+        return (false, longest)
+    }
+
+    /// Regression: after a crash the bots braked for each other all the way round the ring,
+    /// and the rule that holds them on it kept that jam going (level 20, seeds 62 and 221,
+    /// both with roadworks). The perfect bot, which waits for calm traffic, waited for good.
+    /// A bot stuck out of the flow may leave, so the jam dissolves and the shift ends.
+    @Test(arguments: [UInt64(62), 221])
+    func aJamAfterACrashDissolves(seed: UInt64) {
+        #expect(play(levelTwenty(seed), seed: seed, perfect: false, limit: 150).ended, "human bot, seed \(seed)")
+        #expect(play(levelTwenty(seed), seed: seed, perfect: true, limit: ShiftRunner.timeLimit).ended, "perfect bot, seed \(seed)")
+    }
+
+    /// Drivers see slow traffic coming and roll up to it gently (Leo), so after a crash the
+    /// ring flows again soon: with no slow zone, a few seconds after the last wreck is gone.
+    @Test(arguments: [UInt64(5), 9])
+    func trafficFlowsAgainSoonAfterTheWrecksAreGone(seed: UInt64) {
+        let shift = levelTwenty(seed)
+        #expect(shift.cityEvent != .roadworks)
+        #expect(play(shift, seed: seed, perfect: false, limit: 150).calmAfterWrecks <= 8, "seed \(seed)")
     }
 
     @Test func sameSeedSameShift() {

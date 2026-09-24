@@ -177,14 +177,48 @@ extension World {
     /// Whether a car at ring distance `s` sits inside a secure zone.
     func isInSecureZone(_ s: Double) -> Bool {
         for zone in secureZones() {
-            let ahead = layout.ringDistance(from: s, to: zone.s)
-            if ahead <= zone.arc { return true }
+            // From the start of the zone forward: it covers the truck and the room around it.
+            if layout.ringDistance(from: zone.s, to: s) <= zone.arc { return true }
         }
         return false
     }
 }
 
 extension World {
+    /// The criminal and the money transporter keep apart (Leo): neither joins the ring near
+    /// the other, and on the ring the criminal stays out of the transporter's secure zone.
+    /// True if `vehicle`, about to enter at `arm`, would join too close to the other one.
+    func joinsTooClose(_ vehicle: Vehicle, at arm: Arm) -> Bool {
+        let otherType: VehicleType
+        switch vehicle.type {
+        case .pickup: otherType = .transporter
+        case .transporter: otherType = .pickup
+        default: return false
+        }
+        let profile = MergeProfile(pathLength: layout.entry(arm).length, duration: config.mergeDuration, ringSpeed: ringSpeed)
+        let arrival = layout.entryRingS(arm)
+        let apart = config.transporterSecureArc / 2 + config.carLength * 2
+        return vehicles.contains { other in
+            guard other.type == otherType, !other.isCrashed,
+                  let s = virtualRingPosition(of: other, after: profile.duration) else { return false }
+            let ahead = layout.ringDistance(from: arrival, to: s)
+            return min(ahead, layout.ring.length - ahead) < apart
+        }
+    }
+
+    /// The transporter ahead of the criminal on the ring, as something to keep back from:
+    /// its gap counts to the edge of its secure zone. Nil if there is none within half a lap.
+    func transporterAhead(ofRingS s: Double) -> Lead? {
+        for vehicle in vehicles where vehicle.type == .transporter && !vehicle.isCrashed {
+            guard case let .ring(r) = vehicle.phase else { continue }
+            let ahead = layout.ringDistance(from: s, to: r.s)
+            guard ahead < layout.ring.length / 2 else { continue }
+            let gap = ahead - config.carLength - config.transporterSecureArc / 2
+            return Lead(id: vehicle.id, gap: gap, speed: r.drive.speed ?? ringSpeed, length: config.carLength)
+        }
+        return nil
+    }
+
     /// A police car that hits the transporter: the seizure. Only a police car counts; a
     /// normal car bouncing off the transporter is a normal crash.
     func isSeizure(_ a: Vehicle, _ b: Vehicle) -> Bool {

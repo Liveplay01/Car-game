@@ -175,8 +175,8 @@ public struct World: Sendable {
             guard vehicle.isBot, case let .ring(r) = vehicle.phase else { return false }
             return !r.isLeaving
         }
-        // Once the wrecks are gone, a bot out of the flow and not queueing for a module is in a
-        // stop-and-go wave running round the ring.
+        // Once the wrecks are gone, a bot that has not found back into the flow for a while
+        // and is not queueing for a module is in a stop-and-go wave running round the ring.
         let wrecksOnRoad = vehicles.contains(where: \.isCrashed)
         for i in vehicles.indices {
             switch vehicles[i].phase {
@@ -224,7 +224,7 @@ public struct World: Sendable {
                     // everyone who reads the traffic ahead (the AI, the player) sees it right.
                     // Not stuck in a jam, though: after a crash bots can brake for each other all
                     // the way round for good, and one leaving is what dissolves that.
-                    let inWave = !wrecksOnRoad && !r.drive.isInFlow && !isModuleQueue(at: r.s)
+                    let inWave = !wrecksOnRoad && r.drive.outOfFlowTime >= config.waveTime && !isModuleQueue(at: r.s)
                     let jammed = r.drive.hazardTime >= config.botJamPatience || inWave
                     if !jammed && stayingBots <= config.minRingBots {
                         r.distanceToExit += layout.ring.length

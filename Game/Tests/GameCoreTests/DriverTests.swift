@@ -155,3 +155,43 @@ struct DriverTests {
         #expect(depths.allSatisfy { $0 >= 0.6 && $0 <= config.maxDent })
     }
 }
+
+/// Leo: a queue ahead is seen coming. The driver brakes at once and gently, not a reaction
+/// time later and hard, and stops behind it with room to spare.
+@Test func driversRollUpToStandingTrafficGently() {
+    var config = Config()
+    config.crashDuration = 60
+    var world = emptyWorld(config: config)
+    // A queue standing behind a wreck, well ahead (drivers look up to half a lap).
+    world.spawnWreck(atRing: 370)
+    let queue = [world.spawnRingCar(at: 335, exitArm: world.south, type: .car), world.spawnRingCar(at: 300, exitArm: world.south, type: .car)]
+    for id in queue {
+        if let index = world.index(of: id), case var .ring(r) = world.vehicles[index].phase {
+            r.drive.speed = 0
+            r.drive.reaction = 0
+            world.vehicles[index].phase = .ring(r)
+        }
+    }
+    let car = world.spawnRingCar(at: 0, exitArm: world.south, type: .car)
+    world.step()
+    // No reaction time: braking starts right away.
+    #expect(world.drive(of: car)?.reaction == 0)
+    var hardest = 0.0
+    var last = world.speed(of: car) ?? 0
+    var events: [GameEvent] = []
+    for _ in 0..<(8 * World.stepRate) {
+        world.step()
+        events += world.takeEvents()
+        let now = world.speed(of: car) ?? 0
+        // The last creep to a stop is not braking.
+        if now > 10 { hardest = max(hardest, (last - now) / World.stepDuration) }
+        last = now
+    }
+    #expect(events.compactMap(\.crash).isEmpty)
+    #expect(hardest < 0.6 * world.config.gravity)
+    if case let .ring(r) = world.vehicle(id: car)?.phase, case let .ring(back) = world.vehicle(id: queue[1])?.phase {
+        // It stops behind the queue with about the stop gap to spare (the queue edged up a bit).
+        let gap = world.layout.ringDistance(from: r.s, to: back.s) - world.config.carLength
+        #expect(gap >= world.config.stopGap - 1)
+    }
+}

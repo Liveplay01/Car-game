@@ -51,7 +51,7 @@ extension World {
                 continue
             }
             w.reaction -= dt
-            if w.reaction <= 0 && canEnter(w.arm) {
+            if w.reaction <= 0 && canEnter(w.arm) && !joinsTooClose(vehicles[i], at: w.arm) {
                 let path = layout.entry(w.arm)
                 var merge = Vehicle.Merging(
                     arm: w.arm,
@@ -225,7 +225,7 @@ extension World {
     /// brakes, catches up or chases, up to `aiHazardAhead` seconds of ring downstream or
     /// `aiHazardBehind` upstream. The AI waits for that, as a driver would. Trouble on the
     /// far side of the ring, or a slow module zone elsewhere, is no reason: bots keep coming.
-    func isDisturbed(near arm: Arm) -> Bool {
+    public func isDisturbed(near arm: Arm) -> Bool {
         let circumference = layout.ring.length
         let join = layout.entryRingS(arm)
         return vehicles.contains { vehicle in
@@ -302,7 +302,8 @@ extension World {
                 travelled: (elapsed - m.profile.duration) * m.profile.ringSpeed
             )
         case let .ring(r):
-            return ringOrExitPose(s: r.s, distanceToExit: r.distanceToExit, exitArm: r.exitArm, travelled: (r.drive.speed ?? ringSpeed) * t)
+            let exit = staysOnRing(vehicle) ? .infinity : r.distanceToExit
+            return ringOrExitPose(s: r.s, distanceToExit: exit, exitArm: r.exitArm, travelled: (r.drive.speed ?? ringSpeed) * t)
         case let .exiting(e):
             let s = e.s + (e.drive.speed ?? ringSpeed) * t
             let exit = layout.exit(e.arm)
@@ -328,6 +329,14 @@ extension World {
         return e < exit.length ? exit.pose(at: e) : nil
     }
 
+    /// The criminal on the run, the transporter until its time is up and a police car on a
+    /// chase drive another lap instead of taking their exit (`moveVehicles`). Whoever reads
+    /// the traffic ahead must count them as staying, or it plans into a gap that is not there.
+    func staysOnRing(_ vehicle: Vehicle) -> Bool {
+        guard case let .ring(r) = vehicle.phase else { return false }
+        return isChased(vehicle.id) || isTransported(vehicle.id) || r.drive.isPursuing
+    }
+
     /// Ring position after `t` seconds. A merging car counts as if it were already on the
     /// ring: it joins exactly there, at ring speed. Nil if it is not on the ring then.
     func virtualRingPosition(of vehicle: Vehicle, after t: Double) -> Double? {
@@ -339,7 +348,7 @@ extension World {
             return Angle.wrap(layout.entryRingS(m.arm) + travelled, period: circumference)
         case let .ring(r):
             let travelled = (r.drive.speed ?? ringSpeed) * t
-            if travelled >= r.distanceToExit { return nil }
+            if travelled >= r.distanceToExit && !staysOnRing(vehicle) { return nil }
             return Angle.wrap(r.s + travelled, period: circumference)
         case .queued, .waiting, .exiting, .crashed:
             return nil

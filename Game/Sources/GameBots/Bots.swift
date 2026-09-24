@@ -81,7 +81,8 @@ public struct PerfectBot: Bot {
         if let chase, chase.needsDispatch {
             return .dispatch
         }
-        guard world.queue.isReady, !world.isTrafficDisturbed, !world.isTakedownPending else {
+        // Waits for calm at its own entry, like the AI; trouble on the far side is no reason.
+        guard world.queue.isReady, !world.isDisturbed(near: world.layout.player), !world.isTakedownPending else {
             readySince = nil
             return nil
         }

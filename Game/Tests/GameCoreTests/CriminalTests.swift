@@ -312,7 +312,7 @@ struct CriminalTests {
         }
         #expect(drive.speed == world.ringSpeed * world.config.policeChaseSpeedFactor)
         for _ in 0..<(3 * World.stepRate) {
-            drive = world.drive(drive, lead: nil, id: 1, dt: World.stepDuration)
+            drive = world.drive(drive, leads: [], id: 1, dt: World.stepDuration)
         }
         #expect(drive.isInFlow)
         #expect(!drive.isPursuing)

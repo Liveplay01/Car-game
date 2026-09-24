@@ -25,6 +25,8 @@ extension World {
         var gap: Double
         /// Its speed along the road.
         var speed: Double
+        /// How much lane it takes: the cars behind it queue up after its full length.
+        var length = 0.0
     }
 
     /// Something occupying the ring lane, at ring distance `s`.
@@ -42,20 +44,30 @@ extension World {
         let lane = ringLaneOccupants()
         // Criminals do not brake for anything: they plough on. The transporter brakes like
         // everybody else; a crash would wreck it.
+        for i in vehicles.indices where vehicles[i].type == .pickup {
+            // The one exception: the criminal keeps out of the transporter's secure zone
+            // (Leo). It brakes for that and nothing else, and no module slows it.
+            guard case var .ring(r) = vehicles[i].phase else { continue }
+            let truck = transporterAhead(ofRingS: r.s)
+            guard truck != nil || !r.drive.isInFlow else { continue }
+            r.drive = drive(r.drive, leads: truck.map { [$0] } ?? [], id: vehicles[i].id, dt: dt)
+            vehicles[i].phase = .ring(r)
+        }
         for i in vehicles.indices where vehicles[i].type != .pickup {
             let id = vehicles[i].id
             switch vehicles[i].phase {
             case .ring(var r):
-                let lead = leadOnRing(from: r.s, occupants: lane, excluding: id)
-                if let quarry, lead?.id == quarry, vehicles[i].isPlayerPolice {
+                // A driver looks past the car in front: a queue further ahead shows too.
+                let leads = leadsOnRing(from: r.s, occupants: lane, excluding: id)
+                if let quarry, leads.first?.id == quarry, vehicles[i].isPlayerPolice {
                     r.drive = pursue(r.drive, dt: dt)
                 } else {
-                    r.drive = drive(r.drive, lead: lead, id: id, limit: speedLimit(atRingS: r.s), dt: dt)
+                    r.drive = drive(r.drive, leads: leads, id: id, limit: speedLimit(atRingS: r.s), dt: dt)
                 }
                 vehicles[i].phase = .ring(r)
             case .exiting(var e):
                 let lead = leadOnExit(e.arm, from: e.s, excluding: id)
-                e.drive = drive(e.drive, lead: lead, id: id, dt: dt)
+                e.drive = drive(e.drive, leads: lead.map { [$0] } ?? [], id: id, dt: dt)
                 vehicles[i].phase = .exiting(e)
             case .queued, .waiting, .merging, .crashed:
                 break
@@ -88,22 +100,52 @@ extension World {
 
     /// One driver, one step: notice, react, brake or get back into the flow, from below
     /// after braking or from above after a chase.
-    /// - Parameter limit: how fast this driver may go where it is (a module's zone).
-    func drive(_ current: Drive, lead: Lead?, id: Int, limit: Double? = nil, dt: Double) -> Drive {
+    ///
+    /// Slow or standing traffic ahead is seen coming (Leo: "möglichst früh genug bremsen"):
+    /// the driver brakes at once and gently, so it rolls up behind the queue with a little
+    /// room to spare and then drives as slowly as the car in front. Only a wreck is a
+    /// surprise that takes a moment to take in (`driverReaction`); that is where pile-ups
+    /// still come from.
+    /// - Parameters:
+    ///   - leads: what is ahead, nearest first; the queue behind the nearest counts too.
+    ///   - limit: how fast this driver may go where it is (a module's zone).
+    func drive(_ current: Drive, leads: [Lead], id: Int, limit: Double? = nil, dt: Double) -> Drive {
         var drive = current
         drive.isPursuing = false
+        if !current.isInFlow { drive.outOfFlowTime += dt }
         let g = config.gravity
         let limit = limit ?? ringSpeed
         var speed = drive.speed ?? ringSpeed
+        let lead = leads.first
         var needed = 0.0
-        if let lead, speed > lead.speed {
-            let room = lead.gap - config.stopGap
-            needed = room > 0.5 ? (speed * speed - lead.speed * lead.speed) / (2 * room) : .infinity
+        var cause: Lead?
+        // The room each car in between needs once it has stopped.
+        var queued = 0.0
+        for ahead in leads {
+            if speed > ahead.speed {
+                // Aim to arrive with some room to spare, not exactly at the stop gap.
+                let room = ahead.gap - queued - config.stopGap - config.followMargin * ahead.speed
+                var brake = room > 0.5 ? (speed * speed - ahead.speed * ahead.speed) / (2 * room) : .infinity
+                // A car that is only a bit slower is no reason to brake yet: that is what
+                // would send a wave round the ring. Standing traffic and wrecks always are.
+                if ahead.speed > config.standingSpeed, brake < config.followBraking * g { brake = 0 }
+                if brake > needed {
+                    needed = brake
+                    cause = ahead
+                }
+            }
+            queued += ahead.length + config.stopGap
         }
         let alarmed = needed > config.hazardBraking * g
-        if alarmed { drive.hazardTime += dt }
+        // Only real braking counts towards a jam, not gently rolling up to a queue.
+        if needed > config.jamBraking * g { drive.hazardTime += dt }
         if alarmed && drive.reaction == nil {
-            drive.reaction = reactionTime(of: id)
+            // A wreck takes a moment to take in; slow traffic was seen coming, and so is a
+            // wreck with a queue already standing in front of it.
+            func isWreck(_ lead: Lead) -> Bool { vehicle(id: lead.id)?.isCrashed ?? false }
+            let queueInFront = leads.prefix { $0.id != cause?.id }.contains { !isWreck($0) && $0.speed < speed }
+            let surprise = cause.map(isWreck) ?? false && !queueInFront
+            drive.reaction = surprise ? reactionTime(of: id) : 0
         }
         if let reaction = drive.reaction, reaction > 0 {
             // Still taking it in: the car rolls on at its speed.
@@ -170,17 +212,19 @@ extension World {
     }
 
     func leadOnRing(from s: Double, occupants: [Occupant], excluding id: Int) -> Lead? {
+        leadsOnRing(from: s, occupants: occupants, excluding: id, count: 1).first
+    }
+
+    /// The nearest `count` things ahead in the ring lane, nearest first.
+    func leadsOnRing(from s: Double, occupants: [Occupant], excluding id: Int, count: Int = 3) -> [Lead] {
         let circumference = layout.ring.length
-        var nearest: Lead?
+        var ahead: [Lead] = []
         for occupant in occupants where occupant.id != id {
-            let ahead = layout.ringDistance(from: s, to: occupant.s)
-            guard ahead > 0, ahead < circumference / 2 else { continue }
-            let gap = ahead - occupant.length
-            if nearest == nil || gap < nearest!.gap {
-                nearest = Lead(id: occupant.id, gap: gap, speed: occupant.speed)
-            }
+            let distance = layout.ringDistance(from: s, to: occupant.s)
+            guard distance > 0, distance < circumference / 2 else { continue }
+            ahead.append(Lead(id: occupant.id, gap: distance - occupant.length, speed: occupant.speed, length: occupant.length))
         }
-        return nearest
+        return Array(ahead.sorted { ($0.gap, $0.id) < ($1.gap, $1.id) }.prefix(count))
     }
 
     /// Cars ahead on the same exit, and wrecks lying across it.
