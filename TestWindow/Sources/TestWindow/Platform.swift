@@ -20,6 +20,7 @@ enum ProjectFiles {
     /// Highscore and settings of the test window.
     static let saveGame = testWindow.appendingPathComponent("savegame.json")
     static let sounds = root.appendingPathComponent("Assets").appendingPathComponent("Sounds")
+    static let music = root.appendingPathComponent("Assets").appendingPathComponent("Music")
 }
 
 /// The seed of each new shift: `--seed` if given, otherwise a fresh, short one that is easy
@@ -78,5 +79,54 @@ final class RaylibAudio: AudioPlaying {
         if IsAudioDeviceReady() {
             CloseAudioDevice()
         }
+    }
+}
+
+/// Plays the adaptive music stems from `Assets/Music` (M11): all in sync, each faded to the
+/// volume the session asks for (`GameSession.musicMix`). The app does the same with
+/// AVAudioEngine. Missing stems (run SoundMaker) just stay silent.
+final class RaylibMusic {
+    private var streams: [MusicLayer: Music] = [:]
+    private var volumes: [MusicLayer: Double] = [:]
+    /// Overall music level under the sound effects.
+    static let master = 0.35
+    /// Seconds a layer needs to fade in or out.
+    static let fade = 0.8
+
+    init(folder: URL) {
+        guard IsAudioDeviceReady() else { return }
+        for layer in MusicLayer.allCases {
+            let path = folder.appendingPathComponent("\(layer.rawValue).wav").path
+            guard FileExists(path) else { continue }
+            var music = LoadMusicStream(path)
+            guard IsMusicValid(music) else { continue }
+            music.looping = true
+            SetMusicVolume(music, 0)
+            streams[layer] = music
+        }
+        if streams.isEmpty {
+            print("No music stems in \(folder.path) (cd TestWindow; swift run SoundMaker)")
+        }
+        // Started together, so the loops stay in sync.
+        for music in streams.values { PlayMusicStream(music) }
+    }
+
+    func update(mix: MusicMix, enabled: Bool, delta: Double) {
+        for (layer, music) in streams {
+            let target = enabled ? mix.volume(layer) : 0
+            let current = volumes[layer] ?? 0
+            let next = current + (target - current) * min(1, delta / Self.fade)
+            volumes[layer] = next
+            SetMusicVolume(music, Float(next * Self.master))
+            UpdateMusicStream(music)
+        }
+    }
+
+    func unload() {
+        for music in streams.values {
+            StopMusicStream(music)
+            UnloadMusicStream(music)
+        }
+        streams.removeAll()
     }
 }

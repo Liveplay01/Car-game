@@ -42,6 +42,119 @@ struct SoundMaker {
             try wav(normalized(samples, peak: peak)).write(to: url)
             print(String(format: "%@  %.2f s", url.lastPathComponent, Double(samples.count) / rate))
         }
+        try writeMusic(next: folder)
+    }
+
+    // MARK: - Music stems (M11)
+
+    /// Placeholder stems for the adaptive music (`MusicMix`): one 8-second loop each, all in
+    /// sync (120 BPM, 4 bars Am – F – C – G). The test window fades them in and out; the final
+    /// stems come with the look & feel pass under the same names.
+    static func writeMusic(next sounds: URL) throws {
+        let folder = sounds.deletingLastPathComponent().appendingPathComponent("Music")
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        let stems: [(String, [Double], Double)] = [
+            ("base", musicBase(), 0.22),
+            ("rhythm", musicRhythm(), 0.3),
+            ("bass", musicBass(), 0.3),
+            ("lead", musicLead(), 0.18),
+            ("siren", musicSiren(), 0.12),
+            ("rush", musicRush(), 0.25),
+            ("flow", musicFlow(), 0.14),
+        ]
+        for (name, samples, peak) in stems {
+            let url = folder.appendingPathComponent("\(name).wav")
+            try wav(normalized(samples, peak: peak)).write(to: url)
+            print(String(format: "Music/%@  %.2f s", url.lastPathComponent, Double(samples.count) / rate))
+        }
+    }
+
+    static let loopSeconds = 8.0
+    static let beat = 0.5
+    /// Chord roots per bar (Hz, low octave) and their triads as ratios.
+    static let roots = [110.0, 87.31, 130.81, 98.0]
+    static let minor = [1.0, 1.1892, 1.4983]
+    static let major = [1.0, 1.2599, 1.4983]
+    static func chord(_ bar: Int) -> [Double] {
+        let ratios = bar == 0 ? minor : major
+        return ratios.map { roots[bar % 4] * $0 }
+    }
+    static func bar(at t: Double) -> Int { Int(t / (4 * beat)) % 4 }
+
+    /// Soft pad: the chord, fading between bars so the loop is seamless.
+    static func musicBase() -> [Double] {
+        render(loopSeconds) { t in
+            let inBar = t.truncatingRemainder(dividingBy: 4 * beat) / (4 * beat)
+            let swell = 0.6 + 0.4 * sin(.pi * inBar)
+            return chord(bar(at: t)).map { sine($0 * 2, t) + 0.3 * sine($0 * 4, t) }.reduce(0, +) * swell * 0.2
+        }
+    }
+
+    /// Kick on every beat, closed hats on the eighths.
+    static func musicRhythm() -> [Double] {
+        var noise = Noise(seed: 21)
+        var filter = BandPass()
+        return render(loopSeconds) { t in
+            let inBeat = t.truncatingRemainder(dividingBy: beat)
+            let kick = sine(55 + 90 * exp(-inBeat / 0.03), inBeat) * decay(inBeat, 0.12)
+            let inEighth = t.truncatingRemainder(dividingBy: beat / 2)
+            let hat = filter.process(noise.next(), center: 8_000, q: 2) * decay(inEighth, 0.02) * 0.5
+            return kick + hat
+        }
+    }
+
+    /// A plucked bass on every beat, following the chord root.
+    static func musicBass() -> [Double] {
+        render(loopSeconds) { t in
+            let inBeat = t.truncatingRemainder(dividingBy: beat)
+            let root = roots[bar(at: t)] / 2
+            return (sine(root, t) + 0.4 * sine(root * 2, t)) * decay(inBeat, 0.25)
+        }
+    }
+
+    /// The top tier: a sixteenth arpeggio through the chord.
+    static func musicLead() -> [Double] {
+        render(loopSeconds) { t in
+            let step = Int(t / (beat / 4))
+            let notes = chord(bar(at: t)).map { $0 * 4 }
+            let note = notes[step % 3] * (step % 8 >= 6 ? 2 : 1)
+            let inStep = t.truncatingRemainder(dividingBy: beat / 4)
+            return (sine(note, t) + 0.25 * sine(note * 3, t)) * decay(inStep, 0.07)
+        }
+    }
+
+    /// A soft synth siren, two tones per second.
+    static func musicSiren() -> [Double] {
+        render(loopSeconds) { t in
+            let phase = t.truncatingRemainder(dividingBy: 1)
+            let frequency = phase < 0.5 ? 660.0 : 880.0
+            return sine(frequency, t) * (0.6 + 0.4 * sin(2 * .pi * 2 * t))
+        }
+    }
+
+    /// Rush hour: sixteenth hats and a clap on two and four.
+    static func musicRush() -> [Double] {
+        var noise = Noise(seed: 33)
+        var hats = BandPass()
+        var claps = BandPass()
+        return render(loopSeconds) { t in
+            let inSixteenth = t.truncatingRemainder(dividingBy: beat / 4)
+            let hat = hats.process(noise.next(), center: 9_500, q: 2.5) * decay(inSixteenth, 0.012)
+            let beatIndex = Int(t / beat)
+            let inBeat = t.truncatingRemainder(dividingBy: beat)
+            let clap = beatIndex % 2 == 1 ? claps.process(noise.next(), center: 1_600, q: 1.2) * decay(inBeat, 0.05) * 1.4 : 0
+            return hat + clap
+        }
+    }
+
+    /// Flow: a high, glassy triplet shimmer over the chord.
+    static func musicFlow() -> [Double] {
+        render(loopSeconds) { t in
+            let step = Int(t / (beat / 3))
+            let notes = chord(bar(at: t)).map { $0 * 8 }
+            let inStep = t.truncatingRemainder(dividingBy: beat / 3)
+            return sine(notes[step % 3], t) * decay(inStep, 0.15)
+        }
     }
 
     // MARK: - Sounds

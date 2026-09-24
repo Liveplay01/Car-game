@@ -256,6 +256,9 @@ public final class GameSession {
         case .toggleSound:
             save.settings.sound.toggle()
             store.save(save)
+        case .toggleVehicleLabels:
+            save.settings.vehicleLabels.toggle()
+            store.save(save)
         case .toggleHaptics:
             save.settings.haptics.toggle()
             store.save(save)
@@ -792,6 +795,9 @@ public final class GameSession {
         SceneBuilder.addShadows(of: world, alpha: clock.alpha, to: &list)
         SceneBuilder.addVehicles(of: world, alpha: clock.alpha, carSkin: Skins.color(save.career.carSkin), springTime: reduceMotion ? nil : world.time, to: &list)
         SceneBuilder.addTowTrucks(of: world, to: &list)
+        if save.settings.vehicleLabels {
+            SceneBuilder.addLabels(of: world, alpha: clock.alpha, to: &list)
+        }
         effects.addAir(to: &list)
         WeatherLayer.addAir(world: world, time: world.time, reduceMotion: reduceMotion, to: &list)
 

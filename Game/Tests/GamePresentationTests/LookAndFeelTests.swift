@@ -50,4 +50,14 @@ struct LookAndFeelTests {
         #expect(hot.volume(.lead) > 0)
         #expect(hot.volume(.flow) > 0)
     }
+
+    @Test func specialVehiclesGetLabelsAndOldSettingsStillLoad() throws {
+        #expect(Strings.HUD.label(.police) == "POLICE")
+        #expect(Strings.HUD.label(.pickup) == "CRIMINAL")
+        #expect(Strings.HUD.label(.transporter) == "SECURED")
+        #expect(Strings.HUD.label(.car) == nil)
+        let old = try JSONDecoder().decode(Settings.self, from: Data(#"{ "sound": false }"#.utf8))
+        #expect(!old.vehicleLabels)
+        #expect(!old.sound)
+    }
 }

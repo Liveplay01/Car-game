@@ -68,6 +68,7 @@ public enum ScreenAction: Sendable, Equatable {
     case closeSettings
     case toggleSound
     case toggleHaptics
+    case toggleVehicleLabels
     case cycleReduceMotion
     /// Normal duty or High Alert for the next shift (a segmented control in the app).
     case setDuty(Duty)
@@ -139,6 +140,7 @@ public enum ScreenFlow {
                     MenuItem(.toggleSound, Strings.SettingsMenu.sound, value: Strings.SettingsMenu.toggle(settings.sound)),
                     MenuItem(.toggleHaptics, Strings.SettingsMenu.haptics, value: Strings.SettingsMenu.toggle(settings.haptics)),
                     MenuItem(.cycleReduceMotion, Strings.SettingsMenu.reduceMotion, value: Strings.SettingsMenu.reduceMotion(settings.reduceMotion)),
+                    MenuItem(.toggleVehicleLabels, Strings.SettingsMenu.vehicleLabels, value: Strings.SettingsMenu.toggle(settings.vehicleLabels)),
                     MenuItem(.closeSettings, Strings.Menu.back, isPrimary: true),
                 ]
             )

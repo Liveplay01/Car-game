@@ -73,6 +73,9 @@ public struct Settings: Codable, Sendable, Equatable {
     public var sound = true
     public var haptics = true
     public var reduceMotion = ReduceMotion.system
+    /// Accessibility (IDEA.md, M11): a short text label on every special vehicle, so colour
+    /// is never the only way to tell police, criminal and transporter apart.
+    public var vehicleLabels = false
 
     public init() {}
 
@@ -82,6 +85,7 @@ public struct Settings: Codable, Sendable, Equatable {
         sound = try container.decodeIfPresent(Bool.self, forKey: .sound) ?? defaults.sound
         haptics = try container.decodeIfPresent(Bool.self, forKey: .haptics) ?? defaults.haptics
         reduceMotion = (try? container.decodeIfPresent(ReduceMotion.self, forKey: .reduceMotion)) ?? defaults.reduceMotion
+        vehicleLabels = (try? container.decodeIfPresent(Bool.self, forKey: .vehicleLabels)) ?? defaults.vehicleLabels
     }
 }
 

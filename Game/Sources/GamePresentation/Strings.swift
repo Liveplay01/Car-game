@@ -360,6 +360,7 @@ public enum Strings {
 
     public enum SettingsMenu {
         public static let title = "Settings"
+        public static let vehicleLabels = "Vehicle labels"
         public static let sound = "Sound"
         public static let haptics = "Haptics"
         public static let reduceMotion = "Reduce Motion"
@@ -388,6 +389,15 @@ public enum Strings {
         public static let secured = "SECURED"
         public static let seized = "SEIZED"
         public static let lost = "LOST"
+        /// Accessibility labels on special vehicles (M11); nil for ordinary traffic.
+        public static func label(_ type: VehicleType) -> String? {
+            switch type {
+            case .police: "POLICE"
+            case .pickup: "CRIMINAL"
+            case .transporter: "SECURED"
+            case .car, .truck, .sportsCar: nil
+            }
+        }
         /// An insured crash: nothing to pay.
         public static let covered = "COVERED"
         /// "PAID +2,500".

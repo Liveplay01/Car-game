@@ -31,3 +31,6 @@ Desktop.ini
 # ─── Tuning / Savegames (lokal, nicht versionieren) ─────────────────
 TestWindow/tuning.json
 TestWindow/savegame.json
+
+# ─── Musik-Platzhalter (M11): SoundMaker erzeugt sie neu ────────────
+Assets/Music/

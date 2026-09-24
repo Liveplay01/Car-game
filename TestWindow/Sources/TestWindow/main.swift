@@ -22,6 +22,7 @@ rlDisableBackfaceCulling()
 
 let renderer = Renderer()
 let audio = RaylibAudio(folder: ProjectFiles.sounds)
+let music = RaylibMusic(folder: ProjectFiles.music)
 let session = GameSession(
     random: SeedSource(fixed: options.seed),
     store: FileSaveStore(url: ProjectFiles.saveGame),
@@ -133,6 +134,7 @@ while !WindowShouldClose() {
         viewport: viewport,
         fps: Int(GetFPS())
     )
+    music.update(mix: session.musicMix, enabled: session.save.settings.sound, delta: Double(GetFrameTime()))
 
     if let delay = options.screenshotAfterCrash, screenshotAt == .infinity,
        frame.events.contains(where: { if case .crash = $0 { true } else { false } }) {
@@ -153,6 +155,7 @@ while !WindowShouldClose() {
     }
 }
 
+music.unload()
 audio.unload()
 renderer.unload()
 CloseWindow()

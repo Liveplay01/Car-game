@@ -116,6 +116,22 @@ public enum SceneBuilder {
         }
     }
 
+    /// Accessibility labels (M11): "POLICE", "CRIMINAL", "SECURED" beside the special
+    /// vehicles, in their own colour, small and in screen space so they stay readable.
+    public static func addLabels(of world: World, alpha: Double, to list: inout RenderList) {
+        for vehicle in world.vehicles where !vehicle.isCrashed {
+            guard let label = Strings.HUD.label(vehicle.type) else { continue }
+            let pose = interpolatedPose(vehicle, alpha: alpha)
+            let color: ColorToken = switch vehicle.type {
+            case .police: .lightBlue
+            case .pickup: .vehicleCriminal
+            default: .vehicleCargo
+            }
+            list.add(.text(label, position: list.camera.toScreen(pose.position) + Vec2(0, -18), size: 9, alignment: .center, weight: .bold),
+                     color: color, opacity: 0.95, space: .screen, id: RenderID.labels + vehicle.id % 1_000)
+        }
+    }
+
     /// Where a tow depot's yard sits: just outside the ring at its module slot.
     static func towYard(_ slot: Int, layout: RoundaboutLayout, config: Config) -> Vec2 {
         let pose = layout.ring.pose(at: layout.moduleRingS(slot, of: config.moduleSlotCount))
