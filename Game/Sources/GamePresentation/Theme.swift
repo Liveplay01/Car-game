@@ -112,6 +112,18 @@ public enum ColorToken: Sendable, Equatable, CaseIterable {
     /// The dark rim of a fireball.
     case fireDeep
     // Debug overlay (test window only)
+    /// Celebration only (the chest opening): Apple's system hues, bright and fruity. Never
+    /// on the road, so they never read as a vehicle.
+    case juiceRed
+    case juiceOrange
+    case juiceYellow
+    case juiceGreen
+    case juiceBlue
+    case juicePurple
+    /// iOS-style fills and separators for the drawn menus: raised controls, grouped cells.
+    case controlFill
+    case controlThumb
+    case separator
     case debugHitbox
     case debugTight
     case debugClean
@@ -191,6 +203,15 @@ public enum Theme {
         case .fireCore: ColorRGBA(hex: 0xFFE08A)
         case .fireOuter: ColorRGBA(hex: 0xFF7A3D)
         case .fireDeep: ColorRGBA(hex: 0xC2362B)
+        case .juiceRed: ColorRGBA(hex: 0xFF453A)
+        case .juiceOrange: ColorRGBA(hex: 0xFF9F0A)
+        case .juiceYellow: ColorRGBA(hex: 0xFFD60A)
+        case .juiceGreen: ColorRGBA(hex: 0x30D158)
+        case .juiceBlue: ColorRGBA(hex: 0x0A84FF)
+        case .juicePurple: ColorRGBA(hex: 0xBF5AF2)
+        case .controlFill: ColorRGBA(hex: 0x767680, alpha: 61)
+        case .controlThumb: ColorRGBA(hex: 0x636366)
+        case .separator: ColorRGBA(hex: 0x545458, alpha: 153)
         case .debugHitbox: ColorRGBA(hex: 0xFACC15, alpha: 210)
         case .debugTight: ColorRGBA(hex: 0xFF9F43)
         case .debugClean: ColorRGBA(hex: 0x5BE38C)

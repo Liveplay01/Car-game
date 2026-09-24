@@ -213,20 +213,25 @@ public enum TabStrip {
         return Tab.allCases[min(index, Tab.allCases.count - 1)]
     }
 
+    /// Like the iOS tab bar: a dark bar with a hairline on top, a glyph over a small label,
+    /// the chosen tab in the accent.
     static func add(selected: Tab, to list: inout RenderList) {
         let viewport = list.camera.viewport
-        var id = RenderID.menu + 200
+        var id = RenderID.menu + 7_000
         let top = viewport.y - height
-        list.add(.roundedRect(center: Vec2(viewport.x / 2, top + height / 2), size: Vec2(viewport.x, height), cornerRadius: 0, rotation: 0), color: .island, space: .screen, id: id)
+        list.add(.roundedRect(center: Vec2(viewport.x / 2, top + height / 2), size: Vec2(viewport.x, height), cornerRadius: 0, rotation: 0), color: .island, opacity: 0.97, space: .screen, id: id)
         id += 1
-        list.add(.line(from: Vec2(0, top), to: Vec2(viewport.x, top), thickness: 1), color: .marking, space: .screen, id: id)
+        list.add(.line(from: Vec2(0, top), to: Vec2(viewport.x, top), thickness: 1), color: .separator, space: .screen, id: id)
         id += 1
         let cell = viewport.x / Double(Tab.allCases.count)
         for (index, tab) in Tab.allCases.enumerated() {
             let isSelected = tab == selected
+            let tint: ColorToken = isSelected ? .accent : .muted
+            let x = cell * (Double(index) + 0.5)
+            MenuKit.tabGlyph(tab, at: Vec2(x, top + 19), color: tint, id: &id, to: &list)
             list.add(
-                .text(Strings.Tabs.title(tab), position: Vec2(cell * (Double(index) + 0.5), top + height / 2), size: 14, alignment: .center, weight: isSelected ? .bold : .regular),
-                color: isSelected ? .accent : .muted, space: .screen, id: id
+                .text(Strings.Tabs.title(tab), position: Vec2(x, top + 41), size: 10, alignment: .center, weight: isSelected ? .bold : .regular),
+                color: tint, space: .screen, id: id
             )
             id += 1
         }

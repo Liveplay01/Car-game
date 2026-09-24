@@ -113,14 +113,24 @@ public enum UpgradePage {
 
         // Title and balance. The balance counts down after a purchase.
         let shown = countedMoney(career: career, state: state)
-        list.add(.text(Strings.Upgrades.title, position: Vec2(viewport.x / 2, Metrics.sceneInsets.top - 30), size: 26, alignment: .center, weight: .bold), color: .primary, space: .screen, id: id)
-        id += 1
-        Icons.moneyTag(Strings.Upgrades.balance(format.number(shown)), at: Vec2(viewport.x / 2, Metrics.sceneInsets.top - 2), size: 15, alignment: .center, color: .accent, id: &id, to: &list)
+        MenuKit.header(Strings.Upgrades.title, money: Strings.Upgrades.balance(format.number(shown)), viewport: viewport, id: &id, to: &list)
 
         for (index, card) in cards(viewport: viewport, bottomInset: bottomInset, upgrades: upgrades).enumerated() {
             addCard(card.upgrade, index: index, rect: card.rect, career: career, config: config, state: state, format: format, reduceMotion: reduceMotion, showsKeys: showsKeys, id: &id, to: &list)
         }
         addDetail(career: career, config: config, state: state, format: format, reduceMotion: reduceMotion, showsKeys: showsKeys, bottomInset: bottomInset, id: &id, to: &list)
+    }
+
+    /// The colour of an upgrade's theme, for its picture tile.
+    static func tint(of upgrade: Upgrade) -> ColorToken {
+        switch upgrade {
+        case .morePatrols, .interceptor, .dispatchRadio, .backup: .juiceBlue
+        case .longerPursuit: .juicePurple
+        case .quietStreets: .juiceGreen
+        case .cashRoute, .overtime, .doubleRun: .juiceYellow
+        case .freight: .juiceOrange
+        case .insurance, .robberyInsurance: .juiceRed
+        }
     }
 
     /// The balance right after a purchase: it counts down from what it was.
@@ -198,8 +208,12 @@ public enum UpgradePage {
             maxX: center.x + size.x / 2 - 10,
             maxY: center.y - size.y / 2 + 10 + pictureHeight
         )
-        list.add(.roundedRect(center: Vec2((picture.minX + picture.maxX) / 2, (picture.minY + picture.maxY) / 2), size: Vec2(picture.maxX - picture.minX, pictureHeight), cornerRadius: 10, rotation: 0), color: .island, opacity: opacity, space: .screen, id: id)
+        let tile = Vec2((picture.minX + picture.maxX) / 2, (picture.minY + picture.maxY) / 2)
+        list.add(.roundedRect(center: tile, size: Vec2(picture.maxX - picture.minX, pictureHeight), cornerRadius: 10, rotation: 0), color: .island, opacity: opacity, space: .screen, id: id)
         id += 1
+        // Lit in the colour of its theme: police blue, chase purple, quiet green, money
+        // yellow, freight orange, insurance red. Light, not a fill: on dark a fill turns muddy.
+        MenuKit.glow(at: tile, radius: pictureHeight * 0.62, color: tint(of: upgrade), opacity: 0.45 * opacity, id: &id, to: &list)
         UpgradeArt.add(upgrade, in: picture, opacity: opacity, id: &id, to: &list)
 
         let textLeft = center.x - size.x / 2 + 12

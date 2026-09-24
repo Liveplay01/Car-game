@@ -185,9 +185,7 @@ public enum StreetBuilderPage {
         id += 1
 
         let shown = countedMoney(career: career, state: state)
-        list.add(.text(Strings.Builder.title, position: Vec2(viewport.x / 2, Metrics.sceneInsets.top - 30), size: 26, alignment: .center, weight: .bold), color: .primary, space: .screen, id: id)
-        id += 1
-        Icons.moneyTag(Strings.Upgrades.balance(format.number(shown)), at: Vec2(viewport.x / 2, Metrics.sceneInsets.top - 2), size: 15, alignment: .center, color: .accent, id: &id, to: &list)
+        MenuKit.header(Strings.Builder.title, money: Strings.Upgrades.balance(format.number(shown)), viewport: viewport, id: &id, to: &list)
 
         addMap(career: career, config: config, state: state, reduceMotion: reduceMotion, bottomInset: bottomInset, id: &id, to: &list)
         for (index, card) in cards(viewport: viewport, bottomInset: bottomInset).enumerated() {
