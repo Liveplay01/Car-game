@@ -200,7 +200,7 @@ Plattform
 - **M8 Wetter & City Events:** Light Rain bis Extreme als dritte Schwierigkeitsachse, Baustelle, Sperrung, Konzert, VIP-Konvoi, Polizeiaktion
 - **M9 Stadt & Module:** Module im Street Builder platzieren, Abschlepp-Depot, wachsende Stadt
 - **M10 Sammeln:** Sportwagen, unsichtbare Mastery, Truhen mit offenen Odds und Pity, Skins, Shop-Tab
-- **M11 (begonnen):** Soft-Body-Takedown, Highlight beim Schichtwechsel, `.ahap`-Haptikmuster, adaptiver Musik-Mix
+- **M11 (begonnen):** Soft-Body-Takedown, `.ahap`-Haptikmuster, adaptiver Musik-Mix
 
 ### 🟡 Offen aus dem alten M6 (jetzt M11 Look & Feel)
 1. **Bugfix:** Geldtransporter über Schichtende hinaus → **behoben** (verwaistes Fahrzeug wird sauber zum normalen Auto)

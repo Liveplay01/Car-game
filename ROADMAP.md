@@ -19,7 +19,7 @@ Stand: 24.09.2026 · Die Details zur Basis (M0–M2) stehen in [FOUNDATION.md](F
 | M8 | Wetter & City Events ✅ (Playtest offen) | L | Regen, Sturm und Ereignisse, die den Verkehr wirklich verändern |
 | M9 | Stadt & Module ✅ (Playtest offen) | M | Modulplätze im Street Builder, Abschlepp-Depot, sichtbar wachsende Stadt |
 | M10 | Fahrzeugtypen, Mastery & Truhen ✅ (Playtest offen) | L | Sportwagen & Co., unsichtbare Mastery, Truhen mit Skins im Shop |
-| M11 | Look & Feel (Soft-Body ✅, Highlight ✅, Haptik-Muster ✅, Musik-Mix ✅; Sounds, Design-Pass, Screens, Icon offen) | M | finale Farben, Formen, Effekte, Takedown-Deformation, Highlight, HUD, Sounds |
+| M11 | Look & Feel (Soft-Body ✅, Haptik-Muster ✅, Musik-Mix ✅; Sounds, Design-Pass, Screens, Icon offen) | M | finale Farben, Formen, Effekte, Takedown-Deformation, HUD, Sounds |
 
 ### Phase 2 · iPad: nur Fertigmachen (Swift Playgrounds)
 
@@ -441,7 +441,7 @@ Tests), das Feedback in `GamePresentation`. Kein neuer Bildschirm, kein neues Me
   kein Modus, kein Text "FLOW".
 - **Chain Crashes** bleiben ein Ereignis: Folgeunfälle kosten weiter nichts (besteht).
 - **Ergebnis** zählt Near Misses, Perfect Inputs und die längste Kette (für Mastery
-  in M10 und das Highlight in M11).
+  in M10).
 - **Balancing-Bot:** misst, wie oft die neuen Stufen vorkommen (`Sim` zeigt die
   Anteile). Ziel: Perfect deutlich seltener als Clean, Near Miss häufiger als Tight Fit.
 
@@ -598,11 +598,8 @@ Testfenster zu sehen und zu hören.
   getroffenen Zone (Front, Heck, Seite, Ecke) nach, abhängig von Richtung und Wucht,
   danach federt sie zurück und eine Restbeule bleibt. Dazu ein sehr subtiler
   Kameraimpuls statt Shake. Mit Reduce Motion nur die Restbeule.
-- **Highlight beim Schichtwechsel** (IDEA.md: Replay/Highlight): Das Spiel merkt sich
-  den besten Moment der Schicht (Takedown > längster Tight Fit > längste Kette > bester
-  Near Miss > letzter interessanter Moment) und zeigt ihn kurz in der
-  Schichtwechsel-Animation: SHIFT COMPLETE → kurzer Freeze → Highlight → Score →
-  Money → Level Up. Kein eigener Replay-Screen.
+- ~~Highlight beim Schichtwechsel~~ **gestrichen (Leo, 24.09.2026):** Der Übergang zwischen
+  zwei Schichten soll flüssig bleiben, kein Freeze und kein eingeblendeter Moment.
 - **Sound:** alle Soundeffekte und eine Basis-Musik, schon als getrennte Stems für
   die adaptive Musik aus IDEA.md: Combo baut Layer auf, Verbrecher bringt die Sirene,
   Rush Hour zieht den Beat an, Flow State verdichtet den Rhythmus. Takedown in
@@ -776,7 +773,7 @@ Jede Idee aus [IDEA.md](IDEA.md) und wo sie umgesetzt wird.
 | Wahrscheinlichkeits-Upgrades (Trucks, Doppel-Transporter …) | M5 ✅, M7 |
 | Mastery, Mastery-Truhen | M10 |
 | Lootboxen, Truhen-Typen, Lootbox-Regeln | M10 (Premium gegen Echtgeld: später) |
-| Replay / Highlight | M11 |
+| Replay / Highlight | gestrichen: der Schichtwechsel bleibt flüssig |
 | Widget, Live Activity, Action Button | v1.4 |
 | GameKit, CloudKit, StoreKit | v1.4, später |
 | Look & Feel, Fahrzeugdarstellung | M11 |

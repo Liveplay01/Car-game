@@ -334,16 +334,6 @@ public enum Strings {
         public static func levelComplete(_ level: Int) -> String { "LEVEL \(level) COMPLETE" }
         public static let newHighscore = "New highscore"
         public static let fullCoverage = "FULL COVERAGE"
-        /// The frozen best moment at the end of a shift (M11).
-        static func highlight(_ kind: Highlight.Kind) -> String {
-            switch kind {
-            case .takedown: "HIGHLIGHT · TAKEDOWN"
-            case .tightFit: "HIGHLIGHT · TIGHTEST FIT"
-            case .chain: "HIGHLIGHT · PERFECT CHAIN"
-            case .nearMiss: "HIGHLIGHT · CLOSE CALL"
-            case .lastMerge: "HIGHLIGHT"
-            }
-        }
         /// "LOSS −$350" after an escape, "CRASH COST −$120" after a crash (level 20+).
         public static func loss(_ amount: String, escaped: Bool) -> String {
             (escaped ? "LOSS " : "CRASH COST ") + "−" + Strings.money(amount)

@@ -50,14 +50,4 @@ struct LookAndFeelTests {
         #expect(hot.volume(.lead) > 0)
         #expect(hot.volume(.flow) > 0)
     }
-
-    @Test func aTakedownBeatsEveryMerge() {
-        let world = World(seed: 1, mode: .shift, prefill: false)
-        let merge = MergeReport(vehicle: 1, minGap: 0.05, closest: nil, gapBehind: 1, position: .zero, time: 1, rating: .tightFit, points: 200, combo: 2)
-        let tight = Highlight.candidate(for: .merged(merge), in: world)
-        let takedown = Highlight.candidate(for: .takedown(TakedownReport(criminal: 2, police: 3, point: .zero, time: 2, points: 1000, timeLeft: 3)), in: world)
-        #expect(tight?.kind == .tightFit)
-        #expect(takedown?.isBetter(than: tight) == true)
-        #expect(tight?.isBetter(than: takedown) == false)
-    }
 }
