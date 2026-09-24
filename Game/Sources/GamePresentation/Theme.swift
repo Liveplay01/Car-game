@@ -85,7 +85,7 @@ public enum ColorToken: Sendable, Equatable, CaseIterable {
     case debugPanel
 }
 
-/// The dark palette (M6). Night, asphalt and one accent.
+/// The dark palette (M11). Night, asphalt and one accent.
 ///
 /// The ground is the darkest surface, the asphalt sits a step above it, the kerb marks the
 /// edge between them. Text is checked against both: `primary` and `muted` clear 4.5:1 on

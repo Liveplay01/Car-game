@@ -205,7 +205,7 @@ jede Schicht lässt sich also im Testfenster nachspielen.
 schwerer wird, noch bevor du selbst spielst.
 
 **Sounds:** Die Platzhalter-Sounds in `Assets/Sounds` erzeugt
-`cd TestWindow; swift run SoundMaker` neu. Die finalen Sounds kommen in M6 unter
+`cd TestWindow; swift run SoundMaker` neu. Die finalen Sounds kommen in M11 unter
 denselben Dateinamen.
 
 ---
@@ -244,7 +244,7 @@ Ergebnisseite. Mit `--seed` lässt sich die Situation dann exakt nachstellen.
 ## Phase 2 und 3 · iPad, iPhone, TestFlight (später)
 
 Kurzüberblick, damit du weißt, was kommt. Die ausführliche Anleitung ergänzen wir,
-wenn Phase 2 beginnt (M7).
+wenn Phase 2 beginnt (M12).
 
 - **Einrichten:** Swift Playgrounds (App Store, kostenlos) auf dem iPad; Repo per
   Git-App (z. B. Working Copy) klonen oder über Playgrounds' Repo-Import laden,
@@ -255,12 +255,12 @@ wenn Phase 2 beginnt (M7).
   dafür ein echtes iPhone gebraucht wird.
 - **Mit kostenloser Apple-ID** läuft die App uneingeschränkt auf dem eigenen
   Gerät (kein 7-Tage-Limit wie bei einem kostenlosen Xcode-Account). Für App
-  Store und TestFlight ist trotzdem das Developer Program aus M8 nötig.
+  Store und TestFlight ist trotzdem das Developer Program aus M13 nötig.
 - **Performance** auf dem echten Gerät mit Release-Build messen. Maßstab bleibt
   das schwächste unterstützte iPhone (iPhone 11 / SE 2. Gen.); ohne Instruments
   (Xcode) reicht dafür vorerst ein Stoppuhr-/FPS-Overlay wie im Testfenster.
-- **TestFlight (M8):** Swift Playgrounds kann Builds direkt an App Store Connect
+- **TestFlight (M13):** Swift Playgrounds kann Builds direkt an App Store Connect
   übermitteln; öffentlicher Einladungslink auf deiner Website, bis zu 10.000
   Tester. Ob das für dieses Projekt ausreicht oder Xcode am Ende doch nötig wird,
-  klärt sich in M7/M8.
+  klärt sich in M12/M13.
 - **Das Testfenster** läuft weiter unter Windows, praktisch zum schnellen Tunen.

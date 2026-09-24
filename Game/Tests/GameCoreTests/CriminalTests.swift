@@ -198,7 +198,7 @@ struct CriminalTests {
     }
 
     @Test func aCriminalStillArrivingBecomesAnOrdinaryCarWhenTheLastCarIsIn() {
-        // Regression for ROADMAP.md M6: a pickup already driving in when the last car
+        // Regression for ROADMAP.md M11: a pickup already driving in when the last car
         // launches must not linger as an untracked "ghost" pickup into the next shift.
         var world = chaseShift(police: false) {
             $0.shiftCars = 1

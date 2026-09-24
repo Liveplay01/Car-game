@@ -1,6 +1,6 @@
 import GameCore
 
-/// The pages of the tab bar (FOUNDATION.md 3): a native `TabView` in the app (M7), a plain
+/// The pages of the tab bar (FOUNDATION.md 3): a native `TabView` in the app (M12), a plain
 /// strip at the bottom of the test window. Game is where you play; there is no start menu.
 public enum Tab: String, CaseIterable, Sendable {
     case streetBuilder
@@ -102,7 +102,7 @@ public struct MenuItem: Sendable, Equatable {
 }
 
 /// What a menu screen shows, as data: the test window draws it as a text page, the app
-/// builds SwiftUI views from it (M7).
+/// builds SwiftUI views from it (M12).
 public struct ScreenContent: Sendable, Equatable {
     public struct Stat: Sendable, Equatable {
         public var label: String
@@ -197,7 +197,7 @@ public enum TabStrip {
 }
 
 /// Draws a menu screen as a plain text page. Only the test window uses this; it is a tool,
-/// so the page is clear and readable, not designed (the SwiftUI menus come in M6/M7).
+/// so the page is clear and readable, not designed (the SwiftUI menus come in M11/M12).
 enum TextPage {
     static func add(_ content: ScreenContent, showsKeys: Bool, bottomInset: Double, to list: inout RenderList) {
         let viewport = list.camera.viewport

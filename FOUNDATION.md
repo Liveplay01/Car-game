@@ -42,7 +42,7 @@ geschnitten, dass diese Systeme später ohne Umbau andocken (Abschnitt 4.6).
 | Audio | Sounddateien (`.wav`), im Testfenster über raylib, in der App über AVAudioEngine | dieselben Dateien auf beiden Seiten |
 | Texte | nur Englisch, zentral in `Strings.swift` | eine Quelle für Testfenster und App |
 | Speichern | `Codable` → JSON-Datei | einfach, versionierbar, überall gleich |
-| Tests | Swift Testing (unter Windows); ob XCUITest in Swift Playgrounds läuft, ist in M7 zu klären, sonst manuelles Playtesting | – |
+| Tests | Swift Testing (unter Windows); ob XCUITest in Swift Playgrounds läuft, ist in M12 zu klären, sonst manuelles Playtesting | – |
 | Werkzeuge | VS Code + Swift-Erweiterung (Windows); Swift Playgrounds nur zum Fertigmachen (iPad) | – |
 | Fremdcode | In der App keiner, nur Apple-Frameworks. raylib nur im Testfenster | keine Abhängigkeiten in der App |
 
@@ -355,7 +355,7 @@ eine **native iOS-Tab-Bar** (SwiftUI `TabView`). `ScreenFlow` modelliert die Tab
 
 ### Design-Grundsätze
 
-Die Details legt der Look-&-Feel-Meilenstein M6 fest, das meiste davon schon im Testfenster.
+Die Details legt der Look-&-Feel-Meilenstein M11 fest, das meiste davon schon im Testfenster.
 
 - **Dark Theme** mit Farben als Tokens nach Rollen: background, surface (Straße),
   primary (Text), muted, accent, destructive. Sie stehen als Konstanten in
@@ -656,7 +656,7 @@ Rauch, Splitter) und das Ergebnis als Banner statt Menü (Abschnitte 2.5 und 2.6
    Offen: Zahl der Autos und Stärke der Rush Hour
 4. Einfädeldauer 0,5 s
 5. Kommen Klick und Leertaste als Tap-Ersatz nah genug an das echte Gefühl heran?
-   Das endgültige Timing-Feintuning passiert mit Touch in M7.
+   Das endgültige Timing-Feintuning passiert mit Touch in M12.
 6. **Combo-Stufen (5/10/20).** Der Balancing-Bot erreicht ×3 nach rund 15
    Einfädelungen und hält es oft die ganze Schicht (beste Combo Ø 190 beim perfekten,
    Ø 125 beim menschenähnlichen Bot). Höhere Schwellen oder ein Abklingen der Combo

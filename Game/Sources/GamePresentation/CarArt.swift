@@ -231,7 +231,7 @@ enum CarArt {
         let paintedInThisCar = bodyColor(type)
 
         // The light bar throws a soft glow onto the road beside the car, flashing side to
-        // side with the beacon itself (ROADMAP.md M6). Drawn first, so it sits under the body.
+        // side with the beacon itself (ROADMAP.md M11). Drawn first, so it sits under the body.
         if let lights, type == .police {
             let glow = lights < 0.5 ? (1.0, 0.3) : (0.3, 1.0)
             let reach = config.carWidth * 1.5

@@ -1,6 +1,6 @@
 # Roadmap – vom Testfenster zur App im App Store
 
-Stand: 23.09.2026 · Die Details zur Basis (M0–M2) stehen in [FOUNDATION.md](FOUNDATION.md), das Testen in [TESTING.md](TESTING.md), der Gesamtweg in [PLAN.md](PLAN.md).
+Stand: 24.09.2026 · Die Details zur Basis (M0–M2) stehen in [FOUNDATION.md](FOUNDATION.md), das Testen in [TESTING.md](TESTING.md), der Gesamtweg in [PLAN.md](PLAN.md), alle Ideen in [IDEA.md](IDEA.md).
 
 ## Überblick
 
@@ -14,21 +14,32 @@ Stand: 23.09.2026 · Die Details zur Basis (M0–M2) stehen in [FOUNDATION.md](F
 | M3 | Polizei & Verbrecher ✅ (Playtest offen) | L | Verbrecher jagen, Einsatzfahrt |
 | M4 | Geldtransporter ✅ (Playtest offen) | M | Transporter abschirmen, erstes Geld |
 | M5 | Wirtschaft & Fortschritt (Level ✅, Geld & Upgrades ✅, Tab-Navigation ✅, fließender Übergang ✅, Gefahrenstufe ✅, Street Builder ✅) | L | Geld verdienen und ausgeben, Gefahrenstufe |
-| M6 | Look & Feel | M | finale Farben, Formen, Effekte, HUD und Sounds |
+| M6 | Präzision & Flow | M | Perfect Input, Near Miss, Perfect Chain und Flow State spüren |
+| M7 | Risiko & Versicherung | M | Crash-Kosten ab Level 20, Verlust bei Flucht, Insurance, Robbery Insurance, neue Upgrades, Kurve ab Level 10 |
+| M8 | Wetter & City Events | L | Regen, Sturm und Ereignisse, die den Verkehr wirklich verändern |
+| M9 | Stadt & Module | M | Modulplätze im Street Builder, Abschlepp-Depot, sichtbar wachsende Stadt |
+| M10 | Fahrzeugtypen, Mastery & Truhen | L | Sportwagen & Co., unsichtbare Mastery, Truhen mit Skins im Shop |
+| M11 | Look & Feel | M | finale Farben, Formen, Effekte, Takedown-Deformation, Highlight, HUD, Sounds |
 
 ### Phase 2 · iPad: nur Fertigmachen (Swift Playgrounds)
 
 | # | Meilenstein | Umfang | Was du danach testen kannst |
 | --- | --- | --- | --- |
-| M7 | iPhone-App | M | das komplette Spiel mit Touch und Haptik auf deinem iPhone |
+| M12 | iPhone-App | M | das komplette Spiel mit Touch und Haptik auf deinem iPhone |
 
 ### Phase 3 · Veröffentlichung
 
 | # | Meilenstein | Umfang | Ergebnis |
 | --- | --- | --- | --- |
-| M8 | v1.0 & Launch | M | Beta über TestFlight, dann **v1.0 im App Store**, deine Website als Startseite |
+| M13 | v1.0 & Launch | M | Beta über TestFlight, dann **v1.0 im App Store**, deine Website als Startseite |
 
 **Umfang** ist die relative Größe (S < M < L) und keine Zeitzusage.
+
+**Neu am 24.09.2026:** Alle Ideen aus der überarbeiteten [IDEA.md](IDEA.md) sind jetzt
+einem Meilenstein oder einer Version nach v1.0 zugeordnet (siehe
+[Ideen-Abdeckung](#ideen-abdeckung) am Ende). Die neuen Spielsysteme (M6–M10) kommen
+**vor** den Look-&-Feel-Pass, damit dieser alles auf einmal gestaltet. Aus dem alten
+M6 wurde M11, aus M7 wurde M12, aus M8 wurde M13.
 
 ## Grundsätze
 
@@ -65,7 +76,7 @@ Rush Hour, spielbar im Testfenster auf deinem PC.
 - **Blechschaden:** Beulen dort, wo das Auto getroffen wurde; Stoßstangen, Haube,
   Spiegel und Räder reißen ab, Scheiben splittern (`CarArt`).
 - **Crash-Effekte, erste Version:** Aufprall-Blitz, Feuerball und Brand bei harten
-  Treffern, Rauch, Funken, Splitter, kurzer Shake. Der Feinschliff folgt in M6.
+  Treffern, Rauch, Funken, Splitter, kurzer Shake. Der Feinschliff folgt in M11.
 - **Ergebnis ohne Menü:** "GAME OVER" bzw. "SHIFT COMPLETE" oben in der Szene, die
   Simulation läuft weiter, ein Tap startet die nächste Schicht.
 
@@ -200,7 +211,7 @@ lesbar?
   (Upgrades, Shop, Street Builder) samt Inhalten in `ScreenFlow`, im Testfenster als
   Textseiten mit Zifferntasten.
 - **Hauptnavigation als native iOS-Tab-Bar** (SwiftUI `TabView`): Street Builder,
-  Game, Shop, Upgrades. In `ScreenFlow` als Tabs modelliert, gebaut in M7.
+  Game, Shop, Upgrades. In `ScreenFlow` als Tabs modelliert, gebaut in M12.
 
 **Beantwortet aus IDEA.md:** erste Kosten und Skalierung der Upgrades. Der
 Balancing-Bot rechnet vor, wie schnell man sich was leisten kann.
@@ -409,7 +420,160 @@ Härte?
 
 ---
 
-## M6 · Look & Feel
+## M6 · Präzision & Flow
+
+**Ziel:** Der Tap selbst wird zur Belohnung (IDEA.md: Perfect Inputs, Near Miss, Perfect
+Chain, Flow State). Neue Bewertungsstufen entstehen in `GameCore` (Regeln, Events,
+Tests), das Feedback in `GamePresentation`. Kein neuer Bildschirm, kein neues Menü.
+
+| Stufe | Regel (Startwert, alles in `Config.swift`) | Punkte / Combo | Feedback |
+| --- | --- | --- | --- |
+| **Tight Fit** (besteht) | engster Abstand < 0,12 s | 200 × Mult., +2 | Swoosh, scharfer Impuls |
+| **Near Miss** | engster Abstand < 0,2 s, aber kein Tight Fit | 125 × Mult., +1 | kurzer Swoosh, dezente Haptik, kein Popup |
+| **Perfect Input** | Lücke vorne und hinten fast gleich groß (Abweichung ≤ 25 %), beide ≥ 0,2 s | 150 × Mult., +1 | kurzer Präzisions-Ring, hochwertiger Klick, Punkte leicht verzögert |
+| **Clean** (besteht) | alles andere | 100 × Mult., +1 | wie bisher |
+
+- **Perfect Chain:** zählt Perfect Inputs, Near Misses, Tight Fits, Takedowns und
+  gerettete Transporter in Folge. Eine normale saubere Einfädelung, ein Cut-off oder ein
+  Crash beendet sie. Keine eigene Anzeige; nur das Feedback wird stärker.
+- **Flow State:** ab einer Kette von 5 (`flowChain`) ist man "im Flow" — Ring-Glow,
+  Sound-Layer und Haptik werden subtil stärker. Endet mit der Kette. Nur Feedback,
+  kein Modus, kein Text "FLOW".
+- **Chain Crashes** bleiben ein Ereignis: Folgeunfälle kosten weiter nichts (besteht).
+- **Ergebnis** zählt Near Misses, Perfect Inputs und die längste Kette (für Mastery
+  in M10 und das Highlight in M11).
+- **Balancing-Bot:** misst, wie oft die neuen Stufen vorkommen (`Sim` zeigt die
+  Anteile). Ziel: Perfect deutlich seltener als Clean, Near Miss häufiger als Tight Fit.
+
+**Fertig, wenn:** man ohne Text spürt, welcher Tap gut war, und der Flow sich einstellt,
+ohne dass das Spiel es sagt.
+
+**Playtest-Fragen:** Ist Perfect Input zu selten oder zu häufig (`perfectBalance`)? Soll
+eine normale saubere Einfädelung die Kette wirklich beenden? Stimmt die Flow-Schwelle?
+
+---
+
+## M7 · Risiko & Versicherung
+
+**Ziel:** Ab Level 20 bekommen Fehler eine kleine wirtschaftliche Bedeutung (IDEA.md:
+Crash-Economy, Financial Loss, Insurance, Robbery Insurance). Nie so teuer, dass man
+Angst bekommt, etwas auszuprobieren.
+
+- **Crash-Kosten ab Level 20** (`crashCostLevel`): Der Crash, der die Schicht beendet
+  bzw. ein Polizei-Crash, kostet nach Wucht gestaffelt: klein 60, größer 120, schwer
+  200 (`crashCosts`, Grenzen über `impact`). Ein Folgeunfall kostet nichts. Level
+  1–19 bleiben kostenlos.
+- **Verlust bei Flucht ab Level 20:** Ein entkommener Verbrecher bleibt Hard Fail und
+  kostet zusätzlich 350 (`escapeLoss`). Anzeige im Ergebnis: "CRIMINAL ESCAPED ·
+  SHIFT LOST · LOSS −$350".
+- **Nie ins Minus:** Kosten werden vom Verdienst der Schicht und dann vom Konto
+  abgezogen, das Konto fällt nie unter 0.
+- **Insurance** (Upgrade, sichtbar ab Level 20): 7 Stufen, je 15 % weniger
+  Crash-Kosten, Stufe 7 = 100 % ("FULL COVERAGE · You Pay $0").
+- **Robbery Insurance** (Upgrade, sichtbar ab Level 20): 7 Stufen, gleiche Staffel für
+  den Verlust bei Flucht.
+- **Neue Wahrscheinlichkeits-Upgrades** (IDEA.md): **Freight** (mehr Trucks → mehr
+  Maut, aber dichterer Verkehr), **Double Run** (Chance auf einen zweiten Transporter
+  direkt hinterher). Sie verändern keine der drei Schwierigkeits-Achsen.
+- **Kurve ab Level 10 nachziehen** (Playtest Leo: Level 14 zu leicht), gegengemessen
+  mit `Sim --curve`.
+- **Karriere-Simulation** rechnet nach, dass Crash-Kosten im Schnitt unter 10 % des
+  Verdienstes bleiben.
+
+**Fertig, wenn:** Crash und Flucht ab Level 20 im Ergebnis sichtbar kosten, beide
+Versicherungen die Kosten sichtbar senken und die Karriere-Simulation stabil bleibt.
+
+---
+
+## M8 · Wetter & City Events
+
+**Ziel:** Die dritte Schwierigkeits-Achse (IDEA.md: Speed, Density, **Weather**) und
+Ereignisse, die den Verkehr wirklich verändern, nicht nur dekorieren.
+
+**Wetter** (`Weather.swift`, pro Schicht ausgelost, Wahrscheinlichkeit steigt mit dem Level):
+
+| Stufe | ab Level | Wirkung im Spiel | Darstellung |
+| --- | --- | --- | --- |
+| Clear | 1 | – | – |
+| Light Rain | 6 | Reifen haften schlechter (Wracks rutschen weiter), Fahrer reagieren etwas später | dezente Regenstreifen, nasser Glanz |
+| Heavy Rain | 12 | dazu +1 Auto Dichte, Fahrer bremsen schwächer | dichter Regen, dunkler, Sicht am Rand weich abgedunkelt |
+| Storm | 18 | dazu +2 Dichte, KI braucht größere Lücken nicht mehr (drängelt) | Böen, Blitze, intensiveres Audio |
+| Extreme | 25, selten | Sturm plus kurze Sturmböen, die das Tempo schwanken lassen | stärkste Effekte |
+
+- **Fair bleibt es:** Das Tap-Timing selbst ändert sich nie; Sonderfahrzeuge,
+  Warnungen und Countdown-Ringe liegen immer über den Wettereffekten.
+- **Ankündigung:** Das Wetter steht vor der Schicht auf dem Game-Tab ("LEVEL 14 ·
+  Heavy Rain").
+
+**City Events** (`CityEvents.swift`, höchstens eins pro Schicht, vorher angekündigt):
+
+| Event | Wirkung |
+| --- | --- |
+| Roadworks (Baustelle) | ein Ringabschnitt fährt langsamer, wie eine Maut-Zone |
+| Road Closure (Sperrung) | eine KI-Zufahrt ist zu, die anderen bekommen ihren Verkehr |
+| Concert / Parade | eine Zufahrt schickt eine Welle dicht folgender Autos |
+| VIP Convoy | drei KI-Autos fahren eng hintereinander ein: eine lange Lücke davor und dahinter |
+| Police Operation | mehr Polizeiautos in der Schlange |
+
+Events passen in die drei Achsen: Sie ändern Tempo, Dichte oder Lücken, nie die Regeln.
+
+**Fertig, wenn:** Wetter und Events im Testfenster sichtbar sind, sich spielerisch
+unterscheiden und die Kurve (`Sim --curve`) mit Wetter weiter sauber ansteigt.
+
+---
+
+## M9 · Stadt & Module
+
+**Ziel:** Der Street Builder wird zur wachsenden Stadt (IDEA.md: Zollstellen,
+Abschlepp-Depot, City Evolution).
+
+- **Modulplätze im Street Builder:** Palette mit Toll Booth, Speed Camera und
+  Abschlepp-Depot, Ziehen und Ablegen auf die festen Modulplätze, Tausch bei vollem
+  Ring (Kern und Laufbahn existieren schon, siehe M11 "Gerade angefangen").
+- **Abschlepp-Depot** (neues Modul): Wracks in seiner Zone verschwinden **30 %
+  schneller** (`towSpeedup`), der Verkehr fließt schneller wieder. Sichtbar als kleiner
+  Hof am Ring; nach einem Crash in der Zone fährt kurz ein Abschleppwagen hin.
+- **City Evolution:** Um den Kreisverkehr wachsen mit Level, Zufahrten und Modulen
+  flache Stadtblöcke, Bäume und Infrastruktur. Rein Darstellung, aus dem Spielstand
+  berechnet, deterministisch.
+- **Zollstellen:** Maximalzahl (= Modulplätze) und Gebühr-Skalierung im Balancing.
+- **Platzhalter-Sound** `toll` im SoundMaker, Doku in FOUNDATION.md 2.9.
+
+**Fertig, wenn:** man Module im Street Builder platziert, das Depot im Spiel wirkt und
+die Stadt mit dem Fortschritt sichtbar wächst.
+
+---
+
+## M10 · Fahrzeugtypen, Mastery & Truhen
+
+**Ziel:** Langfristige Ziele ohne Feature-Bloat (IDEA.md: Fahrzeugtypen und Skins,
+Mastery, Truhen, Lootbox-Regeln).
+
+- **Fahrzeugtyp ≠ Skin.** Ein Typ hat Spielwerte, ein Skin nur Aussehen.
+  - **Sports Car:** kürzer, leichter, fädelt schneller ein (kürzere Einfädelzeit).
+  - **Truck** (besteht): länger, schwerer.
+  - **Pickup** (besteht): 2,5× Masse, nur für Verbrecher.
+  - Freigeschaltete Typen erscheinen gelegentlich in der eigenen Schlange.
+- **Skins:** Farbe, Lackierung, Formdetails. Kein Skin gibt einen Spielvorteil;
+  Sonderfahrzeuge (Polizei, Pickup, Transporter) bleiben immer erkennbar.
+- **Mastery (unsichtbar):** zählt über die ganze Laufbahn Perfect Inputs, lange Ketten,
+  Tight Fits, Takedowns, gerettete Transporter, lange Combos und besondere Schichten.
+  Beim Erreichen: kurzer Toast "MASTERY COMPLETE · Perfect Timing · CHEST EARNED",
+  die Truhe liegt danach im Shop. Kein Mastery-Screen.
+- **Truhen:** Standard, Premium (später Echtgeld, bis dahin nur verdient), Event,
+  Criminal Hunt. Inhalt nur Map Skins, Car Skins und Vehicle Types.
+- **Lootbox-Regeln:** Seltenheiten Common/Rare/Epic/Legendary, Odds im Shop sichtbar,
+  Pity-System (spätestens jede 10. Truhe mindestens Epic), keine Gameplay-Boni,
+  Duplikate werden zu Geld. Darstellung dezent: Rahmen, Glow, Typografie.
+- **Shop-Tab** in `ScreenFlow`: Truhen öffnen, Odds, Sammlung, Skin wählen.
+- **Spielstand** speichert Mastery-Zähler, Truhen, Sammlung und gewählte Skins.
+
+**Fertig, wenn:** Mastery im Spiel Truhen verdient, Truhen im Shop geöffnet werden
+und gewählte Skins im Spiel zu sehen sind.
+
+---
+
+## M11 · Look & Feel
 
 **Ziel:** Das Spiel sieht aus und klingt so, wie IDEA.md es beschreibt: ruhig,
 hochwertig, präzise. Fast alles davon entsteht in `GamePresentation` und ist im
@@ -422,18 +586,37 @@ Testfenster zu sehen und zu hören.
   Reduce Motion. Feinschliff der Crash-Effekte, Wracks und Fahrzeugteile aus M2.
 - **Fahrzeugdesign** auf Basis des Teile-Modells aus M2 (`CarArt`): finale Formen
   für Auto, Polizei, Pickup, Transporter, jeweils mit abreißbaren Teilen.
+- **Takedown mit Soft-Body-Deformation** (IDEA.md): eine visuelle Deformationsschicht
+  über der bestehenden Physik. 0–30 ms Impact, 30–120 ms gibt die Karosserie an der
+  getroffenen Zone (Front, Heck, Seite, Ecke) nach, abhängig von Richtung und Wucht,
+  danach federt sie zurück und eine Restbeule bleibt. Dazu ein sehr subtiler
+  Kameraimpuls statt Shake. Mit Reduce Motion nur die Restbeule.
+- **Highlight beim Schichtwechsel** (IDEA.md: Replay/Highlight): Das Spiel merkt sich
+  den besten Moment der Schicht (Takedown > längster Tight Fit > längste Kette > bester
+  Near Miss > letzter interessanter Moment) und zeigt ihn kurz in der
+  Schichtwechsel-Animation: SHIFT COMPLETE → kurzer Freeze → Highlight → Score →
+  Money → Level Up. Kein eigener Replay-Screen.
 - **Sound:** alle Soundeffekte und eine Basis-Musik, schon als getrennte Stems für
-  die adaptive Musik aus IDEA.md.
+  die adaptive Musik aus IDEA.md: Combo baut Layer auf, Verbrecher bringt die Sirene,
+  Rush Hour zieht den Beat an, Flow State verdichtet den Rhythmus. Takedown in
+  Schichten: Kontakt, Metall, Deformation, Reifen, Teile, Signatur.
 - **Haptik-Muster** für jedes Ereignis als `.ahap`-Dateien schreiben (das ist
-  JSON). Spüren lassen sie sich erst in M7.
+  JSON), auch für Perfect Input, Near Miss, Truhe geöffnet und Transporter gerettet;
+  Takedown skaliert mit der Wucht. Spüren lassen sie sich erst in M12.
+- **Accessibility:** Farben nie allein — Formen, Icons, Muster und Textlabels für
+  Sonderfahrzeuge; Reduce Motion entfernt Kameraimpuls, Deformation und
+  Screen-Animationen, alle Informationen bleiben.
 - **Screen-Entwürfe** für die SwiftUI-Menüs festlegen (Layout, Inhalte, Texte),
-  damit M7 nur noch umsetzt. **Möglichst native Apple-Elemente:** Tab-Bar,
+  damit M12 nur noch umsetzt. **Möglichst native Apple-Elemente:** Tab-Bar,
   NavigationStack, Listen und Formulare für Einstellungen, Sheets, SF Symbols.
 - **App-Icon** als Entwurf.
 
 **Fertig, wenn:** man ohne Erklärung sieht und hört, was gut und was schlecht war.
 
-### Offen – als Nächstes dran (Stand 22.09.2026)
+### Offen – aus dem alten M6 (Stand 22.09.2026)
+
+Punkt 2 (Kurve ab Level 10) ist nach M7 gewandert, die Modulplätze im Street Builder
+nach M9.
 
 Aus dem Playtest und den Ansagen von Leo, in dieser Reihenfolge:
 
@@ -488,7 +671,7 @@ FOUNDATION.md 2.9.
 
 # Phase 2 · iPad
 
-## M7 · iPhone-App
+## M12 · iPhone-App
 
 **Ziel:** Das fertige Spiel aus Phase 1 läuft mit Touch und Haptik auf dem iPhone –
 ohne Mac, über Swift Playgrounds auf dem iPad.
@@ -501,7 +684,7 @@ ohne Mac, über Swift Playgrounds auf dem iPad.
 - **Adapter:** SpriteKit zeichnet die Render-Liste, Touch mit Zeitstempel als
   Eingabe, AVAudioEngine spielt die Sounds, Core Haptics die `.ahap`-Muster.
   120 Hz auf ProMotion-Geräten.
-- **SwiftUI-Menüs** nach den Entwürfen aus M6, als Ansichten von `ScreenFlow`,
+- **SwiftUI-Menüs** nach den Entwürfen aus M11, als Ansichten von `ScreenFlow`,
   mit nativen Elementen (Tab-Bar für Street Builder, Game, Shop, Upgrades).
 - **Timing-Feintuning mit Touch** auf dem echten Gerät.
 - **Geräte-Tests:** so viele Bildschirmgrößen wie über Playgrounds' Vorschau
@@ -518,7 +701,7 @@ Einschränkung so gut anfühlt wie geplant.
 
 # Phase 3 · Veröffentlichung
 
-## M8 · v1.0 & Launch
+## M13 · v1.0 & Launch
 
 **Ziel:** Das Spiel ist weltweit im App Store, deine Website ist seine Startseite.
 Warum das nur über den App Store geht, steht in [PLAN.md, Phase 3](PLAN.md#phase-3--veröffentlichung).
@@ -547,8 +730,56 @@ Windows im Paket `Game/`, der Mac wird nur für den Feinschliff und den Upload g
 
 | Version | Inhalt | Hinweis |
 | --- | --- | --- |
-| **v1.1 Straßennetz & Zoll** | Straßennetz-Editor bzw. Stadtübersicht, Zollstellen, Trucks, Stau mit Fahrzeugfolgemodell, Verkehrsleitsystem | Designfrage vorher klären: Spielt eine Schicht auf *einem* Kreisverkehr des Netzes (Vorschlag) oder auf dem ganzen Netz? |
-| **v1.2 Motivation & Sammeln** | Daily Login mit Abholen der Zolleinnahmen, Challenges, Perfect-Run-Bonus, Lootboxen und Skins | Lootboxen zunächst nur mit Ingame-Geld; Odds und Pity-System wie in IDEA.md |
-| **v1.3 Abwechslung** | adaptive Musik, Wetter und Tag/Nacht, Krankenwagen/VIP, Baustellen, zweispurige Kreisverkehre, Boss-Event, Prestige | – |
-| **v1.4 Apple-Ökosystem** | Game Center (Bestenlisten, Erfolge), Widget, Live Activity / Dynamic Island, Action Button, Siri Shortcuts, Apple Watch | mit dem Developer-Account aus M8 möglich; braucht mehr Mac-Arbeit als andere Updates |
-| **Später, falls gewünscht** | Premium-Boxen, Season Pass, Multiplayer | Echtgeld braucht In-App-Käufe (StoreKit, Apple erhält eine Provision) und eine rechtliche Prüfung der Lootboxen (App Store 3.1.1, Altersfreigaben, Länder wie Belgien) |
+| **v1.1 Straßennetz** | freier Straßennetz-Editor bzw. Stadtübersicht, neue Straßen und weitere Kreisverkehre, Stau mit Fahrzeugfolgemodell, Verkehrsleitsystem (Gegen-Upgrade zum Zoll-Stau) | Designfrage vorher klären: Spielt eine Schicht auf *einem* Kreisverkehr des Netzes (Vorschlag) oder auf dem ganzen Netz? |
+| **v1.2 Motivation** | Daily Shift / Daily Login mit Abholen der Zolleinnahmen, Challenges, Perfect-Run-Bonus, Event-Truhen, City-/Event-Rewards | – |
+| **v1.3 Abwechslung** | Tag/Nacht, Krankenwagen, Boss-Event (Kopf des Verbrechens), zweispurige Kreisverkehre, weitere Fahrzeugtypen, Prestige | Nichts davon darf die Kernmechanik mit Sonderregeln überladen |
+| **v1.4 Apple-Ökosystem** | Game Center (Bestenlisten, Erfolge aus der Mastery), CloudKit-Spielstand-Sync, Home-Screen-Widget (Level, Daily Shift, Bestwert, Truhe, Stadt, Einnahmen), Live Activity / Dynamic Island (nur bei aktiver Jagd oder aktivem Transporter), Action Button (Start Shift / Daily Shift), Siri Shortcuts, Apple Watch | mit dem Developer-Account aus M13 möglich |
+| **Später, falls gewünscht** | Premium-Truhen gegen Echtgeld, Season Pass, Multiplayer | Echtgeld braucht In-App-Käufe (StoreKit, Apple erhält eine Provision) und eine rechtliche Prüfung der Lootboxen (App Store 3.1.1, Altersfreigaben, Länder wie Belgien) |
+
+---
+
+## Ideen-Abdeckung
+
+Jede Idee aus [IDEA.md](IDEA.md) und wo sie umgesetzt wird.
+
+| Idee (IDEA.md) | Wo |
+| --- | --- |
+| Kernmechanik, Einfädeln, Kollision | M1 ✅ |
+| Schicht, Rush Hour, Level, Wiederholen | M2, M4, M5 ✅ |
+| Schwierigkeit über Speed und Density | M5 ✅, Kurve ab Level 10 in M7 |
+| Schwierigkeit über Weather | M8 |
+| Hard Fail, Polizei-Crash als Soft Fail, Chain Crashes | M4 ✅ |
+| Perfect Inputs / Game Feel | M6 (Regeln), M11 (Feinschliff) |
+| Combo, Tight Fit | M2 ✅ |
+| Near Miss, Perfect Chain, Flow State | M6 |
+| Anticipation, Telegraphing, Warnung im Innenteil | M3/M4 ✅, M8 (Wetter/Event-Ankündigung) |
+| Verbrecher, Polizei, Panic Button | M3 ✅ |
+| Takedown mit Soft-Body-Deformation | M11 |
+| Geldtransporter, kritische Zonen, Countdown | M4 ✅ |
+| Fahrzeugtypen getrennt von Skins | M10 (Truck und Pickup ✅) |
+| Zollstellen | M5 ✅ (Kern), M9 (Platzierung, Balancing) |
+| Abschlepp-Depot | M9 |
+| Wirtschaft schafft Gefahr | M5 ✅, M7, M9 |
+| Gefahrenstufe vor der Schicht | M5 ✅ |
+| City Evolution | M9 (sichtbar wachsend), v1.1 (freies Netz, neue Kreisverkehre) |
+| City Events | M8 |
+| Crash-Economy ab Level 20, Insurance | M7 |
+| Financial Loss bei Flucht, Robbery Insurance | M7 |
+| Map-Erweiterung | M5 ✅ |
+| Wahrscheinlichkeits-Upgrades (Trucks, Doppel-Transporter …) | M5 ✅, M7 |
+| Mastery, Mastery-Truhen | M10 |
+| Lootboxen, Truhen-Typen, Lootbox-Regeln | M10 (Premium gegen Echtgeld: später) |
+| Replay / Highlight | M11 |
+| Widget, Live Activity, Action Button | v1.4 |
+| GameKit, CloudKit, StoreKit | v1.4, später |
+| Look & Feel, Fahrzeugdarstellung | M11 |
+| Sound Design & Dynamic Audio | M11 |
+| Haptik | M11 (Muster), M12 (spüren) |
+| Accessibility | M11, M12 (VoiceOver, Dynamic Type) |
+| Inhaltliche Abwechslung (Krankenwagen, VIP, Baustellen, Boss …) | M8 (VIP, Baustellen, Sperrungen, Polizeiaktion), v1.3 |
+| Multiplayer | später |
+
+**Abweichung zur Klärung:** IDEA.md nennt für eine Schicht mit 15 Autos "ungefähr 2
+Minuten". Gemessen dauert eine Schicht seit M4 (ohne Uhr, kein Tap-Cooldown) je nach
+Level 8–35 s. Ob die Schicht länger werden soll (mehr Autos, langsamerer Anstieg), ist
+eine Playtest-Entscheidung; bis dahin bleibt es beim gemessenen Stand.

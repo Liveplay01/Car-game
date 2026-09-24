@@ -85,7 +85,7 @@ enum HUD {
         }
 
         if showsKeys {
-            // The app gets a dispatch button (and the Action Button) in M7.
+            // The app gets a dispatch button (and the Action Button) in M12.
             add(.text(Strings.Keys.dispatch, position: Vec2(margin, Metrics.strikeRow), size: 11, alignment: .leading, weight: .regular), .muted)
             if timeScale != 1 {
                 add(.text(Strings.multiplier(timeScale), position: Vec2(width - margin, Metrics.strikeRow), size: 13, alignment: .trailing, weight: .bold), .muted)
@@ -184,7 +184,7 @@ enum HUD {
 
     /// Marks the criminal in the scene: while it is only announced, a pulsing wedge on the
     /// island's edge, facing the arm it will come from, so the warning reads without pulling
-    /// the eye off the middle of the ring (ROADMAP.md M6); then a countdown ring around the
+    /// the eye off the middle of the ring (ROADMAP.md M11); then a countdown ring around the
     /// pickup itself, which by then is on screen and worth looking at directly.
     static func addChase(world: World, alpha: Double, to list: inout RenderList) {
         let config = world.config
@@ -220,7 +220,7 @@ enum HUD {
     }
 
     /// The money transporter: while it is only announced, a pulsing wedge on the island's
-    /// edge, facing the arm it will come from (ROADMAP.md M6, same as `addChase`); then a
+    /// edge, facing the arm it will come from (ROADMAP.md M11, same as `addChase`); then a
     /// countdown ring around the truck that empties as its time runs out, plus the secure
     /// zones as pale arcs on the ring. It circles until its time is up, so no exit is marked.
     static func addTransporter(world: World, alpha: Double, to list: inout RenderList) {

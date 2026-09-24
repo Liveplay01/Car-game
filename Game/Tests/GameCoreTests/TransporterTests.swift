@@ -96,7 +96,7 @@ struct TransporterTests {
     }
 
     @Test func aTransporterStillArrivingBecomesAnOrdinaryCarWhenTheLastCarIsIn() {
-        // Regression for ROADMAP.md M6: a transporter already driving in when the last car
+        // Regression for ROADMAP.md M11: a transporter already driving in when the last car
         // launches must not linger as an untracked "ghost" transporter into the next shift
         // (no secure zones, no payout, but still looking and driving like a transporter).
         var world = transporterShift(police: false) {

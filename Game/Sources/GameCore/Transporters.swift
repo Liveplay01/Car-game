@@ -63,7 +63,7 @@ extension World {
                 // It already left its stop line: hand it over as an ordinary car instead of
                 // leaving a transporter nobody tracks any more, which would otherwise still
                 // look and drive like one — with no secure zones and no payout — well into
-                // the next shift (ROADMAP.md M6).
+                // the next shift (ROADMAP.md M11).
                 transporter.phase = .idle(next: .infinity)
                 demoteToOrdinaryTraffic(id)
             case .idle, .active, .seized, .leaving: break

@@ -194,7 +194,7 @@ Plattform
   - Street Builder (Ziehen & Ablegen, 4→8 Arme, Preise, Ring-Geometrie ändert sich)
   - Ring-Module: **Toll Booth** (LKW zahlen, Stau) & **Speed Camera** (Strafe über Limit, Bremsen) – Kern, Zeichnen, Laufbahn fertig, Tests grün
 
-### 🟡 In Arbeit / Offen (M6 Look & Feel)
+### 🟡 In Arbeit / Offen (M11 Look & Feel)
 1. **Bugfix:** Geldtransporter über Schichtende hinaus → **behoben** (verwaistes Fahrzeug wird sauber zum normalen Auto)
 2. **Balancing:** Level 14 noch zu leicht → Kurve ab Level 10 nachziehen
 3. **Warnung im Innenteil:** Keil auf Mittelinsel statt an Zufahrt → **im Code, Playtest offen**
@@ -202,7 +202,7 @@ Plattform
 5. **Trucks optisch final prüfen** (Länge, Masse, Maut, Farben verdrahtet)
 6. **Street Builder Palette & Modulplätze** für Toll Booth / Speed Camera
 
-### 📋 Geplant (Post-M6 / v1.1+)
+### 📋 Geplant (Post-M11 / v1.1+)
 - Straßennetz-Editor / Stadtübersicht (v1.1)
 - Daily Login, Challenges, Perfect-Run-Bonus, Lootboxen, Skins (v1.2)
 - Adaptive Musik, Wetter/Tag-Nacht, Krankenwagen/VIP, Baustellen, 2-spurige Kreisverkehre, Boss-Event, Prestige (v1.3)
@@ -232,9 +232,9 @@ Plattform
 
 | Phase | Meilenstein | Ziel |
 |---|---|---|
-| **Phase 1 (Windows)** | **M6 Look & Feel** | Finale Farben, Formen, Effekte, HUD, Sounds, Haptik-Muster (`.ahap`), Screen-Entwürfe für SwiftUI, App-Icon |
-| **Phase 2 (iPad)** | **M7 iPhone-App** | `App.swiftpm` anlegen, SpriteKit-Adapter, Touch/Haptik/Audio-Adapter, SwiftUI-Menüs aus `ScreenFlow`, Timing-Feintuning auf Gerät, Tests auf iPhone 11/SE (A13) |
-| **Phase 3** | **M8 v1.0 Launch** | Apple Developer Program (99 $), TestFlight-Beta (Website), App Store Einreichung, Privacy Policy & Support-Seite, Launch |
+| **Phase 1 (Windows)** | **M11 Look & Feel** | Finale Farben, Formen, Effekte, HUD, Sounds, Haptik-Muster (`.ahap`), Screen-Entwürfe für SwiftUI, App-Icon |
+| **Phase 2 (iPad)** | **M12 iPhone-App** | `App.swiftpm` anlegen, SpriteKit-Adapter, Touch/Haptik/Audio-Adapter, SwiftUI-Menüs aus `ScreenFlow`, Timing-Feintuning auf Gerät, Tests auf iPhone 11/SE (A13) |
+| **Phase 3** | **M13 v1.0 Launch** | Apple Developer Program (99 $), TestFlight-Beta (Website), App Store Einreichung, Privacy Policy & Support-Seite, Launch |
 
 ---
 
@@ -272,4 +272,4 @@ Car game/
 
 ---
 
-**Stand:** 23.09.2026 – M5 vollständig, M6 gestartet. Das Spiel ist im Testfenster **voll spielbar** mit allen Kernsystemen (Polizei, Transporter, Wirtschaft, Level, Street Builder, Module). Nächster großer Schritt: **M6 Look & Feel** (finale Optik, Sound, Haptik) → dann **Phase 2 auf iPad**.
+**Stand:** 23.09.2026 – M5 vollständig, M11 gestartet. Das Spiel ist im Testfenster **voll spielbar** mit allen Kernsystemen (Polizei, Transporter, Wirtschaft, Level, Street Builder, Module). Nächster großer Schritt: **M11 Look & Feel** (finale Optik, Sound, Haptik) → dann **Phase 2 auf iPad**.

@@ -27,7 +27,7 @@ public enum SoundID: String, CaseIterable, Sendable {
     case seized
 }
 
-/// Haptic patterns. The raw value is the file name: `Assets/Haptics/<raw>.ahap` (M6).
+/// Haptic patterns. The raw value is the file name: `Assets/Haptics/<raw>.ahap` (M11).
 public enum HapticID: String, CaseIterable, Sendable {
     /// One sharp transient.
     case tightFit

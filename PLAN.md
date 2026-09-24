@@ -28,7 +28,7 @@ Details stehen in [FOUNDATION.md](FOUNDATION.md), die Meilensteine in [ROADMAP.m
 - Gespielt wird in einem **Testfenster** mit einfachen Formen. Maus oder
   Leertaste ersetzen den Finger.
 - Kein Mac, kein iPhone und kein Apple-Account nötig.
-- Roadmap: **M0–M6**.
+- Roadmap: **M0–M11**.
 
 ## Phase 2 – Fertigstellung auf dem iPad (Swift Playgrounds)
 
@@ -45,12 +45,12 @@ Details stehen in [FOUNDATION.md](FOUNDATION.md), die Meilensteine in [ROADMAP.m
   unter Windows weiterbaut und -testet.
 - **Zum Testen reicht die kostenlose Apple-ID**, kein bezahlter Account nötig,
   solange nur auf dem eigenen Gerät getestet wird.
-- **Offen, in M7 zu klären** (siehe [ROADMAP.md](ROADMAP.md)): ob ein iPad allein
+- **Offen, in M12 zu klären** (siehe [ROADMAP.md](ROADMAP.md)): ob ein iPad allein
   für iPhone-genaues Touch-/Haptik-/Bildschirmgrößen-Testing reicht oder
   zusätzlich ein echtes iPhone nötig ist, ob die lokale Pfad-Abhängigkeit auf
-  `Game/` in Playgrounds sauber auflöst, und ob sich M8 (App-Store-Einreichung)
+  `Game/` in Playgrounds sauber auflöst, und ob sich M13 (App-Store-Einreichung)
   direkt vom iPad aus erledigen lässt oder Xcode am Ende doch nötig wird.
-- Roadmap: **M7**.
+- Roadmap: **M12**.
 
 ## Phase 3 – Veröffentlichung
 
@@ -74,7 +74,7 @@ Download anbieten.
 - **Vorab-Tests über TestFlight:** Ein öffentlicher Einladungslink auf deiner
   Website erreicht bis zu 10.000 Tester, bevor das Spiel im Store ist.
 - **Updates** laufen danach ebenfalls über den App Store.
-- Roadmap: **M8**.
+- Roadmap: **M13**.
 
 ## Offene Punkte
 

@@ -6,7 +6,7 @@ import Foundation
 ///
 /// Simple synthesis, deterministic, so the files can be rebuilt any time. Quiet and short on
 /// purpose: the more often a sound plays, the less it does (FOUNDATION.md 3). The final
-/// sounds come with the look & feel pass (M6), under the same file names.
+/// sounds come with the look & feel pass (M11), under the same file names.
 @main
 struct SoundMaker {
     static let rate = 44_100.0
