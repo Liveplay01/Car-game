@@ -69,6 +69,11 @@ while !WindowShouldClose() {
                   let upgrade = UpgradePage.card(at: mouse, viewport: viewport, bottomInset: tabBar, upgrades: session.visibleUpgrades) {
             // One click opens the card, a second one right after buys it.
             actions.append(.tapUpgrade(upgrade))
+        } else if session.screen == .page(.shop),
+                  let target = ShopPage.target(at: mouse, viewport: viewport, bottomInset: tabBar, career: session.save.career, state: session.shopPage) {
+            actions.append(.tapShop(target))
+        } else if session.screen == .page(.shop) {
+            // A click beside everything on the shop does nothing.
         } else if session.screen == .page(.streetBuilder) {
             actions.append(.pointerDown(mouse))
         } else {

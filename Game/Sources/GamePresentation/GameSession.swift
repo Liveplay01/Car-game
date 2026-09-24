@@ -27,6 +27,8 @@ public enum InputAction: Sendable, Equatable {
     /// A tap on an upgrade card: it opens its details, a second tap within
     /// `GameSession.doubleTapWindow` buys it (the app's double tap, a double click here).
     case tapUpgrade(Upgrade)
+    /// A tap on the Shop page (`ShopPage.target(at:)`): a section, a chest, a button, an item.
+    case tapShop(ShopPage.Target)
     /// Dragging on a page: press, move, release (the Street Builder's drag and drop).
     case pointerDown(Vec2)
     case pointerMove(Vec2)
@@ -137,6 +139,8 @@ public final class GameSession {
     public static let doubleTapWindow = 0.4
     /// What the Upgrades tab shows and animates.
     public private(set) var upgradePage = UpgradePage.State()
+    /// What the Shop tab shows and animates (M10).
+    public private(set) var shopPage = ShopPage.State()
     /// What the Street Builder tab shows and animates.
     public private(set) var builderPage = StreetBuilderPage.State()
     /// The last tap on a placed part, to tell a double tap from a single one.
@@ -258,7 +262,20 @@ public final class GameSession {
             guard let opening = save.career.openChest(at: index, seed: UInt64(save.shiftsPlayed)) else { return }
             store.save(save)
             play(sounds: [.paid], haptics: [.chest])
-            showNotice(Strings.Shop.opened(opening))
+            // The drawn shop reveals it; without drawn menus a short notice says what it was.
+            if options.drawsMenus {
+                shopPage.opening = (opening, 0)
+            } else {
+                showNotice(Strings.Shop.opened(opening))
+            }
+        case let .buyChest(kind):
+            guard save.career.buyChest(kind, config: config) else {
+                shopPage.denied = 0.001
+                showNotice(Strings.Notice.notEnoughMoney(format.number(config.standardChestPrice)))
+                return
+            }
+            store.save(save)
+            play(sounds: [.comboUp], haptics: [.comboUp])
         case let .wear(id):
             save.career.wear(id)
             store.save(save)
@@ -486,6 +503,34 @@ public final class GameSession {
         Upgrade.available(atLevel: save.career.level, config: config)
     }
 
+    /// A tap on the Shop page. Tapping a selected chest again opens one; tapping an owned
+    /// item again wears it — like the double tap on an upgrade.
+    private func tapShop(_ target: ShopPage.Target) {
+        switch target {
+        case let .section(section):
+            shopPage.section = section
+        case let .chest(kind):
+            if shopPage.selectedChest == kind, save.career.count(of: kind) > 0 {
+                tapShop(.open(kind))
+            }
+            shopPage.selectedChest = kind
+        case let .open(kind):
+            guard let index = save.career.chests.firstIndex(of: kind) else { return }
+            perform(.openChest(index))
+        case let .buy(kind):
+            perform(.buyChest(kind))
+        case let .item(id):
+            if shopPage.selectedItem == id, save.career.owns(id) {
+                perform(.wear(id))
+            }
+            shopPage.selectedItem = id
+        case let .wear(id):
+            perform(.wear(id))
+        case .dismiss:
+            shopPage.opening = nil
+        }
+    }
+
     private func tapUpgrade(_ upgrade: Upgrade) {
         if let last = lastCardTap, last.upgrade == upgrade, last.age <= Self.doubleTapWindow {
             lastCardTap = nil
@@ -555,6 +600,11 @@ public final class GameSession {
             upgradePage.age(by: realDelta)
         } else {
             upgradePage = UpgradePage.State()
+        }
+        if screen == .page(.shop) {
+            shopPage.age(by: realDelta)
+        } else {
+            shopPage = ShopPage.State()
         }
         if screen == .page(.streetBuilder) {
             builderPage.age(by: realDelta)
@@ -636,6 +686,9 @@ public final class GameSession {
         case let .tapUpgrade(upgrade):
             guard screen == .page(.upgrades) else { return }
             tapUpgrade(upgrade)
+        case let .tapShop(target):
+            guard screen == .page(.shop) else { return }
+            tapShop(target)
         case let .pointerDown(point):
             guard screen == .page(.streetBuilder) else { return }
             builderPress(at: point)
@@ -889,6 +942,9 @@ public final class GameSession {
         } else if options.drawsMenus, screen == .page(.upgrades) {
             // Its own page: cards with a picture of what they do (FOUNDATION.md 3).
             UpgradePage.add(career: save.career, config: config, upgrades: visibleUpgrades, state: upgradePage, format: format, reduceMotion: reduceMotion, showsKeys: options.showsKeyHints, bottomInset: bottomInset, to: &list)
+        } else if options.drawsMenus, screen == .page(.shop) {
+            // Its own page: chests, collection and today's goals (M10, v1.2).
+            ShopPage.add(career: save.career, config: config, today: today, state: shopPage, format: format, reduceMotion: reduceMotion, bottomInset: bottomInset, to: &list)
         } else if options.drawsMenus, let content {
             TextPage.add(content, showsKeys: options.showsKeyHints, bottomInset: bottomInset, to: &list)
         }

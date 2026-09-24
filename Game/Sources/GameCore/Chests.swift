@@ -13,6 +13,10 @@ public enum ChestKind: String, Sendable, Equatable, CaseIterable, Codable {
     /// Earned from the police masteries.
     case criminalHunt
 
+    /// Only the Standard chest is sold, for in-game money (IDEA.md). The others are earned;
+    /// real money is not part of v1.0.
+    public var isForSale: Bool { self == .standard }
+
     /// Chance of each rarity, common … legendary. Shown in the shop.
     public var odds: [Double] {
         switch self {
@@ -87,6 +91,18 @@ public struct ChestOpening: Sendable, Equatable {
 extension Career {
     /// Chests in a row without an Epic or better, after which the next one is at least Epic.
     public static let pityChests = 10
+
+    /// Buys a chest with in-game money, if it is for sale and the money is there.
+    @discardableResult
+    public mutating func buyChest(_ kind: ChestKind, config: Config) -> Bool {
+        guard kind.isForSale, money >= config.standardChestPrice else { return false }
+        money -= config.standardChestPrice
+        chests.append(kind)
+        return true
+    }
+
+    /// How many chests of a kind wait in the shop.
+    public func count(of kind: ChestKind) -> Int { chests.count(where: { $0 == kind }) }
 
     /// Opens the chest at `index`. Deterministic: the same career opens the same item.
     @discardableResult

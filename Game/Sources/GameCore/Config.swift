@@ -414,6 +414,8 @@ public struct Config: Sendable, Equatable {
     public var perfectRunPayFactor: Double = 0.5
     /// Daily Shift: money for completing it, times the days in a row (up to 7).
     public var dailyPay: Int = 500
+    /// Price of a Standard chest in the shop (in-game money only).
+    public var standardChestPrice: Int = 5_000
 
     // MARK: Late levels (ROADMAP.md, M7: level 14 felt too easy)
 

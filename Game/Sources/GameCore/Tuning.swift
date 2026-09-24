@@ -276,6 +276,7 @@ public struct Tuning: Sendable {
             .int("perfectRunPoints", \.perfectRunPoints),
             .double("perfectRunPayFactor", \.perfectRunPayFactor),
             .int("dailyPay", \.dailyPay),
+            .int("standardChestPrice", \.standardChestPrice),
             .int("lightRainLevel", \.lightRainLevel),
             .int("heavyRainLevel", \.heavyRainLevel),
             .int("stormLevel", \.stormLevel),

@@ -572,7 +572,12 @@ Mastery, Truhen, Lootbox-Regeln).
 - **Lootbox-Regeln:** Seltenheiten Common/Rare/Epic/Legendary, Odds im Shop sichtbar,
   Pity-System (spätestens jede 10. Truhe mindestens Epic), keine Gameplay-Boni,
   Duplikate werden zu Geld. Darstellung dezent: Rahmen, Glow, Typografie.
-- **Shop-Tab** in `ScreenFlow`: Truhen öffnen, Odds, Sammlung, Skin wählen.
+- **Shop-Tab** ✅ als eigene gezeichnete Seite (`ShopPage`) mit Segmented Control:
+  **Chests** (Karten je Truhen-Art, Odds und Pity immer sichtbar, Open, Standard-Truhe für
+  5.000 Ingame-Geld kaufbar, alle anderen nur verdient), **Collection** (alle Skins und
+  Fahrzeugtypen, Seltenheitsrahmen, nicht gefundene grau, zweiter Tap = tragen),
+  **Today** (Daily Shift, drei Challenges). Geöffnete Truhe: Reveal mit Rahmen und dezentem
+  Glow in Seltenheitsfarbe, Duplikat zahlt Geld; Reduce Motion nur Blende.
 - **Spielstand** speichert Mastery-Zähler, Truhen, Sammlung und gewählte Skins.
 
 **Fertig, wenn:** Mastery im Spiel Truhen verdient, Truhen im Shop geöffnet werden

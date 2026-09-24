@@ -83,6 +83,8 @@ public enum ScreenAction: Sendable, Equatable {
     case removePart
     /// Shop (M10): open the chest at this place in the list, or wear a skin (again: take it off).
     case openChest(Int)
+    /// Buys a chest with in-game money (only the Standard chest is for sale).
+    case buyChest(ChestKind)
     case wear(String)
     /// Game tab: the next shift is today's Daily Shift, or a normal one again (v1.2).
     case toggleDaily
@@ -163,9 +165,10 @@ public enum ScreenFlow {
 
         case .page(.shop):
             let career = save.career
-            let chests = career.chests.enumerated().map { index, chest in
+            var chests = career.chests.enumerated().map { index, chest in
                 MenuItem(.openChest(index), Strings.Shop.chest(chest), detail: Strings.Shop.odds(chest.odds), value: Strings.Shop.open, isPrimary: index == 0)
             }
+            chests.append(MenuItem(.buyChest(.standard), Strings.Shop.chest(.standard), detail: Strings.Shop.odds(ChestKind.standard.odds), value: Strings.Shop.buy(format.number(config.standardChestPrice))))
             let owned = Cosmetics.all.filter { career.owns($0.id) }.map { item in
                 let worn = career.carSkin == item.id || career.mapSkin == item.id
                 let value = item.kind == .vehicleType ? Strings.Shop.unlocked : (worn ? Strings.Shop.worn : Strings.Shop.wear)

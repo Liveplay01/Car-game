@@ -109,8 +109,43 @@ public enum Strings {
     public enum Shop {
         public static let open = "Open"
         public static let wear = "Wear"
+        public static let takeOff = "Take off"
         public static let worn = "On"
         public static let unlocked = "Unlocked"
+        public static let locked = "?"
+        /// Where a chest comes from, when none is waiting.
+        public static func source(_ kind: ChestKind) -> String {
+            switch kind {
+            case .standard: "For sale"
+            case .premium: "Earned by hard masteries"
+            case .event: "Comes with city events"
+            case .criminalHunt: "Earned by catching criminals"
+            }
+        }
+        public static let pickItem = "Tap an item to see it."
+        public static let lockedHint = "Not found yet: it comes out of chests."
+        public static let tapToClose = "Tap to close"
+
+        public static func section(_ section: ShopPage.Section) -> String {
+            switch section {
+            case .chests: "Chests"
+            case .collection: "Collection"
+            case .today: "Today"
+            }
+        }
+
+        public static func waiting(_ count: Int) -> String { count == 1 ? "1 waiting" : "\(count) waiting" }
+        public static func buy(_ price: String) -> String { "Buy · \(price)" }
+        public static func pity(_ chests: Int) -> String { "Epic or better within \(chests) chests. Duplicates pay cash." }
+        public static func duplicate(_ money: String) -> String { "Duplicate · +\(Strings.money(money))" }
+
+        public static func ownedHint(_ item: Cosmetic) -> String {
+            switch item.kind {
+            case .carSkin: "Paints your own cars. Only looks, never a bonus."
+            case .mapSkin: "Tints the centre island. Only looks, never a bonus."
+            case .vehicleType: "Shows up in your queue now and then: shorter, lighter, merges quicker."
+            }
+        }
 
         public static func subtitle(chests: Int, owned: Int, pity: Int) -> String {
             if chests == 0 && owned == 0 { return "Master the game to earn chests: perfect merges, takedowns, long chains." }
@@ -185,6 +220,11 @@ public enum Strings {
         public static let perfectRun = "PERFECT RUN"
         public static let done = "Done"
         public static let challengesTitle = "Today's challenge"
+        public static let readyHint = "Pick it on the Game tab. Same shift for everyone today."
+        public static let todayHint = "Challenges pay once each and change at midnight."
+        public static func doneHint(streak: Int) -> String {
+            streak > 1 ? "Done · \(streak) days in a row · back tomorrow" : "Done · back tomorrow"
+        }
 
         /// "DAILY SHIFT DONE · +1,500 cash · 3 days in a row · CHEST EARNED".
         public static func dailyDone(_ money: String, streak: Int) -> String {
