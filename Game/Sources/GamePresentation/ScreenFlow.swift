@@ -84,6 +84,8 @@ public enum ScreenAction: Sendable, Equatable {
     /// Shop (M10): open the chest at this place in the list, or wear a skin (again: take it off).
     case openChest(Int)
     case wear(String)
+    /// Game tab: the next shift is today's Daily Shift, or a normal one again (v1.2).
+    case toggleDaily
 }
 
 public struct MenuItem: Sendable, Equatable {
@@ -127,7 +129,7 @@ public struct ScreenContent: Sendable, Equatable {
 public enum ScreenFlow {
     /// Content of a menu screen or a page. Nil on the Game tab while ready, playing and
     /// after a shift: its banners and the HUD are part of the scene.
-    public static func content(for screen: Screen, save: SaveGame, world: World, config: Config, format: TextFormat) -> ScreenContent? {
+    public static func content(for screen: Screen, save: SaveGame, world: World, config: Config, format: TextFormat, today: Int = 0) -> ScreenContent? {
         switch screen {
         case .ready, .playing, .result, .page(.game):
             return nil
@@ -170,10 +172,15 @@ public enum ScreenFlow {
                 return MenuItem(.wear(item.id), Strings.Shop.item(item.id), detail: Strings.Shop.kind(item), value: value)
             }
             let pity = Career.pityChests - career.chestsSinceEpic
+            // Today's challenges (v1.2): what they ask and what they pay; done ones are ticked.
+            let challenges = Challenge.of(day: today).map { challenge in
+                MenuItem(.showTab(.shop), Strings.Daily.challenge(challenge), detail: Strings.Daily.challengesTitle,
+                         value: career.isDone(challenge, day: today) ? Strings.Daily.done : "+" + format.number(challenge.reward))
+            }
             return ScreenContent(
                 title: Strings.Tabs.title(.shop),
                 subtitle: Strings.Shop.subtitle(chests: career.chests.count, owned: owned.count, pity: pity),
-                items: chests + owned
+                items: chests + challenges + owned
             )
 
         // The Street Builder draws its own map and palette (`StreetBuilderPage`).

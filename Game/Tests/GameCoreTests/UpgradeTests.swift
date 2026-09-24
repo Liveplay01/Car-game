@@ -47,6 +47,7 @@ struct UpgradeTests {
         var world = quietShift {
             $0.shiftCars = 1
             $0.shiftPay = 700
+            $0.perfectRunPayFactor = 0
         }
         let events = world.mergeNextCar() + world.run(steps: World.stepRate) { $0.shift.outcome != nil }
         guard let result = events.compactMap(\.shiftResult).first else {

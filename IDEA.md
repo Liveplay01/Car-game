@@ -77,8 +77,7 @@ einer Stadt, die mit dem Spieler wächst.
 
 ## Offen: Motivation (v1.2)
 
-- **Daily Shift** / Daily Login, dabei passive Zolleinnahmen abholen.
-- **Challenges** und **Perfect-Run-Bonus**.
+- Daily Login: passive Zolleinnahmen abholen, die zwischen zwei Sitzungen angefallen sind.
 - **Event Chests** mit zeitlich begrenzten Themeninhalten, City-/Event-Rewards.
 
 ---

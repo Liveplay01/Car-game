@@ -183,6 +183,12 @@ public struct Career: Sendable, Equatable, Codable {
     /// For the odds and the pity counter.
     public var chestsOpened = 0
     public var chestsSinceEpic = 0
+    /// Daily Shift and Challenges (v1.2): the day last done, the days in a row, and which
+    /// challenges of `challengeDay` are done.
+    public var dailyDone = -1
+    public var dailyStreak = 0
+    public var challengeDay = -1
+    public var challengesDone: [String] = []
 
     public init(level: Int = 1, money: Int = 0) {
         self.level = max(1, level)
@@ -208,6 +214,10 @@ public struct Career: Sendable, Equatable, Codable {
         mapSkin = try? container.decodeIfPresent(String.self, forKey: .mapSkin)
         chestsOpened = (try? container.decodeIfPresent(Int.self, forKey: .chestsOpened)) ?? 0
         chestsSinceEpic = (try? container.decodeIfPresent(Int.self, forKey: .chestsSinceEpic)) ?? 0
+        dailyDone = (try? container.decodeIfPresent(Int.self, forKey: .dailyDone)) ?? -1
+        dailyStreak = (try? container.decodeIfPresent(Int.self, forKey: .dailyStreak)) ?? 0
+        challengeDay = (try? container.decodeIfPresent(Int.self, forKey: .challengeDay)) ?? -1
+        challengesDone = (try? container.decodeIfPresent([String].self, forKey: .challengesDone)) ?? []
     }
 
     public func steps(of upgrade: Upgrade) -> Int {

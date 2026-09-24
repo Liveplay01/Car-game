@@ -406,6 +406,15 @@ public struct Config: Sendable, Equatable {
     /// Police operation: this much more police in the queue.
     public var policeOperationShare: Double = 0.15
 
+    // MARK: Motivation (IDEA.md; ROADMAP.md, v1.2; `Daily.swift`)
+
+    /// Perfect Run: a completed shift without any crash and without a cut-off earns this
+    /// many points and this share of the shift pay on top.
+    public var perfectRunPoints: Int = 1500
+    public var perfectRunPayFactor: Double = 0.5
+    /// Daily Shift: money for completing it, times the days in a row (up to 7).
+    public var dailyPay: Int = 500
+
     // MARK: Late levels (ROADMAP.md, M7: level 14 felt too easy)
 
     /// From this level on the traffic gets denser, by this many cars per level, up to a limit.

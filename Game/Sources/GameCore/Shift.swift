@@ -80,6 +80,8 @@ public struct ShiftResult: Sendable, Equatable {
     /// insurances paid instead.
     public var costs = 0
     public var covered = 0
+    /// Completed without a single crash (police included) and without a cut-off (v1.2).
+    public var isPerfectRun = false
 
     public var merges: Int { cleanMerges + tightFits + cutOffs + nearMisses + perfects }
 }
@@ -207,7 +209,17 @@ extension World {
         }
         score.points += config.completionBonus
         score.money += config.shiftPay
+        // Perfect Run (v1.2): not a single crash, not a single cut-off.
+        if isPerfectSoFar {
+            score.points += config.perfectRunPoints
+            score.money += Int((Double(config.shiftPay) * config.perfectRunPayFactor).rounded())
+        }
         endShift(.completed, at: now)
+    }
+
+    /// No crash of the player (police included) and no cut-off so far.
+    var isPerfectSoFar: Bool {
+        score.strikes == 0 && score.policeCrashes == 0 && score.cutOffs == 0
     }
 
     mutating func endShift(_ outcome: ShiftOutcome, at time: Double) {
@@ -237,7 +249,8 @@ extension World {
             perfects: score.perfects,
             bestChain: score.bestChain,
             costs: score.costs,
-            covered: score.covered
+            covered: score.covered,
+            isPerfectRun: outcome == .completed && isPerfectSoFar
         )
     }
 }

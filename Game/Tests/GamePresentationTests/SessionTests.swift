@@ -43,6 +43,9 @@ func quietConfig(cars: Int = 15, _ adjust: (inout Config) -> Void = { _ in }) ->
     config.maxShiftCars = cars
     config.carsPerLevel = 0
     config.shiftCarsSpread = 0
+    // The session tests count exact points and pay; the Perfect Run has tests of its own.
+    config.perfectRunPoints = 0
+    config.perfectRunPayFactor = 0
     adjust(&config)
     return config
 }
@@ -56,6 +59,9 @@ func makeSession(
 ) -> GameSession {
     let session = GameSession(config: config, random: FixedSeeds(), store: store, audio: audio, haptics: haptics, timeScale: timeScale)
     session.format = TextFormat(groupingSeparator: ",")
+    // A fixed day whose challenges a short test shift cannot meet, so no test depends on
+    // the calendar.
+    session.today = (0...).first { Set(Challenge.of(day: $0)).isDisjoint(with: [.perfectRun, .highAlertShift]) }!
     return session
 }
 
@@ -472,8 +478,8 @@ struct SessionTuningTests {
         #expect(session.world.config.maxStrikes == 3)
         #expect(session.world.seed == 100)
         #expect(session.world.time < 0.1)
-        // Two from the file, nine in which `quietConfig` differs from Config.swift.
-        #expect(session.advance().texts.contains(Strings.Notice.tuningLoaded(values: 2, changes: 2 + 9)))
+        // Two from the file, eleven in which `quietConfig` differs from Config.swift.
+        #expect(session.advance().texts.contains(Strings.Notice.tuningLoaded(values: 2, changes: 2 + 11)))
     }
 
     @Test func brokenTuningChangesNothing() {

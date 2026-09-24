@@ -169,7 +169,7 @@ public final class GameSession {
         let seed = random.nextSeed()
         playingLevel = save.career.level
         playingDuty = save.career.duty
-        world = World(config: save.career.config(from: config, seed: seed, weather: forcedWeather, event: forcedEvent), seed: seed, mode: .shift, startsOnFirstTap: true)
+        world = World(config: save.career.config(from: config, seed: seed), seed: seed, mode: .shift, startsOnFirstTap: true)
         effects = CrashEffects(seed: seed)
     }
 
@@ -200,7 +200,7 @@ public final class GameSession {
 
     /// The current menu or page as data; nil on the Game tab.
     public var content: ScreenContent? {
-        ScreenFlow.content(for: screen, save: save, world: world, config: config, format: format)
+        ScreenFlow.content(for: screen, save: save, world: world, config: config, format: format, today: today)
     }
 
     // MARK: - Screen flow
@@ -216,6 +216,15 @@ public final class GameSession {
             if screen == .ready { screen = .settings }
         case .closeSettings:
             if screen == .settings { screen = .ready }
+        case .toggleDaily:
+            // Only between shifts, and only while today's is still open.
+            guard screen == .ready, world.shift.phase == .waiting else { return }
+            guard dailySelected || save.career.isDailyOpen(day: today) else {
+                showNotice(Strings.Daily.doneToday)
+                return
+            }
+            dailySelected.toggle()
+            prepareShift(continuing: true, seed: dailySelected ? Career.dailySeed(day: today) : nil)
         case let .setDuty(duty):
             guard save.career.duty != duty else { return }
             save.career.duty = duty
@@ -313,7 +322,8 @@ public final class GameSession {
         let seed = seed ?? random.nextSeed()
         playingLevel = save.career.level
         playingDuty = save.career.duty
-        let shiftConfig = save.career.config(from: config, seed: seed, weather: forcedWeather, event: forcedEvent)
+        playingDaily = dailySelected
+        let shiftConfig = shiftConfig(seed: seed)
         if continuing {
             world = world.nextShift(config: shiftConfig, seed: seed)
         } else {
@@ -335,6 +345,26 @@ public final class GameSession {
         didSet { refreshWaitingShift() }
     }
 
+    /// Today as a day number (days since 1970, local time). The platform may set it; the
+    /// Daily Shift and the Challenges change with it (v1.2).
+    public var today = GameSession.dayNumber(Date())
+
+    public static func dayNumber(_ date: Date) -> Int {
+        let local = date.timeIntervalSince1970 + Double(TimeZone.current.secondsFromGMT(for: date))
+        return Int((local / 86_400).rounded(.down))
+    }
+
+    /// The next shift is today's Daily Shift; and whether the running one is.
+    public private(set) var dailySelected = false
+    public private(set) var playingDaily = false
+
+    /// The config of a shift with this seed: the career's, and for the Daily Shift always
+    /// the day's city event.
+    private func shiftConfig(seed: UInt64) -> Config {
+        let dailyEvent = dailySelected ? Career.dailyEvent(day: today) : nil
+        return save.career.config(from: config, seed: seed, weather: forcedWeather, event: forcedEvent ?? dailyEvent)
+    }
+
     public func setLevel(_ level: Int) {
         save.career.level = max(1, level)
         store.save(save)
@@ -348,7 +378,7 @@ public final class GameSession {
         guard world.shift.phase == .waiting else { return }
         playingLevel = save.career.level
         playingDuty = save.career.duty
-        let next = save.career.config(from: config, seed: world.seed, weather: forcedWeather, event: forcedEvent)
+        let next = shiftConfig(seed: world.seed)
         if next.builtArmSlots == world.config.builtArmSlots {
             world = world.nextShift(config: next, seed: world.seed)
         } else {
@@ -739,10 +769,24 @@ public final class GameSession {
         // Money is banked whatever the outcome; done is a level up, lost is the same level again.
         save.career.record(result, playedAt: playingLevel)
         // Mastery runs in the background; a reached goal is a short toast and a chest (M10).
+        var toasts: [String] = []
+        if result.isPerfectRun {
+            toasts.append(Strings.Daily.perfectRun)
+        }
+        // Daily Shift and Challenges (v1.2).
+        if playingDaily, result.outcome == .completed, let pay = save.career.completeDaily(day: today, config: config) {
+            toasts.append(Strings.Daily.dailyDone(format.number(pay), streak: save.career.dailyStreak))
+        }
+        dailySelected = false
+        let challenges = save.career.recordChallenges(result, duty: playingDuty, day: today)
+        toasts += challenges.map { Strings.Daily.challengeDone($0, reward: format.number($0.reward)) }
         let completed = save.career.recordMastery(result, duty: playingDuty)
         store.save(save)
         if !completed.isEmpty {
-            showNotice(Strings.Mastery.toast(completed))
+            toasts.append(Strings.Mastery.toast(completed))
+        }
+        if !toasts.isEmpty {
+            showNotice(toasts.joined(separator: "  ·  "))
         }
         pendingSummary = ShiftSummary(result: result, level: playingLevel, isNewHighscore: isNew, previousHighscore: previous)
         resultCountdown = Self.resultDelay
@@ -824,7 +868,10 @@ public final class GameSession {
                 highscore: save.highscore > 0 ? format.number(save.highscore) : nil,
                 money: career.money > 0 ? format.number(career.money) : nil
             )
-            let conditions = Strings.Ready.conditions(weather: world.config.weather, event: world.config.cityEvent)
+            let conditions = Strings.Ready.conditions(
+                weather: world.config.weather, event: world.config.cityEvent,
+                daily: dailySelected, dailyOpen: save.career.isDailyOpen(day: today)
+            )
             ReadyBanner.add(level: playingLevel, cars: world.carsLeft ?? 0, duty: career.duty, dutyPay: config.highAlertPay, status: status, conditions: conditions, time: sinceReady, reduceMotion: reduceMotion, showsKeys: options.showsKeyHints, to: &list)
         case .settings, .page:
             break

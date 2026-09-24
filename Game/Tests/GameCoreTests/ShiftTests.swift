@@ -333,7 +333,9 @@ struct ShiftTests {
         let result = events.compactMap(\.shiftResult).first
         #expect(result?.outcome == .completed)
         #expect(result?.cleanMerges == 3)
-        #expect(result?.score == 3 * world.config.pointsClean + world.config.completionBonus)
+        // Three clean merges, the bonus, and the Perfect Run: not a single crash.
+        #expect(result?.score == 3 * world.config.pointsClean + world.config.completionBonus + world.config.perfectRunPoints)
+        #expect(result?.isPerfectRun == true)
         #expect(world.carsLeft == 0)
         // It took as long as the player needed: no clock.
         #expect(result.map { $0.time < 3 } == true)

@@ -32,11 +32,16 @@ public enum Strings {
             return money.map { "\(score) · \(Strings.money($0))" } ?? score
         }
         /// Test window only.
-        public static let keys = "Esc settings · Tab next page · H high alert"
+        public static let keys = "Esc settings · Tab next page · H high alert · D daily"
 
-        /// "Heavy Rain · Roadworks"; nil on a clear day without an event (M8).
-        public static func conditions(weather: Weather, event: CityEvent?) -> String? {
-            let parts = [weather == .clear ? nil : Strings.weather(weather), event.map(Strings.cityEvent)].compactMap { $0 }
+        /// "DAILY SHIFT · Heavy Rain · Roadworks"; nil on a clear day without anything (M8, v1.2).
+        public static func conditions(weather: Weather, event: CityEvent?, daily: Bool = false, dailyOpen: Bool = false) -> String? {
+            let parts = [
+                daily ? Daily.title : nil,
+                weather == .clear ? nil : Strings.weather(weather),
+                event.map(Strings.cityEvent),
+                !daily && dailyOpen ? Daily.ready : nil,
+            ].compactMap { $0 }
             return parts.isEmpty ? nil : parts.joined(separator: " · ")
         }
     }
@@ -169,6 +174,39 @@ public enum Strings {
             let name = item(opening.item.id)
             if opening.isDuplicate { return "Duplicate: \(name) · +\(money(String(opening.money)))" }
             return "\(rarity(opening.item.rarity).uppercased()) · \(name)"
+        }
+    }
+
+    /// Daily Shift, Challenges and the Perfect Run (v1.2).
+    public enum Daily {
+        public static let title = "DAILY SHIFT"
+        public static let ready = "Daily Shift ready"
+        public static let doneToday = "Today's Daily Shift is done. New one tomorrow."
+        public static let perfectRun = "PERFECT RUN"
+        public static let done = "Done"
+        public static let challengesTitle = "Today's challenge"
+
+        /// "DAILY SHIFT DONE · +1,500 cash · 3 days in a row · CHEST EARNED".
+        public static func dailyDone(_ money: String, streak: Int) -> String {
+            let days = streak > 1 ? " · \(streak) days in a row" : ""
+            return "DAILY SHIFT DONE · +\(Strings.money(money))\(days) · CHEST EARNED"
+        }
+
+        public static func challenge(_ challenge: Challenge) -> String {
+            switch challenge {
+            case .perfectInputs: "3 Perfect Inputs in one shift"
+            case .tightFits: "3 Tight Fits in one shift"
+            case .twoTakedowns: "2 takedowns in one shift"
+            case .twoTransporters: "2 transporters paid in one shift"
+            case .longChain: "A Perfect Chain of 8"
+            case .bigCombo: "A combo of 15"
+            case .highAlertShift: "Finish a shift on High Alert"
+            case .perfectRun: "A Perfect Run: no crash, no cut-off"
+            }
+        }
+
+        public static func challengeDone(_ challenge: Challenge, reward: String) -> String {
+            "CHALLENGE · \(Self.challenge(challenge)) · +\(Strings.money(reward))"
         }
     }
 
