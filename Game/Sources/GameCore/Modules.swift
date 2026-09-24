@@ -50,8 +50,15 @@ extension World {
     /// How fast traffic may drive at this point of the ring. Ring speed where no module
     /// holds it back.
     public func speedLimit(atRingS s: Double) -> Double {
-        guard !config.modules.isEmpty else { return ringSpeed }
         var limit = ringSpeed
+        // Roadworks (M8): a slow stretch while the event lasts.
+        if let start = roadworksRingS {
+            let into = layout.ringDistance(from: start, to: s)
+            if into <= config.roadworksArc {
+                limit = min(limit, ringSpeed * config.roadworksSpeedFactor)
+            }
+        }
+        guard !config.modules.isEmpty else { return limit }
         for (slot, module) in config.modules {
             let zone = config.zone(of: module)
             let centre = layout.moduleRingS(slot, of: config.moduleSlotCount)

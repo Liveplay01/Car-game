@@ -40,6 +40,9 @@ public struct ScoreBoard: Sendable, Equatable {
     /// Perfect Chain: good actions in a row (M6). No display of its own; the feedback grows.
     public internal(set) var chain = 0
     public internal(set) var bestChain = 0
+    /// Money lost to crashes and escapes (M7), and what the insurances paid.
+    public internal(set) var costs = 0
+    public internal(set) var covered = 0
 
     public init() {}
 

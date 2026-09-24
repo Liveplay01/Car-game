@@ -74,6 +74,10 @@ public struct Tuning: Sendable {
         check(c.nearMissSeconds >= c.tightFitSeconds, "nearMissSeconds must be ≥ tightFitSeconds")
         check(c.perfectBalance >= 0 && c.perfectMaxGap >= 0, "perfectBalance and perfectMaxGap must be ≥ 0")
         check(c.flowChain >= 1, "flowChain must be ≥ 1")
+        check(c.crashCosts.allSatisfy { $0 >= 0 } && c.escapeLoss >= 0 && c.crashCostLevel >= 1, "crash costs and escapeLoss must be ≥ 0, crashCostLevel ≥ 1")
+        check(c.badWeatherPerLevel >= 0 && (0...1).contains(c.maxBadWeatherChance) && (0...1).contains(c.cityEventChance), "weather and event chances must lie between 0 and 1")
+        check(c.roadworksSpeedFactor > 0 && c.stormAiGapFactor > 0, "roadworksSpeedFactor and stormAiGapFactor must be > 0")
+        check([c.insurancePerStep, c.freightPerStep, c.doubleRunPerStep, c.lateDensityPerLevel].allSatisfy { $0 >= 0 } && c.maxLateDensityBonus >= 0, "M7 steps must be ≥ 0")
         check(c.maxStrikes >= 1, "maxStrikes must be ≥ 1")
         check(c.maxPoliceCrashes >= 0, "maxPoliceCrashes must be ≥ 0")
         check(c.policeChaseSpeedFactor >= 1, "policeChaseSpeedFactor must be ≥ 1")
@@ -254,6 +258,32 @@ public struct Tuning: Sendable {
             .int("backupPerStep", \.backupPerStep),
             .double("cashRoutePerStep", \.cashRoutePerStep),
             .double("overtimePerStep", \.overtimePerStep),
+            .double("insurancePerStep", \.insurancePerStep),
+            .double("freightPerStep", \.freightPerStep),
+            .double("doubleRunPerStep", \.doubleRunPerStep),
+            .int("crashCostLevel", \.crashCostLevel),
+            .ints("crashCosts", \.crashCosts),
+            .doubles("crashCostImpacts", \.crashCostImpacts),
+            .int("escapeLoss", \.escapeLoss),
+            .range("doubleRunDelay", \.doubleRunDelay),
+            .int("lateLevel", \.lateLevel),
+            .double("lateDensityPerLevel", \.lateDensityPerLevel),
+            .int("maxLateDensityBonus", \.maxLateDensityBonus),
+            .int("lightRainLevel", \.lightRainLevel),
+            .int("heavyRainLevel", \.heavyRainLevel),
+            .int("stormLevel", \.stormLevel),
+            .int("extremeLevel", \.extremeLevel),
+            .double("badWeatherPerLevel", \.badWeatherPerLevel),
+            .double("maxBadWeatherChance", \.maxBadWeatherChance),
+            .double("weatherGripLoss", \.weatherGripLoss),
+            .double("weatherReactionDelay", \.weatherReactionDelay),
+            .double("weatherBrakeLoss", \.weatherBrakeLoss),
+            .int("weatherDensityPerStep", \.weatherDensityPerStep),
+            .double("stormAiGapFactor", \.stormAiGapFactor),
+            .int("cityEventLevel", \.cityEventLevel),
+            .double("cityEventChance", \.cityEventChance),
+            .double("roadworksArc", \.roadworksArc),
+            .double("roadworksSpeedFactor", \.roadworksSpeedFactor),
             .double("aiSafeGap", \.aiSafeGap),
             .double("aiPathClearance", \.aiPathClearance),
             .int("freePlayDensity", \.freePlayDensity),

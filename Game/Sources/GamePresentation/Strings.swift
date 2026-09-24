@@ -33,6 +33,12 @@ public enum Strings {
         }
         /// Test window only.
         public static let keys = "Esc settings · Tab next page · H high alert"
+
+        /// "Heavy Rain · Roadworks"; nil on a clear day without an event (M8).
+        public static func conditions(weather: Weather, event: CityEvent?) -> String? {
+            let parts = [weather == .clear ? nil : Strings.weather(weather), event.map(Strings.cityEvent)].compactMap { $0 }
+            return parts.isEmpty ? nil : parts.joined(separator: " · ")
+        }
     }
 
     /// The tab bar.
@@ -84,6 +90,26 @@ public enum Strings {
     /// (balances, prices) carry the note icon instead (`Icons.moneyTag`).
     public static func money(_ formatted: String) -> String { "\(formatted) cash" }
 
+    public static func weather(_ weather: Weather) -> String {
+        switch weather {
+        case .clear: "Clear"
+        case .lightRain: "Light Rain"
+        case .heavyRain: "Heavy Rain"
+        case .storm: "Storm"
+        case .extreme: "Extreme Weather"
+        }
+    }
+
+    public static func cityEvent(_ event: CityEvent) -> String {
+        switch event {
+        case .roadworks: "Roadworks"
+        case .roadClosure: "Road Closure"
+        case .concert: "Concert Traffic"
+        case .vipConvoy: "VIP Convoy"
+        case .policeOperation: "Police Operation"
+        }
+    }
+
     /// The Upgrades tab.
     public enum Upgrades {
         public static let title = "Upgrades"
@@ -114,6 +140,10 @@ public enum Strings {
             case .backup: "Backup"
             case .cashRoute: "Cash Route"
             case .overtime: "Overtime"
+            case .freight: "Freight"
+            case .doubleRun: "Double Run"
+            case .insurance: "Insurance"
+            case .robberyInsurance: "Robbery Insurance"
             }
         }
 
@@ -128,6 +158,10 @@ public enum Strings {
             case .backup: "Your shift survives one police car crash more."
             case .cashRoute: "Money transporters show up sooner and more often."
             case .overtime: "Every shift you finish pays more."
+            case .freight: "More lorries on the road: more tolls, but denser traffic."
+            case .doubleRun: "Sometimes a second money transporter follows right after the first."
+            case .insurance: "Pays part of what a crash costs you."
+            case .robberyInsurance: "Pays part of what an escaped criminal costs you."
             }
         }
 
@@ -150,6 +184,10 @@ public enum Strings {
             case .backup: return "+\(steps * config.backupPerStep) police crashes"
             case .cashRoute: return "\(seconds(times * config.cashRoutePerStep)) sooner"
             case .overtime: return "+\(percent(times * config.overtimePerStep)) pay"
+            case .freight: return "+\(percent(times * config.freightPerStep)) lorries"
+            case .doubleRun: return "\(percent(times * config.doubleRunPerStep)) double runs"
+            case .insurance: return coverage(times * config.insurancePerStep)
+            case .robberyInsurance: return coverage(times * config.insurancePerStep)
             }
         }
 
@@ -164,7 +202,16 @@ public enum Strings {
             case .backup: config.backupPerStep == 1 ? "One more police crash per shift" : "\(config.backupPerStep) more police crashes per shift"
             case .cashRoute: "Transporters come \(seconds(config.cashRoutePerStep)) sooner"
             case .overtime: "+\(percent(config.overtimePerStep)) pay per shift"
+            case .freight: "+\(percent(config.freightPerStep)) lorries in the traffic"
+            case .doubleRun: "+\(percent(config.doubleRunPerStep)) chance of a second transporter"
+            case .insurance: "Covers \(percent(config.insurancePerStep)) more of crash costs"
+            case .robberyInsurance: "Covers \(percent(config.insurancePerStep)) more of escape losses"
             }
+        }
+
+        /// "45 % covered", or "FULL COVERAGE" once nothing is left to pay.
+        static func coverage(_ share: Double) -> String {
+            share >= 1 ? Strings.Result.fullCoverage : "\(percent(share)) covered"
         }
 
         static func percent(_ share: Double) -> String { "\(Int((share * 100).rounded())) %" }
@@ -180,6 +227,15 @@ public enum Strings {
         /// "LEVEL 3 COMPLETE".
         public static func levelComplete(_ level: Int) -> String { "LEVEL \(level) COMPLETE" }
         public static let newHighscore = "New highscore"
+        public static let fullCoverage = "FULL COVERAGE"
+        /// "LOSS −$350" after an escape, "CRASH COST −$120" after a crash (level 20+).
+        public static func loss(_ amount: String, escaped: Bool) -> String {
+            (escaped ? "LOSS " : "CRASH COST ") + "−" + Strings.money(amount)
+        }
+        /// Everything was insured.
+        public static func covered(_ amount: String) -> String {
+            "\(fullCoverage) · \(Strings.money(amount)) paid by insurance"
+        }
         /// After a completed shift: on to the next level.
         public static func nextLevel(_ level: Int) -> String { "Tap for level \(level)" }
         /// After a lost one: the same level again.
@@ -226,6 +282,8 @@ public enum Strings {
         public static let secured = "SECURED"
         public static let seized = "SEIZED"
         public static let lost = "LOST"
+        /// An insured crash: nothing to pay.
+        public static let covered = "COVERED"
         /// "PAID +2,500".
         public static func paid(_ amount: String) -> String { "PAID \(amount)" }
 

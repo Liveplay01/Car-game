@@ -39,7 +39,14 @@ extension Config {
         config.rushHourTempo += faster
         config.criminalTime = max(min(minCriminalTime, config.criminalTime), config.criminalTime - beyond * criminalTimePerLevel)
 
+        // Past `lateLevel` the ring fills up a little more with every level (M7).
+        let late = Double(max(0, level - max(1, lateLevel)))
+        let denser = min(Int(late * lateDensityPerLevel), maxLateDensityBonus)
+        config.densityStart += denser
+        config.densityEnd += denser
+
         config.shiftPay = shiftPayBase + shiftPayPerLevel * level
+        config.level = level
 
         var random = SeededRandom(seed: seed ^ 0x3C6E_F372_FE94_F82B)
         config.shiftCars = random.int(in: shiftCarsRange(atLevel: level))

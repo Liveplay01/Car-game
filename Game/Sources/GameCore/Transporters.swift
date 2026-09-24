@@ -73,7 +73,7 @@ extension World {
         case let .idle(next):
             guard shift.acceptsTaps, now >= next else { return }
             // Only where nobody waits: otherwise the warning would mark somebody else.
-            let candidates = layout.aiArms.filter { isFreeForWarning($0) }
+            let candidates = openAIArms.filter { isFreeForWarning($0) }
             guard !candidates.isEmpty else { return }
             let arm = transporterRng.pick(candidates)
             transporter.phase = .warning(arm: arm, until: now + config.transporterWarning)
@@ -158,7 +158,11 @@ extension World {
             extendChain(at: now)
         }
         events.append(.transporterPaid(vehicle: transporter.vehicle, amount: amount, time: now))
-        transporter.phase = .idle(next: now + transporterRng.double(in: config.transporterInterval))
+        // Double Run (M7): sometimes a second one follows right away. Only drawn with the
+        // upgrade, so every seed without it keeps its transporters.
+        let doubleRun = escaped && config.doubleRunChance > 0 && transporterRng.unit() < config.doubleRunChance
+        let pause = doubleRun ? config.doubleRunDelay : config.transporterInterval
+        transporter.phase = .idle(next: now + transporterRng.double(in: pause))
     }
 
     /// Ring arcs occupied by the secure zones of every live transporter.

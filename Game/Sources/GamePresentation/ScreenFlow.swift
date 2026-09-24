@@ -145,7 +145,7 @@ public enum ScreenFlow {
             return ScreenContent(
                 title: Strings.Upgrades.title,
                 subtitle: Strings.Upgrades.balance(format.number(career.money)),
-                items: Upgrade.allCases.map { upgrade in
+                items: Upgrade.available(atLevel: career.level, config: config).map { upgrade in
                     let steps = career.steps(of: upgrade)
                     let value = career.price(of: upgrade, config: config).map {
                         Strings.Upgrades.next(steps: steps, of: upgrade.maxSteps, price: format.number($0))

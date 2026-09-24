@@ -24,6 +24,10 @@ struct Popup: Sendable, Equatable {
         case paid(Int)
         /// A module on the ring earned money: a toll, a fine.
         case earned(Int)
+        /// What a crash cost from level 20 on (M7).
+        case cost(Int)
+        /// A crash the insurance paid for completely (M7).
+        case covered
     }
 
     static let lifetime = 0.9
@@ -343,6 +347,12 @@ enum HUD {
                 // Small, quiet money: it happens many times a shift.
                 text = format.signed(amount)
                 color = .accent
+            case let .cost(amount):
+                text = "−" + Strings.money(format.number(amount))
+                color = .destructive
+            case .covered:
+                text = Strings.HUD.covered
+                color = .muted
             }
             list.add(
                 .text(text, position: camera.toScreen(popup.position) + Vec2(0, -30 - rise), size: Metrics.popupSize * scale, alignment: .center, weight: .bold),
@@ -356,7 +366,7 @@ enum HUD {
 /// tap starts it. There is no start menu (FOUNDATION.md 3); the shift is already flowing
 /// behind it.
 enum ReadyBanner {
-    static func add(level: Int, cars: Int, duty: Duty, dutyPay: Double, status: String, time: Double, reduceMotion: Bool, showsKeys: Bool, to list: inout RenderList) {
+    static func add(level: Int, cars: Int, duty: Duty, dutyPay: Double, status: String, conditions: String? = nil, time: Double, reduceMotion: Bool, showsKeys: Bool, to list: inout RenderList) {
         let width = list.camera.viewport.x
         var id = RenderID.hud
         HUD.addBand(height: Metrics.resultBand, to: &list, id: &id)
@@ -372,6 +382,10 @@ enum ReadyBanner {
         let island = list.camera.toScreen(.zero)
         let breath = reduceMotion ? 1 : 0.7 + 0.3 * (0.5 + 0.5 * cos(time * 2.4))
         text(Strings.Ready.tapToStart, island, size: 17, color: .primary, opacity: breath)
+        // Weather and the city's event are announced before the shift (M8): anticipation.
+        if let conditions {
+            text(conditions, island - Vec2(0, 28), size: 14, color: .hazard)
+        }
         if showsKeys {
             text(Strings.Ready.keys, island + Vec2(0, 28), size: 12, weight: .regular, color: .muted)
         }
@@ -419,6 +433,12 @@ enum ResultBanner {
         let island = list.camera.toScreen(.zero)
         let next = result.outcome == .completed ? Strings.Result.nextLevel(summary.level + 1) : Strings.Result.retryLevel(summary.level)
         text(next, island, size: 17, color: .primary, opacity: prompt)
+        // From level 20 on mistakes cost money (M7): the loss, or that insurance paid it.
+        if result.costs > 0 {
+            text(Strings.Result.loss(format.number(result.costs), escaped: result.outcome == .escaped), island - Vec2(0, 28), size: 14, color: .destructive, opacity: prompt)
+        } else if result.covered > 0 {
+            text(Strings.Result.covered(format.number(result.covered)), island - Vec2(0, 28), size: 14, color: .muted, opacity: prompt)
+        }
         text(Strings.Result.stats(combo: format.number(result.bestCombo), tightFits: format.number(result.tightFits), busted: result.takedowns, transporters: result.transporters, money: result.money > 0 ? format.number(result.money) : nil, time: format.seconds(result.time)), island + Vec2(0, 28), size: 13, weight: .regular, color: .muted, opacity: prompt)
         if showsKeys {
             text(Strings.Result.keys(seed: result.seed), island + Vec2(0, 48), size: 12, weight: .regular, color: .muted, opacity: prompt)

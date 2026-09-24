@@ -20,14 +20,23 @@ public enum Upgrade: String, CaseIterable, Sendable {
     case cashRoute
     /// More money for a completed shift.
     case overtime
+    /// More lorries: more tolls, and denser traffic (M7).
+    case freight
+    /// A chance of a second transporter right after one (M7).
+    case doubleRun
+    /// Pays part of what a crash costs from level 20 on (M7).
+    case insurance
+    /// Pays part of what an escaped criminal costs from level 20 on (M7).
+    case robberyInsurance
 
     /// How many steps can be bought. The ones with small steps go a long way, so there is
     /// always something to save up for.
     public var maxSteps: Int {
         switch self {
         case .morePatrols, .overtime: 10
-        case .longerPursuit, .cashRoute: 8
-        case .quietStreets, .interceptor, .dispatchRadio: 5
+        case .longerPursuit, .cashRoute, .freight: 8
+        case .insurance, .robberyInsurance: 7
+        case .quietStreets, .interceptor, .dispatchRadio, .doubleRun: 5
         case .backup: 3
         }
     }
@@ -35,11 +44,26 @@ public enum Upgrade: String, CaseIterable, Sendable {
     /// Price relative to the others: the strongest ones cost more.
     var priceFactor: Double {
         switch self {
-        case .morePatrols, .cashRoute, .overtime: 1
+        case .morePatrols, .cashRoute, .overtime, .freight: 1
         case .longerPursuit, .dispatchRadio: 1.2
-        case .quietStreets, .interceptor: 1.5
+        case .quietStreets, .interceptor, .doubleRun: 1.5
+        case .insurance, .robberyInsurance: 2
         case .backup: 3
         }
+    }
+
+    /// The level from which the upgrade is offered: the insurances only once there is
+    /// something to insure (`crashCostLevel`).
+    public func unlockLevel(config: Config) -> Int {
+        switch self {
+        case .insurance, .robberyInsurance: config.crashCostLevel
+        default: 1
+        }
+    }
+
+    /// The upgrades offered at `level`, in their fixed order.
+    public static func available(atLevel level: Int, config: Config) -> [Upgrade] {
+        allCases.filter { $0.unlockLevel(config: config) <= level }
     }
 }
 
@@ -64,6 +88,10 @@ extension Config {
         config.transporterFirst = max(1, transporterFirst.lowerBound - sooner)...max(1, transporterFirst.upperBound - sooner)
         config.transporterInterval = max(1, transporterInterval.lowerBound - sooner)...max(1, transporterInterval.upperBound - sooner)
         config.shiftPay = Int((Double(shiftPay) * (1 + step(.overtime) * overtimePerStep)).rounded())
+        config.truckChance = min(1, truckChance + step(.freight) * freightPerStep)
+        config.doubleRunChance = min(1, doubleRunChance + step(.doubleRun) * doubleRunPerStep)
+        config.crashInsurance = min(1, crashInsurance + step(.insurance) * insurancePerStep)
+        config.robberyInsurance = min(1, robberyInsurance + step(.robberyInsurance) * insurancePerStep)
         return config
     }
 }
@@ -165,8 +193,10 @@ public struct Career: Sendable, Equatable, Codable {
         min(max(0, upgrades[upgrade.rawValue] ?? 0), upgrade.maxSteps)
     }
 
-    /// Price of the next step; nil once every step is bought.
+    /// Price of the next step; nil once every step is bought, or while the upgrade is not
+    /// offered yet at this level.
     public func price(of upgrade: Upgrade, config: Config) -> Int? {
+        guard level >= upgrade.unlockLevel(config: config) else { return nil }
         let next = steps(of: upgrade) + 1
         return next <= upgrade.maxSteps ? config.price(of: upgrade, step: next) : nil
     }
@@ -182,12 +212,18 @@ public struct Career: Sendable, Equatable, Codable {
 
     /// The config of the next shift: the roundabout as it is built, then its level, the
     /// upgrades and the duty.
-    public func config(from base: Config, seed: UInt64) -> Config {
+    /// - Parameters:
+    ///   - weather, event: force the sky and the city instead of drawing them (test window).
+    public func config(from base: Config, seed: UInt64, weather: Weather? = nil, event: CityEvent? = nil) -> Config {
         var config = base
         config.armSlots = armSlots
         config.modules = modules
         // The level sets the traffic, the roundabout scales it, then the upgrades and the duty.
-        return config.forLevel(level, seed: seed).forArms().upgraded { steps(of: $0) }.forDuty(duty)
+        let shift = config.forLevel(level, seed: seed).forArms().upgraded { steps(of: $0) }.forDuty(duty)
+        // The sky and the city come last: they change the traffic the level has set (M8).
+        return shift
+            .forWeather(weather ?? shift.drawWeather(level: level, seed: seed))
+            .forCityEvent(event ?? shift.drawCityEvent(level: level, seed: seed), seed: seed)
     }
 
     /// Buys a module and puts it in `slot`. A slot that is taken is swapped: the old module
@@ -225,7 +261,8 @@ public struct Career: Sendable, Equatable, Codable {
     /// paid out already), and a level up if it was completed. A lost shift is played
     /// again at the same level.
     public mutating func record(_ result: ShiftResult, playedAt level: Int) {
-        money += result.money
+        // Costs come off the shift's earnings, then off the account, never below 0 (M7).
+        money = max(0, money + result.money)
         if result.outcome == .completed {
             self.level = max(1, level) + 1
         }

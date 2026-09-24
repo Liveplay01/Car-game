@@ -77,6 +77,7 @@ enum RenderID {
     static let road = 1_000
     static let debug = 10_000
     static let overlay = 20_000
+    static let weather = 26_000
     static let flowGlow = 29_000
     static let hud = 30_000
     static let popups = 31_000

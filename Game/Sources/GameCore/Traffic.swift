@@ -12,7 +12,7 @@ extension World {
                 return nil
             }
             // An arm a criminal or a transporter was announced for stays free for it.
-            let free = layout.aiArms.filter { !busy.contains($0) && $0 != reservedArm && $0 != reservedTransporterArm }
+            let free = openAIArms.filter { !busy.contains($0) && $0 != reservedArm && $0 != reservedTransporterArm }
             if !free.isEmpty {
                 spawnWaiting(at: rng.pick(free))
                 spawnCooldown = rng.double(in: config.aiSpawnDelay)

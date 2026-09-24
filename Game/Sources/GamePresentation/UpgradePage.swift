@@ -70,15 +70,15 @@ public enum UpgradePage {
     // MARK: - Layout
 
     /// Where each card sits, in screen points.
-    public static func cards(viewport: Vec2, bottomInset: Double) -> [(upgrade: Upgrade, rect: Rect)] {
+    public static func cards(viewport: Vec2, bottomInset: Double, upgrades: [Upgrade] = Upgrade.allCases) -> [(upgrade: Upgrade, rect: Rect)] {
         let width = min(viewport.x - 2 * gap, 460)
         let left = (viewport.x - width) / 2
         let top = Metrics.sceneInsets.top + 34
-        let rows = Double((Upgrade.allCases.count + columns - 1) / columns)
+        let rows = Double((upgrades.count + columns - 1) / columns)
         let available = viewport.y - bottomInset - detailHeight - gap - top
         let cardWidth = (width - gap * Double(columns - 1)) / Double(columns)
         let cardHeight = min(132, (available - gap * (rows - 1)) / rows)
-        return Upgrade.allCases.enumerated().map { index, upgrade in
+        return upgrades.enumerated().map { index, upgrade in
             let column = Double(index % columns)
             let row = Double(index / columns)
             let origin = Vec2(left + column * (cardWidth + gap), top + row * (cardHeight + gap))
@@ -89,8 +89,8 @@ public enum UpgradePage {
     static let detailHeight = 132.0
 
     /// The card under a point; nil between or outside them.
-    public static func card(at point: Vec2, viewport: Vec2, bottomInset: Double) -> Upgrade? {
-        cards(viewport: viewport, bottomInset: bottomInset).first { $0.rect.contains(point) }?.upgrade
+    public static func card(at point: Vec2, viewport: Vec2, bottomInset: Double, upgrades: [Upgrade] = Upgrade.allCases) -> Upgrade? {
+        cards(viewport: viewport, bottomInset: bottomInset, upgrades: upgrades).first { $0.rect.contains(point) }?.upgrade
     }
 
     // MARK: - Drawing
@@ -98,6 +98,7 @@ public enum UpgradePage {
     static func add(
         career: Career,
         config: Config,
+        upgrades: [Upgrade] = Upgrade.allCases,
         state: State,
         format: TextFormat,
         reduceMotion: Bool,
@@ -116,7 +117,7 @@ public enum UpgradePage {
         id += 1
         Icons.moneyTag(Strings.Upgrades.balance(format.number(shown)), at: Vec2(viewport.x / 2, Metrics.sceneInsets.top - 2), size: 15, alignment: .center, color: .accent, id: &id, to: &list)
 
-        for (index, card) in cards(viewport: viewport, bottomInset: bottomInset).enumerated() {
+        for (index, card) in cards(viewport: viewport, bottomInset: bottomInset, upgrades: upgrades).enumerated() {
             addCard(card.upgrade, index: index, rect: card.rect, career: career, config: config, state: state, format: format, reduceMotion: reduceMotion, showsKeys: showsKeys, id: &id, to: &list)
         }
         addDetail(career: career, config: config, state: state, format: format, reduceMotion: reduceMotion, showsKeys: showsKeys, bottomInset: bottomInset, id: &id, to: &list)
@@ -402,6 +403,33 @@ public enum UpgradeArt {
             add(.line(from: center + Vec2(12, 10) * unit, to: center + Vec2(12, -8) * unit, thickness: 2.5 * unit), .accent, 0.9)
             add(.line(from: center + Vec2(12, -8) * unit, to: center + Vec2(7, -3) * unit, thickness: 2.5 * unit), .accent, 0.9)
             add(.line(from: center + Vec2(12, -8) * unit, to: center + Vec2(17, -3) * unit, thickness: 2.5 * unit), .accent, 0.9)
+
+        case .freight:
+            // A lorry: long box, short cab.
+            add(.roundedRect(center: center + Vec2(0, 5) * unit, size: Vec2(17, 26) * unit, cornerRadius: 3 * unit, rotation: 0), .vehicleTruckBox)
+            add(.roundedRect(center: center - Vec2(0, 14) * unit, size: Vec2(15, 10) * unit, cornerRadius: 3 * unit, rotation: 0), .vehicleTruck)
+            add(.roundedRect(center: center + Vec2(19, -6) * unit, size: Vec2(12, 3) * unit, cornerRadius: 1.5, rotation: 0), .accent)
+            add(.roundedRect(center: center + Vec2(19, -6) * unit, size: Vec2(3, 12) * unit, cornerRadius: 1.5, rotation: 0), .accent)
+
+        case .doubleRun:
+            // Two transporters, one behind the other.
+            for (offset, opacity) in [(Vec2(-9, 6), 0.6), (Vec2(7, -4), 1.0)] {
+                add(.roundedRect(center: center + offset * unit, size: Vec2(14, 24) * unit, cornerRadius: 3 * unit, rotation: 0), .vehicleCargo, opacity)
+                add(.roundedRect(center: center + (offset - Vec2(0, 5)) * unit, size: Vec2(9, 8) * unit, cornerRadius: 2 * unit, rotation: 0), .hazard, opacity)
+            }
+
+        case .insurance, .robberyInsurance:
+            // A shield; with a car for crashes, with the pickup for robberies.
+            add(.polygon([
+                center + Vec2(0, -18) * unit,
+                center + Vec2(15, -10) * unit,
+                center + Vec2(15, 4) * unit,
+                center + Vec2(0, 18) * unit,
+                center + Vec2(-15, 4) * unit,
+                center + Vec2(-15, -10) * unit,
+            ]), .accent, 0.85)
+            let body: ColorToken = upgrade == .insurance ? .vehicleCar : .vehicleCriminal
+            car(center, 0.55, body: body, roof: upgrade == .insurance ? nil : .vehicleBed, lights: false)
 
         case .overtime:
             // A stack of coins.

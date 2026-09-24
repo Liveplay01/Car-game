@@ -9,6 +9,8 @@ import GamePresentation
 ///     --level 8            jump to this level (saved, like any level up)
 ///     --tab upgrades       open a tab: streetBuilder, game, shop, upgrades
 ///     --duty high          play on high alert (saved, like pressing H)
+///     --weather storm      force the weather: clear, lightRain, heavyRain, storm, extreme
+///     --event roadworks    force a city event: roadworks, roadClosure, concert, vipConvoy, policeOperation
 ///     --debug              start with the debug overlay (F1)
 ///     --autotap 0.9        tap every 0.9 s (input simulation for demos and visual checks; implies --play)
 ///     --size 375x667       open at this window size instead of fitting the monitor
@@ -21,6 +23,8 @@ struct LaunchOptions {
     var level: Int?
     var tab: Tab?
     var duty: Duty?
+    var weather: Weather?
+    var event: CityEvent?
     var startWithDebug = false
     var autotapInterval: Double?
     var size: (width: Int, height: Int)?
@@ -76,6 +80,20 @@ struct LaunchOptions {
                     consumed = 2
                 } else {
                     print("--level needs a whole number from 1, e.g. --level 8")
+                }
+            case "--weather":
+                if let weather = value().flatMap({ Weather(rawValue: $0) }) {
+                    self.weather = weather
+                    consumed = 2
+                } else {
+                    print("--weather needs one of: " + Weather.allCases.map(\.rawValue).joined(separator: ", "))
+                }
+            case "--event":
+                if let event = value().flatMap({ CityEvent(rawValue: $0) }) {
+                    self.event = event
+                    consumed = 2
+                } else {
+                    print("--event needs one of: " + CityEvent.allCases.map(\.rawValue).joined(separator: ", "))
                 }
             case "--debug":
                 startWithDebug = true

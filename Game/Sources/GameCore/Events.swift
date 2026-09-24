@@ -107,6 +107,9 @@ public struct CrashReport: Sendable, Equatable {
     /// Strikes and police crashes after this crash.
     public var strikes: Int
     public var policeCrashes: Int
+    /// Money the crash cost (level 20 and up, after insurance), and what the insurance paid (M7).
+    public var cost = 0
+    public var covered = 0
 }
 
 public struct ComboChange: Sendable, Equatable {

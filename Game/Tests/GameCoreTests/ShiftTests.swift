@@ -53,8 +53,47 @@ struct RatingRuleTests {
     @Test func tightFitLiesBelowTheThreshold() {
         #expect(Scoring.rate(minGap: 0.05, gapBehind: .infinity, config: config) == .tightFit)
         #expect(Scoring.rate(minGap: 0.1199, gapBehind: .infinity, config: config) == .tightFit)
-        #expect(Scoring.rate(minGap: 0.12, gapBehind: .infinity, config: config) == .clean)
+        #expect(Scoring.rate(minGap: 0.12, gapBehind: .infinity, config: config) == .nearMiss)
         #expect(Scoring.rate(minGap: .infinity, gapBehind: .infinity, config: config) == .clean)
+    }
+
+    @Test func nearMissLiesBetweenTightFitAndItsOwnThreshold() {
+        #expect(Scoring.rate(minGap: 0.15, gapBehind: .infinity, config: config) == .nearMiss)
+        #expect(Scoring.rate(minGap: 0.1999, gapBehind: .infinity, config: config) == .nearMiss)
+        #expect(Scoring.rate(minGap: 0.2, gapBehind: .infinity, config: config) == .clean)
+        #expect(Scoring.points(for: .nearMiss, combo: 0, rushHour: false, config: config) == 125)
+    }
+
+    @Test func perfectInputNeedsACentredRealGap() {
+        // Centred in a real gap.
+        #expect(Scoring.rate(minGap: 0.4, gapBehind: 0.5, gapAhead: 0.6, config: config) == .perfect)
+        // Lopsided.
+        #expect(Scoring.rate(minGap: 0.3, gapBehind: 0.3, gapAhead: 0.9, config: config) == .clean)
+        // An empty ring on one side, or a huge gap: no feat.
+        #expect(Scoring.rate(minGap: 0.5, gapBehind: .infinity, gapAhead: 0.5, config: config) == .clean)
+        #expect(Scoring.rate(minGap: 1.5, gapBehind: 1.5, gapAhead: 1.5, config: config) == .clean)
+        // A close call is a Near Miss, however centred.
+        #expect(Scoring.rate(minGap: 0.15, gapBehind: 0.5, gapAhead: 0.5, config: config) == .nearMiss)
+        #expect(Scoring.points(for: .perfect, combo: 0, rushHour: false, config: config) == 150)
+    }
+
+    @Test func onlyGoodMergesExtendTheChain() {
+        #expect(MergeRating.perfect.extendsChain)
+        #expect(MergeRating.nearMiss.extendsChain)
+        #expect(MergeRating.tightFit.extendsChain)
+        #expect(!MergeRating.clean.extendsChain)
+        #expect(!MergeRating.cutOff.extendsChain)
+    }
+
+    @Test func theChainReachesTheFlowAndACrashEndsIt() {
+        var world = quietShift { $0.flowChain = 3 }
+        for _ in 0..<3 { world.extendChain(at: world.time) }
+        #expect(world.isInFlow)
+        #expect(world.takeEvents().contains { if case let .flowChanged(change) = $0 { change.isInFlow && change.chain == 3 } else { false } })
+        _ = world.scoreCrash(byPolice: true, at: world.time)
+        #expect(!world.isInFlow)
+        #expect(world.score.bestChain == 3)
+        #expect(world.takeEvents().contains { if case let .flowChanged(change) = $0 { !change.isInFlow } else { false } })
     }
 
     @Test func cutOffIsOffByDefault() {

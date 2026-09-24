@@ -164,7 +164,7 @@ public final class GameSession {
         let seed = random.nextSeed()
         playingLevel = save.career.level
         playingDuty = save.career.duty
-        world = World(config: save.career.config(from: config, seed: seed), seed: seed, mode: .shift, startsOnFirstTap: true)
+        world = World(config: save.career.config(from: config, seed: seed, weather: forcedWeather, event: forcedEvent), seed: seed, mode: .shift, startsOnFirstTap: true)
         effects = CrashEffects(seed: seed)
     }
 
@@ -297,7 +297,7 @@ public final class GameSession {
         let seed = seed ?? random.nextSeed()
         playingLevel = save.career.level
         playingDuty = save.career.duty
-        let shiftConfig = save.career.config(from: config, seed: seed)
+        let shiftConfig = save.career.config(from: config, seed: seed, weather: forcedWeather, event: forcedEvent)
         if continuing {
             world = world.nextShift(config: shiftConfig, seed: seed)
         } else {
@@ -311,6 +311,14 @@ public final class GameSession {
     }
 
     /// Jumps to a level, e.g. `--level 8` in the test window. Saved at once.
+    /// Test window (`--weather`, `--event`): every shift gets this sky and this city event.
+    public var forcedWeather: Weather? {
+        didSet { refreshWaitingShift() }
+    }
+    public var forcedEvent: CityEvent? {
+        didSet { refreshWaitingShift() }
+    }
+
     public func setLevel(_ level: Int) {
         save.career.level = max(1, level)
         store.save(save)
@@ -324,7 +332,7 @@ public final class GameSession {
         guard world.shift.phase == .waiting else { return }
         playingLevel = save.career.level
         playingDuty = save.career.duty
-        let next = save.career.config(from: config, seed: world.seed)
+        let next = save.career.config(from: config, seed: world.seed, weather: forcedWeather, event: forcedEvent)
         if next.builtArmSlots == world.config.builtArmSlots {
             world = world.nextShift(config: next, seed: world.seed)
         } else {
@@ -404,6 +412,11 @@ public final class GameSession {
     }
 
     /// A tap on a card: the first one opens the details, a second one right after buys.
+    /// The upgrades the Upgrades tab offers at the player's level (M7: insurances from level 20).
+    public var visibleUpgrades: [Upgrade] {
+        Upgrade.available(atLevel: save.career.level, config: config)
+    }
+
     private func tapUpgrade(_ upgrade: Upgrade) {
         if let last = lastCardTap, last.upgrade == upgrade, last.age <= Self.doubleTapWindow {
             lastCardTap = nil
@@ -541,8 +554,8 @@ public final class GameSession {
             }
         case let .choose(number):
             // On the Upgrades tab the numbers pick a card, like a tap on it.
-            if screen == .page(.upgrades), Upgrade.allCases.indices.contains(number - 1) {
-                tapUpgrade(Upgrade.allCases[number - 1])
+            if screen == .page(.upgrades), visibleUpgrades.indices.contains(number - 1) {
+                tapUpgrade(visibleUpgrades[number - 1])
             } else if let items = content?.items, items.indices.contains(number - 1) {
                 perform(items[number - 1].action)
             }
@@ -618,6 +631,11 @@ public final class GameSession {
                 effects.spawn(for: report, in: world, reduceMotion: reduceMotion)
                 if report.penalty > 0 {
                     addPopup(.penalty(report.penalty), at: report.point)
+                }
+                if report.cost > 0 {
+                    addPopup(.cost(report.cost), at: report.point + Vec2(0, 18))
+                } else if report.covered > 0 {
+                    addPopup(.covered, at: report.point + Vec2(0, 18))
                 }
             case let .comboChanged(change):
                 if change.isTierUp { sinceComboTier = 0 }
@@ -724,10 +742,13 @@ public final class GameSession {
         camera.focus += effects.shakeOffset
         var list = RenderList(camera: camera, background: .background)
         SceneBuilder.addRoad(world.layout, config: world.config, to: &list)
+        WeatherLayer.addCityEvent(world: world, to: &list)
+        WeatherLayer.addGround(world: world, to: &list)
         effects.addGround(world: world, alpha: clock.alpha, to: &list)
         SceneBuilder.addShadows(of: world, alpha: clock.alpha, to: &list)
         SceneBuilder.addVehicles(of: world, alpha: clock.alpha, to: &list)
         effects.addAir(to: &list)
+        WeatherLayer.addAir(world: world, time: world.time, reduceMotion: reduceMotion, to: &list)
 
         switch screen {
         case .playing:
@@ -752,7 +773,8 @@ public final class GameSession {
                 highscore: save.highscore > 0 ? format.number(save.highscore) : nil,
                 money: career.money > 0 ? format.number(career.money) : nil
             )
-            ReadyBanner.add(level: playingLevel, cars: world.carsLeft ?? 0, duty: career.duty, dutyPay: config.highAlertPay, status: status, time: sinceReady, reduceMotion: reduceMotion, showsKeys: options.showsKeyHints, to: &list)
+            let conditions = Strings.Ready.conditions(weather: world.config.weather, event: world.config.cityEvent)
+            ReadyBanner.add(level: playingLevel, cars: world.carsLeft ?? 0, duty: career.duty, dutyPay: config.highAlertPay, status: status, conditions: conditions, time: sinceReady, reduceMotion: reduceMotion, showsKeys: options.showsKeyHints, to: &list)
         case .settings, .page:
             break
         }
@@ -768,7 +790,7 @@ public final class GameSession {
             StreetBuilderPage.add(career: save.career, config: config, state: builderPage, format: format, reduceMotion: reduceMotion, showsKeys: options.showsKeyHints, bottomInset: bottomInset, to: &list)
         } else if options.drawsMenus, screen == .page(.upgrades) {
             // Its own page: cards with a picture of what they do (FOUNDATION.md 3).
-            UpgradePage.add(career: save.career, config: config, state: upgradePage, format: format, reduceMotion: reduceMotion, showsKeys: options.showsKeyHints, bottomInset: bottomInset, to: &list)
+            UpgradePage.add(career: save.career, config: config, upgrades: visibleUpgrades, state: upgradePage, format: format, reduceMotion: reduceMotion, showsKeys: options.showsKeyHints, bottomInset: bottomInset, to: &list)
         } else if options.drawsMenus, let content {
             TextPage.add(content, showsKeys: options.showsKeyHints, bottomInset: bottomInset, to: &list)
         }

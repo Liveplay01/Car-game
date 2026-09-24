@@ -377,9 +377,11 @@ public struct World: Sendable {
         if armored != j { makeWreck(j, contact.point, b) }
         let involvesPlayer = first.owner == .player || second.owner == .player
         var penalty = 0
+        var cost = (paid: 0, covered: 0)
         let comboEvents = events.count
         if strike && isScoring {
             penalty = scoreCrash(byPolice: byPolice, at: now)
+            if mode == .shift { cost = chargeCrash(impact: impact) }
         }
         // The crash comes before the combo reset it causes.
         events.insert(.crash(CrashReport(
@@ -394,7 +396,9 @@ public struct World: Sendable {
             isTakedown: takedown,
             penalty: penalty,
             strikes: score.strikes,
-            policeCrashes: score.policeCrashes
+            policeCrashes: score.policeCrashes,
+            cost: cost.paid,
+            covered: cost.covered
         )), at: comboEvents)
         if takedown {
             let (criminalID, policeID) = first.type == .pickup ? (first.id, second.id) : (second.id, first.id)

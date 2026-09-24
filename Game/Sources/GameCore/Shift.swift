@@ -76,6 +76,10 @@ public struct ShiftResult: Sendable, Equatable {
     public var perfects = 0
     /// Longest Perfect Chain of the shift (M6).
     public var bestChain = 0
+    /// Money lost to crashes and an escape (M7), already taken off `money`; and what the
+    /// insurances paid instead.
+    public var costs = 0
+    public var covered = 0
 
     public var merges: Int { cleanMerges + tightFits + cutOffs + nearMisses + perfects }
 }
@@ -231,7 +235,9 @@ extension World {
             time: shiftTime(time),
             nearMisses: score.nearMisses,
             perfects: score.perfects,
-            bestChain: score.bestChain
+            bestChain: score.bestChain,
+            costs: score.costs,
+            covered: score.covered
         )
     }
 }

@@ -32,6 +32,8 @@ session.isDebugVisible = options.startWithDebug
 if let level = options.level {
     session.setLevel(level)
 }
+session.forcedWeather = options.weather
+session.forcedEvent = options.event
 if let duty = options.duty {
     session.perform(.setDuty(duty))
 }
@@ -63,7 +65,7 @@ while !WindowShouldClose() {
         if session.screen.showsTabBar, let tab = TabStrip.tab(at: mouse, viewport: viewport) {
             actions.append(.selectTab(tab))
         } else if session.screen == .page(.upgrades),
-                  let upgrade = UpgradePage.card(at: mouse, viewport: viewport, bottomInset: tabBar) {
+                  let upgrade = UpgradePage.card(at: mouse, viewport: viewport, bottomInset: tabBar, upgrades: session.visibleUpgrades) {
             // One click opens the card, a second one right after buys it.
             actions.append(.tapUpgrade(upgrade))
         } else if session.screen == .page(.streetBuilder) {

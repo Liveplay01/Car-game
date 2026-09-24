@@ -77,7 +77,7 @@ extension World {
         case let .idle(next):
             guard shift.acceptsTaps, now >= next else { return }
             // Only where nobody waits: otherwise the warning would mark somebody else.
-            let candidates = layout.aiArms.filter { isFreeForWarning($0) }
+            let candidates = openAIArms.filter { isFreeForWarning($0) }
             guard !candidates.isEmpty else { return }
             let arm = criminalRng.pick(candidates)
             criminal.phase = .warning(arm: arm, until: now + config.criminalWarning)
@@ -115,6 +115,7 @@ extension World {
             guard now >= deadline else { return }
             criminal.phase = .leaving(vehicle: id)
             events.append(.criminalEscaped(vehicle: id, time: now))
+            chargeEscape()
             endShift(.escaped, at: now)
 
         case .leaving:

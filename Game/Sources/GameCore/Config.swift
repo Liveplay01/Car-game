@@ -326,6 +326,80 @@ public struct Config: Sendable, Equatable {
     public var backupPerStep: Int = 1
     public var cashRoutePerStep: Double = 1
     public var overtimePerStep: Double = 0.2
+    /// Insurance and Robbery Insurance: this much less of a cost per step; 7 steps cover it all.
+    public var insurancePerStep: Double = 0.15
+    /// Freight: this much more lorry traffic per step (more tolls, denser traffic).
+    public var freightPerStep: Double = 0.03
+    /// Double Run: this much more chance per step of a second transporter right after one.
+    public var doubleRunPerStep: Double = 0.1
+
+    // MARK: Risk and insurance (IDEA.md: Crash-Economy, Financial Loss; ROADMAP.md, M7)
+
+    /// The level this shift is played at; set by `forLevel`.
+    public var level: Int = 1
+    /// From this level on, crashes and escapes cost money. Below it, mistakes are free.
+    public var crashCostLevel: Int = 20
+    /// What the player's crash costs, by how hard it was: below the first impact (wu/s) the
+    /// first cost, and so on. A follow-up crash in the traffic costs nothing.
+    public var crashCosts: [Int] = [60, 120, 200]
+    public var crashCostImpacts: [Double] = [80, 140]
+    /// What an escaped criminal costs on top of the lost shift.
+    public var escapeLoss: Int = 350
+    /// Share of crash costs and escape losses the insurances pay (0…1); set by the upgrades.
+    public var crashInsurance: Double = 0
+    public var robberyInsurance: Double = 0
+    /// Chance that a second transporter follows a paid one, and how soon.
+    public var doubleRunChance: Double = 0
+    public var doubleRunDelay: ClosedRange<Double> = 2...3
+
+    // MARK: Weather (IDEA.md: the third difficulty axis; ROADMAP.md, M8; `Weather.swift`)
+
+    /// This shift's weather; drawn per shift by the career (`Career.config`).
+    public var weather: Weather = .clear
+    /// The first level each kind of weather can come at.
+    public var lightRainLevel: Int = 6
+    public var heavyRainLevel: Int = 12
+    public var stormLevel: Int = 18
+    public var extremeLevel: Int = 25
+    /// Chance of bad weather: this much more per level from `lightRainLevel` on, up to a limit.
+    public var badWeatherPerLevel: Double = 0.03
+    public var maxBadWeatherChance: Double = 0.6
+    /// Per step of weather (light rain 1 … extreme 4): tyre grip lost, driver reaction added
+    /// (seconds), braking lost, and from heavy rain on cars added.
+    public var weatherGripLoss: Double = 0.15
+    public var weatherReactionDelay: Double = 0.1
+    public var weatherBrakeLoss: Double = 0.1
+    public var weatherDensityPerStep: Int = 1
+    /// In a storm the AI squeezes into gaps this much smaller.
+    public var stormAiGapFactor: Double = 0.8
+
+    // MARK: City events (IDEA.md; ROADMAP.md, M8; `CityEvents.swift`)
+
+    /// This shift's event, if any; drawn per shift by the career.
+    public var cityEvent: CityEvent?
+    /// From this level on, a shift has an event with this chance.
+    public var cityEventLevel: Int = 4
+    public var cityEventChance: Double = 0.25
+    /// Roadworks: where on the ring (share of a lap), how long a stretch, and how fast.
+    public var roadworksAt: Double = 0
+    public var roadworksArc: Double = 110
+    public var roadworksSpeedFactor: Double = 0.6
+    /// Road closure: the slot of the closed AI arm.
+    public var closedArmSlot: Int?
+    /// Concert: this many more cars, and AI spawns this much quicker.
+    public var concertDensityBonus: Int = 2
+    public var concertSpawnFactor: Double = 0.5
+    /// VIP convoy: the AI keeps gaps this much longer.
+    public var vipGapFactor: Double = 1.6
+    /// Police operation: this much more police in the queue.
+    public var policeOperationShare: Double = 0.15
+
+    // MARK: Late levels (ROADMAP.md, M7: level 14 felt too easy)
+
+    /// From this level on the traffic gets denser, by this many cars per level, up to a limit.
+    public var lateLevel: Int = 10
+    public var lateDensityPerLevel: Double = 0.2
+    public var maxLateDensityBonus: Int = 3
 
     public init() {}
 
