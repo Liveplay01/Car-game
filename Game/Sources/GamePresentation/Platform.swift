@@ -39,6 +39,8 @@ public struct SaveGame: Codable, Sendable, Equatable {
     /// Level, money and upgrades (M5). A completed shift is a level up, a lost one is
     /// played again (`Career.record`).
     public var career = Career()
+    /// The first shift's hints were shown (`Tutorial`).
+    public var tutorialDone = false
 
     public init() {}
 
@@ -51,6 +53,8 @@ public struct SaveGame: Codable, Sendable, Equatable {
         highscoreSeed = try container.decodeIfPresent(UInt64.self, forKey: .highscoreSeed)
         shiftsPlayed = try container.decodeIfPresent(Int.self, forKey: .shiftsPlayed) ?? defaults.shiftsPlayed
         settings = try container.decodeIfPresent(Settings.self, forKey: .settings) ?? defaults.settings
+        // Whoever played before this existed never needs the tutorial.
+        tutorialDone = try container.decodeIfPresent(Bool.self, forKey: .tutorialDone) ?? (shiftsPlayed > 0)
         if let career = try container.decodeIfPresent(Career.self, forKey: .career) {
             self.career = career
         } else {

@@ -6,6 +6,7 @@ import GamePresentation
 // Test window: draws, takes input, plays sound. No game logic here; that lives in `Game/`.
 
 let options = LaunchOptions(arguments: CommandLine.arguments)
+let saveFile = options.saveFile.map { URL(fileURLWithPath: $0) } ?? ProjectFiles.saveGame
 
 SetConfigFlags(UInt32(FLAG_WINDOW_RESIZABLE.rawValue | FLAG_MSAA_4X_HINT.rawValue | FLAG_VSYNC_HINT.rawValue))
 SetTraceLogLevel(Int32(LOG_WARNING.rawValue))
@@ -25,7 +26,7 @@ let audio = RaylibAudio(folder: ProjectFiles.sounds)
 let music = RaylibMusic(folder: ProjectFiles.music)
 let session = GameSession(
     random: SeedSource(fixed: options.seed),
-    store: FileSaveStore(url: ProjectFiles.saveGame),
+    store: FileSaveStore(url: saveFile),
     audio: audio,
     timeScale: options.timeScale
 )
@@ -42,7 +43,7 @@ session.forcedEvent = options.event
 if let duty = options.duty {
     session.perform(.setDuty(duty))
 }
-print("Save game: \(ProjectFiles.saveGame.path)  (level \(session.save.career.level), \(session.save.career.money) money)")
+print("Save game: \(saveFile.path)  (level \(session.save.career.level), \(session.save.career.money) money)")
 loadTuning(into: session, createIfMissing: false)
 if options.startsShift {
     session.perform(.startShift)

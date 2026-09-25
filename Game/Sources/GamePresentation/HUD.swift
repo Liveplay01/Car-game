@@ -458,7 +458,7 @@ enum ReadyBanner {
     /// How long the splash stays before it rises into the banner's title.
     static let splashDuration = 2.4
 
-    static func add(level: Int, cars: Int, duty: Duty, dutyPay: Double, status: String, conditions: String? = nil, daily: DailyCard? = nil, time: Double, reduceMotion: Bool, showsKeys: Bool, to list: inout RenderList) {
+    static func add(level: Int, cars: Int, duty: Duty, dutyPay: Double, status: String, conditions: String? = nil, daily: DailyCard? = nil, prompt: String = Strings.Ready.tapToStart, time: Double, reduceMotion: Bool, showsKeys: Bool, to list: inout RenderList) {
         let width = list.camera.viewport.x
         var id = RenderID.hud
         HUD.addBand(height: Metrics.resultBand, to: &list, id: &id)
@@ -481,7 +481,7 @@ enum ReadyBanner {
         // The prompt breathes gently, so the waiting screen is alive; still with Reduce Motion.
         let island = list.camera.toScreen(.zero)
         let breath = reduceMotion ? 1 : 0.7 + 0.3 * (0.5 + 0.5 * cos(time * 2.4))
-        text(Strings.Ready.tapToStart, island, size: 17, color: .primary, opacity: breath)
+        text(prompt, island, size: 17, color: .primary, opacity: breath)
         // Weather and the city's event are announced before the shift (M8): anticipation.
         if let conditions {
             text(conditions, island - Vec2(0, 28), size: 14, color: .hazard)

@@ -19,6 +19,7 @@ import GamePresentation
 ///     --debug              start with the debug overlay (F1)
 ///     --autotap 0.9        tap every 0.9 s (input simulation for demos and visual checks; implies --play)
 ///     --size 375x667       open at this window size instead of fitting the monitor
+///     --save other.json    play from another save game file (visual checks without touching yours)
 ///     --screenshot x.png   save a screenshot after --at seconds (default 3) and quit
 ///     --at-crash 0.2       instead: save it this long after the first crash (visual checks of the effects)
 struct LaunchOptions {
@@ -38,6 +39,7 @@ struct LaunchOptions {
     var autotapInterval: Double?
     var size: (width: Int, height: Int)?
     var screenshotFile: String?
+    var saveFile: String?
     var screenshotAt = 3.0
     var screenshotAfterCrash: Double?
 
@@ -75,6 +77,13 @@ struct LaunchOptions {
                 case "high", "highAlert", "alert": duty = .highAlert; consumed = 2
                 case "normal": duty = .normal; consumed = 2
                 default: print("--duty needs normal or high")
+                }
+            case "--save":
+                if let file = value() {
+                    saveFile = file
+                    consumed = 2
+                } else {
+                    print("--save needs a file, e.g. --save check.json")
                 }
             case "--shelf":
                 let names = ShopPage.Shelf.allCases.map { "\($0)" }

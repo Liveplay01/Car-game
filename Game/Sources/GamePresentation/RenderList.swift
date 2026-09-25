@@ -85,6 +85,8 @@ enum RenderID {
     static let flowGlow = 29_000
     static let hud = 30_000
     static let popups = 31_000
+    /// The first shift's hints (`Tutorial`).
+    static let tutorial = 37_000
     static let menu = 40_000
     /// A map's ground details and its plants (`MapTheme`).
     static let mapGround = 60_000

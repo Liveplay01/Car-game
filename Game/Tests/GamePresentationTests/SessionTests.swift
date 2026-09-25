@@ -136,8 +136,37 @@ struct SessionTests {
         #expect(session.world.shift.phase == .waiting)
         #expect(session.world.roadCount > 0)
         let texts = session.advance().texts
-        #expect(texts.contains(Strings.Ready.tapToStart))
+        // A new player is met by the first shift's hint instead of "Tap to start".
+        #expect(texts.contains(Strings.Tutorial.sendCar))
         #expect(texts.contains(Strings.HUD.level(1)))
+    }
+
+    /// Leo, 25.09.2026: a short tutorial in the first shift, hints right in the game. It
+    /// moves on with what the player does, ends with the first shift and never returns;
+    /// whoever played before it existed never sees it.
+    @Test func theFirstShiftTeachesAndThenLetsGo() throws {
+        let store = MemorySaveStore()
+        let session = makeSession(store: store)
+        session.automaticDaily = true
+        session.advance()
+        // The very first shift is a plain one, never the Daily with its city event.
+        #expect(!session.dailySelected)
+        session.advance([.tap])
+        #expect(session.screen == .playing)
+        session.run(seconds: 0.6) { _ in false }
+        #expect(!session.advance().texts.contains(Strings.Tutorial.sendCar))
+        #expect(session.advance().texts.contains(Strings.Tutorial.findGap))
+        finishShift(session)
+        #expect(store.game?.tutorialDone == true)
+        session.run(seconds: 6) { $0.screen == .ready }
+        #expect(session.dailySelected)
+        #expect(!session.advance().texts.contains(Strings.Tutorial.sendCar))
+        #expect(makeSession(store: store).advance().texts.contains(Strings.Ready.tapToStart))
+
+        let old = try JSONDecoder().decode(SaveGame.self, from: Data(#"{ "shiftsPlayed": 12 }"#.utf8))
+        #expect(old.tutorialDone)
+        let fresh = try JSONDecoder().decode(SaveGame.self, from: Data(#"{ "shiftsPlayed": 0 }"#.utf8))
+        #expect(!fresh.tutorialDone)
     }
 
     @Test func tapLaunchesTheCarWithinTheFrameAt60Hz() {

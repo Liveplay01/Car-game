@@ -143,6 +143,8 @@ public final class GameSession {
     public private(set) var countIn = 0.0
     /// Real time the Game tab has been waiting for the first tap.
     private var sinceReady = 0.0
+    /// The first shift's hints; nil once they were shown.
+    private var tutorial: Tutorial?
     /// The map's own clock (petals, koi, snow): runs with the game, slows with it, and never
     /// starts over at a new shift, so nothing jumps between two shifts.
     private var sceneTime = 0.0
@@ -193,6 +195,7 @@ public final class GameSession {
         playingDuty = save.career.duty
         world = World(config: save.career.config(from: config, seed: seed), seed: seed, mode: .shift, startsOnFirstTap: true)
         effects = CrashEffects(seed: seed)
+        tutorial = save.tutorialDone ? nil : Tutorial()
         collectLoginIncome()
     }
 
@@ -406,7 +409,7 @@ public final class GameSession {
     /// otherwise the roundabout starts afresh.
     private func prepareShift(continuing: Bool, seed: UInt64? = nil, screen next: Screen = .ready) {
         // While today's Daily Shift is open, it is the next shift, with its own seed.
-        let daily = automaticDaily && save.career.isDailyOpen(day: today)
+        let daily = wantsDaily
         dailySelected = daily
         let seed = daily ? Career.dailySeed(day: today) : (seed ?? random.nextSeed())
         playingLevel = save.career.level
@@ -455,6 +458,12 @@ public final class GameSession {
     /// The Daily Shift comes by itself as the first shift of the day (Leo, 25.09.2026); there
     /// is nothing to pick. Tests that need a plain shift turn it off.
     public var automaticDaily = true
+
+    /// Whether the next shift is today's Daily Shift. Never the very first shift: a new
+    /// player learns on a plain one (`Tutorial`), the Daily comes right after it.
+    private var wantsDaily: Bool {
+        automaticDaily && tutorial == nil && save.career.isDailyOpen(day: today)
+    }
     /// The splash that announces the Daily Shift, and how long it has shown.
     private var dailySplash: Double?
     /// Game Center (the app sets it; the test window has none).
@@ -790,6 +799,7 @@ public final class GameSession {
             shownScore += (points - shownScore) * min(1, realDelta / Self.scoreCatchUp)
         }
         sinceReady = screen == .ready ? sinceReady + realDelta : 0
+        tutorial?.age(by: realDelta)
         transition?.age += realDelta
         if transition?.isDone == true { transition = nil }
         if screen == .page(.upgrades) {
@@ -944,6 +954,7 @@ public final class GameSession {
     /// Popups, debug markers, sound, haptics and the end of the shift.
     private func react(to events: [GameEvent]) {
         for event in events {
+            tutorial?.react(to: event)
             switch event {
             case let .merged(report):
                 markers.append(DebugMarker(kind: .merge(gap: report.minGap), position: report.position, age: 0))
@@ -1031,7 +1042,7 @@ public final class GameSession {
     /// is open, a normal shift after — also across midnight or when the platform sets `today`.
     private func keepDailyInStep() {
         guard world.shift.phase == .waiting, screen != .playing else { return }
-        let wanted = automaticDaily && save.career.isDailyOpen(day: today)
+        let wanted = wantsDaily
         if wanted != dailySelected { prepareShift(continuing: true, screen: screen) }
     }
 
@@ -1068,6 +1079,11 @@ public final class GameSession {
             save.highscoreSeed = result.seed
         }
         save.shiftsPlayed += 1
+        // The first shift is over, and with it the tutorial.
+        if tutorial != nil {
+            tutorial = nil
+            save.tutorialDone = true
+        }
         // Money is banked whatever the outcome; done is a level up, lost is the same level again.
         save.career.record(result, playedAt: playingLevel)
         // Mastery runs in the background; a reached goal is a short toast and a chest (M10).
@@ -1193,6 +1209,9 @@ public final class GameSession {
                 ),
                 format: format, showsKeys: options.showsKeyHints, timeScale: timeScale, to: &list
             )
+            if let tutorial {
+                Tutorial.add(tutorial, world: world, alpha: clock.alpha, time: sceneTime, reduceMotion: reduceMotion, to: &list)
+            }
             HUD.addPopups(popups, format: format, reduceMotion: reduceMotion, to: &list)
             if countIn > 0 || isInterrupted {
                 HUD.addCountIn(secondsLeft: isInterrupted ? Self.countInSeconds : countIn, to: &list)
@@ -1209,7 +1228,10 @@ public final class GameSession {
                 weather: world.config.weather, event: world.config.cityEvent,
             )
             let daily = dailySelected ? ReadyBanner.DailyCard(event: world.config.cityEvent, streak: career.dailyStreak, next: career.nextStreakMilestone(), splash: dailySplash) : nil
-            ReadyBanner.add(level: playingLevel, cars: world.carsLeft ?? 0, duty: career.duty, dutyPay: config.highAlertPay, status: status, conditions: conditions, daily: daily, time: sinceReady, reduceMotion: reduceMotion, showsKeys: options.showsKeyHints, to: &list)
+            ReadyBanner.add(level: playingLevel, cars: world.carsLeft ?? 0, duty: career.duty, dutyPay: config.highAlertPay, status: status, conditions: conditions, daily: daily, prompt: tutorial == nil ? Strings.Ready.tapToStart : Tutorial.readyPrompt, time: sinceReady, reduceMotion: reduceMotion, showsKeys: options.showsKeyHints, to: &list)
+            if let tutorial {
+                Tutorial.add(tutorial, world: world, alpha: clock.alpha, time: sceneTime, reduceMotion: reduceMotion, to: &list)
+            }
         case .settings, .page:
             break
         }

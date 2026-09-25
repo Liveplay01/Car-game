@@ -14,6 +14,14 @@ public enum Strings {
     }
 
     /// The Game tab between shifts: no menu, one tap starts.
+    /// The first shift's hints (`Tutorial`): short, so they read at a glance while playing.
+    public enum Tutorial {
+        public static let sendCar = "Tap to send your first car"
+        public static let findGap = "Wait for a gap, then tap"
+        public static let combo = "Clean merges build your combo"
+        public static let strikes = "3 crashes end the shift"
+    }
+
     public enum Ready {
         public static let tapToStart = "Tap to start"
 

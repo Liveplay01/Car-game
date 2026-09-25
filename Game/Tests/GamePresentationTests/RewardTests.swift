@@ -16,8 +16,15 @@ struct RewardTests {
 
     // MARK: Daily Shift
 
+    /// A player who has been through the first shift (`Tutorial`).
+    func veteranSession() -> GameSession {
+        var saved = SaveGame()
+        saved.tutorialDone = true
+        return makeSession(store: MemorySaveStore(saved))
+    }
+
     @Test func theDailyShiftIsTheFirstShiftOfTheDayAndSaysSo() {
-        let session = makeSession()
+        let session = veteranSession()
         session.automaticDaily = true
         let frame = session.advance()
         #expect(session.dailySelected)
@@ -32,7 +39,7 @@ struct RewardTests {
     }
 
     @Test func oneTryADayThenPlainShifts() {
-        let session = makeSession()
+        let session = veteranSession()
         session.automaticDaily = true
         session.advance()
         session.advance([.tap])
