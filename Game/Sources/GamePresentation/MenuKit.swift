@@ -69,11 +69,34 @@ enum MenuKit {
         Ease.outCubic((age - 0.04 * Double(index)) / 0.25)
     }
 
-    /// The motion that goes with `stagger`: the chest's spring, a little longer, so a card
-    /// rises past its place and settles instead of just stopping. Use it for offsets and
+    /// The motion that goes with `stagger`: a critically damped spring, a little longer, so a
+    /// card glides into its place and stops there (`Ease.settle`). Use it for offsets and
     /// scale; the fade stays on `stagger`.
+    /// A floating pill of chrome (apple-design: materials and depth): a soft shadow under
+    /// it, the material, a hairline of light along the top, and — for a hint that wants to
+    /// be seen — a thin edge in its colour. Returns nothing; the text goes on top.
+    static func chromePill(center: Vec2, size: Vec2, tint: ColorToken? = nil, opacity: Double, id: inout Int, to list: inout RenderList) {
+        let frame = Rect(minX: center.x - size.x / 2, minY: center.y - size.y / 2, maxX: center.x + size.x / 2, maxY: center.y + size.y / 2)
+        chromePanel(frame, radius: size.y / 2, tint: tint, opacity: opacity, id: &id, to: &list)
+    }
+
+    /// The same material as a panel with any corner radius (the Game tab's `TopBar`).
+    static func chromePanel(_ frame: Rect, radius: Double, tint: ColorToken? = nil, opacity: Double, id: inout Int, to list: inout RenderList) {
+        let center = frame.center
+        let size = Vec2(frame.width, frame.height)
+        list.add(.roundedRect(center: center + Vec2(0, 3), size: size + Vec2(4, 4), cornerRadius: radius + 2, rotation: 0), color: .shadow, opacity: opacity, space: .screen, id: id)
+        if let tint {
+            list.add(.roundedRect(center: center, size: size + Vec2(3, 3), cornerRadius: radius + 1.5, rotation: 0), color: tint, opacity: 0.55 * opacity, space: .screen, id: id + 1)
+        }
+        list.add(.roundedRect(center: center, size: size, cornerRadius: radius, rotation: 0), color: .chrome, opacity: opacity, space: .screen, id: id + 2)
+        // The hairline stays on the straight part of the top edge, clear of the corners.
+        let inset = min(radius * 1.3, size.x / 2 - 1)
+        list.add(.line(from: center + Vec2(-size.x / 2 + inset, -size.y / 2 + 1), to: center + Vec2(size.x / 2 - inset, -size.y / 2 + 1), thickness: 1), color: .chromeEdge, opacity: opacity, space: .screen, id: id + 3)
+        id += 4
+    }
+
     static func staggerSpring(age: Double, index: Int) -> Double {
-        Ease.spring((age - 0.04 * Double(index)) / 0.45)
+        Ease.settle((age - 0.04 * Double(index)) / 0.45)
     }
 
     /// Offset and scale of a card coming in, from `staggerSpring`: 14 points below, 94 %.

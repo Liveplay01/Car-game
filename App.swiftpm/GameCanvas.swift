@@ -81,8 +81,12 @@ struct GameCanvas: View {
                 case .money: text + Text(Image(systemName: "banknote.fill")).foregroundColor(note) + Text(verbatim: "\u{2009}")
                 }
             }
+            // Hierarchy from weight and size together (apple-design, typography): big
+            // numbers bold, everything else semibold; tiny labels a touch wider apart.
+            let fontWeight: Font.Weight = weight == .bold ? (size >= 24 ? .bold : .semibold) : .regular
             let text = joined
-                .font(.system(size: size, weight: weight == .bold ? .semibold : .regular, design: .default).monospacedDigit())
+                .font(.system(size: size, weight: fontWeight, design: .default).monospacedDigit())
+                .tracking(size <= 11 ? 0.3 : 0)
             let anchor: UnitPoint = switch alignment {
             case .leading: .leading
             case .center: .center

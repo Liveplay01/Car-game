@@ -25,20 +25,12 @@ public enum Strings {
     public enum Ready {
         public static let tapToStart = "Tap to start"
 
-        /// The duty of the next shift, and what it is worth.
-        public static func duty(_ duty: Duty, pay: Double) -> String {
+        /// The duty of the next shift and what it is worth, under the cars in the top bar.
+        public static func dutyCaption(_ duty: Duty, pay: Double) -> String {
             switch duty {
-            case .normal: "Normal duty"
-            case .highAlert: "High alert · \(Strings.multiplier(pay)) pay"
+            case .normal: "NORMAL DUTY"
+            case .highAlert: "HIGH ALERT · \(Strings.multiplier(pay)) PAY"
             }
-        }
-        public static let noHighscore = "No highscore yet"
-
-        public static func highscore(_ score: String) -> String { "Highscore \(score)" }
-        /// Highscore and banked money.
-        public static func status(highscore: String?, money: String?) -> String {
-            let score = highscore.map(Self.highscore) ?? noHighscore
-            return money.map { "\(score) · \(Strings.money($0))" } ?? score
         }
         /// Test window only.
         public static let keys = "Esc settings · Tab next page · H high alert"
@@ -347,7 +339,6 @@ public enum Strings {
         }
         /// "7 DAYS IN A ROW · Bronze Badge unlocked".
         public static func milestone(days: Int, item: String) -> String { "\(days) DAYS IN A ROW · \(Shop.item(item)) unlocked" }
-        public static func levelLine(level: Int, cars: Int) -> String { "Level \(level) · \(HUD.cars(cars))" }
         public static let eventChestFound = "EVENT CHEST FOUND"
 
         public static func challenge(_ challenge: Challenge) -> String {
@@ -609,6 +600,13 @@ public enum Strings {
     }
 
     public enum HUD {
+        /// Over the score, like "BEST" over the race on the other side.
+        public static let scoreLabel = "SCORE"
+        /// Captions of the top bar's columns (`TopBar`).
+        public static let levelLabel = "LEVEL"
+        public static let highAlertLabel = "HIGH ALERT"
+        public static let carsLabel = "CARS"
+        public static let bestLabel = "BEST"
         public static let rushHour = "RUSH HOUR"
         public static let tight = "TIGHT!"
         public static let cutOff = "CUT OFF"
@@ -634,11 +632,6 @@ public enum Strings {
         public static func paid(_ amount: String) -> String { "PAID \(amount)" }
 
         public static func combo(_ value: Int) -> String { "COMBO \(value)" }
-        public static func level(_ value: Int) -> String { "LEVEL \(value)" }
-        /// "LEVEL 12 · HIGH ALERT" while the shift is played on high alert.
-        public static func level(_ value: Int, duty: Duty) -> String {
-            duty == .highAlert ? "\(level(value)) · HIGH ALERT" : level(value)
-        }
         /// Cars still to send this shift: "12 cars", "1 car".
         public static func cars(_ count: Int) -> String { count == 1 ? "1 car" : "\(count) cars" }
         /// Seconds left on the chase, rounded up.

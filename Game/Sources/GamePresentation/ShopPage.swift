@@ -68,6 +68,8 @@ public enum ShopPage {
         /// The section just left and how long ago: the new one swipes in from its side of
         /// the segmented control, the old one out to the other (Leo, 25.09.2026).
         public var sectionSlide: (from: Section, age: Double)?
+        /// What was just tapped, and how long ago: it gives way and comes back.
+        public var pressed: (target: Target, age: Double)?
 
         public init() {}
 
@@ -94,6 +96,10 @@ public enum ShopPage {
                 slide.age += delta
                 sectionSlide = slide.age < ShopPage.slideDuration ? slide : nil
             }
+            if var press = pressed {
+                press.age += delta
+                pressed = press.age < ShopPage.pressDuration ? press : nil
+            }
             if denied > 0 {
                 denied += delta
                 if denied > 0.4 { denied = 0 }
@@ -107,6 +113,17 @@ public enum ShopPage {
     static let segmentHeight = 32.0
     static let shelfHeight = 36.0
     static let revealDuration = 0.45
+    /// A tapped card: pressed in to 96 %, back on a critically damped spring.
+    static let pressDuration = 0.28
+    static let pressDepth = 0.04
+
+    /// `rect` as it looks right now: a little smaller just after it was tapped.
+    static func pressed(_ rect: Rect, _ target: Target, _ state: State) -> Rect {
+        guard let press = state.pressed, press.target == target else { return rect }
+        let scale = 1 - pressDepth * (1 - Ease.settle(press.age / pressDuration))
+        let inset = Vec2(rect.width, rect.height) * ((1 - scale) / 2)
+        return Rect(minX: rect.minX + inset.x, minY: rect.minY + inset.y, maxX: rect.maxX - inset.x, maxY: rect.maxY - inset.y)
+    }
     /// A section swipe: the new one springs in over this long, the old one is gone sooner.
     static let slideDuration = 0.45
     static let slideOut = 0.2
@@ -236,7 +253,7 @@ public enum ShopPage {
             // The new section swipes in from its side and springs into place; the old one is
             // drawn once more, sliding out the other way and fading.
             let side = state.section.rawValue > slide.from.rawValue ? 1.0 : -1.0
-            let spring = reduceMotion ? 1 : Ease.spring(slide.age / slideDuration)
+            let spring = reduceMotion ? 1 : Ease.settle(slide.age / slideDuration)
             let shift = Vec2(side * layout.content.width * 0.45 * (1 - spring), 0)
             let fade = Ease.outCubic(slide.age / 0.18)
             for index in sectionStart..<list.items.count {
@@ -299,7 +316,7 @@ public enum ShopPage {
         // The thumb glides over with the same spring as the content.
         var thumb = Double(chosen)
         if let slide = state.sectionSlide, let from = layout.segments.firstIndex(where: { $0.0 == slide.from }) {
-            thumb = Double(from) + (Double(chosen) - Double(from)) * Ease.spring(slide.age / slideDuration)
+            thumb = Double(from) + (Double(chosen) - Double(from)) * Ease.settle(slide.age / slideDuration)
             thumb = min(max(thumb, 0), Double(layout.segments.count - 1))
         }
         MenuKit.segmented(labels, chosen: chosen, thumb: thumb, in: all, id: &id, to: &list)
@@ -311,10 +328,10 @@ public enum ShopPage {
         for (index, (kind, card)) in chestCards(layout).enumerated() {
             // One card after the other: a short rise and fade.
             let enter = reduceMotion ? 1 : MenuKit.stagger(age: state.age, index: index)
-            // It rises past its place and settles, like the chest bursting (`MenuKit.cardEnter`).
+            // It glides up into its place (`MenuKit.cardEnter`).
             let motion = reduceMotion ? (rise: 0.0, scale: 1.0) : MenuKit.cardEnter(MenuKit.staggerSpring(age: state.age, index: index))
             let inset = Vec2(card.width, card.height) * ((1 - motion.scale) / 2)
-            let rect = Rect(minX: card.minX + inset.x, minY: card.minY + inset.y + motion.rise, maxX: card.maxX - inset.x, maxY: card.maxY - inset.y + motion.rise)
+            let rect = pressed(Rect(minX: card.minX + inset.x, minY: card.minY + inset.y + motion.rise, maxX: card.maxX - inset.x, maxY: card.maxY - inset.y + motion.rise), .chest(kind), state)
             let count = career.count(of: kind)
             let selected = kind == state.selectedChest
             if selected {
@@ -363,7 +380,8 @@ public enum ShopPage {
     private static func addCollection(_ layout: Layout, career: Career, state: State, enter: Double, id: inout Int, to list: inout RenderList) {
         // The shelves: a chip each, with how much of it is collected. The chosen one is
         // raised like a segmented thumb and underlined in its rarity's colour.
-        for (shelf, rect) in shelfChips(layout) {
+        for (shelf, chip) in shelfChips(layout) {
+            let rect = pressed(chip, .shelf(shelf), state)
             let chosen = shelf == state.shelf
             let items = shelf.items
             let owned = items.count(where: { career.owns($0.id) })
@@ -377,7 +395,8 @@ public enum ShopPage {
             text(Strings.Shop.shelf(shelf), Vec2(rect.center.x, rect.center.y - 7), size: 11, weight: .bold, color: chosen ? .primary : .muted, alignment: .center, opacity: enter, id: &id, to: &list)
             text("\(owned)/\(items.count)", Vec2(rect.center.x, rect.center.y + 8), size: 10, color: owned == items.count ? tint : .muted, alignment: .center, opacity: enter, id: &id, to: &list)
         }
-        for (item, rect) in itemCells(layout, shelf: state.shelf) {
+        for (item, cell) in itemCells(layout, shelf: state.shelf) {
+            let rect = pressed(cell, .item(item.id), state)
             let owned = career.owns(item.id)
             let worn = career.isWorn(item.id)
             let frame = rarityColor(item.rarity)
@@ -542,7 +561,8 @@ public enum ShopPage {
             y += 20
             text(Strings.Daily.todayHint, Vec2(left, y), size: 11, color: .muted, id: &id, to: &list)
         }
-        for (target, rect) in buttons(layout, career: career, state: state) {
+        for (target, button) in buttons(layout, career: career, state: state) {
+            let rect = pressed(button, target, state)
             let (label, enabled, prominent) = buttonStyle(target, career: career, config: config, format: format)
             let shake = target == .buy(state.selectedChest) && state.denied > 0 ? sin(state.denied * 40) * 4 : 0
             let center = rect.center + Vec2(shake, 0)

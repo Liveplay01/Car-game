@@ -2,11 +2,12 @@ import GameCore
 
 /// Screen changes are never a cut (Leo, 25.09.2026: "dieses Smoothe überall"): whatever lay
 /// over the scene — HUD, result, a page, the settings — fades and slides out while the new
-/// one springs in with the chest's spring. Tabs move sideways in tab-bar order, the settings
+/// one glides in on a critically damped spring (`Ease.settle`, Apple's default: no
+/// overshoot). Tabs move sideways in tab-bar order, the settings
 /// come up from below, the game's own screens rise a little. Reduce Motion keeps only the
 /// cross-fade. The scene and the tab strip underneath never move.
 struct ScreenTransition {
-    /// How long the new screen springs.
+    /// How long the new screen glides.
     static let duration = 0.42
     /// The new one is fully there after this…
     static let fadeIn = 0.2
@@ -59,7 +60,7 @@ struct ScreenTransition {
     /// fading old screen underneath.
     func apply(to list: inout RenderList, incoming: Range<Int>, reduceMotion: Bool) {
         let fade = Ease.outCubic(age / Self.fadeIn)
-        let spring = Ease.spring(age / Self.duration)
+        let spring = Ease.settle(age / Self.duration)
         let way = direction == 0 ? Vec2(0, Self.rise) : Vec2(Self.tabSlide * direction, 0)
         let shift = reduceMotion ? Vec2.zero : way * (1 - spring)
         for index in incoming {

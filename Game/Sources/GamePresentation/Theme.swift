@@ -140,6 +140,10 @@ public enum ColorToken: Sendable, Equatable, CaseIterable {
     case juiceGreen
     case juiceBlue
     case juicePurple
+    /// Floating chrome over the scene (notices, hints): a dark, almost opaque material and
+    /// the bright hairline along its top edge that lifts it off what lies underneath.
+    case chrome
+    case chromeEdge
     /// iOS-style fills and separators for the drawn menus: raised controls, grouped cells.
     case controlFill
     case controlThumb
@@ -275,6 +279,8 @@ public enum Theme {
         case .juiceGreen: ColorRGBA(hex: 0x30D158)
         case .juiceBlue: ColorRGBA(hex: 0x0A84FF)
         case .juicePurple: ColorRGBA(hex: 0xBF5AF2)
+        case .chrome: ColorRGBA(hex: 0x1C2129, alpha: 240)
+        case .chromeEdge: ColorRGBA(hex: 0xFFFFFF, alpha: 34)
         case .controlFill: ColorRGBA(hex: 0x767680, alpha: 61)
         case .controlThumb: ColorRGBA(hex: 0x636366)
         case .separator: ColorRGBA(hex: 0x545458, alpha: 153)
@@ -288,21 +294,13 @@ public enum Theme {
 
 /// Screen measures in points. Spacing follows the 4-point scale.
 public enum Metrics {
-    /// Space the scene leaves free around the playfield: the HUD sits in the top band.
+    /// Space the scene leaves free around the playfield: the top bar (`TopBar`) floats there.
     public static let sceneInsets = EdgeInsets(top: 72, left: 0, bottom: 16, right: 0)
     public static let hudMargin = 20.0
-    /// Solid band behind the HUD, then a short fade into the scene.
-    public static let hudBand = 68.0
-    public static let hudFade = 16.0
-    /// Taller band for the result: title, score and highscore line.
-    public static let resultBand = 144.0
-    /// Vertical centre of the score, timer and pause glyph.
-    public static let hudRow = 28.0
-    /// Vertical centre of the strike dots.
-    public static let strikeRow = 54.0
-    public static let scoreSize = 21.0
+    /// The strike dots, in the top bar's caption row (`TopBar`).
+    public static let strikeRow = 28.0
     /// The cars still to send: the biggest thing in the HUD, because it is the shift's goal.
-    public static let timerSize = 30.0
+    public static let timerSize = 24.0
     /// The rush hour pill behind the car counter; fits "15 cars".
     public static let counterPillWidth = 138.0
     public static let strikeRadius = 4.0

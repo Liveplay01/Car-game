@@ -59,10 +59,21 @@ public enum Ease {
     }
 
     /// The chest's spring (Leo: "dieses Smoothe überall"): shoots about 10 % past 1, swings
-    /// back once and settles. For positions and sizes, never for opacity.
+    /// back once and settles. For positions and sizes, never for opacity. Only where
+    /// something happened with momentum — a chest bursting, a hit landing in the HUD.
     public static func spring(_ x: Double) -> Double {
         guard x > 0 else { return 0 }
         guard x < 1 else { return 1 }
         return 1 - exp(-6 * x) * cos(x * 10)
+    }
+
+    /// A critically damped spring (Apple's default for UI, damping 1.0): it moves off at
+    /// once, glides into place and stops there, no overshoot. For everything that only has
+    /// to arrive: cards, sections, screens, hints. Settled (99.8 %) at x = 1.
+    public static func settle(_ x: Double) -> Double {
+        guard x > 0 else { return 0 }
+        guard x < 1 else { return 1 }
+        let k = 8.5
+        return 1 - (1 + k * x) * exp(-k * x)
     }
 }

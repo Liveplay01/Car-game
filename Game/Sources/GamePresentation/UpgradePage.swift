@@ -165,8 +165,8 @@ public enum UpgradePage {
         var center = Vec2((rect.minX + rect.maxX) / 2, (rect.minY + rect.maxY) / 2)
         var scale = 1.0
         if !reduceMotion {
-            // It rises past its place and settles, like the chest (`MenuKit.cardEnter`).
-            let motion = MenuKit.cardEnter(Ease.spring((state.age - Double(index) * stagger) / (enterDuration + 0.2)))
+            // It glides up into its place (`MenuKit.cardEnter`).
+            let motion = MenuKit.cardEnter(Ease.settle((state.age - Double(index) * stagger) / (enterDuration + 0.2)))
             center.y += motion.rise
             scale = motion.scale
             // Pressed: it gives way a little. Bought: it springs.

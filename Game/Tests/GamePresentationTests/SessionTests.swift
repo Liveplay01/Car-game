@@ -138,7 +138,7 @@ struct SessionTests {
         let texts = session.advance().texts
         // A new player is met by the first shift's hint instead of "Tap to start".
         #expect(texts.contains(Strings.Tutorial.sendCar))
-        #expect(texts.contains(Strings.HUD.level(1)))
+        #expect(texts.contains(Strings.HUD.levelLabel) && texts.contains("1"))
     }
 
     /// Leo, 25.09.2026: a short tutorial in the first shift, hints right in the game. It
@@ -255,7 +255,7 @@ struct SessionTests {
         // The counter ticks and the pill springs open (`HUD.Pops`); once settled it sits exactly.
         session.run(seconds: 0.6)
         let frame = session.advance()
-        #expect(frame.renderList.items.contains { $0.color == .accentInk && $0.primitive == .text(Strings.HUD.cars(1), position: Vec2(viewport.x / 2, Metrics.hudRow), size: Metrics.timerSize, alignment: .center, weight: .bold) })
+        #expect(frame.renderList.items.contains { $0.color == .accentInk && $0.primitive == .text(Strings.HUD.cars(1), position: Vec2(viewport.x / 2, TopBar.top + TopBar.valueRow), size: Metrics.timerSize, alignment: .center, weight: .bold) })
         #expect(frame.texts.contains(Strings.HUD.rushFactor(2)))
     }
 
@@ -266,7 +266,9 @@ struct SessionTests {
         #expect(frame.texts.contains("0"))
         #expect(frame.texts.contains(Strings.HUD.cars(session.world.config.shiftCars - 1)))
         #expect(frame.texts.contains("×1"))
-        #expect(frame.texts.contains(Strings.HUD.level(1)))
+        // The top bar: SCORE · cars · LEVEL, each value under its caption.
+        #expect(frame.texts.contains(Strings.HUD.scoreLabel))
+        #expect(frame.texts.contains(Strings.HUD.levelLabel) && frame.texts.contains("1"))
     }
 }
 
@@ -411,8 +413,10 @@ struct ScreenFlowTests {
         let texts = second.advance().texts
         // The shift paid its level: base plus one level step.
         let pay = Config().shiftPayBase + Config().shiftPayPerLevel
-        #expect(texts.contains(Strings.Ready.status(highscore: "1,100", money: "\(pay)")))
-        #expect(texts.contains(Strings.HUD.level(2)))
+        // The top bar: LEVEL 2, the best score, and the money under it.
+        #expect(texts.contains("1,100"))
+        #expect(texts.contains("\(pay)"))
+        #expect(texts.contains(Strings.HUD.levelLabel) && texts.contains("2"))
     }
 
     @Test func afterAShiftTheNextLevelRollsInBehindTheResult() {
@@ -736,18 +740,18 @@ struct TabTests {
         let store = MemorySaveStore()
         let session = makeSession(config: quietConfig(cars: 1) { $0.rushHourCars = 0 }, store: store)
         let texts = session.advance().texts
-        #expect(texts.contains(Strings.Ready.duty(.normal, pay: session.config.highAlertPay)))
+        #expect(texts.contains(Strings.Ready.dutyCaption(.normal, pay: session.config.highAlertPay)))
         let normalPay = session.world.config.shiftPay
 
         session.advance([.perform(.setDuty(.highAlert))])
         #expect(store.game?.career.duty == .highAlert)
         // The waiting shift is rebuilt at once, so it is the one that will be played.
         #expect(session.world.config.shiftPay == Int((Double(normalPay) * session.config.highAlertPay).rounded()))
-        #expect(session.advance().texts.contains(Strings.Ready.duty(.highAlert, pay: session.config.highAlertPay)))
+        #expect(session.advance().texts.contains(Strings.Ready.dutyCaption(.highAlert, pay: session.config.highAlertPay)))
         // The HUD says so while playing.
         let alertPay = session.world.config.shiftPay
         session.advance([.tap])
-        #expect(session.advance().texts.contains(Strings.HUD.level(1, duty: .highAlert)))
+        #expect(session.advance().texts.contains(Strings.HUD.highAlertLabel))
 
         finishShift(session)
         #expect(store.game?.career.money == alertPay)

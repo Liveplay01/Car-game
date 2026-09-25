@@ -76,30 +76,34 @@ enum HUD {
             id += 1
         }
 
-        addBand(height: Metrics.hudBand, to: &list, id: &id)
+        TopBar.addScrim(id: &id, to: &list)
+        let frame = TopBar.frame(width: width)
+        let columns = TopBar.columns(frame)
+        TopBar.addCard(frame, id: &id, to: &list)
 
-        add(.text(format.number(score), position: Vec2(margin, Metrics.hudRow), size: Metrics.scoreSize, alignment: .leading, weight: .bold), .primary)
+        // Left: the score.
+        TopBar.addColumn(columns.left, alignment: .leading, caption: Strings.HUD.scoreLabel, value: format.number(score), id: &id, to: &list)
 
-        // Cars still to send; during rush hour on an accent pill: a state change you notice
-        // at a glance. It stays there once the shift is over.
-        let counter = Vec2(width / 2, Metrics.hudRow)
+        // Centre: the cars still to send, the shift's goal, and under them the crashes it
+        // survives. Every car sent ticks the counter. In rush hour the column lights up in
+        // the accent: a state change you notice at a glance.
+        let center = columns.center
         let cars = Strings.HUD.cars(world.carsLeft ?? 0)
-        // Every car sent ticks the counter; the rush-hour pill springs open around it.
         let tick = Pops.land(pops.cars, amount: 0.12)
-        if world.shift.rushHourSince != nil {
+        let rush = world.shift.rushHourSince != nil
+        if rush {
             let open = Ease.spring(pops.rushHour)
-            let pill = Vec2(Metrics.counterPillWidth * (0.55 + 0.45 * open), 38 * (0.7 + 0.3 * open))
-            add(.roundedRect(center: counter, size: pill, cornerRadius: pill.y / 2, rotation: 0), .accent, opacity: Ease.outCubic(pops.rushHour / 0.4))
-            add(.text(cars, position: counter, size: Metrics.timerSize * tick, alignment: .center, weight: .bold), .accentInk)
-        } else {
-            add(.text(cars, position: counter, size: Metrics.timerSize * tick, alignment: .center, weight: .bold), .primary)
+            let inset = Rect(minX: center.minX + 4, minY: center.minY + 4, maxX: center.maxX - 4, maxY: center.maxY - 4)
+            let size = Vec2(inset.width * (0.7 + 0.3 * open), inset.height * (0.7 + 0.3 * open))
+            add(.roundedRect(center: inset.center, size: size, cornerRadius: TopBar.corner - 4, rotation: 0), .accent, opacity: Ease.outCubic(pops.rushHour / 0.4))
         }
+        add(.text(cars, position: Vec2(center.center.x, center.minY + TopBar.valueRow), size: Metrics.timerSize * tick, alignment: .center, weight: .bold), rush ? .accentInk : .primary)
 
-        // Crashes the shift survives, under the car counter: one dot per strike (only if there is
-        // more than one) and one per police crash, ringed in police blue. Filled once used.
+        // One dot per strike (only if there is more than one) and one per police crash,
+        // ringed in police blue. Filled once used.
         var dots: [(used: Bool, ring: ColorToken)] = []
         if world.config.maxStrikes > 1 {
-            dots += (0..<world.config.maxStrikes).map { ($0 < world.score.strikes, .muted) }
+            dots += (0..<world.config.maxStrikes).map { ($0 < world.score.strikes, rush ? .accentInk : .muted) }
         }
         let firstPolice = dots.count
         dots += (0..<world.config.maxPoliceCrashes).map { ($0 < world.score.policeCrashes, .lightBlue) }
@@ -108,7 +112,7 @@ enum HUD {
         let span = Double(dots.count - 1) + groupGap
         for (index, dot) in dots.enumerated() {
             let slot = Double(index) + (index >= firstPolice ? groupGap : 0)
-            let center = Vec2(width / 2 + (slot - span / 2) * Metrics.strikeSpacing, Metrics.strikeRow)
+            let at = Vec2(center.center.x + (slot - span / 2) * Metrics.strikeSpacing, Metrics.strikeRow)
             // The dot that was just used lands with a bump and sends a ring out.
             let isNewest = index < firstPolice
                 ? index == world.score.strikes - 1
@@ -117,28 +121,28 @@ enum HUD {
             if dot.used {
                 if pop < 1 {
                     let x = Ease.outCubic(pop)
-                    add(.arc(center: center, radius: Metrics.strikeRadius * (1 + 1.6 * x), thickness: 1.5, startAngle: 0, endAngle: Angle.tau), .destructive, opacity: 1 - x)
+                    add(.arc(center: at, radius: Metrics.strikeRadius * (1 + 1.6 * x), thickness: 1.5, startAngle: 0, endAngle: Angle.tau), .destructive, opacity: 1 - x)
                 }
-                add(.circle(center: center, radius: Metrics.strikeRadius * Pops.land(pop, amount: 0.7)), .destructive)
+                add(.circle(center: at, radius: Metrics.strikeRadius * Pops.land(pop, amount: 0.7)), .destructive)
             } else {
-                add(.arc(center: center, radius: Metrics.strikeRadius - 0.75, thickness: 1.5, startAngle: 0, endAngle: Angle.tau), dot.ring)
+                add(.arc(center: at, radius: Metrics.strikeRadius - 0.75, thickness: 1.5, startAngle: 0, endAngle: Angle.tau), dot.ring)
             }
+        }
+
+        // Right: the race against the best time at this level (Leo: Rekord-Geist), ahead in
+        // the accent, behind in red, ticking with every car; without one, the level.
+        if let race {
+            TopBar.addColumn(columns.right, alignment: .trailing, caption: Strings.Race.best, value: Strings.Race.delta(race.delta), valueSize: 18 * Pops.land(race.pop, amount: 0.15), valueColor: race.delta <= 0 ? .accent : .destructive, id: &id, to: &list)
+        } else {
+            TopBar.addColumn(columns.right, alignment: .trailing, caption: duty == .highAlert ? Strings.HUD.highAlertLabel : Strings.HUD.levelLabel, captionColor: duty == .highAlert ? .destructive : .muted, value: "\(level)", id: &id, to: &list)
         }
 
         if showsKeys {
-            // The app gets a dispatch button (and the Action Button) in M12.
-            add(.text(Strings.Keys.dispatch, position: Vec2(margin, Metrics.strikeRow), size: 11, alignment: .leading, weight: .regular), .muted)
+            // The app has a dispatch button (and the Action Button) instead.
+            add(.text(Strings.Keys.dispatch, position: Vec2(frame.minX + 4, frame.maxY + 14), size: 11, alignment: .leading, weight: .regular), .muted)
             if timeScale != 1 {
-                add(.text(Strings.multiplier(timeScale), position: Vec2(width - margin, Metrics.strikeRow), size: 13, alignment: .trailing, weight: .bold), .muted)
+                add(.text(Strings.multiplier(timeScale), position: Vec2(frame.maxX - 4, frame.maxY + 14), size: 13, alignment: .trailing, weight: .bold), .muted)
             }
-        }
-
-        // The race against the best time at this level (Leo: Rekord-Geist): ahead in the
-        // accent, behind in red, ticking with every car.
-        if let race {
-            let right = width - margin
-            add(.text(Strings.Race.best, position: Vec2(right, Metrics.hudRow - 15), size: 10, alignment: .trailing, weight: .bold), .muted)
-            add(.text(Strings.Race.delta(race.delta), position: Vec2(right, Metrics.hudRow + 3), size: 16 * Pops.land(race.pop, amount: 0.15), alignment: .trailing, weight: .bold), race.delta <= 0 ? .accent : .destructive)
         }
 
         addIsland(world: world, level: level, duty: duty, pop: comboPop, to: &list, id: &id)
@@ -159,25 +163,7 @@ enum HUD {
         list.add(.text(String(count), position: center, size: size, alignment: .center, weight: .bold), color: .primary, space: .screen, id: id)
     }
 
-    /// The north arm runs up under the HUD. A band in the background colour keeps the text
-    /// readable; a short fade lets cars disappear softly instead of at a hard edge.
-    static func addBand(height band: Double, to list: inout RenderList, id: inout Int) {
-        let width = list.camera.viewport.x
-        // In the ground's colour, so it melts into every map.
-        let ground = list.background
-        list.add(.roundedRect(center: Vec2(width / 2, band / 2), size: Vec2(width, band), cornerRadius: 0, rotation: 0), color: ground, space: .screen, id: id)
-        id += 1
-        let steps = 4
-        for step in 0..<steps {
-            let height = Metrics.hudFade / Double(steps)
-            let center = Vec2(width / 2, band + height * (Double(step) + 0.5))
-            list.add(.roundedRect(center: center, size: Vec2(width, height), cornerRadius: 0, rotation: 0), color: ground, opacity: 1 - Double(step + 1) / Double(steps + 1), space: .screen, id: id)
-            id += 1
-        }
-    }
-
-    /// Multiplier, combo count, and above them the level, or in rush hour its factor, on
-    /// the centre island.
+    /// Multiplier, combo count, and above them in rush hour its factor, on the centre island.
     private static func addIsland(world: World, level: Int, duty: Duty, pop: Double, to list: inout RenderList, id: inout Int) {
         let config = world.config
         let center = list.camera.toScreen(.zero)
@@ -200,15 +186,11 @@ enum HUD {
             )
         }
         id += 1
+        // The level sits in the top bar; above the multiplier only rush hour's factor.
         if world.shift.isRushHour {
             list.add(
                 .text(Strings.HUD.rushFactor(config.rushHourScoreFactor), position: center + Vec2(0, -38), size: Metrics.comboLabelSize, alignment: .center, weight: .bold),
                 color: .accent, space: .screen, id: id
-            )
-        } else {
-            list.add(
-                .text(Strings.HUD.level(level, duty: duty), position: center + Vec2(0, -38), size: Metrics.comboLabelSize, alignment: .center, weight: .bold),
-                color: duty == .highAlert ? .destructive : .muted, space: .screen, id: id
             )
         }
         id += 1
@@ -458,25 +440,33 @@ enum ReadyBanner {
     /// How long the splash stays before it rises into the banner's title.
     static let splashDuration = 2.4
 
-    static func add(level: Int, cars: Int, duty: Duty, dutyPay: Double, status: String, conditions: String? = nil, daily: DailyCard? = nil, prompt: String = Strings.Ready.tapToStart, time: Double, reduceMotion: Bool, showsKeys: Bool, to list: inout RenderList) {
+    static func add(level: Int, cars: Int, duty: Duty, dutyPay: Double, highscore: String?, money: String?, conditions: String? = nil, daily: DailyCard? = nil, prompt: String = Strings.Ready.tapToStart, time: Double, reduceMotion: Bool, showsKeys: Bool, to list: inout RenderList) {
         let width = list.camera.viewport.x
         var id = RenderID.hud
-        HUD.addBand(height: Metrics.resultBand, to: &list, id: &id)
         func text(_ string: String, _ position: Vec2, size: Double, weight: FontWeight = .bold, color: ColorToken, opacity: Double = 1) {
             list.add(.text(string, position: position, size: size, alignment: .center, weight: weight), color: color, opacity: opacity, space: .screen, id: id)
             id += 1
         }
+        // The top bar before the shift: which level, how many cars and on what duty, the
+        // score to beat. The Daily Shift says so in its first column.
+        TopBar.addScrim(id: &id, to: &list)
+        let frame = TopBar.frame(width: width)
+        let columns = TopBar.columns(frame)
+        TopBar.addCard(frame, id: &id, to: &list)
+        TopBar.addColumn(columns.left, alignment: .leading, caption: daily == nil ? Strings.HUD.levelLabel : Strings.Daily.title, captionColor: daily == nil ? .muted : .hazard, value: "\(level)", valueColor: daily == nil ? .accent : .hazard, id: &id, to: &list)
+        let center = columns.center
+        TopBar.addColumn(center, alignment: .center, caption: Strings.Ready.dutyCaption(duty, pay: dutyPay), captionColor: duty == .highAlert ? .destructive : .muted, value: Strings.HUD.cars(cars), valueSize: Metrics.timerSize, id: &id, to: &list)
+        TopBar.addColumn(columns.right, alignment: .trailing, caption: Strings.HUD.bestLabel, value: highscore ?? "–", valueColor: highscore == nil ? .muted : .primary, id: &id, to: &list)
+        // Under the card, quietly: the streak on the Daily, otherwise the money in the bank.
+        let under = Vec2(width / 2, frame.maxY + 18)
         if let daily {
-            // The Daily Shift says so in the title; the level moves into the line below.
-            text(Strings.Daily.title, Vec2(width / 2, 36), size: 24, color: .hazard)
-            text(Strings.Daily.levelLine(level: level, cars: cars), Vec2(width / 2, 72), size: 18, color: .primary)
-            text(Strings.Ready.duty(duty, pay: dutyPay), Vec2(width / 2, 100), size: 14, color: duty == .highAlert ? .destructive : .muted)
-            text(Strings.Daily.streakLine(daily.streak), Vec2(width / 2, 124), size: 13, weight: .regular, color: .muted)
-        } else {
-            text(Strings.HUD.level(level), Vec2(width / 2, 36), size: 24, color: .accent)
-            text(Strings.HUD.cars(cars), Vec2(width / 2, 72), size: 20, color: .primary)
-            text(Strings.Ready.duty(duty, pay: dutyPay), Vec2(width / 2, 100), size: 14, color: duty == .highAlert ? .destructive : .muted)
-            text(status, Vec2(width / 2, 124), size: 13, weight: .regular, color: .muted)
+            let line = Strings.Daily.streakLine(daily.streak)
+            MenuKit.chromePill(center: under, size: Vec2(Icons.textWidth(line, size: 12) + 28, 26), opacity: 1, id: &id, to: &list)
+            text(line, under, size: 12, weight: .regular, color: .primary)
+        } else if let money {
+            let width = Icons.textWidth(Strings.money(money), size: 13) + 28
+            MenuKit.chromePill(center: under, size: Vec2(width, 26), opacity: 1, id: &id, to: &list)
+            Icons.moneyTag(money, at: under, size: 13, alignment: .center, color: .primary, id: &id, to: &list)
         }
         // The prompt breathes gently, so the waiting screen is alive; still with Reduce Motion.
         let island = list.camera.toScreen(.zero)
@@ -541,7 +531,9 @@ enum ResultBanner {
         let result = summary.result
         let width = list.camera.viewport.x
         var id = RenderID.hud
-        HUD.addBand(height: Metrics.resultBand, to: &list, id: &id)
+        // The same card as before and during the shift, grown to hold the result.
+        TopBar.addScrim(height: 170, id: &id, to: &list)
+        TopBar.addCard(TopBar.frame(width: width, height: 118), separators: false, id: &id, to: &list)
 
         let enter = Ease.outCubic(age / Self.enter)
         let slide = reduceMotion ? 0 : (1 - enter) * -8
@@ -555,12 +547,13 @@ enum ResultBanner {
         case .struckOut: (Strings.Result.gameOver, .destructive)
         case .escaped: (Strings.Result.escaped, .vehicleCriminal)
         }
-        text(title, Vec2(width / 2, 36), size: 24, color: titleColor)
-        text(format.number(result.score), Vec2(width / 2, 84), size: 48, color: .primary)
+        let top = TopBar.top
+        text(title, Vec2(width / 2, top + 22), size: 13, color: titleColor)
+        text(format.number(result.score), Vec2(width / 2, top + 58), size: 44, color: .primary)
         if summary.isNewHighscore {
-            text(Strings.Result.newHighscore, Vec2(width / 2, 126), size: 15, color: .accent)
+            text(Strings.Result.newHighscore, Vec2(width / 2, top + 96), size: 13, color: .accent)
         } else if summary.previousHighscore > 0 {
-            text(Strings.Result.best(format.number(summary.previousHighscore)), Vec2(width / 2, 126), size: 15, weight: .regular, color: .muted)
+            text(Strings.Result.best(format.number(summary.previousHighscore)), Vec2(width / 2, top + 96), size: 13, weight: .regular, color: .muted)
         }
 
         // The money of the shift counts up from 0 and lands with a small bump (Leo, 25.09.2026).

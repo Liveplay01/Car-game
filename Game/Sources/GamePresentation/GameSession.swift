@@ -166,7 +166,7 @@ public final class GameSession {
     private var lastCardTap: (upgrade: Upgrade, age: Double)?
     private var notice: (text: String, age: Double)?
     /// The screen change in progress, and what the last frame showed over the scene: the
-    /// old screen fades out while the new one springs in (`ScreenTransition`).
+    /// old screen fades out while the new one glides in (`ScreenTransition`).
     private var transition: ScreenTransition?
     private var shownKey: ScreenTransition.Key?
     private var shownOverlay: [RenderItem] = []
@@ -666,6 +666,8 @@ public final class GameSession {
     /// A tap on the Shop page. Tapping a selected chest again opens one; tapping an owned
     /// item again wears it — like the double tap on an upgrade.
     private func tapShop(_ target: ShopPage.Target) {
+        // It gives way under the finger the moment it is touched.
+        if target != .dismiss, !reduceMotion { shopPage.pressed = (target, 0) }
         switch target {
         case let .section(section):
             if shopPage.section != section { tick() }
@@ -1220,15 +1222,11 @@ public final class GameSession {
             ResultBanner.add(summary, age: resultAge, format: format, reduceMotion: reduceMotion, showsKeys: options.showsKeyHints, to: &list)
         case .ready:
             let career = save.career
-            let status = Strings.Ready.status(
-                highscore: save.highscore > 0 ? format.number(save.highscore) : nil,
-                money: career.money > 0 ? format.number(career.money) : nil
-            )
             let conditions = Strings.Ready.conditions(
                 weather: world.config.weather, event: world.config.cityEvent,
             )
             let daily = dailySelected ? ReadyBanner.DailyCard(event: world.config.cityEvent, streak: career.dailyStreak, next: career.nextStreakMilestone(), splash: dailySplash) : nil
-            ReadyBanner.add(level: playingLevel, cars: world.carsLeft ?? 0, duty: career.duty, dutyPay: config.highAlertPay, status: status, conditions: conditions, daily: daily, prompt: tutorial == nil ? Strings.Ready.tapToStart : Tutorial.readyPrompt, time: sinceReady, reduceMotion: reduceMotion, showsKeys: options.showsKeyHints, to: &list)
+            ReadyBanner.add(level: playingLevel, cars: world.carsLeft ?? 0, duty: career.duty, dutyPay: config.highAlertPay, highscore: save.highscore > 0 ? format.number(save.highscore) : nil, money: career.money > 0 ? format.number(career.money) : nil, conditions: conditions, daily: daily, prompt: tutorial == nil ? Strings.Ready.tapToStart : Tutorial.readyPrompt, time: sinceReady, reduceMotion: reduceMotion, showsKeys: options.showsKeyHints, to: &list)
             if let tutorial {
                 Tutorial.add(tutorial, world: world, alpha: clock.alpha, time: sceneTime, reduceMotion: reduceMotion, to: &list)
             }
@@ -1282,12 +1280,13 @@ public final class GameSession {
 
     private func addNotice(_ text: String, age: Double, bottomInset: Double, to list: inout RenderList) {
         let viewport = list.camera.viewport
-        // In: fades up and springs into place like the chest. Out: fades.
+        // In: fades up and glides into place. Out: fades.
         let opacity = Ease.outCubic(age / 0.2) * (1 - Ease.clamp01((age - (Self.noticeDuration - 0.5)) / 0.5))
-        let rise = reduceMotion ? 0 : (1 - Ease.spring(age / 0.45)) * 18
+        let rise = reduceMotion ? 0 : (1 - Ease.settle(age / 0.4)) * 18
         let center = Vec2(viewport.x / 2, viewport.y - bottomInset - 64 + rise)
         let width = min(viewport.x - 24, Double(text.count) * 7 + 32)
-        list.add(.roundedRect(center: center, size: Vec2(width, 28), cornerRadius: 14, rotation: 0), color: .debugPanel, opacity: opacity, space: .screen, id: RenderID.notice)
-        list.add(.text(text, position: center, size: Metrics.noticeSize, alignment: .center, weight: .regular), color: .primary, opacity: opacity, space: .screen, id: RenderID.notice + 1)
+        var id = RenderID.notice
+        MenuKit.chromePill(center: center, size: Vec2(width, 30), opacity: opacity, id: &id, to: &list)
+        list.add(.text(text, position: center, size: Metrics.noticeSize, alignment: .center, weight: .regular), color: .primary, opacity: opacity, space: .screen, id: id)
     }
 }

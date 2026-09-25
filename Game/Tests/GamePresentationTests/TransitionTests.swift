@@ -42,7 +42,7 @@ struct TransitionTests {
         #expect(result.direction == 0)
     }
 
-    @Test func theNewScreenSpringsInAndFadesUp() {
+    @Test func theNewScreenGlidesInAndFadesUp() {
         let item = RenderItem(id: 1, primitive: .circle(center: Vec2(100, 100), radius: 5), color: .primary, space: .screen)
         var start = ScreenTransition(from: .page(.game), to: .page(.shop), outgoing: [])
         func shown(at age: Double, reduceMotion: Bool = false) -> RenderItem {
@@ -58,8 +58,11 @@ struct TransitionTests {
         }
         #expect(shown(at: 0).opacity == 0)
         #expect(x(shown(at: 0)) > 100)
-        // It swings past its place before it settles, like the chest.
-        #expect((0..<40).contains { x(shown(at: Double($0) * 0.01)) < 100 })
+        // It glides into its place and stops there: never past it (apple-design: a
+        // critically damped spring for things that only have to arrive).
+        let path = (0...42).map { x(shown(at: Double($0) * 0.01)) }
+        #expect(path.allSatisfy { $0 >= 100 })
+        #expect(zip(path, path.dropFirst()).allSatisfy { $0 >= $1 })
         #expect(x(shown(at: ScreenTransition.duration)) == 100)
         #expect(shown(at: ScreenTransition.duration).opacity == 1)
         // Reduce Motion: only the fade.

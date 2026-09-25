@@ -91,25 +91,24 @@ struct Tutorial: Sendable, Equatable {
             break
         }
         if let strikeAge = tutorial.strikeAge, strikeAge < hintDuration {
-            let at = Vec2(camera.viewport.x / 2, Metrics.strikeRow + 40)
+            let at = Vec2(camera.viewport.x / 2, TopBar.top + TopBar.height + 28)
             pill(Strings.Tutorial.strikes, at: at, age: strikeAge, leaving: strikeAge - (hintDuration - 0.3), reduceMotion: reduceMotion, tint: .destructive, id: &id, to: &list)
         }
     }
 
-    /// A hint: a dark pill with a thin edge in its colour. It springs in from a little lower
+    /// A hint: a dark pill with a thin edge in its colour. It glides in from a little lower
     /// and fades out quicker than it came.
     private static func pill(_ text: String, at center: Vec2, age: Double, leaving: Double?, reduceMotion: Bool, tint: ColorToken = .accent, id: inout Int, to list: inout RenderList) {
         let enter = Ease.outCubic(age / 0.25)
         let exit = leaving.map { Ease.clamp01($0 / 0.3) } ?? 0
         let opacity = enter * (1 - exit)
         guard opacity > 0.001 else { return }
-        let rise = reduceMotion ? 0 : (1 - Ease.spring(age / 0.45)) * 10
+        let rise = reduceMotion ? 0 : (1 - Ease.settle(age / 0.4)) * 10
         let size = 14.0
         let width = Icons.textWidth(text, size: size) + 32
         let at = center + Vec2(0, rise)
-        list.add(.roundedRect(center: at, size: Vec2(width + 3, 33), cornerRadius: 16.5, rotation: 0), color: tint, opacity: 0.5 * opacity, space: .screen, id: id)
-        list.add(.roundedRect(center: at, size: Vec2(width, 30), cornerRadius: 15, rotation: 0), color: .surface, opacity: 0.96 * opacity, space: .screen, id: id + 1)
-        list.add(.text(text, position: at, size: size, alignment: .center, weight: .bold), color: .primary, opacity: opacity, space: .screen, id: id + 2)
-        id += 3
+        MenuKit.chromePill(center: at, size: Vec2(width, 32), tint: tint, opacity: opacity, id: &id, to: &list)
+        list.add(.text(text, position: at, size: size, alignment: .center, weight: .bold), color: .primary, opacity: opacity, space: .screen, id: id)
+        id += 1
     }
 }
