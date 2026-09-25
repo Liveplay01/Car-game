@@ -210,7 +210,10 @@ public enum ShopPage {
         for (index, (kind, card)) in chestCards(layout).enumerated() {
             // One card after the other: a short rise and fade.
             let enter = reduceMotion ? 1 : MenuKit.stagger(age: state.age, index: index)
-            let rect = Rect(minX: card.minX, minY: card.minY + 8 * (1 - enter), maxX: card.maxX, maxY: card.maxY + 8 * (1 - enter))
+            // It rises past its place and settles, like the chest bursting (`MenuKit.cardEnter`).
+            let motion = reduceMotion ? (rise: 0.0, scale: 1.0) : MenuKit.cardEnter(MenuKit.staggerSpring(age: state.age, index: index))
+            let inset = Vec2(card.width, card.height) * ((1 - motion.scale) / 2)
+            let rect = Rect(minX: card.minX + inset.x, minY: card.minY + inset.y + motion.rise, maxX: card.maxX - inset.x, maxY: card.maxY - inset.y + motion.rise)
             let count = career.count(of: kind)
             let selected = kind == state.selectedChest
             if selected {
@@ -729,11 +732,7 @@ public enum ShopPage {
     }
 
     /// A springy 0 → 1 with a clear overshoot (about 25 %), settled at x = 1.
-    static func spring(_ x: Double) -> Double {
-        guard x > 0 else { return 0 }
-        guard x < 1 else { return 1 }
-        return 1 - exp(-6 * x) * cos(x * 10)
-    }
+    static func spring(_ x: Double) -> Double { Ease.spring(x) }
 
     /// 0…1, the same on every device.
     static func unit(_ index: Int, _ salt: UInt64) -> Double {

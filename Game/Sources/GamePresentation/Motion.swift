@@ -57,4 +57,12 @@ public enum Ease {
     public static func inOutSine(_ x: Double) -> Double {
         (1 - cos(.pi * clamp01(x))) / 2
     }
+
+    /// The chest's spring (Leo: "dieses Smoothe überall"): shoots about 10 % past 1, swings
+    /// back once and settles. For positions and sizes, never for opacity.
+    public static func spring(_ x: Double) -> Double {
+        guard x > 0 else { return 0 }
+        guard x < 1 else { return 1 }
+        return 1 - exp(-6 * x) * cos(x * 10)
+    }
 }

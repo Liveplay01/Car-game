@@ -69,6 +69,18 @@ enum MenuKit {
         Ease.outCubic((age - 0.04 * Double(index)) / 0.25)
     }
 
+    /// The motion that goes with `stagger`: the chest's spring, a little longer, so a card
+    /// rises past its place and settles instead of just stopping. Use it for offsets and
+    /// scale; the fade stays on `stagger`.
+    static func staggerSpring(age: Double, index: Int) -> Double {
+        Ease.spring((age - 0.04 * Double(index)) / 0.45)
+    }
+
+    /// Offset and scale of a card coming in, from `staggerSpring`: 14 points below, 94 %.
+    static func cardEnter(_ spring: Double) -> (rise: Double, scale: Double) {
+        ((1 - spring) * 14, 0.94 + 0.06 * spring)
+    }
+
     /// The tab glyph, after the SF Symbol the app shows (`Tab.symbol`), about 22 points big.
     static func tabGlyph(_ tab: Tab, at c: Vec2, color: ColorToken, id: inout Int, to list: inout RenderList) {
         func add(_ primitive: Primitive, _ tint: ColorToken = color) {

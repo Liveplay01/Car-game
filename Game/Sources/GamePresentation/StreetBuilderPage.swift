@@ -374,8 +374,13 @@ public enum StreetBuilderPage {
         let enter = Ease.outCubic((state.age - Double(index) * 0.05) / 0.25)
         guard enter > 0 else { return }
         var center = rect.center
-        if !reduceMotion { center.y += (1 - enter) * 8 }
-        let size = Vec2(rect.width, rect.height)
+        var size = Vec2(rect.width, rect.height)
+        if !reduceMotion {
+            // It rises past its place and settles, like the chest (`MenuKit.cardEnter`).
+            let motion = MenuKit.cardEnter(Ease.spring((state.age - Double(index) * 0.05) / 0.45))
+            center.y += motion.rise
+            size = size * motion.scale
+        }
 
         list.add(.roundedRect(center: center, size: size, cornerRadius: cardCorner, rotation: 0), color: .surface, opacity: enter, space: .screen, id: id)
         id += 1

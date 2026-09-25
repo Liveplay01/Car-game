@@ -152,6 +152,11 @@ public final class GameSession {
     /// The last tap on a card, to tell a double tap from two single ones.
     private var lastCardTap: (upgrade: Upgrade, age: Double)?
     private var notice: (text: String, age: Double)?
+    /// The screen change in progress, and what the last frame showed over the scene: the
+    /// old screen fades out while the new one springs in (`ScreenTransition`).
+    private var transition: ScreenTransition?
+    private var shownKey: ScreenTransition.Key?
+    private var shownOverlay: [RenderItem] = []
 
     public init(
         config: Config = Config(),
@@ -688,6 +693,8 @@ public final class GameSession {
             shownScore += (points - shownScore) * min(1, realDelta / Self.scoreCatchUp)
         }
         sinceReady = screen == .ready ? sinceReady + realDelta : 0
+        transition?.age += realDelta
+        if transition?.isDone == true { transition = nil }
         if screen == .page(.upgrades) {
             upgradePage.age(by: realDelta)
         } else {
@@ -1014,6 +1021,8 @@ public final class GameSession {
         effects.addAir(to: &list)
         WeatherLayer.addAir(world: world, time: world.time, reduceMotion: reduceMotion, to: &list)
 
+        // Everything from here to the tab strip belongs to the screen and moves with a change.
+        let overlayStart = list.items.count
         switch screen {
         case .playing:
             HUD.addFlowGlow(world: world, flow: flowLevel, to: &list)
@@ -1067,6 +1076,7 @@ public final class GameSession {
         } else if options.drawsMenus, let content {
             TextPage.add(content, showsKeys: options.showsKeyHints, bottomInset: bottomInset, to: &list)
         }
+        applyTransition(to: &list, overlay: overlayStart..<list.items.count)
         if tabStrip {
             TabStrip.add(selected: screen.tab, to: &list)
         }
@@ -1076,10 +1086,25 @@ public final class GameSession {
         return list
     }
 
+    /// Starts a change when the screen differs from last frame's, then lets it move the new
+    /// screen's items and lay the old ones underneath.
+    private func applyTransition(to list: inout RenderList, overlay: Range<Int>) {
+        let key = ScreenTransition.Key(screen)
+        let drawn = Array(list.items[overlay])
+        if let shownKey, shownKey != key {
+            transition = ScreenTransition(from: shownKey, to: key, outgoing: shownOverlay)
+        }
+        shownKey = key
+        shownOverlay = drawn
+        transition?.apply(to: &list, incoming: overlay, reduceMotion: reduceMotion)
+    }
+
     private func addNotice(_ text: String, age: Double, bottomInset: Double, to list: inout RenderList) {
         let viewport = list.camera.viewport
-        let opacity = 1 - Ease.clamp01((age - (Self.noticeDuration - 0.5)) / 0.5)
-        let center = Vec2(viewport.x / 2, viewport.y - bottomInset - 64)
+        // In: fades up and springs into place like the chest. Out: fades.
+        let opacity = Ease.outCubic(age / 0.2) * (1 - Ease.clamp01((age - (Self.noticeDuration - 0.5)) / 0.5))
+        let rise = reduceMotion ? 0 : (1 - Ease.spring(age / 0.45)) * 18
+        let center = Vec2(viewport.x / 2, viewport.y - bottomInset - 64 + rise)
         let width = min(viewport.x - 24, Double(text.count) * 7 + 32)
         list.add(.roundedRect(center: center, size: Vec2(width, 28), cornerRadius: 14, rotation: 0), color: .debugPanel, opacity: opacity, space: .screen, id: RenderID.notice)
         list.add(.text(text, position: center, size: Metrics.noticeSize, alignment: .center, weight: .regular), color: .primary, opacity: opacity, space: .screen, id: RenderID.notice + 1)

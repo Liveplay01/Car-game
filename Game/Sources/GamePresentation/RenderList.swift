@@ -90,6 +90,8 @@ enum RenderID {
     static let effects = 100_000
     static let shadows = 900_000
     static let vehicles = 1_000_000
+    /// The screen fading out during a change (`ScreenTransition`), far above all vehicles.
+    static let transition = 400_000_000
 
     /// Outline, body, parts, cracks and flames of one vehicle (`CarArt.Slot`).
     static let partsPerVehicle = CarArt.Slot.count
