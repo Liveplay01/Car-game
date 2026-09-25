@@ -100,6 +100,8 @@ public enum ColorToken: Sendable, Equatable, CaseIterable {
     case rarityEpic
     case rarityLegendary
     // Map skins (M10): a tint on the centre island.
+    // The ground of each map outside the ring (`MapTheme`): dark, so everything reads.
+    case groundDusk, groundSand, groundNeon, groundForest, groundAutumn, groundSakura, groundAurora, groundEmber
     case mapDusk
     case mapNeon
     case mapAutumn
@@ -198,6 +200,14 @@ public enum Theme {
         case .rarityRare: ColorRGBA(hex: 0x4FA3FF)
         case .rarityEpic: ColorRGBA(hex: 0xB45CF0)
         case .rarityLegendary: ColorRGBA(hex: 0xE3C15A)
+        case .groundDusk: ColorRGBA(hex: 0x15111F)
+        case .groundSand: ColorRGBA(hex: 0x2B2317)
+        case .groundNeon: ColorRGBA(hex: 0x081418)
+        case .groundForest: ColorRGBA(hex: 0x0E1A12)
+        case .groundAutumn: ColorRGBA(hex: 0x1F150D)
+        case .groundSakura: ColorRGBA(hex: 0x1E1419)
+        case .groundAurora: ColorRGBA(hex: 0x0E161D)
+        case .groundEmber: ColorRGBA(hex: 0x1B0E0A)
         case .mapDusk: ColorRGBA(hex: 0x6B5B95)
         case .mapNeon: ColorRGBA(hex: 0x39E1D3)
         case .mapAutumn: ColorRGBA(hex: 0xC8743A)

@@ -155,13 +155,15 @@ enum HUD {
     /// readable; a short fade lets cars disappear softly instead of at a hard edge.
     static func addBand(height band: Double, to list: inout RenderList, id: inout Int) {
         let width = list.camera.viewport.x
-        list.add(.roundedRect(center: Vec2(width / 2, band / 2), size: Vec2(width, band), cornerRadius: 0, rotation: 0), color: .background, space: .screen, id: id)
+        // In the ground's colour, so it melts into every map.
+        let ground = list.background
+        list.add(.roundedRect(center: Vec2(width / 2, band / 2), size: Vec2(width, band), cornerRadius: 0, rotation: 0), color: ground, space: .screen, id: id)
         id += 1
         let steps = 4
         for step in 0..<steps {
             let height = Metrics.hudFade / Double(steps)
             let center = Vec2(width / 2, band + height * (Double(step) + 0.5))
-            list.add(.roundedRect(center: center, size: Vec2(width, height), cornerRadius: 0, rotation: 0), color: .background, opacity: 1 - Double(step + 1) / Double(steps + 1), space: .screen, id: id)
+            list.add(.roundedRect(center: center, size: Vec2(width, height), cornerRadius: 0, rotation: 0), color: ground, opacity: 1 - Double(step + 1) / Double(steps + 1), space: .screen, id: id)
             id += 1
         }
     }

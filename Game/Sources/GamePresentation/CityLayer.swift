@@ -110,8 +110,10 @@ enum CityLayer {
         min(64, 8 + growth)
     }
 
-    static func add(world: World, to list: inout RenderList) {
+    static func add(world: World, theme: MapTheme? = nil, to list: inout RenderList) {
+        MapTheme.addGround(theme, world: world, to: &list)
         let layout = world.layout
+        var plantID = RenderID.mapPlants
         let count = lots(growth: growth(config: world.config))
         let armAngles = layout.arms.map(\.angle)
         var id = RenderID.city
@@ -128,7 +130,8 @@ enum CityLayer {
             let center = Vec2(angle: angle) * distance
             let isTree = WeatherLayer.unitHash(candidate, 13) < 0.35
             if isTree {
-                list.add(.circle(center: center, radius: 7 + 5 * WeatherLayer.unitHash(candidate, 14)), color: .island, opacity: 0.9, space: .world, id: id)
+                // Where a tree stands, the map's own plant grows (`MapTheme.addPlant`).
+                MapTheme.addPlant(theme, at: center, size: 7 + 5 * WeatherLayer.unitHash(candidate, 14), index: candidate, id: &plantID, to: &list)
             } else {
                 let size = Vec2(26 + 30 * WeatherLayer.unitHash(candidate, 15), 22 + 26 * WeatherLayer.unitHash(candidate, 16))
                 list.add(.roundedRect(center: center, size: size, cornerRadius: 3, rotation: angle), color: .surface, opacity: 0.55, space: .world, id: id)

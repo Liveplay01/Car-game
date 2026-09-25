@@ -425,6 +425,9 @@ public final class GameSession {
 
     /// Jumps to a level, e.g. `--level 8` in the test window. Saved at once.
     /// Test window (`--weather`, `--event`): every shift gets this sky and this city event.
+    /// Test window (`--map sand`): shows a map skin without wearing it; never saved.
+    public var forcedMapSkin: String?
+
     public var forcedWeather: Weather? {
         didSet { refreshWaitingShift() }
     }
@@ -641,7 +644,7 @@ public final class GameSession {
         switch target {
         case let .section(section):
             if shopPage.section != section { tick() }
-            shopPage.section = section
+            shopPage.select(section)
         case let .chest(kind):
             if shopPage.selectedChest == kind, save.career.count(of: kind) > 0 {
                 tapShop(.open(kind))
@@ -1061,10 +1064,12 @@ public final class GameSession {
         )
         // The crash shake moves the scene; the HUD (screen space) stays still.
         camera.focus += effects.shakeOffset
-        var list = RenderList(camera: camera, background: .background)
-        CityLayer.add(world: world, to: &list)
+        // The map skin sets the ground outside the ring and what grows in the city.
+        let mapTheme = MapTheme(skin: forcedMapSkin ?? save.career.mapSkin)
+        var list = RenderList(camera: camera, background: MapTheme.ground(mapTheme))
+        CityLayer.add(world: world, theme: mapTheme, to: &list)
         SceneBuilder.addRoad(world.layout, config: world.config, to: &list)
-        CityLayer.addMapSkin(Skins.color(save.career.mapSkin), world: world, to: &list)
+        CityLayer.addMapSkin(Skins.color(forcedMapSkin ?? save.career.mapSkin), world: world, to: &list)
         WeatherLayer.addCityEvent(world: world, to: &list)
         WeatherLayer.addGround(world: world, to: &list)
         effects.addGround(world: world, alpha: clock.alpha, softBody: !reduceMotion, to: &list)

@@ -10,6 +10,7 @@ import GamePresentation
 ///     --tab upgrades       open a tab: streetBuilder, game, shop, upgrades
 ///     --duty high          play on high alert (saved, like pressing H)
 ///     --weather storm      force the weather: clear, lightRain, heavyRain, storm, extreme
+///     --map sand           show a map skin without wearing it: dusk, sand, neon, forest, autumn, sakura, aurora, ember
 ///     --event roadworks    force a city event: roadworks, roadClosure, concert, vipConvoy, policeOperation
 ///     --chest-preview epic play a chest opening (common, rare, epic, legendary) on the Shop tab
 ///     --settings           open the settings
@@ -26,6 +27,7 @@ struct LaunchOptions {
     var tab: Tab?
     var duty: Duty?
     var weather: Weather?
+    var mapSkin: String?
     var event: CityEvent?
     var chestPreview: Rarity?
     var startWithDebug = false
@@ -91,6 +93,13 @@ struct LaunchOptions {
                     consumed = 2
                 } else {
                     print("--weather needs one of: " + Weather.allCases.map(\.rawValue).joined(separator: ", "))
+                }
+            case "--map":
+                if let skin = value(), MapTheme(skin: skin) != nil {
+                    mapSkin = skin
+                    consumed = 2
+                } else {
+                    print("--map needs one of: " + MapTheme.allCases.map(\.rawValue).joined(separator: ", "))
                 }
             case "--event":
                 if let event = value().flatMap({ CityEvent(rawValue: $0) }) {

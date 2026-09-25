@@ -72,7 +72,12 @@ das Auto; **Glitter** – kleine Funkeln blitzen auf. Mit Reduce Motion ohne Eff
 
 ## Map Skins (8)
 
-Tönen die Mittelinsel des Kreisverkehrs mit einem Ring in der Skin-Farbe.
+Tönen die Mittelinsel des Kreisverkehrs mit einem Ring in der Skin-Farbe, färben den Boden
+der Stadt außerhalb des Kreisverkehrs (dunkel, damit alles lesbar bleibt) und bringen eigene
+Details mit (`MapTheme`, Entscheidung Leo 25.09.2026): Sand Dünen und Kakteen, Forest Moos
+und Tannen, Autumn Laub und Herbstbäume, Sakura Blütenblätter und Kirschbäume, Neon ein
+Lichtraster und Leuchtpfosten, Dusk Laternen, Aurora Polarlicht und verschneite Tannen,
+Ember glühende Risse und Felsen. Testfenster: `--map sand` zeigt eine Map, ohne sie anzulegen.
 
 | Item | ID | Seltenheit | Aussehen |
 | --- | --- | --- | --- |

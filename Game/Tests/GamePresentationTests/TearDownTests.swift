@@ -66,6 +66,22 @@ struct TearDownTests {
         #expect(session.builderPage.tornDown?.module == .tollBooth)
     }
 
+    @Test func everyMapSkinHasItsOwnGroundAndPlants() {
+        let maps = Cosmetics.all.filter { $0.kind == .mapSkin }
+        #expect(!maps.isEmpty)
+        for map in maps {
+            let theme = MapTheme(skin: map.id)
+            #expect(theme != nil, "\(map.id)")
+            #expect(MapTheme.ground(theme) != .background, "\(map.id)")
+        }
+        #expect(MapTheme.ground(MapTheme(skin: nil)) == .background)
+        // Worn, the ground outside the ring changes; the HUD band melts into it.
+        var saved = SaveGame()
+        saved.career.mapSkin = "sand"
+        let session = makeSession(store: MemorySaveStore(saved))
+        #expect(session.advance().renderList.background == .groundSand)
+    }
+
     @Test func moneyInATextIsANoteNotAWord() {
         #expect(!Strings.money("2,000").contains("cash"))
         #expect(Icons.pieces(Strings.Notice.notEnoughMoney("2,000")).contains(.money))

@@ -86,12 +86,17 @@ enum RenderID {
     static let hud = 30_000
     static let popups = 31_000
     static let menu = 40_000
+    /// A map's ground details and its plants (`MapTheme`).
+    static let mapGround = 60_000
+    static let mapPlants = 70_000
     static let notice = 48_000
     static let effects = 100_000
     static let shadows = 900_000
     static let vehicles = 1_000_000
     /// The screen fading out during a change (`ScreenTransition`), far above all vehicles.
     static let transition = 400_000_000
+    /// The shop section swiping out (`ShopPage.sectionSlide`).
+    static let shopSlide = 450_000_000
 
     /// Outline, body, parts, cracks and flames of one vehicle (`CarArt.Slot`).
     static let partsPerVehicle = CarArt.Slot.count

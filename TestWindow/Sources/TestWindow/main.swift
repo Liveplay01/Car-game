@@ -37,6 +37,7 @@ if let rarity = options.chestPreview {
     session.previewChestOpening(rarity)
 }
 session.forcedWeather = options.weather
+session.forcedMapSkin = options.mapSkin
 session.forcedEvent = options.event
 if let duty = options.duty {
     session.perform(.setDuty(duty))

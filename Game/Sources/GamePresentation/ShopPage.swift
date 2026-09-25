@@ -40,8 +40,18 @@ public enum ShopPage {
         public var denied = 0.0
         /// The placeholder ad running (test window), and for how long.
         public var ad: Double?
+        /// The section just left and how long ago: the new one swipes in from its side of
+        /// the segmented control, the old one out to the other (Leo, 25.09.2026).
+        public var sectionSlide: (from: Section, age: Double)?
 
         public init() {}
+
+        /// Switches the section with a swipe; the same section again does nothing.
+        public mutating func select(_ next: Section) {
+            guard next != section else { return }
+            sectionSlide = (section, 0)
+            section = next
+        }
 
         public static func == (a: State, b: State) -> Bool {
             a.section == b.section && a.selectedChest == b.selectedChest && a.selectedItem == b.selectedItem
@@ -55,6 +65,10 @@ public enum ShopPage {
                 self.opening = opening
             }
             if let ad { self.ad = ad + delta }
+            if var slide = sectionSlide {
+                slide.age += delta
+                sectionSlide = slide.age < ShopPage.slideDuration ? slide : nil
+            }
             if denied > 0 {
                 denied += delta
                 if denied > 0.4 { denied = 0 }
@@ -67,6 +81,9 @@ public enum ShopPage {
     static let detailHeight = 128.0
     static let segmentHeight = 32.0
     static let revealDuration = 0.45
+    /// A section swipe: the new one springs in over this long, the old one is gone sooner.
+    static let slideDuration = 0.45
+    static let slideOut = 0.2
     /// The placeholder ad of the test window.
     public static let adDuration = 3.0
 
@@ -169,18 +186,45 @@ public enum ShopPage {
         let layout = layout(viewport: viewport, bottomInset: bottomInset)
         addSegments(layout, state: state, career: career, id: &id, to: &list)
         let enter = reduceMotion ? 1 : Ease.outCubic(state.age / 0.25)
-        switch state.section {
-        case .chests: addChests(layout, career: career, config: config, state: state, format: format, enter: enter, reduceMotion: reduceMotion, id: &id, to: &list)
-        case .collection: addCollection(layout, career: career, state: state, enter: enter, id: &id, to: &list)
-        case .today: addToday(layout, career: career, today: today, format: format, enter: enter, id: &id, to: &list)
+        let sectionStart = list.items.count
+        addSection(layout, career: career, config: config, today: today, state: state, format: format, enter: enter, reduceMotion: reduceMotion, id: &id, to: &list)
+        if let slide = state.sectionSlide {
+            // The new section swipes in from its side and springs into place; the old one is
+            // drawn once more, sliding out the other way and fading.
+            let side = state.section.rawValue > slide.from.rawValue ? 1.0 : -1.0
+            let spring = reduceMotion ? 1 : Ease.spring(slide.age / slideDuration)
+            let shift = Vec2(side * layout.content.width * 0.45 * (1 - spring), 0)
+            let fade = Ease.outCubic(slide.age / 0.18)
+            for index in sectionStart..<list.items.count {
+                list.items[index] = list.items[index].moved(by: shift, opacity: fade)
+            }
+            let gone = Ease.outCubic(slide.age / slideOut)
+            if gone < 1 {
+                var old = RenderList(camera: list.camera, background: list.background)
+                var oldState = state
+                oldState.section = slide.from
+                var oldId = RenderID.shopSlide
+                addSection(layout, career: career, config: config, today: today, state: oldState, format: format, enter: 1, reduceMotion: reduceMotion, id: &oldId, to: &old)
+                let away = Vec2(reduceMotion ? 0 : -side * layout.content.width * 0.3 * gone, 0)
+                list.items.insert(contentsOf: old.items.map { $0.moved(by: away, opacity: 1 - gone) }, at: sectionStart)
+            }
         }
-        addDetail(layout, career: career, config: config, today: today, state: state, format: format, id: &id, to: &list)
         if let ad = state.ad {
             addAd(age: ad, id: &id, to: &list)
         }
         if let opening = state.opening {
             addReveal(opening.opening, age: opening.age, format: format, reduceMotion: reduceMotion, id: &id, to: &list)
         }
+    }
+
+    /// One section's content and its detail panel.
+    private static func addSection(_ layout: Layout, career: Career, config: Config, today: Int, state: State, format: TextFormat, enter: Double, reduceMotion: Bool, id: inout Int, to list: inout RenderList) {
+        switch state.section {
+        case .chests: addChests(layout, career: career, config: config, state: state, format: format, enter: enter, reduceMotion: reduceMotion, id: &id, to: &list)
+        case .collection: addCollection(layout, career: career, state: state, enter: enter, id: &id, to: &list)
+        case .today: addToday(layout, career: career, today: today, format: format, enter: enter, id: &id, to: &list)
+        }
+        addDetail(layout, career: career, config: config, today: today, state: state, format: format, id: &id, to: &list)
     }
 
     private static func text(_ string: String, _ at: Vec2, size: Double, weight: FontWeight = .regular, color: ColorToken, alignment: TextAlignment = .leading, opacity: Double = 1, id: inout Int, to list: inout RenderList) {
@@ -201,7 +245,13 @@ public enum ShopPage {
             section == .chests && !career.chests.isEmpty ? Strings.Shop.section(section) + " · \(career.chests.count)" : Strings.Shop.section(section)
         }
         let chosen = layout.segments.firstIndex { $0.0 == state.section } ?? 0
-        MenuKit.segmented(labels, chosen: chosen, thumb: Double(chosen), in: all, id: &id, to: &list)
+        // The thumb glides over with the same spring as the content.
+        var thumb = Double(chosen)
+        if let slide = state.sectionSlide, let from = layout.segments.firstIndex(where: { $0.0 == slide.from }) {
+            thumb = Double(from) + (Double(chosen) - Double(from)) * Ease.spring(slide.age / slideDuration)
+            thumb = min(max(thumb, 0), Double(layout.segments.count - 1))
+        }
+        MenuKit.segmented(labels, chosen: chosen, thumb: thumb, in: all, id: &id, to: &list)
     }
 
     // MARK: Chests
