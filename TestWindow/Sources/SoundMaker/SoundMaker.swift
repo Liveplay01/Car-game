@@ -59,8 +59,6 @@ struct SoundMaker {
             ("chestBurstRare", { chestBurst(rare: true) }, 0.62),
         ]
         for (name, make, peak) in sounds {
-            FileHandle.standardError.write(Data("making \(name)
-".utf8))
             let url = folder.appendingPathComponent("\(name).wav")
             let sound = make().trimmed().normalized(peak: peak)
             try wav(sound).write(to: url)
@@ -987,9 +985,11 @@ struct SoundMaker {
         var count: Int { left.count }
 
         private mutating func grow(to size: Int) {
-            if size > count {
-                left += Array(repeating: 0, count: size - count)
-                right += Array(repeating: 0, count: size - count)
+            // Both sides by the same amount: `count` is the left side, so it is read once.
+            let extra = size - count
+            if extra > 0 {
+                left += Array(repeating: 0, count: extra)
+                right += Array(repeating: 0, count: extra)
             }
         }
 
@@ -1117,12 +1117,6 @@ struct SoundMaker {
     }
 
     // MARK: - WAV
-
-    /// A sample as 16 bit; anything that is not a number becomes silence instead of a crash.
-    static func pcm(_ x: Double) -> Int16 {
-        guard x.isFinite else { return 0 }
-        return Int16((min(max(x, -1), 1) * 32_767).rounded())
-    }
 
     /// A sample as 16 bit; anything that is not a number becomes silence instead of a crash.
     static func pcm(_ x: Double) -> Int16 {
