@@ -1286,8 +1286,8 @@ public final class GameSession {
         switch screen {
         case .playing:
             HUD.addFlowGlow(world: world, flow: flowLevel, to: &list)
-            HUD.addChase(world: world, alpha: clock.alpha, reduceMotion: reduceMotion, to: &list)
-            HUD.addTransporter(world: world, alpha: clock.alpha, reduceMotion: reduceMotion, to: &list)
+            HUD.addChase(world: world, alpha: clock.alpha, to: &list)
+            HUD.addTransporter(world: world, alpha: clock.alpha, to: &list)
             HUD.add(
                 world: world, level: playingLevel, duty: playingDuty,
                 score: Int(shownScore.rounded()),

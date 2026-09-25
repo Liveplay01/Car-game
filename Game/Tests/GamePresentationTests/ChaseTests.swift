@@ -44,14 +44,18 @@ struct ChaseTests {
         #expect(CarArt.shape(.bed, type: .pickup, config: config).isVisible)
     }
 
-    @Test func wantedWhileAnnouncedThenACountdown() {
+    /// Announced only by the wedge on the rim, in the criminal's colour: no label on the
+    /// arm, none on the island (Leo, 25.09.2026). Then a countdown.
+    @Test func aWedgeWhileAnnouncedThenACountdown() {
         let session = chaseSession(police: false)
         session.advance([.confirm])
         var sawWarning = false
         for _ in 0..<(30 * 60) {
             let frame = session.advance()
-            if case .warning = session.world.criminal.phase, frame.texts.contains(Strings.HUD.wanted) {
+            if case .warning = session.world.criminal.phase {
                 sawWarning = true
+                #expect(!frame.texts.contains { $0.hasPrefix(Strings.HUD.wanted) })
+                #expect(frame.renderList.items.contains { $0.color == .vehicleCriminal && $0.space == .world })
             }
             if case .active = session.world.criminal.phase { break }
         }

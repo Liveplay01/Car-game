@@ -202,7 +202,7 @@ enum HUD {
         }
         id += 1
         // The chase, once the pickup is in: the seconds it has left. While it is only
-        // announced, the warning floats over its arm instead (`addChase`).
+        // announced, the wedge on the rim says so (`addChase`).
         if case let .active(_, deadline) = world.criminal.phase {
             list.add(
                 .text(Strings.HUD.wanted(deadline - world.time), position: center + Vec2(0, -64), size: 17, alignment: .center, weight: .bold),
@@ -213,17 +213,15 @@ enum HUD {
     }
 
     /// Marks the criminal in the scene: while it is only announced, a pulsing wedge on the
-    /// island's rim (`RingSignals`), facing the arm it will come from, and "WANTED" floating
-    /// over that arm (`SpatialTag`), so the warning sits where the danger comes from
-    /// (ROADMAP.md M11); then a countdown ring around the pickup itself, which by then is on
-    /// screen and worth looking at directly.
-    static func addChase(world: World, alpha: Double, reduceMotion: Bool = false, to list: inout RenderList) {
+    /// island's rim (`RingSignals`), facing the arm it will come from — its colour says what
+    /// comes, no label needed (Leo, 25.09.2026) — then a countdown ring around the pickup
+    /// itself, which by then is on screen and worth looking at directly (ROADMAP.md M11).
+    static func addChase(world: World, alpha: Double, to list: inout RenderList) {
         let config = world.config
         var id = RenderID.hud + 500
         switch world.criminal.phase {
-        case let .warning(arm, until):
+        case let .warning(arm, _):
             addWedge(arm, world: world, color: .vehicleCriminal, id: &id, to: &list)
-            SpatialTag.add(Strings.HUD.wanted, over: arm, world: world, color: .vehicleCriminal, age: config.criminalWarning - (until - world.time), reduceMotion: reduceMotion, id: &id, to: &list)
         case let .arriving(vehicleID):
             guard let pickup = world.vehicle(id: vehicleID) else { return }
             let pose = SceneBuilder.interpolatedPose(pickup, alpha: alpha)
@@ -250,7 +248,7 @@ enum HUD {
     /// edge, facing the arm it will come from (ROADMAP.md M11, same as `addChase`); then a
     /// countdown ring around the truck that empties as its time runs out, plus the secure
     /// zones as pale arcs on the ring. It circles until its time is up, so no exit is marked.
-    static func addTransporter(world: World, alpha: Double, reduceMotion: Bool = false, to list: inout RenderList) {
+    static func addTransporter(world: World, alpha: Double, to list: inout RenderList) {
         let config = world.config
         var id = RenderID.hud + 600
         switch world.criminal.phase {  // keep the chase ring above the secure zones
@@ -258,9 +256,8 @@ enum HUD {
         default: break
         }
         switch world.transporter.phase {
-        case let .warning(arm, until):
+        case let .warning(arm, _):
             addWedge(arm, world: world, color: .vehicleCargo, id: &id, to: &list)
-            SpatialTag.add(Strings.HUD.transporter, over: arm, world: world, color: .vehicleCargo, age: config.transporterWarning - (until - world.time), reduceMotion: reduceMotion, id: &id, to: &list)
         case let .arriving(vehicleID):
             guard let truck = world.vehicle(id: vehicleID) else { return }
             let pose = SceneBuilder.interpolatedPose(truck, alpha: alpha)
@@ -631,39 +628,5 @@ enum ResultBanner {
             let best = summary.previousHighscore > 0 ? format.number(summary.previousHighscore) : "–"
             TopBar.addColumn(columns.right, alignment: .trailing, caption: Strings.HUD.bestLabel, value: best, valueColor: summary.previousHighscore > 0 ? .primary : .muted, opacity: shown, id: &id, to: &list)
         }
-    }
-}
-
-/// A small label that floats over a place in the city (Leo, 25.09.2026: "Spatial UI, aber
-/// sehr subtil"): over the arm a danger comes from, instead of blinking in the middle of the
-/// screen. It rises off the road on a soft shadow that stays on the ground, hovers there and
-/// breathes up and down by a point or so. Depth, not 3D.
-enum SpatialTag {
-    static let size = 11.0
-    static let height = 22.0
-    /// How high it floats over its shadow, in points.
-    static let hover = 7.0
-
-    /// Over an arm, just outside the ring: where whatever it announces will come from.
-    static func add(_ text: String, over arm: Arm, world: World, color: ColorToken, age: Double, reduceMotion: Bool, id: inout Int, to list: inout RenderList) {
-        let layout = world.layout
-        let ground = arm.outward * (layout.ringRadius + layout.laneWidth / 2 + 30)
-        add(text, at: ground, color: color, age: age, time: world.time, reduceMotion: reduceMotion, id: &id, to: &list)
-    }
-
-    static func add(_ text: String, at ground: Vec2, color: ColorToken, age: Double, time: Double, reduceMotion: Bool, id: inout Int, to list: inout RenderList) {
-        let enter = Ease.outCubic(age / 0.25)
-        guard enter > 0.001 else { return }
-        let base = list.camera.toScreen(ground)
-        let rise = reduceMotion ? 1 : Ease.settle(age / 0.45)
-        let hover = Self.hover * rise + (reduceMotion ? 0 : 1.2 * sin(time * 2.4))
-        let pill = Vec2(Icons.textWidth(text, size: size) + 22, height)
-        // The shadow stays on the road and grows fainter the higher the label floats.
-        list.add(.roundedRect(center: base + Vec2(0, 2), size: pill, cornerRadius: height / 2, rotation: 0), color: .shadow, opacity: enter * (1 - 0.05 * hover), space: .screen, id: id)
-        id += 1
-        let at = base - Vec2(0, hover)
-        MenuKit.chromePill(center: at, size: pill, tint: color, opacity: enter, id: &id, to: &list)
-        list.add(.text(text, position: at, size: size, alignment: .center, weight: .bold), color: color, opacity: enter, space: .screen, id: id)
-        id += 1
     }
 }

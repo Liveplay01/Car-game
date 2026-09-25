@@ -136,10 +136,11 @@ nicht daneben. Alles in `GamePresentation`, also im Testfenster und in der App g
    (Combo-Stufe, Takedown, Transporter bezahlt), **Aufflackern** des ganzen Rands (Strike rot,
    Polizei-Crash blau, verlorene Schicht), **Lichtlauf** einmal herum (Rush Hour beginnt,
    Schicht geschafft). Reduce Motion: nur Aufflackern, keine Bewegung.
-2. **Schwebende Schilder** (`SpatialTag`): „WANTED“ blinkt während der Ankündigung nicht mehr
-   in der Inselmitte, sondern schwebt als kleines Schild über der Zufahrt, aus der der
-   Verbrecher kommt, mit Schatten auf der Straße und einem Hauch Auf und Ab.
-   „TRANSPORTER“ genauso. Der Countdown in der Inselmitte bleibt, sobald die Jagd läuft.
+2. **Ankündigung nur am Ring:** „WANTED“ blinkt während der Ankündigung nicht mehr in der
+   Inselmitte; der pulsierende Keil in der Farbe des Verbrechers (bzw. des Transporters) sagt
+   genug. Ein Schild über der Zufahrt gab es kurz, **gestrichen (Leo, 25.09.2026):** unnötig,
+   die Farbe am Ring kündigt es an. Der Countdown in der Inselmitte bleibt, sobald die Jagd
+   läuft.
 3. **Kein Ergebnis-Screen** (`ResultBanner`): Die obere Karte wächst nicht mehr. In derselben
    Karte: links zählt der Kontostand hoch, in der Mitte „LEVEL 5 COMPLETE“ über der
    Punktzahl, rechts BEST bzw. NEW BEST. Auf der Insel zählt das Geld hoch. Nach 3,6 s
@@ -166,14 +167,13 @@ verdient, im Ergebnis bis zum neuen Kontostand. Die Daily Shift steht in der Mit
 Autos. Die Collection-Reiter im Shop wechseln animiert: die Markierung gleitet zum neuen
 Reiter, die Items wischen von dessen Seite herein (`ShopPage.shelfSlide`).
 
-**Tests:** `LivingCityTests` (16 Tests: Striche und Aufleuchten, Halten ins Ergebnis,
-Lichtlauf, roter Strike, Schild über dem richtigen Arm, Ergebnis wird zur nächsten Schicht,
+**Tests:** `LivingCityTests` (15 Tests: Striche und Aufleuchten, Halten ins Ergebnis,
+Lichtlauf, roter Strike, Ergebnis wird zur nächsten Schicht, Geld zählt hoch, Reiterwechsel,
 Kartengröße, Energie der Stadt, keine Sprünge, Flow-Welle, Builder-Deckung, Kamerafahrt,
 Reduce Motion, Zurücktreten ohne den Ring).
 
 **Grenzen, ehrlich:** In der App sind Shop, Upgrades und Street Builder noch nicht gebaut
-(M12); die Kamera fährt dort schon, sichtbar wird es mit den nativen Tabs. Das Schild über
-der Zufahrt ist per Test geprüft, im Testfenster aber noch nicht gesehen. Unter dem
+(M12); die Kamera fährt dort schon, sichtbar wird es mit den nativen Tabs. Unter dem
 Upgrade-Raster ist vom Ring nur wenig zu sehen.
 
 **Playtest-Fragen:** Liest man den Schichtfortschritt am Ring, ohne hinzuschauen? Sind die

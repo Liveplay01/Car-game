@@ -28,7 +28,8 @@ einer Stadt, die mit dem Spieler wächst.
 11. **Der Schichtwechsel bleibt flüssig.** Kein Freeze, kein Replay, keine Einblendung
     zwischen zwei Schichten (Highlight/Replay wurde deshalb gestrichen).
 12. **Die Welt ist die Oberfläche** (Leo, 25.09.2026). Neues wird zuerst am Kreisverkehr
-    gezeigt (Inselrand, Lichtsignale, schwebende Schilder), erst dann als klassische Anzeige.
+    gezeigt (Inselrand, Lichtsignale, Farbe), erst dann als klassische Anzeige. Keine Beschriftung,
+    wo die Farbe am Ring schon alles sagt.
     Räumlich, aber leise: Tiefe durch Schatten und kleine Staffelung, kein 3D.
 13. **Eine Stadt, mehrere Perspektiven.** Die Tabs sind Blicke auf dieselbe laufende Stadt,
     kein Menü über einem angehaltenen Spiel. Der Ring hört nie auf.
@@ -62,8 +63,6 @@ Umgesetzt ist die Basis (ROADMAP.md, "Eine Stadt, ein Ring"). Offen:
   durchscheinendem Material statt Vollfläche.
 - **Daily Shift als eigene Perspektive** (z. B. anderer Blickwinkel oder Tageslicht) statt
   Splash-Karte.
-- **Weitere Schilder im Raum:** Wetter und City Event über dem betroffenen Teil der Stadt
-  statt als Zeile in der Inselmitte.
 - **Stadtwachstum sichtbar machen:** nach einem Level-Up entsteht ein neues Gebäude mit einer
   kurzen, leisen Bewegung am Rand der Stadt.
 

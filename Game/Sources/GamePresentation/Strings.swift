@@ -625,8 +625,6 @@ public enum Strings {
         public static let secured = "SECURED"
         public static let seized = "SEIZED"
         public static let lost = "LOST"
-        /// Floats over the arm a money transporter is about to come from.
-        public static let transporter = "TRANSPORTER"
         /// Accessibility labels on special vehicles (M11); nil for ordinary traffic.
         public static func label(_ type: VehicleType) -> String? {
             switch type {

@@ -3,9 +3,8 @@ import Testing
 @testable import GameCore
 @testable import GamePresentation
 
-/// One world, one city (Leo, 25.09.2026): the ring as the UI, labels that float over the
-/// city, no screen between two shifts, a city that breathes, and tabs as views of the same
-/// place.
+/// One world, one city (Leo, 25.09.2026): the ring as the UI, no screen between two shifts,
+/// a city that breathes, and tabs as views of the same place.
 @Suite("Living city")
 struct LivingCityTests {
     /// The ticks on the island's rim, as drawn.
@@ -62,32 +61,6 @@ struct LivingCityTests {
         crashNextCar(session)
         let signals = session.advance().renderList.items.filter { $0.id >= RenderID.rim + 700 && $0.id < RenderID.flowGlow }
         #expect(signals.contains { $0.color == .destructive })
-    }
-
-    // MARK: - Spatial labels
-
-    @Test func theWarningFloatsOverTheArmTheCriminalComesFrom() {
-        let session = chaseSession(police: false)
-        session.advance([.confirm])
-        for _ in 0..<(30 * 60) {
-            session.advance()
-            guard case let .warning(arm, _) = session.world.criminal.phase else { continue }
-            session.run(seconds: 0.5)
-            let list = session.advance().renderList
-            guard let tag = list.items.first(where: { if case .text(Strings.HUD.wanted, _, _, _, _) = $0.primitive { true } else { false } }),
-                  case let .text(_, position, _, _, _) = tag.primitive else {
-                Issue.record("no WANTED label while announced")
-                return
-            }
-            // Outside the ring, on the side of its arm; not on the island.
-            let center = list.camera.toScreen(.zero)
-            let away = position - center
-            #expect(away.length > list.camera.toScreen(length: session.world.layout.ringRadius))
-            let armOnScreen = list.camera.toScreen(arm.outward) - center
-            #expect(away.dot(armOnScreen) > 0)
-            return
-        }
-        Issue.record("no warning")
     }
 
     // MARK: - No screen between shifts
