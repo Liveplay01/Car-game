@@ -13,7 +13,12 @@ public protocol SaveStore: AnyObject {
 
 /// Plays sound effects. Test window: raylib. App: AVAudioEngine. Tests: silent or recording.
 public protocol AudioPlaying: AnyObject {
-    func play(_ sound: SoundID)
+    /// Plays a sound, sped up or slowed down by `pitch` (1 = as recorded).
+    func play(_ sound: SoundID, pitch: Double)
+}
+
+extension AudioPlaying {
+    public func play(_ sound: SoundID) { play(sound, pitch: 1) }
 }
 
 /// Plays haptic patterns. App: Core Haptics with the `.ahap` files. Test window: none.

@@ -91,6 +91,20 @@ struct LookAndFeelTests {
     }
 }
 
+/// Leo, 25.09.2026 (better sounds): clean merges climb the pentatonic with the combo, and
+/// frequent sounds vary a little so no two in a row sound the same.
+@Test func mergesClimbWithTheComboAndFrequentSoundsVary() {
+    let ladder = (1...10).map { Feedback.pitch(for: .merge, combo: $0, serial: 0) }
+    #expect(ladder.first == 1)
+    #expect(zip(ladder, ladder.dropFirst()).allSatisfy { $0 <= $1 })
+    // The fourth clean merge in a row is a fifth above the first.
+    #expect(abs(ladder[3] - 1.498) < 0.01)
+    #expect(Feedback.pitch(for: .merge, combo: 0, serial: 0) == 1)
+    let tolls = (0..<8).map { Feedback.pitch(for: .toll, combo: 0, serial: $0) }
+    #expect(Set(tolls).count > 4 && tolls.allSatisfy { abs($0 - 1) <= 0.04 })
+    #expect(Feedback.pitch(for: .shiftComplete, combo: 5, serial: 3) == 1)
+}
+
 /// Leo: skins repaint every vehicle, the special ones keep their shape.
 @Test func skinsRepaintEveryVehicleType() {
     for type in [VehicleType.car, .sportsCar, .police, .pickup, .transporter, .truck] {

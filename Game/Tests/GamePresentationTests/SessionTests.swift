@@ -20,7 +20,11 @@ final class FixedSeeds: RandomSource {
 
 final class RecordingAudio: AudioPlaying {
     var played: [SoundID] = []
-    func play(_ sound: SoundID) { played.append(sound) }
+    var pitches: [Double] = []
+    func play(_ sound: SoundID, pitch: Double) {
+        played.append(sound)
+        pitches.append(pitch)
+    }
 }
 
 final class RecordingHaptics: HapticsPlaying {

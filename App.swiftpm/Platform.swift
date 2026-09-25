@@ -50,17 +50,20 @@ final class AppAudio: AudioPlaying {
             guard let url = AppResources.url("Sounds", sound.rawValue, "wav") else { continue }
             players[sound] = (0..<2).compactMap { _ in
                 let player = try? AVAudioPlayer(contentsOf: url)
+                // Pitch comes from the playback rate (`Feedback.pitch`).
+                player?.enableRate = true
                 player?.prepareToPlay()
                 return player
             }
         }
     }
 
-    func play(_ sound: SoundID) {
+    func play(_ sound: SoundID, pitch: Double) {
         guard let list = players[sound], !list.isEmpty else { return }
         let index = next[sound, default: 0] % list.count
         next[sound] = index + 1
         list[index].currentTime = 0
+        list[index].rate = Float(pitch)
         list[index].play()
     }
 }

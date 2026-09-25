@@ -65,8 +65,9 @@ final class RaylibAudio: AudioPlaying {
         }
     }
 
-    func play(_ sound: SoundID) {
+    func play(_ sound: SoundID, pitch: Double) {
         if let loaded = sounds[sound] {
+            SetSoundPitch(loaded, Float(pitch))
             PlaySound(loaded)
         }
     }

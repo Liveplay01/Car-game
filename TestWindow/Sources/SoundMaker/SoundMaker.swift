@@ -35,7 +35,8 @@ struct SoundMaker {
             ("crashLight", { crash(severity: 0.55, seed: 11) }, 0.55),
             ("crash", { crash(severity: 1, seed: 7) }, 0.72),
             ("crashHeavy", { crash(severity: 1.5, seed: 23) }, 0.85),
-            ("rushHour", rushHour, 0.38),
+            // Once a shift, and the moment it turns: as present as the siren announcements.
+            ("rushHour", rushHour, 0.55),
             ("shiftComplete", shiftComplete, 0.45),
             ("shiftFailed", shiftFailed, 0.36),
             ("wanted", wanted, 0.36),
@@ -43,7 +44,8 @@ struct SoundMaker {
             ("takedown", takedown, 0.8),
             ("dispatch", dispatch, 0.32),
             ("escaped", escaped, 0.4),
-            ("secured", secured, 0.36),
+            // As loud as the criminal's warning: both are announcements of the same weight.
+            ("secured", secured, 0.5),
             ("paid", paid, 0.45),
             ("seized", seized, 0.5),
             ("tow", tow, 0.22),
@@ -1021,12 +1023,24 @@ struct SoundMaker {
         }
 
         /// Silence at the end cut off, with a short fade so nothing clicks.
+        /// Cut the silent tail, then make it clean at both ends: no DC offset, a 1.5 ms fade
+        /// in (a sound that starts mid-wave clicks; that short a fade keeps the punch) and a
+        /// 20 ms fade out.
         func trimmed() -> Stereo {
             let peak = max(left.map(abs).max() ?? 0, right.map(abs).max() ?? 0)
             let floor = peak * 0.0008
             var end = count
             while end > 1, abs(left[end - 1]) < floor, abs(right[end - 1]) < floor { end -= 1 }
             var result = Stereo(left: Array(left[0..<end]), right: Array(right[0..<end]))
+            let offset = (left: result.left.reduce(0, +) / Double(end), right: result.right.reduce(0, +) / Double(end))
+            result.left = result.left.map { $0 - offset.left }
+            result.right = result.right.map { $0 - offset.right }
+            let fadeIn = min(Int(0.0015 * SoundMaker.rate), end)
+            for i in 0..<fadeIn {
+                let gain = Double(i) / Double(fadeIn)
+                result.left[i] *= gain
+                result.right[i] *= gain
+            }
             let fade = min(Int(0.02 * SoundMaker.rate), end)
             for i in 0..<fade {
                 let gain = Double(i) / Double(fade)

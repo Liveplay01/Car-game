@@ -143,6 +143,8 @@ public final class GameSession {
     public private(set) var countIn = 0.0
     /// Real time the Game tab has been waiting for the first tap.
     private var sinceReady = 0.0
+    /// Sounds played so far: small pitch variations follow it (`Feedback.pitch`).
+    private var soundSerial = 0
     /// The first shift's hints; nil once they were shown.
     private var tutorial: Tutorial?
     /// The map's own clock (petals, koi, snow): runs with the game, slows with it, and never
@@ -1084,7 +1086,10 @@ public final class GameSession {
     /// Sound and haptics, as far as the settings allow.
     private func play(sounds: [SoundID], haptics feedback: [HapticID]) {
         if save.settings.sound, let audio {
-            sounds.forEach(audio.play)
+            for sound in sounds {
+                soundSerial += 1
+                audio.play(sound, pitch: Feedback.pitch(for: sound, combo: world.score.combo, serial: soundSerial))
+            }
         }
         if save.settings.haptics, let haptics {
             feedback.forEach(haptics.play)

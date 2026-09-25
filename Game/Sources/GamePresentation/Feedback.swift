@@ -1,3 +1,4 @@
+import Foundation
 import GameCore
 
 /// Sound effects. The raw value is the file name: `Assets/Sounds/<raw>.wav`.
@@ -132,6 +133,26 @@ public enum Feedback {
         case .towed: .tow
         case .criminalEntered: .screech
         case .launched, .tapRejected, .exited, .transporterEntered, .transporterEscaped: nil
+        }
+    }
+
+    /// A clean merge climbs the A-minor pentatonic with the combo, the key the music plays
+    /// in: every car that goes in cleanly sounds one step higher, up to an octave and a
+    /// half, and a broken combo starts again at the bottom.
+    static let comboLadder = [0.0, 3, 5, 7, 10, 12, 15, 17]
+
+    /// How a sound is pitched when it plays. The merge follows the combo; sounds that come
+    /// often (tolls, crashes, ticks) vary a little each time, so no two in a row are the
+    /// same recording (`serial` counts the sounds played).
+    public static func pitch(for sound: SoundID, combo: Int, serial: Int) -> Double {
+        switch sound {
+        case .merge:
+            let step = min(max(combo - 1, 0), comboLadder.count - 1)
+            return pow(2, comboLadder[step] / 12)
+        case .toll, .crashLight, .crash, .crashHeavy, .uiTick, .nearMiss:
+            return 1 + 0.08 * (WeatherLayer.unitHash(serial, 97) - 0.5)
+        default:
+            return 1
         }
     }
 
