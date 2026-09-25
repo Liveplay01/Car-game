@@ -61,17 +61,11 @@ public enum MapTheme: String, Sendable, CaseIterable {
     /// what grows there.
     static func hash(_ index: Int, _ salt: UInt64) -> Double { WeatherLayer.unitHash(index, salt) }
 
-    /// A map's centrepiece — Sakura's koi pond, Tropic's lagoon, Snowfall's frozen pond,
-    /// Meadow's windmill, Cosmos' ringed planet — sits in the open city above the ring, as
-    /// far from every road as it can.
+    /// Every map's centrepiece — Sakura's koi pond, Tropic's lagoon, Snowfall's frozen pond,
+    /// Meadow's windmill, Cosmos' ringed planet, Dusk's fountain, Sand's oasis, Neon's
+    /// plaza, Forest's cabin, Autumn's pumpkin patch, Aurora's igloo, Ember's crater — sits
+    /// in the open city above the ring, as far from every road as it can.
     static let pondRadius = 30.0
-
-    var hasCentrepiece: Bool {
-        switch self {
-        case .sakura, .tropic, .snowfall, .meadow, .cosmos: true
-        case .dusk, .sand, .neon, .forest, .autumn, .aurora, .ember: false
-        }
-    }
 
     static func pondCenter(_ layout: RoundaboutLayout) -> Vec2? {
         let distance = layout.ringRadius + 78
@@ -94,7 +88,7 @@ public enum MapTheme: String, Sendable, CaseIterable {
     /// avenues along the roads open.
     static func keepsClear(_ theme: MapTheme?, _ point: Vec2, layout: RoundaboutLayout) -> Bool {
         guard let theme else { return false }
-        if theme.hasCentrepiece, let pond = pondCenter(layout), point.distance(to: pond) < pondRadius + 38 { return true }
+        if let pond = pondCenter(layout), point.distance(to: pond) < pondRadius + 38 { return true }
         return layout.arms.contains { arm in
             let along = point.dot(arm.outward)
             return along > 0 && (point - arm.outward * along).length < layout.laneWidth + 40
@@ -184,7 +178,6 @@ public enum MapTheme: String, Sendable, CaseIterable {
             // Warm pools of light come from the lanterns (the lanterns are the plants).
             break
         case .meadow:
-            defer { if let spot = pondCenter(world.layout) { addWindmill(at: spot, time: time, id: &id, to: &list) } }
             // Grass in tufts and wild flowers in four colours.
             for index in 0..<18 {
                 soft(spot(index, 401), 26 + 34 * hash(index, 403), .skinFern, 0.06)
@@ -205,9 +198,7 @@ public enum MapTheme: String, Sendable, CaseIterable {
                 guard onScreen(at, 3, camera) else { continue }
                 add(.circle(center: at, radius: 0.9 + hash(index, 421)), index % 4 == 0 ? .skinCoral : .skinPearl, 0.4)
             }
-            if let spot = pondCenter(world.layout) { addLagoon(at: spot, time: time, id: &id, to: &list) }
         case .snowfall:
-            defer { if let spot = pondCenter(world.layout) { addFrozenPond(at: spot, time: time, id: &id, to: &list) } }
             // Snow drifts, sledge tracks and snow that sparkles.
             for index in 0..<22 {
                 soft(spot(index, 431), 16 + 26 * hash(index, 433), .mapSnow, 0.05)
@@ -226,7 +217,6 @@ public enum MapTheme: String, Sendable, CaseIterable {
                 add(.circle(center: at, radius: 0.6 + 0.8 * twinkle), .primary, 0.2 + 0.6 * twinkle)
             }
         case .cosmos:
-            defer { if let spot = pondCenter(world.layout) { addPlanet(at: spot, time: time, id: &id, to: &list) } }
             // Deep space: nebula clouds and stars that twinkle.
             let clouds: [ColorToken] = [.juicePurple, .juiceBlue, .skinRose]
             for index in 0..<12 {
@@ -239,6 +229,10 @@ public enum MapTheme: String, Sendable, CaseIterable {
                 let twinkle = time.map { 0.55 + 0.45 * sin($0 * (1.2 + 2 * bright) + Double(index)) } ?? 0.8
                 add(.circle(center: at, radius: 0.5 + 1.1 * bright * bright), bright > 0.85 ? .mapCosmos : .primary, (0.25 + 0.6 * bright) * twinkle)
             }
+        }
+        // Last, on top of the ground's details: the centrepiece (Sakura draws its pond itself).
+        if theme != .sakura, let spot = pondCenter(world.layout), onScreen(spot, pondRadius * 2, camera) {
+            addCentrepiece(theme, at: spot, time: time, id: &id, to: &list)
         }
     }
 
@@ -342,6 +336,161 @@ public enum MapTheme: String, Sendable, CaseIterable {
     }
 
     // MARK: - Centrepieces
+
+    static func addCentrepiece(_ theme: MapTheme, at spot: Vec2, time: Double?, id: inout Int, to list: inout RenderList) {
+        switch theme {
+        case .meadow: addWindmill(at: spot, time: time, id: &id, to: &list)
+        case .tropic: addLagoon(at: spot, time: time, id: &id, to: &list)
+        case .snowfall: addFrozenPond(at: spot, time: time, id: &id, to: &list)
+        case .cosmos: addPlanet(at: spot, time: time, id: &id, to: &list)
+        case .dusk: addFountain(at: spot, time: time, id: &id, to: &list)
+        case .sand: addOasis(at: spot, time: time, id: &id, to: &list)
+        case .neon: addPlaza(at: spot, time: time, id: &id, to: &list)
+        case .forest: addCabin(at: spot, time: time, id: &id, to: &list)
+        case .autumn: addPumpkinPatch(at: spot, id: &id, to: &list)
+        case .aurora: addIgloo(at: spot, id: &id, to: &list)
+        case .ember: addCrater(at: spot, time: time, id: &id, to: &list)
+        case .sakura: break
+        }
+    }
+
+    /// Dusk's fountain on a little square: a stone basin, water rippling out from the jet,
+    /// and four lamps at the corners.
+    private static func addFountain(at center: Vec2, time: Double?, id: inout Int, to list: inout RenderList) {
+        func add(_ primitive: Primitive, _ color: ColorToken, _ opacity: Double) {
+            list.add(primitive, color: color, opacity: opacity, space: .world, id: id)
+            id += 1
+        }
+        add(.roundedRect(center: center, size: Vec2(58, 58), cornerRadius: 6, rotation: .pi / 4), .stone, 0.22)
+        add(.circle(center: center, radius: 17), .stone, 0.8)
+        add(.circle(center: center, radius: 14), .water, 1)
+        let t = time ?? 0
+        for ring in 0..<3 {
+            let phase = (t * 0.5 + Double(ring) / 3).truncatingRemainder(dividingBy: 1)
+            add(.arc(center: center, radius: 3 + 10 * phase, thickness: 0.8, startAngle: 0, endAngle: Angle.tau), .primary, 0.35 * (1 - phase))
+        }
+        add(.circle(center: center, radius: 2.2), .primary, 0.7)
+        for corner in 0..<4 {
+            addLamp(at: center + Vec2(angle: Double(corner) * .pi / 2) * 30, size: 5, color: .fireCore, id: &id, to: &list)
+        }
+    }
+
+    /// Sand's oasis: a pool of clear water in a ring of green, two palms leaning over it.
+    private static func addOasis(at center: Vec2, time: Double?, id: inout Int, to list: inout RenderList) {
+        func add(_ primitive: Primitive, _ color: ColorToken, _ opacity: Double) {
+            list.add(primitive, color: color, opacity: opacity, space: .world, id: id)
+            id += 1
+        }
+        add(.circle(center: center, radius: 27), .mapForest, 0.3)
+        add(.circle(center: center, radius: 20), .water, 1)
+        add(.circle(center: center, radius: 17), .mapTropic, 0.25)
+        let shimmer = time.map { 0.12 + 0.08 * sin($0 * 1.1) } ?? 0.15
+        add(.line(from: center + Vec2(-7, 4), to: center + Vec2(5, 4), thickness: 1), .primary, shimmer)
+        addPalm(at: center + Vec2(-19, 14), size: 7, index: 3, id: &id, to: &list)
+        addPalm(at: center + Vec2(18, -12), size: 6.5, index: 11, id: &id, to: &list)
+    }
+
+    /// Neon's plaza: rings of light turning slowly around a glowing disc.
+    private static func addPlaza(at center: Vec2, time: Double?, id: inout Int, to list: inout RenderList) {
+        func add(_ primitive: Primitive, _ color: ColorToken, _ opacity: Double) {
+            list.add(primitive, color: color, opacity: opacity, space: .world, id: id)
+            id += 1
+        }
+        let t = time ?? 0
+        add(.circle(center: center, radius: 30), .mapNeon, 0.05)
+        for (ring, (radius, speed)) in [(24.0, 0.35), (17.0, -0.55), (10.0, 0.8)].enumerated() {
+            let turn = t * speed + Double(ring)
+            for arc in 0..<3 {
+                let from = turn + Double(arc) * Angle.tau / 3
+                add(.arc(center: center, radius: radius, thickness: 1.6, startAngle: from, endAngle: from + 1.3), ring == 1 ? .skinRose : .mapNeon, 0.75)
+            }
+        }
+        add(.circle(center: center, radius: 5), .mapNeon, 0.9)
+    }
+
+    /// Forest's log cabin with a campfire before it: the flames flicker.
+    private static func addCabin(at center: Vec2, time: Double?, id: inout Int, to list: inout RenderList) {
+        func add(_ primitive: Primitive, _ color: ColorToken, _ opacity: Double) {
+            list.add(primitive, color: color, opacity: opacity, space: .world, id: id)
+            id += 1
+        }
+        let toRing = (-center).normalized
+        let cabin = center - toRing * 8
+        let turn = toRing.angle
+        add(.roundedRect(center: cabin + Vec2(3, -3), size: Vec2(26, 32), cornerRadius: 2, rotation: turn), .background, 0.4)
+        add(.roundedRect(center: cabin, size: Vec2(26, 32), cornerRadius: 2, rotation: turn), .skinMocha, 0.95)
+        // The roof's two halves and its ridge.
+        add(.roundedRect(center: cabin + toRing.left * 7.5, size: Vec2(26, 15), cornerRadius: 1.5, rotation: turn), .skinLatte, 0.55)
+        add(.line(from: cabin - Vec2(angle: turn) * 13, to: cabin + Vec2(angle: turn) * 13, thickness: 1.4), .skinCream, 0.6)
+        // The fire: a ring of stones, and flames that breathe.
+        let fire = center + toRing * 20
+        for stone in 0..<7 {
+            add(.circle(center: fire + Vec2(angle: Double(stone) / 7 * Angle.tau) * 5, radius: 1.5), .stone, 0.9)
+        }
+        let flicker = time.map { 0.75 + 0.25 * sin($0 * 13) * sin($0 * 7.3) } ?? 0.85
+        add(.circle(center: fire, radius: 16 * flicker), .fireCore, 0.06)
+        add(.circle(center: fire, radius: 3.6 * flicker), .fireOuter, 0.95)
+        add(.circle(center: fire, radius: 1.8 * flicker), .fireCore, 1)
+    }
+
+    /// Autumn's pumpkin patch on dark soil, with a hay bale at its edge.
+    private static func addPumpkinPatch(at center: Vec2, id: inout Int, to list: inout RenderList) {
+        func add(_ primitive: Primitive, _ color: ColorToken, _ opacity: Double) {
+            list.add(primitive, color: color, opacity: opacity, space: .world, id: id)
+            id += 1
+        }
+        add(.roundedRect(center: center, size: Vec2(52, 38), cornerRadius: 6, rotation: 0.2), .wreck, 0.55)
+        for index in 0..<7 {
+            let at = center + Vec2((hash(index, 491) - 0.5) * 40, (hash(index, 492) - 0.5) * 26)
+            let size = 3.4 + 2 * hash(index, 493)
+            add(.circle(center: at, radius: size), .skinPumpkin, 0.95)
+            add(.line(from: at - Vec2(0, size * 0.8), to: at + Vec2(0, size * 0.8), thickness: 0.6), .fireDeep, 0.5)
+            add(.circle(center: at + Vec2(0, size * 0.2), radius: 0.9), .mapForest, 0.95)
+        }
+        let bale = center + Vec2(30, 18)
+        add(.roundedRect(center: bale, size: Vec2(14, 9), cornerRadius: 2, rotation: -0.3), .skinLatte, 0.9)
+        add(.line(from: bale + Vec2(-4, -3), to: bale + Vec2(-2, 4), thickness: 0.7), .skinMocha, 0.6)
+        add(.line(from: bale + Vec2(3, -4), to: bale + Vec2(5, 3), thickness: 0.7), .skinMocha, 0.6)
+    }
+
+    /// Aurora's igloo, its entrance facing the road, and a hole in the ice beside it.
+    private static func addIgloo(at center: Vec2, id: inout Int, to list: inout RenderList) {
+        func add(_ primitive: Primitive, _ color: ColorToken, _ opacity: Double) {
+            list.add(primitive, color: color, opacity: opacity, space: .world, id: id)
+            id += 1
+        }
+        let toRing = (-center).normalized
+        add(.circle(center: center + Vec2(3, -3), radius: 16), .background, 0.35)
+        add(.roundedRect(center: center + toRing * 16, size: Vec2(14, 10), cornerRadius: 4, rotation: toRing.angle), .skinChrome, 0.9)
+        add(.circle(center: center, radius: 15), .primary, 0.92)
+        for ring in [5.0, 10.0] {
+            add(.arc(center: center, radius: ring, thickness: 0.7, startAngle: 0, endAngle: Angle.tau), .skinChrome, 0.8)
+        }
+        for spoke in 0..<6 {
+            let direction = Vec2(angle: Double(spoke) * .pi / 3 + 0.3)
+            add(.line(from: center + direction * 5, to: center + direction * 15, thickness: 0.7), .skinChrome, 0.8)
+        }
+        let hole = center - toRing.left * 26
+        add(.circle(center: hole, radius: 7), .skinIce, 0.5)
+        add(.circle(center: hole, radius: 4), .water, 1)
+    }
+
+    /// Ember's crater: a rim of dark rock around lava that glows and breathes.
+    private static func addCrater(at center: Vec2, time: Double?, id: inout Int, to list: inout RenderList) {
+        func add(_ primitive: Primitive, _ color: ColorToken, _ opacity: Double) {
+            list.add(primitive, color: color, opacity: opacity, space: .world, id: id)
+            id += 1
+        }
+        let glow = time.map { 0.8 + 0.2 * sin($0 * 1.6) } ?? 0.9
+        add(.circle(center: center, radius: 34), .mapEmber, 0.06 * glow)
+        for index in 0..<12 {
+            let at = center + Vec2(angle: Double(index) / 12 * Angle.tau + hash(index, 495) * 0.3) * 19
+            add(.circle(center: at, radius: 5 + 3 * hash(index, 496)), .wreck, 0.95)
+        }
+        add(.circle(center: center, radius: 15), .fireDeep, 0.95)
+        add(.circle(center: center, radius: 11 * glow), .mapEmber, 0.95)
+        add(.circle(center: center + Vec2(-2, 2), radius: 5 * glow), .fireCore, 0.9)
+    }
 
     /// Tropic's lagoon: a beach, clear shallow water with light playing on it, a little
     /// island with a palm, and a wooden jetty from the road's side.

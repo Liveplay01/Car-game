@@ -131,9 +131,12 @@ der Stadt außerhalb des Kreisverkehrs (dunkel, damit alles lesbar bleibt) und b
 Details mit (`MapTheme`, Entscheidung Leo 25.09.2026). **Jede Map säumt ihre Straßen**
 (Alleen an beiden Seiten jedes Arms); die Häuser lassen die Alleen frei.
 
-- **Sand** Dünen und Kakteen · **Forest** Moos und Tannen · **Autumn** Laub, Herbstbäume und
-  fallende Blätter · **Neon** Lichtraster und Leuchtpfosten · **Dusk** Laternen an den
-  Straßen · **Aurora** Polarlicht und verschneite Tannen · **Ember** glühende Risse und Felsen.
+- **Sand** Dünen, Kakteen, eine **Oase** mit zwei Palmen · **Forest** Moos, Tannen, eine
+  **Blockhütte mit flackerndem Lagerfeuer** · **Autumn** Laub, Herbstbäume, fallende Blätter,
+  ein **Kürbisfeld** mit Heuballen · **Neon** Lichtraster, Leuchtpfosten, ein **Platz mit
+  drehenden Lichtringen** · **Dusk** Laternen an den Straßen, ein **Brunnen** mit vier Lampen ·
+  **Aurora** Polarlicht, verschneite Tannen, ein **Iglu** mit Eisloch · **Ember** glühende
+  Risse, Felsen, ein **Krater** mit atmender Lava.
 - **Sakura** (Japan, Leo 25.09.2026): Kirschbaum-Alleen mit Steinlaternen (tōrō) in warmem
   Licht, Kirschbäume in voller Blüte (Kronen in drei Rosatönen), ein **Koi-Teich** mit
   Steinrand, Seerosen, schwimmenden Kois, Trittsteinen und **Torii**, eine geharkte
@@ -148,7 +151,7 @@ Details mit (`MapTheme`, Entscheidung Leo 25.09.2026). **Jede Map säumt ihre St
 - **Cosmos** Tiefraum mit Nebeln und funkelnden Sternen, kleine Planeten, Leuchtbaken an den
   Straßen, ein **Ringplanet mit umlaufendem Mond**, **Sternschnuppen**.
 
-Das Herzstück (Teich, Lagune, Mühle, Planet) liegt an der freien Stelle über dem Ring, so
+Das Herzstück jeder Map liegt an der freien Stelle über dem Ring, so
 weit weg von allen Armen wie möglich; ist kein Platz, fehlt es. Was durch die Luft fliegt,
 ist klein, blass und liegt unter dem HUD. **Reduce Motion:** nichts fliegt, Kois, Mühle,
 Mond und Sterne stehen still. Die Uhr dafür (`sceneTime`) läuft mit dem Spiel und fängt bei
@@ -198,5 +201,5 @@ Dazu die 7 Items aus Daily-Serie und Saison: 61 insgesamt.
 
 - **Weitere Fahrzeugtypen** mit fairen Eigenschaften: Oldtimer (wie ein Auto, eigene Form).
 - **Muster-Skins**: Karo, Camouflage.
-- **Map Skins**: andere Markierungsfarben; Herzstücke auch für die älteren Maps.
+- **Map Skins**: andere Markierungsfarben.
 - **Hupe/Sound-Skins** (rein kosmetisch).
