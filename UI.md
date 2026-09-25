@@ -200,6 +200,11 @@ struct PauseMenuView: View {
 **Use‑Case:** Durch das native `.sheet` wird das Pause‑Menu als Modal‑Overlay angezeigt, das automatisch im Safe‑Area‑Mitte erscheint und mit `presentationDetents([.medium])` eine halb‑hohe Karte simuliert.
 
 ### 4.4 Ergebnis‑Banner (In‑Scene‑Overlay)
+
+> **Stand 25.09.2026:** ersetzt. Das Ergebnis steht in der normalen oberen Karte (gleiche
+> Größe), die Levelzahl rollt weiter, und nach einem kurzen Nachklang wird es von selbst zum
+> Wartebildschirm der nächsten Schicht (`ResultBanner`, ROADMAP.md "Eine Stadt, ein Ring").
+> Der Code unten ist der alte Entwurf.
 Im `GamePresentation.RenderList` wird ein **Banner** erzeugt, sobald die Schicht endet. Beispiel‑Implementation (aus `HUD.swift`):
 ```swift
 func addResultBanner(to list: inout RenderList, summary: ShiftSummary) {

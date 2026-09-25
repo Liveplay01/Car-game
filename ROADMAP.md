@@ -19,7 +19,7 @@ Stand: 24.09.2026 · Die Details zur Basis (M0–M2) stehen in [FOUNDATION.md](F
 | M8 | Wetter & City Events ✅ (Playtest offen) | L | Regen, Sturm und Ereignisse, die den Verkehr wirklich verändern |
 | M9 | Stadt & Module ✅ (Playtest offen) | M | Modulplätze im Street Builder, Abschlepp-Depot, sichtbar wachsende Stadt |
 | M10 | Fahrzeugtypen, Mastery & Truhen ✅ (Playtest offen) | L | Sportwagen & Co., unsichtbare Mastery, Truhen mit Skins im Shop |
-| M11 | Look & Feel (Soft-Body ✅, Haptik-Muster ✅, Musik-Mix ✅, Icon ✅, Sounds-Feinschliff ✅, obere Anzeige ✅; finale Sounds, Design-Pass, Screens offen) | M | finale Farben, Formen, Effekte, Takedown-Deformation, HUD, Sounds |
+| M11 | Look & Feel (Soft-Body ✅, Haptik-Muster ✅, Musik-Mix ✅, Icon ✅, Sounds-Feinschliff ✅, obere Anzeige ✅, Welt als UI ✅; finale Sounds, Design-Pass, Screens offen) | M | finale Farben, Formen, Effekte, Takedown-Deformation, HUD, Sounds |
 
 ### Phase 2 · iPad: nur Fertigmachen (Swift Playgrounds)
 
@@ -122,10 +122,61 @@ genug, oder soll Level 1 schon mit 4 starten? Sind die großen Lücken (3 Autos 
 ein netter Moment oder ein Schlupfloch? Sind die längeren Schichten auf hohen Leveln gut?
 Fließt es mit gebauter Mautstelle?
 
+## Eine Stadt, ein Ring ✅ (25.09.2026, Ideen Leo)
+
+**Leitgedanke:** Die Welt ist die Oberfläche. Statt neuer Anzeigen, Popups und Screens spricht
+der Kreisverkehr selbst, und alle Tabs sind Blicke auf dieselbe laufende Stadt. Gebaut auf
+dem, was schon da war (Warn-Keile, Countdown-Ringe, Flow-Glow, fließender Schichtwechsel),
+nicht daneben. Alles in `GamePresentation`, also im Testfenster und in der App gleich.
+
+1. **Der Ring als UI** (`RingSignals`): Der Inselrand, auf dem die Warn-Keile saßen, ist jetzt
+   die Signal-Spur. Darauf ein Strich pro Auto der Schicht, der aufleuchtet, sobald das Auto
+   drin ist, ab der eigenen Zufahrt in Fahrtrichtung, in der Rush Hour in Mint. Dazu drei
+   kurze Lichtsignale in den Farben, die das Spiel schon hat: **Welle** über die Fahrbahn
+   (Combo-Stufe, Takedown, Transporter bezahlt), **Aufflackern** des ganzen Rands (Strike rot,
+   Polizei-Crash blau, verlorene Schicht), **Lichtlauf** einmal herum (Rush Hour beginnt,
+   Schicht geschafft). Reduce Motion: nur Aufflackern, keine Bewegung.
+2. **Schwebende Schilder** (`SpatialTag`): „WANTED“ blinkt während der Ankündigung nicht mehr
+   in der Inselmitte, sondern schwebt als kleines Schild über der Zufahrt, aus der der
+   Verbrecher kommt, mit Schatten auf der Straße und einem Hauch Auf und Ab.
+   „TRANSPORTER“ genauso. Der Countdown in der Inselmitte bleibt, sobald die Jagd läuft.
+3. **Kein Ergebnis-Screen** (`ResultBanner`): Die obere Karte wächst nicht mehr. In derselben
+   Karte: die Levelzahl rollt zur nächsten weiter, in der Mitte „LEVEL 5 COMPLETE“ über der
+   Punktzahl, rechts BEST bzw. NEW BEST. Auf der Insel zählt das Geld hoch. Nach 3,6 s
+   (`epilogue`) wird das Ergebnis von selbst zum Wartebildschirm der nächsten Schicht,
+   deren Verkehr schon fährt; das Tempo gleitet wie bisher (`tempoGlide`). Ein Tap startet
+   jederzeit.
+4. **Die Stadt atmet** (`CityPulse`): Bäume wiegen sich, einige Fenster glimmen im eigenen
+   Takt, zwei Wolkenschatten ziehen über die Stadt. Alles wird etwas lebhafter bei dichtem
+   Verkehr, mehr in der Rush Hour. Im Flow schickt jedes eingefädelte Auto eine schwache
+   Lichtwelle durch die Fenster der Stadt. Die Phasen laufen durch, Tempowechsel springen
+   nie. Reduce Motion: still.
+5. **Eine Stadt, mehrere Perspektiven** (`Perspective`): Die Kamera gleitet je Tab (0,65 s,
+   kritisch gedämpft). **Street Builder:** der echte Kreisverkehr liegt exakt unter dem Plan,
+   die Straßen laufen sichtbar in die Stadt weiter; baut man einen Arm und der Ring wächst,
+   gleitet die Kamera mit. **Shop:** schwenkt in ein Viertel oben links, der Ring rutscht an
+   den Rand. **Upgrades:** der Ring bleibt, etwas näher, die Stadt drumherum tritt zurück.
+   Die Seiten decken die Stadt nicht mehr ganz zu. Reduce Motion: Schnitt statt Fahrt.
+
+**Tests:** `LivingCityTests` (14 Tests: Striche und Aufleuchten, Halten ins Ergebnis,
+Lichtlauf, roter Strike, Schild über dem richtigen Arm, Ergebnis wird zur nächsten Schicht,
+Kartengröße, Energie der Stadt, keine Sprünge, Flow-Welle, Builder-Deckung, Kamerafahrt,
+Reduce Motion, Zurücktreten ohne den Ring).
+
+**Grenzen, ehrlich:** In der App sind Shop, Upgrades und Street Builder noch nicht gebaut
+(M12); die Kamera fährt dort schon, sichtbar wird es mit den nativen Tabs. Das Schild über
+der Zufahrt ist per Test geprüft, im Testfenster aber noch nicht gesehen. Unter dem
+Upgrade-Raster ist vom Ring nur wenig zu sehen.
+
+**Playtest-Fragen:** Liest man den Schichtfortschritt am Ring, ohne hinzuschauen? Sind die
+Lichtsignale zu viel oder zu wenig? Ist der Nachklang von 3,6 s richtig? Merkt man, dass die
+Stadt atmet, ohne dass es auffällt? Fühlen sich die Tab-Wechsel wie eine Kamerafahrt an?
+
 ## Als Nächstes
 
 1. **Playtest im Testfenster** mit den Bots im Ring (Level 1, 5, 10, 20), Werte in
-   `tuning.json` (`minRingBots`, `ringBotsPerLevel`, `maxMinRingBots`).
+   `tuning.json` (`minRingBots`, `ringBotsPerLevel`, `maxMinRingBots`), und mit dem neuen
+   Ring-als-UI (Playtest-Fragen oben).
 2. **M12: erster Build auf dem iPad** (`App.swiftpm` ist vorbereitet, aber ungetestet).
 
 ## Grundsätze

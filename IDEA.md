@@ -1,6 +1,6 @@
 # Idea.md – offene Ideen
 
-Stand: 24.09.2026
+Stand: 25.09.2026
 
 Diese Datei enthält nur noch Ideen, die **noch nicht umgesetzt** sind. Was gebaut ist,
 steht mit seinen Regeln und Startwerten in [ROADMAP.md](ROADMAP.md) (M0–M11) und in
@@ -27,6 +27,11 @@ einer Stadt, die mit dem Spieler wächst.
 10. **Kein Feature-Bloat.** Neues fügt sich möglichst unsichtbar in den Spielfluss ein.
 11. **Der Schichtwechsel bleibt flüssig.** Kein Freeze, kein Replay, keine Einblendung
     zwischen zwei Schichten (Highlight/Replay wurde deshalb gestrichen).
+12. **Die Welt ist die Oberfläche** (Leo, 25.09.2026). Neues wird zuerst am Kreisverkehr
+    gezeigt (Inselrand, Lichtsignale, schwebende Schilder), erst dann als klassische Anzeige.
+    Räumlich, aber leise: Tiefe durch Schatten und kleine Staffelung, kein 3D.
+13. **Eine Stadt, mehrere Perspektiven.** Die Tabs sind Blicke auf dieselbe laufende Stadt,
+    kein Menü über einem angehaltenen Spiel. Der Ring hört nie auf.
 
 ---
 
@@ -48,6 +53,19 @@ einer Stadt, die mit dem Spieler wächst.
 - **App-Icon** (die Screen-Entwürfe stehen in UI.md, Abschnitt 4).
 
 ---
+
+## Offen: Welt als UI (Fortsetzung)
+
+Umgesetzt ist die Basis (ROADMAP.md, "Eine Stadt, ein Ring"). Offen:
+
+- **In der App:** die nativen Tabs (M12) über der gleitenden Kamera, Seiten mit
+  durchscheinendem Material statt Vollfläche.
+- **Daily Shift als eigene Perspektive** (z. B. anderer Blickwinkel oder Tageslicht) statt
+  Splash-Karte.
+- **Weitere Schilder im Raum:** Wetter und City Event über dem betroffenen Teil der Stadt
+  statt als Zeile in der Inselmitte.
+- **Stadtwachstum sichtbar machen:** nach einem Level-Up entsteht ein neues Gebäude mit einer
+  kurzen, leisen Bewegung am Rand der Stadt.
 
 ## Offen: Balancing (Startwerte stehen, Feinschliff im Playtest)
 
