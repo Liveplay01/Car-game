@@ -66,6 +66,12 @@ struct TransitionTests {
         #expect(x(shown(at: 0.05, reduceMotion: true)) == 100)
     }
 
+    @Test func hudChangesLandWithABumpAndSettleExactly() {
+        #expect(HUD.Pops.land(0, amount: 0.12) > 1.1)
+        #expect((1..<100).contains { HUD.Pops.land(Double($0) / 100, amount: 0.12) < 1 })
+        #expect(HUD.Pops.land(1, amount: 0.12) == 1)
+    }
+
     @Test func theSceneUnderneathNeverMoves() {
         let world = RenderItem(id: 1, primitive: .circle(center: Vec2(3, 4), radius: 1), color: .primary, space: .world)
         #expect(world.moved(by: Vec2(20, 0), opacity: 1).primitive == world.primitive)

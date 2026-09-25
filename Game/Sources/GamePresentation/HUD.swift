@@ -49,7 +49,24 @@ struct Popup: Sendable, Equatable {
 /// The in-game HUD (FOUNDATION.md 3): score top left, cars left and crashes top centre, the
 /// combo on the centre island, where it never covers traffic. Screen space, points.
 enum HUD {
-    static func add(world: World, level: Int, duty: Duty, score: Int, comboPop: Double, format: TextFormat, showsKeys: Bool, timeScale: Double, to list: inout RenderList) {
+    /// How far each small HUD change has come, 0 → 1; 1 is settled (and all of them are
+    /// with Reduce Motion). Nothing in the HUD just switches (Leo: "so smooth wie möglich").
+    struct Pops {
+        /// A car went in: the counter ticks.
+        var cars = 1.0
+        /// Rush hour began: its pill springs open.
+        var rushHour = 1.0
+        /// A strike or a police crash was used: its dot fills with a bump and a ring.
+        var strike = 1.0
+        var policeCrash = 1.0
+
+        /// Scale of something that lands: `amount` larger at 0, a little under at the swing, 1 at the end.
+        static func land(_ x: Double, amount: Double) -> Double {
+            x >= 1 ? 1 : 1 + amount * (1 - Ease.spring(x))
+        }
+    }
+
+    static func add(world: World, level: Int, duty: Duty, score: Int, comboPop: Double, pops: Pops = Pops(), format: TextFormat, showsKeys: Bool, timeScale: Double, to list: inout RenderList) {
         let width = list.camera.viewport.x
         let margin = Metrics.hudMargin
         var id = RenderID.hud
@@ -67,11 +84,15 @@ enum HUD {
         // at a glance. It stays there once the shift is over.
         let counter = Vec2(width / 2, Metrics.hudRow)
         let cars = Strings.HUD.cars(world.carsLeft ?? 0)
+        // Every car sent ticks the counter; the rush-hour pill springs open around it.
+        let tick = Pops.land(pops.cars, amount: 0.12)
         if world.shift.rushHourSince != nil {
-            add(.roundedRect(center: counter, size: Vec2(Metrics.counterPillWidth, 38), cornerRadius: 19, rotation: 0), .accent)
-            add(.text(cars, position: counter, size: Metrics.timerSize, alignment: .center, weight: .bold), .accentInk)
+            let open = Ease.spring(pops.rushHour)
+            let pill = Vec2(Metrics.counterPillWidth * (0.55 + 0.45 * open), 38 * (0.7 + 0.3 * open))
+            add(.roundedRect(center: counter, size: pill, cornerRadius: pill.y / 2, rotation: 0), .accent, opacity: Ease.outCubic(pops.rushHour / 0.4))
+            add(.text(cars, position: counter, size: Metrics.timerSize * tick, alignment: .center, weight: .bold), .accentInk)
         } else {
-            add(.text(cars, position: counter, size: Metrics.timerSize, alignment: .center, weight: .bold), .primary)
+            add(.text(cars, position: counter, size: Metrics.timerSize * tick, alignment: .center, weight: .bold), .primary)
         }
 
         // Crashes the shift survives, under the car counter: one dot per strike (only if there is
@@ -88,8 +109,17 @@ enum HUD {
         for (index, dot) in dots.enumerated() {
             let slot = Double(index) + (index >= firstPolice ? groupGap : 0)
             let center = Vec2(width / 2 + (slot - span / 2) * Metrics.strikeSpacing, Metrics.strikeRow)
+            // The dot that was just used lands with a bump and sends a ring out.
+            let isNewest = index < firstPolice
+                ? index == world.score.strikes - 1
+                : index - firstPolice == world.score.policeCrashes - 1
+            let pop = !isNewest ? 1 : (index < firstPolice ? pops.strike : pops.policeCrash)
             if dot.used {
-                add(.circle(center: center, radius: Metrics.strikeRadius), .destructive)
+                if pop < 1 {
+                    let x = Ease.outCubic(pop)
+                    add(.arc(center: center, radius: Metrics.strikeRadius * (1 + 1.6 * x), thickness: 1.5, startAngle: 0, endAngle: Angle.tau), .destructive, opacity: 1 - x)
+                }
+                add(.circle(center: center, radius: Metrics.strikeRadius * Pops.land(pop, amount: 0.7)), .destructive)
             } else {
                 add(.arc(center: center, radius: Metrics.strikeRadius - 0.75, thickness: 1.5, startAngle: 0, endAngle: Angle.tau), dot.ring)
             }

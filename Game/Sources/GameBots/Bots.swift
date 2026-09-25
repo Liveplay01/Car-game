@@ -266,6 +266,9 @@ public enum ShiftRunner {
                 if case let .shiftEnded(result) = event { return result }
             }
         }
-        preconditionFailure("shift \(seed) did not end")
+        // Not finished in time counts as not done, instead of stopping the whole run: a
+        // storm with roadworks on a high level can make the careful bot this slow (level 25,
+        // seed 288). A real stuck shift shows up as a done rate far below the others.
+        return world.result(outcome: .struckOut, at: world.time)
     }
 }

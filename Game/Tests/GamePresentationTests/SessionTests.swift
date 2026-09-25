@@ -220,6 +220,8 @@ struct SessionTests {
         // The second car is the first of the last two.
         session.run(seconds: 1) { $0.world.queue.isReady }
         session.advance([.tap])
+        // The counter ticks and the pill springs open (`HUD.Pops`); once settled it sits exactly.
+        session.run(seconds: 0.6)
         let frame = session.advance()
         #expect(frame.renderList.items.contains { $0.color == .accentInk && $0.primitive == .text(Strings.HUD.cars(1), position: Vec2(viewport.x / 2, Metrics.hudRow), size: Metrics.timerSize, alignment: .center, weight: .bold) })
         #expect(frame.texts.contains(Strings.HUD.rushFactor(2)))

@@ -120,6 +120,12 @@ public final class GameSession {
     private var shownScore = 0.0
     /// How long ago the combo reached a new tier, for the spring on the multiplier.
     private var sinceComboTier = Double.infinity
+    /// Seconds since a car went in, a strike and a police crash counted (`HUD.Pops`), and
+    /// the counts they were measured against.
+    private var sinceCarSent = Double.infinity
+    private var sinceStrike = Double.infinity
+    private var sincePoliceCrash = Double.infinity
+    private var seenCounts = (carsLeft: 0, strikes: 0, policeCrashes: 0)
     /// Flow State as the ring glow shows it, 0…1: it fades in and out instead of switching.
     private var flowLevel = 0.0
 
@@ -683,6 +689,15 @@ public final class GameSession {
         }
         sinceTakedown += realDelta
         sinceComboTier += realDelta
+        sinceCarSent += realDelta
+        sinceStrike += realDelta
+        sincePoliceCrash += realDelta
+        // Only going the counting way pops: a new shift refills without a bump.
+        let counts = (carsLeft: world.carsLeft ?? 0, strikes: world.score.strikes, policeCrashes: world.score.policeCrashes)
+        if counts.carsLeft < seenCounts.carsLeft { sinceCarSent = 0 }
+        if counts.strikes > seenCounts.strikes { sinceStrike = 0 }
+        if counts.policeCrashes > seenCounts.policeCrashes { sincePoliceCrash = 0 }
+        seenCounts = counts
         let flowTarget = screen == .playing && world.isInFlow ? 1.0 : 0.0
         flowLevel += (flowTarget - flowLevel) * min(1, realDelta / Self.flowFade)
         // The score catches up with itself: it counts, never jumps (FOUNDATION.md 3).
@@ -1032,6 +1047,12 @@ public final class GameSession {
                 world: world, level: playingLevel, duty: playingDuty,
                 score: Int(shownScore.rounded()),
                 comboPop: reduceMotion ? 0 : Ease.clamp01(sinceComboTier / Self.comboPop),
+                pops: reduceMotion ? HUD.Pops() : HUD.Pops(
+                    cars: Ease.clamp01(sinceCarSent / 0.35),
+                    rushHour: world.shift.rushHourSince.map { Ease.clamp01((world.time - $0) / 0.5) } ?? 1,
+                    strike: Ease.clamp01(sinceStrike / 0.5),
+                    policeCrash: Ease.clamp01(sincePoliceCrash / 0.5)
+                ),
                 format: format, showsKeys: options.showsKeyHints, timeScale: timeScale, to: &list
             )
             HUD.addPopups(popups, format: format, reduceMotion: reduceMotion, to: &list)

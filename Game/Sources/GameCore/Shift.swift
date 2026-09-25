@@ -229,7 +229,8 @@ extension World {
         events.append(.shiftEnded(result(outcome: outcome, at: time)))
     }
 
-    func result(outcome: ShiftOutcome, at time: Double) -> ShiftResult {
+    /// The shift's numbers as they stand, as if it ended now with `outcome`.
+    public func result(outcome: ShiftOutcome, at time: Double) -> ShiftResult {
         ShiftResult(
             outcome: outcome,
             score: score.points,
