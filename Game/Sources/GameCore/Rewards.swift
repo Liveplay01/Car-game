@@ -91,7 +91,7 @@ extension Career {
         dailyPlayed = day
         guard let milestone = Self.streakMilestones.first(where: { $0.days == dailyStreak }),
               !collection.contains(milestone.item), let item = Cosmetics.item(milestone.item) else { return nil }
-        collection.append(item.id)
+        collect(item.id)
         return item
     }
 

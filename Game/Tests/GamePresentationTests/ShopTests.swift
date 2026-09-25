@@ -109,6 +109,33 @@ struct ShopTests {
         #expect(session.shopPage.shelf == item.map(ShopPage.Shelf.of))
     }
 
+    /// Leo, 25.09.2026: new items say so, and the Shop tab shows what waits there.
+    @Test func newItemsAreMarkedUntilTheirShelfWasSeen() {
+        let (session, store) = shopSession(chests: [.premium, .standard])
+        #expect(TabStrip.badge(for: .shop, career: session.save.career) == .count(2))
+        #expect(TabStrip.badge(for: .game, career: session.save.career) == nil)
+        session.advance([.tapShop(.open(.premium)), .tapShop(.dismiss)])
+        let item = store.game?.career.collection.first ?? ""
+        #expect(store.game?.career.unseen == [item])
+        // The collection waits on the new item's shelf; it wears its badge there.
+        session.advance([.tapShop(.section(.collection))])
+        #expect(session.advance().texts.contains(Strings.Shop.newBadge))
+        // Leaving the shelf means it was seen.
+        let other = ShopPage.Shelf.allCases.first { $0 != session.shopPage.shelf }!
+        session.advance([.tapShop(.shelf(other))])
+        #expect(store.game?.career.unseen.isEmpty == true)
+        #expect(TabStrip.badge(for: .shop, career: session.save.career) == .count(1))
+        // A tap on a new item sees it as well.
+        var career = Career()
+        career.collect("mint")
+        #expect(career.unseen == ["mint"] && career.owns("mint"))
+        career.markSeen(["mint"])
+        #expect(career.unseen.isEmpty)
+        #expect(TabStrip.badge(for: .shop, career: career) == nil)
+        career.collect("gold")
+        #expect(TabStrip.badge(for: .shop, career: career) == .dot)
+    }
+
     @Test func twoToneSkinsPaintTheRoofInTheirSecondColour() {
         let config = Config()
         for (skin, roof) in [("panda", ColorToken.skinCarbon), ("koi", .skinKoi), ("mocha", .skinCream)] {

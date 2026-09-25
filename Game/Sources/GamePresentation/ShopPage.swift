@@ -320,6 +320,17 @@ public enum ShopPage {
             thumb = min(max(thumb, 0), Double(layout.segments.count - 1))
         }
         MenuKit.segmented(labels, chosen: chosen, thumb: thumb, in: all, id: &id, to: &list)
+        // Something new in the collection: a dot beside its name.
+        if !career.unseen.isEmpty, let (_, rect) = layout.segments.first(where: { $0.0 == .collection }) {
+            let label = Strings.Shop.section(.collection)
+            badgeDot(at: Vec2(rect.center.x + Icons.textWidth(label, size: 13) / 2 + 8, rect.center.y), opacity: 1, id: &id, to: &list)
+        }
+    }
+
+    /// The accent dot that says "something new here".
+    static func badgeDot(at center: Vec2, opacity: Double, id: inout Int, to list: inout RenderList) {
+        list.add(.circle(center: center, radius: 3.5), color: .accent, opacity: opacity, space: .screen, id: id)
+        id += 1
     }
 
     // MARK: Chests
@@ -392,6 +403,9 @@ public enum ShopPage {
                 list.add(.roundedRect(center: Vec2(rect.center.x, rect.maxY - 3), size: Vec2(rect.width - 20, 2.5), cornerRadius: 1.25, rotation: 0), color: tint, opacity: enter, space: .screen, id: id)
                 id += 1
             }
+            if items.contains(where: { career.unseen.contains($0.id) }) {
+                badgeDot(at: Vec2(rect.maxX - 7, rect.minY + 7), opacity: enter, id: &id, to: &list)
+            }
             text(Strings.Shop.shelf(shelf), Vec2(rect.center.x, rect.center.y - 7), size: 11, weight: .bold, color: chosen ? .primary : .muted, alignment: .center, opacity: enter, id: &id, to: &list)
             text("\(owned)/\(items.count)", Vec2(rect.center.x, rect.center.y + 8), size: 10, color: owned == items.count ? tint : .muted, alignment: .center, opacity: enter, id: &id, to: &list)
         }
@@ -410,6 +424,13 @@ public enum ShopPage {
             text(name, Vec2(rect.center.x, rect.maxY - 14), size: fitted(name, 11, width: rect.width - 12), weight: .bold, color: owned ? .primary : .muted, alignment: .center, opacity: enter, id: &id, to: &list)
             if worn {
                 text(Strings.Shop.worn, Vec2(rect.maxX - 10, rect.minY + 12), size: 10, weight: .bold, color: .accent, alignment: .trailing, opacity: enter, id: &id, to: &list)
+            }
+            if career.unseen.contains(item.id) {
+                // "NEW": a small accent capsule in the corner, like a badge on iOS.
+                let at = Vec2(rect.minX + 22, rect.minY + 12)
+                list.add(.roundedRect(center: at, size: Vec2(30, 15), cornerRadius: 7.5, rotation: 0), color: .accent, opacity: enter, space: .screen, id: id)
+                id += 1
+                text(Strings.Shop.newBadge, at, size: 9, weight: .bold, color: .accentInk, alignment: .center, opacity: enter, id: &id, to: &list)
             }
         }
     }

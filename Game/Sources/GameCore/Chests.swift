@@ -247,7 +247,7 @@ extension Career {
             money += rarity.duplicateMoney
             return ChestOpening(chest: kind, item: item, isDuplicate: true, money: rarity.duplicateMoney)
         }
-        collection.append(item.id)
+        collect(item.id)
         return ChestOpening(chest: kind, item: item, isDuplicate: false, money: 0)
     }
 
@@ -270,6 +270,19 @@ extension Career {
             return false
         }
         return true
+    }
+
+    /// Puts a new item into the collection, marked as not seen yet.
+    public mutating func collect(_ id: String) {
+        guard !collection.contains(id) else { return }
+        collection.append(id)
+        unseen.append(id)
+    }
+
+    /// The player has looked at these items: no longer "NEW".
+    public mutating func markSeen<Items: Sequence>(_ ids: Items) where Items.Element == String {
+        let seen = Set(ids)
+        unseen.removeAll { seen.contains($0) }
     }
 
     /// Whether an item is in the collection, e.g. the vehicle type "sportsCar".

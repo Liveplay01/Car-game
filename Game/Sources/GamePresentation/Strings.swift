@@ -158,6 +158,8 @@ public enum Strings {
             }
         }
 
+        /// On an item the player has not looked at yet.
+        public static let newBadge = "NEW"
         /// The collection's shelves; short, six fit across a phone.
         public static func shelf(_ shelf: ShopPage.Shelf) -> String {
             switch shelf {

@@ -179,6 +179,9 @@ public struct Career: Sendable, Equatable, Codable {
     /// Chests waiting in the shop, the items collected, and the skins worn (M10).
     public var chests: [ChestKind] = []
     public var collection: [String] = []
+    /// Items in the collection the player has not looked at yet: marked "NEW" (Leo,
+    /// 25.09.2026). Seen once tapped or once their shelf was left.
+    public var unseen: [String] = []
     /// Car skins worn at once (up to `Career.maxCarSkins`): every normal car on the road
     /// gets one of them. And the one map skin.
     public var carSkins: [String] = []
@@ -212,7 +215,7 @@ public struct Career: Sendable, Equatable, Codable {
         case level, money, upgrades, duty, armSlots, modules, mastery, masteryTiers, chests, collection
         case carSkins, mapSkin, adChests, adDay, chestsOpened, chestsSinceEpic
         case dailyDone, lastLoginDay, dailyStreak, challengeDay, challengesDone
-        case dailyPlayed, albumsDone, bestTimes
+        case dailyPlayed, albumsDone, bestTimes, unseen
         /// Read only: the single car skin of older saves.
         case legacyCarSkin = "carSkin"
     }
@@ -229,6 +232,7 @@ public struct Career: Sendable, Equatable, Codable {
         try c.encode(masteryTiers, forKey: .masteryTiers)
         try c.encode(chests.map(\.rawValue), forKey: .chests)
         try c.encode(collection, forKey: .collection)
+        try c.encode(unseen, forKey: .unseen)
         try c.encode(carSkins, forKey: .carSkins)
         try c.encodeIfPresent(mapSkin, forKey: .mapSkin)
         try c.encode(adChests, forKey: .adChests)
@@ -260,6 +264,7 @@ public struct Career: Sendable, Equatable, Codable {
         let chestNames = (try? container.decodeIfPresent([String].self, forKey: .chests)) ?? []
         chests = chestNames.compactMap(ChestKind.init(rawValue:))
         collection = (try? container.decodeIfPresent([String].self, forKey: .collection)) ?? []
+        unseen = (try? container.decodeIfPresent([String].self, forKey: .unseen)) ?? []
         // Saves from before several skins held one `carSkin`.
         if let skins = try? container.decodeIfPresent([String].self, forKey: .carSkins) {
             carSkins = skins

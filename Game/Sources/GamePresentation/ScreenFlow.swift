@@ -211,9 +211,22 @@ public enum TabStrip {
         return Tab.allCases[min(index, Tab.allCases.count - 1)]
     }
 
+    /// What a tab's badge shows, like on iOS: a count, or just a dot.
+    public enum Badge: Sendable, Equatable {
+        case count(Int)
+        case dot
+    }
+
+    /// The Shop's badge: the chests waiting to be opened, or a dot for new items.
+    public static func badge(for tab: Tab, career: Career) -> Badge? {
+        guard tab == .shop else { return nil }
+        if !career.chests.isEmpty { return .count(career.chests.count) }
+        return career.unseen.isEmpty ? nil : .dot
+    }
+
     /// Like the iOS tab bar: a dark bar with a hairline on top, a glyph over a small label,
-    /// the chosen tab in the accent.
-    static func add(selected: Tab, to list: inout RenderList) {
+    /// the chosen tab in the accent, a red badge where something waits.
+    static func add(selected: Tab, career: Career? = nil, to list: inout RenderList) {
         let viewport = list.camera.viewport
         var id = RenderID.menu + 7_000
         let top = viewport.y - height
@@ -227,6 +240,20 @@ public enum TabStrip {
             let tint: ColorToken = isSelected ? .accent : .muted
             let x = cell * (Double(index) + 0.5)
             MenuKit.tabGlyph(tab, at: Vec2(x, top + 19), color: tint, id: &id, to: &list)
+            if let career, let badge = badge(for: tab, career: career) {
+                let at = Vec2(x + 14, top + 10)
+                switch badge {
+                case let .count(count):
+                    let label = count > 99 ? "99+" : "\(count)"
+                    let width = max(18, Icons.textWidth(label, size: 11) + 10)
+                    list.add(.roundedRect(center: at + Vec2(width / 2 - 9, 0), size: Vec2(width, 18), cornerRadius: 9, rotation: 0), color: .destructive, space: .screen, id: id)
+                    list.add(.text(label, position: at + Vec2(width / 2 - 9, 0), size: 11, alignment: .center, weight: .bold), color: .primary, space: .screen, id: id + 1)
+                    id += 2
+                case .dot:
+                    list.add(.circle(center: at, radius: 5), color: .destructive, space: .screen, id: id)
+                    id += 1
+                }
+            }
             list.add(
                 .text(Strings.Tabs.title(tab), position: Vec2(x, top + 41), size: 10, alignment: .center, weight: isSelected ? .bold : .regular),
                 color: tint, space: .screen, id: id

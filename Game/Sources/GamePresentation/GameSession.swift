@@ -269,7 +269,10 @@ public final class GameSession {
             guard screen.showsTabBar, tab != screen.tab || screen.tab == .game else { return }
             // The next shift already waits behind every page and behind the result.
             let next: Screen = tab == .game ? .ready : .page(tab)
-            if next != screen { tick() }
+            if next != screen {
+                tick()
+                leaveShelf()
+            }
             screen = next
         case let .pickUpPart(part):
             tick()
@@ -665,15 +668,28 @@ public final class GameSession {
 
     /// A tap on the Shop page. Tapping a selected chest again opens one; tapping an owned
     /// item again wears it — like the double tap on an upgrade.
+    /// The shelf on screen is being left: what was new on it has been seen.
+    private func leaveShelf() {
+        guard screen == .page(.shop), shopPage.section == .collection else { return }
+        let shown = shopPage.shelf.items.map(\.id).filter(save.career.unseen.contains)
+        guard !shown.isEmpty else { return }
+        save.career.markSeen(shown)
+        store.save(save)
+    }
+
     private func tapShop(_ target: ShopPage.Target) {
         // It gives way under the finger the moment it is touched.
         if target != .dismiss, !reduceMotion { shopPage.pressed = (target, 0) }
         switch target {
         case let .section(section):
             if shopPage.section != section { tick() }
+            if section != .collection { leaveShelf() }
             shopPage.select(section)
         case let .shelf(shelf):
-            if shopPage.shelf != shelf { tick() }
+            if shopPage.shelf != shelf {
+                tick()
+                leaveShelf()
+            }
             shopPage.shelf = shelf
         case let .chest(kind):
             if shopPage.selectedChest == kind, save.career.count(of: kind) > 0 {
@@ -690,6 +706,10 @@ public final class GameSession {
         case .watchAd:
             perform(.watchAd)
         case let .item(id):
+            if save.career.unseen.contains(id) {
+                save.career.markSeen([id])
+                store.save(save)
+            }
             if shopPage.selectedItem == id, save.career.owns(id) {
                 perform(.wear(id))
             } else if shopPage.selectedItem != id {
@@ -1257,7 +1277,7 @@ public final class GameSession {
         }
         applyTransition(to: &list, overlay: overlayStart..<list.items.count)
         if tabStrip {
-            TabStrip.add(selected: screen.tab, to: &list)
+            TabStrip.add(selected: screen.tab, career: save.career, to: &list)
         }
         if let notice {
             addNotice(notice.text, age: notice.age, bottomInset: bottomInset, to: &list)
