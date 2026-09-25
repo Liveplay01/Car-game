@@ -108,6 +108,19 @@ struct TearDownTests {
         }
     }
 
+    /// The app draws every shape itself (SwiftUI Canvas), each frame. A map may dress the
+    /// city up, but not at any price: a full city on every map stays within a budget.
+    @Test func everyMapStaysWithinItsDrawingBudget() {
+        for map in MapTheme.allCases {
+            var saved = SaveGame()
+            saved.career.mapSkin = map.rawValue
+            saved.career.level = 20
+            saved.career.armSlots = [0, 4, 8, 12, 14, 2, 6]
+            let items = makeSession(store: MemorySaveStore(saved)).advance().renderList.items
+            #expect(items.count < 1_200, "\(map): \(items.count) shapes")
+        }
+    }
+
     @Test func moneyInATextIsANoteNotAWord() {
         #expect(!Strings.money("2,000").contains("cash"))
         #expect(Icons.pieces(Strings.Notice.notEnoughMoney("2,000")).contains(.money))

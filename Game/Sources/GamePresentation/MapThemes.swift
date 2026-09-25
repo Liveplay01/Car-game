@@ -122,6 +122,13 @@ public enum MapTheme: String, Sendable, CaseIterable {
             list.add(primitive, color: color, opacity: opacity, space: .world, id: id)
             id += 1
         }
+        /// A wide patch with a soft edge: three layers, each a little smaller, so it fades
+        /// out instead of ending in a hard circle.
+        func soft(_ center: Vec2, _ radius: Double, _ color: ColorToken, _ opacity: Double) {
+            for layer in 0..<3 {
+                add(.circle(center: center, radius: radius * (1 - 0.22 * Double(layer))), color, opacity * 0.45)
+            }
+        }
         /// A point in the city around the ring, the same one for the same index.
         func spot(_ index: Int, _ salt: UInt64, from inner: Double = 30, to outer: Double = 360) -> Vec2 {
             Vec2(angle: hash(index, salt) * Angle.tau) * (ring + inner + hash(index, salt + 1) * (outer - inner))
@@ -130,7 +137,7 @@ public enum MapTheme: String, Sendable, CaseIterable {
         case .sand:
             // Long, soft dunes and a few pebbles.
             for index in 0..<14 {
-                add(.circle(center: spot(index, 301), radius: 40 + 50 * hash(index, 303)), .mapSand, 0.06)
+                soft(spot(index, 301), 40 + 50 * hash(index, 303), .mapSand, 0.06)
             }
             for index in 0..<40 {
                 add(.circle(center: spot(index, 305), radius: 1.5 + 2 * hash(index, 307)), .mapSand, 0.25)
@@ -138,7 +145,7 @@ public enum MapTheme: String, Sendable, CaseIterable {
         case .forest:
             // Moss patches under the trees.
             for index in 0..<16 {
-                add(.circle(center: spot(index, 311), radius: 30 + 40 * hash(index, 313)), .mapForest, 0.07)
+                soft(spot(index, 311), 30 + 40 * hash(index, 313), .mapForest, 0.07)
             }
         case .autumn:
             // Fallen leaves everywhere, orange and gold.
@@ -164,7 +171,7 @@ public enum MapTheme: String, Sendable, CaseIterable {
                 add(.arc(center: Vec2(0, -ring * 0.4), radius: radius, thickness: 26 - Double(band) * 4, startAngle: 0.35 * .pi, endAngle: 0.65 * .pi + 0.05 * Double(band)), .mapAurora, 0.07 + 0.02 * Double(band))
             }
             for index in 0..<30 {
-                add(.circle(center: spot(index, 341), radius: 12 + 20 * hash(index, 343)), .skinChrome, 0.05)
+                soft(spot(index, 341), 12 + 20 * hash(index, 343), .skinChrome, 0.05)
             }
         case .ember:
             // Cracks in the ground that glow.
@@ -180,10 +187,10 @@ public enum MapTheme: String, Sendable, CaseIterable {
             defer { if let spot = pondCenter(world.layout) { addWindmill(at: spot, time: time, id: &id, to: &list) } }
             // Grass in tufts and wild flowers in four colours.
             for index in 0..<18 {
-                add(.circle(center: spot(index, 401), radius: 26 + 34 * hash(index, 403)), .skinFern, 0.06)
+                soft(spot(index, 401), 26 + 34 * hash(index, 403), .skinFern, 0.06)
             }
             let flowers: [ColorToken] = [.mapMeadow, .primary, .skinRose, .skinSky]
-            for index in 0..<110 {
+            for index in 0..<80 {
                 let at = spot(index, 405, from: 12)
                 guard onScreen(at, 3, camera) else { continue }
                 add(.circle(center: at, radius: 1.1 + 0.8 * hash(index, 407)), flowers[index % flowers.count], 0.55)
@@ -191,7 +198,7 @@ public enum MapTheme: String, Sendable, CaseIterable {
         case .tropic:
             // Sandy patches, shells, and the lagoon.
             for index in 0..<16 {
-                add(.circle(center: spot(index, 411), radius: 14 + 20 * hash(index, 413)), .mapSand, 0.06)
+                soft(spot(index, 411), 14 + 20 * hash(index, 413), .mapSand, 0.06)
             }
             for index in 0..<40 {
                 let at = spot(index, 419, from: 12)
@@ -203,7 +210,7 @@ public enum MapTheme: String, Sendable, CaseIterable {
             defer { if let spot = pondCenter(world.layout) { addFrozenPond(at: spot, time: time, id: &id, to: &list) } }
             // Snow drifts, sledge tracks and snow that sparkles.
             for index in 0..<22 {
-                add(.circle(center: spot(index, 431), radius: 16 + 26 * hash(index, 433)), .mapSnow, 0.05)
+                soft(spot(index, 431), 16 + 26 * hash(index, 433), .mapSnow, 0.05)
             }
             for index in 0..<5 {
                 let center = spot(index, 435, from: 90, to: 300)
@@ -223,7 +230,7 @@ public enum MapTheme: String, Sendable, CaseIterable {
             // Deep space: nebula clouds and stars that twinkle.
             let clouds: [ColorToken] = [.juicePurple, .juiceBlue, .skinRose]
             for index in 0..<12 {
-                add(.circle(center: spot(index, 441), radius: 40 + 60 * hash(index, 443)), clouds[index % clouds.count], 0.035)
+                soft(spot(index, 441), 40 + 60 * hash(index, 443), clouds[index % clouds.count], 0.035)
             }
             for index in 0..<150 {
                 let at = spot(index, 445, from: 8)
@@ -245,18 +252,23 @@ public enum MapTheme: String, Sendable, CaseIterable {
             list.add(primitive, color: color, opacity: opacity, space: .world, id: id)
             id += 1
         }
+        func soft(_ center: Vec2, _ radius: Double, _ color: ColorToken, _ opacity: Double) {
+            for layer in 0..<3 {
+                add(.circle(center: center, radius: radius * (1 - 0.22 * Double(layer))), color, opacity * 0.45)
+            }
+        }
         func spot(_ index: Int, _ salt: UInt64, from inner: Double = 12, to outer: Double = 360) -> Vec2 {
             Vec2(angle: hash(index, salt) * Angle.tau) * (ring + inner + hash(index, salt + 1) * (outer - inner))
         }
         // Soft moss and a haze of fallen blossom.
         for index in 0..<14 {
-            add(.circle(center: spot(index, 331, from: 40), radius: 28 + 36 * hash(index, 332)), .mapForest, 0.05)
+            soft(spot(index, 331, from: 40), 28 + 36 * hash(index, 332), .mapForest, 0.05)
         }
         for index in 0..<10 {
-            add(.circle(center: spot(index, 334, from: 30), radius: 22 + 30 * hash(index, 335)), .mapSakura, 0.035)
+            soft(spot(index, 334, from: 30), 22 + 30 * hash(index, 335), .mapSakura, 0.035)
         }
         // Petals lying everywhere: small ovals, turned every which way.
-        for index in 0..<110 {
+        for index in 0..<80 {
             let at = spot(index, 336)
             guard onScreen(at, 3, camera) else { continue }
             let length = 1.8 + 1.2 * hash(index, 338)
@@ -501,7 +513,7 @@ public enum MapTheme: String, Sendable, CaseIterable {
             add(.circle(center: at, radius: 4.5), .stone, 0.9)
             add(.circle(center: at + Vec2(-1.3, 1.1), radius: 2.4), .mapForest, 0.6)
         }
-        for index in 0..<18 {
+        for index in 0..<12 {
             let at = Vec2(angle: hash(index, 371) * Angle.tau) * island * (0.3 + 0.62 * hash(index, 372))
             add(.roundedRect(center: at, size: Vec2(2, 1.2), cornerRadius: 0.6, rotation: hash(index, 373) * .pi), index % 3 == 0 ? .sakuraPale : .mapSakura, 0.55)
         }
@@ -632,9 +644,9 @@ public enum MapTheme: String, Sendable, CaseIterable {
         id += 3
     }
 
-    /// A cherry tree in full bloom from above: its shadow, petals fallen around it, and a
-    /// crown of blossom clusters — deep pink on the shaded side, pale where the light falls,
-    /// with single white flowers on top.
+    /// A cherry tree in full bloom from above: its shadow and a crown of blossom clusters —
+    /// deep pink on the shaded side, pale where the light falls, with single white flowers
+    /// on top.
     private static func addCherryTree(at center: Vec2, size: Double, index: Int, id: inout Int, to list: inout RenderList) {
         func add(_ primitive: Primitive, _ color: ColorToken, _ opacity: Double = 1) {
             list.add(primitive, color: color, opacity: opacity, space: .world, id: id)
@@ -642,13 +654,9 @@ public enum MapTheme: String, Sendable, CaseIterable {
         }
         let turn = hash(index, 361) * Angle.tau
         add(.circle(center: center + Vec2(size * 0.4, -size * 0.4), radius: size * 1.25), .background, 0.4)
-        for petal in 0..<5 {
-            let at = center + Vec2(angle: turn + Double(petal) * 1.9) * size * (1.35 + 0.6 * hash(index * 5 + petal, 362))
-            add(.roundedRect(center: at, size: Vec2(2, 1.2), cornerRadius: 0.6, rotation: turn + Double(petal)), .mapSakura, 0.6)
-        }
         // No two crowns alike: the clusters differ in number, reach and size.
         let shade = Vec2(size * 0.1, -size * 0.1)
-        let lobes = 5 + index % 3
+        let lobes = 4 + index % 3
         for lobe in 0..<lobes {
             let k = hash(index * 7 + lobe, 364)
             add(.circle(center: center + shade + Vec2(angle: turn + Double(lobe) * Angle.tau / Double(lobes)) * size * (0.45 + 0.2 * k), radius: size * (0.5 + 0.2 * k)), .sakuraDeep, 0.95)
@@ -661,7 +669,7 @@ public enum MapTheme: String, Sendable, CaseIterable {
         for light in 0..<2 {
             add(.circle(center: center + Vec2(angle: 1.9 + Double(light) * 0.9) * size * 0.4, radius: size * 0.3), .sakuraPale, 0.85)
         }
-        for flower in 0..<3 {
+        for flower in 0..<2 {
             let at = center + Vec2(angle: turn + Double(flower) * 2.1) * size * 0.35 * (0.5 + hash(index * 3 + flower, 363))
             add(.circle(center: at, radius: 0.75), .primary, 0.9)
         }

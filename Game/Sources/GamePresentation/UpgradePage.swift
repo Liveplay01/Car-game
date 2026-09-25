@@ -219,18 +219,27 @@ public enum UpgradePage {
         MenuKit.glow(at: tile, radius: pictureHeight * 0.62, color: tint(of: upgrade), opacity: 0.45 * opacity, id: &id, to: &list)
         UpgradeArt.add(upgrade, in: picture, opacity: opacity, id: &id, to: &list)
 
+        // Two rows under the picture: the name with its steps, then the pips with the price.
+        // Each row keeps its own lane, so nothing overlaps however short the card gets.
         let textLeft = center.x - size.x / 2 + 12
-        list.add(.text(Strings.Upgrades.name(upgrade), position: Vec2(textLeft, picture.maxY + 16), size: 14, alignment: .leading, weight: .bold), color: .primary, opacity: opacity, space: .screen, id: id)
+        let textRight = center.x + size.x / 2 - 12
+        let nameY = picture.maxY + (center.y + size.y / 2 - picture.maxY) * 0.36
+        list.add(.text(Strings.Upgrades.name(upgrade), position: Vec2(textLeft, nameY), size: 14, alignment: .leading, weight: .bold), color: .primary, opacity: opacity, space: .screen, id: id)
+        id += 1
+        list.add(.text(Strings.Upgrades.steps(steps, of: upgrade.maxSteps), position: Vec2(textRight, nameY), size: 12, alignment: .trailing, weight: .regular), color: .muted, opacity: opacity, space: .screen, id: id)
         id += 1
         if showsKeys {
-            list.add(.text(Strings.Keys.number(index + 1), position: Vec2(center.x + size.x / 2 - 12, picture.maxY + 16), size: 12, alignment: .trailing, weight: .regular), color: .muted, opacity: 0.7 * opacity, space: .screen, id: id)
+            list.add(.text(Strings.Keys.number(index + 1), position: Vec2(picture.maxX - 8, picture.minY + 10), size: 11, alignment: .trailing, weight: .regular), color: .muted, opacity: 0.7 * opacity, space: .screen, id: id)
             id += 1
         }
 
-        // One pip per step: filled for what is bought. The new one pops in.
-        let pipY = picture.maxY + 34
-        let pipGap = 3.0
-        let pipWidth = min(9.0, (size.x - 24 - pipGap * Double(upgrade.maxSteps - 1)) / Double(upgrade.maxSteps))
+        // One pip per step: filled for what is bought. The new one pops in. They stop short
+        // of the price.
+        let priceY = center.y + size.y / 2 - 14
+        let pipY = priceY
+        let pipGap = 2.5
+        let priceRoom = 82.0
+        let pipWidth = min(9.0, (size.x - 24 - priceRoom - pipGap * Double(upgrade.maxSteps - 1)) / Double(upgrade.maxSteps))
         for step in 0..<upgrade.maxSteps {
             let filled = step < steps
             var pip = Vec2(textLeft + pipWidth / 2 + Double(step) * (pipWidth + pipGap), pipY)
@@ -247,7 +256,6 @@ public enum UpgradePage {
         }
 
         // Price, or "Max" once every step is bought.
-        let priceY = center.y + size.y / 2 - 14
         let affordable = price.map { career.money >= $0 } ?? false
         var priceColor: ColorToken = price == nil ? .accent : (affordable ? .primary : .muted)
         if denied != nil { priceColor = .destructive }
@@ -258,8 +266,6 @@ public enum UpgradePage {
             list.add(.text(Strings.Upgrades.maxed, position: priceAt, size: 14, alignment: .trailing, weight: .bold), color: priceColor, opacity: opacity, space: .screen, id: id)
             id += 1
         }
-        list.add(.text(Strings.Upgrades.steps(steps, of: upgrade.maxSteps), position: Vec2(textLeft, priceY), size: 12, alignment: .leading, weight: .regular), color: .muted, opacity: opacity, space: .screen, id: id)
-        id += 1
     }
 
     /// The panel at the bottom: what the selected upgrade does, and how to buy it.

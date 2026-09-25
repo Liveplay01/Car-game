@@ -148,7 +148,7 @@ public enum ShopPage {
     }
 
     static func chestCards(_ layout: Layout) -> [(ChestKind, Rect)] {
-        Array(zip(ChestKind.allCases, grid(ChestKind.allCases.count, columns: 2, in: layout.content, maxHeight: 150)))
+        Array(zip(ChestKind.allCases, grid(ChestKind.allCases.count, columns: 2, in: layout.content, maxHeight: 188)))
     }
 
     /// The shelf chips across the top of the collection.
@@ -271,6 +271,13 @@ public enum ShopPage {
         addDetail(layout, career: career, config: config, today: today, state: state, format: format, id: &id, to: &list)
     }
 
+    /// A font size at which `string` fits `width`: `size` if it fits, smaller if not, never
+    /// below 9 points.
+    static func fitted(_ string: String, _ size: Double, width: Double) -> Double {
+        let natural = Icons.textWidth(string, size: size)
+        return natural <= width ? size : max(9, size * width / natural)
+    }
+
     private static func text(_ string: String, _ at: Vec2, size: Double, weight: FontWeight = .regular, color: ColorToken, alignment: TextAlignment = .leading, opacity: Double = 1, id: inout Int, to list: inout RenderList) {
         list.add(.text(string, position: at, size: size, alignment: alignment, weight: weight), color: color, opacity: opacity, space: .screen, id: id)
         id += 1
@@ -319,10 +326,10 @@ public enum ShopPage {
             let iconAt = Vec2(rect.center.x, rect.minY + rect.height * 0.36)
             let available = count > 0 || kind.isForSale
             MenuKit.glow(at: iconAt, radius: min(rect.width, rect.height) * 0.42, color: chestColor(kind), opacity: (count > 0 ? 0.5 : 0.25) * enter * (available ? 1 : 0.4), id: &id, to: &list)
-            addChestIcon(kind, at: iconAt, scale: min(1, rect.height / 130), opacity: enter * (available ? 1 : 0.45), id: &id, to: &list)
-            text(Strings.Shop.chest(kind), Vec2(rect.center.x, rect.maxY - 34), size: 13, weight: .bold, color: .primary, alignment: .center, opacity: enter, id: &id, to: &list)
+            addChestIcon(kind, at: iconAt, scale: min(1.2, rect.height / 130), opacity: enter * (available ? 1 : 0.45), id: &id, to: &list)
+            text(Strings.Shop.chest(kind), Vec2(rect.center.x, rect.maxY - 36), size: fitted(Strings.Shop.chest(kind), 14, width: rect.width - 20), weight: .bold, color: .primary, alignment: .center, opacity: enter, id: &id, to: &list)
             let status = count > 0 ? Strings.Shop.waiting(count) : Strings.Shop.source(kind)
-            text(status, Vec2(rect.center.x, rect.maxY - 16), size: 11, color: count > 0 ? .accent : .muted, alignment: .center, opacity: enter, id: &id, to: &list)
+            text(status, Vec2(rect.center.x, rect.maxY - 17), size: fitted(status, 11, width: rect.width - 20), color: count > 0 ? .accent : .muted, alignment: .center, opacity: enter, id: &id, to: &list)
             if count > 0 {
                 // A small badge with the count.
                 let badge = Vec2(rect.maxX - 18, rect.minY + 18)
@@ -380,7 +387,8 @@ public enum ShopPage {
             id += 1
             panel(rect, opacity: enter, id: &id, to: &list)
             addPreview(item, at: Vec2(rect.center.x, rect.minY + rect.height * 0.4), scale: min(1, rect.height / 110), opacity: opacity, id: &id, to: &list)
-            text(owned ? Strings.Shop.item(item.id) : Strings.Shop.locked, Vec2(rect.center.x, rect.maxY - 14), size: 11, weight: .bold, color: owned ? .primary : .muted, alignment: .center, opacity: enter, id: &id, to: &list)
+            let name = owned ? Strings.Shop.item(item.id) : Strings.Shop.locked
+            text(name, Vec2(rect.center.x, rect.maxY - 14), size: fitted(name, 11, width: rect.width - 12), weight: .bold, color: owned ? .primary : .muted, alignment: .center, opacity: enter, id: &id, to: &list)
             if worn {
                 text(Strings.Shop.worn, Vec2(rect.maxX - 10, rect.minY + 12), size: 10, weight: .bold, color: .accent, alignment: .trailing, opacity: enter, id: &id, to: &list)
             }
@@ -504,6 +512,10 @@ public enum ShopPage {
             text(Strings.Shop.odds(kind.odds), Vec2(left, y), size: 11, color: .muted, id: &id, to: &list)
             y += 16
             text(Strings.Shop.pity(Career.pityChests - career.chestsSinceEpic), Vec2(left, y), size: 11, color: .muted, id: &id, to: &list)
+            if kind == .event {
+                y += 16
+                text(Strings.Shop.seasonHint, Vec2(left, y), size: 11, color: .accent, id: &id, to: &list)
+            }
         case .collection:
             guard let id0 = state.selectedItem, let item = Cosmetics.item(id0) else {
                 text(Strings.Shop.pickItem, detail.center - Vec2(0, 24), size: 13, color: .muted, alignment: .center, id: &id, to: &list)

@@ -467,8 +467,10 @@ public enum StreetBuilderPage {
         }
         // A row, read left to right: the part, what it is called, what it costs, what to do
         // with it. The picture sits in the left margin like an icon in a list.
-        addPartPicture(part, at: Vec2(center.x - size.x / 2 + 36, center.y), scale: 0.85, opacity: enter, id: &id, to: &list)
-        let textLeft = center.x - size.x / 2 + 74
+        // On a narrow card (two across a phone) the hint gives way; the panel below says it.
+        let isWide = size.x >= 300
+        addPartPicture(part, at: Vec2(center.x - size.x / 2 + (isWide ? 36 : 28), center.y), scale: 0.85, opacity: enter, id: &id, to: &list)
+        let textLeft = center.x - size.x / 2 + (isWide ? 74 : 56)
         let right = center.x + size.x / 2 - 18
         list.add(.text(Strings.Builder.name(part), position: Vec2(textLeft, center.y - 12), size: 16, alignment: .leading, weight: .bold), color: .primary, opacity: enter, space: .screen, id: id)
         id += 1
@@ -480,8 +482,10 @@ public enum StreetBuilderPage {
             list.add(.text(Strings.Builder.ringFull, position: Vec2(textLeft, center.y + 12), size: 15, alignment: .leading, weight: .bold), color: .muted, opacity: enter, space: .screen, id: id)
             id += 1
         }
-        list.add(.text(Strings.Builder.drag, position: Vec2(right, center.y), size: 12, alignment: .trailing, weight: .regular), color: .muted, opacity: 0.75 * enter, space: .screen, id: id)
-        id += 1
+        if isWide {
+            list.add(.text(Strings.Builder.drag, position: Vec2(right, center.y), size: 12, alignment: .trailing, weight: .regular), color: .muted, opacity: 0.75 * enter, space: .screen, id: id)
+            id += 1
+        }
     }
 
     /// The picture of a part: a bit of ring with an arm going off it.

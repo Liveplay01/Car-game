@@ -373,6 +373,9 @@ enum HUD {
 
     static func addPopups(_ popups: [Popup], format: TextFormat, reduceMotion: Bool, to list: inout RenderList) {
         let camera = list.camera
+        // Popups born at the same spot stack instead of printing over each other: each one
+        // steps up above those already standing there (older ones keep their place).
+        var placed: [(at: Vec2, height: Double)] = []
         for popup in popups {
             let enter = Ease.outCubic(popup.age / Popup.enter)
             let exit = Ease.clamp01((popup.age - (Popup.lifetime - Popup.exit)) / Popup.exit)
@@ -381,6 +384,7 @@ enum HUD {
             let rise = reduceMotion ? 0 : 10 * Ease.outCubic(popup.age / Popup.lifetime)
             let text: String
             let color: ColorToken
+            var size = Metrics.popupSize
             switch popup.kind {
             case .nearMiss, .perfect:
                 addPrecisionRing(popup, reduceMotion: reduceMotion, to: &list)
@@ -416,6 +420,7 @@ enum HUD {
                 // Small, quiet money: it happens many times a shift.
                 text = format.signed(amount)
                 color = .accent
+                size = Metrics.popupSize * 0.7
             case let .cost(amount):
                 text = "−" + Strings.money(format.number(amount))
                 color = .destructive
@@ -423,8 +428,14 @@ enum HUD {
                 text = Strings.HUD.covered
                 color = .muted
             }
+            var at = camera.toScreen(popup.position) + Vec2(0, -30)
+            let height = size + 4
+            while let below = placed.first(where: { abs($0.at.x - at.x) < 56 && abs($0.at.y - at.y) < ($0.height + height) / 2 }) {
+                at.y = below.at.y - (below.height + height) / 2
+            }
+            placed.append((at, height))
             list.add(
-                .text(text, position: camera.toScreen(popup.position) + Vec2(0, -30 - rise), size: Metrics.popupSize * scale, alignment: .center, weight: .bold),
+                .text(text, position: at + Vec2(0, -rise), size: size * scale, alignment: .center, weight: .bold),
                 color: color, opacity: opacity, space: .screen, id: RenderID.popups + popup.serial % 1_000
             )
         }

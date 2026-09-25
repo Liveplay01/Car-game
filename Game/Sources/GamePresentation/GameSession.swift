@@ -295,6 +295,9 @@ public final class GameSession {
             let albums = completeAlbums()
             store.save(save)
             if !albums.isEmpty { showNotice(albums.joined(separator: "  ·  ")) }
+            // The collection waits on the new item: its shelf, and it selected, one tap to wear.
+            shopPage.shelf = ShopPage.Shelf.of(opening.item)
+            shopPage.selectedItem = opening.item.id
             // The drawn shop reveals it and plays the burst with its animation; without drawn
             // menus a short notice says what it was.
             if options.drawsMenus {

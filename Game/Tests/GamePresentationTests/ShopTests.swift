@@ -100,6 +100,15 @@ struct ShopTests {
         #expect(session.advance().texts.contains(Strings.Shop.item("neon")))
     }
 
+    @Test func theCollectionWaitsOnTheItemJustOpened() {
+        let (session, store) = shopSession(chests: [.premium])
+        session.advance([.tapShop(.open(.premium))])
+        let item = store.game?.career.collection.first.flatMap(Cosmetics.item)
+        #expect(item != nil)
+        #expect(session.shopPage.selectedItem == item?.id)
+        #expect(session.shopPage.shelf == item.map(ShopPage.Shelf.of))
+    }
+
     @Test func twoToneSkinsPaintTheRoofInTheirSecondColour() {
         let config = Config()
         for (skin, roof) in [("panda", ColorToken.skinCarbon), ("koi", .skinKoi), ("mocha", .skinCream)] {

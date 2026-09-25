@@ -122,10 +122,12 @@ public enum Strings {
             switch kind {
             case .standard: "For sale · or watch an ad"
             case .premium: "For sale · or by hard masteries"
-            case .event: "From city events and the Daily Shift · holds this season's item"
+            case .event: "City events · Daily Shift"
             case .criminalHunt: "Earned by catching criminals"
             }
         }
+        /// The Event Chest's own line in the detail panel.
+        public static let seasonHint = "Holds this season's item half the time, until you have it."
         public static let pickItem = "Tap an item to see it."
         public static let lockedHint = "Not found yet: it comes out of chests."
         /// Where a locked item comes from: chests, the Daily streak or its season.
