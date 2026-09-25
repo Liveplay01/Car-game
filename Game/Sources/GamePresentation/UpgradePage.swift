@@ -108,7 +108,8 @@ public enum UpgradePage {
     ) {
         let viewport = list.camera.viewport
         var id = RenderID.menu
-        list.add(.roundedRect(center: viewport / 2, size: viewport, cornerRadius: 0, rotation: 0), color: .scrim, space: .screen, id: id)
+        // The city stays faintly there behind the page (`Perspective`): one world, another view.
+        list.add(.roundedRect(center: viewport / 2, size: viewport, cornerRadius: 0, rotation: 0), color: .scrim, opacity: MenuKit.pageBackdrop, space: .screen, id: id)
         id += 1
 
         // Title and balance. The balance counts down after a purchase.

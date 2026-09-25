@@ -20,6 +20,8 @@ public enum StreetBuilderPage {
     }
 
     static let gap = 12.0
+    /// How much of the city behind the page shows through: enough to see it goes on.
+    static let backdrop = 0.7
     static let cardCorner = 14.0
     static let paletteHeight = 112.0
     static let detailHeight = 116.0
@@ -217,8 +219,9 @@ public enum StreetBuilderPage {
     ) {
         let viewport = list.camera.viewport
         var id = RenderID.menu
-        // The page covers the roundabout behind it: one map at a time is enough.
-        list.add(.roundedRect(center: viewport / 2, size: viewport, cornerRadius: 0, rotation: 0), color: .background, space: .screen, id: id)
+        // The real roundabout lies right under the plan (`Perspective.builder`): the page only
+        // dims the city, so the roads visibly run on past the plan into it.
+        list.add(.roundedRect(center: viewport / 2, size: viewport, cornerRadius: 0, rotation: 0), color: .background, opacity: backdrop, space: .screen, id: id)
         id += 1
 
         let shown = countedMoney(career: career, state: state)

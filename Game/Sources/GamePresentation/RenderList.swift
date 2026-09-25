@@ -82,7 +82,11 @@ enum RenderID {
     static let labels = 27_000
     static let moduleSparks = 32_000
     static let towTrucks = 90_000
+    /// The island's rim: the shift's ticks and the ring's signals (`RingSignals`).
+    static let rim = 28_000
     static let flowGlow = 29_000
+    /// Upgrades: the city stepping back around the ring (`Perspective.addRecede`).
+    static let recede = 29_500
     static let hud = 30_000
     static let popups = 31_000
     /// The first shift's hints (`Tutorial`).

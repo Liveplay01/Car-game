@@ -130,6 +130,14 @@ public final class GameSession {
     private var seenCounts = (carsLeft: 0, strikes: 0, policeCrashes: 0)
     /// Flow State as the ring glow shows it, 0…1: it fades in and out instead of switching.
     private var flowLevel = 0.0
+    /// The island's rim: the shift's ticks and the ring's signals (`RingSignals`).
+    private var rim = RingSignals.State()
+    /// The city's breathing (`CityPulse`).
+    private var cityPulse = CityPulse()
+    /// The camera, gliding between the tabs' views of the city (`Perspective`).
+    private var cameraRig = Perspective.Rig()
+    /// Upgrades: how far the city around the ring has stepped back, 0…1.
+    private var recede = 0.0
 
     /// What the adaptive music should play right now (M11); the app fades its stems to it.
     public var musicMix: MusicMix {
@@ -799,6 +807,8 @@ public final class GameSession {
         let counts = (carsLeft: world.carsLeft ?? 0, strikes: world.score.strikes, policeCrashes: world.score.policeCrashes)
         if counts.carsLeft < seenCounts.carsLeft {
             sinceCarSent = 0
+            // In the flow, the city answers every car (`CityPulse.beat`).
+            if screen == .playing { cityPulse.beat(flow: flowLevel) }
             // A split for the race against the best time at this level.
             if screen == .playing, let start = world.shift.startedAt {
                 splits.append(world.time - start)
@@ -810,11 +820,22 @@ public final class GameSession {
         if let splash = dailySplash, screen == .ready {
             dailySplash = splash + realDelta < ReadyBanner.splashDuration ? splash + realDelta : nil
         }
-        if counts.strikes > seenCounts.strikes { sinceStrike = 0 }
-        if counts.policeCrashes > seenCounts.policeCrashes { sincePoliceCrash = 0 }
+        if counts.strikes > seenCounts.strikes {
+            sinceStrike = 0
+            rim.signal(.flush, .destructive)
+        }
+        if counts.policeCrashes > seenCounts.policeCrashes {
+            sincePoliceCrash = 0
+            rim.signal(.flush, .lightBlue)
+        }
         seenCounts = counts
         let flowTarget = screen == .playing && world.isInFlow ? 1.0 : 0.0
         flowLevel += (flowTarget - flowLevel) * min(1, realDelta / Self.flowFade)
+        followRim()
+        rim.age(by: realDelta)
+        cityPulse.advance(by: runs ? simDelta : 0, target: CityPulse.energy(world: world, flow: flowLevel))
+        let recedeTarget = screen == .page(.upgrades) ? 1.0 : 0.0
+        recede += (recedeTarget - recede) * min(1, realDelta / 0.25)
         // The score catches up with itself: it counts, never jumps (FOUNDATION.md 3).
         let points = Double(world.score.points)
         if abs(points - shownScore) < 1 || reduceMotion {
@@ -863,7 +884,19 @@ public final class GameSession {
         if let current = notice {
             notice = current.age + realDelta < Self.noticeDuration ? (current.text, current.age + realDelta) : nil
         }
-        return Frame(renderList: renderList(viewport: viewport, fps: fps), events: events, screen: screen)
+        return Frame(renderList: renderList(viewport: viewport, fps: fps, delta: realDelta), events: events, screen: screen)
+    }
+
+    /// The rim counts the shift on the road. A finished shift's ticks stay a moment into the
+    /// result before the next shift's come in (`RingSignals.hold`).
+    private func followRim() {
+        if case .result = screen, resultAge < RingSignals.hold { return }
+        guard let left = world.carsLeft else {
+            rim.follow(total: 0, sent: 0, lit: .primary)
+            return
+        }
+        let total = world.config.shiftCars
+        rim.follow(total: total, sent: max(0, total - left), lit: world.shift.isRushHour ? .accent : .primary)
     }
 
     private func handle(_ action: InputAction, present: Double, simDelta: Double) {
@@ -1001,15 +1034,27 @@ public final class GameSession {
                     addPopup(.covered, at: report.point + Vec2(0, 18))
                 }
             case let .comboChanged(change):
-                if change.isTierUp { sinceComboTier = 0 }
+                if change.isTierUp {
+                    sinceComboTier = 0
+                    rim.signal(.wave, .accent)
+                }
             case let .shiftEnded(result):
+                // The ring says how it went before the top card does.
+                switch result.outcome {
+                case .completed: rim.signal(.sweep, .accent)
+                case .struckOut: rim.signal(.flush, .destructive)
+                case .escaped: rim.signal(.flush, .vehicleCriminal)
+                }
                 finish(result)
             case let .takedown(report):
                 addPopup(.busted(report.points), at: report.point)
                 sinceTakedown = 0
+                rim.signal(.wave, .lightBlue)
             case .dispatched:
                 addPopup(.dispatch, at: world.layout.stopPose(world.layout.player).position)
-            case .launched, .tapRejected, .exited, .rushHour, .criminalWarning, .criminalEntered, .criminalEscaped:
+            case .rushHour:
+                rim.signal(.sweep, .accent)
+            case .launched, .tapRejected, .exited, .criminalWarning, .criminalEntered, .criminalEscaped:
                 break
             case .transporterWarning:
                 break
@@ -1025,6 +1070,7 @@ public final class GameSession {
             case let .transporterPaid(vehicle, amount, time):
                 if amount > 0 {
                     addPopup(.paid(amount), at: world.layout.stopPose(world.layout.player).position)
+                    rim.signal(.wave, .vehicleCargo)
                 }
             case let .modulePaid(module, _, amount, point, _):
                 // Right where it was earned, so it is clear which module pays.
@@ -1185,24 +1231,21 @@ public final class GameSession {
 
     // MARK: - Render list
 
-    private func renderList(viewport: Vec2, fps: Int) -> RenderList {
+    private func renderList(viewport: Vec2, fps: Int, delta: Double) -> RenderList {
         lastViewport = viewport
-        var camera = Camera.fit(
-            world.layout.viewBounds,
-            viewport: viewport,
-            insets: Metrics.sceneInsets,
-            verticalBias: Metrics.sceneVerticalBias
-        )
+        // Every tab looks at the same city; the camera glides to the view it needs.
+        var camera = cameraRig.camera(Perspective(screen), layout: world.layout, viewport: viewport, bottomInset: tabInset, delta: delta, reduceMotion: reduceMotion)
         // The crash shake moves the scene; the HUD (screen space) stays still.
         camera.focus += effects.shakeOffset
         // The map skin sets the ground outside the ring and what grows in the city.
         let mapTheme = MapTheme(skin: forcedMapSkin ?? save.career.mapSkin)
         var list = RenderList(camera: camera, background: MapTheme.ground(mapTheme))
-        CityLayer.add(world: world, theme: mapTheme, time: reduceMotion ? nil : sceneTime, to: &list)
+        CityLayer.add(world: world, theme: mapTheme, time: reduceMotion ? nil : sceneTime, pulse: reduceMotion ? nil : cityPulse, to: &list)
         SceneBuilder.addRoad(world.layout, config: world.config, to: &list)
         CityLayer.addMapSkin(Skins.color(forcedMapSkin ?? save.career.mapSkin), world: world, to: &list)
         MapTheme.addIsland(mapTheme, world: world, to: &list)
         CityLayer.addFrame(save.career.frame, world: world, to: &list)
+        RingSignals.add(rim, layout: world.layout, reduceMotion: reduceMotion, to: &list)
         WeatherLayer.addCityEvent(world: world, to: &list)
         WeatherLayer.addGround(world: world, to: &list)
         effects.addGround(world: world, alpha: clock.alpha, softBody: !reduceMotion, to: &list)
@@ -1215,14 +1258,15 @@ public final class GameSession {
         effects.addAir(to: &list)
         WeatherLayer.addAir(world: world, time: world.time, reduceMotion: reduceMotion, to: &list)
         MapTheme.addAir(mapTheme, time: sceneTime, reduceMotion: reduceMotion, to: &list)
+        Perspective.addRecede(opacity: recede, layout: world.layout, to: &list)
 
         // Everything from here to the tab strip belongs to the screen and moves with a change.
         let overlayStart = list.items.count
         switch screen {
         case .playing:
             HUD.addFlowGlow(world: world, flow: flowLevel, to: &list)
-            HUD.addChase(world: world, alpha: clock.alpha, to: &list)
-            HUD.addTransporter(world: world, alpha: clock.alpha, to: &list)
+            HUD.addChase(world: world, alpha: clock.alpha, reduceMotion: reduceMotion, to: &list)
+            HUD.addTransporter(world: world, alpha: clock.alpha, reduceMotion: reduceMotion, to: &list)
             HUD.add(
                 world: world, level: playingLevel, duty: playingDuty,
                 score: Int(shownScore.rounded()),
@@ -1244,14 +1288,15 @@ public final class GameSession {
                 HUD.addCountIn(secondsLeft: isInterrupted ? Self.countInSeconds : countIn, to: &list)
             }
         case let .result(summary):
-            ResultBanner.add(summary, age: resultAge, format: format, reduceMotion: reduceMotion, showsKeys: options.showsKeyHints, to: &list)
+            ResultBanner.add(summary, nextLevel: playingLevel, age: resultAge, format: format, reduceMotion: reduceMotion, showsKeys: options.showsKeyHints, to: &list)
+            // After its epilogue the result turns into the next shift's waiting screen, in the
+            // same card: no screen in between (Leo, 25.09.2026).
+            let settled = ResultBanner.settled(age: resultAge)
+            if settled > 0 {
+                addReadyBanner(prompt: nil, drawsCard: false, opacity: settled, to: &list)
+            }
         case .ready:
-            let career = save.career
-            let conditions = Strings.Ready.conditions(
-                weather: world.config.weather, event: world.config.cityEvent,
-            )
-            let daily = dailySelected ? ReadyBanner.DailyCard(event: world.config.cityEvent, streak: career.dailyStreak, next: career.nextStreakMilestone(), splash: dailySplash) : nil
-            ReadyBanner.add(level: playingLevel, cars: world.carsLeft ?? 0, duty: career.duty, dutyPay: config.highAlertPay, highscore: save.highscore > 0 ? format.number(save.highscore) : nil, money: career.money > 0 ? format.number(career.money) : nil, conditions: conditions, daily: daily, prompt: tutorial == nil ? Strings.Ready.tapToStart : Tutorial.readyPrompt, time: sinceReady, reduceMotion: reduceMotion, showsKeys: options.showsKeyHints, to: &list)
+            addReadyBanner(prompt: tutorial == nil ? Strings.Ready.tapToStart : Tutorial.readyPrompt, to: &list)
             if let tutorial {
                 Tutorial.add(tutorial, world: world, alpha: clock.alpha, time: sceneTime, reduceMotion: reduceMotion, to: &list)
             }
@@ -1288,6 +1333,14 @@ public final class GameSession {
             addNotice(notice.text, age: notice.age, bottomInset: bottomInset, to: &list)
         }
         return list
+    }
+
+    /// The next shift's waiting screen: its level, cars and duty, the best, what comes.
+    private func addReadyBanner(prompt: String?, drawsCard: Bool = true, opacity: Double = 1, to list: inout RenderList) {
+        let career = save.career
+        let conditions = Strings.Ready.conditions(weather: world.config.weather, event: world.config.cityEvent)
+        let daily = dailySelected ? ReadyBanner.DailyCard(event: world.config.cityEvent, streak: career.dailyStreak, next: career.nextStreakMilestone(), splash: dailySplash) : nil
+        ReadyBanner.add(level: playingLevel, cars: world.carsLeft ?? 0, duty: career.duty, dutyPay: config.highAlertPay, highscore: save.highscore > 0 ? format.number(save.highscore) : nil, money: career.money > 0 ? format.number(career.money) : nil, conditions: conditions, daily: daily, prompt: prompt, time: sinceReady, reduceMotion: reduceMotion, showsKeys: options.showsKeyHints && drawsCard, drawsCard: drawsCard, opacity: opacity, to: &list)
     }
 
     /// Starts a change when the screen differs from last frame's, then lets it move the new

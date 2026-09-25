@@ -356,7 +356,7 @@ struct ScreenFlowTests {
         let texts = session.advance().texts
         #expect(texts.contains(Strings.Result.levelComplete(1)))
         #expect(texts.contains("1,100"))
-        #expect(texts.contains(Strings.Result.newHighscore))
+        #expect(texts.contains(Strings.Result.newBest))
     }
 
     @Test func oneTapStartsTheNextShiftButNotRightAway() {
@@ -394,7 +394,9 @@ struct ScreenFlowTests {
         #expect(store.game?.shiftsPlayed == 1)
         let texts = session.advance().texts
         #expect(texts.contains(Strings.Result.gameOver))
-        #expect(texts.contains(Strings.Result.best("500")))
+        // The best stays in the top card's right column, where it always is.
+        #expect(texts.contains(Strings.HUD.bestLabel))
+        #expect(texts.contains("500"))
     }
 
     @Test func escapeLeadsFromTheResultBackToTheGameTab() {

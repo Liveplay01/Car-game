@@ -194,42 +194,29 @@ enum HUD {
             )
         }
         id += 1
-        // The chase: "WANTED" while it is announced, then the seconds it has left.
-        let wanted: String?
-        var opacity = 1.0
-        switch world.criminal.phase {
-        case .warning, .arriving:
-            wanted = Strings.HUD.wanted
-            opacity = 0.55 + 0.45 * sin(world.time * 10)
-        case let .active(_, deadline):
-            wanted = Strings.HUD.wanted(deadline - world.time)
-        case .idle, .leaving:
-            wanted = nil
-        }
-        if let wanted {
+        // The chase, once the pickup is in: the seconds it has left. While it is only
+        // announced, the warning floats over its arm instead (`addChase`).
+        if case let .active(_, deadline) = world.criminal.phase {
             list.add(
-                .text(wanted, position: center + Vec2(0, -64), size: 17, alignment: .center, weight: .bold),
-                color: .vehicleCriminal, opacity: opacity, space: .screen, id: id
+                .text(Strings.HUD.wanted(deadline - world.time), position: center + Vec2(0, -64), size: 17, alignment: .center, weight: .bold),
+                color: .vehicleCriminal, space: .screen, id: id
             )
         }
         id += 1
     }
 
     /// Marks the criminal in the scene: while it is only announced, a pulsing wedge on the
-    /// island's edge, facing the arm it will come from, so the warning reads without pulling
-    /// the eye off the middle of the ring (ROADMAP.md M11); then a countdown ring around the
-    /// pickup itself, which by then is on screen and worth looking at directly.
-    static func addChase(world: World, alpha: Double, to list: inout RenderList) {
+    /// island's rim (`RingSignals`), facing the arm it will come from, and "WANTED" floating
+    /// over that arm (`SpatialTag`), so the warning sits where the danger comes from
+    /// (ROADMAP.md M11); then a countdown ring around the pickup itself, which by then is on
+    /// screen and worth looking at directly.
+    static func addChase(world: World, alpha: Double, reduceMotion: Bool = false, to list: inout RenderList) {
         let config = world.config
         var id = RenderID.hud + 500
         switch world.criminal.phase {
-        case let .warning(arm, _):
-            let pulse = (world.time * 1.6).truncatingRemainder(dividingBy: 1)
-            let radius = world.layout.ringRadius - config.laneWidth / 2 - 14
-            let half = 0.35
-            list.add(.arc(center: .zero, radius: radius, thickness: 3 + 7 * pulse, startAngle: arm.angle - half, endAngle: arm.angle + half), color: .vehicleCriminal, opacity: 1 - pulse, space: .world, id: id)
-            id += 1
-            list.add(.arc(center: .zero, radius: radius, thickness: 2.5, startAngle: arm.angle - half, endAngle: arm.angle + half), color: .vehicleCriminal, space: .world, id: id)
+        case let .warning(arm, until):
+            addWedge(arm, world: world, color: .vehicleCriminal, id: &id, to: &list)
+            SpatialTag.add(Strings.HUD.wanted, over: arm, world: world, color: .vehicleCriminal, age: config.criminalWarning - (until - world.time), reduceMotion: reduceMotion, id: &id, to: &list)
         case let .arriving(vehicleID):
             guard let pickup = world.vehicle(id: vehicleID) else { return }
             let pose = SceneBuilder.interpolatedPose(pickup, alpha: alpha)
@@ -256,7 +243,7 @@ enum HUD {
     /// edge, facing the arm it will come from (ROADMAP.md M11, same as `addChase`); then a
     /// countdown ring around the truck that empties as its time runs out, plus the secure
     /// zones as pale arcs on the ring. It circles until its time is up, so no exit is marked.
-    static func addTransporter(world: World, alpha: Double, to list: inout RenderList) {
+    static func addTransporter(world: World, alpha: Double, reduceMotion: Bool = false, to list: inout RenderList) {
         let config = world.config
         var id = RenderID.hud + 600
         switch world.criminal.phase {  // keep the chase ring above the secure zones
@@ -264,13 +251,9 @@ enum HUD {
         default: break
         }
         switch world.transporter.phase {
-        case let .warning(arm, _):
-            let pulse = (world.time * 1.6).truncatingRemainder(dividingBy: 1)
-            let radius = world.layout.ringRadius - config.laneWidth / 2 - 14
-            let half = 0.35
-            list.add(.arc(center: .zero, radius: radius, thickness: 3 + 7 * pulse, startAngle: arm.angle - half, endAngle: arm.angle + half), color: .vehicleCargo, opacity: 1 - pulse, space: .world, id: id)
-            id += 1
-            list.add(.arc(center: .zero, radius: radius, thickness: 2.5, startAngle: arm.angle - half, endAngle: arm.angle + half), color: .vehicleCargo, space: .world, id: id)
+        case let .warning(arm, until):
+            addWedge(arm, world: world, color: .vehicleCargo, id: &id, to: &list)
+            SpatialTag.add(Strings.HUD.transporter, over: arm, world: world, color: .vehicleCargo, age: config.transporterWarning - (until - world.time), reduceMotion: reduceMotion, id: &id, to: &list)
         case let .arriving(vehicleID):
             guard let truck = world.vehicle(id: vehicleID) else { return }
             let pose = SceneBuilder.interpolatedPose(truck, alpha: alpha)
@@ -303,6 +286,17 @@ enum HUD {
         case .idle, .leaving, .seized:
             break
         }
+    }
+
+    /// The warning wedge: a pulsing arc on the island's rim, facing the arm the danger comes from.
+    private static func addWedge(_ arm: Arm, world: World, color: ColorToken, id: inout Int, to list: inout RenderList) {
+        let pulse = (world.time * 1.6).truncatingRemainder(dividingBy: 1)
+        let radius = RingSignals.rim(world.layout)
+        let half = 0.35
+        list.add(.arc(center: .zero, radius: radius, thickness: 3 + 7 * pulse, startAngle: arm.angle - half, endAngle: arm.angle + half), color: color, opacity: 1 - pulse, space: .world, id: id)
+        id += 1
+        list.add(.arc(center: .zero, radius: radius, thickness: 2.5, startAngle: arm.angle - half, endAngle: arm.angle + half), color: color, space: .world, id: id)
+        id += 1
     }
 
     /// Perfect Input and Near Miss (M6): a ring around the car that opens and fades within
@@ -440,38 +434,46 @@ enum ReadyBanner {
     /// How long the splash stays before it rises into the banner's title.
     static let splashDuration = 2.4
 
-    static func add(level: Int, cars: Int, duty: Duty, dutyPay: Double, highscore: String?, money: String?, conditions: String? = nil, daily: DailyCard? = nil, prompt: String = Strings.Ready.tapToStart, time: Double, reduceMotion: Bool, showsKeys: Bool, to list: inout RenderList) {
+    /// - Parameters:
+    ///   - prompt: nil when someone else draws it (the result, which turns into this).
+    ///   - drawsCard: false while the result turns into this: its card stays and only
+    ///     what it says changes, fading in with `opacity`.
+    static func add(level: Int, cars: Int, duty: Duty, dutyPay: Double, highscore: String?, money: String?, conditions: String? = nil, daily: DailyCard? = nil, prompt: String? = Strings.Ready.tapToStart, time: Double, reduceMotion: Bool, showsKeys: Bool, drawsCard: Bool = true, opacity: Double = 1, to list: inout RenderList) {
         let width = list.camera.viewport.x
-        var id = RenderID.hud
-        func text(_ string: String, _ position: Vec2, size: Double, weight: FontWeight = .bold, color: ColorToken, opacity: Double = 1) {
-            list.add(.text(string, position: position, size: size, alignment: .center, weight: weight), color: color, opacity: opacity, space: .screen, id: id)
+        var id = drawsCard ? RenderID.hud : RenderID.hud + 200
+        func text(_ string: String, _ position: Vec2, size: Double, weight: FontWeight = .bold, color: ColorToken, opacity factor: Double = 1) {
+            list.add(.text(string, position: position, size: size, alignment: .center, weight: weight), color: color, opacity: factor * opacity, space: .screen, id: id)
             id += 1
         }
         // The top bar before the shift: which level, how many cars and on what duty, the
         // score to beat. The Daily Shift says so in its first column.
-        TopBar.addScrim(id: &id, to: &list)
         let frame = TopBar.frame(width: width)
         let columns = TopBar.columns(frame)
-        TopBar.addCard(frame, id: &id, to: &list)
-        TopBar.addColumn(columns.left, alignment: .leading, caption: daily == nil ? Strings.HUD.levelLabel : Strings.Daily.title, captionColor: daily == nil ? .muted : .hazard, value: "\(level)", valueColor: daily == nil ? .accent : .hazard, id: &id, to: &list)
+        if drawsCard {
+            TopBar.addScrim(id: &id, to: &list)
+            TopBar.addCard(frame, id: &id, to: &list)
+        }
+        TopBar.addColumn(columns.left, alignment: .leading, caption: daily == nil ? Strings.HUD.levelLabel : Strings.Daily.title, captionColor: daily == nil ? .muted : .hazard, value: "\(level)", valueColor: daily == nil ? .accent : .hazard, opacity: opacity, id: &id, to: &list)
         let center = columns.center
-        TopBar.addColumn(center, alignment: .center, caption: Strings.Ready.dutyCaption(duty, pay: dutyPay), captionColor: duty == .highAlert ? .destructive : .muted, value: Strings.HUD.cars(cars), valueSize: Metrics.timerSize, id: &id, to: &list)
-        TopBar.addColumn(columns.right, alignment: .trailing, caption: Strings.HUD.bestLabel, value: highscore ?? "–", valueColor: highscore == nil ? .muted : .primary, id: &id, to: &list)
+        TopBar.addColumn(center, alignment: .center, caption: Strings.Ready.dutyCaption(duty, pay: dutyPay), captionColor: duty == .highAlert ? .destructive : .muted, value: Strings.HUD.cars(cars), valueSize: Metrics.timerSize, opacity: opacity, id: &id, to: &list)
+        TopBar.addColumn(columns.right, alignment: .trailing, caption: Strings.HUD.bestLabel, value: highscore ?? "–", valueColor: highscore == nil ? .muted : .primary, opacity: opacity, id: &id, to: &list)
         // Under the card, quietly: the streak on the Daily, otherwise the money in the bank.
         let under = Vec2(width / 2, frame.maxY + 18)
         if let daily {
             let line = Strings.Daily.streakLine(daily.streak)
-            MenuKit.chromePill(center: under, size: Vec2(Icons.textWidth(line, size: 12) + 28, 26), opacity: 1, id: &id, to: &list)
+            MenuKit.chromePill(center: under, size: Vec2(Icons.textWidth(line, size: 12) + 28, 26), opacity: opacity, id: &id, to: &list)
             text(line, under, size: 12, weight: .regular, color: .primary)
         } else if let money {
             let width = Icons.textWidth(Strings.money(money), size: 13) + 28
-            MenuKit.chromePill(center: under, size: Vec2(width, 26), opacity: 1, id: &id, to: &list)
-            Icons.moneyTag(money, at: under, size: 13, alignment: .center, color: .primary, id: &id, to: &list)
+            MenuKit.chromePill(center: under, size: Vec2(width, 26), opacity: opacity, id: &id, to: &list)
+            Icons.moneyTag(money, at: under, size: 13, alignment: .center, color: .primary, opacity: opacity, id: &id, to: &list)
         }
         // The prompt breathes gently, so the waiting screen is alive; still with Reduce Motion.
         let island = list.camera.toScreen(.zero)
-        let breath = reduceMotion ? 1 : 0.7 + 0.3 * (0.5 + 0.5 * cos(time * 2.4))
-        text(prompt, island, size: 17, color: .primary, opacity: breath)
+        if let prompt {
+            let breath = reduceMotion ? 1 : 0.7 + 0.3 * (0.5 + 0.5 * cos(time * 2.4))
+            text(prompt, island, size: 17, color: .primary, opacity: breath)
+        }
         // Weather and the city's event are announced before the shift (M8): anticipation.
         if let conditions {
             text(conditions, island - Vec2(0, 28), size: 14, color: .hazard)
@@ -515,9 +517,15 @@ enum ReadyBanner {
     }
 }
 
-/// The end of a shift, right in the scene: "GAME OVER" or "SHIFT COMPLETE" on top, the
-/// score below, and one tap anywhere starts the next shift. No menu, no button to find:
-/// the thumb stays where it is.
+/// The end of a shift, without leaving the world (Leo, 25.09.2026: "Keine klassischen Screens
+/// zwischen den Schichten"). The traffic drives on, the ring runs its light around
+/// (`RingSignals`), and the top card — the same card, same size, same place as before and
+/// during the shift — says how it went: the level rolls over to the next one, the score sits
+/// in the middle, the best on the right. The shift's money counts up on the island.
+///
+/// It is only an epilogue: after `epilogue` seconds it turns by itself into the waiting
+/// screen of the next shift (`ReadyBanner`), whose traffic is already on the road. One tap
+/// anywhere starts it, at any point.
 enum ResultBanner {
     /// Taps in the first moment after the banner appears are ignored, so a hurried tap meant
     /// for the last car never starts the next shift by accident.
@@ -526,60 +534,143 @@ enum ResultBanner {
     /// The shift's money counts up after this long, over this long, then lands.
     static let countDelay = 0.35
     static let countDuration = 1.2
+    /// The level number rolls over to the next one after this long, over this long.
+    static let rollDelay = 0.55
+    static let rollDuration = 0.45
+    /// How long the result stays before it turns into the next shift's waiting screen…
+    static let epilogue = 3.6
+    /// …and how long that takes.
+    static let fade = 0.6
 
-    static func add(_ summary: ShiftSummary, age: Double, format: TextFormat, reduceMotion: Bool, showsKeys: Bool, to list: inout RenderList) {
+    /// 0 while the result shows, 1 once it has become the next shift's waiting screen.
+    static func settled(age: Double) -> Double {
+        Ease.smoothstep((age - epilogue) / fade)
+    }
+
+    /// - Parameter nextLevel: the level the next shift is played at (the same again after a loss).
+    static func add(_ summary: ShiftSummary, nextLevel: Int, age: Double, format: TextFormat, reduceMotion: Bool, showsKeys: Bool, to list: inout RenderList) {
         let result = summary.result
         let width = list.camera.viewport.x
         var id = RenderID.hud
-        // The same card as before and during the shift, grown to hold the result.
-        TopBar.addScrim(height: 170, id: &id, to: &list)
-        TopBar.addCard(TopBar.frame(width: width, height: 118), separators: false, id: &id, to: &list)
+        TopBar.addScrim(id: &id, to: &list)
+        let frame = TopBar.frame(width: width)
+        let columns = TopBar.columns(frame)
+        TopBar.addCard(frame, id: &id, to: &list)
 
-        let enter = Ease.outCubic(age / Self.enter)
-        let slide = reduceMotion ? 0 : (1 - enter) * -8
-        func text(_ string: String, _ position: Vec2, size: Double, weight: FontWeight = .bold, color: ColorToken, opacity: Double = 1) {
-            list.add(.text(string, position: position + Vec2(0, slide), size: size, alignment: .center, weight: weight), color: color, opacity: opacity * enter, space: .screen, id: id)
-            id += 1
-        }
-
+        let shown = Ease.outCubic(age / Self.enter) * (1 - settled(age: age))
         let (title, titleColor): (String, ColorToken) = switch result.outcome {
         case .completed: (Strings.Result.levelComplete(summary.level), .accent)
         case .struckOut: (Strings.Result.gameOver, .destructive)
         case .escaped: (Strings.Result.escaped, .vehicleCriminal)
         }
-        let top = TopBar.top
-        text(title, Vec2(width / 2, top + 22), size: 13, color: titleColor)
-        text(format.number(result.score), Vec2(width / 2, top + 58), size: 44, color: .primary)
-        if summary.isNewHighscore {
-            text(Strings.Result.newHighscore, Vec2(width / 2, top + 96), size: 13, color: .accent)
-        } else if summary.previousHighscore > 0 {
-            text(Strings.Result.best(format.number(summary.previousHighscore)), Vec2(width / 2, top + 96), size: 13, weight: .regular, color: .muted)
+
+        // Once the next shift's screen has taken over, only the card and the prompt are left.
+        if shown > 0.001 {
+            addColumns(summary, nextLevel: nextLevel, columns: columns, title: title, titleColor: titleColor, age: age, shown: shown, format: format, reduceMotion: reduceMotion, id: &id, to: &list)
+        }
+        id = RenderID.hud + 60
+
+        func text(_ string: String, _ position: Vec2, size: Double, weight: FontWeight = .bold, color: ColorToken, opacity: Double) {
+            guard opacity > 0.001 else { return }
+            list.add(.text(string, position: position, size: size, alignment: .center, weight: weight), color: color, opacity: opacity, space: .screen, id: id)
+            id += 1
         }
 
         // The money of the shift counts up from 0 and lands with a small bump (Leo, 25.09.2026).
-        if result.money > 0 {
+        let island = list.camera.toScreen(.zero)
+        if result.money > 0, shown > 0.001 {
             let x = reduceMotion ? 1 : Ease.clamp01((age - countDelay) / countDuration)
-            let shown = Int((Double(result.money) * Ease.outCubic(x)).rounded())
+            let counted = Int((Double(result.money) * Ease.outCubic(x)).rounded())
             let landed = (age - countDelay - countDuration) / 0.35
             let size = reduceMotion || landed < 0 ? 26 : 26 * HUD.Pops.land(landed, amount: 0.2)
-            Icons.moneyTag("+" + format.number(shown), at: list.camera.toScreen(.zero) - Vec2(0, 64), size: size, alignment: .center, color: .primary, opacity: enter, id: &id, to: &list)
+            Icons.moneyTag("+" + format.number(counted), at: island - Vec2(0, 64), size: size, alignment: .center, color: .primary, opacity: shown, id: &id, to: &list)
         }
 
-        // The prompt appears once taps count, in the middle of the island.
+        // The prompt appears once taps count, in the middle of the island, and stays while
+        // the rest turns into the next shift's screen.
         let prompt = Ease.outCubic((age - inputLock) / Self.enter)
         guard prompt > 0 else { return }
-        let island = list.camera.toScreen(.zero)
-        let next = result.outcome == .completed ? Strings.Result.nextLevel(summary.level + 1) : Strings.Result.retryLevel(summary.level)
+        let next = result.outcome == .completed ? Strings.Result.nextLevel(nextLevel) : Strings.Result.retryLevel(nextLevel)
         text(next, island, size: 17, color: .primary, opacity: prompt)
+        let details = prompt * (1 - settled(age: age))
         // From level 20 on mistakes cost money (M7): the loss, or that insurance paid it.
         if result.costs > 0 {
-            text(Strings.Result.loss(format.number(result.costs), escaped: result.outcome == .escaped), island - Vec2(0, 28), size: 14, color: .destructive, opacity: prompt)
+            text(Strings.Result.loss(format.number(result.costs), escaped: result.outcome == .escaped), island - Vec2(0, 28), size: 14, color: .destructive, opacity: details)
         } else if result.covered > 0 {
-            text(Strings.Result.covered(format.number(result.covered)), island - Vec2(0, 28), size: 14, color: .muted, opacity: prompt)
+            text(Strings.Result.covered(format.number(result.covered)), island - Vec2(0, 28), size: 14, color: .muted, opacity: details)
         }
-        text(Strings.Result.stats(combo: format.number(result.bestCombo), tightFits: format.number(result.tightFits), busted: result.takedowns, transporters: result.transporters, money: nil, time: format.seconds(result.time)), island + Vec2(0, 28), size: 13, weight: .regular, color: .muted, opacity: prompt)
+        text(Strings.Result.stats(combo: format.number(result.bestCombo), tightFits: format.number(result.tightFits), busted: result.takedowns, transporters: result.transporters, money: nil, time: format.seconds(result.time)), island + Vec2(0, 28), size: 13, weight: .regular, color: .muted, opacity: details)
         if showsKeys {
-            text(Strings.Result.keys, island + Vec2(0, 48), size: 12, weight: .regular, color: .muted, opacity: prompt)
+            text(Strings.Result.keys, island + Vec2(0, 48), size: 12, weight: .regular, color: .muted, opacity: details)
         }
+    }
+
+    /// The top card's three columns while the result shows. Left the level, rolling over to
+    /// the next one — the old number rises out, the new one rises in from below, in the
+    /// column the next shift shows it in; in the middle how it went over the score; right
+    /// the best.
+    private static func addColumns(_ summary: ShiftSummary, nextLevel: Int, columns: (left: Rect, center: Rect, right: Rect), title: String, titleColor: ColorToken, age: Double, shown: Double, format: TextFormat, reduceMotion: Bool, id: inout Int, to list: inout RenderList) {
+        let result = summary.result
+        let left = columns.left
+        let x = TopBar.anchor(left, .leading)
+        list.add(.text(Strings.HUD.levelLabel, position: Vec2(x, left.minY + TopBar.captionRow), size: 10, alignment: .leading, weight: .bold), color: .muted, opacity: shown, space: .screen, id: id)
+        id += 1
+        let roll = nextLevel == summary.level ? 0 : (reduceMotion ? 1 : Ease.settle((age - rollDelay) / rollDuration))
+        let lift = 14.0
+        let valueY = left.minY + TopBar.valueRow
+        if roll < 1 {
+            list.add(.text("\(summary.level)", position: Vec2(x, valueY - lift * roll), size: 20, alignment: .leading, weight: .bold), color: .accent, opacity: shown * (1 - roll), space: .screen, id: id)
+        }
+        id += 1
+        if roll > 0 {
+            list.add(.text("\(nextLevel)", position: Vec2(x, valueY + lift * (1 - roll)), size: 20, alignment: .leading, weight: .bold), color: .accent, opacity: shown * roll, space: .screen, id: id)
+        }
+        id += 1
+
+        // Centre: how it went, over the final score, which lands with a small bump.
+        let pop = reduceMotion ? 1 : HUD.Pops.land(age / 0.4, amount: 0.12)
+        TopBar.addColumn(columns.center, alignment: .center, caption: title, captionColor: titleColor, value: format.number(result.score), valueSize: Metrics.timerSize * pop, opacity: shown, id: &id, to: &list)
+
+        // Right: the best score — this one, if it is new.
+        if summary.isNewHighscore {
+            TopBar.addColumn(columns.right, alignment: .trailing, caption: Strings.Result.newBest, captionColor: .accent, value: format.number(result.score), valueColor: .accent, opacity: shown, id: &id, to: &list)
+        } else {
+            let best = summary.previousHighscore > 0 ? format.number(summary.previousHighscore) : "–"
+            TopBar.addColumn(columns.right, alignment: .trailing, caption: Strings.HUD.bestLabel, value: best, valueColor: summary.previousHighscore > 0 ? .primary : .muted, opacity: shown, id: &id, to: &list)
+        }
+    }
+}
+
+/// A small label that floats over a place in the city (Leo, 25.09.2026: "Spatial UI, aber
+/// sehr subtil"): over the arm a danger comes from, instead of blinking in the middle of the
+/// screen. It rises off the road on a soft shadow that stays on the ground, hovers there and
+/// breathes up and down by a point or so. Depth, not 3D.
+enum SpatialTag {
+    static let size = 11.0
+    static let height = 22.0
+    /// How high it floats over its shadow, in points.
+    static let hover = 7.0
+
+    /// Over an arm, just outside the ring: where whatever it announces will come from.
+    static func add(_ text: String, over arm: Arm, world: World, color: ColorToken, age: Double, reduceMotion: Bool, id: inout Int, to list: inout RenderList) {
+        let layout = world.layout
+        let ground = arm.outward * (layout.ringRadius + layout.laneWidth / 2 + 30)
+        add(text, at: ground, color: color, age: age, time: world.time, reduceMotion: reduceMotion, id: &id, to: &list)
+    }
+
+    static func add(_ text: String, at ground: Vec2, color: ColorToken, age: Double, time: Double, reduceMotion: Bool, id: inout Int, to list: inout RenderList) {
+        let enter = Ease.outCubic(age / 0.25)
+        guard enter > 0.001 else { return }
+        let base = list.camera.toScreen(ground)
+        let rise = reduceMotion ? 1 : Ease.settle(age / 0.45)
+        let hover = Self.hover * rise + (reduceMotion ? 0 : 1.2 * sin(time * 2.4))
+        let pill = Vec2(Icons.textWidth(text, size: size) + 22, height)
+        // The shadow stays on the road and grows fainter the higher the label floats.
+        list.add(.roundedRect(center: base + Vec2(0, 2), size: pill, cornerRadius: height / 2, rotation: 0), color: .shadow, opacity: enter * (1 - 0.05 * hover), space: .screen, id: id)
+        id += 1
+        let at = base - Vec2(0, hover)
+        MenuKit.chromePill(center: at, size: pill, tint: color, opacity: enter, id: &id, to: &list)
+        list.add(.text(text, position: at, size: size, alignment: .center, weight: .bold), color: color, opacity: enter, space: .screen, id: id)
+        id += 1
     }
 }

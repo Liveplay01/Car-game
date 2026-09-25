@@ -95,6 +95,10 @@ enum MenuKit {
         id += 4
     }
 
+    /// How much of the `.scrim` the Shop and Upgrades pages lay over the city: the running
+    /// roundabout still shows through, dim, under their cards.
+    static let pageBackdrop = 0.88
+
     static func staggerSpring(age: Double, index: Int) -> Double {
         Ease.settle((age - 0.04 * Double(index)) / 0.45)
     }

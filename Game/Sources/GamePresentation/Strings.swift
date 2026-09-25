@@ -555,7 +555,8 @@ public enum Strings {
         public static let escaped = "ESCAPED"
         /// "LEVEL 3 COMPLETE".
         public static func levelComplete(_ level: Int) -> String { "LEVEL \(level) COMPLETE" }
-        public static let newHighscore = "New highscore"
+        /// Over the score in the top card's right column, when this shift set it.
+        public static let newBest = "NEW BEST"
         public static let fullCoverage = "FULL COVERAGE"
         /// "LOSS −$350" after an escape, "CRASH COST −$120" after a crash (level 20+).
         public static func loss(_ amount: String, escaped: Bool) -> String {
@@ -570,7 +571,6 @@ public enum Strings {
         /// After a lost one: the same level again.
         public static func retryLevel(_ level: Int) -> String { "Tap to try level \(level) again" }
 
-        public static func best(_ score: String) -> String { "Best \(score)" }
         /// `money` is nil when the shift earned none.
         public static func stats(combo: String, tightFits: String, busted: Int, transporters: Int, money: String?, time: String) -> String {
             let base = "\(time) · best combo \(combo) · \(tightFits) tight fits · \(busted) busted"
@@ -619,6 +619,8 @@ public enum Strings {
         public static let secured = "SECURED"
         public static let seized = "SEIZED"
         public static let lost = "LOST"
+        /// Floats over the arm a money transporter is about to come from.
+        public static let transporter = "TRANSPORTER"
         /// Accessibility labels on special vehicles (M11); nil for ordinary traffic.
         public static func label(_ type: VehicleType) -> String? {
             switch type {

@@ -240,7 +240,8 @@ public enum ShopPage {
     static func add(career: Career, config: Config, today: Int, state: State, format: TextFormat, reduceMotion: Bool, bottomInset: Double, time: Double = 0, to list: inout RenderList) {
         let viewport = list.camera.viewport
         var id = RenderID.menu
-        list.add(.roundedRect(center: viewport / 2, size: viewport, cornerRadius: 0, rotation: 0), color: .scrim, space: .screen, id: id)
+        // The city stays faintly there behind the page (`Perspective`): one world, another view.
+        list.add(.roundedRect(center: viewport / 2, size: viewport, cornerRadius: 0, rotation: 0), color: .scrim, opacity: MenuKit.pageBackdrop, space: .screen, id: id)
         id += 1
         MenuKit.header(Strings.Tabs.title(.shop), money: Strings.Upgrades.balance(format.number(career.money)), viewport: viewport, id: &id, to: &list)
 
