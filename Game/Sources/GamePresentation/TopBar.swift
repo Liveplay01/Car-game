@@ -6,8 +6,9 @@ import GameCore
 /// keeps the top readable, and one floating card of chrome holds three columns — a small
 /// caption over each value, so every number says what it is.
 ///
-/// Before a shift it reads LEVEL · CARS · BEST, while playing SCORE · CARS · LEVEL (or BEST
-/// in the race against the best time), after it the result. Always the same card in the
+/// Before a shift it reads MONEY · CARS · BEST, while playing MONEY · SCORE · BEST (the race
+/// against the best time in its place when there is one), after it the result with the money
+/// counting up. Always the same card in the
 /// same place, so the screen changes what it says, never where it says it.
 enum TopBar {
     static let margin = 16.0
@@ -64,6 +65,18 @@ enum TopBar {
         list.add(.text(caption, position: Vec2(x, column.minY + captionRow), size: 10, alignment: alignment, weight: .bold), color: captionColor, opacity: opacity, space: .screen, id: id)
         list.add(.text(value, position: Vec2(x, column.minY + valueRow), size: valueSize, alignment: alignment, weight: .bold), color: valueColor, opacity: opacity, space: .screen, id: id + 1)
         id += 2
+    }
+
+    /// A caption over the money, with its note, aligned like `addColumn`. Large amounts get
+    /// a smaller size instead of running out of the column.
+    static func addMoneyColumn(_ column: Rect, alignment: TextAlignment, caption: String = Strings.HUD.moneyLabel, captionColor: ColorToken = .muted, money: String, valueSize: Double = 20, opacity: Double = 1, id: inout Int, to list: inout RenderList) {
+        let x = anchor(column, alignment)
+        list.add(.text(caption, position: Vec2(x, column.minY + captionRow), size: 10, alignment: alignment, weight: .bold), color: captionColor, opacity: opacity, space: .screen, id: id)
+        id += 1
+        let room = column.width - 24
+        let natural = Icons.textWidth(Strings.money(money), size: valueSize)
+        let size = natural <= room ? valueSize : max(11, valueSize * room / natural)
+        Icons.moneyTag(money, at: Vec2(x, column.minY + valueRow), size: size, alignment: alignment, color: .primary, opacity: opacity, id: &id, to: &list)
     }
 
     static func anchor(_ column: Rect, _ alignment: TextAlignment) -> Double {

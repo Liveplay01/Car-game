@@ -68,6 +68,9 @@ public enum ShopPage {
         /// The section just left and how long ago: the new one swipes in from its side of
         /// the segmented control, the old one out to the other (Leo, 25.09.2026).
         public var sectionSlide: (from: Section, age: Double)?
+        /// The shelf just left in the collection, and how long ago: the thumb glides over to
+        /// the new chip, the items swipe in from its side (Leo, 25.09.2026).
+        public var shelfSlide: (from: Shelf, age: Double)?
         /// What was just tapped, and how long ago: it gives way and comes back.
         public var pressed: (target: Target, age: Double)?
 
@@ -78,6 +81,13 @@ public enum ShopPage {
             guard next != section else { return }
             sectionSlide = (section, 0)
             section = next
+        }
+
+        /// Switches the collection's shelf with a swipe; the same shelf again does nothing.
+        public mutating func selectShelf(_ next: Shelf) {
+            guard next != shelf else { return }
+            shelfSlide = (shelf, 0)
+            shelf = next
         }
 
         public static func == (a: State, b: State) -> Bool {
@@ -95,6 +105,10 @@ public enum ShopPage {
             if var slide = sectionSlide {
                 slide.age += delta
                 sectionSlide = slide.age < ShopPage.slideDuration ? slide : nil
+            }
+            if var slide = shelfSlide {
+                slide.age += delta
+                shelfSlide = slide.age < ShopPage.slideDuration ? slide : nil
             }
             if var press = pressed {
                 press.age += delta
@@ -265,6 +279,7 @@ public enum ShopPage {
                 var old = RenderList(camera: list.camera, background: list.background)
                 var oldState = state
                 oldState.section = slide.from
+                oldState.shelfSlide = nil
                 var oldId = RenderID.shopSlide
                 addSection(layout, career: career, config: config, today: today, state: oldState, format: format, enter: 1, reduceMotion: reduceMotion, id: &oldId, to: &old)
                 let away = Vec2(reduceMotion ? 0 : -side * layout.content.width * 0.3 * gone, 0)
@@ -283,7 +298,7 @@ public enum ShopPage {
     private static func addSection(_ layout: Layout, career: Career, config: Config, today: Int, state: State, format: TextFormat, enter: Double, reduceMotion: Bool, id: inout Int, to list: inout RenderList) {
         switch state.section {
         case .chests: addChests(layout, career: career, config: config, state: state, format: format, enter: enter, reduceMotion: reduceMotion, id: &id, to: &list)
-        case .collection: addCollection(layout, career: career, state: state, enter: enter, id: &id, to: &list)
+        case .collection: addCollection(layout, career: career, state: state, enter: enter, reduceMotion: reduceMotion, id: &id, to: &list)
         case .today: addToday(layout, career: career, today: today, format: format, enter: enter, id: &id, to: &list)
         }
         addDetail(layout, career: career, config: config, today: today, state: state, format: format, id: &id, to: &list)
@@ -389,28 +404,68 @@ public enum ShopPage {
 
     // MARK: Collection
 
-    private static func addCollection(_ layout: Layout, career: Career, state: State, enter: Double, id: inout Int, to list: inout RenderList) {
+    private static func addCollection(_ layout: Layout, career: Career, state: State, enter: Double, reduceMotion: Bool, id: inout Int, to list: inout RenderList) {
         // The shelves: a chip each, with how much of it is collected. The chosen one is
-        // raised like a segmented thumb and underlined in its rarity's colour.
-        for (shelf, chip) in shelfChips(layout) {
+        // raised like a segmented thumb and underlined in its rarity's colour; when the shelf
+        // changes, the thumb glides over and the underline takes on the new colour.
+        let chips = shelfChips(layout)
+        let glide = state.shelfSlide.map { reduceMotion ? 1 : Ease.settle($0.age / slideDuration) } ?? 1
+        for (shelf, chip) in chips {
+            let rect = pressed(chip, .shelf(shelf), state)
+            list.add(.roundedRect(center: rect.center, size: Vec2(rect.width, rect.height), cornerRadius: 10, rotation: 0), color: .controlFill, opacity: enter, space: .screen, id: id)
+            id += 1
+        }
+        if let to = chips.first(where: { $0.0 == state.shelf })?.1 {
+            let target = pressed(to, .shelf(state.shelf), state)
+            let from = state.shelfSlide.flatMap { slide in chips.first { $0.0 == slide.from }?.1 } ?? target
+            let center = Vec2.lerp(from.center, target.center, glide)
+            let size = Vec2.lerp(Vec2(from.width, from.height), Vec2(target.width, target.height), glide)
+            list.add(.roundedRect(center: center, size: size, cornerRadius: 10, rotation: 0), color: .controlThumb, opacity: enter, space: .screen, id: id)
+            id += 1
+            let line = Vec2(center.x, center.y + size.y / 2 - 3)
+            if let slide = state.shelfSlide, glide < 1 {
+                list.add(.roundedRect(center: line, size: Vec2(size.x - 20, 2.5), cornerRadius: 1.25, rotation: 0), color: shelfColor(slide.from), opacity: enter * (1 - glide), space: .screen, id: id)
+            }
+            id += 1
+            list.add(.roundedRect(center: line, size: Vec2(size.x - 20, 2.5), cornerRadius: 1.25, rotation: 0), color: shelfColor(state.shelf), opacity: enter * glide, space: .screen, id: id)
+            id += 1
+        }
+        for (shelf, chip) in chips {
             let rect = pressed(chip, .shelf(shelf), state)
             let chosen = shelf == state.shelf
             let items = shelf.items
             let owned = items.count(where: { career.owns($0.id) })
             let tint = shelfColor(shelf)
-            list.add(.roundedRect(center: rect.center, size: Vec2(rect.width, rect.height), cornerRadius: 10, rotation: 0), color: chosen ? .controlThumb : .controlFill, opacity: enter, space: .screen, id: id)
-            id += 1
-            if chosen {
-                list.add(.roundedRect(center: Vec2(rect.center.x, rect.maxY - 3), size: Vec2(rect.width - 20, 2.5), cornerRadius: 1.25, rotation: 0), color: tint, opacity: enter, space: .screen, id: id)
-                id += 1
-            }
             if items.contains(where: { career.unseen.contains($0.id) }) {
                 badgeDot(at: Vec2(rect.maxX - 7, rect.minY + 7), opacity: enter, id: &id, to: &list)
             }
             text(Strings.Shop.shelf(shelf), Vec2(rect.center.x, rect.center.y - 7), size: 11, weight: .bold, color: chosen ? .primary : .muted, alignment: .center, opacity: enter, id: &id, to: &list)
             text("\(owned)/\(items.count)", Vec2(rect.center.x, rect.center.y + 8), size: 10, color: owned == items.count ? tint : .muted, alignment: .center, opacity: enter, id: &id, to: &list)
         }
-        for (item, cell) in itemCells(layout, shelf: state.shelf) {
+
+        // The items. After a change of shelf the new ones swipe in from the side of their
+        // chip and settle; the old ones are drawn once more, sliding out the other way.
+        let itemsStart = list.items.count
+        addShelfItems(state.shelf, layout, career: career, state: state, enter: enter, id: &id, to: &list)
+        guard let slide = state.shelfSlide else { return }
+        let side = state.shelf.rawValue > slide.from.rawValue ? 1.0 : -1.0
+        let shift = Vec2(reduceMotion ? 0 : side * layout.content.width * 0.35 * (1 - glide), 0)
+        let fade = Ease.outCubic(slide.age / 0.18)
+        for index in itemsStart..<list.items.count {
+            list.items[index] = list.items[index].moved(by: shift, opacity: fade)
+        }
+        let gone = Ease.outCubic(slide.age / slideOut)
+        guard gone < 1 else { return }
+        var old = RenderList(camera: list.camera, background: list.background)
+        var oldId = RenderID.shopShelfSlide
+        addShelfItems(slide.from, layout, career: career, state: state, enter: enter, id: &oldId, to: &old)
+        let away = Vec2(reduceMotion ? 0 : -side * layout.content.width * 0.25 * gone, 0)
+        list.items.insert(contentsOf: old.items.map { $0.moved(by: away, opacity: 1 - gone) }, at: itemsStart)
+    }
+
+    /// One shelf's items: four across, framed in their rarity, locked ones faded.
+    private static func addShelfItems(_ shelf: Shelf, _ layout: Layout, career: Career, state: State, enter: Double, id: inout Int, to list: inout RenderList) {
+        for (item, cell) in itemCells(layout, shelf: shelf) {
             let rect = pressed(cell, .item(item.id), state)
             let owned = career.owns(item.id)
             let worn = career.isWorn(item.id)

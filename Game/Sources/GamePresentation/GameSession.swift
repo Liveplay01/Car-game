@@ -120,6 +120,13 @@ public final class GameSession {
     private var sinceTakedown = Double.infinity
     /// The score as the HUD shows it: it runs after the real one instead of jumping.
     private var shownScore = 0.0
+    /// The money as the top bar shows it during a shift: the bank at the start plus what the
+    /// shift has earned, counting up; and since when it last grew.
+    private var shiftStartMoney = 0
+    private var shownMoney = 0.0
+    private var sinceMoney = Double.infinity
+    /// The bank before and after the last shift was booked, for the result's count.
+    private var resultBank = (before: 0, after: 0)
     /// How long ago the combo reached a new tier, for the spring on the multiplier.
     private var sinceComboTier = Double.infinity
     /// Seconds since a car went in, a strike and a police crash counted (`HUD.Pops`), and
@@ -700,7 +707,7 @@ public final class GameSession {
                 tick()
                 leaveShelf()
             }
-            shopPage.shelf = shelf
+            shopPage.selectShelf(shelf)
         case let .chest(kind):
             if shopPage.selectedChest == kind, save.career.count(of: kind) > 0 {
                 tapShop(.open(kind))
@@ -842,6 +849,15 @@ public final class GameSession {
             shownScore = points
         } else {
             shownScore += (points - shownScore) * min(1, realDelta / Self.scoreCatchUp)
+        }
+        // The money counts up the same way, and bumps when it grows.
+        let money = Double(max(0, shiftStartMoney + world.score.money))
+        if money > shownMoney + 0.5 { sinceMoney = min(sinceMoney, 0) }
+        sinceMoney += realDelta
+        if abs(money - shownMoney) < 1 || reduceMotion {
+            shownMoney = money
+        } else {
+            shownMoney += (money - shownMoney) * min(1, realDelta / Self.scoreCatchUp)
         }
         sinceReady = screen == .ready ? sinceReady + realDelta : 0
         tutorial?.age(by: realDelta)
@@ -1091,6 +1107,9 @@ public final class GameSession {
     /// Leaves the waiting banner or the result: the shift is on, with a short "go".
     private func startPlaying() {
         screen = .playing
+        shiftStartMoney = save.career.money
+        shownMoney = Double(shiftStartMoney)
+        sinceMoney = .infinity
         dailySplash = nil
         play(sounds: [.go], haptics: [])
         // The Daily Shift is taken the moment it starts: one try, and the streak counts it.
@@ -1158,7 +1177,9 @@ public final class GameSession {
             save.tutorialDone = true
         }
         // Money is banked whatever the outcome; done is a level up, lost is the same level again.
+        let bankBefore = save.career.money
         save.career.record(result, playedAt: playingLevel)
+        resultBank = (bankBefore, save.career.money)
         // Mastery runs in the background; a reached goal is a short toast and a chest (M10).
         var toasts: [String] = []
         if result.isPerfectRun {
@@ -1270,12 +1291,15 @@ public final class GameSession {
             HUD.add(
                 world: world, level: playingLevel, duty: playingDuty,
                 score: Int(shownScore.rounded()),
+                money: Int(shownMoney.rounded()),
+                best: save.highscore > 0 ? format.number(save.highscore) : nil,
                 comboPop: reduceMotion ? 0 : Ease.clamp01(sinceComboTier / Self.comboPop),
                 race: raceDelta.map { ($0, reduceMotion ? 1 : Ease.clamp01(sinceCarSent / 0.35)) },
                 pops: reduceMotion ? HUD.Pops() : HUD.Pops(
                     cars: Ease.clamp01(sinceCarSent / 0.35),
                     rushHour: world.shift.rushHourSince.map { Ease.clamp01((world.time - $0) / 0.5) } ?? 1,
                     strike: Ease.clamp01(sinceStrike / 0.5),
+                    money: Ease.clamp01(sinceMoney / 0.35),
                     policeCrash: Ease.clamp01(sincePoliceCrash / 0.5)
                 ),
                 format: format, showsKeys: options.showsKeyHints, timeScale: timeScale, to: &list
@@ -1288,7 +1312,7 @@ public final class GameSession {
                 HUD.addCountIn(secondsLeft: isInterrupted ? Self.countInSeconds : countIn, to: &list)
             }
         case let .result(summary):
-            ResultBanner.add(summary, nextLevel: playingLevel, age: resultAge, format: format, reduceMotion: reduceMotion, showsKeys: options.showsKeyHints, to: &list)
+            ResultBanner.add(summary, nextLevel: playingLevel, bank: resultBank, age: resultAge, format: format, reduceMotion: reduceMotion, showsKeys: options.showsKeyHints, to: &list)
             // After its epilogue the result turns into the next shift's waiting screen, in the
             // same card: no screen in between (Leo, 25.09.2026).
             let settled = ResultBanner.settled(age: resultAge)
@@ -1340,7 +1364,7 @@ public final class GameSession {
         let career = save.career
         let conditions = Strings.Ready.conditions(weather: world.config.weather, event: world.config.cityEvent)
         let daily = dailySelected ? ReadyBanner.DailyCard(event: world.config.cityEvent, streak: career.dailyStreak, next: career.nextStreakMilestone(), splash: dailySplash) : nil
-        ReadyBanner.add(level: playingLevel, cars: world.carsLeft ?? 0, duty: career.duty, dutyPay: config.highAlertPay, highscore: save.highscore > 0 ? format.number(save.highscore) : nil, money: career.money > 0 ? format.number(career.money) : nil, conditions: conditions, daily: daily, prompt: prompt, time: sinceReady, reduceMotion: reduceMotion, showsKeys: options.showsKeyHints && drawsCard, drawsCard: drawsCard, opacity: opacity, to: &list)
+        ReadyBanner.add(level: playingLevel, cars: world.carsLeft ?? 0, duty: career.duty, dutyPay: config.highAlertPay, highscore: save.highscore > 0 ? format.number(save.highscore) : nil, money: format.number(career.money), conditions: conditions, daily: daily, prompt: prompt, time: sinceReady, reduceMotion: reduceMotion, showsKeys: options.showsKeyHints && drawsCard, drawsCard: drawsCard, opacity: opacity, to: &list)
     }
 
     /// Starts a change when the screen differs from last frame's, then lets it move the new

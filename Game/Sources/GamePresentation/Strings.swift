@@ -332,6 +332,10 @@ public enum Strings {
 
         // The Daily Shift is the first shift of the day (Leo, 25.09.2026): a splash says so.
         public static func splashLine(event: CityEvent) -> String { "Today's city: \(Strings.cityEvent(event)) · one try" }
+        /// The Daily Shift in the top bar's middle caption, with its duty if it is on alert.
+        public static func caption(_ duty: Duty) -> String {
+            duty == .highAlert ? "DAILY · HIGH ALERT" : title
+        }
         public static func streakLine(_ streak: Int) -> String {
             streak > 0 ? "\(streak) \(streak == 1 ? "day" : "days") in a row · keep it going" : "Play it every day for a streak"
         }
@@ -606,6 +610,8 @@ public enum Strings {
         public static let scoreLabel = "SCORE"
         /// Captions of the top bar's columns (`TopBar`).
         public static let levelLabel = "LEVEL"
+        /// Over the money in the top bar (Leo, 25.09.2026: money instead of the level).
+        public static let moneyLabel = "MONEY"
         public static let highAlertLabel = "HIGH ALERT"
         public static let carsLabel = "CARS"
         public static let bestLabel = "BEST"

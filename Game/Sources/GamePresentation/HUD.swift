@@ -58,6 +58,8 @@ enum HUD {
         var rushHour = 1.0
         /// A strike or a police crash was used: its dot fills with a bump and a ring.
         var strike = 1.0
+        /// Money came in during the shift (a transporter, a toll): the balance bumps.
+        var money = 1.0
         var policeCrash = 1.0
 
         /// Scale of something that lands: `amount` larger at 0, a little under at the swing, 1 at the end.
@@ -66,7 +68,13 @@ enum HUD {
         }
     }
 
-    static func add(world: World, level: Int, duty: Duty, score: Int, comboPop: Double, race: (delta: Double, pop: Double)? = nil, pops: Pops = Pops(), format: TextFormat, showsKeys: Bool, timeScale: Double, to list: inout RenderList) {
+    /// The top card while playing reads MONEY · SCORE · BEST, the same columns as before the
+    /// shift (MONEY · CARS · BEST): the cars still to send are on the ring now (`RingSignals`).
+    ///
+    /// - Parameters:
+    ///   - money: the bank plus what this shift has earned so far, as it counts.
+    ///   - best: the highscore to beat; nil before the first one.
+    static func add(world: World, level: Int, duty: Duty, score: Int, money: Int, best: String?, comboPop: Double, race: (delta: Double, pop: Double)? = nil, pops: Pops = Pops(), format: TextFormat, showsKeys: Bool, timeScale: Double, to list: inout RenderList) {
         let width = list.camera.viewport.x
         let margin = Metrics.hudMargin
         var id = RenderID.hud
@@ -81,14 +89,13 @@ enum HUD {
         let columns = TopBar.columns(frame)
         TopBar.addCard(frame, id: &id, to: &list)
 
-        // Left: the score.
-        TopBar.addColumn(columns.left, alignment: .leading, caption: Strings.HUD.scoreLabel, value: format.number(score), id: &id, to: &list)
+        // Left: the money, counting up as the shift earns; on High Alert its caption says so.
+        TopBar.addMoneyColumn(columns.left, alignment: .leading, caption: duty == .highAlert ? Strings.HUD.highAlertLabel : Strings.HUD.moneyLabel, captionColor: duty == .highAlert ? .destructive : .muted, money: format.number(money), valueSize: 20 * Pops.land(pops.money, amount: 0.15), id: &id, to: &list)
 
-        // Centre: the cars still to send, the shift's goal, and under them the crashes it
-        // survives. Every car sent ticks the counter. In rush hour the column lights up in
-        // the accent: a state change you notice at a glance.
+        // Centre: the score, and over it the crashes the shift survives. Every car sent
+        // ticks it. In rush hour the column lights up in the accent: a state change you
+        // notice at a glance.
         let center = columns.center
-        let cars = Strings.HUD.cars(world.carsLeft ?? 0)
         let tick = Pops.land(pops.cars, amount: 0.12)
         let rush = world.shift.rushHourSince != nil
         if rush {
@@ -97,7 +104,7 @@ enum HUD {
             let size = Vec2(inset.width * (0.7 + 0.3 * open), inset.height * (0.7 + 0.3 * open))
             add(.roundedRect(center: inset.center, size: size, cornerRadius: TopBar.corner - 4, rotation: 0), .accent, opacity: Ease.outCubic(pops.rushHour / 0.4))
         }
-        add(.text(cars, position: Vec2(center.center.x, center.minY + TopBar.valueRow), size: Metrics.timerSize * tick, alignment: .center, weight: .bold), rush ? .accentInk : .primary)
+        add(.text(format.number(score), position: Vec2(center.center.x, center.minY + TopBar.valueRow), size: Metrics.timerSize * tick, alignment: .center, weight: .bold), rush ? .accentInk : .primary)
 
         // One dot per strike (only if there is more than one) and one per police crash,
         // ringed in police blue. Filled once used.
@@ -130,11 +137,11 @@ enum HUD {
         }
 
         // Right: the race against the best time at this level (Leo: Rekord-Geist), ahead in
-        // the accent, behind in red, ticking with every car; without one, the level.
+        // the accent, behind in red, ticking with every car; without one, the best score.
         if let race {
             TopBar.addColumn(columns.right, alignment: .trailing, caption: Strings.Race.best, value: Strings.Race.delta(race.delta), valueSize: 18 * Pops.land(race.pop, amount: 0.15), valueColor: race.delta <= 0 ? .accent : .destructive, id: &id, to: &list)
         } else {
-            TopBar.addColumn(columns.right, alignment: .trailing, caption: duty == .highAlert ? Strings.HUD.highAlertLabel : Strings.HUD.levelLabel, captionColor: duty == .highAlert ? .destructive : .muted, value: "\(level)", id: &id, to: &list)
+            TopBar.addColumn(columns.right, alignment: .trailing, caption: Strings.HUD.bestLabel, value: best ?? "–", valueColor: best == nil ? .muted : .primary, id: &id, to: &list)
         }
 
         if showsKeys {
@@ -438,35 +445,33 @@ enum ReadyBanner {
     ///   - prompt: nil when someone else draws it (the result, which turns into this).
     ///   - drawsCard: false while the result turns into this: its card stays and only
     ///     what it says changes, fading in with `opacity`.
-    static func add(level: Int, cars: Int, duty: Duty, dutyPay: Double, highscore: String?, money: String?, conditions: String? = nil, daily: DailyCard? = nil, prompt: String? = Strings.Ready.tapToStart, time: Double, reduceMotion: Bool, showsKeys: Bool, drawsCard: Bool = true, opacity: Double = 1, to list: inout RenderList) {
+    static func add(level: Int, cars: Int, duty: Duty, dutyPay: Double, highscore: String?, money: String, conditions: String? = nil, daily: DailyCard? = nil, prompt: String? = Strings.Ready.tapToStart, time: Double, reduceMotion: Bool, showsKeys: Bool, drawsCard: Bool = true, opacity: Double = 1, to list: inout RenderList) {
         let width = list.camera.viewport.x
         var id = drawsCard ? RenderID.hud : RenderID.hud + 200
         func text(_ string: String, _ position: Vec2, size: Double, weight: FontWeight = .bold, color: ColorToken, opacity factor: Double = 1) {
             list.add(.text(string, position: position, size: size, alignment: .center, weight: weight), color: color, opacity: factor * opacity, space: .screen, id: id)
             id += 1
         }
-        // The top bar before the shift: which level, how many cars and on what duty, the
-        // score to beat. The Daily Shift says so in its first column.
+        // The top bar before the shift: the money in the bank, how many cars and on what
+        // duty, the score to beat. The Daily Shift says so in the middle.
         let frame = TopBar.frame(width: width)
         let columns = TopBar.columns(frame)
         if drawsCard {
             TopBar.addScrim(id: &id, to: &list)
             TopBar.addCard(frame, id: &id, to: &list)
         }
-        TopBar.addColumn(columns.left, alignment: .leading, caption: daily == nil ? Strings.HUD.levelLabel : Strings.Daily.title, captionColor: daily == nil ? .muted : .hazard, value: "\(level)", valueColor: daily == nil ? .accent : .hazard, opacity: opacity, id: &id, to: &list)
+        TopBar.addMoneyColumn(columns.left, alignment: .leading, money: money, opacity: opacity, id: &id, to: &list)
         let center = columns.center
-        TopBar.addColumn(center, alignment: .center, caption: Strings.Ready.dutyCaption(duty, pay: dutyPay), captionColor: duty == .highAlert ? .destructive : .muted, value: Strings.HUD.cars(cars), valueSize: Metrics.timerSize, opacity: opacity, id: &id, to: &list)
+        let caption = daily == nil ? Strings.Ready.dutyCaption(duty, pay: dutyPay) : Strings.Daily.caption(duty)
+        let captionColor: ColorToken = daily != nil ? .hazard : (duty == .highAlert ? .destructive : .muted)
+        TopBar.addColumn(center, alignment: .center, caption: caption, captionColor: captionColor, value: Strings.HUD.cars(cars), valueSize: Metrics.timerSize, opacity: opacity, id: &id, to: &list)
         TopBar.addColumn(columns.right, alignment: .trailing, caption: Strings.HUD.bestLabel, value: highscore ?? "–", valueColor: highscore == nil ? .muted : .primary, opacity: opacity, id: &id, to: &list)
-        // Under the card, quietly: the streak on the Daily, otherwise the money in the bank.
-        let under = Vec2(width / 2, frame.maxY + 18)
+        // Under the card, quietly: the streak on the Daily.
         if let daily {
+            let under = Vec2(width / 2, frame.maxY + 18)
             let line = Strings.Daily.streakLine(daily.streak)
             MenuKit.chromePill(center: under, size: Vec2(Icons.textWidth(line, size: 12) + 28, 26), opacity: opacity, id: &id, to: &list)
             text(line, under, size: 12, weight: .regular, color: .primary)
-        } else if let money {
-            let width = Icons.textWidth(Strings.money(money), size: 13) + 28
-            MenuKit.chromePill(center: under, size: Vec2(width, 26), opacity: opacity, id: &id, to: &list)
-            Icons.moneyTag(money, at: under, size: 13, alignment: .center, color: .primary, opacity: opacity, id: &id, to: &list)
         }
         // The prompt breathes gently, so the waiting screen is alive; still with Reduce Motion.
         let island = list.camera.toScreen(.zero)
@@ -520,8 +525,8 @@ enum ReadyBanner {
 /// The end of a shift, without leaving the world (Leo, 25.09.2026: "Keine klassischen Screens
 /// zwischen den Schichten"). The traffic drives on, the ring runs its light around
 /// (`RingSignals`), and the top card — the same card, same size, same place as before and
-/// during the shift — says how it went: the level rolls over to the next one, the score sits
-/// in the middle, the best on the right. The shift's money counts up on the island.
+/// during the shift — says how it went: the balance counts up by what the shift earned, the
+/// score sits in the middle, the best on the right. What was earned shows on the island.
 ///
 /// It is only an epilogue: after `epilogue` seconds it turns by itself into the waiting
 /// screen of the next shift (`ReadyBanner`), whose traffic is already on the road. One tap
@@ -534,9 +539,6 @@ enum ResultBanner {
     /// The shift's money counts up after this long, over this long, then lands.
     static let countDelay = 0.35
     static let countDuration = 1.2
-    /// The level number rolls over to the next one after this long, over this long.
-    static let rollDelay = 0.55
-    static let rollDuration = 0.45
     /// How long the result stays before it turns into the next shift's waiting screen…
     static let epilogue = 3.6
     /// …and how long that takes.
@@ -547,8 +549,10 @@ enum ResultBanner {
         Ease.smoothstep((age - epilogue) / fade)
     }
 
-    /// - Parameter nextLevel: the level the next shift is played at (the same again after a loss).
-    static func add(_ summary: ShiftSummary, nextLevel: Int, age: Double, format: TextFormat, reduceMotion: Bool, showsKeys: Bool, to list: inout RenderList) {
+    /// - Parameters:
+    ///   - nextLevel: the level the next shift is played at (the same again after a loss).
+    ///   - bank: the money before the shift was booked and after.
+    static func add(_ summary: ShiftSummary, nextLevel: Int, bank: (before: Int, after: Int), age: Double, format: TextFormat, reduceMotion: Bool, showsKeys: Bool, to list: inout RenderList) {
         let result = summary.result
         let width = list.camera.viewport.x
         var id = RenderID.hud
@@ -566,7 +570,7 @@ enum ResultBanner {
 
         // Once the next shift's screen has taken over, only the card and the prompt are left.
         if shown > 0.001 {
-            addColumns(summary, nextLevel: nextLevel, columns: columns, title: title, titleColor: titleColor, age: age, shown: shown, format: format, reduceMotion: reduceMotion, id: &id, to: &list)
+            addColumns(summary, bank: bank, columns: columns, title: title, titleColor: titleColor, age: age, shown: shown, format: format, reduceMotion: reduceMotion, id: &id, to: &list)
         }
         id = RenderID.hud + 60
 
@@ -605,27 +609,16 @@ enum ResultBanner {
         }
     }
 
-    /// The top card's three columns while the result shows. Left the level, rolling over to
-    /// the next one — the old number rises out, the new one rises in from below, in the
-    /// column the next shift shows it in; in the middle how it went over the score; right
-    /// the best.
-    private static func addColumns(_ summary: ShiftSummary, nextLevel: Int, columns: (left: Rect, center: Rect, right: Rect), title: String, titleColor: ColorToken, age: Double, shown: Double, format: TextFormat, reduceMotion: Bool, id: inout Int, to list: inout RenderList) {
+    /// The top card's three columns while the result shows. Left the balance, counting up by
+    /// what the shift earned and landing with a bump — in the column the next shift shows it
+    /// in; in the middle how it went over the score; right the best.
+    private static func addColumns(_ summary: ShiftSummary, bank: (before: Int, after: Int), columns: (left: Rect, center: Rect, right: Rect), title: String, titleColor: ColorToken, age: Double, shown: Double, format: TextFormat, reduceMotion: Bool, id: inout Int, to list: inout RenderList) {
         let result = summary.result
-        let left = columns.left
-        let x = TopBar.anchor(left, .leading)
-        list.add(.text(Strings.HUD.levelLabel, position: Vec2(x, left.minY + TopBar.captionRow), size: 10, alignment: .leading, weight: .bold), color: .muted, opacity: shown, space: .screen, id: id)
-        id += 1
-        let roll = nextLevel == summary.level ? 0 : (reduceMotion ? 1 : Ease.settle((age - rollDelay) / rollDuration))
-        let lift = 14.0
-        let valueY = left.minY + TopBar.valueRow
-        if roll < 1 {
-            list.add(.text("\(summary.level)", position: Vec2(x, valueY - lift * roll), size: 20, alignment: .leading, weight: .bold), color: .accent, opacity: shown * (1 - roll), space: .screen, id: id)
-        }
-        id += 1
-        if roll > 0 {
-            list.add(.text("\(nextLevel)", position: Vec2(x, valueY + lift * (1 - roll)), size: 20, alignment: .leading, weight: .bold), color: .accent, opacity: shown * roll, space: .screen, id: id)
-        }
-        id += 1
+        let x = reduceMotion ? 1 : Ease.clamp01((age - countDelay) / countDuration)
+        let counted = bank.before + Int((Double(bank.after - bank.before) * Ease.outCubic(x)).rounded())
+        let landed = (age - countDelay - countDuration) / 0.35
+        let size = reduceMotion || landed < 0 || bank.after == bank.before ? 20 : 20 * HUD.Pops.land(landed, amount: 0.15)
+        TopBar.addMoneyColumn(columns.left, alignment: .leading, money: format.number(counted), valueSize: size, opacity: shown, id: &id, to: &list)
 
         // Centre: how it went, over the final score, which lands with a small bump.
         let pop = reduceMotion ? 1 : HUD.Pops.land(age / 0.4, amount: 0.12)

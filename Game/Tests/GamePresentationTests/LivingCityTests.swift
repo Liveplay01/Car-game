@@ -99,10 +99,11 @@ struct LivingCityTests {
         session.run(seconds: GameSession.resultDelay + 0.1) { $0.isShowingResult }
         var texts = session.advance().texts
         #expect(texts.contains(Strings.Result.levelComplete(1)))
-        // The level rolls over in the same column.
-        session.run(seconds: ResultBanner.rollDelay + ResultBanner.rollDuration + 0.2)
+        // The money counts up to the new balance in the card's left column.
+        session.run(seconds: ResultBanner.countDelay + ResultBanner.countDuration + 0.2)
         texts = session.advance().texts
-        #expect(texts.contains("2"))
+        #expect(texts.contains(Strings.HUD.moneyLabel))
+        #expect(texts.contains(session.format.number(session.save.career.money)))
         session.run(seconds: ResultBanner.epilogue + ResultBanner.fade)
         texts = session.advance().texts
         // Still the result (a tap starts the next shift), but it reads like the next shift's
@@ -127,6 +128,25 @@ struct LivingCityTests {
             return
         }
         #expect(size.y == frame.height)
+    }
+
+    @Test func theMoneyCountsUpWhenTheShiftEarnsIt() {
+        var saved = SaveGame()
+        saved.career.money = 500
+        let session = makeSession(config: quietConfig(cars: 1), store: MemorySaveStore(saved))
+        session.advance([.confirm])
+        #expect(session.advance().texts.contains("500"))
+        // The last car brings the shift's pay: the balance counts up to it while still playing.
+        finishShift(session)
+        let pay = session.save.career.money - 500
+        #expect(pay > 0)
+        session.run(seconds: 0.8)
+        #expect(session.screen == .playing)
+        let shown = session.advance().renderList.items.compactMap { item -> Int? in
+            guard case let .text(string, position, _, .leading, _) = item.primitive, position.y == TopBar.top + TopBar.valueRow else { return nil }
+            return Int(string.replacingOccurrences(of: ",", with: ""))
+        }
+        #expect(shown.contains { $0 > 500 && $0 <= 500 + pay })
     }
 
     // MARK: - The city breathes
@@ -160,6 +180,23 @@ struct LivingCityTests {
         var calm = CityPulse()
         calm.beat(flow: 0)
         #expect(calm.sinceBeat == .infinity)
+    }
+
+    // MARK: - Collection shelves
+
+    @Test func aNewShelfSwipesInAndTheOldOneOut() {
+        let session = makeSession()
+        session.advance([.selectTab(.shop), .tapShop(.section(.collection))])
+        session.run(seconds: 1)
+        session.advance([.tapShop(.shelf(.rare))])
+        #expect(session.shopPage.shelfSlide?.from == .common)
+        // The old shelf is drawn once more while it slides out…
+        let during = session.advance().renderList.items
+        #expect(during.contains { (RenderID.shopShelfSlide..<RenderID.shopShelfSlide + 10_000).contains($0.id) })
+        // …and gone once the new one has settled.
+        session.run(seconds: ShopPage.slideDuration + 0.1)
+        #expect(session.shopPage.shelfSlide == nil)
+        #expect(!session.advance().renderList.items.contains { $0.id >= RenderID.shopShelfSlide })
     }
 
     // MARK: - One city, several views

@@ -142,7 +142,7 @@ struct SessionTests {
         let texts = session.advance().texts
         // A new player is met by the first shift's hint instead of "Tap to start".
         #expect(texts.contains(Strings.Tutorial.sendCar))
-        #expect(texts.contains(Strings.HUD.levelLabel) && texts.contains("1"))
+        #expect(texts.contains(Strings.HUD.moneyLabel) && texts.contains("0"))
     }
 
     /// Leo, 25.09.2026: a short tutorial in the first shift, hints right in the game. It
@@ -248,7 +248,7 @@ struct SessionTests {
         #expect(frame.texts.contains(Strings.Debug.fps(60)))
     }
 
-    @Test func rushHourPutsTheCarCounterOnAnAccentPill() {
+    @Test func rushHourPutsTheScoreOnAnAccentPill() {
         let session = makeSession(config: quietConfig(cars: 3) { $0.rushHourCars = 2 })
         session.advance([.confirm])
         let before = session.advance()
@@ -259,7 +259,10 @@ struct SessionTests {
         // The counter ticks and the pill springs open (`HUD.Pops`); once settled it sits exactly.
         session.run(seconds: 0.6)
         let frame = session.advance()
-        #expect(frame.renderList.items.contains { $0.color == .accentInk && $0.primitive == .text(Strings.HUD.cars(1), position: Vec2(viewport.x / 2, TopBar.top + TopBar.valueRow), size: Metrics.timerSize, alignment: .center, weight: .bold) })
+        #expect(frame.renderList.items.contains { item in
+            guard item.color == .accentInk, case let .text(_, position, size, _, _) = item.primitive else { return false }
+            return position == Vec2(viewport.x / 2, TopBar.top + TopBar.valueRow) && size == Metrics.timerSize
+        })
         #expect(frame.texts.contains(Strings.HUD.rushFactor(2)))
     }
 
@@ -268,11 +271,11 @@ struct SessionTests {
         session.advance([.confirm])
         let frame = session.advance()
         #expect(frame.texts.contains("0"))
-        #expect(frame.texts.contains(Strings.HUD.cars(session.world.config.shiftCars - 1)))
         #expect(frame.texts.contains("×1"))
-        // The top bar: SCORE · cars · LEVEL, each value under its caption.
-        #expect(frame.texts.contains(Strings.HUD.scoreLabel))
-        #expect(frame.texts.contains(Strings.HUD.levelLabel) && frame.texts.contains("1"))
+        // The top bar: MONEY · score · BEST. The cars left are on the ring now, not in it.
+        #expect(frame.texts.contains(Strings.HUD.moneyLabel))
+        #expect(frame.texts.contains(Strings.HUD.bestLabel))
+        #expect(!frame.texts.contains(Strings.HUD.cars(session.world.config.shiftCars - 1)))
     }
 }
 
@@ -419,10 +422,9 @@ struct ScreenFlowTests {
         let texts = second.advance().texts
         // The shift paid its level: base plus one level step.
         let pay = Config().shiftPayBase + Config().shiftPayPerLevel
-        // The top bar: LEVEL 2, the best score, and the money under it.
+        // The top bar: the money, the best score.
         #expect(texts.contains("1,100"))
-        #expect(texts.contains("\(pay)"))
-        #expect(texts.contains(Strings.HUD.levelLabel) && texts.contains("2"))
+        #expect(texts.contains(Strings.HUD.moneyLabel) && texts.contains(second.format.number(pay)))
     }
 
     @Test func afterAShiftTheNextLevelRollsInBehindTheResult() {

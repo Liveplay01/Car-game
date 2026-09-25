@@ -141,7 +141,7 @@ nicht daneben. Alles in `GamePresentation`, also im Testfenster und in der App g
    Verbrecher kommt, mit Schatten auf der Straße und einem Hauch Auf und Ab.
    „TRANSPORTER“ genauso. Der Countdown in der Inselmitte bleibt, sobald die Jagd läuft.
 3. **Kein Ergebnis-Screen** (`ResultBanner`): Die obere Karte wächst nicht mehr. In derselben
-   Karte: die Levelzahl rollt zur nächsten weiter, in der Mitte „LEVEL 5 COMPLETE“ über der
+   Karte: links zählt der Kontostand hoch, in der Mitte „LEVEL 5 COMPLETE“ über der
    Punktzahl, rechts BEST bzw. NEW BEST. Auf der Insel zählt das Geld hoch. Nach 3,6 s
    (`epilogue`) wird das Ergebnis von selbst zum Wartebildschirm der nächsten Schicht,
    deren Verkehr schon fährt; das Tempo gleitet wie bisher (`tempoGlide`). Ein Tap startet
@@ -158,7 +158,15 @@ nicht daneben. Alles in `GamePresentation`, also im Testfenster und in der App g
    den Rand. **Upgrades:** der Ring bleibt, etwas näher, die Stadt drumherum tritt zurück.
    Die Seiten decken die Stadt nicht mehr ganz zu. Reduce Motion: Schnitt statt Fahrt.
 
-**Tests:** `LivingCityTests` (14 Tests: Striche und Aufleuchten, Halten ins Ergebnis,
+**Obere Karte, danach (Leo, 25.09.2026):** Geld statt Level, und während der Schicht die
+Punkte statt der Autos (die zeigt der Ring). Überall dieselben drei Spalten: vor der
+Schicht GELD · AUTOS · BEST, in der Schicht GELD · PUNKTE · BEST (bzw. Rekord-Rennen), im
+Ergebnis GELD · Ausgang über Punkten · BEST. Das Geld zählt hoch, sobald die Schicht etwas
+verdient, im Ergebnis bis zum neuen Kontostand. Die Daily Shift steht in der Mitte über den
+Autos. Die Collection-Reiter im Shop wechseln animiert: die Markierung gleitet zum neuen
+Reiter, die Items wischen von dessen Seite herein (`ShopPage.shelfSlide`).
+
+**Tests:** `LivingCityTests` (16 Tests: Striche und Aufleuchten, Halten ins Ergebnis,
 Lichtlauf, roter Strike, Schild über dem richtigen Arm, Ergebnis wird zur nächsten Schicht,
 Kartengröße, Energie der Stadt, keine Sprünge, Flow-Welle, Builder-Deckung, Kamerafahrt,
 Reduce Motion, Zurücktreten ohne den Ring).

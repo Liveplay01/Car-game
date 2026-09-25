@@ -106,6 +106,8 @@ enum RenderID {
     static let transition = 400_000_000
     /// The shop section swiping out (`ShopPage.sectionSlide`).
     static let shopSlide = 450_000_000
+    /// The collection's old shelf swiping out (`ShopPage.shelfSlide`).
+    static let shopShelfSlide = 460_000_000
 
     /// Outline, body, parts, cracks and flames of one vehicle (`CarArt.Slot`).
     static let partsPerVehicle = CarArt.Slot.count
