@@ -30,9 +30,9 @@ public enum Challenge: String, Sendable, Equatable, CaseIterable, Codable {
     /// Money it pays.
     public var reward: Int {
         switch self {
-        case .perfectInputs, .tightFits, .bigCombo: 400
-        case .twoTakedowns, .twoTransporters, .longChain: 600
-        case .highAlertShift, .perfectRun: 800
+        case .perfectInputs, .tightFits, .bigCombo: 250
+        case .twoTakedowns, .twoTransporters, .longChain: 350
+        case .highAlertShift, .perfectRun: 500
         }
     }
 

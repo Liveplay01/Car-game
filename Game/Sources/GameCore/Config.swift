@@ -203,9 +203,9 @@ public struct Config: Sendable, Equatable {
     /// A police car inside either zone holds it; normal cars shield it and earn a bonus.
     public var transporterSecureArc: Double = 130
     /// Money for a transporter that leaves safely, times rush hour.
-    public var transporterPay: Int = 800
+    public var transporterPay: Int = 450
     /// Bonus for a normal car standing in a secure zone while the transporter passes.
-    public var shieldBonus: Int = 100
+    public var shieldBonus: Int = 50
     /// Money for a transporter captured by a police car (it is seized, no money).
     public var transporterSeized: Int = 0
     /// Mass of the transporter relative to a car: heavy, but a crash wrecks it like any car,
@@ -226,7 +226,7 @@ public struct Config: Sendable, Equatable {
     /// And heavier: it pushes what it hits out of the way.
     public var truckMass: Double = 2.2
     /// What a lorry pays at a toll booth (Leo, 24.09.2026: 10 per lorry).
-    public var tollPerTruck: Int = 10
+    public var tollPerTruck: Int = 6
     /// Sports car (M10): length, mass, how much quicker its merge is, and its share of the
     /// player queue once unlocked (`sportsCarShare`, set by the career).
     public var sportsCarLength: Double = 21
@@ -238,7 +238,7 @@ public struct Config: Sendable, Equatable {
     public var tollZoneArc: Double = 150
     public var tollSpeedFactor: Double = 0.55
     /// What a car over the limit pays (Leo, 24.09.2026: 5 per flash).
-    public var cameraFine: Int = 5
+    public var cameraFine: Int = 3
     /// Toll booths and speed cameras only earn during the first this many seconds of a
     /// shift (Leo, 24.09.2026: at most one minute per shift). They stay and keep slowing
     /// the traffic afterwards; only the money stops.
@@ -327,15 +327,15 @@ public struct Config: Sendable, Equatable {
     public var highAlertCars: Double = 1.15
     public var highAlertCriminalTime: Double = 0.8
     public var highAlertCriminalInterval: Double = 1
-    public var highAlertPay: Double = 3
+    public var highAlertPay: Double = 2
 
     // MARK: Money and upgrades (ROADMAP.md, M5; `Upgrades.swift`)
 
     /// Money for a completed shift; set per level by `forLevel`: `shiftPayBase` plus
     /// `shiftPayPerLevel` for every level.
-    public var shiftPay: Int = 260
-    public var shiftPayBase: Int = 200
-    public var shiftPayPerLevel: Int = 60
+    public var shiftPay: Int = 180
+    public var shiftPayBase: Int = 150
+    public var shiftPayPerLevel: Int = 30
     /// Price of the first arm the Street Builder adds; every further one costs
     /// `armCostGrowth` times as much.
     public var armBaseCost: Int = 32_500
@@ -343,7 +343,7 @@ public struct Config: Sendable, Equatable {
     /// Every arm beyond the first four brings this much more traffic and this much more pay,
     /// and lets transporters come this much sooner (IDEA.md: a bigger map spawns more bots).
     public var trafficPerArm: Double = 0.25
-    public var payPerArm: Double = 0.3
+    public var payPerArm: Double = 0.1
     public var transporterPerArm: Double = 0.15
     /// Price of an upgrade's first step (times its price factor); every further step costs
     /// `upgradeCostGrowth` times as much.
@@ -356,14 +356,14 @@ public struct Config: Sendable, Equatable {
     public var interceptorPerStep: Double = 0.1
     public var dispatchRadioPerStep: Double = 0.1
     public var backupPerStep: Int = 1
-    public var cashRoutePerStep: Double = 1
-    public var overtimePerStep: Double = 0.2
+    public var cashRoutePerStep: Double = 0.4
+    public var overtimePerStep: Double = 0.04
     /// Insurance and Robbery Insurance: this much less of a cost per step; 7 steps cover it all.
     public var insurancePerStep: Double = 0.15
     /// Freight: this much more lorry traffic per step (more tolls, denser traffic).
-    public var freightPerStep: Double = 0.03
+    public var freightPerStep: Double = 0.015
     /// Double Run: this much more chance per step of a second transporter right after one.
-    public var doubleRunPerStep: Double = 0.1
+    public var doubleRunPerStep: Double = 0.04
 
     // MARK: Risk and insurance (IDEA.md: Crash-Economy, Financial Loss; ROADMAP.md, M7)
 
@@ -431,13 +431,13 @@ public struct Config: Sendable, Equatable {
     /// Perfect Run: a completed shift without any crash and without a cut-off earns this
     /// many points and this share of the shift pay on top.
     public var perfectRunPoints: Int = 1500
-    public var perfectRunPayFactor: Double = 0.5
+    public var perfectRunPayFactor: Double = 0.25
     /// Daily Shift: money for completing it, times the days in a row (up to 7).
-    public var dailyPay: Int = 500
+    public var dailyPay: Int = 300
     /// Chance that a completed shift with a city event brings an Event Chest (Leo, 25.09.2026).
     public var eventChestChance: Double = 0.15
     /// Daily Login: what a toll booth earns per day away, for at most this many days.
-    public var tollIncomePerDay: Int = 50
+    public var tollIncomePerDay: Int = 30
     public var loginMaxDays: Int = 3
     /// Price of a Standard chest in the shop (in-game money only).
     public var standardChestPrice: Int = 26_000

@@ -114,6 +114,8 @@ public final class GameSession {
     private var resultCountdown = 0.0
     /// Real time the result banner has been showing.
     private var resultAge = 0.0
+    /// The result's money has finished counting up (its "ka-ching" played).
+    private var moneyLanded = false
     /// Real time since the last takedown.
     private var sinceTakedown = Double.infinity
     /// The score as the HUD shows it: it runs after the real one instead of jumping.
@@ -737,8 +739,13 @@ public final class GameSession {
             react(to: events)
             age(by: simDelta)
         }
-        if case .result = screen {
+        if case let .result(summary) = screen {
             resultAge += realDelta
+            // The counted money lands with a "ka-ching".
+            if !moneyLanded, summary.result.money > 0, resultAge >= ResultBanner.countDelay + ResultBanner.countDuration {
+                moneyLanded = true
+                play(sounds: [.purchase], haptics: [.paid])
+            }
         }
         sinceTakedown += realDelta
         sinceComboTier += realDelta
@@ -1115,6 +1122,7 @@ public final class GameSession {
             resultCountdown -= delta
             if resultCountdown <= 0 {
                 resultAge = 0
+                moneyLanded = false
                 // Level up (or not), and the next shift rolls in behind the result.
                 prepareShift(continuing: true, screen: .result(summary))
                 play(sounds: [.swoosh], haptics: [])

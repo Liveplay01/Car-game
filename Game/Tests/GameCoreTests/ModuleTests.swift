@@ -130,7 +130,7 @@ struct ModuleTests {
 /// minute per shift; they stay on the ring afterwards.
 @Test func modulesOnlyEarnInTheFirstMinuteOfAShift() {
     var config = Config()
-    #expect(config.tollPerTruck == 10 && config.cameraFine == 5)
+    #expect(config.tollPerTruck == 6 && config.cameraFine == 3)
     config.modules = [0: .tollBooth]
     config.truckChance = 1
     var world = World(config: config, seed: 5, mode: .shift, startsOnFirstTap: true)

@@ -522,6 +522,9 @@ enum ResultBanner {
     /// for the last car never starts the next shift by accident.
     static let inputLock = 0.4
     static let enter = 0.25
+    /// The shift's money counts up after this long, over this long, then lands.
+    static let countDelay = 0.35
+    static let countDuration = 1.2
 
     static func add(_ summary: ShiftSummary, age: Double, format: TextFormat, reduceMotion: Bool, showsKeys: Bool, to list: inout RenderList) {
         let result = summary.result
@@ -549,6 +552,15 @@ enum ResultBanner {
             text(Strings.Result.best(format.number(summary.previousHighscore)), Vec2(width / 2, 126), size: 15, weight: .regular, color: .muted)
         }
 
+        // The money of the shift counts up from 0 and lands with a small bump (Leo, 25.09.2026).
+        if result.money > 0 {
+            let x = reduceMotion ? 1 : Ease.clamp01((age - countDelay) / countDuration)
+            let shown = Int((Double(result.money) * Ease.outCubic(x)).rounded())
+            let landed = (age - countDelay - countDuration) / 0.35
+            let size = reduceMotion || landed < 0 ? 26 : 26 * HUD.Pops.land(landed, amount: 0.2)
+            Icons.moneyTag("+" + format.number(shown), at: list.camera.toScreen(.zero) - Vec2(0, 64), size: size, alignment: .center, color: .primary, opacity: enter, id: &id, to: &list)
+        }
+
         // The prompt appears once taps count, in the middle of the island.
         let prompt = Ease.outCubic((age - inputLock) / Self.enter)
         guard prompt > 0 else { return }
@@ -561,7 +573,7 @@ enum ResultBanner {
         } else if result.covered > 0 {
             text(Strings.Result.covered(format.number(result.covered)), island - Vec2(0, 28), size: 14, color: .muted, opacity: prompt)
         }
-        text(Strings.Result.stats(combo: format.number(result.bestCombo), tightFits: format.number(result.tightFits), busted: result.takedowns, transporters: result.transporters, money: result.money > 0 ? format.number(result.money) : nil, time: format.seconds(result.time)), island + Vec2(0, 28), size: 13, weight: .regular, color: .muted, opacity: prompt)
+        text(Strings.Result.stats(combo: format.number(result.bestCombo), tightFits: format.number(result.tightFits), busted: result.takedowns, transporters: result.transporters, money: nil, time: format.seconds(result.time)), island + Vec2(0, 28), size: 13, weight: .regular, color: .muted, opacity: prompt)
         if showsKeys {
             text(Strings.Result.keys, island + Vec2(0, 48), size: 12, weight: .regular, color: .muted, opacity: prompt)
         }
