@@ -19,7 +19,7 @@ Stand: 24.09.2026 · Die Details zur Basis (M0–M2) stehen in [FOUNDATION.md](F
 | M8 | Wetter & City Events ✅ (Playtest offen) | L | Regen, Sturm und Ereignisse, die den Verkehr wirklich verändern |
 | M9 | Stadt & Module ✅ (Playtest offen) | M | Modulplätze im Street Builder, Abschlepp-Depot, sichtbar wachsende Stadt |
 | M10 | Fahrzeugtypen, Mastery & Truhen ✅ (Playtest offen) | L | Sportwagen & Co., unsichtbare Mastery, Truhen mit Skins im Shop |
-| M11 | Look & Feel (Soft-Body ✅, Haptik-Muster ✅, Musik-Mix ✅; Sounds, Design-Pass, Screens, Icon offen) | M | finale Farben, Formen, Effekte, Takedown-Deformation, HUD, Sounds |
+| M11 | Look & Feel (Soft-Body ✅, Haptik-Muster ✅, Musik-Mix ✅, Icon ✅, Sounds-Feinschliff ✅, obere Anzeige ✅; finale Sounds, Design-Pass, Screens offen) | M | finale Farben, Formen, Effekte, Takedown-Deformation, HUD, Sounds |
 
 ### Phase 2 · iPad: nur Fertigmachen (Swift Playgrounds)
 

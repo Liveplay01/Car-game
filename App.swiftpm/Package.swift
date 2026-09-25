@@ -19,7 +19,9 @@ let package = Package(
             teamIdentifier: "",
             displayVersion: "0.1",
             bundleVersion: "1",
-            appIcon: .placeholder(icon: .car),
+            // The icon: `Assets.xcassets/AppIcon`, drawn by `Assets/Icon/make_icon.py`. If
+            // Swift Playgrounds refuses the catalog, `.placeholder(icon: .car)` still works.
+            appIcon: .asset("AppIcon"),
             accentColor: .presetColor(.mint),
             supportedDeviceFamilies: [
                 .pad,
