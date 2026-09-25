@@ -73,19 +73,24 @@ extension Career {
         CityEvent.allCases[((day % CityEvent.allCases.count) + CityEvent.allCases.count) % CityEvent.allCases.count]
     }
 
-    /// Whether today's Daily Shift is still to be done.
-    public func isDailyOpen(day: Int) -> Bool { dailyDone != day }
+    /// Whether today's Daily Shift is still to be played. It is the first shift of the day,
+    /// with one try (Leo, 25.09.2026); `startDaily` takes it.
+    public func isDailyOpen(day: Int) -> Bool { dailyPlayed != day && dailyDone != day }
 
-    /// A completed Daily Shift: a Standard chest and money, more for every day in a row
-    /// (up to a week). Returns the money, or nil if it was done already.
+    /// A completed Daily Shift: an Event Chest and money, more for every day in a row (up to
+    /// a week). Returns the money, or nil if it was done already.
     @discardableResult
     public mutating func completeDaily(day: Int, config: Config) -> Int? {
-        guard isDailyOpen(day: day) else { return nil }
-        dailyStreak = dailyDone == day - 1 ? dailyStreak + 1 : 1
+        guard dailyDone != day else { return nil }
+        if dailyPlayed != day {
+            // Completed without being started through `startDaily` (older flows, tests).
+            dailyStreak = dailyPlayed == day - 1 ? dailyStreak + 1 : 1
+            dailyPlayed = day
+        }
         dailyDone = day
         let money = config.dailyPay * min(dailyStreak, 7)
         self.money += money
-        chests.append(.standard)
+        chests.append(.event)
         return money
     }
 

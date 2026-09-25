@@ -58,6 +58,8 @@ public struct Cosmetic: Sendable, Equatable, Identifiable {
     public var id: String
     public var kind: CosmeticKind
     public var rarity: Rarity
+    /// Chests, the Daily streak or a season (`Rewards.swift`).
+    public var source: CosmeticSource = .chest
 }
 
 public enum Cosmetics {
@@ -100,6 +102,15 @@ public enum Cosmetics {
         Cosmetic(id: "ember", kind: .mapSkin, rarity: .legendary),
         // Vehicle types
         Cosmetic(id: "sportsCar", kind: .vehicleType, rarity: .epic),
+        // Only for the Daily streak: 7, 14 and 30 days in a row (Leo, 25.09.2026).
+        Cosmetic(id: "streakBronze", kind: .carSkin, rarity: .rare, source: .streak(days: 7)),
+        Cosmetic(id: "streakSilver", kind: .carSkin, rarity: .epic, source: .streak(days: 14)),
+        Cosmetic(id: "streakGold", kind: .carSkin, rarity: .legendary, source: .streak(days: 30)),
+        // Only in the Event Chest while their season runs.
+        Cosmetic(id: "frost", kind: .carSkin, rarity: .epic, source: .season(.winter)),
+        Cosmetic(id: "blossom", kind: .carSkin, rarity: .epic, source: .season(.spring)),
+        Cosmetic(id: "sunburst", kind: .carSkin, rarity: .epic, source: .season(.summer)),
+        Cosmetic(id: "pumpkin", kind: .carSkin, rarity: .epic, source: .season(.autumn)),
     ]
 
     public static func item(_ id: String) -> Cosmetic? { all.first { $0.id == id } }
@@ -172,9 +183,10 @@ extension Career {
     /// How many chests of a kind wait in the shop.
     public func count(of kind: ChestKind) -> Int { chests.count(where: { $0 == kind }) }
 
-    /// Opens the chest at `index`. Deterministic: the same career opens the same item.
+    /// Opens the chest at `index`. Deterministic: the same career opens the same item. An
+    /// Event Chest opened on `day` holds its season's item half the time, until it is owned.
     @discardableResult
-    public mutating func openChest(at index: Int, seed: UInt64) -> ChestOpening? {
+    public mutating func openChest(at index: Int, seed: UInt64, day: Int? = nil) -> ChestOpening? {
         guard chests.indices.contains(index) else { return nil }
         let kind = chests.remove(at: index)
         var random = SeededRandom(seed: seed ^ UInt64(chestsOpened &* 7919) ^ 0xC4E5_7B0C_5EED_0001)
@@ -191,8 +203,12 @@ extension Career {
             rarity = .epic
         }
         chestsSinceEpic = rarity >= .epic ? 0 : chestsSinceEpic + 1
-        let pool = Cosmetics.all.filter { $0.rarity == rarity }
-        let item = random.pick(pool)
+        let pool = Cosmetics.all.filter { $0.rarity == rarity && $0.source == .chest }
+        var item = random.pick(pool)
+        if kind == .event, let day, random.unit() < 0.5,
+           let seasonal = Season.of(day: day).items.first(where: { !collection.contains($0.id) }) {
+            item = seasonal
+        }
         if collection.contains(item.id) {
             money += rarity.duplicateMoney
             return ChestOpening(chest: kind, item: item, isDuplicate: true, money: rarity.duplicateMoney)

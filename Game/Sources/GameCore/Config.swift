@@ -249,13 +249,13 @@ public struct Config: Sendable, Equatable {
     /// Short and sharp: everyone snatches at the brakes right at the camera.
     public var cameraZoneArc: Double = 44
     public var cameraSpeedFactor: Double = 0.7
-    public var tollBoothCost: Int = 8_000
-    public var speedCameraCost: Int = 12_000
+    public var tollBoothCost: Int = 10_400
+    public var speedCameraCost: Int = 15_600
     /// Tow depot (M9): its zone along the ring, how much faster wrecks there are cleared,
     /// and its price.
     public var towZoneArc: Double = 180
     public var towSpeedup: Double = 0.3
-    public var towDepotCost: Int = 10_000
+    public var towDepotCost: Int = 13_000
 
     // MARK: Strikes (FOUNDATION.md 2.6)
 
@@ -338,7 +338,7 @@ public struct Config: Sendable, Equatable {
     public var shiftPayPerLevel: Int = 60
     /// Price of the first arm the Street Builder adds; every further one costs
     /// `armCostGrowth` times as much.
-    public var armBaseCost: Int = 25_000
+    public var armBaseCost: Int = 32_500
     public var armCostGrowth: Double = 2
     /// Every arm beyond the first four brings this much more traffic and this much more pay,
     /// and lets transporters come this much sooner (IDEA.md: a bigger map spawns more bots).
@@ -347,7 +347,7 @@ public struct Config: Sendable, Equatable {
     public var transporterPerArm: Double = 0.15
     /// Price of an upgrade's first step (times its price factor); every further step costs
     /// `upgradeCostGrowth` times as much.
-    public var upgradeBaseCost: Int = 2000
+    public var upgradeBaseCost: Int = 2_600
     public var upgradeCostGrowth: Double = 1.5
     /// What one step of each upgrade does.
     public var patrolsPerStep: Double = 0.03
@@ -434,13 +434,15 @@ public struct Config: Sendable, Equatable {
     public var perfectRunPayFactor: Double = 0.5
     /// Daily Shift: money for completing it, times the days in a row (up to 7).
     public var dailyPay: Int = 500
+    /// Chance that a completed shift with a city event brings an Event Chest (Leo, 25.09.2026).
+    public var eventChestChance: Double = 0.15
     /// Daily Login: what a toll booth earns per day away, for at most this many days.
     public var tollIncomePerDay: Int = 50
     public var loginMaxDays: Int = 3
     /// Price of a Standard chest in the shop (in-game money only).
-    public var standardChestPrice: Int = 20_000
+    public var standardChestPrice: Int = 26_000
     /// Price of a Premium chest (in-game money only).
-    public var premiumChestPrice: Int = 40_000
+    public var premiumChestPrice: Int = 52_000
     /// Standard chests a day for watching an ad.
     public var adChestsPerDay: Int = 3
 

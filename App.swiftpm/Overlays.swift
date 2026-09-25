@@ -28,7 +28,8 @@ struct GameScreen: View {
     }
 }
 
-/// Dispatch while playing; duty, Daily Shift and settings before a shift.
+/// Dispatch while playing; duty and settings before a shift. The Daily Shift needs no button:
+/// it is the first shift of the day by itself.
 struct NativeControls: View {
     let model: GameModel
 
@@ -45,12 +46,6 @@ struct NativeControls: View {
                     }
                     .pickerStyle(.segmented)
                     .frame(maxWidth: 220)
-                    Button {
-                        model.send(.perform(.toggleDaily))
-                    } label: {
-                        Label("Daily", systemImage: model.dailySelected ? "calendar.badge.checkmark" : "calendar")
-                    }
-                    .buttonStyle(.bordered)
                     Button {
                         model.send(.perform(.openSettings))
                     } label: {

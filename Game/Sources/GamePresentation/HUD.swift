@@ -66,7 +66,7 @@ enum HUD {
         }
     }
 
-    static func add(world: World, level: Int, duty: Duty, score: Int, comboPop: Double, pops: Pops = Pops(), format: TextFormat, showsKeys: Bool, timeScale: Double, to list: inout RenderList) {
+    static func add(world: World, level: Int, duty: Duty, score: Int, comboPop: Double, race: (delta: Double, pop: Double)? = nil, pops: Pops = Pops(), format: TextFormat, showsKeys: Bool, timeScale: Double, to list: inout RenderList) {
         let width = list.camera.viewport.x
         let margin = Metrics.hudMargin
         var id = RenderID.hud
@@ -131,6 +131,14 @@ enum HUD {
             if timeScale != 1 {
                 add(.text(Strings.multiplier(timeScale), position: Vec2(width - margin, Metrics.strikeRow), size: 13, alignment: .trailing, weight: .bold), .muted)
             }
+        }
+
+        // The race against the best time at this level (Leo: Rekord-Geist): ahead in the
+        // accent, behind in red, ticking with every car.
+        if let race {
+            let right = width - margin
+            add(.text(Strings.Race.best, position: Vec2(right, Metrics.hudRow - 15), size: 10, alignment: .trailing, weight: .bold), .muted)
+            add(.text(Strings.Race.delta(race.delta), position: Vec2(right, Metrics.hudRow + 3), size: 16 * Pops.land(race.pop, amount: 0.15), alignment: .trailing, weight: .bold), race.delta <= 0 ? .accent : .destructive)
         }
 
         addIsland(world: world, level: level, duty: duty, pop: comboPop, to: &list, id: &id)
@@ -427,7 +435,19 @@ enum HUD {
 /// tap starts it. There is no start menu (FOUNDATION.md 3); the shift is already flowing
 /// behind it.
 enum ReadyBanner {
-    static func add(level: Int, cars: Int, duty: Duty, dutyPay: Double, status: String, conditions: String? = nil, time: Double, reduceMotion: Bool, showsKeys: Bool, to list: inout RenderList) {
+    /// What the Daily Shift's banner and its splash show (Leo, 25.09.2026).
+    struct DailyCard {
+        var event: CityEvent?
+        var streak: Int
+        var next: (days: Int, item: String, left: Int)?
+        /// Seconds since the splash appeared; nil once it is gone.
+        var splash: Double?
+    }
+
+    /// How long the splash stays before it rises into the banner's title.
+    static let splashDuration = 2.4
+
+    static func add(level: Int, cars: Int, duty: Duty, dutyPay: Double, status: String, conditions: String? = nil, daily: DailyCard? = nil, time: Double, reduceMotion: Bool, showsKeys: Bool, to list: inout RenderList) {
         let width = list.camera.viewport.x
         var id = RenderID.hud
         HUD.addBand(height: Metrics.resultBand, to: &list, id: &id)
@@ -435,10 +455,18 @@ enum ReadyBanner {
             list.add(.text(string, position: position, size: size, alignment: .center, weight: weight), color: color, opacity: opacity, space: .screen, id: id)
             id += 1
         }
-        text(Strings.HUD.level(level), Vec2(width / 2, 36), size: 24, color: .accent)
-        text(Strings.HUD.cars(cars), Vec2(width / 2, 72), size: 20, color: .primary)
-        text(Strings.Ready.duty(duty, pay: dutyPay), Vec2(width / 2, 100), size: 14, color: duty == .highAlert ? .destructive : .muted)
-        text(status, Vec2(width / 2, 124), size: 13, weight: .regular, color: .muted)
+        if let daily {
+            // The Daily Shift says so in the title; the level moves into the line below.
+            text(Strings.Daily.title, Vec2(width / 2, 36), size: 24, color: .hazard)
+            text(Strings.Daily.levelLine(level: level, cars: cars), Vec2(width / 2, 72), size: 18, color: .primary)
+            text(Strings.Ready.duty(duty, pay: dutyPay), Vec2(width / 2, 100), size: 14, color: duty == .highAlert ? .destructive : .muted)
+            text(Strings.Daily.streakLine(daily.streak), Vec2(width / 2, 124), size: 13, weight: .regular, color: .muted)
+        } else {
+            text(Strings.HUD.level(level), Vec2(width / 2, 36), size: 24, color: .accent)
+            text(Strings.HUD.cars(cars), Vec2(width / 2, 72), size: 20, color: .primary)
+            text(Strings.Ready.duty(duty, pay: dutyPay), Vec2(width / 2, 100), size: 14, color: duty == .highAlert ? .destructive : .muted)
+            text(status, Vec2(width / 2, 124), size: 13, weight: .regular, color: .muted)
+        }
         // The prompt breathes gently, so the waiting screen is alive; still with Reduce Motion.
         let island = list.camera.toScreen(.zero)
         let breath = reduceMotion ? 1 : 0.7 + 0.3 * (0.5 + 0.5 * cos(time * 2.4))
@@ -449,6 +477,39 @@ enum ReadyBanner {
         }
         if showsKeys {
             text(Strings.Ready.keys, island + Vec2(0, 28), size: 12, weight: .regular, color: .muted)
+        }
+        if let daily, let age = daily.splash {
+            addSplash(daily, age: age, reduceMotion: reduceMotion, id: &id, to: &list)
+        }
+    }
+
+    /// "DAILY SHIFT" as a card over the scene: it springs in like the chest, holds, then
+    /// rises into the banner's title and fades. A tap starts the shift as always.
+    static func addSplash(_ daily: DailyCard, age: Double, reduceMotion: Bool, id: inout Int, to list: inout RenderList) {
+        let viewport = list.camera.viewport
+        let leave = Ease.clamp01((age - (splashDuration - 0.45)) / 0.45)
+        let alpha = Ease.outCubic(age / 0.25) * (1 - Ease.outCubic(leave))
+        guard alpha > 0.001 else { return }
+        func add(_ primitive: Primitive, _ color: ColorToken, _ opacity: Double = 1) {
+            list.add(primitive, color: color, opacity: opacity * alpha, space: .screen, id: id)
+            id += 1
+        }
+        add(.roundedRect(center: viewport / 2, size: viewport, cornerRadius: 0, rotation: 0), .background, 0.7)
+        let pop = reduceMotion ? 1 : Ease.spring(age / 0.5)
+        let center = viewport / 2 + Vec2(0, reduceMotion ? 0 : -70 * Ease.inCubic(leave) - 20)
+        let size = Vec2(min(viewport.x - 40, 340), 176) * (0.85 + 0.15 * pop)
+        add(.roundedRect(center: center, size: size + Vec2(6, 6), cornerRadius: 25, rotation: 0), .hazard, 0.35)
+        add(.roundedRect(center: center, size: size, cornerRadius: 22, rotation: 0), .surface)
+        func line(_ string: String, _ dy: Double, size: Double, weight: FontWeight = .regular, color: ColorToken) {
+            add(.text(string, position: center + Vec2(0, dy), size: size, alignment: .center, weight: weight), color)
+        }
+        line(Strings.Daily.title, -48, size: 30 * (0.8 + 0.2 * pop), weight: .bold, color: .hazard)
+        if let event = daily.event {
+            line(Strings.Daily.splashLine(event: event), -8, size: 14, color: .primary)
+        }
+        line(Strings.Daily.streakLine(daily.streak), 20, size: 13, color: .muted)
+        if let next = daily.next {
+            line(Strings.Daily.nextMilestone(left: next.left, item: next.item), 46, size: 12, weight: .bold, color: .accent)
         }
     }
 }
@@ -502,7 +563,7 @@ enum ResultBanner {
         }
         text(Strings.Result.stats(combo: format.number(result.bestCombo), tightFits: format.number(result.tightFits), busted: result.takedowns, transporters: result.transporters, money: result.money > 0 ? format.number(result.money) : nil, time: format.seconds(result.time)), island + Vec2(0, 28), size: 13, weight: .regular, color: .muted, opacity: prompt)
         if showsKeys {
-            text(Strings.Result.keys(seed: result.seed), island + Vec2(0, 48), size: 12, weight: .regular, color: .muted, opacity: prompt)
+            text(Strings.Result.keys, island + Vec2(0, 48), size: 12, weight: .regular, color: .muted, opacity: prompt)
         }
     }
 }

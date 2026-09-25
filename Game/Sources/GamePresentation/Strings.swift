@@ -33,7 +33,7 @@ public enum Strings {
             return money.map { "\(score) · \(Strings.money($0))" } ?? score
         }
         /// Test window only.
-        public static let keys = "Esc settings · Tab next page · H high alert · D daily"
+        public static let keys = "Esc settings · Tab next page · H high alert"
 
         /// "DAILY SHIFT · Heavy Rain · Roadworks"; nil on a clear day without anything (M8, v1.2).
         public static func conditions(weather: Weather, event: CityEvent?, daily: Bool = false, dailyOpen: Bool = false) -> String? {
@@ -122,12 +122,20 @@ public enum Strings {
             switch kind {
             case .standard: "For sale · or watch an ad"
             case .premium: "For sale · or by hard masteries"
-            case .event: "Comes with city events"
+            case .event: "From city events and the Daily Shift · holds this season's item"
             case .criminalHunt: "Earned by catching criminals"
             }
         }
         public static let pickItem = "Tap an item to see it."
         public static let lockedHint = "Not found yet: it comes out of chests."
+        /// Where a locked item comes from: chests, the Daily streak or its season.
+        public static func lockedHint(for item: Cosmetic) -> String {
+            switch item.source {
+            case .chest: lockedHint
+            case let .streak(days): "Play the Daily Shift \(days) days in a row."
+            case let .season(season): "Only in Event Chests during \(season.rawValue)."
+            }
+        }
         public static let tapToClose = "Tap to close"
         public static let watchAdShort = "Watch ad"
         public static let adHint = "Watch a short ad for a free Standard chest."
@@ -225,6 +233,13 @@ public enum Strings {
             case "diamond": "Diamond"
             case "holo": "Holo"
             case "sportsCar": "Sports Car"
+            case "streakBronze": "Bronze Badge"
+            case "streakSilver": "Silver Badge"
+            case "streakGold": "Gold Laurel"
+            case "frost": "Frost"
+            case "blossom": "Blossom"
+            case "sunburst": "Sunburst"
+            case "pumpkin": "Pumpkin"
             default: id
             }
         }
@@ -257,7 +272,7 @@ public enum Strings {
         public static func welcomeBack(_ money: String) -> String { "Welcome back · your toll booths earned +\(Strings.money(money))" }
         public static let done = "Done"
         public static let challengesTitle = "Today's challenge"
-        public static let readyHint = "Pick it on the Game tab. Same shift for everyone today."
+        public static let readyHint = "Your first shift of the day. One try, the same shift for everyone."
         public static let todayHint = "Challenges pay once each and change at midnight."
         public static func doneHint(streak: Int) -> String {
             streak > 1 ? "Done · \(streak) days in a row · back tomorrow" : "Done · back tomorrow"
@@ -266,8 +281,22 @@ public enum Strings {
         /// "DAILY SHIFT DONE · +[note]1,500 · 3 days in a row · CHEST EARNED".
         public static func dailyDone(_ money: String, streak: Int) -> String {
             let days = streak > 1 ? " · \(streak) days in a row" : ""
-            return "DAILY SHIFT DONE · +\(Strings.money(money))\(days) · CHEST EARNED"
+            return "DAILY SHIFT DONE · +\(Strings.money(money))\(days) · EVENT CHEST"
         }
+
+        // The Daily Shift is the first shift of the day (Leo, 25.09.2026): a splash says so.
+        public static func splashLine(event: CityEvent) -> String { "Today's city: \(Strings.cityEvent(event)) · one try" }
+        public static func streakLine(_ streak: Int) -> String {
+            streak > 0 ? "\(streak) \(streak == 1 ? "day" : "days") in a row · keep it going" : "Play it every day for a streak"
+        }
+        /// "4 more days for Bronze Badge".
+        public static func nextMilestone(left: Int, item: String) -> String {
+            "\(left) more \(left == 1 ? "day" : "days") for \(Shop.item(item))"
+        }
+        /// "7 DAYS IN A ROW · Bronze Badge unlocked".
+        public static func milestone(days: Int, item: String) -> String { "\(days) DAYS IN A ROW · \(Shop.item(item)) unlocked" }
+        public static func levelLine(level: Int, cars: Int) -> String { "Level \(level) · \(HUD.cars(cars))" }
+        public static let eventChestFound = "EVENT CHEST FOUND"
 
         public static func challenge(_ challenge: Challenge) -> String {
             switch challenge {
@@ -285,6 +314,40 @@ public enum Strings {
         public static func challengeDone(_ challenge: Challenge, reward: String) -> String {
             "CHALLENGE · \(Self.challenge(challenge)) · +\(Strings.money(reward))"
         }
+    }
+
+    /// Albums (Leo, 25.09.2026): full sets pay once and frame the roundabout.
+    public enum Albums {
+        public static func name(_ album: Album) -> String {
+            switch album {
+            case .maps: "Maps"
+            case .commons: "Commons"
+            case .rares: "Rares"
+            case .epics: "Epics"
+            case .legends: "Legends"
+            case .seasons: "Seasons"
+            case .loyalty: "Loyalty"
+            }
+        }
+        /// "ALBUM COMPLETE · Maps · +[note]10,000 · new frame".
+        public static func complete(_ album: Album, reward: String) -> String {
+            "ALBUM COMPLETE · \(name(album)) · +\(Strings.money(reward)) · new frame"
+        }
+        /// "Albums · Maps 5/8 · Commons 6/6".
+        public static func progress(_ entries: [(album: Album, owned: Int, total: Int)]) -> String {
+            "Albums · " + entries.map { "\(name($0.album)) \($0.owned)/\($0.total)" }.joined(separator: " · ")
+        }
+    }
+
+    /// The race against the best time at this level (Leo: Rekord-Geist).
+    public enum Race {
+        public static let best = "BEST"
+        /// "−1.2 s" ahead, "+0.8 s" behind.
+        public static func delta(_ seconds: Double) -> String {
+            (seconds <= 0 ? "−" : "+") + String(format: "%.1f s", abs(seconds))
+        }
+        public static let newBest = "NEW BEST TIME"
+
     }
 
     /// Mastery toasts (M10): short, no screen of their own.
@@ -470,7 +533,7 @@ public enum Strings {
             return base + paid + (money.map { " · +\(Strings.money($0))" } ?? "")
         }
         /// Test window only.
-        public static func keys(seed: UInt64) -> String { "Seed \(seed) · Esc menu" }
+        public static let keys = "Esc menu"
     }
 
     public enum SettingsMenu {

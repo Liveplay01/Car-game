@@ -16,13 +16,13 @@ final class GameModel {
     /// Mirrors of session state the native overlays react to.
     private(set) var screen: Screen = .ready
     private(set) var duty: Duty = .normal
-    private(set) var dailySelected = false
     private(set) var settingsContent: ScreenContent?
 
     @ObservationIgnored private let audio = AppAudio()
     @ObservationIgnored private let haptics = AppHaptics()
     @ObservationIgnored private let music = AppMusic()
     @ObservationIgnored private let ads = AdMobRewardedAds()
+    @ObservationIgnored private let gameCenter = GameCenter()
     @ObservationIgnored private var pending: [InputAction] = []
     @ObservationIgnored private var displayLink: CADisplayLink?
     @ObservationIgnored private var lastTimestamp: CFTimeInterval?
@@ -37,6 +37,7 @@ final class GameModel {
             options: PresentationOptions(drawsMenus: true, showsKeyHints: false)
         )
         session.systemReduceMotion = UIAccessibility.isReduceMotionEnabled
+        session.gameServices = gameCenter
         // With the AdMob SDK the real ad runs; without it the game's placeholder ad.
         if AdMobRewardedAds.isAvailable {
             session.adProvider = ads
@@ -68,9 +69,11 @@ final class GameModel {
         renderList = frame.renderList
         music.update(mix: session.musicMix, enabled: session.save.settings.sound, delta: delta)
         // Only what the native overlays need; changes are rare, so SwiftUI stays calm.
-        if screen != session.screen { screen = session.screen }
+        if screen != session.screen {
+            screen = session.screen
+            GameCenter.showAccessPoint(screen == .ready)
+        }
         if duty != session.save.career.duty { duty = session.save.career.duty }
-        if dailySelected != session.dailySelected { dailySelected = session.dailySelected }
         let content = session.screen == .settings ? session.content : nil
         if settingsContent != content { settingsContent = content }
     }

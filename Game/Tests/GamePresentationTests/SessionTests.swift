@@ -65,6 +65,9 @@ func makeSession(
     // A fixed day whose challenges a short test shift cannot meet, so no test depends on
     // the calendar.
     session.today = (0...).first { Set(Challenge.of(day: $0)).isDisjoint(with: [.perfectRun, .highAlertShift]) }!
+    // The Daily Shift would be every fresh save's first shift; tests get plain ones
+    // (`RewardTests` turn it on).
+    session.automaticDaily = false
     return session
 }
 

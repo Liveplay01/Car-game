@@ -352,9 +352,9 @@ nicht. Mehr Geld heißt ein schwererer Ring (IDEA.md, „Wirtschaft schafft Gefa
 
 | Modul | Preis | Verdient | Zone | Wirkung |
 | --- | --- | --- | --- | --- |
-| Toll Booth | 8.000 | 120 pro Lkw (Autos fahren durch) | 150 lang, Tempo × 0,55 | langer, milder Abschnitt: dahinter staut es sich |
-| Speed Camera | 12.000 | 45 pro Auto, nur wenn das Ring-Tempo über 108 % liegt (ruhiger Start: nichts, Rush Hour: jedes Auto) | 44 lang, Tempo × 0,7 | kurz und scharf: alle bremsen am Blitzer |
-| Tow Depot | 10.000 | nichts | 180 lang, kein Tempolimit | Wracks in der Zone verschwinden 30 % schneller, der Ring fließt früher wieder |
+| Toll Booth | 10.400 | 120 pro Lkw (Autos fahren durch) | 150 lang, Tempo × 0,55 | langer, milder Abschnitt: dahinter staut es sich |
+| Speed Camera | 15.600 | 45 pro Auto, nur wenn das Ring-Tempo über 108 % liegt (ruhiger Start: nichts, Rush Hour: jedes Auto) | 44 lang, Tempo × 0,7 | kurz und scharf: alle bremsen am Blitzer |
+| Tow Depot | 13.000 | nichts | 180 lang, kein Tempolimit | Wracks in der Zone verschwinden 30 % schneller, der Ring fließt früher wieder |
 
 - **Wer zahlt:** jedes Fahrzeug, das die Modulmitte passiert, außer Wracks und dem
   Verbrecher-Pickup. High Alert vervielfacht Modul-Einnahmen **nicht** (Entscheidung Leo,

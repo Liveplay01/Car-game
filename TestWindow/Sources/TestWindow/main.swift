@@ -128,9 +128,6 @@ while !WindowShouldClose() {
     if IsKeyPressed(key(KEY_F2)) {
         actions.append(.cycleSlowMotion)
     }
-    if IsKeyPressed(key(KEY_D)) {
-        actions.append(.perform(.toggleDaily))
-    }
     if IsKeyPressed(key(KEY_H)) {
         actions.append(.perform(.setDuty(session.save.career.duty == .normal ? .highAlert : .normal)))
     }

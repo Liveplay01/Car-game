@@ -40,7 +40,8 @@ struct DailyTests {
         var career = Career()
         let first = career.completeDaily(day: 100, config: config)
         #expect(first == config.dailyPay)
-        #expect(career.chests == [.standard])
+        // The Daily Shift brings an Event Chest (Leo, 25.09.2026).
+        #expect(career.chests == [.event])
         #expect(career.completeDaily(day: 100, config: config) == nil)
         let second = career.completeDaily(day: 101, config: config)
         #expect(second == config.dailyPay * 2)

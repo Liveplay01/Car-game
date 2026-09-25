@@ -30,6 +30,13 @@ public enum Skins {
         case "starlight": .skinMidnight
         case "diamond": .skinIce
         case "holo": .skinHolo
+        case "streakBronze": .skinBronze
+        case "streakSilver": .skinSilver
+        case "streakGold": .skinGold
+        case "frost": .skinFrost
+        case "blossom": .skinBlossom
+        case "sunburst": .skinSunburst
+        case "pumpkin": .skinPumpkin
         case "dusk": .mapDusk
         case "sand": .mapSand
         case "neon": .mapNeon
@@ -48,8 +55,11 @@ public enum Skins {
         case "redStripe": .primary
         case "blackGold", "royal", "lagoon": .skinGold
         case "nightMint": .skinMint
-        case "tiger": .vehicleTire
+        case "tiger", "pumpkin": .vehicleTire
         case "holo": .skinMint
+        case "streakGold": .mapForest
+        case "blossom": .primary
+        case "sunburst": .fireOuter
         default: nil
         }
     }
@@ -66,9 +76,9 @@ public enum Skins {
 
     public static func finish(_ id: String?) -> Finish? {
         switch id {
-        case "pearlShine", "chrome", "holo": .shiny
-        case "starlight": .glitter
-        case "diamond": .shinyGlitter
+        case "pearlShine", "chrome", "holo", "streakSilver": .shiny
+        case "starlight", "frost": .glitter
+        case "diamond", "streakGold": .shinyGlitter
         default: nil
         }
     }
@@ -98,6 +108,28 @@ enum CityLayer {
         let radius = world.layout.ringRadius - world.layout.laneWidth / 2
         list.add(.circle(center: .zero, radius: radius), color: skin, opacity: 0.16, space: .world, id: RenderID.city + 200)
         list.add(.arc(center: .zero, radius: radius - 6, thickness: 2, startAngle: 0, endAngle: Angle.tau), color: skin, opacity: 0.5, space: .world, id: RenderID.city + 201)
+    }
+
+    /// The frame of the most valuable album completed (Leo: Sammelalben): a ring of its
+    /// colour around the roundabout, with a soft glow.
+    static func addFrame(_ album: Album?, world: World, to list: inout RenderList) {
+        guard let album else { return }
+        let radius = world.layout.ringRadius + world.layout.laneWidth / 2 + 5
+        let color = frameColor(album)
+        list.add(.arc(center: .zero, radius: radius + 3, thickness: 8, startAngle: 0, endAngle: Angle.tau), color: color, opacity: 0.12, space: .world, id: RenderID.city + 210)
+        list.add(.arc(center: .zero, radius: radius, thickness: 2.5, startAngle: 0, endAngle: Angle.tau), color: color, opacity: 0.8, space: .world, id: RenderID.city + 211)
+    }
+
+    static func frameColor(_ album: Album) -> ColorToken {
+        switch album {
+        case .maps: .mapAurora
+        case .commons: .rarityCommon
+        case .rares: .rarityRare
+        case .epics: .rarityEpic
+        case .legends: .rarityLegendary
+        case .seasons: .skinFrost
+        case .loyalty: .skinBronze
+        }
     }
 
     /// Everything that counts as progress, as one number.

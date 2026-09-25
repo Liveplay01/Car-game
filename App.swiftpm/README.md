@@ -19,6 +19,18 @@ lokalem Pfad von `../Game` ab; unter Windows wird hier nichts gebaut.
 - **Kein Ton:** Stummschalter/Lautstärke; Assets fehlen → unter Windows
   `powershell -File sync-app-assets.ps1` im Repo ausführen und neu synchronisieren.
 
+## Game Center
+
+Ranglisten und Erfolge laufen über `GameCenter.swift` (GameKit). Vor dem App Store in App Store
+Connect anlegen, mit genau diesen IDs (`Game/Sources/GamePresentation/GameServices.swift`):
+
+- Ranglisten: `cargame.highscore`, `cargame.level`, `cargame.bestcombo`, `cargame.dailystreak`
+- Erfolge: `cargame.mastery.<ziel>.<1–3>` für jede Mastery, `cargame.streak.7/14/30`,
+  `cargame.album.<maps|commons|rares|epics|legends|seasons|loyalty>` (`Achievements.all` listet alle)
+
+Offen: ob Swift Playgrounds die Game-Center-Berechtigung von selbst setzt, zeigt erst der
+erste Build mit echtem Konto. Ohne angemeldeten Spieler wird einfach nichts gemeldet.
+
 ## Werbung (Google AdMob)
 
 Eingetragen sind Googles **Test-IDs** (App-ID in `AdMob-Info.plist`, Rewarded-Einheit in
@@ -36,4 +48,5 @@ Datenschutzangaben um Werbe-/Tracking-Daten ergänzen, Datenschutzerklärung nen
 | `Overlays.swift` | native Buttons (Dispatch, High Alert, Daily, Einstellungen-Sheet) |
 | `Platform.swift` | Spielstand, Seeds, Sound, Haptik, Musik |
 | `Ads.swift` | Rewarded Ads über AdMob, Tracking-Abfrage |
+| `GameCenter.swift` | Game Center: Anmeldung, Ranglisten, Erfolge, Access Point |
 | `Resources/` | Sounds, Haptik-Muster, Musik (Kopie aus `Assets/`, `sync-app-assets.ps1`) |

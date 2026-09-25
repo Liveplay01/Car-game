@@ -251,17 +251,6 @@ public final class GameSession {
                 screen = .ready
                 tick()
             }
-        case .toggleDaily:
-            // Only between shifts, and only while today's is still open.
-            guard screen == .ready, world.shift.phase == .waiting else { return }
-            guard dailySelected || save.career.isDailyOpen(day: today) else {
-                play(sounds: [.denied], haptics: [])
-                showNotice(Strings.Daily.doneToday)
-                return
-            }
-            tick()
-            dailySelected.toggle()
-            prepareShift(continuing: true, seed: dailySelected ? Career.dailySeed(day: today) : nil)
         case let .setDuty(duty):
             guard save.career.duty != duty else { return }
             save.career.duty = duty
@@ -297,8 +286,10 @@ public final class GameSession {
         case let .buy(upgrade):
             buy(upgrade)
         case let .openChest(index):
-            guard let opening = save.career.openChest(at: index, seed: UInt64(save.shiftsPlayed)) else { return }
+            guard let opening = save.career.openChest(at: index, seed: UInt64(save.shiftsPlayed), day: today) else { return }
+            let albums = completeAlbums()
             store.save(save)
+            if !albums.isEmpty { showNotice(albums.joined(separator: "  ·  ")) }
             // The drawn shop reveals it and plays the burst with its animation; without drawn
             // menus a short notice says what it was.
             if options.drawsMenus {
@@ -406,10 +397,16 @@ public final class GameSession {
     /// Continuing keeps the cars on the road and lets the new queue roll in (`World.nextShift`);
     /// otherwise the roundabout starts afresh.
     private func prepareShift(continuing: Bool, seed: UInt64? = nil, screen next: Screen = .ready) {
-        let seed = seed ?? random.nextSeed()
+        // While today's Daily Shift is open, it is the next shift, with its own seed.
+        let daily = automaticDaily && save.career.isDailyOpen(day: today)
+        dailySelected = daily
+        let seed = daily ? Career.dailySeed(day: today) : (seed ?? random.nextSeed())
         playingLevel = save.career.level
         playingDuty = save.career.duty
-        playingDaily = dailySelected
+        playingDaily = daily
+        dailySplash = daily ? 0 : nil
+        splits = []
+        raceDelta = nil
         let shiftConfig = shiftConfig(seed: seed)
         if continuing {
             world = world.nextShift(config: shiftConfig, seed: seed)
@@ -447,6 +444,17 @@ public final class GameSession {
     /// The next shift is today's Daily Shift; and whether the running one is.
     public private(set) var dailySelected = false
     public private(set) var playingDaily = false
+    /// The Daily Shift comes by itself as the first shift of the day (Leo, 25.09.2026); there
+    /// is nothing to pick. Tests that need a plain shift turn it off.
+    public var automaticDaily = true
+    /// The splash that announces the Daily Shift, and how long it has shown.
+    private var dailySplash: Double?
+    /// Game Center (the app sets it; the test window has none).
+    public var gameServices: GameServicing?
+    /// When each car of the running shift was in, seconds from its first tap, and how the
+    /// last one compared with the best time at this level (Leo: Rekord-Geist).
+    private var splits: [Double] = []
+    private var raceDelta: Double?
 
     /// The config of a shift with this seed: the career's, and for the Daily Shift always
     /// the day's city event.
@@ -714,6 +722,7 @@ public final class GameSession {
         if runs {
             clock.add(simDelta)
         }
+        keepDailyInStep()
         let present = world.time + clock.accumulator
         for action in actions {
             handle(action, present: present, simDelta: simDelta)
@@ -738,7 +747,19 @@ public final class GameSession {
         sincePoliceCrash += realDelta
         // Only going the counting way pops: a new shift refills without a bump.
         let counts = (carsLeft: world.carsLeft ?? 0, strikes: world.score.strikes, policeCrashes: world.score.policeCrashes)
-        if counts.carsLeft < seenCounts.carsLeft { sinceCarSent = 0 }
+        if counts.carsLeft < seenCounts.carsLeft {
+            sinceCarSent = 0
+            // A split for the race against the best time at this level.
+            if screen == .playing, let start = world.shift.startedAt {
+                splits.append(world.time - start)
+                if let best = save.career.bestTimes(atLevel: playingLevel), best.indices.contains(splits.count - 1) {
+                    raceDelta = splits[splits.count - 1] - best[splits.count - 1]
+                }
+            }
+        }
+        if let splash = dailySplash, screen == .ready {
+            dailySplash = splash + realDelta < ReadyBanner.splashDuration ? splash + realDelta : nil
+        }
         if counts.strikes > seenCounts.strikes { sinceStrike = 0 }
         if counts.policeCrashes > seenCounts.policeCrashes { sincePoliceCrash = 0 }
         seenCounts = counts
@@ -972,7 +993,37 @@ public final class GameSession {
     /// Leaves the waiting banner or the result: the shift is on, with a short "go".
     private func startPlaying() {
         screen = .playing
+        dailySplash = nil
         play(sounds: [.go], haptics: [])
+        // The Daily Shift is taken the moment it starts: one try, and the streak counts it.
+        if playingDaily {
+            let milestone = save.career.startDaily(day: today)
+            gameServices?.submit(save.career.dailyStreak, to: .dailyStreak)
+            var toasts: [String] = []
+            if let milestone {
+                toasts.append(Strings.Daily.milestone(days: save.career.dailyStreak, item: milestone.id))
+                gameServices?.unlock(Achievements.streak(days: save.career.dailyStreak))
+                toasts += completeAlbums()
+            }
+            store.save(save)
+            if !toasts.isEmpty { showNotice(toasts.joined(separator: "  ·  ")) }
+        }
+    }
+
+    /// The daily state of the waiting shift follows the day: today's Daily Shift while it
+    /// is open, a normal shift after — also across midnight or when the platform sets `today`.
+    private func keepDailyInStep() {
+        guard world.shift.phase == .waiting, screen != .playing else { return }
+        let wanted = automaticDaily && save.career.isDailyOpen(day: today)
+        if wanted != dailySelected { prepareShift(continuing: true, screen: screen) }
+    }
+
+    /// Pays albums the collection just completed; returns their toasts.
+    private func completeAlbums() -> [String] {
+        save.career.completeAlbums().map { album in
+            gameServices?.unlock(Achievements.album(album))
+            return Strings.Albums.complete(album, reward: format.number(album.reward))
+        }
     }
 
     /// The small tick of a tab, a card or a switch.
@@ -1010,11 +1061,30 @@ public final class GameSession {
         // Daily Shift and Challenges (v1.2).
         if playingDaily, result.outcome == .completed, let pay = save.career.completeDaily(day: today, config: config) {
             toasts.append(Strings.Daily.dailyDone(format.number(pay), streak: save.career.dailyStreak))
+        } else if !playingDaily, save.career.rollEventChest(result, config: world.config) {
+            // A city event may leave an Event Chest behind (Leo, 25.09.2026).
+            toasts.append(Strings.Daily.eventChestFound)
         }
         dailySelected = false
+        // The race against the best time at this level; the last car ends the shift in the
+        // step it goes in, so its time is the shift's.
+        if result.outcome == .completed {
+            var times = splits
+            if (times.last ?? -1) < result.time - 0.001 { times.append(result.time) }
+            let hadBest = save.career.bestTimes(atLevel: playingLevel) != nil
+            if save.career.recordTimes(times, atLevel: playingLevel), hadBest {
+                toasts.append(Strings.Race.newBest)
+            }
+            gameServices?.submit(result.score, to: .highscore)
+            gameServices?.submit(result.bestCombo, to: .bestCombo)
+        }
         let challenges = save.career.recordChallenges(result, duty: playingDuty, day: today)
         toasts += challenges.map { Strings.Daily.challengeDone($0, reward: format.number($0.reward)) }
         let completed = save.career.recordMastery(result, duty: playingDuty)
+        for completion in completed {
+            gameServices?.unlock(Achievements.mastery(completion.goal, tier: completion.tier))
+        }
+        gameServices?.submit(save.career.level, to: .level)
         store.save(save)
         if !completed.isEmpty {
             toasts.append(Strings.Mastery.toast(completed))
@@ -1070,6 +1140,7 @@ public final class GameSession {
         CityLayer.add(world: world, theme: mapTheme, to: &list)
         SceneBuilder.addRoad(world.layout, config: world.config, to: &list)
         CityLayer.addMapSkin(Skins.color(forcedMapSkin ?? save.career.mapSkin), world: world, to: &list)
+        CityLayer.addFrame(save.career.frame, world: world, to: &list)
         WeatherLayer.addCityEvent(world: world, to: &list)
         WeatherLayer.addGround(world: world, to: &list)
         effects.addGround(world: world, alpha: clock.alpha, softBody: !reduceMotion, to: &list)
@@ -1093,6 +1164,7 @@ public final class GameSession {
                 world: world, level: playingLevel, duty: playingDuty,
                 score: Int(shownScore.rounded()),
                 comboPop: reduceMotion ? 0 : Ease.clamp01(sinceComboTier / Self.comboPop),
+                race: raceDelta.map { ($0, reduceMotion ? 1 : Ease.clamp01(sinceCarSent / 0.35)) },
                 pops: reduceMotion ? HUD.Pops() : HUD.Pops(
                     cars: Ease.clamp01(sinceCarSent / 0.35),
                     rushHour: world.shift.rushHourSince.map { Ease.clamp01((world.time - $0) / 0.5) } ?? 1,
@@ -1115,9 +1187,9 @@ public final class GameSession {
             )
             let conditions = Strings.Ready.conditions(
                 weather: world.config.weather, event: world.config.cityEvent,
-                daily: dailySelected, dailyOpen: save.career.isDailyOpen(day: today)
             )
-            ReadyBanner.add(level: playingLevel, cars: world.carsLeft ?? 0, duty: career.duty, dutyPay: config.highAlertPay, status: status, conditions: conditions, time: sinceReady, reduceMotion: reduceMotion, showsKeys: options.showsKeyHints, to: &list)
+            let daily = dailySelected ? ReadyBanner.DailyCard(event: world.config.cityEvent, streak: career.dailyStreak, next: career.nextStreakMilestone(), splash: dailySplash) : nil
+            ReadyBanner.add(level: playingLevel, cars: world.carsLeft ?? 0, duty: career.duty, dutyPay: config.highAlertPay, status: status, conditions: conditions, daily: daily, time: sinceReady, reduceMotion: reduceMotion, showsKeys: options.showsKeyHints, to: &list)
         case .settings, .page:
             break
         }

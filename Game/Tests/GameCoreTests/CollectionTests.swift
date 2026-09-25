@@ -110,10 +110,11 @@ struct CollectionTests {
 
     @Test func standardAndPremiumAreForSale() {
         let config = Config()
-        #expect(config.price(of: .standard) == 20_000)
-        #expect(config.price(of: .premium) == 40_000)
+        // Everything for sale is 30 % dearer since 25.09.2026 (Leo).
+        #expect(config.price(of: .standard) == 26_000)
+        #expect(config.price(of: .premium) == 52_000)
         #expect(config.price(of: .criminalHunt) == nil)
-        var career = Career(level: 1, money: 40_000)
+        var career = Career(level: 1, money: 52_000)
         let bought = career.buyChest(.premium, config: config)
         #expect(bought && career.money == 0)
     }

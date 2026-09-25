@@ -77,7 +77,6 @@ einer Stadt, die mit dem Spieler wächst.
 
 ## Offen: Motivation (v1.2)
 
-- **Event Chests** mit zeitlich begrenzten Themeninhalten, City-/Event-Rewards.
 
 ---
 

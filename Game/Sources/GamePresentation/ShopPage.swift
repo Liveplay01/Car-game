@@ -126,7 +126,7 @@ public enum ShopPage {
     }
 
     static func itemCells(_ layout: Layout) -> [(Cosmetic, Rect)] {
-        Array(zip(Cosmetics.all, grid(Cosmetics.all.count, columns: 4, in: layout.content, maxHeight: 118)))
+        Array(zip(Cosmetics.all, grid(Cosmetics.all.count, columns: 5, in: layout.content, maxHeight: 118)))
     }
 
     /// The buttons of the detail panel: up to two, right-aligned.
@@ -423,14 +423,21 @@ public enum ShopPage {
             text(Strings.Shop.pity(Career.pityChests - career.chestsSinceEpic), Vec2(left, y), size: 11, color: .muted, id: &id, to: &list)
         case .collection:
             guard let id0 = state.selectedItem, let item = Cosmetics.item(id0) else {
-                text(Strings.Shop.pickItem, detail.center, size: 13, color: .muted, alignment: .center, id: &id, to: &list)
+                text(Strings.Shop.pickItem, detail.center - Vec2(0, 24), size: 13, color: .muted, alignment: .center, id: &id, to: &list)
+                // The albums: full sets pay once and frame the roundabout.
+                let albums = Album.allCases.map { album in
+                    let progress = career.progress(of: album)
+                    return (album: album, owned: progress.owned, total: progress.total)
+                }
+                text(Strings.Albums.progress(Array(albums.prefix(4))), detail.center + Vec2(0, 4), size: 11, color: .accent, alignment: .center, id: &id, to: &list)
+                text(Strings.Albums.progress(Array(albums.dropFirst(4))), detail.center + Vec2(0, 22), size: 11, color: .accent, alignment: .center, id: &id, to: &list)
                 return
             }
             text(career.owns(item.id) ? Strings.Shop.item(item.id) : Strings.Shop.locked, Vec2(left, y), size: 16, weight: .bold, color: .primary, id: &id, to: &list)
             y += 20
             text(Strings.Shop.kind(item), Vec2(left, y), size: 11, color: rarityColor(item.rarity), id: &id, to: &list)
             y += 16
-            text(career.owns(item.id) ? Strings.Shop.ownedHint(item) : Strings.Shop.lockedHint, Vec2(left, y), size: 11, color: .muted, id: &id, to: &list)
+            text(career.owns(item.id) ? Strings.Shop.ownedHint(item) : Strings.Shop.lockedHint(for: item), Vec2(left, y), size: 11, color: .muted, id: &id, to: &list)
             if item.kind == .carSkin {
                 y += 16
                 text(Strings.Shop.skinsOn(career.carSkins.count, of: Career.maxCarSkins), Vec2(left, y), size: 11, color: .accent, id: &id, to: &list)

@@ -20,7 +20,7 @@ Namen in `Strings.Shop.item`. Wird ein Item ergänzt, gehört es in alle drei un
 - **Odds sind immer sichtbar**, direkt neben der Truhe im Shop.
 - **Pity:** Spätestens die 10. Truhe in Folge ohne Epic ist mindestens Epic.
 - **Duplikate** werden zu Geld: Common 250 · Rare 600 · Epic 1.500 · Legendary 4.000.
-- **Kein Echtgeld in v1.0.** Standard-Truhe **20.000**, Premium-Truhe **40.000** Ingame-Geld
+- **Kein Echtgeld in v1.0.** Standard-Truhe **26.000**, Premium-Truhe **52.000** Ingame-Geld (seit 25.09.2026 alles Kaufbare +30 %)
   (`standardChestPrice`, `premiumChestPrice`).
 - **Werbung:** Eine Standard-Truhe gibt es auch für eine angesehene Werbung, bis zu
   **3 pro Tag** (`adChestsPerDay`). Im Testfenster läuft eine 3-Sekunden-Platzhalter-Werbung;
@@ -30,10 +30,10 @@ Namen in `Strings.Shop.item`. Wird ein Item ergänzt, gehört es in alle drei un
 
 | Truhe | Woher | Common | Rare | Epic | Legendary |
 | --- | --- | --- | --- | --- | --- |
-| Standard Chest | Shop (20.000), Werbung (3/Tag), Mastery Stufe I, Daily Shift | 70 % | 22 % | 7 % | 1 % |
-| Premium Chest | Shop (40.000), Mastery Stufe II und III | 35 % | 35 % | 22 % | 8 % |
+| Standard Chest | Shop (26.000), Werbung (3/Tag), Mastery Stufe I, Daily Shift | 70 % | 22 % | 7 % | 1 % |
+| Premium Chest | Shop (52.000), Mastery Stufe II und III | 35 % | 35 % | 22 % | 8 % |
 | Criminal Hunt Chest | Mastery "Crime Fighter" (Takedowns) | 50 % | 30 % | 15 % | 5 % |
-| Event Chest | City-/Saison-Events (nach v1.0) | 40 % | 35 % | 20 % | 5 % |
+| Event Chest | Jede geschaffte Daily Shift; 15 % Chance nach jeder geschafften Schicht mit City Event (`eventChestChance`). Enthält in der Hälfte der Fälle das Saison-Item, bis man es hat | 40 % | 35 % | 20 % | 5 % |
 
 Innerhalb einer Seltenheit ist jedes Item gleich wahrscheinlich.
 
@@ -69,6 +69,33 @@ das Auto; **Glitter** – kleine Funkeln blitzen auf. Mit Reduce Motion ohne Eff
 | Lagoon | `lagoon` | Legendary | Lagunen-Türkis mit goldenen Streifen |
 | Diamond | `diamond` | Legendary | Eisblau, **Shiny + Glitter** |
 | Holo | `holo` | Legendary | Holo-Flieder mit Mint-Streifen, **Shiny** |
+
+## Nur über Daily-Serie und Saison (7)
+
+Nie in normalen Truhen-Pools (`CosmeticSource`, Entscheidung Leo 25.09.2026). In der Sammlung
+sichtbar, mit dem Hinweis, wie man sie bekommt.
+
+| Item | ID | Seltenheit | Woher | Aussehen |
+| --- | --- | --- | --- | --- |
+| Bronze Badge | `streakBronze` | Rare | Daily Shift 7 Tage in Folge gespielt | Bronze |
+| Silver Badge | `streakSilver` | Epic | 14 Tage in Folge | Silber, **Shiny** |
+| Gold Laurel | `streakGold` | Legendary | 30 Tage in Folge | Gold mit grünem Lorbeer-Streifen, **Shiny + Glitter** |
+| Frost | `frost` | Epic | Event Chest im Winter (Dez–Feb) | Eisweiß, **Glitter** |
+| Blossom | `blossom` | Epic | Event Chest im Frühling (Mär–Mai) | Blütenrosa mit weißem Streifen |
+| Sunburst | `sunburst` | Epic | Event Chest im Sommer (Jun–Aug) | Sonnengelb mit Orange-Streifen |
+| Pumpkin | `pumpkin` | Epic | Event Chest im Herbst (Sep–Nov) | Kürbisorange mit schwarzem Streifen |
+
+## Alben
+
+Ein vollständiger Satz zahlt einmal Geld und legt einen Rahmen in seiner Farbe um den
+Kreisverkehr (der wertvollste abgeschlossene zählt). Fortschritt im Shop unter Collection.
+
+| Album | Inhalt | Belohnung |
+| --- | --- | --- |
+| Maps | alle 8 Map Skins aus Truhen | 10.000 |
+| Commons / Rares / Epics / Legends | alle Car Skins dieser Seltenheit aus Truhen | 5.000 / 10.000 / 20.000 / 40.000 |
+| Seasons | alle 4 Saison-Items | 30.000 |
+| Loyalty | alle 3 Serien-Items | 20.000 |
 
 ## Map Skins (8)
 

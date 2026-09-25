@@ -88,8 +88,6 @@ public enum ScreenAction: Sendable, Equatable {
     /// Watch an ad for a Standard chest (a few a day).
     case watchAd
     case wear(String)
-    /// Game tab: the next shift is today's Daily Shift, or a normal one again (v1.2).
-    case toggleDaily
 }
 
 public struct MenuItem: Sendable, Equatable {

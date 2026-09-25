@@ -197,6 +197,11 @@ public struct Career: Sendable, Equatable, Codable {
     public var dailyStreak = 0
     public var challengeDay = -1
     public var challengesDone: [String] = []
+    /// The day the Daily Shift was last played (one try a day), the albums completed, and
+    /// the best times per level (`Rewards.swift`).
+    public var dailyPlayed = -1
+    public var albumsDone: [String] = []
+    public var bestTimes: [String: [Double]] = [:]
 
     public init(level: Int = 1, money: Int = 0) {
         self.level = max(1, level)
@@ -207,6 +212,7 @@ public struct Career: Sendable, Equatable, Codable {
         case level, money, upgrades, duty, armSlots, modules, mastery, masteryTiers, chests, collection
         case carSkins, mapSkin, adChests, adDay, chestsOpened, chestsSinceEpic
         case dailyDone, lastLoginDay, dailyStreak, challengeDay, challengesDone
+        case dailyPlayed, albumsDone, bestTimes
         /// Read only: the single car skin of older saves.
         case legacyCarSkin = "carSkin"
     }
@@ -234,6 +240,9 @@ public struct Career: Sendable, Equatable, Codable {
         try c.encode(dailyStreak, forKey: .dailyStreak)
         try c.encode(challengeDay, forKey: .challengeDay)
         try c.encode(challengesDone, forKey: .challengesDone)
+        try c.encode(dailyPlayed, forKey: .dailyPlayed)
+        try c.encode(albumsDone, forKey: .albumsDone)
+        try c.encode(bestTimes, forKey: .bestTimes)
     }
 
     /// Missing keys fall back to their defaults, so an older save still loads.
@@ -267,6 +276,10 @@ public struct Career: Sendable, Equatable, Codable {
         dailyStreak = (try? container.decodeIfPresent(Int.self, forKey: .dailyStreak)) ?? 0
         challengeDay = (try? container.decodeIfPresent(Int.self, forKey: .challengeDay)) ?? -1
         challengesDone = (try? container.decodeIfPresent([String].self, forKey: .challengesDone)) ?? []
+        // Saves from before the one-try Daily: the day it was done counts as played.
+        dailyPlayed = (try? container.decodeIfPresent(Int.self, forKey: .dailyPlayed)) ?? dailyDone
+        albumsDone = (try? container.decodeIfPresent([String].self, forKey: .albumsDone)) ?? []
+        bestTimes = (try? container.decodeIfPresent([String: [Double]].self, forKey: .bestTimes)) ?? [:]
     }
 
     public func steps(of upgrade: Upgrade) -> Int {
