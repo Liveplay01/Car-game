@@ -82,6 +82,32 @@ struct TearDownTests {
         #expect(session.advance().renderList.background == .groundSand)
     }
 
+    /// Leo, 25.09.2026: Sakura with a Japanese feel — a koi pond with its torii, cherry
+    /// avenues, petals on the wind. What the wind carries moves with the scene's clock and
+    /// stops for Reduce Motion; every map lines its roads.
+    @Test func mapsBringTheirPlacesAndTheirWeather() {
+        var saved = SaveGame()
+        saved.career.mapSkin = "sakura"
+        let session = makeSession(store: MemorySaveStore(saved))
+        let first = session.advance().renderList.items
+        #expect(first.contains { $0.color == .torii })
+        #expect(first.contains { $0.color == .water })
+        let petals = first.filter { (RenderID.mapAir..<RenderID.towTrucks).contains($0.id) }
+        #expect(petals.count > 20)
+        session.run(seconds: 0.5) { _ in false }
+        let later = session.advance().renderList.items.filter { (RenderID.mapAir..<RenderID.towTrucks).contains($0.id) }
+        #expect(later.map(\.primitive) != petals.map(\.primitive))
+        session.systemReduceMotion = true
+        #expect(!session.advance().renderList.items.contains { (RenderID.mapAir..<RenderID.towTrucks).contains($0.id) })
+
+        for map in MapTheme.allCases {
+            var saved = SaveGame()
+            saved.career.mapSkin = map.rawValue
+            let items = makeSession(store: MemorySaveStore(saved)).advance().renderList.items
+            #expect(items.contains { (RenderID.mapPlants..<RenderID.mapIsland).contains($0.id) }, "\(map) has no avenue")
+        }
+    }
+
     @Test func moneyInATextIsANoteNotAWord() {
         #expect(!Strings.money("2,000").contains("cash"))
         #expect(Icons.pieces(Strings.Notice.notEnoughMoney("2,000")).contains(.money))

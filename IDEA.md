@@ -84,7 +84,8 @@ einer Stadt, die mit dem Spieler wächst.
 
 - Krankenwagen.
 - Boss-Event / Kopf des Verbrechens.
-- Weitere Vehicle Types (Truhen-Inhalt, eigene faire Eigenschaften).
+- Weitere Vehicle Types über Compact, Sports Car und Van hinaus (z. B. Oldtimer; Truhen-Inhalt,
+  eigene faire Eigenschaften).
 - Tag/Nacht, zweispurige Kreisverkehre, Prestige.
 
 Diese Inhalte dürfen die Kernmechanik nicht mit Sonderregeln überladen.

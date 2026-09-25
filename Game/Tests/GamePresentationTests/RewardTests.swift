@@ -107,7 +107,9 @@ struct RewardTests {
     @Test func aFullSetPaysOnceAndFramesTheRoundabout() {
         var career = Career()
         career.collection = Album.maps.items.map(\.id)
-        #expect(career.progress(of: .maps) == (8, 8))
+        let maps = Album.maps.items.count
+        #expect(maps == 12)
+        #expect(career.progress(of: .maps) == (maps, maps))
         let first = career.completeAlbums()
         #expect(first == [.maps])
         #expect(career.money == Album.maps.reward)

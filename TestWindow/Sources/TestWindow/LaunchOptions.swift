@@ -10,7 +10,9 @@ import GamePresentation
 ///     --tab upgrades       open a tab: streetBuilder, game, shop, upgrades
 ///     --duty high          play on high alert (saved, like pressing H)
 ///     --weather storm      force the weather: clear, lightRain, heavyRain, storm, extreme
-///     --map sand           show a map skin without wearing it: dusk, sand, neon, forest, autumn, sakura, aurora, ember
+///     --map sand           show a map skin without wearing it: dusk, sand, neon, forest, autumn, sakura, aurora, ember,
+///                          meadow, tropic, snowfall, cosmos
+///     --shelf maps         open the Shop's collection on a shelf: common, rare, epic, legendary, maps, special
 ///     --event roadworks    force a city event: roadworks, roadClosure, concert, vipConvoy, policeOperation
 ///     --chest-preview epic play a chest opening (common, rare, epic, legendary) on the Shop tab
 ///     --settings           open the settings
@@ -28,6 +30,7 @@ struct LaunchOptions {
     var duty: Duty?
     var weather: Weather?
     var mapSkin: String?
+    var shelf: ShopPage.Shelf?
     var event: CityEvent?
     var chestPreview: Rarity?
     var startWithDebug = false
@@ -72,6 +75,14 @@ struct LaunchOptions {
                 case "high", "highAlert", "alert": duty = .highAlert; consumed = 2
                 case "normal": duty = .normal; consumed = 2
                 default: print("--duty needs normal or high")
+                }
+            case "--shelf":
+                let names = ShopPage.Shelf.allCases.map { "\($0)" }
+                if let name = value(), let index = names.firstIndex(of: name) {
+                    shelf = ShopPage.Shelf.allCases[index]
+                    consumed = 2
+                } else {
+                    print("--shelf needs one of: " + names.joined(separator: ", "))
                 }
             case "--tab":
                 if let tab = value().flatMap({ Tab(rawValue: $0) }) {

@@ -73,6 +73,9 @@ public enum ColorToken: Sendable, Equatable, CaseIterable {
     case vehicleTruckBox
     /// The sports car (M10): a red that no special vehicle uses.
     case vehicleSports
+    /// The compact and the van (LOOT.md): a quiet green and a cream no special vehicle wears.
+    case vehicleCompact
+    case vehicleVan
     // Car skins (M10): only ever on the player own normal cars, never on special vehicles.
     case skinRacingRed
     case skinMidnight
@@ -104,6 +107,15 @@ public enum ColorToken: Sendable, Equatable, CaseIterable {
     case groundDusk, groundSand, groundNeon, groundForest, groundAutumn, groundSakura, groundAurora, groundEmber
     // Items only the Daily streak and the seasons bring (`Rewards.swift`).
     case skinBronze, skinSilver, skinFrost, skinBlossom, skinSunburst, skinPumpkin
+    // Car skins of the second wave (LOOT.md, 25.09.2026); `skinCream` is a two-tone roof.
+    case skinLemon, skinPlum, skinFern, skinLatte, skinCherry, skinMocha, skinCream, skinTeal, skinSky
+    case skinHanami, skinOcean, skinKoi, skinObsidian, skinRuby
+    // Map skins of the second wave: their ground and their tint.
+    case groundMeadow, groundTropic, groundSnow, groundCosmos
+    case mapMeadow, mapTropic, mapSnow, mapCosmos
+    /// Map details: the shade and the light of cherry blossom, lantern stone, pond water,
+    /// the vermilion of a torii, and a firefly's glow.
+    case sakuraDeep, sakuraPale, stone, water, torii, firefly
     case mapDusk
     case mapNeon
     case mapAutumn
@@ -178,6 +190,8 @@ public enum Theme {
         case .vehicleTruck: ColorRGBA(hex: 0x4E586A)
         case .vehicleTruckBox: ColorRGBA(hex: 0xA9B2BE)
         case .vehicleSports: ColorRGBA(hex: 0xE2553F)
+        case .vehicleCompact: ColorRGBA(hex: 0x9FC46B)
+        case .vehicleVan: ColorRGBA(hex: 0xDCD4C3)
         case .skinRacingRed: ColorRGBA(hex: 0xD93A3A)
         case .skinMidnight: ColorRGBA(hex: 0x2A3350)
         case .skinMint: ColorRGBA(hex: 0x8FE3C4)
@@ -208,12 +222,40 @@ public enum Theme {
         case .skinBlossom: ColorRGBA(hex: 0xF6B8D4)
         case .skinSunburst: ColorRGBA(hex: 0xFFB61E)
         case .skinPumpkin: ColorRGBA(hex: 0xF07A1A)
+        case .skinLemon: ColorRGBA(hex: 0xF2E27A)
+        case .skinPlum: ColorRGBA(hex: 0x8E4A6B)
+        case .skinFern: ColorRGBA(hex: 0x5E9E6E)
+        case .skinLatte: ColorRGBA(hex: 0xC8A27C)
+        case .skinCherry: ColorRGBA(hex: 0xB3243B)
+        case .skinMocha: ColorRGBA(hex: 0x6B4A3A)
+        case .skinCream: ColorRGBA(hex: 0xEDE3CC)
+        case .skinTeal: ColorRGBA(hex: 0x1F8A8A)
+        case .skinSky: ColorRGBA(hex: 0x8CC8F0)
+        case .skinHanami: ColorRGBA(hex: 0xF9CFE0)
+        case .skinOcean: ColorRGBA(hex: 0x1C5D7A)
+        case .skinKoi: ColorRGBA(hex: 0xF2662E)
+        case .skinObsidian: ColorRGBA(hex: 0x16171B)
+        case .skinRuby: ColorRGBA(hex: 0x9B1B30)
+        case .groundMeadow: ColorRGBA(hex: 0x0F1810)
+        case .groundTropic: ColorRGBA(hex: 0x0A191B)
+        case .groundSnow: ColorRGBA(hex: 0x121A26)
+        case .groundCosmos: ColorRGBA(hex: 0x07060F)
+        case .mapMeadow: ColorRGBA(hex: 0xF2D45C)
+        case .mapTropic: ColorRGBA(hex: 0x2BC7B4)
+        case .mapSnow: ColorRGBA(hex: 0xDCEBFA)
+        case .mapCosmos: ColorRGBA(hex: 0xF6E7B0)
+        case .sakuraDeep: ColorRGBA(hex: 0xC9577F)
+        case .sakuraPale: ColorRGBA(hex: 0xFFE1EC)
+        case .stone: ColorRGBA(hex: 0x6F6A72)
+        case .water: ColorRGBA(hex: 0x16293A)
+        case .torii: ColorRGBA(hex: 0xD8432E)
+        case .firefly: ColorRGBA(hex: 0xE9F59A)
         case .groundDusk: ColorRGBA(hex: 0x15111F)
         case .groundSand: ColorRGBA(hex: 0x2B2317)
         case .groundNeon: ColorRGBA(hex: 0x081418)
         case .groundForest: ColorRGBA(hex: 0x0E1A12)
         case .groundAutumn: ColorRGBA(hex: 0x1F150D)
-        case .groundSakura: ColorRGBA(hex: 0x1E1419)
+        case .groundSakura: ColorRGBA(hex: 0x1F1520)
         case .groundAurora: ColorRGBA(hex: 0x0E161D)
         case .groundEmber: ColorRGBA(hex: 0x1B0E0A)
         case .mapDusk: ColorRGBA(hex: 0x6B5B95)

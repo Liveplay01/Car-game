@@ -42,9 +42,15 @@ extension World {
         }
     }
 
-    /// How long a merge of this vehicle takes: the sports car is quicker (M10).
+    /// How long a merge of this vehicle takes: the sports car and the van are quicker, the
+    /// compact slower (M10, LOOT.md).
     public func mergeDuration(of type: VehicleType) -> Double {
-        type == .sportsCar ? config.mergeDuration * config.sportsCarMergeFactor : config.mergeDuration
+        switch type {
+        case .sportsCar: config.mergeDuration * config.sportsCarMergeFactor
+        case .compact: config.mergeDuration * config.compactMergeFactor
+        case .van: config.mergeDuration * config.vanMergeFactor
+        case .car, .police, .pickup, .transporter, .truck: config.mergeDuration
+        }
     }
 
     /// The front car starts right away, without wind-up or delay (FOUNDATION.md 2.2).
@@ -133,9 +139,18 @@ extension World {
         while queue.vehicles.count < length {
             let pose = layout.queuePose(slot: Double(queue.vehicles.count) + offset)
             var type: VehicleType = queueRng.unit() < config.policeShare ? .police : .car
-            // Only drawn once unlocked, so every seed without it keeps its queue (M10).
-            if type == .car, config.sportsCarShare > 0, queueRng.unit() < config.sportsCarShare {
-                type = .sportsCar
+            // Only drawn once unlocked, so every seed without them keeps its queue (M10). One
+            // draw for all types: with only the sports car, the queue is the same as before.
+            let shares: [(VehicleType, Double)] = [(.sportsCar, config.sportsCarShare), (.compact, config.compactShare), (.van, config.vanShare)]
+            if type == .car, shares.contains(where: { $0.1 > 0 }) {
+                var pick = queueRng.unit()
+                for (candidate, share) in shares where share > 0 {
+                    if pick < share {
+                        type = candidate
+                        break
+                    }
+                    pick -= share
+                }
             }
             let vehicle = Vehicle(id: makeID(), type: type, owner: .player, phase: .queued, pose: pose)
             vehicles.append(vehicle)

@@ -54,6 +54,18 @@ public enum CosmeticKind: String, Sendable, Equatable, Codable {
     case vehicleType
 }
 
+extension Cosmetic {
+    /// The vehicle a vehicle-type item unlocks.
+    public var vehicleType: VehicleType? {
+        switch id {
+        case "sportsCar": .sportsCar
+        case "compact": .compact
+        case "van": .van
+        default: nil
+        }
+    }
+}
+
 public struct Cosmetic: Sendable, Equatable, Identifiable {
     public var id: String
     public var kind: CosmeticKind
@@ -91,6 +103,22 @@ public enum Cosmetics {
         Cosmetic(id: "lagoon", kind: .carSkin, rarity: .legendary),
         Cosmetic(id: "diamond", kind: .carSkin, rarity: .legendary),
         Cosmetic(id: "holo", kind: .carSkin, rarity: .legendary),
+        // The second wave (LOOT.md, 25.09.2026): new paints, two-tone roofs, finishes.
+        Cosmetic(id: "lemon", kind: .carSkin, rarity: .common),
+        Cosmetic(id: "plum", kind: .carSkin, rarity: .common),
+        Cosmetic(id: "fern", kind: .carSkin, rarity: .common),
+        Cosmetic(id: "latte", kind: .carSkin, rarity: .common),
+        Cosmetic(id: "teal", kind: .carSkin, rarity: .rare),
+        Cosmetic(id: "sky", kind: .carSkin, rarity: .rare),
+        Cosmetic(id: "cherry", kind: .carSkin, rarity: .rare),
+        Cosmetic(id: "mocha", kind: .carSkin, rarity: .rare),
+        Cosmetic(id: "panda", kind: .carSkin, rarity: .epic),
+        Cosmetic(id: "hanami", kind: .carSkin, rarity: .epic),
+        Cosmetic(id: "volcano", kind: .carSkin, rarity: .epic),
+        Cosmetic(id: "ocean", kind: .carSkin, rarity: .epic),
+        Cosmetic(id: "koi", kind: .carSkin, rarity: .legendary),
+        Cosmetic(id: "obsidian", kind: .carSkin, rarity: .legendary),
+        Cosmetic(id: "ruby", kind: .carSkin, rarity: .legendary),
         // Map skins
         Cosmetic(id: "dusk", kind: .mapSkin, rarity: .common),
         Cosmetic(id: "sand", kind: .mapSkin, rarity: .common),
@@ -100,8 +128,14 @@ public enum Cosmetics {
         Cosmetic(id: "sakura", kind: .mapSkin, rarity: .epic),
         Cosmetic(id: "aurora", kind: .mapSkin, rarity: .legendary),
         Cosmetic(id: "ember", kind: .mapSkin, rarity: .legendary),
+        Cosmetic(id: "meadow", kind: .mapSkin, rarity: .common),
+        Cosmetic(id: "tropic", kind: .mapSkin, rarity: .rare),
+        Cosmetic(id: "snowfall", kind: .mapSkin, rarity: .epic),
+        Cosmetic(id: "cosmos", kind: .mapSkin, rarity: .legendary),
         // Vehicle types
+        Cosmetic(id: "compact", kind: .vehicleType, rarity: .rare),
         Cosmetic(id: "sportsCar", kind: .vehicleType, rarity: .epic),
+        Cosmetic(id: "van", kind: .vehicleType, rarity: .epic),
         // Only for the Daily streak: 7, 14 and 30 days in a row (Leo, 25.09.2026).
         Cosmetic(id: "streakBronze", kind: .carSkin, rarity: .rare, source: .streak(days: 7)),
         Cosmetic(id: "streakSilver", kind: .carSkin, rarity: .epic, source: .streak(days: 14)),

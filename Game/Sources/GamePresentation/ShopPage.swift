@@ -15,9 +15,33 @@ public enum ShopPage {
         case today
     }
 
+    /// The collection's shelves: car skins by rarity, the maps, and everything earned another
+    /// way or unlocking a vehicle. Each holds at most a dozen items, so the cells stay big
+    /// enough to see the skin (Leo, 25.09.2026: more skins).
+    public enum Shelf: Int, Sendable, Equatable, CaseIterable {
+        case common, rare, epic, legendary, maps, special
+
+        public var items: [Cosmetic] {
+            Cosmetics.all.filter { item in
+                switch self {
+                case .maps: item.kind == .mapSkin
+                case .special: item.kind == .vehicleType || item.source != .chest
+                case .common, .rare, .epic, .legendary:
+                    item.kind == .carSkin && item.source == .chest && item.rarity.rawValue == rawValue
+                }
+            }
+        }
+
+        /// The shelf an item sits on.
+        public static func of(_ item: Cosmetic) -> Shelf {
+            allCases.first { $0.items.contains(item) } ?? .special
+        }
+    }
+
     /// Everything on the page that answers a tap.
     public enum Target: Sendable, Equatable {
         case section(Section)
+        case shelf(Shelf)
         case chest(ChestKind)
         case open(ChestKind)
         case buy(ChestKind)
@@ -30,6 +54,7 @@ public enum ShopPage {
 
     public struct State: Sendable, Equatable {
         public var section = Section.chests
+        public var shelf = Shelf.common
         public var selectedChest = ChestKind.standard
         public var selectedItem: String?
         /// Real time since the page opened.
@@ -54,7 +79,7 @@ public enum ShopPage {
         }
 
         public static func == (a: State, b: State) -> Bool {
-            a.section == b.section && a.selectedChest == b.selectedChest && a.selectedItem == b.selectedItem
+            a.section == b.section && a.shelf == b.shelf && a.selectedChest == b.selectedChest && a.selectedItem == b.selectedItem
                 && a.age == b.age && a.opening?.opening == b.opening?.opening && a.denied == b.denied
         }
 
@@ -80,6 +105,7 @@ public enum ShopPage {
     static let corner = 14.0
     static let detailHeight = 128.0
     static let segmentHeight = 32.0
+    static let shelfHeight = 36.0
     static let revealDuration = 0.45
     /// A section swipe: the new one springs in over this long, the old one is gone sooner.
     static let slideDuration = 0.45
@@ -125,8 +151,24 @@ public enum ShopPage {
         Array(zip(ChestKind.allCases, grid(ChestKind.allCases.count, columns: 2, in: layout.content, maxHeight: 150)))
     }
 
-    static func itemCells(_ layout: Layout) -> [(Cosmetic, Rect)] {
-        Array(zip(Cosmetics.all, grid(Cosmetics.all.count, columns: 5, in: layout.content, maxHeight: 118)))
+    /// The shelf chips across the top of the collection.
+    static func shelfChips(_ layout: Layout) -> [(Shelf, Rect)] {
+        let area = layout.content
+        let gap = 6.0
+        let width = (area.width - gap * Double(Shelf.allCases.count - 1)) / Double(Shelf.allCases.count)
+        return Shelf.allCases.enumerated().map { index, shelf in
+            let x = area.minX + Double(index) * (width + gap)
+            return (shelf, Rect(minX: x, minY: area.minY, maxX: x + width, maxY: area.minY + shelfHeight))
+        }
+    }
+
+    /// The items of a shelf: four across, three rows at most, the same cell size on every
+    /// shelf.
+    static func itemCells(_ layout: Layout, shelf: Shelf) -> [(Cosmetic, Rect)] {
+        let items = shelf.items
+        var area = layout.content
+        area.minY += shelfHeight + gap
+        return Array(zip(items, grid(max(items.count, 12), columns: 4, in: area, maxHeight: 118)))
     }
 
     /// The buttons of the detail panel: up to two, right-aligned.
@@ -163,7 +205,9 @@ public enum ShopPage {
         list += buttons(layout, career: career, state: state)
         switch state.section {
         case .chests: list += chestCards(layout).map { (.chest($0.0), $0.1) }
-        case .collection: list += itemCells(layout).map { (.item($0.0.id), $0.1) }
+        case .collection:
+            list += shelfChips(layout).map { (.shelf($0.0), $0.1) }
+            list += itemCells(layout, shelf: state.shelf).map { (.item($0.0.id), $0.1) }
         case .today: break
         }
         return list
@@ -310,7 +354,23 @@ public enum ShopPage {
     // MARK: Collection
 
     private static func addCollection(_ layout: Layout, career: Career, state: State, enter: Double, id: inout Int, to list: inout RenderList) {
-        for (item, rect) in itemCells(layout) {
+        // The shelves: a chip each, with how much of it is collected. The chosen one is
+        // raised like a segmented thumb and underlined in its rarity's colour.
+        for (shelf, rect) in shelfChips(layout) {
+            let chosen = shelf == state.shelf
+            let items = shelf.items
+            let owned = items.count(where: { career.owns($0.id) })
+            let tint = shelfColor(shelf)
+            list.add(.roundedRect(center: rect.center, size: Vec2(rect.width, rect.height), cornerRadius: 10, rotation: 0), color: chosen ? .controlThumb : .controlFill, opacity: enter, space: .screen, id: id)
+            id += 1
+            if chosen {
+                list.add(.roundedRect(center: Vec2(rect.center.x, rect.maxY - 3), size: Vec2(rect.width - 20, 2.5), cornerRadius: 1.25, rotation: 0), color: tint, opacity: enter, space: .screen, id: id)
+                id += 1
+            }
+            text(Strings.Shop.shelf(shelf), Vec2(rect.center.x, rect.center.y - 7), size: 11, weight: .bold, color: chosen ? .primary : .muted, alignment: .center, opacity: enter, id: &id, to: &list)
+            text("\(owned)/\(items.count)", Vec2(rect.center.x, rect.center.y + 8), size: 10, color: owned == items.count ? tint : .muted, alignment: .center, opacity: enter, id: &id, to: &list)
+        }
+        for (item, rect) in itemCells(layout, shelf: state.shelf) {
             let owned = career.owns(item.id)
             let worn = career.isWorn(item.id)
             let frame = rarityColor(item.rarity)
@@ -324,6 +384,17 @@ public enum ShopPage {
             if worn {
                 text(Strings.Shop.worn, Vec2(rect.maxX - 10, rect.minY + 12), size: 10, weight: .bold, color: .accent, alignment: .trailing, opacity: enter, id: &id, to: &list)
             }
+        }
+    }
+
+    static func shelfColor(_ shelf: Shelf) -> ColorToken {
+        switch shelf {
+        case .common: .rarityCommon
+        case .rare: .rarityRare
+        case .epic: .rarityEpic
+        case .legendary: .rarityLegendary
+        case .maps: .mapAurora
+        case .special: .accent
         }
     }
 
@@ -341,13 +412,25 @@ public enum ShopPage {
     static func addPreview(_ item: Cosmetic, at center: Vec2, scale: Double, opacity: Double, id: inout Int, to list: inout RenderList) {
         switch item.kind {
         case .carSkin, .vehicleType:
-            let isSports = item.kind == .vehicleType
-            let paint = isSports ? ColorToken.vehicleSports : (Skins.color(item.id) ?? .vehicleCar)
-            let length = (isSports ? 40.0 : 46.0) * scale
+            let type = item.vehicleType
+            let paint = type.map { CarArt.bodyColor($0) } ?? Skins.color(item.id) ?? .vehicleCar
+            // The types show their size against a car's 46.
+            let length = switch type {
+            case .compact: 36.0 * scale
+            case .sportsCar: 40.0 * scale
+            case .van: 54.0 * scale
+            default: 46.0 * scale
+            }
             let width = 24 * scale
             list.add(.roundedRect(center: center, size: Vec2(length, width), cornerRadius: 7 * scale, rotation: 0), color: paint, opacity: opacity, space: .screen, id: id)
             id += 1
-            list.add(.roundedRect(center: center + Vec2(length * 0.08, 0), size: Vec2(length * 0.36, width * 0.72), cornerRadius: 4 * scale, rotation: 0), color: .vehicleGlass, opacity: opacity, space: .screen, id: id)
+            if let roof = Skins.roof(item.id) {
+                list.add(.roundedRect(center: center - Vec2(length * 0.05, 0), size: Vec2(length * 0.6, width * 0.8), cornerRadius: 4 * scale, rotation: 0), color: roof, opacity: opacity, space: .screen, id: id)
+                id += 1
+            }
+            // The van's screen sits far forward over a long roof.
+            let glass = type == .van ? (x: 0.3, length: 0.16) : (x: 0.08, length: 0.36)
+            list.add(.roundedRect(center: center + Vec2(length * glass.x, 0), size: Vec2(length * glass.length, width * 0.72), cornerRadius: 4 * scale, rotation: 0), color: .vehicleGlass, opacity: opacity, space: .screen, id: id)
             id += 1
             if let finish = Skins.finish(item.id) {
                 // A still picture of the finish: a sheen across, a few sparkles.
@@ -362,7 +445,7 @@ public enum ShopPage {
                     }
                 }
             }
-            if let stripe = isSports ? ColorToken.primary : Skins.stripe(item.id) {
+            if let stripe = type == .sportsCar ? ColorToken.primary : Skins.stripe(item.id) {
                 for y in [-2.2, 2.2] {
                     list.add(.line(from: center + Vec2(-length / 2 + 3, y * scale), to: center + Vec2(length / 2 - 3, y * scale), thickness: 1.8 * scale), color: stripe, opacity: 0.9 * opacity, space: .screen, id: id)
                     id += 1
@@ -463,7 +546,7 @@ public enum ShopPage {
         case .watchAd:
             (Strings.Shop.watchAdShort, true, false)
         case let .wear(id): (career.isWorn(id) ? Strings.Shop.takeOff : Strings.Shop.wear, true, true)
-        case .section, .chest, .item, .dismiss: ("", false, false)
+        case .section, .shelf, .chest, .item, .dismiss: ("", false, false)
         }
     }
 

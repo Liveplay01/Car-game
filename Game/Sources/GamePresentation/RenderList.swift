@@ -89,6 +89,9 @@ enum RenderID {
     /// A map's ground details and its plants (`MapTheme`).
     static let mapGround = 60_000
     static let mapPlants = 70_000
+    /// Sakura's raked island (`MapTheme.addIsland`) and what the wind carries (`addAir`).
+    static let mapIsland = 80_000
+    static let mapAir = 85_000
     static let notice = 48_000
     static let effects = 100_000
     static let shadows = 900_000

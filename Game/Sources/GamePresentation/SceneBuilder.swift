@@ -160,7 +160,7 @@ public enum SceneBuilder {
     static func look(_ vehicle: Vehicle, _ skins: [String]) -> Skins.Look? {
         switch vehicle.type {
         // Every vehicle wears the skins (Leo); the special ones keep their shape.
-        case .car, .sportsCar, .police, .pickup, .transporter, .truck: Skins.look(forVehicle: vehicle.id, skins: skins)
+        case .car, .sportsCar, .compact, .van, .police, .pickup, .transporter, .truck: Skins.look(forVehicle: vehicle.id, skins: skins)
         }
     }
 
@@ -197,6 +197,7 @@ public enum SceneBuilder {
                 lights: vehicle.type == .police && flashing ? world.time / CarArt.strobeCycle + Double(vehicle.id % 7) * 0.37 : nil,
                 skin: look(vehicle, carSkins)?.paint,
                 stripe: look(vehicle, carSkins)?.stripe,
+                roof: look(vehicle, carSkins)?.roof,
                 finish: look(vehicle, carSkins)?.finish,
                 finishTime: finishTime,
                 springTime: springTime,

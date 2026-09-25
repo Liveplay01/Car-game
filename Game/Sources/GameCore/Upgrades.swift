@@ -313,6 +313,8 @@ public struct Career: Sendable, Equatable, Codable {
         config.modules = modules
         // The level sets the traffic, the roundabout scales it, then the upgrades and the duty.
         config.sportsCarShare = owns("sportsCar") ? base.sportsCarShareOwned : 0
+        config.compactShare = owns("compact") ? base.compactShareOwned : 0
+        config.vanShare = owns("van") ? base.vanShareOwned : 0
         let shift = config.forLevel(level, seed: seed).forArms().upgraded { steps(of: $0) }.forDuty(duty)
         // The sky and the city come last: they change the traffic the level has set (M8).
         return shift

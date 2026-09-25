@@ -53,7 +53,9 @@ enum CarArt {
         static let spill = 55
         static let poolLayers = 5
         static let roofSheen = 67
-        static let count = 69
+        /// A two-tone skin's roof (`Skins.roof`).
+        static let twoTone = 69
+        static let count = 70
     }
 
     struct Shape {
@@ -77,6 +79,8 @@ enum CarArt {
         switch type {
         case .car: return paints[paintIndex(id)]
         case .sportsCar: return .vehicleSports
+        case .compact: return .vehicleCompact
+        case .van: return .vehicleVan
         case .truck: return .vehicleTruck
         case .police: return .vehiclePolice
         case .pickup: return .vehicleCriminal
@@ -95,7 +99,7 @@ enum CarArt {
     static func parts(_ type: VehicleType) -> [Part] {
         let common: [Part] = [.frontBumper, .rearBumper, .hood, .windscreen, .leftMirror, .rightMirror, .frontLeftWheel, .frontRightWheel, .rearLeftWheel, .rearRightWheel]
         switch type {
-        case .car, .sportsCar: return common + [.rearWindow]
+        case .car, .sportsCar, .compact, .van: return common + [.rearWindow]
         // A lorry is a cab and a box; no rear window behind it.
         case .truck: return [.cargo] + common
         case .police: return common + [.rearWindow, .roof, .lightBar]
@@ -110,6 +114,8 @@ enum CarArt {
         switch type {
         case .truck: config.truckLength
         case .sportsCar: config.sportsCarLength
+        case .compact: config.compactLength
+        case .van: config.vanLength
         case .car, .police, .pickup, .transporter: config.carLength
         }
     }
@@ -126,14 +132,36 @@ enum CarArt {
         case .hood:
             return Shape(center: Vec2(l * 0.3, 0), size: Vec2(l * 0.3, w - 3), cornerRadius: 1.5, color: body, breaksAt: 3.5, reach: 8, isVisible: false)
         case .windscreen:
-            // The lorry's screen sits right at the nose, above the cab.
-            let x = type == .truck ? l * 0.39 : (type == .transporter ? l * 0.33 : l * 0.12)
-            let length = type == .truck ? l * 0.1 : (type == .transporter ? l * 0.13 : l * 0.22)
+            // The lorry's screen sits right at the nose, above the cab; the van's far forward,
+            // over a long roof.
+            let x = switch type {
+            case .truck: l * 0.39
+            case .transporter: l * 0.33
+            case .van: l * 0.3
+            default: l * 0.12
+            }
+            let length = switch type {
+            case .truck: l * 0.1
+            case .transporter: l * 0.13
+            case .van: l * 0.14
+            case .compact: l * 0.26
+            default: l * 0.22
+            }
             return Shape(center: Vec2(x, 0), size: Vec2(length, w * 0.74), cornerRadius: 2, color: .vehicleGlass, breaksAt: 2.5, reach: 9, isVisible: true)
         case .rearWindow:
-            // The pickup's small cab window sits right behind the windscreen.
-            let x = type == .pickup ? -l * 0.02 : -l * 0.3
-            let length = type == .pickup ? l * 0.07 : l * 0.13
+            // The pickup's small cab window sits right behind the windscreen; the van has a
+            // narrow one at its very back.
+            let x = switch type {
+            case .pickup: -l * 0.02
+            case .van: -l * 0.4
+            case .compact: -l * 0.27
+            default: -l * 0.3
+            }
+            let length = switch type {
+            case .pickup: l * 0.07
+            case .van: l * 0.06
+            default: l * 0.13
+            }
             return Shape(center: Vec2(x, 0), size: Vec2(length, w * 0.66), cornerRadius: 1.5, color: .vehicleGlass, breaksAt: 2.5, reach: 7, isVisible: true)
         case .leftMirror:
             return Shape(center: Vec2(l * 0.06, w / 2 + 0.8), size: Vec2(2, 1.6), cornerRadius: 0.6, color: body, breaksAt: 0.8, reach: 5, isVisible: true)
@@ -245,6 +273,7 @@ enum CarArt {
         lights: Double? = nil,
         skin: ColorToken? = nil,
         stripe: ColorToken? = nil,
+        roof: ColorToken? = nil,
         finish: Skins.Finish? = nil,
         finishTime: Double? = nil,
         springTime: Double? = nil,
@@ -306,6 +335,19 @@ enum CarArt {
                 let center = deformed(bay.center, dents: dents, config: config)
                 list.add(.roundedRect(center: world(center, pose), size: bay.size * 0.85, cornerRadius: 1, rotation: pose.heading), color: .vehicleTire, opacity: opacity, space: .world, id: slot(Slot.engineBay))
             }
+        }
+
+        // A two-tone skin (LOOT.md): the roof in its second colour, from the windscreen to the
+        // rear window, which sit on top of it. Only plain cars and only while intact.
+        if let roof, type.isCarType, dents.isEmpty {
+            let front = shape(.windscreen, type: type, config: config)
+            let back = shape(.rearWindow, type: type, config: config)
+            let from = back.center.x - back.size.x / 2 - 0.5
+            let to = front.center.x + front.size.x / 2 - 1
+            list.add(
+                .roundedRect(center: world(Vec2((from + to) / 2, 0), pose), size: Vec2(to - from, config.carWidth * 0.8), cornerRadius: 2, rotation: pose.heading),
+                color: roof, opacity: opacity, space: .world, id: slot(Slot.twoTone)
+            )
         }
 
         for part in parts(type) {

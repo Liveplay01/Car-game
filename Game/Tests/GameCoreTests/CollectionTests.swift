@@ -135,6 +135,28 @@ struct CollectionTests {
         #expect(world.length(of: .sportsCar) < world.length(of: .car))
     }
 
+    /// The compact and the van (LOOT.md): different, not better. The compact is short but
+    /// slow to merge, the van long but quick.
+    @Test func theCompactAndTheVanAreFairAndOnlyComeOnceUnlocked() {
+        var career = Career()
+        let plain = career.config(from: Config(), seed: 1)
+        #expect(plain.compactShare == 0 && plain.vanShare == 0)
+        career.collection = ["compact", "van"]
+        let config = career.config(from: Config(), seed: 1)
+        #expect(config.compactShare > 0 && config.vanShare > 0 && config.sportsCarShare == 0)
+        var mixed = config
+        mixed.policeShare = 0
+        mixed.compactShare = 0.5
+        mixed.vanShare = 0.5
+        let world = World(config: mixed, seed: 2, mode: .shift, prefill: false)
+        let queued = world.queue.vehicles.compactMap { world.vehicle(id: $0)?.type }
+        #expect(queued.contains(.compact) && queued.contains(.van))
+        #expect(queued.allSatisfy { $0 == .compact || $0 == .van })
+        #expect(world.length(of: .compact) < world.length(of: .car) && world.mergeDuration(of: .compact) > world.mergeDuration(of: .car))
+        #expect(world.length(of: .van) > world.length(of: .car) && world.mergeDuration(of: .van) < world.mergeDuration(of: .car))
+        #expect(Cosmetics.all.filter { $0.kind == .vehicleType }.allSatisfy { $0.vehicleType?.isCarType == true })
+    }
+
     @Test func anOldSaveStillLoads() throws {
         let old = #"{ "level": 7, "money": 1200, "upgrades": { "overtime": 2 } }"#
         let career = try JSONDecoder().decode(Career.self, from: Data(old.utf8))

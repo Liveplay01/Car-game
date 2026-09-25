@@ -163,6 +163,8 @@ public struct World: Sendable {
         switch type {
         case .truck: config.truckLength
         case .sportsCar: config.sportsCarLength
+        case .compact: config.compactLength
+        case .van: config.vanLength
         case .car, .police, .pickup, .transporter: config.carLength
         }
     }

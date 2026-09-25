@@ -234,6 +234,18 @@ public struct Config: Sendable, Equatable {
     public var sportsCarMergeFactor: Double = 0.8
     public var sportsCarShareOwned: Double = 0.15
     public var sportsCarShare: Double = 0
+    /// Compact (LOOT.md): very short and light, merges slower. Van: long and heavy, merges
+    /// a touch quicker. Shares like the sports car's, set by the career once unlocked.
+    public var compactLength: Double = 18
+    public var compactMass: Double = 0.7
+    public var compactMergeFactor: Double = 1.15
+    public var compactShareOwned: Double = 0.12
+    public var compactShare: Double = 0
+    public var vanLength: Double = 29
+    public var vanMass: Double = 1.5
+    public var vanMergeFactor: Double = 0.9
+    public var vanShareOwned: Double = 0.12
+    public var vanShare: Double = 0
     /// How far around the booth traffic is held back, and how fast it may still go there.
     public var tollZoneArc: Double = 150
     public var tollSpeedFactor: Double = 0.55

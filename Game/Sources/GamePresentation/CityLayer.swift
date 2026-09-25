@@ -5,7 +5,8 @@ import GameCore
 /// player's progress — more blocks and trees with every level, every arm and every module.
 /// Pure drawing, computed from the shift's config, the same on every device. Kept flat and
 /// quiet below the road, so it never competes with the traffic.
-/// What each skin looks like (LOOT.md): a paint, and for some car skins a racing stripe.
+/// What each skin looks like (LOOT.md): a paint, and for some car skins a racing stripe, a
+/// two-tone roof or a finish.
 public enum Skins {
     /// The paint of a car skin or the tint of a map skin; nil for anything else.
     public static func color(_ id: String?) -> ColorToken? {
@@ -37,6 +38,20 @@ public enum Skins {
         case "blossom": .skinBlossom
         case "sunburst": .skinSunburst
         case "pumpkin": .skinPumpkin
+        case "lemon": .skinLemon
+        case "plum": .skinPlum
+        case "fern": .skinFern
+        case "latte": .skinLatte
+        case "cherry": .skinCherry
+        case "mocha": .skinMocha
+        case "teal": .skinTeal
+        case "sky": .skinSky
+        case "panda", "koi": .skinPearl
+        case "hanami": .skinHanami
+        case "volcano": .skinCarbon
+        case "ocean": .skinOcean
+        case "obsidian": .skinObsidian
+        case "ruby": .skinRuby
         case "dusk": .mapDusk
         case "sand": .mapSand
         case "neon": .mapNeon
@@ -45,6 +60,10 @@ public enum Skins {
         case "sakura": .mapSakura
         case "aurora": .mapAurora
         case "ember": .mapEmber
+        case "meadow": .mapMeadow
+        case "tropic": .mapTropic
+        case "snowfall": .mapSnow
+        case "cosmos": .mapCosmos
         default: nil
         }
     }
@@ -60,6 +79,20 @@ public enum Skins {
         case "streakGold": .mapForest
         case "blossom": .primary
         case "sunburst": .fireOuter
+        case "volcano": .mapEmber
+        case "ocean": .primary
+        case "koi", "ruby": .skinGold
+        default: nil
+        }
+    }
+
+    /// The roof of a two-tone skin: a second colour from windscreen to rear window.
+    public static func roof(_ id: String?) -> ColorToken? {
+        switch id {
+        case "cherry", "sky", "hanami": .skinPearl
+        case "mocha": .skinCream
+        case "panda": .skinCarbon
+        case "koi": .skinKoi
         default: nil
         }
     }
@@ -76,17 +109,18 @@ public enum Skins {
 
     public static func finish(_ id: String?) -> Finish? {
         switch id {
-        case "pearlShine", "chrome", "holo", "streakSilver": .shiny
-        case "starlight", "frost": .glitter
-        case "diamond", "streakGold": .shinyGlitter
+        case "pearlShine", "chrome", "holo", "streakSilver", "ocean", "koi": .shiny
+        case "starlight", "frost", "hanami", "volcano", "ruby": .glitter
+        case "diamond", "streakGold", "obsidian": .shinyGlitter
         default: nil
         }
     }
 
-    /// The look of one car: its paint, stripe and finish.
+    /// The look of one car: its paint, stripe, two-tone roof and finish.
     public struct Look: Sendable, Equatable {
         public var paint: ColorToken?
         public var stripe: ColorToken?
+        public var roof: ColorToken?
         public var finish: Finish?
     }
 
@@ -97,7 +131,7 @@ public enum Skins {
         var hash = UInt64(bitPattern: Int64(id)) &* 0xD6E8_FEB8_6659_FD93
         hash ^= hash >> 32
         let skin = skins[Int(hash % UInt64(skins.count))]
-        return Look(paint: color(skin), stripe: stripe(skin), finish: finish(skin))
+        return Look(paint: color(skin), stripe: stripe(skin), roof: roof(skin), finish: finish(skin))
     }
 }
 
@@ -142,8 +176,9 @@ enum CityLayer {
         min(64, 8 + growth)
     }
 
-    static func add(world: World, theme: MapTheme? = nil, to list: inout RenderList) {
-        MapTheme.addGround(theme, world: world, to: &list)
+    /// - Parameter time: moves what lives on the map's ground (koi, stars, water); nil stills it.
+    static func add(world: World, theme: MapTheme? = nil, time: Double? = nil, to list: inout RenderList) {
+        MapTheme.addGround(theme, world: world, time: time, to: &list)
         let layout = world.layout
         var plantID = RenderID.mapPlants
         let count = lots(growth: growth(config: world.config))
@@ -160,6 +195,8 @@ enum CityLayer {
             guard clearOfRoads else { continue }
             let distance = layout.ringRadius + 70 + WeatherLayer.unitHash(candidate, 12) * 230
             let center = Vec2(angle: angle) * distance
+            // A map may keep a place open: Sakura its pond and its cherry avenues.
+            guard !MapTheme.keepsClear(theme, center, layout: layout) else { continue }
             let isTree = WeatherLayer.unitHash(candidate, 13) < 0.35
             if isTree {
                 // Where a tree stands, the map's own plant grows (`MapTheme.addPlant`).
@@ -174,5 +211,6 @@ enum CityLayer {
             id += 1
             placed += 1
         }
+        MapTheme.addAvenues(theme, world: world, id: &plantID, to: &list)
     }
 }

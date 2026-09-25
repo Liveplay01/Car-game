@@ -156,6 +156,18 @@ public enum Strings {
             }
         }
 
+        /// The collection's shelves; short, six fit across a phone.
+        public static func shelf(_ shelf: ShopPage.Shelf) -> String {
+            switch shelf {
+            case .common: "Common"
+            case .rare: "Rare"
+            case .epic: "Epic"
+            case .legendary: "Legend"
+            case .maps: "Maps"
+            case .special: "Special"
+            }
+        }
+
         public static func waiting(_ count: Int) -> String { count == 1 ? "1 waiting" : "\(count) waiting" }
         public static func buy(_ price: String) -> String { "Buy · \(price)" }
         public static func pity(_ chests: Int) -> String { "Epic or better within \(chests) chests. Duplicates pay out \(Icons.moneyMark)." }
@@ -164,8 +176,8 @@ public enum Strings {
         public static func ownedHint(_ item: Cosmetic) -> String {
             switch item.kind {
             case .carSkin: "Paints the cars on the road. Mix up to five. Only looks, never a bonus."
-            case .mapSkin: "Tints the centre island. Only looks, never a bonus."
-            case .vehicleType: "Shows up in your queue now and then: shorter, lighter, merges quicker."
+            case .mapSkin: "Turns the city into its own place. Only looks, never a bonus."
+            case .vehicleType: "Shows up in your queue now and then: \(trait(item.id))."
             }
         }
 
@@ -240,7 +252,37 @@ public enum Strings {
             case "blossom": "Blossom"
             case "sunburst": "Sunburst"
             case "pumpkin": "Pumpkin"
+            case "lemon": "Lemon"
+            case "plum": "Plum"
+            case "fern": "Fern"
+            case "latte": "Latte"
+            case "teal": "Teal"
+            case "sky": "Sky Top"
+            case "cherry": "Cherry Top"
+            case "mocha": "Mocha Cream"
+            case "panda": "Panda"
+            case "hanami": "Hanami"
+            case "volcano": "Volcano"
+            case "ocean": "Ocean"
+            case "koi": "Koi"
+            case "obsidian": "Obsidian"
+            case "ruby": "Ruby"
+            case "meadow": "Meadow"
+            case "tropic": "Tropic"
+            case "snowfall": "Snowfall"
+            case "cosmos": "Cosmos"
+            case "compact": "Compact"
+            case "van": "Van"
             default: id
+            }
+        }
+
+        /// What a vehicle type does differently: fair, not better.
+        public static func trait(_ id: String) -> String {
+            switch id {
+            case "compact": "tiny, light, slower to merge"
+            case "van": "long, heavy, merges quicker"
+            default: "shorter, lighter, merges quicker"
             }
         }
 
@@ -249,7 +291,7 @@ public enum Strings {
             let kind = switch item.kind {
             case .carSkin: "car skin"
             case .mapSkin: "map skin"
-            case .vehicleType: "vehicle type · shorter, lighter, merges quicker"
+            case .vehicleType: "vehicle type · " + trait(item.id)
             }
             return "\(rarity(item.rarity)) \(kind)"
         }
@@ -573,7 +615,7 @@ public enum Strings {
             case .police: "POLICE"
             case .pickup: "CRIMINAL"
             case .transporter: "SECURED"
-            case .car, .truck, .sportsCar: nil
+            case .car, .truck, .sportsCar, .compact, .van: nil
             }
         }
         /// An insured crash: nothing to pay.

@@ -46,6 +46,8 @@ print("Save game: \(ProjectFiles.saveGame.path)  (level \(session.save.career.le
 loadTuning(into: session, createIfMissing: false)
 if options.startsShift {
     session.perform(.startShift)
+} else if options.shelf != nil {
+    session.perform(.showTab(.shop))
 } else if let tab = options.tab {
     session.perform(.showTab(tab))
 } else if options.opensSettings {
@@ -53,13 +55,16 @@ if options.startsShift {
 }
 
 var runTime = 0.0
+// --shelf: the first frame opens the collection on that shelf.
+var startActions: [InputAction] = options.shelf.map { [.tapShop(.section(.collection)), .tapShop(.shelf($0))] } ?? []
 var screenshotAt = options.screenshotAfterCrash == nil ? options.screenshotAt : .infinity
 var nextAutotap = options.autotapInterval ?? .infinity
 var wasFocused = IsWindowFocused()
 
 while !WindowShouldClose() {
     runTime += Double(GetFrameTime())
-    var actions: [InputAction] = []
+    var actions = startActions
+    startActions = []
     let viewport = Vec2(Double(GetScreenWidth()), Double(GetScreenHeight()))
     if IsKeyPressed(key(KEY_SPACE)) {
         actions.append(.tap)

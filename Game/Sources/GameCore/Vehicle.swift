@@ -15,6 +15,21 @@ public enum VehicleType: Sendable, Equatable {
     /// From the player queue once unlocked (M10): shorter, lighter, and it merges quicker.
     /// A fair difference, not a bonus: the quicker merge needs a different timing.
     case sportsCar
+    /// From the player queue once unlocked (LOOT.md): very short and light, but it takes
+    /// longer to get going — easy to fit, harder to time.
+    case compact
+    /// From the player queue once unlocked (LOOT.md): long and heavy, and it merges a touch
+    /// quicker to make up for it — harder to fit, easier to time.
+    case van
+
+    /// The player's own unlockable cars (`Cosmetic.kind == .vehicleType`): plain cars with
+    /// their own length, weight and merge.
+    public var isCarType: Bool {
+        switch self {
+        case .car, .sportsCar, .compact, .van: true
+        case .police, .pickup, .transporter, .truck: false
+        }
+    }
 }
 
 /// Who sent the vehicle onto the road. Only player cars are rated and can cost strikes.

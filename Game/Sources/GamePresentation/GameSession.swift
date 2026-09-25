@@ -143,6 +143,9 @@ public final class GameSession {
     public private(set) var countIn = 0.0
     /// Real time the Game tab has been waiting for the first tap.
     private var sinceReady = 0.0
+    /// The map's own clock (petals, koi, snow): runs with the game, slows with it, and never
+    /// starts over at a new shift, so nothing jumps between two shifts.
+    private var sceneTime = 0.0
     /// A second tap on the same card within this long buys it.
     public static let doubleTapWindow = 0.4
     /// What the Upgrades tab shows and animates.
@@ -655,6 +658,9 @@ public final class GameSession {
         case let .section(section):
             if shopPage.section != section { tick() }
             shopPage.select(section)
+        case let .shelf(shelf):
+            if shopPage.shelf != shelf { tick() }
+            shopPage.shelf = shelf
         case let .chest(kind):
             if shopPage.selectedChest == kind, save.career.count(of: kind) > 0 {
                 tapShop(.open(kind))
@@ -723,6 +729,7 @@ public final class GameSession {
         let runs = !isInterrupted && countIn == 0
         if runs {
             clock.add(simDelta)
+            sceneTime += simDelta
         }
         keepDailyInStep()
         let present = world.time + clock.accumulator
@@ -1145,9 +1152,10 @@ public final class GameSession {
         // The map skin sets the ground outside the ring and what grows in the city.
         let mapTheme = MapTheme(skin: forcedMapSkin ?? save.career.mapSkin)
         var list = RenderList(camera: camera, background: MapTheme.ground(mapTheme))
-        CityLayer.add(world: world, theme: mapTheme, to: &list)
+        CityLayer.add(world: world, theme: mapTheme, time: reduceMotion ? nil : sceneTime, to: &list)
         SceneBuilder.addRoad(world.layout, config: world.config, to: &list)
         CityLayer.addMapSkin(Skins.color(forcedMapSkin ?? save.career.mapSkin), world: world, to: &list)
+        MapTheme.addIsland(mapTheme, world: world, to: &list)
         CityLayer.addFrame(save.career.frame, world: world, to: &list)
         WeatherLayer.addCityEvent(world: world, to: &list)
         WeatherLayer.addGround(world: world, to: &list)
@@ -1160,6 +1168,7 @@ public final class GameSession {
         }
         effects.addAir(to: &list)
         WeatherLayer.addAir(world: world, time: world.time, reduceMotion: reduceMotion, to: &list)
+        MapTheme.addAir(mapTheme, time: sceneTime, reduceMotion: reduceMotion, to: &list)
 
         // Everything from here to the tab strip belongs to the screen and moves with a change.
         let overlayStart = list.items.count

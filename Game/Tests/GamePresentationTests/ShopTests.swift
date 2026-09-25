@@ -74,8 +74,45 @@ struct ShopTests {
             #expect(ShopPage.target(at: rect.center, viewport: viewport, bottomInset: TabStrip.height, career: career, state: state) == target)
         }
         state.section = .collection
-        let items = ShopPage.targets(viewport: viewport, bottomInset: TabStrip.height, career: career, state: state)
-        #expect(items.filter { if case .item = $0.0 { true } else { false } }.count == Cosmetics.all.count)
+        for shelf in ShopPage.Shelf.allCases {
+            state.shelf = shelf
+            let targets = ShopPage.targets(viewport: viewport, bottomInset: TabStrip.height, career: career, state: state)
+            #expect(targets.filter { if case .item = $0.0 { true } else { false } }.count == shelf.items.count)
+            for (target, rect) in targets {
+                #expect(ShopPage.target(at: rect.center, viewport: viewport, bottomInset: TabStrip.height, career: career, state: state) == target)
+            }
+        }
+    }
+
+    /// Leo, 25.09.2026: more skins. The collection stays readable: every item sits on
+    /// exactly one shelf, and no shelf holds more than its twelve cells.
+    @Test func everyItemSitsOnOneShelfAndEveryShelfFits() {
+        for item in Cosmetics.all {
+            #expect(ShopPage.Shelf.allCases.count(where: { $0.items.contains(item) }) == 1, "\(item.id)")
+            #expect(ShopPage.Shelf.of(item).items.contains(item))
+        }
+        for shelf in ShopPage.Shelf.allCases {
+            #expect(!shelf.items.isEmpty && shelf.items.count <= 12, "\(shelf)")
+        }
+        let (session, _) = shopSession(collection: ["neon"])
+        session.advance([.tapShop(.section(.collection)), .tapShop(.shelf(.maps))])
+        #expect(session.shopPage.shelf == .maps)
+        #expect(session.advance().texts.contains(Strings.Shop.item("neon")))
+    }
+
+    @Test func twoToneSkinsPaintTheRoofInTheirSecondColour() {
+        let config = Config()
+        for (skin, roof) in [("panda", ColorToken.skinCarbon), ("koi", .skinKoi), ("mocha", .skinCream)] {
+            var list = RenderList(camera: Camera(viewport: Vec2(400, 800), center: .zero, focus: Vec2(200, 400), scale: 1), background: .background)
+            let look = Skins.look(forVehicle: 1, skins: [skin])
+            #expect(look?.roof == roof)
+            CarArt.add(id: 1, type: .car, pose: Path.Pose(position: .zero, heading: 0), dents: [], skin: look?.paint, stripe: look?.stripe, roof: look?.roof, config: config, to: &list)
+            #expect(list.items.contains { $0.id == RenderID.vehicle(1, part: CarArt.Slot.twoTone) && $0.color == roof }, "\(skin)")
+        }
+        // Never on the special vehicles: their roof is information.
+        var list = RenderList(camera: Camera(viewport: Vec2(400, 800), center: .zero, focus: Vec2(200, 400), scale: 1), background: .background)
+        CarArt.add(id: 1, type: .police, pose: Path.Pose(position: .zero, heading: 0), dents: [], roof: .skinKoi, config: config, to: &list)
+        #expect(!list.items.contains { $0.id == RenderID.vehicle(1, part: CarArt.Slot.twoTone) })
     }
 
     @Test func thePageDraws() {

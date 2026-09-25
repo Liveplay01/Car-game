@@ -123,6 +123,8 @@ extension World {
         case .transporter: config.transporterMass
         case .truck: config.truckMass
         case .sportsCar: config.sportsCarMass
+        case .compact: config.compactMass
+        case .van: config.vanMass
         case .car, .police: 1.0
         }
         return RigidBody(

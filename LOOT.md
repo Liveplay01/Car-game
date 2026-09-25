@@ -1,8 +1,9 @@
 # LOOT.md – Was in den Truhen steckt
 
-Stand: 24.09.2026 · Code: `Game/Sources/GameCore/Chests.swift` (Katalog, Odds, Pity),
-`Game/Sources/GamePresentation/CityLayer.swift` (`Skins`: Farben und Streifen),
-Namen in `Strings.Shop.item`. Wird ein Item ergänzt, gehört es in alle drei und hierher.
+Stand: 25.09.2026 · Code: `Game/Sources/GameCore/Chests.swift` (Katalog, Odds, Pity),
+`Game/Sources/GamePresentation/CityLayer.swift` (`Skins`: Farben, Streifen, Dächer, Effekte),
+`Game/Sources/GamePresentation/MapThemes.swift` (was eine Map in der Stadt zeigt),
+Namen in `Strings.Shop.item`. Wird ein Item ergänzt, gehört es in alle und hierher.
 
 ## Regeln
 
@@ -37,11 +38,22 @@ Namen in `Strings.Shop.item`. Wird ein Item ergänzt, gehört es in alle drei un
 
 Innerhalb einer Seltenheit ist jedes Item gleich wahrscheinlich.
 
-## Car Skins (24)
+## Sammlung im Shop
+
+Die Collection ist in **Regale** geteilt (Chips unter dem Segmented Control): Common, Rare,
+Epic, Legend (Car Skins aus Truhen nach Seltenheit), Maps und Special (Fahrzeugtypen,
+Serien- und Saison-Items). Jedes Regal zeigt höchstens 12 Items (4 × 3), die Chips zeigen
+den Fortschritt (z. B. `3/10`). Kommen Items dazu, darf kein Regal über 12 wachsen
+(Test `everyItemSitsOnOneShelfAndEveryShelfFits`).
+
+## Car Skins (39)
 
 Lackierung der normalen Autos im Level. Mit Streifen: zwei dünne Rennstreifen über
-Motorhaube, Dach und Heck. Mit Effekt: **Shiny** – ein Lichtstreif läuft immer wieder über
-das Auto; **Glitter** – kleine Funkeln blitzen auf. Mit Reduce Motion ohne Effekt-Animation.
+Motorhaube, Dach und Heck. **Zweifarbig:** das Dach von der Windschutzscheibe bis zur
+Heckscheibe in einer zweiten Farbe (nur auf normalen Autos und den Fahrzeugtypen, nie auf
+Polizei, Verbrecher, Transporter, Lkw). Mit Effekt: **Shiny** – ein Lichtstreif läuft immer
+wieder über das Auto; **Glitter** – kleine Funkeln blitzen auf. Mit Reduce Motion ohne
+Effekt-Animation.
 
 | Item | ID | Seltenheit | Aussehen |
 | --- | --- | --- | --- |
@@ -69,6 +81,21 @@ das Auto; **Glitter** – kleine Funkeln blitzen auf. Mit Reduce Motion ohne Eff
 | Lagoon | `lagoon` | Legendary | Lagunen-Türkis mit goldenen Streifen |
 | Diamond | `diamond` | Legendary | Eisblau, **Shiny + Glitter** |
 | Holo | `holo` | Legendary | Holo-Flieder mit Mint-Streifen, **Shiny** |
+| Lemon | `lemon` | Common | Zitronengelb |
+| Plum | `plum` | Common | Pflaume |
+| Fern | `fern` | Common | Farngrün |
+| Latte | `latte` | Common | Milchkaffee |
+| Teal | `teal` | Rare | Petrol |
+| Sky Top | `sky` | Rare | Himmelblau, Dach perlweiß |
+| Cherry Top | `cherry` | Rare | Kirschrot, Dach perlweiß |
+| Mocha Cream | `mocha` | Rare | Mokkabraun, Dach cremeweiß |
+| Panda | `panda` | Epic | Perlweiß, Dach schwarz |
+| Hanami | `hanami` | Epic | Zartrosa, Dach perlweiß, **Glitter** |
+| Volcano | `volcano` | Epic | Carbon mit Glut-Streifen, **Glitter** |
+| Ocean | `ocean` | Epic | Tiefseeblau mit weißen Streifen, **Shiny** |
+| Koi | `koi` | Legendary | Perlweiß, Dach Koi-Orange, goldene Streifen, **Shiny** |
+| Obsidian | `obsidian` | Legendary | Tiefschwarz, **Shiny + Glitter** |
+| Ruby | `ruby` | Legendary | Rubinrot mit goldenen Streifen, **Glitter** |
 
 ## Nur über Daily-Serie und Saison (7)
 
@@ -92,19 +119,41 @@ Kreisverkehr (der wertvollste abgeschlossene zählt). Fortschritt im Shop unter 
 
 | Album | Inhalt | Belohnung |
 | --- | --- | --- |
-| Maps | alle 8 Map Skins aus Truhen | 10.000 |
+| Maps | alle 12 Map Skins aus Truhen | 10.000 |
 | Commons / Rares / Epics / Legends | alle Car Skins dieser Seltenheit aus Truhen | 5.000 / 10.000 / 20.000 / 40.000 |
 | Seasons | alle 4 Saison-Items | 30.000 |
 | Loyalty | alle 3 Serien-Items | 20.000 |
 
-## Map Skins (8)
+## Map Skins (12)
 
 Tönen die Mittelinsel des Kreisverkehrs mit einem Ring in der Skin-Farbe, färben den Boden
 der Stadt außerhalb des Kreisverkehrs (dunkel, damit alles lesbar bleibt) und bringen eigene
-Details mit (`MapTheme`, Entscheidung Leo 25.09.2026): Sand Dünen und Kakteen, Forest Moos
-und Tannen, Autumn Laub und Herbstbäume, Sakura Blütenblätter und Kirschbäume, Neon ein
-Lichtraster und Leuchtpfosten, Dusk Laternen, Aurora Polarlicht und verschneite Tannen,
-Ember glühende Risse und Felsen. Testfenster: `--map sand` zeigt eine Map, ohne sie anzulegen.
+Details mit (`MapTheme`, Entscheidung Leo 25.09.2026). **Jede Map säumt ihre Straßen**
+(Alleen an beiden Seiten jedes Arms); die Häuser lassen die Alleen frei.
+
+- **Sand** Dünen und Kakteen · **Forest** Moos und Tannen · **Autumn** Laub, Herbstbäume und
+  fallende Blätter · **Neon** Lichtraster und Leuchtpfosten · **Dusk** Laternen an den
+  Straßen · **Aurora** Polarlicht und verschneite Tannen · **Ember** glühende Risse und Felsen.
+- **Sakura** (Japan, Leo 25.09.2026): Kirschbaum-Alleen mit Steinlaternen (tōrō) in warmem
+  Licht, Kirschbäume in voller Blüte (Kronen in drei Rosatönen), ein **Koi-Teich** mit
+  Steinrand, Seerosen, schwimmenden Kois, Trittsteinen und **Torii**, eine geharkte
+  **Zen-Kiesinsel** mit drei bemoosten Steinen, Blütenteppich am Boden und **Blüten, die
+  durch die Luft wehen** (in Böen, taumelnd).
+- **Meadow** Wildblumen, blühende Büsche, **Windmühle** mit drehenden Flügeln neben einem
+  Tulpenfeld in bunten Reihen, **Glühwürmchen**.
+- **Tropic** Palmen-Alleen, Muscheln, Sonnenschirme, eine **Lagune** mit Steg und
+  Palmeninsel, auf dem Wasser spielt das Licht.
+- **Snowfall** verschneite Tannen und warme Laternen, Schneemänner, Schlittenspuren, ein
+  **zugefrorener Teich** mit Kufenspuren und zwei Eisläufern, **Schneefall**.
+- **Cosmos** Tiefraum mit Nebeln und funkelnden Sternen, kleine Planeten, Leuchtbaken an den
+  Straßen, ein **Ringplanet mit umlaufendem Mond**, **Sternschnuppen**.
+
+Das Herzstück (Teich, Lagune, Mühle, Planet) liegt an der freien Stelle über dem Ring, so
+weit weg von allen Armen wie möglich; ist kein Platz, fehlt es. Was durch die Luft fliegt,
+ist klein, blass und liegt unter dem HUD. **Reduce Motion:** nichts fliegt, Kois, Mühle,
+Mond und Sterne stehen still. Die Uhr dafür (`sceneTime`) läuft mit dem Spiel und fängt bei
+einer neuen Schicht nicht neu an. Testfenster: `--map sakura` zeigt eine Map, ohne sie
+anzulegen; `--shelf maps` öffnet die Sammlung auf einem Regal.
 
 | Item | ID | Seltenheit | Aussehen |
 | --- | --- | --- | --- |
@@ -116,28 +165,38 @@ Ember glühende Risse und Felsen. Testfenster: `--map sand` zeigt eine Map, ohne
 | Sakura | `sakura` | Epic | Kirschblütenrosa |
 | Aurora | `aurora` | Legendary | Polarlichtgrün |
 | Ember | `ember` | Legendary | Glut-Orange |
+| Meadow | `meadow` | Common | Butterblumengelb |
+| Tropic | `tropic` | Rare | Lagunentürkis |
+| Snowfall | `snowfall` | Epic | Schneeweiß |
+| Cosmos | `cosmos` | Legendary | Sternenlicht |
 
-## Fahrzeugtypen (1)
+## Fahrzeugtypen (3)
+
+Jeder freigeschaltete Typ taucht gelegentlich in der eigenen Schlange auf (ein Zufallswurf
+für alle Typen; mit nur dem Sportwagen bleibt jede Schlange wie vorher). Anders, nicht besser:
+was leichter zu platzieren ist, ist schwerer zu timen und umgekehrt. Werte in `Config.swift`.
 
 | Item | ID | Seltenheit | Eigenschaften |
 | --- | --- | --- | --- |
-| Sports Car | `sportsCar` | Epic | taucht ab dann gelegentlich (15 %) in der eigenen Schlange auf: kürzer (21 statt 24), leichter (0,8), fädelt 20 % schneller ein – braucht also ein anderes Timing |
+| Compact | `compact` | Rare | 12 %: sehr kurz (18 statt 24), leicht (0,7), fädelt 15 % **langsamer** ein |
+| Sports Car | `sportsCar` | Epic | 15 %: kürzer (21 statt 24), leichter (0,8), fädelt 20 % schneller ein – braucht also ein anderes Timing |
+| Van | `van` | Epic | 12 %: lang (29 statt 24), schwer (1,5), fädelt 10 % schneller ein; Windschutzscheibe weit vorn |
 
 ## Verteilung
 
 | Seltenheit | Car Skins | Map Skins | Typen | Summe |
 | --- | --- | --- | --- | --- |
-| Common | 6 | 2 | – | 8 |
-| Rare | 7 | 2 | – | 9 |
-| Epic | 6 | 2 | 1 | 9 |
-| Legendary | 5 | 2 | – | 7 |
-| **Summe** | **24** | **8** | **1** | **33** |
+| Common | 10 | 3 | – | 13 |
+| Rare | 11 | 3 | 1 | 15 |
+| Epic | 10 | 3 | 2 | 15 |
+| Legendary | 8 | 3 | – | 11 |
+| **Summe** | **39** | **12** | **3** | **54** |
+
+Dazu die 7 Items aus Daily-Serie und Saison: 61 insgesamt.
 
 ## Ideen für später (noch nicht im Spiel)
 
-- **Weitere Fahrzeugtypen** mit fairen Eigenschaften: Kleinwagen (sehr kurz, langsamer
-  beim Einfädeln), Van (lang, schwer), Oldtimer (wie ein Auto, eigene Form).
-- **Muster-Skins**: Karo, Camouflage, zweifarbig geteilt.
-- **Event-Skins** für die Event Chest (z. B. Winter, Halloween), nur zeitlich begrenzt.
-- **Map Skins mit Details**: Bäume/Beleuchtung auf der Insel, andere Markierungsfarben.
+- **Weitere Fahrzeugtypen** mit fairen Eigenschaften: Oldtimer (wie ein Auto, eigene Form).
+- **Muster-Skins**: Karo, Camouflage.
+- **Map Skins**: andere Markierungsfarben; Herzstücke auch für die älteren Maps.
 - **Hupe/Sound-Skins** (rein kosmetisch).
