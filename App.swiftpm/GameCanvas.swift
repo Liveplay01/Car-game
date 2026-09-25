@@ -72,9 +72,17 @@ struct GameCanvas: View {
             context.fill(path, with: .color(color))
 
         case let .text(string, position, size, alignment, weight):
-            let text = Text(string)
+            // Money inside a text: the SF Symbol "banknote" in the accent where the game put
+            // its note mark (`Icons.moneyMark`).
+            let note = Palette.color(.accent, opacity: item.opacity)
+            let joined = Icons.pieces(string).reduce(Text(verbatim: "")) { text, piece in
+                switch piece {
+                case let .text(run): text + Text(verbatim: run).foregroundColor(color)
+                case .money: text + Text(Image(systemName: "banknote.fill")).foregroundColor(note) + Text(verbatim: "\u{2009}")
+                }
+            }
+            let text = joined
                 .font(.system(size: size, weight: weight == .bold ? .semibold : .regular, design: .default).monospacedDigit())
-                .foregroundColor(color)
             let anchor: UnitPoint = switch alignment {
             case .leading: .leading
             case .center: .center

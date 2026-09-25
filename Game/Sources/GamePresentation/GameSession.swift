@@ -562,7 +562,48 @@ public final class GameSession {
                 lastPartTap = 0
                 builderPage.removing = 0.001
             }
+            return
         }
+        // A built part: the first tap marks it, a second one tears it down (Leo, 25.09.2026).
+        guard let part = StreetBuilderPage.builtPart(at: point, career: save.career, config: config, map: map) else {
+            builderPage.marked = nil
+            return
+        }
+        if builderPage.marked?.part == part {
+            tearDown(part)
+            return
+        }
+        if case let .arm(slot) = part, !save.career.canRemoveArm(inSlot: slot) {
+            builderPage.denied = 0.001
+            play(sounds: [.denied], haptics: [])
+            showNotice(Strings.Builder.keepsArms(Career.minimumArms))
+            return
+        }
+        builderPage.marked = (part, 0)
+        play(sounds: [.uiTick], haptics: [])
+        showNotice(Strings.Builder.tapAgainToRemove)
+    }
+
+    /// Tears a built part down. Nothing is paid back (`Career.removeArm`, `removeModule`).
+    private func tearDown(_ part: StreetBuilderPage.Built) {
+        builderPage.marked = nil
+        let name: String
+        switch part {
+        case let .arm(slot):
+            guard save.career.removeArm(inSlot: slot) else { return }
+            builderPage.tornDown = (part, nil, 0)
+            name = Strings.Builder.name(.arm)
+        case let .module(slot):
+            guard let module = save.career.modules[slot] else { return }
+            save.career.removeModule(inSlot: slot)
+            builderPage.tornDown = (part, module, 0)
+            name = StreetBuilderPage.Part(rawValue: module.rawValue).map(Strings.Builder.name) ?? ""
+        }
+        store.save(save)
+        // The roundabout itself is different now, so the waiting shift starts over on it.
+        refreshWaitingShift()
+        play(sounds: [.swoosh], haptics: [.comboUp])
+        showNotice(Strings.Notice.removed(name))
     }
 
     /// The tab bar's height, where it shows.

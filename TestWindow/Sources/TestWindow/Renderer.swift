@@ -90,15 +90,35 @@ final class Renderer {
         case let .text(string, position, size, alignment, weight):
             let font = weight == .bold ? bold : regular
             let fontSize = Float(size)
-            let measured = MeasureTextEx(font, string, fontSize, 0)
-            var origin = vector(point(position))
+            // Money inside a text: the note is drawn where `Icons.moneyMark` stands.
+            let pieces = Icons.pieces(string)
+            let note = Float(Icons.inlineMoneyWidth(size: size))
+            let widths = pieces.map { piece -> Float in
+                switch piece {
+                case let .text(run): MeasureTextEx(font, run, fontSize, 0).x
+                case .money: note
+                }
+            }
+            let height = MeasureTextEx(font, "0", fontSize, 0).y
+            let total = widths.reduce(0, +)
+            let anchor = vector(point(position))
+            var x = anchor.x
             switch alignment {
             case .leading: break
-            case .center: origin.x -= measured.x / 2
-            case .trailing: origin.x -= measured.x
+            case .center: x -= total / 2
+            case .trailing: x -= total
             }
-            origin.y -= measured.y / 2
-            DrawTextEx(font, string, origin, fontSize, 0, tint)
+            for (piece, width) in zip(pieces, widths) {
+                switch piece {
+                case let .text(run):
+                    DrawTextEx(font, run, Vector2(x: x, y: anchor.y - height / 2), fontSize, 0, tint)
+                case .money:
+                    for shape in Icons.inlineMoney(at: Vec2(Double(x + width / 2), Double(anchor.y)), size: size, opacity: item.opacity) {
+                        draw(shape, camera: camera)
+                    }
+                }
+                x += width
+            }
         }
     }
 

@@ -324,6 +324,24 @@ public struct Career: Sendable, Equatable, Codable {
         modules[slot] = nil
     }
 
+    /// The fewest arms a roundabout keeps: the four it starts with.
+    public static let minimumArms = 4
+
+    /// Whether the arm in `slot` may be torn down: not the player's own, and never below
+    /// `minimumArms`.
+    public func canRemoveArm(inSlot slot: Int) -> Bool {
+        slot != 0 && armSlots.contains(slot) && armSlots.count > Self.minimumArms
+    }
+
+    /// Tears an arm down again (Leo, 25.09.2026). Nothing is paid back, like a module: it
+    /// is torn down, not sold. The next arm then costs what it did before this one.
+    @discardableResult
+    public mutating func removeArm(inSlot slot: Int) -> Bool {
+        guard canRemoveArm(inSlot: slot) else { return false }
+        armSlots.removeAll { $0 == slot }
+        return true
+    }
+
     /// Price of the next arm, or nil once the ring is full.
     public func armPrice(config: Config) -> Int? {
         config.armPrice(built: armSlots)

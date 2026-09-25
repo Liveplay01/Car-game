@@ -55,6 +55,12 @@ public enum StreetBuilderPage {
         public var moneyBefore: Int?
         /// A build that could not be paid for.
         public var denied = 0.0
+        /// A built part tapped once (Leo, 25.09.2026): it shows red with a cross, a second tap
+        /// tears it down. It lets go by itself after `markDuration`.
+        public var marked: (part: Built, age: Double)?
+        /// A part just torn down, while it goes: the arm shrinks into the ring, a module
+        /// shrinks away.
+        public var tornDown: (part: Built, module: RoadModule?, age: Double)?
 
         public init() {}
 
@@ -80,7 +86,38 @@ public enum StreetBuilderPage {
                 self.builtModule = builtModule.age < StreetBuilderPage.buildDuration ? builtModule : nil
                 if self.builtModule == nil, built == nil { moneyBefore = nil }
             }
+            if var marked {
+                marked.age += delta
+                self.marked = marked.age < StreetBuilderPage.markDuration ? marked : nil
+            }
+            if var tornDown {
+                tornDown.age += delta
+                self.tornDown = tornDown.age < StreetBuilderPage.tearDuration ? tornDown : nil
+            }
         }
+    }
+
+    /// Something already built on the ring: an arm by its slot, a module by its module slot.
+    public enum Built: Sendable, Equatable {
+        case arm(slot: Int)
+        case module(slot: Int)
+    }
+
+    /// How long a tapped part stays marked for tearing down.
+    static let markDuration = 3.0
+    /// How long tearing down takes to watch.
+    static let tearDuration = 0.45
+
+    /// The built part under a point: a module on the ring first (they sit on it), then an
+    /// arm. The player's own arm is never offered.
+    public static func builtPart(at point: Vec2, career: Career, config: Config, map: (center: Vec2, radius: Double)) -> Built? {
+        if let slot = moduleSlot(at: point, count: config.moduleSlotCount, map: map), career.modules[slot] != nil {
+            return .module(slot: slot)
+        }
+        if let slot = slot(at: point, slots: config.armSlotCount, map: map), slot != 0, career.armSlots.contains(slot) {
+            return .arm(slot: slot)
+        }
+        return nil
     }
 
     // MARK: - Layout
@@ -267,6 +304,18 @@ public enum StreetBuilderPage {
                 addArm(slot: build.slot, slots: slots, map: map, road: .accent, mark: nil, opacity: settle, grow: grow, id: &id, to: &list)
             }
         }
+        // Marked for tearing down: the arm glows red and a cross springs out at its end.
+        if let marked = state.marked, case let .arm(slot) = marked.part, built.contains(slot) {
+            let pulse = reduceMotion ? 0.5 : 0.4 + 0.25 * sin(marked.age * 9)
+            addArm(slot: slot, slots: slots, map: map, road: .destructive, mark: nil, opacity: pulse * Ease.outCubic(marked.age / 0.15), grow: 1, id: &id, to: &list)
+            addCross(at: slotPosition(slot, slots: slots, map: map) + direction(ofSlot: slot, slots: slots) * 14, age: marked.age, reduceMotion: reduceMotion, id: &id, to: &list)
+        }
+        // Torn down: it shrinks back into the ring, red, and fades.
+        if let torn = state.tornDown, case let .arm(slot) = torn.part {
+            let x = Ease.clamp01(torn.age / tearDuration)
+            let shrink = reduceMotion ? 1 : 1 - Ease.inCubic(x)
+            addArm(slot: slot, slots: slots, map: map, road: .destructive, mark: nil, opacity: 1 - Ease.outCubic(x), grow: shrink, id: &id, to: &list)
+        }
         addModules(career: career, config: config, state: state, map: map, reduceMotion: reduceMotion, id: &id, to: &list)
 
         // The one put down but not paid for yet; it fades while it is being taken away.
@@ -307,6 +356,18 @@ public enum StreetBuilderPage {
                 id += 1
             }
         }
+        if let marked = state.marked, case let .module(slot) = marked.part, career.modules[slot] != nil {
+            let at = moduleSlotPosition(slot, count: count, map: map)
+            let pulse = reduceMotion ? 0.8 : 0.6 + 0.3 * sin(marked.age * 9)
+            list.add(.arc(center: at, radius: 12, thickness: 2.5, startAngle: 0, endAngle: Angle.tau), color: .destructive, opacity: pulse, space: .screen, id: id)
+            id += 1
+            addCross(at: at + (at - map.center).normalized * 20, age: marked.age, reduceMotion: reduceMotion, id: &id, to: &list)
+        }
+        if let torn = state.tornDown, case let .module(slot) = torn.part, let module = torn.module {
+            let x = Ease.clamp01(torn.age / tearDuration)
+            let scale = reduceMotion ? 1 : 1 - Ease.inCubic(x)
+            addModuleIcon(module, at: moduleSlotPosition(slot, count: count, map: map), scale: max(0.01, scale), opacity: 1 - Ease.outCubic(x), id: &id, to: &list)
+        }
         if let pending = state.pending, let module = pending.part.module {
             var opacity = 0.7
             if state.removing > 0 { opacity *= 1 - Ease.clamp01(state.removing / removeDuration) }
@@ -315,6 +376,20 @@ public enum StreetBuilderPage {
             list.add(.arc(center: at, radius: 13, thickness: 2.5, startAngle: 0, endAngle: Angle.tau), color: state.denied > 0 ? .destructive : .accent, opacity: opacity, space: .screen, id: id)
             id += 1
             addModuleIcon(module, at: at, scale: 1, opacity: opacity, id: &id, to: &list)
+        }
+    }
+
+    /// The red "tear down" badge: a disc with a cross that springs out like the chest.
+    private static func addCross(at center: Vec2, age: Double, reduceMotion: Bool, id: inout Int, to list: inout RenderList) {
+        let scale = reduceMotion ? 1 : Ease.spring(age / 0.35)
+        guard scale > 0.01 else { return }
+        let radius = 9 * scale
+        list.add(.circle(center: center, radius: radius), color: .destructive, space: .screen, id: id)
+        id += 1
+        let arm = radius * 0.45
+        for turn in [Vec2(arm, arm), Vec2(arm, -arm)] {
+            list.add(.line(from: center - turn, to: center + turn, thickness: 2 * scale), color: .primary, space: .screen, id: id)
+            id += 1
         }
     }
 

@@ -70,9 +70,12 @@ public enum Strings {
         public static let title = "Street Builder"
         public static let ringFull = "Ring full"
         public static let drag = "Drag onto the ring"
-        public static let pickOne = "Tap a part to see what it does."
+        public static let pickOne = "Tap a part to see what it does · tap a built one to tear it down."
         public static let dragHint = "Drag it onto a free slot on the ring."
         public static let buildHint = "Double-tap the part to build it · one tap takes it away."
+        /// A built part was tapped once (Leo, 25.09.2026).
+        public static let tapAgainToRemove = "Tap again to tear it down · nothing is paid back"
+        public static func keepsArms(_ count: Int) -> String { "A roundabout keeps at least \(count) arms" }
         /// Test window only.
         public static let keys = "Drag with the mouse · double-click builds"
 
@@ -93,18 +96,18 @@ public enum Strings {
                 let pay = Upgrades.percent(config.payPerArm)
                 return "A wider ring with one more way in and out: \(traffic) more traffic, transporters more often, and \(pay) more pay per shift."
             case .tollBooth:
-                return "Every lorry pays \(config.tollPerTruck) cash here, in the first \(Int(config.moduleEarningSeconds)) s of a shift. Traffic slows down around it, and so do your police cars."
+                return "Every lorry pays \(Strings.money(String(config.tollPerTruck))) here, in the first \(Int(config.moduleEarningSeconds)) s of a shift. Traffic slows down around it, and so do your police cars."
             case .speedCamera:
-                return "Fines every car over the limit \(config.cameraFine) cash in the first \(Int(config.moduleEarningSeconds)) s of a shift: nothing in a calm shift, a lot in rush hour. Everyone brakes hard at it."
+                return "Fines every car over the limit \(Strings.money(String(config.cameraFine))) in the first \(Int(config.moduleEarningSeconds)) s of a shift: nothing in a calm shift, a lot in rush hour. Everyone brakes hard at it."
             case .towDepot:
                 return "Wrecks near it are towed away \(Upgrades.percent(config.towSpeedup)) faster, so the ring flows again sooner."
             }
         }
     }
 
-    /// Money inside a sentence, where no note can be drawn: "2,000 cash". Standalone values
-    /// (balances, prices) carry the note icon instead (`Icons.moneyTag`).
-    public static func money(_ formatted: String) -> String { "\(formatted) cash" }
+    /// Money inside a sentence: the note, then the amount. The renderers draw the note where
+    /// `Icons.moneyMark` stands, so the word "cash" never shows (Leo, 25.09.2026).
+    public static func money(_ formatted: String) -> String { "\(Icons.moneyMark)\(formatted)" }
 
     /// The Shop tab (M10): chests, their odds, the collection.
     public enum Shop {
@@ -147,7 +150,7 @@ public enum Strings {
 
         public static func waiting(_ count: Int) -> String { count == 1 ? "1 waiting" : "\(count) waiting" }
         public static func buy(_ price: String) -> String { "Buy · \(price)" }
-        public static func pity(_ chests: Int) -> String { "Epic or better within \(chests) chests. Duplicates pay cash." }
+        public static func pity(_ chests: Int) -> String { "Epic or better within \(chests) chests. Duplicates pay out \(Icons.moneyMark)." }
         public static func duplicate(_ money: String) -> String { "Duplicate · +\(Strings.money(money))" }
 
         public static func ownedHint(_ item: Cosmetic) -> String {
@@ -236,7 +239,7 @@ public enum Strings {
             return "\(rarity(item.rarity)) \(kind)"
         }
 
-        /// "EPIC · Carbon" or "Duplicate: Mint · +250 cash".
+        /// "EPIC · Carbon" or "Duplicate: Mint · +[note]250".
         public static func opened(_ opening: ChestOpening) -> String {
             let name = item(opening.item.id)
             if opening.isDuplicate { return "Duplicate: \(name) · +\(money(String(opening.money)))" }
@@ -250,7 +253,7 @@ public enum Strings {
         public static let ready = "Daily Shift ready"
         public static let doneToday = "Today's Daily Shift is done. New one tomorrow."
         public static let perfectRun = "PERFECT RUN"
-        /// "Welcome back · your toll booths earned +1,200 cash".
+        /// "Welcome back · your toll booths earned +[note]1,200".
         public static func welcomeBack(_ money: String) -> String { "Welcome back · your toll booths earned +\(Strings.money(money))" }
         public static let done = "Done"
         public static let challengesTitle = "Today's challenge"
@@ -260,7 +263,7 @@ public enum Strings {
             streak > 1 ? "Done · \(streak) days in a row · back tomorrow" : "Done · back tomorrow"
         }
 
-        /// "DAILY SHIFT DONE · +1,500 cash · 3 days in a row · CHEST EARNED".
+        /// "DAILY SHIFT DONE · +[note]1,500 · 3 days in a row · CHEST EARNED".
         public static func dailyDone(_ money: String, streak: Int) -> String {
             let days = streak > 1 ? " · \(streak) days in a row" : ""
             return "DAILY SHIFT DONE · +\(Strings.money(money))\(days) · CHEST EARNED"
@@ -553,11 +556,13 @@ public enum Strings {
         }
         public static func tuningFailed(_ reason: String) -> String { "tuning.json not applied: \(reason)" }
         public static func unknownKeys(_ keys: [String]) -> String { "tuning.json: unknown \(keys.joined(separator: ", "))" }
-        public static func notEnoughMoney(_ price: String) -> String { "Not enough cash: \(price) needed" }
+        public static func notEnoughMoney(_ price: String) -> String { "Not enough \(Icons.moneyMark) · \(Strings.money(price)) needed" }
         /// "New arm built · 5 arms".
         public static func built(_ name: String, arms: Int) -> String { "\(name) built · \(arms) arms" }
         /// "Tow Depot built on the ring".
         public static func placed(_ name: String) -> String { "\(name) built on the ring" }
+        /// "Toll Booth torn down".
+        public static func removed(_ name: String) -> String { "\(name) torn down" }
         /// "More Patrols 2/4".
         public static func bought(_ name: String, steps: Int, of maxSteps: Int) -> String { "\(name) \(steps)/\(maxSteps)" }
     }
