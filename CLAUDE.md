@@ -10,6 +10,7 @@ Kreisverkehr-Timing-Spiel fürs iPhone (One-Tap, inspiriert von "Car Circle").
 | [ROADMAP.md](ROADMAP.md) | Meilensteine M0–M13 |
 | [TESTING.md](TESTING.md) | So wird getestet |
 | [LOOT.md](LOOT.md) | Was in den Truhen steckt: Skins, Fahrzeugtypen, Odds |
+| [MONETIZATION.md](MONETIZATION.md) | In-App-Käufe und Werbung (Platzhalter), was vor dem Release offen ist |
 
 ## Feste Entscheidungen – nicht neu vorschlagen
 
@@ -43,8 +44,9 @@ Kreisverkehr-Timing-Spiel fürs iPhone (One-Tap, inspiriert von "Car Circle").
   (Entscheidung Leo, 24.09.2026). Folge: App-Store-Datenschutzangaben mit Werbe-/
   Tracking-Daten statt "Data Not Collected", ATT-Abfrage, Datenschutzerklärung erwähnt AdMob.
 - **So viele native Apple-Elemente wie möglich** (Tab-Bar, NavigationStack,
-  Listen, Sheets, SF Symbols). Die Hauptnavigation zwischen Street Builder, Game,
-  Shop und Upgrades ist eine native iOS-Tab-Bar (`TabView`). Eigenes Design nur für
+  Listen, Sheets, SF Symbols). Die Hauptnavigation zwischen Progress, Game, Shop und
+  Build (Upgrades und Street Builder als Segmente) ist eine native iOS-Tab-Bar
+  (`TabView`). Eigenes Design nur für
   die Spielszene.
 - **Crashes sind echte Physik** (`CrashPhysics`, `Drivers.swift`): Stoß-Impuls,
   Reifenreibung, reagierender Verkehr, Blechschaden. Keine geskripteten Animationen.

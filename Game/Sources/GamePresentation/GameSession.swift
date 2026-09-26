@@ -29,6 +29,8 @@ public enum InputAction: Sendable, Equatable {
     case tapUpgrade(Upgrade)
     /// A tap on the Shop page (`ShopPage.target(at:)`): a section, a chest, a button, an item.
     case tapShop(ShopPage.Target)
+    /// A tap on the Progress page (`ProgressPage.target(at:)`): a section.
+    case tapProgress(ProgressPage.Target)
     /// Dragging on a page: press, move, release (the Street Builder's drag and drop).
     case pointerDown(Vec2)
     case pointerMove(Vec2)
@@ -182,6 +184,13 @@ public final class GameSession {
     public private(set) var shopPage = ShopPage.State()
     /// Plays rewarded ads in the app; without one (test window) a placeholder ad runs.
     public weak var adProvider: AdProviding?
+    /// Takes real money in the app (StoreKit); without one a placeholder purchase runs.
+    public weak var purchaser: Purchasing?
+    /// What the Progress tab shows and animates.
+    public private(set) var progressPage = ProgressPage.State()
+    /// The Build tab's page it was left on, and the glide of its segment thumb.
+    public private(set) var buildPage = Tab.upgrades
+    private var buildSlide: (from: Tab, age: Double)?
     /// What the Street Builder tab shows and animates.
     public private(set) var builderPage = StreetBuilderPage.State()
     /// The last tap on a placed part, to tell a double tap from a single one.
@@ -317,7 +326,22 @@ public final class GameSession {
                 tick()
                 leaveShelf()
             }
+            // Between the Build tab's two pages the segment thumb glides over.
+            if Tab.build.contains(tab) {
+                if Tab.build.contains(screen.tab), screen.tab != tab { buildSlide = (screen.tab, 0) }
+                buildPage = tab
+            }
             screen = next
+        case let .showShop(section):
+            perform(.showTab(.shop))
+            guard screen == .page(.shop) else { return }
+            shopPage.section = section
+            shopPage.sectionSlide = nil
+        case let .showProgress(section):
+            perform(.showTab(.progress))
+            guard screen == .page(.progress) else { return }
+            progressPage.section = section
+            progressPage.sectionSlide = nil
         case let .pickUpPart(part):
             tick()
             builderPage.selected = part
@@ -372,22 +396,30 @@ public final class GameSession {
             store.save(save)
             play(sounds: [.purchase], haptics: [.comboUp])
         case .watchAd:
-            guard save.career.adChestsLeft(day: today, config: config) > 0, shopPage.ad == nil else {
-                play(sounds: [.denied], haptics: [])
-                showNotice(Strings.Shop.noAdsLeft)
-                return
-            }
-            if let adProvider {
-                adProvider.showRewardedAd { [weak self] watched in
-                    if watched {
-                        self?.adWatched()
+            showAd(for: .chest)
+        case .watchCashAd:
+            showAd(for: .cash)
+        case let .purchase(product):
+            guard save.career.canBuy(product), shopPage.purchase == nil else { return }
+            tick()
+            if let purchaser {
+                purchaser.purchase(product) { [weak self] paid in
+                    if paid {
+                        self?.purchased(product)
                     } else {
-                        self?.showNotice(Strings.Shop.adNotReady)
+                        self?.showNotice(Strings.Store.cancelled)
                     }
                 }
             } else {
-                // Test window: a placeholder ad that runs a few seconds.
-                shopPage.ad = 0
+                // No App Store yet: a placeholder purchase that charges nothing.
+                shopPage.purchase = (product, 0)
+            }
+        case .restorePurchases:
+            tick()
+            if let purchaser {
+                purchaser.restore { [weak self] products in self?.restored(products) }
+            } else {
+                restored([])
             }
         case let .wear(id):
             if !save.career.wear(id), Cosmetics.item(id)?.kind == .carSkin, save.career.owns(id) {
@@ -700,14 +732,72 @@ public final class GameSession {
         shopPage.opening = (ChestOpening(chest: rarity >= .epic ? .premium : .standard, item: item, isDuplicate: false, money: 0), 0)
     }
 
+    /// Asks for a rewarded ad: the app's, or the placeholder. No Ads pays at once.
+    private func showAd(for reward: AdReward) {
+        guard save.career.adsLeft(reward, day: today, config: config) > 0, shopPage.ad == nil else {
+            play(sounds: [.denied], haptics: [])
+            showNotice(reward == .cash ? Strings.Store.noCashAdsLeft : Strings.Shop.noAdsLeft)
+            return
+        }
+        if save.career.skipsAds {
+            adWatched(reward)
+        } else if let adProvider {
+            adProvider.showRewardedAd { [weak self] watched in
+                if watched {
+                    self?.adWatched(reward)
+                } else {
+                    self?.showNotice(Strings.Shop.adNotReady)
+                }
+            }
+        } else {
+            // Test window: a placeholder ad that runs a few seconds.
+            shopPage.ad = 0
+            shopPage.adReward = reward
+        }
+    }
+
     /// A rewarded ad was watched to the end: a Standard chest.
     public func adWatched() {
-        guard save.career.rewardAd(day: today, config: config) else { return }
+        adWatched(.chest)
+    }
+
+    /// A rewarded ad was watched to the end (or skipped with No Ads): its reward.
+    public func adWatched(_ reward: AdReward) {
+        guard let cash = save.career.rewardAd(reward, day: today, config: config) else { return }
         store.save(save)
         shopPage.ad = nil
-        shopPage.selectedChest = .standard
         play(sounds: [.purchase], haptics: [.paid])
-        showNotice(Strings.Shop.adReward)
+        switch reward {
+        case .chest:
+            shopPage.selectedChest = .standard
+            showNotice(save.career.skipsAds ? Strings.Store.chestNoAd : Strings.Shop.adReward)
+        case .cash:
+            showNotice(save.career.skipsAds ? Strings.Store.cashNoAd(format.number(cash)) : Strings.Store.cashAdReward(format.number(cash)))
+        }
+    }
+
+    /// A purchase went through: the goods, saved at once.
+    public func purchased(_ product: StoreProduct) {
+        shopPage.purchase = nil
+        guard save.career.applyPurchase(product, config: config) else { return }
+        store.save(save)
+        play(sounds: [.purchase], haptics: [.paid])
+        showNotice(Strings.Store.bought(product))
+        // What changes the shifts (Cash Boost) counts from the next one waiting.
+        if product == .cashBoost { refreshWaitingShift() }
+    }
+
+    /// The App Store's answer to Restore Purchases.
+    public func restored(_ products: [StoreProduct]) {
+        let new = save.career.restorePurchases(products)
+        store.save(save)
+        showNotice(Strings.Store.restored(new.count))
+        if new.contains(.cashBoost) { refreshWaitingShift() }
+    }
+
+    /// The price to show: the App Store's once it is known, the placeholder until then.
+    public func price(of product: StoreProduct) -> String {
+        purchaser?.price(of: product) ?? product.placeholderPrice
     }
 
     /// A tap on the Shop page. Tapping a selected chest again opens one; tapping an owned
@@ -762,6 +852,23 @@ public final class GameSession {
             shopPage.selectedItem = id
         case let .wear(id):
             perform(.wear(id))
+        case let .offer(offer):
+            // Tapping the chosen offer again buys it (or watches its ad), like a chest.
+            if shopPage.selectedOffer == offer {
+                switch offer {
+                case let .product(product): perform(.purchase(product))
+                case .freeCash: perform(.watchCashAd)
+                }
+            } else {
+                tick()
+            }
+            shopPage.selectedOffer = offer
+        case let .purchase(product):
+            perform(.purchase(product))
+        case .watchCashAd:
+            perform(.watchCashAd)
+        case .restore:
+            perform(.restorePurchases)
         case .dismiss:
             // A tap during the build-up skips to the burst; after it, it closes.
             if let opening = shopPage.opening, opening.age < ShopPage.burstTime {
@@ -920,10 +1027,24 @@ public final class GameSession {
                 play(sounds: [rare ? .chestBurstRare : .chestBurst], haptics: [.chest])
             }
             if let ad = shopPage.ad, ad >= ShopPage.adDuration {
-                adWatched()
+                adWatched(shopPage.adReward)
+            }
+            if let purchase = shopPage.purchase, purchase.age >= ShopPage.purchaseDuration {
+                purchased(purchase.product)
             }
         } else {
+            // A placeholder purchase is never lost to a tab switch.
+            if let purchase = shopPage.purchase { purchased(purchase.product) }
             shopPage = ShopPage.State()
+        }
+        if screen == .page(.progress) {
+            progressPage.age(by: realDelta)
+        } else if progressPage != ProgressPage.State() {
+            progressPage = ProgressPage.State()
+        }
+        if var slide = buildSlide {
+            slide.age += realDelta
+            buildSlide = slide.age < BuildTab.glide ? slide : nil
         }
         if screen == .page(.streetBuilder) {
             builderPage.age(by: realDelta)
@@ -1027,6 +1148,13 @@ public final class GameSession {
         case let .tapShop(target):
             guard screen == .page(.shop) else { return }
             tapShop(target)
+        case let .tapProgress(target):
+            guard screen == .page(.progress) else { return }
+            switch target {
+            case let .section(section):
+                if progressPage.section != section { tick() }
+                progressPage.select(section)
+            }
         case let .pointerDown(point):
             guard screen == .page(.streetBuilder) else { return }
             builderPress(at: point)
@@ -1048,11 +1176,18 @@ public final class GameSession {
                 builderPage.target = nil
             }
         case let .selectTab(tab):
-            perform(.showTab(tab))
+            // The Build tab opens on the page it was left on; on it, its tab does nothing.
+            if tab == .upgrades {
+                guard !Tab.build.contains(screen.tab) else { return }
+                perform(.showTab(buildPage))
+            } else {
+                perform(.showTab(tab))
+            }
         case .nextTab:
-            let tabs = Tab.allCases
-            let index = tabs.firstIndex(of: screen.tab) ?? 0
-            perform(.showTab(tabs[(index + 1) % tabs.count]))
+            // Every page in tab-bar order, the Build tab's two one after the other.
+            let pages = Tab.bar.flatMap { $0 == .upgrades ? Tab.build : [$0] }
+            let index = pages.firstIndex(of: screen.tab) ?? 0
+            perform(.showTab(pages[(index + 1) % pages.count]))
         case .toggleDebug:
             isDebugVisible.toggle()
         case .dispatch:
@@ -1403,13 +1538,17 @@ public final class GameSession {
         let bottomInset = tabStrip ? TabStrip.height : 0
         if options.drawsMenus, screen == .page(.streetBuilder) {
             // Its own page: the roundabout from above, with the parts to build.
-            StreetBuilderPage.add(career: save.career, config: config, state: builderPage, format: format, reduceMotion: reduceMotion, showsKeys: options.showsKeyHints, bottomInset: bottomInset, to: &list)
+            StreetBuilderPage.add(career: save.career, config: config, state: builderPage, format: format, reduceMotion: reduceMotion, showsKeys: options.showsKeyHints, bottomInset: bottomInset, segmentThumb: buildThumb, to: &list)
         } else if options.drawsMenus, screen == .page(.upgrades) {
             // Its own page: cards with a picture of what they do (FOUNDATION.md 3).
-            UpgradePage.add(career: save.career, config: config, upgrades: visibleUpgrades, state: upgradePage, format: format, reduceMotion: reduceMotion, showsKeys: options.showsKeyHints, bottomInset: bottomInset, to: &list)
+            UpgradePage.add(career: save.career, config: config, upgrades: visibleUpgrades, state: upgradePage, format: format, reduceMotion: reduceMotion, showsKeys: options.showsKeyHints, bottomInset: bottomInset, segmentThumb: buildThumb, to: &list)
         } else if options.drawsMenus, screen == .page(.shop) {
-            // Its own page: chests, collection and today's goals (M10, v1.2).
-            ShopPage.add(career: save.career, config: config, today: today, state: shopPage, format: format, reduceMotion: reduceMotion, bottomInset: bottomInset, to: &list)
+            // Its own page: chests, collection and the store (M10, MONETIZATION.md).
+            let prices = Dictionary(uniqueKeysWithValues: StoreProduct.allCases.map { ($0, price(of: $0)) })
+            ShopPage.add(career: save.career, config: config, today: today, state: shopPage, format: format, reduceMotion: reduceMotion, bottomInset: bottomInset, prices: prices, to: &list)
+        } else if options.drawsMenus, screen == .page(.progress) {
+            // Its own page: records, quests and achievements.
+            ProgressPage.add(save: save, today: today, state: progressPage, format: format, reduceMotion: reduceMotion, bottomInset: bottomInset, to: &list)
         } else if options.drawsMenus, screen == .settings, let content {
             // Like an iOS settings sheet: switches, grouped rows (`SettingsPage`).
             SettingsPage.add(content, showsKeys: options.showsKeyHints, to: &list)
@@ -1424,6 +1563,46 @@ public final class GameSession {
             addNotice(notice.text, age: notice.age, bottomInset: bottomInset, to: &list)
         }
         return list
+    }
+
+    /// Where the Build tab's segment thumb stands: 0 on Upgrades, 1 on the Street Builder,
+    /// gliding in between after a switch.
+    private var buildThumb: Double {
+        let target = Double(Tab.build.firstIndex(of: screen.tab) ?? 0)
+        guard let slide = buildSlide, !reduceMotion else { return target }
+        let from = Double(Tab.build.firstIndex(of: slide.from) ?? 0)
+        return from + (target - from) * Ease.settle(slide.age / BuildTab.glide)
+    }
+
+    /// What a touch or click at `point` means on the chrome every platform shares: the tab
+    /// strip, the Build tab's segments and the Progress tab. Nil where the platform decides
+    /// (the Shop, the upgrade cards, the Street Builder's drags, the game itself).
+    public func pageAction(at point: Vec2, viewport: Vec2) -> InputAction? {
+        guard screen.showsTabBar else { return nil }
+        if let tab = TabStrip.tab(at: point, viewport: viewport) { return .selectTab(tab) }
+        let inset = options.drawsMenus ? TabStrip.height : 0
+        switch screen {
+        case .page(.upgrades), .page(.streetBuilder):
+            return BuildTab.page(at: point, viewport: viewport).map { .perform(.showTab($0)) }
+        case .ready, .result:
+            // The top card is a way in (Leo, 26.09.2026): the money to the store, the cars
+            // to the collection, the score and the best to the records. Not in the first
+            // moment of a result, so a tap meant for the last car stays in the game.
+            if case .result = screen, resultAge < ResultBanner.inputLock { return nil }
+            guard let column = TopBar.column(at: point, width: viewport.x) else { return nil }
+            // After its epilogue the result shows the next shift's cars in the middle.
+            let showsCars = screen == .ready || ResultBanner.settled(age: resultAge) >= 0.5
+            switch column {
+            case .left: return .perform(.showShop(.store))
+            case .center: return .perform(showsCars ? .showShop(.collection) : .showProgress(.records))
+            case .right: return .perform(.showProgress(.records))
+            }
+        case .page(.progress):
+            // The page takes every touch: a segment, or nothing.
+            return .tapProgress(ProgressPage.target(at: point, viewport: viewport, bottomInset: inset) ?? .section(progressPage.section))
+        default:
+            return nil
+        }
     }
 
     /// The next shift's waiting screen: its level, cars and duty, the best, what comes.

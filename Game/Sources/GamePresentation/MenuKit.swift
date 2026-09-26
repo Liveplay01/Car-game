@@ -131,10 +131,17 @@ enum MenuKit {
             add(.roundedRect(center: c + Vec2(0, 3), size: Vec2(18, 15), cornerRadius: 3, rotation: 0))
             add(.arc(center: c + Vec2(0, -4), radius: 5, thickness: 2, startAngle: .pi, endAngle: Angle.tau))
         case .upgrades:
-            // arrow.up.circle: a ring with an arrow.
-            add(.arc(center: c, radius: 10, thickness: 2, startAngle: 0, endAngle: Angle.tau))
-            add(.polygon([c + Vec2(0, -6), c + Vec2(5, -1), c + Vec2(-5, -1)]))
-            add(.roundedRect(center: c + Vec2(0, 2.5), size: Vec2(2.4, 8), cornerRadius: 1.2, rotation: 0))
+            // hammer: a slanted handle under a head (the Build tab).
+            add(.roundedRect(center: c + Vec2(1.5, 3), size: Vec2(3, 17), cornerRadius: 1.5, rotation: -0.7))
+            add(.roundedRect(center: c + Vec2(-3.5, -4.5), size: Vec2(13, 6), cornerRadius: 1.5, rotation: -0.7))
+        case .progress:
+            // trophy: a cup with handles on a foot.
+            add(.polygon([c + Vec2(-7, -9), c + Vec2(7, -9), c + Vec2(5, -1), c + Vec2(-5, -1)]))
+            add(.circle(center: c + Vec2(0, -2), radius: 5))
+            add(.arc(center: c + Vec2(-7, -5), radius: 3, thickness: 1.8, startAngle: Double.pi / 2, endAngle: Double.pi * 1.5))
+            add(.arc(center: c + Vec2(7, -5), radius: 3, thickness: 1.8, startAngle: -Double.pi / 2, endAngle: Double.pi / 2))
+            add(.roundedRect(center: c + Vec2(0, 5), size: Vec2(2.6, 6), cornerRadius: 1, rotation: 0))
+            add(.roundedRect(center: c + Vec2(0, 9), size: Vec2(12, 3), cornerRadius: 1.2, rotation: 0))
         }
     }
 }

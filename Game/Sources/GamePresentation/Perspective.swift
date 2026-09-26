@@ -11,17 +11,20 @@ import GameCore
 /// - **Shop**: the camera turns into the city, the ring drifts to the edge.
 /// - **Upgrades**: the ring stays where it is, a little closer; the city around it recedes
 ///   (`addRecede`).
+/// - **Progress**: like the Shop, but the camera turns the other way, into another district.
 enum Perspective: Sendable, Equatable {
     case street
     case builder
     case shop
     case upgrades
+    case progress
 
     init(_ screen: Screen) {
         switch screen {
         case .page(.streetBuilder): self = .builder
         case .page(.shop): self = .shop
         case .page(.upgrades): self = .upgrades
+        case .page(.progress): self = .progress
         case .page(.game), .ready, .settings, .playing, .result: self = .street
         }
     }
@@ -33,6 +36,8 @@ enum Perspective: Sendable, Equatable {
     static let shopDirection = 2.3
     static let shopDistance = 150.0
     static let shopZoom = 0.74
+    /// Where the Progress tab looks: down and to the right of the ring.
+    static let progressDirection = -0.9
     static let upgradesZoom = 1.06
 
     func camera(layout: RoundaboutLayout, viewport: Vec2, bottomInset: Double) -> Camera {
@@ -46,6 +51,9 @@ enum Perspective: Sendable, Equatable {
             return Camera(viewport: viewport, center: .zero, focus: map.center, scale: map.radius / layout.ringRadius)
         case .shop:
             let center = Vec2(angle: Self.shopDirection) * (layout.ringRadius + Self.shopDistance)
+            return Camera(viewport: viewport, center: center, focus: Vec2(viewport.x / 2, viewport.y * 0.45), scale: street.scale * Self.shopZoom)
+        case .progress:
+            let center = Vec2(angle: Self.progressDirection) * (layout.ringRadius + Self.shopDistance)
             return Camera(viewport: viewport, center: center, focus: Vec2(viewport.x / 2, viewport.y * 0.45), scale: street.scale * Self.shopZoom)
         case .upgrades:
             var camera = street

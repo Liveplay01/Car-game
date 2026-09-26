@@ -73,7 +73,7 @@ public enum UpgradePage {
     public static func cards(viewport: Vec2, bottomInset: Double, upgrades: [Upgrade] = Upgrade.allCases) -> [(upgrade: Upgrade, rect: Rect)] {
         let width = min(viewport.x - 2 * gap, 460)
         let left = (viewport.x - width) / 2
-        let top = Metrics.sceneInsets.top + 34
+        let top = BuildTab.contentTop
         let rows = Double((upgrades.count + columns - 1) / columns)
         let available = viewport.y - bottomInset - detailHeight - gap - top
         let cardWidth = (width - gap * Double(columns - 1)) / Double(columns)
@@ -104,6 +104,7 @@ public enum UpgradePage {
         reduceMotion: Bool,
         showsKeys: Bool,
         bottomInset: Double,
+        segmentThumb: Double = 0,
         to list: inout RenderList
     ) {
         let viewport = list.camera.viewport
@@ -112,9 +113,9 @@ public enum UpgradePage {
         list.add(.roundedRect(center: viewport / 2, size: viewport, cornerRadius: 0, rotation: 0), color: .scrim, opacity: MenuKit.pageBackdrop, space: .screen, id: id)
         id += 1
 
-        // Title and balance. The balance counts down after a purchase.
+        // The Build tab's title, balance and segments. The balance counts down after a purchase.
         let shown = countedMoney(career: career, state: state)
-        MenuKit.header(Strings.Upgrades.title, money: Strings.Upgrades.balance(format.number(shown)), viewport: viewport, id: &id, to: &list)
+        BuildTab.addChrome(page: .upgrades, thumb: segmentThumb, money: Strings.Upgrades.balance(format.number(shown)), viewport: viewport, to: &list)
 
         for (index, card) in cards(viewport: viewport, bottomInset: bottomInset, upgrades: upgrades).enumerated() {
             addCard(card.upgrade, index: index, rect: card.rect, career: career, config: config, state: state, format: format, reduceMotion: reduceMotion, showsKeys: showsKeys, id: &id, to: &list)

@@ -7,12 +7,14 @@ import GamePresentation
 ///     --time-scale 0.5     slow everything down
 ///     --play               start a shift right away
 ///     --level 8            jump to this level (saved, like any level up)
-///     --tab upgrades       open a tab: streetBuilder, game, shop, upgrades
+///     --tab upgrades       open a page: streetBuilder, game, shop, upgrades, progress
 ///     --duty high          play on high alert (saved, like pressing H)
 ///     --weather storm      force the weather: clear, lightRain, heavyRain, storm, extreme
 ///     --map sand           show a map skin without wearing it: dusk, sand, neon, forest, autumn, sakura, aurora, ember,
 ///                          meadow, tropic, snowfall, cosmos
 ///     --shelf maps         open the Shop's collection on a shelf: common, rare, epic, legendary, maps, special
+///     --section store      open a section: the Shop's (chests, collection, store) or Progress's
+///                          (records, quests, achievements)
 ///     --event roadworks    force a city event: roadworks, roadClosure, concert, vipConvoy, policeOperation
 ///     --chest-preview epic play a chest opening (common, rare, epic, legendary) on the Shop tab
 ///     --settings           open the settings
@@ -32,6 +34,8 @@ struct LaunchOptions {
     var weather: Weather?
     var mapSkin: String?
     var shelf: ShopPage.Shelf?
+    var shopSection: ShopPage.Section?
+    var progressSection: ProgressPage.Section?
     var event: CityEvent?
     var chestPreview: Rarity?
     var startWithDebug = false
@@ -92,6 +96,16 @@ struct LaunchOptions {
                     consumed = 2
                 } else {
                     print("--shelf needs one of: " + names.joined(separator: ", "))
+                }
+            case "--section":
+                let shop = ShopPage.Section.allCases.first { "\($0)" == value() }
+                let progress = ProgressPage.Section.allCases.first { "\($0)" == value() }
+                if shop != nil || progress != nil {
+                    shopSection = shop
+                    progressSection = progress
+                    consumed = 2
+                } else {
+                    print("--section needs chests, collection, store, records, quests or achievements")
                 }
             case "--tab":
                 if let tab = value().flatMap({ Tab(rawValue: $0) }) {

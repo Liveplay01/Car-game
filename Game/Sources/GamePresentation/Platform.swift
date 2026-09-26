@@ -90,6 +90,18 @@ public protocol AdProviding: AnyObject {
     func showRewardedAd(completion: @escaping (Bool) -> Void)
 }
 
+/// In-app purchases (MONETIZATION.md). The app plugs StoreKit in here; without it (test
+/// window, the app before the products exist) the game runs a placeholder purchase that
+/// charges nothing. The game books what was bought (`Career.applyPurchase`).
+public protocol Purchasing: AnyObject {
+    /// The App Store's localised price; nil until the products are loaded.
+    func price(of product: StoreProduct) -> String?
+    /// Buys it; `completion(true)` once paid, false if cancelled or failed.
+    func purchase(_ product: StoreProduct, completion: @escaping (Bool) -> Void)
+    /// The one-time products this Apple ID owns (Restore Purchases).
+    func restore(completion: @escaping ([StoreProduct]) -> Void)
+}
+
 public struct Settings: Codable, Sendable, Equatable {
     public var sound = true
     public var haptics = true

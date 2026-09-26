@@ -2,8 +2,9 @@ import Foundation
 import GameCore
 
 /// The Shop tab (IDEA.md: Lootboxen, Truhen, Skins; ROADMAP.md, M10): chests to open or buy,
-/// the collection to wear from, and today's Daily Shift and challenges. A segmented control
-/// switches between the three, like a native `Picker(.segmented)`.
+/// the collection to wear from, and the store: offers for real money and money for an ad
+/// (MONETIZATION.md, placeholders). A segmented control switches between the three, like a
+/// native `Picker(.segmented)`. Today's Daily Shift and challenges live on the Progress tab.
 ///
 /// Fair and quiet on purpose: the odds are always on screen, the pity counter too, and an
 /// opened chest gets a frame in its rarity colour and a soft glow â€” no casino effects.
@@ -12,7 +13,15 @@ public enum ShopPage {
     public enum Section: Int, Sendable, Equatable, CaseIterable {
         case chests
         case collection
-        case today
+        case store
+    }
+
+    /// What the store offers: a product for real money, or money for watching an ad.
+    public enum Offer: Sendable, Equatable {
+        case product(StoreProduct)
+        case freeCash
+
+        public static let all: [Offer] = StoreProduct.allCases.map(Offer.product) + [.freeCash]
     }
 
     /// The collection's shelves: car skins by rarity, the maps, and everything earned another
@@ -50,6 +59,11 @@ public enum ShopPage {
         case wear(String)
         /// A tap anywhere closes the reveal of an opened chest.
         case dismiss
+        /// The store: an offer's card, and the buttons under it.
+        case offer(Offer)
+        case purchase(StoreProduct)
+        case watchCashAd
+        case restore
     }
 
     public struct State: Sendable, Equatable {
@@ -63,8 +77,13 @@ public enum ShopPage {
         public var opening: (opening: ChestOpening, age: Double)?
         /// A refused purchase, and how long ago.
         public var denied = 0.0
-        /// The placeholder ad running (test window), and for how long.
+        /// The placeholder ad running (test window), for how long, and what it pays.
         public var ad: Double?
+        public var adReward = AdReward.chest
+        /// The store's chosen offer.
+        public var selectedOffer = Offer.product(.starterPack)
+        /// A placeholder purchase going through (no App Store yet), and for how long.
+        public var purchase: (product: StoreProduct, age: Double)?
         /// The section just left and how long ago: the new one swipes in from its side of
         /// the segmented control, the old one out to the other (Leo, 25.09.2026).
         public var sectionSlide: (from: Section, age: Double)?
@@ -92,6 +111,7 @@ public enum ShopPage {
 
         public static func == (a: State, b: State) -> Bool {
             a.section == b.section && a.shelf == b.shelf && a.selectedChest == b.selectedChest && a.selectedItem == b.selectedItem
+                && a.selectedOffer == b.selectedOffer && a.purchase?.product == b.purchase?.product
                 && a.age == b.age && a.opening?.opening == b.opening?.opening && a.denied == b.denied
         }
 
@@ -102,6 +122,10 @@ public enum ShopPage {
                 self.opening = opening
             }
             if let ad { self.ad = ad + delta }
+            if var purchase {
+                purchase.age += delta
+                self.purchase = purchase
+            }
             if var slide = sectionSlide {
                 slide.age += delta
                 sectionSlide = slide.age < ShopPage.slideDuration ? slide : nil
@@ -143,6 +167,8 @@ public enum ShopPage {
     static let slideOut = 0.2
     /// The placeholder ad of the test window.
     public static let adDuration = 3.0
+    /// The placeholder purchase: a short "processing" card, then the goods.
+    public static let purchaseDuration = 1.2
 
     // MARK: - Layout
 
@@ -180,6 +206,11 @@ public enum ShopPage {
 
     static func chestCards(_ layout: Layout) -> [(ChestKind, Rect)] {
         Array(zip(ChestKind.allCases, grid(ChestKind.allCases.count, columns: 2, in: layout.content, maxHeight: 188)))
+    }
+
+    /// The store's offers: two across, four rows.
+    static func offerCards(_ layout: Layout) -> [(Offer, Rect)] {
+        Array(zip(Offer.all, grid(Offer.all.count, columns: 2, in: layout.content, maxHeight: 118)))
     }
 
     /// The shelf chips across the top of the collection.
@@ -220,8 +251,11 @@ public enum ShopPage {
         case .collection:
             guard let id = state.selectedItem, career.owns(id), Cosmetics.item(id)?.kind != .vehicleType else { return [] }
             return [button(0, .wear(id))]
-        case .today:
-            return []
+        case .store:
+            switch state.selectedOffer {
+            case let .product(product): return [button(0, .purchase(product)), button(1, .restore)]
+            case .freeCash: return [button(0, .watchCashAd)]
+            }
         }
     }
 
@@ -230,7 +264,7 @@ public enum ShopPage {
         if state.opening != nil {
             return [(.dismiss, Rect(minX: 0, minY: 0, maxX: viewport.x, maxY: viewport.y))]
         }
-        if state.ad != nil { return [] }
+        if state.ad != nil || state.purchase != nil { return [] }
         let layout = layout(viewport: viewport, bottomInset: bottomInset)
         var list: [(Target, Rect)] = layout.segments.map { (.section($0.0), $0.1) }
         list += buttons(layout, career: career, state: state)
@@ -239,7 +273,7 @@ public enum ShopPage {
         case .collection:
             list += shelfChips(layout).map { (.shelf($0.0), $0.1) }
             list += itemCells(layout, shelf: state.shelf).map { (.item($0.0.id), $0.1) }
-        case .today: break
+        case .store: list += offerCards(layout).map { (.offer($0.0), $0.1) }
         }
         return list
     }
@@ -251,7 +285,7 @@ public enum ShopPage {
 
     // MARK: - Drawing
 
-    static func add(career: Career, config: Config, today: Int, state: State, format: TextFormat, reduceMotion: Bool, bottomInset: Double, time: Double = 0, to list: inout RenderList) {
+    static func add(career: Career, config: Config, today: Int, state: State, format: TextFormat, reduceMotion: Bool, bottomInset: Double, prices: [StoreProduct: String] = [:], time: Double = 0, to list: inout RenderList) {
         let viewport = list.camera.viewport
         var id = RenderID.menu
         // The city stays faintly there behind the page (`Perspective`): one world, another view.
@@ -263,7 +297,7 @@ public enum ShopPage {
         addSegments(layout, state: state, career: career, id: &id, to: &list)
         let enter = reduceMotion ? 1 : Ease.outCubic(state.age / 0.25)
         let sectionStart = list.items.count
-        addSection(layout, career: career, config: config, today: today, state: state, format: format, enter: enter, reduceMotion: reduceMotion, id: &id, to: &list)
+        addSection(layout, career: career, config: config, today: today, state: state, format: format, prices: prices, enter: enter, reduceMotion: reduceMotion, id: &id, to: &list)
         if let slide = state.sectionSlide {
             // The new section swipes in from its side and springs into place; the old one is
             // drawn once more, sliding out the other way and fading.
@@ -281,13 +315,16 @@ public enum ShopPage {
                 oldState.section = slide.from
                 oldState.shelfSlide = nil
                 var oldId = RenderID.shopSlide
-                addSection(layout, career: career, config: config, today: today, state: oldState, format: format, enter: 1, reduceMotion: reduceMotion, id: &oldId, to: &old)
+                addSection(layout, career: career, config: config, today: today, state: oldState, format: format, prices: prices, enter: 1, reduceMotion: reduceMotion, id: &oldId, to: &old)
                 let away = Vec2(reduceMotion ? 0 : -side * layout.content.width * 0.3 * gone, 0)
                 list.items.insert(contentsOf: old.items.map { $0.moved(by: away, opacity: 1 - gone) }, at: sectionStart)
             }
         }
         if let ad = state.ad {
-            addAd(age: ad, id: &id, to: &list)
+            addAd(age: ad, reward: state.adReward, id: &id, to: &list)
+        }
+        if let purchase = state.purchase {
+            addPurchase(purchase.product, price: prices[purchase.product] ?? purchase.product.placeholderPrice, age: purchase.age, reduceMotion: reduceMotion, id: &id, to: &list)
         }
         if let opening = state.opening {
             addReveal(opening.opening, age: opening.age, format: format, reduceMotion: reduceMotion, id: &id, to: &list)
@@ -295,13 +332,13 @@ public enum ShopPage {
     }
 
     /// One section's content and its detail panel.
-    private static func addSection(_ layout: Layout, career: Career, config: Config, today: Int, state: State, format: TextFormat, enter: Double, reduceMotion: Bool, id: inout Int, to list: inout RenderList) {
+    private static func addSection(_ layout: Layout, career: Career, config: Config, today: Int, state: State, format: TextFormat, prices: [StoreProduct: String], enter: Double, reduceMotion: Bool, id: inout Int, to list: inout RenderList) {
         switch state.section {
         case .chests: addChests(layout, career: career, config: config, state: state, format: format, enter: enter, reduceMotion: reduceMotion, id: &id, to: &list)
         case .collection: addCollection(layout, career: career, state: state, enter: enter, reduceMotion: reduceMotion, id: &id, to: &list)
-        case .today: addToday(layout, career: career, today: today, format: format, enter: enter, id: &id, to: &list)
+        case .store: addStore(layout, career: career, config: config, today: today, state: state, format: format, prices: prices, reduceMotion: reduceMotion, id: &id, to: &list)
         }
-        addDetail(layout, career: career, config: config, today: today, state: state, format: format, id: &id, to: &list)
+        addDetail(layout, career: career, config: config, today: today, state: state, format: format, prices: prices, id: &id, to: &list)
     }
 
     /// A font size at which `string` fits `width`: `size` if it fits, smaller if not, never
@@ -568,33 +605,92 @@ public enum ShopPage {
         }
     }
 
-    // MARK: Today
+    // MARK: Store
 
-    private static func addToday(_ layout: Layout, career: Career, today: Int, format: TextFormat, enter: Double, id: inout Int, to list: inout RenderList) {
-        let rows = grid(4, columns: 1, in: layout.content, maxHeight: 64)
-        // The Daily Shift first.
-        let daily = rows[0]
-        panel(daily, opacity: enter, id: &id, to: &list)
-        let open = career.isDailyOpen(day: today)
-        text(Strings.Daily.title, Vec2(daily.minX + 16, daily.center.y - 9), size: 14, weight: .bold, color: .primary, opacity: enter, id: &id, to: &list)
-        text(open ? Strings.Daily.readyHint : Strings.Daily.doneHint(streak: career.dailyStreak), Vec2(daily.minX + 16, daily.center.y + 11), size: 11, color: .muted, opacity: enter, id: &id, to: &list)
-        text(open ? Strings.Daily.ready : Strings.Daily.done, Vec2(daily.maxX - 16, daily.center.y), size: 13, weight: .bold, color: open ? .hazard : .accent, alignment: .trailing, opacity: enter, id: &id, to: &list)
-        // Then the day's three challenges.
-        for (challenge, rect) in zip(Challenge.of(day: today), rows.dropFirst()) {
-            let done = career.isDone(challenge, day: today)
-            panel(rect, opacity: enter, id: &id, to: &list)
-            text(Strings.Daily.challenge(challenge), Vec2(rect.minX + 16, rect.center.y), size: 13, weight: .bold, color: done ? .muted : .primary, opacity: enter, id: &id, to: &list)
-            if done {
-                text(Strings.Daily.done, Vec2(rect.maxX - 16, rect.center.y), size: 13, weight: .bold, color: .accent, alignment: .trailing, opacity: enter, id: &id, to: &list)
-            } else {
-                Icons.moneyTag(format.number(challenge.reward), at: Vec2(rect.maxX - 16, rect.center.y), size: 13, alignment: .trailing, color: .primary, opacity: enter, id: &id, to: &list)
+    /// The offers, two across: a picture of what it gives, its name, and the price (or
+    /// Owned, or how many ads are left today).
+    private static func addStore(_ layout: Layout, career: Career, config: Config, today: Int, state: State, format: TextFormat, prices: [StoreProduct: String], reduceMotion: Bool, id: inout Int, to list: inout RenderList) {
+        for (index, (offer, card)) in offerCards(layout).enumerated() {
+            let enter = reduceMotion ? 1 : MenuKit.stagger(age: state.age, index: index)
+            let motion = reduceMotion ? (rise: 0.0, scale: 1.0) : MenuKit.cardEnter(MenuKit.staggerSpring(age: state.age, index: index))
+            let inset = Vec2(card.width, card.height) * ((1 - motion.scale) / 2)
+            let rect = pressed(Rect(minX: card.minX + inset.x, minY: card.minY + inset.y + motion.rise, maxX: card.maxX - inset.x, maxY: card.maxY - inset.y + motion.rise), .offer(offer), state)
+            if offer == state.selectedOffer {
+                list.add(.roundedRect(center: rect.center, size: Vec2(rect.width + 4, rect.height + 4), cornerRadius: corner + 2, rotation: 0), color: .accent, opacity: 0.55 * enter, space: .screen, id: id)
+                id += 1
             }
+            panel(rect, opacity: enter, id: &id, to: &list)
+            let iconAt = Vec2(rect.center.x, rect.minY + rect.height * 0.36)
+            let scale = min(1, rect.height / 118)
+            let name: String
+            let line: String
+            var lineColor = ColorToken.muted
+            switch offer {
+            case let .product(product):
+                name = Strings.Store.name(product)
+                if career.canBuy(product) {
+                    line = prices[product] ?? product.placeholderPrice
+                    lineColor = .primary
+                } else {
+                    line = Strings.Store.owned
+                    lineColor = .accent
+                }
+                addOfferIcon(product, at: iconAt, scale: scale, config: config, format: format, opacity: enter, id: &id, to: &list)
+            case .freeCash:
+                name = Strings.Store.freeCash
+                let left = career.adsLeft(.cash, day: today, config: config)
+                line = left > 0 ? Strings.Shop.watchAd(left) : Strings.Store.noCashAdsLeft
+                lineColor = left > 0 ? .accent : .muted
+                MenuKit.glow(at: iconAt, radius: 36 * scale, color: .juiceGreen, opacity: 0.35 * enter, id: &id, to: &list)
+                // A play button: what an ad is.
+                list.add(.roundedRect(center: iconAt, size: Vec2(46, 32) * scale, cornerRadius: 8 * scale, rotation: 0), color: .juiceGreen, opacity: enter, space: .screen, id: id)
+                list.add(.polygon([iconAt + Vec2(-6, -8) * scale, iconAt + Vec2(9, 0) * scale, iconAt + Vec2(-6, 8) * scale]), color: .primary, opacity: enter, space: .screen, id: id + 1)
+                id += 2
+            }
+            text(name, Vec2(rect.center.x, rect.maxY - 36), size: fitted(name, 14, width: rect.width - 20), weight: .bold, color: .primary, alignment: .center, opacity: enter, id: &id, to: &list)
+            text(line, Vec2(rect.center.x, rect.maxY - 17), size: fitted(line, 12, width: rect.width - 20), weight: .bold, color: lineColor, alignment: .center, opacity: enter, id: &id, to: &list)
+        }
+    }
+
+    /// What a product gives, as a picture: money, chests, no ads, a boost.
+    private static func addOfferIcon(_ product: StoreProduct, at center: Vec2, scale: Double, config: Config, format: TextFormat, opacity: Double, id: inout Int, to list: inout RenderList) {
+        switch product {
+        case .starterPack:
+            MenuKit.glow(at: center, radius: 38 * scale, color: .juiceOrange, opacity: 0.4 * opacity, id: &id, to: &list)
+            addChestIcon(.premium, at: center + Vec2(-10, 2) * scale, scale: 0.7 * scale, opacity: opacity, id: &id, to: &list)
+            addChestIcon(.standard, at: center + Vec2(16, 8) * scale, scale: 0.5 * scale, opacity: opacity, id: &id, to: &list)
+        case .cashSmall, .cashMedium, .cashLarge:
+            let size: Double = switch product {
+            case .cashSmall: 15
+            case .cashMedium: 18
+            default: 21
+            }
+            MenuKit.glow(at: center, radius: (18 + size) * scale, color: .juiceYellow, opacity: 0.3 * opacity, id: &id, to: &list)
+            Icons.moneyTag(format.number(product.grant(config: config).money), at: center, size: size * scale, alignment: .center, color: .primary, opacity: opacity, id: &id, to: &list)
+        case .premiumChests:
+            MenuKit.glow(at: center, radius: 38 * scale, color: .rarityLegendary, opacity: 0.35 * opacity, id: &id, to: &list)
+            for (index, x) in [-22.0, 22, 0].enumerated() {
+                addChestIcon(.premium, at: center + Vec2(x, index == 2 ? 6 : -2) * scale, scale: 0.55 * scale, opacity: opacity, id: &id, to: &list)
+            }
+        case .noAds:
+            // "AD", crossed out.
+            text("AD", center, size: 16 * scale, weight: .bold, color: .primary, alignment: .center, opacity: opacity, id: &id, to: &list)
+            list.add(.arc(center: center, radius: 22 * scale, thickness: 3.5 * scale, startAngle: 0, endAngle: Angle.tau), color: .juiceRed, opacity: opacity, space: .screen, id: id)
+            list.add(.line(from: center + Vec2(-15, -15) * scale, to: center + Vec2(15, 15) * scale, thickness: 3.5 * scale), color: .juiceRed, opacity: opacity, space: .screen, id: id + 1)
+            id += 2
+        case .cashBoost:
+            MenuKit.glow(at: center, radius: 36 * scale, color: .juiceGreen, opacity: 0.35 * opacity, id: &id, to: &list)
+            list.add(.polygon([center + Vec2(-26, -2) * scale, center + Vec2(-16, -16) * scale, center + Vec2(-6, -2) * scale]), color: .juiceGreen, opacity: opacity, space: .screen, id: id)
+            list.add(.roundedRect(center: center + Vec2(-16, 7) * scale, size: Vec2(7, 18) * scale, cornerRadius: 2 * scale, rotation: 0), color: .juiceGreen, opacity: opacity, space: .screen, id: id + 1)
+            id += 2
+            let factor = config.cashBoostPay.truncatingRemainder(dividingBy: 1) == 0 ? String(Int(config.cashBoostPay)) : String(config.cashBoostPay)
+            text("×" + factor, center + Vec2(12, 0) * scale, size: 20 * scale, weight: .bold, color: .primary, alignment: .center, opacity: opacity, id: &id, to: &list)
         }
     }
 
     // MARK: Detail panel
 
-    private static func addDetail(_ layout: Layout, career: Career, config: Config, today: Int, state: State, format: TextFormat, id: inout Int, to list: inout RenderList) {
+    private static func addDetail(_ layout: Layout, career: Career, config: Config, today: Int, state: State, format: TextFormat, prices: [StoreProduct: String], id: inout Int, to list: inout RenderList) {
         let detail = layout.detail
         panel(detail, id: &id, to: &list)
         let left = detail.minX + 16
@@ -633,45 +729,94 @@ public enum ShopPage {
                 y += 16
                 text(Strings.Shop.skinsOn(career.carSkins.count, of: Career.maxCarSkins), Vec2(left, y), size: 11, color: .accent, id: &id, to: &list)
             }
-        case .today:
-            text(Strings.Daily.challengesTitle, Vec2(left, y), size: 16, weight: .bold, color: .primary, id: &id, to: &list)
-            y += 20
-            text(Strings.Daily.todayHint, Vec2(left, y), size: 11, color: .muted, id: &id, to: &list)
+        case .store:
+            switch state.selectedOffer {
+            case let .product(product):
+                text(Strings.Store.name(product), Vec2(left, y), size: 16, weight: .bold, color: .primary, id: &id, to: &list)
+                y += 20
+                text(Strings.Store.detail(product, config: config, format: format), Vec2(left, y), size: 11, color: .muted, id: &id, to: &list)
+            case .freeCash:
+                text(Strings.Store.freeCash, Vec2(left, y), size: 16, weight: .bold, color: .primary, id: &id, to: &list)
+                y += 20
+                text(Strings.Store.freeCashDetail(format.number(career.adCash(config: config))), Vec2(left, y), size: 11, color: .muted, id: &id, to: &list)
+            }
+            y += 16
+            text(Strings.Store.placeholderNote, Vec2(left, y), size: 11, color: .hazard, id: &id, to: &list)
         }
         for (target, button) in buttons(layout, career: career, state: state) {
             let rect = pressed(button, target, state)
-            let (label, enabled, prominent) = buttonStyle(target, career: career, config: config, format: format)
+            let (label, enabled, prominent) = buttonStyle(target, career: career, config: config, format: format, today: today, prices: prices)
             let shake = target == .buy(state.selectedChest) && state.denied > 0 ? sin(state.denied * 40) * 4 : 0
             let center = rect.center + Vec2(shake, 0)
             MenuKit.button(label, center: center, size: Vec2(rect.width, rect.height), prominent: prominent, enabled: enabled, id: &id, to: &list)
         }
     }
 
-    static func buttonStyle(_ target: Target, career: Career, config: Config, format: TextFormat) -> (String, Bool, Bool) {
+    static func buttonStyle(_ target: Target, career: Career, config: Config, format: TextFormat, today: Int = 0, prices: [StoreProduct: String] = [:]) -> (String, Bool, Bool) {
         switch target {
-        case let .open(kind): (Strings.Shop.open, career.count(of: kind) > 0, true)
+        case let .purchase(product):
+            guard career.canBuy(product) else { return (Strings.Store.owned, false, true) }
+            return (prices[product] ?? product.placeholderPrice, true, true)
+        case .restore:
+            return (Strings.Store.restoreShort, true, false)
+        case .watchCashAd:
+            return (career.skipsAds ? Strings.Store.collect : Strings.Store.watch, career.adsLeft(.cash, day: today, config: config) > 0, true)
+        case let .open(kind):
+            return (Strings.Shop.open, career.count(of: kind) > 0, true)
         case let .buy(kind):
-            (Strings.Shop.buy(format.number(config.price(of: kind) ?? 0)), career.money >= (config.price(of: kind) ?? .max), false)
+            return (Strings.Shop.buy(format.number(config.price(of: kind) ?? 0)), career.money >= (config.price(of: kind) ?? .max), false)
         case .watchAd:
-            (Strings.Shop.watchAdShort, true, false)
-        case let .wear(id): (career.isWorn(id) ? Strings.Shop.takeOff : Strings.Shop.wear, true, true)
-        case .section, .shelf, .chest, .item, .dismiss: ("", false, false)
+            return (career.skipsAds ? Strings.Store.collect : Strings.Shop.watchAdShort, true, false)
+        case let .wear(id):
+            return (career.isWorn(id) ? Strings.Shop.takeOff : Strings.Shop.wear, true, true)
+        case .section, .shelf, .chest, .item, .dismiss, .offer:
+            return ("", false, false)
         }
     }
 
     // MARK: Ad
 
     /// The test window placeholder for a rewarded ad: a dark card and a countdown.
-    private static func addAd(age: Double, id: inout Int, to list: inout RenderList) {
+    private static func addAd(age: Double, reward: AdReward, id: inout Int, to list: inout RenderList) {
         let viewport = list.camera.viewport
         list.add(.roundedRect(center: viewport / 2, size: viewport, cornerRadius: 0, rotation: 0), color: .background, opacity: 0.96, space: .screen, id: id)
         id += 1
         let left = max(0, Int((adDuration - age).rounded(.up)))
         text(Strings.Shop.adPlaceholder, viewport / 2 - Vec2(0, 16), size: 18, weight: .bold, color: .primary, alignment: .center, id: &id, to: &list)
-        text(Strings.Shop.adCountdown(left), viewport / 2 + Vec2(0, 14), size: 13, color: .muted, alignment: .center, id: &id, to: &list)
+        let countdown = reward == .cash ? Strings.Store.adCountdownCash(left) : Strings.Shop.adCountdown(left)
+        text(countdown, viewport / 2 + Vec2(0, 14), size: 13, color: .muted, alignment: .center, id: &id, to: &list)
         let progress = min(1, age / adDuration)
         list.add(.roundedRect(center: viewport / 2 + Vec2(-90 + 90 * progress, 44), size: Vec2(180 * progress, 4), cornerRadius: 2, rotation: 0), color: .accent, space: .screen, id: id)
         id += 1
+    }
+
+    // MARK: Purchase
+
+    /// The placeholder purchase (no App Store yet): a sheet rises from below with what is
+    /// bought and its price, a bar fills, and the goods arrive. The app will show Apple's
+    /// own payment sheet instead.
+    private static func addPurchase(_ product: StoreProduct, price: String, age: Double, reduceMotion: Bool, id: inout Int, to list: inout RenderList) {
+        let viewport = list.camera.viewport
+        let fade = Ease.outCubic(age / 0.2)
+        list.add(.roundedRect(center: viewport / 2, size: viewport, cornerRadius: 0, rotation: 0), color: .background, opacity: 0.7 * fade, space: .screen, id: id)
+        id += 1
+        let size = Vec2(min(viewport.x - 32, 340), 168)
+        let rise = reduceMotion ? 0 : (1 - Ease.settle(age / 0.4)) * 60
+        let center = Vec2(viewport.x / 2, viewport.y - size.y / 2 - 90 + rise)
+        let sheet = Rect(minX: center.x - size.x / 2, minY: center.y - size.y / 2, maxX: center.x + size.x / 2, maxY: center.y + size.y / 2)
+        MenuKit.chromePanel(sheet, radius: 22, opacity: fade, id: &id, to: &list)
+        text(Strings.Store.purchasing, Vec2(center.x, sheet.minY + 26), size: 13, color: .muted, alignment: .center, opacity: fade, id: &id, to: &list)
+        text(Strings.Store.name(product), Vec2(center.x, sheet.minY + 56), size: 20, weight: .bold, color: .primary, alignment: .center, opacity: fade, id: &id, to: &list)
+        text(price, Vec2(center.x, sheet.minY + 84), size: 17, weight: .bold, color: .accent, alignment: .center, opacity: fade, id: &id, to: &list)
+        let progress = Ease.clamp01(age / purchaseDuration)
+        let barWidth = size.x - 64
+        list.add(.roundedRect(center: Vec2(center.x, sheet.minY + 114), size: Vec2(barWidth, 5), cornerRadius: 2.5, rotation: 0), color: .controlFill, opacity: fade, space: .screen, id: id)
+        id += 1
+        if progress > 0 {
+            list.add(.roundedRect(center: Vec2(center.x - barWidth / 2 + barWidth * progress / 2, sheet.minY + 114), size: Vec2(barWidth * progress, 5), cornerRadius: 2.5, rotation: 0), color: .accent, opacity: fade, space: .screen, id: id)
+            id += 1
+        }
+        text(Strings.Store.purchasingNote, Vec2(center.x, sheet.minY + 142), size: 11, color: .hazard, alignment: .center, opacity: fade, id: &id, to: &list)
     }
 
     // MARK: Reveal

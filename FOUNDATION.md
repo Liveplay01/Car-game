@@ -403,14 +403,16 @@ einer Schicht ist sie ausgeblendet.
 | **Pause** | Resume, Restart, End shift. Pausiert automatisch, wenn die App in den Hintergrund geht | **Resume** |
 | **Ergebnis** | kein Menü: oben in der Szene "GAME OVER" bzw. "LEVEL 3 COMPLETE", Punkte groß, "New Highscore" oder Bestwert; auf der Mittelinsel "Tap for level 4" bzw. "Tap to try level 3 again", Zeit, beste Combo, Tight Fits, Geld | **Tap** (irgendwo) |
 | **Einstellungen** | Sound, Haptics, Reduce Motion (Standard: folgt iOS); über dem Game-Tab (App: Zahnrad und Sheet, Testfenster: Esc) | – |
-| **Upgrades-Tab** | Kontostand und eine Karte je Upgrade: Bild, Name, gekaufte Stufen, Preis der nächsten. Ein Tap öffnet unten die Details, ein Doppel-Tap kauft | Stufe kaufen |
-| **Street-Builder-Tab** | der Kreisverkehr von oben, die freien Steckplätze und eine Palette mit Teilen. Ein Teil wird auf einen Platz gezogen, ein Doppel-Tap baut es, ein einzelner nimmt es wieder weg | Zufahrt bauen |
-| **Shop-Tab** | noch Platzhalter ("comes later") | – |
+| **Build-Tab** | Segmented Control **Upgrades · Street Builder** (seit 26.09.2026 ein Tab, wie die Bereiche im Shop); öffnet dort, wo man ihn verlassen hat | – |
+| Build · Upgrades | Kontostand und eine Karte je Upgrade: Bild, Name, gekaufte Stufen, Preis der nächsten. Ein Tap öffnet unten die Details, ein Doppel-Tap kauft | Stufe kaufen |
+| Build · Street Builder | der Kreisverkehr von oben, die freien Steckplätze und eine Palette mit Teilen. Ein Teil wird auf einen Platz gezogen, ein Doppel-Tap baut es, ein einzelner nimmt es wieder weg | Zufahrt bauen |
+| **Shop-Tab** | Chests · Collection · Store (In-App-Käufe und Werbung, [MONETIZATION.md](MONETIZATION.md)) | Truhe öffnen |
+| **Progress-Tab** | Records (Bestwerte), Quests (Daily Shift, drei Challenges, Serie), Achievements (Mastery-Ziele mit Stufen und Fortschrittsbalken) | – |
 
 Das HUD und das Ergebnis-Banner gehören zur Spielszene und kommen deshalb komplett
 aus der Render-Liste. Nur der Pause-Button liegt in der App als SwiftUI-Overlay darüber.
 
-**Navigation (ab M5):** Street Builder, Game, Shop und Upgrades wechselt man über
+**Navigation (ab M5, seit 26.09.2026 Progress · Game · Shop · Build):** Die Seiten wechselt man über
 eine **native iOS-Tab-Bar** (SwiftUI `TabView`). `ScreenFlow` modelliert die Tabs
 (`Tab`, `Screen.page`), die App baut daraus nur noch die `TabView`.
 
@@ -699,8 +701,8 @@ Rauch, Splitter) und das Ergebnis als Banner statt Menü (Abschnitte 2.5 und 2.6
 - ✅ Veröffentlichung weltweit über den App Store, deine Website ist die
   Startseite des Spiels (PLAN.md, Phase 3)
 - ✅ GitHub erst ab Phase 2, nur als Sync-Kanal zwischen Windows und iPad
-- ✅ So viele native Apple-Elemente wie möglich; Hauptnavigation (Street Builder,
-  Game, Shop, Upgrades) als native Tab-Bar
+- ✅ So viele native Apple-Elemente wie möglich; Hauptnavigation (Progress, Game,
+  Shop, Build) als native Tab-Bar
 - ✅ Crashes mit echter Physik, reagierendem Verkehr und Blechschaden (2.6)
 - ✅ Ergebnis ohne Menü: Banner in der Szene, ein Tap startet die nächste Schicht
 - ✅ Kein Startmenü: Das Spiel öffnet auf dem Game-Tab, ein Tap startet die Schicht;

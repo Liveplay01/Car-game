@@ -771,7 +771,8 @@ Mastery, Truhen, Lootbox-Regeln).
   **Chests** (Karten je Truhen-Art, Odds und Pity immer sichtbar, Open, Standard-Truhe für
   5.000 Ingame-Geld kaufbar, alle anderen nur verdient), **Collection** (alle Skins und
   Fahrzeugtypen, Seltenheitsrahmen, nicht gefundene grau, zweiter Tap = tragen),
-  **Today** (Daily Shift, drei Challenges). Geöffnete Truhe: Reveal mit Rahmen und dezentem
+  **Store** (seit 26.09.2026: In-App-Käufe und Werbung als Platzhalter, [MONETIZATION.md](MONETIZATION.md);
+  Daily Shift und Challenges stehen jetzt im Progress-Tab unter Quests). Geöffnete Truhe: Reveal mit Rahmen und dezentem
   Glow in Seltenheitsfarbe, Duplikat zahlt Geld; Reduce Motion nur Blende.
 - **Spielstand** speichert Mastery-Zähler, Truhen, Sammlung und gewählte Skins.
 
@@ -909,7 +910,9 @@ ohne Mac, über Swift Playgrounds auf dem iPad.
   Eingabe, AVAudioEngine spielt die Sounds, Core Haptics die `.ahap`-Muster.
   120 Hz auf ProMotion-Geräten.
 - **SwiftUI-Menüs** nach den Entwürfen aus M11, als Ansichten von `ScreenFlow`,
-  mit nativen Elementen (Tab-Bar für Street Builder, Game, Shop, Upgrades).
+  mit nativen Elementen (Tab-Bar für Progress, Game, Shop, Build).
+- **StoreKit 2** anbinden (`Purchasing`), Produkte in App Store Connect anlegen
+  ([MONETIZATION.md](MONETIZATION.md)): ohne das verschenkt die App die Platzhalter-Käufe.
 - **Timing-Feintuning mit Touch** auf dem echten Gerät.
 - **Geräte-Tests:** so viele Bildschirmgrößen wie über Playgrounds' Vorschau
   erreichbar (SE bis Pro Max); 10 Schichten am Stück auf dem schwächsten
@@ -959,7 +962,7 @@ Windows im Paket `Game/`, der Mac wird nur für den Feinschliff und den Upload g
 | **v1.2 Motivation** | ✅ vorgezogen (24.09.2026): Daily Shift (ein Tages-Seed für alle, immer ein City Event, Truhe + Geld, Serie bis 7 Tage), 3 Challenges pro Tag im Shop, Perfect-Run-Bonus (kein Crash, kein Cut-off: +1.500 Punkte, +50 % Lohn). Daily Login ✅ (Mautstellen zahlen 600 pro Tag Abwesenheit, höchstens 3 Tage). Offen: Event-Truhen, City-/Event-Rewards | Testfenster: **D** wählt die Daily Shift |
 | **v1.3 Abwechslung** | Tag/Nacht, Krankenwagen, Boss-Event (Kopf des Verbrechens), zweispurige Kreisverkehre, weitere Fahrzeugtypen, Prestige | Nichts davon darf die Kernmechanik mit Sonderregeln überladen |
 | **v1.4 Apple-Ökosystem** | Game Center (Bestenlisten, Erfolge aus der Mastery), CloudKit-Spielstand-Sync, Home-Screen-Widget (Level, Daily Shift, Bestwert, Truhe, Stadt, Einnahmen), Live Activity / Dynamic Island (nur bei aktiver Jagd oder aktivem Transporter), Action Button (Start Shift / Daily Shift), Siri Shortcuts, Apple Watch | mit dem Developer-Account aus M13 möglich |
-| **Später, falls gewünscht** | Premium-Truhen gegen Echtgeld, Season Pass, Multiplayer | Echtgeld braucht In-App-Käufe (StoreKit, Apple erhält eine Provision) und eine rechtliche Prüfung der Lootboxen (App Store 3.1.1, Altersfreigaben, Länder wie Belgien) |
+| **Später, falls gewünscht** | Season Pass, Multiplayer (Premium-Truhen gegen Echtgeld: als Platzhalter gebaut, [MONETIZATION.md](MONETIZATION.md)) | Echtgeld braucht In-App-Käufe (StoreKit, Apple erhält eine Provision) und eine rechtliche Prüfung der Lootboxen (App Store 3.1.1, Altersfreigaben, Länder wie Belgien) |
 
 ---
 

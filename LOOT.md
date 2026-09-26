@@ -21,7 +21,8 @@ Namen in `Strings.Shop.item`. Wird ein Item ergänzt, gehört es in alle und hie
 - **Odds sind immer sichtbar**, direkt neben der Truhe im Shop.
 - **Pity:** Spätestens die 10. Truhe in Folge ohne Epic ist mindestens Epic.
 - **Duplikate** werden zu Geld: Common 250 · Rare 600 · Epic 1.500 · Legendary 4.000.
-- **Kein Echtgeld in v1.0.** Standard-Truhe **26.000**, Premium-Truhe **52.000** Ingame-Geld (seit 25.09.2026 alles Kaufbare +30 %)
+- **Echtgeld nur als Platzhalter** (26.09.2026, [MONETIZATION.md](MONETIZATION.md)): 3 Premium-Truhen
+  und ein Starter Pack im Store, vor dem Release rechtlich zu prüfen. Standard-Truhe **26.000**, Premium-Truhe **52.000** Ingame-Geld (seit 25.09.2026 alles Kaufbare +30 %)
   (`standardChestPrice`, `premiumChestPrice`).
 - **Werbung:** Eine Standard-Truhe gibt es auch für eine angesehene Werbung, bis zu
   **3 pro Tag** (`adChestsPerDay`). Im Testfenster läuft eine 3-Sekunden-Platzhalter-Werbung;

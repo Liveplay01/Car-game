@@ -34,8 +34,10 @@ struct TouchLayer: ViewModifier {
         let session = model.session
         let viewport = model.viewport
         let tabBar = session.screen.showsTabBar ? TabStrip.height : 0
-        if session.screen.showsTabBar, let tab = TabStrip.tab(at: point, viewport: viewport) {
-            model.send(.selectTab(tab))
+        // The shared chrome (tab strip, the Build tab's segments, the Progress tab) the
+        // session maps itself.
+        if let action = session.pageAction(at: point, viewport: viewport) {
+            model.send(action)
         } else if session.screen == .page(.upgrades) {
             if let upgrade = UpgradePage.card(at: point, viewport: viewport, bottomInset: tabBar, upgrades: session.visibleUpgrades) {
                 model.send(.tapUpgrade(upgrade))

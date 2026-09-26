@@ -34,10 +34,17 @@ struct ScreenTransition {
             }
         }
 
-        /// The tab-bar position; the game's own screens sit on the Game tab.
-        var tabIndex: Int {
+        /// The tab-bar position; the game's own screens sit on the Game tab. The Build tab's
+        /// second page sits half a step to the right of its first, so its segments swipe too.
+        var position: Double {
             let tab: Tab = if case let .page(tab) = self { tab } else { .game }
-            return Tab.allCases.firstIndex(of: tab) ?? 0
+            let index = Double(Tab.bar.firstIndex(of: tab.barTab) ?? 0)
+            return index + (tab == .streetBuilder ? 0.5 : 0)
+        }
+
+        var isBuild: Bool {
+            if case let .page(tab) = self { return tab.barTab == .upgrades }
+            return false
         }
     }
 
@@ -46,12 +53,15 @@ struct ScreenTransition {
     var age = 0.0
     /// The new screen comes from: +1 the right, -1 the left, 0 below.
     var direction: Double
+    /// Between the Build tab's two pages its header and segments stay put (`BuildTab`).
+    var keepsChrome: Bool
 
     init(from old: Key, to new: Key, outgoing: [RenderItem]) {
-        self.outgoing = outgoing
-        direction = old.tabIndex == new.tabIndex || new == .settings || old == .settings
+        keepsChrome = old.isBuild && new.isBuild
+        self.outgoing = keepsChrome ? outgoing.filter { !BuildTab.isChrome($0) } : outgoing
+        direction = old.position == new.position || new == .settings || old == .settings
             ? 0
-            : (new.tabIndex > old.tabIndex ? 1 : -1)
+            : (new.position > old.position ? 1 : -1)
     }
 
     var isDone: Bool { age >= Self.duration }
@@ -63,7 +73,7 @@ struct ScreenTransition {
         let spring = Ease.settle(age / Self.duration)
         let way = direction == 0 ? Vec2(0, Self.rise) : Vec2(Self.tabSlide * direction, 0)
         let shift = reduceMotion ? Vec2.zero : way * (1 - spring)
-        for index in incoming {
+        for index in incoming where !(keepsChrome && BuildTab.isChrome(list.items[index])) {
             list.items[index] = list.items[index].moved(by: shift, opacity: fade)
         }
 

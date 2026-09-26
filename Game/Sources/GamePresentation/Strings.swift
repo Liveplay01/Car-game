@@ -57,9 +57,86 @@ public enum Strings {
             case .streetBuilder: "Street Builder"
             case .game: "Game"
             case .shop: "Shop"
-            case .upgrades: "Upgrades"
+            // The tab of the Upgrades and the Street Builder (Leo, 26.09.2026).
+            case .upgrades: "Build"
+            case .progress: "Progress"
             }
         }
+
+        /// The segments of the Build tab.
+        public static func buildSegment(_ page: Tab) -> String {
+            page == .streetBuilder ? Builder.title : Upgrades.title
+        }
+    }
+
+    /// The Progress tab: records, today's quests and the achievements (Leo, 26.09.2026).
+    public enum Progress {
+        public static func section(_ section: ProgressPage.Section) -> String {
+            switch section {
+            case .records: "Records"
+            case .quests: "Quests"
+            case .achievements: "Achievements"
+            }
+        }
+        public static let highscore = "Highscore"
+        public static let level = "Level reached"
+        public static let bestCombo = "Best combo"
+        public static let bestChain = "Longest Perfect Chain"
+        public static let streak = "Daily streak"
+        public static let shiftsPlayed = "Shifts played"
+        public static let shiftsCompleted = "Shifts completed"
+        public static let takedowns = "Takedowns"
+        public static let transporters = "Transporters paid"
+        public static let perfects = "Perfect Inputs"
+        public static let chestsOpened = "Chests opened"
+        public static let collection = "Collection"
+        public static let none = "–"
+        public static func days(_ days: Int) -> String { days == 1 ? "1 day" : "\(days) days" }
+        public static func owned(_ owned: Int, of total: Int) -> String { "\(owned) / \(total)" }
+        public static let questsHint = "Quests pay once each and change at midnight."
+    }
+
+    /// The Shop's store (MONETIZATION.md): placeholders until the App Store products exist.
+    public enum Store {
+        public static func name(_ product: StoreProduct) -> String {
+            switch product {
+            case .starterPack: "Starter Pack"
+            case .cashSmall: "Pile of Cash"
+            case .cashMedium: "Bag of Cash"
+            case .cashLarge: "Vault of Cash"
+            case .premiumChests: "3 Premium Chests"
+            case .noAds: "No Ads"
+            case .cashBoost: "Cash Boost"
+            }
+        }
+        public static func detail(_ product: StoreProduct, config: Config, format: TextFormat) -> String {
+            let grant = product.grant(config: config)
+            switch product {
+            case .starterPack: return "+\(Strings.money(format.number(grant.money))) · Premium + 2 Standard chests · once only"
+            case .cashSmall, .cashMedium, .cashLarge: return "+\(Strings.money(format.number(grant.money)))"
+            case .premiumChests: return "Epic or better far more often · odds in Chests"
+            case .noAds: return "Ad rewards without the ad, for good"
+            case .cashBoost: return "+\(Int(((config.cashBoostPay - 1) * 100).rounded())) % money from every shift, for good"
+            }
+        }
+        public static let freeCash = "Free Cash"
+        public static func freeCashDetail(_ money: String) -> String { "Watch a short ad for +\(Strings.money(money))" }
+        public static let restore = "Restore Purchases"
+        public static let restoreShort = "Restore"
+        public static let owned = "Owned"
+        public static let placeholderNote = "Placeholder prices · no real money is charged yet"
+        public static let purchasing = "Purchase"
+        public static let purchasingNote = "Placeholder · no money is charged"
+        public static func bought(_ product: StoreProduct) -> String { "Thank you · \(name(product)) added" }
+        public static let cancelled = "Purchase cancelled."
+        public static func restored(_ count: Int) -> String { count == 0 ? "Nothing to restore." : "Restored \(count) purchase\(count == 1 ? "" : "s")." }
+        public static func cashAdReward(_ money: String) -> String { "Ad watched · +\(Strings.money(money))" }
+        public static func cashNoAd(_ money: String) -> String { "No Ads · +\(Strings.money(money))" }
+        public static let chestNoAd = "No Ads · Standard chest added"
+        public static let noCashAdsLeft = "No more cash ads today. Back tomorrow."
+        public static let watch = "Watch ad"
+        public static let collect = "Collect"
+        public static func adCountdownCash(_ seconds: Int) -> String { "Your cash in \(seconds) s" }
     }
 
     /// Pages that are still to come.
@@ -157,7 +234,7 @@ public enum Strings {
             switch section {
             case .chests: "Chests"
             case .collection: "Collection"
-            case .today: "Today"
+            case .store: "Store"
             }
         }
 
@@ -402,8 +479,28 @@ public enum Strings {
 
     }
 
-    /// Mastery toasts (M10): short, no screen of their own.
+    /// Mastery (M10): toasts, and the achievements on the Progress tab.
     public enum Mastery {
+        /// What the next tier asks for: "25 Perfect Inputs".
+        public static func detail(_ goal: MasteryGoal, tier: Int) -> String {
+            guard tier < goal.thresholds.count else { return "All tiers reached" }
+            let n = goal.thresholds[tier]
+            return switch goal {
+            case .perfectTiming: "\(n) Perfect Inputs"
+            case .tightSpots: "\(n) Tight Fits"
+            case .closeCalls: "\(n) Near Misses"
+            case .longChain: "A Perfect Chain of \(n)"
+            case .crimeFighter: "\(n) takedowns"
+            case .secureRoute: "\(n) transporters paid"
+            case .comboMaster: "A combo of \(n)"
+            case .veteran: "\(n) shifts completed"
+            case .highAlertHero: "\(n) High Alert shifts completed"
+            }
+        }
+        /// "II / III".
+        public static func tiers(_ reached: Int) -> String {
+            reached == 0 ? "–" : String(repeating: "I", count: reached)
+        }
         public static func name(_ goal: MasteryGoal) -> String {
             switch goal {
             case .perfectTiming: "Perfect Timing"

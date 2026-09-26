@@ -458,6 +458,21 @@ public struct Config: Sendable, Equatable {
     /// Standard chests a day for watching an ad.
     public var adChestsPerDay: Int = 3
 
+    // MARK: Monetisation (MONETIZATION.md; `Store.swift`) – placeholders
+
+    /// Cash ads a day, and what one pays: a base plus a little per level.
+    public var adCashPerDay: Int = 3
+    public var adCashBase: Int = 2_000
+    public var adCashPerLevel: Int = 250
+    /// What the paid products give.
+    public var starterPackMoney: Int = 30_000
+    public var cashSmallAmount: Int = 25_000
+    public var cashMediumAmount: Int = 90_000
+    public var cashLargeAmount: Int = 240_000
+    public var premiumChestBundle: Int = 3
+    /// Cash Boost: every shift pays this many times as much.
+    public var cashBoostPay: Double = 1.5
+
     // MARK: Late levels (ROADMAP.md, M7: level 14 felt too easy; Leo: more cars later on)
 
     /// From this level on the ring fills up: this many cars more per level, up to a limit…

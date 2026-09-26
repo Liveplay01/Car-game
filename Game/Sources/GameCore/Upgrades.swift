@@ -205,6 +205,11 @@ public struct Career: Sendable, Equatable, Codable {
     public var dailyPlayed = -1
     public var albumsDone: [String] = []
     public var bestTimes: [String: [Double]] = [:]
+    /// One-time App Store products owned (`StoreProduct.rawValue`), and today's cash ads
+    /// (`Store.swift`).
+    public var purchases: [String] = []
+    public var adCashCount = 0
+    public var adCashDay = -1
 
     public init(level: Int = 1, money: Int = 0) {
         self.level = max(1, level)
@@ -216,6 +221,7 @@ public struct Career: Sendable, Equatable, Codable {
         case carSkins, mapSkin, adChests, adDay, chestsOpened, chestsSinceEpic
         case dailyDone, lastLoginDay, dailyStreak, challengeDay, challengesDone
         case dailyPlayed, albumsDone, bestTimes, unseen
+        case purchases, adCashCount, adCashDay
         /// Read only: the single car skin of older saves.
         case legacyCarSkin = "carSkin"
     }
@@ -247,6 +253,9 @@ public struct Career: Sendable, Equatable, Codable {
         try c.encode(dailyPlayed, forKey: .dailyPlayed)
         try c.encode(albumsDone, forKey: .albumsDone)
         try c.encode(bestTimes, forKey: .bestTimes)
+        try c.encode(purchases, forKey: .purchases)
+        try c.encode(adCashCount, forKey: .adCashCount)
+        try c.encode(adCashDay, forKey: .adCashDay)
     }
 
     /// Missing keys fall back to their defaults, so an older save still loads.
@@ -285,6 +294,9 @@ public struct Career: Sendable, Equatable, Codable {
         dailyPlayed = (try? container.decodeIfPresent(Int.self, forKey: .dailyPlayed)) ?? dailyDone
         albumsDone = (try? container.decodeIfPresent([String].self, forKey: .albumsDone)) ?? []
         bestTimes = (try? container.decodeIfPresent([String: [Double]].self, forKey: .bestTimes)) ?? [:]
+        purchases = (try? container.decodeIfPresent([String].self, forKey: .purchases)) ?? []
+        adCashCount = (try? container.decodeIfPresent(Int.self, forKey: .adCashCount)) ?? 0
+        adCashDay = (try? container.decodeIfPresent(Int.self, forKey: .adCashDay)) ?? -1
     }
 
     public func steps(of upgrade: Upgrade) -> Int {
@@ -320,7 +332,8 @@ public struct Career: Sendable, Equatable, Codable {
         config.sportsCarShare = owns("sportsCar") ? base.sportsCarShareOwned : 0
         config.compactShare = owns("compact") ? base.compactShareOwned : 0
         config.vanShare = owns("van") ? base.vanShareOwned : 0
-        let shift = config.forLevel(level, seed: seed).forArms().upgraded { steps(of: $0) }.forDuty(duty)
+        var shift = config.forLevel(level, seed: seed).forArms().upgraded { steps(of: $0) }.forDuty(duty)
+        if hasPurchased(.cashBoost) { shift = shift.forCashBoost() }
         // The sky and the city come last: they change the traffic the level has set (M8).
         return shift
             .forWeather(weather ?? shift.drawWeather(level: level, seed: seed))

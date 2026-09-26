@@ -126,7 +126,7 @@ public enum StreetBuilderPage {
 
     /// The map: where the ring is drawn and how big it is on screen.
     public static func map(viewport: Vec2, bottomInset: Double) -> (center: Vec2, radius: Double) {
-        let top = Metrics.sceneInsets.top + 14
+        let top = BuildTab.contentTop - 4
         let bottom = viewport.y - bottomInset - detailHeight - paletteHeight - 2 * gap
         let height = max(160, bottom - top)
         let center = Vec2(viewport.x / 2, top + height / 2)
@@ -215,6 +215,7 @@ public enum StreetBuilderPage {
         reduceMotion: Bool,
         showsKeys: Bool,
         bottomInset: Double,
+        segmentThumb: Double = 1,
         to list: inout RenderList
     ) {
         let viewport = list.camera.viewport
@@ -225,7 +226,7 @@ public enum StreetBuilderPage {
         id += 1
 
         let shown = countedMoney(career: career, state: state)
-        MenuKit.header(Strings.Builder.title, money: Strings.Upgrades.balance(format.number(shown)), viewport: viewport, id: &id, to: &list)
+        BuildTab.addChrome(page: .streetBuilder, thumb: segmentThumb, money: Strings.Upgrades.balance(format.number(shown)), viewport: viewport, to: &list)
 
         addMap(career: career, config: config, state: state, reduceMotion: reduceMotion, bottomInset: bottomInset, id: &id, to: &list)
         for (index, card) in cards(viewport: viewport, bottomInset: bottomInset).enumerated() {

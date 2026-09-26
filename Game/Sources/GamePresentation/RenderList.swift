@@ -94,6 +94,8 @@ enum RenderID {
     /// The first shift's hints (`Tutorial`).
     static let tutorial = 37_000
     static let menu = 40_000
+    /// The Build tab's header and segments (`BuildTab`): they stay put while its pages switch.
+    static let buildChrome = 46_000
     /// A map's ground details and its plants (`MapTheme`).
     static let mapGround = 60_000
     static let mapPlants = 70_000

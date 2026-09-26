@@ -1,12 +1,25 @@
 import GameCore
 
-/// The pages of the tab bar (FOUNDATION.md 3): a native `TabView` in the app (M12), a plain
-/// strip at the bottom of the test window. Game is where you play; there is no start menu.
+/// The pages (FOUNDATION.md 3). The tab bar shows four of them (`bar`); the Street Builder
+/// shares the Build tab with the Upgrades, one segment each, like the Shop's sections
+/// (Leo, 26.09.2026). A native `TabView` in the app (M12), a plain strip at the bottom of
+/// the test window. Game is where you play; there is no start menu.
 public enum Tab: String, CaseIterable, Sendable {
     case streetBuilder
     case game
     case shop
     case upgrades
+    /// Records, quests and achievements.
+    case progress
+
+    /// The tab bar, left to right.
+    public static let bar: [Tab] = [.progress, .game, .shop, .upgrades]
+
+    /// The two pages of the Build tab, in the order of its segments.
+    public static let build: [Tab] = [.upgrades, .streetBuilder]
+
+    /// The tab-bar item this page sits under.
+    public var barTab: Tab { self == .streetBuilder ? .upgrades : self }
 
     /// SF Symbol for the tab bar of the app.
     public var symbol: String {
@@ -14,7 +27,8 @@ public enum Tab: String, CaseIterable, Sendable {
         case .streetBuilder: "map"
         case .game: "car.fill"
         case .shop: "bag"
-        case .upgrades: "arrow.up.circle"
+        case .upgrades: "hammer"
+        case .progress: "trophy"
         }
     }
 }
@@ -32,7 +46,7 @@ public enum Screen: Sendable, Equatable {
     case settings
     case playing
     case result(ShiftSummary)
-    /// Street Builder, Shop or Upgrades.
+    /// Street Builder, Upgrades, Shop or Progress.
     case page(Tab)
 
     /// The tab this screen belongs to.
@@ -73,6 +87,9 @@ public enum ScreenAction: Sendable, Equatable {
     /// Normal duty or High Alert for the next shift (a segmented control in the app).
     case setDuty(Duty)
     case showTab(Tab)
+    /// Opens the Shop, or the Progress tab, on one of its sections (the Game tab's top card).
+    case showShop(ShopPage.Section)
+    case showProgress(ProgressPage.Section)
     /// Opens an upgrade's details; tapping the open one again buys it.
     case selectUpgrade(Upgrade)
     case buy(Upgrade)
@@ -87,6 +104,12 @@ public enum ScreenAction: Sendable, Equatable {
     case buyChest(ChestKind)
     /// Watch an ad for a Standard chest (a few a day).
     case watchAd
+    /// Watch an ad for money (a few a day).
+    case watchCashAd
+    /// Buys a product for real money (placeholders until the App Store products exist).
+    case purchase(StoreProduct)
+    /// Asks the App Store again for the one-time products bought (App Store rule).
+    case restorePurchases
     case wear(String)
 }
 
@@ -181,15 +204,36 @@ public enum ScreenFlow {
                 return MenuItem(.wear(item.id), Strings.Shop.item(item.id), detail: Strings.Shop.kind(item), value: value)
             }
             let pity = Career.pityChests - career.chestsSinceEpic
-            // Today's challenges (v1.2): what they ask and what they pay; done ones are ticked.
-            let challenges = Challenge.of(day: today).map { challenge in
-                MenuItem(.showTab(.shop), Strings.Daily.challenge(challenge), detail: Strings.Daily.challengesTitle,
-                         value: career.isDone(challenge, day: today) ? Strings.Daily.done : "+" + format.number(challenge.reward))
+            // The store (placeholders): real-money products and money for an ad.
+            var store = StoreProduct.allCases.filter(career.canBuy).map { product in
+                MenuItem(.purchase(product), Strings.Store.name(product), detail: Strings.Store.detail(product, config: config, format: format), value: product.placeholderPrice)
             }
+            if career.adsLeft(.cash, day: today, config: config) > 0 {
+                store.append(MenuItem(.watchCashAd, Strings.Store.freeCash, detail: Strings.Store.freeCashDetail(format.number(career.adCash(config: config))),
+                                      value: Strings.Shop.watchAd(career.adsLeft(.cash, day: today, config: config))))
+            }
+            store.append(MenuItem(.restorePurchases, Strings.Store.restore))
             return ScreenContent(
                 title: Strings.Tabs.title(.shop),
                 subtitle: Strings.Shop.subtitle(chests: career.chests.count, owned: owned.count, pity: pity),
-                items: chests + challenges + owned
+                items: chests + store + owned
+            )
+
+        case .page(.progress):
+            let career = save.career
+            // Today's quests (v1.2): the Daily Shift and what the challenges pay; done ones are ticked.
+            let quests = Challenge.of(day: today).map { challenge in
+                MenuItem(.showTab(.progress), Strings.Daily.challenge(challenge), detail: Strings.Daily.challengesTitle,
+                         value: career.isDone(challenge, day: today) ? Strings.Daily.done : "+" + format.number(challenge.reward))
+            }
+            let achievements = MasteryGoal.allCases.map { goal in
+                MenuItem(.showTab(.progress), Strings.Mastery.name(goal), detail: Strings.Mastery.detail(goal, tier: career.masteryTiers[goal.rawValue] ?? 0),
+                         value: Strings.Mastery.tiers(career.masteryTiers[goal.rawValue] ?? 0))
+            }
+            return ScreenContent(
+                title: Strings.Tabs.title(.progress),
+                stats: ProgressPage.records(save: save, format: format).map { ScreenContent.Stat(label: $0.label, value: $0.value) },
+                items: quests + achievements
             )
 
         // The Street Builder draws its own map and palette (`StreetBuilderPage`).
@@ -207,8 +251,8 @@ public enum TabStrip {
     /// The tab under a point on the screen; nil outside the strip.
     public static func tab(at point: Vec2, viewport: Vec2) -> Tab? {
         guard point.y >= viewport.y - height, point.y <= viewport.y, point.x >= 0, point.x < viewport.x else { return nil }
-        let index = Int(point.x / (viewport.x / Double(Tab.allCases.count)))
-        return Tab.allCases[min(index, Tab.allCases.count - 1)]
+        let index = Int(point.x / (viewport.x / Double(Tab.bar.count)))
+        return Tab.bar[min(index, Tab.bar.count - 1)]
     }
 
     /// What a tab's badge shows, like on iOS: a count, or just a dot.
@@ -234,9 +278,9 @@ public enum TabStrip {
         id += 1
         list.add(.line(from: Vec2(0, top), to: Vec2(viewport.x, top), thickness: 1), color: .separator, space: .screen, id: id)
         id += 1
-        let cell = viewport.x / Double(Tab.allCases.count)
-        for (index, tab) in Tab.allCases.enumerated() {
-            let isSelected = tab == selected
+        let cell = viewport.x / Double(Tab.bar.count)
+        for (index, tab) in Tab.bar.enumerated() {
+            let isSelected = tab == selected.barTab
             let tint: ColorToken = isSelected ? .accent : .muted
             let x = cell * (Double(index) + 0.5)
             MenuKit.tabGlyph(tab, at: Vec2(x, top + 19), color: tint, id: &id, to: &list)

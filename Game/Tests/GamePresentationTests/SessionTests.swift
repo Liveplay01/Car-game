@@ -658,6 +658,8 @@ struct TabTests {
         session.advance([.nextTab])
         #expect(session.screen == .page(.streetBuilder))
         session.advance([.nextTab])
+        #expect(session.screen == .page(.progress))
+        session.advance([.nextTab])
         #expect(session.screen == .ready)
         session.advance([.selectTab(.shop)])
         session.advance([.back])
@@ -823,7 +825,7 @@ struct TabTests {
 
     @Test func theStripMapsClicksToTabs() {
         let viewport = Vec2(400, 800)
-        #expect(TabStrip.tab(at: Vec2(10, 790), viewport: viewport) == .streetBuilder)
+        #expect(TabStrip.tab(at: Vec2(10, 790), viewport: viewport) == .progress)
         #expect(TabStrip.tab(at: Vec2(150, 780), viewport: viewport) == .game)
         #expect(TabStrip.tab(at: Vec2(399, 799), viewport: viewport) == .upgrades)
         #expect(TabStrip.tab(at: Vec2(200, 400), viewport: viewport) == nil)

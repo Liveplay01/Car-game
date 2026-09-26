@@ -47,8 +47,10 @@ print("Save game: \(saveFile.path)  (level \(session.save.career.level), \(sessi
 loadTuning(into: session, createIfMissing: false)
 if options.startsShift {
     session.perform(.startShift)
-} else if options.shelf != nil {
+} else if options.shelf != nil || options.shopSection != nil {
     session.perform(.showTab(.shop))
+} else if options.progressSection != nil {
+    session.perform(.showTab(.progress))
 } else if let tab = options.tab {
     session.perform(.showTab(tab))
 } else if options.opensSettings {
@@ -58,6 +60,8 @@ if options.startsShift {
 var runTime = 0.0
 // --shelf: the first frame opens the collection on that shelf.
 var startActions: [InputAction] = options.shelf.map { [.tapShop(.section(.collection)), .tapShop(.shelf($0))] } ?? []
+startActions += options.shopSection.map { [.tapShop(.section($0))] } ?? []
+startActions += options.progressSection.map { [.tapProgress(.section($0))] } ?? []
 var screenshotAt = options.screenshotAfterCrash == nil ? options.screenshotAt : .infinity
 var nextAutotap = options.autotapInterval ?? .infinity
 var wasFocused = IsWindowFocused()
@@ -74,9 +78,10 @@ while !WindowShouldClose() {
     let tabBar = session.screen.showsTabBar ? TabStrip.height : 0
     if IsMouseButtonPressed(Int32(MOUSE_BUTTON_LEFT.rawValue)) {
         // A click on the tab strip switches the page; on a page it belongs to the page;
-        // anywhere else it is a tap into the game.
-        if session.screen.showsTabBar, let tab = TabStrip.tab(at: mouse, viewport: viewport) {
-            actions.append(.selectTab(tab))
+        // anywhere else it is a tap into the game. The shared chrome (tab strip, the Build
+        // tab's segments, the Progress tab) the session maps itself.
+        if let action = session.pageAction(at: mouse, viewport: viewport) {
+            actions.append(action)
         } else if session.screen == .page(.upgrades),
                   let upgrade = UpgradePage.card(at: mouse, viewport: viewport, bottomInset: tabBar, upgrades: session.visibleUpgrades) {
             // One click opens the card, a second one right after buys it.

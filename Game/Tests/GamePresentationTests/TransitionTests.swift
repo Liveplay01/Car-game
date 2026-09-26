@@ -32,11 +32,14 @@ struct TransitionTests {
     }
 
     @Test func theNewTabComesFromItsSideOfTheTabBar() {
-        let toTheRight = ScreenTransition(from: .page(.streetBuilder), to: .page(.upgrades), outgoing: [])
+        let toTheRight = ScreenTransition(from: .page(.progress), to: .page(.upgrades), outgoing: [])
+        // The Build tab's second segment lies to the right of its first.
+        let toTheBuilder = ScreenTransition(from: .page(.upgrades), to: .page(.streetBuilder), outgoing: [])
         let toTheLeft = ScreenTransition(from: .page(.shop), to: .ready, outgoing: [])
         let settings = ScreenTransition(from: .ready, to: .settings, outgoing: [])
         let result = ScreenTransition(from: .playing, to: .result, outgoing: [])
         #expect(toTheRight.direction == 1)
+        #expect(toTheBuilder.direction == 1 && toTheBuilder.keepsChrome)
         #expect(toTheLeft.direction == -1)
         #expect(settings.direction == 0)
         #expect(result.direction == 0)

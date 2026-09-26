@@ -25,6 +25,20 @@ enum TopBar {
         Rect(minX: margin, minY: top, maxX: width - margin, maxY: top + height)
     }
 
+    /// The card's column under a point, for taps (Leo, 26.09.2026: the money opens the
+    /// store, the cars the collection, the score the records); nil beside the card.
+    enum Column {
+        case left, center, right
+    }
+
+    static func column(at point: Vec2, width: Double) -> Column? {
+        let frame = frame(width: width)
+        guard frame.contains(point) else { return nil }
+        let columns = columns(frame)
+        if columns.left.contains(point) { return .left }
+        return columns.right.contains(point) ? .right : .center
+    }
+
     /// Left, centre, right: 30 %, 40 %, 30 %.
     static func columns(_ frame: Rect) -> (left: Rect, center: Rect, right: Rect) {
         let side = frame.width * 0.3
