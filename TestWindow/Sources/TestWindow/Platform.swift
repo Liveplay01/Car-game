@@ -122,7 +122,7 @@ enum MusicFilter {
         (s[0], s[1], s[2], s[3]) = (l1, r1, l2, r2)
     }
 
-    nonisolated(unsafe) static let processors: [AudioCallback] = [
+    static let processors: [AudioCallback] = [
         { process(0, $0, $1) }, { process(1, $0, $1) }, { process(2, $0, $1) }, { process(3, $0, $1) },
         { process(4, $0, $1) }, { process(5, $0, $1) }, { process(6, $0, $1) }, { process(7, $0, $1) },
     ]
