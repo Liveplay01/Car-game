@@ -32,7 +32,7 @@ Stand: 26.09.2026 · Übersicht über das ganze Spiel. Die Details stehen in [RO
 - **Rush Hour** in den letzten 4 Autos: Tempo auf 135 %, Dichte +2, Punkte ×2. Dichte und Tempo steigen zudem über die ersten 20 s: Wer auf die perfekte Lücke wartet, bekommt mehr Verkehr, keinen leichteren.
 - **Fließender Schichtwechsel, kein Ergebnis-Screen:** Das Ergebnis steht in derselben oberen Karte (gleiche Größe, gleicher Platz), der Ring schickt einen Lichtlauf herum. Nach 3,6 s Nachklang (`epilogue`) wird es von selbst zum Wartebildschirm der nächsten Schicht, deren Verkehr schon fährt; das Tempo gleitet zum neuen Start-Tempo, die Autos der nächsten Schicht rollen von hinten in die Warteschlange. Ein Tap startet jederzeit. Kein Freeze, kein Replay, keine Einblendung (Highlight/Replay wurde gestrichen).
 - **Kein Tap-Cooldown:** Das nächste Auto steht ≈ 0,3 s nach dem Tap an der Haltelinie; ein früher Tap wird gehalten. Eigene Autos bewerten sich nicht gegenseitig, schnelles Tippen gibt also keine geschenkten Tight Fits.
-- **Kein verschluckter Tap (26.09.2026):** Das nachrückende Auto fährt weich an und bremst weich an der Haltelinie (Bremslichter an). Kommt der Tap zu früh, leuchtet kurz die Lichthupe auf, das Auto bremst nicht mehr, sondern rollt mit Ringtempo durch die Linie in sein Einfädeln; die Autos dahinter rollen weiter statt schlagartig zu stehen. Das Timing ändert sich dadurch nicht: bereit ist das Auto im selben Moment wie vorher.
+- **Kein verschluckter Tap (26.09.2026):** Das nachrückende Auto fährt weich an und bremst weich an der Haltelinie (Bremslichter an). Kommt der Tap zu früh, leuchtet kurz die Lichthupe auf, das Auto bremst nicht mehr, pendelt sich ohne Wackler auf Ringtempo ein und rollt ohne Stocken durch die Linie in sein Einfädeln; die Autos dahinter rollen weiter statt schlagartig zu stehen. Ohne gehaltenen Tap ist das Auto im selben Moment bereit wie früher; mit gehaltenem Tap geht es, sobald es an der Linie ist und zum vorderen eigenen Auto mindestens 4 Einheiten Platz sind.
 - **Schichtlänge – entschieden: kurz lassen** (Leo, 26.09.2026). Gemessen je nach Level 8–75 s (Mensch-Bot: Level 10 ≈ 36 s, Level 20 ≈ 68 s, Level 30 ≈ 75 s). Kein Ziel mehr von ≈ 2 Minuten: kurze Schichten tragen das „Nur noch eine!“, lange ermüden den Daumen und machen einen späten Crash bitter.
 
 ### Gefahrenstufe vor der Schicht (Push Your Luck)
@@ -107,7 +107,7 @@ Jede Einfädelung wird nach dem engsten Abstand (surface to surface) bewertet:
 | **Zählt nicht** | wenn der Verbrecher selbst ins Polizeiauto fährt |
 | **Einsatzfahrt (Panic-Button)** | **E** / Rechtsklick: das vorderste Auto wird Polizei, Combo × 0,5 (*Dispatch Radio* +10 % pro Stufe zurück) |
 | **Verfolgung im Ring** | Polizeiauto direkt hinter dem Pickup jagt mit bis ×1,4 Tempo (*Interceptor* +0,1/Stufe), bleibt im Kreis und rammt ihn |
-| **Masse** | Pickup = 2,5× Auto: normales Auto prallt ab und bekommt einen Strike, Pickup fährt verbeult weiter |
+| **Masse** | Pickup = 2,5× Auto: schiebt das andere Auto weiter weg. **Was beschädigt ist, fährt nicht mehr** (26.09.2026): Jeder Treffer ohne Takedown macht auch den Pickup zum Wrack – die Jagd endet ohne Punkte und ohne verlorene Schicht; ein normales eigenes Auto bekommt wie immer den Strike |
 | **Blaulicht** | nur Blau (deutscher Lichtbalken), LED-Doppelblitze, weißer Kern, weicher Schein auf der Straße, jedes Polizeiauto im eigenen Takt |
 
 ---
@@ -389,7 +389,7 @@ Plattform
 
 ## 14. Stand der Umsetzung (26.09.2026)
 
-**Alle 365 automatischen Tests sind grün** (209 GameCore, 149 GamePresentation, 7 GameBots; `swift test` am 26.09.2026).
+**Alle 367 automatischen Tests sind grün** (211 GameCore, 149 GamePresentation, 7 GameBots; `swift test` am 26.09.2026).
 
 | Meilenstein | Inhalt | Stand |
 |---|---|---|
@@ -533,4 +533,4 @@ Car game/
 
 ---
 
-**Stand:** 26.09.2026 – M0–M10, die vorgezogenen Motivationssysteme und „Eine Stadt, ein Ring“ sowie „Mehr Gefühl, keine UI“ sind gebaut, alle 365 Tests grün, das Spiel ist im Testfenster voll spielbar. M11 (Look & Feel) ist zum großen Teil fertig, M12 (iPhone-App) ist vorbereitet, aber auf dem iPad noch nie gebaut. Nächster großer Schritt: **Playtest, dann erster Build auf dem iPad.**
+**Stand:** 26.09.2026 – M0–M10, die vorgezogenen Motivationssysteme und „Eine Stadt, ein Ring“ sowie „Mehr Gefühl, keine UI“ sind gebaut, alle 367 Tests grün, das Spiel ist im Testfenster voll spielbar. M11 (Look & Feel) ist zum großen Teil fertig, M12 (iPhone-App) ist vorbereitet, aber auf dem iPad noch nie gebaut. Nächster großer Schritt: **Playtest, dann erster Build auf dem iPad.**

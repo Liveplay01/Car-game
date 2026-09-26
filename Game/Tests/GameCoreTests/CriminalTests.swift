@@ -133,8 +133,11 @@ struct CriminalTests {
         }
     }
 
-    @Test func aNormalCarBouncesOffTheCriminal() {
-        var world = chaseShift(police: false)
+    /// Leo, 26.09.2026: whatever is damaged stops, the criminal's pickup too. A normal car
+    /// that hits it is still a strike and no takedown; the pickup is a wreck, the chase is
+    /// over without points.
+    @Test func aNormalCarWrecksTheCriminalButItIsNoTakedown() {
+        var world = chaseShift(police: false) { $0.maxStrikes = 3 }
         guard let pickup = world.runUntilChase() else {
             Issue.record("no chase")
             return
@@ -144,14 +147,30 @@ struct CriminalTests {
         #expect(crash?.isStrike == true)
         #expect(crash?.isTakedown == false)
         #expect(events.compactMap(\.takedown).isEmpty)
-        // The pickup drives on, dented.
+        #expect(world.score.takedowns == 0)
         let criminal = world.vehicle(id: pickup)
-        #expect(criminal?.isCrashed == false)
+        #expect(criminal?.isCrashed == true)
         #expect(criminal?.dents.isEmpty == false)
-        #expect(world.criminal.vehicle == pickup)
+        #expect(events.contains { if case .criminalWrecked(pickup, _, _) = $0 { true } else { false } })
+        // The chase is over: no countdown left to lose the shift by.
+        #expect(world.criminal.vehicle == nil)
+        world.run(steps: Int(world.config.criminalTime + 2) * World.stepRate)
+        #expect(world.shift.outcome != .escaped)
     }
 
-    @Test func criminalPloughsThroughAWreck() {
+    /// No damaged vehicle drives on: whatever took a hit is a wreck.
+    @Test func everyDamagedVehicleIsAWreck() {
+        var world = chaseShift(police: false) { $0.maxStrikes = 99 }
+        _ = world.runUntilChase()
+        for _ in 0..<(40 * World.stepRate) {
+            if world.queue.isReady { world.tap(at: world.time) }
+            world.step()
+            _ = world.takeEvents()
+            #expect(world.vehicles.allSatisfy { $0.dents.isEmpty || $0.isCrashed })
+        }
+    }
+
+    @Test func criminalIsStoppedByAWreck() {
         var world = chaseShift(police: false) { $0.crashDuration = 30 }
         guard let pickup = world.runUntilChase() else {
             Issue.record("no chase")
@@ -165,7 +184,9 @@ struct CriminalTests {
         let wreck = world.spawnWreck(atRing: r.s + 150)
         let events = world.run(steps: 3 * World.stepRate)
         #expect(events.compactMap(\.crash).contains { $0.first == wreck || $0.second == wreck })
-        #expect(world.vehicle(id: pickup)?.isCrashed == false)
+        // It no longer ploughs through: it is a wreck too, the chase is over.
+        #expect(world.vehicle(id: pickup)?.isCrashed == true)
+        #expect(world.criminal.vehicle == nil)
         #expect(world.score.strikes == 0)
     }
 

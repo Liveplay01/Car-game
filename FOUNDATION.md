@@ -194,11 +194,15 @@ Im Testfenster ist ein Tap ein Linksklick oder die Leertaste.
    während sein Polizeiauto gleich den Pickup rammt, schickt das nächste Auto ins Wrack.
    `queueAdvanceDuration` (Standard 0) gibt auf Wunsch wieder eine Nachrückzeit.
    **Nachrücken ohne Ruck** *(26.09.2026)*: Das nächste Auto fährt weich an und bremst
-   weich an der Linie (`PlayerQueue.approach`, dazwischen kurz bis 1,5× Ringtempo). Ein
-   gehaltener Tap plant den Rest der Strecke neu: Das Auto rollt mit Ringtempo durch die
-   Linie in sein Einfädeln, die Autos dahinter rollen weiter (`rollingSpeed`). Bereit ist
-   das Auto im selben Moment wie vorher, das Timing ändert sich nicht. Bremslichter und
-   eine Lichthupe für den gehaltenen Tap zeichnet `GamePresentation` (`VehicleLamps`).
+   weich an der Linie (`PlayerQueue.approach`, dazwischen kurz bis 1,5× Ringtempo); bereit
+   ist es im selben Moment wie vorher. Mit gehaltenem Tap (`PlayerQueue.Pass`) bremst es
+   nicht mehr: Es behält sein Tempo und pendelt sich auf Ringtempo ein (liegt es zurück,
+   holt es bis 1,5× auf, nie langsamer werden), fährt über die Linie und im selben
+   Simulationsschritt in sein Einfädeln, sobald zum vorderen eigenen Auto mindestens
+   `passClearance` (4) zwischen den Stoßstangen frei ist. Das kann ein paar Millisekunden
+   früher oder später sein als bei einem stehenden Auto. Die Autos dahinter rollen weiter
+   (`rollingSpeed`). Bremslichter und eine Lichthupe für den gehaltenen Tap zeichnet
+   `GamePresentation` (`VehicleLamps`).
 6. Autos im Ring **verlassen ihn nach 1–3 Ausfahrten wieder**. So entstehen
    ständig neue Lücken.
 
@@ -289,9 +293,12 @@ aber keinen Strike.
   ein Polizei-Crash. Ist ein normales Auto mitschuld, ist es ein Strike.
 - **Kein Crash im Sinne der Regel:** der Takedown (Polizei trifft Verbrecher: Punkte,
   Slow-Mo) und die Beschlagnahme (Polizei trifft Transporter: kein Geld, aber auch
-  keine Strafe). Der Pickup ist dabei "gepanzert": Alles andere prallt an ihm ab, er fährt
-  verbeult weiter. **Der Geldtransporter nicht:** Jeder Crash macht ihn zum Wrack, das Geld
-  ist weg ("LOST"). Dafür bremst er wie jeder andere Fahrer.
+  keine Strafe). **Was beschädigt ist, fährt nicht mehr** *(Leo, 26.09.2026)*: Auch der
+  Pickup ist nicht mehr "gepanzert". Er ist schwerer (`criminalMass`) und schiebt das andere
+  Auto weiter weg, wird aber bei jedem Treffer ohne Takedown selbst zum Wrack; die Jagd endet
+  dann ohne Punkte und ohne verlorene Schicht (`criminalWrecked`). **Der Geldtransporter
+  ebenso:** Jeder Crash macht ihn zum Wrack, das Geld ist weg ("LOST"). Dafür bremst er
+  wie jeder andere Fahrer.
 - **Crash-Physik (umgesetzt in M2):** Der Aufprall ist ein Starrkörper-Stoß am
   Kontaktpunkt: Impulserhaltung, 30 % Rückprall (der Rest geht in die
   Knautschzonen), Reibung beim Streifen. Ein Treffer neben dem Schwerpunkt bringt

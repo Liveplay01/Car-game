@@ -125,6 +125,8 @@ public enum Feedback {
         case .takedown: .takedown
         case .dispatched: .dispatch
         case .criminalEscaped: .escaped
+        // The crash is heard already; the siren just stops.
+        case .criminalWrecked: nil
         case .transporterWarning: .secured
         // The money is gone either way: seized by your police, or wrecked.
         case .transporterSeized, .transporterLost: .seized
@@ -195,7 +197,7 @@ public enum Feedback {
         // Only entering the flow is felt; leaving it is felt through the crash that ends it.
         case let .flowChanged(change): change.isInFlow ? .flow : nil
         case .towed: nil
-        case .launched, .tapRejected, .exited, .criminalEntered, .criminalEscaped, .dispatched, .transporterEntered, .transporterEscaped: nil
+        case .launched, .tapRejected, .exited, .criminalEntered, .criminalEscaped, .criminalWrecked, .dispatched, .transporterEntered, .transporterEscaped: nil
         }
     }
 

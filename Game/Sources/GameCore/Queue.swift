@@ -18,49 +18,58 @@ public struct PlayerQueue: Sendable, Equatable {
     /// A tap that came before the next car stood at the stop line. It launches that car the
     /// moment it arrives. There is at most one, so a bouncing finger sends one car, not five.
     public internal(set) var heldTap: Double?
-    /// The next car rolls up to the stop line and brakes softly to a halt. A tap held for it
-    /// turns that into rolling through: from this point of the approach (0…1) on, it no
-    /// longer brakes but arrives at ring speed and goes straight on (Leo, 26.09.2026).
-    public internal(set) var passFrom: Double?
+    /// The car rolling up with a tap held for it (Leo, 26.09.2026): it no longer brakes but
+    /// keeps rolling, settling at ring speed, and goes the moment it reaches the line.
+    public internal(set) var pass: Pass?
     /// How fast (in ring speeds) the queue was still rolling when the last car launched: 0
-    /// when it stood at the line, up to 1 when a held tap let the front car roll through.
+    /// when it stood at the line, about 1 when a held tap let the front car roll through.
     /// The cars behind carry on from there instead of stopping dead.
     public internal(set) var rollingSpeed = 0.0
 
     public var isReady: Bool { state == .ready }
 
+    /// A car rolling through the line: how far it has come (0…1 of the last slot) and how
+    /// fast it goes, in ring speeds.
+    public struct Pass: Sendable, Equatable {
+        public var position: Double
+        public var speed: Double
+        /// How far past the line it would have come in the last step, in slots: carried
+        /// into its merge, so it goes through without a pause.
+        public var beyond = 0.0
+
+        /// How quickly the speed settles, per slot driven.
+        static let settle = 8.0
+        /// A car that is behind the one in front (one slot back, as a standing queue keeps)
+        /// may catch up a little, up to this fast; one that is ahead just settles at ring
+        /// speed. So after the tap it only ever speeds up or eases off, never both.
+        static let catchUp = 4.0
+        static let fastest = 1.5
+
+        /// One step on, `slots` being how far the ring moves in it, `lockstep` where the car
+        /// would be a full slot behind the one in front. Never past the line.
+        mutating func roll(_ slots: Double, lockstep: Double) {
+            let target = min(1 + max(0, lockstep - position) * Self.catchUp, Self.fastest)
+            speed += (target - speed) * min(1, Self.settle * slots)
+            let next = position + speed * slots
+            beyond = max(0, next - 1)
+            position = min(1, next)
+        }
+    }
+
     /// How far (0…1) the next car has come towards the stop line, at `progress` (0…1) of the
-    /// slot the launched car frees. It moves off from standing (or rolls on at `startSpeed`,
-    /// in ring speeds) and either brakes to a halt at the line or, with a held tap, keeps
-    /// ring speed into its merge. Only the look changes: the car is ready at the same moment
-    /// either way.
-    public static func approach(_ progress: Double, startSpeed: Double = 0, passFrom: Double?) -> Double {
+    /// slot the launched car frees, when no tap is held for it: it moves off from standing
+    /// (or rolls on at `startSpeed`, in ring speeds) and brakes softly to a halt at the line,
+    /// exactly when the slot is free. Only the look changes, not the moment it is ready.
+    public static func approach(_ progress: Double, startSpeed: Double = 0) -> Double {
+        let x = min(max(progress, 0), 1)
+        return hermite(x, start: 0, startSlope: min(max(startSpeed, 0), 1), end: 1, endSlope: 0)
+    }
+
+    /// The speed (in ring speeds) of that approach at `progress`.
+    public static func approachSpeed(_ progress: Double, startSpeed: Double = 0) -> Double {
         let x = min(max(progress, 0), 1)
         let s = min(max(startSpeed, 0), 1)
-        let stop = hermite(x, start: 0, startSlope: s, end: 1, endSlope: 0)
-        guard let x0 = passFrom.map({ min(max($0, 0), 1) }), x > x0, x0 < 1 else { return stop }
-        let plan = passPlan(from: x0, startSpeed: s)
-        return hermite((x - x0) / plan.span, start: plan.start, startSlope: plan.startSlope, end: 1, endSlope: plan.endSlope)
-    }
-
-    /// The ring speeds the rolling car reaches the line with: 1 when the tap caught it in
-    /// time, a little less when it came at the very last moment.
-    public static func passSpeed(from passFrom: Double, startSpeed: Double = 0) -> Double {
-        let x0 = min(max(passFrom, 0), 1)
-        guard x0 < 1 else { return 0 }
-        let plan = passPlan(from: x0, startSpeed: min(max(startSpeed, 0), 1))
-        return plan.endSlope / plan.span
-    }
-
-    /// From where the car was, as fast as it was, to the line at ring speed. Both slopes are
-    /// capped at three times the rise, so the car never overshoots the line.
-    private static func passPlan(from x0: Double, startSpeed s: Double) -> (span: Double, start: Double, startSlope: Double, endSlope: Double) {
-        let span = 1 - x0
-        let start = hermite(x0, start: 0, startSlope: s, end: 1, endSlope: 0)
-        // The braking curve's slope at x0: 6x(1-x) + s(3x² - 4x + 1).
-        let speed = 6 * x0 * (1 - x0) + s * (3 * x0 * x0 - 4 * x0 + 1)
-        let rise = 1 - start
-        return (span, start, min(speed * span, 3 * rise), min(span, 3 * rise))
+        return 6 * x * (1 - x) + s * (3 * x * x - 4 * x + 1)
     }
 
     /// A cubic Hermite on 0…1: from `start` to `end`, leaving and arriving with these slopes.
@@ -74,11 +83,9 @@ extension World {
     mutating func handleTaps(from start: Double, to end: Double) {
         // A held tap goes first, as soon as the next car stands at the stop line.
         if queue.isReady, queue.heldTap != nil {
-            // The front car rolled through: the cars behind it are still moving.
-            let rolling = queue.passFrom.map { PlayerQueue.passSpeed(from: $0, startSpeed: queue.rollingSpeed) } ?? 0
+            // (A car rolling through goes on its own, in `updateQueue`.)
             queue.heldTap = nil
             _ = launchFromQueue(driven: end - start, at: start)
-            queue.rollingSpeed = rolling
         }
         while let first = pendingTaps.first, first <= end {
             pendingTaps.removeFirst()
@@ -87,9 +94,14 @@ extension World {
             if launchFromQueue(driven: driven, at: first) { continue }
             if queue.heldTap == nil {
                 queue.heldTap = first
-                // The car rolling up no longer brakes: it goes through the line.
-                if case let .clearing(id) = queue.state {
-                    queue.passFrom = (launchedDistance(id) ?? config.queueSpacing) / config.queueSpacing
+                // The car rolling up no longer brakes: it rolls on from where it is, as fast
+                // as it is, and goes through the line.
+                if case let .clearing(id) = queue.state, config.queueAdvanceDuration <= 0 {
+                    let x = (launchedDistance(id) ?? config.queueSpacing) / config.queueSpacing
+                    queue.pass = PlayerQueue.Pass(
+                        position: PlayerQueue.approach(x, startSpeed: queue.rollingSpeed),
+                        speed: PlayerQueue.approachSpeed(x, startSpeed: queue.rollingSpeed)
+                    )
                 }
             } else {
                 events.append(.tapRejected(time: first))
@@ -113,9 +125,9 @@ extension World {
         guard queue.isReady, let id = queue.vehicles.first, let i = index(of: id) else { return false }
         queue.vehicles.removeFirst()
         queue.state = .clearing(vehicle: id)
-        // A new approach starts; a dropped held tap (end of the shift) keeps the old one
-        // until then, so the rolling car never jumps back.
-        queue.passFrom = nil
+        // A new approach starts; a dropped held tap (end of the shift) keeps the car rolling
+        // until then, so it never jumps back.
+        queue.pass = nil
         queue.rollingSpeed = 0
         let path = layout.entry(layout.player)
         let merge = Vehicle.Merging(
@@ -136,12 +148,36 @@ extension World {
     /// `queueAdvanceDuration` if one is set. So your own cars never touch, however fast you
     /// tap; and they never rate each other (`resolveContacts`), so there are no Tight Fits
     /// to farm off your own convoy.
+    ///
+    /// A car rolling through on a held tap (`PlayerQueue.Pass`) goes when it reaches the line,
+    /// as long as the one in front has driven far enough that the two keep `passClearance`
+    /// between their bumpers — a few milliseconds earlier or later than a standing car would.
     mutating func updateQueue(_ dt: Double) {
         switch queue.state {
         case .ready:
             break
         case let .clearing(id):
-            if launchedDistance(id).map({ $0 < config.queueSpacing }) != true {
+            let driven = launchedDistance(id)
+            if var pass = queue.pass {
+                pass.roll(dt * ringSpeed / config.queueSpacing, lockstep: (driven ?? 2 * config.queueSpacing) / config.queueSpacing)
+                let leader = vehicle(id: id).map { length(of: $0.type) } ?? config.carLength
+                let follower = queue.vehicles.first.flatMap { vehicle(id: $0) }.map { length(of: $0.type) } ?? config.carLength
+                let room = (leader + follower) / 2 + Self.passClearance
+                queue.pass = pass
+                if pass.position >= 1 {
+                    if queue.heldTap == nil {
+                        // The tap was dropped (the shift is over): it stops at the line.
+                        queue.state = .ready
+                        queue.pass = nil
+                    } else if driven.map({ $0 >= room }) != false {
+                        rollThrough(pass)
+                    } else {
+                        // Too close to the car in front (two long vans): it waits at the line.
+                        queue.pass?.speed = 0
+                        queue.pass?.beyond = 0
+                    }
+                }
+            } else if driven.map({ $0 < config.queueSpacing }) != true {
                 queue.state = config.queueAdvanceDuration > 0 ? .advancing(elapsed: 0) : .ready
             }
         case let .advancing(elapsed):
@@ -153,6 +189,24 @@ extension World {
         }
         placeQueue()
     }
+
+    /// The car rolling through on a held tap reached the line in this step: it goes into its
+    /// merge right away, placed as far along as it got past the line, so it never pauses for
+    /// a step. The cars behind keep rolling at its speed.
+    private mutating func rollThrough(_ pass: PlayerQueue.Pass) {
+        let past = pass.beyond * config.queueSpacing / max(pass.speed * ringSpeed, 1)
+        queue.state = .ready
+        queue.heldTap = nil
+        // `moveVehicles` has run for this step: the merge starts `past` seconds in.
+        guard let id = queue.vehicles.first, launchFromQueue(driven: past + Self.stepDuration, at: time + Self.stepDuration - past),
+              let i = index(of: id), case let .merging(merge) = vehicles[i].phase else { return }
+        vehicles[i].place(layout.entry(layout.player).pose(at: merge.distance))
+        queue.rollingSpeed = min(pass.speed, 1)
+    }
+
+    /// Room between the bumpers of your own two cars when one rolls through on a held tap.
+    /// A standing queue keeps `queueSpacing` minus a car length (8 for two cars).
+    static let passClearance = 4.0
 
     /// Whether a vehicle's brake lights are on (only drawn, Leo 26.09.2026): the player's
     /// queue at its line, a bot braking up to its line or standing there, a driver on the
@@ -184,7 +238,7 @@ extension World {
             return true
         case let .clearing(id):
             guard config.queueAdvanceDuration <= 0 else { return true }
-            guard queue.passFrom == nil else { return false }
+            guard queue.pass == nil else { return false }
             let x = (launchedDistance(id) ?? config.queueSpacing) / config.queueSpacing
             // Past the fastest point of the approach it slows down.
             return x > (queue.rollingSpeed > 0 ? 1.0 / 3 : 0.5)
@@ -208,8 +262,9 @@ extension World {
             return 0
         case let .clearing(id):
             guard config.queueAdvanceDuration <= 0 else { return 1 }
+            if let pass = queue.pass { return 1 - pass.position }
             let driven = launchedDistance(id) ?? config.queueSpacing
-            return 1 - PlayerQueue.approach(driven / config.queueSpacing, startSpeed: queue.rollingSpeed, passFrom: queue.passFrom)
+            return 1 - PlayerQueue.approach(driven / config.queueSpacing, startSpeed: queue.rollingSpeed)
         case let .advancing(elapsed):
             let x = config.queueAdvanceDuration > 0 ? min(max(elapsed / config.queueAdvanceDuration, 0), 1) : 1
             let easeOut = 1 - (1 - x) * (1 - x) * (1 - x)

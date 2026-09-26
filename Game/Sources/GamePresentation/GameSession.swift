@@ -1125,7 +1125,7 @@ public final class GameSession {
                 addPopup(.dispatch, at: world.layout.stopPose(world.layout.player).position)
             case .rushHour:
                 rim.signal(.sweep, .accent)
-            case .launched, .tapRejected, .exited, .criminalWarning, .criminalEntered, .criminalEscaped:
+            case .launched, .tapRejected, .exited, .criminalWarning, .criminalEntered, .criminalEscaped, .criminalWrecked:
                 break
             case .transporterWarning:
                 break

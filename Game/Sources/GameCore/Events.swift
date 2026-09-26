@@ -24,6 +24,9 @@ public enum GameEvent: Sendable, Equatable {
     case takedown(TakedownReport)
     /// The countdown ran out: the pickup got away, the shift is lost.
     case criminalEscaped(vehicle: Int, time: Double)
+    /// The pickup was wrecked without a takedown (it rammed a police car, or something ran
+    /// into it): it goes nowhere any more, so the chase is over — no points, no lost shift.
+    case criminalWrecked(vehicle: Int, point: Vec2, time: Double)
     /// Emergency dispatch: the next car in the queue is now a police car.
     case dispatched(vehicle: Int, combo: Int)
     /// "SECURED": a money transporter will show up at `arm` in `Config.transporterWarning` seconds.

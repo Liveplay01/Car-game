@@ -188,9 +188,11 @@ bereichert; Zurückspulen nach dem Crash, Dauerbrummen an der Sperrzone, SF Comp
 `.ultraThinMaterial` (auf iOS 26 ist Liquid Glass das System-Material) bewusst nicht.
 
 1. **Nachrücken ohne Ruck** (`PlayerQueue.approach`, GameCore): Das nächste Auto fährt weich
-   an und bremst weich an der Linie, statt aus Ringtempo schlagartig zu stehen. Ein früher
-   Tap lässt es mit Ringtempo durch die Linie rollen, die Autos dahinter rollen weiter.
-   Timing unverändert (bereit im selben Moment).
+   an und bremst weich an der Linie, statt aus Ringtempo schlagartig zu stehen (Timing
+   unverändert). Ein früher Tap lässt es durch die Linie rollen (`PlayerQueue.Pass`): nach
+   dem Playtest („sieht noch buggy aus“) ohne Bremsen-und-wieder-Anfahren und ohne Stocken
+   an der Linie – es pendelt sich nur auf Ringtempo ein und geht im selben Schritt ins
+   Einfädeln; die Autos dahinter rollen weiter.
 2. **Lichter** (`VehicleLamps`, `World.isBraking`): Bremslichter an der stehenden Schlange,
    an Bots vor ihrer Linie und an Fahrern, die für ein Wrack bremsen oder im Stau stehen;
    wer den Unfall noch nicht bemerkt hat, rollt ohne. Die Lichthupe blinkt zweimal, wenn ein
@@ -209,6 +211,9 @@ bereichert; Zurückspulen nach dem Crash, Dauerbrummen an der Sperrzone, SF Comp
    `.glassProminent`) mit der Druckfeder des Systems.
 8. **Tutorial:** „Cars crash instantly. Police get 3 chances.“, erscheint jetzt auch beim
    ersten Crash, der die Schicht beendet.
+9. **Was beschädigt ist, fährt nicht mehr** (Playtest Leo): Auch der Verbrecher-Pickup wird
+   bei jedem Treffer zum Wrack (früher fuhr er verbeult weiter); ohne Takedown endet die
+   Jagd ohne Punkte und ohne verlorene Schicht (`criminalWrecked`).
 
 **Entschieden:** Schichten bleiben kurz (kein 2-Minuten-Ziel); ein verlorenes Level wird
 wiederholt, fair dank Sofort-Neustart.

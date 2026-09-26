@@ -138,6 +138,14 @@ extension World {
         )))
     }
 
+    /// The pickup was wrecked without a takedown: it cannot get away any more, so the chase
+    /// ends without points, and the next criminal comes later as after a takedown.
+    mutating func criminalWrecked(_ criminalID: Int, at point: Vec2, now: Double) {
+        guard criminal.vehicle == criminalID else { return }
+        criminal.phase = .idle(next: now + criminalRng.double(in: config.criminalInterval))
+        events.append(.criminalWrecked(vehicle: criminalID, point: point, time: now))
+    }
+
     /// Emergency dispatch: the next car in the queue turns into a police car, for part of
     /// the combo (`dispatchComboFactor`). Nothing happens, and nothing is paid, if it
     /// already is one.

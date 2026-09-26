@@ -379,9 +379,10 @@ public struct World: Sendable {
         let second = vehicles[j]
         let takedown = isTakedown(first, second) && !criminalRanInto(first, second, at: contact.point)
         let seizure = isSeizure(first, second)
-        // A live criminal shrugs off anything but the police: it keeps its course, the other
-        // car bounces off it as off something much heavier.
-        let armored: Int? = takedown || seizure ? nil : [i, j].first { isArmored(vehicles[$0]) }
+        // Whatever is damaged stops (Leo, 26.09.2026): the criminal's pickup too. It is still
+        // the heavier one (`criminalMass`) and shoves the other car further, but a pickup that
+        // takes a hit without a takedown is a wreck, and the chase is over.
+        let wreckedCriminal = takedown ? nil : [first, second].first(where: isLiveCriminal)
         // The money transporter is wrecked like any car, and its money with it.
         let wreckedTruck = seizure ? nil : [first, second].first { $0.type == .transporter && !$0.isCrashed }
         let culprits = [first, second].filter(causesStrike)
@@ -391,24 +392,15 @@ public struct World: Sendable {
         let normal = contactNormal(contact, first: first, second: second)
         var a = body(of: first)
         var b = body(of: second)
-        if armored == i {
-            a.mass = .infinity
-            a.inertia = .infinity
-        }
-        if armored == j {
-            b.mass = .infinity
-            b.inertia = .infinity
-        }
         let impact = CrashPhysics.collide(&a, &b, at: contact.point, normal: normal, restitution: config.crashRestitution, friction: config.crashFriction)
         addDent(i, at: contact.point, impact: impact)
         addDent(j, at: contact.point, impact: impact)
-        // Push apart by the overlap, so they do not start inside each other.
+        // Push apart by the overlap, half each, so they do not start inside each other.
         let overlap = max(0, -contact.gap)
-        let (pushFirst, pushSecond) = armored == i ? (0.0, overlap) : (armored == j ? (overlap, 0.0) : (overlap / 2, overlap / 2))
-        vehicles[i].position += normal * pushFirst
-        vehicles[j].position -= normal * pushSecond
-        if armored != i { makeWreck(i, contact.point, a) }
-        if armored != j { makeWreck(j, contact.point, b) }
+        vehicles[i].position += normal * (overlap / 2)
+        vehicles[j].position -= normal * (overlap / 2)
+        makeWreck(i, contact.point, a)
+        makeWreck(j, contact.point, b)
         let involvesPlayer = first.owner == .player || second.owner == .player
         var penalty = 0
         var cost = (paid: 0, covered: 0)
@@ -445,17 +437,15 @@ public struct World: Sendable {
         if let truck = wreckedTruck {
             transporterWrecked(truck.id, at: contact.point, now: now)
         }
+        if let pickup = wreckedCriminal {
+            criminalWrecked(pickup.id, at: contact.point, now: now)
+        }
         if strike && isScoring && mode == .shift && isStruckOut {
             endShift(.struckOut, at: now)
         }
     }
 
     func isLiveCriminal(_ vehicle: Vehicle) -> Bool {
-        vehicle.type == .pickup && !vehicle.isCrashed
-    }
-
-    /// The criminal keeps its course in a crash; only the police stop it.
-    func isArmored(_ vehicle: Vehicle) -> Bool {
         vehicle.type == .pickup && !vehicle.isCrashed
     }
 
