@@ -10,7 +10,6 @@ import GameCore
 ///     swift run -c release Sim --curve --shifts 300 the difficulty curve, level by level
 ///     swift run -c release Sim --ring --shifts 200  bots on the ring, runs of your cars
 ///     swift run -c release Sim --career 60          whole careers: levels, money, upgrades
-///     swift run -c release Sim --duty high          every shift on high alert
 ///
 /// Shift i uses seed `seed + i`, so any shift can be replayed in the test window.
 @main
@@ -49,17 +48,16 @@ struct Sim {
             return
         }
         if let shifts = options.careerShifts {
-            await printCareers(shifts: shifts, players: options.players, from: options.seed, config: config, duty: options.duty, source: source)
+            await printCareers(shifts: shifts, players: options.players, from: options.seed, config: config, source: source)
             return
         }
         let level = options.level ?? config.hardLevel
         let cars = config.shiftCarsRange(atLevel: level)
-        let duty = options.duty == .highAlert ? " · high alert" : ""
-        print("\(options.shifts) shifts per bot · level \(level), \(cars.lowerBound)–\(cars.upperBound) cars\(duty) · seeds \(options.seed)–\(last) · \(source)\n")
+        print("\(options.shifts) shifts per bot · level \(level), \(cars.lowerBound)–\(cars.upperBound) cars · seeds \(options.seed)–\(last) · \(source)\n")
         print(Report.header)
         let started = Date()
         for kind in options.bots {
-            let results = await play(kind, shifts: options.shifts, from: options.seed, config: config, level: level, duty: options.duty)
+            let results = await play(kind, shifts: options.shifts, from: options.seed, config: config, level: level)
             print(Report(name: kind.name, results: results).line)
             if kind == .perfect, let crash = results.first(where: { $0.crashes > 0 }) {
                 print("  ⚠ the perfect bot crashed in shift \(crash.seed): replay with --seed \(crash.seed)")
@@ -70,13 +68,13 @@ struct Sim {
 
     /// Plays the shifts in parallel on every core; the results come back in seed order.
     /// Every shift is built for `level`, like in the game.
-    static func play(_ kind: BotKind, shifts: Int, from seed: UInt64, config: Config, level: Int, duty: Duty = .normal) async -> [ShiftResult] {
+    static func play(_ kind: BotKind, shifts: Int, from seed: UInt64, config: Config, level: Int) async -> [ShiftResult] {
         await withTaskGroup(of: (Int, ShiftResult).self) { group in
             for index in 0..<shifts {
                 group.addTask {
                     let shiftSeed = seed + UInt64(index)
-                    // Like the game builds a shift: level, then the roundabout, then the duty.
-                    return (index, kind.play(config: Self.shiftConfig(config, level: level, duty: duty, seed: shiftSeed), seed: shiftSeed))
+                    // Like the game builds a shift: level, then the roundabout.
+                    return (index, kind.play(config: Self.shiftConfig(config, level: level, seed: shiftSeed), seed: shiftSeed))
                 }
             }
             var results: [(Int, ShiftResult)] = []
@@ -98,7 +96,7 @@ extension Sim {
             let cars = config.shiftCarsRange(atLevel: level)
             var line = Report.pad(String(level), 5) + Report.pad("\(cars.lowerBound)–\(cars.upperBound)", 7)
             for kind in [BotKind.human, .perfect] {
-                let results = await play(kind, shifts: options.shifts, from: options.seed, config: config, level: level, duty: options.duty)
+                let results = await play(kind, shifts: options.shifts, from: options.seed, config: config, level: level)
                 let done = results.filter { $0.outcome == .completed }.map(\.time).sorted()
                 let share = Double(done.count) / Double(results.count) * 100
                 let time = done.isEmpty ? "–" : String(format: "%.1f s", done[done.count / 2])
@@ -113,18 +111,17 @@ extension Sim {
     /// One player's career with the human-like bot: from level 1, shift after shift. After
     /// every shift it buys what it can afford, the cheapest step first. Returns the career
     /// after each shift and whether that shift was completed.
-    /// One shift of the curve as the game plays it: level, roundabout, duty, and the
+    /// One shift of the curve as the game plays it: level, roundabout, and the
     /// weather and city event drawn for it (M8).
-    static func shiftConfig(_ config: Config, level: Int, duty: Duty, seed: UInt64) -> Config {
-        let shift = config.forLevel(level, seed: seed).forArms().forDuty(duty)
+    static func shiftConfig(_ config: Config, level: Int, seed: UInt64) -> Config {
+        let shift = config.forLevel(level, seed: seed).forArms()
         return shift
             .forWeather(shift.drawWeather(level: level, seed: seed))
             .forCityEvent(shift.drawCityEvent(level: level, seed: seed), seed: seed)
     }
 
-    static func career(shifts: Int, seed: UInt64, config: Config, duty: Duty) -> [(career: Career, completed: Bool, earned: Int)] {
+    static func career(shifts: Int, seed: UInt64, config: Config) -> [(career: Career, completed: Bool, earned: Int)] {
         var career = Career()
-        career.duty = duty
         var history: [(Career, Bool, Int)] = []
         for index in 0..<shifts {
             let shiftSeed = seed &+ UInt64(index)
@@ -143,12 +140,11 @@ extension Sim {
 
     /// Medians over many careers at a few points: how far a player gets, and how fast the
     /// upgrades come.
-    static func printCareers(shifts: Int, players: Int, from seed: UInt64, config: Config, duty: Duty, source: String) async {
-        let alert = duty == .highAlert ? ", high alert" : ""
-        print("Careers · \(players) players × \(shifts) shifts, human bot, buys the cheapest step it can afford\(alert) · \(source)\n")
+    static func printCareers(shifts: Int, players: Int, from seed: UInt64, config: Config, source: String) async {
+        print("Careers · \(players) players × \(shifts) shifts, human bot, buys the cheapest step it can afford · \(source)\n")
         let careers = await withTaskGroup(of: (Int, [(career: Career, completed: Bool, earned: Int)]).self) { group in
             for player in 0..<players {
-                group.addTask { (player, career(shifts: shifts, seed: seed &+ UInt64(player) &* 10_000, config: config, duty: duty)) }
+                group.addTask { (player, career(shifts: shifts, seed: seed &+ UInt64(player) &* 10_000, config: config)) }
             }
             var all: [(Int, [(career: Career, completed: Bool, earned: Int)])] = []
             for await career in group { all.append(career) }
@@ -194,7 +190,7 @@ enum BotKind: String, CaseIterable, Sendable {
 
 struct Options {
     static let usage = """
-        usage: swift run -c release Sim [--shifts 1000] [--seed 42] [--bot perfect|human|random|all] [--level 5 | --curve | --ring | --career 60 [--players 40]] [--duty high] [--tuning file.json]
+        usage: swift run -c release Sim [--shifts 1000] [--seed 42] [--bot perfect|human|random|all] [--level 5 | --curve | --ring | --career 60 [--players 40]] [--tuning file.json]
         """
 
     var shifts = 1000
@@ -206,7 +202,6 @@ struct Options {
     var ring = false
     var careerShifts: Int?
     var players = 40
-    var duty = Duty.normal
 
     init?(arguments: [String]) {
         var index = 1
@@ -244,12 +239,6 @@ struct Options {
             case "--players":
                 guard let players = value.flatMap({ Int($0) }), players > 0 else { return nil }
                 self.players = players
-            case "--duty":
-                switch value {
-                case "high", "highAlert", "alert": duty = .highAlert
-                case "normal": duty = .normal
-                default: return nil
-                }
             default:
                 return nil
             }

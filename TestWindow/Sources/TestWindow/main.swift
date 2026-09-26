@@ -40,8 +40,8 @@ if let rarity = options.chestPreview {
 session.forcedWeather = options.weather
 session.forcedMapSkin = options.mapSkin
 session.forcedEvent = options.event
-if let duty = options.duty {
-    session.perform(.setDuty(duty))
+if let mode = options.mode {
+    session.perform(.setGameMode(mode))
 }
 print("Save game: \(saveFile.path)  (level \(session.save.career.level), \(session.save.career.money) money)")
 loadTuning(into: session, createIfMissing: false)
@@ -64,6 +64,8 @@ startActions += options.shopSection.map { [.tapShop(.section($0))] } ?? []
 startActions += options.progressSection.map { [.tapProgress(.section($0))] } ?? []
 var screenshotAt = options.screenshotAfterCrash == nil ? options.screenshotAt : .infinity
 var nextAutotap = options.autotapInterval ?? .infinity
+// A press on the Game tab: a click, or a drag sideways to another mode.
+var swipingGameTab = false
 var wasFocused = IsWindowFocused()
 
 while !WindowShouldClose() {
@@ -98,8 +100,22 @@ while !WindowShouldClose() {
             if let content = session.content, let action = SettingsPage.action(at: mouse, content: content, viewport: viewport) {
                 actions.append(.perform(action))
             }
+        } else if session.screen.showsTabBar && session.screen.tab == .game {
+            // Between shifts the press may become a swipe to another mode; the session
+            // turns a short one into the tap.
+            actions.append(.pointerDown(mouse))
+            swipingGameTab = true
         } else {
             actions.append(.tap)
+        }
+    }
+    if swipingGameTab {
+        if IsMouseButtonDown(Int32(MOUSE_BUTTON_LEFT.rawValue)) {
+            actions.append(.pointerMove(mouse))
+        }
+        if IsMouseButtonReleased(Int32(MOUSE_BUTTON_LEFT.rawValue)) {
+            actions.append(.pointerUp(mouse))
+            swipingGameTab = false
         }
     }
     // Dragging a part across the Street Builder.
@@ -139,8 +155,11 @@ while !WindowShouldClose() {
     if IsKeyPressed(key(KEY_F2)) {
         actions.append(.cycleSlowMotion)
     }
-    if IsKeyPressed(key(KEY_H)) {
-        actions.append(.perform(.setDuty(session.save.career.duty == .normal ? .highAlert : .normal)))
+    if IsKeyPressed(key(KEY_LEFT)) {
+        actions.append(.swipeMode(-1))
+    }
+    if IsKeyPressed(key(KEY_RIGHT)) {
+        actions.append(.swipeMode(1))
     }
     if IsKeyPressed(key(KEY_T)) {
         loadTuning(into: session, createIfMissing: true)

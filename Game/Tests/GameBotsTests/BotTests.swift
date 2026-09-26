@@ -61,9 +61,9 @@ struct BotTests {
         }
     }
 
-    /// Level 20 as the game builds it: level, roundabout, duty, weather, city event.
+    /// Level 20 as the game builds it: level, roundabout, weather, city event.
     func levelTwenty(_ seed: UInt64) -> Config {
-        let base = config.forLevel(20, seed: seed).forArms().forDuty(.normal)
+        let base = config.forLevel(20, seed: seed).forArms()
         return base
             .forWeather(base.drawWeather(level: 20, seed: seed))
             .forCityEvent(base.drawCityEvent(level: 20, seed: seed), seed: seed)

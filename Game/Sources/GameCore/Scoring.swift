@@ -43,6 +43,13 @@ public struct ScoreBoard: Sendable, Equatable {
     /// Money lost to crashes and escapes (M7), and what the insurances paid.
     public internal(set) var costs = 0
     public internal(set) var covered = 0
+    /// Mayhem: flames earned, wrecks made, the chain reaction running and the biggest one,
+    /// and when the last crash happened.
+    public internal(set) var flames = 0
+    public internal(set) var wrecks = 0
+    public internal(set) var crashChain = 0
+    public internal(set) var biggestChain = 0
+    public internal(set) var lastCrashAt: Double?
 
     public init() {}
 
@@ -172,6 +179,24 @@ extension World {
         setCombo(0)
         setChain(0, at: time)
         return penalty
+    }
+
+    /// Mayhem: a crash that makes a new wreck. A follow-up in the traffic within
+    /// `mayhemChainWindow` of the last crash extends the chain reaction and is worth its place
+    /// in it; the player's own car crashing starts a new one (so throwing car after car into
+    /// the same wreck is no chain).
+    mutating func scoreMayhem(at time: Double, followUp: Bool = true) -> (flames: Int, chain: Int) {
+        if followUp, let last = score.lastCrashAt, time - last <= config.mayhemChainWindow {
+            score.crashChain += 1
+        } else {
+            score.crashChain = 1
+        }
+        score.lastCrashAt = time
+        score.biggestChain = max(score.biggestChain, score.crashChain)
+        score.wrecks += 1
+        let flames = min(score.crashChain, config.mayhemMaxChainFlames)
+        score.flames += flames
+        return (flames, score.crashChain)
     }
 
     /// The last strike, or one police crash more than a shift survives.

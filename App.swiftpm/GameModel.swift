@@ -15,7 +15,6 @@ final class GameModel {
     @ObservationIgnored private(set) var renderList: RenderList?
     /// Mirrors of session state the native overlays react to.
     private(set) var screen: Screen = .ready
-    private(set) var duty: Duty = .normal
     private(set) var settingsContent: ScreenContent?
 
     @ObservationIgnored private let audio = AppAudio()
@@ -73,7 +72,6 @@ final class GameModel {
             screen = session.screen
             GameCenter.showAccessPoint(screen == .ready)
         }
-        if duty != session.save.career.duty { duty = session.save.career.duty }
         let content = session.screen == .settings ? session.content : nil
         if settingsContent != content { settingsContent = content }
     }

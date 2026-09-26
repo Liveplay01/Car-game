@@ -1,3 +1,4 @@
+import Foundation
 import Testing
 @testable import GameCore
 @testable import GamePresentation
@@ -97,6 +98,137 @@ struct BuildAndProgressTabTests {
         let achievements = layout.segments.last!.1.center
         let action = session.pageAction(at: achievements, viewport: viewport)
         #expect(action == .tapProgress(.section(.achievements)))
+    }
+}
+
+@Suite("Game modes (Leo, 26.09.2026)")
+struct GameModeTests {
+    /// A session past its tutorial, waiting on the Game tab.
+    func waiting(_ game: SaveGame = SaveGame()) -> (GameSession, MemorySaveStore) {
+        var game = game
+        game.tutorialDone = true
+        let store = MemorySaveStore(game)
+        let session = makeSession(store: store)
+        session.advance()
+        return (session, store)
+    }
+
+    @Test func aSwipeSlidesTheMapToTheNextModesRoundabout() {
+        let (session, store) = waiting()
+        #expect(session.gameMode == .shift)
+        let before = session.advance().renderList.camera.focus
+        // The map follows the finger.
+        session.advance([.pointerDown(Vec2(300, 400))])
+        session.advance([.pointerMove(Vec2(200, 400))])
+        let dragged = session.advance([.pointerMove(Vec2(150, 400))]).renderList.camera.focus
+        #expect(abs(dragged.x - before.x + 150) < 1)
+        // Let go far enough: it travels on, and the new roundabout clicks into place.
+        session.advance([.pointerUp(Vec2(150, 400))])
+        session.run(seconds: 1.5)
+        #expect(session.gameMode == .unlimited)
+        #expect(store.game?.mode == .unlimited)
+        #expect(session.world.config.endless)
+        #expect(session.screen == .ready)
+        let settled = session.advance().renderList.camera.focus
+        #expect(abs(settled.x - before.x) < 0.5)
+    }
+
+    @Test func theNewModePopsUpAsAMessage() {
+        let (session, _) = waiting()
+        session.advance([.swipeMode(1)])
+        session.run(seconds: 0.5) { $0.gameMode == .unlimited }
+        session.run(seconds: 0.3)
+        #expect(session.advance().texts.contains(Strings.Modes.line(.unlimited)))
+        // It goes again after a moment.
+        session.run(seconds: ModeBanner.duration + 0.2)
+        #expect(!session.advance().texts.contains(Strings.Modes.line(.unlimited)))
+    }
+
+    @Test func aShortDragSpringsBackAndATapStillStarts() {
+        let (session, _) = waiting()
+        session.advance([.pointerDown(Vec2(300, 400))])
+        session.advance([.pointerMove(Vec2(260, 400))])
+        session.run(seconds: 0.3)
+        session.advance([.pointerUp(Vec2(260, 400))])
+        session.run(seconds: 1)
+        #expect(session.gameMode == .shift)
+        #expect(session.screen == .ready)
+        // A short press is a tap: the shift starts.
+        session.advance([.pointerDown(Vec2(200, 400))])
+        session.advance([.pointerUp(Vec2(203, 400))])
+        #expect(session.screen == .playing)
+    }
+
+    @Test func theArrowKeysTravelToo() {
+        let (session, _) = waiting()
+        session.advance([.swipeMode(1)])
+        session.run(seconds: 1.5)
+        session.advance([.swipeMode(1)])
+        session.run(seconds: 1.5)
+        #expect(session.gameMode == .mayhem)
+        // Past the last mode nothing happens.
+        session.advance([.swipeMode(1)])
+        session.run(seconds: 1.5)
+        #expect(session.gameMode == .mayhem)
+    }
+
+    @Test func unlimitedKeepsItsOwnBest() {
+        let (session, store) = waiting()
+        session.advance([.perform(.setGameMode(.unlimited))])
+        #expect(session.playingMode == .unlimited)
+        #expect(session.world.carsLeft == nil)
+        session.advance([.tap])
+        session.run(seconds: 1)
+        crashNextCar(session)
+        session.run(seconds: 6) { $0.isShowingResult }
+        #expect(session.isShowingResult)
+        // An Unlimited run only ends lost: its best is its own, the highscore stays.
+        #expect(store.game?.unlimitedBestCars ?? 0 >= 2)
+        #expect(store.game?.highscore == 0)
+        #expect(store.game?.career.level == 1)
+    }
+
+    @Test func mayhemBurnsAndCountsForNothingElse() {
+        var game = SaveGame()
+        game.career.money = 5_000
+        let (session, store) = waiting(game)
+        session.advance([.perform(.setGameMode(.mayhem))])
+        #expect(session.world.config.mayhem)
+        #expect(session.world.carsLeft == session.config.mayhemCars)
+        #expect(session.advance().texts.contains(Strings.Mayhem.caption))
+        session.advance([.tap])
+        session.run(seconds: 1)
+        crashNextCar(session)
+        // A crash burns and the run goes on.
+        #expect(session.screen == .playing)
+        #expect(session.world.score.flames >= 1)
+        // To the end: every car in.
+        finishShift(session)
+        session.run(seconds: 6) { $0.isShowingResult }
+        #expect(session.isShowingResult)
+        // Its own best, and nothing else: no money, no level, no stats.
+        #expect(store.game?.mayhemBest ?? 0 >= 1)
+        #expect(store.game?.career.money == 5_000)
+        #expect(store.game?.career.level == 1)
+        #expect(store.game?.shiftsPlayed == 0)
+        #expect(store.game?.career.mastery == MasteryStats())
+        #expect(store.game?.highscore == 0)
+    }
+
+    @Test func theTutorialHasNoModes() {
+        let session = makeSession()
+        session.advance([.swipeMode(1)])
+        session.run(seconds: 1)
+        #expect(session.gameMode == .shift)
+        // A touch counts at once: the first shift starts.
+        session.advance([.pointerDown(Vec2(200, 400))])
+        #expect(session.screen == .playing)
+    }
+
+    @Test func anOldSaveWithUnlimitedStillLoadsIt() throws {
+        let data = Data(#"{"unlimited": true, "tutorialDone": true}"#.utf8)
+        let game = try JSONDecoder().decode(SaveGame.self, from: data)
+        #expect(game.mode == .unlimited)
     }
 }
 

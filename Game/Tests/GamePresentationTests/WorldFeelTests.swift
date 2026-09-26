@@ -87,21 +87,6 @@ struct WorldFeelTests {
         #expect(abs(session.advance().renderList.camera.scale - scale) < 1e-9)
     }
 
-    /// High Alert is on the road: two fine stripes along the ring lane, faded in and out.
-    @Test func highAlertPutsStripesOnTheRing() {
-        let session = makeSession()
-        #expect(item(session.advance(), RenderID.alertStripes) == nil)
-        session.advance([.perform(.setDuty(.highAlert))])
-        session.run(seconds: 0.8) { _ in false }
-        let frame = session.advance()
-        #expect((item(frame, RenderID.alertStripes)?.opacity ?? 0) > 0.4)
-        #expect(item(frame, RenderID.alertStripes + 1) != nil)
-        #expect(item(frame, RenderID.alertStripes)?.color == .destructive)
-        session.advance([.perform(.setDuty(.normal))])
-        session.run(seconds: 1.5) { _ in false }
-        #expect(item(session.advance(), RenderID.alertStripes) == nil)
-    }
-
     /// The music breathes in when a criminal is announced or the rush hour begins, and opens
     /// again a moment later.
     @Test func theMusicBreathesInAtTheBigMoments() {

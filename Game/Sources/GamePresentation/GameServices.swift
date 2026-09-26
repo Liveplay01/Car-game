@@ -17,6 +17,10 @@ public enum Leaderboard: String, Sendable, CaseIterable {
     case bestCombo = "cargame.bestcombo"
     /// Longest Daily streak.
     case dailyStreak = "cargame.dailystreak"
+    /// Best score of an Unlimited run.
+    case unlimited = "cargame.unlimited"
+    /// Most flames in a Mayhem run.
+    case mayhem = "cargame.mayhem"
 }
 
 /// Achievement ids: every mastery tier, every streak milestone, every album.

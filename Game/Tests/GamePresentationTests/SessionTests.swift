@@ -72,7 +72,7 @@ func makeSession(
     session.format = TextFormat(groupingSeparator: ",")
     // A fixed day whose challenges a short test shift cannot meet, so no test depends on
     // the calendar.
-    session.today = (0...).first { Set(Challenge.of(day: $0)).isDisjoint(with: [.perfectRun, .highAlertShift]) }!
+    session.today = (0...).first { Set(Challenge.of(day: $0)).isDisjoint(with: [.perfectRun]) }!
     // The Daily Shift would be every fresh save's first shift; tests get plain ones
     // (`RewardTests` turn it on).
     session.automaticDaily = false
@@ -800,27 +800,6 @@ struct TabTests {
             UpgradeArt.add(upgrade, in: Rect(minX: 0, minY: 0, maxX: 56, maxY: 56), opacity: 1, id: &id, to: &list)
             #expect(list.items.count >= 2)
         }
-    }
-
-    @Test func highAlertIsChosenBeforeTheShiftAndPaysTriple() {
-        let store = MemorySaveStore()
-        let session = makeSession(config: quietConfig(cars: 1) { $0.rushHourCars = 0 }, store: store)
-        let texts = session.advance().texts
-        #expect(texts.contains(Strings.Ready.dutyCaption(.normal, pay: session.config.highAlertPay)))
-        let normalPay = session.world.config.shiftPay
-
-        session.advance([.perform(.setDuty(.highAlert))])
-        #expect(store.game?.career.duty == .highAlert)
-        // The waiting shift is rebuilt at once, so it is the one that will be played.
-        #expect(session.world.config.shiftPay == Int((Double(normalPay) * session.config.highAlertPay).rounded()))
-        #expect(session.advance().texts.contains(Strings.Ready.dutyCaption(.highAlert, pay: session.config.highAlertPay)))
-        // The HUD says so while playing.
-        let alertPay = session.world.config.shiftPay
-        session.advance([.tap])
-        #expect(session.advance().texts.contains(Strings.HUD.highAlertLabel))
-
-        finishShift(session)
-        #expect(store.game?.career.money == alertPay)
     }
 
     @Test func theStripMapsClicksToTabs() {

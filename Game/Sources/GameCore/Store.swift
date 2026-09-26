@@ -139,3 +139,22 @@ extension Config {
         return config
     }
 }
+
+extension Config {
+    /// Mayhem (Leo, 26.09.2026): `mayhemCars` cars, more traffic, no criminals, no police in
+    /// the queue, no money on the road and none paid.
+    public func forMayhem() -> Config {
+        var config = self
+        config.mayhem = true
+        config.shiftCars = mayhemCars
+        config.densityStart += mayhemExtraTraffic
+        config.densityEnd += mayhemExtraTraffic
+        config.minRingBots += mayhemExtraTraffic
+        config.criminalChance = 0
+        config.policeShare = 0
+        config.shiftPay = 0
+        config.completionBonus = 0
+        config.perfectRunPoints = 0
+        return config
+    }
+}

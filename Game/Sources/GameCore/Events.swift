@@ -115,6 +115,10 @@ public struct CrashReport: Sendable, Equatable {
     /// Money the crash cost (level 20 and up, after insurance), and what the insurance paid (M7).
     public var cost = 0
     public var covered = 0
+    /// Mayhem: the flames this crash earned and its place in the chain reaction (0 if it
+    /// made no new wreck).
+    public var flames = 0
+    public var chain = 0
 }
 
 public struct ComboChange: Sendable, Equatable {

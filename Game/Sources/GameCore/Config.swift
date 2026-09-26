@@ -286,6 +286,38 @@ public struct Config: Sendable, Equatable {
     public var shiftCars: Int = 15
     /// The last this-many cars are rush hour: faster, denser, points ×2.
     public var rushHourCars: Int = 4
+
+    // MARK: Unlimited (Leo, 26.09.2026)
+
+    /// An endless shift: no car count, no rush hour, no completion. It runs until it is
+    /// lost; after the ramp the traffic keeps getting denser and faster.
+    public var endless = false
+    /// The level Unlimited is played at, the same for everyone (fair best scores).
+    public var endlessLevel: Int = 3
+    /// One car more on the road every this-many seconds after the ramp, up to a limit…
+    public var endlessDensityEvery: Double = 25
+    public var endlessMaxDensityBonus: Int = 8
+    /// …and the tempo rises by this much per minute, up to a limit.
+    public var endlessTempoPerMinute: Double = 0.08
+    public var endlessMaxTempo: Double = 1.6
+    /// Money for every car sent, paid when the run ends.
+    public var endlessPayPerCar: Int = 20
+
+    // MARK: Mayhem (Leo, 26.09.2026)
+
+    /// Mayhem: crash as much as you can. Every wreck is counted in flames, a crash that
+    /// follows another within `mayhemChainWindow` extends a chain reaction and is worth its
+    /// place in it. No strikes, no costs, no money, no stats (`forMayhem`).
+    public var mayhem = false
+    /// Cars to send in a Mayhem run.
+    public var mayhemCars: Int = 30
+    /// The level Mayhem is played at, and how many cars more are on the road than there.
+    public var mayhemLevel: Int = 6
+    public var mayhemExtraTraffic: Int = 3
+    /// A crash this soon after the last one extends the chain reaction.
+    public var mayhemChainWindow: Double = 1.5
+    /// A crash is worth its place in the chain, at most this many flames.
+    public var mayhemMaxChainFlames: Int = 10
     /// Density and tempo rise from their start to their end values over this time, and
     /// stay there: whoever waits for the perfect gap gets more traffic, not an easier one.
     public var rampSeconds: Double = 20
@@ -328,18 +360,6 @@ public struct Config: Sendable, Equatable {
     public var maxLevelTempoBonus: Double = 0.4
     public var criminalTimePerLevel: Double = 0.25
     public var minCriminalTime: Double = 8
-
-    // MARK: Duty (IDEA.md: push your luck; ROADMAP.md, M5)
-
-    /// High Alert: this many cars more to bring in, a chase this much shorter (never below
-    /// `minCriminalTime`) and a criminal in every shift. The traffic itself stays as the
-    /// level has it: denser or faster traffic on top of a high level made those levels
-    /// unplayable rather than riskier. Criminals closer together (a factor below 1) did the
-    /// same — it turned high levels into one long chase — so that one stays at 1.
-    public var highAlertCars: Double = 1.15
-    public var highAlertCriminalTime: Double = 0.8
-    public var highAlertCriminalInterval: Double = 1
-    public var highAlertPay: Double = 2
 
     // MARK: Money and upgrades (ROADMAP.md, M5; `Upgrades.swift`)
 

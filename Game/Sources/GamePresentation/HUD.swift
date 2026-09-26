@@ -31,6 +31,8 @@ struct Popup: Sendable, Equatable {
         /// A module did its job (M9): a short pulse and a few sparks in its colour, so the
         /// player sees it is worth something.
         case modulePulse(ColorToken)
+        /// Mayhem: the flames a crash earned, and its place in the chain reaction.
+        case flames(Int, chain: Int)
     }
 
     static let lifetime = 0.9
@@ -74,7 +76,63 @@ enum HUD {
     /// - Parameters:
     ///   - money: the bank plus what this shift has earned so far, as it counts.
     ///   - best: the highscore to beat; nil before the first one.
-    static func add(world: World, level: Int, duty: Duty, score: Int, money: Int, best: String?, comboPop: Double, race: (delta: Double, pop: Double)? = nil, pops: Pops = Pops(), format: TextFormat, showsKeys: Bool, timeScale: Double, to list: inout RenderList) {
+    static func add(world: World, level: Int, score: Int, money: Int, best: String?, comboPop: Double, race: (delta: Double, pop: Double)? = nil, pops: Pops = Pops(), flames: Int = 0, flamePop: Double = 1, format: TextFormat, showsKeys: Bool, timeScale: Double, to list: inout RenderList) {
+        if world.config.mayhem {
+            addMayhem(world: world, flames: flames, pop: flamePop, best: best, carsPop: pops.cars, format: format, to: &list)
+            return
+        }
+        addTopCard(world: world, level: level, score: score, comboPop: comboPop, money: money, best: best, race: race, pops: pops, format: format, showsKeys: showsKeys, timeScale: timeScale, to: &list)
+        // Unlimited has no rim to count down: the cars sent so far sit under the card.
+        if world.config.endless {
+            let frame = TopBar.frame(width: list.camera.viewport.x)
+            let label = Strings.Modes.carsSent(world.shift.carsSent)
+            let at = Vec2(frame.center.x, frame.maxY + 18)
+            let size = 12 * Pops.land(pops.cars, amount: 0.2)
+            var id = RenderID.hud + 380
+            MenuKit.chromePill(center: at, size: Vec2(Icons.textWidth(label, size: 12) + 28, 26), opacity: 1, id: &id, to: &list)
+            list.add(.text(label, position: at, size: size, alignment: .center, weight: .bold), color: .primary, space: .screen, id: id)
+        }
+    }
+
+    /// Mayhem's top card (Leo, 26.09.2026): the cars still to throw in, the flames in the
+    /// middle — bumping with every crash, glowing while a chain reaction runs — and the best.
+    /// On the island the running chain, big.
+    private static func addMayhem(world: World, flames: Int, pop: Double, best: String?, carsPop: Double, format: TextFormat, to list: inout RenderList) {
+        var id = RenderID.hud
+        TopBar.addScrim(id: &id, to: &list)
+        let frame = TopBar.frame(width: list.camera.viewport.x)
+        let columns = TopBar.columns(frame)
+        TopBar.addCard(frame, id: &id, to: &list)
+        TopBar.addColumn(columns.left, alignment: .leading, caption: Strings.Mayhem.cars, value: format.number(world.carsLeft ?? 0), valueSize: 20 * Pops.land(carsPop, amount: 0.12), id: &id, to: &list)
+        let chain = activeChain(world)
+        let center = columns.center
+        if chain > 1 {
+            // The chain lights the column up in fire.
+            let inset = Rect(minX: center.minX + 4, minY: center.minY + 4, maxX: center.maxX - 4, maxY: center.maxY - 4)
+            list.add(.roundedRect(center: inset.center, size: Vec2(inset.width, inset.height), cornerRadius: TopBar.corner - 4, rotation: 0), color: .fireOuter, opacity: 0.28, space: .screen, id: id)
+            id += 1
+        }
+        list.add(.text(chain > 1 ? Strings.Mayhem.chain(chain) : Strings.Mayhem.flames, position: Vec2(center.center.x, center.minY + TopBar.captionRow), size: 10, alignment: .center, weight: .bold), color: chain > 1 ? .fireCore : .muted, space: .screen, id: id)
+        id += 1
+        Icons.flameTag(format.number(flames), at: Vec2(center.center.x, center.minY + TopBar.valueRow), size: Metrics.timerSize * Pops.land(pop, amount: 0.3), alignment: .center, color: .primary, id: &id, to: &list)
+        TopBar.addColumn(columns.right, alignment: .trailing, caption: Strings.HUD.bestLabel, value: best ?? "–", valueColor: best == nil ? .muted : .primary, id: &id, to: &list)
+        // The island: the chain reaction as it grows.
+        if chain > 1 {
+            let island = list.camera.toScreen(.zero)
+            let size = Metrics.multiplierSize * (1 + 0.25 * (1 - Ease.clamp01(pop)))
+            list.add(.text("×\(chain)", position: island, size: size, alignment: .center, weight: .bold), color: .fireCore, space: .screen, id: id)
+            list.add(.text(Strings.Mayhem.chain(chain), position: island + Vec2(0, 36), size: Metrics.comboLabelSize, alignment: .center, weight: .bold), color: .fireOuter, space: .screen, id: id + 1)
+            id += 2
+        }
+    }
+
+    /// The chain reaction still running, or 0.
+    static func activeChain(_ world: World) -> Int {
+        guard let last = world.score.lastCrashAt, world.time - last <= world.config.mayhemChainWindow else { return 0 }
+        return world.score.crashChain
+    }
+
+    private static func addTopCard(world: World, level: Int, score: Int, comboPop: Double, money: Int, best: String?, race: (delta: Double, pop: Double)?, pops: Pops, format: TextFormat, showsKeys: Bool, timeScale: Double, to list: inout RenderList) {
         let width = list.camera.viewport.x
         let margin = Metrics.hudMargin
         var id = RenderID.hud
@@ -90,7 +148,7 @@ enum HUD {
         TopBar.addCard(frame, id: &id, to: &list)
 
         // Left: the money, counting up as the shift earns; on High Alert its caption says so.
-        TopBar.addMoneyColumn(columns.left, alignment: .leading, caption: duty == .highAlert ? Strings.HUD.highAlertLabel : Strings.HUD.moneyLabel, captionColor: duty == .highAlert ? .destructive : .muted, money: format.number(money), valueSize: 20 * Pops.land(pops.money, amount: 0.15), id: &id, to: &list)
+        TopBar.addMoneyColumn(columns.left, alignment: .leading, money: format.number(money), valueSize: 20 * Pops.land(pops.money, amount: 0.15), id: &id, to: &list)
 
         // Centre: the score, and over it the crashes the shift survives. Every car sent
         // ticks it. In rush hour the column lights up in the accent: a state change you
@@ -152,7 +210,7 @@ enum HUD {
             }
         }
 
-        addIsland(world: world, level: level, duty: duty, pop: comboPop, to: &list, id: &id)
+        addIsland(world: world, level: level, pop: comboPop, to: &list, id: &id)
     }
 
     /// Back after an interruption: the world stands still and counts in. No menu, no button
@@ -171,7 +229,7 @@ enum HUD {
     }
 
     /// Multiplier, combo count, and above them in rush hour its factor, on the centre island.
-    private static func addIsland(world: World, level: Int, duty: Duty, pop: Double, to list: inout RenderList, id: inout Int) {
+    private static func addIsland(world: World, level: Int, pop: Double, to list: inout RenderList, id: inout Int) {
         let config = world.config
         let center = list.camera.toScreen(.zero)
         let tier = Scoring.tier(combo: world.score.combo, config: config)
@@ -407,6 +465,11 @@ enum HUD {
             case .covered:
                 text = Strings.HUD.covered
                 color = .muted
+            case let .flames(flames, chain):
+                // The further along the chain, the bigger and hotter.
+                text = Strings.Mayhem.popup(flames)
+                color = chain >= 3 ? .fireCore : .fireOuter
+                size = Metrics.popupSize * (1 + 0.15 * Double(min(chain, 6)))
             }
             var at = camera.toScreen(popup.position) + Vec2(0, -30)
             let height = size + 4
@@ -425,6 +488,37 @@ enum HUD {
 /// The Game tab between shifts: which level comes next, how many cars it has, and that one
 /// tap starts it. There is no start menu (FOUNDATION.md 3); the shift is already flowing
 /// behind it.
+/// The mode, as a message that pops up when the map has slid on to its roundabout (Leo,
+/// 26.09.2026): springs in, stays a moment, then rises and fades.
+enum ModeBanner {
+    static let duration = 1.8
+
+    static func add(_ mode: GameMode, age: Double, top: Double, reduceMotion: Bool, to list: inout RenderList) {
+        guard age < duration else { return }
+        let width = list.camera.viewport.x
+        let fadeIn = Ease.outCubic(age / 0.15)
+        let leave = Ease.clamp01((age - (duration - 0.35)) / 0.35)
+        let opacity = fadeIn * (1 - leave)
+        guard opacity > 0.01 else { return }
+        let pop = reduceMotion ? 1 : Ease.spring(age / 0.45)
+        let rise = reduceMotion ? 0 : -14 * Ease.outCubic(leave)
+        let center = Vec2(width / 2, top + 30 + rise)
+        let size = Vec2(min(width - 48, 260), 60) * (0.7 + 0.3 * pop)
+        var id = RenderID.hud + 400
+        MenuKit.chromePill(center: center, size: size, tint: tint(mode), opacity: opacity, id: &id, to: &list)
+        list.add(.text(Strings.Modes.name(mode), position: center + Vec2(0, -9), size: 20 * (0.8 + 0.2 * pop), alignment: .center, weight: .bold), color: tint(mode), opacity: opacity, space: .screen, id: id)
+        list.add(.text(Strings.Modes.line(mode), position: center + Vec2(0, 14), size: 12, alignment: .center, weight: .regular), color: .muted, opacity: opacity, space: .screen, id: id + 1)
+    }
+
+    static func tint(_ mode: GameMode) -> ColorToken {
+        switch mode {
+        case .shift: .primary
+        case .unlimited: .accent
+        case .mayhem: .fireOuter
+        }
+    }
+}
+
 enum ReadyBanner {
     /// What the Daily Shift's banner and its splash show (Leo, 25.09.2026).
     struct DailyCard {
@@ -442,7 +536,7 @@ enum ReadyBanner {
     ///   - prompt: nil when someone else draws it (the result, which turns into this).
     ///   - drawsCard: false while the result turns into this: its card stays and only
     ///     what it says changes, fading in with `opacity`.
-    static func add(level: Int, cars: Int, duty: Duty, dutyPay: Double, highscore: String?, money: String, conditions: String? = nil, daily: DailyCard? = nil, prompt: String? = Strings.Ready.tapToStart, time: Double, reduceMotion: Bool, showsKeys: Bool, drawsCard: Bool = true, opacity: Double = 1, to list: inout RenderList) {
+    static func add(level: Int, cars: Int, highscore: String?, money: String, conditions: String? = nil, daily: DailyCard? = nil, mode: GameMode = .shift, prompt: String? = Strings.Ready.tapToStart, time: Double, reduceMotion: Bool, showsKeys: Bool, drawsCard: Bool = true, opacity: Double = 1, to list: inout RenderList) {
         let width = list.camera.viewport.x
         var id = drawsCard ? RenderID.hud : RenderID.hud + 200
         func text(_ string: String, _ position: Vec2, size: Double, weight: FontWeight = .bold, color: ColorToken, opacity factor: Double = 1) {
@@ -459,9 +553,13 @@ enum ReadyBanner {
         }
         TopBar.addMoneyColumn(columns.left, alignment: .leading, money: money, opacity: opacity, id: &id, to: &list)
         let center = columns.center
-        let caption = daily == nil ? Strings.Ready.dutyCaption(duty, pay: dutyPay) : Strings.Daily.caption(duty)
-        let captionColor: ColorToken = daily != nil ? .hazard : (duty == .highAlert ? .destructive : .muted)
-        TopBar.addColumn(center, alignment: .center, caption: caption, captionColor: captionColor, value: Strings.HUD.cars(cars), valueSize: Metrics.timerSize, opacity: opacity, id: &id, to: &list)
+        // Unlimited has no car count: it goes on until it is lost.
+        let (caption, captionColor): (String, ColorToken) = switch mode {
+        case .shift: daily == nil ? (Strings.Ready.levelCaption(level), .muted) : (Strings.Daily.caption, .hazard)
+        case .unlimited: (Strings.Modes.unlimitedCaption, .accent)
+        case .mayhem: (Strings.Mayhem.caption, .fireOuter)
+        }
+        TopBar.addColumn(center, alignment: .center, caption: caption, captionColor: captionColor, value: mode == .unlimited ? Strings.Modes.endless : Strings.HUD.cars(cars), valueSize: Metrics.timerSize, opacity: opacity, id: &id, to: &list)
         TopBar.addColumn(columns.right, alignment: .trailing, caption: Strings.HUD.bestLabel, value: highscore ?? "–", valueColor: highscore == nil ? .muted : .primary, opacity: opacity, id: &id, to: &list)
         // Under the card, quietly: the streak on the Daily.
         if let daily {
@@ -559,11 +657,13 @@ enum ResultBanner {
         TopBar.addCard(frame, id: &id, to: &list)
 
         let shown = Ease.outCubic(age / Self.enter) * (1 - settled(age: age))
-        let (title, titleColor): (String, ColorToken) = switch result.outcome {
+        var (title, titleColor): (String, ColorToken) = switch result.outcome {
         case .completed: (Strings.Result.levelComplete(summary.level), .accent)
         case .struckOut: (Strings.Result.gameOver, .destructive)
         case .escaped: (Strings.Result.escaped, .vehicleCriminal)
         }
+        if summary.mode == .unlimited, result.outcome == .struckOut { title = Strings.Modes.runOver }
+        if summary.mode == .mayhem { (title, titleColor) = (Strings.Mayhem.over, .fireOuter) }
 
         // Once the next shift's screen has taken over, only the card and the prompt are left.
         if shown > 0.001 {
@@ -591,7 +691,11 @@ enum ResultBanner {
         // the rest turns into the next shift's screen.
         let prompt = Ease.outCubic((age - inputLock) / Self.enter)
         guard prompt > 0 else { return }
-        let next = result.outcome == .completed ? Strings.Result.nextLevel(nextLevel) : Strings.Result.retryLevel(nextLevel)
+        let next = switch summary.mode {
+        case .unlimited: Strings.Modes.again
+        case .mayhem: Strings.Mayhem.again
+        case .shift: result.outcome == .completed ? Strings.Result.nextLevel(nextLevel) : Strings.Result.retryLevel(nextLevel)
+        }
         text(next, island, size: 17, color: .primary, opacity: prompt)
         let details = prompt * (1 - settled(age: age))
         // From level 20 on mistakes cost money (M7): the loss, or that insurance paid it.
@@ -599,8 +703,14 @@ enum ResultBanner {
             text(Strings.Result.loss(format.number(result.costs), escaped: result.outcome == .escaped), island - Vec2(0, 28), size: 14, color: .destructive, opacity: details)
         } else if result.covered > 0 {
             text(Strings.Result.covered(format.number(result.covered)), island - Vec2(0, 28), size: 14, color: .muted, opacity: details)
+        } else if summary.mode == .unlimited {
+            text(Strings.Modes.carsSent(result.carsSent), island - Vec2(0, 28), size: 14, color: .accent, opacity: details)
+        } else if summary.mode == .mayhem {
+            text(Strings.Mayhem.summary(wrecks: result.wrecks, chain: result.biggestChain), island - Vec2(0, 28), size: 14, color: .fireOuter, opacity: details)
         }
-        text(Strings.Result.stats(combo: format.number(result.bestCombo), tightFits: format.number(result.tightFits), busted: result.takedowns, transporters: result.transporters, money: nil, time: format.seconds(result.time)), island + Vec2(0, 28), size: 13, weight: .regular, color: .muted, opacity: details)
+        if summary.mode != .mayhem {
+            text(Strings.Result.stats(combo: format.number(result.bestCombo), tightFits: format.number(result.tightFits), busted: result.takedowns, transporters: result.transporters, money: nil, time: format.seconds(result.time)), island + Vec2(0, 28), size: 13, weight: .regular, color: .muted, opacity: details)
+        }
         if showsKeys {
             text(Strings.Result.keys, island + Vec2(0, 48), size: 12, weight: .regular, color: .muted, opacity: details)
         }
@@ -619,11 +729,18 @@ enum ResultBanner {
 
         // Centre: how it went, over the final score, which lands with a small bump.
         let pop = reduceMotion ? 1 : HUD.Pops.land(age / 0.4, amount: 0.12)
-        TopBar.addColumn(columns.center, alignment: .center, caption: title, captionColor: titleColor, value: format.number(result.score), valueSize: Metrics.timerSize * pop, opacity: shown, id: &id, to: &list)
+        if summary.mode == .mayhem {
+            list.add(.text(title, position: Vec2(columns.center.center.x, columns.center.minY + TopBar.captionRow), size: 10, alignment: .center, weight: .bold), color: titleColor, opacity: shown, space: .screen, id: id)
+            id += 1
+            Icons.flameTag(format.number(result.flames), at: Vec2(columns.center.center.x, columns.center.minY + TopBar.valueRow), size: Metrics.timerSize * pop, alignment: .center, color: .primary, opacity: shown, id: &id, to: &list)
+        } else {
+            TopBar.addColumn(columns.center, alignment: .center, caption: title, captionColor: titleColor, value: format.number(result.score), valueSize: Metrics.timerSize * pop, opacity: shown, id: &id, to: &list)
+        }
 
         // Right: the best score — this one, if it is new.
         if summary.isNewHighscore {
-            TopBar.addColumn(columns.right, alignment: .trailing, caption: Strings.Result.newBest, captionColor: .accent, value: format.number(result.score), valueColor: .accent, opacity: shown, id: &id, to: &list)
+            let value = summary.mode == .mayhem ? result.flames : result.score
+            TopBar.addColumn(columns.right, alignment: .trailing, caption: Strings.Result.newBest, captionColor: .accent, value: format.number(value), valueColor: .accent, opacity: shown, id: &id, to: &list)
         } else {
             let best = summary.previousHighscore > 0 ? format.number(summary.previousHighscore) : "–"
             TopBar.addColumn(columns.right, alignment: .trailing, caption: Strings.HUD.bestLabel, value: best, valueColor: summary.previousHighscore > 0 ? .primary : .muted, opacity: shown, id: &id, to: &list)

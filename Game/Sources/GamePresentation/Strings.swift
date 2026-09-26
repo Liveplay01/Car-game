@@ -25,18 +25,51 @@ public enum Strings {
         }
     }
 
+    /// The Game tab's modes (Leo, 26.09.2026).
+    public enum Modes {
+        public static func name(_ mode: GameMode) -> String {
+            switch mode {
+            case .shift: "SHIFT"
+            case .unlimited: "UNLIMITED"
+            case .mayhem: "MAYHEM"
+            }
+        }
+        public static func line(_ mode: GameMode) -> String {
+            switch mode {
+            case .shift: "Clear the level, move up"
+            case .unlimited: "Endless · until you crash"
+            case .mayhem: "30 cars · wreck everything"
+            }
+        }
+        public static let unlimitedCaption = "UNLIMITED"
+        public static let endless = "∞"
+        public static let runOver = "RUN OVER"
+        public static let again = "Tap for another run"
+        public static func carsSent(_ count: Int) -> String { count == 1 ? "1 car" : "\(count) cars" }
+    }
+
+    /// Mayhem (Leo, 26.09.2026): crashes counted in flames.
+    public enum Mayhem {
+        public static let caption = "MAYHEM"
+        public static let flames = "FLAMES"
+        public static let cars = "CARS"
+        public static func chain(_ count: Int) -> String { "CHAIN ×\(count)" }
+        public static let over = "MAYHEM OVER"
+        public static let again = "Tap for more mayhem"
+        public static func summary(wrecks: Int, chain: Int) -> String {
+            "\(wrecks) \(wrecks == 1 ? "wreck" : "wrecks") · biggest chain ×\(chain)"
+        }
+        /// A crash's popup: the flames it earned (the chain shows on the island).
+        public static func popup(_ flames: Int) -> String { "+\(flames)" }
+    }
+
     public enum Ready {
         public static let tapToStart = "Tap to start"
 
-        /// The duty of the next shift and what it is worth, under the cars in the top bar.
-        public static func dutyCaption(_ duty: Duty, pay: Double) -> String {
-            switch duty {
-            case .normal: "NORMAL DUTY"
-            case .highAlert: "HIGH ALERT · \(Strings.multiplier(pay)) PAY"
-            }
-        }
+        /// The level of the next shift, over its cars in the top bar.
+        public static func levelCaption(_ level: Int) -> String { "LEVEL \(level)" }
         /// Test window only.
-        public static let keys = "Esc settings · Tab next page · H high alert"
+        public static let keys = "Esc settings · Tab next page · ← → mode"
 
         /// "DAILY SHIFT · Heavy Rain · Roadworks"; nil on a clear day without anything (M8, v1.2).
         public static func conditions(weather: Weather, event: CityEvent?, daily: Bool = false, dailyOpen: Bool = false) -> String? {
@@ -87,6 +120,10 @@ public enum Strings {
         public static let shiftsCompleted = "Shifts completed"
         public static let takedowns = "Takedowns"
         public static let transporters = "Transporters paid"
+        public static let unlimitedBest = "Unlimited best"
+        public static let unlimitedCars = "Unlimited cars"
+        public static let mayhemBest = "Mayhem flames"
+        public static let mayhemChain = "Mayhem chain"
         public static let perfects = "Perfect Inputs"
         public static let chestsOpened = "Chests opened"
         public static let collection = "Collection"
@@ -412,10 +449,8 @@ public enum Strings {
 
         // The Daily Shift is the first shift of the day (Leo, 25.09.2026): a splash says so.
         public static func splashLine(event: CityEvent) -> String { "Today's city: \(Strings.cityEvent(event)) · one try" }
-        /// The Daily Shift in the top bar's middle caption, with its duty if it is on alert.
-        public static func caption(_ duty: Duty) -> String {
-            duty == .highAlert ? "DAILY · HIGH ALERT" : title
-        }
+        /// The Daily Shift in the top bar's middle caption.
+        public static var caption: String { title }
         public static func streakLine(_ streak: Int) -> String {
             streak > 0 ? "\(streak) \(streak == 1 ? "day" : "days") in a row · keep it going" : "Play it every day for a streak"
         }
@@ -435,7 +470,6 @@ public enum Strings {
             case .twoTransporters: "2 transporters paid in one shift"
             case .longChain: "A Perfect Chain of 8"
             case .bigCombo: "A combo of 15"
-            case .highAlertShift: "Finish a shift on High Alert"
             case .perfectRun: "A Perfect Run: no crash, no cut-off"
             }
         }
@@ -494,7 +528,6 @@ public enum Strings {
             case .secureRoute: "\(n) transporters paid"
             case .comboMaster: "A combo of \(n)"
             case .veteran: "\(n) shifts completed"
-            case .highAlertHero: "\(n) High Alert shifts completed"
             }
         }
         /// "II / III".
@@ -511,7 +544,6 @@ public enum Strings {
             case .secureRoute: "Secure Route"
             case .comboMaster: "Combo Master"
             case .veteran: "Veteran"
-            case .highAlertHero: "High Alert Hero"
             }
         }
 
@@ -712,7 +744,6 @@ public enum Strings {
         public static let levelLabel = "LEVEL"
         /// Over the money in the top bar (Leo, 25.09.2026: money instead of the level).
         public static let moneyLabel = "MONEY"
-        public static let highAlertLabel = "HIGH ALERT"
         public static let carsLabel = "CARS"
         public static let bestLabel = "BEST"
         public static let rushHour = "RUSH HOUR"

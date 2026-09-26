@@ -28,24 +28,17 @@ struct GameScreen: View {
     }
 }
 
-/// Dispatch while playing; duty and settings before a shift. The Daily Shift needs no button:
-/// it is the first shift of the day by itself.
+/// Dispatch while playing; settings before a shift. The mode (Shift, Unlimited,
+/// Mayhem) is a swipe across the game itself. The Daily Shift needs no button: it is the
+/// first shift of the day by itself.
 struct NativeControls: View {
     let model: GameModel
 
     var body: some View {
         VStack {
             if model.screen == .ready {
-                HStack(spacing: 10) {
-                    Picker("Duty", selection: Binding(
-                        get: { model.duty },
-                        set: { model.send(.perform(.setDuty($0))) }
-                    )) {
-                        Text("Normal").tag(Duty.normal)
-                        Text("High Alert").tag(Duty.highAlert)
-                    }
-                    .pickerStyle(.segmented)
-                    .frame(maxWidth: 220)
+                HStack {
+                    Spacer()
                     Button {
                         model.send(.perform(.openSettings))
                     } label: {
@@ -56,7 +49,7 @@ struct NativeControls: View {
                     .buttonStyle(.glass)
                     .accessibilityLabel("Settings")
                 }
-                .padding(.top, 150)
+                .padding(.top, 160)
                 .padding(.horizontal, 16)
             }
             Spacer()

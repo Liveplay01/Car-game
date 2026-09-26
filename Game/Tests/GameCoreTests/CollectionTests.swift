@@ -12,19 +12,19 @@ struct CollectionTests {
 
     @Test func masteryEarnsAChestPerTierOnce() {
         var career = Career()
-        let first = career.recordMastery(result(perfects: 30), duty: .normal)
+        let first = career.recordMastery(result(perfects: 30))
         #expect(first.contains { $0.goal == .perfectTiming && $0.tier == 0 && $0.chest == .standard })
         #expect(career.chests.contains(.standard))
         let chests = career.chests.count
         // The same tier is never paid twice.
-        let again = career.recordMastery(result(perfects: 1), duty: .normal)
+        let again = career.recordMastery(result(perfects: 1))
         #expect(!again.contains { $0.goal == .perfectTiming })
         #expect(career.chests.count == chests)
     }
 
     @Test func theCrimeFighterEarnsCriminalHuntChests() {
         var career = Career()
-        career.recordMastery(result(takedowns: 10), duty: .normal)
+        career.recordMastery(result(takedowns: 10))
         #expect(career.chests.contains(.criminalHunt))
     }
 

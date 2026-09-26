@@ -8,7 +8,7 @@ import GamePresentation
 ///     --play               start a shift right away
 ///     --level 8            jump to this level (saved, like any level up)
 ///     --tab upgrades       open a page: streetBuilder, game, shop, upgrades, progress
-///     --duty high          play on high alert (saved, like pressing H)
+///     --mode mayhem        choose a mode: shift, unlimited, mayhem (saved, like a swipe)
 ///     --weather storm      force the weather: clear, lightRain, heavyRain, storm, extreme
 ///     --map sand           show a map skin without wearing it: dusk, sand, neon, forest, autumn, sakura, aurora, ember,
 ///                          meadow, tropic, snowfall, cosmos
@@ -30,7 +30,7 @@ struct LaunchOptions {
     var startsShift = false
     var level: Int?
     var tab: Tab?
-    var duty: Duty?
+    var mode: GameMode?
     var weather: Weather?
     var mapSkin: String?
     var shelf: ShopPage.Shelf?
@@ -76,11 +76,12 @@ struct LaunchOptions {
                 }
             case "--play":
                 startsShift = true
-            case "--duty":
-                switch value() {
-                case "high", "highAlert", "alert": duty = .highAlert; consumed = 2
-                case "normal": duty = .normal; consumed = 2
-                default: print("--duty needs normal or high")
+            case "--mode":
+                if let mode = value().flatMap({ GameMode(rawValue: $0) }) {
+                    self.mode = mode
+                    consumed = 2
+                } else {
+                    print("--mode needs one of: " + GameMode.allCases.map(\.rawValue).joined(separator: ", "))
                 }
             case "--save":
                 if let file = value() {

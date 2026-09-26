@@ -116,7 +116,7 @@ extension World {
 
     /// Money a module pays for one vehicle passing it, or 0 if this one pays nothing.
     /// High Alert does not multiply it (Leo, 24.09.2026): only shift pay, transporters and
-    /// shield bonuses count triple (`Config.forDuty`).
+    /// shield bonuses count triple.
     func fee(of module: RoadModule, for vehicle: Vehicle) -> Int {
         switch module {
         case .tollBooth:

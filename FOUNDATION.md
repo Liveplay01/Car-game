@@ -266,12 +266,8 @@ ist die Schicht geschafft. Gut gespielt dauert das ≈ 20 s, und leicht soll es 
   Simulation läuft weiter, und **ein Tap startet die nächste Schicht** (die ersten 0,4 s
   sind gesperrt, damit ein hektischer Tap nicht versehentlich weiterschaltet).
 - **Abschlussbonus:** +1000 für eine geschaffte Schicht.
-- **Gefahrenstufe (M5):** Vor jeder Schicht wählt man auf dem Game-Tab zwischen **Normal
-  Duty** und **High Alert**. High Alert bringt 15 % mehr Autos, einen um ein Fünftel
-  kürzeren Verbrecher-Countdown (nie unter `minCriminalTime`) und einen Verbrecher in
-  *jeder* Schicht – dafür zählt alles Geld dreifach. Der Verkehr selbst (Dichte, Tempo)
-  bleibt wie im Level: Dichter oder schneller obendrauf machte hohe Level unspielbar statt
-  riskanter.
+- **Spielmodi (26.09.2026, ersetzen die Gefahrenstufe High Alert, die ganz entfernt ist):**
+  siehe "Game-Tab, Modi" in Abschnitt 3.
 - **Level (M5):** Jede geschaffte Schicht ist ein Level höher, eine verlorene wird auf
   demselben Level wiederholt. Mit dem Level wachsen die Autozahl (10 → höchstens 30,
   je Versuch zufällig ±2) und ab Level 5 das Tempo; Level 1 bis 4 sind entschärft
@@ -370,8 +366,7 @@ nicht. Mehr Geld heißt ein schwererer Ring (IDEA.md, „Wirtschaft schafft Gefa
 | Tow Depot | 13.000 | nichts | 180 lang, kein Tempolimit | Wracks in der Zone verschwinden 30 % schneller, der Ring fließt früher wieder |
 
 - **Wer zahlt:** jedes Fahrzeug, das die Modulmitte passiert, außer Wracks und dem
-  Verbrecher-Pickup. High Alert vervielfacht Modul-Einnahmen **nicht** (Entscheidung Leo,
-  24.09.2026), nur Schichtlohn, Transporter und Abschirm-Bonus.
+  Verbrecher-Pickup.
 - **Daily Login:** Jede Mautstelle zahlt 600 pro Tag Abwesenheit, höchstens 3 Tage
   (`tollIncomePerDay`).
 - **Fahrer in der Zone** bremsen auf das Zonen-Tempo und beschleunigen danach wieder
@@ -398,6 +393,7 @@ einer Schicht ist sie ausgeblendet.
 
 | Screen | Inhalt | Wichtigste Aktion |
 | --- | --- | --- |
+| **Game-Tab, Modi** (26.09.2026) | Wischen zur Seite schiebt die ganze Karte weiter zum Kreisverkehr des nächsten Modus; er rastet auf einer Feder mit leichtem Überschwingen ein, dazu ploppt der Name des Modus auf (Testfenster: ← →). **Shift** (Level), **Unlimited** (endlose Schicht auf festem Level `endlessLevel`, wird nach der Anlaufzeit immer dichter und schneller, endet erst mit dem Verlust, zahlt `endlessPayPerCar` je Auto, eigener Bestwert und eigene Game-Center-Bestenliste), **Mayhem** (30 Autos auf Level `mayhemLevel` mit mehr Verkehr, keine Verbrecher und Transporter; jeder Unfall, der ein neues Wrack macht, bringt Flammen; ein Folgeunfall im Verkehr binnen `mayhemChainWindow` verlängert die Kettenreaktion und zählt seinen Platz in ihr, höchstens `mayhemMaxChainFlames`; der eigene Crash startet die Kette neu; größere Explosionen je länger die Kette; zählt weder ins Geld noch in Level, Statistik, Mastery oder Challenges, nur eigener Bestwert und Bestenliste). Ein kurzer Tipp startet wie immer; auf dem Game-Tab zählt er beim Loslassen. Im Tutorial keine Modi | Wischen |
 | **Game-Tab, bereit** | kein Menü: oben in der Szene "LEVEL 3", die Zahl der Autos, die Gefahrenstufe ("Normal duty" / "High alert · ×3 money"), Highscore und Geld; auf der Mittelinsel "Tap to start" | **Tap** (irgendwo) |
 | **Spiel (HUD)** | oben links Punkte, oben mittig die Autos, die noch fehlen ("12 cars"), darunter die Crash-Punkte (2.6), oben rechts Pause; Combo auf der Mittelinsel; unten die Warteschlange | Tippen |
 | **Pause** | Resume, Restart, End shift. Pausiert automatisch, wenn die App in den Hintergrund geht | **Resume** |

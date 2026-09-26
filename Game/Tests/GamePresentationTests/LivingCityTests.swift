@@ -80,10 +80,10 @@ struct LivingCityTests {
         session.run(seconds: ResultBanner.epilogue + ResultBanner.fade)
         texts = session.advance().texts
         // Still the result (a tap starts the next shift), but it reads like the next shift's
-        // waiting screen: its cars and duty, and no score left over.
+        // waiting screen: its level and cars, and no score left over.
         #expect(session.isShowingResult)
         #expect(texts.contains(Strings.HUD.cars(2)))
-        #expect(texts.contains(Strings.Ready.dutyCaption(.normal, pay: session.config.highAlertPay)))
+        #expect(texts.contains(Strings.Ready.levelCaption(2)))
         #expect(!texts.contains(Strings.Result.levelComplete(1)))
         #expect(texts.contains(Strings.Result.nextLevel(2)))
     }

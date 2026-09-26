@@ -39,6 +39,9 @@ public enum InputAction: Sendable, Equatable {
     case selectTab(Tab)
     /// The next tab (Tab key in the test window).
     case nextTab
+    /// The Game tab's next (+1) or previous (-1) mode (arrow keys; a swipe comes as pointer
+    /// events, `pointerDown` on the waiting screen).
+    case swipeMode(Int)
     /// A menu button of the app.
     case perform(ScreenAction)
 }
@@ -127,8 +130,6 @@ public final class GameSession {
     private var sinceFatalCrash = Double.infinity
     private var sinceLoss = Double.infinity
     private var lossPull = 0.0
-    /// High Alert's stripes on the ring, 0…1 (`SceneBuilder.addHighAlert`).
-    private var alertStripes = 0.0
     /// The score as the HUD shows it: it runs after the real one instead of jumping.
     private var shownScore = 0.0
     /// The money as the top bar shows it during a shift: the bank at the start plus what the
@@ -145,7 +146,7 @@ public final class GameSession {
     private var sinceCarSent = Double.infinity
     private var sinceStrike = Double.infinity
     private var sincePoliceCrash = Double.infinity
-    private var seenCounts = (carsLeft: 0, strikes: 0, policeCrashes: 0)
+    private var seenCounts = (carsSent: 0, strikes: 0, policeCrashes: 0)
     /// Flow State as the ring glow shows it, 0…1: it fades in and out instead of switching.
     private var flowLevel = 0.0
     /// The island's rim: the shift's ticks and the ring's signals (`RingSignals`).
@@ -191,6 +192,33 @@ public final class GameSession {
     /// The Build tab's page it was left on, and the glide of its segment thumb.
     public private(set) var buildPage = Tab.upgrades
     private var buildSlide: (from: Tab, age: Double)?
+    /// The Game tab's mode swipe (Leo, 26.09.2026: the map itself slides on to the next
+    /// roundabout): where the finger came down and how far it has moved.
+    private var modeDrag: (start: Vec2, offset: Double)?
+    /// How far the scene is pushed sideways (points) and how fast it moves; and the mode it
+    /// is travelling to. Once the old roundabout is out of the picture the new one comes in
+    /// from the other side and clicks into place on a spring.
+    private var modePan = 0.0
+    private var modePanVelocity = 0.0
+    private var modeTravel: (to: GameMode, direction: Double)?
+    /// The message that says which mode the new roundabout is.
+    private var modeBanner: (mode: GameMode, age: Double)?
+    /// A swipe this long is no tap any more.
+    static let swipeThreshold = 36.0
+    /// The spring the map settles on: quick, with a small overshoot, so it clicks in.
+    static let panFrequency = 17.0
+    static let panDamping = 0.68
+    /// The mode of the shift waiting or running.
+    public private(set) var playingMode = GameMode.shift
+    /// Mayhem's flames as they count up, and the bump of the last crash.
+    private var shownFlames = 0.0
+    private var sinceFlames = Double.infinity
+
+    /// The chosen mode.
+    public var gameMode: GameMode { save.mode }
+
+    /// A swipe across the Game tab is being followed (the platforms send its moves).
+    public var isTrackingPointer: Bool { modeDrag != nil }
     /// What the Street Builder tab shows and animates.
     public private(set) var builderPage = StreetBuilderPage.State()
     /// The last tap on a placed part, to tell a double tap from a single one.
@@ -227,10 +255,12 @@ public final class GameSession {
         // The Game tab opens on the next shift, already flowing; the first tap starts it.
         let seed = random.nextSeed()
         playingLevel = save.career.level
-        playingDuty = save.career.duty
         world = World(config: save.career.config(from: config, seed: seed), seed: seed, mode: .shift, startsOnFirstTap: true)
         effects = CrashEffects(seed: seed)
         tutorial = save.tutorialDone ? nil : Tutorial()
+        // The first shift is always a plain one; another mode sets its roundabout up now.
+        if tutorial != nil { save.mode = .shift }
+        if save.mode != .shift { prepareShift(continuing: false) }
         collectLoginIncome()
     }
 
@@ -312,12 +342,13 @@ public final class GameSession {
                 screen = .ready
                 tick()
             }
-        case let .setDuty(duty):
-            guard save.career.duty != duty else { return }
-            save.career.duty = duty
+        case let .setGameMode(mode):
+            guard mode != gameMode, world.shift.phase == .waiting, screen == .ready || isShowingResult else { return }
+            save.mode = mode
             store.save(save)
-            tick()
-            refreshWaitingShift()
+            // A roundabout of its own: the new mode starts afresh, on the waiting screen.
+            prepareShift(continuing: false, screen: .ready)
+            modeBanner = (mode, 0)
         case let .showTab(tab):
             guard screen.showsTabBar, tab != screen.tab || screen.tab == .game else { return }
             // The next shift already waits behind every page and behind the result.
@@ -478,9 +509,8 @@ public final class GameSession {
         notice = (text, 0)
     }
 
-    /// The level the running shift is played at, and the duty it was started on.
+    /// The level the running shift is played at.
     public private(set) var playingLevel = 1
-    public private(set) var playingDuty = Duty.normal
 
     /// Sets up the next shift for the saved career: its level (car count, traffic) and the
     /// upgrades bought (`Career.config`). It waits, traffic flowing, for its first tap.
@@ -492,7 +522,8 @@ public final class GameSession {
         dailySelected = daily
         let seed = daily ? Career.dailySeed(day: today) : (seed ?? random.nextSeed())
         playingLevel = save.career.level
-        playingDuty = save.career.duty
+        playingMode = save.mode
+        shownFlames = 0
         playingDaily = daily
         dailySplash = daily ? 0 : nil
         splits = []
@@ -541,7 +572,7 @@ public final class GameSession {
     /// Whether the next shift is today's Daily Shift. Never the very first shift: a new
     /// player learns on a plain one (`Tutorial`), the Daily comes right after it.
     private var wantsDaily: Bool {
-        automaticDaily && (tutorial?.isOver ?? true) && save.career.isDailyOpen(day: today)
+        automaticDaily && save.mode == .shift && (tutorial?.isOver ?? true) && save.career.isDailyOpen(day: today)
     }
     /// The splash that announces the Daily Shift, and how long it has shown.
     private var dailySplash: Double?
@@ -555,6 +586,21 @@ public final class GameSession {
     /// The config of a shift with this seed: the career's, and for the Daily Shift always
     /// the day's city event.
     private func shiftConfig(seed: UInt64) -> Config {
+        switch save.mode {
+        case .unlimited:
+            // The same level for everyone; the upgrades and the roundabout as built.
+            var career = save.career
+            career.level = config.endlessLevel
+            var endless = career.config(from: config, seed: seed, weather: forcedWeather, event: forcedEvent)
+            endless.endless = true
+            return endless
+        case .mayhem:
+            var career = save.career
+            career.level = config.mayhemLevel
+            return career.config(from: config, seed: seed, weather: forcedWeather, event: forcedEvent).forMayhem()
+        case .shift:
+            break
+        }
         let dailyEvent = dailySelected ? Career.dailyEvent(day: today) : nil
         return save.career.config(from: config, seed: seed, weather: forcedWeather, event: forcedEvent ?? dailyEvent)
     }
@@ -571,7 +617,7 @@ public final class GameSession {
     private func refreshWaitingShift() {
         guard world.shift.phase == .waiting else { return }
         playingLevel = save.career.level
-        playingDuty = save.career.duty
+        playingMode = save.mode
         let next = shiftConfig(seed: world.seed)
         if next.builtArmSlots == world.config.builtArmSlots {
             world = world.nextShift(config: next, seed: world.seed)
@@ -952,21 +998,22 @@ public final class GameSession {
         }
         let pullTarget = lossShown && !reduceMotion ? 1.0 : 0
         lossPull += (pullTarget - lossPull) * min(1, realDelta / 0.3)
-        // High Alert's stripes on the ring fade in and out with the duty.
-        let alertTarget = playingDuty == .highAlert ? 1.0 : 0
-        alertStripes = reduceMotion ? alertTarget : alertStripes + (alertTarget - alertStripes) * min(1, realDelta / 0.25)
+        // Mayhem's flames count up and bump with every crash.
+        sinceFlames += realDelta
+        let flames = Double(world.score.flames)
+        shownFlames = reduceMotion || abs(flames - shownFlames) < 1 ? flames : shownFlames + (flames - shownFlames) * min(1, realDelta / Self.scoreCatchUp)
         sinceComboTier += realDelta
         sinceCarSent += realDelta
         sinceStrike += realDelta
         sincePoliceCrash += realDelta
         // Only going the counting way pops: a new shift refills without a bump.
-        let counts = (carsLeft: world.carsLeft ?? 0, strikes: world.score.strikes, policeCrashes: world.score.policeCrashes)
-        if counts.carsLeft < seenCounts.carsLeft {
+        let counts = (carsSent: world.shift.carsSent, strikes: world.score.strikes, policeCrashes: world.score.policeCrashes)
+        if counts.carsSent > seenCounts.carsSent {
             sinceCarSent = 0
             // In the flow, the city answers every car (`CityPulse.beat`).
             if screen == .playing { cityPulse.beat(flow: flowLevel) }
             // A split for the race against the best time at this level.
-            if screen == .playing, let start = world.shift.startedAt {
+            if screen == .playing, playingMode == .shift, let start = world.shift.startedAt {
                 splits.append(world.time - start)
                 if let best = save.career.bestTimes(atLevel: playingLevel), best.indices.contains(splits.count - 1) {
                     raceDelta = splits[splits.count - 1] - best[splits.count - 1]
@@ -1046,6 +1093,10 @@ public final class GameSession {
             slide.age += realDelta
             buildSlide = slide.age < BuildTab.glide ? slide : nil
         }
+        followModePan(realDelta)
+        if let banner = modeBanner {
+            modeBanner = banner.age + realDelta < ModeBanner.duration ? (banner.mode, banner.age + realDelta) : nil
+        }
         if screen == .page(.streetBuilder) {
             builderPage.age(by: realDelta)
             lastPartTap += realDelta
@@ -1095,13 +1146,14 @@ public final class GameSession {
                 world.tap(at: max(world.time, present - simDelta / 2))
             case .ready:
                 // No start menu: the next shift is already on the road, and the first tap
-                // sends its front car.
+                // sends its front car. Not while the map slides to another mode.
+                guard modeTravel == nil, abs(modePan) < Self.swipeThreshold else { return }
                 startPlaying()
                 world.tap(at: max(world.time, present - simDelta / 2))
             case .result:
                 // One tap anywhere: the first car of the next shift. Not in the very first
                 // moment, so a tap meant for the last car does not skip the result.
-                if resultAge >= ResultBanner.inputLock {
+                if resultAge >= ResultBanner.inputLock, modeTravel == nil, abs(modePan) < Self.swipeThreshold {
                     startPlaying()
                     world.tap(at: max(world.time, present - simDelta / 2))
                 }
@@ -1156,9 +1208,27 @@ public final class GameSession {
                 progressPage.select(section)
             }
         case let .pointerDown(point):
+            // On the Game tab a touch is a tap, or the start of a swipe to another mode. The
+            // tap then counts when the finger lifts. During the tutorial it counts at once.
+            if screen == .ready || isShowingResult {
+                // While the map travels to the next mode a touch waits for it.
+                if modeTravel != nil { return }
+                if takesModeSwipe {
+                    // Caught while it springs back: it stays under the finger.
+                    modeDrag = (Vec2(point.x - modePan, point.y), modePan)
+                } else {
+                    handle(.tap, present: present, simDelta: simDelta)
+                }
+                return
+            }
             guard screen == .page(.streetBuilder) else { return }
             builderPress(at: point)
         case let .pointerMove(point):
+            if var drag = modeDrag {
+                drag.offset = point.x - drag.start.x
+                modeDrag = drag
+                return
+            }
             guard screen == .page(.streetBuilder), builderPage.dragging != nil else { return }
             builderPage.dragging?.at = point
             let map = StreetBuilderPage.map(viewport: lastViewport, bottomInset: tabInset)
@@ -1166,6 +1236,19 @@ public final class GameSession {
                 builderPage.target = StreetBuilderPage.target(for: part, at: point, career: save.career, config: config, map: map)
             }
         case let .pointerUp(point):
+            if let drag = modeDrag {
+                modeDrag = nil
+                let offset = point.x - drag.start.x
+                // Where the throw would carry the map: a quick flick counts like a long drag.
+                let projected = offset + modePanVelocity * 0.18
+                if abs(offset) < Self.swipeThreshold && abs(modePanVelocity) < 400 && abs(modePan) < Self.swipeThreshold {
+                    handle(.tap, present: present, simDelta: simDelta)
+                } else if abs(projected) > lastViewport.x * 0.22 {
+                    handle(.swipeMode(projected < 0 ? 1 : -1), present: present, simDelta: simDelta)
+                }
+                // Otherwise it springs back into place (`followModePan`).
+                return
+            }
             guard screen == .page(.streetBuilder), builderPage.dragging != nil else { return }
             let map = StreetBuilderPage.map(viewport: lastViewport, bottomInset: tabInset)
             if let part = builderPage.dragging?.part,
@@ -1174,6 +1257,18 @@ public final class GameSession {
             } else {
                 builderPage.dragging = nil
                 builderPage.target = nil
+            }
+        case let .swipeMode(step):
+            let modes = GameMode.allCases
+            let index = (modes.firstIndex(of: gameMode) ?? 0) + step
+            guard tutorial?.isOver != false, modeTravel == nil, world.shift.phase == .waiting,
+                  screen == .ready || isShowingResult, modes.indices.contains(index) else { return }
+            if reduceMotion {
+                perform(.setGameMode(modes[index]))
+            } else {
+                // The map slides on: the old roundabout out, then the new one in.
+                modeTravel = (modes[index], Double(step))
+                play(sounds: [.swoosh], haptics: [])
             }
         case let .selectTab(tab):
             // The Build tab opens on the page it was left on; on it, its tab does nothing.
@@ -1225,7 +1320,15 @@ public final class GameSession {
                 }
             case let .crash(report):
                 markers.append(DebugMarker(kind: .crash, position: report.point, age: 0))
-                effects.spawn(for: report, in: world, reduceMotion: reduceMotion)
+                effects.spawn(for: report, in: world, reduceMotion: reduceMotion, boost: report.chain)
+                if report.flames > 0 {
+                    // Mayhem: the flames at the wreck, and chains go off like fireworks.
+                    addPopup(.flames(report.flames, chain: report.chain), at: report.point)
+                    sinceFlames = 0
+                    if report.chain >= 2 {
+                        play(sounds: [report.chain >= 4 ? .chestBurstRare : .chestBurst], haptics: [.chest])
+                    }
+                }
                 if report.penalty > 0 {
                     addPopup(.penalty(report.penalty), at: report.point)
                 }
@@ -1358,11 +1461,23 @@ public final class GameSession {
     /// Saves right away, so a highscore survives even if the app is closed in the next second;
     /// the result screen follows after `resultDelay`.
     private func finish(_ result: ShiftResult) {
-        let previous = save.highscore
-        let isNew = result.outcome == .completed && result.score > previous
-        if isNew {
+        if playingMode == .mayhem {
+            finishMayhem(result)
+            return
+        }
+        // Unlimited keeps its own best: every run ends lost, the best one counts.
+        let unlimited = playingMode == .unlimited
+        let previous = unlimited ? save.unlimitedBest : save.highscore
+        let isNew = (unlimited || result.outcome == .completed) && result.score > previous
+        if isNew, unlimited {
+            save.unlimitedBest = result.score
+        } else if isNew {
             save.highscore = result.score
             save.highscoreSeed = result.seed
+        }
+        if unlimited {
+            save.unlimitedBestCars = max(save.unlimitedBestCars, result.carsSent)
+            gameServices?.submit(result.score, to: .unlimited)
         }
         save.shiftsPlayed += 1
         // The first shift is over, and with it the tutorial; only a strike hint that is
@@ -1401,9 +1516,9 @@ public final class GameSession {
             gameServices?.submit(result.score, to: .highscore)
             gameServices?.submit(result.bestCombo, to: .bestCombo)
         }
-        let challenges = save.career.recordChallenges(result, duty: playingDuty, day: today)
+        let challenges = save.career.recordChallenges(result, day: today)
         toasts += challenges.map { Strings.Daily.challengeDone($0, reward: format.number($0.reward)) }
-        let completed = save.career.recordMastery(result, duty: playingDuty)
+        let completed = save.career.recordMastery(result)
         for completion in completed {
             gameServices?.unlock(Achievements.mastery(completion.goal, tier: completion.tier))
         }
@@ -1415,8 +1530,61 @@ public final class GameSession {
         if !toasts.isEmpty {
             showNotice(toasts.joined(separator: "  ·  "))
         }
-        pendingSummary = ShiftSummary(result: result, level: playingLevel, isNewHighscore: isNew, previousHighscore: previous)
+        pendingSummary = ShiftSummary(result: result, level: playingLevel, isNewHighscore: isNew, previousHighscore: previous, mode: playingMode)
         resultCountdown = Self.resultDelay
+    }
+
+    /// Mayhem counts for nothing but itself (Leo, 26.09.2026): no money, no level, no
+    /// stats, no challenges. Only its own best flames and chain.
+    private func finishMayhem(_ result: ShiftResult) {
+        let previous = save.mayhemBest
+        let isNew = result.flames > previous
+        if isNew { save.mayhemBest = result.flames }
+        save.mayhemBestChain = max(save.mayhemBestChain, result.biggestChain)
+        store.save(save)
+        gameServices?.submit(result.flames, to: .mayhem)
+        dailySelected = false
+        resultBank = (save.career.money, save.career.money)
+        pendingSummary = ShiftSummary(result: result, level: playingLevel, isNewHighscore: isNew, previousHighscore: previous, mode: .mayhem)
+        resultCountdown = Self.resultDelay
+    }
+
+    /// The map's slide between two modes: it follows the finger, travels out and in, and
+    /// settles on a spring that overshoots a little, so the new roundabout clicks in.
+    private func followModePan(_ delta: Double) {
+        guard screen == .ready || isShowingResult else {
+            (modeDrag, modeTravel, modePan, modePanVelocity) = (nil, nil, 0, 0)
+            return
+        }
+        let width = max(lastViewport.x, 1)
+        if let drag = modeDrag {
+            // Past the first or the last mode it only gives a little.
+            let index = GameMode.allCases.firstIndex(of: gameMode) ?? 0
+            let canGo = drag.offset < 0 ? index < GameMode.allCases.count - 1 : index > 0
+            let pan = canGo ? drag.offset : drag.offset / 3
+            if delta > 0 { modePanVelocity = 0.5 * modePanVelocity + 0.5 * (pan - modePan) / delta }
+            modePan = pan
+            return
+        }
+        let target = modeTravel.map { -$0.direction * width * 1.3 } ?? 0
+        let omega = Self.panFrequency
+        let steps = 4
+        let dt = delta / Double(steps)
+        for _ in 0..<steps {
+            let acceleration = -omega * omega * (modePan - target) - 2 * Self.panDamping * omega * modePanVelocity
+            modePanVelocity += acceleration * dt
+            modePan += modePanVelocity * dt
+        }
+        // The old roundabout is out of the picture: the new one comes in from the other side.
+        if let travel = modeTravel, -modePan * travel.direction >= width * 0.9 {
+            modeTravel = nil
+            perform(.setGameMode(travel.to))
+            modePan += travel.direction * width * 1.8
+            play(sounds: [], haptics: [.comboUp])
+        }
+        if modeTravel == nil, abs(modePan) < 0.3, abs(modePanVelocity) < 5 {
+            (modePan, modePanVelocity) = (0, 0)
+        }
     }
 
     private func addPopup(_ kind: Popup.Kind, at position: Vec2) {
@@ -1452,15 +1620,15 @@ public final class GameSession {
         lastViewport = viewport
         // Every tab looks at the same city; the camera glides to the view it needs.
         var camera = cameraRig.camera(Perspective(screen), layout: world.layout, viewport: viewport, bottomInset: tabInset, delta: delta, reduceMotion: reduceMotion)
-        // The crash shake moves the scene; the HUD (screen space) stays still.
-        camera.focus += effects.shakeOffset
+        // The crash shake moves the scene; the HUD (screen space) stays still. A swipe on the
+        // Game tab slides the whole map sideways to the next mode's roundabout.
+        camera.focus += effects.shakeOffset + Vec2(modePan, 0)
         camera.scale *= 1 - Self.lossPullBack * lossPull
         // The map skin sets the ground outside the ring and what grows in the city.
         let mapTheme = MapTheme(skin: forcedMapSkin ?? save.career.mapSkin)
         var list = RenderList(camera: camera, background: MapTheme.ground(mapTheme))
         CityLayer.add(world: world, theme: mapTheme, time: reduceMotion ? nil : sceneTime, pulse: reduceMotion ? nil : cityPulse, to: &list)
         SceneBuilder.addRoad(world.layout, config: world.config, to: &list)
-        SceneBuilder.addHighAlert(world.layout, strength: alertStripes, to: &list)
         CityLayer.addMapSkin(Skins.color(forcedMapSkin ?? save.career.mapSkin), world: world, to: &list)
         MapTheme.addIsland(mapTheme, world: world, to: &list)
         CityLayer.addFrame(save.career.frame, world: world, to: &list)
@@ -1487,10 +1655,10 @@ public final class GameSession {
             HUD.addChase(world: world, alpha: clock.alpha, to: &list)
             HUD.addTransporter(world: world, alpha: clock.alpha, to: &list)
             HUD.add(
-                world: world, level: playingLevel, duty: playingDuty,
+                world: world, level: playingLevel,
                 score: Int(shownScore.rounded()),
                 money: Int(shownMoney.rounded()),
-                best: save.highscore > 0 ? format.number(save.highscore) : nil,
+                best: currentBest,
                 comboPop: reduceMotion ? 0 : Ease.clamp01(sinceComboTier / Self.comboPop),
                 race: raceDelta.map { ($0, reduceMotion ? 1 : Ease.clamp01(sinceCarSent / 0.35)) },
                 pops: reduceMotion ? HUD.Pops() : HUD.Pops(
@@ -1500,6 +1668,8 @@ public final class GameSession {
                     money: Ease.clamp01(sinceMoney / 0.35),
                     policeCrash: Ease.clamp01(sincePoliceCrash / 0.5)
                 ),
+                flames: Int(shownFlames.rounded()),
+                flamePop: reduceMotion ? 1 : Ease.clamp01(sinceFlames / 0.35),
                 format: format, showsKeys: options.showsKeyHints, timeScale: timeScale, to: &list
             )
             if let tutorial {
@@ -1606,11 +1776,39 @@ public final class GameSession {
     }
 
     /// The next shift's waiting screen: its level, cars and duty, the best, what comes.
+    /// The best to beat in the chosen mode, formatted; nil before the first.
+    private var currentBest: String? {
+        let best = switch playingMode {
+        case .shift: save.highscore
+        case .unlimited: save.unlimitedBest
+        case .mayhem: save.mayhemBest
+        }
+        return best > 0 ? format.number(best) : nil
+    }
+
+    /// Whether a touch on the Game tab may become a swipe to another mode: while the next
+    /// shift waits (not in the first moment of a result), and never in the tutorial.
+    private var takesModeSwipe: Bool {
+        guard world.shift.phase == .waiting, tutorial?.isOver != false else { return false }
+        if isShowingResult { return resultAge >= ResultBanner.inputLock }
+        return screen == .ready
+    }
+
+    private var isShowingResult: Bool {
+        if case .result = screen { return true }
+        return false
+    }
+
     private func addReadyBanner(prompt: String?, drawsCard: Bool = true, opacity: Double = 1, to list: inout RenderList) {
         let career = save.career
         let conditions = Strings.Ready.conditions(weather: world.config.weather, event: world.config.cityEvent)
         let daily = dailySelected ? ReadyBanner.DailyCard(event: world.config.cityEvent, streak: career.dailyStreak, next: career.nextStreakMilestone(), splash: dailySplash) : nil
-        ReadyBanner.add(level: playingLevel, cars: world.carsLeft ?? 0, duty: career.duty, dutyPay: config.highAlertPay, highscore: save.highscore > 0 ? format.number(save.highscore) : nil, money: format.number(career.money), conditions: conditions, daily: daily, prompt: prompt, time: sinceReady, reduceMotion: reduceMotion, showsKeys: options.showsKeyHints && drawsCard, drawsCard: drawsCard, opacity: opacity, to: &list)
+        ReadyBanner.add(level: playingLevel, cars: world.carsLeft ?? 0, highscore: currentBest, money: format.number(career.money), conditions: conditions, daily: daily, mode: playingMode, prompt: prompt, time: sinceReady, reduceMotion: reduceMotion, showsKeys: options.showsKeyHints && drawsCard, drawsCard: drawsCard, opacity: opacity, to: &list)
+        // Which mode this roundabout is: a message that pops up after a swipe.
+        if let banner = modeBanner {
+            let top = TopBar.frame(width: list.camera.viewport.x).maxY + (daily != nil ? 40 : 14)
+            ModeBanner.add(banner.mode, age: banner.age, top: top, reduceMotion: reduceMotion, to: &list)
+        }
     }
 
     /// Starts a change when the screen differs from last frame's, then lets it move the new

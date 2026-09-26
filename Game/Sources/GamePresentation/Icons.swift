@@ -79,6 +79,41 @@ public enum Icons {
     }
 
     /// A note and a number as one unit. `position` is the anchor the whole unit aligns to.
+    /// A flame, Mayhem's unit: an outer tongue of fire and a hot core, `height` tall.
+    static func flame(at center: Vec2, height: Double, opacity: Double = 1, id: inout Int, to list: inout RenderList) {
+        func tongue(_ scale: Double, dy: Double) -> [Vec2] {
+            let h = height * scale
+            let w = h * 0.62
+            let base = center + Vec2(0, h * 0.42 + dy)
+            return [
+                base + Vec2(0, -h), base + Vec2(w * 0.3, -h * 0.62), base + Vec2(w * 0.5, -h * 0.3),
+                base + Vec2(w * 0.42, -h * 0.08), base + Vec2(0, 0), base + Vec2(-w * 0.42, -h * 0.08),
+                base + Vec2(-w * 0.5, -h * 0.3), base + Vec2(-w * 0.18, -h * 0.55), base + Vec2(-w * 0.12, -h * 0.78),
+            ]
+        }
+        list.add(.polygon(tongue(1, dy: 0)), color: .fireOuter, opacity: opacity, space: .screen, id: id)
+        list.add(.polygon(tongue(0.58, dy: 0)), color: .fireCore, opacity: opacity, space: .screen, id: id + 1)
+        id += 2
+    }
+
+    /// A number with a flame before it, the way money has its note (`moneyTag`).
+    static func flameTag(_ text: String, at position: Vec2, size: Double, alignment: TextAlignment, color: ColorToken, opacity: Double = 1, id: inout Int, to list: inout RenderList) {
+        let flameHeight = size * 1.05
+        let gap = size * 0.3
+        let total = flameHeight * 0.62 + gap + textWidth(text, size: size)
+        let left: Double = switch alignment {
+        case .leading: position.x
+        case .center: position.x - total / 2
+        case .trailing: position.x - total
+        }
+        flame(at: Vec2(left + flameHeight * 0.31, position.y), height: flameHeight, opacity: opacity, id: &id, to: &list)
+        list.add(
+            .text(text, position: Vec2(left + flameHeight * 0.62 + gap, position.y), size: size, alignment: .leading, weight: .bold),
+            color: color, opacity: opacity, space: .screen, id: id
+        )
+        id += 1
+    }
+
     public static func moneyTag(
         _ text: String,
         at position: Vec2,

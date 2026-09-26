@@ -10,11 +10,10 @@ public enum Challenge: String, Sendable, Equatable, CaseIterable, Codable {
     case twoTransporters
     case longChain
     case bigCombo
-    case highAlertShift
     case perfectRun
 
     /// Whether one finished shift meets it.
-    public func isMet(by result: ShiftResult, duty: Duty) -> Bool {
+    public func isMet(by result: ShiftResult) -> Bool {
         switch self {
         case .perfectInputs: result.perfects >= 3
         case .tightFits: result.tightFits >= 3
@@ -22,7 +21,6 @@ public enum Challenge: String, Sendable, Equatable, CaseIterable, Codable {
         case .twoTransporters: result.transporters >= 2
         case .longChain: result.bestChain >= 8
         case .bigCombo: result.bestCombo >= 15
-        case .highAlertShift: duty == .highAlert && result.outcome == .completed
         case .perfectRun: result.isPerfectRun
         }
     }
@@ -32,7 +30,7 @@ public enum Challenge: String, Sendable, Equatable, CaseIterable, Codable {
         switch self {
         case .perfectInputs, .tightFits, .bigCombo: 250
         case .twoTakedowns, .twoTransporters, .longChain: 350
-        case .highAlertShift, .perfectRun: 500
+        case .perfectRun: 500
         }
     }
 
@@ -97,14 +95,14 @@ extension Career {
     /// Books a shift against the day's challenges; pays each that is met for the first
     /// time that day. Returns the ones just completed.
     @discardableResult
-    public mutating func recordChallenges(_ result: ShiftResult, duty: Duty, day: Int) -> [Challenge] {
+    public mutating func recordChallenges(_ result: ShiftResult, day: Int) -> [Challenge] {
         if challengeDay != day {
             challengeDay = day
             challengesDone = []
         }
         var completed: [Challenge] = []
         for challenge in Challenge.of(day: day) where !challengesDone.contains(challenge.rawValue) {
-            guard challenge.isMet(by: result, duty: duty) else { continue }
+            guard challenge.isMet(by: result) else { continue }
             challengesDone.append(challenge.rawValue)
             money += challenge.reward
             completed.append(challenge)

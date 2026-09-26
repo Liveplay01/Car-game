@@ -93,8 +93,6 @@ public struct Tuning: Sendable {
         check(c.tempoPerLevel >= 0 && c.maxLevelTempoBonus >= 0 && c.criminalTimePerLevel >= 0, "per-level steps must be ≥ 0")
         check(c.shiftPayBase >= 0 && c.shiftPayPerLevel >= 0 && c.upgradeBaseCost >= 0, "pay and prices must be ≥ 0")
         check(c.upgradeCostGrowth >= 1, "upgradeCostGrowth must be ≥ 1")
-        check(c.highAlertCars >= 1 && c.highAlertCriminalTime > 0 && c.highAlertCriminalInterval > 0, "High Alert values must be ≥ 1 or > 0")
-        check(c.highAlertPay >= 1, "highAlertPay must be ≥ 1")
         check([c.patrolsPerStep, c.pursuitPerStep, c.quietStreetsPerStep, c.interceptorPerStep, c.dispatchRadioPerStep, c.cashRoutePerStep, c.overtimePerStep].allSatisfy { $0 >= 0 } && c.backupPerStep >= 0, "upgrade steps must be ≥ 0")
         check(c.rushHourCars >= 0, "rushHourCars must be ≥ 0")
         check(c.rampSeconds >= 0, "rampSeconds must be ≥ 0")
@@ -239,10 +237,6 @@ public struct Tuning: Sendable {
             .double("maxLevelTempoBonus", \.maxLevelTempoBonus),
             .double("criminalTimePerLevel", \.criminalTimePerLevel),
             .double("minCriminalTime", \.minCriminalTime),
-            .double("highAlertCars", \.highAlertCars),
-            .double("highAlertCriminalTime", \.highAlertCriminalTime),
-            .double("highAlertCriminalInterval", \.highAlertCriminalInterval),
-            .double("highAlertPay", \.highAlertPay),
             .int("shiftPayBase", \.shiftPayBase),
             .int("shiftPayPerLevel", \.shiftPayPerLevel),
             .int("armBaseCost", \.armBaseCost),
@@ -288,6 +282,17 @@ public struct Tuning: Sendable {
             .int("standardChestPrice", \.standardChestPrice),
             .int("premiumChestPrice", \.premiumChestPrice),
             .int("adChestsPerDay", \.adChestsPerDay),
+            .int("endlessLevel", \.endlessLevel),
+            .double("endlessDensityEvery", \.endlessDensityEvery),
+            .int("endlessMaxDensityBonus", \.endlessMaxDensityBonus),
+            .double("endlessTempoPerMinute", \.endlessTempoPerMinute),
+            .double("endlessMaxTempo", \.endlessMaxTempo),
+            .int("endlessPayPerCar", \.endlessPayPerCar),
+            .int("mayhemCars", \.mayhemCars),
+            .int("mayhemLevel", \.mayhemLevel),
+            .int("mayhemExtraTraffic", \.mayhemExtraTraffic),
+            .double("mayhemChainWindow", \.mayhemChainWindow),
+            .int("mayhemMaxChainFlames", \.mayhemMaxChainFlames),
             .int("adCashPerDay", \.adCashPerDay),
             .int("adCashBase", \.adCashBase),
             .int("adCashPerLevel", \.adCashPerLevel),

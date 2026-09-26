@@ -24,15 +24,15 @@ struct DailyTests {
     @Test func aChallengePaysOncePerDay() {
         var career = Career()
         let day = (0..<500).first { Challenge.of(day: $0).contains(.perfectInputs) }!
-        let done = career.recordChallenges(result(perfects: 5), duty: .normal, day: day)
+        let done = career.recordChallenges(result(perfects: 5), day: day)
         #expect(done.contains(.perfectInputs))
         let money = career.money
         #expect(money >= Challenge.perfectInputs.reward)
-        let again = career.recordChallenges(result(perfects: 5), duty: .normal, day: day)
+        let again = career.recordChallenges(result(perfects: 5), day: day)
         #expect(!again.contains(.perfectInputs))
         #expect(career.money == money)
         // A new day, a new set.
-        _ = career.recordChallenges(result(), duty: .normal, day: day + 1)
+        _ = career.recordChallenges(result(), day: day + 1)
         #expect(!career.isDone(.perfectInputs, day: day + 1))
     }
 

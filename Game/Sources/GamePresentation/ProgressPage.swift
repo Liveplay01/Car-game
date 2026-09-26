@@ -57,6 +57,10 @@ public enum ProgressPage {
         return [
             (Strings.Progress.highscore, count(save.highscore)),
             (Strings.Progress.level, format.number(career.level)),
+            (Strings.Progress.unlimitedBest, count(save.unlimitedBest)),
+            (Strings.Progress.unlimitedCars, count(save.unlimitedBestCars)),
+            (Strings.Progress.mayhemBest, count(save.mayhemBest)),
+            (Strings.Progress.mayhemChain, save.mayhemBestChain > 0 ? "×\(save.mayhemBestChain)" : Strings.Progress.none),
             (Strings.Progress.bestCombo, count(stats.bestCombo)),
             (Strings.Progress.bestChain, count(stats.bestChain)),
             (Strings.Progress.streak, career.dailyStreak > 0 ? Strings.Progress.days(career.dailyStreak) : Strings.Progress.none),

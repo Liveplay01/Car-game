@@ -96,32 +96,6 @@ extension Config {
     }
 }
 
-/// How hard the next shift is played. Chosen before it starts and kept until it is changed
-/// (IDEA.md: push your luck).
-public enum Duty: String, Sendable, Equatable, CaseIterable, Codable {
-    /// The shift as the level has it.
-    case normal
-    /// More cars, a shorter chase and a criminal in every shift — for triple money.
-    case highAlert
-}
-
-extension Config {
-    /// This config as the chosen duty plays it.
-    public func forDuty(_ duty: Duty) -> Config {
-        guard duty == .highAlert else { return self }
-        var config = self
-        config.shiftCars = Int((Double(shiftCars) * highAlertCars).rounded())
-        // Never below the floor: at high levels the countdown is already at its shortest.
-        config.criminalTime = max(minCriminalTime, criminalTime * highAlertCriminalTime)
-        config.criminalChance = 1
-        config.criminalInterval = (criminalInterval.lowerBound * highAlertCriminalInterval)...(criminalInterval.upperBound * highAlertCriminalInterval)
-        config.shiftPay = Int((Double(shiftPay) * highAlertPay).rounded())
-        config.transporterPay = Int((Double(transporterPay) * highAlertPay).rounded())
-        config.shieldBonus = Int((Double(shieldBonus) * highAlertPay).rounded())
-        return config
-    }
-}
-
 extension Config {
     /// A roundabout with more arms: its longer ring carries more traffic, transporters come
     /// sooner, and the bigger job pays more (IDEA.md: a bigger map spawns more bots).
@@ -157,8 +131,7 @@ extension Config {
     }
 }
 
-/// The player's progress across shifts: level, money, the upgrades bought and the duty of
-/// the next shift (ROADMAP.md, M5). The game keeps it in the save game; the balancing bot
+/// The player's progress across shifts: level, money, the upgrades bought (ROADMAP.md, M5). The game keeps it in the save game; the balancing bot
 /// plays whole careers with it.
 public struct Career: Sendable, Equatable, Codable {
     /// The level the next shift is played at.
@@ -166,8 +139,6 @@ public struct Career: Sendable, Equatable, Codable {
     public var money = 0
     /// Bought steps by upgrade (`Upgrade.rawValue`).
     public var upgrades: [String: Int] = [:]
-    /// Normal duty, or High Alert for triple money.
-    public var duty: Duty = .normal
     /// The arm slots built so far; slot 0, the player's, is always one of them.
     public var armSlots: [Int] = [0, 4, 8, 12]
     /// Modules on the ring, by slot. There is a fixed number of slots: once they are all
@@ -217,7 +188,7 @@ public struct Career: Sendable, Equatable, Codable {
     }
 
     enum CodingKeys: String, CodingKey {
-        case level, money, upgrades, duty, armSlots, modules, mastery, masteryTiers, chests, collection
+        case level, money, upgrades, armSlots, modules, mastery, masteryTiers, chests, collection
         case carSkins, mapSkin, adChests, adDay, chestsOpened, chestsSinceEpic
         case dailyDone, lastLoginDay, dailyStreak, challengeDay, challengesDone
         case dailyPlayed, albumsDone, bestTimes, unseen
@@ -231,7 +202,6 @@ public struct Career: Sendable, Equatable, Codable {
         try c.encode(level, forKey: .level)
         try c.encode(money, forKey: .money)
         try c.encode(upgrades, forKey: .upgrades)
-        try c.encode(duty, forKey: .duty)
         try c.encode(armSlots, forKey: .armSlots)
         try c.encode(modules, forKey: .modules)
         try c.encode(mastery, forKey: .mastery)
@@ -264,7 +234,6 @@ public struct Career: Sendable, Equatable, Codable {
         level = max(1, try container.decodeIfPresent(Int.self, forKey: .level) ?? 1)
         money = max(0, try container.decodeIfPresent(Int.self, forKey: .money) ?? 0)
         upgrades = try container.decodeIfPresent([String: Int].self, forKey: .upgrades) ?? [:]
-        duty = (try? container.decodeIfPresent(Duty.self, forKey: .duty)) ?? .normal
         armSlots = try container.decodeIfPresent([Int].self, forKey: .armSlots) ?? [0, 4, 8, 12]
         modules = (try? container.decodeIfPresent([Int: RoadModule].self, forKey: .modules)) ?? [:]
         mastery = (try? container.decodeIfPresent(MasteryStats.self, forKey: .mastery)) ?? MasteryStats()
@@ -321,18 +290,18 @@ public struct Career: Sendable, Equatable, Codable {
     }
 
     /// The config of the next shift: the roundabout as it is built, then its level, the
-    /// upgrades and the duty.
+    /// upgrades.
     /// - Parameters:
     ///   - weather, event: force the sky and the city instead of drawing them (test window).
     public func config(from base: Config, seed: UInt64, weather: Weather? = nil, event: CityEvent? = nil) -> Config {
         var config = base
         config.armSlots = armSlots
         config.modules = modules
-        // The level sets the traffic, the roundabout scales it, then the upgrades and the duty.
+        // The level sets the traffic, the roundabout scales it, then the upgrades.
         config.sportsCarShare = owns("sportsCar") ? base.sportsCarShareOwned : 0
         config.compactShare = owns("compact") ? base.compactShareOwned : 0
         config.vanShare = owns("van") ? base.vanShareOwned : 0
-        var shift = config.forLevel(level, seed: seed).forArms().upgraded { steps(of: $0) }.forDuty(duty)
+        var shift = config.forLevel(level, seed: seed).forArms().upgraded { steps(of: $0) }
         if hasPurchased(.cashBoost) { shift = shift.forCashBoost() }
         // The sky and the city come last: they change the traffic the level has set (M8).
         return shift

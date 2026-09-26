@@ -33,6 +33,15 @@ public enum Tab: String, CaseIterable, Sendable {
     }
 }
 
+/// The Game tab's modes (Leo, 26.09.2026): a swipe across the waiting screen slides the map
+/// on to the next roundabout. Shift is the career; Unlimited an endless run that lasts until
+/// it is lost; Mayhem 30 cars to crash, counted in flames, outside every stat.
+public enum GameMode: String, CaseIterable, Sendable, Codable {
+    case shift
+    case unlimited
+    case mayhem
+}
+
 /// Which screen is showing (FOUNDATION.md 3). The Game tab is ready, playing or showing
 /// the result; the other tabs are pages. Settings open over the Game tab.
 ///
@@ -70,8 +79,10 @@ public struct ShiftSummary: Sendable, Equatable {
     /// The level this shift was played at.
     public var level: Int
     public var isNewHighscore: Bool
-    /// Highscore before this shift.
+    /// Highscore before this shift (Unlimited: its own best).
     public var previousHighscore: Int
+    /// The mode it was played in: Unlimited and Mayhem have their own bests, no level to go on to.
+    public var mode = GameMode.shift
 }
 
 /// Everything a menu or a tab can do. The SwiftUI buttons of the app call these directly.
@@ -84,8 +95,8 @@ public enum ScreenAction: Sendable, Equatable {
     case toggleHaptics
     case toggleVehicleLabels
     case cycleReduceMotion
-    /// Normal duty or High Alert for the next shift (a segmented control in the app).
-    case setDuty(Duty)
+    /// Shift, High Alert or Unlimited for the next shift (a swipe on the Game tab).
+    case setGameMode(GameMode)
     case showTab(Tab)
     /// Opens the Shop, or the Progress tab, on one of its sections (the Game tab's top card).
     case showShop(ShopPage.Section)

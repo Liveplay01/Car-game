@@ -76,27 +76,6 @@ struct UpgradeTests {
         #expect((UInt64(1)...50).allSatisfy { World(config: config, seed: $0).criminal.phase != .idle(next: .infinity) })
     }
 
-    @Test func highAlertIsMoreWorkForMoreMoney() {
-        let normal = config.forLevel(10, seed: 3)
-        let alert = normal.forDuty(.highAlert)
-        #expect(normal.forDuty(.normal) == normal)
-        #expect(alert.shiftCars > normal.shiftCars)
-        #expect(alert.criminalTime < normal.criminalTime)
-        #expect(alert.criminalChance == 1)
-        #expect(alert.shiftPay == Int((Double(normal.shiftPay) * config.highAlertPay).rounded()))
-        #expect(alert.transporterPay == Int((Double(normal.transporterPay) * config.highAlertPay).rounded()))
-        // The traffic itself stays as the level has it.
-        #expect(alert.tempoEnd == normal.tempoEnd)
-        #expect(alert.densityEnd == normal.densityEnd)
-    }
-
-    @Test func highAlertKeepsTheShortestChaseAsItIs() {
-        // At a high level the countdown is already at its floor.
-        let late = config.forLevel(60, seed: 3)
-        #expect(late.criminalTime == config.minCriminalTime)
-        #expect(late.forDuty(.highAlert).criminalTime == config.minCriminalTime)
-    }
-
     @Test func theCareerBuildsTheShiftConfig() {
         var career = Career(level: 3)
         career.upgrades[Upgrade.longerPursuit.rawValue] = 2
@@ -105,9 +84,5 @@ struct UpgradeTests {
         #expect(shift.shiftCars == level.shiftCars)
         #expect(shift.criminalTime == level.criminalTime + 2 * config.pursuitPerStep)
         #expect(shift.shiftPay == config.shiftPayBase + 3 * config.shiftPayPerLevel)
-        // The same career on high alert: more cars, more money.
-        career.duty = .highAlert
-        #expect(career.config(from: config, seed: 5).shiftCars > shift.shiftCars)
-        #expect(career.config(from: config, seed: 5).shiftPay > shift.shiftPay)
     }
 }

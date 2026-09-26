@@ -157,7 +157,7 @@ final class Renderer {
     private static func loadFont(_ path: String) -> Font? {
         guard FileExists(path) else { return nil }
         // ASCII plus the few symbols the game's strings use (× · – — … → −).
-        var codepoints = Array(Int32(32)...Int32(126)) + [0xD7, 0xB7, 0x2013, 0x2014, 0x2026, 0x2192, 0x2212]
+        var codepoints = Array(Int32(32)...Int32(126)) + [0xD7, 0xB7, 0x2013, 0x2014, 0x2026, 0x2192, 0x2212, 0x2190, 0x221E]
         var font = LoadFontEx(path, 64, &codepoints, Int32(codepoints.count))
         guard font.texture.id != 0 else { return nil }
         GenTextureMipmaps(&font.texture)

@@ -27,8 +27,11 @@ public struct ShiftState: Sendable, Equatable {
     }
 
     public internal(set) var phase: Phase = .running
-    /// Cars not yet launched, the queue included. Nil in free play: its queue never ends.
+    /// Cars not yet launched, the queue included. Nil in free play and in Unlimited: their
+    /// queue never ends.
     public internal(set) var carsLeft: Int?
+    /// Cars sent so far (Unlimited counts these instead).
+    public internal(set) var carsSent = 0
     /// World time of the first tap; nil while waiting for it. Shift times count from here.
     public internal(set) var startedAt: Double?
     /// World time at which rush hour began.
@@ -82,6 +85,12 @@ public struct ShiftResult: Sendable, Equatable {
     public var covered = 0
     /// Completed without a single crash (police included) and without a cut-off (v1.2).
     public var isPerfectRun = false
+    /// Cars sent into traffic: Unlimited's measure of a run.
+    public var carsSent = 0
+    /// Mayhem: flames earned, wrecks made and the biggest chain reaction.
+    public var flames = 0
+    public var wrecks = 0
+    public var biggestChain = 0
 
     public var merges: Int { cleanMerges + tightFits + cutOffs + nearMisses + perfects }
 }
@@ -98,13 +107,25 @@ public enum ShiftCurves {
     public static func density(at time: Double, rushHour: Bool, config: Config) -> Int {
         let span = Double(config.densityEnd - config.densityStart)
         let base = config.densityStart + Int((span * ramp(at: time, config: config)).rounded())
-        return base + (rushHour ? config.rushHourDensityBonus : 0)
+        return base + (rushHour ? config.rushHourDensityBonus : 0) + endlessDensity(at: time, config: config)
+    }
+
+    /// Unlimited: one car more every `endlessDensityEvery` seconds after the ramp, capped.
+    static func endlessDensity(at time: Double, config: Config) -> Int {
+        guard config.endless, config.endlessDensityEvery > 0 else { return 0 }
+        let beyond = max(0, time - config.rampSeconds)
+        return min(config.endlessMaxDensityBonus, Int(beyond / config.endlessDensityEvery))
     }
 
     /// Tempo as a share of `ringSpeed`: linear over the ramp, then from the start of rush
     /// hour a short smooth rise to rush hour tempo.
     public static func tempo(at time: Double, rushHourSince: Double?, config: Config) -> Double {
-        let base = config.tempoStart + (config.tempoEnd - config.tempoStart) * ramp(at: time, config: config)
+        var base = config.tempoStart + (config.tempoEnd - config.tempoStart) * ramp(at: time, config: config)
+        if config.endless {
+            // Unlimited keeps speeding up after the ramp, slowly, to a ceiling.
+            let beyond = max(0, time - config.rampSeconds)
+            base = min(max(base, config.endlessMaxTempo), base + beyond / 60 * config.endlessTempoPerMinute)
+        }
         guard let since = rushHourSince else { return base }
         let x = config.rushHourRamp > 0 ? min(max((time - since) / config.rushHourRamp, 0), 1) : 1
         let smooth = x * x * (3 - 2 * x)
@@ -150,7 +171,7 @@ extension World {
     /// tap if it waits for one.
     mutating func startShift(waiting: Bool) {
         guard mode == .shift else { return }
-        shift.carsLeft = config.shiftCars
+        shift.carsLeft = config.endless ? nil : config.shiftCars
         if waiting {
             shift.phase = .waiting
         } else {
@@ -165,7 +186,7 @@ extension World {
         shift.phase = .running
         if case let .idle(next) = criminal.phase { criminal.phase = .idle(next: next + time) }
         if case let .idle(next) = transporter.phase { transporter.phase = .idle(next: next + time) }
-        if config.shiftCars <= config.rushHourCars {
+        if !config.endless, config.shiftCars <= config.rushHourCars {
             beginRushHour(at: time)
         }
     }
@@ -174,10 +195,13 @@ extension World {
     /// with the first of the last `rushHourCars`, so exactly those are doubled; after the
     /// last one, the shift closes.
     mutating func noteLaunch(at time: Double) {
-        guard mode == .shift, let left = shift.carsLeft else { return }
+        guard mode == .shift else { return }
         if shift.phase == .waiting {
             beginShiftClock(at: time)
         }
+        shift.carsSent += 1
+        // Unlimited: no count down, no rush hour, no end but a lost run.
+        guard let left = shift.carsLeft else { return }
         shift.carsLeft = max(0, left - 1)
         let remaining = shift.carsLeft ?? 0
         if shift.phase == .running && remaining < config.rushHourCars {
@@ -203,6 +227,8 @@ extension World {
         guard case .closing = shift.phase else { return }
         let merging = vehicles.contains { $0.owner == .player && $0.activeMerge != nil }
         guard !merging else { return }
+        // Mayhem ends once the last chain reaction has burnt out.
+        if config.mayhem, let last = score.lastCrashAt, now - last < config.mayhemChainWindow { return }
         // A transporter still on the road got through your whole shift: it is paid.
         if case let .active(id, _) = transporter.phase {
             transporterEscapes(id, now: now)
@@ -223,6 +249,8 @@ extension World {
     }
 
     mutating func endShift(_ outcome: ShiftOutcome, at time: Double) {
+        // Unlimited pays for every car sent when the run is over.
+        if config.endless { score.money += config.endlessPayPerCar * shift.carsSent }
         shift.phase = .ended(outcome)
         pendingTaps.removeAll()
         queue.heldTap = nil
@@ -251,7 +279,11 @@ extension World {
             bestChain: score.bestChain,
             costs: score.costs,
             covered: score.covered,
-            isPerfectRun: outcome == .completed && isPerfectSoFar
+            isPerfectRun: outcome == .completed && isPerfectSoFar && !config.mayhem,
+            carsSent: shift.carsSent,
+            flames: score.flames,
+            wrecks: score.wrecks,
+            biggestChain: score.biggestChain
         )
     }
 }

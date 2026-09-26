@@ -87,13 +87,15 @@ struct CrashEffects {
 
     // MARK: - Spawning
 
-    mutating func spawn(for crash: CrashReport, in world: World, reduceMotion: Bool) {
-        let severity = Self.severity(of: crash)
+    /// - Parameter boost: Mayhem's chain reaction (0 elsewhere): every new wreck burns, and the
+    ///   further along the chain, the bigger the fireball, the debris and the shake.
+    mutating func spawn(for crash: CrashReport, in world: World, reduceMotion: Bool, boost: Int = 0) {
+        let severity = boost > 0 ? max(Self.severity(of: crash), 1.2) + 0.18 * Double(min(boost, 6)) : Self.severity(of: crash)
         var average = Vec2.zero
         for id in [crash.first, crash.second] {
             guard let vehicle = world.vehicle(id: id), case let .crashed(state) = vehicle.phase else { continue }
             average += state.velocity / 2
-            if severity >= Self.fireSeverity && !crash.isTakedown {
+            if (severity >= Self.fireSeverity || boost > 0) && !crash.isTakedown {
                 fires[id] = severity
             }
         }

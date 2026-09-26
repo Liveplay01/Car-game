@@ -52,6 +52,13 @@ public struct SaveGame: Codable, Sendable, Equatable {
     public var career = Career()
     /// The first shift's hints were shown (`Tutorial`).
     public var tutorialDone = false
+    /// The Game tab's mode, and the bests of the modes outside the career: Unlimited's score
+    /// and cars, Mayhem's flames and biggest chain reaction.
+    public var mode = GameMode.shift
+    public var unlimitedBest = 0
+    public var unlimitedBestCars = 0
+    public var mayhemBest = 0
+    public var mayhemBestChain = 0
 
     public init() {}
 
@@ -66,6 +73,12 @@ public struct SaveGame: Codable, Sendable, Equatable {
         settings = try container.decodeIfPresent(Settings.self, forKey: .settings) ?? defaults.settings
         // Whoever played before this existed never needs the tutorial.
         tutorialDone = try container.decodeIfPresent(Bool.self, forKey: .tutorialDone) ?? (shiftsPlayed > 0)
+        let legacyUnlimited = (try? decoder.container(keyedBy: LegacyKeys.self).decodeIfPresent(Bool.self, forKey: .unlimited)) ?? false
+        mode = (try? container.decodeIfPresent(GameMode.self, forKey: .mode)) ?? (legacyUnlimited ? .unlimited : .shift)
+        mayhemBest = (try? container.decodeIfPresent(Int.self, forKey: .mayhemBest)) ?? 0
+        mayhemBestChain = (try? container.decodeIfPresent(Int.self, forKey: .mayhemBestChain)) ?? 0
+        unlimitedBest = (try? container.decodeIfPresent(Int.self, forKey: .unlimitedBest)) ?? 0
+        unlimitedBestCars = (try? container.decodeIfPresent(Int.self, forKey: .unlimitedBestCars)) ?? 0
         if let career = try container.decodeIfPresent(Career.self, forKey: .career) {
             self.career = career
         } else {
@@ -81,6 +94,8 @@ public struct SaveGame: Codable, Sendable, Equatable {
     private enum LegacyKeys: String, CodingKey {
         case money
         case level
+        /// Before Mayhem, Unlimited was a switch of its own.
+        case unlimited
     }
 }
 

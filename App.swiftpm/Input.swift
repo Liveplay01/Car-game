@@ -8,6 +8,8 @@ import SwiftUI
 struct TouchLayer: ViewModifier {
     let model: GameModel
     @State private var isDown = false
+    /// A touch on the Game tab between shifts: a tap, or a swipe to another mode.
+    @State private var swipesGameTab = false
 
     func body(content: Content) -> some View {
         content.gesture(
@@ -17,15 +19,16 @@ struct TouchLayer: ViewModifier {
                     if !isDown {
                         isDown = true
                         down(at: Vec2(value.startLocation.x, value.startLocation.y))
-                    } else if model.session.screen == .page(.streetBuilder) {
+                    } else if swipesGameTab || model.session.screen == .page(.streetBuilder) {
                         model.send(.pointerMove(point))
                     }
                 }
                 .onEnded { value in
                     isDown = false
-                    if model.session.screen == .page(.streetBuilder) {
+                    if swipesGameTab || model.session.screen == .page(.streetBuilder) {
                         model.send(.pointerUp(Vec2(value.location.x, value.location.y)))
                     }
+                    swipesGameTab = false
                 }
         )
     }
@@ -50,6 +53,11 @@ struct TouchLayer: ViewModifier {
             model.send(.pointerDown(point))
         } else if session.screen == .settings {
             // The native sheet handles settings.
+        } else if session.screen.showsTabBar && session.screen.tab == .game {
+            // Between shifts the touch may become a swipe to another mode; the session turns
+            // a short one into the tap when the finger lifts.
+            swipesGameTab = true
+            model.send(.pointerDown(point))
         } else {
             model.send(.tap)
         }

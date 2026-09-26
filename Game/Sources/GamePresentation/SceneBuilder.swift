@@ -9,20 +9,6 @@ public enum SceneBuilder {
     /// surface, a kerb line marks where the asphalt ends, the island sits inside the ring,
     /// and the markings go on top — a dashed centre line per arm and a give-way line where
     /// each arm meets the ring (FOUNDATION.md 3).
-    /// High Alert on the road itself (Leo, 26.09.2026): two fine racing stripes along both
-    /// edges of the ring lane, in the alert colour. They say "this one counts" without a word,
-    /// and read by their shape too, not only by colour. `strength` fades them in and out.
-    static func addHighAlert(_ layout: RoundaboutLayout, strength: Double, to list: inout RenderList) {
-        guard strength > 0.01 else { return }
-        let offset = layout.laneWidth / 2 - 3
-        for (index, radius) in [layout.ringRadius - offset, layout.ringRadius + offset].enumerated() {
-            list.add(
-                .arc(center: .zero, radius: radius, thickness: 1.2, startAngle: 0, endAngle: Angle.tau),
-                color: .destructive, opacity: 0.45 * strength, space: .world, id: RenderID.alertStripes + index
-            )
-        }
-    }
-
     public static func addRoad(_ layout: RoundaboutLayout, config: Config, to list: inout RenderList) {
         let lane = layout.laneWidth
         let reach = 700.0

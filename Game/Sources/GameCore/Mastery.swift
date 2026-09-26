@@ -10,7 +10,6 @@ public struct MasteryStats: Sendable, Equatable, Codable {
     public var bestChain = 0
     public var bestCombo = 0
     public var shiftsCompleted = 0
-    public var highAlertCompleted = 0
 
     public init() {}
 
@@ -26,11 +25,10 @@ public struct MasteryStats: Sendable, Equatable, Codable {
         bestChain = value(.bestChain)
         bestCombo = value(.bestCombo)
         shiftsCompleted = value(.shiftsCompleted)
-        highAlertCompleted = value(.highAlertCompleted)
     }
 
     /// Adds one finished shift.
-    public mutating func add(_ result: ShiftResult, duty: Duty) {
+    public mutating func add(_ result: ShiftResult) {
         perfects += result.perfects
         tightFits += result.tightFits
         nearMisses += result.nearMisses
@@ -40,7 +38,6 @@ public struct MasteryStats: Sendable, Equatable, Codable {
         bestCombo = max(bestCombo, result.bestCombo)
         if result.outcome == .completed {
             shiftsCompleted += 1
-            if duty == .highAlert { highAlertCompleted += 1 }
         }
     }
 }
@@ -54,7 +51,6 @@ public enum MasteryGoal: String, Sendable, Equatable, CaseIterable, Codable {
     case secureRoute
     case comboMaster
     case veteran
-    case highAlertHero
 
     /// What each of the three tiers asks for.
     public var thresholds: [Int] {
@@ -67,7 +63,6 @@ public enum MasteryGoal: String, Sendable, Equatable, CaseIterable, Codable {
         case .secureRoute: [10, 75, 300]
         case .comboMaster: [20, 40, 80]
         case .veteran: [10, 75, 300]
-        case .highAlertHero: [5, 30, 120]
         }
     }
 
@@ -81,7 +76,6 @@ public enum MasteryGoal: String, Sendable, Equatable, CaseIterable, Codable {
         case .secureRoute: stats.transporters
         case .comboMaster: stats.bestCombo
         case .veteran: stats.shiftsCompleted
-        case .highAlertHero: stats.highAlertCompleted
         }
     }
 
@@ -105,8 +99,8 @@ extension Career {
     /// Books a finished shift into the mastery counters and hands out a chest for every tier
     /// reached. Returns what was completed, for the toast.
     @discardableResult
-    public mutating func recordMastery(_ result: ShiftResult, duty: Duty) -> [MasteryCompletion] {
-        mastery.add(result, duty: duty)
+    public mutating func recordMastery(_ result: ShiftResult) -> [MasteryCompletion] {
+        mastery.add(result)
         var completed: [MasteryCompletion] = []
         for goal in MasteryGoal.allCases {
             let reached = goal.thresholds.count(where: { goal.value(in: mastery) >= $0 })

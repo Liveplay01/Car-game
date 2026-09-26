@@ -75,7 +75,8 @@ public struct World: Sendable {
             let first = criminalRng.double(in: config.criminalFirst)
             // Some shifts have no criminal at all (`criminalChance`, the Quiet Streets upgrade).
             criminal.phase = .idle(next: criminalRng.unit() < config.criminalChance ? first : .infinity)
-            transporter.phase = .idle(next: transporterRng.double(in: config.transporterFirst))
+            // Mayhem has no money on the road.
+            transporter.phase = .idle(next: config.mayhem ? .infinity : transporterRng.double(in: config.transporterFirst))
         }
         refillQueue()
         if prefill {
@@ -404,8 +405,14 @@ public struct World: Sendable {
         let involvesPlayer = first.owner == .player || second.owner == .player
         var penalty = 0
         var cost = (paid: 0, covered: 0)
+        var mayhem = (flames: 0, chain: 0)
         let comboEvents = events.count
-        if strike && isScoring {
+        if config.mayhem {
+            // Mayhem: no strikes, no costs. Every new wreck burns, chains burn brighter.
+            if isScoring, !first.isCrashed || !second.isCrashed {
+                mayhem = scoreMayhem(at: now, followUp: !strike)
+            }
+        } else if strike && isScoring {
             penalty = scoreCrash(byPolice: byPolice, at: now)
             if mode == .shift { cost = chargeCrash(impact: impact) }
         }
@@ -424,7 +431,9 @@ public struct World: Sendable {
             strikes: score.strikes,
             policeCrashes: score.policeCrashes,
             cost: cost.paid,
-            covered: cost.covered
+            covered: cost.covered,
+            flames: mayhem.flames,
+            chain: mayhem.chain
         )), at: comboEvents)
         if takedown {
             let (criminalID, policeID) = first.type == .pickup ? (first.id, second.id) : (second.id, first.id)
@@ -440,7 +449,7 @@ public struct World: Sendable {
         if let pickup = wreckedCriminal {
             criminalWrecked(pickup.id, at: contact.point, now: now)
         }
-        if strike && isScoring && mode == .shift && isStruckOut {
+        if strike && isScoring && mode == .shift && !config.mayhem && isStruckOut {
             endShift(.struckOut, at: now)
         }
     }

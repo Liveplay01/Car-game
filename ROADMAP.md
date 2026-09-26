@@ -19,6 +19,7 @@ Stand: 26.09.2026 · Die Details zur Basis (M0–M2) stehen in [FOUNDATION.md](F
 | M8 | Wetter & City Events ✅ (Playtest offen) | L | Regen, Sturm und Ereignisse, die den Verkehr wirklich verändern |
 | M9 | Stadt & Module ✅ (Playtest offen) | M | Modulplätze im Street Builder, Abschlepp-Depot, sichtbar wachsende Stadt |
 | M10 | Fahrzeugtypen, Mastery & Truhen ✅ (Playtest offen) | L | Sportwagen & Co., unsichtbare Mastery, Truhen mit Skins im Shop |
+| M10b | Spielmodi per Wischen ✅ (26.09.2026): Shift · Unlimited (endlos bis zum Verlust) · Mayhem (30 Autos, Unfälle in Flammen, Kettenreaktionen); High Alert entfernt | M | im Game-Tab die Karte weiterschieben, Unlimited und Mayhem spielen |
 | M11 | Look & Feel (Soft-Body ✅, Haptik-Muster ✅, Musik-Mix ✅, Icon ✅, Sounds-Feinschliff ✅, obere Anzeige ✅, Welt als UI ✅, Mehr Gefühl ✅; finale Sounds, Design-Pass, Screens offen) | M | finale Farben, Formen, Effekte, Takedown-Deformation, HUD, Sounds |
 
 ### Phase 2 · iPad: nur Fertigmachen (Swift Playgrounds)
@@ -526,7 +527,7 @@ Karte kurz und der Preis leuchtet rot. Mit Reduce Motion bleiben nur Farbe und D
 | Autos erscheinen sichtbar am Bildrand | Sie wurden direkt an der Haltelinie erzeugt | Sie erscheinen außerhalb des Bildes und fahren heran |
 | Gelber Transporter-Effekt an einem normalen Auto | Die KI mied nur die Zufahrt des Verbrechers, nicht die des Transporters | Warnungen nur an freien Zufahrten, KI meidet beide |
 
-### Schritt 4 · Gefahrenstufe ✅
+### Schritt 4 · Gefahrenstufe ✅ (am 26.09.2026 wieder entfernt, ersetzt durch Mayhem, M10b)
 
 Vor jeder Schicht wählt man auf dem Game-Tab (Testfenster: **H**, App später ein
 Segmented Control) zwischen **Normal Duty** und **High Alert**. Die Wahl steht im

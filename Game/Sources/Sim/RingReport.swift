@@ -80,7 +80,7 @@ extension Sim {
     static func ringChain(level: Int, seed: UInt64, config: Config) -> RingStats {
         var stats = RingStats()
         var shiftSeed = seed
-        var world = World(config: shiftConfig(config, level: level, duty: .normal, seed: shiftSeed), seed: shiftSeed, mode: .shift, startsOnFirstTap: true)
+        var world = World(config: shiftConfig(config, level: level, seed: shiftSeed), seed: shiftSeed, mode: .shift, startsOnFirstTap: true)
         var bot = HumanBot(seed: shiftSeed)
         var run = 0
         var longest = 0
@@ -124,7 +124,7 @@ extension Sim {
                     run = 0
                     longest = 0
                     shiftSeed &+= 1
-                    world = world.nextShift(config: shiftConfig(config, level: level, duty: .normal, seed: shiftSeed), seed: shiftSeed)
+                    world = world.nextShift(config: shiftConfig(config, level: level, seed: shiftSeed), seed: shiftSeed)
                     bot = HumanBot(seed: shiftSeed)
                 default:
                     break
