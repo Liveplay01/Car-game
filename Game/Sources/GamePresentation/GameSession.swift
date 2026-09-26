@@ -118,6 +118,15 @@ public final class GameSession {
     private var moneyLanded = false
     /// Real time since the last takedown.
     private var sinceTakedown = Double.infinity
+    /// Brake lights and the headlight flash for a held tap (`VehicleLamps`).
+    private var lamps = VehicleLamps()
+    /// Real seconds since the crash that lost the shift, and since the shift was lost at all
+    /// (a crash or an escape); the camera's step back after it, 0…1.
+    private var sinceFatalCrash = Double.infinity
+    private var sinceLoss = Double.infinity
+    private var lossPull = 0.0
+    /// High Alert's stripes on the ring, 0…1 (`SceneBuilder.addHighAlert`).
+    private var alertStripes = 0.0
     /// The score as the HUD shows it: it runs after the real one instead of jumping.
     private var shownScore = 0.0
     /// The money as the top bar shows it during a shift: the bank at the start plus what the
@@ -230,8 +239,26 @@ public final class GameSession {
     /// Simulation speed: `--time-scale`, the debug slow motion (F2) and the short slow
     /// motion of a takedown.
     public var timeScale: Double {
-        baseTimeScale * Self.slowMotionScales[slowMotionLevel] * takedownSlowMotion
+        baseTimeScale * Self.slowMotionScales[slowMotionLevel] * min(takedownSlowMotion, fatalSlowMotion)
     }
+
+    /// The crash that loses the shift (Leo, 26.09.2026): no hard stop, the moment slows down
+    /// to a fifth for a breath, then eases back while the traffic drives on. Never with
+    /// Reduce Motion.
+    var fatalSlowMotion: Double {
+        guard !reduceMotion else { return 1 }
+        let hold = 0.45
+        let ease = 0.4
+        if sinceFatalCrash < hold { return 0.2 }
+        if sinceFatalCrash < hold + ease { return 0.2 + 0.8 * Ease.outCubic((sinceFatalCrash - hold) / ease) }
+        return 1
+    }
+
+    /// After a lost shift, a tap after this long (real seconds) is the next try at once:
+    /// no result to wait for. Before it, a tap meant for the last car does nothing.
+    public static let restartLock = 0.5
+    /// How far the camera steps back after a lost shift.
+    static let lossPullBack = 0.05
 
     /// A takedown freezes the moment for ~0.3 s (IDEA.md: the good crash), then eases back.
     /// Never with Reduce Motion.
@@ -482,7 +509,7 @@ public final class GameSession {
     /// Whether the next shift is today's Daily Shift. Never the very first shift: a new
     /// player learns on a plain one (`Tutorial`), the Daily comes right after it.
     private var wantsDaily: Bool {
-        automaticDaily && tutorial == nil && save.career.isDailyOpen(day: today)
+        automaticDaily && (tutorial?.isOver ?? true) && save.career.isDailyOpen(day: today)
     }
     /// The splash that announces the Daily Shift, and how long it has shown.
     private var dailySplash: Double?
@@ -796,6 +823,7 @@ public final class GameSession {
             }
             react(to: events)
             age(by: simDelta)
+            lamps.update(world: world, delta: simDelta)
         }
         if case let .result(summary) = screen {
             resultAge += realDelta
@@ -806,6 +834,20 @@ public final class GameSession {
             }
         }
         sinceTakedown += realDelta
+        sinceFatalCrash += realDelta
+        sinceLoss += realDelta
+        // After a lost shift the camera steps back a little, until the next shift waits or runs.
+        let lossShown: Bool
+        switch screen {
+        case .playing: lossShown = pendingSummary.map { $0.result.outcome != .completed } ?? false
+        case let .result(summary): lossShown = summary.result.outcome != .completed && ResultBanner.settled(age: resultAge) < 0.5
+        default: lossShown = false
+        }
+        let pullTarget = lossShown && !reduceMotion ? 1.0 : 0
+        lossPull += (pullTarget - lossPull) * min(1, realDelta / 0.3)
+        // High Alert's stripes on the ring fade in and out with the duty.
+        let alertTarget = playingDuty == .highAlert ? 1.0 : 0
+        alertStripes = reduceMotion ? alertTarget : alertStripes + (alertTarget - alertStripes) * min(1, realDelta / 0.25)
         sinceComboTier += realDelta
         sinceCarSent += realDelta
         sinceStrike += realDelta
@@ -861,6 +903,7 @@ public final class GameSession {
         }
         sinceReady = screen == .ready ? sinceReady + realDelta : 0
         tutorial?.age(by: realDelta)
+        if tutorial?.isDone == true { tutorial = nil }
         transition?.age += realDelta
         if transition?.isDone == true { transition = nil }
         if screen == .page(.upgrades) {
@@ -920,6 +963,13 @@ public final class GameSession {
         case .tap:
             switch screen {
             case .playing:
+                // A lost shift: one tap and the next try is on, without waiting for the result.
+                // Its first car is still rolling up: the tap is held for it (`PlayerQueue`).
+                if let summary = pendingSummary, summary.result.outcome != .completed, sinceLoss >= Self.restartLock {
+                    sinceFatalCrash = .infinity
+                    prepareShift(continuing: true)
+                    startPlaying()
+                }
                 // Input is polled once per frame; the press happened on average half a frame ago.
                 world.tap(at: max(world.time, present - simDelta / 2))
             case .ready:
@@ -1058,8 +1108,13 @@ public final class GameSession {
                 // The ring says how it went before the top card does.
                 switch result.outcome {
                 case .completed: rim.signal(.sweep, .accent)
-                case .struckOut: rim.signal(.flush, .destructive)
-                case .escaped: rim.signal(.flush, .vehicleCriminal)
+                case .struckOut:
+                    rim.signal(.flush, .destructive)
+                    sinceFatalCrash = 0
+                    sinceLoss = 0
+                case .escaped:
+                    rim.signal(.flush, .vehicleCriminal)
+                    sinceLoss = 0
                 }
                 finish(result)
             case let .takedown(report):
@@ -1157,7 +1212,11 @@ public final class GameSession {
             }
         }
         if save.settings.haptics, let haptics {
-            feedback.forEach(haptics.play)
+            // In the flow the merges are felt deeper and softer.
+            let flow = screen == .playing ? flowLevel : 0
+            for haptic in feedback {
+                haptics.play(haptic, softness: Feedback.softness(of: haptic, flow: flow))
+            }
         }
     }
 
@@ -1171,9 +1230,11 @@ public final class GameSession {
             save.highscoreSeed = result.seed
         }
         save.shiftsPlayed += 1
-        // The first shift is over, and with it the tutorial.
+        // The first shift is over, and with it the tutorial; only a strike hint that is
+        // showing runs out (the crash that ended it says why).
         if tutorial != nil {
-            tutorial = nil
+            tutorial?.end()
+            if tutorial?.isDone == true { tutorial = nil }
             save.tutorialDone = true
         }
         // Money is banked whatever the outcome; done is a level up, lost is the same level again.
@@ -1258,11 +1319,13 @@ public final class GameSession {
         var camera = cameraRig.camera(Perspective(screen), layout: world.layout, viewport: viewport, bottomInset: tabInset, delta: delta, reduceMotion: reduceMotion)
         // The crash shake moves the scene; the HUD (screen space) stays still.
         camera.focus += effects.shakeOffset
+        camera.scale *= 1 - Self.lossPullBack * lossPull
         // The map skin sets the ground outside the ring and what grows in the city.
         let mapTheme = MapTheme(skin: forcedMapSkin ?? save.career.mapSkin)
         var list = RenderList(camera: camera, background: MapTheme.ground(mapTheme))
         CityLayer.add(world: world, theme: mapTheme, time: reduceMotion ? nil : sceneTime, pulse: reduceMotion ? nil : cityPulse, to: &list)
         SceneBuilder.addRoad(world.layout, config: world.config, to: &list)
+        SceneBuilder.addHighAlert(world.layout, strength: alertStripes, to: &list)
         CityLayer.addMapSkin(Skins.color(forcedMapSkin ?? save.career.mapSkin), world: world, to: &list)
         MapTheme.addIsland(mapTheme, world: world, to: &list)
         CityLayer.addFrame(save.career.frame, world: world, to: &list)
@@ -1271,7 +1334,7 @@ public final class GameSession {
         WeatherLayer.addGround(world: world, to: &list)
         effects.addGround(world: world, alpha: clock.alpha, softBody: !reduceMotion, to: &list)
         SceneBuilder.addShadows(of: world, alpha: clock.alpha, to: &list)
-        SceneBuilder.addVehicles(of: world, alpha: clock.alpha, carSkins: save.career.carSkins, finishTime: reduceMotion ? nil : world.time, springTime: reduceMotion ? nil : world.time, to: &list)
+        SceneBuilder.addVehicles(of: world, alpha: clock.alpha, carSkins: save.career.carSkins, finishTime: reduceMotion ? nil : world.time, springTime: reduceMotion ? nil : world.time, lamps: lamps, to: &list)
         SceneBuilder.addTowTrucks(of: world, to: &list)
         if save.settings.vehicleLabels {
             SceneBuilder.addLabels(of: world, alpha: clock.alpha, to: &list)
@@ -1313,6 +1376,10 @@ public final class GameSession {
             }
         case let .result(summary):
             ResultBanner.add(summary, nextLevel: playingLevel, bank: resultBank, age: resultAge, format: format, reduceMotion: reduceMotion, showsKeys: options.showsKeyHints, to: &list)
+            // The first shift's strike hint may still be running out.
+            if let tutorial {
+                Tutorial.add(tutorial, world: world, alpha: clock.alpha, time: sceneTime, reduceMotion: reduceMotion, to: &list)
+            }
             // After its epilogue the result turns into the next shift's waiting screen, in the
             // same card: no screen in between (Leo, 25.09.2026).
             let settled = ResultBanner.settled(age: resultAge)
@@ -1320,7 +1387,7 @@ public final class GameSession {
                 addReadyBanner(prompt: nil, drawsCard: false, opacity: settled, to: &list)
             }
         case .ready:
-            addReadyBanner(prompt: tutorial == nil ? Strings.Ready.tapToStart : Tutorial.readyPrompt, to: &list)
+            addReadyBanner(prompt: tutorial?.isOver == false ? Tutorial.readyPrompt : Strings.Ready.tapToStart, to: &list)
             if let tutorial {
                 Tutorial.add(tutorial, world: world, alpha: clock.alpha, time: sceneTime, reduceMotion: reduceMotion, to: &list)
             }

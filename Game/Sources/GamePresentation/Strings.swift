@@ -19,7 +19,10 @@ public enum Strings {
         public static let sendCar = "Tap to send your first car"
         public static let findGap = "Wait for a gap, then tap"
         public static let combo = "Clean merges build your combo"
-        public static let strikes = "3 crashes end the shift"
+        /// The first crash: one car crash ends the shift, only the police have a budget.
+        public static func strikes(policeCrashes: Int) -> String {
+            "Cars crash instantly. Police get \(policeCrashes) chances."
+        }
     }
 
     public enum Ready {

@@ -29,7 +29,11 @@ final class RecordingAudio: AudioPlaying {
 
 final class RecordingHaptics: HapticsPlaying {
     var played: [HapticID] = []
-    func play(_ haptic: HapticID) { played.append(haptic) }
+    var softness: [Double] = []
+    func play(_ haptic: HapticID, softness: Double) {
+        played.append(haptic)
+        self.softness.append(softness)
+    }
 }
 
 let viewport = Vec2(430, 900)
@@ -171,6 +175,41 @@ struct SessionTests {
         #expect(old.tutorialDone)
         let fresh = try JSONDecoder().decode(SaveGame.self, from: Data(#"{ "shiftsPlayed": 0 }"#.utf8))
         #expect(!fresh.tutorialDone)
+    }
+
+    /// The first crash's hint says what really happens (Leo, 26.09.2026): a car crash ends the
+    /// shift at once, only the police have a budget. It fits an iPhone SE in one line.
+    @Test func theStrikeHintTellsTheRealRuleAndFits() {
+        let config = Config()
+        let hint = Strings.Tutorial.strikes(policeCrashes: config.maxPoliceCrashes)
+        #expect(config.maxStrikes == 1)
+        #expect(hint.contains("\(config.maxPoliceCrashes)"))
+        let size = Tutorial.fittingSize(hint, viewportWidth: 375)
+        #expect(size >= 12)
+        #expect(Icons.textWidth(hint, size: size) + 32 <= 375 - 2 * TopBar.margin + 0.5)
+        // The other hints keep their size.
+        #expect(Tutorial.fittingSize(Strings.Tutorial.findGap, viewportWidth: 375) == 14)
+    }
+
+    /// The first fail is usually a car crash, right at the start with 0 points, and it ends
+    /// the shift. The hint still shows, over the end of the shift and into the result, and
+    /// then the tutorial is gone for good.
+    @Test func theFirstCrashSaysWhyEvenThoughItEndsTheShift() {
+        let store = MemorySaveStore()
+        let session = makeSession(store: store)
+        let hint = Strings.Tutorial.strikes(policeCrashes: session.world.config.maxPoliceCrashes)
+        session.advance()
+        session.advance([.tap])
+        crashNextCar(session)
+        #expect(session.world.score.points == 0)
+        #expect(session.advance().texts.contains(hint))
+        session.run(seconds: 3) { if case .result = $0.screen { true } else { false } }
+        #expect(session.advance().texts.contains(hint))
+        #expect(store.game?.tutorialDone == true)
+        session.run(seconds: 8) { $0.screen == .ready }
+        let texts = session.advance().texts
+        #expect(!texts.contains(hint))
+        #expect(!texts.contains(Tutorial.readyPrompt))
     }
 
     @Test func tapLaunchesTheCarWithinTheFrameAt60Hz() {
@@ -386,7 +425,8 @@ struct ScreenFlowTests {
         let session = makeSession(config: quietConfig { $0.maxStrikes = 1 }, store: store)
         session.advance([.confirm])
         crashNextCar(session)
-        session.run(seconds: GameSession.resultDelay + 0.2) { $0.isShowingResult }
+        // The result waits in game time, which the crash's slow motion stretches.
+        session.run(seconds: GameSession.resultDelay + 1.2) { $0.isShowingResult }
         guard case let .result(summary) = session.screen else {
             Issue.record("no result")
             return
@@ -479,7 +519,9 @@ struct FeedbackTests {
 
     @Test func mapsEventsToSoundsAndHaptics() {
         #expect(Feedback.sound(for: merge(.clean)) == .merge)
-        #expect(Feedback.haptic(for: merge(.clean)) == nil)
+        // A clean car clicks into place, barely felt (Leo, 26.09.2026); a cut-off is not felt.
+        #expect(Feedback.haptic(for: merge(.clean)) == .merge)
+        #expect(Feedback.haptic(for: merge(.cutOff)) == nil)
         #expect(Feedback.sound(for: merge(.tightFit)) == .tightFit)
         #expect(Feedback.haptic(for: merge(.tightFit)) == .tightFit)
         #expect(Feedback.sound(for: .launched(vehicle: 1, time: 0)) == nil)
@@ -519,7 +561,19 @@ struct FeedbackTests {
     @Test func eachCueOncePerFrame() {
         let cues = Feedback.cues(for: [merge(.clean), merge(.clean), merge(.tightFit)])
         #expect(cues.sounds == [.merge, .tightFit])
+        // The clean click gives way to the stronger Tight Fit; on its own it is felt.
         #expect(cues.haptics == [.tightFit])
+        #expect(Feedback.cues(for: [merge(.clean), merge(.clean)]).haptics == [.merge])
+    }
+
+    /// In the flow the rhythm is felt deeper and softer; warnings and hits stay sharp.
+    @Test func theFlowSoftensTheRhythmNotTheWarnings() {
+        #expect(Feedback.softness(of: .merge, flow: 1) == 1)
+        #expect(Feedback.softness(of: .perfect, flow: 0.5) == 0.5)
+        #expect(Feedback.softness(of: .tightFit, flow: 0) == 0)
+        #expect(Feedback.softness(of: .crash, flow: 1) == 0)
+        #expect(Feedback.softness(of: .wanted, flow: 1) == 0)
+        #expect(Feedback.softness(of: .takedown, flow: 1) == 0)
     }
 
     @Test func sessionPlaysSoundsOnlyWhenSoundIsOn() {
@@ -530,7 +584,9 @@ struct FeedbackTests {
         session.run(seconds: 1) { _ in audio.played.contains(.merge) }
         // The first tap leaves the waiting banner with a short "go", then the car merges.
         #expect(audio.played == [.go, .merge])
-        #expect(haptics.played.isEmpty)
+        // Only the barely felt click of a clean car, not yet in the flow.
+        #expect(haptics.played == [.merge])
+        #expect(haptics.softness == [0])
 
         audio.played.removeAll()
         session.perform(.toggleSound)
@@ -984,7 +1040,11 @@ struct CrashEffectTests {
         let session = makeSession()
         session.advance([.confirm])
         crashNextCar(session)
-        let items = session.advance().renderList.items
+        // The crash that loses the shift runs in slow motion: wait until the wreck is charred.
+        var items = session.advance().renderList.items
+        for _ in 0..<120 where !items.contains(where: { $0.color == .wreck }) {
+            items = session.advance().renderList.items
+        }
         let liveCar = session.world.vehicles.first { !$0.isCrashed }.map { RenderID.vehicle($0.id, part: 0) }
         let wreck = items.firstIndex { $0.color == .wreck }
         let traffic = items.firstIndex { $0.id == liveCar }

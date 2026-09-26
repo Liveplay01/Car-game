@@ -65,6 +65,34 @@ struct DriverTests {
         }
     }
 
+    /// Brake lights (Leo, 26.09.2026): off in the flow and while the driver is still taking
+    /// the wreck in, on once it brakes and while it stands behind it.
+    @Test func brakeLightsFollowTheDriver() {
+        var world = lastingWrecks()
+        world.spawnWreck(atRing: 400)
+        let car = world.spawnRingCar(at: 0, exitArm: world.south)
+        var sawReactionWithoutLights = false
+        var sawBraking = false
+        for _ in 0..<(6 * World.stepRate) {
+            world.step()
+            guard let vehicle = world.vehicle(id: car), let drive = world.drive(of: car) else { continue }
+            if let reaction = drive.reaction, reaction > 0 {
+                sawReactionWithoutLights = sawReactionWithoutLights || !world.isBraking(vehicle)
+                #expect(!world.isBraking(vehicle))
+            }
+            sawBraking = sawBraking || world.isBraking(vehicle)
+        }
+        #expect(sawReactionWithoutLights)
+        #expect(sawBraking)
+        // Standing behind the wreck: still on.
+        #expect(world.vehicle(id: car).map(world.isBraking) == true)
+        // A car in the flow has them off.
+        var calm = emptyWorld()
+        let flowing = calm.spawnRingCar(at: 0, exitArm: calm.south)
+        calm.run(steps: World.stepRate) { _ in false }
+        #expect(calm.vehicle(id: flowing).map(calm.isBraking) == false)
+    }
+
     @Test func carTooCloseToStopCrashesButCostsNoStrike() {
         var world = lastingWrecks()
         let wreck = world.spawnWreck(atRing: 120)

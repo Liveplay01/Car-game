@@ -1,6 +1,6 @@
 # Roadmap – vom Testfenster zur App im App Store
 
-Stand: 24.09.2026 · Die Details zur Basis (M0–M2) stehen in [FOUNDATION.md](FOUNDATION.md), das Testen in [TESTING.md](TESTING.md), der Gesamtweg in [PLAN.md](PLAN.md), alle Ideen in [IDEA.md](IDEA.md).
+Stand: 26.09.2026 · Die Details zur Basis (M0–M2) stehen in [FOUNDATION.md](FOUNDATION.md), das Testen in [TESTING.md](TESTING.md), der Gesamtweg in [PLAN.md](PLAN.md), alle Ideen in [IDEA.md](IDEA.md).
 
 ## Überblick
 
@@ -19,7 +19,7 @@ Stand: 24.09.2026 · Die Details zur Basis (M0–M2) stehen in [FOUNDATION.md](F
 | M8 | Wetter & City Events ✅ (Playtest offen) | L | Regen, Sturm und Ereignisse, die den Verkehr wirklich verändern |
 | M9 | Stadt & Module ✅ (Playtest offen) | M | Modulplätze im Street Builder, Abschlepp-Depot, sichtbar wachsende Stadt |
 | M10 | Fahrzeugtypen, Mastery & Truhen ✅ (Playtest offen) | L | Sportwagen & Co., unsichtbare Mastery, Truhen mit Skins im Shop |
-| M11 | Look & Feel (Soft-Body ✅, Haptik-Muster ✅, Musik-Mix ✅, Icon ✅, Sounds-Feinschliff ✅, obere Anzeige ✅, Welt als UI ✅; finale Sounds, Design-Pass, Screens offen) | M | finale Farben, Formen, Effekte, Takedown-Deformation, HUD, Sounds |
+| M11 | Look & Feel (Soft-Body ✅, Haptik-Muster ✅, Musik-Mix ✅, Icon ✅, Sounds-Feinschliff ✅, obere Anzeige ✅, Welt als UI ✅, Mehr Gefühl ✅; finale Sounds, Design-Pass, Screens offen) | M | finale Farben, Formen, Effekte, Takedown-Deformation, HUD, Sounds |
 
 ### Phase 2 · iPad: nur Fertigmachen (Swift Playgrounds)
 
@@ -180,11 +180,53 @@ Upgrade-Raster ist vom Ring nur wenig zu sehen.
 Lichtsignale zu viel oder zu wenig? Ist der Nachklang von 3,6 s richtig? Merkt man, dass die
 Stadt atmet, ohne dass es auffällt? Fühlen sich die Tab-Wechsel wie eine Kamerafahrt an?
 
+## Mehr Gefühl, keine UI ✅ (26.09.2026, Vorschläge Leo)
+
+**Leitgedanke:** so wenig UI wie möglich (Leo). Was das Spiel sagen will, sagt die Welt:
+Lichter an den Autos, die Straße, Klang und Haptik. Umgesetzt wurde nur, was wirklich
+bereichert; Zurückspulen nach dem Crash, Dauerbrummen an der Sperrzone, SF Compact und
+`.ultraThinMaterial` (auf iOS 26 ist Liquid Glass das System-Material) bewusst nicht.
+
+1. **Nachrücken ohne Ruck** (`PlayerQueue.approach`, GameCore): Das nächste Auto fährt weich
+   an und bremst weich an der Linie, statt aus Ringtempo schlagartig zu stehen. Ein früher
+   Tap lässt es mit Ringtempo durch die Linie rollen, die Autos dahinter rollen weiter.
+   Timing unverändert (bereit im selben Moment).
+2. **Lichter** (`VehicleLamps`, `World.isBraking`): Bremslichter an der stehenden Schlange,
+   an Bots vor ihrer Linie und an Fahrern, die für ein Wrack bremsen oder im Stau stehen;
+   wer den Unfall noch nicht bemerkt hat, rollt ohne. Die Lichthupe blinkt zweimal, wenn ein
+   früher Tap gehalten wird. Lampen nur, solange sie leuchten (Zeichenbudget).
+3. **Verlorene Schicht:** 0,45 s Zeitlupe (0,2×), Kamera 5 % zurück, Inselrand rot. Ab 0,5 s
+   startet ein Tap sofort den nächsten Versuch, ohne auf das Ergebnis zu warten.
+4. **High Alert auf der Straße:** zwei feine rote Rennstreifen an den Rändern der Ringfahrbahn.
+5. **Haptik:** feinster Klick bei sauberer Einfädelung (`merge.ahap`, nur allein im Frame);
+   im Flow werden die Einfädel-Muster tiefer und weicher (`Feedback.softness`; die App legt
+   AHAP-Parameter vor das Muster). Warnungen und Treffer bleiben scharf.
+6. **Klang:** Die Musik atmet ein (`MusicMix.lowPass`): bei Verbrecher-Warnung und Rush Hour
+   schließt ein Tiefpass sie kurz bis ≈ 650 Hz. Testfenster: Filter im raylib-Audiothread
+   (`MusicFilter`), App: `AVAudioEngine` mit `AVAudioUnitEQ`. Perfect ist jetzt ein dunkles
+   „Plopp“ statt eines hellen Glöckchens.
+7. **App:** Spielszene in SF Pro Rounded; Buttons in Liquid Glass (`.glass`,
+   `.glassProminent`) mit der Druckfeder des Systems.
+8. **Tutorial:** „Cars crash instantly. Police get 3 chances.“, erscheint jetzt auch beim
+   ersten Crash, der die Schicht beendet.
+
+**Entschieden:** Schichten bleiben kurz (kein 2-Minuten-Ziel); ein verlorenes Level wird
+wiederholt, fair dank Sofort-Neustart.
+
+**Tests:** `WorldFeelTests` (Lichthupe und Bremslichter, verlorene Schicht mit und ohne
+Reduce Motion, High-Alert-Streifen, atmende Musik, Blinkkurve), dazu Nachrücken und
+Durchrollen (`WorldTests`), Bremslichter der Fahrer (`DriverTests`), Haptik im Flow
+(`FeedbackTests`).
+
+**Grenzen, ehrlich:** Haptik, Liquid Glass, Rounded-Schrift und der Filter in der App sind
+ungetestet (erst auf iPad/iPhone). Der Filter im Testfenster ist gebaut, aber noch nicht
+angehört.
+
 ## Als Nächstes
 
 1. **Playtest im Testfenster** mit den Bots im Ring (Level 1, 5, 10, 20), Werte in
-   `tuning.json` (`minRingBots`, `ringBotsPerLevel`, `maxMinRingBots`), und mit dem neuen
-   Ring-als-UI (Playtest-Fragen oben).
+   `tuning.json` (`minRingBots`, `ringBotsPerLevel`, `maxMinRingBots`), mit dem
+   Ring-als-UI und dem neuen Spielgefühl (Playtest-Fragen oben und in Spiel.md).
 2. **M12: erster Build auf dem iPad** (`App.swiftpm` ist vorbereitet, aber ungetestet).
 
 ## Grundsätze

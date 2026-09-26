@@ -228,6 +228,8 @@ public struct Drive: Sendable, Equatable {
     public var hazardTime = 0.0
     /// How long the driver has been out of the flow without a break.
     public var outOfFlowTime = 0.0
+    /// The driver is slowing down or standing: the brake lights are on. Only drawn.
+    public var isBraking = false
 
     public init() {}
 

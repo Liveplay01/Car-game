@@ -105,6 +105,84 @@ struct QueueTests {
         #expect(world.queue.heldTap == nil)
     }
 
+    /// Leo, 26.09.2026: the next car no longer stops dead at the line. Without a tap it pulls
+    /// away and brakes softly; with a held tap it rolls through at ring speed, from wherever
+    /// the tap caught it, without a jump and never past the line.
+    @Test func theNextCarBrakesSoftlyOrRollsThroughOnAHeldTap() {
+        let steps = 400
+        let h = 1.0 / Double(steps)
+        func speed(_ x: Double, _ from: Double?) -> Double {
+            (PlayerQueue.approach(min(x + h, 1), passFrom: from) - PlayerQueue.approach(max(x - h, 0), passFrom: from)) / (min(x + h, 1) - max(x - h, 0))
+        }
+        // Standing at the start; at rest at the line without a tap.
+        #expect(PlayerQueue.approach(0, passFrom: nil) == 0)
+        #expect(PlayerQueue.approach(1, passFrom: nil) == 1)
+        #expect(speed(0, nil) < 0.02)
+        #expect(speed(1, nil) < 0.02)
+        for from in [0.0, 0.2, 0.5, 0.8, 0.95, 0.999] {
+            var last = 0.0
+            for i in 0...steps {
+                let x = Double(i) * h
+                let p = PlayerQueue.approach(x, passFrom: from)
+                // Forward only, never past the line, and no jump where the tap came in.
+                #expect(p >= last - 1e-12 && p <= 1 + 1e-12)
+                #expect(abs(p - last) < 0.02)
+                last = p
+            }
+            // The tap does not move the car: the same place as braking up to that moment.
+            #expect(abs(PlayerQueue.approach(from, passFrom: from) - PlayerQueue.approach(from, passFrom: nil)) < 1e-12)
+        }
+        // Caught early enough, it reaches the line at ring speed and goes straight on.
+        for from in [0.0, 0.2, 0.5] {
+            #expect(abs(speed(1, from) - 1) < 0.02)
+            #expect(abs(PlayerQueue.passSpeed(from: from) - 1) < 1e-9)
+        }
+        // The cars behind a car that rolled through carry on at its speed, then brake.
+        func rolling(_ x: Double) -> Double {
+            (PlayerQueue.approach(min(x + h, 1), startSpeed: 1, passFrom: nil) - PlayerQueue.approach(max(x - h, 0), startSpeed: 1, passFrom: nil)) / (min(x + h, 1) - max(x - h, 0))
+        }
+        #expect(abs(rolling(0) - 1) < 0.02)
+        #expect(rolling(1) < 0.02)
+    }
+
+    @Test func aHeldTapLetsTheRollingCarGoThroughTheLine() {
+        var world = emptyWorld()
+        world.tap(at: 0)
+        let next = world.queue.vehicles[1]
+        let limit = 1.5 * world.config.ringSpeed * World.stepDuration + 1e-6
+        // Halfway up to the line, the tap comes in.
+        let halfway = Int((world.config.queueSpacing / world.config.ringSpeed / 2) / World.stepDuration)
+        for _ in 0..<halfway {
+            world.step()
+        }
+        #expect(world.queue.passFrom == nil)
+        #expect(!world.queueBrakes)
+        world.tap(at: world.time)
+        // The car behind it must not stop dead when the one in front rolls through.
+        let behind = world.queue.vehicles[1]
+        var lastStep: Double?
+        for _ in 0..<World.stepRate {
+            world.step()
+            if world.queue.heldTap != nil {
+                #expect(world.queue.passFrom != nil)
+                #expect(!world.queueBrakes)
+            }
+            guard let car = world.vehicle(id: next), let follower = world.vehicle(id: behind) else { break }
+            #expect(car.position.distance(to: car.previousPosition) <= limit)
+            let step = follower.position.distance(to: follower.previousPosition)
+            if let lastStep {
+                #expect(abs(step - lastStep) <= 0.35 * world.config.ringSpeed * World.stepDuration)
+            }
+            lastStep = step
+        }
+        #expect(world.queue.heldTap == nil)
+        #expect(world.queue.passFrom == nil)
+        // In the end the queue stands at the line, brake lights on.
+        world.run(steps: World.stepRate) { $0.queue.isReady }
+        #expect(world.queueBrakes)
+        #expect(world.queue.vehicles.first.flatMap { world.vehicle(id: $0) }.map(world.isBraking) == true)
+    }
+
     @Test func onlyOneEarlyTapIsHeld() {
         var world = emptyWorld()
         world.tap(at: 0)
@@ -119,7 +197,10 @@ struct QueueTests {
         var world = emptyWorld()
         world.tap(at: 0)
         let next = world.queue.vehicles[1]
-        let limit = world.config.ringSpeed * World.stepDuration + 1e-6
+        // It pulls away from standing and brakes at the line in the time the launched car
+        // needs for one slot, so in between it is briefly up to 1.5 times as fast as the ring
+        // (`PlayerQueue.approach`) — a car pulling up, never a jump.
+        let limit = 1.5 * world.config.ringSpeed * World.stepDuration + 1e-6
         for _ in 0..<World.stepRate {
             world.step()
             guard let car = world.vehicle(id: next) else { break }

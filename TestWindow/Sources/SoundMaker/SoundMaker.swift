@@ -271,14 +271,28 @@ struct SoundMaker {
         return reverb(dry, room: 0.35, damp: 0.5, wet: 0.1, tail: 0.2)
     }
 
-    /// Perfect Input: a small crystal "ting" in two notes — precise, not loud.
+    /// Perfect Input: the dark, precise "plop" of a well-made switch or a soft-close drawer
+    /// shutting (Leo, 26.09.2026), nothing that beeps: a short knock whose pitch drops as it
+    /// settles, a soft low weight under it and a tiny click of the mechanism on top. Dark and
+    /// almost dry, like a closed piece of furniture.
     static func perfect() -> Stereo {
-        let dry = renderStereo(0.3) { t in
-            let first = fmBell(2_093, t, length: 0.08, ratio: 3.5, index: 1.2)
-            let second = fmBell(3_136, t - 0.045, length: 0.12, ratio: 3.5, index: 1) * 0.85
-            return (first + second * 0.8, first * 0.8 + second)
+        var noise = Random(seed: 29)
+        var mechanism = Biquad()
+        mechanism.set(.bandPass, 2_300, q: 1.6)
+        var dark = Biquad()
+        dark.set(.lowPass, 2_400, q: 0.7)
+        var phase = 0.0
+        let dry = renderStereo(0.22) { t in
+            // The plop: a resonance falling from 340 to 190 Hz as the body comes to rest.
+            let pitch = 190 + 150 * exp(-t / 0.018)
+            phase += 2 * .pi * pitch / rate
+            let plop = sin(phase) * exp(-t / 0.04) * min(t / 0.0015, 1)
+            let weight = sine(105, t) * exp(-t / 0.05) * 0.55 * min(t / 0.003, 1)
+            let click = mechanism.process(t < 0.004 ? noise.noise() * (1 - t / 0.004) * 0.35 : 0)
+            let x = dark.process(plop + weight + click)
+            return (x, x)
         }
-        return reverb(dry, room: 0.55, damp: 0.3, wet: 0.2, tail: 0.4)
+        return reverb(dry, room: 0.25, damp: 0.7, wet: 0.06, tail: 0.15)
     }
 
     /// Cut off: the car you cut off honks at you — two short, annoyed blasts of a dual horn.

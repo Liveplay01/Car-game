@@ -9,6 +9,20 @@ public enum SceneBuilder {
     /// surface, a kerb line marks where the asphalt ends, the island sits inside the ring,
     /// and the markings go on top — a dashed centre line per arm and a give-way line where
     /// each arm meets the ring (FOUNDATION.md 3).
+    /// High Alert on the road itself (Leo, 26.09.2026): two fine racing stripes along both
+    /// edges of the ring lane, in the alert colour. They say "this one counts" without a word,
+    /// and read by their shape too, not only by colour. `strength` fades them in and out.
+    static func addHighAlert(_ layout: RoundaboutLayout, strength: Double, to list: inout RenderList) {
+        guard strength > 0.01 else { return }
+        let offset = layout.laneWidth / 2 - 3
+        for (index, radius) in [layout.ringRadius - offset, layout.ringRadius + offset].enumerated() {
+            list.add(
+                .arc(center: .zero, radius: radius, thickness: 1.2, startAngle: 0, endAngle: Angle.tau),
+                color: .destructive, opacity: 0.45 * strength, space: .world, id: RenderID.alertStripes + index
+            )
+        }
+    }
+
     public static func addRoad(_ layout: RoundaboutLayout, config: Config, to list: inout RenderList) {
         let lane = layout.laneWidth
         let reach = 700.0
@@ -183,7 +197,9 @@ public enum SceneBuilder {
     /// All vehicles on the road. Crashed ones are not drawn here: the crash effects draw
     /// them as wrecks. A police car's lights flash once it drives off, and on every police
     /// car, the queue included, while a criminal is on the run.
-    public static func addVehicles(of world: World, alpha: Double, carSkins: [String] = [], finishTime: Double? = nil, springTime: Double? = nil, to list: inout RenderList) {
+    /// - Parameters:
+    ///   - lamps: the brake lights and headlight flashes (`VehicleLamps`); nil draws no lamps.
+    public static func addVehicles(of world: World, alpha: Double, carSkins: [String] = [], finishTime: Double? = nil, springTime: Double? = nil, lamps: VehicleLamps? = nil, to list: inout RenderList) {
         let chase = world.criminal.vehicle != nil
         for vehicle in world.vehicles where !vehicle.isCrashed {
             var flashing = chase
@@ -195,6 +211,10 @@ public enum SceneBuilder {
                 dents: vehicle.dents,
                 // Each police car strobes on its own beat, like real ones do.
                 lights: vehicle.type == .police && flashing ? world.time / CarArt.strobeCycle + Double(vehicle.id % 7) * 0.37 : nil,
+                brake: lamps.map { $0.brake(vehicle.id) },
+                // A standing queue glows only at its head; behind it the lamps say enough.
+                brakeGlow: vehicle.phase != .queued || vehicle.id == world.queue.vehicles.first,
+                headlights: lamps?.headlights(vehicle.id) ?? 0,
                 skin: look(vehicle, carSkins)?.paint,
                 stripe: look(vehicle, carSkins)?.stripe,
                 roof: look(vehicle, carSkins)?.roof,

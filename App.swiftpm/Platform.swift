@@ -80,33 +80,84 @@ final class AppHaptics: HapticsPlaying {
         try? engine?.start()
     }
 
-    func play(_ haptic: HapticID) {
-        guard let engine, let url = AppResources.url("Haptics", haptic.rawValue, "ahap") else { return }
+    func play(_ haptic: HapticID, softness: Double) {
+        guard let engine, let url = url(haptic, softness: softness) else { return }
         try? engine.start()
         try? engine.playPattern(from: url)
     }
+
+    /// Softened copies of the patterns (the flow, `Feedback.softness`), made once per step.
+    private var softened: [String: URL] = [:]
+
+    /// The pattern, or a copy that starts with two dynamic parameters (AHAP "Parameter"
+    /// entries): less sharpness and a little less intensity, so it is felt deeper and softer.
+    /// Softness comes in three steps, so there are never more than three copies of each.
+    private func url(_ haptic: HapticID, softness: Double) -> URL? {
+        guard let base = AppResources.url("Haptics", haptic.rawValue, "ahap") else { return nil }
+        let step = Int((min(max(softness, 0), 1) * 3).rounded())
+        guard step > 0 else { return base }
+        let key = "\(haptic.rawValue)-soft\(step)"
+        if let cached = softened[key] { return cached }
+        guard let data = try? Data(contentsOf: base),
+              var json = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any],
+              var pattern = json["Pattern"] as? [Any] else { return base }
+        let amount = Double(step) / 3
+        pattern.insert(["Parameter": ["ParameterID": "HapticSharpnessControl", "Time": 0.0, "ParameterValue": -0.4 * amount]], at: 0)
+        pattern.insert(["Parameter": ["ParameterID": "HapticIntensityControl", "Time": 0.0, "ParameterValue": 1 - 0.15 * amount]], at: 0)
+        json["Pattern"] = pattern
+        let file = FileManager.default.temporaryDirectory.appendingPathComponent("\(key).ahap")
+        guard let out = try? JSONSerialization.data(withJSONObject: json), (try? out.write(to: file)) != nil else { return base }
+        softened[key] = file
+        return file
+    }
 }
 
-/// Adaptive music: all stems loop in sync, each faded to what `MusicMix` asks for.
+/// Adaptive music: all stems loop in sync, each faded to what `MusicMix` asks for, and all
+/// through one low-pass filter, so the music can breathe in (`MusicMix.lowPass`). An
+/// AVAudioEngine for that: stems → mixer → filter → output.
 final class AppMusic {
-    private var players: [MusicLayer: AVAudioPlayer] = [:]
+    private let engine = AVAudioEngine()
+    private let stems = AVAudioMixerNode()
+    private let filter = AVAudioUnitEQ(numberOfBands: 1)
+    private var players: [MusicLayer: AVAudioPlayerNode] = [:]
     private var volumes: [MusicLayer: Double] = [:]
     static let master = 0.35
     static let fade = 0.8
 
     init() {
+        let band = filter.bands[0]
+        band.filterType = .lowPass
+        band.frequency = Float(MusicMix.cutoff(0))
+        band.bypass = false
+        engine.attach(stems)
+        engine.attach(filter)
+        engine.connect(stems, to: filter, format: nil)
+        engine.connect(filter, to: engine.mainMixerNode, format: nil)
         for layer in MusicLayer.allCases {
             guard let url = AppResources.url("Music", layer.rawValue, "wav"),
-                  let player = try? AVAudioPlayer(contentsOf: url) else { continue }
-            player.numberOfLoops = -1
+                  let file = try? AVAudioFile(forReading: url),
+                  let buffer = AVAudioPCMBuffer(pcmFormat: file.processingFormat, frameCapacity: AVAudioFrameCount(file.length)),
+                  (try? file.read(into: buffer)) != nil else { continue }
+            let player = AVAudioPlayerNode()
+            engine.attach(player)
+            engine.connect(player, to: stems, format: buffer.format)
             player.volume = 0
-            player.prepareToPlay()
+            player.scheduleBuffer(buffer, at: nil, options: .loops)
             players[layer] = player
         }
-        // Started on the same device time, so the loops stay together.
-        if let start = players.values.first.map({ $0.deviceCurrentTime + 0.2 }) {
-            for player in players.values { player.play(atTime: start) }
+        start()
+        // A call or another app took the audio: start again once it is back.
+        NotificationCenter.default.addObserver(forName: AVAudioSession.interruptionNotification, object: nil, queue: .main) { [weak self] note in
+            let type = (note.userInfo?[AVAudioSessionInterruptionTypeKey] as? UInt).flatMap(AVAudioSession.InterruptionType.init)
+            if type == .ended { self?.start() }
         }
+    }
+
+    /// Starts the engine and all stems on the same host time, so the loops stay together.
+    private func start() {
+        guard !players.isEmpty, (try? engine.start()) != nil else { return }
+        let at = AVAudioTime(hostTime: mach_absolute_time() + AVAudioTime.hostTime(forSeconds: 0.2))
+        for player in players.values where !player.isPlaying { player.play(at: at) }
     }
 
     func update(mix: MusicMix, enabled: Bool, delta: Double) {
@@ -117,5 +168,6 @@ final class AppMusic {
             volumes[layer] = next
             player.volume = Float(next * Self.master)
         }
+        filter.bands[0].frequency = Float(MusicMix.cutoff(mix.lowPass))
     }
 }

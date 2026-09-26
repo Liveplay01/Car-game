@@ -23,7 +23,13 @@ extension AudioPlaying {
 
 /// Plays haptic patterns. App: Core Haptics with the `.ahap` files. Test window: none.
 public protocol HapticsPlaying: AnyObject {
-    func play(_ haptic: HapticID)
+    /// - Parameter softness: 0…1, how much deeper and softer than the pattern it is felt
+    ///   (`Feedback.softness`, the flow).
+    func play(_ haptic: HapticID, softness: Double)
+}
+
+extension HapticsPlaying {
+    public func play(_ haptic: HapticID) { play(haptic, softness: 0) }
 }
 
 /// Hands out the seed of each new shift. Test window: `--seed` or the clock. Tests: fixed.

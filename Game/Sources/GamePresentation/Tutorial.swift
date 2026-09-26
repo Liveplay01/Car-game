@@ -7,7 +7,8 @@ import GameCore
 /// 1. Before the first tap, the front car of the queue pulses and the prompt says it goes.
 /// 2. Once it went, the island says to wait for a gap, until two cars are in cleanly.
 /// 3. Then, for a moment, that clean merges build the combo.
-/// 4. The first crash says, right under the strike dots, that three end the shift.
+/// 4. The first crash says, right under the strike dots, that a car crash ends the shift at
+///    once and only the police have a few chances (`maxPoliceCrashes`).
 ///
 /// It ends with the first shift, whatever its outcome, and never comes back.
 struct Tutorial: Sendable, Equatable {
@@ -28,6 +29,19 @@ struct Tutorial: Sendable, Equatable {
     var cleanMerges = 0
     /// The strike hint: seconds since the first crash, once it happened.
     var strikeAge: Double?
+    /// The first shift is over: no new hints, but a strike hint already showing runs out, so
+    /// the crash that ends the first shift still says why.
+    private(set) var isOver = false
+
+    /// Nothing left to show: the shift is over and no strike hint is still running.
+    var isDone: Bool {
+        isOver && (strikeAge.map { $0 >= Self.hintDuration } ?? true)
+    }
+
+    mutating func end() {
+        isOver = true
+        move(to: .quiet)
+    }
 
     /// Clean merges before the combo hint.
     static let mergesToLearn = 2
@@ -48,6 +62,7 @@ struct Tutorial: Sendable, Equatable {
 
     /// What happened in the shift moves the hints on.
     mutating func react(to event: GameEvent) {
+        guard !isOver else { return }
         switch event {
         case .launched:
             if step == .sendCar { move(to: .findGap) }
@@ -56,7 +71,8 @@ struct Tutorial: Sendable, Equatable {
             cleanMerges += 1
             if step == .findGap, cleanMerges >= Self.mergesToLearn { move(to: .combo) }
         case let .crash(report):
-            if strikeAge == nil, report.penalty > 0 { strikeAge = 0 }
+            // Any crash charged to the player, even one at 0 points that costs nothing.
+            if strikeAge == nil, report.isStrike || report.isPoliceCrash { strikeAge = 0 }
         default:
             break
         }
@@ -92,23 +108,32 @@ struct Tutorial: Sendable, Equatable {
         }
         if let strikeAge = tutorial.strikeAge, strikeAge < hintDuration {
             let at = Vec2(camera.viewport.x / 2, TopBar.top + TopBar.height + 28)
-            pill(Strings.Tutorial.strikes, at: at, age: strikeAge, leaving: strikeAge - (hintDuration - 0.3), reduceMotion: reduceMotion, tint: .destructive, id: &id, to: &list)
+            pill(Strings.Tutorial.strikes(policeCrashes: world.config.maxPoliceCrashes), at: at, age: strikeAge, leaving: strikeAge - (hintDuration - 0.3), reduceMotion: reduceMotion, tint: .destructive, id: &id, to: &list)
         }
     }
 
     /// A hint: a dark pill with a thin edge in its colour. It glides in from a little lower
-    /// and fades out quicker than it came.
+    /// and fades out quicker than it came. A hint too long for a small screen gets a slightly
+    /// smaller size instead of running over the edge.
     private static func pill(_ text: String, at center: Vec2, age: Double, leaving: Double?, reduceMotion: Bool, tint: ColorToken = .accent, id: inout Int, to list: inout RenderList) {
         let enter = Ease.outCubic(age / 0.25)
         let exit = leaving.map { Ease.clamp01($0 / 0.3) } ?? 0
         let opacity = enter * (1 - exit)
         guard opacity > 0.001 else { return }
         let rise = reduceMotion ? 0 : (1 - Ease.settle(age / 0.4)) * 10
-        let size = 14.0
+        let size = fittingSize(text, viewportWidth: list.camera.viewport.x)
         let width = Icons.textWidth(text, size: size) + 32
         let at = center + Vec2(0, rise)
         MenuKit.chromePill(center: at, size: Vec2(width, 32), tint: tint, opacity: opacity, id: &id, to: &list)
         list.add(.text(text, position: at, size: size, alignment: .center, weight: .bold), color: .primary, opacity: opacity, space: .screen, id: id)
         id += 1
+    }
+
+    /// The hint's text size: 14, or less (never under 12) so the pill keeps the screen margins.
+    static func fittingSize(_ text: String, viewportWidth: Double) -> Double {
+        let natural = 14.0
+        let room = viewportWidth - 2 * TopBar.margin - 32
+        let width = Icons.textWidth(text, size: natural)
+        return width <= room ? natural : max(12, natural * room / width)
     }
 }

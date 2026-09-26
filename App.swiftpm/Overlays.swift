@@ -51,7 +51,9 @@ struct NativeControls: View {
                     } label: {
                         Image(systemName: "gearshape.fill")
                     }
-                    .buttonStyle(.bordered)
+                    // Liquid Glass (iOS 26): the traffic shines through, and the button gives
+                    // under the finger with the system's own spring.
+                    .buttonStyle(.glass)
                     .accessibilityLabel("Settings")
                 }
                 .padding(.top, 150)
@@ -67,7 +69,7 @@ struct NativeControls: View {
                         Label("Dispatch", systemImage: "light.beacon.max.fill")
                             .font(.headline)
                     }
-                    .buttonStyle(.borderedProminent)
+                    .buttonStyle(.glassProminent)
                     .tint(.blue)
                     .padding(.trailing, 16)
                     .padding(.bottom, 24)

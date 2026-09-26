@@ -193,6 +193,12 @@ Im Testfenster ist ein Tap ein Linksklick oder die Leertaste.
    schnelles Tippen ein Tight-Fit-Automat. Das Risiko liegt beim Spieler: Wer nachschiebt,
    während sein Polizeiauto gleich den Pickup rammt, schickt das nächste Auto ins Wrack.
    `queueAdvanceDuration` (Standard 0) gibt auf Wunsch wieder eine Nachrückzeit.
+   **Nachrücken ohne Ruck** *(26.09.2026)*: Das nächste Auto fährt weich an und bremst
+   weich an der Linie (`PlayerQueue.approach`, dazwischen kurz bis 1,5× Ringtempo). Ein
+   gehaltener Tap plant den Rest der Strecke neu: Das Auto rollt mit Ringtempo durch die
+   Linie in sein Einfädeln, die Autos dahinter rollen weiter (`rollingSpeed`). Bereit ist
+   das Auto im selben Moment wie vorher, das Timing ändert sich nicht. Bremslichter und
+   eine Lichthupe für den gehaltenen Tap zeichnet `GamePresentation` (`VehicleLamps`).
 6. Autos im Ring **verlassen ihn nach 1–3 Ausfahrten wieder**. So entstehen
    ständig neue Lücken.
 
@@ -432,13 +438,13 @@ Testfenster sichtbar. Die Haptik-Spalte ist erst auf dem iPhone spürbar.
 | Ereignis | Häufigkeit | Bild | Haptik |
 | --- | --- | --- | --- |
 | Tap → Auto fährt los | 15× pro Schicht, oft kurz hintereinander | sofort, keine Animation davor | keine (die Bewegung ist das Feedback) |
-| Sauber eingefädelt | sehr oft | kein Text | keine |
+| Sauber eingefädelt | sehr oft | kein Text | feinster Klick (`merge.ahap`), nur allein im Frame; im Flow tiefer und weicher wie alle Einfädel-Muster |
 | Tight Fit | oft | Swoosh + kurzes "TIGHT!" (von 0,9 auf 1 skaliert mit Einblendung, < 250 ms, ease-out) | ein scharfer Transient |
 | Neue Combo-Stufe | gelegentlich | Spring auf dem Multiplikator (Dauer 0,35 s, Bounce 0,2), Glow | Doppel-Tick |
 | Crash | gelegentlich | Wracks mit Beulen, abreißende Teile, Splitter, Funken, Rauch; bei harten Treffern (≈ jeder 4.) Feuerball und Brand; Shake je nach Aufprallstärke. Wracks und Rauch liegen unter dem Verkehr, damit keine Lücke verdeckt wird | kräftiger Stoß + kurzes Rumpeln, nur beim eigenen Crash |
 | Rush Hour beginnt | 1× pro Schicht | Zustandswechsel am Auto-Zähler (Akzent-Pill) | ansteigendes Muster |
-| Slow-Mo | nur beim Verbrecher-Takedown | nie für häufige Ereignisse | eigenes Muster |
-| Menüs (App, SwiftUI) | selten | ≤ 250 ms, `.timingCurve(0.23, 1, 0.32, 1, duration: 0.25)`; Buttons beim Drücken auf 0,97 skaliert | `.sensoryFeedback` nur bei Bestätigungen |
+| Slow-Mo | beim Verbrecher-Takedown und beim Crash, der die Schicht beendet (0,2× für 0,45 s, dazu 5 % Zurücktreten) | nie für häufige Ereignisse | eigenes Muster |
+| Menüs (App, SwiftUI) | selten | ≤ 250 ms, `.timingCurve(0.23, 1, 0.32, 1, duration: 0.25)`; native Buttons in Liquid Glass (`.glass`), die mit der Systemfeder nachgeben | `.sensoryFeedback` nur bei Bestätigungen |
 
 **Reduce Motion** ist eine Einstellung in `GamePresentation` und folgt in der App
 der iOS-Einstellung. Sie entfernt Shake, Zoom, Slow-Mo und fliegende Teile. Ein-

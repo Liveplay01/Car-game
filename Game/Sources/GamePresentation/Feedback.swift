@@ -65,6 +65,9 @@ public enum SoundID: String, CaseIterable, Sendable {
 
 /// Haptic patterns. The raw value is the file name: `Assets/Haptics/<raw>.ahap` (M11).
 public enum HapticID: String, CaseIterable, Sendable {
+    /// Clean merge: a tiny, crisp detent, barely felt, like a Digital Crown clicking into
+    /// place (Leo, 26.09.2026). It comes with every clean car, so it stays that small.
+    case merge
     /// One sharp transient.
     case tightFit
     /// A light, soft transient: "that was close" (M6).
@@ -171,7 +174,9 @@ public enum Feedback {
             case .tightFit: .tightFit
             case .nearMiss: .nearMiss
             case .perfect: .perfect
-            case .clean, .cutOff: nil
+            // A clean car clicks into the ring; a cut-off is felt through nothing good.
+            case .clean: .merge
+            case .cutOff: nil
             }
         // Only the player's own crash is felt; the pile-up behind it is heard and seen.
         case let .crash(report): report.isStrike ? .crash : nil
@@ -194,6 +199,18 @@ public enum Feedback {
         }
     }
 
+    /// How much softer a haptic is played, 0…1 (Leo, 26.09.2026): in the flow the rhythm of
+    /// the merges is felt deeper and rounder — less sharpness, a little less strength. What
+    /// warns or hits (a crash, a siren, a takedown) stays as sharp as ever.
+    public static func softness(of haptic: HapticID, flow: Double) -> Double {
+        switch haptic {
+        case .merge, .tightFit, .nearMiss, .perfect, .comboUp, .flow:
+            min(max(flow, 0), 1)
+        case .chest, .crash, .rushHour, .shiftComplete, .wanted, .takedown, .secured, .seized, .paid:
+            0
+        }
+    }
+
     /// Sounds and haptics for one frame, each at most once and in first-seen order.
     public static func cues(for events: [GameEvent]) -> (sounds: [SoundID], haptics: [HapticID]) {
         var sounds: [SoundID] = []
@@ -206,6 +223,8 @@ public enum Feedback {
                 haptics.append(haptic)
             }
         }
+        // The clean click is only felt on its own: anything stronger in the frame says it.
+        if haptics.count > 1 { haptics.removeAll { $0 == .merge } }
         // A pile-up is heard as one crash, as heavy as its hardest hit.
         let weights: [SoundID] = [.crashLight, .crash, .crashHeavy]
         if let heaviest = sounds.filter(weights.contains).max(by: { weights.firstIndex(of: $0)! < weights.firstIndex(of: $1)! }) {

@@ -83,9 +83,55 @@ final class RaylibAudio: AudioPlaying {
     }
 }
 
+/// The music's low-pass (`MusicMix.lowPass`, the music breathing in): two one-pole stages per
+/// stem, run by raylib on the audio thread over the stereo float frames it mixes. raylib's
+/// callbacks carry no context, so each stem has its own little function and its own state.
+enum MusicFilter {
+    /// The one-pole coefficient: 1 lets everything through, smaller closes it down. Written
+    /// by the main thread once a frame, read by the audio thread; a torn read is harmless.
+    nonisolated(unsafe) static var coefficient: Float = 1
+    /// Two stages × two channels per stem.
+    nonisolated(unsafe) static let state: UnsafeMutablePointer<Float> = {
+        let memory = UnsafeMutablePointer<Float>.allocate(capacity: 4 * slots)
+        memory.initialize(repeating: 0, count: 4 * slots)
+        return memory
+    }()
+    static let slots = 8
+    /// The device rate raylib mixes at (miniaudio's default); only shapes the cutoff a little.
+    static let sampleRate = 48_000.0
+
+    static func set(lowPass: Double) {
+        let cutoff = MusicMix.cutoff(lowPass)
+        coefficient = Float(1 - exp(-2 * Double.pi * cutoff / sampleRate))
+    }
+
+    static func process(_ slot: Int, _ buffer: UnsafeMutableRawPointer?, _ frames: UInt32) {
+        guard let buffer, slot < slots else { return }
+        let samples = buffer.assumingMemoryBound(to: Float.self)
+        let a = coefficient
+        let s = state + slot * 4
+        var (l1, r1, l2, r2) = (s[0], s[1], s[2], s[3])
+        for frame in 0..<Int(frames) {
+            l1 += a * (samples[2 * frame] - l1)
+            r1 += a * (samples[2 * frame + 1] - r1)
+            l2 += a * (l1 - l2)
+            r2 += a * (r1 - r2)
+            samples[2 * frame] = l2
+            samples[2 * frame + 1] = r2
+        }
+        (s[0], s[1], s[2], s[3]) = (l1, r1, l2, r2)
+    }
+
+    nonisolated(unsafe) static let processors: [AudioCallback] = [
+        { process(0, $0, $1) }, { process(1, $0, $1) }, { process(2, $0, $1) }, { process(3, $0, $1) },
+        { process(4, $0, $1) }, { process(5, $0, $1) }, { process(6, $0, $1) }, { process(7, $0, $1) },
+    ]
+}
+
 /// Plays the adaptive music stems from `Assets/Music` (M11): all in sync, each faded to the
-/// volume the session asks for (`GameSession.musicMix`). The app does the same with
-/// AVAudioEngine. Missing stems (run SoundMaker) just stay silent.
+/// volume the session asks for (`GameSession.musicMix`), all through the breathing low-pass
+/// (`MusicFilter`). The app does the same with AVAudioEngine. Missing stems (run SoundMaker)
+/// just stay silent.
 final class RaylibMusic {
     private var streams: [MusicLayer: Music] = [:]
     private var volumes: [MusicLayer: Double] = [:]
@@ -103,6 +149,9 @@ final class RaylibMusic {
             guard IsMusicValid(music) else { continue }
             music.looping = true
             SetMusicVolume(music, 0)
+            if streams.count < MusicFilter.slots {
+                AttachAudioStreamProcessor(music.stream, MusicFilter.processors[streams.count])
+            }
             streams[layer] = music
         }
         if streams.isEmpty {
@@ -113,6 +162,7 @@ final class RaylibMusic {
     }
 
     func update(mix: MusicMix, enabled: Bool, delta: Double) {
+        MusicFilter.set(lowPass: mix.lowPass)
         for (layer, music) in streams {
             let target = enabled ? mix.volume(layer) : 0
             let current = volumes[layer] ?? 0

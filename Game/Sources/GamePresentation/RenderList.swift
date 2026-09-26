@@ -76,6 +76,8 @@ public struct RenderList: Sendable {
 enum RenderID {
     static let city = 500
     static let road = 1_000
+    /// High Alert's stripes on the ring (`SceneBuilder.addHighAlert`).
+    static let alertStripes = 9_000
     static let debug = 10_000
     static let overlay = 20_000
     static let weather = 26_000

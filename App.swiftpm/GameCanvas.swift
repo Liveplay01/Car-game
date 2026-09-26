@@ -82,10 +82,12 @@ struct GameCanvas: View {
                 }
             }
             // Hierarchy from weight and size together (apple-design, typography): big
-            // numbers bold, everything else semibold; tiny labels a touch wider apart.
+            // numbers bold, everything else semibold; tiny labels a touch wider apart. The
+            // scene speaks SF Pro Rounded, like the numbers in Fitness (Leo, 26.09.2026); the
+            // native controls around it keep the system font.
             let fontWeight: Font.Weight = weight == .bold ? (size >= 24 ? .bold : .semibold) : .regular
             let text = joined
-                .font(.system(size: size, weight: fontWeight, design: .default).monospacedDigit())
+                .font(.system(size: size, weight: fontWeight, design: .rounded).monospacedDigit())
                 .tracking(size <= 11 ? 0.3 : 0)
             let anchor: UnitPoint = switch alignment {
             case .leading: .leading

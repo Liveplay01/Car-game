@@ -1,6 +1,6 @@
 # Spiel.md – Car Game: Spielmechanik, Funktionen & Status
 
-Stand: 25.09.2026 · Übersicht über das ganze Spiel. Die Details stehen in [ROADMAP.md](ROADMAP.md) (Regeln und Messwerte je Meilenstein), [LOOT.md](LOOT.md) (Truhen, Skins), [FOUNDATION.md](FOUNDATION.md) (Basis, Architektur), [TESTING.md](TESTING.md) und in `Game/Sources/GameCore/Config.swift` (alle Zahlen). Weicht dieses Dokument vom Code ab, gilt der Code.
+Stand: 26.09.2026 · Übersicht über das ganze Spiel. Die Details stehen in [ROADMAP.md](ROADMAP.md) (Regeln und Messwerte je Meilenstein), [LOOT.md](LOOT.md) (Truhen, Skins), [FOUNDATION.md](FOUNDATION.md) (Basis, Architektur), [TESTING.md](TESTING.md) und in `Game/Sources/GameCore/Config.swift` (alle Zahlen). Weicht dieses Dokument vom Code ab, gilt der Code.
 
 ---
 
@@ -30,9 +30,10 @@ Stand: 25.09.2026 · Übersicht über das ganze Spiel. Die Details stehen in [RO
 - **Level 1 ist bewusst machbar** (weniger und langsamere Autos, größere KI-Lücken, längere Jagd, mehr Polizei); ab Level 5 (`hardLevel`) gelten die vollen Werte.
 - **Tempo:** ab Level 5 +1 % pro Level, bis +40 %. **Dichte:** ab Level 6 zusätzliche Autos (bis +6), KI fährt enger auf (bis 0,06 s), bleibt länger (Extrarunden, ab Level 12 mindestens zwei Ausfahrten).
 - **Rush Hour** in den letzten 4 Autos: Tempo auf 135 %, Dichte +2, Punkte ×2. Dichte und Tempo steigen zudem über die ersten 20 s: Wer auf die perfekte Lücke wartet, bekommt mehr Verkehr, keinen leichteren.
-- **Fließender Schichtwechsel:** Nach dem Ergebnis läuft der Verkehr weiter, das Level steigt, das Tempo gleitet zum neuen Start-Tempo, die Autos der nächsten Schicht rollen von hinten in die Warteschlange. Der erste Tap startet die nächste Schicht. Kein Freeze, kein Replay, keine Einblendung (Highlight/Replay wurde gestrichen).
+- **Fließender Schichtwechsel, kein Ergebnis-Screen:** Das Ergebnis steht in derselben oberen Karte (gleiche Größe, gleicher Platz), der Ring schickt einen Lichtlauf herum. Nach 3,6 s Nachklang (`epilogue`) wird es von selbst zum Wartebildschirm der nächsten Schicht, deren Verkehr schon fährt; das Tempo gleitet zum neuen Start-Tempo, die Autos der nächsten Schicht rollen von hinten in die Warteschlange. Ein Tap startet jederzeit. Kein Freeze, kein Replay, keine Einblendung (Highlight/Replay wurde gestrichen).
 - **Kein Tap-Cooldown:** Das nächste Auto steht ≈ 0,3 s nach dem Tap an der Haltelinie; ein früher Tap wird gehalten. Eigene Autos bewerten sich nicht gegenseitig, schnelles Tippen gibt also keine geschenkten Tight Fits.
-- **Gemessene Schichtlänge:** je nach Level 8–75 s (Mensch-Bot: Level 10 ≈ 36 s, Level 20 ≈ 68 s, Level 30 ≈ 75 s). Das ursprünglich gedachte „≈ 2 Minuten“ ist eine offene Playtest-Frage.
+- **Kein verschluckter Tap (26.09.2026):** Das nachrückende Auto fährt weich an und bremst weich an der Haltelinie (Bremslichter an). Kommt der Tap zu früh, leuchtet kurz die Lichthupe auf, das Auto bremst nicht mehr, sondern rollt mit Ringtempo durch die Linie in sein Einfädeln; die Autos dahinter rollen weiter statt schlagartig zu stehen. Das Timing ändert sich dadurch nicht: bereit ist das Auto im selben Moment wie vorher.
+- **Schichtlänge – entschieden: kurz lassen** (Leo, 26.09.2026). Gemessen je nach Level 8–75 s (Mensch-Bot: Level 10 ≈ 36 s, Level 20 ≈ 68 s, Level 30 ≈ 75 s). Kein Ziel mehr von ≈ 2 Minuten: kurze Schichten tragen das „Nur noch eine!“, lange ermüden den Daumen und machen einen späten Crash bitter.
 
 ### Gefahrenstufe vor der Schicht (Push Your Luck)
 
@@ -44,6 +45,8 @@ Auf dem Game-Tab wählbar, gilt bis zur nächsten Änderung:
 | Verbrecher-Countdown | wie das Level | ×0,8 (nie unter 8 s) |
 | Verbrecher | gemäß Chance (Quiet Streets senkt sie) | in **jeder** Schicht |
 | Geld (Lohn, Transporter, Abschirm-Bonus) | ×1 | **×2** |
+
+Auf High Alert tragen beide Ränder der Ringfahrbahn feine rote Rennstreifen (blenden beim Umschalten weich ein und aus): „Jetzt zählt es“ steht auf der Straße, nicht in einer Anzeige.
 
 Mehr Tempo oder mehr Autos im Ring ließen hohe Level unspielbar statt riskanter werden (Mensch-Bot Level 35: 82 % → 17 %) – die jetzige Mischung kostet auf Level 10 ≈ 2, auf Level 35 ≈ 28 Prozentpunkte.
 
@@ -57,6 +60,8 @@ Mehr Tempo oder mehr Autos im Ring ließen hohe Level unspielbar statt riskanter
 | **Normales Auto crasht** | **Hard Fail** (`maxStrikes = 1`; ab Level 20 kostet der Crash Geld) |
 | **Polizeiauto crasht** | Soft Fail: kostet 250 Punkte & Combo, **3 erlaubt** (`maxPoliceCrashes = 3`, Upgrade *Backup* +1 pro Stufe), der 4. = Hard Fail |
 | **Folgeunfälle im Verkehr** | Kosten standardmäßig **keine** Strikes (umschaltbar); wer in einen sichtbaren Unfall einfädelt, bleibt 1 s verantwortlich |
+
+**Verlorene Schicht ohne Game-Over-Screen (26.09.2026):** Der Crash, der die Schicht beendet, läuft kurz in Zeitlupe (0,2× für 0,45 s, dann weich zurück), die Kamera tritt 5 % zurück, der Inselrand flackert rot. Der Verkehr fährt weiter. Ab 0,5 s nach dem Crash startet ein Tap sofort den nächsten Versuch auf demselben Level, ohne auf das Ergebnis zu warten (der Tap wird gehalten, bis das erste Auto an der Linie ist). Wer nicht tippt, sieht wie bisher das Ergebnis in der oberen Karte. Reduce Motion: keine Zeitlupe, kein Zurücktreten. Zurückspulen gibt es bewusst nicht (kein Replay, der Ring hört nie auf).
 
 **Begründung:** Bei einer Schicht mit vielen parallelen Systemen (Combo, Verbrecher, Transporter, Modul-Zonen) wäre ein einzelner Patzer eines Polizeiautos, der alles beendet, überproportional hart. Polizei-Crashes haben ein eigenes Budget, da sie für Takedowns riskiert werden müssen.
 
@@ -72,14 +77,14 @@ Jede Einfädelung wird nach dem engsten Abstand (surface to surface) bewertet:
 |---|---|---|---|---|
 | **Tight Fit** | < 0,12 s | 200 × Mult. | +2 | Swoosh, scharfer Haptik-Impuls |
 | **Near Miss** | < 0,2 s, kein Tight Fit | 125 × Mult. | +1 | kurzer Swoosh, dezente Haptik |
-| **Perfect Input** | Lücke vorne/hinten fast gleich (≤ 25 % Abweichung), beide ≥ 0,2 s, zusammen ≤ 2 s | 150 × Mult. | +1 | Präzisions-Ring, hochwertiger Klick |
-| **Clean** | alles andere | 100 × Mult. | +1 | wie bisher |
+| **Perfect Input** | Lücke vorne/hinten fast gleich (≤ 25 % Abweichung), beide ≥ 0,2 s, zusammen ≤ 2 s | 150 × Mult. | +1 | Präzisions-Ring, dunkles „Plopp“ wie ein hochwertiger Schalter |
+| **Clean** | alles andere | 100 × Mult. | +1 | leiser Tick (steigt mit der Combo), feinster Haptik-Klick beim Einrasten in den Ring |
 | **Crash** | | −250 (nie unter 0) | Reset | |
 | **Cut-off** (optional, Default aus) | Hintermann < `sloppyWindow` | – | Reset, kein Strike | |
 
 - **Combo-Multiplikator:** 0–4 ×1 · 5–9 ×1,5 · 10–19 ×2 · 20+ ×3.
 - **Perfect Chain:** zählt Perfect Inputs, Near Misses, Tight Fits, Takedowns und gerettete Transporter in Folge; eine normale saubere Einfädelung, ein Cut-off oder ein Crash beendet sie. Keine eigene Anzeige.
-- **Flow State:** ab Kette 5 – Ring-Glow, Sound-Layer und Haptik werden subtil stärker. Nur Feedback, kein Modus, kein Text.
+- **Flow State:** ab Kette 5 – Ring-Glow, Sound-Layer, die Stadt atmet mit; die Haptik der Einfädelungen (Klick, Tight Fit, Near Miss, Perfect, Combo) wird tiefer und weicher, Warnungen und Treffer bleiben scharf. Nur Feedback, kein Modus, kein Text.
 - **Schichtabschluss:** +1.000 Punkte.
 - **Perfect Run:** geschaffte Schicht ohne Crash (Polizei eingeschlossen) und ohne Cut-off: **+1.500 Punkte, +25 % Lohn**.
 - **Rekord-Geist:** Bestzeit pro Level (pro Auto); live als ±Sekunden im HUD, „NEW BEST TIME“ beim Übertreffen.
@@ -95,8 +100,8 @@ Jede Einfädelung wird nach dem engsten Abstand (surface to surface) bewertet:
 | **Nur stoppbar mit** | Polizeiauto (blau, weißes Dach, Lichtbalken mit Blaulicht) |
 | **Anteil Polizei in der Schlange** | 20 % (Level 1: 30 %; *More Patrols* +3 %/Stufe; Police Operation +15 %) |
 | **Auftritt** | erster Verbrecher nach 4–8 s, Pause danach 10–16 s; keiner, wenn die Jagd das Schichtende überdauern könnte |
-| **Warnung** | 2 s vorher: „WANTED“, Sirene, pulsierender Keil auf der Mittelinsel in Richtung der Zufahrt |
-| **Countdown** | ab Einfahrt Level 1: 16 s, Level 5: 12 s, −0,25 s pro Level bis 8 s (*Longer Pursuit* +1 s/Stufe); der Pickup dreht bis dahin Runden |
+| **Warnung** | 2 s vorher: Sirene und pulsierender Keil in Verbrecher-Farbe auf dem Inselrand in Richtung der Zufahrt – ohne Beschriftung, die Farbe sagt es (Leo, 25.09.2026) |
+| **Countdown** | ab Einfahrt Level 1: 16 s, Level 5: 12 s, −0,25 s pro Level bis 8 s (*Longer Pursuit* +1 s/Stufe); der Pickup dreht bis dahin Runden. Sichtbar als Ring um den Pickup und als Sekunden in der Inselmitte |
 | **Entkommt er** | Schicht verloren (Hard Fail) |
 | **Takedown** | 1.000 Pkt × Multiplikator × Rush Hour, 0,3 s Slow-Mo, Soft-Body-Deformation (Front/Heck/Seite/Ecke, Restbeule), flache Splitter in Polizeifarben, blauer Ring, „BUSTED!“, Combo bleibt, kein Feuer |
 | **Zählt nicht** | wenn der Verbrecher selbst ins Polizeiauto fährt |
@@ -112,7 +117,7 @@ Jede Einfädelung wird nach dem engsten Abstand (surface to surface) bewertet:
 | Element | Details |
 |---|---|
 | **Aussehen** | gepanzerter Kastenwagen in Panzergrün, Goldmünze, Goldstreifen, Rundumleuchte, kein Heckfenster |
-| **Spawn** | erster nach 8–14 s, Pause danach 15–25 s (*Cash Route* −0,4 s pro Stufe; jede Zusatz-Zufahrt −15 %); Warnung „SECURED“ (2 s) als Keil auf der Mittelinsel |
+| **Spawn** | erster nach 8–14 s, Pause danach 15–25 s (*Cash Route* −0,4 s pro Stufe; jede Zusatz-Zufahrt −15 %); Warnung 2 s vorher als pulsierender Keil in Transporter-Farbe auf dem Inselrand, ohne Beschriftung |
 | **Ziel** | Unbeschadet die markierte Ausfahrt nehmen → **450 Geld** (× Rush Hour; High Alert ×2) |
 | **Sperrzonen** | Zone von 130 Einheiten (≈ 5 Autolängen) um den Transporter, je 65 davor und dahinter, auf dem Ring als Bogen sichtbar |
 | **Polizei in Sperrzone** | Transporter wird **beschlagnahmt** → kein Geld, keine Strafe |
@@ -204,7 +209,7 @@ Alles Kaufbare wurde am 25.09.2026 um 30 % teurer, das Geld pro Schicht gleichze
 | Duplikate aus Truhen | Common 250 · Rare 600 · Epic 1.500 · Legendary 4.000 |
 | Alben (voller Satz, einmalig) | 5.000 – 40.000 (siehe 10) |
 
-Geld bleibt auch aus verlorenen Schichten. Das Geld der Schicht zählt im Ergebnis mit Geldschein hoch und landet mit Ka-ching.
+Geld bleibt auch aus verlorenen Schichten. Der Kontostand steht immer links in der oberen Karte und zählt schon während der Schicht hoch, sobald etwas verdient wird (Transporter, Maut); im Ergebnis zählt er bis zum neuen Kontostand, der Verdienst der Schicht erscheint auf der Insel und landet mit Ka-ching.
 
 ### Geld ausgeben
 
@@ -312,7 +317,7 @@ Ein voller Satz zahlt einmal Geld und legt einen **Rahmen** in seiner Farbe um d
 - **Serie:** zählt gespielte Tage (Wiederkommen wird belohnt). 7 / 14 / 30 Tage geben exklusive Skins (Bronze Badge, Silver Badge, Gold Laurel).
 - **Saisons:** Der Event Chest enthält in der Hälfte der Fälle das Saison-Item (Frost/Winter, Blossom/Frühling, Sunburst/Sommer, Pumpkin/Herbst), das es nur in seiner Saison gibt.
 - **Challenges:** 3 kleine Ziele pro Tag, für alle gleich, je einmal bezahlt (z. B. 3 Perfect Inputs, 2 Takedowns, Kette 8, Combo 15, High-Alert-Schicht, Perfect Run). Sichtbar im Shop unter *Today*.
-- **Tutorial:** in der ersten Schicht, ohne Menü und ohne Pause – pulsierender Ring am vordersten Auto, „Wait for a gap“, Combo-Hinweis nach zwei sauberen Einfädelungen, Hinweis beim ersten Crash. Endet mit der ersten Schicht; alte Spielstände sehen es nicht.
+- **Tutorial:** in der ersten Schicht, ohne Menü und ohne Pause – pulsierender Ring am vordersten Auto, „Wait for a gap“, Combo-Hinweis nach zwei sauberen Einfädelungen, beim ersten Crash „Cars crash instantly. Police get 3 chances.“ (auch wenn dieser Crash die Schicht beendet, läuft der Hinweis bis ins Ergebnis). Endet mit der ersten Schicht; alte Spielstände sehen es nicht.
 - **Game Center:** `GameServicing` im Spiel, GameKit-Adapter in der App (Ranglisten Highscore/Level/Bestcombo/Daily-Serie, Erfolge aus Mastery, Serie und Alben, Access Point). IDs in `GameServices.swift`.
 - **Spielstand** versioniert und tolerant: fehlende Schlüssel fallen auf Defaults, unbekannte Truhen werden verworfen, nie der ganze Spielstand.
 
@@ -320,20 +325,27 @@ Ein voller Satz zahlt einmal Geld und legt einen **Rahmen** in seiner Farbe um d
 
 ## 12. Look & Feel / Sound / Haptik / Menüs
 
+**Leitgedanke „Eine Stadt, ein Ring“ (Leo, 25.09.2026):** Die Welt ist die Oberfläche. Neues wird zuerst am Kreisverkehr gezeigt (Inselrand, Lichtsignale, Farbe), erst dann als klassische Anzeige; die Tabs sind Blicke auf dieselbe laufende Stadt, der Ring hört nie auf.
+
 | Aspekt | Umsetzung |
 |---|---|
+| **Ring als UI** (`RingSignals`) | Auf dem Inselrand ein Strich pro Auto der Schicht, der aufleuchtet, sobald das Auto drin ist (ab der eigenen Zufahrt in Fahrtrichtung, in der Rush Hour Mint) – ersetzt den Autozähler. Dazu drei Lichtsignale: **Welle** (Combo-Stufe, Takedown, Transporter bezahlt), **Aufflackern** des Rands (Strike rot, Polizei-Crash blau, verlorene Schicht), **Lichtlauf** einmal herum (Rush Hour beginnt, Schicht geschafft). Warn-Keile für Verbrecher und Transporter sitzen auf demselben Rand |
+| **Die Stadt atmet** (`CityPulse`) | Bäume wiegen sich, Fenster glimmen im eigenen Takt, zwei Wolkenschatten ziehen; lebhafter bei dichtem Verkehr und in der Rush Hour; im Flow schickt jedes eingefädelte Auto eine schwache Lichtwelle durch die Fenster |
+| **Lichter der Autos** (`VehicleLamps`) | Bremslichter zeigen, was die Fahrer tun: die Schlange steht an der Linie, ein Bot bremst vor seiner Linie, hinter einem Wrack baut sich sichtbar ein Stau auf (wer den Unfall noch nicht bemerkt hat, rollt ohne Bremslicht weiter). Nur das vorderste stehende Auto wirft einen roten Schein auf den Asphalt. Die Lichthupe blinkt zweimal kurz, wenn ein früher Tap gehalten wird |
+| **High Alert auf der Straße** | zwei feine rote Rennstreifen an den Rändern der Ringfahrbahn, statt einer weiteren Anzeige |
+| **Perspektiven** (`Perspective`) | Die Kamera gleitet je Tab (0,65 s, kritisch gedämpft): Street Builder – der echte Ring liegt exakt unter dem Plan und die Kamera wächst mit; Shop – Schwenk in ein Viertel, der Ring rutscht an den Rand; Upgrades – Ring näher, Stadt tritt zurück. Die Seiten decken die Stadt nicht mehr ganz zu |
 | **Grafik** | Clean, minimalistisch, Apple-artig, Dark Theme, flache Vektorformen, hoher Kontrast; Effekte in `GamePresentation` als Daten |
 | **Farben** | Tokens nach Rolle (background, surface, primary, muted, accent, destructive). Fahrzeugfarben = Spielinfo, nie UI-Akzent |
-| **Schrift** | SF Pro (App), Tabular Figures für Scores, große Zahlen fett, kleine Labels leicht gesperrt |
-| **Obere Anzeige** | schwebende Karte im Chrome-Material, drei Spalten mit Beschriftung über dem Wert (Start: LEVEL · CARS · BEST, Spiel: SCORE · CARS · LEVEL/BEST, Ergebnis in derselben Karte), weicher Verlauf darunter |
-| **HUD** | Autozähler tickt bei jedem Auto, Rush-Hour-Pille federt auf, Strike-/Polizei-Crash-Punkte landen mit Ring, Rekord-Geist ±Sekunden |
+| **Schrift** | Spielszene in SF Pro Rounded (App, wie die Zahlen in Fitness), native Bedienelemente in SF Pro; Tabular Figures für Scores, große Zahlen fett, kleine Labels leicht gesperrt |
+| **Obere Anzeige** | schwebende Karte im Chrome-Material, immer gleich groß, drei Spalten mit Beschriftung über dem Wert, weicher Verlauf darunter. Vor der Schicht **MONEY · CARS · BEST**, in der Schicht **MONEY · SCORE · BEST** (bzw. Rekord-Rennen ±Sekunden), im Ergebnis **MONEY** (zählt hoch) · „LEVEL 5 COMPLETE“ über den Punkten · **BEST / NEW BEST**. Bei High Alert steht „HIGH ALERT“ über dem Geld; die Daily Shift steht in der Mitte über den Autos |
+| **HUD** | Punktzahl läuft hinterher statt zu springen und tickt bei jedem Auto, Geld federt beim Zuwachs, Rush Hour färbt die Mittelspalte, Strike-/Polizei-Crash-Punkte landen mit Ring; Verbrecher-Countdown in der Inselmitte |
 | **Animationen** | kritisch gedämpfte Feder (kein Überschwingen) für Menüs, Tab-Wechsel und Hinweise; Truhe und Treffer federn; kein harter Schnitt zwischen Spiel, Ergebnis, Tabs und Einstellungen. Reduce Motion behält nur die Überblendung |
-| **Menüs** | Apple-artig (`MenuKit`): Large Title mit Geld-Chip, Segment-Control, Karten steigen ein und schwingen aus, geben beim Tippen nach; gestapelte Popups |
-| **Shop** | Segmente Chests / Collection / Today, Collection in Regalen (Common, Rare, Epic, Legend, Maps, Special, max. 12 pro Regal); **NEW**-Markierung für neue Items, Badge am Shop-Tab |
+| **Menüs** | Apple-artig (`MenuKit`): Large Title mit Geld-Chip, Segment-Control, Karten steigen ein und schwingen aus, geben beim Tippen nach; gestapelte Popups. Native Buttons der App in Liquid Glass (`.glass`, `.glassProminent`): der Verkehr scheint durch, sie geben mit der Systemfeder nach |
+| **Shop** | Segmente Chests / Collection / Today, Collection in Regalen (Common, Rare, Epic, Legend, Maps, Special, max. 12 pro Regal; Reiterwechsel animiert: Markierung gleitet, Items wischen von der Seite herein); **NEW**-Markierung für neue Items, Badge am Shop-Tab |
 | **Einstellungen** | iOS-Sheet: Sound, Haptics, Reduce Motion, Vehicle Labels |
-| **Sound** | 32 Effekte, adaptive Musik aus 7 Stems (`base`, `bass`, `rhythm`, `lead`, `flow`, `rush`, `siren`, Mischpult `MusicMix`): Combo baut Instrumente auf, Verbrecher → Sirene, Rush Hour → Beat zieht an, Flow verdichtet. Saubere Einfädelungen steigen mit der Combo die a-Moll-Pentatonik hinauf; häufige Sounds variieren leicht in der Tonhöhe; keine Knackser. **Alles noch Platzhalter aus dem `SoundMaker`** |
-| **Haptik** | 14 `.ahap`-Muster (Tight Fit, Near Miss, Perfect, Takedown, Crash, Rush Hour, Combo, Flow, Truhe, Transporter …), Takedown skaliert mit der Wucht. Spürbar erst auf dem iPhone |
-| **Accessibility** | Farben nie allein (Formen, Icons, Muster), Vehicle Labels, Reduce Motion entfernt Shake/Zoom/Slow-Mo/Deformation, alle Informationen bleiben |
+| **Sound** | 32 Effekte, adaptive Musik aus 7 Stems (`base`, `bass`, `rhythm`, `lead`, `flow`, `rush`, `siren`, Mischpult `MusicMix`): Combo baut Instrumente auf, Verbrecher → Sirene, Rush Hour → Beat zieht an, Flow verdichtet. **Die Musik atmet ein:** bei der Verbrecher-Warnung und zu Beginn der Rush Hour schließt ein Tiefpass die Musik kurz (bis ≈ 650 Hz, ≈ 1,4 s), dann öffnet sie sich mit Sirene bzw. Beat wieder; Effekte bleiben ungefiltert. Saubere Einfädelungen steigen mit der Combo die a-Moll-Pentatonik hinauf; häufige Sounds variieren leicht in der Tonhöhe; keine Knackser. Klangrichtung: organisch und edel statt Arcade (Perfect ist ein dunkles „Plopp“). **Alles noch Platzhalter aus dem `SoundMaker`** |
+| **Haptik** | 15 `.ahap`-Muster (Einfädel-Klick, Tight Fit, Near Miss, Perfect, Takedown, Crash, Rush Hour, Combo, Flow, Truhe, Transporter …), Takedown skaliert mit der Wucht. Der Klick einer sauberen Einfädelung ist kaum spürbar und nur allein im Frame; im Flow wird die Haptik der Einfädelungen tiefer und weicher. Spürbar erst auf dem iPhone |
+| **Accessibility** | Farben nie allein (Formen, Icons, Muster), Vehicle Labels, Reduce Motion entfernt Shake/Zoom/Slow-Mo/Deformation, Kamerafahrten (Schnitt statt Fahrt) und das Atmen der Stadt; am Ring bleibt nur das Aufflackern; alle Informationen bleiben |
 | **App-Icon** | Kreisverkehr bei Nacht, das Mint-Auto fädelt in eine Lücke ein (`Assets/Icon/make_icon.py`) |
 | **Navigation** | native iOS-Tab-Bar (Street Builder, Game, Shop, Upgrades); zwischen den Schichten sichtbar, während einer Schicht ausgeblendet |
 
@@ -357,9 +369,10 @@ GameCore (120 Hz, deterministisch, plattformneutral)
         │
         ▼
 GamePresentation (Daten: Render-Liste, Effekte, HUD, ScreenFlow, Feedback)
-  ├─ GameSession, ScreenFlow, Transitions, Motion, MenuKit, TopBar, HUD
+  ├─ GameSession, ScreenFlow, Transitions, Motion, MenuKit, TopBar, HUD (ReadyBanner, ResultBanner)
   ├─ Seiten: ShopPage, UpgradePage, StreetBuilderPage, SettingsPage, Tutorial
-  ├─ Szene: SceneBuilder, CarArt, CityLayer, MapThemes, WeatherLayer, PoliceLights, Effects
+  ├─ Szene: SceneBuilder, CarArt, VehicleLamps, CityLayer (CityPulse), MapThemes, WeatherLayer, PoliceLights, Effects
+  ├─ Welt als UI: RingSignals, Perspective (Kamera je Tab)
   └─ Strings (alle Texte), Theme, Icons, Music, Feedback, GameServices
         │
         ▼
@@ -374,9 +387,9 @@ Plattform
 
 ---
 
-## 14. Stand der Umsetzung (25.09.2026)
+## 14. Stand der Umsetzung (26.09.2026)
 
-**Alle 338 automatischen Tests sind grün** (206 GameCore, 125 GamePresentation, 7 GameBots; `swift test` am 25.09.2026).
+**Alle 365 automatischen Tests sind grün** (209 GameCore, 149 GamePresentation, 7 GameBots; `swift test` am 26.09.2026).
 
 | Meilenstein | Inhalt | Stand |
 |---|---|---|
@@ -393,8 +406,10 @@ Plattform
 | v1.4 (Teil, vorgezogen) | Game Center (Adapter in der App) | ✅ im Code |
 | Bots im Ring | Mindestens 3–5 Bots, Halteregel, fließender Verkehr | ✅ |
 | Inhalt (25.09.) | 39 Car Skins, 12 Map Skins mit Herzstücken, Compact & Van, Tutorial, Street Builder abreißen | ✅ |
-| **M11 Look & Feel** | Soft-Body-Takedown ✅, Haptik-Muster ✅, adaptiver Musik-Mix ✅, App-Icon ✅, Sound-Feinschliff ✅, Apple-Menüs und obere Anzeige ✅ | 🟡 teilweise |
-| **M12 iPhone-App** | `App.swiftpm` vorbereitet: Canvas-Zeichnung, Touch, Sound, Haptik, Musik, AdMob (Test-IDs), Game Center, native Buttons, Einstellungen | 🟡 ungetestet, erster Build auf dem iPad offen |
+| Eine Stadt, ein Ring (25.09.) | Ring als UI, Ankündigung nur am Ring, kein Ergebnis-Screen, atmende Stadt, Kamera je Tab, obere Karte mit Geld | ✅ |
+| Mehr Gefühl, keine UI (26.09.) | Bremslichter und Lichthupe, weiches Nachrücken, verlorene Schicht mit Zeitlupe und Sofort-Neustart, High-Alert-Streifen, Einfädel-Klick, weichere Flow-Haptik, atmende Musik, Perfect-„Plopp“, SF Pro Rounded, Liquid-Glass-Buttons | ✅ (Haptik, App-Teile und Klang erst auf iPad/iPhone prüfbar) |
+| **M11 Look & Feel** | Soft-Body-Takedown ✅, Haptik-Muster ✅, adaptiver Musik-Mix ✅, App-Icon ✅, Sound-Feinschliff ✅, Apple-Menüs und obere Anzeige ✅, Welt als UI ✅, Mehr Gefühl ✅ | 🟡 teilweise |
+| **M12 iPhone-App** | `App.swiftpm` vorbereitet: Canvas-Zeichnung, Touch, Sound, Haptik, Musik, AdMob (Test-IDs), Game Center, native Buttons, Einstellungen | 🟡 ungetestet, erster Build auf dem iPad offen; Shop, Upgrades und Street Builder in der App noch nicht gebaut |
 | M13 v1.0 Launch | Developer Program, TestFlight, App Store | ⬜ |
 
 Fast alles ist **im Testfenster spielbar, der Playtest steht aber bei fast allen Systemen noch aus.**
@@ -414,10 +429,17 @@ Fast alles ist **im Testfenster spielbar, der Playtest steht aber bei fast allen
 - Ist Level 14 jetzt schwer genug (Kurve ab Level 10 nachgezogen)?
 - Sind die längeren Schichten auf hohen Leveln gut?
 - Truhen-Öffnung, Motion und Menüs im Gesamteindruck
+- Ring als UI: Liest man den Schichtfortschritt am Ring, ohne hinzuschauen? Sind die Lichtsignale zu viel oder zu wenig?
+- Ist der Nachklang von 3,6 s nach der Schicht richtig?
+- Merkt man, dass die Stadt atmet, ohne dass es auffällt? Fühlen sich die Tab-Wechsel wie eine Kamerafahrt an?
+- Verlorene Schicht: Sind 0,45 s Zeitlupe und 5 % Zurücktreten richtig? Tippt man zu früh versehentlich in den Neustart (Sperre 0,5 s)?
+- Bremslichter: Liest man den Stau hinter einem Wrack? Stört der Schein in dichten Leveln?
+- Lichthupe beim frühen Tap: wahrgenommen, ohne abzulenken?
+- High-Alert-Streifen: deutlich genug, ohne mit den Signalen am Inselrand zu konkurrieren?
+- Auf dem iPhone: Einfädel-Klick kaum spürbar genug? Weichere Flow-Haptik spürbar? Atmende Musik hörbar, aber nicht störend?
 
 ### Bekannte Unstimmigkeiten
 
-- **Tutorial-Hinweis „3 crashes end the shift“** erscheint beim ersten Crash mit Strafe – bei einem normalen Auto endet die Schicht aber sofort (`maxStrikes = 1`); nur die Polizei-Crashes haben ein Budget von 3.
 - **Karriere-Simulation** (`Sim --career`) und die Verdienst-Tabellen in ROADMAP.md (M5, Schritt 2) stammen von vor den Preis- und Lohnänderungen vom 25.09. und sollten neu gemessen werden.
 
 ---
@@ -433,7 +455,7 @@ Fast alles ist **im Testfenster spielbar, der Playtest steht aber bei fast allen
 
 ### Nächste Schritte
 
-1. **Playtest im Testfenster** (Level 1, 5, 10, 20; Werte in `tuning.json`).
+1. **Playtest im Testfenster** (Level 1, 5, 10, 20; Werte in `tuning.json`), auch mit dem Ring als UI und dem neuen Spielgefühl (Playtest-Fragen oben).
 2. **M11 abschließen:** finale Sounds, Design-Pass.
 3. **M12:** erster Build auf dem iPad, Timing-Feintuning mit Touch, Tests auf iPhone 11 / SE (A13), Randfälle (Anruf, App-Wechsel, Stummschalter).
 4. **M13:** Apple Developer Program (99 $), AdMob-Konto mit echten IDs, Game-Center-IDs in App Store Connect, TestFlight-Beta (Website), Datenschutzangaben mit Werbe-/Tracking-Daten, ATT-Abfrage, Privacy Policy & Support-Seite, Einreichung, Launch.
@@ -464,7 +486,7 @@ Fast alles ist **im Testfenster spielbar, der Playtest steht aber bei fast allen
 
 ## 17. Offene Entscheidungen / Balancing-Punkte
 
-- [ ] Schichtlänge: gemessen 8–75 s, gedacht war ≈ 2 Minuten – länger machen oder so lassen?
+- [x] Schichtlänge: kurz lassen, kein 2-Minuten-Ziel (Leo, 26.09.2026)
 - [ ] Level-Kurve für Speed, Density und Weather; Rush-Hour-Werte
 - [ ] Bots im Ring: Startet Level 1 mit 3 oder 4? Sind 3er-Lücken ein netter Moment oder ein Schlupfloch?
 - [ ] Kosten: Zufahrten, Module, Tow Depot, Truhen nach den +30 % (Karriere neu messen)
@@ -475,7 +497,7 @@ Fast alles ist **im Testfenster spielbar, der Playtest steht aber bei fast allen
 - [ ] Wetterparameter, Häufigkeit der City Events
 - [ ] Blaulicht auf dem Boden und Warn-Keil: Intensität, Position, Deutlichkeit
 - [ ] Ist ×2 bei High Alert genug Anreiz, solange man die Schichten locker schafft? Soll High Alert zusätzlich mehr Punkte geben?
-- [ ] Ist ein verlorenes Level zu wiederholen motivierend oder frustrierend?
+- [x] Verlorenes Level wiederholen: bleibt so, fair dank Sofort-Neustart (Leo, 26.09.2026)
 - [ ] Muss vor dem Launch geklärt werden: ob Swift Playgrounds Game-Center-Berechtigung und App-Store-Upload für dieses Projekt ausreichen oder Xcode am Ende doch nötig wird
 
 ---
@@ -511,4 +533,4 @@ Car game/
 
 ---
 
-**Stand:** 25.09.2026 – M0–M10 und die vorgezogenen Motivationssysteme sind gebaut, alle 338 Tests grün, das Spiel ist im Testfenster voll spielbar. M11 (Look & Feel) ist zum großen Teil fertig, M12 (iPhone-App) ist vorbereitet, aber auf dem iPad noch nie gebaut. Nächster großer Schritt: **Playtest, dann erster Build auf dem iPad.**
+**Stand:** 26.09.2026 – M0–M10, die vorgezogenen Motivationssysteme und „Eine Stadt, ein Ring“ sowie „Mehr Gefühl, keine UI“ sind gebaut, alle 365 Tests grün, das Spiel ist im Testfenster voll spielbar. M11 (Look & Feel) ist zum großen Teil fertig, M12 (iPhone-App) ist vorbereitet, aber auf dem iPad noch nie gebaut. Nächster großer Schritt: **Playtest, dann erster Build auf dem iPad.**

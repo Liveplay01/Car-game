@@ -151,6 +151,7 @@ extension World {
             // Still taking it in: the car rolls on at its speed.
             drive.reaction = max(0, reaction - dt)
             drive.speed = speed
+            drive.isBraking = false
             return drive
         }
         if alarmed {
@@ -164,6 +165,10 @@ extension World {
         if abs(speed - ringSpeed) < 1e-9 && !alarmed {
             return Drive()
         }
+        // Brake lights: slowing down, or standing. A driver still taking the hazard in
+        // (above) rolls on without them, so the reaction time can be seen.
+        let before = current.speed ?? ringSpeed
+        drive.isBraking = speed < before - 1e-9 || speed <= config.standingSpeed
         drive.speed = speed
         return drive
     }

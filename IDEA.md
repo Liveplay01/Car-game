@@ -68,7 +68,6 @@ Umgesetzt ist die Basis (ROADMAP.md, "Eine Stadt, ein Ring"). Offen:
 
 ## Offen: Balancing (Startwerte stehen, Feinschliff im Playtest)
 
-- Schichtlänge: IDEA sah ~2 Minuten für 15 Autos vor, gemessen sind es 8–35 s. Länger machen oder so lassen?
 - Levelkurve für Speed, Density und Weather; Rush-Hour-Werte.
 - Kosten: Map-Erweiterungen, Zollstellen (auch Maximalzahl), Abschlepp-Depot.
 - Wirkung der 30-%-Wrackentfernung des Depots.

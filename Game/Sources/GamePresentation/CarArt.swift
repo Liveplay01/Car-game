@@ -55,7 +55,13 @@ enum CarArt {
         static let roofSheen = 67
         /// A two-tone skin's roof (`Skins.roof`).
         static let twoTone = 69
-        static let count = 70
+        /// Brake lights: the glow on the road and the two lamps (`addLights`).
+        static let brakeGlow = 70
+        static let brakeLamps = 71
+        /// Headlights, only when they flash: the beam on the road and the two lamps.
+        static let beam = 73
+        static let headLamps = 74
+        static let count = 76
     }
 
     struct Shape {
@@ -263,6 +269,9 @@ enum CarArt {
     /// on it pushed in with the metal, torn-off parts missing, broken glass cracked.
     /// - Parameters:
     ///   - lights: 0…1 phase of the flashing police lights; nil when they are off.
+    ///   - brake: 0…1, how brightly the brake lights shine; nil or 0 draws none.
+    ///   - brakeGlow: whether they light the road behind the car too.
+    ///   - headlights: 0…1, a flash of the headlights (a held tap, `GameSession`).
     static func add(
         id: Int,
         type: VehicleType,
@@ -271,6 +280,9 @@ enum CarArt {
         char: Double = 0,
         opacity: Double = 1,
         lights: Double? = nil,
+        brake: Double? = nil,
+        brakeGlow: Bool = true,
+        headlights: Double = 0,
         skin: ColorToken? = nil,
         stripe: ColorToken? = nil,
         roof: ColorToken? = nil,
@@ -309,6 +321,22 @@ enum CarArt {
                     )
                 }
             }
+        }
+
+        // Light on the road goes under the body too: the red of the brakes behind the car,
+        // the white of a headlight flash ahead of it.
+        let lampLength = length(of: type, config: config)
+        if let brake, brake > 0.01, brakeGlow {
+            list.add(
+                .roundedRect(center: world(Vec2(-lampLength / 2 - 2.5, 0), pose), size: Vec2(9, config.carWidth * 1.3), cornerRadius: 4.5, rotation: pose.heading),
+                color: .lightRed, opacity: opacity * 0.16 * brake, space: .world, id: slot(Slot.brakeGlow)
+            )
+        }
+        if headlights > 0.01 {
+            list.add(
+                .roundedRect(center: world(Vec2(lampLength / 2 + 8, 0), pose), size: Vec2(16, config.carWidth * 1.4), cornerRadius: 6, rotation: pose.heading),
+                color: .primary, opacity: opacity * 0.28 * headlights, space: .world, id: slot(Slot.beam)
+            )
         }
 
         if dents.isEmpty {
@@ -391,6 +419,27 @@ enum CarArt {
                 }
             }
         }
+        // The lamps on the body, only while they shine (every shape costs, `TearDownTests`):
+        // the brake lights when the driver brakes, the headlights while they flash.
+        let lampSize = Vec2(1.3, config.carWidth * 0.22)
+        let lampY = config.carWidth * 0.3
+        if let brake, brake > 0.02 {
+            for (index, y) in [lampY, -lampY].enumerated() {
+                list.add(
+                    .roundedRect(center: world(Vec2(-lampLength / 2 + 0.8, y), pose), size: lampSize, cornerRadius: 0.5, rotation: pose.heading),
+                    color: .lightRed, opacity: opacity * min(brake, 1), space: .world, id: slot(Slot.brakeLamps + index)
+                )
+            }
+        }
+        if headlights > 0.01 {
+            for (index, y) in [lampY, -lampY].enumerated() {
+                list.add(
+                    .roundedRect(center: world(Vec2(lampLength / 2 - 0.8, y), pose), size: lampSize, cornerRadius: 0.5, rotation: pose.heading),
+                    color: .primary, opacity: opacity * headlights, space: .world, id: slot(Slot.headLamps + index)
+                )
+            }
+        }
+
         // A finish (LOOT.md): a sweep of light over the car now and then, and/or sparkles
         // that twinkle. Only moving with a clock (not with Reduce Motion) and on intact cars.
         if let finish, let time = finishTime, dents.isEmpty {
