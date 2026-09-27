@@ -295,6 +295,12 @@ export const baseConfig = {
   weatherDensityPerStep: 1,
   stormAiGapFactor: 0.8,
 
+  // Night: the city goes dark, you merge by the lights (only the picture changes, not the rules)
+  night: false,
+  nightLevel: 10,
+  nightChancePerLevel: 0.08,
+  maxNightChance: 0.5,
+
   // City events
   cityEvent: null as CityEvent | null,
   cityEventLevel: 4,

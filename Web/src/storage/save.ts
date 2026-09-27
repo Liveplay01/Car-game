@@ -157,6 +157,31 @@ export function writeSave(save: SaveGame): boolean {
   }
 }
 
+/** Marks an exported file as ours, so a random JSON file is not taken for a save. */
+const EXPORT_TAG = 'car-game-save';
+
+/** The save as a file to carry to another device (Settings → Export progress). */
+export function exportSave(save: SaveGame): string {
+  return JSON.stringify({ format: EXPORT_TAG, version: 2, exportedAt: new Date().toISOString(), save }, null, 2);
+}
+
+/**
+ * Reads an exported file back. Null when it is not a Car Game save; otherwise it goes through
+ * the same field-by-field checks as the stored save, so a hand-edited file cannot break the game.
+ */
+export function parseImport(text: string): SaveGame | null {
+  let raw: unknown;
+  try {
+    raw = JSON.parse(text);
+  } catch {
+    return null;
+  }
+  if (!isObject(raw)) return null;
+  const inner = raw.format === EXPORT_TAG ? raw.save : raw;
+  if (!isObject(inner) || !isObject(inner.career)) return null;
+  return readSave(inner);
+}
+
 export function eraseSave(): SaveGame {
   try {
     localStorage.removeItem(KEY);

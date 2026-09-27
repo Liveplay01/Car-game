@@ -9,6 +9,8 @@ import {
   type Upgrade,
   forArms,
   forWeather,
+  forNight,
+  drawNight,
   forCityEvent,
   drawWeather,
   drawCityEvent,
@@ -233,7 +235,7 @@ export const Careers = {
     cfg.vanShare = Careers.owns(c, 'van') ? base.vanShareOwned : 0;
     let shift = upgraded(forArms(forLevel(cfg, c.level, seed)), (u) => Careers.steps(c, u));
     if (Careers.hasPurchased(c, 'cashBoost')) shift = forCashBoost(shift);
-    const sky = forWeather(shift, weather ?? drawWeather(shift, c.level, seed));
+    const sky = forNight(forWeather(shift, weather ?? drawWeather(shift, c.level, seed)), drawNight(shift, c.level, seed));
     return forCityEvent(sky, event === undefined ? drawCityEvent(sky, c.level, seed) : event, seed);
   },
 

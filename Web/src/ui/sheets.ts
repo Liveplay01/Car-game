@@ -1,6 +1,7 @@
 import { h, icon } from './dom';
 import { ICONS } from './icons';
-import type { Settings } from '../core/career';
+import type { Settings, SaveGame } from '../core/career';
+import { parseImport } from '../storage/save';
 
 interface OpenSheet {
   root: HTMLElement;
@@ -72,6 +73,9 @@ export const isSheetOpen = (): boolean => current !== null;
 export interface SettingsActions {
   changed(settings: Settings): void;
   reset(): void;
+  /** The save as file text, for Export progress. */
+  exportText(): string;
+  importSave(save: SaveGame): void;
   install: (() => void) | null;
   closed(): void;
 }
@@ -143,6 +147,8 @@ export function settingsSheet(layer: HTMLElement, s: Settings, actions: Settings
     }
   }
 
+  const progressList = progressRows(actions, () => close());
+
   const resetBtn = h('button', { class: 'btn block destructive' }, 'Reset progress');
   let armed = false;
   resetBtn.addEventListener('click', () => {
@@ -185,9 +191,84 @@ export function settingsSheet(layer: HTMLElement, s: Settings, actions: Settings
     ),
     h('div', { style: 'display:flex;justify-content:flex-end;margin:10px 0 24px' }, motionSeg),
     installRow ? h('div', { class: 'list', style: 'margin-bottom:24px' }, installRow) : null,
-    h('p', { class: 'section-note', style: 'margin:0 4px 12px' }, 'Your progress is saved on this device only.'),
+    h('p', { class: 'section-note', style: 'margin:0 4px 8px' }, 'Your progress is saved on this device. To move it, export it here and import the file on the other device.'),
+    progressList,
     resetBtn,
   );
   const close = openSheet(layer, 'Settings', body, () => actions.closed());
   return close;
+}
+
+/** Export and import of the whole progress, for moving to another device. */
+function progressRows(actions: SettingsActions, closeSheet: () => void): HTMLElement {
+  const exportSub = h('div', { class: 'row-sub' }, 'A file with your level, money, upgrades and collection.');
+  const exportBtn = h('button', { class: 'btn', type: 'button' }, 'Export');
+  exportBtn.addEventListener('click', () => {
+    const day = new Date().toISOString().slice(0, 10);
+    const name = `car-game-save-${day}.json`;
+    const text = actions.exportText();
+    const file = new File([text], name, { type: 'application/json' });
+    // On a phone the share sheet (AirDrop, messages, Files) is the natural way to hand it over.
+    const touch = window.matchMedia('(pointer: coarse)').matches;
+    if (touch && typeof navigator.canShare === 'function' && navigator.canShare({ files: [file] })) {
+      navigator.share({ files: [file], title: 'Car Game progress' }).catch(() => {
+        /* cancelled */
+      });
+      return;
+    }
+    const url = URL.createObjectURL(file);
+    const link = h('a', { href: url, download: name });
+    document.body.append(link);
+    link.click();
+    link.remove();
+    window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+    exportSub.textContent = `Saved as ${name}.`;
+  });
+
+  const importSub = h('div', { class: 'row-sub' }, 'Replaces the progress on this device.');
+  const importBtn = h('button', { class: 'btn', type: 'button' }, 'Import');
+  const picker = h('input', { type: 'file', accept: '.json,application/json', hidden: true, 'aria-hidden': 'true', tabindex: '-1' });
+  let pending: SaveGame | null = null;
+  const showPending = (save: SaveGame | null, error: string | null): void => {
+    pending = save;
+    importSub.classList.toggle('error', error !== null);
+    if (error !== null) {
+      importSub.textContent = error;
+      importBtn.textContent = 'Import';
+      importBtn.classList.remove('destructive');
+    } else if (save) {
+      const money = save.career.money.toLocaleString('en-US');
+      importSub.textContent = `Level ${save.career.level} · ${money} coins. Replace the progress on this device?`;
+      importBtn.textContent = 'Replace';
+      importBtn.classList.add('destructive');
+    }
+  };
+  picker.addEventListener('change', () => {
+    const chosen = picker.files?.[0];
+    picker.value = '';
+    if (!chosen) return;
+    chosen
+      .text()
+      .then((text) => {
+        const save = parseImport(text);
+        showPending(save, save ? null : 'That file is not a Car Game save.');
+      })
+      .catch(() => showPending(null, 'That file could not be read.'));
+  });
+  importBtn.addEventListener('click', () => {
+    if (!pending) {
+      picker.click();
+      return;
+    }
+    const save = pending;
+    closeSheet();
+    actions.importSave(save);
+  });
+
+  return h(
+    'div',
+    { class: 'list', style: 'margin-bottom:24px' },
+    h('div', { class: 'row' }, h('div', { class: 'row-main' }, h('div', { class: 'row-title' }, 'Export progress'), exportSub), exportBtn),
+    h('div', { class: 'row' }, h('div', { class: 'row-main' }, h('div', { class: 'row-title' }, 'Import progress'), importSub), importBtn, picker),
+  );
 }

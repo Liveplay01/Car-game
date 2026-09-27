@@ -260,6 +260,19 @@ export function forWeather(base: Config, weather: Weather): Config {
   return c;
 }
 
+/** Whether one shift at `level` runs at night, drawn from the seed: more likely the higher the level. */
+export function drawNight(c: Config, level: number, seed: number): boolean {
+  if (level < c.nightLevel) return false;
+  const chance = Math.min(c.maxNightChance, c.nightChancePerLevel * (level - c.nightLevel + 1));
+  return new Rng((seed ^ 0x6e176e17) >>> 0).unit() < chance;
+}
+
+export function forNight(base: Config, night: boolean): Config {
+  const c = cloneConfig(base);
+  c.night = night;
+  return c;
+}
+
 /** The event of one shift at `level`, or null. */
 export function drawCityEvent(c: Config, level: number, seed: number): CityEvent | null {
   if (level < c.cityEventLevel) return null;

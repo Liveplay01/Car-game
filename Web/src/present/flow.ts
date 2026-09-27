@@ -72,6 +72,9 @@ export const BuildLayout = {
   gap: 12,
   segmentHeight: 32,
   paletteHeight: 112,
+  /** Share of the room the builder's ring uses, and its largest radius (points). */
+  mapZoom: 0.8,
+  maxMapRadius: 170,
   /** A line of help under the palette; the details live in a sheet. */
   detailHeight: 34,
   top: Metrics.sceneInsets.top + 22,
@@ -98,6 +101,10 @@ export const BuildLayout = {
     const top = BuildLayout.contentTop - 4;
     const bottom = viewport.y - bottomInset - BuildLayout.detailHeight - BuildLayout.paletteHeight - 2 * BuildLayout.gap;
     const height = Math.max(160, bottom - top);
-    return { center: v(viewport.x / 2, top + height / 2), radius: Math.min(height / 2 - 34, viewport.x / 2 - 62) };
+    // Zoomed out a little and lifted, so the arms and the queue keep clear of the parts below
+    // (Leo, 27.09.2026); on a desktop the ring stays a sensible size instead of filling the height.
+    const fit = Math.min(height / 2 - 34, viewport.x / 2 - 62);
+    const radius = Math.min(fit * BuildLayout.mapZoom, BuildLayout.maxMapRadius);
+    return { center: v(viewport.x / 2, top + height * 0.46), radius };
   },
 };

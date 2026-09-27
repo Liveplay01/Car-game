@@ -17,6 +17,7 @@ import { CityLayer, CityPulse } from './city';
 import { MapTheme } from './mapThemes';
 import { Skins } from './skins';
 import { WeatherLayer } from './weather';
+import { NightLayer } from './night';
 import { HUD, TopBar, RingSignals, ModeBanner, ReadyBanner, ResultBanner, type Popup, type PopupKind, type ShiftSummary, POPUP_LIFETIME, settledPops } from './hud';
 import { Tutorial } from './tutorial';
 import { MenuKit } from './menukit';
@@ -1432,6 +1433,7 @@ export class GameSession {
     SceneBuilder.addShadows(list, world, alpha);
     SceneBuilder.addVehicles(list, world, alpha, career.carSkins, rm ? null : world.time, rm ? null : world.time, this.lamps);
     SceneBuilder.addTowTrucks(list, world);
+    if (world.config.night) NightLayer.add(list, world, alpha, this.lamps, rm ? null : world.time);
     if (this.save.settings.vehicleLabels) SceneBuilder.addLabels(list, world, alpha);
     this.effects.addAir(list);
     this.explosions.addAir(list);
@@ -1524,7 +1526,7 @@ export class GameSession {
       cars: this.world.carsLeft ?? 0,
       highscore: this.currentBest,
       money: Fmt.number(career.money),
-      conditions: S.ready.conditions(this.world.config.weather, this.world.config.cityEvent),
+      conditions: S.ready.conditions(this.world.config.weather, this.world.config.cityEvent, this.world.config.night),
       daily,
       mode: this.playingMode,
       prompt,
@@ -1572,6 +1574,16 @@ export class GameSession {
     writeSave(this.save);
     this.tutorial = new Tutorial();
     this.prepareShift(false);
+  }
+
+  /** Progress brought from another device (Settings → Import progress) replaces this one. */
+  importProgress(save: SaveGame): void {
+    this.save = save;
+    writeSave(this.save);
+    this.tutorial = save.tutorialDone ? null : new Tutorial();
+    if (this.tutorial) this.save.mode = 'shift';
+    this.prepareShift(false);
+    this.showNotice(S.settings.imported(save.career.level));
   }
 }
 

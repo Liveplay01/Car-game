@@ -50,6 +50,10 @@ export const S = {
     strikes: (police: number): string => `Cars crash instantly. Police get ${police} chances.`,
   },
 
+  settings: {
+    imported: (level: number): string => `Progress imported · Level ${level}`,
+  },
+
   modes: {
     name: (m: GameMode): string => (m === 'shift' ? 'SHIFT' : m === 'unlimited' ? 'UNLIMITED' : 'MAYHEM'),
     line: (m: GameMode): string => (m === 'shift' ? 'Clear the level, move up' : m === 'unlimited' ? 'Endless · until you crash' : '12 cars · aim for the tankers'),
@@ -74,8 +78,8 @@ export const S = {
   ready: {
     tapToStart: 'Tap to start',
     levelCaption: (level: number): string => `LEVEL ${level}`,
-    conditions(weather: Weather, event: CityEvent | null): string | null {
-      const parts = [weather === 'clear' ? null : S.weather(weather), event ? S.cityEvent(event) : null].filter((x): x is string => !!x);
+    conditions(weather: Weather, event: CityEvent | null, night = false): string | null {
+      const parts = [night ? S.night : null, weather === 'clear' ? null : S.weather(weather), event ? S.cityEvent(event) : null].filter((x): x is string => !!x);
       return parts.length ? parts.join(' · ') : null;
     },
   },
@@ -421,6 +425,7 @@ export const S = {
     },
   },
 
+  night: 'Night',
   weather: (w: Weather): string => ({ clear: 'Clear', lightRain: 'Light Rain', heavyRain: 'Heavy Rain', storm: 'Storm', extreme: 'Extreme Weather' })[w],
   cityEvent: (e: CityEvent): string =>
     ({ roadworks: 'Roadworks', roadClosure: 'Road Closure', concert: 'Concert Traffic', vipConvoy: 'VIP Convoy', policeOperation: 'Police Operation' })[e],

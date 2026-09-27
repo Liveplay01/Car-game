@@ -7,6 +7,7 @@ import { AudioPlayer, Haptics } from '../audio/player';
 import { h, icon } from './dom';
 import { ICONS } from './icons';
 import { settingsSheet, isSheetOpen, closeAnySheet } from './sheets';
+import { exportSave } from '../storage/save';
 import { DetailSheet } from './detailSheet';
 
 interface InstallPromptEvent extends Event {
@@ -194,6 +195,8 @@ export class Shell {
     this.closeSettings = settingsSheet(this.layers, s.save.settings, {
       changed: () => s.saveSettings(),
       reset: () => s.resetProgress(),
+      exportText: () => exportSave(s.save),
+      importSave: (save) => s.importProgress(save),
       install: this.installPrompt
         ? () => {
             void this.installPrompt?.prompt();

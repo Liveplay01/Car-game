@@ -26,6 +26,8 @@ export const COLORS = {
   vehiclePoliceRoof: [242, 244, 247, 1],
   lightRed: [255, 59, 71, 1],
   lightBlue: [79, 163, 255, 1],
+  headlight: [255, 238, 208, 1],
+  night: [3, 5, 10, 1],
   vehicleCriminal: [180, 92, 240, 1],
   vehicleBed: [53, 33, 74, 1],
   vehicleCargo: [216, 162, 58, 1],
