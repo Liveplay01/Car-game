@@ -1,4 +1,4 @@
-import { type Config } from './config';
+import { type Config, gravity } from './config';
 import { Layout, type Arm } from './roundabout';
 import { type Pose } from './paths';
 import { Rng, substream } from './rng';
@@ -14,6 +14,8 @@ import {
   mergeProfile,
   profileDistance,
   newDrive,
+  isHeavy,
+  isExplosive,
 } from './vehicle';
 import type { GameEvent, MergeRating, ShiftOutcome, ShiftResult } from './events';
 import { ScoreBoard, Scoring } from './scoring';
@@ -34,13 +36,15 @@ import {
   isTransported,
   criminalRanInto,
 } from './specials';
+import { type MilitaryPhase, updateMilitary, explode, isEscorted, predictedZoneS, gapToZone } from './explosions';
+import { chargeModules, wreckClearRate, towDepotCovering } from './modules';
 import { tempoAt, densityAt } from './levels';
 
 export const STEP_RATE = 120;
 export const STEP = 1 / STEP_RATE;
 
 /** A car rolling through the line on a held tap (`PlayerQueue.Pass` in GameCore). */
-interface Pass {
+export interface Pass {
   position: number;
   speed: number;
   beyond: number;
@@ -60,23 +64,27 @@ function rollPass(p: Pass, slots: number, lockstep: number): void {
   p.position = Math.min(1, next);
 }
 
-/** How far (0…1) the next car has come towards the line, braking softly at the end. */
 function hermite(u: number, start: number, startSlope: number, end: number, endSlope: number): number {
   const u2 = u * u;
   const u3 = u2 * u;
   return (2 * u3 - 3 * u2 + 1) * start + (u3 - 2 * u2 + u) * startSlope + (-2 * u3 + 3 * u2) * end + (u3 - u2) * endSlope;
 }
 
-const approach = (progress: number, startSpeed = 0): number =>
+/** How far (0…1) the next car has come towards the line; it brakes softly at the end. */
+export const approach = (progress: number, startSpeed = 0): number =>
   hermite(Math.min(Math.max(progress, 0), 1), 0, Math.min(Math.max(startSpeed, 0), 1), 1, 0);
 
-const approachSpeed = (progress: number, startSpeed = 0): number => {
+export const approachSpeed = (progress: number, startSpeed = 0): number => {
   const x = Math.min(Math.max(progress, 0), 1);
   const s = Math.min(Math.max(startSpeed, 0), 1);
   return 6 * x * (1 - x) + s * (3 * x * x - 4 * x + 1);
 };
 
-type QueueState = { kind: 'ready' } | { kind: 'clearing'; vehicle: number } | { kind: 'filling'; elapsed: number };
+export type QueueState =
+  | { kind: 'ready' }
+  | { kind: 'clearing'; vehicle: number }
+  | { kind: 'advancing'; elapsed: number }
+  | { kind: 'filling'; elapsed: number };
 
 /** The player's queue at the South arm. One tap sends the front car (FOUNDATION.md 2.2). */
 export class PlayerQueue {
@@ -103,6 +111,7 @@ export class ShiftState {
   carsSent = 0;
   startedAt: number | null = null;
   rushHourSince: number | null = null;
+  detonated = false;
 
   get acceptsTaps(): boolean {
     return this.phase === 'waiting' || this.phase === 'running' || this.phase === 'rushHour';
@@ -119,6 +128,15 @@ interface Hit {
   contact: Contact;
 }
 
+/** 0…1 from an id, the same every time. */
+export function unitHashId(id: number): number {
+  let h = Math.imul(id ^ 0x9e3779b9, 0x85ebca6b);
+  h ^= h >>> 13;
+  h = Math.imul(h, 0xc2b2ae35);
+  h ^= h >>> 16;
+  return (h >>> 0) / 4294967296;
+}
+
 /**
  * Game state plus rules. Fixed step of 1/120 s, deterministic: the same seed and the same
  * taps give the same result (FOUNDATION.md 4.1).
@@ -132,7 +150,8 @@ export class World {
   score = new ScoreBoard();
   criminal: CriminalPhase = { kind: 'idle', next: Infinity };
   transporter: TransporterPhase = { kind: 'idle', next: Infinity };
-  /** Speed of everything on the ring. */
+  military: MilitaryPhase = { kind: 'idle', next: Infinity };
+  militaryCount = 0;
   ringSpeed: number;
   targetDensity: number;
 
@@ -140,6 +159,8 @@ export class World {
   queueRng: Rng;
   criminalRng: Rng;
   transporterRng: Rng;
+  tankerRng: Rng;
+  militaryRng: Rng;
   nextVehicleId: number;
   pendingTaps: number[] = [];
   spawnCooldown = 0;
@@ -157,6 +178,8 @@ export class World {
     this.queueRng = substream(seed, 0x51ed2701);
     this.criminalRng = substream(seed, 0xb5ad4ece);
     this.transporterRng = substream(seed, 0x9f314d7c);
+    this.tankerRng = substream(seed, 0x7a1e5c93);
+    this.militaryRng = substream(seed, 0xe3b20c6d);
     this.ringSpeed = config.ringSpeed;
     this.targetDensity = config.freePlayDensity;
     this.nextVehicleId = firstVehicleId;
@@ -164,7 +187,12 @@ export class World {
     this.applyShiftCurves(0);
     const first = this.criminalRng.range(config.criminalFirst.lo, config.criminalFirst.hi);
     this.criminal = { kind: 'idle', next: this.criminalRng.unit() < config.criminalChance ? first : Infinity };
-    this.transporter = { kind: 'idle', next: this.transporterRng.range(config.transporterFirst.lo, config.transporterFirst.hi) };
+    this.transporter = {
+      kind: 'idle',
+      next: config.mayhem ? Infinity : this.transporterRng.range(config.transporterFirst.lo, config.transporterFirst.hi),
+    };
+    const comes = this.militaryRng.unit() < config.militaryChance;
+    this.military = { kind: 'idle', next: comes ? this.militaryRng.range(config.militaryFirst.lo, config.militaryFirst.hi) : Infinity };
     this.refillQueue();
     if (prefill) prefillRing(this, Math.max(this.targetDensity, config.minRingBots));
   }
@@ -175,26 +203,25 @@ export class World {
 
   /**
    * The next shift, continuing this one's traffic (FOUNDATION.md 2.5): every car on the road
-   * keeps driving, the tempo glides, and the new cars roll into the queue from behind.
+   * keeps driving, every wreck keeps skidding, the tempo glides, and the new cars roll into
+   * the queue from behind. Cars that were the player's are plain traffic now.
    */
   nextShift(config: Config, seed: number): World {
     const next = new World(config, seed, { prefill: false, startsOnFirstTap: true, firstVehicleId: this.nextVehicleId });
     const carried = this.vehicles.filter((veh) => veh.phase.kind !== 'queued');
     for (const veh of carried) {
       veh.owner = 'ai';
-      // A special vehicle from the last shift is plain traffic now.
-      if (veh.type === 'pickup' || veh.type === 'transporter') {
-        if (!veh.isCrashed) veh.type = 'car';
-      }
       if (veh.phase.kind === 'ring') {
         veh.phase.justMerged = null;
-        veh.phase.isLeaving = false;
       }
       veh.prevPosition = veh.position;
       veh.prevHeading = veh.heading;
     }
-    // The queued cars of the new world are newer: keep creation order.
     next.vehicles = [...carried, ...next.vehicles];
+    // A military truck still on its rounds keeps them, on the new shift's clock.
+    const m = this.military;
+    if (m.kind === 'active') next.military = { kind: 'active', vehicle: m.vehicle, deadline: Math.max(0, m.deadline - this.time) };
+    else if (m.kind === 'leaving') next.military = { kind: 'leaving', vehicle: m.vehicle };
     next.tempoGlide = { from: this.ringSpeed, since: 0 };
     next.applyShiftCurves(0);
     next.queue.state = { kind: 'filling', elapsed: 0 };
@@ -202,10 +229,7 @@ export class World {
     return next;
   }
 
-  /**
-   * Registers a tap at world time `time`; it takes effect inside the step that contains that
-   * moment, not at the next frame, so timing is fair to the millisecond.
-   */
+  /** Registers a tap at world time `time`; it takes effect inside the step containing it. */
   tap(time: number): void {
     if (!this.shift.acceptsTaps) return;
     const t = Math.max(time, this.time);
@@ -248,6 +272,7 @@ export class World {
     updateTraffic(this, dt);
     updateCriminals(this, end);
     updateTransporters(this, end);
+    updateMilitary(this, end);
     this.resolveContacts(end);
     this.resolveTrafficContacts(end);
     this.rateMerges(end);
@@ -262,6 +287,8 @@ export class World {
     const c = this.config;
     switch (type) {
       case 'truck':
+      case 'tanker':
+      case 'military':
         return c.truckLength;
       case 'sportsCar':
         return c.sportsCarLength;
@@ -283,6 +310,10 @@ export class World {
         return c.transporterMass;
       case 'truck':
         return c.truckMass;
+      case 'tanker':
+        return c.tankerMass;
+      case 'military':
+        return c.militaryMass;
       case 'sportsCar':
         return c.sportsCarMass;
       case 'compact':
@@ -302,6 +333,17 @@ export class World {
     return capsule(veh.position, veh.heading, this.lengthOf(veh.type), this.config.carWidth);
   }
 
+  /** The AI arms cars can come from: all of them, unless a road closure shuts one. */
+  get openAIArms(): Arm[] {
+    const closed = this.config.closedArmSlot;
+    return closed === null ? this.layout.aiArms : this.layout.aiArms.filter((a) => a.slot !== closed);
+  }
+
+  /** Where the roadworks sit on the ring (ring distance of their start), if there are any. */
+  get roadworksRingS(): number | null {
+    return this.config.cityEvent === 'roadworks' ? this.config.roadworksAt * this.layout.ring.length : null;
+  }
+
   /** Every car leaves 1–3 arms after the one it came from, never at South. */
   randomExit(arm: Arm): Arm {
     const options: Arm[] = [];
@@ -315,7 +357,7 @@ export class World {
   // MARK: Movement
 
   isRingBot(veh: Vehicle): boolean {
-    return veh.isBot;
+    return veh.isBot || isEscorted(this, veh.id);
   }
 
   moveVehicles(dt: number, now: number): void {
@@ -323,14 +365,14 @@ export class World {
     const circumference = layout.ring.length;
     let stayingBots = this.vehicles.filter((veh) => this.isRingBot(veh) && veh.phase.kind === 'ring' && !veh.phase.isLeaving).length;
     const wrecksOnRoad = this.vehicles.some((veh) => veh.isCrashed);
-    for (const veh of this.vehicles) {
+    for (let i = 0; i < this.vehicles.length; i++) {
+      const veh = this.vehicles[i];
       const phase = veh.phase;
       switch (phase.kind) {
         case 'queued':
         case 'waiting':
           break;
         case 'merging': {
-          // The merge keeps pace with the ring, so a tempo change never changes a gap.
           phase.elapsed += (dt * this.ringSpeed) / phase.profile.ringSpeed;
           if (phase.elapsed >= phase.profile.duration) {
             const overflow = (phase.elapsed - phase.profile.duration) * phase.profile.ringSpeed;
@@ -355,14 +397,18 @@ export class World {
         case 'ring': {
           phase.sinceMerge += dt;
           const d = (phase.drive.speed ?? this.ringSpeed) * dt;
+          chargeModules(this, veh, phase.s, d, now);
           phase.s = wrap(phase.s + d, circumference);
           phase.distanceToExit -= d;
-          if (phase.distanceToExit <= 0 && (isChased(this, veh.id) || isTransported(this, veh.id) || phase.drive.isPursuing)) {
+          if (
+            phase.distanceToExit <= 0 &&
+            (isChased(this, veh.id) || isTransported(this, veh.id) || isEscorted(this, veh.id) || phase.drive.isPursuing)
+          ) {
             phase.distanceToExit += circumference;
           }
           if (veh.isBot && !phase.isLeaving && phase.distanceToExit <= this.config.botExitNotice * this.ringSpeed) {
             // The ring belongs to the bots: one leaves only once its successor is in.
-            const inWave = !wrecksOnRoad && phase.drive.outOfFlowTime >= this.config.waveTime;
+            const inWave = !wrecksOnRoad && phase.drive.outOfFlowTime >= this.config.waveTime && !isModuleQueueAt(this, phase.s);
             const jammed = phase.drive.hazardTime >= this.config.botJamPatience || inWave;
             if (!jammed && stayingBots <= this.config.minRingBots) {
               phase.distanceToExit += circumference;
@@ -382,24 +428,30 @@ export class World {
         case 'exiting': {
           phase.s += (phase.drive.speed ?? this.ringSpeed) * dt;
           const exit = layout.exit(phase.arm);
-          if (phase.s >= exit.length) veh.retired = true;
-          else veh.place(exit.pose(phase.s));
+          if (phase.s >= exit.length) {
+            veh.retired = true;
+            this.events.push({ type: 'exited', vehicle: veh.id, arm: phase.arm });
+          } else veh.place(exit.pose(phase.s));
           break;
         }
         case 'crashed': {
-          phase.elapsed += dt;
+          // A tow depot nearby clears wrecks faster (M9).
+          phase.elapsed += dt * wreckClearRate(this, veh.position);
           const body = this.bodyOf(veh);
           skid(body, this.config, dt);
           veh.position = body.position;
           veh.heading = body.heading;
           phase.velocity = body.velocity;
           phase.spin = body.angularVelocity;
-          if (phase.elapsed >= this.config.crashDuration) veh.retired = true;
+          if (phase.elapsed >= this.config.crashDuration) {
+            veh.retired = true;
+            const slot = towDepotCovering(this, veh.position);
+            if (slot !== null) this.events.push({ type: 'towed', vehicle: veh.id, slot, time: now });
+          }
           break;
         }
       }
     }
-    void now;
   }
 
   // MARK: Crash physics glue
@@ -428,13 +480,20 @@ export class World {
     return v(dot(d, forward), dot(d, left(forward)));
   }
 
+  worldPoint(local: Vec2, veh: Vehicle): Vec2 {
+    const forward = fromAngle(veh.heading);
+    return add(veh.position, add(mul(forward, local.x), mul(left(forward), local.y)));
+  }
+
   /** Crumples the sheet metal where the car was hit: the harder, the deeper. */
   addDent(veh: Vehicle, point: Vec2, impact: number): void {
     const local = this.localPoint(point, veh);
     const depth = Math.min(Math.max(impact * this.config.dentPerImpact, 0.6), this.config.maxDent);
     const near = veh.dents.find((dent) => length(sub(dent.point, local)) < 4);
-    if (near) near.depth = Math.min(this.config.maxDent * 1.3, near.depth + depth * 0.5);
-    else if (veh.dents.length < 8) veh.dents.push({ point: local, depth });
+    if (near) {
+      near.depth = Math.min(this.config.maxDent * 1.3, near.depth + depth * 0.5);
+      near.time = this.time;
+    } else if (veh.dents.length < 8) veh.dents.push({ point: local, depth, time: this.time });
   }
 
   makeWreck(veh: Vehicle, point: Vec2, body: RigidBody): void {
@@ -454,6 +513,7 @@ export class World {
       for (let m = k + 1; m < wrecks.length; m++) {
         const a = wrecks[k];
         const b = wrecks[m];
+        if (lengthSq(sub(a.position, b.position)) > 60 * 60) continue;
         const c = contact(this.hitboxOf(a), this.hitboxOf(b));
         if (c.gap >= 0) continue;
         const normal = this.contactNormal(c, a, b);
@@ -481,8 +541,10 @@ export class World {
 
   // MARK: Collisions and rating
 
+  /** A wreck that live traffic runs into. In Mayhem only one still flying. */
   isObstacle(veh: Vehicle): boolean {
-    return veh.isCrashed;
+    if (veh.phase.kind !== 'crashed') return false;
+    return !this.config.mayhem || length(veh.phase.velocity) > this.config.mayhemWreckHitSpeed;
   }
 
   isLiveTraffic(veh: Vehicle): boolean {
@@ -490,7 +552,6 @@ export class World {
     return veh.phase.kind === 'exiting';
   }
 
-  /** Merging cars against everything on the road, wrecks included; their gaps are measured too. */
   resolveContacts(now: number): void {
     const hitboxes = this.vehicles.map((veh) => (veh.isCollidable || this.isObstacle(veh) ? this.hitboxOf(veh) : null));
     const hits: Hit[] = [];
@@ -505,7 +566,6 @@ export class World {
         const otherIsMerging = this.vehicles[j].activeMerge !== null;
         if (otherIsMerging && j < i) continue;
         const c = contact(a, b);
-        // Your own cars never rate each other (FOUNDATION.md 2.2).
         const ownPair = this.vehicles[i].owner === 'player' && this.vehicles[j].owner === 'player';
         if (!this.vehicles[j].isCrashed && !ownPair) this.noteGap(c.gap, this.vehicles[i], this.vehicles[j].id);
         if (otherIsMerging && !ownPair) this.noteGap(c.gap, this.vehicles[j], this.vehicles[i].id);
@@ -524,7 +584,6 @@ export class World {
     });
   }
 
-  /** Disturbed traffic: drivers who could not stop hit the car ahead or a wreck. */
   resolveTrafficContacts(now: number): void {
     if (!this.isTrafficDisturbed) return;
     const reach = this.config.truckLength + 2;
@@ -544,13 +603,13 @@ export class World {
     this.resolve(hits, now);
   }
 
-  /** Deepest contact first, ties in index order: deterministic. A car crashes once per step. */
   private resolve(hits: Hit[], now: number): void {
     const crashedNow = new Set<number>();
     hits.sort((x, y) => x.contact.gap - y.contact.gap || x.i - y.i || x.j - y.j);
     for (const hit of hits) {
       const first = this.vehicles[hit.i];
       const second = this.vehicles[hit.j];
+      if (!first || !second) continue;
       if (crashedNow.has(first.id) || crashedNow.has(second.id) || first.isCrashed) continue;
       this.crash(first, second, hit.contact, now);
       crashedNow.add(first.id);
@@ -579,10 +638,9 @@ export class World {
     return (truck(a) && b.isPlayerPolice) || (truck(b) && a.isPlayerPolice);
   }
 
-  /** The player's mistake: a player car crashing while it merges, or right after it. */
   causesStrike(veh: Vehicle): boolean {
     if (veh.owner !== 'player' || veh.isCrashed) return false;
-    if (veh.activeMerge) return true;
+    if (this.config.chainCrashesCostStrikes || veh.activeMerge) return true;
     if (veh.phase.kind === 'ring') return veh.phase.sinceMerge < this.config.mergeResponsibility;
     return false;
   }
@@ -597,9 +655,13 @@ export class World {
     const seizure = this.isSeizure(first, second);
     const wreckedCriminal = takedown ? undefined : [first, second].find((x) => this.isLiveCriminal(x));
     const wreckedTruck = seizure ? undefined : [first, second].find((x) => x.type === 'transporter' && !x.isCrashed);
+    const explosives = [first, second].filter((x) => isExplosive(x.type) && !x.isCrashed).map((x) => x.id);
     const culprits = [first, second].filter((x) => this.causesStrike(x));
     const strike = !takedown && !seizure && culprits.length > 0;
     const byPolice = strike && culprits.every((x) => x.type === 'police');
+    const firstWasWreck = first.isCrashed;
+    const secondWasWreck = second.isCrashed;
+    const heavy = [first, second].some((x) => !x.isCrashed && isHeavy(x.type));
     const normal = this.contactNormal(c, first, second);
     const a = this.bodyOf(first);
     const b = this.bodyOf(second);
@@ -613,9 +675,12 @@ export class World {
     this.makeWreck(second, point, b);
     const involvesPlayer = first.owner === 'player' || second.owner === 'player';
     let penalty = 0;
-    let cost = 0;
+    let cost = { paid: 0, covered: 0 };
+    let mayhem = { flames: 0, chain: 0 };
     const comboEvents = this.events.length;
-    if (strike && this.isScoring) {
+    if (this.config.mayhem) {
+      if (this.isScoring && (!firstWasWreck || !secondWasWreck)) mayhem = this.scoreMayhem(now, !strike, heavy);
+    } else if (strike && this.isScoring) {
       penalty = this.scoreCrash(byPolice, now);
       cost = this.chargeCrash(impact);
     }
@@ -624,26 +689,32 @@ export class World {
       first: first.id,
       second: second.id,
       point,
-      impact,
+      time: now,
       involvesPlayer,
+      impact,
       isStrike: strike,
       isPoliceCrash: byPolice,
       isTakedown: takedown,
       penalty,
-      cost,
-      time: now,
+      strikes: this.score.strikes,
+      policeCrashes: this.score.policeCrashes,
+      cost: cost.paid,
+      covered: cost.covered,
+      flames: mayhem.flames,
+      chain: mayhem.chain,
     });
     if (takedown) {
       const [criminalId, policeId] = first.type === 'pickup' ? [first.id, second.id] : [second.id, first.id];
       criminalCaught(this, criminalId, policeId, point, now);
     }
     if (seizure) {
-      const truckId = first.type === 'transporter' ? first.id : second.id;
-      transporterSeized(this, truckId, point, now);
+      const [truckId, policeId] = first.type === 'transporter' ? [first.id, second.id] : [second.id, first.id];
+      transporterSeized(this, truckId, policeId, point, now);
     }
     if (wreckedTruck) transporterWrecked(this, wreckedTruck.id, point, now);
     if (wreckedCriminal) criminalWrecked(this, wreckedCriminal.id, point, now);
-    if (strike && this.isScoring && this.isStruckOut) this.endShift('struckOut', now);
+    if (strike && this.isScoring && !this.config.mayhem && this.isStruckOut) this.endShift('struckOut', now);
+    for (const id of explosives) explode(this, id, now);
   }
 
   /** Rates and scores every player merge that ended this step without a crash. */
@@ -663,23 +734,25 @@ export class World {
         this.score.money += this.config.shieldBonus;
       }
       const [rating, points, combo] = this.scoreMerge(merge.minGap, behind, ahead);
-      this.setChain(Scoring.extendsChain(rating) ? this.score.chain + 1 : 0);
+      this.setChain(Scoring.extendsChain(rating) ? this.score.chain + 1 : 0, now);
       this.events.splice(at, 0, {
         type: 'merged',
         vehicle: veh.id,
+        minGap: merge.minGap,
+        closest: merge.closest,
+        gapBehind: behind,
+        position: veh.position,
+        time: now,
         rating,
         points,
         combo,
-        minGap: merge.minGap,
-        position: veh.position,
         shielded,
+        gapAhead: ahead,
         chain: this.score.chain,
-        time: now,
       });
     }
   }
 
-  /** Free time (s) to the nearest car ahead on the ring; your own cars do not count. */
   gapAhead(s: number, id: number): number {
     const circumference = this.layout.ring.length;
     let nearest = Infinity;
@@ -706,13 +779,11 @@ export class World {
     return Number.isFinite(nearest) ? Math.max(0, nearest - this.config.carLength) / this.ringSpeed : Infinity;
   }
 
-  /** Those who keep circling instead of taking their exit. */
   staysOnRing(veh: Vehicle): boolean {
     if (veh.phase.kind !== 'ring') return false;
-    return isChased(this, veh.id) || isTransported(this, veh.id) || veh.phase.drive.isPursuing;
+    return isChased(this, veh.id) || isTransported(this, veh.id) || isEscorted(this, veh.id) || veh.phase.drive.isPursuing;
   }
 
-  /** Ring position after `t` seconds; a merging car counts where it will join. */
   virtualRingPosition(veh: Vehicle, t: number): number | null {
     const circumference = this.layout.ring.length;
     const p = veh.phase;
@@ -729,7 +800,6 @@ export class World {
     return null;
   }
 
-  /** Where `veh` will be after `t` seconds if nobody taps. Null once it has left the road. */
   predictedPose(veh: Vehicle, t: number): Pose | null {
     const layout = this.layout;
     const p = veh.phase;
@@ -761,7 +831,7 @@ export class World {
       }
       case 'crashed': {
         const speed = length(p.velocity);
-        const brake = this.config.tireGripBrake * ((9.81 * this.config.carLength) / this.config.carLengthMeters);
+        const brake = this.config.tireGripBrake * gravity(this.config);
         const time = Math.min(t, speed / brake);
         const travelled = speed * time - (brake * time * time) / 2;
         return { position: add(veh.position, mul(normalize(p.velocity), travelled)), heading: veh.heading + p.spin * time };
@@ -771,10 +841,7 @@ export class World {
     }
   }
 
-  /**
-   * Smallest gap (s) a car launched at `arm` would have to anyone during its merge, if nobody
-   * else taps. Exactly what a player sees coming: used by the AI's safe-gap check.
-   */
+  /** Smallest gap (s) a car launched at `arm` would have to anyone during its merge. */
   predictedMergeGap(arm: Arm, launchDelay = 0, samples = 60, stopBelow = -Infinity): number {
     const path = this.layout.entry(arm);
     const profile = mergeProfile(path.length, this.config.mergeDuration, this.ringSpeed);
@@ -788,6 +855,11 @@ export class World {
         if (!pose) continue;
         const g = contact(me, this.hitbox(pose, other.type)).gap / this.ringSpeed;
         if (g < smallest) smallest = g;
+        if (smallest < stopBelow) return smallest;
+      }
+      const zone = predictedZoneS(this, launchDelay + t);
+      if (zone !== null) {
+        smallest = Math.min(smallest, gapToZone(this, me, zone) / this.ringSpeed);
         if (smallest < stopBelow) return smallest;
       }
     }
@@ -816,16 +888,18 @@ export class World {
     if (rating === 'clean') this.score.cleanMerges++;
     else if (rating === 'tightFit') this.score.tightFits++;
     else if (rating === 'nearMiss') this.score.nearMisses++;
-    else this.score.perfects++;
-    this.setCombo(this.score.combo + Scoring.comboGain(rating, c));
+    else if (rating === 'perfect') this.score.perfects++;
+    else this.score.cutOffs++;
+    if (rating === 'cutOff') this.setCombo(0);
+    else this.setCombo(this.score.combo + Scoring.comboGain(rating, c));
     return [rating, points, this.score.combo];
   }
 
-  setChain(chain: number): void {
+  setChain(chain: number, time: number): void {
     const was = this.isInFlow;
     this.score.chain = Math.max(0, chain);
     this.score.bestChain = Math.max(this.score.bestChain, this.score.chain);
-    if (this.isInFlow !== was) this.events.push({ type: 'flowChanged', inFlow: this.isInFlow, chain: this.score.chain });
+    if (this.isInFlow !== was) this.events.push({ type: 'flowChanged', isInFlow: this.isInFlow, chain: this.score.chain, time });
   }
 
   setCombo(combo: number): void {
@@ -835,34 +909,51 @@ export class World {
     this.score.combo = combo;
     this.score.bestCombo = Math.max(this.score.bestCombo, combo);
     const tier = Scoring.tier(combo, c);
+    const previousTier = Scoring.tier(previous, c);
     this.events.push({
       type: 'comboChanged',
       previous,
       combo,
-      previousTier: Scoring.tier(previous, c),
+      previousTier,
       tier,
       multiplier: Scoring.multiplierOfTier(tier, c),
+      isTierUp: tier > previousTier,
     });
   }
 
   scoreCrash(byPolice: boolean, now: number): number {
-    void now;
     const penalty = Math.min(this.score.points, this.config.crashPenalty);
     this.score.points -= penalty;
     if (byPolice) this.score.policeCrashes++;
     else this.score.strikes++;
     this.setCombo(0);
-    this.setChain(0);
+    this.setChain(0, now);
     return penalty;
   }
 
-  scoreTakedown(): number {
+  /**
+   * Mayhem: a crash that makes a new wreck. A follow-up within `mayhemChainWindow` extends the
+   * chain reaction; the player's own car crashing starts a new one.
+   */
+  scoreMayhem(at: number, followUp = true, heavy = false): { flames: number; chain: number } {
+    const s = this.score;
+    if (followUp && s.lastCrashAt !== null && at - s.lastCrashAt <= this.config.mayhemChainWindow) s.crashChain++;
+    else s.crashChain = 1;
+    s.lastCrashAt = at;
+    s.biggestChain = Math.max(s.biggestChain, s.crashChain);
+    s.wrecks++;
+    const flames = Math.min(s.crashChain, this.config.mayhemMaxChainFlames) * (heavy ? Math.max(1, this.config.mayhemHeavyFlames) : 1);
+    s.flames += flames;
+    return { flames, chain: s.crashChain };
+  }
+
+  scoreTakedown(now: number): number {
     const c = this.config;
     const factor = Scoring.multiplier(this.score.combo, c) * (this.isRushHourScoring ? c.rushHourScoreFactor : 1);
     const points = Math.round(c.takedownPoints * factor);
     this.score.points += points;
     this.score.takedowns++;
-    this.setChain(this.score.chain + 1);
+    this.setChain(this.score.chain + 1, now);
     return points;
   }
 
@@ -871,9 +962,9 @@ export class World {
   }
 
   /** From `crashCostLevel` on, the player's crash costs money; the insurance pays a share. */
-  chargeCrash(impact: number): number {
+  chargeCrash(impact: number): { paid: number; covered: number } {
     const c = this.config;
-    if (c.level < c.crashCostLevel || c.endless) return 0;
+    if (c.level < c.crashCostLevel || c.endless) return { paid: 0, covered: 0 };
     let bucket = 0;
     while (bucket < c.crashCostImpacts.length && impact >= c.crashCostImpacts[bucket]) bucket++;
     const cost = c.crashCosts[Math.min(bucket, c.crashCosts.length - 1)];
@@ -881,7 +972,7 @@ export class World {
     this.score.costs += cost - covered;
     this.score.covered += covered;
     this.score.money -= cost - covered;
-    return cost - covered;
+    return { paid: cost - covered, covered };
   }
 
   chargeEscape(): void {
@@ -906,14 +997,9 @@ export class World {
       if (this.launchFromQueue(driven, first)) continue;
       if (this.queue.heldTap === null) {
         this.queue.heldTap = first;
-        // The car rolling up no longer brakes: it rolls on and goes through the line.
-        if (this.queue.state.kind === 'clearing') {
+        if (this.queue.state.kind === 'clearing' && this.config.queueAdvanceDuration <= 0) {
           const x = (this.launchedDistance(this.queue.state.vehicle) ?? this.config.queueSpacing) / this.config.queueSpacing;
-          this.queue.pass = {
-            position: approach(x, this.queue.rollingSpeed),
-            speed: approachSpeed(x, this.queue.rollingSpeed),
-            beyond: 0,
-          };
+          this.queue.pass = { position: approach(x, this.queue.rollingSpeed), speed: approachSpeed(x, this.queue.rollingSpeed), beyond: 0 };
         }
       } else {
         this.events.push({ type: 'tapRejected', time: first });
@@ -935,7 +1021,6 @@ export class World {
     }
   }
 
-  /** The front car starts right away, without wind-up or delay (FOUNDATION.md 2.2). */
   launchFromQueue(driven: number, time: number): boolean {
     if (!this.queue.isReady || this.queue.vehicles.length === 0) return false;
     const id = this.queue.vehicles[0];
@@ -951,7 +1036,6 @@ export class World {
       arm: this.layout.player,
       exitArm: this.randomExit(this.layout.player),
       profile: mergeProfile(path.length, this.mergeDurationOf(veh.type), this.ringSpeed),
-      // `moveVehicles` adds this step's dt afterwards.
       elapsed: driven - STEP,
       minGap: Infinity,
       closest: null,
@@ -989,8 +1073,11 @@ export class World {
           }
         }
       } else if (driven === null || driven >= c.queueSpacing) {
-        this.queue.state = { kind: 'ready' };
+        this.queue.state = c.queueAdvanceDuration > 0 ? { kind: 'advancing', elapsed: 0 } : { kind: 'ready' };
       }
+    } else if (state.kind === 'advancing') {
+      const next = state.elapsed + dt;
+      this.queue.state = next >= c.queueAdvanceDuration ? { kind: 'ready' } : { kind: 'advancing', elapsed: next };
     } else if (state.kind === 'filling') {
       const next = state.elapsed + dt;
       this.queue.state = next >= c.queueFillSeconds ? { kind: 'ready' } : { kind: 'filling', elapsed: next };
@@ -998,7 +1085,6 @@ export class World {
     this.placeQueue();
   }
 
-  /** The car rolling through on a held tap reached the line: straight into its merge. */
   private rollThrough(pass: Pass): void {
     const c = this.config;
     const past = (pass.beyond * c.queueSpacing) / Math.max(pass.speed * this.ringSpeed, 1);
@@ -1026,9 +1112,14 @@ export class World {
       case 'ready':
         return 0;
       case 'clearing': {
+        if (c.queueAdvanceDuration > 0) return 1;
         if (this.queue.pass) return 1 - this.queue.pass.position;
         const driven = this.launchedDistance(state.vehicle) ?? c.queueSpacing;
         return 1 - approach(driven / c.queueSpacing, this.queue.rollingSpeed);
+      }
+      case 'advancing': {
+        const x = c.queueAdvanceDuration > 0 ? Math.min(Math.max(state.elapsed / c.queueAdvanceDuration, 0), 1) : 1;
+        return (1 - x) * (1 - x) * (1 - x);
       }
       case 'filling': {
         const x = c.queueFillSeconds > 0 ? Math.min(Math.max(state.elapsed / c.queueFillSeconds, 0), 1) : 1;
@@ -1045,7 +1136,6 @@ export class World {
     });
   }
 
-  /** Keeps the queue longer than any screen shows; in a shift it holds only the cars still to send. */
   refillQueue(): void {
     const c = this.config;
     const target = Math.min(c.queueVisible + 4, this.shift.carsLeft ?? Infinity);
@@ -1075,23 +1165,24 @@ export class World {
     }
   }
 
-  /** Whether the player's queue has its brake lights on. Only drawn. */
   get queueBrakes(): boolean {
     const state = this.queue.state;
     switch (state.kind) {
       case 'ready':
         return this.queue.heldTap === null;
+      case 'advancing':
+        return true;
       case 'clearing': {
+        if (this.config.queueAdvanceDuration > 0) return true;
         if (this.queue.pass) return false;
         const x = (this.launchedDistance(state.vehicle) ?? this.config.queueSpacing) / this.config.queueSpacing;
         return x > (this.queue.rollingSpeed > 0 ? 1 / 3 : 0.5);
       }
       case 'filling':
-        return state.elapsed / this.config.queueFillSeconds > 0.5;
+        return this.config.queueFillSeconds <= 0 || state.elapsed / this.config.queueFillSeconds > 0.5;
     }
   }
 
-  /** Brake lights, for the renderer. */
   isBraking(veh: Vehicle): boolean {
     const p = veh.phase;
     switch (p.kind) {
@@ -1099,8 +1190,7 @@ export class World {
         return veh.owner === 'player' ? this.queueBrakes : true;
       case 'waiting': {
         if (p.approach <= 0) return true;
-        const g = (9.81 * this.config.carLength) / this.config.carLengthMeters;
-        return Math.sqrt(2 * this.config.aiApproachBrake * g * p.approach) < this.ringSpeed;
+        return Math.sqrt(2 * this.config.aiApproachBrake * gravity(this.config) * p.approach) < this.ringSpeed;
       }
       case 'ring':
       case 'exiting':
@@ -1110,12 +1200,7 @@ export class World {
     }
   }
 
-  // MARK: Emergency dispatch
-
-  /**
-   * The next car in the queue turns into a police car, for part of the combo
-   * (`dispatchComboFactor`). Nothing happens if it already is one.
-   */
+  /** The next car becomes a police car, for part of the combo (`dispatchComboFactor`). */
   dispatchPolice(): boolean {
     if (!this.shift.acceptsTaps || this.queue.vehicles.length === 0) return false;
     const veh = this.vehicle(this.queue.vehicles[0]);
@@ -1127,6 +1212,10 @@ export class World {
   }
 
   // MARK: Shift
+
+  get carsLeft(): number | null {
+    return this.shift.carsLeft;
+  }
 
   shiftTime(now: number): number {
     return this.shift.startedAt === null ? 0 : now - this.shift.startedAt;
@@ -1158,6 +1247,7 @@ export class World {
     this.shift.phase = 'running';
     if (this.criminal.kind === 'idle') this.criminal = { kind: 'idle', next: this.criminal.next + time };
     if (this.transporter.kind === 'idle') this.transporter = { kind: 'idle', next: this.transporter.next + time };
+    if (this.military.kind === 'idle') this.military = { kind: 'idle', next: this.military.next + time };
     if (!this.config.endless && this.config.shiftCars <= this.config.rushHourCars) this.beginRushHour(time);
   }
 
@@ -1186,7 +1276,8 @@ export class World {
     if (this.shift.phase !== 'closing') return;
     const merging = this.vehicles.some((x) => x.owner === 'player' && x.activeMerge !== null);
     if (merging) return;
-    // A transporter still on the road got through your whole shift: it is paid.
+    // Mayhem ends once the last chain reaction has burnt out.
+    if (this.config.mayhem && this.score.lastCrashAt !== null && now - this.score.lastCrashAt < this.config.mayhemChainWindow) return;
     if (this.transporter.kind === 'active') transporterEscapes(this, this.transporter.vehicle, now);
     const c = this.config;
     this.score.points += c.completionBonus;
@@ -1199,7 +1290,7 @@ export class World {
   }
 
   get isPerfectSoFar(): boolean {
-    return this.score.strikes === 0 && this.score.policeCrashes === 0;
+    return this.score.strikes === 0 && this.score.policeCrashes === 0 && this.score.cutOffs === 0;
   }
 
   endShift(outcome: ShiftOutcome, time: number): void {
@@ -1220,6 +1311,7 @@ export class World {
       bestCombo: s.bestCombo,
       cleanMerges: s.cleanMerges,
       tightFits: s.tightFits,
+      cutOffs: s.cutOffs,
       nearMisses: s.nearMisses,
       perfects: s.perfects,
       crashes: s.strikes,
@@ -1229,19 +1321,46 @@ export class World {
       money: s.money,
       costs: s.costs,
       covered: s.covered,
+      seed: this.seed,
       time: this.shiftTime(time),
       bestChain: s.bestChain,
-      isPerfectRun: outcome === 'completed' && this.isPerfectSoFar,
+      isPerfectRun: outcome === 'completed' && this.isPerfectSoFar && !this.config.mayhem,
       carsSent: this.shift.carsSent,
-      seed: this.seed,
+      flames: s.flames,
+      wrecks: s.wrecks,
+      biggestChain: s.biggestChain,
+      detonated: this.shift.detonated,
     };
   }
-
-  // MARK: Spawning helpers shared with traffic and specials
 
   approachPose(w: Waiting): Pose {
     const stop = this.layout.stopPose(w.arm);
     return { position: sub(stop.position, mul(fromAngle(stop.heading), w.approach)), heading: stop.heading };
   }
+
+  /** Normal traffic is cars and lorries, some of them gas tankers. */
+  rollTrafficType(): VehicleType {
+    if (this.rng.unit() >= this.config.truckChance) return 'car';
+    return this.config.tankerShare > 0 && this.tankerRng.unit() < this.config.tankerShare ? 'tanker' : 'truck';
+  }
+
+  /** Turns an abandoned special vehicle into ordinary traffic. */
+  demoteToOrdinaryTraffic(id: number, type: VehicleType = 'car'): void {
+    const veh = this.vehicle(id);
+    if (veh) veh.type = type;
+  }
 }
 
+/** A module's slow zone lies at `s` or within `jamLookahead` seconds of ring ahead of it. */
+export function isModuleQueueAt(w: World, s: number): boolean {
+  const c = w.config;
+  const slow = Object.entries(c.modules).filter(([, m]) => (m === 'tollBooth' ? c.tollSpeedFactor : m === 'speedCamera' ? c.cameraSpeedFactor : 1) < 1);
+  if (slow.length === 0) return false;
+  const reach = c.jamLookahead * w.ringSpeed;
+  const L = w.layout.ring.length;
+  return slow.some(([slot, m]) => {
+    const arc = m === 'tollBooth' ? c.tollZoneArc : c.cameraZoneArc;
+    const start = wrap(w.layout.moduleRingS(Number(slot), c.moduleSlotCount) - arc / 2, L);
+    return w.layout.ringDistance(wrap(start - reach, L), s) <= reach + arc;
+  });
+}

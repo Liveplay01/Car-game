@@ -17,14 +17,10 @@
     <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
   </head>
   <body>
-    <div id="app" class="app" data-phase="ready" data-page="game">
+    <div id="app" class="app" data-screen="ready" data-tabbar="shown">
       <canvas id="scene" class="scene" aria-label="Roundabout. Tap anywhere to send the front car." role="img"></canvas>
-      <div id="tap-zone" class="tap-zone" aria-hidden="true"></div>
-      <div id="hud" class="hud"></div>
-      <div id="pages" class="pages"></div>
       <nav id="tabbar" class="tabbar" aria-label="Main"></nav>
       <div id="layers"></div>
-      <div id="toast" class="toast" role="status" aria-live="polite"></div>
     </div>
     <noscript>This game needs JavaScript.</noscript>
     <script type="module" src="/src/main.ts"></script>

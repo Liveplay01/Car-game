@@ -27,48 +27,56 @@ tapper should crash in almost every shift.
 
 | Input | Action |
 | --- | --- |
-| Tap / click / Space / Enter | send the front car (the first tap starts the shift) |
-| Dispatch button, `D` | turn the next car into a police car (costs part of the combo) |
-| `Esc`, `P` | pause |
-| `←` / `→` before a shift | Shift or Unlimited |
+| Tap / click / Space | send the front car (the first tap starts the shift) |
+| Swipe left/right on the waiting screen, `←` / `→` | Shift · Unlimited · Mayhem |
+| Tap after a lost shift | the next try at once |
+| Dispatch button, `D`, `E`, right-click | turn the next car into a police car (costs part of the combo) |
+| Tab bar, `Tab` | Progress · Game · Shop · Build (Upgrades, Street Builder) |
+| Top card on the waiting screen | money → Store, cars → Collection, best → Records |
+| `Enter` | start / buy the open upgrade |
+| `Esc` | settings on the waiting screen, back to the game from a page |
+| `R` | restart the shift |
 
-Taps are handled on `pointerdown` with the event's timestamp, so the car leaves at the
-exact moment of the touch, not at the next frame. The play field has
-`touch-action: none` (no double-tap zoom, no scrolling).
+There is no pause screen, as in the app: leaving the tab freezes the world, coming back
+counts in. Taps are timestamped on `pointerdown`, so the car leaves at the moment of the
+touch, not at the next frame.
 
 ## Structure
 
 ```
 src/
-  core/       rules, no DOM: world, roundabout, paths, vehicles, traffic, drivers,
-              collision, crash physics, scoring, levels, upgrades, loot, career
-  renderer/   Canvas 2D: camera, cached static layer, vehicles, effects, popups
-  audio/      Web Audio: every sound is synthesised, no audio files
-  storage/    localStorage: career, upgrades, collection, records, settings
-  game/       session: fixed-step loop, taps, slow-mo, events → sound/haptics/effects
-  ui/         HUD, tab bar, pages (Progress, Shop, Build), sheets, chest reveal
+  core/       rules, no DOM (GameCore): world, roundabout, traffic, drivers, crash
+              physics, scoring, levels, specials, explosions, modules, loot, daily,
+              store, career
+  present/    GamePresentation, 1:1: render list, scene, effects, weather, city, map
+              skins, HUD, ring signals, banners, tutorial, camera perspectives, screen
+              transitions, mode swipe, pages (Shop, Progress, Upgrades, Street Builder),
+              feedback + music mix, and the session that runs it all
+  audio/      Web Audio: the real sound samples with pitch, adaptive music stems
+  storage/    localStorage save (v2, migrates v1)
+  ui/         the DOM shell: canvas, native-like tab bar, settings sheet
+public/audio/ sounds (35) and music stems (7) as AAC, from ../Assets
 scripts/sim.mjs   headless balancing bots
 ```
 
-## What is in, what is not
+The canvas draws everything the Swift test window draws (scene, HUD and pages); the DOM
+only carries what should feel native: the tab bar, the settings sheet, two buttons.
 
-In: the full core loop (queue, fixed 0.5 s merge, capsule collision, Tight Fit, Near Miss,
-Perfect, combo tiers, Perfect Chain, rush hour, levels with the eased early levels and
-the denser late ones), real crash physics with reacting traffic and pile-ups, police cars,
-criminals with countdown and takedown, emergency dispatch, money transporters with secure
-zones, lorries, the Unlimited mode, 13 upgrades, Standard/Premium/Criminal Hunt chests with
-public odds and pity, 39 car skins plus three car types, mastery goals with chests,
-records, settings (sound, haptics, reduce motion).
+## What is in
 
-Not (yet) ported from the Swift game: Street Builder and ring modules, Mayhem, tankers and
-military trucks, weather, city events, map skins, Daily Shift and challenges, ads and
-in-app purchases.
+Everything the Swift game has: the core loop, real crash physics, police, criminals,
+transporters, lorries, tankers and military trucks with explosions, the three modes
+(Shift, Unlimited, Mayhem) with the swipe between them, weather and city events, the
+Street Builder with arms and ring modules, 13 upgrades, chests with the juicy reveal,
+the collection with map skins and albums, the Daily Shift with streaks and challenges,
+mastery, records, the tutorial, the adaptive music and the store (placeholder purchases
+and ads: nothing is charged).
 
 ## Saving
 
-Everything is stored in `localStorage` under `carGame.career.v1`, on this device only.
-Loading is defensive: a damaged or older save falls back field by field instead of
-breaking the game. "Reset progress" in Settings erases it.
+Everything is stored in `localStorage` under `carGame.save.v2`, on this device only (an
+older `carGame.career.v1` is migrated). Loading is defensive: a damaged save falls back
+field by field instead of breaking the game. "Reset progress" in Settings erases it.
 
 ## PWA
 

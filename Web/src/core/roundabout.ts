@@ -1,4 +1,4 @@
-import { type Config, mergePathLength } from './config';
+import { type Config, cloneConfig, mergePathLength, builtArmSlots } from './config';
 import { type Path, type Pose, type Bezier, circlePath, curvePath, line } from './paths';
 import { type Vec2, add, sub, mul, dot, length, fromAngle, right, wrap, TAU, ZERO } from './vec2';
 
@@ -39,17 +39,22 @@ export class Layout {
   /** World area the camera keeps in view: the ring and the visible queue. */
   readonly viewBounds: Rect;
 
-  constructor(config: Config) {
-    const slots = config.armSlots.slice().sort((a, b) => a - b);
-    if (!slots.includes(0)) slots.unshift(0);
+  readonly armSlotCount: number;
+
+  constructor(input: Config) {
+    const slots = builtArmSlots(input);
+    this.armSlotCount = Math.max(3, input.armSlotCount);
     this.arms = slots.map((slot, index) => ({
       index,
       slot,
-      angle: -Math.PI / 2 + (slot * TAU) / config.armSlotCount,
+      angle: -Math.PI / 2 + (slot * TAU) / Math.max(3, input.armSlotCount),
     }));
     this.player = this.arms[0];
     this.aiArms = this.arms.slice(1);
-    const radius = config.ringRadius;
+    // Every arm needs its room, so the ring grows with them.
+    const radius = input.ringRadius + input.ringRadiusPerArm * Math.max(0, this.arms.length - 4);
+    const config = cloneConfig(input);
+    config.ringRadius = radius;
     this.ringRadius = radius;
     this.laneWidth = config.laneWidth;
     this.queueSpacing = config.queueSpacing;
@@ -104,6 +109,12 @@ export class Layout {
   /** Ring distance forward from a to b. */
   ringDistance(a: number, b: number): number {
     return wrap(b - a, this.ring.length);
+  }
+
+  /** Where a module slot sits on the ring (ring distance), offset half a step from the arms. */
+  moduleRingS(slot: number, count: number): number {
+    const n = Math.max(1, count);
+    return wrap((TAU * (slot + 0.5)) / n) * this.ringRadius;
   }
 
   /** Ring distance a car drives from joining at `entryArm` until it leaves at `exitArm`. */

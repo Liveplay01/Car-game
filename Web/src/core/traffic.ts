@@ -4,6 +4,7 @@ import { type Waiting, type Merging, Vehicle, type VehicleType, mergeProfile, is
 import { wrap, angleOf } from './vec2';
 import type { World } from './world';
 import { reservedCriminalArm, reservedTransporterArm, joinsTooClose } from './specials';
+import { reservedMilitaryArm, isMilitaryOverdue } from './explosions';
 
 /**
  * AI traffic on the other arms (FOUNDATION.md 2.7). It only enters with a safe gap, counts
@@ -22,12 +23,15 @@ export function updateTraffic(w: World, dt: number): void {
       list.push(x.phase);
       queues.set(x.phase.arm.index, list);
     }
-    const reservedA = reservedCriminalArm(w);
-    const reservedB = reservedTransporterArm(w);
-    // One per arm: an arm is free only while nobody waits there.
-    const free = w.layout.aiArms.filter(
-      (arm) => !(queues.get(arm.index)?.length) && arm.index !== reservedA?.index && arm.index !== reservedB?.index,
-    );
+    const reserved = [reservedCriminalArm(w), reservedTransporterArm(w), reservedMilitaryArm(w)].map((a) => a?.index);
+    const takesAnother = (arm: Arm): boolean => {
+      const queue = queues.get(arm.index);
+      if (!queue || queue.length === 0) return true;
+      if (queue.length >= Math.max(1, c.aiQueuePerArm)) return false;
+      const last = Math.max(...queue.map((q) => q.approach));
+      return last < c.aiApproachDistance - 2 * c.queueSpacing;
+    };
+    const free = w.openAIArms.filter((arm) => takesAnother(arm) && !reserved.includes(arm.index));
     if (free.length > 0) {
       spawnWaiting(w, w.rng.pick(free));
       w.spawnCooldown = w.rng.range(c.aiSpawnDelay.lo, c.aiSpawnDelay.hi);
@@ -95,21 +99,17 @@ function needsReplacementBot(w: World): boolean {
   let incoming = 0;
   let onRing = 0;
   for (const x of w.vehicles) {
-    if (!x.isBot) continue;
-    if (x.phase.kind === 'merging' || x.phase.kind === 'waiting') incoming++;
-    else if (x.phase.kind === 'ring') onRing++;
+    const ringBot = w.isRingBot(x);
+    if (x.isBot && (x.phase.kind === 'merging' || x.phase.kind === 'waiting')) incoming++;
+    else if (ringBot && x.phase.kind === 'ring') onRing++;
   }
-  return onRing + incoming < w.config.minRingBots;
+  return onRing - (isMilitaryOverdue(w) ? 1 : 0) + incoming < w.config.minRingBots;
 }
 
 function spawnWaiting(w: World, arm: Arm): void {
   const c = w.config;
   const waiting: Waiting = { kind: 'waiting', arm, reaction: w.rng.range(c.aiReaction.lo, c.aiReaction.hi), approach: c.aiApproachDistance };
-  w.vehicles.push(new Vehicle(w.makeId(), rollTrafficType(w), 'ai', waiting, w.approachPose(waiting)));
-}
-
-export function rollTrafficType(w: World): VehicleType {
-  return w.rng.unit() < w.config.truckChance ? 'truck' : 'car';
+  w.vehicles.push(new Vehicle(w.makeId(), w.rollTrafficType(), 'ai', waiting, w.approachPose(waiting)));
 }
 
 /** One step of driving up: at ring speed, then braking so it stops right at the line. */
@@ -123,7 +123,12 @@ function approachStep(w: World, distance: number, dt: number, rolling: boolean):
 /** Whether a criminal or a transporter can be announced for `arm`. */
 export function isFreeForWarning(w: World, arm: Arm): boolean {
   const waiting = w.vehicles.some((x) => x.phase.kind === 'waiting' && x.phase.arm.index === arm.index);
-  return !waiting && arm.index !== reservedCriminalArm(w)?.index && arm.index !== reservedTransporterArm(w)?.index;
+  return (
+    !waiting &&
+    arm.index !== reservedCriminalArm(w)?.index &&
+    arm.index !== reservedTransporterArm(w)?.index &&
+    arm.index !== reservedMilitaryArm(w)?.index
+  );
 }
 
 /** Places a car directly on the ring: for the start of a shift. */
@@ -154,7 +159,7 @@ export function spawnRingCar(w: World, s: number, exitArm: Arm, type: VehicleTyp
 export function prefillRing(w: World, count: number): void {
   const circumference = w.layout.ring.length;
   const placed: { s: number; length: number }[] = [];
-  let type = rollTrafficType(w);
+  let type = w.rollTrafficType();
   let attempts = 0;
   while (placed.length < count && attempts < 200) {
     attempts++;
@@ -167,7 +172,7 @@ export function prefillRing(w: World, count: number): void {
     if (tooClose) continue;
     placed.push({ s, length: size });
     spawnRingCar(w, s, w.rng.pick(w.layout.aiArms), type);
-    type = rollTrafficType(w);
+    type = w.rollTrafficType();
   }
 }
 
@@ -196,6 +201,8 @@ function canBargeIn(w: World, arm: Arm): boolean {
 /** Something near where `arm` joins the ring is not flowing: the AI waits, as a driver would. */
 export function isDisturbedNear(w: World, arm: Arm): boolean {
   const c = w.config;
+  // In Mayhem traffic flows over everything: nothing to wait for.
+  if (c.mayhem) return false;
   const circumference = w.layout.ring.length;
   const join = w.layout.entryRingS[arm.index];
   return w.vehicles.some((x) => {

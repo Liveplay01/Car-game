@@ -16,11 +16,19 @@ export type VehicleType =
   /** The player's unlockable car types (LOOT.md): different, not better. */
   | 'sportsCar'
   | 'compact'
-  | 'van';
+  | 'van'
+  /** A gas tanker: drives like any lorry, but wrecked it explodes. */
+  | 'tanker'
+  /** A military truck with a bomb: a no-go zone around it on the ring. */
+  | 'military';
 
 export type Owner = 'player' | 'ai';
 
 export const isCarType = (t: VehicleType): boolean => t === 'car' || t === 'sportsCar' || t === 'compact' || t === 'van';
+/** A lorry of any kind: long and heavy, worth more flames in Mayhem. */
+export const isHeavy = (t: VehicleType): boolean => t === 'truck' || t === 'tanker' || t === 'military';
+/** Goes up when it is wrecked. */
+export const isExplosive = (t: VehicleType): boolean => t === 'tanker' || t === 'military';
 
 /**
  * Speed profile of a merge: fixed duration, ends exactly at ring speed (FOUNDATION.md 2.2).
@@ -128,6 +136,8 @@ export type Phase = { kind: 'queued' } | Waiting | Merging | Ring | Exiting | Cr
 export interface Dent {
   point: Vec2;
   depth: number;
+  /** World time of the hit that made or deepened it, for the soft-body spring. */
+  time: number;
 }
 
 export class Vehicle {
@@ -165,7 +175,7 @@ export class Vehicle {
 
   /** Plain AI traffic: the bots whose gaps the player's cars have to hit. */
   get isBot(): boolean {
-    return this.owner === 'ai' && this.type !== 'pickup' && this.type !== 'transporter';
+    return this.owner === 'ai' && this.type !== 'pickup' && this.type !== 'transporter' && this.type !== 'military';
   }
 
   get isPlayerPolice(): boolean {

@@ -1,90 +1,168 @@
-import { type Career, newCareer, MAX_CAR_SKINS } from '../core/career';
+import { type SaveGame, type Career, newSave, newCareer, GAME_MODES, MASTERY_GOALS, type GameMode } from '../core/career';
 import { UPGRADES, upgradeMaxSteps } from '../core/levels';
-import { CATALOG } from '../core/loot';
+import { COSMETICS, CHEST_KINDS, type ChestKind, MAX_CAR_SKINS, cosmetic } from '../core/loot';
+import { ROAD_MODULES, type RoadModule } from '../core/config';
 
-const KEY = 'carGame.career.v1';
+const KEY = 'carGame.save.v2';
+const LEGACY_KEY = 'carGame.career.v1';
 
-const isObject = (x: unknown): x is Record<string, unknown> => typeof x === 'object' && x !== null && !Array.isArray(x);
-const num = (x: unknown, fallback: number, min = 0): number => (typeof x === 'number' && Number.isFinite(x) ? Math.max(min, x) : fallback);
+type Raw = Record<string, unknown>;
+const isObject = (x: unknown): x is Raw => typeof x === 'object' && x !== null && !Array.isArray(x);
+const num = (x: unknown, fallback: number, min = -Infinity): number => (typeof x === 'number' && Number.isFinite(x) ? Math.max(min, x) : fallback);
+const int = (x: unknown, fallback: number, min = -Infinity): number => Math.floor(num(x, fallback, min));
 const strings = (x: unknown): string[] => (Array.isArray(x) ? x.filter((s): s is string => typeof s === 'string') : []);
 
-/**
- * Reads the career from localStorage. Anything missing or malformed falls back to the
- * default, field by field, so an old or damaged save never breaks the game.
- */
-export function loadCareer(): Career {
+function readCareer(raw: unknown): Career {
   const fresh = newCareer();
-  let raw: unknown;
-  try {
-    const text = localStorage.getItem(KEY);
-    if (!text) return fresh;
-    raw = JSON.parse(text);
-  } catch {
-    return fresh;
-  }
   if (!isObject(raw)) return fresh;
-  const known = new Set(CATALOG.map((c) => c.id));
-  const collection = strings(raw.collection).filter((id) => known.has(id));
+  const known = new Set(COSMETICS.map((c) => c.id));
+  const collection = [...new Set(strings(raw.collection).filter((id) => known.has(id)))];
   const upgrades: Career['upgrades'] = {};
   if (isObject(raw.upgrades)) {
     for (const u of UPGRADES) {
-      const steps = num(raw.upgrades[u], 0);
-      if (steps > 0) upgrades[u] = Math.min(Math.floor(steps), upgradeMaxSteps[u]);
+      const steps = int(raw.upgrades[u], 0, 0);
+      if (steps > 0) upgrades[u] = Math.min(steps, upgradeMaxSteps[u]);
+    }
+  }
+  const armSlots = [...new Set([0, ...strings([]).map(Number), ...(Array.isArray(raw.armSlots) ? raw.armSlots : [])])]
+    .filter((x): x is number => typeof x === 'number' && Number.isInteger(x) && x >= 0 && x < 16)
+    .sort((a, b) => a - b);
+  const modules: Record<number, RoadModule> = {};
+  if (isObject(raw.modules)) {
+    for (const [slot, m] of Object.entries(raw.modules)) {
+      const n = Number(slot);
+      if (Number.isInteger(n) && n >= 0 && n < 6 && ROAD_MODULES.includes(m as RoadModule)) modules[n] = m as RoadModule;
     }
   }
   const mastery = { ...fresh.mastery };
-  if (isObject(raw.mastery)) for (const k of Object.keys(mastery) as (keyof typeof mastery)[]) mastery[k] = num(raw.mastery[k], 0);
+  if (isObject(raw.mastery)) for (const k of Object.keys(mastery) as (keyof typeof mastery)[]) mastery[k] = int(raw.mastery[k], 0, 0);
   const masteryTiers: Career['masteryTiers'] = {};
   if (isObject(raw.masteryTiers)) {
-    for (const [k, value] of Object.entries(raw.masteryTiers)) masteryTiers[k as keyof Career['masteryTiers']] = Math.min(3, num(value, 0));
-  }
-  const records = { ...fresh.records };
-  if (isObject(raw.records)) for (const k of Object.keys(records) as (keyof typeof records)[]) records[k] = num(raw.records[k], fresh.records[k]);
-  const settings = { ...fresh.settings };
-  if (isObject(raw.settings)) {
-    if (typeof raw.settings.sound === 'boolean') settings.sound = raw.settings.sound;
-    if (typeof raw.settings.haptics === 'boolean') settings.haptics = raw.settings.haptics;
-    if (raw.settings.reduceMotion === 'on' || raw.settings.reduceMotion === 'off' || raw.settings.reduceMotion === 'system') {
-      settings.reduceMotion = raw.settings.reduceMotion;
+    for (const goal of MASTERY_GOALS) {
+      const t = int(raw.masteryTiers[goal], 0, 0);
+      if (t > 0) masteryTiers[goal] = Math.min(3, t);
     }
   }
-  const chests = strings(raw.chests).filter((c): c is Career['chests'][number] => c === 'standard' || c === 'premium' || c === 'criminalHunt');
+  const bestTimes: Record<string, number[]> = {};
+  if (isObject(raw.bestTimes)) {
+    for (const [level, times] of Object.entries(raw.bestTimes)) {
+      if (Array.isArray(times) && times.every((t) => typeof t === 'number' && Number.isFinite(t))) bestTimes[level] = times as number[];
+    }
+  }
+  const mapSkin = typeof raw.mapSkin === 'string' && collection.includes(raw.mapSkin) && cosmetic(raw.mapSkin)?.kind === 'mapSkin' ? raw.mapSkin : null;
   return {
-    version: 1,
-    level: Math.floor(num(raw.level, 1, 1)),
-    money: Math.floor(num(raw.money, 0)),
+    level: int(raw.level, 1, 1),
+    money: int(raw.money, 0, 0),
     upgrades,
-    collection,
-    carSkins: strings(raw.carSkins)
-      .filter((id) => collection.includes(id) && CATALOG.find((c) => c.id === id)?.kind === 'carSkin')
-      .slice(0, MAX_CAR_SKINS),
-    unseen: strings(raw.unseen).filter((id) => collection.includes(id)),
-    chests,
-    chestsOpened: num(raw.chestsOpened, 0),
-    chestsSinceEpic: num(raw.chestsSinceEpic, 0),
+    armSlots: armSlots.length >= 4 ? armSlots : fresh.armSlots,
+    modules,
     mastery,
     masteryTiers,
-    records,
-    settings,
-    tutorialDone: raw.tutorialDone === true,
+    chests: strings(raw.chests).filter((c): c is ChestKind => CHEST_KINDS.includes(c as ChestKind)),
+    collection,
+    unseen: strings(raw.unseen).filter((id) => collection.includes(id)),
+    carSkins: strings(raw.carSkins)
+      .filter((id) => collection.includes(id) && cosmetic(id)?.kind === 'carSkin')
+      .slice(0, MAX_CAR_SKINS),
+    mapSkin,
+    adChests: int(raw.adChests, 0, 0),
+    adDay: int(raw.adDay, -1),
+    chestsOpened: int(raw.chestsOpened, 0, 0),
+    chestsSinceEpic: int(raw.chestsSinceEpic, 0, 0),
+    dailyDone: int(raw.dailyDone, -1),
+    lastLoginDay: int(raw.lastLoginDay, -1),
+    dailyStreak: int(raw.dailyStreak, 0, 0),
+    challengeDay: int(raw.challengeDay, -1),
+    challengesDone: strings(raw.challengesDone),
+    dailyPlayed: int(raw.dailyPlayed, int(raw.dailyDone, -1)),
+    albumsDone: strings(raw.albumsDone),
+    bestTimes,
+    purchases: strings(raw.purchases),
+    adCashCount: int(raw.adCashCount, 0, 0),
+    adCashDay: int(raw.adCashDay, -1),
   };
 }
 
-/** Writes the career. Storage can be full or blocked (private mode): the game plays on. */
-export function saveCareer(career: Career): boolean {
+function readSave(raw: unknown): SaveGame {
+  const fresh = newSave();
+  if (!isObject(raw)) return fresh;
+  const settings = { ...fresh.settings };
+  if (isObject(raw.settings)) {
+    const s = raw.settings;
+    if (typeof s.sound === 'boolean') settings.sound = s.sound;
+    if (typeof s.haptics === 'boolean') settings.haptics = s.haptics;
+    if (typeof s.vehicleLabels === 'boolean') settings.vehicleLabels = s.vehicleLabels;
+    if (s.reduceMotion === 'system' || s.reduceMotion === 'on' || s.reduceMotion === 'off') settings.reduceMotion = s.reduceMotion;
+  }
+  return {
+    version: 2,
+    highscore: int(raw.highscore, 0, 0),
+    highscoreSeed: typeof raw.highscoreSeed === 'number' ? raw.highscoreSeed : null,
+    shiftsPlayed: int(raw.shiftsPlayed, 0, 0),
+    settings,
+    career: readCareer(raw.career),
+    tutorialDone: raw.tutorialDone === true,
+    mode: GAME_MODES.includes(raw.mode as GameMode) ? (raw.mode as GameMode) : 'shift',
+    unlimitedBest: int(raw.unlimitedBest, 0, 0),
+    unlimitedBestCars: int(raw.unlimitedBestCars, 0, 0),
+    mayhemBest: int(raw.mayhemBest, 0, 0),
+    mayhemBestChain: int(raw.mayhemBestChain, 0, 0),
+  };
+}
+
+/** The first web version kept a smaller career; its progress carries over once. */
+function readLegacy(raw: unknown): SaveGame | null {
+  if (!isObject(raw)) return null;
+  const save = newSave();
+  save.career = readCareer(raw);
+  if (isObject(raw.records)) {
+    save.highscore = int(raw.records.bestScore, 0, 0);
+    save.unlimitedBest = int(raw.records.unlimitedBest, 0, 0);
+    save.unlimitedBestCars = int(raw.records.unlimitedCars, 0, 0);
+    save.shiftsPlayed = int(raw.records.shiftsPlayed, 0, 0);
+  }
+  if (isObject(raw.settings)) {
+    if (typeof raw.settings.sound === 'boolean') save.settings.sound = raw.settings.sound;
+    if (typeof raw.settings.haptics === 'boolean') save.settings.haptics = raw.settings.haptics;
+    const rm = raw.settings.reduceMotion;
+    if (rm === 'system' || rm === 'on' || rm === 'off') save.settings.reduceMotion = rm;
+  }
+  save.tutorialDone = raw.tutorialDone === true;
+  return save;
+}
+
+/** Reads the save game; anything missing or malformed falls back field by field. */
+export function loadSave(): SaveGame {
   try {
-    localStorage.setItem(KEY, JSON.stringify(career));
+    const text = localStorage.getItem(KEY);
+    if (text) return readSave(JSON.parse(text));
+    const legacy = localStorage.getItem(LEGACY_KEY);
+    if (legacy) {
+      const migrated = readLegacy(JSON.parse(legacy));
+      if (migrated) return migrated;
+    }
+  } catch {
+    /* damaged or blocked storage: start fresh */
+  }
+  return newSave();
+}
+
+/** Writes the save game. Storage can be full or blocked (private mode): the game plays on. */
+export function writeSave(save: SaveGame): boolean {
+  try {
+    localStorage.setItem(KEY, JSON.stringify(save));
     return true;
   } catch {
     return false;
   }
 }
 
-export function resetCareer(): Career {
+export function eraseSave(): SaveGame {
   try {
     localStorage.removeItem(KEY);
+    localStorage.removeItem(LEGACY_KEY);
   } catch {
-    /* blocked storage: nothing to remove */
+    /* nothing to remove */
   }
-  return newCareer();
+  return newSave();
 }

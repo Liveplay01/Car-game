@@ -1,6 +1,6 @@
 import { h, icon } from './dom';
 import { ICONS } from './icons';
-import type { Career, Settings } from '../core/career';
+import type { Settings } from '../core/career';
 
 interface OpenSheet {
   root: HTMLElement;
@@ -69,36 +69,11 @@ export function openSheet(layer: HTMLElement, title: string, body: HTMLElement, 
 export const closeAnySheet = (): void => current?.close();
 export const isSheetOpen = (): boolean => current !== null;
 
-export interface PauseActions {
-  resume(): void;
-  restart(): void;
-  endShift(): void;
-}
-
-export function pauseSheet(layer: HTMLElement, actions: PauseActions): void {
-  let chosen = false;
-  const pick = (fn: () => void) => () => {
-    chosen = true;
-    close();
-    fn();
-  };
-  const body = h(
-    'div',
-    { class: 'sheet-actions' },
-    h('button', { class: 'btn primary block', onclick: pick(actions.resume) }, icon(ICONS.play), 'Resume'),
-    h('button', { class: 'btn block', onclick: pick(actions.restart) }, icon(ICONS.restart), 'Restart'),
-    h('button', { class: 'btn block destructive', onclick: pick(actions.endShift) }, icon(ICONS.flag), 'End shift'),
-  );
-  body.querySelectorAll('svg').forEach((s) => s.setAttribute('width', '18'));
-  const close = openSheet(layer, 'Paused', body, () => {
-    if (!chosen) actions.resume();
-  });
-}
-
 export interface SettingsActions {
   changed(settings: Settings): void;
   reset(): void;
   install: (() => void) | null;
+  closed(): void;
 }
 
 function switchRow(title: string, sub: string | null, on: boolean, onChange: (on: boolean) => void): HTMLElement {
@@ -111,8 +86,7 @@ function switchRow(title: string, sub: string | null, on: boolean, onChange: (on
   return h('div', { class: 'row' }, h('div', { class: 'row-main' }, h('div', { class: 'row-title' }, title), sub ? h('div', { class: 'row-sub' }, sub) : null), sw);
 }
 
-export function settingsSheet(layer: HTMLElement, career: Career, actions: SettingsActions): void {
-  const s = career.settings;
+export function settingsSheet(layer: HTMLElement, s: Settings, actions: SettingsActions): () => void {
   const hasVibration = typeof navigator.vibrate === 'function';
   const motionOptions: [Settings['reduceMotion'], string][] = [
     ['system', 'System'],
@@ -199,6 +173,10 @@ export function settingsSheet(layer: HTMLElement, career: Career, actions: Setti
         s.haptics = on;
         actions.changed(s);
       }),
+      switchRow('Vehicle labels', 'Names the special vehicles on the road.', s.vehicleLabels, (on) => {
+        s.vehicleLabels = on;
+        actions.changed(s);
+      }),
       h(
         'div',
         { class: 'row' },
@@ -210,5 +188,6 @@ export function settingsSheet(layer: HTMLElement, career: Career, actions: Setti
     h('p', { class: 'section-note', style: 'margin:0 4px 12px' }, 'Your progress is saved on this device only.'),
     resetBtn,
   );
-  const close = openSheet(layer, 'Settings', body);
+  const close = openSheet(layer, 'Settings', body, () => actions.closed());
+  return close;
 }

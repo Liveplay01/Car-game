@@ -24,16 +24,17 @@ Wechsel und bleiben als Referenz für Regeln, Werte und Ideen.
 
 - **Browserspiel.** Das Produkt ist `Web/`: **Vite + TypeScript + HTML5 Canvas**, ohne
   UI-Framework (kein React/Vue) und ohne Game-Engine.
-- **Aufbau von `Web/src/`:** `core/` (Spielregeln, kein DOM), `renderer/` (Canvas),
-  `audio/` (Web Audio, synthetisierte Sounds), `storage/` (localStorage), `game/`
-  (Frame-Schleife, Taps, Events → Bild/Ton/Haptik), `ui/` (HUD, Tab-Bar, Seiten).
-  Spiellogik gehört nur nach `core/`.
+- **Aufbau von `Web/src/`:** `core/` (Spielregeln, kein DOM; Port von `GameCore`),
+  `present/` (Darstellung 1:1 aus `GamePresentation`: Render-Liste, Szene, HUD, Seiten,
+  Übergänge, Kamera, Feedback und die `GameSession`), `audio/` (Web Audio: echte Samples
+  aus `Assets/`, adaptive Musik-Stems), `storage/` (localStorage), `ui/` (DOM-Hülle:
+  Canvas, Tab-Bar, Einstellungs-Sheet). Spiellogik gehört nur nach `core/`.
 - **Fester Takt:** Simulation mit 120 Hz, Interpolation dazwischen, Taps mit Zeitstempel
   (`pointerdown`). Gleicher Seed + gleiche Taps = gleiches Ergebnis.
 - **Zielgeräte:** aktuelle Browser auf Handy (Hochformat, einhändig) und Desktop.
   Touch ohne Doppeltipp-Zoom (`touch-action`), Tastatur (Leertaste/Enter) auf dem Desktop.
 - **Spielsprache nur Englisch.** Die Projektdokumente sind auf Deutsch.
-- **Spielstand nur lokal im Browser** (`localStorage`, Schlüssel `carGame.career.v1`).
+- **Spielstand nur lokal im Browser** (`localStorage`, Schlüssel `carGame.save.v2`, alte `carGame.career.v1` werden übernommen).
   **Kein Backend, keine Datenbank, keine API.** nginx liefert nur statische Dateien aus.
 - **Deployment:** Docker-Image aus dem `Dockerfile` im Repo-Root (Node baut, `nginx:alpine`
   liefert aus), **Port 5050** – überall: Container, `npm run dev`, `npm run preview`.
@@ -79,6 +80,6 @@ Referenz, pausiert: `cd Game; swift test`, `cd Game; swift run -c release Sim �
 
 - Neues Spielsystem: zuerst in `Web/src/core/`, mit dem Balancing-Bot prüfen
   (`npm run sim`: der vorsichtige Bot darf nie crashen), dann darstellen
-  (`renderer/`, `ui/`), dann im Browser spielen – auch auf einem echten Handy.
+  (`present/`, `ui/`), dann im Browser spielen – auch auf einem echten Handy.
 - Alle Tuning-Werte stehen in `Web/src/core/config.ts`.
 - Vor jedem Commit: `npm run build` muss grün sein.

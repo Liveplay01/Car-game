@@ -1,0 +1,107 @@
+import { type Vec2, v, add } from '../core/vec2';
+import { type RenderList, type Primitive, type Align, circle, arc, polygon, text } from './render';
+import type { ColorToken } from './theme';
+import { measure } from './measure';
+
+/**
+ * Small glyphs drawn from the same shapes as everything else (`Icons.swift`): no fonts, no
+ * image files. A banknote marks every amount of money, so money is never read as points.
+ */
+export const MONEY_MARK = '';
+
+/** A text cut at its notes, in order; null stands for a note. */
+export function textPieces(s: string): (string | null)[] {
+  const out: (string | null)[] = [];
+  let run = '';
+  for (const ch of s) {
+    if (ch === MONEY_MARK) {
+      if (run) out.push(run);
+      run = '';
+      out.push(null);
+    } else run += ch;
+  }
+  if (run) out.push(run);
+  return out;
+}
+
+/** The coin inside a text: its diameter plus a little air. */
+export const inlineMoneyWidth = (size: number): number => size * 0.72 + size * 0.3;
+/** Diameter of the coin next to a number of this size. */
+export const coinSize = (size: number): number => size * 0.78;
+
+/** How wide a piece of text is, notes included (bold unless told otherwise). */
+export function textWidth(s: string, size: number, bold = true): number {
+  return textPieces(s).reduce((w, piece) => w + (piece === null ? inlineMoneyWidth(size) : measure(piece, size, bold)), 0);
+}
+
+export interface Shape {
+  p: Primitive;
+  color: ColorToken;
+  alpha: number;
+}
+
+/** The coin's shapes: a gold disc with a sunk ring, like the earlier web UI. A dimmed
+ * amount (muted, destructive) tints the coin instead. */
+export function moneyShapes(center: Vec2, height: number, color: ColorToken): Shape[] {
+  const r = height / 2;
+  const tint: ColorToken = color === 'accent' || color === 'primary' || color === 'coin' ? 'coin' : color;
+  return [
+    { p: circle(center, r), color: tint, alpha: 1 },
+    { p: arc(center, r * 0.62, Math.max(1, r * 0.16), 0, Math.PI * 2), color: tint === 'coin' ? 'coinInk' : 'background', alpha: 0.55 },
+  ];
+}
+
+export function money(list: RenderList, center: Vec2, height: number, color: ColorToken = 'accent', opacity = 1): void {
+  for (const s of moneyShapes(center, height, color)) list.s(s.p, s.color, opacity * s.alpha);
+}
+
+/** A note and a number as one unit; `position` is the anchor the whole unit aligns to. */
+export function moneyTag(
+  list: RenderList,
+  label: string,
+  position: Vec2,
+  size: number,
+  align: Align,
+  color: ColorToken,
+  noteColor: ColorToken = 'accent',
+  opacity = 1,
+): void {
+  const noteHeight = coinSize(size);
+  const noteWidth = noteHeight;
+  const gap = size * 0.34;
+  const total = noteWidth + gap + textWidth(label, size);
+  const left = align === 'leading' ? position.x : align === 'center' ? position.x - total / 2 : position.x - total;
+  money(list, v(left + noteWidth / 2, position.y), noteHeight, noteColor, opacity);
+  list.s(text(label, v(left + noteWidth + gap, position.y), size, 'leading', 'bold'), color, opacity);
+}
+
+/** A flame, Mayhem's unit: an outer tongue of fire and a hot core. */
+export function flame(list: RenderList, center: Vec2, height: number, opacity = 1): void {
+  const tongue = (scale: number): Vec2[] => {
+    const h = height * scale;
+    const w = h * 0.62;
+    const base = add(center, v(0, h * 0.42));
+    return [
+      add(base, v(0, -h)),
+      add(base, v(w * 0.3, -h * 0.62)),
+      add(base, v(w * 0.5, -h * 0.3)),
+      add(base, v(w * 0.42, -h * 0.08)),
+      base,
+      add(base, v(-w * 0.42, -h * 0.08)),
+      add(base, v(-w * 0.5, -h * 0.3)),
+      add(base, v(-w * 0.18, -h * 0.55)),
+      add(base, v(-w * 0.12, -h * 0.78)),
+    ];
+  };
+  list.s(polygon(tongue(1)), 'fireOuter', opacity);
+  list.s(polygon(tongue(0.58)), 'fireCore', opacity);
+}
+
+export function flameTag(list: RenderList, label: string, position: Vec2, size: number, align: Align, color: ColorToken, opacity = 1): void {
+  const flameHeight = size * 1.05;
+  const gap = size * 0.3;
+  const total = flameHeight * 0.62 + gap + textWidth(label, size);
+  const left = align === 'leading' ? position.x : align === 'center' ? position.x - total / 2 : position.x - total;
+  flame(list, v(left + flameHeight * 0.31, position.y), flameHeight, opacity);
+  list.s(text(label, v(left + flameHeight * 0.62 + gap, position.y), size, 'leading', 'bold'), color, opacity);
+}

@@ -7,6 +7,7 @@ import { type Vec2, add, sub, mul, dot, length, normalize, angleOf, fromAngle, w
 import { Rng } from './rng';
 import type { World } from './world';
 import { transporterAhead } from './specials';
+import { speedLimitAt } from './modules';
 
 /** The nearest thing ahead a driver has to mind. */
 export interface Lead {
@@ -30,8 +31,11 @@ interface Occupant {
  * follow from the physics, not from a script. In normal traffic nothing here runs.
  */
 export function updateDrivers(w: World, dt: number): void {
+  // Mayhem: nobody brakes, for nothing. Traffic keeps flowing.
+  if (w.config.mayhem) return;
   const quarry = pursuitQuarry(w);
-  if (!w.isTrafficDisturbed && quarry === null && !hasTransporterOnRing(w)) return;
+  const zones = Object.keys(w.config.modules).length > 0 || w.roadworksRingS !== null;
+  if (!w.isTrafficDisturbed && quarry === null && !zones && !hasTransporterOnRing(w)) return;
   const lane = ringLaneOccupants(w);
   // The criminal ploughs on; it only keeps out of the transporter's secure zone.
   for (const veh of w.vehicles) {
@@ -46,7 +50,7 @@ export function updateDrivers(w: World, dt: number): void {
     if (p.kind === 'ring') {
       const leads = leadsOnRing(w, p.s, lane, veh.id);
       if (quarry !== null && leads[0]?.id === quarry && veh.isPlayerPolice) p.drive = pursue(w, p.drive, dt);
-      else p.drive = drive(w, p.drive, leads, veh.id, dt);
+      else p.drive = drive(w, p.drive, leads, veh.id, dt, zones ? speedLimitAt(w, p.s) : undefined);
     } else if (p.kind === 'exiting') {
       const lead = leadOnExit(w, p.arm, p.s, veh.id);
       p.drive = drive(w, p.drive, lead ? [lead] : [], veh.id, dt);
@@ -80,12 +84,12 @@ function pursue(w: World, current: Drive, dt: number): Drive {
 }
 
 /** One driver, one step: notice, react, brake or get back into the flow. */
-function drive(w: World, current: Drive, leads: Lead[], id: number, dt: number): Drive {
+function drive(w: World, current: Drive, leads: Lead[], id: number, dt: number, speedLimit?: number): Drive {
   const c = w.config;
   const d: Drive = { ...current, isPursuing: false };
   if (!isInFlow(current)) d.outOfFlowTime += dt;
   const g = gravity(c);
-  const limit = w.ringSpeed;
+  const limit = speedLimit ?? w.ringSpeed;
   let speed = d.speed ?? w.ringSpeed;
   const lead = leads[0];
   let needed = 0;

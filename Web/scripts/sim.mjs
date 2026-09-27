@@ -11,10 +11,11 @@ const server = await createServer({ server: { middlewareMode: true }, appType: '
 try {
   const { World, STEP } = await server.ssrLoadModule('/src/core/world.ts');
   const { baseConfig } = await server.ssrLoadModule('/src/core/config.ts');
-  const { forLevel } = await server.ssrLoadModule('/src/core/levels.ts');
+  const { forLevel, forMayhem } = await server.ssrLoadModule('/src/core/levels.ts');
+  const mayhem = process.argv.includes('--mayhem');
 
   const play = (seed, strategy) => {
-    const config = forLevel(baseConfig, level, seed);
+    const config = mayhem ? forMayhem(forLevel(baseConfig, level, seed)) : forLevel(baseConfig, level, seed);
     const world = new World(config, seed, { startsOnFirstTap: false });
     let result = null;
     for (let i = 0; i < 120 * 180 && !result; i++) {
@@ -29,7 +30,7 @@ try {
   const random = (world) => world.queue.isReady && Math.random() < 0.02;
 
   for (const [name, strategy] of [['careful', careful], ['random', random]]) {
-    let crashes = 0, completed = 0, score = 0, time = 0, tight = 0, stuck = 0;
+    let crashes = 0, completed = 0, score = 0, time = 0, tight = 0, stuck = 0, flames = 0, boom = 0;
     for (let s = 1; s <= shifts; s++) {
       const r = play(s * 7919, strategy);
       if (!r) { stuck++; continue; }
@@ -38,10 +39,13 @@ try {
       score += r.score;
       time += r.time;
       tight += r.tightFits;
+      flames += r.flames;
+      if (r.detonated) boom++;
     }
     const n = shifts - stuck;
     console.log(`${name.padEnd(8)} level ${level}: completed ${completed}/${shifts}, crashes ${crashes}, ` +
-      `Ø score ${Math.round(score / n)}, Ø time ${(time / n).toFixed(1)} s, Ø tight fits ${(tight / n).toFixed(1)}, unfinished ${stuck}`);
+      `Ø score ${Math.round(score / n)}, Ø time ${(time / n).toFixed(1)} s, Ø tight fits ${(tight / n).toFixed(1)}, unfinished ${stuck}` +
+      (mayhem ? `, Ø flames ${(flames / n).toFixed(1)}, bombs ${boom}` : `, bombs ${boom}`));
   }
   void STEP;
 } finally {

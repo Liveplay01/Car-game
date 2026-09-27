@@ -1,0 +1,249 @@
+import { type Vec2, v, add, sub, mul } from '../core/vec2';
+import type { ColorToken } from './theme';
+
+/** Coordinate space of a render item: world units (y up) or screen points (y down). */
+export type Space = 'world' | 'screen';
+export type Align = 'leading' | 'center' | 'trailing';
+export type Weight = 'regular' | 'bold';
+
+/** Simple building blocks every platform can draw with little code (FOUNDATION.md 4.1). */
+export type Primitive =
+  | { k: 'rect'; center: Vec2; size: Vec2; radius: number; rotation: number }
+  | { k: 'circle'; center: Vec2; radius: number }
+  | { k: 'arc'; center: Vec2; radius: number; thickness: number; start: number; end: number }
+  | { k: 'line'; from: Vec2; to: Vec2; thickness: number }
+  | { k: 'polygon'; points: Vec2[] }
+  | { k: 'text'; text: string; position: Vec2; size: number; align: Align; weight: Weight };
+
+export interface RenderItem {
+  p: Primitive;
+  color: ColorToken;
+  opacity: number;
+  space: Space;
+  /** Marks items a transition treats apart (the Build tab's chrome). */
+  tag?: string;
+  /** Screen rectangle the item is cut to (a scrolling list). */
+  clip?: Rect;
+}
+
+export const rect = (center: Vec2, size: Vec2, radius = 0, rotation = 0): Primitive => ({ k: 'rect', center, size, radius, rotation });
+export const circle = (center: Vec2, radius: number): Primitive => ({ k: 'circle', center, radius });
+export const arc = (center: Vec2, radius: number, thickness: number, start: number, end: number): Primitive => ({
+  k: 'arc',
+  center,
+  radius,
+  thickness,
+  start,
+  end,
+});
+export const line = (from: Vec2, to: Vec2, thickness: number): Primitive => ({ k: 'line', from, to, thickness });
+export const polygon = (points: Vec2[]): Primitive => ({ k: 'polygon', points });
+export const text = (s: string, position: Vec2, size: number, align: Align = 'center', weight: Weight = 'regular'): Primitive => ({
+  k: 'text',
+  text: s,
+  position,
+  size,
+  align,
+  weight,
+});
+
+export interface Rect {
+  minX: number;
+  minY: number;
+  maxX: number;
+  maxY: number;
+}
+
+export const R = {
+  make: (minX: number, minY: number, maxX: number, maxY: number): Rect => ({ minX, minY, maxX, maxY }),
+  width: (r: Rect): number => r.maxX - r.minX,
+  height: (r: Rect): number => r.maxY - r.minY,
+  center: (r: Rect): Vec2 => v((r.minX + r.maxX) / 2, (r.minY + r.maxY) / 2),
+  contains: (r: Rect, p: Vec2): boolean => p.x >= r.minX && p.x <= r.maxX && p.y >= r.minY && p.y <= r.maxY,
+  inset: (r: Rect, dx: number, dy = dx): Rect => ({ minX: r.minX + dx, minY: r.minY + dy, maxX: r.maxX - dx, maxY: r.maxY - dy }),
+  offset: (r: Rect, d: Vec2): Rect => ({ minX: r.minX + d.x, minY: r.minY + d.y, maxX: r.maxX + d.x, maxY: r.maxY + d.y }),
+};
+
+/** Maps world units onto the screen (points, y down). The world is the same size everywhere. */
+export interface Camera {
+  viewport: Vec2;
+  /** World point shown at `focus`. */
+  center: Vec2;
+  /** Screen point where `center` appears. */
+  focus: Vec2;
+  /** Points per world unit. */
+  scale: number;
+}
+
+export const toScreen = (c: Camera, p: Vec2): Vec2 => v(c.focus.x + (p.x - c.center.x) * c.scale, c.focus.y - (p.y - c.center.y) * c.scale);
+export const toWorld = (c: Camera, p: Vec2): Vec2 => v(c.center.x + (p.x - c.focus.x) / c.scale, c.center.y - (p.y - c.focus.y) / c.scale);
+
+export interface Insets {
+  top: number;
+  left: number;
+  bottom: number;
+  right: number;
+}
+
+/** Largest zoom at which `bounds` fits inside the viewport minus `insets`. */
+export function fitCamera(bounds: Rect, viewport: Vec2, insets: Insets, verticalBias = 0.5): Camera {
+  const avail = v(Math.max(1, viewport.x - insets.left - insets.right), Math.max(1, viewport.y - insets.top - insets.bottom));
+  const scale = Math.min(avail.x / R.width(bounds), avail.y / R.height(bounds));
+  const contentHeight = R.height(bounds) * scale;
+  const spare = avail.y - contentHeight;
+  const focus = v(insets.left + avail.x / 2, insets.top + spare * verticalBias + contentHeight / 2);
+  return { viewport, center: R.center(bounds), focus, scale };
+}
+
+/** Everything one frame shows, in drawing order. */
+export class RenderList {
+  items: RenderItem[] = [];
+  /** Set while drawing a group that a transition must recognise. */
+  tag: string | undefined = undefined;
+  /** Set while drawing a group that is cut to a screen rectangle. */
+  clip: Rect | undefined = undefined;
+  constructor(
+    public camera: Camera,
+    public background: ColorToken,
+  ) {}
+
+  add(p: Primitive, color: ColorToken, opacity: number, space: Space): void {
+    if (opacity <= 0.001) return;
+    const item: RenderItem = { p, color, opacity, space };
+    if (this.tag !== undefined) item.tag = this.tag;
+    if (this.clip !== undefined) item.clip = this.clip;
+    this.items.push(item);
+  }
+
+  /** World shorthand. */
+  w(p: Primitive, color: ColorToken, opacity = 1): void {
+    this.add(p, color, opacity, 'world');
+  }
+
+  /** Screen shorthand. */
+  s(p: Primitive, color: ColorToken, opacity = 1): void {
+    this.add(p, color, opacity, 'screen');
+  }
+}
+
+/** A screen item shifted by `offset` and faded by `factor` (world items keep their place). */
+export function moved(item: RenderItem, offset: Vec2, factor: number): RenderItem {
+  const out: RenderItem = { ...item, opacity: item.opacity * factor };
+  if (item.space !== 'screen' || (offset.x === 0 && offset.y === 0)) return out;
+  const p = item.p;
+  switch (p.k) {
+    case 'rect':
+      out.p = { ...p, center: add(p.center, offset) };
+      break;
+    case 'circle':
+      out.p = { ...p, center: add(p.center, offset) };
+      break;
+    case 'arc':
+      out.p = { ...p, center: add(p.center, offset) };
+      break;
+    case 'line':
+      out.p = { ...p, from: add(p.from, offset), to: add(p.to, offset) };
+      break;
+    case 'polygon':
+      out.p = { ...p, points: p.points.map((q) => add(q, offset)) };
+      break;
+    case 'text':
+      out.p = { ...p, position: add(p.position, offset) };
+      break;
+  }
+  return out;
+}
+
+/** A world item as a screen item through `cam`: for small pictures drawn with the scene's own art. */
+export function pinned(item: RenderItem, cam: Camera, factor = 1): RenderItem {
+  const out: RenderItem = { ...item, opacity: item.opacity * factor, space: 'screen' };
+  if (item.space === 'screen') return out;
+  const pt = (q: Vec2): Vec2 => toScreen(cam, q);
+  const l = (x: number): number => x * cam.scale;
+  const p = item.p;
+  switch (p.k) {
+    case 'rect':
+      out.p = { ...p, center: pt(p.center), size: v(l(p.size.x), l(p.size.y)), radius: l(p.radius), rotation: -p.rotation };
+      break;
+    case 'circle':
+      out.p = { ...p, center: pt(p.center), radius: l(p.radius) };
+      break;
+    case 'arc':
+      out.p = { ...p, center: pt(p.center), radius: l(p.radius), thickness: l(p.thickness), start: -p.end, end: -p.start };
+      break;
+    case 'line':
+      out.p = { ...p, from: pt(p.from), to: pt(p.to), thickness: l(p.thickness) };
+      break;
+    case 'polygon':
+      out.p = { ...p, points: p.points.map(pt) };
+      break;
+    case 'text':
+      out.p = { ...p, position: pt(p.position), size: l(p.size) };
+      break;
+  }
+  return out;
+}
+
+/** Easing curves (FOUNDATION.md 3, motion rules), 1:1 from `Motion.swift`. */
+export const Ease = {
+  clamp01: (x: number): number => (x < 0 ? 0 : x > 1 ? 1 : x),
+  outCubic(x: number): number {
+    const u = 1 - Ease.clamp01(x);
+    return 1 - u * u * u;
+  },
+  inCubic(x: number): number {
+    const t = Ease.clamp01(x);
+    return t * t * t;
+  },
+  smoothstep(x: number): number {
+    const t = Ease.clamp01(x);
+    return t * t * (3 - 2 * t);
+  },
+  inOutSine: (x: number): number => (1 - Math.cos(Math.PI * Ease.clamp01(x))) / 2,
+  /** Shoots about 10 % past 1, swings back once and settles. For positions and sizes. */
+  spring(x: number): number {
+    if (x <= 0) return 0;
+    if (x >= 1) return 1;
+    return 1 - Math.exp(-6 * x) * Math.cos(x * 10);
+  },
+  /** A critically damped spring (Apple's default): glides into place, no overshoot. */
+  settle(x: number): number {
+    if (x <= 0) return 0;
+    if (x >= 1) return 1;
+    const k = 8.5;
+    return 1 - (1 + k * x) * Math.exp(-k * x);
+  },
+};
+
+/** 0…1, the same for the same inputs every time (`WeatherLayer.unitHash`). */
+export function unitHash(index: number, salt: number): number {
+  let x = Math.imul(index | 0, 0x9e3779b9) ^ Math.imul(salt | 0, 0xbf58476d);
+  x ^= x >>> 16;
+  x = Math.imul(x, 0x7feb352d);
+  x ^= x >>> 15;
+  x = Math.imul(x, 0x846ca68b);
+  x ^= x >>> 16;
+  return (x >>> 0) / 4294967296;
+}
+
+export const lerp = (a: number, b: number, t: number): number => a + (b - a) * t;
+export const vlerp = (a: Vec2, b: Vec2, t: number): Vec2 => add(a, mul(sub(b, a), t));
+
+/** Screen measures in points (`Metrics` in Theme.swift). */
+export const Metrics = {
+  sceneInsets: { top: 72, left: 0, bottom: 16, right: 0 } as Insets,
+  hudMargin: 20,
+  strikeRow: 28,
+  timerSize: 24,
+  strikeRadius: 4,
+  strikeSpacing: 16,
+  multiplierSize: 44,
+  comboLabelSize: 13,
+  popupSize: 20,
+  noticeSize: 13,
+  sceneVerticalBias: 0.6,
+  vehicleCornerRadius: 4.5,
+};
+
+/** The height of the tab bar the pages leave room for. */
+export const TAB_BAR_HEIGHT = 52;

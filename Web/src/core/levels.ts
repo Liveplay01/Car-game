@@ -1,4 +1,4 @@
-import { type Config, cloneConfig } from './config';
+import { type Config, type Weather, type CityEvent, WEATHERS, CITY_EVENTS, weatherSeverity, cloneConfig, builtArmSlots, slotDistance } from './config';
 import { Rng } from './rng';
 
 // MARK: Shift curves (FOUNDATION.md 2.5)
@@ -79,9 +79,12 @@ export function forLevel(base: Config, level: number, seed: number): Config {
   if (l >= base.longerStayLevel && base.exitArmsAhead.hi >= 2) {
     c.exitArmsAhead = { lo: Math.max(2, base.exitArmsAhead.lo), hi: base.exitArmsAhead.hi };
   }
+  c.aiQueuePerArm = Math.min(base.maxAiQueuePerArm, base.aiQueuePerArm + Math.floor(late / Math.max(1, base.lateLevelsPerQueueCar)));
   const quicker = Math.max(base.minSpawnDelayFactor, 1 - late * base.lateSpawnFasterPerLevel);
   c.aiSpawnDelay = { lo: base.aiSpawnDelay.lo * quicker, hi: base.aiSpawnDelay.hi * quicker };
   c.minRingBots = Math.max(base.minRingBots, Math.min(base.maxMinRingBots, base.minRingBots + Math.floor((l - 1) * base.ringBotsPerLevel)));
+  c.tankerShare = l >= base.tankerLevel ? base.tankerLevelShare : 0;
+  c.militaryChance = l >= base.militaryLevel ? base.militaryLevelChance : 0;
   c.shiftPay = base.shiftPayBase + base.shiftPayPerLevel * l;
   c.level = l;
 
@@ -170,5 +173,162 @@ export function upgraded(base: Config, steps: (u: Upgrade) => number): Config {
   c.doubleRunChance = Math.min(1, base.doubleRunChance + step('doubleRun') * base.doubleRunPerStep);
   c.crashInsurance = Math.min(1, base.crashInsurance + step('insurance') * base.insurancePerStep);
   c.robberyInsurance = Math.min(1, base.robberyInsurance + step('robberyInsurance') * base.insurancePerStep);
+  return c;
+}
+
+// MARK: Arms, weather, city events, Mayhem, Cash Boost
+
+/** A roundabout with more arms: more traffic, transporters sooner, better pay. */
+export function forArms(base: Config): Config {
+  const extra = Math.max(0, builtArmSlots(base).length - 4);
+  if (extra <= 0) return base;
+  const c = cloneConfig(base);
+  const traffic = 1 + extra * base.trafficPerArm;
+  c.densityStart = Math.round(base.densityStart * traffic);
+  c.densityEnd = Math.round(base.densityEnd * traffic);
+  c.minRingBots = Math.round(base.minRingBots * traffic);
+  c.shiftPay = Math.round(base.shiftPay * (1 + extra * base.payPerArm));
+  const sooner = Math.max(0.2, 1 - extra * base.transporterPerArm);
+  c.transporterFirst = { lo: base.transporterFirst.lo * sooner, hi: base.transporterFirst.hi * sooner };
+  c.transporterInterval = { lo: base.transporterInterval.lo * sooner, hi: base.transporterInterval.hi * sooner };
+  return c;
+}
+
+/** Price of the next arm; null once no slot is free any more. */
+export function armPrice(c: Config, built: number[]): number | null {
+  const probe = cloneConfig(c);
+  probe.armSlots = built;
+  const slots = builtArmSlots(probe);
+  if (slots.length >= c.armSlotCount / Math.max(1, c.armSlotSpacing)) return null;
+  const raw = c.armBaseCost * Math.pow(c.armCostGrowth, Math.max(0, slots.length - 4));
+  return Math.round(raw / 100) * 100;
+}
+
+/** Whether an arm can be built in `slot`: free, and far enough from the others. */
+export function canBuildArm(c: Config, slot: number, built: number[]): boolean {
+  if (slot <= 0 || slot >= c.armSlotCount || built.includes(slot)) return false;
+  return built.every((b) => slotDistance(b, slot, c.armSlotCount) >= c.armSlotSpacing);
+}
+
+export function firstLevelOf(c: Config, w: Weather): number {
+  switch (w) {
+    case 'clear':
+      return 1;
+    case 'lightRain':
+      return c.lightRainLevel;
+    case 'heavyRain':
+      return c.heavyRainLevel;
+    case 'storm':
+      return c.stormLevel;
+    case 'extreme':
+      return c.extremeLevel;
+  }
+}
+
+/** The weather of one shift at `level`, drawn from the seed. */
+export function drawWeather(c: Config, level: number, seed: number): Weather {
+  const rng = new Rng((seed ^ 0x7e571a2b) >>> 0);
+  const chance = Math.min(c.maxBadWeatherChance, c.badWeatherPerLevel * Math.max(0, level - c.lightRainLevel + 1));
+  if (chance <= 0 || rng.unit() >= chance) return 'clear';
+  const options = WEATHERS.filter((w) => w !== 'clear' && firstLevelOf(c, w) <= level);
+  if (options.length === 0) return 'clear';
+  const weights = options.map((w) => 5 - weatherSeverity(w));
+  let pick = rng.unit() * weights.reduce((a, b) => a + b, 0);
+  for (let i = 0; i < options.length; i++) {
+    pick -= weights[i];
+    if (pick < 0) return options[i];
+  }
+  return options[options.length - 1];
+}
+
+/** This config under `weather`: tyres, drivers and traffic as that weather has them. */
+export function forWeather(base: Config, weather: Weather): Config {
+  const c = cloneConfig(base);
+  c.weather = weather;
+  const severity = weatherSeverity(weather);
+  if (severity <= 0) return c;
+  const grip = Math.max(0.35, 1 - severity * base.weatherGripLoss);
+  c.tireGripBrake *= grip;
+  c.tireGripSide *= grip;
+  const reaction = severity * base.weatherReactionDelay;
+  c.driverReaction = { lo: base.driverReaction.lo + reaction, hi: base.driverReaction.hi + reaction };
+  c.driverBrake *= Math.max(0.4, 1 - severity * base.weatherBrakeLoss);
+  const denser = Math.max(0, severity - 1) * base.weatherDensityPerStep;
+  c.densityStart += denser;
+  c.densityEnd += denser;
+  if (severity >= 3) c.aiSafeGap *= base.stormAiGapFactor;
+  return c;
+}
+
+/** The event of one shift at `level`, or null. */
+export function drawCityEvent(c: Config, level: number, seed: number): CityEvent | null {
+  if (level < c.cityEventLevel) return null;
+  const rng = new Rng((seed ^ 0x0c17e7e4) >>> 0);
+  if (rng.unit() >= c.cityEventChance) return null;
+  const options = CITY_EVENTS.filter((e) => e !== 'roadClosure' || builtArmSlots(c).length >= 4);
+  return rng.pick(options);
+}
+
+export function forCityEvent(base: Config, event: CityEvent | null, seed: number): Config {
+  const c = cloneConfig(base);
+  c.cityEvent = event;
+  if (!event) return c;
+  const rng = new Rng((seed ^ 0x5eed0f0c) >>> 0);
+  switch (event) {
+    case 'roadworks':
+      c.roadworksAt = rng.unit();
+      break;
+    case 'roadClosure': {
+      const aiSlots = builtArmSlots(base).slice(1);
+      c.closedArmSlot = aiSlots.length === 0 ? null : rng.pick(aiSlots);
+      break;
+    }
+    case 'concert':
+      c.densityStart += base.concertDensityBonus;
+      c.densityEnd += base.concertDensityBonus;
+      c.aiSpawnDelay = { lo: base.aiSpawnDelay.lo * base.concertSpawnFactor, hi: base.aiSpawnDelay.hi * base.concertSpawnFactor };
+      break;
+    case 'vipConvoy':
+      c.densityStart += 1;
+      c.densityEnd += 1;
+      c.aiSafeGap *= base.vipGapFactor;
+      break;
+    case 'policeOperation':
+      c.policeShare = Math.min(1, base.policeShare + base.policeOperationShare);
+      break;
+  }
+  return c;
+}
+
+/** Mayhem: crash as much as you can. No strikes, no money, no stats. */
+export function forMayhem(base: Config): Config {
+  const c = cloneConfig(base);
+  c.mayhem = true;
+  c.shiftCars = base.mayhemCars;
+  c.densityEnd += base.mayhemExtraTraffic;
+  c.densityStart = c.densityEnd;
+  c.minRingBots += base.mayhemExtraTraffic;
+  c.criminalChance = 0;
+  c.policeShare = 0;
+  c.shiftPay = 0;
+  c.completionBonus = 0;
+  c.perfectRunPoints = 0;
+  c.truckChance = base.mayhemTruckChance;
+  c.queueAdvanceDuration = Math.max(base.queueAdvanceDuration, base.mayhemReload);
+  c.driverAcceleration *= base.mayhemRecoveryFactor;
+  c.tankerShare = base.mayhemTankerShare;
+  c.militaryChance = 1;
+  c.militaryFirst = base.mayhemMilitaryFirst;
+  c.militaryPerShift = base.mayhemMilitaryPerShift;
+  c.militaryInterval = base.mayhemMilitaryInterval;
+  return c;
+}
+
+/** Cash Boost: every shift pays this many times as much. */
+export function forCashBoost(base: Config): Config {
+  const c = cloneConfig(base);
+  c.shiftPay = Math.round(base.shiftPay * base.cashBoostPay);
+  c.transporterPay = Math.round(base.transporterPay * base.cashBoostPay);
+  c.shieldBonus = Math.round(base.shieldBonus * base.cashBoostPay);
   return c;
 }

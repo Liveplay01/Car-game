@@ -1,18 +1,17 @@
 import type { Arm } from './roundabout';
 import { Vehicle, type Waiting, mergeProfile } from './vehicle';
-import { type Vec2, sub, dot, fromAngle } from './vec2';
+import { type Vec2, sub, dot, fromAngle, wrap } from './vec2';
 import type { World } from './world';
 import type { Lead } from './drivers';
 import { isFreeForWarning } from './traffic';
+import { joinsMilitaryZone } from './explosions';
 
 // MARK: Criminal (ROADMAP.md M3)
 
 export type CriminalPhase =
   | { kind: 'idle'; next: number }
-  /** "WANTED": the pickup shows up at `arm` at `until`. */
   | { kind: 'warning'; arm: Arm; until: number }
   | { kind: 'arriving'; vehicle: number }
-  /** On the road; it escapes at `deadline` and the shift is lost. */
   | { kind: 'active'; vehicle: number; deadline: number }
   | { kind: 'leaving'; vehicle: number };
 
@@ -20,8 +19,13 @@ export const reservedCriminalArm = (w: World): Arm | null => (w.criminal.kind ==
 
 export const isChased = (w: World, id: number): boolean => w.criminal.kind === 'active' && w.criminal.vehicle === id;
 
-export function criminalTimeLeft(w: World): number | null {
-  return w.criminal.kind === 'active' ? Math.max(0, w.criminal.deadline - w.time) : null;
+export function criminalVehicle(w: World): number | null {
+  const c = w.criminal;
+  return c.kind === 'arriving' || c.kind === 'active' || c.kind === 'leaving' ? c.vehicle : null;
+}
+
+export function criminalTimeLeft(w: World, time = w.time): number | null {
+  return w.criminal.kind === 'active' ? Math.max(0, w.criminal.deadline - time) : null;
 }
 
 function spawnSpecial(w: World, arm: Arm, type: 'pickup' | 'transporter'): Vehicle {
@@ -41,25 +45,23 @@ export function updateCriminals(w: World, now: number): void {
     return;
   }
   if (w.shift.startedAt === null) return;
-  // Your last car is in: the criminal gets away with it, one only announced is called off.
   if (!w.shift.acceptsTaps) {
     const cr = w.criminal;
     if (cr.kind === 'warning') w.criminal = { kind: 'idle', next: Infinity };
     else if (cr.kind === 'arriving') {
       w.criminal = { kind: 'idle', next: Infinity };
-      const veh = w.vehicle(cr.vehicle);
-      if (veh) veh.type = 'car';
+      w.demoteToOrdinaryTraffic(cr.vehicle);
     } else if (cr.kind === 'active') w.criminal = { kind: 'leaving', vehicle: cr.vehicle };
   }
   const cr = w.criminal;
   switch (cr.kind) {
     case 'idle': {
       if (!w.shift.acceptsTaps || now < cr.next) return;
-      const candidates = w.layout.aiArms.filter((arm) => isFreeForWarning(w, arm));
+      const candidates = w.openAIArms.filter((arm) => isFreeForWarning(w, arm));
       if (candidates.length === 0) return;
       const arm = w.criminalRng.pick(candidates);
       w.criminal = { kind: 'warning', arm, until: now + c.criminalWarning };
-      w.events.push({ type: 'criminalWarning', arm });
+      w.events.push({ type: 'criminalWarning', arm, time: now });
       return;
     }
     case 'warning': {
@@ -70,7 +72,7 @@ export function updateCriminals(w: World, now: number): void {
     }
     case 'arriving': {
       const pickup = w.vehicle(cr.vehicle);
-      if (!pickup || pickup.isCrashed) {
+      if (!pickup) {
         w.criminal = { kind: 'idle', next: now + w.criminalRng.range(c.criminalInterval.lo, c.criminalInterval.hi) };
         return;
       }
@@ -84,7 +86,7 @@ export function updateCriminals(w: World, now: number): void {
     case 'active': {
       if (now < cr.deadline) return;
       w.criminal = { kind: 'leaving', vehicle: cr.vehicle };
-      w.events.push({ type: 'criminalEscaped', vehicle: cr.vehicle });
+      w.events.push({ type: 'criminalEscaped', vehicle: cr.vehicle, time: now });
       w.chargeEscape();
       w.endShift('escaped', now);
       return;
@@ -94,28 +96,22 @@ export function updateCriminals(w: World, now: number): void {
   }
 }
 
-/** A police car stopped the criminal: points, and the next one comes later. */
 export function criminalCaught(w: World, criminalId: number, policeId: number, point: Vec2, now: number): void {
-  const points = w.isScoring ? w.scoreTakedown() : 0;
+  const timeLeft = criminalTimeLeft(w, now) ?? 0;
+  const points = w.isScoring ? w.scoreTakedown(now) : 0;
   const c = w.config;
   w.criminal = { kind: 'idle', next: now + w.criminalRng.range(c.criminalInterval.lo, c.criminalInterval.hi) };
-  w.events.push({ type: 'takedown', criminal: criminalId, police: policeId, point, points });
+  w.events.push({ type: 'takedown', criminal: criminalId, police: policeId, point, time: now, points, timeLeft });
 }
 
-/** Wrecked without a takedown: the chase ends without points. */
 export function criminalWrecked(w: World, criminalId: number, point: Vec2, now: number): void {
-  const cr = w.criminal;
-  const id = cr.kind === 'arriving' || cr.kind === 'active' || cr.kind === 'leaving' ? cr.vehicle : null;
-  if (id !== criminalId) return;
+  if (criminalVehicle(w) !== criminalId) return;
   const c = w.config;
   w.criminal = { kind: 'idle', next: now + w.criminalRng.range(c.criminalInterval.lo, c.criminalInterval.hi) };
-  w.events.push({ type: 'criminalWrecked', vehicle: criminalId, point });
+  w.events.push({ type: 'criminalWrecked', vehicle: criminalId, point, time: now });
 }
 
-/**
- * The criminal drove into the police car, not the other way round: its front hit, the police
- * car's did not. Then it is no takedown: the police car bounces off the heavy pickup.
- */
+/** The criminal drove into the police car: its front hit, the police car's did not. */
 export function criminalRanInto(w: World, a: Vehicle, b: Vehicle, point: Vec2): boolean {
   const [criminal, police] = a.type === 'pickup' ? [a, b] : [b, a];
   const front = (veh: Vehicle): boolean => dot(sub(point, veh.position), fromAngle(veh.heading)) > w.lengthOf(veh.type) * 0.25;
@@ -136,6 +132,11 @@ export const reservedTransporterArm = (w: World): Arm | null => (w.transporter.k
 
 export const isTransported = (w: World, id: number): boolean => w.transporter.kind === 'active' && w.transporter.vehicle === id;
 
+export function transporterVehicle(w: World): number | null {
+  const t = w.transporter;
+  return t.kind === 'arriving' || t.kind === 'active' || t.kind === 'seized' || t.kind === 'leaving' ? t.vehicle : null;
+}
+
 export function updateTransporters(w: World, now: number): void {
   const c = w.config;
   if (!w.isScoring) {
@@ -148,19 +149,18 @@ export function updateTransporters(w: World, now: number): void {
     if (t.kind === 'warning') w.transporter = { kind: 'idle', next: Infinity };
     else if (t.kind === 'arriving') {
       w.transporter = { kind: 'idle', next: Infinity };
-      const veh = w.vehicle(t.vehicle);
-      if (veh) veh.type = 'car';
+      w.demoteToOrdinaryTraffic(t.vehicle);
     }
   }
   const t = w.transporter;
   switch (t.kind) {
     case 'idle': {
       if (!w.shift.acceptsTaps || now < t.next) return;
-      const candidates = w.layout.aiArms.filter((arm) => isFreeForWarning(w, arm));
+      const candidates = w.openAIArms.filter((arm) => isFreeForWarning(w, arm));
       if (candidates.length === 0) return;
       const arm = w.transporterRng.pick(candidates);
       w.transporter = { kind: 'warning', arm, until: now + c.transporterWarning };
-      w.events.push({ type: 'transporterWarning', arm });
+      w.events.push({ type: 'transporterWarning', arm, time: now });
       return;
     }
     case 'warning': {
@@ -171,7 +171,7 @@ export function updateTransporters(w: World, now: number): void {
     }
     case 'arriving': {
       const truck = w.vehicle(t.vehicle);
-      if (!truck || truck.isCrashed) {
+      if (!truck) {
         w.transporter = { kind: 'idle', next: now + w.transporterRng.range(c.transporterInterval.lo, c.transporterInterval.hi) };
         return;
       }
@@ -192,7 +192,8 @@ export function updateTransporters(w: World, now: number): void {
 
 export function transporterEscapes(w: World, id: number, now: number): void {
   w.transporter = { kind: 'leaving', vehicle: id };
-  scoreTransporter(w, now, true, id);
+  w.events.push({ type: 'transporterEscaped', vehicle: id, time: now });
+  scoreTransporter(w, now);
 }
 
 export function transporterWrecked(w: World, truckId: number, point: Vec2, now: number): void {
@@ -200,27 +201,28 @@ export function transporterWrecked(w: World, truckId: number, point: Vec2, now: 
   if ((t.kind === 'arriving' || t.kind === 'active') && t.vehicle === truckId) {
     const c = w.config;
     w.transporter = { kind: 'idle', next: now + w.transporterRng.range(c.transporterInterval.lo, c.transporterInterval.hi) };
-    w.events.push({ type: 'transporterLost', vehicle: truckId, point });
+    w.events.push({ type: 'transporterLost', vehicle: truckId, point, time: now });
   }
 }
 
-/** A police car rammed it: seized, no money, but no penalty either. */
-export function transporterSeized(w: World, truckId: number, point: Vec2, now: number): void {
+export function transporterSeized(w: World, truckId: number, policeId: number, point: Vec2, now: number): void {
   w.transporter = { kind: 'seized', vehicle: truckId };
-  w.events.push({ type: 'transporterSeized', vehicle: truckId, point });
-  scoreTransporter(w, now, false, truckId);
+  w.events.push({ type: 'transporterSeized', vehicle: truckId, police: policeId, point, time: now });
+  scoreTransporter(w, now);
 }
 
-function scoreTransporter(w: World, now: number, escaped: boolean, id: number): void {
+function scoreTransporter(w: World, now: number): void {
   const c = w.config;
   if (!w.isScoring) return;
-  const amount = escaped ? Math.round(c.transporterPay * (w.isRushHourScoring ? c.rushHourScoreFactor : 1)) : 0;
+  const escaped = w.transporter.kind === 'leaving';
+  const money = escaped ? c.transporterPay : c.transporterSeized;
+  const amount = Math.round(money * (w.isRushHourScoring ? c.rushHourScoreFactor : 1));
   w.score.money += amount;
   if (escaped) {
     w.score.transporters++;
-    w.setChain(w.score.chain + 1);
+    w.setChain(w.score.chain + 1, now);
   }
-  w.events.push({ type: 'transporterPaid', vehicle: id, amount, escaped });
+  w.events.push({ type: 'transporterPaid', vehicle: transporterVehicle(w), amount, time: now });
   const doubleRun = escaped && c.doubleRunChance > 0 && w.transporterRng.unit() < c.doubleRunChance;
   const pause = doubleRun ? c.doubleRunDelay : c.transporterInterval;
   w.transporter = { kind: 'idle', next: now + w.transporterRng.range(pause.lo, pause.hi) };
@@ -232,8 +234,7 @@ export function secureZone(w: World): { s: number; arc: number } | null {
   const truck = w.vehicle(w.transporter.vehicle);
   if (!truck || truck.phase.kind !== 'ring') return null;
   const half = w.config.transporterSecureArc / 2;
-  const circumference = w.layout.ring.length;
-  return { s: (((truck.phase.s - half) % circumference) + circumference) % circumference, arc: w.config.transporterSecureArc };
+  return { s: wrap(truck.phase.s - half, w.layout.ring.length), arc: w.config.transporterSecureArc };
 }
 
 export function isInSecureZone(w: World, s: number): boolean {
@@ -241,8 +242,9 @@ export function isInSecureZone(w: World, s: number): boolean {
   return zone !== null && w.layout.ringDistance(zone.s, s) <= zone.arc;
 }
 
-/** The criminal and the transporter keep apart when they join. */
+/** The criminal and the transporter keep apart when they join; the truck keeps its zone clear. */
 export function joinsTooClose(w: World, veh: Vehicle, arm: Arm): boolean {
+  if (joinsMilitaryZone(w, veh, arm)) return true;
   const otherType = veh.type === 'pickup' ? 'transporter' : veh.type === 'transporter' ? 'pickup' : null;
   if (!otherType) return false;
   const profile = mergeProfile(w.layout.entry(arm).length, w.config.mergeDuration, w.ringSpeed);
@@ -257,14 +259,13 @@ export function joinsTooClose(w: World, veh: Vehicle, arm: Arm): boolean {
   });
 }
 
-/** The criminal keeps out of the transporter's secure zone: it brakes for that and nothing else. */
 export function transporterAhead(w: World, s: number): Lead | null {
   for (const veh of w.vehicles) {
     if (veh.type !== 'transporter' || veh.isCrashed || veh.phase.kind !== 'ring') continue;
     const ahead = w.layout.ringDistance(s, veh.phase.s);
     if (ahead >= w.layout.ring.length / 2) continue;
-    const gap = ahead - w.config.carLength - w.config.transporterSecureArc / 2;
-    return { id: veh.id, gap, speed: veh.phase.drive.speed ?? w.ringSpeed, length: w.config.carLength };
+    const gapValue = ahead - w.config.carLength - w.config.transporterSecureArc / 2;
+    return { id: veh.id, gap: gapValue, speed: veh.phase.drive.speed ?? w.ringSpeed, length: w.config.carLength };
   }
   return null;
 }
