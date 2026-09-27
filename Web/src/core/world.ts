@@ -17,7 +17,7 @@ import {
   isHeavy,
   isExplosive,
 } from './vehicle';
-import type { GameEvent, MergeRating, ShiftOutcome, ShiftResult } from './events';
+import type { EliminationReason, GameEvent, MergeRating, ShiftOutcome, ShiftResult } from './events';
 import { ScoreBoard, Scoring } from './scoring';
 import { updateTraffic, prefillRing } from './traffic';
 import { updateDrivers } from './drivers';
@@ -35,6 +35,7 @@ import {
   isChased,
   isTransported,
   criminalRanInto,
+  updateEscorts,
 } from './specials';
 import { type MilitaryPhase, updateMilitary, explode, isEscorted, predictedZoneS, gapToZone } from './explosions';
 import { chargeModules, wreckClearRate, towDepotCovering } from './modules';
@@ -89,6 +90,18 @@ export type QueueState =
 /** The player's queue at the South arm. One tap sends the front car (FOUNDATION.md 2.2). */
 export class PlayerQueue {
   vehicles: number[] = [];
+  /** Taps not yet handled, sorted by time. */
+  pendingTaps: number[] = [];
+  /** Multiplayer: out of the match, the lane stays empty. */
+  out = false;
+  /** Seconds of free-flowing traffic since this lane last sent a car; too many and it stalls. */
+  idle = 0;
+
+  /** `arm` null: the player's arm (South). Multiplayer gives every seat its own arm. */
+  constructor(
+    readonly seat = 0,
+    readonly arm: Arm | null = null,
+  ) {}
   state: QueueState = { kind: 'ready' };
   /** A tap that came before the next car stood at the line; at most one. */
   heldTap: number | null = null;
@@ -146,12 +159,16 @@ export class World {
   stepCount = 0;
   vehicles: Vehicle[] = [];
   queue = new PlayerQueue();
+  /** Every human lane: one in the single-player game, up to four in multiplayer. */
+  seats: PlayerQueue[] = [this.queue];
   shift = new ShiftState();
   score = new ScoreBoard();
   criminal: CriminalPhase = { kind: 'idle', next: Infinity };
   transporter: TransporterPhase = { kind: 'idle', next: Infinity };
   military: MilitaryPhase = { kind: 'idle', next: Infinity };
   militaryCount = 0;
+  /** The syndicate boss's escorts still to join, and where (boss levels). */
+  escortsDue: { arm: Arm; left: number } | null = null;
   ringSpeed: number;
   targetDensity: number;
 
@@ -162,7 +179,6 @@ export class World {
   tankerRng: Rng;
   militaryRng: Rng;
   nextVehicleId: number;
-  pendingTaps: number[] = [];
   spawnCooldown = 0;
   events: GameEvent[] = [];
   tempoGlide: { from: number; since: number } | null = null;
@@ -183,22 +199,44 @@ export class World {
     this.ringSpeed = config.ringSpeed;
     this.targetDensity = config.freePlayDensity;
     this.nextVehicleId = firstVehicleId;
+    if (config.players > 1) {
+      this.seats = seatArms(this.layout, config.players).map((arm, seat) => new PlayerQueue(seat, arm));
+      this.queue = this.seats[0];
+    }
     this.startShift(startsOnFirstTap);
     this.applyShiftCurves(0);
     const first = this.criminalRng.range(config.criminalFirst.lo, config.criminalFirst.hi);
     this.criminal = { kind: 'idle', next: this.criminalRng.unit() < config.criminalChance ? first : Infinity };
     this.transporter = {
       kind: 'idle',
-      next: config.mayhem ? Infinity : this.transporterRng.range(config.transporterFirst.lo, config.transporterFirst.hi),
+      next: config.mayhem || config.players > 1 ? Infinity : this.transporterRng.range(config.transporterFirst.lo, config.transporterFirst.hi),
     };
     const comes = this.militaryRng.unit() < config.militaryChance;
     this.military = { kind: 'idle', next: comes ? this.militaryRng.range(config.militaryFirst.lo, config.militaryFirst.hi) : Infinity };
-    this.refillQueue();
+    for (const q of this.seats) this.refillQueue(q);
     if (prefill) prefillRing(this, Math.max(this.targetDensity, config.minRingBots));
   }
 
   get time(): number {
     return this.stepCount * STEP;
+  }
+
+  /** The single player's taps (seat 0). */
+  get pendingTaps(): number[] {
+    return this.queue.pendingTaps;
+  }
+
+  set pendingTaps(taps: number[]) {
+    this.queue.pendingTaps = taps;
+  }
+
+  /** Multiplayer: several human lanes, last one standing wins. */
+  get isVersus(): boolean {
+    return this.config.players > 1;
+  }
+
+  armOf(q: PlayerQueue): Arm {
+    return q.arm ?? this.layout.player;
   }
 
   /**
@@ -230,12 +268,13 @@ export class World {
   }
 
   /** Registers a tap at world time `time`; it takes effect inside the step containing it. */
-  tap(time: number): void {
-    if (!this.shift.acceptsTaps) return;
+  tap(time: number, seat = 0): void {
+    const q = this.seats[seat];
+    if (!this.shift.acceptsTaps || !q || q.out) return;
     const t = Math.max(time, this.time);
-    let index = this.pendingTaps.findIndex((x) => x > t);
-    if (index < 0) index = this.pendingTaps.length;
-    this.pendingTaps.splice(index, 0, t);
+    let index = q.pendingTaps.findIndex((x) => x > t);
+    if (index < 0) index = q.pendingTaps.length;
+    q.pendingTaps.splice(index, 0, t);
   }
 
   takeEvents(): GameEvent[] {
@@ -273,6 +312,7 @@ export class World {
     updateCriminals(this, end);
     updateTransporters(this, end);
     updateMilitary(this, end);
+    updateEscorts(this);
     this.resolveContacts(end);
     this.resolveTrafficContacts(end);
     this.rateMerges(end);
@@ -336,7 +376,8 @@ export class World {
   /** The AI arms cars can come from: all of them, unless a road closure shuts one. */
   get openAIArms(): Arm[] {
     const closed = this.config.closedArmSlot;
-    return closed === null ? this.layout.aiArms : this.layout.aiArms.filter((a) => a.slot !== closed);
+    const arms = this.isVersus ? this.layout.arms.filter((a) => !this.seats.some((q) => q.arm?.index === a.index)) : this.layout.aiArms;
+    return closed === null ? arms : arms.filter((a) => a.slot !== closed);
   }
 
   /** Where the roadworks sit on the ring (ring distance of their start), if there are any. */
@@ -657,6 +698,7 @@ export class World {
     const wreckedTruck = seizure ? undefined : [first, second].find((x) => x.type === 'transporter' && !x.isCrashed);
     const explosives = [first, second].filter((x) => isExplosive(x.type) && !x.isCrashed).map((x) => x.id);
     const culprits = [first, second].filter((x) => this.causesStrike(x));
+    const mergedAt = new Set([first, second].filter((x) => !x.isCrashed && x.activeMerge !== null).map((x) => x.id));
     const strike = !takedown && !seizure && culprits.length > 0;
     const byPolice = strike && culprits.every((x) => x.type === 'police');
     const firstWasWreck = first.isCrashed;
@@ -678,7 +720,9 @@ export class World {
     let cost = { paid: 0, covered: 0 };
     let mayhem = { flames: 0, chain: 0 };
     const comboEvents = this.events.length;
-    if (this.config.mayhem) {
+    if (this.isVersus) {
+      // Multiplayer scores nothing: whoever caused the crash is out (`eliminate`, via the host).
+    } else if (this.config.mayhem) {
       if (this.isScoring && (!firstWasWreck || !secondWasWreck)) mayhem = this.scoreMayhem(now, !strike, heavy);
     } else if (strike && this.isScoring) {
       penalty = this.scoreCrash(byPolice, now);
@@ -713,7 +757,12 @@ export class World {
     }
     if (wreckedTruck) transporterWrecked(this, wreckedTruck.id, point, now);
     if (wreckedCriminal) criminalWrecked(this, wreckedCriminal.id, point, now);
-    if (strike && this.isScoring && !this.config.mayhem && this.isStruckOut) this.endShift('struckOut', now);
+    if (this.isVersus) {
+      // Only a merge that crashes counts: a chain reaction on the ring is nobody's fault.
+      const merging = [first, second].filter((x) => x.owner === 'player' && x.phase.kind === 'crashed' && mergedAt.has(x.id));
+      if (this.isScoring) for (const x of merging) this.events.push({ type: 'faulted', seat: x.seat, point, time: now });
+    } else if (strike && this.isScoring && !this.config.mayhem && this.isStruckOut) this.endShift('struckOut', now);
+    else if (strike && this.isScoring && this.config.trialRule === 'flawless') this.endShift('failed', now);
     for (const id of explosives) explode(this, id, now);
   }
 
@@ -750,7 +799,16 @@ export class World {
         gapAhead: ahead,
         chain: this.score.chain,
       });
+      if (this.breaksTrial(rating)) this.endShift('failed', now);
     }
+  }
+
+  /** Whether this merge breaks the shift's trial rule (mastery trials). */
+  breaksTrial(rating: MergeRating): boolean {
+    const rule = this.config.trialRule;
+    if (!rule || !this.isScoring) return false;
+    if (rule === 'skilledOnly') return rating === 'clean' || rating === 'cutOff';
+    return rating === 'cutOff';
   }
 
   gapAhead(s: number, id: number): number {
@@ -987,19 +1045,23 @@ export class World {
   // MARK: Queue and taps
 
   handleTaps(start: number, end: number): void {
-    if (this.queue.isReady && this.queue.heldTap !== null) {
-      this.queue.heldTap = null;
-      this.launchFromQueue(end - start, start);
+    for (const q of this.seats) if (!q.out) this.handleQueueTaps(q, start, end);
+  }
+
+  private handleQueueTaps(q: PlayerQueue, start: number, end: number): void {
+    if (q.isReady && q.heldTap !== null) {
+      q.heldTap = null;
+      this.launchFromQueue(end - start, start, q);
     }
-    while (this.pendingTaps.length > 0 && this.pendingTaps[0] <= end) {
-      const first = this.pendingTaps.shift()!;
+    while (q.pendingTaps.length > 0 && q.pendingTaps[0] <= end) {
+      const first = q.pendingTaps.shift()!;
       const driven = end - Math.max(first, start);
-      if (this.launchFromQueue(driven, first)) continue;
-      if (this.queue.heldTap === null) {
-        this.queue.heldTap = first;
-        if (this.queue.state.kind === 'clearing' && this.config.queueAdvanceDuration <= 0) {
-          const x = (this.launchedDistance(this.queue.state.vehicle) ?? this.config.queueSpacing) / this.config.queueSpacing;
-          this.queue.pass = { position: approach(x, this.queue.rollingSpeed), speed: approachSpeed(x, this.queue.rollingSpeed), beyond: 0 };
+      if (this.launchFromQueue(driven, first, q)) continue;
+      if (q.heldTap === null) {
+        q.heldTap = first;
+        if (q.state.kind === 'clearing' && this.config.queueAdvanceDuration <= 0) {
+          const x = (this.launchedDistance(q.state.vehicle) ?? this.config.queueSpacing) / this.config.queueSpacing;
+          q.pass = { position: approach(x, q.rollingSpeed), speed: approachSpeed(x, q.rollingSpeed), beyond: 0 };
         }
       } else {
         this.events.push({ type: 'tapRejected', time: first });
@@ -1021,20 +1083,22 @@ export class World {
     }
   }
 
-  launchFromQueue(driven: number, time: number): boolean {
-    if (!this.queue.isReady || this.queue.vehicles.length === 0) return false;
-    const id = this.queue.vehicles[0];
+  launchFromQueue(driven: number, time: number, q: PlayerQueue = this.queue): boolean {
+    if (!q.isReady || q.vehicles.length === 0 || q.out) return false;
+    const id = q.vehicles[0];
     const veh = this.vehicle(id);
     if (!veh) return false;
-    this.queue.vehicles.shift();
-    this.queue.state = { kind: 'clearing', vehicle: id };
-    this.queue.pass = null;
-    this.queue.rollingSpeed = 0;
-    const path = this.layout.entry(this.layout.player);
+    q.vehicles.shift();
+    q.state = { kind: 'clearing', vehicle: id };
+    q.pass = null;
+    q.rollingSpeed = 0;
+    q.idle = 0;
+    const arm = this.armOf(q);
+    const path = this.layout.entry(arm);
     const merge: Merging = {
       kind: 'merging',
-      arm: this.layout.player,
-      exitArm: this.randomExit(this.layout.player),
+      arm,
+      exitArm: this.randomExit(arm),
       profile: mergeProfile(path.length, this.mergeDurationOf(veh.type), this.ringSpeed),
       elapsed: driven - STEP,
       minGap: Infinity,
@@ -1044,59 +1108,63 @@ export class World {
     veh.phase = merge;
     this.events.push({ type: 'launched', vehicle: id, time });
     this.noteLaunch(time);
-    this.refillQueue();
+    this.refillQueue(q);
     return true;
   }
 
   updateQueue(dt: number): void {
-    const state = this.queue.state;
+    for (const q of this.seats) this.updateOneQueue(q, dt);
+  }
+
+  private updateOneQueue(q: PlayerQueue, dt: number): void {
+    const state = q.state;
     const c = this.config;
     if (state.kind === 'clearing') {
       const driven = this.launchedDistance(state.vehicle);
-      const pass = this.queue.pass;
+      const pass = q.pass;
       if (pass) {
         rollPass(pass, (dt * this.ringSpeed) / c.queueSpacing, (driven ?? 2 * c.queueSpacing) / c.queueSpacing);
         const leaderVeh = this.vehicle(state.vehicle);
         const leader = leaderVeh ? this.lengthOf(leaderVeh.type) : c.carLength;
-        const followerVeh = this.queue.vehicles.length > 0 ? this.vehicle(this.queue.vehicles[0]) : undefined;
+        const followerVeh = q.vehicles.length > 0 ? this.vehicle(q.vehicles[0]) : undefined;
         const follower = followerVeh ? this.lengthOf(followerVeh.type) : c.carLength;
         const room = (leader + follower) / 2 + PASS_CLEARANCE;
         if (pass.position >= 1) {
-          if (this.queue.heldTap === null) {
-            this.queue.state = { kind: 'ready' };
-            this.queue.pass = null;
+          if (q.heldTap === null) {
+            q.state = { kind: 'ready' };
+            q.pass = null;
           } else if (driven === null || driven >= room) {
-            this.rollThrough(pass);
+            this.rollThrough(pass, q);
           } else {
             pass.speed = 0;
             pass.beyond = 0;
           }
         }
       } else if (driven === null || driven >= c.queueSpacing) {
-        this.queue.state = c.queueAdvanceDuration > 0 ? { kind: 'advancing', elapsed: 0 } : { kind: 'ready' };
+        q.state = c.queueAdvanceDuration > 0 ? { kind: 'advancing', elapsed: 0 } : { kind: 'ready' };
       }
     } else if (state.kind === 'advancing') {
       const next = state.elapsed + dt;
-      this.queue.state = next >= c.queueAdvanceDuration ? { kind: 'ready' } : { kind: 'advancing', elapsed: next };
+      q.state = next >= c.queueAdvanceDuration ? { kind: 'ready' } : { kind: 'advancing', elapsed: next };
     } else if (state.kind === 'filling') {
       const next = state.elapsed + dt;
-      this.queue.state = next >= c.queueFillSeconds ? { kind: 'ready' } : { kind: 'filling', elapsed: next };
+      q.state = next >= c.queueFillSeconds ? { kind: 'ready' } : { kind: 'filling', elapsed: next };
     }
-    this.placeQueue();
+    this.placeQueue(q);
   }
 
-  private rollThrough(pass: Pass): void {
+  private rollThrough(pass: Pass, q: PlayerQueue): void {
     const c = this.config;
     const past = (pass.beyond * c.queueSpacing) / Math.max(pass.speed * this.ringSpeed, 1);
-    this.queue.state = { kind: 'ready' };
-    this.queue.heldTap = null;
-    const id = this.queue.vehicles[0];
-    if (id === undefined || !this.launchFromQueue(past + STEP, this.time + STEP - past)) return;
+    q.state = { kind: 'ready' };
+    q.heldTap = null;
+    const id = q.vehicles[0];
+    if (id === undefined || !this.launchFromQueue(past + STEP, this.time + STEP - past, q)) return;
     const veh = this.vehicle(id);
     if (veh && veh.phase.kind === 'merging') {
-      veh.place(this.layout.entry(this.layout.player).pose(profileDistance(veh.phase.profile, veh.phase.elapsed)));
+      veh.place(this.layout.entry(this.armOf(q)).pose(profileDistance(veh.phase.profile, veh.phase.elapsed)));
     }
-    this.queue.rollingSpeed = Math.min(pass.speed, 1);
+    q.rollingSpeed = Math.min(pass.speed, 1);
   }
 
   launchedDistance(id: number): number | null {
@@ -1105,17 +1173,17 @@ export class World {
     return profileDistance(veh.phase.profile, veh.phase.elapsed);
   }
 
-  queueSlotOffset(): number {
-    const state = this.queue.state;
+  queueSlotOffset(q: PlayerQueue = this.queue): number {
+    const state = q.state;
     const c = this.config;
     switch (state.kind) {
       case 'ready':
         return 0;
       case 'clearing': {
         if (c.queueAdvanceDuration > 0) return 1;
-        if (this.queue.pass) return 1 - this.queue.pass.position;
+        if (q.pass) return 1 - q.pass.position;
         const driven = this.launchedDistance(state.vehicle) ?? c.queueSpacing;
-        return 1 - approach(driven / c.queueSpacing, this.queue.rollingSpeed);
+        return 1 - approach(driven / c.queueSpacing, q.rollingSpeed);
       }
       case 'advancing': {
         const x = c.queueAdvanceDuration > 0 ? Math.min(Math.max(state.elapsed / c.queueAdvanceDuration, 0), 1) : 1;
@@ -1128,20 +1196,20 @@ export class World {
     }
   }
 
-  placeQueue(): void {
-    const offset = this.queueSlotOffset();
-    this.queue.vehicles.forEach((id, slot) => {
+  placeQueue(q: PlayerQueue = this.queue): void {
+    const offset = this.queueSlotOffset(q);
+    q.vehicles.forEach((id, slot) => {
       const veh = this.vehicle(id);
-      if (veh) veh.place(this.layout.queuePose(slot + offset));
+      if (veh) veh.place(this.layout.queuePose(slot + offset, this.armOf(q)));
     });
   }
 
-  refillQueue(): void {
+  refillQueue(q: PlayerQueue = this.queue): void {
     const c = this.config;
     const target = Math.min(c.queueVisible + 4, this.shift.carsLeft ?? Infinity);
-    const offset = this.queueSlotOffset();
-    while (this.queue.vehicles.length < target) {
-      const pose = this.layout.queuePose(this.queue.vehicles.length + offset);
+    const offset = this.queueSlotOffset(q);
+    while (q.vehicles.length < target) {
+      const pose = this.layout.queuePose(q.vehicles.length + offset, this.armOf(q));
       let type: VehicleType = this.queueRng.unit() < c.policeShare ? 'police' : 'car';
       const shares: [VehicleType, number][] = [
         ['sportsCar', c.sportsCarShare],
@@ -1160,23 +1228,28 @@ export class World {
         }
       }
       const veh = new Vehicle(this.makeId(), type, 'player', { kind: 'queued' }, pose);
+      veh.seat = q.seat;
       this.vehicles.push(veh);
-      this.queue.vehicles.push(veh.id);
+      q.vehicles.push(veh.id);
     }
   }
 
   get queueBrakes(): boolean {
-    const state = this.queue.state;
+    return this.queueBrakesOf(this.queue);
+  }
+
+  queueBrakesOf(q: PlayerQueue): boolean {
+    const state = q.state;
     switch (state.kind) {
       case 'ready':
-        return this.queue.heldTap === null;
+        return q.heldTap === null;
       case 'advancing':
         return true;
       case 'clearing': {
         if (this.config.queueAdvanceDuration > 0) return true;
-        if (this.queue.pass) return false;
+        if (q.pass) return false;
         const x = (this.launchedDistance(state.vehicle) ?? this.config.queueSpacing) / this.config.queueSpacing;
-        return x > (this.queue.rollingSpeed > 0 ? 1 / 3 : 0.5);
+        return x > (q.rollingSpeed > 0 ? 1 / 3 : 0.5);
       }
       case 'filling':
         return this.config.queueFillSeconds <= 0 || state.elapsed / this.config.queueFillSeconds > 0.5;
@@ -1187,7 +1260,7 @@ export class World {
     const p = veh.phase;
     switch (p.kind) {
       case 'queued':
-        return veh.owner === 'player' ? this.queueBrakes : true;
+        return veh.owner === 'player' ? this.queueBrakesOf(this.seats[veh.seat] ?? this.queue) : true;
       case 'waiting': {
         if (p.approach <= 0) return true;
         return Math.sqrt(2 * this.config.aiApproachBrake * gravity(this.config) * p.approach) < this.ringSpeed;
@@ -1273,6 +1346,7 @@ export class World {
 
   updateShift(now: number): void {
     this.applyShiftCurves(now);
+    this.countIdle(STEP);
     if (this.shift.phase !== 'closing') return;
     const merging = this.vehicles.some((x) => x.owner === 'player' && x.activeMerge !== null);
     if (merging) return;
@@ -1297,8 +1371,10 @@ export class World {
     if (this.config.endless) this.score.money += this.config.endlessPayPerCar * this.shift.carsSent;
     this.shift.phase = 'ended';
     this.shift.outcome = outcome;
-    this.pendingTaps = [];
-    this.queue.heldTap = null;
+    for (const q of this.seats) {
+      q.pendingTaps = [];
+      q.heldTap = null;
+    }
     this.events.push({ type: 'shiftEnded', result: this.result(outcome, time) });
   }
 
@@ -1330,7 +1406,53 @@ export class World {
       wrecks: s.wrecks,
       biggestChain: s.biggestChain,
       detonated: this.shift.detonated,
+      convoy: this.config.convoy,
+      bossBusted: s.bossBusted,
     };
+  }
+
+  // MARK: Multiplayer
+
+  /** Lanes still in the match. */
+  get seatsLeft(): PlayerQueue[] {
+    return this.seats.filter((q) => !q.out);
+  }
+
+  /**
+   * Lanes that have not sent a car for `versusStallSeconds` of free-flowing traffic: they stall
+   * out. While wrecks lie on the road the clock waits, waiting is the right call then.
+   */
+  get stalledSeats(): number[] {
+    if (!this.isVersus || !this.isScoring) return [];
+    return this.seatsLeft.filter((q) => q.idle > this.config.versusStallSeconds).map((q) => q.seat);
+  }
+
+  private countIdle(dt: number): void {
+    if (!this.isVersus || !this.isScoring || this.isTrafficDisturbed) return;
+    for (const q of this.seatsLeft) q.idle += dt;
+  }
+
+  /**
+   * Takes a seat out of the match (it crashed, stalled or left). Its waiting cars clear the
+   * lane; cars already on the road keep driving. The last seat left wins.
+   */
+  eliminate(seat: number, reason: EliminationReason, now: number): void {
+    const q = this.seats[seat];
+    if (!q || q.out || !this.isScoring) return;
+    q.out = true;
+    q.pendingTaps = [];
+    q.heldTap = null;
+    q.pass = null;
+    const waiting = new Set(q.vehicles);
+    q.vehicles = [];
+    q.state = { kind: 'ready' };
+    this.vehicles = this.vehicles.filter((veh) => !waiting.has(veh.id));
+    this.events.push({ type: 'eliminated', seat, reason, time: now });
+    const left = this.seatsLeft;
+    if (left.length <= 1) {
+      this.events.push({ type: 'matchOver', winner: left.length === 1 ? left[0].seat : null, time: now });
+      this.endShift('completed', now);
+    }
   }
 
   approachPose(w: Waiting): Pose {
@@ -1352,6 +1474,13 @@ export class World {
 }
 
 /** A module's slow zone lies at `s` or within `jamLookahead` seconds of ring ahead of it. */
+/** Where the seats sit: spread evenly around the ring, seat 0 at South. */
+export function seatArms(layout: Layout, players: number): Arm[] {
+  const n = layout.arms.length;
+  const count = Math.max(1, Math.min(players, n));
+  return Array.from({ length: count }, (_, k) => layout.arms[Math.round((k * n) / count) % n]);
+}
+
 export function isModuleQueueAt(w: World, s: number): boolean {
   const c = w.config;
   const slow = Object.entries(c.modules).filter(([, m]) => (m === 'tollBooth' ? c.tollSpeedFactor : m === 'speedCamera' ? c.cameraSpeedFactor : 1) < 1);

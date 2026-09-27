@@ -21,6 +21,8 @@ export const CITY_EVENTS: CityEvent[] = ['roadworks', 'roadClosure', 'concert', 
 export type RoadModule = 'tollBooth' | 'speedCamera' | 'towDepot';
 export const ROAD_MODULES: RoadModule[] = ['tollBooth', 'speedCamera', 'towDepot'];
 
+export type TrialRule = 'skilledOnly' | 'flawless';
+
 export const baseConfig = {
   // Roundabout
   armSlotCount: 16,
@@ -300,6 +302,29 @@ export const baseConfig = {
   nightLevel: 10,
   nightChancePerLevel: 0.08,
   maxNightChance: 0.5,
+  /** Blackout: some nights the street lamps are out too; only headlights and tail lights show. */
+  blackout: false,
+  blackoutLevel: 20,
+  blackoutChance: 0.35,
+  /** Pay for the harder view: a night shift pays a little more, a blackout more still. */
+  nightPayFactor: 1.1,
+  blackoutPayFactor: 1.25,
+
+  // Syndicate convoy: every `convoyEvery` levels the criminal is the boss, with armoured escorts
+  convoy: false,
+  convoyEvery: 15,
+  convoyEscorts: 2,
+  /** The boss is on the ring this much longer than a plain criminal before it gets away. */
+  convoyTimeFactor: 1.5,
+  convoyWarning: 3,
+  /** The convoy comes early in the shift, so it is there before the last car is sent. */
+  convoyFirst: r(1.5, 3),
+  heistRecoveryBase: 3000,
+  heistRecoveryPerLevel: 200,
+
+  // Mastery trials (core/trials.ts): an extra rule for this shift, broken ends it as 'failed'
+  /** skilledOnly: every merge a Tight Fit, Near Miss or Perfect; flawless: no crash, no cut-off. */
+  trialRule: null as TrialRule | null,
 
   // City events
   cityEvent: null as CityEvent | null,
@@ -362,6 +387,12 @@ export const baseConfig = {
   botExitNotice: 1.5,
   botJamPatience: 20,
   jamLookahead: 2.5,
+
+  // Multiplayer (core/versus.ts)
+  /** Human lanes on the ring: 1 is the normal game, 2–4 a multiplayer match. */
+  players: 1,
+  /** A lane that sends no car for this long stalls and is out. */
+  versusStallSeconds: 10,
 };
 
 export type Config = typeof baseConfig;

@@ -88,7 +88,7 @@ export const Feedback = {
         return 'rushHour';
       case 'shiftEnded':
         if (e.result.detonated) return null;
-        return e.result.outcome === 'completed' ? 'shiftComplete' : e.result.outcome === 'struckOut' ? 'shiftFailed' : null;
+        return e.result.outcome === 'completed' ? 'shiftComplete' : e.result.outcome === 'struckOut' || e.result.outcome === 'failed' ? 'shiftFailed' : null;
       case 'criminalWarning':
         return 'wanted';
       case 'takedown':
@@ -104,6 +104,8 @@ export const Feedback = {
         return 'seized';
       case 'transporterPaid':
         return e.amount > 0 ? 'paid' : null;
+      case 'heistRecovered':
+        return 'paid';
       case 'modulePaid':
         return 'toll';
       case 'flowChanged':
@@ -169,6 +171,8 @@ export const Feedback = {
         return 'seized';
       case 'transporterPaid':
         return e.amount > 0 ? 'paid' : null;
+      case 'heistRecovered':
+        return 'paid';
       case 'flowChanged':
         return e.isInFlow ? 'flow' : null;
       case 'explosion':
@@ -204,6 +208,7 @@ export const Feedback = {
       case 'transporterLost':
       case 'modulePaid':
       case 'explosion':
+      case 'heistRecovered':
         return e.point;
       default:
         return null;

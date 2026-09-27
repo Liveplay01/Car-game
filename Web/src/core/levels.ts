@@ -87,6 +87,9 @@ export function forLevel(base: Config, level: number, seed: number): Config {
   c.militaryChance = l >= base.militaryLevel ? base.militaryLevelChance : 0;
   c.shiftPay = base.shiftPayBase + base.shiftPayPerLevel * l;
   c.level = l;
+  // A boss level: the criminal of this shift is the syndicate's head, with its escorts.
+  c.convoy = base.convoyEvery > 0 && l % base.convoyEvery === 0;
+  if (c.convoy) c.criminalFirst = base.convoyFirst;
 
   const [lo, hi] = shiftCarsRange(l, base);
   c.shiftCars = new Rng((seed ^ 0x3c6ef372) >>> 0).int(lo, hi);
@@ -261,15 +264,26 @@ export function forWeather(base: Config, weather: Weather): Config {
 }
 
 /** Whether one shift at `level` runs at night, drawn from the seed: more likely the higher the level. */
-export function drawNight(c: Config, level: number, seed: number): boolean {
-  if (level < c.nightLevel) return false;
+export type Darkness = 'day' | 'night' | 'blackout';
+
+/**
+ * Whether one shift at `level` runs at night, drawn from the seed: more likely the higher the
+ * level. From `blackoutLevel` on, some nights lose their street lamps too.
+ */
+export function drawNight(c: Config, level: number, seed: number): Darkness {
+  if (level < c.nightLevel) return 'day';
+  const rng = new Rng((seed ^ 0x6e176e17) >>> 0);
   const chance = Math.min(c.maxNightChance, c.nightChancePerLevel * (level - c.nightLevel + 1));
-  return new Rng((seed ^ 0x6e176e17) >>> 0).unit() < chance;
+  if (rng.unit() >= chance) return 'day';
+  return level >= c.blackoutLevel && rng.unit() < c.blackoutChance ? 'blackout' : 'night';
 }
 
-export function forNight(base: Config, night: boolean): Config {
+/** This config at `darkness`: the rules stay, the view gets harder and the pay a little better. */
+export function forNight(base: Config, darkness: Darkness): Config {
   const c = cloneConfig(base);
-  c.night = night;
+  c.night = darkness !== 'day';
+  c.blackout = darkness === 'blackout';
+  if (c.night) c.shiftPay = Math.round(base.shiftPay * (c.blackout ? base.blackoutPayFactor : base.nightPayFactor));
   return c;
 }
 

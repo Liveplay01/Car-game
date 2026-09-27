@@ -1,15 +1,15 @@
 import { World, STEP } from '../core/world';
 import { baseConfig, gravity, builtArmSlots, type Config, type RoadModule } from '../core/config';
-import { type SaveGame, type GameMode, GAME_MODES, Careers, newSave } from '../core/career';
+import { type SaveGame, type GameMode, Careers, newSave } from '../core/career';
 import type { GameEvent, ShiftResult } from '../core/events';
-import { forMayhem, type Upgrade } from '../core/levels';
+import type { Upgrade } from '../core/levels';
 import { type ChestKind, ALBUM_REWARD, cosmetic, rarityRank } from '../core/loot';
 import type { StoreProduct, AdReward } from '../core/store';
 import { dailySeed, dailyEvent, dayNumber } from '../core/daily';
 import { type Vec2, v, add } from '../core/vec2';
 import { loadSave, writeSave } from '../storage/save';
 import { RenderList, R, Ease, toScreen, rect, text, Metrics, type Camera } from './render';
-import { S, Fmt } from './strings';
+import { S, Fmt, money as moneyText } from './strings';
 import { CrashEffects } from './effects';
 import { ExplosionEffects, MapScars, SmokeCurtain } from './explosionsFx';
 import { SceneBuilder, VehicleLamps, towYard } from './scene';
@@ -18,10 +18,10 @@ import { MapTheme } from './mapThemes';
 import { Skins } from './skins';
 import { WeatherLayer } from './weather';
 import { NightLayer } from './night';
-import { HUD, TopBar, RingSignals, ModeBanner, ReadyBanner, ResultBanner, type Popup, type PopupKind, type ShiftSummary, POPUP_LIFETIME, settledPops } from './hud';
+import { HUD, TopBar, RingSignals, ModeBanner, ReadyBanner, ResultBanner, type Popup, type PopupKind, type ShiftSummary, type RunCard, POPUP_LIFETIME, settledPops } from './hud';
 import { Tutorial } from './tutorial';
 import { MenuKit } from './menukit';
-import { type Screen, type Tab, type ScreenAction, type Built, type ProgressSection, TAB_BAR, BUILD_PAGES, barTab, screenTab, showsTabBar, partModule, BuildLayout } from './flow';
+import { type Screen, type Tab, type SwipeMode, SWIPE_MODES, type ScreenAction, type Built, type ProgressSection, TAB_BAR, BUILD_PAGES, barTab, screenTab, showsTabBar, partModule, BuildLayout } from './flow';
 import { CameraRig, perspectiveOf, addRecede } from './perspective';
 import { TransitionTracker, ModePan } from './transitions';
 import { ShopPage, ShopState, shelfOf, type ShopTarget } from './shop';
@@ -31,6 +31,15 @@ import { StreetBuilderPage, BuilderState, sameBuilt } from './builder';
 import { Feedback, Music, type MusicMix, type SoundID, type HapticID } from './feedback';
 import { Details, type Detail } from './detail';
 import { TyreMarks } from './marks';
+import { type ChallengeSpec, challengeOf, challengeConfig, encodeChallenge } from '../core/challenge';
+import { type Trial, trial as trialById, trialConfig, trialPassed } from '../core/trials';
+
+/**
+ * A shift played for itself, outside the career: a friend's challenge link or a mastery
+ * trial. It always starts from a fresh world with its own seed, so the traffic is the same for
+ * everyone; it earns no money or levels (a trial pays its reward once).
+ */
+export type SpecialRun = { k: 'challenge'; spec: ChallengeSpec } | { k: 'trial'; trial: Trial };
 
 /** What the platform reports; key and touch mapping stays in `main.ts`. */
 export type InputAction =
@@ -126,7 +135,11 @@ export class GameSession {
   buildPage: Tab = 'upgrades';
   private buildSlide: { from: Tab; age: number } | null = null;
   private pan = new ModePan();
-  private modeBanner: { mode: GameMode; age: number } | null = null;
+  private modeBanner: { mode: SwipeMode; age: number } | null = null;
+  /** The multiplayer page of the mode swipe is showing: a tap opens the lobby. */
+  versusSelected = false;
+  /** Opens the multiplayer lobby (the shell's sheet). */
+  onVersus: (() => void) | null = null;
   playingMode: GameMode = 'shift';
   private shownFlames = 0;
   private sinceFlames = Infinity;
@@ -154,6 +167,10 @@ export class GameSession {
   private revealUpgrade: Upgrade | null = null;
   /** Tells the page when the tab bar or badges changed. */
   onChrome: (() => void) | null = null;
+  /** The challenge or trial being played, until the player leaves it. */
+  special: SpecialRun | null = null;
+  /** The last finished shift as a challenge a friend can play; null when it cannot be shared. */
+  shareable: ChallengeSpec | null = null;
 
   constructor(private output: SessionOutput | null = null) {
     this.save = loadSave();
@@ -174,6 +191,11 @@ export class GameSession {
 
   get gameMode(): GameMode {
     return this.save.mode;
+  }
+
+  /** Where the mode swipe stands: a career mode, or multiplayer. */
+  get swipeMode(): SwipeMode {
+    return this.versusSelected ? 'multiplayer' : this.save.mode;
   }
 
   get reduceMotion(): boolean {
@@ -240,13 +262,14 @@ export class GameSession {
     const career = save.career;
     switch (action.k) {
       case 'startShift':
-        if (this.screen.k === 'ready') this.startPlaying();
+        if (this.screen.k === 'ready' && this.versusSelected) this.onVersus?.();
+        else if (this.screen.k === 'ready') this.startPlaying();
         break;
       case 'restart':
         this.prepareShift(false);
         break;
       case 'openSettings':
-        if (this.screen.k === 'ready') {
+        if (this.screen.k === 'ready' || this.screen.k === 'result') {
           this.screen = { k: 'settings' };
           this.tick();
           this.onChrome?.();
@@ -261,11 +284,19 @@ export class GameSession {
         break;
       case 'setGameMode': {
         const mode = action.mode;
-        if (mode === this.gameMode || this.world.shift.phase !== 'waiting' || !(this.screen.k === 'ready' || this.isShowingResult)) return;
+        if (mode === this.swipeMode || this.world.shift.phase !== 'waiting' || !(this.screen.k === 'ready' || this.isShowingResult)) return;
+        // Multiplayer is a page of the swipe, not a career mode: the career keeps its mode.
+        const fromVersus = this.versusSelected;
+        this.versusSelected = mode === 'multiplayer';
+        this.modeBanner = { mode, age: 0 };
+        if (mode === 'multiplayer' || (fromVersus && mode === this.gameMode)) {
+          if (this.isShowingResult) this.prepareShift(false, null, { k: 'ready' });
+          this.onChrome?.();
+          break;
+        }
         save.mode = mode;
         this.persist();
         this.prepareShift(false, null, { k: 'ready' });
-        this.modeBanner = { mode, age: 0 };
         break;
       }
       case 'showTab': {
@@ -412,23 +443,25 @@ export class GameSession {
   }
 
   private get wantsDaily(): boolean {
-    return this.save.mode === 'shift' && (this.tutorial?.isOver ?? true) && Careers.isDailyOpen(this.save.career, this.today);
+    return this.special === null && this.save.mode === 'shift' && (this.tutorial?.isOver ?? true) && Careers.isDailyOpen(this.save.career, this.today);
   }
 
   /** Sets up the next shift; it waits, traffic flowing, for its first tap. */
   private prepareShift(continuing: boolean, seed: number | null = null, next: Screen = { k: 'ready' }): void {
+    const special = this.special;
     const daily = this.wantsDaily;
     this.dailySelected = daily;
-    const s = daily ? dailySeed(this.today) : (seed ?? this.nextSeed());
-    this.playingLevel = this.save.career.level;
-    this.playingMode = this.save.mode;
+    const s = special ? GameSession.specialSeed(special) : daily ? dailySeed(this.today) : (seed ?? this.nextSeed());
+    this.playingLevel = special ? (special.k === 'trial' ? special.trial.level : special.spec.level) : this.save.career.level;
+    this.playingMode = special?.k === 'challenge' ? special.spec.mode : special ? 'shift' : this.save.mode;
     this.shownFlames = 0;
     this.playingDaily = daily;
     this.dailySplash = daily ? 0 : null;
     this.splits = [];
     this.raceDelta = null;
-    const cfg = this.shiftConfig(s);
-    if (continuing) this.world = this.world.nextShift(cfg, s);
+    const cfg = special ? this.specialConfig(special) : this.shiftConfig(s);
+    // A challenge or trial never carries traffic over: it starts fresh, the same for everyone.
+    if (continuing && !special) this.world = this.world.nextShift(cfg, s);
     else {
       this.world = new World(cfg, s, { startsOnFirstTap: true });
       this.resetScene();
@@ -441,19 +474,103 @@ export class GameSession {
   }
 
   private shiftConfig(seed: number): Config {
+    return Careers.shiftConfig(this.save.career, this.save.mode, this.config, seed, this.dailySelected ? dailyEvent(this.today) : undefined);
+  }
+
+  private specialConfig(run: SpecialRun): Config {
+    return run.k === 'challenge' ? challengeConfig(run.spec, this.config) : trialConfig(run.trial, this.config);
+  }
+
+  private static specialSeed(run: SpecialRun): number {
+    return run.k === 'challenge' ? run.spec.seed : run.trial.seed;
+  }
+
+  // MARK: Challenges and trials
+
+  /** A friend's challenge link was opened: its shift waits on the Game tab. */
+  startChallenge(spec: ChallengeSpec): void {
+    this.startSpecial({ k: 'challenge', spec });
+  }
+
+  startTrial(id: string): void {
+    const t = trialById(id);
+    if (t) this.startSpecial({ k: 'trial', trial: t });
+  }
+
+  private startSpecial(run: SpecialRun): void {
+    if (this.screen.k === 'playing') return;
+    this.special = run;
+    this.shareable = null;
+    this.closeDetail();
+    this.tick();
+    this.prepareShift(false);
+  }
+
+  /** Back to the career's own shifts. */
+  leaveSpecial(): void {
+    if (!this.special || this.screen.k === 'playing') return;
+    this.special = null;
+    this.shareable = null;
+    this.tick();
+    this.prepareShift(false, null, this.screen.k === 'page' ? this.screen : { k: 'ready' });
+  }
+
+  /** The link to the last finished shift, or null. */
+  shareLink(origin: string): string | null {
+    return this.shareable ? `${origin}#challenge=${encodeChallenge(this.shareable)}` : null;
+  }
+
+  /** What the result says in a challenge or trial, and pays (a trial's reward, once). */
+  private finishSpecial(run: SpecialRun, result: ShiftResult): void {
     const career = this.save.career;
-    if (this.save.mode === 'unlimited') {
-      const cfg = Careers.config({ ...career, level: this.config.endlessLevel }, this.config, seed);
-      cfg.endless = true;
-      return cfg;
+    const bankBefore = career.money;
+    let summary: NonNullable<ShiftSummary['run']>;
+    if (run.k === 'challenge') {
+      const spec = run.spec;
+      const mayhem = spec.mode === 'mayhem';
+      const mine = mayhem ? result.flames : result.score;
+      const beaten = mine > spec.target;
+      summary = {
+        caption: beaten ? S.run.beaten : S.run.missed,
+        color: beaten ? 'accent' : 'muted',
+        line: beaten ? S.run.ahead(Fmt.number(mine - spec.target)) : S.run.short(Fmt.number(spec.target - mine)),
+        lineColor: beaten ? 'accent' : 'muted',
+        right: [S.run.toBeat, Fmt.number(spec.target)],
+      };
+      // Sharing now sends the same shift back with your own score to beat.
+      this.shareable = { ...spec, target: mine };
+    } else {
+      const t = run.trial;
+      const passed = trialPassed(t, result);
+      const first = passed && !career.trialsDone.includes(t.id);
+      if (first) {
+        career.trialsDone.push(t.id);
+        career.money += t.reward;
+      }
+      summary = {
+        caption: passed ? S.run.passed : S.run.failed,
+        color: passed ? 'accent' : 'destructive',
+        line: passed && !first ? S.run.passedBefore : S.trials.goal(t),
+        lineColor: passed ? 'accent' : 'muted',
+        right: [S.run.trial, S.trials.level(t.level)],
+      };
+      this.shareable = null;
     }
-    if (this.save.mode === 'mayhem') return forMayhem(Careers.config({ ...career, level: this.config.mayhemLevel }, this.config, seed));
-    return Careers.config(career, this.config, seed, null, this.dailySelected ? dailyEvent(this.today) : undefined);
+    if (this.tutorial) {
+      this.tutorial.end();
+      if (this.tutorial.isDone) this.tutorial = null;
+      this.save.tutorialDone = true;
+    }
+    this.persist();
+    this.resultBank = { before: bankBefore, after: career.money };
+    const shown: ShiftResult = { ...result, money: career.money - bankBefore, costs: 0, covered: 0 };
+    this.pendingSummary = { result: shown, level: this.playingLevel, isNewHighscore: false, previousHighscore: 0, mode: this.playingMode, run: summary };
+    this.resultCountdown = this.resultDelayFor(result);
   }
 
   /** The waiting shift is rebuilt after a purchase: same seed, unless the ring changed. */
   private refreshWaitingShift(): void {
-    if (this.world.shift.phase !== 'waiting') return;
+    if (this.world.shift.phase !== 'waiting' || this.special) return;
     this.playingLevel = this.save.career.level;
     this.playingMode = this.save.mode;
     const next = this.shiftConfig(this.world.seed);
@@ -898,6 +1015,11 @@ export class GameSession {
             const summary = this.pendingSummary;
             if (summary && summary.result.outcome !== 'completed' && this.sinceLoss >= GameSession.restartLock) {
               this.sinceFatalCrash = Infinity;
+              // A challenge or trial starts over fresh: that world is new, so it is shown first.
+              if (this.special) {
+                this.prepareShift(false);
+                break;
+              }
               this.prepareShift(true);
               this.startPlaying();
             }
@@ -906,11 +1028,19 @@ export class GameSession {
           }
           case 'ready':
             if (this.pan.travel || Math.abs(this.pan.pan) >= ModePan.swipeThreshold) return;
+            if (this.versusSelected) {
+              this.onVersus?.();
+              return;
+            }
             this.startPlaying();
             this.tapWorld(a.ago, simDelta);
             break;
           case 'result':
             if (this.resultAge >= ResultBanner.inputLock && !this.pan.travel && Math.abs(this.pan.pan) < ModePan.swipeThreshold) {
+              if (this.versusSelected) {
+                this.onVersus?.();
+                return;
+              }
               this.startPlaying();
               this.tapWorld(a.ago, simDelta);
             }
@@ -920,7 +1050,8 @@ export class GameSession {
         }
         break;
       case 'confirm':
-        if (this.screen.k === 'ready' || this.screen.k === 'result') {
+        if ((this.screen.k === 'ready' || this.screen.k === 'result') && this.versusSelected) this.onVersus?.();
+        else if (this.screen.k === 'ready' || this.screen.k === 'result') {
           this.startPlaying();
           this.tapWorld(undefined, simDelta);
         } else if (this.isPage('upgrades') && this.upgradePage.selected) this.perform({ k: 'buy', upgrade: this.upgradePage.selected });
@@ -931,6 +1062,7 @@ export class GameSession {
           this.closeDetail();
           this.tick();
         } else if (this.screen.k === 'settings') this.perform({ k: 'closeSettings' });
+        else if (this.special && (this.screen.k === 'ready' || this.screen.k === 'result')) this.leaveSpecial();
         else if (this.screen.k === 'ready') this.perform({ k: 'openSettings' });
         else if (this.screen.k === 'result' || this.screen.k === 'page') {
           if (this.isPage('shop') && this.shopPage.opening) this.tapShop({ k: 'dismiss' });
@@ -992,12 +1124,12 @@ export class GameSession {
         if (this.isPage('upgrades')) this.upgradePage.wheel(a.dy, this.upgradeScrollRange);
         break;
       case 'swipeMode': {
-        const index = GAME_MODES.indexOf(this.gameMode) + a.step;
+        const index = SWIPE_MODES.indexOf(this.swipeMode) + a.step;
         if (!(this.tutorial?.isOver ?? true) || this.pan.travel || this.world.shift.phase !== 'waiting') return;
-        if (!(this.screen.k === 'ready' || this.isShowingResult) || index < 0 || index >= GAME_MODES.length) return;
-        if (this.reduceMotion) this.perform({ k: 'setGameMode', mode: GAME_MODES[index] });
+        if (!(this.screen.k === 'ready' || this.isShowingResult) || index < 0 || index >= SWIPE_MODES.length) return;
+        if (this.reduceMotion) this.perform({ k: 'setGameMode', mode: SWIPE_MODES[index] });
         else {
-          this.pan.travel = { to: GAME_MODES[index], direction: a.step };
+          this.pan.travel = { to: SWIPE_MODES[index], direction: a.step };
           this.play(['swoosh'], []);
         }
         break;
@@ -1123,7 +1255,7 @@ export class GameSession {
   }
 
   private get takesModeSwipe(): boolean {
-    if (this.world.shift.phase !== 'waiting' || !(this.tutorial?.isOver ?? true)) return false;
+    if (this.world.shift.phase !== 'waiting' || !(this.tutorial?.isOver ?? true) || this.special) return false;
     if (this.isShowingResult) return this.resultAge >= ResultBanner.inputLock;
     return this.screen.k === 'ready';
   }
@@ -1149,7 +1281,11 @@ export class GameSession {
       if (section !== null) {
         if (this.progressPage.section !== section) this.tick();
         this.progressPage.select(section);
+        return true;
       }
+      // A trial: it waits, ready to play, on the Game tab.
+      const trial = this.progressPage.section === 2 ? ProgressPage.trialAt(point, this.lastViewport, this.tabInset) : null;
+      if (trial) this.startTrial(trial);
       return true;
     }
     return null;
@@ -1197,6 +1333,16 @@ export class GameSession {
           this.addPopup({ k: 'busted', n: e.points }, e.point);
           this.sinceTakedown = 0;
           this.rim.signal('wave', 'lightBlue');
+          break;
+        case 'criminalWarning':
+          if (e.boss) {
+            this.addPopup({ k: 'convoy' }, world.layout.stopPose(e.arm).position);
+            this.rim.signal('sweep', 'coin');
+          }
+          break;
+        case 'heistRecovered':
+          this.addPopup({ k: 'heist', n: e.amount }, add(e.point, v(0, 24)));
+          this.rim.signal('wave', 'coin');
           break;
         case 'dispatched':
           this.addPopup({ k: 'dispatch' }, world.layout.stopPose(world.layout.player).position);
@@ -1269,7 +1415,7 @@ export class GameSession {
 
   /** The waiting shift follows the day: today's Daily Shift while open, a normal one after. */
   private keepDailyInStep(): void {
-    if (this.world.shift.phase !== 'waiting' || this.screen.k === 'playing') return;
+    if (this.world.shift.phase !== 'waiting' || this.screen.k === 'playing' || this.special) return;
     this.today = dayNumber();
     if (this.wantsDaily !== this.dailySelected) this.prepareShift(true, null, this.screen);
   }
@@ -1304,6 +1450,14 @@ export class GameSession {
   private finish(result: ShiftResult): void {
     const save = this.save;
     const career = save.career;
+    if (this.special) {
+      this.finishSpecial(this.special, result);
+      return;
+    }
+    // Any finished shift can go to a friend as a challenge (not while learning the game).
+    this.shareable = save.tutorialDone
+      ? challengeOf(career, this.playingMode, this.playingLevel, result.seed, this.world.config.cityEvent, this.playingMode === 'mayhem' ? result.flames : result.score)
+      : null;
     if (this.playingMode === 'mayhem') {
       const previous = save.mayhemBest;
       const isNew = result.flames > previous;
@@ -1366,7 +1520,7 @@ export class GameSession {
       this.pan.reset();
       return;
     }
-    const switched = this.pan.follow(delta, this.lastViewport.x, GAME_MODES.indexOf(this.gameMode), GAME_MODES.length);
+    const switched = this.pan.follow(delta, this.lastViewport.x, SWIPE_MODES.indexOf(this.swipeMode), SWIPE_MODES.length);
     if (switched) {
       this.perform({ k: 'setGameMode', mode: switched });
       this.play([], ['comboUp']);
@@ -1480,7 +1634,7 @@ export class GameSession {
       const arriving = ResultBanner.arriving(this.resultAge);
       if (arriving > 0) this.addReadyBanner(list, null, false, arriving);
     } else if (s.k === 'ready') {
-      this.addReadyBanner(list, this.tutorial && !this.tutorial.isOver ? Tutorial.readyPrompt : S.ready.tapToStart);
+      this.addReadyBanner(list, this.tutorial && !this.tutorial.isOver ? Tutorial.readyPrompt : this.versusSelected ? S.ready.tapForFriends : S.ready.tapToStart);
       this.tutorial?.add(list, world, alpha, this.sceneTime, rm);
     }
     const inset = this.tabInset;
@@ -1516,9 +1670,24 @@ export class GameSession {
     return c.unseen.length > 0 ? 'dot' : null;
   }
 
+  /** How the waiting screen names the challenge or trial being played. */
+  private get runCard(): RunCard | null {
+    const r = this.special;
+    if (!r) return null;
+    if (r.k === 'challenge') return { caption: S.run.challenge, color: 'accent', badge: S.run.fromFriend, line: null, right: [S.run.toBeat, Fmt.number(r.spec.target)] };
+    const done = this.save.career.trialsDone.includes(r.trial.id);
+    return {
+      caption: S.run.trial,
+      color: 'hazard',
+      badge: S.trials.name(r.trial.id),
+      line: S.trials.goal(r.trial),
+      right: done ? [S.trials.passed, '✓'] : [S.run.rewardCaption, moneyText(Fmt.number(r.trial.reward))],
+    };
+  }
+
   private addReadyBanner(list: RenderList, prompt: string | null, drawsCard = true, opacity = 1): void {
     const career = this.save.career;
-    const daily = this.dailySelected
+    const daily = this.dailySelected && !this.versusSelected
       ? { event: this.world.config.cityEvent, streak: career.dailyStreak, next: Careers.nextStreakMilestone(career), splash: this.dailySplash }
       : null;
     ReadyBanner.add(list, {
@@ -1526,9 +1695,12 @@ export class GameSession {
       cars: this.world.carsLeft ?? 0,
       highscore: this.currentBest,
       money: Fmt.number(career.money),
-      conditions: S.ready.conditions(this.world.config.weather, this.world.config.cityEvent, this.world.config.night),
+      // A trial's goal already names its conditions.
+      conditions: this.special?.k === 'trial' || this.versusSelected ? null : S.ready.conditions(this.world.config.weather, this.world.config.cityEvent, this.world.config.night, this.world.config.blackout),
+      run: this.runCard,
       daily,
       mode: this.playingMode,
+      versus: this.versusSelected,
       prompt,
       time: this.sinceReady,
       reduceMotion: this.reduceMotion,
@@ -1546,7 +1718,7 @@ export class GameSession {
     const opacity = Ease.outCubic(age / 0.2) * (1 - Ease.clamp01((age - (GameSession.noticeDuration - 0.5)) / 0.5));
     const rise = this.reduceMotion ? 0 : (1 - Ease.settle(age / 0.4)) * 18;
     // On the Game tab the settings button sits bottom left: the notice keeps above it.
-    const lift = this.screen.k === 'ready' ? 56 : 0;
+    const lift = this.screen.k === 'ready' || this.screen.k === 'result' ? 56 : 0;
     const center = v(vp.x / 2, vp.y - bottomInset - 36 - lift + rise);
     const size = Metrics.noticeSize;
     const maxWidth = vp.x - 24;

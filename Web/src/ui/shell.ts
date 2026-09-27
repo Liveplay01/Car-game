@@ -1,6 +1,6 @@
 import './shell.css';
 import { v } from '../core/vec2';
-import { GameSession, type InputAction } from '../present/session';
+import { GameSession, type InputAction, type SessionOutput } from '../present/session';
 import { CanvasDrawer } from '../present/draw';
 import { TAB_BAR, barTab, screenTab, showsTabBar, type Tab } from '../present/flow';
 import { AudioPlayer, Haptics } from '../audio/player';
@@ -8,7 +8,11 @@ import { h, icon } from './dom';
 import { ICONS } from './icons';
 import { settingsSheet, isSheetOpen, closeAnySheet } from './sheets';
 import { exportSave } from '../storage/save';
+import { decodeChallenge, type ChallengeSpec } from '../core/challenge';
+import { S, Fmt } from '../present/strings';
 import { DetailSheet } from './detailSheet';
+import { VersusLobby } from './versusLobby';
+import { Music } from '../present/feedback';
 
 interface InstallPromptEvent extends Event {
   prompt(): Promise<void>;
@@ -39,6 +43,11 @@ export class Shell {
   private keyboardNav = false;
   private readonly settingsBtn: HTMLButtonElement;
   private readonly dispatchBtn: HTMLButtonElement;
+  private readonly shareBtn: HTMLButtonElement;
+  private readonly leaveBtn: HTMLButtonElement;
+  private readonly leaveLabel: HTMLElement;
+  /** A challenge link that arrived mid-shift: it opens once the shift is over. */
+  private pendingChallenge: ChallengeSpec | null = null;
   private readonly probe: HTMLElement;
   private readonly motionQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
   private actions: InputAction[] = [];
@@ -50,6 +59,9 @@ export class Shell {
   private chromeKey = '';
   private closeSettings: (() => void) | null = null;
   private readonly detail: DetailSheet;
+  private readonly versus: VersusLobby;
+  private readonly versusBar: HTMLElement;
+  private readonly againBtn: HTMLButtonElement;
 
   constructor(
     private readonly app: HTMLElement,
@@ -57,10 +69,11 @@ export class Shell {
     private readonly layers: HTMLElement,
   ) {
     this.drawer = new CanvasDrawer(canvas);
-    this.session = new GameSession({
+    const output: SessionOutput = {
       sound: (id, pitch, pan) => this.audio.play(id, pitch, pan),
       haptic: (id, softness) => this.haptics.play(id, softness),
-    });
+    };
+    this.session = new GameSession(output);
     this.session.systemReduceMotion = this.motionQuery.matches;
     this.motionQuery.addEventListener('change', () => (this.session.systemReduceMotion = this.motionQuery.matches));
 
@@ -88,7 +101,29 @@ export class Shell {
       keycap('D'),
     );
     for (const b of [this.settingsBtn, this.dispatchBtn]) b.addEventListener('pointerdown', (e) => e.stopPropagation());
-    app.append(this.settingsBtn, this.dispatchBtn);
+    // Under a result: send this shift to a friend. In a challenge or trial: leave it.
+    this.shareBtn = h('button', { class: 'btn glass run-btn', type: 'button', onclick: () => void this.share() }, icon(ICONS.share), h('span', {}, 'Challenge a friend'));
+    this.leaveLabel = h('span', {}, 'Leave');
+    this.leaveBtn = h('button', { class: 'btn glass run-btn', type: 'button', 'aria-keyshortcuts': 'Escape', onclick: () => this.session.leaveSpecial() }, icon(ICONS.close), this.leaveLabel);
+    // Multiplayer: a friend's code or your own; the match takes over the canvas.
+    this.versus = new VersusLobby(layers, output, {
+      started: () => this.syncChrome(true),
+      ended: (message) => {
+        if (message) this.session.showNotice(message);
+        this.last = performance.now();
+        this.syncChrome(true);
+      },
+    });
+    // The last page of the mode swipe: a tap there opens the lobby.
+    this.session.onVersus = () => {
+      if (!isSheetOpen()) this.versus.open();
+    };
+    const runBar = h('div', { class: 'run-bar' }, this.shareBtn, this.leaveBtn);
+    this.againBtn = h('button', { class: 'btn glass run-btn primary-run', type: 'button', onclick: () => this.versus.start() }, icon(ICONS.restart), h('span', {}, 'Play again'));
+    const quitBtn = h('button', { class: 'btn glass run-btn show', type: 'button', onclick: () => this.versus.leave() }, icon(ICONS.close), h('span', {}, 'Leave'));
+    this.versusBar = h('div', { class: 'versus-bar' }, quitBtn, this.againBtn);
+    for (const b of [this.settingsBtn, this.dispatchBtn, this.shareBtn, this.leaveBtn, this.againBtn, quitBtn]) b.addEventListener('pointerdown', (e) => e.stopPropagation());
+    app.append(this.settingsBtn, this.dispatchBtn, runBar, this.versusBar);
     this.detail = new DetailSheet(
       app,
       (action) => {
@@ -107,6 +142,8 @@ export class Shell {
       e.preventDefault();
       this.installPrompt = e as InstallPromptEvent;
     });
+    this.readChallengeLink();
+    window.addEventListener('hashchange', () => this.readChallengeLink());
     this.syncChrome(true);
     requestAnimationFrame((t) => this.loop(t));
   }
@@ -149,10 +186,13 @@ export class Shell {
     const screen = s.screen;
     const selected = barTab(screenTab(screen));
     const badge = s.badge('shop');
-    const key = `${screen.k}|${selected}|${JSON.stringify(badge)}|${s.world.shift.phase}`;
+    const match = this.versus.match;
+    const key = `${screen.k}|${selected}|${JSON.stringify(badge)}|${s.world.shift.phase}|${s.special?.k ?? ''}|${s.shareable ? 1 : 0}|${match ? 1 : 0}|${this.versus.canRematch ? 1 : 0}`;
     if (!force && key === this.chromeKey) return;
     this.chromeKey = key;
-    this.app.dataset.tabbar = showsTabBar(screen) ? 'shown' : 'hidden';
+    this.app.dataset.versus = match ? 'on' : 'off';
+    this.againBtn.classList.toggle('show', this.versus.canRematch);
+    this.app.dataset.tabbar = showsTabBar(screen) && !match ? 'shown' : 'hidden';
     this.app.dataset.screen = screen.k;
     this.moveTabIndicator(TAB_BAR.indexOf(selected));
     for (const [tab, { button, badge: el }] of this.tabs) {
@@ -164,8 +204,13 @@ export class Shell {
       el.style.minWidth = b === 'dot' ? '10px' : '';
       el.style.height = b === 'dot' ? '10px' : '';
     }
-    this.settingsBtn.classList.toggle('show', screen.k === 'ready');
+    // Settings come back as soon as a shift is over, on the result as on the waiting screen.
+    this.settingsBtn.classList.toggle('show', screen.k === 'ready' || screen.k === 'result');
     this.dispatchBtn.classList.toggle('show', screen.k === 'playing');
+    const onGame = screen.k === 'ready' || screen.k === 'result';
+    this.shareBtn.classList.toggle('show', screen.k === 'result' && s.shareable !== null);
+    this.leaveBtn.classList.toggle('show', onGame && s.special !== null);
+    this.leaveLabel.textContent = s.special?.k === 'trial' ? 'Leave trial' : 'Leave challenge';
     if (screen.k === 'settings' && !isSheetOpen()) this.showSettingsSheet();
     if (screen.k !== 'settings' && this.closeSettings) {
       const close = this.closeSettings;
@@ -183,6 +228,51 @@ export class Shell {
     pill.classList.toggle('instant', this.keyboardNav || !pill.dataset.placed);
     pill.style.transform = `translateX(${index * 100}%)`;
     if (!pill.dataset.placed) requestAnimationFrame(() => (pill.dataset.placed = 'true'));
+  }
+
+  /** The finished shift as a link: the share sheet on a phone, the clipboard elsewhere. */
+  private async share(): Promise<void> {
+    const s = this.session;
+    const url = s.shareLink(location.origin + location.pathname);
+    const spec = s.shareable;
+    if (!url || !spec) return;
+    const text = S.run.shareText(Fmt.number(spec.target));
+    const touch = window.matchMedia('(pointer: coarse)').matches;
+    if (touch && typeof navigator.share === 'function') {
+      try {
+        await navigator.share({ title: 'Car Game', text, url });
+      } catch {
+        /* cancelled */
+      }
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(url);
+      s.showNotice(S.run.copied);
+    } catch {
+      window.prompt('Copy this link', url);
+    }
+  }
+
+  /** `#challenge=…` in the address: a friend's shift to play. Read once, then cleared. */
+  private readChallengeLink(): void {
+    const match = /^#challenge=([A-Za-z0-9_-]+)$/.exec(location.hash);
+    if (!match) return;
+    history.replaceState(null, '', location.pathname + location.search);
+    const spec = decodeChallenge(match[1]);
+    if (!spec) {
+      this.session.showNotice(S.run.brokenLink);
+      return;
+    }
+    this.pendingChallenge = spec;
+    this.openPendingChallenge();
+  }
+
+  private openPendingChallenge(): void {
+    const spec = this.pendingChallenge;
+    if (!spec || this.session.screen.k === 'playing' || this.session.screen.k === 'settings') return;
+    this.pendingChallenge = null;
+    this.session.startChallenge(spec);
   }
 
   private openSettings(): void {
@@ -227,7 +317,13 @@ export class Shell {
       if (e.pointerType === 'mouse' && e.button !== 0) return;
       this.keyboardNav = false;
       this.audio.unlock();
-      if (isSheetOpen() || this.pointerId !== null) return;
+      if (isSheetOpen()) return;
+      if (this.versus.match) {
+        e.preventDefault();
+        this.versus.match.tap();
+        return;
+      }
+      if (this.pointerId !== null) return;
       e.preventDefault();
       this.pointerId = e.pointerId;
       try {
@@ -267,6 +363,17 @@ export class Shell {
       if (e.repeat && key !== 'Tab') return;
       this.audio.unlock();
       this.keyboardNav = true;
+      const match = this.versus.match;
+      if (match) {
+        if (e.code === 'Space' && !onControl) {
+          e.preventDefault();
+          match.tap();
+        } else if (key === 'Enter' && !onControl && this.versus.canRematch) {
+          e.preventDefault();
+          this.versus.start();
+        }
+        return;
+      }
       if (e.code === 'Space') {
         if (onControl) return;
         e.preventDefault();
@@ -328,12 +435,15 @@ export class Shell {
     const actions = this.actions;
     this.actions = [];
     const s = this.session;
-    const list = s.frame(delta, actions, this.size, TAB_HEIGHT);
+    const match = this.versus.match;
+    // A multiplayer match owns the canvas; the career world waits where it was.
+    const list = match ? match.frame(delta, this.size, s.reduceMotion) : s.frame(delta, actions, this.size, TAB_HEIGHT);
     this.drawer.draw(list);
     this.detail.update(s.detail);
     s.sheetInset = this.detail.inset;
-    this.audio.updateMusic(s.musicMix, s.save.settings.sound, Math.min(delta, 0.1));
+    this.audio.updateMusic(match ? Music.silent : s.musicMix, s.save.settings.sound, Math.min(delta, 0.1));
     this.app.classList.toggle('reduce-motion', s.reduceMotion);
+    if (this.pendingChallenge) this.openPendingChallenge();
     this.syncChrome();
     requestAnimationFrame((t) => this.loop(t));
   }

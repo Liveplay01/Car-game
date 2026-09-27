@@ -12,6 +12,7 @@ import {
   forNight,
   drawNight,
   forCityEvent,
+  forMayhem,
   drawWeather,
   drawCityEvent,
   forCashBoost,
@@ -131,6 +132,10 @@ export interface Career {
   purchases: string[];
   adCashCount: number;
   adCashDay: number;
+  /** Mastery trials passed (core/trials.ts), each rewarded once. */
+  trialsDone: string[];
+  /** Syndicate bosses taken down: the trophy count in Records. */
+  bossTrophies: number;
 }
 
 /** Everything that is saved (`SaveGame` in GamePresentation). */
@@ -177,6 +182,8 @@ export const newCareer = (): Career => ({
   purchases: [],
   adCashCount: 0,
   adCashDay: -1,
+  trialsDone: [],
+  bossTrophies: 0,
 });
 
 export const newSave = (): SaveGame => ({
@@ -482,6 +489,21 @@ export const Careers = {
   record(c: Career, r: ShiftResult, level: number): void {
     c.money = Math.max(0, c.money + r.money);
     if (r.outcome === 'completed') c.level = Math.max(1, level) + 1;
+    if (r.bossBusted) c.bossTrophies++;
+  },
+
+  /**
+   * The config of a shift in `mode`: Unlimited and Mayhem play at their own fixed level, a
+   * Shift at the career's. `event` pins the city event (the Daily Shift's, or a challenge's).
+   */
+  shiftConfig(c: Career, mode: GameMode, base: Config, seed: number, event: CityEvent | null | undefined = undefined): Config {
+    if (mode === 'unlimited') {
+      const cfg = Careers.config({ ...c, level: base.endlessLevel }, base, seed, null, event);
+      cfg.endless = true;
+      return cfg;
+    }
+    if (mode === 'mayhem') return forMayhem(Careers.config({ ...c, level: base.mayhemLevel }, base, seed, null, event));
+    return Careers.config(c, base, seed, null, event);
   },
 
   recordMastery(c: Career, r: ShiftResult): MasteryCompletion[] {

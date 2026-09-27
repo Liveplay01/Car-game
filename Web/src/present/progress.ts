@@ -1,6 +1,7 @@
 import { type SaveGame, type Career, Careers, MASTERY_GOALS, MASTERY_THRESHOLDS, masteryValue } from '../core/career';
 import { COSMETICS } from '../core/loot';
 import { challengesOf, challengeReward } from '../core/daily';
+import { TRIALS, type TrialId } from '../core/trials';
 import { type Vec2, v, add } from '../core/vec2';
 import { type RenderList, type Rect, RenderList as List, R, rect, circle, line, text, Ease, Metrics, moved, type Align, type Weight } from './render';
 import type { ColorToken } from './theme';
@@ -63,6 +64,7 @@ export const ProgressPage = {
       { label: P.shiftsPlayed, value: count(save.shiftsPlayed) },
       { label: P.shiftsCompleted, value: count(m.shiftsCompleted) },
       { label: P.takedowns, value: count(m.takedowns) },
+      { label: P.bosses, value: count(c.bossTrophies) },
       { label: P.transporters, value: count(m.transporters) },
       { label: P.perfects, value: count(m.perfects) },
       { label: P.chestsOpened, value: count(c.chestsOpened) },
@@ -74,9 +76,9 @@ export const ProgressPage = {
     const width = Math.min(viewport.x - 2 * ProgressPage.gap, 460);
     const left = (viewport.x - width) / 2;
     const top = Metrics.sceneInsets.top + 22;
-    const sw = width / 3;
+    const sw = width / 4;
     return {
-      segments: ([0, 1, 2] as ProgressSection[]).map((s, i): [ProgressSection, Rect] => [s, R.make(left + i * sw, top, left + (i + 1) * sw, top + ShopPage.segmentHeight)]),
+      segments: ([0, 1, 2, 3] as ProgressSection[]).map((s, i): [ProgressSection, Rect] => [s, R.make(left + i * sw, top, left + (i + 1) * sw, top + ShopPage.segmentHeight)]),
       content: R.make(left, top + ShopPage.segmentHeight + ProgressPage.gap, left + width, viewport.y - bottomInset - ProgressPage.gap),
     };
   },
@@ -94,7 +96,7 @@ export const ProgressPage = {
     let thumb: number = chosen;
     const slide = state.sectionSlide;
     if (slide) thumb = slide.from + (chosen - slide.from) * (reduceMotion ? 1 : Ease.settle(slide.age / ShopPage.slideDuration));
-    MenuKit.segmented(list, [0, 1, 2].map((i) => S.progress.section(i)), chosen, thumb, R.make(l.segments[0][1].minX, l.segments[0][1].minY, l.segments[2][1].maxX, l.segments[2][1].maxY));
+    MenuKit.segmented(list, [0, 1, 2, 3].map((i) => S.progress.section(i)), chosen, thumb, R.make(l.segments[0][1].minX, l.segments[0][1].minY, l.segments[3][1].maxX, l.segments[3][1].maxY));
 
     const start = list.items.length;
     ProgressPage.addSection(list, state.section, l, save, today, state.age, reduceMotion);
@@ -115,6 +117,7 @@ export const ProgressPage = {
   addSection(list: RenderList, section: ProgressSection, l: Layout, save: SaveGame, today: number, age: number, reduceMotion: boolean): void {
     if (section === 0) ProgressPage.addRecords(list, l, save, age, reduceMotion);
     else if (section === 1) ProgressPage.addQuests(list, l, save.career, today, age, reduceMotion);
+    else if (section === 2) ProgressPage.addTrials(list, l, save.career, age, reduceMotion);
     else ProgressPage.addAchievements(list, l, save.career, age, reduceMotion);
   },
 
@@ -176,6 +179,37 @@ export const ProgressPage = {
     t(list, S.daily.streakLine(career.dailyStreak), v(streak.minX + 16, sc.y - 9), 13, 'primary', sO, { weight: 'bold' });
     const next = Careers.nextStreakMilestone(career);
     t(list, next ? S.daily.nextMilestone(next.left, next.item) : S.progress.questsHint, v(streak.minX + 16, sc.y + 11), 11, 'muted', sO);
+  },
+
+  trialRows: (l: Layout): Rect[] => ShopPage.grid(TRIALS.length, 1, l.content, 64),
+
+  /** The trial under a tap on the Trials section: it starts on the Game tab. */
+  trialAt(point: Vec2, viewport: Vec2, bottomInset: number): TrialId | null {
+    const rows = ProgressPage.trialRows(ProgressPage.layout(viewport, bottomInset));
+    const index = rows.findIndex((r) => R.contains(r, point));
+    return index < 0 ? null : TRIALS[index].id;
+  },
+
+  /** Mastery trials: fixed shifts with a goal. Tap one to play it; each pays once. */
+  addTrials(list: RenderList, l: Layout, career: Career, age: number, reduceMotion: boolean): void {
+    const rows = ProgressPage.trialRows(l);
+    TRIALS.forEach((trial, i) => {
+      const [r, o] = ProgressPage.entering(rows[i], age, i, reduceMotion);
+      ProgressPage.panel(list, r, o);
+      const c = R.center(r);
+      const done = career.trialsDone.includes(trial.id);
+      const box = v(r.minX + 24, c.y);
+      list.s(circle(box, 9), done ? 'accent' : 'controlFill', o);
+      if (done) {
+        list.s(line(add(box, v(-4, 0)), add(box, v(-1, 3.5)), 2), 'accentInk', o);
+        list.s(line(add(box, v(-1, 3.5)), add(box, v(4.5, -3.5)), 2), 'accentInk', o);
+      }
+      t(list, S.trials.name(trial.id), v(r.minX + 44, c.y - 9), 14, 'primary', o, { weight: 'bold' });
+      t(list, `${S.trials.level(trial.level)} · ${S.trials.goal(trial)}`, v(r.minX + 44, c.y + 11), 11, 'muted', o);
+      if (done) t(list, S.trials.passed, v(r.maxX - 16, c.y - 9), 12, 'accent', o, { weight: 'bold', align: 'trailing' });
+      else moneyTag(list, Fmt.number(trial.reward), v(r.maxX - 16, c.y - 9), 13, 'trailing', 'primary', 'accent', o);
+      t(list, `${S.trials.play} ›`, v(r.maxX - 16, c.y + 11), 11, done ? 'muted' : 'accent', o, { weight: 'bold', align: 'trailing' });
+    });
   },
 
   addAchievements(list: RenderList, l: Layout, career: Career, age: number, reduceMotion: boolean): void {

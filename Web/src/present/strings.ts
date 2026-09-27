@@ -1,12 +1,14 @@
 import type { Config, Weather, CityEvent } from '../core/config';
 import type { Upgrade } from '../core/levels';
-import type { GameMode, MasteryGoal, MasteryCompletion } from '../core/career';
+import type { MasteryGoal, MasteryCompletion } from '../core/career';
 import { MASTERY_THRESHOLDS } from '../core/career';
+import type { SwipeMode } from './flow';
 import type { Rarity, ChestKind, Cosmetic, ChestOpening, Album } from '../core/loot';
 import type { Challenge } from '../core/daily';
 import type { StoreProduct } from '../core/store';
 import { productGrant } from '../core/store';
-import type { VehicleType } from '../core/vehicle';
+import type { VehicleType, VehicleRole } from '../core/vehicle';
+import type { Trial, TrialId } from '../core/trials';
 import { MONEY_MARK } from './icons';
 
 /** Every text the game shows (`Strings.swift`). English only. */
@@ -54,11 +56,78 @@ export const S = {
     imported: (level: number): string => `Progress imported · Level ${level}`,
   },
 
+  /** Challenge links and mastery trials: shifts that are played for themselves. */
+  run: {
+    challenge: 'CHALLENGE',
+    trial: 'TRIAL',
+    fromFriend: 'A friend’s shift · same traffic for everyone',
+    beat: (target: string, mayhem: boolean): string => (mayhem ? `Beat ${target} flames` : `Beat ${target}`),
+    toBeat: 'TO BEAT',
+    beaten: 'CHALLENGE BEATEN',
+    missed: 'NOT QUITE',
+    ahead: (n: string): string => `${n} ahead · send it back`,
+    short: (n: string): string => `${n} short`,
+    again: 'Tap to try again',
+    passed: 'TRIAL PASSED',
+    failed: 'TRIAL FAILED',
+    passedBefore: 'Passed before · no second reward',
+    rewardCaption: 'REWARD',
+    brokenLink: 'That challenge link is broken or cut short.',
+    copied: 'Challenge link copied',
+    shareText: (target: string): string => `Can you beat ${target} on my roundabout?`,
+  },
+
+  trials: {
+    name(id: TrialId): string {
+      return {
+        tightSqueeze: 'Tight Squeeze',
+        deadCentre: 'Dead Centre',
+        cleanSheet: 'Clean Sheet',
+        blackout: 'Blackout',
+        stormWatch: 'Storm Watch',
+        marathon: 'Marathon',
+        mostWanted: 'Most Wanted',
+      }[id];
+    },
+    goal(t: Trial): string {
+      switch (t.id) {
+        case 'tightSqueeze':
+          return `${t.cars} cars, every merge a Tight Fit or better`;
+        case 'deadCentre':
+          return `${t.goal.k === 'perfects' ? t.goal.n : 0} Perfect merges in ${t.cars} cars`;
+        case 'cleanSheet':
+          return `${t.cars} cars, no crash and no cut-off`;
+        case 'blackout':
+          return `${t.cars} cars at night, the street lamps out`;
+        case 'stormWatch':
+          return `${t.cars} cars through a storm at night`;
+        case 'marathon':
+          return `${t.cars} cars in one shift`;
+        case 'mostWanted':
+          return 'Take down the syndicate boss';
+      }
+    },
+    level: (l: number): string => `Level ${l}`,
+    passed: 'PASSED',
+    play: 'Play',
+  },
+
+  boss: {
+    incoming: 'SYNDICATE CONVOY',
+    heist: (amount: string): string => `HEIST RECOVERED ${amount}`,
+    escaped: 'BOSS ESCAPED',
+    wanted: (seconds: number): string => `BOSS ${Math.ceil(Math.max(0, seconds))}`,
+    busted: (amount: string): string => `Boss busted · ${amount} recovered`,
+    label: (role: VehicleRole): string | null => (role === 'boss' ? 'BOSS' : role === 'escort' ? 'ESCORT' : null),
+  },
+
   modes: {
-    name: (m: GameMode): string => (m === 'shift' ? 'SHIFT' : m === 'unlimited' ? 'UNLIMITED' : 'MAYHEM'),
-    line: (m: GameMode): string => (m === 'shift' ? 'Clear the level, move up' : m === 'unlimited' ? 'Endless · until you crash' : '12 cars · aim for the tankers'),
+    name: (m: SwipeMode): string => (m === 'shift' ? 'SHIFT' : m === 'unlimited' ? 'UNLIMITED' : m === 'mayhem' ? 'MAYHEM' : 'MULTIPLAYER'),
+    line: (m: SwipeMode): string =>
+      m === 'shift' ? 'Clear the level, move up' : m === 'unlimited' ? 'Endless · until you crash' : m === 'mayhem' ? '12 cars · aim for the tankers' : 'Up to 4 friends · last one standing',
     unlimitedCaption: 'UNLIMITED',
     endless: '∞',
+    versusPlayers: '2–4',
     runOver: 'RUN OVER',
     again: 'Tap for another run',
     carsSent: (n: number): string => (n === 1 ? '1 car' : `${n} cars`),
@@ -77,9 +146,10 @@ export const S = {
 
   ready: {
     tapToStart: 'Tap to start',
+    tapForFriends: 'Tap to play with friends',
     levelCaption: (level: number): string => `LEVEL ${level}`,
-    conditions(weather: Weather, event: CityEvent | null, night = false): string | null {
-      const parts = [night ? S.night : null, weather === 'clear' ? null : S.weather(weather), event ? S.cityEvent(event) : null].filter((x): x is string => !!x);
+    conditions(weather: Weather, event: CityEvent | null, night = false, blackout = false): string | null {
+      const parts = [blackout ? S.blackout : night ? S.night : null, weather === 'clear' ? null : S.weather(weather), event ? S.cityEvent(event) : null].filter((x): x is string => !!x);
       return parts.length ? parts.join(' · ') : null;
     },
   },
@@ -92,7 +162,8 @@ export const S = {
   },
 
   progress: {
-    section: (i: number): string => ['Records', 'Quests', 'Achievements'][i],
+    section: (i: number): string => ['Records', 'Quests', 'Trials', 'Mastery'][i],
+    bosses: 'Syndicate bosses',
     highscore: 'Highscore',
     level: 'Level reached',
     bestCombo: 'Best combo',
@@ -426,6 +497,7 @@ export const S = {
   },
 
   night: 'Night',
+  blackout: 'Blackout',
   weather: (w: Weather): string => ({ clear: 'Clear', lightRain: 'Light Rain', heavyRain: 'Heavy Rain', storm: 'Storm', extreme: 'Extreme Weather' })[w],
   cityEvent: (e: CityEvent): string =>
     ({ roadworks: 'Roadworks', roadClosure: 'Road Closure', concert: 'Concert Traffic', vipConvoy: 'VIP Convoy', policeOperation: 'Police Operation' })[e],

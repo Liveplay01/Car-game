@@ -2,6 +2,7 @@ import type { World } from '../core/world';
 import type { Arm } from '../core/roundabout';
 import type { ShiftResult } from '../core/events';
 import type { GameMode } from '../core/career';
+import type { SwipeMode } from './flow';
 import type { CityEvent } from '../core/config';
 import { Scoring } from '../core/scoring';
 import { secureZone } from '../core/specials';
@@ -113,7 +114,9 @@ export type PopupKind =
   | { k: 'covered' }
   | { k: 'modulePulse'; color: ColorToken }
   | { k: 'flames'; n: number; chain: number }
-  | { k: 'boom' };
+  | { k: 'boom' }
+  | { k: 'convoy' }
+  | { k: 'heist'; n: number };
 
 export interface Popup {
   serial: number;
@@ -272,7 +275,9 @@ export const HUD = {
     if (world.score.combo > 0) list.s(text(S.hud.combo(world.score.combo), add(center, v(0, 34)), Metrics.comboLabelSize, 'center', 'bold'), 'muted');
     if (world.shift.isRushHour) list.s(text(S.hud.rushFactor(c.rushHourScoreFactor), add(center, v(0, -38)), Metrics.comboLabelSize, 'center', 'bold'), 'accent');
     if (world.criminal.kind === 'active') {
-      list.s(text(S.hud.wanted(world.criminal.deadline - world.time), add(center, v(0, -64)), 17, 'center', 'bold'), 'vehicleCriminal');
+      const left = world.criminal.deadline - world.time;
+      const boss = world.vehicle(world.criminal.vehicle)?.role === 'boss';
+      list.s(text(boss ? S.boss.wanted(left) : S.hud.wanted(left), add(center, v(0, -64)), 17, 'center', 'bold'), boss ? 'coin' : 'vehicleCriminal');
     }
   },
 
@@ -301,7 +306,9 @@ export const HUD = {
       const pickup = world.vehicle(cr.vehicle);
       if (!pickup || pickup.isCrashed) return;
       const pos = interpolatedPose(pickup, alpha).position;
-      HUD.countdownRing(list, pos, 20, Math.max(0, cr.deadline - world.time) / world.config.criminalTime, 'vehicleCriminal', String(Math.ceil(cr.deadline - world.time)));
+      const boss = pickup.role === 'boss';
+      const time = world.config.criminalTime * (boss ? world.config.convoyTimeFactor : 1);
+      HUD.countdownRing(list, pos, boss ? 24 : 20, Math.max(0, cr.deadline - world.time) / time, boss ? 'coin' : 'vehicleCriminal', String(Math.ceil(cr.deadline - world.time)));
     }
   },
 
@@ -465,6 +472,15 @@ export const HUD = {
           color = 'fireCore';
           size = Metrics.popupSize * 1.6;
           break;
+        case 'convoy':
+          label = S.boss.incoming;
+          color = 'coin';
+          size = Metrics.popupSize * 0.8;
+          break;
+        case 'heist':
+          label = S.boss.heist(moneyText(Fmt.number(k.n)));
+          color = 'coin';
+          break;
       }
       let at = add(toScreen(cam, p.position), v(0, -30));
       const height = size + 4;
@@ -584,8 +600,8 @@ export class RingSignals {
 
 export const ModeBanner = {
   duration: 1.8,
-  tint: (m: GameMode): ColorToken => (m === 'shift' ? 'primary' : m === 'unlimited' ? 'accent' : 'fireOuter'),
-  add(list: RenderList, mode: GameMode, age: number, top: number, reduceMotion: boolean): void {
+  tint: (m: SwipeMode): ColorToken => (m === 'shift' || m === 'multiplayer' ? 'primary' : m === 'unlimited' ? 'accent' : 'fireOuter'),
+  add(list: RenderList, mode: SwipeMode, age: number, top: number, reduceMotion: boolean): void {
     if (age >= ModeBanner.duration) return;
     const width = list.camera.viewport.x;
     const leave = Ease.clamp01((age - (ModeBanner.duration - 0.35)) / 0.35);
@@ -620,14 +636,18 @@ export const ReadyBanner = {
       conditions: string | null;
       daily: DailyCard | null;
       mode: GameMode;
+      /** The multiplayer page of the swipe: no level, no daily, a code instead. */
+      versus?: boolean;
       prompt: string | null;
       time: number;
       reduceMotion: boolean;
       drawsCard?: boolean;
       opacity?: number;
+      run?: RunCard | null;
     },
   ): void {
     const width = list.camera.viewport.x;
+    const run = o.run ?? null;
     const opacity = o.opacity ?? 1;
     const frame = TopBar.frame(width);
     const cols = TopBar.columns(frame);
@@ -637,14 +657,26 @@ export const ReadyBanner = {
     }
     list.tag = 'topbarLabels';
     TopBar.addMoneyColumn(list, cols.left, 'leading', o.money, { opacity });
-    const [caption, captionColor]: [string, ColorToken] =
-      o.mode === 'shift' ? (o.daily === null ? [S.ready.levelCaption(o.level), 'muted'] : [S.daily.title, 'hazard']) : o.mode === 'unlimited' ? [S.modes.unlimitedCaption, 'accent'] : [S.mayhem.caption, 'fireOuter'];
-    TopBar.addColumn(list, cols.center, 'center', caption, o.mode === 'unlimited' ? S.modes.endless : S.hud.cars(o.cars), { captionColor, valueSize: Metrics.timerSize, opacity });
-    TopBar.addColumn(list, cols.right, 'trailing', S.hud.bestLabel, o.highscore ?? '–', { valueColor: o.highscore === null ? 'muted' : 'primary', opacity });
+    const [caption, captionColor]: [string, ColorToken] = o.versus
+      ? [S.modes.name('multiplayer'), 'primary']
+      : run
+      ? [run.caption, run.color]
+      : o.mode === 'shift'
+        ? o.daily === null
+          ? [S.ready.levelCaption(o.level), 'muted']
+          : [S.daily.title, 'hazard']
+        : o.mode === 'unlimited'
+          ? [S.modes.unlimitedCaption, 'accent']
+          : [S.mayhem.caption, 'fireOuter'];
+    const value = o.versus ? S.modes.versusPlayers : o.mode === 'unlimited' ? S.modes.endless : S.hud.cars(o.cars);
+    TopBar.addColumn(list, cols.center, 'center', caption, value, { captionColor, valueSize: Metrics.timerSize, opacity });
+    if (run) TopBar.addColumn(list, cols.right, 'trailing', run.right[0], run.right[1], { opacity });
+    else TopBar.addColumn(list, cols.right, 'trailing', S.hud.bestLabel, o.highscore ?? '–', { valueColor: o.highscore === null ? 'muted' : 'primary', opacity });
     list.tag = undefined;
-    if (o.daily) {
+    const pillText = run ? run.badge : o.daily ? S.daily.streakLine(o.daily.streak) : null;
+    if (pillText) {
       const under = v(width / 2, frame.maxY + 18);
-      const lineText = S.daily.streakLine(o.daily.streak);
+      const lineText = pillText;
       MenuKit.chromePill(list, under, v(textWidth(lineText, 12) + 28, 26), opacity);
       list.s(text(lineText, under, 12, 'center'), 'primary', opacity);
     }
@@ -653,7 +685,8 @@ export const ReadyBanner = {
       const breath = o.reduceMotion ? 1 : 0.7 + 0.3 * (0.5 + 0.5 * Math.cos(o.time * 2.4));
       list.s(text(o.prompt, island, 17, 'center', 'bold'), 'primary', breath * opacity);
     }
-    if (o.conditions) list.s(text(o.conditions, sub(island, v(0, 28)), 14, 'center', 'bold'), 'hazard', opacity);
+    const line = run ? [run.line, o.conditions].filter((x): x is string => !!x).join(' · ') : o.conditions;
+    if (line) list.s(text(line, sub(island, v(0, 28)), 14, 'center', 'bold'), run ? run.color : 'hazard', opacity);
     if (o.daily && o.daily.splash !== null) ReadyBanner.addSplash(list, o.daily, o.daily.splash, o.reduceMotion);
   },
 
@@ -682,6 +715,20 @@ export interface ShiftSummary {
   isNewHighscore: boolean;
   previousHighscore: number;
   mode: GameMode;
+  /** A challenge or trial: its own verdict replaces the title, the right column and the line. */
+  run?: { caption: string; color: ColorToken; line: string; lineColor: ColorToken; right: [string, string] };
+}
+
+/** How the waiting screen names a challenge or trial. */
+export interface RunCard {
+  caption: string;
+  color: ColorToken;
+  /** The pill under the top card: whose shift, or the trial's name. */
+  badge: string;
+  /** Above the prompt: the trial's goal (a challenge shows only its conditions there). */
+  line: string | null;
+  /** The right column: the score to beat, or the trial's reward. */
+  right: [string, string];
 }
 
 /** The end of a shift without leaving the world: the same card says how it went. */
@@ -714,6 +761,10 @@ export const ResultBanner = {
           : [S.result.escaped, 'vehicleCriminal'];
     if (summary.mode === 'unlimited' && r.outcome === 'struckOut') title = S.modes.runOver;
     if (summary.mode === 'mayhem') [title, titleColor] = [S.mayhem.over, 'fireOuter'];
+    // On a boss level the criminal that got away was the syndicate's head.
+    if (r.outcome === 'escaped' && r.convoy && !r.bossBusted) title = S.boss.escaped;
+    const run = summary.run;
+    if (run) [title, titleColor] = [run.caption, run.color];
 
     list.tag = 'topbarLabels';
     if (shown > 0.001) {
@@ -723,13 +774,16 @@ export const ResultBanner = {
       const size = reduceMotion || landed < 0 || bank.after === bank.before ? 20 : 20 * land(landed, 0.15);
       TopBar.addMoneyColumn(list, cols.left, 'leading', Fmt.number(counted), { valueSize: size, opacity: shown });
       const pop = reduceMotion ? 1 : land(age / 0.4, 0.12);
-      if (summary.mode === 'mayhem') {
+      if (summary.mode === 'mayhem' && !run) {
         list.s(text(title, v(R.center(cols.center).x, cols.center.minY + TopBar.captionRow), 10, 'center', 'bold'), titleColor, shown);
         flameTag(list, Fmt.number(r.flames), v(R.center(cols.center).x, cols.center.minY + TopBar.valueRow), Metrics.timerSize * pop, 'center', 'primary', shown);
       } else {
         TopBar.addColumn(list, cols.center, 'center', title, Fmt.number(r.score), { captionColor: titleColor, valueSize: Metrics.timerSize * pop, opacity: shown });
       }
-      if (summary.isNewHighscore) {
+      if (run) {
+        const [caption, value] = run.right;
+        TopBar.addColumn(list, cols.right, 'trailing', caption, value, { valueSize: 16, opacity: shown });
+      } else if (summary.isNewHighscore) {
         TopBar.addColumn(list, cols.right, 'trailing', S.result.newBest, Fmt.number(summary.mode === 'mayhem' ? r.flames : r.score), { captionColor: 'accent', valueColor: 'accent', opacity: shown });
       } else {
         TopBar.addColumn(list, cols.right, 'trailing', S.hud.bestLabel, summary.previousHighscore > 0 ? Fmt.number(summary.previousHighscore) : '–', {
@@ -748,12 +802,20 @@ export const ResultBanner = {
     }
     const prompt = Ease.outCubic((age - ResultBanner.inputLock) / ResultBanner.enter);
     if (prompt <= 0) return;
-    const next =
-      summary.mode === 'unlimited' ? S.modes.again : summary.mode === 'mayhem' ? S.mayhem.again : r.outcome === 'completed' ? S.result.nextLevel(nextLevel) : S.result.retryLevel(nextLevel);
+    const next = run
+      ? S.run.again
+      : summary.mode === 'unlimited'
+        ? S.modes.again
+        : summary.mode === 'mayhem'
+          ? S.mayhem.again
+          : r.outcome === 'completed'
+            ? S.result.nextLevel(nextLevel)
+            : S.result.retryLevel(nextLevel);
     list.s(text(next, island, 17, 'center', 'bold'), 'primary', prompt);
     const details = prompt * (1 - ResultBanner.leaving(age));
     if (details <= 0.001) return;
-    if (r.costs > 0) list.s(text(S.result.loss(Fmt.number(r.costs), r.outcome === 'escaped'), sub(island, v(0, 28)), 14, 'center', 'bold'), 'destructive', details);
+    if (run) list.s(text(run.line, sub(island, v(0, 28)), 14, 'center', 'bold'), run.lineColor, details);
+    else if (r.costs > 0) list.s(text(S.result.loss(Fmt.number(r.costs), r.outcome === 'escaped'), sub(island, v(0, 28)), 14, 'center', 'bold'), 'destructive', details);
     else if (r.covered > 0) list.s(text(S.result.covered(Fmt.number(r.covered)), sub(island, v(0, 28)), 14, 'center', 'bold'), 'muted', details);
     else if (summary.mode === 'unlimited') list.s(text(S.modes.carsSent(r.carsSent), sub(island, v(0, 28)), 14, 'center', 'bold'), 'accent', details);
     else if (summary.mode === 'mayhem') list.s(text(S.mayhem.summary(r.wrecks, r.biggestChain), sub(island, v(0, 28)), 14, 'center', 'bold'), 'fireOuter', details);

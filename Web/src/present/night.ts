@@ -15,6 +15,8 @@ import { interpolatedPose, type VehicleLamps } from './scene';
 export const NightLayer = {
   /** How dark the city gets; bodies stay faintly visible, so shapes still read up close. */
   darkness: 0.66,
+  /** A blackout: no street lamps, and darker still; the lights of the cars are all there is. */
+  blackoutDarkness: 0.76,
   /** Headlight cone: length ahead of the bumper and width at its far end, in car widths. */
   coneReach: 2,
   coneSpread: 1.15,
@@ -28,8 +30,9 @@ export const NightLayer = {
 
   add(list: RenderList, world: World, alpha: number, lamps: VehicleLamps | null, time: number | null): void {
     const vp = list.camera.viewport;
-    list.s(rect(mul(vp, 0.5), vp), 'night', NightLayer.darkness);
-    NightLayer.addStreetLamps(list, world);
+    const blackout = world.config.blackout;
+    list.s(rect(mul(vp, 0.5), vp), 'night', blackout ? NightLayer.blackoutDarkness : NightLayer.darkness);
+    if (!blackout) NightLayer.addStreetLamps(list, world);
     const c = world.config;
     const W = c.carWidth;
     const chase = criminalVehicle(world) !== null;

@@ -1,4 +1,8 @@
-import type { GameMode } from '../core/career';
+import { type GameMode, GAME_MODES } from '../core/career';
+
+/** The pages of the Game tab's mode swipe: the three career modes, then multiplayer. */
+export type SwipeMode = GameMode | 'multiplayer';
+export const SWIPE_MODES: SwipeMode[] = [...GAME_MODES, 'multiplayer'];
 import type { ChestKind } from '../core/loot';
 import type { StoreProduct } from '../core/store';
 import type { Upgrade } from '../core/levels';
@@ -31,7 +35,7 @@ export const screenTab = (s: Screen): Tab => (s.k === 'page' ? s.tab : 'game');
 export const showsTabBar = (s: Screen): boolean => s.k !== 'settings' && s.k !== 'playing';
 
 export type ShopSection = 0 | 1 | 2; // chests · collection · store
-export type ProgressSection = 0 | 1 | 2; // records · quests · achievements
+export type ProgressSection = 0 | 1 | 2 | 3; // records · quests · trials · achievements
 
 export type Part = 'arm' | RoadModule;
 export const PARTS: Part[] = ['arm', 'tollBooth', 'speedCamera', 'towDepot'];
@@ -49,7 +53,7 @@ export type ScreenAction =
   | { k: 'toggleHaptics' }
   | { k: 'toggleVehicleLabels' }
   | { k: 'cycleReduceMotion' }
-  | { k: 'setGameMode'; mode: GameMode }
+  | { k: 'setGameMode'; mode: SwipeMode }
   | { k: 'showTab'; tab: Tab }
   | { k: 'showShop'; section: ShopSection }
   | { k: 'showProgress'; section: ProgressSection }

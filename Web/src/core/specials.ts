@@ -10,10 +10,23 @@ import { joinsMilitaryZone } from './explosions';
 
 export type CriminalPhase =
   | { kind: 'idle'; next: number }
-  | { kind: 'warning'; arm: Arm; until: number }
+  | { kind: 'warning'; arm: Arm; until: number; boss: boolean }
   | { kind: 'arriving'; vehicle: number }
   | { kind: 'active'; vehicle: number; deadline: number }
   | { kind: 'leaving'; vehicle: number };
+
+/**
+ * On a boss level the first criminal of the shift is the syndicate's head, until it is taken
+ * down: a boss with armoured escorts that join the ring right behind it. A police car has to be
+ * timed into the gap between the boss and its escorts; hitting an escort is a plain crash.
+ */
+export const bossDue = (w: World): boolean => w.config.convoy && !w.score.bossBusted;
+
+/** The boss on the road right now, if there is one. */
+export function bossVehicle(w: World): number | null {
+  const id = criminalVehicle(w);
+  return id !== null && w.vehicle(id)?.role === 'boss' ? id : null;
+}
 
 export const reservedCriminalArm = (w: World): Arm | null => (w.criminal.kind === 'warning' ? w.criminal.arm : null);
 
@@ -28,7 +41,7 @@ export function criminalTimeLeft(w: World, time = w.time): number | null {
   return w.criminal.kind === 'active' ? Math.max(0, w.criminal.deadline - time) : null;
 }
 
-function spawnSpecial(w: World, arm: Arm, type: 'pickup' | 'transporter'): Vehicle {
+function spawnSpecial(w: World, arm: Arm, type: 'pickup' | 'transporter' | 'van'): Vehicle {
   const waiting: Waiting = { kind: 'waiting', arm, reaction: 0, approach: w.config.aiApproachDistance };
   const veh = new Vehicle(w.makeId(), type, 'ai', waiting, w.approachPose(waiting));
   w.vehicles.push(veh);
@@ -60,13 +73,18 @@ export function updateCriminals(w: World, now: number): void {
       const candidates = w.openAIArms.filter((arm) => isFreeForWarning(w, arm));
       if (candidates.length === 0) return;
       const arm = w.criminalRng.pick(candidates);
-      w.criminal = { kind: 'warning', arm, until: now + c.criminalWarning };
-      w.events.push({ type: 'criminalWarning', arm, time: now });
+      const boss = bossDue(w);
+      w.criminal = { kind: 'warning', arm, until: now + (boss ? c.convoyWarning : c.criminalWarning), boss };
+      w.events.push({ type: 'criminalWarning', arm, time: now, boss });
       return;
     }
     case 'warning': {
       if (now < cr.until || armOccupied(w, cr.arm)) return;
       const pickup = spawnSpecial(w, cr.arm, 'pickup');
+      if (cr.boss) {
+        pickup.role = 'boss';
+        w.escortsDue = { arm: cr.arm, left: c.convoyEscorts };
+      }
       w.criminal = { kind: 'arriving', vehicle: pickup.id };
       return;
     }
@@ -77,9 +95,10 @@ export function updateCriminals(w: World, now: number): void {
         return;
       }
       if (pickup.phase.kind === 'merging') {
-        const deadline = now + c.criminalTime;
+        const boss = pickup.role === 'boss';
+        const deadline = now + c.criminalTime * (boss ? c.convoyTimeFactor : 1);
         w.criminal = { kind: 'active', vehicle: cr.vehicle, deadline };
-        w.events.push({ type: 'criminalEntered', vehicle: cr.vehicle, deadline });
+        w.events.push({ type: 'criminalEntered', vehicle: cr.vehicle, deadline, boss });
       }
       return;
     }
@@ -102,6 +121,34 @@ export function criminalCaught(w: World, criminalId: number, policeId: number, p
   const c = w.config;
   w.criminal = { kind: 'idle', next: now + w.criminalRng.range(c.criminalInterval.lo, c.criminalInterval.hi) };
   w.events.push({ type: 'takedown', criminal: criminalId, police: policeId, point, time: now, points, timeLeft });
+  if (w.vehicle(criminalId)?.role === 'boss' && w.isScoring) {
+    const amount = c.heistRecoveryBase + c.heistRecoveryPerLevel * c.level;
+    w.score.money += amount;
+    w.score.bossBusted = true;
+    w.escortsDue = null;
+    w.events.push({ type: 'heistRecovered', vehicle: criminalId, point, time: now, amount });
+  }
+}
+
+/** The escorts join from the boss's arm, one after the other, right behind it. */
+export function updateEscorts(w: World): void {
+  const due = w.escortsDue;
+  if (!due || due.left <= 0) {
+    w.escortsDue = null;
+    return;
+  }
+  if (!w.shift.acceptsTaps) {
+    w.escortsDue = null;
+    return;
+  }
+  if (armOccupied(w, due.arm)) return;
+  const escort = spawnSpecial(w, due.arm, 'van');
+  escort.role = 'escort';
+  const waiting = escort.phase as Waiting;
+  // They follow the boss closely: no dawdling at the line.
+  escort.phase = { ...waiting, approach: 0 };
+  escort.place(w.approachPose(escort.phase as Waiting));
+  due.left--;
 }
 
 export function criminalWrecked(w: World, criminalId: number, point: Vec2, now: number): void {

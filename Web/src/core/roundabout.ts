@@ -101,9 +101,9 @@ export class Layout {
   }
 
   /** Pose of a queued car. Slot 0 is the stop line; fractional slots are cars rolling up. */
-  queuePose(slot: number): Pose {
-    const stop = this.stopPose(this.player);
-    return { position: add(stop.position, mul(armOutward(this.player), this.queueSpacing * slot)), heading: stop.heading };
+  queuePose(slot: number, arm: Arm = this.player): Pose {
+    const stop = this.stopPose(arm);
+    return { position: add(stop.position, mul(armOutward(arm), this.queueSpacing * slot)), heading: stop.heading };
   }
 
   /** Ring distance forward from a to b. */

@@ -1,7 +1,7 @@
 import type { World } from '../core/world';
 import type { Vehicle } from '../core/vehicle';
 import type { Pose } from '../core/paths';
-import type { Layout } from '../core/roundabout';
+import type { Layout, Arm } from '../core/roundabout';
 import { type Config, moduleZone, moduleEntries } from '../core/config';
 import { type Vec2, v, add, sub, mul, dot, dist, left, right, fromAngle, length, normalize, angleDelta, lerpV, TAU } from '../core/vec2';
 import { type RenderList, rect, circle, arc, line, text, Ease, Metrics, toScreen } from './render';
@@ -11,6 +11,7 @@ import { lookFor } from './skins';
 import { S } from './strings';
 import { towDepotCovering } from '../core/modules';
 import { criminalVehicle } from '../core/specials';
+import { isCarType } from '../core/vehicle';
 
 /** Pose between the last two simulation steps. */
 export function interpolatedPose(veh: Vehicle, alpha: number): Pose {
@@ -108,9 +109,13 @@ function cachedYard(slot: number, layout: Layout, c: Config): Pose {
 
 export const towYard = (slot: number, layout: Layout, c: Config): Vec2 => cachedYard(slot, layout, c).position;
 
+const SYNDICATE_BOSS = { paint: 'syndicate', stripe: 'coin', roof: null, finish: null } as const;
+const SYNDICATE_ESCORT = { paint: 'syndicateEscort', stripe: null, roof: 'syndicate', finish: null } as const;
+
 /** Builds the game scene, roads and vehicles, as render items in world space. */
 export const SceneBuilder = {
-  addRoad(list: RenderList, layout: Layout, c: Config): void {
+  /** `own`: the lane marked as yours (multiplayer: your seat's arm). */
+  addRoad(list: RenderList, layout: Layout, c: Config, own: Arm = layout.player): void {
     const lane = layout.laneWidth;
     const reach = 700;
     for (const a of layout.arms) list.w(rect(mul(fromAngle(a.angle), reach / 2), v(reach, lane * 2 + 7), 0, a.angle), 'kerb');
@@ -137,7 +142,7 @@ export const SceneBuilder = {
         list.w(rect(add(mouth.position, mul(across, step)), v(3, 4), 1, mouth.heading), 'marking', 0.7);
       }
     }
-    const stop = layout.stopPose(layout.player);
+    const stop = layout.stopPose(own);
     const forward = fromAngle(stop.heading);
     const front = add(stop.position, mul(forward, c.carLength / 2 + 4));
     const across = mul(right(forward), lane / 2 - 2);
@@ -182,10 +187,11 @@ export const SceneBuilder = {
   addLabels(list: RenderList, world: World, alpha: number): void {
     for (const veh of world.vehicles) {
       if (veh.isCrashed) continue;
-      const label = S.hud.label(veh.type);
+      const label = S.boss.label(veh.role) ?? S.hud.label(veh.type);
       if (!label) continue;
       const pose = interpolatedPose(veh, alpha);
-      const color: ColorToken = veh.type === 'police' ? 'lightBlue' : veh.type === 'pickup' ? 'vehicleCriminal' : 'vehicleCargo';
+      const color: ColorToken =
+        veh.role === 'boss' ? 'coin' : veh.role === 'escort' ? 'muted' : veh.type === 'police' ? 'lightBlue' : veh.type === 'pickup' ? 'vehicleCriminal' : 'vehicleCargo';
       list.s(text(label, add(toScreen(list.camera, pose.position), v(0, -18)), 9, 'center', 'bold'), color, 0.95);
     }
   },
@@ -223,7 +229,11 @@ export const SceneBuilder = {
     for (const veh of world.vehicles) {
       if (veh.isCrashed) continue;
       const flashing = chase || veh.phase.kind !== 'queued';
-      const look = lookFor(veh.id, carSkins);
+      // The syndicate: a black boss car with a gold line, gunmetal escorts. Not a skin: they
+      // must read as who they are.
+      // Skins only dress plain cars: police, criminals, transporters and lorries keep the colours
+      // that say what they are (a dispatched car turns fully into a police car).
+      const look = veh.role === 'boss' ? SYNDICATE_BOSS : veh.role === 'escort' ? SYNDICATE_ESCORT : isCarType(veh.type) ? lookFor(veh.id, carSkins) : null;
       CarArt.add(
         list,
         {

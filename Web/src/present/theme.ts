@@ -27,6 +27,8 @@ export const COLORS = {
   lightRed: [255, 59, 71, 1],
   lightBlue: [79, 163, 255, 1],
   headlight: [255, 238, 208, 1],
+  syndicate: [24, 25, 29, 1],
+  syndicateEscort: [52, 56, 64, 1],
   night: [3, 5, 10, 1],
   vehicleCriminal: [180, 92, 240, 1],
   vehicleBed: [53, 33, 74, 1],

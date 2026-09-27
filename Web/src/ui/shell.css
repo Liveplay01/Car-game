@@ -597,6 +597,53 @@ button {
   bottom: calc(var(--tabbar-h) + var(--safe-bottom) + var(--s4));
 }
 
+/* Challenge a friend · Leave challenge: glass pills at the bottom right of the Game tab. */
+.run-bar {
+  position: absolute;
+  z-index: var(--z-hud);
+  right: calc(var(--safe-right) + var(--s4));
+  bottom: calc(var(--tabbar-h) + var(--safe-bottom) + var(--s4));
+  display: flex;
+  gap: var(--s2);
+  pointer-events: none;
+}
+
+.run-btn {
+  min-height: 44px;
+  padding: 0 var(--s4) 0 var(--s3);
+  border-radius: 22px;
+  font-size: 14px;
+  font-weight: 600;
+  background: var(--glass);
+  display: none;
+  opacity: 0;
+  transform: translateY(6px);
+  transition: opacity 200ms var(--ease-out), transform 200ms var(--ease-out);
+}
+
+.run-btn svg {
+  width: 18px;
+  height: 18px;
+}
+
+.run-btn.show {
+  display: inline-flex;
+  opacity: 1;
+  transform: none;
+  pointer-events: auto;
+}
+
+@starting-style {
+  .run-btn.show {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+
+.run-btn:active {
+  transform: scale(0.97);
+}
+
 .section-note {
   font-size: 13px;
   line-height: 1.45;
@@ -910,4 +957,174 @@ button {
     animation-duration: 1ms !important;
     transition-duration: 1ms !important;
   }
+}
+
+/* Multiplayer: the match owns the screen; Leave and Play again sit at the bottom, in thumb reach. */
+.versus-bar {
+  position: absolute;
+  z-index: var(--z-hud);
+  left: 50%;
+  bottom: calc(var(--safe-bottom) + var(--s4));
+  transform: translateX(-50%);
+  display: none;
+  gap: var(--s2);
+}
+
+.app[data-versus='on'] .versus-bar {
+  display: flex;
+}
+
+.app[data-versus='on'] .settings-btn,
+.app[data-versus='on'] .dispatch-btn,
+.app[data-versus='on'] .run-bar {
+  display: none;
+}
+
+.run-btn.primary-run {
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+
+.versus-sheet {
+  display: grid;
+  /* minmax(0, …): the code field may shrink; a grid track would otherwise grow to fit it. */
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--s4);
+}
+
+.versus-sheet .btn svg {
+  flex: none;
+  width: 20px;
+  height: 20px;
+}
+
+.versus-intro {
+  margin: 0 var(--s1);
+}
+
+.versus-divider {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  color: var(--faint);
+  font-size: 13px;
+}
+
+.versus-divider::before,
+.versus-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--separator);
+}
+
+.join-row {
+  display: flex;
+  gap: var(--s2);
+}
+
+.join-row .btn {
+  flex: none;
+  min-height: 52px;
+  min-width: 96px;
+  border-radius: 14px;
+}
+
+.code-input {
+  flex: 1;
+  width: 100%;
+  min-width: 0;
+  min-height: 52px;
+  padding: 0 var(--s4);
+  border: 1.5px solid var(--separator);
+  border-radius: 14px;
+  background: var(--surface-2);
+  color: var(--primary);
+  font: 700 24px/1 var(--font-round);
+  letter-spacing: 0.4em;
+  font-variant-numeric: tabular-nums;
+  transition: border-color 160ms ease;
+}
+
+.code-input::placeholder {
+  color: var(--faint);
+}
+
+.code-input:focus-visible {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.versus-error {
+  margin: 0 var(--s1);
+  color: var(--destructive);
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+.versus-status {
+  margin: 0;
+  text-align: center;
+  color: var(--muted);
+  font-size: 15px;
+}
+
+.join-code-card {
+  display: grid;
+  justify-items: center;
+  gap: var(--s2);
+  padding: var(--s4) 0 var(--s2);
+}
+
+.join-code-label {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.join-code {
+  display: flex;
+  gap: var(--s2);
+}
+
+.join-code span {
+  display: grid;
+  place-items: center;
+  width: 52px;
+  height: 64px;
+  border-radius: 14px;
+  background: var(--surface-2);
+  font: 700 34px/1 var(--font-round);
+  font-variant-numeric: tabular-nums;
+  color: var(--primary);
+}
+
+.lane-row {
+  gap: var(--s3);
+}
+
+.lane-dot {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--surface-3);
+  color: var(--primary);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.lane-row.empty .lane-dot,
+.lane-row.empty .row-title {
+  color: var(--faint);
+}
+
+.you-tag {
+  padding: var(--s1) var(--s2);
+  border-radius: 8px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 700;
 }

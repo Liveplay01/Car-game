@@ -24,6 +24,9 @@ export type VehicleType =
 
 export type Owner = 'player' | 'ai';
 
+/** A part in a special event: the syndicate boss (a criminal) and its armoured escorts. */
+export type VehicleRole = 'boss' | 'escort' | null;
+
 export const isCarType = (t: VehicleType): boolean => t === 'car' || t === 'sportsCar' || t === 'compact' || t === 'van';
 /** A lorry of any kind: long and heavy, worth more flames in Mayhem. */
 export const isHeavy = (t: VehicleType): boolean => t === 'truck' || t === 'tanker' || t === 'military';
@@ -145,6 +148,9 @@ export class Vehicle {
   prevHeading: number;
   dents: Dent[] = [];
   retired = false;
+  role: VehicleRole = null;
+  /** Multiplayer: whose lane a player car came from. */
+  seat = 0;
 
   constructor(
     readonly id: number,

@@ -4,7 +4,8 @@ import type { RoadModule } from './config';
 
 export type MergeRating = 'clean' | 'tightFit' | 'nearMiss' | 'perfect' | 'cutOff';
 
-export type ShiftOutcome = 'completed' | 'struckOut' | 'escaped';
+/** `failed`: a trial's own rule was broken (see `Config.trialRule`). */
+export type ShiftOutcome = 'completed' | 'struckOut' | 'escaped' | 'failed';
 
 export type ExplosionKind = 'tanker' | 'bomb';
 
@@ -35,6 +36,10 @@ export interface ShiftResult {
   wrecks: number;
   biggestChain: number;
   detonated: boolean;
+  /** A boss level: the syndicate convoy came this shift. */
+  convoy: boolean;
+  /** The syndicate boss was taken down this shift. */
+  bossBusted: boolean;
 }
 
 export interface ComboChange {
@@ -92,6 +97,9 @@ export interface ExplosionReport {
 }
 
 /** Typed events the simulation emits; presentation turns them into picture, sound and haptics. */
+/** Why a seat left a multiplayer match. */
+export type EliminationReason = 'crash' | 'stalled' | 'left';
+
 export type GameEvent =
   | { type: 'launched'; vehicle: number; time: number }
   | ({ type: 'merged' } & MergeReport)
@@ -102,8 +110,10 @@ export type GameEvent =
   | { type: 'shiftEnded'; result: ShiftResult }
   | { type: 'tapRejected'; time: number }
   | { type: 'exited'; vehicle: number; arm: Arm }
-  | { type: 'criminalWarning'; arm: Arm; time: number }
-  | { type: 'criminalEntered'; vehicle: number; deadline: number }
+  | { type: 'criminalWarning'; arm: Arm; time: number; boss: boolean }
+  | { type: 'criminalEntered'; vehicle: number; deadline: number; boss: boolean }
+  /** The syndicate boss was taken down: the stolen money comes back. */
+  | { type: 'heistRecovered'; vehicle: number; point: Vec2; time: number; amount: number }
   | { type: 'criminalEscaped'; vehicle: number; time: number }
   | { type: 'criminalWrecked'; vehicle: number; point: Vec2; time: number }
   | { type: 'takedown'; criminal: number; police: number; point: Vec2; time: number; points: number; timeLeft: number }
@@ -118,4 +128,9 @@ export type GameEvent =
   | { type: 'towed'; vehicle: number; slot: number; time: number }
   | { type: 'militaryWarning'; arm: Arm; time: number }
   | { type: 'militaryEntered'; vehicle: number; deadline: number }
-  | ({ type: 'explosion' } & ExplosionReport);
+  | ({ type: 'explosion' } & ExplosionReport)
+  /** Multiplayer: this seat's car caused a crash (the host turns it into `eliminated`). */
+  | { type: 'faulted'; seat: number; point: Vec2; time: number }
+  | { type: 'eliminated'; seat: number; reason: EliminationReason; time: number }
+  /** The last seat standing; null when the last ones went out together. */
+  | { type: 'matchOver'; winner: number | null; time: number };

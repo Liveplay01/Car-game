@@ -1,4 +1,4 @@
-import type { GameMode } from '../core/career';
+import type { SwipeMode } from './flow';
 import { type Vec2, v } from '../core/vec2';
 import { type RenderItem, type RenderList, Ease, moved } from './render';
 import { type Screen, type Tab, TAB_BAR, barTab } from './flow';
@@ -160,7 +160,7 @@ export class ModePan {
   pan = 0;
   velocity = 0;
   drag: { start: Vec2; offset: number } | null = null;
-  travel: { to: GameMode; direction: number } | null = null;
+  travel: { to: SwipeMode; direction: number } | null = null;
 
   get isTracking(): boolean {
     return this.drag !== null;
@@ -200,7 +200,7 @@ export class ModePan {
   }
 
   /** Advances the spring. Returns the mode to switch to once the old map is out of the picture. */
-  follow(delta: number, width: number, index: number, count: number): GameMode | null {
+  follow(delta: number, width: number, index: number, count: number): SwipeMode | null {
     width = Math.max(width, 1);
     if (this.drag) {
       const canGo = this.drag.offset < 0 ? index < count - 1 : index > 0;
@@ -218,7 +218,7 @@ export class ModePan {
       this.velocity += acceleration * dt;
       this.pan += this.velocity * dt;
     }
-    let switched: GameMode | null = null;
+    let switched: SwipeMode | null = null;
     const travel = this.travel;
     if (travel && -this.pan * travel.direction >= width * 0.9) {
       this.travel = null;
