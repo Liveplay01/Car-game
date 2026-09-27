@@ -48,6 +48,12 @@ public enum GameEvent: Sendable, Equatable {
     case flowChanged(FlowChange)
     /// A tow depot cleared a wreck in its zone (M9): `point` is the depot yard's module slot.
     case towed(vehicle: Int, slot: Int, time: Double)
+    /// "DANGER": a military truck with a bomb will show up at `arm` (Leo, 27.09.2026).
+    case militaryWarning(arm: Arm, time: Double)
+    /// It is on the ring, its zone is up; it leaves at shift time `deadline`.
+    case militaryEntered(vehicle: Int, deadline: Double)
+    /// A gas tanker or the bomb went up.
+    case explosion(ExplosionReport)
 }
 
 public struct FlowChange: Sendable, Equatable {

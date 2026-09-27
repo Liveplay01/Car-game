@@ -147,14 +147,25 @@ extension Config {
         var config = self
         config.mayhem = true
         config.shiftCars = mayhemCars
-        config.densityStart += mayhemExtraTraffic
+        // Full traffic from the first second: something to hit right away, no ramp.
         config.densityEnd += mayhemExtraTraffic
+        config.densityStart = config.densityEnd
         config.minRingBots += mayhemExtraTraffic
         config.criminalChance = 0
         config.policeShare = 0
         config.shiftPay = 0
         config.completionBonus = 0
         config.perfectRunPoints = 0
+        // Far more to blow up (Leo, 27.09.2026): lorries, most of them tankers, and a
+        // military truck every little while.
+        config.truckChance = mayhemTruckChance
+        config.queueAdvanceDuration = max(config.queueAdvanceDuration, mayhemReload)
+        config.driverAcceleration *= mayhemRecoveryFactor
+        config.tankerShare = mayhemTankerShare
+        config.militaryChance = 1
+        config.militaryFirst = mayhemMilitaryFirst
+        config.militaryPerShift = mayhemMilitaryPerShift
+        config.militaryInterval = mayhemMilitaryInterval
         return config
     }
 }

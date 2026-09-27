@@ -82,3 +82,26 @@ struct CityTests {
         #expect(CityLayer.lots(growth: 10_000) == 64)
     }
 }
+
+@Suite("Tow depot yard")
+struct TowYardTests {
+    /// Every slot, with the four first arms and with more: the yard lies beside the road,
+    /// never on the ring or on an arm (Leo, 27.09.2026).
+    @Test(arguments: [[0, 4, 8, 12], [0, 2, 4, 6, 8, 10, 12, 14], [0, 3, 6, 9, 12]])
+    func theYardNeverSitsOnTheRoad(arms: [Int]) {
+        var config = Config()
+        config.armSlots = arms
+        let layout = RoundaboutLayout(config: config)
+        let half = SceneBuilder.towYardSize / 2
+        for slot in 0..<config.moduleSlotCount {
+            let yard = SceneBuilder.towYard(slot, layout: layout, config: config)
+            #expect(yard.length - half.y > layout.ringRadius + layout.laneWidth / 2, "slot \(slot)")
+            for arm in layout.arms where yard.dot(arm.outward) > 0 {
+                #expect(abs(yard.dot(arm.outward.left)) - half.x > layout.laneWidth, "slot \(slot), arm \(arm.slot)")
+            }
+            // Still next to its slot, not somewhere across the map.
+            let slotAngle = layout.moduleRingS(slot, of: config.moduleSlotCount) / layout.ringRadius
+            #expect(abs(Angle.wrap(yard.angle - slotAngle + .pi, period: Angle.tau) - .pi) < 0.9)
+        }
+    }
+}

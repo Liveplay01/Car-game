@@ -104,6 +104,10 @@ public struct Tuning: Sendable {
         check(c.policeShare >= 0 && c.policeShare <= 1, "policeShare must lie between 0 and 1")
         check(c.criminalTime > 0 && c.criminalWarning >= 0, "criminalTime must be > 0, criminalWarning ≥ 0")
         check(c.criminalMass > 0, "criminalMass must be > 0")
+        check(c.tankerMass > 0 && c.militaryMass > 0, "tankerMass and militaryMass must be > 0")
+        check(c.tankerShare >= 0 && c.tankerShare <= 1 && c.tankerLevelShare >= 0 && c.tankerLevelShare <= 1 && c.mayhemTankerShare >= 0 && c.mayhemTankerShare <= 1, "tanker shares must lie between 0 and 1")
+        check(c.militaryChance >= 0 && c.militaryChance <= 1 && c.militaryLevelChance >= 0 && c.militaryLevelChance <= 1, "military chances must lie between 0 and 1")
+        check(c.tankerBlastRadius >= 0 && c.bombBlastRadius >= 0 && c.militaryZoneArc >= 0 && c.militaryTime > 0, "blast radii and the military zone must be ≥ 0, militaryTime > 0")
         check(c.criminalChance >= 0 && c.criminalChance <= 1, "criminalChance must lie between 0 and 1")
         check(c.dispatchComboFactor >= 0 && c.dispatchComboFactor <= 1, "dispatchComboFactor must lie between 0 and 1")
         check(zip(c.comboThresholds, c.comboThresholds.dropFirst()).allSatisfy { $0 < $1 }, "comboThresholds must rise")
@@ -209,6 +213,7 @@ public struct Tuning: Sendable {
             .double("criminalTime", \.criminalTime),
             .int("takedownPoints", \.takedownPoints),
             .double("criminalMass", \.criminalMass),
+            .double("criminalEntryGap", \.criminalEntryGap),
             .double("dispatchComboFactor", \.dispatchComboFactor),
             .double("policeChaseSpeedFactor", \.policeChaseSpeedFactor),
             .range("transporterFirst", \.transporterFirst),
@@ -257,6 +262,7 @@ public struct Tuning: Sendable {
             .double("insurancePerStep", \.insurancePerStep),
             .double("freightPerStep", \.freightPerStep),
             .double("doubleRunPerStep", \.doubleRunPerStep),
+            .double("recoveryPerStep", \.recoveryPerStep),
             .int("crashCostLevel", \.crashCostLevel),
             .ints("crashCosts", \.crashCosts),
             .doubles("crashCostImpacts", \.crashCostImpacts),
@@ -289,10 +295,37 @@ public struct Tuning: Sendable {
             .double("endlessMaxTempo", \.endlessMaxTempo),
             .int("endlessPayPerCar", \.endlessPayPerCar),
             .int("mayhemCars", \.mayhemCars),
+            .double("mayhemReload", \.mayhemReload),
+            .int("mayhemHeavyFlames", \.mayhemHeavyFlames),
+            .double("mayhemRecoveryFactor", \.mayhemRecoveryFactor),
+            .double("mayhemWreckHitSpeed", \.mayhemWreckHitSpeed),
             .int("mayhemLevel", \.mayhemLevel),
             .int("mayhemExtraTraffic", \.mayhemExtraTraffic),
             .double("mayhemChainWindow", \.mayhemChainWindow),
             .int("mayhemMaxChainFlames", \.mayhemMaxChainFlames),
+            .double("tankerShare", \.tankerShare),
+            .int("tankerLevel", \.tankerLevel),
+            .double("tankerLevelShare", \.tankerLevelShare),
+            .double("tankerMass", \.tankerMass),
+            .double("tankerBlastRadius", \.tankerBlastRadius),
+            .double("tankerBlastSpeed", \.tankerBlastSpeed),
+            .double("militaryChance", \.militaryChance),
+            .int("militaryLevel", \.militaryLevel),
+            .double("militaryLevelChance", \.militaryLevelChance),
+            .range("militaryFirst", \.militaryFirst),
+            .int("militaryPerShift", \.militaryPerShift),
+            .range("militaryInterval", \.militaryInterval),
+            .double("militaryWarning", \.militaryWarning),
+            .double("militaryTime", \.militaryTime),
+            .double("militaryZoneArc", \.militaryZoneArc),
+            .double("militaryMass", \.militaryMass),
+            .double("bombBlastRadius", \.bombBlastRadius),
+            .double("bombBlastSpeed", \.bombBlastSpeed),
+            .double("mayhemTruckChance", \.mayhemTruckChance),
+            .double("mayhemTankerShare", \.mayhemTankerShare),
+            .range("mayhemMilitaryFirst", \.mayhemMilitaryFirst),
+            .int("mayhemMilitaryPerShift", \.mayhemMilitaryPerShift),
+            .range("mayhemMilitaryInterval", \.mayhemMilitaryInterval),
             .int("adCashPerDay", \.adCashPerDay),
             .int("adCashBase", \.adCashBase),
             .int("adCashPerLevel", \.adCashPerLevel),

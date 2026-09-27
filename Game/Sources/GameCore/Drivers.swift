@@ -39,6 +39,8 @@ extension World {
     }
 
     mutating func updateDrivers(_ dt: Double) {
+        // Mayhem: nobody brakes, for nothing (Leo, 27.09.2026). Traffic keeps flowing.
+        guard !config.mayhem else { return }
         let quarry = pursuitQuarry
         guard isTrafficDisturbed || quarry != nil || !config.modules.isEmpty else { return }
         let lane = ringLaneOccupants()

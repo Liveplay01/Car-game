@@ -128,7 +128,7 @@ public enum UpgradePage {
         switch upgrade {
         case .morePatrols, .interceptor, .dispatchRadio, .backup: .juiceBlue
         case .longerPursuit: .juicePurple
-        case .quietStreets: .juiceGreen
+        case .quietStreets, .quickRecovery: .juiceGreen
         case .cashRoute, .overtime, .doubleRun: .juiceYellow
         case .freight: .juiceOrange
         case .insurance, .robberyInsurance: .juiceRed
@@ -435,6 +435,17 @@ public enum UpgradeArt {
             add(.roundedRect(center: center - Vec2(0, 14) * unit, size: Vec2(15, 10) * unit, cornerRadius: 3 * unit, rotation: 0), .vehicleTruck)
             add(.roundedRect(center: center + Vec2(19, -6) * unit, size: Vec2(12, 3) * unit, cornerRadius: 1.5, rotation: 0), .accent)
             add(.roundedRect(center: center + Vec2(19, -6) * unit, size: Vec2(3, 12) * unit, cornerRadius: 1.5, rotation: 0), .accent)
+
+        case .quickRecovery:
+            // A car pulling away hard: speed lines behind it and an arrow up.
+            car(center + Vec2(-2, 4) * unit, 0.9, body: .vehicleCar, roof: nil, lights: false)
+            for line in 0..<3 {
+                let x = center.x + Double(line - 1) * 7 * unit - 2 * unit
+                add(.line(from: Vec2(x, center.y + 20 * unit), to: Vec2(x, center.y + 28 * unit), thickness: 2.5 * unit), .juiceGreen, 0.85 - Double(line) * 0.15)
+            }
+            add(.line(from: center + Vec2(17, 12) * unit, to: center + Vec2(17, -12) * unit, thickness: 3 * unit), .accent)
+            add(.line(from: center + Vec2(17, -12) * unit, to: center + Vec2(11, -5) * unit, thickness: 3 * unit), .accent)
+            add(.line(from: center + Vec2(17, -12) * unit, to: center + Vec2(23, -5) * unit, thickness: 3 * unit), .accent)
 
         case .doubleRun:
             // Two transporters, one behind the other.

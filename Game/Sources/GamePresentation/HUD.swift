@@ -33,6 +33,8 @@ struct Popup: Sendable, Equatable {
         case modulePulse(ColorToken)
         /// Mayhem: the flames a crash earned, and its place in the chain reaction.
         case flames(Int, chain: Int)
+        /// A gas tanker went up.
+        case boom
     }
 
     static let lifetime = 0.9
@@ -350,6 +352,59 @@ enum HUD {
         }
     }
 
+    /// The military truck (Leo, 27.09.2026): its warning, then the no-go zone on the ring
+    /// around it, pulsing red with a hazard edge at both ends, and its countdown.
+    static func addMilitary(world: World, alpha: Double, to list: inout RenderList) {
+        let config = world.config
+        var id = RenderID.hud + 700
+        switch world.military.phase {
+        case let .warning(arm, _):
+            addWedge(arm, world: world, color: .lightRed, id: &id, to: &list)
+        case let .arriving(vehicleID):
+            guard let truck = world.vehicle(id: vehicleID) else { return }
+            let pose = SceneBuilder.interpolatedPose(truck, alpha: alpha)
+            list.add(.arc(center: pose.position, radius: 26, thickness: 2, startAngle: 0, endAngle: Angle.tau), color: .lightRed, opacity: 0.6, space: .world, id: id)
+        case let .active(vehicleID, deadline):
+            guard let truck = world.vehicle(id: vehicleID), !truck.isCrashed else { return }
+            let pose = SceneBuilder.interpolatedPose(truck, alpha: alpha)
+            let pulse = 0.5 + 0.5 * sin(world.time * 7)
+            // The zone, centred on the truck as it is drawn and on the ring as it is built.
+            let ringRadius = world.layout.ringRadius
+            let center = atan2(pose.position.y, pose.position.x)
+            let half = config.militaryZoneArc / 2 / ringRadius
+            let lane = config.laneWidth
+            list.add(.arc(center: .zero, radius: ringRadius, thickness: lane - 2, startAngle: center - half, endAngle: center + half),
+                     color: .lightRed, opacity: 0.12 + 0.1 * pulse, space: .world, id: id)
+            id += 1
+            for edge in [-1.0, 1.0] {
+                list.add(.arc(center: .zero, radius: ringRadius + edge * (lane / 2 - 1), thickness: 2, startAngle: center - half, endAngle: center + half),
+                         color: .lightRed, opacity: 0.75, space: .world, id: id)
+                id += 1
+            }
+            // Hazard bars across the lane at both ends of the zone.
+            for end in [-1.0, 1.0] {
+                let angle = center + end * half
+                let inner = Vec2(angle: angle) * (ringRadius - lane / 2 + 1)
+                let outer = Vec2(angle: angle) * (ringRadius + lane / 2 - 1)
+                list.add(.line(from: inner, to: outer, thickness: 3.5), color: .hazard, opacity: 0.95, space: .world, id: id)
+                id += 1
+                list.add(.line(from: inner + (outer - inner) * 0.3, to: inner + (outer - inner) * 0.7, thickness: 3.5), color: .bomb, opacity: 0.95, space: .world, id: id)
+                id += 1
+            }
+            let left = max(0, deadline - world.time) / config.militaryTime
+            list.add(.arc(center: pose.position, radius: 26, thickness: 1, startAngle: 0, endAngle: Angle.tau), color: .lightRed, opacity: 0.3, space: .world, id: id)
+            id += 1
+            if left > 0.001 {
+                list.add(.arc(center: pose.position, radius: 26, thickness: 3, startAngle: .pi / 2, endAngle: .pi / 2 + Angle.tau * left), color: .lightRed, space: .world, id: id)
+            }
+            id += 1
+            let label = list.camera.toScreen(pose.position) + Vec2(0, -list.camera.toScreen(length: 26) - 12)
+            list.add(.text(Strings.HUD.danger, position: label, size: 12, alignment: .center, weight: .bold), color: .lightRed, opacity: 0.7 + 0.3 * pulse, space: .screen, id: id)
+        case .idle, .leaving, .detonated:
+            break
+        }
+    }
+
     /// The warning wedge: a pulsing arc on the island's rim, facing the arm the danger comes from.
     private static func addWedge(_ arm: Arm, world: World, color: ColorToken, id: inout Int, to list: inout RenderList) {
         let pulse = (world.time * 1.6).truncatingRemainder(dividingBy: 1)
@@ -470,6 +525,10 @@ enum HUD {
                 text = Strings.Mayhem.popup(flames)
                 color = chain >= 3 ? .fireCore : .fireOuter
                 size = Metrics.popupSize * (1 + 0.15 * Double(min(chain, 6)))
+            case .boom:
+                text = Strings.HUD.boom
+                color = .fireCore
+                size = Metrics.popupSize * 1.6
             }
             var at = camera.toScreen(popup.position) + Vec2(0, -30)
             let height = size + 4
@@ -659,7 +718,7 @@ enum ResultBanner {
         let shown = Ease.outCubic(age / Self.enter) * (1 - settled(age: age))
         var (title, titleColor): (String, ColorToken) = switch result.outcome {
         case .completed: (Strings.Result.levelComplete(summary.level), .accent)
-        case .struckOut: (Strings.Result.gameOver, .destructive)
+        case .struckOut: result.detonated ? (Strings.Result.detonated, .fireOuter) : (Strings.Result.gameOver, .destructive)
         case .escaped: (Strings.Result.escaped, .vehicleCriminal)
         }
         if summary.mode == .unlimited, result.outcome == .struckOut { title = Strings.Modes.runOver }

@@ -94,6 +94,8 @@ Jede Einfädelung wird nach dem engsten Abstand (surface to surface) bewertet:
 
 ## 5. Verbrecher-Bots & Polizei
 
+- **Verbrecher halten sich nicht an die Verkehrsordnung** *(Leo, 27.09.2026)*: Der Pickup rollt ohne Anhalten an die Linie und quetscht sich in die erste Lücke, in der er nicht crasht (`criminalEntryGap` = 0,05 s statt des KI-Sicherheitsabstands); nur ein Stau direkt an seiner Einfahrt hält ihn auf.
+
 | Element | Details |
 |---|---|
 | **Fahrzeugtyp** | Pickup-Truck (violett, offene Ladefläche, Countdown-Ring) – sofort erkennbar |
@@ -147,6 +149,14 @@ Gemessen (Mensch-Bot, `Sim --ring`): Ø 3,6 Bots im Ring auf Level 1 (vorher 1,2
 ### Lkw
 
 22 % des normalen Verkehrs (*Freight* +1,5 %/Stufe); Länge 36 (Auto 24), Masse 2,2, heller Kofferaufbau (nur das Fahrerhaus trägt den Skin). Zahlen an Mautstellen.
+
+### Sprengstoff: Tanklaster & Militär-Truck (Leo, 27.09.2026)
+
+- **Tanklaster** (ab Level 4, 18 % der Lkw; eigener Zufallsstrom, der Verkehr jedes Seeds bleibt gleich): fährt wie ein Lkw (silberner Tank, orange Bänder, Gefahren-Raute), zahlt Maut. **Wird er zum Wrack, explodiert er:** alles im Umkreis von 66 wird zum Wrack und weggeschleudert (echter Stoß-Impuls, Beule auf der Seite zur Explosion), ein Tanklaster in Reichweite geht mit hoch (Kettenreaktion).
+- **Militär-Truck** (ab Level 7, 30 % der Schichten, einer pro Schicht): angekündigt wie der Transporter (rote Warnung, Alarm-Hupe), dreht 12 s seine Runden und hat eine **Sperrzone** (84 lang, rot pulsierend, gelb-schwarze Balken an den Enden). **Fädelt ein Auto in die Zone ein oder trifft irgendetwas den Truck, geht die Bombe hoch:** alles auf der Straße fliegt in die Luft, die Schicht ist verloren ("KABOOM", dasselbe Level noch einmal). Die Zone zählt für KI und Bots wie ein Auto in der Lückenvorhersage. Solange der Truck seine Runden dreht, zählt er als einer der Mindest-Bots; er fährt erst ab, wenn genug Bots ohne ihn bleiben.
+- **Der Rauch der Bombe ist der Übergang:** Er quillt aus der Explosion, bis er das Bild füllt; dahinter wird ein frischer Kreisverkehr aufgebaut; wenn er sich verzieht, ist alles wieder normal und die nächste Schicht wartet.
+- **Explosionen:** weißer Blitz, Feuerball aus Glutballen (weißgelb → orange → dunkelrot → schwarzer Rauch), Druckwelle und Staubring, brennende Trümmer auf Glutspuren, Rauchschwaden unter dem Verkehr, starker Screenshake (Trauma-Modell) mit Zoom-Punch, eigener Sound (`explosion`, `detonation`) und Haptik (`explosion`). Reduce Motion: nur Blenden, kein Shake.
+- **Die Karte leidet:** verbrannter Boden an der Explosionsstelle, Bäume und Häuser in Reichweite fangen Feuer (breitet sich aus), brennen einige Sekunden und bleiben verkohlt (verblasst nach etwa 30 s); die verbrannte Stelle auf der Straße ist nach wenigen Sekunden wieder weg. Nach der Bombe beginnt das neue Level sauber.
 
 ### Fahrzeugtypen des Spielers (freischaltbar, LOOT.md)
 
@@ -236,6 +246,7 @@ Abreißen (Zufahrten und Module) ist möglich, **nichts wird erstattet.** Die ei
 | Overtime | +4 % Schichtlohn | 10 | 2.600 |
 | Freight | +1,5 % Lkw (mehr Maut, dichterer Verkehr) | 8 | 2.600 |
 | Double Run | +4 % Chance auf zweiten Transporter | 5 | 3.900 |
+| Quick Recovery | Verkehr beschleunigt 20 % stärker (schneller wieder auf Tempo nach Unfällen) | 5 | 3.100 |
 | Insurance* | −15 % Crash-Kosten (Stufe 7 = 100 %) | 7 | 5.200 |
 | Robbery Insurance* | −15 % Verlust bei Flucht (Stufe 7 = 100 %) | 7 | 5.200 |
 

@@ -107,11 +107,13 @@ public enum SceneBuilder {
                 add(.circle(center: mast, radius: 1.6), .lightBlue, 0.9)
             case .towDepot:
                 // A small fenced yard outside the ring, a parked wreck and the tow truck.
-                let yard = towYard(slot, layout: layout, config: config)
-                add(.roundedRect(center: yard, size: Vec2(34, 26), cornerRadius: 4, rotation: pose.heading), .kerb)
-                add(.roundedRect(center: yard, size: Vec2(30, 22), cornerRadius: 3, rotation: pose.heading), .surface)
-                add(.roundedRect(center: yard + Vec2(angle: pose.heading) * 7, size: Vec2(11, 7), cornerRadius: 2, rotation: pose.heading + 0.3), .vehicleCarGraphite, 0.8)
-                add(.roundedRect(center: yard - Vec2(angle: pose.heading) * 7, size: Vec2(12, 7), cornerRadius: 2, rotation: pose.heading), .hazard, 0.9)
+                let yardPose = towYardPose(slot, layout: layout, config: config)
+                let yard = yardPose.position
+                let heading = yardPose.heading
+                add(.roundedRect(center: yard, size: towYardSize, cornerRadius: 4, rotation: heading), .kerb)
+                add(.roundedRect(center: yard, size: towYardSize - Vec2(4, 4), cornerRadius: 3, rotation: heading), .surface)
+                add(.roundedRect(center: yard + Vec2(angle: heading) * 7, size: Vec2(11, 7), cornerRadius: 2, rotation: heading + 0.3), .vehicleCarGraphite, 0.8)
+                add(.roundedRect(center: yard - Vec2(angle: heading) * 7, size: Vec2(12, 7), cornerRadius: 2, rotation: heading), .hazard, 0.9)
             }
         }
     }
@@ -133,9 +135,54 @@ public enum SceneBuilder {
     }
 
     /// Where a tow depot's yard sits: just outside the ring at its module slot.
+    /// Beside the road, never on it (Leo, 27.09.2026): a slot right at an arm moves the yard
+    /// along the ring, away from the arm, to the nearest place clear of the ring, the arms
+    /// and their entry and exit lanes.
     static func towYard(_ slot: Int, layout: RoundaboutLayout, config: Config) -> Vec2 {
-        let pose = layout.ring.pose(at: layout.moduleRingS(slot, of: config.moduleSlotCount))
-        return pose.position + pose.position.normalized * (layout.laneWidth / 2 + 24)
+        towYardPose(slot, layout: layout, config: config).position
+    }
+
+    /// The yard is `towYardSize` big and turned along the ring.
+    static let towYardSize = Vec2(34, 26)
+
+    static func towYardPose(_ slot: Int, layout: RoundaboutLayout, config: Config) -> Path.Pose {
+        let lane = layout.laneWidth
+        let kerb = 3.5
+        let slotAngle = layout.moduleRingS(slot, of: config.moduleSlotCount) / layout.ringRadius
+        let half = towYardSize / 2
+        let corner = (half.x * half.x + half.y * half.y).squareRoot()
+        // The entry and exit lanes where they curve between an arm and the ring.
+        var lanes: [Vec2] = []
+        for arm in layout.arms {
+            for path in [layout.entry(arm), layout.exit(arm)] {
+                for step in stride(from: 0.0, through: path.length, by: 4) {
+                    lanes.append(path.pose(at: step).position)
+                }
+            }
+        }
+        func isClear(_ center: Vec2) -> Bool {
+            // Off the ring…
+            guard center.length - half.y >= layout.ringRadius + lane / 2 + kerb + 3 else { return false }
+            // …off every arm (a straight band, `addRoad`)…
+            for arm in layout.arms {
+                let along = center.dot(arm.outward)
+                let aside = abs(center.dot(arm.outward.left))
+                if along > 0, aside - half.x < lane + kerb + 3 { return false }
+            }
+            // …and off the lanes curving into and out of the ring.
+            return lanes.allSatisfy { $0.distance(to: center) >= corner + lane / 2 }
+        }
+        let base = layout.ringRadius + lane / 2 + kerb + half.y + 4
+        for step in 0...60 {
+            for sign in step == 0 ? [1.0] : [1.0, -1.0] {
+                let angle = slotAngle + sign * Double(step) * 0.015
+                for out in [0.0, 12, 24] {
+                    let center = Vec2(angle: angle) * (base + out)
+                    if isClear(center) { return Path.Pose(position: center, heading: angle + .pi / 2) }
+                }
+            }
+        }
+        return Path.Pose(position: Vec2(angle: slotAngle) * (base + 40), heading: slotAngle + .pi / 2)
     }
 
     /// Tow trucks (M9): for every wreck a depot clears, a truck drives out of the yard to it
@@ -160,7 +207,7 @@ public enum SceneBuilder {
     static func look(_ vehicle: Vehicle, _ skins: [String]) -> Skins.Look? {
         switch vehicle.type {
         // Every vehicle wears the skins (Leo); the special ones keep their shape.
-        case .car, .sportsCar, .compact, .van, .police, .pickup, .transporter, .truck: Skins.look(forVehicle: vehicle.id, skins: skins)
+        case .car, .sportsCar, .compact, .van, .police, .pickup, .transporter, .truck, .tanker, .military: Skins.look(forVehicle: vehicle.id, skins: skins)
         }
     }
 

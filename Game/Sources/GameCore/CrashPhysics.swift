@@ -122,6 +122,8 @@ extension World {
         case .pickup: config.criminalMass
         case .transporter: config.transporterMass
         case .truck: config.truckMass
+        case .tanker: config.tankerMass
+        case .military: config.militaryMass
         case .sportsCar: config.sportsCarMass
         case .compact: config.compactMass
         case .van: config.vanMass

@@ -121,7 +121,7 @@ extension World {
         switch module {
         case .tollBooth:
             // Only trucks pay a toll; cars are waved through.
-            return vehicle.type == .truck ? config.tollPerTruck : 0
+            return vehicle.type == .truck || vehicle.type == .tanker ? config.tollPerTruck : 0
         case .speedCamera:
             // A fine needs somebody going too fast: at the calm start of a shift the camera
             // earns nothing, in rush hour it earns with every car.

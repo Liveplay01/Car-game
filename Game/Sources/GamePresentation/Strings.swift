@@ -38,7 +38,7 @@ public enum Strings {
             switch mode {
             case .shift: "Clear the level, move up"
             case .unlimited: "Endless · until you crash"
-            case .mayhem: "30 cars · wreck everything"
+            case .mayhem: "12 cars · aim for the tankers"
             }
         }
         public static let unlimitedCaption = "UNLIMITED"
@@ -606,6 +606,7 @@ public enum Strings {
             case .cashRoute: "Cash Route"
             case .overtime: "Overtime"
             case .freight: "Freight"
+            case .quickRecovery: "Quick Recovery"
             case .doubleRun: "Double Run"
             case .insurance: "Insurance"
             case .robberyInsurance: "Robbery Insurance"
@@ -624,6 +625,7 @@ public enum Strings {
             case .cashRoute: "Money transporters show up sooner and more often."
             case .overtime: "Every shift you finish pays more."
             case .freight: "More lorries on the road: more tolls, but denser traffic."
+            case .quickRecovery: "Drivers pull away harder, so after a crash the traffic is back up to speed sooner."
             case .doubleRun: "Sometimes a second money transporter follows right after the first."
             case .insurance: "Pays part of what a crash costs you."
             case .robberyInsurance: "Pays part of what an escaped criminal costs you."
@@ -650,6 +652,7 @@ public enum Strings {
             case .cashRoute: return "\(seconds(times * config.cashRoutePerStep)) sooner"
             case .overtime: return "+\(percent(times * config.overtimePerStep)) pay"
             case .freight: return "+\(percent(times * config.freightPerStep)) lorries"
+            case .quickRecovery: return "+\(percent(times * config.recoveryPerStep)) acceleration"
             case .doubleRun: return "\(percent(times * config.doubleRunPerStep)) double runs"
             case .insurance: return coverage(times * config.insurancePerStep)
             case .robberyInsurance: return coverage(times * config.insurancePerStep)
@@ -668,6 +671,7 @@ public enum Strings {
             case .cashRoute: "Transporters come \(seconds(config.cashRoutePerStep)) sooner"
             case .overtime: "+\(percent(config.overtimePerStep)) pay per shift"
             case .freight: "+\(percent(config.freightPerStep)) lorries in the traffic"
+            case .quickRecovery: "Traffic accelerates \(percent(config.recoveryPerStep)) harder"
             case .doubleRun: "+\(percent(config.doubleRunPerStep)) chance of a second transporter"
             case .insurance: "Covers \(percent(config.insurancePerStep)) more of crash costs"
             case .robberyInsurance: "Covers \(percent(config.insurancePerStep)) more of escape losses"
@@ -688,6 +692,8 @@ public enum Strings {
     /// The banner at the end of a shift.
     public enum Result {
         public static let gameOver = "GAME OVER"
+        /// The military truck's bomb went off.
+        public static let detonated = "KABOOM"
         public static let escaped = "ESCAPED"
         /// "LEVEL 3 COMPLETE".
         public static func levelComplete(_ level: Int) -> String { "LEVEL \(level) COMPLETE" }
@@ -756,12 +762,18 @@ public enum Strings {
         public static let secured = "SECURED"
         public static let seized = "SEIZED"
         public static let lost = "LOST"
+        /// The military truck is announced, and the zone it keeps around it.
+        public static let danger = "DANGER"
+        /// A gas tanker went up.
+        public static let boom = "BOOM!"
         /// Accessibility labels on special vehicles (M11); nil for ordinary traffic.
         public static func label(_ type: VehicleType) -> String? {
             switch type {
             case .police: "POLICE"
             case .pickup: "CRIMINAL"
             case .transporter: "SECURED"
+            case .tanker: "GAS"
+            case .military: "BOMB"
             case .car, .truck, .sportsCar, .compact, .van: nil
             }
         }

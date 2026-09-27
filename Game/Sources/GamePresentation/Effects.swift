@@ -157,6 +157,13 @@ struct CrashEffects {
         return serial
     }
 
+    /// Sets wrecks on fire: everything a blast caught burns (`ExplosionEffects`).
+    mutating func ignite(_ ids: [Int], strength: Double) {
+        for id in ids {
+            fires[id] = max(fires[id] ?? 0, strength)
+        }
+    }
+
     // MARK: - Update
 
     mutating func update(_ dt: Double, world: World, reduceMotion: Bool = false) {

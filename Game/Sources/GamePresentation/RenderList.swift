@@ -102,6 +102,11 @@ enum RenderID {
     static let mapAir = 85_000
     static let notice = 48_000
     static let effects = 100_000
+    /// Explosions (`ExplosionEffects`), the burnt map (`MapScars`) and the bomb's smoke
+    /// curtain (`SmokeCurtain`).
+    static let explosions = 600_000
+    static let scars = 700_000
+    static let curtain = 720_000
     static let shadows = 900_000
     static let vehicles = 1_000_000
     /// The screen fading out during a change (`ScreenTransition`), far above all vehicles.

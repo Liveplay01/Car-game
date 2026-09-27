@@ -26,7 +26,8 @@ enum CarArt {
         case lightBar
         /// Pickup: the open load bed.
         case bed
-        /// Lorry: the box. Transporter: the armoured box behind the cab.
+        /// Lorry: the box. Transporter: the armoured box behind the cab. Tanker: the tank.
+        /// Military truck: the canvas bed the bomb lies on.
         case cargo
         /// Transporter: the amber beacon on the cab roof.
         case hazard
@@ -91,6 +92,8 @@ enum CarArt {
         case .police: return .vehiclePolice
         case .pickup: return .vehicleCriminal
         case .transporter: return .vehicleArmor
+        case .tanker: return .vehicleTanker
+        case .military: return .vehicleMilitary
         }
     }
 
@@ -107,7 +110,7 @@ enum CarArt {
         switch type {
         case .car, .sportsCar, .compact, .van: return common + [.rearWindow]
         // A lorry is a cab and a box; no rear window behind it.
-        case .truck: return [.cargo] + common
+        case .truck, .tanker, .military: return [.cargo] + common
         case .police: return common + [.rearWindow, .roof, .lightBar]
         case .pickup: return [.bed] + common + [.rearWindow]
         // An armoured van: no rear window, a box behind a short cab, a beacon on top.
@@ -118,7 +121,7 @@ enum CarArt {
     /// How long this kind of vehicle is (`World.length(of:)`).
     static func length(of type: VehicleType, config: Config) -> Double {
         switch type {
-        case .truck: config.truckLength
+        case .truck, .tanker, .military: config.truckLength
         case .sportsCar: config.sportsCarLength
         case .compact: config.compactLength
         case .van: config.vanLength
@@ -141,13 +144,13 @@ enum CarArt {
             // The lorry's screen sits right at the nose, above the cab; the van's far forward,
             // over a long roof.
             let x = switch type {
-            case .truck: l * 0.39
+            case .truck, .tanker, .military: l * 0.39
             case .transporter: l * 0.33
             case .van: l * 0.3
             default: l * 0.12
             }
             let length = switch type {
-            case .truck: l * 0.1
+            case .truck, .tanker, .military: l * 0.1
             case .transporter: l * 0.13
             case .van: l * 0.14
             case .compact: l * 0.26
@@ -184,8 +187,16 @@ enum CarArt {
         case .bed:
             return Shape(center: Vec2(-l * 0.26, 0), size: Vec2(l * 0.4, w - 3), cornerRadius: 1.5, color: .vehicleBed, breaksAt: .infinity, reach: 0, isVisible: true)
         case .cargo:
-            if type == .truck {
+            switch type {
+            case .truck:
                 return Shape(center: Vec2(-l * 0.14, 0), size: Vec2(l * 0.62, w + 2), cornerRadius: 2, color: .vehicleTruckBox, breaksAt: 4, reach: 9, isVisible: true)
+            case .tanker:
+                // A round tank: from above a long capsule, polished.
+                return Shape(center: Vec2(-l * 0.14, 0), size: Vec2(l * 0.64, w + 1), cornerRadius: (w + 1) / 2, color: .vehicleTank, breaksAt: 4, reach: 9, isVisible: true)
+            case .military:
+                return Shape(center: Vec2(-l * 0.14, 0), size: Vec2(l * 0.62, w + 1), cornerRadius: 1.5, color: .vehicleMilitaryBox, breaksAt: 4, reach: 9, isVisible: true)
+            default:
+                break
             }
             // The armoured box: flush with the body, from the cab to the rear doors.
             return Shape(center: Vec2(-l * 0.13, 0), size: Vec2(l * 0.64, w - 2), cornerRadius: 1.5, color: .vehicleArmorBox, breaksAt: 4, reach: 9, isVisible: true)
@@ -486,9 +497,47 @@ enum CarArt {
             list.add(.line(from: world(box.center + Vec2(1.9, 0), pose), to: world(box.center - Vec2(1.9, 0), pose), thickness: 0.9),
                      color: .vehicleCargo, opacity: opacity, space: .world, id: slot(Slot.glitter + 1))
         }
+        // The gas tanker: a shine along the top of the polished tank, two orange bands round
+        // it and the hazard diamond at the back, so it reads as "flammable" by shape too.
+        if type == .tanker, dents.isEmpty {
+            let tank = shape(.cargo, type: type, config: config)
+            let from = tank.center.x - tank.size.x / 2 + 3
+            let to = tank.center.x + tank.size.x / 2 - 3
+            list.add(.line(from: world(Vec2(from, 1.6), pose), to: world(Vec2(to, 1.6), pose), thickness: 1.4),
+                     color: .primary, opacity: opacity * 0.45, space: .world, id: slot(Slot.sheen))
+            for (index, x) in [-0.28, 0.2].enumerated() {
+                let band = tank.center.x + tank.size.x * x
+                list.add(.roundedRect(center: world(Vec2(band, 0), pose), size: Vec2(1.3, tank.size.y - 0.6), cornerRadius: 0.6, rotation: pose.heading),
+                         color: .fireOuter, opacity: opacity, space: .world, id: slot(Slot.stripes + index))
+            }
+            let diamond = world(Vec2(tank.center.x - tank.size.x * 0.05, 0), pose)
+            list.add(.roundedRect(center: diamond, size: Vec2(4.6, 4.6), cornerRadius: 0.6, rotation: pose.heading + .pi / 4),
+                     color: .fireDeep, opacity: opacity, space: .world, id: slot(Slot.glitter))
+            list.add(.roundedRect(center: diamond, size: Vec2(3, 3), cornerRadius: 0.4, rotation: pose.heading + .pi / 4),
+                     color: .hazard, opacity: opacity, space: .world, id: slot(Slot.glitter + 1))
+        }
+        // The military truck: a black bomb with a yellow band and tail fins on its bed, and a
+        // red lamp on it that blinks (only with a clock: Reduce Motion keeps it lit).
+        if type == .military, dents.isEmpty {
+            let bed = shape(.cargo, type: type, config: config)
+            let bombLength = bed.size.x * 0.66
+            let center = bed.center + Vec2(bed.size.x * 0.06, 0)
+            let tail = center.x - bombLength / 2
+            for (index, y) in [-1.0, 1.0].enumerated() {
+                list.add(.line(from: world(Vec2(tail + 2, y * 1.2), pose), to: world(Vec2(tail - 1.8, y * 3.6), pose), thickness: 1.4),
+                         color: .bomb, opacity: opacity, space: .world, id: slot(Slot.stripes + index))
+            }
+            list.add(.roundedRect(center: world(center, pose), size: Vec2(bombLength, config.carWidth * 0.5), cornerRadius: config.carWidth * 0.25, rotation: pose.heading),
+                     color: .bomb, opacity: opacity, space: .world, id: slot(Slot.glitter))
+            list.add(.roundedRect(center: world(center + Vec2(bombLength * 0.18, 0), pose), size: Vec2(1.6, config.carWidth * 0.5), cornerRadius: 0.5, rotation: pose.heading),
+                     color: .hazard, opacity: opacity, space: .world, id: slot(Slot.glitter + 1))
+            let blink = finishTime.map { time in pow(max(0, sin(time * 2.2 * .pi * 2)), 3) } ?? 1
+            let lamp = world(center + Vec2(-bombLength * 0.12, 0), pose)
+            list.add(.circle(center: lamp, radius: 1.1 + 1.6 * blink), color: .lightRed, opacity: opacity * (0.35 + 0.65 * blink), space: .world, id: slot(Slot.sheen))
+        }
         // A racing stripe (LOOT.md): two thin lines down the middle, over roof and glass.
         // Only on an intact car; a wreck shows its dents instead.
-        if let stripe, dents.isEmpty, type != .police, type != .transporter {
+        if let stripe, dents.isEmpty, type != .police, type != .transporter, !type.isExplosive {
             let half = length(of: type, config: config) / 2 - 2
             for (index, y) in [-1.6, 1.6].enumerated() {
                 list.add(.line(from: world(Vec2(-half, y), pose), to: world(Vec2(half, y), pose), thickness: 1.3),

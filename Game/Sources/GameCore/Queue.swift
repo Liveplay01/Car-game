@@ -116,7 +116,7 @@ extension World {
         case .sportsCar: config.mergeDuration * config.sportsCarMergeFactor
         case .compact: config.mergeDuration * config.compactMergeFactor
         case .van: config.mergeDuration * config.vanMergeFactor
-        case .car, .police, .pickup, .transporter, .truck: config.mergeDuration
+        case .car, .police, .pickup, .transporter, .truck, .tanker, .military: config.mergeDuration
         }
     }
 

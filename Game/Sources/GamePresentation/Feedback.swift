@@ -61,6 +61,12 @@ public enum SoundID: String, CaseIterable, Sendable {
     case chestBurst
     /// Epic and legendary: a deeper burst with a fanfare.
     case chestBurstRare
+    /// A gas tanker goes up: a deep boom, a roaring fireball, debris raining down.
+    case explosion
+    /// The bomb: bigger, longer, the whole city shakes, and a rumble that rolls away.
+    case detonation
+    /// A military truck is announced: an alarm klaxon.
+    case alarm
 }
 
 /// Haptic patterns. The raw value is the file name: `Assets/Haptics/<raw>.ahap` (M11).
@@ -95,6 +101,8 @@ public enum HapticID: String, CaseIterable, Sendable {
     case seized
     /// A rising double pulse: the transporter was paid.
     case paid
+    /// A heavy hit and a long rumble: something blew up.
+    case explosion
 }
 
 /// Turns game events into sound and haptics (FOUNDATION.md 3, motion and haptics rules):
@@ -114,6 +122,8 @@ public enum Feedback {
         case let .crash(report): report.isTakedown ? nil : crashSound(report)
         case let .comboChanged(change): change.isTierUp ? .comboUp : nil
         case .rushHour: .rushHour
+        // The bomb is heard, nothing else.
+        case let .shiftEnded(result) where result.detonated: nil
         case let .shiftEnded(result):
             switch result.outcome {
             case .completed: .shiftComplete
@@ -137,7 +147,9 @@ public enum Feedback {
         case let .flowChanged(change): change.isInFlow ? .flowIn : nil
         case .towed: .tow
         case .criminalEntered: .screech
-        case .launched, .tapRejected, .exited, .transporterEntered, .transporterEscaped: nil
+        case .militaryWarning: .alarm
+        case let .explosion(report): report.kind == .bomb ? .detonation : .explosion
+        case .launched, .tapRejected, .exited, .transporterEntered, .transporterEscaped, .militaryEntered: nil
         }
     }
 
@@ -197,7 +209,10 @@ public enum Feedback {
         // Only entering the flow is felt; leaving it is felt through the crash that ends it.
         case let .flowChanged(change): change.isInFlow ? .flow : nil
         case .towed: nil
-        case .launched, .tapRejected, .exited, .criminalEntered, .criminalEscaped, .criminalWrecked, .dispatched, .transporterEntered, .transporterEscaped: nil
+        // Every blast is felt, wherever it is: it shakes the whole screen.
+        case .explosion: .explosion
+        case .militaryWarning: .wanted
+        case .launched, .tapRejected, .exited, .criminalEntered, .criminalEscaped, .criminalWrecked, .dispatched, .transporterEntered, .transporterEscaped, .militaryEntered: nil
         }
     }
 
@@ -208,7 +223,7 @@ public enum Feedback {
         switch haptic {
         case .merge, .tightFit, .nearMiss, .perfect, .comboUp, .flow:
             min(max(flow, 0), 1)
-        case .chest, .crash, .rushHour, .shiftComplete, .wanted, .takedown, .secured, .seized, .paid:
+        case .chest, .crash, .rushHour, .shiftComplete, .wanted, .takedown, .secured, .seized, .paid, .explosion:
             0
         }
     }

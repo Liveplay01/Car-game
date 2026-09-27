@@ -59,6 +59,10 @@ struct SoundMaker {
             ("chestCharge", chestCharge, 0.32),
             ("chestBurst", { chestBurst(rare: false) }, 0.55),
             ("chestBurstRare", { chestBurst(rare: true) }, 0.62),
+            // Explosives (Leo, 27.09.2026): the loudest things in the game.
+            ("explosion", { explosion(size: 1, seed: 31) }, 0.95),
+            ("detonation", detonation, 1.0),
+            ("alarm", alarm, 0.45),
         ]
         for (name, make, peak) in sounds {
             let url = folder.appendingPathComponent("\(name).wav")
@@ -389,6 +393,86 @@ struct SoundMaker {
         var crack = Random(seed: random.seed())
         sound.add(mono: render(0.03) { t in snap.process(crack.noise()) * decay(t, 0.006) }, at: 0.004, gain: 0.5 + 0.2 * s, pan: random.range(-0.4, 0.4))
         return sound
+    }
+
+    // MARK: - Explosives (Leo, 27.09.2026)
+
+    /// A gas tanker going up: a crack, a saturated sub-bass boom dropping in pitch, the
+    /// fireball roaring (noise that opens bright and closes dark), fire crackling, glass and
+    /// debris raining down, all in a big outdoor space.
+    static func explosion(size s: Double, seed: UInt64) -> Stereo {
+        var random = Random(seed: seed)
+        let length = 1.4 + 1.4 * s
+        var sound = Stereo(seconds: length)
+        var osc = Oscillator()
+        var rumble = Random(seed: random.seed())
+        var low = Biquad()
+        low.set(.lowPass, 120 + 40 * s, q: 0.7)
+        let boom = render(length) { t in
+            let pitch = 26 + 95 * exp(-t / (0.08 * s))
+            let body = osc.sine(pitch) * decay(t, 0.32 * s)
+            let air = low.process(rumble.noise()) * decay(t, 0.55 * s) * 2.8
+            return softClip((body * 1.3 + air) * 1.4, drive: 3)
+        }
+        sound.add(mono: boom)
+        // The fireball: wide noise that swells in a few milliseconds and darkens as it dies.
+        var roarNoise = Random(seed: random.seed())
+        var roarLeft = Biquad()
+        var roarRight = Biquad()
+        var roarNoiseRight = Random(seed: random.seed())
+        let roar = renderStereo(length) { t in
+            let cutoff = 300 + 3_200 * exp(-t / (0.22 * s))
+            roarLeft.set(.lowPass, cutoff, q: 0.6)
+            roarRight.set(.lowPass, cutoff * 0.93, q: 0.6)
+            let level = (1 - exp(-t / 0.012)) * decay(t, 0.42 * s) * 1.4
+            return (roarLeft.process(roarNoise.noise()) * level, roarRight.process(roarNoiseRight.noise()) * level)
+        }
+        sound.add(roar, gain: 0.85)
+        // The crack of the tank bursting: dry and bright, right at the start.
+        var snap = Biquad()
+        snap.set(.highPass, 1_800, q: 0.7)
+        var crack = Random(seed: random.seed())
+        sound.add(mono: render(0.06) { t in snap.process(crack.noise()) * decay(t, 0.012) }, gain: 0.9)
+        // Fire crackling on in the tail.
+        for _ in 0..<Int(70 * s) {
+            let start = random.range(0.12, length * 0.85)
+            sound.addHit(at: start, frequency: random.range(1_400, 6_500), decay: random.range(0.002, 0.006),
+                         amplitude: random.range(0.12, 0.4) * exp(-start / (0.9 * s)), noise: 0.9, pan: random.range(-0.85, 0.85), seed: random.seed())
+        }
+        sound.add(glass(amount: 1.3, seed: random.seed()), at: 0.015, gain: 0.35)
+        sound.add(debris(pieces: Int(5 * s + 3), seed: random.seed()), at: 0.28, gain: 0.4)
+        return reverb(sound, room: 0.85, damp: 0.5, wet: 0.28, tail: 1.1)
+    }
+
+    /// The bomb: a bigger explosion, its echo thrown back by the houses, and a deep rumble
+    /// that rolls on and away.
+    static func detonation() -> Stereo {
+        var sound = explosion(size: 2, seed: 41)
+        sound.add(explosion(size: 0.8, seed: 43), at: 0.32, gain: 0.35, pan: -0.3)
+        var random = Random(seed: 47)
+        var rumble = Biquad()
+        rumble.set(.lowPass, 75, q: 0.8)
+        let roll = render(3.6) { t in
+            let swell = 0.6 + 0.4 * sin(2 * .pi * 1.3 * t + 0.4 * sin(2 * .pi * 0.4 * t))
+            return rumble.process(random.noise()) * envelope(t, attack: 0.15, hold: 0.6, release: 2.8) * swell * 3.2
+        }
+        sound.add(mono: roll, at: 0.1, gain: 0.8)
+        return sound
+    }
+
+    /// A military truck is announced: three hard klaxon blasts.
+    static func alarm() -> Stereo {
+        var sound = Stereo(seconds: 1.6)
+        for blast in 0..<3 {
+            var low = Oscillator()
+            var high = Oscillator()
+            let tone = render(0.3) { t in
+                let x = low.harmonic(233, harmonics: 14) * 0.6 + high.harmonic(311, harmonics: 10) * 0.4
+                return softClip(x * envelope(t, attack: 0.008, hold: 0.24, release: 0.05) * 1.6, drive: 2)
+            }
+            sound.add(mono: tone, at: Double(blast) * 0.4)
+        }
+        return reverb(sound, room: 0.6, damp: 0.5, wet: 0.2, tail: 0.5)
     }
 
     /// Glass shattering: a bright burst, then shards tinkling to the ground.

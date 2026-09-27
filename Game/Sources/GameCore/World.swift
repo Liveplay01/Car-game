@@ -29,6 +29,7 @@ public struct World: Sendable {
     public internal(set) var score = ScoreBoard()
     public internal(set) var criminal = CriminalState(phase: .idle(next: .infinity))
     public internal(set) var transporter = TransporterState(phase: .idle(next: .infinity))
+    public internal(set) var military = MilitaryState(phase: .idle(next: .infinity))
     /// Speed of everything on the ring. All ring cars share it, so the ring itself never crashes.
     public internal(set) var ringSpeed: Double
     /// The AI fills the road up to this many cars (ring, merging and waiting).
@@ -40,6 +41,9 @@ public struct World: Sendable {
     var queueRng: SeededRandom
     var criminalRng: SeededRandom
     var transporterRng: SeededRandom
+    /// Own streams for the explosives too (Leo, 27.09.2026): every seed keeps its traffic.
+    var tankerRng: SeededRandom
+    var militaryRng: SeededRandom
     var nextVehicleID = 1
     var pendingTaps: [Double] = []
     var spawnCooldown = 0.0
@@ -66,6 +70,8 @@ public struct World: Sendable {
         queueRng = SeededRandom(seed: seed ^ 0x51ED_2701_A3C4_9B17)
         criminalRng = SeededRandom(seed: seed ^ 0xB5AD_4ECE_DA1C_E2A9)
         transporterRng = SeededRandom(seed: seed ^ 0x9F31_4D7C_2E8B_0A56)
+        tankerRng = SeededRandom(seed: seed ^ 0x7A1E_5C93_D40B_28F1)
+        militaryRng = SeededRandom(seed: seed ^ 0xE3B2_0C6D_91A7_4F58)
         ringSpeed = config.ringSpeed
         targetDensity = config.freePlayDensity
         nextVehicleID = firstVehicleID
@@ -77,6 +83,9 @@ public struct World: Sendable {
             criminal.phase = .idle(next: criminalRng.unit() < config.criminalChance ? first : .infinity)
             // Mayhem has no money on the road.
             transporter.phase = .idle(next: config.mayhem ? .infinity : transporterRng.double(in: config.transporterFirst))
+            // Some shifts bring a military truck (`militaryChance`), Mayhem several.
+            let comes = militaryRng.unit() < config.militaryChance
+            military.phase = .idle(next: comes ? militaryRng.double(in: config.militaryFirst) : .infinity)
         }
         refillQueue()
         if prefill {
@@ -98,6 +107,12 @@ public struct World: Sendable {
         }
         // Ordered by creation: every carried car is older than the new queue.
         next.vehicles.insert(contentsOf: carried, at: 0)
+        // A military truck still on its rounds keeps them, on the new shift's clock.
+        switch military.phase {
+        case let .active(id, deadline): next.military.phase = .active(vehicle: id, deadline: max(0, deadline - time))
+        case let .leaving(id): next.military.phase = .leaving(vehicle: id)
+        case .idle, .warning, .arriving, .detonated: break
+        }
         next.tempoGlide = (from: ringSpeed, since: 0)
         next.applyShiftCurves(at: 0)
         next.queue.state = .filling(elapsed: 0)
@@ -142,6 +157,7 @@ public struct World: Sendable {
         updateTraffic(dt)
         updateCriminals(now: end)
         updateTransporters(now: end)
+        updateMilitary(now: end)
         resolveContacts(now: end)
         resolveTrafficContacts(now: end)
         rateMerges(now: end)
@@ -159,10 +175,10 @@ public struct World: Sendable {
         hitbox(at: Path.Pose(position: vehicle.position, heading: vehicle.heading), type: vehicle.type)
     }
 
-    /// How long a vehicle is. Only the lorry differs from a car.
+    /// How long a vehicle is. The lorries (tanker and military truck too) are longest.
     public func length(of type: VehicleType) -> Double {
         switch type {
-        case .truck: config.truckLength
+        case .truck, .tanker, .military: config.truckLength
         case .sportsCar: config.sportsCarLength
         case .compact: config.compactLength
         case .van: config.vanLength
@@ -175,7 +191,7 @@ public struct World: Sendable {
     mutating func moveVehicles(_ dt: Double, now: Double) {
         // Bots on the ring that have not decided to leave yet.
         var stayingBots = vehicles.count { vehicle in
-            guard vehicle.isBot, case let .ring(r) = vehicle.phase else { return false }
+            guard isRingBot(vehicle), case let .ring(r) = vehicle.phase else { return false }
             return !r.isLeaving
         }
         // Once the wrecks are gone, a bot that has not found back into the flow for a while
@@ -216,9 +232,9 @@ public struct World: Sendable {
                 r.s = Angle.wrap(r.s + d, period: layout.ring.length)
                 r.distanceToExit -= d
                 let id = vehicles[i].id
-                if r.distanceToExit <= 0 && (isChased(id) || isTransported(id) || r.drive.isPursuing) {
-                    // The criminal on the run, the transporter until its time is up and a
-                    // police car on a chase do not leave: another lap.
+                if r.distanceToExit <= 0 && (isChased(id) || isTransported(id) || isEscorted(id) || r.drive.isPursuing) {
+                    // The criminal on the run, the transporter and the military truck until
+                    // their time is up and a police car on a chase do not leave: another lap.
                     r.distanceToExit += layout.ring.length
                 }
                 if vehicles[i].isBot && !r.isLeaving && r.distanceToExit <= config.botExitNotice * ringSpeed {
@@ -281,7 +297,7 @@ public struct World: Sendable {
     /// their gaps to live traffic. In normal traffic ring cars share one speed and cannot
     /// touch each other (FOUNDATION.md 4.3); disturbed traffic is `resolveTrafficContacts`.
     mutating func resolveContacts(now: Double) {
-        let hitboxes = vehicles.map { $0.isCollidable || $0.isCrashed ? hitbox(of: $0) : nil }
+        let hitboxes = vehicles.map { $0.isCollidable || isObstacle($0) ? hitbox(of: $0) : nil }
         var hits: [(i: Int, j: Int, contact: Collision.Contact)] = []
         for i in vehicles.indices where vehicles[i].activeMerge != nil {
             guard let a = hitboxes[i] else { continue }
@@ -317,7 +333,7 @@ public struct World: Sendable {
             for j in vehicles.indices where j != i {
                 let other = vehicles[j]
                 // Live pairs once; merging cars were checked in `resolveContacts`.
-                guard other.isCrashed || (isLiveTraffic(other) && j > i) else { continue }
+                guard isObstacle(other) || (isLiveTraffic(other) && j > i) else { continue }
                 guard (vehicles[i].position - other.position).lengthSquared < reach * reach else { continue }
                 let contact = Collision.contact(hitbox(of: vehicles[i]), hitbox(of: other))
                 if contact.gap <= 0 {
@@ -326,6 +342,13 @@ public struct World: Sendable {
             }
         }
         resolve(hits, now: now)
+    }
+
+    /// A wreck that live traffic runs into. In Mayhem only one still flying: cars drive over
+    /// the ones lying on the road (`mayhemWreckHitSpeed`).
+    func isObstacle(_ vehicle: Vehicle) -> Bool {
+        guard case let .crashed(state) = vehicle.phase else { return false }
+        return !config.mayhem || state.velocity.length > config.mayhemWreckHitSpeed
     }
 
     /// On the ring or an exit and not merging.
@@ -386,6 +409,8 @@ public struct World: Sendable {
         let wreckedCriminal = takedown ? nil : [first, second].first(where: isLiveCriminal)
         // The money transporter is wrecked like any car, and its money with it.
         let wreckedTruck = seizure ? nil : [first, second].first { $0.type == .transporter && !$0.isCrashed }
+        // A gas tanker or the military truck that is wrecked here goes up (`explode`).
+        let explosives = [first, second].filter { $0.type.isExplosive && !$0.isCrashed }.map(\.id)
         let culprits = [first, second].filter(causesStrike)
         let strike = !takedown && !seizure && !culprits.isEmpty
         // Only if every car at fault is a police car; a normal car's mistake is a strike.
@@ -410,7 +435,8 @@ public struct World: Sendable {
         if config.mayhem {
             // Mayhem: no strikes, no costs. Every new wreck burns, chains burn brighter.
             if isScoring, !first.isCrashed || !second.isCrashed {
-                mayhem = scoreMayhem(at: now, followUp: !strike)
+                let heavy = [first, second].contains { !$0.isCrashed && $0.type.isHeavy }
+                mayhem = scoreMayhem(at: now, followUp: !strike, heavy: heavy)
             }
         } else if strike && isScoring {
             penalty = scoreCrash(byPolice: byPolice, at: now)
@@ -451,6 +477,9 @@ public struct World: Sendable {
         }
         if strike && isScoring && mode == .shift && !config.mayhem && isStruckOut {
             endShift(.struckOut, at: now)
+        }
+        for id in explosives {
+            explode(id, now: now)
         }
     }
 
@@ -585,9 +614,9 @@ public struct World: Sendable {
     /// Cleanly turns an abandoned criminal or transporter into a normal car: used once its
     /// warning is called off after it already left its stop line, so it never lingers as a
     /// vehicle that still looks special but does nothing (`updateCriminals`, `updateTransporters`).
-    mutating func demoteToOrdinaryTraffic(_ id: Int) {
+    mutating func demoteToOrdinaryTraffic(_ id: Int, as type: VehicleType = .car) {
         guard let index = index(of: id) else { return }
-        vehicles[index].type = .car
+        vehicles[index].type = type
     }
 
     mutating func makeID() -> Int {

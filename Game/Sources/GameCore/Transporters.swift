@@ -189,6 +189,8 @@ extension World {
     /// the other, and on the ring the criminal stays out of the transporter's secure zone.
     /// True if `vehicle`, about to enter at `arm`, would join too close to the other one.
     func joinsTooClose(_ vehicle: Vehicle, at arm: Arm) -> Bool {
+        // Nobody joins inside the military truck's zone, and it waits for a clear one.
+        if joinsMilitaryZone(vehicle, at: arm) { return true }
         let otherType: VehicleType
         switch vehicle.type {
         case .pickup: otherType = .transporter

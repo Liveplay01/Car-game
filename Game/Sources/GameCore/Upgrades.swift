@@ -22,6 +22,9 @@ public enum Upgrade: String, CaseIterable, Sendable {
     case overtime
     /// More lorries: more tolls, and denser traffic (M7).
     case freight
+    /// Drivers accelerate harder: after a crash the traffic is back up to speed sooner
+    /// (Leo, 27.09.2026).
+    case quickRecovery
     /// A chance of a second transporter right after one (M7).
     case doubleRun
     /// Pays part of what a crash costs from level 20 on (M7).
@@ -36,7 +39,7 @@ public enum Upgrade: String, CaseIterable, Sendable {
         case .morePatrols, .overtime: 10
         case .longerPursuit, .cashRoute, .freight: 8
         case .insurance, .robberyInsurance: 7
-        case .quietStreets, .interceptor, .dispatchRadio, .doubleRun: 5
+        case .quietStreets, .interceptor, .dispatchRadio, .doubleRun, .quickRecovery: 5
         case .backup: 3
         }
     }
@@ -45,7 +48,7 @@ public enum Upgrade: String, CaseIterable, Sendable {
     var priceFactor: Double {
         switch self {
         case .morePatrols, .cashRoute, .overtime, .freight: 1
-        case .longerPursuit, .dispatchRadio: 1.2
+        case .longerPursuit, .dispatchRadio, .quickRecovery: 1.2
         case .quietStreets, .interceptor, .doubleRun: 1.5
         case .insurance, .robberyInsurance: 2
         case .backup: 3
@@ -89,6 +92,7 @@ extension Config {
         config.transporterInterval = max(1, transporterInterval.lowerBound - sooner)...max(1, transporterInterval.upperBound - sooner)
         config.shiftPay = Int((Double(shiftPay) * (1 + step(.overtime) * overtimePerStep)).rounded())
         config.truckChance = min(1, truckChance + step(.freight) * freightPerStep)
+        config.driverAcceleration = driverAcceleration * (1 + step(.quickRecovery) * recoveryPerStep)
         config.doubleRunChance = min(1, doubleRunChance + step(.doubleRun) * doubleRunPerStep)
         config.crashInsurance = min(1, crashInsurance + step(.insurance) * insurancePerStep)
         config.robberyInsurance = min(1, robberyInsurance + step(.robberyInsurance) * insurancePerStep)

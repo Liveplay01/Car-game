@@ -179,7 +179,8 @@ enum CityLayer {
     /// - Parameters:
     ///   - time: moves what lives on the map's ground (koi, stars, water); nil stills it.
     ///   - pulse: the city's breathing (`CityPulse`); nil (Reduce Motion) keeps it still.
-    static func add(world: World, theme: MapTheme? = nil, time: Double? = nil, pulse: CityPulse? = nil, to list: inout RenderList) {
+    ///   - scars: what blasts did to the city (`MapScars`), at session time `now`.
+    static func add(world: World, theme: MapTheme? = nil, time: Double? = nil, pulse: CityPulse? = nil, scars: MapScars? = nil, now: Double = 0, to list: inout RenderList) {
         MapTheme.addGround(theme, world: world, time: time, to: &list)
         let layout = world.layout
         var plantID = RenderID.mapPlants
@@ -204,13 +205,17 @@ enum CityLayer {
                 // Where a tree stands, the map's own plant grows (`MapTheme.addPlant`), and
                 // sways a little in the city's breath.
                 let sway = pulse?.sway(candidate) ?? .zero
-                MapTheme.addPlant(theme, at: center + sway, size: 7 + 5 * WeatherLayer.unitHash(candidate, 14), index: candidate, id: &plantID, to: &list)
+                let size = 7 + 5 * WeatherLayer.unitHash(candidate, 14)
+                MapTheme.addPlant(theme, at: center + sway, size: size, index: candidate, id: &plantID, to: &list)
+                // A blast nearby sets it on fire, and it stays charred (Leo, 27.09.2026).
+                scars?.addTree(at: center + sway, size: size, index: candidate, now: now, time: time, to: &list)
             } else {
                 let size = Vec2(26 + 30 * WeatherLayer.unitHash(candidate, 15), 22 + 26 * WeatherLayer.unitHash(candidate, 16))
                 list.add(.roundedRect(center: center, size: size, cornerRadius: 3, rotation: angle), color: .surface, opacity: 0.55, space: .world, id: id)
                 id += 1
                 // A roof edge, a touch lighter: the block reads as a building, not a hole.
                 list.add(.roundedRect(center: center, size: size - Vec2(8, 8), cornerRadius: 2, rotation: angle), color: .kerb, opacity: 0.35, space: .world, id: id)
+                scars?.addHouse(at: center, size: size, rotation: angle, index: candidate, now: now, time: time, to: &list)
                 // Some windows are lit, and glow up and down slowly, each on its own beat.
                 if WeatherLayer.unitHash(candidate, 17) < 0.45 {
                     id += 1

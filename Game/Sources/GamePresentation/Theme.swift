@@ -131,6 +131,19 @@ public enum ColorToken: Sendable, Equatable, CaseIterable {
     case fireOuter
     /// The dark rim of a fireball.
     case fireDeep
+    // Explosives (Leo, 27.09.2026)
+    /// The gas tanker: a steel-blue cab and a polished tank.
+    case vehicleTanker
+    case vehicleTank
+    /// The military truck: olive drab, a darker canvas, the black bomb on its bed.
+    case vehicleMilitary
+    case vehicleMilitaryBox
+    case bomb
+    /// Thick smoke of a blast and the smoke curtain between levels, dark and light.
+    case smokeDark
+    case smokeLight
+    /// Burnt ground and charred trees.
+    case scorch
     // Debug overlay (test window only)
     /// Celebration only (the chest opening): Apple's system hues, bright and fruity. Never
     /// on the road, so they never read as a vehicle.
@@ -273,6 +286,14 @@ public enum Theme {
         case .fireCore: ColorRGBA(hex: 0xFFE08A)
         case .fireOuter: ColorRGBA(hex: 0xFF7A3D)
         case .fireDeep: ColorRGBA(hex: 0xC2362B)
+        case .vehicleTanker: ColorRGBA(hex: 0x3D5A80)
+        case .vehicleTank: ColorRGBA(hex: 0xD3D9E0)
+        case .vehicleMilitary: ColorRGBA(hex: 0x5C6B3A)
+        case .vehicleMilitaryBox: ColorRGBA(hex: 0x47532C)
+        case .bomb: ColorRGBA(hex: 0x24272A)
+        case .smokeDark: ColorRGBA(hex: 0x2C2F34)
+        case .smokeLight: ColorRGBA(hex: 0x9CA3AC)
+        case .scorch: ColorRGBA(hex: 0x171411)
         case .juiceRed: ColorRGBA(hex: 0xFF453A)
         case .juiceOrange: ColorRGBA(hex: 0xFF9F0A)
         case .juiceYellow: ColorRGBA(hex: 0xFFD60A)

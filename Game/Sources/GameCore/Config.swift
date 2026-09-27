@@ -179,6 +179,10 @@ public struct Config: Sendable, Equatable {
     public var criminalTime: Double = 12
     /// Points for a takedown, times combo multiplier and rush hour.
     public var takedownPoints: Int = 1000
+    /// Criminals do not keep to the rules (Leo, 27.09.2026): the pickup rolls up without
+    /// stopping and barges in at the first gap this big (seconds) that it gets through
+    /// without a crash, whatever the traffic behind it has to do.
+    public var criminalEntryGap: Double = 0.05
     /// Mass of the pickup relative to a car once a police car stops it. Anything else
     /// bounces off it: only the police can stop a criminal.
     public var criminalMass: Double = 2.5
@@ -269,6 +273,45 @@ public struct Config: Sendable, Equatable {
     public var towSpeedup: Double = 0.3
     public var towDepotCost: Int = 13_000
 
+    // MARK: Explosives (Leo, 27.09.2026)
+
+    /// Share of lorries that are gas tankers. 0 below `tankerLevel`, `tankerLevelShare` from
+    /// there on (`forLevel`). A tanker drives like any lorry; wrecked, it explodes.
+    public var tankerShare: Double = 0
+    public var tankerLevel: Int = 4
+    public var tankerLevelShare: Double = 0.18
+    /// A full tank is heavy.
+    public var tankerMass: Double = 2.4
+    /// Everything on the road within this radius of an exploding tanker becomes a wreck,
+    /// thrown away from it at up to this speed (wu/s), less towards the edge and the heavier
+    /// it is. The map burns further out (drawn only, `MapScars`).
+    public var tankerBlastRadius: Double = 66
+    public var tankerBlastSpeed: Double = 280
+    /// Military truck: its chance per shift, 0 below `militaryLevel`, `militaryLevelChance`
+    /// from there on (`forLevel`). When it comes, its warning, how long it stays on the ring,
+    /// how many come in one shift and the pause between them.
+    public var militaryChance: Double = 0
+    public var militaryLevel: Int = 7
+    public var militaryLevelChance: Double = 0.3
+    public var militaryFirst: ClosedRange<Double> = 10...18
+    public var militaryPerShift: Int = 1
+    public var militaryInterval: ClosedRange<Double> = 8...12
+    public var militaryWarning: Double = 2
+    public var militaryTime: Double = 12
+    /// The no-go zone along the ring, centred on the truck: about a car length of clearance
+    /// before and behind it. A car merging into it sets the bomb off.
+    public var militaryZoneArc: Double = 84
+    public var militaryMass: Double = 2.6
+    /// The bomb reaches everything on the road, and throws it hard.
+    public var bombBlastRadius: Double = 2_000
+    public var bombBlastSpeed: Double = 420
+    /// Mayhem: far more of both.
+    public var mayhemTruckChance: Double = 0.34
+    public var mayhemTankerShare: Double = 0.6
+    public var mayhemMilitaryFirst: ClosedRange<Double> = 9...15
+    public var mayhemMilitaryPerShift: Int = 4
+    public var mayhemMilitaryInterval: ClosedRange<Double> = 6...10
+
     // MARK: Strikes (FOUNDATION.md 2.6)
 
     /// Crashes of normal cars that end the shift. 1, the default, is the classic hard
@@ -309,8 +352,20 @@ public struct Config: Sendable, Equatable {
     /// follows another within `mayhemChainWindow` extends a chain reaction and is worth its
     /// place in it. No strikes, no costs, no money, no stats (`forMayhem`).
     public var mayhem = false
-    /// Cars to send in a Mayhem run.
-    public var mayhemCars: Int = 30
+    /// Cars to send in a Mayhem run: few, so each one is worth aiming (Leo, 27.09.2026).
+    public var mayhemCars: Int = 12
+    /// Reloading: the next car needs this long to roll up, so firing them all off at the
+    /// start does not work; waiting for the right moment does.
+    public var mayhemReload: Double = 1.1
+    /// A wrecked lorry, tanker or military truck is worth this many times the flames.
+    public var mayhemHeavyFlames: Int = 2
+    /// Traffic in Mayhem gets back up to speed this many times faster after a pile-up, so
+    /// there is always something to hit.
+    public var mayhemRecoveryFactor: Double = 2
+    /// In Mayhem nobody brakes and traffic drives over wrecks lying on the road (Leo,
+    /// 27.09.2026); only a wreck still flying faster than this (wu/s) hits what is in its way,
+    /// so blasts and crashes still set off chain reactions.
+    public var mayhemWreckHitSpeed: Double = 60
     /// The level Mayhem is played at, and how many cars more are on the road than there.
     public var mayhemLevel: Int = 6
     public var mayhemExtraTraffic: Int = 3
@@ -396,6 +451,8 @@ public struct Config: Sendable, Equatable {
     public var freightPerStep: Double = 0.015
     /// Double Run: this much more chance per step of a second transporter right after one.
     public var doubleRunPerStep: Double = 0.04
+    /// Quick Recovery: drivers accelerate this much harder per step (5 steps: twice as hard).
+    public var recoveryPerStep: Double = 0.2
 
     // MARK: Risk and insurance (IDEA.md: Crash-Economy, Financial Loss; ROADMAP.md, M7)
 

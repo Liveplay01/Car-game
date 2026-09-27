@@ -36,6 +36,8 @@ public struct ShiftState: Sendable, Equatable {
     public internal(set) var startedAt: Double?
     /// World time at which rush hour began.
     public internal(set) var rushHourSince: Double?
+    /// The military truck's bomb went off and ended it (Leo, 27.09.2026).
+    public internal(set) var detonated = false
 
     public var acceptsTaps: Bool {
         switch phase {
@@ -91,6 +93,8 @@ public struct ShiftResult: Sendable, Equatable {
     public var flames = 0
     public var wrecks = 0
     public var biggestChain = 0
+    /// The military truck's bomb went off and ended the shift.
+    public var detonated = false
 
     public var merges: Int { cleanMerges + tightFits + cutOffs + nearMisses + perfects }
 }
@@ -283,7 +287,8 @@ extension World {
             carsSent: shift.carsSent,
             flames: score.flames,
             wrecks: score.wrecks,
-            biggestChain: score.biggestChain
+            biggestChain: score.biggestChain,
+            detonated: shift.detonated
         )
     }
 }

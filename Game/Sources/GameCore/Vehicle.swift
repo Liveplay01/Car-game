@@ -21,15 +21,29 @@ public enum VehicleType: Sendable, Equatable {
     /// From the player queue once unlocked (LOOT.md): long and heavy, and it merges a touch
     /// quicker to make up for it — harder to fit, easier to time.
     case van
+    /// A gas tanker (Leo, 27.09.2026): drives like any lorry, but wrecked it explodes and
+    /// wrecks everything around it (`Explosions.swift`).
+    case tanker
+    /// A military truck with a bomb on its bed (Leo, 27.09.2026): announced like the money
+    /// transporter, with a no-go zone around it on the ring. A car merging into that zone, or
+    /// anything hitting the truck, sets the bomb off: everything on the road is blown up and
+    /// the shift is over.
+    case military
 
     /// The player's own unlockable cars (`Cosmetic.kind == .vehicleType`): plain cars with
     /// their own length, weight and merge.
     public var isCarType: Bool {
         switch self {
         case .car, .sportsCar, .compact, .van: true
-        case .police, .pickup, .transporter, .truck: false
+        case .police, .pickup, .transporter, .truck, .tanker, .military: false
         }
     }
+
+    /// A lorry of any kind: long and heavy, worth more flames in Mayhem.
+    public var isHeavy: Bool { self == .truck || self == .tanker || self == .military }
+
+    /// Goes up when it is wrecked (`World.explode`).
+    public var isExplosive: Bool { self == .tanker || self == .military }
 }
 
 /// Who sent the vehicle onto the road. Only player cars are rated and can cost strikes.
@@ -188,9 +202,9 @@ public struct Vehicle: Sendable, Equatable {
     }
 
     /// Plain AI traffic: the bots whose gaps the player's cars have to hit. The criminal and
-    /// the transporter come and go by their own rules and do not count.
+    /// the transporter and the military truck come and go by their own rules and do not count.
     public var isBot: Bool {
-        owner == .ai && type != .pickup && type != .transporter
+        owner == .ai && type != .pickup && type != .transporter && type != .military
     }
 
     /// One of the player's police cars, still in one piece.

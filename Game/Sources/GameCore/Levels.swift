@@ -62,6 +62,10 @@ extension Config {
         // where the player's cars go.
         config.minRingBots = max(minRingBots, min(maxMinRingBots, minRingBots + Int(Double(level - 1) * ringBotsPerLevel)))
 
+        // Explosives (Leo, 27.09.2026): gas tankers in the traffic, later a military truck.
+        config.tankerShare = level >= tankerLevel ? tankerLevelShare : 0
+        config.militaryChance = level >= militaryLevel ? militaryLevelChance : 0
+
         config.shiftPay = shiftPayBase + shiftPayPerLevel * level
         config.level = level
 

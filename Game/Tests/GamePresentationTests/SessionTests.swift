@@ -115,14 +115,15 @@ extension Frame {
 /// Sends the cars of a quiet shift one by one until it is over.
 func finishShift(_ session: GameSession) {
     for _ in 0..<(session.world.carsLeft ?? 0) {
-        session.run(seconds: 1) { $0.world.queue.isReady }
+        // Mayhem reloads between cars (`mayhemReload`); everywhere else this is at once.
+        session.run(seconds: 3) { $0.world.queue.isReady }
         session.advance([.tap])
     }
     session.run(seconds: 2) { $0.world.shift.outcome != nil }
 }
 
 func crashNextCar(_ session: GameSession) {
-    session.run(seconds: 1) { $0.world.queue.isReady }
+    session.run(seconds: 3) { $0.world.queue.isReady }
     var world = session.world
     let s = world.layout.entryRingS(world.layout.player) - world.ringSpeed * world.config.mergeDuration
     world.spawnRingCar(at: s, exitArm: world.layout.arm(3))

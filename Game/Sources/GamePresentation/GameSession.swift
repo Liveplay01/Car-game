@@ -112,6 +112,10 @@ public final class GameSession {
     private var clock = FixedStepClock()
     private var markers: [DebugMarker] = []
     private var effects = CrashEffects(seed: 0)
+    /// Blasts, what they did to the city, and the bomb's smoke between two levels.
+    private var explosions = ExplosionEffects(seed: 0)
+    private var scars = MapScars()
+    private var curtain: SmokeCurtain?
     private var popups: [Popup] = []
     private var popupSerial = 0
     /// The finished shift, shown once `resultCountdown` has run out.
@@ -257,6 +261,7 @@ public final class GameSession {
         playingLevel = save.career.level
         world = World(config: save.career.config(from: config, seed: seed), seed: seed, mode: .shift, startsOnFirstTap: true)
         effects = CrashEffects(seed: seed)
+        explosions = ExplosionEffects(seed: seed)
         tutorial = save.tutorialDone ? nil : Tutorial()
         // The first shift is always a plain one; another mode sets its roundabout up now.
         if tutorial != nil { save.mode = .shift }
@@ -939,6 +944,9 @@ public final class GameSession {
         clock.reset()
         markers.removeAll()
         effects = CrashEffects(seed: world.seed)
+        // The level after the bomb starts clean: no fire, no burnt trees (Leo, 27.09.2026).
+        explosions = ExplosionEffects(seed: world.seed)
+        scars = MapScars()
         popups.removeAll()
         pendingSummary = nil
     }
@@ -1390,6 +1398,28 @@ public final class GameSession {
             case .flowChanged:
                 // The glow follows `world.isInFlow` smoothly (`flowLevel`).
                 break
+            case .militaryWarning, .militaryEntered:
+                break
+            case let .explosion(report):
+                markers.append(DebugMarker(kind: .crash, position: report.point, age: 0))
+                explosions.spawn(report, reduceMotion: reduceMotion)
+                scars.add(report, now: sceneTime)
+                effects.ignite(report.wrecked + [report.source], strength: 1.5)
+                if report.kind == .bomb {
+                    // Its smoke carries over to the next level (`SmokeCurtain`).
+                    curtain = SmokeCurtain(center: report.point)
+                } else {
+                    addPopup(.boom, at: report.point)
+                }
+                if report.flames > 0 {
+                    addPopup(.flames(report.flames, chain: report.chain), at: report.point + Vec2(0, 20))
+                    sinceFlames = 0
+                }
+                // Heard and felt even outside a running shift: the whole screen shakes.
+                if screen != .playing {
+                    let cues = Feedback.cues(for: [event])
+                    play(sounds: cues.sounds, haptics: cues.haptics)
+                }
             }
         }
         guard screen == .playing else { return }
@@ -1531,7 +1561,12 @@ public final class GameSession {
             showNotice(toasts.joined(separator: "  ·  "))
         }
         pendingSummary = ShiftSummary(result: result, level: playingLevel, isNewHighscore: isNew, previousHighscore: previous, mode: playingMode)
-        resultCountdown = Self.resultDelay
+        resultCountdown = resultDelay(for: result)
+    }
+
+    /// After the bomb the result waits until its smoke covers the screen (`SmokeCurtain`).
+    private func resultDelay(for result: ShiftResult) -> Double {
+        result.detonated ? SmokeCurtain.swapAt : Self.resultDelay
     }
 
     /// Mayhem counts for nothing but itself (Leo, 26.09.2026): no money, no level, no
@@ -1546,7 +1581,7 @@ public final class GameSession {
         dailySelected = false
         resultBank = (save.career.money, save.career.money)
         pendingSummary = ShiftSummary(result: result, level: playingLevel, isNewHighscore: isNew, previousHighscore: previous, mode: .mayhem)
-        resultCountdown = Self.resultDelay
+        resultCountdown = resultDelay(for: result)
     }
 
     /// The map's slide between two modes: it follows the finger, travels out and in, and
@@ -1602,13 +1637,18 @@ public final class GameSession {
         }
         popups.removeAll { $0.age >= Popup.lifetime }
         effects.update(delta, world: world, reduceMotion: reduceMotion)
+        explosions.update(delta, gravity: world.config.gravity)
+        scars.forget(before: sceneTime)
+        curtain?.age += delta
+        if curtain?.isDone == true { curtain = nil }
         if let summary = pendingSummary {
             resultCountdown -= delta
             if resultCountdown <= 0 {
                 resultAge = 0
                 moneyLanded = false
-                // Level up (or not), and the next shift rolls in behind the result.
-                prepareShift(continuing: true, screen: .result(summary))
+                // Level up (or not), and the next shift rolls in behind the result. After the
+                // bomb the smoke hides the road now: a fresh roundabout comes out of it.
+                prepareShift(continuing: !summary.result.detonated, screen: .result(summary))
                 play(sounds: [.swoosh], haptics: [])
             }
         }
@@ -1622,12 +1662,12 @@ public final class GameSession {
         var camera = cameraRig.camera(Perspective(screen), layout: world.layout, viewport: viewport, bottomInset: tabInset, delta: delta, reduceMotion: reduceMotion)
         // The crash shake moves the scene; the HUD (screen space) stays still. A swipe on the
         // Game tab slides the whole map sideways to the next mode's roundabout.
-        camera.focus += effects.shakeOffset + Vec2(modePan, 0)
-        camera.scale *= 1 - Self.lossPullBack * lossPull
+        camera.focus += effects.shakeOffset + explosions.shakeOffset + Vec2(modePan, 0)
+        camera.scale *= (1 - Self.lossPullBack * lossPull) * (1 + explosions.punch)
         // The map skin sets the ground outside the ring and what grows in the city.
         let mapTheme = MapTheme(skin: forcedMapSkin ?? save.career.mapSkin)
         var list = RenderList(camera: camera, background: MapTheme.ground(mapTheme))
-        CityLayer.add(world: world, theme: mapTheme, time: reduceMotion ? nil : sceneTime, pulse: reduceMotion ? nil : cityPulse, to: &list)
+        CityLayer.add(world: world, theme: mapTheme, time: reduceMotion ? nil : sceneTime, pulse: reduceMotion ? nil : cityPulse, scars: scars.isEmpty ? nil : scars, now: sceneTime, to: &list)
         SceneBuilder.addRoad(world.layout, config: world.config, to: &list)
         CityLayer.addMapSkin(Skins.color(forcedMapSkin ?? save.career.mapSkin), world: world, to: &list)
         MapTheme.addIsland(mapTheme, world: world, to: &list)
@@ -1635,6 +1675,8 @@ public final class GameSession {
         RingSignals.add(rim, layout: world.layout, reduceMotion: reduceMotion, to: &list)
         WeatherLayer.addCityEvent(world: world, to: &list)
         WeatherLayer.addGround(world: world, to: &list)
+        scars.addGround(now: sceneTime, time: reduceMotion ? nil : sceneTime, to: &list)
+        explosions.addGround(to: &list)
         effects.addGround(world: world, alpha: clock.alpha, softBody: !reduceMotion, to: &list)
         SceneBuilder.addShadows(of: world, alpha: clock.alpha, to: &list)
         SceneBuilder.addVehicles(of: world, alpha: clock.alpha, carSkins: save.career.carSkins, finishTime: reduceMotion ? nil : world.time, springTime: reduceMotion ? nil : world.time, lamps: lamps, to: &list)
@@ -1643,9 +1685,12 @@ public final class GameSession {
             SceneBuilder.addLabels(of: world, alpha: clock.alpha, to: &list)
         }
         effects.addAir(to: &list)
+        explosions.addAir(to: &list)
         WeatherLayer.addAir(world: world, time: world.time, reduceMotion: reduceMotion, to: &list)
         MapTheme.addAir(mapTheme, time: sceneTime, reduceMotion: reduceMotion, to: &list)
         Perspective.addRecede(opacity: recede, layout: world.layout, to: &list)
+        curtain?.add(viewport: viewport, reduceMotion: reduceMotion, to: &list)
+        explosions.addFlash(viewport: viewport, to: &list)
 
         // Everything from here to the tab strip belongs to the screen and moves with a change.
         let overlayStart = list.items.count
@@ -1654,6 +1699,7 @@ public final class GameSession {
             HUD.addFlowGlow(world: world, flow: flowLevel, to: &list)
             HUD.addChase(world: world, alpha: clock.alpha, to: &list)
             HUD.addTransporter(world: world, alpha: clock.alpha, to: &list)
+            HUD.addMilitary(world: world, alpha: clock.alpha, to: &list)
             HUD.add(
                 world: world, level: playingLevel,
                 score: Int(shownScore.rounded()),

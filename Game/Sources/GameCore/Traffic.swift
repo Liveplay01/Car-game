@@ -26,7 +26,7 @@ extension World {
                 return last < config.aiApproachDistance - 2 * config.queueSpacing
             }
             // An arm a criminal or a transporter was announced for stays free for it.
-            let free = openAIArms.filter { takesAnother($0) && $0 != reservedArm && $0 != reservedTransporterArm }
+            let free = openAIArms.filter { takesAnother($0) && $0 != reservedArm && $0 != reservedTransporterArm && $0 != reservedMilitaryArm }
             if !free.isEmpty {
                 spawnWaiting(at: rng.pick(free))
                 spawnCooldown = rng.double(in: config.aiSpawnDelay)
@@ -35,11 +35,13 @@ extension World {
 
         for i in vehicles.indices {
             guard case .waiting(var w) = vehicles[i].phase else { continue }
+            // The criminal never waits politely (`criminalEntryGap`).
+            let barges = vehicles[i].type == .pickup
             if w.approach > 0 {
-                w.approach = approachStep(w.approach, dt: dt, rolling: config.aiRollingMerge)
+                w.approach = approachStep(w.approach, dt: dt, rolling: config.aiRollingMerge || barges)
                 // Rolling merge (higher levels): a car that reaches its line with a gap goes
                 // straight in, no stop, no hesitation. Traffic flows instead of queuing.
-                if w.approach == 0, config.aiRollingMerge {
+                if w.approach == 0, config.aiRollingMerge || barges {
                     w.reaction = 0
                 }
                 // Queued behind another car at the same arm: stop a car length behind it.
@@ -51,7 +53,8 @@ extension World {
                 continue
             }
             w.reaction -= dt
-            if w.reaction <= 0 && canEnter(w.arm) && !joinsTooClose(vehicles[i], at: w.arm) {
+            let clear = barges ? canBargeIn(w.arm) : canEnter(w.arm)
+            if w.reaction <= 0 && clear && !joinsTooClose(vehicles[i], at: w.arm) {
                 let path = layout.entry(w.arm)
                 var merge = Vehicle.Merging(
                     arm: w.arm,
@@ -107,15 +110,22 @@ extension World {
             case .queued, .ring, .exiting, .crashed: return false
             }
         }
-        return ringBotCount + incoming < config.minRingBots
+        // A military truck whose time is up waits for its successor: it does not count.
+        return ringBotCount - (isMilitaryOverdue ? 1 : 0) + incoming < config.minRingBots
     }
 
-    /// Bots on the ring right now: past their merge, not yet on an exit, in one piece.
+    /// Bots on the ring right now: past their merge, not yet on an exit, in one piece. The
+    /// military truck on its rounds counts as one: with its zone it takes the room of several.
     public var ringBotCount: Int {
         vehicles.count { vehicle in
-            guard vehicle.isBot, case .ring = vehicle.phase else { return false }
+            guard isRingBot(vehicle), case .ring = vehicle.phase else { return false }
             return true
         }
+    }
+
+    /// A bot, or the military truck on its rounds (`ringBotCount`).
+    func isRingBot(_ vehicle: Vehicle) -> Bool {
+        vehicle.isBot || isEscorted(vehicle.id)
     }
 
     /// Cars that count towards the density: on the ring, merging or about to enter.
@@ -133,10 +143,12 @@ extension World {
         vehicles.append(Vehicle(id: makeID(), type: rollTrafficType(), owner: .ai, phase: .waiting(waiting), pose: approachPose(waiting)))
     }
 
-    /// Normal traffic is cars and lorries; everything else is announced (`Criminals`,
-    /// `Transporters`).
+    /// Normal traffic is cars and lorries, some of them gas tankers; everything else is
+    /// announced (`Criminals`, `Transporters`, `Explosions`).
     mutating func rollTrafficType() -> VehicleType {
-        rng.unit() < config.truckChance ? .truck : .car
+        guard rng.unit() < config.truckChance else { return .car }
+        // Drawn from their own stream, so tankers left every seed's traffic as it was.
+        return config.tankerShare > 0 && tankerRng.unit() < config.tankerShare ? .tanker : .truck
     }
 
     /// Where a car driving up to its stop line is: that far back along its lane.
@@ -160,7 +172,7 @@ extension World {
             if case let .waiting(w) = vehicle.phase { return w.arm == arm }
             return false
         }
-        return !waiting && arm != reservedArm && arm != reservedTransporterArm
+        return !waiting && arm != reservedArm && arm != reservedTransporterArm && arm != reservedMilitaryArm
     }
 
     /// Places a car directly on the ring. Used for the start of a shift and in tests.
@@ -221,11 +233,19 @@ extension World {
         return predictedMergeGap(from: arm, samples: 30, stopBelow: config.aiPathClearance) >= config.aiPathClearance
     }
 
+    /// The criminal's rule: any gap it gets through without touching anyone will do, no safe
+    /// distance. Only a jam right at its entry holds it back: there is no gap to take.
+    func canBargeIn(_ arm: Arm) -> Bool {
+        !isDisturbed(near: arm) && predictedMergeGap(from: arm, samples: 30, stopBelow: config.criminalEntryGap) >= config.criminalEntryGap
+    }
+
     /// Something near where `arm` joins the ring is not flowing: a wreck, or a driver who
     /// brakes, catches up or chases, up to `aiHazardAhead` seconds of ring downstream or
     /// `aiHazardBehind` upstream. The AI waits for that, as a driver would. Trouble on the
     /// far side of the ring, or a slow module zone elsewhere, is no reason: bots keep coming.
     public func isDisturbed(near arm: Arm) -> Bool {
+        // In Mayhem traffic flows over everything: nothing to wait for.
+        guard !config.mayhem else { return false }
         let circumference = layout.ring.length
         let join = layout.entryRingS(arm)
         return vehicles.contains { vehicle in
@@ -255,7 +275,7 @@ extension World {
     ) -> Double {
         let path = layout.entry(arm)
         let profile = MergeProfile(pathLength: path.length, duration: config.mergeDuration, ringSpeed: ringSpeed)
-        let others = vehicles.filter { $0.isCollidable || $0.isCrashed }
+        let others = vehicles.filter { $0.isCollidable || isObstacle($0) }
         var smallest = Double.infinity
         for k in 0...samples {
             let t = profile.duration * Double(k) / Double(samples)
@@ -263,6 +283,11 @@ extension World {
             for other in others {
                 guard let pose = predictedPose(of: other, after: launchDelay + t) else { continue }
                 smallest = min(smallest, Collision.gap(me, hitbox(at: pose, type: other.type)) / ringSpeed)
+                if smallest < stopBelow { return smallest }
+            }
+            // The military truck's zone counts like a car: touching it sets the bomb off.
+            if let zone = predictedZoneS(after: launchDelay + t) {
+                smallest = min(smallest, gapToZone(me, ringS: zone) / ringSpeed)
                 if smallest < stopBelow { return smallest }
             }
         }
@@ -278,10 +303,13 @@ extension World {
         for k in 0...samples {
             let t = profile.duration * Double(k) / Double(samples)
             let me = hitbox(at: path.pose(at: profile.distance(at: t)))
-            for other in vehicles where other.isCollidable || other.isCrashed {
+            for other in vehicles where other.isCollidable || isObstacle(other) {
                 guard let pose = predictedPose(of: other, after: launchDelay + t) else { continue }
                 let gap = Collision.gap(me, hitbox(at: pose, type: other.type)) / ringSpeed
                 gaps[other.id] = min(gaps[other.id] ?? .infinity, gap)
+            }
+            if let truck = activeMilitaryTruck, let zone = predictedZoneS(after: launchDelay + t) {
+                gaps[truck.id] = min(gaps[truck.id] ?? .infinity, gapToZone(me, ringS: zone) / ringSpeed)
             }
         }
         return gaps
@@ -334,7 +362,7 @@ extension World {
     /// the traffic ahead must count them as staying, or it plans into a gap that is not there.
     func staysOnRing(_ vehicle: Vehicle) -> Bool {
         guard case let .ring(r) = vehicle.phase else { return false }
-        return isChased(vehicle.id) || isTransported(vehicle.id) || r.drive.isPursuing
+        return isChased(vehicle.id) || isTransported(vehicle.id) || isEscorted(vehicle.id) || r.drive.isPursuing
     }
 
     /// Ring position after `t` seconds. A merging car counts as if it were already on the

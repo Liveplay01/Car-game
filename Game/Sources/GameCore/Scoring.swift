@@ -185,7 +185,8 @@ extension World {
     /// `mayhemChainWindow` of the last crash extends the chain reaction and is worth its place
     /// in it; the player's own car crashing starts a new one (so throwing car after car into
     /// the same wreck is no chain).
-    mutating func scoreMayhem(at time: Double, followUp: Bool = true) -> (flames: Int, chain: Int) {
+    /// A heavy wreck (a lorry, tanker or military truck) is worth `mayhemHeavyFlames` times as much.
+    mutating func scoreMayhem(at time: Double, followUp: Bool = true, heavy: Bool = false) -> (flames: Int, chain: Int) {
         if followUp, let last = score.lastCrashAt, time - last <= config.mayhemChainWindow {
             score.crashChain += 1
         } else {
@@ -194,7 +195,7 @@ extension World {
         score.lastCrashAt = time
         score.biggestChain = max(score.biggestChain, score.crashChain)
         score.wrecks += 1
-        let flames = min(score.crashChain, config.mayhemMaxChainFlames)
+        let flames = min(score.crashChain, config.mayhemMaxChainFlames) * (heavy ? max(1, config.mayhemHeavyFlames) : 1)
         score.flames += flames
         return (flames, score.crashChain)
     }
