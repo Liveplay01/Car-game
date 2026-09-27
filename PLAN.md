@@ -1,5 +1,7 @@
 # Car Game – Build- & Release-Plan
 
+> **Pausiert seit 27.09.2026:** Car Game ist jetzt ein Browserspiel ([Web/README.md](Web/README.md)). Dieser Plan (Windows → iPad → App Store) beschreibt die Apple-Schiene und ruht, bis sie fortgesetzt wird.
+
 Stand: 23.09.2026 (aktualisiert)
 
 ## Ziel

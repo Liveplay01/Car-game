@@ -1,5 +1,7 @@
 # Testing – so testest du das Spiel
 
+> **Pausiert seit 27.09.2026:** Beschreibt das Testen der Swift-Schiene. Die Web-Version testet man mit `npm run build`, `npm run sim` und im Browser ([Web/README.md](Web/README.md)).
+
 Stand: 23.09.2026 · Gehört zu [FOUNDATION.md](FOUNDATION.md) und [ROADMAP.md](ROADMAP.md)
 
 > **Getestet wird unter Windows.** Die Befehle unten gibt es, sobald M0 gebaut

@@ -1,0 +1,19 @@
+{
+  "name": "car-game-web",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Web port of the roundabout timing game: one tap sends the front car into the ring.",
+  "scripts": {
+    "dev": "vite --host",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview --host",
+    "typecheck": "tsc --noEmit",
+    "sim": "node scripts/sim.mjs"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.4",
+    "typescript": "~5.9.3",
+    "vite": "^8.3.1"
+  }
+}

@@ -1,72 +1,84 @@
 # CLAUDE.md – Car Game
 
-Kreisverkehr-Timing-Spiel fürs iPhone (One-Tap, inspiriert von "Car Circle").
+Kreisverkehr-Timing-Spiel **im Browser** (One-Tap, inspiriert von "Car Circle"), spielbar
+auf Handy und Desktop, installierbar als PWA.
+
+**Richtungswechsel (Entscheidung Leo, 27.09.2026):** Car Game ist ab jetzt ein
+**Browserspiel**. Die Apple-Schiene (Swift-App, iPad/Swift Playgrounds, App Store) ist
+**pausiert**, nicht gelöscht. Die Swift-Dokumente unten beschreiben den Stand vor dem
+Wechsel und bleiben als Referenz für Regeln, Werte und Ideen.
 
 | Dokument | Inhalt |
 | --- | --- |
+| [Web/README.md](Web/README.md) | **Das Spiel:** Befehle, Aufbau, Speichern, PWA, Deployment |
+| [Web/PRODUCT.md](Web/PRODUCT.md) | Zielgruppe, Designprinzipien, Barrierefreiheit |
 | [IDEA.md](IDEA.md) | Offene Ideen (Umgesetztes und Gestrichenes wird entfernt) |
-| [PLAN.md](PLAN.md) | Weg: Windows → iPad (Swift Playgrounds) → Veröffentlichung |
-| [FOUNDATION.md](FOUNDATION.md) | Basis: Technik, Regeln mit Startwerten, Architektur |
-| [ROADMAP.md](ROADMAP.md) | Meilensteine M0–M13 |
-| [TESTING.md](TESTING.md) | So wird getestet |
+| [FOUNDATION.md](FOUNDATION.md) | Regeln mit Startwerten, Architektur (Swift-Stand, Regeln gelten weiter) |
 | [LOOT.md](LOOT.md) | Was in den Truhen steckt: Skins, Fahrzeugtypen, Odds |
-| [MONETIZATION.md](MONETIZATION.md) | In-App-Käufe und Werbung (Platzhalter), was vor dem Release offen ist |
+| [ROADMAP.md](ROADMAP.md) | Meilensteine der Swift-Schiene (pausiert) |
+| [PLAN.md](PLAN.md) | Weg Windows → iPad → App Store (pausiert) |
+| [TESTING.md](TESTING.md) | Testen der Swift-Schiene (pausiert) |
+| [MONETIZATION.md](MONETIZATION.md) | In-App-Käufe und Werbung der App (pausiert) |
 
 ## Feste Entscheidungen – nicht neu vorschlagen
 
-- **Swift, überall.** Kein Web-Stack, keine Engine (Unity, Godot …), kein
-  Cross-Plattform-Framework.
-- **Entwickelt und getestet wird unter Windows** (Swift-Toolchain, VS Code). Für
-  Phase 2 (Touch, Haptik, SwiftUI-Menüs) wird **kein Mac angeschafft**: Das
-  App-Projekt läuft in **Swift Playgrounds auf einem iPad**.
-- **Alles Spielentscheidende und die Darstellungslogik** gehören in das
-  plattformneutrale Paket `Game/` (`GameCore`, `GamePresentation`). Dort nur
-  Swift-Standardbibliothek + Foundation, **kein** SpriteKit, UIKit, SwiftUI oder
-  `simd`. Das Paket muss unter Windows bauen.
-- **`TestWindow/`** (raylib) ist ein Werkzeug, kein Produkt: Es zeichnet nur, nimmt
-  Eingaben an und spielt Ton ab. Keine Spiellogik darin, kein Design-Aufwand.
-- **`App.swiftpm/`** (Swift Playgrounds auf dem iPad, Phase 2) enthält nur dünne
-  Adapter (SpriteKit, Touch, Haptik, Audio) und die SwiftUI-Menüs. Es hängt per
-  lokalem Pfad von `Game/` ab.
-- **Zielgeräte:** jedes iPhone ab **iOS 26** (ab iPhone 11 / SE 2. Gen.), Hochformat,
-  einhändig. Nichts darf eine iOS-27-API voraussetzen.
-- **Spielsprache nur Englisch**, alle Texte zentral in `Strings.swift`. Die
-  Projektdokumente sind auf Deutsch.
-- **Veröffentlichung:** App Store weltweit. Die eigene Website ist Landing Page
-  (App-Store-Link, TestFlight-Link, Datenschutz, Support).
-- **GitHub nur als Sync-Kanal ab Phase 2.** Ein privates Repo überträgt den Code
-  zwischen Windows und iPad (Swift Playgrounds) – Commits und Pushes direkt auf
-  `main`, kein Feature-Branch- oder PR-Workflow für dieses Ein-Personen-Projekt
-  (der PR-Workflow aus der globalen CLAUDE.md gilt hier weiterhin nicht). Bis
-  Phase 2 beginnt, bleibt es bei lokalen Commits ohne zu pushen.
-- **Kein Backend, kein eigener Server.** Online-Funktionen nur über Apple-Dienste –
-  **Ausnahme Werbung:** Standard-Truhen per Werbung laufen über **Google AdMob**
-  (Entscheidung Leo, 24.09.2026). Folge: App-Store-Datenschutzangaben mit Werbe-/
-  Tracking-Daten statt "Data Not Collected", ATT-Abfrage, Datenschutzerklärung erwähnt AdMob.
-- **So viele native Apple-Elemente wie möglich** (Tab-Bar, NavigationStack,
-  Listen, Sheets, SF Symbols). Die Hauptnavigation zwischen Progress, Game, Shop und
-  Build (Upgrades und Street Builder als Segmente) ist eine native iOS-Tab-Bar
-  (`TabView`). Eigenes Design nur für
-  die Spielszene.
-- **Crashes sind echte Physik** (`CrashPhysics`, `Drivers.swift`): Stoß-Impuls,
+- **Browserspiel.** Das Produkt ist `Web/`: **Vite + TypeScript + HTML5 Canvas**, ohne
+  UI-Framework (kein React/Vue) und ohne Game-Engine.
+- **Aufbau von `Web/src/`:** `core/` (Spielregeln, kein DOM), `renderer/` (Canvas),
+  `audio/` (Web Audio, synthetisierte Sounds), `storage/` (localStorage), `game/`
+  (Frame-Schleife, Taps, Events → Bild/Ton/Haptik), `ui/` (HUD, Tab-Bar, Seiten).
+  Spiellogik gehört nur nach `core/`.
+- **Fester Takt:** Simulation mit 120 Hz, Interpolation dazwischen, Taps mit Zeitstempel
+  (`pointerdown`). Gleicher Seed + gleiche Taps = gleiches Ergebnis.
+- **Zielgeräte:** aktuelle Browser auf Handy (Hochformat, einhändig) und Desktop.
+  Touch ohne Doppeltipp-Zoom (`touch-action`), Tastatur (Leertaste/Enter) auf dem Desktop.
+- **Spielsprache nur Englisch.** Die Projektdokumente sind auf Deutsch.
+- **Spielstand nur lokal im Browser** (`localStorage`, Schlüssel `carGame.career.v1`).
+  **Kein Backend, keine Datenbank, keine API.** nginx liefert nur statische Dateien aus.
+- **Deployment:** Docker-Image aus dem `Dockerfile` im Repo-Root (Node baut, `nginx:alpine`
+  liefert aus), **Port 5050** – überall: Container, `npm run dev`, `npm run preview`.
+  Coolify baut es aus dem GitHub-Repo. nginx-Konfiguration: `Web/nginx.conf`.
+- **GitHub** ist die Quelle für das Deployment. Commits direkt auf `main`, kein
+  Feature-Branch- oder PR-Workflow für dieses Ein-Personen-Projekt (der PR-Workflow aus
+  der globalen CLAUDE.md gilt hier weiterhin nicht). **Gepusht wird nur durch Leo**; jeder
+  Push auf `main` kann ein Deployment auslösen.
+- **Die Web-Version ist jetzt die führende Umsetzung der Regeln.** Sie ist aus `Game/`
+  (`GameCore`) portiert, mit denselben Werten (`Config.swift` → `Web/src/core/config.ts`).
+  Neue Regeln entstehen in `Web/src/core/`, nicht mehr in Swift.
+- **Native App-Anmutung im Browser:** Tab-Bar (Progress · Game · Shop · Build), gruppierte
+  Listen, Sheets, Schalter, Segmented Controls, wie man sie von iOS kennt. Eigenes Design
+  nur für die Spielszene. Glas-Effekt nur für schwebende Bedienelemente über der Szene.
+- **Fahrzeugfarben sind Spielinformation** und für die UI tabu; Fahrzeugtypen sind über
+  Form, Farbe und Symbol erkennbar.
+- **Crashes sind echte Physik** (`Web/src/core/crash.ts`, `drivers.ts`): Stoß-Impuls,
   Reifenreibung, reagierender Verkehr, Blechschaden. Keine geskripteten Animationen.
 
-## Befehle (ab M0)
+### Pausiert (Apple-Schiene, Stand vor dem 27.09.2026)
+
+Nicht weiterentwickeln, nicht löschen: `Game/` (Swift-Paket `GameCore`,
+`GamePresentation`), `TestWindow/` (raylib), `App.swiftpm/`, `Assets/` (Sounds, Haptik,
+Icon; das Icon nutzt auch die Web-Version). Die früheren Festlegungen (Swift überall,
+iPad statt Mac, iOS 26, App Store, AdMob für Werbe-Truhen, SwiftUI-`TabView`) gelten erst
+wieder, wenn die App-Schiene fortgesetzt wird.
+
+## Befehle
 
 ```powershell
-cd Game;       swift test                                        # Logik-Tests
-cd Game;       swift run -c release Sim --shifts 1000 --seed 42  # Balancing-Bot
-cd Game;       swift run -c release Sim --curve --shifts 300     # Schwierigkeit pro Level
-cd Game;       swift run -c release Sim --career 120             # Laufbahnen: Level, Geld, Upgrades
-cd Game;       swift run -c release Sim --ring --shifts 200      # Bots im Ring, Kolonnen des Spielers
-cd TestWindow; swift run -c release TestWindow                   # Spielen
-cd TestWindow; swift run SoundMaker                              # Platzhalter-Sounds neu erzeugen
-powershell -File sync-app-assets.ps1                            # Sounds/Haptik/Musik in App.swiftpm kopieren
+cd Web; npm install                     # einmalig
+cd Web; npm run dev                     # Entwickeln: http://localhost:5050 (auch vom Handy im WLAN)
+cd Web; npm run build                   # Typecheck + Build nach Web/dist
+cd Web; npm run preview                 # Build lokal ausliefern, Port 5050
+cd Web; npm run sim -- 60 5             # Balancing-Bots: Schichten, Level
+docker build -t car-game . ; docker run -p 5050:5050 car-game   # Container wie in Coolify
 ```
+
+Referenz, pausiert: `cd Game; swift test`, `cd Game; swift run -c release Sim …`,
+`cd TestWindow; swift run -c release TestWindow`.
 
 ## Arbeitsweise
 
-- Neues Spielsystem: zuerst in `GameCore` mit Tests, dann in `GamePresentation`
-  darstellen, dann im Testfenster spielen.
-- Alle Tuning-Werte stehen in `Game/Sources/GameCore/Config.swift`.
-- Welcher Meilenstein gerade dran ist: [ROADMAP.md](ROADMAP.md).
+- Neues Spielsystem: zuerst in `Web/src/core/`, mit dem Balancing-Bot prüfen
+  (`npm run sim`: der vorsichtige Bot darf nie crashen), dann darstellen
+  (`renderer/`, `ui/`), dann im Browser spielen – auch auf einem echten Handy.
+- Alle Tuning-Werte stehen in `Web/src/core/config.ts`.
+- Vor jedem Commit: `npm run build` muss grün sein.

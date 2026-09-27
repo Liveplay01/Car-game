@@ -1,5 +1,7 @@
 # Roadmap – vom Testfenster zur App im App Store
 
+> **Pausiert seit 27.09.2026:** Car Game ist jetzt ein Browserspiel ([Web/README.md](Web/README.md)). Diese Meilensteine gehören zur Swift-/App-Schiene; was die Web-Version davon schon enthält, steht im README unter „Was drin ist“.
+
 Stand: 26.09.2026 · Die Details zur Basis (M0–M2) stehen in [FOUNDATION.md](FOUNDATION.md), das Testen in [TESTING.md](TESTING.md), der Gesamtweg in [PLAN.md](PLAN.md), alle Ideen in [IDEA.md](IDEA.md).
 
 ## Überblick

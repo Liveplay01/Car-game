@@ -1,0 +1,7 @@
+# Only the web app goes into the build context; the Swift project, assets and docs stay out.
+**
+!Web
+!Web/**
+Web/node_modules
+Web/dist
+Web/**/*.local

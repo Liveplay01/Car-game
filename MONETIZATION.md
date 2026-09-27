@@ -1,5 +1,7 @@
 # MONETIZATION.md – In-App-Käufe und Werbung
 
+> **Pausiert seit 27.09.2026:** Beschreibt In-App-Käufe und Werbung der iOS-App. Die Web-Version hat keine Werbung und keine Käufe.
+
 Stand: 26.09.2026 · Alles hier ist **Platzhalter**: Produkte, Preise und Mengen sind
 Startwerte (`Config.swift`, `Store.swift`), bis die Produkte in App Store Connect angelegt
 sind. Truhen-Inhalte und Odds stehen in [LOOT.md](LOOT.md).

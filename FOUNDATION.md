@@ -1,5 +1,7 @@
 # Foundation.md – Plan für die Basis des Spiels
 
+> **Stand 27.09.2026:** Car Game ist jetzt ein Browserspiel ([Web/README.md](Web/README.md)). Die **Spielregeln und Startwerte** hier gelten weiter (portiert nach `Web/src/core/`); Technik, Zielgeräte und Architektur beschreiben die pausierte Swift-Schiene.
+
 Stand: 22.09.2026 · Grundlage: [IDEA.md](IDEA.md) (Spielidee) und [PLAN.md](PLAN.md) (Build- & Release-Weg)
 Weiter geht es in [ROADMAP.md](ROADMAP.md), getestet wird nach [TESTING.md](TESTING.md).
 
