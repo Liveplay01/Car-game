@@ -152,6 +152,9 @@ export interface Career {
   /** The last week whose Weekly Elite paid, and how many have paid in all. */
   weeklyDone: number;
   weekliesDone: number;
+  /** Museum entries met on the road (core/museum.ts), and those not looked at yet. */
+  museumSeen: string[];
+  museumNew: string[];
 }
 
 /** Everything that is saved (`SaveGame` in GamePresentation). */
@@ -205,6 +208,8 @@ export const newCareer = (): Career => ({
   legendaryDone: 0,
   weeklyDone: -1,
   weekliesDone: 0,
+  museumSeen: [],
+  museumNew: [],
 });
 
 export const newSave = (): SaveGame => ({
@@ -359,6 +364,19 @@ export const Careers = {
     if (c.collection.includes(id)) return;
     c.collection.push(id);
     c.unseen.push(id);
+  },
+
+  /** Museum entries on the road for the first time: they go on show, marked new. Returns them. */
+  discover(c: Career, ids: string[]): string[] {
+    const fresh = ids.filter((id) => !c.museumSeen.includes(id));
+    c.museumSeen.push(...fresh);
+    c.museumNew.push(...fresh);
+    return fresh;
+  },
+
+  /** Museum entries looked at: no longer new. */
+  markMuseumSeen(c: Career, ids: string[]): void {
+    c.museumNew = c.museumNew.filter((x) => !ids.includes(x));
   },
 
   markSeen(c: Career, ids: string[]): void {

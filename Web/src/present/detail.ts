@@ -13,6 +13,9 @@ import { StreetBuilderPage } from './builder';
 import type { Part, ScreenAction } from './flow';
 import { R, rect, polygon } from './render';
 import { MenuKit } from './menukit';
+import { MuseumPage } from './museum';
+import { museumEntry, firstLevel } from '../core/museum';
+import { rematch } from '../core/trials';
 
 /**
  * What the detail sheet shows (`ui/detailSheet.ts`): the explanation of the card that was
@@ -24,7 +27,8 @@ export type DetailArt =
   | { k: 'chest'; kind: ChestKind }
   | { k: 'item'; id: string; owned: boolean }
   | { k: 'offer'; offer: Offer }
-  | { k: 'part'; part: Part };
+  | { k: 'part'; part: Part }
+  | { k: 'museum'; id: string; shown: boolean; time: number };
 
 export interface DetailRow {
   label: string;
@@ -201,6 +205,64 @@ export const Details = {
     };
   },
 
+  /** A Museum entry: how it works once it has been met, where to find it before. */
+  museum(id: string, career: Career, config: Config): Detail | null {
+    const entry = museumEntry(id);
+    if (!entry) return null;
+    const shown = career.museumSeen.includes(id);
+    const level = firstLevel(entry, config);
+    const art: DetailArt = { k: 'museum', id, shown, time: 0 };
+    if (!shown) {
+      return {
+        key: `museum:${id}:locked`,
+        art,
+        eyebrow: { text: entry.k === 'boss' ? S.museum.boss : S.museum.special, color: 'muted' },
+        title: S.museum.unknown,
+        price: { text: S.museum.undiscovered, color: 'muted' },
+        steps: null,
+        body: [entry.k === 'boss' ? S.museum.lockedBossHint(level) : S.museum.lockedHint(level)],
+        rows: [],
+        notes: [],
+        actions: [],
+      };
+    }
+    if (entry.k === 'special') {
+      return {
+        key: `museum:${id}`,
+        art,
+        eyebrow: { text: S.museum.special, color: MuseumPage.color(entry) },
+        title: S.museum.name(entry.kind),
+        price: null,
+        steps: null,
+        body: S.museum.explanation(entry.kind, config),
+        rows: [],
+        notes: [],
+        actions: [],
+      };
+    }
+    const kind = entry.kind;
+    const beaten = career.bossesBeaten.includes(kind);
+    const match = rematch(kind);
+    const won = career.trialsDone.includes(match.id);
+    const rows: DetailRow[] = [
+      { label: S.museum.firstMet, value: S.trials.level(level) },
+      { label: S.museum.heist, value: money(Fmt.number(config.heistRecoveryBase + config.heistRecoveryPerLevel * level)) },
+    ];
+    if (beaten) rows.push({ label: S.boss.rematch(kind), value: won ? S.trials.passed : money(Fmt.number(match.reward)), valueColor: won ? 'accent' : 'primary' });
+    return {
+      key: `museum:${id}`,
+      art,
+      eyebrow: { text: S.museum.boss, color: 'coin' },
+      title: S.boss.name(kind),
+      price: { text: beaten ? S.boss.beaten : S.museum.met, color: beaten ? 'accent' : 'muted' },
+      steps: null,
+      body: S.museum.bossExplanation(kind),
+      rows,
+      notes: [],
+      actions: beaten ? [{ label: won ? S.museum.rematch : `${S.museum.rematch} · ${money(Fmt.number(match.reward))}`, action: { k: 'startTrial', id: match.id }, prominent: true, enabled: true }] : [],
+    };
+  },
+
   /** The picture at the top of the sheet, drawn with the game's own shapes into `size`. */
   drawArt(list: RenderList, art: DetailArt, center: Vec2, size: number, config: Config): void {
     const scale = size / 96;
@@ -233,6 +295,11 @@ export const Details = {
       case 'part':
         StreetBuilderPage.addPartPicture(list, art.part, v(center.x - 10 * scale, center.y), 1.6 * scale, 1);
         break;
+      case 'museum': {
+        const entry = museumEntry(art.id);
+        if (entry) MuseumPage.art(list, entry, center, 1.3 * scale, art.shown, art.time, 1, size * 0.92);
+        break;
+      }
     }
   },
 };

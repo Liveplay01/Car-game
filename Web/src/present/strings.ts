@@ -9,6 +9,7 @@ import type { StoreProduct } from '../core/store';
 import { productGrant } from '../core/store';
 import type { VehicleType, VehicleRole } from '../core/vehicle';
 import { type Trial, type TrialId, type RunId, type EliteKind, rematchKind } from '../core/trials';
+import type { SpecialKind } from '../core/museum';
 import { MONEY_MARK } from './icons';
 
 /** Every text the game shows (`Strings.swift`). English only. */
@@ -126,18 +127,8 @@ export const S = {
     arriving: (k: BossKind): string =>
       ({ convoy: 'SYNDICATE CONVOY', getaway: 'GETAWAY DRIVER', armoured: 'ARMOURED BOSS', phantom: 'THE PHANTOM' })[k],
     name: (k: BossKind): string => ({ convoy: 'The Convoy', getaway: 'The Getaway Driver', armoured: 'The Armoured Boss', phantom: 'The Phantom' })[k],
-    /** What each boss asks of you, in the Bosses list. */
-    tactic: (k: BossKind): string =>
-      ({
-        convoy: 'Escorts right behind it: time a police car into the gap.',
-        getaway: 'No escorts, but gone in seconds: have a police car ready.',
-        armoured: 'Shrugs off the first ram: a second police car finishes it.',
-        phantom: 'A blackout, and it drives without lights: follow the ring.',
-      })[k],
     rematch: (k: BossKind): string => `Rematch · ${S.boss.name(k)}`,
-    firstAt: (level: number): string => `First at Level ${level}`,
     beaten: 'Busted',
-    notMet: 'Not met yet',
     armour: 'ARMOUR CRACKED',
     heist: (amount: string): string => `HEIST RECOVERED ${amount}`,
     escaped: 'BOSS ESCAPED',
@@ -252,7 +243,7 @@ export const S = {
   },
 
   progress: {
-    section: (i: number): string => ['Records', 'Quests', 'Trials', 'Bosses', 'Mastery'][i],
+    section: (i: number): string => ['Records', 'Quests', 'Trials', 'Museum', 'Mastery'][i],
     bosses: 'Syndicate bosses',
     prestige: 'Prestige',
     legendary: 'Legendary shifts',
@@ -278,6 +269,121 @@ export const S = {
     days: (d: number): string => (d === 1 ? '1 day' : `${d} days`),
     owned: (o: number, t: number): string => `${o} / ${t}`,
     questsHint: 'Quests pay once each and change at midnight.',
+  },
+
+  museum: {
+    shelf: (i: number): string => ['Bosses', 'Specials'][i],
+    unknown: '???',
+    notSeen: 'Not seen yet',
+    newBadge: 'NEW',
+    firstAt: (level: number): string => `From Level ${level}`,
+    undiscovered: 'Not discovered yet',
+    lockedHint: (level: number): string =>
+      level > 1
+        ? `Shows up from Level ${level}. Once it has been on the road in front of you, it goes on show here with everything you need to know.`
+        : 'Keep playing shifts. Once it has been on the road in front of you, it goes on show here with everything you need to know.',
+    lockedBossHint: (level: number): string => `The syndicate sends it on Level ${level}. Once you have faced it, it goes on show here with how to take it down.`,
+    discovered: (names: string[]): string => `New in the Museum: ${names.join(', ')}`,
+    boss: 'Syndicate boss',
+    special: 'Special vehicle',
+    met: 'Met, still at large',
+    heist: 'Heist recovered',
+    firstMet: 'Boss level',
+    rematch: 'Rematch',
+    name: (k: SpecialKind): string =>
+      ({
+        police: 'Police Car',
+        pickup: 'Criminal',
+        transporter: 'Money Transporter',
+        ambulance: 'Ambulance',
+        truck: 'Lorry',
+        tanker: 'Gas Tanker',
+        military: 'Military Truck',
+      })[k],
+    /** One short line on a boss's card; the sheet explains the rest. */
+    bossTagline: (k: BossKind): string =>
+      ({ convoy: 'Escorts right behind it', getaway: 'Gone in seconds', armoured: 'Takes two police cars', phantom: 'Drives without lights' })[k],
+    /** One line on the card: what it asks of you. */
+    tagline: (k: SpecialKind): string =>
+      ({
+        police: 'The only car that stops a criminal',
+        pickup: 'Ram it with a police car',
+        transporter: 'Let it through, then cash in',
+        ambulance: 'Keep the road ahead clear',
+        truck: 'Long and heavy: leave a bigger gap',
+        tanker: 'Wreck it and it explodes',
+        military: 'Stay out of its zone',
+      })[k],
+    /** The explanation in the sheet: what it is, what to do, what it pays or costs. */
+    explanation(k: SpecialKind, c: Config): string[] {
+      switch (k) {
+        case 'police':
+          return [
+            'Police cars come from your own queue, like any of your cars. They are the only cars that can stop a criminal.',
+            `Send one into the ring while a criminal is on it and drive into it: that is a takedown, worth ${Fmt.number(c.takedownPoints)} points and a link in your chain. Hold a police car back when a warning lights up an arm.`,
+            `A police car is tougher than your other cars: your shift survives ${c.maxPoliceCrashes === 1 ? 'one police crash' : `${c.maxPoliceCrashes} police crashes`}. Keep it away from the money transporter, though.`,
+          ];
+        case 'pickup':
+          return [
+            'A warning lights up the arm it comes from. Then it barges into the ring and races round it, heavy and fearless.',
+            `You have about ${Math.round(c.criminalTime)} seconds to ram it with one of your police cars. A takedown pays ${Fmt.number(c.takedownPoints)} points and extends your chain.`,
+            'If it gets away, it takes money with it and the shift is over. Your ordinary cars cannot stop it: a crash with them is just a crash.',
+          ];
+        case 'transporter':
+          return [
+            'An armoured truck full of cash. A warning shows its arm, then it drives once round the ring with a secure zone around it.',
+            `If it leaves safely you earn ${money(Fmt.number(c.transporterPay))} and a link in your chain. Every car of yours that joins inside its secure zone adds ${money(Fmt.number(c.shieldBonus))}.`,
+            'Do not hit it: a police car that rams it seizes the cash and nobody gets paid, and a wrecked transporter is lost.',
+          ];
+        case 'ambulance':
+          return [
+            'On an emergency run: it comes in with a warning and takes the long way round the ring.',
+            'The stretch of ring right ahead of it has to stay clear. If you send a car in there, the run is spoiled and your combo and chain are gone.',
+            `Keep the road clear until it leaves and it pays ${money(Fmt.number(c.ambulancePay))} and extends your chain. It never causes a crash itself.`,
+          ];
+        case 'truck':
+          return [
+            'Part of the ordinary traffic, but longer and much heavier than a car.',
+            'It needs a bigger gap in front of your car, and in a crash it shoves lighter cars around instead of stopping.',
+            `Every lorry that passes a Toll Booth early in a shift pays ${money(Fmt.number(c.tollPerTruck))}.`,
+          ];
+        case 'tanker':
+          return [
+            'A lorry full of gas. It drives like any other lorry, and it comes without a warning.',
+            'Wrecked, it explodes: the blast throws every car nearby off the road, yours too. Give it room.',
+            'In Mayhem that is exactly the point: aim for the tankers, the bigger the chain reaction the more flames.',
+          ];
+        case 'military':
+          return [
+            'A military truck with a bomb on board. A warning shows its arm, then it drives round the ring with a no-go zone around it.',
+            'Any car that enters the zone sets the bomb off, and the blast reaches across the whole roundabout.',
+            `Hold your cars back while it passes. After about ${Math.round(c.militaryTime)} seconds it leaves as soon as the way out is clear.`,
+          ];
+      }
+    },
+    /** How to beat each boss, for the sheet. */
+    bossExplanation(k: BossKind): string[] {
+      switch (k) {
+        case 'convoy':
+          return [
+            'The head of the syndicate, in gold-striped black. Its armoured escorts join the ring right behind it.',
+            'Time a police car into the gap between the boss and its escorts. Hitting an escort is a plain crash.',
+            'You get more time than with an ordinary criminal: use it to wait for the gap.',
+          ];
+        case 'getaway':
+          return [
+            'No escorts at all, just speed: the getaway driver is gone in a few seconds.',
+            'Have a police car at the front of your queue before its warning ends, and send it in the moment the boss is on the ring.',
+          ];
+        case 'armoured':
+          return ['Its armour shrugs off the first ram, and an escort sticks to it.', 'One police car cracks the armour, a second one finishes it. Keep two in your queue.'];
+        case 'phantom':
+          return [
+            'It comes in a blackout, and it drives without lights: you only see it where the street lights reach.',
+            'Follow the ring and trust its warning. An escort rides behind it, so pick the gap carefully.',
+          ];
+      }
+    },
   },
 
   store: {

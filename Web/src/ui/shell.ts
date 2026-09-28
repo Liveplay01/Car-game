@@ -185,9 +185,9 @@ export class Shell {
     const s = this.session;
     const screen = s.screen;
     const selected = barTab(screenTab(screen));
-    const badge = s.badge('shop');
+    const badges = TAB_BAR.map((tab) => s.badge(tab));
     const match = this.versus.match;
-    const key = `${screen.k}|${selected}|${JSON.stringify(badge)}|${s.world.shift.phase}|${s.special?.k ?? ''}|${s.shareable ? 1 : 0}|${match ? 1 : 0}|${this.versus.canRematch ? 1 : 0}`;
+    const key = `${screen.k}|${selected}|${JSON.stringify(badges)}|${s.world.shift.phase}|${s.special?.k ?? ''}|${s.shareable ? 1 : 0}|${match ? 1 : 0}|${this.versus.canRematch ? 1 : 0}`;
     if (!force && key === this.chromeKey) return;
     this.chromeKey = key;
     this.app.dataset.versus = match ? 'on' : 'off';
@@ -198,7 +198,7 @@ export class Shell {
     for (const [tab, { button, badge: el }] of this.tabs) {
       if (tab === selected) button.setAttribute('aria-current', 'page');
       else button.removeAttribute('aria-current');
-      const b = tab === 'shop' ? badge : null;
+      const b = badges[TAB_BAR.indexOf(tab)] ?? null;
       el.hidden = b === null;
       el.textContent = b && b !== 'dot' ? (b.count > 99 ? '99+' : String(b.count)) : '';
       el.style.minWidth = b === 'dot' ? '10px' : '';

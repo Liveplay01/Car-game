@@ -35,7 +35,7 @@ export const screenTab = (s: Screen): Tab => (s.k === 'page' ? s.tab : 'game');
 export const showsTabBar = (s: Screen): boolean => s.k !== 'settings' && s.k !== 'playing';
 
 export type ShopSection = 0 | 1 | 2; // chests · collection · store
-export type ProgressSection = 0 | 1 | 2 | 3 | 4; // records · quests · trials · bosses · achievements
+export type ProgressSection = 0 | 1 | 2 | 3 | 4; // records · quests · trials · museum · achievements
 
 export type Part = 'arm' | RoadModule;
 export const PARTS: Part[] = ['arm', 'tollBooth', 'speedCamera', 'towDepot'];
@@ -69,7 +69,8 @@ export type ScreenAction =
   | { k: 'watchCashAd' }
   | { k: 'purchase'; product: StoreProduct }
   | { k: 'restorePurchases' }
-  | { k: 'wear'; id: string };
+  | { k: 'wear'; id: string }
+  | { k: 'startTrial'; id: string };
 
 /** Layout shared by the Build tab's two pages and the camera that lies under them. */
 export const BuildLayout = {

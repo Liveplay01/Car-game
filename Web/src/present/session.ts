@@ -27,13 +27,15 @@ import { CameraRig, perspectiveOf, addRecede } from './perspective';
 import { TransitionTracker, ModePan } from './transitions';
 import { ShopPage, ShopState, shelfOf, type ShopTarget } from './shop';
 import { ProgressPage, ProgressState } from './progress';
+import { MuseumPage, type MuseumTarget } from './museum';
+import { sightings, museumEntry, shelfEntries, museumId } from '../core/museum';
 import { UpgradePage, UpgradeState } from './upgrades';
 import { StreetBuilderPage, BuilderState, sameBuilt } from './builder';
 import { Feedback, Music, type MusicMix, type SoundID, type HapticID } from './feedback';
 import { Details, type Detail } from './detail';
 import { TyreMarks } from './marks';
 import { type ChallengeSpec, challengeOf, challengeConfig, encodeChallenge } from '../core/challenge';
-import { type Trial, trial as trialById, trialConfig, trialPassed } from '../core/trials';
+import { type Trial, trial as trialById, trialConfig, trialPassed, rematchId } from '../core/trials';
 
 /**
  * A shift played for itself, outside the career: a friend's challenge link or a mastery
@@ -132,6 +134,8 @@ export class GameSession {
   upgradePage = new UpgradeState();
   shopPage = new ShopState();
   progressPage = new ProgressState();
+  /** Museum entries first met during this shift, for the line on its result. */
+  private museumFound: string[] = [];
   builderPage = new BuilderState();
   buildPage: Tab = 'upgrades';
   private buildSlide: { from: Tab; age: number } | null = null;
@@ -264,7 +268,7 @@ export class GameSession {
     switch (action.k) {
       case 'startShift':
         if (this.screen.k === 'ready' && this.versusSelected) this.onVersus?.();
-        else if (this.screen.k === 'ready') this.startPlaying();
+        else if (this.screen.k === 'ready' && !this.world.isArriving()) this.startPlaying();
         break;
       case 'restart':
         this.prepareShift(false);
@@ -407,6 +411,9 @@ export class GameSession {
       case 'restorePurchases':
         this.tick();
         this.showNotice(S.store.restored(0));
+        break;
+      case 'startTrial':
+        this.startTrial(action.id);
         break;
       case 'wear': {
         const item = cosmetic(action.id);
@@ -905,6 +912,7 @@ export class GameSession {
       }
       if (steps >= 60) this.accumulator = 0;
       this.react(events);
+      this.noteSightings();
       this.age(simDelta);
       this.lamps.update(this.world, simDelta);
     }
@@ -1049,14 +1057,16 @@ export class GameSession {
                 this.prepareShift(false);
                 break;
               }
+              // This tap only starts the transition: the next one, once the cars are at the line, plays.
               this.prepareShift(true);
               this.startPlaying();
+              break;
             }
             this.tapWorld(a.ago, simDelta);
             break;
           }
           case 'ready':
-            if (this.pan.travel || Math.abs(this.pan.pan) >= ModePan.swipeThreshold) return;
+            if (this.pan.travel || Math.abs(this.pan.pan) >= ModePan.swipeThreshold || this.world.isArriving()) return;
             if (this.versusSelected) {
               this.onVersus?.();
               return;
@@ -1065,7 +1075,7 @@ export class GameSession {
             this.tapWorld(a.ago, simDelta);
             break;
           case 'result':
-            if (this.resultAge >= ResultBanner.inputLock && !this.pan.travel && Math.abs(this.pan.pan) < ModePan.swipeThreshold) {
+            if (this.resultAge >= ResultBanner.inputLock && !this.pan.travel && Math.abs(this.pan.pan) < ModePan.swipeThreshold && !this.world.isArriving()) {
               if (this.versusSelected) {
                 this.onVersus?.();
                 return;
@@ -1080,7 +1090,7 @@ export class GameSession {
         break;
       case 'confirm':
         if ((this.screen.k === 'ready' || this.screen.k === 'result') && this.versusSelected) this.onVersus?.();
-        else if (this.screen.k === 'ready' || this.screen.k === 'result') {
+        else if ((this.screen.k === 'ready' || this.screen.k === 'result') && !this.world.isArriving()) {
           this.startPlaying();
           this.tapWorld(undefined, simDelta);
         } else if (this.isPage('upgrades') && this.upgradePage.selected) this.perform({ k: 'buy', upgrade: this.upgradePage.selected });
@@ -1240,10 +1250,65 @@ export class GameSession {
     if (target !== this.upgradePage.scroll) this.upgradePage.scrollTo(Math.min(Math.max(target, 0), this.upgradeScrollRange));
   }
 
+  /** A tap in the Museum: a shelf, or an entry for the sheet (a second tap starts its rematch). */
+  private tapMuseum(target: MuseumTarget): void {
+    const m = this.progressPage.museum;
+    const career = this.save.career;
+    if (target.k === 'shelf') {
+      if (m.shelf !== target.shelf) {
+        this.tick();
+        this.leaveMuseumShelf();
+        this.closeDetail();
+      }
+      m.selectShelf(target.shelf);
+      return;
+    }
+    if (career.museumNew.includes(target.id)) {
+      Careers.markMuseumSeen(career, [target.id]);
+      this.persist();
+    }
+    const entry = museumEntry(target.id);
+    if (this.detailOpen && m.selected === target.id && entry?.k === 'boss' && career.bossesBeaten.includes(entry.kind)) {
+      this.startTrial(rematchId(entry.kind));
+      return;
+    }
+    if (m.selected !== target.id) this.tick();
+    m.selected = target.id;
+    this.detailOpen = true;
+  }
+
+  /** The Museum shelf on screen is being left: what was new on it has been seen. */
+  private leaveMuseumShelf(): void {
+    if (!this.isPage('progress') || this.progressPage.section !== 3) return;
+    const career = this.save.career;
+    const shown = shelfEntries(this.progressPage.museum.shelf)
+      .map(museumId)
+      .filter((id) => career.museumNew.includes(id));
+    if (shown.length === 0) return;
+    Careers.markMuseumSeen(career, shown);
+    this.persist();
+  }
+
+  /** Special vehicles and bosses on the road for the first time go on show in the Museum. */
+  private noteSightings(): void {
+    const found = Careers.discover(this.save.career, sightings(this.world));
+    if (found.length === 0) return;
+    this.museumFound.push(...found);
+    this.persist();
+  }
+
+  /** The Museum's new entries of the shift, as a line for the result; empties the list. */
+  private takeMuseumNotice(): string | null {
+    const names = this.museumFound.map((id) => museumEntry(id)).flatMap((e) => (e ? [MuseumPage.name(e)] : []));
+    this.museumFound = [];
+    return names.length > 0 ? S.museum.discovered(names) : null;
+  }
+
   /** Closes the detail sheet; what it was about is no longer chosen. */
   closeDetail(): void {
     if (!this.detailOpen) return;
     this.detailOpen = false;
+    this.progressPage.museum.selected = null;
     this.upgradePage.selected = null;
     this.shopPage.selectedItem = null;
     this.builderPage.selected = null;
@@ -1272,6 +1337,10 @@ export class GameSession {
         if (b.dragging && !this.pressAt) return null;
         const part = b.pending?.part ?? b.selected;
         return part ? Details.part(part, b.pending !== null, career, this.config) : null;
+      }
+      case 'progress': {
+        const selected = this.progressPage.museum.selected;
+        return this.progressPage.section === 3 && selected ? Details.museum(selected, career, this.config) : null;
       }
       default:
         return null;
@@ -1308,7 +1377,11 @@ export class GameSession {
     if (this.isPage('progress')) {
       const section: ProgressSection | null = ProgressPage.sectionAt(point, this.lastViewport, this.tabInset);
       if (section !== null) {
-        if (this.progressPage.section !== section) this.tick();
+        if (this.progressPage.section !== section) {
+          this.tick();
+          this.leaveMuseumShelf();
+          this.closeDetail();
+        }
         this.progressPage.select(section);
         return true;
       }
@@ -1320,8 +1393,8 @@ export class GameSession {
       const career = this.save.career;
       if (open === 0 && ProgressPage.prestigeAt(point, vp, this.tabInset, career)) this.tryPrestige();
       if (open === 1 && ProgressPage.weeklyAt(point, vp, this.tabInset)) this.startSpecial({ k: 'trial', trial: weeklyTrial(weekNumber(this.today)) });
-      const match = open === 3 ? ProgressPage.rematchAt(point, vp, this.tabInset, career) : null;
-      if (match) this.startTrial(match);
+      const museum = open === 3 ? ProgressPage.museumAt(point, vp, this.tabInset, this.progressPage) : null;
+      if (museum) this.tapMuseum(museum);
       return true;
     }
     return null;
@@ -1527,6 +1600,8 @@ export class GameSession {
       if (isNew) save.mayhemBest = result.flames;
       save.mayhemBestChain = Math.max(save.mayhemBestChain, result.biggestChain);
       this.persist();
+      const found = this.takeMuseumNotice();
+      if (found) this.showNotice(found);
       this.dailySelected = false;
       this.resultBank = { before: career.money, after: career.money };
       this.pendingSummary = { result, level: this.playingLevel, isNewHighscore: isNew, previousHighscore: previous, mode: 'mayhem' };
@@ -1569,6 +1644,8 @@ export class GameSession {
     const completed = Careers.recordMastery(career, result);
     this.persist();
     if (completed.length > 0) toasts.push(S.mastery.toast(completed));
+    const found = this.takeMuseumNotice();
+    if (found) toasts.push(found);
     if (toasts.length > 0) this.showNotice(toasts.join('  ·  '));
     this.pendingSummary = { result, level: this.playingLevel, isNewHighscore: isNew, previousHighscore: previous, mode: this.playingMode };
     this.resultCountdown = this.resultDelayFor(result);
@@ -1730,8 +1807,9 @@ export class GameSession {
 
   /** Whether a tab has something waiting, like an iOS badge: the Shop's chests or new items. */
   badge(tab: Tab): { count: number } | 'dot' | null {
-    if (barTab(tab) !== 'shop') return null;
     const c = this.save.career;
+    if (barTab(tab) === 'progress') return c.museumNew.length > 0 ? 'dot' : null;
+    if (barTab(tab) !== 'shop') return null;
     if (c.chests.length > 0) return { count: c.chests.length };
     return c.unseen.length > 0 ? 'dot' : null;
   }

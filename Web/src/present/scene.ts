@@ -109,8 +109,8 @@ function cachedYard(slot: number, layout: Layout, c: Config): Pose {
 
 export const towYard = (slot: number, layout: Layout, c: Config): Vec2 => cachedYard(slot, layout, c).position;
 
-const SYNDICATE_BOSS = { paint: 'syndicate', stripe: 'coin', roof: null, finish: null } as const;
-const SYNDICATE_ESCORT = { paint: 'syndicateEscort', stripe: null, roof: 'syndicate', finish: null } as const;
+export const SYNDICATE_BOSS = { paint: 'syndicate', stripe: 'coin', roof: null, finish: null } as const;
+export const SYNDICATE_ESCORT ={ paint: 'syndicateEscort', stripe: null, roof: 'syndicate', finish: null } as const;
 
 /** Builds the game scene, roads and vehicles, as render items in world space. */
 export const SceneBuilder = {

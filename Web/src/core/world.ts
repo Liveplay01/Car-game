@@ -272,10 +272,18 @@ export class World {
     return next;
   }
 
+  /**
+   * The new shift's cars are still rolling up to the line (Leo, 28.09.2026): taps in between
+   * count for nothing, the shift starts with the first tap once the queue has arrived.
+   */
+  isArriving(seat = 0): boolean {
+    return this.seats[seat]?.state.kind === 'filling';
+  }
+
   /** Registers a tap at world time `time`; it takes effect inside the step containing it. */
   tap(time: number, seat = 0): void {
     const q = this.seats[seat];
-    if (!this.shift.acceptsTaps || !q || q.out) return;
+    if (!this.shift.acceptsTaps || !q || q.out || this.isArriving(seat)) return;
     const t = Math.max(time, this.time);
     let index = q.pendingTaps.findIndex((x) => x > t);
     if (index < 0) index = q.pendingTaps.length;

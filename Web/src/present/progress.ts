@@ -1,24 +1,27 @@
 import { type SaveGame, type Career, Careers, MASTERY_GOALS, MASTERY_THRESHOLDS, masteryValue } from '../core/career';
 import { COSMETICS } from '../core/loot';
 import { challengesOf, challengeReward } from '../core/daily';
-import { TRIALS, type TrialId, type RematchId, rematch } from '../core/trials';
+import { TRIALS, type TrialId } from '../core/trials';
 import { weekNumber, weekDaysLeft, weeklyTrial } from '../core/weekly';
-import { baseConfig, BOSS_KINDS } from '../core/config';
-import { firstBossLevel } from '../core/levels';
+import { baseConfig } from '../core/config';
 import { type Vec2, v, add } from '../core/vec2';
 import { type RenderList, type Rect, RenderList as List, R, rect, circle, line, text, Ease, Metrics, moved, type Align, type Weight } from './render';
 import type { ColorToken } from './theme';
 import { MenuKit } from './menukit';
-import { moneyTag } from './icons';
+import { moneyTag, textWidth } from './icons';
 import { S, Fmt } from './strings';
 import { ShopPage } from './shop';
 import type { ProgressSection } from './flow';
+import { MuseumPage, MuseumState, type MuseumTarget } from './museum';
 
 /** What the Progress tab shows and animates (`ProgressPage.State`). */
 export class ProgressState {
   section: ProgressSection = 0;
   age = 0;
+  /** Seconds the page has been open: the police lights in the Museum keep flashing. */
+  time = 0;
   sectionSlide: { from: ProgressSection; age: number } | null = null;
+  museum = new MuseumState();
 
   select(next: ProgressSection): void {
     if (next === this.section) return;
@@ -29,6 +32,8 @@ export class ProgressState {
 
   advance(delta: number): void {
     this.age += delta;
+    this.time += delta;
+    this.museum.advance(delta);
     if (this.sectionSlide) {
       this.sectionSlide.age += delta;
       if (this.sectionSlide.age >= ShopPage.slideDuration) this.sectionSlide = null;
@@ -107,9 +112,13 @@ export const ProgressPage = {
     if (slide) thumb = slide.from + (chosen - slide.from) * (reduceMotion ? 1 : Ease.settle(slide.age / ShopPage.slideDuration));
     const last = l.segments[l.segments.length - 1][1];
     MenuKit.segmented(list, PROGRESS_SECTIONS.map((i) => S.progress.section(i)), chosen, thumb, R.make(l.segments[0][1].minX, l.segments[0][1].minY, last.maxX, last.maxY));
+    if (save.career.museumNew.length > 0) {
+      const r = l.segments[3][1];
+      ShopPage.badgeDot(list, v(R.center(r).x + textWidth(S.progress.section(3), 13) / 2 + 7, R.center(r).y - 6), 1);
+    }
 
     const start = list.items.length;
-    ProgressPage.addSection(list, state.section, l, save, today, state.age, reduceMotion);
+    ProgressPage.addSection(list, state.section, l, save, today, state, state.age, reduceMotion);
     if (!slide) return;
     const side = state.section > slide.from ? 1 : -1;
     const spring = reduceMotion ? 1 : Ease.settle(slide.age / ShopPage.slideDuration);
@@ -119,16 +128,16 @@ export const ProgressPage = {
     const gone = Ease.outCubic(slide.age / ShopPage.slideOut);
     if (gone >= 1) return;
     const old = new List(list.camera, list.background);
-    ProgressPage.addSection(old, slide.from, l, save, today, 10, true);
+    ProgressPage.addSection(old, slide.from, l, save, today, state, 10, true);
     const away = v(reduceMotion ? 0 : -side * R.width(l.content) * 0.3 * gone, 0);
     list.items.splice(start, 0, ...old.items.map((i) => moved(i, away, 1 - gone)));
   },
 
-  addSection(list: RenderList, section: ProgressSection, l: Layout, save: SaveGame, today: number, age: number, reduceMotion: boolean): void {
+  addSection(list: RenderList, section: ProgressSection, l: Layout, save: SaveGame, today: number, state: ProgressState, age: number, reduceMotion: boolean): void {
     if (section === 0) ProgressPage.addRecords(list, l, save, age, reduceMotion);
     else if (section === 1) ProgressPage.addQuests(list, l, save.career, today, age, reduceMotion);
     else if (section === 2) ProgressPage.addTrials(list, l, save.career, age, reduceMotion);
-    else if (section === 3) ProgressPage.addBosses(list, l, save.career, age, reduceMotion);
+    else if (section === 3) MuseumPage.add(list, l.content, save.career, state.museum, age, state.time, reduceMotion);
     else ProgressPage.addAchievements(list, l, save.career, age, reduceMotion);
   },
 
@@ -143,13 +152,6 @@ export const ProgressPage = {
   prestigeAt(point: Vec2, viewport: Vec2, bottomInset: number, c: Career): boolean {
     if (!ProgressPage.showsPrestige(c)) return false;
     return R.contains(ProgressPage.prestigeCard(ProgressPage.layout(viewport, bottomInset)), point);
-  },
-
-  checkmark(list: RenderList, box: Vec2, done: boolean, opacity: number): void {
-    list.s(circle(box, 9), done ? 'accent' : 'controlFill', opacity);
-    if (!done) return;
-    list.s(line(add(box, v(-4, 0)), add(box, v(-1, 3.5)), 2), 'accentInk', opacity);
-    list.s(line(add(box, v(-1, 3.5)), add(box, v(4.5, -3.5)), 2), 'accentInk', opacity);
   },
 
   entering(r: Rect, age: number, index: number, reduceMotion: boolean): [Rect, number] {
@@ -279,41 +281,9 @@ export const ProgressPage = {
     });
   },
 
-  bossRows: (l: Layout): Rect[] => ShopPage.grid(BOSS_KINDS.length, 1, l.content, 92),
-
-  /** The rematch under a tap on the Bosses section, once that boss has been taken down. */
-  rematchAt(point: Vec2, viewport: Vec2, bottomInset: number, c: Career): RematchId | null {
-    const rows = ProgressPage.bossRows(ProgressPage.layout(viewport, bottomInset));
-    const index = rows.findIndex((r) => R.contains(r, point));
-    if (index < 0) return null;
-    const kind = BOSS_KINDS[index];
-    return c.bossesBeaten.includes(kind) ? rematch(kind).id as RematchId : null;
-  },
-
-  /**
-   * The syndicate's bosses: what each one asks of you, whether you have taken it down, and its
-   * rematch (one round harder, pays once) once you have.
-   */
-  addBosses(list: RenderList, l: Layout, career: Career, age: number, reduceMotion: boolean): void {
-    const rows = ProgressPage.bossRows(l);
-    BOSS_KINDS.forEach((kind, i) => {
-      const [r, o] = ProgressPage.entering(rows[i], age, i, reduceMotion);
-      ProgressPage.panel(list, r, o);
-      const c = R.center(r);
-      const beaten = career.bossesBeaten.includes(kind);
-      const match = rematch(kind);
-      const won = career.trialsDone.includes(match.id);
-      ProgressPage.checkmark(list, v(r.minX + 24, c.y - 12), beaten, o);
-      t(list, S.boss.name(kind), v(r.minX + 44, c.y - 12), 14, beaten ? 'coin' : 'primary', o, { weight: 'bold' });
-      const tactic = S.boss.tactic(kind);
-      t(list, tactic, v(r.minX + 44, c.y + 10), ShopPage.fitted(tactic, 11, R.width(r) - 60), 'muted', o);
-      const status = beaten ? S.boss.beaten : `${S.boss.notMet} · ${S.boss.firstAt(firstBossLevel(kind, baseConfig))}`;
-      t(list, status, v(r.minX + 44, c.y + 28), 11, beaten ? 'accent' : 'muted', o, { weight: 'bold' });
-      if (!beaten) return;
-      if (won) t(list, S.trials.passed, v(r.maxX - 16, c.y - 12), 12, 'accent', o, { weight: 'bold', align: 'trailing' });
-      else moneyTag(list, Fmt.number(match.reward), v(r.maxX - 16, c.y - 12), 13, 'trailing', 'primary', 'accent', o);
-      t(list, `${S.boss.rematch(kind).split(' · ')[0]} ›`, v(r.maxX - 16, c.y + 28), 11, won ? 'muted' : 'coin', o, { weight: 'bold', align: 'trailing' });
-    });
+  /** A tap on the Museum section: a shelf chip or an entry. */
+  museumAt(point: Vec2, viewport: Vec2, bottomInset: number, state: ProgressState): MuseumTarget | null {
+    return MuseumPage.targetAt(point, ProgressPage.layout(viewport, bottomInset).content, state.museum.shelf);
   },
 
   addAchievements(list: RenderList, l: Layout, career: Career, age: number, reduceMotion: boolean): void {
