@@ -3,7 +3,7 @@ import { UPGRADES, upgradeMaxSteps } from '../core/levels';
 import { COSMETICS, CHEST_KINDS, type ChestKind, MAX_CAR_SKINS, cosmetic } from '../core/loot';
 import { ROAD_MODULES, type RoadModule, BOSS_KINDS, type BossKind, baseConfig } from '../core/config';
 import { RUN_IDS } from '../core/trials';
-import { MUSEUM_IDS, inferredSightings } from '../core/museum';
+import { MUSEUM_IDS, MUSEUM_SHELVES, type MuseumShelf, inferredSightings } from '../core/museum';
 
 const KEY = 'carGame.save.v2';
 const LEGACY_KEY = 'carGame.career.v1';
@@ -53,9 +53,12 @@ function readCareer(raw: unknown): Career {
   }
   const bossesBeaten = [...new Set(strings(raw.bossesBeaten).filter((k): k is BossKind => BOSS_KINDS.includes(k as BossKind)))];
   // A save from before the Museum starts with what it must have met already.
+  const infer = (shelves?: MuseumShelf[]): string[] => inferredSightings(int(raw.level, 1, 1), int(raw.prestige, 0, 0), bossesBeaten, mastery, baseConfig, shelves);
+  // A shelf the save did not know yet (the Museum began with two) starts from what it must have met.
+  const knownShelves = int(raw.museumShelves, 2, 0);
   const museumSeen = Array.isArray(raw.museumSeen)
-    ? [...new Set(strings(raw.museumSeen).filter((id) => MUSEUM_IDS.includes(id)))]
-    : inferredSightings(int(raw.level, 1, 1), int(raw.prestige, 0, 0), bossesBeaten, mastery, baseConfig);
+    ? [...new Set([...strings(raw.museumSeen).filter((id) => MUSEUM_IDS.includes(id)), ...infer(MUSEUM_SHELVES.filter((s) => s >= knownShelves))])]
+    : infer();
   const mapSkin = typeof raw.mapSkin === 'string' && collection.includes(raw.mapSkin) && cosmetic(raw.mapSkin)?.kind === 'mapSkin' ? raw.mapSkin : null;
   return {
     level: int(raw.level, 1, 1),
@@ -96,6 +99,7 @@ function readCareer(raw: unknown): Career {
     weekliesDone: int(raw.weekliesDone, 0, 0),
     museumSeen,
     museumNew: [...new Set(strings(raw.museumNew).filter((id) => museumSeen.includes(id)))],
+    museumShelves: MUSEUM_SHELVES.length,
   };
 }
 

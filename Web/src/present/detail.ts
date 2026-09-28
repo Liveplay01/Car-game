@@ -216,7 +216,7 @@ export const Details = {
       return {
         key: `museum:${id}:locked`,
         art,
-        eyebrow: { text: entry.k === 'boss' ? S.museum.boss : S.museum.special, color: 'muted' },
+        eyebrow: { text: S.museum.kind(entry), color: 'muted' },
         title: S.museum.unknown,
         price: { text: S.museum.undiscovered, color: 'muted' },
         steps: null,
@@ -226,15 +226,15 @@ export const Details = {
         actions: [],
       };
     }
-    if (entry.k === 'special') {
+    if (entry.k !== 'boss') {
       return {
         key: `museum:${id}`,
         art,
-        eyebrow: { text: S.museum.special, color: MuseumPage.color(entry) },
-        title: S.museum.name(entry.kind),
+        eyebrow: { text: S.museum.kind(entry), color: MuseumPage.color(entry) },
+        title: S.museum.name(entry),
         price: null,
         steps: null,
-        body: S.museum.explanation(entry.kind, config),
+        body: S.museum.explanation(entry, config),
         rows: [],
         notes: [],
         actions: [],
@@ -252,11 +252,11 @@ export const Details = {
     return {
       key: `museum:${id}`,
       art,
-      eyebrow: { text: S.museum.boss, color: 'coin' },
-      title: S.boss.name(kind),
+      eyebrow: { text: S.museum.kind(entry), color: 'coin' },
+      title: S.museum.name(entry),
       price: { text: beaten ? S.boss.beaten : S.museum.met, color: beaten ? 'accent' : 'muted' },
       steps: null,
-      body: S.museum.bossExplanation(kind),
+      body: S.museum.explanation(entry, config),
       rows,
       notes: [],
       actions: beaten ? [{ label: won ? S.museum.rematch : `${S.museum.rematch} · ${money(Fmt.number(match.reward))}`, action: { k: 'startTrial', id: match.id }, prominent: true, enabled: true }] : [],

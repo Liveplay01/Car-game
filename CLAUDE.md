@@ -82,4 +82,11 @@ Referenz, pausiert: `cd Game; swift test`, `cd Game; swift run -c release Sim �
   (`npm run sim`: der vorsichtige Bot darf nie crashen), dann darstellen
   (`present/`, `ui/`), dann im Browser spielen – auch auf einem echten Handy.
 - Alle Tuning-Werte stehen in `Web/src/core/config.ts`.
+- **Museum wächst mit (Leo, 28.09.2026):** Der Katalog in `core/museum.ts` folgt den Inhaltslisten
+  (`BOSS_KINDS`, Fahrzeugtypen, `WEATHERS`, `CITY_EVENTS`, Dunkelheit). Neuer Boss, neues
+  Spezialfahrzeug, neues Wetter oder Ereignis erscheint dort automatisch; der Build bricht ab,
+  bis Level (`core/museum.ts`), Text (`present/strings.ts`, `*_TEXT`) und Bild/Farbe
+  (`present/museum.ts`) eingetragen sind. Ein gewöhnlicher Fahrzeugtyp kommt in `ORDINARY`.
+  Eine ganz neue Inhaltsart bekommt ein eigenes Regal (`MUSEUM_SHELVES`); alte Spielstände
+  erhalten dafür automatisch, was sie schon gesehen haben müssen (`museumShelves`).
 - Vor jedem Commit: `npm run build` muss grün sein.

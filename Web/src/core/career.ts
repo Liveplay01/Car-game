@@ -1,3 +1,4 @@
+import { MUSEUM_SHELVES } from './museum';
 import { baseConfig, cloneConfig, type Config, type RoadModule, type Weather, type CityEvent, type BossKind, type LegendaryRule, modulePrice } from './config';
 import {
   forLevel,
@@ -155,6 +156,8 @@ export interface Career {
   /** Museum entries met on the road (core/museum.ts), and those not looked at yet. */
   museumSeen: string[];
   museumNew: string[];
+  /** How many Museum shelves the save knew: a shelf added later starts from what it must have met. */
+  museumShelves: number;
 }
 
 /** Everything that is saved (`SaveGame` in GamePresentation). */
@@ -210,6 +213,7 @@ export const newCareer = (): Career => ({
   weekliesDone: 0,
   museumSeen: [],
   museumNew: [],
+  museumShelves: MUSEUM_SHELVES.length,
 });
 
 export const newSave = (): SaveGame => ({

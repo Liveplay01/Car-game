@@ -1,65 +1,111 @@
-import { type Config, type BossKind, BOSS_KINDS } from './config';
-import { firstBossLevel } from './levels';
+import { type Config, type BossKind, type Weather, type CityEvent, BOSS_KINDS, WEATHERS, CITY_EVENTS } from './config';
+import { type Darkness, firstBossLevel, firstLevelOf } from './levels';
+import type { VehicleType } from './vehicle';
 import type { World } from './world';
 
 /**
- * The Museum (Leo, 28.09.2026): the syndicate's bosses and the special vehicles, each one on
- * show once it has been on the road in front of you. Until then it is a grey silhouette.
+ * The Museum (Leo, 28.09.2026): the syndicate's bosses, the special vehicles and the city's
+ * conditions, each one on show once it has been on the road in front of you. Until then it is
+ * a grey silhouette.
+ *
+ * The catalogue follows the game's own lists (`BOSS_KINDS`, the vehicle types, `WEATHERS`,
+ * `CITY_EVENTS`, the darkness): new content there is in the Museum at once. The tables below and
+ * the texts and pictures in `present/` are records over those types, so the build fails until
+ * a new kind has its level, its text and its picture.
  */
-export type MuseumShelf = 0 | 1; // bosses · specials
-export const MUSEUM_SHELVES: MuseumShelf[] = [0, 1];
+export type MuseumShelf = 0 | 1 | 2; // bosses · specials · conditions
+export const MUSEUM_SHELVES: MuseumShelf[] = [0, 1, 2];
 
-/** The vehicles that are more than traffic: each one asks something of you. */
-export type SpecialKind = 'police' | 'pickup' | 'transporter' | 'ambulance' | 'truck' | 'tanker' | 'military';
-export const SPECIAL_KINDS: SpecialKind[] = ['police', 'pickup', 'transporter', 'ambulance', 'truck', 'tanker', 'military'];
+/** Traffic that is only traffic. Every other vehicle type is a special and goes in the Museum. */
+const ORDINARY = ['car', 'sportsCar', 'compact', 'van'] as const;
+export type SpecialKind = Exclude<VehicleType, (typeof ORDINARY)[number]>;
+export type WeatherKind = Exclude<Weather, 'clear'>;
+export type DarkKind = Exclude<Darkness, 'day'>;
 
-export type MuseumEntry = { k: 'boss'; kind: BossKind } | { k: 'special'; kind: SpecialKind };
+/** The first level whose shifts can bring each special. A new vehicle type must be listed here or in `ORDINARY`. */
+const SPECIAL_LEVEL: Record<SpecialKind, (c: Config) => number> = {
+  police: () => 1,
+  pickup: () => 1,
+  transporter: () => 1,
+  truck: () => 1,
+  ambulance: (c) => c.ambulanceLevel,
+  tanker: (c) => c.tankerLevel,
+  military: (c) => c.militaryLevel,
+};
+const DARK_LEVEL: Record<DarkKind, (c: Config) => number> = {
+  night: (c) => c.nightLevel,
+  blackout: (c) => c.blackoutLevel,
+};
+
+export const SPECIAL_KINDS = Object.keys(SPECIAL_LEVEL) as SpecialKind[];
+export const WEATHER_KINDS = WEATHERS.filter((w): w is WeatherKind => w !== 'clear');
+export const DARK_KINDS = Object.keys(DARK_LEVEL) as DarkKind[];
+
+export type MuseumEntry =
+  | { k: 'boss'; kind: BossKind }
+  | { k: 'special'; kind: SpecialKind }
+  | { k: 'weather'; kind: WeatherKind }
+  | { k: 'dark'; kind: DarkKind }
+  | { k: 'event'; kind: CityEvent };
 
 export const museumId = (e: MuseumEntry): string => `${e.k}.${e.kind}`;
 
-export function museumEntry(id: string): MuseumEntry | null {
-  const [k, kind] = id.split('.');
-  if (k === 'boss' && BOSS_KINDS.includes(kind as BossKind)) return { k, kind: kind as BossKind };
-  if (k === 'special' && SPECIAL_KINDS.includes(kind as SpecialKind)) return { k, kind: kind as SpecialKind };
-  return null;
-}
-
 export function shelfEntries(shelf: MuseumShelf): MuseumEntry[] {
-  return shelf === 0 ? BOSS_KINDS.map((kind): MuseumEntry => ({ k: 'boss', kind })) : SPECIAL_KINDS.map((kind): MuseumEntry => ({ k: 'special', kind }));
+  switch (shelf) {
+    case 0:
+      return BOSS_KINDS.map((kind): MuseumEntry => ({ k: 'boss', kind }));
+    case 1:
+      return SPECIAL_KINDS.map((kind): MuseumEntry => ({ k: 'special', kind }));
+    case 2:
+      return [
+        ...WEATHER_KINDS.map((kind): MuseumEntry => ({ k: 'weather', kind })),
+        ...DARK_KINDS.map((kind): MuseumEntry => ({ k: 'dark', kind })),
+        ...CITY_EVENTS.map((kind): MuseumEntry => ({ k: 'event', kind })),
+      ];
+  }
 }
 
-export const MUSEUM_IDS: string[] = MUSEUM_SHELVES.flatMap((s) => shelfEntries(s).map(museumId));
+const BY_ID = new Map(MUSEUM_SHELVES.flatMap(shelfEntries).map((e) => [museumId(e), e]));
+export const MUSEUM_IDS: string[] = [...BY_ID.keys()];
+
+export const museumEntry = (id: string): MuseumEntry | null => BY_ID.get(id) ?? null;
+
+export const shelfOfEntry = (e: MuseumEntry): MuseumShelf => (e.k === 'boss' ? 0 : e.k === 'special' ? 1 : 2);
 
 /** The first level whose shifts can bring it (1: from the start). */
 export function firstLevel(e: MuseumEntry, c: Config): number {
-  if (e.k === 'boss') return firstBossLevel(e.kind, c);
-  switch (e.kind) {
-    case 'tanker':
-      return c.tankerLevel;
-    case 'military':
-      return c.militaryLevel;
-    case 'ambulance':
-      return c.ambulanceLevel;
-    default:
-      return 1;
+  switch (e.k) {
+    case 'boss':
+      return firstBossLevel(e.kind, c);
+    case 'special':
+      return SPECIAL_LEVEL[e.kind](c);
+    case 'weather':
+      return firstLevelOf(c, e.kind);
+    case 'dark':
+      return DARK_LEVEL[e.kind](c);
+    case 'event':
+      return c.cityEventLevel;
   }
 }
 
-/** What is on the road right now that the Museum shows: bosses by kind, the specials by type. */
+/** What is in front of you right now that the Museum shows: bosses, specials, the sky and the city. */
 export function sightings(w: World): string[] {
-  const out: string[] = [];
+  const c = w.config;
+  const out = new Set<string>();
   for (const veh of w.vehicles) {
-    let id: string | null = null;
-    if (veh.role === 'boss') id = w.config.convoy ? museumId({ k: 'boss', kind: w.config.bossKind }) : null;
-    else if (veh.role === null && SPECIAL_KINDS.includes(veh.type as SpecialKind)) id = museumId({ k: 'special', kind: veh.type as SpecialKind });
-    if (id && !out.includes(id)) out.push(id);
+    if (veh.role === 'boss' && c.convoy) out.add(museumId({ k: 'boss', kind: c.bossKind }));
+    else if (veh.role === null && veh.type in SPECIAL_LEVEL) out.add(museumId({ k: 'special', kind: veh.type as SpecialKind }));
   }
-  return out;
+  if (c.weather !== 'clear') out.add(museumId({ k: 'weather', kind: c.weather }));
+  if (c.night) out.add(museumId({ k: 'dark', kind: c.blackout ? 'blackout' : 'night' }));
+  if (c.cityEvent) out.add(museumId({ k: 'event', kind: c.cityEvent }));
+  return [...out];
 }
 
 /**
- * A save from before the Museum: what it must have met already. Bosses it beat or passed,
- * the specials its stats count, and every special below the level it reached.
+ * What a save must have met already, for a save from before the Museum or before one of its
+ * shelves (`shelves`): bosses it beat or passed, the specials its stats count, and everything
+ * below the level it reached.
  */
 export function inferredSightings(
   level: number,
@@ -67,14 +113,16 @@ export function inferredSightings(
   bossesBeaten: BossKind[],
   stats: { takedowns: number; transporters: number; ambulances: number },
   c: Config,
+  shelves: MuseumShelf[] = MUSEUM_SHELVES,
 ): string[] {
-  return MUSEUM_SHELVES.flatMap(shelfEntries)
+  return shelves
+    .flatMap(shelfEntries)
     .filter((e) => {
       if (prestige > 0) return true;
       if (e.k === 'boss') return bossesBeaten.includes(e.kind) || level > firstLevel(e, c);
-      if (e.kind === 'pickup' || e.kind === 'police') return stats.takedowns > 0 || level > 2;
-      if (e.kind === 'transporter') return stats.transporters > 0 || level > 2;
-      if (e.kind === 'ambulance') return stats.ambulances > 0 || level > firstLevel(e, c);
+      if (e.k === 'special' && (e.kind === 'pickup' || e.kind === 'police')) return stats.takedowns > 0 || level > 2;
+      if (e.k === 'special' && e.kind === 'transporter') return stats.transporters > 0 || level > 2;
+      if (e.k === 'special' && e.kind === 'ambulance') return stats.ambulances > 0 || level > firstLevel(e, c);
       return level > firstLevel(e, c);
     })
     .map(museumId);

@@ -1,4 +1,4 @@
-import type { Config, Weather, CityEvent, BossKind, LegendaryRule } from '../core/config';
+import { type Config, type Weather, type CityEvent, type BossKind, type LegendaryRule, weatherSeverity } from '../core/config';
 import type { Upgrade } from '../core/levels';
 import type { MasteryGoal, MasteryCompletion } from '../core/career';
 import { MASTERY_THRESHOLDS } from '../core/career';
@@ -9,7 +9,7 @@ import type { StoreProduct } from '../core/store';
 import { productGrant } from '../core/store';
 import type { VehicleType, VehicleRole } from '../core/vehicle';
 import { type Trial, type TrialId, type RunId, type EliteKind, rematchKind } from '../core/trials';
-import type { SpecialKind } from '../core/museum';
+import type { SpecialKind, WeatherKind, DarkKind, MuseumEntry } from '../core/museum';
 import { MONEY_MARK } from './icons';
 
 /** Every text the game shows (`Strings.swift`). English only. */
@@ -42,6 +42,215 @@ export const percent = (share: number): string => `${Math.round(share * 100)} %
 const secondsText = (value: number): string => (value === Math.round(value) ? `${value} s` : `${value} s`);
 export const multiplier = (value: number): string => `${value === Math.round(value) ? String(value) : String(+value.toFixed(2))}×`;
 export const comboMultiplier = (value: number): string => `×${value === Math.round(value) ? String(value) : String(+value.toFixed(2))}`;
+
+/** A Museum entry's words: one short line for its card, the explanation for its sheet. */
+interface MuseumText {
+  line: string;
+  explain: (c: Config) => string[];
+}
+
+/**
+ * The Museum's texts, one record per kind of content: a new boss, vehicle type, weather,
+ * darkness or city event does not build until it has its words here.
+ */
+const BOSS_TEXT: Record<BossKind, MuseumText> = {
+  convoy: {
+    line: 'Escorts right behind it',
+    explain: () => [
+      'The head of the syndicate, in gold-striped black. Its armoured escorts join the ring right behind it.',
+      'Time a police car into the gap between the boss and its escorts. Hitting an escort is a plain crash.',
+      'You get more time than with an ordinary criminal: use it to wait for the gap.',
+    ],
+  },
+  getaway: {
+    line: 'Gone in seconds',
+    explain: () => [
+      'No escorts at all, just speed: the getaway driver is gone in a few seconds.',
+      'Have a police car at the front of your queue before its warning ends, and send it in the moment the boss is on the ring.',
+    ],
+  },
+  armoured: {
+    line: 'Takes two police cars',
+    explain: () => ['Its armour shrugs off the first ram, and an escort sticks to it.', 'One police car cracks the armour, a second one finishes it. Keep two in your queue.'],
+  },
+  phantom: {
+    line: 'Drives without lights',
+    explain: () => [
+      'It comes in a blackout, and it drives without lights: you only see it where the street lights reach.',
+      'Follow the ring and trust its warning. An escort rides behind it, so pick the gap carefully.',
+    ],
+  },
+};
+
+const SPECIAL_TEXT: Record<SpecialKind, MuseumText & { name: string }> = {
+  police: {
+    name: 'Police Car',
+    line: 'The only car that stops a criminal',
+    explain: (c) => [
+      'Police cars come from your own queue, like any of your cars. They are the only cars that can stop a criminal.',
+      `Send one into the ring while a criminal is on it and drive into it: that is a takedown, worth ${Fmt.number(c.takedownPoints)} points and a link in your chain. Hold a police car back when a warning lights up an arm.`,
+      `A police car is tougher than your other cars: your shift survives ${c.maxPoliceCrashes === 1 ? 'one police crash' : `${c.maxPoliceCrashes} police crashes`}. Keep it away from the money transporter, though.`,
+    ],
+  },
+  pickup: {
+    name: 'Criminal',
+    line: 'Ram it with a police car',
+    explain: (c) => [
+      'A warning lights up the arm it comes from. Then it barges into the ring and races round it, heavy and fearless.',
+      `You have about ${Math.round(c.criminalTime)} seconds to ram it with one of your police cars. A takedown pays ${Fmt.number(c.takedownPoints)} points and extends your chain.`,
+      'If it gets away, it takes money with it and the shift is over. Your ordinary cars cannot stop it: a crash with them is just a crash.',
+    ],
+  },
+  transporter: {
+    name: 'Money Transporter',
+    line: 'Let it through, then cash in',
+    explain: (c) => [
+      'An armoured truck full of cash. A warning shows its arm, then it drives once round the ring with a secure zone around it.',
+      `If it leaves safely you earn ${money(Fmt.number(c.transporterPay))} and a link in your chain. Every car of yours that joins inside its secure zone adds ${money(Fmt.number(c.shieldBonus))}.`,
+      'Do not hit it: a police car that rams it seizes the cash and nobody gets paid, and a wrecked transporter is lost.',
+    ],
+  },
+  ambulance: {
+    name: 'Ambulance',
+    line: 'Keep the road ahead clear',
+    explain: (c) => [
+      'On an emergency run: it comes in with a warning and takes the long way round the ring.',
+      'The stretch of ring right ahead of it has to stay clear. If you send a car in there, the run is spoiled and your combo and chain are gone.',
+      `Keep the road clear until it leaves and it pays ${money(Fmt.number(c.ambulancePay))} and extends your chain. It never causes a crash itself.`,
+    ],
+  },
+  truck: {
+    name: 'Lorry',
+    line: 'Long and heavy: leave a bigger gap',
+    explain: (c) => [
+      'Part of the ordinary traffic, but longer and much heavier than a car.',
+      'It needs a bigger gap in front of your car, and in a crash it shoves lighter cars around instead of stopping.',
+      `Every lorry that passes a Toll Booth early in a shift pays ${money(Fmt.number(c.tollPerTruck))}.`,
+    ],
+  },
+  tanker: {
+    name: 'Gas Tanker',
+    line: 'Wreck it and it explodes',
+    explain: () => [
+      'A lorry full of gas. It drives like any other lorry, and it comes without a warning.',
+      'Wrecked, it explodes: the blast throws every car nearby off the road, yours too. Give it room.',
+      'In Mayhem that is exactly the point: aim for the tankers, the bigger the chain reaction the more flames.',
+    ],
+  },
+  military: {
+    name: 'Military Truck',
+    line: 'Stay out of its zone',
+    explain: (c) => [
+      'A military truck with a bomb on board. A warning shows its arm, then it drives round the ring with a no-go zone around it.',
+      'Any car that enters the zone sets the bomb off, and the blast reaches across the whole roundabout.',
+      `Hold your cars back while it passes. After about ${Math.round(c.militaryTime)} seconds it leaves as soon as the way out is clear.`,
+    ],
+  },
+};
+
+/** The grip the tyres keep in a weather, as `forWeather` sets it. */
+const gripIn = (w: Weather, c: Config): string => percent(Math.max(0.35, 1 - weatherSeverity(w) * c.weatherGripLoss));
+
+const WEATHER_TEXT: Record<WeatherKind, MuseumText> = {
+  lightRain: {
+    line: 'Slick roads',
+    explain: (c) => [
+      `A wet road: tyres keep only ${gripIn('lightRain', c)} of their grip, and drivers react a little later and brake more softly.`,
+      'Crashes slide further and cars need longer to stop. Leave a little more room when you merge.',
+    ],
+  },
+  heavyRain: {
+    line: 'Less grip, more traffic',
+    explain: (c) => [
+      `Pouring rain: tyres keep ${gripIn('heavyRain', c)} of their grip, drivers react later still, and more cars are on the road.`,
+      'Tight fits turn into crashes quickly. Wait for the gaps that are clearly big enough.',
+    ],
+  },
+  storm: {
+    line: 'Drivers squeeze into gaps',
+    explain: (c) => [
+      `A storm: tyres keep ${gripIn('storm', c)} of their grip, the traffic is heavier, and the other drivers squeeze into smaller gaps.`,
+      'The ring fills up faster than you are used to. Time your cars carefully and keep an eye on who pushes in.',
+    ],
+  },
+  extreme: {
+    line: 'The worst the sky can do',
+    explain: (c) => [
+      `Extreme weather: tyres keep only ${gripIn('extreme', c)} of their grip, the traffic is at its heaviest, and every driver is on edge.`,
+      'Every crash slides a long way and takes others with it. Patience pays more than speed here.',
+    ],
+  },
+};
+
+const DARK_TEXT: Record<DarkKind, MuseumText> = {
+  night: {
+    line: 'Only headlights and lamps',
+    explain: (c) => [
+      'A night shift: the city is dark, and you see the cars by their headlights and under the street lamps.',
+      `Watch the lights on the ring rather than the cars. A night shift pays ${percent(c.nightPayFactor - 1)} more.`,
+    ],
+  },
+  blackout: {
+    line: 'Even the lamps are out',
+    explain: (c) => [
+      'A night with the street lamps out: only the headlights show where the cars are.',
+      `A blackout shift pays ${percent(c.blackoutPayFactor - 1)} more. The Phantom, the fourth boss of the syndicate, only comes in a blackout.`,
+    ],
+  },
+};
+
+const EVENT_TEXT: Record<CityEvent, MuseumText> = {
+  roadworks: {
+    line: 'A slow stretch on the ring',
+    explain: (c) => [
+      `Roadworks on part of the ring: traffic there slows to ${percent(c.roadworksSpeedFactor)} of its speed.`,
+      'Cars bunch up behind the works, so the gaps change as they pass through. Look where the queue on the ring forms.',
+    ],
+  },
+  roadClosure: {
+    line: 'One arm is closed',
+    explain: () => [
+      'One of the other arms is closed for the shift: no traffic comes in from it and no car can leave there.',
+      'The traffic comes from fewer directions and leaves by fewer exits. It only happens on a roundabout with four arms or more.',
+    ],
+  },
+  concert: {
+    line: 'The whole city is out',
+    explain: (c) => [
+      `A concert lets out: ${c.concertDensityBonus} more cars on the ring, and new cars arrive twice as often.`,
+      'Gaps are rare and short. Take a good one when it comes instead of waiting for a perfect one.',
+    ],
+  },
+  vipConvoy: {
+    line: 'Wide gaps, more cars',
+    explain: (c) => [
+      `A VIP is in town: one more car on the ring, and every driver keeps about ${percent(c.vipGapFactor - 1)} more distance.`,
+      'The gaps between the cars are wider but move differently. Time your merge to the new rhythm.',
+    ],
+  },
+  policeOperation: {
+    line: 'More police in your queue',
+    explain: (c) => [
+      `A police operation: ${percent(c.policeOperationShare)} more of your cars are police cars.`,
+      'Criminals are easier to catch, and every police car is one more chance for a takedown. Use them.',
+    ],
+  },
+};
+
+function museumText(e: MuseumEntry): MuseumText {
+  switch (e.k) {
+    case 'boss':
+      return BOSS_TEXT[e.kind];
+    case 'special':
+      return SPECIAL_TEXT[e.kind];
+    case 'weather':
+      return WEATHER_TEXT[e.kind];
+    case 'dark':
+      return DARK_TEXT[e.kind];
+    case 'event':
+      return EVENT_TEXT[e.kind];
+  }
+}
 
 export const S = {
   gameTitle: 'Car Game',
@@ -272,7 +481,7 @@ export const S = {
   },
 
   museum: {
-    shelf: (i: number): string => ['Bosses', 'Specials'][i],
+    shelf: (i: number): string => ['Bosses', 'Specials', 'Conditions'][i],
     unknown: '???',
     notSeen: 'Not seen yet',
     newBadge: 'NEW',
@@ -280,110 +489,33 @@ export const S = {
     undiscovered: 'Not discovered yet',
     lockedHint: (level: number): string =>
       level > 1
-        ? `Shows up from Level ${level}. Once it has been on the road in front of you, it goes on show here with everything you need to know.`
-        : 'Keep playing shifts. Once it has been on the road in front of you, it goes on show here with everything you need to know.',
+        ? `Shows up from Level ${level}. Once you have met it on the road, it goes on show here with everything you need to know.`
+        : 'Keep playing shifts. Once you have met it on the road, it goes on show here with everything you need to know.',
     lockedBossHint: (level: number): string => `The syndicate sends it on Level ${level}. Once you have faced it, it goes on show here with how to take it down.`,
     discovered: (names: string[]): string => `New in the Museum: ${names.join(', ')}`,
-    boss: 'Syndicate boss',
-    special: 'Special vehicle',
+    kind: (e: MuseumEntry): string => ({ boss: 'Syndicate boss', special: 'Special vehicle', weather: 'Weather', dark: 'Darkness', event: 'City event' })[e.k],
     met: 'Met, still at large',
     heist: 'Heist recovered',
     firstMet: 'Boss level',
     rematch: 'Rematch',
-    name: (k: SpecialKind): string =>
-      ({
-        police: 'Police Car',
-        pickup: 'Criminal',
-        transporter: 'Money Transporter',
-        ambulance: 'Ambulance',
-        truck: 'Lorry',
-        tanker: 'Gas Tanker',
-        military: 'Military Truck',
-      })[k],
-    /** One short line on a boss's card; the sheet explains the rest. */
-    bossTagline: (k: BossKind): string =>
-      ({ convoy: 'Escorts right behind it', getaway: 'Gone in seconds', armoured: 'Takes two police cars', phantom: 'Drives without lights' })[k],
-    /** One line on the card: what it asks of you. */
-    tagline: (k: SpecialKind): string =>
-      ({
-        police: 'The only car that stops a criminal',
-        pickup: 'Ram it with a police car',
-        transporter: 'Let it through, then cash in',
-        ambulance: 'Keep the road ahead clear',
-        truck: 'Long and heavy: leave a bigger gap',
-        tanker: 'Wreck it and it explodes',
-        military: 'Stay out of its zone',
-      })[k],
+    name(e: MuseumEntry): string {
+      switch (e.k) {
+        case 'boss':
+          return S.boss.name(e.kind);
+        case 'special':
+          return SPECIAL_TEXT[e.kind].name;
+        case 'weather':
+          return S.weather(e.kind);
+        case 'dark':
+          return e.kind === 'blackout' ? S.blackout : S.night;
+        case 'event':
+          return S.cityEvent(e.kind);
+      }
+    },
+    /** One short line on the card: what it asks of you. */
+    line: (e: MuseumEntry): string => museumText(e).line,
     /** The explanation in the sheet: what it is, what to do, what it pays or costs. */
-    explanation(k: SpecialKind, c: Config): string[] {
-      switch (k) {
-        case 'police':
-          return [
-            'Police cars come from your own queue, like any of your cars. They are the only cars that can stop a criminal.',
-            `Send one into the ring while a criminal is on it and drive into it: that is a takedown, worth ${Fmt.number(c.takedownPoints)} points and a link in your chain. Hold a police car back when a warning lights up an arm.`,
-            `A police car is tougher than your other cars: your shift survives ${c.maxPoliceCrashes === 1 ? 'one police crash' : `${c.maxPoliceCrashes} police crashes`}. Keep it away from the money transporter, though.`,
-          ];
-        case 'pickup':
-          return [
-            'A warning lights up the arm it comes from. Then it barges into the ring and races round it, heavy and fearless.',
-            `You have about ${Math.round(c.criminalTime)} seconds to ram it with one of your police cars. A takedown pays ${Fmt.number(c.takedownPoints)} points and extends your chain.`,
-            'If it gets away, it takes money with it and the shift is over. Your ordinary cars cannot stop it: a crash with them is just a crash.',
-          ];
-        case 'transporter':
-          return [
-            'An armoured truck full of cash. A warning shows its arm, then it drives once round the ring with a secure zone around it.',
-            `If it leaves safely you earn ${money(Fmt.number(c.transporterPay))} and a link in your chain. Every car of yours that joins inside its secure zone adds ${money(Fmt.number(c.shieldBonus))}.`,
-            'Do not hit it: a police car that rams it seizes the cash and nobody gets paid, and a wrecked transporter is lost.',
-          ];
-        case 'ambulance':
-          return [
-            'On an emergency run: it comes in with a warning and takes the long way round the ring.',
-            'The stretch of ring right ahead of it has to stay clear. If you send a car in there, the run is spoiled and your combo and chain are gone.',
-            `Keep the road clear until it leaves and it pays ${money(Fmt.number(c.ambulancePay))} and extends your chain. It never causes a crash itself.`,
-          ];
-        case 'truck':
-          return [
-            'Part of the ordinary traffic, but longer and much heavier than a car.',
-            'It needs a bigger gap in front of your car, and in a crash it shoves lighter cars around instead of stopping.',
-            `Every lorry that passes a Toll Booth early in a shift pays ${money(Fmt.number(c.tollPerTruck))}.`,
-          ];
-        case 'tanker':
-          return [
-            'A lorry full of gas. It drives like any other lorry, and it comes without a warning.',
-            'Wrecked, it explodes: the blast throws every car nearby off the road, yours too. Give it room.',
-            'In Mayhem that is exactly the point: aim for the tankers, the bigger the chain reaction the more flames.',
-          ];
-        case 'military':
-          return [
-            'A military truck with a bomb on board. A warning shows its arm, then it drives round the ring with a no-go zone around it.',
-            'Any car that enters the zone sets the bomb off, and the blast reaches across the whole roundabout.',
-            `Hold your cars back while it passes. After about ${Math.round(c.militaryTime)} seconds it leaves as soon as the way out is clear.`,
-          ];
-      }
-    },
-    /** How to beat each boss, for the sheet. */
-    bossExplanation(k: BossKind): string[] {
-      switch (k) {
-        case 'convoy':
-          return [
-            'The head of the syndicate, in gold-striped black. Its armoured escorts join the ring right behind it.',
-            'Time a police car into the gap between the boss and its escorts. Hitting an escort is a plain crash.',
-            'You get more time than with an ordinary criminal: use it to wait for the gap.',
-          ];
-        case 'getaway':
-          return [
-            'No escorts at all, just speed: the getaway driver is gone in a few seconds.',
-            'Have a police car at the front of your queue before its warning ends, and send it in the moment the boss is on the ring.',
-          ];
-        case 'armoured':
-          return ['Its armour shrugs off the first ram, and an escort sticks to it.', 'One police car cracks the armour, a second one finishes it. Keep two in your queue.'];
-        case 'phantom':
-          return [
-            'It comes in a blackout, and it drives without lights: you only see it where the street lights reach.',
-            'Follow the ring and trust its warning. An escort rides behind it, so pick the gap carefully.',
-          ];
-      }
-    },
+    explanation: (e: MuseumEntry, c: Config): string[] => museumText(e).explain(c),
   },
 
   store: {
