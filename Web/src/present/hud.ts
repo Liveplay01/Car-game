@@ -109,7 +109,11 @@ export type PopupKind =
   | { k: 'dispatch' }
   | { k: 'seized' }
   | { k: 'lost' }
-  | { k: 'paid'; n: number }
+  | { k: 'paid'; n: number; jackpot?: boolean }
+  /** A Critical Merge: its points, already multiplied. */
+  | { k: 'critical'; n: number }
+  /** A Jackpot transporter is announced at its arm. */
+  | { k: 'jackpot' }
   | { k: 'earned'; n: number }
   | { k: 'cost'; n: number }
   | { k: 'covered' }
@@ -278,12 +282,32 @@ export const HUD = {
     const size = Metrics.multiplierSize * (1 + 0.16 * Math.sin(Math.PI * Ease.outCubic(pop)));
     list.s(text(comboMultiplier(Scoring.multiplierOfTier(tier, c)), center, size, 'center', 'bold'), color);
     if (world.score.combo > 0) list.s(text(S.hud.combo(world.score.combo), add(center, v(0, 34)), Metrics.comboLabelSize, 'center', 'bold'), 'muted');
+    HUD.addComboProgress(list, world, add(center, v(0, 50)));
     if (world.shift.isRushHour) list.s(text(S.hud.rushFactor(c.rushHourScoreFactor), add(center, v(0, -38)), Metrics.comboLabelSize, 'center', 'bold'), 'accent');
     if (world.criminal.kind === 'active') {
       const left = world.criminal.deadline - world.time;
       const boss = world.vehicle(world.criminal.vehicle)?.role === 'boss';
       list.s(text(boss ? S.boss.wanted(left) : S.hud.wanted(left), add(center, v(0, -64)), 17, 'center', 'bold'), boss ? 'coin' : 'vehicleCriminal');
     }
+  },
+
+  /**
+   * How far the combo is towards the next multiplier: a short bar under the combo, so the next
+   * step is always in sight. Gone at the top multiplier.
+   */
+  addComboProgress(list: RenderList, world: World, at: Vec2): void {
+    const c = world.config;
+    const combo = world.score.combo;
+    const count = Math.min(c.comboThresholds.length, c.comboMultipliers.length);
+    const tier = Scoring.tier(combo, c);
+    if (combo <= 0 || tier >= count) return;
+    const from = tier === 0 ? 0 : c.comboThresholds[tier - 1];
+    const to = c.comboThresholds[tier];
+    const share = Ease.clamp01((combo - from) / Math.max(1, to - from));
+    const width = 56;
+    const height = 3;
+    list.s(rect(at, v(width, height), height / 2), 'marking', 0.5);
+    if (share > 0) list.s(rect(v(at.x - width / 2 + (width * share) / 2, at.y), v(width * share, height), height / 2), 'accent', 0.9);
   },
 
   addWedge(list: RenderList, armItem: Arm, world: World, color: ColorToken): void {
@@ -319,21 +343,24 @@ export const HUD = {
 
   addTransporter(list: RenderList, world: World, alpha: number): void {
     const t = world.transporter;
-    if (t.kind === 'warning') HUD.addWedge(list, t.arm, world, 'vehicleCargo');
+    // A Jackpot is gold from its warning on: worth protecting, and you know it before it comes.
+    const jackpot = t.kind === 'warning' ? world.jackpotDue : t.kind === 'arriving' || t.kind === 'active' ? t.vehicle === world.jackpotVehicle : false;
+    const color: ColorToken = jackpot ? 'coin' : 'vehicleCargo';
+    if (t.kind === 'warning') HUD.addWedge(list, t.arm, world, color);
     else if (t.kind === 'arriving') {
       const truck = world.vehicle(t.vehicle);
-      if (truck) list.w(arc(interpolatedPose(truck, alpha).position, 20, 2, 0, TAU), 'vehicleCargo', 0.6);
+      if (truck) list.w(arc(interpolatedPose(truck, alpha).position, 20, 2, 0, TAU), color, 0.6);
     } else if (t.kind === 'active') {
       const truck = world.vehicle(t.vehicle);
       if (!truck || truck.isCrashed) return;
       const pos = interpolatedPose(truck, alpha).position;
-      HUD.countdownRing(list, pos, 20, Math.max(0, t.deadline - world.time) / world.config.transporterTime, 'vehicleCargo', String(Math.ceil(t.deadline - world.time)));
+      HUD.countdownRing(list, pos, 20, Math.max(0, t.deadline - world.time) / world.config.transporterTime, color, jackpot ? S.hud.jackpotTimer(t.deadline - world.time) : String(Math.ceil(t.deadline - world.time)));
       const zone = secureZone(world);
       if (zone) {
         const ringRadius = world.layout.ringRadius;
         const center = Math.atan2(pos.y, pos.x);
         const half = zone.arc / 2 / ringRadius;
-        list.w(arc(v(0, 0), ringRadius + world.config.laneWidth / 2 - 3, 2, center - half, center + half), 'vehicleCargo', 0.35);
+        list.w(arc(v(0, 0), ringRadius + world.config.laneWidth / 2 - 3, 2, center - half, center + half), color, jackpot ? 0.5 : 0.35);
       }
     }
   },
@@ -401,6 +428,24 @@ export const HUD = {
     list.w(arc(p.position, radius, isPerfect ? 2.5 : 1.5, 0, TAU), isPerfect ? 'accent' : 'muted', (isPerfect ? 0.9 : 0.4) * (1 - x));
   },
 
+  /** A Critical Merge: a gold ring and sparks flying out, quick and rare enough to be loud. */
+  addCriticalBurst(list: RenderList, p: Popup, reduceMotion: boolean): void {
+    const duration = 0.45;
+    if (p.age >= duration) return;
+    const x = p.age / duration;
+    const out = Ease.outCubic(x);
+    const fade = 1 - x;
+    list.w(arc(p.position, reduceMotion ? 18 : 10 + 20 * out, 3 * fade + 0.5, 0, TAU), 'coin', 0.9 * fade);
+    if (reduceMotion) return;
+    const sparks = 10;
+    for (let i = 0; i < sparks; i++) {
+      const angle = (i / sparks) * TAU + (p.serial % 5) * 0.4;
+      const reach = 8 + 30 * out * (0.7 + 0.3 * ((i * 7) % 3) / 2);
+      const from = add(p.position, mul(fromAngle(angle), reach));
+      list.w(line(from, add(from, mul(fromAngle(angle), 6 * fade)), 1.8), i % 3 === 0 ? 'primary' : 'coin', fade);
+    }
+  },
+
   addModulePulse(list: RenderList, p: Popup, color: ColorToken, reduceMotion: boolean): void {
     if (p.age >= 0.5) return;
     const x = p.age / 0.5;
@@ -447,6 +492,17 @@ export const HUD = {
         case 'modulePulse':
           HUD.addModulePulse(list, p, k.color, reduceMotion);
           continue;
+        case 'critical':
+          HUD.addCriticalBurst(list, p, reduceMotion);
+          label = S.hud.critical(Fmt.signed(k.n));
+          color = 'coin';
+          size = Metrics.popupSize * 1.15 * (reduceMotion ? 1 : land(p.age / 0.3, 0.25));
+          break;
+        case 'jackpot':
+          label = S.hud.jackpotIncoming;
+          color = 'coin';
+          size = Metrics.popupSize * 0.8;
+          break;
         case 'tightFit':
           label = S.hud.tight;
           color = 'accent';
@@ -476,8 +532,9 @@ export const HUD = {
           color = 'destructive';
           break;
         case 'paid':
-          label = S.hud.paid(Fmt.signed(k.n));
-          color = 'vehicleCargo';
+          label = k.jackpot ? S.hud.jackpotPaid(Fmt.signed(k.n)) : S.hud.paid(Fmt.signed(k.n));
+          color = k.jackpot ? 'coin' : 'vehicleCargo';
+          if (k.jackpot) size = Metrics.popupSize * 1.3 * (reduceMotion ? 1 : land(p.age / 0.35, 0.3));
           break;
         case 'earned':
           label = Fmt.signed(k.n);
@@ -532,11 +589,17 @@ export const HUD = {
       }
       let at = add(toScreen(cam, p.position), v(0, -30));
       const height = size + 4;
-      for (;;) {
-        const below = placed.find((q) => Math.abs(q.at.x - at.x) < 56 && Math.abs(q.at.y - at.y) < (q.height + height) / 2);
+      // Stack above whatever it overlaps. The small tolerance matters: placed exactly on the
+      // edge, rounding could find the same popup again and loop forever (a Critical froze the
+      // game that way). Each popup is moved above at most once per placed popup.
+      for (let tries = 0; tries <= placed.length; tries++) {
+        const below = placed.find((q) => Math.abs(q.at.x - at.x) < 56 && Math.abs(q.at.y - at.y) < (q.height + height) / 2 - 0.5);
         if (!below) break;
         at = v(at.x, below.at.y - (below.height + height) / 2);
       }
+      // Never half off the screen: a popup at a side arm moves in until it fits.
+      const half = textWidth(label, size * scale) / 2 + 12;
+      if (half * 2 < cam.viewport.x) at = v(Math.min(Math.max(at.x, half), cam.viewport.x - half), at.y);
       placed.push({ at, height });
       list.s(text(label, add(at, v(0, -rise)), size * scale, 'center', 'bold'), color, opacity);
     }
@@ -668,6 +731,10 @@ export const ModeBanner = {
 export interface DailyCard {
   event: CityEvent | null;
   streak: number;
+  /** The streak pays more on every shift right now. */
+  bonus: number | null;
+  /** Hours until the streak breaks, when that is close; null otherwise. */
+  endsIn: number | null;
   next: { days: number; item: string; left: number } | null;
   splash: number | null;
 }
@@ -694,6 +761,8 @@ export const ReadyBanner = {
       run?: RunCard | null;
       /** The career's Prestige rank: a star before the level. */
       prestige?: number;
+      /** The next goal in reach, under the prompt. */
+      goal?: string | null;
     },
   ): void {
     const width = list.camera.viewport.x;
@@ -723,12 +792,13 @@ export const ReadyBanner = {
     if (run) TopBar.addColumn(list, cols.right, 'trailing', run.right[0], run.right[1], { opacity });
     else TopBar.addColumn(list, cols.right, 'trailing', S.hud.bestLabel, o.highscore ?? '–', { valueColor: o.highscore === null ? 'muted' : 'primary', opacity });
     list.tag = undefined;
-    const pillText = run ? run.badge : o.daily ? S.daily.streakLine(o.daily.streak) : null;
+    const pillText = run ? run.badge : o.daily ? S.daily.streakPill(o.daily.streak, o.daily.bonus, o.daily.endsIn) : null;
     if (pillText) {
       const under = v(width / 2, frame.maxY + 18);
       const lineText = pillText;
       MenuKit.chromePill(list, under, v(textWidth(lineText, 12) + 28, 26), opacity);
-      list.s(text(lineText, under, 12, 'center'), 'primary', opacity);
+      // A streak about to break says so in the warning colour.
+      list.s(text(lineText, under, 12, 'center'), !run && o.daily?.endsIn != null ? 'hazard' : 'primary', opacity);
     }
     const island = toScreen(list.camera, v(0, 0));
     if (o.prompt) {
@@ -737,6 +807,7 @@ export const ReadyBanner = {
     }
     const line = run ? [run.line, o.conditions].filter((x): x is string => !!x).join(' · ') : o.conditions;
     if (line) list.s(text(line, sub(island, v(0, 28)), 14, 'center', 'bold'), run ? run.color : 'hazard', opacity);
+    if (o.goal && o.prompt) list.s(text(o.goal, add(island, v(0, 28)), 13, 'center'), 'muted', opacity * (o.reduceMotion ? 1 : Ease.outCubic(o.time / 0.4)));
     if (o.daily && o.daily.splash !== null) ReadyBanner.addSplash(list, o.daily, o.daily.splash, o.reduceMotion);
   },
 
@@ -767,6 +838,8 @@ export interface ShiftSummary {
   mode: GameMode;
   /** A challenge or trial: its own verdict replaces the title, the right column and the line. */
   run?: { caption: string; color: ColorToken; line: string; lineColor: ColorToken; right: [string, string] };
+  /** Under the stats: how close a lost shift came, or what the money is close to. */
+  closeCall?: { text: string; color: ColorToken } | null;
 }
 
 /** How the waiting screen names a challenge or trial. */
@@ -873,6 +946,13 @@ export const ResultBanner = {
     else if (summary.mode === 'mayhem') list.s(text(S.mayhem.summary(r.wrecks, r.biggestChain), sub(island, v(0, 28)), 14, 'center', 'bold'), 'fireOuter', details);
     if (summary.mode !== 'mayhem') {
       list.s(text(S.result.stats(Fmt.number(r.bestCombo), Fmt.number(r.tightFits), r.takedowns, r.transporters, Fmt.seconds(r.time)), add(island, v(0, 28)), 13, 'center'), 'muted', details);
+    }
+    const close = summary.closeCall;
+    if (close) {
+      // It lands a moment after the prompt: the thing to read after "tap to try again".
+      const enter = reduceMotion ? 1 : Ease.outCubic((age - ResultBanner.inputLock - 0.15) / 0.3);
+      const rise = reduceMotion ? 0 : 6 * (1 - Ease.clamp01(enter));
+      if (enter > 0) list.s(text(close.text, add(island, v(0, 54 + rise)), 14, 'center', 'bold'), close.color, details * Ease.clamp01(enter));
     }
   },
 };

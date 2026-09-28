@@ -11,22 +11,19 @@ import {
   isForSale,
   rarityRank,
 } from '../core/loot';
-import { type StoreProduct, type AdReward, STORE_PRODUCTS, PLACEHOLDER_PRICE, productGrant } from '../core/store';
 import type { VehicleType } from '../core/vehicle';
 import { type Vec2, v, add, sub, mul, fromAngle, TAU } from '../core/vec2';
 import { type RenderList, type Rect, RenderList as List, R, rect, circle, arc, line, polygon, text, Ease, Metrics, moved, pinned, unitHash, vlerp, type Align, type Weight } from './render';
 import type { ColorToken } from './theme';
 import { MenuKit } from './menukit';
-import { moneyTag, textWidth } from './icons';
+import { textWidth } from './icons';
 import { S, Fmt } from './strings';
 import { CarArt } from './carArt';
 import { Skins, lookFor } from './skins';
 import { baseConfig } from '../core/config';
 import type { ShopSection } from './flow';
-
-export type Offer = { k: 'product'; product: StoreProduct } | { k: 'freeCash' };
-export const OFFERS: Offer[] = [...STORE_PRODUCTS.map((product): Offer => ({ k: 'product', product })), { k: 'freeCash' }];
-const sameOffer = (a: Offer, b: Offer): boolean => a.k === b.k && (a.k !== 'product' || (b.k === 'product' && a.product === b.product));
+import { CasinoPage, CasinoState, type CasinoTarget } from './casino';
+import { ChestReel, type Reel } from './chestReel';
 
 /** Shelves: car skins by rarity, the maps, and everything earned another way or a vehicle. */
 export type Shelf = 0 | 1 | 2 | 3 | 4 | 5 | 6; // common rare epic legendary maps special honours
@@ -55,10 +52,7 @@ export type ShopTarget =
   | { k: 'item'; id: string }
   | { k: 'wear'; id: string }
   | { k: 'dismiss' }
-  | { k: 'offer'; offer: Offer }
-  | { k: 'purchase'; product: StoreProduct }
-  | { k: 'watchCashAd' }
-  | { k: 'restore' };
+  | { k: 'casino'; t: CasinoTarget };
 
 export const sameTarget = (a: ShopTarget, b: ShopTarget): boolean => JSON.stringify(a) === JSON.stringify(b);
 
@@ -69,12 +63,10 @@ export class ShopState {
   selectedChest: ChestKind = 'standard';
   selectedItem: string | null = null;
   age = 0;
-  opening: { opening: ChestOpening; age: number } | null = null;
+  opening: { opening: ChestOpening; age: number; reel: Reel } | null = null;
   denied = 0;
   ad: number | null = null;
-  adReward: AdReward = 'chest';
-  selectedOffer: Offer = { k: 'product', product: 'starterPack' };
-  purchase: { product: StoreProduct; age: number } | null = null;
+  casino = new CasinoState();
   sectionSlide: { from: ShopSection; age: number } | null = null;
   shelfSlide: { from: Shelf; age: number } | null = null;
   pressed: { target: ShopTarget; age: number } | null = null;
@@ -91,17 +83,10 @@ export class ShopState {
     this.shelf = next;
   }
 
-  selectOffer(o: Offer): boolean {
-    const same = sameOffer(this.selectedOffer, o);
-    this.selectedOffer = o;
-    return same;
-  }
-
   advance(delta: number): void {
     this.age += delta;
     if (this.opening) this.opening.age += delta;
     if (this.ad !== null) this.ad += delta;
-    if (this.purchase) this.purchase.age += delta;
     if (this.sectionSlide) {
       this.sectionSlide.age += delta;
       if (this.sectionSlide.age >= ShopPage.slideDuration) this.sectionSlide = null;
@@ -127,7 +112,7 @@ interface Layout {
   detail: Rect;
 }
 
-const JUICE: ColorToken[] = ['juiceRed', 'juiceOrange', 'juiceYellow', 'juiceGreen', 'juiceBlue', 'juicePurple'];
+export const JUICE: ColorToken[] = ['juiceRed', 'juiceOrange', 'juiceYellow', 'juiceGreen', 'juiceBlue', 'juicePurple'];
 const unit = (index: number, salt: number): number => unitHash(index, salt + 101);
 
 function t(list: RenderList, s: string, at: Vec2, size: number, color: ColorToken, o: { weight?: Weight; align?: Align; opacity?: number } = {}): void {
@@ -136,8 +121,8 @@ function t(list: RenderList, s: string, at: Vec2, size: number, color: ColorToke
 
 /**
  * The Shop tab (`ShopPage.swift`): chests to open or buy, the collection to wear from, and
- * the store (placeholders). Fair and quiet: odds and pity always on screen. The chest opening
- * is the one place that is allowed to be loud.
+ * the casino (`present/casino.ts`). Fair: odds and pity always on screen. The chest opening
+ * and the casino's wins are the places that are allowed to be loud.
  */
 export const ShopPage = {
   gap: 12,
@@ -151,8 +136,18 @@ export const ShopPage = {
   slideDuration: 0.45,
   slideOut: 0.2,
   adDuration: 3,
-  purchaseDuration: 1.2,
-  burstTime: 0.9,
+  /**
+   * When the chest bursts: a Common or Rare opens after a short wobble; an Epic or Legendary
+   * charges up first, so you feel something big is inside before the reel runs.
+   */
+  burstTime: (opening: ChestOpening): number => (rarityRank(opening.item.rarity) >= 2 ? 1.4 : 0.45),
+  /** The stages of one opening, in seconds from its start: burst, reel at rest, prize card. */
+  stages(opening: ChestOpening, reel: Reel): { burst: number; landed: number; reveal: number } {
+    const burst = ShopPage.burstTime(opening);
+    return { burst, landed: burst + ChestReel.spin, reveal: burst + ChestReel.duration(reel) };
+  },
+  /** The prize stays at least this long before a tap can close it. */
+  closeAfter: 0.5,
   confettiCount: 32,
 
   pressedRect(r: Rect, target: ShopTarget, state: ShopState): Rect {
@@ -195,11 +190,6 @@ export const ShopPage = {
     return CHEST_KINDS.map((k, i) => [k, cells[i]]);
   },
 
-  offerCards: (l: Layout): [Offer, Rect][] => {
-    const cells = ShopPage.grid(OFFERS.length, 2, l.content, 118);
-    return OFFERS.map((o, i) => [o, cells[i]]);
-  },
-
   shelfChips(l: Layout): [Shelf, Rect][] {
     const area = l.content;
     const gap = 6;
@@ -214,16 +204,16 @@ export const ShopPage = {
     return items.map((item, i) => [item, cells[i]]);
   },
 
-  targets(viewport: Vec2, bottomInset: number, _career: Career, state: ShopState): [ShopTarget, Rect][] {
+  targets(viewport: Vec2, bottomInset: number, career: Career, state: ShopState): [ShopTarget, Rect][] {
     if (state.opening) return [[{ k: 'dismiss' }, R.make(0, 0, viewport.x, viewport.y)]];
-    if (state.ad !== null || state.purchase) return [];
+    if (state.ad !== null) return [];
     const l = ShopPage.layout(viewport, bottomInset);
     const out: [ShopTarget, Rect][] = l.segments.map(([section, r]) => [{ k: 'section', section }, r]);
     if (state.section === 0) out.push(...ShopPage.chestCards(l).map(([kind, r]): [ShopTarget, Rect] => [{ k: 'chest', kind }, r]));
     else if (state.section === 1) {
       out.push(...ShopPage.shelfChips(l).map(([shelf, r]): [ShopTarget, Rect] => [{ k: 'shelf', shelf }, r]));
       out.push(...ShopPage.itemCells(l, state.shelf).map(([item, r]): [ShopTarget, Rect] => [{ k: 'item', id: item.id }, r]));
-    } else out.push(...ShopPage.offerCards(l).map(([offer, r]): [ShopTarget, Rect] => [{ k: 'offer', offer }, r]));
+    } else out.push(...CasinoPage.targets(l.content, career, state.casino).map(([t, r]): [ShopTarget, Rect] => [{ k: 'casino', t }, r]));
     return out;
   },
 
@@ -259,15 +249,14 @@ export const ShopPage = {
         list.items.splice(start, 0, ...old.items.map((i) => moved(i, away, 1 - gone)));
       }
     }
-    if (state.ad !== null) ShopPage.addAd(list, state.ad, state.adReward);
-    if (state.purchase) ShopPage.addPurchase(list, state.purchase.product, PLACEHOLDER_PRICE[state.purchase.product], state.purchase.age, reduceMotion);
-    if (state.opening) ShopPage.addReveal(list, state.opening.opening, state.opening.age, reduceMotion);
+    if (state.ad !== null) ShopPage.addAd(list, state.ad);
+    if (state.opening) ShopPage.addReveal(list, state.opening.opening, state.opening.reel, state.opening.age, reduceMotion);
   },
 
-  addSection(list: RenderList, l: Layout, career: Career, config: Config, today: number, state: ShopState, section: ShopSection, reduceMotion: boolean, forcedEnter: number | null = null): void {
+  addSection(list: RenderList, l: Layout, career: Career, _config: Config, today: number, state: ShopState, section: ShopSection, reduceMotion: boolean, forcedEnter: number | null = null): void {
     if (section === 0) ShopPage.addChests(list, l, career, state, reduceMotion, forcedEnter);
     else if (section === 1) ShopPage.addCollection(list, l, career, state, reduceMotion ? 1 : (forcedEnter ?? Ease.outCubic(state.age / 0.25)), reduceMotion);
-    else ShopPage.addStore(list, l, career, config, today, state, reduceMotion, forcedEnter);
+    else CasinoPage.add(list, l.content, career, today, state.casino, reduceMotion, forcedEnter === null ? state.age : 10);
   },
 
   fitted(s: string, size: number, width: number): number {
@@ -482,94 +471,11 @@ export const ShopPage = {
     for (const it of preview.items) list.items.push(pinned(it, preview.camera, opacity));
   },
 
-  // MARK: Store
-
-  addStore(list: RenderList, l: Layout, career: Career, config: Config, today: number, state: ShopState, reduceMotion: boolean, forcedEnter: number | null): void {
-    ShopPage.offerCards(l).forEach(([offer, card], index) => {
-      const placed = ShopPage.cardRect(card, forcedEnter === null ? state.age : 10, index, reduceMotion);
-      const enter = placed.enter;
-      const r = ShopPage.pressedRect(placed.rect, { k: 'offer', offer }, state);
-      const c = R.center(r);
-      if (sameOffer(offer, state.selectedOffer)) list.s(rect(c, v(R.width(r) + 4, R.height(r) + 4), ShopPage.corner + 2), 'accent', 0.55 * enter);
-      ShopPage.panel(list, r, 'card', enter);
-      const iconAt = v(c.x, r.minY + R.height(r) * 0.36);
-      const scale = Math.min(1, R.height(r) / 118);
-      let name: string;
-      let lineText: string;
-      let lineColor: ColorToken = 'muted';
-      if (offer.k === 'product') {
-        name = S.store.name(offer.product);
-        if (Careers.canBuy(career, offer.product)) {
-          lineText = PLACEHOLDER_PRICE[offer.product];
-          lineColor = 'primary';
-        } else {
-          lineText = S.store.owned;
-          lineColor = 'accent';
-        }
-        ShopPage.addOfferIcon(list, offer.product, iconAt, scale, config, enter);
-      } else {
-        name = S.store.freeCash;
-        const left = Careers.adsLeft(career, 'cash', today, config);
-        lineText = left > 0 ? S.shop.watchAd(left) : S.store.noCashAdsLeft;
-        lineColor = left > 0 ? 'accent' : 'muted';
-        MenuKit.glow(list, iconAt, 36 * scale, 'juiceGreen', 0.35 * enter);
-        list.s(rect(iconAt, mul(v(46, 32), scale), 8 * scale), 'juiceGreen', enter);
-        list.s(polygon([add(iconAt, mul(v(-6, -8), scale)), add(iconAt, mul(v(9, 0), scale)), add(iconAt, mul(v(-6, 8), scale))]), 'primary', enter);
-      }
-      t(list, name, v(c.x, r.maxY - 36), ShopPage.fitted(name, 14, R.width(r) - 20), 'primary', { weight: 'bold', align: 'center', opacity: enter });
-      t(list, lineText, v(c.x, r.maxY - 17), ShopPage.fitted(lineText, 12, R.width(r) - 20), lineColor, { weight: 'bold', align: 'center', opacity: enter });
-    });
-  },
-
-  addOfferIcon(list: RenderList, product: StoreProduct, center: Vec2, scale: number, config: Config, opacity: number): void {
-    const at = (x: number, y: number): Vec2 => add(center, mul(v(x, y), scale));
-    switch (product) {
-      case 'starterPack':
-        MenuKit.glow(list, center, 38 * scale, 'juiceOrange', 0.4 * opacity);
-        ShopPage.addChestIcon(list, 'premium', at(-10, 2), 0.7 * scale, opacity);
-        ShopPage.addChestIcon(list, 'standard', at(16, 8), 0.5 * scale, opacity);
-        break;
-      case 'cashSmall':
-      case 'cashMedium':
-      case 'cashLarge': {
-        const size = product === 'cashSmall' ? 15 : product === 'cashMedium' ? 18 : 21;
-        MenuKit.glow(list, center, (18 + size) * scale, 'juiceYellow', 0.3 * opacity);
-        moneyTag(list, Fmt.number(productGrant(product, config).money), center, size * scale, 'center', 'primary', 'accent', opacity);
-        break;
-      }
-      case 'premiumChests':
-        MenuKit.glow(list, center, 38 * scale, 'rarityLegendary', 0.35 * opacity);
-        [-22, 22, 0].forEach((x, i) => ShopPage.addChestIcon(list, 'premium', at(x, i === 2 ? 6 : -2), 0.55 * scale, opacity));
-        break;
-      case 'noAds':
-        t(list, 'AD', center, 16 * scale, 'primary', { weight: 'bold', align: 'center', opacity });
-        list.s(arc(center, 22 * scale, 3.5 * scale, 0, TAU), 'juiceRed', opacity);
-        list.s(line(at(-15, -15), at(15, 15), 3.5 * scale), 'juiceRed', opacity);
-        break;
-      case 'cashBoost': {
-        MenuKit.glow(list, center, 36 * scale, 'juiceGreen', 0.35 * opacity);
-        list.s(polygon([at(-26, -2), at(-16, -16), at(-6, -2)]), 'juiceGreen', opacity);
-        list.s(rect(at(-16, 7), mul(v(7, 18), scale), 2 * scale), 'juiceGreen', opacity);
-        const factor = Number.isInteger(config.cashBoostPay) ? String(config.cashBoostPay) : String(config.cashBoostPay);
-        t(list, '×' + factor, at(12, 0), 20 * scale, 'primary', { weight: 'bold', align: 'center', opacity });
-        break;
-      }
-    }
-  },
-
   // MARK: Detail panel
 
-  buttonStyle(target: ShopTarget, career: Career, config: Config, today: number): { label: string; enabled: boolean; prominent: boolean } {
+  buttonStyle(target: ShopTarget, career: Career, config: Config, _today: number): { label: string; enabled: boolean; prominent: boolean } {
     const price = (k: ChestKind): number | null => (k === 'standard' ? config.standardChestPrice : k === 'premium' ? config.premiumChestPrice : null);
     switch (target.k) {
-      case 'purchase':
-        return Careers.canBuy(career, target.product)
-          ? { label: PLACEHOLDER_PRICE[target.product], enabled: true, prominent: true }
-          : { label: S.store.owned, enabled: false, prominent: true };
-      case 'restore':
-        return { label: S.store.restoreShort, enabled: true, prominent: false };
-      case 'watchCashAd':
-        return { label: Careers.skipsAds(career) ? S.store.collect : S.store.watch, enabled: Careers.adsLeft(career, 'cash', today, config) > 0, prominent: true };
       case 'open':
         return { label: S.shop.open, enabled: Careers.count(career, target.kind) > 0, prominent: true };
       case 'buy': {
@@ -577,7 +483,7 @@ export const ShopPage = {
         return { label: S.shop.buy(Fmt.number(p ?? 0)), enabled: p !== null && career.money >= p, prominent: false };
       }
       case 'watchAd':
-        return { label: Careers.skipsAds(career) ? S.store.collect : S.shop.watchAdShort, enabled: true, prominent: false };
+        return { label: S.shop.watchAdShort, enabled: true, prominent: false };
       case 'wear':
         return { label: Careers.isWorn(career, target.id) ? S.shop.takeOff : S.shop.wear, enabled: true, prominent: true };
       default:
@@ -585,37 +491,17 @@ export const ShopPage = {
     }
   },
 
-  // MARK: Ad and purchase placeholders
+  // MARK: Ad placeholder
 
-  addAd(list: RenderList, age: number, reward: AdReward): void {
+  addAd(list: RenderList, age: number): void {
     const vp = list.camera.viewport;
     const c = mul(vp, 0.5);
     list.s(rect(c, vp), 'background', 0.96);
     const left = Math.max(0, Math.ceil(ShopPage.adDuration - age));
     t(list, S.shop.adPlaceholder, sub(c, v(0, 16)), 18, 'primary', { weight: 'bold', align: 'center' });
-    t(list, reward === 'cash' ? S.store.adCountdownCash(left) : S.shop.adCountdown(left), add(c, v(0, 14)), 13, 'muted', { align: 'center' });
+    t(list, S.shop.adCountdown(left), add(c, v(0, 14)), 13, 'muted', { align: 'center' });
     const progress = Math.min(1, age / ShopPage.adDuration);
     list.s(rect(add(c, v(-90 + 90 * progress, 44)), v(180 * progress, 4), 2), 'accent');
-  },
-
-  /** A sheet rises from below with what is bought and its price, a bar fills, the goods arrive. */
-  addPurchase(list: RenderList, product: StoreProduct, price: string, age: number, reduceMotion: boolean): void {
-    const vp = list.camera.viewport;
-    const fade = Ease.outCubic(age / 0.2);
-    list.s(rect(mul(vp, 0.5), vp), 'background', 0.7 * fade);
-    const size = v(Math.min(vp.x - 32, 340), 168);
-    const rise = reduceMotion ? 0 : (1 - Ease.settle(age / 0.4)) * 60;
-    const c = v(vp.x / 2, vp.y - size.y / 2 - 90 + rise);
-    const sheet = R.make(c.x - size.x / 2, c.y - size.y / 2, c.x + size.x / 2, c.y + size.y / 2);
-    MenuKit.chromePanel(list, sheet, 22, fade);
-    t(list, S.store.purchasing, v(c.x, sheet.minY + 26), 13, 'muted', { align: 'center', opacity: fade });
-    t(list, S.store.name(product), v(c.x, sheet.minY + 56), 20, 'primary', { weight: 'bold', align: 'center', opacity: fade });
-    t(list, price, v(c.x, sheet.minY + 84), 17, 'accent', { weight: 'bold', align: 'center', opacity: fade });
-    const progress = Ease.clamp01(age / ShopPage.purchaseDuration);
-    const barWidth = size.x - 64;
-    list.s(rect(v(c.x, sheet.minY + 114), v(barWidth, 5), 2.5), 'controlFill', fade);
-    if (progress > 0) list.s(rect(v(c.x - barWidth / 2 + (barWidth * progress) / 2, sheet.minY + 114), v(barWidth * progress, 5), 2.5), 'accent', fade);
-    t(list, S.store.purchasingNote, v(c.x, sheet.minY + 142), 11, 'hazard', { align: 'center', opacity: fade });
   },
 
   // MARK: Reveal
@@ -625,7 +511,7 @@ export const ShopPage = {
    * ducks before it bursts; then flash, lid off, shockwaves, fruit splashes, juice drops,
    * confetti, rays and a jelly card. A pure function of the age, so it never stutters.
    */
-  addReveal(list: RenderList, opening: ChestOpening, age: number, reduceMotion: boolean): void {
+  addReveal(list: RenderList, opening: ChestOpening, reel: Reel, age: number, reduceMotion: boolean): void {
     const vp = list.camera.viewport;
     const center = sub(mul(vp, 0.5), v(0, 20));
     const rarity = opening.item.rarity;
@@ -638,49 +524,31 @@ export const ShopPage = {
       if (fade > 0) list.s(rect(mul(vp, 0.5), vp), 'background', fade);
       return;
     }
-    if (age < ShopPage.burstTime) {
-      ShopPage.addBuildUp(list, opening.chest, age, center, color);
+    const stage = ShopPage.stages(opening, reel);
+    if (age < stage.burst) {
+      ShopPage.addBuildUp(list, opening.chest, age, center, color, stage.burst, rarityRank(rarity) >= 2);
       return;
     }
-    const tt = age - ShopPage.burstTime;
-    const rayFade = Math.min(1, tt / 0.3);
-    const breathe = 1 + 0.06 * Math.sin(tt * 3.2);
-    MenuKit.glow(list, center, (170 + 60 * power) * breathe * Ease.outCubic(Math.min(1, tt / 0.4)), color, 0.3 * rayFade);
-
-    const epicPlus = rarityRank(rarity) >= 2;
-    const rayCount = epicPlus ? 14 : 10;
-    const rayLength = (200 + 90 * power) * Ease.outCubic(Math.min(1, tt / 0.5));
-    for (let i = 0; i < rayCount; i++) {
-      const a = (i / rayCount) * TAU + tt * 0.5;
-      const half = 0.08 * power;
-      list.s(polygon([center, add(center, mul(fromAngle(a - half), rayLength)), add(center, mul(fromAngle(a + half), rayLength))]), JUICE[i % JUICE.length], 0.2 * rayFade);
+    // The chest bursts open and the reel runs out of it; the lid flies off over it.
+    if (age < stage.reveal) {
+      const spun = age - stage.burst;
+      ChestReel.add(
+        list,
+        reel,
+        center,
+        spun,
+        (item) => ShopPage.rarityColor(item.rarity),
+        (item, at, scale, opacity) => ShopPage.addPreview(list, item, at, scale, opacity),
+      );
+      if (spun < 0.8) {
+        const x = spun / 0.8;
+        list.s(rect(add(center, v(80 * x, -40 - 300 * x + 420 * x * x)), v(55, 19), 9, 6 * x), ShopPage.chestPaint(opening.chest).lid, 1 - x);
+      }
+      if (spun < 0.18) list.s(rect(mul(vp, 0.5), vp), 'primary', 0.5 * (1 - spun / 0.18));
+      return;
     }
-    for (let i = 0; i < rayCount; i++) {
-      const a = ((i + 0.5) / rayCount) * TAU - tt * 0.3;
-      list.s(polygon([center, add(center, mul(fromAngle(a - 0.025), rayLength * 1.1)), add(center, mul(fromAngle(a + 0.025), rayLength * 1.1))]), color, 0.22 * rayFade);
-    }
-
-    const waves: [number, number, ColorToken][] =
-      rarity === 'legendary'
-        ? [
-            [0, 1, 'primary'],
-            [0.08, 0.85, color],
-            [0.4, 1, 'rarityLegendary'],
-          ]
-        : [
-            [0, 1, 'primary'],
-            [0.08, 0.8, color],
-          ];
-    for (const [delay, strength, c] of waves) {
-      const x = (tt - delay) / 0.6;
-      if (x < 0 || x >= 1) continue;
-      list.s(arc(center, 30 + 300 * Ease.outCubic(x) * strength, 10 * (1 - x) + 1, 0, TAU), c, 0.85 * (1 - x));
-    }
-
-    if (tt < 0.8) {
-      const x = tt / 0.8;
-      list.s(rect(add(center, v(80 * x, -40 - 300 * x + 420 * x * x)), v(55, 19), 9, 6 * x), ShopPage.chestPaint(opening.chest).lid, 1 - x);
-    }
+    const tt = age - stage.reveal;
+    ShopPage.addRays(list, center, tt, power, color, rarityRank(rarity) >= 2, rarity === 'legendary');
 
     if (tt < 0.9) {
       const count = Math.floor(8 + 6 * power);
@@ -711,6 +579,56 @@ export const ShopPage = {
       }
     }
 
+    ShopPage.addConfetti(list, center, tt, power, color, rarity === 'legendary');
+
+    ShopPage.addRevealCard(list, opening, center, tt, color, false);
+
+    if (tt < 0.3) {
+      const white = Math.max(0, 1 - tt / 0.12);
+      if (white > 0) list.s(rect(mul(vp, 0.5), vp), 'primary', 0.85 * white);
+      list.s(rect(mul(vp, 0.5), vp), color, 0.25 * (1 - tt / 0.3));
+    }
+  },
+
+  /** Light, turning rays and shockwaves from `center`, `tt` seconds after a burst (a chest, a big win). */
+  addRays(list: RenderList, center: Vec2, tt: number, power: number, color: ColorToken, epicPlus: boolean, legendary: boolean): void {
+    const rayFade = Math.min(1, tt / 0.3);
+    const breathe = 1 + 0.06 * Math.sin(tt * 3.2);
+    MenuKit.glow(list, center, (170 + 60 * power) * breathe * Ease.outCubic(Math.min(1, tt / 0.4)), color, 0.3 * rayFade);
+
+    const rayCount = epicPlus ? 14 : 10;
+    const rayLength = (200 + 90 * power) * Ease.outCubic(Math.min(1, tt / 0.5));
+    for (let i = 0; i < rayCount; i++) {
+      const a = (i / rayCount) * TAU + tt * 0.5;
+      const half = 0.08 * power;
+      list.s(polygon([center, add(center, mul(fromAngle(a - half), rayLength)), add(center, mul(fromAngle(a + half), rayLength))]), JUICE[i % JUICE.length], 0.2 * rayFade);
+    }
+    for (let i = 0; i < rayCount; i++) {
+      const a = ((i + 0.5) / rayCount) * TAU - tt * 0.3;
+      list.s(polygon([center, add(center, mul(fromAngle(a - 0.025), rayLength * 1.1)), add(center, mul(fromAngle(a + 0.025), rayLength * 1.1))]), color, 0.22 * rayFade);
+    }
+
+    const waves: [number, number, ColorToken][] =
+      legendary
+        ? [
+            [0, 1, 'primary'],
+            [0.08, 0.85, color],
+            [0.4, 1, 'rarityLegendary'],
+          ]
+        : [
+            [0, 1, 'primary'],
+            [0.08, 0.8, color],
+          ];
+    for (const [delay, strength, c] of waves) {
+      const x = (tt - delay) / 0.6;
+      if (x < 0 || x >= 1) continue;
+      list.s(arc(center, 30 + 300 * Ease.outCubic(x) * strength, 10 * (1 - x) + 1, 0, TAU), c, 0.85 * (1 - x));
+    }
+  },
+
+  /** Confetti thrown up from `center` and, for the rarest, gold raining down. */
+  addConfetti(list: RenderList, center: Vec2, tt: number, power: number, color: ColorToken, legendary: boolean): void {
+    const vp = list.camera.viewport;
     const confettiLife = 1.8;
     if (tt < confettiLife) {
       for (let i = 0; i < Math.floor(ShopPage.confettiCount * power); i++) {
@@ -724,28 +642,25 @@ export const ShopPage = {
       }
     }
 
-    if (rarity === 'legendary') {
+    if (legendary) {
       for (let i = 0; i < 30; i++) {
         const fall = tt - unit(i, 7) * 1.4;
         if (fall <= 0 || fall >= 1.4) continue;
         list.s(circle(v(unit(i, 8) * vp.x + Math.sin(fall * 5 + i) * 8, -10 + fall * vp.y * 0.8), 2.5), 'rarityLegendary', 1 - fall / 1.4);
       }
     }
-
-    ShopPage.addRevealCard(list, opening, center, tt, color, false);
-
-    if (tt < 0.3) {
-      const white = Math.max(0, 1 - tt / 0.12);
-      if (white > 0) list.s(rect(mul(vp, 0.5), vp), 'primary', 0.85 * white);
-      list.s(rect(mul(vp, 0.5), vp), color, 0.25 * (1 - tt / 0.3));
-    }
   },
 
-  addBuildUp(list: RenderList, chest: ChestKind, age: number, center: Vec2, color: ColorToken): void {
-    const x = age / ShopPage.burstTime;
+  /**
+   * The chest before it bursts. `big` (an Epic or Legendary inside): it lifts off the ground,
+   * shakes wildly and light of the prize's colour shoots out through its seams.
+   */
+  addBuildUp(list: RenderList, chest: ChestKind, age: number, center: Vec2, color: ColorToken, duration: number, big: boolean): void {
+    const x = Ease.clamp01(age / duration);
     const enter = Ease.spring(age / 0.35);
     const intensity = x * x;
-    const shake = mul(v(Math.sin(age * 55) * 7, Math.cos(age * 47) * 3), intensity);
+    const wild = big ? 1.8 : 1;
+    const shake = mul(v(Math.sin(age * 55) * 7 * wild, Math.cos(age * 47) * 3 * wild), intensity);
     let stretch = 1 + 0.1 * Math.sin(age * 26) * (0.3 + intensity);
     const duck = Math.max(0, (x - 0.83) / 0.17);
     stretch -= 0.22 * Ease.outCubic(duck);
@@ -758,7 +673,22 @@ export const ShopPage = {
       list.s(circle(add(center, mul(fromAngle(a), 120 - 40 * x)), 3 + 2 * x), JUICE[i % JUICE.length], Math.min(1, age / 0.3) * 0.9);
     }
     const scale = 1.6 * enter * (1 + 0.08 * intensity);
-    const at = add(center, shake);
+    const lift = big ? 20 * Ease.outCubic(Ease.clamp01((x - 0.2) / 0.5)) : 0;
+    const at = add(center, add(shake, v(0, -lift)));
+    if (big) {
+      // Light through the seams: thin beams from the chest, longer and brighter as it charges.
+      const beams = 9;
+      for (let i = 0; i < beams; i++) {
+        const a = -Math.PI / 2 + ((i / (beams - 1)) - 0.5) * 2.6 + Math.sin(age * 3 + i) * 0.06;
+        const flicker = 0.6 + 0.4 * Math.sin(age * 31 + i * 1.7);
+        const length = (60 + 170 * intensity) * (0.7 + 0.3 * unit(i, 23));
+        const half = 0.035 + 0.02 * intensity;
+        const from = add(at, mul(fromAngle(a), 18 * scale / 1.6));
+        list.s(polygon([from, add(from, mul(fromAngle(a - half), length)), add(from, mul(fromAngle(a + half), length))]), color, 0.55 * intensity * flicker);
+      }
+      // A flat shadow left on the ground: it shrinks as the chest rises.
+      list.s(rect(add(center, v(0, 44)), v(110 * (1 - 0.25 * lift / 20), 14), 7), 'background', 0.6 * (lift / 20));
+    }
     ShopPage.addChestIcon(list, chest, at, scale, 1, squash, 3 * intensity * (1 + Math.sin(age * 40)));
     for (let i = 0; i < Math.floor(6 + 16 * x); i++) {
       const phase = (age * 2.2 + unit(i, 9)) % 1;
@@ -808,7 +738,8 @@ export const ShopPage = {
       const m = appear(0.3);
       t(list, S.shop.duplicate(Fmt.number(opening.money)), add(place(v(0, 102)), v(0, 10 * (1 - m))), 13, 'accent', { weight: 'bold', align: 'center', opacity: m });
     }
-    t(list, S.shop.tapToClose, place(v(0, 132)), 11, 'muted', { align: 'center', opacity: 0.8 * appear(0.6) });
+    // The hint comes when a tap can close the card, not before.
+    t(list, S.shop.tapToClose, place(v(0, 132)), 11, 'muted', { align: 'center', opacity: 0.8 * appear(ShopPage.closeAfter) });
 
     if (reduceMotion || tt <= 0.3) return;
     const stars = rarityRank(opening.item.rarity) >= 2 ? 10 : 6;

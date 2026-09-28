@@ -5,8 +5,8 @@ import { MASTERY_THRESHOLDS } from '../core/career';
 import type { SwipeMode } from './flow';
 import type { Rarity, ChestKind, Cosmetic, ChestOpening, Album } from '../core/loot';
 import type { Challenge } from '../core/daily';
-import type { StoreProduct } from '../core/store';
-import { productGrant } from '../core/store';
+import type { NextGoal, NearMiss } from '../core/goals';
+import type { CasinoGame, SlotSymbol } from '../core/casino';
 import type { VehicleType, VehicleRole } from '../core/vehicle';
 import { type Trial, type TrialId, type RunId, type EliteKind, rematchKind } from '../core/trials';
 import type { SpecialKind, WeatherKind, DarkKind, MuseumEntry } from '../core/museum';
@@ -518,59 +518,91 @@ export const S = {
     explanation: (e: MuseumEntry, c: Config): string[] => museumText(e).explain(c),
   },
 
-  store: {
-    name(p: StoreProduct): string {
-      switch (p) {
-        case 'starterPack':
-          return 'Starter Pack';
-        case 'cashSmall':
-          return 'Pile of Cash';
-        case 'cashMedium':
-          return 'Bag of Cash';
-        case 'cashLarge':
-          return 'Vault of Cash';
-        case 'premiumChests':
-          return '3 Premium Chests';
-        case 'noAds':
-          return 'No Ads';
-        case 'cashBoost':
-          return 'Cash Boost';
-      }
+  casino: {
+    game: (g: CasinoGame): string => ({ crash: 'Crash', slots: 'Slots', upgrade: 'Upgrade' })[g],
+    symbol: (s: SlotSymbol): string =>
+      ({ car: 'Car', compact: 'Compact', van: 'Van', sportsCar: 'Sports car', ambulance: 'Ambulance', transporter: 'Transporter', boss: 'Boss' })[s],
+    today: (net: number): string => (net === 0 ? 'Today ±0' : `Today ${net > 0 ? '+' : '−'}${money(Fmt.number(Math.abs(net)))}`),
+    odds: 'Odds',
+    noHistory: 'No rounds yet',
+    times: (m: number): string => `${m.toFixed(2)}×`,
+    allIn: 'All in',
+    stakeShort: (n: number): string => (n >= 1000 && n % 1000 === 0 ? `${n / 1000}K` : Fmt.number(n)),
+    auto: 'Auto',
+    autoOff: 'Off',
+    drive: (m: string): string => `Drive · ${m}`,
+    spin: (m: string): string => `Spin · ${m}`,
+    upgrade: (chance: number): string => `Upgrade · ${(chance * 100).toFixed(1)} %`,
+    cashOut: (m: string): string => `Cash out · ${m}`,
+    notEnough: 'Not enough money',
+    tapToSkip: 'Tap to skip',
+    collect: (m: string): string => `Collect ${m}`,
+    keep: 'Keep it',
+    double: 'Double or nothing',
+    done: 'Done',
+    crashHint: 'The car speeds up. Cash out before it crashes.',
+    riding: (m: string): string => `${m} if you cash out now`,
+    cashedOut: (m: string): string => `Cashed out · +${m}`,
+    crashed: 'Crashed · the stake is gone',
+    dangerZone: 'Danger zone',
+    clutch: 'CLUTCH CASH-OUT!',
+    clutchSaved: (s: string): string => `Out ${s} s before the crash`,
+    slotsHint: 'Three alike on the line pay · odds in the sheet',
+    noWin: 'No win this time',
+    slotRule(rule: 'triple' | 'bossPair' | 'pair' | null, pay: number, line: readonly SlotSymbol[]): string {
+      if (rule === 'triple') return `Three × ${S.casino.symbol(line[0])} · ${pay}×`;
+      if (rule === 'bossPair') return `Two bosses · ${pay}×`;
+      if (rule === 'pair') return `First two alike · ${pay}×`;
+      return '';
     },
-    detail(p: StoreProduct, c: Config): string {
-      const grant = productGrant(p, c);
-      switch (p) {
-        case 'starterPack':
-          return `+${money(Fmt.number(grant.money))} · Premium + 2 Standard chests · once only`;
-        case 'cashSmall':
-        case 'cashMedium':
-        case 'cashLarge':
-          return `+${money(Fmt.number(grant.money))}`;
-        case 'premiumChests':
-          return 'Epic or better far more often · odds in Chests';
-        case 'noAds':
-          return 'Ad rewards without the ad, for good';
-        case 'cashBoost':
-          return `+${Math.round((c.cashBoostPay - 1) * 100)} % money from every shift, for good`;
-      }
+    chance: 'chance',
+    upgraded: 'Upgraded',
+    lostSkins: (n: number): string => (n === 1 ? 'The skin is gone' : `${n} skins are gone`),
+    stakeValue: (m: string): string => `Stake worth ${m}`,
+    pickStakes: 'Pick skins to stake',
+    pickTarget: 'Pick the skin to win',
+    pickStakesTitle: (n: number, max: number): string => `Skins to stake · ${n} of ${max}`,
+    pickTargetTitle: 'The skin to win · rarer than your stake',
+    noSkins: 'No skins to stake yet · chests have them',
+    noTargets: 'Nothing rarer left to win',
+    flipping: 'The car doubles it, the crash takes it',
+    doubled: (m: string): string => `Doubled · ${m}`,
+    doubledSkin: (name: string): string => `Doubled · + ${name}`,
+    flipLost: 'Lost on the coin',
+    flipLostSkin: 'Lost on the coin · the skins are gone',
+    flipsLeft: (n: number): string => (n <= 0 ? 'That was the last double' : `${n} more double${n === 1 ? '' : 's'} possible · or keep it`),
+    refunded: (m: string): string => `A drive was cut short · ${m} back`,
+    cashedOnLeave: (m: string): string => `Cashed out as you left · +${m}`,
+    skinsLost: (n: number): string => (n === 1 ? 'Staked skin lost' : `${n} staked skins lost`),
+    detail: {
+      crash: [
+        'A car speeds up and the multiplier climbs. Cash out any time: you get the stake times the multiplier. If it crashes first, the stake is gone.',
+        'Where it crashes is drawn before it starts. Whatever you aim for, you get back 96 % of your stakes on average.',
+      ],
+      slots: [
+        'Three reels, 20 stops each, every stop as likely. Three alike on the line pay, so do two bosses anywhere, and so do the first two reels alike.',
+        'The symbols above and below the line are the real neighbours on the reel: a near miss is only ever what the reels gave.',
+      ],
+      upgrade: [
+        'Stake up to five of your skins on one you do not have yet, rarer than all of them. The chance is what the stake is worth against the target, less 5 %.',
+        'Win: the skin is yours. Lose: the staked skins leave your collection and the road. Completed albums stay completed.',
+      ],
+      double: 'After a win: double or nothing on a fair coin, exactly 50 %, up to 5 times in a row. Keep it whenever you like.',
+      fair: 'Play money only. Nothing here can be bought with real money.',
+      leave: 'Leaving the page during a drive cashes out. A round cut short pays its stake back.',
+      reaches: (m: string): string => `Reaches ${m}`,
+      instant: 'Crashes at 1.00×',
+      triple: (s: string): string => `Three × ${s}`,
+      bossPair: 'Two bosses',
+      pair: 'First two alike',
+      returns: (p: string): string => `Returns ${p} of stakes on average`,
+      hitRate: (n: string): string => `A win every ${n} spins on average`,
+      oneIn: (n: string): string => `1 in ${n}`,
+      value: (r: string): string => `${r} skin`,
+      maxChance: (p: string): string => `The chance is at most ${p}`,
+      best: 'Best',
+      bestWin: 'Biggest win',
     },
-    freeCash: 'Free Cash',
-    freeCashDetail: (m: string): string => `Watch a short ad for +${money(m)}`,
-    restore: 'Restore Purchases',
-    restoreShort: 'Restore',
-    owned: 'Owned',
-    placeholderNote: 'Placeholder prices · no real money is charged yet',
-    purchasing: 'Purchase',
-    purchasingNote: 'Placeholder · no money is charged',
-    bought: (p: StoreProduct): string => `Thank you · ${S.store.name(p)} added`,
-    restored: (n: number): string => (n === 0 ? 'Nothing to restore.' : `Restored ${n} purchase${n === 1 ? '' : 's'}.`),
-    cashAdReward: (m: string): string => `Ad watched · +${money(m)}`,
-    cashNoAd: (m: string): string => `No Ads · +${money(m)}`,
-    chestNoAd: 'No Ads · Standard chest added',
-    noCashAdsLeft: 'No more cash ads today. Back tomorrow.',
-    watch: 'Watch ad',
-    collect: 'Collect',
-    adCountdownCash: (s: number): string => `Your cash in ${s} s`,
   },
 
   builder: {
@@ -603,6 +635,8 @@ export const S = {
     wear: 'Wear',
     takeOff: 'Take off',
     worn: 'On',
+    inTraffic: 'In traffic',
+    vehicleAuto: 'Nothing to wear: a vehicle joins the traffic by itself, already now.',
     locked: '?',
     lockedTitle: (kind: string): string => (kind === 'mapSkin' ? 'Mystery map' : kind === 'vehicleType' ? 'Mystery vehicle' : 'Mystery skin'),
     source(k: ChestKind): string {
@@ -636,7 +670,7 @@ export const S = {
     watchAd: (left: number): string => `Watch ad · ${left} left`,
     skinsOn: (n: number, max: number): string => `${n} of ${max} car skins on · they mix on the road`,
     skinsFull: (max: number): string => `${max} car skins are on. Take one off first.`,
-    section: (i: number): string => ['Chests', 'Collection', 'Store'][i],
+    section: (i: number): string => ['Chests', 'Collection', 'Casino'][i],
     newBadge: 'NEW',
     shelf: (i: number): string => ['Common', 'Rare', 'Epic', 'Legend', 'Maps', 'Special', 'Honours'][i],
     waiting: (n: number): string => (n === 1 ? '1 waiting' : `${n} waiting`),
@@ -761,6 +795,14 @@ export const S = {
     nextMilestone: (left: number, item: string): string => `${left} more ${left === 1 ? 'day' : 'days'} for ${S.shop.item(item)}`,
     milestone: (days: number, item: string): string => `${days} DAYS IN A ROW · ${S.shop.item(item)} unlocked`,
     eventChestFound: 'EVENT CHEST FOUND',
+    luckyDrop: 'LUCKY DROP · STANDARD CHEST',
+    /** The pill over the Daily Shift: the streak, its bonus, and when it breaks. */
+    streakPill(streak: number, bonus: number | null, endsIn: number | null): string {
+      if (streak <= 0) return S.daily.streakLine(0);
+      const days = `${streak} ${streak === 1 ? 'day' : 'days'} in a row`;
+      if (endsIn !== null) return `${days} · ends in ${endsIn < 1 ? 'under 1 h' : `${Math.floor(endsIn)} h`}`;
+      return bonus !== null ? `${days} · +${Math.round(bonus * 100)} % pay on every shift` : `${days} · keep it going`;
+    },
     challenge(c: Challenge): string {
       switch (c) {
         case 'perfectInputs':
@@ -923,6 +965,24 @@ export const S = {
     },
   },
 
+  goals: {
+    next(g: NextGoal): string {
+      if (g.k === 'challenge') return `Today · ${S.daily.challenge(g.challenge)} · +${money(String(g.reward))}`;
+      return `${S.mastery.name(g.goal)} · ${g.have}/${g.need}`;
+    },
+    money: (short: string, upgrade: Upgrade): string => `${money(short)} to ${S.upgrades.name(upgrade)}`,
+    nearMiss(n: NearMiss): string {
+      switch (n.k) {
+        case 'cars':
+          return n.left === 1 ? `Just 1 car short of level ${n.level + 1}` : `${n.left} cars short of level ${n.level + 1}`;
+        case 'best':
+          return `${n.short.toLocaleString('en-US')} points short of your best`;
+        case 'combo':
+          return `${n.short === 1 ? 'One merge' : `${n.short} merges`} short of ${comboMultiplier(n.multiplier)}`;
+      }
+    },
+  },
+
   result: {
     gameOver: 'GAME OVER',
     detonated: 'KABOOM',
@@ -957,6 +1017,10 @@ export const S = {
     cars: (n: number): string => (n === 1 ? '1 car' : `${n} cars`),
     wanted: (seconds: number): string => `WANTED ${Math.ceil(Math.max(0, seconds))}`,
     rushFactor: (value: number): string => `RUSH HOUR ${multiplier(value)}`,
+    critical: (points: string): string => `CRITICAL ${points}`,
+    jackpotIncoming: 'JACKPOT!',
+    jackpotTimer: (seconds: number): string => `$ ${Math.ceil(Math.max(0, seconds))}`,
+    jackpotPaid: (amount: string): string => `JACKPOT ${amount}`,
     label(t: VehicleType): string | null {
       switch (t) {
         case 'police':

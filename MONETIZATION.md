@@ -1,6 +1,12 @@
 # MONETIZATION.md – In-App-Käufe und Werbung
 
 > **Pausiert seit 27.09.2026:** Beschreibt In-App-Käufe und Werbung der iOS-App. Die Web-Version hat keine Werbung und keine Käufe.
+>
+> **Store entfernt (Leo, 28.09.2026):** Die Web-Version hatte zwischenzeitlich einen Platzhalter-Store
+> (Geldpakete, Truhen, No Ads, Cash Boost). Er ist samt Cash Boost und Free-Cash-Werbung gelöscht; an
+> seiner Stelle steht das Casino ([LOOT.md](LOOT.md), Casino). **Solange das Casino existiert, gibt es
+> keine kaufbare Währung und keine Truhen gegen Echtgeld** – sonst wäre es echtes Glücksspiel. Übrig
+> ist nur die Platzhalter-Werbetruhe (3 pro Tag).
 
 Stand: 26.09.2026 · Alles hier ist **Platzhalter**: Produkte, Preise und Mengen sind
 Startwerte (`Config.swift`, `Store.swift`), bis die Produkte in App Store Connect angelegt

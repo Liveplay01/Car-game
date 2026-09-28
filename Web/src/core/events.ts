@@ -46,6 +46,9 @@ export interface ShiftResult {
   legendary: LegendaryRule | null;
   /** Ambulances that got through with a clear road. */
   ambulances: number;
+  /** Critical Merges this shift, and Jackpot transporters paid. */
+  criticals: number;
+  jackpots: number;
 }
 
 export interface ComboChange {
@@ -89,6 +92,8 @@ export interface MergeReport {
   shielded: boolean;
   gapAhead: number;
   chain: number;
+  /** A Critical Merge: its points already count `criticalFactor` times. */
+  critical: boolean;
 }
 
 export interface ExplosionReport {
@@ -128,10 +133,10 @@ export type GameEvent =
   | { type: 'criminalEscaped'; vehicle: number; time: number }
   | { type: 'criminalWrecked'; vehicle: number; point: Vec2; time: number }
   | { type: 'takedown'; criminal: number; police: number; point: Vec2; time: number; points: number; timeLeft: number }
-  | { type: 'transporterWarning'; arm: Arm; time: number }
+  | { type: 'transporterWarning'; arm: Arm; time: number; jackpot: boolean }
   | { type: 'transporterEntered'; vehicle: number; deadline: number }
   | { type: 'transporterEscaped'; vehicle: number; time: number }
-  | { type: 'transporterPaid'; vehicle: number | null; amount: number; time: number }
+  | { type: 'transporterPaid'; vehicle: number | null; amount: number; time: number; jackpot: boolean }
   | { type: 'transporterLost'; vehicle: number; point: Vec2; time: number }
   | { type: 'transporterSeized'; vehicle: number; police: number; point: Vec2; time: number }
   | { type: 'dispatched'; vehicle: number; combo: number }

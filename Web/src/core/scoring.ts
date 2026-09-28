@@ -29,6 +29,9 @@ export class ScoreBoard {
   bossBusted = false;
   /** Ambulances that got through with a clear road. */
   ambulances = 0;
+  /** Critical Merges, and Jackpot transporters paid. */
+  criticals = 0;
+  jackpots = 0;
   lastCrashAt: number | null = null;
 
   get merges(): number {

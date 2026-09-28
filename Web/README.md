@@ -19,6 +19,7 @@ npm run build      # type-check + production build into dist/
 npm run preview    # serve dist/ on port 5050 (with the service worker)
 npm run sim        # balancing bots, like `swift run Sim`: node scripts/sim.mjs [shifts] [level]
 npm run sim:versus # multiplayer bots (the lobby bots): never out for a crash, same seed = same match
+npm run sim:casino # casino fairness: every game returns what its odds sheet says, the coin is fair
 ```
 
 `npm run sim` must show **0 crashes for the careful bot** at every level. A random
@@ -33,7 +34,7 @@ tapper should crash in almost every shift.
 | Tap after a lost shift | the next try at once |
 | Dispatch button, `D`, `E`, right-click | turn the next car into a police car (costs part of the combo) |
 | Tab bar, `Tab` | Progress · Game · Shop · Build (Upgrades, Street Builder) |
-| Top card on the waiting screen | money → Store, cars → Collection, best → Records |
+| Top card on the waiting screen | money → Chests, cars → Collection, best → Records |
 | `Enter` | start / buy the open upgrade |
 | `Esc` | settings on the waiting screen, back to the game from a page |
 | `R` | restart the shift |
@@ -71,8 +72,8 @@ transporters, lorries, tankers and military trucks with explosions, the three mo
 (Shift, Unlimited, Mayhem) with the swipe between them, weather and city events, the
 Street Builder with arms and ring modules, 13 upgrades, chests with the juicy reveal,
 the collection with map skins and albums, the Daily Shift with streaks and challenges,
-mastery, records, the tutorial, the adaptive music and the store (placeholder purchases
-and ads: nothing is charged).
+mastery, records, the tutorial and the adaptive music. The store is gone (28.09.2026):
+nothing can be bought with real money; only the placeholder ad chest is left.
 
 Only in the browser version:
 
@@ -88,6 +89,9 @@ Only in the browser version:
   it earns nothing, the score to beat is the goal.
 - **Mastery trials** (`core/trials.ts`, Progress → Trials): seven fixed shifts with a goal,
   some with an extra rule that ends the shift as `failed` when broken; each pays once.
+- **Casino** (`core/casino.ts`, `present/casino.ts`, Shop → Casino): Crash, Slots and a Skin
+  Upgrade, and double or nothing on a fair coin after any win. Play money and skins only;
+  odds and returns in the sheet behind "Odds" (LOOT.md, Casino).
 - **Export / import** of the whole progress in Settings, for moving to another device.
 - Tyre marks after a skilled merge, stereo placement of sounds, keyboard hints on desktop.
 

@@ -19,7 +19,6 @@ import {
   forMayhem,
   drawWeather,
   drawCityEvent,
-  forCashBoost,
   armPrice as configArmPrice,
   canBuildArm,
 } from './levels';
@@ -40,7 +39,8 @@ import {
   prestigeReward,
 } from './loot';
 import { type Challenge, challengesOf, challengeMet, challengeReward, STREAK_MILESTONES } from './daily';
-import { type StoreProduct, isConsumable, productGrant, type AdReward } from './store';
+import type { CasinoPending, CasinoRound } from './casino';
+import { randomSeed } from './rng';
 
 export type GameMode = 'shift' | 'unlimited' | 'mayhem';
 export const GAME_MODES: GameMode[] = ['shift', 'unlimited', 'mayhem'];
@@ -137,9 +137,6 @@ export interface Career {
   dailyPlayed: number;
   albumsDone: string[];
   bestTimes: Record<string, number[]>;
-  purchases: string[];
-  adCashCount: number;
-  adCashDay: number;
   /** Mastery trials passed (core/trials.ts), each rewarded once. */
   trialsDone: string[];
   /** Syndicate bosses taken down: the trophy count in Records. */
@@ -158,6 +155,16 @@ export interface Career {
   museumNew: string[];
   /** How many Museum shelves the save knew: a shelf added later starts from what it must have met. */
   museumShelves: number;
+  /** The casino (core/casino.ts): this career's own stream, rounds played, an open round and the history. */
+  casinoSeed: number;
+  casinoRounds: number;
+  casinoPending: CasinoPending | null;
+  casinoLog: CasinoRound[];
+  casinoBestWin: number;
+  casinoBestCrash: number;
+  /** Today's balance of the money games: the day it belongs to and the sum. */
+  casinoDay: number;
+  casinoNet: number;
 }
 
 /** Everything that is saved (`SaveGame` in GamePresentation). */
@@ -201,9 +208,6 @@ export const newCareer = (): Career => ({
   dailyPlayed: -1,
   albumsDone: [],
   bestTimes: {},
-  purchases: [],
-  adCashCount: 0,
-  adCashDay: -1,
   trialsDone: [],
   bossTrophies: 0,
   bossesBeaten: [],
@@ -214,6 +218,14 @@ export const newCareer = (): Career => ({
   museumSeen: [],
   museumNew: [],
   museumShelves: MUSEUM_SHELVES.length,
+  casinoSeed: randomSeed(),
+  casinoRounds: 0,
+  casinoPending: null,
+  casinoLog: [],
+  casinoBestWin: 0,
+  casinoBestCrash: 0,
+  casinoDay: -1,
+  casinoNet: 0,
 });
 
 export const newSave = (): SaveGame => ({
@@ -256,12 +268,9 @@ export const Careers = {
 
   availableUpgrades: (c: Career, config: Config = baseConfig): Upgrade[] => UPGRADES.filter((u) => upgradeUnlockLevel(u, config) <= c.level),
 
-  hasPurchased: (c: Career, p: StoreProduct): boolean => !isConsumable(p) && c.purchases.includes(p),
-  canBuy: (c: Career, p: StoreProduct): boolean => isConsumable(p) || !Careers.hasPurchased(c, p),
-
   /**
    * The config of the next shift: the roundabout as it is built, then its level, the upgrades,
-   * the Cash Boost, and last the sky, the city and a legendary rule. After a Prestige the
+   * and last the sky, the city and a legendary rule. After a Prestige the
    * traffic is that of a higher level (`headStart`); the bosses keep to the level shown.
    * `legendary` pins the rule (null: none); undefined draws it from the seed.
    */
@@ -280,8 +289,7 @@ export const Careers = {
     cfg.compactShare = Careers.owns(c, 'compact') ? base.compactShareOwned : 0;
     cfg.vanShare = Careers.owns(c, 'van') ? base.vanShareOwned : 0;
     const level = c.level + Careers.headStart(c, base);
-    let shift = upgraded(forArms(forLevel(cfg, level, seed, c.level)), (u) => Careers.steps(c, u));
-    if (Careers.hasPurchased(c, 'cashBoost')) shift = forCashBoost(shift);
+    const shift = upgraded(forArms(forLevel(cfg, level, seed, c.level)), (u) => Careers.steps(c, u));
     const rule = legendary === undefined ? drawLegendary(shift, level, seed) : legendary;
     const stormy = rule === 'darkStorm' ? 'storm' : null;
     const sky = forNight(forWeather(shift, weather ?? stormy ?? drawWeather(shift, level, seed)), Careers.darkness(shift, rule, level, seed));
@@ -423,47 +431,19 @@ export const Careers = {
     return false;
   },
 
-  // MARK: Ads and store (placeholders)
+  // MARK: Ads (placeholder)
 
   adChestsLeft: (c: Career, day: number, config: Config = baseConfig): number => Math.max(0, config.adChestsPerDay - (c.adDay === day ? c.adChests : 0)),
 
-  adCash: (c: Career, config: Config = baseConfig): number => config.adCashBase + config.adCashPerLevel * Math.max(0, c.level - 1),
-
-  adsLeft(c: Career, reward: AdReward, day: number, config: Config = baseConfig): number {
-    return reward === 'chest' ? Careers.adChestsLeft(c, day, config) : Math.max(0, config.adCashPerDay - (c.adCashDay === day ? c.adCashCount : 0));
-  },
-
-  /** A watched ad: a Standard chest or money. Returns the money (0 for a chest), or null. */
-  rewardAd(c: Career, reward: AdReward, day: number, config: Config = baseConfig): number | null {
-    if (reward === 'chest') {
-      if (Careers.adChestsLeft(c, day, config) <= 0) return null;
-      if (c.adDay !== day) {
-        c.adDay = day;
-        c.adChests = 0;
-      }
-      c.adChests++;
-      c.chests.push('standard');
-      return 0;
+  /** A watched ad: a Standard chest. False when today's are used up. */
+  rewardAd(c: Career, day: number, config: Config = baseConfig): boolean {
+    if (Careers.adChestsLeft(c, day, config) <= 0) return false;
+    if (c.adDay !== day) {
+      c.adDay = day;
+      c.adChests = 0;
     }
-    if (Careers.adsLeft(c, 'cash', day, config) <= 0) return null;
-    if (c.adCashDay !== day) {
-      c.adCashDay = day;
-      c.adCashCount = 0;
-    }
-    c.adCashCount++;
-    const cash = Careers.adCash(c, config);
-    c.money += cash;
-    return cash;
-  },
-
-  skipsAds: (c: Career): boolean => Careers.hasPurchased(c, 'noAds'),
-
-  applyPurchase(c: Career, p: StoreProduct, config: Config = baseConfig): boolean {
-    if (!Careers.canBuy(c, p)) return false;
-    const grant = productGrant(p, config);
-    c.money += grant.money;
-    c.chests.push(...grant.chests);
-    if (!isConsumable(p)) c.purchases.push(p);
+    c.adChests++;
+    c.chests.push('standard');
     return true;
   },
 
@@ -532,6 +512,14 @@ export const Careers = {
     if (r.outcome !== 'completed' || config.cityEvent === null) return false;
     if (((Math.imul(seed ^ 0xe7e17c4e, 2654435761) >>> 0) / 4294967296) >= config.eventChestChance) return false;
     c.chests.push('event');
+    return true;
+  },
+
+  /** A Lucky Drop: now and then a completed career shift leaves a Standard Chest behind. */
+  rollLuckyDrop(c: Career, r: ShiftResult, config: Config, seed: number): boolean {
+    if (r.outcome !== 'completed' || config.endless || config.mayhem) return false;
+    if (((Math.imul(seed ^ 0x10c4d209, 2654435761) >>> 0) / 4294967296) >= config.luckyDropChance) return false;
+    c.chests.push('standard');
     return true;
   },
 

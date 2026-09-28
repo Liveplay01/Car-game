@@ -2,16 +2,17 @@ import { type Career, Careers } from '../core/career';
 import type { Config } from '../core/config';
 import { type Upgrade, upgradeMaxSteps } from '../core/levels';
 import { type ChestKind, type Rarity, RARITIES, CHEST_ODDS, PITY_CHESTS, MAX_CAR_SKINS, cosmetic, isForSale } from '../core/loot';
-import { PLACEHOLDER_PRICE } from '../core/store';
+import { type CasinoGame, type SlotSymbol, SLOT_SYMBOLS, Casino } from '../core/casino';
 import { type Vec2, v } from '../core/vec2';
 import type { RenderList } from './render';
 import type { ColorToken } from './theme';
 import { S, Fmt, money, percent } from './strings';
-import { ShopPage, type Offer } from './shop';
+import { ShopPage } from './shop';
+import { CasinoPage } from './casino';
 import { UpgradeArt } from './upgrades';
 import { StreetBuilderPage } from './builder';
 import type { Part, ScreenAction } from './flow';
-import { R, rect, polygon } from './render';
+import { R } from './render';
 import { MenuKit } from './menukit';
 import { MuseumPage } from './museum';
 import { museumEntry, firstLevel } from '../core/museum';
@@ -26,7 +27,7 @@ export type DetailArt =
   | { k: 'upgrade'; upgrade: Upgrade }
   | { k: 'chest'; kind: ChestKind }
   | { k: 'item'; id: string; owned: boolean }
-  | { k: 'offer'; offer: Offer }
+  | { k: 'casino'; game: CasinoGame }
   | { k: 'part'; part: Part }
   | { k: 'museum'; id: string; shown: boolean; time: number };
 
@@ -102,8 +103,8 @@ export const Details = {
       actions.push({ label: S.shop.buy(money(Fmt.number(price))), action: { k: 'buyChest', kind }, prominent: false, enabled: career.money >= price });
     }
     if (kind === 'standard') {
-      const left = Careers.adsLeft(career, 'chest', today, config);
-      actions.push({ label: Careers.skipsAds(career) ? S.store.collect : S.shop.watchAdShort, action: { k: 'watchAd' }, prominent: false, enabled: left > 0 });
+      const left = Careers.adChestsLeft(career, today, config);
+      actions.push({ label: S.shop.watchAdShort, action: { k: 'watchAd' }, prominent: false, enabled: left > 0 });
     }
     return {
       key: `chest:${kind}`,
@@ -125,6 +126,8 @@ export const Details = {
     const owned = Careers.owns(career, id);
     const notes: Detail['notes'] = [];
     if (item.kind === 'carSkin') notes.push({ text: S.shop.skinsOn(career.carSkins.length, MAX_CAR_SKINS), color: 'accent' });
+    // A vehicle type is never worn: it drives by itself. Say so, or the sheet looks like its button is missing.
+    if (owned && item.kind === 'vehicleType') notes.push({ text: S.shop.vehicleAuto, color: 'muted' });
     const actions: DetailAction[] = [];
     if (owned && item.kind !== 'vehicleType') {
       actions.push({ label: Careers.isWorn(career, id) ? S.shop.takeOff : S.shop.wear, action: { k: 'wear', id }, prominent: !Careers.isWorn(career, id), enabled: true });
@@ -134,7 +137,7 @@ export const Details = {
       art: { k: 'item', id, owned },
       eyebrow: { text: S.shop.kind(item), color: rarityColor(item.rarity) },
       title: owned ? S.shop.item(id) : S.shop.lockedTitle(item.kind),
-      price: Careers.isWorn(career, id) ? { text: S.shop.worn, color: 'accent' } : null,
+      price: Careers.isWorn(career, id) ? { text: S.shop.worn, color: 'accent' } : owned && item.kind === 'vehicleType' ? { text: S.shop.inTraffic, color: 'accent' } : null,
       steps: null,
       body: [owned ? S.shop.ownedHint(item) : S.shop.lockedHint(item)],
       rows: [],
@@ -143,38 +146,56 @@ export const Details = {
     };
   },
 
-  offer(offer: Offer, career: Career, config: Config, today: number): Detail {
-    if (offer.k === 'freeCash') {
-      const left = Careers.adsLeft(career, 'cash', today, config);
-      return {
-        key: 'offer:freeCash',
-        art: { k: 'offer', offer },
-        eyebrow: left > 0 ? { text: S.shop.watchAd(left), color: 'accent' } : { text: S.store.noCashAdsLeft, color: 'muted' },
-        title: S.store.freeCash,
-        price: null,
-        steps: null,
-        body: [S.store.freeCashDetail(Fmt.number(Careers.adCash(career, config)))],
-        rows: [],
-        notes: [{ text: S.store.placeholderNote, color: 'hazard' }],
-        actions: [{ label: Careers.skipsAds(career) ? S.store.collect : S.store.watch, action: { k: 'watchCashAd' }, prominent: true, enabled: left > 0 }],
-      };
+  /** A casino game: how it plays, its odds and its return, exactly (LOOT.md, Casino). */
+  casino(game: CasinoGame, career: Career, config: Config): Detail {
+    const pct = (x: number): string => `${(x * 100).toFixed(x < 0.1 ? 2 : 1)} %`;
+    const D = S.casino.detail;
+    const rows: DetailRow[] = [];
+    const notes: Detail['notes'] = [];
+    let body: string[];
+    switch (game) {
+      case 'crash':
+        body = D.crash;
+        rows.push({ label: D.instant, value: pct(1 - Casino.crashChance(1.01, config)), valueColor: 'destructive' });
+        for (const m of [1.5, 2, 5, 10, 100]) rows.push({ label: D.reaches(S.casino.times(m)), value: pct(Casino.crashChance(m, config)) });
+        if (career.casinoBestCrash > 0) rows.push({ label: D.best, value: S.casino.times(career.casinoBestCrash), valueColor: 'accent' });
+        notes.push({ text: D.returns(pct(1 - config.crashEdge)), color: 'accent' }, { text: D.leave, color: 'muted' });
+        break;
+      case 'slots': {
+        body = D.slots;
+        const n = config.slotStrip.length;
+        const share = (sym: SlotSymbol): number => config.slotStrip.filter((x) => x === sym).length / n;
+        for (const sym of [...SLOT_SYMBOLS].reverse()) {
+          const p = Casino.tripleChance(sym, config);
+          rows.push({ label: D.triple(S.casino.symbol(sym)), value: `${config.slotTriple[sym]}× · ${D.oneIn(Fmt.number(1 / p))}`, labelColor: sym === 'boss' ? 'coin' : undefined });
+        }
+        const q = share('boss');
+        rows.push({ label: D.bossPair, value: `${config.slotBossPair}× · ${D.oneIn(Fmt.number(1 / (3 * q * q * (1 - q))))}` });
+        const pair = SLOT_SYMBOLS.filter((x) => x !== 'boss').reduce((sum, x) => sum + share(x) ** 2 * (1 - share(x)), 0);
+        rows.push({ label: D.pair, value: `${config.slotPair}× · ${D.oneIn(Fmt.number(1 / pair))}` });
+        const { rtp, hit } = Casino.slotRtp(config);
+        notes.push({ text: D.returns(pct(rtp)), color: 'accent' }, { text: D.hitRate((1 / hit).toFixed(1)), color: 'muted' });
+        break;
+      }
+      case 'upgrade':
+        body = D.upgrade;
+        for (const r of RARITIES) rows.push({ label: D.value(S.shop.rarity(r)), value: money(Fmt.number(config.skinValue[r])), labelColor: rarityColor(r) });
+        notes.push({ text: D.returns(pct(1 - config.upgradeEdge)), color: 'accent' }, { text: D.maxChance(pct(config.upgradeMaxChance)), color: 'muted' });
+        break;
     }
-    const p = offer.product;
-    const canBuy = Careers.canBuy(career, p);
+    if (career.casinoBestWin > 0 && game !== 'upgrade') rows.push({ label: D.bestWin, value: money(Fmt.number(career.casinoBestWin)), valueColor: 'accent' });
+    notes.push({ text: D.double, color: 'muted' }, { text: D.fair, color: 'muted' });
     return {
-      key: `offer:${p}`,
-      art: { k: 'offer', offer },
-      eyebrow: canBuy ? null : { text: S.store.owned, color: 'accent' },
-      title: S.store.name(p),
-      price: { text: canBuy ? PLACEHOLDER_PRICE[p] : S.store.owned, color: canBuy ? 'primary' : 'accent' },
+      key: `casino:${game}`,
+      art: { k: 'casino', game },
+      eyebrow: { text: S.shop.section(2), color: 'coin' },
+      title: S.casino.game(game),
+      price: null,
       steps: null,
-      body: [S.store.detail(p, config)],
-      rows: [],
-      notes: [{ text: S.store.placeholderNote, color: 'hazard' }],
-      actions: [
-        { label: canBuy ? PLACEHOLDER_PRICE[p] : S.store.owned, action: { k: 'purchase', product: p }, prominent: true, enabled: canBuy },
-        { label: S.store.restoreShort, action: { k: 'restorePurchases' }, prominent: false, enabled: true },
-      ],
+      body,
+      rows,
+      notes,
+      actions: [],
     };
   },
 
@@ -264,7 +285,7 @@ export const Details = {
   },
 
   /** The picture at the top of the sheet, drawn with the game's own shapes into `size`. */
-  drawArt(list: RenderList, art: DetailArt, center: Vec2, size: number, config: Config): void {
+  drawArt(list: RenderList, art: DetailArt, center: Vec2, size: number, _config: Config): void {
     const scale = size / 96;
     switch (art.k) {
       case 'upgrade': {
@@ -284,13 +305,8 @@ export const Details = {
         ShopPage.addPreview(list, item, center, 1.35 * scale, art.owned ? 1 : 0.45);
         break;
       }
-      case 'offer':
-        if (art.offer.k === 'product') ShopPage.addOfferIcon(list, art.offer.product, center, 1.05 * scale, config, 1);
-        else {
-          MenuKit.glow(list, center, size * 0.5, 'juiceGreen', 0.3);
-          list.s(rect(center, v(52 * scale, 36 * scale), 9 * scale), 'juiceGreen');
-          list.s(polygon([v(center.x - 7 * scale, center.y - 9 * scale), v(center.x + 10 * scale, center.y), v(center.x - 7 * scale, center.y + 9 * scale)]), 'primary');
-        }
+      case 'casino':
+        CasinoPage.art(list, art.game, center, size);
         break;
       case 'part':
         StreetBuilderPage.addPartPicture(list, art.part, v(center.x - 10 * scale, center.y), 1.6 * scale, 1);

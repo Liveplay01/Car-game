@@ -41,7 +41,16 @@ export type SoundID =
   | 'chestBurstRare'
   | 'explosion'
   | 'detonation'
-  | 'alarm';
+  | 'alarm'
+  /** Made in `audio/player.ts` (no sample): a Critical Merge, a Jackpot paid, and the chest reel. */
+  | 'critical'
+  | 'jackpot'
+  | 'chargeUp'
+  | 'reelSpin'
+  | 'reelTick'
+  | 'shimmer'
+  | 'reelLand'
+  | 'reelLandBig';
 
 export const SOUND_IDS: SoundID[] = [
   'merge', 'toll', 'tightFit', 'nearMiss', 'perfect', 'cutOff', 'comboUp', 'crashLight', 'crash', 'crashHeavy', 'rushHour',
@@ -68,7 +77,13 @@ export type HapticID =
   | 'paid'
   | 'explosion'
   /** Multiplayer: the instant answer to a tap, before the car moves (the input delay). */
-  | 'tap';
+  | 'tap'
+  | 'critical'
+  /** The syndicate boss taken down: a double thump. */
+  | 'bossTakedown'
+  /** A card under the chest reel's marker, and the reel landing on the prize. */
+  | 'reelTick'
+  | 'reelStop';
 
 /**
  * Turns game events into sound and haptics (`Feedback.swift`): the more often something
@@ -81,6 +96,7 @@ export const Feedback = {
   sound(e: GameEvent): SoundID | null {
     switch (e.type) {
       case 'merged':
+        if (e.critical) return 'critical';
         return ({ clean: 'merge', tightFit: 'tightFit', nearMiss: 'nearMiss', perfect: 'perfect', cutOff: 'cutOff' } as const)[e.rating];
       case 'crash':
         return e.isTakedown ? null : Feedback.crashSound(e);
@@ -105,7 +121,7 @@ export const Feedback = {
       case 'transporterLost':
         return 'seized';
       case 'transporterPaid':
-        return e.amount > 0 ? 'paid' : null;
+        return e.amount > 0 ? (e.jackpot ? 'jackpot' : 'paid') : null;
       case 'heistRecovered':
         return 'paid';
       case 'modulePaid':
@@ -160,6 +176,7 @@ export const Feedback = {
   haptic(e: GameEvent): HapticID | null {
     switch (e.type) {
       case 'merged':
+        if (e.critical) return 'critical';
         return e.rating === 'cutOff' ? null : e.rating === 'clean' ? 'merge' : e.rating;
       case 'crash':
         return e.isStrike ? 'crash' : null;
@@ -180,9 +197,9 @@ export const Feedback = {
       case 'transporterLost':
         return 'seized';
       case 'transporterPaid':
-        return e.amount > 0 ? 'paid' : null;
+        return e.amount > 0 ? (e.jackpot ? 'chest' : 'paid') : null;
       case 'heistRecovered':
-        return 'paid';
+        return 'bossTakedown';
       case 'flowChanged':
         return e.isInFlow ? 'flow' : null;
       case 'explosion':

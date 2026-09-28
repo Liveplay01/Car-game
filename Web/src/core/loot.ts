@@ -181,6 +181,34 @@ export interface ChestOpening {
   money: number;
 }
 
+/**
+ * The reel a chest opening spins (Leo, 28.09.2026). The prize is already drawn (`rollChest`);
+ * the reel only shows it, and the drop odds never change. The other cards are drawn by the same
+ * chest's public odds, except the teaser: with `teaserChance`, a prize below Legendary gets a
+ * Legendary card right before or after it, the one the reel just slipped off or did not reach.
+ * The prize sits at `stop`.
+ */
+export function chestReel(kind: ChestKind, prize: Cosmetic, seed: number, length: number, stop: number, teaserChance = 0): Cosmetic[] {
+  const rng = new Rng(seed >>> 0);
+  const odds = CHEST_ODDS[kind];
+  const draw = (): Cosmetic => {
+    let pick = rng.unit();
+    let rarity: Rarity = 'common';
+    for (let i = 0; i < RARITIES.length; i++) {
+      rarity = RARITIES[i];
+      pick -= odds[i];
+      if (pick < 0) break;
+    }
+    return rng.pick(COSMETICS.filter((x) => x.rarity === rarity && x.source.kind === 'chest'));
+  };
+  const cards = Array.from({ length }, (_, i) => (i === stop ? prize : draw()));
+  if (prize.rarity !== 'legendary' && rng.unit() < teaserChance) {
+    const legends = COSMETICS.filter((x) => x.rarity === 'legendary' && x.source.kind === 'chest');
+    cards[stop + (rng.unit() < 0.6 ? -1 : 1)] = rng.pick(legends);
+  }
+  return cards;
+}
+
 /** Draws a rarity by the chest's public odds; the pity counter guarantees an Epic. */
 export function rollChest(
   kind: ChestKind,

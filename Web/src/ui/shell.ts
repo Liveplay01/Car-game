@@ -508,6 +508,7 @@ export class Shell {
     this.detail.update(s.detail);
     s.sheetInset = this.detail.inset;
     this.audio.updateMusic(match ? match.music : s.musicMix, s.save.settings.sound, Math.min(delta, 0.1));
+    this.audio.updateTension(match ? 0 : s.tension, s.save.settings.sound, Math.min(delta, 0.1));
     this.app.classList.toggle('reduce-motion', s.reduceMotion);
     if (this.pendingChallenge) this.openPendingChallenge();
     if (this.pendingJoin) this.openPendingJoin();

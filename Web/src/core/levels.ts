@@ -461,12 +461,3 @@ export function forMayhem(base: Config): Config {
   c.militaryInterval = base.mayhemMilitaryInterval;
   return c;
 }
-
-/** Cash Boost: every shift pays this many times as much. */
-export function forCashBoost(base: Config): Config {
-  const c = cloneConfig(base);
-  c.shiftPay = Math.round(base.shiftPay * base.cashBoostPay);
-  c.transporterPay = Math.round(base.transporterPay * base.cashBoostPay);
-  c.shieldBonus = Math.round(base.shieldBonus * base.cashBoostPay);
-  return c;
-}

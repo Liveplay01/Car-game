@@ -415,16 +415,54 @@ export const baseConfig = {
   premiumChestPrice: 52000,
   adChestsPerDay: 3,
 
-  // Monetisation (placeholders)
-  adCashPerDay: 3,
-  adCashBase: 2000,
-  adCashPerLevel: 250,
-  starterPackMoney: 30000,
-  cashSmallAmount: 25000,
-  cashMediumAmount: 90000,
-  cashLargeAmount: 240000,
-  premiumChestBundle: 3,
-  cashBoostPay: 1.5,
+  // Engagement (Leo, 28.09.2026): surprises on top of skill, never instead of it
+  /** A Perfect or a Near Miss is now and then a Critical Merge: its points count this many times. */
+  criticalChance: 0.07,
+  criticalFactor: 3,
+  /** Now and then the transporter is a Jackpot: gilded, announced as one, pays this many times. */
+  jackpotChance: 0.08,
+  jackpotFactor: 5,
+  /** A completed career shift now and then drops a Standard Chest. */
+  luckyDropChance: 0.06,
+  /** From this many Daily Shifts in a row, every shift pays `streakBonusPay` more while the streak lives. */
+  streakBonusDays: 3,
+  streakBonusPay: 0.15,
+  /** Hours before midnight from which the waiting card warns that the streak is about to break. */
+  streakWarningHours: 6,
+  /**
+   * Chest reel teaser (Leo, 28.09.2026): when the prize is not Legendary, this share of reels
+   * shows a Legendary card right next to it. Display only, the drop odds stay the same; 0 turns it off.
+   */
+  chestTeaserChance: 0.7,
+
+  // Casino (core/casino.ts, LOOT.md): honest odds, a small house edge, all of it on screen.
+  /** The stakes on offer; "All in" stakes whatever there is. */
+  casinoStakes: [100, 500, 1000, 5000, 25000],
+  /** Crash: the multiplier grows e^(rate·t); P(crash ≥ m) = (1 − edge)/m, so every cash-out returns 1 − edge. */
+  crashEdge: 0.04,
+  crashRate: 0.18,
+  crashMax: 100,
+  /** Auto cash-out targets (0: off). */
+  crashAutoTargets: [0, 1.5, 2, 5],
+  /** Slots: every reel is this strip of 20 stops; each stop is as likely. */
+  slotStrip: [
+    'car', 'compact', 'van', 'car', 'sportsCar', 'compact', 'car', 'boss', 'van', 'compact',
+    'car', 'ambulance', 'compact', 'van', 'car', 'transporter', 'car', 'compact', 'van', 'sportsCar',
+  ] as const,
+  /** Three of a kind on the line pays this many times the stake. */
+  slotTriple: { car: 6, compact: 10, van: 15, sportsCar: 40, ambulance: 100, transporter: 150, boss: 500 },
+  /** Two bosses anywhere on the line. */
+  slotBossPair: 10,
+  /** The first two reels alike (not a boss). Every win pays at least twice the stake. */
+  slotPair: 2,
+  /** Skin upgrade: what a skin of each rarity is worth; chance = stake / target × (1 − edge). */
+  skinValue: { common: 1000, rare: 3000, epic: 9000, legendary: 30000 },
+  upgradeEdge: 0.05,
+  upgradeMaxChance: 0.75,
+  upgradeMaxStake: 5,
+  /** Double or nothing: a fair coin, at most this many times in a row. */
+  doubleMaxChain: 5,
+  casinoLogLength: 20,
 
   // Late levels
   lateLevel: 6,

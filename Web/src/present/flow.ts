@@ -4,7 +4,7 @@ import { type GameMode, GAME_MODES } from '../core/career';
 export type SwipeMode = GameMode | 'multiplayer';
 export const SWIPE_MODES: SwipeMode[] = [...GAME_MODES, 'multiplayer'];
 import type { ChestKind } from '../core/loot';
-import type { StoreProduct } from '../core/store';
+import type { CasinoGame } from '../core/casino';
 import type { Upgrade } from '../core/levels';
 import type { RoadModule } from '../core/config';
 import { type Vec2, v } from '../core/vec2';
@@ -34,7 +34,7 @@ export type Screen =
 export const screenTab = (s: Screen): Tab => (s.k === 'page' ? s.tab : 'game');
 export const showsTabBar = (s: Screen): boolean => s.k !== 'settings' && s.k !== 'playing';
 
-export type ShopSection = 0 | 1 | 2; // chests · collection · store
+export type ShopSection = 0 | 1 | 2; // chests · collection · casino
 export type ProgressSection = 0 | 1 | 2 | 3 | 4; // records · quests · trials · museum · achievements
 
 export type Part = 'arm' | RoadModule;
@@ -66,9 +66,7 @@ export type ScreenAction =
   | { k: 'openChest'; index: number }
   | { k: 'buyChest'; kind: ChestKind }
   | { k: 'watchAd' }
-  | { k: 'watchCashAd' }
-  | { k: 'purchase'; product: StoreProduct }
-  | { k: 'restorePurchases' }
+  | { k: 'showCasino'; game: CasinoGame }
   | { k: 'wear'; id: string }
   | { k: 'startTrial'; id: string };
 

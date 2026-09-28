@@ -127,6 +127,8 @@ function cachedYard(slot: number, layout: Layout, c: Config): Pose {
 export const towYard = (slot: number, layout: Layout, c: Config): Vec2 => cachedYard(slot, layout, c).position;
 
 export const SYNDICATE_BOSS = { paint: 'syndicate', stripe: 'coin', roof: null, finish: null } as const;
+/** A Jackpot transporter: gilded and glittering, a prize you can see coming. */
+export const JACKPOT_TRANSPORTER = { paint: 'coin', stripe: null, roof: null, finish: 'shinyGlitter' } as const;
 export const SYNDICATE_ESCORT ={ paint: 'syndicateEscort', stripe: null, roof: 'syndicate', finish: null } as const;
 
 /** Builds the game scene, roads and vehicles, as render items in world space. */
@@ -282,7 +284,16 @@ export const SceneBuilder = {
       // must read as who they are.
       // Skins only dress plain cars: police, criminals, transporters and lorries keep the colours
       // that say what they are (a dispatched car turns fully into a police car).
-      const look = veh.role === 'boss' ? SYNDICATE_BOSS : veh.role === 'escort' ? SYNDICATE_ESCORT : isCarType(veh.type) ? lookFor(veh.id, carSkins) : null;
+      const look =
+        veh.role === 'boss'
+          ? SYNDICATE_BOSS
+          : veh.role === 'escort'
+            ? SYNDICATE_ESCORT
+            : veh.id === world.jackpotVehicle && veh.type === 'transporter'
+              ? JACKPOT_TRANSPORTER
+              : isCarType(veh.type)
+                ? lookFor(veh.id, carSkins)
+                : null;
       CarArt.add(
         list,
         {

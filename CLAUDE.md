@@ -51,6 +51,10 @@ Wechsel und bleiben als Referenz für Regeln, Werte und Ideen.
   nur für die Spielszene. Glas-Effekt nur für schwebende Bedienelemente über der Szene.
 - **Fahrzeugfarben sind Spielinformation** und für die UI tabu; Fahrzeugtypen sind über
   Form, Farbe und Symbol erkennbar.
+- **Casino statt Store (Leo, 28.09.2026):** Der Shop hat Chests · Collection · Casino (Crash, Slots,
+  Skin-Upgrade, Doppelt oder nichts; `core/casino.ts`). Der Store ist entfernt. **Solange das Casino
+  existiert, gibt es keine kaufbare Währung und keine Truhen gegen Echtgeld.** Chancen bleiben sichtbar
+  und ehrlich (LOOT.md, Casino); `npm run sim:casino` prüft die Rückzahlquoten.
 - **Crashes sind echte Physik** (`Web/src/core/crash.ts`, `drivers.ts`): Stoß-Impuls,
   Reifenreibung, reagierender Verkehr, Blechschaden. Keine geskripteten Animationen.
 
@@ -70,6 +74,7 @@ cd Web; npm run dev                     # Entwickeln: http://localhost:5050 (auc
 cd Web; npm run build                   # Typecheck + Build nach Web/dist
 cd Web; npm run preview                 # Build lokal ausliefern, Port 5050
 cd Web; npm run sim -- 60 5             # Balancing-Bots: Schichten, Level
+cd Web; npm run sim:casino              # Casino: Rückzahlquoten, faire Münze, Determinismus
 docker build -t car-game . ; docker run -p 5050:5050 car-game   # Container wie in Coolify
 ```
 

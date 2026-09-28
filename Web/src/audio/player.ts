@@ -99,6 +99,7 @@ export class AudioPlayer {
 
   play(id: SoundID, pitch: number, pan = 0): void {
     const ctx = this.ctx;
+    if (ctx && this.sfx && ctx.state === 'running' && this.synth(id, ctx, this.sfx, pan, pitch)) return;
     const buffer = this.buffers.get(id);
     if (!ctx || !this.sfx || !buffer || ctx.state !== 'running') return;
     // The same sound twice within a few ms is one sound (a pile-up in one frame).
@@ -120,7 +121,187 @@ export class AudioPlayer {
     src.start();
   }
 
+  /**
+   * The two sounds without a sample, made from the samples they grow out of plus a few
+   * oscillators: a Critical Merge is the Perfect with a sub-bass hit under it and a bright
+   * fifth over it; a Jackpot is the pay-out with a rising A-major arpeggio (the key of the music).
+   */
+  private synth(id: SoundID, ctx: AudioContext, out: GainNode, pan: number, pitch = 1): boolean {
+    if (!AudioPlayer.synthIds.includes(id)) return false;
+    const now = ctx.currentTime;
+    if (now - (this.lastStart.get(id) ?? -1) < 0.025) return true;
+    this.lastStart.set(id, now);
+    const noise = (at: number, length: number, from: number, to: number, level: number, rate = 0): void => {
+      const frames = Math.ceil(ctx.sampleRate * length);
+      const buffer = ctx.createBuffer(1, frames, ctx.sampleRate);
+      const data = buffer.getChannelData(0);
+      for (let i = 0; i < frames; i++) data[i] = Math.random() * 2 - 1;
+      const src = ctx.createBufferSource();
+      src.buffer = buffer;
+      const band = ctx.createBiquadFilter();
+      band.type = 'bandpass';
+      band.Q.value = 1.2;
+      band.frequency.setValueAtTime(from, now + at);
+      band.frequency.exponentialRampToValueAtTime(to, now + at + length);
+      const gain = ctx.createGain();
+      gain.gain.setValueAtTime(0.0001, now + at);
+      gain.gain.exponentialRampToValueAtTime(level, now + at + 0.05);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + at + length);
+      src.connect(band);
+      band.connect(gain);
+      // A rattle: the level flutters at `rate` per second, slowing as the reel does.
+      if (rate > 0) {
+        const lfo = ctx.createOscillator();
+        const depth = ctx.createGain();
+        lfo.type = 'square';
+        lfo.frequency.setValueAtTime(rate, now + at);
+        lfo.frequency.exponentialRampToValueAtTime(rate * 0.35, now + at + length);
+        depth.gain.value = level * 0.6;
+        lfo.connect(depth);
+        depth.connect(gain.gain);
+        lfo.start(now + at);
+        lfo.stop(now + at + length + 0.02);
+      }
+      gain.connect(out);
+      src.start(now + at);
+      src.stop(now + at + length + 0.02);
+    };
+    const tone = (type: OscillatorType, from: number, to: number, at: number, length: number, level: number): void => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = type;
+      osc.frequency.setValueAtTime(from, now + at);
+      if (to !== from) osc.frequency.exponentialRampToValueAtTime(to, now + at + length);
+      gain.gain.setValueAtTime(0.0001, now + at);
+      gain.gain.exponentialRampToValueAtTime(level, now + at + 0.008);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + at + length);
+      osc.connect(gain);
+      gain.connect(out);
+      osc.start(now + at);
+      osc.stop(now + at + length + 0.02);
+    };
+    switch (id) {
+      case 'critical':
+        this.play('perfect', 1, pan);
+        tone('sine', 110, 42, 0, 0.32, 0.9);
+        tone('triangle', 1760, 1760, 0.03, 0.22, 0.12);
+        tone('triangle', 2637, 2637, 0.05, 0.26, 0.08);
+        break;
+      case 'jackpot':
+        this.play('paid', 1, pan);
+        [880, 1109, 1319, 1760].forEach((f, i) => tone('triangle', f, f, 0.05 + i * 0.065, 0.3, 0.14));
+        tone('sine', 98, 55, 0, 0.35, 0.7);
+        break;
+      case 'chargeUp':
+        // A sub-bass that rises and swells for the Epic/Legendary build-up (1.4 s), with a whine over it.
+        tone('sine', 38, 96, 0, 1.45, 0.8);
+        tone('sawtooth', 220, 880, 0.3, 1.15, 0.03);
+        break;
+      case 'reelSpin':
+        // The reel setting off: a full, rolling whirr that slows down with it.
+        noise(0, 1.6, 2400, 700, 0.22, 34);
+        tone('sine', 70, 48, 0, 0.5, 0.3);
+        break;
+      case 'reelTick': {
+        // `pitch` 0.55 (crawling) … 1.3 (spinning): slow ticks are deeper, louder, with a knock under them.
+        const slow = Math.min(Math.max((1.3 - pitch) / 0.75, 0), 1);
+        tone('square', 1800 * pitch, 1200 * pitch, 0, 0.035, 0.05 + 0.12 * slow);
+        if (slow > 0.3) tone('sine', 150 * pitch, 70, 0, 0.09, 0.5 * slow);
+        break;
+      }
+      case 'shimmer':
+        // An Epic or Legendary card running past: a short, glassy ping.
+        tone('sine', 2093 * pitch, 2093 * pitch, 0, 0.3, 0.1);
+        tone('sine', 3136 * pitch, 3136 * pitch, 0.02, 0.26, 0.06);
+        break;
+      case 'reelLand':
+        tone('sine', 120, 55, 0, 0.22, 0.8);
+        tone('square', 900, 600, 0, 0.05, 0.12);
+        break;
+      case 'reelLandBig':
+        // A Legendary: a deep boom under a bright chord, held through the freeze.
+        tone('sine', 90, 32, 0, 0.7, 1);
+        [1319, 1661, 1976, 2637].forEach((f, i) => tone('triangle', f, f, 0.12 + i * 0.03, 0.8, 0.09));
+        break;
+    }
+    return true;
+  }
+
+  private static readonly synthIds: SoundID[] = ['critical', 'jackpot', 'chargeUp', 'reelSpin', 'reelTick', 'shimmer', 'reelLand', 'reelLandBig'];
+
   /** Once per frame: each stem glides towards its volume, the filter follows the breath. */
+  /** The casino's tension (`GameSession.tension`): a riser and a heartbeat, built lazily. */
+  private tensionVoice: { gain: GainNode; filter: BiquadFilterNode; engine: OscillatorNode[]; whine: OscillatorNode; whineGain: GainNode } | null = null;
+  private heartbeat = 0;
+
+  /**
+   * 0 is silence; towards 1 an engine climbs and whines like a turbine, and under it a
+   * heartbeat thumps faster and louder (lub-dub). Called every frame, like the music.
+   */
+  updateTension(level: number, enabled: boolean, delta: number): void {
+    const ctx = this.ctx;
+    if (!ctx || !this.sfx || ctx.state !== 'running') return;
+    const on = enabled && level > 0.001 ? Math.min(1, level) : 0;
+    if (on === 0 && !this.tensionVoice) return;
+    if (!this.tensionVoice) {
+      const gain = ctx.createGain();
+      gain.gain.value = 0;
+      const filter = ctx.createBiquadFilter();
+      filter.type = 'lowpass';
+      filter.Q.value = 6;
+      filter.connect(gain);
+      gain.connect(this.sfx);
+      const engine = [0, 7].map((detune) => {
+        const osc = ctx.createOscillator();
+        osc.type = 'sawtooth';
+        osc.detune.value = detune;
+        osc.connect(filter);
+        osc.start();
+        return osc;
+      });
+      const whineGain = ctx.createGain();
+      whineGain.gain.value = 0;
+      whineGain.connect(this.sfx);
+      const whine = ctx.createOscillator();
+      whine.type = 'sine';
+      whine.connect(whineGain);
+      whine.start();
+      this.tensionVoice = { gain, filter, engine, whine, whineGain };
+    }
+    const v = this.tensionVoice;
+    const now = ctx.currentTime;
+    for (const osc of v.engine) osc.frequency.setTargetAtTime(55 + 165 * on, now, 0.05);
+    v.filter.frequency.setTargetAtTime(260 + 2200 * on * on, now, 0.05);
+    v.gain.gain.setTargetAtTime(on > 0 ? 0.025 + 0.07 * on : 0, now, on > 0 ? 0.06 : 0.12);
+    v.whine.frequency.setTargetAtTime(700 + 1500 * on, now, 0.05);
+    v.whineGain.gain.setTargetAtTime(on > 0.3 ? 0.012 * (on - 0.3) : 0, now, 0.08);
+    if (on === 0) {
+      this.heartbeat = 0;
+      return;
+    }
+    // The heart: from about 60 to 140 beats a minute.
+    this.heartbeat -= delta;
+    if (this.heartbeat > 0) return;
+    this.heartbeat = 60 / (60 + 80 * on);
+    const thump = (at: number, level: number): void => {
+      const osc = ctx.createOscillator();
+      const g = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(72, now + at);
+      osc.frequency.exponentialRampToValueAtTime(38, now + at + 0.16);
+      g.gain.setValueAtTime(0.0001, now + at);
+      g.gain.exponentialRampToValueAtTime(level, now + at + 0.012);
+      g.gain.exponentialRampToValueAtTime(0.0001, now + at + 0.18);
+      osc.connect(g);
+      g.connect(this.sfx!);
+      osc.start(now + at);
+      osc.stop(now + at + 0.2);
+    };
+    const loud = 0.25 + 0.45 * on;
+    thump(0, loud);
+    thump(0.17, loud * 0.6);
+  }
+
   updateMusic(mix: MusicMix, enabled: boolean, delta: number): void {
     const ctx = this.ctx;
     const music = this.music;
@@ -172,6 +353,10 @@ export class Haptics {
     paid: [12, 60, 20],
     explosion: [70, 40, 50, 40, 30],
     tap: [12],
+    critical: [16, 30, 24],
+    bossTakedown: [55, 45, 70],
+    reelTick: [8],
+    reelStop: [30, 50, 60],
   };
   private readonly supported = typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function';
 

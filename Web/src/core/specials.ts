@@ -208,13 +208,16 @@ export function updateTransporters(w: World, now: number): void {
       if (candidates.length === 0) return;
       const arm = w.transporterRng.pick(candidates);
       w.transporter = { kind: 'warning', arm, until: now + c.transporterWarning };
-      w.events.push({ type: 'transporterWarning', arm, time: now });
+      w.jackpotDue = c.jackpotChance > 0 && w.luckRng.unit() < c.jackpotChance;
+      w.events.push({ type: 'transporterWarning', arm, time: now, jackpot: w.jackpotDue });
       return;
     }
     case 'warning': {
       if (now < t.until || armOccupied(w, t.arm)) return;
       const truck = spawnSpecial(w, t.arm, 'transporter');
       w.transporter = { kind: 'arriving', vehicle: truck.id };
+      w.jackpotVehicle = w.jackpotDue ? truck.id : null;
+      w.jackpotDue = false;
       return;
     }
     case 'arriving': {
@@ -263,14 +266,18 @@ function scoreTransporter(w: World, now: number): void {
   const c = w.config;
   if (!w.isScoring) return;
   const escaped = w.transporter.kind === 'leaving';
-  const money = escaped ? c.transporterPay : c.transporterSeized;
+  const vehicle = transporterVehicle(w);
+  // A Jackpot pays several times over, but only when it got through.
+  const jackpot = escaped && vehicle !== null && vehicle === w.jackpotVehicle;
+  const money = escaped ? c.transporterPay * (jackpot ? Math.max(1, c.jackpotFactor) : 1) : c.transporterSeized;
   const amount = Math.round(money * (w.isRushHourScoring ? c.rushHourScoreFactor : 1));
   w.score.money += amount;
   if (escaped) {
     w.score.transporters++;
+    if (jackpot) w.score.jackpots++;
     w.setChain(w.score.chain + 1, now);
   }
-  w.events.push({ type: 'transporterPaid', vehicle: transporterVehicle(w), amount, time: now });
+  w.events.push({ type: 'transporterPaid', vehicle, amount, time: now, jackpot });
   const doubleRun = escaped && c.doubleRunChance > 0 && w.transporterRng.unit() < c.doubleRunChance;
   const pause = doubleRun ? c.doubleRunDelay : c.transporterInterval;
   w.transporter = { kind: 'idle', next: now + w.transporterRng.range(pause.lo, pause.hi) };

@@ -4,9 +4,12 @@ import { type SaveGame, type GameMode, Careers, newSave } from '../core/career';
 import type { GameEvent, ShiftResult } from '../core/events';
 import type { Upgrade } from '../core/levels';
 import { type ChestKind, ALBUM_REWARD, cosmetic, rarityRank } from '../core/loot';
-import type { StoreProduct, AdReward } from '../core/store';
+import { Casino } from '../core/casino';
 import { dailySeed, dailyEvent, dayNumber } from '../core/daily';
 import { weekNumber, weeklyTrial } from '../core/weekly';
+import { Goals } from '../core/goals';
+import { ChestReel } from './chestReel';
+import { Scoring } from '../core/scoring';
 import { type Vec2, v, add } from '../core/vec2';
 import { loadSave, writeSave } from '../storage/save';
 import { RenderList, R, Ease, toScreen, rect, text, Metrics, type Camera } from './render';
@@ -26,6 +29,7 @@ import { type Screen, type Tab, type SwipeMode, SWIPE_MODES, type ScreenAction, 
 import { CameraRig, perspectiveOf, addRecede } from './perspective';
 import { TransitionTracker, ModePan } from './transitions';
 import { ShopPage, ShopState, shelfOf, type ShopTarget } from './shop';
+import { CasinoPage, type CasinoTarget, type CasinoCue } from './casino';
 import { ProgressPage, ProgressState } from './progress';
 import { MuseumPage, type MuseumTarget } from './museum';
 import { sightings, museumEntry, shelfEntries, museumId } from '../core/museum';
@@ -83,6 +87,8 @@ export class GameSession {
   static readonly noticeDuration = 3.5;
   static readonly restartLock = 0.5;
   static readonly lossPullBack = 0.05;
+  /** At the top multiplier the camera leans in by this much. */
+  static readonly topTierLean = 0.03;
   static readonly flowFade = 0.6;
   static readonly doubleTapWindow = 0.4;
 
@@ -106,6 +112,10 @@ export class GameSession {
   private resultAge = 0;
   private moneyLanded = false;
   private sinceTakedown = Infinity;
+  /** A hit-stop: the world holds for a blink on a Critical Merge and on reaching the top multiplier. */
+  private sinceHitStop = Infinity;
+  /** 0 → 1 while the combo is at its top multiplier: the camera leans in a little. */
+  private topTier = 0;
   private lamps = new VehicleLamps();
   private sinceFatalCrash = Infinity;
   private sinceLoss = Infinity;
@@ -164,6 +174,8 @@ export class GameSession {
   private raceDelta: number | null = null;
   /** The mix the music should play; `main.ts` fades its stems to it. */
   musicMix: MusicMix = Music.silent;
+  /** How tense the casino is right now, 0…1: the shell turns it into a riser and a heartbeat. */
+  tension = 0;
   /** The detail sheet over a page: open after a card was tapped (`ui/detailSheet.ts`). */
   detailOpen = false;
   /** How much of the screen the open sheet covers (points); the shell reports it. */
@@ -188,6 +200,7 @@ export class GameSession {
     if (this.tutorial) this.save.mode = 'shift';
     this.prepareShift(false);
     this.collectLoginIncome();
+    this.resumeCasino();
   }
 
   private nextSeed(): number {
@@ -229,7 +242,12 @@ export class GameSession {
 
   /** Simulation speed with the short slow motions of a takedown and of the lost shift. */
   get timeScale(): number {
-    return Math.min(this.takedownSlowMotion, this.fatalSlowMotion);
+    return Math.min(this.takedownSlowMotion, this.fatalSlowMotion, this.hitStop);
+  }
+
+  private get hitStop(): number {
+    if (this.reduceMotion) return 1;
+    return this.sinceHitStop < 0.06 ? 0.08 : 1;
   }
 
   private get fatalSlowMotion(): number {
@@ -372,17 +390,21 @@ export class GameSession {
         this.buy(action.upgrade);
         break;
       case 'openChest': {
-        const opening = Careers.openChest(career, action.index, save.shiftsPlayed * 7919 + this.popupSerial, this.today);
+        const seed = save.shiftsPlayed * 7919 + this.popupSerial;
+        const opening = Careers.openChest(career, action.index, seed, this.today);
         if (!opening) return;
         const albums = this.completeAlbums();
         this.persist();
         if (albums.length > 0) this.showNotice(albums.join('  ·  '));
         this.shopPage.shelf = shelfOf(opening.item);
         this.shopPage.selectedItem = opening.item.id;
-        this.shopPage.opening = { opening, age: this.reduceMotion ? ShopPage.burstTime : 0 };
+        // Reduced motion: no build-up, no reel, the prize at once.
+        const reel = ChestReel.make(opening.chest, opening.item, (seed ^ Math.imul(career.chestsOpened, 0x9e3779b1)) >>> 0, this.config.chestTeaserChance);
+        this.shopPage.opening = { opening, reel, age: this.reduceMotion ? ShopPage.stages(opening, reel).reveal : 0 };
         const rare = rarityRank(opening.item.rarity) >= 2;
         if (this.reduceMotion) this.play([rare ? 'chestBurstRare' : 'chestBurst'], ['chest']);
-        else this.play(['chestCharge'], ['wanted']);
+        // Something big inside: a sub-bass charges up under the chest until it bursts.
+        else this.play(rare ? ['chestCharge', 'chargeUp'] : ['chestCharge'], ['wanted']);
         break;
       }
       case 'buyChest':
@@ -397,20 +419,11 @@ export class GameSession {
         this.play(['purchase'], ['comboUp']);
         break;
       case 'watchAd':
-        this.showAd('chest');
+        this.showAd();
         break;
-      case 'watchCashAd':
-        this.showAd('cash');
-        break;
-      case 'purchase':
-        if (!Careers.canBuy(career, action.product) || this.shopPage.purchase) return;
-        this.tick();
-        // No store yet: a placeholder purchase that charges nothing.
-        this.shopPage.purchase = { product: action.product, age: 0 };
-        break;
-      case 'restorePurchases':
-        this.tick();
-        this.showNotice(S.store.restored(0));
+      case 'showCasino':
+        this.perform({ k: 'showShop', section: 2 });
+        if (this.isPage('shop')) this.shopPage.casino.selectGame(action.game);
         break;
       case 'startTrial':
         this.startTrial(action.id);
@@ -484,7 +497,9 @@ export class GameSession {
   private shiftConfig(seed: number): Config {
     // The Daily Shift pins its city event and is never a Legendary Shift.
     const daily = this.dailySelected;
-    return Careers.shiftConfig(this.save.career, this.save.mode, this.config, seed, daily ? dailyEvent(this.today) : undefined, daily ? null : undefined);
+    const cfg = Careers.shiftConfig(this.save.career, this.save.mode, this.config, seed, daily ? dailyEvent(this.today) : undefined, daily ? null : undefined);
+    // A living Daily streak pays more on every career shift (Mayhem pays in flames).
+    return this.save.mode !== 'mayhem' && Goals.streakBonus(this.save.career, this.today, this.config) ? Goals.forStreak(cfg) : cfg;
   }
 
   private specialConfig(run: SpecialRun): Config {
@@ -741,40 +756,299 @@ export class GameSession {
     return showsTabBar(this.screen) ? this.lastInset : 0;
   }
 
-  private showAd(reward: AdReward): void {
-    const career = this.save.career;
-    if (Careers.adsLeft(career, reward, this.today, this.config) <= 0 || this.shopPage.ad !== null) {
+  private showAd(): void {
+    if (Careers.adChestsLeft(this.save.career, this.today, this.config) <= 0 || this.shopPage.ad !== null) {
       this.play(['denied'], []);
-      this.showNotice(reward === 'cash' ? S.store.noCashAdsLeft : S.shop.noAdsLeft);
+      this.showNotice(S.shop.noAdsLeft);
       return;
     }
-    if (Careers.skipsAds(career)) this.adWatched(reward);
-    else {
-      this.shopPage.ad = 0;
-      this.shopPage.adReward = reward;
-    }
+    this.shopPage.ad = 0;
   }
 
-  private adWatched(reward: AdReward): void {
-    const career = this.save.career;
-    const cash = Careers.rewardAd(career, reward, this.today, this.config);
-    if (cash === null) return;
+  private adWatched(): void {
+    if (!Careers.rewardAd(this.save.career, this.today, this.config)) return;
     this.persist();
     this.shopPage.ad = null;
     this.play(['purchase'], ['paid']);
-    if (reward === 'chest') {
-      this.shopPage.selectedChest = 'standard';
-      this.showNotice(Careers.skipsAds(career) ? S.store.chestNoAd : S.shop.adReward);
-    } else this.showNotice(Careers.skipsAds(career) ? S.store.cashNoAd(Fmt.number(cash)) : S.store.cashAdReward(Fmt.number(cash)));
+    this.shopPage.selectedChest = 'standard';
+    this.showNotice(S.shop.adReward);
   }
 
-  private purchased(product: StoreProduct): void {
-    this.shopPage.purchase = null;
-    if (!Careers.applyPurchase(this.save.career, product, this.config)) return;
+  // MARK: Casino (core/casino.ts, present/casino.ts)
+
+  private tapCasino(t: CasinoTarget): void {
+    const s = this.shopPage.casino;
+    const career = this.save.career;
+    if (t.k !== 'skip' && t.k !== 'cashOut' && !this.reduceMotion) s.pressed = { t, age: 0 };
+    switch (t.k) {
+      case 'game':
+        if (s.game === t.game || s.busy) return;
+        this.tick();
+        this.collectCasino();
+        s.selectGame(t.game);
+        break;
+      case 'odds':
+        this.tick();
+        if (this.detailOpen) this.closeDetail();
+        else this.detailOpen = true;
+        break;
+      case 'stake':
+        if (s.busy) return;
+        this.tick();
+        s.stake = t.index;
+        break;
+      case 'auto':
+        if (s.busy) return;
+        this.tick();
+        s.auto = t.index;
+        break;
+      case 'play':
+        this.casinoPlay();
+        break;
+      case 'cashOut':
+        this.casinoCashOut(0);
+        break;
+      case 'double':
+        this.casinoFlip();
+        break;
+      case 'collect':
+        this.tick();
+        this.collectCasino();
+        break;
+      case 'skip':
+        s.skip();
+        break;
+      case 'slot':
+        this.tick();
+        this.collectCasino();
+        s.picker = t.slot < 5 ? 'stake' : 'target';
+        s.page = 0;
+        break;
+      case 'pick':
+        if (s.picker === 'stake') {
+          if (s.staked.includes(t.id)) s.staked = s.staked.filter((x) => x !== t.id);
+          else if (s.staked.length >= this.config.upgradeMaxStake) {
+            this.play(['denied'], []);
+            return;
+          } else s.staked = [...s.staked, t.id];
+          s.tidy(career);
+          this.tick();
+        } else {
+          s.target = t.id;
+          s.picker = null;
+          this.tick();
+        }
+        break;
+      case 'page':
+        this.tick();
+        s.page = Math.max(0, s.page + t.step);
+        break;
+      case 'done':
+        this.tick();
+        s.picker = null;
+        break;
+    }
+  }
+
+  /** Space: cash out on a drive, skip a reveal, otherwise play again with the same stake. */
+  private casinoKey(ago: number): void {
+    const s = this.shopPage.casino;
+    if (s.driving) this.casinoCashOut(ago);
+    else if (s.busy) s.skip();
+    // A key pressed a moment too late for the cash-out must not start the next round.
+    else if (!s.picker && s.sinceEnd >= 0.7) this.casinoPlay();
+  }
+
+  /** A new round with the stake chosen: the save is written before anything shows. */
+  private casinoPlay(): void {
+    const s = this.shopPage.casino;
+    const career = this.save.career;
+    if (s.busy || s.picker) return;
+    this.collectCasino();
+    if (s.game === 'upgrade') {
+      if (s.staked.length === 0 || !s.target) {
+        this.tick();
+        s.picker = s.staked.length === 0 ? 'stake' : 'target';
+        s.page = 0;
+        return;
+      }
+      const roll = Casino.upgrade(career, s.staked, s.target, this.today, this.config);
+      if (!roll) {
+        this.play(['denied'], []);
+        return;
+      }
+      this.persist();
+      s.staked = [];
+      s.target = null;
+      s.run = { k: 'upgrade', roll, age: 0 };
+      if (this.reduceMotion) s.skip();
+      this.play(['swoosh'], ['tap']);
+      return;
+    }
+    const stake = CasinoPage.stakeOf(career, s);
+    if (s.game === 'crash') {
+      const point = Casino.startCrash(career, stake, this.today, this.config);
+      if (point === null) return this.casinoDenied(stake);
+      this.persist();
+      s.run = { k: 'crash', stake, point, end: Casino.endOf(point, this.config.crashAutoTargets[s.auto] ?? 0), age: 0, out: null, crash: null };
+      this.play(['go'], ['tap']);
+      return;
+    }
+    const from: [number, number, number] = [...s.reels];
+    const spin = Casino.spin(career, stake, this.today, this.config);
+    if (!spin) return this.casinoDenied(stake);
     this.persist();
-    this.play(['purchase'], ['paid']);
-    this.showNotice(S.store.bought(product));
-    if (product === 'cashBoost') this.refreshWaitingShift();
+    s.reels = spin.stops;
+    s.run = { k: 'slots', spin, from, anticipate: spin.line[0] === spin.line[1], age: 0 };
+    if (this.reduceMotion) s.skip();
+    this.play(['swoosh'], ['tap']);
+  }
+
+  private casinoDenied(stake: number): void {
+    this.play(['denied'], []);
+    this.showNotice(S.notice.notEnoughMoney(Fmt.number(stake)));
+  }
+
+  /** Cashes out at the multiplier of the moment the tap came (`ago` seconds back). */
+  private casinoCashOut(ago: number): void {
+    const run = this.shopPage.casino.run;
+    if (!run || run.k !== 'crash' || !this.shopPage.casino.driving) return;
+    const at = Math.max(0, run.age - ago);
+    if (at >= Casino.timeOf(run.end.at, this.config)) return;
+    const m = Casino.multiplierAt(at, this.config);
+    if (m <= 1) return;
+    this.settleDrive(m);
+  }
+
+  /** The drive ends at `m`: paid if it had not crashed yet there; null is the crash. */
+  private settleDrive(m: number | null): void {
+    const run = this.shopPage.casino.run;
+    if (!run || run.k !== 'crash') return;
+    const win = m === null ? Casino.crashed(this.save.career, this.today, this.config) : Casino.cashOut(this.save.career, m, this.today, this.config);
+    this.persist();
+    if (win > 0 && m !== null) {
+      const clutch = CasinoPage.clutchOf(run.point, m);
+      run.out = { m, win, age: 0, clutch };
+      this.play(['paid'], ['paid']);
+      if (clutch !== null) this.play(['perfect'], ['perfect']);
+      if (m >= 5) this.play([m >= 10 ? 'chestBurstRare' : 'chestBurst'], []);
+    } else {
+      run.crash = 0;
+      this.play(['explosion', 'crashHeavy'], ['explosion']);
+    }
+  }
+
+  private casinoFlip(): void {
+    const s = this.shopPage.casino;
+    const pending = this.save.career.casinoPending;
+    if (s.busy || !pending || pending.k !== 'win') return;
+    const items = pending.items.length > 0;
+    const flip = Casino.flip(this.save.career, this.today, this.config);
+    if (!flip) {
+      this.play(['denied'], []);
+      return;
+    }
+    this.persist();
+    s.run = { k: 'flip', flip, items, age: 0 };
+    if (this.reduceMotion) s.skip();
+    this.play(['chestCharge'], ['tap']);
+  }
+
+  private casinoCue(cue: CasinoCue): void {
+    const run = this.shopPage.casino.run;
+    if (!run) return;
+    switch (cue.k) {
+      case 'tick':
+        // The drive ticks at every tenth more, a semitone higher each time: the tension is heard.
+        if (run.k === 'crash') this.playPitched('uiTick', Math.pow(2, Math.min(cue.step, 24) / 12));
+        else this.playPitched('uiTick', 1 + 0.05 * (cue.step % 3));
+        break;
+      case 'reel':
+        // Klack-wumm: the stop, and a low thud under it.
+        this.playPitched('toll', [1, 1.12, 1.26][cue.reel]);
+        this.playPitched('build', 0.7);
+        this.play([], ['merge']);
+        break;
+      case 'creep':
+        this.playPitched('uiTick', 0.85 + 0.08 * cue.step);
+        this.play([], ['tap']);
+        break;
+      case 'peg':
+        this.playPitched('uiTick', cue.slow ? 1.35 : 1.15);
+        if (cue.slow) this.play([], ['tap']);
+        break;
+      case 'ding':
+        this.playPitched('toll', Math.min(2.2, 1.3 + 0.045 * cue.step));
+        break;
+      case 'clutchBoom':
+        this.play(['explosion'], ['explosion']);
+        break;
+      case 'crashDue':
+        if (run.k === 'crash') this.settleDrive(run.end.cashOut ? run.end.at : null);
+        break;
+      case 'result':
+        if (run.k === 'slots') {
+          if (run.spin.win > 0) this.play([run.spin.pay >= 40 ? 'chestBurstRare' : 'chestBurst'], ['chest']);
+        } else if (run.k === 'upgrade') {
+          if (run.roll.won) {
+            this.play(['chestBurstRare'], ['chest']);
+            this.announceAlbums();
+          } else {
+            this.play(['shiftFailed'], ['crash']);
+            this.showNotice(S.casino.skinsLost(run.roll.staked.length));
+          }
+        } else if (run.k === 'flip') {
+          if (run.flip.won) {
+            this.play(['chestBurst'], ['chest']);
+            if (run.items) this.announceAlbums();
+          } else this.play(['shiftFailed'], ['crash']);
+        }
+        break;
+    }
+  }
+
+  private announceAlbums(): void {
+    const albums = this.completeAlbums();
+    if (albums.length === 0) return;
+    this.persist();
+    this.showNotice(albums.join('  ·  '));
+  }
+
+  /** The win is kept; the offer to double goes. */
+  private collectCasino(): void {
+    if (this.save.career.casinoPending?.k !== 'win') return;
+    Casino.collect(this.save.career);
+    this.persist();
+  }
+
+  /** Leaving the casino: a drive cashes out where it stands, an open win is kept. */
+  private leaveCasino(): void {
+    const s = this.shopPage.casino;
+    const run = s.run;
+    if (run?.k === 'crash' && s.driving) {
+      const due = run.age >= Casino.timeOf(run.end.at, this.config);
+      const m = due ? (run.end.cashOut ? run.end.at : null) : Casino.multiplierAt(run.age, this.config);
+      if (m !== null && m <= 1) Casino.resume(this.save.career, this.today);
+      else {
+        const win = m === null ? Casino.crashed(this.save.career, this.today, this.config) : Casino.cashOut(this.save.career, m, this.today, this.config);
+        if (win > 0) this.showNotice(S.casino.cashedOnLeave(moneyText(Fmt.number(win))));
+      }
+      s.run = null;
+      this.persist();
+    }
+    this.collectCasino();
+  }
+
+  /** A round open when the page closed: a drive pays its stake back, a win is kept. */
+  private resumeCasino(): void {
+    if (!this.save.career.casinoPending) return;
+    const back = Casino.resume(this.save.career, this.today);
+    this.persist();
+    if (back) this.showNotice(S.casino.refunded(moneyText(Fmt.number(back.refunded))));
+  }
+
+  private playPitched(sound: SoundID, pitch: number): void {
+    if (this.output && this.save.settings.sound) this.output.sound(sound, pitch, 0);
   }
 
   /** The shelf on screen is being left: what was new on it has been seen. */
@@ -800,6 +1074,7 @@ export class GameSession {
           this.closeDetail();
         }
         if (target.section !== 1) this.leaveShelf();
+        if (target.section !== 2) this.leaveCasino();
         s.select(target.section);
         break;
       case 'shelf':
@@ -840,26 +1115,21 @@ export class GameSession {
       case 'wear':
         this.perform({ k: 'wear', id: target.id });
         break;
-      case 'offer':
-        if (s.selectOffer(target.offer) && this.detailOpen) {
-          if (target.offer.k === 'product') this.perform({ k: 'purchase', product: target.offer.product });
-          else this.perform({ k: 'watchCashAd' });
-        } else this.tick();
-        this.detailOpen = true;
+      case 'casino':
+        this.tapCasino(target.t);
         break;
-      case 'purchase':
-        this.perform({ k: 'purchase', product: target.product });
+      case 'dismiss': {
+        // A tap moves the opening on a step (open the chest, stop the reel, show the prize);
+        // the prize itself stays at least `closeAfter` before a tap closes it.
+        const o = s.opening;
+        if (!o) break;
+        const stage = ShopPage.stages(o.opening, o.reel);
+        if (o.age < stage.burst) o.age = stage.burst - 0.001;
+        else if (o.age < stage.landed) o.age = stage.landed - 0.001;
+        else if (o.age < stage.reveal) o.age = stage.reveal - 0.001;
+        else if (o.age - stage.reveal >= ShopPage.closeAfter) s.opening = null;
         break;
-      case 'watchCashAd':
-        this.perform({ k: 'watchCashAd' });
-        break;
-      case 'restore':
-        this.perform({ k: 'restorePurchases' });
-        break;
-      case 'dismiss':
-        if (s.opening && s.opening.age < ShopPage.burstTime) s.opening.age = ShopPage.burstTime - 0.001;
-        else s.opening = null;
-        break;
+      }
     }
   }
 
@@ -924,6 +1194,10 @@ export class GameSession {
       }
     }
     this.sinceTakedown += realDelta;
+    this.sinceHitStop += realDelta;
+    const tiers = Math.min(this.world.config.comboThresholds.length, this.world.config.comboMultipliers.length);
+    const atTop = this.screen.k === 'playing' && tiers > 0 && Scoring.tier(this.world.score.combo, this.world.config) >= tiers ? 1 : 0;
+    this.topTier += (atTop - this.topTier) * Math.min(1, realDelta / 0.6);
     this.sinceFatalCrash += realDelta;
     this.sinceLoss += realDelta;
     let lossShown = false;
@@ -991,14 +1265,14 @@ export class GameSession {
       const before = this.shopPage.opening?.age ?? null;
       this.shopPage.advance(realDelta);
       const after = this.shopPage.opening?.age ?? null;
-      if (before !== null && after !== null && before < ShopPage.burstTime && after >= ShopPage.burstTime) {
-        const rare = rarityRank(this.shopPage.opening!.opening.item.rarity) >= 2;
-        this.play([rare ? 'chestBurstRare' : 'chestBurst'], ['chest']);
-      }
-      if (this.shopPage.ad !== null && this.shopPage.ad >= ShopPage.adDuration) this.adWatched(this.shopPage.adReward);
-      if (this.shopPage.purchase && this.shopPage.purchase.age >= ShopPage.purchaseDuration) this.purchased(this.shopPage.purchase.product);
+      const opening = this.shopPage.opening;
+      if (opening && before !== null && after !== null) this.reelCues(opening, before, after);
+      if (this.shopPage.ad !== null && this.shopPage.ad >= ShopPage.adDuration) this.adWatched();
+      for (const cue of this.shopPage.casino.advance(realDelta)) this.casinoCue(cue);
+      this.tension = this.shopPage.section === 2 ? this.shopPage.casino.tension : 0;
     } else {
-      if (this.shopPage.purchase) this.purchased(this.shopPage.purchase.product);
+      this.leaveCasino();
+      this.tension = 0;
       this.shopPage = new ShopState();
     }
     if (this.isPage('progress')) this.progressPage.advance(realDelta);
@@ -1083,6 +1357,9 @@ export class GameSession {
               this.startPlaying();
               this.tapWorld(a.ago, simDelta);
             }
+            break;
+          case 'page':
+            if (this.isPage('shop') && this.shopPage.section === 2) this.casinoKey(a.ago ?? 0);
             break;
           default:
             break;
@@ -1327,10 +1604,10 @@ export class GameSession {
         return this.upgradePage.selected ? Details.upgrade(this.upgradePage.selected, career, this.config) : null;
       case 'shop': {
         const s = this.shopPage;
-        if (s.opening || s.ad !== null || s.purchase) return null;
+        if (s.opening || s.ad !== null) return null;
         if (s.section === 0) return Details.chest(s.selectedChest, career, this.config, this.today);
         if (s.section === 1) return s.selectedItem ? Details.item(s.selectedItem, career) : null;
-        return Details.offer(s.selectedOffer, career, this.config, this.today);
+        return Details.casino(s.casino.game, career, this.config);
       }
       case 'streetBuilder': {
         const b = this.builderPage;
@@ -1370,7 +1647,8 @@ export class GameSession {
       const column = TopBar.column(point, this.lastViewport.x);
       if (!column) return null;
       const showsCars = this.screen.k === 'ready' || ResultBanner.settled(this.resultAge) >= 0.5;
-      if (column === 'left') return { k: 'perform', action: { k: 'showShop', section: 2 } };
+      // The money leads to the chests it buys, never straight into the casino.
+      if (column === 'left') return { k: 'perform', action: { k: 'showShop', section: 0 } };
       if (column === 'center') return { k: 'perform', action: showsCars ? { k: 'showShop', section: 1 } : { k: 'showProgress', section: 0 } };
       return { k: 'perform', action: { k: 'showProgress', section: 0 } };
     }
@@ -1406,7 +1684,11 @@ export class GameSession {
       this.tutorial?.react(e);
       switch (e.type) {
         case 'merged':
-          if (e.rating !== 'clean') this.addPopup({ k: e.rating } as PopupKind, e.position);
+          if (e.critical) {
+            this.addPopup({ k: 'critical', n: e.points }, e.position);
+            this.rim.signal('wave', 'coin');
+            this.sinceHitStop = 0;
+          } else if (e.rating !== 'clean') this.addPopup({ k: e.rating } as PopupKind, e.position);
           if (TyreMarks.leavesMark(e.rating)) this.tyreMarks.add();
           break;
         case 'crash':
@@ -1424,6 +1706,9 @@ export class GameSession {
           if (e.isTierUp) {
             this.sinceComboTier = 0;
             this.rim.signal('wave', 'accent');
+            // The top multiplier lands with a blink of stillness.
+            const c = world.config;
+            if (e.tier >= Math.min(c.comboThresholds.length, c.comboMultipliers.length)) this.sinceHitStop = 0;
           }
           break;
         case 'shiftEnded':
@@ -1484,10 +1769,16 @@ export class GameSession {
         case 'transporterLost':
           this.addPopup({ k: 'lost' }, e.point);
           break;
+        case 'transporterWarning':
+          if (e.jackpot) {
+            this.addPopup({ k: 'jackpot' }, world.layout.stopPose(e.arm).position);
+            this.rim.signal('sweep', 'coin');
+          }
+          break;
         case 'transporterPaid':
           if (e.amount > 0) {
-            this.addPopup({ k: 'paid', n: e.amount }, world.layout.stopPose(world.layout.player).position);
-            this.rim.signal('wave', 'vehicleCargo');
+            this.addPopup({ k: 'paid', n: e.amount, jackpot: e.jackpot }, world.layout.stopPose(world.layout.player).position);
+            this.rim.signal(e.jackpot ? 'sweep' : 'wave', e.jackpot ? 'coin' : 'vehicleCargo');
           }
           break;
         case 'modulePaid':
@@ -1554,6 +1845,41 @@ export class GameSession {
 
   private tick(): void {
     this.play(['uiTick'], []);
+  }
+
+  /**
+   * What a chest opening sounds and feels like between two frames: the whirr as the reel sets
+   * off, a tick for every card under the marker (deeper and heavier as it slows, a short
+   * vibration once it is slow enough to feel each one), a shimmer when an Epic or Legendary
+   * passes, a heavy double knock when it lands, and the burst when the prize comes.
+   */
+  private reelCues(o: NonNullable<ShopState['opening']>, before: number, after: number): void {
+    const stage = ShopPage.stages(o.opening, o.reel);
+    const passes = (at: number): boolean => before < at && after >= at;
+    const legendary = o.opening.item.rarity === 'legendary';
+    if (passes(stage.burst)) this.play(['swoosh', 'reelSpin'], ['comboUp']);
+    if (before >= stage.burst && before < stage.landed) {
+      const spun = after - stage.burst;
+      const card = ChestReel.passing(o.reel, spun);
+      if (card !== ChestReel.passing(o.reel, before - stage.burst)) {
+        const speed = ChestReel.speed(o.reel, spun);
+        // 0 (crawling) … 1 (spinning): slow ticks are low and loud, fast ones light and high.
+        const pace = Ease.clamp01(speed / 25);
+        this.playReel('reelTick', 0.55 + 0.75 * pace, speed < 18 ? ['reelTick'] : []);
+        const passing = o.reel.cards[card];
+        if (passing && rarityRank(passing.rarity) >= 2) this.playReel('shimmer', passing.rarity === 'legendary' ? 1.5 : 1, []);
+      }
+    }
+    if (passes(stage.landed)) this.play([legendary ? 'reelLandBig' : 'reelLand'], ['reelStop']);
+    if (passes(stage.reveal)) this.play([rarityRank(o.opening.item.rarity) >= 2 ? 'chestBurstRare' : 'chestBurst'], ['chest']);
+  }
+
+  /** A sound at a pitch of our own (the reel's ticks), with the usual settings for sound and haptics. */
+  private playReel(sound: SoundID, pitch: number, haptics: HapticID[]): void {
+    const out = this.output;
+    if (!out) return;
+    if (this.save.settings.sound) out.sound(sound, pitch, 0);
+    if (this.save.settings.haptics) for (const h of haptics) out.haptic(h, 0);
   }
 
   private play(sounds: SoundID[], haptics: HapticID[], origins: Map<SoundID, Vec2> | null = null): void {
@@ -1633,6 +1959,7 @@ export class GameSession {
     const pay = this.playingDaily && result.outcome === 'completed' ? Careers.completeDaily(career, this.today, this.config) : null;
     if (pay !== null) toasts.push(S.daily.dailyDone(Fmt.number(pay), career.dailyStreak));
     else if (!this.playingDaily && Careers.rollEventChest(career, result, this.world.config, result.seed)) toasts.push(S.daily.eventChestFound);
+    else if (Careers.rollLuckyDrop(career, result, this.world.config, result.seed)) toasts.push(S.daily.luckyDrop);
     this.dailySelected = false;
     if (result.outcome === 'completed') {
       const times = [...this.splits];
@@ -1647,8 +1974,21 @@ export class GameSession {
     const found = this.takeMuseumNotice();
     if (found) toasts.push(found);
     if (toasts.length > 0) this.showNotice(toasts.join('  ·  '));
-    this.pendingSummary = { result, level: this.playingLevel, isNewHighscore: isNew, previousHighscore: previous, mode: this.playingMode };
+    this.pendingSummary = { result, level: this.playingLevel, isNewHighscore: isNew, previousHighscore: previous, mode: this.playingMode, closeCall: this.closeCall(result, previous) };
     this.resultCountdown = this.resultDelayFor(result);
+  }
+
+  /**
+   * The line under a result: after a loss, how close it was (honestly: cars left, points to
+   * the best, a merge short of the next multiplier); after a win, what the money is close to.
+   */
+  private closeCall(result: ShiftResult, best: number): ShiftSummary['closeCall'] {
+    if (result.outcome !== 'completed') {
+      const miss = Goals.nearMiss(result, this.playingMode === 'shift' ? this.world.config.shiftCars : 0, this.playingLevel, best, this.world.config);
+      return miss ? { text: S.goals.nearMiss(miss), color: 'hazard' } : null;
+    }
+    const goal = Goals.money(this.save.career, this.config);
+    return goal ? { text: S.goals.money(Fmt.number(goal.short), goal.upgrade), color: 'accent' } : null;
   }
 
   private challengeRewardOf = (ch: Parameters<typeof S.daily.challenge>[0]): number => challengeRewardValue(ch);
@@ -1708,7 +2048,7 @@ export class GameSession {
     const camera = {
       ...cam,
       focus: v(cam.focus.x + shake.x + this.pan.pan, cam.focus.y + shake.y),
-      scale: cam.scale * (1 - GameSession.lossPullBack * this.lossPull) * (1 + this.explosions.punch),
+      scale: cam.scale * (1 - GameSession.lossPullBack * this.lossPull) * (1 + this.explosions.punch) * (1 + (rm ? 0 : GameSession.topTierLean * this.topTier)),
     };
     const career = this.save.career;
     const theme = MapTheme.from(career.mapSkin);
@@ -1838,8 +2178,17 @@ export class GameSession {
   private addReadyBanner(list: RenderList, prompt: string | null, drawsCard = true, opacity = 1): void {
     const career = this.save.career;
     const daily = this.dailySelected && !this.versusSelected
-      ? { event: this.world.config.cityEvent, streak: career.dailyStreak, next: Careers.nextStreakMilestone(career), splash: this.dailySplash }
+      ? {
+          event: this.world.config.cityEvent,
+          streak: Goals.streak(career, this.today),
+          next: Careers.nextStreakMilestone(career),
+          splash: this.dailySplash,
+          bonus: Goals.streakBonus(career, this.today, this.config) ? this.config.streakBonusPay : null,
+          endsIn: this.streakEndsIn,
+        }
       : null;
+    // The next goal in reach: only on a plain career shift, never over a challenge, trial or match.
+    const goal = !this.special && !this.versusSelected && this.playingMode === 'shift' && (this.tutorial?.isOver ?? true) ? Goals.next(career, this.today) : null;
     ReadyBanner.add(list, {
       level: this.playingLevel,
       cars: this.world.carsLeft ?? 0,
@@ -1857,11 +2206,21 @@ export class GameSession {
       reduceMotion: this.reduceMotion,
       drawsCard,
       opacity,
+      goal: goal ? S.goals.next(goal) : null,
     });
     if (this.modeBanner) {
       const top = TopBar.frame(list.camera.viewport.x).maxY + (daily ? 40 : 14);
       ModeBanner.add(list, this.modeBanner.mode, this.modeBanner.age, top, this.reduceMotion);
     }
+  }
+
+  /** Hours until midnight while yesterday's streak still waits for today's Daily Shift; else null. */
+  private get streakEndsIn(): number | null {
+    if (!Goals.streakAtRisk(this.save.career, this.today)) return null;
+    const now = new Date();
+    const midnight = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+    const hours = (midnight.getTime() - now.getTime()) / 3600000;
+    return hours <= this.config.streakWarningHours ? hours : null;
   }
 
   private addNotice(list: RenderList, textValue: string, age: number, bottomInset: number): void {

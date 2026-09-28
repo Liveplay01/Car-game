@@ -4,6 +4,7 @@ import { COSMETICS, CHEST_KINDS, type ChestKind, MAX_CAR_SKINS, cosmetic } from 
 import { ROAD_MODULES, type RoadModule, BOSS_KINDS, type BossKind, baseConfig } from '../core/config';
 import { RUN_IDS } from '../core/trials';
 import { MUSEUM_IDS, MUSEUM_SHELVES, type MuseumShelf, inferredSightings } from '../core/museum';
+import { type CasinoGame, type CasinoPending, type CasinoRound, CASINO_GAMES } from '../core/casino';
 
 const KEY = 'carGame.save.v2';
 const LEGACY_KEY = 'carGame.career.v1';
@@ -87,9 +88,6 @@ function readCareer(raw: unknown): Career {
     dailyPlayed: int(raw.dailyPlayed, int(raw.dailyDone, -1)),
     albumsDone: strings(raw.albumsDone),
     bestTimes,
-    purchases: strings(raw.purchases),
-    adCashCount: int(raw.adCashCount, 0, 0),
-    adCashDay: int(raw.adCashDay, -1),
     trialsDone: [...new Set(strings(raw.trialsDone).filter((id) => RUN_IDS.includes(id)))],
     bossTrophies: int(raw.bossTrophies, 0, 0),
     bossesBeaten,
@@ -100,7 +98,33 @@ function readCareer(raw: unknown): Career {
     museumSeen,
     museumNew: [...new Set(strings(raw.museumNew).filter((id) => museumSeen.includes(id)))],
     museumShelves: MUSEUM_SHELVES.length,
+    casinoSeed: int(raw.casinoSeed, fresh.casinoSeed, 0) >>> 0,
+    casinoRounds: int(raw.casinoRounds, 0, 0),
+    casinoPending: readPending(raw.casinoPending, collection),
+    casinoLog: Array.isArray(raw.casinoLog) ? raw.casinoLog.flatMap(readRound).slice(-baseConfig.casinoLogLength) : [],
+    casinoBestWin: int(raw.casinoBestWin, 0, 0),
+    casinoBestCrash: num(raw.casinoBestCrash, 0, 0),
+    casinoDay: int(raw.casinoDay, -1),
+    casinoNet: int(raw.casinoNet, 0),
   };
+}
+
+/** An open casino round; anything implausible is dropped (the round then never happened). */
+function readPending(raw: unknown, collection: string[]): CasinoPending | null {
+  if (!isObject(raw)) return null;
+  if (raw.k === 'crash') {
+    const stake = int(raw.stake, 0, 0);
+    return stake > 0 ? { k: 'crash', stake, seed: int(raw.seed, 0, 0) >>> 0 } : null;
+  }
+  if (raw.k !== 'win' || !CASINO_GAMES.includes(raw.game as CasinoGame)) return null;
+  return { k: 'win', game: raw.game as CasinoGame, money: int(raw.money, 0, 0), items: strings(raw.items).filter((id) => collection.includes(id)), flips: int(raw.flips, 0, 0) };
+}
+
+function readRound(raw: unknown): CasinoRound[] {
+  if (!isObject(raw) || !CASINO_GAMES.includes(raw.game as CasinoGame)) return [];
+  const round: CasinoRound = { game: raw.game as CasinoGame, stake: int(raw.stake, 0, 0), win: int(raw.win, 0, 0), x: num(raw.x, 0, 0), day: int(raw.day, -1) };
+  if (typeof raw.item === 'string' && cosmetic(raw.item)) round.item = raw.item;
+  return [round];
 }
 
 function readSave(raw: unknown): SaveGame {

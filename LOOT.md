@@ -21,8 +21,9 @@ Namen in `Strings.Shop.item`. Wird ein Item ergänzt, gehört es in alle und hie
 - **Odds sind immer sichtbar**, direkt neben der Truhe im Shop.
 - **Pity:** Spätestens die 10. Truhe in Folge ohne Epic ist mindestens Epic.
 - **Duplikate** werden zu Geld: Common 250 · Rare 600 · Epic 1.500 · Legendary 4.000.
-- **Echtgeld nur als Platzhalter** (26.09.2026, [MONETIZATION.md](MONETIZATION.md)): 3 Premium-Truhen
-  und ein Starter Pack im Store, vor dem Release rechtlich zu prüfen. Standard-Truhe **26.000**, Premium-Truhe **52.000** Ingame-Geld (seit 25.09.2026 alles Kaufbare +30 %)
+- **Kein Echtgeld.** Der Store ist entfernt (Leo, 28.09.2026). Geld und Truhen gibt es nur im
+  Spiel, solange das Casino existiert, ist keine Währung kaufbar ([MONETIZATION.md](MONETIZATION.md)).
+  Standard-Truhe **26.000**, Premium-Truhe **52.000** Ingame-Geld (seit 25.09.2026 alles Kaufbare +30 %)
   (`standardChestPrice`, `premiumChestPrice`).
 - **Werbung:** Eine Standard-Truhe gibt es auch für eine angesehene Werbung, bis zu
   **3 pro Tag** (`adChestsPerDay`). Im Testfenster läuft eine 3-Sekunden-Platzhalter-Werbung;
@@ -38,6 +39,48 @@ Namen in `Strings.Shop.item`. Wird ein Item ergänzt, gehört es in alle und hie
 | Event Chest | Jede geschaffte Daily Shift; 15 % Chance nach jeder geschafften Schicht mit City Event (`eventChestChance`). Enthält in der Hälfte der Fälle das Saison-Item, bis man es hat | 40 % | 35 % | 20 % | 5 % |
 
 Innerhalb einer Seltenheit ist jedes Item gleich wahrscheinlich.
+
+## Casino (Shop · Casino)
+
+Seit 28.09.2026 (Leo): Geld **und** Skins lassen sich verspielen. Nur Spielgeld, kein Echtgeld.
+Code: `Web/src/core/casino.ts` (Regeln), `Web/src/present/casino.ts` (Darstellung), Werte in
+`Web/src/core/config.ts` (Block „Casino“). Prüfung: `npm run sim:casino`.
+
+**Fair gebaut:**
+
+- Jedes Ergebnis kommt aus einem eigenen, gesäten Zufallsstrom pro Karriere (`casinoSeed`, `casinoRounds`).
+- Der Einsatz wird abgezogen und der Stand gespeichert, **bevor** etwas enthüllt wird. Neu laden würfelt nicht neu.
+- Eine abgebrochene Crash-Fahrt (Seite geschlossen) gibt den Einsatz zurück. Den Shop während
+  einer Fahrt verlassen kassiert zum aktuellen Multiplikator.
+- Chancen, Gewinntabelle und Rückzahlquote stehen im Sheet hinter „Odds“, die letzten Runden als Verlauf.
+- Beinahe-Gewinne passieren nur, wenn die Walzen sie wirklich liefern. Keine gezinkten Walzen,
+  keine „Hol’s dir zurück“-Texte, keine Timer. Jede Enthüllung ist per Tipp überspringbar.
+- Jeder Gewinn zahlt mindestens das Doppelte des Einsatzes (kein „Gewinn“, der eigentlich ein Verlust ist).
+- **Inszenierung ändert nie das Ergebnis** (28.09.2026): Crash heizt sich in Stufen auf (ab 2× Speed-Lines,
+  ab 5× Nitro und glühender Rand, ab 10× Danger Zone), dazu ein Motor-Riser und ein Herzschlag. Der Crash
+  knallt (Hitstop, Explosion, roter Blitz). Wer bis 0,35 s vor dem Crash aussteigt, bekommt „Clutch
+  Cash-out“, und nur dann wird der Crash-Punkt nach dem Ausstieg gezeigt. Bei den Slots kriecht Walze 3
+  nur dann Symbol für Symbol heran, wenn Walze 1 und 2 schon gleich sind; die Stopps stehen da längst
+  fest. Die Upgrade-Nadel kriecht immer zur **echten** Landestelle; liegt diese wirklich an einer Kante
+  der Gewinnzone (Abstand unter 3,5 %), dauert das Auslaufen länger. Eine Nadel, die immer knapp an der
+  Kante landet, gibt es nicht: Das wäre ein vorgetäuschter Beinahe-Gewinn.
+- „Today“ zeigt ehrlich den Saldo des Tages aus Crash und Slots.
+
+| Spiel | Regel | Rückzahlung |
+| --- | --- | --- |
+| **Crash** | Multiplikator e^(0,18·t); Crash-Punkt vorab gezogen, P(≥ m) = 0,96 / m, gedeckelt bei 100×; 4,95 % crashen sofort bei 1,00× | **96 %** für jedes Ziel |
+| **Slots** | 3 Walzen à 20 gleich wahrscheinliche Stopps (Streifen `slotStrip`) | **95,45 %** exakt, Gewinn in 1 von 4,7 Spins |
+| **Skin-Upgrade** | 1–5 Truhen-Skins (Car/Map) auf einen fehlenden, seltener als alle Einsätze; Chance = Einsatzwert / Zielwert × 0,95, höchstens 75 % | **95 %** (bis zur Obergrenze) |
+| **Doppelt oder nichts** | Nach jedem Gewinn, freiwillig: faire Münze, genau 50 %, höchstens 5× in Folge | 100 % |
+
+Slots-Gewinntabelle (×Einsatz): drei Boss 500 · Transporter 150 · Ambulance 100 · Sports car 40 ·
+Van 15 · Compact 10 · Car 6 · zwei Bosse irgendwo 10 · erste zwei Walzen gleich 2.
+
+Skin-Wert fürs Upgrade (`skinValue`): Common 1.000 · Rare 3.000 · Epic 9.000 · Legendary 30.000.
+Setzbar sind nur Car und Map Skins aus Truhen, keine Fahrzeugtypen (sie ändern den Verkehr),
+keine Serien-, Saison- oder Ehren-Items. Eingesetzte Skins sind in jedem Fall weg: getauscht
+gegen das Ziel oder verloren. Sie verschwinden aus Sammlung und Fahrbahn. Abgeschlossene
+Alben bleiben abgeschlossen, ihre Prämie gibt es nicht zweimal.
 
 ## Sammlung im Shop
 

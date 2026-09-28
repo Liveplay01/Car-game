@@ -27,6 +27,12 @@ the player earns. The juice is in the moment (Tight Fit, takedown, crash), not i
 Casino-style mobile games (flashing banners, fake urgency, coin showers on every screen),
 neon arcade clutter, cartoon UI chrome. Also: vehicle colours used as UI colours.
 
+The Casino in the Shop (since 28.09.2026) is the one exception to "no casino look", like the
+chest opening: its wins may be loud, but only inside it. It stays honest: odds and returns
+one tap away, a real history, near misses only when the draw gives them, every win at least
+double the stake, reveals that skip on a tap, no timers, no "win it back", nothing pointing
+the player into it from elsewhere, and play money only (no currency can be bought).
+
 ## Design Principles
 
 1. The scene is the product: UI floats over it only where needed and never covers the road.

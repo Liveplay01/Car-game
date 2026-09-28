@@ -199,6 +199,11 @@ export class World {
   tankerRng: Rng;
   militaryRng: Rng;
   ambulanceRng: Rng;
+  /** Critical Merges and Jackpot transporters: its own stream, so older seeds keep their traffic. */
+  luckRng: Rng;
+  /** The next transporter is a Jackpot (drawn with its warning), and the truck that is one. */
+  jackpotDue = false;
+  jackpotVehicle: number | null = null;
   nextVehicleId: number;
   spawnCooldown = 0;
   events: GameEvent[] = [];
@@ -220,6 +225,7 @@ export class World {
     this.tankerRng = substream(seed, 0x7a1e5c93);
     this.militaryRng = substream(seed, 0xe3b20c6d);
     this.ambulanceRng = substream(seed, 0xa3b01a4c);
+    this.luckRng = substream(seed, 0x1ac4c0de);
     this.ringSpeed = config.ringSpeed;
     this.targetDensity = config.freePlayDensity;
     this.nextVehicleId = firstVehicleId;
@@ -285,6 +291,8 @@ export class World {
     const m = this.military;
     if (m.kind === 'active') next.military = { kind: 'active', vehicle: m.vehicle, deadline: Math.max(0, m.deadline - this.time) };
     else if (m.kind === 'leaving') next.military = { kind: 'leaving', vehicle: m.vehicle };
+    // A Jackpot truck still driving off stays gilded.
+    next.jackpotVehicle = this.jackpotVehicle;
     next.tempoGlide = { from: this.ringSpeed, since: 0 };
     next.applyShiftCurves(0);
     next.queue.state = { kind: 'filling', elapsed: 0 };
@@ -871,7 +879,13 @@ export class World {
         shielded = true;
         this.score.money += this.config.shieldBonus;
       }
-      const [rating, points, combo] = this.scoreMerge(merge.minGap, behind, ahead);
+      const [rating, merged, combo] = this.scoreMerge(merge.minGap, behind, ahead);
+      const critical = this.rollCritical(rating);
+      const points = critical ? merged * Math.max(1, this.config.criticalFactor) : merged;
+      if (critical) {
+        this.score.points += points - merged;
+        this.score.criticals++;
+      }
       if (this.isVersus) this.noteVersusMerge(veh, rating, merge.minGap, now);
       this.setChain(Scoring.extendsChain(rating) ? this.score.chain + 1 : 0, now);
       noteMergeNearAmbulance(this, veh, s, now);
@@ -889,9 +903,21 @@ export class World {
         shielded,
         gapAhead: ahead,
         chain: this.score.chain,
+        critical,
       });
       if (this.breaksTrial(rating)) this.endShift('failed', now);
     }
+  }
+
+  /**
+   * A Perfect or a Near Miss is now and then a Critical Merge. Only a skilled merge can be one,
+   * and the draw comes from the seed: the same taps give the same criticals.
+   */
+  rollCritical(rating: MergeRating): boolean {
+    const c = this.config;
+    if (this.isVersus || c.mayhem || c.criticalChance <= 0) return false;
+    if (rating !== 'perfect' && rating !== 'nearMiss') return false;
+    return this.luckRng.unit() < c.criticalChance;
   }
 
   /** Whether this merge breaks the shift's trial rule (mastery trials). */
@@ -1508,6 +1534,8 @@ export class World {
       bossKind: this.config.convoy ? this.config.bossKind : null,
       legendary: this.config.legendary,
       ambulances: s.ambulances,
+      criticals: s.criticals,
+      jackpots: s.jackpots,
     };
   }
 
