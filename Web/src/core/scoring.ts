@@ -27,6 +27,8 @@ export class ScoreBoard {
   biggestChain = 0;
   /** The syndicate boss was taken down this shift (boss levels). */
   bossBusted = false;
+  /** Ambulances that got through with a clear road. */
+  ambulances = 0;
   lastCrashAt: number | null = null;
 
   get merges(): number {

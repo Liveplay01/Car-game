@@ -23,6 +23,24 @@ export const ROAD_MODULES: RoadModule[] = ['tollBooth', 'speedCamera', 'towDepot
 
 export type TrialRule = 'skilledOnly' | 'flawless';
 
+/**
+ * The syndicate's bosses, one after the other every `convoyEvery` levels (Leo, 28.09.2026):
+ * each asks for another timing, not just more of the same.
+ * - convoy: armoured escorts right behind the boss; the police car goes into the gap.
+ * - getaway: no escorts, but gone quickly; a police car has to be ready.
+ * - armoured: it shrugs off the first ram; a second police car finishes it.
+ * - phantom: a blackout, and the boss drives without lights.
+ */
+export type BossKind = 'convoy' | 'getaway' | 'armoured' | 'phantom';
+export const BOSS_KINDS: BossKind[] = ['convoy', 'getaway', 'armoured', 'phantom'];
+
+/**
+ * Legendary Shifts (Leo, 28.09.2026): now and then a career shift comes with one extra rule and
+ * pays a Premium Chest. Rare, announced on the waiting card, never on a boss level.
+ */
+export type LegendaryRule = 'gridlock' | 'dragnet' | 'heavyLoad' | 'darkStorm' | 'zeroTolerance';
+export const LEGENDARY_RULES: LegendaryRule[] = ['gridlock', 'dragnet', 'heavyLoad', 'darkStorm', 'zeroTolerance'];
+
 export const baseConfig = {
   // Roundabout
   armSlotCount: 16,
@@ -321,6 +339,51 @@ export const baseConfig = {
   convoyFirst: r(1.5, 3),
   heistRecoveryBase: 3000,
   heistRecoveryPerLevel: 200,
+  /** Which boss this level brings; `forLevel` sets it from the level. */
+  bossKind: 'convoy' as BossKind,
+  /** Police rams the boss shrugs off before one finishes it. */
+  bossArmour: 0,
+  /** An armoured boss is this heavy: a ram bounces off it. */
+  bossArmourMass: 6,
+  getawayTimeFactor: 0.7,
+  armouredTimeFactor: 1.8,
+  armouredEscorts: 1,
+  phantomEscorts: 1,
+  phantomTimeFactor: 1.6,
+  /** From the second round of bosses on: one more escort per round, at most `maxBossEscorts`… */
+  bossRoundEscorts: 1,
+  maxBossEscorts: 3,
+  /** …and a little less time per round. */
+  bossRoundTimeFactor: 0.9,
+
+  // Legendary Shifts (core/legendary.ts)
+  legendary: null as LegendaryRule | null,
+  legendaryLevel: 25,
+  legendaryChance: 0.06,
+  gridlockDensityBonus: 2,
+  dragnetSpeedup: 0.5,
+  dragnetTimeFactor: 0.85,
+  heavyLoadTruckChance: 0.45,
+  heavyLoadTankerShare: 0.5,
+
+  // Prestige (Leo, 28.09.2026): back to Level 1 with the traffic of a higher level; looks only
+  prestigeLevel: 50,
+  /** Each rank plays this many levels harder, at most `maxPrestigeHeadStart`. */
+  prestigeHeadStart: 10,
+  maxPrestigeHeadStart: 40,
+
+  // Ambulance (Leo, 28.09.2026): an emergency run once round the ring; keep the road ahead clear
+  ambulanceLevel: 8,
+  /** Chance per shift; 0 turns it off (Mayhem, multiplayer). */
+  ambulanceChance: 0.4,
+  /** Early in the shift: short shifts must still see it through. */
+  ambulanceFirst: r(2, 5),
+  ambulanceWarning: 2,
+  /** The stretch of ring ahead of the ambulance where no new car may join. */
+  ambulanceClearArc: 120,
+  ambulancePay: 300,
+  ambulanceLength: 30,
+  ambulanceMass: 1.6,
 
   // Mastery trials (core/trials.ts): an extra rule for this shift, broken ends it as 'failed'
   /** skilledOnly: every merge a Tight Fit, Near Miss or Perfect; flawless: no crash, no cut-off. */
@@ -343,6 +406,8 @@ export const baseConfig = {
   perfectRunPoints: 1500,
   perfectRunPayFactor: 0.25,
   dailyPay: 300,
+  /** The Weekly Elite pays this once a week, with a Premium Chest (core/weekly.ts). */
+  weeklyPay: 6000,
   eventChestChance: 0.15,
   tollIncomePerDay: 30,
   loginMaxDays: 3,

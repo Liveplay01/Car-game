@@ -1,6 +1,6 @@
 # Spiel.md – Car Game: Spielmechanik, Funktionen & Status
 
-Stand: 26.09.2026 · Übersicht über das ganze Spiel. Die Details stehen in [ROADMAP.md](ROADMAP.md) (Regeln und Messwerte je Meilenstein), [LOOT.md](LOOT.md) (Truhen, Skins), [FOUNDATION.md](FOUNDATION.md) (Basis, Architektur), [TESTING.md](TESTING.md) und in `Game/Sources/GameCore/Config.swift` (alle Zahlen). Weicht dieses Dokument vom Code ab, gilt der Code.
+Stand: 28.09.2026 · Übersicht über das ganze Spiel. Seit dem 27.09.2026 ist Car Game ein **Browserspiel** (`Web/`); die Swift-/iPhone-Schiene ist pausiert. Maßgeblich sind `Web/src/core/config.ts` (alle Zahlen) und [Web/README.md](Web/README.md) (Befehle, Aufbau, Deployment). Hintergrund und Herleitung stehen in [FOUNDATION.md](FOUNDATION.md), [ROADMAP.md](ROADMAP.md) (Messwerte je Meilenstein, Swift-Stand) und [LOOT.md](LOOT.md). Weicht dieses Dokument vom Code ab, gilt der Code.
 
 ---
 
@@ -11,44 +11,44 @@ Stand: 26.09.2026 · Übersicht über das ganze Spiel. Die Details stehen in [RO
 **Das Spielprinzip:** Der Spieler packt seine Autos in **Lücken zwischen Bot-Autos**. Im Ring sind deshalb immer mindestens 3–5 Bots (siehe 7).
 
 **Unsere Version:** Gleiche Grundmechanik, dazu aktive Sondertypen im Verkehr:
-- **Verbrecher-Pickups** (müssen aktiv per Polizeiauto gerammt werden)
+- **Verbrecher-Pickups** (müssen aktiv per Polizeiauto gerammt werden), alle 15 Level als **Syndikats-Konvoi** mit Boss
 - **Geldtransporter** (sollen unbeschadet entkommen, aber **nicht** von Polizei berührt werden)
-- **Lkw** (zahlen an Mautstellen)
-- dazu **Wetter** und **City Events**, die den Verkehr wirklich verändern
+- **Lkw** (zahlen an Mautstellen), **Tanklaster** und **Militär-Trucks** (explodieren)
+- dazu **Wetter**, **Nacht** und **City Events**, die den Verkehr oder die Sicht verändern
 
-**Meta:** Geld → Upgrades kaufen, Kreisverkehr im Street Builder ausbauen (Zufahrten, Module), Truhen mit Skins öffnen. Die Stadt wächst sichtbar mit.
+**Meta:** Geld → Upgrades kaufen, Kreisverkehr im Street Builder ausbauen (Zufahrten, Module), Truhen mit Skins öffnen, Trials und Quests abhaken. Die Stadt wächst sichtbar mit.
 
-**Zielgerät:** iPhone ab iOS 26, Hochformat, einhändig. Spielsprache nur Englisch, Projektdokumente auf Deutsch.
+**Plattform:** Browser auf Handy (Hochformat, einhändig) und Desktop, installierbar als PWA, offline spielbar nach dem ersten Besuch. Spielsprache nur Englisch, Projektdokumente auf Deutsch.
 
 ---
 
-## 2. Schicht, Level & Ablauf
+## 2. Spielmodi, Schicht & Level
+
+### Spielmodi (Wischen auf dem Wartebildschirm, `←` / `→`)
+
+| Modus | Kurz | Regeln |
+|---|---|---|
+| **Shift** | „Clear the level, move up“ | die Karriere: feste Autozahl pro Schicht, Level, Geld (siehe unten) |
+| **Unlimited** | „Endless · until you crash“ | spielt auf Level 3, ohne Autozahl, bis zum ersten Verlust. Nach der 20-s-Rampe alle 25 s +1 Auto Dichte (bis +8), Tempo +8 % pro Minute (bis 160 %). Lohn 20 pro geschicktem Auto, keine Crash-Kosten. Rekorde: Punkte und Autos |
+| **Mayhem** | „12 cars · aim for the tankers“ | Crashes sind das Ziel: 12 Autos auf Level 6, +3 Dichte, 1,1 s Nachladen zwischen den Autos, keine Polizei, keine Verbrecher, kein Lohn. 34 % Lkw, davon 60 % Tanklaster, bis zu 4 Militär-Trucks (erster nach 9–15 s, dann alle 6–10 s). Jedes neue Wrack gibt **Flammen**; ein Folge-Crash innerhalb von 1,5 s verlängert die Kette (Flammen = Kettenlänge, höchstens 10, Lkw ×2). Wracks treffen nur, solange sie noch fliegen. Die Schicht endet, wenn die letzte Kettenreaktion ausgebrannt ist. Rekorde: Flammen und längste Kette |
+| **Multiplayer** | „Up to 4 friends · last one standing“ | siehe 11 |
+
+Die Gefahrenstufe *Normal Duty / High Alert* wurde am 26.09.2026 **entfernt** und durch die Modi ersetzt.
+
+### Schicht & Level (Modus Shift)
 
 - **Keine Uhr.** Eine Schicht besteht aus einer festen Zahl Autos, die alle in den Verkehr müssen; danach ist sie geschafft.
 - **Level:** Jede geschaffte Schicht = Level +1, eine verlorene wird **auf demselben Level wiederholt** (neu ausgeloste Autozahl).
-- **Autos pro Schicht:** Level 1 ≈ 10 (8–12), +1,1 pro Level, je Versuch ±2, höchstens 30. High Alert ×1,15.
+- **Autos pro Schicht:** Level 1 ≈ 10 (8–12), +1,1 pro Level, je Versuch ±2, höchstens 30.
 - **Level 1 ist bewusst machbar** (weniger und langsamere Autos, größere KI-Lücken, längere Jagd, mehr Polizei); ab Level 5 (`hardLevel`) gelten die vollen Werte.
 - **Tempo:** ab Level 5 +1 % pro Level, bis +40 %. **Dichte:** ab Level 6 zusätzliche Autos (bis +6), KI fährt enger auf (bis 0,06 s), bleibt länger (Extrarunden, ab Level 12 mindestens zwei Ausfahrten).
 - **Rush Hour** in den letzten 4 Autos: Tempo auf 135 %, Dichte +2, Punkte ×2. Dichte und Tempo steigen zudem über die ersten 20 s: Wer auf die perfekte Lücke wartet, bekommt mehr Verkehr, keinen leichteren.
-- **Fließender Schichtwechsel, kein Ergebnis-Screen:** Das Ergebnis steht in derselben oberen Karte (gleiche Größe, gleicher Platz), der Ring schickt einen Lichtlauf herum. Nach 3,6 s Nachklang (`epilogue`) wird es von selbst zum Wartebildschirm der nächsten Schicht, deren Verkehr schon fährt; das Tempo gleitet zum neuen Start-Tempo, die Autos der nächsten Schicht rollen von hinten in die Warteschlange. Ein Tap startet jederzeit. Kein Freeze, kein Replay, keine Einblendung (Highlight/Replay wurde gestrichen).
+- **Fließender Schichtwechsel, kein Ergebnis-Screen:** Das Ergebnis steht in derselben oberen Karte, der Ring schickt einen Lichtlauf herum. Nach dem Nachklang wird es von selbst zum Wartebildschirm der nächsten Schicht, deren Verkehr schon fährt; das Tempo gleitet zum neuen Start-Tempo, die Autos der nächsten Schicht rollen von hinten in die Warteschlange. Ein Tap startet jederzeit. Kein Freeze, kein Replay, keine Einblendung.
+- **Kein Pause-Screen:** Wer den Browser-Tab verlässt, friert die Welt ein; beim Zurückkommen wird eingezählt.
 - **Kein Tap-Cooldown:** Das nächste Auto steht ≈ 0,3 s nach dem Tap an der Haltelinie; ein früher Tap wird gehalten. Eigene Autos bewerten sich nicht gegenseitig, schnelles Tippen gibt also keine geschenkten Tight Fits.
-- **Kein verschluckter Tap (26.09.2026):** Das nachrückende Auto fährt weich an und bremst weich an der Haltelinie (Bremslichter an). Kommt der Tap zu früh, leuchtet kurz die Lichthupe auf, das Auto bremst nicht mehr, pendelt sich ohne Wackler auf Ringtempo ein und rollt ohne Stocken durch die Linie in sein Einfädeln; die Autos dahinter rollen weiter statt schlagartig zu stehen. Ohne gehaltenen Tap ist das Auto im selben Moment bereit wie früher; mit gehaltenem Tap geht es, sobald es an der Linie ist und zum vorderen eigenen Auto mindestens 4 Einheiten Platz sind.
-- **Schichtlänge – entschieden: kurz lassen** (Leo, 26.09.2026). Gemessen je nach Level 8–75 s (Mensch-Bot: Level 10 ≈ 36 s, Level 20 ≈ 68 s, Level 30 ≈ 75 s). Kein Ziel mehr von ≈ 2 Minuten: kurze Schichten tragen das „Nur noch eine!“, lange ermüden den Daumen und machen einen späten Crash bitter.
-
-### Gefahrenstufe vor der Schicht (Push Your Luck)
-
-Auf dem Game-Tab wählbar, gilt bis zur nächsten Änderung:
-
-| | Normal Duty | High Alert |
-|---|---|---|
-| Autos | wie das Level | ×1,15 |
-| Verbrecher-Countdown | wie das Level | ×0,8 (nie unter 8 s) |
-| Verbrecher | gemäß Chance (Quiet Streets senkt sie) | in **jeder** Schicht |
-| Geld (Lohn, Transporter, Abschirm-Bonus) | ×1 | **×2** |
-
-Auf High Alert tragen beide Ränder der Ringfahrbahn feine rote Rennstreifen (blenden beim Umschalten weich ein und aus): „Jetzt zählt es“ steht auf der Straße, nicht in einer Anzeige.
-
-Mehr Tempo oder mehr Autos im Ring ließen hohe Level unspielbar statt riskanter werden (Mensch-Bot Level 35: 82 % → 17 %) – die jetzige Mischung kostet auf Level 10 ≈ 2, auf Level 35 ≈ 28 Prozentpunkte.
+- **Kein verschluckter Tap:** Das nachrückende Auto fährt weich an und bremst weich an der Haltelinie (Bremslichter an). Kommt der Tap zu früh, leuchtet kurz die Lichthupe auf, das Auto rollt ohne Stocken durch die Linie in sein Einfädeln, sobald zum vorderen eigenen Auto mindestens 4 Einheiten Platz sind.
+- **Taps mit Zeitstempel:** Gezählt wird der Moment von `pointerdown`, nicht der nächste Frame.
+- **Schichtlänge – entschieden: kurz lassen** (Leo, 26.09.2026). Je nach Level 8–75 s. Kurze Schichten tragen das „Nur noch eine!“.
 
 ---
 
@@ -59,13 +59,14 @@ Mehr Tempo oder mehr Autos im Ring ließen hohe Level unspielbar statt riskanter
 | **Verbrecher-Pickup entkommt** (Countdown abgelaufen) | **Hard Fail** – Schicht verloren (ab Level 20 zusätzlich 350 Verlust) |
 | **Normales Auto crasht** | **Hard Fail** (`maxStrikes = 1`; ab Level 20 kostet der Crash Geld) |
 | **Polizeiauto crasht** | Soft Fail: kostet 250 Punkte & Combo, **3 erlaubt** (`maxPoliceCrashes = 3`, Upgrade *Backup* +1 pro Stufe), der 4. = Hard Fail |
+| **Militär-Truck geht hoch** | Hard Fail („KABOOM“, dasselbe Level noch einmal); in Mayhem das Finale |
 | **Folgeunfälle im Verkehr** | Kosten standardmäßig **keine** Strikes (umschaltbar); wer in einen sichtbaren Unfall einfädelt, bleibt 1 s verantwortlich |
 
-**Verlorene Schicht ohne Game-Over-Screen (26.09.2026):** Der Crash, der die Schicht beendet, läuft kurz in Zeitlupe (0,2× für 0,45 s, dann weich zurück), die Kamera tritt 5 % zurück, der Inselrand flackert rot. Der Verkehr fährt weiter. Ab 0,5 s nach dem Crash startet ein Tap sofort den nächsten Versuch auf demselben Level, ohne auf das Ergebnis zu warten (der Tap wird gehalten, bis das erste Auto an der Linie ist). Wer nicht tippt, sieht wie bisher das Ergebnis in der oberen Karte. Reduce Motion: keine Zeitlupe, kein Zurücktreten. Zurückspulen gibt es bewusst nicht (kein Replay, der Ring hört nie auf).
+In Mayhem beendet kein Crash die Schicht, in Unlimited beendet ihn der erste Hard Fail.
 
-**Begründung:** Bei einer Schicht mit vielen parallelen Systemen (Combo, Verbrecher, Transporter, Modul-Zonen) wäre ein einzelner Patzer eines Polizeiautos, der alles beendet, überproportional hart. Polizei-Crashes haben ein eigenes Budget, da sie für Takedowns riskiert werden müssen.
+**Verlorene Schicht ohne Game-Over-Screen:** Der Crash, der die Schicht beendet, läuft kurz in Zeitlupe, die Kamera tritt etwas zurück, der Inselrand flackert rot. Der Verkehr fährt weiter. Kurz nach dem Crash startet ein Tap sofort den nächsten Versuch auf demselben Level. Wer nicht tippt, sieht das Ergebnis in der oberen Karte. Reduce Motion: keine Zeitlupe, kein Zurücktreten.
 
-**Crashes sind echte Physik** (`CrashPhysics`, `Drivers.swift`): Stoß-Impuls am Kontaktpunkt, Reifenreibung, reagierender Verkehr mit Kettenunfällen (Fahrer reagieren nach 0,5–1,5 s), Blechschaden mit Beulen und abreißenden Teilen. Keine geskripteten Animationen.
+**Crashes sind echte Physik** (`Web/src/core/crash.ts`, `drivers.ts`): Stoß-Impuls am Kontaktpunkt, 30 % Rückprall, Reifenreibung, reagierender Verkehr mit Kettenunfällen (Fahrer reagieren nach 0,5–1,5 s), Blechschaden mit Beulen und abreißenden Teilen. Keine geskripteten Animationen.
 
 ---
 
@@ -73,28 +74,28 @@ Mehr Tempo oder mehr Autos im Ring ließen hohe Level unspielbar statt riskanter
 
 Jede Einfädelung wird nach dem engsten Abstand (surface to surface) bewertet:
 
-| Stufe | Regel | Punkte | Combo | Feedback |
-|---|---|---|---|---|
-| **Tight Fit** | < 0,12 s | 200 × Mult. | +2 | Swoosh, scharfer Haptik-Impuls |
-| **Near Miss** | < 0,2 s, kein Tight Fit | 125 × Mult. | +1 | kurzer Swoosh, dezente Haptik |
-| **Perfect Input** | Lücke vorne/hinten fast gleich (≤ 25 % Abweichung), beide ≥ 0,2 s, zusammen ≤ 2 s | 150 × Mult. | +1 | Präzisions-Ring, dunkles „Plopp“ wie ein hochwertiger Schalter |
-| **Clean** | alles andere | 100 × Mult. | +1 | leiser Tick (steigt mit der Combo), feinster Haptik-Klick beim Einrasten in den Ring |
-| **Crash** | | −250 (nie unter 0) | Reset | |
-| **Cut-off** (optional, Default aus) | Hintermann < `sloppyWindow` | – | Reset, kein Strike | |
+| Stufe | Regel | Punkte | Combo |
+|---|---|---|---|
+| **Tight Fit** | < 0,12 s | 200 × Mult. | +2 |
+| **Near Miss** | < 0,2 s, kein Tight Fit | 125 × Mult. | +1 |
+| **Perfect Input** | Lücke vorne/hinten fast gleich (≤ 25 % Abweichung), beide ≥ 0,2 s, zusammen ≤ 2 s | 150 × Mult. | +1 |
+| **Clean** | alles andere | 100 × Mult. | +1 |
+| **Crash** | | −250 (nie unter 0) | Reset |
+| **Cut-off** (optional, Default aus) | Hintermann < `sloppyWindow` | – | Reset, kein Strike |
 
 - **Combo-Multiplikator:** 0–4 ×1 · 5–9 ×1,5 · 10–19 ×2 · 20+ ×3.
 - **Perfect Chain:** zählt Perfect Inputs, Near Misses, Tight Fits, Takedowns und gerettete Transporter in Folge; eine normale saubere Einfädelung, ein Cut-off oder ein Crash beendet sie. Keine eigene Anzeige.
-- **Flow State:** ab Kette 5 – Ring-Glow, Sound-Layer, die Stadt atmet mit; die Haptik der Einfädelungen (Klick, Tight Fit, Near Miss, Perfect, Combo) wird tiefer und weicher, Warnungen und Treffer bleiben scharf. Nur Feedback, kein Modus, kein Text.
+- **Flow State:** ab Kette 5 – Ring-Glow, Sound-Layer, die Stadt atmet mit. Nur Feedback, kein Modus, kein Text.
 - **Schichtabschluss:** +1.000 Punkte.
-- **Perfect Run:** geschaffte Schicht ohne Crash (Polizei eingeschlossen) und ohne Cut-off: **+1.500 Punkte, +25 % Lohn**.
+- **Perfect Run:** geschaffte Schicht ohne Crash (Polizei eingeschlossen) und ohne Cut-off: **+1.500 Punkte, +25 % Lohn** (nicht in Mayhem).
 - **Rekord-Geist:** Bestzeit pro Level (pro Auto); live als ±Sekunden im HUD, „NEW BEST TIME“ beim Übertreffen.
-- **Ergebnis** zählt Near Misses, Perfect Inputs, längste Kette, Bestcombo (für Mastery).
+- **Reifenspuren** nach einer gekonnten Einfädelung (nur Web).
 
 ---
 
 ## 5. Verbrecher-Bots & Polizei
 
-- **Verbrecher halten sich nicht an die Verkehrsordnung** *(Leo, 27.09.2026)*: Der Pickup rollt ohne Anhalten an die Linie und quetscht sich in die erste Lücke, in der er nicht crasht (`criminalEntryGap` = 0,05 s statt des KI-Sicherheitsabstands); nur ein Stau direkt an seiner Einfahrt hält ihn auf.
+- **Verbrecher halten sich nicht an die Verkehrsordnung** *(Leo, 27.09.2026)*: Der Pickup rollt ohne Anhalten an die Linie und quetscht sich in die erste Lücke, in der er nicht crasht (`criminalEntryGap` = 0,05 s); nur ein Stau direkt an seiner Einfahrt hält ihn auf.
 
 | Element | Details |
 |---|---|
@@ -102,15 +103,29 @@ Jede Einfädelung wird nach dem engsten Abstand (surface to surface) bewertet:
 | **Nur stoppbar mit** | Polizeiauto (blau, weißes Dach, Lichtbalken mit Blaulicht) |
 | **Anteil Polizei in der Schlange** | 20 % (Level 1: 30 %; *More Patrols* +3 %/Stufe; Police Operation +15 %) |
 | **Auftritt** | erster Verbrecher nach 4–8 s, Pause danach 10–16 s; keiner, wenn die Jagd das Schichtende überdauern könnte |
-| **Warnung** | 2 s vorher: Sirene und pulsierender Keil in Verbrecher-Farbe auf dem Inselrand in Richtung der Zufahrt – ohne Beschriftung, die Farbe sagt es (Leo, 25.09.2026) |
-| **Countdown** | ab Einfahrt Level 1: 16 s, Level 5: 12 s, −0,25 s pro Level bis 8 s (*Longer Pursuit* +1 s/Stufe); der Pickup dreht bis dahin Runden. Sichtbar als Ring um den Pickup und als Sekunden in der Inselmitte |
+| **Warnung** | 2 s vorher: Sirene und pulsierender Keil in Verbrecher-Farbe auf dem Inselrand in Richtung der Zufahrt – ohne Beschriftung |
+| **Countdown** | ab Einfahrt Level 1: 16 s, Level 5: 12 s, −0,25 s pro Level bis 8 s (*Longer Pursuit* +1 s/Stufe). Sichtbar als Ring um den Pickup und als Sekunden in der Inselmitte |
 | **Entkommt er** | Schicht verloren (Hard Fail) |
-| **Takedown** | 1.000 Pkt × Multiplikator × Rush Hour, 0,3 s Slow-Mo, Soft-Body-Deformation (Front/Heck/Seite/Ecke, Restbeule), flache Splitter in Polizeifarben, blauer Ring, „BUSTED!“, Combo bleibt, kein Feuer |
+| **Takedown** | 1.000 Pkt × Multiplikator × Rush Hour, kurze Slow-Mo, Soft-Body-Deformation, Splitter in Polizeifarben, „BUSTED!“, Combo bleibt |
 | **Zählt nicht** | wenn der Verbrecher selbst ins Polizeiauto fährt |
-| **Einsatzfahrt (Panic-Button)** | **E** / Rechtsklick: das vorderste Auto wird Polizei, Combo × 0,5 (*Dispatch Radio* +10 % pro Stufe zurück) |
-| **Verfolgung im Ring** | Polizeiauto direkt hinter dem Pickup jagt mit bis ×1,4 Tempo (*Interceptor* +0,1/Stufe), bleibt im Kreis und rammt ihn |
-| **Masse** | Pickup = 2,5× Auto: schiebt das andere Auto weiter weg. **Was beschädigt ist, fährt nicht mehr** (26.09.2026): Jeder Treffer ohne Takedown macht auch den Pickup zum Wrack – die Jagd endet ohne Punkte und ohne verlorene Schicht; ein normales eigenes Auto bekommt wie immer den Strike |
-| **Blaulicht** | nur Blau (deutscher Lichtbalken), LED-Doppelblitze, weißer Kern, weicher Schein auf der Straße, jedes Polizeiauto im eigenen Takt |
+| **Einsatzfahrt (Dispatch)** | Dispatch-Button, `D`, `E` oder Rechtsklick: das nächste Auto wird Polizei, Combo × 0,5 (*Dispatch Radio* +10 % pro Stufe zurück) |
+| **Verfolgung im Ring** | Polizeiauto direkt hinter dem Pickup jagt mit bis ×1,4 Tempo (*Interceptor* +0,1/Stufe) und rammt ihn |
+| **Masse** | Pickup = 2,5× Auto. **Was beschädigt ist, fährt nicht mehr:** Jeder Treffer ohne Takedown macht auch den Pickup zum Wrack – die Jagd endet ohne Punkte und ohne verlorene Schicht |
+| **Blaulicht** | nur Blau (deutscher Lichtbalken), LED-Doppelblitze, weicher Schein auf der Straße, jedes Polizeiauto im eigenen Takt |
+
+### Neu seit 28.09.2026 (Werte in `config.ts`)
+
+- **Vier Syndikats-Bosse** im Wechsel alle 15 Level: Convoy (15, zwei Eskorten dahinter), Getaway Driver (30, keine Eskorte, 0,7× Zeit), Armoured Boss (45, steckt den ersten Rammstoß weg, zweites Polizeiauto nötig), Phantom (60, Blackout, fährt ohne Licht). Ab Runde 2 (75+) je +1 Eskorte (max. 3) und ×0,9 Zeit. Besiegte Bosse öffnen ein **Rematch** unter Progress → Bosses (eine Runde härter, zahlt einmal 6.000–12.000).
+- **Legendary Shifts:** ab Level 25, 6 % pro Karriere-Schicht, nie auf Boss-Leveln oder in der Daily. Regeln: Gridlock, Dragnet, Heavy Load, Dark Storm, Zero Tolerance. Geschafft: Premium-Truhe, Skins nach 1/5/15.
+- **Weekly Elite:** eine Schicht pro Woche (ab Montag) für alle, per Seed. Progress → Quests. Beliebig oft spielbar, zahlt einmal pro Woche 6.000 + Premium-Truhe.
+- **Prestige:** ab Level 50 (Progress → Records). Zurück auf Level 1; Geld, Upgrades, Straßen, Sammlung bleiben. Verkehr pro Rang 10 Level härter (max. 40). ★ vor dem Level, Skins bei ★1–3. Nur Optik, kein Bonus.
+- **Krankenwagen:** ab Level 8, 40 % pro Schicht, angekündigt, drängt sich rein wie der Verbrecher und fährt fast eine Runde. Die Straße vor ihm (120 Einheiten) muss frei bleiben: wer dort einfädelt, verliert Combo und Chain. Frei durch: +300, Chain +1.
+
+### Syndikats-Konvoi (Boss-Level, nur Web)
+
+- **Jedes 15. Level** (15, 30, 45 …) ist der erste Verbrecher der Schicht der **Boss** des Syndikats. Er kommt früh (nach 1,5–3 s), mit 3 s Warnung („SYNDICATE CONVOY“), und bleibt 1,5-mal so lange im Ring wie ein normaler Verbrecher.
+- **Zwei gepanzerte Begleitfahrzeuge** fädeln direkt hinter ihm ein. Ein Polizeiauto muss genau in die Lücke zwischen Boss und Begleitern getimt werden; ein Treffer auf einen Begleiter ist ein normaler Crash.
+- **Busted:** Das gestohlene Geld kommt zurück (3.000 + 200 × Level) und der Boss zählt als Trophäe in *Records*.
 
 ---
 
@@ -118,15 +133,17 @@ Jede Einfädelung wird nach dem engsten Abstand (surface to surface) bewertet:
 
 | Element | Details |
 |---|---|
-| **Aussehen** | gepanzerter Kastenwagen in Panzergrün, Goldmünze, Goldstreifen, Rundumleuchte, kein Heckfenster |
-| **Spawn** | erster nach 8–14 s, Pause danach 15–25 s (*Cash Route* −0,4 s pro Stufe; jede Zusatz-Zufahrt −15 %); Warnung 2 s vorher als pulsierender Keil in Transporter-Farbe auf dem Inselrand, ohne Beschriftung |
-| **Ziel** | Unbeschadet die markierte Ausfahrt nehmen → **450 Geld** (× Rush Hour; High Alert ×2) |
-| **Sperrzonen** | Zone von 130 Einheiten (≈ 5 Autolängen) um den Transporter, je 65 davor und dahinter, auf dem Ring als Bogen sichtbar |
+| **Aussehen** | gepanzerter Kastenwagen in Panzergrün, Goldmünze, Goldstreifen, Rundumleuchte |
+| **Spawn** | erster nach 8–14 s, Pause danach 15–25 s (*Cash Route* −0,4 s pro Stufe; jede Zusatz-Zufahrt −15 %); Warnung 2 s vorher als pulsierender Keil in Transporter-Farbe auf dem Inselrand |
+| **Ziel** | Unbeschadet die markierte Ausfahrt nehmen → **450 Geld** (× Rush Hour) |
+| **Sperrzone** | 130 Einheiten (≈ 5 Autolängen) um den Transporter, auf dem Ring als Bogen sichtbar |
 | **Polizei in Sperrzone** | Transporter wird **beschlagnahmt** → kein Geld, keine Strafe |
 | **Normales Auto in Sperrzone** | **Abschirmen** → +50 Bonus pro Auto |
 | **Transporter crasht** | Wrack, Geld weg („LOST“); er bremst und crasht wie jeder andere Fahrer (Masse 1,6) |
 | **Countdown** | 10 s, dann nimmt er seine Ausfahrt; ist das letzte Auto vorher drin, sofortige Auszahlung |
 | **Double Run** (Upgrade) | 4 % pro Stufe Chance auf einen zweiten Transporter direkt danach |
+
+Kein Transporter in Mayhem und im Multiplayer.
 
 ---
 
@@ -137,26 +154,24 @@ Jede Einfädelung wird nach dem engsten Abstand (surface to surface) bewertet:
 Der Spieler soll Lücken treffen, keine Kolonnen bilden.
 
 - **`minRingBots`:** Level 1–4: 3 · ab Level 5: 4 · ab Level 9: 5; ein größerer Kreisverkehr skaliert mit. Jede Schicht startet mit mindestens so vielen Bots.
-- **Halteregel:** Ein Bot fährt erst raus, wenn danach noch genug drin sind, sonst dreht er eine weitere Runde. Entscheidung 1,5 s vor der Ausfahrt, damit KI und Spieler nie in eine Lücke planen, die nicht frei wird. Fehlt ein Bot, kommt sofort Ersatz.
-- **Dichte zählt nur KI-Autos,** nicht die des Spielers – eine Kolonne verhindert also keine Bots.
+- **Halteregel:** Ein Bot fährt erst raus, wenn danach noch genug drin sind, sonst dreht er eine weitere Runde. Entscheidung 1,5 s vor der Ausfahrt. Fehlt ein Bot, kommt sofort Ersatz.
+- **Dichte zählt nur KI-Autos,** nicht die des Spielers.
 - **Stauwellen lösen sich auf:** Ohne Wrack und ohne Modul-Schlange darf ein Bot trotz Minimum raus; Rückfallebene nach 20 s Bremsen.
-- **Die KI wartet nur bei Störungen nahe ihrer Einfahrt** (bis 2,5 s voraus, 1,5 s zurück), fädelt weiter nur mit sicherer Lücke ein und verursacht nie einen Crash.
-- **Fließender Verkehr ab Level 6:** Bots fahren ohne Anhalten ein (Rolling Merge), höchstens 2 stehen gleichzeitig an einer Linie, ein Auto pro Zufahrt in der Schlange.
+- **Die KI wartet nur bei Störungen nahe ihrer Einfahrt** (bis 2,5 s voraus, 1,5 s zurück), fädelt nur mit sicherer Lücke ein und verursacht nie einen Crash.
+- **Fließender Verkehr ab Level 6:** Bots fahren ohne Anhalten ein (Rolling Merge).
 - Neue Autos erscheinen außerhalb des Bildes und fahren heran.
-
-Gemessen (Mensch-Bot, `Sim --ring`): Ø 3,6 Bots im Ring auf Level 1 (vorher 1,2), unter dem Minimum 1,1 % der Zeit (vorher 88 %), längste Kolonne im Median 4 (vorher 6).
 
 ### Lkw
 
-22 % des normalen Verkehrs (*Freight* +1,5 %/Stufe); Länge 36 (Auto 24), Masse 2,2, heller Kofferaufbau (nur das Fahrerhaus trägt den Skin). Zahlen an Mautstellen.
+22 % des normalen Verkehrs (*Freight* +1,5 %/Stufe); Länge 36 (Auto 24), Masse 2,2, heller Kofferaufbau. Zahlen an Mautstellen.
 
 ### Sprengstoff: Tanklaster & Militär-Truck (Leo, 27.09.2026)
 
-- **Tanklaster** (ab Level 4, 18 % der Lkw; eigener Zufallsstrom, der Verkehr jedes Seeds bleibt gleich): fährt wie ein Lkw (silberner Tank, orange Bänder, Gefahren-Raute), zahlt Maut. **Wird er zum Wrack, explodiert er:** alles im Umkreis von 66 wird zum Wrack und weggeschleudert (echter Stoß-Impuls, Beule auf der Seite zur Explosion), ein Tanklaster in Reichweite geht mit hoch (Kettenreaktion).
-- **Militär-Truck** (ab Level 7, 30 % der Schichten, einer pro Schicht): angekündigt wie der Transporter (rote Warnung, Alarm-Hupe), dreht 12 s seine Runden und hat eine **Sperrzone** (84 lang, rot pulsierend, gelb-schwarze Balken an den Enden). **Fädelt ein Auto in die Zone ein oder trifft irgendetwas den Truck, geht die Bombe hoch:** alles auf der Straße fliegt in die Luft, die Schicht ist verloren ("KABOOM", dasselbe Level noch einmal). Die Zone zählt für KI und Bots wie ein Auto in der Lückenvorhersage. Solange der Truck seine Runden dreht, zählt er als einer der Mindest-Bots; er fährt erst ab, wenn genug Bots ohne ihn bleiben.
-- **Der Rauch der Bombe ist der Übergang:** Er quillt aus der Explosion, bis er das Bild füllt; dahinter wird ein frischer Kreisverkehr aufgebaut; wenn er sich verzieht, ist alles wieder normal und die nächste Schicht wartet.
-- **Explosionen:** weißer Blitz, Feuerball aus Glutballen (weißgelb → orange → dunkelrot → schwarzer Rauch), Druckwelle und Staubring, brennende Trümmer auf Glutspuren, Rauchschwaden unter dem Verkehr, starker Screenshake (Trauma-Modell) mit Zoom-Punch, eigener Sound (`explosion`, `detonation`) und Haptik (`explosion`). Reduce Motion: nur Blenden, kein Shake.
-- **Die Karte leidet:** verbrannter Boden an der Explosionsstelle, Bäume und Häuser in Reichweite fangen Feuer (breitet sich aus), brennen einige Sekunden und bleiben verkohlt (verblasst nach etwa 30 s); die verbrannte Stelle auf der Straße ist nach wenigen Sekunden wieder weg. Nach der Bombe beginnt das neue Level sauber.
+- **Tanklaster** (ab Level 4, 18 % der Lkw): fährt wie ein Lkw (silberner Tank, orange Bänder, Gefahren-Raute), zahlt Maut. **Wird er zum Wrack, explodiert er:** alles im Umkreis von 66 wird zum Wrack und weggeschleudert, ein Tanklaster in Reichweite geht mit hoch (Kettenreaktion).
+- **Militär-Truck** (ab Level 7, 30 % der Schichten, einer pro Schicht): angekündigt wie der Transporter, dreht 12 s seine Runden und hat eine **Sperrzone** (84 lang, rot pulsierend). **Fädelt ein Auto in die Zone ein oder trifft irgendetwas den Truck, geht die Bombe hoch:** alles auf der Straße fliegt in die Luft, die Schicht ist verloren. Die Zone zählt für KI und Bots wie ein Auto; solange er fährt, zählt er als einer der Mindest-Bots.
+- **Der Rauch der Bombe ist der Übergang:** Er füllt das Bild, dahinter wird ein frischer Kreisverkehr aufgebaut.
+- **Explosionen:** Blitz, Feuerball, Druckwelle, brennende Trümmer, Screenshake mit Zoom-Punch, eigene Sounds (`explosion`, `detonation`). Reduce Motion: nur Blenden, kein Shake.
+- **Die Karte leidet:** verbrannter Boden, Bäume und Häuser in Reichweite fangen Feuer und bleiben eine Weile verkohlt.
 
 ### Fahrzeugtypen des Spielers (freischaltbar, LOOT.md)
 
@@ -170,11 +185,11 @@ Ein Typ hat Spielwerte, ein Skin nur Aussehen – **anders, nicht besser**. Jede
 
 ---
 
-## 8. Wetter & City Events
+## 8. Wetter, Nacht & City Events
 
-### Wetter (dritte Schwierigkeitsachse, pro Schicht ausgelost)
+### Wetter (pro Schicht ausgelost)
 
-Chance ab Level 6: +3 % pro Level, höchstens 60 %. Vorher auf dem Game-Tab angekündigt („LEVEL 14 · Heavy Rain“).
+Chance ab Level 6: +3 % pro Level, höchstens 60 %. Vorher auf dem Wartebildschirm angekündigt.
 
 | Stufe | ab Level | Wirkung |
 |---|---|---|
@@ -186,13 +201,19 @@ Chance ab Level 6: +3 % pro Level, höchstens 60 %. Vorher auf dem Game-Tab ange
 
 Fair bleibt es: Das Tap-Timing ändert sich nie; Sonderfahrzeuge, Warnungen und Countdown-Ringe liegen immer über den Wettereffekten.
 
+### Nacht und Blackout (nur Web)
+
+- **Nacht** ab Level 10: Chance 8 % pro Level ab Level 10, höchstens 50 %. Die Stadt wird dunkel, man fädelt nach den Lichtern der Autos ein.
+- **Blackout** ab Level 20: 35 % der Nächte, auch die Straßenlaternen sind aus; nur Scheinwerfer und Rücklichter zeigen den Verkehr.
+- **Nur das Bild ändert sich, nicht die Regeln.** Dafür zahlt die Schicht mehr: Nacht ×1,1, Blackout ×1,25 Lohn.
+
 ### City Events (höchstens eins pro Schicht, ab Level 4 mit 25 % Chance, vorher angekündigt)
 
 | Event | Wirkung |
 |---|---|
 | Roadworks (Baustelle) | ein Ringabschnitt fährt langsamer (×0,6) |
 | Road Closure (Sperrung) | eine KI-Zufahrt ist zu, die anderen bekommen ihren Verkehr |
-| Concert / Parade | eine Zufahrt schickt eine Welle dicht folgender Autos (+2 Dichte, KI-Spawns doppelt so schnell) |
+| Concert Traffic | eine Zufahrt schickt eine Welle dicht folgender Autos (+2 Dichte, KI-Spawns doppelt so schnell) |
 | VIP Convoy | drei KI-Autos fahren eng hintereinander ein: lange Lücke davor und dahinter |
 | Police Operation | +15 % Polizei in der Schlange |
 
@@ -202,32 +223,34 @@ Events ändern Tempo, Dichte oder Lücken – nie die Regeln.
 
 ## 9. Wirtschaft & Meta-Progression
 
-Alles Kaufbare wurde am 25.09.2026 um 30 % teurer, das Geld pro Schicht gleichzeitig gesenkt.
-
 ### Geld verdienen
 
 | Quelle | Betrag |
 |---|---|
-| Schichtabschluss | 150 + 30 × Level (*Overtime* +4 %/Stufe, +10 % pro Zusatz-Zufahrt, High Alert ×2) |
-| Geretteter Transporter | 450 (Rush Hour ×2, High Alert ×2) |
+| Schichtabschluss | 150 + 30 × Level (*Overtime* +4 %/Stufe, +10 % pro Zusatz-Zufahrt, Nacht ×1,1 / Blackout ×1,25) |
+| Unlimited | 20 pro geschicktem Auto |
+| Geretteter Transporter | 450 (Rush Hour ×2) |
 | Abschirm-Bonus | 50 pro Auto in der Sperrzone |
 | Perfect Run | +25 % Lohn |
+| Boss busted | 3.000 + 200 × Level |
 | Daily Shift | 300 × Serie (bis 7 Tage → 2.100) + Event Chest |
-| Challenges (3 pro Tag) | 250 / 350 / 500 je Challenge |
-| Toll Booth | 6 pro Lkw; Speed Camera 3 pro Auto über dem Limit – **nur in den ersten 60 s** einer Schicht, der Stau bleibt |
+| Quests (3 pro Tag) | 250 / 350 / 500 je Quest |
+| Trials | 1.500 – 5.000, je einmal (siehe 11) |
+| Toll Booth | 6 pro Lkw; Speed Camera 3 pro Auto über dem Limit – **nur in den ersten 60 s** einer Schicht |
 | Daily Login | 30 pro Toll Booth pro Tag Abwesenheit, höchstens 3 Tage |
+| Werbung (Platzhalter) | bis zu 3 × am Tag Geld: 2.000 + 250 × (Level − 1) |
 | Duplikate aus Truhen | Common 250 · Rare 600 · Epic 1.500 · Legendary 4.000 |
 | Alben (voller Satz, einmalig) | 5.000 – 40.000 (siehe 10) |
 
-Geld bleibt auch aus verlorenen Schichten. Der Kontostand steht immer links in der oberen Karte und zählt schon während der Schicht hoch, sobald etwas verdient wird (Transporter, Maut); im Ergebnis zählt er bis zum neuen Kontostand, der Verdienst der Schicht erscheint auf der Insel und landet mit Ka-ching.
+Geld bleibt auch aus verlorenen Schichten. Der Kontostand steht immer links in der oberen Karte und zählt schon während der Schicht hoch.
 
 ### Geld ausgeben
 
 | Bereich | Was | Preis |
 |---|---|---|
-| **Upgrades** (Upgrades-Tab) | 12 Upgrades, 81 Stufen | erste Stufe 2.600 × Faktor, jede weitere ×1,5 |
-| **Zufahrten** (Street Builder) | 5.–8. Arm; je Arm Ring +18 breiter, +25 % Verkehr, Transporter 15 % früher, +10 % Lohn | 32.500 / 65.000 / 130.000 / 260.000 = **487.500** |
-| **Module** (Street Builder) | Toll Booth, Speed Camera, Tow Depot auf 6 festen Modulplätzen; voll = Tausch | 10.400 / 15.600 / 13.000 |
+| **Upgrades** (Build → Upgrades) | 13 Upgrades, 86 Stufen | erste Stufe 2.600 × Faktor, jede weitere ×1,5 |
+| **Zufahrten** (Build → Street Builder) | 5.–8. Arm; je Arm Ring +18 breiter, +25 % Verkehr, Transporter 15 % früher, +10 % Lohn | 32.500 / 65.000 / 130.000 / 260.000 = **487.500** |
+| **Module** (Street Builder) | Toll Booth, Speed Camera, Tow Depot auf 6 festen Modulplätzen | 10.400 / 15.600 / 13.000 |
 | **Truhen** (Shop) | Standard, Premium | 26.000 / 52.000 |
 
 Abreißen (Zufahrten und Module) ist möglich, **nichts wird erstattet.** Die eigene Zufahrt und die 4 Start-Zufahrten bleiben.
@@ -245,55 +268,68 @@ Abreißen (Zufahrten und Module) ist möglich, **nichts wird erstattet.** Die ei
 | Cash Route | Transporter 0,4 s früher & öfter | 8 | 2.600 |
 | Overtime | +4 % Schichtlohn | 10 | 2.600 |
 | Freight | +1,5 % Lkw (mehr Maut, dichterer Verkehr) | 8 | 2.600 |
-| Double Run | +4 % Chance auf zweiten Transporter | 5 | 3.900 |
 | Quick Recovery | Verkehr beschleunigt 20 % stärker (schneller wieder auf Tempo nach Unfällen) | 5 | 3.100 |
+| Double Run | +4 % Chance auf zweiten Transporter | 5 | 3.900 |
 | Insurance* | −15 % Crash-Kosten (Stufe 7 = 100 %) | 7 | 5.200 |
 | Robbery Insurance* | −15 % Verlust bei Flucht (Stufe 7 = 100 %) | 7 | 5.200 |
 
-\* sichtbar ab Level 20. Die Geld-Upgrades wurden stark gedämpft, damit das Geld nicht alles bezahlt.
+\* freigeschaltet ab Level 20.
 
 ### Risiko & Versicherung (ab Level 20)
 
-Bis Level 19 sind Fehler kostenlos. Ab Level 20: Der Crash, der die Schicht beendet, bzw. ein Polizei-Crash kostet nach Wucht **60 / 120 / 200**; ein entkommener Verbrecher **350** zusätzlich zur verlorenen Schicht. Folgeunfälle kosten nichts. Kosten kommen vom Verdienst der Schicht, dann vom Konto – **nie ins Minus.** Anzeige im Ergebnis, bei Vollversicherung „FULL COVERAGE · You Pay $0“.
+Bis Level 19 sind Fehler kostenlos. Ab Level 20: Der Crash, der die Schicht beendet, bzw. ein Polizei-Crash kostet nach Wucht **60 / 120 / 200**; ein entkommener Verbrecher **350** zusätzlich zur verlorenen Schicht. Folgeunfälle kosten nichts, Unlimited kostet nie. Kosten kommen vom Verdienst der Schicht, dann vom Konto – **nie ins Minus.**
+
+### Store (Shop → Store, Platzhalter)
+
+Nichts wird berechnet; der Store zeigt nur den Ablauf, bis es echte Produkte gibt ([MONETIZATION.md](MONETIZATION.md), pausiert).
+
+| Produkt | Platzhalter-Preis | Inhalt |
+|---|---|---|
+| Starter Pack | $1.99 | 30.000 Geld, 1 Premium- und 2 Standard-Truhen |
+| Pile / Bag / Vault of Cash | $0.99 / $2.99 / $6.99 | 25.000 / 90.000 / 240.000 Geld |
+| 3 Premium Chests | $3.99 | 3 Premium-Truhen |
+| No Ads | $3.99 | Werbe-Belohnungen ohne Werbung |
+| Cash Boost | $4.99 | jede Schicht zahlt ×1,5 (Lohn, Transporter, Abschirm-Bonus) |
+
+„Restore Purchases“ ist vorhanden.
 
 ### Street Builder & Module
 
-- **Ziehen und Ablegen** aus der Palette auf leuchtende Steckplätze (16 Plätze, Mindestabstand 2, Vollausbau 8 Zufahrten); Doppel-Tap baut, ein Tap nimmt das Teil wieder weg; fehlt Geld, wackelt es und der Preis wird rot.
-- **Abreißen:** erster Tipp markiert (rot pulsierend, ×-Abzeichen), zweiter reißt ab.
-- **Toll Booth:** Lkw zahlen, der Abschnitt staut (Zone 150 Einheiten lang, Tempo ×0,55). Der Stau behindert Polizei → Verbrecher entkommen leichter.
+- **Ziehen und Ablegen** aus der Palette auf leuchtende Steckplätze (16 Plätze, Mindestabstand 2, Vollausbau 8 Zufahrten); fehlt Geld, wackelt es und der Preis wird rot.
+- **Abreißen:** erster Tipp markiert, zweiter reißt ab.
+- **Toll Booth:** Lkw zahlen, der Abschnitt staut (Zone 150 Einheiten, Tempo ×0,55). Der Stau behindert Polizei → Verbrecher entkommen leichter.
 - **Speed Camera:** kurze, scharfe Zone (44 Einheiten), alle bremsen (×0,7); zahlt nur über 108 % Grundtempo.
-- **Tow Depot:** Wracks in seiner Zone (180 Einheiten) verschwinden 30 % schneller; kleiner Hof am Ring, nach einem Crash fährt kurz ein Abschleppwagen hin.
-- **City Evolution:** um den Kreisverkehr wachsen mit Level, Zufahrten und Modulen Stadtblöcke, Bäume und Infrastruktur – rein Darstellung, aus dem Spielstand berechnet.
+- **Tow Depot:** Wracks in seiner Zone (180 Einheiten) verschwinden 30 % schneller; nach einem Crash fährt kurz ein Abschleppwagen hin.
+- **City Evolution:** um den Kreisverkehr wachsen mit Level, Zufahrten und Modulen Stadtblöcke, Bäume und Infrastruktur – rein Darstellung.
 
 ---
 
 ## 10. Sammeln: Truhen, Skins, Mastery, Alben
 
-Details und alle Item-Listen: [LOOT.md](LOOT.md).
+Details und alle Item-Listen: [LOOT.md](LOOT.md) (Liste im Code: `Web/src/core/loot.ts`).
 
 - **Nur Aussehen.** Kein Skin gibt einen Spielvorteil. Sonderfahrzeuge bleiben an der **Form** erkennbar, nicht an der Farbe.
-- **61 Items:** 39 Car Skins, 12 Map Skins, 3 Fahrzeugtypen, 7 nur über Daily-Serie und Saison.
-- **Skins mischen:** bis zu **5 Car Skins** gleichzeitig; **jedes Fahrzeug** im Level (auch KI, Polizei, Pickup, Transporter, Lkw) trägt einen davon, fest pro Fahrzeug. Ein Map Skin.
-- **Map Skins** färben den Boden der Stadt, tönen die Mittelinsel, säumen alle Straßen mit eigenen Pflanzen und bringen ein **Herzstück** mit Animation (z. B. Koi-Teich mit Torii bei Sakura, Windmühle bei Meadow, Ringplanet bei Cosmos). Reduce Motion: nichts fliegt.
+- **63 Items:** 47 Car Skins (davon 7 nur über Daily-Serie und Saison), 13 Map Skins, 3 Fahrzeugtypen.
+- **Skins mischen:** bis zu **5 Car Skins** gleichzeitig; **jedes Fahrzeug** im Level trägt einen davon, fest pro Fahrzeug. Ein Map Skin.
+- **Map Skins** färben den Boden der Stadt, tönen die Mittelinsel, säumen die Straßen mit eigenen Pflanzen und bringen ein **Herzstück** mit Animation.
 - **Car Skins:** Farben, Rennstreifen, zweifarbige Dächer, **Shiny** (Lichtstreif) und **Glitter** (Funkeln).
 
 ### Truhen
 
 | Truhe | Woher | Common | Rare | Epic | Legendary |
 |---|---|---|---|---|---|
-| Standard | Shop (26.000), Werbung (3/Tag), Mastery Stufe I, Daily Shift | 70 % | 22 % | 7 % | 1 % |
-| Premium | Shop (52.000), Mastery Stufe II/III | 35 % | 35 % | 22 % | 8 % |
+| Standard | Shop (26.000), Werbung (3/Tag), Mastery Stufe I, Starter Pack | 70 % | 22 % | 7 % | 1 % |
+| Premium | Shop (52.000), Mastery Stufe II/III, Store | 35 % | 35 % | 22 % | 8 % |
 | Criminal Hunt | Mastery „Crime Fighter“ | 50 % | 30 % | 15 % | 5 % |
 | Event | jede geschaffte Daily Shift; 15 % nach jeder geschafften Schicht mit City Event | 40 % | 35 % | 20 % | 5 % |
 
 - **Odds immer sichtbar**, **Pity:** spätestens die 10. Truhe in Folge ohne Epic ist mindestens Epic.
-- **Kein Echtgeld in v1.0.** Premium gegen Echtgeld frühestens später, nach rechtlicher Prüfung der Lootboxen.
-- **Werbung:** eine Standard-Truhe pro angesehener Werbung, bis zu 3 pro Tag (Google AdMob, im Code mit Test-IDs; im Testfenster eine 3-s-Platzhalter-Werbung).
-- **Öffnung „splashy, fruity“:** Squash & Stretch, Frucht-Palette, Splash-Blobs, Konfetti, Strahlen, Jelly-Pop; Legendary mit Goldregen. Reduce Motion nur Blende.
+- **Kein Echtgeld.** Werbung und Käufe sind Platzhalter.
+- **Öffnung „splashy, fruity“:** Squash & Stretch, Splash-Blobs, Konfetti, Strahlen, Jelly-Pop; Legendary mit Goldregen. Reduce Motion nur Blende.
 
-### Mastery (unsichtbar)
+### Mastery
 
-Neun Ziele mit je drei Stufen zählen über die ganze Laufbahn; beim Erreichen erscheint ein Toast („MASTERY COMPLETE · … · CHEST EARNED“), die Truhe liegt im Shop. Kein Mastery-Screen.
+Acht Ziele mit je drei Stufen zählen über die ganze Laufbahn; beim Erreichen erscheint ein Toast, die Truhe liegt im Shop. Der Stand ist unter **Progress → Mastery** einsehbar.
 
 | Ziel | Stufen |
 |---|---|
@@ -305,9 +341,8 @@ Neun Ziele mit je drei Stufen zählen über die ganze Laufbahn; beim Erreichen e
 | Secure Route (Transporter) | 10 / 75 / 300 |
 | Combo Master (beste Combo) | 20 / 40 / 80 |
 | Veteran (geschaffte Schichten) | 10 / 75 / 300 |
-| High Alert Hero | 5 / 30 / 120 |
 
-Stufe I gibt eine Standard-, höhere Stufen eine Premium-Truhe; Crime Fighter gibt Stufe I–II Criminal Hunt, Stufe III Premium.
+Stufe I gibt eine Standard-, höhere Stufen eine Premium-Truhe; Crime Fighter gibt Stufe I–II Criminal Hunt, Stufe III Premium. (High Alert Hero ist mit High Alert entfallen.)
 
 ### Alben
 
@@ -316,21 +351,46 @@ Ein voller Satz zahlt einmal Geld und legt einen **Rahmen** in seiner Farbe um d
 | Album | Inhalt | Belohnung |
 |---|---|---|
 | Commons / Rares / Epics / Legends | alle Car Skins der Seltenheit | 5.000 / 10.000 / 20.000 / 40.000 |
-| Maps | alle 12 Map Skins | 10.000 |
+| Maps | alle Map Skins | 10.000 |
 | Seasons | 4 Saison-Items | 30.000 |
 | Loyalty | 3 Serien-Items | 20.000 |
 
 ---
 
-## 11. Motivation: Daily, Serie, Challenges, Tutorial
+## 11. Motivation & Mitspielen
 
-- **Daily Shift:** automatisch die **erste Schicht des Tages**, ein Versuch, angekündigt per Splash und Titel „DAILY SHIFT“. Ein Tages-Seed für alle, immer mit City Event. Geschafft → 300 × Serie Geld + Event Chest. Die allererste Schicht ist nie die Daily.
-- **Serie:** zählt gespielte Tage (Wiederkommen wird belohnt). 7 / 14 / 30 Tage geben exklusive Skins (Bronze Badge, Silver Badge, Gold Laurel).
-- **Saisons:** Der Event Chest enthält in der Hälfte der Fälle das Saison-Item (Frost/Winter, Blossom/Frühling, Sunburst/Sommer, Pumpkin/Herbst), das es nur in seiner Saison gibt.
-- **Challenges:** 3 kleine Ziele pro Tag, für alle gleich, je einmal bezahlt (z. B. 3 Perfect Inputs, 2 Takedowns, Kette 8, Combo 15, High-Alert-Schicht, Perfect Run). Sichtbar im Shop unter *Today*.
-- **Tutorial:** in der ersten Schicht, ohne Menü und ohne Pause – pulsierender Ring am vordersten Auto, „Wait for a gap“, Combo-Hinweis nach zwei sauberen Einfädelungen, beim ersten Crash „Cars crash instantly. Police get 3 chances.“ (auch wenn dieser Crash die Schicht beendet, läuft der Hinweis bis ins Ergebnis). Endet mit der ersten Schicht; alte Spielstände sehen es nicht.
-- **Game Center:** `GameServicing` im Spiel, GameKit-Adapter in der App (Ranglisten Highscore/Level/Bestcombo/Daily-Serie, Erfolge aus Mastery, Serie und Alben, Access Point). IDs in `GameServices.swift`.
-- **Spielstand** versioniert und tolerant: fehlende Schlüssel fallen auf Defaults, unbekannte Truhen werden verworfen, nie der ganze Spielstand.
+- **Daily Shift:** automatisch die **erste Schicht des Tages**, ein Versuch, Titel „DAILY SHIFT“. Ein Tages-Seed für alle, immer mit City Event. Geschafft → 300 × Serie Geld + Event Chest. Die allererste Schicht ist nie die Daily.
+- **Serie:** zählt gespielte Tage. 7 / 14 / 30 Tage geben exklusive Skins (Bronze Badge, Silver Badge, Gold Laurel).
+- **Saisons:** Der Event Chest enthält in der Hälfte der Fälle das Saison-Item (Frost, Blossom, Sunburst, Pumpkin), das es nur in seiner Saison gibt.
+- **Quests** (früher Challenges): 3 kleine Ziele pro Tag, für alle gleich, je einmal bezahlt, wechseln um Mitternacht. Unter **Progress → Quests**.
+- **Records** (Progress): Highscore, Level, Bestcombo, längste Kette, Daily-Serie, Schichten, Takedowns, Transporter, Unlimited- und Mayhem-Rekorde, Syndikats-Bosse, Sammlung.
+- **Tutorial:** in der ersten Schicht, ohne Menü und ohne Pause – pulsierender Ring am vordersten Auto, „Wait for a gap, then tap“, Combo-Hinweis, beim ersten Crash „Cars crash instantly. Police get 3 chances.“
+
+### Trials (Progress → Trials, nur Web)
+
+Sieben feste Schichten mit festem Seed (alle treffen denselben Verkehr), frischem Kreisverkehr mit 4 Armen, ohne eigene Upgrades. Eine Zusatzregel beendet die Schicht als *failed*, wenn sie gebrochen wird. Jede Trial zahlt einmal.
+
+| Trial | Level | Autos | Ziel / Bedingung | Belohnung |
+|---|---|---|---|---|
+| Tight Squeeze | 8 | 8 | jede Einfädelung Tight Fit, Near Miss oder Perfect | 1.500 |
+| Dead Centre | 6 | 12 | mindestens 4 Perfect Inputs | 1.500 |
+| Clean Sheet | 12 | 16 | kein Crash, kein Cut-off | 2.500 |
+| Blackout | 16 | 16 | Nacht, Laternen aus | 3.000 |
+| Storm Watch | 20 | 18 | Sturm bei Nacht | 4.000 |
+| Marathon | 14 | 40 | schaffen | 4.000 |
+| Most Wanted | 15 | 24 | den Syndikats-Boss festnehmen | 5.000 |
+
+### Challenge-Links (nur Web)
+
+Nach einer Schicht macht „Challenge a friend“ einen Link (`#challenge=…`) mit Seed, Modus, Level, Upgrades, Zufahrten, Modulen und Event. Wer ihn öffnet, spielt dieselbe Schicht aus einer frischen Welt; Ziel ist die Punktzahl (in Mayhem die Flammen) des Absenders. Eine Challenge bringt nichts ein. Kein Server nötig.
+
+### Multiplayer (nur Web)
+
+- **Bis zu 4 Freunde auf einem Kreisverkehr**, jeder mit eigener Zufahrt; 8 Arme, dazwischen KI-Verkehr (Unlimited-Level, keine Polizei, Verbrecher, Wetter, Nacht oder Events).
+- **Raus ist,** wessen Auto **beim Einfädeln** crasht, oder wer 10 s fließenden Verkehrs lang kein Auto schickt (die Uhr wartet, solange Wracks liegen). Der Letzte gewinnt.
+- **Beitreten:** Der Host tippt *Host a game* und bekommt einen vierstelligen Code; die anderen geben ihn ein.
+- **Netz:** Peer-to-Peer über WebRTC mit PeerJS; dessen öffentlicher Broker stellt die Geräte nur einander vor. Kein eigener Server, nichts wird gespeichert.
+- **Lockstep:** Alle Geräte rechnen dieselbe deterministische Welt (gleicher Seed, gleiche Taps, 120 Hz). Der Host vergibt jedem Tap seinen Schritt (≈ 50 ms Eingabeverzögerung für alle) und entscheidet, wer raus ist.
 
 ---
 
@@ -340,208 +400,164 @@ Ein voller Satz zahlt einmal Geld und legt einen **Rahmen** in seiner Farbe um d
 
 | Aspekt | Umsetzung |
 |---|---|
-| **Ring als UI** (`RingSignals`) | Auf dem Inselrand ein Strich pro Auto der Schicht, der aufleuchtet, sobald das Auto drin ist (ab der eigenen Zufahrt in Fahrtrichtung, in der Rush Hour Mint) – ersetzt den Autozähler. Dazu drei Lichtsignale: **Welle** (Combo-Stufe, Takedown, Transporter bezahlt), **Aufflackern** des Rands (Strike rot, Polizei-Crash blau, verlorene Schicht), **Lichtlauf** einmal herum (Rush Hour beginnt, Schicht geschafft). Warn-Keile für Verbrecher und Transporter sitzen auf demselben Rand |
-| **Die Stadt atmet** (`CityPulse`) | Bäume wiegen sich, Fenster glimmen im eigenen Takt, zwei Wolkenschatten ziehen; lebhafter bei dichtem Verkehr und in der Rush Hour; im Flow schickt jedes eingefädelte Auto eine schwache Lichtwelle durch die Fenster |
-| **Lichter der Autos** (`VehicleLamps`) | Bremslichter zeigen, was die Fahrer tun: die Schlange steht an der Linie, ein Bot bremst vor seiner Linie, hinter einem Wrack baut sich sichtbar ein Stau auf (wer den Unfall noch nicht bemerkt hat, rollt ohne Bremslicht weiter). Nur das vorderste stehende Auto wirft einen roten Schein auf den Asphalt. Die Lichthupe blinkt zweimal kurz, wenn ein früher Tap gehalten wird |
-| **High Alert auf der Straße** | zwei feine rote Rennstreifen an den Rändern der Ringfahrbahn, statt einer weiteren Anzeige |
-| **Perspektiven** (`Perspective`) | Die Kamera gleitet je Tab (0,65 s, kritisch gedämpft): Street Builder – der echte Ring liegt exakt unter dem Plan und die Kamera wächst mit; Shop – Schwenk in ein Viertel, der Ring rutscht an den Rand; Upgrades – Ring näher, Stadt tritt zurück. Die Seiten decken die Stadt nicht mehr ganz zu |
-| **Grafik** | Clean, minimalistisch, Apple-artig, Dark Theme, flache Vektorformen, hoher Kontrast; Effekte in `GamePresentation` als Daten |
-| **Farben** | Tokens nach Rolle (background, surface, primary, muted, accent, destructive). Fahrzeugfarben = Spielinfo, nie UI-Akzent |
-| **Schrift** | Spielszene in SF Pro Rounded (App, wie die Zahlen in Fitness), native Bedienelemente in SF Pro; Tabular Figures für Scores, große Zahlen fett, kleine Labels leicht gesperrt |
-| **Obere Anzeige** | schwebende Karte im Chrome-Material, immer gleich groß, drei Spalten mit Beschriftung über dem Wert, weicher Verlauf darunter. Vor der Schicht **MONEY · CARS · BEST**, in der Schicht **MONEY · SCORE · BEST** (bzw. Rekord-Rennen ±Sekunden), im Ergebnis **MONEY** (zählt hoch) · „LEVEL 5 COMPLETE“ über den Punkten · **BEST / NEW BEST**. Bei High Alert steht „HIGH ALERT“ über dem Geld; die Daily Shift steht in der Mitte über den Autos |
-| **HUD** | Punktzahl läuft hinterher statt zu springen und tickt bei jedem Auto, Geld federt beim Zuwachs, Rush Hour färbt die Mittelspalte, Strike-/Polizei-Crash-Punkte landen mit Ring; Verbrecher-Countdown in der Inselmitte |
-| **Animationen** | kritisch gedämpfte Feder (kein Überschwingen) für Menüs, Tab-Wechsel und Hinweise; Truhe und Treffer federn; kein harter Schnitt zwischen Spiel, Ergebnis, Tabs und Einstellungen. Reduce Motion behält nur die Überblendung |
-| **Menüs** | Apple-artig (`MenuKit`): Large Title mit Geld-Chip, Segment-Control, Karten steigen ein und schwingen aus, geben beim Tippen nach; gestapelte Popups. Native Buttons der App in Liquid Glass (`.glass`, `.glassProminent`): der Verkehr scheint durch, sie geben mit der Systemfeder nach |
-| **Shop** | Segmente Chests / Collection / Today, Collection in Regalen (Common, Rare, Epic, Legend, Maps, Special, max. 12 pro Regal; Reiterwechsel animiert: Markierung gleitet, Items wischen von der Seite herein); **NEW**-Markierung für neue Items, Badge am Shop-Tab |
-| **Einstellungen** | iOS-Sheet: Sound, Haptics, Reduce Motion, Vehicle Labels |
-| **Sound** | 32 Effekte, adaptive Musik aus 7 Stems (`base`, `bass`, `rhythm`, `lead`, `flow`, `rush`, `siren`, Mischpult `MusicMix`): Combo baut Instrumente auf, Verbrecher → Sirene, Rush Hour → Beat zieht an, Flow verdichtet. **Die Musik atmet ein:** bei der Verbrecher-Warnung und zu Beginn der Rush Hour schließt ein Tiefpass die Musik kurz (bis ≈ 650 Hz, ≈ 1,4 s), dann öffnet sie sich mit Sirene bzw. Beat wieder; Effekte bleiben ungefiltert. Saubere Einfädelungen steigen mit der Combo die a-Moll-Pentatonik hinauf; häufige Sounds variieren leicht in der Tonhöhe; keine Knackser. Klangrichtung: organisch und edel statt Arcade (Perfect ist ein dunkles „Plopp“). **Alles noch Platzhalter aus dem `SoundMaker`** |
-| **Haptik** | 15 `.ahap`-Muster (Einfädel-Klick, Tight Fit, Near Miss, Perfect, Takedown, Crash, Rush Hour, Combo, Flow, Truhe, Transporter …), Takedown skaliert mit der Wucht. Der Klick einer sauberen Einfädelung ist kaum spürbar und nur allein im Frame; im Flow wird die Haptik der Einfädelungen tiefer und weicher. Spürbar erst auf dem iPhone |
-| **Accessibility** | Farben nie allein (Formen, Icons, Muster), Vehicle Labels, Reduce Motion entfernt Shake/Zoom/Slow-Mo/Deformation, Kamerafahrten (Schnitt statt Fahrt) und das Atmen der Stadt; am Ring bleibt nur das Aufflackern; alle Informationen bleiben |
-| **App-Icon** | Kreisverkehr bei Nacht, das Mint-Auto fädelt in eine Lücke ein (`Assets/Icon/make_icon.py`) |
-| **Navigation** | native iOS-Tab-Bar (Street Builder, Game, Shop, Upgrades); zwischen den Schichten sichtbar, während einer Schicht ausgeblendet |
+| **Ring als UI** | Auf dem Inselrand ein Strich pro Auto der Schicht, der aufleuchtet, sobald das Auto drin ist – ersetzt den Autozähler. Dazu Lichtsignale: **Welle** (Combo-Stufe, Takedown, Transporter bezahlt), **Aufflackern** (Strike rot, Polizei-Crash blau), **Lichtlauf** (Rush Hour, Schicht geschafft). Warn-Keile für Verbrecher und Transporter sitzen auf demselben Rand |
+| **Die Stadt atmet** | Bäume wiegen sich, Fenster glimmen, Wolkenschatten ziehen; lebhafter bei dichtem Verkehr und in der Rush Hour |
+| **Lichter der Autos** | Bremslichter zeigen, was die Fahrer tun (Schlange an der Linie, Stau hinter einem Wrack); die Lichthupe blinkt, wenn ein früher Tap gehalten wird. Bei Nacht tragen Scheinwerfer und Rücklichter das Bild |
+| **Perspektiven** | Die Kamera gleitet je Tab: Build – der Ring liegt unter dem Plan; Shop – Schwenk, der Ring rutscht an den Rand; Progress – eigener Blick. Die Seiten decken die Stadt nie ganz zu |
+| **Grafik** | Canvas 2D, clean, minimalistisch, dunkle Nacht-Stadt, flache Vektorformen, ein Mint-Akzent für das, was der Spieler verdient |
+| **Farben** | Tokens nach Rolle. Fahrzeugfarben = Spielinfo, nie UI-Akzent |
+| **Schrift** | Systemschrift: auf Apple-Geräten SF Pro, in der Spielszene SF Pro Rounded (`ui-rounded`), sonst Segoe UI / Roboto; Tabular Figures für Zahlen |
+| **Obere Anzeige** | schwebende Karte mit drei Spalten (MONEY · CARS/SCORE · BEST), im Ergebnis zählt das Geld hoch. Auf dem Wartebildschirm führt Geld → Store, Autos → Collection, Best → Records |
+| **Navigation** | DOM-Tab-Bar wie in iOS: **Progress · Game · Shop · Build**; zwischen den Schichten sichtbar, während einer Schicht ausgeblendet. Build hat die Segmente Upgrades / Street Builder, Shop Chests / Collection / Store, Progress Records / Quests / Trials / Mastery |
+| **Menüs** | native Anmutung: gruppierte Listen, Sheets, Schalter, Segmented Controls; Glas nur für schwebende Bedienelemente über der Szene. Kritisch gedämpfte Federn, kein harter Schnitt |
+| **Einstellungen** | Sheet: Sound, Haptics, Reduce Motion (System / On / Off), Vehicle Labels, Export / Import / Reset Progress |
+| **Sound** | Web Audio: 35 Effekte und 7 Musik-Stems als AAC aus `Assets/` (noch die Platzhalter aus dem `SoundMaker`), mit Tonhöhen-Variation und Stereo-Position. Adaptive Musik: Combo baut Instrumente auf, Verbrecher → Sirene, Rush Hour → Beat zieht an, Flow verdichtet; bei Verbrecher-Warnung und Rush-Hour-Beginn atmet die Musik durch einen Tiefpass ein |
+| **Haptik** | über `navigator.vibrate` – nur wo der Browser es kann (Android/Chrome); iOS-Safari hat keine Vibration, der Schalter zeigt das an |
+| **Accessibility** | Farben nie allein (Formen, Icons, Muster), Vehicle Labels, WCAG-AA-Kontrast, 44-px-Ziele, Tastatur (Leertaste, Enter, D/E, Esc, R, Tab, Pfeile), sichtbarer Fokus, Live-Region für Ergebnisse. Reduce Motion folgt standardmäßig dem System und entfernt Shake, Zeitlupe und fliegende Teile |
+| **Icon** | Kreisverkehr bei Nacht, das Mint-Auto fädelt in eine Lücke ein (`Assets/Icon/`), als PWA-Icons in `Web/public/icons/` |
 
 ---
 
 ## 13. Technische Architektur
 
 ```
-Eingabe (Touch/Click mit Zeitstempel)
+Eingabe (pointerdown mit Zeitstempel, Tastatur)
         │
         ▼
-GameCore (120 Hz, deterministisch, plattformneutral)
-  ├─ Config.swift / Tuning.swift  ← ALLE Tuning-Werte, Live-Tuning
-  ├─ World / Roundabout / Paths / Vehicle / Collision / CrashPhysics
-  ├─ Traffic / Queue / Drivers            (KI, Bots im Ring, reagierender Verkehr)
-  ├─ Criminals / Transporters / Modules
-  ├─ Scoring / Shift / Levels / Risk
-  ├─ Weather / CityEvents
-  ├─ Upgrades (Career) / Mastery / Chests / Rewards / Daily
-  └─ Events / RNG / Vec2
+core/  (Spielregeln, kein DOM, 120 Hz, deterministisch)
+  ├─ config.ts                  ← ALLE Tuning-Werte
+  ├─ world / roundabout / paths / vehicle / collision / crash / drivers / traffic
+  ├─ specials (Verbrecher, Boss-Konvoi, Transporter) / explosions / modules
+  ├─ scoring / levels (Kurven, Upgrades, Wetter, Nacht, Events, Mayhem)
+  ├─ career / loot / daily / store / trials / challenge / versus
+  └─ events / rng / vec2
         │
         ▼
-GamePresentation (Daten: Render-Liste, Effekte, HUD, ScreenFlow, Feedback)
-  ├─ GameSession, ScreenFlow, Transitions, Motion, MenuKit, TopBar, HUD (ReadyBanner, ResultBanner)
-  ├─ Seiten: ShopPage, UpgradePage, StreetBuilderPage, SettingsPage, Tutorial
-  ├─ Szene: SceneBuilder, CarArt, VehicleLamps, CityLayer (CityPulse), MapThemes, WeatherLayer, PoliceLights, Effects
-  ├─ Welt als UI: RingSignals, Perspective (Kamera je Tab)
-  └─ Strings (alle Texte), Theme, Icons, Music, Feedback, GameServices
+present/  (Darstellung 1:1 aus GamePresentation)
+  ├─ session (GameSession), flow (Modus-Wischen), transitions, perspective, tutorial
+  ├─ Szene: scene, render, draw, carArt, city, mapThemes, weather, night, effects, explosionsFx, marks
+  ├─ HUD & Seiten: hud, menukit, shop, progress, upgrades, builder, detail, versus
+  └─ strings (alle Texte), theme, icons, skins, feedback (+ Musik-Mix)
         │
         ▼
-Plattform
-  ├─ TestWindow (Windows, raylib) – Maus/Leertaste, Sounds, Live-Tuning (T)
-  └─ App.swiftpm (Swift Playgrounds, iPad) – Canvas-Zeichnung, SwiftUI, Core Haptics, AVAudioEngine, GameKit, AdMob
+audio/ (Web Audio)   storage/ (localStorage)   net/ (PeerJS-Raum)   ui/ (DOM-Hülle: Canvas, Tab-Bar, Sheets, Lobby)
 ```
 
-**Wichtig:** `GameCore` und `GamePresentation` nutzen **nur Swift Stdlib + Foundation** → laufen unter Windows. Die Plattform enthält **keine Spiellogik**. Neues Spielsystem: zuerst in `GameCore` mit Tests, dann in `GamePresentation`, dann im Testfenster spielen.
+- **Vite + TypeScript + HTML5 Canvas**, kein UI-Framework, keine Game-Engine. Einzige Laufzeit-Abhängigkeit: `peerjs` (Multiplayer).
+- **Gleicher Seed + gleiche Taps = gleiches Ergebnis** – Grundlage für Balancing-Bots, Challenge-Links, Trials und Multiplayer.
+- **Spielstand nur lokal:** `localStorage`, Schlüssel `carGame.save.v2` (alte `carGame.career.v1` werden übernommen); tolerant geladen, Feld für Feld. Export/Import als JSON-Datei.
+- **PWA:** Manifest, Service Worker aus dem Build (precacht alle Dateien, Navigation network-first).
+- **Deployment:** Docker (Node baut, `nginx:alpine` liefert statisch aus), Port 5050, Coolify baut aus GitHub. **Kein Backend, keine Datenbank, keine API.**
 
-**Feste Entscheidungen** (siehe [CLAUDE.md](CLAUDE.md)): Swift überall, kein Mac, kein Backend (Ausnahme: Werbung über Google AdMob), so viele native Apple-Elemente wie möglich, GitHub nur als Sync-Kanal ab Phase 2.
+**Feste Entscheidungen** siehe [CLAUDE.md](CLAUDE.md). Die Swift-Pakete (`Game/`, `TestWindow/`, `App.swiftpm/`) sind pausiert und bleiben als Referenz.
 
 ---
 
-## 14. Stand der Umsetzung (26.09.2026)
+## 14. Stand der Umsetzung (28.09.2026)
 
-**Alle 367 automatischen Tests sind grün** (211 GameCore, 149 GamePresentation, 7 GameBots; `swift test` am 26.09.2026).
+**Die Web-Version kann alles, was die Swift-Version konnte**, plus Nacht/Blackout, Syndikats-Konvoi, Trials, Challenge-Links, Multiplayer, Export/Import und Reifenspuren.
 
-| Meilenstein | Inhalt | Stand |
+| Bereich | Inhalt | Stand |
 |---|---|---|
-| M0–M2 | Fundament, Kreisverkehr, Einfädeln, Schicht & Punkte, Crash-Physik | ✅ |
-| M3 | Polizei & Verbrecher | ✅ |
-| M4 | Geldtransporter | ✅ |
-| M5 | Wirtschaft: Level, Geld & Upgrades, Tab-Navigation, fließender Übergang, Gefahrenstufe, Street Builder | ✅ |
-| M6 | Präzision & Flow (Near Miss, Perfect Input, Chain, Flow) | ✅ |
-| M7 | Risiko & Versicherung, Freight, Double Run, dichtere Level | ✅ |
-| M8 | Wetter & City Events | ✅ |
-| M9 | Module im Street Builder, Tow Depot, wachsende Stadt | ✅ |
-| M10 | Fahrzeugtypen, unsichtbare Mastery, Truhen, Shop | ✅ |
-| v1.2 (vorgezogen) | Daily Shift, Challenges, Perfect Run, Daily Login, Serie, Event-Truhen, Saisons, Alben, Rekord-Geist | ✅ |
-| v1.4 (Teil, vorgezogen) | Game Center (Adapter in der App) | ✅ im Code |
-| Bots im Ring | Mindestens 3–5 Bots, Halteregel, fließender Verkehr | ✅ |
-| Inhalt (25.09.) | 39 Car Skins, 12 Map Skins mit Herzstücken, Compact & Van, Tutorial, Street Builder abreißen | ✅ |
-| Eine Stadt, ein Ring (25.09.) | Ring als UI, Ankündigung nur am Ring, kein Ergebnis-Screen, atmende Stadt, Kamera je Tab, obere Karte mit Geld | ✅ |
-| Mehr Gefühl, keine UI (26.09.) | Bremslichter und Lichthupe, weiches Nachrücken, verlorene Schicht mit Zeitlupe und Sofort-Neustart, High-Alert-Streifen, Einfädel-Klick, weichere Flow-Haptik, atmende Musik, Perfect-„Plopp“, SF Pro Rounded, Liquid-Glass-Buttons | ✅ (Haptik, App-Teile und Klang erst auf iPad/iPhone prüfbar) |
-| **M11 Look & Feel** | Soft-Body-Takedown ✅, Haptik-Muster ✅, adaptiver Musik-Mix ✅, App-Icon ✅, Sound-Feinschliff ✅, Apple-Menüs und obere Anzeige ✅, Welt als UI ✅, Mehr Gefühl ✅ | 🟡 teilweise |
-| **M12 iPhone-App** | `App.swiftpm` vorbereitet: Canvas-Zeichnung, Touch, Sound, Haptik, Musik, AdMob (Test-IDs), Game Center, native Buttons, Einstellungen | 🟡 ungetestet, erster Build auf dem iPad offen; Shop, Upgrades und Street Builder in der App noch nicht gebaut |
-| M13 v1.0 Launch | Developer Program, TestFlight, App Store | ⬜ |
+| Kern | Kreisverkehr, Einfädeln, Schicht & Punkte, echte Crash-Physik, Bots im Ring | ✅ |
+| Sonderverkehr | Polizei & Verbrecher, Transporter, Lkw, Tanklaster, Militär-Truck, Boss-Konvoi | ✅ |
+| Modi | Shift, Unlimited, Mayhem, Multiplayer (Wischen) | ✅ |
+| Schwierigkeit | Level-Kurve, Wetter, Nacht/Blackout, City Events, Risiko & Versicherung | ✅ |
+| Meta | Geld, 13 Upgrades, Street Builder mit Modulen, Truhen, Sammlung, Alben, Mastery, Daily, Serie, Quests, Trials, Records, Store (Platzhalter) | ✅ |
+| Hülle | Tab-Bar, Einstellungen, PWA, Offline, Docker/Coolify | ✅ |
+| Look & Feel | Ring als UI, atmende Stadt, Kamera je Tab, adaptive Musik | ✅, Klänge noch Platzhalter |
+| Swift-/App-Schiene | M11 Look & Feel, M12 iPhone-App, M13 App Store | ⏸ pausiert |
 
-Fast alles ist **im Testfenster spielbar, der Playtest steht aber bei fast allen Systemen noch aus.**
+Automatische Tests hat die Web-Version nicht; geprüft wird mit `npm run build` (Typecheck) und den Balancing-Bots. Am 28.09.2026: Build grün; `npm run sim` auf Level 5 – vorsichtiger Bot 60/60 Schichten geschafft, 0 Crashes; Zufalls-Tapper 0/60 geschafft, 60 Crashes.
 
-### Offen in M11
+### Offen
 
-- **Finale Sounds und Musik als echte Stems** (heute synthetische Platzhalter; das Mischpult existiert)
-- **Haptik spüren und feinjustieren** auf dem iPhone
-- **Design-Pass und Screen-Entwürfe** (UI.md) für die SwiftUI-Menüs, damit M12 nur umsetzt
+- **Echte Klänge und Musik-Stems** statt der `SoundMaker`-Platzhalter.
+- **Playtest auf echten Handys** (iPhone-Safari und Android): Timing mit Touch, 60 fps auf älteren Geräten, PWA-Installation.
+- **Multiplayer über echte Netze** (Mobilfunk, Firewalls, TURN).
+- **Deployment über Coolify** mit HTTPS und eigener Domain.
 
 ### Playtest offen
 
 - Bots im Ring: Fühlt es sich wie Lücken-Treffen an? Reichen 3 Bots auf Level 1?
-- Warn-Keil auf der Mittelinsel: richtige Position, deutlich genug?
-- Blaulicht auf dem Boden: Intensität und Reichweite?
-- Lkw: Aussehen und Bremsverhalten
-- Ist Level 14 jetzt schwer genug (Kurve ab Level 10 nachgezogen)?
-- Sind die längeren Schichten auf hohen Leveln gut?
-- Truhen-Öffnung, Motion und Menüs im Gesamteindruck
-- Ring als UI: Liest man den Schichtfortschritt am Ring, ohne hinzuschauen? Sind die Lichtsignale zu viel oder zu wenig?
-- Ist der Nachklang von 3,6 s nach der Schicht richtig?
-- Merkt man, dass die Stadt atmet, ohne dass es auffällt? Fühlen sich die Tab-Wechsel wie eine Kamerafahrt an?
-- Verlorene Schicht: Sind 0,45 s Zeitlupe und 5 % Zurücktreten richtig? Tippt man zu früh versehentlich in den Neustart (Sperre 0,5 s)?
-- Bremslichter: Liest man den Stau hinter einem Wrack? Stört der Schein in dichten Leveln?
-- Lichthupe beim frühen Tap: wahrgenommen, ohne abzulenken?
-- High-Alert-Streifen: deutlich genug, ohne mit den Signalen am Inselrand zu konkurrieren?
-- Auf dem iPhone: Einfädel-Klick kaum spürbar genug? Weichere Flow-Haptik spürbar? Atmende Musik hörbar, aber nicht störend?
+- Warn-Keil auf der Mittelinsel und Blaulicht auf dem Boden: deutlich genug?
+- Ring als UI: Liest man den Schichtfortschritt, ohne hinzuschauen?
+- Unlimited: Wie lange hält man durch, steigt der Druck richtig?
+- Mayhem: Macht Zielen auf Tanklaster Spaß, sind 12 Autos richtig?
+- Nacht/Blackout: noch fair lesbar? Boss-Konvoi: Ist die Lücke vor den Begleitern treffbar?
+- Multiplayer: Sind 50 ms Eingabeverzögerung spürbar? Sind 10 s bis zum Ausscheiden richtig?
+- Verlorene Schicht: Zeitlupe und Sofort-Neustart im richtigen Maß?
 
 ### Bekannte Unstimmigkeiten
 
-- **Karriere-Simulation** (`Sim --career`) und die Verdienst-Tabellen in ROADMAP.md (M5, Schritt 2) stammen von vor den Preis- und Lohnänderungen vom 25.09. und sollten neu gemessen werden.
+- **Karriere-Messungen** in ROADMAP.md (M5) stammen von vor den Preis- und Lohnänderungen vom 25.09. und aus der Swift-Simulation; die Web-Sim misst nur Schichten, keine Laufbahn.
+- ROADMAP.md nennt für Mayhem 30 Autos; im Code sind es 12 (`mayhemCars`).
 
 ---
 
-## 15. Geplant nach v1.0
+## 15. Ideen danach
 
-| Version | Inhalt |
-|---|---|
-| **v1.1 Straßennetz** | freier Straßennetz-Editor / Stadtübersicht, neue Straßen und weitere Kreisverkehre, Abschleppwagen aus dem Depot-Hof in der Stadt, Verkehrsleitsystem als Gegen-Upgrade zum Zoll-Stau (Designfrage vorher: Spielt eine Schicht auf *einem* Kreisverkehr des Netzes oder auf dem ganzen Netz?) |
-| **v1.3 Abwechslung** | Tag/Nacht, Krankenwagen, Boss-Event (Kopf des Verbrechens), zweispurige Kreisverkehre, weitere Fahrzeugtypen (z. B. Oldtimer), Prestige – ohne die Kernmechanik mit Sonderregeln zu überladen |
-| **v1.4 Apple-Ökosystem** | Home-Screen-Widget, Live Activity / Dynamic Island (nur bei aktiver Jagd oder Transporter), Action Button, CloudKit-Sync, Siri Shortcuts, Apple Watch |
-| **Später, falls gewünscht** | Premium-Truhen gegen Echtgeld (StoreKit, rechtliche Prüfung), Season Pass, Multiplayer (Echtzeit vs. asynchron offen; Multiplayer-Skins nur kosmetisch) |
-
-### Nächste Schritte
-
-1. **Playtest im Testfenster** (Level 1, 5, 10, 20; Werte in `tuning.json`), auch mit dem Ring als UI und dem neuen Spielgefühl (Playtest-Fragen oben).
-2. **M11 abschließen:** finale Sounds, Design-Pass.
-3. **M12:** erster Build auf dem iPad, Timing-Feintuning mit Touch, Tests auf iPhone 11 / SE (A13), Randfälle (Anruf, App-Wechsel, Stummschalter).
-4. **M13:** Apple Developer Program (99 $), AdMob-Konto mit echten IDs, Game-Center-IDs in App Store Connect, TestFlight-Beta (Website), Datenschutzangaben mit Werbe-/Tracking-Daten, ATT-Abfrage, Privacy Policy & Support-Seite, Einreichung, Launch.
+Offene Ideen stehen in [IDEA.md](IDEA.md). Aus der alten Planung passen zum Browserspiel weiterhin: freier Straßennetz-Editor und weitere Kreisverkehre, Abschleppwagen aus dem Depot-Hof, Verkehrsleitsystem gegen den Zoll-Stau, Krankenwagen, zweispurige Kreisverkehre, weitere Fahrzeugtypen, Prestige. Die Apple-Ideen (Widget, Live Activity, Game Center, CloudKit, StoreKit) ruhen mit der App-Schiene.
 
 ---
 
 ## 16. Testen & Balancing
 
-| Werkzeug | Befehl |
+| Werkzeug | Befehl (in `Web/`) |
 |---|---|
-| **Spielen** | `Spiel starten.cmd` (baut und startet) oder `cd TestWindow; swift run -c release TestWindow` |
-| **Automatische Tests** | `cd Game; swift test` |
-| **Balancing-Bot** | `swift run -c release Sim --shifts 1000 --seed 42` |
-| **Schwierigkeit pro Level** (mit Wetter und Events) | `swift run -c release Sim --curve --shifts 300` |
-| **Laufbahnen** (Level, Geld, Upgrades; `--duty high`) | `swift run -c release Sim --career 120` |
-| **Bots im Ring, Kolonnen des Spielers** | `swift run -c release Sim --ring --shifts 200` |
-| **Sounds neu erzeugen** | `cd TestWindow; swift run SoundMaker`, danach `powershell -File sync-app-assets.ps1` |
-| **Live-Tuning** | `tuning.json` editieren → im Fenster **T** (gleicher Seed, neue Werte) |
-| **Debug-Overlay / Zeitlupe** | **F1** (Hitboxen, Abstände, FPS, Seed) / **F2** (1× → 0,5× → 0,25×) |
+| **Einmalig installieren** | `npm install` |
+| **Spielen / Entwickeln** | `npm run dev` → http://localhost:5050 (auch vom Handy im WLAN) |
+| **Typecheck + Build** | `npm run build` (muss vor jedem Commit grün sein) |
+| **Build lokal ausliefern** | `npm run preview` (Port 5050, mit Service Worker) |
+| **Balancing-Bots** | `npm run sim -- 60 5` (Schichten, Level): der vorsichtige Bot darf **nie** crashen, ein Zufalls-Tapper fast immer |
+| **Multiplayer-Bots** | `npm run sim:versus`: vorsichtige Spuren scheiden nie durch Crash aus, gleicher Seed = gleiches Match |
+| **Container wie in Coolify** | im Repo-Root: `docker build -t car-game . ; docker run -p 5050:5050 car-game` |
 
-**Steuerung im Testfenster:** Leertaste / Linksklick = Tap · **E** / Rechtsklick = Einsatzfahrt · **H** = Gefahrenstufe · **Tab** oder Klick auf die Leiste = Seite wechseln · **Esc** = Pause / Einstellungen / zurück · **R** = Schicht neu · Ziehen = Street Builder.
+**Steuerung:** Tap / Klick / Leertaste = Auto schicken (der erste Tap startet) · Wischen bzw. `←` / `→` = Modus · Dispatch-Button, `D`, `E`, Rechtsklick = Einsatzfahrt · `Tab` = Seite · obere Karte = Store / Collection / Records · `Enter` = starten / Upgrade kaufen · `Esc` = Einstellungen bzw. zurück · `R` = Schicht neu.
 
-**Startparameter** (u. a.): `--seed`, `--time-scale`, `--play`, `--level 8`, `--tab upgrades`, `--duty high`, `--weather storm`, `--event roadworks`, `--map sakura`, `--shelf maps`, `--chest-preview legendary`, `--settings`, `--debug`, `--autotap 0.9`, `--size 375x667`, `--save datei.json`, `--screenshot bild.png --at 4`, `--at-crash 0.2`. Vollständige Liste: [TESTING.md](TESTING.md) und `LaunchOptions.swift`.
-
-**Playtest-Routine (nach jedem Meilenstein):** 3 Schichten spielen → Fairness der Crashes prüfen (F1), Feedback-Wahrnehmung, Ruckler (FPS), Motivation („Will ich noch eine?“). Auffälligkeiten **mit Seed** notieren.
+**Playtest-Routine:** 3 Schichten spielen, am Desktop und auf einem echten Handy → Fairness der Crashes, Feedback-Wahrnehmung, Ruckler, Motivation („Will ich noch eine?“). Auffälligkeiten **mit Seed** notieren (ein Challenge-Link hält die Schicht fest).
 
 ---
 
 ## 17. Offene Entscheidungen / Balancing-Punkte
 
 - [x] Schichtlänge: kurz lassen, kein 2-Minuten-Ziel (Leo, 26.09.2026)
+- [x] Verlorenes Level wiederholen: bleibt so, fair dank Sofort-Neustart (Leo, 26.09.2026)
+- [x] Gefahrenstufe High Alert: entfernt, ersetzt durch die Spielmodi (26.09.2026)
+- [x] Browserspiel statt App (Leo, 27.09.2026)
 - [ ] Level-Kurve für Speed, Density und Weather; Rush-Hour-Werte
-- [ ] Bots im Ring: Startet Level 1 mit 3 oder 4? Sind 3er-Lücken ein netter Moment oder ein Schlupfloch?
-- [ ] Kosten: Zufahrten, Module, Tow Depot, Truhen nach den +30 % (Karriere neu messen)
-- [ ] Wirkung der 30-%-Wrackentfernung des Depots
+- [ ] Bots im Ring: Startet Level 1 mit 3 oder 4?
+- [ ] Kosten: Zufahrten, Module, Truhen (Karriere neu messen)
 - [ ] Crash-Kosten ab Level 20, Verlust bei Flucht, Versicherungs-Staffeln
 - [ ] Parameter der Fahrzeugtypen (Compact, Sports Car, Van)
 - [ ] Truhen-Odds, Mastery-Stufen, Pity-Schwelle
-- [ ] Wetterparameter, Häufigkeit der City Events
+- [ ] Wetter, Nacht-Chance, Häufigkeit der City Events
+- [ ] Unlimited- und Mayhem-Werte, Boss-Level-Abstand (jedes 15.)
 - [ ] Blaulicht auf dem Boden und Warn-Keil: Intensität, Position, Deutlichkeit
-- [ ] Ist ×2 bei High Alert genug Anreiz, solange man die Schichten locker schafft? Soll High Alert zusätzlich mehr Punkte geben?
-- [x] Verlorenes Level wiederholen: bleibt so, fair dank Sofort-Neustart (Leo, 26.09.2026)
-- [ ] Muss vor dem Launch geklärt werden: ob Swift Playgrounds Game-Center-Berechtigung und App-Store-Upload für dieses Projekt ausreichen oder Xcode am Ende doch nötig wird
+- [ ] Store und Werbung: bleiben Platzhalter oder fliegen raus, solange es kein Backend und keine Zahlung gibt?
 
 ---
 
 ## 18. Datei-Struktur (Kern)
 
 ```
-Car game/
+Car-game/
 ├─ CLAUDE.md                      ← feste Entscheidungen, Befehle, Arbeitsweise
 ├─ Spiel.md                       ← dieses Dokument
-├─ IDEA.md, PLAN.md, FOUNDATION.md, ROADMAP.md, TESTING.md, LOOT.md, UI.md
-├─ Spiel starten.cmd              ← baut und startet das Testfenster
-├─ sync-app-assets.ps1            ← Sounds/Haptik/Musik nach App.swiftpm kopieren
-├─ Game/                          ← Plattformneutrales Swift-Paket
-│  ├─ Sources/GameCore/           ← Spiellogik (Config, World, Vehicle, Criminals, Transporters, Upgrades, Levels, Modules, Weather, CityEvents, Risk, Mastery, Chests, Rewards, Daily, …)
-│  ├─ Sources/GamePresentation/   ← Darstellung als Daten (GameSession, RenderList, HUD, TopBar, ScreenFlow, Shop/Upgrade/StreetBuilder/Settings-Seiten, CarArt, CityLayer, MapThemes, Strings, Theme, Motion, Music, Feedback, …)
-│  ├─ Sources/GameBots/           ← Bots für Sim & Tests
-│  ├─ Sources/Sim/                ← Balancing-Bot (swift run Sim)
-│  └─ Tests/                      ← Swift Testing (GameCore, GamePresentation, GameBots)
-├─ TestWindow/                    ← raylib-Testfenster (Windows), nur Zeichnen, Eingabe, Ton
-│  ├─ Sources/TestWindow/         ← Fenster, Renderer, Platform, Startparameter
-│  ├─ Sources/SoundMaker/         ← erzeugt die Platzhalter-Sounds
-│  ├─ tuning.json                 ← Live-Tuning
-│  └─ savegame.json               ← Highscore, Einstellungen, Karriere
-├─ App.swiftpm/                   ← iPhone-App (Swift Playgrounds auf dem iPad): dünne Adapter
-│  └─ CarGameApp, GameModel, GameCanvas, Input, Overlays, Platform, Ads, GameCenter, Resources/
-└─ Assets/
-   ├─ Sounds/                     ← 32 .wav (Platzhalter)
-   ├─ Music/                      ← 7 Stems
-   ├─ Haptics/                    ← 14 .ahap-Muster
-   └─ Icon/                       ← App-Icon und Skript
+├─ IDEA.md, FOUNDATION.md, LOOT.md, ROADMAP.md, PLAN.md, TESTING.md, MONETIZATION.md
+├─ Dockerfile, .dockerignore      ← Node baut, nginx liefert aus (Port 5050)
+├─ Web/                           ← DAS SPIEL
+│  ├─ README.md, PRODUCT.md
+│  ├─ index.html, vite.config.ts, nginx.conf, package.json
+│  ├─ src/core/                   ← Spielregeln (config.ts = alle Zahlen)
+│  ├─ src/present/                ← Szene, HUD, Seiten, Session
+│  ├─ src/audio/ storage/ net/ ui/
+│  ├─ public/                     ← Manifest, Icons, audio/ (35 Sounds, 7 Stems)
+│  └─ scripts/                    ← sim.mjs, versus-sim.mjs
+├─ Assets/                        ← Sounds, Musik, Haptik, Icon (Quelle, auch für Web)
+└─ pausiert: Game/ (GameCore, GamePresentation, Sim), TestWindow/ (raylib), App.swiftpm/
 ```
 
 ---
 
-**Stand:** 26.09.2026 – M0–M10, die vorgezogenen Motivationssysteme und „Eine Stadt, ein Ring“ sowie „Mehr Gefühl, keine UI“ sind gebaut, alle 367 Tests grün, das Spiel ist im Testfenster voll spielbar. M11 (Look & Feel) ist zum großen Teil fertig, M12 (iPhone-App) ist vorbereitet, aber auf dem iPad noch nie gebaut. Nächster großer Schritt: **Playtest, dann erster Build auf dem iPad.**
+**Stand:** 28.09.2026 – Car Game ist ein Browserspiel. Alle Systeme der Swift-Version sind portiert, dazu Nacht, Boss-Konvoi, Trials, Challenge-Links und Multiplayer. Nächster großer Schritt: **Playtest auf echten Handys und Deployment über Coolify.**

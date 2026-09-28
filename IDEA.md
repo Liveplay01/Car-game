@@ -98,11 +98,10 @@ Umgesetzt ist die Basis (ROADMAP.md, "Eine Stadt, ein Ring"). Offen:
 
 ## Offen: Inhaltliche Abwechslung (v1.3)
 
-- Krankenwagen.
-- Boss-Event / Kopf des Verbrechens.
 - Weitere Vehicle Types über Compact, Sports Car und Van hinaus (z. B. Oldtimer; Truhen-Inhalt,
   eigene faire Eigenschaften).
-- Tag/Nacht, zweispurige Kreisverkehre, Prestige.
+- Zweispurige Kreisverkehre.
+- Ghost Racing über Challenge-Links (Leo, 28.09.2026: erstmal nicht).
 
 Diese Inhalte dürfen die Kernmechanik nicht mit Sonderregeln überladen.
 

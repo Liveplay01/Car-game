@@ -24,7 +24,14 @@ export const MAX_CAR_SKINS = 5;
 
 export type CosmeticKind = 'carSkin' | 'mapSkin' | 'vehicleType';
 export type Season = 'winter' | 'spring' | 'summer' | 'autumn';
-export type CosmeticSource = { kind: 'chest' } | { kind: 'streak'; days: number } | { kind: 'season'; season: Season };
+export type CosmeticSource =
+  | { kind: 'chest' }
+  | { kind: 'streak'; days: number }
+  | { kind: 'season'; season: Season }
+  /** Earned by completing this many Legendary Shifts. */
+  | { kind: 'legendary'; shifts: number }
+  /** Earned by reaching this Prestige rank. */
+  | { kind: 'prestige'; rank: number };
 
 export interface Cosmetic {
   id: string;
@@ -98,7 +105,25 @@ export const COSMETICS: Cosmetic[] = [
   c('blossom', 'carSkin', 'epic', { kind: 'season', season: 'spring' }),
   c('sunburst', 'carSkin', 'epic', { kind: 'season', season: 'summer' }),
   c('pumpkin', 'carSkin', 'epic', { kind: 'season', season: 'autumn' }),
+  c('laurel', 'carSkin', 'rare', { kind: 'legendary', shifts: 1 }),
+  c('crown', 'carSkin', 'epic', { kind: 'legendary', shifts: 5 }),
+  c('phoenix', 'carSkin', 'legendary', { kind: 'legendary', shifts: 15 }),
+  c('starSilver', 'carSkin', 'epic', { kind: 'prestige', rank: 1 }),
+  c('starGold', 'carSkin', 'epic', { kind: 'prestige', rank: 2 }),
+  c('starIris', 'carSkin', 'legendary', { kind: 'prestige', rank: 3 }),
 ];
+
+/** The item a completed Legendary Shift count unlocks, if any. */
+export const legendaryReward = (shifts: number): Cosmetic | undefined =>
+  COSMETICS.find((x) => x.source.kind === 'legendary' && x.source.shifts === shifts);
+
+/** The item a Prestige rank unlocks, if any. */
+export const prestigeReward = (rank: number): Cosmetic | undefined => COSMETICS.find((x) => x.source.kind === 'prestige' && x.source.rank === rank);
+
+/** The next Legendary Shift milestone still to reach. */
+export function nextLegendaryReward(collection: readonly string[]): Cosmetic | undefined {
+  return COSMETICS.find((x) => x.source.kind === 'legendary' && !collection.includes(x.id));
+}
 
 export const cosmetic = (id: string): Cosmetic | undefined => COSMETICS.find((x) => x.id === id);
 
@@ -113,10 +138,11 @@ export function seasonOf(day: number): Season {
 export const seasonItems = (season: Season): Cosmetic[] =>
   COSMETICS.filter((x) => x.source.kind === 'season' && x.source.season === season);
 
-export type Album = 'maps' | 'commons' | 'rares' | 'epics' | 'legends' | 'seasons' | 'loyalty';
-export const ALBUMS: Album[] = ['maps', 'commons', 'rares', 'epics', 'legends', 'seasons', 'loyalty'];
+export type Album = 'maps' | 'commons' | 'rares' | 'epics' | 'legends' | 'seasons' | 'loyalty' | 'honours';
+export const ALBUMS: Album[] = ['maps', 'commons', 'rares', 'epics', 'legends', 'seasons', 'loyalty', 'honours'];
 
 export const ALBUM_REWARD: Record<Album, number> = {
+  honours: 50000,
   commons: 5000,
   maps: 10000,
   rares: 10000,
@@ -143,6 +169,8 @@ export function albumItems(album: Album): Cosmetic[] {
       return COSMETICS.filter((x) => x.source.kind === 'season');
     case 'loyalty':
       return COSMETICS.filter((x) => x.source.kind === 'streak');
+    case 'honours':
+      return COSMETICS.filter((x) => x.source.kind === 'legendary' || x.source.kind === 'prestige');
   }
 }
 

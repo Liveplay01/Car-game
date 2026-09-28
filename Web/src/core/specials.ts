@@ -83,7 +83,8 @@ export function updateCriminals(w: World, now: number): void {
       const pickup = spawnSpecial(w, cr.arm, 'pickup');
       if (cr.boss) {
         pickup.role = 'boss';
-        w.escortsDue = { arm: cr.arm, left: c.convoyEscorts };
+        pickup.armour = c.bossArmour;
+        w.escortsDue = c.convoyEscorts > 0 ? { arm: cr.arm, left: c.convoyEscorts } : null;
       }
       w.criminal = { kind: 'arriving', vehicle: pickup.id };
       return;

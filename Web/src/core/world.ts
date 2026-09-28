@@ -40,6 +40,7 @@ import {
 import { type MilitaryPhase, updateMilitary, explode, isEscorted, predictedZoneS, gapToZone } from './explosions';
 import { chargeModules, wreckClearRate, towDepotCovering } from './modules';
 import { tempoAt, densityAt } from './levels';
+import { type AmbulancePhase, firstAmbulance, updateAmbulance, noteMergeNearAmbulance, ambulanceThrough } from './ambulance';
 
 export const STEP_RATE = 120;
 export const STEP = 1 / STEP_RATE;
@@ -167,6 +168,7 @@ export class World {
   transporter: TransporterPhase = { kind: 'idle', next: Infinity };
   military: MilitaryPhase = { kind: 'idle', next: Infinity };
   militaryCount = 0;
+  ambulance: AmbulancePhase = { kind: 'done' };
   /** The syndicate boss's escorts still to join, and where (boss levels). */
   escortsDue: { arm: Arm; left: number } | null = null;
   ringSpeed: number;
@@ -178,6 +180,7 @@ export class World {
   transporterRng: Rng;
   tankerRng: Rng;
   militaryRng: Rng;
+  ambulanceRng: Rng;
   nextVehicleId: number;
   spawnCooldown = 0;
   events: GameEvent[] = [];
@@ -196,6 +199,7 @@ export class World {
     this.transporterRng = substream(seed, 0x9f314d7c);
     this.tankerRng = substream(seed, 0x7a1e5c93);
     this.militaryRng = substream(seed, 0xe3b20c6d);
+    this.ambulanceRng = substream(seed, 0xa3b01a4c);
     this.ringSpeed = config.ringSpeed;
     this.targetDensity = config.freePlayDensity;
     this.nextVehicleId = firstVehicleId;
@@ -213,6 +217,7 @@ export class World {
     };
     const comes = this.militaryRng.unit() < config.militaryChance;
     this.military = { kind: 'idle', next: comes ? this.militaryRng.range(config.militaryFirst.lo, config.militaryFirst.hi) : Infinity };
+    this.ambulance = firstAmbulance(this);
     for (const q of this.seats) this.refillQueue(q);
     if (prefill) prefillRing(this, Math.max(this.targetDensity, config.minRingBots));
   }
@@ -312,6 +317,7 @@ export class World {
     updateCriminals(this, end);
     updateTransporters(this, end);
     updateMilitary(this, end);
+    updateAmbulance(this, end);
     updateEscorts(this);
     this.resolveContacts(end);
     this.resolveTrafficContacts(end);
@@ -336,6 +342,8 @@ export class World {
         return c.compactLength;
       case 'van':
         return c.vanLength;
+      case 'ambulance':
+        return c.ambulanceLength;
       default:
         return c.carLength;
     }
@@ -360,6 +368,8 @@ export class World {
         return c.compactMass;
       case 'van':
         return c.vanMass;
+      case 'ambulance':
+        return c.ambulanceMass;
       default:
         return 1;
     }
@@ -504,7 +514,7 @@ export class World {
       velocity = veh.phase.velocity;
       spin = veh.phase.spin;
     }
-    const mass = this.massOf(veh.type);
+    const mass = veh.armour > 0 ? this.config.bossArmourMass : this.massOf(veh.type);
     return { position: veh.position, velocity, heading: veh.heading, angularVelocity: spin, mass, inertia: unitInertia(this.config) * mass };
   }
 
@@ -693,6 +703,7 @@ export class World {
   crash(first: Vehicle, second: Vehicle, c: Contact, now: number): void {
     const point = contactPoint(c);
     const takedown = this.isTakedown(first, second) && !criminalRanInto(this, first, second, point);
+    if (takedown && this.shrugsOff(first, second, c, point, now)) return;
     const seizure = this.isSeizure(first, second);
     const wreckedCriminal = takedown ? undefined : [first, second].find((x) => this.isLiveCriminal(x));
     const wreckedTruck = seizure ? undefined : [first, second].find((x) => x.type === 'transporter' && !x.isCrashed);
@@ -766,6 +777,49 @@ export class World {
     for (const id of explosives) explode(this, id, now);
   }
 
+  /**
+   * An armoured boss takes the ram (the armoured boss, M-Syndicate): the impact is real, but the
+   * boss is so heavy it keeps its line. The police car bounces off as a wreck, the armour cracks,
+   * and the next police car finishes it. Not a strike: the ram was the right call.
+   */
+  private shrugsOff(first: Vehicle, second: Vehicle, c: Contact, point: Vec2, now: number): boolean {
+    const boss = [first, second].find((x) => x.type === 'pickup' && x.armour > 0);
+    if (!boss) return false;
+    const police = boss === first ? second : first;
+    const normal = this.contactNormal(c, first, second);
+    const a = this.bodyOf(first);
+    const b = this.bodyOf(second);
+    const impact = collide(a, b, point, normal, this.config.crashRestitution, this.config.crashFriction);
+    this.addDent(first, point, impact);
+    this.addDent(second, point, impact);
+    // The boss keeps its line on the ring: the police car takes the whole overlap.
+    const away = police === first ? normal : mul(normal, -1);
+    police.position = add(police.position, mul(away, Math.max(0, -c.gap)));
+    this.makeWreck(police, point, police === first ? a : b);
+    boss.armour--;
+    this.events.push({
+      type: 'crash',
+      first: first.id,
+      second: second.id,
+      point,
+      time: now,
+      involvesPlayer: true,
+      impact,
+      isStrike: false,
+      isPoliceCrash: false,
+      isTakedown: false,
+      penalty: 0,
+      strikes: this.score.strikes,
+      policeCrashes: this.score.policeCrashes,
+      cost: 0,
+      covered: 0,
+      flames: 0,
+      chain: 0,
+    });
+    this.events.push({ type: 'armourHit', criminal: boss.id, police: police.id, point, time: now, armourLeft: boss.armour });
+    return true;
+  }
+
   /** Rates and scores every player merge that ended this step without a crash. */
   rateMerges(now: number): void {
     for (const veh of this.vehicles) {
@@ -784,6 +838,7 @@ export class World {
       }
       const [rating, points, combo] = this.scoreMerge(merge.minGap, behind, ahead);
       this.setChain(Scoring.extendsChain(rating) ? this.score.chain + 1 : 0, now);
+      noteMergeNearAmbulance(this, veh, s, now);
       this.events.splice(at, 0, {
         type: 'merged',
         vehicle: veh.id,
@@ -1321,6 +1376,7 @@ export class World {
     if (this.criminal.kind === 'idle') this.criminal = { kind: 'idle', next: this.criminal.next + time };
     if (this.transporter.kind === 'idle') this.transporter = { kind: 'idle', next: this.transporter.next + time };
     if (this.military.kind === 'idle') this.military = { kind: 'idle', next: this.military.next + time };
+    if (this.ambulance.kind === 'idle') this.ambulance = { kind: 'idle', next: this.ambulance.next + time };
     if (!this.config.endless && this.config.shiftCars <= this.config.rushHourCars) this.beginRushHour(time);
   }
 
@@ -1353,6 +1409,7 @@ export class World {
     // Mayhem ends once the last chain reaction has burnt out.
     if (this.config.mayhem && this.score.lastCrashAt !== null && now - this.score.lastCrashAt < this.config.mayhemChainWindow) return;
     if (this.transporter.kind === 'active') transporterEscapes(this, this.transporter.vehicle, now);
+    ambulanceThrough(this, now);
     const c = this.config;
     this.score.points += c.completionBonus;
     this.score.money += c.shiftPay;
@@ -1408,6 +1465,9 @@ export class World {
       detonated: this.shift.detonated,
       convoy: this.config.convoy,
       bossBusted: s.bossBusted,
+      bossKind: this.config.convoy ? this.config.bossKind : null,
+      legendary: this.config.legendary,
+      ambulances: s.ambulances,
     };
   }
 

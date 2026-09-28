@@ -1,4 +1,4 @@
-import type { Config, Weather, CityEvent } from '../core/config';
+import type { Config, Weather, CityEvent, BossKind, LegendaryRule } from '../core/config';
 import type { Upgrade } from '../core/levels';
 import type { MasteryGoal, MasteryCompletion } from '../core/career';
 import { MASTERY_THRESHOLDS } from '../core/career';
@@ -8,7 +8,7 @@ import type { Challenge } from '../core/daily';
 import type { StoreProduct } from '../core/store';
 import { productGrant } from '../core/store';
 import type { VehicleType, VehicleRole } from '../core/vehicle';
-import type { Trial, TrialId } from '../core/trials';
+import { type Trial, type TrialId, type RunId, type EliteKind, rematchKind } from '../core/trials';
 import { MONEY_MARK } from './icons';
 
 /** Every text the game shows (`Strings.swift`). English only. */
@@ -78,7 +78,10 @@ export const S = {
   },
 
   trials: {
-    name(id: TrialId): string {
+    name(id: RunId): string {
+      const boss = rematchKind(id);
+      if (boss) return S.boss.rematch(boss);
+      if (id === 'weekly') return S.weekly.title;
       return {
         tightSqueeze: 'Tight Squeeze',
         deadCentre: 'Dead Centre',
@@ -87,9 +90,12 @@ export const S = {
         stormWatch: 'Storm Watch',
         marathon: 'Marathon',
         mostWanted: 'Most Wanted',
-      }[id];
+      }[id as TrialId];
     },
     goal(t: Trial): string {
+      if (t.elite) return S.weekly.goal(t);
+      const boss = rematchKind(t.id);
+      if (boss) return `${S.boss.name(boss)} again: more escorts, less time`;
       switch (t.id) {
         case 'tightSqueeze':
           return `${t.cars} cars, every merge a Tight Fit or better`;
@@ -105,6 +111,8 @@ export const S = {
           return `${t.cars} cars in one shift`;
         case 'mostWanted':
           return 'Take down the syndicate boss';
+        default:
+          return '';
       }
     },
     level: (l: number): string => `Level ${l}`,
@@ -114,11 +122,93 @@ export const S = {
 
   boss: {
     incoming: 'SYNDICATE CONVOY',
+    /** The warning over the arm: which boss is coming. */
+    arriving: (k: BossKind): string =>
+      ({ convoy: 'SYNDICATE CONVOY', getaway: 'GETAWAY DRIVER', armoured: 'ARMOURED BOSS', phantom: 'THE PHANTOM' })[k],
+    name: (k: BossKind): string => ({ convoy: 'The Convoy', getaway: 'The Getaway Driver', armoured: 'The Armoured Boss', phantom: 'The Phantom' })[k],
+    /** What each boss asks of you, in the Bosses list. */
+    tactic: (k: BossKind): string =>
+      ({
+        convoy: 'Escorts right behind it: time a police car into the gap.',
+        getaway: 'No escorts, but gone in seconds: have a police car ready.',
+        armoured: 'Shrugs off the first ram: a second police car finishes it.',
+        phantom: 'A blackout, and it drives without lights: follow the ring.',
+      })[k],
+    rematch: (k: BossKind): string => `Rematch · ${S.boss.name(k)}`,
+    firstAt: (level: number): string => `First at Level ${level}`,
+    beaten: 'Busted',
+    notMet: 'Not met yet',
+    armour: 'ARMOUR CRACKED',
     heist: (amount: string): string => `HEIST RECOVERED ${amount}`,
     escaped: 'BOSS ESCAPED',
     wanted: (seconds: number): string => `BOSS ${Math.ceil(Math.max(0, seconds))}`,
     busted: (amount: string): string => `Boss busted · ${amount} recovered`,
     label: (role: VehicleRole): string | null => (role === 'boss' ? 'BOSS' : role === 'escort' ? 'ESCORT' : null),
+  },
+
+  legendary: {
+    caption: 'LEGENDARY SHIFT',
+    name: (r: LegendaryRule): string =>
+      ({ gridlock: 'Gridlock', dragnet: 'Dragnet', heavyLoad: 'Heavy Load', darkStorm: 'Dark Storm', zeroTolerance: 'Zero Tolerance' })[r],
+    line: (r: LegendaryRule): string =>
+      ({
+        gridlock: 'Rush hour from the first car',
+        dragnet: 'Criminals twice as often',
+        heavyLoad: 'Lorries everywhere, half of them gas',
+        darkStorm: 'A storm in a blackout',
+        zeroTolerance: 'One crash or cut-off ends it',
+      })[r],
+    reward: 'REWARD',
+    chest: 'Premium',
+    done: (item: string | null): string => `LEGENDARY SHIFT DONE · PREMIUM CHEST${item ? ` · ${S.shop.item(item)} unlocked` : ''}`,
+    broken: 'RULE BROKEN',
+  },
+
+  weekly: {
+    title: 'Weekly Elite',
+    caption: 'WEEKLY ELITE',
+    elite: (e: EliteKind): string =>
+      ({ flawless: 'Flawless', precision: 'Precision', storm: 'Storm Front', gridlock: 'Gridlock', dragnet: 'Dragnet', boss: 'Boss Hunt' })[e],
+    goal(t: Trial): string {
+      switch (t.elite) {
+        case 'flawless':
+          return `Level ${t.level} · ${t.cars} cars, no crash and no cut-off`;
+        case 'precision':
+          return `Level ${t.level} · ${t.goal.k === 'perfects' ? t.goal.n : 0} Perfect merges in ${t.cars} cars`;
+        case 'storm':
+          return `Level ${t.level} · ${t.cars} cars through a storm at night`;
+        case 'gridlock':
+          return `Level ${t.level} · ${t.cars} cars in rush hour from the start`;
+        case 'dragnet':
+          return `Level ${t.level} · ${t.cars} cars, criminals twice as often`;
+        case 'boss':
+          return `Level ${t.level} · take down the syndicate boss`;
+        default:
+          return '';
+      }
+    },
+    daysLeft: (n: number): string => (n === 1 ? 'last day' : `${n} days left`),
+    hint: 'The same shift for everyone this week. Play it as often as you like; it pays once.',
+    done: (m: string): string => `WEEKLY ELITE DONE · +${money(m)} · PREMIUM CHEST`,
+    passedThisWeek: 'Passed this week · new one on Monday',
+  },
+
+  prestige: {
+    title: 'Prestige',
+    caption: (rank: number): string => `★${rank}`,
+    ready: (level: number): string => `Level ${level} reached: start over at Level 1 on a harder road`,
+    locked: (level: number): string => `Reach Level ${level} to start over on a harder road`,
+    keeps: 'Money, upgrades, roads and collection stay. Looks only, never a bonus.',
+    confirm: 'Tap again to prestige · back to Level 1',
+    done: (rank: number, item: string | null): string => `PRESTIGE ★${rank}${item ? ` · ${S.shop.item(item)} unlocked` : ''}`,
+    headStart: (levels: number): string => `Traffic runs ${levels} levels harder`,
+  },
+
+  ambulance: {
+    incoming: 'AMBULANCE',
+    blocked: 'BLOCKED',
+    clear: (amount: string): string => `CLEAR ROAD ${amount}`,
+    lost: 'AMBULANCE LOST',
   },
 
   modes: {
@@ -147,7 +237,7 @@ export const S = {
   ready: {
     tapToStart: 'Tap to start',
     tapForFriends: 'Tap to play with friends',
-    levelCaption: (level: number): string => `LEVEL ${level}`,
+    levelCaption: (level: number, prestige = 0): string => (prestige > 0 ? `★${prestige} · LEVEL ${level}` : `LEVEL ${level}`),
     conditions(weather: Weather, event: CityEvent | null, night = false, blackout = false): string | null {
       const parts = [blackout ? S.blackout : night ? S.night : null, weather === 'clear' ? null : S.weather(weather), event ? S.cityEvent(event) : null].filter((x): x is string => !!x);
       return parts.length ? parts.join(' · ') : null;
@@ -162,8 +252,12 @@ export const S = {
   },
 
   progress: {
-    section: (i: number): string => ['Records', 'Quests', 'Trials', 'Mastery'][i],
+    section: (i: number): string => ['Records', 'Quests', 'Trials', 'Bosses', 'Mastery'][i],
     bosses: 'Syndicate bosses',
+    prestige: 'Prestige',
+    legendary: 'Legendary shifts',
+    weeklies: 'Weekly Elites',
+    ambulances: 'Ambulances cleared',
     highscore: 'Highscore',
     level: 'Level reached',
     bestCombo: 'Best combo',
@@ -290,6 +384,9 @@ export const S = {
     lockedHint(item: Cosmetic): string {
       if (item.source.kind === 'streak') return `Play the Daily Shift ${item.source.days} days in a row.`;
       if (item.source.kind === 'season') return `Only in Event Chests during ${item.source.season}.`;
+      if (item.source.kind === 'legendary')
+        return item.source.shifts === 1 ? 'Complete a Legendary Shift.' : `Complete ${item.source.shifts} Legendary Shifts.`;
+      if (item.source.kind === 'prestige') return `Reach Prestige ★${item.source.rank}.`;
       return 'Not found yet: it comes out of chests.';
     },
     tapToClose: 'Tap to close',
@@ -303,7 +400,7 @@ export const S = {
     skinsFull: (max: number): string => `${max} car skins are on. Take one off first.`,
     section: (i: number): string => ['Chests', 'Collection', 'Store'][i],
     newBadge: 'NEW',
-    shelf: (i: number): string => ['Common', 'Rare', 'Epic', 'Legend', 'Maps', 'Special'][i],
+    shelf: (i: number): string => ['Common', 'Rare', 'Epic', 'Legend', 'Maps', 'Special', 'Honours'][i],
     waiting: (n: number): string => (n === 1 ? '1 waiting' : `${n} waiting`),
     buy: (price: string): string => `Buy · ${price}`,
     pity: (n: number): string => `Epic or better within ${n} chests. Duplicates pay out ${MONEY_MARK}.`,
@@ -391,6 +488,12 @@ export const S = {
         cosmos: 'Cosmos',
         compact: 'Compact',
         van: 'Van',
+        laurel: 'Laurel',
+        crown: 'Crown',
+        phoenix: 'Phoenix',
+        starSilver: 'Silver Star',
+        starGold: 'Gold Star',
+        starIris: 'Iris Star',
       };
       return names[id] ?? id;
     },
@@ -442,7 +545,8 @@ export const S = {
   },
 
   albums: {
-    name: (a: Album): string => ({ maps: 'Maps', commons: 'Commons', rares: 'Rares', epics: 'Epics', legends: 'Legends', seasons: 'Seasons', loyalty: 'Loyalty' })[a],
+    name: (a: Album): string =>
+      ({ maps: 'Maps', commons: 'Commons', rares: 'Rares', epics: 'Epics', legends: 'Legends', seasons: 'Seasons', loyalty: 'Loyalty', honours: 'Honours' })[a],
     complete: (a: Album, reward: string): string => `ALBUM COMPLETE · ${S.albums.name(a)} · +${money(reward)} · new frame`,
     progress: (entries: { album: Album; owned: number; total: number }[]): string =>
       'Albums · ' + entries.map((e) => `${S.albums.name(e.album)} ${e.owned}/${e.total}`).join(' · '),
@@ -627,6 +731,8 @@ export const S = {
           return 'GAS';
         case 'military':
           return 'BOMB';
+        case 'ambulance':
+          return 'AMBULANCE';
         default:
           return null;
       }

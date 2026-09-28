@@ -33,6 +33,12 @@ export const Skins = {
       streakBronze: 'skinBronze',
       streakSilver: 'skinSilver',
       streakGold: 'skinGold',
+      laurel: 'skinLaurel',
+      crown: 'skinCrown',
+      phoenix: 'skinPhoenix',
+      starSilver: 'skinSilver',
+      starGold: 'skinGold',
+      starIris: 'skinHolo',
       frost: 'skinFrost',
       blossom: 'skinBlossom',
       sunburst: 'skinSunburst',
@@ -88,6 +94,16 @@ export const Skins = {
         return 'vehicleTire';
       case 'streakGold':
         return 'mapForest';
+      case 'laurel':
+      case 'crown':
+      case 'starIris':
+        return 'skinGold';
+      case 'phoenix':
+        return 'fireCore';
+      case 'starSilver':
+        return 'primary';
+      case 'starGold':
+        return 'skinCarbon';
       case 'sunburst':
         return 'fireOuter';
       case 'volcano':
@@ -122,7 +138,14 @@ export const Skins = {
       case 'streakSilver':
       case 'ocean':
       case 'koi':
+      case 'laurel':
+      case 'starSilver':
         return 'shiny';
+      case 'crown':
+      case 'phoenix':
+      case 'starGold':
+      case 'starIris':
+        return 'shinyGlitter';
       case 'starlight':
       case 'frost':
       case 'hanami':

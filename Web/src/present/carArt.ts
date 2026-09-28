@@ -190,6 +190,8 @@ export const CarArt = {
         return 'vehicleTanker';
       case 'military':
         return 'vehicleMilitary';
+      case 'ambulance':
+        return 'vehicleAmbulance';
     }
   },
 
@@ -211,6 +213,8 @@ export const CarArt = {
         return ['bed', ...common, 'rearWindow'];
       case 'transporter':
         return ['cargo', ...common, 'hazard'];
+      case 'ambulance':
+        return [...common, 'rearWindow', 'lightBar'];
     }
   },
 
@@ -226,6 +230,8 @@ export const CarArt = {
         return c.compactLength;
       case 'van':
         return c.vanLength;
+      case 'ambulance':
+        return c.ambulanceLength;
       default:
         return c.carLength;
     }
@@ -236,6 +242,8 @@ export const CarArt = {
     const w = c.carWidth;
     const body = CarArt.bodyColor(type);
     const lorry = type === 'truck' || type === 'tanker' || type === 'military';
+    // The ambulance is built like a van: a short cab, then the long box.
+    const boxy = type === 'van' || type === 'ambulance';
     const S = (cx: number, cy: number, sx: number, sy: number, radius: number, color: ColorToken, breaksAt: number, reach: number, visible: boolean): Shape => ({
       center: v(cx, cy),
       size: v(sx, sy),
@@ -253,13 +261,13 @@ export const CarArt = {
       case 'hood':
         return S(l * 0.3, 0, l * 0.3, w - 3, 1.5, body, 3.5, 8, false);
       case 'windscreen': {
-        const x = lorry ? l * 0.39 : type === 'transporter' ? l * 0.33 : type === 'van' ? l * 0.3 : l * 0.12;
-        const len = lorry ? l * 0.1 : type === 'transporter' ? l * 0.13 : type === 'van' ? l * 0.14 : type === 'compact' ? l * 0.26 : l * 0.22;
+        const x = lorry ? l * 0.39 : type === 'transporter' ? l * 0.33 : boxy ? l * 0.3 : l * 0.12;
+        const len = lorry ? l * 0.1 : type === 'transporter' ? l * 0.13 : boxy ? l * 0.14 : type === 'compact' ? l * 0.26 : l * 0.22;
         return S(x, 0, len, w * 0.74, 2, 'vehicleGlass', 2.5, 9, true);
       }
       case 'rearWindow': {
-        const x = type === 'pickup' ? -l * 0.02 : type === 'van' ? -l * 0.4 : type === 'compact' ? -l * 0.27 : -l * 0.3;
-        const len = type === 'pickup' ? l * 0.07 : type === 'van' ? l * 0.06 : l * 0.13;
+        const x = type === 'pickup' ? -l * 0.02 : boxy ? -l * 0.4 : type === 'compact' ? -l * 0.27 : -l * 0.3;
+        const len = type === 'pickup' ? l * 0.07 : boxy ? l * 0.06 : l * 0.13;
         return S(x, 0, len, w * 0.66, 1.5, 'vehicleGlass', 2.5, 7, true);
       }
       case 'leftMirror':
@@ -277,7 +285,8 @@ export const CarArt = {
       case 'roof':
         return S(-l * 0.11, 0, l * 0.24, w * 0.8, 2, 'vehiclePoliceRoof', Infinity, 0, true);
       case 'lightBar':
-        return S(-l * 0.07, 0, 2.8, w * 0.8, 1, 'lightBlue', 2.5, 8, true);
+        // The ambulance carries its lights on the front edge of the box.
+        return S(type === 'ambulance' ? l * 0.17 : -l * 0.07, 0, 2.8, w * 0.8, 1, 'lightBlue', 2.5, 8, true);
       case 'bed':
         return S(-l * 0.26, 0, l * 0.4, w - 3, 1.5, 'vehicleBed', Infinity, 0, true);
       case 'cargo':
@@ -356,9 +365,9 @@ export const CarArt = {
     const W = c.carWidth;
     const lights = d.lights ?? null;
 
-    if (lights !== null && type === 'police') {
+    if (lights !== null && (type === 'police' || type === 'ambulance')) {
       const spill = PoliceLights.spill(lights);
-      const bar = v(-L * 0.07, 0);
+      const bar = CarArt.shape('lightBar', type, c).center;
       const halo = Math.max(spill.left, spill.right);
       if (halo > 0.01) {
         list.w(circle(worldOf(bar, pose), L * 1.1), 'lightBlue', opacity * 0.03 * halo);
@@ -485,6 +494,16 @@ export const CarArt = {
       list.w(circle(coin, 3.4), 'vehicleCargo', opacity);
       list.w(circle(coin, 2.2), 'vehicleArmor', opacity);
       list.w(line(worldOf(add(box.center, v(1.9, 0)), pose), worldOf(sub(box.center, v(1.9, 0)), pose), 0.9), 'vehicleCargo', opacity);
+    }
+    if (type === 'ambulance' && dents.length === 0) {
+      // A red band along both sides and a red cross on the roof: an ambulance at a glance.
+      for (const y of [-1, 1]) {
+        const side = y * (W / 2 - 1.1);
+        list.w(line(worldOf(v(-L / 2 + 2, side), pose), worldOf(v(L * 0.1, side), pose), 1.2), 'lightRed', opacity);
+      }
+      const cross = worldOf(v(-L * 0.18, 0), pose);
+      list.w(rect(cross, v(7.5, 2.6), 0.6, pose.heading), 'lightRed', opacity);
+      list.w(rect(cross, v(2.6, 7.5), 0.6, pose.heading), 'lightRed', opacity);
     }
     if (type === 'tanker' && dents.length === 0) {
       const tank = CarArt.shape('cargo', type, c);

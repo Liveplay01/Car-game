@@ -35,7 +35,7 @@ export const screenTab = (s: Screen): Tab => (s.k === 'page' ? s.tab : 'game');
 export const showsTabBar = (s: Screen): boolean => s.k !== 'settings' && s.k !== 'playing';
 
 export type ShopSection = 0 | 1 | 2; // chests · collection · store
-export type ProgressSection = 0 | 1 | 2 | 3; // records · quests · trials · achievements
+export type ProgressSection = 0 | 1 | 2 | 3 | 4; // records · quests · trials · bosses · achievements
 
 export type Part = 'arm' | RoadModule;
 export const PARTS: Part[] = ['arm', 'tollBooth', 'speedCamera', 'towDepot'];

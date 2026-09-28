@@ -38,6 +38,8 @@ export const NightLayer = {
     const chase = criminalVehicle(world) !== null;
     for (const veh of world.vehicles) {
       if (veh.isCrashed) continue;
+      // The Phantom drives dark: no headlights, no tail lights. Only the chase ring shows it.
+      if (veh.role === 'boss' && c.bossKind === 'phantom') continue;
       const pose = interpolatedPose(veh, alpha);
       const L = CarArt.length(veh.type, c);
       const flash = lamps ? lamps.headlights(veh.id) : 0;
@@ -73,8 +75,8 @@ export const NightLayer = {
       }
       if (isExplosive(veh.type)) list.w(circle(pose.position, 1.4), 'hazard', 0.8);
 
-      // Police strobes light up the street around them.
-      if (veh.type === 'police' && (chase || veh.phase.kind !== 'queued')) {
+      // Police and ambulance strobes light up the street around them.
+      if ((veh.type === 'police' && (chase || veh.phase.kind !== 'queued')) || veh.type === 'ambulance') {
         const spill = PoliceLights.spill(world.time / CarArt.strobeCycle + (veh.id % 7) * 0.37);
         const across = mul(left(fromAngle(pose.heading)), W * 0.9);
         if (spill.left > 0.01) list.w(circle(add(pose.position, across), L * 0.9), 'lightBlue', 0.1 * spill.left);

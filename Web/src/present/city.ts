@@ -71,7 +71,18 @@ export const CityLayer = {
   },
 
   frameColor(album: Album): ColorToken {
-    return ({ maps: 'mapAurora', commons: 'rarityCommon', rares: 'rarityRare', epics: 'rarityEpic', legends: 'rarityLegendary', seasons: 'skinFrost', loyalty: 'skinBronze' } as const)[album];
+    return (
+      {
+        maps: 'mapAurora',
+        commons: 'rarityCommon',
+        rares: 'rarityRare',
+        epics: 'rarityEpic',
+        legends: 'rarityLegendary',
+        seasons: 'skinFrost',
+        loyalty: 'skinBronze',
+        honours: 'skinPhoenix',
+      } as const
+    )[album];
   },
 
   addFrame(list: RenderList, album: Album | null, world: World): void {

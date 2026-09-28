@@ -1,6 +1,9 @@
-import { baseConfig, cloneConfig, type Config, type RoadModule, type Weather, type CityEvent, modulePrice } from './config';
+import { baseConfig, cloneConfig, type Config, type RoadModule, type Weather, type CityEvent, type BossKind, type LegendaryRule, modulePrice } from './config';
 import {
   forLevel,
+  drawLegendary,
+  forLegendary,
+  type Darkness,
   upgraded,
   upgradePrice,
   upgradeMaxSteps,
@@ -32,6 +35,8 @@ import {
   DUPLICATE_MONEY,
   MAX_CAR_SKINS,
   COSMETICS,
+  legendaryReward,
+  prestigeReward,
 } from './loot';
 import { type Challenge, challengesOf, challengeMet, challengeReward, STREAK_MILESTONES } from './daily';
 import { type StoreProduct, isConsumable, productGrant, type AdReward } from './store';
@@ -57,6 +62,8 @@ export interface MasteryStats {
   bestChain: number;
   bestCombo: number;
   shiftsCompleted: number;
+  /** Ambulances that got through with a clear road. */
+  ambulances: number;
 }
 
 export type MasteryGoal = 'perfectTiming' | 'tightSpots' | 'closeCalls' | 'longChain' | 'crimeFighter' | 'secureRoute' | 'comboMaster' | 'veteran';
@@ -136,6 +143,15 @@ export interface Career {
   trialsDone: string[];
   /** Syndicate bosses taken down: the trophy count in Records. */
   bossTrophies: number;
+  /** Boss kinds taken down at least once in the career: their rematches are open. */
+  bossesBeaten: BossKind[];
+  /** Prestige rank: each one started the career over at Level 1 on a harder road. */
+  prestige: number;
+  /** Legendary Shifts completed. */
+  legendaryDone: number;
+  /** The last week whose Weekly Elite paid, and how many have paid in all. */
+  weeklyDone: number;
+  weekliesDone: number;
 }
 
 /** Everything that is saved (`SaveGame` in GamePresentation). */
@@ -160,7 +176,7 @@ export const newCareer = (): Career => ({
   upgrades: {},
   armSlots: [0, 4, 8, 12],
   modules: {},
-  mastery: { perfects: 0, tightFits: 0, nearMisses: 0, takedowns: 0, transporters: 0, bestChain: 0, bestCombo: 0, shiftsCompleted: 0 },
+  mastery: { perfects: 0, tightFits: 0, nearMisses: 0, takedowns: 0, transporters: 0, bestChain: 0, bestCombo: 0, shiftsCompleted: 0, ambulances: 0 },
   masteryTiers: {},
   chests: [],
   collection: [],
@@ -184,6 +200,11 @@ export const newCareer = (): Career => ({
   adCashDay: -1,
   trialsDone: [],
   bossTrophies: 0,
+  bossesBeaten: [],
+  prestige: 0,
+  legendaryDone: 0,
+  weeklyDone: -1,
+  weekliesDone: 0,
 });
 
 export const newSave = (): SaveGame => ({
@@ -231,19 +252,60 @@ export const Careers = {
 
   /**
    * The config of the next shift: the roundabout as it is built, then its level, the upgrades,
-   * the Cash Boost, and last the sky and the city.
+   * the Cash Boost, and last the sky, the city and a legendary rule. After a Prestige the
+   * traffic is that of a higher level (`headStart`); the bosses keep to the level shown.
+   * `legendary` pins the rule (null: none); undefined draws it from the seed.
    */
-  config(c: Career, base: Config, seed: number, weather: Weather | null = null, event: CityEvent | null | undefined = undefined): Config {
+  config(
+    c: Career,
+    base: Config,
+    seed: number,
+    weather: Weather | null = null,
+    event: CityEvent | null | undefined = undefined,
+    legendary: LegendaryRule | null | undefined = undefined,
+  ): Config {
     const cfg = cloneConfig(base);
     cfg.armSlots = [...c.armSlots];
     cfg.modules = { ...c.modules };
     cfg.sportsCarShare = Careers.owns(c, 'sportsCar') ? base.sportsCarShareOwned : 0;
     cfg.compactShare = Careers.owns(c, 'compact') ? base.compactShareOwned : 0;
     cfg.vanShare = Careers.owns(c, 'van') ? base.vanShareOwned : 0;
-    let shift = upgraded(forArms(forLevel(cfg, c.level, seed)), (u) => Careers.steps(c, u));
+    const level = c.level + Careers.headStart(c, base);
+    let shift = upgraded(forArms(forLevel(cfg, level, seed, c.level)), (u) => Careers.steps(c, u));
     if (Careers.hasPurchased(c, 'cashBoost')) shift = forCashBoost(shift);
-    const sky = forNight(forWeather(shift, weather ?? drawWeather(shift, c.level, seed)), drawNight(shift, c.level, seed));
-    return forCityEvent(sky, event === undefined ? drawCityEvent(sky, c.level, seed) : event, seed);
+    const rule = legendary === undefined ? drawLegendary(shift, level, seed) : legendary;
+    const stormy = rule === 'darkStorm' ? 'storm' : null;
+    const sky = forNight(forWeather(shift, weather ?? stormy ?? drawWeather(shift, level, seed)), Careers.darkness(shift, rule, level, seed));
+    return forLegendary(forCityEvent(sky, event === undefined ? drawCityEvent(sky, level, seed) : event, seed), rule);
+  },
+
+  /** The phantom boss comes in a blackout, and so does a Dark Storm; otherwise the seed decides. */
+  darkness(shift: Config, rule: LegendaryRule | null, level: number, seed: number): Darkness {
+    if ((shift.convoy && shift.bossKind === 'phantom') || rule === 'darkStorm') return 'blackout';
+    return drawNight(shift, level, seed);
+  },
+
+  // MARK: Prestige
+
+  /** How many levels harder the traffic runs after Prestige: the rank's head start. */
+  headStart: (c: Career, config: Config = baseConfig): number => Math.min(c.prestige * config.prestigeHeadStart, config.maxPrestigeHeadStart),
+
+  canPrestige: (c: Career, config: Config = baseConfig): boolean => c.level >= config.prestigeLevel,
+
+  /**
+   * Starts the career over at Level 1, one rank up: money, upgrades, roads and collection stay,
+   * the traffic plays harder from now on, and some ranks unlock a skin. Best times belong to
+   * the old road and go. Returns the item unlocked, or null.
+   */
+  prestige(c: Career, config: Config = baseConfig): { rank: number; item: string | null } | null {
+    if (!Careers.canPrestige(c, config)) return null;
+    c.prestige++;
+    c.level = 1;
+    c.bestTimes = {};
+    const reward = prestigeReward(c.prestige);
+    if (!reward || Careers.owns(c, reward.id)) return { rank: c.prestige, item: null };
+    Careers.collect(c, reward.id);
+    return { rank: c.prestige, item: reward.id };
   },
 
   // MARK: Street Builder
@@ -489,21 +551,56 @@ export const Careers = {
   record(c: Career, r: ShiftResult, level: number): void {
     c.money = Math.max(0, c.money + r.money);
     if (r.outcome === 'completed') c.level = Math.max(1, level) + 1;
-    if (r.bossBusted) c.bossTrophies++;
+    if (r.bossBusted) {
+      c.bossTrophies++;
+      if (r.bossKind && !c.bossesBeaten.includes(r.bossKind)) c.bossesBeaten.push(r.bossKind);
+    }
+  },
+
+  /** A completed Legendary Shift: a Premium Chest, and a skin at some counts. Null otherwise. */
+  completeLegendary(c: Career, r: ShiftResult): { item: string | null } | null {
+    if (r.outcome !== 'completed' || !r.legendary) return null;
+    c.legendaryDone++;
+    c.chests.push('premium');
+    const reward = legendaryReward(c.legendaryDone);
+    if (!reward || Careers.owns(c, reward.id)) return { item: null };
+    Careers.collect(c, reward.id);
+    return { item: reward.id };
+  },
+
+  isWeeklyDone: (c: Career, week: number): boolean => c.weeklyDone === week,
+
+  /** This week's Weekly Elite passed for the first time: its money and a Premium Chest. */
+  completeWeekly(c: Career, week: number, config: Config = baseConfig): number | null {
+    if (c.weeklyDone === week) return null;
+    c.weeklyDone = week;
+    c.weekliesDone++;
+    c.money += config.weeklyPay;
+    c.chests.push('premium');
+    return config.weeklyPay;
   },
 
   /**
    * The config of a shift in `mode`: Unlimited and Mayhem play at their own fixed level, a
-   * Shift at the career's. `event` pins the city event (the Daily Shift's, or a challenge's).
+   * Shift at the career's. `event` pins the city event (the Daily Shift's, or a challenge's),
+   * `legendary` the legendary rule (the Daily Shift has none; a challenge the sender's).
    */
-  shiftConfig(c: Career, mode: GameMode, base: Config, seed: number, event: CityEvent | null | undefined = undefined): Config {
+  shiftConfig(
+    c: Career,
+    mode: GameMode,
+    base: Config,
+    seed: number,
+    event: CityEvent | null | undefined = undefined,
+    legendary: LegendaryRule | null | undefined = undefined,
+  ): Config {
+    // Unlimited and Mayhem have their own fixed level: no Prestige head start, no legendary rule.
     if (mode === 'unlimited') {
-      const cfg = Careers.config({ ...c, level: base.endlessLevel }, base, seed, null, event);
+      const cfg = Careers.config({ ...c, level: base.endlessLevel, prestige: 0 }, base, seed, null, event, null);
       cfg.endless = true;
       return cfg;
     }
-    if (mode === 'mayhem') return forMayhem(Careers.config({ ...c, level: base.mayhemLevel }, base, seed, null, event));
-    return Careers.config(c, base, seed, null, event);
+    if (mode === 'mayhem') return forMayhem(Careers.config({ ...c, level: base.mayhemLevel, prestige: 0 }, base, seed, null, event, null));
+    return Careers.config(c, base, seed, null, event, legendary);
   },
 
   recordMastery(c: Career, r: ShiftResult): MasteryCompletion[] {
@@ -515,6 +612,7 @@ export const Careers = {
     m.transporters += r.transporters;
     m.bestChain = Math.max(m.bestChain, r.bestChain);
     m.bestCombo = Math.max(m.bestCombo, r.bestCombo);
+    m.ambulances += r.ambulances;
     if (r.outcome === 'completed') m.shiftsCompleted++;
     const completed: MasteryCompletion[] = [];
     for (const goal of MASTERY_GOALS) {

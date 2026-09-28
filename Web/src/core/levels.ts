@@ -1,4 +1,18 @@
-import { type Config, type Weather, type CityEvent, WEATHERS, CITY_EVENTS, weatherSeverity, cloneConfig, builtArmSlots, slotDistance } from './config';
+import {
+  type Config,
+  type Weather,
+  type CityEvent,
+  type BossKind,
+  type LegendaryRule,
+  BOSS_KINDS,
+  LEGENDARY_RULES,
+  WEATHERS,
+  CITY_EVENTS,
+  weatherSeverity,
+  cloneConfig,
+  builtArmSlots,
+  slotDistance,
+} from './config';
 import { Rng } from './rng';
 
 // MARK: Shift curves (FOUNDATION.md 2.5)
@@ -43,7 +57,7 @@ export function shiftCarsRange(level: number, c: Config): [number, number] {
  * The config of one shift at `level`. Below `hardLevel` the traffic is eased towards the
  * level 1 values; beyond it the tempo keeps rising and the ring fills up.
  */
-export function forLevel(base: Config, level: number, seed: number): Config {
+export function forLevel(base: Config, level: number, seed: number, bossLevel = level): Config {
   const l = Math.max(1, level);
   const c = cloneConfig(base);
   const ease = base.hardLevel > 1 ? Math.min((l - 1) / (base.hardLevel - 1), 1) : 1;
@@ -88,12 +102,58 @@ export function forLevel(base: Config, level: number, seed: number): Config {
   c.shiftPay = base.shiftPayBase + base.shiftPayPerLevel * l;
   c.level = l;
   // A boss level: the criminal of this shift is the syndicate's head, with its escorts.
-  c.convoy = base.convoyEvery > 0 && l % base.convoyEvery === 0;
-  if (c.convoy) c.criminalFirst = base.convoyFirst;
+  const boss = bossAt(Math.max(1, bossLevel), base);
+  c.convoy = boss !== null;
+  if (boss) {
+    c.criminalFirst = base.convoyFirst;
+    applyBoss(c, base, boss.kind, boss.round);
+  }
 
   const [lo, hi] = shiftCarsRange(l, base);
   c.shiftCars = new Rng((seed ^ 0x3c6ef372) >>> 0).int(lo, hi);
   return c;
+}
+
+// MARK: Syndicate bosses
+
+/** The boss of `level`, or null: every `convoyEvery` levels the next kind, round after round. */
+export function bossAt(level: number, c: Config): { kind: BossKind; round: number } | null {
+  if (c.convoyEvery <= 0 || level < c.convoyEvery || level % c.convoyEvery !== 0) return null;
+  const index = level / c.convoyEvery - 1;
+  return { kind: BOSS_KINDS[index % BOSS_KINDS.length], round: Math.floor(index / BOSS_KINDS.length) };
+}
+
+/** The first level that brings `kind`. */
+export const firstBossLevel = (kind: BossKind, c: Config): number => c.convoyEvery * (BOSS_KINDS.indexOf(kind) + 1);
+
+/** Escorts, time and armour of one boss; later rounds bring more escorts and less time. */
+export function applyBoss(c: Config, base: Config, kind: BossKind, round: number): void {
+  let escorts = base.convoyEscorts;
+  let time = base.convoyTimeFactor;
+  let armour = 0;
+  switch (kind) {
+    case 'convoy':
+      break;
+    case 'getaway':
+      escorts = 0;
+      time = base.getawayTimeFactor;
+      break;
+    case 'armoured':
+      escorts = base.armouredEscorts;
+      time = base.armouredTimeFactor;
+      armour = 1;
+      break;
+    case 'phantom':
+      escorts = base.phantomEscorts;
+      time = base.phantomTimeFactor;
+      break;
+  }
+  // The getaway driver stays alone: its test is the time.
+  if (round > 0 && kind !== 'getaway') escorts = Math.min(base.maxBossEscorts, escorts + round * base.bossRoundEscorts);
+  c.bossKind = kind;
+  c.convoyEscorts = escorts;
+  c.convoyTimeFactor = time * Math.pow(base.bossRoundTimeFactor, round);
+  c.bossArmour = armour;
 }
 
 // MARK: Upgrades (ROADMAP.md M5, `Upgrades.swift`)
@@ -327,10 +387,61 @@ export function forCityEvent(base: Config, event: CityEvent | null, seed: number
   return c;
 }
 
+// MARK: Legendary Shifts
+
+/** Whether a career shift at `level` is a Legendary Shift, and its rule, drawn from the seed. */
+export function drawLegendary(c: Config, level: number, seed: number): LegendaryRule | null {
+  if (level < c.legendaryLevel || c.convoy) return null;
+  const rng = new Rng((seed ^ 0x1e6e7da5) >>> 0);
+  if (rng.unit() >= c.legendaryChance) return null;
+  return rng.pick(LEGENDARY_RULES);
+}
+
+/**
+ * The shift under a legendary rule. The rule changes the traffic, never the timing of a tap:
+ * - gridlock: rush hour from the first car to the last, and more of it.
+ * - dragnet: criminals come twice as often and get away sooner.
+ * - heavyLoad: lorries everywhere, half of them tankers.
+ * - darkStorm: a storm in a blackout (the sky is set in `Careers.config`).
+ * - zeroTolerance: any crash or cut-off ends the shift.
+ */
+export function forLegendary(base: Config, rule: LegendaryRule | null): Config {
+  const c = cloneConfig(base);
+  c.legendary = rule;
+  switch (rule) {
+    case null:
+      break;
+    case 'gridlock':
+      c.rushHourCars = Math.max(base.rushHourCars, base.shiftCars);
+      c.densityStart += base.gridlockDensityBonus;
+      c.densityEnd += base.gridlockDensityBonus;
+      break;
+    case 'dragnet': {
+      const k = base.dragnetSpeedup;
+      c.criminalChance = 1;
+      c.criminalFirst = { lo: base.criminalFirst.lo * k, hi: base.criminalFirst.hi * k };
+      c.criminalInterval = { lo: base.criminalInterval.lo * k, hi: base.criminalInterval.hi * k };
+      c.criminalTime = base.criminalTime * base.dragnetTimeFactor;
+      break;
+    }
+    case 'heavyLoad':
+      c.truckChance = Math.max(base.truckChance, base.heavyLoadTruckChance);
+      c.tankerShare = Math.max(base.tankerShare, base.heavyLoadTankerShare);
+      break;
+    case 'darkStorm':
+      break;
+    case 'zeroTolerance':
+      c.trialRule = 'flawless';
+      break;
+  }
+  return c;
+}
+
 /** Mayhem: crash as much as you can. No strikes, no money, no stats. */
 export function forMayhem(base: Config): Config {
   const c = cloneConfig(base);
   c.mayhem = true;
+  c.ambulanceChance = 0;
   c.shiftCars = base.mayhemCars;
   c.densityEnd += base.mayhemExtraTraffic;
   c.densityStart = c.densityEnd;

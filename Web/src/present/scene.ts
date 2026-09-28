@@ -191,7 +191,15 @@ export const SceneBuilder = {
       if (!label) continue;
       const pose = interpolatedPose(veh, alpha);
       const color: ColorToken =
-        veh.role === 'boss' ? 'coin' : veh.role === 'escort' ? 'muted' : veh.type === 'police' ? 'lightBlue' : veh.type === 'pickup' ? 'vehicleCriminal' : 'vehicleCargo';
+        veh.role === 'boss'
+          ? 'coin'
+          : veh.role === 'escort'
+            ? 'muted'
+            : veh.type === 'police' || veh.type === 'ambulance'
+              ? 'lightBlue'
+              : veh.type === 'pickup'
+                ? 'vehicleCriminal'
+                : 'vehicleCargo';
       list.s(text(label, add(toScreen(list.camera, pose.position), v(0, -18)), 9, 'center', 'bold'), color, 0.95);
     }
   },
@@ -241,7 +249,7 @@ export const SceneBuilder = {
           type: veh.type,
           pose: interpolatedPose(veh, alpha),
           dents: veh.dents,
-          lights: veh.type === 'police' && flashing ? world.time / CarArt.strobeCycle + (veh.id % 7) * 0.37 : null,
+          lights: (veh.type === 'police' && flashing) || veh.type === 'ambulance' ? world.time / CarArt.strobeCycle + (veh.id % 7) * 0.37 : null,
           brake: lamps ? lamps.brake(veh.id) : null,
           brakeGlow: veh.phase.kind !== 'queued' || veh.id === world.queue.vehicles[0],
           headlights: lamps ? lamps.headlights(veh.id) : 0,

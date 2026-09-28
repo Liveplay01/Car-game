@@ -29,13 +29,17 @@ export const OFFERS: Offer[] = [...STORE_PRODUCTS.map((product): Offer => ({ k: 
 const sameOffer = (a: Offer, b: Offer): boolean => a.k === b.k && (a.k !== 'product' || (b.k === 'product' && a.product === b.product));
 
 /** Shelves: car skins by rarity, the maps, and everything earned another way or a vehicle. */
-export type Shelf = 0 | 1 | 2 | 3 | 4 | 5; // common rare epic legendary maps special
-export const SHELVES: Shelf[] = [0, 1, 2, 3, 4, 5];
+export type Shelf = 0 | 1 | 2 | 3 | 4 | 5 | 6; // common rare epic legendary maps special honours
+export const SHELVES: Shelf[] = [0, 1, 2, 3, 4, 5, 6];
+
+/** Earned by Legendary Shifts and Prestige: their own shelf, so no shelf grows past 12. */
+const isHonour = (item: Cosmetic): boolean => item.source.kind === 'legendary' || item.source.kind === 'prestige';
 
 export function shelfItems(shelf: Shelf): Cosmetic[] {
   return COSMETICS.filter((item) => {
     if (shelf === 4) return item.kind === 'mapSkin';
-    if (shelf === 5) return item.kind === 'vehicleType' || item.source.kind !== 'chest';
+    if (shelf === 6) return isHonour(item);
+    if (shelf === 5) return item.kind === 'vehicleType' || (item.source.kind !== 'chest' && !isHonour(item));
     return item.kind === 'carSkin' && item.source.kind === 'chest' && rarityRank(item.rarity) === shelf;
   });
 }
@@ -397,10 +401,11 @@ export const ShopPage = {
       if (items.some((i) => career.unseen.includes(i.id))) ShopPage.badgeDot(list, v(r.maxX - 7, r.minY + 7), enter);
       // Over the white chip the labels turn dark as it arrives.
       const on = shelf === state.shelf ? glide : slide && shelf === slide.from ? 1 - glide : 0;
-      t(list, S.shop.shelf(shelf), v(c.x, c.y - 7), 11, 'muted', { weight: 'bold', align: 'center', opacity: enter * (1 - on) });
+      const label = ShopPage.fitted(S.shop.shelf(shelf), 11, R.width(r) - 6);
+      t(list, S.shop.shelf(shelf), v(c.x, c.y - 7), label, 'muted', { weight: 'bold', align: 'center', opacity: enter * (1 - on) });
       t(list, `${owned}/${items.length}`, v(c.x, c.y + 8), 10, owned === items.length ? ShopPage.shelfColor(shelf) : 'muted', { align: 'center', opacity: enter * (1 - on) });
       if (on > 0) {
-        t(list, S.shop.shelf(shelf), v(c.x, c.y - 7), 11, 'background', { weight: 'bold', align: 'center', opacity: enter * on });
+        t(list, S.shop.shelf(shelf), v(c.x, c.y - 7), label, 'background', { weight: 'bold', align: 'center', opacity: enter * on });
         t(list, `${owned}/${items.length}`, v(c.x, c.y + 8), 10, 'background', { align: 'center', opacity: 0.6 * enter * on });
       }
     }
@@ -440,7 +445,7 @@ export const ShopPage = {
     }
   },
 
-  shelfColor: (s: Shelf): ColorToken => (['rarityCommon', 'rarityRare', 'rarityEpic', 'rarityLegendary', 'mapAurora', 'accent'] as ColorToken[])[s],
+  shelfColor: (s: Shelf): ColorToken => (['rarityCommon', 'rarityRare', 'rarityEpic', 'rarityLegendary', 'mapAurora', 'accent', 'coin'] as ColorToken[])[s],
   rarityColor: (r: Rarity): ColorToken => ({ common: 'rarityCommon', rare: 'rarityRare', epic: 'rarityEpic', legendary: 'rarityLegendary' } as const)[r],
   chestColor: (k: ChestKind): ColorToken => ({ standard: 'rarityCommon', premium: 'coin', event: 'accent', criminalHunt: 'rarityEpic' } as const)[k],
 

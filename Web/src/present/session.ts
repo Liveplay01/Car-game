@@ -6,6 +6,7 @@ import type { Upgrade } from '../core/levels';
 import { type ChestKind, ALBUM_REWARD, cosmetic, rarityRank } from '../core/loot';
 import type { StoreProduct, AdReward } from '../core/store';
 import { dailySeed, dailyEvent, dayNumber } from '../core/daily';
+import { weekNumber, weeklyTrial } from '../core/weekly';
 import { type Vec2, v, add } from '../core/vec2';
 import { loadSave, writeSave } from '../storage/save';
 import { RenderList, R, Ease, toScreen, rect, text, Metrics, type Camera } from './render';
@@ -474,7 +475,9 @@ export class GameSession {
   }
 
   private shiftConfig(seed: number): Config {
-    return Careers.shiftConfig(this.save.career, this.save.mode, this.config, seed, this.dailySelected ? dailyEvent(this.today) : undefined);
+    // The Daily Shift pins its city event and is never a Legendary Shift.
+    const daily = this.dailySelected;
+    return Careers.shiftConfig(this.save.career, this.save.mode, this.config, seed, daily ? dailyEvent(this.today) : undefined, daily ? null : undefined);
   }
 
   private specialConfig(run: SpecialRun): Config {
@@ -495,6 +498,27 @@ export class GameSession {
   startTrial(id: string): void {
     const t = trialById(id);
     if (t) this.startSpecial({ k: 'trial', trial: t });
+  }
+
+  /** Prestige asks twice: the first tap arms it, a second within a few seconds starts over. */
+  private prestigeArmed = -Infinity;
+
+  private tryPrestige(): void {
+    const career = this.save.career;
+    if (!Careers.canPrestige(career, this.config) || this.screen.k === 'playing') return;
+    if (this.sceneTime - this.prestigeArmed > 4) {
+      this.prestigeArmed = this.sceneTime;
+      this.tick();
+      this.showNotice(S.prestige.confirm);
+      return;
+    }
+    this.prestigeArmed = -Infinity;
+    const done = Careers.prestige(career, this.config);
+    if (!done) return;
+    this.persist();
+    this.play(['shiftComplete'], ['shiftComplete']);
+    this.showNotice(S.prestige.done(done.rank, done.item));
+    this.prepareShift(false, null, this.screen);
   }
 
   private startSpecial(run: SpecialRun): void {
@@ -542,8 +566,13 @@ export class GameSession {
     } else {
       const t = run.trial;
       const passed = trialPassed(t, result);
-      const first = passed && !career.trialsDone.includes(t.id);
-      if (first) {
+      // The Weekly Elite pays once a week (with a Premium Chest); every other trial once ever.
+      const weekly = t.id === 'weekly';
+      const first = passed && (weekly ? !Careers.isWeeklyDone(career, weekNumber(this.today)) : !career.trialsDone.includes(t.id));
+      if (first && weekly) {
+        const pay = Careers.completeWeekly(career, weekNumber(this.today), this.config);
+        if (pay !== null) this.showNotice(S.weekly.done(Fmt.number(pay)));
+      } else if (first) {
         career.trialsDone.push(t.id);
         career.money += t.reward;
       }
@@ -1286,6 +1315,13 @@ export class GameSession {
       // A trial: it waits, ready to play, on the Game tab.
       const trial = this.progressPage.section === 2 ? ProgressPage.trialAt(point, this.lastViewport, this.tabInset) : null;
       if (trial) this.startTrial(trial);
+      const open = this.progressPage.section;
+      const vp = this.lastViewport;
+      const career = this.save.career;
+      if (open === 0 && ProgressPage.prestigeAt(point, vp, this.tabInset, career)) this.tryPrestige();
+      if (open === 1 && ProgressPage.weeklyAt(point, vp, this.tabInset)) this.startSpecial({ k: 'trial', trial: weeklyTrial(weekNumber(this.today)) });
+      const match = open === 3 ? ProgressPage.rematchAt(point, vp, this.tabInset, career) : null;
+      if (match) this.startTrial(match);
       return true;
     }
     return null;
@@ -1336,9 +1372,28 @@ export class GameSession {
           break;
         case 'criminalWarning':
           if (e.boss) {
-            this.addPopup({ k: 'convoy' }, world.layout.stopPose(e.arm).position);
+            this.addPopup({ k: 'convoy', kind: world.config.bossKind }, world.layout.stopPose(e.arm).position);
             this.rim.signal('sweep', 'coin');
           }
+          break;
+        case 'armourHit':
+          this.addPopup({ k: 'armour' }, add(e.point, v(0, 20)));
+          this.rim.signal('wave', 'coin');
+          break;
+        case 'ambulanceWarning':
+          this.addPopup({ k: 'ambulance' }, world.layout.stopPose(e.arm).position);
+          this.rim.signal('sweep', 'lightBlue');
+          break;
+        case 'ambulanceBlocked':
+          this.addPopup({ k: 'blocked' }, e.point);
+          this.rim.signal('flush', 'destructive');
+          break;
+        case 'ambulanceCleared':
+          this.addPopup({ k: 'clearRoad', n: e.amount }, e.point);
+          this.rim.signal('wave', 'lightBlue');
+          break;
+        case 'ambulanceLost':
+          this.addPopup({ k: 'lost' }, e.point);
           break;
         case 'heistRecovered':
           this.addPopup({ k: 'heist', n: e.amount }, add(e.point, v(0, 24)));
@@ -1456,7 +1511,15 @@ export class GameSession {
     }
     // Any finished shift can go to a friend as a challenge (not while learning the game).
     this.shareable = save.tutorialDone
-      ? challengeOf(career, this.playingMode, this.playingLevel, result.seed, this.world.config.cityEvent, this.playingMode === 'mayhem' ? result.flames : result.score)
+      ? challengeOf(
+          career,
+          this.playingMode,
+          this.playingLevel,
+          result.seed,
+          this.world.config.cityEvent,
+          this.playingMode === 'mayhem' ? result.flames : result.score,
+          this.world.config.legendary,
+        )
       : null;
     if (this.playingMode === 'mayhem') {
       const previous = save.mayhemBest;
@@ -1490,6 +1553,8 @@ export class GameSession {
     this.resultBank = { before: bankBefore, after: career.money };
     const toasts: string[] = [];
     if (result.isPerfectRun) toasts.push(S.daily.perfectRun);
+    const legendary = Careers.completeLegendary(career, result);
+    if (legendary) toasts.push(S.legendary.done(legendary.item));
     const pay = this.playingDaily && result.outcome === 'completed' ? Careers.completeDaily(career, this.today, this.config) : null;
     if (pay !== null) toasts.push(S.daily.dailyDone(Fmt.number(pay), career.dailyStreak));
     else if (!this.playingDaily && Careers.rollEventChest(career, result, this.world.config, result.seed)) toasts.push(S.daily.eventChestFound);
@@ -1604,6 +1669,7 @@ export class GameSession {
       HUD.addChase(list, world, alpha);
       HUD.addTransporter(list, world, alpha);
       HUD.addMilitary(list, world, alpha);
+      HUD.addAmbulance(list, world, alpha);
       const since = world.shift.rushHourSince;
       HUD.add(list, {
         world,
@@ -1673,12 +1739,18 @@ export class GameSession {
   /** How the waiting screen names the challenge or trial being played. */
   private get runCard(): RunCard | null {
     const r = this.special;
+    const rule = this.world.config.legendary;
+    // A Legendary Shift in the career: its rule and its Premium Chest on the waiting card.
+    if (!r && rule && this.playingMode === 'shift' && !this.versusSelected) {
+      return { caption: S.legendary.caption, color: 'coin', badge: S.legendary.name(rule), line: S.legendary.line(rule), right: [S.legendary.reward, S.legendary.chest] };
+    }
     if (!r) return null;
     if (r.k === 'challenge') return { caption: S.run.challenge, color: 'accent', badge: S.run.fromFriend, line: null, right: [S.run.toBeat, Fmt.number(r.spec.target)] };
-    const done = this.save.career.trialsDone.includes(r.trial.id);
+    const weekly = r.trial.id === 'weekly';
+    const done = weekly ? Careers.isWeeklyDone(this.save.career, weekNumber(this.today)) : this.save.career.trialsDone.includes(r.trial.id);
     return {
-      caption: S.run.trial,
-      color: 'hazard',
+      caption: weekly ? S.weekly.caption : S.run.trial,
+      color: weekly ? 'coin' : 'hazard',
       badge: S.trials.name(r.trial.id),
       line: S.trials.goal(r.trial),
       right: done ? [S.trials.passed, '✓'] : [S.run.rewardCaption, moneyText(Fmt.number(r.trial.reward))],
@@ -1698,6 +1770,7 @@ export class GameSession {
       // A trial's goal already names its conditions.
       conditions: this.special?.k === 'trial' || this.versusSelected ? null : S.ready.conditions(this.world.config.weather, this.world.config.cityEvent, this.world.config.night, this.world.config.blackout),
       run: this.runCard,
+      prestige: this.special ? 0 : career.prestige,
       daily,
       mode: this.playingMode,
       versus: this.versusSelected,

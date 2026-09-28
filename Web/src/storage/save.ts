@@ -1,8 +1,8 @@
 import { type SaveGame, type Career, newSave, newCareer, GAME_MODES, MASTERY_GOALS, type GameMode } from '../core/career';
 import { UPGRADES, upgradeMaxSteps } from '../core/levels';
 import { COSMETICS, CHEST_KINDS, type ChestKind, MAX_CAR_SKINS, cosmetic } from '../core/loot';
-import { ROAD_MODULES, type RoadModule } from '../core/config';
-import { TRIAL_IDS } from '../core/trials';
+import { ROAD_MODULES, type RoadModule, BOSS_KINDS, type BossKind } from '../core/config';
+import { RUN_IDS } from '../core/trials';
 
 const KEY = 'carGame.save.v2';
 const LEGACY_KEY = 'carGame.career.v1';
@@ -81,8 +81,13 @@ function readCareer(raw: unknown): Career {
     purchases: strings(raw.purchases),
     adCashCount: int(raw.adCashCount, 0, 0),
     adCashDay: int(raw.adCashDay, -1),
-    trialsDone: [...new Set(strings(raw.trialsDone).filter((id) => (TRIAL_IDS as string[]).includes(id)))],
+    trialsDone: [...new Set(strings(raw.trialsDone).filter((id) => RUN_IDS.includes(id)))],
     bossTrophies: int(raw.bossTrophies, 0, 0),
+    bossesBeaten: [...new Set(strings(raw.bossesBeaten).filter((k): k is BossKind => BOSS_KINDS.includes(k as BossKind)))],
+    prestige: int(raw.prestige, 0, 0),
+    legendaryDone: int(raw.legendaryDone, 0, 0),
+    weeklyDone: int(raw.weeklyDone, -1),
+    weekliesDone: int(raw.weekliesDone, 0, 0),
   };
 }
 

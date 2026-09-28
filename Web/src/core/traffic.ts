@@ -5,6 +5,7 @@ import { wrap, angleOf } from './vec2';
 import type { World } from './world';
 import { reservedCriminalArm, reservedTransporterArm, joinsTooClose } from './specials';
 import { reservedMilitaryArm, isMilitaryOverdue } from './explosions';
+import { reservedAmbulanceArm, joinsClearRoad, longestExit } from './ambulance';
 
 /**
  * AI traffic on the other arms (FOUNDATION.md 2.7). It only enters with a safe gap, counts
@@ -23,7 +24,7 @@ export function updateTraffic(w: World, dt: number): void {
       list.push(x.phase);
       queues.set(x.phase.arm.index, list);
     }
-    const reserved = [reservedCriminalArm(w), reservedTransporterArm(w), reservedMilitaryArm(w)].map((a) => a?.index);
+    const reserved = [reservedCriminalArm(w), reservedTransporterArm(w), reservedMilitaryArm(w), reservedAmbulanceArm(w)].map((a) => a?.index);
     const takesAnother = (arm: Arm): boolean => {
       const queue = queues.get(arm.index);
       if (!queue || queue.length === 0) return true;
@@ -42,8 +43,8 @@ export function updateTraffic(w: World, dt: number): void {
     const veh = w.vehicles[i];
     const p = veh.phase;
     if (p.kind !== 'waiting') continue;
-    // The criminal never waits politely.
-    const barges = veh.type === 'pickup';
+    // The criminal never waits politely; the ambulance has right of way.
+    const barges = veh.type === 'pickup' || veh.type === 'ambulance';
     if (p.approach > 0) {
       p.approach = approachStep(w, p.approach, dt, c.aiRollingMerge || barges);
       if (p.approach === 0 && (c.aiRollingMerge || barges)) p.reaction = 0;
@@ -54,12 +55,12 @@ export function updateTraffic(w: World, dt: number): void {
     }
     p.reaction -= dt;
     const clear = barges ? canBargeIn(w, p.arm) : canEnter(w, p.arm);
-    if (p.reaction <= 0 && clear && !joinsTooClose(w, veh, p.arm)) {
+    if (p.reaction <= 0 && clear && !joinsTooClose(w, veh, p.arm) && !joinsClearRoad(w, veh, p.arm)) {
       const path = w.layout.entry(p.arm);
       const merge: Merging = {
         kind: 'merging',
         arm: p.arm,
-        exitArm: w.randomExit(p.arm),
+        exitArm: veh.type === 'ambulance' ? longestExit(w, p.arm) : w.randomExit(p.arm),
         profile: mergeProfile(path.length, c.mergeDuration, w.ringSpeed),
         elapsed: 0,
         minGap: Infinity,
@@ -127,7 +128,8 @@ export function isFreeForWarning(w: World, arm: Arm): boolean {
     !waiting &&
     arm.index !== reservedCriminalArm(w)?.index &&
     arm.index !== reservedTransporterArm(w)?.index &&
-    arm.index !== reservedMilitaryArm(w)?.index
+    arm.index !== reservedMilitaryArm(w)?.index &&
+    arm.index !== reservedAmbulanceArm(w)?.index
   );
 }
 

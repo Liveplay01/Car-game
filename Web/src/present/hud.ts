@@ -3,9 +3,10 @@ import type { Arm } from '../core/roundabout';
 import type { ShiftResult } from '../core/events';
 import type { GameMode } from '../core/career';
 import type { SwipeMode } from './flow';
-import type { CityEvent } from '../core/config';
+import type { CityEvent, BossKind } from '../core/config';
 import { Scoring } from '../core/scoring';
 import { secureZone } from '../core/specials';
+import { clearZone } from '../core/ambulance';
 import { type Vec2, v, add, sub, mul, fromAngle, TAU } from '../core/vec2';
 import { type RenderList, type Rect, R, rect, circle, arc, line, text, Ease, Metrics, toScreen, type Align } from './render';
 import type { ColorToken } from './theme';
@@ -115,8 +116,12 @@ export type PopupKind =
   | { k: 'modulePulse'; color: ColorToken }
   | { k: 'flames'; n: number; chain: number }
   | { k: 'boom' }
-  | { k: 'convoy' }
-  | { k: 'heist'; n: number };
+  | { k: 'convoy'; kind: BossKind }
+  | { k: 'heist'; n: number }
+  | { k: 'armour' }
+  | { k: 'ambulance' }
+  | { k: 'blocked' }
+  | { k: 'clearRoad'; n: number };
 
 export interface Popup {
   serial: number;
@@ -333,6 +338,31 @@ export const HUD = {
     }
   },
 
+  /**
+   * The ambulance: its arm is marked before it comes; on the ring a blue band runs ahead of it
+   * over the road that has to stay clear. Once a car blocked it, the band is gone.
+   */
+  addAmbulance(list: RenderList, world: World, alpha: number): void {
+    const a = world.ambulance;
+    if (a.kind === 'warning') HUD.addWedge(list, a.arm, world, 'lightBlue');
+    else if (a.kind === 'arriving') {
+      const veh = world.vehicle(a.vehicle);
+      if (veh) list.w(arc(interpolatedPose(veh, alpha).position, 22, 2, 0, TAU), 'lightBlue', 0.6);
+    } else if (a.kind === 'active') {
+      const veh = world.vehicle(a.vehicle);
+      const zone = clearZone(world);
+      if (!veh || veh.isCrashed || !zone) return;
+      const pos = interpolatedPose(veh, alpha).position;
+      const r = world.layout.ringRadius;
+      const from = Math.atan2(pos.y, pos.x);
+      const to = from + zone.arc / r;
+      const pulse = 0.5 + 0.5 * Math.sin(world.time * 5);
+      const lane = world.layout.laneWidth / 2 - 3;
+      for (const edge of [r - lane, r + lane]) list.w(arc(v(0, 0), edge, 2, from, to), 'lightBlue', 0.3 + 0.25 * pulse);
+      list.w(arc(v(0, 0), r, world.layout.laneWidth - 6, from, to), 'lightBlue', 0.06 + 0.04 * pulse);
+    }
+  },
+
   addMilitary(list: RenderList, world: World, alpha: number): void {
     const m = world.military;
     const c = world.config;
@@ -473,13 +503,31 @@ export const HUD = {
           size = Metrics.popupSize * 1.6;
           break;
         case 'convoy':
-          label = S.boss.incoming;
+          label = S.boss.arriving(k.kind);
           color = 'coin';
           size = Metrics.popupSize * 0.8;
           break;
         case 'heist':
           label = S.boss.heist(moneyText(Fmt.number(k.n)));
           color = 'coin';
+          break;
+        case 'armour':
+          label = S.boss.armour;
+          color = 'coin';
+          size = Metrics.popupSize * 0.8;
+          break;
+        case 'ambulance':
+          label = S.ambulance.incoming;
+          color = 'lightBlue';
+          size = Metrics.popupSize * 0.8;
+          break;
+        case 'blocked':
+          label = S.ambulance.blocked;
+          color = 'destructive';
+          break;
+        case 'clearRoad':
+          label = S.ambulance.clear(Fmt.signed(k.n));
+          color = 'lightBlue';
           break;
       }
       let at = add(toScreen(cam, p.position), v(0, -30));
@@ -644,6 +692,8 @@ export const ReadyBanner = {
       drawsCard?: boolean;
       opacity?: number;
       run?: RunCard | null;
+      /** The career's Prestige rank: a star before the level. */
+      prestige?: number;
     },
   ): void {
     const width = list.camera.viewport.x;
@@ -663,7 +713,7 @@ export const ReadyBanner = {
       ? [run.caption, run.color]
       : o.mode === 'shift'
         ? o.daily === null
-          ? [S.ready.levelCaption(o.level), 'muted']
+          ? [S.ready.levelCaption(o.level, o.prestige ?? 0), 'muted']
           : [S.daily.title, 'hazard']
         : o.mode === 'unlimited'
           ? [S.modes.unlimitedCaption, 'accent']
@@ -763,6 +813,8 @@ export const ResultBanner = {
     if (summary.mode === 'mayhem') [title, titleColor] = [S.mayhem.over, 'fireOuter'];
     // On a boss level the criminal that got away was the syndicate's head.
     if (r.outcome === 'escaped' && r.convoy && !r.bossBusted) title = S.boss.escaped;
+    // A Legendary Shift's rule was broken (Zero Tolerance).
+    if (r.outcome === 'failed') [title, titleColor] = [S.legendary.broken, 'destructive'];
     const run = summary.run;
     if (run) [title, titleColor] = [run.caption, run.color];
 

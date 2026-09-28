@@ -20,7 +20,9 @@ export type VehicleType =
   /** A gas tanker: drives like any lorry, but wrecked it explodes. */
   | 'tanker'
   /** A military truck with a bomb: a no-go zone around it on the ring. */
-  | 'military';
+  | 'military'
+  /** On an emergency run: the ring ahead of it has to stay clear. */
+  | 'ambulance';
 
 export type Owner = 'player' | 'ai';
 
@@ -149,6 +151,8 @@ export class Vehicle {
   dents: Dent[] = [];
   retired = false;
   role: VehicleRole = null;
+  /** An armoured boss: police rams it still shrugs off. */
+  armour = 0;
   /** Multiplayer: whose lane a player car came from. */
   seat = 0;
 
@@ -181,7 +185,7 @@ export class Vehicle {
 
   /** Plain AI traffic: the bots whose gaps the player's cars have to hit. */
   get isBot(): boolean {
-    return this.owner === 'ai' && this.type !== 'pickup' && this.type !== 'transporter' && this.type !== 'military';
+    return this.owner === 'ai' && this.type !== 'pickup' && this.type !== 'transporter' && this.type !== 'military' && this.type !== 'ambulance';
   }
 
   get isPlayerPolice(): boolean {

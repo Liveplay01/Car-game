@@ -1,6 +1,6 @@
 import type { Arm } from './roundabout';
 import type { Vec2 } from './vec2';
-import type { RoadModule } from './config';
+import type { RoadModule, BossKind, LegendaryRule } from './config';
 
 export type MergeRating = 'clean' | 'tightFit' | 'nearMiss' | 'perfect' | 'cutOff';
 
@@ -40,6 +40,12 @@ export interface ShiftResult {
   convoy: boolean;
   /** The syndicate boss was taken down this shift. */
   bossBusted: boolean;
+  /** Which boss came (a boss level), else null. */
+  bossKind: BossKind | null;
+  /** A Legendary Shift's rule, else null. */
+  legendary: LegendaryRule | null;
+  /** Ambulances that got through with a clear road. */
+  ambulances: number;
 }
 
 export interface ComboChange {
@@ -114,6 +120,8 @@ export type GameEvent =
   | { type: 'criminalEntered'; vehicle: number; deadline: number; boss: boolean }
   /** The syndicate boss was taken down: the stolen money comes back. */
   | { type: 'heistRecovered'; vehicle: number; point: Vec2; time: number; amount: number }
+  /** An armoured boss shrugged off a police ram: the police car is a wreck, the boss drives on. */
+  | { type: 'armourHit'; criminal: number; police: number; point: Vec2; time: number; armourLeft: number }
   | { type: 'criminalEscaped'; vehicle: number; time: number }
   | { type: 'criminalWrecked'; vehicle: number; point: Vec2; time: number }
   | { type: 'takedown'; criminal: number; police: number; point: Vec2; time: number; points: number; timeLeft: number }
@@ -126,6 +134,13 @@ export type GameEvent =
   | { type: 'dispatched'; vehicle: number; combo: number }
   | { type: 'modulePaid'; module: RoadModule; slot: number; amount: number; point: Vec2; time: number }
   | { type: 'towed'; vehicle: number; slot: number; time: number }
+  | { type: 'ambulanceWarning'; arm: Arm; time: number }
+  | { type: 'ambulanceEntered'; vehicle: number }
+  /** A car joined right in front of the ambulance: combo and chain are gone, and its bonus. */
+  | { type: 'ambulanceBlocked'; vehicle: number; blocker: number; point: Vec2; time: number }
+  /** The ambulance left the ring with its road kept clear. */
+  | { type: 'ambulanceCleared'; vehicle: number; amount: number; point: Vec2; time: number }
+  | { type: 'ambulanceLost'; vehicle: number; point: Vec2; time: number }
   | { type: 'militaryWarning'; arm: Arm; time: number }
   | { type: 'militaryEntered'; vehicle: number; deadline: number }
   | ({ type: 'explosion' } & ExplosionReport)

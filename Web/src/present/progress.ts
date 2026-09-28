@@ -1,7 +1,10 @@
 import { type SaveGame, type Career, Careers, MASTERY_GOALS, MASTERY_THRESHOLDS, masteryValue } from '../core/career';
 import { COSMETICS } from '../core/loot';
 import { challengesOf, challengeReward } from '../core/daily';
-import { TRIALS, type TrialId } from '../core/trials';
+import { TRIALS, type TrialId, type RematchId, rematch } from '../core/trials';
+import { weekNumber, weekDaysLeft, weeklyTrial } from '../core/weekly';
+import { baseConfig, BOSS_KINDS } from '../core/config';
+import { firstBossLevel } from '../core/levels';
 import { type Vec2, v, add } from '../core/vec2';
 import { type RenderList, type Rect, RenderList as List, R, rect, circle, line, text, Ease, Metrics, moved, type Align, type Weight } from './render';
 import type { ColorToken } from './theme';
@@ -38,6 +41,8 @@ interface Layout {
   content: Rect;
 }
 
+const PROGRESS_SECTIONS: ProgressSection[] = [0, 1, 2, 3, 4];
+
 function t(list: RenderList, s: string, at: Vec2, size: number, color: ColorToken, opacity: number, o: { weight?: Weight; align?: Align } = {}): void {
   list.s(text(s, at, size, o.align ?? 'leading', o.weight ?? 'regular'), color, opacity);
 }
@@ -65,6 +70,10 @@ export const ProgressPage = {
       { label: P.shiftsCompleted, value: count(m.shiftsCompleted) },
       { label: P.takedowns, value: count(m.takedowns) },
       { label: P.bosses, value: count(c.bossTrophies) },
+      { label: P.prestige, value: c.prestige > 0 ? S.prestige.caption(c.prestige) : P.none },
+      { label: P.legendary, value: count(c.legendaryDone) },
+      { label: P.weeklies, value: count(c.weekliesDone) },
+      { label: P.ambulances, value: count(m.ambulances) },
       { label: P.transporters, value: count(m.transporters) },
       { label: P.perfects, value: count(m.perfects) },
       { label: P.chestsOpened, value: count(c.chestsOpened) },
@@ -76,9 +85,9 @@ export const ProgressPage = {
     const width = Math.min(viewport.x - 2 * ProgressPage.gap, 460);
     const left = (viewport.x - width) / 2;
     const top = Metrics.sceneInsets.top + 22;
-    const sw = width / 4;
+    const sw = width / PROGRESS_SECTIONS.length;
     return {
-      segments: ([0, 1, 2, 3] as ProgressSection[]).map((s, i): [ProgressSection, Rect] => [s, R.make(left + i * sw, top, left + (i + 1) * sw, top + ShopPage.segmentHeight)]),
+      segments: PROGRESS_SECTIONS.map((s, i): [ProgressSection, Rect] => [s, R.make(left + i * sw, top, left + (i + 1) * sw, top + ShopPage.segmentHeight)]),
       content: R.make(left, top + ShopPage.segmentHeight + ProgressPage.gap, left + width, viewport.y - bottomInset - ProgressPage.gap),
     };
   },
@@ -96,7 +105,8 @@ export const ProgressPage = {
     let thumb: number = chosen;
     const slide = state.sectionSlide;
     if (slide) thumb = slide.from + (chosen - slide.from) * (reduceMotion ? 1 : Ease.settle(slide.age / ShopPage.slideDuration));
-    MenuKit.segmented(list, [0, 1, 2, 3].map((i) => S.progress.section(i)), chosen, thumb, R.make(l.segments[0][1].minX, l.segments[0][1].minY, l.segments[3][1].maxX, l.segments[3][1].maxY));
+    const last = l.segments[l.segments.length - 1][1];
+    MenuKit.segmented(list, PROGRESS_SECTIONS.map((i) => S.progress.section(i)), chosen, thumb, R.make(l.segments[0][1].minX, l.segments[0][1].minY, last.maxX, last.maxY));
 
     const start = list.items.length;
     ProgressPage.addSection(list, state.section, l, save, today, state.age, reduceMotion);
@@ -118,7 +128,28 @@ export const ProgressPage = {
     if (section === 0) ProgressPage.addRecords(list, l, save, age, reduceMotion);
     else if (section === 1) ProgressPage.addQuests(list, l, save.career, today, age, reduceMotion);
     else if (section === 2) ProgressPage.addTrials(list, l, save.career, age, reduceMotion);
+    else if (section === 3) ProgressPage.addBosses(list, l, save.career, age, reduceMotion);
     else ProgressPage.addAchievements(list, l, save.career, age, reduceMotion);
+  },
+
+  /** The Prestige card sits above the records once it is in reach, or was ever used. */
+  showsPrestige: (c: Career): boolean => c.prestige > 0 || c.level >= baseConfig.prestigeLevel - 10,
+
+  prestigeCard(l: Layout): Rect {
+    return R.make(l.content.minX, l.content.minY, l.content.maxX, l.content.minY + 64);
+  },
+
+  /** A tap on the Prestige card (Records): the session asks twice before it starts over. */
+  prestigeAt(point: Vec2, viewport: Vec2, bottomInset: number, c: Career): boolean {
+    if (!ProgressPage.showsPrestige(c)) return false;
+    return R.contains(ProgressPage.prestigeCard(ProgressPage.layout(viewport, bottomInset)), point);
+  },
+
+  checkmark(list: RenderList, box: Vec2, done: boolean, opacity: number): void {
+    list.s(circle(box, 9), done ? 'accent' : 'controlFill', opacity);
+    if (!done) return;
+    list.s(line(add(box, v(-4, 0)), add(box, v(-1, 3.5)), 2), 'accentInk', opacity);
+    list.s(line(add(box, v(-1, 3.5)), add(box, v(4.5, -3.5)), 2), 'accentInk', opacity);
   },
 
   entering(r: Rect, age: number, index: number, reduceMotion: boolean): [Rect, number] {
@@ -133,9 +164,24 @@ export const ProgressPage = {
 
   addRecords(list: RenderList, l: Layout, save: SaveGame, age: number, reduceMotion: boolean): void {
     const records = ProgressPage.records(save);
-    const cells = ShopPage.grid(records.length, 2, l.content, 74);
+    const c = save.career;
+    let area = l.content;
+    if (ProgressPage.showsPrestige(c)) {
+      const [card, o] = ProgressPage.entering(ProgressPage.prestigeCard(l), age, 0, reduceMotion);
+      ProgressPage.panel(list, card, o);
+      const center = R.center(card);
+      const ready = Careers.canPrestige(c);
+      const title = c.prestige > 0 ? `${S.prestige.title} ${S.prestige.caption(c.prestige)}` : S.prestige.title;
+      t(list, title, v(card.minX + 16, center.y - 10), 14, 'coin', o, { weight: 'bold' });
+      const hint = ready ? S.prestige.ready(c.level) : c.prestige > 0 ? S.prestige.headStart(Careers.headStart(c)) : S.prestige.locked(baseConfig.prestigeLevel);
+      const room = R.width(card) - (ready ? 120 : 32);
+      t(list, hint, v(card.minX + 16, center.y + 11), ShopPage.fitted(hint, 11, room), 'muted', o);
+      if (ready) t(list, `${S.prestige.title} ›`, v(card.maxX - 16, center.y), 13, 'coin', o, { weight: 'bold', align: 'trailing' });
+      area = R.make(l.content.minX, card.maxY + ProgressPage.gap, l.content.maxX, l.content.maxY);
+    }
+    const cells = ShopPage.grid(records.length, 2, area, 74);
     records.forEach((record, i) => {
-      const [r, o] = ProgressPage.entering(cells[i], age, i, reduceMotion);
+      const [r, o] = ProgressPage.entering(cells[i], age, i + 1, reduceMotion);
       ProgressPage.panel(list, r, o);
       const c = R.center(r);
       const empty = record.value === S.progress.none;
@@ -144,8 +190,15 @@ export const ProgressPage = {
     });
   },
 
+  questRows: (l: Layout): Rect[] => ShopPage.grid(6, 1, l.content, 64),
+
+  /** A tap on the Weekly Elite row (Quests): its shift waits on the Game tab. */
+  weeklyAt(point: Vec2, viewport: Vec2, bottomInset: number): boolean {
+    return R.contains(ProgressPage.questRows(ProgressPage.layout(viewport, bottomInset))[1], point);
+  },
+
   addQuests(list: RenderList, l: Layout, career: Career, today: number, age: number, reduceMotion: boolean): void {
-    const rows = ShopPage.grid(5, 1, l.content, 64);
+    const rows = ProgressPage.questRows(l);
     let index = 0;
     const row = (): [Rect, number] => ProgressPage.entering(rows[index], age, index++, reduceMotion);
 
@@ -154,8 +207,22 @@ export const ProgressPage = {
     const open = Careers.isDailyOpen(career, today);
     const dc = R.center(daily);
     t(list, S.daily.title, v(daily.minX + 16, dc.y - 9), 14, 'primary', dO, { weight: 'bold' });
-    t(list, open ? S.daily.readyHint : S.daily.doneHint(career.dailyStreak), v(daily.minX + 16, dc.y + 11), 11, 'muted', dO);
+    t(list, open ? S.daily.readyHint : S.daily.doneHint(career.dailyStreak), v(daily.minX + 16, dc.y + 11), ShopPage.fitted(S.daily.readyHint, 11, R.width(daily) - 32), 'muted', dO);
     t(list, open ? S.daily.ready : S.daily.done, v(daily.maxX - 16, dc.y - 9), 13, open ? 'hazard' : 'accent', dO, { weight: 'bold', align: 'trailing' });
+
+    // The Weekly Elite: one shift for the whole week, tap to play it.
+    const [weekly, wO] = row();
+    ProgressPage.panel(list, weekly, wO);
+    const week = weekNumber(today);
+    const elite = weeklyTrial(week);
+    const passed = Careers.isWeeklyDone(career, week);
+    const wc = R.center(weekly);
+    t(list, `${S.weekly.caption} · ${S.weekly.elite(elite.elite ?? 'flawless')}`, v(weekly.minX + 16, wc.y - 9), 14, 'coin', wO, { weight: 'bold' });
+    const goal = passed ? S.weekly.passedThisWeek : S.weekly.goal(elite);
+    t(list, goal, v(weekly.minX + 16, wc.y + 11), ShopPage.fitted(goal, 11, R.width(weekly) - 120), 'muted', wO);
+    if (passed) t(list, S.daily.done, v(weekly.maxX - 16, wc.y - 9), 13, 'accent', wO, { weight: 'bold', align: 'trailing' });
+    else moneyTag(list, Fmt.number(elite.reward), v(weekly.maxX - 16, wc.y - 9), 13, 'trailing', 'primary', 'accent', wO);
+    t(list, `${S.weekly.daysLeft(weekDaysLeft(today))} · ${S.trials.play} ›`, v(weekly.maxX - 16, wc.y + 11), 11, 'coin', wO, { weight: 'bold', align: 'trailing' });
 
     for (const challenge of challengesOf(today)) {
       const [r, o] = row();
@@ -187,7 +254,7 @@ export const ProgressPage = {
   trialAt(point: Vec2, viewport: Vec2, bottomInset: number): TrialId | null {
     const rows = ProgressPage.trialRows(ProgressPage.layout(viewport, bottomInset));
     const index = rows.findIndex((r) => R.contains(r, point));
-    return index < 0 ? null : TRIALS[index].id;
+    return index < 0 ? null : (TRIALS[index].id as TrialId);
   },
 
   /** Mastery trials: fixed shifts with a goal. Tap one to play it; each pays once. */
@@ -209,6 +276,43 @@ export const ProgressPage = {
       if (done) t(list, S.trials.passed, v(r.maxX - 16, c.y - 9), 12, 'accent', o, { weight: 'bold', align: 'trailing' });
       else moneyTag(list, Fmt.number(trial.reward), v(r.maxX - 16, c.y - 9), 13, 'trailing', 'primary', 'accent', o);
       t(list, `${S.trials.play} ›`, v(r.maxX - 16, c.y + 11), 11, done ? 'muted' : 'accent', o, { weight: 'bold', align: 'trailing' });
+    });
+  },
+
+  bossRows: (l: Layout): Rect[] => ShopPage.grid(BOSS_KINDS.length, 1, l.content, 92),
+
+  /** The rematch under a tap on the Bosses section, once that boss has been taken down. */
+  rematchAt(point: Vec2, viewport: Vec2, bottomInset: number, c: Career): RematchId | null {
+    const rows = ProgressPage.bossRows(ProgressPage.layout(viewport, bottomInset));
+    const index = rows.findIndex((r) => R.contains(r, point));
+    if (index < 0) return null;
+    const kind = BOSS_KINDS[index];
+    return c.bossesBeaten.includes(kind) ? rematch(kind).id as RematchId : null;
+  },
+
+  /**
+   * The syndicate's bosses: what each one asks of you, whether you have taken it down, and its
+   * rematch (one round harder, pays once) once you have.
+   */
+  addBosses(list: RenderList, l: Layout, career: Career, age: number, reduceMotion: boolean): void {
+    const rows = ProgressPage.bossRows(l);
+    BOSS_KINDS.forEach((kind, i) => {
+      const [r, o] = ProgressPage.entering(rows[i], age, i, reduceMotion);
+      ProgressPage.panel(list, r, o);
+      const c = R.center(r);
+      const beaten = career.bossesBeaten.includes(kind);
+      const match = rematch(kind);
+      const won = career.trialsDone.includes(match.id);
+      ProgressPage.checkmark(list, v(r.minX + 24, c.y - 12), beaten, o);
+      t(list, S.boss.name(kind), v(r.minX + 44, c.y - 12), 14, beaten ? 'coin' : 'primary', o, { weight: 'bold' });
+      const tactic = S.boss.tactic(kind);
+      t(list, tactic, v(r.minX + 44, c.y + 10), ShopPage.fitted(tactic, 11, R.width(r) - 60), 'muted', o);
+      const status = beaten ? S.boss.beaten : `${S.boss.notMet} · ${S.boss.firstAt(firstBossLevel(kind, baseConfig))}`;
+      t(list, status, v(r.minX + 44, c.y + 28), 11, beaten ? 'accent' : 'muted', o, { weight: 'bold' });
+      if (!beaten) return;
+      if (won) t(list, S.trials.passed, v(r.maxX - 16, c.y - 12), 12, 'accent', o, { weight: 'bold', align: 'trailing' });
+      else moneyTag(list, Fmt.number(match.reward), v(r.maxX - 16, c.y - 12), 13, 'trailing', 'primary', 'accent', o);
+      t(list, `${S.boss.rematch(kind).split(' · ')[0]} ›`, v(r.maxX - 16, c.y + 28), 11, won ? 'muted' : 'coin', o, { weight: 'bold', align: 'trailing' });
     });
   },
 

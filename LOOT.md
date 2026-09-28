@@ -113,6 +113,19 @@ sichtbar, mit dem Hinweis, wie man sie bekommt.
 | Sunburst | `sunburst` | Epic | Event Chest im Sommer (Jun–Aug) | Sonnengelb mit Orange-Streifen |
 | Pumpkin | `pumpkin` | Epic | Event Chest im Herbst (Sep–Nov) | Kürbisorange mit schwarzem Streifen |
 
+## Nur über Legendary Shifts und Prestige (6, Regal „Honours“)
+
+Seit 28.09.2026. Nie in Truhen, eigenes Regal im Shop.
+
+| Name | ID | Seltenheit | Wie | Look |
+| --- | --- | --- | --- | --- |
+| Laurel | `laurel` | Rare | 1. Legendary Shift geschafft | Lorbeergrün, Goldstreifen, glänzend |
+| Crown | `crown` | Epic | 5 Legendary Shifts | Bordeaux, Goldstreifen, glänzend + Glitzer |
+| Phoenix | `phoenix` | Legendary | 15 Legendary Shifts | Feuerorange, heller Streifen, glänzend + Glitzer |
+| Silver Star | `starSilver` | Epic | Prestige ★1 | Silber, weißer Streifen, glänzend |
+| Gold Star | `starGold` | Epic | Prestige ★2 | Gold, schwarzer Streifen, glänzend + Glitzer |
+| Iris Star | `starIris` | Legendary | Prestige ★3 | Holo, Goldstreifen, glänzend + Glitzer |
+
 ## Alben
 
 Ein vollständiger Satz zahlt einmal Geld und legt einen Rahmen in seiner Farbe um den
@@ -124,6 +137,7 @@ Kreisverkehr (der wertvollste abgeschlossene zählt). Fortschritt im Shop unter 
 | Commons / Rares / Epics / Legends | alle Car Skins dieser Seltenheit aus Truhen | 5.000 / 10.000 / 20.000 / 40.000 |
 | Seasons | alle 4 Saison-Items | 30.000 |
 | Loyalty | alle 3 Serien-Items | 20.000 |
+| Honours | alle 6 Legendary- und Prestige-Items | 50.000 |
 
 ## Map Skins (12)
 

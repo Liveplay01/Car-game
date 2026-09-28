@@ -118,6 +118,14 @@ export const Feedback = {
         return 'alarm';
       case 'explosion':
         return e.kind === 'bomb' ? 'detonation' : 'explosion';
+      case 'ambulanceWarning':
+        return 'dispatch';
+      case 'ambulanceBlocked':
+        return 'cutOff';
+      case 'ambulanceCleared':
+        return 'paid';
+      case 'armourHit':
+        return 'screech';
       default:
         return null;
     }
@@ -177,6 +185,12 @@ export const Feedback = {
         return e.isInFlow ? 'flow' : null;
       case 'explosion':
         return 'explosion';
+      case 'ambulanceWarning':
+        return 'secured';
+      case 'ambulanceCleared':
+        return 'paid';
+      case 'armourHit':
+        return 'takedown';
       default:
         return null;
     }
@@ -209,6 +223,9 @@ export const Feedback = {
       case 'modulePaid':
       case 'explosion':
       case 'heistRecovered':
+      case 'armourHit':
+      case 'ambulanceBlocked':
+      case 'ambulanceCleared':
         return e.point;
       default:
         return null;

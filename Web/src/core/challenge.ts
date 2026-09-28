@@ -1,4 +1,4 @@
-import { type Config, type CityEvent, type RoadModule, CITY_EVENTS, ROAD_MODULES } from './config';
+import { type Config, type CityEvent, type RoadModule, type LegendaryRule, CITY_EVENTS, ROAD_MODULES, LEGENDARY_RULES } from './config';
 import { UPGRADES, upgradeMaxSteps, type Upgrade } from './levels';
 import { type Career, type GameMode, GAME_MODES, Careers, newCareer } from './career';
 
@@ -20,13 +20,27 @@ export interface ChallengeSpec {
   cashBoost: boolean;
   event: CityEvent | null;
   target: number;
+  /** The sender's Prestige rank: it sets how hard the traffic runs. */
+  prestige: number;
+  /** The legendary rule of the shift, if it was a Legendary Shift. */
+  legendary: LegendaryRule | null;
 }
 
 const CAR_TYPES = ['sportsCar', 'compact', 'van'];
 
 /** The challenge of a shift just played with this career. */
-export function challengeOf(c: Career, mode: GameMode, level: number, seed: number, event: CityEvent | null, target: number): ChallengeSpec {
+export function challengeOf(
+  c: Career,
+  mode: GameMode,
+  level: number,
+  seed: number,
+  event: CityEvent | null,
+  target: number,
+  legendary: LegendaryRule | null = null,
+): ChallengeSpec {
   return {
+    prestige: mode === 'shift' ? c.prestige : 0,
+    legendary,
     seed: seed >>> 0,
     mode,
     level,
@@ -50,11 +64,12 @@ export function challengeCareer(s: ChallengeSpec): Career {
     modules: { ...s.modules },
     collection: [...s.cars],
     purchases: s.cashBoost ? ['cashBoost'] : [],
+    prestige: s.prestige,
   };
 }
 
 export function challengeConfig(s: ChallengeSpec, base: Config): Config {
-  return Careers.shiftConfig(challengeCareer(s), s.mode, base, s.seed, s.event);
+  return Careers.shiftConfig(challengeCareer(s), s.mode, base, s.seed, s.event, s.legendary);
 }
 
 // MARK: Link text
@@ -76,7 +91,22 @@ const fromBase64Url = (code: string): string => {
 export function encodeChallenge(s: ChallengeSpec): string {
   const upgrades = UPGRADES.map((u) => s.upgrades[u] ?? 0);
   const modules = Object.entries(s.modules).map(([slot, m]) => [Number(slot), ROAD_MODULES.indexOf(m)]);
-  const packed = [1, s.seed, GAME_MODES.indexOf(s.mode), s.level, upgrades, s.armSlots, modules, s.cars.map((id) => CAR_TYPES.indexOf(id)), s.cashBoost ? 1 : 0, s.event ? CITY_EVENTS.indexOf(s.event) : -1, s.target];
+  // Prestige and the legendary rule came later: at the end, so older links still read.
+  const packed = [
+    1,
+    s.seed,
+    GAME_MODES.indexOf(s.mode),
+    s.level,
+    upgrades,
+    s.armSlots,
+    modules,
+    s.cars.map((id) => CAR_TYPES.indexOf(id)),
+    s.cashBoost ? 1 : 0,
+    s.event ? CITY_EVENTS.indexOf(s.event) : -1,
+    s.target,
+    s.prestige,
+    s.legendary ? LEGENDARY_RULES.indexOf(s.legendary) : -1,
+  ];
   return toBase64Url(JSON.stringify(packed));
 }
 
@@ -91,7 +121,7 @@ export function decodeChallenge(code: string): ChallengeSpec | null {
     return null;
   }
   if (!Array.isArray(packed) || packed[0] !== 1 || packed.length < 11) return null;
-  const [, seed, mode, level, ups, arms, mods, cars, boost, event, target] = packed as unknown[];
+  const [, seed, mode, level, ups, arms, mods, cars, boost, event, target, prestige, legendary] = packed as unknown[];
   if (!isInt(seed, 0, 0xffffffff) || !isInt(mode, 0, GAME_MODES.length - 1) || !isInt(level, 1, 999) || !isInt(target, 0, 1e9)) return null;
   if (!Array.isArray(ups) || !Array.isArray(arms) || !Array.isArray(mods) || !Array.isArray(cars)) return null;
   const upgrades: Partial<Record<Upgrade, number>> = {};
@@ -116,5 +146,7 @@ export function decodeChallenge(code: string): ChallengeSpec | null {
     cashBoost: boost === 1,
     event: isInt(event, 0, CITY_EVENTS.length - 1) ? CITY_EVENTS[event] : null,
     target,
+    prestige: isInt(prestige, 0, 99) ? prestige : 0,
+    legendary: isInt(legendary, 0, LEGENDARY_RULES.length - 1) ? LEGENDARY_RULES[legendary] : null,
   };
 }
