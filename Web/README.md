@@ -18,7 +18,7 @@ npm run dev        # http://localhost:5050, also reachable from a phone on the s
 npm run build      # type-check + production build into dist/
 npm run preview    # serve dist/ on port 5050 (with the service worker)
 npm run sim        # balancing bots, like `swift run Sim`: node scripts/sim.mjs [shifts] [level]
-npm run sim:versus # multiplayer bots: careful lanes never go out for a crash, same seed = same match
+npm run sim:versus # multiplayer bots (the lobby bots): never out for a crash, same seed = same match
 ```
 
 `npm run sim` must show **0 crashes for the careful bot** at every level. A random
@@ -55,7 +55,7 @@ src/
               feedback + music mix, and the session that runs it all
   audio/      Web Audio: the real sound samples with pitch, adaptive music stems
   storage/    localStorage save (v2, migrates v1)
-  net/        multiplayer room (PeerJS/WebRTC): four-digit code, lobby, tap messages
+  net/        multiplayer room (PeerJS/WebRTC): code, lobby, bots, pings, reconnect, tap messages
   ui/         the DOM shell: canvas, native-like tab bar, settings sheet, multiplayer lobby
 public/audio/ sounds (35) and music stems (7) as AAC, from ../Assets
 scripts/sim.mjs   headless balancing bots
@@ -93,22 +93,59 @@ Only in the browser version:
 
 ## Multiplayer
 
-The last page of the mode swipe. Up to four friends play one roundabout, one lane each
+The last page of the mode swipe. Up to four players on one roundabout, one lane each
 (eight arms: the players sit apart, AI traffic comes in between). Whoever's car crashes
-**while merging** is out; so is a lane that sends no car for 10 s of free-flowing traffic
-(the clock waits while wrecks lie on the road). The last one left wins.
+**while merging** is out; so is a lane that sends no car for too long. The last one left
+wins. Every value below is in `core/config.ts` (`versus…`).
 
-- **Joining:** the host taps *Host a game* and gets a four-digit code; friends type it in.
+- **Escalation:** after 30 s *rush hour* (ring +15 %, a little more traffic), after 60 s
+  *sudden death* (ring +30 %, the stall clock drops from 10 s to 4 s and restarts for
+  everyone). Wrecks on the road hold the stall clock, but only for 3 s per car.
+- **Risk pays:** every merge fills your pressure bar (clean 1, tight fit / near miss 3,
+  perfect 4); a full bar (16) sends a lorry in your colour onto the arm just before a
+  rival's lane, once round the ring. Five merges without a cut-off earn a **shield** that
+  forgives one light bump (impact ≤ 60).
+- **Identity:** each lobby slot has a colour (mint, coral, violet, gold; `player1…4` in
+  `theme.ts`, never a vehicle colour): the roof and glow of that player's cars, their lane
+  line, pill and badge. The top shows clock, phase and one badge per player (cars sent,
+  stall countdown pulsing red under 3 s, ping, series crowns).
+- **Feel:** a tap is answered at once on your device (haptic, click, headlight flash, the
+  car leaning forward) while the car itself leaves after the input delay. The music runs
+  in multiplayer and builds with the phases; the final duel muffles it to a heartbeat.
+  Count-in ticks, merge sounds for your merges, a gong when someone is out, confetti for the
+  winner (not with Reduce Motion).
+- **Out, not bored:** tap to follow another lane (the camera leans towards it), send
+  reactions (🔥 💀 👏 😮, keys 1–4) that float up from your lane on every screen, and send
+  one lorry from the stands per match (`T`).
+- **Rounds:** single match, best of 3 or best of 5. Points per round: 3 / 2 / 1 by place,
+  last place 0, +1 for most cars sent, +1 for the tightest merge. The result lists place,
+  cars, risky merges and points; after it everyone taps *Ready* (Enter) and the next round
+  starts when all are ready. The host can go back to the *Lobby* instead.
+- **Lobby:** your name (saved as `carGame.player.v1`), an *Invite* link
+  (`#join=1234`: opens the game and joins at once; the share sheet on a phone, the clipboard
+  elsewhere), bots for open lanes (a friend who joins takes a bot's seat), and *Practise
+  against bots* on this device without any network.
 - **Network:** peer to peer over WebRTC with [PeerJS](https://peerjs.com). PeerJS's free
   public broker (`0.peerjs.com`) only introduces the devices by the code (peer id
-  `car-game-roundabout-v1-<code>`); its STUN/TURN servers help through firewalls. There is no
-  server of our own, nginx still serves only static files. Nothing is saved.
+  `car-game-roundabout-v2-<code>`). There is no server of our own, nginx still serves only
+  static files. Nothing is saved but your name.
+- **Mobile data:** Google's public STUN servers are built in. Behind carrier NAT some phones
+  need a TURN relay; set `VITE_TURN_URL` (comma-separated `turn:`/`turns:` URLs),
+  `VITE_TURN_USERNAME` and `VITE_TURN_CREDENTIAL` when building (Docker build args, e.g. in
+  Coolify). Without them the game still works wherever a direct connection is possible.
+- **Reconnect:** a guest whose connection drops keeps the seat; the room retries a few
+  times, the host sends the match so far (seed and every input) and the guest replays it
+  and catches up. A lane that stays away stalls out like any other. The host is the clock:
+  when the host leaves, the match ends for everyone (no host migration).
 - **Sync (lockstep):** every device runs the same deterministic world (same seed, same
   taps, 120 Hz). The host keeps the clock, gives every tap its step (6 steps ≈ 50 ms input
-  delay for everyone) and tells the guests how far they may run. Who is out comes from the
-  host's world and travels as an input too, so every screen shows the same result.
-- Code: rules in `core/world.ts` (seats, `eliminate`, `stalledSeats`) and `core/versus.ts`,
-  the match in `present/versus.ts`, the room in `net/room.ts`, the sheet in `ui/versusLobby.ts`.
+  delay for everyone) and tells the guests how far they may run. Who is out and every
+  lorry from the stands come from the host's world and travel as inputs too, so every
+  screen shows the same result. Bots run on the host; their taps travel like everyone's.
+- Code: rules in `core/world.ts` (seats, phases, pressure, shield, `eliminate`,
+  `stalledSeats`) and `core/versus.ts` (standings, series, `VersusBot`), the rival lorry in
+  `core/traffic.ts`, the match in `present/versus.ts`, the room in `net/room.ts`, the sheet
+  in `ui/versusLobby.ts`, the name in `storage/profile.ts`.
 
 ## Saving
 

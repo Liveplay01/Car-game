@@ -106,6 +106,9 @@ export interface ExplosionReport {
 /** Why a seat left a multiplayer match. */
 export type EliminationReason = 'crash' | 'stalled' | 'left';
 
+/** How far a multiplayer match has escalated: 0 open, 1 rush hour, 2 sudden death. */
+export type VersusPhase = 0 | 1 | 2;
+
 export type GameEvent =
   | { type: 'launched'; vehicle: number; time: number }
   | ({ type: 'merged' } & MergeReport)
@@ -147,5 +150,13 @@ export type GameEvent =
   /** Multiplayer: this seat's car caused a crash (the host turns it into `eliminated`). */
   | { type: 'faulted'; seat: number; point: Vec2; time: number }
   | { type: 'eliminated'; seat: number; reason: EliminationReason; time: number }
+  /** Multiplayer: the match escalates (1 rush hour, 2 sudden death). */
+  | { type: 'versusPhase'; phase: VersusPhase; time: number }
+  /** Multiplayer: a streak earned this seat a shield against one light crash. */
+  | { type: 'shieldGained'; seat: number; time: number }
+  /** Multiplayer: the shield took a light crash; the seat stays in. */
+  | { type: 'shielded'; seat: number; point: Vec2; time: number }
+  /** Multiplayer: a lorry joins the ring for this seat (a full pressure bar, or revenge from the stands). */
+  | { type: 'rivalSent'; seat: number; vehicle: number; revenge: boolean; time: number }
   /** The last seat standing; null when the last ones went out together. */
   | { type: 'matchOver'; winner: number | null; time: number };

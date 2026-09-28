@@ -1,4 +1,4 @@
-import type { GameEvent, CrashReport } from '../core/events';
+import type { GameEvent, CrashReport, VersusPhase } from '../core/events';
 import type { World } from '../core/world';
 import { Scoring } from '../core/scoring';
 import type { Vec2 } from '../core/vec2';
@@ -66,7 +66,9 @@ export type HapticID =
   | 'secured'
   | 'seized'
   | 'paid'
-  | 'explosion';
+  | 'explosion'
+  /** Multiplayer: the instant answer to a tap, before the car moves (the input delay). */
+  | 'tap';
 
 /**
  * Turns game events into sound and haptics (`Feedback.swift`): the more often something
@@ -289,6 +291,32 @@ export const Music = {
     if (t < attack + hold) return 1;
     if (t < attack + hold + release) return 1 - Ease.inOutSine((t - attack - hold) / release);
     return 0;
+  },
+
+  /**
+   * A multiplayer match: the stems build up with the phases (rush hour brings the rush stem,
+   * sudden death the lead and a siren), each new phase breathes in, and in the final duel the
+   * music closes to a muffled heartbeat.
+   */
+  versus(o: { phase: VersusPhase; sincePhase: number; duel: boolean; time: number; countIn: boolean; over: boolean; won: boolean }): MusicMix {
+    if (o.countIn) return { volumes: { base: 0.6 }, lowPass: 0.35 };
+    if (o.over) return o.won ? { volumes: { base: 1, rhythm: 1, flow: 0.8 }, lowPass: 0 } : { volumes: { base: 0.7 }, lowPass: 0.55 };
+    const volumes: Partial<Record<MusicLayer, number>> = {
+      base: 1,
+      rhythm: 1,
+      bass: o.phase >= 1 || o.duel ? 0.8 : 0,
+      rush: o.phase >= 1 ? 1 : 0,
+      lead: o.phase >= 2 ? 0.9 : 0,
+      siren: o.phase >= 2 ? 0.5 : 0,
+    };
+    let lowPass = o.phase > 0 ? Music.breath(o.sincePhase) * Music.breathDepth : 0;
+    if (o.duel) {
+      // Lub-dub at 72 bpm: the filter opens a little on each beat.
+      const t = o.time % (60 / 72);
+      const beat = Math.min(1, Math.exp(-t / 0.07) + (t >= 0.2 ? 0.7 * Math.exp(-(t - 0.2) / 0.07) : 0));
+      lowPass = Math.max(lowPass, 0.62 - 0.3 * beat);
+    }
+    return { volumes, lowPass };
   },
 
   playing(world: World, flow: number): MusicMix {

@@ -20,6 +20,11 @@
   --rarity-rare: #4fa3ff;
   --rarity-epic: #b45cf0;
   --rarity-legendary: #e3c15a;
+  /* Multiplayer: one colour per lobby slot (theme.ts player1…4), never a vehicle colour. */
+  --player-1: #00f5d4;
+  --player-2: #ff8a5c;
+  --player-3: #b084ff;
+  --player-4: #ffd166;
   --glass: rgba(20, 23, 28, 0.72);
   --glass-edge: rgba(255, 255, 255, 0.09);
   --scrim: rgba(14, 16, 19, 0.84);
@@ -1127,4 +1132,224 @@ button {
   color: var(--accent);
   font-size: 12px;
   font-weight: 700;
+}
+
+/* Multiplayer lobby: lane colours, your name, the format, bots. */
+.lane-dot.p1 { background: var(--player-1); color: var(--accent-ink); }
+.lane-dot.p2 { background: var(--player-2); color: var(--accent-ink); }
+.lane-dot.p3 { background: var(--player-3); color: var(--accent-ink); }
+.lane-dot.p4 { background: var(--player-4); color: var(--accent-ink); }
+
+.lane-row.empty .lane-dot {
+  background: transparent;
+  color: var(--faint);
+  box-shadow: inset 0 0 0 1.5px var(--separator);
+}
+
+.bot-name {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.bot-name svg {
+  width: 16px;
+  height: 16px;
+  color: var(--muted);
+}
+
+.name-row {
+  cursor: text;
+}
+
+.name-row .row-title {
+  flex: none;
+}
+
+.name-input {
+  flex: 1;
+  min-width: 0;
+  min-height: 32px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--primary);
+  font: 500 16px/1.35 var(--font);
+  text-align: right;
+}
+
+.name-input::placeholder {
+  color: var(--faint);
+}
+
+.name-input:focus-visible {
+  outline: none;
+}
+
+.name-row:focus-within {
+  box-shadow: inset 0 0 0 1.5px var(--accent);
+  border-radius: var(--r-row);
+}
+
+.format-row {
+  display: grid;
+  gap: var(--s2);
+  margin: 0 var(--s1);
+}
+
+.format-row .segmented {
+  display: grid;
+  width: 100%;
+}
+
+.format-row .segmented button {
+  min-width: 0;
+}
+
+.format-row .row-value {
+  color: var(--muted);
+}
+
+.versus-status.small {
+  min-height: 1.45em;
+  font-size: 13px;
+  color: var(--accent);
+}
+
+.versus-status.small:empty {
+  display: none;
+}
+
+.practice-title {
+  font: 700 22px/1.2 var(--font-round);
+  color: var(--primary);
+}
+
+.invite-btn {
+  margin-top: var(--s2);
+  min-width: 132px;
+  border-radius: 22px;
+}
+
+.invite-btn svg,
+.btn.small svg {
+  width: 18px;
+  height: 18px;
+}
+
+.quiet-btn {
+  background: transparent;
+  color: var(--muted);
+  box-shadow: inset 0 0 0 1px var(--separator);
+}
+
+.btn.small {
+  min-height: 36px;
+  padding: 0 var(--s3) 0 var(--s2);
+  gap: var(--s1);
+  font-size: 14px;
+  border-radius: 18px;
+}
+
+/* 36 px drawn, 44 px to touch. */
+.icon-btn.small {
+  width: 36px;
+  height: 36px;
+  position: relative;
+  background: var(--surface-3);
+}
+
+.icon-btn.small::after {
+  content: '';
+  position: absolute;
+  inset: -4px;
+}
+
+.icon-btn.small svg {
+  width: 18px;
+  height: 18px;
+}
+
+/* After a match: Ready turns into a quiet "waiting" pill once you pressed it. */
+.run-btn.primary-run.waiting {
+  background: var(--glass);
+  color: var(--accent);
+  box-shadow: inset 0 0 0 1.5px var(--accent);
+}
+
+.run-btn:disabled {
+  opacity: 0.5;
+}
+
+/* Out of the match: reactions and one lorry, above the Leave button, in thumb reach. */
+.react-bar {
+  position: absolute;
+  z-index: var(--z-hud);
+  left: 50%;
+  bottom: calc(var(--safe-bottom) + var(--s4) + 44px + var(--s3));
+  transform: translateX(-50%);
+  display: none;
+  align-items: center;
+  gap: var(--s2);
+  max-width: calc(100% - 2 * var(--s4));
+}
+
+.app[data-versus='on'] .react-bar.show {
+  display: flex;
+}
+
+@starting-style {
+  .app[data-versus='on'] .react-bar.show {
+    opacity: 0;
+    transform: translate(-50%, 6px);
+  }
+}
+
+.react-bar {
+  transition: opacity 200ms var(--ease-out), transform 200ms var(--ease-out);
+}
+
+.react-btn {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: var(--glass);
+  border: 1px solid var(--glass-edge);
+  font-size: 22px;
+  line-height: 1;
+  transition: transform 140ms var(--ease-out);
+}
+
+.react-btn:active {
+  transform: scale(0.9);
+}
+
+.react-bar .revenge-btn {
+  margin-left: var(--s1);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .react-btn:hover {
+    background: rgba(40, 45, 52, 0.85);
+  }
+}
+
+@media (max-width: 380px) {
+  .versus-bar .run-btn {
+    padding: 0 var(--s3) 0 var(--s2);
+    font-size: 13px;
+  }
+  .react-bar .revenge-btn span {
+    display: none;
+  }
+  .react-bar .revenge-btn {
+    padding: 0 var(--s3);
+  }
+}
+
+.versus-sheet .list + .list {
+  margin-top: 0;
 }

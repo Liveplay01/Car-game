@@ -17,9 +17,9 @@ import {
   isHeavy,
   isExplosive,
 } from './vehicle';
-import type { EliminationReason, GameEvent, MergeRating, ShiftOutcome, ShiftResult } from './events';
+import type { EliminationReason, GameEvent, MergeRating, ShiftOutcome, ShiftResult, VersusPhase } from './events';
 import { ScoreBoard, Scoring } from './scoring';
-import { updateTraffic, prefillRing } from './traffic';
+import { updateTraffic, prefillRing, spawnRival } from './traffic';
 import { updateDrivers } from './drivers';
 import {
   type CriminalPhase,
@@ -97,6 +97,24 @@ export class PlayerQueue {
   out = false;
   /** Seconds of free-flowing traffic since this lane last sent a car; too many and it stalls. */
   idle = 0;
+  /** Seconds the stall clock waited for wrecks since this lane last sent a car (`versusStallGrace`). */
+  grace = 0;
+  /** Multiplayer: when this seat went out (world time), else null. */
+  outAt: number | null = null;
+  /** Multiplayer: pressure from merges; a full bar sends a lorry round the ring. */
+  pressure = 0;
+  /** Multiplayer: merges in a row without a cut-off, towards a shield. */
+  streak = 0;
+  /** Multiplayer: takes one light crash of this lane's merge. */
+  shield = false;
+  /** Multiplayer: an out seat may send one lorry from the stands. */
+  revengeUsed = false;
+  /** Multiplayer stats: cars sent, merges, risky merges (tight fit, near miss, perfect). */
+  sent = 0;
+  merges = 0;
+  risky = 0;
+  /** The smallest gap of a merge that cut nobody off: the riskiest one. */
+  tightest = Infinity;
 
   /** `arm` null: the player's arm (South). Multiplayer gives every seat its own arm. */
   constructor(
@@ -185,6 +203,8 @@ export class World {
   spawnCooldown = 0;
   events: GameEvent[] = [];
   tempoGlide: { from: number; since: number } | null = null;
+  /** Multiplayer: how far the match has escalated. */
+  versusPhase: VersusPhase = 0;
 
   constructor(
     readonly config: Config,
@@ -779,7 +799,14 @@ export class World {
     if (this.isVersus) {
       // Only a merge that crashes counts: a chain reaction on the ring is nobody's fault.
       const merging = [first, second].filter((x) => x.owner === 'player' && x.phase.kind === 'crashed' && mergedAt.has(x.id));
-      if (this.isScoring) for (const x of merging) this.events.push({ type: 'faulted', seat: x.seat, point, time: now });
+      // A shield takes one light crash; anything harder still puts the lane out.
+      for (const x of this.isScoring ? merging : []) {
+        const q = this.seats[x.seat];
+        if (q && q.shield && !q.out && impact <= this.config.versusShieldImpact) {
+          q.shield = false;
+          this.events.push({ type: 'shielded', seat: x.seat, point, time: now });
+        } else this.events.push({ type: 'faulted', seat: x.seat, point, time: now });
+      }
     } else if (strike && this.isScoring && !this.config.mayhem && this.isStruckOut) this.endShift('struckOut', now);
     else if (strike && this.isScoring && this.config.trialRule === 'flawless') this.endShift('failed', now);
     for (const id of explosives) explode(this, id, now);
@@ -845,6 +872,7 @@ export class World {
         this.score.money += this.config.shieldBonus;
       }
       const [rating, points, combo] = this.scoreMerge(merge.minGap, behind, ahead);
+      if (this.isVersus) this.noteVersusMerge(veh, rating, merge.minGap, now);
       this.setChain(Scoring.extendsChain(rating) ? this.score.chain + 1 : 0, now);
       noteMergeNearAmbulance(this, veh, s, now);
       this.events.splice(at, 0, {
@@ -1156,6 +1184,8 @@ export class World {
     q.pass = null;
     q.rollingSpeed = 0;
     q.idle = 0;
+    q.grace = 0;
+    q.sent++;
     const arm = this.armOf(q);
     const path = this.layout.entry(arm);
     const merge: Merging = {
@@ -1360,9 +1390,10 @@ export class World {
   applyShiftCurves(now: number): void {
     const c = this.config;
     const time = this.shiftTime(now);
-    if (this.isScoring) this.targetDensity = densityAt(time, this.shift.isRushHour, c);
+    const versusRush = this.isVersus && time >= c.versusRushAt ? c.versusRushDensity : 0;
+    if (this.isScoring) this.targetDensity = densityAt(time, this.shift.isRushHour, c) + versusRush;
     const since = this.shift.rushHourSince === null ? null : this.shift.rushHourSince - (this.shift.startedAt ?? 0);
-    const target = c.ringSpeed * tempoAt(time, since, c);
+    const target = c.ringSpeed * tempoAt(time, since, c) * this.versusTempo(time);
     if (this.tempoGlide) {
       const x = Math.min(Math.max((now - this.tempoGlide.since) / c.tempoGlideSeconds, 0), 1);
       this.ringSpeed = this.tempoGlide.from + (target - this.tempoGlide.from) * x * x * (3 - 2 * x);
@@ -1410,6 +1441,7 @@ export class World {
 
   updateShift(now: number): void {
     this.applyShiftCurves(now);
+    this.escalate(now);
     this.countIdle(STEP);
     if (this.shift.phase !== 'closing') return;
     const merging = this.vehicles.some((x) => x.owner === 'player' && x.activeMerge !== null);
@@ -1492,12 +1524,103 @@ export class World {
    */
   get stalledSeats(): number[] {
     if (!this.isVersus || !this.isScoring) return [];
-    return this.seatsLeft.filter((q) => q.idle > this.config.versusStallSeconds).map((q) => q.seat);
+    const limit = this.stallLimit;
+    return this.seatsLeft.filter((q) => q.idle > limit).map((q) => q.seat);
   }
 
+  /** Seconds a lane may go without sending a car: short in sudden death. */
+  get stallLimit(): number {
+    const c = this.config;
+    return this.versusPhase >= 2 ? c.versusSuddenDeathStall : c.versusStallSeconds;
+  }
+
+  /**
+   * Wrecks on the road hold the stall clock, waiting is the right call then, but only for
+   * `versusStallGrace` seconds per car: a pile-up must not freeze the match.
+   */
   private countIdle(dt: number): void {
-    if (!this.isVersus || !this.isScoring || this.isTrafficDisturbed) return;
-    for (const q of this.seatsLeft) q.idle += dt;
+    if (!this.isVersus || !this.isScoring) return;
+    const disturbed = this.isTrafficDisturbed;
+    for (const q of this.seatsLeft) {
+      if (disturbed && q.grace < this.config.versusStallGrace) q.grace += dt;
+      else q.idle += dt;
+    }
+  }
+
+  /** The phase of a match `time` seconds in: open, rush hour, sudden death. */
+  versusPhaseAt(time: number): VersusPhase {
+    const c = this.config;
+    return time >= c.versusSuddenDeathAt ? 2 : time >= c.versusRushAt ? 1 : 0;
+  }
+
+  /** The match's tempo factor: each phase glides the ring faster over `versusPhaseGlide`. */
+  versusTempo(time: number): number {
+    if (!this.isVersus) return 1;
+    const c = this.config;
+    const glide = (at: number): number => {
+      const x = Math.min(Math.max((time - at) / Math.max(c.versusPhaseGlide, 1e-6), 0), 1);
+      return x * x * (3 - 2 * x);
+    };
+    return 1 + (c.versusRushTempo - 1) * glide(c.versusRushAt) + (c.versusSuddenDeathTempo - c.versusRushTempo) * glide(c.versusSuddenDeathAt);
+  }
+
+  /** Moves the match into its next phase; sudden death gives every lane a fresh, short clock. */
+  private escalate(now: number): void {
+    if (!this.isVersus || !this.isScoring) return;
+    const phase = this.versusPhaseAt(this.shiftTime(now));
+    if (phase <= this.versusPhase) return;
+    this.versusPhase = phase;
+    if (phase === 2) {
+      for (const q of this.seatsLeft) {
+        q.idle = 0;
+        q.grace = 0;
+      }
+    }
+    this.events.push({ type: 'versusPhase', phase, time: now });
+  }
+
+  /** A seat's merge in a match: its stats, the streak towards a shield, the pressure bar. */
+  private noteVersusMerge(veh: Vehicle, rating: MergeRating, minGap: number, now: number): void {
+    const q = this.seats[veh.seat];
+    if (!q || q.out) return;
+    const c = this.config;
+    q.merges++;
+    const risky = rating === 'tightFit' || rating === 'nearMiss' || rating === 'perfect';
+    if (risky) q.risky++;
+    if (rating === 'cutOff') q.streak = 0;
+    else {
+      q.tightest = Math.min(q.tightest, minGap);
+      if (!q.shield && ++q.streak >= c.versusShieldStreak) {
+        q.shield = true;
+        q.streak = 0;
+        this.events.push({ type: 'shieldGained', seat: q.seat, time: now });
+      }
+    }
+    const p = c.versusPressure;
+    q.pressure += rating === 'cutOff' ? 0 : rating === 'perfect' ? p.perfect : risky ? p.risky : p.clean;
+    while (q.pressure >= c.versusPressureFull) {
+      q.pressure -= c.versusPressureFull;
+      this.sendRival(q.seat, false, now);
+    }
+  }
+
+  /**
+   * A lorry joins the ring just before a rival's lane and goes round once more than usual:
+   * the pressure good merging puts on the others. Every device does it on the same step.
+   */
+  sendRival(seat: number, revenge: boolean, now: number): boolean {
+    const vehicle = spawnRival(this, seat);
+    if (vehicle === null) return false;
+    this.events.push({ type: 'rivalSent', seat, vehicle, revenge, time: now });
+    return true;
+  }
+
+  /** An out seat's one lorry from the stands, while at least two lanes still play. */
+  revenge(seat: number, now: number): boolean {
+    const q = this.seats[seat];
+    if (!q || !q.out || q.revengeUsed || !this.isScoring || this.seatsLeft.length < 2) return false;
+    q.revengeUsed = true;
+    return this.sendRival(seat, true, now);
   }
 
   /**
@@ -1508,6 +1631,7 @@ export class World {
     const q = this.seats[seat];
     if (!q || q.out || !this.isScoring) return;
     q.out = true;
+    q.outAt = now;
     q.pendingTaps = [];
     q.heldTap = null;
     q.pass = null;

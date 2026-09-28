@@ -155,6 +155,8 @@ export class Vehicle {
   armour = 0;
   /** Multiplayer: whose lane a player car came from. */
   seat = 0;
+  /** Multiplayer: an AI lorry this seat sent into the ring (pressure or revenge), else null. */
+  sentBy: number | null = null;
 
   constructor(
     readonly id: number,

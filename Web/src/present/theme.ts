@@ -159,6 +159,12 @@ export const COLORS = {
   chestHuntLid: [60, 45, 84, 1],
   chestEventBody: [30, 60, 54, 1],
   chestEventLid: [40, 78, 69, 1],
+  // Multiplayer: one colour per lobby slot, for the badges, the lanes and a stripe on each
+  // player's cars. Kept clear of the vehicle colours and of destructive red.
+  player1: [0, 245, 212, 1],
+  player2: [255, 138, 92, 1],
+  player3: [176, 132, 255, 1],
+  player4: [255, 209, 102, 1],
 } as const satisfies Record<string, readonly [number, number, number, number]>;
 
 export type ColorToken = keyof typeof COLORS;

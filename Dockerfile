@@ -7,6 +7,12 @@ WORKDIR /app
 COPY Web/package.json Web/package-lock.json ./
 RUN npm ci --no-audit --no-fund
 COPY Web/ ./
+# Optional TURN relay for multiplayer on mobile data (see Web/README.md, Multiplayer).
+# Empty by default: the game then uses public STUN only.
+ARG VITE_TURN_URL=""
+ARG VITE_TURN_USERNAME=""
+ARG VITE_TURN_CREDENTIAL=""
+ENV VITE_TURN_URL=$VITE_TURN_URL VITE_TURN_USERNAME=$VITE_TURN_USERNAME VITE_TURN_CREDENTIAL=$VITE_TURN_CREDENTIAL
 RUN npm run build
 
 # Stage 2: only the built files and nginx.

@@ -12,7 +12,8 @@ import { decodeChallenge, type ChallengeSpec } from '../core/challenge';
 import { S, Fmt } from '../present/strings';
 import { DetailSheet } from './detailSheet';
 import { VersusLobby } from './versusLobby';
-import { Music } from '../present/feedback';
+import { REACTION_EMOJI } from '../present/versus';
+import { REACTIONS } from '../net/room';
 
 interface InstallPromptEvent extends Event {
   prompt(): Promise<void>;
@@ -62,6 +63,12 @@ export class Shell {
   private readonly versus: VersusLobby;
   private readonly versusBar: HTMLElement;
   private readonly againBtn: HTMLButtonElement;
+  private readonly againLabel: HTMLElement;
+  private readonly lobbyBtn: HTMLButtonElement;
+  private readonly revengeBtn: HTMLButtonElement;
+  private readonly reactBar: HTMLElement;
+  /** A `#join=` link that arrived mid-shift: it opens once the shift is over. */
+  private pendingJoin: string | null = null;
 
   constructor(
     private readonly app: HTMLElement,
@@ -106,9 +113,10 @@ export class Shell {
     this.leaveLabel = h('span', {}, 'Leave');
     this.leaveBtn = h('button', { class: 'btn glass run-btn', type: 'button', 'aria-keyshortcuts': 'Escape', onclick: () => this.session.leaveSpecial() }, icon(ICONS.close), this.leaveLabel);
     // Multiplayer: a friend's code or your own; the match takes over the canvas.
-    this.versus = new VersusLobby(layers, output, {
+    const feel = { sound: () => this.session.save.settings.sound, haptics: () => this.session.save.settings.haptics };
+    this.versus = new VersusLobby(layers, output, feel, {
       started: () => this.syncChrome(true),
-      ended: (message) => {
+      ended: (message: string | null) => {
         if (message) this.session.showNotice(message);
         this.last = performance.now();
         this.syncChrome(true);
@@ -119,11 +127,31 @@ export class Shell {
       if (!isSheetOpen()) this.versus.open();
     };
     const runBar = h('div', { class: 'run-bar' }, this.shareBtn, this.leaveBtn);
-    this.againBtn = h('button', { class: 'btn glass run-btn primary-run', type: 'button', onclick: () => this.versus.start() }, icon(ICONS.restart), h('span', {}, 'Play again'));
+    // After a match: Ready (everyone taps it, then the next round starts), and for the host a
+    // way back to the lobby to change the format or the bots.
+    this.againLabel = h('span', {}, 'Play again');
+    this.againBtn = h(
+      'button',
+      { class: 'btn glass run-btn primary-run', type: 'button', 'aria-keyshortcuts': 'Enter', 'aria-pressed': 'false', onclick: () => this.versus.toggleReady() },
+      icon(ICONS.check),
+      this.againLabel,
+    );
+    this.lobbyBtn = h('button', { class: 'btn glass run-btn', type: 'button', onclick: () => this.versus.backToLobby() }, icon(ICONS.people), h('span', {}, 'Lobby'));
     const quitBtn = h('button', { class: 'btn glass run-btn show', type: 'button', onclick: () => this.versus.leave() }, icon(ICONS.close), h('span', {}, 'Leave'));
-    this.versusBar = h('div', { class: 'versus-bar' }, quitBtn, this.againBtn);
-    for (const b of [this.settingsBtn, this.dispatchBtn, this.shareBtn, this.leaveBtn, this.againBtn, quitBtn]) b.addEventListener('pointerdown', (e) => e.stopPropagation());
-    app.append(this.settingsBtn, this.dispatchBtn, runBar, this.versusBar);
+    this.versusBar = h('div', { class: 'versus-bar' }, quitBtn, this.lobbyBtn, this.againBtn);
+    // Out of the match: reactions for everyone, and one lorry from the stands.
+    this.revengeBtn = h(
+      'button',
+      { class: 'btn glass run-btn revenge-btn', type: 'button', 'aria-label': 'Send a lorry into the ring', 'aria-keyshortcuts': 'T', onclick: () => this.versus.match?.revenge() },
+      icon(ICONS.truck),
+      h('span', {}, 'Send a lorry'),
+    );
+    const reactButtons = REACTIONS.map((r, i) =>
+      h('button', { class: 'react-btn', type: 'button', 'aria-label': `React ${r}`, 'aria-keyshortcuts': String(i + 1), onclick: () => this.versus.react(r) }, REACTION_EMOJI[r]),
+    );
+    this.reactBar = h('div', { class: 'react-bar', role: 'group', 'aria-label': 'Reactions' }, ...reactButtons, this.revengeBtn);
+    for (const b of [this.settingsBtn, this.dispatchBtn, this.shareBtn, this.leaveBtn, this.againBtn, this.lobbyBtn, quitBtn, this.reactBar]) b.addEventListener('pointerdown', (e) => e.stopPropagation());
+    app.append(this.settingsBtn, this.dispatchBtn, runBar, this.reactBar, this.versusBar);
     this.detail = new DetailSheet(
       app,
       (action) => {
@@ -143,7 +171,11 @@ export class Shell {
       this.installPrompt = e as InstallPromptEvent;
     });
     this.readChallengeLink();
-    window.addEventListener('hashchange', () => this.readChallengeLink());
+    this.readJoinLink();
+    window.addEventListener('hashchange', () => {
+      this.readChallengeLink();
+      this.readJoinLink();
+    });
     this.syncChrome(true);
     requestAnimationFrame((t) => this.loop(t));
   }
@@ -187,11 +219,24 @@ export class Shell {
     const selected = barTab(screenTab(screen));
     const badges = TAB_BAR.map((tab) => s.badge(tab));
     const match = this.versus.match;
-    const key = `${screen.k}|${selected}|${JSON.stringify(badges)}|${s.world.shift.phase}|${s.special?.k ?? ''}|${s.shareable ? 1 : 0}|${match ? 1 : 0}|${this.versus.canRematch ? 1 : 0}`;
+    const lobby = this.versus;
+    const versusKey = match
+      ? [match.isOver, match.isOut, match.canRevenge, lobby.canReady, lobby.isReady, lobby.enoughForNext, lobby.nextLabel, lobby.isHost].map(String).join(',')
+      : '';
+    const key = `${screen.k}|${selected}|${JSON.stringify(badges)}|${s.world.shift.phase}|${s.special?.k ?? ''}|${s.shareable ? 1 : 0}|${match ? 1 : 0}|${versusKey}`;
     if (!force && key === this.chromeKey) return;
     this.chromeKey = key;
     this.app.dataset.versus = match ? 'on' : 'off';
-    this.againBtn.classList.toggle('show', this.versus.canRematch);
+    const ready = lobby.isReady;
+    this.againBtn.classList.toggle('show', lobby.canReady);
+    this.againBtn.disabled = lobby.canReady && !lobby.enoughForNext;
+    this.againBtn.setAttribute('aria-pressed', String(ready));
+    this.againBtn.classList.toggle('waiting', ready);
+    this.againLabel.textContent = !lobby.enoughForNext ? 'Not enough players' : ready ? 'Ready · waiting' : lobby.nextLabel;
+    this.lobbyBtn.classList.toggle('show', lobby.canReady && lobby.isHost);
+    const watching = !!match && match.isOut && !match.isOver;
+    this.reactBar.classList.toggle('show', watching);
+    this.revengeBtn.classList.toggle('show', watching && match.canRevenge);
     this.app.dataset.tabbar = showsTabBar(screen) && !match ? 'shown' : 'hidden';
     this.app.dataset.screen = screen.k;
     this.moveTabIndicator(TAB_BAR.indexOf(selected));
@@ -252,6 +297,23 @@ export class Shell {
     } catch {
       window.prompt('Copy this link', url);
     }
+  }
+
+  /** `#join=1234` in the address: a friend's multiplayer game. Read once, then cleared. */
+  private readJoinLink(): void {
+    const match = /^#join=(\d{4})$/.exec(location.hash);
+    if (!match) return;
+    history.replaceState(null, '', location.pathname + location.search);
+    this.pendingJoin = match[1];
+    this.openPendingJoin();
+  }
+
+  private openPendingJoin(): void {
+    const code = this.pendingJoin;
+    const k = this.session.screen.k;
+    if (!code || k === 'playing' || k === 'settings' || (isSheetOpen() && !this.versus.isOpen)) return;
+    this.pendingJoin = null;
+    this.versus.joinByLink(code);
   }
 
   /** `#challenge=…` in the address: a friend's shift to play. Read once, then cleared. */
@@ -368,9 +430,13 @@ export class Shell {
         if (e.code === 'Space' && !onControl) {
           e.preventDefault();
           match.tap();
-        } else if (key === 'Enter' && !onControl && this.versus.canRematch) {
+        } else if (key === 'Enter' && !onControl && this.versus.canReady) {
           e.preventDefault();
-          this.versus.start();
+          this.versus.toggleReady();
+        } else if (match.isOut && !match.isOver && key >= '1' && key <= String(REACTIONS.length)) {
+          this.versus.react(REACTIONS[Number(key) - 1]);
+        } else if (key === 't' || key === 'T') {
+          match.revenge();
         }
         return;
       }
@@ -441,9 +507,10 @@ export class Shell {
     this.drawer.draw(list);
     this.detail.update(s.detail);
     s.sheetInset = this.detail.inset;
-    this.audio.updateMusic(match ? Music.silent : s.musicMix, s.save.settings.sound, Math.min(delta, 0.1));
+    this.audio.updateMusic(match ? match.music : s.musicMix, s.save.settings.sound, Math.min(delta, 0.1));
     this.app.classList.toggle('reduce-motion', s.reduceMotion);
     if (this.pendingChallenge) this.openPendingChallenge();
+    if (this.pendingJoin) this.openPendingJoin();
     this.syncChrome();
     requestAnimationFrame((t) => this.loop(t));
   }

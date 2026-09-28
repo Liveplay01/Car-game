@@ -70,6 +70,8 @@ export function updateTraffic(w: World, dt: number): void {
       if (c.aiLapChance > 0 && w.rng.unit() < c.aiLapChance) {
         merge.extraLaps = 1 + (w.rng.unit() < 0.6 ? 1 : 0) + (w.rng.unit() < 0.3 ? 1 : 0);
       }
+      // A lorry sent in a match passes every lane once before it leaves.
+      if (veh.sentBy !== null) merge.extraLaps = Math.max(merge.extraLaps, 1);
       veh.phase = merge;
     }
   }
@@ -111,6 +113,24 @@ function spawnWaiting(w: World, arm: Arm): void {
   const c = w.config;
   const waiting: Waiting = { kind: 'waiting', arm, reaction: w.rng.range(c.aiReaction.lo, c.aiReaction.hi), approach: c.aiApproachDistance };
   w.vehicles.push(new Vehicle(w.makeId(), w.rollTrafficType(), 'ai', waiting, w.approachPose(waiting)));
+}
+
+/**
+ * Multiplayer: a lorry for `seat` on the AI arm just before a rival's lane, so it passes that
+ * lane's mouth first. The AI still only joins with a safe gap. Returns its id, or null.
+ */
+export function spawnRival(w: World, seat: number): number | null {
+  const c = w.config;
+  const open = w.openAIArms;
+  if (open.length === 0) return null;
+  const rivals = w.seatsLeft.filter((q) => q.seat !== seat);
+  const before = rivals.map((q) => w.layout.advance(w.armOf(q), -1)).filter((a) => open.some((o) => o.index === a.index));
+  const arm = w.rng.pick(before.length > 0 ? before : open);
+  const waiting: Waiting = { kind: 'waiting', arm, reaction: c.aiReaction.lo, approach: c.aiApproachDistance };
+  const veh = new Vehicle(w.makeId(), 'truck', 'ai', waiting, w.approachPose(waiting));
+  veh.sentBy = seat;
+  w.vehicles.push(veh);
+  return veh.id;
 }
 
 /** One step of driving up: at ring speed, then braking so it stops right at the line. */

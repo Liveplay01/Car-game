@@ -18,6 +18,23 @@ export function interpolatedPose(veh: Vehicle, alpha: number): Pose {
   return { position: lerpV(veh.prevPosition, veh.position, alpha), heading: veh.prevHeading + angleDelta(veh.prevHeading, veh.heading) * alpha };
 }
 
+/** Brake lights and headlight flashes by vehicle id. */
+export interface Lamps {
+  brake(id: number): number;
+  headlights(id: number): number;
+}
+
+/** A multiplayer car in its player's colour: a painted roof, a glow, a lunge on the tap. */
+export interface VehicleMark {
+  color: ColorToken;
+  /** Paint the roof (plain cars); a lorry sent by a player only glows. */
+  roof: boolean;
+  /** 0…1: the glow under the car. */
+  glow: number;
+  /** World units the car leans forward (the tap's anticipation). */
+  lunge: number;
+}
+
 /**
  * The lights of the traffic (`VehicleLamps.swift`): brake lights come on quickly and fade a
  * little slower; the headlights flash twice when a tap is held for the car rolling up.
@@ -114,8 +131,8 @@ export const SYNDICATE_ESCORT ={ paint: 'syndicateEscort', stripe: null, roof: '
 
 /** Builds the game scene, roads and vehicles, as render items in world space. */
 export const SceneBuilder = {
-  /** `own`: the lane marked as yours (multiplayer: your seat's arm). */
-  addRoad(list: RenderList, layout: Layout, c: Config, own: Arm = layout.player): void {
+  /** `own`: the lane marked as yours; null marks none (multiplayer marks every lane itself). */
+  addRoad(list: RenderList, layout: Layout, c: Config, own: Arm | null = layout.player): void {
     const lane = layout.laneWidth;
     const reach = 700;
     for (const a of layout.arms) list.w(rect(mul(fromAngle(a.angle), reach / 2), v(reach, lane * 2 + 7), 0, a.angle), 'kerb');
@@ -142,12 +159,17 @@ export const SceneBuilder = {
         list.w(rect(add(mouth.position, mul(across, step)), v(3, 4), 1, mouth.heading), 'marking', 0.7);
       }
     }
-    const stop = layout.stopPose(own);
+    if (own) SceneBuilder.addLaneMark(list, layout, c, own, 'accent', 0.22);
+    SceneBuilder.addModules(list, layout, c);
+  },
+
+  /** A line along a lane's kerb, from the back of its queue to just past the stop line. */
+  addLaneMark(list: RenderList, layout: Layout, c: Config, arm: Arm, color: ColorToken, opacity: number, width = 2): void {
+    const stop = layout.stopPose(arm);
     const forward = fromAngle(stop.heading);
     const front = add(stop.position, mul(forward, c.carLength / 2 + 4));
-    const across = mul(right(forward), lane / 2 - 2);
-    list.w(line(add(sub(stop.position, mul(forward, c.queueSpacing * c.queueVisible)), across), add(front, across), 2), 'accent', 0.22);
-    SceneBuilder.addModules(list, layout, c);
+    const across = mul(right(forward), layout.laneWidth / 2 - 2);
+    list.w(line(add(sub(stop.position, mul(forward, c.queueSpacing * c.queueVisible)), across), add(front, across), width), color, opacity);
   },
 
   addModules(list: RenderList, layout: Layout, c: Config): void {
@@ -232,11 +254,30 @@ export const SceneBuilder = {
     }
   },
 
-  addVehicles(list: RenderList, world: World, alpha: number, carSkins: string[], finishTime: number | null, springTime: number | null, lamps: VehicleLamps | null): void {
+  /** `marks`: multiplayer dresses each player's cars (and the lorries they send) in their colour. */
+  addVehicles(
+    list: RenderList,
+    world: World,
+    alpha: number,
+    carSkins: string[],
+    finishTime: number | null,
+    springTime: number | null,
+    lamps: Lamps | null,
+    marks: ((veh: Vehicle) => VehicleMark | null) | null = null,
+  ): void {
     const chase = criminalVehicle(world) !== null;
+    const fronts = new Set(world.seats.map((q) => q.vehicles[0]));
     for (const veh of world.vehicles) {
       if (veh.isCrashed) continue;
       const flashing = chase || veh.phase.kind !== 'queued';
+      const mark = marks?.(veh) ?? null;
+      let pose = interpolatedPose(veh, alpha);
+      if (mark) {
+        if (mark.lunge !== 0) pose = { position: add(pose.position, mul(fromAngle(pose.heading), mark.lunge)), heading: pose.heading };
+        // A soft pool of the player's colour under the car: whose it is, even on a busy ring.
+        const L = CarArt.length(veh.type, world.config);
+        list.w(rect(pose.position, v(L + 7, world.config.carWidth + 7), Metrics.vehicleCornerRadius + 3.5, pose.heading), mark.color, 0.2 * mark.glow);
+      }
       // The syndicate: a black boss car with a gold line, gunmetal escorts. Not a skin: they
       // must read as who they are.
       // Skins only dress plain cars: police, criminals, transporters and lorries keep the colours
@@ -247,15 +288,15 @@ export const SceneBuilder = {
         {
           id: veh.id,
           type: veh.type,
-          pose: interpolatedPose(veh, alpha),
+          pose,
           dents: veh.dents,
           lights: (veh.type === 'police' && flashing) || veh.type === 'ambulance' ? world.time / CarArt.strobeCycle + (veh.id % 7) * 0.37 : null,
           brake: lamps ? lamps.brake(veh.id) : null,
-          brakeGlow: veh.phase.kind !== 'queued' || veh.id === world.queue.vehicles[0],
+          brakeGlow: veh.phase.kind !== 'queued' || fronts.has(veh.id),
           headlights: lamps ? lamps.headlights(veh.id) : 0,
           skin: look?.paint ?? null,
           stripe: look?.stripe ?? null,
-          roof: look?.roof ?? null,
+          roof: mark?.roof ? mark.color : (look?.roof ?? null),
           finish: look?.finish ?? null,
           finishTime,
           springTime,

@@ -458,6 +458,25 @@ export const baseConfig = {
   players: 1,
   /** A lane that sends no car for this long stalls and is out. */
   versusStallSeconds: 10,
+  /** While wrecks lie on the road the stall clock waits, but at most this long per car. */
+  versusStallGrace: 3,
+  /** Match time (s) when rush hour begins: the ring speeds up, a little more traffic. */
+  versusRushAt: 30,
+  versusRushTempo: 1.15,
+  versusRushDensity: 1,
+  /** Match time (s) of sudden death: faster still, and the stall clock is short. */
+  versusSuddenDeathAt: 60,
+  versusSuddenDeathTempo: 1.3,
+  versusSuddenDeathStall: 4,
+  /** Seconds a new phase takes to reach its tempo. */
+  versusPhaseGlide: 2,
+  /** Pressure a merge earns (clean, tight fit / near miss, perfect); a full bar sends a lorry. */
+  versusPressure: { clean: 1, risky: 3, perfect: 4 },
+  versusPressureFull: 16,
+  /** Merges in a row without a cut-off that earn a shield against one light crash. */
+  versusShieldStreak: 5,
+  /** The hardest impact a shield takes (a light bump; `crash` sounds start above 60). */
+  versusShieldImpact: 60,
 };
 
 export type Config = typeof baseConfig;

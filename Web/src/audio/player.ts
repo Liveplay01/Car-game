@@ -171,6 +171,7 @@ export class Haptics {
     seized: [30],
     paid: [12, 60, 20],
     explosion: [70, 40, 50, 40, 30],
+    tap: [12],
   };
   private readonly supported = typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function';
 
