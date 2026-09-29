@@ -106,6 +106,8 @@ export interface Waiting {
   reaction: number;
   /** Distance still to drive up to the stop line. */
   approach: number;
+  /** Seconds it has stood at the line looking for a gap (unset: none yet); see `aiPatience`. */
+  waited?: number;
 }
 
 export interface Ring {

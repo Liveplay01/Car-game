@@ -270,6 +270,13 @@ aber keinen Strike.
   kriechen zählt dabei nicht als Bremsen.
 - **Die KI fährt nur bei sicherer Lücke ein** (≥ `aiSafeGap` nach vorn und hinten).
   Einfädelnde Spielerautos zählen dabei mit. **Die KI verursacht nie einen Crash.**
+- **Die KI verhungert nicht an der Linie (Leo, 29.09.2026):** Wer `aiPatience` (2,5 s) an
+  der Haltelinie steht, nimmt die nächste Lücke, durch die er ohne Berührung kommt
+  (`aiPushInGap`, 0,15 s); bremsende Autos am Einfädelpunkt halten ihn dann nicht mehr auf,
+  nur ein Wrack. Ohne diese Regel konnte ein Dauerstrom von Spielerautos im Unlimited-Modus
+  und im Multiplayer nach einigen Minuten alle KI-Arme aushungern: Der Ring war leer, und
+  Dauertippen wurde gefahrlos. Test: „a steady stream of the player's cars does not starve
+  the other arms“.
   Liegt ein Wrack oder bremst ein Auto nahe ihrer Einfahrt (bis 2,5 s voraus, 1,5 s
   zurück), wartet sie. Eine Störung auf der anderen Seite des Rings, eine
   Verfolgungsjagd oder eine Modul-Zone anderswo hält sie nicht auf.

@@ -655,6 +655,79 @@ button {
   color: var(--muted);
 }
 
+/* Left-handed (Settings): the floating buttons swap sides, the dispatch button under the left thumb. */
+[data-hand='left'] .dispatch-btn {
+  right: auto;
+  left: calc(var(--safe-left) + var(--s4));
+}
+
+[data-hand='left'] .settings-btn {
+  left: auto;
+  right: calc(var(--safe-right) + var(--s4));
+}
+
+[data-hand='left'] .run-bar {
+  right: auto;
+  left: calc(var(--safe-left) + var(--s4));
+}
+
+/* Unread patch notes: a dot on the settings button, like a badge. */
+.settings-btn.has-news::after {
+  content: '';
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--destructive);
+  box-shadow: 0 0 0 2px var(--surface-2);
+}
+
+.new-pill {
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+/* What's new: one section per update, newest first. */
+.note + .note {
+  margin-top: var(--s5);
+  padding-top: var(--s5);
+  border-top: 0.5px solid var(--separator);
+}
+
+.note-date {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.note-title {
+  margin: 2px 0 var(--s3);
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1.25;
+  text-wrap: balance;
+}
+
+.note-items {
+  margin: 0;
+  padding-left: 20px;
+  display: grid;
+  gap: var(--s2);
+  font-size: 15px;
+  line-height: 1.5;
+  text-wrap: pretty;
+}
+
+.note-items li::marker {
+  color: var(--accent);
+}
+
 .dispatch-btn {
   right: calc(var(--safe-right) + var(--s4));
   bottom: calc(var(--safe-bottom) + var(--s5));

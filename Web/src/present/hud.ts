@@ -806,6 +806,8 @@ export const ReadyBanner = {
       goal?: string | null;
       /** Conditions met for the first time: what they are and what they do. */
       intro?: ConditionIntro[] | null;
+      /** Larger text (Settings): the intro card's type a step up. */
+      textScale?: number;
     },
   ): void {
     const width = list.camera.viewport.x;
@@ -852,7 +854,7 @@ export const ReadyBanner = {
     const island = toScreen(list.camera, v(0, 0));
     // The card names the new conditions itself, so the line on the island makes way for it.
     const introBottom = island.y - (run?.line ? 49 : 26);
-    const intro = o.intro && o.intro.length > 0 ? ReadyBanner.introLayout(o.intro, frame, frame.maxY + (pillText ? 43 : 12), introBottom) : null;
+    const intro = o.intro && o.intro.length > 0 ? ReadyBanner.introLayout(o.intro, frame, frame.maxY + (pillText ? 43 : 12), introBottom, o.textScale ?? 1) : null;
     const conditions = intro ? null : o.conditions;
     if (o.prompt) {
       const breath = o.reduceMotion ? 1 : 0.7 + 0.3 * (0.5 + 0.5 * Math.cos(o.time * 2.4));
@@ -875,13 +877,13 @@ export const ReadyBanner = {
    * Fits the intro between `top` and `bottom`: the full sentences if they fit, then tighter,
    * then only the names with a few words each; null when not even that fits.
    */
-  introLayout(intro: ConditionIntro[], bar: Rect, top: number, bottom: number): IntroLayout | null {
-    const width = Math.min(R.width(bar), ReadyBanner.introMaxWidth);
+  introLayout(intro: ConditionIntro[], bar: Rect, top: number, bottom: number, scale = 1): IntroLayout | null {
+    const width = Math.min(R.width(bar), ReadyBanner.introMaxWidth * scale);
     const left = (bar.minX + bar.maxX - width) / 2;
     const steps = [
-      { pad: 16, titleSize: 15, bodySize: 13, lineHeight: 18, gap: 12, short: false },
-      { pad: 12, titleSize: 14, bodySize: 12, lineHeight: 16, gap: 8, short: false },
-      { pad: 12, titleSize: 14, bodySize: 12, lineHeight: 16, gap: 8, short: true },
+      { pad: 16, titleSize: 15 * scale, bodySize: 13 * scale, lineHeight: 18 * scale, gap: 12, short: false },
+      { pad: 12, titleSize: 14 * scale, bodySize: 12 * scale, lineHeight: 16 * scale, gap: 8, short: false },
+      { pad: 12, titleSize: 14 * scale, bodySize: 12 * scale, lineHeight: 16 * scale, gap: 8, short: true },
     ];
     for (const step of steps) {
       const rows = intro.map((i) => ({ title: i.title, lines: wrapText(step.short ? i.short : i.text, width - 2 * step.pad, step.bodySize) }));

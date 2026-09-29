@@ -1,6 +1,7 @@
 import { h, icon } from './dom';
 import { ICONS } from './icons';
 import type { Settings, SaveGame } from '../core/career';
+import type { PatchNote } from '../present/patchNotes';
 import { parseImport } from '../storage/save';
 import { isInstalled, isIos } from '../storage/device';
 
@@ -71,8 +72,29 @@ export function openSheet(layer: HTMLElement, title: string, body: HTMLElement, 
 export const closeAnySheet = (): void => current?.close();
 export const isSheetOpen = (): boolean => current !== null;
 
+/** Settings → What's new: the patch notes, newest first. */
+export function patchNotesSheet(layer: HTMLElement, notes: PatchNote[], onClose: () => void): () => void {
+  const body = h(
+    'div',
+    { class: 'notes' },
+    ...notes.map((note) =>
+      h(
+        'section',
+        { class: 'note' },
+        h('div', { class: 'note-date' }, note.date),
+        h('h3', { class: 'note-title' }, note.title),
+        h('ul', { class: 'note-items' }, ...note.items.map((item) => h('li', {}, item))),
+      ),
+    ),
+  );
+  return openSheet(layer, "What's new", body, onClose);
+}
+
 export interface SettingsActions {
   changed(settings: Settings): void;
+  /** The patch notes; `notesUnread` lights the row until they are opened. */
+  openNotes(): void;
+  notesUnread: boolean;
   reset(): void;
   /** The save as file text, for Export progress. */
   exportText(): string;
@@ -182,6 +204,14 @@ export function settingsSheet(layer: HTMLElement, s: Settings, actions: Settings
         s.vehicleLabels = on;
         actions.changed(s);
       }),
+      switchRow('Left-handed', 'Puts the buttons over the game on the left.', s.leftHanded, (on) => {
+        s.leftHanded = on;
+        actions.changed(s);
+      }),
+      switchRow('Larger text', 'Notices and cards over the game a step larger.', s.largeText, (on) => {
+        s.largeText = on;
+        actions.changed(s);
+      }),
       h(
         'div',
         { class: 'row' },
@@ -190,6 +220,17 @@ export function settingsSheet(layer: HTMLElement, s: Settings, actions: Settings
     ),
     h('div', { style: 'display:flex;justify-content:flex-end;margin:10px 0 24px' }, motionSeg),
     installRow ? h('div', { class: 'list', style: 'margin-bottom:24px' }, installRow) : null,
+    h(
+      'div',
+      { class: 'list', style: 'margin-bottom:24px' },
+      h(
+        'div',
+        { class: 'row' },
+        h('div', { class: 'row-main' }, h('div', { class: 'row-title' }, "What's new"), h('div', { class: 'row-sub' }, 'Patch notes and updates.')),
+        actions.notesUnread ? h('span', { class: 'new-pill' }, 'New') : null,
+        h('button', { class: 'btn', type: 'button', onclick: () => actions.openNotes() }, 'Open'),
+      ),
+    ),
     h('p', { class: 'section-note', style: 'margin:0 4px 8px' }, 'Your progress is saved on this device. To move it, export it here and import the file on the other device.'),
     progressList,
     resetBtn,

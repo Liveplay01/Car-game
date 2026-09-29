@@ -37,10 +37,11 @@ einer Stadt, die mit dem Spieler wächst.
 
 ## Offen: Look & Feel
 
-- **Echte Klänge und Musik-Stems** statt der Platzhalter: Combo baut Layer auf (Rhythmus,
-  Bass), Verbrecher bringt Sirenen-Impuls, Rush Hour zieht den Beat an, Flow State verdichtet
-  den Rhythmus. Perfect Input: kurzer hochwertiger Sound. Takedown in Schichten: Kontakt,
-  Metall, Deformation, Reifen, abreißende Teile, Signatur. Das Mischpult (`MusicMix`) steht.
+- **Takedown-Klang in Schichten:** Kontakt, Metall, Deformation, Reifen, abreißende Teile,
+  Signatur, statt eines einzelnen Samples. (Die Samples und die Musik-Stems selbst sind da.)
+- **Casino-Klänge aufnehmen:** Walzenstopp, Münzen, Nadel, Münzwurf, Chips und Splittern sind
+  heute modellierte Samples (`Web/audio-src/make_casino_sounds.py`, gleiche Dateinamen);
+  echte Aufnahmen oder eine CC0-Sammlung könnten sie Datei für Datei ersetzen.
 - **Haptik feinjustieren** auf Android-Handys (iPhones können im Browser nicht vibrieren);
   Takedown-Haptik mit der Wucht skalieren.
 - **Daily Shift als eigene Perspektive** (z. B. anderer Blickwinkel oder Tageslicht) statt

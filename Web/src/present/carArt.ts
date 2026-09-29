@@ -565,6 +565,12 @@ export const CarArt = {
       const half = L / 2 - 2;
       for (const y of [-1.6, 1.6]) list.w(line(worldOf(v(-half, y), pose), worldOf(v(half, y), pose), 1.3), d.stripe, opacity * 0.9);
     }
+    // Light from the upper left (like the trees and houses): a soft sheen along the side of
+    // the body that faces it, whichever way the car drives. A wreck has lost its shine.
+    if (dents.length === 0) {
+      const side = rotated(v(-1, 1), -pose.heading).y >= 0 ? 1 : -1;
+      list.w(rect(worldOf(v(0, side * W * 0.2), pose), v(L * 0.78, W * 0.3), W * 0.15, pose.heading), 'primary', opacity * 0.07);
+    }
   },
 
   lightBar(list: RenderList, shape: Shape, center: Vec2, rotation: number, pose: Pose, lights: number | null, opacity: number, c: Config): void {

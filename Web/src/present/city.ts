@@ -164,8 +164,7 @@ export const CityLayer = {
         scars?.addTree(list, add(center, sway), size, candidate, now, time);
       } else {
         const size = mul(v(26 + 30 * unitHash(candidate, 15), 22 + 26 * unitHash(candidate, 16)), grow);
-        list.w(rect(center, size, 3, angle), 'surface', 0.55 * fade);
-        list.w(rect(center, v(Math.max(0, size.x - 8), Math.max(0, size.y - 8)), 2, angle), 'kerb', 0.35 * fade);
+        CityLayer.addRoof(list, center, size, angle, candidate, fade);
         scars?.addHouse(list, center, size, angle, candidate, now, time);
         if (unitHash(candidate, 17) < 0.45) {
           const glow = pulse ? pulse.window(candidate, distance) : CityPulse.windowRest;
@@ -177,6 +176,45 @@ export const CityLayer = {
     }
     MapTheme.addAvenues(list, theme, world);
     if (pulse) CityLayer.addCloudShadows(list, pulse);
+  },
+
+  /**
+   * A house from above: its shadow, then the roof. Most are pitched, with a ridge along the
+   * long side, the half that faces the light (upper left, like the trees) lighter; the rest
+   * are flat, with a parapet and a unit or two on top. Four muted roof colours, never bright:
+   * the houses frame the road, they do not compete with the cars.
+   */
+  addRoof(list: RenderList, center: Vec2, size: Vec2, angle: number, index: number, fade: number): void {
+    const roofs: ColorToken[] = ['roofSlate', 'roofTile', 'roofConcrete', 'roofMoss'];
+    const color = roofs[Math.floor(unitHash(index, 19) * roofs.length)];
+    list.w(rect(add(center, v(4, -4)), size, 3, angle), 'shadow', 0.8 * fade);
+    list.w(rect(center, size, 3, angle), color, 0.95 * fade);
+    const along = fromAngle(angle);
+    const across = fromAngle(angle + Math.PI / 2);
+    if (unitHash(index, 20) < 0.6) {
+      // Pitched: the ridge runs along the longer side, the roof falls away to both others.
+      const lengthwise = size.x >= size.y;
+      const fall = lengthwise ? across : along;
+      const long = lengthwise ? size.x : size.y;
+      const short = lengthwise ? size.y : size.x;
+      // The half facing the light from the upper left (world −x, +y) is the lighter one.
+      const lit = -fall.x + fall.y > 0 ? 1 : -1;
+      const half = (side: number): Vec2 => add(center, mul(fall, (side * short) / 4));
+      const halfSize = lengthwise ? v(size.x - 2, short / 2 - 1) : v(short / 2 - 1, size.y - 2);
+      list.w(rect(half(lit), halfSize, 2, angle), 'primary', 0.06 * fade);
+      list.w(rect(half(-lit), halfSize, 2, angle), 'background', 0.2 * fade);
+      list.w(rect(center, lengthwise ? v(long - 3, 1.4) : v(1.4, long - 3), 0.7, angle), 'background', 0.4 * fade);
+    } else {
+      // Flat: a parapet round the edge, and a unit or two standing on it.
+      list.w(rect(center, v(Math.max(0, size.x - 5), Math.max(0, size.y - 5)), 2, angle), 'background', 0.22 * fade);
+      const units = 1 + (unitHash(index, 21) < 0.5 ? 1 : 0);
+      for (let u = 0; u < units; u++) {
+        const at = add(center, add(mul(along, (unitHash(index * 3 + u, 22) - 0.5) * size.x * 0.5), mul(across, (unitHash(index * 3 + u, 23) - 0.5) * size.y * 0.5)));
+        list.w(rect(add(at, v(1.2, -1.2)), v(6, 4.5), 1, angle), 'shadow', 0.8 * fade);
+        list.w(rect(at, v(6, 4.5), 1, angle), 'stone', 0.55 * fade);
+        list.w(circle(at, 1.4), 'background', 0.5 * fade);
+      }
+    }
   },
 
   addCloudShadows(list: RenderList, pulse: CityPulse): void {

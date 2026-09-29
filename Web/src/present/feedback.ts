@@ -50,13 +50,23 @@ export type SoundID =
   | 'reelTick'
   | 'shimmer'
   | 'reelLand'
-  | 'reelLandBig';
+  | 'reelLandBig'
+  /** The casino's own: samples rendered by `Web/audio-src/make_casino_sounds.py`. */
+  | 'casinoStop'
+  | 'coinClink'
+  | 'needleTick'
+  | 'meterTick'
+  | 'coinToss'
+  | 'coinLand'
+  | 'chipsIn'
+  | 'shatter';
 
 export const SOUND_IDS: SoundID[] = [
   'merge', 'toll', 'tightFit', 'nearMiss', 'perfect', 'cutOff', 'comboUp', 'crashLight', 'crash', 'crashHeavy', 'rushHour',
   'shiftComplete', 'shiftFailed', 'wanted', 'takedown', 'dispatch', 'escaped', 'paid', 'secured', 'seized', 'screech', 'tow',
   'flowIn', 'go', 'swoosh', 'uiTick', 'purchase', 'build', 'denied', 'chestCharge', 'chestBurst', 'chestBurstRare',
   'explosion', 'detonation', 'alarm',
+  'casinoStop', 'coinClink', 'needleTick', 'meterTick', 'coinToss', 'coinLand', 'chipsIn', 'shatter',
 ];
 
 export type HapticID =

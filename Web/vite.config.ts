@@ -103,6 +103,9 @@ export default defineConfig({
     target: 'es2022',
     assetsInlineLimit: 0,
     sourcemap: false,
+    // The game is one bundle on purpose (it all runs at once, and gzip keeps it near 175 kB);
+    // only PeerJS loads on demand. Warn when it grows well past today's size.
+    chunkSizeWarningLimit: 640,
   },
   // The game runs on port 5050 everywhere: dev server, preview and the nginx container.
   server: {

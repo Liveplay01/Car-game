@@ -15,11 +15,16 @@ export type Primitive =
   | { k: 'polygon'; points: Vec2[] }
   | { k: 'text'; text: string; position: Vec2; size: number; align: Align; weight: Weight };
 
+/** A fine texture laid over a group of world items, anchored to the world (`draw.ts`). */
+export type Grain = 'asphalt';
+
 export interface RenderItem {
   p: Primitive;
   color: ColorToken;
   opacity: number;
   space: Space;
+  /** The item's area gets this texture over it, once its whole group is drawn. */
+  grain?: Grain;
   /** Marks items a transition treats apart (the Build tab's chrome). */
   tag?: string;
   /** Screen rectangle the item is cut to (a scrolling list). */
@@ -102,6 +107,10 @@ export class RenderList {
   tag: string | undefined = undefined;
   /** Set while drawing a group that is cut to a screen rectangle. */
   clip: Rect | undefined = undefined;
+  /** Set while drawing a group that gets a texture over it (the roads). */
+  grain: Grain | undefined = undefined;
+  /** The ground between everything gets a faint texture, anchored to the world. */
+  groundGrain = false;
   constructor(
     public camera: Camera,
     public background: ColorToken,
@@ -112,6 +121,7 @@ export class RenderList {
     const item: RenderItem = { p, color, opacity, space };
     if (this.tag !== undefined) item.tag = this.tag;
     if (this.clip !== undefined) item.clip = this.clip;
+    if (this.grain !== undefined && space === 'world') item.grain = this.grain;
     this.items.push(item);
   }
 
@@ -149,6 +159,35 @@ export function moved(item: RenderItem, offset: Vec2, factor: number): RenderIte
       break;
     case 'text':
       out.p = { ...p, position: add(p.position, offset) };
+      break;
+  }
+  return out;
+}
+
+/** A screen item scaled by `k` around `focus` (a lean in); sizes grow with it, texts too. */
+export function zoomed(item: RenderItem, focus: Vec2, k: number): RenderItem {
+  if (item.space !== 'screen' || k === 1) return item;
+  const at = (q: Vec2): Vec2 => add(focus, mul(sub(q, focus), k));
+  const p = item.p;
+  const out: RenderItem = { ...item };
+  switch (p.k) {
+    case 'rect':
+      out.p = { ...p, center: at(p.center), size: mul(p.size, k), radius: p.radius * k };
+      break;
+    case 'circle':
+      out.p = { ...p, center: at(p.center), radius: p.radius * k };
+      break;
+    case 'arc':
+      out.p = { ...p, center: at(p.center), radius: p.radius * k, thickness: p.thickness * k };
+      break;
+    case 'line':
+      out.p = { ...p, from: at(p.from), to: at(p.to), thickness: p.thickness * k };
+      break;
+    case 'polygon':
+      out.p = { ...p, points: p.points.map(at) };
+      break;
+    case 'text':
+      out.p = { ...p, position: at(p.position), size: p.size * k };
       break;
   }
   return out;

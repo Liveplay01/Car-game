@@ -18,6 +18,7 @@ import { type Vec2, v, add, sub, mul, fromAngle, TAU } from '../core/vec2';
 import { type RenderList, type Rect, RenderList as List, R, rect, circle, arc, line, polygon, text, Ease, Metrics, moved, pinned, unitHash, vlerp, type Align, type Weight } from './render';
 import type { ColorToken } from './theme';
 import { MenuKit } from './menukit';
+import { land } from './hud';
 import { textWidth } from './icons';
 import { S, Fmt } from './strings';
 import { CarArt } from './carArt';
@@ -227,7 +228,9 @@ export const ShopPage = {
   add(list: RenderList, career: Career, config: Config, today: number, state: ShopState, reduceMotion: boolean, bottomInset: number): void {
     const vp = list.camera.viewport;
     MenuKit.backdrop(list);
-    MenuKit.header(list, S.tabs.shop, Fmt.number(career.money), vp);
+    // The casino holds back what a round has not shown yet, and counts a win up as it lands.
+    const wallet = state.casino.wallet;
+    MenuKit.header(list, S.tabs.shop, Fmt.number(wallet.money(career.money)), vp, reduceMotion ? 1 : land(wallet.sinceLanded / 0.35, 0.14));
     const l = ShopPage.layout(vp, bottomInset);
     ShopPage.addSegments(list, l, state, career);
     const start = list.items.length;
@@ -279,7 +282,7 @@ export const ShopPage = {
       thumb = Math.min(Math.max(thumb, 0), 2);
     }
     MenuKit.segmented(list, labels, chosen, thumb, all, l.segments.map(([s]) => s === 2 && !Unlocks.isOpen(career, 'casino')));
-    if (career.unseen.length > 0) {
+    if (state.casino.wallet.unseen(career.unseen).length > 0) {
       const r = l.segments[1][1];
       ShopPage.badgeDot(list, v(R.center(r).x + textWidth(S.shop.section(1), 13) / 2 + 8, R.center(r).y), 1);
     }
@@ -389,7 +392,7 @@ export const ShopPage = {
       const items = shelfItems(shelf);
       const owned = items.filter((i) => Careers.owns(career, i.id)).length;
       // On the chip's corner, like a badge: inside it would sit on the label.
-      if (items.some((i) => career.unseen.includes(i.id))) ShopPage.badgeDot(list, v(r.maxX - 3, r.minY + 3), enter);
+      if (items.some((i) => state.casino.wallet.unseen(career.unseen).includes(i.id))) ShopPage.badgeDot(list, v(r.maxX - 3, r.minY + 3), enter);
       // Over the white chip the labels turn dark as it arrives.
       const on = shelf === state.shelf ? glide : slide && shelf === slide.from ? 1 - glide : 0;
       const label = ShopPage.fitted(S.shop.shelf(shelf), 11, R.width(r) - 14);

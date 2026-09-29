@@ -53,6 +53,10 @@ export interface Settings {
   haptics: boolean;
   reduceMotion: ReduceMotion;
   vehicleLabels: boolean;
+  /** The floating buttons on the other side, for the left thumb. */
+  leftHanded: boolean;
+  /** Notices and the cards over the scene a step larger. */
+  largeText: boolean;
 }
 
 export interface MasteryStats {
@@ -172,6 +176,8 @@ export interface Career {
   /** Today's balance of the money games: the day it belongs to and the sum. */
   casinoDay: number;
   casinoNet: number;
+  /** How early (−) or late (+) the last merges were tapped, in ms (`core/timing.ts`). */
+  tapOffsets: number[];
 }
 
 /**
@@ -197,6 +203,8 @@ export interface SaveGame {
   unlimitedBestCars: number;
   mayhemBest: number;
   mayhemBestChain: number;
+  /** The newest patch notes the player has opened (`present/patchNotes.ts`); null: none yet. */
+  notesSeen: string | null;
 }
 
 export const newCareer = (): Career => ({
@@ -246,6 +254,7 @@ export const newCareer = (): Career => ({
   casinoBestCrash: 0,
   casinoDay: -1,
   casinoNet: 0,
+  tapOffsets: [],
 });
 
 export const newSave = (): SaveGame => ({
@@ -253,7 +262,7 @@ export const newSave = (): SaveGame => ({
   highscore: 0,
   highscoreSeed: null,
   shiftsPlayed: 0,
-  settings: { sound: true, haptics: true, reduceMotion: 'system', vehicleLabels: false },
+  settings: { sound: true, haptics: true, reduceMotion: 'system', vehicleLabels: false, leftHanded: false, largeText: false },
   career: newCareer(),
   tutorialDone: false,
   hints: [],
@@ -262,6 +271,7 @@ export const newSave = (): SaveGame => ({
   unlimitedBestCars: 0,
   mayhemBest: 0,
   mayhemBestChain: 0,
+  notesSeen: null,
 });
 
 export const MINIMUM_ARMS = 4;

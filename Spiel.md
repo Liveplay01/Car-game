@@ -188,6 +188,7 @@ Ein Typ hat Spielwerte, ein Skin nur Aussehen – **anders, nicht besser**. Jede
 ## 8. Wetter, Nacht & City Events
 
 **Erste Begegnung (Leo, 29.09.2026):** Bringt eine Schicht eine Bedingung, in der der Spieler noch nie gespielt hat, erklärt eine Karte unter der oberen Leiste auf dem Wartebildschirm, was sie ist und was sich ändert („New · Roadworks“ + ein Satz, `INTRO_TEXT` in `present/strings.ts`). Sie kommt einen Moment nach dem Wartebildschirm, blockiert nichts und geht mit dem Start. Erst dann zählt die Bedingung als gesehen (Museum, `sightings`), die Karte erscheint also genau einmal. Ist der Bildschirm zu niedrig, zeigt sie nur den Namen und die Kurzzeile aus dem Museum. Eine neue Bedingung braucht ihren Satz, sonst bricht der Build ab.
+Spezialfahrzeuge und Bosse bekommen beim ersten Auftauchen in einer laufenden Schicht einmal einen Hinweis unten („New · Gas Tanker · Wreck it and it explodes“, die Kurzzeile aus dem Museum). Gesehen zählt überhaupt nur, was in einer laufenden Schicht vorkommt, nicht der Verkehr hinter den Tabs, und erst nach dem Tutorial.
 
 ### Wetter (pro Schicht ausgelost)
 
@@ -285,6 +286,13 @@ Bis Level 19 sind Fehler kostenlos. Ab Level 20: Der Crash, der die Schicht been
 
 Crash, Slots, Skin-Upgrade und Doppelt oder nichts, nur mit Spielgeld; Chancen und Rückzahlquoten stehen offen im Spiel und in [LOOT.md](LOOT.md) („Casino“), `npm run sim:casino` prüft sie. Es gibt keine kaufbare Währung und keine Truhen gegen Echtgeld (CLAUDE.md). Das Casino öffnet leise mit Level 10; nichts im Spiel lenkt dorthin.
 
+**Darstellung (Leo, 29.09.2026):**
+- **Erst die Enthüllung, dann das Geld:** Die Regeln verbuchen eine Runde sofort (fair beim Neuladen). Geld-Chip, Tagessaldo und Verlauf zeigen das Ergebnis aber erst mit der Enthüllung (`Wallet` in `present/casino.ts`). Der Einsatz fliegt als Münzen vom Chip auf die Bühne, ein Gewinn fliegt zurück und zählt dort hoch.
+- **Gewinnstufen nach Vielfachem des Einsatzes, in allen Spielen gleich** (`casinoWinTiers`: 2 · 10 · 40 · 150): mehr Münzen, dann Konfetti, dann Strahlen und ein Stoß, dann ein Goldblitz. Ein gewonnener Skin bekommt mindestens Konfetti.
+- **Pro Spiel:** Crash lehnt die Kamera mit dem Multiplikator bis 8 % ans Auto und zählt den Gewinn hoch. Slots verwischen schnelle Walzen, Gewinnsymbole hüpfen nacheinander, die Gewinnlinie zeichnet sich, ein Verlust dunkelt kurz ab. Beim Skin-Upgrade fliegen die Einsätze in den Topf und zerspringen bei Verlust, die Nadel zieht einen Schweif. Bei Doppelt oder nichts wächst ein Münzstapel mit jeder Verdopplung und kippt bei Verlust.
+- **Eigene Klänge,** synthetisiert in `audio/player.ts`: Walzenstopp, Münzklimpern, Nadel, Crash-Zähler, Münzwurf und -landung, Chips, Splittern.
+- **Ehrlich bleibt es:** keine vorgetäuschten Beinahe-Gewinne, kein Jubel bei Verlust, jede Enthüllung überspringbar, Reduce Motion zeigt nur Zählen und Blenden.
+
 ### Freischaltungen und einmalige Hinweise (29.09.2026)
 
 Ein neuer Spieler trifft die Systeme nacheinander (`core/unlocks.ts`, Werte in `config.ts`):
@@ -367,7 +375,7 @@ Ein voller Satz zahlt einmal Geld und legt einen **Rahmen** in seiner Farbe um d
 - **Serie:** zählt gespielte Tage. 7 / 14 / 30 Tage geben exklusive Skins (Bronze Badge, Silver Badge, Gold Laurel).
 - **Saisons:** Der Event Chest enthält in der Hälfte der Fälle das Saison-Item (Frost, Blossom, Sunburst, Pumpkin), das es nur in seiner Saison gibt.
 - **Quests** (früher Challenges): 3 kleine Ziele pro Tag, für alle gleich, je einmal bezahlt, wechseln um Mitternacht. Unter **Progress → Quests**.
-- **Records** (Progress): Highscore, Level, Bestcombo, längste Kette, Daily-Serie, Schichten, Takedowns, Transporter, Unlimited- und Mayhem-Rekorde, Syndikats-Bosse, Sammlung.
+- **Records** (Progress): Highscore, Level, Bestcombo, längste Kette, Daily-Serie, Schichten, Takedowns, Transporter, Unlimited- und Mayhem-Rekorde, Syndikats-Bosse, Sammlung, **Timing** (Leo, 29.09.2026): wie früh (−) oder spät (+) die letzten 50 Merges im Schnitt getippt waren, gemessen an der Mitte der Lücke (`core/timing.ts`; ab 8 Merges, bis ±30 ms „On the beat“; offene Ringe zählen nicht).
 - **Tutorial:** in der ersten Schicht, ohne Menü und ohne Pause – pulsierender Ring am vordersten Auto, „Wait for a gap, then tap“, Combo-Hinweis, beim ersten Crash „Cars crash instantly. Police get 3 chances.“
 
 ### Trials (Progress → Trials, ab Level 8)
@@ -414,7 +422,9 @@ Nach einer Schicht macht „Challenge a friend“ einen Link (`#challenge=…`) 
 | **Obere Anzeige** | schwebende Karte mit drei Spalten (MONEY · CARS/SCORE · BEST), im Ergebnis zählt das Geld hoch. Auf dem Wartebildschirm führt Geld → Chests, Autos → Collection, Best → Records |
 | **Navigation** | DOM-Tab-Bar wie in iOS: **Progress · Game · Shop · Build**; zwischen den Schichten sichtbar, während einer Schicht ausgeblendet. Build hat die Segmente Upgrades / Street Builder, Shop Chests / Collection / Casino, Progress Records / Quests / Trials / Museum / Mastery |
 | **Menüs** | native Anmutung: gruppierte Listen, Sheets, Schalter, Segmented Controls; Glas nur für schwebende Bedienelemente über der Szene. Kritisch gedämpfte Federn, kein harter Schnitt |
-| **Einstellungen** | Sheet: Sound, Haptics, Reduce Motion (System / On / Off), Vehicle Labels, Export / Import / Reset Progress |
+| **Einstellungen** | Sheet: Sound, Haptics, Vehicle Labels, **Left-handed** (schwebende Knöpfe auf die andere Seite, Dispatch links), **Larger text** (Hinweise und Karten über der Szene ×1,2), Reduce Motion (System / On / Off), **What's new** (Patch Notes aus `present/patchNotes.ts`; ungelesen: Punkt am Einstellungsknopf), Export / Import / Reset Progress |
+| **Ergebnis teilen** | Unter jedem Ergebnis „Picture“: das Bild des Bildschirms mit Streifen „Car Game · Adresse“. Am Handy über das Teilen-Menü (mit Challenge-Link, wenn es einen gibt), sonst als PNG gespeichert |
+| **Adaptive Auflösung** | Kommen die Frames dauerhaft langsam und unregelmäßig, sinkt die Pixeldichte 2 → 1,5 → 1; nach 12 s flüssigem Lauf steigt sie wieder. Gleichmäßige 30 fps (Stromsparmodus) bleiben unangetastet |
 | **Sound** | Web Audio: 35 Effekte und 7 Musik-Stems als AAC in `Web/public/audio/` (noch Platzhalter), mit Tonhöhen-Variation und Stereo-Position. Adaptive Musik: Combo baut Instrumente auf, Verbrecher → Sirene, Rush Hour → Beat zieht an, Flow verdichtet; bei Verbrecher-Warnung und Rush-Hour-Beginn atmet die Musik durch einen Tiefpass ein |
 | **Haptik** | über `navigator.vibrate` – nur wo der Browser es kann (Android/Chrome); iOS-Safari hat keine Vibration, der Schalter zeigt das an |
 | **Accessibility** | Farben nie allein (Formen, Icons, Muster), Vehicle Labels, WCAG-AA-Kontrast, 44-px-Ziele, Tastatur (Leertaste, Enter, D/E, Esc, R, Tab, Pfeile), sichtbarer Fokus, Live-Region für Ergebnisse. Reduce Motion folgt standardmäßig dem System und entfernt Shake, Zeitlupe und fliegende Teile |

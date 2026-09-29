@@ -6,6 +6,7 @@ import { TRIALS, type TrialId } from '../core/trials';
 import { weekNumber, weekDaysLeft, weeklyTrial } from '../core/weekly';
 import { baseConfig } from '../core/config';
 import { Elite } from '../core/elite';
+import { averageOffset } from '../core/timing';
 import { type Vec2, v, add } from '../core/vec2';
 import { type RenderList, type Rect, RenderList as List, R, rect, circle, line, text, Ease, Metrics, moved, type Align, type Weight } from './render';
 import type { ColorToken } from './theme';
@@ -85,6 +86,7 @@ export const ProgressPage = {
       { label: P.perfects, value: count(m.perfects) },
       { label: P.chestsOpened, value: count(c.chestsOpened) },
       { label: P.collection, value: P.owned(COSMETICS.filter((x) => Careers.owns(c, x.id)).length, COSMETICS.length) },
+      { label: P.timingLabel(baseConfig.timingSamples), value: P.timing(averageOffset(c, baseConfig), baseConfig.timingOnBeat) },
     ];
   },
 

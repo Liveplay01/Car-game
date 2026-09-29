@@ -75,6 +75,10 @@ export const Skins = {
       tropic: 'mapTropic',
       snowfall: 'mapSnow',
       cosmos: 'mapCosmos',
+      harbour: 'mapHarbour',
+      vineyard: 'mapVineyard',
+      grove: 'mapGrove',
+      abyss: 'mapAbyss',
     };
     return id ? (map[id] ?? null) : null;
   },

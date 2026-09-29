@@ -329,6 +329,8 @@ export const S = {
     rewardCaption: 'REWARD',
     brokenLink: 'That challenge link is broken or cut short.',
     copied: 'Challenge link copied',
+    pictureText: 'My shift in Car Game',
+    pictureSaved: 'Picture saved',
     shareText: (target: string): string => `Can you beat ${target} on my roundabout?`,
   },
 
@@ -552,8 +554,9 @@ export const S = {
 
   /** A condition met for the first time, on the ready screen (`ConditionIntro`). */
   intro: {
-    title: (e: ConditionEntry): string =>
-      `New · ${e.k === 'dark' ? (e.kind === 'blackout' ? S.blackout : S.night) : e.k === 'weather' ? S.weather(e.kind) : S.cityEvent(e.kind)}`,
+    title: (e: ConditionEntry): string => `New · ${S.museum.name(e)}`,
+    /** A special vehicle or a boss on the road for the first time, as a notice: its name and what to do. */
+    meet: (e: MuseumEntry): string => `New · ${S.museum.name(e)} · ${museumText(e).line}`,
     text: (e: ConditionEntry, c: Config): string =>
       e.k === 'dark' ? INTRO_TEXT.dark[e.kind](c) : e.k === 'weather' ? INTRO_TEXT.weather[e.kind](c) : INTRO_TEXT.event[e.kind](c),
 
@@ -605,6 +608,10 @@ export const S = {
     days: (d: number): string => (d === 1 ? '1 day' : `${d} days`),
     owned: (o: number, t: number): string => `${o} / ${t}`,
     questsHint: 'Quests pay once each and change at midnight.',
+    timingLabel: (n: number): string => `Your timing · last ${n} merges`,
+    /** How far from the middle of the gap the taps land on average; null: not enough merges yet. */
+    timing: (ms: number | null, onBeat: number): string =>
+      ms === null ? '–' : Math.abs(ms) <= onBeat ? 'On the beat' : ms < 0 ? `${-ms} ms early` : `${ms} ms late`,
   },
 
   museum: {
@@ -698,6 +705,8 @@ export const S = {
     flipLost: 'Lost on the coin',
     flipLostSkin: 'Lost on the coin · the skins are gone',
     flipsLeft: (n: number): string => (n <= 0 ? 'That was the last double' : `${n} more double${n === 1 ? '' : 's'} possible · or keep it`),
+    /** Over the stack beside the coin: how many times the first win it has become. */
+    chainTimes: (n: number): string => `×${n}`,
     refunded: (m: string): string => `A drive was cut short · ${m} back`,
     cashedOnLeave: (m: string): string => `Cashed out as you left · +${m}`,
     skinsLost: (n: number): string => (n === 1 ? 'Staked skin lost' : `${n} staked skins lost`),
@@ -886,6 +895,10 @@ export const S = {
         tropic: 'Tropic',
         snowfall: 'Snowfall',
         cosmos: 'Cosmos',
+        harbour: 'Harbour',
+        vineyard: 'Vineyard',
+        grove: 'Mushroom Grove',
+        abyss: 'Abyss',
         compact: 'Compact',
         van: 'Van',
         laurel: 'Laurel',

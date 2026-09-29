@@ -102,17 +102,19 @@ export function conditionsOf(c: Config): ConditionEntry[] {
 
 /**
  * What is in front of you right now that the Museum shows: bosses, specials, the sky and the
- * city. A condition counts once the shift is under way, so the ready screen can still tell a
- * player who meets it for the first time what it does.
+ * city. Only a shift under way counts: the traffic that drives on behind the tabs and the
+ * ready screen is not met yet. So the ready screen can still explain a new condition, and a
+ * special gets its notice the first time it comes while the player is playing.
  */
 export function sightings(w: World): string[] {
+  if (w.shift.phase === 'waiting') return [];
   const c = w.config;
   const out = new Set<string>();
   for (const veh of w.vehicles) {
     if (veh.role === 'boss' && c.convoy) out.add(museumId({ k: 'boss', kind: c.bossKind }));
     else if (veh.role === null && veh.type in SPECIAL_LEVEL) out.add(museumId({ k: 'special', kind: veh.type as SpecialKind }));
   }
-  if (w.shift.phase !== 'waiting') for (const e of conditionsOf(c)) out.add(museumId(e));
+  for (const e of conditionsOf(c)) out.add(museumId(e));
   return [...out];
 }
 

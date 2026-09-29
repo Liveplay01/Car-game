@@ -71,6 +71,14 @@ export const baseConfig = {
   freePlayDensity: 5,
   aiSafeGap: 0.25,
   aiPathClearance: 0.1,
+  /**
+   * A car that has stood this many seconds at the line stops waiting for a comfortable gap and
+   * pushes in at the next one it takes without touching anyone (`aiPushInGap`, seconds).
+   * Without it a steady stream of the player's cars starves the other arms: the ring empties
+   * of traffic and sending cars without pause becomes safe.
+   */
+  aiPatience: 2.5,
+  aiPushInGap: 0.15,
   aiSpawnDelay: r(0.4, 1.2),
   aiHazardAhead: 2.5,
   aiHazardBehind: 1.5,
@@ -109,6 +117,14 @@ export const baseConfig = {
   nearMissSeconds: 0.2,
   perfectBalance: 0.25,
   perfectMaxGap: 2,
+  /** Records: the timing of the last this many merges into a real gap (`core/timing.ts`). */
+  timingSamples: 50,
+  /** A gap wider than this (seconds ahead + behind) says nothing about the timing. */
+  timingMaxGap: 3,
+  /** The Records show the timing from this many merges on. */
+  timingMinSamples: 8,
+  /** Within this many milliseconds of the middle of the gap counts as on the beat. */
+  timingOnBeat: 30,
 
   // Scoring
   pointsClean: 100,
@@ -487,6 +503,12 @@ export const baseConfig = {
   /** Double or nothing: a fair coin, at most this many times in a row. */
   doubleMaxChain: 5,
   casinoLogLength: 20,
+  /**
+   * How loud a win is, by how many times the stake it pays, the same in every game
+   * (`present/casino.ts`): from the first more coins, then confetti, then rays and a jolt,
+   * then a gold flash.
+   */
+  casinoWinTiers: [2, 10, 40, 150] as readonly number[],
 
   // Late levels
   lateLevel: 6,

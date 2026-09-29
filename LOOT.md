@@ -206,13 +206,13 @@ Kreisverkehr (der wertvollste abgeschlossene zählt). Fortschritt im Shop unter 
 
 | Album | Inhalt | Belohnung |
 | --- | --- | --- |
-| Maps | alle 12 Map Skins aus Truhen | 10.000 |
+| Maps | alle 16 Map Skins aus Truhen | 10.000 |
 | Commons / Rares / Epics / Legends | alle Car Skins dieser Seltenheit aus Truhen | 5.000 / 10.000 / 20.000 / 40.000 |
 | Seasons | alle 4 Saison-Items | 30.000 |
 | Loyalty | alle 3 Serien-Items | 20.000 |
 | Honours | alle 11 Legendary-, Prestige- und Elite-Items | 50.000 |
 
-## Map Skins (12)
+## Map Skins (16)
 
 Tönen die Mittelinsel des Kreisverkehrs mit einem Ring in der Skin-Farbe, färben den Boden
 der Stadt außerhalb des Kreisverkehrs (dunkel, damit alles lesbar bleibt) und bringen eigene
@@ -238,6 +238,15 @@ Details mit (`MapTheme`, Entscheidung Leo 25.09.2026). **Jede Map säumt ihre St
   **zugefrorener Teich** mit Kufenspuren und zwei Eisläufern, **Schneefall**.
 - **Cosmos** Tiefraum mit Nebeln und funkelnden Sternen, kleine Planeten, Leuchtbaken an den
   Straßen, ein **Ringplanet mit umlaufendem Mond**, **Sternschnuppen**.
+- **Neu (Leo, 29.09.2026):** **Harbour** nasser Kai, Containerstapel, Poller und warme
+  Hafenlaternen, ein **Hafenbecken mit schaukelndem Boot und Kran** · **Vineyard** Rebzeilen mit
+  Trauben, Zypressen mit langen Schatten, Olivenbäume, eine **Villa mit Ziegeldach** und
+  warmem Hof · **Mushroom Grove** Moos und leuchtende Pilze, ein **Hexenring um einen
+  leuchtenden Teich**, aufsteigende Sporen · **Abyss** Meeresgrund mit Sandrippeln und
+  Lichtspiel, Korallenfächer und Anemonen, ein **Wrack mit funkelnder Truhe**, Quallen und
+  aufsteigende Blasen.
+- **Ohne Map Skin** stehen echte Bäume an der Stadt (Krone aus Lappen in drei Grüntönen,
+  Licht von oben links, Schatten; Spielerwunsch 29.09.2026); Autumn nutzt dieselbe Form.
 
 Das Herzstück jeder Map liegt an der freien Stelle über dem Ring, so
 weit weg von allen Armen wie möglich; ist kein Platz, fehlt es. Was durch die Luft fliegt,
@@ -259,6 +268,10 @@ einer neuen Schicht nicht neu an.
 | Tropic | `tropic` | Rare | Lagunentürkis |
 | Snowfall | `snowfall` | Epic | Schneeweiß |
 | Cosmos | `cosmos` | Legendary | Sternenlicht |
+| Harbour | `harbour` | Common | Hafenlicht-Orange |
+| Vineyard | `vineyard` | Rare | Traubenviolett |
+| Mushroom Grove | `grove` | Epic | Pilzleuchten-Türkis |
+| Abyss | `abyss` | Legendary | Tiefseeblau |
 
 ## Fahrzeugtypen (3)
 
@@ -276,13 +289,13 @@ was leichter zu platzieren ist, ist schwerer zu timen und umgekehrt. Werte in `W
 
 | Seltenheit | Car Skins | Map Skins | Typen | Summe |
 | --- | --- | --- | --- | --- |
-| Common | 10 | 3 | – | 13 |
-| Rare | 11 | 3 | 1 | 15 |
-| Epic | 10 | 3 | 2 | 15 |
-| Legendary | 8 | 3 | – | 11 |
-| **Summe** | **39** | **12** | **3** | **54** |
+| Common | 10 | 4 | – | 14 |
+| Rare | 11 | 4 | 1 | 16 |
+| Epic | 10 | 4 | 2 | 16 |
+| Legendary | 8 | 4 | – | 12 |
+| **Summe** | **39** | **16** | **3** | **58** |
 
-Dazu die 7 Items aus Daily-Serie und Saison: 61 insgesamt.
+Dazu die 7 Items aus Daily-Serie und Saison: 65 insgesamt.
 
 ## Ideen für später (noch nicht im Spiel)
 

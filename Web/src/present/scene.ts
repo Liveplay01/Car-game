@@ -137,13 +137,13 @@ export const SceneBuilder = {
   addRoad(list: RenderList, layout: Layout, c: Config, own: Arm | null = layout.player): void {
     const lane = layout.laneWidth;
     const reach = 700;
+    // Asphalt grain over the whole road once it is drawn: the markings wear with it.
+    const grain = list.grain;
+    list.grain = 'asphalt';
     for (const a of layout.arms) list.w(rect(mul(fromAngle(a.angle), reach / 2), v(reach, lane * 2 + 7), 0, a.angle), 'kerb');
     list.w(arc(v(0, 0), layout.ringRadius, lane + 7, 0, TAU), 'kerb');
     for (const a of layout.arms) list.w(rect(mul(fromAngle(a.angle), reach / 2), v(reach, lane * 2), 0, a.angle), 'surface');
     list.w(arc(v(0, 0), layout.ringRadius, lane, 0, TAU), 'surface');
-    list.w(circle(v(0, 0), layout.ringRadius - lane / 2 + 3.5), 'kerb');
-    list.w(circle(v(0, 0), layout.ringRadius - lane / 2), 'island');
-    list.w(arc(v(0, 0), layout.ringRadius - lane / 2 - 14, 1.5, 0, TAU), 'marking', 0.25);
     for (const a of layout.arms) {
       const out = fromAngle(a.angle);
       let distance = layout.ringRadius + lane / 2 + 10;
@@ -163,6 +163,11 @@ export const SceneBuilder = {
     }
     if (own) SceneBuilder.addLaneMark(list, layout, c, own, 'accent', 0.22);
     SceneBuilder.addModules(list, layout, c);
+    list.grain = grain;
+    // The island stays a calm surface: the combo and the prompts sit on it.
+    list.w(circle(v(0, 0), layout.ringRadius - lane / 2 + 3.5), 'kerb');
+    list.w(circle(v(0, 0), layout.ringRadius - lane / 2), 'island');
+    list.w(arc(v(0, 0), layout.ringRadius - lane / 2 - 14, 1.5, 0, TAU), 'marking', 0.25);
   },
 
   /** A line along a lane's kerb, from the back of its queue to just past the stop line. */
@@ -245,14 +250,18 @@ export const SceneBuilder = {
     }
   },
 
+  /**
+   * Each car's shadow, falling away from the light (upper left, like the trees and houses):
+   * a wide soft layer and a tighter, darker one right under the body.
+   */
   addShadows(list: RenderList, world: World, alpha: number): void {
+    const W = world.config.carWidth;
     for (const veh of world.vehicles) {
       if (veh.isCrashed) continue;
       const pose = interpolatedPose(veh, alpha);
-      list.w(
-        rect(sub(pose.position, v(0, 2.5)), v(CarArt.length(veh.type, world.config) + 3, world.config.carWidth + 3), Metrics.vehicleCornerRadius + 2, pose.heading),
-        'shadow',
-      );
+      const L = CarArt.length(veh.type, world.config);
+      list.w(rect(add(pose.position, v(2, -3)), v(L + 6, W + 6), Metrics.vehicleCornerRadius + 4, pose.heading), 'shadow', 0.45);
+      list.w(rect(add(pose.position, v(1, -1.8)), v(L + 2, W + 2), Metrics.vehicleCornerRadius + 1.5, pose.heading), 'shadow', 0.9);
     }
   },
 

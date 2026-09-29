@@ -1,7 +1,7 @@
 import type { SaveGame } from '../core/career';
 import type { Config } from '../core/config';
 import { Casino } from '../core/casino';
-import { CasinoPage, type CasinoState, type CasinoTarget, type CasinoCue } from './casino';
+import { CasinoPage, type Books, type CasinoState, type CasinoTarget, type CasinoCue, winTier } from './casino';
 import type { SoundID, HapticID } from './feedback';
 import { S, Fmt, money as moneyText } from './strings';
 
@@ -114,12 +114,19 @@ export class CasinoFlow {
     else if (!s.picker && s.sinceEnd >= 0.7) this.start();
   }
 
+  /** The books as they stand before a round changes them: what the page shows until the reveal. */
+  private books(): Books {
+    const career = this.host.save.career;
+    return { money: career.money, net: Casino.today(career, this.host.today), log: career.casinoLog.map((r) => ({ ...r })), unseen: [...career.unseen] };
+  }
+
   /** A new round with the stake chosen: the save is written before anything shows. */
   private start(): void {
     const s = this.host.casino;
     const career = this.host.save.career;
     if (s.busy || s.picker) return;
     this.collect();
+    const before = this.books();
     if (s.game === 'upgrade') {
       if (s.staked.length === 0 || !s.target) {
         this.host.tick();
@@ -133,11 +140,12 @@ export class CasinoFlow {
         return;
       }
       this.host.persist();
+      s.wallet.stake(before, 0, this.host.reduceMotion);
       s.staked = [];
       s.target = null;
       s.run = { k: 'upgrade', roll, age: 0 };
       if (this.host.reduceMotion) s.skip();
-      this.host.play(['swoosh'], ['tap']);
+      this.host.play(['chipsIn', 'swoosh'], ['tap']);
       return;
     }
     const stake = CasinoPage.stakeOf(career, s);
@@ -145,18 +153,20 @@ export class CasinoFlow {
       const point = Casino.startCrash(career, stake, this.host.today, this.host.config);
       if (point === null) return this.denied(stake);
       this.host.persist();
+      s.wallet.stake(before, stake, this.host.reduceMotion);
       s.run = { k: 'crash', stake, point, end: Casino.endOf(point, this.host.config.crashAutoTargets[s.auto] ?? 0), age: 0, out: null, crash: null };
-      this.host.play(['go'], ['tap']);
+      this.host.play(['chipsIn', 'go'], ['tap']);
       return;
     }
     const from: [number, number, number] = [...s.reels];
     const spin = Casino.spin(career, stake, this.host.today, this.host.config);
     if (!spin) return this.denied(stake);
     this.host.persist();
+    s.wallet.stake(before, stake, this.host.reduceMotion);
     s.reels = spin.stops;
     s.run = { k: 'slots', spin, from, anticipate: spin.line[0] === spin.line[1], age: 0 };
     if (this.host.reduceMotion) s.skip();
-    this.host.play(['swoosh'], ['tap']);
+    this.host.play(['chipsIn', 'reelSpin'], ['tap']);
   }
 
   private denied(stake: number): void {
@@ -181,12 +191,13 @@ export class CasinoFlow {
     if (!run || run.k !== 'crash') return;
     const win = m === null ? Casino.crashed(this.host.save.career, this.host.today, this.host.config) : Casino.cashOut(this.host.save.career, m, this.host.today, this.host.config);
     this.host.persist();
+    const tier = win > 0 && m !== null ? winTier(m) : 0;
+    this.host.casino.wallet.reveal(this.host.save.career.money, win, tier, this.host.reduceMotion);
     if (win > 0 && m !== null) {
       const clutch = CasinoPage.clutchOf(run.point, m);
       run.out = { m, win, age: 0, clutch };
-      this.host.play(['paid'], ['paid']);
+      this.host.play(['paid', ...CasinoFlow.fanfare(tier)], ['paid']);
       if (clutch !== null) this.host.play(['perfect'], ['perfect']);
-      if (m >= 5) this.host.play([m >= 10 ? 'chestBurstRare' : 'chestBurst'], []);
     } else {
       run.crash = 0;
       this.host.play(['explosion', 'crashHeavy'], ['explosion']);
@@ -198,15 +209,23 @@ export class CasinoFlow {
     const pending = this.host.save.career.casinoPending;
     if (s.busy || !pending || pending.k !== 'win') return;
     const items = pending.items.length > 0;
+    const chain = pending.flips + 1;
+    const before = this.books();
     const flip = Casino.flip(this.host.save.career, this.host.today, this.host.config);
     if (!flip) {
       this.host.play(['denied'], []);
       return;
     }
     this.host.persist();
-    s.run = { k: 'flip', flip, items, age: 0 };
+    s.wallet.stake(before, 0, this.host.reduceMotion);
+    s.run = { k: 'flip', flip, items, age: 0, chain };
     if (this.host.reduceMotion) s.skip();
-    this.host.play(['chestCharge'], ['tap']);
+    this.host.play(['coinToss'], ['tap']);
+  }
+
+  /** The fanfare a win of `tier` gets on top of its own sound. */
+  static fanfare(tier: number): SoundID[] {
+    return tier >= 3 ? ['chestBurstRare'] : tier >= 2 ? ['chestBurst'] : [];
   }
 
   cue(cue: CasinoCue): void {
@@ -214,26 +233,29 @@ export class CasinoFlow {
     if (!run) return;
     switch (cue.k) {
       case 'tick':
-        // The drive ticks at every tenth more, a semitone higher each time: the tension is heard.
-        if (run.k === 'crash') this.host.playPitched('uiTick', Math.pow(2, Math.min(cue.step, 24) / 12));
-        else this.host.playPitched('uiTick', 1 + 0.05 * (cue.step % 3));
+        // The drive's meter blips at every tenth more, a semitone higher each time: the tension is heard.
+        if (run.k === 'crash') this.host.playPitched('meterTick', Math.pow(2, Math.min(cue.step, 24) / 12));
+        else this.host.playPitched('needleTick', 1.4 + 0.08 * (cue.step % 3));
         break;
       case 'reel':
-        // Klack-wumm: the stop, and a low thud under it.
-        this.host.playPitched('toll', [1, 1.12, 1.26][cue.reel]);
-        this.host.playPitched('build', 0.7);
+        // Klack-wumm: the stop, a little higher reel by reel.
+        this.host.playPitched('casinoStop', [1, 1.12, 1.26][cue.reel]);
         this.host.play([], ['merge']);
         break;
       case 'creep':
-        this.host.playPitched('uiTick', 0.85 + 0.08 * cue.step);
+        this.host.playPitched('needleTick', 0.8 + 0.08 * cue.step);
         this.host.play([], ['tap']);
         break;
       case 'peg':
-        this.host.playPitched('uiTick', cue.slow ? 1.35 : 1.15);
+        this.host.playPitched('needleTick', cue.slow ? 0.85 : 1.2);
         if (cue.slow) this.host.play([], ['tap']);
         break;
       case 'ding':
-        this.host.playPitched('toll', Math.min(2.2, 1.3 + 0.045 * cue.step));
+        this.host.playPitched('coinClink', Math.min(2, 1 + 0.04 * cue.step));
+        break;
+      case 'coins':
+        this.host.playPitched('coinClink', 1 + 0.1 * cue.tier);
+        this.host.play([], ['paid']);
         break;
       case 'clutchBoom':
         this.host.play(['explosion'], ['explosion']);
@@ -241,24 +263,34 @@ export class CasinoFlow {
       case 'crashDue':
         if (run.k === 'crash') this.settleDrive(run.end.cashOut ? run.end.at : null);
         break;
-      case 'result':
+      case 'result': {
+        const bank = this.host.save.career.money;
+        const rm = this.host.reduceMotion;
         if (run.k === 'slots') {
-          if (run.spin.win > 0) this.host.play([run.spin.pay >= 40 ? 'chestBurstRare' : 'chestBurst'], ['chest']);
+          const tier = winTier(run.spin.pay);
+          this.host.casino.wallet.reveal(bank, run.spin.win, tier, rm);
+          if (run.spin.win > 0) this.host.play([tier >= 3 ? 'chestBurstRare' : 'chestBurst'], ['chest']);
         } else if (run.k === 'upgrade') {
+          this.host.casino.wallet.reveal(bank, 0, 0, rm);
           if (run.roll.won) {
             this.host.play(['chestBurstRare'], ['chest']);
             this.host.announceAlbums();
           } else {
-            this.host.play(['shiftFailed'], ['crash']);
+            this.host.play(['shatter', 'shiftFailed'], ['crash']);
             this.host.showNotice(S.casino.skinsLost(run.roll.staked.length));
           }
         } else if (run.k === 'flip') {
+          // A doubled win flies in: what the coin added, as loud as the chain has grown.
+          const gained = run.flip.won && !run.items ? run.flip.money / 2 : 0;
+          this.host.casino.wallet.reveal(bank, gained, winTier(2 ** run.chain), rm);
+          this.host.play(['coinLand'], []);
           if (run.flip.won) {
             this.host.play(['chestBurst'], ['chest']);
             if (run.items) this.host.announceAlbums();
           } else this.host.play(['shiftFailed'], ['crash']);
         }
         break;
+      }
     }
   }
 
@@ -281,6 +313,8 @@ export class CasinoFlow {
         const win = m === null ? Casino.crashed(this.host.save.career, this.host.today, this.host.config) : Casino.cashOut(this.host.save.career, m, this.host.today, this.host.config);
         if (win > 0) this.host.showNotice(S.casino.cashedOnLeave(moneyText(Fmt.number(win))));
       }
+      // The page is being left: the books show as they are, without a show.
+      s.wallet.reveal(this.host.save.career.money, 0, 0, true);
       s.run = null;
       this.host.persist();
     }

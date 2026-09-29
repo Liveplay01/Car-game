@@ -111,6 +111,10 @@ function readCareer(raw: unknown): Career {
     casinoBestCrash: num(raw.casinoBestCrash, 0, 0),
     casinoDay: int(raw.casinoDay, -1),
     casinoNet: int(raw.casinoNet, 0),
+    tapOffsets: (Array.isArray(raw.tapOffsets) ? raw.tapOffsets : [])
+      .filter((x): x is number => typeof x === 'number' && Number.isFinite(x))
+      .map((x) => Math.max(-5000, Math.min(5000, Math.round(x))))
+      .slice(-baseConfig.timingSamples),
   };
 }
 
@@ -148,6 +152,8 @@ function readSave(raw: unknown): SaveGame {
     if (typeof s.sound === 'boolean') settings.sound = s.sound;
     if (typeof s.haptics === 'boolean') settings.haptics = s.haptics;
     if (typeof s.vehicleLabels === 'boolean') settings.vehicleLabels = s.vehicleLabels;
+    if (typeof s.leftHanded === 'boolean') settings.leftHanded = s.leftHanded;
+    if (typeof s.largeText === 'boolean') settings.largeText = s.largeText;
     if (s.reduceMotion === 'system' || s.reduceMotion === 'on' || s.reduceMotion === 'off') settings.reduceMotion = s.reduceMotion;
   }
   return {
@@ -164,6 +170,7 @@ function readSave(raw: unknown): SaveGame {
     unlimitedBestCars: int(raw.unlimitedBestCars, 0, 0),
     mayhemBest: int(raw.mayhemBest, 0, 0),
     mayhemBestChain: int(raw.mayhemBestChain, 0, 0),
+    notesSeen: typeof raw.notesSeen === 'string' ? raw.notesSeen : null,
   };
 }
 

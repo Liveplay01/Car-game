@@ -9,6 +9,8 @@ import { type ChestKind, ALBUM_REWARD, cosmetic, rarityRank } from '../core/loot
 import { dailySeed, dailyEvent, dayNumber } from '../core/daily';
 import { weekNumber, weeklyTrial } from '../core/weekly';
 import { Goals } from '../core/goals';
+import { noteTap } from '../core/timing';
+import { latestNote } from './patchNotes';
 import { ChestReel } from './chestReel';
 import { Scoring } from '../core/scoring';
 import { type Vec2, v, add } from '../core/vec2';
@@ -24,6 +26,7 @@ import { MapTheme } from './mapThemes';
 import { Skins } from './skins';
 import { WeatherLayer } from './weather';
 import { NightLayer } from './night';
+import { CityLights } from './cityLights';
 import { HUD, TopBar, RingSignals, ModeBanner, ModeHint, ReadyBanner, ResultBanner, type Popup, type PopupKind, type ShiftSummary, type RunCard, type ConditionIntro, POPUP_LIFETIME, settledPops } from './hud';
 import { Tutorial } from './tutorial';
 import { NoticeQueue } from './notices';
@@ -210,6 +213,8 @@ export class GameSession {
     this.explosions = new ExplosionEffects(seed);
     this.tutorial = this.save.tutorialDone ? null : new Tutorial();
     if (this.tutorial) this.save.mode = 'shift';
+    // A new player has nothing to catch up on: the notes so far count as read.
+    if (this.tutorial && this.save.notesSeen === null) this.save.notesSeen = latestNote();
     this.prepareShift(false);
     this.collectLoginIncome();
     this.casinoFlow.resume();
@@ -1385,12 +1390,19 @@ export class GameSession {
     this.persist();
   }
 
-  /** Special vehicles and bosses on the road for the first time go on show in the Museum. */
+  /**
+   * Special vehicles and bosses on the road for the first time go on show in the Museum, and a
+   * notice says once what they are and what to do (conditions had the ready screen for that).
+   */
   private noteSightings(): void {
+    // The tutorial teaches the first shift itself; what it meets there is met again right after.
+    if (this.tutorial && !this.tutorial.isOver) return;
     const found = Careers.discover(this.save.career, sightings(this.world));
     if (found.length === 0) return;
     this.museumFound.push(...found);
     this.persist();
+    const met = found.map(museumEntry).filter((e) => e !== null && (e.k === 'special' || e.k === 'boss'));
+    if (met.length > 0 && !this.versusSelected) this.announce(...met.map((e) => S.intro.meet(e!)));
   }
 
   /** The Museum's new entries of the shift, as a line for the result; empties the list. */
@@ -1539,6 +1551,8 @@ export class GameSession {
             this.sinceHitStop = 0;
           } else if (e.rating !== 'clean') this.addPopup({ k: e.rating } as PopupKind, e.position);
           if (TyreMarks.leavesMark(e.rating)) this.tyreMarks.add();
+          // The Records keep how early or late the taps come (saved with the shift).
+          if (!this.tutorial) noteTap(this.save.career, e.gapAhead, e.gapBehind, this.config);
           break;
         case 'crash':
           this.effects.spawn(e, world, this.reduceMotion, e.chain);
@@ -1873,6 +1887,7 @@ export class GameSession {
     const theme = MapTheme.from(career.mapSkin);
     this.lastCamera = camera;
     const list = new RenderList(camera, MapTheme.ground(theme));
+    list.groundGrain = true;
     CityLayer.add(list, world, theme, rm ? null : this.sceneTime, rm ? null : this.cityPulse, this.scars.isEmpty ? null : this.scars, this.sceneTime, this.playingMode === 'shift' && !this.special ? this.cityRise : null);
     SceneBuilder.addRoad(list, world.layout, world.config);
     CityLayer.addMapSkin(list, Skins.color(career.mapSkin), world);
@@ -1886,6 +1901,7 @@ export class GameSession {
     this.tyreMarks.addGround(list, world.layout, world.config);
     this.explosions.addGround(list);
     this.effects.addGround(list, world, alpha, !rm);
+    CityLights.add(list, world, alpha, theme);
     SceneBuilder.addShadows(list, world, alpha);
     SceneBuilder.addVehicles(list, world, alpha, career.carSkins, rm ? null : world.time, rm ? null : world.time, this.lamps);
     SceneBuilder.addTowTrucks(list, world);
@@ -1974,7 +1990,8 @@ export class GameSession {
     if (barTab(tab) === 'progress') return c.museumNew.length > 0 ? 'dot' : null;
     if (barTab(tab) !== 'shop') return null;
     if (c.chests.length > 0) return { count: c.chests.length };
-    return c.unseen.length > 0 ? 'dot' : null;
+    // A skin a casino round has won stays quiet until the round shows it.
+    return this.shopPage.casino.wallet.unseen(c.unseen).length > 0 ? 'dot' : null;
   }
 
   /** How the waiting screen names the challenge or trial being played. */
@@ -2033,6 +2050,7 @@ export class GameSession {
       opacity,
       goal: goal ? S.goals.next(goal) : null,
       intro: this.versusSelected || (this.tutorial && !this.tutorial.isOver) ? null : this.conditionIntro,
+      textScale: this.textScale,
     });
     if (this.modeBanner) {
       const top = TopBar.frame(list.camera.viewport.x).maxY + (daily ? 40 : 14);
@@ -2065,16 +2083,20 @@ export class GameSession {
     const vp = list.camera.viewport;
     const opacity = Ease.outCubic(age / 0.2) * (1 - Ease.clamp01((age - (duration - 0.5)) / 0.5));
     const rise = this.reduceMotion ? 0 : (1 - Ease.settle(age / 0.4)) * 18;
-    // On the Game tab the settings button sits bottom left: the notice keeps above it.
-    const lift = this.screen.k === 'ready' || this.screen.k === 'result' ? 56 : 0;
-    const center = v(vp.x / 2, vp.y - bottomInset - 36 - lift + rise);
-    const size = Metrics.noticeSize;
+    // On the Game tab the settings button sits bottom left, during a shift the dispatch button
+    // bottom right (`ui/shell.css`): the notice keeps above them.
+    const lift = this.screen.k === 'ready' || this.screen.k === 'result' ? 56 : this.screen.k === 'playing' ? 72 : 0;
+    // Larger text (Settings) makes the pill a step bigger, and lifts it by what it grew.
+    const scale = this.textScale;
+    const height = 30 * scale;
+    const center = v(vp.x / 2, vp.y - bottomInset - 36 - lift - (height - 30) / 2 + rise);
+    const size = Metrics.noticeSize * scale;
     const maxWidth = vp.x - 24;
     let fontSize = size;
     const natural = textWidthOf(textValue, size);
-    if (natural + 32 > maxWidth) fontSize = Math.max(10, (size * (maxWidth - 32)) / natural);
+    if (natural + 32 > maxWidth) fontSize = Math.max(10 * scale, (size * (maxWidth - 32)) / natural);
     const width = Math.min(maxWidth, textWidthOf(textValue, fontSize) + 32);
-    MenuKit.chromePill(list, center, v(width, 30), opacity);
+    MenuKit.chromePill(list, center, v(width, height), opacity);
     list.s(text(textValue, center, fontSize, 'center'), 'primary', opacity);
   }
 
@@ -2085,6 +2107,21 @@ export class GameSession {
 
   /** The settings sheet changed a setting in place: keep it. */
   saveSettings(): void {
+    this.persist();
+  }
+
+  /** How much larger notices and cards over the scene are drawn (Settings → Larger text). */
+  get textScale(): number {
+    return this.save.settings.largeText ? 1.2 : 1;
+  }
+
+  /** Patch notes newer than the last ones read (Settings → What's new). */
+  get notesUnread(): boolean {
+    return this.save.notesSeen !== latestNote();
+  }
+
+  markNotesRead(): void {
+    this.save.notesSeen = latestNote();
     this.persist();
   }
 

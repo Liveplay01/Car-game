@@ -535,6 +535,7 @@ export class VersusMatch {
     const w = this.world;
     const alpha = this.countIn > 0 ? 0 : Math.min(1, this.accumulator / STEP);
     const list = new RenderList(this.camera(viewport, this.frameDt), MapTheme.ground(null));
+    list.groundGrain = true;
     CityLayer.add(list, w, null, rm ? null : this.sceneTime, null, null, this.sceneTime);
     SceneBuilder.addRoad(list, w.layout, w.config, null);
     for (const q of w.seats) {

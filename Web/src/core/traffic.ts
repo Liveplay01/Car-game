@@ -54,7 +54,10 @@ export function updateTraffic(w: World, dt: number): void {
       continue;
     }
     p.reaction -= dt;
-    const clear = barges ? canBargeIn(w, p.arm) : canEnter(w, p.arm);
+    p.waited = (p.waited ?? 0) + dt;
+    // Waited long enough: the next gap it gets through without touching anyone will do.
+    const patient = p.waited < c.aiPatience;
+    const clear = barges ? canBargeIn(w, p.arm) : patient ? canEnter(w, p.arm) : canPushIn(w, p.arm);
     if (p.reaction <= 0 && clear && !joinsTooClose(w, veh, p.arm) && !joinsClearRoad(w, veh, p.arm)) {
       const path = w.layout.entry(p.arm);
       const merge: Merging = {
@@ -220,8 +223,20 @@ function canBargeIn(w: World, arm: Arm): boolean {
   return !isDisturbedNear(w, arm) && w.predictedMergeGap(arm, 0, 30, w.config.criminalEntryGap) >= w.config.criminalEntryGap;
 }
 
-/** Something near where `arm` joins the ring is not flowing: the AI waits, as a driver would. */
-export function isDisturbedNear(w: World, arm: Arm): boolean {
+/**
+ * A car out of patience (`aiPatience`): a gap of `aiPushInGap` will do, and cars braking near
+ * the join no longer hold it back; only a wreck there does.
+ */
+function canPushIn(w: World, arm: Arm): boolean {
+  const gap = w.config.aiPushInGap;
+  return !isDisturbedNear(w, arm, true) && w.predictedMergeGap(arm, 0, 30, gap) >= gap;
+}
+
+/**
+ * Something near where `arm` joins the ring is not flowing: the AI waits, as a driver would.
+ * `wrecksOnly`: only a crash counts, not traffic that is braking.
+ */
+export function isDisturbedNear(w: World, arm: Arm, wrecksOnly = false): boolean {
   const c = w.config;
   // In Mayhem traffic flows over everything: nothing to wait for.
   if (c.mayhem) return false;
@@ -229,7 +244,7 @@ export function isDisturbedNear(w: World, arm: Arm): boolean {
   const join = w.layout.entryRingS[arm.index];
   return w.vehicles.some((x) => {
     const p = x.phase;
-    const disturbed = p.kind === 'crashed' || ((p.kind === 'ring' || p.kind === 'exiting') && !isInFlow(p.drive));
+    const disturbed = p.kind === 'crashed' || (!wrecksOnly && (p.kind === 'ring' || p.kind === 'exiting') && !isInFlow(p.drive));
     if (!disturbed) return false;
     const s = wrap(angleOf(x.position)) * w.layout.ringRadius;
     const downstream = w.layout.ringDistance(join, s);

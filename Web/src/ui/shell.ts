@@ -6,7 +6,10 @@ import { TAB_BAR, barTab, screenTab, showsTabBar, type Tab } from '../present/fl
 import { AudioPlayer, Haptics } from '../audio/player';
 import { h, icon } from './dom';
 import { ICONS } from './icons';
-import { settingsSheet, isSheetOpen, closeAnySheet } from './sheets';
+import { settingsSheet, patchNotesSheet, isSheetOpen, closeAnySheet } from './sheets';
+import { PATCH_NOTES } from '../present/patchNotes';
+import { css } from '../present/theme';
+import { fontFor } from '../present/measure';
 import { exportSave } from '../storage/save';
 import { isInstalled, isIos, isStorageKept, keepStorage } from '../storage/device';
 import type { Hint } from '../core/career';
@@ -46,6 +49,15 @@ export class Shell {
   private readonly settingsBtn: HTMLButtonElement;
   private readonly dispatchBtn: HTMLButtonElement;
   private readonly shareBtn: HTMLButtonElement;
+  private readonly photoBtn: HTMLButtonElement;
+  /** The patch notes are open over the settings: closing the settings sheet is not leaving them. */
+  private notesOpen = false;
+  /** Adaptive resolution: the device pixel ratio in use, and how the frames have been going. */
+  private dprCap = 2;
+  private frameAvg = 1 / 60;
+  private frameJitter = 0;
+  private slowFor = 0;
+  private fastFor = 0;
   private readonly leaveBtn: HTMLButtonElement;
   private readonly leaveLabel: HTMLElement;
   /** A challenge link that arrived mid-shift: it opens once the shift is over. */
@@ -73,7 +85,7 @@ export class Shell {
 
   constructor(
     private readonly app: HTMLElement,
-    canvas: HTMLCanvasElement,
+    private readonly canvas: HTMLCanvasElement,
     private readonly layers: HTMLElement,
   ) {
     this.drawer = new CanvasDrawer(canvas);
@@ -111,6 +123,8 @@ export class Shell {
     for (const b of [this.settingsBtn, this.dispatchBtn]) b.addEventListener('pointerdown', (e) => e.stopPropagation());
     // Under a result: send this shift to a friend. In a challenge or trial: leave it.
     this.shareBtn = h('button', { class: 'btn glass run-btn', type: 'button', onclick: () => void this.share() }, icon(ICONS.share), h('span', {}, 'Challenge a friend'));
+    // Under any result: the picture on the screen, to send or keep.
+    this.photoBtn = h('button', { class: 'btn glass run-btn', type: 'button', 'aria-label': 'Share a picture of this result', onclick: () => void this.sharePicture() }, icon(ICONS.camera), h('span', {}, 'Picture'));
     this.leaveLabel = h('span', {}, 'Leave');
     this.leaveBtn = h('button', { class: 'btn glass run-btn', type: 'button', 'aria-keyshortcuts': 'Escape', onclick: () => this.session.leaveSpecial() }, icon(ICONS.close), this.leaveLabel);
     // Multiplayer: a friend's code or your own; the match takes over the canvas.
@@ -127,7 +141,7 @@ export class Shell {
     this.session.onVersus = () => {
       if (!isSheetOpen()) this.versus.open();
     };
-    const runBar = h('div', { class: 'run-bar' }, this.shareBtn, this.leaveBtn);
+    const runBar = h('div', { class: 'run-bar' }, this.photoBtn, this.shareBtn, this.leaveBtn);
     // After a match: Ready (everyone taps it, then the next round starts), and for the host a
     // way back to the lobby to change the format or the bots.
     this.againLabel = h('span', {}, 'Play again');
@@ -151,7 +165,7 @@ export class Shell {
       h('button', { class: 'react-btn', type: 'button', 'aria-label': `React ${r}`, 'aria-keyshortcuts': String(i + 1), onclick: () => this.versus.react(r) }, REACTION_EMOJI[r]),
     );
     this.reactBar = h('div', { class: 'react-bar', role: 'group', 'aria-label': 'Reactions' }, ...reactButtons, this.revengeBtn);
-    for (const b of [this.settingsBtn, this.dispatchBtn, this.shareBtn, this.leaveBtn, this.againBtn, this.lobbyBtn, quitBtn, this.reactBar]) b.addEventListener('pointerdown', (e) => e.stopPropagation());
+    for (const b of [this.settingsBtn, this.dispatchBtn, this.shareBtn, this.photoBtn, this.leaveBtn, this.againBtn, this.lobbyBtn, quitBtn, this.reactBar]) b.addEventListener('pointerdown', (e) => e.stopPropagation());
     app.append(this.settingsBtn, this.dispatchBtn, runBar, this.reactBar, this.versusBar);
     this.detail = new DetailSheet(
       app,
@@ -225,10 +239,12 @@ export class Shell {
     const versusKey = match
       ? [match.isOver, match.isOut, match.canRevenge, lobby.canReady, lobby.isReady, lobby.enoughForNext, lobby.nextLabel, lobby.isHost].map(String).join(',')
       : '';
-    const key = `${screen.k}|${selected}|${JSON.stringify(badges)}|${s.world.shift.phase}|${s.special?.k ?? ''}|${s.shareable ? 1 : 0}|${match ? 1 : 0}|${versusKey}`;
+    const key = `${screen.k}|${selected}|${JSON.stringify(badges)}|${s.world.shift.phase}|${s.special?.k ?? ''}|${s.shareable ? 1 : 0}|${match ? 1 : 0}|${versusKey}|${s.save.settings.leftHanded}|${s.notesUnread}`;
     if (!force && key === this.chromeKey) return;
     this.chromeKey = key;
     this.app.dataset.versus = match ? 'on' : 'off';
+    this.app.dataset.hand = s.save.settings.leftHanded ? 'left' : 'right';
+    this.settingsBtn.classList.toggle('has-news', s.notesUnread);
     const ready = lobby.isReady;
     this.againBtn.classList.toggle('show', lobby.canReady);
     this.againBtn.disabled = lobby.canReady && !lobby.enoughForNext;
@@ -256,6 +272,7 @@ export class Shell {
     this.dispatchBtn.classList.toggle('show', screen.k === 'playing');
     const onGame = screen.k === 'ready' || screen.k === 'result';
     this.shareBtn.classList.toggle('show', screen.k === 'result' && s.shareable !== null);
+    this.photoBtn.classList.toggle('show', screen.k === 'result' && !match);
     this.leaveBtn.classList.toggle('show', onGame && s.special !== null);
     this.leaveLabel.textContent = s.special?.k === 'trial' ? 'Leave trial' : 'Leave challenge';
     if (screen.k === 'settings' && !isSheetOpen()) this.showSettingsSheet();
@@ -298,6 +315,90 @@ export class Shell {
       s.showNotice(S.run.copied);
     } catch {
       window.prompt('Copy this link', url);
+    }
+  }
+
+  /**
+   * The result as a picture: what the screen shows, with the game's name under it. A phone
+   * hands it to the share sheet (with the challenge link when there is one); elsewhere it is
+   * saved as a file.
+   */
+  private async sharePicture(): Promise<void> {
+    const s = this.session;
+    const blob = await this.picture();
+    if (!blob) return;
+    const day = new Date().toISOString().slice(0, 10);
+    const file = new File([blob], `car-game-${day}.png`, { type: 'image/png' });
+    const touch = window.matchMedia('(pointer: coarse)').matches;
+    if (touch && typeof navigator.canShare === 'function' && navigator.canShare({ files: [file] })) {
+      const url = s.shareLink(location.origin + location.pathname);
+      try {
+        await navigator.share({ files: [file], title: 'Car Game', text: S.run.pictureText, ...(url ? { url } : {}) });
+      } catch {
+        /* cancelled */
+      }
+      return;
+    }
+    const href = URL.createObjectURL(file);
+    const link = h('a', { href, download: file.name });
+    document.body.append(link);
+    link.click();
+    link.remove();
+    window.setTimeout(() => URL.revokeObjectURL(href), 1000);
+    s.showNotice(S.run.pictureSaved);
+  }
+
+  /** The canvas as it stands, and a strip under it with the game's name and where to play it. */
+  private picture(): Promise<Blob | null> {
+    const src = this.canvas;
+    const dpr = this.drawer.dpr;
+    const strip = Math.round(44 * dpr);
+    const out = document.createElement('canvas');
+    out.width = src.width;
+    out.height = src.height + strip;
+    const ctx = out.getContext('2d');
+    if (!ctx) return Promise.resolve(null);
+    ctx.drawImage(src, 0, 0);
+    ctx.fillStyle = css('background');
+    ctx.fillRect(0, src.height, out.width, strip);
+    ctx.fillStyle = css('accent');
+    ctx.font = fontFor(Math.round(15 * dpr), true);
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(`Car Game · ${location.host}`, out.width / 2, src.height + strip / 2);
+    return new Promise((resolve) => out.toBlob(resolve, 'image/png'));
+  }
+
+  /**
+   * Adaptive resolution. Frames that keep coming slow and uneven (a device that cannot keep
+   * up) step the pixel ratio down, 2 → 1.5 → 1; a long smooth stretch steps it back up. A
+   * steady 30 fps (a phone saving power) is left alone: that is the screen, not the game.
+   */
+  private adaptQuality(delta: number): void {
+    if (delta <= 0 || delta > 0.25 || document.hidden) return;
+    this.frameAvg += (delta - this.frameAvg) * 0.05;
+    this.frameJitter += (Math.abs(delta - this.frameAvg) - this.frameJitter) * 0.05;
+    const struggling = this.frameAvg > 1 / 45 && (this.frameJitter > 0.004 || this.frameAvg > 1 / 25);
+    if (struggling) {
+      this.slowFor += delta;
+      this.fastFor = 0;
+    } else if (this.frameAvg < 1 / 57) {
+      this.fastFor += delta;
+      this.slowFor = 0;
+    } else {
+      this.slowFor = 0;
+      this.fastFor = 0;
+    }
+    const device = window.devicePixelRatio || 1;
+    const inUse = Math.min(device, this.dprCap);
+    if (this.slowFor > 2 && inUse > 1) {
+      this.dprCap = Math.max(1, inUse - 0.5);
+      this.slowFor = 0;
+      this.resize();
+    } else if (this.fastFor > 12 && this.dprCap < Math.min(2, device)) {
+      this.dprCap = Math.min(2, this.dprCap + 0.5);
+      this.fastFor = 0;
+      this.resize();
     }
   }
 
@@ -365,7 +466,20 @@ export class Shell {
   private showSettingsSheet(): void {
     const s = this.session;
     this.closeSettings = settingsSheet(this.layers, s.save.settings, {
-      changed: () => s.saveSettings(),
+      changed: () => {
+        s.saveSettings();
+        this.syncChrome(true);
+      },
+      notesUnread: s.notesUnread,
+      // The notes open over the settings; closing them brings the settings back.
+      openNotes: () => {
+        this.notesOpen = true;
+        s.markNotesRead();
+        patchNotesSheet(this.layers, PATCH_NOTES, () => {
+          this.notesOpen = false;
+          this.syncChrome(true);
+        });
+      },
       reset: () => s.resetProgress(),
       exportText: () => exportSave(s.save),
       importSave: (save) => s.importProgress(save),
@@ -377,7 +491,7 @@ export class Shell {
         : null,
       closed: () => {
         this.closeSettings = null;
-        s.perform({ k: 'closeSettings' });
+        if (!this.notesOpen) s.perform({ k: 'closeSettings' });
       },
     });
   }
@@ -508,8 +622,9 @@ export class Shell {
     };
     const w = window.innerWidth;
     const hgt = window.innerHeight;
-    // Above 2× the eye sees no difference, but a 3× phone would fill 2.25 times the pixels.
-    this.drawer.resize(w, hgt, Math.min(window.devicePixelRatio || 1, 2));
+    // Above 2× the eye sees no difference, but a 3× phone would fill 2.25 times the pixels;
+    // a device that struggles gets less (`adaptQuality`).
+    this.drawer.resize(w, hgt, Math.min(window.devicePixelRatio || 1, this.dprCap));
     this.drawer.offset = v(this.safe.left, this.safe.top);
     this.size = v(Math.max(1, w - this.safe.left - this.safe.right), Math.max(1, hgt - this.safe.top - this.safe.bottom));
   }
@@ -526,6 +641,7 @@ export class Shell {
     // A multiplayer match owns the canvas; the career world waits where it was.
     const list = match ? match.frame(delta, this.size, s.reduceMotion) : s.frame(delta, actions, this.size, TAB_HEIGHT);
     this.drawer.draw(list);
+    this.adaptQuality(delta);
     this.detail.update(s.detail);
     s.sheetInset = this.detail.inset;
     this.audio.updateMusic(match ? match.music : s.musicMix, s.save.settings.sound, Math.min(delta, 0.1));

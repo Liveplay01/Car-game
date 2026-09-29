@@ -23,21 +23,32 @@ export const MenuKit = {
   },
 
   /** Large title on the left, the balance as a chip on the right. */
-  header(list: RenderList, title: string, money: string, viewport: Vec2): void {
-    const y = Metrics.sceneInsets.top - 22;
-    // Aligned with the page's content column, so on a wide screen it does not drift to the edges.
-    const inset = Math.max(MenuKit.margin, (viewport.x - 460) / 2);
+  /** `swell` > 1 grows the money chip for a moment (coins landing in it). */
+  header(list: RenderList, title: string, money: string, viewport: Vec2, swell = 1): void {
+    const y = MenuKit.headerY;
     const tag = list.tag;
     list.tag = 'headerTitle';
-    list.s(text(title, v(inset, y), MenuKit.titleSize, 'leading', 'bold'), 'primary');
+    list.s(text(title, v(MenuKit.headerInset(viewport), y), MenuKit.titleSize, 'leading', 'bold'), 'primary');
     list.tag = 'headerChip';
     const size = 15;
-    const width = size * 0.78 + size * 0.34 + textWidth(money, size) + 26;
-    const chip = v(viewport.x - inset - width / 2, y);
-    list.s(rect(chip, v(width, 32), 16), 'controlFill');
-    moneyTag(list, money, chip, size, 'center', 'primary');
+    const chip = MenuKit.headerChip(viewport, money);
+    list.s(rect(chip, v(MenuKit.chipWidth(money) * swell, 32 * swell), 16 * swell), 'controlFill');
+    moneyTag(list, money, chip, size * swell, 'center', 'primary');
     list.tag = tag;
   },
+
+  get headerY(): number {
+    return Metrics.sceneInsets.top - 22;
+  },
+
+  /** Aligned with the page's content column, so on a wide screen it does not drift to the edges. */
+  headerInset: (viewport: Vec2): number => Math.max(MenuKit.margin, (viewport.x - 460) / 2),
+
+  chipWidth: (money: string): number => 15 * 0.78 + 15 * 0.34 + textWidth(money, 15) + 26,
+
+  /** Where the header's money chip sits (coins fly there). */
+  headerChip: (viewport: Vec2, money: string): Vec2 =>
+    v(viewport.x - MenuKit.headerInset(viewport) - MenuKit.chipWidth(money) / 2, MenuKit.headerY),
 
   /** A segmented control: a sunk track and a raised thumb that can slide. */
   segmented(list: RenderList, labels: string[], chosen: number, thumb: number, r: Rect, locked: boolean[] = []): void {

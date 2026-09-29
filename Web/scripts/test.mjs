@@ -13,7 +13,7 @@ const load = (path) => server.ssrLoadModule(path);
 const { World } = await load('/src/core/world.ts');
 const { baseConfig } = await load('/src/core/config.ts');
 const { forLevel } = await load('/src/core/levels.ts');
-const { newSave, newCareer } = await load('/src/core/career.ts');
+const { newSave, newCareer, Careers } = await load('/src/core/career.ts');
 const { encodeChallenge, decodeChallenge, challengeOf } = await load('/src/core/challenge.ts');
 const { loadSave, writeSave, exportSave, parseImport } = await load('/src/storage/save.ts');
 const { NoticeQueue } = await load('/src/present/notices.ts');
@@ -21,6 +21,7 @@ const { bookShift } = await load('/src/present/booking.ts');
 const { S } = await load('/src/present/strings.ts');
 const { Unlocks } = await load('/src/core/unlocks.ts');
 const { sightings, shelfEntries, museumId } = await load('/src/core/museum.ts');
+const { tapOffset, noteTap, averageOffset } = await load('/src/core/timing.ts');
 
 // MARK: Rules
 
@@ -278,4 +279,86 @@ test('every condition has a short first-meeting line', () => {
     assert.ok(!/undefined|NaN/.test(title + line), `${museumId(e)}: ${line}`);
     assert.ok(line.length <= 130, `${museumId(e)} is ${line.length} characters: ${line}`);
   }
+});
+
+test('every special vehicle and boss has a short first-meeting notice', () => {
+  for (const e of [...shelfEntries(0), ...shelfEntries(1)]) {
+    const notice = S.intro.meet(e);
+    assert.match(notice, /^New · \S.* · \S/, museumId(e));
+    assert.ok(notice.length <= 60, `${museumId(e)} is ${notice.length} characters: ${notice}`);
+  }
+});
+
+test('nothing counts as met while the shift waits for its first tap', () => {
+  const world = new World(forLevel(baseConfig, 20, 3), 3, { startsOnFirstTap: true });
+  for (let i = 0; i < 120 * 20; i++) world.step();
+  assert.equal(world.shift.phase, 'waiting');
+  assert.deepEqual(sightings(world), []);
+});
+
+// MARK: Timing, maps, patch notes
+
+
+test('the timing is how far the tap was from the middle of the gap', () => {
+  const ms = (x) => Math.round(x * 1000);
+  assert.equal(ms(tapOffset(0.3, 0.9, baseConfig)), -300, 'early');
+  assert.equal(ms(tapOffset(0.8, 0.4, baseConfig)), 200, 'late');
+  assert.equal(ms(tapOffset(0.5, 0.5, baseConfig)), 0);
+  assert.equal(tapOffset(Infinity, 0.5, baseConfig), null, 'an open ring says nothing');
+  assert.equal(tapOffset(2, 2, baseConfig), null, 'a gap wider than timingMaxGap says nothing');
+});
+
+test('the Records keep the last merges and average them once there are enough', () => {
+  const career = newCareer();
+  noteTap(career, 0.3, 0.9, baseConfig);
+  assert.deepEqual(career.tapOffsets, [-300]);
+  assert.equal(averageOffset(career, baseConfig), null);
+  for (let i = 0; i < baseConfig.timingSamples + 10; i++) noteTap(career, 0.45, 0.55, baseConfig);
+  assert.equal(career.tapOffsets.length, baseConfig.timingSamples);
+  assert.equal(averageOffset(career, baseConfig), -50);
+});
+
+test('every map skin from the chests has its place, colour and name', async () => {
+  const { COSMETICS } = await load('/src/core/loot.ts');
+  const { MapTheme } = await load('/src/present/mapThemes.ts');
+  const { Skins } = await load('/src/present/skins.ts');
+  for (const item of COSMETICS.filter((x) => x.kind === 'mapSkin')) {
+    assert.ok(MapTheme.from(item.id), `${item.id} has no MapTheme`);
+    assert.ok(Skins.color(item.id), `${item.id} has no colour`);
+    assert.notEqual(S.shop.item(item.id), item.id, `${item.id} has no name`);
+  }
+});
+
+test('patch notes are newest first, each with a unique id and something to say', async () => {
+  const { PATCH_NOTES, latestNote } = await load('/src/present/patchNotes.ts');
+  const ids = PATCH_NOTES.map((n) => n.id);
+  assert.equal(new Set(ids).size, ids.length);
+  assert.equal(latestNote(), ids[0]);
+  for (const n of PATCH_NOTES) assert.ok(n.title && n.date && n.items.length > 0, n.id);
+});
+
+// MARK: Traffic
+
+test('a steady stream of the player\'s cars does not starve the other arms (long Unlimited)', () => {
+  const career = newCareer();
+  const cfg = Careers.shiftConfig(career, 'unlimited', baseConfig, 4242);
+  // The shift must not end on its own: only the traffic is looked at.
+  cfg.maxStrikes = 1e9;
+  cfg.maxPoliceCrashes = 1e9;
+  cfg.criminalChance = 0;
+  const world = new World(cfg, 4242, { startsOnFirstTap: false });
+  const entered = new Set();
+  let late = 0;
+  for (let i = 0; i < 120 * 300; i++) {
+    // Sends a car whenever it would not crash at once: the stream a spamming player makes.
+    if (world.queue.isReady && world.predictedMergeGap(world.layout.player, 0, 40) > 0) world.tap(world.time);
+    world.step();
+    world.takeEvents();
+    for (const v of world.vehicles) {
+      if (v.owner !== 'ai' || v.phase.kind !== 'merging' || entered.has(v.id)) continue;
+      entered.add(v.id);
+      if (world.time > 240) late++;
+    }
+  }
+  assert.ok(late >= 5, `only ${late} cars of the traffic joined the ring in the fifth minute`);
 });

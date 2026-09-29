@@ -82,5 +82,11 @@ docker build -t car-game . ; docker run -p 5050:5050 car-game   # Container wie 
   (`present/museum.ts`) eingetragen sind. Ein gewöhnlicher Fahrzeugtyp kommt in `ORDINARY`.
   Eine ganz neue Inhaltsart bekommt ein eigenes Regal (`MUSEUM_SHELVES`); alte Spielstände
   erhalten dafür automatisch, was sie schon gesehen haben müssen (`museumShelves`).
+- **Patch Notes (Leo, 29.09.2026):** Jede größere Neuerung und jeder spürbare Bugfix bekommt
+  einen Eintrag in `Web/src/present/patchNotes.ts` (Settings → What's new): Englisch, für
+  Spieler geschrieben, neueste zuerst, eindeutige `id`. Eine neue erste `id` zeigt den Punkt
+  am Einstellungsknopf.
 - Vor jedem Commit: `npm test` und `npm run build` müssen grün sein.
 - Das Icon-Original liegt in `Web/icon/` (`python Web/icon/make_icon.py`).
+- Die Casino-Klänge entstehen in `Web/audio-src/make_casino_sounds.py` (numpy, scipy, ffmpeg)
+  und landen als `.m4a` in `Web/public/audio/sounds/`.

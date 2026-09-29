@@ -10,8 +10,24 @@ import { rotated } from './carArt';
  * its own plants grow, a centrepiece sits above the ring, and some maps bring weather of
  * their own. The ground stays dark so cars, HUD and effects read the same on every map.
  */
-export type MapTheme = 'dusk' | 'sand' | 'neon' | 'forest' | 'autumn' | 'sakura' | 'aurora' | 'ember' | 'meadow' | 'tropic' | 'snowfall' | 'cosmos';
-export const MAP_THEMES: MapTheme[] = ['dusk', 'sand', 'neon', 'forest', 'autumn', 'sakura', 'aurora', 'ember', 'meadow', 'tropic', 'snowfall', 'cosmos'];
+export type MapTheme =
+  | 'dusk'
+  | 'sand'
+  | 'neon'
+  | 'forest'
+  | 'autumn'
+  | 'sakura'
+  | 'aurora'
+  | 'ember'
+  | 'meadow'
+  | 'tropic'
+  | 'snowfall'
+  | 'cosmos'
+  | 'harbour'
+  | 'vineyard'
+  | 'grove'
+  | 'abyss';
+export const MAP_THEMES: MapTheme[] = ['dusk', 'sand', 'neon', 'forest', 'autumn', 'sakura', 'aurora', 'ember', 'meadow', 'tropic', 'snowfall', 'cosmos', 'harbour', 'vineyard', 'grove', 'abyss'];
 
 const hash = (i: number, salt: number): number => unitHash(i, salt);
 
@@ -43,6 +59,10 @@ export const MapTheme = {
       tropic: 'groundTropic',
       snowfall: 'groundSnow',
       cosmos: 'groundCosmos',
+      harbour: 'groundHarbour',
+      vineyard: 'groundVineyard',
+      grove: 'groundGrove',
+      abyss: 'groundAbyss',
     } as const)[theme];
   },
 
@@ -168,6 +188,53 @@ export const MapTheme = {
         }
         break;
       }
+      case 'harbour':
+        // Wet concrete slabs of the quay, and the harbour lights on the ground.
+        for (let i = 0; i < 10; i++) soft(spot(i, 601), 34 + 40 * hash(i, 603), 'surface', 0.08);
+        for (let i = 0; i < 36; i++) {
+          const at = spot(i, 605, 16);
+          if (onScreen(at, 3, cam)) add1(circle(at, 1.6), 'mapHarbour', 0.18 + 0.15 * hash(i, 607));
+        }
+        break;
+      case 'vineyard':
+        // Rows of vines across the hills, grapes hanging on some of them.
+        for (let i = 0; i < 10; i++) {
+          const center = spot(i, 611, 60, 320);
+          const along = fromAngle(hash(i, 613) * Math.PI);
+          const across = left(along);
+          for (let row = -2; row <= 2; row++) {
+            const mid = add(center, mul(across, row * 9));
+            if (!onScreen(mid, 40, cam)) continue;
+            list.w(line(sub(mid, mul(along, 30)), add(mid, mul(along, 30)), 3), 'mapCypress', 0.55);
+            for (let g = 0; g < 4; g++) {
+              if (hash(i * 31 + row * 7 + g, 615) < 0.6) add1(circle(add(mid, mul(along, -24 + g * 16)), 1.4), 'mapVineyard', 0.8);
+            }
+          }
+        }
+        break;
+      case 'grove':
+        // Moss, and glowing spores on the ground that breathe in and out.
+        for (let i = 0; i < 16; i++) soft(spot(i, 621), 24 + 36 * hash(i, 623), 'mapForest', 0.05);
+        for (let i = 0; i < 60; i++) {
+          const at = spot(i, 625, 10);
+          if (!onScreen(at, 2, cam)) continue;
+          const glow = time !== null ? 0.5 + 0.5 * Math.sin(time * (0.8 + hash(i, 627)) + i) : 0.7;
+          add1(circle(at, 0.8 + 0.6 * hash(i, 629)), 'mapGrove', 0.25 + 0.5 * glow);
+        }
+        break;
+      case 'abyss':
+        // Sand ripples on the sea floor, and light that plays down through the water.
+        for (let i = 0; i < 12; i++) {
+          const center = spot(i, 631, 40, 320);
+          if (!onScreen(center, 60, cam)) continue;
+          const start = hash(i, 633) * TAU;
+          for (let r = 0; r < 3; r++) list.w(arc(center, 20 + r * 9, 1, start, start + 1.2), 'mapAbyss', 0.08);
+        }
+        for (let i = 0; i < 8; i++) {
+          const pulse = time !== null ? 0.5 + 0.5 * Math.sin(time * 0.6 + i * 1.3) : 0.5;
+          soft(spot(i, 635, 20, 340), 30 + 20 * hash(i, 637), 'mapAbyss', 0.035 * pulse);
+        }
+        break;
     }
     const pond = MapTheme.pondCenter(world.layout);
     if (theme !== 'sakura' && pond && onScreen(pond, MapTheme.pondRadius * 2, cam)) MapTheme.addCentrepiece(list, theme, pond, time);
@@ -266,6 +333,14 @@ export const MapTheme = {
         return Centre.igloo(list, at);
       case 'ember':
         return Centre.crater(list, at, time);
+      case 'harbour':
+        return Centre.dock(list, at, time);
+      case 'vineyard':
+        return Centre.villa(list, at, time);
+      case 'grove':
+        return Centre.fairyRing(list, at, time);
+      case 'abyss':
+        return Centre.shipwreck(list, at, time);
       case 'sakura':
         return;
     }
@@ -292,11 +367,9 @@ export const MapTheme = {
   /** What grows where a tree would stand. */
   addPlant(list: RenderList, theme: MapTheme | null, center: Vec2, size: number, index: number): void {
     const a = (p: ReturnType<typeof circle>, c: ColorToken, o = 1): void => list.w(p, c, o);
-    if (!theme) {
-      a(circle(center, size), 'island', 0.9);
-      return;
-    }
     if (!onScreen(center, size * 2.5, list.camera)) return;
+    // The plain city: a real tree, the one players asked for (29.09.2026).
+    if (!theme) return Plants.tree(list, center, size, index);
     switch (theme) {
       case 'sand': {
         const height = size * 2.2;
@@ -318,8 +391,21 @@ export const MapTheme = {
         break;
       }
       case 'autumn':
-        a(circle(center, size * 1.1), 'mapAutumn', 0.75);
-        a(circle(add(center, v(size * 0.3, size * 0.25)), size * 0.6), 'hazard', 0.4);
+        Plants.tree(list, center, size * 1.05, index, ['fireDeep', 'mapAutumn', 'hazard'], 0.8);
+        break;
+      case 'harbour':
+        Plants.containers(list, center, size, index);
+        break;
+      case 'vineyard':
+        if (index % 3 === 0) Plants.tree(list, center, size * 0.8, index, ['mapCypress', 'skinFern', 'skinSilver'], 0.8);
+        else Plants.cypress(list, center, size);
+        break;
+      case 'grove':
+        Plants.mushroom(list, center, size, index);
+        break;
+      case 'abyss':
+        if (index % 3 === 1) Plants.anemone(list, center, size, index);
+        else Plants.coral(list, center, size, index);
         break;
       case 'sakura':
         if (index % 6 === 3) Plants.lantern(list, center, size);
@@ -380,7 +466,7 @@ export const MapTheme = {
         [-1, 1].forEach((side, sideIndex) => {
           index++;
           const isAccent = (step + sideIndex) % 3 === 1;
-          const isLight = (isAccent && (theme === 'sakura' || theme === 'snowfall' || theme === 'dusk')) || theme === 'cosmos';
+          const isLight = (isAccent && (theme === 'sakura' || theme === 'snowfall' || theme === 'dusk' || theme === 'harbour')) || theme === 'cosmos';
           const size = isLight ? 6 : 8.5 + 3.5 * hash(index, 381);
           const at = add(mul(out, distance + 6 * hash(index, 382)), mul(left(out), side * (layout.laneWidth + (isLight ? 14 : 20) + 4 * hash(index, 383))));
           if (!onScreen(at, size * 2.5, list.camera)) return;
@@ -405,8 +491,17 @@ export const MapTheme = {
             case 'meadow':
               Plants.flowerBush(list, at, size * 0.85, index);
               break;
+            case 'harbour':
+              if (isAccent) Plants.lamp(list, at, size, 'mapHarbour');
+              else Plants.bollard(list, at, size);
+              break;
+            case 'vineyard':
+              Plants.cypress(list, at, size * 0.8);
+              break;
             case 'sand':
             case 'ember':
+            case 'grove':
+            case 'abyss':
               if (isAccent) MapTheme.addPlant(list, theme, at, size * 0.8, index);
               break;
             default:
@@ -456,6 +551,31 @@ export const MapTheme = {
         }
         return;
       }
+      case 'grove':
+        // Spores rise slowly, glowing, the way the mushrooms below do.
+        return drift(list, 26, time, vp, ['mapGrove', 'primary', 'mapGrove'], 3, -16, 6, 18, true, 561);
+      case 'abyss': {
+        drift(list, 24, time, vp, ['primary', 'mapAbyss'], 3.2, -26, 4, 10, true, 571);
+        // A few jellyfish pump their way up through the water, trailing their tentacles.
+        const span = vp.y + 120;
+        for (let j = 0; j < 3; j++) {
+          const phase = hash(j, 583) * TAU;
+          const rise = time * 8 * (0.6 + 0.4 * hash(j, 584));
+          const y = span - ((hash(j, 582) * span + rise) % span) - 60;
+          const at = v(hash(j, 581) * vp.x + Math.sin(time * 0.2 + phase) * 40, y);
+          const pulse = 0.5 + 0.5 * Math.sin(time * 1.6 + phase);
+          const bell = 9 + 3 * pulse;
+          list.s(circle(at, bell * 2.2), 'mapAbyss', 0.05);
+          list.s(circle(at, bell), 'mapAbyss', 0.22);
+          list.s(circle(v(at.x, at.y - bell * 0.2), bell * 0.6), 'primary', 0.12);
+          for (let t = 0; t < 4; t++) {
+            const x = at.x + (t - 1.5) * bell * 0.45;
+            const sway = Math.sin(time * 2 + t + phase) * 3;
+            list.s(line(v(x, at.y + bell * 0.6), v(x + sway, at.y + bell * 0.6 + 16 + 4 * pulse), 1), 'mapAbyss', 0.25);
+          }
+        }
+        return;
+      }
       default:
         return;
     }
@@ -489,6 +609,107 @@ function drift(list: RenderList, count: number, time: number, vp: Vec2, colors: 
 }
 
 const Plants = {
+  /**
+   * A tree from above: its shadow, a lobed crown in three tones (`palette`: shade, leaf,
+   * light), and a bright clump where the light from the upper left catches it.
+   */
+  tree(list: RenderList, center: Vec2, size: number, index: number, palette: [ColorToken, ColorToken, ColorToken] = ['treeShade', 'treeLeaf', 'treeLight'], opacity = 1): void {
+    const turn = hash(index, 701) * TAU;
+    list.w(circle(add(center, v(size * 0.45, -size * 0.45)), size * 1.15), 'shadow', 0.8 * opacity);
+    const lobes = 5 + (index % 3);
+    for (let lobe = 0; lobe < lobes; lobe++) {
+      const k = hash(index * 7 + lobe, 703);
+      list.w(circle(add(center, mul(fromAngle(turn + (lobe * TAU) / lobes), size * (0.45 + 0.12 * k))), size * (0.46 + 0.15 * k)), palette[0], opacity);
+    }
+    list.w(circle(center, size * 0.74), palette[1], opacity);
+    // Clumps of leaves inside the crown, each catching a little light, so it is no flat disc.
+    for (let lobe = 0; lobe < 3; lobe++) {
+      const k = hash(index * 5 + lobe, 705);
+      const clump = add(center, mul(fromAngle(turn + 0.9 + lobe * 2.1), size * (0.32 + 0.1 * k)));
+      list.w(circle(clump, size * (0.34 + 0.08 * k)), palette[1], opacity);
+      list.w(circle(add(clump, v(-size * 0.08, size * 0.08)), size * (0.2 + 0.05 * k)), palette[2], 0.28 * opacity);
+    }
+    const lit = add(center, v(-size * 0.28, size * 0.3));
+    list.w(circle(lit, size * 0.34), palette[2], 0.9 * opacity);
+    list.w(circle(add(lit, v(size * 0.18, -size * 0.1)), size * 0.2), palette[2], 0.7 * opacity);
+  },
+  /** A cypress from above: a small dark crown and the long shadow of a tall, slim tree. */
+  cypress(list: RenderList, center: Vec2, size: number): void {
+    const away = fromAngle(-Math.PI / 4);
+    list.w(rect(add(center, mul(away, size * 1.3)), v(size * 2.6, size * 0.75), size * 0.37, -Math.PI / 4), 'shadow', 0.8);
+    list.w(circle(center, size * 0.6), 'mapCypress', 0.95);
+    list.w(circle(add(center, v(-size * 0.15, size * 0.15)), size * 0.35), 'treeLight', 0.6);
+  },
+  /** A stack of shipping containers on the quay, two rows, in the colours of the lines. */
+  containers(list: RenderList, center: Vec2, size: number, index: number): void {
+    const turn = ((index % 2) * Math.PI) / 2 + (hash(index, 711) - 0.5) * 0.2;
+    const along = fromAngle(turn);
+    const across = left(along);
+    const colors: ColorToken[] = ['skinOcean', 'skinRuby', 'mapHarbour', 'skinTeal', 'skinCopper'];
+    list.w(rect(add(center, v(size * 0.4, -size * 0.4)), v(size * 2.6, size * 1.9), 1, turn), 'shadow', 0.8);
+    for (let i = 0; i < 3; i++) {
+      for (let j = 0; j < 2; j++) {
+        if (hash(index * 11 + i * 3 + j, 713) < 0.2) continue;
+        const at = add(center, add(mul(along, (i - 1) * size * 0.85), mul(across, (j - 0.5) * size * 0.9)));
+        list.w(rect(at, v(size * 0.8, size * 0.82), 0.6, turn), colors[Math.floor(hash(index * 13 + i * 2 + j, 715) * colors.length)], 0.75);
+        list.w(line(sub(at, mul(along, size * 0.3)), add(at, mul(along, size * 0.3)), 0.5), 'background', 0.35);
+      }
+    }
+  },
+  bollard(list: RenderList, center: Vec2, size: number): void {
+    list.w(circle(add(center, v(1, -1)), size * 0.3), 'shadow', 0.8);
+    list.w(circle(center, size * 0.28), 'wreck', 0.95);
+    list.w(circle(center, size * 0.15), 'stone', 0.9);
+  },
+  /** A mushroom from above: a round cap with pale spots, the glowing ones lighting the ground. */
+  mushroom(list: RenderList, center: Vec2, size: number, index: number): void {
+    const caps: ColorToken[] = ['mapGrove', 'skinRose', 'skinSunburst', 'skinHolo'];
+    const cap = caps[index % caps.length];
+    if (cap === 'mapGrove' || cap === 'skinHolo') list.w(circle(center, size * 2), cap, 0.07);
+    list.w(circle(add(center, v(size * 0.35, -size * 0.35)), size * 0.95), 'shadow', 0.8);
+    list.w(circle(center, size * 0.9), cap, 0.9);
+    list.w(circle(add(center, v(size * 0.2, -size * 0.2)), size * 0.62), 'background', 0.18);
+    for (let s = 0; s < 5; s++) {
+      const at = add(center, mul(fromAngle(hash(index * 5 + s, 721) * TAU), size * 0.55 * hash(index * 5 + s, 723)));
+      list.w(circle(at, size * (0.09 + 0.06 * hash(index * 5 + s, 725))), 'primary', 0.85);
+    }
+    if (index % 2 === 0) {
+      const at = add(center, mul(fromAngle(hash(index, 727) * TAU), size * 1.2));
+      list.w(circle(at, size * 0.4), cap, 0.85);
+      list.w(circle(add(at, v(-size * 0.08, size * 0.08)), size * 0.1), 'primary', 0.8);
+    }
+  },
+  /** A coral fan on the sea floor: branches opening from one foot, each forking, round at the tips. */
+  coral(list: RenderList, center: Vec2, size: number, index: number): void {
+    const colors: ColorToken[] = ['skinCoral', 'skinRose', 'mapAbyss', 'skinSunburst'];
+    const color = colors[index % colors.length];
+    const opens = hash(index, 731) * TAU;
+    list.w(circle(center, size * 1.2), color, 0.05);
+    const foot = sub(center, mul(fromAngle(opens), size * 0.5));
+    for (let b = 0; b < 4; b++) {
+      const dir = opens + (b - 1.5) * 0.45 + (hash(index * 5 + b, 733) - 0.5) * 0.2;
+      const mid = add(foot, mul(fromAngle(dir), size * 0.65));
+      list.w(line(foot, mid, size * 0.2), color, 0.85);
+      for (const fork of [-0.4, 0.35]) {
+        const tip = add(mid, mul(fromAngle(dir + fork), size * (0.45 + 0.2 * hash(index * 9 + b, 735))));
+        list.w(line(mid, tip, size * 0.13), color, 0.85);
+        list.w(circle(tip, size * 0.11), color, 0.95);
+      }
+    }
+    list.w(circle(foot, size * 0.22), color, 0.9);
+  },
+  /** A sea anemone: a soft body and short, thick tentacles with round tips. */
+  anemone(list: RenderList, center: Vec2, size: number, index: number): void {
+    const color: ColorToken = index % 2 === 0 ? 'mapAbyss' : 'skinRose';
+    list.w(circle(center, size * 1.4), color, 0.05);
+    for (let t = 0; t < 10; t++) {
+      const tip = add(center, mul(fromAngle((t / 10) * TAU + hash(index, 741)), size * (0.65 + 0.12 * hash(index * 10 + t, 743))));
+      list.w(line(center, tip, size * 0.22), color, 0.6);
+      list.w(circle(tip, size * 0.16), color, 0.9);
+    }
+    list.w(circle(center, size * 0.45), color, 0.95);
+    list.w(circle(center, size * 0.2), 'primary', 0.55);
+  },
   lamp(list: RenderList, center: Vec2, size: number, color: ColorToken): void {
     list.w(circle(center, size * 2.2), color, 0.05);
     list.w(circle(center, size * 1.1), color, 0.1);
@@ -722,6 +943,93 @@ const Centre = {
       list.w(line(add(mill, mul(dir, 3)), add(mill, mul(dir, 21.5)), 0.7), 'skinMocha', 0.8);
     }
     list.w(circle(mill, 1.6), 'vehicleTire', 0.95);
+  },
+  /** Harbour: a basin in the quay with a moored boat rocking on it, bollards and a crane. */
+  dock(list: RenderList, c: Vec2, time: number | null): void {
+    const r = MapTheme.pondRadius;
+    const toRing = normalize(mul(c, -1));
+    const across = left(toRing);
+    const turn = angleOf(toRing);
+    list.w(rect(c, v(r * 2.3, r * 2.3), 3, turn), 'surface', 0.35);
+    list.w(rect(c, v(r * 1.9, r * 1.9), 2, turn), 'water', 1);
+    const t = time ?? 0;
+    for (let wave = 0; wave < 4; wave++) {
+      const phase = t * 0.5 + wave * 1.6;
+      const at = add(c, v(Math.sin(phase) * r * 0.4, (wave - 1.5) * r * 0.35));
+      list.w(line(sub(at, v(r * 0.16, 0)), add(at, v(r * 0.16, 0)), 0.9), 'primary', 0.1 + 0.06 * Math.sin(phase * 1.7));
+    }
+    const heading = turn + (time !== null ? 0.05 * Math.sin(time * 1.1) : 0);
+    const fwd = fromAngle(heading);
+    const side = left(fwd);
+    const boat = add(c, mul(across, -r * 0.35));
+    const len = r * 1.1;
+    const beam = r * 0.42;
+    const at = (x: number, y: number): Vec2 => add(boat, add(mul(fwd, x), mul(side, y)));
+    const hull = [at(len * 0.55, 0), at(len * 0.2, beam / 2), at(-len * 0.45, beam / 2), at(-len * 0.45, -beam / 2), at(len * 0.2, -beam / 2)];
+    list.w(polygon(hull.map((p) => add(p, v(2, -2)))), 'shadow', 0.7);
+    list.w(polygon(hull), 'skinCream', 0.95);
+    list.w(rect(at(-len * 0.1, 0), v(len * 0.35, beam * 0.6), 1, heading), 'skinOcean', 0.95);
+    list.w(circle(at(len * 0.35, 0), 1.2), 'mapHarbour', 0.95);
+    for (const s of [-1, 1]) Plants.bollard(list, add(c, add(mul(toRing, r * 1.02), mul(across, s * r * 0.6))), 6);
+    const crane = add(c, add(mul(toRing, -r * 1.05), mul(across, r * 0.7)));
+    list.w(rect(crane, v(8, 8), 1, turn), 'mapHarbour', 0.9);
+    const jib = fromAngle(angleOf(across) + Math.PI + (time !== null ? 0.3 * Math.sin(time * 0.15) : 0));
+    list.w(line(crane, add(crane, mul(jib, r * 1.1)), 2.4), 'mapHarbour', 0.85);
+    Plants.lamp(list, add(c, add(mul(toRing, r * 1.02), mul(across, -r * 0.95))), 4, 'mapHarbour');
+  },
+  /** Vineyard: a villa with a terracotta roof, a warm courtyard and two cypresses at its gate. */
+  villa(list: RenderList, c: Vec2, time: number | null): void {
+    const toRing = normalize(mul(c, -1));
+    const across = left(toRing);
+    const turn = angleOf(toRing);
+    const ridge = fromAngle(turn);
+    list.w(rect(add(c, v(4, -4)), v(40, 30), 2, turn), 'shadow', 0.8);
+    list.w(rect(c, v(40, 30), 2, turn), 'skinCopper', 0.9);
+    list.w(rect(add(c, mul(across, 7.5)), v(40, 14), 1.5, turn), 'skinPumpkin', 0.3);
+    for (let k = -3; k <= 3; k++) {
+      const at = add(c, mul(ridge, k * 5));
+      list.w(line(sub(at, mul(across, 14)), add(at, mul(across, 14)), 0.4), 'fireDeep', 0.35);
+    }
+    list.w(line(sub(c, mul(ridge, 20)), add(c, mul(ridge, 20)), 1.2), 'fireDeep', 0.6);
+    const yard = add(c, mul(toRing, 26));
+    list.w(rect(yard, v(26, 16), 2, turn), 'skinLatte', 0.3);
+    list.w(circle(yard, 10), 'fireCore', 0.06 * (time !== null ? 0.8 + 0.2 * Math.sin(time * 2.3) : 0.9));
+    for (const s of [-1, 1]) Plants.cypress(list, add(yard, mul(across, s * 17)), 5);
+  },
+  /** Mushroom Grove: a fairy ring of mushrooms round a glowing pool, motes circling over it. */
+  fairyRing(list: RenderList, c: Vec2, time: number | null): void {
+    const r = MapTheme.pondRadius;
+    const t = time ?? 0;
+    const breathe = time !== null ? 0.75 + 0.25 * Math.sin(t * 1.3) : 0.9;
+    list.w(circle(c, r * 1.3), 'mapGrove', 0.05 * breathe);
+    list.w(circle(c, r * 0.55), 'mapGrove', 0.1 * breathe);
+    list.w(circle(c, r * 0.5), 'water', 0.9);
+    list.w(circle(c, r * 0.42), 'mapGrove', 0.18 * breathe);
+    const count = 11;
+    for (let i = 0; i < count; i++) Plants.mushroom(list, add(c, mul(fromAngle((i / count) * TAU + hash(i, 751) * 0.2), r * 0.95)), 3 + 1.5 * hash(i, 753), i * 3);
+    for (let m = 0; m < 5; m++) list.w(circle(add(c, mul(fromAngle(t * 0.5 + m * 1.26), r * 0.3 + 3 * Math.sin(t + m))), 1), 'primary', 0.6 * breathe);
+  },
+  /** Abyss: a sunken ship on the sea floor, its mast broken, a chest beside it that glints. */
+  shipwreck(list: RenderList, c: Vec2, time: number | null): void {
+    const r = MapTheme.pondRadius;
+    const tilt = 0.6;
+    const fwd = fromAngle(tilt);
+    const side = left(fwd);
+    const len = r * 1.7;
+    const beam = r * 0.55;
+    const at = (x: number, y: number): Vec2 => add(c, add(mul(fwd, x), mul(side, y)));
+    list.w(circle(c, r * 1.3), 'mapAbyss', 0.04);
+    const hull = [at(len * 0.5, 0), at(len * 0.25, beam / 2), at(-len * 0.5, beam * 0.45), at(-len * 0.5, -beam * 0.45), at(len * 0.25, -beam / 2)];
+    list.w(polygon(hull.map((p) => add(p, v(4, -4)))), 'shadow', 0.8);
+    list.w(polygon(hull), 'skinMocha', 0.9);
+    list.w(polygon(hull.map((p) => add(c, mul(sub(p, c), 0.8)))), 'wreck', 0.85);
+    for (let k = -2; k <= 2; k++) list.w(line(at(k * len * 0.15, -beam * 0.35), at(k * len * 0.15, beam * 0.35), 0.6), 'skinMocha', 0.7);
+    list.w(line(at(len * 0.05, 0), add(at(len * 0.05, 0), mul(fromAngle(tilt + 1.9), len * 0.6)), 2), 'skinLatte', 0.8);
+    const chest = at(-len * 0.25, -beam * 0.9);
+    list.w(rect(chest, v(7, 5), 1, tilt + 0.4), 'skinCopper', 0.95);
+    list.w(line(sub(chest, v(3.5, 0)), add(chest, v(3.5, 0)), 0.6), 'coin', 0.9);
+    const glint = time !== null ? Math.pow(Math.max(0, Math.sin(time * 1.7)), 12) : 0.3;
+    list.w(circle(add(chest, v(1.5, 1.5)), 0.8 + 1.8 * glint), 'coin', 0.3 + 0.7 * glint);
   },
   planet(list: RenderList, c: Vec2, time: number | null): void {
     const radius = MapTheme.pondRadius * 0.55;
