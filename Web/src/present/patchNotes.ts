@@ -22,6 +22,13 @@ export type PatchImpact = 'major' | 'minor' | 'fix';
 
 export const PATCH_NOTES: PatchNote[] = [
   {
+    id: '2026-09-29-traffic-flicker',
+    date: '29 September 2026',
+    title: 'Cars back in sight',
+    impact: 'fix',
+    items: ['Fixed: on some devices the cars flickered or vanished on busy maps like Mushroom Grove.'],
+  },
+  {
     id: '2026-09-29-smoother',
     date: '29 September 2026',
     title: 'Smoother, fairer, clearer',

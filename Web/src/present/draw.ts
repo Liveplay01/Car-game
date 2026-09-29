@@ -34,7 +34,11 @@ export class CanvasDrawer {
   private grainKind: Grain | undefined = undefined;
 
   constructor(private readonly canvas: HTMLCanvasElement) {
-    const ctx = canvas.getContext('2d', { alpha: false, desynchronized: true } as CanvasRenderingContext2DSettings);
+    // Not `desynchronized`: that low-latency mode lets the screen show a frame while it is still
+    // being drawn. Every frame starts with the ground over last frame's cars and draws the cars
+    // late, so on a busy map (Mushroom Grove) the screen mostly caught it without them and the
+    // traffic only flickered up now and then. The taps keep their own timestamps anyway.
+    const ctx = canvas.getContext('2d', { alpha: false });
     if (!ctx) throw new Error('Canvas 2D is not available');
     this.ctx = ctx;
   }
