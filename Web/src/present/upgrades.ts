@@ -124,7 +124,7 @@ export const BuildTab = {
 };
 
 /**
- * The Upgrades page (`UpgradePage.swift`): a card per upgrade with a picture of what it does,
+ * The Upgrades page: a card per upgrade with a picture of what it does,
  * the steps bought and the next price. One tap opens the details, a double tap buys. Only
  * the purchase celebrates.
  */

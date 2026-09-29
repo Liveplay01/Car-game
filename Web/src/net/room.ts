@@ -1,4 +1,4 @@
-import { Peer, type DataConnection, type PeerOptions } from 'peerjs';
+import type { Peer, DataConnection, PeerOptions } from 'peerjs';
 import { VERSUS_MAX_PLAYERS, randomJoinCode, type BestOf, type Series } from '../core/versus';
 
 /**
@@ -80,6 +80,15 @@ export const cleanName = (name: string): string =>
  * names one (`VITE_TURN_URL`, `VITE_TURN_USERNAME`, `VITE_TURN_CREDENTIAL`). Phones on mobile
  * data sit behind carrier NAT; without a relay some of them cannot reach each other.
  */
+/** PeerJS loads only when a real room opens: the career and practice rooms never need it. */
+let peerClass: Promise<typeof Peer> | null = null;
+function loadPeer(): Promise<typeof Peer> {
+  peerClass ??= import('peerjs').then((m) => m.Peer);
+  // A failed load (offline before it was cached) may be tried again later.
+  peerClass.catch(() => (peerClass = null));
+  return peerClass;
+}
+
 function peerOptions(): PeerOptions {
   const iceServers: RTCIceServer[] = [{ urls: ['stun:stun.l.google.com:19302', 'stun:stun1.l.google.com:19302'] }];
   const env = import.meta.env;
@@ -195,13 +204,20 @@ export class Room {
       return;
     }
     this.peer?.destroy();
-    const peer = new Peer(peerOptions());
-    this.peer = peer;
-    peer.on('open', () => start(peer));
-    peer.on('error', (e) => {
-      if (e.type === 'peer-unavailable') this.fail(this.members.length > 0 ? 'hostLeft' : 'noGame');
-      else this.lostHost(this.hostConn);
-    });
+    this.peer = null;
+    loadPeer().then(
+      (Peer) => {
+        if (this.closed) return;
+        const peer = new Peer(peerOptions());
+        this.peer = peer;
+        peer.on('open', () => start(peer));
+        peer.on('error', (e) => {
+          if (e.type === 'peer-unavailable') this.fail(this.members.length > 0 ? 'hostLeft' : 'noGame');
+          else this.lostHost(this.hostConn);
+        });
+      },
+      () => this.fail('network'),
+    );
   }
 
   /** The line to the host broke: try again a few times before giving up. */
@@ -253,8 +269,17 @@ export class Room {
   // MARK: Host
 
   private openAsHost(attempt: number): void {
-    const code = randomJoinCode();
-    const peer = new Peer(peerId(code), peerOptions());
+    loadPeer().then(
+      (Peer) => {
+        if (this.closed) return;
+        const code = randomJoinCode();
+        this.listen(new Peer(peerId(code), peerOptions()), code, attempt);
+      },
+      () => this.fail('network'),
+    );
+  }
+
+  private listen(peer: Peer, code: string, attempt: number): void {
     this.peer = peer;
     peer.on('open', () => {
       this.code = code;

@@ -6,7 +6,7 @@ import { textWidth } from './icons';
 
 const PAGE_BACKDROP = 0.92;
 
-/** The iOS look of the drawn pages (`MenuKit.swift`). */
+/** The iOS look of the drawn pages. */
 export const MenuKit = {
   margin: 20,
   titleSize: 30,

@@ -54,7 +54,7 @@ function t(list: RenderList, s: string, at: Vec2, size: number, color: ColorToke
   list.s(text(s, at, size, o.align ?? 'leading', o.weight ?? 'regular'), color, opacity);
 }
 
-/** The Progress tab (`ProgressPage.swift`): records, today's quests, the achievements. */
+/** The Progress tab: records, today's quests, the achievements. */
 export const ProgressPage = {
   gap: 12,
 

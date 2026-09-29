@@ -86,7 +86,7 @@ export type HapticID =
   | 'reelStop';
 
 /**
- * Turns game events into sound and haptics (`Feedback.swift`): the more often something
+ * Turns game events into sound and haptics: the more often something
  * happens, the less it does. Launching a car gives no feedback; the car moving is the feedback.
  */
 export const Feedback = {

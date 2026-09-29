@@ -56,7 +56,8 @@ src/
               feedback + music mix, and the session that runs it all
   audio/      Web Audio: the real sound samples with pitch, adaptive music stems
   storage/    localStorage save (v2, migrates v1)
-  net/        multiplayer room (PeerJS/WebRTC): code, lobby, bots, pings, reconnect, tap messages
+  net/        multiplayer room (PeerJS/WebRTC): code, lobby, bots, pings, reconnect, tap messages;
+              PeerJS loads only when a room opens
   ui/         the DOM shell: canvas, native-like tab bar, settings sheet, multiplayer lobby
 public/audio/ sounds (35) and music stems (7) as AAC
 icon/        the icon master (make_icon.py → AppIcon.png)
@@ -89,7 +90,7 @@ Only in the browser version:
   it earns nothing, the score to beat is the goal.
 - **Mastery trials** (`core/trials.ts`, Progress → Trials): seven fixed shifts with a goal,
   some with an extra rule that ends the shift as `failed` when broken; each pays once.
-- **Casino** (`core/casino.ts`, `present/casino.ts`, Shop → Casino): Crash, Slots and a Skin
+- **Casino** (`core/casino.ts`, `present/casino.ts`, `present/casinoFlow.ts`, Shop → Casino): Crash, Slots and a Skin
   Upgrade, and double or nothing on a fair coin after any win. Play money and skins only;
   odds and returns in the sheet behind "Odds" (LOOT.md, Casino).
 - **Export / import** of the whole progress in Settings, for moving to another device.

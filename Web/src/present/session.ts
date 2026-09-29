@@ -6,7 +6,6 @@ import { Unlocks } from '../core/unlocks';
 import type { GameEvent, ShiftResult } from '../core/events';
 import type { Upgrade } from '../core/levels';
 import { type ChestKind, ALBUM_REWARD, cosmetic, rarityRank } from '../core/loot';
-import { Casino } from '../core/casino';
 import { dailySeed, dailyEvent, dayNumber } from '../core/daily';
 import { weekNumber, weeklyTrial } from '../core/weekly';
 import { Goals } from '../core/goals';
@@ -34,7 +33,7 @@ import { type Screen, type Tab, type SwipeMode, SWIPE_MODES, type ScreenAction, 
 import { CameraRig, perspectiveOf, addRecede } from './perspective';
 import { TransitionTracker, ModePan } from './transitions';
 import { ShopPage, ShopState, shelfOf, type ShopTarget } from './shop';
-import { CasinoPage, type CasinoTarget, type CasinoCue } from './casino';
+import { CasinoFlow, type CasinoHost } from './casinoFlow';
 import { ProgressPage, ProgressState } from './progress';
 import { MuseumPage, type MuseumTarget } from './museum';
 import { sightings, museumEntry, shelfEntries, museumId } from '../core/museum';
@@ -79,7 +78,7 @@ export interface SessionOutput {
 }
 
 /**
- * Runs the game for the browser (`GameSession.swift`): screens, fixed-step loop, input
+ * Runs the game for the browser: screens, fixed-step loop, input
  * timestamps, feedback, save game and the render list. The roundabout never stops: every tab
  * looks at the same running city, and the camera glides to the view it needs.
  */
@@ -147,6 +146,8 @@ export class GameSession {
   private sceneTime = 0;
   upgradePage = new UpgradeState();
   shopPage = new ShopState();
+  /** The casino's rounds (`casinoFlow.ts`): it reaches the session only through its host. */
+  private readonly casinoFlow = new CasinoFlow(this.casinoHost());
   progressPage = new ProgressState();
   /** Museum entries first met during this shift, for the line on its result. */
   private museumFound: string[] = [];
@@ -211,7 +212,7 @@ export class GameSession {
     if (this.tutorial) this.save.mode = 'shift';
     this.prepareShift(false);
     this.collectLoginIncome();
-    this.resumeCasino();
+    this.casinoFlow.resume();
   }
 
   private nextSeed(): number {
@@ -813,237 +814,41 @@ export class GameSession {
     this.showNotice(S.shop.adReward);
   }
 
-  // MARK: Casino (core/casino.ts, present/casino.ts)
+  // MARK: Casino (present/casinoFlow.ts)
 
-  private tapCasino(t: CasinoTarget): void {
-    const s = this.shopPage.casino;
-    const career = this.save.career;
-    if (t.k !== 'skip' && t.k !== 'cashOut' && !this.reduceMotion) s.pressed = { t, age: 0 };
-    switch (t.k) {
-      case 'game':
-        if (s.game === t.game || s.busy) return;
-        this.tick();
-        this.collectCasino();
-        s.selectGame(t.game);
-        break;
-      case 'odds':
-        this.tick();
-        if (this.detailOpen) this.closeDetail();
-        else this.detailOpen = true;
-        break;
-      case 'stake':
-        if (s.busy) return;
-        this.tick();
-        s.stake = t.index;
-        break;
-      case 'auto':
-        if (s.busy) return;
-        this.tick();
-        s.auto = t.index;
-        break;
-      case 'play':
-        this.casinoPlay();
-        break;
-      case 'cashOut':
-        this.casinoCashOut(0);
-        break;
-      case 'double':
-        this.casinoFlip();
-        break;
-      case 'collect':
-        this.tick();
-        this.collectCasino();
-        break;
-      case 'skip':
-        s.skip();
-        break;
-      case 'slot':
-        this.tick();
-        this.collectCasino();
-        s.picker = t.slot < 5 ? 'stake' : 'target';
-        s.page = 0;
-        break;
-      case 'pick':
-        if (s.picker === 'stake') {
-          if (s.staked.includes(t.id)) s.staked = s.staked.filter((x) => x !== t.id);
-          else if (s.staked.length >= this.config.upgradeMaxStake) {
-            this.play(['denied'], []);
-            return;
-          } else s.staked = [...s.staked, t.id];
-          s.tidy(career);
-          this.tick();
-        } else {
-          s.target = t.id;
-          s.picker = null;
-          this.tick();
-        }
-        break;
-      case 'page':
-        this.tick();
-        s.page = Math.max(0, s.page + t.step);
-        break;
-      case 'done':
-        this.tick();
-        s.picker = null;
-        break;
-    }
-  }
-
-  /** Space: cash out on a drive, skip a reveal, otherwise play again with the same stake. */
-  private casinoKey(ago: number): void {
-    const s = this.shopPage.casino;
-    if (s.driving) this.casinoCashOut(ago);
-    else if (s.busy) s.skip();
-    // A key pressed a moment too late for the cash-out must not start the next round.
-    else if (!s.picker && s.sinceEnd >= 0.7) this.casinoPlay();
-  }
-
-  /** A new round with the stake chosen: the save is written before anything shows. */
-  private casinoPlay(): void {
-    const s = this.shopPage.casino;
-    const career = this.save.career;
-    if (s.busy || s.picker) return;
-    this.collectCasino();
-    if (s.game === 'upgrade') {
-      if (s.staked.length === 0 || !s.target) {
-        this.tick();
-        s.picker = s.staked.length === 0 ? 'stake' : 'target';
-        s.page = 0;
-        return;
-      }
-      const roll = Casino.upgrade(career, s.staked, s.target, this.today, this.config);
-      if (!roll) {
-        this.play(['denied'], []);
-        return;
-      }
-      this.persist();
-      s.staked = [];
-      s.target = null;
-      s.run = { k: 'upgrade', roll, age: 0 };
-      if (this.reduceMotion) s.skip();
-      this.play(['swoosh'], ['tap']);
-      return;
-    }
-    const stake = CasinoPage.stakeOf(career, s);
-    if (s.game === 'crash') {
-      const point = Casino.startCrash(career, stake, this.today, this.config);
-      if (point === null) return this.casinoDenied(stake);
-      this.persist();
-      s.run = { k: 'crash', stake, point, end: Casino.endOf(point, this.config.crashAutoTargets[s.auto] ?? 0), age: 0, out: null, crash: null };
-      this.play(['go'], ['tap']);
-      return;
-    }
-    const from: [number, number, number] = [...s.reels];
-    const spin = Casino.spin(career, stake, this.today, this.config);
-    if (!spin) return this.casinoDenied(stake);
-    this.persist();
-    s.reels = spin.stops;
-    s.run = { k: 'slots', spin, from, anticipate: spin.line[0] === spin.line[1], age: 0 };
-    if (this.reduceMotion) s.skip();
-    this.play(['swoosh'], ['tap']);
-  }
-
-  private casinoDenied(stake: number): void {
-    this.play(['denied'], []);
-    this.showNotice(S.notice.notEnoughMoney(Fmt.number(stake)));
-  }
-
-  /** Cashes out at the multiplier of the moment the tap came (`ago` seconds back). */
-  private casinoCashOut(ago: number): void {
-    const run = this.shopPage.casino.run;
-    if (!run || run.k !== 'crash' || !this.shopPage.casino.driving) return;
-    const at = Math.max(0, run.age - ago);
-    if (at >= Casino.timeOf(run.end.at, this.config)) return;
-    const m = Casino.multiplierAt(at, this.config);
-    if (m <= 1) return;
-    this.settleDrive(m);
-  }
-
-  /** The drive ends at `m`: paid if it had not crashed yet there; null is the crash. */
-  private settleDrive(m: number | null): void {
-    const run = this.shopPage.casino.run;
-    if (!run || run.k !== 'crash') return;
-    const win = m === null ? Casino.crashed(this.save.career, this.today, this.config) : Casino.cashOut(this.save.career, m, this.today, this.config);
-    this.persist();
-    if (win > 0 && m !== null) {
-      const clutch = CasinoPage.clutchOf(run.point, m);
-      run.out = { m, win, age: 0, clutch };
-      this.play(['paid'], ['paid']);
-      if (clutch !== null) this.play(['perfect'], ['perfect']);
-      if (m >= 5) this.play([m >= 10 ? 'chestBurstRare' : 'chestBurst'], []);
-    } else {
-      run.crash = 0;
-      this.play(['explosion', 'crashHeavy'], ['explosion']);
-    }
-  }
-
-  private casinoFlip(): void {
-    const s = this.shopPage.casino;
-    const pending = this.save.career.casinoPending;
-    if (s.busy || !pending || pending.k !== 'win') return;
-    const items = pending.items.length > 0;
-    const flip = Casino.flip(this.save.career, this.today, this.config);
-    if (!flip) {
-      this.play(['denied'], []);
-      return;
-    }
-    this.persist();
-    s.run = { k: 'flip', flip, items, age: 0 };
-    if (this.reduceMotion) s.skip();
-    this.play(['chestCharge'], ['tap']);
-  }
-
-  private casinoCue(cue: CasinoCue): void {
-    const run = this.shopPage.casino.run;
-    if (!run) return;
-    switch (cue.k) {
-      case 'tick':
-        // The drive ticks at every tenth more, a semitone higher each time: the tension is heard.
-        if (run.k === 'crash') this.playPitched('uiTick', Math.pow(2, Math.min(cue.step, 24) / 12));
-        else this.playPitched('uiTick', 1 + 0.05 * (cue.step % 3));
-        break;
-      case 'reel':
-        // Klack-wumm: the stop, and a low thud under it.
-        this.playPitched('toll', [1, 1.12, 1.26][cue.reel]);
-        this.playPitched('build', 0.7);
-        this.play([], ['merge']);
-        break;
-      case 'creep':
-        this.playPitched('uiTick', 0.85 + 0.08 * cue.step);
-        this.play([], ['tap']);
-        break;
-      case 'peg':
-        this.playPitched('uiTick', cue.slow ? 1.35 : 1.15);
-        if (cue.slow) this.play([], ['tap']);
-        break;
-      case 'ding':
-        this.playPitched('toll', Math.min(2.2, 1.3 + 0.045 * cue.step));
-        break;
-      case 'clutchBoom':
-        this.play(['explosion'], ['explosion']);
-        break;
-      case 'crashDue':
-        if (run.k === 'crash') this.settleDrive(run.end.cashOut ? run.end.at : null);
-        break;
-      case 'result':
-        if (run.k === 'slots') {
-          if (run.spin.win > 0) this.play([run.spin.pay >= 40 ? 'chestBurstRare' : 'chestBurst'], ['chest']);
-        } else if (run.k === 'upgrade') {
-          if (run.roll.won) {
-            this.play(['chestBurstRare'], ['chest']);
-            this.announceAlbums();
-          } else {
-            this.play(['shiftFailed'], ['crash']);
-            this.showNotice(S.casino.skinsLost(run.roll.staked.length));
-          }
-        } else if (run.k === 'flip') {
-          if (run.flip.won) {
-            this.play(['chestBurst'], ['chest']);
-            if (run.items) this.announceAlbums();
-          } else this.play(['shiftFailed'], ['crash']);
-        }
-        break;
-    }
+  private casinoHost(): CasinoHost {
+    // Getters: the casino always sees today's page, day and settings.
+    const session = this;
+    return {
+      get casino() {
+        return session.shopPage.casino;
+      },
+      get save() {
+        return session.save;
+      },
+      get config() {
+        return session.config;
+      },
+      get today() {
+        return session.today;
+      },
+      get reduceMotion() {
+        return session.reduceMotion;
+      },
+      get detailOpen() {
+        return session.detailOpen;
+      },
+      set detailOpen(open: boolean) {
+        session.detailOpen = open;
+      },
+      closeDetail: () => this.closeDetail(),
+      tick: () => this.tick(),
+      play: (sounds, haptics) => this.play(sounds, haptics),
+      playPitched: (sound, pitch) => this.playPitched(sound, pitch),
+      persist: () => this.persist(),
+      showNotice: (text) => this.showNotice(text),
+      announceAlbums: () => this.announceAlbums(),
+    };
   }
 
   private announceAlbums(): void {
@@ -1051,39 +856,6 @@ export class GameSession {
     if (albums.length === 0) return;
     this.persist();
     this.announce(...albums);
-  }
-
-  /** The win is kept; the offer to double goes. */
-  private collectCasino(): void {
-    if (this.save.career.casinoPending?.k !== 'win') return;
-    Casino.collect(this.save.career);
-    this.persist();
-  }
-
-  /** Leaving the casino: a drive cashes out where it stands, an open win is kept. */
-  private leaveCasino(): void {
-    const s = this.shopPage.casino;
-    const run = s.run;
-    if (run?.k === 'crash' && s.driving) {
-      const due = run.age >= Casino.timeOf(run.end.at, this.config);
-      const m = due ? (run.end.cashOut ? run.end.at : null) : Casino.multiplierAt(run.age, this.config);
-      if (m !== null && m <= 1) Casino.resume(this.save.career, this.today);
-      else {
-        const win = m === null ? Casino.crashed(this.save.career, this.today, this.config) : Casino.cashOut(this.save.career, m, this.today, this.config);
-        if (win > 0) this.showNotice(S.casino.cashedOnLeave(moneyText(Fmt.number(win))));
-      }
-      s.run = null;
-      this.persist();
-    }
-    this.collectCasino();
-  }
-
-  /** A round open when the page closed: a drive pays its stake back, a win is kept. */
-  private resumeCasino(): void {
-    if (!this.save.career.casinoPending) return;
-    const back = Casino.resume(this.save.career, this.today);
-    this.persist();
-    if (back) this.showNotice(S.casino.refunded(moneyText(Fmt.number(back.refunded))));
   }
 
   private playPitched(sound: SoundID, pitch: number): void {
@@ -1118,7 +890,7 @@ export class GameSession {
           this.closeDetail();
         }
         if (target.section !== 1) this.leaveShelf();
-        if (target.section !== 2) this.leaveCasino();
+        if (target.section !== 2) this.casinoFlow.leave();
         s.select(target.section);
         break;
       case 'shelf':
@@ -1160,7 +932,7 @@ export class GameSession {
         this.perform({ k: 'wear', id: target.id });
         break;
       case 'casino':
-        this.tapCasino(target.t);
+        this.casinoFlow.tap(target.t);
         break;
       case 'dismiss': {
         // A tap moves the opening on a step (open the chest, stop the reel, show the prize);
@@ -1315,10 +1087,10 @@ export class GameSession {
       const opening = this.shopPage.opening;
       if (opening && before !== null && after !== null) this.reelCues(opening, before, after);
       if (this.shopPage.ad !== null && this.shopPage.ad >= ShopPage.adDuration) this.adWatched();
-      for (const cue of this.shopPage.casino.advance(realDelta)) this.casinoCue(cue);
+      for (const cue of this.shopPage.casino.advance(realDelta)) this.casinoFlow.cue(cue);
       this.tension = this.shopPage.section === 2 ? this.shopPage.casino.tension : 0;
     } else {
-      this.leaveCasino();
+      this.casinoFlow.leave();
       this.tension = 0;
       this.shopPage = new ShopState();
     }
@@ -1406,7 +1178,7 @@ export class GameSession {
             }
             break;
           case 'page':
-            if (this.isPage('shop') && this.shopPage.section === 2) this.casinoKey(a.ago ?? 0);
+            if (this.isPage('shop') && this.shopPage.section === 2) this.casinoFlow.key(a.ago ?? 0);
             break;
           default:
             break;

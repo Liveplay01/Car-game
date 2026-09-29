@@ -3,7 +3,7 @@ import { weatherSeverity } from '../core/config';
 import { type Vec2, v, add, mul, normalize, fromAngle, wrap } from '../core/vec2';
 import { type RenderList, rect, circle, arc, line, unitHash } from './render';
 
-/** Weather and city events on screen (`WeatherLayer.swift`). Only drawing. */
+/** Weather and city events on screen. Only drawing. */
 export const WeatherLayer = {
   darkness: [0, 0.08, 0.16, 0.24, 0.3],
   streaks: [0, 40, 90, 130, 170],

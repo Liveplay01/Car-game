@@ -13,7 +13,7 @@ import type { SpecialKind, WeatherKind, DarkKind, MuseumEntry } from '../core/mu
 import type { EliteStep, TitleId, TitleRule } from '../core/elite';
 import { MONEY_MARK } from './icons';
 
-/** Every text the game shows (`Strings.swift`). English only. */
+/** Every text the game shows. English only. */
 
 /** Numbers in the device's format: 1,000 or 1.000. */
 const grouping = (() => {

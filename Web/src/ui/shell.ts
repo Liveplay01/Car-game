@@ -508,7 +508,8 @@ export class Shell {
     };
     const w = window.innerWidth;
     const hgt = window.innerHeight;
-    this.drawer.resize(w, hgt, Math.min(window.devicePixelRatio || 1, 3));
+    // Above 2× the eye sees no difference, but a 3× phone would fill 2.25 times the pixels.
+    this.drawer.resize(w, hgt, Math.min(window.devicePixelRatio || 1, 2));
     this.drawer.offset = v(this.safe.left, this.safe.top);
     this.size = v(Math.max(1, w - this.safe.left - this.safe.right), Math.max(1, hgt - this.safe.top - this.safe.bottom));
   }

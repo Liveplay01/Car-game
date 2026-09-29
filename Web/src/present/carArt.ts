@@ -31,15 +31,24 @@ export type Part =
   | 'cargo'
   | 'hazard';
 
+/** A part's place on the car. Shared between frames (see `shapes`), so never changed. */
 export interface Shape {
-  center: Vec2;
-  size: Vec2;
-  radius: number;
-  color: ColorToken;
-  breaksAt: number;
-  reach: number;
-  visible: boolean;
+  readonly center: Vec2;
+  readonly size: Vec2;
+  readonly radius: number;
+  readonly color: ColorToken;
+  readonly breaksAt: number;
+  readonly reach: number;
+  readonly visible: boolean;
 }
+
+/**
+ * Parts, shapes and outlines depend only on the vehicle type and the config, yet every car
+ * asks for them every frame: built once per config, they stop feeding the garbage collector.
+ */
+const shapes = new WeakMap<Config, Map<string, Shape>>();
+const outlines = new WeakMap<Config, Map<VehicleType, readonly Vec2[]>>();
+const partLists = new Map<VehicleType, readonly Part[]>();
 
 const PAINTS: ColorToken[] = ['vehicleCar', 'vehicleCarSilver', 'vehicleCarGraphite', 'vehicleCarSand'];
 
@@ -68,7 +77,7 @@ export const SoftBody = {
   },
 };
 
-/** The police light bar (`PoliceLights.swift`): six LEDs, changing patterns that cross-fade. */
+/** The police light bar: six LEDs, changing patterns that cross-fade. */
 export const PoliceLights = {
   perSide: 3,
   count: 6,
@@ -163,7 +172,7 @@ export interface CarDraw {
   springTime?: number | null;
 }
 
-/** How a vehicle looks and how it breaks (`CarArt.swift`). */
+/** How a vehicle looks and how it breaks. */
 export const CarArt = {
   strobeCycle: 0.8,
 
@@ -195,7 +204,13 @@ export const CarArt = {
     }
   },
 
-  parts(type: VehicleType): Part[] {
+  parts(type: VehicleType): readonly Part[] {
+    let parts = partLists.get(type);
+    if (!parts) partLists.set(type, (parts = CarArt.makeParts(type)));
+    return parts;
+  },
+
+  makeParts(type: VehicleType): Part[] {
     const common: Part[] = ['frontBumper', 'rearBumper', 'hood', 'windscreen', 'leftMirror', 'rightMirror', 'frontLeftWheel', 'frontRightWheel', 'rearLeftWheel', 'rearRightWheel'];
     switch (type) {
       case 'car':
@@ -238,6 +253,15 @@ export const CarArt = {
   },
 
   shape(part: Part, type: VehicleType, c: Config): Shape {
+    let byConfig = shapes.get(c);
+    if (!byConfig) shapes.set(c, (byConfig = new Map()));
+    const key = `${type}.${part}`;
+    let shape = byConfig.get(key);
+    if (!shape) byConfig.set(key, (shape = CarArt.makeShape(part, type, c)));
+    return shape;
+  },
+
+  makeShape(part: Part, type: VehicleType, c: Config): Shape {
     const l = CarArt.length(type, c);
     const w = c.carWidth;
     const body = CarArt.bodyColor(type);
@@ -306,7 +330,15 @@ export const CarArt = {
     return dents.some((d) => d.depth >= s.breaksAt && dist(d.point, s.center) <= s.reach + s.size.x / 2);
   },
 
-  outline(type: VehicleType, c: Config): Vec2[] {
+  outline(type: VehicleType, c: Config): readonly Vec2[] {
+    let byConfig = outlines.get(c);
+    if (!byConfig) outlines.set(c, (byConfig = new Map()));
+    let points = byConfig.get(type);
+    if (!points) byConfig.set(type, (points = CarArt.makeOutline(type, c)));
+    return points;
+  },
+
+  makeOutline(type: VehicleType, c: Config): Vec2[] {
     const hl = CarArt.length(type, c) / 2;
     const hw = c.carWidth / 2;
     const r = Metrics.vehicleCornerRadius;

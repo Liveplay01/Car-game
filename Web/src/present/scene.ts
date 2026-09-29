@@ -36,7 +36,7 @@ export interface VehicleMark {
 }
 
 /**
- * The lights of the traffic (`VehicleLamps.swift`): brake lights come on quickly and fade a
+ * The lights of the traffic: brake lights come on quickly and fade a
  * little slower; the headlights flash twice when a tap is held for the car rolling up.
  */
 export class VehicleLamps {

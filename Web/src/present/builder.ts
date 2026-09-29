@@ -66,7 +66,7 @@ export class BuilderState {
 const slotAngle = (slot: number, slots: number): number => -Math.PI / 2 + (slot * TAU) / Math.max(3, slots);
 
 /**
- * The Street Builder (`StreetBuilderPage.swift`): the roundabout from above, the parts to buy
+ * The Street Builder: the roundabout from above, the parts to buy
  * and what they do. Drag a part onto a free slot, double-tap to build, one tap takes it away;
  * a built part tapped once is marked, a second tap tears it down.
  */

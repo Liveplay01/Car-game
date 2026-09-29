@@ -61,7 +61,7 @@ export class CityPulse {
   }
 }
 
-/** City Evolution (`CityLayer.swift`): around the roundabout the city grows with progress. */
+/** City Evolution: around the roundabout the city grows with progress. */
 /** What rises in the city right now: the houses from number `from` on, `age` seconds in. */
 export interface CityRise {
   from: number;

@@ -34,7 +34,7 @@ interface Particle {
   lifetime: number;
 }
 
-/** Explosions (`Explosions.swift`): fireball, shock ring, embers, metal, smoke, heavy shake. */
+/** Explosions: fireball, shock ring, embers, metal, smoke, heavy shake. */
 export class ExplosionEffects {
   static readonly tankerLifetime = 1.3;
   static readonly bombLifetime = 2.2;

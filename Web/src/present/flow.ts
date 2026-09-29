@@ -13,7 +13,7 @@ import { type Rect, R, Metrics } from './render';
 import type { ShiftSummary } from './hud';
 
 /**
- * The pages (`ScreenFlow.swift`). The tab bar shows four (`TAB_BAR`); the Street Builder shares
+ * The pages. The tab bar shows four (`TAB_BAR`); the Street Builder shares
  * the Build tab with the Upgrades, one segment each. Game is where you play; no start menu.
  */
 export type Tab = 'streetBuilder' | 'game' | 'shop' | 'upgrades' | 'progress';

@@ -4,7 +4,7 @@ import { type Camera, type RenderList, fitCamera, toScreen, arc, Ease, Metrics, 
 import { type Screen, BuildLayout } from './flow';
 
 /**
- * One city, seen from different places (`Perspective.swift`). The roundabout keeps running
+ * One city, seen from different places. The roundabout keeps running
  * under every tab; the camera glides to the view that tab needs. Never a zoom on start/end:
  * the Game tab, playing and the result all share the street view.
  */

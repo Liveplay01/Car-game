@@ -12,7 +12,7 @@ import { TopBar } from './hud';
 export type TutorialStep = 'sendCar' | 'findGap' | 'combo' | 'quiet';
 
 /**
- * The first shift teaches the one thing to know (`Tutorial.swift`). Nothing pauses:
+ * The first shift teaches the one thing to know. Nothing pauses:
  * the front car pulses, the island says to wait for a gap, then that clean merges build the
  * combo; the first crash says why it matters. Ends with the first shift and never comes back.
  */

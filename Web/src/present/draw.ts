@@ -17,6 +17,8 @@ export class CanvasDrawer {
   width = 0;
   height = 0;
   offset = v(0, 0);
+  /** The font the context holds: parsing a font string is costly, so it is set only on change. */
+  private font = '';
 
   constructor(private readonly canvas: HTMLCanvasElement) {
     const ctx = canvas.getContext('2d', { alpha: false, desynchronized: true } as CanvasRenderingContext2DSettings);
@@ -30,6 +32,7 @@ export class CanvasDrawer {
     this.height = height;
     this.canvas.width = Math.round(width * dpr);
     this.canvas.height = Math.round(height * dpr);
+    this.font = '';
   }
 
   draw(list: RenderList): void {
@@ -40,11 +43,14 @@ export class CanvasDrawer {
     ctx.setTransform(this.dpr, 0, 0, this.dpr, this.offset.x * this.dpr, this.offset.y * this.dpr);
     ctx.lineCap = 'butt';
     ctx.lineJoin = 'round';
+    // Set before any save(), so no restore() takes them back.
+    ctx.textBaseline = 'middle';
+    ctx.textAlign = 'left';
     const cam = list.camera;
     let clip: RenderItem['clip'] = undefined;
     for (const item of list.items) {
       if (item.clip !== clip) {
-        if (clip) ctx.restore();
+        if (clip) this.restoreClip();
         clip = item.clip;
         if (clip) {
           ctx.save();
@@ -55,7 +61,20 @@ export class CanvasDrawer {
       }
       this.item(item, cam);
     }
-    if (clip) ctx.restore();
+    if (clip) this.restoreClip();
+  }
+
+  /** Leaves a clipped group; the font set inside it goes back with the rest of the state. */
+  private restoreClip(): void {
+    this.ctx.restore();
+    this.font = '';
+  }
+
+  private setFont(size: number, bold: boolean): void {
+    const font = fontFor(size, bold);
+    if (font === this.font) return;
+    this.ctx.font = font;
+    this.font = font;
   }
 
   private item(item: RenderItem, cam: Camera): void {
@@ -160,9 +179,7 @@ export class CanvasDrawer {
         if (p.size < 1) return;
         const anchor = pt(p.position);
         const bold = p.weight === 'bold';
-        ctx.font = fontFor(p.size, bold);
-        ctx.textBaseline = 'middle';
-        ctx.textAlign = 'left';
+        this.setFont(p.size, bold);
         if (!p.text.includes(MONEY_MARK)) {
           const width = measure(p.text, p.size, bold);
           const x = p.align === 'leading' ? anchor.x : p.align === 'center' ? anchor.x - width / 2 : anchor.x - width;
@@ -182,10 +199,8 @@ export class CanvasDrawer {
               this.item({ p: shape.p, color: shape.color, opacity: item.opacity * shape.alpha, space: 'screen' }, cam);
             }
           } else {
-            ctx.font = fontFor(p.size, bold);
+            this.setFont(p.size, bold);
             ctx.fillStyle = color;
-            ctx.textBaseline = 'middle';
-            ctx.textAlign = 'left';
             ctx.fillText(piece, x, anchor.y + p.size * 0.04);
           }
           x += widths[i];

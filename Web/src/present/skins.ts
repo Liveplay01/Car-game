@@ -1,6 +1,6 @@
 import type { ColorToken } from './theme';
 
-/** What each skin looks like (LOOT.md, `Skins` in CityLayer.swift). */
+/** What each skin looks like (LOOT.md). */
 export type Finish = 'shiny' | 'glitter' | 'shinyGlitter';
 
 export const Skins = {

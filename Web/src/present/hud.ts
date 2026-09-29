@@ -17,7 +17,7 @@ import { interpolatedPose } from './scene';
 
 // MARK: Top bar
 
-/** The one floating card of chrome at the top (`TopBar.swift`): MONEY · CARS/SCORE · BEST. */
+/** The one floating card of chrome at the top: MONEY · CARS/SCORE · BEST. */
 export const TopBar = {
   margin: 16,
   top: 10,
@@ -165,7 +165,7 @@ export interface HudInput {
   flamePop: number;
 }
 
-/** The in-game HUD (`HUD.swift`): the top card, the combo on the island, the specials. */
+/** The in-game HUD: the top card, the combo on the island, the specials. */
 export const HUD = {
   add(list: RenderList, h: HudInput): void {
     if (h.world.config.mayhem) {
@@ -617,7 +617,7 @@ interface Signal {
   age: number;
 }
 
-/** The island's rim as the game's signal track (`RingSignals.swift`). */
+/** The island's rim as the game's signal track. */
 export class RingSignals {
   static rim = (world: World): number => world.layout.ringRadius - world.layout.laneWidth / 2 - 14;
   static readonly hold = 0.9;

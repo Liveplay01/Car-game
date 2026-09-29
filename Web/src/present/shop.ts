@@ -121,7 +121,7 @@ function t(list: RenderList, s: string, at: Vec2, size: number, color: ColorToke
 }
 
 /**
- * The Shop tab (`ShopPage.swift`): chests to open or buy, the collection to wear from, and
+ * The Shop tab: chests to open or buy, the collection to wear from, and
  * the casino (`present/casino.ts`). Fair: odds and pity always on screen. The chest opening
  * and the casino's wins are the places that are allowed to be loud.
  */

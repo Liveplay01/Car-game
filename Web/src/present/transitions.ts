@@ -32,7 +32,7 @@ const LABEL = new Set(['headerTitle', 'segLabels', 'segThumb', 'topbarLabels']);
 const sameItem = (a: RenderItem, b: RenderItem): boolean => a.color === b.color && Math.abs(a.opacity - b.opacity) < 0.01 && JSON.stringify(a.p) === JSON.stringify(b.p);
 
 /**
- * Screen changes are never a cut (`Transitions.swift`): whatever lay over the scene fades and
+ * Screen changes are never a cut: whatever lay over the scene fades and
  * slides out while the new one glides in on a critically damped spring. Tabs move sideways
  * in tab-bar order, the settings come up from below, the game's own screens rise a little.
  * The scene underneath never moves, and neither does what both screens share.

@@ -4,7 +4,7 @@ import type { ColorToken } from './theme';
 import { measure } from './measure';
 
 /**
- * Small glyphs drawn from the same shapes as everything else (`Icons.swift`): no fonts, no
+ * Small glyphs drawn from the same shapes as everything else: no fonts, no
  * image files. A banknote marks every amount of money, so money is never read as points.
  */
 export const MONEY_MARK = '';

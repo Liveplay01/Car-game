@@ -6,7 +6,7 @@ import type { ColorToken } from './theme';
 import { rotated } from './carArt';
 
 /**
- * What a map skin does to the city (`MapThemes.swift`): the ground takes the map's colour,
+ * What a map skin does to the city: the ground takes the map's colour,
  * its own plants grow, a centrepiece sits above the ring, and some maps bring weather of
  * their own. The ground stays dark so cars, HUD and effects read the same on every map.
  */

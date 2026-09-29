@@ -31,7 +31,7 @@ interface Blast {
 }
 
 /**
- * Crash effects (`Effects.swift`): wrecks with damage where they were hit, impact flash,
+ * Crash effects: wrecks with damage where they were hit, impact flash,
  * fireball on hard hits, burning wrecks, smoke, debris, sparks and a short screen shake.
  * Wrecks and smoke lie below the moving cars; flash and sparks above them last a moment.
  */
