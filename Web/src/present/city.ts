@@ -2,7 +2,7 @@ import type { World } from '../core/world';
 import { builtArmSlots, type Config } from '../core/config';
 import type { Album } from '../core/loot';
 import { type Vec2, v, add, mul, right, fromAngle, wrap, TAU } from '../core/vec2';
-import { type RenderList, rect, circle, arc, unitHash } from './render';
+import { type RenderList, rect, circle, arc, unitHash, Ease } from './render';
 import type { ColorToken } from './theme';
 import { MapTheme } from './mapThemes';
 import type { MapScars } from './explosionsFx';
@@ -62,6 +62,13 @@ export class CityPulse {
 }
 
 /** City Evolution (`CityLayer.swift`): around the roundabout the city grows with progress. */
+/** What rises in the city right now: the houses from number `from` on, `age` seconds in. */
+export interface CityRise {
+  from: number;
+  age: number;
+  reduceMotion: boolean;
+}
+
 export const CityLayer = {
   addMapSkin(list: RenderList, skin: ColorToken | null, world: World): void {
     if (!skin) return;
@@ -110,10 +117,28 @@ export const CityLayer = {
 
   growth: (c: Config): number => c.level + 4 * Math.max(0, builtArmSlots(c).length - 4) + 3 * Object.keys(c.modules).length,
 
-  add(list: RenderList, world: World, theme: MapTheme | null, time: number | null, pulse: CityPulse | null, scars: MapScars | null, now: number): void {
+  /** How many houses and trees stand around the ring. */
+  count: (c: Config): number => Math.min(64, 8 + CityLayer.growth(c)),
+
+  /** One new house or tree takes this long to rise; the next starts `riseStagger` later. */
+  riseDuration: 0.9,
+  riseStagger: 0.18,
+  riseDelay: 0.4,
+
+  /** How far a new house (placed as number `index`) has risen: 0 not yet, 1 standing. */
+  risen(rise: CityRise | null, index: number): number {
+    if (!rise || index < rise.from) return 1;
+    return Ease.clamp01((rise.age - CityLayer.riseDelay - (index - rise.from) * CityLayer.riseStagger) / CityLayer.riseDuration);
+  },
+
+  /**
+   * The city around the ring. It grows with the level, the arms and the modules; what is new
+   * since the last look rises out of the ground (`rise`), one after the other.
+   */
+  add(list: RenderList, world: World, theme: MapTheme | null, time: number | null, pulse: CityPulse | null, scars: MapScars | null, now: number, rise: CityRise | null = null): void {
     MapTheme.addGround(list, theme, world, time);
     const layout = world.layout;
-    const count = Math.min(64, 8 + CityLayer.growth(world.config));
+    const count = CityLayer.count(world.config);
     const armAngles = layout.arms.map((a) => a.angle);
     let placed = 0;
     for (let candidate = 0; placed < count && candidate < count * 4; candidate++) {
@@ -123,20 +148,29 @@ export const CityLayer = {
       const distance = layout.ringRadius + 70 + unitHash(candidate, 12) * 230;
       const center = mul(fromAngle(angle), distance);
       if (MapTheme.keepsClear(theme, center, layout)) continue;
+      const risen = CityLayer.risen(rise, placed);
+      if (risen <= 0) {
+        placed++;
+        continue;
+      }
+      // Rising: it grows on a spring and fades in; a faint ring of dust spreads where it lands.
+      const grow = risen >= 1 || rise?.reduceMotion ? 1 : Ease.spring(risen);
+      const fade = risen >= 1 ? 1 : Ease.outCubic(Math.min(1, risen * 2));
+      if (risen < 1 && !rise?.reduceMotion) list.w(arc(center, 16 + 40 * Ease.outCubic(risen), 2, 0, TAU), 'marking', 0.35 * (1 - risen));
       if (unitHash(candidate, 13) < 0.35) {
         const sway = pulse ? pulse.sway(candidate) : v(0, 0);
-        const size = 7 + 5 * unitHash(candidate, 14);
+        const size = (7 + 5 * unitHash(candidate, 14)) * grow;
         MapTheme.addPlant(list, theme, add(center, sway), size, candidate);
         scars?.addTree(list, add(center, sway), size, candidate, now, time);
       } else {
-        const size = v(26 + 30 * unitHash(candidate, 15), 22 + 26 * unitHash(candidate, 16));
-        list.w(rect(center, size, 3, angle), 'surface', 0.55);
-        list.w(rect(center, v(size.x - 8, size.y - 8), 2, angle), 'kerb', 0.35);
+        const size = mul(v(26 + 30 * unitHash(candidate, 15), 22 + 26 * unitHash(candidate, 16)), grow);
+        list.w(rect(center, size, 3, angle), 'surface', 0.55 * fade);
+        list.w(rect(center, v(Math.max(0, size.x - 8), Math.max(0, size.y - 8)), 2, angle), 'kerb', 0.35 * fade);
         scars?.addHouse(list, center, size, angle, candidate, now, time);
         if (unitHash(candidate, 17) < 0.45) {
           const glow = pulse ? pulse.window(candidate, distance) : CityPulse.windowRest;
           const spot = add(add(center, mul(fromAngle(angle + Math.PI / 2), size.y * 0.18)), mul(fromAngle(angle), size.x * (unitHash(candidate, 18) - 0.5) * 0.4));
-          list.w(rect(spot, v(size.x * 0.22, size.y * 0.16), 1, angle), 'hazard', glow);
+          list.w(rect(spot, v(size.x * 0.22, size.y * 0.16), 1, angle), 'hazard', glow * fade);
         }
       }
       placed++;

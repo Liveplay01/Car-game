@@ -1,6 +1,6 @@
 # Spiel.md – Car Game: Spielmechanik, Funktionen & Status
 
-Stand: 28.09.2026 · Übersicht über das ganze Spiel. Seit dem 27.09.2026 ist Car Game ein **Browserspiel** (`Web/`); die Swift-/iPhone-Schiene ist pausiert. Maßgeblich sind `Web/src/core/config.ts` (alle Zahlen) und [Web/README.md](Web/README.md) (Befehle, Aufbau, Deployment). Hintergrund und Herleitung stehen in [FOUNDATION.md](FOUNDATION.md), [ROADMAP.md](ROADMAP.md) (Messwerte je Meilenstein, Swift-Stand) und [LOOT.md](LOOT.md). Weicht dieses Dokument vom Code ab, gilt der Code.
+Stand: 29.09.2026 · Übersicht über das ganze Spiel. Seit dem 27.09.2026 ist Car Game ein **Browserspiel** (`Web/`); die frühere Swift-/iPhone-Schiene ist seit dem 29.09.2026 gelöscht. Maßgeblich sind `Web/src/core/config.ts` (alle Zahlen) und [Web/README.md](Web/README.md) (Befehle, Aufbau, Deployment). Regeln und Grundlagen stehen in [FOUNDATION.md](FOUNDATION.md), die Truhen in [LOOT.md](LOOT.md). Weicht dieses Dokument vom Code ab, gilt der Code.
 
 ---
 
@@ -279,19 +279,21 @@ Abreißen (Zufahrten und Module) ist möglich, **nichts wird erstattet.** Die ei
 
 Bis Level 19 sind Fehler kostenlos. Ab Level 20: Der Crash, der die Schicht beendet, bzw. ein Polizei-Crash kostet nach Wucht **60 / 120 / 200**; ein entkommener Verbrecher **350** zusätzlich zur verlorenen Schicht. Folgeunfälle kosten nichts, Unlimited kostet nie. Kosten kommen vom Verdienst der Schicht, dann vom Konto – **nie ins Minus.**
 
-### Store (Shop → Store, Platzhalter)
+### Casino (Shop → Casino, ab Level 10)
 
-Nichts wird berechnet; der Store zeigt nur den Ablauf, bis es echte Produkte gibt ([MONETIZATION.md](MONETIZATION.md), pausiert).
+Crash, Slots, Skin-Upgrade und Doppelt oder nichts, nur mit Spielgeld; Chancen und Rückzahlquoten stehen offen im Spiel und in [LOOT.md](LOOT.md) („Casino“), `npm run sim:casino` prüft sie. Es gibt keine kaufbare Währung und keine Truhen gegen Echtgeld (CLAUDE.md). Das Casino öffnet leise mit Level 10; nichts im Spiel lenkt dorthin.
 
-| Produkt | Platzhalter-Preis | Inhalt |
+### Freischaltungen und einmalige Hinweise (29.09.2026)
+
+Ein neuer Spieler trifft die Systeme nacheinander (`core/unlocks.ts`, Werte in `config.ts`):
+
+| Was | Ab | Wie es sich zeigt |
 |---|---|---|
-| Starter Pack | $1.99 | 30.000 Geld, 1 Premium- und 2 Standard-Truhen |
-| Pile / Bag / Vault of Cash | $0.99 / $2.99 / $6.99 | 25.000 / 90.000 / 240.000 Geld |
-| 3 Premium Chests | $3.99 | 3 Premium-Truhen |
-| No Ads | $3.99 | Werbe-Belohnungen ohne Werbung |
-| Cash Boost | $4.99 | jede Schicht zahlt ×1,5 (Lohn, Transporter, Abschirm-Bonus) |
+| Daily Shift (und Serie) | Level 3 | Hinweis „New · the Daily Shift …“; vorher sagt die Quest-Zeile, ab wann |
+| Trials (Progress) | Level 8 | Hinweis „New · Trials in Progress …“; vorher ist das Segment blass und sagt beim Tippen, ab wann |
+| Casino (Shop) | Level 10 | ohne Hinweis; vorher ist das Segment blass |
 
-„Restore Purchases“ ist vorhanden.
+Wer ein System schon vorher benutzt hat, behält es. Einmalige Hinweise (`hints` im Spielstand): nach Level 3 bittet das Spiel den Browser, den Speicher dauerhaft zu behalten (`storage.persist()`), und schlägt die Installation vor (iPhone: „Zum Home-Bildschirm“); nach Level 5 zeigt der Game-Tab bis zum ersten Moduswechsel „Swipe for more modes“; nach Level 12 empfiehlt es einen Export, solange der Speicher nicht geschützt ist. Meldungen kommen nacheinander, jede in ihrer eigenen Zeile (`present/notices.ts`).
 
 ### Street Builder & Module
 
@@ -318,8 +320,8 @@ Details und alle Item-Listen: [LOOT.md](LOOT.md) (Liste im Code: `Web/src/core/l
 
 | Truhe | Woher | Common | Rare | Epic | Legendary |
 |---|---|---|---|---|---|
-| Standard | Shop (26.000), Werbung (3/Tag), Mastery Stufe I, Starter Pack | 70 % | 22 % | 7 % | 1 % |
-| Premium | Shop (52.000), Mastery Stufe II/III, Store | 35 % | 35 % | 22 % | 8 % |
+| Standard | Shop (26.000), Werbung (3/Tag), Mastery Stufe I | 70 % | 22 % | 7 % | 1 % |
+| Premium | Shop (52.000), Mastery Stufe II/III | 35 % | 35 % | 22 % | 8 % |
 | Criminal Hunt | Mastery „Crime Fighter“ | 50 % | 30 % | 15 % | 5 % |
 | Event | jede geschaffte Daily Shift; 15 % nach jeder geschafften Schicht mit City Event | 40 % | 35 % | 20 % | 5 % |
 
@@ -366,7 +368,7 @@ Ein voller Satz zahlt einmal Geld und legt einen **Rahmen** in seiner Farbe um d
 - **Records** (Progress): Highscore, Level, Bestcombo, längste Kette, Daily-Serie, Schichten, Takedowns, Transporter, Unlimited- und Mayhem-Rekorde, Syndikats-Bosse, Sammlung.
 - **Tutorial:** in der ersten Schicht, ohne Menü und ohne Pause – pulsierender Ring am vordersten Auto, „Wait for a gap, then tap“, Combo-Hinweis, beim ersten Crash „Cars crash instantly. Police get 3 chances.“
 
-### Trials (Progress → Trials, nur Web)
+### Trials (Progress → Trials, ab Level 8)
 
 Sieben feste Schichten mit festem Seed (alle treffen denselben Verkehr), frischem Kreisverkehr mit 4 Armen, ohne eigene Upgrades. Eine Zusatzregel beendet die Schicht als *failed*, wenn sie gebrochen wird. Jede Trial zahlt einmal.
 
@@ -407,14 +409,14 @@ Nach einer Schicht macht „Challenge a friend“ einen Link (`#challenge=…`) 
 | **Grafik** | Canvas 2D, clean, minimalistisch, dunkle Nacht-Stadt, flache Vektorformen, ein Mint-Akzent für das, was der Spieler verdient |
 | **Farben** | Tokens nach Rolle. Fahrzeugfarben = Spielinfo, nie UI-Akzent |
 | **Schrift** | Systemschrift: auf Apple-Geräten SF Pro, in der Spielszene SF Pro Rounded (`ui-rounded`), sonst Segoe UI / Roboto; Tabular Figures für Zahlen |
-| **Obere Anzeige** | schwebende Karte mit drei Spalten (MONEY · CARS/SCORE · BEST), im Ergebnis zählt das Geld hoch. Auf dem Wartebildschirm führt Geld → Store, Autos → Collection, Best → Records |
-| **Navigation** | DOM-Tab-Bar wie in iOS: **Progress · Game · Shop · Build**; zwischen den Schichten sichtbar, während einer Schicht ausgeblendet. Build hat die Segmente Upgrades / Street Builder, Shop Chests / Collection / Store, Progress Records / Quests / Trials / Mastery |
+| **Obere Anzeige** | schwebende Karte mit drei Spalten (MONEY · CARS/SCORE · BEST), im Ergebnis zählt das Geld hoch. Auf dem Wartebildschirm führt Geld → Chests, Autos → Collection, Best → Records |
+| **Navigation** | DOM-Tab-Bar wie in iOS: **Progress · Game · Shop · Build**; zwischen den Schichten sichtbar, während einer Schicht ausgeblendet. Build hat die Segmente Upgrades / Street Builder, Shop Chests / Collection / Casino, Progress Records / Quests / Trials / Museum / Mastery |
 | **Menüs** | native Anmutung: gruppierte Listen, Sheets, Schalter, Segmented Controls; Glas nur für schwebende Bedienelemente über der Szene. Kritisch gedämpfte Federn, kein harter Schnitt |
 | **Einstellungen** | Sheet: Sound, Haptics, Reduce Motion (System / On / Off), Vehicle Labels, Export / Import / Reset Progress |
-| **Sound** | Web Audio: 35 Effekte und 7 Musik-Stems als AAC aus `Assets/` (noch die Platzhalter aus dem `SoundMaker`), mit Tonhöhen-Variation und Stereo-Position. Adaptive Musik: Combo baut Instrumente auf, Verbrecher → Sirene, Rush Hour → Beat zieht an, Flow verdichtet; bei Verbrecher-Warnung und Rush-Hour-Beginn atmet die Musik durch einen Tiefpass ein |
+| **Sound** | Web Audio: 35 Effekte und 7 Musik-Stems als AAC in `Web/public/audio/` (noch Platzhalter), mit Tonhöhen-Variation und Stereo-Position. Adaptive Musik: Combo baut Instrumente auf, Verbrecher → Sirene, Rush Hour → Beat zieht an, Flow verdichtet; bei Verbrecher-Warnung und Rush-Hour-Beginn atmet die Musik durch einen Tiefpass ein |
 | **Haptik** | über `navigator.vibrate` – nur wo der Browser es kann (Android/Chrome); iOS-Safari hat keine Vibration, der Schalter zeigt das an |
 | **Accessibility** | Farben nie allein (Formen, Icons, Muster), Vehicle Labels, WCAG-AA-Kontrast, 44-px-Ziele, Tastatur (Leertaste, Enter, D/E, Esc, R, Tab, Pfeile), sichtbarer Fokus, Live-Region für Ergebnisse. Reduce Motion folgt standardmäßig dem System und entfernt Shake, Zeitlupe und fliegende Teile |
-| **Icon** | Kreisverkehr bei Nacht, das Mint-Auto fädelt in eine Lücke ein (`Assets/Icon/`), als PWA-Icons in `Web/public/icons/` |
+| **Icon** | Kreisverkehr bei Nacht, das Mint-Auto fädelt in eine Lücke ein (Original in `Web/icon/`), als PWA-Icons in `Web/public/icons/` |
 
 ---
 
@@ -429,11 +431,11 @@ core/  (Spielregeln, kein DOM, 120 Hz, deterministisch)
   ├─ world / roundabout / paths / vehicle / collision / crash / drivers / traffic
   ├─ specials (Verbrecher, Boss-Konvoi, Transporter) / explosions / modules
   ├─ scoring / levels (Kurven, Upgrades, Wetter, Nacht, Events, Mayhem)
-  ├─ career / loot / daily / store / trials / challenge / versus
+  ├─ career / loot / daily / casino / trials / challenge / versus / unlocks
   └─ events / rng / vec2
         │
         ▼
-present/  (Darstellung 1:1 aus GamePresentation)
+present/  (Darstellung)
   ├─ session (GameSession), flow (Modus-Wischen), transitions, perspective, tutorial
   ├─ Szene: scene, render, draw, carArt, city, mapThemes, weather, night, effects, explosionsFx, marks
   ├─ HUD & Seiten: hud, menukit, shop, progress, upgrades, builder, detail, versus
@@ -446,16 +448,16 @@ audio/ (Web Audio)   storage/ (localStorage)   net/ (PeerJS-Raum)   ui/ (DOM-Hü
 - **Vite + TypeScript + HTML5 Canvas**, kein UI-Framework, keine Game-Engine. Einzige Laufzeit-Abhängigkeit: `peerjs` (Multiplayer).
 - **Gleicher Seed + gleiche Taps = gleiches Ergebnis** – Grundlage für Balancing-Bots, Challenge-Links, Trials und Multiplayer.
 - **Spielstand nur lokal:** `localStorage`, Schlüssel `carGame.save.v2` (alte `carGame.career.v1` werden übernommen); tolerant geladen, Feld für Feld. Export/Import als JSON-Datei.
-- **PWA:** Manifest, Service Worker aus dem Build (precacht alle Dateien, Navigation network-first).
+- **PWA und offline:** Manifest, Service Worker aus dem Build (precacht alle Dateien; Navigation network-first, nach 3 s oder ohne Netz die gespeicherte Seite). Nach dem ersten Laden läuft alles ohne Netz, nur der Multiplayer braucht es. Beim ersten Besuch: „Ready to play offline“.
 - **Deployment:** Docker (Node baut, `nginx:alpine` liefert statisch aus), Port 5050, Coolify baut aus GitHub. **Kein Backend, keine Datenbank, keine API.**
 
-**Feste Entscheidungen** siehe [CLAUDE.md](CLAUDE.md). Die Swift-Pakete (`Game/`, `TestWindow/`, `App.swiftpm/`) sind pausiert und bleiben als Referenz.
+**Feste Entscheidungen** siehe [CLAUDE.md](CLAUDE.md). Die frühere Swift-Schiene liegt nur noch in der Git-Historie (bis Commit `4f9ac73`).
 
 ---
 
-## 14. Stand der Umsetzung (28.09.2026)
+## 14. Stand der Umsetzung (29.09.2026)
 
-**Die Web-Version kann alles, was die Swift-Version konnte**, plus Nacht/Blackout, Syndikats-Konvoi, Trials, Challenge-Links, Multiplayer, Export/Import und Reifenspuren.
+Die Web-Version ist das ganze Spiel: dazu gehören Nacht/Blackout, Syndikats-Konvoi, Trials, Challenge-Links, Multiplayer, Export/Import, Reifenspuren, Casino, Freischaltungen und Offline-Betrieb.
 
 | Bereich | Inhalt | Stand |
 |---|---|---|
@@ -463,12 +465,11 @@ audio/ (Web Audio)   storage/ (localStorage)   net/ (PeerJS-Raum)   ui/ (DOM-Hü
 | Sonderverkehr | Polizei & Verbrecher, Transporter, Lkw, Tanklaster, Militär-Truck, Boss-Konvoi | ✅ |
 | Modi | Shift, Unlimited, Mayhem, Multiplayer (Wischen) | ✅ |
 | Schwierigkeit | Level-Kurve, Wetter, Nacht/Blackout, City Events, Risiko & Versicherung | ✅ |
-| Meta | Geld, 13 Upgrades, Street Builder mit Modulen, Truhen, Sammlung, Alben, Mastery, Daily, Serie, Quests, Trials, Records, Store (Platzhalter) | ✅ |
-| Hülle | Tab-Bar, Einstellungen, PWA, Offline, Docker/Coolify | ✅ |
-| Look & Feel | Ring als UI, atmende Stadt, Kamera je Tab, adaptive Musik | ✅, Klänge noch Platzhalter |
-| Swift-/App-Schiene | M11 Look & Feel, M12 iPhone-App, M13 App Store | ⏸ pausiert |
+| Meta | Geld, 13 Upgrades, Street Builder mit Modulen, Truhen, Sammlung, Alben, Mastery, Daily, Serie, Quests, Trials, Records, Casino, Freischaltungen | ✅ |
+| Hülle | Tab-Bar, Einstellungen, PWA, Offline, Speicherschutz, Docker/Coolify | ✅ |
+| Look & Feel | Ring als UI, atmende und sichtbar wachsende Stadt, Kamera je Tab, adaptive Musik | ✅, Klänge noch Platzhalter |
 
-Automatische Tests hat die Web-Version nicht; geprüft wird mit `npm run build` (Typecheck) und den Balancing-Bots. Am 28.09.2026: Build grün; `npm run sim` auf Level 5 – vorsichtiger Bot 60/60 Schichten geschafft, 0 Crashes; Zufalls-Tapper 0/60 geschafft, 60 Crashes.
+Geprüft wird mit `npm test` (20 Tests, node:test), `npm run build` (Typecheck) und den Balancing-Bots. Am 28.09.2026: Build grün; `npm run sim` auf Level 5 – vorsichtiger Bot 60/60 Schichten geschafft, 0 Crashes; Zufalls-Tapper 0/60 geschafft, 60 Crashes.
 
 ### Offen
 
@@ -490,14 +491,13 @@ Automatische Tests hat die Web-Version nicht; geprüft wird mit `npm run build` 
 
 ### Bekannte Unstimmigkeiten
 
-- **Karriere-Messungen** in ROADMAP.md (M5) stammen von vor den Preis- und Lohnänderungen vom 25.09. und aus der Swift-Simulation; die Web-Sim misst nur Schichten, keine Laufbahn.
-- ROADMAP.md nennt für Mayhem 30 Autos; im Code sind es 12 (`mayhemCars`).
+- **Keine Karriere-Messung:** Die Web-Sim misst nur Schichten, keine ganze Laufbahn (Geld, Preise, Freischaltungen über viele Level).
 
 ---
 
 ## 15. Ideen danach
 
-Offene Ideen stehen in [IDEA.md](IDEA.md). Aus der alten Planung passen zum Browserspiel weiterhin: freier Straßennetz-Editor und weitere Kreisverkehre, Abschleppwagen aus dem Depot-Hof, Verkehrsleitsystem gegen den Zoll-Stau, Krankenwagen, zweispurige Kreisverkehre, weitere Fahrzeugtypen, Prestige. Die Apple-Ideen (Widget, Live Activity, Game Center, CloudKit, StoreKit) ruhen mit der App-Schiene.
+Offene Ideen stehen in [IDEA.md](IDEA.md). Aus der alten Planung passen zum Browserspiel weiterhin: freier Straßennetz-Editor und weitere Kreisverkehre, Abschleppwagen aus dem Depot-Hof, Verkehrsleitsystem gegen den Zoll-Stau, Krankenwagen, zweispurige Kreisverkehre, weitere Fahrzeugtypen, Prestige.
 
 ---
 
@@ -510,10 +510,11 @@ Offene Ideen stehen in [IDEA.md](IDEA.md). Aus der alten Planung passen zum Brow
 | **Typecheck + Build** | `npm run build` (muss vor jedem Commit grün sein) |
 | **Build lokal ausliefern** | `npm run preview` (Port 5050, mit Service Worker) |
 | **Balancing-Bots** | `npm run sim -- 60 5` (Schichten, Level): der vorsichtige Bot darf **nie** crashen, ein Zufalls-Tapper fast immer |
+| **Tests** | `npm test`: Replays (gleicher Seed + gleiche Taps), vorsichtiger Bot ohne Crash, Spielstände (alt, kaputt, Export/Import), Buchung einer Schicht, Freischaltungen, Meldungen |
 | **Multiplayer-Bots** | `npm run sim:versus`: vorsichtige Spuren scheiden nie durch Crash aus, gleicher Seed = gleiches Match |
 | **Container wie in Coolify** | im Repo-Root: `docker build -t car-game . ; docker run -p 5050:5050 car-game` |
 
-**Steuerung:** Tap / Klick / Leertaste = Auto schicken (der erste Tap startet) · Wischen bzw. `←` / `→` = Modus · Dispatch-Button, `D`, `E`, Rechtsklick = Einsatzfahrt · `Tab` = Seite · obere Karte = Store / Collection / Records · `Enter` = starten / Upgrade kaufen · `Esc` = Einstellungen bzw. zurück · `R` = Schicht neu.
+**Steuerung:** Tap / Klick / Leertaste = Auto schicken (der erste Tap startet) · Wischen bzw. `←` / `→` = Modus · Dispatch-Button, `D`, `E`, Rechtsklick = Einsatzfahrt · `Tab` = Seite · obere Karte = Chests / Collection / Records · `Enter` = starten / Upgrade kaufen · `Esc` = Einstellungen bzw. zurück · `R` = Schicht neu.
 
 **Playtest-Routine:** 3 Schichten spielen, am Desktop und auf einem echten Handy → Fairness der Crashes, Feedback-Wahrnehmung, Ruckler, Motivation („Will ich noch eine?“). Auffälligkeiten **mit Seed** notieren (ein Challenge-Link hält die Schicht fest).
 
@@ -534,7 +535,9 @@ Offene Ideen stehen in [IDEA.md](IDEA.md). Aus der alten Planung passen zum Brow
 - [ ] Wetter, Nacht-Chance, Häufigkeit der City Events
 - [ ] Unlimited- und Mayhem-Werte, Boss-Level-Abstand (jedes 15.)
 - [ ] Blaulicht auf dem Boden und Warn-Keil: Intensität, Position, Deutlichkeit
-- [ ] Store und Werbung: bleiben Platzhalter oder fliegen raus, solange es kein Backend und keine Zahlung gibt?
+- [x] Store entfernt, Casino statt Store (Leo, 28.09.2026)
+- [x] Nur noch die Web-Version, Swift-Schiene gelöscht (Leo, 29.09.2026)
+- [ ] Freischalt-Level: Daily 3, Trials 8, Casino 10
 
 ---
 
@@ -544,7 +547,7 @@ Offene Ideen stehen in [IDEA.md](IDEA.md). Aus der alten Planung passen zum Brow
 Car-game/
 ├─ CLAUDE.md                      ← feste Entscheidungen, Befehle, Arbeitsweise
 ├─ Spiel.md                       ← dieses Dokument
-├─ IDEA.md, FOUNDATION.md, LOOT.md, ROADMAP.md, PLAN.md, TESTING.md, MONETIZATION.md
+├─ FOUNDATION.md, LOOT.md, IDEA.md, multiplayer_perfection_plan.md
 ├─ Dockerfile, .dockerignore      ← Node baut, nginx liefert aus (Port 5050)
 ├─ Web/                           ← DAS SPIEL
 │  ├─ README.md, PRODUCT.md
@@ -553,11 +556,10 @@ Car-game/
 │  ├─ src/present/                ← Szene, HUD, Seiten, Session
 │  ├─ src/audio/ storage/ net/ ui/
 │  ├─ public/                     ← Manifest, Icons, audio/ (35 Sounds, 7 Stems)
-│  └─ scripts/                    ← sim.mjs, versus-sim.mjs
-├─ Assets/                        ← Sounds, Musik, Haptik, Icon (Quelle, auch für Web)
-└─ pausiert: Game/ (GameCore, GamePresentation, Sim), TestWindow/ (raylib), App.swiftpm/
+│  ├─ icon/                       ← Original des Icons (make_icon.py)
+│  └─ scripts/                    ← test.mjs, sim.mjs, versus-sim.mjs, casino-sim.mjs
 ```
 
 ---
 
-**Stand:** 28.09.2026 – Car Game ist ein Browserspiel. Alle Systeme der Swift-Version sind portiert, dazu Nacht, Boss-Konvoi, Trials, Challenge-Links und Multiplayer. Nächster großer Schritt: **Playtest auf echten Handys und Deployment über Coolify.**
+**Stand:** 29.09.2026 – Car Game ist ein Browserspiel, offline spielbar nach dem ersten Laden, mit automatischen Tests. Nächster großer Schritt: **Playtest auf echten Handys und Deployment über Coolify.**

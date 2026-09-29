@@ -1,4 +1,5 @@
 import { type SaveGame, type Career, Careers, MASTERY_GOALS, MASTERY_THRESHOLDS, masteryValue } from '../core/career';
+import { Unlocks } from '../core/unlocks';
 import { COSMETICS } from '../core/loot';
 import { challengesOf, challengeReward } from '../core/daily';
 import { TRIALS, type TrialId } from '../core/trials';
@@ -112,7 +113,8 @@ export const ProgressPage = {
     const slide = state.sectionSlide;
     if (slide) thumb = slide.from + (chosen - slide.from) * (reduceMotion ? 1 : Ease.settle(slide.age / ShopPage.slideDuration));
     const last = l.segments[l.segments.length - 1][1];
-    MenuKit.segmented(list, PROGRESS_SECTIONS.map((i) => S.progress.section(i)), chosen, thumb, R.make(l.segments[0][1].minX, l.segments[0][1].minY, last.maxX, last.maxY));
+    const locked = PROGRESS_SECTIONS.map((i) => i === 2 && !Unlocks.isOpen(save.career, 'trials'));
+    MenuKit.segmented(list, PROGRESS_SECTIONS.map((i) => S.progress.section(i)), chosen, thumb, R.make(l.segments[0][1].minX, l.segments[0][1].minY, last.maxX, last.maxY), locked);
     if (save.career.museumNew.length > 0) {
       const r = l.segments[3][1];
       ShopPage.badgeDot(list, v(R.center(r).x + textWidth(S.progress.section(3), 13) / 2 + 7, R.center(r).y - 6), 1);
@@ -240,8 +242,15 @@ export const ProgressPage = {
     const open = Careers.isDailyOpen(career, today);
     const dc = R.center(daily);
     t(list, S.daily.title, v(daily.minX + 16, dc.y - 9), 14, 'primary', dO, { weight: 'bold' });
-    t(list, open ? S.daily.readyHint : S.daily.doneHint(career.dailyStreak), v(daily.minX + 16, dc.y + 11), ShopPage.fitted(S.daily.readyHint, 11, R.width(daily) - 32), 'muted', dO);
-    t(list, open ? S.daily.ready : S.daily.done, v(daily.maxX - 16, dc.y - 9), 13, open ? 'hazard' : 'accent', dO, { weight: 'bold', align: 'trailing' });
+    if (!Unlocks.isOpen(career, 'daily')) {
+      // Not yet: the row says when, nothing more.
+      const at = Unlocks.level('daily');
+      t(list, S.unlocks.opensAt(S.daily.title, at), v(daily.minX + 16, dc.y + 11), 11, 'muted', dO);
+      t(list, S.unlocks.lockedTag(at), v(daily.maxX - 16, dc.y - 9), 13, 'muted', dO, { weight: 'bold', align: 'trailing' });
+    } else {
+      t(list, open ? S.daily.readyHint : S.daily.doneHint(career.dailyStreak), v(daily.minX + 16, dc.y + 11), ShopPage.fitted(S.daily.readyHint, 11, R.width(daily) - 32), 'muted', dO);
+      t(list, open ? S.daily.ready : S.daily.done, v(daily.maxX - 16, dc.y - 9), 13, open ? 'hazard' : 'accent', dO, { weight: 'bold', align: 'trailing' });
+    }
 
     // The Weekly Elite: one shift for the whole week, tap to play it.
     const [weekly, wO] = row();

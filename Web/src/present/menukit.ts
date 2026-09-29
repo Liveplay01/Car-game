@@ -40,7 +40,7 @@ export const MenuKit = {
   },
 
   /** A segmented control: a sunk track and a raised thumb that can slide. */
-  segmented(list: RenderList, labels: string[], chosen: number, thumb: number, r: Rect): void {
+  segmented(list: RenderList, labels: string[], chosen: number, thumb: number, r: Rect, locked: boolean[] = []): void {
     if (labels.length === 0) return;
     const height = R.height(r);
     const tag = list.tag;
@@ -54,7 +54,8 @@ export const MenuKit = {
     list.s(rect(thumbCenter, thumbSize, 7), 'controlThumb');
     list.tag = 'segLabels';
     labels.forEach((label, i) => {
-      list.s(text(label, v(r.minX + cell * (i + 0.5), R.center(r).y), 13, 'center', i === chosen ? 'bold' : 'regular'), i === chosen ? 'primary' : 'muted');
+      // A section that opens later stays in its place, faded.
+      list.s(text(label, v(r.minX + cell * (i + 0.5), R.center(r).y), 13, 'center', i === chosen ? 'bold' : 'regular'), i === chosen ? 'primary' : 'muted', locked[i] ? 0.4 : 1);
     });
     list.tag = tag;
   },

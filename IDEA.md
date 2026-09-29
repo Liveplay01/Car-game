@@ -1,11 +1,10 @@
 # Idea.md – offene Ideen
 
-Stand: 25.09.2026
+Stand: 29.09.2026
 
-Diese Datei enthält nur noch Ideen, die **noch nicht umgesetzt** sind. Was gebaut ist,
-steht mit seinen Regeln und Startwerten in [ROADMAP.md](ROADMAP.md) (M0–M11) und in
-`Game/Sources/GameCore/Config.swift`. Gestrichene Ideen werden hier ebenfalls entfernt
-und in der Roadmap vermerkt.
+Diese Datei enthält nur Ideen, die **noch nicht umgesetzt** sind. Was gebaut ist, steht in
+[Spiel.md](Spiel.md) und [FOUNDATION.md](FOUNDATION.md), die Zahlen in `Web/src/core/config.ts`.
+Gestrichene Ideen werden hier ebenfalls entfernt.
 
 Die Spielidee in einem Satz: Autos per Tap in einen rotierenden Kreisverkehr einfädeln
 (inspiriert von "Car Circle"), mit Polizei, Verbrechern, Geldtransportern, Wetter und
@@ -36,35 +35,16 @@ einer Stadt, die mit dem Spieler wächst.
 
 ---
 
-## Offen: Look & Feel (M11)
+## Offen: Look & Feel
 
-- **Finale Optik:** sehr clean, minimalistisch, Apple-artig, Dark Theme, viel Raum,
-  reduzierte Palette, hoher Kontrast, SF Pro, SF-Symbols-artige Icons.
-- **Animationen:** Spring-Easing, physisch, keine harten Schnitte, direkte Verbindung
-  zwischen Input und Bewegung.
-- **Fahrzeugdarstellung final:** Farben und Formen vermitteln Spielinformation, Farbe
-  nie allein (Formen, Icons, Muster). Textlabels gibt es als Einstellung "Vehicle labels".
-- **Finale Sounds und adaptive Musik als echte Stems:** Combo baut Layer auf (Rhythmus,
-  Bass), Verbrecher bringt Sirenen-Impuls, Rush Hour zieht den Beat an, Flow State
-  verdichtet den Rhythmus. Perfect Input: kurzer hochwertiger Sound. Takedown in
-  Schichten: Kontakt, Metall, Deformation, Reifen, abreißende Teile, Signatur. Das
-  Mischpult dafür (`MusicMix`) existiert; es fehlen die Klänge.
-- **Haptik spüren und feinjustieren** auf dem iPhone (Muster liegen in `Assets/Haptics`);
+- **Echte Klänge und Musik-Stems** statt der Platzhalter: Combo baut Layer auf (Rhythmus,
+  Bass), Verbrecher bringt Sirenen-Impuls, Rush Hour zieht den Beat an, Flow State verdichtet
+  den Rhythmus. Perfect Input: kurzer hochwertiger Sound. Takedown in Schichten: Kontakt,
+  Metall, Deformation, Reifen, abreißende Teile, Signatur. Das Mischpult (`MusicMix`) steht.
+- **Haptik feinjustieren** auf Android-Handys (iPhones können im Browser nicht vibrieren);
   Takedown-Haptik mit der Wucht skalieren.
-- **App-Icon** (die Screen-Entwürfe stehen in UI.md, Abschnitt 4).
-
----
-
-## Offen: Welt als UI (Fortsetzung)
-
-Umgesetzt ist die Basis (ROADMAP.md, "Eine Stadt, ein Ring"). Offen:
-
-- **In der App:** die nativen Tabs (M12) über der gleitenden Kamera, Seiten mit
-  durchscheinendem Material statt Vollfläche.
 - **Daily Shift als eigene Perspektive** (z. B. anderer Blickwinkel oder Tageslicht) statt
   Splash-Karte.
-- **Stadtwachstum sichtbar machen:** nach einem Level-Up entsteht ein neues Gebäude mit einer
-  kurzen, leisen Bewegung am Rand der Stadt.
 
 ## Offen: Balancing (Startwerte stehen, Feinschliff im Playtest)
 
@@ -77,10 +57,11 @@ Umgesetzt ist die Basis (ROADMAP.md, "Eine Stadt, ein Ring"). Offen:
 - Wetterparameter, Häufigkeit der City Events.
 - Blaulicht auf dem Boden: Intensität und Reichweite.
 - Keil-Warnung auf der Mittelinsel: Position und Deutlichkeit.
+- Freischalt-Level für Daily (3), Trials (8) und Casino (10).
 
 ---
 
-## Offen: Stadt und Straßennetz (v1.1)
+## Offen: Stadt und Straßennetz
 
 - Freier Straßennetz-Editor bzw. Stadtübersicht: neue Straßen, **weitere Kreisverkehre**,
   Gebäude, Verkehrsinfrastruktur, dekorative Stadtobjekte.
@@ -91,12 +72,7 @@ Umgesetzt ist die Basis (ROADMAP.md, "Eine Stadt, ein Ring"). Offen:
 
 ---
 
-## Offen: Motivation (v1.2)
-
-
----
-
-## Offen: Inhaltliche Abwechslung (v1.3)
+## Offen: Inhaltliche Abwechslung
 
 - Weitere Vehicle Types über Compact, Sports Car und Van hinaus (z. B. Oldtimer; Truhen-Inhalt,
   eigene faire Eigenschaften).
@@ -105,24 +81,3 @@ Umgesetzt ist die Basis (ROADMAP.md, "Eine Stadt, ein Ring"). Offen:
 
 Diese Inhalte dürfen die Kernmechanik nicht mit Sonderregeln überladen.
 
----
-
-## Offen: Apple-Ökosystem (v1.4)
-
-- **Home-Screen-Widget:** Level, Daily Shift, Personal Best, verfügbare Truhe,
-  Stadtstatus, passive Einnahmen. Nicht das ganze Spiel abbilden.
-- **Live Activity / Dynamic Island:** nur bei aktiver Criminal-Jagd oder aktivem
-  Geldtransporter, nie während jeder Schicht.
-- **Action Button:** Start Shift / Daily Shift, bewusst einfach.
-- **GameKit:** Bestenlisten und Achievements (aus der Mastery).
-- **CloudKit:** Spielstand-Sync.
-- Siri Shortcuts, Apple Watch.
-
----
-
-## Später, falls gewünscht
-
-- **Premium-Truhen gegen Echtgeld** (StoreKit) und Season Pass; vorher rechtliche
-  Prüfung der Lootboxen (App Store 3.1.1, Altersfreigaben, Länder wie Belgien).
-- **Multiplayer**: Echtzeit oder asynchroner Vergleich; Multiplayer-Skins nur kosmetisch,
-  spielbar mit Standard-Skin.
