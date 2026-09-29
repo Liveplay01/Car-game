@@ -164,7 +164,7 @@ export const CityLayer = {
         scars?.addTree(list, add(center, sway), size, candidate, now, time);
       } else {
         const size = mul(v(26 + 30 * unitHash(candidate, 15), 22 + 26 * unitHash(candidate, 16)), grow);
-        CityLayer.addRoof(list, center, size, angle, candidate, fade);
+        CityLayer.addRoof(list, center, size, angle, candidate, fade, MapTheme.roofs(theme));
         scars?.addHouse(list, center, size, angle, candidate, now, time);
         if (unitHash(candidate, 17) < 0.45) {
           const glow = pulse ? pulse.window(candidate, distance) : CityPulse.windowRest;
@@ -181,11 +181,10 @@ export const CityLayer = {
   /**
    * A house from above: its shadow, then the roof. Most are pitched, with a ridge along the
    * long side, the half that faces the light (upper left, like the trees) lighter; the rest
-   * are flat, with a parapet and a unit or two on top. Four muted roof colours, never bright:
-   * the houses frame the road, they do not compete with the cars.
+   * are flat, with a parapet and a unit or two on top. Four roof colours (`roofs`, from the map),
+   * muted, never loud: the houses frame the road, they do not compete with the cars.
    */
-  addRoof(list: RenderList, center: Vec2, size: Vec2, angle: number, index: number, fade: number): void {
-    const roofs: ColorToken[] = ['roofSlate', 'roofTile', 'roofConcrete', 'roofMoss'];
+  addRoof(list: RenderList, center: Vec2, size: Vec2, angle: number, index: number, fade: number, roofs: ColorToken[] = MapTheme.roofs(null)): void {
     const color = roofs[Math.floor(unitHash(index, 19) * roofs.length)];
     list.w(rect(add(center, v(4, -4)), size, 3, angle), 'shadow', 0.8 * fade);
     list.w(rect(center, size, 3, angle), color, 0.95 * fade);

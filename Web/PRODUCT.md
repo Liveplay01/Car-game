@@ -19,7 +19,8 @@ game runs at 60 fps on an older phone, and progress is never lost on the device.
 
 ## Brand Personality
 
-Calm, precise, satisfying. A dark night-time city, a clean road, one mint accent for what
+Calm, precise, satisfying. A dark night-time city (sunny map skins bring daylight around it),
+a clean dark road, one mint accent for what
 the player earns. The juice is in the moment (Tight Fit, takedown, crash), not in the chrome.
 
 ## Anti-references

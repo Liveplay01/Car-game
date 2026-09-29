@@ -105,6 +105,7 @@ export const COSMETICS: Cosmetic[] = [
   c('highland', 'mapSkin', 'rare'),
   c('lanterns', 'mapSkin', 'epic'),
   c('crystal', 'mapSkin', 'legendary'),
+  c('beach', 'mapSkin', 'common'),
   c('compact', 'vehicleType', 'rare'),
   c('sportsCar', 'vehicleType', 'epic'),
   c('van', 'vehicleType', 'epic'),

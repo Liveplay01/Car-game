@@ -903,6 +903,7 @@ export const S = {
         highland: 'Highlands',
         lanterns: 'Lantern Festival',
         crystal: 'Crystal Cavern',
+        beach: 'Beach',
         compact: 'Compact',
         van: 'Van',
         laurel: 'Laurel',

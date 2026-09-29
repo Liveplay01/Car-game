@@ -1,6 +1,6 @@
 import type { RenderList, RenderItem, Camera, Grain } from './render';
 import { toScreen, unitHash } from './render';
-import { css, type ColorToken } from './theme';
+import { COLORS, css, type ColorToken } from './theme';
 import { type Vec2, v } from '../core/vec2';
 import { MONEY_MARK, textPieces, inlineMoneyWidth, moneyShapes } from './icons';
 import { fontFor, measure } from './measure';
@@ -11,6 +11,14 @@ import { fontFor, measure } from './measure';
  * `offset` places the safe area inside the canvas; full-screen fills (scrims, flashes) are
  * stretched to the whole canvas so no edge ever shows.
  */
+type GroundGrain = 'ground' | 'groundBright';
+
+/** Whether a colour is a daylight ground (relative luminance above a mid grey). */
+function isBright(token: ColorToken): boolean {
+  const [r, g, b] = COLORS[token];
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b > 110;
+}
+
 export class CanvasDrawer {
   private readonly ctx: CanvasRenderingContext2D;
   dpr = 1;
@@ -20,7 +28,7 @@ export class CanvasDrawer {
   /** The font the context holds: parsing a font string is costly, so it is set only on change. */
   private font = '';
   /** Textures, made once; and the area of the textured group being drawn (screen points). */
-  private readonly patterns = new Map<Grain | 'ground', CanvasPattern | null>();
+  private readonly patterns = new Map<Grain | GroundGrain, CanvasPattern | null>();
   private grainPath: Path2D | null = null;
   private grainKind: Grain | undefined = undefined;
 
@@ -51,7 +59,7 @@ export class CanvasDrawer {
     ctx.textBaseline = 'middle';
     ctx.textAlign = 'left';
     const cam = list.camera;
-    if (list.groundGrain) this.fillGrain('ground', null, cam);
+    if (list.groundGrain) this.fillGrain(isBright(list.background) ? 'groundBright' : 'ground', null, cam);
     let clip: RenderItem['clip'] = undefined;
     for (const item of list.items) {
       // A textured group has ended: its texture goes over it now, markings and all.
@@ -143,7 +151,7 @@ export class CanvasDrawer {
   }
 
   /** Lays a texture over `path` (null: the whole canvas), anchored to the world so it never swims. */
-  private fillGrain(kind: Grain | 'ground', path: Path2D | null, cam: Camera): void {
+  private fillGrain(kind: Grain | GroundGrain, path: Path2D | null, cam: Camera): void {
     const pattern = this.pattern(kind);
     if (!pattern) return;
     const s = cam.scale * CanvasDrawer.texel;
@@ -157,17 +165,18 @@ export class CanvasDrawer {
   /** World units one texture pixel covers: a 256-pixel tile spans about five car lengths. */
   static readonly texel = 0.5;
 
-  private pattern(kind: Grain | 'ground'): CanvasPattern | null {
+  private pattern(kind: Grain | GroundGrain): CanvasPattern | null {
     if (!this.patterns.has(kind)) this.patterns.set(kind, this.ctx.createPattern(CanvasDrawer.tile(kind), 'repeat'));
     return this.patterns.get(kind) ?? null;
   }
 
   /**
    * A seamless 256-pixel texture, the same every time. Asphalt: fine light and dark grain,
-   * a few pale chips of stone and darker tar patches. Ground: soft mottling and a finer grain.
+   * a few pale chips of stone and darker tar patches. Ground: soft mottling and a finer grain;
+   * on a bright (daylight) ground far fainter, since black shows as dirt on sand and snow.
    * Mostly transparent, so the colour under it stays the colour of the road or the map.
    */
-  static tile(kind: Grain | 'ground'): HTMLCanvasElement {
+  static tile(kind: Grain | GroundGrain): HTMLCanvasElement {
     const size = 256;
     const canvas = document.createElement('canvas');
     canvas.width = size;
@@ -212,8 +221,9 @@ export class CanvasDrawer {
       }
       for (let i = 0; i < 50; i++) dot(h(i, 911) * size, h(i, 912) * size, 1.1 + 0.7 * h(i, 913), light(0.035 + 0.035 * h(i, 914)));
     } else {
-      for (let i = 0; i < 16; i++) patch(h(i, 921) * size, h(i, 922) * size, 40 + 60 * h(i, 923), i % 2 === 0 ? '255,255,255' : '0,0,0', i % 2 === 0 ? 0.012 + 0.01 * h(i, 924) : 0.04 + 0.03 * h(i, 924));
-      for (let i = 0; i < 900; i++) dot(h(i, 926) * size, h(i, 927) * size, 0.5 + 0.6 * h(i, 928), h(i, 925) < 0.4 ? light(0.015 + 0.015 * h(i, 929)) : dark(0.04 + 0.04 * h(i, 929)));
+      const k = kind === 'groundBright' ? 0.3 : 1;
+      for (let i = 0; i < 16; i++) patch(h(i, 921) * size, h(i, 922) * size, 40 + 60 * h(i, 923), i % 2 === 0 ? '255,255,255' : '0,0,0', i % 2 === 0 ? (0.012 + 0.01 * h(i, 924)) / k ** 0.5 : (0.04 + 0.03 * h(i, 924)) * k);
+      for (let i = 0; i < 900; i++) dot(h(i, 926) * size, h(i, 927) * size, 0.5 + 0.6 * h(i, 928), h(i, 925) < 0.4 ? light(0.015 + 0.015 * h(i, 929)) : dark((0.04 + 0.04 * h(i, 929)) * (0.5 + k / 2)));
     }
     return canvas;
   }

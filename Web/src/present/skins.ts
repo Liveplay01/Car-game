@@ -83,6 +83,7 @@ export const Skins = {
       highland: 'mapHighland',
       lanterns: 'mapLanterns',
       crystal: 'mapCrystal',
+      beach: 'sea',
     };
     return id ? (map[id] ?? null) : null;
   },

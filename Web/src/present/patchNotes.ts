@@ -13,6 +13,18 @@ export interface PatchNote {
 
 export const PATCH_NOTES: PatchNote[] = [
   {
+    id: '2026-09-29-sunny-maps',
+    date: '29 September 2026',
+    title: 'Maps in the sun',
+    items: [
+      'The daytime maps are bright now: fresh green lawns under the cherry trees in Sakura, blazing sand, new snow, sunny meadows, vineyards, jungle, highlands and red rock.',
+      'Houses on sunny maps have roofs in daylight colours, and butterflies flutter over the Meadow.',
+      'A new map in the chests: Beach, with a turquoise cove, surf, a lifeguard tower, parasols, sandcastles and gulls.',
+      'Fixed: vineyard fields overlapped each other and ran under houses and roads.',
+      'Night maps like Neon, Cosmos and Lantern Festival stay dark, and the road stays dark everywhere, so cars read just as before.',
+    ],
+  },
+  {
     id: '2026-09-29-more-maps',
     date: '29 September 2026',
     title: 'Four more maps',

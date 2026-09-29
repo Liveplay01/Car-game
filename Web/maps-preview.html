@@ -28,17 +28,21 @@
       import { Skins } from '/src/present/skins.ts';
       import { v } from '/src/core/vec2.ts';
 
-      const TW = 440;
-      const TH = 300;
       const sheet = document.getElementById('sheet');
-      const world = new World(forLevel(baseConfig, 8, 99), 99, { startsOnFirstTap: false });
+      // ?only=sand,vineyard shows just those maps, ?w=900 draws them bigger.
+      const params = new URLSearchParams(location.search);
+      const only = params.get('only')?.split(',');
+      const TW = Number(params.get('w') ?? 440);
+      const TH = Math.round((TW * 300) / 440);
+      sheet.style.gridTemplateColumns = `repeat(${Number(params.get('cols') ?? 4)}, ${TW}px)`;
+            const world = new World(forLevel(baseConfig, 8, 99), 99, { startsOnFirstTap: false });
       for (let i = 0; i < 120 * 6; i++) world.step();
       const t = world.time;
-      const scale = (TH / 2 - 10) / (world.layout.ringRadius + 250);
+      const scale = (TH / 2 - 10) / (world.layout.ringRadius + Number(params.get('reach') ?? 250));
       const viewport = v(TW, TH);
       const camera = { viewport, center: v(0, 0), focus: v(TW / 2, TH / 2), scale };
 
-      for (const theme of [null, ...MAP_THEMES]) {
+      for (const theme of [null, ...MAP_THEMES].filter((x) => !only || only.includes(x ?? 'none'))) {
         const figure = document.createElement('figure');
         const canvas = document.createElement('canvas');
         canvas.width = TW;

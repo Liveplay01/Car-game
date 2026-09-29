@@ -206,18 +206,27 @@ Kreisverkehr (der wertvollste abgeschlossene zählt). Fortschritt im Shop unter 
 
 | Album | Inhalt | Belohnung |
 | --- | --- | --- |
-| Maps | alle 20 Map Skins aus Truhen | 10.000 |
+| Maps | alle 21 Map Skins aus Truhen | 10.000 |
 | Commons / Rares / Epics / Legends | alle Car Skins dieser Seltenheit aus Truhen | 5.000 / 10.000 / 20.000 / 40.000 |
 | Seasons | alle 4 Saison-Items | 30.000 |
 | Loyalty | alle 3 Serien-Items | 20.000 |
 | Honours | alle 11 Legendary-, Prestige- und Elite-Items | 50.000 |
 
-## Map Skins (20)
+## Map Skins (21)
 
 Tönen die Mittelinsel des Kreisverkehrs mit einem Ring in der Skin-Farbe, färben den Boden
-der Stadt außerhalb des Kreisverkehrs (dunkel, damit alles lesbar bleibt) und bringen eigene
+der Stadt außerhalb des Kreisverkehrs und bringen eigene
 Details mit (`MapTheme`, Entscheidung Leo 25.09.2026). **Jede Map säumt ihre Straßen**
 (Alleen an beiden Seiten jedes Arms); die Häuser lassen die Alleen frei.
+
+**Tag und Nacht (Leo, 29.09.2026: „die Maps wirken traurig“):** Maps, die in der Sonne spielen
+(`DAYLIGHT` in `mapThemes.ts`: Sand, Forest, Autumn, Sakura, Meadow, Tropic, Snowfall, Vineyard,
+Red Canyon, Highlands, Beach), haben einen hellen, satten Boden in der Farbe ihres Ortes –
+hellgrüner Rasen in Sakura, knalliger Sand, Neuschnee – und Dächer in Tagesfarben (Ziegel,
+Schiefer, Beton; unter Schnee weiß). Die Nacht-Maps (Dusk, Neon, Aurora, Ember, Cosmos, Harbour,
+Mushroom Grove, Abyss, Lantern Festival, Crystal Cavern) bleiben dunkel, weil ihr Licht das Thema
+ist. **Straße, Mittelinsel und HUD bleiben auf jeder Map dunkel**, damit Autos und Text gleich
+gut lesbar sind. Die Bodentextur ist auf hellen Böden schwächer (sonst wirkt sie wie Schmutz).
 
 - **Sand** Dünen, Kakteen, eine **Oase** mit zwei Palmen · **Forest** Moos, Tannen, eine
   **Blockhütte mit flackerndem Lagerfeuer** · **Autumn** Laub, Herbstbäume, fallende Blätter,
@@ -230,17 +239,21 @@ Details mit (`MapTheme`, Entscheidung Leo 25.09.2026). **Jede Map säumt ihre St
   Steinrand, Seerosen, schwimmenden Kois, Trittsteinen und **Torii**, eine geharkte
   **Zen-Kiesinsel** mit drei bemoosten Steinen, Blütenteppich am Boden und **Blüten, die
   durch die Luft wehen** (in Böen, taumelnd).
-- **Meadow** Wildblumen, blühende Büsche, **Windmühle** mit drehenden Flügeln neben einem
-  Tulpenfeld in bunten Reihen, **Glühwürmchen**.
-- **Tropic** Palmen-Alleen, Muscheln, Sonnenschirme, eine **Lagune** mit Steg und
+- **Meadow** Frühlingswiese mit Wildblumen, blühende Büsche, **Windmühle** mit drehenden
+  Flügeln neben einem Tulpenfeld in bunten Reihen, **Schmetterlinge**.
+- **Tropic** Dschungelgrün, Palmen-Alleen, Hibiskus, eine **Lagune** mit Steg und
   Palmeninsel, auf dem Wasser spielt das Licht.
+- **Beach** (Leo, 29.09.2026) heißer Sand mit Flutlinien, Muscheln und Seesternen, Palmen und
+  Sonnenschirme an den Straßen, Sandburgen, eine **türkise Bucht** mit Brandung, Bojen, Surfbrett
+  und **Rettungsturm**, **Möwen** ziehen mit ihren Schatten drüber.
 - **Snowfall** verschneite Tannen und warme Laternen, Schneemänner, Schlittenspuren, ein
   **zugefrorener Teich** mit Kufenspuren und zwei Eisläufern, **Schneefall**.
 - **Cosmos** Tiefraum mit Nebeln und funkelnden Sternen, kleine Planeten, Leuchtbaken an den
   Straßen, ein **Ringplanet mit umlaufendem Mond**, **Sternschnuppen**.
 - **Neu (Leo, 29.09.2026):** **Harbour** nasser Kai, Containerstapel, Poller und warme
-  Hafenlaternen, ein **Hafenbecken mit schaukelndem Boot und Kran** · **Vineyard** Rebzeilen mit
-  Trauben, Zypressen mit langen Schatten, Olivenbäume, eine **Villa mit Ziegeldach** und
+  Hafenlaternen, ein **Hafenbecken mit schaukelndem Boot und Kran** · **Vineyard** Weinfelder aus
+  Erde und Rebzeilen mit Trauben (an den Straßen ausgerichtet, überlappen sich nie und lassen
+  Straßen, Häuser und Villa frei), Zypressen mit langen Schatten, Olivenbäume, eine **Villa mit Ziegeldach** und
   warmem Hof · **Mushroom Grove** Moos und leuchtende Pilze, ein **Hexenring um einen
   leuchtenden Teich**, aufsteigende Sporen · **Abyss** Meeresgrund mit Sandrippeln und
   Lichtspiel, Korallenfächer und Anemonen, ein **Wrack mit funkelnder Truhe**, Quallen und
@@ -285,6 +298,7 @@ einer neuen Schicht nicht neu an.
 | Highlands | `highland` | Rare | Heide-Violett |
 | Lantern Festival | `lanterns` | Epic | Laternengold |
 | Crystal Cavern | `crystal` | Legendary | Kristallviolett |
+| Beach | `beach` | Common | Meerestürkis |
 
 ## Fahrzeugtypen (3)
 
@@ -302,13 +316,13 @@ was leichter zu platzieren ist, ist schwerer zu timen und umgekehrt. Werte in `W
 
 | Seltenheit | Car Skins | Map Skins | Typen | Summe |
 | --- | --- | --- | --- | --- |
-| Common | 10 | 5 | – | 15 |
+| Common | 10 | 6 | – | 16 |
 | Rare | 11 | 5 | 1 | 17 |
 | Epic | 10 | 5 | 2 | 17 |
 | Legendary | 8 | 5 | – | 13 |
-| **Summe** | **39** | **20** | **3** | **62** |
+| **Summe** | **39** | **21** | **3** | **63** |
 
-Dazu die 7 Items aus Daily-Serie und Saison: 69 insgesamt.
+Dazu die 7 Items aus Daily-Serie und Saison: 70 insgesamt.
 
 ## Ideen für später (noch nicht im Spiel)
 

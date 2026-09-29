@@ -321,9 +321,9 @@ Wer ein System schon vorher benutzt hat, behält es. Einmalige Hinweise (`hints`
 Details und alle Item-Listen: [LOOT.md](LOOT.md) (Liste im Code: `Web/src/core/loot.ts`).
 
 - **Nur Aussehen.** Kein Skin gibt einen Spielvorteil. Sonderfahrzeuge bleiben an der **Form** erkennbar, nicht an der Farbe.
-- **69 Items:** 46 Car Skins (davon 7 nur über Daily-Serie und Saison), 20 Map Skins, 3 Fahrzeugtypen.
+- **70 Items:** 46 Car Skins (davon 7 nur über Daily-Serie und Saison), 21 Map Skins, 3 Fahrzeugtypen.
 - **Skins mischen:** bis zu **5 Car Skins** gleichzeitig; **jedes Fahrzeug** im Level trägt einen davon, fest pro Fahrzeug. Ein Map Skin.
-- **Map Skins** färben den Boden der Stadt, tönen die Mittelinsel, säumen die Straßen mit eigenen Pflanzen und bringen ein **Herzstück** mit Animation.
+- **Map Skins** färben den Boden der Stadt (Tag-Maps hell und satt, Nacht-Maps dunkel), tönen die Mittelinsel, säumen die Straßen mit eigenen Pflanzen und bringen ein **Herzstück** mit Animation.
 - **Car Skins:** Farben, Rennstreifen, zweifarbige Dächer, **Shiny** (Lichtstreif) und **Glitter** (Funkeln).
 
 ### Truhen
