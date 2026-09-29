@@ -4,10 +4,9 @@ A browser version of the roundabout timing game: one tap sends the front car int
 spinning roundabout. It runs on desktop and phones, saves progress on the device and can
 be installed as a PWA ("Add to Home Screen").
 
-Since 27.09.2026 this is **the** game; the Swift/iOS app is paused (see `../CLAUDE.md`).
-The rules were ported from the Swift package `Game/` (`GameCore`): same world units, same
-tuning values (`Config.swift` → `src/core/config.ts`), same fixed 120 Hz step. New rules
-are made here, in `src/core/`.
+This is **the** game (the earlier Swift/iOS version was removed on 29.09.2026). The rules
+live in `src/core/`, every tuning value in `src/core/config.ts`, with a fixed 120 Hz step.
+The rules themselves are described in `../FOUNDATION.md`, the whole game in `../Spiel.md`.
 
 ## Commands
 
@@ -17,9 +16,10 @@ npm install
 npm run dev        # http://localhost:5050, also reachable from a phone on the same network
 npm run build      # type-check + production build into dist/
 npm run preview    # serve dist/ on port 5050 (with the service worker)
-npm run sim        # balancing bots, like `swift run Sim`: node scripts/sim.mjs [shifts] [level]
+npm run sim        # balancing bots: node scripts/sim.mjs [shifts] [level]
 npm run sim:versus # multiplayer bots (the lobby bots): never out for a crash, same seed = same match
 npm run sim:casino # casino fairness: every game returns what its odds sheet says, the coin is fair
+npm test           # node:test: replays, the careful bot, saves (old, broken, export), unlocks, notices
 ```
 
 `npm run sim` must show **0 crashes for the careful bot** at every level. A random
@@ -30,7 +30,7 @@ tapper should crash in almost every shift.
 | Input | Action |
 | --- | --- |
 | Tap / click / Space | send the front car (the first tap starts the shift) |
-| Swipe left/right on the waiting screen, `←` / `→` | Shift · Unlimited · Mayhem · Multiplayer |
+| Swipe left/right on the waiting screen, `←` / `→` | Shift · Unlimited · Mayhem · Multiplayer (after Level 5 a toast and a “Swipe for more modes” hint point it out, until the first switch) |
 | Tap after a lost shift | the next try at once |
 | Dispatch button, `D`, `E`, right-click | turn the next car into a police car (costs part of the combo) |
 | Tab bar, `Tab` | Progress · Game · Shop · Build (Upgrades, Street Builder) |
@@ -47,10 +47,10 @@ touch, not at the next frame.
 
 ```
 src/
-  core/       rules, no DOM (GameCore): world, roundabout, traffic, drivers, crash
+  core/       rules, no DOM: world, roundabout, traffic, drivers, crash
               physics, scoring, levels, specials, explosions, modules, loot, daily,
               store, career
-  present/    GamePresentation, 1:1: render list, scene, effects, weather, city, map
+  present/    presentation: render list, scene, effects, weather, city, map
               skins, HUD, ring signals, banners, tutorial, camera perspectives, screen
               transitions, mode swipe, pages (Shop, Progress, Upgrades, Street Builder),
               feedback + music mix, and the session that runs it all
@@ -58,16 +58,16 @@ src/
   storage/    localStorage save (v2, migrates v1)
   net/        multiplayer room (PeerJS/WebRTC): code, lobby, bots, pings, reconnect, tap messages
   ui/         the DOM shell: canvas, native-like tab bar, settings sheet, multiplayer lobby
-public/audio/ sounds (35) and music stems (7) as AAC, from ../Assets
+public/audio/ sounds (35) and music stems (7) as AAC
+icon/        the icon master (make_icon.py → AppIcon.png)
 scripts/sim.mjs   headless balancing bots
 ```
 
-The canvas draws everything the Swift test window draws (scene, HUD and pages); the DOM
-only carries what should feel native: the tab bar, the settings sheet, two buttons.
+The canvas draws everything in the game (scene, HUD and pages); the DOM only carries what should feel native: the tab bar, the settings sheet, two buttons.
 
 ## What is in
 
-Everything the Swift game has: the core loop, real crash physics, police, criminals,
+The core loop, real crash physics, police, criminals,
 transporters, lorries, tankers and military trucks with explosions, the three modes
 (Shift, Unlimited, Mayhem) with the swipe between them, weather and city events, the
 Street Builder with arms and ring modules, 13 upgrades, chests with the juicy reveal,
@@ -159,13 +159,32 @@ field by field instead of breaking the game. "Reset progress" in Settings erases
 "Export progress" writes it to a file (`car-game-save-<date>.json`), "Import progress" reads
 such a file back through the same checks, after showing what it replaces.
 
+Keeping it safe (`storage/device.ts`, one-time `hints` in the save): Safari clears a site's
+storage after about a week without a visit unless the game is on the home screen. After
+Level 3 the game asks the browser to keep its storage (`navigator.storage.persist()`, never
+on the first visit, since Firefox may ask the player) and suggests installing it (on an
+iPhone: Share → Add to Home Screen). After Level 12, if the storage is still unprotected, it
+suggests an export.
+
+## Unlocks and notices
+
+- `core/unlocks.ts`: the Daily Shift opens at Level 3, the Trials at 8, the Casino at 10
+  (`*UnlockLevel` in `config.ts`); whoever used one before keeps it. Locked segments stay in
+  place, faded, and say when they open. The Casino opens quietly (nothing points there).
+- After Level 5 a pill on the Game tab says "Swipe for more modes" until the first switch.
+- `present/notices.ts`: news (what a shift earned, an unlock, a hint) takes turns in the
+  notice pill; a reply to the player's own action shows at once.
+- `present/booking.ts`: books a finished career shift into the save and lists its news.
+
 ## PWA
 
 - `public/manifest.webmanifest`: name, portrait, full screen, icons (made from
-  `Assets/Icon/AppIcon.png`, the maskable one padded to the safe zone).
+  `icon/AppIcon.png`, the maskable one padded to the safe zone).
 - `sw.js` is generated at build time (`vite.config.ts`): it precaches every built file,
-  so the game runs offline after the first visit. Navigations go network-first, so a new
-  deploy shows up on the next start; the cache name changes with every build.
+  so the game runs offline after the first visit ("Ready to play offline" says so once).
+  Navigations go network-first, so a new deploy shows up on the next start; after 3 s, or
+  without network, the cached page comes instead, and only a good response is cached. The
+  cache name changes with every build.
 - iOS: Safari → Share → "Add to Home Screen". Android/Chrome: Settings → Install.
 
 ## Deploying (Docker, Coolify)

@@ -9,7 +9,7 @@ export type ShiftOutcome = 'completed' | 'struckOut' | 'escaped' | 'failed';
 
 export type ExplosionKind = 'tanker' | 'bomb';
 
-/** Everything the result shows (`ShiftResult` in GameCore). */
+/** Everything the result shows. */
 export interface ShiftResult {
   outcome: ShiftOutcome;
   score: number;

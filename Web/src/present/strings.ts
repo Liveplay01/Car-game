@@ -267,6 +267,22 @@ export const S = {
     imported: (level: number): string => `Progress imported · Level ${level}`,
   },
 
+  /** Systems that open with the level (`core/unlocks.ts`). */
+  unlocks: {
+    daily: 'New · the Daily Shift: one try a day, the same shift for everyone',
+    trials: 'New · Trials in Progress: special shifts with a reward',
+    opensAt: (name: string, level: number): string => `${name} ${name.endsWith('s') ? 'open' : 'opens'} at Level ${level}`,
+    lockedTag: (level: number): string => `LEVEL ${level}`,
+  },
+
+  /** One-time tips that keep the progress safe (`Hint`). */
+  hints: {
+    installIos: 'Tip · Share → Add to Home Screen keeps your progress safe',
+    install: 'Tip · Install the game in Settings to keep your progress safe',
+    backup: 'Tip · Export your progress in Settings to keep a copy',
+    offline: 'Ready to play offline',
+  },
+
   /** Challenge links and mastery trials: shifts that are played for themselves. */
   run: {
     challenge: 'CHALLENGE',
@@ -491,6 +507,8 @@ export const S = {
     runOver: 'RUN OVER',
     again: 'Tap for another run',
     carsSent: (n: number): string => (n === 1 ? '1 car' : `${n} cars`),
+    unlocked: 'New modes · swipe sideways for Unlimited, Mayhem and Multiplayer',
+    swipeHint: 'Swipe for more modes',
   },
 
   mayhem: {

@@ -6,8 +6,7 @@ import { MONEY_MARK, textPieces, inlineMoneyWidth, moneyShapes } from './icons';
 import { fontFor, measure } from './measure';
 
 /**
- * Draws a render list on a 2D canvas: the platform side of FOUNDATION.md 4.1 (the raylib
- * `Renderer` of the test window, for the browser).
+ * Draws a render list on a 2D canvas: the platform side of FOUNDATION.md 4.1.
  *
  * `offset` places the safe area inside the canvas; full-screen fills (scrims, flashes) are
  * stretched to the whole canvas so no edge ever shows.

@@ -1,5 +1,6 @@
 import type { Career } from '../core/career';
 import { Careers } from '../core/career';
+import { Unlocks } from '../core/unlocks';
 import type { Config } from '../core/config';
 import {
   type ChestKind,
@@ -277,7 +278,7 @@ export const ShopPage = {
       thumb = state.sectionSlide.from + (chosen - state.sectionSlide.from) * Ease.settle(state.sectionSlide.age / ShopPage.slideDuration);
       thumb = Math.min(Math.max(thumb, 0), 2);
     }
-    MenuKit.segmented(list, labels, chosen, thumb, all);
+    MenuKit.segmented(list, labels, chosen, thumb, all, l.segments.map(([s]) => s === 2 && !Unlocks.isOpen(career, 'casino')));
     if (career.unseen.length > 0) {
       const r = l.segments[1][1];
       ShopPage.badgeDot(list, v(R.center(r).x + textWidth(S.shop.section(1), 13) / 2 + 8, R.center(r).y), 1);
@@ -568,7 +569,7 @@ export const ShopPage = {
       }
     }
 
-    // Screen space is y-down; the Swift code writes the drop paths in the same space.
+    // Screen space is y-down; the drop paths are written in the same space.
     const dropLife = 1.4;
     if (tt < dropLife) {
       for (let i = 0; i < Math.floor(36 * power); i++) {

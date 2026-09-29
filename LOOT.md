@@ -1,9 +1,9 @@
 # LOOT.md – Was in den Truhen steckt
 
-Stand: 25.09.2026 · Code: `Game/Sources/GameCore/Chests.swift` (Katalog, Odds, Pity),
-`Game/Sources/GamePresentation/CityLayer.swift` (`Skins`: Farben, Streifen, Dächer, Effekte),
-`Game/Sources/GamePresentation/MapThemes.swift` (was eine Map in der Stadt zeigt),
-Namen in `Strings.Shop.item`. Wird ein Item ergänzt, gehört es in alle und hierher.
+Stand: 29.09.2026 · Code: `Web/src/core/loot.ts` (Katalog, Odds, Pity),
+`Web/src/present/skins.ts` (Farben, Streifen, Dächer, Effekte),
+`Web/src/present/mapThemes.ts` (was eine Map in der Stadt zeigt),
+Namen in `Web/src/present/strings.ts` (`S.shop`). Wird ein Item ergänzt, gehört es in alle und hierher.
 
 ## Regeln
 
@@ -22,12 +22,12 @@ Namen in `Strings.Shop.item`. Wird ein Item ergänzt, gehört es in alle und hie
 - **Pity:** Spätestens die 10. Truhe in Folge ohne Epic ist mindestens Epic.
 - **Duplikate** werden zu Geld: Common 250 · Rare 600 · Epic 1.500 · Legendary 4.000.
 - **Kein Echtgeld.** Der Store ist entfernt (Leo, 28.09.2026). Geld und Truhen gibt es nur im
-  Spiel, solange das Casino existiert, ist keine Währung kaufbar ([MONETIZATION.md](MONETIZATION.md)).
+  Spiel, solange das Casino existiert, ist keine Währung kaufbar (CLAUDE.md, „Casino statt Store“).
   Standard-Truhe **26.000**, Premium-Truhe **52.000** Ingame-Geld (seit 25.09.2026 alles Kaufbare +30 %)
   (`standardChestPrice`, `premiumChestPrice`).
 - **Werbung:** Eine Standard-Truhe gibt es auch für eine angesehene Werbung, bis zu
-  **3 pro Tag** (`adChestsPerDay`). Im Testfenster läuft eine 3-Sekunden-Platzhalter-Werbung;
-  die App bindet später einen Werbe-Anbieter über `AdProviding` an.
+  **3 pro Tag** (`adChestsPerDay`). Im Browser läuft eine kurze Platzhalter-Werbung; ein
+  echter Werbe-Anbieter ist nicht angebunden.
 
 ## Truhen
 
@@ -243,8 +243,7 @@ Das Herzstück jeder Map liegt an der freien Stelle über dem Ring, so
 weit weg von allen Armen wie möglich; ist kein Platz, fehlt es. Was durch die Luft fliegt,
 ist klein, blass und liegt unter dem HUD. **Reduce Motion:** nichts fliegt, Kois, Mühle,
 Mond und Sterne stehen still. Die Uhr dafür (`sceneTime`) läuft mit dem Spiel und fängt bei
-einer neuen Schicht nicht neu an. Testfenster: `--map sakura` zeigt eine Map, ohne sie
-anzulegen; `--shelf maps` öffnet die Sammlung auf einem Regal.
+einer neuen Schicht nicht neu an.
 
 | Item | ID | Seltenheit | Aussehen |
 | --- | --- | --- | --- |
@@ -265,7 +264,7 @@ anzulegen; `--shelf maps` öffnet die Sammlung auf einem Regal.
 
 Jeder freigeschaltete Typ taucht gelegentlich in der eigenen Schlange auf (ein Zufallswurf
 für alle Typen; mit nur dem Sportwagen bleibt jede Schlange wie vorher). Anders, nicht besser:
-was leichter zu platzieren ist, ist schwerer zu timen und umgekehrt. Werte in `Config.swift`.
+was leichter zu platzieren ist, ist schwerer zu timen und umgekehrt. Werte in `Web/src/core/config.ts`.
 
 | Item | ID | Seltenheit | Eigenschaften |
 | --- | --- | --- | --- |

@@ -6,7 +6,7 @@ import type { Lead } from './drivers';
 import { isFreeForWarning } from './traffic';
 import { joinsMilitaryZone } from './explosions';
 
-// MARK: Criminal (ROADMAP.md M3)
+// MARK: Criminal (Spiel.md)
 
 export type CriminalPhase =
   | { kind: 'idle'; next: number }
@@ -166,7 +166,7 @@ export function criminalRanInto(w: World, a: Vehicle, b: Vehicle, point: Vec2): 
   return front(criminal) && !front(police);
 }
 
-// MARK: Money transporter (ROADMAP.md M4)
+// MARK: Money transporter (Spiel.md)
 
 export type TransporterPhase =
   | { kind: 'idle'; next: number }

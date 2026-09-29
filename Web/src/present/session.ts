@@ -1,7 +1,8 @@
 import { World, STEP } from '../core/world';
 import { baseConfig, gravity, builtArmSlots, type Config, type RoadModule } from '../core/config';
-import { type SaveGame, type GameMode, Careers, newSave } from '../core/career';
+import { type SaveGame, type GameMode, type Hint, Careers, newSave } from '../core/career';
 import { Elite } from '../core/elite';
+import { Unlocks } from '../core/unlocks';
 import type { GameEvent, ShiftResult } from '../core/events';
 import type { Upgrade } from '../core/levels';
 import { type ChestKind, ALBUM_REWARD, cosmetic, rarityRank } from '../core/loot';
@@ -19,13 +20,15 @@ import { S, Fmt, money as moneyText } from './strings';
 import { CrashEffects } from './effects';
 import { ExplosionEffects, MapScars, SmokeCurtain } from './explosionsFx';
 import { SceneBuilder, VehicleLamps, towYard } from './scene';
-import { CityLayer, CityPulse } from './city';
+import { CityLayer, CityPulse, type CityRise } from './city';
 import { MapTheme } from './mapThemes';
 import { Skins } from './skins';
 import { WeatherLayer } from './weather';
 import { NightLayer } from './night';
-import { HUD, TopBar, RingSignals, ModeBanner, ReadyBanner, ResultBanner, type Popup, type PopupKind, type ShiftSummary, type RunCard, POPUP_LIFETIME, settledPops } from './hud';
+import { HUD, TopBar, RingSignals, ModeBanner, ModeHint, ReadyBanner, ResultBanner, type Popup, type PopupKind, type ShiftSummary, type RunCard, POPUP_LIFETIME, settledPops } from './hud';
 import { Tutorial } from './tutorial';
+import { NoticeQueue } from './notices';
+import { bookShift } from './booking';
 import { MenuKit } from './menukit';
 import { type Screen, type Tab, type SwipeMode, SWIPE_MODES, type ScreenAction, type Built, type ProgressSection, TAB_BAR, BUILD_PAGES, barTab, screenTab, showsTabBar, partModule, BuildLayout } from './flow';
 import { CameraRig, perspectiveOf, addRecede } from './perspective';
@@ -86,7 +89,6 @@ export class GameSession {
   static readonly scoreCatchUp = 0.28;
   static readonly comboPop = 0.35;
   static readonly countInSeconds = 2;
-  static readonly noticeDuration = 3.5;
   static readonly restartLock = 0.5;
   static readonly lossPullBack = 0.05;
   /** At the top multiplier the camera leans in by this much. */
@@ -153,6 +155,11 @@ export class GameSession {
   private buildSlide: { from: Tab; age: number } | null = null;
   private pan = new ModePan();
   private modeBanner: { mode: SwipeMode; age: number } | null = null;
+  /** Houses the career's city had at the last look, and what rises since (`CityLayer.add`). */
+  private cityCount: number | null = null;
+  private cityRise: CityRise | null = null;
+  /** The swipe hint after Level 5: 0 hidden, 1 shown, fading between. */
+  private modeHint = 0;
   /** The multiplayer page of the mode swipe is showing: a tap opens the lobby. */
   versusSelected = false;
   /** Opens the multiplayer lobby (the shell's sheet). */
@@ -166,7 +173,7 @@ export class GameSession {
   private lastCamera: Camera | null = null;
   private lastInset = 0;
   private lastCardTap: { upgrade: Upgrade; age: number } | null = null;
-  private notice: { text: string; age: number } | null = null;
+  private readonly notices = new NoticeQueue();
   private transitions = new TransitionTracker();
   playingLevel = 1;
   dailySelected = false;
@@ -186,6 +193,8 @@ export class GameSession {
   private revealUpgrade: Upgrade | null = null;
   /** Tells the page when the tab bar or badges changed. */
   onChrome: (() => void) | null = null;
+  /** A one-time hint came due (installing, a backup): the shell knows whether it applies. */
+  onHint: ((hint: Hint) => void) | null = null;
   /** The challenge or trial being played, until the player leaves it. */
   special: SpecialRun | null = null;
   /** The last finished shift as a challenge a friend can play; null when it cannot be shared. */
@@ -239,7 +248,7 @@ export class GameSession {
   collectLoginIncome(): void {
     const income = Careers.collectLoginIncome(this.save.career, this.today, this.config);
     this.persist();
-    if (income !== null) this.showNotice(S.daily.welcomeBack(Fmt.number(income)));
+    if (income !== null) this.announce(S.daily.welcomeBack(Fmt.number(income)));
   }
 
   /** Simulation speed with the short slow motions of a takedown and of the lost shift. */
@@ -314,6 +323,10 @@ export class GameSession {
         const fromVersus = this.versusSelected;
         this.versusSelected = mode === 'multiplayer';
         this.modeBanner = { mode, age: 0 };
+        if (!this.save.hints.includes('modes')) {
+          this.save.hints.push('modes');
+          this.persist();
+        }
         if (mode === 'multiplayer' || (fromVersus && mode === this.gameMode)) {
           if (this.isShowingResult) this.prepareShift(false, null, { k: 'ready' });
           this.onChrome?.();
@@ -346,13 +359,13 @@ export class GameSession {
       case 'showShop':
         this.perform({ k: 'showTab', tab: 'shop' });
         if (!this.isPage('shop')) return;
-        this.shopPage.section = action.section;
+        this.shopPage.section = action.section === 2 && !Unlocks.isOpen(this.save.career, 'casino', this.config) ? 0 : action.section;
         this.shopPage.sectionSlide = null;
         break;
       case 'showProgress':
         this.perform({ k: 'showTab', tab: 'progress' });
         if (!this.isPage('progress')) return;
-        this.progressPage.section = action.section;
+        this.progressPage.section = action.section === 2 && !Unlocks.isOpen(this.save.career, 'trials', this.config) ? 0 : action.section;
         this.progressPage.sectionSlide = null;
         break;
       case 'pickUpPart': {
@@ -397,7 +410,7 @@ export class GameSession {
         if (!opening) return;
         const albums = this.completeAlbums();
         this.persist();
-        if (albums.length > 0) this.showNotice(albums.join('  ·  '));
+        if (albums.length > 0) this.announce(...albums);
         this.shopPage.shelf = shelfOf(opening.item);
         this.shopPage.selectedItem = opening.item.id;
         // Reduced motion: no build-up, no reel, the prize at once.
@@ -474,12 +487,19 @@ export class GameSession {
     }
   }
 
+  /** A reply to what the player just did: shown at once. */
   showNotice(textValue: string): void {
-    this.notice = { text: textValue, age: 0 };
+    this.notices.say(textValue);
+  }
+
+  /** News for the player: each line gets its own turn. */
+  announce(...texts: string[]): void {
+    this.notices.announce(...texts);
   }
 
   private get wantsDaily(): boolean {
-    return this.special === null && this.save.mode === 'shift' && (this.tutorial?.isOver ?? true) && Careers.isDailyOpen(this.save.career, this.today);
+    const career = this.save.career;
+    return this.special === null && this.save.mode === 'shift' && (this.tutorial?.isOver ?? true) && Unlocks.isOpen(career, 'daily', this.config) && Careers.isDailyOpen(career, this.today);
   }
 
   /** Sets up the next shift; it waits, traffic flowing, for its first tap. */
@@ -556,7 +576,7 @@ export class GameSession {
     const titles = Careers.recordTitles(career, this.config);
     this.persist();
     this.play(['shiftComplete'], ['shiftComplete']);
-    this.showNotice([S.prestige.done(done.rank, done.item), ...(titles.length > 0 ? [S.titles.earned(titles)] : [])].join('  ·  '));
+    this.announce(S.prestige.done(done.rank, done.item), ...(titles.length > 0 ? [S.titles.earned(titles)] : []));
     this.prepareShift(false, null, this.screen);
   }
 
@@ -610,12 +630,12 @@ export class GameSession {
       const first = passed && (weekly ? !Careers.isWeeklyDone(career, weekNumber(this.today)) : !career.trialsDone.includes(t.id));
       if (first && weekly) {
         const pay = Careers.completeWeekly(career, weekNumber(this.today), this.config);
-        if (pay !== null) this.showNotice(S.weekly.done(Fmt.number(pay)));
+        if (pay !== null) this.announce(S.weekly.done(Fmt.number(pay)));
       } else if (first) {
         career.trialsDone.push(t.id);
         career.money += t.reward;
         const titles = Careers.recordTitles(career, this.config);
-        if (titles.length > 0) this.showNotice(S.titles.earned(titles));
+        if (titles.length > 0) this.announce(S.titles.earned(titles));
       }
       summary = {
         caption: passed ? S.run.passed : S.run.failed,
@@ -1030,7 +1050,7 @@ export class GameSession {
     const albums = this.completeAlbums();
     if (albums.length === 0) return;
     this.persist();
-    this.showNotice(albums.join('  ·  '));
+    this.announce(...albums);
   }
 
   /** The win is kept; the offer to double goes. */
@@ -1088,6 +1108,11 @@ export class GameSession {
     if (target.k !== 'dismiss' && !this.reduceMotion) s.pressed = { target, age: 0 };
     switch (target.k) {
       case 'section':
+        if (target.section === 2 && !Unlocks.isOpen(career, 'casino', this.config)) {
+          this.showNotice(S.unlocks.opensAt(S.shop.section(2), Unlocks.level('casino', this.config)));
+          this.play(['denied'], []);
+          break;
+        }
         if (s.section !== target.section) {
           this.tick();
           this.closeDetail();
@@ -1270,6 +1295,9 @@ export class GameSession {
     if (Math.abs(money - this.shownMoney) < 1 || this.reduceMotion) this.shownMoney = money;
     else this.shownMoney += (money - this.shownMoney) * Math.min(1, realDelta / GameSession.scoreCatchUp);
     this.sinceReady = this.screen.k === 'ready' ? this.sinceReady + realDelta : 0;
+    this.watchCity(realDelta);
+    const hintTarget = this.showsModeHint ? 1 : 0;
+    this.modeHint = this.reduceMotion ? hintTarget : Math.max(0, Math.min(1, this.modeHint + (hintTarget ? 1 : -1) * (realDelta / 0.35)));
     this.tutorial?.advance(realDelta);
     if (this.tutorial?.isDone) this.tutorial = null;
     this.transitions.advance(realDelta);
@@ -1314,7 +1342,7 @@ export class GameSession {
       this.lastCardTap.age += realDelta;
       if (this.lastCardTap.age > GameSession.doubleTapWindow) this.lastCardTap = null;
     }
-    if (this.notice) this.notice = this.notice.age + realDelta < GameSession.noticeDuration ? { text: this.notice.text, age: this.notice.age + realDelta } : null;
+    this.notices.advance(realDelta);
     this.musicMix = this.screen.k === 'playing' && runs ? Music.playing(this.world, this.flowLevel) : Music.silent;
     return this.renderList(viewport, realDelta);
   }
@@ -1650,6 +1678,29 @@ export class GameSession {
     return UpgradePage.layoutOf(this.lastViewport, this.tabInset, this.visibleUpgrades.length).maxScroll + sheet;
   }
 
+  /**
+   * The city of a career shift grew (a level, an arm, a module): the new houses rise, once the
+   * result has made way. Other modes and challenges show other cities and are not counted.
+   */
+  private watchCity(dt: number): void {
+    if (this.cityRise && this.screen.k !== 'result') {
+      this.cityRise.age += dt;
+      const rising = (this.cityCount ?? 0) - this.cityRise.from;
+      if (this.cityRise.age > CityLayer.riseDelay + CityLayer.riseDuration + rising * CityLayer.riseStagger) this.cityRise = null;
+    }
+    if (this.special || this.versusSelected || this.playingMode !== 'shift') return;
+    const count = CityLayer.count(this.world.config);
+    if (this.cityCount !== null && count > this.cityCount) this.cityRise = { from: this.cityCount, age: 0, reduceMotion: this.reduceMotion };
+    this.cityCount = count;
+  }
+
+  /** After Level 5, until the first swipe, on the waiting screen of a career shift (not under a notice). */
+  private get showsModeHint(): boolean {
+    const career = this.save.career;
+    if (this.save.hints.includes('modes') || career.level <= this.config.modeHintAfterLevel || this.versusSelected || !this.notices.isEmpty) return false;
+    return this.screen.k === 'ready' && this.sinceReady > 0.6 && this.takesModeSwipe;
+  }
+
   private get takesModeSwipe(): boolean {
     if (this.world.shift.phase !== 'waiting' || !(this.tutorial?.isOver ?? true) || this.special) return false;
     if (this.isShowingResult) return this.resultAge >= ResultBanner.inputLock;
@@ -1675,6 +1726,11 @@ export class GameSession {
     }
     if (this.isPage('progress')) {
       const section: ProgressSection | null = ProgressPage.sectionAt(point, this.lastViewport, this.tabInset);
+      if (section === 2 && !Unlocks.isOpen(this.save.career, 'trials', this.config)) {
+        this.showNotice(S.unlocks.opensAt(S.progress.section(2), Unlocks.level('trials', this.config)));
+        this.play(['denied'], []);
+        return true;
+      }
       if (section !== null) {
         if (this.progressPage.section !== section) {
           this.tick();
@@ -1850,7 +1906,7 @@ export class GameSession {
       toasts.push(...this.completeAlbums());
     }
     this.persist();
-    if (toasts.length > 0) this.showNotice(toasts.join('  ·  '));
+    this.announce(...toasts);
   }
 
   /** The waiting shift follows the day: today's Daily Shift while open, a normal one after. */
@@ -1941,70 +1997,32 @@ export class GameSession {
           this.world.config.legendary,
         )
       : null;
-    if (this.playingMode === 'mayhem') {
-      const previous = save.mayhemBest;
-      const isNew = result.flames > previous;
-      if (isNew) save.mayhemBest = result.flames;
-      save.mayhemBestChain = Math.max(save.mayhemBestChain, result.biggestChain);
-      this.persist();
-      const found = this.takeMuseumNotice();
-      if (found) this.showNotice(found);
-      this.dailySelected = false;
-      this.resultBank = { before: career.money, after: career.money };
-      this.pendingSummary = { result, level: this.playingLevel, isNewHighscore: isNew, previousHighscore: previous, mode: 'mayhem' };
-      this.resultCountdown = this.resultDelayFor(result);
-      return;
-    }
-    const unlimited = this.playingMode === 'unlimited';
-    const previous = unlimited ? save.unlimitedBest : save.highscore;
-    const isNew = (unlimited || result.outcome === 'completed') && result.score > previous;
-    if (isNew && unlimited) save.unlimitedBest = result.score;
-    else if (isNew) {
-      save.highscore = result.score;
-      save.highscoreSeed = result.seed;
-    }
-    if (unlimited) save.unlimitedBestCars = Math.max(save.unlimitedBestCars, result.carsSent);
-    save.shiftsPlayed += 1;
-    if (this.tutorial) {
+    if (this.tutorial && this.playingMode !== 'mayhem') {
       this.tutorial.end();
       if (this.tutorial.isDone) this.tutorial = null;
       save.tutorialDone = true;
     }
-    const bankBefore = career.money;
-    const eliteBefore = Elite.isOpen(career, this.config);
-    Careers.record(career, result, this.playingLevel);
-    this.resultBank = { before: bankBefore, after: career.money };
-    const toasts: string[] = [];
-    if (result.isPerfectRun) toasts.push(S.daily.perfectRun);
-    const legendary = Careers.completeLegendary(career, result);
-    if (legendary) toasts.push(S.legendary.done(legendary.item));
-    const pay = this.playingDaily && result.outcome === 'completed' ? Careers.completeDaily(career, this.today, this.config) : null;
-    if (pay !== null) toasts.push(S.daily.dailyDone(Fmt.number(pay), career.dailyStreak));
-    else if (!this.playingDaily && Careers.rollEventChest(career, result, this.world.config, result.seed)) toasts.push(S.daily.eventChestFound);
-    else if (Careers.rollLuckyDrop(career, result, this.world.config, result.seed)) toasts.push(S.daily.luckyDrop);
-    this.dailySelected = false;
-    if (result.outcome === 'completed') {
-      const times = [...this.splits];
-      if ((times[times.length - 1] ?? -1) < result.time - 0.001) times.push(result.time);
-      const hadBest = Careers.bestTimes(career, this.playingLevel) !== null;
-      if (Careers.recordTimes(career, times, this.playingLevel) && hadBest) toasts.push(S.race.newBest);
-    }
-    toasts.push(...Careers.recordChallenges(career, result, this.today).map((ch) => S.daily.challengeDone(ch, Fmt.number(this.challengeRewardOf(ch)))));
-    const completed = Careers.recordMastery(career, result);
-    const elite = Careers.recordElite(career, result, this.config);
-    const titles = Careers.recordTitles(career, this.config);
+    const booked = bookShift(save, result, {
+      mode: this.playingMode,
+      level: this.playingLevel,
+      daily: this.playingDaily,
+      today: this.today,
+      config: this.config,
+      shiftConfig: this.world.config,
+      splits: this.splits,
+    });
     this.persist();
-    if (completed.length > 0) toasts.push(S.mastery.toast(completed));
-    if (elite) {
-      // The shift that opens the track says so; later ones show their XP or the level they reached.
-      if (!eliteBefore) toasts.push(S.elite.opened);
-      else if (elite.steps.length === 0 && elite.xp > 0) toasts.push(S.elite.gained(elite.xp));
-      for (const step of elite.steps) if (eliteBefore || step.level > 1) toasts.push(S.elite.reached(step));
-    }
-    if (titles.length > 0) toasts.push(S.titles.earned(titles));
+    this.dailySelected = false;
+    this.resultBank = booked.bank;
     const found = this.takeMuseumNotice();
-    if (found) toasts.push(found);
-    if (toasts.length > 0) this.showNotice(toasts.join('  ·  '));
+    this.notices.announce(...booked.news, ...(found ? [found] : []));
+    for (const hint of booked.due) this.onHint?.(hint);
+    const { isNew, previous } = booked;
+    if (this.playingMode === 'mayhem') {
+      this.pendingSummary = { result, level: this.playingLevel, isNewHighscore: isNew, previousHighscore: previous, mode: 'mayhem' };
+      this.resultCountdown = this.resultDelayFor(result);
+      return;
+    }
     this.pendingSummary = { result, level: this.playingLevel, isNewHighscore: isNew, previousHighscore: previous, mode: this.playingMode, closeCall: this.closeCall(result, previous) };
     this.resultCountdown = this.resultDelayFor(result);
   }
@@ -2021,8 +2039,6 @@ export class GameSession {
     const goal = Goals.money(this.save.career, this.config);
     return goal ? { text: S.goals.money(Fmt.number(goal.short), goal.upgrade), color: 'accent' } : null;
   }
-
-  private challengeRewardOf = (ch: Parameters<typeof S.daily.challenge>[0]): number => challengeRewardValue(ch);
 
   private resultDelayFor(result: ShiftResult): number {
     return result.detonated ? SmokeCurtain.swapAt : GameSession.resultDelay;
@@ -2085,7 +2101,7 @@ export class GameSession {
     const theme = MapTheme.from(career.mapSkin);
     this.lastCamera = camera;
     const list = new RenderList(camera, MapTheme.ground(theme));
-    CityLayer.add(list, world, theme, rm ? null : this.sceneTime, rm ? null : this.cityPulse, this.scars.isEmpty ? null : this.scars, this.sceneTime);
+    CityLayer.add(list, world, theme, rm ? null : this.sceneTime, rm ? null : this.cityPulse, this.scars.isEmpty ? null : this.scars, this.sceneTime, this.playingMode === 'shift' && !this.special ? this.cityRise : null);
     SceneBuilder.addRoad(list, world.layout, world.config);
     CityLayer.addMapSkin(list, Skins.color(career.mapSkin), world);
     MapTheme.addIsland(list, theme, world);
@@ -2153,13 +2169,16 @@ export class GameSession {
       this.tutorial?.add(list, world, alpha, this.sceneTime, rm);
     }
     const inset = this.tabInset;
+    // Where a notice would sit: above the settings button; it fades out as the shift starts.
+    if (this.modeHint > 0 && (s.k === 'ready' || s.k === 'playing')) ModeHint.add(list, v(viewport.x / 2, viewport.y - inset - 92), this.modeHint, this.sceneTime, rm);
     if (this.isPage('streetBuilder')) StreetBuilderPage.add(list, career, this.config, this.builderPage, rm, inset, this.buildThumb);
     else if (this.isPage('upgrades')) UpgradePage.add(list, career, this.config, this.visibleUpgrades, this.upgradePage, rm, inset, this.buildThumb);
     else if (this.isPage('shop')) ShopPage.add(list, career, this.config, this.today, this.shopPage, rm, inset);
     else if (this.isPage('progress')) ProgressPage.add(list, this.save, this.today, this.progressPage, rm, inset);
     else if (s.k === 'settings') list.s(rect({ x: viewport.x / 2, y: viewport.y / 2 }, viewport), 'background', 0.55);
     this.transitions.apply(list, s, overlayStart, rm);
-    if (this.notice) this.addNotice(list, this.notice.text, this.notice.age, inset);
+    const notice = this.notices.shown;
+    if (notice) this.addNotice(list, notice.text, notice.age, notice.duration, inset);
     return list;
   }
 
@@ -2257,9 +2276,9 @@ export class GameSession {
     return hours <= this.config.streakWarningHours ? hours : null;
   }
 
-  private addNotice(list: RenderList, textValue: string, age: number, bottomInset: number): void {
+  private addNotice(list: RenderList, textValue: string, age: number, duration: number, bottomInset: number): void {
     const vp = list.camera.viewport;
-    const opacity = Ease.outCubic(age / 0.2) * (1 - Ease.clamp01((age - (GameSession.noticeDuration - 0.5)) / 0.5));
+    const opacity = Ease.outCubic(age / 0.2) * (1 - Ease.clamp01((age - (duration - 0.5)) / 0.5));
     const rise = this.reduceMotion ? 0 : (1 - Ease.settle(age / 0.4)) * 18;
     // On the Game tab the settings button sits bottom left: the notice keeps above it.
     const lift = this.screen.k === 'ready' || this.screen.k === 'result' ? 56 : 0;
@@ -2299,9 +2318,8 @@ export class GameSession {
     this.tutorial = save.tutorialDone ? null : new Tutorial();
     if (this.tutorial) this.save.mode = 'shift';
     this.prepareShift(false);
-    this.showNotice(S.settings.imported(save.career.level));
+    this.announce(S.settings.imported(save.career.level));
   }
 }
 
-import { challengeReward as challengeRewardValue } from '../core/daily';
 import { textWidth as textWidthOf } from './icons';

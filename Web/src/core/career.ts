@@ -112,7 +112,7 @@ export interface MasteryCompletion {
   chest: ChestKind;
 }
 
-/** The player's progress across shifts (`Career` in GameCore). */
+/** The player's progress across shifts. */
 export interface Career {
   level: number;
   money: number;
@@ -174,7 +174,14 @@ export interface Career {
   casinoNet: number;
 }
 
-/** Everything that is saved (`SaveGame` in GamePresentation). */
+/**
+ * One-time hints: the mode swipe after Level 5 (until the first switch), installing the game
+ * and a backup of the progress (each once, from its level on; `config.*HintAfterLevel`).
+ */
+export const HINTS = ['modes', 'install', 'backup'] as const;
+export type Hint = (typeof HINTS)[number];
+
+/** Everything that is saved (`storage/save.ts` reads and writes it). */
 export interface SaveGame {
   version: 2;
   highscore: number;
@@ -183,6 +190,8 @@ export interface SaveGame {
   settings: Settings;
   career: Career;
   tutorialDone: boolean;
+  /** One-time hints already given (`HINTS`): 'modes' once the player switched modes. */
+  hints: Hint[];
   mode: GameMode;
   unlimitedBest: number;
   unlimitedBestCars: number;
@@ -247,6 +256,7 @@ export const newSave = (): SaveGame => ({
   settings: { sound: true, haptics: true, reduceMotion: 'system', vehicleLabels: false },
   career: newCareer(),
   tutorialDone: false,
+  hints: [],
   mode: 'shift',
   unlimitedBest: 0,
   unlimitedBestCars: 0,

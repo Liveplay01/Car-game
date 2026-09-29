@@ -728,6 +728,22 @@ export const ModeBanner = {
   },
 };
 
+/** After Level 5, until the first swipe: a pill says the other modes are a swipe away, its arrows nudging outward. */
+export const ModeHint = {
+  add(list: RenderList, center: Vec2, shown: number, time: number, reduceMotion: boolean): void {
+    const alpha = Ease.outCubic(shown);
+    if (alpha <= 0.01) return;
+    const label = S.modes.swipeHint;
+    const size = v(textWidth(label, 13) + 64, 32);
+    const at = add(center, v(0, reduceMotion ? 0 : 10 * (1 - alpha)));
+    MenuKit.chromePill(list, at, size, alpha);
+    list.s(text(label, at, 13, 'center', 'bold'), 'primary', alpha);
+    const nudge = reduceMotion ? 0 : 4 * Math.max(0, Math.sin(time * 3.2));
+    list.s(text('‹', add(at, v(-size.x / 2 + 17 - nudge, -1)), 19, 'center', 'bold'), 'accent', alpha);
+    list.s(text('›', add(at, v(size.x / 2 - 17 + nudge, -1)), 19, 'center', 'bold'), 'accent', alpha);
+  },
+};
+
 export interface DailyCard {
   event: CityEvent | null;
   streak: number;

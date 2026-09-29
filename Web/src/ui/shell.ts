@@ -8,6 +8,8 @@ import { h, icon } from './dom';
 import { ICONS } from './icons';
 import { settingsSheet, isSheetOpen, closeAnySheet } from './sheets';
 import { exportSave } from '../storage/save';
+import { isInstalled, isIos, isStorageKept, keepStorage } from '../storage/device';
+import type { Hint } from '../core/career';
 import { decodeChallenge, type ChallengeSpec } from '../core/challenge';
 import { S, Fmt } from '../present/strings';
 import { DetailSheet } from './detailSheet';
@@ -28,8 +30,7 @@ const TAB_LABEL: Record<Tab, string> = { progress: 'Progress', game: 'Game', sho
 const TAB_ICON: Record<Tab, string> = { progress: ICONS.progress, game: ICONS.game, shop: ICONS.shop, upgrades: ICONS.build, streetBuilder: ICONS.build };
 
 /**
- * The browser shell: one canvas that draws the whole game (scene, HUD and pages, like the
- * test window), and a thin DOM layer for what should feel native — the tab bar, the settings
+ * The browser shell: one canvas that draws the whole game (scene, HUD and pages), and a thin DOM layer for what should feel native — the tab bar, the settings
  * sheet, and two floating buttons. Input is timestamped when it happens, not when the frame
  * sees it.
  */
@@ -162,6 +163,7 @@ export class Shell {
     );
 
     this.session.onChrome = () => this.syncChrome(true);
+    this.session.onHint = (hint) => void this.giveHint(hint);
     this.bindInput(canvas);
     this.resize();
     window.addEventListener('resize', () => this.resize());
@@ -340,6 +342,24 @@ export class Shell {
   private openSettings(): void {
     this.audio.unlock();
     this.push({ k: 'perform', action: { k: 'openSettings' } });
+  }
+
+  /**
+   * A one-time hint came due. Level 3: ask the browser to keep the save and suggest installing
+   * (not when installed already). Level 12: suggest an export while the save is unprotected.
+   */
+  private async giveHint(hint: Hint): Promise<void> {
+    const installed = isInstalled();
+    if (hint === 'install') {
+      const kept = await keepStorage();
+      if (installed) return;
+      if (isIos()) this.session.announce(S.hints.installIos);
+      else if (this.installPrompt) this.session.announce(S.hints.install);
+      // Nothing to install here (Firefox): an export is the way to keep a copy.
+      else if (!kept) this.session.announce(S.hints.backup);
+    } else if (hint === 'backup') {
+      if (!installed && !(await isStorageKept())) this.session.announce(S.hints.backup);
+    }
   }
 
   private showSettingsSheet(): void {

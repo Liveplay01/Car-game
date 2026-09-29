@@ -1,4 +1,4 @@
-/** Plain 2D vector maths (y up, like GameCore's `Vec2`). Immutable, small, fast enough. */
+/** Plain 2D vector maths (y up). Immutable, small, fast enough. */
 export interface Vec2 {
   readonly x: number;
   readonly y: number;

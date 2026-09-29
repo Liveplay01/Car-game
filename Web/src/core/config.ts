@@ -1,5 +1,5 @@
 /**
- * All tuning values in one place, ported 1:1 from `Game/Sources/GameCore/Config.swift`.
+ * All tuning values in one place.
  *
  * Units: world units (wu), seconds, wu per second. The world has the same size on every
  * device, only the camera zooms, so timing is identical everywhere.
@@ -365,6 +365,20 @@ export const baseConfig = {
   dragnetTimeFactor: 0.85,
   heavyLoadTruckChance: 0.45,
   heavyLoadTankerShare: 0.5,
+
+  /** From this level cleared on, the Game tab says the other modes are a swipe away (until the first swipe). */
+  modeHintAfterLevel: 5,
+  /** Level cleared after which the game asks the browser to keep its storage and suggests installing it (once). */
+  installHintAfterLevel: 3,
+  /** Level cleared after which an unprotected save suggests an export (once). */
+  backupHintAfterLevel: 12,
+  // Unlocks (Leo, 29.09.2026, `core/unlocks.ts`): a new player meets the systems one at a time.
+  /** The Daily Shift (and its streak) from this level on. */
+  dailyUnlockLevel: 3,
+  /** The Trials section in Progress from this level on. */
+  trialsUnlockLevel: 8,
+  /** The Casino in the Shop from this level on; it opens quietly, nothing points there. */
+  casinoUnlockLevel: 10,
 
   // Prestige (Leo, 28.09.2026): back to Level 1 with the traffic of a higher level; looks only
   prestigeLevel: 50,

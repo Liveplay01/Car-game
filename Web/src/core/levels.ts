@@ -44,7 +44,7 @@ export function tempoAt(time: number, rushHourSince: number | null, c: Config): 
   return base + (Math.max(c.rushHourTempo, base) - base) * smooth;
 }
 
-// MARK: Levels (ROADMAP.md M5)
+// MARK: Levels (Spiel.md)
 
 export function shiftCarsRange(level: number, c: Config): [number, number] {
   const l = Math.max(1, level);
@@ -156,7 +156,7 @@ export function applyBoss(c: Config, base: Config, kind: BossKind, round: number
   c.bossArmour = armour;
 }
 
-// MARK: Upgrades (ROADMAP.md M5, `Upgrades.swift`)
+// MARK: Upgrades (Spiel.md)
 
 export const UPGRADES = [
   'morePatrols',

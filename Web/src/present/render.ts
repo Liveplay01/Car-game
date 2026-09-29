@@ -184,7 +184,7 @@ export function pinned(item: RenderItem, cam: Camera, factor = 1): RenderItem {
   return out;
 }
 
-/** Easing curves (FOUNDATION.md 3, motion rules), 1:1 from `Motion.swift`. */
+/** Easing curves (FOUNDATION.md 3, motion rules). */
 export const Ease = {
   clamp01: (x: number): number => (x < 0 ? 0 : x > 1 ? 1 : x),
   outCubic(x: number): number {
@@ -229,7 +229,7 @@ export function unitHash(index: number, salt: number): number {
 export const lerp = (a: number, b: number, t: number): number => a + (b - a) * t;
 export const vlerp = (a: Vec2, b: Vec2, t: number): Vec2 => add(a, mul(sub(b, a), t));
 
-/** Screen measures in points (`Metrics` in Theme.swift). */
+/** Screen measures in points. */
 export const Metrics = {
   sceneInsets: { top: 72, left: 0, bottom: 16, right: 0 } as Insets,
   hudMargin: 20,

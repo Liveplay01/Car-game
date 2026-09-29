@@ -9,6 +9,7 @@
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview --host",
     "typecheck": "tsc --noEmit",
+    "test": "node --test-reporter=spec scripts/test.mjs",
     "sim": "node scripts/sim.mjs",
     "sim:versus": "node scripts/versus-sim.mjs",
     "sim:casino": "node scripts/casino-sim.mjs"

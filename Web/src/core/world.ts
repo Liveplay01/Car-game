@@ -45,7 +45,7 @@ import { type AmbulancePhase, firstAmbulance, updateAmbulance, noteMergeNearAmbu
 export const STEP_RATE = 120;
 export const STEP = 1 / STEP_RATE;
 
-/** A car rolling through the line on a held tap (`PlayerQueue.Pass` in GameCore). */
+/** A car rolling through the line on a held tap. */
 export interface Pass {
   position: number;
   speed: number;

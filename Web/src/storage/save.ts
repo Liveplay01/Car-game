@@ -1,4 +1,4 @@
-import { type SaveGame, type Career, newSave, newCareer, GAME_MODES, MASTERY_GOALS, type GameMode } from '../core/career';
+import { type SaveGame, type Career, type Hint, HINTS, newSave, newCareer, GAME_MODES, MASTERY_GOALS, type GameMode } from '../core/career';
 import { UPGRADES, upgradeMaxSteps } from '../core/levels';
 import { COSMETICS, CHEST_KINDS, type ChestKind, MAX_CAR_SKINS, cosmetic } from '../core/loot';
 import { ROAD_MODULES, type RoadModule, BOSS_KINDS, type BossKind, baseConfig } from '../core/config';
@@ -132,6 +132,13 @@ function readRound(raw: unknown): CasinoRound[] {
   return [round];
 }
 
+/** Known hints only; someone with an Unlimited or Mayhem best has found the mode swipe already. */
+function readHints(raw: Record<string, unknown>): Hint[] {
+  const hints = new Set(strings(raw.hints).filter((h): h is Hint => (HINTS as readonly string[]).includes(h)));
+  if (int(raw.unlimitedBest, 0, 0) > 0 || int(raw.mayhemBest, 0, 0) > 0) hints.add('modes');
+  return [...hints];
+}
+
 function readSave(raw: unknown): SaveGame {
   const fresh = newSave();
   if (!isObject(raw)) return fresh;
@@ -151,6 +158,7 @@ function readSave(raw: unknown): SaveGame {
     settings,
     career: readCareer(raw.career),
     tutorialDone: raw.tutorialDone === true,
+    hints: readHints(raw),
     mode: GAME_MODES.includes(raw.mode as GameMode) ? (raw.mode as GameMode) : 'shift',
     unlimitedBest: int(raw.unlimitedBest, 0, 0),
     unlimitedBestCars: int(raw.unlimitedBestCars, 0, 0),

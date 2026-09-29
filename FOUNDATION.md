@@ -1,9 +1,9 @@
-# Foundation.md – Plan für die Basis des Spiels
+# Foundation.md – Spielregeln und Grundlagen
 
-> **Stand 27.09.2026:** Car Game ist jetzt ein Browserspiel ([Web/README.md](Web/README.md)). Die **Spielregeln und Startwerte** hier gelten weiter (portiert nach `Web/src/core/`); Technik, Zielgeräte und Architektur beschreiben die pausierte Swift-Schiene.
-
-Stand: 22.09.2026 · Grundlage: [IDEA.md](IDEA.md) (Spielidee) und [PLAN.md](PLAN.md) (Build- & Release-Weg)
-Weiter geht es in [ROADMAP.md](ROADMAP.md), getestet wird nach [TESTING.md](TESTING.md).
+Stand: 29.09.2026 · Car Game ist ein Browserspiel ([Web/README.md](Web/README.md)). Hier stehen
+die **Regeln mit ihren Startwerten**, die Grundsätze für Bild und Bewegung und die Architektur.
+Die Zahlen selbst stehen in `Web/src/core/config.ts`; weicht dieses Dokument vom Code ab, gilt
+der Code. Offene Ideen: [IDEA.md](IDEA.md), Überblick über das ganze Spiel: [Spiel.md](Spiel.md).
 
 ## 0. Was mit "Basis" gemeint ist
 
@@ -16,134 +16,59 @@ irgendein Zusatzsystem dazukommt:
 > Verkehr müssen; die letzten davon sind Rush Hour. Gut gespielt dauert das ≈ 20 s.
 
 Fühlt sich dieser Loop nicht gut an, retten ihn auch Verbrecher, Geldtransporter
-und Zollstellen nicht. Deshalb bauen wir ihn zuerst und spielen ihn auf dem
-Windows-PC, bevor irgendetwas anderes dazukommt.
+und Zollstellen nicht.
 
 **Teil der Basis:** Kreisverkehr, KI-Verkehr, Warteschlange, Einfädeln per Tap,
 Kollision, Combo, Tight-Fit-Bonus, Strikes, Schicht mit Rush Hour,
-Ergebnis-Screen, Highscore.
+Ergebnis-Banner, Highscore.
 
-**Nicht Teil der Basis:** alles andere aus IDEA.md. Die Architektur ist aber so
-geschnitten, dass diese Systeme später ohne Umbau andocken (Abschnitt 4.6).
+**Alles andere** (Polizei, Transporter, Wirtschaft, Truhen, Modi, Multiplayer …) dockt an
+die Basis an, ohne sie umzubauen (Abschnitt 4.6).
 
 ---
 
-## 1. Technik, Arbeitsweise, Zielgeräte
+## 1. Technik und Zielgeräte
 
-### 1.1 Stack: Swift, überall
+### 1.1 Stack
 
-| Bereich | Wahl | Warum |
-| --- | --- | --- |
-| Sprache | Swift 6 | eine Sprache für Logik, Testfenster, App, später Widgets und Watch |
-| Spielregeln | Modul **`GameCore`** | plattformneutral, läuft unter Windows und auf dem iPhone |
-| Darstellungslogik | Modul **`GamePresentation`** | beschreibt Bild, Ton und Haptik als Daten, ebenfalls plattformneutral |
-| Testfenster (Windows) | raylib über ein Swift-Paket | Fenster, Formen, Eingabe, Ton. Nur zum Testen, kommt nicht in die App |
-| Spielszene (App) | SpriteKit | zeichnet, was `GamePresentation` vorgibt |
-| Menüs (App) | SwiftUI | Apple-Look, Dynamic Type und VoiceOver ohne Nachbau |
-| Haptik (App) | Core Haptics, Muster als `.ahap`-Dateien | Die Dateien entstehen am PC, spürbar sind sie erst am iPhone |
-| Audio | Sounddateien (`.wav`), im Testfenster über raylib, in der App über AVAudioEngine | dieselben Dateien auf beiden Seiten |
-| Texte | nur Englisch, zentral in `Strings.swift` | eine Quelle für Testfenster und App |
-| Speichern | `Codable` → JSON-Datei | einfach, versionierbar, überall gleich |
-| Tests | Swift Testing (unter Windows); ob XCUITest in Swift Playgrounds läuft, ist in M12 zu klären, sonst manuelles Playtesting | – |
-| Werkzeuge | VS Code + Swift-Erweiterung (Windows); Swift Playgrounds nur zum Fertigmachen (iPad) | – |
-| Fremdcode | In der App keiner, nur Apple-Frameworks. raylib nur im Testfenster | keine Abhängigkeiten in der App |
-
-**Kein Backend, kein eigener Server.** Das Projekt und der Spielstand liegen
-lokal; GitHub kommt ab Phase 2 nur als Sync-Kanal zwischen Windows und iPad dazu
-(Abschnitt 1.2). Spätere Online-Funktionen laufen über Apples eigene Dienste
-(Game Center, CloudKit, StoreKit).
-
-### 1.2 Arbeitsweise: Windows zuerst, iPad nur zum Fertigmachen
-
-Swift läuft unter Windows, SpriteKit, SwiftUI und die Haptik aber nicht. Damit
-kein Mac gebraucht wird, steckt **alles Plattformneutrale in einem Paket**, das
-unter Windows entsteht und getestet wird; zum Fertigmachen reicht später ein
-iPad mit Swift Playgrounds:
-
-```
-  ┌──────────────────────────────────────────────────────────────┐
-  │  Game/ – plattformneutrales Swift, entsteht unter Windows    │
-  │                                                              │
-  │   GameCore           die Spielregeln                         │
-  │   GamePresentation   was man sieht, hört, fühlt – als Daten  │
-  └──────────────┬──────────────────────────────┬────────────────┘
-                 │                              │
-   Testfenster · Windows · jetzt      iPhone-App · iPad · zum Fertigmachen
-   raylib zeichnet die Daten          SpriteKit zeichnet dieselben Daten
-   Maus / Leertaste = Tap             Touch, Haptik, SwiftUI-Menüs
-```
-
-| Unter Windows im Testfenster fertig und testbar | Erst mit iPad (und iPhone) |
-| --- | --- |
-| Timing, Fairness, Kollision, Combo, Schicht | wie sich ein echter Touch anfühlt |
-| alle Features: Polizei, Transporter, Wirtschaft | Haptik spüren (die Muster schreiben wir am PC) |
-| Look & Feel: Farben, Formen, Effekte, HUD, Sounds | SF-Pro-Schrift, SwiftUI-Menüs, Liquid Glass |
-| Ablauf der Screens und ihre Inhalte | Performance auf dem iPhone, Bildschirmgrößen |
-| Balancing (Bot spielt 1000 Schichten) | Signieren, TestFlight, App Store |
-
-**Was für Phase 2 übrig bleibt (iPad, Swift Playgrounds):**
-
-1. `App.swiftpm`-Projekt anlegen und das Paket `Game/` per lokalem Pfad einbinden
-2. SpriteKit-Adapter: zeichnet die Render-Liste aus `GamePresentation`
-3. Touch-, Haptik- und Audio-Adapter
-4. SwiftUI-Menüs als reine Ansichten des Screen-Ablaufs aus `GamePresentation`
-5. Tests auf dem echten Gerät und Timing-Feintuning mit Touch
-6. Über GitHub synchronisieren, App-Store-Einreichung direkt aus Playgrounds prüfen
-
-Alles andere kommt fertig und getestet aus Phase 1. Deshalb bleibt Phase 2 überschaubar.
-
-**Einschränkung:** Maus und Leertaste sind nur ein Ersatz für den Finger. Ob das
-Spiel Spaß macht, zeigt das Testfenster. Das letzte Timing-Feintuning passiert mit
-echtem Touch (iPad, später iPhone).
-
-**Risiko und Rückfallebene:** Die Swift-Pakete für raylib sind Community-Projekte.
-Baut keines mit der aktuellen Swift-Version, legen wir den raylib-Quellcode (C)
-direkt ins Projekt. Die Swift-Toolchain kompiliert ihn mit. Deshalb ist der erste
-Schritt in M0 ein kurzer Bautest.
-
-**Für Phase 2:** Swift Playgrounds (App Store, kostenlos) auf dem iPad
-installieren, das Repo über eine Git-App (z. B. Working Copy) klonen oder über
-Playgrounds' eigenen Repo-Import laden, darin den Ordner `App.swiftpm` öffnen.
-Windows bleibt die Hauptkopie und pusht auf `origin`; das iPad zieht nur den
-Stand, es entsteht keine zweite Quelle der Wahrheit.
+Vite + TypeScript + HTML5 Canvas, ohne UI-Framework und ohne Game-Engine. Befehle, Aufbau,
+Speichern, PWA und Deployment: [Web/README.md](Web/README.md). **Kein Backend:** Der Spielstand
+liegt im Browser (`localStorage`), nginx liefert nur statische Dateien aus. Multiplayer läuft
+direkt zwischen den Geräten (WebRTC über PeerJS).
 
 ### 1.3 Zielgeräte und Sprache
 
-**Mindestversion ist iOS 26.** Das sind alle iPhones ab **iPhone 11** und das
-**iPhone SE ab der 2. Generation**. iOS 27 wird ausdrücklich nicht vorausgesetzt:
-Alles, was die App braucht, gibt es schon in iOS 26. Neuere APIs nur hinter
-`if #available(iOS 27, *)`, und dann mit einem Weg, der ohne sie genauso
-funktioniert.
+Aktuelle Browser auf dem Handy (Hochformat, einhändig) und auf dem Desktop, installierbar als
+PWA und nach dem ersten Laden auch offline spielbar.
 
 | Grenze | Gerät | Was das für uns heißt |
 | --- | --- | --- |
-| Kleinster Bildschirm | iPhone SE (2./3. Gen.): 375 × 667 pt, 16:9, Home-Button | Das Layout muss auch auf einem niedrigen Bildschirm funktionieren |
-| Größter Bildschirm | iPhone 17 Pro Max: 440 × 956 pt | Nichts darf verloren oder gestreckt wirken |
-| Schwächster Chip | A13 (iPhone 11, SE 2. Gen.) | Performance-Maßstab: Dort müssen 60 fps halten |
-| Bildwiederholrate | 60 Hz auf den meisten Modellen, 120 Hz auf ProMotion-Modellen | Fester Simulationstakt, damit das Timing überall gleich ist |
-| Action Button | nur auf neueren Modellen | Die Einsatzfahrt gibt es immer auch als Button im Spiel |
+| Kleinster Bildschirm | 375 × 667 (iPhone SE, kleine Android-Handys) | Das Layout muss auch auf einem niedrigen Bildschirm funktionieren |
+| Größter Bildschirm | Desktop-Fenster, Tablets | Nichts darf verloren oder gestreckt wirken; die Szene bleibt hochkant |
+| Schwache Geräte | ältere Mittelklasse-Handys | Performance-Maßstab: Dort müssen 60 fps halten |
+| Bildwiederholrate | 60 bis 144 Hz | Fester Simulationstakt, damit das Timing überall gleich ist |
 
 **Sprache: nur Englisch, weltweit.** Alle Texte stehen an einer Stelle
-(`Strings.swift`) und werden von Testfenster und App gemeinsam genutzt. Zahlen
-erscheinen im Format des Geräts (1,000 bzw. 1.000). In Grafiken steht kein Text.
+(`Web/src/present/strings.ts`). Zahlen erscheinen im Format des Geräts (1,000 bzw. 1.000).
+In Grafiken steht kein Text.
 
 ---
 
 ## 2. Spielregeln der Basis, konkret
 
 Alle Zahlen sind **Startwerte**. Sie stehen gesammelt in
-`Game/Sources/GameCore/Config.swift` und werden im Playtest getunt, im Testfenster
-live über `tuning.json` (siehe [TESTING.md](TESTING.md)). Damit sind auch die
+`Web/src/core/config.ts` und werden im Playtest getunt (`npm run sim` prüft sie mit
+Bots). Damit sind auch die
 offenen Punkte "Combo-Schwellen" und "Multiplikatoren" aus IDEA.md vorläufig
 beantwortet.
 
 ### 2.1 Spielfeld
 
-- **Hochformat, einhändig spielbar.** Das Testfenster ist ebenfalls hochkant.
+- **Hochformat, einhändig spielbar.** Auf dem Desktop steht die Szene ebenfalls hochkant.
 - **Die Spielwelt ist überall gleich groß** und hat feste Welt-Einheiten. Nur die
   Kamera zoomt so, dass Kreisverkehr und Warteschlange ins Fenster bzw. in den
   sicheren Bildschirmbereich passen. Timing und Highscores sind dadurch auf allen
-  Geräten gleich. Auf dem iPhone SE zeigt die Warteschlange 3 statt 4 Autos.
+  Geräten gleich. Auf kleinen Handys (375 × 667) zeigt die Warteschlange 3 statt 4 Autos.
 - **Ein einspuriger Kreisverkehr mit 4 Zufahrten** (N, O, S, W). Verkehr fließt
   gegen den Uhrzeigersinn, wie im deutschen Rechtsverkehr.
 - **Deine Zufahrt ist Süd**, also unten in der Daumenzone. Dort steht die Warteschlange.
@@ -169,11 +94,11 @@ beantwortet.
 in **16 Steckplätzen** rund um den Ring (22,5° Raster); Platz 0 unten gehört immer dem
 Spieler. Zwei Zufahrten müssen mindestens zwei Plätze auseinander liegen, sonst stoßen ihre
 Ein- und Ausfahrten aneinander. Jede Zufahrt über die vierte hinaus macht den Ring um 18
-Einheiten weiter, damit alle Platz behalten. Gebaut wird im Street Builder (ROADMAP.md, M5).
+Einheiten weiter, damit alle Platz behalten. Gebaut wird im Street Builder (Build-Tab).
 
 ### 2.2 Was bei einem Tap passiert
 
-Im Testfenster ist ein Tap ein Linksklick oder die Leertaste.
+Auf dem Desktop ist ein Tap ein Klick oder die Leertaste.
 
 1. **Tap irgendwo auf die Spielfläche** (außer auf Buttons). Das vorderste Auto
    fährt **im selben Frame** los, ohne Ausholbewegung und ohne Verzögerung.
@@ -204,7 +129,7 @@ Im Testfenster ist ein Tap ein Linksklick oder die Leertaste.
    `passClearance` (4) zwischen den Stoßstangen frei ist. Das kann ein paar Millisekunden
    früher oder später sein als bei einem stehenden Auto. Die Autos dahinter rollen weiter
    (`rollingSpeed`). Bremslichter und eine Lichthupe für den gehaltenen Tap zeichnet
-   `GamePresentation` (`VehicleLamps`).
+   `present/scene.ts` (`VehicleLamps`).
 6. Autos im Ring **verlassen ihn nach 1–3 Ausfahrten wieder**. So entstehen
    ständig neue Lücken.
 
@@ -216,7 +141,7 @@ bleibt die Bewertung fair, wenn das Tempo in der Rush Hour steigt.
 | Ergebnis | Bedingung | Punkte | Combo | Feedback |
 | --- | --- | --- | --- | --- |
 | **Crash** | Fahrzeuge berühren sich (beim Einfädeln oder bis 1 s danach) | −250 (nie unter 0) | auf 0 | normales Auto: Strike (Standard: Game Over), Polizeiauto: Polizei-Crash (2.6) |
-| **Tight Fit** | kleinster Abstand < 0,12 s | 200 × Multiplikator | +2 | Swoosh, auf dem iPhone ein scharfer Taptic-Klick |
+| **Tight Fit** | kleinster Abstand < 0,12 s | 200 × Multiplikator | +2 | Swoosh, dazu ein scharfer Haptik-Klick, wo das Gerät vibrieren kann |
 | **Sauber** | alles andere | 100 × Multiplikator | +1 | dezenter Ton |
 
 **Zur "unsauberen Einfädelung" aus IDEA.md:** Sie ist als optionales Fenster
@@ -246,7 +171,7 @@ ist die Schicht geschafft. Gut gespielt dauert das ≈ 20 s, und leicht soll es 
   Obergrenze: Die KI füllt den Ring nur so weit, wie ihre Sicherheitslücken reichen.
 - **Rush Hour = die letzten 4 Autos** (`rushHourCars`): Tempo 135 %, Dichte +2,
   **Punkte ×2**. Sie beginnt mit dem ersten dieser vier; der Zähler wechselt auf eine
-  Akzent-Pill. Auf dem iPhone kommt ein Haptik-Signal dazu.
+  Akzent-Pill, dazu ein Haptik-Signal, wo das Gerät vibrieren kann.
 - **Verbrecher und Transporter** kommen früh (nach 4–8 s bzw. 8–14 s). **Sobald alle Autos
   drin sind, ist die Schicht geschafft** – ein Verbrecher, der dann noch unterwegs ist,
   fährt einfach weg. Wer spät noch einen Verbrecher gemeldet bekommt, hat also die Wahl:
@@ -273,7 +198,7 @@ ist die Schicht geschafft. Gut gespielt dauert das ≈ 20 s, und leicht soll es 
 - **Level (M5):** Jede geschaffte Schicht ist ein Level höher, eine verlorene wird auf
   demselben Level wiederholt. Mit dem Level wachsen die Autozahl (10 → höchstens 30,
   je Versuch zufällig ±2) und ab Level 5 das Tempo; Level 1 bis 4 sind entschärft
-  (`Levels.swift`, ROADMAP.md M5).
+  (`Web/src/core/levels.ts`).
 
 ### 2.6 Fehler: Crashes
 
@@ -313,7 +238,7 @@ aber keinen Strike.
 - **Der Verkehr reagiert:** Fahrer sehen Wracks und bremsende Autos, reagieren nach
   0,5–1,5 s (echte Bremsreaktionszeiten) und bremsen so stark wie nötig, höchstens
   0,9 g. Reicht der Platz nicht, fahren sie auf, und Kettenunfälle entstehen aus der
-  Physik (`Drivers.swift`). Danach beschleunigen sie wieder in den Fluss.
+  Physik (`Web/src/core/drivers.ts`). Danach beschleunigen sie wieder in den Fluss.
 - **Folgeunfälle** im Verkehr dahinter kosten nichts: Ein Fehler zählt einmal. Wer in
   eine sichtbare Unfallstelle einfädelt, macht dagegen einen Fehler. Umschaltbar über
   `chainCrashesCostStrikes`.
@@ -382,84 +307,81 @@ nicht. Mehr Geld heißt ein schwererer Ring (IDEA.md, „Wirtschaft schafft Gefa
 - **Darstellung:** Das Modul steht am Ring, seine Zone ist als Abschnitt sichtbar, damit
   man sieht, wo sich der Verkehr gleich staut. Ein Abschleppwagen fährt nach einem Crash
   aus dem Depot-Hof.
-- Alle Werte stehen in `Config.swift` (Abschnitt „Ring modules and trucks“).
+- Alle Werte stehen in `Web/src/core/config.ts` (Abschnitt „Ring modules and trucks“).
 
 ---
 
 ## 3. Screens und UI
 
-**Screen-Ablauf und Inhalte** entstehen in `GamePresentation`, also unter Windows:
-welcher Screen gerade aktiv ist, welche Daten er zeigt und welche Aktionen er
-anbietet. Das Testfenster zeigt das als schlichte Textseiten. Die App baut daraus
-auf dem Mac die SwiftUI-Screens.
+**Screen-Ablauf und Inhalte** stehen in `Web/src/present/flow.ts`: welcher Screen gerade
+aktiv ist, welche Daten er zeigt und welche Aktionen er anbietet. Die DOM-Hülle
+(`Web/src/ui/`) zeigt daraus Tab-Bar, Sheets und Knöpfe.
 
 *Stand M5:* **Es gibt kein Startmenü.** Das Spiel öffnet auf dem Game-Tab mit dem
 Kreisverkehr; ein Tap startet die Schicht. Unten wechselt eine Tab-Bar zu den anderen
-Seiten (in der App die native `TabView`, im Testfenster eine schlichte Leiste). Während
+Seiten, gebaut wie eine iOS-Tab-Bar. Während
 einer Schicht ist sie ausgeblendet.
 
 | Screen | Inhalt | Wichtigste Aktion |
 | --- | --- | --- |
-| **Game-Tab, Modi** (26.09.2026) | Wischen zur Seite schiebt die ganze Karte weiter zum Kreisverkehr des nächsten Modus; er rastet auf einer Feder mit leichtem Überschwingen ein, dazu ploppt der Name des Modus auf (Testfenster: ← →). **Shift** (Level), **Unlimited** (endlose Schicht auf festem Level `endlessLevel`, wird nach der Anlaufzeit immer dichter und schneller, endet erst mit dem Verlust, zahlt `endlessPayPerCar` je Auto, eigener Bestwert und eigene Game-Center-Bestenliste), **Mayhem** (12 Autos auf Level `mayhemLevel`, voller Verkehr ab der ersten Sekunde ohne Anlaufzeit, keine Verbrecher und Transporter; *(27.09.2026)* zwischen zwei Autos eine Nachladezeit von `mayhemReload` = 1,1 s, damit man nicht alles auf einmal raushaut, sondern auf den richtigen Moment wartet; viel mehr Lkw, die meisten davon Tanklaster, und alle paar Sekunden ein Militär-Truck, dessen Bombe das Finale ist; Wracks von Lkw, Tankern und Militär-Trucks zählen doppelt (`mayhemHeavyFlames`); niemand bremst, und fahrende Autos fahren über liegende Wracks hinweg, nur ein noch fliegendes Wrack (schneller als `mayhemWreckHitSpeed`) trifft, was im Weg ist; jeder Unfall, der ein neues Wrack macht, bringt Flammen; ein Folgeunfall im Verkehr binnen `mayhemChainWindow` verlängert die Kettenreaktion und zählt seinen Platz in ihr, höchstens `mayhemMaxChainFlames`; der eigene Crash startet die Kette neu; größere Explosionen je länger die Kette; zählt weder ins Geld noch in Level, Statistik, Mastery oder Challenges, nur eigener Bestwert und Bestenliste). Ein kurzer Tipp startet wie immer; auf dem Game-Tab zählt er beim Loslassen. Im Tutorial keine Modi | Wischen |
+| **Game-Tab, Modi** (26.09.2026) | Wischen zur Seite schiebt die ganze Karte weiter zum Kreisverkehr des nächsten Modus; er rastet auf einer Feder mit leichtem Überschwingen ein, dazu ploppt der Name des Modus auf (Desktop: ← →). Nach Level 5 weist ein Hinweis darauf hin, bis zum ersten Wechsel. **Shift** (Level), **Unlimited** (endlose Schicht auf festem Level `endlessLevel`, wird nach der Anlaufzeit immer dichter und schneller, endet erst mit dem Verlust, zahlt `endlessPayPerCar` je Auto, eigener Bestwert), **Mayhem** (12 Autos auf Level `mayhemLevel`, voller Verkehr ab der ersten Sekunde ohne Anlaufzeit, keine Verbrecher und Transporter; *(27.09.2026)* zwischen zwei Autos eine Nachladezeit von `mayhemReload` = 1,1 s, damit man nicht alles auf einmal raushaut, sondern auf den richtigen Moment wartet; viel mehr Lkw, die meisten davon Tanklaster, und alle paar Sekunden ein Militär-Truck, dessen Bombe das Finale ist; Wracks von Lkw, Tankern und Militär-Trucks zählen doppelt (`mayhemHeavyFlames`); niemand bremst, und fahrende Autos fahren über liegende Wracks hinweg, nur ein noch fliegendes Wrack (schneller als `mayhemWreckHitSpeed`) trifft, was im Weg ist; jeder Unfall, der ein neues Wrack macht, bringt Flammen; ein Folgeunfall im Verkehr binnen `mayhemChainWindow` verlängert die Kettenreaktion und zählt seinen Platz in ihr, höchstens `mayhemMaxChainFlames`; der eigene Crash startet die Kette neu; größere Explosionen je länger die Kette; zählt weder ins Geld noch in Level, Statistik, Mastery oder Challenges, nur eigener Bestwert). Ein kurzer Tipp startet wie immer; auf dem Game-Tab zählt er beim Loslassen. Im Tutorial keine Modi. Als letzte Seite: **Multiplayer** (2–4 Spieler, Last One Standing) | Wischen |
 | **Game-Tab, bereit** | kein Menü: oben in der Szene "LEVEL 3", die Zahl der Autos, die Gefahrenstufe ("Normal duty" / "High alert · ×3 money"), Highscore und Geld; auf der Mittelinsel "Tap to start" | **Tap** (irgendwo) |
-| **Spiel (HUD)** | oben links Punkte, oben mittig die Autos, die noch fehlen ("12 cars"), darunter die Crash-Punkte (2.6), oben rechts Pause; Combo auf der Mittelinsel; unten die Warteschlange | Tippen |
-| **Pause** | Resume, Restart, End shift. Pausiert automatisch, wenn die App in den Hintergrund geht | **Resume** |
+| **Spiel (HUD)** | oben links Punkte, oben mittig die Autos, die noch fehlen ("12 cars"), darunter die Crash-Punkte (2.6), unten die Einsatzfahrt; Combo auf der Mittelinsel; unten die Warteschlange | Tippen |
+| **Unterbrechung** | Geht der Tab in den Hintergrund, hält die Schicht an und zählt beim Zurückkommen herunter | – |
 | **Ergebnis** | kein Menü: oben in der Szene "GAME OVER" bzw. "LEVEL 3 COMPLETE", Punkte groß, "New Highscore" oder Bestwert; auf der Mittelinsel "Tap for level 4" bzw. "Tap to try level 3 again", Zeit, beste Combo, Tight Fits, Geld | **Tap** (irgendwo) |
-| **Einstellungen** | Sound, Haptics, Reduce Motion (Standard: folgt iOS); über dem Game-Tab (App: Zahnrad und Sheet, Testfenster: Esc) | – |
+| **Einstellungen** | Sound, Haptics, Vehicle labels, Reduce Motion (Standard: folgt dem System), Installieren, Export/Import des Spielstands; das Zahnrad auf dem Game-Tab öffnet ein Sheet | – |
 | **Build-Tab** | Segmented Control **Upgrades · Street Builder** (seit 26.09.2026 ein Tab, wie die Bereiche im Shop); öffnet dort, wo man ihn verlassen hat | – |
 | Build · Upgrades | Kontostand und eine Karte je Upgrade: Bild, Name, gekaufte Stufen, Preis der nächsten. Ein Tap öffnet unten die Details, ein Doppel-Tap kauft | Stufe kaufen |
 | Build · Street Builder | der Kreisverkehr von oben, die freien Steckplätze und eine Palette mit Teilen. Ein Teil wird auf einen Platz gezogen, ein Doppel-Tap baut es, ein einzelner nimmt es wieder weg | Zufahrt bauen |
-| **Shop-Tab** | Chests · Collection · Store (In-App-Käufe und Werbung, [MONETIZATION.md](MONETIZATION.md)) | Truhe öffnen |
-| **Progress-Tab** | Records (Bestwerte), Quests (Daily Shift, drei Challenges, Serie), Achievements (Mastery-Ziele mit Stufen und Fortschrittsbalken) | – |
+| **Shop-Tab** | Chests · Collection · Casino ([LOOT.md](LOOT.md)); keine kaufbare Währung | Truhe öffnen |
+| **Progress-Tab** | Records · Quests · Trials · Museum · Mastery | – |
 
 Das HUD und das Ergebnis-Banner gehören zur Spielszene und kommen deshalb komplett
-aus der Render-Liste. Nur der Pause-Button liegt in der App als SwiftUI-Overlay darüber.
+aus der Render-Liste. Nur schwebende Knöpfe (Einstellungen, Einsatzfahrt, Challenge) liegen
+als DOM-Elemente darüber.
 
-**Navigation (ab M5, seit 26.09.2026 Progress · Game · Shop · Build):** Die Seiten wechselt man über
-eine **native iOS-Tab-Bar** (SwiftUI `TabView`). `ScreenFlow` modelliert die Tabs
-(`Tab`, `Screen.page`), die App baut daraus nur noch die `TabView`.
+**Navigation (Progress · Game · Shop · Build):** Die Tab-Bar ist DOM (`Web/src/ui/shell.ts`),
+`flow.ts` modelliert die Tabs (`Tab`, `Screen.page`).
 
 ### Design-Grundsätze
 
-Die Details legt der Look-&-Feel-Meilenstein M11 fest, das meiste davon schon im Testfenster.
-
 - **Dark Theme** mit Farben als Tokens nach Rollen: background, surface (Straße),
-  primary (Text), muted, accent, destructive. Sie stehen als Konstanten in
-  `GamePresentation` und gelten für Testfenster und App gleich.
+  primary (Text), muted, accent, destructive. Sie stehen in
+  `Web/src/present/theme.ts` und als CSS-Variablen in `Web/src/ui/shell.css`.
 - **Fahrzeugfarben sind Spielinformation und für die UI tabu.** Die Akzentfarbe
   darf nie wie ein Fahrzeugtyp aussehen (Polizei, Pickup, Transporter).
 - **Fahrzeugtypen sind immer über Farbe, Form und Symbol erkennbar.** Damit ist
   Farbenblind-Tauglichkeit Standard und kein Extra.
-- **Schrift:** In der App SF Pro, im Testfenster eine freie Platzhalterschrift.
-  Zahlen mit gleich breiten Ziffern, damit Punkte und Zähler nicht zittern.
-- **In der App:** SF Symbols. **Liquid Glass sparsam**, nur für schwebende
-  Bedienelemente wie Pause und Menü-Panels, nie über der Fahrbahn.
-- **Touch:** Die ganze Spielfläche ist Tap-Zone. Buttons haben mindestens 44 pt.
-- **So viele native Apple-Elemente wie möglich:** Tab-Bar, NavigationStack, Listen
-  und Formulare (Einstellungen), Sheets, SF Symbols, System-Buttons. Eigenes Design
-  nur für die Spielszene selbst (Render-Liste).
+- **Schrift:** die Systemschrift (auf Apple-Geräten SF Pro). Zahlen mit gleich breiten
+  Ziffern, damit Punkte und Zähler nicht zittern.
+- **Glas-Effekt sparsam**, nur für schwebende Bedienelemente über der Szene, nie über
+  der Fahrbahn.
+- **Touch:** Die ganze Spielfläche ist Tap-Zone. Buttons haben mindestens 44 px.
+- **Native App-Anmutung:** Tab-Bar, gruppierte Listen, Sheets, Schalter und Segmented
+  Controls, wie man sie von iOS kennt. Eigenes Design nur für die Spielszene selbst
+  (Render-Liste).
 - **So wenig Bewegung für den Daumen wie möglich:** Nach einer Schicht geht es mit
   einem Tap weiter, ohne einen Button suchen zu müssen.
 
 ### Motion- und Haptik-Regeln
 
 Nach Emil Kowalski: Je häufiger ein Ereignis, desto weniger Animation. Für Haptik
-gilt dasselbe. Die Bild-Spalte wird in `GamePresentation` umgesetzt und ist im
-Testfenster sichtbar. Die Haptik-Spalte ist erst auf dem iPhone spürbar.
+gilt dasselbe. Die Bild-Spalte steckt in `Web/src/present/`, die Haptik-Spalte in
+`Web/src/audio/` (nur wo der Browser vibrieren kann; auf iPhones kann er es nicht).
 
 | Ereignis | Häufigkeit | Bild | Haptik |
 | --- | --- | --- | --- |
 | Tap → Auto fährt los | 15× pro Schicht, oft kurz hintereinander | sofort, keine Animation davor | keine (die Bewegung ist das Feedback) |
-| Sauber eingefädelt | sehr oft | kein Text | feinster Klick (`merge.ahap`), nur allein im Frame; im Flow tiefer und weicher wie alle Einfädel-Muster |
+| Sauber eingefädelt | sehr oft | kein Text | feinster Klick, nur allein im Frame; im Flow tiefer und weicher wie alle Einfädel-Muster |
 | Tight Fit | oft | Swoosh + kurzes "TIGHT!" (von 0,9 auf 1 skaliert mit Einblendung, < 250 ms, ease-out) | ein scharfer Transient |
 | Neue Combo-Stufe | gelegentlich | Spring auf dem Multiplikator (Dauer 0,35 s, Bounce 0,2), Glow | Doppel-Tick |
 | Crash | gelegentlich | Wracks mit Beulen, abreißende Teile, Splitter, Funken, Rauch; bei harten Treffern (≈ jeder 4.) Feuerball und Brand; Shake je nach Aufprallstärke. Wracks und Rauch liegen unter dem Verkehr, damit keine Lücke verdeckt wird | kräftiger Stoß + kurzes Rumpeln, nur beim eigenen Crash |
 | Rush Hour beginnt | 1× pro Schicht | Zustandswechsel am Auto-Zähler (Akzent-Pill) | ansteigendes Muster |
 | Slow-Mo | beim Verbrecher-Takedown und beim Crash, der die Schicht beendet (0,2× für 0,45 s, dazu 5 % Zurücktreten) | nie für häufige Ereignisse | eigenes Muster |
-| Menüs (App, SwiftUI) | selten | ≤ 250 ms, `.timingCurve(0.23, 1, 0.32, 1, duration: 0.25)`; native Buttons in Liquid Glass (`.glass`), die mit der Systemfeder nachgeben | `.sensoryFeedback` nur bei Bestätigungen |
+| Menüs (Sheets, Tabs) | selten | ≤ 250 ms, `cubic-bezier(0.23, 1, 0.32, 1)`; Knöpfe geben beim Drücken leicht nach | nur bei Bestätigungen |
 
-**Reduce Motion** ist eine Einstellung in `GamePresentation` und folgt in der App
-der iOS-Einstellung. Sie entfernt Shake, Zoom, Slow-Mo und fliegende Teile. Ein-
+**Reduce Motion** ist eine Einstellung und folgt standardmäßig der des Systems
+(`prefers-reduced-motion`). Sie entfernt Shake, Zoom, Slow-Mo und fliegende Teile. Ein-
 und Ausblenden sowie Farbwechsel bleiben, weil sie Information tragen.
 
 ---
@@ -469,44 +391,37 @@ und Ausblenden sowie Farbwechsel bleiben, weil sie Information tragen.
 ### 4.1 Drei Schichten
 
 ```
-  Eingabe mit Zeitstempel (Testfenster: Klick / Leertaste · App: Touch)
+  Eingabe mit Zeitstempel (pointerdown · Leertaste/Enter)
         │
         ▼
-  GameCore ─ Spielregeln, fester Takt 120 Hz, deterministisch
+  core/ ─ Spielregeln, fester Takt 120 Hz, deterministisch, kein DOM
         │  Zustand + Events (merged · crash · comboChanged · rushHour · shiftEnded)
         ▼
-  GamePresentation ─ macht daraus Daten:
+  present/ ─ macht daraus Daten:
         │   • Render-Liste pro Frame (Formen, Texte, Kamera)
         │   • Effekte (Swoosh, Glow, Shake, Partikel, Popups, Slow-Mo)
         │   • Feedback-Signale (Sound-ID, Haptik-ID)
-        │   • Screen-Ablauf (Start → Schicht → Pause → Ergebnis …)
+        │   • Screen-Ablauf (Game-Tab → Schicht → Ergebnis …) in der `GameSession`
         ▼
   Plattform ─ führt nur aus
-      Testfenster: raylib zeichnet, spielt Sounds
-      App: SpriteKit zeichnet, AVAudioEngine spielt, Core Haptics vibriert, SwiftUI zeigt Menüs
+      present/draw.ts zeichnet auf den Canvas, audio/ spielt Sounds und Musik,
+      storage/ speichert, ui/ zeigt Tab-Bar, Sheets und Knöpfe
 ```
 
-- **`GameCore` und `GamePresentation` nutzen nur die Swift-Standardbibliothek und
-  Foundation.** Kein SpriteKit, UIKit, SwiftUI oder `simd` (dafür ein eigener
-  `Vec2`). Nur so bauen sie unter Windows.
+- **`core/` kennt kein DOM** und keine Browser-APIs. Nur so laufen die Balancing-Bots
+  (`npm run sim`) und die Tests (`npm test`) in Node.
 - **Die Render-Liste** besteht aus einfachen Bausteinen: abgerundete Rechtecke,
-  Kreise, Bögen, Linien und Texte, jeweils mit fester ID, Position, Drehung,
-  Farb-Token und Deckkraft. Jede Plattform kann das mit wenig Code zeichnen. Die
-  App hält pro ID einen wiederverwendeten SpriteKit-Node und rendert Formen als
-  Texturen vor.
-- **Die Plattform enthält keine Spiellogik.** Testfenster und iPhone verhalten sich
-  dadurch garantiert gleich, und die Mac-Phase bleibt dünn.
+  Kreise, Bögen, Linien und Texte, jeweils mit Position, Drehung, Farb-Token und
+  Deckkraft.
+- **Die Plattform enthält keine Spiellogik.**
 - **Game-Loop:** Die Plattform sammelt pro Frame die vergangene Zeit und ruft
   `world.step(1/120)` so oft wie nötig auf. Zwischen zwei Schritten wird
-  interpoliert. Am PC-Monitor (60/144 Hz) wie auf dem iPhone (60/120 Hz) bleibt
-  das Timing damit gleich.
+  interpoliert. Bei 60, 120 oder 144 Hz bleibt das Timing damit gleich.
 - **Eingaben kommen mit Zeitstempel** in die Simulation und werden nicht erst im
   nächsten Frame verarbeitet. Das macht das Timing auf die Millisekunde fair.
 - **Deterministisch:** fester Zeitschritt plus Seed-Zufall. Gleicher Seed und
-  gleiche Eingaben ergeben dasselbe Ergebnis. Das ist auch die Grundlage für
-  Replays und Social Clips aus IDEA.md.
-- **Nur für die App:** 120 Hz per `SpriteView(preferredFramesPerSecond: 120)` und
-  dem Info.plist-Key `CADisableMinimumFrameDurationOnPhone`.
+  gleiche Eingaben ergeben dasselbe Ergebnis. Darauf bauen Challenge-Links, der
+  Multiplayer (Lockstep) und die Replay-Tests.
 
 ### 4.2 Fahrzeuge fahren auf Pfaden, nicht auf Winkeln
 
@@ -521,8 +436,8 @@ aus IDEA.md sind dann nur neue Pfade und keine neue Logik.
 
 - Jedes Fahrzeug ist eine **Kapsel** (Strecke plus Radius). Der Abstand zwischen
   zwei Kapseln ist exakt und billig zu berechnen.
-- **Keine Physik-Engine.** Die Kollision gehört zur Spiellogik, muss unter
-  Windows testbar sein und exakt die Abstände für Tight Fit liefern.
+- **Keine Physik-Engine.** Die Kollision gehört zur Spiellogik, muss in Node
+  testbar sein und exakt die Abstände für Tight Fit liefern.
 - **Geprüft wird nur, wo es nötig ist:** einfädelnde Fahrzeuge gegen alles auf der
   Straße, Wracks eingeschlossen. Im normalen Verkehr kann Ring gegen Ring nicht
   kollidieren; erst wenn der Verkehr nach einem Crash gestört ist, wird auch der
@@ -536,159 +451,42 @@ aus IDEA.md sind dann nur neue Pfade und keine neue Logik.
 ### 4.4 Ordnerstruktur
 
 ```
-Car game/                          (Projektordner, lokal)
-├─ CLAUDE.md                       feste Projektentscheidungen für Claude-Sessions
-├─ IDEA.md · PLAN.md · FOUNDATION.md · ROADMAP.md · TESTING.md
-├─ Game/                           Swift Package – plattformneutral (Windows + iPad)
-│  ├─ Package.swift
-│  ├─ Sources/GameCore/            Spielregeln
-│  │  ├─ Config.swift              ALLE Tuning-Werte an einem Ort
-│  │  ├─ World.swift               Spielzustand + step(dt)
-│  │  ├─ Paths.swift               Pfade (Kreis, Bézier) nach Streckenlänge
-│  │  ├─ Roundabout.swift          Ring, Zufahrten, Einfädel- und Ausfahrbahnen
-│  │  ├─ Vehicle.swift             Fahrzeug, Phasen, Einfädel-Tempoprofil
-│  │  ├─ Traffic.swift             KI-Verkehr (ein- und ausfahren)
-│  │  ├─ Queue.swift               Warteschlange + Tap-Verarbeitung
-│  │  ├─ Collision.swift           Kapsel-Abstände
-│  │  ├─ CrashPhysics.swift        Stoß als Starrkörper-Impuls, Rutschen mit Reifenreibung, Beulen
-│  │  ├─ Drivers.swift             Fahrer reagieren auf Crashes: bremsen, anhalten, auffahren
-│  │  ├─ Criminals.swift           Verbrecher-Pickup: Warnung, Countdown, Takedown, Einsatzfahrt (M3)
-│  │  ├─ Scoring.swift             Bewertung, Combo, Strikes
-│  │  ├─ Shift.swift               Autos der Schicht, Dichte- und Tempokurve, Rush Hour
-│  │  ├─ Tuning.swift              tuning.json über die Config legen
-│  │  ├─ Events.swift              typisierte Events
-│  │  ├─ RNG.swift                 Seed-Zufall
-│  │  └─ Vec2.swift                eigene Vektor-Mathematik
-│  ├─ Sources/GamePresentation/    Darstellung als Daten
-│  │  ├─ RenderList.swift          Formen, Texte, Kamera pro Frame
-│  │  ├─ Camera.swift              Welt ins Fenster bzw. auf den Bildschirm einpassen
-│  │  ├─ Effects.swift             Crash-Effekte: Feuer, Rauch, Splitter, abreißende Teile, Shake
-│  │  ├─ CarArt.swift              Fahrzeug aus Teilen, verbeulbare Karosserie
-│  │  ├─ HUD.swift                 Punkte, Auto-Zähler, Crash-Punkte, Combo, Popups, Ergebnis-Banner
-│  │  ├─ Platform.swift            Protokolle (SaveStore …), Spielstand, JSON-Speicher
-│  │  ├─ Motion.swift              Easing-Kurven und Springs
-│  │  ├─ Theme.swift               Farb-Tokens, Maße
-│  │  ├─ Feedback.swift            Event → Sound-ID + Haptik-ID
-│  │  ├─ ScreenFlow.swift          Screen-Ablauf und Screen-Inhalte
-│  │  ├─ SceneBuilder.swift        Straßen und Fahrzeuge als Render-Items
-│  │  ├─ DebugOverlay.swift        F1: Hitboxen, Abstände, FPS, Seed
-│  │  ├─ GameSession.swift         Frame-Schleife für die Plattform (Takt, Eingaben, Render-Liste)
-│  │  └─ Strings.swift             alle Texte (Englisch)
-│  ├─ Sources/GameBots/            Bots (perfekt, menschlich, zufällig) für Sim und Tests
-│  ├─ Sources/Sim/                 Balancing-Bot:  swift run Sim
-│  └─ Tests/                       Swift Testing:  swift test
-├─ Assets/                         plattformneutral: Sounds (.wav), Haptik-Muster (.ahap)
-├─ TestWindow/                     Swift Package – Testfenster (raylib)
-│  ├─ Package.swift                nutzt ../Game und raylib
-│  ├─ Sources/CRaylib/             raylib 5.5 als C-Quellcode (Rückfallebene aus 1.2, ab M0 genutzt)
-│  ├─ Sources/TestWindow/          zeichnet, nimmt Eingaben an, spielt Sounds
-│  ├─ Sources/SoundMaker/          erzeugt die Platzhalter-Sounds:  swift run SoundMaker
-│  ├─ tuning.json                  Werte zum Live-Tunen (Taste T)
-│  └─ savegame.json                Highscore und Einstellungen des Testfensters (entsteht beim Spielen)
-└─ App.swiftpm/                    Swift-Playgrounds-App-Projekt – entsteht erst auf dem iPad (Phase 2)
-   ├─ Package.swift                iOSApplication-Produkt, lokale Abhängigkeit auf ../Game
-   └─ Sources/                     SpriteKit-, Touch-, Haptik-, Audio-Adapter, SwiftUI-Menüs
+Car-game/
+├─ CLAUDE.md                 feste Projektentscheidungen für Claude-Sessions
+├─ FOUNDATION.md · Spiel.md · LOOT.md · IDEA.md
+├─ Dockerfile                Node baut, nginx liefert aus (Port 5050)
+└─ Web/
+   ├─ index.html · vite.config.ts (schreibt auch den Service Worker)
+   ├─ nginx.conf
+   ├─ icon/                  Original des Icons (make_icon.py)
+   ├─ public/                Manifest, Icons, Sounds und Musik (.m4a)
+   ├─ scripts/               Balancing- und Casino-Bots, Tests
+   └─ src/
+      ├─ core/               Spielregeln (config.ts: ALLE Tuning-Werte)
+      ├─ present/            Render-Liste, Szene, HUD, Seiten, Übergänge, GameSession
+      ├─ audio/              Web Audio: Samples, adaptive Musik, Haptik
+      ├─ storage/            Spielstand in localStorage
+      ├─ net/                Multiplayer-Raum (PeerJS)
+      └─ ui/                 DOM-Hülle: Canvas, Tab-Bar, Sheets
 ```
-
-### 4.5 Schnittstellen (Protokolle)
-
-Alles, was Hardware oder Speicher berührt, läuft über ein Protokoll aus dem Paket
-`Game/` (`Platform.swift`). Jede Plattform liefert ihre eigene Umsetzung. Einzige
-Ausnahme: `FileSaveStore` (JSON-Datei, nur Foundation) steckt schon im Paket und
-dient Testfenster und App gleich, nur der Speicherort unterscheidet sich.
-
-| Protokoll | Zweck | Testfenster | App | In Tests |
-| --- | --- | --- | --- | --- |
-| `SaveStore` | Spielstand, Highscore | JSON-Datei | JSON in Application Support | im Arbeitsspeicher |
-| `AudioPlaying` | Sounds, später Musik-Layer | raylib | AVAudioEngine | stumm |
-| `HapticsPlaying` | Haptik-Muster | stumm | Core Haptics (`.ahap`) | zeichnet nur auf |
-| `RandomSource` | Zufall | Uhrzeit oder `--seed` | Uhrzeit | fester Seed |
 
 ### 4.6 Andockpunkte für spätere Systeme
 
 | Späteres System (IDEA.md) | Wo es in der Basis andockt |
 | --- | --- |
 | Polizei, Verbrecher-Pickup, Geldtransporter, Trucks | `VehicleType`; die Warteschlange erzeugt Typen nach Gewichtung (Polizei und Pickup umgesetzt in M3) |
-| Einsatzfahrt / Panic-Button | `World.dispatchPolice()` (M3); in der App ein Button und der Action Button |
+| Einsatzfahrt / Panic-Button | `World.dispatchPolice()`; ein schwebender Knopf, `D`/`E` oder Rechtsklick |
 | Sperrzonen um den Geldtransporter | Regel-Hooks in der Bewertung (`onMerged`) |
-| Zollstellen und Stau | Pfade, dazu das Fahrermodell aus `Drivers.swift` (eigenes Tempo, Bremsen, Anfahren) |
-| Verfolgung im Ring (M4+) | `Drivers.swift`: Ein Polizeiauto, direkt hinter dem Verbrecher, beschleunigt auf ×1,4 (`policeChaseSpeedFactor`), bremst nicht für ihn und rammt ihn; es kreist, solange es jagt, danach reiht es sich wieder ein |
-| Blaulicht (M4+) | `SceneBuilder.swift`: Polizeiautos blinken, sobald sie losfahren; während einer Jagd alle, auch in der Warteschlange |
-| Gefahrenstufe und Upgrades | Die Config wird pro Schicht aus Basiswerten plus Modifikatoren gebaut; das Level macht es schon so (`Config.forLevel`) |
-| Shop, Truhen, Straßeneditor | neue Screens in `ScreenFlow`, in der App als SwiftUI-Ansichten; Hauptnavigation als native Tab-Bar |
-| Trucks, Polizei, Transporter mit Schaden | eigene Teile-Modelle in `CarArt`, Masse pro Fahrzeugtyp in `CrashPhysics` |
+| Zollstellen und Stau | Pfade, dazu das Fahrermodell aus `drivers.ts` (eigenes Tempo, Bremsen, Anfahren) |
+| Verfolgung im Ring | `drivers.ts`: Ein Polizeiauto, direkt hinter dem Verbrecher, beschleunigt auf ×1,4 (`policeChaseSpeedFactor`), bremst nicht für ihn und rammt ihn; es kreist, solange es jagt, danach reiht es sich wieder ein |
+| Blaulicht | `present/scene.ts`: Polizeiautos blinken, sobald sie losfahren; während einer Jagd alle, auch in der Warteschlange |
+| Gefahrenstufe und Upgrades | Die Config wird pro Schicht aus Basiswerten plus Modifikatoren gebaut; das Level macht es schon so (`forLevel` in `levels.ts`) |
+| Shop, Truhen, Straßeneditor | neue Seiten in `flow.ts` und `present/`; Hauptnavigation über die Tab-Bar |
+| Trucks, Polizei, Transporter mit Schaden | eigene Teile-Modelle in `carArt.ts`, Masse pro Fahrzeugtyp in `crash.ts` |
 | Adaptive Musik | Events (`comboChanged`, `rushHour`) steuern die Audio-Layer |
-| Widget, Live Activity, Watch | lesen den gespeicherten Spielstand bzw. Events aus |
-| Replays und Social Clips | Seed und Eingabe-Zeitpunkte genügen als komplettes Replay |
+| Challenge-Links, Replay-Tests | Seed und Eingabe-Zeitpunkte genügen als komplettes Replay |
 
 ---
-
-## 5. Bauschritte der Basis (M0 bis M2, alles unter Windows)
-
-### M0 – Fundament
-
-1. Werkzeuge einrichten: Visual-Studio-Build-Tools, Swift-Toolchain, VS Code mit
-   Swift-Erweiterung (Befehle in [TESTING.md](TESTING.md), Abschnitt 0).
-2. **Bautest Testfenster:** Ein raylib-Fenster öffnet sich unter Windows. Klappt
-   das Swift-Paket nicht, wird raylib lokal eingebunden (Abschnitt 1.2).
-3. Paket `Game/` mit `GameCore` und `GamePresentation` und je einem ersten Test
-   anlegen. `swift test` ist grün.
-4. Die Render-Liste steht, und das Testfenster zeichnet, was sie liefert.
-   Game-Loop mit festem 120-Hz-Takt und Interpolation, die Kamera passt die Welt
-   ins Hochkant-Fenster.
-5. Statischer Kreisverkehr im Testfenster. Debug-Overlay mit F1 (FPS, Seed),
-   Startparameter `--seed` und `--time-scale`.
-
-**Fertig, wenn:** der Kreisverkehr im Testfenster zu sehen ist und `swift test`
-grün ist.
-
-### M1 – Kreisverkehr & Einfädeln
-
-1. Pfad-System (Ring, 4 Zufahrten, Einfädelbahn) mit Tests.
-2. KI-Verkehr, Warteschlange, Einfädeln, Kapsel-Kollision und Messung des
-   Mindestabstands, mit Tests für die Grenzfälle ("gerade so berührt", "gerade so vorbei").
-3. Fahrzeuge als Formen in der Render-Liste. Klick oder Leertaste lässt ein Auto
-   einfädeln, ein Crash dreht die Autos heraus.
-4. Debug: Kapseln und Abstände einblenden (F1), Zeitlupe (F2).
-
-**Fertig, wenn:** Man kann endlos einfädeln und crashen, und jeder Crash wirkt im
-Debug-Overlay fair.
-
-### M2 – Schicht & Punkte (damit ist die Basis spielbar)
-
-1. Bewertung (Crash, Tight Fit, Sauber), Combo, Strikes, Schicht-Timer, Dichte-
-   und Tempokurve, Rush Hour, alles mit Tests.
-2. HUD (Punkte, Timer, Strikes, Combo) als Texte in der Render-Liste.
-3. Screen-Ablauf Start → Schicht → Pause → Ergebnis in `ScreenFlow`, im
-   Testfenster als schlichte Textseiten.
-4. Highscore in einer JSON-Datei speichern (`SaveStore`).
-5. Live-Tuning: Werte in `tuning.json` ändern, im Fenster **T** drücken, sofort
-   aktiv, ohne Neustart.
-6. Einfache Soundeffekte für Tight Fit und Crash. Ton hilft schon jetzt beim
-   Timing-Gefühl.
-7. Balancing-Bot `swift run Sim`: Ein perfekter Bot darf nie crashen, ein
-   Zufalls-Tapper crasht oft, die Punkteverteilung ist plausibel.
-
-**Fertig, wenn:** die Definition of Done unten erfüllt ist.
-
-*Umgesetzt in M2, zusätzlich auf Wunsch:* echte Crash-Physik, reagierender Verkehr
-mit Kettenunfällen, Blechschaden mit abreißenden Teilen, erste Crash-Effekte (Feuer,
-Rauch, Splitter) und das Ergebnis als Banner statt Menü (Abschnitte 2.5 und 2.6).
-
----
-
-## 6. Definition of Done der Basis (Windows)
-
-- [x] Eine komplette 2-Minuten-Schicht ist im Testfenster spielbar
-- [x] Läuft flüssig mit der Bildrate des Monitors (gemessen: 164 fps), auch in der Rush Hour
-- [x] Das Auto fährt im selben Frame los, in dem geklickt bzw. gedrückt wird (automatischer Test)
-- [ ] Jeder Crash ist im Debug-Overlay nachvollziehbar, kein "das war doch frei!" (Playtest)
-- [x] Gleicher Seed und gleiche Eingaben ergeben dasselbe Ergebnis (automatischer Test)
-- [x] Combo, Tight Fit, Strikes, Rush Hour, Ergebnis und Highscore funktionieren
-- [x] Werte lassen sich über `tuning.json` ohne Neustart ändern
-- [x] Das Testfenster enthält keine Spiellogik, nur Zeichnen, Eingabe und Ton
-- [x] `swift test` ist grün, der Balancing-Bot liefert plausible Werte (perfekter Bot: 0 Crashes in 1000 Schichten)
-- [ ] Playtest: 5 Schichten gespielt, Entscheidungen aus Abschnitt 7 notiert
 
 ---
 
@@ -696,38 +494,27 @@ Rauch, Splitter) und das Ergebnis als Banner statt Menü (Abschnitte 2.5 und 2.6
 
 **Entschieden:**
 
-- ✅ Swift, überall
-- ✅ Entwickelt und getestet wird unter Windows, Phase 2 läuft ohne Mac auf dem iPad (Swift Playgrounds)
-- ✅ Die App läuft auf jedem iPhone ab iOS 26 (ab iPhone 11 / SE 2. Gen.)
-- ✅ Hochformat, einhändig
+- ✅ Browserspiel (Vite + TypeScript + Canvas), installierbar als PWA, offline spielbar
+- ✅ Hochformat, einhändig; Desktop mit Tastatur
 - ✅ Spielsprache nur Englisch
-- ✅ Veröffentlichung weltweit über den App Store, deine Website ist die
-  Startseite des Spiels (PLAN.md, Phase 3)
-- ✅ GitHub erst ab Phase 2, nur als Sync-Kanal zwischen Windows und iPad
-- ✅ So viele native Apple-Elemente wie möglich; Hauptnavigation (Progress, Game,
-  Shop, Build) als native Tab-Bar
+- ✅ Native App-Anmutung; Hauptnavigation (Progress, Game, Shop, Build) als Tab-Bar
 - ✅ Crashes mit echter Physik, reagierendem Verkehr und Blechschaden (2.6)
 - ✅ Ergebnis ohne Menü: Banner in der Szene, ein Tap startet die nächste Schicht
 - ✅ Kein Startmenü: Das Spiel öffnet auf dem Game-Tab, ein Tap startet die Schicht;
   die anderen Seiten erreicht man über die Tab-Bar unten (3)
 - ✅ Eine Schicht hat keine feste Zeit: Man bringt eine feste Zahl Autos in den Verkehr,
   danach ist sie zu Ende. Gut gespielt ≈ 20 s, und das Spiel soll nicht leicht sein (2.5)
+- ✅ Klassisch 1 Strike für normale Autos, dazu 3 Polizei-Crashes (2.6)
 
-**Entscheiden wir im Playtest nach M2:**
+**Offen für den Playtest:**
 
-1. ~~3 Strikes oder klassisch 1 (`maxStrikes`)~~ → in M4 entschieden: klassisch 1 für
-   normale Autos, dazu 3 Polizei-Crashes (2.6)
-2. Schwelle für Tight Fit (0,12 s) und ob "Cut off!" an oder aus ist (`sloppyWindow`)
-3. ~~Schichtlänge 120 s~~ → in M4 entschieden: keine Uhr, 15 Autos pro Schicht (2.5).
-   Offen: Zahl der Autos und Stärke der Rush Hour
-4. Einfädeldauer 0,5 s
-5. Kommen Klick und Leertaste als Tap-Ersatz nah genug an das echte Gefühl heran?
-   Das endgültige Timing-Feintuning passiert mit Touch in M12.
-6. **Combo-Stufen (5/10/20).** Der Balancing-Bot erreicht ×3 nach rund 15
-   Einfädelungen und hält es oft die ganze Schicht (beste Combo Ø 190 beim perfekten,
-   Ø 125 beim menschenähnlichen Bot). Höhere Schwellen oder ein Abklingen der Combo
-   würden die Stufen spürbarer machen.
-7. Sollen Folgeunfälle Strikes kosten (`chainCrashesCostStrikes`)? Und wie lange
+1. Schwelle für Tight Fit (0,12 s) und ob "Cut off!" an oder aus ist (`sloppyWindow`)
+2. Zahl der Autos pro Schicht und Stärke der Rush Hour
+3. Einfädeldauer 0,5 s
+4. **Combo-Stufen (5/10/20).** Der Balancing-Bot erreicht ×3 nach rund 15
+   Einfädelungen und hält es oft die ganze Schicht. Höhere Schwellen oder ein Abklingen
+   der Combo würden die Stufen spürbarer machen.
+5. Sollen Folgeunfälle Strikes kosten (`chainCrashesCostStrikes`)? Und wie lange
    bleibt ein eingefädeltes Auto in deiner Verantwortung (`mergeResponsibility`, 1 s)?
-8. Wie lange sollen Wracks liegen bleiben (`crashDuration`, 2,2 s)? Länger heißt
+6. Wie lange sollen Wracks liegen bleiben (`crashDuration`, 2,2 s)? Länger heißt
    mehr Stau und mehr Folgeunfälle, aber auch längere Wartezeit an der Einfahrt.

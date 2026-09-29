@@ -1,6 +1,6 @@
 /**
- * Seeded random numbers (sfc32). The same seed gives the same shift, like GameCore's
- * `SeededRandom`: good for replays and for reproducing a bug.
+ * Seeded random numbers (sfc32). The same seed gives the same shift: good for replays and
+ * for reproducing a bug.
  */
 export class Rng {
   private a: number;

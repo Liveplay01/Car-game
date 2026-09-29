@@ -2,6 +2,7 @@ import { h, icon } from './dom';
 import { ICONS } from './icons';
 import type { Settings, SaveGame } from '../core/career';
 import { parseImport } from '../storage/save';
+import { isInstalled, isIos } from '../storage/device';
 
 interface OpenSheet {
   root: HTMLElement;
@@ -11,7 +12,7 @@ interface OpenSheet {
 let current: OpenSheet | null = null;
 
 /**
- * A bottom sheet (the web stand-in for SwiftUI's `.sheet`): scrim, grabber, focus kept inside,
+ * A bottom sheet (like an iOS sheet): scrim, grabber, focus kept inside,
  * Escape and a tap on the scrim close it.
  */
 export function openSheet(layer: HTMLElement, title: string, body: HTMLElement, onClose?: () => void): () => void {
@@ -120,10 +121,8 @@ export function settingsSheet(layer: HTMLElement, s: Settings, actions: Settings
   }
   setMotion(s.reduceMotion);
 
-  const isIos = /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-  const standalone = window.matchMedia('(display-mode: standalone)').matches || (navigator as unknown as { standalone?: boolean }).standalone === true;
   let installRow: HTMLElement | null = null;
-  if (!standalone) {
+  if (!isInstalled()) {
     if (actions.install) {
       installRow = h(
         'div',
@@ -131,7 +130,7 @@ export function settingsSheet(layer: HTMLElement, s: Settings, actions: Settings
         h('div', { class: 'row-main' }, h('div', { class: 'row-title' }, 'Install the game'), h('div', { class: 'row-sub' }, 'Full screen, offline, one tap from your home screen.')),
         h('button', { class: 'btn primary', onclick: () => actions.install?.() }, 'Install'),
       );
-    } else if (isIos) {
+    } else if (isIos()) {
       installRow = h(
         'div',
         { class: 'row' },

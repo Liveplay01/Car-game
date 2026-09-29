@@ -1,6 +1,5 @@
 /**
- * Colours by role, generated from `Game/Sources/GamePresentation/Theme.swift`
- * (FOUNDATION.md 3). Vehicle colours are game information and off-limits for UI.
+ * Colours by role (FOUNDATION.md 3); `ui/shell.css` mirrors them as CSS variables. Vehicle colours are game information and off-limits for UI.
  */
 export const COLORS = {
   background: [11, 13, 16, 1],

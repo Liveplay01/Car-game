@@ -10,7 +10,8 @@ export function fontFor(size: number, bold: boolean): string {
   return `${bold ? 700 : 500} ${size}px ${FONT}`;
 }
 
-const measureCanvas = document.createElement('canvas').getContext('2d')!;
+/** Made on first use, so the rules and texts also load where there is no DOM (tests). */
+let measureCanvas: CanvasRenderingContext2D | null = null;
 const widthCache = new Map<string, number>();
 
 /** Exact width of a run of text at `size` points (the renderers measure exactly). */
@@ -18,6 +19,7 @@ export function measure(textRun: string, size: number, bold: boolean): number {
   const key = `${bold ? 'b' : 'r'}${size.toFixed(1)}|${textRun}`;
   let w = widthCache.get(key);
   if (w === undefined) {
+    measureCanvas ??= document.createElement('canvas').getContext('2d')!;
     measureCanvas.font = fontFor(size, bold);
     w = measureCanvas.measureText(textRun).width;
     if (widthCache.size > 4000) widthCache.clear();

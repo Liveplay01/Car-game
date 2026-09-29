@@ -12,7 +12,7 @@ fair and learnable, and a reason to come back (levels, upgrades, chests).
 
 ## Product Purpose
 
-A browser and PWA version of the iOS roundabout timing game (see `../FOUNDATION.md`).
+A roundabout timing game for the browser, installable as a PWA (rules: `../FOUNDATION.md`).
 One tap sends the front car into the spinning roundabout; good timing brings points and
 combo, bad timing a crash with real physics. Success: the timing feels exact on touch, the
 game runs at 60 fps on an older phone, and progress is never lost on the device.
@@ -40,7 +40,7 @@ the player into it from elsewhere, and play money only (no currency can be bough
    as iOS players know them.
 3. The more often an event happens, the less animation it gets (FOUNDATION.md motion table).
 4. Vehicle types are told apart by shape, colour and symbol, so colour blindness is covered.
-5. Fair and exact: taps count at the moment of the touch; the same rules as the Swift core.
+5. Fair and exact: taps count at the moment of the touch; same seed and taps, same result.
 
 ## Accessibility & Inclusion
 

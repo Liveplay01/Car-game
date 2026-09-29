@@ -43,6 +43,7 @@ function serviceWorker(): Plugin {
       const source = `// Generated at build time (vite.config.ts). Cache-first for the app shell.
 const CACHE = 'car-game-${version}';
 const ASSETS = ${JSON.stringify([...new Set(assets)])};
+const NAV_TIMEOUT = 3000;
 
 self.addEventListener('install', (event) => {
   event.waitUntil(caches.open(CACHE).then((cache) => cache.addAll(ASSETS)).then(() => self.skipWaiting()));
@@ -61,17 +62,23 @@ self.addEventListener('fetch', (event) => {
   if (request.method !== 'GET') return;
   const url = new URL(request.url);
   if (url.origin !== self.location.origin) return;
-  // Navigations: network first so a new deploy shows up, the cached shell when offline.
+  // Navigations: network first so a new deploy shows up, the cached shell when offline or
+  // when the network hangs (a weak signal) for more than NAV_TIMEOUT. Only a good page is kept.
   if (request.mode === 'navigate') {
-    event.respondWith(
-      fetch(request)
-        .then((response) => {
-          const copy = response.clone();
-          caches.open(CACHE).then((cache) => cache.put('/index.html', copy));
-          return response;
-        })
-        .catch(() => caches.match('/index.html')),
-    );
+    const network = fetch(request).then((response) => {
+      if (response.ok) {
+        const copy = response.clone();
+        caches.open(CACHE).then((cache) => cache.put('/index.html', copy));
+      }
+      return response;
+    });
+    event.respondWith((async () => {
+      const slow = new Promise((resolve) => setTimeout(resolve, NAV_TIMEOUT, null));
+      const first = await Promise.race([network.catch(() => null), slow]);
+      if (first && first.ok) return first;
+      const cached = await caches.match('/index.html');
+      return cached || first || network;
+    })());
     return;
   }
   event.respondWith(

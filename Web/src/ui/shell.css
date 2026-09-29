@@ -1,5 +1,5 @@
 /*
- * Car Game – web shell. Role tokens come from GamePresentation/Theme.swift; vehicle colours
+ * Car Game – web shell. Role tokens mirror `present/theme.ts`; vehicle colours
  * are game information and stay out of the UI (FOUNDATION.md, design principles).
  */
 :root {
