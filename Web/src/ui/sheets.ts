@@ -1,7 +1,7 @@
 import { h, icon } from './dom';
 import { ICONS } from './icons';
 import type { Settings, SaveGame } from '../core/career';
-import type { PatchNote } from '../present/patchNotes';
+import type { PatchNote, PatchImpact } from '../present/patchNotes';
 import { parseImport } from '../storage/save';
 import { isInstalled, isIos } from '../storage/device';
 
@@ -73,16 +73,32 @@ export const closeAnySheet = (): void => current?.close();
 export const isSheetOpen = (): boolean => current !== null;
 
 /** Settings → What's new: the patch notes, newest first. */
+/** How much an update changes, as its badge says it (colour and word, never colour alone). */
+const IMPACT: Record<PatchImpact, string> = { major: 'Big update', minor: 'Update', fix: 'Fixes' };
+
+/**
+ * What's new: every update folds open and shut (a native disclosure, so keys and screen
+ * readers know it); the newest is open. A badge beside each says how much it changes.
+ */
 export function patchNotesSheet(layer: HTMLElement, notes: PatchNote[], onClose: () => void): () => void {
   const body = h(
     'div',
     { class: 'notes' },
-    ...notes.map((note) =>
+    ...notes.map((note, i) =>
       h(
-        'section',
-        { class: 'note' },
-        h('div', { class: 'note-date' }, note.date),
-        h('h3', { class: 'note-title' }, note.title),
+        'details',
+        { class: 'note', open: i === 0 },
+        h(
+          'summary',
+          { class: 'note-head' },
+          h(
+            'div',
+            { class: 'note-heading' },
+            h('div', { class: 'note-meta' }, h('span', { class: 'note-date' }, note.date), h('span', { class: `impact impact-${note.impact}` }, IMPACT[note.impact])),
+            h('h3', { class: 'note-title' }, note.title),
+          ),
+          icon(ICONS.chevronDown, {}),
+        ),
         h('ul', { class: 'note-items' }, ...note.items.map((item) => h('li', {}, item))),
       ),
     ),
@@ -141,6 +157,7 @@ export function settingsSheet(layer: HTMLElement, s: Settings, actions: Settings
     b.style.minWidth = '72px';
     b.addEventListener('click', () => {
       s.reduceMotion = value;
+      s.motionChosen = value === 'system';
       setMotion(value);
       actions.changed(s);
     });

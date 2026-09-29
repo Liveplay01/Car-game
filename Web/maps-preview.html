@@ -21,7 +21,7 @@
       import { baseConfig } from '/src/core/config.ts';
       import { forLevel } from '/src/core/levels.ts';
       import { MapTheme, MAP_THEMES } from '/src/present/mapThemes.ts';
-      import { RenderList } from '/src/present/render.ts';
+      import { RenderList, text } from '/src/present/render.ts';
       import { CanvasDrawer } from '/src/present/draw.ts';
       import { CityLayer } from '/src/present/city.ts';
       import { SceneBuilder } from '/src/present/scene.ts';
@@ -53,6 +53,25 @@
         MapTheme.addAir(list, theme, time, false);
         return list;
       };
+
+      // ?thumbs=1: every map's thumbnail (Shop → Collection), as the shop draws it.
+      if (params.has('thumbs')) {
+        const { ShopPage } = await import('/src/present/shop.ts');
+        const { S } = await import('/src/present/strings.ts');
+        const size = v(760, 520);
+        const canvas = document.createElement('canvas');
+        canvas.style.cssText = `width:${size.x}px;height:${size.y}px`;
+        document.body.append(canvas);
+        const drawer = new CanvasDrawer(canvas);
+        drawer.resize(size.x, size.y, 2);
+        const list = new RenderList({ viewport: size, center: v(0, 0), focus: v(0, 0), scale: 1 }, 'card');
+        MAP_THEMES.forEach((theme, i) => {
+          const at = v(60 + (i % 7) * 106, 70 + Math.floor(i / 7) * 160);
+          ShopPage.addMapPreview(list, theme, at, Number(params.get('scale') ?? 1.2), 1);
+          list.s(text(S.shop.item(theme), v(at.x, at.y + 58), 11, 'center', 'bold'), 'primary');
+        });
+        drawer.draw(list);
+      }
 
       // ?bench=1: each map 60 frames on a phone screen (390 × 844 points at 2×), build and draw timed.
       if (params.has('bench')) {
@@ -87,7 +106,7 @@
         document.body.append(pre);
       }
 
-      for (const theme of [null, ...MAP_THEMES].filter((x) => !params.has('bench') && (!only || only.includes(x ?? 'none')))) {
+      for (const theme of [null, ...MAP_THEMES].filter((x) => !params.has('bench') && !params.has('thumbs') && (!only || only.includes(x ?? 'none')))) {
         const figure = document.createElement('figure');
         const canvas = document.createElement('canvas');
         canvas.width = TW;

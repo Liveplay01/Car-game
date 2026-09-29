@@ -117,6 +117,21 @@ export function trialConfig(t: Trial, base: Config): Config {
   return forLegendary(c, t.legendary);
 }
 
+/**
+ * How far a counting goal is while the trial runs (Perfects, or Tight Fits or better), for the
+ * live counter under the top card; null for goals that only the end decides.
+ */
+export function trialProgress(t: Trial, s: { tightFits: number; nearMisses: number; perfects: number }): { have: number; need: number } | null {
+  switch (t.goal.k) {
+    case 'perfects':
+      return { have: s.perfects, need: t.goal.n };
+    case 'skilled':
+      return { have: s.tightFits + s.nearMisses + s.perfects, need: t.goal.n };
+    default:
+      return null;
+  }
+}
+
 export function trialPassed(t: Trial, r: ShiftResult): boolean {
   if (r.outcome !== 'completed') return false;
   switch (t.goal.k) {

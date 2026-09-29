@@ -47,7 +47,7 @@ import { Feedback, Music, type MusicMix, type SoundID, type HapticID } from './f
 import { Details, type Detail } from './detail';
 import { TyreMarks } from './marks';
 import { type ChallengeSpec, challengeOf, challengeConfig, encodeChallenge } from '../core/challenge';
-import { type Trial, TRIALS, trial as trialById, trialConfig, trialOpen, trialPassed, rematchId } from '../core/trials';
+import { type Trial, TRIALS, trial as trialById, trialConfig, trialOpen, trialPassed, trialProgress, rematchId } from '../core/trials';
 
 /**
  * A shift played for itself, outside the career: a friend's challenge link or a mastery
@@ -104,6 +104,19 @@ export class GameSession {
   screen: Screen = { k: 'ready' };
   save: SaveGame;
   systemReduceMotion = false;
+  /**
+   * Set by the shell when the device cannot keep 30 fps even at a pixel ratio of 1: the scene
+   * leaves out its decoration (ground texture, what flies through the air, cloud shadows).
+   */
+  lowDetail = false;
+
+  /** Recommends Reduce Motion, once ever, when the game runs slow; never switches it on. */
+  recommendReduceMotion(): void {
+    if (this.reduceMotion || this.save.hints.includes('reduceMotion')) return;
+    this.save.hints.push('reduceMotion');
+    this.persist();
+    this.announce(S.hints.reduceMotion);
+  }
   today = dayNumber();
 
   private accumulator = 0;
@@ -1886,8 +1899,9 @@ export class GameSession {
     const career = this.save.career;
     const theme = MapTheme.from(career.mapSkin);
     const list = new RenderList(camera, MapTheme.ground(theme));
-    list.groundGrain = true;
-    CityLayer.add(list, world, theme, rm ? null : this.sceneTime, rm ? null : this.cityPulse, this.scars.isEmpty ? null : this.scars, this.sceneTime, this.playingMode === 'shift' && !this.special ? this.cityRise : null);
+    // A device that cannot keep 30 fps leaves out the decoration (`lowDetail`), never the game.
+    list.groundGrain = !this.lowDetail;
+    CityLayer.add(list, world, theme, rm ? null : this.sceneTime, rm ? null : this.cityPulse, this.scars.isEmpty ? null : this.scars, this.sceneTime, this.playingMode === 'shift' && !this.special ? this.cityRise : null, !this.lowDetail);
     SceneBuilder.addRoad(list, world.layout, world.config);
     CityLayer.addMapSkin(list, Skins.color(career.mapSkin), world);
     MapTheme.addIsland(list, theme, world);
@@ -1909,7 +1923,8 @@ export class GameSession {
     this.effects.addAir(list);
     this.explosions.addAir(list);
     WeatherLayer.addAir(list, world, world.time, rm);
-    MapTheme.addAir(list, theme, this.sceneTime, rm);
+    const island = { center: toScreen(camera, v(0, 0)), radius: (world.layout.ringRadius - world.layout.laneWidth / 2) * camera.scale };
+    if (!this.lowDetail) MapTheme.addAir(list, theme, this.sceneTime, rm, island);
     return list;
   }
 
@@ -1977,6 +1992,11 @@ export class GameSession {
         flamePop: rm ? 1 : Ease.clamp01(this.sinceFlames / 0.35),
       });
       this.tutorial?.add(list, world, alpha, this.sceneTime, rm);
+      // A trial that counts (Perfects, Tight Fits): how far it is, while it runs.
+      const progress = this.special?.k === 'trial' ? trialProgress(this.special.trial, world.score) : null;
+      if (progress && this.special?.k === 'trial') {
+        HUD.addGoalPill(list, S.trials.progress(this.special.trial, progress.have, progress.need), progress.have >= progress.need, rm ? 1 : Ease.clamp01(this.sinceCarSent / 0.35));
+      }
       HUD.addPopups(list, this.popups, rm);
       if (this.countIn > 0 || this.isInterrupted) HUD.addCountIn(list, this.isInterrupted ? GameSession.countInSeconds : this.countIn);
     } else if (s.k === 'result') {

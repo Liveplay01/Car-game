@@ -46,5 +46,5 @@ the player into it from elsewhere, and play money only (no currency can be bough
 ## Accessibility & Inclusion
 
 WCAG AA contrast for text, 44 px touch targets, keyboard play (Space, Enter, D, Esc),
-visible focus, a live region for results, Reduce Motion (follows the system by default)
+visible focus, a live region for results, Reduce Motion (off by default, "System" to follow the device; a slow device gets it recommended once)
 removes shake, slow-mo and flying parts.

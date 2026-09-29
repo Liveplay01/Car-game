@@ -183,6 +183,14 @@ export const HUD = {
     }
   },
 
+  /** A trial's counting goal under the top card, live ("Tight Fits or better 3/5"); accent once met. */
+  addGoalPill(list: RenderList, label: string, met: boolean, pop: number): void {
+    const frame = TopBar.frame(list.camera.viewport.x);
+    const at = v(R.center(frame).x, frame.maxY + 18);
+    MenuKit.chromePill(list, at, v(textWidth(label, 12) + 28, 26), 1, met ? 'accent' : undefined);
+    list.s(text(label, at, 12 * land(pop, 0.2), 'center', 'bold'), met ? 'accent' : 'primary');
+  },
+
   activeChain(world: World): number {
     const last = world.score.lastCrashAt;
     if (last === null || world.time - last > world.config.mayhemChainWindow) return 0;
@@ -355,7 +363,9 @@ export const HUD = {
       const truck = world.vehicle(t.vehicle);
       if (!truck || truck.isCrashed) return;
       const pos = interpolatedPose(truck, alpha).position;
-      HUD.countdownRing(list, pos, 20, Math.max(0, t.deadline - world.time) / world.config.transporterTime, color, jackpot ? S.hud.jackpotTimer(t.deadline - world.time) : String(Math.ceil(t.deadline - world.time)));
+      // Only the seconds: a money sign beside a countdown read like money running out. The gold
+      // ring and truck already say it is a Jackpot.
+      HUD.countdownRing(list, pos, 20, Math.max(0, t.deadline - world.time) / world.config.transporterTime, color, S.hud.transporterTimer(t.deadline - world.time));
       const zone = secureZone(world);
       if (zone) {
         const ringRadius = world.layout.ringRadius;

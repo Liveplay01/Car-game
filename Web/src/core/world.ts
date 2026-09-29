@@ -924,7 +924,6 @@ export class World {
   breaksTrial(rating: MergeRating): boolean {
     const rule = this.config.trialRule;
     if (!rule || !this.isScoring) return false;
-    if (rule === 'skilledOnly') return rating === 'clean' || rating === 'cutOff';
     return rating === 'cutOff';
   }
 

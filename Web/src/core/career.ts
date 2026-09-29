@@ -57,6 +57,11 @@ export interface Settings {
   leftHanded: boolean;
   /** Notices and the cards over the scene a step larger. */
   largeText: boolean;
+  /**
+   * The player chose "System" themselves (Leo, 29.09.2026: Reduce Motion is off unless chosen).
+   * A "system" saved before without this was the old default and reads as off.
+   */
+  motionChosen: boolean;
 }
 
 export interface MasteryStats {
@@ -185,7 +190,7 @@ export interface Career {
  * and a backup of the progress (each once, from its level on; `config.*HintAfterLevel`), and
  * what a Perfect Run is, the first time one happens.
  */
-export const HINTS = ['modes', 'install', 'backup', 'perfectRun'] as const;
+export const HINTS = ['modes', 'install', 'backup', 'perfectRun', 'reduceMotion'] as const;
 export type Hint = (typeof HINTS)[number];
 
 /** Everything that is saved (`storage/save.ts` reads and writes it). */
@@ -263,7 +268,7 @@ export const newSave = (): SaveGame => ({
   highscore: 0,
   highscoreSeed: null,
   shiftsPlayed: 0,
-  settings: { sound: true, haptics: true, reduceMotion: 'system', vehicleLabels: false, leftHanded: false, largeText: false },
+  settings: { sound: true, haptics: true, reduceMotion: 'off', vehicleLabels: false, leftHanded: false, largeText: false, motionChosen: false },
   career: newCareer(),
   tutorialDone: false,
   hints: [],

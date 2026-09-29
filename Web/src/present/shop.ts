@@ -23,6 +23,7 @@ import { textWidth } from './icons';
 import { S, Fmt } from './strings';
 import { CarArt } from './carArt';
 import { Skins, lookFor } from './skins';
+import { MapTheme } from './mapThemes';
 import { baseConfig } from '../core/config';
 import type { ShopSection } from './flow';
 import { CasinoPage, CasinoState, type CasinoTarget } from './casino';
@@ -443,16 +444,32 @@ export const ShopPage = {
   rarityColor: (r: Rarity): ColorToken => ({ common: 'rarityCommon', rare: 'rarityRare', epic: 'rarityEpic', legendary: 'rarityLegendary' } as const)[r],
   chestColor: (k: ChestKind): ColorToken => ({ standard: 'rarityCommon', premium: 'coin', event: 'accent', criminalHunt: 'rarityEpic' } as const)[k],
 
-  /** A car in the skin's paint, an island in the map's tint, or the vehicle type itself. */
+  /**
+   * A map as a little diorama, so the maps tell apart at a glance: a disc of its ground, the
+   * roundabout with its tinted island, and four of its own plants round it, drawn with the
+   * game's own art (cherry trees, cacti, palms, containers, mushrooms …).
+   */
+  addMapPreview(list: RenderList, id: string, center: Vec2, scale: number, opacity: number): void {
+    const theme = MapTheme.from(id);
+    const tint = Skins.color(id) ?? 'island';
+    // 60 world units across the disc's radius; the disc is 30 points at scale 1.
+    const preview = new List({ viewport: list.camera.viewport, center: v(0, 0), focus: center, scale: (30 * scale) / 60 }, list.background);
+    preview.w(circle(v(2.5, -2.5), 61), 'shadow', 0.8);
+    preview.w(circle(v(0, 0), 60), MapTheme.ground(theme));
+    MapTheme.addBadge(preview, theme);
+    preview.w(arc(v(0, 0), 27, 9, 0, TAU), 'surface');
+    preview.w(circle(v(0, 0), 22.5), 'island');
+    preview.w(circle(v(0, 0), 22.5), tint, 0.45);
+    preview.w(arc(v(0, 0), 18, 2, 0, TAU), tint);
+    // Four plants, clear of the badge's pond, field or sea (which lie towards 1.4 rad).
+    [0.2, 2.6, 3.9, 5.2].forEach((angle, i) => MapTheme.addPlant(preview, theme, mul(fromAngle(angle), 44), 8.5, 3 + i * 7));
+    preview.w(arc(v(0, 0), 59.5, 1, 0, TAU), 'primary', 0.12);
+    for (const it of preview.items) list.items.push(pinned(it, preview.camera, opacity));
+  },
+
+  /** A car in the skin's paint, a map as a little diorama, or the vehicle type itself. */
   addPreview(list: RenderList, item: Cosmetic, center: Vec2, scale: number, opacity: number): void {
-    if (item.kind === 'mapSkin') {
-      const tint = Skins.color(item.id) ?? 'island';
-      list.s(arc(center, 24 * scale, 8 * scale, 0, TAU), 'surface', opacity);
-      list.s(circle(center, 19 * scale), 'island', opacity);
-      list.s(circle(center, 19 * scale), tint, 0.45 * opacity);
-      list.s(arc(center, 14 * scale, 2 * scale, 0, TAU), tint, opacity);
-      return;
-    }
+    if (item.kind === 'mapSkin') return ShopPage.addMapPreview(list, item.id, center, scale, opacity);
     // The car itself, drawn with the game's own art and turned a little, like the earlier
     // web UI's thumbnails: the shop shows exactly what drives.
     const type: VehicleType = item.kind === 'vehicleType' ? (item.id as VehicleType) : 'car';

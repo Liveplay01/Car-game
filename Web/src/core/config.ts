@@ -21,7 +21,7 @@ export const CITY_EVENTS: CityEvent[] = ['roadworks', 'roadClosure', 'concert', 
 export type RoadModule = 'tollBooth' | 'speedCamera' | 'towDepot';
 export const ROAD_MODULES: RoadModule[] = ['tollBooth', 'speedCamera', 'towDepot'];
 
-export type TrialRule = 'skilledOnly' | 'flawless';
+export type TrialRule = 'flawless';
 
 /**
  * The syndicate's bosses, one after the other every `convoyEvery` levels (Leo, 28.09.2026):
@@ -429,7 +429,7 @@ export const baseConfig = {
   ambulanceMass: 1.6,
 
   // Mastery trials (core/trials.ts): an extra rule for this shift, broken ends it as 'failed'
-  /** skilledOnly: every merge a Tight Fit, Near Miss or Perfect; flawless: no crash, no cut-off. */
+  /** flawless: no crash, no cut-off (a broken rule ends the trial as failed). */
   trialRule: null as TrialRule | null,
 
   // City events

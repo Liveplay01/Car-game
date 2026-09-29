@@ -35,41 +35,15 @@ einer Stadt, die mit dem Spieler wächst.
 
 ---
 
-## Offen: Look & Feel
+## Später: Backend über Coolify (Leo, 29.09.2026: verschoben)
 
-- **Takedown-Klang in Schichten:** Kontakt, Metall, Deformation, Reifen, abreißende Teile,
-  Signatur, statt eines einzelnen Samples. (Die Samples und die Musik-Stems selbst sind da.)
-- **Casino-Klänge aufnehmen:** Walzenstopp, Münzen, Nadel, Münzwurf, Chips und Splittern sind
-  heute modellierte Samples (`Web/audio-src/make_casino_sounds.py`, gleiche Dateinamen);
-  echte Aufnahmen oder eine CC0-Sammlung könnten sie Datei für Datei ersetzen.
-- **Haptik feinjustieren** auf Android-Handys (iPhones können im Browser nicht vibrieren);
-  Takedown-Haptik mit der Wucht skalieren.
-- **Daily Shift als eigene Perspektive** (z. B. anderer Blickwinkel oder Tageslicht) statt
-  Splash-Karte.
-
-## Offen: Balancing (Startwerte stehen, Feinschliff im Playtest)
-
-- Levelkurve für Speed, Density und Weather; Rush-Hour-Werte.
-- Kosten: Map-Erweiterungen, Zollstellen (auch Maximalzahl), Abschlepp-Depot.
-- Wirkung der 30-%-Wrackentfernung des Depots.
-- Crash-Kosten ab Level 20, Verlust bei Flucht, beide Versicherungs-Staffeln.
-- Parameter des Sportwagens; weitere Fahrzeugtypen.
-- Truhen-Odds, Anzahl der Mastery-Stufen, Pity-Schwelle.
-- Wetterparameter, Häufigkeit der City Events.
-- Blaulicht auf dem Boden: Intensität und Reichweite.
-- Keil-Warnung auf der Mittelinsel: Position und Deutlichkeit.
-- Freischalt-Level für Daily (3), Trials (8) und Casino (10).
-
----
-
-## Offen: Stadt und Straßennetz
-
-- Freier Straßennetz-Editor bzw. Stadtübersicht: neue Straßen, **weitere Kreisverkehre**,
-  Gebäude, Verkehrsinfrastruktur, dekorative Stadtobjekte.
-- Die Position einer Zollstelle beeinflusst ihren Wert.
-- Nach einem Crash kommt ein Abschleppwagen sichtbar **aus dem Depot-Hof in der Stadt**
-  (heute fährt er aus dem Hof am Ring).
-- Verkehrsleitsystem als Gegen-Upgrade zum Zoll-Stau.
+Das Spiel bleibt offline-first; ein Backend wäre ein Zusatz, der ausfallen darf. Empfohlene
+Reihenfolge: (1) Analytics und Fehlerberichte (Umami/Plausible, GlitchTip als Coolify-Dienste,
+kein eigener Code); (2) eigener PeerJS-Server und TURN mit kurzlebigen Zugängen (löst
+„Multiplayer über echte Netze“); (3) Daily-Bestenliste mit Replay-Prüfung (Seed + Taps,
+`core/` läuft in Node); (4) Kurzlinks mit Vorschaubild für Challenge-Links; (5) Spielstand
+über Geräte per Sync-Code. Geld und Truhen bleiben lokal, die Casino-Regel gilt weiter. Vorher
+muss „Kein Backend“ aus den festen Entscheidungen in CLAUDE.md.
 
 ---
 

@@ -427,7 +427,7 @@ Nach einer Schicht macht „Challenge a friend“ einen Link (`#challenge=…`) 
 | **Adaptive Auflösung** | Kommen die Frames dauerhaft langsam und unregelmäßig, sinkt die Pixeldichte 2 → 1,5 → 1; nach 12 s flüssigem Lauf steigt sie wieder. Gleichmäßige 30 fps (Stromsparmodus) bleiben unangetastet |
 | **Sound** | Web Audio: 44 Effekte und 7 Musik-Stems als AAC in `Web/public/audio/`, mit Tonhöhen-Variation und Stereo-Position. Adaptive Musik: Combo baut Instrumente auf, Verbrecher → Sirene, Rush Hour → Beat zieht an, Flow verdichtet; bei Verbrecher-Warnung und Rush-Hour-Beginn atmet die Musik durch einen Tiefpass ein |
 | **Haptik** | über `navigator.vibrate` – nur wo der Browser es kann (Android/Chrome); iOS-Safari hat keine Vibration, der Schalter zeigt das an |
-| **Accessibility** | Farben nie allein (Formen, Icons, Muster), Vehicle Labels, WCAG-AA-Kontrast, 44-px-Ziele, Tastatur (Leertaste, Enter, D/E, Esc, R, Tab, Pfeile), sichtbarer Fokus, Live-Region für Ergebnisse. Reduce Motion folgt standardmäßig dem System und entfernt Shake, Zeitlupe und fliegende Teile |
+| **Accessibility** | Farben nie allein (Formen, Icons, Muster), Vehicle Labels, WCAG-AA-Kontrast, 44-px-Ziele, Tastatur (Leertaste, Enter, D/E, Esc, R, Tab, Pfeile), sichtbarer Fokus, Live-Region für Ergebnisse. Reduce Motion ist standardmäßig aus (Leo, 29.09.2026; „System“ wählbar) und entfernt Shake, Zeitlupe und fliegende Teile. Läuft ein Gerät zu langsam, senkt das Spiel erst die Auflösung (2 → 1,5 → 1), dann die Deko (Bodentextur, Luft, Wolkenschatten), damit es nicht unter 30 fps fällt; Reduce Motion wird dann einmal empfohlen, nie eingeschaltet |
 | **Icon** | Kreisverkehr bei Nacht, das Mint-Auto fädelt in eine Lücke ein (Original in `Web/icon/`), als PWA-Icons in `Web/public/icons/` |
 
 ---
@@ -498,10 +498,10 @@ Geprüft wird mit `npm test` (29 Tests, node:test), `npm run build` (Typecheck) 
 - Multiplayer: Sind 50 ms Eingabeverzögerung spürbar? Sind 10 s bis zum Ausscheiden richtig?
 - Verlorene Schicht: Zeitlupe und Sofort-Neustart im richtigen Maß?
 
-### Bekannte Unstimmigkeiten
+### Gemessen (Karriere-Bot)
 
-- **Level laufen dem Geld davon** (`npm run sim:career`, 29.09.2026): Level 60 ist nach 1,1 h (Könner) bis 1,6 h (Gelegenheitsspieler) reiner Spielzeit erreicht, bis dahin sind 130.000–150.000 verdient. Alle Upgrades zusammen kosten 1,6 Mio.; mit Level 60 besitzt man 28–30 von 86 Stufen. Die erste zusätzliche Zufahrt (32.500) und die Module (10.400–15.600) werden nie erschwinglich, solange man Upgrades kauft. Daily (3), Trials (8) und Casino (10) öffnen alle in den ersten 5 Minuten. Entscheidung offen (§17).
-- **Die ersten Minuten** (`npm run sim:career -- 12 --story=20`): Schichten dauern anfangs 6–10 s. Bis Minute 3 kommen fünf neue Systeme (Daily nach 21 s, Challenges, Modi, Mastery, Trials). Ein Gelegenheitsspieler verliert bei **Level 10 vier Schichten am Stück** (Minute 5–7). Freischaltungen sind entzerrt (siehe „Freischaltungen“). **Offen (§17): die Kurve ab Level 8.** `npm run sim:career -- --curve=3-16 --per=60` (verlorene Schichten je Level, frische Karriere ohne Upgrades): Könner 8 % bis Level 7, dann 13 → 22 → 27 → 35 → 47 % (Level 8–12); Gelegenheitsspieler 23–35 % bis Level 7, dann 45 → 45 → 63 → 77 → 65 %. Es gibt keinen einzelnen Auslöser: ab Level 8 kommen mehr Autos (+1,1 je Level, ab Level 9 fünf Ring-Bots statt vier), Krankenwagen (8), der Verbrecher hat weniger Zeit, dazu Regen, City Events und ab 10 die Nacht.
+- **Level laufen dem Geld davon** (`npm run sim:career`, 29.09.2026): Level 60 ist nach 1,1 h (Könner) bis 1,6 h (Gelegenheitsspieler) reiner Spielzeit erreicht, bis dahin sind 130.000–150.000 verdient. Alle Upgrades zusammen kosten 1,6 Mio.; mit Level 60 besitzt man 28–30 von 86 Stufen. Die erste zusätzliche Zufahrt (32.500) und die Module (10.400–15.600) werden nie erschwinglich, solange man Upgrades kauft. Leo, 29.09.2026: bleibt so (die Freischaltungen sind inzwischen entzerrt).
+- **Die ersten Minuten** (`npm run sim:career -- 12 --story=20`): Schichten dauern anfangs 6–10 s. Bis Minute 3 kommen fünf neue Systeme (Daily nach 21 s, Challenges, Modi, Mastery, Trials). Ein Gelegenheitsspieler verliert bei **Level 10 vier Schichten am Stück** (Minute 5–7). Freischaltungen sind entzerrt (siehe „Freischaltungen“). **Die Kurve ab Level 8** (Leo, 29.09.2026: bleibt so): `npm run sim:career -- --curve=3-16 --per=60` (verlorene Schichten je Level, frische Karriere ohne Upgrades): Könner 8 % bis Level 7, dann 13 → 22 → 27 → 35 → 47 % (Level 8–12); Gelegenheitsspieler 23–35 % bis Level 7, dann 45 → 45 → 63 → 77 → 65 %. Es gibt keinen einzelnen Auslöser: ab Level 8 kommen mehr Autos (+1,1 je Level, ab Level 9 fünf Ring-Bots statt vier), Krankenwagen (8), der Verbrecher hat weniger Zeit, dazu Regen, City Events und ab 10 die Nacht.
 
 ---
 
@@ -537,15 +537,15 @@ Offene Ideen stehen in [IDEA.md](IDEA.md). Aus der alten Planung passen zum Brow
 - [x] Verlorenes Level wiederholen: bleibt so, fair dank Sofort-Neustart (Leo, 26.09.2026)
 - [x] Gefahrenstufe High Alert: entfernt, ersetzt durch die Spielmodi (26.09.2026)
 - [x] Browserspiel statt App (Leo, 27.09.2026)
-- [ ] Level-Kurve für Speed, Density und Weather; Rush-Hour-Werte
-- [ ] Bots im Ring: Startet Level 1 mit 3 oder 4?
-- [ ] Kosten: Zufahrten, Module, Truhen (Karriere neu messen)
-- [ ] Crash-Kosten ab Level 20, Verlust bei Flucht, Versicherungs-Staffeln
-- [ ] Parameter der Fahrzeugtypen (Compact, Sports Car, Van)
-- [ ] Truhen-Odds, Mastery-Stufen, Pity-Schwelle
-- [ ] Wetter, Nacht-Chance, Häufigkeit der City Events
-- [ ] Unlimited- und Mayhem-Werte, Boss-Level-Abstand (jedes 15.)
-- [ ] Blaulicht auf dem Boden und Warn-Keil: Intensität, Position, Deutlichkeit
+- [x] Level-Kurve für Speed, Density und Weather; Rush-Hour-Werte (Leo, 29.09.2026: bleibt so)
+- [x] Bots im Ring: Startet Level 1 mit 3 oder 4? (Leo, 29.09.2026: bleibt so)
+- [x] Kosten: Zufahrten, Module, Truhen (Karriere neu messen) (Leo, 29.09.2026: bleibt so)
+- [x] Crash-Kosten ab Level 20, Verlust bei Flucht, Versicherungs-Staffeln (Leo, 29.09.2026: bleibt so)
+- [x] Parameter der Fahrzeugtypen (Compact, Sports Car, Van) (Leo, 29.09.2026: bleibt so)
+- [x] Truhen-Odds, Mastery-Stufen, Pity-Schwelle (Leo, 29.09.2026: bleibt so)
+- [x] Wetter, Nacht-Chance, Häufigkeit der City Events (Leo, 29.09.2026: bleibt so)
+- [x] Unlimited- und Mayhem-Werte, Boss-Level-Abstand (jedes 15.) (Leo, 29.09.2026: bleibt so)
+- [x] Blaulicht auf dem Boden und Warn-Keil: Intensität, Position, Deutlichkeit (Leo, 29.09.2026: bleibt so)
 - [x] Store entfernt, Casino statt Store (Leo, 28.09.2026)
 - [x] Nur noch die Web-Version, Swift-Schiene gelöscht (Leo, 29.09.2026)
 - [x] Freischalt-Level entzerrt: Daily 4, Modi 6, Trials 9 (jede Trial bei ihrem Level), Casino 12 (Leo, 29.09.2026)

@@ -85,7 +85,9 @@ docker build -t car-game . ; docker run -p 5050:5050 car-game   # Container wie 
 - **Patch Notes (Leo, 29.09.2026):** Jede größere Neuerung und jeder spürbare Bugfix bekommt
   einen Eintrag in `Web/src/present/patchNotes.ts` (Settings → What's new): Englisch, für
   Spieler geschrieben, neueste zuerst, eindeutige `id`. Eine neue erste `id` zeigt den Punkt
-  am Einstellungsknopf.
+  am Einstellungsknopf. Jeder Eintrag hat ein `impact`: `major` (rot, ändert Regeln, Level oder
+  Belohnungen spürbar), `minor` (gelb, neu oder poliert, ohne das Spiel zu ändern), `fix`
+  (grün, nur Fehlerbehebungen). Die Liste zeigt den neuesten aufgeklappt, die anderen zu.
 - Vor jedem Commit: `npm test` und `npm run build` müssen grün sein.
 - Das Icon-Original liegt in `Web/icon/` (`python Web/icon/make_icon.py`).
 - Die Casino-Klänge entstehen in `Web/audio-src/make_casino_sounds.py` (numpy, scipy, ffmpeg)

@@ -135,7 +135,7 @@ export const CityLayer = {
    * The city around the ring. It grows with the level, the arms and the modules; what is new
    * since the last look rises out of the ground (`rise`), one after the other.
    */
-  add(list: RenderList, world: World, theme: MapTheme | null, time: number | null, pulse: CityPulse | null, scars: MapScars | null, now: number, rise: CityRise | null = null): void {
+  add(list: RenderList, world: World, theme: MapTheme | null, time: number | null, pulse: CityPulse | null, scars: MapScars | null, now: number, rise: CityRise | null = null, clouds = true): void {
     MapTheme.addGround(list, theme, world, time);
     const layout = world.layout;
     const count = CityLayer.count(world.config);
@@ -175,7 +175,7 @@ export const CityLayer = {
       placed++;
     }
     MapTheme.addAvenues(list, theme, world);
-    if (pulse) CityLayer.addCloudShadows(list, pulse);
+    if (pulse && clouds) CityLayer.addCloudShadows(list, pulse);
   },
 
   /**

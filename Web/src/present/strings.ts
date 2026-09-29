@@ -308,6 +308,7 @@ export const S = {
     installIos: 'Tip · Share → Add to Home Screen keeps your progress safe',
     install: 'Tip · Install the game in Settings to keep your progress safe',
     backup: 'Tip · Export your progress in Settings to keep a copy',
+    reduceMotion: 'Tip · Running slow? Reduce motion in Settings can help',
     offline: 'Ready to play offline',
   },
 
@@ -377,6 +378,8 @@ export const S = {
     passed: 'PASSED',
     play: 'Play',
     opensAt: (l: number): string => `Opens at level ${l}`,
+    /** The live counter of a counting trial goal. */
+    progress: (t: Trial, have: number, need: number): string => `${t.goal.k === 'perfects' ? 'Perfect merges' : 'Tight Fits or better'} ${Math.min(have, need)}/${need}${have >= need ? ' ✓' : ''}`,
   },
 
   boss: {
@@ -1206,7 +1209,7 @@ export const S = {
     rushFactor: (value: number): string => `RUSH HOUR ${multiplier(value)}`,
     critical: (points: string): string => `CRITICAL ${points}`,
     jackpotIncoming: 'JACKPOT!',
-    jackpotTimer: (seconds: number): string => `$ ${Math.ceil(Math.max(0, seconds))}`,
+    transporterTimer: (seconds: number): string => `${Math.ceil(Math.max(0, seconds))} s`,
     jackpotPaid: (amount: string): string => `JACKPOT ${amount}`,
     label(t: VehicleType): string | null {
       switch (t) {

@@ -335,15 +335,17 @@ export class Shell {
   }
 
   /**
-   * Adaptive resolution. Frames that keep coming slow and uneven (a device that cannot keep
-   * up) step the pixel ratio down, 2 → 1.5 → 1; a long smooth stretch steps it back up. A
-   * steady 30 fps (a phone saving power) is left alone: that is the screen, not the game.
+   * Adaptive quality (Leo, 29.09.2026: never below 30 fps, lower the detail instead). Frames
+   * that keep coming slow and uneven, or steadily under 29 fps, step down: the pixel ratio
+   * 2 → 1.5 → 1, then the decoration (ground texture, what flies through the air, cloud
+   * shadows). If even that is not enough, Reduce Motion is recommended once, never switched on.
+   * A long smooth stretch steps back up. A steady 30 fps (a phone saving power) is left alone.
    */
   private adaptQuality(delta: number): void {
     if (delta <= 0 || delta > 0.25 || document.hidden) return;
     this.frameAvg += (delta - this.frameAvg) * 0.05;
     this.frameJitter += (Math.abs(delta - this.frameAvg) - this.frameJitter) * 0.05;
-    const struggling = this.frameAvg > 1 / 45 && (this.frameJitter > 0.004 || this.frameAvg > 1 / 25);
+    const struggling = this.frameAvg > 1 / 45 && (this.frameJitter > 0.004 || this.frameAvg > 1 / 29);
     if (struggling) {
       this.slowFor += delta;
       this.fastFor = 0;
@@ -356,10 +358,20 @@ export class Shell {
     }
     const device = window.devicePixelRatio || 1;
     const inUse = Math.min(device, this.dprCap);
+    const s = this.session;
     if (this.slowFor > 2 && inUse > 1) {
       this.dprCap = Math.max(1, inUse - 0.5);
       this.slowFor = 0;
       this.resize();
+    } else if (this.slowFor > 2 && !s.lowDetail) {
+      s.lowDetail = true;
+      this.slowFor = 0;
+    } else if (this.slowFor > 4) {
+      this.slowFor = 0;
+      s.recommendReduceMotion();
+    } else if (this.fastFor > 12 && s.lowDetail) {
+      s.lowDetail = false;
+      this.fastFor = 0;
     } else if (this.fastFor > 12 && this.dprCap < Math.min(2, device)) {
       this.dprCap = Math.min(2, this.dprCap + 0.5);
       this.fastFor = 0;

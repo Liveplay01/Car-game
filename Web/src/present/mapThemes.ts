@@ -622,6 +622,143 @@ export const MapTheme = {
     }
   },
 
+  /**
+   * The map's own marks on its thumbnail (Shop, chest, casino): a disc of radius 60 world
+   * units with the road at 27, so only the ring 33–58 is free. One signature per map, small
+   * enough to sit under the four plants drawn after it.
+   */
+  addBadge(list: RenderList, theme: MapTheme | null): void {
+    const w = (p: ReturnType<typeof circle>, c: ColorToken, o = 1): void => list.w(p, c, o);
+    const at = (i: number, salt: number, from = 34, to = 56): Vec2 => mul(fromAngle(hash(i, salt) * TAU), from + hash(i, salt + 1) * (to - from));
+    const dots = (n: number, salt: number, r: number, colors: ColorToken[], o: number): void => {
+      for (let i = 0; i < n; i++) w(circle(at(i, salt), r * (0.7 + 0.6 * hash(i, salt + 2))), colors[i % colors.length], o);
+    };
+    const glow = (c: Vec2, r: number, color: ColorToken, o: number): void => {
+      for (let layer = 0; layer < 3; layer++) w(circle(c, r * (1 - 0.25 * layer)), color, o * 0.4);
+    };
+    // A chord of the disc at `offset` from the centre, along `angle`.
+    const chord = (offset: number, angle: number, width: number, color: ColorToken, o: number): void => {
+      const half = Math.sqrt(Math.max(0, 58 * 58 - offset * offset));
+      const along = fromAngle(angle);
+      const across = left(along);
+      w(line(add(mul(across, offset), mul(along, -half)), add(mul(across, offset), mul(along, half)), width), color, o);
+    };
+    switch (theme) {
+      case null:
+        return;
+      case 'dusk':
+        for (let i = 0; i < 10; i++) glow(mul(fromAngle((i / 10) * TAU + 0.3), 35), 4, 'fireCore', 0.35);
+        return dots(10, 901, 0.9, ['mapDusk', 'primary'], 0.6);
+      case 'sand':
+        for (let i = 0; i < 5; i++) {
+          const c = at(i, 903, 40, 52);
+          const start = hash(i, 905) * TAU;
+          for (let r = 0; r < 3; r++) w(arc(c, 6 + r * 3, 0.8, start, start + 1.1), 'sandDune', 0.6);
+        }
+        return;
+      case 'neon':
+        for (let x = -54; x <= 54; x += 12) {
+          chord(x, 0, 0.6, 'mapNeon', 0.25);
+          chord(x, Math.PI / 2, 0.6, 'mapNeon', 0.25);
+        }
+        return;
+      case 'forest':
+        for (let i = 0; i < 6; i++) glow(at(i, 907), 9, 'firDark', 0.4);
+        return dots(10, 909, 1, ['firLight', 'skinSunburst'], 0.8);
+      case 'autumn':
+        return dots(22, 911, 1.4, ['fireOuter', 'fireDeep', 'hazard'], 0.85);
+      case 'sakura': {
+        dots(18, 913, 1.1, ['mapSakura', 'sakuraPale'], 0.9);
+        // A little koi pond with its stone rim.
+        const pond = mul(fromAngle(1.4), 45);
+        w(circle(pond, 9.5), 'stone', 0.8);
+        w(circle(pond, 8), 'water');
+        w(circle(add(pond, v(-2, 1.5)), 1.8), 'skinKoi');
+        w(circle(add(pond, v(2.5, -1)), 1.5), 'primary', 0.9);
+        return;
+      }
+      case 'aurora':
+        for (let band = 0; band < 3; band++) w(arc(v(0, 0), 40 + band * 7, 4, 0.2 * Math.PI, 0.8 * Math.PI + 0.1 * band), band === 1 ? 'skinSky' : 'mapAurora', 0.45);
+        return dots(10, 915, 0.8, ['primary'], 0.7);
+      case 'ember':
+        for (let i = 0; i < 8; i++) {
+          const from = at(i, 917, 36, 50);
+          w(line(from, add(from, mul(fromAngle(hash(i, 919) * TAU), 8)), 1.3), 'mapEmber', 0.85);
+        }
+        return glow(mul(fromAngle(4.2), 46), 7, 'mapEmber', 0.35);
+      case 'meadow':
+        return dots(26, 921, 1.2, ['mapMeadow', 'primary', 'skinRose', 'skinSky', 'juiceRed'], 0.95);
+      case 'tropic': {
+        dots(14, 923, 1.3, ['skinCoral', 'skinSunburst', 'skinRose'], 0.9);
+        const lagoon = mul(fromAngle(1.4), 45);
+        w(circle(lagoon, 10), 'mapSand', 0.9);
+        w(circle(lagoon, 8), 'sea');
+        return;
+      }
+      case 'snowfall':
+        for (let i = 0; i < 3; i++) {
+          const start = hash(i, 925) * TAU;
+          for (const rail of [-1.5, 1.5]) w(arc(v(0, 0), 45 + i * 4 + rail, 0.7, start, start + 1.4), 'snowShade', 0.9);
+        }
+        return dots(12, 927, 0.8, ['skinSky'], 0.8);
+      case 'cosmos':
+        glow(mul(fromAngle(2.2), 44), 12, 'juicePurple', 0.25);
+        return dots(30, 929, 0.8, ['primary', 'primary', 'mapCosmos'], 0.9);
+      case 'harbour': {
+        const basin = mul(fromAngle(1.4), 45);
+        w(rect(basin, v(18, 12), 1.5, 1.4), 'water');
+        w(rect(basin, v(8, 3.5), 1, 1.4), 'skinCream', 0.9);
+        return dots(10, 931, 1, ['mapHarbour'], 0.7);
+      }
+      case 'vineyard': {
+        const field = mul(fromAngle(1.4), 45);
+        const turn = 1.4 + Math.PI / 2;
+        w(rect(field, v(18, 12), 1.5, turn), 'vineSoil', 0.95);
+        for (let row = -1; row <= 1; row++) {
+          const mid = add(field, mul(fromAngle(turn + Math.PI / 2), row * 3.6));
+          w(line(sub(mid, mul(fromAngle(turn), 7.5)), add(mid, mul(fromAngle(turn), 7.5)), 1.6), 'mapCypress');
+          w(circle(add(mid, mul(fromAngle(turn), 2)), 0.9), 'mapVineyard');
+        }
+        return;
+      }
+      case 'grove':
+        for (let i = 0; i < 12; i++) glow(at(i, 933), 3, 'mapGrove', 0.35);
+        return dots(12, 935, 0.8, ['mapGrove'], 0.9);
+      case 'abyss':
+        for (let i = 0; i < 4; i++) {
+          const c = at(i, 937, 40, 50);
+          const start = hash(i, 939) * TAU;
+          for (let r = 0; r < 2; r++) w(arc(c, 5 + r * 3, 0.7, start, start + 1.3), 'mapAbyss', 0.5);
+        }
+        for (let i = 0; i < 8; i++) w(arc(at(i, 941), 1.4 + hash(i, 943), 0.5, 0, TAU), 'primary', 0.55);
+        return;
+      case 'canyon': {
+        const from = mul(fromAngle(1), 36);
+        w(polygon([from, mul(fromAngle(1.35), 47), mul(fromAngle(1.7), 56), mul(fromAngle(1.75), 52), mul(fromAngle(1.3), 42), mul(fromAngle(1.1), 35)]), 'canyonSand', 0.6);
+        return dots(16, 945, 1, ['canyonRock', 'canyonSand'], 0.7);
+      }
+      case 'highland':
+        for (let i = 0; i < 3; i++) w(circle(at(i, 947, 40, 50), 4 + 2 * hash(i, 949)), 'water', 0.7);
+        return dots(22, 951, 0.9, ['heatherBloom', 'mapHighland', 'skinRose'], 0.9);
+      case 'lanterns':
+        for (let i = 0; i < 8; i++) glow(mul(fromAngle((i / 8) * TAU + 0.2), 36), 4.5, i % 2 === 0 ? 'mapLanterns' : 'lanternRed', 0.45);
+        return dots(12, 953, 0.9, ['mapLanterns', 'lanternRed'], 0.6);
+      case 'crystal':
+        for (let i = 0; i < 6; i++) {
+          const c = at(i, 955, 36, 48);
+          const dir = fromAngle(hash(i, 957) * TAU);
+          w(polygon([c, add(c, mul(dir, 9)), add(add(c, mul(dir, 6)), mul(left(dir), 2))]), 'crystalCyan', 0.45);
+        }
+        return dots(10, 959, 0.9, ['crystalCyan', 'mapCrystal'], 0.8);
+      case 'beach':
+        // The sea along one side of the disc, surf on the sand, shells.
+        w(arc(v(0, 0), 52, 12, 1.1, 2.1), 'sea');
+        w(arc(v(0, 0), 55, 6, 1.1, 2.1), 'seaDeep', 0.7);
+        w(arc(v(0, 0), 45.5, 1.4, 1.12, 2.08), 'primary', 0.85);
+        return dots(12, 961, 0.9, ['skinCoral', 'skinPearl'], 0.9);
+    }
+  },
+
   /** What grows where a tree would stand. */
   addPlant(list: RenderList, theme: MapTheme | null, center: Vec2, size: number, index: number): void {
     const a = (p: ReturnType<typeof circle>, c: ColorToken, o = 1): void => list.w(p, c, o);
@@ -817,7 +954,25 @@ export const MapTheme = {
   },
 
   /** Above the vehicles, below the HUD: what the wind carries over the map. */
-  addAir(list: RenderList, theme: MapTheme | null, time: number, reduceMotion: boolean): void {
+  /**
+   * `calm` is the island on screen: what flies over it fades to a trace there, so the prompt,
+   * the combo and the result lines on the island stay clear.
+   */
+  addAir(list: RenderList, theme: MapTheme | null, time: number, reduceMotion: boolean, calm: { center: Vec2; radius: number } | null = null): void {
+    const from = list.items.length;
+    MapTheme.addAirItems(list, theme, time, reduceMotion);
+    if (!calm) return;
+    for (let i = from; i < list.items.length; i++) {
+      const item = list.items[i];
+      const p = item.p;
+      const at = p.k === 'line' ? mul(add(p.from, p.to), 0.5) : p.k === 'circle' || p.k === 'rect' || p.k === 'arc' ? p.center : null;
+      if (!at) continue;
+      const inside = 1 - Math.min(1, Math.max(0, (dist(at, calm.center) - calm.radius * 0.75) / (calm.radius * 0.35)));
+      if (inside > 0) list.items[i] = { ...item, opacity: item.opacity * (1 - 0.85 * inside) };
+    }
+  },
+
+  addAirItems(list: RenderList, theme: MapTheme | null, time: number, reduceMotion: boolean): void {
     if (!theme || reduceMotion) return;
     const vp = list.camera.viewport;
     switch (theme) {
