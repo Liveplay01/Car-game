@@ -1,0 +1,66 @@
+<!doctype html>
+<!-- TEMPORARY: a sheet with every map skin drawn once, to look at them all at a glance. -->
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Map skins – preview</title>
+    <style>
+      body { margin: 0; background: #0b0d10; color: #f4f6f9; font: 13px/1.4 system-ui, sans-serif; }
+      p { margin: 8px 12px; }
+      .sheet { display: grid; grid-template-columns: repeat(4, 440px); gap: 2px; padding: 0 2px; }
+      figure { position: relative; margin: 0; }
+      figcaption { position: absolute; inset: 0 0 auto 0; padding: 4px 8px; background: rgba(11, 13, 16, 0.72); }
+    </style>
+  </head>
+  <body>
+    <p>Every map skin, drawn the way a shift draws it (cars on the ring, no HUD).</p>
+    <div class="sheet" id="sheet"></div>
+    <script type="module">
+      import { World } from '/src/core/world.ts';
+      import { baseConfig } from '/src/core/config.ts';
+      import { forLevel } from '/src/core/levels.ts';
+      import { MapTheme, MAP_THEMES } from '/src/present/mapThemes.ts';
+      import { RenderList } from '/src/present/render.ts';
+      import { CanvasDrawer } from '/src/present/draw.ts';
+      import { CityLayer } from '/src/present/city.ts';
+      import { SceneBuilder } from '/src/present/scene.ts';
+      import { Skins } from '/src/present/skins.ts';
+      import { v } from '/src/core/vec2.ts';
+
+      const TW = 440;
+      const TH = 300;
+      const sheet = document.getElementById('sheet');
+      const world = new World(forLevel(baseConfig, 8, 99), 99, { startsOnFirstTap: false });
+      for (let i = 0; i < 120 * 6; i++) world.step();
+      const t = world.time;
+      const scale = (TH / 2 - 10) / (world.layout.ringRadius + 250);
+      const viewport = v(TW, TH);
+      const camera = { viewport, center: v(0, 0), focus: v(TW / 2, TH / 2), scale };
+
+      for (const theme of [null, ...MAP_THEMES]) {
+        const figure = document.createElement('figure');
+        const canvas = document.createElement('canvas');
+        canvas.width = TW;
+        canvas.height = TH;
+        const caption = document.createElement('figcaption');
+        caption.textContent = theme ?? 'no map skin';
+        figure.append(canvas, caption);
+        sheet.append(figure);
+
+        const list = new RenderList(camera, MapTheme.ground(theme));
+        list.groundGrain = true;
+        CityLayer.add(list, world, theme, t, null, null, t);
+        SceneBuilder.addRoad(list, world.layout, world.config);
+        CityLayer.addMapSkin(list, Skins.color(theme), world);
+        MapTheme.addIsland(list, theme, world);
+        SceneBuilder.addVehicles(list, world, 1, [], t, t, null);
+        MapTheme.addAir(list, theme, t, false);
+        const drawer = new CanvasDrawer(canvas);
+        drawer.resize(TW, TH, 1);
+        drawer.draw(list);
+        caption.textContent += ` · ${list.items.length} items`;
+      }
+    </script>
+  </body>
+</html>

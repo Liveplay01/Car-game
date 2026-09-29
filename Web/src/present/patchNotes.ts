@@ -13,6 +13,18 @@ export interface PatchNote {
 
 export const PATCH_NOTES: PatchNote[] = [
   {
+    id: '2026-09-29-more-maps',
+    date: '29 September 2026',
+    title: 'Four more maps',
+    items: [
+      'Four new maps in the chests: Red Canyon, Highlands, Lantern Festival and Crystal Cavern.',
+      'Red Canyon: a rock arch with a campfire under it, yucca palms and grit blowing over the rim.',
+      'Highlands: a ring of standing stones round a lochan, heather in mats and mist in the hollows.',
+      'Lantern Festival: paper lanterns line the streets, stalls around a stage with a great paper drum, and sky lanterns go up.',
+      'Crystal Cavern: a geode of violet prisms round a lit pool, with rays turning and dust that catches the light.',
+    ],
+  },
+  {
     id: '2026-09-29-maps',
     date: '29 September 2026',
     title: 'New maps and a livelier casino',

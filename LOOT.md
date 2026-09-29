@@ -206,13 +206,13 @@ Kreisverkehr (der wertvollste abgeschlossene zählt). Fortschritt im Shop unter 
 
 | Album | Inhalt | Belohnung |
 | --- | --- | --- |
-| Maps | alle 16 Map Skins aus Truhen | 10.000 |
+| Maps | alle 20 Map Skins aus Truhen | 10.000 |
 | Commons / Rares / Epics / Legends | alle Car Skins dieser Seltenheit aus Truhen | 5.000 / 10.000 / 20.000 / 40.000 |
 | Seasons | alle 4 Saison-Items | 30.000 |
 | Loyalty | alle 3 Serien-Items | 20.000 |
 | Honours | alle 11 Legendary-, Prestige- und Elite-Items | 50.000 |
 
-## Map Skins (16)
+## Map Skins (20)
 
 Tönen die Mittelinsel des Kreisverkehrs mit einem Ring in der Skin-Farbe, färben den Boden
 der Stadt außerhalb des Kreisverkehrs (dunkel, damit alles lesbar bleibt) und bringen eigene
@@ -245,6 +245,15 @@ Details mit (`MapTheme`, Entscheidung Leo 25.09.2026). **Jede Map säumt ihre St
   leuchtenden Teich**, aufsteigende Sporen · **Abyss** Meeresgrund mit Sandrippeln und
   Lichtspiel, Korallenfächer und Anemonen, ein **Wrack mit funkelnder Truhe**, Quallen und
   aufsteigende Blasen.
+- **Noch vier (Leo, 29.09.2026):** **Red Canyon** Sanddünen, ein ausgetrocknetes Flussbett,
+  Felsnasen aus Schichtgestein und Yucca-Palmen, ein **Felsbogen mit Lagerfeuer**, der Staub,
+  der über den Rand weht · **Highlands** Moorpfützen, Heide in dicken Matten, Moos und
+  Menhire, ein **Steinkreis um einen Bergsee** mit Nebel darin und treibende Heideblüten ·
+  **Lantern Festival** ein nächtliches Fest: Papierlaternen an den Straßen, Stände mit
+  gestreiftem Dach, ein **Podium mit großer Papiertrommel**, von der Funken steigen, und
+  **Himmelslaternen** steigen auf · **Crystal Cavern** eine Tropfsteinhöhle: Risse von Licht im
+  Fels, Kristallbüschel und Stalagmiten, ein **Geode aus violetten Prismen um einen leuchtenden
+  Pool**, aus dem Strahlen drehen, und Staub, der aufblitzt.
 - **Ohne Map Skin** stehen echte Bäume an der Stadt (Krone aus Lappen in drei Grüntönen,
   Licht von oben links, Schatten; Spielerwunsch 29.09.2026); Autumn nutzt dieselbe Form.
 
@@ -272,6 +281,10 @@ einer neuen Schicht nicht neu an.
 | Vineyard | `vineyard` | Rare | Traubenviolett |
 | Mushroom Grove | `grove` | Epic | Pilzleuchten-Türkis |
 | Abyss | `abyss` | Legendary | Tiefseeblau |
+| Red Canyon | `canyon` | Common | Kanyon-Orange |
+| Highlands | `highland` | Rare | Heide-Violett |
+| Lantern Festival | `lanterns` | Epic | Laternengold |
+| Crystal Cavern | `crystal` | Legendary | Kristallviolett |
 
 ## Fahrzeugtypen (3)
 
@@ -289,13 +302,13 @@ was leichter zu platzieren ist, ist schwerer zu timen und umgekehrt. Werte in `W
 
 | Seltenheit | Car Skins | Map Skins | Typen | Summe |
 | --- | --- | --- | --- | --- |
-| Common | 10 | 4 | – | 14 |
-| Rare | 11 | 4 | 1 | 16 |
-| Epic | 10 | 4 | 2 | 16 |
-| Legendary | 8 | 4 | – | 12 |
-| **Summe** | **39** | **16** | **3** | **58** |
+| Common | 10 | 5 | – | 15 |
+| Rare | 11 | 5 | 1 | 17 |
+| Epic | 10 | 5 | 2 | 17 |
+| Legendary | 8 | 5 | – | 13 |
+| **Summe** | **39** | **20** | **3** | **62** |
 
-Dazu die 7 Items aus Daily-Serie und Saison: 65 insgesamt.
+Dazu die 7 Items aus Daily-Serie und Saison: 69 insgesamt.
 
 ## Ideen für später (noch nicht im Spiel)
 

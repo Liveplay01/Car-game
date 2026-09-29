@@ -79,6 +79,10 @@ export const Skins = {
       vineyard: 'mapVineyard',
       grove: 'mapGrove',
       abyss: 'mapAbyss',
+      canyon: 'mapCanyon',
+      highland: 'mapHighland',
+      lanterns: 'mapLanterns',
+      crystal: 'mapCrystal',
     };
     return id ? (map[id] ?? null) : null;
   },

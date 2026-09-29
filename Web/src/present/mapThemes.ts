@@ -26,8 +26,33 @@ export type MapTheme =
   | 'harbour'
   | 'vineyard'
   | 'grove'
-  | 'abyss';
-export const MAP_THEMES: MapTheme[] = ['dusk', 'sand', 'neon', 'forest', 'autumn', 'sakura', 'aurora', 'ember', 'meadow', 'tropic', 'snowfall', 'cosmos', 'harbour', 'vineyard', 'grove', 'abyss'];
+  | 'abyss'
+  | 'canyon'
+  | 'highland'
+  | 'lanterns'
+  | 'crystal';
+export const MAP_THEMES: MapTheme[] = [
+  'dusk',
+  'sand',
+  'neon',
+  'forest',
+  'autumn',
+  'sakura',
+  'aurora',
+  'ember',
+  'meadow',
+  'tropic',
+  'snowfall',
+  'cosmos',
+  'harbour',
+  'vineyard',
+  'grove',
+  'abyss',
+  'canyon',
+  'highland',
+  'lanterns',
+  'crystal',
+];
 
 const hash = (i: number, salt: number): number => unitHash(i, salt);
 
@@ -63,6 +88,10 @@ export const MapTheme = {
       vineyard: 'groundVineyard',
       grove: 'groundGrove',
       abyss: 'groundAbyss',
+      canyon: 'groundCanyon',
+      highland: 'groundHighland',
+      lanterns: 'groundLanterns',
+      crystal: 'groundCrystal',
     } as const)[theme];
   },
 
@@ -235,6 +264,78 @@ export const MapTheme = {
           soft(spot(i, 635, 20, 340), 30 + 20 * hash(i, 637), 'mapAbyss', 0.035 * pulse);
         }
         break;
+      case 'canyon':
+        // Sand in wide drifts, a dry wash winding between the buttes, and grit on the ground.
+        for (let i = 0; i < 14; i++) soft(spot(i, 641), 34 + 46 * hash(i, 643), 'canyonSand', 0.05);
+        for (let i = 0; i < 6; i++) {
+          const from = spot(i, 645, 40, 300);
+          if (!onScreen(from, 80, cam)) continue;
+          const dir = fromAngle(hash(i, 647) * TAU);
+          const mid = add(from, mul(dir, 34));
+          const end = add(mid, mul(fromAngle(angleOf(dir) + (hash(i, 649) - 0.5) * 0.9), 40));
+          list.w(polygon([from, mid, end, add(mid, mul(left(dir), 9)), add(from, mul(left(dir), 11))]), 'canyonSand', 0.09);
+        }
+        for (let i = 0; i < 44; i++) {
+          const at = spot(i, 651, 12);
+          if (onScreen(at, 3, cam)) add1(circle(at, 1.2 + 1.6 * hash(i, 653)), i % 3 === 0 ? 'canyonRock' : 'canyonSand', 0.3);
+        }
+        break;
+      case 'highland':
+        // Peat pools, heather in wide mats and moss where the water lies.
+        for (let i = 0; i < 12; i++) {
+          const at = spot(i, 661, 30, 320);
+          soft(at, 22 + 30 * hash(i, 663), 'mapHighland', 0.04);
+          if (hash(i, 665) < 0.5) soft(at, 14 + 12 * hash(i, 667), 'water', 0.1);
+        }
+        for (let i = 0; i < 16; i++) soft(spot(i, 669), 18 + 26 * hash(i, 671), 'highlandMoss', 0.05);
+        for (let i = 0; i < 90; i++) {
+          const at = spot(i, 673, 10);
+          if (!onScreen(at, 2, cam)) continue;
+          const bloom = time !== null ? 0.6 + 0.4 * Math.sin(time * (0.5 + hash(i, 675)) + i) : 0.8;
+          add1(circle(at, 0.7 + 0.7 * hash(i, 677)), i % 4 === 0 ? 'skinRose' : 'heatherBloom', (0.25 + 0.45 * bloom) * 0.9);
+        }
+        break;
+      case 'lanterns':
+        // Night ground: flagstones catching the warm light, and petals dropped on the way.
+        for (let i = 0; i < 12; i++) soft(spot(i, 681, 20, 330), 30 + 40 * hash(i, 683), 'mapLanterns', 0.05);
+        for (let i = 0; i < 7; i++) {
+          const at = spot(i, 685, 50, 300);
+          const along = fromAngle(hash(i, 687) * Math.PI);
+          const across = left(along);
+          for (let slab = -3; slab <= 3; slab++) {
+            const row = add(at, mul(along, slab * 9));
+            for (let stone = -3; stone <= 3; stone++) list.w(line(add(row, mul(across, stone * 9)), add(row, mul(across, (stone + 0.9) * 9)), 0.6), 'background', 0.3);
+          }
+        }
+        for (let i = 0; i < 40; i++) {
+          const at = spot(i, 689, 12);
+          if (onScreen(at, 3, cam)) add1(circle(at, 0.9 + 0.8 * hash(i, 691)), i % 3 === 0 ? 'lanternRed' : 'mapLanterns', 0.3);
+        }
+        break;
+      case 'crystal': {
+        // A cave floor: cracks of light under the rock, and the glow around each shard.
+        for (let i = 0; i < 14; i++) soft(spot(i, 701), 28 + 40 * hash(i, 703), 'mapCrystal', 0.05);
+        for (let i = 0; i < 10; i++) {
+          const center = spot(i, 705, 20, 330);
+          if (!onScreen(center, 60, cam)) continue;
+          const start = hash(i, 707) * TAU;
+          const dir = fromAngle(start);
+          const mid = add(center, mul(dir, 22 + 16 * hash(i, 709)));
+          const end = add(mid, mul(fromAngle(start + (hash(i, 711) - 0.5) * 1.2), 20));
+          const pulse = time !== null ? 0.55 + 0.45 * Math.sin(time * 0.9 + i * 1.7) : 0.7;
+          list.w(polygon([center, mid, end, add(mid, mul(left(dir), 5))]), 'crystalCyan', 0.16 * pulse);
+        }
+        for (let i = 0; i < 10; i++) {
+          const at = spot(i, 713, 20, 330);
+          const pulse = time !== null ? 0.5 + 0.5 * Math.sin(time * 0.7 + i * 2.1) : 0.6;
+          soft(at, 16 + 16 * hash(i, 715), 'crystalCyan', 0.05 * pulse);
+        }
+        for (let i = 0; i < 40; i++) {
+          const at = spot(i, 717, 10);
+          if (onScreen(at, 3, cam)) add1(circle(at, 0.8 + 1 * hash(i, 719)), 'crystalCyan', 0.35);
+        }
+        break;
+      }
     }
     const pond = MapTheme.pondCenter(world.layout);
     if (theme !== 'sakura' && pond && onScreen(pond, MapTheme.pondRadius * 2, cam)) MapTheme.addCentrepiece(list, theme, pond, time);
@@ -341,6 +442,14 @@ export const MapTheme = {
         return Centre.fairyRing(list, at, time);
       case 'abyss':
         return Centre.shipwreck(list, at, time);
+      case 'canyon':
+        return Centre.arch(list, at, time);
+      case 'highland':
+        return Centre.stoneCircle(list, at, time);
+      case 'lanterns':
+        return Centre.lanternStage(list, at, time);
+      case 'crystal':
+        return Centre.geode(list, at, time);
       case 'sakura':
         return;
     }
@@ -402,6 +511,22 @@ export const MapTheme = {
         break;
       case 'grove':
         Plants.mushroom(list, center, size, index);
+        break;
+      case 'canyon':
+        if (index % 2 === 0) Plants.hoodoo(list, center, size, index);
+        else Plants.yucca(list, center, size, index);
+        break;
+      case 'highland':
+        if (index % 3 === 2) Plants.menhir(list, center, size, index);
+        else Plants.heather(list, center, size, index);
+        break;
+      case 'lanterns':
+        if (index % 3 === 1) Plants.stall(list, center, size, index);
+        else Plants.paperLantern(list, center, size, index);
+        break;
+      case 'crystal':
+        if (index % 3 === 0) Plants.stalagmite(list, center, size, index);
+        else Plants.shard(list, center, size, index);
         break;
       case 'abyss':
         if (index % 3 === 1) Plants.anemone(list, center, size, index);
@@ -466,7 +591,7 @@ export const MapTheme = {
         [-1, 1].forEach((side, sideIndex) => {
           index++;
           const isAccent = (step + sideIndex) % 3 === 1;
-          const isLight = (isAccent && (theme === 'sakura' || theme === 'snowfall' || theme === 'dusk' || theme === 'harbour')) || theme === 'cosmos';
+          const isLight = (isAccent && (theme === 'sakura' || theme === 'snowfall' || theme === 'dusk' || theme === 'harbour' || theme === 'lanterns')) || theme === 'cosmos';
           const size = isLight ? 6 : 8.5 + 3.5 * hash(index, 381);
           const at = add(mul(out, distance + 6 * hash(index, 382)), mul(left(out), side * (layout.laneWidth + (isLight ? 14 : 20) + 4 * hash(index, 383))));
           if (!onScreen(at, size * 2.5, list.camera)) return;
@@ -497,6 +622,22 @@ export const MapTheme = {
               break;
             case 'vineyard':
               Plants.cypress(list, at, size * 0.8);
+              break;
+            case 'canyon':
+              if (isAccent) Plants.hoodoo(list, at, size * 0.85, index);
+              else Plants.yucca(list, at, size * 0.9, index);
+              break;
+            case 'highland':
+              if (isAccent) Plants.menhir(list, at, size * 0.75, index);
+              else Plants.heather(list, at, size * 0.9, index);
+              break;
+            case 'lanterns':
+              if (isAccent) Plants.paperLantern(list, at, size, index);
+              else Plants.stall(list, at, size * 0.85, index);
+              break;
+            case 'crystal':
+              if (isAccent) Plants.shard(list, at, size * 0.9, index);
+              else Plants.stalagmite(list, at, size * 0.8, index);
               break;
             case 'sand':
             case 'ember':
@@ -573,6 +714,49 @@ export const MapTheme = {
             const sway = Math.sin(time * 2 + t + phase) * 3;
             list.s(line(v(x, at.y + bell * 0.6), v(x + sway, at.y + bell * 0.6 + 16 + 4 * pulse), 1), 'mapAbyss', 0.25);
           }
+        }
+        return;
+      }
+      case 'canyon':
+        // Grit blowing over the rim, and the dust it leaves hanging in the low sun.
+        return drift(list, 34, time, vp, ['canyonSand', 'canyonRock', 'canyonSand'], 3, 2, 22, 10, true, 591);
+      case 'highland': {
+        // Mist lying in the hollows, sliding slowly downhill.
+        for (let i = 0; i < 7; i++) {
+          const home = v(hash(i, 593) * (vp.x + 160) - 80, hash(i, 594) * vp.y);
+          const at = add(home, v(Math.sin(time * 0.09 + i * 1.7) * 40, Math.sin(time * 0.13 + i) * 12));
+          for (let layer = 0; layer < 3; layer++) list.s(circle(at, (26 - 5 * layer) * (1 + 0.1 * Math.sin(time * 0.2 + i))), 'primary', 0.035);
+        }
+        // Heather seed drifting off the hills.
+        drift(list, 12, time, vp, ['heatherBloom', 'mapHighland'], 2.4, -3, 14, 8, true, 595);
+        return;
+      }
+      case 'lanterns': {
+        drift(list, 16, time, vp, ['lanternRed', 'mapLanterns', 'lanternRed'], 3, -8, 6, 10, true, 597);
+        // Sky lanterns going up, each with its own flame and a slow tilt.
+        const span = vp.y + 140;
+        for (let j = 0; j < 4; j++) {
+          const phase = hash(j, 598) * TAU;
+          const rise = time * 11 * (0.7 + 0.3 * hash(j, 599));
+          const y = span - ((hash(j, 600) * span + rise) % span) - 70;
+          const at = v(hash(j, 601) * vp.x + Math.sin(time * 0.25 + phase) * 26, y);
+          const warm = 0.6 + 0.4 * Math.sin(time * 2.2 + phase);
+          const size = 3 + 1.4 * hash(j, 602);
+          list.s(circle(at, size * 2.6), 'mapLanterns', 0.05);
+          list.s(circle(at, size * 1.5), 'mapLanterns', 0.1);
+          list.s(rect(at, v(size, size * 1.3), size * 0.4, 0.2 * Math.sin(time + phase)), j % 2 === 0 ? 'lanternRed' : 'mapLanterns', 0.5 + 0.25 * warm);
+          list.s(circle(add(at, v(0, -size * 0.8)), 0.9), 'fireCore', 0.5 + 0.4 * warm);
+        }
+        return;
+      }
+      case 'crystal': {
+        // Dust hanging in the light, and a shard of it catching the shine.
+        for (let i = 0; i < 30; i++) {
+          const at = v(hash(i, 604) * vp.x, hash(i, 605) * vp.y);
+          const glint = time !== null ? Math.pow(Math.max(0, Math.sin(time * (0.7 + hash(i, 606)) + i * 1.3)), 6) : 0.2;
+          if (glint <= 0.02) continue;
+          list.s(circle(at, 3 + 2 * hash(i, 607)), 'crystalCyan', 0.1 * glint);
+          list.s(circle(at, 0.9 + 0.7 * hash(i, 608)), 'primary', 0.85 * glint);
         }
         return;
       }
@@ -779,6 +963,114 @@ const Plants = {
       list.w(arc(center, radius / 2, radius, from, from + TAU / 8), piece % 2 === 0 ? 'skinCoral' : 'primary', 0.95);
     }
     list.w(circle(center, size * 0.12), 'vehicleTire', 0.9);
+  },
+  /** A hoodoo from above: a stack of harder and softer rock, each layer a little wider. */
+  hoodoo(list: RenderList, center: Vec2, size: number, index: number): void {
+    const away = fromAngle(-Math.PI / 4);
+    const turn = hash(index, 761) * TAU;
+    list.w(rect(add(center, mul(away, size * 1.5)), v(size * 2.4, size * 0.8), size * 0.4, -Math.PI / 4), 'shadow', 0.8);
+    list.w(circle(center, size * 1.15), 'canyonRock', 0.95);
+    for (let layer = 0; layer < 4; layer++) {
+      const k = hash(index * 7 + layer, 763);
+      const at = add(center, mul(fromAngle(turn + layer * 1.7), size * (0.2 + 0.1 * k)));
+      list.w(circle(at, size * (0.5 - 0.09 * layer) * (0.85 + 0.3 * k)), 'canyonSand', 0.8);
+    }
+    list.w(circle(add(center, v(-size * 0.22, size * 0.22)), size * 0.3), 'canyonSand', 0.7);
+  },
+  /** A yucca: a rosette of stiff blades with a flower spike standing out of the middle. */
+  yucca(list: RenderList, center: Vec2, size: number, index: number): void {
+    const turn = hash(index, 765) * TAU;
+    list.w(circle(add(center, v(size * 0.35, -size * 0.35)), size * 0.85), 'background', 0.3);
+    for (let blade = 0; blade < 9; blade++) {
+      const dir = turn + (blade * TAU) / 9;
+      const len = size * (0.85 + 0.35 * hash(index * 5 + blade, 767));
+      const tip = add(center, mul(fromAngle(dir), len));
+      list.w(polygon([center, add(center, mul(fromAngle(dir + 1.57), size * 0.2)), tip, add(center, mul(fromAngle(dir - 1.57), size * 0.2))]), blade % 2 === 0 ? 'mapForest' : 'skinFern', 0.92);
+    }
+    list.w(circle(center, size * 0.24), 'skinLatte', 0.95);
+    const spike = add(center, mul(fromAngle(turn + 0.8), size * 0.75));
+    list.w(circle(add(spike, v(size * 0.14, size * 0.14)), size * 0.24), 'skinCream', 0.9);
+  },
+  /** Heather from above: a low mossy mound speckled with blooms, densest on the crown. */
+  heather(list: RenderList, center: Vec2, size: number, index: number): void {
+    list.w(circle(add(center, v(size * 0.3, -size * 0.3)), size * 1.05), 'background', 0.3);
+    list.w(circle(center, size * 0.95), 'highlandMoss', 0.9);
+    list.w(circle(add(center, v(-size * 0.2, size * 0.2)), size * 0.62), 'highlandMoss', 0.7);
+    const blooms = 7 + (index % 4);
+    for (let b = 0; b < blooms; b++) {
+      const k = hash(index * 7 + b, 771);
+      const at = add(center, mul(fromAngle(hash(index * 11 + b, 772) * TAU), size * 0.75 * k));
+      list.w(circle(at, size * (0.09 + 0.07 * k)), b % 3 === 0 ? 'mapHighland' : 'heatherBloom', 0.9);
+    }
+  },
+  /** A standing stone, roughened and leaning a little, with the light on its upper left. */
+  menhir(list: RenderList, center: Vec2, size: number, index: number): void {
+    const turn = hash(index, 773) * TAU;
+    const lean = (hash(index, 774) - 0.5) * 0.5;
+    const h = size * 1.9;
+    list.w(rect(add(center, v(size * 0.4, -size * 0.4)), v(size * 1.5, size * 0.9), size * 0.4, -Math.PI / 4), 'shadow', 0.8);
+    list.w(rect(center, v(size * 1.15, h), size * 0.5, turn), 'stone', 0.95);
+    list.w(rect(add(center, v(-size * 0.22, size * 0.16)), v(size * 0.55, h * 0.9), size * 0.25, turn + lean), 'skinSilver', 0.45);
+    list.w(rect(add(center, mul(fromAngle(turn), h * 0.4)), v(size * 0.8, size * 0.4), size * 0.2, turn), 'highlandMoss', 0.5);
+    list.w(circle(add(center, v(-size * 0.3, size * 0.25)), size * 0.28), 'heatherBloom', 0.55);
+  },
+  /** A festival stall from above: a counter under a striped awning, lit from within. */
+  stall(list: RenderList, center: Vec2, size: number, index: number): void {
+    const turn = hash(index, 781) * TAU;
+    const along = fromAngle(turn);
+    const across = left(along);
+    list.w(rect(add(center, v(size * 0.4, -size * 0.4)), v(size * 2.5, size * 2.1), 1, turn), 'shadow', 0.8);
+    list.w(circle(center, size * 1.5), 'mapLanterns', 0.06);
+    list.w(rect(center, v(size * 2.1, size * 1.7), 0.6, turn), 'stone', 0.9);
+    for (let piece = 0; piece < 6; piece++) {
+      const from = turn + (piece * TAU) / 6;
+      list.w(arc(center, size * 0.95, size * 0.55, from, from + TAU / 6), piece % 2 === 0 ? 'lanternRed' : 'skinCream', 0.95);
+    }
+    list.w(circle(add(center, mul(along, size * 0.5)), size * 0.55), 'mapLanterns', 0.85);
+    list.w(circle(add(center, add(mul(along, size * 0.5), mul(across, -size * 0.5))), size * 0.24), 'fireCore', 0.9);
+  },
+  /** A paper lantern on its pole, warm on one side, with its cord and the cap on top. */
+  paperLantern(list: RenderList, center: Vec2, size: number, index: number): void {
+    const warm = index % 3 !== 0;
+    const color: ColorToken = warm ? 'mapLanterns' : 'lanternRed';
+    list.w(circle(center, size * 2.6), color, 0.05);
+    list.w(circle(center, size * 1.5), color, 0.1);
+    list.w(circle(add(center, v(size * 0.3, -size * 0.3)), size * 0.95), 'stone', 0.9);
+    list.w(circle(center, size * 0.78), color, 0.95);
+    for (let rib = -1; rib <= 1; rib++) list.w(line(add(center, v(rib * size * 0.4, -size * 0.45)), add(center, v(rib * size * 0.4, size * 0.45)), 0.4), 'stone', 0.4);
+    list.w(circle(add(center, v(-size * 0.2, size * 0.2)), size * 0.34), 'primary', 0.22);
+    list.w(circle(add(center, v(0, -size * 0.62)), size * 0.22), 'stone', 0.9);
+    list.w(circle(add(center, v(0, size * 0.7)), size * 0.2), 'fireCore', 0.9);
+  },
+  /** A stalagmite from above: a ring of rock with the light pooling in its hollow. */
+  stalagmite(list: RenderList, center: Vec2, size: number, index: number): void {
+    const turn = hash(index, 791) * TAU;
+    list.w(circle(add(center, v(size * 0.35, -size * 0.35)), size * 1.15), 'background', 0.35);
+    list.w(circle(center, size), 'stone', 0.95);
+    for (let lobe = 0; lobe < 5; lobe++) {
+      const k = hash(index * 7 + lobe, 793);
+      list.w(circle(add(center, mul(fromAngle(turn + (lobe * TAU) / 5), size * (0.3 + 0.14 * k))), size * (0.4 + 0.16 * k)), 'wreck', 0.9);
+    }
+    list.w(circle(add(center, v(-size * 0.22, size * 0.22)), size * 0.34), 'skinSilver', 0.35);
+    if (index % 3 === 0) list.w(circle(center, size * 0.16), 'crystalCyan', 0.8);
+  },
+  /** A cluster of crystal shards: a few prisms leaning out of one another, lit through. */
+  shard(list: RenderList, center: Vec2, size: number, index: number): void {
+    const turn = hash(index, 795) * TAU;
+    const color: ColorToken = index % 3 === 0 ? 'crystalCyan' : 'mapCrystal';
+    list.w(circle(center, size * 1.8), color, 0.06);
+    list.w(circle(add(center, v(size * 0.35, -size * 0.35)), size * 1.05), 'shadow', 0.8);
+    const count = 3 + (index % 3);
+    for (let s = 0; s < count; s++) {
+      const dir = turn + (s * TAU) / count + hash(index * 5 + s, 797) * 0.4;
+      const len = size * (1 + 0.5 * hash(index * 11 + s, 799));
+      const width = size * 0.3;
+      const tip = add(center, mul(fromAngle(dir), len));
+      const side = mul(left(fromAngle(dir)), width);
+      list.w(polygon([sub(center, side), add(center, side), tip]), color, 0.9);
+      list.w(polygon([sub(center, side), add(center, mul(side, 0.4)), tip]), 'primary', 0.16);
+    }
+    list.w(circle(center, size * 0.32), 'crystalCyan', 0.6);
   },
 };
 
@@ -1031,8 +1323,110 @@ const Centre = {
     const glint = time !== null ? Math.pow(Math.max(0, Math.sin(time * 1.7)), 12) : 0.3;
     list.w(circle(add(chest, v(1.5, 1.5)), 0.8 + 1.8 * glint), 'coin', 0.3 + 0.7 * glint);
   },
-  planet(list: RenderList, c: Vec2, time: number | null): void {
-    const radius = MapTheme.pondRadius * 0.55;
+  /** Red Canyon: a natural arch of layered rock, with a fire ring under it and the dusk behind. */
+  arch(list: RenderList, c: Vec2, time: number | null): void {
+    const r = MapTheme.pondRadius;
+    const turn = hash(3, 763) * TAU;
+    const reach = r * 1.05;
+    list.w(circle(c, r * 1.35), 'canyonSand', 0.05);
+    list.w(circle(add(c, v(3, -3)), r * 0.9), 'shadow', 0.6);
+    // The span: a thick arc standing on two legs, the light coming through the opening.
+    for (const leg of [-1, 1]) {
+      const foot = add(c, mul(fromAngle(turn), reach * leg));
+      list.w(circle(add(foot, mul(fromAngle(turn + Math.PI / 2), reach * 0.42)), r * 0.5), 'canyonRock', 0.95);
+      list.w(circle(add(foot, mul(fromAngle(turn + Math.PI / 2), reach * 0.3)), r * 0.3), 'canyonSand', 0.85);
+    }
+    list.w(arc(c, reach, r * 0.55, turn + Math.PI * 0.02, turn + Math.PI * 0.98), 'canyonRock', 0.95);
+    for (let band = 1; band <= 3; band++) {
+      const k = reach * (1 - band * 0.16);
+      list.w(arc(c, k, 1.2, turn + Math.PI * (0.04 + band * 0.03), turn + Math.PI * (0.96 - band * 0.03)), 'canyonSand', 0.4);
+    }
+    list.w(arc(c, reach + r * 0.26, 1.6, turn + Math.PI * 0.12, turn + Math.PI * 0.88), 'mapCanyon', 0.7);
+    // The fire ring in front of the arch, burning down into the night.
+    const fire = add(c, mul(fromAngle(turn + Math.PI / 2), r * 0.78));
+    for (let s = 0; s < 8; s++) list.w(circle(add(fire, mul(fromAngle((s / 8) * TAU), 6.5)), 2), 'stone', 0.9);
+    const flicker = time !== null ? 0.75 + 0.25 * Math.sin(time * 9) * Math.sin(time * 5.1) : 0.85;
+    list.w(circle(fire, 18 * flicker), 'fireOuter', 0.07);
+    list.w(circle(fire, 5 * flicker), 'fireOuter', 0.9);
+    list.w(circle(fire, 2.4 * flicker), 'fireCore', 1);
+    Plants.yucca(list, add(c, mul(fromAngle(turn + 2.3), r * 0.85)), 6, 21);
+  },
+  /** Highlands: a ring of standing stones round a lochan, mist lying in the middle of it. */
+  stoneCircle(list: RenderList, c: Vec2, time: number | null): void {
+    const r = MapTheme.pondRadius;
+    const breathe = time !== null ? 0.75 + 0.25 * Math.sin(time * 0.5) : 0.85;
+    list.w(circle(c, r * 1.35), 'highlandMoss', 0.12);
+    list.w(circle(c, r * 0.62), 'water', 0.9);
+    list.w(circle(c, r * 0.55), 'primary', 0.05 * breathe);
+    for (let ring = 0; ring < 3; ring++) {
+      const phase = ((time ?? 0) * 0.4 + ring / 3) % 1;
+      list.w(arc(c, r * (0.2 + 0.4 * phase), 0.7, 0, TAU), 'primary', 0.25 * (1 - phase));
+    }
+    const count = 8;
+    for (let i = 0; i < count; i++) {
+      const at = add(c, mul(fromAngle((i / count) * TAU + 0.2), r * 0.98));
+      Plants.menhir(list, at, 5 + 1.5 * hash(i, 775), i * 5 + 2);
+    }
+    for (let m = 0; m < 6; m++) list.w(circle(add(c, mul(fromAngle((time ?? 0) * 0.3 + m * 1.05), r * (0.2 + 0.35 * hash(m, 777)))), 1), 'heatherBloom', 0.5 * breathe);
+  },
+  /** Lantern Festival: a stage of a great paper drum, ringed by stalls, with sparks off the brazier. */
+  lanternStage(list: RenderList, c: Vec2, time: number | null): void {
+    const r = MapTheme.pondRadius;
+    const t = time ?? 0;
+    list.w(circle(c, r * 1.3), 'mapLanterns', 0.06);
+    list.w(circle(c, r * 0.95), 'stone', 0.85);
+    for (let ring = 0; ring < 3; ring++) list.w(arc(c, r * (0.45 + ring * 0.22), 0.8, 0, TAU), 'lanternRed', 0.5 - 0.12 * ring);
+    // The drum, turning slowly, its ribs catching the light as they come round.
+    const glow = 0.8 + 0.2 * Math.sin(t * 1.7);
+    list.w(circle(c, r * 0.72), 'mapLanterns', 0.16 * glow);
+    list.w(circle(c, r * 0.5), 'lanternRed', 0.95);
+    list.w(circle(add(c, v(-r * 0.14, r * 0.14)), r * 0.36), 'mapLanterns', 0.9);
+    for (let rib = 0; rib < 8; rib++) {
+      const from = t * 0.5 + (rib * TAU) / 8;
+      const depth = Math.cos(from);
+      list.w(line(add(c, mul(fromAngle(from), r * 0.46)), add(c, mul(fromAngle(from), r * 0.5)), 0.8), depth > 0 ? 'primary' : 'stone', 0.2 + 0.3 * Math.max(0, depth));
+    }
+    list.w(circle(c, r * 0.16), 'fireCore', 0.95);
+    list.w(circle(add(c, v(r * 0.5, -r * 0.5)), r * 0.2), 'skinGold', 0.8);
+    // Stalls round the stage and a brazier throwing sparks.
+    for (let i = 0; i < 5; i++) Plants.stall(list, add(c, mul(fromAngle((i / 5) * TAU + 0.5), r * 1.15)), 6, i * 3);
+    const brazier = add(c, mul(fromAngle(2.1), r * 1.05));
+    for (let s = 0; s < 7; s++) list.w(circle(add(brazier, mul(fromAngle((s / 7) * TAU), 5)), 1.6), 'stone', 0.9);
+    list.w(circle(brazier, 13 * glow), 'fireCore', 0.08);
+    list.w(circle(brazier, 3.4 * glow), 'fireOuter', 0.95);
+    for (let s = 0; s < 5; s++) {
+      const rise = ((t * 9 + s * 3) % 16) / 16;
+      list.w(circle(add(brazier, v(Math.sin(s * 2.3 + t) * 4, rise * 22)), 0.9), 'fireCore', 0.7 * (1 - rise));
+    }
+  },
+  /** Crystal Cavern: a great geode of violet prisms round a lit pool, rays going out of it. */
+  geode(list: RenderList, c: Vec2, time: number | null): void {
+    const r = MapTheme.pondRadius;
+    const t = time ?? 0;
+    const breathe = 0.7 + 0.3 * Math.sin(t * 0.9);
+    list.w(circle(c, r * 1.4), 'mapCrystal', 0.06 * breathe);
+    list.w(circle(c, r), 'water', 1);
+    list.w(circle(c, r * 0.8), 'crystalCyan', 0.1 * breathe);
+    // Light rays out of the pool, turning slowly.
+    for (let ray = 0; ray < 9; ray++) {
+      const from = t * 0.16 + (ray * TAU) / 9;
+      const dir = fromAngle(from);
+      const reach = r * (1 + 0.5 * (0.5 + 0.5 * Math.sin(from * 2 + t * 0.6)));
+      list.w(polygon([add(c, mul(dir, r * 0.35)), add(c, mul(dir, reach)), add(c, mul(fromAngle(from + 0.12), r * 0.4))]), 'crystalCyan', 0.1 * breathe);
+    }
+    // The prisms themselves, leaning in around the rim.
+    for (let i = 0; i < 9; i++) {
+      const dir = (i / 9) * TAU + 0.35;
+      const tip = add(c, mul(fromAngle(dir), r * (1.05 + 0.25 * hash(i, 781))));
+      const side = mul(left(fromAngle(dir)), r * 0.16);
+      list.w(polygon([sub(c, side), add(c, side), tip]), i % 3 === 0 ? 'crystalCyan' : 'mapCrystal', 0.92);
+      list.w(polygon([sub(c, side), add(c, mul(side, 0.35)), tip]), 'primary', 0.15);
+      list.w(polygon([add(c, side), tip, add(c, mul(side, 0.2))]), 'groundCrystal', 0.35);
+    }
+    const glint = Math.pow(Math.max(0, Math.sin(t * 1.3)), 10);
+    list.w(circle(add(c, v(r * 0.3, r * 0.3)), 1.5 + 4 * glint), 'primary', 0.2 + 0.7 * glint);
+  },
+  planet(list: RenderList, c: Vec2, time: number | null): void {    const radius = MapTheme.pondRadius * 0.55;
     const tilt = 0.35;
     const ellipse = (a: number, b: number, angle: number): Vec2 => add(c, rotated(v(a * Math.cos(angle), b * Math.sin(angle)), tilt));
     const ring = (front: boolean): void => {
