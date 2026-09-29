@@ -974,13 +974,9 @@ export const ResultBanner = {
   leaving: (age: number): number => Ease.smoothstep(ResultBanner.settled(age) * 2),
   arriving: (age: number): number => Ease.smoothstep(ResultBanner.settled(age) * 2 - 1),
 
-  add(list: RenderList, summary: ShiftSummary, nextLevel: number, bank: { before: number; after: number }, age: number, reduceMotion: boolean): void {
+  /** How the shift ended, in words and colour: the card's caption and the photo's headline. */
+  title(summary: ShiftSummary): [string, ColorToken] {
     const r = summary.result;
-    const frame = TopBar.frame(list.camera.viewport.x);
-    const cols = TopBar.columns(frame);
-    TopBar.addScrim(list);
-    TopBar.addCard(list, frame);
-    const shown = Ease.outCubic(age / ResultBanner.enter) * (1 - ResultBanner.leaving(age));
     let [title, titleColor]: [string, ColorToken] =
       r.outcome === 'completed'
         ? [S.result.levelComplete(summary.level), 'accent']
@@ -995,8 +991,19 @@ export const ResultBanner = {
     if (r.outcome === 'escaped' && r.convoy && !r.bossBusted) title = S.boss.escaped;
     // A Legendary Shift's rule was broken (Zero Tolerance).
     if (r.outcome === 'failed') [title, titleColor] = [S.legendary.broken, 'destructive'];
+    if (summary.run) [title, titleColor] = [summary.run.caption, summary.run.color];
+    return [title, titleColor];
+  },
+
+  add(list: RenderList, summary: ShiftSummary, nextLevel: number, bank: { before: number; after: number }, age: number, reduceMotion: boolean): void {
+    const r = summary.result;
+    const frame = TopBar.frame(list.camera.viewport.x);
+    const cols = TopBar.columns(frame);
+    TopBar.addScrim(list);
+    TopBar.addCard(list, frame);
+    const shown = Ease.outCubic(age / ResultBanner.enter) * (1 - ResultBanner.leaving(age));
+    const [title, titleColor] = ResultBanner.title(summary);
     const run = summary.run;
-    if (run) [title, titleColor] = [run.caption, run.color];
 
     list.tag = 'topbarLabels';
     if (shown > 0.001) {

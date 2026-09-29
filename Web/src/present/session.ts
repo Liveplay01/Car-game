@@ -34,6 +34,7 @@ import { bookShift } from './booking';
 import { MenuKit } from './menukit';
 import { type Screen, type Tab, type SwipeMode, SWIPE_MODES, type ScreenAction, type Built, type ProgressSection, TAB_BAR, BUILD_PAGES, barTab, screenTab, showsTabBar, partModule, BuildLayout } from './flow';
 import { CameraRig, perspectiveOf, addRecede } from './perspective';
+import { PhotoCard } from './photo';
 import { TransitionTracker, ModePan } from './transitions';
 import { ShopPage, ShopState, shelfOf, type ShopTarget } from './shop';
 import { CasinoFlow, type CasinoHost } from './casinoFlow';
@@ -1872,20 +1873,11 @@ export class GameSession {
 
   // MARK: Render list
 
-  private renderList(viewport: Vec2, delta: number): RenderList {
+  /** The world through `camera`: city, road, traffic, weather and the map's air; no HUD. */
+  private sceneList(camera: Camera, alpha: number, rm: boolean): RenderList {
     const world = this.world;
-    const rm = this.reduceMotion;
-    const alpha = Math.min(1, this.accumulator / STEP);
-    const cam = this.cameraRig.camera(perspectiveOf(this.screen), world.layout, viewport, this.tabInset, delta, rm);
-    const shake = add(this.effects.shakeOffset, this.explosions.shakeOffset);
-    const camera = {
-      ...cam,
-      focus: v(cam.focus.x + shake.x + this.pan.pan, cam.focus.y + shake.y),
-      scale: cam.scale * (1 - GameSession.lossPullBack * this.lossPull) * (1 + this.explosions.punch) * (1 + (rm ? 0 : GameSession.topTierLean * this.topTier)),
-    };
     const career = this.save.career;
     const theme = MapTheme.from(career.mapSkin);
-    this.lastCamera = camera;
     const list = new RenderList(camera, MapTheme.ground(theme));
     list.groundGrain = true;
     CityLayer.add(list, world, theme, rm ? null : this.sceneTime, rm ? null : this.cityPulse, this.scars.isEmpty ? null : this.scars, this.sceneTime, this.playingMode === 'shift' && !this.special ? this.cityRise : null);
@@ -1911,6 +1903,39 @@ export class GameSession {
     this.explosions.addAir(list);
     WeatherLayer.addAir(list, world, world.time, rm);
     MapTheme.addAir(list, theme, this.sceneTime, rm);
+    return list;
+  }
+
+  /**
+   * The photo of a finished shift: the roundabout framed from above for a `size` print (no
+   * HUD), and what the print says about it. Null when there is no result on screen.
+   */
+  photo(size: Vec2): { list: RenderList; card: PhotoCard } | null {
+    const s = this.screen;
+    if (s.k !== 'result') return null;
+    const layout = this.world.layout;
+    // The ring and the first stretch of every arm, the queue coming in at the bottom.
+    const reach = layout.ringRadius + layout.laneWidth / 2 + 110;
+    const scale = Math.min(size.x, size.y) / 2 / reach;
+    const camera: Camera = { viewport: size, center: v(0, -reach * 0.12), focus: v(size.x / 2, size.y / 2), scale };
+    const list = this.sceneList(camera, Math.min(1, this.accumulator / STEP), this.reduceMotion);
+    return { list, card: PhotoCard.of(s.summary, this.save.career.mapSkin) };
+  }
+
+  private renderList(viewport: Vec2, delta: number): RenderList {
+    const world = this.world;
+    const rm = this.reduceMotion;
+    const alpha = Math.min(1, this.accumulator / STEP);
+    const cam = this.cameraRig.camera(perspectiveOf(this.screen), world.layout, viewport, this.tabInset, delta, rm);
+    const shake = add(this.effects.shakeOffset, this.explosions.shakeOffset);
+    const camera = {
+      ...cam,
+      focus: v(cam.focus.x + shake.x + this.pan.pan, cam.focus.y + shake.y),
+      scale: cam.scale * (1 - GameSession.lossPullBack * this.lossPull) * (1 + this.explosions.punch) * (1 + (rm ? 0 : GameSession.topTierLean * this.topTier)),
+    };
+    const career = this.save.career;
+    this.lastCamera = camera;
+    const list = this.sceneList(camera, alpha, rm);
     addRecede(list, this.recede, world.layout);
     this.curtain?.add(list, viewport, rm);
     this.explosions.addFlash(list, viewport);

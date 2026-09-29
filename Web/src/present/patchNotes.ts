@@ -13,6 +13,16 @@ export interface PatchNote {
 
 export const PATCH_NOTES: PatchNote[] = [
   {
+    id: '2026-09-29-photo',
+    date: '29 September 2026',
+    title: 'Say cheese',
+    items: [
+      'Picture now takes a real photo: a flash, a click, and an instant print of your roundabout drops in and develops.',
+      'The print shows your score, your best moments, the map, a NEW BEST stamp when it is one and the date, and dares your friends to beat it.',
+      'Share it straight away or download it.',
+    ],
+  },
+  {
     id: '2026-09-29-sunny-maps',
     date: '29 September 2026',
     title: 'Maps in the sun',

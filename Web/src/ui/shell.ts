@@ -8,8 +8,7 @@ import { h, icon } from './dom';
 import { ICONS } from './icons';
 import { settingsSheet, patchNotesSheet, isSheetOpen, closeAnySheet } from './sheets';
 import { PATCH_NOTES } from '../present/patchNotes';
-import { css } from '../present/theme';
-import { fontFor } from '../present/measure';
+import { PhotoView } from './photo';
 import { exportSave } from '../storage/save';
 import { isInstalled, isIos, isStorageKept, keepStorage } from '../storage/device';
 import type { Hint } from '../core/career';
@@ -26,6 +25,8 @@ interface InstallPromptEvent extends Event {
 }
 
 const TAB_HEIGHT = 56;
+/** The photo's scene in points (drawn at twice the pixels): the square on the print. */
+const PHOTO_SCENE = v(492, 492);
 
 /** A key hint on a floating button; CSS shows it only where there is a keyboard and a mouse. */
 const keycap = (label: string): HTMLElement => h('kbd', { class: 'keycap', 'aria-hidden': 'true' }, label);
@@ -50,6 +51,7 @@ export class Shell {
   private readonly dispatchBtn: HTMLButtonElement;
   private readonly shareBtn: HTMLButtonElement;
   private readonly photoBtn: HTMLButtonElement;
+  private readonly photo: PhotoView;
   /** The patch notes are open over the settings: closing the settings sheet is not leaving them. */
   private notesOpen = false;
   /** Adaptive resolution: the device pixel ratio in use, and how the frames have been going. */
@@ -85,7 +87,7 @@ export class Shell {
 
   constructor(
     private readonly app: HTMLElement,
-    private readonly canvas: HTMLCanvasElement,
+    canvas: HTMLCanvasElement,
     private readonly layers: HTMLElement,
   ) {
     this.drawer = new CanvasDrawer(canvas);
@@ -124,7 +126,16 @@ export class Shell {
     // Under a result: send this shift to a friend. In a challenge or trial: leave it.
     this.shareBtn = h('button', { class: 'btn glass run-btn', type: 'button', onclick: () => void this.share() }, icon(ICONS.share), h('span', {}, 'Challenge a friend'));
     // Under any result: the picture on the screen, to send or keep.
-    this.photoBtn = h('button', { class: 'btn glass run-btn', type: 'button', 'aria-label': 'Share a picture of this result', onclick: () => void this.sharePicture() }, icon(ICONS.camera), h('span', {}, 'Picture'));
+    this.photoBtn = h('button', { class: 'btn glass run-btn', type: 'button', 'aria-label': S.photo.buttonLabel, 'aria-haspopup': 'dialog', onclick: () => this.takePicture() }, icon(ICONS.camera), h('span', {}, S.photo.button));
+    this.photo = new PhotoView(app, {
+      shutter: () => {
+        this.audio.unlock();
+        if (this.session.save.settings.sound) this.audio.play('shutter', 1);
+        if (this.session.save.settings.haptics) this.haptics.play('tap', 0);
+      },
+      reduceMotion: () => this.session.reduceMotion,
+      link: () => this.session.shareLink(location.origin + location.pathname),
+    });
     this.leaveLabel = h('span', {}, 'Leave');
     this.leaveBtn = h('button', { class: 'btn glass run-btn', type: 'button', 'aria-keyshortcuts': 'Escape', onclick: () => this.session.leaveSpecial() }, icon(ICONS.close), this.leaveLabel);
     // Multiplayer: a friend's code or your own; the match takes over the canvas.
@@ -318,55 +329,9 @@ export class Shell {
     }
   }
 
-  /**
-   * The result as a picture: what the screen shows, with the game's name under it. A phone
-   * hands it to the share sheet (with the challenge link when there is one); elsewhere it is
-   * saved as a file.
-   */
-  private async sharePicture(): Promise<void> {
-    const s = this.session;
-    const blob = await this.picture();
-    if (!blob) return;
-    const day = new Date().toISOString().slice(0, 10);
-    const file = new File([blob], `car-game-${day}.png`, { type: 'image/png' });
-    const touch = window.matchMedia('(pointer: coarse)').matches;
-    if (touch && typeof navigator.canShare === 'function' && navigator.canShare({ files: [file] })) {
-      const url = s.shareLink(location.origin + location.pathname);
-      try {
-        await navigator.share({ files: [file], title: 'Car Game', text: S.run.pictureText, ...(url ? { url } : {}) });
-      } catch {
-        /* cancelled */
-      }
-      return;
-    }
-    const href = URL.createObjectURL(file);
-    const link = h('a', { href, download: file.name });
-    document.body.append(link);
-    link.click();
-    link.remove();
-    window.setTimeout(() => URL.revokeObjectURL(href), 1000);
-    s.showNotice(S.run.pictureSaved);
-  }
-
-  /** The canvas as it stands, and a strip under it with the game's name and where to play it. */
-  private picture(): Promise<Blob | null> {
-    const src = this.canvas;
-    const dpr = this.drawer.dpr;
-    const strip = Math.round(44 * dpr);
-    const out = document.createElement('canvas');
-    out.width = src.width;
-    out.height = src.height + strip;
-    const ctx = out.getContext('2d');
-    if (!ctx) return Promise.resolve(null);
-    ctx.drawImage(src, 0, 0);
-    ctx.fillStyle = css('background');
-    ctx.fillRect(0, src.height, out.width, strip);
-    ctx.fillStyle = css('accent');
-    ctx.font = fontFor(Math.round(15 * dpr), true);
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText(`Car Game · ${location.host}`, out.width / 2, src.height + strip / 2);
-    return new Promise((resolve) => out.toBlob(resolve, 'image/png'));
+  /** The result as a photo: a flash, then the print to look at, share or download (`PhotoView`). */
+  private takePicture(): void {
+    void this.photo.open(() => this.session.photo(PHOTO_SCENE), this.photoBtn);
   }
 
   /**
@@ -513,7 +478,7 @@ export class Shell {
       if (e.pointerType === 'mouse' && e.button !== 0) return;
       this.keyboardNav = false;
       this.audio.unlock();
-      if (isSheetOpen()) return;
+      if (isSheetOpen() || this.photo.isOpen) return;
       if (this.versus.match) {
         e.preventDefault();
         this.versus.match.tap();
@@ -553,7 +518,7 @@ export class Shell {
     document.addEventListener('pointerdown', () => this.audio.unlock(), { capture: true });
 
     document.addEventListener('keydown', (e) => {
-      if (isSheetOpen()) return;
+      if (isSheetOpen() || this.photo.isOpen) return;
       const onControl = (e.target as HTMLElement).closest('button, input, a, [role="switch"]') !== null;
       const key = e.key;
       if (e.repeat && key !== 'Tab') return;

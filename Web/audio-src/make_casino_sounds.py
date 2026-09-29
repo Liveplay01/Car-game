@@ -12,6 +12,7 @@ every time. Needs numpy, scipy and ffmpeg.
 """
 import os
 import subprocess
+import sys
 import tempfile
 
 import numpy as np
@@ -184,6 +185,27 @@ def shatter():
     return room(out, 0.5, 0.2, 9000)
 
 
+def shutter():
+    # The photo of a shift: a camera's shutter. Its own seed, so the casino's sounds above stay
+    # the same whether or not this one is made with them.
+    local = np.random.default_rng(29_09_2026 + 1)
+
+    def click(gain, pitch):
+        t = t_axis(0.12)
+        noise = band(local.normal(0, 1, len(t)), 2200 * pitch, 8000, 2) * np.exp(-t / 0.0025)
+        body = sum(a * np.sin(2 * np.pi * f * pitch * t + local.uniform(0, 6.3)) * np.exp(-t / d) for f, a, d in [(1750, 1, 0.014), (3300, 0.5, 0.008), (5200, 0.25, 0.005)])
+        thump = np.sin(2 * np.pi * 115 * t) * np.exp(-t / 0.018)
+        return gain * (0.8 * noise + 0.35 * body + 0.5 * thump)
+
+    out = silence(0.35)
+    # The first curtain opens, the second closes it; the spring settles after.
+    place(out, click(1.0, 1.0), 0)
+    place(out, click(0.75, 0.9), 0.058)
+    for at, g in [(0.078, 0.14), (0.087, 0.09), (0.094, 0.05)]:
+        place(out, band(local.normal(0, 1, int(SR * 0.004)), 3000, 9000) * np.exp(-np.arange(int(SR * 0.004)) / (SR * 0.001)), at, g)
+    return room(out, 0.18, 0.1, 8000)
+
+
 SOUNDS = {
     'casinoStop': casino_stop,
     'coinClink': coin_clink,
@@ -193,6 +215,7 @@ SOUNDS = {
     'coinLand': coin_land,
     'chipsIn': chips_in,
     'shatter': shatter,
+    'shutter': shutter,
 }
 
 
@@ -205,9 +228,13 @@ def finish(stereo):
 
 
 def main():
+    # Names on the command line make only those (`... make_casino_sounds.py shutter`).
+    only = set(sys.argv[1:])
     os.makedirs(OUT, exist_ok=True)
     with tempfile.TemporaryDirectory() as tmp:
         for name, make in SOUNDS.items():
+            if only and name not in only:
+                continue
             wav = os.path.join(tmp, f'{name}.wav')
             wavfile.write(wav, SR, finish(make()))
             target = os.path.join(OUT, f'{name}.m4a')

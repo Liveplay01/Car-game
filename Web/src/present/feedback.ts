@@ -59,14 +59,16 @@ export type SoundID =
   | 'coinToss'
   | 'coinLand'
   | 'chipsIn'
-  | 'shatter';
+  | 'shatter'
+  /** The photo of a shift (same script). */
+  | 'shutter';
 
 export const SOUND_IDS: SoundID[] = [
   'merge', 'toll', 'tightFit', 'nearMiss', 'perfect', 'cutOff', 'comboUp', 'crashLight', 'crash', 'crashHeavy', 'rushHour',
   'shiftComplete', 'shiftFailed', 'wanted', 'takedown', 'dispatch', 'escaped', 'paid', 'secured', 'seized', 'screech', 'tow',
   'flowIn', 'go', 'swoosh', 'uiTick', 'purchase', 'build', 'denied', 'chestCharge', 'chestBurst', 'chestBurstRare',
   'explosion', 'detonation', 'alarm',
-  'casinoStop', 'coinClink', 'needleTick', 'meterTick', 'coinToss', 'coinLand', 'chipsIn', 'shatter',
+  'casinoStop', 'coinClink', 'needleTick', 'meterTick', 'coinToss', 'coinLand', 'chipsIn', 'shatter', 'shutter',
 ];
 
 export type HapticID =

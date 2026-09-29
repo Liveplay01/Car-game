@@ -213,6 +213,11 @@ export const COLORS = {
   chestHuntLid: [60, 45, 84, 1],
   chestEventBody: [30, 60, 54, 1],
   chestEventLid: [40, 78, 69, 1],
+  // The photo of a shift: a print on white paper, dark ink, and the orange date a film camera burns in.
+  photoPaper: [250, 250, 247, 1],
+  photoInk: [18, 20, 23, 1],
+  photoInkMuted: [96, 101, 110, 1],
+  photoDate: [255, 138, 61, 1],
   // Multiplayer: one colour per lobby slot, for the badges, the lanes and a stripe on each
   // player's cars. Kept clear of the vehicle colours and of destructive red.
   player1: [0, 245, 212, 1],

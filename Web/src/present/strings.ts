@@ -331,6 +331,7 @@ export const S = {
     copied: 'Challenge link copied',
     pictureText: 'My shift in Car Game',
     pictureSaved: 'Picture saved',
+    pictureCopied: 'Picture copied',
     shareText: (target: string): string => `Can you beat ${target} on my roundabout?`,
   },
 
@@ -1132,6 +1133,29 @@ export const S = {
           return `${n.short === 1 ? 'One merge' : `${n.short} merges`} short of ${comboMultiplier(n.multiplier)}`;
       }
     },
+  },
+
+  /** The photo of a finished shift: what the print says, and the buttons under it. */
+  photo: {
+    button: 'Picture',
+    buttonLabel: 'Take a picture of this result',
+    dialog: 'Picture of your shift',
+    share: 'Share',
+    copy: 'Copy',
+    download: 'Download',
+    saved: 'Saved',
+    close: 'Close',
+    score: 'SCORE',
+    flames: 'FLAMES',
+    newBest: 'NEW BEST',
+    hook: (score: string): string => `Can you beat ${score}?`,
+    hookFlames: (flames: string): string => `Can you top ${flames} flames?`,
+    combo: (n: number): string => `×${n} combo`,
+    tightFits: (n: number): string => (n === 1 ? '1 tight fit' : `${n} tight fits`),
+    busted: (n: number): string => `${n} busted`,
+    wrecks: (n: number): string => (n === 1 ? '1 wreck' : `${n} wrecks`),
+    chain: (n: number): string => `chain of ${n}`,
+    city: 'The City',
   },
 
   result: {
