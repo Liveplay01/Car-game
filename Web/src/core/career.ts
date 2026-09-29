@@ -41,6 +41,7 @@ import {
 import { type Challenge, challengesOf, challengeMet, challengeReward, STREAK_MILESTONES } from './daily';
 import type { CasinoPending, CasinoRound } from './casino';
 import { randomSeed } from './rng';
+import { Elite, type EliteGain, type EliteStep, type TitleId, TITLES } from './elite';
 
 export type GameMode = 'shift' | 'unlimited' | 'mayhem';
 export const GAME_MODES: GameMode[] = ['shift', 'unlimited', 'mayhem'];
@@ -147,6 +148,12 @@ export interface Career {
   prestige: number;
   /** Legendary Shifts completed. */
   legendaryDone: number;
+  /** Elite XP earned since Level 50 (core/elite.ts), and the highest Elite level paid out. */
+  eliteXp: number;
+  eliteClaimed: number;
+  /** The title worn, and every title already announced. */
+  title: TitleId | null;
+  titlesSeen: TitleId[];
   /** The last week whose Weekly Elite paid, and how many have paid in all. */
   weeklyDone: number;
   weekliesDone: number;
@@ -213,6 +220,10 @@ export const newCareer = (): Career => ({
   bossesBeaten: [],
   prestige: 0,
   legendaryDone: 0,
+  eliteXp: 0,
+  eliteClaimed: 0,
+  title: null,
+  titlesSeen: [],
   weeklyDone: -1,
   weekliesDone: 0,
   museumSeen: [],
@@ -323,6 +334,43 @@ export const Careers = {
     if (!reward || Careers.owns(c, reward.id)) return { rank: c.prestige, item: null };
     Careers.collect(c, reward.id);
     return { rank: c.prestige, item: reward.id };
+  },
+
+  // MARK: Elite track and titles
+
+  /**
+   * Books a finished shift on the Elite track (nothing before Level 50): its XP, then every
+   * Elite level reached pays its chest and, at a milestone, its skin. Null while the track is shut.
+   */
+  recordElite(c: Career, r: ShiftResult, config: Config = baseConfig): EliteGain | null {
+    if (!Elite.isOpen(c, config)) return null;
+    const xp = Elite.xpOf(r, config);
+    c.eliteXp += xp;
+    const steps: EliteStep[] = [];
+    const reached = Elite.level(c, config);
+    while (c.eliteClaimed < reached) {
+      c.eliteClaimed++;
+      const step = Elite.step(c.eliteClaimed, config);
+      c.chests.push(step.chest);
+      if (step.item && !Careers.owns(c, step.item.id)) Careers.collect(c, step.item.id);
+      steps.push(step);
+    }
+    return { xp, steps };
+  },
+
+  /** Titles earned since the last look: announced once, and the first one is worn right away. */
+  recordTitles(c: Career, config: Config = baseConfig): TitleId[] {
+    const fresh = Elite.titles(c, config).filter((t) => !c.titlesSeen.includes(t));
+    c.titlesSeen.push(...fresh);
+    if (c.title === null && fresh.length > 0) c.title = fresh[0];
+    return fresh;
+  },
+
+  /** Wears an earned title; the one worn again takes it off. */
+  wearTitle(c: Career, id: TitleId, config: Config = baseConfig): boolean {
+    if (!TITLES.includes(id) || !Elite.titleEarned(id, c, config)) return false;
+    c.title = c.title === id ? null : id;
+    return true;
   },
 
   // MARK: Street Builder

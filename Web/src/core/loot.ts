@@ -31,7 +31,9 @@ export type CosmeticSource =
   /** Earned by completing this many Legendary Shifts. */
   | { kind: 'legendary'; shifts: number }
   /** Earned by reaching this Prestige rank. */
-  | { kind: 'prestige'; rank: number };
+  | { kind: 'prestige'; rank: number }
+  /** Earned on the Elite track (core/elite.ts) at this Elite level. */
+  | { kind: 'elite'; level: number };
 
 export interface Cosmetic {
   id: string;
@@ -111,6 +113,11 @@ export const COSMETICS: Cosmetic[] = [
   c('starSilver', 'carSkin', 'epic', { kind: 'prestige', rank: 1 }),
   c('starGold', 'carSkin', 'epic', { kind: 'prestige', rank: 2 }),
   c('starIris', 'carSkin', 'legendary', { kind: 'prestige', rank: 3 }),
+  c('eliteSteel', 'carSkin', 'rare', { kind: 'elite', level: 5 }),
+  c('eliteBlaze', 'carSkin', 'epic', { kind: 'elite', level: 15 }),
+  c('eliteJade', 'carSkin', 'epic', { kind: 'elite', level: 25 }),
+  c('eliteAurum', 'carSkin', 'legendary', { kind: 'elite', level: 35 }),
+  c('eliteHalo', 'carSkin', 'legendary', { kind: 'elite', level: 45 }),
 ];
 
 /** The item a completed Legendary Shift count unlocks, if any. */
@@ -119,6 +126,12 @@ export const legendaryReward = (shifts: number): Cosmetic | undefined =>
 
 /** The item a Prestige rank unlocks, if any. */
 export const prestigeReward = (rank: number): Cosmetic | undefined => COSMETICS.find((x) => x.source.kind === 'prestige' && x.source.rank === rank);
+
+/** The item an Elite level unlocks, if any. */
+export const eliteReward = (level: number): Cosmetic | undefined => COSMETICS.find((x) => x.source.kind === 'elite' && x.source.level === level);
+
+/** Earned by deeds, not found in chests: Legendary Shifts, Prestige and the Elite track. */
+export const isHonour = (item: Cosmetic): boolean => item.source.kind === 'legendary' || item.source.kind === 'prestige' || item.source.kind === 'elite';
 
 /** The next Legendary Shift milestone still to reach. */
 export function nextLegendaryReward(collection: readonly string[]): Cosmetic | undefined {
@@ -170,7 +183,7 @@ export function albumItems(album: Album): Cosmetic[] {
     case 'loyalty':
       return COSMETICS.filter((x) => x.source.kind === 'streak');
     case 'honours':
-      return COSMETICS.filter((x) => x.source.kind === 'legendary' || x.source.kind === 'prestige');
+      return COSMETICS.filter(isHonour);
   }
 }
 

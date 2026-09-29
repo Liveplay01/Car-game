@@ -372,6 +372,16 @@ export const baseConfig = {
   prestigeHeadStart: 10,
   maxPrestigeHeadStart: 40,
 
+  // Elite (Leo, 29.09.2026): from `prestigeLevel` on, shifts earn Elite XP on a track of their
+  // own that Prestige keeps (core/elite.ts). Looks, titles and chests only, never a bonus.
+  eliteXpPerLevel: 100,
+  /** Per completed shift; every Perfect Input and Tight Fit adds 1. */
+  eliteXpCompleted: 10,
+  eliteXpBoss: 10,
+  eliteXpLegendary: 10,
+  /** Every Elite level pays a Standard Chest, every this many a Premium Chest instead. */
+  elitePremiumEvery: 10,
+
   // Ambulance (Leo, 28.09.2026): an emergency run once round the ring; keep the road ahead clear
   ambulanceLevel: 8,
   /** Chance per shift; 0 turns it off (Mayhem, multiplayer). */

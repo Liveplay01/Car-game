@@ -10,6 +10,7 @@ import {
   COSMETICS,
   isForSale,
   rarityRank,
+  isHonour,
 } from '../core/loot';
 import type { VehicleType } from '../core/vehicle';
 import { type Vec2, v, add, sub, mul, fromAngle, TAU } from '../core/vec2';
@@ -29,8 +30,7 @@ import { ChestReel, type Reel } from './chestReel';
 export type Shelf = 0 | 1 | 2 | 3 | 4 | 5 | 6; // common rare epic legendary maps special honours
 export const SHELVES: Shelf[] = [0, 1, 2, 3, 4, 5, 6];
 
-/** Earned by Legendary Shifts and Prestige: their own shelf, so no shelf grows past 12. */
-const isHonour = (item: Cosmetic): boolean => item.source.kind === 'legendary' || item.source.kind === 'prestige';
+// Honours (Legendary Shifts, Prestige, the Elite track) have their own shelf, so no shelf grows past 12.
 
 export function shelfItems(shelf: Shelf): Cosmetic[] {
   return COSMETICS.filter((item) => {
@@ -311,9 +311,9 @@ export const ShopPage = {
       MenuKit.glow(list, iconAt, Math.min(Math.min(R.width(r), R.height(r)) * 0.42, iconAt.y - r.minY - 4), ShopPage.chestColor(kind), (count > 0 ? 0.5 : 0.25) * enter * (available ? 1 : 0.4));
       ShopPage.addChestIcon(list, kind, iconAt, Math.min(1.2, R.height(r) / 130), enter * (available ? 1 : 0.45));
       const name = S.shop.chest(kind);
-      t(list, name, v(c.x, r.maxY - 36), ShopPage.fitted(name, 14, R.width(r) - 20), 'primary', { weight: 'bold', align: 'center', opacity: enter });
+      t(list, name, v(c.x, r.maxY - 36), ShopPage.fitted(name, 14, R.width(r) - 28), 'primary', { weight: 'bold', align: 'center', opacity: enter });
       const status = count > 0 ? S.shop.waiting(count) : S.shop.source(kind);
-      t(list, status, v(c.x, r.maxY - 17), ShopPage.fitted(status, 11, R.width(r) - 20), count > 0 ? 'accent' : 'muted', { align: 'center', opacity: enter });
+      t(list, status, v(c.x, r.maxY - 17), ShopPage.fitted(status, 11, R.width(r) - 28), count > 0 ? 'accent' : 'muted', { align: 'center', opacity: enter });
       if (count > 0) {
         const badge = v(r.maxX - 18, r.minY + 18);
         list.s(circle(badge, 10), 'accent', enter);
@@ -387,10 +387,11 @@ export const ShopPage = {
       const c = R.center(r);
       const items = shelfItems(shelf);
       const owned = items.filter((i) => Careers.owns(career, i.id)).length;
-      if (items.some((i) => career.unseen.includes(i.id))) ShopPage.badgeDot(list, v(r.maxX - 7, r.minY + 7), enter);
+      // On the chip's corner, like a badge: inside it would sit on the label.
+      if (items.some((i) => career.unseen.includes(i.id))) ShopPage.badgeDot(list, v(r.maxX - 3, r.minY + 3), enter);
       // Over the white chip the labels turn dark as it arrives.
       const on = shelf === state.shelf ? glide : slide && shelf === slide.from ? 1 - glide : 0;
-      const label = ShopPage.fitted(S.shop.shelf(shelf), 11, R.width(r) - 6);
+      const label = ShopPage.fitted(S.shop.shelf(shelf), 11, R.width(r) - 14);
       t(list, S.shop.shelf(shelf), v(c.x, c.y - 7), label, 'muted', { weight: 'bold', align: 'center', opacity: enter * (1 - on) });
       t(list, `${owned}/${items.length}`, v(c.x, c.y + 8), 10, owned === items.length ? ShopPage.shelfColor(shelf) : 'muted', { align: 'center', opacity: enter * (1 - on) });
       if (on > 0) {

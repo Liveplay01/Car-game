@@ -1,3 +1,4 @@
+import type { TitleId } from '../core/elite';
 import { type GameMode, GAME_MODES } from '../core/career';
 
 /** The pages of the Game tab's mode swipe: the three career modes, then multiplayer. */
@@ -68,7 +69,10 @@ export type ScreenAction =
   | { k: 'watchAd' }
   | { k: 'showCasino'; game: CasinoGame }
   | { k: 'wear'; id: string }
-  | { k: 'startTrial'; id: string };
+  | { k: 'startTrial'; id: string }
+  | { k: 'wearTitle'; id: TitleId }
+  | { k: 'showElite' }
+  | { k: 'prestige' };
 
 /** Layout shared by the Build tab's two pages and the camera that lies under them. */
 export const BuildLayout = {

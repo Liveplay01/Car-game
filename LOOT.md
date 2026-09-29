@@ -156,9 +156,9 @@ sichtbar, mit dem Hinweis, wie man sie bekommt.
 | Sunburst | `sunburst` | Epic | Event Chest im Sommer (Jun–Aug) | Sonnengelb mit Orange-Streifen |
 | Pumpkin | `pumpkin` | Epic | Event Chest im Herbst (Sep–Nov) | Kürbisorange mit schwarzem Streifen |
 
-## Nur über Legendary Shifts und Prestige (6, Regal „Honours“)
+## Nur über Legendary Shifts, Prestige und die Elite-Leiste (11, Regal „Honours“)
 
-Seit 28.09.2026. Nie in Truhen, eigenes Regal im Shop.
+Seit 28.09.2026, Elite-Items seit 29.09.2026. Nie in Truhen, eigenes Regal im Shop.
 
 | Name | ID | Seltenheit | Wie | Look |
 | --- | --- | --- | --- | --- |
@@ -168,6 +168,36 @@ Seit 28.09.2026. Nie in Truhen, eigenes Regal im Shop.
 | Silver Star | `starSilver` | Epic | Prestige ★1 | Silber, weißer Streifen, glänzend |
 | Gold Star | `starGold` | Epic | Prestige ★2 | Gold, schwarzer Streifen, glänzend + Glitzer |
 | Iris Star | `starIris` | Legendary | Prestige ★3 | Holo, Goldstreifen, glänzend + Glitzer |
+| Steel Chevron | `eliteSteel` | Rare | Elite 5 | Chrom, Goldstreifen, glänzend |
+| Blaze Chevron | `eliteBlaze` | Epic | Elite 15 | Nachtblau, Flammenstreifen, glänzend |
+| Jade Chevron | `eliteJade` | Epic | Elite 25 | Lagune, Perlstreifen, glänzend |
+| Black Aurum | `eliteAurum` | Legendary | Elite 35 | Obsidian, Goldstreifen, glänzend + Glitzer |
+| Halo | `eliteHalo` | Legendary | Elite 45 | Eisweiß, Goldstreifen, glänzend + Glitzer |
+
+Kein Elite-Item ist ganz gold lackiert: Gold am ganzen Auto bleibt dem Jackpot-Transporter
+vorbehalten (Fahrzeugfarben sind Spielinformation).
+
+## Elite-Leiste und Titel
+
+Seit 29.09.2026 (`Web/src/core/elite.ts`, Werte in `config.ts`). Level 50 öffnet die Leiste,
+Prestige behält sie. Nur Aussehen, Titel und Truhen, nie ein Vorteil auf der Straße.
+
+- **Elite XP pro Schicht:** 10 für eine geschaffte Schicht, 1 je Perfect Input und Tight
+  Fit (auch in einer verlorenen Schicht), je 10 für einen gestellten Boss und eine geschaffte
+  Legendary Shift. Mayhem und Trials zählen nicht.
+- **Elite-Level:** Level 50 ist Elite 1, danach alle 100 XP eins mehr. Jedes Elite-Level
+  zahlt eine Standard Chest, jedes zehnte eine Premium Chest.
+- **Meilensteine** (alle fünf bis Elite 50): Titel bei 1, 10, 20, 30, 40, 50; Lackierungen
+  bei 5, 15, 25, 35, 45 (Tabelle oben).
+- **In der Welt:** goldener Innenrand auf der Mittelinsel, je 10 Elite-Level ein goldener
+  Punkt bei der eigenen Spur (höchstens fünf); die Level-Anzeige oben wird golden.
+- **Titel** hängen an Taten, die der Spielstand belegt: die sechs Elite-Titel, *Precision
+  Driver*, *Combo Master*, *Close Call Artist* (Mastery ganz), *Syndicate Breaker* (alle
+  Bosse), *Night Owl* / *Storm Chaser* (Trials Blackout / Storm Watch), *Legend Hunter*
+  (15 Legendary Shifts), *Star Driver* (Prestige ★3). Der erste verdiente Titel wird
+  getragen, jeder andere lässt sich im Elite-Sheet antippen.
+- **Ort:** Progress → Records, Elite-Karte oben. Ihr Sheet zeigt Leiste, Titel und
+  Prestige (der Prestige-Knopf fragt zweimal).
 
 ## Alben
 
@@ -180,7 +210,7 @@ Kreisverkehr (der wertvollste abgeschlossene zählt). Fortschritt im Shop unter 
 | Commons / Rares / Epics / Legends | alle Car Skins dieser Seltenheit aus Truhen | 5.000 / 10.000 / 20.000 / 40.000 |
 | Seasons | alle 4 Saison-Items | 30.000 |
 | Loyalty | alle 3 Serien-Items | 20.000 |
-| Honours | alle 6 Legendary- und Prestige-Items | 50.000 |
+| Honours | alle 11 Legendary-, Prestige- und Elite-Items | 50.000 |
 
 ## Map Skins (12)
 

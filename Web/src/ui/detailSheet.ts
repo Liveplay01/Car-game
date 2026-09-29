@@ -1,6 +1,6 @@
 import { v } from '../core/vec2';
 import { baseConfig } from '../core/config';
-import type { Detail, DetailAction } from '../present/detail';
+import type { Detail, DetailAction, DetailRow } from '../present/detail';
 import { Details } from '../present/detail';
 import { RenderList } from '../present/render';
 import { CanvasDrawer } from '../present/draw';
@@ -152,16 +152,10 @@ export class DetailSheet {
 
     const keep = this.scroller.scrollTop;
     const body: Node[] = d.body.map((p) => h('p', { class: 'detail-text' }, rich(p)));
-    if (d.rows.length > 0) {
-      const rows = h('div', { class: 'list detail-rows' });
-      for (const r of d.rows) {
-        const label = h('div', { class: 'row-title' }, rich(r.label));
-        if (r.labelColor) label.style.color = css(r.labelColor);
-        const value = h('div', { class: 'row-value' }, rich(r.value));
-        if (r.valueColor) value.style.color = css(r.valueColor);
-        rows.append(h('div', { class: 'row' }, label, value));
-      }
-      body.push(rows);
+    if (d.rows.length > 0) body.push(this.list(d.rows));
+    for (const section of d.sections ?? []) {
+      body.push(h('h3', { class: 'detail-section' }, section.header));
+      body.push(this.list(section.rows));
     }
     for (const n of d.notes) {
       const note = h('p', { class: 'detail-note' }, rich(n.text));
@@ -174,6 +168,25 @@ export class DetailSheet {
     this.actions.replaceChildren(...d.actions.map((a) => this.button(a)));
     this.actions.hidden = d.actions.length === 0;
     this.actions.classList.toggle('many', d.actions.length > 2);
+  }
+
+  /** A grouped list; a row with an action is a button. */
+  private list(rows: DetailRow[]): HTMLElement {
+    const out = h('div', { class: 'list detail-rows' });
+    for (const r of rows) {
+      const label = h('div', { class: 'row-title' }, rich(r.label));
+      if (r.labelColor) label.style.color = css(r.labelColor);
+      const main = r.sub ? h('div', { class: 'row-main' }, label, h('div', { class: 'row-sub' }, r.sub)) : label;
+      const value = h('div', { class: 'row-value' }, rich(r.value));
+      if (r.valueColor) value.style.color = css(r.valueColor);
+      if (r.action) {
+        const action = r.action;
+        const b = h('button', { class: 'row tappable', type: 'button' }, main, value);
+        b.addEventListener('click', () => this.onAction(action));
+        out.append(b);
+      } else out.append(h('div', { class: 'row' }, main, value));
+    }
+    return out;
   }
 
   private button(a: DetailAction): HTMLButtonElement {

@@ -12,7 +12,8 @@ import { CasinoPage } from './casino';
 import { UpgradeArt } from './upgrades';
 import { StreetBuilderPage } from './builder';
 import type { Part, ScreenAction } from './flow';
-import { R } from './render';
+import { R, circle, line, text } from './render';
+import { Elite, TITLES, TITLE_RULES } from '../core/elite';
 import { MenuKit } from './menukit';
 import { MuseumPage } from './museum';
 import { museumEntry, firstLevel } from '../core/museum';
@@ -29,13 +30,18 @@ export type DetailArt =
   | { k: 'item'; id: string; owned: boolean }
   | { k: 'casino'; game: CasinoGame }
   | { k: 'part'; part: Part }
-  | { k: 'museum'; id: string; shown: boolean; time: number };
+  | { k: 'museum'; id: string; shown: boolean; time: number }
+  | { k: 'elite'; level: number };
 
 export interface DetailRow {
   label: string;
   value: string;
   labelColor?: ColorToken;
   valueColor?: ColorToken;
+  /** A second, quieter line under the label. */
+  sub?: string;
+  /** A tappable row: the whole row sends this. */
+  action?: ScreenAction;
 }
 
 export interface DetailAction {
@@ -55,6 +61,8 @@ export interface Detail {
   steps: { done: number; total: number } | null;
   body: string[];
   rows: DetailRow[];
+  /** Further grouped lists under their own headings, after `rows`. */
+  sections?: { header: string; rows: DetailRow[] }[];
   notes: { text: string; color: ColorToken }[];
   actions: DetailAction[];
 }
@@ -143,6 +151,66 @@ export const Details = {
       rows: [],
       notes,
       actions,
+    };
+  },
+
+  /**
+   * The late game in one sheet: the Elite track, what waits along it, the titles to wear and
+   * Prestige. `armed`: Prestige was tapped once and waits for the second tap.
+   */
+  elite(career: Career, config: Config, armed: boolean): Detail {
+    const open = Elite.isOpen(career, config);
+    const level = Elite.level(career, config);
+    const { into, need } = Elite.progress(career, config);
+    const track: DetailRow[] = Elite.milestones().map((l) => {
+      const reached = level >= l;
+      return { label: S.elite.caption(l), value: S.elite.reward(Elite.step(l, config)), labelColor: reached ? 'coin' : 'muted', valueColor: reached ? 'accent' : 'muted' };
+    });
+    const titles: DetailRow[] = TITLES.map((t) => {
+      const earned = Elite.titleEarned(t, career, config);
+      const worn = career.title === t;
+      return {
+        label: S.titles.name(t),
+        sub: S.titles.rule(TITLE_RULES[t]),
+        value: worn ? S.elite.wearing : earned ? '' : S.elite.notYet,
+        labelColor: earned ? 'primary' : 'muted',
+        valueColor: worn ? 'accent' : 'muted',
+        action: earned ? { k: 'wearTitle', id: t } : undefined,
+      };
+    });
+    const next = open ? Elite.nextMilestone(career, config) : null;
+    const prestige: DetailRow[] = [
+      { label: S.elite.rank, value: career.prestige > 0 ? S.prestige.caption(career.prestige) : S.progress.none, valueColor: career.prestige > 0 ? 'coin' : 'muted' },
+      { label: S.elite.traffic, value: career.prestige > 0 ? S.elite.harder(Careers.headStart(career, config)) : S.progress.none, valueColor: 'muted' },
+    ];
+    const ready = Careers.canPrestige(career, config);
+    const notes: Detail['notes'] = [];
+    if (next) notes.push({ text: S.elite.next(next), color: 'accent' });
+    notes.push({ text: ready ? S.prestige.ready(career.level) : S.prestige.locked(config.prestigeLevel), color: ready ? 'coin' : 'muted' });
+    notes.push({ text: S.prestige.keeps, color: 'muted' });
+    return {
+      key: 'elite',
+      art: { k: 'elite', level },
+      eyebrow: open ? { text: S.elite.xp(into, need), color: 'muted' } : { text: S.elite.locked(config.prestigeLevel), color: 'muted' },
+      title: open ? S.elite.caption(level) : S.elite.title,
+      price: career.title ? { text: S.titles.name(career.title), color: 'coin' } : null,
+      steps: open ? { done: Math.floor((into / need) * 10), total: 10 } : null,
+      body: S.elite.body,
+      rows: [],
+      sections: [
+        { header: S.elite.trackHeader, rows: track },
+        { header: S.elite.titlesHeader, rows: titles },
+        { header: S.elite.prestigeHeader, rows: prestige },
+      ],
+      notes,
+      actions: [
+        {
+          label: armed ? S.elite.prestigeConfirm : S.elite.prestigeAction(career.prestige + 1),
+          action: { k: 'prestige' },
+          prominent: armed,
+          enabled: ready,
+        },
+      ],
     };
   },
 
@@ -285,6 +353,18 @@ export const Details = {
   },
 
   /** The picture at the top of the sheet, drawn with the game's own shapes into `size`. */
+  /** The Elite badge: a gold ring with a chevron and the level in it (grey while the track is shut). */
+  eliteBadge(list: RenderList, level: number, center: Vec2, scale: number, opacity: number): void {
+    const color: ColorToken = level > 0 ? 'coin' : 'muted';
+    MenuKit.glow(list, center, 48 * scale, color, 0.3 * opacity);
+    list.s(circle(center, 34 * scale), 'controlFill', opacity);
+    list.s(circle(center, 34 * scale), color, 0.2 * opacity);
+    const up = v(center.x, center.y - 16 * scale);
+    list.s(line(v(center.x - 13 * scale, center.y - 6 * scale), up, 4 * scale), color, opacity);
+    list.s(line(up, v(center.x + 13 * scale, center.y - 6 * scale), 4 * scale), color, opacity);
+    list.s(text(level > 0 ? String(level) : '–', v(center.x, center.y + 12 * scale), 24 * scale, 'center', 'bold'), color, opacity);
+  },
+
   drawArt(list: RenderList, art: DetailArt, center: Vec2, size: number, _config: Config): void {
     const scale = size / 96;
     switch (art.k) {
@@ -316,6 +396,9 @@ export const Details = {
         if (entry) MuseumPage.art(list, entry, center, 1.3 * scale, art.shown, art.time, 1, size * 0.92);
         break;
       }
+      case 'elite':
+        Details.eliteBadge(list, art.level, center, scale, 1);
+        break;
     }
   },
 };

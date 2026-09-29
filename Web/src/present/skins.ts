@@ -39,6 +39,11 @@ export const Skins = {
       starSilver: 'skinSilver',
       starGold: 'skinGold',
       starIris: 'skinHolo',
+      eliteSteel: 'skinChrome',
+      eliteBlaze: 'skinMidnight',
+      eliteJade: 'skinLagoon',
+      eliteAurum: 'skinObsidian',
+      eliteHalo: 'skinIce',
       frost: 'skinFrost',
       blossom: 'skinBlossom',
       sunburst: 'skinSunburst',
@@ -100,6 +105,14 @@ export const Skins = {
         return 'skinGold';
       case 'phoenix':
         return 'fireCore';
+      case 'eliteSteel':
+      case 'eliteAurum':
+      case 'eliteHalo':
+        return 'skinGold';
+      case 'eliteBlaze':
+        return 'fireOuter';
+      case 'eliteJade':
+        return 'skinPearl';
       case 'starSilver':
         return 'primary';
       case 'starGold':
@@ -140,11 +153,16 @@ export const Skins = {
       case 'koi':
       case 'laurel':
       case 'starSilver':
+      case 'eliteSteel':
+      case 'eliteBlaze':
+      case 'eliteJade':
         return 'shiny';
       case 'crown':
       case 'phoenix':
       case 'starGold':
       case 'starIris':
+      case 'eliteAurum':
+      case 'eliteHalo':
         return 'shinyGlitter';
       case 'starlight':
       case 'frost':

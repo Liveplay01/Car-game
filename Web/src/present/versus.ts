@@ -610,6 +610,8 @@ export class VersusMatch {
 
   /** A pill in the player's colour at the end of every lane; an empty lane says why. */
   private addLanes(list: RenderList): void {
+    // Once the match is over the result card holds the names; pills would show through it.
+    if (this.isOver) return;
     const w = this.world;
     for (const q of w.seats) {
       const at = this.laneAnchor(list, q.seat);
@@ -625,7 +627,7 @@ export class VersusMatch {
       const width = me ? 52 : Math.max(52, measure(name, 12, true) + 20);
       if (this.watch === q.seat) list.s(rect(at, v(width + 6, 30), 15), color, 0.35);
       list.s(rect(at, v(width, 24), 12), color);
-      list.s(text(name, v(at.x, at.y + 4.5), me ? 13 : 12, 'center', 'bold'), 'accentInk');
+      list.s(text(name, v(at.x, at.y), me ? 13 : 12, 'center', 'bold'), 'accentInk');
       if (q.shield) this.addShield(list, v(at.x - width / 2 - 12, at.y), color);
       if (this.isOver || this.countIn > 0) continue;
       // The stall clock once it is running out; your own pressure bar otherwise.
@@ -669,7 +671,7 @@ export class VersusMatch {
     const label = `${clock}  ·  ${phase}`;
     const chipW = measure(label, 13, true) + 28;
     list.s(rect(v(viewport.x / 2, 22), v(chipW, 28), 14), 'scrim', 0.85);
-    list.s(text(label, v(viewport.x / 2, 26.5), 13, 'center', 'bold'), w.versusPhase === 2 ? 'destructive' : 'primary');
+    list.s(text(label, v(viewport.x / 2, 22), 13, 'center', 'bold'), w.versusPhase === 2 ? 'destructive' : 'primary');
 
     const n = w.seats.length;
     const gap = 8;
@@ -700,9 +702,9 @@ export class VersusMatch {
     list.s(rect(at, size, 12), 'card', 1);
     const dot = v(at.x - width / 2 + 16, at.y - 7);
     list.s(circle(dot, 8), color, dim);
-    list.s(text(String(slot + 1), v(dot.x, dot.y + 3.5), 10, 'center', 'bold'), 'accentInk', dim);
+    list.s(text(String(slot + 1), dot, 10, 'center', 'bold'), 'accentInk', dim);
     const nameMax = width - 38;
-    list.s(text(this.clip(me ? 'You' : this.nameOf(seat), 12, nameMax), v(at.x - width / 2 + 29, at.y - 3), 12, 'leading', 'bold'), q.out ? 'muted' : 'primary', dim);
+    list.s(text(this.clip(me ? 'You' : this.nameOf(seat), 12, nameMax), v(at.x - width / 2 + 29, dot.y), 12, 'leading', 'bold'), q.out ? 'muted' : 'primary', dim);
     let sub: string;
     let subColor: ColorToken = 'muted';
     if (member?.away && !q.out) {
@@ -713,15 +715,15 @@ export class VersusMatch {
       sub = `${Math.max(0, secondsLeft).toFixed(1)} s`;
       subColor = 'destructive';
     } else sub = `${q.sent} ${q.sent === 1 ? 'car' : 'cars'}`;
-    list.s(text(sub, v(at.x - width / 2 + 10, at.y + 14), 11, 'leading', danger || subColor === 'destructive' ? 'bold' : 'regular'), subColor, dim);
+    list.s(text(sub, v(at.x - width / 2 + 10, at.y + 11), 11, 'leading', danger || subColor === 'destructive' ? 'bold' : 'regular'), subColor, dim);
     // Ping of a friend's line to the host: green, yellow, red.
     const ping = member && !member.bot && slot !== 0 ? member.ping : undefined;
     if (ping !== undefined && ping > 0 && width >= 84 && !q.out) {
       const quality: ColorToken = ping < 80 ? 'juiceGreen' : ping < 160 ? 'juiceYellow' : 'destructive';
       const label = `${Math.round(ping)}`;
       const right = at.x + width / 2 - 8;
-      list.s(text(label, v(right, at.y + 14), 10, 'trailing'), 'muted', dim);
-      list.s(circle(v(right - measure(label, 10, false) - 6, at.y + 10.5), 2.5), quality, dim);
+      list.s(text(label, v(right, at.y + 11), 10, 'trailing'), 'muted', dim);
+      list.s(circle(v(right - measure(label, 10, false) - 6, at.y + 11), 2.5), quality, dim);
     }
     // Round wins in a series: small crowns in the corner.
     const wins = this.series.wins[slot] ?? 0;
@@ -746,8 +748,8 @@ export class VersusMatch {
       const color: ColorToken = phase === 2 ? 'destructive' : 'primary';
       const width = Math.max(measure(title.toUpperCase(), 15, true), measure(sub, 12, false)) + 40;
       list.s(rect(v(viewport.x / 2, y + 16 - lift), v(width, 48), 14), 'scrim', 0.9 * fade);
-      list.s(text(title.toUpperCase(), v(viewport.x / 2, y + 12 - lift), 15, 'center', 'bold'), color, fade);
-      list.s(text(sub, v(viewport.x / 2, y + 30 - lift), 12, 'center'), 'muted', fade);
+      list.s(text(title.toUpperCase(), v(viewport.x / 2, y + 8 - lift), 15, 'center', 'bold'), color, fade);
+      list.s(text(sub, v(viewport.x / 2, y + 26 - lift), 12, 'center'), 'muted', fade);
       y += 56;
     }
     for (const n of this.notes) {
@@ -755,7 +757,7 @@ export class VersusMatch {
       const width = measure(n.text, 13, true) + 40;
       list.s(rect(v(viewport.x / 2, y + 12), v(width, 26), 13), 'scrim', 0.85 * fade);
       list.s(circle(v(viewport.x / 2 - width / 2 + 14, y + 12), 4), n.color, fade);
-      list.s(text(n.text, v(viewport.x / 2 + 6, y + 16.5), 13, 'center', 'bold'), 'primary', fade);
+      list.s(text(n.text, v(viewport.x / 2 + 6, y + 12), 13, 'center', 'bold'), 'primary', fade);
       y += 32;
     }
   }
@@ -768,15 +770,17 @@ export class VersusMatch {
     const mid = v(viewport.x / 2, viewport.y / 2);
     if (!this.isHost && this.room.reconnecting) {
       list.s(rect(v(mid.x, mid.y), v(220, 44), 14), 'scrim', 0.92);
-      list.s(text('Reconnecting…', v(mid.x, mid.y + 5), 15, 'center', 'bold'), 'primary');
+      list.s(text('Reconnecting…', mid, 15, 'center', 'bold'), 'primary');
       return;
     }
     if (this.countIn > 0) {
       const slot = this.slots[this.you] ?? this.you;
-      list.s(text(String(Math.ceil(this.countIn)), v(mid.x, mid.y + 22), 64, 'center', 'bold'), this.colorOf(this.you));
+      list.s(text(String(Math.ceil(this.countIn)), v(mid.x, mid.y - 2), 64, 'center', 'bold'), this.colorOf(this.you));
       const line = `Your lane: ${PLAYER_COLOR_NAMES[slot] ?? ''}. Last one standing wins.`;
-      list.s(rect(v(mid.x, mid.y + 51), v(measure(line, 14, false) + 28, 30), 15), 'scrim', 0.9);
-      list.s(text(line, v(mid.x, mid.y + 56), 14, 'center'), 'primary');
+      // Under the badges, where the notes go later: over the ring it would cover a lane's pill.
+      const lineY = 118;
+      list.s(rect(v(mid.x, lineY), v(Math.min(measure(line, 14, false) + 28, viewport.x - 24), 30), 15), 'scrim', 0.9);
+      list.s(text(line, v(mid.x, lineY), 14, 'center'), 'primary');
       return;
     }
     if (this.isOver) {
@@ -792,7 +796,7 @@ export class VersusMatch {
       const seconds = Math.max(0, this.world.stallLimit - mine.idle);
       const warning = `Send a car · ${seconds.toFixed(1)} s`;
       list.s(rect(v(mid.x, bottom - 61), v(measure(warning, 15, true) + 32, 34), 17), 'scrim', 0.92);
-      list.s(text(warning, v(mid.x, bottom - 56), 15, 'center', 'bold'), 'destructive');
+      list.s(text(warning, v(mid.x, bottom - 61), 15, 'center', 'bold'), 'destructive');
     }
   }
 
@@ -826,7 +830,7 @@ export class VersusMatch {
       else if (leaders.length === 1) subtitle = `${leaderName(leaders[0])} ${this.slots.indexOf(leaders[0]) === this.you ? 'win' : 'wins'} the series`;
       else subtitle = 'The series ends in a tie';
     }
-    list.s(text(subtitle, v(cx, top + 62), 13, 'center'), 'muted', fade);
+    list.s(text(subtitle, v(cx, top + 67), 13, 'center'), 'muted', fade);
 
     // Columns: place, dot, name … cars, risky, points (round, or series total).
     const left = cx - width / 2 + 16;
@@ -843,14 +847,14 @@ export class VersusMatch {
       const member = this.room.members.find((m) => m.slot === slot);
       const me = row.seat === this.you;
       if (me) list.s(rect(v(cx, y), v(width - 16, rowH - 4), 10), 'cardRaised', fade);
-      list.s(text(String(row.place), v(left + 4, y + 4.5), 13, 'center', 'bold'), row.place === 1 ? 'coin' : 'muted', fade);
+      list.s(text(String(row.place), v(left + 4, y), 13, 'center', 'bold'), row.place === 1 ? 'coin' : 'muted', fade);
       list.s(circle(v(left + 22, y), 6), this.colorOf(row.seat), fade);
       const nameMax = cols.cars - 40 - (left + 34);
-      list.s(text(this.clip(me ? 'You' : this.nameOf(row.seat), 14, nameMax, true), v(left + 34, y + 5), 14, 'leading', 'bold'), 'primary', fade);
-      list.s(text(String(q.sent), v(cols.cars, y + 5), 13, 'trailing'), 'primary', fade);
-      list.s(text(String(q.risky), v(cols.risky, y + 5), 13, 'trailing'), 'primary', fade);
+      list.s(text(this.clip(me ? 'You' : this.nameOf(row.seat), 14, nameMax, true), v(left + 34, y), 14, 'leading', 'bold'), 'primary', fade);
+      list.s(text(String(q.sent), v(cols.cars, y), 13, 'trailing'), 'primary', fade);
+      list.s(text(String(q.risky), v(cols.risky, y), 13, 'trailing'), 'primary', fade);
       const total = series ? (after.points[slot] ?? 0) : row.points;
-      list.s(text(series ? String(total) : `+${row.points}`, v(cols.pts, y + 5), 13, 'trailing', 'bold'), row.points > 0 ? 'accent' : 'muted', fade);
+      list.s(text(series ? String(total) : `+${row.points}`, v(cols.pts, y), 13, 'trailing', 'bold'), row.points > 0 ? 'accent' : 'muted', fade);
       // Ready for the next one: a check, or a quiet dot while we wait for them.
       const ready = member?.bot || member?.ready;
       if (ready) this.addCheck(list, v(cols.ready - 6, y), fade);

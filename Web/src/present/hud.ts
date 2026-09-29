@@ -761,6 +761,10 @@ export const ReadyBanner = {
       run?: RunCard | null;
       /** The career's Prestige rank: a star before the level. */
       prestige?: number;
+      /** An Elite driver: the level caption turns gold. */
+      elite?: boolean;
+      /** The name friends see, on the multiplayer page (there is no best to show). */
+      playerName?: string;
       /** The next goal in reach, under the prompt. */
       goal?: string | null;
     },
@@ -782,7 +786,7 @@ export const ReadyBanner = {
       ? [run.caption, run.color]
       : o.mode === 'shift'
         ? o.daily === null
-          ? [S.ready.levelCaption(o.level, o.prestige ?? 0), 'muted']
+          ? [S.ready.levelCaption(o.level, o.prestige ?? 0), o.elite ? 'coin' : 'muted']
           : [S.daily.title, 'hazard']
         : o.mode === 'unlimited'
           ? [S.modes.unlimitedCaption, 'accent']
@@ -790,6 +794,12 @@ export const ReadyBanner = {
     const value = o.versus ? S.modes.versusPlayers : o.mode === 'unlimited' ? S.modes.endless : S.hud.cars(o.cars);
     TopBar.addColumn(list, cols.center, 'center', caption, value, { captionColor, valueSize: Metrics.timerSize, opacity });
     if (run) TopBar.addColumn(list, cols.right, 'trailing', run.right[0], run.right[1], { opacity });
+    else if (o.versus) {
+      // A long name shrinks to fit its column.
+      const name = o.playerName || S.modes.defaultName;
+      const room = R.width(cols.right) - 32;
+      TopBar.addColumn(list, cols.right, 'trailing', S.modes.youLabel, name, { opacity, valueSize: Math.max(11, Math.min(20, (20 * room) / Math.max(1, textWidth(name, 20)))) });
+    }
     else TopBar.addColumn(list, cols.right, 'trailing', S.hud.bestLabel, o.highscore ?? '–', { valueColor: o.highscore === null ? 'muted' : 'primary', opacity });
     list.tag = undefined;
     const pillText = run ? run.badge : o.daily ? S.daily.streakPill(o.daily.streak, o.daily.bonus, o.daily.endsIn) : null;

@@ -1,6 +1,7 @@
 import { World, STEP } from '../core/world';
 import { baseConfig, gravity, builtArmSlots, type Config, type RoadModule } from '../core/config';
 import { type SaveGame, type GameMode, Careers, newSave } from '../core/career';
+import { Elite } from '../core/elite';
 import type { GameEvent, ShiftResult } from '../core/events';
 import type { Upgrade } from '../core/levels';
 import { type ChestKind, ALBUM_REWARD, cosmetic, rarityRank } from '../core/loot';
@@ -12,6 +13,7 @@ import { ChestReel } from './chestReel';
 import { Scoring } from '../core/scoring';
 import { type Vec2, v, add } from '../core/vec2';
 import { loadSave, writeSave } from '../storage/save';
+import { loadPlayerName } from '../storage/profile';
 import { RenderList, R, Ease, toScreen, rect, text, Metrics, type Camera } from './render';
 import { S, Fmt, money as moneyText } from './strings';
 import { CrashEffects } from './effects';
@@ -428,6 +430,19 @@ export class GameSession {
       case 'startTrial':
         this.startTrial(action.id);
         break;
+      case 'wearTitle':
+        if (Careers.wearTitle(career, action.id, this.config)) {
+          this.tick();
+          this.persist();
+        }
+        break;
+      case 'prestige':
+        this.tryPrestige();
+        break;
+      case 'showElite':
+        if (!this.detailOpen) this.tick();
+        this.detailOpen = true;
+        break;
       case 'wear': {
         const item = cosmetic(action.id);
         if (!Careers.wear(career, action.id) && item?.kind === 'carSkin' && Careers.owns(career, action.id)) this.showNotice(S.shop.skinsFull(5));
@@ -524,11 +539,12 @@ export class GameSession {
 
   /** Prestige asks twice: the first tap arms it, a second within a few seconds starts over. */
   private prestigeArmed = -Infinity;
+  static readonly prestigeWindow = 4;
 
   private tryPrestige(): void {
     const career = this.save.career;
     if (!Careers.canPrestige(career, this.config) || this.screen.k === 'playing') return;
-    if (this.sceneTime - this.prestigeArmed > 4) {
+    if (this.sceneTime - this.prestigeArmed > GameSession.prestigeWindow) {
       this.prestigeArmed = this.sceneTime;
       this.tick();
       this.showNotice(S.prestige.confirm);
@@ -537,9 +553,10 @@ export class GameSession {
     this.prestigeArmed = -Infinity;
     const done = Careers.prestige(career, this.config);
     if (!done) return;
+    const titles = Careers.recordTitles(career, this.config);
     this.persist();
     this.play(['shiftComplete'], ['shiftComplete']);
-    this.showNotice(S.prestige.done(done.rank, done.item));
+    this.showNotice([S.prestige.done(done.rank, done.item), ...(titles.length > 0 ? [S.titles.earned(titles)] : [])].join('  ·  '));
     this.prepareShift(false, null, this.screen);
   }
 
@@ -597,6 +614,8 @@ export class GameSession {
       } else if (first) {
         career.trialsDone.push(t.id);
         career.money += t.reward;
+        const titles = Careers.recordTitles(career, this.config);
+        if (titles.length > 0) this.showNotice(S.titles.earned(titles));
       }
       summary = {
         caption: passed ? S.run.passed : S.run.failed,
@@ -1616,6 +1635,8 @@ export class GameSession {
         return part ? Details.part(part, b.pending !== null, career, this.config) : null;
       }
       case 'progress': {
+        // Records has one sheet: the Elite track, opened from its card.
+        if (this.progressPage.section === 0) return Details.elite(career, this.config, this.sceneTime - this.prestigeArmed <= GameSession.prestigeWindow);
         const selected = this.progressPage.museum.selected;
         return this.progressPage.section === 3 && selected ? Details.museum(selected, career, this.config) : null;
       }
@@ -1669,7 +1690,7 @@ export class GameSession {
       const open = this.progressPage.section;
       const vp = this.lastViewport;
       const career = this.save.career;
-      if (open === 0 && ProgressPage.prestigeAt(point, vp, this.tabInset, career)) this.tryPrestige();
+      if (open === 0 && ProgressPage.eliteAt(point, vp, this.tabInset, career)) this.perform({ k: 'showElite' });
       if (open === 1 && ProgressPage.weeklyAt(point, vp, this.tabInset)) this.startSpecial({ k: 'trial', trial: weeklyTrial(weekNumber(this.today)) });
       const museum = open === 3 ? ProgressPage.museumAt(point, vp, this.tabInset, this.progressPage) : null;
       if (museum) this.tapMuseum(museum);
@@ -1950,6 +1971,7 @@ export class GameSession {
       save.tutorialDone = true;
     }
     const bankBefore = career.money;
+    const eliteBefore = Elite.isOpen(career, this.config);
     Careers.record(career, result, this.playingLevel);
     this.resultBank = { before: bankBefore, after: career.money };
     const toasts: string[] = [];
@@ -1969,8 +1991,17 @@ export class GameSession {
     }
     toasts.push(...Careers.recordChallenges(career, result, this.today).map((ch) => S.daily.challengeDone(ch, Fmt.number(this.challengeRewardOf(ch)))));
     const completed = Careers.recordMastery(career, result);
+    const elite = Careers.recordElite(career, result, this.config);
+    const titles = Careers.recordTitles(career, this.config);
     this.persist();
     if (completed.length > 0) toasts.push(S.mastery.toast(completed));
+    if (elite) {
+      // The shift that opens the track says so; later ones show their XP or the level they reached.
+      if (!eliteBefore) toasts.push(S.elite.opened);
+      else if (elite.steps.length === 0 && elite.xp > 0) toasts.push(S.elite.gained(elite.xp));
+      for (const step of elite.steps) if (eliteBefore || step.level > 1) toasts.push(S.elite.reached(step));
+    }
+    if (titles.length > 0) toasts.push(S.titles.earned(titles));
     const found = this.takeMuseumNotice();
     if (found) toasts.push(found);
     if (toasts.length > 0) this.showNotice(toasts.join('  ·  '));
@@ -2058,6 +2089,7 @@ export class GameSession {
     SceneBuilder.addRoad(list, world.layout, world.config);
     CityLayer.addMapSkin(list, Skins.color(career.mapSkin), world);
     MapTheme.addIsland(list, theme, world);
+    if (!this.special) CityLayer.addElite(list, Elite.level(career, this.config), world);
     CityLayer.addFrame(list, Careers.frame(career), world);
     this.rim.add(list, world, rm);
     WeatherLayer.addCityEvent(list, world);
@@ -2198,6 +2230,8 @@ export class GameSession {
       conditions: this.special?.k === 'trial' || this.versusSelected ? null : S.ready.conditions(this.world.config.weather, this.world.config.cityEvent, this.world.config.night, this.world.config.blackout),
       run: this.runCard,
       prestige: this.special ? 0 : career.prestige,
+      elite: !this.special && Elite.isOpen(career, this.config),
+      playerName: this.versusSelected ? loadPlayerName() : undefined,
       daily,
       mode: this.playingMode,
       versus: this.versusSelected,

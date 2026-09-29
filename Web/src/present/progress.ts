@@ -4,6 +4,7 @@ import { challengesOf, challengeReward } from '../core/daily';
 import { TRIALS, type TrialId } from '../core/trials';
 import { weekNumber, weekDaysLeft, weeklyTrial } from '../core/weekly';
 import { baseConfig } from '../core/config';
+import { Elite } from '../core/elite';
 import { type Vec2, v, add } from '../core/vec2';
 import { type RenderList, type Rect, RenderList as List, R, rect, circle, line, text, Ease, Metrics, moved, type Align, type Weight } from './render';
 import type { ColorToken } from './theme';
@@ -141,17 +142,55 @@ export const ProgressPage = {
     else ProgressPage.addAchievements(list, l, save.career, age, reduceMotion);
   },
 
-  /** The Prestige card sits above the records once it is in reach, or was ever used. */
-  showsPrestige: (c: Career): boolean => c.prestige > 0 || c.level >= baseConfig.prestigeLevel - 10,
+  /**
+   * The Elite card sits above the records from Level 40 on, and for good once Level 50 was
+   * reached. It is the door to the late game: its sheet holds the track, the titles and Prestige.
+   */
+  showsElite: (c: Career): boolean => Elite.isOpen(c) || c.level >= baseConfig.prestigeLevel - 10,
 
-  prestigeCard(l: Layout): Rect {
-    return R.make(l.content.minX, l.content.minY, l.content.maxX, l.content.minY + 64);
+  eliteCard(l: Layout): Rect {
+    return R.make(l.content.minX, l.content.minY, l.content.maxX, l.content.minY + 76);
   },
 
-  /** A tap on the Prestige card (Records): the session asks twice before it starts over. */
-  prestigeAt(point: Vec2, viewport: Vec2, bottomInset: number, c: Career): boolean {
-    if (!ProgressPage.showsPrestige(c)) return false;
-    return R.contains(ProgressPage.prestigeCard(ProgressPage.layout(viewport, bottomInset)), point);
+  /** A tap on the Elite card: the sheet with the track and the titles. */
+  eliteAt(point: Vec2, viewport: Vec2, bottomInset: number, c: Career): boolean {
+    if (!ProgressPage.showsElite(c)) return false;
+    return R.contains(ProgressPage.eliteCard(ProgressPage.layout(viewport, bottomInset)), point);
+  },
+
+  /** Elite level, title, the bar to the next level and what the next milestone brings. */
+  addEliteCard(list: RenderList, card: Rect, c: Career, o: number): void {
+    ProgressPage.panel(list, card, o);
+    const open = Elite.isOpen(c);
+    const top = card.minY + 22;
+    t(list, open ? S.elite.caption(Elite.level(c)) : S.elite.title, v(card.minX + 16, top), 15, open ? 'coin' : 'muted', o, { weight: 'bold' });
+    const badges = [c.prestige > 0 ? S.prestige.caption(c.prestige) : null, c.title ? S.titles.name(c.title) : null].filter((x): x is string => !!x);
+    t(list, [...badges, '›'].join(' · ').replace(' · ›', ' ›'), v(card.maxX - 16, top), 12, badges.length > 0 ? 'coin' : 'muted', o, { weight: 'bold', align: 'trailing' });
+    const barY = card.minY + 42;
+    const barWidth = R.width(card) - 32;
+    list.s(rect(v(R.center(card).x, barY), v(barWidth, 5), 2.5), 'controlFill', o);
+    const { into, need } = Elite.progress(c);
+    const fraction = open ? Ease.clamp01(into / need) : 0;
+    if (fraction > 0) {
+      const filled = Math.max(5, barWidth * fraction);
+      list.s(rect(v(card.minX + 16 + filled / 2, barY), v(filled, 5), 2.5), 'coin', o);
+    }
+    const bottom = card.minY + 60;
+    if (!open) {
+      const hint = S.elite.locked(baseConfig.prestigeLevel);
+      t(list, hint, v(card.minX + 16, bottom), ShopPage.fitted(hint, 11, barWidth), 'muted', o);
+      return;
+    }
+    const xp = S.elite.xp(into, need);
+    t(list, xp, v(card.minX + 16, bottom), 11, 'muted', o);
+    // Prestige in reach says so; otherwise the card names what comes next.
+    const next = Elite.nextMilestone(c);
+    const ready = Careers.canPrestige(c);
+    const line = ready ? S.elite.prestigeReady : next ? S.elite.next(next) : null;
+    if (line) {
+      const room = barWidth - textWidth(xp, 11) - 16;
+      t(list, line, v(card.maxX - 16, bottom), ShopPage.fitted(line, 11, room), ready ? 'coin' : 'muted', o, { align: 'trailing', weight: ready ? 'bold' : 'regular' });
+    }
   },
 
   entering(r: Rect, age: number, index: number, reduceMotion: boolean): [Rect, number] {
@@ -168,18 +207,10 @@ export const ProgressPage = {
     const records = ProgressPage.records(save);
     const c = save.career;
     let area = l.content;
-    if (ProgressPage.showsPrestige(c)) {
-      const [card, o] = ProgressPage.entering(ProgressPage.prestigeCard(l), age, 0, reduceMotion);
-      ProgressPage.panel(list, card, o);
-      const center = R.center(card);
-      const ready = Careers.canPrestige(c);
-      const title = c.prestige > 0 ? `${S.prestige.title} ${S.prestige.caption(c.prestige)}` : S.prestige.title;
-      t(list, title, v(card.minX + 16, center.y - 10), 14, 'coin', o, { weight: 'bold' });
-      const hint = ready ? S.prestige.ready(c.level) : c.prestige > 0 ? S.prestige.headStart(Careers.headStart(c)) : S.prestige.locked(baseConfig.prestigeLevel);
-      const room = R.width(card) - (ready ? 120 : 32);
-      t(list, hint, v(card.minX + 16, center.y + 11), ShopPage.fitted(hint, 11, room), 'muted', o);
-      if (ready) t(list, `${S.prestige.title} ›`, v(card.maxX - 16, center.y), 13, 'coin', o, { weight: 'bold', align: 'trailing' });
-      area = R.make(l.content.minX, card.maxY + ProgressPage.gap, l.content.maxX, l.content.maxY);
+    if (ProgressPage.showsElite(c)) {
+      const [card, o] = ProgressPage.entering(ProgressPage.eliteCard(l), age, 0, reduceMotion);
+      ProgressPage.addEliteCard(list, card, c, o);
+      area = R.make(l.content.minX, ProgressPage.eliteCard(l).maxY + ProgressPage.gap, l.content.maxX, l.content.maxY);
     }
     const cells = ShopPage.grid(records.length, 2, area, 74);
     records.forEach((record, i) => {
@@ -274,7 +305,9 @@ export const ProgressPage = {
         list.s(line(add(box, v(-1, 3.5)), add(box, v(4.5, -3.5)), 2), 'accentInk', o);
       }
       t(list, S.trials.name(trial.id), v(r.minX + 44, c.y - 9), 14, 'primary', o, { weight: 'bold' });
-      t(list, `${S.trials.level(trial.level)} · ${S.trials.goal(trial)}`, v(r.minX + 44, c.y + 11), 11, 'muted', o);
+      // The goal shrinks before it runs into "Play ›" on a narrow phone.
+      const goal = `${S.trials.level(trial.level)} · ${S.trials.goal(trial)}`;
+      t(list, goal, v(r.minX + 44, c.y + 11), ShopPage.fitted(goal, 11, R.width(r) - 44 - 16 - textWidth(`${S.trials.play} ›`, 11) - 12), 'muted', o);
       if (done) t(list, S.trials.passed, v(r.maxX - 16, c.y - 9), 12, 'accent', o, { weight: 'bold', align: 'trailing' });
       else moneyTag(list, Fmt.number(trial.reward), v(r.maxX - 16, c.y - 9), 13, 'trailing', 'primary', 'accent', o);
       t(list, `${S.trials.play} ›`, v(r.maxX - 16, c.y + 11), 11, done ? 'muted' : 'accent', o, { weight: 'bold', align: 'trailing' });

@@ -909,6 +909,41 @@ button {
   text-align: right;
 }
 
+.detail-rows .row-sub {
+  font-weight: 400;
+  white-space: normal;
+}
+
+.detail-rows .row.tappable {
+  width: 100%;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  font-size: 15px;
+  text-align: left;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.detail-rows .row.tappable:active {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.detail-rows .row.tappable:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+.detail-section {
+  margin: var(--s2) 0 var(--s2) var(--s4);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
 .detail-note {
   margin: 0 0 var(--s3);
   font-size: 14px;

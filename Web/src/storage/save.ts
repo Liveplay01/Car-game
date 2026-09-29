@@ -4,6 +4,7 @@ import { COSMETICS, CHEST_KINDS, type ChestKind, MAX_CAR_SKINS, cosmetic } from 
 import { ROAD_MODULES, type RoadModule, BOSS_KINDS, type BossKind, baseConfig } from '../core/config';
 import { RUN_IDS } from '../core/trials';
 import { MUSEUM_IDS, MUSEUM_SHELVES, type MuseumShelf, inferredSightings } from '../core/museum';
+import { TITLES, type TitleId } from '../core/elite';
 import { type CasinoGame, type CasinoPending, type CasinoRound, CASINO_GAMES } from '../core/casino';
 
 const KEY = 'carGame.save.v2';
@@ -93,6 +94,10 @@ function readCareer(raw: unknown): Career {
     bossesBeaten,
     prestige: int(raw.prestige, 0, 0),
     legendaryDone: int(raw.legendaryDone, 0, 0),
+    eliteXp: int(raw.eliteXp, 0, 0),
+    eliteClaimed: int(raw.eliteClaimed, 0, 0),
+    title: TITLES.includes(raw.title as TitleId) ? (raw.title as TitleId) : null,
+    titlesSeen: [...new Set(strings(raw.titlesSeen).filter((t): t is TitleId => TITLES.includes(t as TitleId)))],
     weeklyDone: int(raw.weeklyDone, -1),
     weekliesDone: int(raw.weekliesDone, 0, 0),
     museumSeen,

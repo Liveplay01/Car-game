@@ -635,7 +635,8 @@ export const CasinoPage = {
     ShopPage.panel(list, s, 'card', enter);
     if (driving && heat >= 2 && !reduceMotion) CasinoPage.edgeGlow(list, HEAT[heat], (heat === 3 ? 0.9 : 0.55) * (0.75 + 0.25 * Math.sin(run!.age * (heat === 3 ? 14 : 7))));
 
-    const plot = R.make(s.minX + 44, s.minY + 84, s.maxX - 22, s.maxY - 22);
+    // Clear of the line under the multiplier, and room left of it for the scale beside the car.
+    const plot = R.make(s.minX + 60, s.minY + 98, s.maxX - 22, s.maxY - 22);
     const reach = now + ghost;
     const xMax = Math.max(6, reach * 1.15);
     const top = out && out.clutch !== null ? run!.point : m;
@@ -653,7 +654,7 @@ export const CasinoPage = {
       if (g === 1 && y - lastY < 18) continue;
       lastY = y;
       list.s(line(v(plot.minX, y), v(plot.maxX, y), 1), 'marking', 0.35 * enter);
-      t(list, S.casino.times(g), v(plot.minX - 8, y), 10, 'muted', { align: 'trailing', opacity: 0.8 * enter });
+      t(list, S.casino.times(g), v(plot.minX - 18, y), 10, 'muted', { align: 'trailing', opacity: 0.8 * enter });
     }
     const color: ColorToken = crashed !== null ? 'destructive' : out ? 'accent' : HEAT[heat];
     if (run && now > 0) {
@@ -934,8 +935,9 @@ export const CasinoPage = {
     ShopPage.panel(list, stage, 'card', enter);
     const slots = CasinoPage.slots(stage);
     const dialBottom = slots[0].minY - 26;
-    const radius = Math.max(30, Math.min(R.width(stage) * 0.3, (dialBottom - stage.minY - 28) / 2));
-    const center = v(R.center(stage).x, stage.minY + 18 + radius);
+    // Centred in the room above the slots, with space outside for the pegs and the pointer's tip.
+    const radius = Math.max(30, Math.min(R.width(stage) * 0.3, (dialBottom - stage.minY) / 2 - 30));
+    const center = v(R.center(stage).x, (stage.minY + dialBottom) / 2);
     const staked = run ? run.roll.staked : state.staked;
     const target = run ? run.roll.target : state.target;
     const chance = run ? run.roll.chance : target ? Casino.upgradeChance(staked, target, baseConfig) : 0;

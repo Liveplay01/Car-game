@@ -10,6 +10,7 @@ import type { CasinoGame, SlotSymbol } from '../core/casino';
 import type { VehicleType, VehicleRole } from '../core/vehicle';
 import { type Trial, type TrialId, type RunId, type EliteKind, rematchKind } from '../core/trials';
 import type { SpecialKind, WeatherKind, DarkKind, MuseumEntry } from '../core/museum';
+import type { EliteStep, TitleId, TitleRule } from '../core/elite';
 import { MONEY_MARK } from './icons';
 
 /** Every text the game shows (`Strings.swift`). English only. */
@@ -404,6 +405,73 @@ export const S = {
     headStart: (levels: number): string => `Traffic runs ${levels} levels harder`,
   },
 
+  elite: {
+    title: 'Elite',
+    caption: (level: number): string => `Elite ${level}`,
+    locked: (level: number): string => `Reach Level ${level}: the Elite track and Prestige open`,
+    prestigeReady: 'Prestige ready',
+    prestigeHeader: 'Prestige',
+    rank: 'Rank',
+    traffic: 'Traffic',
+    harder: (levels: number): string => `+${levels} levels`,
+    prestigeAction: (rank: number): string => `Prestige to ★${rank}`,
+    prestigeConfirm: 'Tap again · back to Level 1',
+    xp: (into: number, need: number): string => `${into} / ${need} XP`,
+    next: (step: EliteStep): string => `Next at Elite ${step.level}: ${S.elite.reward(step)}`,
+    reward: (step: EliteStep): string => (step.item ? S.shop.item(step.item.id) : step.title ? `title “${S.titles.name(step.title)}”` : S.shop.chest(step.chest)),
+    gained: (xp: number): string => `+${xp} ELITE XP`,
+    opened: 'ELITE DRIVER · the Elite track is open',
+    reached: (step: EliteStep): string =>
+      `ELITE ${step.level}${step.item ? ` · ${S.shop.item(step.item.id)} unlocked` : ''} · ${S.shop.chest(step.chest)}`,
+    body: [
+      'From Level 50 on, every shift earns Elite XP: 10 for a completed shift, 1 for each Perfect Input and Tight Fit, 10 more for a boss taken down or a Legendary Shift.',
+      'Each Elite level pays a Standard Chest, every tenth a Premium Chest. Titles and skins wait along the way. Prestige keeps the track.',
+      'Looks only, never a bonus on the road.',
+    ],
+    trackHeader: 'Along the track',
+    titlesHeader: 'Titles · tap one to wear it',
+    wearing: 'Worn',
+    notYet: 'Not yet',
+  },
+
+  titles: {
+    name: (id: TitleId): string =>
+      ({
+        eliteDriver: 'Elite Driver',
+        roadVeteran: 'Road Veteran',
+        ringMaster: 'Ring Master',
+        ironNerves: 'Iron Nerves',
+        roadRoyalty: 'Road Royalty',
+        livingLegend: 'Living Legend',
+        precisionDriver: 'Precision Driver',
+        comboMaster: 'Combo Master',
+        closeCallArtist: 'Close Call Artist',
+        syndicateBreaker: 'Syndicate Breaker',
+        nightOwl: 'Night Owl',
+        stormChaser: 'Storm Chaser',
+        legendHunter: 'Legend Hunter',
+        starDriver: 'Star Driver',
+      })[id],
+    rule(r: TitleRule): string {
+      switch (r.k) {
+        case 'elite':
+          return `Reach Elite ${r.level}`;
+        case 'mastery':
+          return `Complete the ${S.mastery.name(r.goal)} mastery`;
+        case 'bosses':
+          return 'Take down every syndicate boss';
+        case 'trial':
+          return `Pass the ${S.trials.name(r.id as RunId)} trial`;
+        case 'legendary':
+          return `Complete ${r.shifts} Legendary Shifts`;
+        case 'prestige':
+          return `Reach Prestige ★${r.rank}`;
+      }
+    },
+    earned: (ids: TitleId[]): string => (ids.length === 1 ? `TITLE · ${S.titles.name(ids[0])}` : `${ids.length} NEW TITLES · ${ids.map((t) => S.titles.name(t)).join(', ')}`),
+    none: 'No title',
+  },
+
   ambulance: {
     incoming: 'AMBULANCE',
     blocked: 'BLOCKED',
@@ -418,6 +486,8 @@ export const S = {
     unlimitedCaption: 'UNLIMITED',
     endless: '∞',
     versusPlayers: '2–4',
+    youLabel: 'YOU',
+    defaultName: 'Player',
     runOver: 'RUN OVER',
     again: 'Tap for another run',
     carsSent: (n: number): string => (n === 1 ? '1 car' : `${n} cars`),
@@ -659,6 +729,7 @@ export const S = {
       if (item.source.kind === 'legendary')
         return item.source.shifts === 1 ? 'Complete a Legendary Shift.' : `Complete ${item.source.shifts} Legendary Shifts.`;
       if (item.source.kind === 'prestige') return `Reach Prestige ★${item.source.rank}.`;
+      if (item.source.kind === 'elite') return `Reach Elite ${item.source.level}.`;
       return 'Not found yet: it comes out of chests.';
     },
     tapToClose: 'Tap to close',
@@ -766,6 +837,11 @@ export const S = {
         starSilver: 'Silver Star',
         starGold: 'Gold Star',
         starIris: 'Iris Star',
+        eliteSteel: 'Steel Chevron',
+        eliteBlaze: 'Blaze Chevron',
+        eliteJade: 'Jade Chevron',
+        eliteAurum: 'Black Aurum',
+        eliteHalo: 'Halo',
       };
       return names[id] ?? id;
     },

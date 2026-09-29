@@ -340,8 +340,11 @@ export const StreetBuilderPage = {
     }
     const wide = size.x >= 300;
     P.addPartPicture(list, part, v(center.x - size.x / 2 + (wide ? 36 : 28), center.y), 0.85, enter);
-    const textLeft = center.x - size.x / 2 + (wide ? 74 : 56);
-    list.s(text(S.builder.name(part), v(textLeft, center.y - 12), 16, 'leading', 'bold'), 'primary', enter);
+    // Clear of the picture (the new arm's road sticks out to the right); a long name shrinks.
+    const textLeft = center.x - size.x / 2 + (wide ? 76 : 64);
+    const name = S.builder.name(part);
+    const room = center.x + size.x / 2 - 12 - textLeft - (wide ? measure(S.builder.drag, 12, false) + 24 : 0);
+    list.s(text(name, v(textLeft, center.y - 12), Math.max(11, Math.min(16, (16 * room) / Math.max(1, measure(name, 16, true)))), 'leading', 'bold'), 'primary', enter);
     const priceColor: ColorToken = price !== null && career.money >= price ? 'accent' : 'muted';
     if (price !== null) moneyTag(list, Fmt.number(price), v(textLeft, center.y + 12), 15, 'leading', priceColor, priceColor, enter);
     else list.s(text(S.builder.ringFull, v(textLeft, center.y + 12), 15, 'leading', 'bold'), 'muted', enter);
@@ -365,7 +368,7 @@ export const StreetBuilderPage = {
     const y = vp.y - bottomInset - BuildLayout.detailHeight / 2 - 2;
     const enter = Ease.outCubic((state.age - 0.1) / 0.25);
     const hint = state.pending ? S.builder.buildHint : S.builder.pickOne;
-    const size = Math.max(11, Math.min(13, (13 * (Math.min(vp.x, 460) - 24)) / Math.max(1, measure(hint, 13, false))));
+    const size = Math.max(9, Math.min(13, (13 * (Math.min(vp.x, 460) - 32)) / Math.max(1, measure(hint, 13, false))));
     list.s(text(hint, v(vp.x / 2, y), size, 'center'), state.pending ? 'accent' : 'muted', enter);
   },
 };
