@@ -58,8 +58,11 @@ export function bookShift(save: SaveGame, result: ShiftResult, ctx: ShiftContext
   const bankBefore = career.money;
   const eliteBefore = Elite.isOpen(career, ctx.config);
   const openBefore = Unlocks.open(career, ctx.config);
+  const levelBefore = career.level;
   Careers.record(career, result, ctx.level);
   const news: string[] = [];
+  // The first level cleared: a chest to open within the first minute.
+  if (ctx.mode === 'shift' && Careers.giveWelcomeChest(career, levelBefore, ctx.config)) news.push(S.daily.welcomeChest);
   // Level 5 cleared: the other modes are a swipe away (the waiting screen keeps a hint until the first swipe).
   const cap = ctx.config.modeHintAfterLevel;
   if (ctx.mode === 'shift' && !save.hints.includes('modes') && ctx.level <= cap && career.level > cap) news.push(S.modes.unlocked);
@@ -67,7 +70,12 @@ export function bookShift(save: SaveGame, result: ShiftResult, ctx: ShiftContext
   for (const f of Unlocks.open(career, ctx.config)) if (!openBefore.includes(f) && f !== 'casino') news.push(S.unlocks[f]);
   const due = (['install', 'backup'] as const).filter((h) => !save.hints.includes(h) && career.level > (h === 'install' ? ctx.config.installHintAfterLevel : ctx.config.backupHintAfterLevel));
   save.hints.push(...due);
-  if (result.isPerfectRun) news.push(S.daily.perfectRun);
+  if (result.isPerfectRun) {
+    // The first one says what it is and what it pays (early on only: a veteran knows).
+    const first = !save.hints.includes('perfectRun');
+    if (first) save.hints.push('perfectRun');
+    news.push(first && career.level <= 10 ? S.daily.perfectRunFirst(Math.round(ctx.config.perfectRunPayFactor * 100)) : S.daily.perfectRun);
+  }
   const legendary = Careers.completeLegendary(career, result);
   if (legendary) news.push(S.legendary.done(legendary.item));
   const pay = ctx.daily && result.outcome === 'completed' ? Careers.completeDaily(career, ctx.today, ctx.config) : null;

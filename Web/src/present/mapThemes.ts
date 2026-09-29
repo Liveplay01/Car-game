@@ -202,11 +202,17 @@ export const MapTheme = {
   },
 
   addGround(list: RenderList, theme: MapTheme | null, world: World, time: number | null): void {
-    if (!theme) return;
+    const layout = world.layout;
+    // What the still ground shows: the map on this road. Everything before `still()` is baked
+    // once by the drawer (with the background and the texture); what moves comes after it.
+    const still = (): void => list.markStatic(`${theme}|${layout.ringRadius}|${layout.laneWidth}|${layout.arms.map((a) => a.slot).join(',')}`);
+    if (!theme) return still();
     const ring = world.layout.ringRadius;
     const cam = list.camera;
     const add1 = (p: ReturnType<typeof circle>, c: ColorToken, o: number): void => list.w(p, c, o);
+    // Soft patches are large and see-through, the costliest fills on the map: only those in view.
     const soft = (center: Vec2, radius: number, color: ColorToken, opacity: number): void => {
+      if (!onScreen(center, radius, cam)) return;
       for (let layer = 0; layer < 3; layer++) add1(circle(center, radius * (1 - 0.22 * layer)), color, opacity * 0.45);
     };
     const spot = (i: number, salt: number, from = 30, to = 360): Vec2 => mul(fromAngle(hash(i, salt) * TAU), ring + from + hash(i, salt + 1) * (to - from));
@@ -220,7 +226,10 @@ export const MapTheme = {
           const start = hash(i, 310) * TAU;
           for (let r = 0; r < 4; r++) list.w(arc(center, 24 + r * 7, 1.2, start, start + 0.9), 'sandDune', 0.35);
         }
-        for (let i = 0; i < 40; i++) add1(circle(spot(i, 305), 1.5 + 2 * hash(i, 307)), 'sandDune', 0.35);
+        for (let i = 0; i < 40; i++) {
+          const at = spot(i, 305);
+          if (onScreen(at, 4, cam)) add1(circle(at, 1.5 + 2 * hash(i, 307)), 'sandDune', 0.35);
+        }
         break;
       case 'forest':
         // Sun through the canopy on a mossy floor: dark hollows, bright glades, ferns.
@@ -235,10 +244,13 @@ export const MapTheme = {
         // A golden stubble field, darker where the soil shows, and fallen leaves.
         for (let i = 0; i < 12; i++) soft(spot(i, 325), 30 + 40 * hash(i, 327), 'skinMocha', 0.12);
         for (let i = 0; i < 10; i++) soft(spot(i, 328), 26 + 34 * hash(i, 329), 'skinSunburst', 0.14);
-        for (let i = 0; i < 90; i++) add1(circle(spot(i, 321, 10), 1.6 + 1.6 * hash(i, 323)), i % 3 === 0 ? 'fireDeep' : 'fireOuter', 0.6);
+        for (let i = 0; i < 90; i++) {
+          const at = spot(i, 321, 10);
+          if (onScreen(at, 4, cam)) add1(circle(at, 1.6 + 1.6 * hash(i, 323)), i % 3 === 0 ? 'fireDeep' : 'fireOuter', 0.6);
+        }
         break;
       case 'sakura':
-        MapTheme.addSakuraGround(list, world, time);
+        MapTheme.addSakuraGround(list, world, time, still);
         break;
       case 'neon': {
         const reach = ring + 380;
@@ -290,6 +302,7 @@ export const MapTheme = {
           const start = hash(i, 437) * TAU;
           for (const rail of [-2.2, 2.2]) list.w(arc(center, 46 + rail, 0.9, start, start + 1.1), 'snowShade', 0.8);
         }
+        still();
         for (let i = 0; i < 50; i++) {
           const at = spot(i, 439, 12);
           if (!onScreen(at, 2, cam)) continue;
@@ -300,6 +313,7 @@ export const MapTheme = {
       case 'cosmos': {
         const clouds: ColorToken[] = ['juicePurple', 'juiceBlue', 'skinRose'];
         for (let i = 0; i < 12; i++) soft(spot(i, 441), 40 + 60 * hash(i, 443), clouds[i % 3], 0.035);
+        still();
         for (let i = 0; i < 150; i++) {
           const at = spot(i, 445, 8);
           if (!onScreen(at, 2, cam)) continue;
@@ -345,6 +359,7 @@ export const MapTheme = {
       case 'grove':
         // Moss, and glowing spores on the ground that breathe in and out.
         for (let i = 0; i < 16; i++) soft(spot(i, 621), 24 + 36 * hash(i, 623), 'mapForest', 0.05);
+        still();
         for (let i = 0; i < 60; i++) {
           const at = spot(i, 625, 10);
           if (!onScreen(at, 2, cam)) continue;
@@ -360,6 +375,7 @@ export const MapTheme = {
           const start = hash(i, 633) * TAU;
           for (let r = 0; r < 3; r++) list.w(arc(center, 20 + r * 9, 1, start, start + 1.2), 'mapAbyss', 0.08);
         }
+        still();
         for (let i = 0; i < 8; i++) {
           const pulse = time !== null ? 0.5 + 0.5 * Math.sin(time * 0.6 + i * 1.3) : 0.5;
           soft(spot(i, 635, 20, 340), 30 + 20 * hash(i, 637), 'mapAbyss', 0.035 * pulse);
@@ -390,6 +406,7 @@ export const MapTheme = {
           if (hash(i, 665) < 0.5) soft(at, 14 + 12 * hash(i, 667), 'water', 0.1);
         }
         for (let i = 0; i < 16; i++) soft(spot(i, 669), 18 + 26 * hash(i, 671), 'highlandMoss', 0.05);
+        still();
         for (let i = 0; i < 90; i++) {
           const at = spot(i, 673, 10);
           if (!onScreen(at, 2, cam)) continue;
@@ -417,6 +434,7 @@ export const MapTheme = {
       case 'crystal': {
         // A cave floor: cracks of light under the rock, and the glow around each shard.
         for (let i = 0; i < 14; i++) soft(spot(i, 701), 28 + 40 * hash(i, 703), 'mapCrystal', 0.05);
+        still();
         for (let i = 0; i < 10; i++) {
           const center = spot(i, 705, 20, 330);
           if (!onScreen(center, 60, cam)) continue;
@@ -460,15 +478,18 @@ export const MapTheme = {
         break;
       }
     }
+    still();
     const pond = MapTheme.pondCenter(world.layout);
     if (theme !== 'sakura' && pond && onScreen(pond, MapTheme.pondRadius * 2, cam)) MapTheme.addCentrepiece(list, theme, pond, time);
   },
 
-  addSakuraGround(list: RenderList, world: World, time: number | null): void {
+  /** `still` marks where the moving part (the koi and what drifts on the pond) begins. */
+  addSakuraGround(list: RenderList, world: World, time: number | null, still: () => void = () => undefined): void {
     const layout = world.layout;
     const ring = layout.ringRadius;
     const cam = list.camera;
     const soft = (center: Vec2, radius: number, color: ColorToken, opacity: number): void => {
+      if (!onScreen(center, radius, cam)) return;
       for (let layer = 0; layer < 3; layer++) list.w(circle(center, radius * (1 - 0.22 * layer)), color, opacity * 0.45);
     };
     const spot = (i: number, salt: number, from = 12, to = 360): Vec2 => mul(fromAngle(hash(i, salt) * TAU), ring + from + hash(i, salt + 1) * (to - from));
@@ -483,7 +504,7 @@ export const MapTheme = {
       list.w(rect(at, v(len, len * 0.6), len * 0.3, hash(i, 339) * Math.PI), i % 3 === 0 ? 'sakuraPale' : 'mapSakura', 0.6 + 0.35 * hash(i, 340));
     }
     const pond = MapTheme.pondCenter(layout);
-    if (!pond) return;
+    if (!pond) return still();
     const r = MapTheme.pondRadius;
     const toRing = normalize(mul(pond, -1));
     [r + 7, r + 14, r + 22].forEach((along, step) => {
@@ -503,6 +524,7 @@ export const MapTheme = {
     list.w(circle(pond, r), 'water', 1);
     list.w(circle(pond, r * 0.72), 'background', 0.22);
     list.w(arc(pond, r - 3, 3, 0, TAU), 'mapTropic', 0.08);
+    still();
     const t = time ?? 0;
     const koi: [ColorToken, ColorToken | null, number, number][] = [
       ['skinKoi', 'primary', r * 0.55, 0.45],
@@ -714,6 +736,7 @@ export const MapTheme = {
   addAvenues(list: RenderList, theme: MapTheme | null, world: World): void {
     if (!theme) return;
     const layout = world.layout;
+    const from = list.items.length;
     for (const armItem of layout.arms) {
       const out = fromAngle(armItem.angle);
       let distance = layout.ringRadius + layout.laneWidth / 2 + 40;
@@ -789,6 +812,8 @@ export const MapTheme = {
         step++;
       }
     }
+    // The avenues stand still (only the trees in the open sway): the drawer keeps their picture.
+    list.bake(from, 'avenues', `${theme}|${layout.ringRadius}|${layout.laneWidth}|${layout.arms.map((a) => a.slot).join(',')}`);
   },
 
   /** Above the vehicles, below the HUD: what the wind carries over the map. */

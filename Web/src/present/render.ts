@@ -111,6 +111,19 @@ export class RenderList {
   grain: Grain | undefined = undefined;
   /** The ground between everything gets a faint texture, anchored to the world. */
   groundGrain = false;
+  /**
+   * The leading items that stay the same while the map and the camera do (the ground and its
+   * still details): the drawer bakes them, with the background and the ground texture, into
+   * one picture and reuses it frame after frame (`CanvasDrawer`). `staticKey` names what they
+   * show; it must change whenever they would.
+   */
+  staticKey: string | null = null;
+  staticEnd = 0;
+  /**
+   * Still stretches further up the list (the road), by the index they start at: baked as a
+   * see-through picture and put back in their place, between what lies under and over them.
+   */
+  bakes = new Map<number, { end: number; name: string; key: string }>();
   constructor(
     public camera: Camera,
     public background: ColorToken,
@@ -133,6 +146,29 @@ export class RenderList {
   /** Screen shorthand. */
   s(p: Primitive, color: ColorToken, opacity = 1): void {
     this.add(p, color, opacity, 'screen');
+  }
+
+  /**
+   * Everything added so far is still ground, showing `key`: plain world shapes only (no clip,
+   * no texture of their own), or nothing is baked. Called once, where the moving part begins.
+   */
+  markStatic(key: string): void {
+    if (this.staticKey !== null) return;
+    if (this.items.some((x) => x.space !== 'world' || x.clip !== undefined || x.grain !== undefined)) return;
+    this.staticKey = key;
+    this.staticEnd = this.items.length;
+  }
+
+  /**
+   * The items from `start` on are still (the road): `name` keeps their picture apart from other
+   * bakes. `key` must change whenever they would; without one, their shapes themselves are the
+   * key (fine for a few dozen). Plain world shapes only; a stretch with a clip or a screen item
+   * is simply drawn.
+   */
+  bake(start: number, name: string, key?: string): void {
+    const part = this.items.slice(start);
+    if (part.length === 0 || part.some((x) => x.space !== 'world' || x.clip !== undefined)) return;
+    this.bakes.set(start, { end: this.items.length, name, key: key ?? JSON.stringify(part) });
   }
 }
 

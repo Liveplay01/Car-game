@@ -282,9 +282,9 @@ Abreißen (Zufahrten und Module) ist möglich, **nichts wird erstattet.** Die ei
 
 Bis Level 19 sind Fehler kostenlos. Ab Level 20: Der Crash, der die Schicht beendet, bzw. ein Polizei-Crash kostet nach Wucht **60 / 120 / 200**; ein entkommener Verbrecher **350** zusätzlich zur verlorenen Schicht. Folgeunfälle kosten nichts, Unlimited kostet nie. Kosten kommen vom Verdienst der Schicht, dann vom Konto – **nie ins Minus.**
 
-### Casino (Shop → Casino, ab Level 10)
+### Casino (Shop → Casino, ab Level 12)
 
-Crash, Slots, Skin-Upgrade und Doppelt oder nichts, nur mit Spielgeld; Chancen und Rückzahlquoten stehen offen im Spiel und in [LOOT.md](LOOT.md) („Casino“), `npm run sim:casino` prüft sie. Es gibt keine kaufbare Währung und keine Truhen gegen Echtgeld (CLAUDE.md). Das Casino öffnet leise mit Level 10; nichts im Spiel lenkt dorthin.
+Crash, Slots, Skin-Upgrade und Doppelt oder nichts, nur mit Spielgeld; Chancen und Rückzahlquoten stehen offen im Spiel und in [LOOT.md](LOOT.md) („Casino“), `npm run sim:casino` prüft sie. Es gibt keine kaufbare Währung und keine Truhen gegen Echtgeld (CLAUDE.md). Das Casino öffnet leise mit Level 12; nichts im Spiel lenkt dorthin.
 
 **Darstellung (Leo, 29.09.2026):**
 - **Erst die Enthüllung, dann das Geld:** Die Regeln verbuchen eine Runde sofort (fair beim Neuladen). Geld-Chip, Tagessaldo und Verlauf zeigen das Ergebnis aber erst mit der Enthüllung (`Wallet` in `present/casino.ts`). Der Einsatz fliegt als Münzen vom Chip auf die Bühne, ein Gewinn fliegt zurück und zählt dort hoch.
@@ -299,11 +299,11 @@ Ein neuer Spieler trifft die Systeme nacheinander (`core/unlocks.ts`, Werte in `
 
 | Was | Ab | Wie es sich zeigt |
 |---|---|---|
-| Daily Shift (und Serie) | Level 3 | Hinweis „New · the Daily Shift …“; vorher sagt die Quest-Zeile, ab wann |
-| Trials (Progress) | Level 8 | Hinweis „New · Trials in Progress …“; vorher ist das Segment blass und sagt beim Tippen, ab wann |
-| Casino (Shop) | Level 10 | ohne Hinweis; vorher ist das Segment blass |
+| Daily Shift (und Serie) | Level 4 | Hinweis „New · the Daily Shift …“; vorher sagt die Quest-Zeile, ab wann |
+| Trials (Progress) | Level 9 | Hinweis „New · Trials in Progress …“; vorher ist das Segment blass und sagt beim Tippen, ab wann. Jede Trial öffnet erst bei ihrem eigenen Level („Opens at level X“) |
+| Casino (Shop) | Level 12 | ohne Hinweis; vorher ist das Segment blass |
 
-Wer ein System schon vorher benutzt hat, behält es. Einmalige Hinweise (`hints` im Spielstand): nach Level 3 bittet das Spiel den Browser, den Speicher dauerhaft zu behalten (`storage.persist()`), und schlägt die Installation vor (iPhone: „Zum Home-Bildschirm“); nach Level 5 zeigt der Game-Tab bis zum ersten Moduswechsel „Swipe for more modes“; nach Level 12 empfiehlt es einen Export, solange der Speicher nicht geschützt ist. Meldungen kommen nacheinander, jede in ihrer eigenen Zeile (`present/notices.ts`).
+**Entzerrt (Leo, 29.09.2026):** vorher Daily 3, Modi 5, Trials 8, Casino 10: fünf neue Systeme in den ersten drei Minuten. Jetzt etwa eins alle ein bis vier Minuten (Daily nach ~1 min, Modi ~2, Trials ~4, Casino ~8). Wer ein System schon vorher benutzt hat, behält es. Einmalige Hinweise (`hints` im Spielstand): nach Level 3 bittet das Spiel den Browser, den Speicher dauerhaft zu behalten (`storage.persist()`), und schlägt die Installation vor (iPhone: „Zum Home-Bildschirm“); nach Level 6 zeigt der Game-Tab bis zum ersten Moduswechsel „Swipe for more modes“; nach Level 12 empfiehlt es einen Export, solange der Speicher nicht geschützt ist; der erste Perfect Run sagt, was er bringt. Meldungen kommen nacheinander, jede in ihrer eigenen Zeile (`present/notices.ts`).
 
 ### Street Builder & Module
 
@@ -330,7 +330,7 @@ Details und alle Item-Listen: [LOOT.md](LOOT.md) (Liste im Code: `Web/src/core/l
 
 | Truhe | Woher | Common | Rare | Epic | Legendary |
 |---|---|---|---|---|---|
-| Standard | Shop (26.000), Werbung (3/Tag), Mastery Stufe I | 70 % | 22 % | 7 % | 1 % |
+| Standard | **Willkommens-Truhe** beim ersten geschafften Level (einmal, `welcomeChestLevel`; 29.09.2026: die erste Belohnung in Minute 1 statt 3), Lucky Drop (6 % je geschaffter Schicht), Shop (26.000), Werbung (3/Tag), Mastery Stufe I | 70 % | 22 % | 7 % | 1 % |
 | Premium | Shop (52.000), Mastery Stufe II/III | 35 % | 35 % | 22 % | 8 % |
 | Criminal Hunt | Mastery „Crime Fighter“ | 50 % | 30 % | 15 % | 5 % |
 | Event | jede geschaffte Daily Shift; 15 % nach jeder geschafften Schicht mit City Event | 40 % | 35 % | 20 % | 5 % |
@@ -378,19 +378,19 @@ Ein voller Satz zahlt einmal Geld und legt einen **Rahmen** in seiner Farbe um d
 - **Records** (Progress): Highscore, Level, Bestcombo, längste Kette, Daily-Serie, Schichten, Takedowns, Transporter, Unlimited- und Mayhem-Rekorde, Syndikats-Bosse, Sammlung, **Timing** (Leo, 29.09.2026): wie früh (−) oder spät (+) die letzten 50 Merges im Schnitt getippt waren, gemessen an der Mitte der Lücke (`core/timing.ts`; ab 8 Merges, bis ±30 ms „On the beat“; offene Ringe zählen nicht).
 - **Tutorial:** in der ersten Schicht, ohne Menü und ohne Pause – pulsierender Ring am vordersten Auto, „Wait for a gap, then tap“, Combo-Hinweis, beim ersten Crash „Cars crash instantly. Police get 3 chances.“
 
-### Trials (Progress → Trials, ab Level 8)
+### Trials (Progress → Trials, ab Level 9)
 
-Sieben feste Schichten mit festem Seed (alle treffen denselben Verkehr), frischem Kreisverkehr mit 4 Armen, ohne eigene Upgrades. Eine Zusatzregel beendet die Schicht als *failed*, wenn sie gebrochen wird. Jede Trial zahlt einmal.
+Sieben feste Schichten mit festem Seed (alle treffen denselben Verkehr), frischem Kreisverkehr mit 4 Armen, ohne eigene Upgrades. Eine Zusatzregel beendet die Schicht als *failed*, wenn sie gebrochen wird. Jede Trial zahlt einmal. **Die leichteste steht oben, und jede öffnet erst bei ihrem Level** (vorher: alle sieben auf einmal, Tight Squeeze zuoberst).
 
 | Trial | Level | Autos | Ziel / Bedingung | Belohnung |
 |---|---|---|---|---|
-| Tight Squeeze | 8 | 8 | jede Einfädelung Tight Fit, Near Miss oder Perfect | 1.500 |
 | Dead Centre | 6 | 12 | mindestens 4 Perfect Inputs | 1.500 |
+| Tight Squeeze | 8 | 8 | mindestens 5 Einfädelungen Tight Fit, Near Miss oder Perfect (Leo, 29.09.2026: vorher *jede*, eine saubere Einfädelung beendete den Versuch; das hielt viele auf) | 1.500 |
 | Clean Sheet | 12 | 16 | kein Crash, kein Cut-off | 2.500 |
-| Blackout | 16 | 16 | Nacht, Laternen aus | 3.000 |
-| Storm Watch | 20 | 18 | Sturm bei Nacht | 4.000 |
 | Marathon | 14 | 40 | schaffen | 4.000 |
 | Most Wanted | 15 | 24 | den Syndikats-Boss festnehmen | 5.000 |
+| Blackout | 16 | 16 | Nacht, Laternen aus | 3.000 |
+| Storm Watch | 20 | 18 | Sturm bei Nacht | 4.000 |
 
 ### Challenge-Links (nur Web)
 
@@ -425,7 +425,7 @@ Nach einer Schicht macht „Challenge a friend“ einen Link (`#challenge=…`) 
 | **Einstellungen** | Sheet: Sound, Haptics, Vehicle Labels, **Left-handed** (schwebende Knöpfe auf die andere Seite, Dispatch links), **Larger text** (Hinweise und Karten über der Szene ×1,2), Reduce Motion (System / On / Off), **What's new** (Patch Notes aus `present/patchNotes.ts`; ungelesen: Punkt am Einstellungsknopf), Export / Import / Reset Progress |
 | **Ergebnis teilen** | Unter jedem Ergebnis „Picture“ (Leo, 29.09.2026: „wie ein geschossenes Foto“): Blitz mit Auslöser-Geräusch, dann fällt ein **Sofortbild** gekippt ein und entwickelt sich aus Weiß. Der Abzug (1080×1350, 4:5) zeigt den Kreisverkehr von oben ohne HUD, mit Film-Look (Wärme, Lichtleck, Vignette), Klebestreifen in der Map-Farbe, Sticker mit dem Ergebnis, **NEW BEST**-Stempel, orangem Datum wie von einer Filmkamera, darunter Score, die besten Fakten, Map-Name, „Can you beat …?“ und Spielname mit Icon. Nur zwei Knöpfe: **Share** (Teilen-Menü mit Challenge-Link; ohne Datei-Teilen: Bild kopieren) und **Download**. Esc, ✕ oder Tippen daneben schließt. Reduce Motion: nur Überblenden (`ui/photo.ts`, Text in `present/photo.ts`) |
 | **Adaptive Auflösung** | Kommen die Frames dauerhaft langsam und unregelmäßig, sinkt die Pixeldichte 2 → 1,5 → 1; nach 12 s flüssigem Lauf steigt sie wieder. Gleichmäßige 30 fps (Stromsparmodus) bleiben unangetastet |
-| **Sound** | Web Audio: 35 Effekte und 7 Musik-Stems als AAC in `Web/public/audio/` (noch Platzhalter), mit Tonhöhen-Variation und Stereo-Position. Adaptive Musik: Combo baut Instrumente auf, Verbrecher → Sirene, Rush Hour → Beat zieht an, Flow verdichtet; bei Verbrecher-Warnung und Rush-Hour-Beginn atmet die Musik durch einen Tiefpass ein |
+| **Sound** | Web Audio: 44 Effekte und 7 Musik-Stems als AAC in `Web/public/audio/`, mit Tonhöhen-Variation und Stereo-Position. Adaptive Musik: Combo baut Instrumente auf, Verbrecher → Sirene, Rush Hour → Beat zieht an, Flow verdichtet; bei Verbrecher-Warnung und Rush-Hour-Beginn atmet die Musik durch einen Tiefpass ein |
 | **Haptik** | über `navigator.vibrate` – nur wo der Browser es kann (Android/Chrome); iOS-Safari hat keine Vibration, der Schalter zeigt das an |
 | **Accessibility** | Farben nie allein (Formen, Icons, Muster), Vehicle Labels, WCAG-AA-Kontrast, 44-px-Ziele, Tastatur (Leertaste, Enter, D/E, Esc, R, Tab, Pfeile), sichtbarer Fokus, Live-Region für Ergebnisse. Reduce Motion folgt standardmäßig dem System und entfernt Shake, Zeitlupe und fliegende Teile |
 | **Icon** | Kreisverkehr bei Nacht, das Mint-Auto fädelt in eine Lücke ein (Original in `Web/icon/`), als PWA-Icons in `Web/public/icons/` |
@@ -479,16 +479,13 @@ Die Web-Version ist das ganze Spiel: dazu gehören Nacht/Blackout, Syndikats-Kon
 | Schwierigkeit | Level-Kurve, Wetter, Nacht/Blackout, City Events, Risiko & Versicherung | ✅ |
 | Meta | Geld, 13 Upgrades, Street Builder mit Modulen, Truhen, Sammlung, Alben, Mastery, Daily, Serie, Quests, Trials, Records, Casino, Freischaltungen | ✅ |
 | Hülle | Tab-Bar, Einstellungen, PWA, Offline, Speicherschutz, Docker/Coolify | ✅ |
-| Look & Feel | Ring als UI, atmende und sichtbar wachsende Stadt, Kamera je Tab, adaptive Musik | ✅, Klänge noch Platzhalter |
+| Look & Feel | Ring als UI, atmende und sichtbar wachsende Stadt, Kamera je Tab, adaptive Musik | ✅ |
 
-Geprüft wird mit `npm test` (20 Tests, node:test), `npm run build` (Typecheck) und den Balancing-Bots. Am 28.09.2026: Build grün; `npm run sim` auf Level 5 – vorsichtiger Bot 60/60 Schichten geschafft, 0 Crashes; Zufalls-Tapper 0/60 geschafft, 60 Crashes.
+Geprüft wird mit `npm test` (29 Tests, node:test), `npm run build` (Typecheck) und den Balancing-Bots. Am 28.09.2026: Build grün; `npm run sim` auf Level 5 – vorsichtiger Bot 60/60 Schichten geschafft, 0 Crashes; Zufalls-Tapper 0/60 geschafft, 60 Crashes.
 
 ### Offen
 
-- **Echte Klänge und Musik-Stems** statt der `SoundMaker`-Platzhalter.
-- **Playtest auf echten Handys** (iPhone-Safari und Android): Timing mit Touch, 60 fps auf älteren Geräten, PWA-Installation.
 - **Multiplayer über echte Netze** (Mobilfunk, Firewalls, TURN).
-- **Deployment über Coolify** mit HTTPS und eigener Domain.
 
 ### Playtest offen
 
@@ -503,7 +500,8 @@ Geprüft wird mit `npm test` (20 Tests, node:test), `npm run build` (Typecheck) 
 
 ### Bekannte Unstimmigkeiten
 
-- **Keine Karriere-Messung:** Die Web-Sim misst nur Schichten, keine ganze Laufbahn (Geld, Preise, Freischaltungen über viele Level).
+- **Level laufen dem Geld davon** (`npm run sim:career`, 29.09.2026): Level 60 ist nach 1,1 h (Könner) bis 1,6 h (Gelegenheitsspieler) reiner Spielzeit erreicht, bis dahin sind 130.000–150.000 verdient. Alle Upgrades zusammen kosten 1,6 Mio.; mit Level 60 besitzt man 28–30 von 86 Stufen. Die erste zusätzliche Zufahrt (32.500) und die Module (10.400–15.600) werden nie erschwinglich, solange man Upgrades kauft. Daily (3), Trials (8) und Casino (10) öffnen alle in den ersten 5 Minuten. Entscheidung offen (§17).
+- **Die ersten Minuten** (`npm run sim:career -- 12 --story=20`): Schichten dauern anfangs 6–10 s. Bis Minute 3 kommen fünf neue Systeme (Daily nach 21 s, Challenges, Modi, Mastery, Trials). Ein Gelegenheitsspieler verliert bei **Level 10 vier Schichten am Stück** (Minute 5–7). Freischaltungen sind entzerrt (siehe „Freischaltungen“). **Offen (§17): die Kurve ab Level 8.** `npm run sim:career -- --curve=3-16 --per=60` (verlorene Schichten je Level, frische Karriere ohne Upgrades): Könner 8 % bis Level 7, dann 13 → 22 → 27 → 35 → 47 % (Level 8–12); Gelegenheitsspieler 23–35 % bis Level 7, dann 45 → 45 → 63 → 77 → 65 %. Es gibt keinen einzelnen Auslöser: ab Level 8 kommen mehr Autos (+1,1 je Level, ab Level 9 fünf Ring-Bots statt vier), Krankenwagen (8), der Verbrecher hat weniger Zeit, dazu Regen, City Events und ab 10 die Nacht.
 
 ---
 
@@ -523,6 +521,7 @@ Offene Ideen stehen in [IDEA.md](IDEA.md). Aus der alten Planung passen zum Brow
 | **Build lokal ausliefern** | `npm run preview` (Port 5050, mit Service Worker) |
 | **Balancing-Bots** | `npm run sim -- 60 5` (Schichten, Level): der vorsichtige Bot darf **nie** crashen, ein Zufalls-Tapper fast immer |
 | **Tests** | `npm test`: Replays (gleicher Seed + gleiche Taps), vorsichtiger Bot ohne Crash, Spielstände (alt, kaputt, Export/Import), Buchung einer Schicht, Freischaltungen, Meldungen |
+| **Karriere-Bot** | `npm run sim:career -- 60`: ein menschenähnlicher Bot (Reaktionszeit, Fehleinschätzung, jagt Verbrecher per Dispatch) spielt als Könner und als Gelegenheitsspieler von Level 1 bis 60, bucht jede Schicht wie das Spiel und kauft wie ein Spieler (billigstes Upgrade, dann Zufahrt). Ausgabe je Level-Abschnitt: Schichten, Stunden, verlorene Schichten, Geld pro Schicht, Kontostand, Upgrades, nächster Preis. `--story=20` erzählt die ersten 20 Schichten einzeln, mit allen Meldungen |
 | **Multiplayer-Bots** | `npm run sim:versus`: vorsichtige Spuren scheiden nie durch Crash aus, gleicher Seed = gleiches Match |
 | **Container wie in Coolify** | im Repo-Root: `docker build -t car-game . ; docker run -p 5050:5050 car-game` |
 
@@ -549,7 +548,7 @@ Offene Ideen stehen in [IDEA.md](IDEA.md). Aus der alten Planung passen zum Brow
 - [ ] Blaulicht auf dem Boden und Warn-Keil: Intensität, Position, Deutlichkeit
 - [x] Store entfernt, Casino statt Store (Leo, 28.09.2026)
 - [x] Nur noch die Web-Version, Swift-Schiene gelöscht (Leo, 29.09.2026)
-- [ ] Freischalt-Level: Daily 3, Trials 8, Casino 10
+- [x] Freischalt-Level entzerrt: Daily 4, Modi 6, Trials 9 (jede Trial bei ihrem Level), Casino 12 (Leo, 29.09.2026)
 
 ---
 
@@ -559,7 +558,7 @@ Offene Ideen stehen in [IDEA.md](IDEA.md). Aus der alten Planung passen zum Brow
 Car-game/
 ├─ CLAUDE.md                      ← feste Entscheidungen, Befehle, Arbeitsweise
 ├─ Spiel.md                       ← dieses Dokument
-├─ FOUNDATION.md, LOOT.md, IDEA.md, multiplayer_perfection_plan.md
+├─ FOUNDATION.md, LOOT.md, IDEA.md
 ├─ Dockerfile, .dockerignore      ← Node baut, nginx liefert aus (Port 5050)
 ├─ Web/                           ← DAS SPIEL
 │  ├─ README.md, PRODUCT.md
@@ -574,4 +573,4 @@ Car-game/
 
 ---
 
-**Stand:** 29.09.2026 – Car Game ist ein Browserspiel, offline spielbar nach dem ersten Laden, mit automatischen Tests. Nächster großer Schritt: **Playtest auf echten Handys und Deployment über Coolify.**
+**Stand:** 29.09.2026 – Car Game ist ein Browserspiel, offline spielbar nach dem ersten Laden, mit automatischen Tests. Es läuft über Coolify und hat schon viele Spieler. Nächster Schritt: die Karriere messen und das Balancing (§17) mit Zahlen entscheiden.

@@ -20,7 +20,8 @@ function isBright(token: ColorToken): boolean {
 }
 
 export class CanvasDrawer {
-  private readonly ctx: CanvasRenderingContext2D;
+  /** The context drawn on: the canvas's own, or the ground picture's while it is baked. */
+  private ctx: CanvasRenderingContext2D;
   dpr = 1;
   width = 0;
   height = 0;
@@ -47,21 +48,97 @@ export class CanvasDrawer {
     this.font = '';
   }
 
-  draw(list: RenderList): void {
+  /**
+   * The still ground (background, its texture and `list.staticEnd` leading items), baked once
+   * and copied pixel for pixel while `groundKey` stays the same: the map, the road, the camera
+   * and the canvas. The large see-through patches of a map are then no longer painted every
+   * frame; what moves is drawn over it as before, so the picture is exactly the same.
+   */
+  private ground: { canvas: HTMLCanvasElement; ctx: CanvasRenderingContext2D; key: string } | null = null;
+  private lastGroundKey = '';
+
+  private groundKey(list: RenderList): string {
+    const c = list.camera;
+    return `${list.staticKey}|${list.staticEnd}|${list.background}|${list.groundGrain}|${c.center.x},${c.center.y},${c.focus.x},${c.focus.y},${c.scale},${c.viewport.x},${c.viewport.y}|${this.canvas.width}x${this.canvas.height}@${this.dpr}|${this.offset.x},${this.offset.y}`;
+  }
+
+  /** Background, ground texture and the still items, on whichever context is `this.ctx`. */
+  private paintGround(list: RenderList, end: number): void {
     const ctx = this.ctx;
     ctx.setTransform(1, 0, 0, 1, 0, 0);
-    ctx.fillStyle = css(list.background);
+    this.forgetStyle();
+    this.setFill(css(list.background));
     ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+    ctx.setTransform(this.dpr, 0, 0, this.dpr, this.offset.x * this.dpr, this.offset.y * this.dpr);
+    ctx.lineCap = 'butt';
+    ctx.lineJoin = 'round';
+    const cam = list.camera;
+    if (list.groundGrain) this.fillGrain(isBright(list.background) ? 'groundBright' : 'ground', null, cam);
+    for (let i = 0; i < end; i++) {
+      const item = list.items[i];
+      if (!this.offscreen(item.p, cam)) this.item(item, cam);
+    }
+  }
+
+  draw(list: RenderList): void {
+    const ctx = this.ctx;
+    let start = 0;
+    if (list.staticKey !== null) {
+      const key = this.groundKey(list);
+      // Baked only once the view holds still for a frame: a moving camera would bake every frame.
+      const holds = key === this.lastGroundKey;
+      this.lastGroundKey = key;
+      if (this.ground?.key !== key && holds) {
+        const canvas = this.ground?.canvas ?? document.createElement('canvas');
+        if (canvas.width !== this.canvas.width || canvas.height !== this.canvas.height) {
+          canvas.width = this.canvas.width;
+          canvas.height = this.canvas.height;
+        }
+        const baked = this.ground?.ctx ?? canvas.getContext('2d', { alpha: false });
+        if (baked) {
+          this.ctx = baked;
+          this.paintGround(list, list.staticEnd);
+          this.ctx = ctx;
+          this.ground = { canvas, ctx: baked, key };
+        }
+      }
+      if (this.ground?.key === key) {
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
+        ctx.drawImage(this.ground.canvas, 0, 0);
+        start = list.staticEnd;
+      }
+    }
+    if (start === 0) this.paintGround(list, 0);
+    this.prepare();
+    this.paintItems(list, start, list.items.length, true);
+  }
+
+  /** The world transform and the text and line settings, on `this.ctx`. */
+  private prepare(): void {
+    const ctx = this.ctx;
     ctx.setTransform(this.dpr, 0, 0, this.dpr, this.offset.x * this.dpr, this.offset.y * this.dpr);
     ctx.lineCap = 'butt';
     ctx.lineJoin = 'round';
     // Set before any save(), so no restore() takes them back.
     ctx.textBaseline = 'middle';
     ctx.textAlign = 'left';
+    this.forgetStyle();
+  }
+
+  private paintItems(list: RenderList, from: number, to: number, useBakes: boolean): void {
+    const ctx = this.ctx;
     const cam = list.camera;
-    if (list.groundGrain) this.fillGrain(isBright(list.background) ? 'groundBright' : 'ground', null, cam);
     let clip: RenderItem['clip'] = undefined;
-    for (const item of list.items) {
+    for (let i = from; i < to; i++) {
+      const bake = useBakes && clip === undefined ? list.bakes.get(i) : undefined;
+      if (bake) {
+        this.flushGrain(cam);
+        if (this.drawBaked(list, i, bake)) {
+          i = bake.end - 1;
+          continue;
+        }
+      }
+      const item = list.items[i];
       // A textured group has ended: its texture goes over it now, markings and all.
       if (item.grain !== this.grainKind) this.flushGrain(cam);
       if (item.clip !== clip) {
@@ -74,11 +151,58 @@ export class CanvasDrawer {
           ctx.clip();
         }
       }
+      if (item.space === 'world' && this.offscreen(item.p, cam)) continue;
       this.item(item, cam);
       if (item.grain) this.addGrainArea(item, cam);
     }
     this.flushGrain(cam);
     if (clip) this.restoreClip();
+  }
+
+  /** Baked stretches (the road), by name: their picture and what it shows. */
+  private readonly baked = new Map<string, { canvas: HTMLCanvasElement; ctx: CanvasRenderingContext2D; key: string; last: string }>();
+
+  /**
+   * Puts a still stretch in as its picture: baked once the view has held for a frame, then
+   * copied while its shapes, the camera and the canvas stay. False: draw it item by item.
+   */
+  private drawBaked(list: RenderList, start: number, bake: { end: number; name: string; key: string }): boolean {
+    if (bake.end > list.items.length) return false;
+    const c = list.camera;
+    const key = `${bake.key}|${c.center.x},${c.center.y},${c.focus.x},${c.focus.y},${c.scale}|${this.canvas.width}x${this.canvas.height}@${this.dpr}|${this.offset.x},${this.offset.y}`;
+    let slot = this.baked.get(bake.name);
+    const holds = slot?.last === key;
+    if (slot) slot.last = key;
+    if (slot?.key !== key) {
+      if (!slot) {
+        const canvas = document.createElement('canvas');
+        const bctx = canvas.getContext('2d');
+        if (!bctx) return false;
+        slot = { canvas, ctx: bctx, key: '', last: key };
+        this.baked.set(bake.name, slot);
+        return false;
+      }
+      if (!holds) return false;
+      const { canvas } = slot;
+      if (canvas.width !== this.canvas.width || canvas.height !== this.canvas.height) {
+        canvas.width = this.canvas.width;
+        canvas.height = this.canvas.height;
+      }
+      const main = this.ctx;
+      this.ctx = slot.ctx;
+      this.ctx.setTransform(1, 0, 0, 1, 0, 0);
+      this.ctx.clearRect(0, 0, canvas.width, canvas.height);
+      this.prepare();
+      this.paintItems(list, start, bake.end, false);
+      this.ctx = main;
+      this.forgetStyle();
+      slot.key = key;
+    }
+    const ctx = this.ctx;
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.drawImage(slot.canvas, 0, 0);
+    ctx.setTransform(this.dpr, 0, 0, this.dpr, this.offset.x * this.dpr, this.offset.y * this.dpr);
+    return true;
   }
 
   // MARK: Texture
@@ -158,6 +282,7 @@ export class CanvasDrawer {
     pattern.setTransform(new DOMMatrix([s, 0, 0, -s, cam.focus.x - cam.center.x * cam.scale, cam.focus.y + cam.center.y * cam.scale]));
     const ctx = this.ctx;
     ctx.fillStyle = pattern;
+    this.fill = null;
     if (path) ctx.fill(path);
     else ctx.fillRect(-this.offset.x, -this.offset.y, this.width, this.height);
   }
@@ -232,6 +357,7 @@ export class CanvasDrawer {
   private restoreClip(): void {
     this.ctx.restore();
     this.font = '';
+    this.forgetStyle();
   }
 
   private setFont(size: number, bold: boolean): void {
@@ -241,11 +367,84 @@ export class CanvasDrawer {
     this.font = font;
   }
 
+  /** The colour last set, so an unchanged one is not parsed again (the canvas parses every string). */
+  private fill: string | null = null;
+  private stroke: string | null = null;
+
+  private setFill(color: string): void {
+    if (color === this.fill) return;
+    this.ctx.fillStyle = color;
+    this.fill = color;
+  }
+
+  private setStroke(color: string): void {
+    if (color === this.stroke) return;
+    this.ctx.strokeStyle = color;
+    this.stroke = color;
+  }
+
+  /** After a restore or a texture the context's colours are no longer the ones remembered. */
+  private forgetStyle(): void {
+    this.fill = null;
+    this.stroke = null;
+  }
+
+  /**
+   * Whether a world item lies wholly outside the canvas: then it is not drawn at all. Bounds
+   * are generous (a rotated rect by its diagonal), so nothing on screen is ever dropped.
+   */
+  private offscreen(p: RenderItem['p'], cam: Camera): boolean {
+    const s = cam.scale;
+    let x: number;
+    let y: number;
+    let reach: number;
+    switch (p.k) {
+      case 'circle':
+        ({ x, y } = toScreen(cam, p.center));
+        reach = p.radius * s;
+        break;
+      case 'rect':
+        ({ x, y } = toScreen(cam, p.center));
+        reach = (Math.hypot(p.size.x, p.size.y) / 2) * s;
+        break;
+      case 'arc':
+        ({ x, y } = toScreen(cam, p.center));
+        reach = (p.radius + p.thickness / 2) * s;
+        break;
+      case 'line': {
+        const a = toScreen(cam, p.from);
+        const b = toScreen(cam, p.to);
+        x = (a.x + b.x) / 2;
+        y = (a.y + b.y) / 2;
+        reach = Math.hypot(a.x - b.x, a.y - b.y) / 2 + p.thickness * s;
+        break;
+      }
+      case 'polygon': {
+        let minX = Infinity;
+        let minY = Infinity;
+        let maxX = -Infinity;
+        let maxY = -Infinity;
+        for (const q of p.points) {
+          const o = toScreen(cam, q);
+          if (o.x < minX) minX = o.x;
+          if (o.x > maxX) maxX = o.x;
+          if (o.y < minY) minY = o.y;
+          if (o.y > maxY) maxY = o.y;
+        }
+        return maxX < -this.offset.x - 1 || maxY < -this.offset.y - 1 || minX > this.width - this.offset.x + 1 || minY > this.height - this.offset.y + 1;
+      }
+      default:
+        return false;
+    }
+    reach += 1;
+    return x + reach < -this.offset.x || y + reach < -this.offset.y || x - reach > this.width - this.offset.x || y - reach > this.height - this.offset.y;
+  }
+
   private item(item: RenderItem, cam: Camera): void {
     const ctx = this.ctx;
     const world = item.space === 'world';
-    const color = css(item.color, item.opacity);
     const p = item.p;
+    const color = css(item.color, item.opacity);
     const pt = (q: Vec2): Vec2 => (world ? toScreen(cam, q) : q);
     const len = (l: number): number => (world ? l * cam.scale : l);
     switch (p.k) {
@@ -265,16 +464,29 @@ export class CanvasDrawer {
         if (w <= 0 || h <= 0) return;
         const rot = world ? -p.rotation : p.rotation;
         const r = Math.max(0, Math.min(len(p.radius), w / 2, h / 2));
-        ctx.fillStyle = color;
-        if (rot !== 0) {
-          ctx.save();
+        this.setFill(color);
+        if (rot !== 0 && r <= 0.3) {
+          // A turned square-cornered rect: its four corners, no change of transform needed.
+          const cos = Math.cos(rot);
+          const sin = Math.sin(rot);
+          const hw = w / 2;
+          const hh = h / 2;
+          ctx.beginPath();
+          ctx.moveTo(cx - hw * cos + hh * sin, cy - hw * sin - hh * cos);
+          ctx.lineTo(cx + hw * cos + hh * sin, cy + hw * sin - hh * cos);
+          ctx.lineTo(cx + hw * cos - hh * sin, cy + hw * sin + hh * cos);
+          ctx.lineTo(cx - hw * cos - hh * sin, cy - hw * sin + hh * cos);
+          ctx.closePath();
+          ctx.fill();
+        } else if (rot !== 0) {
+          // Turned with round corners: the path is laid in a turned frame; only the transform
+          // goes back afterwards (a full save/restore of the context costs far more).
           ctx.translate(cx, cy);
           ctx.rotate(rot);
           ctx.beginPath();
-          if (r > 0.3) ctx.roundRect(-w / 2, -h / 2, w, h, r);
-          else ctx.rect(-w / 2, -h / 2, w, h);
+          ctx.roundRect(-w / 2, -h / 2, w, h, r);
           ctx.fill();
-          ctx.restore();
+          ctx.setTransform(this.dpr, 0, 0, this.dpr, this.offset.x * this.dpr, this.offset.y * this.dpr);
         } else {
           ctx.beginPath();
           if (r > 0.3) ctx.roundRect(cx - w / 2, cy - h / 2, w, h, r);
@@ -287,7 +499,7 @@ export class CanvasDrawer {
         const c = pt(p.center);
         const r = len(p.radius);
         if (r <= 0.05) return;
-        ctx.fillStyle = color;
+        this.setFill(color);
         ctx.beginPath();
         ctx.arc(c.x, c.y, r, 0, Math.PI * 2);
         ctx.fill();
@@ -298,7 +510,7 @@ export class CanvasDrawer {
         const r = len(p.radius);
         const t = len(p.thickness);
         if (t <= 0.02 || r <= 0) return;
-        ctx.strokeStyle = color;
+        this.setStroke(color);
         ctx.lineWidth = t;
         ctx.beginPath();
         if (Math.abs(p.end - p.start) >= Math.PI * 2 - 1e-9) {
@@ -317,7 +529,7 @@ export class CanvasDrawer {
         const b = pt(p.to);
         const t = len(p.thickness);
         if (t <= 0.02) return;
-        ctx.strokeStyle = color;
+        this.setStroke(color);
         ctx.lineWidth = t;
         ctx.beginPath();
         ctx.moveTo(a.x, a.y);
@@ -327,7 +539,7 @@ export class CanvasDrawer {
       }
       case 'polygon': {
         if (p.points.length < 3) return;
-        ctx.fillStyle = color;
+        this.setFill(color);
         ctx.beginPath();
         const first = pt(p.points[0]);
         ctx.moveTo(first.x, first.y);
@@ -347,7 +559,7 @@ export class CanvasDrawer {
         if (!p.text.includes(MONEY_MARK)) {
           const width = measure(p.text, p.size, bold);
           const x = p.align === 'leading' ? anchor.x : p.align === 'center' ? anchor.x - width / 2 : anchor.x - width;
-          ctx.fillStyle = color;
+          this.setFill(color);
           ctx.fillText(p.text, x, anchor.y + p.size * 0.04);
           return;
         }
@@ -364,7 +576,7 @@ export class CanvasDrawer {
             }
           } else {
             this.setFont(p.size, bold);
-            ctx.fillStyle = color;
+            this.setFill(color);
             ctx.fillText(piece, x, anchor.y + p.size * 0.04);
           }
           x += widths[i];

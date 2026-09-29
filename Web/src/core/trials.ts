@@ -1,7 +1,7 @@
 import { type Config, type Weather, type TrialRule, type BossKind, type LegendaryRule, BOSS_KINDS, baseConfig, cloneConfig } from './config';
 import type { ShiftResult } from './events';
 import { type Darkness, forNight, forLegendary, firstBossLevel } from './levels';
-import { Careers, newCareer } from './career';
+import { type Career, Careers, newCareer } from './career';
 
 /**
  * Mastery trials: fixed skill tests. Each is one set shift (level, seed, conditions) with a
@@ -26,6 +26,8 @@ export type TrialGoal =
   | { k: 'complete' }
   /** Complete it with at least `n` Perfect merges. */
   | { k: 'perfects'; n: number }
+  /** Complete it with at least `n` merges a Tight Fit or better (a clean merge just does not count). */
+  | { k: 'skilled'; n: number }
   /** Take down the syndicate boss (a boss level). */
   | { k: 'boss' };
 
@@ -47,15 +49,26 @@ export interface Trial {
 
 const fixed = (t: Omit<Trial, 'legendary'>): Trial => ({ ...t, legendary: null });
 
+/**
+ * Easiest first, and each opens at its own level (`trialOpen`), so the list grows with the
+ * player instead of showing seven at once (Leo, 29.09.2026: Tight Squeeze held many up; it
+ * wanted every merge a Tight Fit, one clean merge failed it, and it stood at the top).
+ */
 export const TRIALS: Trial[] = [
-  fixed({ id: 'tightSqueeze', level: 8, seed: 0x7a11a001, cars: 8, goal: { k: 'complete' }, rule: 'skilledOnly', weather: 'clear', darkness: 'day', reward: 1500 }),
   fixed({ id: 'deadCentre', level: 6, seed: 0x7a11a002, cars: 12, goal: { k: 'perfects', n: 4 }, rule: null, weather: 'clear', darkness: 'day', reward: 1500 }),
+  fixed({ id: 'tightSqueeze', level: 8, seed: 0x7a11a001, cars: 8, goal: { k: 'skilled', n: 5 }, rule: null, weather: 'clear', darkness: 'day', reward: 1500 }),
   fixed({ id: 'cleanSheet', level: 12, seed: 0x7a11a003, cars: 16, goal: { k: 'complete' }, rule: 'flawless', weather: 'clear', darkness: 'day', reward: 2500 }),
-  fixed({ id: 'blackout', level: 16, seed: 0x7a11a004, cars: 16, goal: { k: 'complete' }, rule: null, weather: 'clear', darkness: 'blackout', reward: 3000 }),
-  fixed({ id: 'stormWatch', level: 20, seed: 0x7a11a005, cars: 18, goal: { k: 'complete' }, rule: null, weather: 'storm', darkness: 'night', reward: 4000 }),
   fixed({ id: 'marathon', level: 14, seed: 0x7a11a006, cars: 40, goal: { k: 'complete' }, rule: null, weather: 'clear', darkness: 'day', reward: 4000 }),
   fixed({ id: 'mostWanted', level: 15, seed: 0x7a11a007, cars: 24, goal: { k: 'boss' }, rule: null, weather: 'clear', darkness: 'day', reward: 5000 }),
+  fixed({ id: 'blackout', level: 16, seed: 0x7a11a004, cars: 16, goal: { k: 'complete' }, rule: null, weather: 'clear', darkness: 'blackout', reward: 3000 }),
+  fixed({ id: 'stormWatch', level: 20, seed: 0x7a11a005, cars: 18, goal: { k: 'complete' }, rule: null, weather: 'storm', darkness: 'night', reward: 4000 }),
 ];
+
+/**
+ * A trial can be played from its own level on (the Trials section itself opens at
+ * `trialsUnlockLevel`). One passed before, or a Prestige, keeps it open.
+ */
+export const trialOpen = (t: Trial, c: Career): boolean => c.level >= t.level || c.prestige > 0 || c.trialsDone.includes(t.id);
 
 export const TRIAL_IDS: TrialId[] = TRIALS.map((t) => t.id as TrialId);
 
@@ -111,6 +124,8 @@ export function trialPassed(t: Trial, r: ShiftResult): boolean {
       return true;
     case 'perfects':
       return r.perfects >= t.goal.n;
+    case 'skilled':
+      return r.tightFits + r.nearMisses + r.perfects >= t.goal.n;
     case 'boss':
       return r.bossBusted;
   }

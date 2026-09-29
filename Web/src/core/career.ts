@@ -182,9 +182,10 @@ export interface Career {
 
 /**
  * One-time hints: the mode swipe after Level 5 (until the first switch), installing the game
- * and a backup of the progress (each once, from its level on; `config.*HintAfterLevel`).
+ * and a backup of the progress (each once, from its level on; `config.*HintAfterLevel`), and
+ * what a Perfect Run is, the first time one happens.
  */
-export const HINTS = ['modes', 'install', 'backup'] as const;
+export const HINTS = ['modes', 'install', 'backup', 'perfectRun'] as const;
 export type Hint = (typeof HINTS)[number];
 
 /** Everything that is saved (`storage/save.ts` reads and writes it). */
@@ -580,6 +581,16 @@ export const Careers = {
     if (r.outcome !== 'completed' || config.cityEvent === null) return false;
     if (((Math.imul(seed ^ 0xe7e17c4e, 2654435761) >>> 0) / 4294967296) >= config.eventChestChance) return false;
     c.chests.push('event');
+    return true;
+  },
+
+  /**
+   * The welcome chest: a Standard Chest the moment the career first reaches
+   * `welcomeChestLevel` (never again, not after a Prestige). True when it was given.
+   */
+  giveWelcomeChest(c: Career, levelBefore: number, config: Config = baseConfig): boolean {
+    if (c.prestige > 0 || levelBefore >= config.welcomeChestLevel || c.level < config.welcomeChestLevel) return false;
+    c.chests.push('standard');
     return true;
   },
 

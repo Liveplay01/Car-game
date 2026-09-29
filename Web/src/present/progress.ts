@@ -2,7 +2,7 @@ import { type SaveGame, type Career, Careers, MASTERY_GOALS, MASTERY_THRESHOLDS,
 import { Unlocks } from '../core/unlocks';
 import { COSMETICS } from '../core/loot';
 import { challengesOf, challengeReward } from '../core/daily';
-import { TRIALS, type TrialId } from '../core/trials';
+import { TRIALS, trialOpen, type TrialId } from '../core/trials';
 import { weekNumber, weekDaysLeft, weeklyTrial } from '../core/weekly';
 import { baseConfig } from '../core/config';
 import { Elite } from '../core/elite';
@@ -305,9 +305,19 @@ export const ProgressPage = {
   addTrials(list: RenderList, l: Layout, career: Career, age: number, reduceMotion: boolean): void {
     const rows = ProgressPage.trialRows(l);
     TRIALS.forEach((trial, i) => {
-      const [r, o] = ProgressPage.entering(rows[i], age, i, reduceMotion);
-      ProgressPage.panel(list, r, o);
+      const [r, full] = ProgressPage.entering(rows[i], age, i, reduceMotion);
       const c = R.center(r);
+      // A trial above the career's level waits, quieter, and says when it opens.
+      if (!trialOpen(trial, career)) {
+        const o = full * 0.55;
+        ProgressPage.panel(list, r, o);
+        list.s(circle(v(r.minX + 24, c.y), 9), 'controlFill', o);
+        t(list, S.trials.name(trial.id), v(r.minX + 44, c.y - 9), 14, 'primary', o, { weight: 'bold' });
+        t(list, S.trials.opensAt(trial.level), v(r.minX + 44, c.y + 11), 11, 'muted', o);
+        return;
+      }
+      const o = full;
+      ProgressPage.panel(list, r, o);
       const done = career.trialsDone.includes(trial.id);
       const box = v(r.minX + 24, c.y);
       list.s(circle(box, 9), done ? 'accent' : 'controlFill', o);

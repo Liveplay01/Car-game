@@ -42,7 +42,52 @@
       const viewport = v(TW, TH);
       const camera = { viewport, center: v(0, 0), focus: v(TW / 2, TH / 2), scale };
 
-      for (const theme of [null, ...MAP_THEMES].filter((x) => !only || only.includes(x ?? 'none'))) {
+      const build = (theme, cam, time) => {
+        const list = new RenderList(cam, MapTheme.ground(theme));
+        list.groundGrain = true;
+        CityLayer.add(list, world, theme, time, null, null, time);
+        SceneBuilder.addRoad(list, world.layout, world.config);
+        CityLayer.addMapSkin(list, Skins.color(theme), world);
+        MapTheme.addIsland(list, theme, world);
+        SceneBuilder.addVehicles(list, world, 1, [], time, time, null);
+        MapTheme.addAir(list, theme, time, false);
+        return list;
+      };
+
+      // ?bench=1: each map 60 frames on a phone screen (390 × 844 points at 2×), build and draw timed.
+      if (params.has('bench')) {
+        const size = v(390, 844);
+        const cam = { viewport: size, center: v(0, 0), focus: v(size.x / 2, size.y / 2), scale: size.x / 2 / (world.layout.ringRadius + 140) };
+        const canvas = document.createElement('canvas');
+        const drawer = new CanvasDrawer(canvas);
+        drawer.resize(size.x, size.y, 2);
+        const rows = [];
+        for (const theme of [null, ...MAP_THEMES]) {
+          let buildMs = 0;
+          let drawMs = 0;
+          let items = 0;
+          for (let k = 0; k < 70; k++) {
+            const a = performance.now();
+            const list = build(theme, cam, t + k / 60);
+            const b = performance.now();
+            drawer.draw(list);
+            canvas.getContext('2d').getImageData(0, 0, 1, 1);
+            const c = performance.now();
+            if (k < 10) continue;
+            buildMs += b - a;
+            drawMs += c - b;
+            items = list.items.length;
+          }
+          rows.push([theme ?? 'none', items, buildMs / 60, drawMs / 60]);
+        }
+        rows.sort((x, y) => y[2] + y[3] - (x[2] + x[3]));
+        const pre = document.createElement('pre');
+        pre.textContent = 'map          items  build ms  draw ms  total ms\n' + rows.map(([n, i, bm, dm]) => `${n.padEnd(12)} ${String(i).padStart(5)}  ${bm.toFixed(2).padStart(8)}  ${dm.toFixed(2).padStart(7)}  ${(bm + dm).toFixed(2).padStart(8)}`).join('\n');
+        pre.style.cssText = 'font: 13px/1.4 ui-monospace, monospace; margin: 12px';
+        document.body.append(pre);
+      }
+
+      for (const theme of [null, ...MAP_THEMES].filter((x) => !params.has('bench') && (!only || only.includes(x ?? 'none')))) {
         const figure = document.createElement('figure');
         const canvas = document.createElement('canvas');
         canvas.width = TW;
@@ -52,17 +97,11 @@
         figure.append(canvas, caption);
         sheet.append(figure);
 
-        const list = new RenderList(camera, MapTheme.ground(theme));
-        list.groundGrain = true;
-        CityLayer.add(list, world, theme, t, null, null, t);
-        SceneBuilder.addRoad(list, world.layout, world.config);
-        CityLayer.addMapSkin(list, Skins.color(theme), world);
-        MapTheme.addIsland(list, theme, world);
-        SceneBuilder.addVehicles(list, world, 1, [], t, t, null);
-        MapTheme.addAir(list, theme, t, false);
+        const list = build(theme, camera, t);
         const drawer = new CanvasDrawer(canvas);
         drawer.resize(TW, TH, 1);
-        drawer.draw(list);
+        // ?frames=2 draws twice, the second time over the baked ground (it must look the same).
+        for (let k = 0; k < Number(params.get('frames') ?? 1); k++) drawer.draw(list);
         caption.textContent += ` · ${list.items.length} items`;
       }
     </script>

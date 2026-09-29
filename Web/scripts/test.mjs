@@ -156,15 +156,55 @@ const completed = (level, over = {}) => {
 };
 const context = (level, over = {}) => ({ mode: 'shift', level, daily: false, today: 20000, config: baseConfig, shiftConfig: forLevel(baseConfig, level, 1), splits: [], ...over });
 
-test('clearing Level 5 tells about the other modes, once', () => {
+test('clearing the mode-hint level tells about the other modes, once', () => {
+  const at = baseConfig.modeHintAfterLevel;
   const save = newSave();
-  save.career.level = 5;
-  const booked = bookShift(save, completed(5), context(5));
-  assert.equal(save.career.level, 6);
+  save.career.level = at;
+  const booked = bookShift(save, completed(at), context(at));
+  assert.equal(save.career.level, at + 1);
   assert.equal(booked.news[0], S.modes.unlocked);
   save.hints.push('modes');
-  save.career.level = 5;
-  assert.ok(!bookShift(save, completed(5), context(5)).news.includes(S.modes.unlocked));
+  save.career.level = at;
+  assert.ok(!bookShift(save, completed(at), context(at)).news.includes(S.modes.unlocked));
+});
+
+test('Tight Squeeze counts Tight Fits or better; trials open one by one', async () => {
+  const { TRIALS, trial, trialPassed, trialOpen } = await load('/src/core/trials.ts');
+  const squeeze = trial('tightSqueeze');
+  const done = { outcome: 'completed', tightFits: 2, nearMisses: 1, perfects: 1 };
+  assert.equal(trialPassed(squeeze, done), false);
+  assert.equal(trialPassed(squeeze, { ...done, perfects: 2 }), true);
+  // Easiest first, and none above the career's level unless passed before.
+  const levels = TRIALS.map((t) => t.level);
+  assert.deepEqual(levels, [...levels].sort((a, b) => a - b));
+  const c = newCareer();
+  c.level = squeeze.level - 1;
+  assert.equal(trialOpen(squeeze, c), false);
+  c.trialsDone.push(squeeze.id);
+  assert.equal(trialOpen(squeeze, c), true);
+});
+
+test('the first level cleared gives one welcome chest, and only then', () => {
+  const welcomed = (save, result, level) => bookShift(save, result, context(level)).news.includes(S.daily.welcomeChest);
+  const save = newSave();
+  const booked = bookShift(save, completed(1), context(1));
+  assert.equal(save.career.level, 2);
+  assert.equal(booked.news[0], S.daily.welcomeChest);
+  assert.ok(save.career.chests.includes('standard'));
+  assert.ok(!welcomed(save, completed(2), 2));
+  // A lost first shift gives nothing yet; after a Prestige the chest does not come again.
+  assert.ok(!welcomed(newSave(), { ...completed(1), outcome: 'struckOut' }, 1));
+  const again = newSave();
+  again.career.prestige = 1;
+  assert.ok(!welcomed(again, completed(1), 1));
+});
+
+test('the first Perfect Run says what it is, later ones only its name', () => {
+  const save = newSave();
+  const first = bookShift(save, completed(1, { isPerfectRun: true }), context(1));
+  assert.ok(first.news.some((n) => n.startsWith('PERFECT RUN ·')));
+  const later = bookShift(save, completed(2, { isPerfectRun: true }), context(2));
+  assert.ok(later.news.includes(S.daily.perfectRun));
 });
 
 test('the install and backup hints come due once, at their levels', () => {

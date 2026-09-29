@@ -10,7 +10,8 @@
   --separator: rgba(255, 255, 255, 0.08);
   --primary: #f4f6f9;
   --muted: #99a2af;
-  --faint: #6b7380;
+  /* The quietest text: still 4.9:1 on a card and 6.2:1 on the page (WCAG AA). */
+  --faint: #8a929e;
   --accent: #9ee6cf;
   --accent-ink: #0e1013;
   --accent-soft: rgba(158, 230, 207, 0.14);
@@ -192,6 +193,13 @@ button {
   transition: color 200ms ease;
 }
 
+/* 32 px drawn as on iOS, 44 px to touch. */
+.segmented button::after {
+  content: '';
+  position: absolute;
+  inset: -6px 0;
+}
+
 .segmented button[aria-pressed='true'] {
   color: var(--primary);
 }
@@ -270,7 +278,8 @@ button {
   gap: 2px;
   font-size: 11px;
   font-weight: 600;
-  color: var(--faint);
+  /* Muted, not faint: over a bright daylight map the glass bar is lighter, and the labels must still read. */
+  color: var(--muted);
   transition: color 160ms ease;
   position: relative;
 }
@@ -938,12 +947,20 @@ button {
 }
 
 .detail-close {
+  position: relative;
   align-self: start;
   width: 36px;
   height: 36px;
   margin: 2px 0 0 auto;
   background: rgba(255, 255, 255, 0.07);
   color: var(--muted);
+}
+
+/* 36 px drawn, 44 px to touch. */
+.detail-close::after {
+  content: '';
+  position: absolute;
+  inset: -4px;
 }
 
 .detail-close svg {
@@ -1352,11 +1369,19 @@ button {
 }
 
 .btn.small {
+  position: relative;
   min-height: 36px;
   padding: 0 var(--s3) 0 var(--s2);
   gap: var(--s1);
   font-size: 14px;
   border-radius: 18px;
+}
+
+/* 36 px drawn, 44 px to touch. */
+.btn.small::after {
+  content: '';
+  position: absolute;
+  inset: -4px 0;
 }
 
 /* 36 px drawn, 44 px to touch. */
@@ -1560,4 +1585,9 @@ button {
   top: calc(var(--safe-top) + var(--s3));
   right: calc(var(--safe-right) + var(--s3));
   color: var(--primary);
+}
+
+/* A settings row with a switch flips it anywhere (ui/sheets.ts, switchRow). */
+.switch-row {
+  cursor: pointer;
 }

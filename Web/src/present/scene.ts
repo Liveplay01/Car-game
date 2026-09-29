@@ -137,6 +137,7 @@ export const SceneBuilder = {
   addRoad(list: RenderList, layout: Layout, c: Config, own: Arm | null = layout.player): void {
     const lane = layout.laneWidth;
     const reach = 700;
+    const from = list.items.length;
     // Asphalt grain over the whole road once it is drawn: the markings wear with it.
     const grain = list.grain;
     list.grain = 'asphalt';
@@ -168,6 +169,8 @@ export const SceneBuilder = {
     list.w(circle(v(0, 0), layout.ringRadius - lane / 2 + 3.5), 'kerb');
     list.w(circle(v(0, 0), layout.ringRadius - lane / 2), 'island');
     list.w(arc(v(0, 0), layout.ringRadius - lane / 2 - 14, 1.5, 0, TAU), 'marking', 0.25);
+    // The road never moves: the drawer keeps its picture (`RenderList.bake`).
+    list.bake(from, 'road');
   },
 
   /** A line along a lane's kerb, from the back of its queue to just past the stop line. */

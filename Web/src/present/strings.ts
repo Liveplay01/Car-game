@@ -356,7 +356,7 @@ export const S = {
       if (boss) return `${S.boss.name(boss)} again: more escorts, less time`;
       switch (t.id) {
         case 'tightSqueeze':
-          return `${t.cars} cars, every merge a Tight Fit or better`;
+          return `${t.goal.k === 'skilled' ? t.goal.n : 0} Tight Fits or better in ${t.cars} cars`;
         case 'deadCentre':
           return `${t.goal.k === 'perfects' ? t.goal.n : 0} Perfect merges in ${t.cars} cars`;
         case 'cleanSheet':
@@ -376,6 +376,7 @@ export const S = {
     level: (l: number): string => `Level ${l}`,
     passed: 'PASSED',
     play: 'Play',
+    opensAt: (l: number): string => `Opens at level ${l}`,
   },
 
   boss: {
@@ -948,6 +949,8 @@ export const S = {
     milestone: (days: number, item: string): string => `${days} DAYS IN A ROW · ${S.shop.item(item)} unlocked`,
     eventChestFound: 'EVENT CHEST FOUND',
     luckyDrop: 'LUCKY DROP · STANDARD CHEST',
+    welcomeChest: 'YOUR FIRST CHEST · open it in the Shop',
+    perfectRunFirst: (pay: number): string => `PERFECT RUN · no crash or cut-off · +${pay} % pay`,
     /** The pill over the Daily Shift: the streak, its bonus, and when it breaks. */
     streakPill(streak: number, bonus: number | null, endsIn: number | null): string {
       if (streak <= 0) return S.daily.streakLine(0);
@@ -1169,8 +1172,17 @@ export const S = {
     covered: (amount: string): string => `FULL COVERAGE · ${money(amount)} paid by insurance`,
     nextLevel: (l: number): string => `Tap for level ${l}`,
     retryLevel: (l: number): string => `Tap to try level ${l} again`,
-    stats(combo: string, tightFits: string, busted: number, transporters: number, time: string): string {
-      return `${time} · best combo ${combo} · ${tightFits} tight fits · ${busted} busted` + (transporters > 0 ? ` · ${transporters} paid` : '');
+    /** Only what happened: no "0 busted" in the levels before the first criminal. */
+    stats(combo: number, tightFits: number, busted: number, transporters: number, time: string): string {
+      return [
+        time,
+        combo > 1 ? `best combo ${Fmt.number(combo)}` : null,
+        tightFits > 0 ? `${Fmt.number(tightFits)} tight ${tightFits === 1 ? 'fit' : 'fits'}` : null,
+        busted > 0 ? `${busted} busted` : null,
+        transporters > 0 ? `${transporters} paid` : null,
+      ]
+        .filter((x): x is string => x !== null)
+        .join(' · ');
     },
   },
 

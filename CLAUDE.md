@@ -16,7 +16,6 @@ App-Store-Arbeit mehr vorschlagen.
 | [FOUNDATION.md](FOUNDATION.md) | Regeln mit Startwerten, Motion-Regeln, Architektur |
 | [LOOT.md](LOOT.md) | Was in den Truhen steckt: Skins, Fahrzeugtypen, Odds |
 | [IDEA.md](IDEA.md) | Offene Ideen (Umgesetztes und Gestrichenes wird entfernt) |
-| [multiplayer_perfection_plan.md](multiplayer_perfection_plan.md) | Plan für den Multiplayer |
 
 ## Feste Entscheidungen – nicht neu vorschlagen
 
@@ -66,6 +65,7 @@ cd Web; npm run preview                 # Build lokal ausliefern, Port 5050
 cd Web; npm test                        # Tests: Replays, Spielstände, Meldungen (node:test)
 cd Web; npm run sim -- 60 5             # Balancing-Bots: Schichten, Level
 cd Web; npm run sim:casino              # Casino: Rückzahlquoten, faire Münze, Determinismus
+cd Web; npm run sim:career -- 60        # Ganze Karriere bis Level 60: Spielzeit, Geld, Upgrades
 docker build -t car-game . ; docker run -p 5050:5050 car-game   # Container wie in Coolify
 ```
 

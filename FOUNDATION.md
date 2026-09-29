@@ -420,6 +420,15 @@ und Ausblenden sowie Farbwechsel bleiben, weil sie Information tragen.
 - **Die Render-Liste** besteht aus einfachen Bausteinen: abgerundete Rechtecke,
   Kreise, Bögen, Linien und Texte, jeweils mit Position, Drehung, Farb-Token und
   Deckkraft.
+- **Gebackene Ebenen (29.09.2026, Performance ohne Grafikverlust):** Der Zeichner
+  (`present/draw.ts`) backt, was still steht, einmal in ein Bild und kopiert es, solange
+  Map, Straße, Kamera und Bildschirm gleich bleiben: den Boden samt Textur
+  (`RenderList.markStatic`, in `MapTheme.addGround` die Stelle `still()`), die Alleen und die
+  Straße (`RenderList.bake`). Formen außerhalb des Bildschirms werden nicht gezeichnet.
+  **Regel:** Ein neues Bodendetail, das sich bewegt oder mit der Zeit ändert, gehört hinter
+  `still()`, sonst friert es im Bild ein; eine gebackene Strecke braucht einen Schlüssel,
+  der sich mit ihrem Inhalt ändert. Messen: `maps-preview.html?bench=1`, Pixelvergleich
+  mit `?frames=2`.
 - **Die Plattform enthält keine Spiellogik.**
 - **Game-Loop:** Die Plattform sammelt pro Frame die vergangene Zeit und ruft
   `world.step(1/120)` so oft wie nötig auf. Zwischen zwei Schritten wird

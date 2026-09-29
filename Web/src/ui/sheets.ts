@@ -110,7 +110,12 @@ function switchRow(title: string, sub: string | null, on: boolean, onChange: (on
     sw.setAttribute('aria-checked', String(next));
     onChange(next);
   });
-  return h('div', { class: 'row' }, h('div', { class: 'row-main' }, h('div', { class: 'row-title' }, title), sub ? h('div', { class: 'row-sub' }, sub) : null), sw);
+  const row = h('div', { class: 'row switch-row' }, h('div', { class: 'row-main' }, h('div', { class: 'row-title' }, title), sub ? h('div', { class: 'row-sub' }, sub) : null), sw);
+  // As on iOS the whole row flips the switch, not only the 51 × 31 switch itself.
+  row.addEventListener('click', (e) => {
+    if (e.target !== sw) sw.click();
+  });
+  return row;
 }
 
 export function settingsSheet(layer: HTMLElement, s: Settings, actions: SettingsActions): () => void {

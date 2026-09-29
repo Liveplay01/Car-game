@@ -47,7 +47,7 @@ import { Feedback, Music, type MusicMix, type SoundID, type HapticID } from './f
 import { Details, type Detail } from './detail';
 import { TyreMarks } from './marks';
 import { type ChallengeSpec, challengeOf, challengeConfig, encodeChallenge } from '../core/challenge';
-import { type Trial, trial as trialById, trialConfig, trialPassed, rematchId } from '../core/trials';
+import { type Trial, TRIALS, trial as trialById, trialConfig, trialOpen, trialPassed, rematchId } from '../core/trials';
 
 /**
  * A shift played for itself, outside the career: a friend's challenge link or a mastery
@@ -561,7 +561,14 @@ export class GameSession {
 
   startTrial(id: string): void {
     const t = trialById(id);
-    if (t) this.startSpecial({ k: 'trial', trial: t });
+    if (!t) return;
+    // A mastery trial above the career's level is not played yet (rematches and the Weekly
+    // Elite have their own conditions).
+    if (TRIALS.includes(t) && !trialOpen(t, this.save.career)) {
+      this.showNotice(S.trials.opensAt(t.level));
+      return;
+    }
+    this.startSpecial({ k: 'trial', trial: t });
   }
 
   /** Prestige asks twice: the first tap arms it, a second within a few seconds starts over. */

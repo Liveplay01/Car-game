@@ -383,18 +383,21 @@ export const baseConfig = {
   heavyLoadTankerShare: 0.5,
 
   /** From this level cleared on, the Game tab says the other modes are a swipe away (until the first swipe). */
-  modeHintAfterLevel: 5,
+  modeHintAfterLevel: 6,
   /** Level cleared after which the game asks the browser to keep its storage and suggests installing it (once). */
   installHintAfterLevel: 3,
   /** Level cleared after which an unprotected save suggests an export (once). */
   backupHintAfterLevel: 12,
   // Unlocks (Leo, 29.09.2026, `core/unlocks.ts`): a new player meets the systems one at a time.
+  // Spread out the same day (`npm run sim:career -- 12 --story=20`): five systems came in the
+  // first three minutes; now about one every one to four (Daily ~1 min, modes ~2, Trials ~4,
+  // Casino ~8), after the core is learned. Whoever used one already keeps it.
   /** The Daily Shift (and its streak) from this level on. */
-  dailyUnlockLevel: 3,
-  /** The Trials section in Progress from this level on. */
-  trialsUnlockLevel: 8,
+  dailyUnlockLevel: 4,
+  /** The Trials section in Progress from this level on; each trial opens at its own level. */
+  trialsUnlockLevel: 9,
   /** The Casino in the Shop from this level on; it opens quietly, nothing points there. */
-  casinoUnlockLevel: 10,
+  casinoUnlockLevel: 12,
 
   // Prestige (Leo, 28.09.2026): back to Level 1 with the traffic of a higher level; looks only
   prestigeLevel: 50,
@@ -464,6 +467,11 @@ export const baseConfig = {
   jackpotFactor: 5,
   /** A completed career shift now and then drops a Standard Chest. */
   luckyDropChance: 0.06,
+  /**
+   * The first level cleared gives a Standard Chest (29.09.2026, the first minute): a reward to
+   * hold within a minute instead of three, and maybe a map to play on right away.
+   */
+  welcomeChestLevel: 2,
   /** From this many Daily Shifts in a row, every shift pays `streakBonusPay` more while the streak lives. */
   streakBonusDays: 3,
   streakBonusPay: 0.15,

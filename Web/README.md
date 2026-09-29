@@ -169,7 +169,7 @@ suggests an export.
 
 ## Unlocks and notices
 
-- `core/unlocks.ts`: the Daily Shift opens at Level 3, the Trials at 8, the Casino at 10
+- `core/unlocks.ts`: the Daily Shift opens at Level 4, the Trials at 9 (each trial at its own level), the Casino at 12
   (`*UnlockLevel` in `config.ts`); whoever used one before keeps it. Locked segments stay in
   place, faded, and say when they open. The Casino opens quietly (nothing points there).
 - After Level 5 a pill on the Game tab says "Swipe for more modes" until the first switch.

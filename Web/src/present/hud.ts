@@ -1059,7 +1059,7 @@ export const ResultBanner = {
     else if (summary.mode === 'unlimited') list.s(text(S.modes.carsSent(r.carsSent), sub(island, v(0, 28)), 14, 'center', 'bold'), 'accent', details);
     else if (summary.mode === 'mayhem') list.s(text(S.mayhem.summary(r.wrecks, r.biggestChain), sub(island, v(0, 28)), 14, 'center', 'bold'), 'fireOuter', details);
     if (summary.mode !== 'mayhem') {
-      list.s(text(S.result.stats(Fmt.number(r.bestCombo), Fmt.number(r.tightFits), r.takedowns, r.transporters, Fmt.seconds(r.time)), add(island, v(0, 28)), 13, 'center'), 'muted', details);
+      list.s(text(S.result.stats(r.bestCombo, r.tightFits, r.takedowns, r.transporters, Fmt.seconds(r.time)), add(island, v(0, 28)), 13, 'center'), 'muted', details);
     }
     const close = summary.closeCall;
     if (close) {

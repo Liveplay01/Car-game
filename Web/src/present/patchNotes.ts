@@ -13,6 +13,20 @@ export interface PatchNote {
 
 export const PATCH_NOTES: PatchNote[] = [
   {
+    id: '2026-09-29-smoother',
+    date: '29 September 2026',
+    title: 'Smoother everywhere',
+    items: [
+      'The city now takes up to half the time to draw on every map, so the game runs smoother and saves battery. It looks exactly the same.',
+      'Easier to read: quiet texts and the tab bar have more contrast, also over the bright maps.',
+      'Easier to hit: small buttons and switches react to a bigger area, and a whole settings row flips its switch.',
+      'New players get a chest for their first level cleared, and the first Perfect Run says what it pays.',
+      'Tight Squeeze is fair now: 5 Tight Fits or better in 8 cars, and a clean merge no longer ends the try.',
+      'Trials open one by one at their own level, the easiest first. The Daily Shift, the other modes, the Trials and the Casino now arrive a little later, one at a time. Anything you have already used stays open.',
+      'The result line only lists what happened in the shift, no more "0 busted".',
+    ],
+  },
+  {
     id: '2026-09-29-photo',
     date: '29 September 2026',
     title: 'Say cheese',
