@@ -189,7 +189,7 @@ Ein Typ hat Spielwerte, ein Skin nur Aussehen – **anders, nicht besser**. Jede
 
 ### Wetter (pro Schicht ausgelost)
 
-Chance ab Level 6: +3 % pro Level, höchstens 60 %. Vorher auf dem Wartebildschirm angekündigt.
+Chance ab Level 6: +2 % pro Level, höchstens 40 %. Vorher auf dem Wartebildschirm angekündigt.
 
 | Stufe | ab Level | Wirkung |
 |---|---|---|
@@ -203,7 +203,7 @@ Fair bleibt es: Das Tap-Timing ändert sich nie; Sonderfahrzeuge, Warnungen und 
 
 ### Nacht und Blackout (nur Web)
 
-- **Nacht** ab Level 10: Chance 8 % pro Level ab Level 10, höchstens 50 %. Die Stadt wird dunkel, man fädelt nach den Lichtern der Autos ein.
+- **Nacht** ab Level 10: Chance 3 % pro Level ab Level 10, höchstens 20 %. Die Stadt wird dunkel, man fädelt nach den Lichtern der Autos ein.
 - **Blackout** ab Level 20: 35 % der Nächte, auch die Straßenlaternen sind aus; nur Scheinwerfer und Rücklichter zeigen den Verkehr.
 - **Nur das Bild ändert sich, nicht die Regeln.** Dafür zahlt die Schicht mehr: Nacht ×1,1, Blackout ×1,25 Lohn.
 

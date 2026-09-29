@@ -307,8 +307,8 @@ export const baseConfig = {
   heavyRainLevel: 12,
   stormLevel: 18,
   extremeLevel: 25,
-  badWeatherPerLevel: 0.03,
-  maxBadWeatherChance: 0.6,
+  badWeatherPerLevel: 0.02,
+  maxBadWeatherChance: 0.4,
   weatherGripLoss: 0.15,
   weatherReactionDelay: 0.1,
   weatherBrakeLoss: 0.1,
@@ -318,8 +318,8 @@ export const baseConfig = {
   // Night: the city goes dark, you merge by the lights (only the picture changes, not the rules)
   night: false,
   nightLevel: 10,
-  nightChancePerLevel: 0.08,
-  maxNightChance: 0.5,
+  nightChancePerLevel: 0.03,
+  maxNightChance: 0.2,
   /** Blackout: some nights the street lamps are out too; only headlights and tail lights show. */
   blackout: false,
   blackoutLevel: 20,
