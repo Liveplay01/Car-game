@@ -14,6 +14,7 @@ import { MenuKit } from './menukit';
 import { moneyTag, flameTag, textWidth } from './icons';
 import { S, Fmt, money as moneyText, comboMultiplier } from './strings';
 import { interpolatedPose } from './scene';
+import { wrapText } from './upgrades';
 
 // MARK: Top bar
 
@@ -755,6 +756,26 @@ export interface DailyCard {
   splash: number | null;
 }
 
+/** A condition met for the first time, as the ready screen explains it. */
+export interface ConditionIntro {
+  title: string;
+  /** What changes and what to do, one sentence or two. */
+  text: string;
+  /** A few words, for a screen too short for the sentence. */
+  short: string;
+}
+
+/** The intro card fitted to the room between the top card and the prompt. */
+interface IntroLayout {
+  box: Rect;
+  pad: number;
+  titleSize: number;
+  bodySize: number;
+  lineHeight: number;
+  gap: number;
+  rows: { title: string; lines: string[] }[];
+}
+
 export const ReadyBanner = {
   splashDuration: 2.4,
   add(
@@ -783,6 +804,8 @@ export const ReadyBanner = {
       playerName?: string;
       /** The next goal in reach, under the prompt. */
       goal?: string | null;
+      /** Conditions met for the first time: what they are and what they do. */
+      intro?: ConditionIntro[] | null;
     },
   ): void {
     const width = list.camera.viewport.x;
@@ -827,14 +850,70 @@ export const ReadyBanner = {
       list.s(text(lineText, under, 12, 'center'), !run && o.daily?.endsIn != null ? 'hazard' : 'primary', opacity);
     }
     const island = toScreen(list.camera, v(0, 0));
+    // The card names the new conditions itself, so the line on the island makes way for it.
+    const introBottom = island.y - (run?.line ? 49 : 26);
+    const intro = o.intro && o.intro.length > 0 ? ReadyBanner.introLayout(o.intro, frame, frame.maxY + (pillText ? 43 : 12), introBottom) : null;
+    const conditions = intro ? null : o.conditions;
     if (o.prompt) {
       const breath = o.reduceMotion ? 1 : 0.7 + 0.3 * (0.5 + 0.5 * Math.cos(o.time * 2.4));
       list.s(text(o.prompt, island, 17, 'center', 'bold'), 'primary', breath * opacity);
     }
-    const line = run ? [run.line, o.conditions].filter((x): x is string => !!x).join(' · ') : o.conditions;
+    const line = run ? [run.line, conditions].filter((x): x is string => !!x).join(' · ') : conditions;
     if (line) list.s(text(line, sub(island, v(0, 28)), 14, 'center', 'bold'), run ? run.color : 'hazard', opacity);
     if (o.goal && o.prompt) list.s(text(o.goal, add(island, v(0, 28)), 13, 'center'), 'muted', opacity * (o.reduceMotion ? 1 : Ease.outCubic(o.time / 0.4)));
+    if (intro) ReadyBanner.addIntro(list, intro, o.time, o.reduceMotion, opacity);
     if (o.daily && o.daily.splash !== null) ReadyBanner.addSplash(list, o.daily, o.daily.splash, o.reduceMotion);
+  },
+
+  /** The intro comes a beat after the ready screen, so it reads as news, not as part of the card. */
+  introDelay: 0.35,
+
+  /** Wide enough for two conditions, narrow enough that a line stays easy to read (about 60 characters). */
+  introMaxWidth: 440,
+
+  /**
+   * Fits the intro between `top` and `bottom`: the full sentences if they fit, then tighter,
+   * then only the names with a few words each; null when not even that fits.
+   */
+  introLayout(intro: ConditionIntro[], bar: Rect, top: number, bottom: number): IntroLayout | null {
+    const width = Math.min(R.width(bar), ReadyBanner.introMaxWidth);
+    const left = (bar.minX + bar.maxX - width) / 2;
+    const steps = [
+      { pad: 16, titleSize: 15, bodySize: 13, lineHeight: 18, gap: 12, short: false },
+      { pad: 12, titleSize: 14, bodySize: 12, lineHeight: 16, gap: 8, short: false },
+      { pad: 12, titleSize: 14, bodySize: 12, lineHeight: 16, gap: 8, short: true },
+    ];
+    for (const step of steps) {
+      const rows = intro.map((i) => ({ title: i.title, lines: wrapText(step.short ? i.short : i.text, width - 2 * step.pad, step.bodySize) }));
+      const height = 2 * step.pad + rows.reduce((h, r) => h + step.titleSize + 7 + r.lines.length * step.lineHeight, 0) + step.gap * (rows.length - 1);
+      if (top + height <= bottom) return { ...step, rows, box: R.make(left, top, left + width, top + height) };
+    }
+    return null;
+  },
+
+  /**
+   * A condition met for the first time, under the top card: its name in the colour of the
+   * conditions line, and what changes. It comes a beat after the ready screen and goes when
+   * the shift starts; the Museum keeps the longer story.
+   */
+  addIntro(list: RenderList, l: IntroLayout, time: number, reduceMotion: boolean, opacity: number): void {
+    const age = time - ReadyBanner.introDelay;
+    if (age <= 0) return;
+    const enter = reduceMotion ? Ease.clamp01(age / 0.2) : MenuKit.staggerSpring(age, 0);
+    const rise = reduceMotion ? 0 : MenuKit.cardEnter(enter).rise;
+    const alpha = Ease.clamp01(enter) * opacity;
+    const box = R.offset(l.box, v(0, rise));
+    MenuKit.chromePanel(list, box, TopBar.corner, alpha);
+    let y = box.minY + l.pad;
+    for (const row of l.rows) {
+      list.s(text(row.title, v(box.minX + l.pad, y + l.titleSize / 2), l.titleSize, 'leading', 'bold'), 'hazard', alpha);
+      y += l.titleSize + 7;
+      for (const ln of row.lines) {
+        list.s(text(ln, v(box.minX + l.pad, y + l.lineHeight / 2), l.bodySize, 'leading'), 'primary', alpha);
+        y += l.lineHeight;
+      }
+      y += l.gap;
+    }
   },
 
   addSplash(list: RenderList, daily: DailyCard, age: number, reduceMotion: boolean): void {

@@ -24,7 +24,7 @@ import { MapTheme } from './mapThemes';
 import { Skins } from './skins';
 import { WeatherLayer } from './weather';
 import { NightLayer } from './night';
-import { HUD, TopBar, RingSignals, ModeBanner, ModeHint, ReadyBanner, ResultBanner, type Popup, type PopupKind, type ShiftSummary, type RunCard, POPUP_LIFETIME, settledPops } from './hud';
+import { HUD, TopBar, RingSignals, ModeBanner, ModeHint, ReadyBanner, ResultBanner, type Popup, type PopupKind, type ShiftSummary, type RunCard, type ConditionIntro, POPUP_LIFETIME, settledPops } from './hud';
 import { Tutorial } from './tutorial';
 import { NoticeQueue } from './notices';
 import { bookShift } from './booking';
@@ -36,7 +36,7 @@ import { ShopPage, ShopState, shelfOf, type ShopTarget } from './shop';
 import { CasinoFlow, type CasinoHost } from './casinoFlow';
 import { ProgressPage, ProgressState } from './progress';
 import { MuseumPage, type MuseumTarget } from './museum';
-import { sightings, museumEntry, shelfEntries, museumId } from '../core/museum';
+import { sightings, museumEntry, shelfEntries, museumId, conditionsOf } from '../core/museum';
 import { UpgradePage, UpgradeState } from './upgrades';
 import { StreetBuilderPage, BuilderState, sameBuilt } from './builder';
 import { Feedback, Music, type MusicMix, type SoundID, type HapticID } from './feedback';
@@ -2032,11 +2032,24 @@ export class GameSession {
       drawsCard,
       opacity,
       goal: goal ? S.goals.next(goal) : null,
+      intro: this.versusSelected || (this.tutorial && !this.tutorial.isOver) ? null : this.conditionIntro,
     });
     if (this.modeBanner) {
       const top = TopBar.frame(list.camera.viewport.x).maxY + (daily ? 40 : 14);
       ModeBanner.add(list, this.modeBanner.mode, this.modeBanner.age, top, this.reduceMotion);
     }
+  }
+
+  /**
+   * The waiting shift's conditions this player has never played in. They go into the Museum
+   * when the shift starts (`sightings`), so each is explained once.
+   */
+  private get conditionIntro(): ConditionIntro[] {
+    const c = this.world.config;
+    const seen = this.save.career.museumSeen;
+    return conditionsOf(c)
+      .filter((e) => !seen.includes(museumId(e)))
+      .map((e) => ({ title: S.intro.title(e), text: S.intro.text(e, c), short: S.intro.short(e) }));
   }
 
   /** Hours until midnight while yesterday's streak still waits for today's Daily Shift; else null. */

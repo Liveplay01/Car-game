@@ -20,6 +20,7 @@ const { NoticeQueue } = await load('/src/present/notices.ts');
 const { bookShift } = await load('/src/present/booking.ts');
 const { S } = await load('/src/present/strings.ts');
 const { Unlocks } = await load('/src/core/unlocks.ts');
+const { sightings, shelfEntries, museumId } = await load('/src/core/museum.ts');
 
 // MARK: Rules
 
@@ -253,4 +254,28 @@ test('a long list folds its tail into the last line', () => {
   }
   assert.equal(seen.length, 1 + NoticeQueue.maxWaiting);
   assert.equal(seen[seen.length - 1], '5  ·  6  ·  7');
+});
+
+// MARK: First meetings
+
+test('a condition counts as met once the shift runs, so the ready screen can explain it first', () => {
+  const config = { ...forLevel(baseConfig, 12, 7), cityEvent: 'roadworks', weather: 'lightRain' };
+  const world = new World(config, 7, { startsOnFirstTap: true });
+  for (let i = 0; i < 120; i++) world.step();
+  assert.equal(world.shift.phase, 'waiting');
+  assert.ok(!sightings(world).includes('event.roadworks'));
+  world.tap(world.time);
+  for (let i = 0; i < 120; i++) world.step();
+  assert.ok(sightings(world).includes('event.roadworks'));
+  assert.ok(sightings(world).includes('weather.lightRain'));
+});
+
+test('every condition has a short first-meeting line', () => {
+  for (const e of shelfEntries(2)) {
+    const title = S.intro.title(e);
+    const line = S.intro.text(e, baseConfig);
+    assert.match(title, /^New · \S/, museumId(e));
+    assert.ok(!/undefined|NaN/.test(title + line), `${museumId(e)}: ${line}`);
+    assert.ok(line.length <= 130, `${museumId(e)} is ${line.length} characters: ${line}`);
+  }
 });

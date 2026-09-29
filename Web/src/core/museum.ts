@@ -88,7 +88,23 @@ export function firstLevel(e: MuseumEntry, c: Config): number {
   }
 }
 
-/** What is in front of you right now that the Museum shows: bosses, specials, the sky and the city. */
+/** A condition of a shift: the sky, the dark or a city event (the Museum's third shelf). */
+export type ConditionEntry = Extract<MuseumEntry, { k: 'weather' | 'dark' | 'event' }>;
+
+/** The conditions a shift is played in, in the order the ready screen names them. */
+export function conditionsOf(c: Config): ConditionEntry[] {
+  const out: ConditionEntry[] = [];
+  if (c.night) out.push({ k: 'dark', kind: c.blackout ? 'blackout' : 'night' });
+  if (c.weather !== 'clear') out.push({ k: 'weather', kind: c.weather });
+  if (c.cityEvent) out.push({ k: 'event', kind: c.cityEvent });
+  return out;
+}
+
+/**
+ * What is in front of you right now that the Museum shows: bosses, specials, the sky and the
+ * city. A condition counts once the shift is under way, so the ready screen can still tell a
+ * player who meets it for the first time what it does.
+ */
 export function sightings(w: World): string[] {
   const c = w.config;
   const out = new Set<string>();
@@ -96,9 +112,7 @@ export function sightings(w: World): string[] {
     if (veh.role === 'boss' && c.convoy) out.add(museumId({ k: 'boss', kind: c.bossKind }));
     else if (veh.role === null && veh.type in SPECIAL_LEVEL) out.add(museumId({ k: 'special', kind: veh.type as SpecialKind }));
   }
-  if (c.weather !== 'clear') out.add(museumId({ k: 'weather', kind: c.weather }));
-  if (c.night) out.add(museumId({ k: 'dark', kind: c.blackout ? 'blackout' : 'night' }));
-  if (c.cityEvent) out.add(museumId({ k: 'event', kind: c.cityEvent }));
+  if (w.shift.phase !== 'waiting') for (const e of conditionsOf(c)) out.add(museumId(e));
   return [...out];
 }
 

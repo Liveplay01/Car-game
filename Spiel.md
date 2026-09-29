@@ -187,6 +187,8 @@ Ein Typ hat Spielwerte, ein Skin nur Aussehen – **anders, nicht besser**. Jede
 
 ## 8. Wetter, Nacht & City Events
 
+**Erste Begegnung (Leo, 29.09.2026):** Bringt eine Schicht eine Bedingung, in der der Spieler noch nie gespielt hat, erklärt eine Karte unter der oberen Leiste auf dem Wartebildschirm, was sie ist und was sich ändert („New · Roadworks“ + ein Satz, `INTRO_TEXT` in `present/strings.ts`). Sie kommt einen Moment nach dem Wartebildschirm, blockiert nichts und geht mit dem Start. Erst dann zählt die Bedingung als gesehen (Museum, `sightings`), die Karte erscheint also genau einmal. Ist der Bildschirm zu niedrig, zeigt sie nur den Namen und die Kurzzeile aus dem Museum. Eine neue Bedingung braucht ihren Satz, sonst bricht der Build ab.
+
 ### Wetter (pro Schicht ausgelost)
 
 Chance ab Level 6: +2 % pro Level, höchstens 40 %. Vorher auf dem Wartebildschirm angekündigt.

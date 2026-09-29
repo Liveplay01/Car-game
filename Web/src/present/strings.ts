@@ -9,7 +9,7 @@ import type { NextGoal, NearMiss } from '../core/goals';
 import type { CasinoGame, SlotSymbol } from '../core/casino';
 import type { VehicleType, VehicleRole } from '../core/vehicle';
 import { type Trial, type TrialId, type RunId, type EliteKind, rematchKind } from '../core/trials';
-import type { SpecialKind, WeatherKind, DarkKind, MuseumEntry } from '../core/museum';
+import type { SpecialKind, WeatherKind, DarkKind, MuseumEntry, ConditionEntry } from '../core/museum';
 import type { EliteStep, TitleId, TitleRule } from '../core/elite';
 import { MONEY_MARK } from './icons';
 
@@ -235,6 +235,34 @@ const EVENT_TEXT: Record<CityEvent, MuseumText> = {
       `A police operation: ${percent(c.policeOperationShare)} more of your cars are police cars.`,
       'Criminals are easier to catch, and every police car is one more chance for a takedown. Use them.',
     ],
+  },
+};
+
+/**
+ * What the ready screen says the first time a shift brings a condition: what changes and what
+ * to do about it, in one breath. A new weather, darkness or city event needs its line here.
+ */
+const INTRO_TEXT: {
+  weather: Record<WeatherKind, (c: Config) => string>;
+  dark: Record<DarkKind, (c: Config) => string>;
+  event: Record<CityEvent, (c: Config) => string>;
+} = {
+  weather: {
+    lightRain: (c) => `Wet road: tyres keep ${gripIn('lightRain', c)} of their grip, so crashes slide further. Leave a little more room.`,
+    heavyRain: (c) => `Pouring rain: ${gripIn('heavyRain', c)} grip and more cars on the ring. Wait for gaps that are clearly big enough.`,
+    storm: (c) => `Storm: ${gripIn('storm', c)} grip, and drivers squeeze into small gaps. Merge with care.`,
+    extreme: (c) => `Only ${gripIn('extreme', c)} grip and the heaviest traffic. Patience pays more than speed.`,
+  },
+  dark: {
+    night: (c) => `The city is dark: watch the headlights, not the cars. A night shift pays ${percent(c.nightPayFactor - 1)} more.`,
+    blackout: (c) => `The street lamps are out: only headlights show the cars. A blackout pays ${percent(c.blackoutPayFactor - 1)} more.`,
+  },
+  event: {
+    roadworks: (c) => `Traffic slows to ${percent(c.roadworksSpeedFactor)} on the striped part of the ring. Cars queue behind it, so the gaps change.`,
+    roadClosure: () => 'One arm is closed: no cars come in from it and none can leave there.',
+    concert: (c) => `${c.concertDensityBonus} more cars and new ones twice as often. Take a good gap when it comes.`,
+    vipConvoy: (c) => `Every driver keeps ${percent(c.vipGapFactor - 1)} more distance: wider gaps, a new rhythm.`,
+    policeOperation: (c) => `${percent(c.policeOperationShare)} more of your cars are police: more chances for a takedown.`,
   },
 };
 
@@ -520,6 +548,17 @@ export const S = {
     again: 'Tap for more mayhem',
     summary: (wrecks: number, chain: number): string => `${wrecks} ${wrecks === 1 ? 'wreck' : 'wrecks'} · biggest chain ×${chain}`,
     popup: (flames: number): string => `+${flames}`,
+  },
+
+  /** A condition met for the first time, on the ready screen (`ConditionIntro`). */
+  intro: {
+    title: (e: ConditionEntry): string =>
+      `New · ${e.k === 'dark' ? (e.kind === 'blackout' ? S.blackout : S.night) : e.k === 'weather' ? S.weather(e.kind) : S.cityEvent(e.kind)}`,
+    text: (e: ConditionEntry, c: Config): string =>
+      e.k === 'dark' ? INTRO_TEXT.dark[e.kind](c) : e.k === 'weather' ? INTRO_TEXT.weather[e.kind](c) : INTRO_TEXT.event[e.kind](c),
+
+    /** The Museum's few words, where the sentence has no room. */
+    short: (e: ConditionEntry): string => museumText(e).line,
   },
 
   ready: {
