@@ -5,10 +5,11 @@
  */
 
 /**
- * Built for a game portal (CrazyGames): the game runs inside their page, cannot be installed,
- * and the portal keeps the save.
+ * Opened by CrazyGames: their embed points at the normal address with `?crazygames` added
+ * (`https://…/?crazygames`). Then the game runs inside their page, cannot be installed, and
+ * their SDK keeps the save (`ui/crazygames.ts`). Every other visit is the plain browser game.
  */
-export const inPortal = import.meta.env.MODE === 'crazygames';
+export const inPortal = typeof location !== 'undefined' && new URLSearchParams(location.search).has('crazygames');
 
 /** iPhone or iPad (iPadOS says it is a Mac, but has touch). */
 export const isIos = (): boolean =>

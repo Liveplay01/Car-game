@@ -22,6 +22,17 @@ export type PatchImpact = 'major' | 'minor' | 'fix';
 
 export const PATCH_NOTES: PatchNote[] = [
   {
+    id: '2026-09-30-roundabout-timing',
+    date: '30 September 2026',
+    title: 'Say hello to Roundabout Timing',
+    impact: 'minor',
+    items: [
+      'The game has a proper name now: Roundabout Timing.',
+      'Settings → Legal has the Privacy Policy, the Imprint and the open-source licenses. Short version: no accounts, no tracking, your progress stays on your device.',
+      'Playing on CrazyGames? Log in there and your progress follows you to every device.',
+    ],
+  },
+  {
     id: '2026-09-30-safer',
     date: '30 September 2026',
     title: 'Safer progress, your own soundtrack',

@@ -282,7 +282,7 @@ function museumText(e: MuseumEntry): MuseumText {
 }
 
 export const S = {
-  gameTitle: 'Car Game',
+  gameTitle: 'Roundabout Timing',
 
   tutorial: {
     sendCar: 'Tap to send your first car',
@@ -332,7 +332,7 @@ export const S = {
     rewardCaption: 'REWARD',
     brokenLink: 'That challenge link is broken or cut short.',
     copied: 'Challenge link copied',
-    pictureText: 'My shift in Car Game',
+    pictureText: 'My shift in Roundabout Timing',
     pictureSaved: 'Picture saved',
     pictureCopied: 'Picture copied',
     shareText: (target: string): string => `Can you beat ${target} on my roundabout?`,

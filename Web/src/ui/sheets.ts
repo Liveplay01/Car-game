@@ -2,6 +2,8 @@ import { h, icon } from './dom';
 import { ICONS } from './icons';
 import type { Settings, SaveGame } from '../core/career';
 import type { PatchNote, PatchImpact } from '../present/patchNotes';
+import { LEGAL_DOCS, type LegalDoc, type LegalId } from '../present/legal';
+import type { License } from '../present/licenses';
 import { parseImport } from '../storage/save';
 import { inPortal, isInstalled, isIos } from '../storage/device';
 
@@ -106,11 +108,50 @@ export function patchNotesSheet(layer: HTMLElement, notes: PatchNote[], onClose:
   return openSheet(layer, "What's new", body, onClose);
 }
 
+/** Privacy Policy or Imprint, as plain reading text. Links leave the game in a new tab. */
+export function legalSheet(layer: HTMLElement, doc: LegalDoc, onClose: () => void): () => void {
+  const body = h(
+    'div',
+    { class: 'legal' },
+    ...doc.sections.flatMap((section) => [
+      section.heading ? h('h3', {}, section.heading) : null,
+      ...(section.paragraphs ?? []).map((p) => h('p', {}, p)),
+      section.list ? h('ul', {}, ...section.list.map((item) => h('li', {}, item))) : null,
+      ...(section.after ?? []).map((p) => h('p', {}, p)),
+      section.link ? h('p', {}, h('a', { href: section.link[1], target: '_blank', rel: 'noopener noreferrer' }, section.link[0])) : null,
+    ]),
+  );
+  return openSheet(layer, doc.title, body, onClose);
+}
+
+/** The open-source code in the game, each with its license text. */
+export function licensesSheet(layer: HTMLElement, licenses: License[], onClose: () => void): () => void {
+  const body = h(
+    'div',
+    { class: 'legal' },
+    h('p', {}, 'Roundabout Timing uses this open-source software. Thank you to its authors.'),
+    ...licenses.flatMap((l) => [h('h3', {}, `${l.name} · ${l.license}`), h('pre', {}, l.text)]),
+  );
+  return openSheet(layer, 'Licenses', body, onClose);
+}
+
+/** A row that opens a page, the whole row tappable. */
+function linkRow(title: string, sub: string, onOpen: () => void): HTMLElement {
+  return h(
+    'button',
+    { class: 'row row-link', type: 'button', onclick: onOpen },
+    h('div', { class: 'row-main' }, h('div', { class: 'row-title' }, title), h('div', { class: 'row-sub' }, sub)),
+    icon(ICONS.chevronRight),
+  );
+}
+
 export interface SettingsActions {
   changed(settings: Settings): void;
   /** The patch notes; `notesUnread` lights the row until they are opened. */
   openNotes(): void;
   notesUnread: boolean;
+  /** Privacy Policy, Imprint or the open-source licenses, over the settings. */
+  openLegal(page: LegalId | 'licenses'): void;
   reset(): void;
   /** The save as file text, for Export progress. */
   exportText(): string;
@@ -257,9 +298,22 @@ export function settingsSheet(layer: HTMLElement, s: Settings, actions: Settings
         h('button', { class: 'btn', type: 'button', onclick: () => actions.openNotes() }, 'Open'),
       ),
     ),
-    h('p', { class: 'section-note', style: 'margin:0 4px 8px' }, 'Your progress is saved on this device. To move it, export it here and import the file on the other device.'),
+    h(
+      'p',
+      { class: 'section-note', style: 'margin:0 4px 8px' },
+      inPortal
+        ? 'Log in to CrazyGames to keep your progress on every device. You can also export it here as a file.'
+        : 'Your progress is saved on this device. To move it, export it here and import the file on the other device.',
+    ),
     progressList,
     resetBtn,
+    h('p', { class: 'section-note', style: 'margin:24px 4px 8px' }, 'Legal'),
+    h(
+      'div',
+      { class: 'list', style: 'margin-bottom:8px' },
+      ...LEGAL_DOCS.map((doc) => linkRow(doc.title, doc.sub, () => actions.openLegal(doc.id))),
+      linkRow('Licenses', 'Open-source software in the game.', () => actions.openLegal('licenses')),
+    ),
   );
   const close = openSheet(layer, 'Settings', body, () => actions.closed());
   return close;
@@ -271,13 +325,13 @@ function progressRows(actions: SettingsActions, closeSheet: () => void): HTMLEle
   const exportBtn = h('button', { class: 'btn', type: 'button' }, 'Export');
   exportBtn.addEventListener('click', () => {
     const day = new Date().toISOString().slice(0, 10);
-    const name = `car-game-save-${day}.json`;
+    const name = `roundabout-timing-save-${day}.json`;
     const text = actions.exportText();
     const file = new File([text], name, { type: 'application/json' });
     // On a phone the share sheet (AirDrop, messages, Files) is the natural way to hand it over.
     const touch = window.matchMedia('(pointer: coarse)').matches;
     if (touch && typeof navigator.canShare === 'function' && navigator.canShare({ files: [file] })) {
-      navigator.share({ files: [file], title: 'Car Game progress' }).catch(() => {
+      navigator.share({ files: [file], title: 'Roundabout Timing progress' }).catch(() => {
         /* cancelled */
       });
       return;
@@ -317,7 +371,7 @@ function progressRows(actions: SettingsActions, closeSheet: () => void): HTMLEle
       .text()
       .then((text) => {
         const save = parseImport(text);
-        showPending(save, save ? null : 'That file is not a Car Game save.');
+        showPending(save, save ? null : 'That file is not a Roundabout Timing save.');
       })
       .catch(() => showPending(null, 'That file could not be read.'));
   });

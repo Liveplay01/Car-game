@@ -2,6 +2,7 @@ import { defineConfig, type Plugin } from 'vite';
 import { createHash } from 'node:crypto';
 import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { LEGAL_DOCS, type LegalDoc, GAME_NAME, missingLegal } from './src/present/legal.ts';
 
 /** The sound effects and music stems, so the game sounds right offline too. */
 function audioFiles(): string[] {
@@ -17,11 +18,11 @@ function audioFiles(): string[] {
   return out.sort();
 }
 
-/** The Content-Security-Policy from `nginx.conf`, so `npm run preview` runs under the same rules. */
+/** The default Content-Security-Policy from `nginx.conf`, so `npm run preview` runs under the same rules. */
 function contentSecurityPolicy(): Record<string, string> {
   try {
     const conf = readFileSync(join(process.cwd(), 'nginx.conf'), 'utf8');
-    const policy = /add_header Content-Security-Policy "([^"]+)"/.exec(conf)?.[1];
+    const policy = /map \$args \$csp \{\s*default "([^"]+)"/.exec(conf)?.[1];
     return policy ? { 'Content-Security-Policy': policy } : {};
   } catch {
     return {};
@@ -82,10 +83,12 @@ self.addEventListener('fetch', (event) => {
   const url = new URL(request.url);
   if (url.origin !== self.location.origin) return;
   // Navigations: network first so a new deploy shows up, the cached shell when offline or
-  // when the network hangs (a weak signal) for more than NAV_TIMEOUT. Only a good page is kept.
+  // when the network hangs (a weak signal) for more than NAV_TIMEOUT. Only a good game page is
+  // kept as the shell; a legal page offline comes from the precache.
   if (request.mode === 'navigate') {
+    const shell = url.pathname === '/' || url.pathname === '/index.html';
     const network = fetch(request).then((response) => {
-      if (response.ok) {
+      if (response.ok && shell) {
         const copy = response.clone();
         caches.open(CACHE).then((cache) => cache.put('/index.html', copy));
       }
@@ -95,7 +98,7 @@ self.addEventListener('fetch', (event) => {
       const slow = new Promise((resolve) => setTimeout(resolve, NAV_TIMEOUT, null));
       const first = await Promise.race([network.catch(() => null), slow]);
       if (first && first.ok) return first;
-      const cached = await caches.match('/index.html');
+      const cached = (shell ? null : await caches.match(request, { ignoreSearch: true })) || (await caches.match('/index.html'));
       return cached || first || network;
     })());
     return;
@@ -116,29 +119,74 @@ self.addEventListener('fetch', (event) => {
   };
 }
 
-/**
- * The CrazyGames build: their SDK loads before the game (it keeps the save, `ui/crazygames.ts`),
- * and the page drops what only an installable game needs.
- */
-function crazyGamesPage(): Plugin {
+const escapeHtml = (text: string): string =>
+  text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+
+/** One legal page as plain HTML, readable without the game (and without JavaScript). */
+function legalPage(doc: LegalDoc): string {
+  const e = escapeHtml;
+  const body = doc.sections
+    .map((section) =>
+      [
+        section.heading ? `<h2>${e(section.heading)}</h2>` : '',
+        ...(section.paragraphs ?? []).map((p) => `<p>${e(p)}</p>`),
+        section.list ? `<ul>${section.list.map((item) => `<li>${e(item)}</li>`).join('')}</ul>` : '',
+        ...(section.after ?? []).map((p) => `<p>${e(p)}</p>`),
+        section.link ? `<p><a href="${e(section.link[1])}" rel="noopener noreferrer">${e(section.link[0])}</a></p>` : '',
+      ].join(''),
+    )
+    .join('\n');
+  const others = LEGAL_DOCS.filter((d) => d.id !== doc.id).map((d) => `<a href="/${d.id}.html">${e(d.title)}</a>`);
+  return `<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>${e(doc.title)} · ${e(GAME_NAME)}</title>
+<meta name="color-scheme" content="dark" />
+<link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32.png" />
+<style>
+  :root { --bg: #0b0d10; --primary: #f4f6f9; --muted: #99a2af; --accent: #9ee6cf; --separator: rgba(255, 255, 255, 0.08); }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--primary); font: 16px/1.6 -apple-system, BlinkMacSystemFont, system-ui, 'Segoe UI', Roboto, sans-serif; }
+  main { max-width: 680px; margin: 0 auto; padding: 48px 16px 64px; }
+  h1 { margin: 0 0 24px; font-size: 36px; line-height: 1.2; }
+  h2 { margin: 32px 0 8px; font-size: 20px; line-height: 1.3; }
+  p, ul { margin: 0 0 12px; color: var(--muted); }
+  ul { padding-left: 20px; }
+  li + li { margin-top: 8px; }
+  a { color: var(--accent); }
+  nav { display: flex; flex-wrap: wrap; gap: 16px; margin-top: 48px; padding-top: 24px; border-top: 1px solid var(--separator); font-size: 14px; }
+</style>
+</head>
+<body>
+<main>
+<h1>${e(doc.title)}</h1>
+${body}
+<nav><a href="/">Play ${e(GAME_NAME)}</a>${others.join('')}</nav>
+</main>
+</body>
+</html>
+`;
+}
+
+/** Writes `/privacy.html` and `/imprint.html` from `src/present/legal.ts`, the same text the game shows. */
+function legalPages(): Plugin {
   return {
-    name: 'car-game-crazygames',
-    transformIndexHtml: {
-      order: 'pre',
-      handler: (html) =>
-        html
-          .replace(/\s*<link rel="manifest"[^>]*>/, '')
-          .replace('</title>', '</title>\n    <script src="https://sdk.crazygames.com/crazygames-sdk-v3.js"></script>'),
+    name: 'car-game-legal-pages',
+    apply: 'build',
+    generateBundle() {
+      const missing = missingLegal();
+      if (missing.length) this.warn(`Legal pages: fill in ${missing.join(', ')} in src/present/legal.ts`);
+      for (const doc of LEGAL_DOCS) this.emitFile({ type: 'asset', fileName: `${doc.id}.html`, source: legalPage(doc) });
     },
   };
 }
 
-export default defineConfig(({ mode }) => ({
-  // A portal serves the game from its own sub-folder: relative paths, no service worker.
-  ...(mode === 'crazygames' ? { base: './' } : {}),
-  plugins: mode === 'crazygames' ? [crazyGamesPage()] : [serviceWorker()],
+export default defineConfig({
+  // The legal pages first: the service worker precaches everything the bundle holds by then.
+  plugins: [legalPages(), serviceWorker()],
   build: {
-    outDir: mode === 'crazygames' ? 'dist-crazygames' : 'dist',
     target: 'es2022',
     assetsInlineLimit: 0,
     sourcemap: false,
@@ -158,4 +206,4 @@ export default defineConfig(({ mode }) => ({
     strictPort: true,
     headers: contentSecurityPolicy(),
   },
-}));
+});

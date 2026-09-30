@@ -183,7 +183,7 @@ export class PhotoView {
     if (withFile) {
       const url = this.hooks.link();
       try {
-        await navigator.share({ files: [file], title: 'Car Game', text: `${card.hook} ${S.run.pictureText}`, ...(url ? { url } : {}) });
+        await navigator.share({ files: [file], title: S.gameTitle, text: `${card.hook} ${S.run.pictureText}`, ...(url ? { url } : {}) });
       } catch {
         /* cancelled */
       }
@@ -439,7 +439,7 @@ function caption(g: CanvasRenderingContext2D, card: PhotoCard, logo: HTMLImageEl
   }
   g.font = fontFor(32, true);
   g.fillStyle = css('photoInk');
-  g.fillText('Car Game', right - (logo ? icon + 20 : 0), top + 82);
+  g.fillText(S.gameTitle, right - (logo ? icon + 20 : 0), top + 82, 380);
   g.font = fontFor(22, false);
   g.fillStyle = css('photoInkMuted');
   g.fillText(location.host, right - (logo ? icon + 20 : 0), top + 114, 380);

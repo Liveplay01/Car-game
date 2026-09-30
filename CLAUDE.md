@@ -62,7 +62,6 @@ cd Web; npm install                     # einmalig
 cd Web; npm run dev                     # Entwickeln: http://localhost:5050 (auch vom Handy im WLAN)
 cd Web; npm run build                   # Typecheck + Build nach Web/dist
 cd Web; npm run preview                 # Build lokal ausliefern, Port 5050
-cd Web; npm run build:crazygames        # CrazyGames-Build nach Web/dist-crazygames (SDK, Data Module)
 cd Web; npm test                        # Tests: Replays, Spielstände, Meldungen (node:test)
 cd Web; npm run sim -- 60 5             # Balancing-Bots: Schichten, Level
 cd Web; npm run sim:casino              # Casino: Rückzahlquoten, faire Münze, Determinismus
@@ -89,6 +88,9 @@ docker build -t car-game . ; docker run -p 5050:5050 car-game   # Container wie 
   am Einstellungsknopf. Jeder Eintrag hat ein `impact`: `major` (rot, ändert Regeln, Level oder
   Belohnungen spürbar), `minor` (gelb, neu oder poliert, ohne das Spiel zu ändern), `fix`
   (grün, nur Fehlerbehebungen). Die Liste zeigt den neuesten aufgeklappt, die anderen zu.
+- **Name (Leo, 30.09.2026):** Das Spiel heißt **Roundabout Timing** (kurz RAT); „Car Game“ ist nur noch der Ordner- und Repo-Name.
+- **CrazyGames (Leo, 30.09.2026):** Eingebettet über die normale URL mit `?crazygames`, kein eigener Build, kein Upload. Nur dann lädt das SDK und speichert über das Data Module (Web/README.md, CrazyGames).
+- **Rechtliches:** Datenschutz und Impressum in `Web/src/present/legal.ts` (Settings → Legal, `/privacy`, `/imprint`). Neuer Dienst, der Daten bekommt (Werbung, Analyse, Server) = Absatz dort und neues `LEGAL_UPDATED`.
 - Vor jedem Commit: `npm test` und `npm run build` müssen grün sein.
 - Das Icon-Original liegt in `Web/icon/` (`python Web/icon/make_icon.py`).
 - Die Casino-Klänge entstehen in `Web/audio-src/make_casino_sounds.py` (numpy, scipy, ffmpeg)

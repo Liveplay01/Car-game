@@ -16,7 +16,6 @@ npm install
 npm run dev        # http://localhost:5050, also reachable from a phone on the same network
 npm run build      # type-check + production build into dist/
 npm run preview    # serve dist/ on port 5050 (with the service worker)
-npm run build:crazygames  # CrazyGames build into dist-crazygames/: zip its contents and upload
 npm run sim        # balancing bots: node scripts/sim.mjs [shifts] [level]
 npm run sim:versus # multiplayer bots (the lobby bots): never out for a crash, same seed = same match
 npm run sim:casino # casino fairness: every game returns what its odds sheet says, the coin is fair
@@ -228,11 +227,23 @@ HTTPS matters: the service worker (offline play, install prompt) only works on
 
 ## CrazyGames
 
-`npm run build:crazygames` builds the portal version into `dist-crazygames/`: relative paths,
-no service worker, no manifest, and the CrazyGames SDK v3 in the page. The save goes through
-the SDK's Data Module (`ui/crazygames.ts` switches `storage/store.ts` before the save is read):
-in the cloud for a logged-in player, in the browser for a guest. A save already in this
-browser's `localStorage` is copied over once. Without the SDK (ad blocker, another domain) the
-game saves in `localStorage` as usual. Install and export hints are off there. In the submission
-form, Progress Save must be "Yes, using the Data Module", or the SDK disables it.
-The normal build (`npm run build`) is unchanged and never loads the SDK.
+CrazyGames embeds the normal address with `?crazygames` added: `https://<domain>/?crazygames`.
+Only that address loads the CrazyGames SDK v3 (`src/ui/crazygames.ts`), and only for it nginx
+sends a Content-Security-Policy that allows their domains (`map $args $csp` in `nginx.conf`).
+There the save goes through the SDK's Data Module (`storage/store.ts` is switched before the save
+is read): in the cloud for a logged-in player, in the browser for a guest; a save already in
+that browser is copied over once. The SDK also hears `loadingStop` and `gameplayStart/Stop`.
+No service worker, no install or export hints there. Without the SDK (ad blocker, 6 s timeout)
+the game saves in `localStorage` as usual. Every other visit is the plain browser game.
+In the submission form, Progress Save must be "Yes, using the Data Module".
+Test locally: `npm run build`, serve `dist/` without the CSP and open `/?crazygames`
+(on localhost the SDK runs in its `local` mode).
+
+## Legal pages
+
+Privacy Policy and Imprint live in `src/present/legal.ts`: the game shows them under
+Settings → Legal, and the build writes them as `/privacy.html` and `/imprint.html` (nginx also
+answers `/privacy` and `/imprint`), for forms that ask for a link. The build warns while
+`OPERATOR` or `HOSTING` is empty. A new service the game talks to (ads, analytics, another
+server) needs a paragraph there and a new `LEGAL_UPDATED`. Licenses of the bundled open-source
+code come straight from `node_modules` (`src/present/licenses.ts`).

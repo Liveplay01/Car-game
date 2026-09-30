@@ -1,6 +1,6 @@
 {
-  "name": "Car Game – Roundabout Timing",
-  "short_name": "Car Game",
+  "name": "Roundabout Timing",
+  "short_name": "Roundabout",
   "description": "Send your cars into the gaps of a spinning roundabout. One tap, perfect timing.",
   "id": "/",
   "start_url": "/",

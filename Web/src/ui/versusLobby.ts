@@ -6,6 +6,7 @@ import { VersusMatch, type MatchFeel } from '../present/versus';
 import type { SessionOutput } from '../present/session';
 import { VERSUS_MAX_PLAYERS, VERSUS_MIN_PLAYERS, BEST_OF, isJoinCode, isSeriesOver, newSeries, type BestOf, type Series } from '../core/versus';
 import { loadPlayerName, savePlayerName, seatToken } from '../storage/profile';
+import { S } from '../present/strings';
 
 const ERROR_TEXT: Record<RoomError, string> = {
   noGame: 'No game with this code. Check the digits with your friend.',
@@ -462,7 +463,7 @@ export class VersusLobby {
     const touch = window.matchMedia('(pointer: coarse)').matches;
     if (touch && typeof navigator.share === 'function') {
       try {
-        await navigator.share({ title: 'Car Game', text: `Join my roundabout: code ${code}`, url });
+        await navigator.share({ title: S.gameTitle, text: `Join my roundabout: code ${code}`, url });
       } catch {
         /* cancelled */
       }

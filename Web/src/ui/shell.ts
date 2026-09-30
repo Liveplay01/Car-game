@@ -6,10 +6,12 @@ import { TAB_BAR, barTab, screenTab, showsTabBar, type Tab } from '../present/fl
 import { AudioPlayer, Haptics } from '../audio/player';
 import { h, icon } from './dom';
 import { ICONS } from './icons';
-import { settingsSheet, patchNotesSheet, isSheetOpen, closeAnySheet } from './sheets';
+import { settingsSheet, patchNotesSheet, legalSheet, licensesSheet, isSheetOpen, closeAnySheet } from './sheets';
+import { legalDoc } from '../present/legal';
 import { PATCH_NOTES } from '../present/patchNotes';
 import { PhotoView } from './photo';
 import { exportSave } from '../storage/save';
+import { reportGameplay } from './crazygames';
 import { inPortal, isInstalled, isIos, isStorageKept, keepStorage, renewStorage } from '../storage/device';
 import type { Hint } from '../core/career';
 import { decodeChallenge, type ChallengeSpec } from '../core/challenge';
@@ -54,8 +56,11 @@ export class Shell {
   private readonly shareBtn: HTMLButtonElement;
   private readonly photoBtn: HTMLButtonElement;
   private readonly photo: PhotoView;
-  /** The patch notes are open over the settings: closing the settings sheet is not leaving them. */
-  private notesOpen = false;
+  /**
+   * A page opened from the settings (patch notes, a legal page) is showing: closing the
+   * settings sheet for it is not leaving the settings.
+   */
+  private pageOpen = false;
   /** Adaptive resolution: the device pixel ratio in use, and how the frames have been going. */
   private dprCap = 2;
   private frameAvg = 1 / 60;
@@ -270,6 +275,7 @@ export class Shell {
     const key = `${screen.k}|${selected}|${JSON.stringify(badges)}|${s.world.shift.phase}|${s.special?.k ?? ''}|${s.shareable ? 1 : 0}|${match ? 1 : 0}|${versusKey}|${s.save.settings.leftHanded}|${s.notesUnread}`;
     if (!force && key === this.chromeKey) return;
     this.chromeKey = key;
+    reportGameplay(screen.k === 'playing' && !document.hidden);
     this.app.dataset.versus = match ? 'on' : 'off';
     this.app.dataset.hand = s.save.settings.leftHanded ? 'left' : 'right';
     this.settingsBtn.classList.toggle('has-news', s.notesUnread);
@@ -332,7 +338,7 @@ export class Shell {
     const touch = window.matchMedia('(pointer: coarse)').matches;
     if (touch && typeof navigator.share === 'function') {
       try {
-        await navigator.share({ title: 'Car Game', text, url });
+        await navigator.share({ title: S.gameTitle, text, url });
       } catch {
         /* cancelled */
       }
@@ -458,6 +464,12 @@ export class Shell {
     }
   }
 
+  /** A page over the settings closed: the settings come back (`syncChrome` reopens them). */
+  private pageClosed(): void {
+    this.pageOpen = false;
+    this.syncChrome(true);
+  }
+
   private showSettingsSheet(): void {
     const s = this.session;
     this.closeSettings = settingsSheet(this.layers, s.save.settings, {
@@ -468,12 +480,20 @@ export class Shell {
       notesUnread: s.notesUnread,
       // The notes open over the settings; closing them brings the settings back.
       openNotes: () => {
-        this.notesOpen = true;
+        this.pageOpen = true;
         s.markNotesRead();
-        patchNotesSheet(this.layers, PATCH_NOTES, () => {
-          this.notesOpen = false;
-          this.syncChrome(true);
-        });
+        patchNotesSheet(this.layers, PATCH_NOTES, () => this.pageClosed());
+      },
+      // The same for the legal pages; the licenses load only when asked for.
+      openLegal: (page) => {
+        this.pageOpen = true;
+        if (page !== 'licenses') {
+          legalSheet(this.layers, legalDoc(page), () => this.pageClosed());
+          return;
+        }
+        import('../present/licenses')
+          .then(({ LICENSES }) => licensesSheet(this.layers, LICENSES, () => this.pageClosed()))
+          .catch(() => this.pageClosed());
       },
       reset: () => s.resetProgress(),
       exportText: () => exportSave(s.save),
@@ -486,7 +506,7 @@ export class Shell {
         : null,
       closed: () => {
         this.closeSettings = null;
-        if (!this.notesOpen) s.perform({ k: 'closeSettings' });
+        if (!this.pageOpen) s.perform({ k: 'closeSettings' });
       },
     });
   }
@@ -600,7 +620,11 @@ export class Shell {
       this.audio.setSuspended(false);
       this.last = performance.now();
     };
-    document.addEventListener('visibilitychange', () => (document.hidden ? away() : back()));
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) away();
+      else back();
+      reportGameplay(this.session.screen.k === 'playing' && !document.hidden);
+    });
     window.addEventListener('blur', () => {
       if (this.session.screen.k === 'playing') this.push({ k: 'focusLost' });
     });
