@@ -6,18 +6,19 @@ import { TAB_BAR, barTab, screenTab, showsTabBar, type Tab } from '../present/fl
 import { AudioPlayer, Haptics } from '../audio/player';
 import { h, icon } from './dom';
 import { ICONS } from './icons';
-import { settingsSheet, patchNotesSheet, legalSheet, licensesSheet, isSheetOpen, closeAnySheet } from './sheets';
+import { settingsSheet, patchNotesSheet, legalSheet, licensesSheet, installDialog, isSheetOpen, closeAnySheet } from './sheets';
 import { legalDoc } from '../present/legal';
 import { PATCH_NOTES } from '../present/patchNotes';
 import { PhotoView } from './photo';
 import { exportSave } from '../storage/save';
 import { reportGameplay } from './crazygames';
-import { inPortal, isInstalled, isIos, isStorageKept, keepStorage, renewStorage } from '../storage/device';
+import { inPortal, isInstalled, isIos, isIpad, isStorageKept, keepStorage, renewStorage } from '../storage/device';
 import type { Hint } from '../core/career';
 import { decodeChallenge, type ChallengeSpec } from '../core/challenge';
 import { S, Fmt } from '../present/strings';
 import { DetailSheet } from './detailSheet';
 import { VersusLobby } from './versusLobby';
+import { leaderboardSheet } from './leaderboardSheet';
 import { REACTION_EMOJI } from '../present/versus';
 import { REACTIONS } from '../net/room';
 import { LiveRegion } from './liveRegion';
@@ -36,6 +37,29 @@ const PHOTO_SCENE = v(492, 492);
 const keycap = (label: string): HTMLElement => h('kbd', { class: 'keycap', 'aria-hidden': 'true' }, label);
 const TAB_LABEL: Record<Tab, string> = { progress: 'Progress', game: 'Game', shop: 'Shop', upgrades: 'Build', streetBuilder: 'Build' };
 const TAB_ICON: Record<Tab, string> = { progress: ICONS.progress, game: ICONS.game, shop: ICONS.shop, upgrades: ICONS.build, streetBuilder: ICONS.build };
+
+/** Runs `then` once the pointer that is down now is lifted (or cancelled). */
+function afterRelease(then: () => void): void {
+  const done = (): void => {
+    window.removeEventListener('pointerup', done, true);
+    window.removeEventListener('pointercancel', done, true);
+    then();
+  };
+  window.addEventListener('pointerup', done, true);
+  window.addEventListener('pointercancel', done, true);
+}
+
+/** Drops the click a tap produces after its pointerup (a moment later on touch). */
+function swallowNextClick(): void {
+  const swallow = (e: Event): void => {
+    e.stopPropagation();
+    e.preventDefault();
+    stop();
+  };
+  const stop = (): void => window.removeEventListener('click', swallow, true);
+  window.addEventListener('click', swallow, true);
+  window.setTimeout(stop, 400);
+}
 
 /**
  * The browser shell: one canvas that draws the whole game (scene, HUD and pages), and a thin DOM layer for what should feel native — the tab bar, the settings
@@ -159,6 +183,18 @@ export class Shell {
     // The last page of the mode swipe: a tap there opens the lobby.
     this.session.onVersus = () => {
       if (!isSheetOpen()) this.versus.open();
+    };
+    // Progress → the rank chip: the leaderboards. The chip reacts on the press, the sheet opens
+    // when the finger lifts, and the click that follows is swallowed: otherwise it lands on the
+    // scrim that just appeared under the finger and closes the sheet again.
+    this.session.onLeaderboard = () => {
+      const open = (): void => {
+        if (isSheetOpen()) return;
+        swallowNextClick();
+        leaderboardSheet(this.layers, { records: () => this.session.leaderboardRecords, closed: () => this.syncChrome(true) });
+      };
+      if (this.pointerId === null) open();
+      else afterRelease(open);
     };
     const runBar = h('div', { class: 'run-bar' }, this.photoBtn, this.shareBtn, this.leaveBtn);
     // After a match: Ready (everyone taps it, then the next round starts), and for the host a
@@ -455,7 +491,8 @@ export class Shell {
     if (hint === 'install') {
       const kept = await keepStorage();
       if (installed || inPortal) return;
-      if (isIos()) this.session.announce(S.hints.installIos);
+      // iPhone and iPad: the tip takes the screen until it is confirmed (Safari clears the save after a week).
+      if (isIos()) installDialog(this.layers, isIpad(), () => undefined);
       else if (this.installPrompt) this.session.announce(S.hints.install);
       // Nothing to install here (Firefox): an export is the way to keep a copy.
       else if (!kept) this.session.announce(S.hints.backup);

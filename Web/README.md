@@ -155,6 +155,21 @@ wins. Every value below is in `core/config.ts` (`versus…`).
   `core/traffic.ts`, the match in `present/versus.ts`, the room in `net/room.ts`, the sheet
   in `ui/versusLobby.ts`, the name in `storage/profile.ts`.
 
+## Leaderboard
+
+Progress → **Ranks** (the chip beside the balance; it shows the Shift level rank once known) opens
+`ui/leaderboardSheet.ts`: two boards, Shift level and Unlimited, the top 50 and your own place.
+There is no sign-up: the player enters a name, and the records come from this device's save. The
+service (`../Server/`) answers with a secret token kept in `carGame.account.v1`; the name is the
+multiplayer name too (`carGame.player.v1`), and renaming in either place renames both (the
+leaderboard may refuse a name: then both keep the old one).
+
+- `net/leaderboard.ts`: the client. `syncScores` runs on every save (`GameSession.persist`) and
+  sends only a record better than the one the service confirmed this session; offline or failed
+  sends wait a minute. Without `VITE_API_URL` in the build everything here is off.
+- The service's address must be in `connect-src` in `nginx.conf` (both CSP lines).
+- Privacy: `present/legal.ts`, section Leaderboard.
+
 ## Saving
 
 Everything is stored in `localStorage` under `carGame.save.v2`, on this device only (an

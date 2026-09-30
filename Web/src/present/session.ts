@@ -17,6 +17,7 @@ import { Scoring } from '../core/scoring';
 import { type Vec2, v, add } from '../core/vec2';
 import { loadSave, writeSave } from '../storage/save';
 import { loadPlayerName } from '../storage/profile';
+import { syncScores, type Records } from '../net/leaderboard';
 import { RenderList, R, Ease, toScreen, rect, type Camera } from './render';
 import { S, Fmt, money as moneyText } from './strings';
 import { CrashEffects } from './effects';
@@ -189,6 +190,8 @@ export class GameSession {
   versusSelected = false;
   /** Opens the multiplayer lobby (the shell's sheet). */
   onVersus: (() => void) | null = null;
+  /** Opens the leaderboards (the shell's sheet): the rank chip on Progress. */
+  onLeaderboard: (() => void) | null = null;
   playingMode: GameMode = 'shift';
   private shownFlames = 0;
   private sinceFlames = Infinity;
@@ -261,12 +264,20 @@ export class GameSession {
     return this.pan.isTracking || this.builderPage.dragging !== null;
   }
 
+  /** The records the leaderboards rank (`net/leaderboard.ts`). */
+  get leaderboardRecords(): Records {
+    const { save } = this;
+    return { level: save.career.level, prestige: save.career.prestige, unlimitedBest: save.unlimitedBest, unlimitedCars: save.unlimitedBestCars };
+  }
+
   get visibleUpgrades(): readonly Upgrade[] {
     return Careers.availableUpgrades(this.save.career, this.config);
   }
 
   private persist(): void {
     this.store();
+    // A better level or Unlimited record goes to the leaderboard; nothing happens without a name.
+    void syncScores(this.leaderboardRecords);
     this.onChrome?.();
   }
 
@@ -1369,6 +1380,11 @@ export class GameSession {
       return { k: 'perform', action: { k: 'showProgress', section: 0 } };
     }
     if (this.isPage('progress')) {
+      if (ProgressPage.rankChipAt(point, this.lastViewport, this.save.career.money)) {
+        this.tick();
+        this.onLeaderboard?.();
+        return true;
+      }
       const section: ProgressSection | null = ProgressPage.sectionAt(point, this.lastViewport, this.tabInset);
       if (section === 2 && !Unlocks.isOpen(this.save.career, 'trials', this.config)) {
         this.showNotice(S.unlocks.opensAt(S.progress.section(2), Unlocks.level('trials', this.config)));

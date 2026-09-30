@@ -1739,3 +1739,323 @@ button {
 .switch-row {
   cursor: pointer;
 }
+
+/* MARK: Home Screen tip (iPhone, iPad): takes the screen until confirmed */
+
+.install-root {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-toast);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: calc(var(--safe-top) + var(--s5)) var(--s4) calc(var(--safe-bottom) + var(--s5));
+  background: rgba(11, 13, 16, 0.96);
+  animation: fade-in 240ms ease both;
+}
+
+.install-root.closing {
+  animation: fade-out 200ms ease both;
+}
+
+.install-card {
+  width: min(400px, 100%);
+  display: grid;
+  gap: var(--s4);
+  justify-items: center;
+  text-align: center;
+  animation: install-in 360ms var(--ease-drawer) both;
+}
+
+.install-badge {
+  width: 64px;
+  height: 64px;
+  border-radius: 16px;
+  display: grid;
+  place-items: center;
+  background: var(--surface-2);
+  color: var(--accent);
+}
+
+.install-badge svg {
+  width: 36px;
+  height: 36px;
+}
+
+.install-title {
+  margin: 0;
+  font-size: 26px;
+  font-weight: 700;
+  line-height: 1.15;
+  letter-spacing: -0.01em;
+}
+
+.install-why {
+  margin: 0;
+  color: var(--muted);
+  font-size: 16px;
+  line-height: 1.5;
+}
+
+.install-steps {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  display: grid;
+  gap: var(--s2);
+  background: var(--surface-2);
+  border-radius: 14px;
+  padding: var(--s3) var(--s4);
+  text-align: left;
+}
+
+.install-step {
+  display: grid;
+  grid-template-columns: 24px 1fr 28px;
+  align-items: center;
+  gap: var(--s3);
+  min-height: 44px;
+  font-size: 15px;
+  line-height: 1.35;
+}
+
+.install-num {
+  width: 24px;
+  height: 24px;
+  border-radius: 12px;
+  display: grid;
+  place-items: center;
+  background: var(--surface-3);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.install-glyph {
+  color: var(--accent);
+  display: grid;
+  place-items: center;
+}
+
+.install-glyph svg {
+  width: 22px;
+  height: 22px;
+}
+
+@keyframes install-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.98);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .install-root,
+  .install-card {
+    animation: none;
+  }
+}
+
+/* MARK: Leaderboard (ui/leaderboardSheet.ts) */
+
+.board {
+  display: grid;
+  gap: var(--s4);
+}
+
+.board-intro {
+  margin: 0 var(--s1) var(--s3);
+}
+
+.board-top:empty {
+  display: none;
+}
+
+.board-tabs {
+  display: grid;
+  width: 100%;
+}
+
+.board-tabs button {
+  min-width: 0;
+}
+
+.text-input {
+  flex: 1;
+  width: 100%;
+  min-width: 0;
+  min-height: 52px;
+  padding: 0 var(--s4);
+  border: 1.5px solid var(--separator);
+  border-radius: 14px;
+  background: var(--surface-2);
+  color: var(--primary);
+  /* 16 px or more: iOS Safari does not zoom into the field. */
+  font: 600 17px/1.2 var(--font);
+  transition: border-color 160ms ease;
+}
+
+.text-input::placeholder {
+  color: var(--faint);
+  font-weight: 500;
+}
+
+.text-input:focus-visible {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.text-input[aria-invalid='true'] {
+  border-color: var(--destructive);
+}
+
+.field-help {
+  margin: var(--s2) var(--s1) 0;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--muted);
+}
+
+.field-help.error {
+  color: var(--destructive);
+}
+
+.board-form .quiet-btn {
+  margin-top: var(--s3);
+}
+
+.btn.busy {
+  opacity: 0.6;
+}
+
+.board-list {
+  min-height: 52px;
+}
+
+.board-row {
+  gap: var(--s3);
+  min-height: 48px;
+  padding-top: var(--s2);
+  padding-bottom: var(--s2);
+}
+
+.board-rank {
+  flex: none;
+  min-width: 3ch;
+  font-size: 15px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+  text-align: right;
+}
+
+.board-row.podium .board-rank {
+  color: var(--primary);
+}
+
+.board-name {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  min-width: 0;
+}
+
+.board-name > span:first-child {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.board-name .you-tag {
+  flex: none;
+}
+
+.sheet .board-value {
+  color: var(--primary);
+  font-size: 15px;
+}
+
+/* Your own line: tinted, the same mint as everything the player earns. */
+.board-row.me {
+  background: var(--accent-soft);
+}
+
+.board-row.me .board-rank {
+  color: var(--accent);
+}
+
+.board-row.me + .row::before,
+.board-gap + .board-row.me::before {
+  border-top-color: transparent;
+}
+
+.board-gap {
+  justify-content: center;
+  min-height: 28px;
+  padding: 0;
+  color: var(--faint);
+  letter-spacing: 0.2em;
+}
+
+.board-empty {
+  min-height: 72px;
+}
+
+.board-label {
+  margin: 0 var(--s1) var(--s2);
+}
+
+.board-footer {
+  display: grid;
+  gap: var(--s3);
+  padding-bottom: var(--s2);
+}
+
+.board-footer:empty {
+  display: none;
+}
+
+.board-footer .section-note {
+  margin: 0 var(--s1);
+}
+
+.skeleton .bone {
+  display: block;
+  height: 12px;
+  border-radius: 6px;
+  background: var(--surface-3);
+  animation: bone-pulse 1.2s ease-in-out infinite alternate;
+}
+
+.skeleton .bone.rank {
+  flex: none;
+  width: 3ch;
+}
+
+.skeleton .bone.value {
+  flex: none;
+  width: 64px;
+  margin-left: auto;
+}
+
+@keyframes bone-pulse {
+  to {
+    opacity: 0.45;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeleton .bone {
+    animation: none;
+  }
+}
+
+/* Multiplayer: the note under the name field (the leaderboard kept the old name). */
+.name-note {
+  margin-top: calc(-1 * var(--s2));
+}
+
+.name-note:empty {
+  display: none;
+}

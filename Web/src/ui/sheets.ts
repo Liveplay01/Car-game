@@ -38,7 +38,7 @@ export function openSheet(layer: HTMLElement, title: string, body: HTMLElement, 
       e.preventDefault();
       close();
     } else if (e.key === 'Tab') {
-      const focusable = Array.from(sheet.querySelectorAll<HTMLElement>('button:not([disabled]), [href], [tabindex]:not([tabindex="-1"])'));
+      const focusable = Array.from(sheet.querySelectorAll<HTMLElement>('button:not([disabled]), input:not([disabled]):not([type="hidden"]), [href], [tabindex]:not([tabindex="-1"])'));
       if (focusable.length === 0) return;
       const first = focusable[0];
       const last = focusable[focusable.length - 1];
@@ -69,6 +69,53 @@ export function openSheet(layer: HTMLElement, title: string, body: HTMLElement, 
   const firstAction = sheet.querySelector<HTMLElement>('.sheet-actions button, .list button');
   (firstAction ?? closeBtn).focus({ preventScroll: true });
   return close;
+}
+
+/**
+ * iPhone and iPad (Leo, 30.09.2026): the Home Screen tip takes the whole screen and stays until
+ * it is confirmed. Safari clears a site's storage after a week without a visit; from the Home
+ * Screen the progress stays, and the game plays full screen. Only the button closes it.
+ */
+export function installDialog(layer: HTMLElement, ipad: boolean, onDone: () => void): void {
+  const previouslyFocused = document.activeElement as HTMLElement | null;
+  const step = (n: number, text: string, glyph: string): HTMLElement =>
+    h('li', { class: 'install-step' }, h('span', { class: 'install-num', 'aria-hidden': 'true' }, String(n)), h('span', { class: 'install-text' }, text), h('span', { class: 'install-glyph', 'aria-hidden': 'true' }, icon(glyph)));
+  const ok = h('button', { class: 'btn primary block', type: 'button' }, 'Got it');
+  const root = h(
+    'div',
+    { class: 'install-root', role: 'alertdialog', 'aria-modal': 'true', 'aria-labelledby': 'install-title', 'aria-describedby': 'install-why' },
+    h(
+      'div',
+      { class: 'install-card' },
+      h('div', { class: 'install-badge', 'aria-hidden': 'true' }, icon(ICONS.game)),
+      h('h2', { class: 'install-title', id: 'install-title' }, 'Keep your progress safe'),
+      h('p', { class: 'install-why', id: 'install-why' }, 'Safari deletes the progress of a website you have not opened for a week. Put Roundabout Timing on your Home Screen: your progress stays, and it plays full screen like an app.'),
+      h(
+        'ol',
+        { class: 'install-steps' },
+        step(1, ipad ? 'Tap Share at the top of Safari' : 'Tap Share at the bottom of Safari', ICONS.share),
+        step(2, 'Scroll down and tap “Add to Home Screen”', ICONS.plus),
+        step(3, 'Tap “Add”, then start the game from its icon', ICONS.check),
+      ),
+      ok,
+    ),
+  );
+  const onKey = (e: KeyboardEvent): void => {
+    // Nothing but the button leaves: Escape and Tab stay inside.
+    if (e.key === 'Escape' || e.key === 'Tab') e.preventDefault();
+    e.stopPropagation();
+  };
+  ok.addEventListener('click', () => {
+    document.removeEventListener('keydown', onKey, true);
+    root.classList.add('closing');
+    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    window.setTimeout(() => root.remove(), reduce ? 0 : 200);
+    previouslyFocused?.focus?.();
+    onDone();
+  });
+  document.addEventListener('keydown', onKey, true);
+  layer.append(root);
+  ok.focus({ preventScroll: true });
 }
 
 export const closeAnySheet = (): void => current?.close();

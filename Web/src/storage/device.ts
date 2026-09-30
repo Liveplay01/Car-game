@@ -15,6 +15,9 @@ export const inPortal = typeof location !== 'undefined' && new URLSearchParams(l
 export const isIos = (): boolean =>
   /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 
+/** An iPad: its Share button sits at the top of Safari, not at the bottom. */
+export const isIpad = (): boolean => /iPad/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+
 /** Started from the home screen (or as an installed app on the desktop). */
 export const isInstalled = (): boolean =>
   window.matchMedia('(display-mode: standalone)').matches ||

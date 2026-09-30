@@ -415,8 +415,11 @@ export const baseConfig = {
 
   /** From this level cleared on, the Game tab says the other modes are a swipe away (until the first swipe). */
   modeHintAfterLevel: 6,
-  /** Level cleared after which the game asks the browser to keep its storage and suggests installing it (once). */
-  installHintAfterLevel: 3,
+  /**
+   * Level cleared after which the game asks the browser to keep its storage and suggests
+   * installing it, once (Leo, 30.09.2026: from Level 5; on iPhone and iPad as a full-screen tip).
+   */
+  installHintAfterLevel: 4,
   /** Level cleared after which an unprotected save suggests an export (once). */
   backupHintAfterLevel: 12,
   // Unlocks (Leo, 29.09.2026, `core/unlocks.ts`): a new player meets the systems one at a time.

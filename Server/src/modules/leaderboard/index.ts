@@ -39,6 +39,8 @@ export function leaderboardModule(): ServerModule {
         const own = me ? scores.of(board.id, period, me.id) : null;
         // A few seconds old is fine for a public list; the player's own line is never cached.
         c.header('Cache-Control', me ? 'private, no-store' : 'public, max-age=10');
+        // The same address answers differently with a token: a cache must not mix the two.
+        c.header('Vary', 'Authorization');
         return c.json({
           board: describe(board),
           entries: scores.top(board.id, period, limit).map((e) => ({ rank: e.rank, name: e.name, score: e.score, meta: e.meta, at: e.achievedAt, me: e.playerId === me?.id })),

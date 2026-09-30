@@ -22,6 +22,18 @@ export type PatchImpact = 'major' | 'minor' | 'fix';
 
 export const PATCH_NOTES: PatchNote[] = [
   {
+    id: '2026-09-30-leaderboard',
+    date: '30 September 2026',
+    title: 'Leaderboards',
+    impact: 'minor',
+    items: [
+      'See how you rank: tap Ranks at the top of Progress. One list for the level you have reached, one for your Unlimited record.',
+      'No sign-up: just enter a name. Your level and your Unlimited record come from the progress on this device and go on the leaderboard by themselves whenever they improve.',
+      'It is the same name you use in multiplayer: change it in one place and it changes in the other.',
+      'Changed your mind? Remove your name and scores from the leaderboard at any time, in the same place.',
+    ],
+  },
+  {
     id: '2026-09-30-two-lanes',
     date: '30 September 2026',
     title: 'Two lanes, new traffic and a Season Pass',
@@ -34,6 +46,7 @@ export const PATCH_NOTES: PatchNote[] = [
       'New weather: fog from Level 35, snow and ice from Level 45. Both pay a little more.',
       'The Season Pass (Progress → Quests, from Level 15): a track of twelve tiers each season, bought with play money, with three animated skins per season that come back every year.',
       'The Hall of Fame (Records → Elite): a plaque for every Prestige rank, a gold wall on the island and a skin of its own.',
+      'On iPhone and iPad the game now shows, once at Level 5, how to put it on your Home Screen, so Safari can never clear your progress.',
     ],
   },
   {

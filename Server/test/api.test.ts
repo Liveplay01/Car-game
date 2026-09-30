@@ -53,13 +53,14 @@ test('a player registers, is known by their token and can be renamed', async () 
   assert.equal((await call('GET', '/v1/me')).status, 401);
   assert.equal((await call('GET', '/v1/me', { token: 'rat_nope' })).status, 401);
 
-  // A name may change once a minute.
-  assert.equal((await call('PATCH', '/v1/me', { token, body: { name: 'Leon' } })).status, 429);
-  clock.now += 61_000;
+  // Right after entering it, a typo can be fixed; after that a name may change once every 10 seconds.
   const renamed = await call('PATCH', '/v1/me', { token, body: { name: 'Leon' } });
   assert.equal(renamed.status, 200);
   assert.equal(renamed.json.player.name, 'Leon');
   assert.equal((await call('GET', '/v1/me', { token })).json.player.name, 'Leon');
+  assert.equal((await call('PATCH', '/v1/me', { token, body: { name: 'Leonie' } })).status, 429);
+  clock.now += 11_000;
+  assert.equal((await call('PATCH', '/v1/me', { token, body: { name: 'Leonie' } })).status, 200);
 });
 
 test('names: taken, look-alike, and not allowed', async () => {
@@ -82,7 +83,7 @@ test('names: taken, look-alike, and not allowed', async () => {
 test('a rename cannot take a name that is not allowed', async () => {
   const { call, join, clock } = setup();
   const { token } = await join('Leo');
-  clock.now += 61_000;
+  clock.now += 11_000;
   assert.equal((await call('PATCH', '/v1/me', { token, body: { name: 'Hitler' } })).status, 422);
 });
 
@@ -141,6 +142,7 @@ test('the list is ranked, ties go to whoever was first, and "me" is marked', asy
   assert.equal(guest.json.entries.length, 1);
   assert.equal(guest.json.me, null);
   assert.match(guest.headers.get('cache-control') ?? '', /public/);
+  assert.match(guest.headers.get('vary') ?? '', /Authorization/);
 });
 
 test('the shift level board ranks prestige before level', async () => {

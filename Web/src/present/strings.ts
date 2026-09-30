@@ -378,7 +378,6 @@ export const S = {
 
   /** One-time tips that keep the progress safe (`Hint`). */
   hints: {
-    installIos: 'Tip · Share → Add to Home Screen keeps your progress safe',
     install: 'Tip · Install the game in Settings to keep your progress safe',
     backup: 'Tip · Export your progress in Settings to keep a copy',
     reduceMotion: 'Tip · Running slow? Reduce motion in Settings can help',
@@ -746,6 +745,13 @@ export const S = {
     /** How far from the middle of the gap the taps land on average; null: not enough merges yet. */
     timing: (ms: number | null, onBeat: number): string =>
       ms === null ? '–' : Math.abs(ms) <= onBeat ? 'On the beat' : ms < 0 ? `${-ms} ms early` : `${ms} ms late`,
+  },
+
+  leaderboard: {
+    /** The header chip before a rank is known (not joined yet, or offline). */
+    chip: 'Ranks',
+    rank: (n: number): string => `#${Fmt.number(n)}`,
+    chipLabel: 'Leaderboard',
   },
 
   museum: {

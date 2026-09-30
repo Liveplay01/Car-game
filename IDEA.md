@@ -42,14 +42,51 @@ Reihenfolge: (1) Analytics und Fehlerberichte (Umami/Plausible, GlitchTip als Co
 kein eigener Code); (2) eigener PeerJS-Server und TURN mit kurzlebigen Zugängen (löst
 „Multiplayer über echte Netze“); (3) Daily-Bestenliste mit Replay-Prüfung (Seed + Taps,
 `core/` läuft in Node); (4) Kurzlinks mit Vorschaubild für Challenge-Links; (5) Spielstand
-über Geräte per Sync-Code. Geld und Truhen bleiben lokal, die Casino-Regel gilt weiter. Vorher
+über Geräte per Konto (siehe unten). Geld und Truhen bleiben lokal, die Casino-Regel gilt weiter. Vorher
 muss „Kein Backend“ aus den festen Entscheidungen in CLAUDE.md.
 
 **Stand 30.09.2026:** Der Ranglisten-Dienst steht in `Server/` (Spieler mit Namen, Bestenlisten
-Shift-Level und Unlimited, Plausibilitätsgrenzen; `net/leaderboard.ts` ist der Client). Offen: die
-Oberfläche im Spiel (Name wählen, Liste zeigen, Scores senden), die Domain in `VITE_API_URL` und in
-der CSP von `nginx.conf`, ein Absatz in `legal.ts`. Die Punkte (1) bis (5) oben bleiben möglich und
-können als weitere Module in den Dienst.
+Shift-Level und Unlimited, Plausibilitätsgrenzen) läuft auf `api-game.gustaff.dev` und ist im
+Spiel angebunden (Progress → Ranks, ohne Anmeldung, ein Name für Rangliste und Multiplayer). Die
+Punkte (1) bis (5) oben bleiben möglich und können als weitere Module in den Dienst.
+
+---
+
+## Später: Konto mit Nutzername und Passwort (Leo, 30.09.2026)
+
+Idee: Wer will, legt ein Konto an (nur Nutzername und Passwort, **keine E-Mail**); der Spielstand
+liegt dann im Backend und folgt dem Spieler auf jedes Gerät. Ohne Konto bleibt alles lokal, das Konto
+ist ein Zusatz, der ausfallen darf.
+
+- **Größe:** ein Stand ist 1,3 KB (neu) bis etwa 22 KB (Level 120, alles gesammelt); 100.000 Spieler
+  sind rund 1 GB. SQLite genügt.
+- **Ohne E-Mail gibt es keine „Passwort vergessen“-Funktion.** Vergessenes Passwort = Konto weg, das muss
+  beim Anlegen klar stehen. Mildern: der lokale Export bleibt, dazu ein einmaliger **Wiederherstellungs-
+  schlüssel** beim Anlegen, den der Spieler sich notiert.
+- **Passwörter** nur als Argon2- oder bcrypt-Hash speichern, Anmeldeversuche begrenzen, Nutzername
+  eindeutig und ohne Beleidigungen (Namensfilter wie beim Multiplayer).
+- **Abgleich:** beim Anmelden vergleichen, was lokal und im Konto liegt. Ist der Stand auf beiden Seiten
+  verschieden, fragen („Dieses Gerät: Level 42 · Konto: Level 57“) statt still zu überschreiben.
+  Speichern nach jeder Schicht; das Spiel bleibt offline spielbar und gleicht später ab.
+- **Rechtliches:** Nutzername, Passwort-Hash und Spielstand sind Daten auf dem Server: Absatz in
+  `Web/src/present/legal.ts` und neues `LEGAL_UPDATED`, dazu eine Funktion „Konto löschen“.
+- **Regeln:** Vorher muss „Kein Backend, keine Datenbank, keine API“ aus den festen Entscheidungen in
+  CLAUDE.md. Geld und Truhen bleiben lokal berechnet; ein Konto schützt nur vor Verlust, nicht vor
+  Manipulation (die Bestenliste mit Replay-Prüfung aus dem Backend-Plan ist die Stelle dafür).
+- **Aufwand:** etwa 2 bis 3 Tage plus Pflege als zweiter Dienst bei Coolify.
+
+Gut befunden (Leo, 30.09.2026), kommen in jedem Fall mit: **Wiederherstellungsschlüssel** beim Anlegen
+und **Passwort nur als Hash** mit Begrenzung der Anmeldeversuche. Ebenfalls festgehalten:
+
+- **Abgleich mit Nachfrage** statt stillem Überschreiben, und **Offline bleibt spielbar**: Speichern
+  lokal wie bisher, das Konto gleicht danach ab; fällt der Server aus, läuft das Spiel trotzdem.
+- **Datenschutz-Absatz und „Konto löschen“** sind Pflicht, sobald Nutzername, Passwort-Hash und
+  Spielstand auf dem Server liegen.
+- **Grenzen:** das Konto schützt vor Verlust, nicht vor Manipulation; ein zweiter Dienst mit Datenbank
+  und Sicherung bei Coolify; vergessenes Passwort ohne Schlüssel bedeutet verlorenes Konto.
+- **Einfachere Alternativen, falls das Konto zu groß wird:** (a) **Sync-Code** wie `K7M2-9QXA`, mit
+  dem ein Stand auf ein anderes Gerät geholt wird (kein Name, kein Passwort, kaum Datenschutz-Aufwand);
+  (b) **Login des Anbieters**, wie auf CrazyGames schon gebaut (`?crazygames`, Data Module).
 
 ---
 

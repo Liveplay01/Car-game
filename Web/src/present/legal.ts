@@ -75,7 +75,7 @@ export const LEGAL_DOCS: LegalDoc[] = [
     sections: [
       {
         paragraphs: [
-          `${GAME_NAME} has no accounts, no cookies, no analytics and no tracking. Your progress stays on your device. This page explains the few things that do leave it.`,
+          `${GAME_NAME} has no sign-up, no cookies, no analytics and no tracking. Your progress stays on your device. This page explains the few things that do leave it.`,
           `Last updated: ${LEGAL_UPDATED}.`,
         ],
       },
@@ -109,6 +109,14 @@ export const LEGAL_DOCS: LegalDoc[] = [
         ],
         after: ['Legal basis: Art. 6(1)(b) GDPR (connecting you to the players you chose to play with). Without multiplayer, none of this happens.'],
         link: ['PeerJS', 'https://peerjs.com'],
+      },
+      {
+        heading: 'Leaderboard',
+        paragraphs: [
+          'Only if you enter a name for the leaderboard (Progress → Ranks), the game sends it to our leaderboard server, which runs on the same machine as the game. From then on it sends your level (with your Prestige rank) and your Unlimited record whenever they improve.',
+          'The server stores the name, a random ID, a secret key that proves the name is yours (only its hash is kept), your best scores and when you reached them. The name and the scores are public: everyone can see them on the leaderboard. Your IP address reaches the server with every request, as with any website; it is used only in memory to stop abuse and is not stored. Offensive names are removed.',
+          'Legal basis: Art. 6(1)(b) GDPR (the leaderboard you chose to join). To remove your name and all your scores at once: Progress → Ranks → Remove me from the leaderboard.',
+        ],
       },
       {
         heading: 'Sharing',

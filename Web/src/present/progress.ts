@@ -17,6 +17,7 @@ import { S, Fmt } from './strings';
 import { ShopPage } from './shop';
 import type { ProgressSection } from './flow';
 import { MuseumPage, MuseumState, type MuseumTarget } from './museum';
+import { knownRank, leaderboardEnabled } from '../net/leaderboard';
 
 /** What the Progress tab shows and animates (`ProgressPage.State`). */
 export class ProgressState {
@@ -51,6 +52,9 @@ interface Layout {
 }
 
 const PROGRESS_SECTIONS: ProgressSection[] = [0, 1, 2, 3, 4];
+
+/** The podium glyph: three steps of 4 points with 1 point between. */
+const PODIUM_WIDTH = 14;
 
 function t(list: RenderList, s: string, at: Vec2, size: number, color: ColorToken, opacity: number, o: { weight?: Weight; align?: Align } = {}): void {
   list.s(text(s, at, size, o.align ?? 'leading', o.weight ?? 'regular'), color, opacity);
@@ -102,6 +106,51 @@ export const ProgressPage = {
     };
   },
 
+  /**
+   * The way to the leaderboards: a chip beside the balance with the player's Shift level rank
+   * (or "Ranks" until one is known). Where the title leaves too little room it is the podium alone.
+   */
+  rankChip(viewport: Vec2, money: number): { frame: Rect; label: string | null } | null {
+    if (!leaderboardEnabled) return null;
+    const rank = knownRank('shift-level');
+    const label = rank === null ? S.leaderboard.chip : S.leaderboard.rank(rank);
+    const cash = Fmt.number(money);
+    const right = MenuKit.headerChip(viewport, cash).x - MenuKit.chipWidth(cash) / 2 - 8;
+    const titleEnd = MenuKit.headerInset(viewport) + textWidth(S.tabs.progress, MenuKit.titleSize) + 12;
+    const y = MenuKit.headerY;
+    const full = 12 + PODIUM_WIDTH + 6 + textWidth(label, 15) + 14;
+    if (right - full >= titleEnd) return { frame: R.make(right - full, y - 16, right, y + 16), label };
+    return { frame: R.make(right - 32, y - 16, right, y + 16), label: null };
+  },
+
+  addRankChip(list: RenderList, viewport: Vec2, money: number): void {
+    const chip = ProgressPage.rankChip(viewport, money);
+    if (!chip) return;
+    const { frame, label } = chip;
+    const tag = list.tag;
+    list.tag = 'headerChip';
+    list.s(rect(R.center(frame), v(R.width(frame), R.height(frame)), 16), 'controlFill');
+    const podiumX = label === null ? R.center(frame).x - PODIUM_WIDTH / 2 : frame.minX + 12;
+    ProgressPage.podium(list, v(podiumX, R.center(frame).y + 6));
+    if (label !== null) t(list, label, v(podiumX + PODIUM_WIDTH + 6, R.center(frame).y), 15, 'primary', 1, { weight: 'bold' });
+    list.tag = tag;
+  },
+
+  /** Three steps, the middle one highest: the leaderboard's mark. `base` is its bottom left. */
+  podium(list: RenderList, base: Vec2): void {
+    const step = 4;
+    const gap = 1;
+    [8, 12, 5].forEach((height, i) => {
+      const x = base.x + i * (step + gap) + step / 2;
+      list.s(rect(v(x, base.y - height / 2), v(step, height), 1), 'accent');
+    });
+  },
+
+  rankChipAt(point: Vec2, viewport: Vec2, money: number): boolean {
+    const chip = ProgressPage.rankChip(viewport, money);
+    return chip !== null && R.contains(R.inset(chip.frame, -6), point);
+  },
+
   sectionAt(point: Vec2, viewport: Vec2, bottomInset: number): ProgressSection | null {
     return ProgressPage.layout(viewport, bottomInset).segments.find(([, r]) => R.contains(r, point))?.[0] ?? null;
   },
@@ -110,6 +159,7 @@ export const ProgressPage = {
     const vp = list.camera.viewport;
     MenuKit.backdrop(list);
     MenuKit.header(list, S.tabs.progress, Fmt.number(save.career.money), vp);
+    ProgressPage.addRankChip(list, vp, save.career.money);
     const l = ProgressPage.layout(vp, bottomInset);
     const chosen = state.section;
     let thumb: number = chosen;

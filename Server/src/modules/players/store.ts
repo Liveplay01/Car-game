@@ -53,7 +53,8 @@ export class PlayerStore {
     const id = randomUUID();
     const token = `rat_${randomBytes(24).toString('base64url')}`;
     try {
-      this.db.prepare('INSERT INTO players (id, name, name_key, token_hash, created_at, renamed_at) VALUES (?, ?, ?, ?, ?, ?)').run(id, name, key, hashToken(token), now, now);
+      // renamed_at 0: a typo can be fixed right after the name was entered.
+      this.db.prepare('INSERT INTO players (id, name, name_key, token_hash, created_at, renamed_at) VALUES (?, ?, ?, ?, ?, 0)').run(id, name, key, hashToken(token), now);
     } catch (error) {
       if (isUniqueViolation(error)) throw new NameTaken();
       throw error;

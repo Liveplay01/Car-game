@@ -21,7 +21,7 @@ only erasable syntax is allowed (no `enum`, no constructor parameter properties)
 | --- | --- |
 | `GET /healthz` | `ok` (Docker health check) |
 | `POST /v1/players` `{name}` | Makes an account: `{player: {id, name}, token}`. The token is shown once; the game keeps it. `409 name_taken`, `422 invalid_name` / `name_not_allowed` |
-| `GET /v1/me` · `PATCH /v1/me` `{name}` · `DELETE /v1/me` | Who am I · rename (once a minute) · delete my account and all my scores |
+| `GET /v1/me` · `PATCH /v1/me` `{name}` · `DELETE /v1/me` | Who am I · rename (once every 10 seconds) · delete my account and all my scores |
 | `GET /v1/boards` | The boards that exist |
 | `GET /v1/boards/:board?limit=50` | Top list (max 100). With a token: the player's own line is marked and `me` has their rank, even far down |
 | `PUT /v1/boards/:board/score` | Submit a score (token). Only a better one replaces the old: `{accepted, best}` |
@@ -48,7 +48,7 @@ promise: use the admin routes for what slips through.
 with DevTools can post a believable fake, so look at the lists now and then and remove entries.
 
 **Rate limits** (in memory): 20 new accounts per hour per address, 30 score submissions per minute
-per player, one rename per minute.
+per player, one rename every 10 seconds.
 
 ## Adding a feature
 

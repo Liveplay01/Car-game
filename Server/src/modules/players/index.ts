@@ -15,7 +15,7 @@ import { NameTaken, PLAYER_MIGRATIONS, PlayerStore, type Player } from './store.
 
 export type PlayerEnv = { Variables: AppEnv['Variables'] & { player: Player } };
 
-const RENAME_EVERY_MS = 60_000;
+const RENAME_EVERY_MS = 10_000;
 
 function bearer(c: Context): string | null {
   const match = /^Bearer (\S+)$/.exec(c.req.header('authorization') ?? '');
@@ -27,7 +27,7 @@ export function requirePlayer(store: PlayerStore): MiddlewareHandler<PlayerEnv> 
   return async (c, next) => {
     const token = bearer(c);
     const player = token ? store.byToken(token) : null;
-    if (!player) throw new ApiError(401, 'unauthorized', 'Sign in first.');
+    if (!player) throw new ApiError(401, 'unauthorized', 'This device has no name on the leaderboard yet.');
     if (player.banned) throw new ApiError(403, 'banned', 'This player has been blocked.');
     c.set('player', player);
     await next();

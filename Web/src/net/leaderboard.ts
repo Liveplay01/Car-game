@@ -6,15 +6,17 @@ import { storage } from '../storage/store';
  * plays on without it, so nothing here may stop a shift. Without `VITE_API_URL` in the build
  * there is no service and `leaderboardEnabled` is false.
  *
- * A player has an account as soon as they pick a name: the service answers with a secret token,
- * kept here like the save (`carGame.account.v1`), and every later call carries it. There is no
- * password; losing the browser's storage means picking a new name.
+ * There is no sign-up: entering a name is all. The service answers with a secret token, kept
+ * here like the save (`carGame.account.v1`), that tells it later which name this device's
+ * records belong to. Losing the browser's storage means entering a name again.
  */
 
 const BASE = (typeof import.meta.env.VITE_API_URL === 'string' ? import.meta.env.VITE_API_URL : '').trim().replace(/\/+$/, '');
 export const leaderboardEnabled = BASE !== '';
 
 const TIMEOUT_MS = 8000;
+/** After a failed send (offline, the service down) the next try waits this long. */
+const RETRY_MS = 60_000;
 
 /** The boards the service offers (`Server/src/modules/leaderboard/boards.ts`). */
 export type BoardId = 'shift-level' | 'unlimited';
@@ -62,6 +64,22 @@ export class LeaderboardError extends Error {
   }
 }
 
+/** A sentence for the player about a failed call. */
+export function describeError(error: unknown): string {
+  if (!(error instanceof LeaderboardError)) return 'Something went wrong. Try again.';
+  switch (error.code) {
+    case 'network':
+    case 'disabled':
+      return 'The leaderboard cannot be reached right now. Check your connection and try again.';
+    case 'unauthorized':
+    case 'banned':
+      return 'This device is no longer on the leaderboard. Enter a name to be on it again.';
+    // Everything else: the service's own sentence, written for players (`Server/`).
+    default:
+      return error.message;
+  }
+}
+
 export function loadAccount(): Account | null {
   try {
     const raw = storage().getItem(ACCOUNT_KEY);
@@ -94,6 +112,8 @@ async function request<T>(method: string, path: string, options: { token?: strin
       headers,
       body: options.body === undefined ? undefined : JSON.stringify(options.body),
       signal: AbortSignal.timeout(TIMEOUT_MS),
+      // Always the live list: right after a new name or score an older copy would hide it.
+      cache: 'no-store',
     });
   } catch {
     throw new LeaderboardError('network', 'The leaderboard cannot be reached right now.');
@@ -137,9 +157,29 @@ export async function renameAccount(account: Account, name: string): Promise<Acc
   }
 }
 
+/** Removes the name and every score from the service; this device forgets the account. */
+export async function deleteAccount(account: Account): Promise<void> {
+  try {
+    await request<void>('DELETE', '/v1/me', { token: account.token });
+  } catch (error) {
+    // Already gone on the service: forgetting it here is all that is left to do.
+    if (!(error instanceof LeaderboardError && (error.status === 401 || error.status === 403))) throw error;
+  }
+  saveAccount(null);
+  for (const board of Object.keys(ranks) as BoardId[]) delete ranks[board];
+  for (const board of Object.keys(confirmed) as BoardId[]) delete confirmed[board];
+}
+
+/** The player's places this session has heard of (the Progress header shows the Shift level one). */
+const ranks: Partial<Record<BoardId, number>> = {};
+
+export const knownRank = (board: BoardId): number | null => (loadAccount() ? (ranks[board] ?? null) : null);
+
 /** The top of a board; the player's own line is marked when they have an account. */
-export function fetchBoard(board: BoardId, limit = 50): Promise<BoardView> {
-  return request<BoardView>('GET', `/v1/boards/${board}?limit=${limit}`, { token: loadAccount()?.token });
+export async function fetchBoard(board: BoardId, limit = 50): Promise<BoardView> {
+  const view = await request<BoardView>('GET', `/v1/boards/${board}?limit=${limit}`, { token: loadAccount()?.token });
+  if (view.me) ranks[board] = view.me.rank;
+  return view;
 }
 
 /**
@@ -161,3 +201,63 @@ export const submitShiftLevel = (level: number, prestige: number): Promise<Submi
 
 /** Unlimited: the record score and the cars sent in that run. */
 export const submitUnlimited = (score: number, cars: number): Promise<SubmitResult | null> => submitScore('unlimited', { score, cars });
+
+/** What the game knows of the player's records, in the shape the boards take them. */
+export interface Records {
+  level: number;
+  prestige: number;
+  unlimitedBest: number;
+  /** The most cars sent in an Unlimited run (the plausibility check wants cars for a score). */
+  unlimitedCars: number;
+}
+
+/**
+ * The best each board has confirmed this session. It starts empty, so the first save after
+ * a start sends once; after that only a better record makes a request.
+ */
+const confirmed: Partial<Record<BoardId, number>> = {};
+let syncing: Promise<void> | null = null;
+let retryAt = 0;
+
+/** Ranked as the service ranks it (`Server/src/modules/leaderboard/boards.ts`): Prestige first. */
+const levelScore = (r: Records): number => r.prestige * 1000 + r.level;
+
+function due(r: Records): [BoardId, Record<string, number>, number][] {
+  const list: [BoardId, Record<string, number>, number][] = [];
+  if ((confirmed['shift-level'] ?? -1) < levelScore(r)) list.push(['shift-level', { level: r.level, prestige: r.prestige }, levelScore(r)]);
+  if (r.unlimitedBest > 0 && (confirmed.unlimited ?? -1) < r.unlimitedBest) list.push(['unlimited', { score: r.unlimitedBest, cars: Math.max(1, r.unlimitedCars) }, r.unlimitedBest]);
+  return list;
+}
+
+/**
+ * Sends the records that improved. Called on every save: cheap when nothing changed, and never
+ * in the way of play (no account, offline or a failed send only means: later).
+ */
+export function syncScores(r: Records): Promise<void> {
+  if (!leaderboardEnabled || !loadAccount()) return Promise.resolve();
+  if (syncing) return syncing;
+  if (Date.now() < retryAt) return Promise.resolve();
+  const work = due(r);
+  if (work.length === 0) return Promise.resolve();
+  syncing = (async () => {
+    try {
+      for (const [board, body, value] of work) {
+        try {
+          const result = await submitScore(board, body);
+          if (!result) return;
+          confirmed[board] = Math.max(value, result.best.score);
+          ranks[board] = result.best.rank;
+        } catch (error) {
+          // Refused as impossible: sending the same again would not help.
+          if (error instanceof LeaderboardError && error.status === 422) confirmed[board] = value;
+          else throw error;
+        }
+      }
+    } catch {
+      retryAt = Date.now() + RETRY_MS;
+    } finally {
+      syncing = null;
+    }
+  })();
+  return syncing;
+}
