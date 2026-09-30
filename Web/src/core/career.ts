@@ -42,6 +42,7 @@ import { type Challenge, challengesOf, challengeMet, challengeReward, STREAK_MIL
 import type { CasinoPending, CasinoRound } from './casino';
 import { randomSeed } from './rng';
 import { Elite, type EliteGain, type EliteStep, type TitleId, TITLES } from './elite';
+import type { HallEntry } from './seasonPass';
 
 export type GameMode = 'shift' | 'unlimited' | 'mayhem';
 export const GAME_MODES: GameMode[] = ['shift', 'unlimited', 'mayhem'];
@@ -186,6 +187,13 @@ export interface Career {
   casinoNet: number;
   /** How early (−) or late (+) the last merges were tapped, in ms (`core/timing.ts`). */
   tapOffsets: number[];
+  /** The Season Pass bought (its season key, core/seasonPass.ts), its XP and the tiers paid. */
+  passKey: string | null;
+  passXp: number;
+  passClaimed: number;
+  /** The Hall of Fame: built or not, and a plaque for every Prestige rank. */
+  hallBuilt: boolean;
+  hallOfFame: HallEntry[];
 }
 
 /**
@@ -264,6 +272,11 @@ export const newCareer = (): Career => ({
   casinoDay: -1,
   casinoNet: 0,
   tapOffsets: [],
+  passKey: null,
+  passXp: 0,
+  passClaimed: 0,
+  hallBuilt: false,
+  hallOfFame: [],
 });
 
 export const newSave = (): SaveGame => ({
@@ -354,15 +367,30 @@ export const Careers = {
    * the traffic plays harder from now on, and some ranks unlock a skin. Best times belong to
    * the old road and go. Returns the item unlocked, or null.
    */
-  prestige(c: Career, config: Config = baseConfig): { rank: number; item: string | null } | null {
+  prestige(c: Career, config: Config = baseConfig, day = -1): { rank: number; item: string | null } | null {
     if (!Careers.canPrestige(c, config)) return null;
     c.prestige++;
+    c.hallOfFame.push({ rank: c.prestige, day, bosses: c.bossTrophies, legendary: c.legendaryDone, elite: Elite.level(c, config) });
     c.level = 1;
     c.bestTimes = {};
     const reward = prestigeReward(c.prestige);
     if (!reward || Careers.owns(c, reward.id)) return { rank: c.prestige, item: null };
     Careers.collect(c, reward.id);
     return { rank: c.prestige, item: reward.id };
+  },
+
+  // MARK: Hall of Fame
+
+  /** The Hall of Fame can be built once the Elite track is open (Level 50 reached once). */
+  canBuildHall: (c: Career, config: Config = baseConfig): boolean => !c.hallBuilt && Elite.isOpen(c, config) && c.money >= config.hallOfFamePrice,
+
+  /** Builds the Hall of Fame: the monument goes up in the city and its skin is yours. */
+  buildHall(c: Career, config: Config = baseConfig): boolean {
+    if (!Careers.canBuildHall(c, config)) return false;
+    c.money -= config.hallOfFamePrice;
+    c.hallBuilt = true;
+    Careers.collect(c, 'hallOfFame');
+    return true;
   },
 
   // MARK: Elite track and titles

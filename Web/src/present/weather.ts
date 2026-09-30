@@ -8,7 +8,17 @@ export const WeatherLayer = {
   darkness: [0, 0.08, 0.16, 0.24, 0.3],
   streaks: [0, 40, 90, 130, 170],
 
+  /** Fog: soft banks drift round the ring; the stretch in front of your own arm stays clearer. */
+  fogBanks: 16,
+  fogLayers: 4,
+
   addGround(list: RenderList, world: World): void {
+    if (world.config.weather === 'snow') {
+      // A cold, pale cast over the city: it lies under snow.
+      const vp = list.camera.viewport;
+      list.s(rect(mul(vp, 0.5), vp), 'groundSnow', 0.1);
+      return;
+    }
     const severity = weatherSeverity(world.config.weather);
     if (severity <= 0) return;
     const vp = list.camera.viewport;
@@ -19,6 +29,8 @@ export const WeatherLayer = {
   },
 
   addAir(list: RenderList, world: World, time: number, reduceMotion: boolean): void {
+    if (world.config.weather === 'fog') return WeatherLayer.addFog(list, world, reduceMotion ? 0 : time);
+    if (world.config.weather === 'snow') return WeatherLayer.addSnow(list, reduceMotion ? 0 : time);
     const severity = weatherSeverity(world.config.weather);
     if (severity <= 0) return;
     const vp = list.camera.viewport;
@@ -38,8 +50,48 @@ export const WeatherLayer = {
     if (into < 0.14) list.s(rect(mul(vp, 0.5), vp), 'primary', 0.16 * (1 - into / 0.14));
   },
 
+  addFog(list: RenderList, world: World, time: number): void {
+    const layout = world.layout;
+    const vp = list.camera.viewport;
+    list.s(rect(mul(vp, 0.5), vp), 'smokeLight', 0.12);
+    const own = layout.player.angle;
+    for (let i = 0; i < WeatherLayer.fogBanks; i++) {
+      // Each bank drifts slowly along the ring at its own pace and distance.
+      const angle = unitHash(i, 41) * Math.PI * 2 + time * (0.03 + 0.04 * unitHash(i, 42));
+      const away = Math.abs(Math.atan2(Math.sin(angle - own), Math.cos(angle - own)));
+      const thin = Math.min(1, Math.max(0.15, (away - 0.35) / 1.2));
+      const center = mul(fromAngle(angle), layout.ringRadius + (unitHash(i, 43) - 0.4) * 90);
+      const radius = 70 + 70 * unitHash(i, 44);
+      for (let k = 0; k < WeatherLayer.fogLayers; k++) {
+        list.w(circle(center, radius * (1 - k * 0.2)), 'smokeLight', 0.07 * thin);
+      }
+    }
+  },
+
+  addSnow(list: RenderList, time: number): void {
+    const vp = list.camera.viewport;
+    for (let i = 0; i < 120; i++) {
+      const speed = 40 + 50 * unitHash(i, 52);
+      const y = ((unitHash(i, 51) * vp.y + time * speed) % (vp.y + 20)) - 10;
+      const x = unitHash(i, 53) * vp.x + Math.sin(time * 0.9 + i) * 10;
+      list.s(circle(v(x, y), 1 + 1.6 * unitHash(i, 54)), 'primary', 0.35 + 0.35 * unitHash(i, 55));
+    }
+  },
+
   addCityEvent(list: RenderList, world: World): void {
     const layout = world.layout;
+    const stop = world.busStopS;
+    if (stop !== null) {
+      // The bus stop: a yellow box on the road and the round sign beside it.
+      const pose = layout.ring.pose(stop);
+      const out = normalize(pose.position);
+      const r = layout.ringRadius;
+      const from = (stop - 36) / r;
+      for (const edge of [-1, 1]) list.w(arc(v(0, 0), r + edge * (layout.laneWidth / 2 - 2), 1.6, from, stop / r), 'vehicleBus', 0.7);
+      const sign = add(pose.position, mul(out, layout.laneWidth / 2 + 7));
+      list.w(circle(sign, 5), 'vehicleBus');
+      list.w(circle(sign, 3.6), 'juiceGreen');
+    }
     const start = world.roadworksRingS;
     if (start !== null) {
       const arcLen = world.config.roadworksArc;

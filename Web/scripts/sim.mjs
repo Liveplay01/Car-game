@@ -37,7 +37,8 @@ try {
 
   // The careful bot also keeps the ambulance's road clear: it waits while its car would land on it.
   const clearRoad = (world) => !joinsClearRoad(world, { type: 'car' }, world.layout.player);
-  const careful = (world) => world.queue.isReady && world.predictedMergeGap(world.layout.player, 0, 40) > 0.04 && clearRoad(world);
+  const lane = (world) => world.vehicle(world.queue.vehicles[0])?.lane ?? 0;
+  const careful = (world) => world.queue.isReady && world.predictedMergeGap(world.layout.player, 0, 40, -Infinity, lane(world)) > 0.04 && clearRoad(world);
   const random = (world) => world.queue.isReady && Math.random() < 0.02;
 
   for (const [name, strategy] of [['careful', careful], ['random', random]]) {

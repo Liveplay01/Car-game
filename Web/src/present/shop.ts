@@ -32,8 +32,8 @@ import { casinoKit, loadCasino } from './casinoLoader';
 import { ChestReel, type Reel } from './chestReel';
 
 /** Shelves: car skins by rarity, the maps, and everything earned another way or a vehicle. */
-export type Shelf = 0 | 1 | 2 | 3 | 4 | 5 | 6; // common rare epic legendary maps special honours
-export const SHELVES: Shelf[] = [0, 1, 2, 3, 4, 5, 6];
+export type Shelf = 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7; // common rare epic legendary maps special honours pass
+export const SHELVES: Shelf[] = [0, 1, 2, 3, 4, 5, 6, 7];
 
 // Honours (Legendary Shifts, Prestige, the Elite track) have their own shelf, so no shelf grows past 12.
 
@@ -41,7 +41,8 @@ export function shelfItems(shelf: Shelf): Cosmetic[] {
   return COSMETICS.filter((item) => {
     if (shelf === 4) return item.kind === 'mapSkin';
     if (shelf === 6) return isHonour(item);
-    if (shelf === 5) return item.kind === 'vehicleType' || (item.source.kind !== 'chest' && !isHonour(item));
+    if (shelf === 7) return item.source.kind === 'pass';
+    if (shelf === 5) return item.kind === 'vehicleType' || (item.source.kind !== 'chest' && item.source.kind !== 'pass' && !isHonour(item));
     return item.kind === 'carSkin' && item.source.kind === 'chest' && rarityRank(item.rarity) === shelf;
   });
 }
@@ -508,6 +509,7 @@ export const ShopPage = {
         stripe: look?.stripe ?? null,
         roof: look?.roof ?? null,
         finish: look?.finish ?? null,
+        effect: look?.effect ?? null,
         finishTime: null,
       },
       baseConfig,

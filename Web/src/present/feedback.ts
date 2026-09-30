@@ -149,10 +149,12 @@ export const Feedback = {
       case 'explosion':
         return e.kind === 'bomb' ? 'detonation' : 'explosion';
       case 'ambulanceWarning':
+      case 'learnerWarning':
         return 'dispatch';
       case 'ambulanceBlocked':
         return 'cutOff';
       case 'ambulanceCleared':
+      case 'learnerPassed':
         return 'paid';
       case 'armourHit':
         return 'screech';

@@ -7,6 +7,7 @@ import { MUSEUM_IDS, MUSEUM_SHELVES, type MuseumShelf, inferredSightings } from 
 import { TITLES, type TitleId } from '../core/elite';
 import { type CasinoGame, type CasinoPending, type CasinoRound, CASINO_GAMES } from '../core/casino';
 import { storage } from './store';
+import { PASS_TIERS, type HallEntry } from '../core/seasonPass';
 
 const KEY = 'carGame.save.v2';
 const LEGACY_KEY = 'carGame.career.v1';
@@ -118,7 +119,24 @@ function readCareer(raw: unknown): Career {
       .filter((x): x is number => typeof x === 'number' && Number.isFinite(x))
       .map((x) => Math.max(-5000, Math.min(5000, Math.round(x))))
       .slice(-baseConfig.timingSamples),
+    passKey: typeof raw.passKey === 'string' && /^(winter|spring|summer|autumn)-\d{4}$/.test(raw.passKey) ? raw.passKey : null,
+    passXp: int(raw.passXp, 0, 0),
+    passClaimed: Math.min(int(raw.passClaimed, 0, 0), PASS_TIERS),
+    hallBuilt: raw.hallBuilt === true,
+    hallOfFame: (Array.isArray(raw.hallOfFame) ? raw.hallOfFame : []).flatMap((x): HallEntry[] => {
+      if (!x || typeof x !== 'object') return [];
+      const e = x as Record<string, unknown>;
+      return [{ rank: int(e.rank, 1, 1), day: int(e.day, -1), bosses: int(e.bosses, 0, 0), legendary: int(e.legendary, 0, 0), elite: int(e.elite, 0, 0) }];
+    }).slice(0, 100),
   };
+}
+
+/** Ranks reached before the Hall of Fame kept plaques get one each, without a date. */
+function withPlaques(c: Career): Career {
+  const known = new Set(c.hallOfFame.map((e) => e.rank));
+  for (let rank = 1; rank <= c.prestige; rank++) if (!known.has(rank)) c.hallOfFame.push({ rank, day: -1, bosses: 0, legendary: 0, elite: 0 });
+  c.hallOfFame.sort((a, b) => a.rank - b.rank);
+  return c;
 }
 
 /** An open casino round; anything implausible is dropped (the round then never happened). */
@@ -170,7 +188,7 @@ function readSave(raw: unknown): SaveGame {
     highscoreSeed: typeof raw.highscoreSeed === 'number' ? raw.highscoreSeed : null,
     shiftsPlayed: int(raw.shiftsPlayed, 0, 0),
     settings,
-    career: readCareer(raw.career),
+    career: withPlaques(readCareer(raw.career)),
     tutorialDone: raw.tutorialDone === true,
     hints: readHints(raw),
     mode: GAME_MODES.includes(raw.mode as GameMode) ? (raw.mode as GameMode) : 'shift',
@@ -186,7 +204,7 @@ function readSave(raw: unknown): SaveGame {
 function readLegacy(raw: unknown): SaveGame | null {
   if (!isObject(raw)) return null;
   const save = newSave();
-  save.career = readCareer(raw);
+  save.career = withPlaques(readCareer(raw));
   if (isObject(raw.records)) {
     save.highscore = int(raw.records.bestScore, 0, 0);
     save.unlimitedBest = int(raw.records.unlimitedBest, 0, 0);

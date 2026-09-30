@@ -1,5 +1,5 @@
 import { gravity } from './config';
-import { type Drive, isInFlow, newDrive, type Vehicle } from './vehicle';
+import { type Drive, type Merging, isInFlow, newDrive, profileDistance, type Vehicle } from './vehicle';
 import type { Arm } from './roundabout';
 import { capsule } from './collision';
 import { nearestOnPath } from './paths';
@@ -8,6 +8,7 @@ import { Rng } from './rng';
 import type { World } from './world';
 import { transporterAhead } from './specials';
 import { speedLimitAt } from './modules';
+import { isStalling } from './learner';
 
 /** The nearest thing ahead a driver has to mind. */
 export interface Lead {
@@ -20,6 +21,8 @@ export interface Lead {
 
 interface Occupant {
   id: number;
+  /** The lane it takes up; a wreck across both lanes is listed once for each. */
+  lane: number;
   s: number;
   speed: number;
   length: number;
@@ -35,7 +38,8 @@ export function updateDrivers(w: World, dt: number): void {
   if (w.config.mayhem) return;
   const quarry = pursuitQuarry(w);
   const zones = Object.keys(w.config.modules).length > 0 || w.roadworksRingS !== null;
-  if (!w.isTrafficDisturbed && quarry === null && !zones && !hasTransporterOnRing(w)) return;
+  const hesitant = w.learner.kind === 'active' || w.vehicles.some((x) => w.owesStop(x) && x.phase.kind === 'ring');
+  if (!w.isTrafficDisturbed && quarry === null && !zones && !hesitant && !hasTransporterOnRing(w)) return;
   const lane = ringLaneOccupants(w);
   // The criminal ploughs on; it only keeps out of the transporter's secure zone.
   for (const veh of w.vehicles) {
@@ -48,14 +52,80 @@ export function updateDrivers(w: World, dt: number): void {
     if (veh.type === 'pickup') continue;
     const p = veh.phase;
     if (p.kind === 'ring') {
-      const leads = leadsOnRing(w, p.s, lane, veh.id);
+      const leads = leadsOnRing(w, p.s, lane, veh.id, veh.lane);
+      if (w.owesStop(veh)) busStop(w, veh, p.s, p.drive.speed ?? w.ringSpeed, leads, dt);
+      let limit = zones ? speedLimitAt(w, p.s) : undefined;
+      // The learner hesitates now and then: it brakes for nothing, and the traffic bunches up.
+      if (isStalling(w, veh.id)) limit = Math.min(limit ?? w.ringSpeed, w.ringSpeed * w.config.learnerStallSpeed);
       if (quarry !== null && leads[0]?.id === quarry && veh.isPlayerPolice) p.drive = pursue(w, p.drive, dt);
-      else p.drive = drive(w, p.drive, leads, veh.id, dt, zones ? speedLimitAt(w, p.s) : undefined);
+      else p.drive = drive(w, p.drive, leads, veh.id, dt, limit);
     } else if (p.kind === 'exiting') {
-      const lead = leadOnExit(w, p.arm, p.s, veh.id);
+      const lead = leadOnExit(w, p.arm, p.s, veh.id, veh.lane);
       p.drive = drive(w, p.drive, lead ? [lead] : [], veh.id, dt);
+    } else if (p.kind === 'merging') {
+      paceMerge(w, p, lane, veh.id, veh.lane, dt);
     }
   }
+}
+
+/**
+ * A school bus on its way to the stop: the stop is a standing lead ahead of it, so it brakes
+ * like any driver and stands right at the sign. Once it has stood `busDwell` there, it pulls away.
+ */
+function busStop(w: World, veh: Vehicle, s: number, speed: number, leads: Lead[], dt: number): void {
+  const stop = w.busStopS;
+  if (stop === null) return;
+  const ahead = w.layout.ringDistance(s, stop);
+  const front = w.lengthOf(veh.type) / 2;
+  if (ahead > w.layout.ring.length / 2) return;
+  if (ahead - front <= w.config.stopGap + 2 && speed <= w.config.standingSpeed) {
+    veh.dwell += dt;
+    if (veh.dwell >= w.config.busDwell) veh.served = true;
+  }
+  if (veh.served) return;
+  leads.unshift({ id: -1, gap: Math.max(0, ahead - front + w.config.stopGap), speed: 0, length: 0 });
+  leads.sort((a, b) => a.gap - b.gap);
+}
+
+/** Traffic below this share of the ring's speed is a jam a merging car has to mind. */
+const SLOW_TRAFFIC = 0.9;
+/** A merging car plans its stop with this share of the hardest braking, and so keeps a margin. */
+const MERGE_BRAKE_SHARE = 0.75;
+/** A slowed merging car this close to the ring counts for the traffic behind it. */
+const JOINING_REACH = 1.5;
+
+/**
+ * A car on its way in minds the ring where it joins (players' feedback, 30.09.2026): when the
+ * traffic there is slow or stands, it brakes behind it instead of ploughing in at full speed.
+ * On a flowing ring nothing changes, so the timing of a tap stays exactly what it was.
+ */
+function paceMerge(w: World, p: Merging, occupants: Occupant[], id: number, laneOf: number, dt: number): void {
+  const c = w.config;
+  const g = gravity(c);
+  const nominal = w.mergeSpeed({ ...p, pace: 1 });
+  const current = nominal * (p.pace ?? 1);
+  const s = wrap(w.layout.entryS(p.arm, laneOf) - w.mergeRemaining(p, laneOf), w.layout.ring.length);
+  let target = nominal;
+  let queued = 0;
+  for (const lead of leadsOnRing(w, s, occupants, id, laneOf)) {
+    if (lead.speed < w.ringSpeed * SLOW_TRAFFIC) {
+      const room = Math.max(0, lead.gap - queued - c.stopGap - c.followMargin * lead.speed);
+      target = Math.min(target, Math.sqrt(lead.speed * lead.speed + 2 * c.driverBrake * g * MERGE_BRAKE_SHARE * room));
+    }
+    queued += lead.length + c.stopGap;
+  }
+  if (p.pace === undefined && target >= nominal) return;
+  // Still at the line it simply pulls away more gently; once rolling it has to brake.
+  const atLine = profileDistance(p.profile, p.elapsed) < c.carLength / 2;
+  const braked = atLine ? target : Math.max(target, current - c.driverBrake * g * dt);
+  const next = target < current ? braked : Math.min(target, current + c.driverAcceleration * g * dt);
+  if (next >= nominal - 1e-9) {
+    p.pace = undefined;
+    p.braking = false;
+    return;
+  }
+  p.pace = nominal > 1e-9 ? Math.min(Math.max(next / nominal, 0), 1) : 1;
+  p.braking = next < current - 1e-9 || next <= c.standingSpeed;
 }
 
 function hasTransporterOnRing(w: World): boolean {
@@ -156,7 +226,7 @@ function reactionTime(w: World, id: number): number {
 
 /** Nose, centre and tail of a wreck: enough to tell whether it reaches into a lane. */
 function wreckPoints(w: World, veh: Vehicle): Vec2[] {
-  const cap = capsule(veh.position, veh.heading, w.lengthOf(veh.type), w.config.carWidth);
+  const cap = capsule(veh.position, veh.heading, w.lengthOf(veh.type), w.widthOf(veh.type));
   const forward = mul(normalize(sub(cap.b, cap.a)), cap.radius);
   return [sub(cap.a, forward), veh.position, add(cap.b, forward)];
 }
@@ -169,33 +239,42 @@ function ringLaneOccupants(w: World): Occupant[] {
   const out: Occupant[] = [];
   for (const veh of w.vehicles) {
     const p = veh.phase;
+    const lane = veh.lane;
     if (p.kind === 'ring') {
-      out.push({ id: veh.id, s: p.s, speed: p.drive.speed ?? w.ringSpeed, length: w.lengthOf(veh.type) });
+      out.push({ id: veh.id, lane, s: p.s, speed: p.drive.speed ?? w.ringSpeed, length: w.lengthOf(veh.type) });
+    } else if (p.kind === 'merging' && (p.pace ?? 1) < 1 && w.mergeRemaining(p, lane) < c.carLength * JOINING_REACH) {
+      // Held up by the jam right at the join: the ring traffic behind has to mind it too.
+      const s = wrap(w.layout.entryS(p.arm, lane) - w.mergeRemaining(p, lane), circumference);
+      out.push({ id: veh.id, lane, s, speed: w.mergeSpeed(p), length: w.lengthOf(veh.type) });
     } else if (p.kind === 'exiting' && p.s < c.carLength) {
-      const s = wrap(w.layout.exitRingS[p.arm.index] + p.s, circumference);
-      out.push({ id: veh.id, s, speed: p.drive.speed ?? w.ringSpeed, length: w.lengthOf(veh.type) });
+      const s = wrap(w.layout.exitS(p.arm, lane) + p.s, circumference);
+      out.push({ id: veh.id, lane, s, speed: p.drive.speed ?? w.ringSpeed, length: w.lengthOf(veh.type) });
     } else if (p.kind === 'crashed') {
       const points = wreckPoints(w, veh);
-      let nearest = points[0];
-      for (const pt of points) {
-        if (Math.abs(length(pt) - w.layout.ringRadius) < Math.abs(length(nearest) - w.layout.ringRadius)) nearest = pt;
+      // A wreck blocks every lane it reaches into.
+      for (let l = 0; l < w.layout.lanes; l++) {
+        const radius = w.layout.laneRadius(l);
+        let nearest = points[0];
+        for (const pt of points) {
+          if (Math.abs(length(pt) - radius) < Math.abs(length(nearest) - radius)) nearest = pt;
+        }
+        if (Math.abs(length(nearest) - radius) - c.carWidth / 2 >= halfLane - c.carWidth / 2 + 1) continue;
+        const angle = angleOf(nearest);
+        const s = wrap(angle, TAU) * w.layout.ringRadius;
+        const tangent = fromAngle(angle + Math.PI / 2);
+        out.push({ id: veh.id, lane: l, s, speed: Math.max(0, dot(p.velocity, tangent)), length: w.lengthOf(veh.type) });
       }
-      if (Math.abs(length(nearest) - w.layout.ringRadius) - c.carWidth / 2 >= halfLane - c.carWidth / 2 + 1) continue;
-      const angle = angleOf(nearest);
-      const s = wrap(angle, TAU) * w.layout.ringRadius;
-      const tangent = fromAngle(angle + Math.PI / 2);
-      out.push({ id: veh.id, s, speed: Math.max(0, dot(p.velocity, tangent)), length: w.lengthOf(veh.type) });
     }
   }
   return out;
 }
 
 /** The nearest `count` things ahead in the ring lane, nearest first. */
-function leadsOnRing(w: World, s: number, occupants: Occupant[], id: number, count = 3): Lead[] {
+function leadsOnRing(w: World, s: number, occupants: Occupant[], id: number, lane = 0, count = 3): Lead[] {
   const circumference = w.layout.ring.length;
   const ahead: Lead[] = [];
   for (const o of occupants) {
-    if (o.id === id) continue;
+    if (o.id === id || o.lane !== lane) continue;
     const distance = w.layout.ringDistance(s, o.s);
     if (distance <= 0 || distance >= circumference / 2) continue;
     ahead.push({ id: o.id, gap: distance - o.length, speed: o.speed, length: o.length });
@@ -205,9 +284,9 @@ function leadsOnRing(w: World, s: number, occupants: Occupant[], id: number, cou
 }
 
 /** Cars ahead on the same exit, and wrecks lying across it. */
-function leadOnExit(w: World, arm: Arm, s: number, id: number): Lead | null {
+function leadOnExit(w: World, arm: Arm, s: number, id: number, lane = 0): Lead | null {
   const c = w.config;
-  const path = w.layout.exit(arm);
+  const path = w.layout.exit(arm, lane);
   const halfLane = c.laneWidth / 2 + c.carWidth / 2;
   let nearest: Lead | null = null;
   const consider = (vid: number, gap: number, speed: number): void => {
@@ -216,7 +295,7 @@ function leadOnExit(w: World, arm: Arm, s: number, id: number): Lead | null {
   for (const veh of w.vehicles) {
     if (veh.id === id) continue;
     const p = veh.phase;
-    if (p.kind === 'exiting' && p.arm.index === arm.index && p.s > s) {
+    if (p.kind === 'exiting' && p.arm.index === arm.index && veh.lane === lane && p.s > s) {
       consider(veh.id, p.s - s - w.lengthOf(veh.type), p.drive.speed ?? w.ringSpeed);
     } else if (p.kind === 'crashed') {
       // Cheap reject: a wreck far from this exit cannot block it.

@@ -72,7 +72,7 @@ export interface CityRise {
 export const CityLayer = {
   addMapSkin(list: RenderList, skin: ColorToken | null, world: World): void {
     if (!skin) return;
-    const radius = world.layout.ringRadius - world.layout.laneWidth / 2;
+    const radius = world.layout.islandRadius;
     list.w(circle(v(0, 0), radius), skin, 0.16);
     list.w(arc(v(0, 0), radius - 6, 2, 0, TAU), skin, 0.5);
   },
@@ -88,6 +88,7 @@ export const CityLayer = {
         seasons: 'skinFrost',
         loyalty: 'skinBronze',
         honours: 'skinPhoenix',
+        pass: 'mapNeon',
       } as const
     )[album];
   },
@@ -106,13 +107,36 @@ export const CityLayer = {
    */
   addElite(list: RenderList, eliteLevel: number, world: World): void {
     if (eliteLevel <= 0) return;
-    const radius = world.layout.ringRadius - world.layout.laneWidth / 2 - 7;
+    const radius = world.layout.islandRadius - 7;
     list.w(arc(v(0, 0), radius, 2, 0, TAU), 'coin', 0.55);
     const studs = Math.min(5, Math.floor(eliteLevel / 10));
     for (let i = 0; i < studs; i++) {
       const angle = -Math.PI / 2 + (i - (studs - 1) / 2) * 0.13;
       list.w(circle(mul(fromAngle(angle), radius), 3.5), 'coin', 0.9);
     }
+  },
+
+  /**
+   * The Hall of Fame, once built: a gold wall along the top of the island with a star for
+   * every Prestige rank (up to ten) and a laurel in its middle.
+   */
+  addHall(list: RenderList, built: boolean, ranks: number, world: World): void {
+    if (!built) return;
+    const radius = world.layout.islandRadius - 20;
+    const half = 0.5;
+    const top = Math.PI / 2;
+    list.w(arc(v(0, 0), radius, 9, top - half, top + half), 'coinInk', 0.85);
+    list.w(arc(v(0, 0), radius, 6, top - half, top + half), 'coin', 0.9);
+    const stars = Math.min(10, ranks);
+    for (let i = 0; i < stars; i++) {
+      const angle = top + (i - (stars - 1) / 2) * ((2 * half) / 11);
+      const at = mul(fromAngle(angle), radius);
+      list.w(circle(at, 2.3), 'primary', 0.95);
+      list.w(circle(at, 1.1), 'coin', 1);
+    }
+    const laurel = mul(fromAngle(top), radius - 14);
+    for (const side of [-1, 1]) list.w(arc(laurel, 6, 1.6, top + side * 0.4 - Math.PI / 2, top + side * 1.6 - Math.PI / 2), 'skinLaurel', 0.9);
+    list.w(circle(laurel, 2.4), 'coin', 0.95);
   },
 
   growth: (c: Config): number => c.level + 4 * Math.max(0, builtArmSlots(c).length - 4) + 3 * Object.keys(c.modules).length,

@@ -1,4 +1,5 @@
 import type { ColorToken } from './theme';
+import type { Effect } from './skinEffects';
 
 /** What each skin looks like (LOOT.md). */
 export type Finish = 'shiny' | 'glitter' | 'shinyGlitter';
@@ -84,6 +85,19 @@ export const Skins = {
       lanterns: 'mapLanterns',
       crystal: 'mapCrystal',
       beach: 'sea',
+      blizzard: 'skinIce',
+      northernLights: 'skinMidnight',
+      glacier: 'skinFrost',
+      petalStorm: 'skinBlossom',
+      rainbow: 'skinPearl',
+      bloomGlow: 'skinHanami',
+      solarFlare: 'skinSunburst',
+      neonWave: 'skinObsidian',
+      lava: 'skinCarbon',
+      ghost: 'skinPearl',
+      harvestMoon: 'skinPumpkin',
+      thunder: 'skinMidnight',
+      hallOfFame: 'skinGold',
     };
     return id ? (map[id] ?? null) : null;
   },
@@ -130,9 +144,37 @@ export const Skins = {
         return 'fireOuter';
       case 'volcano':
         return 'mapEmber';
+      case 'solarFlare':
+        return 'fireOuter';
+      case 'thunder':
+        return 'juiceYellow';
+      case 'harvestMoon':
+        return 'vehicleTire';
+      case 'hallOfFame':
+        return 'skinLaurel';
       default:
         return null;
     }
+  },
+
+  /** The loud skins' animation (Season Pass, Hall of Fame). */
+  effect(id: string | null): Effect | null {
+    const map: Record<string, Effect> = {
+      blizzard: 'snowTrail',
+      northernLights: 'aurora',
+      glacier: 'crystal',
+      petalStorm: 'petals',
+      rainbow: 'rainbow',
+      bloomGlow: 'bloom',
+      solarFlare: 'flame',
+      neonWave: 'neon',
+      lava: 'lava',
+      ghost: 'ghost',
+      harvestMoon: 'embers',
+      thunder: 'lightning',
+      hallOfFame: 'laurel',
+    };
+    return id ? (map[id] ?? null) : null;
   },
 
   roof(id: string | null): ColorToken | null {
@@ -182,7 +224,13 @@ export const Skins = {
       case 'diamond':
       case 'streakGold':
       case 'obsidian':
+      case 'glacier':
+      case 'hallOfFame':
         return 'shinyGlitter';
+      case 'northernLights':
+      case 'thunder':
+      case 'neonWave':
+        return 'shiny';
       default:
         return null;
     }
@@ -197,6 +245,7 @@ export interface Look {
   stripe: ColorToken | null;
   roof: ColorToken | null;
   finish: Finish | null;
+  effect?: Effect | null;
 }
 
 /** Every vehicle on the road wears one of the skins that are on, picked by its id. */
@@ -205,5 +254,5 @@ export function lookFor(id: number, skins: string[]): Look | null {
   let h = Math.imul(id ^ 0x6659fd93, 0xd6e8feb8) ^ (id * 2654435761);
   h ^= h >>> 16;
   const skin = skins[(h >>> 0) % skins.length];
-  return { paint: Skins.color(skin), stripe: Skins.stripe(skin), roof: Skins.roof(skin), finish: Skins.finish(skin) };
+  return { paint: Skins.color(skin), stripe: Skins.stripe(skin), roof: Skins.roof(skin), finish: Skins.finish(skin), effect: Skins.effect(skin) };
 }

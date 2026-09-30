@@ -4,14 +4,14 @@ import type { Pose } from '../core/paths';
 import type { Layout, Arm } from '../core/roundabout';
 import { type Config, moduleZone, moduleEntries } from '../core/config';
 import { type Vec2, v, add, sub, mul, dot, dist, left, right, fromAngle, length, normalize, angleDelta, lerpV, TAU } from '../core/vec2';
-import { type RenderList, rect, circle, arc, line, text, Ease, Metrics, toScreen } from './render';
+import { type RenderList, rect, circle, arc, line, polygon, text, Ease, Metrics, toScreen } from './render';
 import type { ColorToken } from './theme';
 import { CarArt } from './carArt';
 import { lookFor } from './skins';
 import { S } from './strings';
 import { towDepotCovering } from '../core/modules';
 import { criminalVehicle } from '../core/specials';
-import { isCarType } from '../core/vehicle';
+import { isCarType, isEmergency } from '../core/vehicle';
 
 /** Pose between the last two simulation steps. */
 export function interpolatedPose(veh: Vehicle, alpha: number): Pose {
@@ -142,9 +142,18 @@ export const SceneBuilder = {
     const grain = list.grain;
     list.grain = 'asphalt';
     for (const a of layout.arms) list.w(rect(mul(fromAngle(a.angle), reach / 2), v(reach, lane * 2 + 7), 0, a.angle), 'kerb');
-    list.w(arc(v(0, 0), layout.ringRadius, lane + 7, 0, TAU), 'kerb');
+    // Two lanes: the road grows inwards, the island shrinks.
+    const width = lane * layout.lanes;
+    const middle = layout.ringRadius - (lane * (layout.lanes - 1)) / 2;
+    list.w(arc(v(0, 0), middle, width + 7, 0, TAU), 'kerb');
     for (const a of layout.arms) list.w(rect(mul(fromAngle(a.angle), reach / 2), v(reach, lane * 2), 0, a.angle), 'surface');
-    list.w(arc(v(0, 0), layout.ringRadius, lane, 0, TAU), 'surface');
+    list.w(arc(v(0, 0), middle, width, 0, TAU), 'surface');
+    if (layout.lanes > 1) {
+      // The dashed line between the lanes.
+      const r = layout.ringRadius - lane / 2;
+      const dashes = Math.round((TAU * r) / 22);
+      for (let k = 0; k < dashes; k++) list.w(arc(v(0, 0), r, 1.5, (k * TAU) / dashes, (k * TAU) / dashes + (TAU / dashes) * 0.55), 'marking', 0.8);
+    }
     for (const a of layout.arms) {
       const out = fromAngle(a.angle);
       let distance = layout.ringRadius + lane / 2 + 10;
@@ -166,11 +175,31 @@ export const SceneBuilder = {
     SceneBuilder.addModules(list, layout, c);
     list.grain = grain;
     // The island stays a calm surface: the combo and the prompts sit on it.
-    list.w(circle(v(0, 0), layout.ringRadius - lane / 2 + 3.5), 'kerb');
-    list.w(circle(v(0, 0), layout.ringRadius - lane / 2), 'island');
-    list.w(arc(v(0, 0), layout.ringRadius - lane / 2 - 14, 1.5, 0, TAU), 'marking', 0.25);
+    list.w(circle(v(0, 0), layout.islandRadius + 3.5), 'kerb');
+    list.w(circle(v(0, 0), layout.islandRadius), 'island');
+    list.w(arc(v(0, 0), layout.islandRadius - 14, 1.5, 0, TAU), 'marking', 0.25);
     // The road never moves: the drawer keeps its picture (`RenderList.bake`).
     list.bake(from, 'road');
+  },
+
+  /**
+   * Two lanes: an arrow on the road in front of your stop line says which lane your front car
+   * is bound for, straight on into the outer lane or bending left across it into the inner one.
+   */
+  addLaneArrow(list: RenderList, world: World): void {
+    const layout = world.layout;
+    if (layout.lanes < 2) return;
+    const front = world.queue.vehicles[0];
+    const veh = front === undefined ? undefined : world.vehicle(front);
+    if (!veh) return;
+    const path = layout.entry(layout.player, veh.lane);
+    const pts: Vec2[] = [];
+    for (let k = 0; k <= 8; k++) pts.push(path.point(path.length * (0.12 + 0.5 * (k / 8))));
+    for (let k = 1; k < pts.length; k++) list.w(line(pts[k - 1], pts[k], 2.4), 'accent', 0.45);
+    const tip = path.pose(path.length * 0.62);
+    const ahead = fromAngle(tip.heading);
+    const side = mul(left(ahead), 4.5);
+    list.w(polygon([add(tip.position, mul(ahead, 6)), add(tip.position, side), sub(tip.position, side)]), 'accent', 0.6);
   },
 
   /** A line along a lane's kerb, from the back of its queue to just past the stop line. */
@@ -227,7 +256,7 @@ export const SceneBuilder = {
           ? 'coin'
           : veh.role === 'escort'
             ? 'muted'
-            : veh.type === 'police' || veh.type === 'ambulance'
+            : veh.type === 'police' || isEmergency(veh.type)
               ? 'lightBlue'
               : veh.type === 'pickup'
                 ? 'vehicleCriminal'
@@ -313,7 +342,7 @@ export const SceneBuilder = {
           type: veh.type,
           pose,
           dents: veh.dents,
-          lights: (veh.type === 'police' && flashing) || veh.type === 'ambulance' ? world.time / CarArt.strobeCycle + (veh.id % 7) * 0.37 : null,
+          lights: (veh.type === 'police' && flashing) || isEmergency(veh.type) ? world.time / CarArt.strobeCycle + (veh.id % 7) * 0.37 : null,
           brake: lamps ? lamps.brake(veh.id) : null,
           brakeGlow: veh.phase.kind !== 'queued' || fronts.has(veh.id),
           headlights: lamps ? lamps.headlights(veh.id) : 0,
@@ -321,6 +350,7 @@ export const SceneBuilder = {
           stripe: look?.stripe ?? null,
           roof: mark?.roof ? mark.color : (look?.roof ?? null),
           finish: look?.finish ?? null,
+          effect: look && 'effect' in look ? (look.effect ?? null) : null,
           finishTime,
           springTime,
         },

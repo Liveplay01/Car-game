@@ -2,6 +2,7 @@ import { World, STEP } from '../core/world';
 import { baseConfig, gravity, builtArmSlots, type Config } from '../core/config';
 import { type SaveGame, type GameMode, type Hint, Careers, newSave } from '../core/career';
 import { Elite } from '../core/elite';
+import { SeasonPass } from '../core/seasonPass';
 import { Unlocks } from '../core/unlocks';
 import type { GameEvent, ShiftResult } from '../core/events';
 import type { Upgrade } from '../core/levels';
@@ -492,8 +493,23 @@ export class GameSession {
         this.tryPrestige();
         break;
       case 'showElite':
+      case 'showPass':
         if (!this.detailOpen) this.tick();
         this.detailOpen = true;
+        break;
+      case 'buyPass':
+        if (SeasonPass.buy(career, this.today, this.config)) {
+          this.persist();
+          this.showNotice(S.pass.bought(SeasonPass.season(this.today)));
+          this.play(['paid'], ['comboUp']);
+        }
+        break;
+      case 'buildHall':
+        if (Careers.buildHall(career, this.config)) {
+          this.persist();
+          this.showNotice(S.hall.built);
+          this.play(['paid'], ['comboUp']);
+        }
         break;
       case 'wear': {
         const item = cosmetic(action.id);
@@ -622,7 +638,7 @@ export class GameSession {
       return;
     }
     this.prestigeArmed = -Infinity;
-    const done = Careers.prestige(career, this.config);
+    const done = Careers.prestige(career, this.config, this.today);
     if (!done) return;
     const titles = Careers.recordTitles(career, this.config);
     this.persist();
@@ -1292,6 +1308,7 @@ export class GameSession {
       case 'progress': {
         // Records has one sheet: the Elite track, opened from its card.
         if (this.progressPage.section === 0) return Details.elite(career, this.config, this.sceneTime - this.prestigeArmed <= GameSession.prestigeWindow);
+        if (this.progressPage.section === 1) return Details.pass(career, this.config, this.today);
         const selected = this.progressPage.museum.selected;
         return this.progressPage.section === 3 && selected ? Details.museum(selected, career, this.config) : null;
       }
@@ -1375,6 +1392,7 @@ export class GameSession {
       const career = this.save.career;
       if (open === 0 && ProgressPage.eliteAt(point, vp, this.tabInset, career)) this.perform({ k: 'showElite' });
       if (open === 1 && ProgressPage.weeklyAt(point, vp, this.tabInset)) this.startSpecial({ k: 'trial', trial: weeklyTrial(weekNumber(this.today)) });
+      if (open === 1 && ProgressPage.passAt(point, vp, this.tabInset)) this.perform({ k: 'showPass' });
       const museum = open === 3 ? ProgressPage.museumAt(point, vp, this.tabInset, this.progressPage) : null;
       if (museum) this.tapMuseum(museum);
       return true;
@@ -1393,7 +1411,9 @@ export class GameSession {
             this.rim.signal('wave', 'coin');
             this.sinceHitStop = 0;
           } else if (e.rating !== 'clean') this.addPopup({ k: e.rating } as PopupKind, e.position);
-          if (TyreMarks.leavesMark(e.rating)) this.tyreMarks.add();
+          if (e.shave > 0) this.addPopup({ k: 'shave', n: e.shave }, add(e.position, v(0, 22)));
+          // In the snow every merge leaves its tracks, and they stay.
+          if (TyreMarks.leavesMark(e.rating) || world.config.weather === 'snow') this.tyreMarks.add(world.config.weather === 'snow');
           // The Records keep how early or late the taps come (saved with the shift).
           if (!this.tutorial) noteTap(this.save.career, e.gapAhead, e.gapBehind, this.config);
           break;
@@ -1445,8 +1465,19 @@ export class GameSession {
           this.rim.signal('wave', 'coin');
           break;
         case 'ambulanceWarning':
-          this.addPopup({ k: 'ambulance' }, world.layout.stopPose(e.arm).position);
+          this.addPopup({ k: 'ambulance', fire: e.fire }, world.layout.stopPose(e.arm).position);
           this.rim.signal('sweep', 'lightBlue');
+          break;
+        case 'learnerWarning':
+          this.addPopup({ k: 'learner' }, world.layout.stopPose(e.arm).position);
+          this.rim.signal('sweep', 'juiceGreen');
+          break;
+        case 'learnerSpoilt':
+          this.addPopup({ k: 'crowded' }, e.point);
+          break;
+        case 'learnerPassed':
+          this.addPopup({ k: 'patient', n: e.amount }, e.point);
+          this.rim.signal('wave', 'juiceGreen');
           break;
         case 'ambulanceBlocked':
           this.addPopup({ k: 'blocked' }, e.point);
@@ -1728,12 +1759,14 @@ export class GameSession {
     CityLayer.addMapSkin(list, Skins.color(career.mapSkin), world);
     MapTheme.addIsland(list, theme, world);
     if (!this.special) CityLayer.addElite(list, Elite.level(career, this.config), world);
+    if (!this.special) CityLayer.addHall(list, career.hallBuilt, career.prestige, world);
     CityLayer.addFrame(list, Careers.frame(career), world);
     this.rim.add(list, world, rm);
     WeatherLayer.addCityEvent(list, world);
     WeatherLayer.addGround(list, world);
     this.scars.addGround(list, this.sceneTime, rm ? null : this.sceneTime);
     this.tyreMarks.addGround(list, world.layout, world.config);
+    SceneBuilder.addLaneArrow(list, world);
     this.explosions.addGround(list);
     this.effects.addGround(list, world, alpha, !rm);
     CityLights.add(list, world, alpha, theme);
@@ -1745,7 +1778,7 @@ export class GameSession {
     this.effects.addAir(list);
     this.explosions.addAir(list);
     WeatherLayer.addAir(list, world, world.time, rm);
-    const island = { center: toScreen(camera, v(0, 0)), radius: (world.layout.ringRadius - world.layout.laneWidth / 2) * camera.scale };
+    const island = { center: toScreen(camera, v(0, 0)), radius: (world.layout.islandRadius) * camera.scale };
     if (!this.lowDetail) MapTheme.addAir(list, theme, this.sceneTime, rm, island);
     return list;
   }
@@ -1792,6 +1825,7 @@ export class GameSession {
       HUD.addTransporter(list, world, alpha);
       HUD.addMilitary(list, world, alpha);
       HUD.addAmbulance(list, world, alpha);
+      HUD.addLearner(list, world, alpha);
       const since = world.shift.rushHourSince;
       HUD.add(list, {
         world,

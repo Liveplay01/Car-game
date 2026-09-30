@@ -1,5 +1,5 @@
 import type { World } from '../core/world';
-import { isExplosive } from '../core/vehicle';
+import { isExplosive, isEmergency } from '../core/vehicle';
 import { type Vec2, v, add, mul, left, fromAngle } from '../core/vec2';
 import { type RenderList, rect, circle, polygon } from './render';
 import { CarArt, PoliceLights, worldOf } from './carArt';
@@ -76,7 +76,7 @@ export const NightLayer = {
       if (isExplosive(veh.type)) list.w(circle(pose.position, 1.4), 'hazard', 0.8);
 
       // Police and ambulance strobes light up the street around them.
-      if ((veh.type === 'police' && (chase || veh.phase.kind !== 'queued')) || veh.type === 'ambulance') {
+      if ((veh.type === 'police' && (chase || veh.phase.kind !== 'queued')) || isEmergency(veh.type)) {
         const spill = PoliceLights.spill(world.time / CarArt.strobeCycle + (veh.id % 7) * 0.37);
         const across = mul(left(fromAngle(pose.heading)), W * 0.9);
         if (spill.left > 0.01) list.w(circle(add(pose.position, across), L * 0.9), 'lightBlue', 0.1 * spill.left);

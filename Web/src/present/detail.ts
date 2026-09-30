@@ -14,6 +14,7 @@ import { StreetBuilderPage } from './builder';
 import type { Part, ScreenAction } from './flow';
 import { R, circle, line, text } from './render';
 import { Elite, TITLES, TITLE_RULES } from '../core/elite';
+import { SeasonPass, PASS_TIERS } from '../core/seasonPass';
 import { MenuKit } from './menukit';
 import { MuseumPage } from './museum';
 import { museumEntry, firstLevel } from '../core/museum';
@@ -183,6 +184,21 @@ export const Details = {
       { label: S.elite.rank, value: career.prestige > 0 ? S.prestige.caption(career.prestige) : S.progress.none, valueColor: career.prestige > 0 ? 'coin' : 'muted' },
       { label: S.elite.traffic, value: career.prestige > 0 ? S.elite.harder(Careers.headStart(career, config)) : S.progress.none, valueColor: 'muted' },
     ];
+    // The Hall of Fame: a plaque per rank; built, it stands on the island.
+    const plaques: DetailRow[] = career.hallOfFame.map((e) => ({
+      label: S.hall.plaque(e),
+      value: '',
+      sub: S.hall.plaqueLine(e, e.day >= 0 ? new Date(e.day * 86400000).toISOString().slice(0, 10) : null),
+      labelColor: 'coin',
+    }));
+    if (plaques.length === 0) plaques.push({ label: S.hall.empty, value: '', labelColor: 'muted' });
+    plaques.push({
+      label: S.hall.title,
+      value: career.hallBuilt ? S.hall.standing : money(Fmt.number(config.hallOfFamePrice)),
+      sub: career.hallBuilt ? undefined : open ? S.hall.notBuilt : S.hall.open(config.prestigeLevel),
+      labelColor: career.hallBuilt ? 'coin' : 'primary',
+      valueColor: career.hallBuilt ? 'accent' : career.money >= config.hallOfFamePrice ? 'primary' : 'muted',
+    });
     const ready = Careers.canPrestige(career, config);
     const notes: Detail['notes'] = [];
     if (next) notes.push({ text: S.elite.next(next), color: 'accent' });
@@ -201,6 +217,7 @@ export const Details = {
         { header: S.elite.trackHeader, rows: track },
         { header: S.elite.titlesHeader, rows: titles },
         { header: S.elite.prestigeHeader, rows: prestige },
+        { header: S.hall.header, rows: plaques },
       ],
       notes,
       actions: [
@@ -210,7 +227,56 @@ export const Details = {
           prominent: armed,
           enabled: ready,
         },
+        ...(career.hallBuilt || !open
+          ? []
+          : [{ label: S.hall.build(money(Fmt.number(config.hallOfFamePrice))), action: { k: 'buildHall' } as const, prominent: false, enabled: Careers.canBuildHall(career, config) }]),
       ],
+    };
+  },
+
+  /** The Season Pass: this season's track, its skins, and the button to buy it. */
+  pass(career: Career, config: Config, day: number): Detail {
+    const season = SeasonPass.season(day);
+    const owned = SeasonPass.owns(career, day);
+    const tier = owned ? SeasonPass.tier(career, config) : 0;
+    const { into, need } = SeasonPass.progress(career, config);
+    const open = SeasonPass.isOpen(career, config);
+    const track: DetailRow[] = Array.from({ length: PASS_TIERS }, (_, i) => {
+      const reward = SeasonPass.reward(i + 1, season);
+      const reached = owned && tier > i;
+      return {
+        label: S.pass.tier(i + 1, PASS_TIERS),
+        value: S.pass.reward(reward),
+        labelColor: reached ? 'coin' : 'muted',
+        valueColor: reached ? 'accent' : reward.k === 'skin' ? rarityColor(reward.item.rarity) : 'muted',
+      };
+    });
+    const crown = SeasonPass.skins(season)[2];
+    const notes: Detail['notes'] = [{ text: S.pass.daysLeft(SeasonPass.daysLeft(day)), color: 'muted' }];
+    if (owned && tier >= PASS_TIERS) notes.unshift({ text: S.pass.complete, color: 'accent' });
+    if (!open) notes.unshift({ text: S.pass.locked(config.seasonPassLevel), color: 'muted' });
+    const price = config.seasonPassPrice;
+    return {
+      key: 'pass',
+      art: { k: 'item', id: crown.id, owned: true },
+      eyebrow: { text: owned ? S.pass.xp(into, need) : S.pass.buyHint, color: 'muted' },
+      title: S.pass.caption(season),
+      price: owned ? { text: S.pass.tier(tier, PASS_TIERS), color: 'coin' } : { text: money(Fmt.number(price)), color: 'primary' },
+      steps: owned ? { done: tier, total: PASS_TIERS } : null,
+      body: S.pass.body(config.seasonPassXpPerTier),
+      rows: [],
+      sections: [{ header: S.pass.trackHeader, rows: track }],
+      notes,
+      actions: owned
+        ? []
+        : [
+            {
+              label: career.money >= price ? S.pass.buy(money(Fmt.number(price))) : S.upgrades.missing(money(Fmt.number(price - career.money))),
+              action: { k: 'buyPass' },
+              prominent: true,
+              enabled: SeasonPass.canBuy(career, day, config),
+            },
+          ],
     };
   },
 

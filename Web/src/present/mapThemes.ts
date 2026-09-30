@@ -608,7 +608,7 @@ export const MapTheme = {
   /** Sakura rakes the island into a gravel garden. */
   addIsland(list: RenderList, theme: MapTheme | null, world: World): void {
     if (theme !== 'sakura') return;
-    const island = world.layout.ringRadius - world.layout.laneWidth / 2;
+    const island = world.layout.islandRadius;
     for (let radius = 16; radius < island - 22; radius += 6.5) list.w(arc(v(0, 0), radius, 1.1, 0, TAU), 'sakuraPale', 0.05);
     for (let i = 0; i < 3; i++) {
       const at = mul(fromAngle(0.9 + i * 2.2), island * 0.6);

@@ -4,7 +4,7 @@ import { type MuseumShelf, type MuseumEntry, type SpecialKind, type WeatherKind,
 import { rematch } from '../core/trials';
 import { type VehicleType, isHeavy } from '../core/vehicle';
 import { type Vec2, v, add, mul, fromAngle, TAU } from '../core/vec2';
-import { type RenderList, type RenderItem, type Rect, RenderList as List, R, rect, circle, line, polygon, text, Ease, moved, pinned, vlerp, type Align, type Weight } from './render';
+import { type RenderList, type RenderItem, type Rect, RenderList as List, R, rect, circle, arc, line, polygon, text, Ease, moved, pinned, vlerp, type Align, type Weight } from './render';
 import type { ColorToken } from './theme';
 import { MenuKit } from './menukit';
 import { moneyTag } from './icons';
@@ -109,6 +109,24 @@ const WEATHER_ICON: Record<WeatherKind, Icon> = {
     bolt(l, at, -8);
     bolt(l, at, 12);
   },
+  fog: (l, at, u) => {
+    cloud(l, at, u, 'muted');
+    for (const [y, w] of [[12, 40], [18, 30], [24, 36]]) l.s(line(at(-w / 2, y), at(w / 2, y), 3 * u), 'smokeLight');
+  },
+  snow: (l, at, u) => {
+    // A snowflake: three bars and their tips.
+    for (let k = 0; k < 3; k++) {
+      const a = (k * Math.PI) / 3;
+      const d = v(Math.cos(a) * 18, Math.sin(a) * 18);
+      l.s(line(at(-d.x, -d.y), at(d.x, d.y), 3 * u), 'skinIce');
+      for (const s of [-1, 1]) {
+        const tip = v(d.x * s * 0.62, d.y * s * 0.62);
+        const side = v(-Math.sin(a) * 5, Math.cos(a) * 5);
+        l.s(line(at(tip.x, tip.y), at(tip.x * 1.25 + side.x, tip.y * 1.25 + side.y), 2 * u), 'skinIce');
+        l.s(line(at(tip.x, tip.y), at(tip.x * 1.25 - side.x, tip.y * 1.25 - side.y), 2 * u), 'skinIce');
+      }
+    }
+  },
 };
 
 const DARK_ICON: Record<DarkKind, Icon> = {
@@ -152,6 +170,15 @@ const EVENT_ICON: Record<CityEvent, Icon> = {
     l.s(polygon([at(0, -21), at(17, -15), at(15, 5), at(0, 21), at(-15, 5), at(-17, -15)]), 'lightBlue');
     star(l, at, 0, -1, 9, 4, 'primary');
   },
+  schoolRun: (l, at, u) => {
+    // A bus stop sign: the pole and its round plate with an H.
+    l.s(line(at(0, 22), at(0, -4), 3 * u), 'muted');
+    l.s(circle(at(0, -10), 14 * u), 'vehicleBus');
+    l.s(circle(at(0, -10), 11 * u), 'juiceGreen');
+    l.s(line(at(-4, -16), at(-4, -4), 2.5 * u), 'vehicleBus');
+    l.s(line(at(4, -16), at(4, -4), 2.5 * u), 'vehicleBus');
+    l.s(line(at(-4, -10), at(4, -10), 2.5 * u), 'vehicleBus');
+  },
 };
 
 /** The glow behind an entry on show. A new kind has to pick one (the compiler checks). */
@@ -163,8 +190,12 @@ const SPECIAL_COLOR: Record<SpecialKind, ColorToken> = {
   truck: 'rarityCommon',
   tanker: 'juiceOrange',
   military: 'juiceGreen',
+  fireTruck: 'juiceRed',
+  motorbike: 'juiceOrange',
+  learner: 'juiceGreen',
+  bus: 'juiceYellow',
 };
-const WEATHER_COLOR: Record<WeatherKind, ColorToken> = { lightRain: 'lightBlue', heavyRain: 'rarityRare', storm: 'coin', extreme: 'juiceRed' };
+const WEATHER_COLOR: Record<WeatherKind, ColorToken> = { lightRain: 'lightBlue', heavyRain: 'rarityRare', storm: 'coin', extreme: 'juiceRed', fog: 'smokeLight', snow: 'skinIce' };
 const DARK_COLOR: Record<DarkKind, ColorToken> = { night: 'rarityEpic', blackout: 'muted' };
 const EVENT_COLOR: Record<CityEvent, ColorToken> = {
   roadworks: 'juiceOrange',
@@ -172,6 +203,7 @@ const EVENT_COLOR: Record<CityEvent, ColorToken> = {
   concert: 'rarityEpic',
   vipConvoy: 'coin',
   policeOperation: 'lightBlue',
+  schoolRun: 'juiceYellow',
 };
 
 /**
@@ -196,6 +228,8 @@ export const MuseumPage = {
         return DARK_COLOR[e.kind];
       case 'event':
         return EVENT_COLOR[e.kind];
+      case 'road':
+        return 'accent';
     }
   },
 
@@ -353,7 +387,7 @@ export const MuseumPage = {
       for (let i = 1; i <= escorts; i++) cars.push({ type: 'van', at: add(front, mul(ahead, -i * step)), look: SYNDICATE_ESCORT });
     } else {
       const type = entry.kind as VehicleType;
-      length = isHeavy(type) ? c.truckLength : type === 'ambulance' ? c.ambulanceLength : c.carLength;
+      length = isHeavy(type) ? Math.max(c.truckLength, CarArt.length(type, c)) : CarArt.length(type, c);
       cars.push({ type, at: v(0, 0), look: null });
     }
     // A car is the same size on every card, unless a convoy or a lorry needs the room.
@@ -362,7 +396,7 @@ export const MuseumPage = {
     const preview = new List({ viewport: list.camera.viewport, center: v(0, 0), focus: center, scale: pxPerUnit }, list.background);
     // Back to front, so the boss sits on top of its escorts.
     [...cars].reverse().forEach((car, i) => {
-      const flashing = shown && (car.type === 'police' || car.type === 'ambulance');
+      const flashing = shown && (car.type === 'police' || car.type === 'ambulance' || car.type === 'fireTruck');
       CarArt.add(
         preview,
         {
@@ -390,6 +424,12 @@ export const MuseumPage = {
     if (entry.k === 'weather') WEATHER_ICON[entry.kind](icon, at, u);
     else if (entry.k === 'dark') DARK_ICON[entry.kind](icon, at, u);
     else if (entry.k === 'event') EVENT_ICON[entry.kind](icon, at, u);
+    else if (entry.k === 'road') {
+      // Two lanes round an island, the dashed line between them.
+      icon.s(arc(at(0, 0), 17 * u, 16 * u, 0, TAU), 'surface');
+      for (let k = 0; k < 10; k++) icon.s(arc(at(0, 0), 17 * u, 1.4 * u, (k * TAU) / 10, (k * TAU) / 10 + 0.35), 'primary');
+      icon.s(circle(at(0, 0), 8 * u), 'accent');
+    }
     return icon.items;
   },
 };

@@ -94,6 +94,8 @@ export interface MergeReport {
   chain: number;
   /** A Critical Merge: its points already count `criticalFactor` times. */
   critical: boolean;
+  /** Points for slipping past a motorbike (already in `points`); 0 when there was none. */
+  shave: number;
 }
 
 export interface ExplosionReport {
@@ -142,13 +144,20 @@ export type GameEvent =
   | { type: 'dispatched'; vehicle: number; combo: number }
   | { type: 'modulePaid'; module: RoadModule; slot: number; amount: number; point: Vec2; time: number }
   | { type: 'towed'; vehicle: number; slot: number; time: number }
-  | { type: 'ambulanceWarning'; arm: Arm; time: number }
+  /** `fire`: this run is a fire engine, with its longer road to keep clear. */
+  | { type: 'ambulanceWarning'; arm: Arm; time: number; fire: boolean }
   | { type: 'ambulanceEntered'; vehicle: number }
   /** A car joined right in front of the ambulance: combo and chain are gone, and its bonus. */
   | { type: 'ambulanceBlocked'; vehicle: number; blocker: number; point: Vec2; time: number }
   /** The ambulance left the ring with its road kept clear. */
   | { type: 'ambulanceCleared'; vehicle: number; amount: number; point: Vec2; time: number }
   | { type: 'ambulanceLost'; vehicle: number; point: Vec2; time: number }
+  | { type: 'learnerWarning'; arm: Arm; time: number }
+  | { type: 'learnerEntered'; vehicle: number }
+  /** A car of yours joined right beside the learner: its bonus is gone. */
+  | { type: 'learnerSpoilt'; vehicle: number; blocker: number; point: Vec2; time: number }
+  /** The learner left the ring with room around it all the way. */
+  | { type: 'learnerPassed'; vehicle: number; amount: number; point: Vec2; time: number }
   | { type: 'militaryWarning'; arm: Arm; time: number }
   | { type: 'militaryEntered'; vehicle: number; deadline: number }
   | ({ type: 'explosion' } & ExplosionReport)

@@ -9,10 +9,12 @@ import {
   Vehicle,
   type VehicleType,
   type Merging,
+  type MergeProfile,
   type Ring,
   type Waiting,
   mergeProfile,
   profileDistance,
+  profileSpeed,
   newDrive,
   isHeavy,
   isExplosive,
@@ -41,6 +43,7 @@ import { type MilitaryPhase, updateMilitary, explode, isEscorted, predictedZoneS
 import { chargeModules, wreckClearRate, towDepotCovering } from './modules';
 import { tempoAt, densityAt } from './levels';
 import { type AmbulancePhase, firstAmbulance, updateAmbulance, noteMergeNearAmbulance, ambulanceThrough } from './ambulance';
+import { type LearnerPhase, firstLearner, updateLearner, noteMergeNearLearner, learnerThrough } from './learner';
 
 export const STEP_RATE = 120;
 export const STEP = 1 / STEP_RATE;
@@ -187,6 +190,7 @@ export class World {
   military: MilitaryPhase = { kind: 'idle', next: Infinity };
   militaryCount = 0;
   ambulance: AmbulancePhase = { kind: 'done' };
+  learner: LearnerPhase = { kind: 'done' };
   /** The syndicate boss's escorts still to join, and where (boss levels). */
   escortsDue: { arm: Arm; left: number } | null = null;
   ringSpeed: number;
@@ -199,6 +203,11 @@ export class World {
   tankerRng: Rng;
   militaryRng: Rng;
   ambulanceRng: Rng;
+  /** Newer draws each get a stream of their own, so older seeds keep their traffic. */
+  fireRng: Rng;
+  learnerRng: Rng;
+  trafficRng: Rng;
+  laneRng: Rng;
   /** Critical Merges and Jackpot transporters: its own stream, so older seeds keep their traffic. */
   luckRng: Rng;
   /** The next transporter is a Jackpot (drawn with its warning), and the truck that is one. */
@@ -225,6 +234,10 @@ export class World {
     this.tankerRng = substream(seed, 0x7a1e5c93);
     this.militaryRng = substream(seed, 0xe3b20c6d);
     this.ambulanceRng = substream(seed, 0xa3b01a4c);
+    this.fireRng = substream(seed, 0xf12e7c0c);
+    this.learnerRng = substream(seed, 0x1ea24e25);
+    this.trafficRng = substream(seed, 0x6b1ce5a1);
+    this.laneRng = substream(seed, 0x2a4e5d11);
     this.luckRng = substream(seed, 0x1ac4c0de);
     this.ringSpeed = config.ringSpeed;
     this.targetDensity = config.freePlayDensity;
@@ -244,6 +257,7 @@ export class World {
     const comes = this.militaryRng.unit() < config.militaryChance;
     this.military = { kind: 'idle', next: comes ? this.militaryRng.range(config.militaryFirst.lo, config.militaryFirst.hi) : Infinity };
     this.ambulance = firstAmbulance(this);
+    this.learner = firstLearner(this);
     for (const q of this.seats) this.refillQueue(q);
     if (prefill) prefillRing(this, Math.max(this.targetDensity, config.minRingBots));
   }
@@ -277,7 +291,8 @@ export class World {
    */
   nextShift(config: Config, seed: number): World {
     const next = new World(config, seed, { prefill: false, startsOnFirstTap: true, firstVehicleId: this.nextVehicleId });
-    const carried = this.vehicles.filter((veh) => veh.phase.kind !== 'queued');
+    // A ring with one lane has no inner lane: whoever still drove there leaves the picture.
+    const carried = this.vehicles.filter((veh) => veh.phase.kind !== 'queued' && (veh.lane === 0 || next.layout.lanes > 1));
     for (const veh of carried) {
       veh.owner = 'ai';
       if (veh.phase.kind === 'ring') {
@@ -354,6 +369,7 @@ export class World {
     updateTransporters(this, end);
     updateMilitary(this, end);
     updateAmbulance(this, end);
+    updateLearner(this, end);
     updateEscorts(this);
     this.resolveContacts(end);
     this.resolveTrafficContacts(end);
@@ -380,9 +396,20 @@ export class World {
         return c.vanLength;
       case 'ambulance':
         return c.ambulanceLength;
+      case 'fireTruck':
+        return c.truckLength;
+      case 'bus':
+        return c.busLength;
+      case 'motorbike':
+        return c.motorbikeLength;
       default:
         return c.carLength;
     }
+  }
+
+  /** Every vehicle is as wide as a car, except the slim motorbike. */
+  widthOf(type: VehicleType): number {
+    return type === 'motorbike' ? this.config.motorbikeWidth : this.config.carWidth;
   }
 
   massOf(type: VehicleType): number {
@@ -406,17 +433,23 @@ export class World {
         return c.vanMass;
       case 'ambulance':
         return c.ambulanceMass;
+      case 'fireTruck':
+        return c.fireTruckMass;
+      case 'bus':
+        return c.busMass;
+      case 'motorbike':
+        return c.motorbikeMass;
       default:
         return 1;
     }
   }
 
   hitbox(pose: Pose, type: VehicleType = 'car'): Capsule {
-    return capsule(pose.position, pose.heading, this.lengthOf(type), this.config.carWidth);
+    return capsule(pose.position, pose.heading, this.lengthOf(type), this.widthOf(type));
   }
 
   hitboxOf(veh: Vehicle): Capsule {
-    return capsule(veh.position, veh.heading, this.lengthOf(veh.type), this.config.carWidth);
+    return capsule(veh.position, veh.heading, this.lengthOf(veh.type), this.widthOf(veh.type));
   }
 
   /** The AI arms cars can come from: all of them, unless a road closure shuts one. */
@@ -429,6 +462,16 @@ export class World {
   /** Where the roadworks sit on the ring (ring distance of their start), if there are any. */
   get roadworksRingS(): number | null {
     return this.config.cityEvent === 'roadworks' ? this.config.roadworksAt * this.layout.ring.length : null;
+  }
+
+  /** Where the bus stop sits on the ring during a School Run, else null. */
+  get busStopS(): number | null {
+    return this.config.cityEvent === 'schoolRun' ? this.config.busStopAt * this.layout.ring.length : null;
+  }
+
+  /** A school bus that still has its stop to make: it stays on the ring until it has. */
+  owesStop(veh: Vehicle): boolean {
+    return veh.type === 'bus' && !veh.served && this.busStopS !== null;
   }
 
   /** Every car leaves 1–3 arms after the one it came from, never at South. */
@@ -460,24 +503,27 @@ export class World {
         case 'waiting':
           break;
         case 'merging': {
-          phase.elapsed += (dt * this.ringSpeed) / phase.profile.ringSpeed;
+          const pace = phase.pace ?? 1;
+          phase.elapsed += (dt * this.ringSpeed * pace) / phase.profile.ringSpeed;
           if (phase.elapsed >= phase.profile.duration) {
             const overflow = (phase.elapsed - phase.profile.duration) * phase.profile.ringSpeed;
+            // Slowed by a jam at the join: it arrives at its own speed and the drivers take over.
+            const drive = pace < 1 ? { ...newDrive(), speed: this.mergeSpeed(phase) } : newDrive();
             const ring: Ring = {
               kind: 'ring',
-              s: wrap(layout.entryRingS[phase.arm.index] + overflow, circumference),
+              s: wrap(layout.entryS(phase.arm, veh.lane) + overflow, circumference),
               exitArm: phase.exitArm,
-              distanceToExit: layout.ringDistanceArms(phase.arm, phase.exitArm) + phase.extraLaps * circumference - overflow,
+              distanceToExit: layout.ringDistanceArms(phase.arm, phase.exitArm, veh.lane) + phase.extraLaps * circumference - overflow,
               justMerged: phase,
-              drive: newDrive(),
+              drive,
               sinceMerge: 0,
               isLeaving: false,
             };
             veh.phase = ring;
-            veh.place(layout.ring.pose(ring.s));
+            veh.place(layout.rings[veh.lane].pose(ring.s));
             if (veh.isBot) stayingBots++;
           } else {
-            veh.place(layout.entry(phase.arm).pose(profileDistance(phase.profile, phase.elapsed)));
+            veh.place(layout.entry(phase.arm, veh.lane).pose(profileDistance(phase.profile, phase.elapsed)));
           }
           break;
         }
@@ -489,7 +535,7 @@ export class World {
           phase.distanceToExit -= d;
           if (
             phase.distanceToExit <= 0 &&
-            (isChased(this, veh.id) || isTransported(this, veh.id) || isEscorted(this, veh.id) || phase.drive.isPursuing)
+            (isChased(this, veh.id) || isTransported(this, veh.id) || isEscorted(this, veh.id) || phase.drive.isPursuing || this.owesStop(veh))
           ) {
             phase.distanceToExit += circumference;
           }
@@ -504,17 +550,25 @@ export class World {
               stayingBots--;
             }
           }
+          // The inner lane's way out crosses the outer lane: a car takes it only when it is clear.
+          if (veh.lane === 1 && !phase.exitChecked && phase.distanceToExit <= this.config.botExitNotice * this.ringSpeed) {
+            phase.exitChecked = true;
+            if (phase.distanceToExit > 0 && !this.isExitClear(veh)) {
+              phase.distanceToExit += circumference;
+              phase.exitChecked = false;
+            }
+          }
           if (phase.distanceToExit <= 0) {
             veh.phase = { kind: 'exiting', arm: phase.exitArm, s: -phase.distanceToExit, drive: phase.drive };
-            veh.place(layout.exit(phase.exitArm).pose(-phase.distanceToExit));
+            veh.place(layout.exit(phase.exitArm, veh.lane).pose(-phase.distanceToExit));
           } else {
-            veh.place(layout.ring.pose(phase.s));
+            veh.place(layout.rings[veh.lane].pose(phase.s));
           }
           break;
         }
         case 'exiting': {
           phase.s += (phase.drive.speed ?? this.ringSpeed) * dt;
-          const exit = layout.exit(phase.arm);
+          const exit = layout.exit(phase.arm, veh.lane);
           if (phase.s >= exit.length) {
             veh.retired = true;
             this.events.push({ type: 'exited', vehicle: veh.id, arm: phase.arm });
@@ -667,8 +721,53 @@ export class World {
       const p = veh.phase;
       if (p.kind === 'crashed') return true;
       if (p.kind === 'ring' || p.kind === 'exiting') return p.drive.speed !== null || p.drive.reaction !== null;
+      if (p.kind === 'merging') return (p.pace ?? 1) < 1;
       return false;
     });
+  }
+
+  /** How fast a merging car drives right now, in world units per second. */
+  mergeSpeed(p: Merging): number {
+    return (profileSpeed(p.profile, p.elapsed) * this.ringSpeed * (p.pace ?? 1)) / p.profile.ringSpeed;
+  }
+
+  /** What a merging car still has to drive before it is on the ring. */
+  mergeRemaining(p: Merging, lane = 0): number {
+    return Math.max(0, this.layout.entry(p.arm, lane).length - profileDistance(p.profile, p.elapsed));
+  }
+
+  /**
+   * The speed profile of a merge from `arm` into `lane`: the inner lane's path is longer and
+   * its lane turns slower, so the merge takes longer and ends at that lane's speed.
+   */
+  profileFor(arm: Arm, lane: number, type: VehicleType): MergeProfile {
+    const path = this.layout.entry(arm, lane);
+    const stretch = lane === 0 ? 1 : path.length / this.layout.entry(arm, 0).length;
+    return mergeProfile(path.length, this.mergeDurationOf(type) * stretch, this.ringSpeed, this.layout.laneRadius(lane) / this.layout.ringRadius);
+  }
+
+  /**
+   * An inner-lane car about to leave: its way out crosses the outer lane. Clear means nobody in
+   * the outer lane comes near it on the way (the same prediction the AI uses to join).
+   */
+  isExitClear(veh: Vehicle): boolean {
+    const p = veh.phase;
+    if (p.kind !== 'ring') return true;
+    const speed = p.drive.speed ?? this.ringSpeed;
+    const horizon = (p.distanceToExit + this.layout.exit(p.exitArm, 1).length * 0.6) / Math.max(speed, 1);
+    const others = this.vehicles.filter((x) => x.id !== veh.id && x.lane === 0 && (x.isCollidable || this.isObstacle(x)));
+    const clearance = this.config.aiSafeGap * this.ringSpeed * 0.5;
+    for (let k = 0; k <= 24; k++) {
+      const t = (horizon * k) / 24;
+      const me = this.predictedPose(veh, t);
+      if (!me) continue;
+      const box = this.hitbox(me, veh.type);
+      for (const other of others) {
+        const pose = this.predictedPose(other, t);
+        if (pose && contact(box, this.hitbox(pose, other.type)).gap < clearance) return false;
+      }
+    }
+    return true;
   }
 
   resolveTrafficContacts(now: number): void {
@@ -871,8 +970,8 @@ export class World {
       veh.phase.justMerged = null;
       if (veh.owner !== 'player' || !this.isScoring) continue;
       const s = veh.phase.s;
-      const behind = this.gapBehind(s, veh.id);
-      const ahead = this.gapAhead(s, veh.id);
+      const behind = this.gapBehind(s, veh.id, veh.lane);
+      const ahead = this.gapAhead(s, veh.id, veh.lane);
       const at = this.events.length;
       let shielded = false;
       if (this.transporter.kind === 'active' && veh.type !== 'police' && isInSecureZone(this, s)) {
@@ -881,14 +980,14 @@ export class World {
       }
       const [rating, merged, combo] = this.scoreMerge(merge.minGap, behind, ahead);
       const critical = this.rollCritical(rating);
-      const points = critical ? merged * Math.max(1, this.config.criticalFactor) : merged;
-      if (critical) {
-        this.score.points += points - merged;
-        this.score.criticals++;
-      }
+      const shave = this.shaveBonus(rating, merge.closest);
+      const points = (critical ? merged * Math.max(1, this.config.criticalFactor) : merged) + shave;
+      this.score.points += points - merged;
+      if (critical) this.score.criticals++;
       if (this.isVersus) this.noteVersusMerge(veh, rating, merge.minGap, now);
       this.setChain(Scoring.extendsChain(rating) ? this.score.chain + 1 : 0, now);
       noteMergeNearAmbulance(this, veh, s, now);
+      noteMergeNearLearner(this, veh, s, now);
       this.events.splice(at, 0, {
         type: 'merged',
         vehicle: veh.id,
@@ -904,6 +1003,7 @@ export class World {
         gapAhead: ahead,
         chain: this.score.chain,
         critical,
+        shave,
       });
       if (this.breaksTrial(rating)) this.endShift('failed', now);
     }
@@ -920,6 +1020,14 @@ export class World {
     return this.luckRng.unit() < c.criticalChance;
   }
 
+  /** A Tight Fit or Near Miss past a motorbike: the close shave pays on top, times the combo. */
+  shaveBonus(rating: MergeRating, closest: number | null): number {
+    if (rating !== 'tightFit' && rating !== 'nearMiss') return 0;
+    if (closest === null || this.vehicle(closest)?.type !== 'motorbike') return 0;
+    const c = this.config;
+    return Math.round(c.motorbikeBonus * Scoring.multiplier(this.score.combo, c) * (this.isRushHourScoring ? c.rushHourScoreFactor : 1));
+  }
+
   /** Whether this merge breaks the shift's trial rule (mastery trials). */
   breaksTrial(rating: MergeRating): boolean {
     const rule = this.config.trialRule;
@@ -927,11 +1035,11 @@ export class World {
     return rating === 'cutOff';
   }
 
-  gapAhead(s: number, id: number): number {
+  gapAhead(s: number, id: number, lane = 0): number {
     const circumference = this.layout.ring.length;
     let nearest = Infinity;
     for (const other of this.vehicles) {
-      if (other.id === id || other.owner === 'player') continue;
+      if (other.id === id || other.owner === 'player' || other.lane !== lane) continue;
       const otherS = this.virtualRingPosition(other, 0);
       if (otherS === null) continue;
       const ahead = this.layout.ringDistance(s, otherS);
@@ -940,11 +1048,11 @@ export class World {
     return Number.isFinite(nearest) ? Math.max(0, nearest - this.config.carLength) / this.ringSpeed : Infinity;
   }
 
-  gapBehind(s: number, id: number): number {
+  gapBehind(s: number, id: number, lane = 0): number {
     const circumference = this.layout.ring.length;
     let nearest = Infinity;
     for (const other of this.vehicles) {
-      if (other.id === id || other.owner === 'player') continue;
+      if (other.id === id || other.owner === 'player' || other.lane !== lane) continue;
       const otherS = this.virtualRingPosition(other, 0);
       if (otherS === null) continue;
       const behind = this.layout.ringDistance(otherS, s);
@@ -955,16 +1063,17 @@ export class World {
 
   staysOnRing(veh: Vehicle): boolean {
     if (veh.phase.kind !== 'ring') return false;
-    return isChased(this, veh.id) || isTransported(this, veh.id) || isEscorted(this, veh.id) || veh.phase.drive.isPursuing;
+    return isChased(this, veh.id) || isTransported(this, veh.id) || isEscorted(this, veh.id) || veh.phase.drive.isPursuing || this.owesStop(veh);
   }
 
   virtualRingPosition(veh: Vehicle, t: number): number | null {
     const circumference = this.layout.ring.length;
     const p = veh.phase;
     if (p.kind === 'merging') {
-      const travelled = t * this.ringSpeed - (p.profile.duration - p.elapsed) * p.profile.ringSpeed;
-      if (travelled >= this.layout.ringDistanceArms(p.arm, p.exitArm)) return null;
-      return wrap(this.layout.entryRingS[p.arm.index] + travelled, circumference);
+      const pace = Math.max(p.pace ?? 1, 0.05);
+      const travelled = t * this.ringSpeed - ((p.profile.duration - p.elapsed) * p.profile.ringSpeed) / pace;
+      if (travelled >= this.layout.ringDistanceArms(p.arm, p.exitArm, veh.lane)) return null;
+      return wrap(this.layout.entryS(p.arm, veh.lane) + travelled, circumference);
     }
     if (p.kind === 'ring') {
       const travelled = (p.drive.speed ?? this.ringSpeed) * t;
@@ -978,18 +1087,18 @@ export class World {
     const layout = this.layout;
     const p = veh.phase;
     const ringOrExit = (s: number, distanceToExit: number, exitArm: Arm, travelled: number): Pose | null => {
-      if (travelled < distanceToExit) return layout.ring.pose(s + travelled);
-      const exit = layout.exit(exitArm);
+      if (travelled < distanceToExit) return layout.rings[veh.lane].pose(s + travelled);
+      const exit = layout.exit(exitArm, veh.lane);
       const e = travelled - distanceToExit;
       return e < exit.length ? exit.pose(e) : null;
     };
     switch (p.kind) {
       case 'merging': {
-        const elapsed = p.elapsed + (t * this.ringSpeed) / p.profile.ringSpeed;
-        if (elapsed < p.profile.duration) return layout.entry(p.arm).pose(profileDistance(p.profile, elapsed));
+        const elapsed = p.elapsed + (t * this.ringSpeed * (p.pace ?? 1)) / p.profile.ringSpeed;
+        if (elapsed < p.profile.duration) return layout.entry(p.arm, veh.lane).pose(profileDistance(p.profile, elapsed));
         return ringOrExit(
-          layout.entryRingS[p.arm.index],
-          layout.ringDistanceArms(p.arm, p.exitArm),
+          layout.entryS(p.arm, veh.lane),
+          layout.ringDistanceArms(p.arm, p.exitArm, veh.lane),
           p.exitArm,
           (elapsed - p.profile.duration) * p.profile.ringSpeed,
         );
@@ -1000,7 +1109,7 @@ export class World {
       }
       case 'exiting': {
         const s = p.s + (p.drive.speed ?? this.ringSpeed) * t;
-        const exit = layout.exit(p.arm);
+        const exit = layout.exit(p.arm, veh.lane);
         return s < exit.length ? exit.pose(s) : null;
       }
       case 'crashed': {
@@ -1016,9 +1125,9 @@ export class World {
   }
 
   /** Smallest gap (s) a car launched at `arm` would have to anyone during its merge. */
-  predictedMergeGap(arm: Arm, launchDelay = 0, samples = 60, stopBelow = -Infinity): number {
-    const path = this.layout.entry(arm);
-    const profile = mergeProfile(path.length, this.config.mergeDuration, this.ringSpeed);
+  predictedMergeGap(arm: Arm, launchDelay = 0, samples = 60, stopBelow = -Infinity, lane = 0): number {
+    const path = this.layout.entry(arm, lane);
+    const profile = this.profileFor(arm, lane, 'car');
     const others = this.vehicles.filter((x) => x.isCollidable || this.isObstacle(x));
     let smallest = Infinity;
     for (let k = 0; k <= samples; k++) {
@@ -1194,6 +1303,8 @@ export class World {
         return c.mergeDuration * c.compactMergeFactor;
       case 'van':
         return c.mergeDuration * c.vanMergeFactor;
+      case 'motorbike':
+        return c.mergeDuration * c.motorbikeMergeFactor;
       default:
         return c.mergeDuration;
     }
@@ -1212,12 +1323,11 @@ export class World {
     q.grace = 0;
     q.sent++;
     const arm = this.armOf(q);
-    const path = this.layout.entry(arm);
     const merge: Merging = {
       kind: 'merging',
       arm,
       exitArm: this.randomExit(arm),
-      profile: mergeProfile(path.length, this.mergeDurationOf(veh.type), this.ringSpeed),
+      profile: this.profileFor(arm, veh.lane, veh.type),
       elapsed: driven - STEP,
       minGap: Infinity,
       closest: null,
@@ -1280,7 +1390,7 @@ export class World {
     if (id === undefined || !this.launchFromQueue(past + STEP, this.time + STEP - past, q)) return;
     const veh = this.vehicle(id);
     if (veh && veh.phase.kind === 'merging') {
-      veh.place(this.layout.entry(this.armOf(q)).pose(profileDistance(veh.phase.profile, veh.phase.elapsed)));
+      veh.place(this.layout.entry(this.armOf(q), veh.lane).pose(profileDistance(veh.phase.profile, veh.phase.elapsed)));
     }
     q.rollingSpeed = Math.min(pass.speed, 1);
   }
@@ -1347,6 +1457,8 @@ export class World {
       }
       const veh = new Vehicle(this.makeId(), type, 'player', { kind: 'queued' }, pose);
       veh.seat = q.seat;
+      // Two lanes: some of your cars are bound for the inner lane (police stay outside, for the chase).
+      if (this.layout.lanes > 1 && type !== 'police' && this.laneRng.unit() < c.playerInnerShare) veh.lane = 1;
       this.vehicles.push(veh);
       q.vehicles.push(veh.id);
     }
@@ -1386,6 +1498,8 @@ export class World {
       case 'ring':
       case 'exiting':
         return p.drive.isBraking;
+      case 'merging':
+        return p.braking ?? false;
       default:
         return false;
     }
@@ -1441,6 +1555,7 @@ export class World {
     if (this.transporter.kind === 'idle') this.transporter = { kind: 'idle', next: this.transporter.next + time };
     if (this.military.kind === 'idle') this.military = { kind: 'idle', next: this.military.next + time };
     if (this.ambulance.kind === 'idle') this.ambulance = { kind: 'idle', next: this.ambulance.next + time };
+    if (this.learner.kind === 'idle') this.learner = { kind: 'idle', next: this.learner.next + time };
     if (!this.config.endless && this.config.shiftCars <= this.config.rushHourCars) this.beginRushHour(time);
   }
 
@@ -1475,6 +1590,7 @@ export class World {
     if (this.config.mayhem && this.score.lastCrashAt !== null && now - this.score.lastCrashAt < this.config.mayhemChainWindow) return;
     if (this.transporter.kind === 'active') transporterEscapes(this, this.transporter.vehicle, now);
     ambulanceThrough(this, now);
+    learnerThrough(this, now);
     const c = this.config;
     this.score.points += c.completionBonus;
     this.score.money += c.shiftPay;
@@ -1679,10 +1795,19 @@ export class World {
     return { position: sub(stop.position, mul(fromAngle(stop.heading), w.approach)), heading: stop.heading };
   }
 
-  /** Normal traffic is cars and lorries, some of them gas tankers. */
+  /**
+   * Normal traffic is cars and lorries, some of them gas tankers. From their levels on, some
+   * cars are motorbikes, and a School Run sends school buses (their own stream: older seeds
+   * keep their traffic).
+   */
   rollTrafficType(): VehicleType {
-    if (this.rng.unit() >= this.config.truckChance) return 'car';
-    return this.config.tankerShare > 0 && this.tankerRng.unit() < this.config.tankerShare ? 'tanker' : 'truck';
+    const c = this.config;
+    if (this.rng.unit() >= c.truckChance) {
+      if (c.level >= c.motorbikeLevel && c.motorbikeShare > 0 && this.trafficRng.unit() < c.motorbikeShare) return 'motorbike';
+      return 'car';
+    }
+    if (c.cityEvent === 'schoolRun' && this.trafficRng.unit() < c.busShare / Math.max(c.truckChance, 0.01)) return 'bus';
+    return c.tankerShare > 0 && this.tankerRng.unit() < c.tankerShare ? 'tanker' : 'truck';
   }
 
   /** Turns an abandoned special vehicle into ordinary traffic. */

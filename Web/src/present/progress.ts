@@ -6,6 +6,7 @@ import { TRIALS, trialOpen, type TrialId } from '../core/trials';
 import { weekNumber, weekDaysLeft, weeklyTrial } from '../core/weekly';
 import { baseConfig } from '../core/config';
 import { Elite } from '../core/elite';
+import { SeasonPass, PASS_TIERS } from '../core/seasonPass';
 import { averageOffset } from '../core/timing';
 import { type Vec2, v, add } from '../core/vec2';
 import { type RenderList, type Rect, RenderList as List, R, rect, circle, line, text, Ease, Metrics, moved, type Align, type Weight } from './render';
@@ -227,7 +228,12 @@ export const ProgressPage = {
     });
   },
 
-  questRows: (l: Layout): Rect[] => ShopPage.grid(6, 1, l.content, 64),
+  questRows: (l: Layout): Rect[] => ShopPage.grid(7, 1, l.content, 64),
+
+  /** A tap on the Season Pass row (Quests): its sheet with the track. */
+  passAt(point: Vec2, viewport: Vec2, bottomInset: number): boolean {
+    return R.contains(ProgressPage.questRows(ProgressPage.layout(viewport, bottomInset))[2], point);
+  },
 
   /** A tap on the Weekly Elite row (Quests): its shift waits on the Game tab. */
   weeklyAt(point: Vec2, viewport: Vec2, bottomInset: number): boolean {
@@ -267,6 +273,31 @@ export const ProgressPage = {
     if (passed) t(list, S.daily.done, v(weekly.maxX - 16, wc.y - 9), 13, 'accent', wO, { weight: 'bold', align: 'trailing' });
     else moneyTag(list, Fmt.number(elite.reward), v(weekly.maxX - 16, wc.y - 9), 13, 'trailing', 'primary', 'accent', wO);
     t(list, `${S.weekly.daysLeft(weekDaysLeft(today))} · ${S.trials.play} ›`, v(weekly.maxX - 16, wc.y + 11), 11, 'coin', wO, { weight: 'bold', align: 'trailing' });
+
+    // The Season Pass: this season's track, tap for the sheet.
+    const [pass, pO] = row();
+    ProgressPage.panel(list, pass, pO);
+    const pc = R.center(pass);
+    const season = SeasonPass.season(today);
+    const owned = SeasonPass.owns(career, today);
+    t(list, S.pass.caption(season), v(pass.minX + 16, pc.y - 9), 14, 'accent', pO, { weight: 'bold' });
+    if (!SeasonPass.isOpen(career)) {
+      t(list, S.pass.locked(baseConfig.seasonPassLevel), v(pass.minX + 16, pc.y + 11), 11, 'muted', pO);
+      t(list, S.unlocks.lockedTag(baseConfig.seasonPassLevel), v(pass.maxX - 16, pc.y - 9), 13, 'muted', pO, { weight: 'bold', align: 'trailing' });
+    } else if (owned) {
+      const tier = SeasonPass.tier(career);
+      const { into, need } = SeasonPass.progress(career);
+      t(list, `${S.pass.tier(tier, PASS_TIERS)} · ${S.pass.xp(into, need)}`, v(pass.minX + 16, pc.y + 11), 11, 'muted', pO);
+      const bar = R.make(pass.maxX - 112, pc.y - 12, pass.maxX - 16, pc.y - 6);
+      list.s(rect(R.center(bar), v(R.width(bar), R.height(bar)), 3), 'controlFill', pO);
+      const share = tier >= PASS_TIERS ? 1 : into / need;
+      if (share > 0) list.s(rect(v(bar.minX + (R.width(bar) * share) / 2, R.center(bar).y), v(R.width(bar) * share, R.height(bar)), 3), 'accent', pO);
+      t(list, `${S.pass.daysLeft(SeasonPass.daysLeft(today))} ›`, v(pass.maxX - 16, pc.y + 11), 11, 'accent', pO, { weight: 'bold', align: 'trailing' });
+    } else {
+      t(list, S.pass.buyHint, v(pass.minX + 16, pc.y + 11), ShopPage.fitted(S.pass.buyHint, 11, R.width(pass) - 130), 'muted', pO);
+      moneyTag(list, Fmt.number(baseConfig.seasonPassPrice), v(pass.maxX - 16, pc.y - 9), 13, 'trailing', 'primary', 'accent', pO);
+      t(list, `${S.pass.daysLeft(SeasonPass.daysLeft(today))} ›`, v(pass.maxX - 16, pc.y + 11), 11, 'accent', pO, { weight: 'bold', align: 'trailing' });
+    }
 
     for (const challenge of challengesOf(today)) {
       const [r, o] = row();

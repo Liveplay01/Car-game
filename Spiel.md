@@ -467,6 +467,17 @@ audio/ (Web Audio)   storage/ (localStorage)   net/ (PeerJS-Raum)   ui/ (DOM-Hü
 
 ---
 
+## 13a. Neu seit 30.09.2026 (Werte in `config.ts`)
+
+- **Einfädeln bei Stau** (Spieler-Feedback): Ein einfädelndes Auto bremst hinter langsamem oder stehendem Verkehr an seiner Einmündung (`paceMerge` in `core/drivers.ts`); an der Haltelinie fährt es gleich sanfter los. Bei fließendem Verkehr ändert sich nichts, das Timing bleibt exakt.
+- **Zwei Spuren ab Level 80**: innere Spur, die synchron mit der äußeren dreht; 40 % der KI und 35 % deiner Autos (nie Polizei) fahren innen und kreuzen beim Ein- und Ausfahren die äußere Spur. Ein Pfeil vor der Haltelinie zeigt die Spur des vorderen Autos. Wer innen ausfahren will, prüft die Kreuzung und dreht sonst eine Runde. Die Insel wird kleiner (`layout.islandRadius`).
+- **Motorrad** (ab Level 22, 12 % der KI-Autos): schmal, fädelt schnell in 0,1-s-Lücken ein. Tight Fit/Near Miss daneben: +150 × Combo („CLOSE SHAVE“).
+- **Fahrschulauto** (ab Level 28, 30 % der Schichten): angekündigt, eine Runde, zögert alle 2–4 s (bremst auf 35 %). Grünes Band vorne und hinten frei halten: +250 und Chain +1.
+- **Feuerwehr** (ab Level 35, 45 % der Notfallfahrten): wie der Krankenwagen, 190 statt 120 Einheiten freie Straße, zahlt 500.
+- **School Run** (City Event ab Level 30): Schulbusse (28 % des neuen Verkehrs) halten 1,6 s an einer Haltestelle auf dem Ring.
+- **Nebel** (ab Level 35): Sicht nur im Bild, Fahrer reagieren 0,3 s später, Lohn ×1,1. **Schnee & Eis** (ab Level 45): 45 % Grip, 60 % Bremse, Reifenspuren bleiben liegen, Lohn ×1,15.
+- **Saison-Pass und Ruhmeshalle**: siehe [LOOT.md](LOOT.md).
+
 ## 14. Stand der Umsetzung (29.09.2026)
 
 Die Web-Version ist das ganze Spiel: dazu gehören Nacht/Blackout, Syndikats-Konvoi, Trials, Challenge-Links, Multiplayer, Export/Import, Reifenspuren, Casino, Freischaltungen und Offline-Betrieb.

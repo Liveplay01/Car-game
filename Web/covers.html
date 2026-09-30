@@ -1,0 +1,143 @@
+<!doctype html>
+<!--
+  Store covers (CrazyGames asks for 1920×1080, 800×1200 and 800×800): a real shift, played by
+  the careful bot and drawn by the game's own renderer, the title on the roundabout's island.
+  Dev server only (npm run dev, then /covers.html).
+  ?size=landscape|portrait|square  ?theme=sand  ?level=18  ?seed=14  ?t=10.51 (seconds played)
+  ?zoom=1.05 (bigger = closer)  ?fx=0.5&fy=0.5 (where the ring sits)  ?title=0 (the scene alone)
+  Save each by screenshotting #cover at its exact size (Playwright); the last set is in ../Marketing/covers/.
+-->
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Covers</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Overpass:ital,wght@0,800;0,900;1,900&display=block" rel="stylesheet" />
+    <style>
+      html, body { margin: 0; background: #0b0d10; }
+      #cover { position: relative; overflow: hidden; }
+      canvas { position: absolute; inset: 0; display: block; }
+      .title {
+        position: absolute;
+        margin: 0;
+        font-family: 'Overpass', sans-serif;
+        font-weight: 900;
+        font-style: italic;
+        line-height: 0.84;
+        letter-spacing: -0.02em;
+        text-transform: uppercase;
+        text-align: center;
+        transform: translate(-50%, -46%);
+        white-space: nowrap;
+        color: #fff;
+        text-shadow: 0 0.05em 0 rgba(0, 0, 0, 0.45);
+      }
+      .title span { display: block; }
+      .title .accent { color: #ffd23f; }
+    </style>
+  </head>
+  <body>
+    <div id="cover">
+      <canvas id="scene"></canvas>
+      <h1 class="title" id="title"><span>Roundabout</span><span class="accent">Timing</span></h1>
+    </div>
+    <script type="module">
+      import { World } from '/src/core/world.ts';
+      import { baseConfig } from '/src/core/config.ts';
+      import { forLevel } from '/src/core/levels.ts';
+      import { joinsClearRoad } from '/src/core/ambulance.ts';
+      import { MapTheme } from '/src/present/mapThemes.ts';
+      import { RenderList } from '/src/present/render.ts';
+      import { CanvasDrawer } from '/src/present/draw.ts';
+      import { CityLayer } from '/src/present/city.ts';
+      import { SceneBuilder } from '/src/present/scene.ts';
+      import { Skins } from '/src/present/skins.ts';
+      import { v } from '/src/core/vec2.ts';
+
+      const params = new URLSearchParams(location.search);
+      const SIZES = { landscape: [1920, 1080], portrait: [800, 1200], square: [800, 800] };
+      const kind = params.get('size') ?? 'landscape';
+      const [W, H] = SIZES[kind];
+      const theme = params.get('theme') ?? 'sand';
+      const level = Number(params.get('level') ?? 18);
+      const seed = Number(params.get('seed') ?? 14);
+      const seconds = Number(params.get('t') ?? 10.51);
+      const zoomParam = params.get('zoom');
+
+      // A shift played by the careful bot (scripts/sim.mjs): it only takes safe gaps.
+      let world = new World(forLevel(baseConfig, level, seed), seed, { startsOnFirstTap: false });
+      const careful = () => world.queue.isReady && world.predictedMergeGap(world.layout.player, 0, 40) > 0.04 && !joinsClearRoad(world, { type: 'car' }, world.layout.player);
+      while (world.time < seconds) {
+        if (careful()) world.tap(world.time);
+        world.step();
+        world.takeEvents();
+      }
+
+      // Where the ring sits and how big, per format: the title gets the calm side.
+      const R = world.layout.ringRadius;
+      const LAYOUT = {
+        landscape: { focus: v(W * 0.5, H * 0.5), reach: H * 0.5, zoom: 1.08 },
+        portrait: { focus: v(W * 0.5, H * 0.5), reach: W * 0.5, zoom: 1.02 },
+        square: { focus: v(W * 0.5, H * 0.5), reach: W * 0.5, zoom: 1.02 },
+      }[kind];
+      // ?fx=0.7&fy=0.45 moves the ring (fractions of the cover).
+      if (params.has('fx')) LAYOUT.focus = v(W * Number(params.get('fx')), LAYOUT.focus.y);
+      if (params.has('fy')) LAYOUT.focus = v(LAYOUT.focus.x, H * Number(params.get('fy')));
+      const scale = (LAYOUT.reach / (R + 70)) * (zoomParam === null ? LAYOUT.zoom : Number(zoomParam));
+      const camera = { viewport: v(W, H), center: v(0, 0), focus: LAYOUT.focus, scale };
+
+      const cover = document.getElementById('cover');
+      cover.style.width = `${W}px`;
+      cover.style.height = `${H}px`;
+      const canvas = document.getElementById('scene');
+      canvas.style.width = `${W}px`;
+      canvas.style.height = `${H}px`;
+      const drawer = new CanvasDrawer(canvas);
+      drawer.resize(W, H, 1);
+      /** Draws the world as it stands now (also used by the preview videos, frame by frame). */
+      function render() {
+        const t = world.time;
+        const list = new RenderList(camera, MapTheme.ground(theme));
+        list.groundGrain = true;
+        CityLayer.add(list, world, theme, t, null, null, t);
+        SceneBuilder.addRoad(list, world.layout, world.config);
+        CityLayer.addMapSkin(list, Skins.color(theme), world);
+        MapTheme.addIsland(list, theme, world);
+        SceneBuilder.addVehicles(list, world, 1, [], t, t, null);
+        MapTheme.addAir(list, theme, t, false);
+        drawer.draw(list);
+      }
+      render();
+
+      // The title sits on the roundabout's island: the traffic circles the name.
+      const title = document.getElementById('title');
+      if (params.get('title') === '0') title.hidden = true;
+      title.style.left = `${LAYOUT.focus.x}px`;
+      title.style.top = `${LAYOUT.focus.y}px`;
+      title.style.fontSize = `${Math.round(R * scale * 0.23)}px`;
+      // ?video=1: the page is driven from outside (scripts: window.cover).
+      let shift = 0;
+      let offset = 0; // seconds played in the shifts before this one
+      window.cover = {
+        /** Plays on to `time` seconds (the bot taps, shifts roll on), then draws. */
+        seek(time, titleOpacity) {
+          while (offset + world.time < time) {
+            if (careful()) world.tap(world.time);
+            world.step();
+            for (const e of world.takeEvents()) {
+              // A finished shift rolls on into the next one, as the game does.
+              if (e.type === 'shiftEnded') { offset += world.time; shift++; world = world.nextShift(forLevel(baseConfig, level + shift, seed + shift), seed + shift); break; }
+            }
+          }
+          title.style.opacity = String(titleOpacity);
+          render();
+          return true;
+        },
+        get time() { return offset + world.time; },
+      };
+      await document.fonts.ready;
+      document.body.dataset.ready = 'true';
+    </script>
+  </body>
+</html>

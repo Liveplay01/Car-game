@@ -1,6 +1,7 @@
 import type { Config } from '../core/config';
 import { type SaveGame, type GameMode, type Hint, Careers } from '../core/career';
 import { Elite } from '../core/elite';
+import { SeasonPass } from '../core/seasonPass';
 import type { ShiftResult } from '../core/events';
 import { challengeReward } from '../core/daily';
 import { Unlocks } from '../core/unlocks';
@@ -100,5 +101,7 @@ export function bookShift(save: SaveGame, result: ShiftResult, ctx: ShiftContext
     for (const step of elite.steps) if (eliteBefore || step.level > 1) news.push(S.elite.reached(step));
   }
   if (titles.length > 0) news.push(S.titles.earned(titles));
+  const pass = SeasonPass.record(career, result, ctx.today, ctx.config);
+  if (pass) for (const step of pass.steps) news.push(S.pass.reached(step));
   return { isNew, previous, bank: { before: bankBefore, after: career.money }, news, due };
 }

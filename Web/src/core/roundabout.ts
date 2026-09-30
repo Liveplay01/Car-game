@@ -1,5 +1,15 @@
 import { type Config, cloneConfig, mergePathLength, builtArmSlots } from './config';
 import { type Path, type Pose, type Bezier, circlePath, curvePath, line } from './paths';
+
+/** A lane of the ring, parametrised by the outer lane's distance: both lanes turn together. */
+function lanePath(radius: number, reference: number): Path {
+  const length = TAU * reference;
+  const pose = (s: number): Pose => {
+    const angle = wrap(s / reference);
+    return { position: mul(fromAngle(angle), radius), heading: angle + Math.PI / 2 };
+  };
+  return { length, closed: true, pose, point: (s) => pose(s).position };
+}
 import { type Vec2, add, sub, mul, dot, length, fromAngle, right, wrap, TAU, ZERO } from './vec2';
 
 /** One arm of the roundabout. Index 0 is the player's, at the bottom; the rest follow in driving direction. */
@@ -36,6 +46,15 @@ export class Layout {
   readonly exitRingS: number[];
   readonly stopDistance: number;
   readonly queueSpacing: number;
+  /** Lanes on the ring (1 or 2), and each lane's path, entries, exits and join points. */
+  readonly lanes: number;
+  readonly rings: Path[];
+  readonly laneEntries: Path[][];
+  readonly laneExits: Path[][];
+  readonly laneEntryS: number[][];
+  readonly laneExitS: number[][];
+  /** Where the island begins: inside the innermost lane. */
+  readonly islandRadius: number;
   /** World area the camera keeps in view: the ring and the visible queue. */
   readonly viewBounds: Rect;
 
@@ -74,6 +93,26 @@ export class Layout {
     this.entryRingS = this.arms.map((a) => wrap(a.angle + config.mergeAngle) * radius);
     this.exitRingS = this.arms.map((a) => wrap(a.angle - config.mergeAngle) * radius);
 
+    // The inner lane: its paths are built on every layout (cheap), used only with two lanes.
+    this.lanes = Math.max(1, Math.min(2, input.lanes));
+    const inner = cloneConfig(config);
+    inner.ringRadius = radius - config.laneWidth;
+    inner.mergeAngle = config.innerMergeAngle;
+    this.rings = [this.ring, lanePath(inner.ringRadius, radius)];
+    this.laneEntries = [this.entries, this.arms.map((arm) => curvePath([entryCurve(arm.angle, stop, inner)]))];
+    this.laneExits = [
+      this.exits,
+      this.arms.map((arm) => {
+        const curve = exitCurve(arm.angle, stop, inner);
+        const outward = fromAngle(arm.angle);
+        const end = add(mul(outward, stop + 260), mul(right(outward), config.laneWidth / 2));
+        return curvePath([curve, line(curve.p3, end)]);
+      }),
+    ];
+    this.laneEntryS = [this.entryRingS, this.arms.map((a) => wrap(a.angle + inner.mergeAngle) * radius)];
+    this.laneExitS = [this.exitRingS, this.arms.map((a) => wrap(a.angle - inner.mergeAngle) * radius)];
+    this.islandRadius = radius - config.laneWidth / 2 - (this.lanes - 1) * config.laneWidth;
+
     const edge = radius + config.laneWidth / 2 + 18;
     const queueEnd = stop + config.queueSpacing * (config.queueVisible - 1) + config.carLength / 2 + 10;
     this.viewBounds = { minX: -edge, minY: -queueEnd, maxX: edge, maxY: edge };
@@ -88,12 +127,26 @@ export class Layout {
     return this.arm(arm.index + steps);
   }
 
-  entry(arm: Arm): Path {
-    return this.entries[arm.index];
+  entry(arm: Arm, lane = 0): Path {
+    return this.laneEntries[lane][arm.index];
   }
 
-  exit(arm: Arm): Path {
-    return this.exits[arm.index];
+  exit(arm: Arm, lane = 0): Path {
+    return this.laneExits[lane][arm.index];
+  }
+
+  /** The radius a lane drives on: 0 the outer, 1 the inner. */
+  laneRadius(lane: number): number {
+    return this.ringRadius - lane * this.laneWidth;
+  }
+
+  /** Where a car from `arm` is on the ring once it has joined `lane`. */
+  entryS(arm: Arm, lane = 0): number {
+    return this.laneEntryS[lane][arm.index];
+  }
+
+  exitS(arm: Arm, lane = 0): number {
+    return this.laneExitS[lane][arm.index];
   }
 
   stopPose(arm: Arm): Pose {
@@ -118,8 +171,8 @@ export class Layout {
   }
 
   /** Ring distance a car drives from joining at `entryArm` until it leaves at `exitArm`. */
-  ringDistanceArms(entryArm: Arm, exitArm: Arm): number {
-    return this.ringDistance(this.entryRingS[entryArm.index], this.exitRingS[exitArm.index]);
+  ringDistanceArms(entryArm: Arm, exitArm: Arm, lane = 0): number {
+    return this.ringDistance(this.entryS(entryArm, lane), this.exitS(exitArm, lane));
   }
 }
 

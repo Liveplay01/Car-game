@@ -1,11 +1,12 @@
 import type { Config } from '../core/config';
 import type { Dent, VehicleType } from '../core/vehicle';
-import { isCarType, isExplosive } from '../core/vehicle';
+import { isCarType, isExplosive, isEmergency } from '../core/vehicle';
 import type { Pose } from '../core/paths';
 import { type Vec2, v, add, sub, mul, dist, length, fromAngle, lerpV } from '../core/vec2';
 import { type RenderList, rect, circle, line, polygon, Ease, Metrics, unitHash } from './render';
 import type { ColorToken } from './theme';
 import { type Finish, isShiny, glitters } from './skins';
+import { type Effect, SkinEffects } from './skinEffects';
 
 /** Rotates a vector counter-clockwise. */
 export const rotated = (p: Vec2, a: number): Vec2 => v(p.x * Math.cos(a) - p.y * Math.sin(a), p.x * Math.sin(a) + p.y * Math.cos(a));
@@ -170,6 +171,8 @@ export interface CarDraw {
   finish?: Finish | null;
   finishTime?: number | null;
   springTime?: number | null;
+  /** A loud skin's animation; a wreck has lost it. */
+  effect?: Effect | null;
 }
 
 /** How a vehicle looks and how it breaks. */
@@ -201,6 +204,14 @@ export const CarArt = {
         return 'vehicleMilitary';
       case 'ambulance':
         return 'vehicleAmbulance';
+      case 'fireTruck':
+        return 'vehicleFire';
+      case 'bus':
+        return 'vehicleBus';
+      case 'learner':
+        return 'vehicleLearner';
+      case 'motorbike':
+        return 'vehicleMotorbike';
     }
   },
 
@@ -217,7 +228,13 @@ export const CarArt = {
       case 'sportsCar':
       case 'compact':
       case 'van':
+      case 'learner':
+      case 'bus':
         return [...common, 'rearWindow'];
+      case 'motorbike':
+        return ['frontLeftWheel', 'rearLeftWheel', 'windscreen'];
+      case 'fireTruck':
+        return ['cargo', ...common, 'lightBar'];
       case 'truck':
       case 'tanker':
       case 'military':
@@ -247,10 +264,19 @@ export const CarArt = {
         return c.vanLength;
       case 'ambulance':
         return c.ambulanceLength;
+      case 'fireTruck':
+        return c.truckLength;
+      case 'bus':
+        return c.busLength;
+      case 'motorbike':
+        return c.motorbikeLength;
       default:
         return c.carLength;
     }
   },
+
+  /** Every vehicle is as wide as a car, except the slim motorbike. */
+  width: (type: VehicleType, c: Config): number => (type === 'motorbike' ? c.motorbikeWidth : c.carWidth),
 
   shape(part: Part, type: VehicleType, c: Config): Shape {
     let byConfig = shapes.get(c);
@@ -263,9 +289,9 @@ export const CarArt = {
 
   makeShape(part: Part, type: VehicleType, c: Config): Shape {
     const l = CarArt.length(type, c);
-    const w = c.carWidth;
+    const w = CarArt.width(type, c);
     const body = CarArt.bodyColor(type);
-    const lorry = type === 'truck' || type === 'tanker' || type === 'military';
+    const lorry = type === 'truck' || type === 'tanker' || type === 'military' || type === 'fireTruck';
     // The ambulance is built like a van: a short cab, then the long box.
     const boxy = type === 'van' || type === 'ambulance';
     const S = (cx: number, cy: number, sx: number, sy: number, radius: number, color: ColorToken, breaksAt: number, reach: number, visible: boolean): Shape => ({
@@ -285,13 +311,15 @@ export const CarArt = {
       case 'hood':
         return S(l * 0.3, 0, l * 0.3, w - 3, 1.5, body, 3.5, 8, false);
       case 'windscreen': {
+        if (type === 'motorbike') return S(l * 0.02, 0, l * 0.3, w * 0.8, w * 0.4, 'vehicleRider', 2.5, 6, true);
+        if (type === 'bus') return S(l * 0.44, 0, l * 0.06, w * 0.8, 1.5, 'vehicleGlass', 2.5, 9, true);
         const x = lorry ? l * 0.39 : type === 'transporter' ? l * 0.33 : boxy ? l * 0.3 : l * 0.12;
         const len = lorry ? l * 0.1 : type === 'transporter' ? l * 0.13 : boxy ? l * 0.14 : type === 'compact' ? l * 0.26 : l * 0.22;
         return S(x, 0, len, w * 0.74, 2, 'vehicleGlass', 2.5, 9, true);
       }
       case 'rearWindow': {
-        const x = type === 'pickup' ? -l * 0.02 : boxy ? -l * 0.4 : type === 'compact' ? -l * 0.27 : -l * 0.3;
-        const len = type === 'pickup' ? l * 0.07 : boxy ? l * 0.06 : l * 0.13;
+        const x = type === 'pickup' ? -l * 0.02 : boxy || type === 'bus' ? -l * 0.44 : type === 'compact' ? -l * 0.27 : -l * 0.3;
+        const len = type === 'pickup' ? l * 0.07 : boxy || type === 'bus' ? l * 0.05 : l * 0.13;
         return S(x, 0, len, w * 0.66, 1.5, 'vehicleGlass', 2.5, 7, true);
       }
       case 'leftMirror':
@@ -302,21 +330,23 @@ export const CarArt = {
       case 'frontRightWheel':
       case 'rearLeftWheel':
       case 'rearRightWheel': {
-        const x = part === 'frontLeftWheel' || part === 'frontRightWheel' ? l * 0.3 : -l * 0.3;
-        const y = part === 'frontLeftWheel' || part === 'rearLeftWheel' ? w / 2 - 1.5 : -w / 2 + 1.5;
-        return S(x, y, 5, 2.4, 1, 'vehicleTire', 4, 5, false);
+        const x = part === 'frontLeftWheel' || part === 'frontRightWheel' ? l * (type === 'motorbike' ? 0.36 : 0.3) : -l * (type === 'motorbike' ? 0.36 : 0.3);
+        const y = type === 'motorbike' ? 0 : part === 'frontLeftWheel' || part === 'rearLeftWheel' ? w / 2 - 1.5 : -w / 2 + 1.5;
+        // A motorbike's two wheels stick out front and back, and show.
+        return S(x, y, type === 'motorbike' ? 5.5 : 5, 2.4, 1, 'vehicleTire', 4, 5, type === 'motorbike');
       }
       case 'roof':
         return S(-l * 0.11, 0, l * 0.24, w * 0.8, 2, 'vehiclePoliceRoof', Infinity, 0, true);
       case 'lightBar':
         // The ambulance carries its lights on the front edge of the box.
-        return S(type === 'ambulance' ? l * 0.17 : -l * 0.07, 0, 2.8, w * 0.8, 1, 'lightBlue', 2.5, 8, true);
+        return S(type === 'ambulance' ? l * 0.17 : type === 'fireTruck' ? l * 0.3 : -l * 0.07, 0, 2.8, w * 0.8, 1, 'lightBlue', 2.5, 8, true);
       case 'bed':
         return S(-l * 0.26, 0, l * 0.4, w - 3, 1.5, 'vehicleBed', Infinity, 0, true);
       case 'cargo':
         if (type === 'truck') return S(-l * 0.14, 0, l * 0.62, w + 2, 2, 'vehicleTruckBox', 4, 9, true);
         if (type === 'tanker') return S(-l * 0.14, 0, l * 0.64, w + 1, (w + 1) / 2, 'vehicleTank', 4, 9, true);
         if (type === 'military') return S(-l * 0.14, 0, l * 0.62, w + 1, 1.5, 'vehicleMilitaryBox', 4, 9, true);
+        if (type === 'fireTruck') return S(-l * 0.12, 0, l * 0.66, w - 1, 1.5, 'vehicleFire', 4, 9, true);
         return S(-l * 0.13, 0, l * 0.64, w - 2, 1.5, 'vehicleArmorBox', 4, 9, true);
       case 'hazard':
         return S(l * 0.2, 0, 2.2, w * 0.42, 1, 'hazard', 2.5, 6, true);
@@ -340,7 +370,7 @@ export const CarArt = {
 
   makeOutline(type: VehicleType, c: Config): Vec2[] {
     const hl = CarArt.length(type, c) / 2;
-    const hw = c.carWidth / 2;
+    const hw = CarArt.width(type, c) / 2;
     const r = Metrics.vehicleCornerRadius;
     const corners = [v(hl - r, hw - r), v(-hl + r, hw - r), v(-hl + r, -hw + r), v(hl - r, -hw + r)];
     const points: Vec2[] = [];
@@ -388,16 +418,17 @@ export const CarArt = {
   add(list: RenderList, d: CarDraw, c: Config): void {
     const type = d.type;
     const pose = d.pose;
-    const opacity = d.opacity ?? 1;
+    const effect = d.dents.length === 0 ? (d.effect ?? null) : null;
+    const opacity = (d.opacity ?? 1) * SkinEffects.opacity(effect, d.finishTime ?? null, d.id);
     const char = d.char ?? 0;
     const dents = SoftBody.dents(d.dents, type, d.springTime ?? null);
     const body = CarArt.bodyColor(type, d.id, d.skin ?? null);
     const paintedInThisCar = CarArt.bodyColor(type, 0, d.skin ?? null);
     const L = CarArt.length(type, c);
-    const W = c.carWidth;
+    const W = CarArt.width(type, c);
     const lights = d.lights ?? null;
 
-    if (lights !== null && (type === 'police' || type === 'ambulance')) {
+    if (lights !== null && (type === 'police' || isEmergency(type))) {
       const spill = PoliceLights.spill(lights);
       const bar = CarArt.shape('lightBar', type, c).center;
       const halo = Math.max(spill.left, spill.right);
@@ -426,9 +457,11 @@ export const CarArt = {
     const head = d.headlights ?? 0;
     if (head > 0.01) list.w(rect(worldOf(v(L / 2 + 8, 0), pose), v(16, W * 1.4), 6, pose.heading), 'primary', opacity * 0.28 * head);
 
+    if (effect) SkinEffects.under(list, effect, pose, L, W, d.finishTime ?? null, d.id, opacity);
     if (dents.length === 0) {
       list.w(rect(pose.position, v(L + 2.5, W + 2.5), Metrics.vehicleCornerRadius + 1, pose.heading), 'kerb', opacity);
       list.w(rect(pose.position, v(L, W), Metrics.vehicleCornerRadius, pose.heading), body, opacity);
+      if (effect) SkinEffects.paint(list, effect, pose, L, W, d.finishTime ?? null, d.id, opacity);
     } else {
       const local = CarArt.deformedOutline(type, dents, c);
       list.w(polygon(local.map((p) => worldOf(mul(p, 1.1), pose))), 'kerb', opacity);
@@ -537,6 +570,35 @@ export const CarArt = {
       list.w(rect(cross, v(7.5, 2.6), 0.6, pose.heading), 'lightRed', opacity);
       list.w(rect(cross, v(2.6, 7.5), 0.6, pose.heading), 'lightRed', opacity);
     }
+    if (type === 'fireTruck' && dents.length === 0) {
+      // The ladder on top: two rails and their rungs, and a white band along the sides.
+      const box = CarArt.shape('cargo', type, c);
+      const from = box.center.x - box.size.x / 2 + 1;
+      const to = box.center.x + box.size.x / 2 + 3;
+      for (const y of [-2.4, 2.4]) list.w(line(worldOf(v(from, y), pose), worldOf(v(to, y), pose), 1.1), 'vehicleLadder', opacity);
+      for (let x = from + 2; x < to; x += 3.4) list.w(line(worldOf(v(x, -2.4), pose), worldOf(v(x, 2.4), pose), 0.7), 'vehicleLadder', opacity);
+      for (const y of [-1, 1]) list.w(line(worldOf(v(-L / 2 + 1.5, y * (W / 2 - 0.8)), pose), worldOf(v(L / 2 - 2, y * (W / 2 - 0.8)), pose), 0.9), 'primary', opacity * 0.8);
+    }
+    if (type === 'bus' && dents.length === 0) {
+      // A row of windows down each side and the black band of a school bus.
+      for (const y of [-1, 1]) {
+        for (let x = -L / 2 + 5; x < L * 0.36; x += 5.2) list.w(rect(worldOf(v(x, y * (W / 2 - 1.8)), pose), v(3.8, 2.2), 0.6, pose.heading), 'vehicleGlass', opacity);
+        list.w(line(worldOf(v(-L / 2 + 1, y * (W / 2 - 0.4)), pose), worldOf(v(L / 2 - 1, y * (W / 2 - 0.4)), pose), 0.8), 'vehicleTire', opacity * 0.8);
+      }
+      list.w(rect(worldOf(v(L * 0.1, 0), pose), v(L * 0.5, W * 0.34), 1, pose.heading), 'primary', opacity * 0.18);
+    }
+    if (type === 'learner' && dents.length === 0) {
+      // The driving-school sign on the roof: a red L on white.
+      const at = worldOf(v(-L * 0.08, 0), pose);
+      list.w(rect(at, v(7.5, 6.5), 1, pose.heading), 'primary', opacity);
+      list.w(rect(worldOf(v(-L * 0.08, 1.2), pose), v(4.6, 1.3), 0.3, pose.heading), 'lightRed', opacity);
+      list.w(rect(worldOf(v(-L * 0.08 - 1.7, -0.6), pose), v(1.3, 3.8), 0.3, pose.heading), 'lightRed', opacity);
+    }
+    if (type === 'motorbike' && dents.length === 0) {
+      // The rider's helmet, over the tank.
+      list.w(circle(worldOf(v(-L * 0.06, 0), pose), W * 0.36), 'vehicleRider', opacity);
+      list.w(circle(worldOf(v(-L * 0.02, 0), pose), W * 0.16), 'vehicleGlass', opacity);
+    }
     if (type === 'tanker' && dents.length === 0) {
       const tank = CarArt.shape('cargo', type, c);
       const from = tank.center.x - tank.size.x / 2 + 3;
@@ -571,6 +633,7 @@ export const CarArt = {
       const side = rotated(v(-1, 1), -pose.heading).y >= 0 ? 1 : -1;
       list.w(rect(worldOf(v(0, side * W * 0.2), pose), v(L * 0.78, W * 0.3), W * 0.15, pose.heading), 'primary', opacity * 0.07);
     }
+    if (effect) SkinEffects.over(list, effect, pose, L, W, d.finishTime ?? null, d.id, opacity);
   },
 
   lightBar(list: RenderList, shape: Shape, center: Vec2, rotation: number, pose: Pose, lights: number | null, opacity: number, c: Config): void {

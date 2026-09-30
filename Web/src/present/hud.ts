@@ -7,6 +7,7 @@ import type { CityEvent, BossKind } from '../core/config';
 import { Scoring } from '../core/scoring';
 import { secureZone } from '../core/specials';
 import { clearZone } from '../core/ambulance';
+import { learnerZone } from '../core/learner';
 import { type Vec2, v, add, sub, mul, fromAngle, TAU } from '../core/vec2';
 import { type RenderList, type Rect, R, rect, circle, arc, line, text, Ease, Metrics, toScreen, type Align } from './render';
 import type { ColorToken } from './theme';
@@ -124,9 +125,15 @@ export type PopupKind =
   | { k: 'convoy'; kind: BossKind }
   | { k: 'heist'; n: number }
   | { k: 'armour' }
-  | { k: 'ambulance' }
+  | { k: 'ambulance'; fire?: boolean }
   | { k: 'blocked' }
-  | { k: 'clearRoad'; n: number };
+  | { k: 'clearRoad'; n: number }
+  /** The learner driver: announced, its space taken, or left with room all the way. */
+  | { k: 'learner' }
+  | { k: 'crowded' }
+  | { k: 'patient'; n: number }
+  /** A close shave past a motorbike: its bonus points. */
+  | { k: 'shave'; n: number };
 
 export interface Popup {
   serial: number;
@@ -401,6 +408,31 @@ export const HUD = {
     }
   },
 
+  /**
+   * The learner driver: its arm is marked before it comes; on the ring a green band around it,
+   * ahead and behind, shows the space to leave it. Once a car took it, the band is gone.
+   */
+  addLearner(list: RenderList, world: World, alpha: number): void {
+    const l = world.learner;
+    if (l.kind === 'warning') HUD.addWedge(list, l.arm, world, 'juiceGreen');
+    else if (l.kind === 'arriving') {
+      const veh = world.vehicle(l.vehicle);
+      if (veh) list.w(arc(interpolatedPose(veh, alpha).position, 20, 2, 0, TAU), 'juiceGreen', 0.6);
+    } else if (l.kind === 'active') {
+      const veh = world.vehicle(l.vehicle);
+      const zone = learnerZone(world);
+      if (!veh || veh.isCrashed || !zone) return;
+      const pos = interpolatedPose(veh, alpha).position;
+      const r = world.layout.laneRadius(veh.lane);
+      const mid = Math.atan2(pos.y, pos.x);
+      const half = zone.arc / world.layout.ringRadius;
+      const pulse = 0.5 + 0.5 * Math.sin(world.time * 4);
+      const lane = world.layout.laneWidth / 2 - 3;
+      for (const edge of [r - lane, r + lane]) list.w(arc(v(0, 0), edge, 1.6, mid - half, mid + half), 'juiceGreen', 0.25 + 0.2 * pulse);
+      list.w(arc(v(0, 0), r, world.layout.laneWidth - 6, mid - half, mid + half), 'juiceGreen', 0.05 + 0.03 * pulse);
+    }
+  },
+
   addMilitary(list: RenderList, world: World, alpha: number): void {
     const m = world.military;
     const c = world.config;
@@ -477,7 +509,7 @@ export const HUD = {
     const tier = Scoring.tier(world.score.combo, c) / Math.max(1, tiers);
     const glow = Math.min(1, 0.3 * tier + 0.7 * flow);
     if (glow <= 0.01) return;
-    const radius = world.layout.ringRadius - c.laneWidth / 2 - 3;
+    const radius = world.layout.islandRadius - 3;
     list.w(arc(v(0, 0), radius, 12, 0, TAU), 'accent', 0.12 * glow);
     list.w(arc(v(0, 0), radius, 3, 0, TAU), 'accent', 0.45 * glow);
   },
@@ -585,9 +617,28 @@ export const HUD = {
           size = Metrics.popupSize * 0.8;
           break;
         case 'ambulance':
-          label = S.ambulance.incoming;
+          label = k.fire ? S.ambulance.fire : S.ambulance.incoming;
           color = 'lightBlue';
           size = Metrics.popupSize * 0.8;
+          break;
+        case 'learner':
+          label = S.learner.incoming;
+          color = 'juiceGreen';
+          size = Metrics.popupSize * 0.8;
+          break;
+        case 'crowded':
+          label = S.learner.crowded;
+          color = 'muted';
+          size = Metrics.popupSize * 0.8;
+          break;
+        case 'patient':
+          label = S.learner.patient(Fmt.signed(k.n));
+          color = 'juiceGreen';
+          break;
+        case 'shave':
+          label = S.hud.shave(Fmt.signed(k.n));
+          color = 'juiceOrange';
+          size = Metrics.popupSize * 0.85;
           break;
         case 'blocked':
           label = S.ambulance.blocked;
@@ -630,7 +681,7 @@ interface Signal {
 
 /** The island's rim as the game's signal track. */
 export class RingSignals {
-  static rim = (world: World): number => world.layout.ringRadius - world.layout.laneWidth / 2 - 14;
+  static rim = (world: World): number => world.layout.islandRadius - 14;
   static readonly hold = 0.9;
   total = 0;
   sent = 0;

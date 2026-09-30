@@ -11,12 +11,18 @@ export interface Range {
 
 const r = (lo: number, hi: number): Range => ({ lo, hi });
 
-export type Weather = 'clear' | 'lightRain' | 'heavyRain' | 'storm' | 'extreme';
-export const WEATHERS: Weather[] = ['clear', 'lightRain', 'heavyRain', 'storm', 'extreme'];
-export const weatherSeverity = (w: Weather): number => WEATHERS.indexOf(w);
+/**
+ * The sky of a shift. Rain gets rougher step by step (`weatherSeverity`); fog and snow
+ * (Leo, 30.09.2026) are kinds of their own: fog takes the view, snow the grip.
+ */
+export type Weather = 'clear' | 'lightRain' | 'heavyRain' | 'storm' | 'extreme' | 'fog' | 'snow';
+export const WEATHERS: Weather[] = ['clear', 'lightRain', 'heavyRain', 'storm', 'extreme', 'fog', 'snow'];
+const RAIN: Record<Weather, number> = { clear: 0, lightRain: 1, heavyRain: 2, storm: 3, extreme: 4, fog: 0, snow: 0 };
+/** How hard it rains: 0 (clear, fog, snow) to 4 (extreme). */
+export const weatherSeverity = (w: Weather): number => RAIN[w];
 
-export type CityEvent = 'roadworks' | 'roadClosure' | 'concert' | 'vipConvoy' | 'policeOperation';
-export const CITY_EVENTS: CityEvent[] = ['roadworks', 'roadClosure', 'concert', 'vipConvoy', 'policeOperation'];
+export type CityEvent = 'roadworks' | 'roadClosure' | 'concert' | 'vipConvoy' | 'policeOperation' | 'schoolRun';
+export const CITY_EVENTS: CityEvent[] = ['roadworks', 'roadClosure', 'concert', 'vipConvoy', 'policeOperation', 'schoolRun'];
 
 export type RoadModule = 'tollBooth' | 'speedCamera' | 'towDepot';
 export const ROAD_MODULES: RoadModule[] = ['tollBooth', 'speedCamera', 'towDepot'];
@@ -50,6 +56,18 @@ export const baseConfig = {
   ringRadius: 120,
   laneWidth: 24,
   mergeAngle: 0.26,
+  /**
+   * Two lanes (Leo, 30.09.2026): from `twoLaneLevel` on the ring gets an inner lane. Both lanes
+   * turn together; a car bound for the inner lane crosses the outer one on its way in and out.
+   * An arrow at the stop line shows where your front car is headed.
+   */
+  lanes: 1,
+  twoLaneLevel: 80,
+  /** Share of the AI's cars and of yours that take the inner lane. */
+  innerLaneShare: 0.4,
+  playerInnerShare: 0.35,
+  /** The inner lane is joined and left a little further round than the outer one. */
+  innerMergeAngle: 0.42,
 
   // Vehicles
   carLength: 24,
@@ -330,6 +348,19 @@ export const baseConfig = {
   weatherBrakeLoss: 0.1,
   weatherDensityPerStep: 1,
   stormAiGapFactor: 0.8,
+  /** Fog: the far side of the ring fades out; drivers see a hazard later. It pays a little more. */
+  fogLevel: 35,
+  fogReactionDelay: 0.3,
+  fogPayFactor: 1.1,
+  /** Snow and ice: tyres keep this share of their grip, brakes this share of their bite. */
+  snowLevel: 45,
+  snowGrip: 0.45,
+  snowBrake: 0.6,
+  snowReactionDelay: 0.15,
+  snowPayFactor: 1.15,
+  /** How often each kind comes when the sky turns bad (rain eases from 4 down to 1). */
+  fogWeight: 3,
+  snowWeight: 2,
 
   // Night: the city goes dark, you merge by the lights (only the picture changes, not the rules)
   night: false,
@@ -399,6 +430,13 @@ export const baseConfig = {
   /** The Casino in the Shop from this level on; it opens quietly, nothing points there. */
   casinoUnlockLevel: 12,
 
+  // Season Pass (core/seasonPass.ts): play money only, a track of 12 tiers per season
+  seasonPassLevel: 15,
+  seasonPassPrice: 150000,
+  seasonPassXpPerTier: 120,
+  /** Hall of Fame: a monument in the city with a plaque per Prestige rank, and its own skin. */
+  hallOfFamePrice: 250000,
+
   // Prestige (Leo, 28.09.2026): back to Level 1 with the traffic of a higher level; looks only
   prestigeLevel: 50,
   /** Each rank plays this many levels harder, at most `maxPrestigeHeadStart`. */
@@ -427,6 +465,42 @@ export const baseConfig = {
   ambulancePay: 300,
   ambulanceLength: 30,
   ambulanceMass: 1.6,
+  /**
+   * Fire engine (Leo, 30.09.2026): from its level on, some emergency runs are a fire engine
+   * instead: long and heavy, with a longer road ahead to keep clear, and better pay.
+   */
+  fireTruckLevel: 35,
+  fireTruckShare: 0.45,
+  fireTruckClearArc: 190,
+  fireTruckPay: 500,
+  fireTruckMass: 2.4,
+
+  // Motorbikes (Leo, 30.09.2026): quick and slim, they slip into gaps a car would not take
+  motorbikeLevel: 22,
+  /** Share of the new AI cars that are motorbikes. */
+  motorbikeShare: 0.12,
+  motorbikeLength: 15,
+  motorbikeWidth: 7,
+  motorbikeMass: 0.35,
+  motorbikeMergeFactor: 0.7,
+  /** The gap (s) a motorbike takes to join; a car wants `aiSafeGap`. */
+  motorbikeEntryGap: 0.1,
+  /** A merge of yours that slips past a motorbike (Tight Fit or Near Miss) pays this on top, times the combo. */
+  motorbikeBonus: 150,
+
+  // Learner driver (Leo, 30.09.2026): a driving-school car, announced, once round the ring
+  learnerLevel: 28,
+  /** Chance per shift; 0 turns it off (Mayhem, multiplayer). */
+  learnerChance: 0.3,
+  learnerFirst: r(3, 9),
+  learnerWarning: 2,
+  /** It hesitates now and then: brakes down to this share of the ring's speed for a moment. */
+  learnerStallEvery: r(2.2, 4.2),
+  learnerStallTime: r(0.7, 1.3),
+  learnerStallSpeed: 0.35,
+  /** Keep your cars this far away from it, ahead and behind, and it pays when it leaves. */
+  learnerZoneArc: 80,
+  learnerPay: 250,
 
   // Mastery trials (core/trials.ts): an extra rule for this shift, broken ends it as 'failed'
   /** flawless: no crash, no cut-off (a broken rule ends the trial as failed). */
@@ -444,6 +518,19 @@ export const baseConfig = {
   concertSpawnFactor: 0.5,
   vipGapFactor: 1.6,
   policeOperationShare: 0.15,
+  /**
+   * School Run (Leo, 30.09.2026): school buses join the traffic and stop at a bus stop on the
+   * ring; the traffic behind them waits. Merge behind a bus, not into the queue it leaves.
+   */
+  schoolRunLevel: 30,
+  /** Where the bus stop sits on the ring (share of the ring), drawn per shift. */
+  busStopAt: 0,
+  /** Share of the new AI traffic that is a school bus during a School Run. */
+  busShare: 0.28,
+  busLength: 44,
+  busMass: 2.4,
+  /** Seconds a bus stands at the stop. */
+  busDwell: 1.6,
 
   // Motivation
   perfectRunPoints: 1500,

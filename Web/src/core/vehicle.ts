@@ -22,7 +22,15 @@ export type VehicleType =
   /** A military truck with a bomb: a no-go zone around it on the ring. */
   | 'military'
   /** On an emergency run: the ring ahead of it has to stay clear. */
-  | 'ambulance';
+  | 'ambulance'
+  /** An emergency run too, long and heavy, with a longer road to keep clear. */
+  | 'fireTruck'
+  /** Quick and slim: slips into small gaps; a close merge past it pays extra. */
+  | 'motorbike'
+  /** A driving-school car: hesitates on the ring; keeping your distance pays. */
+  | 'learner'
+  /** A school bus (School Run): stops at the bus stop on the ring, the traffic behind waits. */
+  | 'bus';
 
 export type Owner = 'player' | 'ai';
 
@@ -31,7 +39,9 @@ export type VehicleRole = 'boss' | 'escort' | null;
 
 export const isCarType = (t: VehicleType): boolean => t === 'car' || t === 'sportsCar' || t === 'compact' || t === 'van';
 /** A lorry of any kind: long and heavy, worth more flames in Mayhem. */
-export const isHeavy = (t: VehicleType): boolean => t === 'truck' || t === 'tanker' || t === 'military';
+export const isHeavy = (t: VehicleType): boolean => t === 'truck' || t === 'tanker' || t === 'military' || t === 'bus' || t === 'fireTruck';
+/** On an emergency run: the road ahead of it has to stay clear. */
+export const isEmergency = (t: VehicleType): boolean => t === 'ambulance' || t === 'fireTruck';
 /** Goes up when it is wrecked. */
 export const isExplosive = (t: VehicleType): boolean => t === 'tanker' || t === 'military';
 
@@ -46,9 +56,10 @@ export interface MergeProfile {
   ringSpeed: number;
 }
 
-export function mergeProfile(pathLength: number, duration: number, ringSpeed: number): MergeProfile {
+/** `endScale`: the lane it joins turns slower than the outer one (the inner lane: its radius share). */
+export function mergeProfile(pathLength: number, duration: number, ringSpeed: number, endScale = 1): MergeProfile {
   const average = pathLength / duration;
-  const end = Math.min(ringSpeed, 2 * average);
+  const end = Math.min(ringSpeed * endScale, 2 * average);
   return { duration, endSpeed: end, startSpeed: 2 * average - end, ringSpeed };
 }
 
@@ -97,6 +108,13 @@ export interface Merging {
   minGap: number;
   closest: number | null;
   extraLaps: number;
+  /**
+   * Share of its planned speed the car drives at (unset: 1). Below 1 only while the ring at its
+   * join is slow or jammed: it brakes behind the traffic instead of ploughing in (drivers.ts).
+   */
+  pace?: number;
+  /** Slowing down for a jam at the join: the brake lights are on. */
+  braking?: boolean;
 }
 
 export interface Waiting {
@@ -120,6 +138,8 @@ export interface Ring {
   drive: Drive;
   sinceMerge: number;
   isLeaving: boolean;
+  /** Inner lane: the way out across the outer lane was checked for this lap. */
+  exitChecked?: boolean;
 }
 
 export interface Exiting {
@@ -159,6 +179,11 @@ export class Vehicle {
   seat = 0;
   /** Multiplayer: an AI lorry this seat sent into the ring (pressure or revenge), else null. */
   sentBy: number | null = null;
+  /** The ring lane it drives in: 0 the outer (every roundabout), 1 the inner (two lanes). */
+  lane: 0 | 1 = 0;
+  /** A school bus: seconds it has stood at the stop, and whether it has served it. */
+  dwell = 0;
+  served = false;
 
   constructor(
     readonly id: number,
@@ -189,7 +214,8 @@ export class Vehicle {
 
   /** Plain AI traffic: the bots whose gaps the player's cars have to hit. */
   get isBot(): boolean {
-    return this.owner === 'ai' && this.type !== 'pickup' && this.type !== 'transporter' && this.type !== 'military' && this.type !== 'ambulance';
+    const t = this.type;
+    return this.owner === 'ai' && t !== 'pickup' && t !== 'transporter' && t !== 'military' && !isEmergency(t) && t !== 'learner';
   }
 
   get isPlayerPolice(): boolean {

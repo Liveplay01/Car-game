@@ -33,7 +33,11 @@ export type CosmeticSource =
   /** Earned by reaching this Prestige rank. */
   | { kind: 'prestige'; rank: number }
   /** Earned on the Elite track (core/elite.ts) at this Elite level. */
-  | { kind: 'elite'; level: number };
+  | { kind: 'elite'; level: number }
+  /** A tier of the Season Pass (core/seasonPass.ts) in its season. */
+  | { kind: 'pass'; season: Season; tier: number }
+  /** Built the Hall of Fame. */
+  | { kind: 'hall' };
 
 export interface Cosmetic {
   id: string;
@@ -127,6 +131,20 @@ export const COSMETICS: Cosmetic[] = [
   c('eliteJade', 'carSkin', 'epic', { kind: 'elite', level: 25 }),
   c('eliteAurum', 'carSkin', 'legendary', { kind: 'elite', level: 35 }),
   c('eliteHalo', 'carSkin', 'legendary', { kind: 'elite', level: 45 }),
+  // The Season Pass: three skins per season, loud and animated (Leo, 30.09.2026).
+  c('blizzard', 'carSkin', 'epic', { kind: 'pass', season: 'winter', tier: 3 }),
+  c('northernLights', 'carSkin', 'legendary', { kind: 'pass', season: 'winter', tier: 8 }),
+  c('glacier', 'carSkin', 'legendary', { kind: 'pass', season: 'winter', tier: 12 }),
+  c('petalStorm', 'carSkin', 'epic', { kind: 'pass', season: 'spring', tier: 3 }),
+  c('rainbow', 'carSkin', 'legendary', { kind: 'pass', season: 'spring', tier: 8 }),
+  c('bloomGlow', 'carSkin', 'legendary', { kind: 'pass', season: 'spring', tier: 12 }),
+  c('solarFlare', 'carSkin', 'epic', { kind: 'pass', season: 'summer', tier: 3 }),
+  c('neonWave', 'carSkin', 'legendary', { kind: 'pass', season: 'summer', tier: 8 }),
+  c('lava', 'carSkin', 'legendary', { kind: 'pass', season: 'summer', tier: 12 }),
+  c('ghost', 'carSkin', 'epic', { kind: 'pass', season: 'autumn', tier: 3 }),
+  c('harvestMoon', 'carSkin', 'legendary', { kind: 'pass', season: 'autumn', tier: 8 }),
+  c('thunder', 'carSkin', 'legendary', { kind: 'pass', season: 'autumn', tier: 12 }),
+  c('hallOfFame', 'carSkin', 'legendary', { kind: 'hall' }),
 ];
 
 /** The item a completed Legendary Shift count unlocks, if any. */
@@ -140,7 +158,8 @@ export const prestigeReward = (rank: number): Cosmetic | undefined => COSMETICS.
 export const eliteReward = (level: number): Cosmetic | undefined => COSMETICS.find((x) => x.source.kind === 'elite' && x.source.level === level);
 
 /** Earned by deeds, not found in chests: Legendary Shifts, Prestige and the Elite track. */
-export const isHonour = (item: Cosmetic): boolean => item.source.kind === 'legendary' || item.source.kind === 'prestige' || item.source.kind === 'elite';
+export const isHonour = (item: Cosmetic): boolean =>
+  item.source.kind === 'legendary' || item.source.kind === 'prestige' || item.source.kind === 'elite' || item.source.kind === 'hall';
 
 /** The next Legendary Shift milestone still to reach. */
 export function nextLegendaryReward(collection: readonly string[]): Cosmetic | undefined {
@@ -160,10 +179,11 @@ export function seasonOf(day: number): Season {
 export const seasonItems = (season: Season): Cosmetic[] =>
   COSMETICS.filter((x) => x.source.kind === 'season' && x.source.season === season);
 
-export type Album = 'maps' | 'commons' | 'rares' | 'epics' | 'legends' | 'seasons' | 'loyalty' | 'honours';
-export const ALBUMS: Album[] = ['maps', 'commons', 'rares', 'epics', 'legends', 'seasons', 'loyalty', 'honours'];
+export type Album = 'maps' | 'commons' | 'rares' | 'epics' | 'legends' | 'seasons' | 'loyalty' | 'honours' | 'pass';
+export const ALBUMS: Album[] = ['maps', 'commons', 'rares', 'epics', 'legends', 'seasons', 'loyalty', 'honours', 'pass'];
 
 export const ALBUM_REWARD: Record<Album, number> = {
+  pass: 60000,
   honours: 50000,
   commons: 5000,
   maps: 10000,
@@ -193,6 +213,8 @@ export function albumItems(album: Album): Cosmetic[] {
       return COSMETICS.filter((x) => x.source.kind === 'streak');
     case 'honours':
       return COSMETICS.filter(isHonour);
+    case 'pass':
+      return COSMETICS.filter((x) => x.source.kind === 'pass');
   }
 }
 

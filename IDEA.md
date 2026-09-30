@@ -57,7 +57,6 @@ können als weitere Module in den Dienst.
 
 - Weitere Vehicle Types über Compact, Sports Car und Van hinaus (z. B. Oldtimer; Truhen-Inhalt,
   eigene faire Eigenschaften).
-- Zweispurige Kreisverkehre.
 - Ghost Racing über Challenge-Links (Leo, 28.09.2026: erstmal nicht).
 
 Diese Inhalte dürfen die Kernmechanik nicht mit Sonderregeln überladen.

@@ -177,6 +177,27 @@ Seit 28.09.2026, Elite-Items seit 29.09.2026. Nie in Truhen, eigenes Regal im Sh
 Kein Elite-Item ist ganz gold lackiert: Gold am ganzen Auto bleibt dem Jackpot-Transporter
 vorbehalten (Fahrzeugfarben sind Spielinformation).
 
+## Saison-Pass und Ruhmeshalle (Leo, 30.09.2026, `core/seasonPass.ts`)
+
+- **Saison-Pass** (Progress → Quests, ab Level 15): 150.000 Spielgeld pro Saison, nie Echtgeld.
+  Jede Schicht bringt dieselben XP wie die Elite-Leiste; 120 XP pro Stufe, 12 Stufen:
+  Standard, 5.000, **Skin 1**, Standard, 10.000, Premium, Event, **Skin 2**, 20.000, Premium,
+  30.000, **Skin 3**. Die vier Saisons (Dezember zählt zum nächsten Winter) kommen jedes Jahr
+  wieder, also auch ihre Skins; ein schon besessener Skin zahlt sein Duplikat-Geld.
+- **Pass-Skins mit Effekten** (Regal „Pass“, Album „Season Pass“ 60.000, nicht im Casino):
+
+| Saison | Stufe 3 (Epic) | Stufe 8 (Legendary) | Stufe 12 (Legendary) |
+|---|---|---|---|
+| Winter | Blizzard (Schneespur) | Northern Lights (Polarlicht-Unterboden) | Glacier (kreisende Eissplitter) |
+| Frühling | Petal Storm (Blütenblätter) | Rainbow Road (Regenbogen-Lack) | Bloom Glow (pulsierendes Rosa) |
+| Sommer | Solar Flare (Flammenspur) | Neon Wave (Neon-Unterboden) | Lava Core (glühende Risse) |
+| Herbst | Ghost Rider (flackernd, Nachbilder) | Harvest Moon (Glut und Laub) | Thunderbolt (Blitze) |
+
+- **Ruhmeshalle** (Records → Elite, sobald die Elite-Leiste offen ist): 250.000. Eine goldene
+  Wand auf der Insel mit einem Stern pro Prestige-Rang, eine Plakette pro Rang (Datum, Elite,
+  Bosse, Legendary Shifts) und der Skin **Hall of Famer** (Lorbeer-Aura, Regal „Honours“).
+  Effekte laufen nur auf intakten Autos; Reduce Motion zeigt ein stehendes Bild.
+
 ## Elite-Leiste und Titel
 
 Seit 29.09.2026 (`Web/src/core/elite.ts`, Werte in `config.ts`). Level 50 öffnet die Leiste,

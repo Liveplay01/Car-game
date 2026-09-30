@@ -1,5 +1,5 @@
 import type { Arm } from './roundabout';
-import { Vehicle, type Waiting, mergeProfile } from './vehicle';
+import { Vehicle, type Waiting, type VehicleType, mergeProfile, isEmergency } from './vehicle';
 import type { World } from './world';
 import { isFreeForWarning } from './traffic';
 
@@ -11,7 +11,7 @@ import { isFreeForWarning } from './traffic';
  */
 export type AmbulancePhase =
   | { kind: 'idle'; next: number }
-  | { kind: 'warning'; arm: Arm; until: number }
+  | { kind: 'warning'; arm: Arm; until: number; fire: boolean }
   | { kind: 'arriving'; vehicle: number }
   | { kind: 'active'; vehicle: number; blocked: boolean }
   | { kind: 'done' };
@@ -22,6 +22,19 @@ export function firstAmbulance(w: World): AmbulancePhase {
   const comes = !c.mayhem && !w.isVersus && c.level >= c.ambulanceLevel && w.ambulanceRng.unit() < c.ambulanceChance;
   return comes ? { kind: 'idle', next: w.ambulanceRng.range(c.ambulanceFirst.lo, c.ambulanceFirst.hi) } : { kind: 'done' };
 }
+
+/**
+ * From `fireTruckLevel` on, some runs are a fire engine (Leo, 30.09.2026). Its own stream, drawn
+ * only from that level on, so the shifts below it keep their traffic.
+ */
+function isFireRun(w: World): boolean {
+  const c = w.config;
+  return c.level >= c.fireTruckLevel && w.fireRng.unit() < c.fireTruckShare;
+}
+
+/** The road an emergency vehicle needs clear ahead of it. */
+export const clearArc = (w: World, type: VehicleType): number =>
+  (type === 'fireTruck' ? w.config.fireTruckClearArc : w.config.ambulanceClearArc) + w.lengthOf(type) / 2;
 
 export const reservedAmbulanceArm = (w: World): Arm | null => (w.ambulance.kind === 'warning' ? w.ambulance.arm : null);
 
@@ -56,7 +69,7 @@ export function updateAmbulance(w: World, now: number): void {
     if (a.kind === 'arriving') {
       const veh = w.vehicle(a.vehicle);
       if (veh && veh.phase.kind === 'waiting') {
-        w.demoteToOrdinaryTraffic(a.vehicle, 'van');
+        w.demoteToOrdinaryTraffic(a.vehicle, veh.type === 'fireTruck' ? 'truck' : 'van');
         w.ambulance = { kind: 'done' };
         return;
       }
@@ -68,8 +81,9 @@ export function updateAmbulance(w: World, now: number): void {
       const candidates = w.openAIArms.filter((arm) => isFreeForWarning(w, arm));
       if (candidates.length === 0) return;
       const arm = w.ambulanceRng.pick(candidates);
-      w.ambulance = { kind: 'warning', arm, until: now + c.ambulanceWarning };
-      w.events.push({ type: 'ambulanceWarning', arm, time: now });
+      const fire = isFireRun(w);
+      w.ambulance = { kind: 'warning', arm, until: now + c.ambulanceWarning, fire };
+      w.events.push({ type: 'ambulanceWarning', arm, time: now, fire });
       return;
     }
     case 'warning': {
@@ -77,14 +91,14 @@ export function updateAmbulance(w: World, now: number): void {
       if (now < a.until || occupied) return;
       // It comes in fast from close by: the warning has already shown where.
       const waiting: Waiting = { kind: 'waiting', arm: a.arm, reaction: 0, approach: c.aiApproachDistance * 0.4 };
-      const veh = new Vehicle(w.makeId(), 'ambulance', 'ai', waiting, w.approachPose(waiting));
+      const veh = new Vehicle(w.makeId(), a.fire ? 'fireTruck' : 'ambulance', 'ai', waiting, w.approachPose(waiting));
       w.vehicles.push(veh);
       w.ambulance = { kind: 'arriving', vehicle: veh.id };
       return;
     }
     case 'arriving': {
       const veh = w.vehicle(a.vehicle);
-      if (!veh || veh.isCrashed || veh.type !== 'ambulance') {
+      if (!veh || veh.isCrashed || !isEmergency(veh.type)) {
         w.ambulance = { kind: 'done' };
         return;
       }
@@ -124,7 +138,8 @@ export function ambulanceThrough(w: World, now: number): void {
   const veh = w.vehicle(a.vehicle);
   if (a.blocked || !veh || veh.isCrashed) return;
   const c = w.config;
-  const amount = Math.round(c.ambulancePay * (w.isRushHourScoring ? c.rushHourScoreFactor : 1));
+  const pay = veh.type === 'fireTruck' ? c.fireTruckPay : c.ambulancePay;
+  const amount = Math.round(pay * (w.isRushHourScoring ? c.rushHourScoreFactor : 1));
   w.score.money += amount;
   w.score.ambulances++;
   w.setChain(w.score.chain + 1, now);
@@ -137,7 +152,7 @@ export function clearZone(w: World): { s: number; arc: number } | null {
   if (a.kind !== 'active' || a.blocked) return null;
   const veh = w.vehicle(a.vehicle);
   if (!veh || veh.phase.kind !== 'ring') return null;
-  return { s: veh.phase.s, arc: w.config.ambulanceClearArc + w.lengthOf('ambulance') / 2 };
+  return { s: veh.phase.s, arc: clearArc(w, veh.type) };
 }
 
 /** Whether a car at ring position `s` stands on the ambulance's clear road. */
@@ -151,7 +166,7 @@ export function isOnClearRoad(w: World, s: number): boolean {
 /** A player's car joined on the clear road: the run is spoilt. */
 export function noteMergeNearAmbulance(w: World, veh: Vehicle, s: number, now: number): void {
   const a = w.ambulance;
-  if (a.kind !== 'active' || a.blocked || !isOnClearRoad(w, s)) return;
+  if (a.kind !== 'active' || a.blocked || !isOnClearRoad(w, s) || veh.lane !== w.vehicle(a.vehicle)?.lane) return;
   a.blocked = true;
   w.setCombo(0);
   w.setChain(0, now);
@@ -160,7 +175,7 @@ export function noteMergeNearAmbulance(w: World, veh: Vehicle, s: number, now: n
 
 /** The AI keeps the clear road free too: it does not join where the ambulance is about to pass. */
 export function joinsClearRoad(w: World, veh: Vehicle, arm: Arm): boolean {
-  if (veh.type === 'ambulance') return false;
+  if (isEmergency(veh.type)) return false;
   const a = w.ambulance;
   if (a.kind !== 'active' && a.kind !== 'arriving') return false;
   const amb = w.vehicle(a.vehicle);
@@ -170,6 +185,6 @@ export function joinsClearRoad(w: World, veh: Vehicle, arm: Arm): boolean {
   if (ambS === null) return false;
   const arrival = w.layout.entryRingS[arm.index];
   const ahead = w.layout.ringDistance(ambS, arrival);
-  const reach = w.config.ambulanceClearArc + w.lengthOf('ambulance') / 2 + w.config.carLength;
+  const reach = clearArc(w, amb.type) + w.config.carLength;
   return ahead <= reach;
 }

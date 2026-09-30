@@ -11,6 +11,8 @@ import type { VehicleType, VehicleRole } from '../core/vehicle';
 import { type Trial, type TrialId, type RunId, type EliteKind, rematchKind } from '../core/trials';
 import type { SpecialKind, WeatherKind, DarkKind, MuseumEntry, ConditionEntry } from '../core/museum';
 import type { EliteStep, TitleId, TitleRule } from '../core/elite';
+import type { PassReward, PassStep, HallEntry } from '../core/seasonPass';
+import type { Season } from '../core/loot';
 import { MONEY_MARK } from './icons';
 
 /** Every text the game shows. English only. */
@@ -147,10 +149,45 @@ const SPECIAL_TEXT: Record<SpecialKind, MuseumText & { name: string }> = {
       `Hold your cars back while it passes. After about ${Math.round(c.militaryTime)} seconds it leaves as soon as the way out is clear.`,
     ],
   },
+  fireTruck: {
+    name: 'Fire Engine',
+    line: 'A long road to keep clear',
+    explain: (c) => [
+      'An emergency run like the ambulance, but a fire engine: long, heavy, and it needs more of the road.',
+      'The stretch of ring ahead of it is longer. Send a car in there and the run is spoiled, your combo and chain with it.',
+      `Keep the road clear until it leaves and it pays ${money(Fmt.number(c.fireTruckPay))} and extends your chain.`,
+    ],
+  },
+  motorbike: {
+    name: 'Motorbike',
+    line: 'Slips into tiny gaps',
+    explain: (c) => [
+      'Quick and slim: a motorbike joins in gaps a car would never take, so a gap you counted on can be gone.',
+      `Slip one of your cars right past it, a Tight Fit or a Near Miss, and the close shave pays ${Fmt.number(c.motorbikeBonus)} points on top, times your combo.`,
+    ],
+  },
+  learner: {
+    name: 'Learner Driver',
+    line: 'Give it room, it hesitates',
+    explain: (c) => [
+      'A driving-school car goes once round the ring, and now and then it brakes for no reason. The traffic behind it bunches up.',
+      'A green band shows the space around it, ahead and behind. Keep your cars out of it while it drives.',
+      `If it leaves with room all the way, it pays ${money(Fmt.number(c.learnerPay))} and extends your chain. Joining close to it only costs that bonus.`,
+    ],
+  },
+  bus: {
+    name: 'School Bus',
+    line: 'Stops at the bus stop',
+    explain: (c) => [
+      'Only on a School Run: long yellow buses that stop at the bus stop on the ring, for about ' + `${Math.round(c.busDwell * 10) / 10} seconds.`,
+      'The traffic behind a bus waits, and your cars wait with it instead of ploughing in. Merge behind a bus when it pulls away.',
+    ],
+  },
 };
 
 /** The grip the tyres keep in a weather, as `forWeather` sets it. */
-const gripIn = (w: Weather, c: Config): string => percent(Math.max(0.35, 1 - weatherSeverity(w) * c.weatherGripLoss));
+const gripIn = (w: Weather, c: Config): string =>
+  percent(w === 'snow' ? c.snowGrip : w === 'fog' ? 1 : Math.max(0.35, 1 - weatherSeverity(w) * c.weatherGripLoss));
 
 const WEATHER_TEXT: Record<WeatherKind, MuseumText> = {
   lightRain: {
@@ -179,6 +216,20 @@ const WEATHER_TEXT: Record<WeatherKind, MuseumText> = {
     explain: (c) => [
       `Extreme weather: tyres keep only ${gripIn('extreme', c)} of their grip, the traffic is at its heaviest, and every driver is on edge.`,
       'Every crash slides a long way and takes others with it. Patience pays more than speed here.',
+    ],
+  },
+  fog: {
+    line: 'The far side fades out',
+    explain: (c) => [
+      'Thick fog: the far side of the ring fades out, and drivers see a crash a moment later.',
+      `Watch the traffic that comes out of the fog towards your arm; the warnings still shine through. A foggy shift pays ${percent(c.fogPayFactor - 1)} more.`,
+    ],
+  },
+  snow: {
+    line: 'Ice on the road',
+    explain: (c) => [
+      `Snow and ice: tyres keep only ${gripIn('snow', c)} of their grip, and nobody stops quickly. A crash slides a long way.`,
+      `Your tyre tracks stay in the snow. Leave clearly more room than usual. A snowy shift pays ${percent(c.snowPayFactor - 1)} more.`,
     ],
   },
 };
@@ -236,6 +287,13 @@ const EVENT_TEXT: Record<CityEvent, MuseumText> = {
       'Criminals are easier to catch, and every police car is one more chance for a takedown. Use them.',
     ],
   },
+  schoolRun: {
+    line: 'Buses stop on the ring',
+    explain: (c) => [
+      `School's out: yellow school buses join the traffic, and each one stops for ${Math.round(c.busDwell * 10) / 10} seconds at the bus stop on the ring.`,
+      'The cars behind a bus wait for it. Your cars brake behind a queue too, but the best gap opens right after a bus pulls away.',
+    ],
+  },
 };
 
 /**
@@ -252,6 +310,8 @@ const INTRO_TEXT: {
     heavyRain: (c) => `Pouring rain: ${gripIn('heavyRain', c)} grip and more cars on the ring. Wait for gaps that are clearly big enough.`,
     storm: (c) => `Storm: ${gripIn('storm', c)} grip, and drivers squeeze into small gaps. Merge with care.`,
     extreme: (c) => `Only ${gripIn('extreme', c)} grip and the heaviest traffic. Patience pays more than speed.`,
+    fog: (c) => `Fog: the far side of the ring fades out, the warnings still shine through. Pays ${percent(c.fogPayFactor - 1)} more.`,
+    snow: (c) => `Ice: ${gripIn('snow', c)} grip, nobody stops quickly. Leave more room. Pays ${percent(c.snowPayFactor - 1)} more.`,
   },
   dark: {
     night: (c) => `The city is dark: watch the headlights, not the cars. A night shift pays ${percent(c.nightPayFactor - 1)} more.`,
@@ -263,6 +323,7 @@ const INTRO_TEXT: {
     concert: (c) => `${c.concertDensityBonus} more cars and new ones twice as often. Take a good gap when it comes.`,
     vipConvoy: (c) => `Every driver keeps ${percent(c.vipGapFactor - 1)} more distance: wider gaps, a new rhythm.`,
     policeOperation: (c) => `${percent(c.policeOperationShare)} more of your cars are police: more chances for a takedown.`,
+    schoolRun: () => 'School buses stop at the bus stop on the ring. Merge behind a bus as it pulls away.',
   },
 };
 
@@ -278,8 +339,20 @@ function museumText(e: MuseumEntry): MuseumText {
       return DARK_TEXT[e.kind];
     case 'event':
       return EVENT_TEXT[e.kind];
+    case 'road':
+      return ROAD_TEXT;
   }
 }
+
+/** The two-lane ring (its own kind of condition: the road itself). */
+const ROAD_TEXT: MuseumText = {
+  line: 'Read the gaps in both lanes',
+  explain: (c) => [
+    `From Level ${c.twoLaneLevel} the ring has an inner lane. Both lanes turn together, and traffic uses both.`,
+    'An arrow in front of your stop line shows where your front car is headed: straight into the outer lane, or bending left across it into the inner one.',
+    'A car bound for the inner lane needs a gap in the outer lane to cross and a gap in the inner lane to join. Cars leaving the inner lane cross the outer one too.',
+  ],
+};
 
 export const S = {
   gameTitle: 'Roundabout Timing',
@@ -527,9 +600,57 @@ export const S = {
 
   ambulance: {
     incoming: 'AMBULANCE',
+    fire: 'FIRE ENGINE',
     blocked: 'BLOCKED',
     clear: (amount: string): string => `CLEAR ROAD ${amount}`,
     lost: 'AMBULANCE LOST',
+  },
+
+  pass: {
+    title: 'Season Pass',
+    seasonName: (s: Season): string => ({ winter: 'Winter', spring: 'Spring', summer: 'Summer', autumn: 'Autumn' })[s],
+    caption: (s: Season): string => `${S.pass.seasonName(s)} Season Pass`,
+    tier: (n: number, total: number): string => `Tier ${n} of ${total}`,
+    xp: (into: number, need: number): string => `${into} / ${need} XP`,
+    locked: (level: number): string => `Opens at Level ${level}`,
+    buyHint: 'Twelve tiers of chests, money and three animated skins',
+    daysLeft: (n: number): string => (n === 1 ? 'last day' : `${n} days left`),
+    complete: 'Track complete · see you next season',
+    reward(r: PassReward): string {
+      if (r.k === 'chest') return S.shop.chest(r.chest);
+      if (r.k === 'money') return money(Fmt.number(r.amount));
+      return S.shop.item(r.item.id);
+    },
+    reached: (step: PassStep): string =>
+      `SEASON PASS · TIER ${step.tier} · ${step.duplicate > 0 ? `${S.pass.reward(step.reward)} again · +${money(Fmt.number(step.duplicate))}` : S.pass.reward(step.reward)}`,
+    bought: (s: Season): string => `${S.pass.caption(s).toUpperCase()} · every shift now climbs the track`,
+    buy: (price: string): string => `Buy · ${price}`,
+    body: (xpPerTier: number): string[] => [
+      `A track of twelve tiers for this season, bought with play money. Every shift earns XP towards it: 10 for a completed shift, 1 for every Perfect Input and Tight Fit, 10 more for a boss or a Legendary Shift. A tier needs ${xpPerTier} XP.`,
+      'Three of the tiers hold this season’s own skins, with effects no chest has. The four seasons come back every year, and so do their skins.',
+      'Only looks, never a bonus on the road. Nothing here costs real money.',
+    ],
+    trackHeader: 'The track',
+  },
+
+  hall: {
+    title: 'Hall of Fame',
+    header: 'Hall of Fame',
+    build: (price: string): string => `Build the Hall of Fame · ${price}`,
+    built: 'HALL OF FAME BUILT · a wall of honour on the island · Hall of Famer unlocked',
+    notBuilt: 'A gold wall on the island with a star for every Prestige rank, and a skin of its own.',
+    open: (level: number): string => `Opens once you reach Level ${level}`,
+    plaque: (e: HallEntry): string => `★${e.rank}`,
+    plaqueLine: (e: HallEntry, date: string | null): string =>
+      [date, e.elite > 0 ? `Elite ${e.elite}` : null, `${e.bosses} ${e.bosses === 1 ? 'boss' : 'bosses'}`, e.legendary > 0 ? `${e.legendary} legendary` : null].filter((x) => x).join(' · '),
+    empty: 'Your first Prestige gets the first plaque.',
+    standing: 'Standing on the island',
+  },
+
+  learner: {
+    incoming: 'LEARNER DRIVER',
+    crowded: 'TOO CLOSE',
+    patient: (amount: string): string => `PATIENCE ${amount}`,
   },
 
   modes: {
@@ -565,7 +686,13 @@ export const S = {
     /** A special vehicle or a boss on the road for the first time, as a notice: its name and what to do. */
     meet: (e: MuseumEntry): string => `New · ${S.museum.name(e)} · ${museumText(e).line}`,
     text: (e: ConditionEntry, c: Config): string =>
-      e.k === 'dark' ? INTRO_TEXT.dark[e.kind](c) : e.k === 'weather' ? INTRO_TEXT.weather[e.kind](c) : INTRO_TEXT.event[e.kind](c),
+      e.k === 'road'
+        ? 'The ring has two lanes now. The arrow at your stop line shows where your car is headed; the inner lane crosses the outer one.'
+        : e.k === 'dark'
+          ? INTRO_TEXT.dark[e.kind](c)
+          : e.k === 'weather'
+            ? INTRO_TEXT.weather[e.kind](c)
+            : INTRO_TEXT.event[e.kind](c),
 
     /** The Museum's few words, where the sentence has no room. */
     short: (e: ConditionEntry): string => museumText(e).line,
@@ -634,7 +761,7 @@ export const S = {
         : 'Keep playing shifts. Once you have met it on the road, it goes on show here with everything you need to know.',
     lockedBossHint: (level: number): string => `The syndicate sends it on Level ${level}. Once you have faced it, it goes on show here with how to take it down.`,
     discovered: (names: string[]): string => `New in the Museum: ${names.join(', ')}`,
-    kind: (e: MuseumEntry): string => ({ boss: 'Syndicate boss', special: 'Special vehicle', weather: 'Weather', dark: 'Darkness', event: 'City event' })[e.k],
+    kind: (e: MuseumEntry): string => ({ boss: 'Syndicate boss', special: 'Special vehicle', weather: 'Weather', dark: 'Darkness', event: 'City event', road: 'Road' })[e.k],
     met: 'Met, still at large',
     heist: 'Heist recovered',
     firstMet: 'Boss level',
@@ -651,6 +778,8 @@ export const S = {
           return e.kind === 'blackout' ? S.blackout : S.night;
         case 'event':
           return S.cityEvent(e.kind);
+        case 'road':
+          return 'Two Lanes';
       }
     },
     /** One short line on the card: what it asks of you. */
@@ -803,6 +932,8 @@ export const S = {
         return item.source.shifts === 1 ? 'Complete a Legendary Shift.' : `Complete ${item.source.shifts} Legendary Shifts.`;
       if (item.source.kind === 'prestige') return `Reach Prestige ★${item.source.rank}.`;
       if (item.source.kind === 'elite') return `Reach Elite ${item.source.level}.`;
+      if (item.source.kind === 'pass') return `Tier ${item.source.tier} of the ${S.pass.seasonName(item.source.season)} Season Pass. It comes back every year.`;
+      if (item.source.kind === 'hall') return 'Build the Hall of Fame (Records → Elite).';
       return 'Not found yet: it comes out of chests.';
     },
     tapToClose: 'Tap to close',
@@ -816,7 +947,7 @@ export const S = {
     skinsFull: (max: number): string => `${max} car skins are on. Take one off first.`,
     section: (i: number): string => ['Chests', 'Collection', 'Casino'][i],
     newBadge: 'NEW',
-    shelf: (i: number): string => ['Common', 'Rare', 'Epic', 'Legend', 'Maps', 'Special', 'Honours'][i],
+    shelf: (i: number): string => ['Common', 'Rare', 'Epic', 'Legend', 'Maps', 'Special', 'Honours', 'Pass'][i],
     waiting: (n: number): string => (n === 1 ? '1 waiting' : `${n} waiting`),
     buy: (price: string): string => `Buy · ${price}`,
     pity: (n: number): string => `Epic or better within ${n} chests. Duplicates pay out ${MONEY_MARK}.`,
@@ -924,6 +1055,19 @@ export const S = {
         eliteJade: 'Jade Chevron',
         eliteAurum: 'Black Aurum',
         eliteHalo: 'Halo',
+        blizzard: 'Blizzard',
+        northernLights: 'Northern Lights',
+        glacier: 'Glacier',
+        petalStorm: 'Petal Storm',
+        rainbow: 'Rainbow Road',
+        bloomGlow: 'Bloom Glow',
+        solarFlare: 'Solar Flare',
+        neonWave: 'Neon Wave',
+        lava: 'Lava Core',
+        ghost: 'Ghost Rider',
+        harvestMoon: 'Harvest Moon',
+        thunder: 'Thunderbolt',
+        hallOfFame: 'Hall of Famer',
       };
       return names[id] ?? id;
     },
@@ -986,7 +1130,7 @@ export const S = {
 
   albums: {
     name: (a: Album): string =>
-      ({ maps: 'Maps', commons: 'Commons', rares: 'Rares', epics: 'Epics', legends: 'Legends', seasons: 'Seasons', loyalty: 'Loyalty', honours: 'Honours' })[a],
+      ({ maps: 'Maps', commons: 'Commons', rares: 'Rares', epics: 'Epics', legends: 'Legends', seasons: 'Seasons', loyalty: 'Loyalty', honours: 'Honours', pass: 'Season Pass' })[a],
     complete: (a: Album, reward: string): string => `ALBUM COMPLETE · ${S.albums.name(a)} · +${money(reward)} · new frame`,
     progress: (entries: { album: Album; owned: number; total: number }[]): string =>
       'Albums · ' + entries.map((e) => `${S.albums.name(e.album)} ${e.owned}/${e.total}`).join(' · '),
@@ -1042,9 +1186,10 @@ export const S = {
 
   night: 'Night',
   blackout: 'Blackout',
-  weather: (w: Weather): string => ({ clear: 'Clear', lightRain: 'Light Rain', heavyRain: 'Heavy Rain', storm: 'Storm', extreme: 'Extreme Weather' })[w],
+  weather: (w: Weather): string =>
+    ({ clear: 'Clear', lightRain: 'Light Rain', heavyRain: 'Heavy Rain', storm: 'Storm', extreme: 'Extreme Weather', fog: 'Fog', snow: 'Snow & Ice' })[w],
   cityEvent: (e: CityEvent): string =>
-    ({ roadworks: 'Roadworks', roadClosure: 'Road Closure', concert: 'Concert Traffic', vipConvoy: 'VIP Convoy', policeOperation: 'Police Operation' })[e],
+    ({ roadworks: 'Roadworks', roadClosure: 'Road Closure', concert: 'Concert Traffic', vipConvoy: 'VIP Convoy', policeOperation: 'Police Operation', schoolRun: 'School Run' })[e],
 
   upgrades: {
     title: 'Upgrades',
@@ -1213,6 +1358,7 @@ export const S = {
     jackpotIncoming: 'JACKPOT!',
     transporterTimer: (seconds: number): string => `${Math.ceil(Math.max(0, seconds))} s`,
     jackpotPaid: (amount: string): string => `JACKPOT ${amount}`,
+    shave: (points: string): string => `CLOSE SHAVE ${points}`,
     label(t: VehicleType): string | null {
       switch (t) {
         case 'police':
@@ -1227,6 +1373,14 @@ export const S = {
           return 'BOMB';
         case 'ambulance':
           return 'AMBULANCE';
+        case 'fireTruck':
+          return 'FIRE';
+        case 'learner':
+          return 'LEARNER';
+        case 'bus':
+          return 'BUS';
+        case 'motorbike':
+          return 'BIKE';
         default:
           return null;
       }

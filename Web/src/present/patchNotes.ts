@@ -22,6 +22,21 @@ export type PatchImpact = 'major' | 'minor' | 'fix';
 
 export const PATCH_NOTES: PatchNote[] = [
   {
+    id: '2026-09-30-two-lanes',
+    date: '30 September 2026',
+    title: 'Two lanes, new traffic and a Season Pass',
+    impact: 'major',
+    items: [
+      'Your cars now brake for a jam where they join, instead of ploughing into the queue at full speed.',
+      'From Level 80 the ring has two lanes. An arrow at your stop line shows where your front car is headed; the inner lane crosses the outer one.',
+      'New on the road: motorbikes (from Level 22) that slip into tiny gaps, a close shave past one pays extra; learner drivers (from Level 28) that hesitate, give them room for a bonus; fire engines (from Level 35) with a longer road to keep clear.',
+      'New city event from Level 30: the School Run. School buses stop at a bus stop on the ring.',
+      'New weather: fog from Level 35, snow and ice from Level 45. Both pay a little more.',
+      'The Season Pass (Progress → Quests, from Level 15): a track of twelve tiers each season, bought with play money, with three animated skins per season that come back every year.',
+      'The Hall of Fame (Records → Elite): a plaque for every Prestige rank, a gold wall on the island and a skin of its own.',
+    ],
+  },
+  {
     id: '2026-09-30-roundabout-timing',
     date: '30 September 2026',
     title: 'Say hello to Roundabout Timing',

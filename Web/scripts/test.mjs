@@ -578,3 +578,117 @@ test('the result is spoken as one sentence: how it ended and the score', () => {
   assert.ok(spoken.includes(Fmt.number(result.score)), spoken);
   assert.ok(spoken.includes(S.result.newBest), spoken);
 });
+
+// MARK: Content of 30.09.2026
+
+const laneAware = (world) => {
+  const front = world.vehicle(world.queue.vehicles[0]);
+  return world.queue.isReady && world.predictedMergeGap(world.layout.player, 0, 40, -Infinity, front?.lane ?? 0) > 0.04;
+};
+
+test('a car sent into a jam brakes behind it instead of ploughing in', async () => {
+  const { spawnRingCar } = await load('/src/core/traffic.ts');
+  for (let seed = 1; seed <= 6; seed++) {
+    const cfg = forLevel(baseConfig, 3, seed);
+    Object.assign(cfg, { minRingBots: 0, densityStart: 0, densityEnd: 0, criminalChance: 0, transporterFirst: { lo: 999, hi: 999 } });
+    const world = new World(cfg, seed, { startsOnFirstTap: false, prefill: false });
+    const join = world.layout.entryRingS[0];
+    for (let k = 0; k < 3; k++) spawnRingCar(world, join + 30 + k * 30, world.layout.arms[2], 'car');
+    const jam = world.vehicles.filter((x) => x.phase.kind === 'ring');
+    world.tap(0.1);
+    let crashes = 0;
+    for (let i = 0; i < 120 * 5; i++) {
+      for (const x of jam) if (x.phase.kind === 'ring' && world.time < 3) Object.assign(x.phase, { distanceToExit: 1e6, drive: { ...x.phase.drive, speed: 0, reaction: 0 } });
+      world.step();
+      for (const e of world.takeEvents()) if (e.type === 'crash' && e.involvesPlayer) crashes++;
+    }
+    assert.equal(crashes, 0, `seed ${seed}`);
+  }
+});
+
+test('the two-lane ring (level 80) replays exactly, and the careful bot stays safe', () => {
+  const run = (seed, tapAt) => {
+    const world = new World(forLevel(baseConfig, 82, seed), seed, { startsOnFirstTap: false });
+    assert.equal(world.layout.lanes, 2);
+    const taps = [];
+    let result = null;
+    let inner = 0;
+    for (let i = 0; i < 120 * 180 && !result; i++) {
+      if (tapAt(world)) {
+        taps.push(world.time);
+        world.tap(world.time);
+      }
+      world.step();
+      for (const e of world.takeEvents()) {
+        if (e.type === 'shiftEnded') result = e.result;
+        if (e.type === 'merged' && world.vehicle(e.vehicle)?.lane === 1) inner++;
+      }
+    }
+    return { result, taps, inner };
+  };
+  let inner = 0;
+  for (let s = 1; s <= 4; s++) {
+    const first = run(s * 104729, laneAware);
+    assert.ok(first.result, `shift ${s} ends`);
+    assert.equal(first.result.crashes, 0, `shift ${s}: ${first.result.crashes} crashes`);
+    inner += first.inner;
+    const times = [...first.taps];
+    const replay = run(s * 104729, (world) => times.length > 0 && world.time >= times[0] - 1e-9 && (times.shift(), true));
+    assert.deepEqual(replay.result, first.result);
+  }
+  assert.ok(inner > 0, 'some of your cars joined the inner lane');
+});
+
+test('learner drivers, fire engines, motorbikes and school buses come at their levels', async () => {
+  const { forCityEvent } = await load('/src/core/levels.ts');
+  const seen = new Set();
+  let buses = 0;
+  let stopped = 0;
+  for (let s = 1; s <= 12; s++) {
+    const cfg = forCityEvent(forLevel(baseConfig, 40, s), 'schoolRun', s);
+    const world = new World(cfg, s, { startsOnFirstTap: false });
+    let warned = false;
+    for (let i = 0; i < 120 * 60; i++) {
+      if (laneAware(world)) world.tap(world.time);
+      world.step();
+      for (const x of world.vehicles) seen.add(x.type);
+      for (const e of world.takeEvents()) {
+        if (e.type === 'learnerWarning') warned = true;
+        if (e.type === 'learnerEntered') assert.ok(warned, 'the learner is announced first');
+        if (e.type === 'shiftEnded') i = Infinity;
+      }
+    }
+    buses += world.vehicles.filter((x) => x.type === 'bus').length;
+    stopped += world.vehicles.filter((x) => x.type === 'bus' && x.served).length;
+  }
+  for (const t of ['motorbike', 'bus', 'learner']) assert.ok(seen.has(t), `${t} came`);
+  assert.ok(buses === 0 || stopped > 0, 'a school bus makes its stop');
+  const low = new World(forLevel(baseConfig, 10, 5), 5, { startsOnFirstTap: false });
+  for (let i = 0; i < 120 * 20; i++) low.step();
+  assert.ok(!low.vehicles.some((x) => ['motorbike', 'learner', 'fireTruck', 'bus'].includes(x.type)), 'nothing new below its level');
+});
+
+test('the Season Pass pays its tiers once; the Hall of Fame keeps a plaque per rank', async () => {
+  const { SeasonPass, PASS_TIERS } = await load('/src/core/seasonPass.ts');
+  const day = Math.floor(Date.UTC(2026, 11, 20) / 86400000);
+  assert.equal(SeasonPass.key(day), 'winter-2027');
+  const c = newCareer();
+  c.level = 20;
+  c.money = baseConfig.seasonPassPrice;
+  assert.ok(SeasonPass.buy(c, day));
+  assert.equal(c.money, 0);
+  assert.ok(!SeasonPass.buy(c, day), 'bought once a season');
+  const shift = { outcome: 'completed', perfects: 1000, tightFits: 1000, bossBusted: false, legendary: null };
+  const first = SeasonPass.record(c, shift, day);
+  assert.equal(first.steps.length, PASS_TIERS);
+  assert.ok(SeasonPass.skins('winter').every((x) => c.collection.includes(x.id)));
+  assert.equal(SeasonPass.record(c, shift, day).steps.length, 0, 'every tier pays once');
+  assert.equal(SeasonPass.record(c, shift, day + 120), null, 'last season’s pass has closed');
+  const p = newCareer();
+  p.level = baseConfig.prestigeLevel;
+  Careers.prestige(p, baseConfig, day);
+  assert.deepEqual(p.hallOfFame.map((e) => e.rank), [1]);
+  p.money = baseConfig.hallOfFamePrice;
+  assert.ok(Careers.buildHall(p));
+  assert.ok(p.hallBuilt && p.collection.includes('hallOfFame'));
+});

@@ -6,6 +6,9 @@ import { type RenderList, line, Ease } from './render';
 
 interface Mark {
   age: number;
+  /** In the snow the tracks stay much longer. */
+  hold: number;
+  fade: number;
 }
 
 /**
@@ -30,14 +33,14 @@ export class TyreMarks {
     return rating === 'tightFit' || rating === 'nearMiss' || rating === 'perfect';
   }
 
-  add(): void {
-    this.marks.push({ age: 0 });
+  add(snow = false): void {
+    this.marks.push({ age: 0, hold: snow ? 10 : TyreMarks.hold, fade: snow ? 12 : TyreMarks.fade });
   }
 
   update(dt: number): void {
     if (dt <= 0 || this.marks.length === 0) return;
     for (const m of this.marks) m.age += dt;
-    this.marks = this.marks.filter((m) => m.age < TyreMarks.hold + TyreMarks.fade);
+    this.marks = this.marks.filter((m) => m.age < m.hold + m.fade);
   }
 
   clear(): void {
@@ -50,7 +53,7 @@ export class TyreMarks {
     let opacity = 0;
     for (const m of this.marks) {
       const fadeIn = Ease.outCubic(m.age / TyreMarks.appear);
-      const fadeOut = 1 - Ease.smoothstep((m.age - TyreMarks.hold) / TyreMarks.fade);
+      const fadeOut = 1 - Ease.smoothstep((m.age - m.hold) / m.fade);
       opacity = Math.max(opacity, fadeIn * fadeOut);
     }
     if (opacity <= 0.01) return;

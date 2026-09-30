@@ -98,6 +98,7 @@ export function forLevel(base: Config, level: number, seed: number, bossLevel = 
   c.aiSpawnDelay = { lo: base.aiSpawnDelay.lo * quicker, hi: base.aiSpawnDelay.hi * quicker };
   c.minRingBots = Math.max(base.minRingBots, Math.min(base.maxMinRingBots, base.minRingBots + Math.floor((l - 1) * base.ringBotsPerLevel)));
   c.tankerShare = l >= base.tankerLevel ? base.tankerLevelShare : 0;
+  c.lanes = l >= base.twoLaneLevel ? 2 : 1;
   c.militaryChance = l >= base.militaryLevel ? base.militaryLevelChance : 0;
   c.shiftPay = base.shiftPayBase + base.shiftPayPerLevel * l;
   c.level = l;
@@ -285,7 +286,18 @@ export function firstLevelOf(c: Config, w: Weather): number {
       return c.stormLevel;
     case 'extreme':
       return c.extremeLevel;
+    case 'fog':
+      return c.fogLevel;
+    case 'snow':
+      return c.snowLevel;
   }
+}
+
+/** How often a kind of bad weather comes, against the others open at the level. */
+function weatherWeight(c: Config, w: Weather): number {
+  if (w === 'fog') return c.fogWeight;
+  if (w === 'snow') return c.snowWeight;
+  return 5 - weatherSeverity(w);
 }
 
 /** The weather of one shift at `level`, drawn from the seed. */
@@ -295,7 +307,7 @@ export function drawWeather(c: Config, level: number, seed: number): Weather {
   if (chance <= 0 || rng.unit() >= chance) return 'clear';
   const options = WEATHERS.filter((w) => w !== 'clear' && firstLevelOf(c, w) <= level);
   if (options.length === 0) return 'clear';
-  const weights = options.map((w) => 5 - weatherSeverity(w));
+  const weights = options.map((w) => weatherWeight(c, w));
   let pick = rng.unit() * weights.reduce((a, b) => a + b, 0);
   for (let i = 0; i < options.length; i++) {
     pick -= weights[i];
@@ -308,6 +320,21 @@ export function drawWeather(c: Config, level: number, seed: number): Weather {
 export function forWeather(base: Config, weather: Weather): Config {
   const c = cloneConfig(base);
   c.weather = weather;
+  if (weather === 'fog') {
+    // Only the view and the drivers' eyes: the far side fades out, a hazard is seen later.
+    c.driverReaction = { lo: base.driverReaction.lo + base.fogReactionDelay, hi: base.driverReaction.hi + base.fogReactionDelay };
+    c.shiftPay = Math.round(base.shiftPay * base.fogPayFactor);
+    return c;
+  }
+  if (weather === 'snow') {
+    // Ice under the tyres: crashes slide a long way, and nobody stops quickly.
+    c.tireGripBrake *= base.snowGrip;
+    c.tireGripSide *= base.snowGrip;
+    c.driverBrake *= base.snowBrake;
+    c.driverReaction = { lo: base.driverReaction.lo + base.snowReactionDelay, hi: base.driverReaction.hi + base.snowReactionDelay };
+    c.shiftPay = Math.round(base.shiftPay * base.snowPayFactor);
+    return c;
+  }
   const severity = weatherSeverity(weather);
   if (severity <= 0) return c;
   const grip = Math.max(0.35, 1 - severity * base.weatherGripLoss);
@@ -347,12 +374,15 @@ export function forNight(base: Config, darkness: Darkness): Config {
   return c;
 }
 
+/** The first level a city event can come on: most from `cityEventLevel`, the School Run later. */
+export const eventLevel = (c: Config, e: CityEvent): number => (e === 'schoolRun' ? c.schoolRunLevel : c.cityEventLevel);
+
 /** The event of one shift at `level`, or null. */
 export function drawCityEvent(c: Config, level: number, seed: number): CityEvent | null {
   if (level < c.cityEventLevel) return null;
   const rng = new Rng((seed ^ 0x0c17e7e4) >>> 0);
   if (rng.unit() >= c.cityEventChance) return null;
-  const options = CITY_EVENTS.filter((e) => e !== 'roadClosure' || builtArmSlots(c).length >= 4);
+  const options = CITY_EVENTS.filter((e) => (e !== 'roadClosure' || builtArmSlots(c).length >= 4) && eventLevel(c, e) <= level);
   return rng.pick(options);
 }
 
@@ -382,6 +412,9 @@ export function forCityEvent(base: Config, event: CityEvent | null, seed: number
       break;
     case 'policeOperation':
       c.policeShare = Math.min(1, base.policeShare + base.policeOperationShare);
+      break;
+    case 'schoolRun':
+      c.busStopAt = rng.unit();
       break;
   }
   return c;

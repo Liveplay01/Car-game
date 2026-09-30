@@ -1,5 +1,5 @@
 import { type Config, type BossKind, type Weather, type CityEvent, BOSS_KINDS, WEATHERS, CITY_EVENTS } from './config';
-import { type Darkness, firstBossLevel, firstLevelOf } from './levels';
+import { type Darkness, firstBossLevel, firstLevelOf, eventLevel } from './levels';
 import type { VehicleType } from './vehicle';
 import type { World } from './world';
 
@@ -21,6 +21,8 @@ const ORDINARY = ['car', 'sportsCar', 'compact', 'van'] as const;
 export type SpecialKind = Exclude<VehicleType, (typeof ORDINARY)[number]>;
 export type WeatherKind = Exclude<Weather, 'clear'>;
 export type DarkKind = Exclude<Darkness, 'day'>;
+/** The road itself: the two-lane ring from its level on. */
+export type RoadKind = 'twoLane';
 
 /** The first level whose shifts can bring each special. A new vehicle type must be listed here or in `ORDINARY`. */
 const SPECIAL_LEVEL: Record<SpecialKind, (c: Config) => number> = {
@@ -31,6 +33,10 @@ const SPECIAL_LEVEL: Record<SpecialKind, (c: Config) => number> = {
   ambulance: (c) => c.ambulanceLevel,
   tanker: (c) => c.tankerLevel,
   military: (c) => c.militaryLevel,
+  motorbike: (c) => c.motorbikeLevel,
+  learner: (c) => c.learnerLevel,
+  bus: (c) => c.schoolRunLevel,
+  fireTruck: (c) => c.fireTruckLevel,
 };
 const DARK_LEVEL: Record<DarkKind, (c: Config) => number> = {
   night: (c) => c.nightLevel,
@@ -46,7 +52,8 @@ export type MuseumEntry =
   | { k: 'special'; kind: SpecialKind }
   | { k: 'weather'; kind: WeatherKind }
   | { k: 'dark'; kind: DarkKind }
-  | { k: 'event'; kind: CityEvent };
+  | { k: 'event'; kind: CityEvent }
+  | { k: 'road'; kind: RoadKind };
 
 export const museumId = (e: MuseumEntry): string => `${e.k}.${e.kind}`;
 
@@ -58,6 +65,7 @@ export function shelfEntries(shelf: MuseumShelf): MuseumEntry[] {
       return SPECIAL_KINDS.map((kind): MuseumEntry => ({ k: 'special', kind }));
     case 2:
       return [
+        { k: 'road', kind: 'twoLane' },
         ...WEATHER_KINDS.map((kind): MuseumEntry => ({ k: 'weather', kind })),
         ...DARK_KINDS.map((kind): MuseumEntry => ({ k: 'dark', kind })),
         ...CITY_EVENTS.map((kind): MuseumEntry => ({ k: 'event', kind })),
@@ -84,16 +92,19 @@ export function firstLevel(e: MuseumEntry, c: Config): number {
     case 'dark':
       return DARK_LEVEL[e.kind](c);
     case 'event':
-      return c.cityEventLevel;
+      return eventLevel(c, e.kind);
+    case 'road':
+      return c.twoLaneLevel;
   }
 }
 
 /** A condition of a shift: the sky, the dark or a city event (the Museum's third shelf). */
-export type ConditionEntry = Extract<MuseumEntry, { k: 'weather' | 'dark' | 'event' }>;
+export type ConditionEntry = Extract<MuseumEntry, { k: 'weather' | 'dark' | 'event' | 'road' }>;
 
 /** The conditions a shift is played in, in the order the ready screen names them. */
 export function conditionsOf(c: Config): ConditionEntry[] {
   const out: ConditionEntry[] = [];
+  if (c.lanes > 1) out.push({ k: 'road', kind: 'twoLane' });
   if (c.night) out.push({ k: 'dark', kind: c.blackout ? 'blackout' : 'night' });
   if (c.weather !== 'clear') out.push({ k: 'weather', kind: c.weather });
   if (c.cityEvent) out.push({ k: 'event', kind: c.cityEvent });

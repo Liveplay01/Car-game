@@ -72,7 +72,10 @@ export type ScreenAction =
   | { k: 'startTrial'; id: string }
   | { k: 'wearTitle'; id: TitleId }
   | { k: 'showElite' }
-  | { k: 'prestige' };
+  | { k: 'prestige' }
+  | { k: 'showPass' }
+  | { k: 'buyPass' }
+  | { k: 'buildHall' };
 
 /** Layout shared by the Build tab's two pages and the camera that lies under them. */
 export const BuildLayout = {
