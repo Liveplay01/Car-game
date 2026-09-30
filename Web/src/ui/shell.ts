@@ -10,7 +10,7 @@ import { settingsSheet, patchNotesSheet, isSheetOpen, closeAnySheet } from './sh
 import { PATCH_NOTES } from '../present/patchNotes';
 import { PhotoView } from './photo';
 import { exportSave } from '../storage/save';
-import { isInstalled, isIos, isStorageKept, keepStorage } from '../storage/device';
+import { isInstalled, isIos, isStorageKept, keepStorage, renewStorage } from '../storage/device';
 import type { Hint } from '../core/career';
 import { decodeChallenge, type ChallengeSpec } from '../core/challenge';
 import { S, Fmt } from '../present/strings';
@@ -18,6 +18,8 @@ import { DetailSheet } from './detailSheet';
 import { VersusLobby } from './versusLobby';
 import { REACTION_EMOJI } from '../present/versus';
 import { REACTIONS } from '../net/room';
+import { LiveRegion } from './liveRegion';
+import { ResultBanner } from '../present/hud';
 
 interface InstallPromptEvent extends Event {
   prompt(): Promise<void>;
@@ -84,6 +86,7 @@ export class Shell {
   private readonly reactBar: HTMLElement;
   /** A `#join=` link that arrived mid-shift: it opens once the shift is over. */
   private pendingJoin: string | null = null;
+  private readonly live: LiveRegion;
 
   constructor(
     private readonly app: HTMLElement,
@@ -187,6 +190,7 @@ export class Shell {
       () => this.session.closeDetail(),
     );
 
+    this.live = new LiveRegion(app);
     this.session.onChrome = () => this.syncChrome(true);
     this.session.onHint = (hint) => void this.giveHint(hint);
     this.bindInput(canvas);
@@ -197,6 +201,10 @@ export class Shell {
       e.preventDefault();
       this.installPrompt = e as InstallPromptEvent;
     });
+    // An installed game is kept more readily; and once the player has something to lose
+    // (the level-3 hint came), every visit asks again where asking is silent.
+    window.addEventListener('appinstalled', () => void keepStorage());
+    if (this.session.save.hints.includes('install')) void renewStorage();
     this.readChallengeLink();
     this.readJoinLink();
     window.addEventListener('hashchange', () => {
@@ -209,6 +217,15 @@ export class Shell {
 
   get game(): GameSession {
     return this.session;
+  }
+
+  /**
+   * Nothing would be lost by reloading the page now: no shift running (a frozen one would be
+   * gone), no match or lobby (the connection), no photo. The save is written on every change.
+   */
+  get canReload(): boolean {
+    const k = this.session.screen.k;
+    return k !== 'playing' && k !== 'settings' && !this.versus.match && !this.versus.isOpen && !this.photo.isOpen;
   }
 
   private push(a: InputAction): void {
@@ -620,8 +637,10 @@ export class Shell {
     this.drawer.draw(list);
     this.adaptQuality(delta);
     this.detail.update(s.detail);
+    const summary = !match && s.screen.k === 'result' ? s.screen.summary : null;
+    this.live.update(summary, () => (summary ? ResultBanner.spoken(summary) : ''), match ? null : s.noticeText);
     s.sheetInset = this.detail.inset;
-    this.audio.updateMusic(match ? match.music : s.musicMix, s.save.settings.sound, Math.min(delta, 0.1));
+    this.audio.updateMusic(match ? match.music : s.musicMix, s.save.settings.music, Math.min(delta, 0.1));
     this.audio.updateTension(match ? 0 : s.tension, s.save.settings.sound, Math.min(delta, 0.1));
     this.app.classList.toggle('reduce-motion', s.reduceMotion);
     if (this.pendingChallenge) this.openPendingChallenge();

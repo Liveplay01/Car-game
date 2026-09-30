@@ -1,11 +1,11 @@
 import { World, STEP } from '../core/world';
-import { baseConfig, gravity, builtArmSlots, type Config, type RoadModule } from '../core/config';
+import { baseConfig, gravity, builtArmSlots, type Config } from '../core/config';
 import { type SaveGame, type GameMode, type Hint, Careers, newSave } from '../core/career';
 import { Elite } from '../core/elite';
 import { Unlocks } from '../core/unlocks';
 import type { GameEvent, ShiftResult } from '../core/events';
 import type { Upgrade } from '../core/levels';
-import { type ChestKind, ALBUM_REWARD, cosmetic, rarityRank } from '../core/loot';
+import { ALBUM_REWARD, cosmetic, rarityRank } from '../core/loot';
 import { dailySeed, dailyEvent, dayNumber } from '../core/daily';
 import { weekNumber, weeklyTrial } from '../core/weekly';
 import { Goals } from '../core/goals';
@@ -16,7 +16,7 @@ import { Scoring } from '../core/scoring';
 import { type Vec2, v, add } from '../core/vec2';
 import { loadSave, writeSave } from '../storage/save';
 import { loadPlayerName } from '../storage/profile';
-import { RenderList, R, Ease, toScreen, rect, text, Metrics, type Camera } from './render';
+import { RenderList, R, Ease, toScreen, rect, type Camera } from './render';
 import { S, Fmt, money as moneyText } from './strings';
 import { CrashEffects } from './effects';
 import { ExplosionEffects, MapScars, SmokeCurtain } from './explosionsFx';
@@ -27,34 +27,35 @@ import { Skins } from './skins';
 import { WeatherLayer } from './weather';
 import { NightLayer } from './night';
 import { CityLights } from './cityLights';
-import { HUD, TopBar, RingSignals, ModeBanner, ModeHint, ReadyBanner, ResultBanner, type Popup, type PopupKind, type ShiftSummary, type RunCard, type ConditionIntro, POPUP_LIFETIME, settledPops } from './hud';
+import { HUD, TopBar, RingSignals, ModeBanner, ModeHint, ReadyBanner, ResultBanner, type Popup, type PopupKind, type ShiftSummary, POPUP_LIFETIME, settledPops } from './hud';
 import { Tutorial } from './tutorial';
 import { NoticeQueue } from './notices';
 import { bookShift } from './booking';
-import { MenuKit } from './menukit';
-import { type Screen, type Tab, type SwipeMode, SWIPE_MODES, type ScreenAction, type Built, type ProgressSection, TAB_BAR, BUILD_PAGES, barTab, screenTab, showsTabBar, partModule, BuildLayout } from './flow';
+import { type Screen, type Tab, type SwipeMode, SWIPE_MODES, type ScreenAction, type ProgressSection, TAB_BAR, BUILD_PAGES, barTab, screenTab, showsTabBar, BuildLayout } from './flow';
 import { CameraRig, perspectiveOf, addRecede } from './perspective';
 import { PhotoCard } from './photo';
 import { TransitionTracker, ModePan } from './transitions';
-import { ShopPage, ShopState, shelfOf, type ShopTarget } from './shop';
-import { CasinoFlow, type CasinoHost } from './casinoFlow';
+import { ShopPage, ShopState, shelfOf } from './shop';
+import type { CasinoFlow, CasinoHost } from './casinoFlow';
+import { casinoKit, loadCasino } from './casinoLoader';
+import { Casino } from '../core/casino';
+import { BuildFlow } from './buildFlow';
+import { ShopFlow } from './shopFlow';
+import type { PageHost } from './pageHost';
+import { type SpecialRun, settleSpecial, runCard } from './specialRuns';
+import { conditionIntro, streakEndsIn, addNotice } from './readyScreen';
+
+export type { SpecialRun } from './specialRuns';
 import { ProgressPage, ProgressState } from './progress';
 import { MuseumPage, type MuseumTarget } from './museum';
-import { sightings, museumEntry, shelfEntries, museumId, conditionsOf } from '../core/museum';
+import { sightings, museumEntry, shelfEntries, museumId } from '../core/museum';
 import { UpgradePage, UpgradeState } from './upgrades';
-import { StreetBuilderPage, BuilderState, sameBuilt } from './builder';
+import { StreetBuilderPage, BuilderState } from './builder';
 import { Feedback, Music, type MusicMix, type SoundID, type HapticID } from './feedback';
 import { Details, type Detail } from './detail';
 import { TyreMarks } from './marks';
 import { type ChallengeSpec, challengeOf, challengeConfig, encodeChallenge } from '../core/challenge';
-import { type Trial, TRIALS, trial as trialById, trialConfig, trialOpen, trialPassed, trialProgress, rematchId } from '../core/trials';
-
-/**
- * A shift played for itself, outside the career: a friend's challenge link or a mastery
- * trial. It always starts from a fresh world with its own seed, so the traffic is the same for
- * everyone; it earns no money or levels (a trial pays its reward once).
- */
-export type SpecialRun = { k: 'challenge'; spec: ChallengeSpec } | { k: 'trial'; trial: Trial };
+import { TRIALS, trial as trialById, trialConfig, trialOpen, trialProgress, rematchId } from '../core/trials';
 
 /** What the platform reports; key and touch mapping stays in `main.ts`. */
 export type InputAction =
@@ -97,7 +98,6 @@ export class GameSession {
   /** At the top multiplier the camera leans in by this much. */
   static readonly topTierLean = 0.03;
   static readonly flowFade = 0.6;
-  static readonly doubleTapWindow = 0.4;
 
   readonly config: Config = baseConfig;
   world: World;
@@ -163,8 +163,14 @@ export class GameSession {
   private sceneTime = 0;
   upgradePage = new UpgradeState();
   shopPage = new ShopState();
-  /** The casino's rounds (`casinoFlow.ts`): it reaches the session only through its host. */
-  private readonly casinoFlow = new CasinoFlow(this.casinoHost());
+  /**
+   * The casino's rounds (`casinoFlow.ts`), once the casino has loaded (`casinoLoader.ts`): it
+   * reaches the session only through its host.
+   */
+  private loadedCasinoFlow: CasinoFlow | null = null;
+  /** The Build and Shop tabs' actions (`buildFlow.ts`, `shopFlow.ts`), through one host. */
+  private readonly buildFlow = new BuildFlow(this.pageHost());
+  private readonly shopFlow = new ShopFlow(this.pageHost(), () => this.casinoFlow);
   progressPage = new ProgressState();
   /** Museum entries first met during this shift, for the line on its result. */
   private museumFound: string[] = [];
@@ -185,12 +191,10 @@ export class GameSession {
   playingMode: GameMode = 'shift';
   private shownFlames = 0;
   private sinceFlames = Infinity;
-  private lastPartTap = Infinity;
   private lastViewport = v(430, 900);
   /** The camera of the last frame: places sounds left or right. */
   private lastCamera: Camera | null = null;
   private lastInset = 0;
-  private lastCardTap: { upgrade: Upgrade; age: number } | null = null;
   private readonly notices = new NoticeQueue();
   private transitions = new TransitionTracker();
   playingLevel = 1;
@@ -231,7 +235,7 @@ export class GameSession {
     if (this.tutorial && this.save.notesSeen === null) this.save.notesSeen = latestNote();
     this.prepareShift(false);
     this.collectLoginIncome();
-    this.casinoFlow.resume();
+    this.resumeCasino();
   }
 
   private nextSeed(): number {
@@ -261,8 +265,18 @@ export class GameSession {
   }
 
   private persist(): void {
-    writeSave(this.save);
+    this.store();
     this.onChrome?.();
+  }
+
+  /** The save could not be written this session (private mode, full storage): said once. */
+  private unsavedWarned = false;
+
+  /** Writes the save; if the browser refuses, the player learns it once, with the way out. */
+  private store(): void {
+    if (writeSave(this.save) || this.unsavedWarned) return;
+    this.unsavedWarned = true;
+    this.announce(S.hints.notSaved);
   }
 
   collectLoginIncome(): void {
@@ -364,7 +378,7 @@ export class GameSession {
         const same = next.k === this.screen.k && (next.k !== 'page' || (this.screen.k === 'page' && this.screen.tab === next.tab));
         if (!same) {
           this.tick();
-          this.leaveShelf();
+          this.shopFlow.leaveShelf();
           this.closeDetail();
         }
         if (BUILD_PAGES.includes(tab)) {
@@ -407,7 +421,7 @@ export class GameSession {
         break;
       }
       case 'buildPart':
-        this.buildPart();
+        this.buildFlow.buildPart();
         break;
       case 'removePart':
         if (this.builderPage.pending) this.detailOpen = false;
@@ -422,7 +436,7 @@ export class GameSession {
         this.revealUpgrade = action.upgrade;
         break;
       case 'buy':
-        this.buy(action.upgrade);
+        this.buildFlow.buy(action.upgrade);
         break;
       case 'openChest': {
         const seed = save.shiftsPlayed * 7919 + this.popupSerial;
@@ -454,11 +468,16 @@ export class GameSession {
         this.play(['purchase'], ['comboUp']);
         break;
       case 'watchAd':
-        this.showAd();
+        this.shopFlow.showAd();
         break;
       case 'showCasino':
         this.perform({ k: 'showShop', section: 2 });
-        if (this.isPage('shop')) this.shopPage.casino.selectGame(action.game);
+        // The casino may still be loading: the game is picked once it is here.
+        loadCasino()
+          .then(() => {
+            if (this.isPage('shop')) this.shopPage.casino?.selectGame(action.game);
+          })
+          .catch(() => undefined);
         break;
       case 'startTrial':
         this.startTrial(action.id);
@@ -510,6 +529,11 @@ export class GameSession {
   /** A reply to what the player just did: shown at once. */
   showNotice(textValue: string): void {
     this.notices.say(textValue);
+  }
+
+  /** The notice showing right now, for the screen reader's live region. */
+  get noticeText(): string | null {
+    return this.notices.shown?.text ?? null;
   }
 
   /** News for the player: each line gets its own turn. */
@@ -634,45 +658,10 @@ export class GameSession {
   private finishSpecial(run: SpecialRun, result: ShiftResult): void {
     const career = this.save.career;
     const bankBefore = career.money;
-    let summary: NonNullable<ShiftSummary['run']>;
-    if (run.k === 'challenge') {
-      const spec = run.spec;
-      const mayhem = spec.mode === 'mayhem';
-      const mine = mayhem ? result.flames : result.score;
-      const beaten = mine > spec.target;
-      summary = {
-        caption: beaten ? S.run.beaten : S.run.missed,
-        color: beaten ? 'accent' : 'muted',
-        line: beaten ? S.run.ahead(Fmt.number(mine - spec.target)) : S.run.short(Fmt.number(spec.target - mine)),
-        lineColor: beaten ? 'accent' : 'muted',
-        right: [S.run.toBeat, Fmt.number(spec.target)],
-      };
-      // Sharing now sends the same shift back with your own score to beat.
-      this.shareable = { ...spec, target: mine };
-    } else {
-      const t = run.trial;
-      const passed = trialPassed(t, result);
-      // The Weekly Elite pays once a week (with a Premium Chest); every other trial once ever.
-      const weekly = t.id === 'weekly';
-      const first = passed && (weekly ? !Careers.isWeeklyDone(career, weekNumber(this.today)) : !career.trialsDone.includes(t.id));
-      if (first && weekly) {
-        const pay = Careers.completeWeekly(career, weekNumber(this.today), this.config);
-        if (pay !== null) this.announce(S.weekly.done(Fmt.number(pay)));
-      } else if (first) {
-        career.trialsDone.push(t.id);
-        career.money += t.reward;
-        const titles = Careers.recordTitles(career, this.config);
-        if (titles.length > 0) this.announce(S.titles.earned(titles));
-      }
-      summary = {
-        caption: passed ? S.run.passed : S.run.failed,
-        color: passed ? 'accent' : 'destructive',
-        line: passed && !first ? S.run.passedBefore : S.trials.goal(t),
-        lineColor: passed ? 'accent' : 'muted',
-        right: [S.run.trial, S.trials.level(t.level)],
-      };
-      this.shareable = null;
-    }
+    const settled = settleSpecial(run, result, career, this.today, this.config);
+    const summary = settled.summary;
+    this.shareable = settled.shareable;
+    if (settled.news.length > 0) this.announce(...settled.news);
     if (this.tutorial) {
       this.tutorial.end();
       if (this.tutorial.isDone) this.tutorial = null;
@@ -698,156 +687,38 @@ export class GameSession {
     }
   }
 
-  private buy(upgrade: Upgrade): void {
-    const career = this.save.career;
-    this.upgradePage.selected = upgrade;
-    const price = Careers.priceOf(career, upgrade, this.config);
-    if (price === null) return;
-    const money = career.money;
-    if (!Careers.buy(career, upgrade, this.config)) {
-      this.upgradePage.denied = { upgrade, age: 0 };
-      this.play(['denied'], []);
-      this.showNotice(S.notice.notEnoughMoney(Fmt.number(price)));
-      return;
-    }
-    const steps = Careers.steps(career, upgrade);
-    this.upgradePage.purchase = { upgrade, steps: steps - 1, age: 0 };
-    this.upgradePage.moneyBefore = money;
-    this.persist();
-    this.refreshWaitingShift();
-    this.play(['purchase'], ['comboUp']);
-  }
-
-  private buildPart(): void {
-    const b = this.builderPage;
-    const pending = b.pending;
-    if (!pending) return;
-    const career = this.save.career;
-    const price = StreetBuilderPage.price(pending.part, career, this.config);
-    if (price === null) return;
-    const money = career.money;
-    const module = partModule(pending.part);
-    const ok = module ? Careers.buildModule(career, module, pending.slot, this.config) : Careers.buildArm(career, pending.slot, this.config);
-    if (!ok) {
-      b.denied = 0.001;
-      this.play(['denied'], []);
-      this.showNotice(S.notice.notEnoughMoney(Fmt.number(price)));
-      return;
-    }
-    b.pending = null;
-    b.removing = 0;
-    this.detailOpen = false;
-    b.selected = null;
-    if (module) b.builtModule = { slot: pending.slot, age: 0 };
-    else b.built = { slot: pending.slot, age: 0 };
-    b.moneyBefore = money;
-    this.persist();
-    this.refreshWaitingShift();
-    this.play(['build'], ['comboUp']);
-    this.showNotice(module ? S.notice.placed(S.builder.name(pending.part)) : S.notice.built(S.builder.name(pending.part), career.armSlots.length));
-  }
-
-  /** A press on the Street Builder: pick up a part, build or drop the pending one, mark or tear down. */
-  private builderPress(point: Vec2): void {
-    const b = this.builderPage;
-    const career = this.save.career;
-    const part = StreetBuilderPage.cardAt(point, this.lastViewport, this.tabInset);
-    if (part) {
-      this.perform({ k: 'pickUpPart', part });
-      b.dragging = { part, at: point };
-      this.pressAt = point;
-      return;
-    }
-    const map = StreetBuilderPage.map(this.lastViewport, this.tabInset);
-    const pending = b.pending;
-    if (pending) {
-      const hit = partModule(pending.part)
-        ? StreetBuilderPage.moduleSlotAt(point, this.config.moduleSlotCount, map)
-        : StreetBuilderPage.slotAt(point, this.config.armSlotCount, map);
-      if (hit === pending.slot) {
-        if (this.lastPartTap <= GameSession.doubleTapWindow) {
-          this.lastPartTap = Infinity;
-          this.perform({ k: 'buildPart' });
-        } else {
-          this.lastPartTap = 0;
-          b.removing = 0.001;
-        }
-        return;
-      }
-    }
-    const built = StreetBuilderPage.builtPartAt(point, career, this.config, map);
-    if (!built) {
-      b.marked = null;
-      return;
-    }
-    if (b.marked && sameBuilt(b.marked.part, built)) {
-      this.tearDown(built);
-      return;
-    }
-    if (built.k === 'arm' && !Careers.canRemoveArm(career, built.slot)) {
-      b.denied = 0.001;
-      this.play(['denied'], []);
-      this.showNotice(S.builder.keepsArms(4));
-      return;
-    }
-    b.marked = { part: built, age: 0 };
-    this.play(['uiTick'], []);
-    this.showNotice(S.builder.tapAgainToRemove);
-  }
-
-  private tearDown(part: Built): void {
-    const b = this.builderPage;
-    const career = this.save.career;
-    b.marked = null;
-    let name: string;
-    if (part.k === 'arm') {
-      if (!Careers.removeArm(career, part.slot)) return;
-      b.tornDown = { part, module: null, age: 0 };
-      name = S.builder.name('arm');
-    } else {
-      const module: RoadModule | undefined = career.modules[part.slot];
-      if (!module) return;
-      Careers.removeModule(career, part.slot);
-      b.tornDown = { part, module, age: 0 };
-      name = S.builder.name(module);
-    }
-    this.persist();
-    this.refreshWaitingShift();
-    this.play(['swoosh'], ['comboUp']);
-    this.showNotice(S.notice.removed(name));
-  }
-
   /** The tab bar's height where it shows. */
   private get tabInset(): number {
     return showsTabBar(this.screen) ? this.lastInset : 0;
   }
 
-  private showAd(): void {
-    if (Careers.adChestsLeft(this.save.career, this.today, this.config) <= 0 || this.shopPage.ad !== null) {
-      this.play(['denied'], []);
-      this.showNotice(S.shop.noAdsLeft);
-      return;
-    }
-    this.shopPage.ad = 0;
-  }
-
-  private adWatched(): void {
-    if (!Careers.rewardAd(this.save.career, this.today, this.config)) return;
-    this.persist();
-    this.shopPage.ad = null;
-    this.play(['purchase'], ['paid']);
-    this.shopPage.selectedChest = 'standard';
-    this.showNotice(S.shop.adReward);
-  }
-
   // MARK: Casino (present/casinoFlow.ts)
 
+  private get casinoFlow(): CasinoFlow | null {
+    const kit = casinoKit();
+    if (kit && !this.loadedCasinoFlow) this.loadedCasinoFlow = new kit.CasinoFlow(this.casinoHost());
+    return this.loadedCasinoFlow;
+  }
+
+  /**
+   * A casino round left open by a reload or a closed tab is settled at the start: a drive
+   * still running pays back its stake. Needs only the rules, not the casino's looks.
+   */
+  private resumeCasino(): void {
+    const career = this.save.career;
+    if (!career.casinoPending) return;
+    const back = Casino.resume(career, this.today);
+    this.persist();
+    if (back) this.showNotice(S.casino.refunded(moneyText(Fmt.number(back.refunded))));
+  }
+
   private casinoHost(): CasinoHost {
-    // Getters: the casino always sees today's page, day and settings.
+    // Getters: the casino always sees today's page, day and settings. The flow exists only
+    // once the casino has loaded, and then the Shop always has its state.
     const session = this;
     return {
       get casino() {
-        return session.shopPage.casino;
+        return session.shopPage.casino!;
       },
       get save() {
         return session.save;
@@ -877,6 +748,56 @@ export class GameSession {
     };
   }
 
+  private pageHost(): PageHost {
+    const session = this;
+    return {
+      get save() {
+        return session.save;
+      },
+      get config() {
+        return session.config;
+      },
+      get today() {
+        return session.today;
+      },
+      get reduceMotion() {
+        return session.reduceMotion;
+      },
+      get upgradePage() {
+        return session.upgradePage;
+      },
+      get builderPage() {
+        return session.builderPage;
+      },
+      get shopPage() {
+        return session.shopPage;
+      },
+      get viewport() {
+        return session.lastViewport;
+      },
+      get tabInset() {
+        return session.tabInset;
+      },
+      get onShop() {
+        return session.isPage('shop');
+      },
+      get detailOpen() {
+        return session.detailOpen;
+      },
+      set detailOpen(open: boolean) {
+        session.detailOpen = open;
+      },
+      perform: (action) => this.perform(action),
+      tick: () => this.tick(),
+      closeDetail: () => this.closeDetail(),
+      persist: () => this.persist(),
+      refreshWaitingShift: () => this.refreshWaitingShift(),
+      play: (sounds, haptics) => this.play(sounds, haptics),
+      showNotice: (text) => this.showNotice(text),
+      pressed: (point) => (this.pressAt = point),
+    };
+  }
+
   private announceAlbums(): void {
     const albums = this.completeAlbums();
     if (albums.length === 0) return;
@@ -886,104 +807,6 @@ export class GameSession {
 
   private playPitched(sound: SoundID, pitch: number): void {
     if (this.output && this.save.settings.sound) this.output.sound(sound, pitch, 0);
-  }
-
-  /** The shelf on screen is being left: what was new on it has been seen. */
-  private leaveShelf(): void {
-    if (!this.isPage('shop') || this.shopPage.section !== 1) return;
-    const career = this.save.career;
-    const shown = ShopPage.itemCells(ShopPage.layout(this.lastViewport, this.tabInset), this.shopPage.shelf)
-      .map(([item]) => item.id)
-      .filter((id) => career.unseen.includes(id));
-    if (shown.length === 0) return;
-    Careers.markSeen(career, shown);
-    this.persist();
-  }
-
-  private tapShop(target: ShopTarget): void {
-    const s = this.shopPage;
-    const career = this.save.career;
-    if (target.k !== 'dismiss' && !this.reduceMotion) s.pressed = { target, age: 0 };
-    switch (target.k) {
-      case 'section':
-        if (target.section === 2 && !Unlocks.isOpen(career, 'casino', this.config)) {
-          this.showNotice(S.unlocks.opensAt(S.shop.section(2), Unlocks.level('casino', this.config)));
-          this.play(['denied'], []);
-          break;
-        }
-        if (s.section !== target.section) {
-          this.tick();
-          this.closeDetail();
-        }
-        if (target.section !== 1) this.leaveShelf();
-        if (target.section !== 2) this.casinoFlow.leave();
-        s.select(target.section);
-        break;
-      case 'shelf':
-        if (s.shelf !== target.shelf) {
-          this.tick();
-          this.leaveShelf();
-          this.closeDetail();
-        }
-        s.selectShelf(target.shelf);
-        break;
-      case 'chest':
-        if (this.detailOpen && s.selectedChest === target.kind && Careers.count(career, target.kind) > 0) this.tapShop({ k: 'open', kind: target.kind });
-        else if (s.selectedChest !== target.kind) this.tick();
-        s.selectedChest = target.kind;
-        this.detailOpen = true;
-        break;
-      case 'open': {
-        const index = career.chests.indexOf(target.kind as ChestKind);
-        if (index >= 0) this.perform({ k: 'openChest', index });
-        break;
-      }
-      case 'buy':
-        this.perform({ k: 'buyChest', kind: target.kind });
-        break;
-      case 'watchAd':
-        this.perform({ k: 'watchAd' });
-        break;
-      case 'item':
-        if (career.unseen.includes(target.id)) {
-          Careers.markSeen(career, [target.id]);
-          this.persist();
-        }
-        if (this.detailOpen && s.selectedItem === target.id && Careers.owns(career, target.id)) this.perform({ k: 'wear', id: target.id });
-        else if (s.selectedItem !== target.id) this.tick();
-        s.selectedItem = target.id;
-        this.detailOpen = true;
-        break;
-      case 'wear':
-        this.perform({ k: 'wear', id: target.id });
-        break;
-      case 'casino':
-        this.casinoFlow.tap(target.t);
-        break;
-      case 'dismiss': {
-        // A tap moves the opening on a step (open the chest, stop the reel, show the prize);
-        // the prize itself stays at least `closeAfter` before a tap closes it.
-        const o = s.opening;
-        if (!o) break;
-        const stage = ShopPage.stages(o.opening, o.reel);
-        if (o.age < stage.burst) o.age = stage.burst - 0.001;
-        else if (o.age < stage.landed) o.age = stage.landed - 0.001;
-        else if (o.age < stage.reveal) o.age = stage.reveal - 0.001;
-        else if (o.age - stage.reveal >= ShopPage.closeAfter) s.opening = null;
-        break;
-      }
-    }
-  }
-
-  private tapUpgrade(upgrade: Upgrade): void {
-    const last = this.lastCardTap;
-    if (last && last.upgrade === upgrade && last.age <= GameSession.doubleTapWindow) {
-      this.lastCardTap = null;
-      this.perform({ k: 'buy', upgrade });
-    } else {
-      this.lastCardTap = { upgrade, age: 0 };
-      this.perform({ k: 'selectUpgrade', upgrade });
-    }
   }
 
   private resetScene(): void {
@@ -1112,11 +935,15 @@ export class GameSession {
       const after = this.shopPage.opening?.age ?? null;
       const opening = this.shopPage.opening;
       if (opening && before !== null && after !== null) this.reelCues(opening, before, after);
-      if (this.shopPage.ad !== null && this.shopPage.ad >= ShopPage.adDuration) this.adWatched();
-      for (const cue of this.shopPage.casino.advance(realDelta)) this.casinoFlow.cue(cue);
-      this.tension = this.shopPage.section === 2 ? this.shopPage.casino.tension : 0;
+      if (this.shopPage.ad !== null && this.shopPage.ad >= ShopPage.adDuration) this.shopFlow.adWatched();
+      // Once the casino is open it loads in the background, so its section is there at once.
+      if (Unlocks.isOpen(this.save.career, 'casino', this.config)) loadCasino().catch(() => undefined);
+      const casino = this.shopPage.casino;
+      const flow = this.casinoFlow;
+      if (casino && flow) for (const cue of casino.advance(realDelta)) flow.cue(cue);
+      this.tension = this.shopPage.section === 2 && casino ? casino.tension : 0;
     } else {
-      this.casinoFlow.leave();
+      this.casinoFlow?.leave();
       this.tension = 0;
       this.shopPage = new ShopState();
     }
@@ -1130,16 +957,11 @@ export class GameSession {
     if (this.modeBanner) this.modeBanner = this.modeBanner.age + realDelta < ModeBanner.duration ? { mode: this.modeBanner.mode, age: this.modeBanner.age + realDelta } : null;
     if (this.isPage('streetBuilder')) {
       this.builderPage.advance(realDelta);
-      this.lastPartTap += realDelta;
       if (this.builderPage.removing > StreetBuilderPage.removeDuration) this.perform({ k: 'removePart' });
     } else {
       this.builderPage = new BuilderState();
-      this.lastPartTap = Infinity;
     }
-    if (this.lastCardTap) {
-      this.lastCardTap.age += realDelta;
-      if (this.lastCardTap.age > GameSession.doubleTapWindow) this.lastCardTap = null;
-    }
+    this.buildFlow.advance(realDelta, this.isPage('streetBuilder'));
     this.notices.advance(realDelta);
     this.musicMix = this.screen.k === 'playing' && runs ? Music.playing(this.world, this.flowLevel) : Music.silent;
     return this.renderList(viewport, realDelta);
@@ -1204,7 +1026,7 @@ export class GameSession {
             }
             break;
           case 'page':
-            if (this.isPage('shop') && this.shopPage.section === 2) this.casinoFlow.key(a.ago ?? 0);
+            if (this.isPage('shop') && this.shopPage.section === 2) this.casinoFlow?.key(a.ago ?? 0);
             break;
           default:
             break;
@@ -1226,7 +1048,7 @@ export class GameSession {
         else if (this.special && (this.screen.k === 'ready' || this.screen.k === 'result')) this.leaveSpecial();
         else if (this.screen.k === 'ready') this.perform({ k: 'openSettings' });
         else if (this.screen.k === 'result' || this.screen.k === 'page') {
-          if (this.isPage('shop') && this.shopPage.opening) this.tapShop({ k: 'dismiss' });
+          if (this.isPage('shop') && this.shopPage.opening) this.shopFlow.tapShop({ k: 'dismiss' });
           else this.perform({ k: 'showTab', tab: 'game' });
         }
         break;
@@ -1263,7 +1085,7 @@ export class GameSession {
         if (this.isPage('upgrades') && this.upgradePage.drag) {
           if (this.upgradePage.release()) {
             const upgrade = UpgradePage.cardAt(a.p, this.lastViewport, this.tabInset, this.visibleUpgrades, this.upgradePage.scroll);
-            if (upgrade) this.tapUpgrade(upgrade);
+            if (upgrade) this.buildFlow.tapUpgrade(upgrade);
           }
           return;
         }
@@ -1341,11 +1163,11 @@ export class GameSession {
     }
     if (this.isPage('shop')) {
       const target = ShopPage.targetAt(point, this.lastViewport, inset, this.save.career, this.shopPage);
-      if (target) this.tapShop(target);
+      if (target) this.shopFlow.tapShop(target);
       return;
     }
     if (this.isPage('streetBuilder')) {
-      this.builderPress(point);
+      this.buildFlow.press(point);
       return;
     }
     if (this.screen.k === 'ready' || this.isShowingResult) {
@@ -1459,7 +1281,7 @@ export class GameSession {
         if (s.opening || s.ad !== null) return null;
         if (s.section === 0) return Details.chest(s.selectedChest, career, this.config, this.today);
         if (s.section === 1) return s.selectedItem ? Details.item(s.selectedItem, career) : null;
-        return Details.casino(s.casino.game, career, this.config);
+        return s.casino ? Details.casino(s.casino.game, career, this.config) : null;
       }
       case 'streetBuilder': {
         const b = this.builderPage;
@@ -2018,7 +1840,10 @@ export class GameSession {
     else if (s.k === 'settings') list.s(rect({ x: viewport.x / 2, y: viewport.y / 2 }, viewport), 'background', 0.55);
     this.transitions.apply(list, s, overlayStart, rm);
     const notice = this.notices.shown;
-    if (notice) this.addNotice(list, notice.text, notice.age, notice.duration, inset);
+    // On the Game tab the settings button sits bottom left, during a shift the dispatch button
+    // bottom right (`ui/shell.css`): the notice keeps above them.
+    const lift = s.k === 'ready' || s.k === 'result' ? 56 : s.k === 'playing' ? 72 : 0;
+    if (notice) addNotice(list, notice, { bottomInset: inset, lift, textScale: this.textScale, reduceMotion: rm });
     return list;
   }
 
@@ -2043,28 +1868,7 @@ export class GameSession {
     if (barTab(tab) !== 'shop') return null;
     if (c.chests.length > 0) return { count: c.chests.length };
     // A skin a casino round has won stays quiet until the round shows it.
-    return this.shopPage.casino.wallet.unseen(c.unseen).length > 0 ? 'dot' : null;
-  }
-
-  /** How the waiting screen names the challenge or trial being played. */
-  private get runCard(): RunCard | null {
-    const r = this.special;
-    const rule = this.world.config.legendary;
-    // A Legendary Shift in the career: its rule and its Premium Chest on the waiting card.
-    if (!r && rule && this.playingMode === 'shift' && !this.versusSelected) {
-      return { caption: S.legendary.caption, color: 'coin', badge: S.legendary.name(rule), line: S.legendary.line(rule), right: [S.legendary.reward, S.legendary.chest] };
-    }
-    if (!r) return null;
-    if (r.k === 'challenge') return { caption: S.run.challenge, color: 'accent', badge: S.run.fromFriend, line: null, right: [S.run.toBeat, Fmt.number(r.spec.target)] };
-    const weekly = r.trial.id === 'weekly';
-    const done = weekly ? Careers.isWeeklyDone(this.save.career, weekNumber(this.today)) : this.save.career.trialsDone.includes(r.trial.id);
-    return {
-      caption: weekly ? S.weekly.caption : S.run.trial,
-      color: weekly ? 'coin' : 'hazard',
-      badge: S.trials.name(r.trial.id),
-      line: S.trials.goal(r.trial),
-      right: done ? [S.trials.passed, '✓'] : [S.run.rewardCaption, moneyText(Fmt.number(r.trial.reward))],
-    };
+    return this.shopPage.wallet.unseen(c.unseen).length > 0 ? 'dot' : null;
   }
 
   private addReadyBanner(list: RenderList, prompt: string | null, drawsCard = true, opacity = 1): void {
@@ -2076,7 +1880,7 @@ export class GameSession {
           next: Careers.nextStreakMilestone(career),
           splash: this.dailySplash,
           bonus: Goals.streakBonus(career, this.today, this.config) ? this.config.streakBonusPay : null,
-          endsIn: this.streakEndsIn,
+          endsIn: streakEndsIn(career, this.today, this.config),
         }
       : null;
     // The next goal in reach: only on a plain career shift, never over a challenge, trial or match.
@@ -2088,7 +1892,7 @@ export class GameSession {
       money: Fmt.number(career.money),
       // A trial's goal already names its conditions.
       conditions: this.special?.k === 'trial' || this.versusSelected ? null : S.ready.conditions(this.world.config.weather, this.world.config.cityEvent, this.world.config.night, this.world.config.blackout),
-      run: this.runCard,
+      run: runCard(this.special, this.world.config, this.playingMode, this.versusSelected, career, this.today),
       prestige: this.special ? 0 : career.prestige,
       elite: !this.special && Elite.isOpen(career, this.config),
       playerName: this.versusSelected ? loadPlayerName() : undefined,
@@ -2101,55 +1905,13 @@ export class GameSession {
       drawsCard,
       opacity,
       goal: goal ? S.goals.next(goal) : null,
-      intro: this.versusSelected || (this.tutorial && !this.tutorial.isOver) ? null : this.conditionIntro,
+      intro: this.versusSelected || (this.tutorial && !this.tutorial.isOver) ? null : conditionIntro(this.world.config, career),
       textScale: this.textScale,
     });
     if (this.modeBanner) {
       const top = TopBar.frame(list.camera.viewport.x).maxY + (daily ? 40 : 14);
       ModeBanner.add(list, this.modeBanner.mode, this.modeBanner.age, top, this.reduceMotion);
     }
-  }
-
-  /**
-   * The waiting shift's conditions this player has never played in. They go into the Museum
-   * when the shift starts (`sightings`), so each is explained once.
-   */
-  private get conditionIntro(): ConditionIntro[] {
-    const c = this.world.config;
-    const seen = this.save.career.museumSeen;
-    return conditionsOf(c)
-      .filter((e) => !seen.includes(museumId(e)))
-      .map((e) => ({ title: S.intro.title(e), text: S.intro.text(e, c), short: S.intro.short(e) }));
-  }
-
-  /** Hours until midnight while yesterday's streak still waits for today's Daily Shift; else null. */
-  private get streakEndsIn(): number | null {
-    if (!Goals.streakAtRisk(this.save.career, this.today)) return null;
-    const now = new Date();
-    const midnight = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
-    const hours = (midnight.getTime() - now.getTime()) / 3600000;
-    return hours <= this.config.streakWarningHours ? hours : null;
-  }
-
-  private addNotice(list: RenderList, textValue: string, age: number, duration: number, bottomInset: number): void {
-    const vp = list.camera.viewport;
-    const opacity = Ease.outCubic(age / 0.2) * (1 - Ease.clamp01((age - (duration - 0.5)) / 0.5));
-    const rise = this.reduceMotion ? 0 : (1 - Ease.settle(age / 0.4)) * 18;
-    // On the Game tab the settings button sits bottom left, during a shift the dispatch button
-    // bottom right (`ui/shell.css`): the notice keeps above them.
-    const lift = this.screen.k === 'ready' || this.screen.k === 'result' ? 56 : this.screen.k === 'playing' ? 72 : 0;
-    // Larger text (Settings) makes the pill a step bigger, and lifts it by what it grew.
-    const scale = this.textScale;
-    const height = 30 * scale;
-    const center = v(vp.x / 2, vp.y - bottomInset - 36 - lift - (height - 30) / 2 + rise);
-    const size = Metrics.noticeSize * scale;
-    const maxWidth = vp.x - 24;
-    let fontSize = size;
-    const natural = textWidthOf(textValue, size);
-    if (natural + 32 > maxWidth) fontSize = Math.max(10 * scale, (size * (maxWidth - 32)) / natural);
-    const width = Math.min(maxWidth, textWidthOf(textValue, fontSize) + 32);
-    MenuKit.chromePill(list, center, v(width, height), opacity);
-    list.s(text(textValue, center, fontSize, 'center'), 'primary', opacity);
   }
 
   /** Screen point of the island centre (for DOM overlays that follow the camera). */
@@ -2180,7 +1942,7 @@ export class GameSession {
   /** A fresh save (Settings → Reset progress). */
   resetProgress(): void {
     this.save = newSave();
-    writeSave(this.save);
+    this.store();
     this.tutorial = new Tutorial();
     this.prepareShift(false);
   }
@@ -2188,12 +1950,10 @@ export class GameSession {
   /** Progress brought from another device (Settings → Import progress) replaces this one. */
   importProgress(save: SaveGame): void {
     this.save = save;
-    writeSave(this.save);
+    this.store();
     this.tutorial = save.tutorialDone ? null : new Tutorial();
     if (this.tutorial) this.save.mode = 'shift';
     this.prepareShift(false);
     this.announce(S.settings.imported(save.career.level));
   }
 }
-
-import { textWidth as textWidthOf } from './icons';

@@ -310,6 +310,8 @@ export const S = {
     backup: 'Tip · Export your progress in Settings to keep a copy',
     reduceMotion: 'Tip · Running slow? Reduce motion in Settings can help',
     offline: 'Ready to play offline',
+    notSaved: 'This browser is not saving your progress · Export it in Settings to keep it',
+    updated: 'Updated · See what’s new in Settings',
   },
 
   /** Challenge links and mastery trials: shifts that are played for themselves. */

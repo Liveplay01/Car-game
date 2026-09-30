@@ -150,6 +150,8 @@ function readSave(raw: unknown): SaveGame {
   if (isObject(raw.settings)) {
     const s = raw.settings;
     if (typeof s.sound === 'boolean') settings.sound = s.sound;
+    // One switch for both until 30.09.2026: whoever turned the sound off hears no music either.
+    settings.music = typeof s.music === 'boolean' ? s.music : settings.sound;
     if (typeof s.haptics === 'boolean') settings.haptics = s.haptics;
     if (typeof s.vehicleLabels === 'boolean') settings.vehicleLabels = s.vehicleLabels;
     if (typeof s.leftHanded === 'boolean') settings.leftHanded = s.leftHanded;
@@ -189,7 +191,7 @@ function readLegacy(raw: unknown): SaveGame | null {
     save.shiftsPlayed = int(raw.records.shiftsPlayed, 0, 0);
   }
   if (isObject(raw.settings)) {
-    if (typeof raw.settings.sound === 'boolean') save.settings.sound = raw.settings.sound;
+    if (typeof raw.settings.sound === 'boolean') save.settings.sound = save.settings.music = raw.settings.sound;
     if (typeof raw.settings.haptics === 'boolean') save.settings.haptics = raw.settings.haptics;
     const rm = raw.settings.reduceMotion;
     if (rm === 'system' || rm === 'on' || rm === 'off') save.settings.reduceMotion = rm;

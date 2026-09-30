@@ -24,6 +24,16 @@ export async function isStorageKept(): Promise<boolean> {
 }
 
 /**
+ * Asks again, on a later visit, where asking never shows a prompt: Chrome and Safari decide
+ * by how much the site is used, so a no today can be a yes next week. Firefox asks the
+ * player instead, so there the one request at level 3 (`keepStorage`) stays the only one.
+ */
+export async function renewStorage(): Promise<void> {
+  if (/Firefox\//.test(navigator.userAgent)) return;
+  await keepStorage();
+}
+
+/**
  * Asks the browser to keep the storage. Chrome decides silently, Firefox may ask the player,
  * so this is called once the player has something to lose, never on the first visit.
  */

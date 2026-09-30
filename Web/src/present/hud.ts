@@ -1005,6 +1005,18 @@ export const ResultBanner = {
     return [title, titleColor];
   },
 
+  /** The card in one sentence, for screen readers: how it ended, the score, what happened. */
+  spoken(summary: ShiftSummary): string {
+    const r = summary.result;
+    const [title] = ResultBanner.title(summary);
+    const detail =
+      summary.mode === 'mayhem'
+        ? S.mayhem.summary(r.wrecks, r.biggestChain)
+        : S.result.stats(r.bestCombo, r.tightFits, r.takedowns, r.transporters, Fmt.seconds(r.time));
+    const best = summary.isNewHighscore ? `. ${S.result.newBest}` : '';
+    return `${title}. ${Fmt.number(r.score)} points${best}. ${detail}`;
+  },
+
   add(list: RenderList, summary: ShiftSummary, nextLevel: number, bank: { before: number; after: number }, age: number, reduceMotion: boolean): void {
     const r = summary.result;
     const frame = TopBar.frame(list.camera.viewport.x);

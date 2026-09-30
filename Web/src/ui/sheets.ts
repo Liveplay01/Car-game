@@ -214,8 +214,12 @@ export function settingsSheet(layer: HTMLElement, s: Settings, actions: Settings
     h(
       'div',
       { class: 'list' },
-      switchRow('Sound', null, s.sound, (on) => {
+      switchRow('Sound effects', null, s.sound, (on) => {
         s.sound = on;
+        actions.changed(s);
+      }),
+      switchRow('Music', null, s.music, (on) => {
+        s.music = on;
         actions.changed(s);
       }),
       switchRow('Haptics', hasVibration ? null : 'Not available in this browser', s.haptics, (on) => {

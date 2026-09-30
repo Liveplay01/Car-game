@@ -1,5 +1,7 @@
-// Automated tests (node:test, no extra packages): the rules replay exactly, the careful bot
-// stays safe, saves survive old and broken data, and the notice queue tells one thing at a time.
+// Automated tests (node:test, no extra packages): the rules replay exactly (Legendary Shifts and
+// multiplayer matches too), the careful bot stays safe, bosses and ambulances are announced,
+// saves survive old and broken data, multiplayer messages are checked at the door, and the
+// notice queue tells one thing at a time.
 //   npm test
 // The TypeScript sources are loaded through Vite, like the balancing bots.
 import { test, after } from 'node:test';
@@ -18,10 +20,18 @@ const { encodeChallenge, decodeChallenge, challengeOf } = await load('/src/core/
 const { loadSave, writeSave, exportSave, parseImport } = await load('/src/storage/save.ts');
 const { NoticeQueue } = await load('/src/present/notices.ts');
 const { bookShift } = await load('/src/present/booking.ts');
-const { S } = await load('/src/present/strings.ts');
+const { S, Fmt } = await load('/src/present/strings.ts');
 const { Unlocks } = await load('/src/core/unlocks.ts');
 const { sightings, shelfEntries, museumId } = await load('/src/core/museum.ts');
 const { tapOffset, noteTap, averageOffset } = await load('/src/core/timing.ts');
+const { forLegendary } = await load('/src/core/levels.ts');
+const { LEGENDARY_RULES, cloneConfig } = await load('/src/core/config.ts');
+const { versusConfig, VersusBot, INPUT_DELAY } = await load('/src/core/versus.ts');
+const { substream } = await load('/src/core/rng.ts');
+const { readGuestMessage, readHostMessage, RateLimit } = await load('/src/net/messages.ts');
+const { settleSpecial } = await load('/src/present/specialRuns.ts');
+const { trial: trialById } = await load('/src/core/trials.ts');
+const { ResultBanner } = await load('/src/present/hud.ts');
 
 // MARK: Rules
 
@@ -401,4 +411,170 @@ test('a steady stream of the player\'s cars does not starve the other arms (long
     }
   }
   assert.ok(late >= 5, `only ${late} cars of the traffic joined the ring in the fifth minute`);
+});
+
+// MARK: Bosses, ambulances, Legendary Shifts
+
+/** Plays a shift of `config` with the careful bot; returns the result and every event seen. */
+function playConfig(config, seed, tapAt = careful) {
+  const world = new World(config, seed, { startsOnFirstTap: false });
+  const seen = [];
+  let result = null;
+  for (let i = 0; i < 120 * 240 && !result; i++) {
+    if (tapAt(world)) world.tap(world.time);
+    world.step();
+    for (const e of world.takeEvents()) {
+      seen.push(e);
+      if (e.type === 'shiftEnded') result = e.result;
+    }
+  }
+  return { result, seen };
+}
+
+test('every 15th level sends the syndicate boss, announced first', () => {
+  for (const seed of [11, 22, 33]) {
+    const { result, seen } = playConfig(forLevel(baseConfig, 15, seed), seed);
+    assert.ok(result, `seed ${seed}: the shift ends`);
+    const warning = seen.find((e) => e.type === 'criminalWarning');
+    assert.ok(warning?.boss, `seed ${seed}: the first criminal is the boss, and it is warned of`);
+    const entered = seen.findIndex((e) => e.type === 'criminalEntered' && e.boss);
+    assert.ok(entered < 0 || seen.findIndex((e) => e.type === 'criminalWarning') < entered, `seed ${seed}: the warning comes before the boss`);
+  }
+});
+
+test('an ambulance, when it comes, is announced before it enters', () => {
+  const base = cloneConfig(baseConfig);
+  base.ambulanceChance = 1;
+  let came = 0;
+  for (const seed of [5, 6, 7, 8]) {
+    const { seen } = playConfig(forLevel(base, 12, seed), seed);
+    const warned = seen.findIndex((e) => e.type === 'ambulanceWarning');
+    const entered = seen.findIndex((e) => e.type === 'ambulanceEntered');
+    if (entered >= 0) {
+      came++;
+      assert.ok(warned >= 0 && warned < entered, `seed ${seed}: warning first`);
+    }
+  }
+  assert.ok(came > 0, 'with a chance of 1 an ambulance comes in some shift');
+});
+
+test('every Legendary rule plays a shift that ends and replays exactly', () => {
+  for (const rule of LEGENDARY_RULES) {
+    const seed = 9000 + LEGENDARY_RULES.indexOf(rule);
+    const config = () => forLegendary(forLevel(baseConfig, 30, seed), rule);
+    const taps = [];
+    const first = playConfig(config(), seed, (world) => careful(world) && (taps.push(world.time), true));
+    assert.ok(first.result, `${rule}: the shift ends`);
+    const times = [...taps];
+    const replay = playConfig(config(), seed, (world) => times.length > 0 && world.time >= times[0] - 1e-9 && (times.shift(), true));
+    assert.deepEqual(replay.result, first.result, `${rule}: the replay is the same shift`);
+  }
+});
+
+// MARK: Multiplayer
+
+/** A four-lane match of bots; the same seed plays the same match on every device. */
+function playMatch(seed) {
+  const world = new World(versusConfig(4, seed), seed);
+  const bots = world.seats.map((q) => new VersusBot(q.seat, substream(seed, 0xb0770 + q.seat)));
+  const pending = [];
+  let winner;
+  for (let i = 0; i < 120 * 120 && winner === undefined; i++) {
+    for (const q of world.seats) if (!q.out && bots[q.seat].decide(world)) pending.push([world.stepCount + INPUT_DELAY, q.seat]);
+    while (pending.length > 0 && pending[0][0] <= world.stepCount) world.tap(world.time, pending.shift()[1]);
+    world.step();
+    for (const e of world.takeEvents()) {
+      if (e.type === 'faulted') world.eliminate(e.seat, 'crash', world.time);
+      if (e.type === 'matchOver') winner = e.winner;
+    }
+    for (const seat of world.stalledSeats) world.eliminate(seat, 'stalled', world.time);
+  }
+  return world.vehicles.map((v) => `${v.id}:${v.position.x.toFixed(6)},${v.position.y.toFixed(6)}`).join('|') + `#${world.stepCount}#${winner}`;
+}
+
+test('a match replays the same on every device (crash physics included)', () => {
+  assert.equal(playMatch(314), playMatch(314));
+  assert.notEqual(playMatch(314), playMatch(315));
+});
+
+test("a guest's messages are checked field by field", () => {
+  assert.deepEqual(readGuestMessage({ t: 'tap', step: 120 }), { t: 'tap', step: 120 });
+  assert.deepEqual(readGuestMessage({ t: 'react', r: 'fire' }), { t: 'react', r: 'fire' });
+  assert.deepEqual(readGuestMessage({ t: 'ping', at: 5, rtt: 1e9 }), { t: 'ping', at: 5, rtt: 99_999 });
+  const bad = [
+    null,
+    'tap',
+    [],
+    { t: 'tap' },
+    { t: 'tap', step: NaN },
+    { t: 'tap', step: -1 },
+    { t: 'react', r: 'bomb' },
+    { t: 'hello', name: 'x'.repeat(500), token: 'a' },
+    { t: 'ready', on: 'yes' },
+    { t: 'shutdown' },
+  ];
+  for (const message of bad) assert.equal(readGuestMessage(message), null, JSON.stringify(message));
+});
+
+test("the host's messages are checked too; names are cleaned", () => {
+  const series = { bestOf: 3, round: 1, points: { 0: 10, 1: 4 }, wins: { 0: 1 } };
+  const start = readHostMessage({ t: 'start', seed: 7, names: ['Ann\u0007', 'Bo'], slots: [0, 2], you: 1, series });
+  assert.equal(start?.t, 'start');
+  assert.deepEqual(start.names, ['Ann', 'Bo']);
+  assert.deepEqual(readHostMessage({ t: 'f', h: 40, i: [[38, 1, 't']] }), { t: 'f', h: 40, i: [[38, 1, 't']] });
+  const bad = [
+    { t: 'f', h: 40, i: [[38, 9, 't']] },
+    { t: 'f', h: 40, i: [[38, 1, 'x']] },
+    { t: 'start', seed: 7, names: ['A'], slots: [0], you: 3, series },
+    { t: 'lobby', members: [{ slot: 7, name: 'A' }], you: 0, bestOf: 1 },
+    { t: 'lobby', members: [], you: 0, bestOf: 2 },
+    { t: 'pings', ms: { 0: 'fast' } },
+  ];
+  for (const message of bad) assert.equal(readHostMessage(message), null, JSON.stringify(message));
+});
+
+test('a flood of messages from one guest is cut to a steady rate', () => {
+  const limit = new RateLimit(30, 60);
+  let passed = 0;
+  for (let i = 0; i < 1000; i++) if (limit.take(0)) passed++;
+  assert.equal(passed, 60, 'a burst, then nothing in the same instant');
+  assert.equal(limit.take(1000), true, 'a second later there is room again');
+});
+
+// MARK: Settings, specials, the spoken result
+
+test('music gets its own switch; whoever had the sound off keeps both off', () => {
+  fakeStorage({ 'carGame.save.v2': JSON.stringify({ settings: { sound: false }, career: {} }) });
+  assert.equal(loadSave().settings.music, false);
+  fakeStorage({ 'carGame.save.v2': JSON.stringify({ settings: { sound: true, music: false }, career: {} }) });
+  const save = loadSave();
+  assert.equal(save.settings.sound, true);
+  assert.equal(save.settings.music, false);
+  assert.equal(newSave().settings.music, true);
+});
+
+test('a trial pays its reward once; a challenge sends back your own score', () => {
+  const career = newCareer();
+  career.level = 20;
+  const t = trialById('marathon');
+  const done = { ...play(77, 5, careful).result, outcome: 'completed' };
+  const before = career.money;
+  const first = settleSpecial({ k: 'trial', trial: t }, done, career, 20000, baseConfig);
+  assert.equal(first.summary.caption, S.run.passed);
+  assert.equal(career.money, before + t.reward);
+  settleSpecial({ k: 'trial', trial: t }, done, career, 20000, baseConfig);
+  assert.equal(career.money, before + t.reward, 'the second pass pays nothing');
+  const spec = challengeOf(career, 'shift', 5, 77, null, done.score + 1, null);
+  const lost = settleSpecial({ k: 'challenge', spec }, done, career, 20000, baseConfig);
+  assert.equal(lost.summary.caption, S.run.missed);
+  assert.equal(lost.shareable.target, done.score);
+});
+
+test('the result is spoken as one sentence: how it ended and the score', () => {
+  const result = { ...play(78, 3, careful).result, outcome: 'completed' };
+  const summary = { result, level: 3, isNewHighscore: true, previousHighscore: 0, mode: 'shift' };
+  const spoken = ResultBanner.spoken(summary);
+  assert.ok(spoken.startsWith(S.result.levelComplete(3)), spoken);
+  assert.ok(spoken.includes(Fmt.number(result.score)), spoken);
+  assert.ok(spoken.includes(S.result.newBest), spoken);
 });

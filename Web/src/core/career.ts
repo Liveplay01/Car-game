@@ -49,7 +49,10 @@ export const GAME_MODES: GameMode[] = ['shift', 'unlimited', 'mayhem'];
 export type ReduceMotion = 'system' | 'on' | 'off';
 
 export interface Settings {
+  /** Sound effects (merges, crashes, the casino). */
   sound: boolean;
+  /** The adaptive music, apart from the effects. */
+  music: boolean;
   haptics: boolean;
   reduceMotion: ReduceMotion;
   vehicleLabels: boolean;
@@ -268,7 +271,7 @@ export const newSave = (): SaveGame => ({
   highscore: 0,
   highscoreSeed: null,
   shiftsPlayed: 0,
-  settings: { sound: true, haptics: true, reduceMotion: 'off', vehicleLabels: false, leftHanded: false, largeText: false, motionChosen: false },
+  settings: { sound: true, music: true, haptics: true, reduceMotion: 'off', vehicleLabels: false, leftHanded: false, largeText: false, motionChosen: false },
   career: newCareer(),
   tutorialDone: false,
   hints: [],

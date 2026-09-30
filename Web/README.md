@@ -56,7 +56,8 @@ src/
               feedback + music mix, and the session that runs it all
   audio/      Web Audio: the real sound samples with pitch, adaptive music stems
   storage/    localStorage save (v2, migrates v1)
-  net/        multiplayer room (PeerJS/WebRTC): code, lobby, bots, pings, reconnect, tap messages;
+  net/        multiplayer room (PeerJS/WebRTC): code, lobby, bots, pings, reconnect; the tap
+              messages and their checks (`messages.ts`: every field read, floods dropped);
               PeerJS loads only when a room opens
   ui/         the DOM shell: canvas, native-like tab bar, settings sheet, multiplayer lobby
 public/audio/ sounds (35) and music stems (7) as AAC
@@ -92,7 +93,9 @@ Only in the browser version:
   some with an extra rule that ends the shift as `failed` when broken; each pays once.
 - **Casino** (`core/casino.ts`, `present/casino.ts`, `present/casinoFlow.ts`, Shop → Casino): Crash, Slots and a Skin
   Upgrade, and double or nothing on a fair coin after any win. Play money and skins only;
-  odds and returns in the sheet behind "Odds" (LOOT.md, Casino).
+  odds and returns in the sheet behind "Odds" (LOOT.md, Casino). Its looks and rounds are a
+  chunk of their own (`present/casinoLoader.ts`), loaded when the Shop opens with the casino
+  unlocked; the Shop's money chip (`casinoWallet.ts`) works without it.
 - **Export / import** of the whole progress in Settings, for moving to another device.
 - Tyre marks after a skilled merge, stereo placement of sounds, keyboard hints on desktop.
 
@@ -165,7 +168,9 @@ storage after about a week without a visit unless the game is on the home screen
 Level 3 the game asks the browser to keep its storage (`navigator.storage.persist()`, never
 on the first visit, since Firefox may ask the player) and suggests installing it (on an
 iPhone: Share → Add to Home Screen). After Level 12, if the storage is still unprotected, it
-suggests an export.
+suggests an export. From then on every visit asks again where asking is silent (Chrome,
+Safari; not Firefox), and installing the game asks at once. If a write fails (private
+window, full storage), the game says so once per session and points to Export.
 
 ## Unlocks and notices
 
@@ -185,7 +190,12 @@ suggests an export.
   so the game runs offline after the first visit ("Ready to play offline" says so once).
   Navigations go network-first, so a new deploy shows up on the next start; after 3 s, or
   without network, the cached page comes instead, and only a good response is cached. The
-  cache name changes with every build.
+  cache name (build time + content hash) changes with every build; the cache of the version
+  before stays, so a tab still running it can load its lazy files (PeerJS, the casino).
+- Updates while the game is open (`main.ts`): a game coming back from the background looks
+  for a new version. Once one took over, the page reloads the next time it is hidden, and
+  only when nothing would be lost (no shift running, no match or lobby, no photo); afterwards
+  "Updated · See what's new in Settings" if there are unread patch notes.
 - iOS: Safari → Share → "Add to Home Screen". Android/Chrome: Settings → Install.
 
 ## Deploying (Docker, Coolify)
@@ -197,7 +207,7 @@ container listens on **port 5050**.
 | --- | --- |
 | `../Dockerfile` | Stage 1 `node:22-alpine`: `npm ci`, `npm run build` (type-check included). Stage 2 `nginx:alpine`: only `dist/` and the config, `EXPOSE 5050`, health check on `/healthz` |
 | `../.dockerignore` | Only `Web/` goes into the build context, without `node_modules` and `dist` |
-| `nginx.conf` | Port 5050, gzip, SPA fallback (`try_files $uri $uri/ /index.html`), `/assets/*` cached for a year, `index.html` / `sw.js` / manifest always revalidated (`no-cache`), a missing asset is a real 404, basic security headers |
+| `nginx.conf` | Port 5050, gzip, SPA fallback (`try_files $uri $uri/ /index.html`), `/assets/*` cached for a year, `index.html` / `sw.js` / manifest always revalidated (`no-cache`), a missing asset is a real 404, security headers including a Content-Security-Policy (own files only, PeerJS's broker for multiplayer). `npm run preview` sends the same policy, read from this file, so a change can be tried locally |
 
 Locally (with Docker installed):
 

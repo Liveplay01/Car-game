@@ -22,6 +22,19 @@ export type PatchImpact = 'major' | 'minor' | 'fix';
 
 export const PATCH_NOTES: PatchNote[] = [
   {
+    id: '2026-09-30-safer',
+    date: '30 September 2026',
+    title: 'Safer progress, your own soundtrack',
+    impact: 'minor',
+    items: [
+      'Music and sound effects have their own switches in Settings: keep the crashes, lose the music, or the other way round.',
+      'If your browser stops saving your progress (a private window, a full phone), the game now tells you once, with the way to keep it: Export in Settings.',
+      'Updates arrive quietly: the game reloads in the background when nothing would be lost, and points you here afterwards.',
+      'Multiplayer shrugs off broken or flooded messages instead of stalling the match, and says so plainly when the game was updated mid-lobby.',
+      'Screen readers now hear how a shift ended and every notice.',
+    ],
+  },
+  {
     id: '2026-09-29-traffic-flicker',
     date: '29 September 2026',
     title: 'Cars back in sight',

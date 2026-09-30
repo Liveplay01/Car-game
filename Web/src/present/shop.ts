@@ -26,7 +26,9 @@ import { Skins, lookFor } from './skins';
 import { MapTheme } from './mapThemes';
 import { baseConfig } from '../core/config';
 import type { ShopSection } from './flow';
-import { CasinoPage, CasinoState, type CasinoTarget } from './casino';
+import type { CasinoState, CasinoTarget } from './casino';
+import { Wallet } from './casinoWallet';
+import { casinoKit, loadCasino } from './casinoLoader';
 import { ChestReel, type Reel } from './chestReel';
 
 /** Shelves: car skins by rarity, the maps, and everything earned another way or a vehicle. */
@@ -69,10 +71,21 @@ export class ShopState {
   opening: { opening: ChestOpening; age: number; reel: Reel } | null = null;
   denied = 0;
   ad: number | null = null;
-  casino = new CasinoState();
+  /** The money as the casino shows it: the header and badges read it before the casino loads. */
+  readonly wallet = new Wallet();
+  private casinoState: CasinoState | null = null;
   sectionSlide: { from: ShopSection; age: number } | null = null;
   shelfSlide: { from: Shelf; age: number } | null = null;
   pressed: { target: ShopTarget; age: number } | null = null;
+
+  /** The casino's state, once the casino has loaded (`casinoLoader.ts`); null before. */
+  get casino(): CasinoState | null {
+    if (!this.casinoState) {
+      const kit = casinoKit();
+      if (kit) this.casinoState = new kit.CasinoState(this.wallet);
+    }
+    return this.casinoState;
+  }
 
   select(next: ShopSection): void {
     if (next === this.section) return;
@@ -216,7 +229,11 @@ export const ShopPage = {
     else if (state.section === 1) {
       out.push(...ShopPage.shelfChips(l).map(([shelf, r]): [ShopTarget, Rect] => [{ k: 'shelf', shelf }, r]));
       out.push(...ShopPage.itemCells(l, state.shelf).map(([item, r]): [ShopTarget, Rect] => [{ k: 'item', id: item.id }, r]));
-    } else out.push(...CasinoPage.targets(l.content, career, state.casino).map(([t, r]): [ShopTarget, Rect] => [{ k: 'casino', t }, r]));
+    } else {
+      const kit = casinoKit();
+      const casino = state.casino;
+      if (kit && casino) out.push(...kit.CasinoPage.targets(l.content, career, casino).map(([t, r]): [ShopTarget, Rect] => [{ k: 'casino', t }, r]));
+    }
     return out;
   },
 
@@ -230,7 +247,7 @@ export const ShopPage = {
     const vp = list.camera.viewport;
     MenuKit.backdrop(list);
     // The casino holds back what a round has not shown yet, and counts a win up as it lands.
-    const wallet = state.casino.wallet;
+    const wallet = state.wallet;
     MenuKit.header(list, S.tabs.shop, Fmt.number(wallet.money(career.money)), vp, reduceMotion ? 1 : land(wallet.sinceLanded / 0.35, 0.14));
     const l = ShopPage.layout(vp, bottomInset);
     ShopPage.addSegments(list, l, state, career);
@@ -261,7 +278,12 @@ export const ShopPage = {
   addSection(list: RenderList, l: Layout, career: Career, _config: Config, today: number, state: ShopState, section: ShopSection, reduceMotion: boolean, forcedEnter: number | null = null): void {
     if (section === 0) ShopPage.addChests(list, l, career, state, reduceMotion, forcedEnter);
     else if (section === 1) ShopPage.addCollection(list, l, career, state, reduceMotion ? 1 : (forcedEnter ?? Ease.outCubic(state.age / 0.25)), reduceMotion);
-    else CasinoPage.add(list, l.content, career, today, state.casino, reduceMotion, forcedEnter === null ? state.age : 10);
+    else {
+      const kit = casinoKit();
+      const casino = state.casino;
+      if (kit && casino) kit.CasinoPage.add(list, l.content, career, today, casino, reduceMotion, forcedEnter === null ? state.age : 10);
+      else loadCasino().catch(() => undefined);
+    }
   },
 
   fitted(s: string, size: number, width: number): number {
@@ -283,7 +305,7 @@ export const ShopPage = {
       thumb = Math.min(Math.max(thumb, 0), 2);
     }
     MenuKit.segmented(list, labels, chosen, thumb, all, l.segments.map(([s]) => s === 2 && !Unlocks.isOpen(career, 'casino')));
-    if (state.casino.wallet.unseen(career.unseen).length > 0) {
+    if (state.wallet.unseen(career.unseen).length > 0) {
       const r = l.segments[1][1];
       ShopPage.badgeDot(list, v(R.center(r).x + textWidth(S.shop.section(1), 13) / 2 + 8, R.center(r).y), 1);
     }
@@ -393,7 +415,7 @@ export const ShopPage = {
       const items = shelfItems(shelf);
       const owned = items.filter((i) => Careers.owns(career, i.id)).length;
       // On the chip's corner, like a badge: inside it would sit on the label.
-      if (items.some((i) => state.casino.wallet.unseen(career.unseen).includes(i.id))) ShopPage.badgeDot(list, v(r.maxX - 3, r.minY + 3), enter);
+      if (items.some((i) => state.wallet.unseen(career.unseen).includes(i.id))) ShopPage.badgeDot(list, v(r.maxX - 3, r.minY + 3), enter);
       // Over the white chip the labels turn dark as it arrives.
       const on = shelf === state.shelf ? glide : slide && shelf === slide.from ? 1 - glide : 0;
       const label = ShopPage.fitted(S.shop.shelf(shelf), 11, R.width(r) - 14);

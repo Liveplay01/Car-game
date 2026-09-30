@@ -8,7 +8,7 @@ import type { RenderList } from './render';
 import type { ColorToken } from './theme';
 import { S, Fmt, money, percent } from './strings';
 import { ShopPage } from './shop';
-import { CasinoPage } from './casino';
+import { casinoKit } from './casinoLoader';
 import { UpgradeArt } from './upgrades';
 import { StreetBuilderPage } from './builder';
 import type { Part, ScreenAction } from './flow';
@@ -386,7 +386,7 @@ export const Details = {
         break;
       }
       case 'casino':
-        CasinoPage.art(list, art.game, center, size);
+        casinoKit()?.CasinoPage.art(list, art.game, center, size);
         break;
       case 'part':
         StreetBuilderPage.addPartPicture(list, art.part, v(center.x - 10 * scale, center.y), 1.6 * scale, 1);

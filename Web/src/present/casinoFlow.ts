@@ -322,10 +322,4 @@ export class CasinoFlow {
   }
 
   /** A round open when the page closed: a drive pays its stake back, a win is kept. */
-  resume(): void {
-    if (!this.host.save.career.casinoPending) return;
-    const back = Casino.resume(this.host.save.career, this.host.today);
-    this.host.persist();
-    if (back) this.host.showNotice(S.casino.refunded(moneyText(Fmt.number(back.refunded))));
-  }
 }

@@ -13,6 +13,7 @@ const ERROR_TEXT: Record<RoomError, string> = {
   network: 'Could not connect. Check your internet and try again. On mobile data, Wi-Fi often helps.',
   hostLeft: 'The host closed the game.',
   codeBusy: 'Could not get a free code. Try again.',
+  outdated: 'The game was just updated. Reload the page to play together.',
 };
 
 const BEST_OF_LABEL: Record<BestOf, string> = { 1: 'Single', 3: 'Best of 3', 5: 'Best of 5' };

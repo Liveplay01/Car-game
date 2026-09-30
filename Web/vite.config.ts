@@ -1,6 +1,6 @@
 import { defineConfig, type Plugin } from 'vite';
 import { createHash } from 'node:crypto';
-import { readdirSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 /** The sound effects and music stems, so the game sounds right offline too. */
@@ -15,6 +15,17 @@ function audioFiles(): string[] {
     }
   }
   return out.sort();
+}
+
+/** The Content-Security-Policy from `nginx.conf`, so `npm run preview` runs under the same rules. */
+function contentSecurityPolicy(): Record<string, string> {
+  try {
+    const conf = readFileSync(join(process.cwd(), 'nginx.conf'), 'utf8');
+    const policy = /add_header Content-Security-Policy "([^"]+)"/.exec(conf)?.[1];
+    return policy ? { 'Content-Security-Policy': policy } : {};
+  } catch {
+    return {};
+  }
 }
 
 /**
@@ -40,8 +51,10 @@ function serviceWorker(): Plugin {
         ...audioFiles(),
       ];
       const version = createHash('sha256').update(assets.join('|')).digest('hex').slice(0, 12);
+      // The build time orders the caches, so the one before this build can be told apart.
+      const built = Date.now();
       const source = `// Generated at build time (vite.config.ts). Cache-first for the app shell.
-const CACHE = 'car-game-${version}';
+const CACHE = 'car-game-${built}-${version}';
 const ASSETS = ${JSON.stringify([...new Set(assets)])};
 const NAV_TIMEOUT = 3000;
 
@@ -49,10 +62,16 @@ self.addEventListener('install', (event) => {
   event.waitUntil(caches.open(CACHE).then((cache) => cache.addAll(ASSETS)).then(() => self.skipWaiting()));
 });
 
+// Keeps the cache of the version before this one: a tab still running it can load its
+// lazy files (PeerJS) that the server no longer has. Anything older goes.
+const builtOf = (key) => Number(key.split('-')[2]) || 0;
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys()
-      .then((keys) => Promise.all(keys.filter((k) => k.startsWith('car-game-') && k !== CACHE).map((k) => caches.delete(k))))
+      .then((keys) => {
+        const older = keys.filter((k) => k.startsWith('car-game-') && k !== CACHE).sort((a, b) => builtOf(b) - builtOf(a));
+        return Promise.all(older.slice(1).map((k) => caches.delete(k)));
+      })
       .then(() => self.clients.claim()),
   );
 });
@@ -103,8 +122,8 @@ export default defineConfig({
     target: 'es2022',
     assetsInlineLimit: 0,
     sourcemap: false,
-    // The game is one bundle on purpose (it all runs at once, and gzip keeps it near 175 kB);
-    // only PeerJS loads on demand. Warn when it grows well past today's size.
+    // The game is one bundle on purpose (it all runs at once, and gzip keeps it near 180 kB);
+    // only PeerJS and the casino load on demand. Warn when it grows well past today's size.
     chunkSizeWarningLimit: 640,
   },
   // The game runs on port 5050 everywhere: dev server, preview and the nginx container.
@@ -117,5 +136,6 @@ export default defineConfig({
     host: true,
     port: 5050,
     strictPort: true,
+    headers: contentSecurityPolicy(),
   },
 });

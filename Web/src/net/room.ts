@@ -1,5 +1,6 @@
 import type { Peer, DataConnection, PeerOptions } from 'peerjs';
-import { VERSUS_MAX_PLAYERS, randomJoinCode, type BestOf, type Series } from '../core/versus';
+import { VERSUS_MAX_PLAYERS, randomJoinCode, type BestOf } from '../core/versus';
+import { cleanName, readGuestMessage, readHostMessage, RateLimit, type GuestMessage, type HostMessage, type Member } from './messages';
 
 /**
  * A multiplayer room: a host and up to three friends (or bots), peer to peer (WebRTC).
@@ -8,72 +9,13 @@ import { VERSUS_MAX_PLAYERS, randomJoinCode, type BestOf, type Series } from '..
  * is no server of our own. A practice room (`Room.local`) has no network at all: you and bots.
  */
 
-/** What a lane does at a step: tap, leave the match (crash, stall, left), or a revenge lorry. */
-export type InputKind = 't' | 'c' | 's' | 'l' | 'h';
-export type Input = [step: number, seat: number, kind: InputKind];
-
-/** A reaction an out player sends to the ring. */
-export type Reaction = 'fire' | 'skull' | 'clap' | 'wow';
-export const REACTIONS: Reaction[] = ['fire', 'skull', 'clap', 'wow'];
-
-export interface Member {
-  /** Lobby slot 0…3; the host is 0. The slot also gives the player colour. */
-  slot: number;
-  name: string;
-  /** A bot the host plays. */
-  bot?: boolean;
-  /** Ready for the next match (after one has finished). */
-  ready?: boolean;
-  /** Lost the connection during a match; the seat waits for a reconnect. */
-  away?: boolean;
-  /** Round trip to the host in ms, as last measured. */
-  ping?: number;
-}
-
-/** What a match needs to begin (or, with the inputs so far, to be replayed on a reconnect). */
-export interface MatchStart {
-  seed: number;
-  names: string[];
-  /** Lobby slot of every seat. */
-  slots: number[];
-  you: number;
-  series: Series;
-}
-
-export type HostMessage =
-  | { t: 'lobby'; members: Member[]; you: number; bestOf: BestOf }
-  | ({ t: 'start' } & MatchStart)
-  /** A guest that reconnected: the match so far, to replay. */
-  | ({ t: 'resume'; inputs: Input[]; h: number } & MatchStart)
-  /** Inputs scheduled since the last frame; the world may run up to step `h`. */
-  | { t: 'f'; h: number; i: Input[] }
-  | { t: 'pong'; at: number }
-  /** Everyone's ping by lobby slot. */
-  | { t: 'pings'; ms: Record<number, number> }
-  | { t: 'react'; seat: number; r: Reaction }
-  | { t: 'full' };
-
-export type GuestMessage =
-  | { t: 'hello'; name: string; token: string }
-  | { t: 'name'; name: string }
-  | { t: 'tap'; step: number }
-  | { t: 'ping'; at: number; rtt: number }
-  | { t: 'ready'; on: boolean }
-  | { t: 'react'; r: Reaction }
-  | { t: 'revenge' }
-  | { t: 'bye' };
+export { REACTIONS, NAME_MAX, cleanName } from './messages';
+export type { Input, InputKind, Reaction, Member, MatchStart, HostMessage, GuestMessage } from './messages';
 
 /** v2: names, bots, series and reconnects; a v1 game is not found under the same code. */
 const PREFIX = 'car-game-roundabout-v2-';
 const peerId = (code: string): string => PREFIX + code;
 const BOT_NAMES = ['Blinker', 'Turbo', 'Rusty', 'Nova'];
-export const NAME_MAX = 12;
-
-/** A name as others see it: trimmed, no control characters, at most `NAME_MAX` letters. */
-export const cleanName = (name: string): string =>
-  Array.from(name.replace(/[\p{Cc}\p{Cf}]/gu, '').trim().replace(/\s+/g, ' '))
-    .slice(0, NAME_MAX)
-    .join('');
 
 /**
  * Where WebRTC looks for a way through: public STUN servers, plus a TURN relay when the build
@@ -89,6 +31,9 @@ function loadPeer(): Promise<typeof Peer> {
   return peerClass;
 }
 
+/** Why PeerJS did not load: offline, or online but this page is older than the server's files. */
+const loadError = (): RoomError => (navigator.onLine ? 'outdated' : 'network');
+
 function peerOptions(): PeerOptions {
   const iceServers: RTCIceServer[] = [{ urls: ['stun:stun.l.google.com:19302', 'stun:stun1.l.google.com:19302'] }];
   const env = import.meta.env;
@@ -103,7 +48,7 @@ function peerOptions(): PeerOptions {
   return { config: { iceServers } };
 }
 
-export type RoomError = 'noGame' | 'full' | 'network' | 'hostLeft' | 'codeBusy';
+export type RoomError = 'noGame' | 'full' | 'network' | 'hostLeft' | 'codeBusy' | 'outdated';
 
 export interface RoomEvents {
   /** The lobby changed (someone joined, left, renamed or got ready; the code is ready). */
@@ -195,7 +140,10 @@ export class Room {
         conn.send({ t: 'hello', name: this.name, token: this.token } satisfies GuestMessage);
         this.on.changed();
       });
-      conn.on('data', (data) => this.fromHost(data as HostMessage));
+      conn.on('data', (data) => {
+        const message = readHostMessage(data);
+        if (message) this.fromHost(message);
+      });
       conn.on('close', () => this.lostHost(conn));
       conn.on('error', () => this.lostHost(conn));
     };
@@ -216,7 +164,7 @@ export class Room {
           else this.lostHost(this.hostConn);
         });
       },
-      () => this.fail('network'),
+      () => this.fail(loadError()),
     );
   }
 
@@ -275,7 +223,7 @@ export class Room {
         const code = randomJoinCode();
         this.listen(new Peer(peerId(code), peerOptions()), code, attempt);
       },
-      () => this.fail('network'),
+      () => this.fail(loadError()),
     );
   }
 
@@ -305,8 +253,12 @@ export class Room {
       conn.send({ t: 'full' } satisfies HostMessage);
       window.setTimeout(() => conn.close(), 300);
     };
+    // A stranger's browser: every message is checked, and a flood is dropped.
+    const limit = new RateLimit();
     conn.on('data', (data) => {
-      const message = data as GuestMessage;
+      if (!limit.take(performance.now())) return;
+      const message = readGuestMessage(data);
+      if (!message) return;
       if (slot !== null) {
         this.fromGuest(slot, message);
         return;
