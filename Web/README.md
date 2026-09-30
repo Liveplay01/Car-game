@@ -207,7 +207,7 @@ container listens on **port 5050**.
 | --- | --- |
 | `../Dockerfile` | Stage 1 `node:22-alpine`: `npm ci`, `npm run build` (type-check included). Stage 2 `nginx:alpine`: only `dist/` and the config, `EXPOSE 5050`, health check on `/healthz` |
 | `../.dockerignore` | Only `Web/` goes into the build context, without `node_modules` and `dist` |
-| `nginx.conf` | Port 5050, gzip, SPA fallback (`try_files $uri $uri/ /index.html`), `/assets/*` cached for a year, `index.html` / `sw.js` / manifest always revalidated (`no-cache`), a missing asset is a real 404, security headers including a Content-Security-Policy (own files only, PeerJS's broker for multiplayer). `npm run preview` sends the same policy, read from this file, so a change can be tried locally |
+| `nginx.conf` | Port 5050, gzip, SPA fallback (`try_files $uri $uri/ /index.html`), `/assets/*` cached for a year, `index.html` / `sw.js` / manifest always revalidated (`no-cache`), a missing asset is a real 404, security headers including a Content-Security-Policy (own files only, PeerJS's broker for multiplayer, the leaderboard service at `api-game.gustaff.dev`; another address for the service needs a change in both `connect-src` entries). `npm run preview` sends the same policy, read from this file, so a change can be tried locally |
 
 Locally (with Docker installed):
 
