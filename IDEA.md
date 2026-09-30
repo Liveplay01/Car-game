@@ -45,6 +45,12 @@ kein eigener Code); (2) eigener PeerJS-Server und TURN mit kurzlebigen Zugängen
 über Geräte per Sync-Code. Geld und Truhen bleiben lokal, die Casino-Regel gilt weiter. Vorher
 muss „Kein Backend“ aus den festen Entscheidungen in CLAUDE.md.
 
+**Stand 30.09.2026:** Der Ranglisten-Dienst steht in `Server/` (Spieler mit Namen, Bestenlisten
+Shift-Level und Unlimited, Plausibilitätsgrenzen; `net/leaderboard.ts` ist der Client). Offen: die
+Oberfläche im Spiel (Name wählen, Liste zeigen, Scores senden), die Domain in `VITE_API_URL` und in
+der CSP von `nginx.conf`, ein Absatz in `legal.ts`. Die Punkte (1) bis (5) oben bleiben möglich und
+können als weitere Module in den Dienst.
+
 ---
 
 ## Offen: Inhaltliche Abwechslung

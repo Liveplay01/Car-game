@@ -32,8 +32,9 @@ die Basis an, ohne sie umzubauen (Abschnitt 4.6).
 ### 1.1 Stack
 
 Vite + TypeScript + HTML5 Canvas, ohne UI-Framework und ohne Game-Engine. Befehle, Aufbau,
-Speichern, PWA und Deployment: [Web/README.md](Web/README.md). **Kein Backend:** Der Spielstand
-liegt im Browser (`localStorage`), nginx liefert nur statische Dateien aus. Multiplayer läuft
+Speichern, PWA und Deployment: [Web/README.md](Web/README.md). **Kein Backend fürs Spiel:** Der Spielstand
+liegt im Browser (`localStorage`), nginx liefert nur statische Dateien aus; nur die optionale
+Rangliste spricht mit einem eigenen kleinen Dienst ([Server/README.md](Server/README.md)). Multiplayer läuft
 direkt zwischen den Geräten (WebRTC über PeerJS).
 
 ### 1.3 Zielgeräte und Sprache

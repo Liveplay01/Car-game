@@ -1,0 +1,24 @@
+{
+  "name": "car-game-server",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Small self-hosted service for Roundabout Timing: players and leaderboards, built to take more features as modules.",
+  "engines": {
+    "node": ">=22.18"
+  },
+  "scripts": {
+    "dev": "node --disable-warning=ExperimentalWarning --watch src/server.ts",
+    "start": "node --disable-warning=ExperimentalWarning src/server.ts",
+    "typecheck": "tsc --noEmit",
+    "test": "node --disable-warning=ExperimentalWarning --test \"test/*.test.ts\""
+  },
+  "dependencies": {
+    "@hono/node-server": "^2.1.3",
+    "hono": "^4.13.12"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.4",
+    "typescript": "~5.9.3"
+  }
+}

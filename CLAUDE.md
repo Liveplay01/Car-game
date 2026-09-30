@@ -11,6 +11,7 @@ App-Store-Arbeit mehr vorschlagen.
 | Dokument | Inhalt |
 | --- | --- |
 | [Web/README.md](Web/README.md) | **Das Spiel:** Befehle, Aufbau, Speichern, PWA, Deployment |
+| [Server/README.md](Server/README.md) | **Ranglisten-Dienst:** API, Module, Deployment in Coolify, Moderation |
 | [Web/PRODUCT.md](Web/PRODUCT.md) | Zielgruppe, Designprinzipien, Barrierefreiheit |
 | [Spiel.md](Spiel.md) | Überblick über das ganze Spiel und Stand der Umsetzung |
 | [FOUNDATION.md](FOUNDATION.md) | Regeln mit Startwerten, Motion-Regeln, Architektur |
@@ -32,7 +33,13 @@ App-Store-Arbeit mehr vorschlagen.
   Touch ohne Doppeltipp-Zoom (`touch-action`), Tastatur (Leertaste/Enter) auf dem Desktop.
 - **Spielsprache nur Englisch.** Die Projektdokumente sind auf Deutsch.
 - **Spielstand nur lokal im Browser** (`localStorage`, Schlüssel `carGame.save.v2`, alte `carGame.career.v1` werden übernommen).
-  **Kein Backend, keine Datenbank, keine API.** nginx liefert nur statische Dateien aus.
+  Das Spiel selbst bleibt ohne Backend: nginx liefert nur statische Dateien aus, Geld, Truhen und Fortschritt liegen lokal.
+- **Ranglisten-Dienst (Leo, 30.09.2026):** Es gibt **einen kleinen, optionalen Server** in `Server/`
+  (Node 22 + Hono + SQLite, eigener Container, eigene Coolify-Ressource auf einer Subdomain, Port 5051).
+  Er kennt nur anonyme Spieler (frei gewählter Name, gefiltert) und Bestenlisten (Shift-Level, Unlimited-Rekord);
+  weitere Funktionen kommen als Module in `Server/src/modules/`. Anti-Cheat nur über Plausibilitätsgrenzen.
+  Das Spiel läuft auch ohne ihn (offline-first, `net/leaderboard.ts` ist abgeschaltet ohne `VITE_API_URL`).
+  Spielstand, Geld und Truhen bleiben lokal; die Casino-Regel gilt weiter. Details: [Server/README.md](Server/README.md).
 - **Offline spielbar:** Nach dem ersten Laden läuft das Spiel ohne Netz (Service Worker aus
   `Web/vite.config.ts`, precacht alle Dateien). Nur der Multiplayer braucht Netz.
 - **Deployment:** Docker-Image aus dem `Dockerfile` im Repo-Root (Node baut, `nginx:alpine`
@@ -66,6 +73,9 @@ cd Web; npm test                        # Tests: Replays, Spielstände, Meldunge
 cd Web; npm run sim -- 60 5             # Balancing-Bots: Schichten, Level
 cd Web; npm run sim:casino              # Casino: Rückzahlquoten, faire Münze, Determinismus
 cd Web; npm run sim:career -- 60        # Ganze Karriere bis Level 60: Spielzeit, Geld, Upgrades
+cd Server; npm install                  # einmalig
+cd Server; npm run dev                  # Ranglisten-Dienst: http://localhost:5051
+cd Server; npm test                     # Tests des Dienstes (Namen, Anmeldung, Ranglisten, Admin)
 docker build -t car-game . ; docker run -p 5050:5050 car-game   # Container wie in Coolify
 ```
 
@@ -91,7 +101,7 @@ docker build -t car-game . ; docker run -p 5050:5050 car-game   # Container wie 
 - **Name (Leo, 30.09.2026):** Das Spiel heißt **Roundabout Timing** (kurz RAT); „Car Game“ ist nur noch der Ordner- und Repo-Name.
 - **CrazyGames (Leo, 30.09.2026):** Eingebettet über die normale URL mit `?crazygames`, kein eigener Build, kein Upload. Nur dann lädt das SDK und speichert über das Data Module (Web/README.md, CrazyGames).
 - **Rechtliches:** Datenschutz und Impressum in `Web/src/present/legal.ts` (Settings → Legal, `/privacy`, `/imprint`). Neuer Dienst, der Daten bekommt (Werbung, Analyse, Server) = Absatz dort und neues `LEGAL_UPDATED`.
-- Vor jedem Commit: `npm test` und `npm run build` müssen grün sein.
+- Vor jedem Commit: `npm test` und `npm run build` müssen grün sein (in `Web/`, und in `Server/` `npm test` und `npm run typecheck`, wenn er berührt wurde).
 - Das Icon-Original liegt in `Web/icon/` (`python Web/icon/make_icon.py`).
 - Die Casino-Klänge entstehen in `Web/audio-src/make_casino_sounds.py` (numpy, scipy, ffmpeg)
   und landen als `.m4a` in `Web/public/audio/sounds/`.

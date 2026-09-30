@@ -5,6 +5,8 @@
 import { storage } from './store';
 
 export const NAME_KEY = 'carGame.player.v1';
+/** The leaderboard account (`net/leaderboard.ts`): who the player is on the service, and their secret. */
+export const ACCOUNT_KEY = 'carGame.account.v1';
 const TOKEN_KEY = 'carGame.seat.v1';
 
 export function loadPlayerName(): string {

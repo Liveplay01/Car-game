@@ -7,7 +7,7 @@
  */
 import { type KeyValueStore, useStore } from '../storage/store';
 import { SAVE_KEYS } from '../storage/save';
-import { NAME_KEY } from '../storage/profile';
+import { ACCOUNT_KEY, NAME_KEY } from '../storage/profile';
 
 const SDK_URL = 'https://sdk.crazygames.com/crazygames-sdk-v3.js';
 /** The game starts without the SDK rather than keep the player waiting longer than this. */
@@ -51,7 +51,7 @@ export async function startCrazyGames(): Promise<void> {
     await Promise.race([found.init(), timeout()]);
     if (found.environment === 'disabled') return;
     found.game.loadingStart();
-    useStore(found.data, [...SAVE_KEYS, NAME_KEY]);
+    useStore(found.data, [...SAVE_KEYS, NAME_KEY, ACCOUNT_KEY]);
     sdk = found;
   } catch {
     /* no SDK: the save stays in this browser */

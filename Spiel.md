@@ -461,7 +461,7 @@ audio/ (Web Audio)   storage/ (localStorage)   net/ (PeerJS-Raum)   ui/ (DOM-Hü
 - **Gleicher Seed + gleiche Taps = gleiches Ergebnis** – Grundlage für Balancing-Bots, Challenge-Links, Trials und Multiplayer.
 - **Spielstand nur lokal:** `localStorage`, Schlüssel `carGame.save.v2` (alte `carGame.career.v1` werden übernommen); tolerant geladen, Feld für Feld. Export/Import als JSON-Datei.
 - **PWA und offline:** Manifest, Service Worker aus dem Build (precacht alle Dateien; Navigation network-first, nach 3 s oder ohne Netz die gespeicherte Seite). Nach dem ersten Laden läuft alles ohne Netz, nur der Multiplayer braucht es. Beim ersten Besuch: „Ready to play offline“.
-- **Deployment:** Docker (Node baut, `nginx:alpine` liefert statisch aus), Port 5050, Coolify baut aus GitHub. **Kein Backend, keine Datenbank, keine API.**
+- **Deployment:** Docker (Node baut, `nginx:alpine` liefert statisch aus), Port 5050, Coolify baut aus GitHub. **Das Spiel braucht kein Backend;** nur die optionale Rangliste nutzt den kleinen Dienst aus `Server/` (eigener Container, SQLite).
 
 **Feste Entscheidungen** siehe [CLAUDE.md](CLAUDE.md). Die frühere Swift-Schiene liegt nur noch in der Git-Historie (bis Commit `4f9ac73`).
 

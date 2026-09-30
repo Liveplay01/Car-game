@@ -13,6 +13,10 @@ ARG VITE_TURN_URL=""
 ARG VITE_TURN_USERNAME=""
 ARG VITE_TURN_CREDENTIAL=""
 ENV VITE_TURN_URL=$VITE_TURN_URL VITE_TURN_USERNAME=$VITE_TURN_USERNAME VITE_TURN_CREDENTIAL=$VITE_TURN_CREDENTIAL
+# Optional: address of the leaderboard service (Server/), e.g. https://api.example.com.
+# Empty by default: the game then has no leaderboard. nginx.conf must allow it in connect-src.
+ARG VITE_API_URL=""
+ENV VITE_API_URL=$VITE_API_URL
 RUN npm run build
 
 # Stage 2: only the built files and nginx.
