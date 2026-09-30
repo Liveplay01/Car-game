@@ -3,7 +3,7 @@ import { ICONS } from './icons';
 import type { Settings, SaveGame } from '../core/career';
 import type { PatchNote, PatchImpact } from '../present/patchNotes';
 import { parseImport } from '../storage/save';
-import { isInstalled, isIos } from '../storage/device';
+import { inPortal, isInstalled, isIos } from '../storage/device';
 
 interface OpenSheet {
   root: HTMLElement;
@@ -166,7 +166,7 @@ export function settingsSheet(layer: HTMLElement, s: Settings, actions: Settings
   setMotion(s.reduceMotion);
 
   let installRow: HTMLElement | null = null;
-  if (!isInstalled()) {
+  if (!isInstalled() && !inPortal) {
     if (actions.install) {
       installRow = h(
         'div',

@@ -4,6 +4,12 @@
  * storage is marked persistent, keeps it.
  */
 
+/**
+ * Built for a game portal (CrazyGames): the game runs inside their page, cannot be installed,
+ * and the portal keeps the save.
+ */
+export const inPortal = import.meta.env.MODE === 'crazygames';
+
 /** iPhone or iPad (iPadOS says it is a Mac, but has touch). */
 export const isIos = (): boolean =>
   /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);

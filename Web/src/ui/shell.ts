@@ -10,7 +10,7 @@ import { settingsSheet, patchNotesSheet, isSheetOpen, closeAnySheet } from './sh
 import { PATCH_NOTES } from '../present/patchNotes';
 import { PhotoView } from './photo';
 import { exportSave } from '../storage/save';
-import { isInstalled, isIos, isStorageKept, keepStorage, renewStorage } from '../storage/device';
+import { inPortal, isInstalled, isIos, isStorageKept, keepStorage, renewStorage } from '../storage/device';
 import type { Hint } from '../core/career';
 import { decodeChallenge, type ChallengeSpec } from '../core/challenge';
 import { S, Fmt } from '../present/strings';
@@ -442,18 +442,19 @@ export class Shell {
   /**
    * A one-time hint came due. Level 3: ask the browser to keep the save and suggest installing
    * (not when installed already). Level 12: suggest an export while the save is unprotected.
+   * On a portal neither: nothing to install, and the portal's login keeps the save.
    */
   private async giveHint(hint: Hint): Promise<void> {
     const installed = isInstalled();
     if (hint === 'install') {
       const kept = await keepStorage();
-      if (installed) return;
+      if (installed || inPortal) return;
       if (isIos()) this.session.announce(S.hints.installIos);
       else if (this.installPrompt) this.session.announce(S.hints.install);
       // Nothing to install here (Firefox): an export is the way to keep a copy.
       else if (!kept) this.session.announce(S.hints.backup);
     } else if (hint === 'backup') {
-      if (!installed && !(await isStorageKept())) this.session.announce(S.hints.backup);
+      if (!installed && !inPortal && !(await isStorageKept())) this.session.announce(S.hints.backup);
     }
   }
 

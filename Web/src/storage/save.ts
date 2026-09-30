@@ -6,9 +6,12 @@ import { RUN_IDS } from '../core/trials';
 import { MUSEUM_IDS, MUSEUM_SHELVES, type MuseumShelf, inferredSightings } from '../core/museum';
 import { TITLES, type TitleId } from '../core/elite';
 import { type CasinoGame, type CasinoPending, type CasinoRound, CASINO_GAMES } from '../core/casino';
+import { storage } from './store';
 
 const KEY = 'carGame.save.v2';
 const LEGACY_KEY = 'carGame.career.v1';
+/** Everything the save is made of, for a switch to another store (`useStore`). */
+export const SAVE_KEYS = [KEY, LEGACY_KEY] as const;
 
 type Raw = Record<string, unknown>;
 const isObject = (x: unknown): x is Raw => typeof x === 'object' && x !== null && !Array.isArray(x);
@@ -203,9 +206,9 @@ function readLegacy(raw: unknown): SaveGame | null {
 /** Reads the save game; anything missing or malformed falls back field by field. */
 export function loadSave(): SaveGame {
   try {
-    const text = localStorage.getItem(KEY);
+    const text = storage().getItem(KEY);
     if (text) return readSave(JSON.parse(text));
-    const legacy = localStorage.getItem(LEGACY_KEY);
+    const legacy = storage().getItem(LEGACY_KEY);
     if (legacy) {
       const migrated = readLegacy(JSON.parse(legacy));
       if (migrated) return migrated;
@@ -219,7 +222,7 @@ export function loadSave(): SaveGame {
 /** Writes the save game. Storage can be full or blocked (private mode): the game plays on. */
 export function writeSave(save: SaveGame): boolean {
   try {
-    localStorage.setItem(KEY, JSON.stringify(save));
+    storage().setItem(KEY, JSON.stringify(save));
     return true;
   } catch {
     return false;
@@ -253,8 +256,8 @@ export function parseImport(text: string): SaveGame | null {
 
 export function eraseSave(): SaveGame {
   try {
-    localStorage.removeItem(KEY);
-    localStorage.removeItem(LEGACY_KEY);
+    storage().removeItem(KEY);
+    storage().removeItem(LEGACY_KEY);
   } catch {
     /* nothing to remove */
   }

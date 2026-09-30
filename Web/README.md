@@ -16,6 +16,7 @@ npm install
 npm run dev        # http://localhost:5050, also reachable from a phone on the same network
 npm run build      # type-check + production build into dist/
 npm run preview    # serve dist/ on port 5050 (with the service worker)
+npm run build:crazygames  # CrazyGames build into dist-crazygames/: zip its contents and upload
 npm run sim        # balancing bots: node scripts/sim.mjs [shifts] [level]
 npm run sim:versus # multiplayer bots (the lobby bots): never out for a crash, same seed = same match
 npm run sim:casino # casino fairness: every game returns what its odds sheet says, the coin is fair
@@ -224,3 +225,14 @@ Exposes** to `5050` and add the domain; Coolify's proxy handles HTTPS. Every pus
 
 HTTPS matters: the service worker (offline play, install prompt) only works on
 `https://` or `localhost`.
+
+## CrazyGames
+
+`npm run build:crazygames` builds the portal version into `dist-crazygames/`: relative paths,
+no service worker, no manifest, and the CrazyGames SDK v3 in the page. The save goes through
+the SDK's Data Module (`ui/crazygames.ts` switches `storage/store.ts` before the save is read):
+in the cloud for a logged-in player, in the browser for a guest. A save already in this
+browser's `localStorage` is copied over once. Without the SDK (ad blocker, another domain) the
+game saves in `localStorage` as usual. Install and export hints are off there. In the submission
+form, Progress Save must be "Yes, using the Data Module", or the SDK disables it.
+The normal build (`npm run build`) is unchanged and never loads the SDK.

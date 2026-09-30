@@ -2,12 +2,14 @@
  * The multiplayer profile: the name friends see, kept on this device like the save
  * (`carGame.player.v1`), and a token per tab that lets a dropped player take their seat back.
  */
-const NAME_KEY = 'carGame.player.v1';
+import { storage } from './store';
+
+export const NAME_KEY = 'carGame.player.v1';
 const TOKEN_KEY = 'carGame.seat.v1';
 
 export function loadPlayerName(): string {
   try {
-    const raw = localStorage.getItem(NAME_KEY);
+    const raw = storage().getItem(NAME_KEY);
     if (!raw) return '';
     const parsed = JSON.parse(raw) as { name?: unknown };
     return typeof parsed.name === 'string' ? parsed.name : '';
@@ -18,7 +20,7 @@ export function loadPlayerName(): string {
 
 export function savePlayerName(name: string): void {
   try {
-    localStorage.setItem(NAME_KEY, JSON.stringify({ name }));
+    storage().setItem(NAME_KEY, JSON.stringify({ name }));
   } catch {
     /* private mode: the name lasts this visit */
   }

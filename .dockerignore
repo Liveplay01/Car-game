@@ -4,4 +4,5 @@
 !Web/**
 Web/node_modules
 Web/dist
+Web/dist-*
 Web/**/*.local

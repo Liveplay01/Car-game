@@ -62,6 +62,7 @@ cd Web; npm install                     # einmalig
 cd Web; npm run dev                     # Entwickeln: http://localhost:5050 (auch vom Handy im WLAN)
 cd Web; npm run build                   # Typecheck + Build nach Web/dist
 cd Web; npm run preview                 # Build lokal ausliefern, Port 5050
+cd Web; npm run build:crazygames        # CrazyGames-Build nach Web/dist-crazygames (SDK, Data Module)
 cd Web; npm test                        # Tests: Replays, Spielstände, Meldungen (node:test)
 cd Web; npm run sim -- 60 5             # Balancing-Bots: Schichten, Level
 cd Web; npm run sim:casino              # Casino: Rückzahlquoten, faire Münze, Determinismus

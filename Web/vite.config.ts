@@ -116,9 +116,29 @@ self.addEventListener('fetch', (event) => {
   };
 }
 
-export default defineConfig({
-  plugins: [serviceWorker()],
+/**
+ * The CrazyGames build: their SDK loads before the game (it keeps the save, `ui/crazygames.ts`),
+ * and the page drops what only an installable game needs.
+ */
+function crazyGamesPage(): Plugin {
+  return {
+    name: 'car-game-crazygames',
+    transformIndexHtml: {
+      order: 'pre',
+      handler: (html) =>
+        html
+          .replace(/\s*<link rel="manifest"[^>]*>/, '')
+          .replace('</title>', '</title>\n    <script src="https://sdk.crazygames.com/crazygames-sdk-v3.js"></script>'),
+    },
+  };
+}
+
+export default defineConfig(({ mode }) => ({
+  // A portal serves the game from its own sub-folder: relative paths, no service worker.
+  ...(mode === 'crazygames' ? { base: './' } : {}),
+  plugins: mode === 'crazygames' ? [crazyGamesPage()] : [serviceWorker()],
   build: {
+    outDir: mode === 'crazygames' ? 'dist-crazygames' : 'dist',
     target: 'es2022',
     assetsInlineLimit: 0,
     sourcemap: false,
@@ -138,4 +158,4 @@ export default defineConfig({
     strictPort: true,
     headers: contentSecurityPolicy(),
   },
-});
+}));

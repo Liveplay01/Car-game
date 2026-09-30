@@ -1,5 +1,7 @@
 import { Shell } from './ui/shell';
 import { S } from './present/strings';
+import { inPortal } from './storage/device';
+import { startCrazyGames } from './ui/crazygames';
 
 const app = document.getElementById('app')!;
 const canvas = document.getElementById('scene') as HTMLCanvasElement;
@@ -7,12 +9,16 @@ const layers = document.getElementById('layers')!;
 /** Set right before a reload into a new version (sessionStorage: this tab only). */
 const UPDATED_KEY = 'carGame.updated';
 
+// On CrazyGames the save lives in their SDK, which has to be ready before the game reads it.
+if (inPortal) await startCrazyGames();
+
 const shell = new Shell(app, canvas, layers);
 if (import.meta.env.DEV) (window as unknown as { __game: Shell }).__game = shell;
 
 // Offline and installable: the service worker caches the built app (production only). The
-// first time everything is cached, the game says it now runs without internet.
-if ('serviceWorker' in navigator && import.meta.env.PROD) {
+// first time everything is cached, the game says it now runs without internet. Not on a portal:
+// there the game lives in someone else's page, and the portal ships the updates.
+if ('serviceWorker' in navigator && import.meta.env.PROD && !inPortal) {
   const firstVisit = !navigator.serviceWorker.controller;
   window.addEventListener('load', () => {
     navigator.serviceWorker
