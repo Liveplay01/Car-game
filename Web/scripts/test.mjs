@@ -398,6 +398,31 @@ test('briefings without a task stay a few seconds each, a task goes first', () =
   assert.equal(briefs.view, null);
 });
 
+test('cars spammed into the slow traffic after a crash creep in for nothing (Unlimited exploit)', async () => {
+  const { upgradeMaxSteps } = await load('/src/core/levels.ts');
+  const career = { ...newCareer(), level: 40, upgrades: { ...upgradeMaxSteps } };
+  const cfg = Careers.shiftConfig(career, 'unlimited', baseConfig, 37);
+  const world = new World(cfg, 37, { startsOnFirstTap: true });
+  // The police car at the front goes into the traffic and crashes; then taps as fast as possible.
+  world.tap(1.5);
+  let next = Infinity;
+  let launched = 0;
+  while (world.time < 12 && world.shift.phase !== 'ended') {
+    if (world.time >= next) {
+      world.tap(world.time);
+      next = world.time + 0.15;
+    }
+    world.step();
+    for (const e of world.takeEvents()) {
+      if (e.type === 'crash' && e.isPoliceCrash && next === Infinity) next = world.time + 2;
+      if (e.type === 'launched') launched++;
+    }
+  }
+  assert.ok(world.score.crept >= 5, `crept ${world.score.crept}`);
+  assert.ok(world.score.combo <= 2 && world.score.points <= 300, `combo ${world.score.combo}, points ${world.score.points}`);
+  assert.ok(world.shift.carsSent <= launched - world.score.crept, 'a car that crept in is no car in Unlimited');
+});
+
 test('nothing counts as met while the shift waits for its first tap', () => {
   const world = new World(forLevel(baseConfig, 20, 3), 3, { startsOnFirstTap: true });
   for (let i = 0; i < 120 * 20; i++) world.step();

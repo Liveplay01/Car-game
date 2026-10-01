@@ -10,6 +10,8 @@ export class ScoreBoard {
   cleanMerges = 0;
   tightFits = 0;
   cutOffs = 0;
+  /** Merges that crept in behind slow traffic (`creepPace`): no points, no combo, and in Unlimited no car. */
+  crept = 0;
   takedowns = 0;
   transporters = 0;
   money = 0;

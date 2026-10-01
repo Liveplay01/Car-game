@@ -30,7 +30,7 @@ import { Skins } from './skins';
 import { WeatherFade, WeatherLayer } from './weather';
 import { NightLayer } from './night';
 import { CityLights } from './cityLights';
-import { HUD, TopBar, RingSignals, ModeBanner, ModeHint, ReadyBanner, ResultBanner, type Popup, type PopupKind, type ShiftSummary, POPUP_LIFETIME, settledPops } from './hud';
+import { HUD, TopBar, RingSignals, ModeBanner, ModeHint, ReadyBanner, ResultBanner, type Popup, type PopupKind, type ShiftSummary, type ConditionIntro, POPUP_LIFETIME, settledPops } from './hud';
 import { Tutorial } from './tutorial';
 import { NoticeQueue } from './notices';
 import { bookShift } from './booking';
@@ -1576,6 +1576,11 @@ export class GameSession {
       this.tutorial?.react(e);
       switch (e.type) {
         case 'merged':
+          // Braked in behind slow traffic: nothing was timed, so it says so and counts for nothing.
+          if (e.crept) {
+            this.addPopup({ k: 'crept' }, e.position);
+            break;
+          }
           if (e.critical) {
             this.addPopup({ k: 'critical', n: e.points }, e.position);
             this.rim.signal('wave', 'coin');
@@ -2154,7 +2159,7 @@ export class GameSession {
       drawsCard,
       opacity,
       goal: goal ? S.goals.next(goal) : null,
-      intro: this.versusSelected || (this.tutorial && !this.tutorial.isOver) ? null : conditionIntro(this.world.config, career),
+      intro: this.versusSelected || (this.tutorial && !this.tutorial.isOver) ? null : this.readyIntro,
       textScale: this.textScale,
       noticeRoom: this.noticeRoom,
     });
@@ -2163,6 +2168,12 @@ export class GameSession {
       ModeBanner.add(list, this.modeBanner.mode, this.modeBanner.age, top, this.reduceMotion);
     }
     return under;
+  }
+
+  /** The ready screen's card: what a trial's goal asks for, then the conditions new to this player. */
+  private get readyIntro(): ConditionIntro[] {
+    const howTo = this.special?.k === 'trial' ? S.trials.howTo(this.special.trial) : null;
+    return [...(howTo ? [howTo] : []), ...conditionIntro(this.world.config, this.save.career)];
   }
 
   /** Screen point of the island centre (for DOM overlays that follow the camera). */

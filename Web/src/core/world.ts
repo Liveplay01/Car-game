@@ -977,6 +977,10 @@ export class World {
       const behind = this.gapBehind(s, veh.id, veh.lane);
       const ahead = this.gapAhead(s, veh.id, veh.lane);
       const at = this.events.length;
+      if ((merge.pace ?? 1) < this.config.creepPace) {
+        this.noteCreep(veh, merge, s, behind, ahead, now);
+        continue;
+      }
       let shielded = false;
       if (this.transporter.kind === 'active' && veh.type !== 'police' && isInSecureZone(this, s)) {
         shielded = true;
@@ -1011,6 +1015,38 @@ export class World {
       });
       if (this.breaksTrial(rating)) this.endShift('failed', now);
     }
+  }
+
+  /**
+   * A car of yours that braked its way into the ring behind slow traffic (`creepPace`): it took
+   * no timing, so it earns nothing and leaves the combo and the chain as they are. In Unlimited
+   * it does not count as a car either, so it adds nothing to the count or the pay. An ambulance
+   * or a learner it crowds still notices it.
+   */
+  private noteCreep(veh: Vehicle, merge: Merging, s: number, behind: number, ahead: number, now: number): void {
+    this.score.crept++;
+    if (this.config.endless) this.shift.carsSent = Math.max(0, this.shift.carsSent - 1);
+    const at = this.events.length;
+    noteMergeNearAmbulance(this, veh, s, now);
+    noteMergeNearLearner(this, veh, s, now);
+    this.events.splice(at, 0, {
+      type: 'merged',
+      vehicle: veh.id,
+      minGap: merge.minGap,
+      closest: merge.closest,
+      gapBehind: behind,
+      position: veh.position,
+      time: now,
+      rating: 'clean',
+      points: 0,
+      combo: this.score.combo,
+      shielded: false,
+      gapAhead: ahead,
+      chain: this.score.chain,
+      critical: false,
+      shave: 0,
+      crept: true,
+    });
   }
 
   /**

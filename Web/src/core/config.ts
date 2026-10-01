@@ -132,6 +132,13 @@ export const baseConfig = {
   // Rating
   tightFitSeconds: 0.12,
   sloppyWindow: 0,
+  /**
+   * A merge that still drives slower than this share of its planned speed as it joins the ring
+   * braked in behind slow traffic: nothing was timed, so it scores nothing (Leo, 01.10.2026:
+   * after a crash, cars spammed one behind the other crept in safely, each one +1 combo, and in
+   * Unlimited the ring filled with your own cars for a record without playing).
+   */
+  creepPace: 0.9,
   nearMissSeconds: 0.2,
   perfectBalance: 0.25,
   perfectMaxGap: 2,

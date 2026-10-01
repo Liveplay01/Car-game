@@ -30,6 +30,8 @@ export const PATCH_NOTES: PatchNote[] = [
     title: 'Briefings, Feats, Big Screen, Cloud sync and the Classic',
     impact: 'major',
     items: [
+      'Fixed: after a crash you could spam cars into the slowed traffic and fill the roundabout with your own cars for a free combo and Unlimited record. A car that has to brake its way in behind slow traffic now shows "Jammed · no points": it scores nothing and does not count as a car in Unlimited.',
+      'Dead Centre and Tight Squeeze now explain on their start screen what a Perfect Input and a Tight Fit need: a Perfect Input is the middle of a medium gap, not a huge one.',
       'Motorbikes are red now, with a light helmet and handlebars: the dark ones were hard to see on the asphalt.',
       'Something new on the road now tells you what to do: the first time you meet a criminal, a money transporter, an ambulance and the rest, the top bar shows what to do until it is done. New weather and city events get a few seconds there as the shift starts.',
       'Let a criminal get away and the next one reminds you how to catch it.',

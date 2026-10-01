@@ -96,6 +96,8 @@ export interface MergeReport {
   critical: boolean;
   /** Points for slipping past a motorbike (already in `points`); 0 when there was none. */
   shave: number;
+  /** It crept in behind slow traffic (`creepPace`): rated nothing, scored nothing. */
+  crept?: boolean;
 }
 
 export interface ExplosionReport {

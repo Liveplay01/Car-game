@@ -144,6 +144,13 @@ bleibt die Bewertung fair, wenn das Tempo in der Rush Hour steigt.
 | **Crash** | Fahrzeuge berühren sich (beim Einfädeln oder bis 1 s danach) | −250 (nie unter 0) | auf 0 | normales Auto: Strike (Standard: Game Over), Polizeiauto: Polizei-Crash (2.6) |
 | **Tight Fit** | kleinster Abstand < 0,12 s | 200 × Multiplikator | +2 | Swoosh, dazu ein scharfer Haptik-Klick, wo das Gerät vibrieren kann |
 | **Sauber** | alles andere | 100 × Multiplikator | +1 | dezenter Ton |
+| **Eingekrochen** *(01.10.2026)* | fährt beim Erreichen des Rings noch unter 90 % seines geplanten Tempos, hat also hinter langsamem Verkehr gebremst (`creepPace`) | 0 | bleibt | "JAMMED · NO POINTS"; Kette bleibt; in Unlimited zählt das Auto nicht (weder Zähler noch Geld) |
+
+**Warum "Eingekrochen":** Nach einem Crash bremsen alle füreinander. Dauertippen schob
+so eine Kolonne eigener Autos gefahrlos in den gebremsten Ring, jedes mit +1 Combo, und
+die gebremsten Einfädler hielten die Störung selbst am Leben: Unlimited-Rekord ohne zu
+spielen. Getimt wird dabei nichts, also gibt es nichts. Test: „cars spammed into the slow
+traffic after a crash creep in for nothing“.
 
 **Zur "unsauberen Einfädelung" aus IDEA.md:** Sie ist als optionales Fenster
 `sloppyWindow` vorbereitet (z. B. < 0,04 s zum Hintermann ergibt "Cut off!" und

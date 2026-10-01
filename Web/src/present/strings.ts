@@ -493,6 +493,27 @@ export const S = {
     passed: 'PASSED',
     play: 'Play',
     opensAt: (l: number): string => `Opens at level ${l}`,
+    /**
+     * What a counting goal asks for, on the trial's ready screen (Leo, 01.10.2026: nobody knew
+     * a Perfect Input wants a medium gap, not the biggest one). Same shape as `ConditionIntro`.
+     */
+    howTo(t: Trial): { title: string; text: string; short: string } | null {
+      if (t.goal.k === 'perfects') {
+        return {
+          title: 'How to · Perfect Input',
+          text: 'Land your car right in the middle of a gap, with about as much room ahead as behind. A huge empty stretch does not count: pick a medium gap.',
+          short: 'The middle of a medium gap, not a huge one',
+        };
+      }
+      if (t.goal.k === 'skilled') {
+        return {
+          title: 'How to · Tight Fit',
+          text: 'Join close to the car ahead or behind without touching it: Tight Fits, Near Misses and Perfect Inputs count, a merge with lots of room does not.',
+          short: 'Close to another car, without a crash',
+        };
+      }
+      return null;
+    },
     /** The live counter of a counting trial goal. */
     progress: (t: Trial, have: number, need: number): string => `${t.goal.k === 'perfects' ? 'Perfect Inputs' : 'Tight Fits or better'} ${Math.min(have, need)}/${need}${have >= need ? ' ✓' : ''}`,
   },
@@ -1495,6 +1516,8 @@ export const S = {
     rushHour: 'RUSH HOUR',
     tight: 'TIGHT!',
     cutOff: 'CUT OFF',
+    /** A car that braked its way in behind slow traffic: no timing, no points. */
+    crept: 'JAMMED · NO POINTS',
     busted: 'BUSTED!',
     dispatch: 'DISPATCH',
     seized: 'SEIZED',
