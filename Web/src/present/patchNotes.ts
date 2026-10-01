@@ -22,6 +22,24 @@ export type PatchImpact = 'major' | 'minor' | 'fix';
 
 export const PATCH_NOTES: PatchNote[] = [
   {
+    id: '2026-10-01-crazygames-count-in',
+    date: '1 October 2026',
+    title: 'No more stuck count-in on CrazyGames',
+    impact: 'fix',
+    items: [
+      'On CrazyGames a shift could hang on the count-in after you clicked outside the game. The pause and the count-in are gone there: the game simply carries on.',
+    ],
+  },
+  {
+    id: '2026-10-01-crazygames',
+    date: '1 October 2026',
+    title: 'Now on CrazyGames',
+    impact: 'minor',
+    items: [
+      'Roundabout Timing is now officially on CrazyGames. Settings has a link to its page: rate it and share it with friends.',
+    ],
+  },
+  {
     id: '2026-10-01-live-sync',
     date: '1 October 2026',
     title: 'Live Cloud sync',

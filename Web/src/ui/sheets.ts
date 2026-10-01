@@ -1,5 +1,5 @@
 import { h, icon } from './dom';
-import { ICONS } from './icons';
+import { ICONS, CRAZYGAMES_LOGO } from './icons';
 import type { Settings, SaveGame } from '../core/career';
 import type { PatchNote, PatchImpact } from '../present/patchNotes';
 import { LEGAL_DOCS, type LegalDoc, type LegalId } from '../present/legal';
@@ -256,6 +256,19 @@ function linkRow(title: string, sub: string, onOpen: () => void): HTMLElement {
   );
 }
 
+/** The game's page on CrazyGames (Leo, 01.10.2026). Not shown inside CrazyGames itself. */
+const CRAZYGAMES_PAGE = 'https://www.crazygames.com/game/roundabout-timing';
+
+function crazyGamesRow(): HTMLElement {
+  return h(
+    'a',
+    { class: 'row row-link', href: CRAZYGAMES_PAGE, target: '_blank', rel: 'noopener' },
+    h('span', { class: 'row-logo', html: CRAZYGAMES_LOGO }),
+    h('div', { class: 'row-main' }, h('div', { class: 'row-title' }, 'Roundabout Timing on CrazyGames'), h('div', { class: 'row-sub' }, 'Our official page. Rate the game and share it.')),
+    icon(ICONS.external),
+  );
+}
+
 export interface SettingsActions {
   changed(settings: Settings): void;
   /** The patch notes; `notesUnread` lights the row until they are opened. */
@@ -409,6 +422,7 @@ export function settingsSheet(layer: HTMLElement, s: Settings, actions: Settings
         actions.notesUnread ? h('span', { class: 'new-pill' }, 'New') : null,
         h('button', { class: 'btn', type: 'button', onclick: () => actions.openNotes() }, 'Open'),
       ),
+      inPortal ? null : crazyGamesRow(),
     ),
     h(
       'p',

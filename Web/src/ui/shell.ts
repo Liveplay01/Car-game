@@ -767,13 +767,16 @@ export class Shell {
       }
     });
 
-    // An interruption freezes the world; coming back counts in.
+    // An interruption freezes the world; coming back counts in. Not on CrazyGames (Leo,
+    // 01.10.2026): in their iframe the page around the game takes the focus, and the focus did
+    // not always come back, so the game hung on the count-in. There a hidden tab stops the
+    // frames by itself, and coming back carries on without a jump (`last` starts over).
     const away = (): void => {
-      this.push({ k: 'focusLost' });
+      if (!inPortal) this.push({ k: 'focusLost' });
       this.audio.setSuspended(true);
     };
     const back = (): void => {
-      this.push({ k: 'focusGained' });
+      if (!inPortal) this.push({ k: 'focusGained' });
       this.audio.setSuspended(false);
       this.last = performance.now();
     };
@@ -782,6 +785,7 @@ export class Shell {
       else back();
       reportGameplay(this.session.screen.k === 'playing' && !document.hidden);
     });
+    if (inPortal) return;
     window.addEventListener('blur', () => {
       if (this.session.screen.k === 'playing') this.push({ k: 'focusLost' });
     });
