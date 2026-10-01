@@ -423,6 +423,8 @@ export const baseConfig = {
   installHintAfterLevel: 4,
   /** Level cleared after which a device without a cloud copy recommends Cloud sync (once; Leo, 01.10.2026: it replaced the export). */
   backupHintAfterLevel: 12,
+  /** Level from which the one-time Cloud sync pop-up comes (Leo, 01.10.2026: not before there is progress to keep). */
+  cloudIntroFromLevel: 3,
   // Unlocks (Leo, 29.09.2026, `core/unlocks.ts`): a new player meets the systems one at a time.
   // Spread out the same day (`npm run sim:career -- 12 --story=20`): five systems came in the
   // first three minutes; now about one every one to four (Daily ~1 min, modes ~2, Trials ~4,

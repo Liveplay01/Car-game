@@ -385,6 +385,8 @@ export const S = {
     reduceMotion: 'Tip · Running slow? Reduce motion in Settings can help',
     offline: 'Ready to play offline',
     notSaved: 'This browser is not saving your progress · Cloud sync in Settings can keep a copy',
+    /** The same where there is no Cloud sync (CrazyGames, no service). */
+    notSavedHere: 'This browser is not saving your progress · It lasts until you close the game',
     updated: 'Updated · See what’s new in Settings',
   },
 

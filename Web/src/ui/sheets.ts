@@ -184,7 +184,7 @@ export function licensesSheet(layer: HTMLElement, licenses: License[], onClose: 
 }
 
 /**
- * A small one-time pop-up for every player: Cloud sync exists, and where to find it. "Open Cloud
+ * A small one-time pop-up from Level 3 (`config.cloudIntroFromLevel`): Cloud sync exists, and where to find it. "Open Cloud
  * sync" goes straight there; "Maybe later" closes it (Escape and a tap outside too). It is shown
  * once per device (`cloudIntroDue`), and the page itself stays in Settings.
  */
@@ -198,7 +198,7 @@ export function cloudIntroDialog(layer: HTMLElement, actions: { open(): void; cl
     'div',
     { class: 'intro-card', role: 'alertdialog', 'aria-modal': 'true', 'aria-labelledby': 'intro-title', 'aria-describedby': 'intro-why' },
     h('div', { class: 'install-badge', 'aria-hidden': 'true' }, icon(ICONS.gear)),
-    h('h2', { class: 'install-title intro-title', id: 'intro-title' }, 'New: Cloud sync'),
+    h('h2', { class: 'install-title intro-title', id: 'intro-title' }, 'Cloud sync'),
     h('p', { class: 'install-why', id: 'intro-why' }, 'Back up your progress and carry on with any device using a short code. No account and no password.'),
     h(
       'ol',

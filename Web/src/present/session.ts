@@ -18,7 +18,7 @@ import { type Vec2, v, add } from '../core/vec2';
 import { loadSave, writeSave } from '../storage/save';
 import { loadPlayerName } from '../storage/profile';
 import { syncScores, type Records } from '../net/leaderboard';
-import { cloudChanged } from '../net/cloud';
+import { cloudChanged, cloudEnabled } from '../net/cloud';
 import { RenderList, R, Ease, toScreen, rect, type Camera } from './render';
 import { S, Fmt, money as moneyText } from './strings';
 import { CrashEffects } from './effects';
@@ -296,7 +296,7 @@ export class GameSession {
   private store(): void {
     if (writeSave(this.save) || this.unsavedWarned) return;
     this.unsavedWarned = true;
-    this.announce(S.hints.notSaved);
+    this.announce(cloudEnabled ? S.hints.notSaved : S.hints.notSavedHere);
   }
 
   collectLoginIncome(): void {
@@ -975,6 +975,7 @@ export class GameSession {
       const before = this.shopPage.opening?.age ?? null;
       this.shopPage.advance(realDelta);
       // The Collection's grid glides on after a flick and springs back past its ends.
+      this.revealItemAboveSheet();
       this.shopPage.items.follow(realDelta, this.collectionScrollRange);
       const after = this.shopPage.opening?.age ?? null;
       const opening = this.shopPage.opening;
@@ -1334,6 +1335,20 @@ export class GameSession {
     if (shown.length === 0) return;
     Careers.markMuseumSeen(career, shown);
     this.persist();
+  }
+
+  /** The Collection card just tapped glides into view above the sheet that opened for it. */
+  private revealItemAboveSheet(): void {
+    const s = this.shopPage;
+    const id = s.revealItem;
+    if (!id || !this.detailOpen || this.sheetInset <= 0) return;
+    s.revealItem = null;
+    const l = ShopPage.layout(this.lastViewport, this.tabInset);
+    const cell = ShopPage.itemCells(l, s.shelf, s.items.scroll).find(([item]) => item.id === id);
+    if (!cell) return;
+    const area = ShopPage.itemsArea(l);
+    const window = { ...area, minY: area.minY + 4, maxY: this.lastViewport.y - this.tabInset - this.sheetInset - 12 };
+    s.items.reveal(cell[1], window, this.collectionScrollRange);
   }
 
   /** The Progress card just tapped glides into view above the sheet that opened for it. */

@@ -100,6 +100,8 @@ export class ShopState {
   shelfSlide: { from: Shelf; age: number; scroll: number } | null = null;
   /** The Collection's grid scrolls. */
   readonly items = new Scroller();
+  /** The card just tapped: it glides into view above its sheet once the sheet is up. */
+  revealItem: Cosmetic['id'] | null = null;
   pressed: { target: ShopTarget; age: number } | null = null;
 
   /** The casino's state, once the casino has loaded (`casinoLoader.ts`); null before. */

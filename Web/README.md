@@ -29,7 +29,7 @@ tapper should crash in almost every shift.
 
 | Input | Action |
 | --- | --- |
-| Tap / click / Space | send the front car (the first tap starts the shift) |
+| Tap / click / Space | send the front car (the first tap starts the shift); Space and Enter play even on a button the mouse left focused, only a control reached with `Tab` keeps them |
 | Swipe left/right on the waiting screen, `←` / `→` | Shift · Unlimited · Mayhem · Multiplayer (after Level 5 a toast and a “Swipe for more modes” hint point it out, until the first switch) |
 | Tap after a lost shift | the next try at once |
 | Dispatch button, `D`, `E`, right-click | turn the next car into a police car (costs part of the combo) |
@@ -38,6 +38,7 @@ tapper should crash in almost every shift.
 | `Enter` | start / buy the open upgrade |
 | `Esc` | settings on the waiting screen, back to the game from a page |
 | `R` | restart the shift |
+| `↑` / `↓`, Page Up/Down, Home/End | scroll the open list (Collection, Upgrades, Progress), gliding like the wheel |
 
 There is no pause screen, as in the app: leaving the tab freezes the world, coming back
 counts in. Taps are timestamped on `pointerdown`, so the car leaves at the moment of the
@@ -193,7 +194,7 @@ Level 4 the game asks the browser to keep its storage (`navigator.storage.persis
 on the first visit, since Firefox may ask the player) and recommends the Home Screen (on an
 iPhone: a full-screen tip, Share → Add to Home Screen; elsewhere a line, when the browser can
 install). After Level 12 it recommends Cloud sync while this device has no cloud copy. Cloud
-sync also has a pop-up of its own, once per device. From then on every visit asks again where
+sync also has a pop-up of its own, once per device, from Level 3 (`cloudIntroFromLevel`). From then on every visit asks again where
 asking is silent (Chrome, Safari; not Firefox), and installing the game asks at once. If a
 write fails (private window, full storage), the game says so once per session and points to
 Cloud sync.

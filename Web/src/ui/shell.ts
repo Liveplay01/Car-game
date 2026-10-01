@@ -42,6 +42,8 @@ const PHOTO_SCENE = v(492, 492);
 const keycap = (label: string): HTMLElement => h('kbd', { class: 'keycap', 'aria-hidden': 'true' }, label);
 const TAB_LABEL: Record<Tab, string> = { progress: 'Progress', game: 'Game', shop: 'Shop', upgrades: 'Build', streetBuilder: 'Build' };
 const TAB_ICON: Record<Tab, string> = { progress: ICONS.progress, game: ICONS.game, shop: ICONS.shop, upgrades: ICONS.build, streetBuilder: ICONS.build };
+/** Keys that scroll a list, in points; ±1 means a page (most of the window's height). */
+const SCROLL_KEYS: Partial<Record<string, number>> = { ArrowDown: 60, ArrowUp: -60, PageDown: 1, PageUp: -1, Home: -1e6, End: 1e6 };
 
 /** Runs `then` once the pointer that is down now is lifted (or cancelled). */
 function afterRelease(then: () => void): void {
@@ -80,6 +82,8 @@ export class Shell {
   private tabIndicator: HTMLElement | null = null;
   /** The last tab change came from the keyboard: the indicator jumps, it does not glide. */
   private keyboardNav = false;
+  /** Focus moved with Tab since the last pointer press: a focused button then keeps Space and Enter. */
+  private focusByKeyboard = false;
   private readonly settingsBtn: HTMLButtonElement;
   private readonly dispatchBtn: HTMLButtonElement;
   private readonly shareBtn: HTMLButtonElement;
@@ -268,7 +272,10 @@ export class Shell {
     );
 
     this.live = new LiveRegion(app);
-    this.session.onChrome = () => this.syncChrome(true);
+    this.session.onChrome = () => {
+      this.syncChrome(true);
+      this.scheduleCloudIntro();
+    };
     this.session.onHint = (hint) => void this.giveHint(hint);
     this.bindInput(canvas);
     this.resize();
@@ -290,8 +297,7 @@ export class Shell {
     });
     this.syncChrome(true);
     requestAnimationFrame((t) => this.loop(t));
-    // A moment after the game is up, so the pop-up does not cover the first frame.
-    window.setTimeout(() => this.maybeShowCloudIntro(), 1500);
+    this.scheduleCloudIntro();
   }
 
   get game(): GameSession {
@@ -559,13 +565,27 @@ export class Shell {
   /** Set until the settings sheet is up: it then opens the cloud page right away. */
   private wantCloud = false;
 
+  /** Set once the pop-up is on its way (or not due on this device): it is looked at only once. */
+  private cloudIntroScheduled = false;
+
   /**
-   * Once per device, a little after the game opens: a pop-up that tells every player about Cloud
-   * sync and where it is (`cloudIntroDialog`). It waits while something else is on screen.
+   * The Cloud sync pop-up comes once the player has something to keep (Leo, 01.10.2026: from
+   * `config.cloudIntroFromLevel`): at the start of a visit, or after the shift that reaches it,
+   * a moment later so it does not cover the first frame or the result.
+   */
+  private scheduleCloudIntro(): void {
+    if (this.cloudIntroScheduled || this.session.save.career.level < this.session.config.cloudIntroFromLevel) return;
+    this.cloudIntroScheduled = true;
+    window.setTimeout(() => this.maybeShowCloudIntro(), 1500);
+  }
+
+  /**
+   * Once per device: a pop-up that tells the player about Cloud sync and where it is
+   * (`cloudIntroDialog`). It waits while something else is on screen.
    */
   private maybeShowCloudIntro(tries = 0): void {
     if (!cloudIntroDue()) return;
-    const busy = isSheetOpen() || this.session.screen.k === 'playing' || this.session.screen.k === 'settings' || document.querySelector('.install-root, .intro-root');
+    const busy = isSheetOpen() || ['playing', 'result', 'settings'].includes(this.session.screen.k) || document.querySelector('.install-root, .intro-root');
     if (busy) {
       if (tries < 12) window.setTimeout(() => this.maybeShowCloudIntro(tries + 1), 5000);
       return;
@@ -679,21 +699,34 @@ export class Shell {
       },
       { passive: false },
     );
-    document.addEventListener('pointerdown', () => this.audio.unlock(), { capture: true });
+    document.addEventListener(
+      'pointerdown',
+      () => {
+        this.audio.unlock();
+        this.focusByKeyboard = false;
+      },
+      { capture: true },
+    );
 
     document.addEventListener('keydown', (e) => {
       if (isSheetOpen() || this.photo.isOpen) return;
-      const onControl = (e.target as HTMLElement).closest('button, input, a, [role="switch"]') !== null;
+      const target = e.target as HTMLElement;
+      const onControl = target.closest('button, input, a, [role="switch"]') !== null;
       const key = e.key;
+      if (key === 'Tab') this.focusByKeyboard = true;
+      // Space and Enter always play, also on a button the mouse left focused (a tab after a
+      // click); only a control reached with Tab, or a text field, keeps them for itself.
+      const ownsKeys = target.closest('input, textarea, select, [contenteditable="true"]') !== null || (onControl && this.focusByKeyboard);
+      if ((e.code === 'Space' || key === 'Enter') && onControl && !ownsKeys) target.blur();
       if (e.repeat && key !== 'Tab') return;
       this.audio.unlock();
       this.keyboardNav = true;
       const match = this.versus.match;
       if (match) {
-        if (e.code === 'Space' && !onControl) {
+        if (e.code === 'Space' && !ownsKeys) {
           e.preventDefault();
           match.tap();
-        } else if (key === 'Enter' && !onControl && this.versus.canReady) {
+        } else if (key === 'Enter' && !ownsKeys && this.versus.canReady) {
           e.preventDefault();
           this.versus.toggleReady();
         } else if (match.isOut && !match.isOver && key >= '1' && key <= String(REACTIONS.length)) {
@@ -704,12 +737,17 @@ export class Shell {
         return;
       }
       if (e.code === 'Space') {
-        if (onControl) return;
+        if (ownsKeys) return;
         e.preventDefault();
         this.push({ k: 'tap', ago: Math.max(0, (performance.now() - e.timeStamp) / 1000) });
-      } else if (key === 'Enter' && !onControl) {
+      } else if (key === 'Enter' && !ownsKeys) {
         e.preventDefault();
         this.push({ k: 'confirm' });
+      } else if (SCROLL_KEYS[key] !== undefined && !target.closest('input, textarea, select, [contenteditable="true"]')) {
+        // The lists scroll from the keyboard too (Collection, Upgrades, Progress), gliding like the wheel.
+        e.preventDefault();
+        const step = SCROLL_KEYS[key];
+        this.push({ k: 'wheel', p: v(0, 0), dy: Math.abs(step) === 1 ? step * this.size.y * 0.8 : step });
       } else if (key === 'Escape') {
         this.push({ k: 'back' });
       } else if (key === 'ArrowLeft' || key === 'ArrowRight') {

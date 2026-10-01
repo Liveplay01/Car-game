@@ -537,7 +537,7 @@ Offene Ideen stehen in [IDEA.md](IDEA.md). Aus der alten Planung passen zum Brow
 | **Multiplayer-Bots** | `npm run sim:versus`: vorsichtige Spuren scheiden nie durch Crash aus, gleicher Seed = gleiches Match |
 | **Container wie in Coolify** | im Repo-Root: `docker build -t car-game . ; docker run -p 5050:5050 car-game` |
 
-**Steuerung:** Tap / Klick / Leertaste = Auto schicken (der erste Tap startet) · Wischen bzw. `←` / `→` = Modus · Dispatch-Button, `D`, `E`, Rechtsklick = Einsatzfahrt · `Tab` = Seite · obere Karte = Chests / Collection / Records · `Enter` = starten / Upgrade kaufen · `Esc` = Einstellungen bzw. zurück · `R` = Schicht neu.
+**Steuerung:** Tap / Klick / Leertaste = Auto schicken (der erste Tap startet) · Wischen bzw. `←` / `→` = Modus · Dispatch-Button, `D`, `E`, Rechtsklick = Einsatzfahrt · `Tab` = Seite · obere Karte = Chests / Collection / Records · `Enter` = starten / Upgrade kaufen · `Esc` = Einstellungen bzw. zurück · `R` = Schicht neu · `↑` / `↓`, Bild↑/↓, Pos1/Ende = Liste scrollen. Leertaste und Enter spielen immer, auch wenn die Maus einen Knopf fokussiert hat; nur ein mit `Tab` erreichter Knopf behält sie.
 
 **Playtest-Routine:** 3 Schichten spielen, am Desktop und auf einem echten Handy → Fairness der Crashes, Feedback-Wahrnehmung, Ruckler, Motivation („Will ich noch eine?“). Auffälligkeiten **mit Seed** notieren (ein Challenge-Link hält die Schicht fest).
 

@@ -31,6 +31,10 @@ export const PATCH_NOTES: PatchNote[] = [
       'Scrolling with a mouse wheel or trackpad glides smoothly in every list.',
       'Cloud sync replaces the export: Settings no longer writes a save file. A file you exported before can still be imported.',
       'The Home Screen tip at Level 5 is now a simple recommendation, and the later tip points to Cloud sync.',
+      'Space always sends a car now, also after you clicked a tab like the Shop.',
+      'A card you tap in the Collection glides up above its details instead of hiding behind them.',
+      'On a keyboard the arrow keys, Page Up/Down, Home and End scroll the lists.',
+      'The Cloud sync pop-up waits until Level 3, when there is progress to keep.',
     ],
   },
   {

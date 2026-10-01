@@ -82,6 +82,7 @@ export class ShopFlow {
         if (this.host.detailOpen && s.selectedItem === target.id && Careers.owns(career, target.id)) this.host.perform({ k: 'wear', id: target.id });
         else if (s.selectedItem !== target.id) this.host.tick();
         s.selectedItem = target.id;
+        s.revealItem = target.id;
         this.host.detailOpen = true;
         break;
       case 'wear':
