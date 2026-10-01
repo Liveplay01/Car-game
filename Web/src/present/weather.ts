@@ -1,7 +1,7 @@
 import type { World } from '../core/world';
 import { type Weather, weatherSeverity } from '../core/config';
 import { type Vec2, v, add, mul, normalize, fromAngle, wrap } from '../core/vec2';
-import { type RenderList, rect, circle, arc, line, unitHash } from './render';
+import { type RenderList, rect, circle, arc, line, segments, dots, unitHash } from './render';
 
 /** The weathers on screen and how strongly each shows (0–1); usually just one, at 1. */
 export type WeatherMix = readonly (readonly [Weather, number])[];
@@ -80,14 +80,21 @@ export const WeatherLayer = {
     const fall = 900 + 150 * severity;
     const slant = v(-0.18, 1);
     const length = 10 + 4 * severity;
-    // Rain sets in drop by drop: a share of the streaks, each at full strength.
+    // Rain sets in drop by drop: a share of the streaks, each at full strength. All streaks
+    // share one colour, so they go out as one path: one stroke a frame instead of up to 170,
+    // which a phone's GPU feels.
     const streaks = Math.round(WeatherLayer.streaks[severity] * amount);
-    for (let i = 0; i < streaks; i++) {
-      const x = unitHash(i, 1) * (vp.x + 60) - 30;
-      const speed = fall * (0.8 + 0.4 * unitHash(i, 3));
-      const y = ((unitHash(i, 2) * vp.y + time * speed) % (vp.y + 40)) - 20;
-      const start = v(x + (y / vp.y) * -40, y);
-      list.s(line(start, add(start, mul(slant, length)), 1.2), 'primary', 0.1 + 0.03 * severity);
+    if (streaks > 0) {
+      const ends: Vec2[] = [];
+      const drop = mul(slant, length);
+      for (let i = 0; i < streaks; i++) {
+        const x = unitHash(i, 1) * (vp.x + 60) - 30;
+        const speed = fall * (0.8 + 0.4 * unitHash(i, 3));
+        const y = ((unitHash(i, 2) * vp.y + time * speed) % (vp.y + 40)) - 20;
+        const start = v(x + (y / vp.y) * -40, y);
+        ends.push(start, add(start, drop));
+      }
+      list.s(segments(ends, 1.2), 'primary', 0.1 + 0.03 * severity);
     }
     if (reduceMotion || severity < 3) return;
     const period = severity >= 4 ? 4.5 : 7;
@@ -122,14 +129,30 @@ export const WeatherLayer = {
     }
   },
 
+  /**
+   * Snow: each flake had its own strength, so 120 fills a frame, each with a colour of its own.
+   * Now the flakes fall into a few strengths (`snowBands`) and each band is filled as one path:
+   * the same flurry in three draw calls.
+   */
+  snowFlakes: 120,
+  snowBands: 3,
+
   addSnow(list: RenderList, time: number, amount = 1): void {
     const vp = list.camera.viewport;
-    const flakes = Math.round(120 * amount);
+    const flakes = Math.round(WeatherLayer.snowFlakes * amount);
+    const bands = WeatherLayer.snowBands;
+    const points: Vec2[][] = Array.from({ length: bands }, () => []);
+    const radii: number[][] = Array.from({ length: bands }, () => []);
     for (let i = 0; i < flakes; i++) {
       const speed = 40 + 50 * unitHash(i, 52);
       const y = ((unitHash(i, 51) * vp.y + time * speed) % (vp.y + 20)) - 10;
       const x = unitHash(i, 53) * vp.x + Math.sin(time * 0.9 + i) * 10;
-      list.s(circle(v(x, y), 1 + 1.6 * unitHash(i, 54)), 'primary', 0.35 + 0.35 * unitHash(i, 55));
+      const band = Math.min(bands - 1, Math.floor(unitHash(i, 55) * bands));
+      points[band].push(v(x, y));
+      radii[band].push(1 + 1.6 * unitHash(i, 54));
+    }
+    for (let band = 0; band < bands; band++) {
+      if (points[band].length > 0) list.s(dots(points[band], radii[band]), 'primary', 0.35 + (0.35 * (band + 0.5)) / bands);
     }
   },
 

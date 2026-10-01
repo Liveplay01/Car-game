@@ -9,13 +9,14 @@ import { secureZone } from '../core/specials';
 import { clearZone } from '../core/ambulance';
 import { learnerZone } from '../core/learner';
 import { type Vec2, v, add, sub, mul, fromAngle, TAU } from '../core/vec2';
-import { type RenderList, type Rect, R, rect, circle, arc, line, text, Ease, Metrics, toScreen, type Align } from './render';
+import { type RenderList, type Rect, R, rect, circle, arc, line, text, Ease, Metrics, toScreen, moved, type Align } from './render';
 import type { ColorToken } from './theme';
 import { MenuKit } from './menukit';
 import { moneyTag, flameTag, textWidth } from './icons';
 import { S, Fmt, money as moneyText, comboMultiplier } from './strings';
 import { interpolatedPose } from './scene';
 import { wrapText } from './upgrades';
+import type { BriefView } from './briefing';
 
 // MARK: Top bar
 
@@ -69,13 +70,58 @@ export const TopBar = {
     }
   },
 
-  addCard(list: RenderList, frame: Rect, opacity = 1): void {
+  /** `brief`: a briefing shows on the card; its colour edges the card and the column lines give way. */
+  addCard(list: RenderList, frame: Rect, opacity = 1, brief: BriefView | null = null): void {
     const tag = list.tag;
     list.tag = 'topbarCard';
-    MenuKit.chromePanel(list, frame, TopBar.corner, opacity);
+    MenuKit.chromePanel(list, frame, TopBar.corner, opacity, brief ? brief.brief.color : null, brief ? brief.card : 1);
     const cols = TopBar.columns(frame);
-    for (const x of [cols.left.maxX, cols.right.minX]) list.s(line(v(x, frame.minY + 14), v(x, frame.maxY - 14), 1), 'chromeEdge', opacity);
+    const lines = opacity * (1 - (brief?.card ?? 0));
+    for (const x of [cols.left.maxX, cols.right.minX]) list.s(line(v(x, frame.minY + 14), v(x, frame.maxY - 14), 1), 'chromeEdge', lines);
     list.tag = tag;
+  },
+
+  /** How far the numbers and a briefing glide while they cross over (points). */
+  briefTravel: 6,
+
+  /**
+   * A briefing on the card (`Briefings`): what it is, small and in its colour, then what to do,
+   * on one line if it fits, else on two in a smaller size. A briefing with a time limit wears a
+   * thin line along the card's foot that runs down with it.
+   */
+  addBrief(list: RenderList, frame: Rect, view: BriefView, reduceMotion: boolean, textScale = 1): void {
+    const alpha = view.card * view.words;
+    if (alpha <= 0.001) return;
+    const drop = reduceMotion ? 0 : (1 - view.card) * TopBar.briefTravel;
+    const pad = 16;
+    const width = R.width(frame) - 2 * pad;
+    const x = frame.minX + pad;
+    const { size, lines } = TopBar.fitBrief(view.brief.text, width, textScale);
+    const lineHeight = size * 1.2;
+    const captionSize = 10;
+    const gap = 4;
+    const block = captionSize + gap + lines.length * lineHeight;
+    const top = frame.minY + (TopBar.height - block) / 2 + drop;
+    list.s(text(view.brief.caption, v(x, top + captionSize / 2), captionSize, 'leading', 'bold'), view.brief.color, alpha);
+    lines.forEach((ln, i) => list.s(text(ln, v(x, top + captionSize + gap + lineHeight * (i + 0.5)), size, 'leading', 'bold'), 'primary', alpha));
+    if (view.used !== null && view.used < 1) {
+      const inset = TopBar.corner;
+      const full = R.width(frame) - 2 * inset;
+      const left = full * (1 - view.used);
+      const y = frame.maxY - 2;
+      list.s(line(v(frame.minX + inset, y), v(frame.minX + inset + left, y), 2), view.brief.color, 0.55 * view.card);
+    }
+  },
+
+  /** The briefing's size: one line up to 15 points; else two lines, 13 points or smaller. */
+  fitBrief(s: string, width: number, textScale = 1): { size: number; lines: string[] } {
+    const single = Math.min(16, 15 * textScale);
+    if (textWidth(s, single) <= width) return { size: single, lines: [s] };
+    for (let size = 13; size >= 10.5; size -= 0.5) {
+      const lines = wrapText(s, width, size, true);
+      if (lines.length <= 2) return { size, lines };
+    }
+    return { size: 10.5, lines: wrapText(s, width, 10.5, true).slice(0, 2) };
   },
 
   anchor: (col: Rect, a: Align): number => (a === 'leading' ? col.minX + 16 : a === 'center' ? R.center(col).x : col.maxX - 16),
@@ -171,6 +217,10 @@ export interface HudInput {
   pops: Pops;
   flames: number;
   flamePop: number;
+  /** Something new and what to do about it: it takes the top card's place for a while. */
+  brief?: BriefView | null;
+  reduceMotion?: boolean;
+  textScale?: number;
 }
 
 /** The in-game HUD: the top card, the combo on the island, the specials. */
@@ -230,11 +280,13 @@ export const HUD = {
 
   addTopCard(list: RenderList, h: HudInput): void {
     const world = h.world;
+    const brief = h.brief ?? null;
     TopBar.addScrim(list);
     const frame = TopBar.frame(list.camera.viewport.x);
     const cols = TopBar.columns(frame);
-    TopBar.addCard(list, frame);
+    TopBar.addCard(list, frame, 1, brief);
     list.tag = 'topbarLabels';
+    const numbers = list.items.length;
     TopBar.addMoneyColumn(list, cols.left, 'leading', Fmt.number(h.money), { valueSize: 20 * land(h.pops.money, 0.15) });
     const c = cols.center;
     const tick = land(h.pops.cars, 0.12);
@@ -274,6 +326,16 @@ export const HUD = {
         valueColor: h.race.delta <= 0 ? 'accent' : 'destructive',
       });
     } else TopBar.addColumn(list, cols.right, 'trailing', S.hud.bestLabel, h.best ?? '–', { valueColor: h.best === null ? 'muted' : 'primary' });
+    if (brief) {
+      // The numbers fade and lift away while the briefing settles in from below, and back.
+      const shown = brief.card;
+      if (shown >= 0.999) list.items.length = numbers;
+      else {
+        const lift = v(0, h.reduceMotion ? 0 : -TopBar.briefTravel * shown);
+        for (let i = numbers; i < list.items.length; i++) list.items[i] = moved(list.items[i], lift, 1 - shown);
+      }
+      TopBar.addBrief(list, frame, brief, h.reduceMotion ?? false, h.textScale ?? 1);
+    }
     list.tag = undefined;
     HUD.addIsland(list, world, h.comboPop);
   },
@@ -869,8 +931,10 @@ export const ReadyBanner = {
       intro?: ConditionIntro[] | null;
       /** Larger text (Settings): the intro card's type a step up. */
       textScale?: number;
+      /** Room a notice takes under the top card right now: the intro card makes way for it. */
+      noticeRoom?: number;
     },
-  ): void {
+  ): number {
     const width = list.camera.viewport.x;
     const run = o.run ?? null;
     const opacity = o.opacity ?? 1;
@@ -915,7 +979,8 @@ export const ReadyBanner = {
     const island = toScreen(list.camera, v(0, 0));
     // The card names the new conditions itself, so the line on the island makes way for it.
     const introBottom = island.y - (run?.line ? 49 : 26);
-    const intro = o.intro && o.intro.length > 0 ? ReadyBanner.introLayout(o.intro, frame, frame.maxY + (pillText ? 43 : 12), introBottom, o.textScale ?? 1) : null;
+    const under = frame.maxY + (pillText ? 31 : 0);
+    const intro = o.intro && o.intro.length > 0 ? ReadyBanner.introLayout(o.intro, frame, under + 12 + (o.noticeRoom ?? 0), introBottom, o.textScale ?? 1) : null;
     const conditions = intro ? null : o.conditions;
     if (o.prompt) {
       const breath = o.reduceMotion ? 1 : 0.7 + 0.3 * (0.5 + 0.5 * Math.cos(o.time * 2.4));
@@ -926,6 +991,7 @@ export const ReadyBanner = {
     if (o.goal && o.prompt) list.s(text(o.goal, add(island, v(0, 28)), 13, 'center'), 'muted', opacity * (o.reduceMotion ? 1 : Ease.outCubic(o.time / 0.4)));
     if (intro) ReadyBanner.addIntro(list, intro, o.time, o.reduceMotion, opacity);
     if (o.daily && o.daily.splash !== null) ReadyBanner.addSplash(list, o.daily, o.daily.splash, o.reduceMotion);
+    return under;
   },
 
   /** The intro comes a beat after the ready screen, so it reads as news, not as part of the card. */

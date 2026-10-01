@@ -625,6 +625,36 @@ export class CanvasDrawer {
         ctx.stroke();
         return;
       }
+      case 'segments': {
+        // One stroke for all of them: a shower of streaks costs one draw call, not hundreds.
+        const t = len(p.thickness);
+        if (t <= 0.02 || p.points.length < 2) return;
+        this.setStroke(color);
+        ctx.lineWidth = t;
+        ctx.beginPath();
+        for (let i = 0; i + 1 < p.points.length; i += 2) {
+          const a = pt(p.points[i]);
+          const b = pt(p.points[i + 1]);
+          ctx.moveTo(a.x, a.y);
+          ctx.lineTo(b.x, b.y);
+        }
+        ctx.stroke();
+        return;
+      }
+      case 'dots': {
+        if (p.points.length === 0) return;
+        this.setFill(color);
+        ctx.beginPath();
+        for (let i = 0; i < p.points.length; i++) {
+          const c = pt(p.points[i]);
+          const r = len(p.radii[i]);
+          if (r <= 0.05) continue;
+          ctx.moveTo(c.x + r, c.y);
+          ctx.arc(c.x, c.y, r, 0, Math.PI * 2);
+        }
+        ctx.fill();
+        return;
+      }
       case 'polygon': {
         if (p.points.length < 3) return;
         this.setFill(color);

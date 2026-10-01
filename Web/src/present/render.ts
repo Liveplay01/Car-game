@@ -13,6 +13,10 @@ export type Primitive =
   | { k: 'arc'; center: Vec2; radius: number; thickness: number; start: number; end: number }
   | { k: 'line'; from: Vec2; to: Vec2; thickness: number }
   | { k: 'polygon'; points: Vec2[] }
+  /** Many thin lines in one colour, drawn as one path: `points` in pairs, from and to (rain). */
+  | { k: 'segments'; points: Vec2[]; thickness: number }
+  /** Many small discs in one colour, filled as one path (snow). */
+  | { k: 'dots'; points: Vec2[]; radii: number[] }
   | { k: 'text'; text: string; position: Vec2; size: number; align: Align; weight: Weight };
 
 /** A fine texture laid over a group of world items, anchored to the world (`draw.ts`). */
@@ -50,6 +54,8 @@ export const arc = (center: Vec2, radius: number, thickness: number, start: numb
 });
 export const line = (from: Vec2, to: Vec2, thickness: number): Primitive => ({ k: 'line', from, to, thickness });
 export const polygon = (points: Vec2[]): Primitive => ({ k: 'polygon', points });
+export const segments = (points: Vec2[], thickness: number): Primitive => ({ k: 'segments', points, thickness });
+export const dots = (points: Vec2[], radii: number[]): Primitive => ({ k: 'dots', points, radii });
 export const text = (s: string, position: Vec2, size: number, align: Align = 'center', weight: Weight = 'regular'): Primitive => ({
   k: 'text',
   text: s,
@@ -213,6 +219,8 @@ export function moved(item: RenderItem, offset: Vec2, factor: number): RenderIte
       out.p = { ...p, from: add(p.from, offset), to: add(p.to, offset) };
       break;
     case 'polygon':
+    case 'segments':
+    case 'dots':
       out.p = { ...p, points: p.points.map((q) => add(q, offset)) };
       break;
     case 'text':
@@ -244,6 +252,12 @@ export function zoomed(item: RenderItem, focus: Vec2, k: number): RenderItem {
     case 'polygon':
       out.p = { ...p, points: p.points.map(at) };
       break;
+    case 'segments':
+      out.p = { ...p, points: p.points.map(at), thickness: p.thickness * k };
+      break;
+    case 'dots':
+      out.p = { ...p, points: p.points.map(at), radii: p.radii.map((r) => r * k) };
+      break;
     case 'text':
       out.p = { ...p, position: at(p.position), size: p.size * k };
       break;
@@ -273,6 +287,12 @@ export function pinned(item: RenderItem, cam: Camera, factor = 1): RenderItem {
       break;
     case 'polygon':
       out.p = { ...p, points: p.points.map(pt) };
+      break;
+    case 'segments':
+      out.p = { ...p, points: p.points.map(pt), thickness: l(p.thickness) };
+      break;
+    case 'dots':
+      out.p = { ...p, points: p.points.map(pt), radii: p.radii.map(l) };
       break;
     case 'text':
       out.p = { ...p, position: pt(p.position), size: l(p.size) };

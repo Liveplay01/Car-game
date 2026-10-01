@@ -29,23 +29,28 @@ export function streakEndsIn(career: Career, today: number, config: Config): num
   return hours <= config.streakWarningHours ? hours : null;
 }
 
+/** Where a notice sits: hanging under `top` (the Game tab), or standing on `bottom` (the pages). */
+export type NoticePlace = { top: number } | { bottom: number };
+
+/** How tall a notice is, Larger text included. */
+export const noticeHeight = (textScale: number): number => 30 * textScale;
+
+/** How much a notice shows at `age` (0–1): it fades in quickly and out a little slower. */
+export const noticePresence = (age: number, duration: number): number => Ease.outCubic(age / 0.2) * (1 - Ease.clamp01((age - (duration - 0.5)) / 0.5));
+
 /**
- * The notice pill above the floating buttons. `lift` keeps it above the button on screen
- * (settings on the Game tab, dispatch during a shift); Larger text makes it a step bigger and
- * lifts it by what it grew.
+ * The notice pill. On the Game tab it hangs under the top card, out of the thumb's way (Leo:
+ * a tap covered it at the bottom), and drops in from under the card; on the pages it stands
+ * above the tab bar. Larger text makes it a step bigger.
  */
-export function addNotice(
-  list: RenderList,
-  notice: { text: string; age: number; duration: number },
-  o: { bottomInset: number; lift: number; textScale: number; reduceMotion: boolean },
-): void {
+export function addNotice(list: RenderList, notice: { text: string; age: number; duration: number }, o: { at: NoticePlace; textScale: number; reduceMotion: boolean }): void {
   const { text: textValue, age, duration } = notice;
   const vp = list.camera.viewport;
-  const opacity = Ease.outCubic(age / 0.2) * (1 - Ease.clamp01((age - (duration - 0.5)) / 0.5));
-  const rise = o.reduceMotion ? 0 : (1 - Ease.settle(age / 0.4)) * 18;
+  const opacity = noticePresence(age, duration);
+  const travel = o.reduceMotion ? 0 : (1 - Ease.settle(age / 0.4)) * 10;
   const scale = o.textScale;
-  const height = 30 * scale;
-  const center = v(vp.x / 2, vp.y - o.bottomInset - 36 - o.lift - (height - 30) / 2 + rise);
+  const height = noticeHeight(scale);
+  const center = 'top' in o.at ? v(vp.x / 2, o.at.top + height / 2 - travel) : v(vp.x / 2, o.at.bottom - height / 2 + travel);
   const size = Metrics.noticeSize * scale;
   const maxWidth = vp.x - 24;
   let fontSize = size;

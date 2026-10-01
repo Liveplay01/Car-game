@@ -27,9 +27,13 @@ export const PATCH_NOTES: PatchNote[] = [
   {
     id: '2026-10-01',
     date: '1 October 2026',
-    title: 'Feats, Big Screen, Cloud sync, friends and the Classic',
+    title: 'Briefings, Feats, Big Screen, Cloud sync and the Classic',
     impact: 'major',
     items: [
+      'Something new on the road now tells you what to do: the first time you meet a criminal, a money transporter, an ambulance and the rest, the top bar shows what to do until it is done. New weather and city events get a few seconds there as the shift starts.',
+      'Let a criminal get away and the next one reminds you how to catch it.',
+      'Messages now appear at the top, under the score bar, so your thumb no longer covers them while you play.',
+      'Rain and snow are much lighter on your phone: the same showers and flurries, drawn in a fraction of the work.',
       'A crash shakes the camera without redrawing the whole city each frame, so big pile-ups stay smooth on older phones. It looks exactly the same.',
       'Hidden buttons and the tab bar no longer cost your phone any work while you play.',
       'The Classic: a new car with a long bonnet and chrome bumpers. It drives like a car and is the only honour you can find by luck: 1 Standard Chest in 500 holds it, until you have it. The odds are on the chest.',

@@ -106,11 +106,11 @@ export const MenuKit = {
   },
 
   /** A floating panel of chrome: a soft shadow, the material, a hairline of light along the top. */
-  chromePanel(list: RenderList, frame: Rect, radius: number, opacity: number, tint: ColorToken | null = null): void {
+  chromePanel(list: RenderList, frame: Rect, radius: number, opacity: number, tint: ColorToken | null = null, tintOpacity = 1): void {
     const center = R.center(frame);
     const size = v(R.width(frame), R.height(frame));
     list.s(rect(add(center, v(0, 3)), add(size, v(4, 4)), radius + 2), 'shadow', opacity);
-    if (tint) list.s(rect(center, add(size, v(3, 3)), radius + 1.5), tint, 0.55 * opacity);
+    if (tint) list.s(rect(center, add(size, v(3, 3)), radius + 1.5), tint, 0.55 * opacity * tintOpacity);
     list.s(rect(center, size, radius), 'chrome', opacity);
     const inset = Math.min(radius * 1.3, size.x / 2 - 1);
     list.s(line(add(center, v(-size.x / 2 + inset, -size.y / 2 + 1)), add(center, v(size.x / 2 - inset, -size.y / 2 + 1)), 1), 'chromeEdge', opacity);

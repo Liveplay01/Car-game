@@ -228,6 +228,9 @@ Cloud sync.
   only when nothing would be lost (no shift running, no match or lobby, no photo); afterwards
   "Updated · See what's new in Settings" if there are unread patch notes.
 - iOS: Safari → Share → "Add to Home Screen". Android/Chrome: Settings → Install.
+- Link previews (`index.html`, Open Graph): `public/og-image.jpg`, the CrazyGames landscape
+  cover (`../Marketing/covers`) cut to 1200×630. Not precached: only link previews load it.
+  Challenge links keep their own picture with the score (`Server/`, `/c/:id/preview.png`).
 
 ## Deploying (Docker, Coolify)
 

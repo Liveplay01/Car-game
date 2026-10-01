@@ -50,6 +50,11 @@ export const comboMultiplier = (value: number): string => `×${value === Math.ro
 /** A Museum entry's words: one short line for its card, the explanation for its sheet. */
 interface MuseumText {
   line: string;
+  /**
+   * What to do, in one breath: the top card shows it the first time this meets you in a shift
+   * (`Briefings`). Short enough for two lines on a phone.
+   */
+  brief: string;
   explain: (c: Config) => string[];
 }
 
@@ -60,6 +65,7 @@ interface MuseumText {
 const BOSS_TEXT: Record<BossKind, MuseumText> = {
   convoy: {
     line: 'Escorts right behind it',
+    brief: 'Ram the boss with a police car, in the gap before its escorts.',
     explain: () => [
       'The head of the syndicate, in gold-striped black. Its armoured escorts join the ring right behind it.',
       'Time a police car into the gap between the boss and its escorts. Hitting an escort is a plain crash.',
@@ -68,6 +74,7 @@ const BOSS_TEXT: Record<BossKind, MuseumText> = {
   },
   getaway: {
     line: 'Gone in seconds',
+    brief: 'It is gone in seconds: have a police car ready and ram it at once.',
     explain: () => [
       'No escorts at all, just speed: the getaway driver is gone in a few seconds.',
       'Have a police car at the front of your queue before its warning ends, and send it in the moment the boss is on the ring.',
@@ -75,10 +82,12 @@ const BOSS_TEXT: Record<BossKind, MuseumText> = {
   },
   armoured: {
     line: 'Takes two police cars',
+    brief: 'Ram it twice: the first police car only cracks the armour.',
     explain: () => ['Its armour shrugs off the first ram, and an escort sticks to it.', 'One police car cracks the armour, a second one finishes it. Keep two in your queue.'],
   },
   phantom: {
     line: 'Drives without lights',
+    brief: 'No lights: follow its warning and ram it with a police car.',
     explain: () => [
       'It comes in a blackout, and it drives without lights: you only see it where the street lights reach.',
       'Follow the ring and trust its warning. An escort rides behind it, so pick the gap carefully.',
@@ -90,6 +99,7 @@ const SPECIAL_TEXT: Record<SpecialKind, MuseumText & { name: string }> = {
   police: {
     name: 'Police Car',
     line: 'The only car that stops a criminal',
+    brief: 'Only police cars stop a criminal. Keep one ready for the next warning.',
     explain: (c) => [
       'Police cars come from your own queue, like any of your cars. They are the only cars that can stop a criminal.',
       `Send one into the ring while a criminal is on it and drive into it: that is a takedown, worth ${Fmt.number(c.takedownPoints)} points and a link in your chain. Hold a police car back when a warning lights up an arm.`,
@@ -99,6 +109,7 @@ const SPECIAL_TEXT: Record<SpecialKind, MuseumText & { name: string }> = {
   pickup: {
     name: 'Criminal',
     line: 'Ram it with a police car',
+    brief: 'Crash a police car into the purple-ringed pickup before it gets away.',
     explain: (c) => [
       'A warning lights up the arm it comes from. Then it barges into the ring and races round it, heavy and fearless.',
       `You have about ${Math.round(c.criminalTime)} seconds to ram it with one of your police cars. A takedown pays ${Fmt.number(c.takedownPoints)} points and extends your chain.`,
@@ -108,6 +119,7 @@ const SPECIAL_TEXT: Record<SpecialKind, MuseumText & { name: string }> = {
   transporter: {
     name: 'Money Transporter',
     line: 'Let it through, then cash in',
+    brief: 'Let the money truck through untouched: it pays when it leaves.',
     explain: (c) => [
       'An armoured truck full of cash. A warning shows its arm, then it drives once round the ring with a secure zone around it.',
       `If it leaves safely you earn ${money(Fmt.number(c.transporterPay))} and a link in your chain. Every car of yours that joins inside its secure zone adds ${money(Fmt.number(c.shieldBonus))}.`,
@@ -117,6 +129,7 @@ const SPECIAL_TEXT: Record<SpecialKind, MuseumText & { name: string }> = {
   ambulance: {
     name: 'Ambulance',
     line: 'Keep the road ahead clear',
+    brief: 'Keep the road ahead of the ambulance clear until it leaves the ring.',
     explain: (c) => [
       'On an emergency run: it comes in with a warning and takes the long way round the ring.',
       'The stretch of ring right ahead of it has to stay clear. If you send a car in there, the run is spoiled and your combo and chain are gone.',
@@ -126,6 +139,7 @@ const SPECIAL_TEXT: Record<SpecialKind, MuseumText & { name: string }> = {
   truck: {
     name: 'Lorry',
     line: 'Long and heavy: leave a bigger gap',
+    brief: 'Lorries are long and heavy: leave a bigger gap in front of your car.',
     explain: (c) => [
       'Part of the ordinary traffic, but longer and much heavier than a car.',
       'It needs a bigger gap in front of your car, and in a crash it shoves lighter cars around instead of stopping.',
@@ -135,6 +149,7 @@ const SPECIAL_TEXT: Record<SpecialKind, MuseumText & { name: string }> = {
   tanker: {
     name: 'Gas Tanker',
     line: 'Wreck it and it explodes',
+    brief: 'A wrecked gas tanker explodes and throws every car nearby. Give it room.',
     explain: () => [
       'A lorry full of gas. It drives like any other lorry, and it comes without a warning.',
       'Wrecked, it explodes: the blast throws every car nearby off the road, yours too. Give it room.',
@@ -144,6 +159,7 @@ const SPECIAL_TEXT: Record<SpecialKind, MuseumText & { name: string }> = {
   military: {
     name: 'Military Truck',
     line: 'Stay out of its zone',
+    brief: "Keep every car out of the military truck's zone until it leaves.",
     explain: (c) => [
       'A military truck with a bomb on board. A warning shows its arm, then it drives round the ring with a no-go zone around it.',
       'Any car that enters the zone sets the bomb off, and the blast reaches across the whole roundabout.',
@@ -153,6 +169,7 @@ const SPECIAL_TEXT: Record<SpecialKind, MuseumText & { name: string }> = {
   fireTruck: {
     name: 'Fire Engine',
     line: 'A long road to keep clear',
+    brief: 'Keep the long stretch ahead of the fire engine clear until it leaves.',
     explain: (c) => [
       'An emergency run like the ambulance, but a fire engine: long, heavy, and it needs more of the road.',
       'The stretch of ring ahead of it is longer. Send a car in there and the run is spoiled, your combo and chain with it.',
@@ -162,6 +179,7 @@ const SPECIAL_TEXT: Record<SpecialKind, MuseumText & { name: string }> = {
   motorbike: {
     name: 'Motorbike',
     line: 'Slips into tiny gaps',
+    brief: 'Bikes slip into tiny gaps. Shave past one for bonus points.',
     explain: (c) => [
       'Quick and slim: a motorbike joins in gaps a car would never take, so a gap you counted on can be gone.',
       `Slip one of your cars right past it, a Tight Fit or a Near Miss, and the close shave pays ${Fmt.number(c.motorbikeBonus)} points on top, times your combo.`,
@@ -170,6 +188,7 @@ const SPECIAL_TEXT: Record<SpecialKind, MuseumText & { name: string }> = {
   learner: {
     name: 'Learner Driver',
     line: 'Give it room, it hesitates',
+    brief: 'Keep your cars out of the green band around the learner.',
     explain: (c) => [
       'A driving-school car goes once round the ring, and now and then it brakes for no reason. The traffic behind it bunches up.',
       'A green band shows the space around it, ahead and behind. Keep your cars out of it while it drives.',
@@ -179,6 +198,7 @@ const SPECIAL_TEXT: Record<SpecialKind, MuseumText & { name: string }> = {
   bus: {
     name: 'School Bus',
     line: 'Stops at the bus stop',
+    brief: 'School buses stop at the bus stop. Merge behind one as it pulls away.',
     explain: (c) => [
       'Only on a School Run: long yellow buses that stop at the bus stop on the ring, for about ' + `${Math.round(c.busDwell * 10) / 10} seconds.`,
       'The traffic behind a bus waits, and your cars wait with it instead of ploughing in. Merge behind a bus when it pulls away.',
@@ -193,6 +213,7 @@ const gripIn = (w: Weather, c: Config): string =>
 const WEATHER_TEXT: Record<WeatherKind, MuseumText> = {
   lightRain: {
     line: 'Slick roads',
+    brief: 'Wet road: crashes slide further. Leave a little more room.',
     explain: (c) => [
       `A wet road: tyres keep only ${gripIn('lightRain', c)} of their grip, and drivers react a little later and brake more softly.`,
       'Crashes slide further and cars need longer to stop. Leave a little more room when you merge.',
@@ -200,6 +221,7 @@ const WEATHER_TEXT: Record<WeatherKind, MuseumText> = {
   },
   heavyRain: {
     line: 'Less grip, more traffic',
+    brief: 'Less grip and more cars. Wait for gaps that are clearly big enough.',
     explain: (c) => [
       `Pouring rain: tyres keep ${gripIn('heavyRain', c)} of their grip, drivers react later still, and more cars are on the road.`,
       'Tight fits turn into crashes quickly. Wait for the gaps that are clearly big enough.',
@@ -207,6 +229,7 @@ const WEATHER_TEXT: Record<WeatherKind, MuseumText> = {
   },
   storm: {
     line: 'Drivers squeeze into gaps',
+    brief: 'Drivers squeeze into small gaps. Merge with care.',
     explain: (c) => [
       `A storm: tyres keep ${gripIn('storm', c)} of their grip, the traffic is heavier, and the other drivers squeeze into smaller gaps.`,
       'The ring fills up faster than you are used to. Time your cars carefully and keep an eye on who pushes in.',
@@ -214,6 +237,7 @@ const WEATHER_TEXT: Record<WeatherKind, MuseumText> = {
   },
   extreme: {
     line: 'The worst the sky can do',
+    brief: 'Hardly any grip and the heaviest traffic. Patience pays.',
     explain: (c) => [
       `Extreme weather: tyres keep only ${gripIn('extreme', c)} of their grip, the traffic is at its heaviest, and every driver is on edge.`,
       'Every crash slides a long way and takes others with it. Patience pays more than speed here.',
@@ -221,6 +245,7 @@ const WEATHER_TEXT: Record<WeatherKind, MuseumText> = {
   },
   fog: {
     line: 'The far side fades out',
+    brief: 'The far side fades out. Watch the cars coming out of the fog.',
     explain: (c) => [
       'Thick fog: the far side of the ring fades out, and drivers see a crash a moment later.',
       `Watch the traffic that comes out of the fog towards your arm; the warnings still shine through. A foggy shift pays ${percent(c.fogPayFactor - 1)} more.`,
@@ -228,6 +253,7 @@ const WEATHER_TEXT: Record<WeatherKind, MuseumText> = {
   },
   snow: {
     line: 'Ice on the road',
+    brief: 'Ice on the road: nobody stops quickly. Leave clearly more room.',
     explain: (c) => [
       `Snow and ice: tyres keep only ${gripIn('snow', c)} of their grip, and nobody stops quickly. A crash slides a long way.`,
       `Your tyre tracks stay in the snow. Leave clearly more room than usual. A snowy shift pays ${percent(c.snowPayFactor - 1)} more.`,
@@ -238,6 +264,7 @@ const WEATHER_TEXT: Record<WeatherKind, MuseumText> = {
 const DARK_TEXT: Record<DarkKind, MuseumText> = {
   night: {
     line: 'Only headlights and lamps',
+    brief: 'Watch the headlights, not the cars.',
     explain: (c) => [
       'A night shift: the city is dark, and you see the cars by their headlights and under the street lamps.',
       `Watch the lights on the ring rather than the cars. A night shift pays ${percent(c.nightPayFactor - 1)} more.`,
@@ -245,6 +272,7 @@ const DARK_TEXT: Record<DarkKind, MuseumText> = {
   },
   blackout: {
     line: 'Even the lamps are out',
+    brief: 'The street lamps are out: only headlights show the cars.',
     explain: (c) => [
       'A night with the street lamps out: only the headlights show where the cars are.',
       `A blackout shift pays ${percent(c.blackoutPayFactor - 1)} more. The Phantom, the fourth boss of the syndicate, only comes in a blackout.`,
@@ -255,6 +283,7 @@ const DARK_TEXT: Record<DarkKind, MuseumText> = {
 const EVENT_TEXT: Record<CityEvent, MuseumText> = {
   roadworks: {
     line: 'A slow stretch on the ring',
+    brief: 'Cars drive slower through the roadworks, so the gaps change there.',
     explain: (c) => [
       `Roadworks on part of the ring: traffic there slows to ${percent(c.roadworksSpeedFactor)} of its speed.`,
       'Cars bunch up behind the works, so the gaps change as they pass through. Look where the queue on the ring forms.',
@@ -262,6 +291,7 @@ const EVENT_TEXT: Record<CityEvent, MuseumText> = {
   },
   roadClosure: {
     line: 'One arm is closed',
+    brief: 'One arm is closed: fewer cars come in, and none leave there.',
     explain: () => [
       'One of the other arms is closed for the shift: no traffic comes in from it and no car can leave there.',
       'The traffic comes from fewer directions and leaves by fewer exits. It only happens on a roundabout with four arms or more.',
@@ -269,6 +299,7 @@ const EVENT_TEXT: Record<CityEvent, MuseumText> = {
   },
   concert: {
     line: 'The whole city is out',
+    brief: 'Many more cars on the ring. Take a good gap when it comes.',
     explain: (c) => [
       `A concert lets out: ${c.concertDensityBonus} more cars on the ring, and new cars arrive twice as often.`,
       'Gaps are rare and short. Take a good one when it comes instead of waiting for a perfect one.',
@@ -276,6 +307,7 @@ const EVENT_TEXT: Record<CityEvent, MuseumText> = {
   },
   vipConvoy: {
     line: 'Wide gaps, more cars',
+    brief: 'Every driver keeps more distance: wider gaps, a new rhythm.',
     explain: (c) => [
       `A VIP is in town: one more car on the ring, and every driver keeps about ${percent(c.vipGapFactor - 1)} more distance.`,
       'The gaps between the cars are wider but move differently. Time your merge to the new rhythm.',
@@ -283,6 +315,7 @@ const EVENT_TEXT: Record<CityEvent, MuseumText> = {
   },
   policeOperation: {
     line: 'More police in your queue',
+    brief: 'More of your cars are police: more chances for a takedown.',
     explain: (c) => [
       `A police operation: ${percent(c.policeOperationShare)} more of your cars are police cars.`,
       'Criminals are easier to catch, and every police car is one more chance for a takedown. Use them.',
@@ -290,6 +323,7 @@ const EVENT_TEXT: Record<CityEvent, MuseumText> = {
   },
   schoolRun: {
     line: 'Buses stop on the ring',
+    brief: 'School buses stop on the ring. Merge behind one as it pulls away.',
     explain: (c) => [
       `School's out: yellow school buses join the traffic, and each one stops for ${Math.round(c.busDwell * 10) / 10} seconds at the bus stop on the ring.`,
       'The cars behind a bus wait for it. Your cars brake behind a queue too, but the best gap opens right after a bus pulls away.',
@@ -348,6 +382,7 @@ function museumText(e: MuseumEntry): MuseumText {
 /** The two-lane ring (its own kind of condition: the road itself). */
 const ROAD_TEXT: MuseumText = {
   line: 'Read the gaps in both lanes',
+  brief: 'The arrow at your stop line shows which lane your car will take.',
   explain: (c) => [
     `From Level ${c.twoLaneLevel} the ring has an inner lane. Both lanes turn together, and traffic uses both.`,
     'An arrow in front of your stop line shows where your front car is headed: straight into the outer lane, or bending left across it into the inner one.',
@@ -693,8 +728,6 @@ export const S = {
   /** A condition met for the first time, on the ready screen (`ConditionIntro`). */
   intro: {
     title: (e: ConditionEntry): string => `New · ${S.museum.name(e)}`,
-    /** A special vehicle or a boss on the road for the first time, as a notice: its name and what to do. */
-    meet: (e: MuseumEntry): string => `New · ${S.museum.name(e)} · ${museumText(e).line}`,
     text: (e: ConditionEntry, c: Config): string =>
       e.k === 'road'
         ? 'The ring has two lanes now. The arrow at your stop line shows where your car is headed; the inner lane crosses the outer one.'
@@ -706,6 +739,13 @@ export const S = {
 
     /** The Museum's few words, where the sentence has no room. */
     short: (e: ConditionEntry): string => museumText(e).line,
+  },
+
+  /** The top card's briefing (`Briefings`): what meets you and what to do about it. */
+  brief: {
+    /** `again`: shown once more after this one cost the last shift. */
+    caption: (e: MuseumEntry, again: boolean): string => `${again ? 'Remember' : 'New'} · ${S.museum.name(e)}`.toUpperCase(),
+    text: (e: MuseumEntry): string => museumText(e).brief,
   },
 
   ready: {

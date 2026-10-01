@@ -46,12 +46,13 @@ import { BuildFlow } from './buildFlow';
 import { ShopFlow } from './shopFlow';
 import type { PageHost } from './pageHost';
 import { type SpecialRun, settleSpecial, runCard } from './specialRuns';
-import { conditionIntro, streakEndsIn, addNotice } from './readyScreen';
+import { conditionIntro, streakEndsIn, addNotice, noticeHeight, noticePresence, type NoticePlace } from './readyScreen';
+import { Briefings, briefOf } from './briefing';
 
 export type { SpecialRun } from './specialRuns';
 import { ProgressPage, ProgressState, type ProgressTarget } from './progress';
 import { MuseumPage } from './museum';
-import { sightings, museumEntry } from '../core/museum';
+import { sightings, museumEntry, museumId, conditionsOf, type MuseumEntry } from '../core/museum';
 import { UpgradePage, UpgradeState } from './upgrades';
 import { StreetBuilderPage, BuilderState } from './builder';
 import { Feedback, Music, type MusicMix, type SoundID, type HapticID } from './feedback';
@@ -207,6 +208,12 @@ export class GameSession {
   private lastCamera: Camera | null = null;
   private lastInset = 0;
   private readonly notices = new NoticeQueue();
+  /** Something new on the road takes the top card for a while, with what to do (`Briefings`). */
+  private readonly briefings = new Briefings();
+  /** Entries whose task cost a shift (a criminal got away): explained once more next time. */
+  private readonly relearn = new Set<string>();
+  /** Entries met for the first time whose briefing never got its turn (the shift ended first). */
+  private readonly owed = new Set<string>();
   private transitions = new TransitionTracker();
   playingLevel = 1;
   dailySelected = false;
@@ -578,7 +585,8 @@ export class GameSession {
 
   /** The notice showing right now, for the screen reader's live region. */
   get noticeText(): string | null {
-    return this.notices.shown?.text ?? null;
+    const brief = this.screen.k === 'playing' ? this.briefings.view : null;
+    return this.notices.shown?.text ?? (brief ? `${brief.brief.caption}. ${brief.brief.text}` : null);
   }
 
   /** News for the player: each line gets its own turn. */
@@ -614,6 +622,7 @@ export class GameSession {
     this.pendingSummary = null;
     this.shownScore = 0;
     this.sinceComboTier = Infinity;
+    for (const id of this.briefings.clear()) this.owed.add(id);
     this.screen = next;
     this.onChrome?.();
   }
@@ -898,6 +907,7 @@ export class GameSession {
       if (steps >= 60) this.accumulator = 0;
       this.react(events);
       this.noteSightings();
+      this.briefings.advance(simDelta, this.world);
       this.age(simDelta);
       this.lamps.update(this.world, simDelta);
     }
@@ -1372,18 +1382,51 @@ export class GameSession {
   }
 
   /**
-   * Special vehicles and bosses on the road for the first time go on show in the Museum, and a
-   * notice says once what they are and what to do (conditions had the ready screen for that).
+   * Special vehicles and bosses on the road for the first time go on show in the Museum, and the
+   * top card says what they are and what to do (`brief`). Conditions have the ready screen and
+   * their briefing as the shift starts (`briefConditions`).
    */
   private noteSightings(): void {
     // The tutorial teaches the first shift itself; what it meets there is met again right after.
     if (this.tutorial && !this.tutorial.isOver) return;
-    const found = Careers.discover(this.save.career, sightings(this.world));
+    const seen = sightings(this.world);
+    // A briefing owed from a shift that ended too soon comes when its vehicle is back.
+    if (this.owed.size > 0) for (const id of seen) if (this.owed.has(id)) this.brief(museumEntry(id));
+    const found = Careers.discover(this.save.career, seen);
     if (found.length === 0) return;
     this.museumFound.push(...found);
     this.persist();
-    const met = found.map(museumEntry).filter((e) => e !== null && (e.k === 'special' || e.k === 'boss'));
-    if (met.length > 0 && !this.versusSelected) this.announce(...met.map((e) => S.intro.meet(e!)));
+    for (const e of found.map(museumEntry)) if (e && (e.k === 'special' || e.k === 'boss')) this.brief(e, true);
+  }
+
+  /** Whether briefings belong on the top card now: a shift of your own, past the tutorial. */
+  private get briefs(): boolean {
+    return this.screen.k === 'playing' && !this.versusSelected && this.playingMode !== 'mayhem' && (this.tutorial?.isOver ?? true);
+  }
+
+  /**
+   * Explains `e` on the top card if it is new to this player or cost the last shift. `found`:
+   * the Museum has just taken it in, so it is new for sure.
+   */
+  private brief(e: MuseumEntry | null, found = false): void {
+    if (!e) return;
+    const id = museumId(e);
+    // Met where there is no top card to explain it (Mayhem): owed for a shift that has one.
+    if (!this.briefs) {
+      if (found) this.owed.add(id);
+      return;
+    }
+    const again = this.relearn.has(id);
+    const owed = this.owed.has(id);
+    if (!found && !again && !owed && this.save.career.museumSeen.includes(id)) return;
+    this.relearn.delete(id);
+    this.owed.delete(id);
+    this.briefings.add(briefOf(e, again && !found && !owed));
+  }
+
+  /** The shift's conditions new to this player: each on the top card for a few seconds as it starts. */
+  private briefConditions(): void {
+    for (const e of conditionsOf(this.world.config)) this.brief(e);
   }
 
   /** The Museum's new entries of the shift, as a line for the result; empties the list. */
@@ -1582,6 +1625,7 @@ export class GameSession {
           this.rim.signal('wave', 'lightBlue');
           break;
         case 'criminalWarning':
+          this.brief(e.boss ? { k: 'boss', kind: world.config.bossKind } : { k: 'special', kind: 'pickup' });
           if (e.boss) {
             this.addPopup({ k: 'convoy', kind: world.config.bossKind }, world.layout.stopPose(e.arm).position);
             this.rim.signal('sweep', 'coin');
@@ -1592,10 +1636,12 @@ export class GameSession {
           this.rim.signal('wave', 'coin');
           break;
         case 'ambulanceWarning':
+          this.brief({ k: 'special', kind: e.fire ? 'fireTruck' : 'ambulance' });
           this.addPopup({ k: 'ambulance', fire: e.fire }, world.layout.stopPose(e.arm).position);
           this.rim.signal('sweep', 'lightBlue');
           break;
         case 'learnerWarning':
+          this.brief({ k: 'special', kind: 'learner' });
           this.addPopup({ k: 'learner' }, world.layout.stopPose(e.arm).position);
           this.rim.signal('sweep', 'juiceGreen');
           break;
@@ -1634,6 +1680,7 @@ export class GameSession {
           this.addPopup({ k: 'lost' }, e.point);
           break;
         case 'transporterWarning':
+          this.brief({ k: 'special', kind: 'transporter' });
           if (e.jackpot) {
             this.addPopup({ k: 'jackpot' }, world.layout.stopPose(e.arm).position);
             this.rim.signal('sweep', 'coin');
@@ -1652,7 +1699,17 @@ export class GameSession {
         case 'towed':
           this.addPopup({ k: 'modulePulse', color: 'hazard' }, towYard(e.slot, world.layout, world.config));
           break;
+        case 'militaryWarning':
+          this.brief({ k: 'special', kind: 'military' });
+          break;
+        case 'criminalEscaped': {
+          // It cost the shift: the next one explains it again.
+          const boss = world.vehicle(e.vehicle)?.role === 'boss';
+          if (this.briefs) this.relearn.add(museumId(boss ? { k: 'boss', kind: world.config.bossKind } : { k: 'special', kind: 'pickup' }));
+          break;
+        }
         case 'explosion':
+          if (e.kind === 'bomb' && this.briefs) this.relearn.add(museumId({ k: 'special', kind: 'military' }));
           this.explosions.spawn(e, this.reduceMotion);
           this.scars.add(e, this.sceneTime);
           this.effects.ignite([...e.wrecked, e.source], 1.5);
@@ -1683,6 +1740,7 @@ export class GameSession {
     this.sinceMoney = Infinity;
     this.dailySplash = null;
     this.play(['go'], []);
+    this.briefConditions();
     this.onChrome?.();
     if (!this.playingDaily) return;
     const career = this.save.career;
@@ -1956,6 +2014,8 @@ export class GameSession {
 
     const overlayStart = list.items.length;
     const s = this.screen;
+    // Where the chrome under the top card ends: a notice hangs below it.
+    let underCard = TopBar.frame(viewport.x).maxY;
     if (s.k === 'playing') {
       HUD.addFlowGlow(list, world, this.flowLevel);
       HUD.addChase(list, world, alpha);
@@ -1983,10 +2043,14 @@ export class GameSession {
             },
         flames: Math.round(this.shownFlames),
         flamePop: rm ? 1 : Ease.clamp01(this.sinceFlames / 0.35),
+        brief: this.briefings.view,
+        reduceMotion: rm,
+        textScale: this.textScale,
       });
       this.tutorial?.add(list, world, alpha, this.sceneTime, rm);
       // A trial that counts (Perfects, Tight Fits): how far it is, while it runs.
       const progress = this.special?.k === 'trial' ? trialProgress(this.special.trial, world.score) : null;
+      if (world.config.endless || progress) underCard = TopBar.frame(viewport.x).maxY + 31;
       if (progress && this.special?.k === 'trial') {
         HUD.addGoalPill(list, S.trials.progress(this.special.trial, progress.have, progress.need), progress.have >= progress.need, rm ? 1 : Ease.clamp01(this.sinceCarSent / 0.35));
       }
@@ -1996,9 +2060,9 @@ export class GameSession {
       ResultBanner.add(list, s.summary, this.playingLevel, this.resultBank, this.resultAge, rm);
       this.tutorial?.add(list, world, alpha, this.sceneTime, rm);
       const arriving = ResultBanner.arriving(this.resultAge);
-      if (arriving > 0) this.addReadyBanner(list, null, false, arriving);
+      if (arriving > 0) underCard = this.addReadyBanner(list, null, false, arriving);
     } else if (s.k === 'ready') {
-      this.addReadyBanner(list, this.tutorial && !this.tutorial.isOver ? Tutorial.readyPrompt : this.versusSelected ? S.ready.tapForFriends : S.ready.tapToStart);
+      underCard = this.addReadyBanner(list, this.tutorial && !this.tutorial.isOver ? Tutorial.readyPrompt : this.versusSelected ? S.ready.tapForFriends : S.ready.tapToStart);
       this.tutorial?.add(list, world, alpha, this.sceneTime, rm);
     }
     const inset = this.tabInset;
@@ -2011,11 +2075,24 @@ export class GameSession {
     else if (s.k === 'settings') list.s(rect({ x: viewport.x / 2, y: viewport.y / 2 }, viewport), 'background', 0.55);
     this.transitions.apply(list, s, overlayStart, rm);
     const notice = this.notices.shown;
-    // On the Game tab the settings button sits bottom left, during a shift the dispatch button
-    // bottom right (`ui/shell.css`): the notice keeps above them.
-    const lift = s.k === 'ready' || s.k === 'result' ? 56 : s.k === 'playing' ? 72 : 0;
-    if (notice) addNotice(list, notice, { bottomInset: inset, lift, textScale: this.textScale, reduceMotion: rm });
+    if (notice) addNotice(list, notice, { at: this.noticePlace(s, underCard, inset), textScale: this.textScale, reduceMotion: rm });
     return list;
+  }
+
+  /**
+   * Where the notice goes. On the Game tab it hangs under the top card (and the pill under it),
+   * where a thumb tapping the ring never covers it; on the pages it stays above the tab bar.
+   */
+  private noticePlace(s: Screen, underCard: number, inset: number): NoticePlace {
+    if (s.k === 'ready' || s.k === 'result' || s.k === 'playing') return { top: underCard + 10 };
+    return { bottom: this.lastViewport.y - inset - 21 };
+  }
+
+  /** How much room a notice under the top card takes right now, for the ready screen's intro to make way. */
+  private get noticeRoom(): number {
+    const notice = this.notices.shown;
+    if (!notice) return 0;
+    return (noticeHeight(this.textScale) + 10) * Ease.smoothstep(noticePresence(notice.age, notice.duration));
   }
 
   /** The Build tab's segment thumb: 0 on Upgrades, 1 on the Street Builder, gliding between. */
@@ -2042,7 +2119,8 @@ export class GameSession {
     return this.shopPage.wallet.unseen(c.unseen).length > 0 ? 'dot' : null;
   }
 
-  private addReadyBanner(list: RenderList, prompt: string | null, drawsCard = true, opacity = 1): void {
+  /** Draws the ready screen; returns where its chrome under the top card ends (`ReadyBanner.add`). */
+  private addReadyBanner(list: RenderList, prompt: string | null, drawsCard = true, opacity = 1): number {
     const career = this.save.career;
     const daily = this.dailySelected && !this.versusSelected
       ? {
@@ -2056,7 +2134,7 @@ export class GameSession {
       : null;
     // The next goal in reach: only on a plain career shift, never over a challenge, trial or match.
     const goal = !this.special && !this.versusSelected && this.playingMode === 'shift' && (this.tutorial?.isOver ?? true) ? Goals.next(career, this.today) : null;
-    ReadyBanner.add(list, {
+    const under = ReadyBanner.add(list, {
       level: this.playingLevel,
       cars: this.world.carsLeft ?? 0,
       highscore: this.currentBest,
@@ -2078,11 +2156,13 @@ export class GameSession {
       goal: goal ? S.goals.next(goal) : null,
       intro: this.versusSelected || (this.tutorial && !this.tutorial.isOver) ? null : conditionIntro(this.world.config, career),
       textScale: this.textScale,
+      noticeRoom: this.noticeRoom,
     });
     if (this.modeBanner) {
       const top = TopBar.frame(list.camera.viewport.x).maxY + (daily ? 40 : 14);
       ModeBanner.add(list, this.modeBanner.mode, this.modeBanner.age, top, this.reduceMotion);
     }
+    return under;
   }
 
   /** Screen point of the island centre (for DOM overlays that follow the camera). */

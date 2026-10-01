@@ -21,6 +21,7 @@ const { loadSave, writeSave, parseImport } = await load('/src/storage/save.ts');
 const { fingerprint } = await load('/src/net/cloud.ts');
 const { iceServers } = await load('/src/net/rtc.ts');
 const { NoticeQueue } = await load('/src/present/notices.ts');
+const { Briefings, briefOf } = await load('/src/present/briefing.ts');
 const { bookShift } = await load('/src/present/booking.ts');
 const { S, Fmt } = await load('/src/present/strings.ts');
 const { Unlocks } = await load('/src/core/unlocks.ts');
@@ -355,12 +356,46 @@ test('every condition has a short first-meeting line', () => {
   }
 });
 
-test('every special vehicle and boss has a short first-meeting notice', () => {
-  for (const e of [...shelfEntries(0), ...shelfEntries(1)]) {
-    const notice = S.intro.meet(e);
-    assert.match(notice, /^New · \S.* · \S/, museumId(e));
-    assert.ok(notice.length <= 60, `${museumId(e)} is ${notice.length} characters: ${notice}`);
+test('everything in the Museum has a briefing short enough for two lines of the top card', () => {
+  for (const e of [...shelfEntries(0), ...shelfEntries(1), ...shelfEntries(2)]) {
+    const b = briefOf(e);
+    assert.match(b.caption, /^NEW · \S/, museumId(e));
+    assert.match(briefOf(e, true).caption, /^REMEMBER · \S/, museumId(e));
+    assert.ok(b.text.length > 0 && !/undefined|NaN/.test(b.caption + b.text), museumId(e));
+    assert.ok(b.text.length <= 72, `${museumId(e)} is ${b.text.length} characters: ${b.text}`);
   }
+});
+
+test('a briefing with a task stays until the task is over, then the numbers come back', () => {
+  const world = { criminal: { kind: 'warning' } };
+  const briefs = new Briefings();
+  briefs.add(briefOf({ k: 'special', kind: 'pickup' }));
+  briefs.add(briefOf({ k: 'special', kind: 'pickup' }));
+  for (let t = 0; t < 20; t += 0.1) briefs.advance(0.1, world);
+  assert.equal(briefs.view?.brief.id, 'special.pickup', 'still on while the criminal is');
+  assert.equal(briefs.view?.used, null);
+  world.criminal.kind = 'idle';
+  for (let t = 0; t < 1; t += 0.1) briefs.advance(0.1, world);
+  assert.equal(briefs.view, null);
+  assert.ok(briefs.isEmpty, 'given once per shift');
+});
+
+test('briefings without a task stay a few seconds each, a task goes first', () => {
+  const world = { criminal: { kind: 'idle' }, transporter: { kind: 'warning' } };
+  const briefs = new Briefings();
+  briefs.add(briefOf({ k: 'weather', kind: 'fog' }));
+  briefs.add(briefOf({ k: 'event', kind: 'roadworks' }));
+  const seen = [];
+  for (let t = 0; t < 30; t += 0.05) {
+    // The fog is on the card when the transporter's warning comes: the fog has its least time first.
+    if (Math.abs(t - 1) < 0.01) briefs.add(briefOf({ k: 'special', kind: 'transporter' }));
+    if (t > 8) world.transporter.kind = 'idle';
+    briefs.advance(0.05, world);
+    const id = briefs.view?.brief.id;
+    if (id && seen[seen.length - 1] !== id) seen.push(id);
+  }
+  assert.deepEqual(seen, ['weather.fog', 'special.transporter', 'event.roadworks']);
+  assert.equal(briefs.view, null);
 });
 
 test('nothing counts as met while the shift waits for its first tap', () => {
