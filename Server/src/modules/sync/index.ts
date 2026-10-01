@@ -32,8 +32,11 @@ export const SYNC_MIGRATIONS: readonly string[] = [
   ) WITHOUT ROWID`,
 ];
 
-/** A save is 1 to ~25 KB; this leaves room for growth and refuses anything silly. */
-export const MAX_SAVE_BYTES = 96 * 1024;
+/**
+ * A save grows with the career (best times per level, chests, collection): a few KB early on,
+ * around 100 KB after a few hundred levels. This leaves room for that and refuses anything silly.
+ */
+export const MAX_SAVE_BYTES = 512 * 1024;
 
 const CODE_LENGTH = 12;
 

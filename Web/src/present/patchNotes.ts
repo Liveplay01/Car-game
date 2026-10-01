@@ -22,6 +22,16 @@ export type PatchImpact = 'major' | 'minor' | 'fix';
 
 export const PATCH_NOTES: PatchNote[] = [
   {
+    id: '2026-10-01-cloud-size',
+    date: '1 October 2026',
+    title: 'Cloud sync for long careers',
+    impact: 'fix',
+    items: [
+      'Cloud sync works again for long careers: it no longer fails with "too large" after many levels.',
+      'Your best times per level take far less space in your save.',
+    ],
+  },
+  {
     id: '2026-10-01-smooth-scroll',
     date: '1 October 2026',
     title: 'Smoother scrolling, Cloud sync for your progress',

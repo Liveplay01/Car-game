@@ -43,8 +43,8 @@ The token travels as `Authorization: Bearer <token>`. Errors are `{error: {code,
 vanish from every list. Adding is limited to 20 tries a minute per player.
 
 **Cloud save** has no name and no password: the sync code is the key (12 characters from 31, about
-59 bits). Only its SHA-256 is stored, next to the save as the game wrote it (up to 96 KB, a real
-save is 1 to 25 KB). The game adds the player's leaderboard account (id, name, token) to the copy as
+59 bits). Only its SHA-256 is stored, next to the save as the game wrote it (up to 512 KB; a save
+grows with the career, from a few KB to around 100 KB after a few hundred levels). The game adds the player's leaderboard account (id, name, token) to the copy as
 `cloudAccount`, so a new device becomes the same player; the server stores it like the rest and does
 not look at it. The server knows nothing of the game's rules and does not check the content;
 the game reads it field by field like an imported file. Wrong codes count against 60 tries a minute

@@ -67,7 +67,10 @@ test('sync: a save must be an object and not too large', async () => {
   let n = 0;
   for (const save of [null, 5, 'x', [1]]) assert.equal((await call('POST', '/v1/sync', { body: { save }, ip: `10.2.0.${++n}` })).status, 422);
   assert.equal((await call('POST', '/v1/sync', { body: {}, ip: '10.2.1.1' })).status, 422);
-  const huge = { filler: 'x'.repeat(200 * 1024) };
+  // A long career's save (best times for hundreds of levels) still fits.
+  const big = { filler: 'x'.repeat(200 * 1024) };
+  assert.equal((await call('POST', '/v1/sync', { body: { save: big }, ip: '10.2.1.3' })).status, 201);
+  const huge = { filler: 'x'.repeat(600 * 1024) };
   assert.equal((await call('POST', '/v1/sync', { body: { save: huge }, ip: '10.2.1.2' })).status, 413);
 });
 

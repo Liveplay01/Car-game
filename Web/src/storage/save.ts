@@ -1,4 +1,4 @@
-import { type SaveGame, type Career, type Hint, HINTS, newSave, newCareer, GAME_MODES, MASTERY_GOALS, type GameMode } from '../core/career';
+import { type SaveGame, type Career, type Hint, HINTS, newSave, newCareer, roundTimes, GAME_MODES, MASTERY_GOALS, type GameMode } from '../core/career';
 import { UPGRADES, upgradeMaxSteps } from '../core/levels';
 import { COSMETICS, CHEST_KINDS, type ChestKind, type CosmeticSource, MAX_CAR_SKINS, cosmetic } from '../core/loot';
 import { ROAD_MODULES, type RoadModule, BOSS_KINDS, type BossKind, baseConfig } from '../core/config';
@@ -62,7 +62,7 @@ function readCareer(raw: unknown): Career {
   const bestTimes: Record<string, number[]> = {};
   if (isObject(raw.bestTimes)) {
     for (const [level, times] of Object.entries(raw.bestTimes)) {
-      if (Array.isArray(times) && times.every((t) => typeof t === 'number' && Number.isFinite(t))) bestTimes[level] = times as number[];
+      if (Array.isArray(times) && times.every((t) => typeof t === 'number' && Number.isFinite(t))) bestTimes[level] = roundTimes(times as number[]);
     }
   }
   const bossesBeaten = [...new Set(strings(raw.bossesBeaten).filter((k): k is BossKind => BOSS_KINDS.includes(k as BossKind)))];

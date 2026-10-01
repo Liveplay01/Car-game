@@ -224,6 +224,12 @@ export interface SaveGame {
   notesSeen: string | null;
 }
 
+/**
+ * Split times kept to the millisecond. The simulation's clock gives long fractions
+ * (12.341666666666667), and one list per level made big saves too large for the cloud.
+ */
+export const roundTimes = (times: readonly number[]): number[] => times.map((t) => Math.round(t * 1000) / 1000);
+
 export const newCareer = (): Career => ({
   level: 1,
   money: 0,
@@ -668,7 +674,7 @@ export const Careers = {
     const pace = (times: number[]): number => (times[times.length - 1] ?? Infinity) / Math.max(1, times.length);
     const best = c.bestTimes[String(level)];
     if (best && pace(best) <= last / splits.length) return false;
-    c.bestTimes[String(level)] = splits;
+    c.bestTimes[String(level)] = roundTimes(splits);
     return true;
   },
 
