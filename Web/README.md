@@ -270,6 +270,17 @@ In the submission form, Progress Save must be "Yes, using the Data Module".
 Test locally: `npm run build`, serve `dist/` without the CSP and open `/?crazygames`
 (on localhost the SDK runs in its `local` mode).
 
+## Google AdSense
+
+`src/ui/ads.ts` adds the AdSense tag once the game is on screen: production build only, and
+never on `?crazygames`. `index.html` carries the `google-adsense-account` meta tag (site
+verification, sends nothing). The default Content-Security-Policy in `nginx.conf` lets the tag,
+the ad frames and the consent message through; the CrazyGames policy stays closed to them.
+`ads.txt` belongs on the root domain (`https://gustaff.dev/ads.txt`, the portfolio's project),
+not in this repo; it covers `game.gustaff.dev`. The consent message (EEA/UK) is set up in
+AdSense under Privacy & messaging. Auto ads (and which formats) are also set there: no anchor
+or full-screen formats on this site, a tap on the scene must never hit an ad.
+
 ## Legal pages
 
 Privacy Policy and Imprint live in `src/present/legal.ts`: the game shows them under

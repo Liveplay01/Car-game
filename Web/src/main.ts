@@ -3,6 +3,7 @@ import { S } from './present/strings';
 import { inPortal } from './storage/device';
 import { gameLoaded, startCrazyGames } from './ui/crazygames';
 import { startCloud } from './net/cloud';
+import { startAds } from './ui/ads';
 
 const app = document.getElementById('app')!;
 const canvas = document.getElementById('scene') as HTMLCanvasElement;
@@ -17,6 +18,7 @@ if (inPortal) await startCrazyGames();
 const shell = new Shell(app, canvas, layers);
 if (import.meta.env.DEV) (window as unknown as { __game: Shell }).__game = shell;
 gameLoaded();
+startAds();
 // Cloud sync, when the player turned it on: newer progress from another device comes over by itself.
 startCloud({
   save: () => shell.game.save,

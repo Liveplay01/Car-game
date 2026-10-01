@@ -75,7 +75,7 @@ export const LEGAL_DOCS: LegalDoc[] = [
     sections: [
       {
         paragraphs: [
-          `${GAME_NAME} has no sign-up, no cookies, no analytics and no tracking. Your progress stays on your device. This page explains the few things that do leave it.`,
+          `${GAME_NAME} has no sign-up and no analytics of its own. Your progress stays on your device. This page explains the few things that do leave it, and the ads Google may show on this site.`,
           `Last updated: ${LEGAL_UPDATED}.`,
         ],
       },
@@ -150,6 +150,15 @@ export const LEGAL_DOCS: LegalDoc[] = [
           'When you tap Challenge a friend, the game asks our server for a short link (like …/c/K7M29QXA) that shows a picture with your score in a chat. For that it sends the challenge: the shift (level, mode, the random seed of the traffic, your upgrades, roads and car types) and the score to beat. If you have a name on the leaderboard, the link is tied to it and the picture shows that name; removing your name from the leaderboard takes it off your links. The server keeps a short link for a year, then deletes it. Anyone with the link can open it. Your IP address reaches the server with the request, as with any website; it is used only in memory to stop abuse and is not stored. Without the server the game shares the long link, which sends nothing to us.',
           'Legal basis: Art. 6(1)(b) GDPR (the link you asked for).',
         ],
+      },
+      {
+        heading: 'Ads (Google AdSense)',
+        paragraphs: [
+          'On game.gustaff.dev (not on CrazyGames) Google AdSense may show ads. For that, your browser loads scripts from Google and sends it your IP address, your browser and device data and the page you are on. Google, and the advertisers it works with, may set or read cookies and similar identifiers on your device to choose and measure ads, to prevent fraud and, with your consent, to personalise ads. Google may process data in the USA; Google is certified under the EU-US Data Privacy Framework.',
+          'If you are in the European Economic Area or the United Kingdom, a consent message from Google asks you first. Without your consent, only the ads that need no personal data are possible, or none at all. Legal basis: your consent, Art. 6(1)(a) GDPR and § 25(1) TDDDG. You can change your choice at any time with the privacy settings link of the consent message, or by clearing the site data in your browser.',
+        ],
+        after: ['Google is responsible for its own use of the data. How it uses data from sites that use its services, and how to turn personalised ads off:'],
+        link: ['How Google uses data from partner sites', 'https://policies.google.com/technologies/partner-sites'],
       },
       {
         heading: 'Playing on CrazyGames',
