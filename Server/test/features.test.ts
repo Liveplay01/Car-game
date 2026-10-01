@@ -51,6 +51,13 @@ test('sync: a save is stored under a new code and comes back on another device',
   assert.equal(got.status, 200);
   assert.deepEqual(got.json.save, SAVE);
   assert.equal(got.json.updatedAt, made.json.updatedAt);
+
+  // The game asks often with the version it has: unchanged, the answer leaves the save out.
+  const same = await call('GET', `/v1/sync?have=${made.json.updatedAt}`, { token: typed, ip: '10.9.9.9' });
+  assert.equal(same.status, 200);
+  assert.deepEqual(same.json, { updatedAt: made.json.updatedAt });
+  const older = await call('GET', `/v1/sync?have=${made.json.updatedAt - 1}`, { token: typed, ip: '10.9.9.9' });
+  assert.deepEqual(older.json.save, SAVE);
 });
 
 test('sync: wrong, unknown and missing codes are refused', async () => {
@@ -119,7 +126,7 @@ test('sync: deleting removes the save; the limits hold', async () => {
   // Ten new codes an hour per address; guessing is limited too.
   for (let i = 0; i < 9; i++) assert.equal((await call('POST', '/v1/sync', { body: { save: SAVE } })).status, 201);
   assert.equal((await call('POST', '/v1/sync', { body: { save: SAVE } })).status, 429);
-  for (let i = 0; i < 60; i++) await call('GET', '/v1/sync', { token: 'AAAA-AAAA-AAAA', ip: '10.7.7.7' });
+  for (let i = 0; i < 120; i++) await call('GET', '/v1/sync', { token: 'AAAA-AAAA-AAAA', ip: '10.7.7.7' });
   assert.equal((await call('GET', '/v1/sync', { token: 'AAAA-AAAA-AAAA', ip: '10.7.7.7' })).status, 429);
 });
 

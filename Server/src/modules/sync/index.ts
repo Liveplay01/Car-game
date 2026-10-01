@@ -14,7 +14,8 @@ import type { Db } from '../../db.ts';
  * `Authorization` header and never from an address.
  *
  *   POST   /v1/sync   {save}                     makes the code        → {code, updatedAt}
- *   GET    /v1/sync                              the stored save       → {save, updatedAt}
+ *   GET    /v1/sync?have=<updatedAt>             the stored save       → {save, updatedAt}; only
+ *                                                {updatedAt} when it still is `have` (the game asks often)
  *   PUT    /v1/sync   {save, baseUpdatedAt}      stores a newer save   → {updatedAt}, 409 when
  *                                                the cloud changed since `baseUpdatedAt`
  *   DELETE /v1/sync                              removes it
@@ -85,8 +86,9 @@ export function syncModule(): ServerModule {
     migrations: SYNC_MIGRATIONS,
     routes(app, ctx: ServerContext) {
       const store = new SyncStore(ctx.db);
-      // Every try with a wrong code counts: 60 bits cannot be guessed at this speed.
-      const perAddress = rateLimit<AppEnv>({ max: 60, windowMs: 60_000 }, (c) => c.get('ip'), ctx.now);
+      // Every try with a wrong code counts: 60 bits cannot be guessed at this speed. The game looks
+      // every 10 s and sends 2 s after a change, and a home network shares one address.
+      const perAddress = rateLimit<AppEnv>({ max: 120, windowMs: 60_000 }, (c) => c.get('ip'), ctx.now);
       const creating = rateLimit<AppEnv>({ max: 10, windowMs: 3_600_000 }, (c) => c.get('ip'), ctx.now);
       const big = bodyLimit({ maxSize: MAX_SAVE_BYTES + 1024, onError: () => { throw new ApiError(413, 'too_large', 'The save is too large.'); } });
 
@@ -118,6 +120,7 @@ export function syncModule(): ServerModule {
       app.get('/sync', perAddress, (c) => {
         const found = store.get(codeOf(c));
         if (!found) throw unknownCode();
+        if (c.req.query('have') === String(found.updatedAt)) return c.json({ updatedAt: found.updatedAt });
         return c.json({ save: JSON.parse(found.save) as unknown, updatedAt: found.updatedAt });
       });
 

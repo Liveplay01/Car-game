@@ -367,6 +367,7 @@ export const S = {
 
   settings: {
     imported: (level: number): string => `Progress imported · Level ${level}`,
+    synced: (level: number): string => `Synced from the cloud · Level ${level}`,
   },
 
   /** Systems that open with the level (`core/unlocks.ts`). */

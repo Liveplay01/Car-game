@@ -313,6 +313,11 @@ export class Shell {
     return k !== 'playing' && k !== 'settings' && !this.versus.match && !this.versus.isOpen && !this.photo.isOpen;
   }
 
+  /** Cloud progress from another device may replace the save: not during a shift, not on a page. */
+  get canTakeCloud(): boolean {
+    return this.canReload && this.session.screen.k !== 'page';
+  }
+
   private push(a: InputAction): void {
     this.actions.push(a);
   }

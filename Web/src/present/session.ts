@@ -18,7 +18,7 @@ import { type Vec2, v, add } from '../core/vec2';
 import { loadSave, writeSave } from '../storage/save';
 import { loadPlayerName } from '../storage/profile';
 import { syncScores, type Records } from '../net/leaderboard';
-import { cloudChanged, cloudEnabled } from '../net/cloud';
+import { cloudChanged, cloudEnabled, cloudLinked } from '../net/cloud';
 import { RenderList, R, Ease, toScreen, rect, type Camera } from './render';
 import { S, Fmt, money as moneyText } from './strings';
 import { CrashEffects } from './effects';
@@ -244,7 +244,8 @@ export class GameSession {
     // A new player has nothing to catch up on: the notes so far count as read.
     if (this.tutorial && this.save.notesSeen === null) this.save.notesSeen = latestNote();
     this.prepareShift(false);
-    this.collectLoginIncome();
+    // With a cloud copy the day begins after the first look at the cloud (`net/cloud.ts`, ready).
+    if (!cloudLinked()) this.collectLoginIncome();
     this.resumeCasino();
   }
 
@@ -2117,12 +2118,19 @@ export class GameSession {
   }
 
   /** Progress brought from another device (Settings → Import progress) replaces this one. */
-  importProgress(save: SaveGame): void {
+  importProgress(save: SaveGame, text = S.settings.imported(save.career.level)): void {
     this.save = save;
     this.store();
     this.tutorial = save.tutorialDone ? null : new Tutorial();
     if (this.tutorial) this.save.mode = 'shift';
     this.prepareShift(false);
-    this.announce(S.settings.imported(save.career.level));
+    this.announce(text);
+  }
+
+  /** Newer progress from another device (cloud sync), taken over between shifts. */
+  takeCloudSave(save: SaveGame): void {
+    this.importProgress(save, S.settings.synced(save.career.level));
+    // A copy from a device not opened today still pays today's toll income here.
+    this.collectLoginIncome();
   }
 }

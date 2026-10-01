@@ -13,17 +13,26 @@ import { type Account, apiRequest, leaderboardEnabled, LeaderboardError, loadAcc
  * the scores, the friends and the multiplayer name stay the player's). The code is the key, so
  * it is kept here (`carGame.sync.v1`) and shown in Settings → Cloud sync, nowhere else.
  *
- * Two devices can diverge. The service refuses a write that builds on an old version, and the
- * game then never overwrites quietly: it shows both sides and asks (`status` 'choose'). While it
- * waits nothing is sent. Not on a portal: CrazyGames keeps the save in its own cloud.
+ * It is live (Leo, 01.10.2026): a change goes up two seconds later, and while the game is on
+ * screen it looks every few seconds whether another device moved on. Newer progress from the
+ * cloud is taken over by itself when this device has nothing unsent: nothing is lost then.
+ *
+ * Two devices can diverge (both played since they last synced). The service refuses a write that
+ * builds on an old version, and the game then never overwrites quietly: it shows both sides and
+ * asks (`status` 'choose'). While it waits nothing is sent. Not on a portal: CrazyGames keeps the
+ * save in its own cloud.
  */
 
 export const cloudEnabled = leaderboardEnabled && !inPortal;
 
 const KEY = 'carGame.sync.v1';
-/** A change goes up this long after the last one, so a busy stretch of play is one request. */
-const PUSH_AFTER_MS = 15_000;
-const RETRY_MS = 60_000;
+/** A change goes up this long after the last one, so a burst of changes is one request. */
+const PUSH_AFTER_MS = 2_000;
+/** How often a game on screen asks whether another device moved on. */
+const POLL_MS = 10_000;
+const RETRY_MS = 15_000;
+/** Browsers refuse a `keepalive` request (sent while the page goes away) above 64 KB. */
+const KEEPALIVE_MAX = 60_000;
 
 /** The link to the cloud copy: its code, the version this device last saw, and what it held. */
 interface Link {
@@ -58,15 +67,26 @@ export interface CloudDeps {
   save(): SaveGame;
   /** A sentence for the player, shown like the game's other hints. */
   notify(text: string): void;
+  /** Whether newer cloud progress may replace the save now (not in the middle of a shift). */
+  canTake(): boolean;
+  /** Puts newer cloud progress on this device. */
+  take(save: SaveGame): void;
+  /** The first look at the cloud is done (or there is no cloud copy): the day may begin. */
+  ready(): void;
 }
 
 let deps: CloudDeps | null = null;
 let link: Link | null = null;
 let incoming: Incoming | null = null;
+/** Newer cloud progress, taken over as soon as the game allows (`canTake`). */
+let waiting: Incoming | null = null;
 let status: CloudStatus = 'off';
 let savedAt: number | null = null;
 let timer = 0;
 let busy = false;
+let checking = false;
+/** The cloud version the player put off deciding about: it is not announced again. */
+let declined: number | null = null;
 const listeners = new Set<() => void>();
 
 const INTRO_KEY = 'carGame.cloudIntro.v1';
@@ -140,6 +160,9 @@ function writeLink(next: Link | null): void {
   }
 }
 
+/** The status now (read after an `await`: the player may have chosen in the meantime). */
+const choosing = (): boolean => status === 'choose';
+
 function set(next: CloudStatus): void {
   status = next;
   for (const listener of listeners) listener();
@@ -161,36 +184,94 @@ const forgetIfGone = (error: unknown): void => {
     window.clearTimeout(timer);
     writeLink(null);
     incoming = null;
+    waiting = null;
     set('off');
   }
 };
 
-/** Compares the cloud with this device's link: the same version means nothing to do. */
+/** This device changed something since it last sent or took the cloud copy. */
+const unsent = (): boolean => !!link && !!deps && stamp(deps.save()) !== link.hash;
+
+/** Makes the cloud's progress this device's, and links to that version. */
+function adopt(found: Incoming): SaveGame {
+  const { code, save, updatedAt, account } = found;
+  // The name comes with the progress: this device is that player now (scores, friends, multiplayer name).
+  // A copy from a device that never had a name leaves this device's own account alone.
+  if (account) {
+    saveAccount(account);
+    savePlayerName(account.name);
+  }
+  writeLink({ code, version: updatedAt, hash: stamp(save) });
+  incoming = null;
+  waiting = null;
+  savedAt = Date.now();
+  set('synced');
+  return save;
+}
+
+/** Both devices moved on: the player picks (Settings → Cloud sync). */
+function conflict(found: Incoming): void {
+  const first = incoming === null;
+  incoming = found;
+  waiting = null;
+  set('choose');
+  if (first && found.updatedAt !== declined) deps?.notify('Your cloud save has other progress. Open Settings → Cloud sync to choose.');
+}
+
+/**
+ * Newer cloud progress: taken over right away when this device has nothing unsent, and the game
+ * is not in the middle of a shift (then right after it). Both moved on: the player picks.
+ */
+function arrive(found: Incoming): void {
+  if (!deps) return;
+  if (unsent()) return conflict(found);
+  if (!deps.canTake()) {
+    waiting = found;
+    return;
+  }
+  deps.take(adopt(found));
+}
+
+/**
+ * Compares the cloud with this device's link: the same version means nothing to do. It sends the
+ * version it has, and the service then answers without the save when nothing changed.
+ */
 async function check(): Promise<void> {
-  if (!link || !deps || busy) return;
-  const { code } = link;
+  if (!link || !deps || busy || checking || status === 'choose') return;
+  const { code, version } = link;
+  checking = true;
   try {
-    const got = await apiRequest<{ save: unknown; updatedAt: number }>('GET', '/v1/sync', { token: code });
-    if (!link || link.code !== code) return;
+    const got = await apiRequest<{ save?: unknown; updatedAt: number }>('GET', `/v1/sync?have=${version}`, { token: code });
+    // A save went up while the answer was on its way: the answer is older than this device now.
+    if (!link || link.code !== code || link.version !== version || choosing()) return;
     if (got.updatedAt === link.version) {
       savedAt = Date.now();
-      if (status !== 'choose') set('synced');
+      waiting = null;
+      if (status !== 'synced') set('synced');
       return;
     }
-    const save = parseImport(JSON.stringify(got.save));
+    const save = got.save === undefined ? null : parseImport(JSON.stringify(got.save));
     if (!save) return;
-    const first = incoming === null;
-    incoming = { code, save, updatedAt: got.updatedAt, account: accountOf(got.save) };
-    set('choose');
-    if (first) deps.notify('Your cloud save has other progress. Open Settings → Cloud sync to choose.');
+    arrive({ code, save, updatedAt: got.updatedAt, account: accountOf(got.save) });
   } catch (error) {
     forgetIfGone(error);
-    if (link && status !== 'choose') set('offline');
+    if (link && !choosing()) set('offline');
+  } finally {
+    checking = false;
   }
+}
+
+/** Every few seconds while the game is on screen: take what waits, or look again. */
+function tick(): void {
+  if (!link || !deps || document.hidden || status === 'choose') return;
+  if (waiting) arrive(waiting);
+  else void check();
 }
 
 async function push(keepalive = false): Promise<void> {
   if (!link || !deps || status === 'choose' || busy) return;
+  // Something newer is waiting to be taken, and this device changed too: the player picks.
+  if (waiting) return arrive(waiting);
   const save = deps.save();
   const hash = stamp(save);
   if (hash === link.hash) {
@@ -200,8 +281,10 @@ async function push(keepalive = false): Promise<void> {
   busy = true;
   set('saving');
   const sent = link;
+  const body = { save: payload(save), baseUpdatedAt: sent.version };
   try {
-    const done = await apiRequest<{ updatedAt: number }>('PUT', '/v1/sync', { token: sent.code, body: { save: payload(save), baseUpdatedAt: sent.version }, keepalive });
+    const small = !keepalive || JSON.stringify(body).length < KEEPALIVE_MAX;
+    const done = await apiRequest<{ updatedAt: number }>('PUT', '/v1/sync', { token: sent.code, body, keepalive: keepalive && small });
     writeLink({ code: sent.code, version: done.updatedAt, hash });
     savedAt = Date.now();
     busy = false;
@@ -233,27 +316,37 @@ export function cloudChanged(): void {
 // A name entered, renamed or removed on this device goes up with the next save.
 onAccountChange(() => cloudChanged());
 
-/** Starts watching: loads the link, and looks once whether another device moved on. */
+/**
+ * This device has a cloud copy. The game then books the day's login income only after the first
+ * look at the cloud (`CloudDeps.ready`), so opening the game does not count as playing on it.
+ */
+export const cloudLinked = (): boolean => cloudEnabled && readLink() !== null;
+
+/** Starts watching: loads the link, looks whether another device moved on, and keeps looking. */
 export function startCloud(next: CloudDeps): void {
   if (!cloudEnabled) return;
   deps = next;
   link = readLink();
   if (link) {
     set('synced');
-    void check();
-  }
-  // Leaving the page: send what is waiting now, and look again when the player comes back.
-  let hiddenAt = 0;
+    void check().finally(() => next.ready());
+  } else next.ready();
+  window.setInterval(tick, POLL_MS);
+  // Leaving the page: send what is waiting now. Coming back (or back online): look right away.
   document.addEventListener('visibilitychange', () => {
     if (!link) return;
     if (document.hidden) {
-      hiddenAt = Date.now();
       if (timer) {
         window.clearTimeout(timer);
         timer = 0;
         void push(true);
       }
-    } else if (Date.now() - hiddenAt > 5 * 60_000) void check();
+    } else tick();
+  });
+  window.addEventListener('focus', tick);
+  window.addEventListener('online', () => {
+    tick();
+    cloudChanged();
   });
 }
 
@@ -264,6 +357,7 @@ export async function createCloud(): Promise<string> {
   const made = await apiRequest<{ code: string; updatedAt: number }>('POST', '/v1/sync', { body: { save: payload(save) } });
   writeLink({ code: made.code, version: made.updatedAt, hash: stamp(save) });
   incoming = null;
+  waiting = null;
   savedAt = Date.now();
   set('synced');
   return made.code;
@@ -284,19 +378,7 @@ export async function connectCloud(typed: string): Promise<void> {
 
 /** The player chose the cloud's progress: this is the save to put on this device. */
 export function useCloudSave(): SaveGame | null {
-  if (!incoming) return null;
-  const { code, save, updatedAt, account } = incoming;
-  // The name comes with the progress: this device is that player now (scores, friends, multiplayer name).
-  // A copy from a device that never had a name leaves this device's own account alone.
-  if (account) {
-    saveAccount(account);
-    savePlayerName(account.name);
-  }
-  writeLink({ code, version: updatedAt, hash: stamp(save) });
-  incoming = null;
-  savedAt = Date.now();
-  set('synced');
-  return save;
+  return incoming ? adopt(incoming) : null;
 }
 
 /** The player chose this device's progress: it replaces the cloud copy, knowingly. */
@@ -307,6 +389,7 @@ export async function keepThisDevice(): Promise<void> {
   const done = await apiRequest<{ updatedAt: number }>('PUT', '/v1/sync', { token: code, body: { save: payload(save), baseUpdatedAt: updatedAt } });
   writeLink({ code, version: done.updatedAt, hash: stamp(save) });
   incoming = null;
+  waiting = null;
   savedAt = Date.now();
   set('synced');
 }
@@ -321,6 +404,7 @@ export async function syncNow(): Promise<void> {
 
 /** The player looked at both sides and chose neither (for now). */
 export function dismissIncoming(): void {
+  declined = incoming?.updatedAt ?? null;
   incoming = null;
   set(link ? 'synced' : 'off');
 }
@@ -330,6 +414,7 @@ export function stopCloud(): void {
   window.clearTimeout(timer);
   writeLink(null);
   incoming = null;
+  waiting = null;
   set('off');
 }
 

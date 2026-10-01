@@ -31,7 +31,7 @@ only erasable syntax is allowed (no `enum`, no constructor parameter properties)
 | `DELETE /v1/friends/:id` | (token) Take someone off your list |
 | `GET /v1/friends/boards/:board` | (token) The same board as the public one, ranked among you and your friends only |
 | `POST /v1/sync` `{save}` | Cloud save, no account: stores the save and answers `{code, updatedAt}` (`K7M2-9QXA-4TFB`) |
-| `GET /v1/sync` | The save of the code in `Authorization: Bearer <code>`: `{save, updatedAt}`. `404 unknown_code` |
+| `GET /v1/sync?have=<updatedAt>` | The save of the code in `Authorization: Bearer <code>`: `{save, updatedAt}`; only `{updatedAt}` when it still is `have` (the game asks every 10 s). `404 unknown_code` |
 | `PUT /v1/sync` `{save, baseUpdatedAt}` | Stores a newer save. `409 conflict` (with the current `updatedAt`) when another device saved since `baseUpdatedAt`: the game then asks the player |
 | `DELETE /v1/sync` | Removes the cloud copy |
 | `GET /v1/rtc/ice` | `{iceServers, relay}` for multiplayer: STUN always, a short-lived TURN login when Cloudflare TURN is set up |
@@ -47,7 +47,7 @@ vanish from every list. Adding is limited to 20 tries a minute per player.
 grows with the career, from a few KB to around 100 KB after a few hundred levels). The game adds the player's leaderboard account (id, name, token) to the copy as
 `cloudAccount`, so a new device becomes the same player; the server stores it like the rest and does
 not look at it. The server knows nothing of the game's rules and does not check the content;
-the game reads it field by field like an imported file. Wrong codes count against 60 tries a minute
+the game reads it field by field like an imported file. Wrong codes count against 120 tries a minute
 per address, new codes against 10 an hour. Every write names the version it builds on
 (`baseUpdatedAt`), so two devices never overwrite each other quietly.
 

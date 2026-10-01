@@ -22,6 +22,17 @@ export type PatchImpact = 'major' | 'minor' | 'fix';
 
 export const PATCH_NOTES: PatchNote[] = [
   {
+    id: '2026-10-01-live-sync',
+    date: '1 October 2026',
+    title: 'Live Cloud sync',
+    impact: 'minor',
+    items: [
+      'Cloud sync is live: your progress goes to the cloud two seconds after it changes.',
+      'Your other devices pick it up by themselves within seconds, between shifts. No more choosing when only one device played.',
+      'You are only asked when both devices played since they last synced.',
+    ],
+  },
+  {
     id: '2026-10-01-cloud-size',
     date: '1 October 2026',
     title: 'Cloud sync for long careers',

@@ -17,8 +17,14 @@ if (inPortal) await startCrazyGames();
 const shell = new Shell(app, canvas, layers);
 if (import.meta.env.DEV) (window as unknown as { __game: Shell }).__game = shell;
 gameLoaded();
-// Cloud sync, when the player turned it on: looks once whether another device moved on.
-startCloud({ save: () => shell.game.save, notify: (text) => shell.game.announce(text) });
+// Cloud sync, when the player turned it on: newer progress from another device comes over by itself.
+startCloud({
+  save: () => shell.game.save,
+  notify: (text) => shell.game.announce(text),
+  canTake: () => shell.canTakeCloud,
+  take: (save) => shell.game.takeCloudSave(save),
+  ready: () => shell.game.collectLoginIncome(),
+});
 
 // Offline and installable: the service worker caches the built app (production only). The
 // first time everything is cached, the game says it now runs without internet. Not on a portal:
