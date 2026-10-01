@@ -318,7 +318,7 @@ export const CarArt = {
       case 'hood':
         return S(l * 0.3, 0, l * 0.3, w - 3, 1.5, body, 3.5, 8, false);
       case 'windscreen': {
-        if (type === 'motorbike') return S(l * 0.02, 0, l * 0.3, w * 0.8, w * 0.4, 'vehicleRider', 2.5, 6, true);
+        if (type === 'motorbike') return S(-l * 0.04, 0, l * 0.24, w * 0.62, w * 0.3, 'vehicleRider', 2.5, 6, true);
         if (type === 'bus') return S(l * 0.44, 0, l * 0.06, w * 0.8, 1.5, 'vehicleGlass', 2.5, 9, true);
         const x = lorry ? l * 0.39 : type === 'transporter' ? l * 0.33 : boxy ? l * 0.3 : classic ? -l * 0.02 : l * 0.12;
         const len = lorry ? l * 0.1 : type === 'transporter' ? l * 0.13 : boxy ? l * 0.14 : type === 'compact' ? l * 0.26 : classic ? l * 0.16 : l * 0.22;
@@ -337,10 +337,11 @@ export const CarArt = {
       case 'frontRightWheel':
       case 'rearLeftWheel':
       case 'rearRightWheel': {
-        const x = part === 'frontLeftWheel' || part === 'frontRightWheel' ? l * (type === 'motorbike' ? 0.36 : 0.3) : -l * (type === 'motorbike' ? 0.36 : 0.3);
+        const x = part === 'frontLeftWheel' || part === 'frontRightWheel' ? l * (type === 'motorbike' ? 0.44 : 0.3) : -l * (type === 'motorbike' ? 0.44 : 0.3);
         const y = type === 'motorbike' ? 0 : part === 'frontLeftWheel' || part === 'rearLeftWheel' ? w / 2 - 1.5 : -w / 2 + 1.5;
-        // A motorbike's two wheels stick out front and back, and show.
-        return S(x, y, type === 'motorbike' ? 5.5 : 5, 2.4, 1, 'vehicleTire', 4, 5, type === 'motorbike');
+        // A motorbike's two wheels show only where they stick out front and back: further in,
+        // they ran as a dark stripe down the middle of the red bike.
+        return type === 'motorbike' ? S(x, y, 3.4, 2.2, 1, 'vehicleTire', 4, 5, true) : S(x, y, 5, 2.4, 1, 'vehicleTire', 4, 5, false);
       }
       case 'roof':
         return S(-l * 0.11, 0, l * 0.24, w * 0.8, 2, 'vehiclePoliceRoof', Infinity, 0, true);
@@ -602,8 +603,10 @@ export const CarArt = {
       list.w(rect(worldOf(v(-L * 0.08 - 1.7, -0.6), pose), v(1.3, 3.8), 0.3, pose.heading), 'lightRed', opacity);
     }
     if (type === 'motorbike' && dents.length === 0) {
+      // The handlebar across the front, wider than the bike: from above, what makes it a bike.
+      list.w(line(worldOf(v(L * 0.24, -W * 0.68), pose), worldOf(v(L * 0.24, W * 0.68), pose), 1.3), 'vehicleTrim', opacity);
       // The rider's helmet, over the tank.
-      list.w(circle(worldOf(v(-L * 0.06, 0), pose), W * 0.36), 'vehicleRider', opacity);
+      list.w(circle(worldOf(v(-L * 0.06, 0), pose), W * 0.36), 'vehicleHelmet', opacity);
       list.w(circle(worldOf(v(-L * 0.02, 0), pose), W * 0.16), 'vehicleGlass', opacity);
     }
     if (type === 'tanker' && dents.length === 0) {

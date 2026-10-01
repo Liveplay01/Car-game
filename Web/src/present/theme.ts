@@ -46,8 +46,11 @@ export const COLORS = {
   vehicleLadder: [196, 202, 210, 1],
   vehicleBus: [247, 190, 22, 1],
   vehicleLearner: [236, 238, 242, 1],
-  vehicleMotorbike: [30, 33, 38, 1],
-  vehicleRider: [255, 122, 61, 1],
+  /** A red motorbike: a dark one vanished on the dark asphalt (Leo, 01.10.2026). */
+  vehicleMotorbike: [226, 52, 62, 1],
+  /** The rider's jacket, a shade under the red, and the light helmet over it. */
+  vehicleRider: [158, 32, 44, 1],
+  vehicleHelmet: [244, 241, 234, 1],
   skinLaurel: [96, 138, 92, 1],
   skinCrown: [118, 38, 62, 1],
   skinPhoenix: [236, 96, 44, 1],

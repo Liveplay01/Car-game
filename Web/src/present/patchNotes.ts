@@ -30,6 +30,7 @@ export const PATCH_NOTES: PatchNote[] = [
     title: 'Briefings, Feats, Big Screen, Cloud sync and the Classic',
     impact: 'major',
     items: [
+      'Motorbikes are red now, with a light helmet and handlebars: the dark ones were hard to see on the asphalt.',
       'Something new on the road now tells you what to do: the first time you meet a criminal, a money transporter, an ambulance and the rest, the top bar shows what to do until it is done. New weather and city events get a few seconds there as the shift starts.',
       'Let a criminal get away and the next one reminds you how to catch it.',
       'Messages now appear at the top, under the score bar, so your thumb no longer covers them while you play.',
