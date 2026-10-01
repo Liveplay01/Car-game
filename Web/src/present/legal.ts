@@ -146,7 +146,9 @@ export const LEGAL_DOCS: LegalDoc[] = [
       {
         heading: 'Sharing',
         paragraphs: [
-          "Sharing a result, a photo, a challenge or a room link uses your device's own share sheet or download. The game sends nothing to us when you share.",
+          "Sharing a result, a photo, a challenge or a room link uses your device's own share sheet or download.",
+          'When you tap Challenge a friend, the game asks our server for a short link (like …/c/K7M29QXA) that shows a picture with your score in a chat. For that it sends the challenge: the shift (level, mode, the random seed of the traffic, your upgrades, roads and car types) and the score to beat. If you have a name on the leaderboard, the link is tied to it and the picture shows that name; removing your name from the leaderboard takes it off your links. The server keeps a short link for a year, then deletes it. Anyone with the link can open it. Your IP address reaches the server with the request, as with any website; it is used only in memory to stop abuse and is not stored. Without the server the game shares the long link, which sends nothing to us.',
+          'Legal basis: Art. 6(1)(b) GDPR (the link you asked for).',
         ],
       },
       {

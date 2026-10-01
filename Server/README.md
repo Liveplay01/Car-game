@@ -35,8 +35,19 @@ only erasable syntax is allowed (no `enum`, no constructor parameter properties)
 | `PUT /v1/sync` `{save, baseUpdatedAt}` | Stores a newer save. `409 conflict` (with the current `updatedAt`) when another device saved since `baseUpdatedAt`: the game then asks the player |
 | `DELETE /v1/sync` | Removes the cloud copy |
 | `GET /v1/rtc/ice` | `{iceServers, relay}` for multiplayer: STUN always, a short-lived TURN login when Cloudflare TURN is set up |
+| `POST /v1/challenges` `{code, mode, level, target}` | A short link for a challenge: `{id}` (`201`, or `200` with the id the same challenge already has). With a token the link carries the player's name. `422 invalid_challenge`, `503 not_configured` without a game address |
+| `GET /c/:id` | The page behind the short link (outside `/v1`, for people and chat apps): Open Graph tags with title, text and picture, then straight on to `GAME_URL/#challenge=<code>` |
+| `GET /c/:id/preview.png` | Its picture, 1200 × 630, drawn by the server |
 
 The token travels as `Authorization: Bearer <token>`. Errors are `{error: {code, message}}`.
+
+**Challenge short links** (`src/modules/challenges/`): the game's own challenge link is long and shows
+nothing in a chat. The service keeps the game's code as it came (it never reads it) plus mode, level and
+the score to beat, under an 8-character id. The picture is a roundabout at night and a motorway message
+sign in a 5 × 7 dot font, drawn in code (`raster.ts`, `preview.ts`: no canvas, no font file, no native
+package) and kept in memory for the most recent 64 links. Nobody can upload a picture. The sender's name
+comes from their leaderboard account and follows it: renamed, deleted or blocked, the link changes with
+it. A link lives a year. New links count against 60 an hour per address.
 
 **Friends** are one-way: typing a code puts that player on your list, and they do not have to agree
 (their scores are public on the boards anyway; the code only saves the search). Blocked players
@@ -102,6 +113,8 @@ A second resource next to the game, from the same GitHub repository:
 | `PORT` | `5051` | |
 | `TRUST_PROXY` | `true` | Read the caller's address from `X-Forwarded-For` (last entry). Keep it on behind Coolify. |
 | `CF_TURN_KEY_ID`, `CF_TURN_API_TOKEN` | unset | Cloudflare TURN, for multiplayer between phone networks (below). Unset: STUN only. |
+| `GAME_URL` | the first address in `CORS_ORIGINS` | Where a challenge's short link sends people, e.g. `https://game.your-domain.tld`. Neither set (`CORS_ORIGINS=*`): no short links, the game shares its long link. |
+| `PUBLIC_URL` | read from the request | This service's own address, for the picture in a short link. Only needed if the proxy does not pass `X-Forwarded-Proto` and `X-Forwarded-Host` (Coolify does). |
 
 5. **Run exactly one instance.** SQLite lives in one file; do not scale it to several replicas.
 6. **Backup:** the volume is the whole state. Back it up with Coolify's scheduled backups or copy

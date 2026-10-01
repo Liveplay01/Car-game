@@ -404,14 +404,6 @@ test('every map skin from the chests has its place, colour and name', async () =
   }
 });
 
-test('patch notes are newest first, each with a unique id and something to say', async () => {
-  const { PATCH_NOTES, latestNote } = await load('/src/present/patchNotes.ts');
-  const ids = PATCH_NOTES.map((n) => n.id);
-  assert.equal(new Set(ids).size, ids.length);
-  assert.equal(latestNote(), ids[0]);
-  for (const n of PATCH_NOTES) assert.ok(n.title && n.date && n.items.length > 0, n.id);
-});
-
 // MARK: Traffic
 
 test('a steady stream of the player\'s cars does not starve the other arms (long Unlimited)', () => {
@@ -798,4 +790,68 @@ test('a save already past a Feat gets its reward when it loads', () => {
   const c = loadSave().career;
   for (const id of ['bigScreen', 'nova', 'zenith', 'starSilver', 'eliteHalo', 'crown']) assert.ok(c.collection.includes(id), id);
   for (const id of ['gilded', 'singularity', 'eventHorizon', 'undying', 'phoenix']) assert.ok(!c.collection.includes(id), id);
+});
+
+// MARK: The Classic
+
+test('the Classic: an honour found only in Standard Chests, about 1 in 500, never twice', async () => {
+  const { cosmetic, rollChest, albumItems, isHonour, CHEST_KINDS } = await load('/src/core/loot.ts');
+  const { shelfOf } = await load('/src/present/shop.ts');
+  const classic = cosmetic('classic');
+  assert.ok(isHonour(classic));
+  assert.equal(shelfOf(classic), 2, 'on the Honours shelf');
+  assert.ok(!albumItems('honours').includes(classic), 'the Honours album waits on deeds, not luck');
+  const draws = 200_000;
+  for (const kind of CHEST_KINDS) {
+    let found = 0;
+    for (let seed = 0; seed < draws; seed++) if (rollChest(kind, [], 0, seed, 100).item.id === 'classic') found++;
+    if (kind !== 'standard') assert.equal(found, 0, `never in a ${kind} chest`);
+    else assert.ok(Math.abs(found / draws - 0.002) < 0.0005, `1 in 500 (${found} of ${draws})`);
+  }
+  for (let seed = 0; seed < 20_000; seed++) assert.notEqual(rollChest('standard', ['classic'], 0, seed, 100).item.id, 'classic', 'not once it is owned');
+  // Other results of a seed did not change: the find is drawn after everything else.
+  for (let seed = 0; seed < 5000; seed++) {
+    const fresh = rollChest('standard', [], 0, seed, 100);
+    if (fresh.item.id !== 'classic') assert.equal(fresh.item.id, rollChest('standard', ['classic'], 0, seed, 100).item.id);
+  }
+  assert.equal(S.shop.item('classic'), 'Classic');
+});
+
+test('the Classic joins the queue once owned, drives like a car, and travels in a challenge', () => {
+  const c = newCareer();
+  assert.equal(Careers.shiftConfig(c, 'shift', baseConfig, 1, null, null).classicShare, 0);
+  c.collection.push('classic');
+  const cfg = Careers.shiftConfig(c, 'shift', baseConfig, 1, null, null);
+  assert.equal(cfg.classicShare, baseConfig.classicShareOwned);
+  const world = new World(cfg, 7);
+  for (let i = 0; i < 40 && !world.queue.vehicles.some((id) => world.vehicle(id)?.type === 'classic'); i++) {
+    world.queue.vehicles.length = 0;
+    world.refillQueue();
+  }
+  assert.ok(world.queue.vehicles.some((id) => world.vehicle(id)?.type === 'classic'), 'shows up in the queue');
+  assert.equal(world.mergeDurationOf('classic'), world.mergeDurationOf('car'));
+  const spec = challengeOf(c, 'shift', 3, 99, null, 1000);
+  assert.deepEqual(spec.cars, ['classic']);
+  assert.deepEqual(decodeChallenge(encodeChallenge(spec)).cars, ['classic']);
+});
+
+// MARK: What's new
+
+test("What's new has one entry per day, newest first, and a new item lights the dot again", async () => {
+  const { PATCH_NOTES, latestNote } = await load('/src/present/patchNotes.ts');
+  const days = PATCH_NOTES.map((n) => n.id);
+  for (const day of days) assert.match(day, /^\d{4}-\d{2}-\d{2}$/, `${day}: the id is the day`);
+  assert.equal(new Set(days).size, days.length, 'one entry per day: add to the day that is already there');
+  assert.deepEqual([...days].sort().reverse(), days, 'newest day first');
+  for (const n of PATCH_NOTES) {
+    assert.ok(n.items.length > 0 && n.title.length > 0, `${n.id} says something`);
+    assert.equal(new Date(`${n.id}T12:00:00Z`).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' }), n.date, `${n.id}: the date matches`);
+  }
+  const before = latestNote();
+  PATCH_NOTES[0].items.unshift('Something new today.');
+  try {
+    assert.notEqual(latestNote(), before);
+  } finally {
+    PATCH_NOTES[0].items.shift();
+  }
 });

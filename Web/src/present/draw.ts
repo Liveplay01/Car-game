@@ -1,4 +1,4 @@
-import type { RenderList, RenderItem, Camera, Grain } from './render';
+import type { RenderList, RenderItem, Camera, Grain, Bake } from './render';
 import { toScreen, unitHash } from './render';
 import { COLORS, css, type ColorToken } from './theme';
 import { type Vec2, v } from '../core/vec2';
@@ -13,10 +13,37 @@ import { fontFor, measure } from './measure';
  */
 type GroundGrain = 'ground' | 'groundBright';
 
+/** The camera the still pictures are baked for, where they go (device pixels) and their margin. */
+type Still = { cam: Camera; dx: number; dy: number; room: number };
+
 /** Whether a colour is a daylight ground (relative luminance above a mid grey). */
 function isBright(token: ColorToken): boolean {
   const [r, g, b] = COLORS[token];
   return 0.2126 * r + 0.7152 * g + 0.0722 * b > 110;
+}
+
+/** Deep equality of plain shapes (numbers, strings, arrays, objects), without making anything. */
+function same(a: unknown, b: unknown): boolean {
+  if (a === b) return true;
+  if (typeof a !== 'object' || typeof b !== 'object' || a === null || b === null) return false;
+  if (Array.isArray(a)) {
+    if (!Array.isArray(b) || a.length !== b.length) return false;
+    for (let i = 0; i < a.length; i++) if (!same(a[i], b[i])) return false;
+    return true;
+  }
+  if (Array.isArray(b)) return false;
+  const x = a as Record<string, unknown>;
+  const y = b as Record<string, unknown>;
+  for (const k in x) if (!same(x[k], y[k])) return false;
+  for (const k in y) if (!(k in x) && y[k] !== undefined) return false;
+  return true;
+}
+
+/** Whether `items[start..end]` show exactly the shapes `before` did. */
+function sameItems(items: RenderItem[], start: number, end: number, before: RenderItem[]): boolean {
+  if (before.length !== end - start) return false;
+  for (let i = start; i < end; i++) if (!same(items[i], before[i - start])) return false;
+  return true;
 }
 
 export class CanvasDrawer {
@@ -63,24 +90,56 @@ export class CanvasDrawer {
   private ground: { canvas: HTMLCanvasElement; ctx: CanvasRenderingContext2D; key: string } | null = null;
   private lastGroundKey = '';
 
-  private groundKey(list: RenderList): string {
+  /**
+   * Screen points a baked picture reaches past the canvas on every side: a crash's shake (up to
+   * about 14) then only moves it; a bigger one paints item by item as before.
+   */
+  static readonly shakeRoom = 16;
+  /** Device pixels the picture being baked on `this.ctx` reaches past the canvas (0: the canvas itself). */
+  private pad = 0;
+
+  /**
+   * The camera the still pictures are baked for and where they go (device pixels): without the
+   * shake when it fits their margin, so a shaking camera keeps them. The focus is snapped to
+   * 1/1024 point, so taking the shake off again gives the very same key frame after frame.
+   */
+  private still(list: RenderList): Still {
     const c = list.camera;
+    const room = Math.ceil(CanvasDrawer.shakeRoom * this.dpr);
+    const s = list.shake;
+    const dx = Math.round(s.x * this.dpr);
+    const dy = Math.round(s.y * this.dpr);
+    if (Math.abs(dx) > room || Math.abs(dy) > room) return { cam: c, dx: 0, dy: 0, room };
+    const snap = (x: number): number => Math.round(x * 1024) / 1024;
+    return { cam: { ...c, focus: v(snap(c.focus.x - s.x), snap(c.focus.y - s.y)) }, dx, dy, room };
+  }
+
+  /** A picture as big as the canvas plus `room` on every side. */
+  private fit(canvas: HTMLCanvasElement, room: number): void {
+    const w = this.canvas.width + 2 * room;
+    const h = this.canvas.height + 2 * room;
+    if (canvas.width !== w || canvas.height !== h) {
+      canvas.width = w;
+      canvas.height = h;
+    }
+  }
+
+  private groundKey(list: RenderList, c: Camera): string {
     return `${list.staticKey}|${list.staticEnd}|${list.background}|${list.backdrop}|${list.groundGrain}|${c.center.x},${c.center.y},${c.focus.x},${c.focus.y},${c.scale},${c.viewport.x},${c.viewport.y}|${this.canvas.width}x${this.canvas.height}@${this.dpr}|${this.offset.x},${this.offset.y}`;
   }
 
   /** Background, ground texture and the still items, on whichever context is `this.ctx`. */
-  private paintGround(list: RenderList, end: number): void {
+  private paintGround(list: RenderList, end: number, cam: Camera): void {
     const ctx = this.ctx;
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     this.forgetStyle();
     // Big Screen: cleared, then only a veil of the background over the player's picture.
-    if (list.backdrop !== null) ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+    if (list.backdrop !== null) ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
     this.setFill(css(list.background, list.backdrop ?? 1));
-    ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
-    ctx.setTransform(this.dpr, 0, 0, this.dpr, this.offset.x * this.dpr, this.offset.y * this.dpr);
+    ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+    this.placeWorld();
     ctx.lineCap = 'butt';
     ctx.lineJoin = 'round';
-    const cam = list.camera;
     if (list.groundGrain && list.backdrop === null) this.fillGrain(isBright(list.background) ? 'groundBright' : 'ground', null, cam);
     for (let i = 0; i < end; i++) {
       const item = list.items[i];
@@ -90,22 +149,22 @@ export class CanvasDrawer {
 
   draw(list: RenderList): void {
     const ctx = this.ctx;
+    const still = this.still(list);
     let start = 0;
     if (list.staticKey !== null) {
-      const key = this.groundKey(list);
+      const key = this.groundKey(list, still.cam);
       // Baked only once the view holds still for a frame: a moving camera would bake every frame.
       const holds = key === this.lastGroundKey;
       this.lastGroundKey = key;
       if (this.ground?.key !== key && holds) {
         const canvas = this.ground?.canvas ?? document.createElement('canvas');
-        if (canvas.width !== this.canvas.width || canvas.height !== this.canvas.height) {
-          canvas.width = this.canvas.width;
-          canvas.height = this.canvas.height;
-        }
+        this.fit(canvas, still.room);
         const baked = this.ground?.ctx ?? canvas.getContext('2d');
         if (baked) {
           this.ctx = baked;
-          this.paintGround(list, list.staticEnd);
+          this.pad = still.room;
+          this.paintGround(list, list.staticEnd, still.cam);
+          this.pad = 0;
           this.ctx = ctx;
           this.ground = { canvas, ctx: baked, key };
         }
@@ -114,19 +173,24 @@ export class CanvasDrawer {
         ctx.setTransform(1, 0, 0, 1, 0, 0);
         // A see-through ground would show the last frame under it.
         if (list.backdrop !== null) ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-        ctx.drawImage(this.ground.canvas, 0, 0);
+        ctx.drawImage(this.ground.canvas, still.dx - still.room, still.dy - still.room);
         start = list.staticEnd;
       }
     }
-    if (start === 0) this.paintGround(list, 0);
+    if (start === 0) this.paintGround(list, 0, list.camera);
     this.prepare();
-    this.paintItems(list, start, list.items.length, true);
+    this.paintItems(list, start, list.items.length, list.camera, still);
+  }
+
+  /** The world transform (safe area and a baked picture's margin included), on `this.ctx`. */
+  private placeWorld(): void {
+    this.ctx.setTransform(this.dpr, 0, 0, this.dpr, this.offset.x * this.dpr + this.pad, this.offset.y * this.dpr + this.pad);
   }
 
   /** The world transform and the text and line settings, on `this.ctx`. */
   private prepare(): void {
     const ctx = this.ctx;
-    ctx.setTransform(this.dpr, 0, 0, this.dpr, this.offset.x * this.dpr, this.offset.y * this.dpr);
+    this.placeWorld();
     ctx.lineCap = 'butt';
     ctx.lineJoin = 'round';
     // Set before any save(), so no restore() takes them back.
@@ -135,15 +199,15 @@ export class CanvasDrawer {
     this.forgetStyle();
   }
 
-  private paintItems(list: RenderList, from: number, to: number, useBakes: boolean): void {
+  /** Items `from` to `to` as `cam` sees them; with `still`, a baked stretch goes in as its picture. */
+  private paintItems(list: RenderList, from: number, to: number, cam: Camera, still: Still | null): void {
     const ctx = this.ctx;
-    const cam = list.camera;
     let clip: RenderItem['clip'] = undefined;
     for (let i = from; i < to; i++) {
-      const bake = useBakes && clip === undefined ? list.bakes.get(i) : undefined;
-      if (bake) {
+      const bake = still && clip === undefined ? list.bakes.get(i) : undefined;
+      if (bake && still) {
         this.flushGrain(cam);
-        if (this.drawBaked(list, i, bake)) {
+        if (this.drawBaked(list, i, bake, still)) {
           i = bake.end - 1;
           continue;
         }
@@ -169,49 +233,55 @@ export class CanvasDrawer {
     if (clip) this.restoreClip();
   }
 
-  /** Baked stretches (the road), by name: their picture and what it shows. */
-  private readonly baked = new Map<string, { canvas: HTMLCanvasElement; ctx: CanvasRenderingContext2D; key: string; last: string }>();
+  /**
+   * Baked stretches (the road), by name: their picture and what it shows. Without a key of its
+   * own, a stretch keeps last frame's shapes and a version that counts each change of them.
+   */
+  private readonly baked = new Map<string, { canvas: HTMLCanvasElement; ctx: CanvasRenderingContext2D; key: string; last: string; shapes: RenderItem[]; version: number }>();
 
   /**
    * Puts a still stretch in as its picture: baked once the view has held for a frame, then
    * copied while its shapes, the camera and the canvas stay. False: draw it item by item.
    */
-  private drawBaked(list: RenderList, start: number, bake: { end: number; name: string; key: string }): boolean {
+  private drawBaked(list: RenderList, start: number, bake: Bake, still: Still): boolean {
     if (bake.end > list.items.length) return false;
-    const c = list.camera;
-    const key = `${bake.key}|${c.center.x},${c.center.y},${c.focus.x},${c.focus.y},${c.scale}|${this.canvas.width}x${this.canvas.height}@${this.dpr}|${this.offset.x},${this.offset.y}`;
     let slot = this.baked.get(bake.name);
-    const holds = slot?.last === key;
-    if (slot) slot.last = key;
-    if (slot?.key !== key) {
-      if (!slot) {
-        const canvas = document.createElement('canvas');
-        const bctx = canvas.getContext('2d');
-        if (!bctx) return false;
-        slot = { canvas, ctx: bctx, key: '', last: key };
-        this.baked.set(bake.name, slot);
-        return false;
-      }
+    if (!slot) {
+      const canvas = document.createElement('canvas');
+      const bctx = canvas.getContext('2d');
+      if (!bctx) return false;
+      slot = { canvas, ctx: bctx, key: '', last: '', shapes: [], version: 0 };
+      this.baked.set(bake.name, slot);
+    }
+    // Compared shape by shape, so no frame turns the whole road into a string to find it unchanged.
+    if (bake.key === null && !sameItems(list.items, start, bake.end, slot.shapes)) {
+      slot.shapes = list.items.slice(start, bake.end);
+      slot.version++;
+    }
+    const c = still.cam;
+    const key = `${bake.key ?? slot.version}|${c.center.x},${c.center.y},${c.focus.x},${c.focus.y},${c.scale}|${this.canvas.width}x${this.canvas.height}@${this.dpr}|${this.offset.x},${this.offset.y}`;
+    const holds = slot.last === key;
+    slot.last = key;
+    if (slot.key !== key) {
       if (!holds) return false;
       const { canvas } = slot;
-      if (canvas.width !== this.canvas.width || canvas.height !== this.canvas.height) {
-        canvas.width = this.canvas.width;
-        canvas.height = this.canvas.height;
-      }
+      this.fit(canvas, still.room);
       const main = this.ctx;
       this.ctx = slot.ctx;
+      this.pad = still.room;
       this.ctx.setTransform(1, 0, 0, 1, 0, 0);
       this.ctx.clearRect(0, 0, canvas.width, canvas.height);
       this.prepare();
-      this.paintItems(list, start, bake.end, false);
+      this.paintItems(list, start, bake.end, c, null);
+      this.pad = 0;
       this.ctx = main;
       this.forgetStyle();
       slot.key = key;
     }
     const ctx = this.ctx;
     ctx.setTransform(1, 0, 0, 1, 0, 0);
-    ctx.drawImage(slot.canvas, 0, 0);
-    ctx.setTransform(this.dpr, 0, 0, this.dpr, this.offset.x * this.dpr, this.offset.y * this.dpr);
+    ctx.drawImage(slot.canvas, still.dx - still.room, still.dy - still.room);
+    this.placeWorld();
     return true;
   }
 
@@ -294,7 +364,10 @@ export class CanvasDrawer {
     ctx.fillStyle = pattern;
     this.fill = null;
     if (path) ctx.fill(path);
-    else ctx.fillRect(-this.offset.x, -this.offset.y, this.width, this.height);
+    else {
+      const m = this.pad / this.dpr;
+      ctx.fillRect(-this.offset.x - m, -this.offset.y - m, this.width + 2 * m, this.height + 2 * m);
+    }
   }
 
   /** World units one texture pixel covers: a 256-pixel tile spans about five car lengths. */
@@ -405,6 +478,8 @@ export class CanvasDrawer {
    */
   private offscreen(p: RenderItem['p'], cam: Camera): boolean {
     const s = cam.scale;
+    // A baked picture's margin counts as on screen: a shake moves it into view.
+    const m = this.pad / this.dpr;
     let x: number;
     let y: number;
     let reach: number;
@@ -441,12 +516,12 @@ export class CanvasDrawer {
           if (o.y < minY) minY = o.y;
           if (o.y > maxY) maxY = o.y;
         }
-        return maxX < -this.offset.x - 1 || maxY < -this.offset.y - 1 || minX > this.width - this.offset.x + 1 || minY > this.height - this.offset.y + 1;
+        return maxX < -this.offset.x - m - 1 || maxY < -this.offset.y - m - 1 || minX > this.width - this.offset.x + m + 1 || minY > this.height - this.offset.y + m + 1;
       }
       default:
         return false;
     }
-    reach += 1;
+    reach += 1 + m;
     return x + reach < -this.offset.x || y + reach < -this.offset.y || x - reach > this.width - this.offset.x || y - reach > this.height - this.offset.y;
   }
 
@@ -490,13 +565,16 @@ export class CanvasDrawer {
           ctx.fill();
         } else if (rot !== 0) {
           // Turned with round corners: the path is laid in a turned frame; only the transform
-          // goes back afterwards (a full save/restore of the context costs far more).
-          ctx.translate(cx, cy);
-          ctx.rotate(rot);
+          // goes back afterwards (a full save/restore of the context costs far more). The turned
+          // frame is set in one call, the same matrix translate and rotate would make.
+          const d = this.dpr;
+          const cos = Math.cos(rot) * d;
+          const sin = Math.sin(rot) * d;
+          ctx.setTransform(cos, sin, -sin, cos, cx * d + this.offset.x * d + this.pad, cy * d + this.offset.y * d + this.pad);
           ctx.beginPath();
           ctx.roundRect(-w / 2, -h / 2, w, h, r);
           ctx.fill();
-          ctx.setTransform(this.dpr, 0, 0, this.dpr, this.offset.x * this.dpr, this.offset.y * this.dpr);
+          this.placeWorld();
         } else {
           ctx.beginPath();
           if (r > 0.3) ctx.roundRect(cx - w / 2, cy - h / 2, w, h, r);

@@ -17,7 +17,7 @@ export type MuseumShelf = 0 | 1 | 2; // bosses · specials · conditions
 export const MUSEUM_SHELVES: MuseumShelf[] = [0, 1, 2];
 
 /** Traffic that is only traffic. Every other vehicle type is a special and goes in the Museum. */
-const ORDINARY = ['car', 'sportsCar', 'compact', 'van'] as const;
+const ORDINARY = ['car', 'sportsCar', 'compact', 'van', 'classic'] as const;
 export type SpecialKind = Exclude<VehicleType, (typeof ORDINARY)[number]>;
 export type WeatherKind = Exclude<Weather, 'clear'>;
 export type DarkKind = Exclude<Darkness, 'day'>;

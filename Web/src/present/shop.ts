@@ -46,7 +46,8 @@ export type CarGroup = Rarity | 'vehicles' | 'seasons';
 const CAR_GROUPS: CarGroup[] = ['common', 'rare', 'epic', 'legendary', 'vehicles', 'seasons'];
 
 function carGroup(item: Cosmetic): CarGroup | null {
-  if (item.kind === 'vehicleType') return 'vehicles';
+  // A vehicle that is an honour (the Classic) stands on the Honours shelf only.
+  if (item.kind === 'vehicleType') return item.source.kind === 'chest' ? 'vehicles' : null;
   if (item.kind !== 'carSkin') return null;
   if (item.source.kind === 'season') return 'seasons';
   return item.source.kind === 'chest' ? item.rarity : null;

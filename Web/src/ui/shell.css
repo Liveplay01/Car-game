@@ -150,6 +150,22 @@ button {
   border: 1px solid var(--glass-edge);
 }
 
+/* A device that cannot keep its frames (`lowDetail`, ui/shell.ts) gets the glass near solid:
+   the blur over the moving scene is redone every frame. A strong device never sees this. */
+.app[data-detail='low'] {
+  --glass: rgba(20, 23, 28, 0.9);
+}
+
+.app[data-detail='low'] .glass,
+.app[data-detail='low'] .tabbar {
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
+.app[data-detail='low'] .tabbar {
+  background: rgba(14, 16, 19, 0.95);
+}
+
 .icon-btn {
   width: 44px;
   height: 44px;
@@ -233,7 +249,7 @@ button {
   -webkit-backdrop-filter: blur(20px) saturate(1.5);
   backdrop-filter: blur(20px) saturate(1.5);
   border-top: 0.5px solid var(--separator);
-  transition: transform 260ms var(--ease-drawer);
+  transition: transform 260ms var(--ease-drawer), visibility 0s;
 }
 
 .app[data-phase='playing'] .tabbar,
@@ -669,9 +685,13 @@ a.row-link {
 
 /* MARK: Shell – the canvas draws every page; the DOM only carries the native-like chrome. */
 
+/* Gone out of sight, it is also left out once it has slid away: a hidden blur that the browser
+   keeps redoing over the moving scene costs frames on a phone. */
 .app[data-tabbar='hidden'] .tabbar {
   transform: translateY(100%);
   pointer-events: none;
+  visibility: hidden;
+  transition: transform 260ms var(--ease-drawer), visibility 0s linear 260ms;
 }
 
 .float-btn {
@@ -680,13 +700,16 @@ a.row-link {
   opacity: 0;
   transform: scale(0.92);
   pointer-events: none;
-  transition: opacity 180ms var(--ease-out), transform 180ms var(--ease-out);
+  visibility: hidden;
+  transition: opacity 180ms var(--ease-out), transform 180ms var(--ease-out), visibility 0s linear 180ms;
 }
 
 .float-btn.show {
   opacity: 1;
   transform: none;
   pointer-events: auto;
+  visibility: visible;
+  transition: opacity 180ms var(--ease-out), transform 180ms var(--ease-out), visibility 0s;
 }
 
 .float-btn:active {

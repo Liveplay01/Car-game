@@ -13,6 +13,8 @@ import { storage } from '../storage/store';
 
 const BASE = (typeof import.meta.env.VITE_API_URL === 'string' ? import.meta.env.VITE_API_URL : '').trim().replace(/\/+$/, '');
 export const leaderboardEnabled = BASE !== '';
+/** An address on the service, for links people open themselves (a challenge's short link). */
+export const apiUrl = (path: string): string => BASE + path;
 
 const TIMEOUT_MS = 8000;
 /** After a failed send (offline, the service down) the next try waits this long. */

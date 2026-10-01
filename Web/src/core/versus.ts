@@ -28,6 +28,7 @@ export function versusConfig(players: number, seed: number): Config {
   c.sportsCarShare = 0;
   c.compactShare = 0;
   c.vanShare = 0;
+  c.classicShare = 0;
   c.weather = 'clear';
   c.night = false;
   c.cityEvent = null;

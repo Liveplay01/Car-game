@@ -27,7 +27,7 @@ import { SceneBuilder, VehicleLamps, towYard } from './scene';
 import { CityLayer, CityPulse, type CityRise } from './city';
 import { MapTheme } from './mapThemes';
 import { Skins } from './skins';
-import { WeatherLayer } from './weather';
+import { WeatherFade, WeatherLayer } from './weather';
 import { NightLayer } from './night';
 import { CityLights } from './cityLights';
 import { HUD, TopBar, RingSignals, ModeBanner, ModeHint, ReadyBanner, ResultBanner, type Popup, type PopupKind, type ShiftSummary, POPUP_LIFETIME, settledPops } from './hud';
@@ -164,6 +164,8 @@ export class GameSession {
   private soundSerial = 0;
   private tutorial: Tutorial | null;
   private sceneTime = 0;
+  /** The weather moves in at a new shift instead of switching on (`WeatherFade`). */
+  private readonly weatherFade = new WeatherFade();
   upgradePage = new UpgradeState();
   shopPage = new ShopState();
   /**
@@ -694,7 +696,12 @@ export class GameSession {
 
   /** The link to the last finished shift, or null. */
   shareLink(origin: string): string | null {
-    return this.shareable ? `${origin}#challenge=${encodeChallenge(this.shareable)}` : null;
+    return this.shareable ? `${origin}#challenge=${this.shareCode()}` : null;
+  }
+
+  /** The code of the last finished shift's challenge (`encodeChallenge`), or null. */
+  shareCode(): string | null {
+    return this.shareable ? encodeChallenge(this.shareable) : null;
   }
 
   /** What the result says in a challenge or trial, and pays (a trial's reward, once). */
@@ -1891,7 +1898,8 @@ export class GameSession {
     CityLayer.addFrame(list, Careers.frame(career), world);
     this.rim.add(list, world, rm);
     WeatherLayer.addCityEvent(list, world);
-    WeatherLayer.addGround(list, world);
+    const weather = this.weatherFade.mix(world.config.weather, this.sceneTime);
+    WeatherLayer.addGround(list, world, weather);
     this.scars.addGround(list, this.sceneTime, rm ? null : this.sceneTime);
     this.tyreMarks.addGround(list, world.layout, world.config);
     SceneBuilder.addLaneArrow(list, world);
@@ -1905,7 +1913,7 @@ export class GameSession {
     if (this.save.settings.vehicleLabels) SceneBuilder.addLabels(list, world, alpha);
     this.effects.addAir(list);
     this.explosions.addAir(list);
-    WeatherLayer.addAir(list, world, world.time, rm);
+    WeatherLayer.addAir(list, world, this.sceneTime, rm, weather);
     const island = { center: toScreen(camera, v(0, 0)), radius: (world.layout.islandRadius) * camera.scale };
     if (!this.lowDetail) MapTheme.addAir(list, theme, this.sceneTime, rm, island);
     return list;
@@ -1941,6 +1949,7 @@ export class GameSession {
     const career = this.save.career;
     this.lastCamera = camera;
     const list = this.sceneList(camera, alpha, rm, this.backdrop);
+    list.shake = shake;
     addRecede(list, this.recede, world.layout);
     this.curtain?.add(list, viewport, rm);
     this.explosions.addFlash(list, viewport);

@@ -190,6 +190,8 @@ export const CarArt = {
         return 'vehicleCompact';
       case 'van':
         return 'vehicleVan';
+      case 'classic':
+        return 'vehicleClassic';
       case 'truck':
         return 'vehicleTruck';
       case 'police':
@@ -228,6 +230,7 @@ export const CarArt = {
       case 'sportsCar':
       case 'compact':
       case 'van':
+      case 'classic':
       case 'learner':
       case 'bus':
         return [...common, 'rearWindow'];
@@ -262,6 +265,8 @@ export const CarArt = {
         return c.compactLength;
       case 'van':
         return c.vanLength;
+      case 'classic':
+        return c.classicLength;
       case 'ambulance':
         return c.ambulanceLength;
       case 'fireTruck':
@@ -303,23 +308,25 @@ export const CarArt = {
       reach,
       visible,
     });
+    // The Classic: chrome bumpers across the whole width, a long bonnet, the cabin far back.
+    const classic = type === 'classic';
     switch (part) {
       case 'frontBumper':
-        return S(l / 2 - 1, 0, 2, w - 3, 1, 'vehicleTrim', 2, 6, true);
+        return classic ? S(l / 2 - 0.8, 0, 1.8, w - 0.5, 0.9, 'vehicleChrome', 2, 6, true) : S(l / 2 - 1, 0, 2, w - 3, 1, 'vehicleTrim', 2, 6, true);
       case 'rearBumper':
-        return S(-l / 2 + 1, 0, 2, w - 3, 1, 'vehicleTrim', 2, 6, true);
+        return classic ? S(-l / 2 + 0.8, 0, 1.8, w - 0.5, 0.9, 'vehicleChrome', 2, 6, true) : S(-l / 2 + 1, 0, 2, w - 3, 1, 'vehicleTrim', 2, 6, true);
       case 'hood':
         return S(l * 0.3, 0, l * 0.3, w - 3, 1.5, body, 3.5, 8, false);
       case 'windscreen': {
         if (type === 'motorbike') return S(l * 0.02, 0, l * 0.3, w * 0.8, w * 0.4, 'vehicleRider', 2.5, 6, true);
         if (type === 'bus') return S(l * 0.44, 0, l * 0.06, w * 0.8, 1.5, 'vehicleGlass', 2.5, 9, true);
-        const x = lorry ? l * 0.39 : type === 'transporter' ? l * 0.33 : boxy ? l * 0.3 : l * 0.12;
-        const len = lorry ? l * 0.1 : type === 'transporter' ? l * 0.13 : boxy ? l * 0.14 : type === 'compact' ? l * 0.26 : l * 0.22;
+        const x = lorry ? l * 0.39 : type === 'transporter' ? l * 0.33 : boxy ? l * 0.3 : classic ? -l * 0.02 : l * 0.12;
+        const len = lorry ? l * 0.1 : type === 'transporter' ? l * 0.13 : boxy ? l * 0.14 : type === 'compact' ? l * 0.26 : classic ? l * 0.16 : l * 0.22;
         return S(x, 0, len, w * 0.74, 2, 'vehicleGlass', 2.5, 9, true);
       }
       case 'rearWindow': {
-        const x = type === 'pickup' ? -l * 0.02 : boxy || type === 'bus' ? -l * 0.44 : type === 'compact' ? -l * 0.27 : -l * 0.3;
-        const len = type === 'pickup' ? l * 0.07 : boxy || type === 'bus' ? l * 0.05 : l * 0.13;
+        const x = type === 'pickup' ? -l * 0.02 : boxy || type === 'bus' ? -l * 0.44 : type === 'compact' ? -l * 0.27 : classic ? -l * 0.31 : -l * 0.3;
+        const len = type === 'pickup' ? l * 0.07 : boxy || type === 'bus' ? l * 0.05 : classic ? l * 0.09 : l * 0.13;
         return S(x, 0, len, w * 0.66, 1.5, 'vehicleGlass', 2.5, 7, true);
       }
       case 'leftMirror':

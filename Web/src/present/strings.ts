@@ -409,6 +409,7 @@ export const S = {
     rewardCaption: 'REWARD',
     brokenLink: 'That challenge link is broken or cut short.',
     copied: 'Challenge link copied',
+    linkReady: 'Link ready. Tap Challenge a friend again to share it.',
     pictureText: 'My shift in Roundabout Timing',
     pictureSaved: 'Picture saved',
     pictureCopied: 'Picture copied',
@@ -959,6 +960,8 @@ export const S = {
       if (item.source.kind === 'elite') return `Reach Elite ${item.source.level}.`;
       if (item.source.kind === 'pass') return `Tier ${item.source.tier} of the ${S.pass.seasonName(item.source.season)} Season Pass. It comes back every year.`;
       if (item.source.kind === 'hall') return 'Build the Hall of Fame (Records → Elite).';
+      if (item.source.kind === 'find')
+        return `A rare find: ${S.shop.findOdds(item.source.chance)} ${S.shop.chest(item.source.chest)}. The only honour that is luck.`;
       return 'Not found yet: it comes out of chests.';
     },
     tapToClose: 'Tap to close',
@@ -1073,6 +1076,7 @@ export const S = {
         beach: 'Beach',
         compact: 'Compact',
         van: 'Van',
+        classic: 'Classic',
         laurel: 'Laurel',
         crown: 'Crown',
         phoenix: 'Phoenix',
@@ -1107,7 +1111,20 @@ export const S = {
       };
       return names[id] ?? id;
     },
-    trait: (id: string): string => (id === 'compact' ? 'tiny, light, slower to merge' : id === 'van' ? 'long, heavy, merges quicker' : 'shorter, lighter, merges quicker'),
+    trait: (id: string): string =>
+      id === 'compact'
+        ? 'tiny, light, slower to merge'
+        : id === 'van'
+          ? 'long, heavy, merges quicker'
+          : id === 'classic'
+            ? 'drives like a car, long bonnet, chrome bumpers'
+            : 'shorter, lighter, merges quicker',
+    /** "1 in 500 from a" for a find's chance. */
+    findOdds: (chance: number): string => `1 in ${Fmt.number(Math.round(1 / chance))} from a`,
+    oneIn: (chance: number): string => `1 in ${Fmt.number(Math.round(1 / chance))}`,
+    findRow: (id: string): string => `${S.shop.item(id)} · honour`,
+    found: 'Found',
+    findHint: (id: string): string => `The ${S.shop.item(id)} is the one honour that is luck. It takes the place of what you would have drawn, until you have it.`,
     kind(item: Cosmetic): string {
       const kind = item.kind === 'carSkin' ? 'car skin' : item.kind === 'mapSkin' ? 'map skin' : 'vehicle type · ' + S.shop.trait(item.id);
       return `${S.shop.rarity(item.rarity)} ${kind}`;

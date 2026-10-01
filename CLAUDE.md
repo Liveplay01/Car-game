@@ -38,8 +38,9 @@ App-Store-Arbeit mehr vorschlagen.
   (Node 22 + Hono + SQLite, eigener Container, eigene Coolify-Ressource auf einer Subdomain, Port 5051).
   Er kennt anonyme Spieler (frei gewählter Name, gefiltert), Bestenlisten (Shift-Level, Unlimited-Rekord) und
   seit 01.10.2026 ein **Freunde-Board** (Freundescode `K7M2-9QXA`, einseitig), einen optionalen **Cloud-Spielstand
-  per Sync-Code** (`K7M2-9QXA-4TFB`, kein Konto, kein Passwort, Rückfrage bei Konflikt, nie still überschreiben) und
-  **TURN-Zugänge** für den Multiplayer (Cloudflare, `GET /v1/rtc/ice`); weitere Funktionen kommen als Module in
+  per Sync-Code** (`K7M2-9QXA-4TFB`, kein Konto, kein Passwort, Rückfrage bei Konflikt, nie still überschreiben),
+  **TURN-Zugänge** für den Multiplayer (Cloudflare, `GET /v1/rtc/ice`) und **Kurzlinks für Challenges** (`/c/K7M29QXA`,
+  Vorschaubild zeichnet der Server selbst, kein Upload; `net/challengeLink.ts`); weitere Funktionen kommen als Module in
   `Server/src/modules/`. Anti-Cheat nur über Plausibilitätsgrenzen.
   Das Spiel läuft auch ohne ihn (offline-first, `net/leaderboard.ts`, `net/cloud.ts` und `net/rtc.ts` sind abgeschaltet
   bzw. fallen zurück ohne `VITE_API_URL`). Die Quelle des Spielstands bleibt der Browser (Cloud = optionale Kopie);
@@ -96,12 +97,19 @@ docker build -t car-game . ; docker run -p 5050:5050 car-game   # Container wie 
   (`present/museum.ts`) eingetragen sind. Ein gewöhnlicher Fahrzeugtyp kommt in `ORDINARY`.
   Eine ganz neue Inhaltsart bekommt ein eigenes Regal (`MUSEUM_SHELVES`); alte Spielstände
   erhalten dafür automatisch, was sie schon gesehen haben müssen (`museumShelves`).
-- **Patch Notes (Leo, 29.09.2026):** Jede größere Neuerung und jeder spürbare Bugfix bekommt
-  einen Eintrag in `Web/src/present/patchNotes.ts` (Settings → What's new): Englisch, für
-  Spieler geschrieben, neueste zuerst, eindeutige `id`. Eine neue erste `id` zeigt den Punkt
-  am Einstellungsknopf. Jeder Eintrag hat ein `impact`: `major` (rot, ändert Regeln, Level oder
-  Belohnungen spürbar), `minor` (gelb, neu oder poliert, ohne das Spiel zu ändern), `fix`
-  (grün, nur Fehlerbehebungen). Die Liste zeigt den neuesten aufgeklappt, die anderen zu.
+- **Patch Notes (Leo, 29.09.2026):** Jede größere Neuerung und jeder spürbare Bugfix kommt
+  in `Web/src/present/patchNotes.ts` (Settings → What's new): Englisch, für Spieler
+  geschrieben, neueste zuerst.
+  **Ein Eintrag pro Tag (Leo, 01.10.2026):** Gibt es für heute schon einen Eintrag (`id` ist
+  der Tag, `YYYY-MM-DD`), kommt jede neue Änderung als Punkt oben in dessen `items`. Keinen
+  zweiten Eintrag für denselben Tag anlegen. Den `title` des Tages so anpassen, dass er das
+  Wichtigste nennt, und das `impact` auf die stärkste Änderung des Tages heben (`major` rot:
+  ändert Regeln, Level oder Belohnungen spürbar; `minor` gelb: neu oder poliert, ohne das
+  Spiel zu ändern; `fix` grün: nur Fehlerbehebungen; reine Fixes beginnen mit „Fixed:“).
+  Erst am nächsten Tag beginnt ein neuer Eintrag. Ein neuer Punkt zeigt den Punkt am
+  Einstellungsknopf (`latestNote`: Tag und Anzahl der Punkte), auch im bestehenden Eintrag.
+  `npm test` prüft: eine `id` pro Tag, neueste zuerst. Die Liste zeigt den neuesten Tag
+  aufgeklappt, die anderen zu.
 - **Name (Leo, 30.09.2026):** Das Spiel heißt **Roundabout Timing** (kurz RAT); „Car Game“ ist nur noch der Ordner- und Repo-Name.
 - **CrazyGames (Leo, 30.09.2026):** Eingebettet über die normale URL mit `?crazygames`, kein eigener Build, kein Upload. Nur dann lädt das SDK und speichert über das Data Module (Web/README.md, CrazyGames).
 - **Rechtliches:** Datenschutz und Impressum in `Web/src/present/legal.ts` (Settings → Legal, `/privacy`, `/imprint`). Neuer Dienst, der Daten bekommt (Werbung, Analyse, Server) = Absatz dort und neues `LEGAL_UPDATED`.

@@ -9,6 +9,7 @@ import { migrate, type Db } from './db.ts';
 import { ApiError } from './errors.ts';
 import type { AppEnv, ServerContext, ServerModule } from './module.ts';
 import { adminModule } from './modules/admin/index.ts';
+import { challengesModule } from './modules/challenges/index.ts';
 import { friendsModule } from './modules/friends/index.ts';
 import { leaderboardModule } from './modules/leaderboard/index.ts';
 import { playersModule } from './modules/players/index.ts';
@@ -19,7 +20,7 @@ import { syncModule } from './modules/sync/index.ts';
  * The features of the server, in the order they are set up. A module may use the ones above it
  * (the leaderboard needs players). Add a new feature here.
  */
-export const modules = (): ServerModule[] => [playersModule(), leaderboardModule(), friendsModule(), syncModule(), rtcModule(), adminModule()];
+export const modules = (): ServerModule[] => [playersModule(), leaderboardModule(), friendsModule(), syncModule(), rtcModule(), challengesModule(), adminModule()];
 
 /**
  * Who is calling. Behind Coolify's proxy that is the last address the proxy wrote into
@@ -81,6 +82,7 @@ export function createApp(options: AppOptions): Hono<AppEnv> {
   const v1 = new Hono<AppEnv>();
   for (const m of list) m.routes(v1, ctx);
   app.route('/v1', v1);
+  for (const m of list) m.pages?.(app, ctx);
 
   app.notFound((c) => c.json({ error: { code: 'not_found', message: 'There is nothing here.' } }, 404));
   app.onError((error, c) => {

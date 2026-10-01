@@ -1,7 +1,7 @@
 import { type Career, Careers } from '../core/career';
 import type { Config } from '../core/config';
 import { type Upgrade, upgradeMaxSteps } from '../core/levels';
-import { type ChestKind, type Rarity, RARITIES, CHEST_ODDS, PITY_CHESTS, MAX_CAR_SKINS, BIG_SCREEN, cosmetic, isForSale } from '../core/loot';
+import { type ChestKind, type Rarity, RARITIES, CHEST_ODDS, chestFinds, PITY_CHESTS, MAX_CAR_SKINS, BIG_SCREEN, cosmetic, isForSale } from '../core/loot';
 import { type CasinoGame, type SlotSymbol, SLOT_SYMBOLS, Casino } from '../core/casino';
 import { type Vec2, v } from '../core/vec2';
 import type { RenderList } from './render';
@@ -104,6 +104,13 @@ export const Details = {
     const odds = CHEST_ODDS[kind];
     const rows: DetailRow[] = RARITIES.map((r, i) => ({ label: S.shop.rarity(r), value: percent(odds[i]), labelColor: rarityColor(r) }));
     const notes: Detail['notes'] = [{ text: S.shop.pity(PITY_CHESTS - career.chestsSinceEpic), color: 'muted' }];
+    // A find (the Classic) is part of the odds too: shown with them, honestly, also once it is found.
+    for (const find of chestFinds(kind)) {
+      if (find.source.kind !== 'find') continue;
+      const found = Careers.owns(career, find.id);
+      rows.push({ label: S.shop.findRow(find.id), value: found ? S.shop.found : S.shop.oneIn(find.source.chance), labelColor: 'coin', valueColor: found ? 'muted' : undefined });
+      if (!found) notes.push({ text: S.shop.findHint(find.id), color: 'muted' });
+    }
     if (kind === 'event') notes.push({ text: S.shop.seasonHint, color: 'accent' });
     const actions: DetailAction[] = [];
     const index = career.chests.indexOf(kind);

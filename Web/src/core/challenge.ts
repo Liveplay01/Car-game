@@ -25,7 +25,8 @@ export interface ChallengeSpec {
   legendary: LegendaryRule | null;
 }
 
-const CAR_TYPES = ['sportsCar', 'compact', 'van'];
+// New types go at the end: a link stores their positions.
+const CAR_TYPES = ['sportsCar', 'compact', 'van', 'classic'];
 
 /** The challenge of a shift just played with this career. */
 export function challengeOf(

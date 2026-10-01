@@ -205,6 +205,12 @@ export const baseConfig = {
   vanMergeFactor: 0.9,
   vanShareOwned: 0.12,
   vanShare: 0,
+  // The Classic (an honour from Standard Chests): drives like a car, a little longer and heavier.
+  classicLength: 25,
+  classicMass: 1.1,
+  classicMergeFactor: 1,
+  classicShareOwned: 0.1,
+  classicShare: 0,
   tollZoneArc: 150,
   tollSpeedFactor: 0.55,
   cameraFine: 3,

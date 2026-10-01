@@ -34,6 +34,7 @@ try {
   const { Unlocks, FEATURES } = await server.ssrLoadModule('/src/core/unlocks.ts');
   const { bookShift } = await server.ssrLoadModule('/src/present/booking.ts');
   const { joinsClearRoad } = await server.ssrLoadModule('/src/core/ambulance.ts');
+  const { Elite } = await server.ssrLoadModule('/src/core/elite.ts');
 
   // A seeded source of chance, so a run is the same every time.
   const random = (seed) => () => {
@@ -54,6 +55,9 @@ try {
       world.vehicles = all;
     }
   };
+
+  /** What the cash transporters paid in the shifts played so far: all of them, and the Jackpot ones. */
+  const paid = { transporters: 0, jackpots: 0, jackpotCount: 0 };
 
   const playShift = (config, seed, p, r) => {
     const world = new World(config, seed, { startsOnFirstTap: false });
@@ -85,7 +89,16 @@ try {
         if (go && clear) tapAt = world.time + Math.max(0.05, reaction + p.jitter * gauss(r));
       }
       world.step();
-      for (const e of world.takeEvents()) if (e.type === 'shiftEnded') result = e.result;
+      for (const e of world.takeEvents()) {
+        if (e.type === 'shiftEnded') result = e.result;
+        if (e.type === 'transporterPaid' && e.amount > 0) {
+          paid.transporters += e.amount;
+          if (e.jackpot) {
+            paid.jackpots += e.amount;
+            paid.jackpotCount++;
+          }
+        }
+      }
     }
     return result;
   };
@@ -129,6 +142,13 @@ try {
     const opened = {};
     const rows = [];
     let band = { shifts: 0, lost: 0, earned: 0, minutes: 0 };
+    /** Money the shifts paid on the road (before booking), to compare the Jackpot against. */
+    let shiftMoney = 0;
+    /** The Elite track from the moment it opens (Level 50): shifts, minutes and XP since then. */
+    const elite = { openedAt: null, shifts: 0, minutes: 0, xp: 0 };
+    paid.transporters = 0;
+    paid.jackpots = 0;
+    paid.jackpotCount = 0;
     while (c.level < target && shifts < 4000) {
       const seed = shifts * 7919 + 17;
       const shiftConfig = Careers.config(c, baseConfig, seed);
@@ -138,6 +158,8 @@ try {
       band.shifts++;
       if (!res) continue;
       const before = c.money;
+      const xpBefore = c.eliteXp;
+      const eliteOpen = Elite.isOpen(c, baseConfig);
       const booking = bookShift(save, res, { mode: 'shift', level, daily: false, today: 20725, config: baseConfig, shiftConfig, splits: [] });
       if (story && shifts <= story) {
         const clock = `${Math.floor(minutes)}:${String(Math.round((minutes % 1) * 60)).padStart(2, '0')}`;
@@ -152,6 +174,12 @@ try {
       const spent = res.time / 60 + BETWEEN;
       minutes += spent;
       band.minutes += spent;
+      shiftMoney += Math.max(0, res.money);
+      if (eliteOpen) {
+        elite.shifts++;
+        elite.minutes += spent;
+        elite.xp += c.eliteXp - xpBefore;
+      } else if (Elite.isOpen(c, baseConfig)) elite.openedAt = { level: c.level, minutes };
       crashes += res.crashes;
       outcomes[res.outcome] = (outcomes[res.outcome] ?? 0) + 1;
       takedowns += res.takedowns;
@@ -186,6 +214,20 @@ try {
     const owned = UPGRADES.reduce((n, u) => n + Careers.steps(c, u), 0);
     const maxSteps = UPGRADES.reduce((n, u) => n + upgradeMaxSteps[u], 0);
     console.log(`  upgrades ${owned}/${maxSteps} steps (all of them cost ${allSteps.toLocaleString('en')}); next arm ${Careers.armPrice(c, baseConfig)?.toLocaleString('en')}; modules ${ROAD_MODULES.map((m) => `${m} ${modulePrice(baseConfig, m).toLocaleString('en')}`).join(', ')}; chests waiting ${c.chests.length}`);
+    // The Jackpot transporter (`jackpotChance`, `jackpotFactor`): how much of the road's money it is.
+    const share = (x) => `${((100 * x) / Math.max(1, shiftMoney)).toFixed(1)} %`;
+    const plain = paid.jackpots / Math.max(1, baseConfig.jackpotFactor);
+    console.log(
+      `  money on the road ${Math.round(shiftMoney).toLocaleString('en')}: transporters ${share(paid.transporters)}, Jackpots ${share(paid.jackpots)} (${paid.jackpotCount} in ${shifts} shifts; ${share(paid.jackpots - plain)} is the Jackpot's extra over a plain run)`,
+    );
+    // The Elite track (Level 50 is Elite 1, then `eliteXpPerLevel` XP a level): its pace, and where it leads.
+    if (elite.openedAt && elite.shifts > 0) {
+      const perHour = elite.xp / (elite.minutes / 60);
+      const hoursTo = (level) => ((level - 1) * baseConfig.eliteXpPerLevel) / perHour;
+      console.log(
+        `  elite: open at level ${elite.openedAt.level} (${(elite.openedAt.minutes / 60).toFixed(1)} h); since then ${elite.shifts} shifts, ${(elite.minutes / 60).toFixed(1)} h, ${(elite.xp / elite.shifts).toFixed(1)} XP a shift, ${Math.round(perHour)} XP an hour → Elite ${Elite.level(c, baseConfig)}; at this pace Elite 10 in ${hoursTo(10).toFixed(0)} h, 50 in ${hoursTo(50).toFixed(0)} h, 100 in ${hoursTo(100).toFixed(0)} h of play`,
+      );
+    } else if (target > baseConfig.prestigeLevel) console.log('  elite: not open yet');
     console.log(`  opened:${FEATURES.map((f) => (opened[f] ? `${f} at level ${opened[f].level} (${opened[f].minutes.toFixed(0)} min)` : `${f} never`)).join(', ')}`);
     console.log('  level  shifts   hours  lost %  money/shift       bank  upgrades  arms  next upgrade  shifts for it');
     for (const x of rows) {

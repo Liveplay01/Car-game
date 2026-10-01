@@ -182,6 +182,7 @@ Ein Typ hat Spielwerte, ein Skin nur Aussehen – **anders, nicht besser**. Jede
 | **Compact** (Rare) | 12 % | sehr kurz (18), leicht (0,7), fädelt 15 % **langsamer** ein |
 | **Sports Car** (Epic) | 15 % | kürzer (21), leichter (0,8), fädelt 20 % schneller ein |
 | **Van** (Epic) | 12 % | lang (29), schwer (1,5), fädelt 10 % schneller ein |
+| **Classic** (Legendary, Honour) | 10 % | fährt wie ein Auto, etwas länger (25) und schwerer (1,1); lange Haube, Chromstoßstangen. Nur als seltener Fund in der Standard Chest (1 zu 500) |
 
 ---
 
@@ -203,6 +204,8 @@ Chance ab Level 6: +2 % pro Level, höchstens 40 %. Vorher auf dem Wartebildschi
 | Extreme | 25, selten | Sturm plus kurze Böen, die das Tempo schwanken lassen |
 
 Fair bleibt es: Das Tap-Timing ändert sich nie; Sonderfahrzeuge, Warnungen und Countdown-Ringe liegen immer über den Wettereffekten.
+
+**Wetter zieht auf (01.10.2026):** Beim Schichtwechsel springt das Bild nicht um. Das alte Wetter dünnt in 2,5 s aus, das neue setzt ein: Regen Tropfen für Tropfen, Nebel, Schnee und die Abdunklung im Sturm blenden über (`WeatherFade` in `present/weather.ts`). Nur das Bild; die Regeln haben das neue Wetter sofort, die Ready-Karte nennt es.
 
 ### Nacht und Blackout (nur Web)
 
@@ -321,7 +324,7 @@ Ein neuer Spieler trifft die Systeme nacheinander (`core/unlocks.ts`, Werte in `
 Details und alle Item-Listen: [LOOT.md](LOOT.md) (Liste im Code: `Web/src/core/loot.ts`).
 
 - **Nur Aussehen.** Kein Skin gibt einen Spielvorteil. Sonderfahrzeuge bleiben an der **Form** erkennbar, nicht an der Farbe.
-- **101 Items:** 74 Car Skins, 24 Map Skins, 3 Fahrzeugtypen. Im Shop vier Regale: **Cars** (Truhen-Skins nach Seltenheit mit Überschriften, dazu Fahrzeuge und Saison-Skins), **Maps**, **Honours** (Legendary Shifts, Prestige, Elite, Feats, Daily-Serie), **Pass**. Das Raster scrollt.
+- **102 Items:** 74 Car Skins, 24 Map Skins, 4 Fahrzeugtypen (der Classic ist ein Honour). Im Shop vier Regale: **Cars** (Truhen-Skins nach Seltenheit mit Überschriften, dazu Fahrzeuge und Saison-Skins), **Maps**, **Honours** (Legendary Shifts, Prestige, Elite, Feats, Daily-Serie, der Classic), **Pass**. Das Raster scrollt.
 - **Skins mischen:** bis zu **5 Car Skins** gleichzeitig; **jedes Fahrzeug** im Level trägt einen davon, fest pro Fahrzeug. Ein Map Skin.
 - **Map Skins** färben den Boden der Stadt (Tag-Maps hell und satt, Nacht-Maps dunkel), tönen die Mittelinsel, säumen die Straßen mit eigenen Pflanzen und bringen ein **Herzstück** mit Animation.
 - **Car Skins:** Farben, Rennstreifen, zweifarbige Dächer, **Shiny** (Lichtstreif) und **Glitter** (Funkeln).
@@ -394,7 +397,7 @@ Sieben feste Schichten mit festem Seed (alle treffen denselben Verkehr), frische
 
 ### Challenge-Links (nur Web)
 
-Nach einer Schicht macht „Challenge a friend“ einen Link (`#challenge=…`) mit Seed, Modus, Level, Upgrades, Zufahrten, Modulen und Event. Wer ihn öffnet, spielt dieselbe Schicht aus einer frischen Welt; Ziel ist die Punktzahl (in Mayhem die Flammen) des Absenders. Eine Challenge bringt nichts ein. Kein Server nötig.
+Nach einer Schicht macht „Challenge a friend“ einen Link (`#challenge=…`) mit Seed, Modus, Level, Upgrades, Zufahrten, Modulen und Event. Wer ihn öffnet, spielt dieselbe Schicht aus einer frischen Welt; Ziel ist die Punktzahl (in Mayhem die Flammen) des Absenders. Eine Challenge bringt nichts ein. Kein Server nötig. **Mit dem Dienst** (01.10.2026) wird daraus beim Tippen ein Kurzlink (`…/c/K7M29QXA`), der im Chat ein Vorschaubild zeigt: Kreisverkehr bei Nacht und eine LED-Tafel mit „Beat 12,345“, mit Leaderboard-Namen auch „from Leo“. Ohne Dienst oder ohne Antwort in 2,5 s bleibt es der lange Link (`net/challengeLink.ts`, Server/README).
 
 ### Multiplayer (nur Web)
 
@@ -514,6 +517,7 @@ Geprüft wird mit `npm test` (29 Tests, node:test), `npm run build` (Typecheck) 
 
 - **Level laufen dem Geld davon** (`npm run sim:career`, 29.09.2026): Level 60 ist nach 1,1 h (Könner) bis 1,6 h (Gelegenheitsspieler) reiner Spielzeit erreicht, bis dahin sind 130.000–150.000 verdient. Alle Upgrades zusammen kosten 1,6 Mio.; mit Level 60 besitzt man 28–30 von 86 Stufen. Die erste zusätzliche Zufahrt (32.500) und die Module (10.400–15.600) werden nie erschwinglich, solange man Upgrades kauft. Leo, 29.09.2026: bleibt so (die Freischaltungen sind inzwischen entzerrt).
 - **Die ersten Minuten** (`npm run sim:career -- 12 --story=20`): Schichten dauern anfangs 6–10 s. Bis Minute 3 kommen fünf neue Systeme (Daily nach 21 s, Challenges, Modi, Mastery, Trials). Ein Gelegenheitsspieler verliert bei **Level 10 vier Schichten am Stück** (Minute 5–7). Freischaltungen sind entzerrt (siehe „Freischaltungen“). **Die Kurve ab Level 8** (Leo, 29.09.2026: bleibt so): `npm run sim:career -- --curve=3-16 --per=60` (verlorene Schichten je Level, frische Karriere ohne Upgrades): Könner 8 % bis Level 7, dann 13 → 22 → 27 → 35 → 47 % (Level 8–12); Gelegenheitsspieler 23–35 % bis Level 7, dann 45 → 45 → 63 → 77 → 65 %. Es gibt keinen einzelnen Auslöser: ab Level 8 kommen mehr Autos (+1,1 je Level, ab Level 9 fünf Ring-Bots statt vier), Krankenwagen (8), der Verbrecher hat weniger Zeit, dazu Regen, City Events und ab 10 die Nacht.
+- **Jackpot und Elite-Tempo** (`npm run sim:career -- 70`, 01.10.2026; die Zeilen „money on the road“ und „elite“): Geldtransporter bringen 27–29 % des Geldes auf der Straße, Jackpot-Transporter davon 11–14 % (der Aufschlag durch `jackpotFactor` 5 allein: 9–11 %), bei nur 6 Jackpots in 120–206 Schichten, also stark vom Zufall abhängig. Die **Elite-Leiste** läuft schnell: Level 50–70 bringen 17 (Gelegenheitsspieler) bis 29 XP (Könner) pro Schicht, rund 1.500–2.700 XP pro Stunde. In dem Tempo wäre **Elite 100 nach 4–7 h** reiner Spielzeit erreicht, Elite 50 nach 2–3 h. Gemessen nur bis Level 70 und ohne Prestige; schwerere Level bringen vermutlich weniger XP pro Stunde. Noch nicht entschieden.
 
 ---
 

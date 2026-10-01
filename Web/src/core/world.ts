@@ -394,6 +394,8 @@ export class World {
         return c.compactLength;
       case 'van':
         return c.vanLength;
+      case 'classic':
+        return c.classicLength;
       case 'ambulance':
         return c.ambulanceLength;
       case 'fireTruck':
@@ -431,6 +433,8 @@ export class World {
         return c.compactMass;
       case 'van':
         return c.vanMass;
+      case 'classic':
+        return c.classicMass;
       case 'ambulance':
         return c.ambulanceMass;
       case 'fireTruck':
@@ -1303,6 +1307,8 @@ export class World {
         return c.mergeDuration * c.compactMergeFactor;
       case 'van':
         return c.mergeDuration * c.vanMergeFactor;
+      case 'classic':
+        return c.mergeDuration * c.classicMergeFactor;
       case 'motorbike':
         return c.mergeDuration * c.motorbikeMergeFactor;
       default:
@@ -1443,6 +1449,7 @@ export class World {
         ['sportsCar', c.sportsCarShare],
         ['compact', c.compactShare],
         ['van', c.vanShare],
+        ['classic', c.classicShare],
       ];
       if (type === 'car' && shares.some(([, s]) => s > 0)) {
         let pick = this.queueRng.unit();

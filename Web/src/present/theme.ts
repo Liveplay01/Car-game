@@ -39,6 +39,8 @@ export const COLORS = {
   vehicleSports: [226, 85, 63, 1],
   vehicleCompact: [159, 196, 107, 1],
   vehicleVan: [220, 212, 195, 1],
+  vehicleClassic: [128, 44, 52, 1],
+  vehicleChrome: [208, 213, 220, 1],
   vehicleAmbulance: [248, 248, 244, 1],
   vehicleFire: [214, 40, 40, 1],
   vehicleLadder: [196, 202, 210, 1],
@@ -241,18 +243,21 @@ export const COLORS = {
 
 export type ColorToken = keyof typeof COLORS;
 
-const cache = new Map<string, string>();
+/**
+ * Per token, its string at each of the 256 alpha steps. Asked thousands of times a frame, so
+ * the lookup builds no key: a string made per call is garbage the next frame has to collect.
+ */
+const cache = new Map<ColorToken, (string | undefined)[]>();
 
 /** The CSS colour of a token at an opacity (the token's own alpha included). */
 export function css(token: ColorToken, opacity = 1): string {
   const [r, g, b, a] = COLORS[token];
   const alpha = Math.max(0, Math.min(1, a * opacity));
   const q = Math.round(alpha * 255);
-  const key = token + q;
-  let value = cache.get(key);
-  if (!value) {
-    value = `rgba(${r},${g},${b},${(q / 255).toFixed(3)})`;
-    cache.set(key, value);
+  let row = cache.get(token);
+  if (!row) {
+    row = new Array<string | undefined>(256);
+    cache.set(token, row);
   }
-  return value;
+  return (row[q] ??= `rgba(${r},${g},${b},${(q / 255).toFixed(3)})`);
 }

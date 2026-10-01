@@ -1,6 +1,6 @@
 # LOOT.md – Was in den Truhen steckt
 
-Stand: 29.09.2026 · Code: `Web/src/core/loot.ts` (Katalog, Odds, Pity),
+Stand: 01.10.2026 · Code: `Web/src/core/loot.ts` (Katalog, Odds, Pity),
 `Web/src/present/skins.ts` (Farben, Streifen, Dächer, Effekte),
 `Web/src/present/mapThemes.ts` (was eine Map in der Stadt zeigt),
 Namen in `Web/src/present/strings.ts` (`S.shop`). Wird ein Item ergänzt, gehört es in alle und hierher.
@@ -37,6 +37,13 @@ Namen in `Web/src/present/strings.ts` (`S.shop`). Wird ein Item ergänzt, gehör
 | Premium Chest | Shop (52.000), Mastery Stufe II und III | 35 % | 35 % | 22 % | 8 % |
 | Criminal Hunt Chest | Mastery "Crime Fighter" (Takedowns) | 50 % | 30 % | 15 % | 5 % |
 | Event Chest | Jede geschaffte Daily Shift; 15 % Chance nach jeder geschafften Schicht mit City Event (`eventChestChance`). Enthält in der Hälfte der Fälle das Saison-Item, bis man es hat | 40 % | 35 % | 20 % | 5 % |
+
+**Der Fund in der Standard Chest (Leo, 01.10.2026):** Jede Standard Chest enthält mit **1 zu 500
+(0,2 %)** den **Classic** (Oldtimer, unten bei den Fahrzeugtypen), solange man ihn nicht hat. Er
+ersetzt dann das gezogene Item; die Seltenheit wird vorher wie immer gezogen, die Pity zählt
+unverändert. Der Wurf kommt als letzter aus dem Seed, alle anderen Ergebnisse bleiben gleich.
+Er ist das einzige Honour, das Glück ist, und in keiner anderen Truhe. Die Chance steht im
+Chest-Sheet bei den anderen Odds (`chestFinds`, Quelle `{ kind: 'find' }` in `core/loot.ts`).
 
 Innerhalb einer Seltenheit ist jedes Item gleich wahrscheinlich.
 
@@ -158,7 +165,10 @@ sichtbar, mit dem Hinweis, wie man sie bekommt.
 
 ## Nur über Legendary Shifts, Prestige und die Elite-Leiste (19, Regal „Honours“, die Maps auch im Regal „Maps“)
 
-Seit 28.09.2026, Elite-Items seit 29.09.2026. Nie in Truhen, eigenes Regal im Shop.
+Seit 28.09.2026, Elite-Items seit 29.09.2026. Nie in Truhen, eigenes Regal im Shop. Einzige
+Ausnahme seit 01.10.2026: der **Classic** (Fahrzeugtyp, Legendary), ein seltener Fund in der
+Standard Chest (oben, „Truhen“). Er steht im Regal „Honours“, zählt aber nicht zum Album
+„Honours“: Das Album belohnt Taten, nicht Glück.
 
 | Name | ID | Seltenheit | Wie | Look |
 | --- | --- | --- | --- | --- |
@@ -349,6 +359,9 @@ was leichter zu platzieren ist, ist schwerer zu timen und umgekehrt. Werte in `W
 | Compact | `compact` | Rare | 12 %: sehr kurz (18 statt 24), leicht (0,7), fädelt 15 % **langsamer** ein |
 | Sports Car | `sportsCar` | Epic | 15 %: kürzer (21 statt 24), leichter (0,8), fädelt 20 % schneller ein – braucht also ein anderes Timing |
 | Van | `van` | Epic | 12 %: lang (29 statt 24), schwer (1,5), fädelt 10 % schneller ein; Windschutzscheibe weit vorn |
+| Classic | `classic` | Legendary (Honour) | 10 %: fährt wie ein Auto, etwas länger (25) und schwerer (1,1); lange Motorhaube, Kabine weit hinten, Chromstoßstangen über die ganze Breite, Lack Ochsenblut. Nur als Fund in der Standard Chest (1 zu 500) |
+
+Der Classic steht nicht im Regal „Cars“, sondern unter „Honours“ (Leo, 01.10.2026).
 
 ## Verteilung
 
@@ -364,7 +377,6 @@ Dazu die 7 Items aus Daily-Serie und Saison: 70 insgesamt.
 
 ## Ideen für später (noch nicht im Spiel)
 
-- **Weitere Fahrzeugtypen** mit fairen Eigenschaften: Oldtimer (wie ein Auto, eigene Form).
 - **Muster-Skins**: Karo, Camouflage.
 - **Map Skins**: andere Markierungsfarben.
 - **Hupe/Sound-Skins** (rein kosmetisch).

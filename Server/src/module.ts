@@ -22,4 +22,6 @@ export interface ServerModule {
   name: string;
   migrations: readonly string[];
   routes(app: Hono<AppEnv>, ctx: ServerContext): void;
+  /** Pages outside `/v1`, for people and link previews rather than the game (a challenge's short link). */
+  pages?(app: Hono<AppEnv>, ctx: ServerContext): void;
 }

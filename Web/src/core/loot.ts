@@ -37,7 +37,12 @@ export type CosmeticSource =
   /** A tier of the Season Pass (core/seasonPass.ts) in its season. */
   | { kind: 'pass'; season: Season; tier: number }
   /** Built the Hall of Fame. */
-  | { kind: 'hall' };
+  | { kind: 'hall' }
+  /**
+   * The one honour that is luck (Leo, 01.10.2026): found in this chest with this chance per
+   * opening, until it is found. On the Honours shelf, never in a chest's normal pool.
+   */
+  | { kind: 'find'; chest: ChestKind; chance: number };
 
 export interface Cosmetic {
   id: string;
@@ -154,7 +159,12 @@ export const COSMETICS: Cosmetic[] = [
   c('harvestMoon', 'carSkin', 'legendary', { kind: 'pass', season: 'autumn', tier: 8 }),
   c('thunder', 'carSkin', 'legendary', { kind: 'pass', season: 'autumn', tier: 12 }),
   c('hallOfFame', 'carSkin', 'legendary', { kind: 'hall' }),
+  // The Classic: one Standard Chest in 500 (Leo, 01.10.2026).
+  c('classic', 'vehicleType', 'legendary', { kind: 'find', chest: 'standard', chance: 0.002 }),
 ];
+
+/** What a chest can turn up besides its normal pool, with the chance per opening. */
+export const chestFinds = (kind: ChestKind): Cosmetic[] => COSMETICS.filter((x) => x.source.kind === 'find' && x.source.chest === kind);
 
 /** The item a completed Legendary Shift count unlocks, if any. */
 export const legendaryReward = (shifts: number): Cosmetic | undefined =>
@@ -171,7 +181,7 @@ export const eliteReward = (level: number): Cosmetic | undefined => COSMETICS.fi
 
 /** Earned by deeds, not found in chests: Legendary Shifts, Prestige and the Elite track. */
 export const isHonour = (item: Cosmetic): boolean =>
-  item.source.kind === 'legendary' || item.source.kind === 'prestige' || item.source.kind === 'elite' || item.source.kind === 'hall';
+  item.source.kind === 'legendary' || item.source.kind === 'prestige' || item.source.kind === 'elite' || item.source.kind === 'hall' || item.source.kind === 'find';
 
 /** The next Legendary Shift milestone still to reach. */
 export function nextLegendaryReward(collection: readonly string[]): Cosmetic | undefined {
@@ -224,7 +234,8 @@ export function albumItems(album: Album): Cosmetic[] {
     case 'loyalty':
       return COSMETICS.filter((x) => x.source.kind === 'streak');
     case 'honours':
-      return COSMETICS.filter(isHonour);
+      // Deeds only: a find is luck, and an album must not wait on it.
+      return COSMETICS.filter((x) => isHonour(x) && x.source.kind !== 'find');
     case 'pass':
       return COSMETICS.filter((x) => x.source.kind === 'pass');
   }
@@ -289,6 +300,10 @@ export function rollChest(
   if (kind === 'event' && day !== null && rng.unit() < 0.5) {
     const seasonal = seasonItems(seasonOf(day)).find((x) => !collection.includes(x.id));
     if (seasonal) item = seasonal;
+  }
+  // A find (the Classic) takes the place of the drawn item. Drawn last, so every other result of a seed stays as it was.
+  for (const find of chestFinds(kind)) {
+    if (find.source.kind === 'find' && !collection.includes(find.id) && rng.unit() < find.source.chance) item = find;
   }
   return { item, rarity: item.rarity, chestsSinceEpic: since };
 }

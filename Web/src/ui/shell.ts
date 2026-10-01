@@ -15,6 +15,7 @@ import { reportGameplay } from './crazygames';
 import { inPortal, isInstalled, isIos, isIpad, keepStorage, renewStorage } from '../storage/device';
 import type { Hint } from '../core/career';
 import { decodeChallenge, type ChallengeSpec } from '../core/challenge';
+import { knownShortLink, shortLink } from '../net/challengeLink';
 import { S, Fmt } from '../present/strings';
 import { DetailSheet } from './detailSheet';
 import { VersusLobby } from './versusLobby';
@@ -177,7 +178,10 @@ export class Shell {
         if (this.session.save.settings.haptics) this.haptics.play('tap', 0);
       },
       reduceMotion: () => this.session.reduceMotion,
-      link: () => this.session.shareLink(location.origin + location.pathname),
+      link: () => {
+        const code = this.session.shareCode();
+        return (code && knownShortLink(code)) ?? this.session.shareLink(location.origin + location.pathname);
+      },
     });
     this.leaveLabel = h('span', {}, 'Leave');
     this.leaveBtn = h('button', { class: 'btn glass run-btn', type: 'button', 'aria-keyshortcuts': 'Escape', onclick: () => this.session.leaveSpecial() }, icon(ICONS.close), this.leaveLabel);
@@ -354,10 +358,13 @@ export class Shell {
     const badges = TAB_BAR.map((tab) => s.badge(tab));
     const match = this.versus.match;
     const lobby = this.versus;
+    // Asked every frame: built as one plain string (no JSON, no arrays) so it leaves next to no garbage.
     const versusKey = match
-      ? [match.isOver, match.isOut, match.canRevenge, lobby.canReady, lobby.isReady, lobby.enoughForNext, lobby.nextLabel, lobby.isHost].map(String).join(',')
+      ? `${match.isOver},${match.isOut},${match.canRevenge},${lobby.canReady},${lobby.isReady},${lobby.enoughForNext},${lobby.nextLabel},${lobby.isHost}`
       : '';
-    const key = `${screen.k}|${selected}|${JSON.stringify(badges)}|${s.world.shift.phase}|${s.special?.k ?? ''}|${s.shareable ? 1 : 0}|${match ? 1 : 0}|${versusKey}|${s.save.settings.leftHanded}|${s.notesUnread}`;
+    let badgeKey = '';
+    for (const b of badges) badgeKey += b === null ? '-' : b === 'dot' ? '.' : `${b.count};`;
+    const key = `${screen.k}|${selected}|${badgeKey}|${s.world.shift.phase}|${s.special?.k ?? ''}|${s.shareable ? 1 : 0}|${match ? 1 : 0}|${versusKey}|${s.save.settings.leftHanded}|${s.notesUnread}`;
     if (!force && key === this.chromeKey) return;
     this.chromeKey = key;
     reportGameplay(screen.k === 'playing' && !document.hidden);
@@ -416,16 +423,21 @@ export class Shell {
   /** The finished shift as a link: the share sheet on a phone, the clipboard elsewhere. */
   private async share(): Promise<void> {
     const s = this.session;
-    const url = s.shareLink(location.origin + location.pathname);
+    const long = s.shareLink(location.origin + location.pathname);
     const spec = s.shareable;
-    if (!url || !spec) return;
+    const code = s.shareCode();
+    if (!long || !spec || !code) return;
+    // The short link with its picture (`net/challengeLink.ts`), else the long one as before.
+    const url = (await shortLink(spec, code)) ?? long;
+    if (s.shareable !== spec) return;
     const text = S.run.shareText(Fmt.number(spec.target));
     const touch = window.matchMedia('(pointer: coarse)').matches;
     if (touch && typeof navigator.share === 'function') {
       try {
         await navigator.share({ title: S.gameTitle, text, url });
-      } catch {
-        /* cancelled */
+      } catch (error) {
+        // Some browsers allow the share sheet only right after the tap. The link is ready now: one more tap shares it at once.
+        if (error instanceof DOMException && error.name === 'NotAllowedError') s.showNotice(S.run.linkReady);
       }
       return;
     }
@@ -473,12 +485,15 @@ export class Shell {
       this.resize();
     } else if (this.slowFor > 2 && !s.lowDetail) {
       s.lowDetail = true;
+      // The glass over the scene goes solid too: its blur is redone every frame (shell.css).
+      this.app.dataset.detail = 'low';
       this.slowFor = 0;
     } else if (this.slowFor > 4) {
       this.slowFor = 0;
       s.recommendReduceMotion();
     } else if (this.fastFor > 12 && s.lowDetail) {
       s.lowDetail = false;
+      delete this.app.dataset.detail;
       this.fastFor = 0;
     } else if (this.fastFor > 12 && this.dprCap < Math.min(2, device)) {
       this.dprCap = Math.min(2, this.dprCap + 0.5);

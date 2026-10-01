@@ -347,6 +347,7 @@ export const Careers = {
     cfg.sportsCarShare = Careers.owns(c, 'sportsCar') ? base.sportsCarShareOwned : 0;
     cfg.compactShare = Careers.owns(c, 'compact') ? base.compactShareOwned : 0;
     cfg.vanShare = Careers.owns(c, 'van') ? base.vanShareOwned : 0;
+    cfg.classicShare = Careers.owns(c, 'classic') ? base.classicShareOwned : 0;
     const level = c.level + Careers.headStart(c, base);
     const shift = upgraded(forArms(forLevel(cfg, level, seed, c.level)), (u) => Careers.steps(c, u));
     const rule = legendary === undefined ? drawLegendary(shift, level, seed) : legendary;

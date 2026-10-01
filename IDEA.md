@@ -40,14 +40,14 @@ einer Stadt, die mit dem Spieler wächst.
 Das Spiel bleibt offline-first; ein Backend ist ein Zusatz, der ausfallen darf. Noch offen, in
 empfohlener Reihenfolge: (1) Analytics und Fehlerberichte (Umami/Plausible, GlitchTip als
 Coolify-Dienste, kein eigener Code); (2) Daily-Bestenliste mit Replay-Prüfung (Seed + Taps,
-`core/` läuft in Node; macht die Ranglisten fälschungssicher); (3) Kurzlinks mit Vorschaubild
-für Challenge-Links. Geld und Truhen bleiben lokal, die Casino-Regel gilt weiter.
+`core/` läuft in Node; macht die Ranglisten fälschungssicher). Geld und Truhen bleiben lokal,
+die Casino-Regel gilt weiter.
 
 **Stand 01.10.2026:** Der Dienst in `Server/` (läuft auf `api-game.gustaff.dev`) kann: Spieler mit
 Namen, Bestenlisten Shift-Level und Unlimited, **Freunde-Board** (Freundescode),
-**Cloud-Spielstand per Sync-Code** (Settings → Cloud sync) und **TURN-Zugänge** für den
+**Cloud-Spielstand per Sync-Code** (Settings → Cloud sync), **TURN-Zugänge** für den
 Multiplayer (Cloudflare, braucht `CF_TURN_KEY_ID` und `CF_TURN_API_TOKEN` in Coolify, siehe
-Server/README). Einen eigenen PeerJS-Server gibt es bewusst nicht: der öffentliche Broker reicht
+Server/README) und **Kurzlinks mit Vorschaubild** für Challenges (`/c/…`). Einen eigenen PeerJS-Server gibt es bewusst nicht: der öffentliche Broker reicht
 nur Raumcodes weiter, das Netzproblem löst das Relay.
 
 ---
@@ -92,8 +92,6 @@ und **Passwort nur als Hash** mit Begrenzung der Anmeldeversuche. Ebenfalls fest
 
 ## Offen: Inhaltliche Abwechslung
 
-- Weitere Vehicle Types über Compact, Sports Car und Van hinaus (z. B. Oldtimer; Truhen-Inhalt,
-  eigene faire Eigenschaften).
 - Ghost Racing über Challenge-Links (Leo, 28.09.2026: erstmal nicht).
 
 Diese Inhalte dürfen die Kernmechanik nicht mit Sonderregeln überladen.

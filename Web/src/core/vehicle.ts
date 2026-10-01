@@ -17,6 +17,8 @@ export type VehicleType =
   | 'sportsCar'
   | 'compact'
   | 'van'
+  /** The Classic: an honour found in Standard Chests only, very rarely (LOOT.md). Drives like a car. */
+  | 'classic'
   /** A gas tanker: drives like any lorry, but wrecked it explodes. */
   | 'tanker'
   /** A military truck with a bomb: a no-go zone around it on the ring. */
@@ -37,7 +39,7 @@ export type Owner = 'player' | 'ai';
 /** A part in a special event: the syndicate boss (a criminal) and its armoured escorts. */
 export type VehicleRole = 'boss' | 'escort' | null;
 
-export const isCarType = (t: VehicleType): boolean => t === 'car' || t === 'sportsCar' || t === 'compact' || t === 'van';
+export const isCarType = (t: VehicleType): boolean => t === 'car' || t === 'sportsCar' || t === 'compact' || t === 'van' || t === 'classic';
 /** A lorry of any kind: long and heavy, worth more flames in Mayhem. */
 export const isHeavy = (t: VehicleType): boolean => t === 'truck' || t === 'tanker' || t === 'military' || t === 'bus' || t === 'fireTruck';
 /** On an emergency run: the road ahead of it has to stay clear. */

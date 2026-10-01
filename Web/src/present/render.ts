@@ -31,6 +31,13 @@ export interface RenderItem {
   clip?: Rect;
 }
 
+/** A still stretch of the list (`RenderList.bake`): null key, its shapes are compared instead. */
+export interface Bake {
+  end: number;
+  name: string;
+  key: string | null;
+}
+
 export const rect = (center: Vec2, size: Vec2, radius = 0, rotation = 0): Primitive => ({ k: 'rect', center, size, radius, rotation });
 export const circle = (center: Vec2, radius: number): Primitive => ({ k: 'circle', center, radius });
 export const arc = (center: Vec2, radius: number, thickness: number, start: number, end: number): Primitive => ({
@@ -129,7 +136,12 @@ export class RenderList {
    * Still stretches further up the list (the road), by the index they start at: baked as a
    * see-through picture and put back in their place, between what lies under and over them.
    */
-  bakes = new Map<number, { end: number; name: string; key: string }>();
+  bakes = new Map<number, Bake>();
+  /**
+   * The camera shake already in `camera.focus` (screen points). The still pictures are baked
+   * without it and only moved by it, so a crash does not repaint them every frame.
+   */
+  shake: Vec2 = v(0, 0);
   constructor(
     public camera: Camera,
     public background: ColorToken,
@@ -167,14 +179,18 @@ export class RenderList {
 
   /**
    * The items from `start` on are still (the road): `name` keeps their picture apart from other
-   * bakes. `key` must change whenever they would; without one, their shapes themselves are the
-   * key (fine for a few dozen). Plain world shapes only; a stretch with a clip or a screen item
-   * is simply drawn.
+   * bakes. `key` must change whenever they would; without one, the drawer compares the shapes
+   * themselves with the last frame's. Plain world shapes only; a stretch with a clip or a screen
+   * item is simply drawn.
    */
   bake(start: number, name: string, key?: string): void {
-    const part = this.items.slice(start);
-    if (part.length === 0 || part.some((x) => x.space !== 'world' || x.clip !== undefined)) return;
-    this.bakes.set(start, { end: this.items.length, name, key: key ?? JSON.stringify(part) });
+    const end = this.items.length;
+    if (end === start) return;
+    for (let i = start; i < end; i++) {
+      const x = this.items[i];
+      if (x.space !== 'world' || x.clip !== undefined) return;
+    }
+    this.bakes.set(start, { end, name, key: key ?? null });
   }
 }
 
