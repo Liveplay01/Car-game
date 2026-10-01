@@ -178,6 +178,13 @@ field by field instead of breaking the game. "Reset progress" in Settings erases
 "Export progress" writes it to a file (`car-game-save-<date>.json`), "Import progress" reads
 such a file back through the same checks, after showing what it replaces.
 
+**Big Screen** (Prestige ★5, `ui/backdrop.ts`): the player's own picture or video behind the
+roundabout, kept apart from the save under `carGame.backdrop.v1` (always plain `localStorage`,
+also on CrazyGames: an uploaded picture is hundreds of kilobytes). An upload is shrunk to a
+JPEG data URL; a link is kept as text. It sits in a DOM layer behind the canvas; the scene
+leaves its ground see-through only then (`RenderList.backdrop`). YouTube plays through
+youtube-nocookie.com, so `nginx.conf` allows `https:` images and media and that one frame.
+
 Keeping it safe (`storage/device.ts`, one-time `hints` in the save): Safari clears a site's
 storage after about a week without a visit unless the game is on the home screen. After
 Level 3 the game asks the browser to keep its storage (`navigator.storage.persist()`, never

@@ -24,7 +24,7 @@ export const HOSTING = {
   location: 'Germany',
 };
 
-export const LEGAL_UPDATED = '30 September 2026';
+export const LEGAL_UPDATED = '1 October 2026';
 
 export const GAME_NAME = 'Roundabout Timing';
 
@@ -106,6 +106,7 @@ export const LEGAL_DOCS: LegalDoc[] = [
           'PeerJS Server (0.peerjs.com), run by the PeerJS open-source project, which receives your IP address and a random room ID to introduce the players.',
           'STUN servers of Google LLC (stun.l.google.com), which receive your IP address to find a route between the players. Google may process it in the USA; Google is certified under the EU-US Data Privacy Framework.',
           'The other players in the room, whose devices technically see your IP address, and the name you chose.',
+          'Only if your connection needs a relay (many phone networks and school Wi-Fi do): a relay of Cloudflare, Inc. (USA, certified under the EU-US Data Privacy Framework) that passes the match data on and sees your IP address while it does. Before a room opens, the game asks our server for a login that stops working after a day; the server receives your IP address with that request, as with any request, and does not store it.',
         ],
         after: ['Legal basis: Art. 6(1)(b) GDPR (connecting you to the players you chose to play with). Without multiplayer, none of this happens.'],
         link: ['PeerJS', 'https://peerjs.com'],
@@ -117,6 +118,30 @@ export const LEGAL_DOCS: LegalDoc[] = [
           'The server stores the name, a random ID, a secret key that proves the name is yours (only its hash is kept), your best scores and when you reached them. The name and the scores are public: everyone can see them on the leaderboard. Your IP address reaches the server with every request, as with any website; it is used only in memory to stop abuse and is not stored. Offensive names are removed.',
           'Legal basis: Art. 6(1)(b) GDPR (the leaderboard you chose to join). To remove your name and all your scores at once: Progress → Ranks → Remove me from the leaderboard.',
         ],
+      },
+      {
+        heading: 'Friends',
+        paragraphs: [
+          'If you open Friends on the leaderboard, the server makes a friend code for you (like K7M2-9QXA). Whoever types your code adds you to their friends list and then sees your name and your best scores on their friends board, which they could already see on the public leaderboard. You can see and remove the people on your own list; the list is stored with your leaderboard entry.',
+          'Legal basis: Art. 6(1)(b) GDPR (the friends board you chose to use). Removing your name from the leaderboard deletes your friend code and your list as well.',
+        ],
+      },
+      {
+        heading: 'Cloud sync',
+        paragraphs: [
+          'Only if you turn on Cloud sync (Settings → Cloud sync), the game sends a copy of your progress (the same data as the progress file you can export: level, money, upgrades, collection, records, settings) to our server. No name, e-mail address or password is needed: the server makes a random sync code, and the code is the only key to the copy. Only its hash is stored, together with the copy and the times it was made and last changed. The copy is not public. Your IP address reaches the server with every request, as with any website; it is used only in memory to stop abuse and is not stored.',
+          'Anyone who knows your sync code can load or replace your copy, so keep it private. A picture you chose for Big Screen is not part of it. If you have a name on the leaderboard, the copy also holds that name and the secret key that proves it is yours, so that on a new device you are the same player again, with the same name, scores and friends. Anyone with the sync code could therefore also act as that player.',
+          'Legal basis: Art. 6(1)(b) GDPR (the backup you chose to make). To delete the copy for good: Settings → Cloud sync → Delete the cloud copy. Stopping on one device leaves the copy for your other devices.',
+        ],
+      },
+      {
+        heading: 'Big Screen',
+        paragraphs: [
+          'Big Screen (a map you earn at Prestige ★5) shows your own picture or video behind the roundabout. A picture you upload is made smaller and kept in your browser only; it is never sent to us or anyone else.',
+          "Only if you paste a link, your browser loads it straight from that site, which receives your IP address and your browser's identification like on any visit. A YouTube link plays through YouTube's privacy-enhanced mode (youtube-nocookie.com), run by Google Ireland Limited; Google may process data in the USA and is certified under the EU-US Data Privacy Framework. The link itself stays on your device.",
+          'Legal basis: Art. 6(1)(b) GDPR (showing what you chose to show). To stop it: Remove in the Big Screen sheet, or take Big Screen off.',
+        ],
+        link: ['Google Privacy Policy', 'https://policies.google.com/privacy'],
       },
       {
         heading: 'Sharing',

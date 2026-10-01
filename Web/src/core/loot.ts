@@ -126,6 +126,15 @@ export const COSMETICS: Cosmetic[] = [
   c('starSilver', 'carSkin', 'epic', { kind: 'prestige', rank: 1 }),
   c('starGold', 'carSkin', 'epic', { kind: 'prestige', rank: 2 }),
   c('starIris', 'carSkin', 'legendary', { kind: 'prestige', rank: 3 }),
+  // The player's own picture or video behind the roundabout (Leo, 01.10.2026; ui/backdrop.ts).
+  c('bigScreen', 'mapSkin', 'legendary', { kind: 'prestige', rank: 5 }),
+  // Feats (Leo, 01.10.2026): the hardest deeds in the game, never luck. Progress → Mastery → Feats (core/feats.ts).
+  c('nova', 'carSkin', 'legendary', { kind: 'prestige', rank: 10 }),
+  c('gilded', 'mapSkin', 'legendary', { kind: 'prestige', rank: 15 }),
+  c('singularity', 'carSkin', 'legendary', { kind: 'prestige', rank: 20 }),
+  c('zenith', 'carSkin', 'legendary', { kind: 'elite', level: 75 }),
+  c('eventHorizon', 'mapSkin', 'legendary', { kind: 'elite', level: 100 }),
+  c('undying', 'carSkin', 'legendary', { kind: 'legendary', shifts: 50 }),
   c('eliteSteel', 'carSkin', 'rare', { kind: 'elite', level: 5 }),
   c('eliteBlaze', 'carSkin', 'epic', { kind: 'elite', level: 15 }),
   c('eliteJade', 'carSkin', 'epic', { kind: 'elite', level: 25 }),
@@ -150,6 +159,9 @@ export const COSMETICS: Cosmetic[] = [
 /** The item a completed Legendary Shift count unlocks, if any. */
 export const legendaryReward = (shifts: number): Cosmetic | undefined =>
   COSMETICS.find((x) => x.source.kind === 'legendary' && x.source.shifts === shifts);
+
+/** The map that shows the player's own picture or video instead of a city. */
+export const BIG_SCREEN = 'bigScreen';
 
 /** The item a Prestige rank unlocks, if any. */
 export const prestigeReward = (rank: number): Cosmetic | undefined => COSMETICS.find((x) => x.source.kind === 'prestige' && x.source.rank === rank);

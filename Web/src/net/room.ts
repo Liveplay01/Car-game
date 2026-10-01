@@ -1,4 +1,5 @@
 import type { Peer, DataConnection, PeerOptions } from 'peerjs';
+import { iceServers } from './rtc';
 import { VERSUS_MAX_PLAYERS, randomJoinCode, type BestOf } from '../core/versus';
 import { cleanName, readGuestMessage, readHostMessage, RateLimit, type GuestMessage, type HostMessage, type Member } from './messages';
 
@@ -6,7 +7,7 @@ import { cleanName, readGuestMessage, readHostMessage, RateLimit, type GuestMess
  * A multiplayer room: a host and up to three friends (or bots), peer to peer (WebRTC).
  * PeerJS's public broker only introduces the players to each other by the four-digit code;
  * the game itself runs on every device and only taps travel (see `present/versus.ts`). There
- * is no server of our own. A practice room (`Room.local`) has no network at all: you and bots.
+ * is no game server: our own service only hands out relay logins (`net/rtc.ts`). A practice room (`Room.local`) has no network at all: you and bots.
  */
 
 export { REACTIONS, NAME_MAX, cleanName } from './messages';
@@ -17,11 +18,6 @@ const PREFIX = 'car-game-roundabout-v2-';
 const peerId = (code: string): string => PREFIX + code;
 const BOT_NAMES = ['Blinker', 'Turbo', 'Rusty', 'Nova'];
 
-/**
- * Where WebRTC looks for a way through: public STUN servers, plus a TURN relay when the build
- * names one (`VITE_TURN_URL`, `VITE_TURN_USERNAME`, `VITE_TURN_CREDENTIAL`). Phones on mobile
- * data sit behind carrier NAT; without a relay some of them cannot reach each other.
- */
 /** PeerJS loads only when a real room opens: the career and practice rooms never need it. */
 let peerClass: Promise<typeof Peer> | null = null;
 function loadPeer(): Promise<typeof Peer> {
@@ -34,19 +30,8 @@ function loadPeer(): Promise<typeof Peer> {
 /** Why PeerJS did not load: offline, or online but this page is older than the server's files. */
 const loadError = (): RoomError => (navigator.onLine ? 'outdated' : 'network');
 
-function peerOptions(): PeerOptions {
-  const iceServers: RTCIceServer[] = [{ urls: ['stun:stun.l.google.com:19302', 'stun:stun1.l.google.com:19302'] }];
-  const env = import.meta.env;
-  const turn = typeof env.VITE_TURN_URL === 'string' ? env.VITE_TURN_URL.trim() : '';
-  if (turn) {
-    iceServers.push({
-      urls: turn.split(',').map((u: string) => u.trim()).filter(Boolean),
-      username: env.VITE_TURN_USERNAME || undefined,
-      credential: env.VITE_TURN_CREDENTIAL || undefined,
-    });
-  }
-  return { config: { iceServers } };
-}
+/** STUN, and a relay when the service has one (`net/rtc.ts`): phones on mobile data often cannot reach each other without. */
+const peerOptions = async (): Promise<PeerOptions> => ({ config: { iceServers: await iceServers() } });
 
 export type RoomError = 'noGame' | 'full' | 'network' | 'hostLeft' | 'codeBusy' | 'outdated';
 
@@ -153,10 +138,10 @@ export class Room {
     }
     this.peer?.destroy();
     this.peer = null;
-    loadPeer().then(
-      (Peer) => {
+    Promise.all([loadPeer(), peerOptions()]).then(
+      ([Peer, options]) => {
         if (this.closed) return;
-        const peer = new Peer(peerOptions());
+        const peer = new Peer(options);
         this.peer = peer;
         peer.on('open', () => start(peer));
         peer.on('error', (e) => {
@@ -217,11 +202,11 @@ export class Room {
   // MARK: Host
 
   private openAsHost(attempt: number): void {
-    loadPeer().then(
-      (Peer) => {
+    Promise.all([loadPeer(), peerOptions()]).then(
+      ([Peer, options]) => {
         if (this.closed) return;
         const code = randomJoinCode();
-        this.listen(new Peer(peerId(code), peerOptions()), code, attempt);
+        this.listen(new Peer(peerId(code), options), code, attempt);
       },
       () => this.fail(loadError()),
     );

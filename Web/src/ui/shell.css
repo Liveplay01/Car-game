@@ -1990,6 +1990,87 @@ button {
   border-top-color: transparent;
 }
 
+/* The Prestige star (ui/leaderboardSheet.ts): a five-point star with the rank inside and a
+   slow glint. Tiers follow the star skins: silver ★1, gold ★2, iris ★3 and up. */
+.prestige-star {
+  --star-a: #f4f6fa;
+  --star-b: #9aa3b2;
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+  width: 30px;
+  height: 29px;
+  margin-right: var(--s2);
+  vertical-align: middle;
+  background: linear-gradient(145deg, var(--star-a), var(--star-b));
+  clip-path: polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%);
+  padding: 0;
+  border: 0;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform 120ms var(--ease-drawer), filter 120ms var(--ease-drawer);
+}
+
+.prestige-star:active {
+  transform: scale(0.9);
+}
+
+/* The clip-path would cut an outline off: the focused star brightens instead. */
+.prestige-star:focus-visible {
+  outline: none;
+  filter: brightness(1.2) saturate(1.3);
+}
+
+.prestige-info .quiet-btn {
+  align-self: flex-start;
+  margin-bottom: var(--s3);
+}
+
+.prestige-star.tier-2 {
+  --star-a: #ffe28a;
+  --star-b: #e0a21c;
+}
+
+.prestige-star.tier-3 {
+  --star-a: #ffd36e;
+  --star-b: #c15cff;
+}
+
+.prestige-star::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(110deg, transparent 35%, rgba(255, 255, 255, 0.85) 50%, transparent 65%);
+  background-size: 250% 100%;
+  background-position: 160% 0;
+  animation: prestige-glint 3.6s ease-in-out infinite;
+}
+
+.prestige-star-rank {
+  position: relative;
+  z-index: 1;
+  margin-top: 3px;
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1;
+  color: #2a1d05;
+  font-variant-numeric: tabular-nums;
+}
+
+@keyframes prestige-glint {
+  0%,
+  55% {
+    background-position: 160% 0;
+  }
+  100% {
+    background-position: -60% 0;
+  }
+}
+
+.app.reduce-motion .prestige-star::after {
+  animation: none;
+}
+
 .board-gap {
   justify-content: center;
   min-height: 28px;
@@ -2058,4 +2139,89 @@ button {
 
 .name-note:empty {
   display: none;
+}
+
+/* Cloud sync and friends: a code shown large, easy to read out and to copy. */
+.cloud {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s3);
+}
+
+.cloud-or {
+  margin-top: var(--s2);
+}
+
+.sync-code {
+  font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+  font-size: 22px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  color: var(--primary);
+  user-select: all;
+}
+
+.sync-input {
+  font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+  letter-spacing: 0.06em;
+}
+
+.friends-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s2);
+  margin-top: var(--s4);
+}
+
+.friends-panel:empty {
+  display: none;
+}
+
+.scope-tabs {
+  margin-bottom: var(--s2);
+}
+
+/* The one-time Cloud sync pop-up: a card on a dimmed screen (the install dialog is the full-screen sibling). */
+.intro-root {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-toast);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: calc(var(--safe-top) + var(--s4)) var(--s4) calc(var(--safe-bottom) + var(--s4));
+  background: var(--scrim);
+  animation: fade-in 240ms ease both;
+}
+
+.intro-root.closing {
+  animation: fade-out 200ms ease both;
+}
+
+.intro-card {
+  width: min(380px, 100%);
+  display: grid;
+  gap: var(--s3);
+  justify-items: center;
+  text-align: center;
+  padding: var(--s5) var(--s4) var(--s4);
+  border-radius: 22px;
+  background: var(--surface-1);
+  box-shadow: 0 0 0 1px var(--separator);
+  animation: install-in 360ms var(--ease-drawer) both;
+}
+
+.intro-card .btn {
+  width: 100%;
+}
+
+.intro-title {
+  font-size: 22px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .intro-root,
+  .intro-card {
+    animation: none;
+  }
 }

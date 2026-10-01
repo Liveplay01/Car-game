@@ -112,6 +112,12 @@ export class RenderList {
   /** The ground between everything gets a faint texture, anchored to the world. */
   groundGrain = false;
   /**
+   * Big Screen: the ground is see-through, so the player's own picture or video behind the
+   * canvas shows (`ui/backdrop.ts`), dimmed by the background colour at this opacity so the
+   * road and the cars stay readable. Null: an ordinary, solid ground.
+   */
+  backdrop: number | null = null;
+  /**
    * The leading items that stay the same while the map and the camera do (the ground and its
    * still details): the drawer bakes them, with the background and the ground texture, into
    * one picture and reuses it frame after frame (`CanvasDrawer`). `staticKey` names what they

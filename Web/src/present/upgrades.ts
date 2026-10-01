@@ -9,91 +9,16 @@ import { moneyTag } from './icons';
 import { S, Fmt } from './strings';
 import { measure } from './measure';
 import { BuildLayout, BUILD_PAGES, type Tab } from './flow';
+import { Scroller } from './scroll';
 
-/** What the Upgrades page shows and animates (`UpgradePage.State`). */
-export class UpgradeState {
+/** What the Upgrades page shows and animates (`UpgradePage.State`); the list scrolls (`Scroller`). */
+export class UpgradeState extends Scroller {
   selected: Upgrade | null = null;
   age = 0;
   pressed: { upgrade: Upgrade; age: number } | null = null;
   purchase: { upgrade: Upgrade; steps: number; age: number } | null = null;
   denied: { upgrade: Upgrade; age: number } | null = null;
   moneyBefore: number | null = null;
-  /** The list's scroll offset (points), its fling speed, and a finger on it. */
-  scroll = 0;
-  velocity = 0;
-  drag: { startY: number; startScroll: number; moved: boolean; y: number } | null = null;
-  private lastScroll = 0;
-  indicator = 0;
-
-  /** Past the ends the list gives way with rising resistance, like a native scroll view. */
-  static rubber(overshoot: number): number {
-    const d = 120;
-    return (1 - 1 / ((Math.abs(overshoot) * 0.55) / d + 1)) * d * Math.sign(overshoot);
-  }
-
-  press(y: number): void {
-    this.target = null;
-    this.drag = { startY: y, startScroll: this.scroll, moved: false, y };
-    this.velocity = 0;
-  }
-
-  move(y: number, maxScroll: number): void {
-    const d = this.drag;
-    if (!d) return;
-    d.y = y;
-    if (!d.moved && Math.abs(y - d.startY) < 6) return;
-    d.moved = true;
-    const raw = d.startScroll - (y - d.startY);
-    this.scroll = raw < 0 ? UpgradeState.rubber(raw) : raw > maxScroll ? maxScroll + UpgradeState.rubber(raw - maxScroll) : raw;
-  }
-
-  /** True when the finger lifted without scrolling: it was a tap. */
-  release(): boolean {
-    const d = this.drag;
-    this.drag = null;
-    return !!d && !d.moved;
-  }
-
-  /** Glide to a scroll position (a card brought into view). */
-  private target: number | null = null;
-  scrollTo(target: number): void {
-    this.target = target;
-    this.velocity = 0;
-  }
-
-  wheel(dy: number, maxScroll: number): void {
-    this.scroll = Math.min(Math.max(this.scroll + dy, 0), maxScroll);
-    this.velocity = 0;
-  }
-
-  /** The fling decays; past an end it springs back. */
-  follow(delta: number, maxScroll: number): void {
-    if (delta <= 0) return;
-    if (this.drag) {
-      if (this.drag.moved) this.velocity = 0.6 * this.velocity + (0.4 * (this.scroll - this.lastScroll)) / delta;
-      this.lastScroll = this.scroll;
-      return;
-    }
-    if (this.target !== null) {
-      this.scroll += (this.target - this.scroll) * Math.min(1, delta / 0.12);
-      if (Math.abs(this.target - this.scroll) < 0.5) {
-        this.scroll = this.target;
-        this.target = null;
-      }
-      this.lastScroll = this.scroll;
-      return;
-    }
-    this.scroll += this.velocity * delta;
-    this.velocity *= Math.exp(-delta / 0.325);
-    const target = Math.min(Math.max(this.scroll, 0), maxScroll);
-    if (target !== this.scroll) {
-      this.velocity *= Math.exp(-delta / 0.05);
-      this.scroll += (target - this.scroll) * Math.min(1, delta / 0.09);
-      if (Math.abs(target - this.scroll) < 0.3) this.scroll = target;
-    }
-    if (Math.abs(this.velocity) < 4) this.velocity = 0;
-    this.lastScroll = this.scroll;
-  }
 
   advance(delta: number): void {
     this.age += delta;
@@ -224,15 +149,7 @@ export const UpgradePage = {
   /** A thin bar at the right edge while the list moves, like iOS. */
   addScrollIndicator(list: RenderList, area: Rect, state: UpgradeState, count: number, bottomInset: number): void {
     const l = UpgradePage.layoutOf(list.camera.viewport, bottomInset, count);
-    if (l.maxScroll <= 0) return;
-    const moving = state.drag?.moved || Math.abs(state.velocity) > 4;
-    state.indicator += ((moving ? 1 : 0) - state.indicator) * 0.2;
-    if (state.indicator < 0.02) return;
-    const h = R.height(area);
-    const bar = Math.max(36, (h * h) / (h + l.maxScroll));
-    const x = Math.min(list.camera.viewport.x - 4, l.left + 2 * l.cardWidth + UpgradePage.gap + 5);
-    const y = area.minY + (h - bar) * Ease.clamp01(state.scroll / l.maxScroll) + bar / 2;
-    list.s(rect(v(x, y), v(3, bar), 1.5), 'muted', 0.7 * state.indicator);
+    state.addIndicator(list, area, l.maxScroll, Math.min(list.camera.viewport.x - 4, l.left + 2 * l.cardWidth + UpgradePage.gap + 5));
   },
 
   addCard(list: RenderList, upgrade: Upgrade, index: number, r: Rect, career: Career, config: Config, state: UpgradeState, reduceMotion: boolean): void {

@@ -1,7 +1,7 @@
 import { Careers } from '../core/career';
 import { Unlocks } from '../core/unlocks';
 import type { ChestKind } from '../core/loot';
-import { ShopPage, type ShopTarget } from './shop';
+import { ShopPage, type ShopTarget, shelfItems } from './shop';
 import type { CasinoFlow } from './casinoFlow';
 import { S } from './strings';
 import type { PageHost } from './pageHost';
@@ -22,8 +22,8 @@ export class ShopFlow {
   leaveShelf(): void {
     if (!this.host.onShop || this.host.shopPage.section !== 1) return;
     const career = this.host.save.career;
-    const shown = ShopPage.itemCells(ShopPage.layout(this.host.viewport, this.host.tabInset), this.host.shopPage.shelf)
-      .map(([item]) => item.id)
+    const shown = shelfItems(this.host.shopPage.shelf)
+      .map((item) => item.id)
       .filter((id) => career.unseen.includes(id));
     if (shown.length === 0) return;
     Careers.markSeen(career, shown);

@@ -36,7 +36,7 @@ export const screenTab = (s: Screen): Tab => (s.k === 'page' ? s.tab : 'game');
 export const showsTabBar = (s: Screen): boolean => s.k !== 'settings' && s.k !== 'playing';
 
 export type ShopSection = 0 | 1 | 2; // chests · collection · casino
-export type ProgressSection = 0 | 1 | 2 | 3 | 4; // records · quests · trials · museum · achievements
+export type ProgressSection = 0 | 1 | 2 | 3; // records · today · goals (trials, mastery, feats) · museum
 
 export type Part = 'arm' | RoadModule;
 export const PARTS: Part[] = ['arm', 'tollBooth', 'speedCamera', 'towDepot'];
@@ -69,6 +69,8 @@ export type ScreenAction =
   | { k: 'watchAd' }
   | { k: 'showCasino'; game: CasinoGame }
   | { k: 'wear'; id: string }
+  /** Big Screen: choose the picture or video behind the roundabout (the shell's sheet). */
+  | { k: 'editBackdrop' }
   | { k: 'startTrial'; id: string }
   | { k: 'wearTitle'; id: TitleId }
   | { k: 'showElite' }

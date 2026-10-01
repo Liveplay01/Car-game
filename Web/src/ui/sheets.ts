@@ -6,6 +6,7 @@ import { LEGAL_DOCS, type LegalDoc, type LegalId } from '../present/legal';
 import type { License } from '../present/licenses';
 import { parseImport } from '../storage/save';
 import { inPortal, isInstalled, isIos } from '../storage/device';
+import { cloudEnabled } from '../net/cloud';
 
 interface OpenSheet {
   root: HTMLElement;
@@ -182,6 +183,69 @@ export function licensesSheet(layer: HTMLElement, licenses: License[], onClose: 
   return openSheet(layer, 'Licenses', body, onClose);
 }
 
+/**
+ * A small one-time pop-up for every player: Cloud sync exists, and where to find it. "Open Cloud
+ * sync" goes straight there; "Maybe later" closes it (Escape and a tap outside too). It is shown
+ * once per device (`cloudIntroDue`), and the page itself stays in Settings.
+ */
+export function cloudIntroDialog(layer: HTMLElement, actions: { open(): void; closed(): void }): void {
+  const previouslyFocused = document.activeElement as HTMLElement | null;
+  const step = (n: number, text: string, glyph: string): HTMLElement =>
+    h('li', { class: 'install-step' }, h('span', { class: 'install-num', 'aria-hidden': 'true' }, String(n)), h('span', { class: 'install-text' }, text), h('span', { class: 'install-glyph', 'aria-hidden': 'true' }, icon(glyph)));
+  const open = h('button', { class: 'btn primary block', type: 'button' }, 'Open Cloud sync');
+  const later = h('button', { class: 'btn block quiet-btn', type: 'button' }, 'Maybe later');
+  const card = h(
+    'div',
+    { class: 'intro-card', role: 'alertdialog', 'aria-modal': 'true', 'aria-labelledby': 'intro-title', 'aria-describedby': 'intro-why' },
+    h('div', { class: 'install-badge', 'aria-hidden': 'true' }, icon(ICONS.gear)),
+    h('h2', { class: 'install-title intro-title', id: 'intro-title' }, 'New: Cloud sync'),
+    h('p', { class: 'install-why', id: 'intro-why' }, 'Back up your progress and carry on with any device using a short code. No account and no password.'),
+    h(
+      'ol',
+      { class: 'install-steps' },
+      step(1, 'Tap the gear for Settings', ICONS.gear),
+      step(2, 'Open “Cloud sync”', ICONS.chevronRight),
+      step(3, 'Back up, or type a code from another device', ICONS.check),
+    ),
+    open,
+    later,
+  );
+  const root = h('div', { class: 'intro-root' }, card);
+  const finish = (): void => {
+    document.removeEventListener('keydown', onKey, true);
+    root.classList.add('closing');
+    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    window.setTimeout(() => root.remove(), reduce ? 0 : 200);
+    previouslyFocused?.focus?.();
+  };
+  const onKey = (e: KeyboardEvent): void => {
+    e.stopPropagation();
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      finish();
+      actions.closed();
+    } else if (e.key === 'Tab') {
+      // Focus stays on the two buttons.
+      e.preventDefault();
+      (document.activeElement === open ? later : open).focus();
+    }
+  };
+  open.addEventListener('click', () => {
+    finish();
+    actions.open();
+  });
+  later.addEventListener('click', () => {
+    finish();
+    actions.closed();
+  });
+  root.addEventListener('click', (e) => {
+    if (e.target === root) later.click();
+  });
+  document.addEventListener('keydown', onKey, true);
+  layer.append(root);
+  open.focus({ preventScroll: true });
+}
+
 /** A row that opens a page, the whole row tappable. */
 function linkRow(title: string, sub: string, onOpen: () => void): HTMLElement {
   return h(
@@ -203,6 +267,8 @@ export interface SettingsActions {
   /** The save as file text, for Export progress. */
   exportText(): string;
   importSave(save: SaveGame): void;
+  /** Cloud sync (a sync code), over the settings. */
+  openCloud(): void;
   install: (() => void) | null;
   closed(): void;
 }
@@ -435,6 +501,7 @@ function progressRows(actions: SettingsActions, closeSheet: () => void): HTMLEle
   return h(
     'div',
     { class: 'list', style: 'margin-bottom:24px' },
+    cloudEnabled ? linkRow('Cloud sync', 'Keep your progress safe and move it to another device with a code.', () => actions.openCloud()) : null,
     h('div', { class: 'row' }, h('div', { class: 'row-main' }, h('div', { class: 'row-title' }, 'Export progress'), exportSub), exportBtn),
     h('div', { class: 'row' }, h('div', { class: 'row-main' }, h('div', { class: 'row-title' }, 'Import progress'), importSub), importBtn, picker),
   );

@@ -1,7 +1,7 @@
 import { type Career, Careers } from '../core/career';
 import type { Config } from '../core/config';
 import { type Upgrade, upgradeMaxSteps } from '../core/levels';
-import { type ChestKind, type Rarity, RARITIES, CHEST_ODDS, PITY_CHESTS, MAX_CAR_SKINS, cosmetic, isForSale } from '../core/loot';
+import { type ChestKind, type Rarity, RARITIES, CHEST_ODDS, PITY_CHESTS, MAX_CAR_SKINS, BIG_SCREEN, cosmetic, isForSale } from '../core/loot';
 import { type CasinoGame, type SlotSymbol, SLOT_SYMBOLS, Casino } from '../core/casino';
 import { type Vec2, v } from '../core/vec2';
 import type { RenderList } from './render';
@@ -19,6 +19,7 @@ import { MenuKit } from './menukit';
 import { MuseumPage } from './museum';
 import { museumEntry, firstLevel } from '../core/museum';
 import { rematch } from '../core/trials';
+import { Feats } from '../core/feats';
 
 /**
  * What the detail sheet shows (`ui/detailSheet.ts`): the explanation of the card that was
@@ -141,6 +142,7 @@ export const Details = {
     if (owned && item.kind !== 'vehicleType') {
       actions.push({ label: Careers.isWorn(career, id) ? S.shop.takeOff : S.shop.wear, action: { k: 'wear', id }, prominent: !Careers.isWorn(career, id), enabled: true });
     }
+    if (owned && id === BIG_SCREEN) actions.push({ label: S.backdrop.choose, action: { k: 'editBackdrop' }, prominent: false, enabled: true });
     return {
       key: `item:${id}`,
       art: { k: 'item', id, owned },
@@ -151,6 +153,40 @@ export const Details = {
       body: [owned ? S.shop.ownedHint(item) : S.shop.lockedHint(item)],
       rows: [],
       notes,
+      actions,
+    };
+  },
+
+  /**
+   * A Feat (Progress → Mastery → Feats): its reward shown in full, the goal, how far the save
+   * has come and the title it adds. Once earned the reward can be worn from here.
+   */
+  feat(id: string, career: Career, config: Config): Detail | null {
+    const feat = Feats.byId(id);
+    const item = cosmetic(id);
+    if (!feat || !item) return null;
+    const { have, need } = Feats.progress(feat, career, config);
+    const done = have >= need;
+    const owned = Careers.owns(career, id);
+    const rows: DetailRow[] = [
+      { label: S.feats.rowGoal, value: S.feats.goal(feat.goal) },
+      { label: S.feats.rowNow, value: S.feats.have(have, need), valueColor: done ? 'accent' : 'muted' },
+      { label: S.feats.reward, value: S.shop.item(id), valueColor: 'rarityLegendary' },
+    ];
+    if (feat.title) rows.push({ label: S.feats.rowTitle, value: S.titles.name(feat.title), valueColor: 'coin' });
+    const actions: DetailAction[] = [];
+    if (owned) actions.push({ label: Careers.isWorn(career, id) ? S.shop.takeOff : S.shop.wear, action: { k: 'wear', id }, prominent: !Careers.isWorn(career, id), enabled: true });
+    if (owned && id === BIG_SCREEN) actions.push({ label: S.backdrop.choose, action: { k: 'editBackdrop' }, prominent: false, enabled: true });
+    return {
+      key: `feat:${id}`,
+      art: { k: 'item', id, owned: true },
+      eyebrow: { text: `${S.feats.eyebrow} · ${S.shop.kind(item)}`, color: 'rarityLegendary' },
+      title: S.shop.item(id),
+      price: done ? { text: S.feats.done, color: 'accent' } : { text: S.feats.have(have, need), color: 'muted' },
+      steps: null,
+      body: [S.feats.body, S.shop.ownedHint(item)],
+      rows,
+      notes: owned ? [{ text: S.feats.earned, color: 'accent' }] : [],
       actions,
     };
   },

@@ -56,11 +56,14 @@ export interface SubmitResult {
 export class LeaderboardError extends Error {
   readonly code: string;
   readonly status: number;
+  /** The whole answer of the service, for the few errors that carry more than a message (a cloud conflict). */
+  readonly body: unknown;
 
-  constructor(code: string, message: string, status = 0) {
+  constructor(code: string, message: string, status = 0, body: unknown = null) {
     super(message);
     this.code = code;
     this.status = status;
+    this.body = body;
   }
 }
 
@@ -91,16 +94,26 @@ export function loadAccount(): Account | null {
   }
 }
 
-function saveAccount(account: Account | null): void {
+const accountListeners = new Set<() => void>();
+
+/** Cloud sync wants to know when the account changes (a name entered, renamed, removed): it travels with the save. */
+export function onAccountChange(listener: () => void): void {
+  accountListeners.add(listener);
+}
+
+/** Keeps the account on this device. Also used when a cloud copy brings one (`net/cloud.ts`). */
+export function saveAccount(account: Account | null): void {
   try {
     if (account) storage().setItem(ACCOUNT_KEY, JSON.stringify(account));
     else storage().removeItem(ACCOUNT_KEY);
   } catch {
     /* private mode: the account lasts this visit only */
   }
+  for (const listener of accountListeners) listener();
 }
 
-async function request<T>(method: string, path: string, options: { token?: string; body?: unknown } = {}): Promise<T> {
+/** One call to the service (`Server/`), shared by the leaderboard, friends, cloud save and relay logins. */
+export async function apiRequest<T>(method: string, path: string, options: { token?: string; body?: unknown; timeoutMs?: number; keepalive?: boolean } = {}): Promise<T> {
   if (!leaderboardEnabled) throw new LeaderboardError('disabled', 'The leaderboard is not available.');
   const headers: Record<string, string> = {};
   if (options.token) headers.Authorization = `Bearer ${options.token}`;
@@ -111,7 +124,8 @@ async function request<T>(method: string, path: string, options: { token?: strin
       method,
       headers,
       body: options.body === undefined ? undefined : JSON.stringify(options.body),
-      signal: AbortSignal.timeout(TIMEOUT_MS),
+      signal: AbortSignal.timeout(options.timeoutMs ?? TIMEOUT_MS),
+      keepalive: options.keepalive,
       // Always the live list: right after a new name or score an older copy would hide it.
       cache: 'no-store',
     });
@@ -127,10 +141,12 @@ async function request<T>(method: string, path: string, options: { token?: strin
   }
   if (!response.ok) {
     const error = (json as { error?: { code?: string; message?: string } } | null)?.error;
-    throw new LeaderboardError(error?.code ?? 'error', error?.message ?? 'Something went wrong.', response.status);
+    throw new LeaderboardError(error?.code ?? 'error', error?.message ?? 'Something went wrong.', response.status, json);
   }
   return json as T;
 }
+
+const request = apiRequest;
 
 /** The token was refused (the account was removed): forget it, the player picks a name again. */
 function forgetIfRefused(error: unknown): never {
@@ -201,6 +217,62 @@ export const submitShiftLevel = (level: number, prestige: number): Promise<Submi
 
 /** Unlimited: the record score and the cars sent in that run. */
 export const submitUnlimited = (score: number, cars: number): Promise<SubmitResult | null> => submitScore('unlimited', { score, cars });
+
+// MARK: Friends
+
+export interface Friend {
+  id: string;
+  name: string;
+}
+
+export interface FriendsView {
+  /** Your own friend code, like `K7M2-9QXA`: what you send to a friend. */
+  code: string;
+  friends: Friend[];
+}
+
+/** Your friend code and your list. Needs an account (a name). */
+export async function fetchFriends(): Promise<FriendsView> {
+  const account = loadAccount();
+  if (!account) throw new LeaderboardError('unauthorized', 'Enter a name first.', 401);
+  try {
+    return await request<FriendsView>('GET', '/v1/friends', { token: account.token });
+  } catch (error) {
+    return forgetIfRefused(error);
+  }
+}
+
+/** Adds a friend by their code. Throws `unknown_code`, `own_code`, `invalid_code` or `too_many_friends` with a sentence to show. */
+export async function addFriend(code: string): Promise<Friend> {
+  const account = loadAccount();
+  if (!account) throw new LeaderboardError('unauthorized', 'Enter a name first.', 401);
+  try {
+    return (await request<{ friend: Friend }>('POST', '/v1/friends', { token: account.token, body: { code } })).friend;
+  } catch (error) {
+    return forgetIfRefused(error);
+  }
+}
+
+export async function removeFriend(id: string): Promise<void> {
+  const account = loadAccount();
+  if (!account) return;
+  try {
+    await request<void>('DELETE', `/v1/friends/${encodeURIComponent(id)}`, { token: account.token });
+  } catch (error) {
+    forgetIfRefused(error);
+  }
+}
+
+/** A board among you and your friends: the same lines as the public one, ranked only against them. */
+export async function fetchFriendsBoard(board: BoardId): Promise<BoardView & { friends: number }> {
+  const account = loadAccount();
+  if (!account) throw new LeaderboardError('unauthorized', 'Enter a name first.', 401);
+  try {
+    return await request<BoardView & { friends: number }>('GET', `/v1/friends/boards/${board}`, { token: account.token });
+  } catch (error) {
+    return forgetIfRefused(error);
+  }
+}
 
 /** What the game knows of the player's records, in the shape the boards take them. */
 export interface Records {

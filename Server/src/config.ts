@@ -9,6 +9,9 @@ export interface Config {
   adminToken: string | null;
   /** Behind Coolify's proxy the client's address is in X-Forwarded-For. */
   trustProxy: boolean;
+  /** Cloudflare TURN key (Realtime → TURN Server); both set: multiplayer gets a relay (`/v1/rtc/ice`). */
+  turnKeyId: string | null;
+  turnApiToken: string | null;
 }
 
 function integer(value: string | undefined, fallback: number, min: number, max: number): number {
@@ -27,5 +30,7 @@ export function readConfig(env: NodeJS.ProcessEnv = process.env): Config {
     corsOrigins: (env.CORS_ORIGINS ?? '*').split(',').map((o) => o.trim()).filter(Boolean),
     adminToken,
     trustProxy: env.TRUST_PROXY !== 'false',
+    turnKeyId: env.CF_TURN_KEY_ID?.trim() || null,
+    turnApiToken: env.CF_TURN_API_TOKEN?.trim() || null,
   };
 }

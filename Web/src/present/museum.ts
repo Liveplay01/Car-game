@@ -1,10 +1,10 @@
 import type { Career } from '../core/career';
 import { type Config, type BossKind, type CityEvent, baseConfig } from '../core/config';
-import { type MuseumShelf, type MuseumEntry, type SpecialKind, type WeatherKind, type DarkKind, MUSEUM_SHELVES, shelfEntries, museumId, firstLevel } from '../core/museum';
+import { type MuseumShelf, type MuseumEntry, type SpecialKind, type WeatherKind, type DarkKind, shelfEntries, museumId, firstLevel } from '../core/museum';
 import { rematch } from '../core/trials';
 import { type VehicleType, isHeavy } from '../core/vehicle';
 import { type Vec2, v, add, mul, fromAngle, TAU } from '../core/vec2';
-import { type RenderList, type RenderItem, type Rect, RenderList as List, R, rect, circle, arc, line, polygon, text, Ease, moved, pinned, vlerp, type Align, type Weight } from './render';
+import { type RenderList, type RenderItem, type Rect, RenderList as List, R, rect, circle, arc, line, polygon, text, pinned, type Align, type Weight } from './render';
 import type { ColorToken } from './theme';
 import { MenuKit } from './menukit';
 import { moneyTag } from './icons';
@@ -13,26 +13,12 @@ import { ShopPage } from './shop';
 import { CarArt } from './carArt';
 import { SYNDICATE_BOSS, SYNDICATE_ESCORT } from './scene';
 
-/** What the Museum section shows and animates: its shelf and the entry in the detail sheet. */
+/** What the Museum section remembers: the entry in the detail sheet, and the entries scrolled into view. */
 export class MuseumState {
-  shelf: MuseumShelf = 0;
-  shelfSlide: { from: MuseumShelf; age: number } | null = null;
   selected: string | null = null;
-
-  selectShelf(next: MuseumShelf): void {
-    if (next === this.shelf) return;
-    this.shelfSlide = { from: this.shelf, age: 0 };
-    this.shelf = next;
-  }
-
-  advance(delta: number): void {
-    if (!this.shelfSlide) return;
-    this.shelfSlide.age += delta;
-    if (this.shelfSlide.age >= ShopPage.slideDuration) this.shelfSlide = null;
-  }
+  /** Entries that were on screen: leaving the Museum, what was new among them counts as seen. */
+  readonly viewed = new Set<string>();
 }
-
-export type MuseumTarget = { k: 'shelf'; shelf: MuseumShelf } | { k: 'entry'; id: string };
 
 function t(list: RenderList, s: string, at: Vec2, size: number, color: ColorToken, opacity: number, o: { weight?: Weight; align?: Align } = {}): void {
   list.s(text(s, at, size, o.align ?? 'leading', o.weight ?? 'regular'), color, opacity);
@@ -208,11 +194,14 @@ const EVENT_COLOR: Record<CityEvent, ColorToken> = {
 
 /**
  * The Museum (Progress tab): the syndicate's bosses, the special vehicles and the city's
- * conditions on their shelves, like the Collection. What has not been met yet is a grey
- * silhouette; a tap on an entry opens the detail sheet with what it asks of you.
+ * conditions, one shelf under the other in a list (`ProgressPage`). What has not been met yet
+ * is a grey silhouette; a tap on an entry opens the detail sheet with what it asks of you.
  */
 export const MuseumPage = {
-  chipHeight: 36,
+  /** Bosses are rows; the other shelves are cards, three to a row. */
+  bossHeight: 92,
+  cardHeight: 118,
+  columns: (shelf: MuseumShelf): number => (shelf === 0 ? 1 : 3),
 
   name: (e: MuseumEntry): string => S.museum.name(e),
 
@@ -233,91 +222,25 @@ export const MuseumPage = {
     }
   },
 
-  chips(content: Rect): [MuseumShelf, Rect][] {
-    const gap = 6;
-    const w = (R.width(content) - gap * (MUSEUM_SHELVES.length - 1)) / MUSEUM_SHELVES.length;
-    return MUSEUM_SHELVES.map((s, i) => [s, R.make(content.minX + i * (w + gap), content.minY, content.minX + i * (w + gap) + w, content.minY + MuseumPage.chipHeight)]);
-  },
-
-  /** Bosses are rows; the other shelves are cards, in three columns once they grow past eight. */
-  cells(content: Rect, shelf: MuseumShelf): [MuseumEntry, Rect][] {
+  /** Shown so far / all, for a shelf's heading. */
+  count(career: Career, shelf: MuseumShelf): { shown: number; all: number } {
     const entries = shelfEntries(shelf);
-    const area = { ...content, minY: content.minY + MuseumPage.chipHeight + ShopPage.gap };
-    const cells = shelf === 0 ? ShopPage.grid(entries.length, 1, area, 92) : ShopPage.grid(entries.length, entries.length > 8 ? 3 : 2, area, 118);
-    return entries.map((e, i) => [e, cells[i]]);
+    return { shown: entries.filter((e) => seen(career, e)).length, all: entries.length };
   },
 
-  targetAt(point: Vec2, content: Rect, shelf: MuseumShelf): MuseumTarget | null {
-    const chip = MuseumPage.chips(content).find(([, r]) => R.contains(r, point));
-    if (chip) return { k: 'shelf', shelf: chip[0] };
-    const cell = MuseumPage.cells(content, shelf).find(([, r]) => R.contains(r, point));
-    return cell ? { k: 'entry', id: museumId(cell[0]) } : null;
-  },
-
-  entering(r: Rect, age: number, index: number, reduceMotion: boolean): [Rect, number] {
-    if (reduceMotion) return [r, 1];
-    const rise = MenuKit.cardEnter(MenuKit.staggerSpring(age, index)).rise;
-    return [R.offset(r, v(0, rise)), MenuKit.stagger(age, index)];
-  },
-
-  add(list: RenderList, content: Rect, career: Career, state: MuseumState, age: number, time: number, reduceMotion: boolean): void {
-    const chips = MuseumPage.chips(content);
-    const slide = state.shelfSlide;
-    const glide = slide ? (reduceMotion ? 1 : Ease.settle(slide.age / ShopPage.slideDuration)) : 1;
-    const enter = reduceMotion ? 1 : Ease.outCubic(age / 0.25);
-    for (const [, r] of chips) list.s(rect(R.center(r), v(R.width(r), R.height(r)), 10), 'controlFill', enter);
-    const to = chips.find(([s]) => s === state.shelf)?.[1];
-    if (to) {
-      // The chosen shelf is a white chip, as in the Collection; it glides to the next one.
-      const from = (slide && chips.find(([s]) => s === slide.from)?.[1]) || to;
-      list.s(rect(vlerp(R.center(from), R.center(to), glide), v(R.width(to), R.height(to)), 10), 'primary', enter);
+  /** One entry in its cell: a boss row or a card, with the NEW badge and the ring when chosen. */
+  addEntry(list: RenderList, entry: MuseumEntry, r: Rect, career: Career, state: MuseumState, time: number, o: number): void {
+    const id = museumId(entry);
+    const c = R.center(r);
+    if (state.selected === id) list.s(rect(c, v(R.width(r) + 4, R.height(r) + 4), ShopPage.corner + 2), 'accent', 0.9 * o);
+    ShopPage.panel(list, r, 'card', o);
+    if (entry.k === 'boss') MuseumPage.addBossRow(list, entry.kind, r, career, time, o);
+    else MuseumPage.addCard(list, entry, r, career, time, o);
+    if (career.museumNew.includes(id)) {
+      const at = v(r.minX + 22, r.minY + 12);
+      list.s(rect(at, v(30, 15), 7.5), 'accent', o);
+      t(list, S.museum.newBadge, at, 9, 'accentInk', o, { weight: 'bold', align: 'center' });
     }
-    for (const [shelf, r] of chips) {
-      const c = R.center(r);
-      const entries = shelfEntries(shelf);
-      const shown = entries.filter((e) => seen(career, e)).length;
-      if (entries.some((e) => career.museumNew.includes(museumId(e)))) ShopPage.badgeDot(list, v(r.maxX - 9, r.minY + 9), enter);
-      const on = shelf === state.shelf ? glide : slide && shelf === slide.from ? 1 - glide : 0;
-      const label = S.museum.shelf(shelf);
-      const size = ShopPage.fitted(label, 12, R.width(r) - 20);
-      const count = `${shown}/${entries.length}`;
-      t(list, label, v(c.x, c.y - 7), size, 'muted', enter * (1 - on), { weight: 'bold', align: 'center' });
-      t(list, count, v(c.x, c.y + 8), 10, shown === entries.length ? 'coin' : 'muted', enter * (1 - on), { align: 'center' });
-      if (on > 0) {
-        t(list, label, v(c.x, c.y - 7), size, 'background', enter * on, { weight: 'bold', align: 'center' });
-        t(list, count, v(c.x, c.y + 8), 10, 'background', 0.6 * enter * on, { align: 'center' });
-      }
-    }
-    const start = list.items.length;
-    MuseumPage.addShelf(list, state.shelf, content, career, state, age, time, reduceMotion);
-    if (!slide) return;
-    const side = state.shelf > slide.from ? 1 : -1;
-    const shift = v(reduceMotion ? 0 : side * R.width(content) * 0.35 * (1 - glide), 0);
-    const fade = Ease.outCubic(slide.age / 0.18);
-    for (let i = start; i < list.items.length; i++) list.items[i] = moved(list.items[i], shift, fade);
-    const gone = Ease.outCubic(slide.age / ShopPage.slideOut);
-    if (gone >= 1) return;
-    const old = new List(list.camera, list.background);
-    MuseumPage.addShelf(old, slide.from, content, career, state, 10, time, true);
-    const away = v(reduceMotion ? 0 : -side * R.width(content) * 0.25 * gone, 0);
-    list.items.splice(start, 0, ...old.items.map((i) => moved(i, away, 1 - gone)));
-  },
-
-  addShelf(list: RenderList, shelf: MuseumShelf, content: Rect, career: Career, state: MuseumState, age: number, time: number, reduceMotion: boolean): void {
-    MuseumPage.cells(content, shelf).forEach(([entry, cell], i) => {
-      const [r, o] = MuseumPage.entering(cell, age, i, reduceMotion);
-      const id = museumId(entry);
-      const c = R.center(r);
-      if (state.selected === id) list.s(rect(c, v(R.width(r) + 4, R.height(r) + 4), ShopPage.corner + 2), 'accent', 0.9 * o);
-      ShopPage.panel(list, r, 'card', o);
-      if (entry.k === 'boss') MuseumPage.addBossRow(list, entry.kind, r, career, time, o);
-      else MuseumPage.addCard(list, entry, r, career, time, o);
-      if (career.museumNew.includes(id)) {
-        const at = v(r.minX + 22, r.minY + 12);
-        list.s(rect(at, v(30, 15), 7.5), 'accent', o);
-        t(list, S.museum.newBadge, at, 9, 'accentInk', o, { weight: 'bold', align: 'center' });
-      }
-    });
   },
 
   addBossRow(list: RenderList, kind: BossKind, r: Rect, career: Career, time: number, o: number): void {

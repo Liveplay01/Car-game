@@ -75,6 +75,14 @@ export class ScoreStore {
     return rows.map((r) => ({ rank: r.rank, playerId: r.player_id, name: r.name, score: r.score, meta: parseMeta(r.meta), achievedAt: r.achieved_at }));
   }
 
+  /** The same ranking among just these players (a friends list); ranks count only them. */
+  among(board: string, period: string, playerIds: string[]): ListedEntry[] {
+    if (playerIds.length === 0) return [];
+    const marks = playerIds.map(() => '?').join(', ');
+    const rows = this.db.prepare(`SELECT * FROM (${RANKED} AND s.player_id IN (${marks})) ORDER BY rank`).all(board, period, ...playerIds) as unknown as EntryRow[];
+    return rows.map((r) => ({ rank: r.rank, playerId: r.player_id, name: r.name, score: r.score, meta: parseMeta(r.meta), achievedAt: r.achieved_at }));
+  }
+
   /** The player's own place, even far below the top list. Null without a score. */
   of(board: string, period: string, playerId: string): Entry | null {
     const row = this.db.prepare(`SELECT * FROM (${RANKED}) WHERE player_id = ?`).get(board, period, playerId) as EntryRow | undefined;

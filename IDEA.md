@@ -37,18 +37,18 @@ einer Stadt, die mit dem Spieler wächst.
 
 ## Später: Backend über Coolify (Leo, 29.09.2026: verschoben)
 
-Das Spiel bleibt offline-first; ein Backend wäre ein Zusatz, der ausfallen darf. Empfohlene
-Reihenfolge: (1) Analytics und Fehlerberichte (Umami/Plausible, GlitchTip als Coolify-Dienste,
-kein eigener Code); (2) eigener PeerJS-Server und TURN mit kurzlebigen Zugängen (löst
-„Multiplayer über echte Netze“); (3) Daily-Bestenliste mit Replay-Prüfung (Seed + Taps,
-`core/` läuft in Node); (4) Kurzlinks mit Vorschaubild für Challenge-Links; (5) Spielstand
-über Geräte per Konto (siehe unten). Geld und Truhen bleiben lokal, die Casino-Regel gilt weiter. Vorher
-muss „Kein Backend“ aus den festen Entscheidungen in CLAUDE.md.
+Das Spiel bleibt offline-first; ein Backend ist ein Zusatz, der ausfallen darf. Noch offen, in
+empfohlener Reihenfolge: (1) Analytics und Fehlerberichte (Umami/Plausible, GlitchTip als
+Coolify-Dienste, kein eigener Code); (2) Daily-Bestenliste mit Replay-Prüfung (Seed + Taps,
+`core/` läuft in Node; macht die Ranglisten fälschungssicher); (3) Kurzlinks mit Vorschaubild
+für Challenge-Links. Geld und Truhen bleiben lokal, die Casino-Regel gilt weiter.
 
-**Stand 30.09.2026:** Der Ranglisten-Dienst steht in `Server/` (Spieler mit Namen, Bestenlisten
-Shift-Level und Unlimited, Plausibilitätsgrenzen) läuft auf `api-game.gustaff.dev` und ist im
-Spiel angebunden (Progress → Ranks, ohne Anmeldung, ein Name für Rangliste und Multiplayer). Die
-Punkte (1) bis (5) oben bleiben möglich und können als weitere Module in den Dienst.
+**Stand 01.10.2026:** Der Dienst in `Server/` (läuft auf `api-game.gustaff.dev`) kann: Spieler mit
+Namen, Bestenlisten Shift-Level und Unlimited, **Freunde-Board** (Freundescode),
+**Cloud-Spielstand per Sync-Code** (Settings → Cloud sync) und **TURN-Zugänge** für den
+Multiplayer (Cloudflare, braucht `CF_TURN_KEY_ID` und `CF_TURN_API_TOKEN` in Coolify, siehe
+Server/README). Einen eigenen PeerJS-Server gibt es bewusst nicht: der öffentliche Broker reicht
+nur Raumcodes weiter, das Netzproblem löst das Relay.
 
 ---
 
@@ -84,9 +84,9 @@ und **Passwort nur als Hash** mit Begrenzung der Anmeldeversuche. Ebenfalls fest
   Spielstand auf dem Server liegen.
 - **Grenzen:** das Konto schützt vor Verlust, nicht vor Manipulation; ein zweiter Dienst mit Datenbank
   und Sicherung bei Coolify; vergessenes Passwort ohne Schlüssel bedeutet verlorenes Konto.
-- **Einfachere Alternativen, falls das Konto zu groß wird:** (a) **Sync-Code** wie `K7M2-9QXA`, mit
-  dem ein Stand auf ein anderes Gerät geholt wird (kein Name, kein Passwort, kaum Datenschutz-Aufwand);
-  (b) **Login des Anbieters**, wie auf CrazyGames schon gebaut (`?crazygames`, Data Module).
+- **Der Sync-Code ist gebaut** (01.10.2026, Settings → Cloud sync): kein Name, kein Passwort, Abgleich mit
+  Nachfrage, Löschen für alle Geräte. Ein Konto mit Nutzername und Passwort lohnt nur noch, wenn der Code
+  nicht reicht (z. B. Wiederherstellung ohne Code). Auf CrazyGames gilt weiter deren Login (`?crazygames`).
 
 ---
 

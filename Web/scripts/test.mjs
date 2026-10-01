@@ -18,6 +18,8 @@ const { forLevel } = await load('/src/core/levels.ts');
 const { newSave, newCareer, Careers } = await load('/src/core/career.ts');
 const { encodeChallenge, decodeChallenge, challengeOf } = await load('/src/core/challenge.ts');
 const { loadSave, writeSave, exportSave, parseImport } = await load('/src/storage/save.ts');
+const { fingerprint } = await load('/src/net/cloud.ts');
+const { iceServers } = await load('/src/net/rtc.ts');
 const { NoticeQueue } = await load('/src/present/notices.ts');
 const { bookShift } = await load('/src/present/booking.ts');
 const { S, Fmt } = await load('/src/present/strings.ts');
@@ -155,6 +157,26 @@ test('export and import give the same save; other files are refused', () => {
   assert.deepEqual(parseImport(exportSave(save)), save);
   assert.equal(parseImport('{"hello": 1}'), null);
   assert.equal(parseImport('nope'), null);
+});
+
+test('a save survives the trip through the cloud unchanged, and a change is noticed', () => {
+  const save = newSave();
+  save.career.level = 33;
+  save.career.money = 4200;
+  save.unlimitedBest = 1500;
+  save.hints = ['modes']; // what reading a save with a record adds anyway
+  // The cloud stores the save as the game wrote it and sends it back as JSON.
+  const back = parseImport(JSON.stringify(JSON.parse(JSON.stringify(save))));
+  assert.deepEqual(back, save);
+  assert.equal(fingerprint(JSON.stringify(back)), fingerprint(JSON.stringify(save)), 'a clean copy is not "changed"');
+  save.career.money += 1;
+  assert.notEqual(fingerprint(JSON.stringify(save)), fingerprint(JSON.stringify(back)));
+});
+
+test('the ice servers always start with STUN, also without the service', async () => {
+  const servers = await iceServers();
+  assert.ok(servers.length >= 1);
+  assert.match(String(Array.isArray(servers[0].urls) ? servers[0].urls[0] : servers[0].urls), /^stun:/);
 });
 
 // MARK: Booking a shift
@@ -373,7 +395,8 @@ test('every map skin from the chests has its place, colour and name', async () =
   const { MapTheme } = await load('/src/present/mapThemes.ts');
   const { Skins } = await load('/src/present/skins.ts');
   for (const item of COSMETICS.filter((x) => x.kind === 'mapSkin')) {
-    assert.ok(MapTheme.from(item.id), `${item.id} has no MapTheme`);
+    // Big Screen has no city of its own: it shows the player's picture (ui/backdrop.ts).
+    if (item.id !== 'bigScreen') assert.ok(MapTheme.from(item.id), `${item.id} has no MapTheme`);
     assert.ok(Skins.color(item.id), `${item.id} has no colour`);
     assert.notEqual(S.shop.item(item.id), item.id, `${item.id} has no name`);
   }
@@ -691,4 +714,86 @@ test('the Season Pass pays its tiers once; the Hall of Fame keeps a plaque per r
   p.money = baseConfig.hallOfFamePrice;
   assert.ok(Careers.buildHall(p));
   assert.ok(p.hallBuilt && p.collection.includes('hallOfFame'));
+});
+
+// MARK: Big Screen
+
+const { parseBackdropLink, youtubeEmbed } = await load('/src/present/backdrop.ts');
+const { prestigeReward, BIG_SCREEN } = await load('/src/core/loot.ts');
+
+test('Big Screen tells YouTube, video files and pictures apart, and refuses what is no web link', () => {
+  for (const link of ['https://www.youtube.com/watch?v=dQw4w9WgXcQ&t=42', 'youtu.be/dQw4w9WgXcQ', 'https://m.youtube.com/shorts/dQw4w9WgXcQ', 'https://www.youtube.com/live/dQw4w9WgXcQ?si=x', 'https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ']) {
+    assert.deepEqual(parseBackdropLink(link), { k: 'youtube', id: 'dQw4w9WgXcQ' }, link);
+  }
+  assert.deepEqual(parseBackdropLink('https://example.com/clip.MP4'), { k: 'video', url: 'https://example.com/clip.MP4' });
+  assert.deepEqual(parseBackdropLink('http://example.com/cat.jpg'), { k: 'image', url: 'https://example.com/cat.jpg' }, 'http is upgraded');
+  assert.deepEqual(parseBackdropLink('  example.com/cat.png '), { k: 'image', url: 'https://example.com/cat.png' });
+  for (const bad of ['', 'not a link', 'javascript:alert(1)', 'data:image/png;base64,AAAA', 'ftp://example.com/a.png', 'https://localhost/a.png', 'https://user:pw@example.com/a.png']) {
+    assert.equal(parseBackdropLink(bad), null, bad);
+  }
+  // A YouTube page that is not a video is not a picture either: it is taken for one only if it loads.
+  assert.equal(parseBackdropLink('https://www.youtube.com/watch?v=short').k, 'image');
+  const embed = new URL(youtubeEmbed('dQw4w9WgXcQ'));
+  assert.equal(embed.hostname, 'www.youtube-nocookie.com');
+  assert.equal(embed.searchParams.get('mute'), '1');
+  assert.equal(embed.searchParams.get('playlist'), 'dQw4w9WgXcQ', 'loops');
+});
+
+test('Big Screen is the Prestige ★5 reward, and older saves past ★5 get it', () => {
+  assert.equal(prestigeReward(5)?.id, BIG_SCREEN);
+  const c = newCareer();
+  c.prestige = 4;
+  c.level = baseConfig.prestigeLevel;
+  assert.deepEqual(Careers.prestige(c, baseConfig), { rank: 5, item: BIG_SCREEN });
+  assert.ok(Careers.wear(c, BIG_SCREEN) && c.mapSkin === BIG_SCREEN);
+  // A save from before Big Screen, already at ★6, finds it in the collection, marked new.
+  const old = newSave();
+  old.career.prestige = 6;
+  old.career.collection = ['starSilver', 'starGold', 'starIris'];
+  fakeStorage({ 'carGame.save.v2': JSON.stringify(old) });
+  const loaded = loadSave();
+  assert.ok(loaded.career.collection.includes(BIG_SCREEN));
+  assert.ok(loaded.career.unseen.includes(BIG_SCREEN));
+  // Below ★5 nothing arrives early.
+  old.career.prestige = 4;
+  fakeStorage({ 'carGame.save.v2': JSON.stringify(old) });
+  assert.ok(!loadSave().career.collection.includes(BIG_SCREEN));
+});
+
+// MARK: Feats
+
+test('every Feat pays its own reward where its deed happens, never in a chest', async () => {
+  const { FEATS, Feats } = await load('/src/core/feats.ts');
+  const { cosmetic, legendaryReward, eliteReward, CHEST_ODDS } = await load('/src/core/loot.ts');
+  const { Elite, TITLE_RULES } = await load('/src/core/elite.ts');
+  assert.ok(CHEST_ODDS.standard.length === 4, 'no new chest rarity');
+  for (const feat of FEATS) {
+    const item = cosmetic(feat.id);
+    assert.ok(item, `${feat.id} is a cosmetic`);
+    assert.notEqual(item.source.kind, 'chest', `${feat.id} is never in a chest`);
+    const g = feat.goal;
+    const reward = g.k === 'prestige' ? prestigeReward(g.rank) : g.k === 'elite' ? eliteReward(g.level) : legendaryReward(g.shifts);
+    assert.equal(reward?.id, feat.id, `${feat.id} is paid at its goal`);
+    if (feat.title) assert.deepEqual(TITLE_RULES[feat.title], g.k === 'prestige' ? { k: 'prestige', rank: g.rank } : g.k === 'elite' ? { k: 'elite', level: g.level } : { k: 'legendary', shifts: g.shifts });
+    assert.notEqual(S.shop.item(feat.id), feat.id, `${feat.id} has a name`);
+  }
+  const c = newCareer();
+  assert.equal(Feats.count(c), 0);
+  c.prestige = 20;
+  c.legendaryDone = 50;
+  c.eliteXp = 99 * baseConfig.eliteXpPerLevel;
+  assert.equal(Elite.level(c), 100);
+  assert.equal(Feats.count(c), FEATS.length);
+  assert.ok(['ascended', 'eternal', 'grandmaster', 'centurion', 'immortal'].every((t) => Elite.titleEarned(t, c)));
+});
+
+test('a save already past a Feat gets its reward when it loads', () => {
+  const old = newSave();
+  old.career.prestige = 11;
+  old.career.eliteClaimed = 80;
+  old.career.legendaryDone = 12;
+  fakeStorage({ 'carGame.save.v2': JSON.stringify(old) });
+  const c = loadSave().career;
+  for (const id of ['bigScreen', 'nova', 'zenith', 'starSilver', 'eliteHalo', 'crown']) assert.ok(c.collection.includes(id), id);
+  for (const id of ['gilded', 'singularity', 'eventHorizon', 'undying', 'phoenix']) assert.ok(!c.collection.includes(id), id);
 });

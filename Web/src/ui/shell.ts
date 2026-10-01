@@ -6,7 +6,8 @@ import { TAB_BAR, barTab, screenTab, showsTabBar, type Tab } from '../present/fl
 import { AudioPlayer, Haptics } from '../audio/player';
 import { h, icon } from './dom';
 import { ICONS } from './icons';
-import { settingsSheet, patchNotesSheet, legalSheet, licensesSheet, installDialog, isSheetOpen, closeAnySheet } from './sheets';
+import { settingsSheet, patchNotesSheet, legalSheet, licensesSheet, installDialog, cloudIntroDialog, isSheetOpen, closeAnySheet } from './sheets';
+import { cloudIntroDue, markCloudIntroSeen } from '../net/cloud';
 import { legalDoc } from '../present/legal';
 import { PATCH_NOTES } from '../present/patchNotes';
 import { PhotoView } from './photo';
@@ -19,10 +20,15 @@ import { S, Fmt } from '../present/strings';
 import { DetailSheet } from './detailSheet';
 import { VersusLobby } from './versusLobby';
 import { leaderboardSheet } from './leaderboardSheet';
+import { cloudSheet } from './cloudSheet';
 import { REACTION_EMOJI } from '../present/versus';
 import { REACTIONS } from '../net/room';
 import { LiveRegion } from './liveRegion';
 import { ResultBanner } from '../present/hud';
+import { BackdropLayer, backdropSheet } from './backdrop';
+import { loadBackdrop, saveBackdrop } from '../storage/backdrop';
+import { BIG_SCREEN } from '../core/loot';
+import { Careers } from '../core/career';
 
 interface InstallPromptEvent extends Event {
   prompt(): Promise<void>;
@@ -116,6 +122,8 @@ export class Shell {
   /** A `#join=` link that arrived mid-shift: it opens once the shift is over. */
   private pendingJoin: string | null = null;
   private readonly live: LiveRegion;
+  /** Big Screen: the player's picture or video behind the canvas. */
+  private readonly backdrop: BackdropLayer;
 
   constructor(
     private readonly app: HTMLElement,
@@ -196,6 +204,35 @@ export class Shell {
       if (this.pointerId === null) open();
       else afterRelease(open);
     };
+    // Big Screen: what the player chose last time comes back (only once they own it: nothing
+    // loads from another site before), and its sheet opens from the Collection.
+    this.backdrop = new BackdropLayer(app, canvas);
+    const saved = loadBackdrop();
+    if (saved && Careers.owns(this.session.save.career, BIG_SCREEN)) {
+      void this.backdrop.show(saved).then((ok) => {
+        if (!ok && this.session.save.career.mapSkin === BIG_SCREEN) this.session.showNotice(S.backdrop.lost);
+      });
+    }
+    this.session.onBackdrop = () => {
+      const open = (): void => {
+        if (isSheetOpen()) return;
+        backdropSheet(this.layers, this.backdrop, {
+          applied: (kept) => {
+            this.session.wearBigScreen();
+            this.session.showNotice(kept ? S.backdrop.on : S.backdrop.notKept);
+          },
+          removed: () => undefined,
+          closed: () => this.syncChrome(true),
+        });
+      };
+      // From a double tap on the canvas: open when the finger lifts, as with the leaderboards.
+      if (this.pointerId === null) open();
+      else
+        afterRelease(() => {
+          swallowNextClick();
+          open();
+        });
+    };
     const runBar = h('div', { class: 'run-bar' }, this.photoBtn, this.shareBtn, this.leaveBtn);
     // After a match: Ready (everyone taps it, then the next round starts), and for the host a
     // way back to the lobby to change the format or the bots.
@@ -254,6 +291,8 @@ export class Shell {
     });
     this.syncChrome(true);
     requestAnimationFrame((t) => this.loop(t));
+    // A moment after the game is up, so the pop-up does not cover the first frame.
+    window.setTimeout(() => this.maybeShowCloudIntro(), 1500);
   }
 
   get game(): GameSession {
@@ -507,6 +546,37 @@ export class Shell {
     this.syncChrome(true);
   }
 
+  /** The cloud sync page, over the settings; the settings come back when it closes. */
+  private openCloudPage(): void {
+    const s = this.session;
+    this.pageOpen = true;
+    cloudSheet(this.layers, { current: () => s.save, importSave: (save) => s.importProgress(save), closed: () => this.pageClosed() });
+  }
+
+  /** The pop-up's button: Settings open (as from the gear), and the cloud page lands on top of them. */
+  private openCloudFromIntro(): void {
+    this.wantCloud = true;
+    this.openSettings();
+  }
+
+  /** Set until the settings sheet is up: it then opens the cloud page right away. */
+  private wantCloud = false;
+
+  /**
+   * Once per device, a little after the game opens: a pop-up that tells every player about Cloud
+   * sync and where it is (`cloudIntroDialog`). It waits while something else is on screen.
+   */
+  private maybeShowCloudIntro(tries = 0): void {
+    if (!cloudIntroDue()) return;
+    const busy = isSheetOpen() || this.session.screen.k === 'playing' || this.session.screen.k === 'settings' || document.querySelector('.install-root, .intro-root');
+    if (busy) {
+      if (tries < 12) window.setTimeout(() => this.maybeShowCloudIntro(tries + 1), 5000);
+      return;
+    }
+    markCloudIntroSeen();
+    cloudIntroDialog(this.layers, { open: () => this.openCloudFromIntro(), closed: () => undefined });
+  }
+
   private showSettingsSheet(): void {
     const s = this.session;
     this.closeSettings = settingsSheet(this.layers, s.save.settings, {
@@ -532,9 +602,15 @@ export class Shell {
           .then(({ LICENSES }) => licensesSheet(this.layers, LICENSES, () => this.pageClosed()))
           .catch(() => this.pageClosed());
       },
-      reset: () => s.resetProgress(),
+      reset: () => {
+        s.resetProgress();
+        void this.backdrop.show(null);
+        saveBackdrop(null);
+      },
       exportText: () => exportSave(s.save),
       importSave: (save) => s.importProgress(save),
+      // The cloud sync page, over the settings; the settings come back when it closes.
+      openCloud: () => this.openCloudPage(),
       install: this.installPrompt
         ? () => {
             void this.installPrompt?.prompt();
@@ -546,6 +622,11 @@ export class Shell {
         if (!this.pageOpen) s.perform({ k: 'closeSettings' });
       },
     });
+    // Came from the pop-up: straight on to the cloud page.
+    if (this.wantCloud) {
+      this.wantCloud = false;
+      this.openCloudPage();
+    }
   }
 
   // MARK: Input
@@ -694,9 +775,11 @@ export class Shell {
     this.actions = [];
     const s = this.session;
     const match = this.versus.match;
+    s.backdrop = this.backdrop.ready;
     // A multiplayer match owns the canvas; the career world waits where it was.
     const list = match ? match.frame(delta, this.size, s.reduceMotion) : s.frame(delta, actions, this.size, TAB_HEIGHT);
     this.drawer.draw(list);
+    this.backdrop.visible = list.backdrop !== null;
     this.adaptQuality(delta);
     this.detail.update(s.detail);
     const summary = !match && s.screen.k === 'result' ? s.screen.summary : null;

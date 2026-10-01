@@ -1,14 +1,32 @@
 import type { Pose } from '../core/paths';
 import { type Vec2, v, add, mul, fromAngle } from '../core/vec2';
-import { type RenderList, rect, circle, line, polygon, unitHash } from './render';
+import { type RenderList, rect, circle, arc, line, polygon, unitHash } from './render';
 import type { ColorToken } from './theme';
 
 /**
- * The loud skins (Season Pass and Hall of Fame, Leo, 30.09.2026): an animated effect on top of
+ * The loud skins (Season Pass and Hall of Fame, Leo, 30.09.2026; Feats, 01.10.2026): an animated effect on top of
  * the paint. Only looks: an effect never covers a lamp that tells the traffic something, and a
  * wreck has lost it. `time` null (Reduce Motion, previews) shows one still frame.
  */
-export type Effect = 'snowTrail' | 'aurora' | 'crystal' | 'petals' | 'rainbow' | 'bloom' | 'flame' | 'neon' | 'lava' | 'ghost' | 'embers' | 'lightning' | 'laurel';
+export type Effect =
+  | 'snowTrail'
+  | 'aurora'
+  | 'crystal'
+  | 'petals'
+  | 'rainbow'
+  | 'bloom'
+  | 'flame'
+  | 'neon'
+  | 'lava'
+  | 'ghost'
+  | 'embers'
+  | 'lightning'
+  | 'laurel'
+  // Feats (core/feats.ts): the rarest skins, so their effects are the loudest.
+  | 'nova'
+  | 'singularity'
+  | 'halo'
+  | 'soulfire';
 
 /** A local point of the car in world space (x forward, y left). */
 const at = (pose: Pose, x: number, y: number): Vec2 => {
@@ -93,6 +111,36 @@ export const SkinEffects = {
       case 'rainbow':
         trail(pose, L, W, t, id, 12, 1.2, 26, (p, u, i) => list.w(circle(p, 1.6 * (1 - u * 0.5)), RAINBOW[i % RAINBOW.length], o * (1 - u)));
         break;
+      case 'nova': {
+        // A star going off under the car: a white-gold glow that swells and settles.
+        const pulse = 0.5 + 0.5 * Math.sin(t * 2.4 + id);
+        list.w(circle(pose.position, L * (0.8 + 0.25 * pulse)), 'fireCore', o * 0.08);
+        list.w(circle(pose.position, L * (0.6 + 0.12 * pulse)), 'primary', o * 0.1);
+        glow(['fireCore', 'primary'], 0.9, 0.35);
+        break;
+      }
+      case 'singularity': {
+        // Light falling into it: a dark well, and a disc of fire turning round the car.
+        list.w(circle(pose.position, L * 0.85), 'groundHorizon', o * 0.55);
+        for (let band = 0; band < 3; band++) {
+          const spin = t * (1.6 - band * 0.35) + band * 2.1 + id;
+          const color: ColorToken = band === 1 ? 'horizonViolet' : 'mapHorizon';
+          list.w(arc(pose.position, L * (0.62 + band * 0.1), 1.6 - band * 0.3, spin, spin + 2.2), color, o * (0.75 - band * 0.18));
+        }
+        break;
+      }
+      case 'halo':
+        list.w(circle(pose.position, L * 0.7), 'coin', o * 0.1);
+        trail(pose, L, W, t, id, 8, 0.5, 20, (p, u) => list.w(circle(p, 1.1 * (1 - u * 0.4)), 'fireCore', o * 0.85 * (1 - u)));
+        break;
+      case 'soulfire':
+        // Blue fire that does not go out: white at the car, blue, then violet where it fades.
+        glow(['lightBlue', 'horizonViolet'], 0.7, 0.3);
+        trail(pose, L, W, t, id, 14, 1.6, 26, (p, u) => {
+          const color: ColorToken = u < 0.2 ? 'primary' : u < 0.6 ? 'lightBlue' : 'horizonViolet';
+          list.w(circle(p, 3.2 * (1 - u * 0.6)), color, o * 0.85 * (1 - u));
+        });
+        break;
       case 'ghost':
         // Afterimages: where it just was.
         for (const [back, share] of [[10, 0.18], [20, 0.08]] as const) {
@@ -153,6 +201,35 @@ export const SkinEffects = {
           list.w(line(prev, next, 1.8), 'lightBlue', o * 0.7);
           list.w(line(prev, next, 0.7), 'primary', o);
           prev = next;
+        }
+        break;
+      }
+      case 'nova':
+        // Four rays turning slowly, a spark at each tip.
+        for (let i = 0; i < 4; i++) {
+          const a = t * 0.8 + (i * Math.PI) / 2 + id;
+          const reach = L * (0.7 + 0.15 * Math.sin(t * 3 + i));
+          const tip = add(pose.position, mul(fromAngle(a), reach));
+          list.w(line(add(pose.position, mul(fromAngle(a), L * 0.45)), tip, 1), 'fireCore', o * 0.7);
+          list.w(circle(tip, 1.4), 'primary', o * 0.95);
+        }
+        break;
+      case 'singularity':
+        // Specks spiralling in and vanishing at the car.
+        for (let i = 0; i < 6; i++) {
+          const u = (t * 0.5 + i / 6 + unitHash(id, i)) % 1;
+          const a = i * 1.7 + u * 5 + id;
+          const p = add(pose.position, mul(fromAngle(a), L * (1.1 - 0.7 * u)));
+          list.w(circle(p, 1.3 * (1 - u * 0.5)), i % 2 === 0 ? 'mapHorizon' : 'horizonViolet', o * Math.sin(Math.PI * u));
+        }
+        break;
+      case 'halo': {
+        // A crown of light hovering over the roof, its points turning.
+        list.w(arc(pose.position, W * 0.62, 1.2, 0, Math.PI * 2), 'coin', o * 0.85);
+        for (let i = 0; i < 5; i++) {
+          const a = t * 1.1 + (i * Math.PI * 2) / 5 + id;
+          const base = add(pose.position, mul(fromAngle(a), W * 0.62));
+          list.w(polygon([add(base, mul(fromAngle(a - 0.35), 1.2)), add(pose.position, mul(fromAngle(a), W * 0.62 + 3.2)), add(base, mul(fromAngle(a + 0.35), 1.2))]), 'fireCore', o * 0.95);
         }
         break;
       }

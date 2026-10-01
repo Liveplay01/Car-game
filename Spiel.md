@@ -1,6 +1,6 @@
 # Spiel.md – Car Game: Spielmechanik, Funktionen & Status
 
-Stand: 30.09.2026 · Übersicht über das ganze Spiel. Seit dem 27.09.2026 ist Car Game ein **Browserspiel** (`Web/`); die frühere Swift-/iPhone-Schiene ist seit dem 29.09.2026 gelöscht. Maßgeblich sind `Web/src/core/config.ts` (alle Zahlen) und [Web/README.md](Web/README.md) (Befehle, Aufbau, Deployment). Regeln und Grundlagen stehen in [FOUNDATION.md](FOUNDATION.md), die Truhen in [LOOT.md](LOOT.md). Weicht dieses Dokument vom Code ab, gilt der Code.
+Stand: 01.10.2026 · Übersicht über das ganze Spiel. Seit dem 27.09.2026 ist Car Game ein **Browserspiel** (`Web/`); die frühere Swift-/iPhone-Schiene ist seit dem 29.09.2026 gelöscht. Maßgeblich sind `Web/src/core/config.ts` (alle Zahlen) und [Web/README.md](Web/README.md) (Befehle, Aufbau, Deployment). Regeln und Grundlagen stehen in [FOUNDATION.md](FOUNDATION.md), die Truhen in [LOOT.md](LOOT.md). Weicht dieses Dokument vom Code ab, gilt der Code.
 
 ---
 
@@ -115,9 +115,9 @@ Jede Einfädelung wird nach dem engsten Abstand (surface to surface) bewertet:
 
 ### Neu seit 28.09.2026 (Werte in `config.ts`)
 
-- **Vier Syndikats-Bosse** im Wechsel alle 15 Level: Convoy (15, zwei Eskorten dahinter), Getaway Driver (30, keine Eskorte, 0,7× Zeit), Armoured Boss (45, steckt den ersten Rammstoß weg, zweites Polizeiauto nötig), Phantom (60, Blackout, fährt ohne Licht). Ab Runde 2 (75+) je +1 Eskorte (max. 3) und ×0,9 Zeit. Besiegte Bosse öffnen ein **Rematch** unter Progress → Bosses (eine Runde härter, zahlt einmal 6.000–12.000).
+- **Vier Syndikats-Bosse** im Wechsel alle 15 Level: Convoy (15, zwei Eskorten dahinter), Getaway Driver (30, keine Eskorte, 0,7× Zeit), Armoured Boss (45, steckt den ersten Rammstoß weg, zweites Polizeiauto nötig), Phantom (60, Blackout, fährt ohne Licht). Ab Runde 2 (75+) je +1 Eskorte (max. 3) und ×0,9 Zeit. Besiegte Bosse öffnen ein **Rematch** unter Progress → Museum (eine Runde härter, zahlt einmal 6.000–12.000).
 - **Legendary Shifts:** ab Level 25, 6 % pro Karriere-Schicht, nie auf Boss-Leveln oder in der Daily. Regeln: Gridlock, Dragnet, Heavy Load, Dark Storm, Zero Tolerance. Geschafft: Premium-Truhe, Skins nach 1/5/15.
-- **Weekly Elite:** eine Schicht pro Woche (ab Montag) für alle, per Seed. Progress → Quests. Beliebig oft spielbar, zahlt einmal pro Woche 6.000 + Premium-Truhe.
+- **Weekly Shift** (bis 01.10.2026 „Weekly Elite“, umbenannt, damit es nicht mit dem Elite-Track verwechselt wird): eine Schicht pro Woche (ab Montag) für alle, per Seed. Progress → Today. Beliebig oft spielbar, zahlt einmal pro Woche 6.000 + Premium-Truhe.
 - **Prestige:** ab Level 50 (Progress → Records). Zurück auf Level 1; Geld, Upgrades, Straßen, Sammlung bleiben. Verkehr pro Rang 10 Level härter (max. 40). ★ vor dem Level, Skins bei ★1–3. Nur Optik, kein Bonus.
 - **Krankenwagen:** ab Level 8, 40 % pro Schicht, angekündigt, drängt sich rein wie der Verbrecher und fährt fast eine Runde. Die Straße vor ihm (120 Einheiten) muss frei bleiben: wer dort einfädelt, verliert Combo und Chain. Frei durch: +300, Chain +1.
 
@@ -321,7 +321,7 @@ Ein neuer Spieler trifft die Systeme nacheinander (`core/unlocks.ts`, Werte in `
 Details und alle Item-Listen: [LOOT.md](LOOT.md) (Liste im Code: `Web/src/core/loot.ts`).
 
 - **Nur Aussehen.** Kein Skin gibt einen Spielvorteil. Sonderfahrzeuge bleiben an der **Form** erkennbar, nicht an der Farbe.
-- **70 Items:** 46 Car Skins (davon 7 nur über Daily-Serie und Saison), 21 Map Skins, 3 Fahrzeugtypen.
+- **101 Items:** 74 Car Skins, 24 Map Skins, 3 Fahrzeugtypen. Im Shop vier Regale: **Cars** (Truhen-Skins nach Seltenheit mit Überschriften, dazu Fahrzeuge und Saison-Skins), **Maps**, **Honours** (Legendary Shifts, Prestige, Elite, Feats, Daily-Serie), **Pass**. Das Raster scrollt.
 - **Skins mischen:** bis zu **5 Car Skins** gleichzeitig; **jedes Fahrzeug** im Level trägt einen davon, fest pro Fahrzeug. Ein Map Skin.
 - **Map Skins** färben den Boden der Stadt (Tag-Maps hell und satt, Nacht-Maps dunkel), tönen die Mittelinsel, säumen die Straßen mit eigenen Pflanzen und bringen ein **Herzstück** mit Animation.
 - **Car Skins:** Farben, Rennstreifen, zweifarbige Dächer, **Shiny** (Lichtstreif) und **Glitter** (Funkeln).
@@ -341,7 +341,7 @@ Details und alle Item-Listen: [LOOT.md](LOOT.md) (Liste im Code: `Web/src/core/l
 
 ### Mastery
 
-Acht Ziele mit je drei Stufen zählen über die ganze Laufbahn; beim Erreichen erscheint ein Toast, die Truhe liegt im Shop. Der Stand ist unter **Progress → Mastery** einsehbar.
+Acht Ziele mit je drei Stufen zählen über die ganze Laufbahn; beim Erreichen erscheint ein Toast, die Truhe liegt im Shop. Der Stand ist unter **Progress → Goals** einsehbar.
 
 | Ziel | Stufen |
 |---|---|
@@ -374,11 +374,11 @@ Ein voller Satz zahlt einmal Geld und legt einen **Rahmen** in seiner Farbe um d
 - **Daily Shift:** automatisch die **erste Schicht des Tages**, ein Versuch, Titel „DAILY SHIFT“. Ein Tages-Seed für alle, immer mit City Event. Geschafft → 300 × Serie Geld + Event Chest. Die allererste Schicht ist nie die Daily.
 - **Serie:** zählt gespielte Tage. 7 / 14 / 30 Tage geben exklusive Skins (Bronze Badge, Silver Badge, Gold Laurel).
 - **Saisons:** Der Event Chest enthält in der Hälfte der Fälle das Saison-Item (Frost, Blossom, Sunburst, Pumpkin), das es nur in seiner Saison gibt.
-- **Quests** (früher Challenges): 3 kleine Ziele pro Tag, für alle gleich, je einmal bezahlt, wechseln um Mitternacht. Unter **Progress → Quests**.
+- **Quests** (früher Challenges): 3 kleine Ziele pro Tag, für alle gleich, je einmal bezahlt, wechseln um Mitternacht. Unter **Progress → Today**.
 - **Records** (Progress): Highscore, Level, Bestcombo, längste Kette, Daily-Serie, Schichten, Takedowns, Transporter, Unlimited- und Mayhem-Rekorde, Syndikats-Bosse, Sammlung, **Timing** (Leo, 29.09.2026): wie früh (−) oder spät (+) die letzten 50 Merges im Schnitt getippt waren, gemessen an der Mitte der Lücke (`core/timing.ts`; ab 8 Merges, bis ±30 ms „On the beat“; offene Ringe zählen nicht).
 - **Tutorial:** in der ersten Schicht, ohne Menü und ohne Pause – pulsierender Ring am vordersten Auto, „Wait for a gap, then tap“, Combo-Hinweis, beim ersten Crash „Cars crash instantly. Police get 3 chances.“
 
-### Trials (Progress → Trials, ab Level 9)
+### Trials (Progress → Goals, ab Level 9)
 
 Sieben feste Schichten mit festem Seed (alle treffen denselben Verkehr), frischem Kreisverkehr mit 4 Armen, ohne eigene Upgrades. Eine Zusatzregel beendet die Schicht als *failed*, wenn sie gebrochen wird. Jede Trial zahlt einmal. **Die leichteste steht oben, und jede öffnet erst bei ihrem Level** (vorher: alle sieben auf einmal, Tight Squeeze zuoberst).
 
@@ -421,6 +421,7 @@ Nach einer Schicht macht „Challenge a friend“ einen Link (`#challenge=…`) 
 | **Schrift** | Systemschrift: auf Apple-Geräten SF Pro, in der Spielszene SF Pro Rounded (`ui-rounded`), sonst Segoe UI / Roboto; Tabular Figures für Zahlen |
 | **Obere Anzeige** | schwebende Karte mit drei Spalten (MONEY · CARS/SCORE · BEST), im Ergebnis zählt das Geld hoch. Auf dem Wartebildschirm führt Geld → Chests, Autos → Collection, Best → Records |
 | **Navigation** | DOM-Tab-Bar wie in iOS: **Progress · Game · Shop · Build**; zwischen den Schichten sichtbar, während einer Schicht ausgeblendet. Build hat die Segmente Upgrades / Street Builder, Shop Chests / Collection / Casino, Progress Records / Quests / Trials / Museum / Mastery |
+| **Progress-Tab** (aufgeräumt 01.10.2026) | vier Segmente ohne Unter-Tabs: **Records** (Elite-Karte ab Level 40, sechs große Werte, der Rest unter „All stats“ zum Aufklappen, leere Werte ausgeblendet) · **Today** (Daily Shift mit Serie, Weekly Shift, Season Pass, drei Quests, alle im selben Kartenstil) · **Goals** (Trials, Mastery, Feats untereinander mit Überschriften) · **Museum** (Bosse, Specials, Conditions untereinander). Jede Liste scrollt (`present/scroll.ts`, wie die Upgrades); getippt wird beim Loslassen |
 | **Menüs** | native Anmutung: gruppierte Listen, Sheets, Schalter, Segmented Controls; Glas nur für schwebende Bedienelemente über der Szene. Kritisch gedämpfte Federn, kein harter Schnitt |
 | **Einstellungen** | Sheet: Sound effects und Music (getrennt seit 30.09.2026), Haptics, Vehicle Labels, **Left-handed** (schwebende Knöpfe auf die andere Seite, Dispatch links), **Larger text** (Hinweise und Karten über der Szene ×1,2), Reduce Motion (System / On / Off), **What's new** (Patch Notes aus `present/patchNotes.ts`; ungelesen: Punkt am Einstellungsknopf), Export / Import / Reset Progress |
 | **Ergebnis teilen** | Unter jedem Ergebnis „Picture“ (Leo, 29.09.2026: „wie ein geschossenes Foto“): Blitz mit Auslöser-Geräusch, dann fällt ein **Sofortbild** gekippt ein und entwickelt sich aus Weiß. Der Abzug (1080×1350, 4:5) zeigt den Kreisverkehr von oben ohne HUD, mit Film-Look (Wärme, Lichtleck, Vignette), Klebestreifen in der Map-Farbe, Sticker mit dem Ergebnis, **NEW BEST**-Stempel, orangem Datum wie von einer Filmkamera, darunter Score, die besten Fakten, Map-Name, „Can you beat …?“ und Spielname mit Icon. Nur zwei Knöpfe: **Share** (Teilen-Menü mit Challenge-Link; ohne Datei-Teilen: Bild kopieren) und **Download**. Esc, ✕ oder Tippen daneben schließt. Reduce Motion: nur Überblenden (`ui/photo.ts`, Text in `present/photo.ts`) |

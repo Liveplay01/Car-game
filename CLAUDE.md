@@ -36,10 +36,14 @@ App-Store-Arbeit mehr vorschlagen.
   Das Spiel selbst bleibt ohne Backend: nginx liefert nur statische Dateien aus, Geld, Truhen und Fortschritt liegen lokal.
 - **Ranglisten-Dienst (Leo, 30.09.2026):** Es gibt **einen kleinen, optionalen Server** in `Server/`
   (Node 22 + Hono + SQLite, eigener Container, eigene Coolify-Ressource auf einer Subdomain, Port 5051).
-  Er kennt nur anonyme Spieler (frei gewählter Name, gefiltert) und Bestenlisten (Shift-Level, Unlimited-Rekord);
-  weitere Funktionen kommen als Module in `Server/src/modules/`. Anti-Cheat nur über Plausibilitätsgrenzen.
-  Das Spiel läuft auch ohne ihn (offline-first, `net/leaderboard.ts` ist abgeschaltet ohne `VITE_API_URL`).
-  Spielstand, Geld und Truhen bleiben lokal; die Casino-Regel gilt weiter. Details: [Server/README.md](Server/README.md).
+  Er kennt anonyme Spieler (frei gewählter Name, gefiltert), Bestenlisten (Shift-Level, Unlimited-Rekord) und
+  seit 01.10.2026 ein **Freunde-Board** (Freundescode `K7M2-9QXA`, einseitig), einen optionalen **Cloud-Spielstand
+  per Sync-Code** (`K7M2-9QXA-4TFB`, kein Konto, kein Passwort, Rückfrage bei Konflikt, nie still überschreiben) und
+  **TURN-Zugänge** für den Multiplayer (Cloudflare, `GET /v1/rtc/ice`); weitere Funktionen kommen als Module in
+  `Server/src/modules/`. Anti-Cheat nur über Plausibilitätsgrenzen.
+  Das Spiel läuft auch ohne ihn (offline-first, `net/leaderboard.ts`, `net/cloud.ts` und `net/rtc.ts` sind abgeschaltet
+  bzw. fallen zurück ohne `VITE_API_URL`). Die Quelle des Spielstands bleibt der Browser (Cloud = optionale Kopie);
+  Geld und Truhen werden lokal berechnet, die Casino-Regel gilt weiter. Details: [Server/README.md](Server/README.md).
 - **Offline spielbar:** Nach dem ersten Laden läuft das Spiel ohne Netz (Service Worker aus
   `Web/vite.config.ts`, precacht alle Dateien). Nur der Multiplayer braucht Netz.
 - **Deployment:** Docker-Image aus dem `Dockerfile` im Repo-Root (Node baut, `nginx:alpine`

@@ -24,7 +24,12 @@ export type TitleId =
   | 'nightOwl'
   | 'stormChaser'
   | 'legendHunter'
-  | 'starDriver';
+  | 'starDriver'
+  | 'ascended'
+  | 'eternal'
+  | 'grandmaster'
+  | 'centurion'
+  | 'immortal';
 
 export const TITLES: TitleId[] = [
   'eliteDriver',
@@ -41,6 +46,12 @@ export const TITLES: TitleId[] = [
   'stormChaser',
   'legendHunter',
   'starDriver',
+  // Feats (core/feats.ts): the hardest titles in the game.
+  'ascended',
+  'eternal',
+  'grandmaster',
+  'centurion',
+  'immortal',
 ];
 
 /** What earns a title. */
@@ -67,6 +78,11 @@ export const TITLE_RULES: Record<TitleId, TitleRule> = {
   stormChaser: { k: 'trial', id: 'stormWatch' },
   legendHunter: { k: 'legendary', shifts: 15 },
   starDriver: { k: 'prestige', rank: 3 },
+  ascended: { k: 'prestige', rank: 10 },
+  eternal: { k: 'prestige', rank: 20 },
+  grandmaster: { k: 'elite', level: 75 },
+  centurion: { k: 'elite', level: 100 },
+  immortal: { k: 'legendary', shifts: 50 },
 };
 
 /** The top tier of every mastery goal (`MASTERY_THRESHOLDS` has three). */

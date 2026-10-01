@@ -1,0 +1,93 @@
+/* Big Screen (ui/backdrop.ts): the player's picture or video behind the see-through canvas. */
+
+.backdrop {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  background: var(--bg);
+  opacity: 0;
+  visibility: hidden;
+  transition:
+    opacity 400ms var(--ease-out),
+    visibility 0s linear 400ms;
+}
+
+.backdrop.show {
+  opacity: 1;
+  visibility: visible;
+  transition:
+    opacity 400ms var(--ease-out),
+    visibility 0s;
+}
+
+.backdrop > img,
+.backdrop > video,
+.backdrop > iframe {
+  position: absolute;
+  border: 0;
+  pointer-events: none;
+  transition: opacity 400ms var(--ease-out);
+}
+
+.backdrop > img,
+.backdrop > video {
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* A 16:9 player that always covers the screen, upright phone or wide desktop; the rest is cut off. */
+.backdrop > iframe {
+  top: 50%;
+  left: 50%;
+  width: max(100vw, 177.78vh);
+  height: max(100vh, 56.25vw);
+  transform: translate(-50%, -50%);
+}
+
+.backdrop > .loading,
+.backdrop > .leaving {
+  opacity: 0;
+}
+
+.app.reduce-motion .backdrop,
+.app.reduce-motion .backdrop > * {
+  transition: none;
+}
+
+/* The sheet. */
+
+.backdrop-sheet .list {
+  margin-bottom: var(--s4);
+}
+
+.backdrop-intro {
+  margin: 0 var(--s1) var(--s4);
+}
+
+.backdrop-label {
+  margin: 0 var(--s1) var(--s2);
+}
+
+.backdrop-or {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  margin: var(--s4) var(--s1);
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.backdrop-or::before,
+.backdrop-or::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--separator);
+}
+
+.backdrop-note {
+  margin: 0 var(--s1) var(--s2);
+}

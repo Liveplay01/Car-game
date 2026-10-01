@@ -38,7 +38,9 @@ export class CanvasDrawer {
     // being drawn. Every frame starts with the ground over last frame's cars and draws the cars
     // late, so on a busy map (Mushroom Grove) the screen mostly caught it without them and the
     // traffic only flickered up now and then. The taps keep their own timestamps anyway.
-    const ctx = canvas.getContext('2d', { alpha: false });
+    // With alpha, so Big Screen's ground can let the player's picture behind the canvas through;
+    // every other ground is painted solid, so nothing else changes.
+    const ctx = canvas.getContext('2d');
     if (!ctx) throw new Error('Canvas 2D is not available');
     this.ctx = ctx;
   }
@@ -63,7 +65,7 @@ export class CanvasDrawer {
 
   private groundKey(list: RenderList): string {
     const c = list.camera;
-    return `${list.staticKey}|${list.staticEnd}|${list.background}|${list.groundGrain}|${c.center.x},${c.center.y},${c.focus.x},${c.focus.y},${c.scale},${c.viewport.x},${c.viewport.y}|${this.canvas.width}x${this.canvas.height}@${this.dpr}|${this.offset.x},${this.offset.y}`;
+    return `${list.staticKey}|${list.staticEnd}|${list.background}|${list.backdrop}|${list.groundGrain}|${c.center.x},${c.center.y},${c.focus.x},${c.focus.y},${c.scale},${c.viewport.x},${c.viewport.y}|${this.canvas.width}x${this.canvas.height}@${this.dpr}|${this.offset.x},${this.offset.y}`;
   }
 
   /** Background, ground texture and the still items, on whichever context is `this.ctx`. */
@@ -71,13 +73,15 @@ export class CanvasDrawer {
     const ctx = this.ctx;
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     this.forgetStyle();
-    this.setFill(css(list.background));
+    // Big Screen: cleared, then only a veil of the background over the player's picture.
+    if (list.backdrop !== null) ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+    this.setFill(css(list.background, list.backdrop ?? 1));
     ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
     ctx.setTransform(this.dpr, 0, 0, this.dpr, this.offset.x * this.dpr, this.offset.y * this.dpr);
     ctx.lineCap = 'butt';
     ctx.lineJoin = 'round';
     const cam = list.camera;
-    if (list.groundGrain) this.fillGrain(isBright(list.background) ? 'groundBright' : 'ground', null, cam);
+    if (list.groundGrain && list.backdrop === null) this.fillGrain(isBright(list.background) ? 'groundBright' : 'ground', null, cam);
     for (let i = 0; i < end; i++) {
       const item = list.items[i];
       if (!this.offscreen(item.p, cam)) this.item(item, cam);
@@ -98,7 +102,7 @@ export class CanvasDrawer {
           canvas.width = this.canvas.width;
           canvas.height = this.canvas.height;
         }
-        const baked = this.ground?.ctx ?? canvas.getContext('2d', { alpha: false });
+        const baked = this.ground?.ctx ?? canvas.getContext('2d');
         if (baked) {
           this.ctx = baked;
           this.paintGround(list, list.staticEnd);
@@ -108,6 +112,8 @@ export class CanvasDrawer {
       }
       if (this.ground?.key === key) {
         ctx.setTransform(1, 0, 0, 1, 0, 0);
+        // A see-through ground would show the last frame under it.
+        if (list.backdrop !== null) ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
         ctx.drawImage(this.ground.canvas, 0, 0);
         start = list.staticEnd;
       }

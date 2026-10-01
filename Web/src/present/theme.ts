@@ -145,6 +145,13 @@ export const COLORS = {
   groundCrystal: [15, 10, 28, 1],
   mapCrystal: [198, 115, 255, 1],
   crystalCyan: [80, 240, 245, 1],
+  // Feats (core/feats.ts): Gilded City, a night city in gold leaf; Event Horizon, a black hole and its fire.
+  groundGilded: [22, 17, 9, 1],
+  mapGilded: [255, 204, 92, 1],
+  gildedMarble: [236, 226, 204, 1],
+  groundHorizon: [4, 3, 10, 1],
+  mapHorizon: [255, 150, 64, 1],
+  horizonViolet: [150, 96, 255, 1],
   groundDusk: [21, 17, 31, 1],
   groundSand: [236, 188, 104, 1],
   groundNeon: [8, 20, 24, 1],

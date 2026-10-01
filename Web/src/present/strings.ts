@@ -12,6 +12,7 @@ import { type Trial, type TrialId, type RunId, type EliteKind, rematchKind } fro
 import type { SpecialKind, WeatherKind, DarkKind, MuseumEntry, ConditionEntry } from '../core/museum';
 import type { EliteStep, TitleId, TitleRule } from '../core/elite';
 import type { PassReward, PassStep, HallEntry } from '../core/seasonPass';
+import type { FeatGoal } from '../core/feats';
 import type { Season } from '../core/loot';
 import { MONEY_MARK } from './icons';
 
@@ -371,7 +372,7 @@ export const S = {
   /** Systems that open with the level (`core/unlocks.ts`). */
   unlocks: {
     daily: 'New · the Daily Shift: one try a day, the same shift for everyone',
-    trials: 'New · Trials in Progress: special shifts with a reward',
+    trials: 'New · Trials in Progress → Goals: special shifts with a reward',
     opensAt: (name: string, level: number): string => `${name} ${name.endsWith('s') ? 'open' : 'opens'} at Level ${level}`,
     lockedTag: (level: number): string => `LEVEL ${level}`,
   },
@@ -433,7 +434,7 @@ export const S = {
         case 'tightSqueeze':
           return `${t.goal.k === 'skilled' ? t.goal.n : 0} Tight Fits or better in ${t.cars} cars`;
         case 'deadCentre':
-          return `${t.goal.k === 'perfects' ? t.goal.n : 0} Perfect merges in ${t.cars} cars`;
+          return `${t.goal.k === 'perfects' ? t.goal.n : 0} Perfect Inputs in ${t.cars} cars`;
         case 'cleanSheet':
           return `${t.cars} cars, no crash and no cut-off`;
         case 'blackout':
@@ -453,7 +454,7 @@ export const S = {
     play: 'Play',
     opensAt: (l: number): string => `Opens at level ${l}`,
     /** The live counter of a counting trial goal. */
-    progress: (t: Trial, have: number, need: number): string => `${t.goal.k === 'perfects' ? 'Perfect merges' : 'Tight Fits or better'} ${Math.min(have, need)}/${need}${have >= need ? ' ✓' : ''}`,
+    progress: (t: Trial, have: number, need: number): string => `${t.goal.k === 'perfects' ? 'Perfect Inputs' : 'Tight Fits or better'} ${Math.min(have, need)}/${need}${have >= need ? ' ✓' : ''}`,
   },
 
   boss: {
@@ -491,8 +492,8 @@ export const S = {
   },
 
   weekly: {
-    title: 'Weekly Elite',
-    caption: 'WEEKLY ELITE',
+    title: 'Weekly Shift',
+    caption: 'WEEKLY SHIFT',
     elite: (e: EliteKind): string =>
       ({ flawless: 'Flawless', precision: 'Precision', storm: 'Storm Front', gridlock: 'Gridlock', dragnet: 'Dragnet', boss: 'Boss Hunt' })[e],
     goal(t: Trial): string {
@@ -500,7 +501,7 @@ export const S = {
         case 'flawless':
           return `Level ${t.level} · ${t.cars} cars, no crash and no cut-off`;
         case 'precision':
-          return `Level ${t.level} · ${t.goal.k === 'perfects' ? t.goal.n : 0} Perfect merges in ${t.cars} cars`;
+          return `Level ${t.level} · ${t.goal.k === 'perfects' ? t.goal.n : 0} Perfect Inputs in ${t.cars} cars`;
         case 'storm':
           return `Level ${t.level} · ${t.cars} cars through a storm at night`;
         case 'gridlock':
@@ -515,7 +516,7 @@ export const S = {
     },
     daysLeft: (n: number): string => (n === 1 ? 'last day' : `${n} days left`),
     hint: 'The same shift for everyone this week. Play it as often as you like; it pays once.',
-    done: (m: string): string => `WEEKLY ELITE DONE · +${money(m)} · PREMIUM CHEST`,
+    done: (m: string): string => `WEEKLY SHIFT DONE · +${money(m)} · PREMIUM CHEST`,
     passedThisWeek: 'Passed this week · new one on Monday',
   },
 
@@ -576,6 +577,11 @@ export const S = {
         stormChaser: 'Storm Chaser',
         legendHunter: 'Legend Hunter',
         starDriver: 'Star Driver',
+        ascended: 'Ascended',
+        eternal: 'Eternal',
+        grandmaster: 'Grandmaster',
+        centurion: 'Centurion',
+        immortal: 'Immortal',
       })[id],
     rule(r: TitleRule): string {
       switch (r.k) {
@@ -715,11 +721,20 @@ export const S = {
   },
 
   progress: {
-    section: (i: number): string => ['Records', 'Quests', 'Trials', 'Museum', 'Mastery'][i],
+    section: (i: number): string => ['Records', 'Today', 'Goals', 'Museum'][i],
+    /** The headings inside the sections: Records' long list, Today's quests, the three kinds of goal. */
+    allStats: 'All stats',
+    statsMore: (n: number): string => `${n} more ›`,
+    statsHide: 'Hide',
+    quests: 'Quests',
+    trials: 'Trials',
+    mastery: 'Mastery',
+    feats: 'Feats',
+    trialsLocked: (level: number): string => `Opens at Level ${level} · special shifts with a reward`,
     bosses: 'Syndicate bosses',
     prestige: 'Prestige',
     legendary: 'Legendary shifts',
-    weeklies: 'Weekly Elites',
+    weeklies: 'Weekly Shifts',
     ambulances: 'Ambulances cleared',
     highscore: 'Highscore',
     level: 'Level reached',
@@ -953,13 +968,17 @@ export const S = {
     skinsFull: (max: number): string => `${max} car skins are on. Take one off first.`,
     section: (i: number): string => ['Chests', 'Collection', 'Casino'][i],
     newBadge: 'NEW',
-    shelf: (i: number): string => ['Common', 'Rare', 'Epic', 'Legend', 'Maps', 'Special', 'Honours', 'Pass'][i],
+    shelf: (i: number): string => ['Cars', 'Maps', 'Honours', 'Pass'][i],
+    /** The headings on the Cars shelf: the chest skins by rarity, then the vehicles and the season skins. */
+    group: (g: Rarity | 'vehicles' | 'seasons'): string =>
+      ({ common: 'Common', rare: 'Rare', epic: 'Epic', legendary: 'Legendary', vehicles: 'Vehicles', seasons: 'Seasons' })[g],
     waiting: (n: number): string => (n === 1 ? '1 waiting' : `${n} waiting`),
     buy: (price: string): string => `Buy · ${price}`,
     pity: (n: number): string => `Epic or better within ${n} chests. Duplicates pay out ${MONEY_MARK}.`,
     duplicate: (m: string): string => `Duplicate · +${money(m)}`,
     ownedHint(item: Cosmetic): string {
       if (item.kind === 'carSkin') return 'Paints the cars on the road. Mix up to five. Only looks, never a bonus.';
+      if (item.id === 'bigScreen') return 'Your own picture or video behind the roundabout: upload a picture, or paste a link to a YouTube video, an image or a video file. Only looks, never a bonus.';
       if (item.kind === 'mapSkin') return 'Turns the city into its own place. Only looks, never a bonus.';
       return `Shows up in your queue now and then: ${S.shop.trait(item.id)}.`;
     },
@@ -1056,6 +1075,13 @@ export const S = {
         starSilver: 'Silver Star',
         starGold: 'Gold Star',
         starIris: 'Iris Star',
+        bigScreen: 'Big Screen',
+        nova: 'Nova',
+        gilded: 'Gilded City',
+        singularity: 'Singularity',
+        zenith: 'Zenith Crown',
+        eventHorizon: 'Event Horizon',
+        undying: 'Undying Flame',
         eliteSteel: 'Steel Chevron',
         eliteBlaze: 'Blaze Chevron',
         eliteJade: 'Jade Chevron',
@@ -1089,9 +1115,38 @@ export const S = {
     },
   },
 
+  /** Big Screen's sheet (`ui/backdrop.ts`): the player's own picture or video behind the roundabout. */
+  backdrop: {
+    choose: 'Choose picture or video',
+    title: 'Big Screen',
+    intro: 'Put your own picture or video behind the roundabout. It plays on the Game tab while Big Screen is on.',
+    linkLabel: 'Link',
+    linkPlaceholder: 'YouTube, image or video link',
+    show: 'Show',
+    or: 'or',
+    upload: 'Upload a picture',
+    uploadSub: 'From your device, pictures only. It stays on this device.',
+    pick: 'Choose',
+    now: (what: 'youtube' | 'video' | 'image' | 'upload'): string =>
+      ({ youtube: 'A YouTube video', video: 'A video from a link', image: 'A picture from a link', upload: 'Your own picture' })[what],
+    nowSub: 'Behind the roundabout now.',
+    remove: 'Remove',
+    loading: 'Loading…',
+    notALink: 'That is not a web link. Copy the whole address, starting with https://',
+    cannotLoad: 'That link did not load. Use the address of the picture or video itself (it often ends in .jpg, .png or .mp4); some sites do not let their pictures show elsewhere.',
+    notAPicture: 'Only pictures can be uploaded. For a video, paste a YouTube link.',
+    unreadable: 'That picture could not be read. Try another one.',
+    notKept: 'Too big to keep on this device: it shows until you close the game.',
+    note: 'A link loads straight from its own site (YouTube, or wherever the picture lives), on this device only. Nothing is sent to us.',
+    on: 'Big Screen is on',
+    lost: 'Big Screen: your link did not load. The city is back for now.',
+  },
+
   daily: {
     title: 'DAILY SHIFT',
-    ready: 'Daily Shift ready',
+    /** Its row under Progress → Today. */
+    name: 'Daily Shift',
+    ready: 'Ready',
     perfectRun: 'PERFECT RUN',
     welcomeBack: (m: string): string => `Welcome back · your toll booths earned +${money(m)}`,
     done: 'Done',
@@ -1101,6 +1156,13 @@ export const S = {
     splashLine: (e: CityEvent): string => `Today's city: ${S.cityEvent(e)} · one try`,
     streakLine: (streak: number): string => (streak > 0 ? `${streak} ${streak === 1 ? 'day' : 'days'} in a row · keep it going` : 'Play it every day for a streak'),
     nextMilestone: (left: number, item: string): string => `${left} more ${left === 1 ? 'day' : 'days'} for ${S.shop.item(item)}`,
+    /** The second line of its row under Progress → Today: what it is, or the streak and what it brings next. */
+    rowLine(streak: number, open: boolean, next: { left: number; item: string } | null): string {
+      if (streak <= 0) return open ? S.daily.readyHint : 'Back tomorrow · play it every day for a streak';
+      const days = `${streak} ${streak === 1 ? 'day' : 'days'} in a row`;
+      const parts = [days, next ? S.daily.nextMilestone(next.left, next.item) : null, open ? null : 'back tomorrow'];
+      return parts.filter((p): p is string => p !== null).join(' · ');
+    },
     milestone: (days: number, item: string): string => `${days} DAYS IN A ROW · ${S.shop.item(item)} unlocked`,
     eventChestFound: 'EVENT CHEST FOUND',
     luckyDrop: 'LUCKY DROP · STANDARD CHEST',
@@ -1146,6 +1208,30 @@ export const S = {
     best: 'BEST',
     delta: (seconds: number): string => (seconds <= 0 ? '−' : '+') + `${Math.abs(seconds).toFixed(1)} s`,
     newBest: 'NEW BEST TIME',
+  },
+
+  /** Progress → Mastery → Feats (core/feats.ts): the hardest deeds and what they pay. */
+  feats: {
+    goal(g: FeatGoal): string {
+      switch (g.k) {
+        case 'prestige':
+          return `Reach Prestige ★${g.rank}`;
+        case 'elite':
+          return `Reach Elite ${g.level}`;
+        case 'legendary':
+          return `Complete ${g.shifts} Legendary Shifts`;
+      }
+    },
+    have: (have: number, need: number): string => `${Math.min(have, need)} / ${need}`,
+    done: 'Done',
+    withTitle: (title: string): string => `+ title “${title}”`,
+    eyebrow: 'Feat',
+    body: 'One of the hardest deeds in the game. No chest, no casino and no money can get you this: only the road.',
+    rowGoal: 'Goal',
+    rowNow: 'You',
+    rowTitle: 'Title',
+    reward: 'Reward',
+    earned: 'Earned · in your collection',
   },
 
   mastery: {

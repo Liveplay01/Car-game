@@ -1,6 +1,6 @@
 import { type SaveGame, type Career, type Hint, HINTS, newSave, newCareer, GAME_MODES, MASTERY_GOALS, type GameMode } from '../core/career';
 import { UPGRADES, upgradeMaxSteps } from '../core/levels';
-import { COSMETICS, CHEST_KINDS, type ChestKind, MAX_CAR_SKINS, cosmetic } from '../core/loot';
+import { COSMETICS, CHEST_KINDS, type ChestKind, type CosmeticSource, MAX_CAR_SKINS, cosmetic } from '../core/loot';
 import { ROAD_MODULES, type RoadModule, BOSS_KINDS, type BossKind, baseConfig } from '../core/config';
 import { RUN_IDS } from '../core/trials';
 import { MUSEUM_IDS, MUSEUM_SHELVES, type MuseumShelf, inferredSightings } from '../core/museum';
@@ -25,6 +25,14 @@ function readCareer(raw: unknown): Career {
   if (!isObject(raw)) return fresh;
   const known = new Set(COSMETICS.map((c) => c.id));
   const collection = [...new Set(strings(raw.collection).filter((id) => known.has(id)))];
+  // A reward added after the save had passed its deed (Big Screen at ★5, the Feats) arrives now, marked new.
+  const prestige = int(raw.prestige, 0, 0);
+  const eliteClaimed = int(raw.eliteClaimed, 0, 0);
+  const legendaryDone = int(raw.legendaryDone, 0, 0);
+  const earned = (s: CosmeticSource): boolean =>
+    (s.kind === 'prestige' && s.rank <= prestige) || (s.kind === 'elite' && s.level <= eliteClaimed) || (s.kind === 'legendary' && s.shifts <= legendaryDone);
+  const late = COSMETICS.filter((c) => earned(c.source) && !collection.includes(c.id)).map((c) => c.id);
+  collection.push(...late);
   const upgrades: Career['upgrades'] = {};
   if (isObject(raw.upgrades)) {
     for (const u of UPGRADES) {
@@ -76,7 +84,7 @@ function readCareer(raw: unknown): Career {
     masteryTiers,
     chests: strings(raw.chests).filter((c): c is ChestKind => CHEST_KINDS.includes(c as ChestKind)),
     collection,
-    unseen: strings(raw.unseen).filter((id) => collection.includes(id)),
+    unseen: [...new Set([...strings(raw.unseen).filter((id) => collection.includes(id)), ...late])],
     carSkins: strings(raw.carSkins)
       .filter((id) => collection.includes(id) && cosmetic(id)?.kind === 'carSkin')
       .slice(0, MAX_CAR_SKINS),
@@ -96,10 +104,10 @@ function readCareer(raw: unknown): Career {
     trialsDone: [...new Set(strings(raw.trialsDone).filter((id) => RUN_IDS.includes(id)))],
     bossTrophies: int(raw.bossTrophies, 0, 0),
     bossesBeaten,
-    prestige: int(raw.prestige, 0, 0),
-    legendaryDone: int(raw.legendaryDone, 0, 0),
+    prestige,
+    legendaryDone,
     eliteXp: int(raw.eliteXp, 0, 0),
-    eliteClaimed: int(raw.eliteClaimed, 0, 0),
+    eliteClaimed,
     title: TITLES.includes(raw.title as TitleId) ? (raw.title as TitleId) : null,
     titlesSeen: [...new Set(strings(raw.titlesSeen).filter((t): t is TitleId => TITLES.includes(t as TitleId)))],
     weeklyDone: int(raw.weeklyDone, -1),

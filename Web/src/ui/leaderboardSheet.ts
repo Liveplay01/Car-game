@@ -5,18 +5,24 @@ import {
   type BoardEntry,
   type BoardId,
   type BoardView,
+  type FriendsView,
   type Records,
+  addFriend,
   createAccount,
   deleteAccount,
   describeError,
   fetchBoard,
+  fetchFriends,
+  fetchFriendsBoard,
   loadAccount,
+  removeFriend,
   renameAccount,
   syncScores,
 } from '../net/leaderboard';
 import { NAME_MAX } from '../net/room';
 import { loadPlayerName, savePlayerName } from '../storage/profile';
-import { S, Fmt } from '../present/strings';
+import { Fmt } from '../present/strings';
+import { baseConfig } from '../core/config';
 
 /**
  * Progress → the rank chip: the leaderboards. No sign-up (Leo, 30.09.2026): the player only
@@ -37,24 +43,60 @@ const BOARDS: { id: BoardId; label: string; empty: string }[] = [
 ];
 
 /** The last list of each board: shown at once when the sheet opens again, then refreshed. */
-const cache = new Map<BoardId, BoardView>();
+const cache = new Map<string, BoardView>();
 let lastBoard: BoardId = 'shift-level';
+/** Everyone, or only you and the friends whose codes you added. */
+type Scope = 'all' | 'friends';
+let lastScope: Scope = 'all';
 
 /** The number a line stands for: the level (with its Prestige rank) or the Unlimited score. */
-function valueOf(board: BoardId, e: { score: number; meta: Record<string, number> }): string {
-  if (board === 'unlimited') return Fmt.number(e.score);
+function valueOf(board: BoardId, e: { score: number; meta: Record<string, number> }, onStar: () => void): (string | HTMLElement)[] {
+  if (board === 'unlimited') return [Fmt.number(e.score)];
   const level = `Level ${Fmt.number(e.meta.level ?? e.score % 1000)}`;
   const prestige = e.meta.prestige ?? Math.floor(e.score / 1000);
-  return prestige > 0 ? `${S.prestige.caption(prestige)} · ${level}` : level;
+  return prestige > 0 ? [prestigeStar(prestige, onStar), level] : [level];
 }
 
-function entryRow(board: BoardId, e: BoardEntry | (Omit<BoardEntry, 'name'> & { name: string })): HTMLElement {
+/**
+ * The Prestige star: a star with the rank inside, a slow glint across it (not under Reduce
+ * Motion). A tap on it explains the system (`onTap`).
+ */
+export function prestigeStar(rank: number, onTap: () => void): HTMLElement {
+  return h(
+    'button',
+    { class: `prestige-star tier-${Math.min(rank, 3)}`, type: 'button', 'aria-label': `Prestige rank ${rank}. How Prestige works`, onclick: onTap },
+    h('span', { class: 'prestige-star-rank', 'aria-hidden': 'true' }, String(rank)),
+  );
+}
+
+/** What Prestige is, in the numbers the game really uses. */
+function prestigeInfo(back: () => void): HTMLElement {
+  const row = (title: string, sub: string): HTMLElement => h('div', { class: 'row' }, h('div', { class: 'row-main' }, h('div', { class: 'row-title' }, title), h('div', { class: 'row-sub' }, sub)));
+  const { prestigeLevel, prestigeHeadStart, maxPrestigeHeadStart } = baseConfig;
+  return h(
+    'div',
+    { class: 'board prestige-info' },
+    h('button', { class: 'btn quiet-btn', type: 'button', onclick: back }, '‹ Back to the leaderboard'),
+    h('p', { class: 'section-note' }, 'The star before a level is the Prestige rank: how many times that player started over after Level ' + prestigeLevel + '.'),
+    h(
+      'div',
+      { class: 'list' },
+      row(`Level ${prestigeLevel} opens it`, 'Progress → Records → Elite. The button asks twice.'),
+      row('Back to Level 1', 'Money, upgrades, roads, your collection and the Elite track stay. Best times start over.'),
+      row(`Harder traffic: +${prestigeHeadStart} levels per rank`, `From ★1 the road plays ${prestigeHeadStart} levels harder, at most +${maxPrestigeHeadStart} levels (from ★${Math.ceil(maxPrestigeHeadStart / prestigeHeadStart)}).`),
+      row('Only for show', 'Silver, Gold and Iris Star skins at ★1 to ★3, the Star Driver title at ★3 and a plaque in the Hall of Fame. Never a bonus on the road.'),
+      row('On this leaderboard', 'Shift level ranks the Prestige rank first, then the level. Unlimited ignores it.'),
+    ),
+  );
+}
+
+function entryRow(board: BoardId, e: BoardEntry | (Omit<BoardEntry, 'name'> & { name: string }), onStar: () => void): HTMLElement {
   return h(
     'div',
     { class: `row board-row${e.me ? ' me' : ''}${e.rank <= 3 ? ' podium' : ''}`, role: 'listitem' },
     h('span', { class: 'board-rank', 'aria-label': `Rank ${e.rank}` }, Fmt.number(e.rank)),
     h('div', { class: 'row-main' }, h('div', { class: 'row-title board-name' }, h('span', {}, e.name), e.me ? h('span', { class: 'you-tag' }, 'You') : null)),
-    h('span', { class: 'row-value board-value' }, valueOf(board, e)),
+    h('span', { class: 'row-value board-value' }, ...valueOf(board, e, onStar)),
   );
 }
 
@@ -133,12 +175,22 @@ function nameForm(value: string, action: string, submit: (name: string) => Promi
   return form;
 }
 
+/** A friend code as it is typed or pasted: `K7M2-9QXA`. */
+const tidyFriendCode = (text: string): string =>
+  text
+    .toUpperCase()
+    .replace(/[^A-Z0-9]/g, '')
+    .slice(0, 8)
+    .replace(/(.{4})(?=.)/g, '$1-');
+
 export function leaderboardSheet(layer: HTMLElement, actions: LeaderboardActions): () => void {
   let board: BoardId = lastBoard;
+  let scope: Scope = lastScope;
   let account: Account | null = loadAccount();
   let renaming = false;
   /** Which request's answer may still be shown: a newer one (another board) wins. */
   let asked = 0;
+  let friendsAsked = 0;
 
   const top = h('div', { class: 'board-top' });
   const list = h('div', { class: 'list board-list', role: 'list', 'aria-label': 'Leaderboard', 'aria-busy': 'false' });
@@ -156,6 +208,136 @@ export function leaderboardSheet(layer: HTMLElement, actions: LeaderboardActions
     return button;
   });
 
+  // Everyone | Friends: the second shows only you and the people whose friend code you added.
+  const scopeTabs = h('div', { class: 'segmented board-tabs scope-tabs', role: 'group', 'aria-label': 'Who to rank against' });
+  const scopeThumb = h('span', { class: 'thumb', 'aria-hidden': 'true' });
+  scopeThumb.style.width = 'calc((100% - 4px) / 2)';
+  scopeTabs.append(scopeThumb);
+  const SCOPES: { id: Scope; label: string }[] = [
+    { id: 'all', label: 'Everyone' },
+    { id: 'friends', label: 'Friends' },
+  ];
+  const scopeButtons = SCOPES.map((s) => {
+    const button = h('button', { type: 'button', 'aria-pressed': 'false', onclick: () => pickScope(s.id) }, s.label);
+    scopeTabs.append(button);
+    return button;
+  });
+  const friendsPanel = h('div', { class: 'friends-panel' });
+
+  function pickScope(next: Scope): void {
+    scope = next;
+    lastScope = next;
+    SCOPES.forEach((s, i) => {
+      const on = s.id === next;
+      scopeButtons[i].setAttribute('aria-pressed', String(on));
+      if (on) scopeThumb.style.transform = `translateX(${i * 100}%)`;
+    });
+    void load();
+    void renderFriends();
+  }
+
+  /** The friends lists are stale after adding or removing someone. */
+  function friendsChanged(): void {
+    for (const b of BOARDS) cache.delete(`friends:${b.id}`);
+    void load();
+    void renderFriends();
+  }
+
+  /** Under the friends list: your code to hand out, a field for theirs, and who is on your list. */
+  async function renderFriends(note?: string): Promise<void> {
+    if (scope !== 'friends' || !account) {
+      friendsPanel.replaceChildren();
+      return;
+    }
+    const ticket = ++friendsAsked;
+    let view: FriendsView;
+    try {
+      view = await fetchFriends();
+    } catch (error) {
+      if (ticket === friendsAsked && scope === 'friends') friendsPanel.replaceChildren(h('p', { class: 'field-help error', role: 'alert' }, describeError(error)));
+      return;
+    }
+    if (ticket !== friendsAsked || scope !== 'friends') return;
+
+    const copy = h('button', { class: 'btn', type: 'button' }, 'Copy');
+    copy.addEventListener('click', () => {
+      navigator.clipboard?.writeText(view.code).then(
+        () => {
+          copy.textContent = 'Copied';
+          window.setTimeout(() => (copy.textContent = 'Copy'), 1500);
+        },
+        () => undefined,
+      );
+    });
+
+    const input = h('input', {
+      class: 'text-input code-input sync-input',
+      type: 'text',
+      name: 'friend-code',
+      autocomplete: 'off',
+      autocapitalize: 'characters',
+      spellcheck: 'false',
+      enterkeyhint: 'go',
+      maxlength: '9',
+      placeholder: 'K7M2-9QXA',
+      'aria-label': "A friend's code",
+    });
+    const help = h('p', { class: 'field-help', 'aria-live': 'polite' }, note ?? 'Type the code your friend sees here. They do not have to add you back.');
+    const add = h('button', { class: 'btn', type: 'submit' }, 'Add');
+    input.addEventListener('input', () => {
+      input.value = tidyFriendCode(input.value);
+      help.classList.remove('error');
+    });
+    const form = h(
+      'form',
+      {
+        class: 'board-form',
+        novalidate: true,
+        onsubmit: (e: Event) => {
+          e.preventDefault();
+          if (input.value.replace(/-/g, '').length !== 8) {
+            help.textContent = 'A friend code has 8 letters and numbers, like K7M2-9QXA.';
+            help.classList.add('error');
+            return;
+          }
+          add.disabled = true;
+          addFriend(input.value).then(
+            (friend) => {
+              for (const b of BOARDS) cache.delete(`friends:${b.id}`);
+              void load();
+              void renderFriends(`${friend.name} is on your list.`);
+            },
+            (error: unknown) => {
+              add.disabled = false;
+              help.textContent = describeError(error);
+              help.classList.add('error');
+              input.focus();
+            },
+          );
+        },
+      },
+      h('div', { class: 'join-row' }, input, add),
+      help,
+    );
+
+    const people = view.friends.map((f) =>
+      h(
+        'div',
+        { class: 'row' },
+        h('div', { class: 'row-main' }, h('div', { class: 'row-title' }, f.name)),
+        h('button', { class: 'btn', type: 'button', 'aria-label': `Remove ${f.name} from your friends`, onclick: () => void removeFriend(f.id).then(friendsChanged) }, 'Remove'),
+      ),
+    );
+
+    friendsPanel.replaceChildren(
+      h('p', { class: 'section-note board-label' }, 'Your friend code'),
+      h('div', { class: 'list' }, h('div', { class: 'row' }, h('div', { class: 'row-main' }, h('div', { class: 'sync-code', 'aria-label': `Your friend code: ${view.code}` }, view.code)), copy)),
+      h('p', { class: 'section-note board-label' }, 'Add a friend'),
+      form,
+      ...(people.length > 0 ? [h('p', { class: 'section-note board-label' }, `Your friends (${people.length})`), h('div', { class: 'list' }, ...people)] : []),
+    );
+  }
+
   function choose(next: BoardId): void {
     board = next;
     lastBoard = next;
@@ -168,14 +350,14 @@ export function leaderboardSheet(layer: HTMLElement, actions: LeaderboardActions
   }
 
   function showList(view: BoardView): void {
-    const rows = view.entries.map((e) => entryRow(board, e));
+    const rows = view.entries.map((e) => entryRow(board, e, openInfo));
     // Further down than the top list: a gap, then your own line.
     if (view.me && account && !view.entries.some((e) => e.me)) {
       rows.push(h('div', { class: 'row board-gap', 'aria-hidden': 'true' }, '···'));
-      rows.push(entryRow(board, { rank: view.me.rank, name: account.name, score: view.me.score, meta: view.me.meta, me: true }));
+      rows.push(entryRow(board, { rank: view.me.rank, name: account.name, score: view.me.score, meta: view.me.meta, me: true }, openInfo));
     }
     if (rows.length === 0) {
-      const empty = BOARDS.find((b) => b.id === board)?.empty ?? '';
+      const empty = scope === 'friends' ? 'Add a friend with their code to compare your records.' : (BOARDS.find((b) => b.id === board)?.empty ?? '');
       rows.push(h('div', { class: 'row board-empty' }, h('div', { class: 'row-main' }, h('div', { class: 'row-title' }, 'Nobody here yet'), h('div', { class: 'row-sub' }, empty))));
     }
     list.replaceChildren(...rows);
@@ -184,15 +366,23 @@ export function leaderboardSheet(layer: HTMLElement, actions: LeaderboardActions
 
   async function load(): Promise<void> {
     const ticket = ++asked;
-    const cached = cache.get(board);
+    if (scope === 'friends' && !account) {
+      list.replaceChildren(
+        h('div', { class: 'row board-empty' }, h('div', { class: 'row-main' }, h('div', { class: 'row-title' }, 'Enter a name first'), h('div', { class: 'row-sub' }, 'Friends need a name on the leaderboard. Enter one above.'))),
+      );
+      list.setAttribute('aria-busy', 'false');
+      return;
+    }
+    const key = `${scope}:${board}`;
+    const cached = cache.get(key);
     if (cached) showList(cached);
     else {
       list.replaceChildren(...skeleton());
       list.setAttribute('aria-busy', 'true');
     }
     try {
-      const view = await fetchBoard(board);
-      cache.set(board, view);
+      const view = scope === 'friends' ? await fetchFriendsBoard(board) : await fetchBoard(board);
+      cache.set(key, view);
       if (ticket === asked) showList(view);
     } catch (error) {
       if (ticket !== asked) return;
@@ -326,6 +516,7 @@ export function leaderboardSheet(layer: HTMLElement, actions: LeaderboardActions
       // Your records go up at once, then the list shows you in it.
       await syncScores(actions.records());
       cache.clear();
+      void renderFriends();
       await load();
       return null;
     } catch (error) {
@@ -333,8 +524,20 @@ export function leaderboardSheet(layer: HTMLElement, actions: LeaderboardActions
     }
   }
 
-  const body = h('div', { class: 'board' }, top, tabs, list, footer);
+  const body = h('div', { class: 'board' }, top, scopeTabs, tabs, list, friendsPanel, footer);
+
+  /** The star's explanation replaces the list inside the sheet; Back brings the list as it was. */
+  function openInfo(): void {
+    const info = prestigeInfo(() => {
+      body.replaceChildren(top, scopeTabs, tabs, list, friendsPanel, footer);
+      body.querySelector<HTMLElement>('.prestige-star')?.focus({ preventScroll: true });
+    });
+    body.replaceChildren(info);
+    info.querySelector<HTMLElement>('button')?.focus({ preventScroll: true });
+  }
+
   renderTop();
+  pickScope(scope);
   choose(board);
   return openSheet(layer, 'Leaderboard', body, actions.closed);
 }

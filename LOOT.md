@@ -84,11 +84,11 @@ Alben bleiben abgeschlossen, ihre Prämie gibt es nicht zweimal.
 
 ## Sammlung im Shop
 
-Die Collection ist in **Regale** geteilt (Chips unter dem Segmented Control): Common, Rare,
-Epic, Legend (Car Skins aus Truhen nach Seltenheit), Maps und Special (Fahrzeugtypen,
-Serien- und Saison-Items). Jedes Regal zeigt höchstens 12 Items (4 × 3), die Chips zeigen
-den Fortschritt (z. B. `3/10`). Kommen Items dazu, darf kein Regal über 12 wachsen
-(Test `everyItemSitsOnOneShelfAndEveryShelfFits`).
+Die Collection hat seit 01.10.2026 **vier Regale** (Chips unter dem Segmented Control, vorher
+acht): **Cars** (Car Skins aus Truhen, nach Seltenheit unter Überschriften Common · Rare · Epic ·
+Legendary, dann Vehicles und Seasons), **Maps**, **Honours** (Legendary Shifts, Prestige, Elite,
+Feats, Hall of Fame und die Daily-Serie) und **Pass**. Das Raster scrollt (4 Spalten), die Chips
+und Überschriften zeigen den Fortschritt (z. B. `3/10`). Code: `shelfItems` in `Web/src/present/shop.ts`.
 
 ## Car Skins (39)
 
@@ -156,7 +156,7 @@ sichtbar, mit dem Hinweis, wie man sie bekommt.
 | Sunburst | `sunburst` | Epic | Event Chest im Sommer (Jun–Aug) | Sonnengelb mit Orange-Streifen |
 | Pumpkin | `pumpkin` | Epic | Event Chest im Herbst (Sep–Nov) | Kürbisorange mit schwarzem Streifen |
 
-## Nur über Legendary Shifts, Prestige und die Elite-Leiste (11, Regal „Honours“)
+## Nur über Legendary Shifts, Prestige und die Elite-Leiste (19, Regal „Honours“, die Maps auch im Regal „Maps“)
 
 Seit 28.09.2026, Elite-Items seit 29.09.2026. Nie in Truhen, eigenes Regal im Shop.
 
@@ -168,6 +168,13 @@ Seit 28.09.2026, Elite-Items seit 29.09.2026. Nie in Truhen, eigenes Regal im Sh
 | Silver Star | `starSilver` | Epic | Prestige ★1 | Silber, weißer Streifen, glänzend |
 | Gold Star | `starGold` | Epic | Prestige ★2 | Gold, schwarzer Streifen, glänzend + Glitzer |
 | Iris Star | `starIris` | Legendary | Prestige ★3 | Holo, Goldstreifen, glänzend + Glitzer |
+| Big Screen | `bigScreen` | Legendary | Prestige ★5 | Map Skin: statt der Stadt das eigene Bild oder Video (Upload nur Bilder; Link: YouTube, Bild, Videodatei), gedämpft hinter dem Ring |
+| Nova | `nova` | Legendary | Prestige ★10 (Feat) | Perlweiß, Goldstreifen; Effekt: weiß-goldenes Glühen, vier kreisende Strahlen |
+| Gilded City | `gilded` | Legendary | Prestige ★15 (Feat) | Map Skin: Nachtstadt in Blattgold, Gold-Obelisk mit vier Brunnen, Goldstaub |
+| Singularity | `singularity` | Legendary | Prestige ★20 (Feat) | Obsidian, violetter Streifen; Effekt: dunkler Schlund, kreisende Feuerscheibe, einfallende Funken |
+| Zenith Crown | `zenith` | Legendary | Elite 75 (Feat) | Nachtblau, Goldstreifen; Effekt: kreisende Lichtkrone, aufsteigende Funken |
+| Event Horizon | `eventHorizon` | Legendary | Elite 100 (Feat) | Map Skin: Schwarzes Loch mit Akkretionsscheibe, Sterne, treibende Felsen |
+| Undying Flame | `undying` | Legendary | 50 Legendary Shifts (Feat) | Carbon, blauer Streifen; Effekt: blau-weißes Feuer, das nie ausgeht |
 | Steel Chevron | `eliteSteel` | Rare | Elite 5 | Chrom, Goldstreifen, glänzend |
 | Blaze Chevron | `eliteBlaze` | Epic | Elite 15 | Nachtblau, Flammenstreifen, glänzend |
 | Jade Chevron | `eliteJade` | Epic | Elite 25 | Lagune, Perlstreifen, glänzend |
@@ -179,7 +186,7 @@ vorbehalten (Fahrzeugfarben sind Spielinformation).
 
 ## Saison-Pass und Ruhmeshalle (Leo, 30.09.2026, `core/seasonPass.ts`)
 
-- **Saison-Pass** (Progress → Quests, ab Level 15): 150.000 Spielgeld pro Saison, nie Echtgeld.
+- **Saison-Pass** (Progress → Today, ab Level 15): 150.000 Spielgeld pro Saison, nie Echtgeld.
   Jede Schicht bringt dieselben XP wie die Elite-Leiste; 120 XP pro Stufe, 12 Stufen:
   Standard, 5.000, **Skin 1**, Standard, 10.000, Premium, Event, **Skin 2**, 20.000, Premium,
   30.000, **Skin 3**. Die vier Saisons (Dezember zählt zum nächsten Winter) kommen jedes Jahr
@@ -231,7 +238,17 @@ Kreisverkehr (der wertvollste abgeschlossene zählt). Fortschritt im Shop unter 
 | Commons / Rares / Epics / Legends | alle Car Skins dieser Seltenheit aus Truhen | 5.000 / 10.000 / 20.000 / 40.000 |
 | Seasons | alle 4 Saison-Items | 30.000 |
 | Loyalty | alle 3 Serien-Items | 20.000 |
-| Honours | alle 11 Legendary-, Prestige- und Elite-Items | 50.000 |
+| Honours | alle 19 Legendary-, Prestige- und Elite-Items (auch die Feats) | 50.000 |
+
+## Feats (Leo, 01.10.2026, `core/feats.ts`)
+
+Die schwersten Taten im Spiel, unter Progress → Goals (nach Trials und Mastery).
+Nie Glück, nie kaufbar, keine neue Seltenheit in den Truhen: jede Feat ist ein langer Weg
+(Prestige-Ränge, Elite-Leiste, Legendary Shifts) und zahlt ein eigenes Item, oft dazu einen Titel
+(*Ascended* ★10, *Eternal* ★20, *Grandmaster* Elite 75, *Centurion* Elite 100, *Immortal*
+50 Legendary Shifts). Die Belohnung ist sichtbar, bevor man sie hat: Name, Bild, Ziel und
+Fortschritt. Ausgezahlt wird dort, wo die Tat passiert (`Careers.prestige`, `recordElite`,
+`completeLegendary`); ein Spielstand, der schon weiter ist, bekommt sie beim Laden.
 
 ## Map Skins (21)
 

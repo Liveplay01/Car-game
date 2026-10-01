@@ -85,6 +85,13 @@ export const Skins = {
       lanterns: 'mapLanterns',
       crystal: 'mapCrystal',
       beach: 'sea',
+      bigScreen: 'skinHolo',
+      gilded: 'mapGilded',
+      eventHorizon: 'mapHorizon',
+      nova: 'skinPearl',
+      singularity: 'skinObsidian',
+      zenith: 'skinMidnight',
+      undying: 'skinCarbon',
       blizzard: 'skinIce',
       northernLights: 'skinMidnight',
       glacier: 'skinFrost',
@@ -152,12 +159,19 @@ export const Skins = {
         return 'vehicleTire';
       case 'hallOfFame':
         return 'skinLaurel';
+      case 'nova':
+      case 'zenith':
+        return 'skinGold';
+      case 'singularity':
+        return 'horizonViolet';
+      case 'undying':
+        return 'lightBlue';
       default:
         return null;
     }
   },
 
-  /** The loud skins' animation (Season Pass, Hall of Fame). */
+  /** The loud skins' animation (Season Pass, Hall of Fame, Feats). */
   effect(id: string | null): Effect | null {
     const map: Record<string, Effect> = {
       blizzard: 'snowTrail',
@@ -173,6 +187,10 @@ export const Skins = {
       harvestMoon: 'embers',
       thunder: 'lightning',
       hallOfFame: 'laurel',
+      nova: 'nova',
+      singularity: 'singularity',
+      zenith: 'halo',
+      undying: 'soulfire',
     };
     return id ? (map[id] ?? null) : null;
   },
@@ -226,7 +244,12 @@ export const Skins = {
       case 'obsidian':
       case 'glacier':
       case 'hallOfFame':
+      case 'nova':
+      case 'zenith':
         return 'shinyGlitter';
+      case 'singularity':
+      case 'undying':
+        return 'shiny';
       case 'northernLights':
       case 'thunder':
       case 'neonWave':

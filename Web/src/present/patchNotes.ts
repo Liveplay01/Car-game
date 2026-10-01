@@ -22,6 +22,69 @@ export type PatchImpact = 'major' | 'minor' | 'fix';
 
 export const PATCH_NOTES: PatchNote[] = [
   {
+    id: '2026-10-01-tidy-up',
+    date: '1 October 2026',
+    title: 'A tidier Progress and Collection',
+    impact: 'minor',
+    items: [
+      'Progress has four sections now: Records, Today, Goals and Museum. No more tabs inside tabs, and every list scrolls.',
+      'Today holds the Daily Shift (with your streak), the Weekly Shift, the Season Pass and the quests, all in one style.',
+      'Goals gathers the Trials, Mastery and Feats in one list.',
+      'Records shows your six big numbers; tap All stats for the rest. Modes you have never played no longer show a row of dashes.',
+      'The Collection has four shelves: Cars (by rarity, with the vehicles and season skins), Maps, Honours and Pass.',
+      'The Weekly Elite is now called the Weekly Shift, so it is not mixed up with the Elite track.',
+    ],
+  },
+  {
+    id: '2026-10-01-feats',
+    date: '1 October 2026',
+    title: 'Feats: the rarest rewards in the game',
+    impact: 'major',
+    items: [
+      'New under Progress → Mastery → Feats: the hardest deeds in the game, each with a reward no chest, casino or money can get you.',
+      'Four animated car skins: Nova (Prestige ★10), Singularity (★20), Zenith Crown (Elite 75) and Undying Flame (50 Legendary Shifts).',
+      'Two new maps: Gilded City, a night city in gold leaf around a gold obelisk (Prestige ★15), and Event Horizon, a black hole with its disc of fire (Elite 100).',
+      'Five new titles to wear: Ascended, Eternal, Grandmaster, Centurion and Immortal.',
+      'Every feat shows its reward, its goal and how far you are. Already there? Your reward is waiting in your collection.',
+    ],
+  },
+  {
+    id: '2026-10-01-cloud-and-friends',
+    date: '1 October 2026',
+    title: 'Cloud sync, friends and better multiplayer',
+    impact: 'minor',
+    items: [
+      'Cloud sync: Settings → Cloud sync backs your progress up and gives you a code like K7M2-9QXA-4TFB. Type it on another device to carry on there. No account and no password.',
+      'Let your browser remember the sync code: after you back up, it offers to save it in your password manager, and fills it in on a new device.',
+      'Your name comes along: load your progress on a new device and you are the same player again, with your name, leaderboard scores, friends and multiplayer name.',
+      'Changed progress on two devices? The game shows both and asks which to keep. It never replaces anything quietly.',
+      'Friends board: on the leaderboard, switch to Friends. Share your friend code, type a friend’s code, and see how you rank against just them.',
+      'Multiplayer reaches more players: phones on mobile data and school Wi-Fi that could not find each other before now connect through a relay.',
+    ],
+  },
+  {
+    id: '2026-10-01-big-screen',
+    date: '1 October 2026',
+    title: 'Big Screen: your own backdrop',
+    impact: 'major',
+    items: [
+      'New Prestige reward at ★5: Big Screen, a map that puts your own picture or video behind the roundabout.',
+      'Wear it in Shop → Collection → Maps, then paste a link (a YouTube video, an image or a video file) or upload a picture from your device. Videos play muted and on a loop.',
+      'Already past ★5? Big Screen is waiting in your collection.',
+      'An uploaded picture stays on your device. Change or remove it any time with “Choose picture or video”.',
+    ],
+  },
+  {
+    id: '2026-10-01-prestige-star',
+    date: '1 October 2026',
+    title: 'A star for Prestige',
+    impact: 'minor',
+    items: [
+      'On the leaderboard, a player’s Prestige rank is now a star of its own with the rank inside: silver at ★1, gold at ★2, iris from ★3, with a slow glint across it.',
+      'Tap a star to see how Prestige works: what you keep, what starts over, how much harder the traffic gets and what you earn. Nothing on the road changes.',
+    ],
+  },
+  {
     id: '2026-09-30-leaderboard',
     date: '30 September 2026',
     title: 'Leaderboards',

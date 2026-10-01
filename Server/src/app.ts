@@ -9,14 +9,17 @@ import { migrate, type Db } from './db.ts';
 import { ApiError } from './errors.ts';
 import type { AppEnv, ServerContext, ServerModule } from './module.ts';
 import { adminModule } from './modules/admin/index.ts';
+import { friendsModule } from './modules/friends/index.ts';
 import { leaderboardModule } from './modules/leaderboard/index.ts';
 import { playersModule } from './modules/players/index.ts';
+import { rtcModule } from './modules/rtc/index.ts';
+import { syncModule } from './modules/sync/index.ts';
 
 /**
  * The features of the server, in the order they are set up. A module may use the ones above it
  * (the leaderboard needs players). Add a new feature here.
  */
-export const modules = (): ServerModule[] => [playersModule(), leaderboardModule(), adminModule()];
+export const modules = (): ServerModule[] => [playersModule(), leaderboardModule(), friendsModule(), syncModule(), rtcModule(), adminModule()];
 
 /**
  * Who is calling. Behind Coolify's proxy that is the last address the proxy wrote into
@@ -60,7 +63,9 @@ export function createApp(options: AppOptions): Hono<AppEnv> {
       maxAge: 86_400,
     }),
   );
-  app.use('*', bodyLimit({ maxSize: 8192, onError: () => { throw new ApiError(413, 'too_large', 'The request is too large.'); } }));
+  // Small requests everywhere, except the cloud save, which carries a whole save (its route sets its own limit).
+  const small = bodyLimit({ maxSize: 8192, onError: () => { throw new ApiError(413, 'too_large', 'The request is too large.'); } });
+  app.use('*', (c, next) => (c.req.path === '/v1/sync' ? next() : small(c, next)));
   app.use('*', async (c, next) => {
     c.set('ip', clientIp(c, ctx.config));
     c.header('X-Content-Type-Options', 'nosniff');

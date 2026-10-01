@@ -6,7 +6,7 @@ import { SeasonPass } from '../core/seasonPass';
 import { Unlocks } from '../core/unlocks';
 import type { GameEvent, ShiftResult } from '../core/events';
 import type { Upgrade } from '../core/levels';
-import { ALBUM_REWARD, cosmetic, rarityRank } from '../core/loot';
+import { ALBUM_REWARD, BIG_SCREEN, cosmetic, rarityRank } from '../core/loot';
 import { dailySeed, dailyEvent, dayNumber } from '../core/daily';
 import { weekNumber, weeklyTrial } from '../core/weekly';
 import { Goals } from '../core/goals';
@@ -18,6 +18,7 @@ import { type Vec2, v, add } from '../core/vec2';
 import { loadSave, writeSave } from '../storage/save';
 import { loadPlayerName } from '../storage/profile';
 import { syncScores, type Records } from '../net/leaderboard';
+import { cloudChanged } from '../net/cloud';
 import { RenderList, R, Ease, toScreen, rect, type Camera } from './render';
 import { S, Fmt, money as moneyText } from './strings';
 import { CrashEffects } from './effects';
@@ -48,9 +49,9 @@ import { type SpecialRun, settleSpecial, runCard } from './specialRuns';
 import { conditionIntro, streakEndsIn, addNotice } from './readyScreen';
 
 export type { SpecialRun } from './specialRuns';
-import { ProgressPage, ProgressState } from './progress';
-import { MuseumPage, type MuseumTarget } from './museum';
-import { sightings, museumEntry, shelfEntries, museumId } from '../core/museum';
+import { ProgressPage, ProgressState, type ProgressTarget } from './progress';
+import { MuseumPage } from './museum';
+import { sightings, museumEntry } from '../core/museum';
 import { UpgradePage, UpgradeState } from './upgrades';
 import { StreetBuilderPage, BuilderState } from './builder';
 import { Feedback, Music, type MusicMix, type SoundID, type HapticID } from './feedback';
@@ -192,6 +193,10 @@ export class GameSession {
   onVersus: (() => void) | null = null;
   /** Opens the leaderboards (the shell's sheet): the rank chip on Progress. */
   onLeaderboard: (() => void) | null = null;
+  /** Opens Big Screen's sheet (the shell's): pick a picture or paste a link. */
+  onBackdrop: (() => void) | null = null;
+  /** The player's own picture or video is ready behind the canvas (`ui/backdrop.ts`). */
+  backdrop = false;
   playingMode: GameMode = 'shift';
   private shownFlames = 0;
   private sinceFlames = Infinity;
@@ -217,6 +222,7 @@ export class GameSession {
   sheetInset = 0;
   private pressAt: Vec2 | null = null;
   private revealUpgrade: Upgrade | null = null;
+  private revealProgress: ProgressTarget | null = null;
   /** Tells the page when the tab bar or badges changed. */
   onChrome: (() => void) | null = null;
   /** A one-time hint came due (installing, a backup): the shell knows whether it applies. */
@@ -278,6 +284,8 @@ export class GameSession {
     this.store();
     // A better level or Unlimited record goes to the leaderboard; nothing happens without a name.
     void syncScores(this.leaderboardRecords);
+    // With cloud sync on, the changed save follows to the cloud a little later.
+    cloudChanged();
     this.onChrome?.();
   }
 
@@ -411,8 +419,10 @@ export class GameSession {
       case 'showProgress':
         this.perform({ k: 'showTab', tab: 'progress' });
         if (!this.isPage('progress')) return;
-        this.progressPage.section = action.section === 2 && !Unlocks.isOpen(this.save.career, 'trials', this.config) ? 0 : action.section;
+        if (this.progressPage.section !== action.section) this.leaveMuseum();
+        this.progressPage.section = action.section;
         this.progressPage.sectionSlide = null;
+        this.progressPage.reset();
         break;
       case 'pickUpPart': {
         this.tick();
@@ -526,8 +536,13 @@ export class GameSession {
         const item = cosmetic(action.id);
         if (!Careers.wear(career, action.id) && item?.kind === 'carSkin' && Careers.owns(career, action.id)) this.showNotice(S.shop.skinsFull(5));
         this.persist();
+        // Big Screen put on with nothing to show yet: straight to choosing it.
+        if (action.id === BIG_SCREEN && career.mapSkin === BIG_SCREEN && !this.backdrop) this.onBackdrop?.();
         break;
       }
+      case 'editBackdrop':
+        if (Careers.owns(career, BIG_SCREEN)) this.onBackdrop?.();
+        break;
       case 'toggleSound':
         save.settings.sound = !save.settings.sound;
         this.persist();
@@ -974,8 +989,14 @@ export class GameSession {
       this.tension = 0;
       this.shopPage = new ShopState();
     }
-    if (this.isPage('progress')) this.progressPage.advance(realDelta);
-    else if (this.progressPage.age !== 0 || this.progressPage.section !== 0) this.progressPage = new ProgressState();
+    if (this.isPage('progress')) {
+      this.progressPage.advance(realDelta);
+      this.revealProgressAboveSheet();
+      this.progressPage.follow(realDelta, this.progressScrollRange);
+    } else if (this.progressPage.age !== 0 || this.progressPage.section !== 0) {
+      this.leaveMuseum();
+      this.progressPage = new ProgressState();
+    }
     if (this.buildSlide) {
       this.buildSlide.age += realDelta;
       if (this.buildSlide.age >= BuildLayout.glide) this.buildSlide = null;
@@ -1094,6 +1115,14 @@ export class GameSession {
           this.upgradePage.move(a.p.y, this.upgradeScrollRange);
           return;
         }
+        if (this.isPage('progress') && this.progressPage.drag) {
+          this.progressPage.move(a.p.y, this.progressScrollRange);
+          return;
+        }
+        if (this.isPage('shop') && this.shopPage.items.drag) {
+          this.shopPage.items.move(a.p.y, this.collectionScrollRange);
+          return;
+        }
         if (!this.isPage('streetBuilder') || !this.builderPage.dragging) return;
         if (this.pressAt && Math.hypot(a.p.x - this.pressAt.x, a.p.y - this.pressAt.y) > 8) {
           this.pressAt = null;
@@ -1116,6 +1145,20 @@ export class GameSession {
           }
           return;
         }
+        if (this.isPage('progress') && this.progressPage.drag) {
+          if (this.progressPage.release()) {
+            const target = ProgressPage.targetAt(a.p, this.lastViewport, this.tabInset, this.save, this.today, this.progressPage);
+            if (target) this.tapProgress(target);
+          }
+          return;
+        }
+        if (this.isPage('shop') && this.shopPage.items.drag) {
+          if (this.shopPage.items.release()) {
+            const target = ShopPage.itemAt(a.p, this.lastViewport, this.tabInset, this.shopPage);
+            if (target) this.shopFlow.tapShop(target);
+          }
+          return;
+        }
         const b = this.builderPage;
         if (!this.isPage('streetBuilder') || !b.dragging) return;
         const slot = StreetBuilderPage.targetFor(b.dragging.part, a.p, this.save.career, this.config, StreetBuilderPage.map(this.lastViewport, this.tabInset));
@@ -1132,6 +1175,8 @@ export class GameSession {
       }
       case 'wheel':
         if (this.isPage('upgrades')) this.upgradePage.wheel(a.dy, this.upgradeScrollRange);
+        else if (this.isPage('progress')) this.progressPage.wheel(a.dy, this.progressScrollRange);
+        else if (this.isPage('shop') && this.shopPage.section === 1) this.shopPage.items.wheel(a.dy, this.collectionScrollRange);
         break;
       case 'swipeMode': {
         const index = SWIPE_MODES.indexOf(this.swipeMode) + a.step;
@@ -1189,6 +1234,11 @@ export class GameSession {
       return;
     }
     if (this.isPage('shop')) {
+      // The Collection's grid scrolls: a press there is a tap or the start of a scroll.
+      if (ShopPage.inItems(point, this.lastViewport, inset, this.shopPage)) {
+        this.shopPage.items.press(point.y);
+        return;
+      }
       const target = ShopPage.targetAt(point, this.lastViewport, inset, this.save.career, this.shopPage);
       if (target) this.shopFlow.tapShop(target);
       return;
@@ -1221,43 +1271,79 @@ export class GameSession {
     if (target !== this.upgradePage.scroll) this.upgradePage.scrollTo(Math.min(Math.max(target, 0), this.upgradeScrollRange));
   }
 
-  /** A tap in the Museum: a shelf, or an entry for the sheet (a second tap starts its rematch). */
-  private tapMuseum(target: MuseumTarget): void {
+  /** A tap in a Progress list: a card's sheet, a shift to play, the stats folding open. */
+  private tapProgress(target: ProgressTarget): void {
+    const p = this.progressPage;
+    switch (target.k) {
+      case 'elite':
+        this.perform({ k: 'showElite' });
+        break;
+      case 'pass':
+        this.perform({ k: 'showPass' });
+        break;
+      case 'stats':
+        this.tick();
+        p.statsOpen = !p.statsOpen;
+        break;
+      case 'weekly':
+        this.startSpecial({ k: 'trial', trial: weeklyTrial(weekNumber(this.today)) });
+        break;
+      case 'trial':
+        // It waits, ready to play, on the Game tab.
+        this.startTrial(target.id);
+        break;
+      case 'feat':
+        if (p.feat !== target.id) this.tick();
+        p.feat = target.id;
+        this.detailOpen = true;
+        this.revealProgress = target;
+        break;
+      case 'museum':
+        this.tapMuseum(target.id);
+        break;
+    }
+  }
+
+  /** A tap on a Museum entry: its sheet (a second tap on a beaten boss starts its rematch). */
+  private tapMuseum(id: string): void {
     const m = this.progressPage.museum;
     const career = this.save.career;
-    if (target.k === 'shelf') {
-      if (m.shelf !== target.shelf) {
-        this.tick();
-        this.leaveMuseumShelf();
-        this.closeDetail();
-      }
-      m.selectShelf(target.shelf);
-      return;
-    }
-    if (career.museumNew.includes(target.id)) {
-      Careers.markMuseumSeen(career, [target.id]);
+    if (career.museumNew.includes(id)) {
+      Careers.markMuseumSeen(career, [id]);
       this.persist();
     }
-    const entry = museumEntry(target.id);
-    if (this.detailOpen && m.selected === target.id && entry?.k === 'boss' && career.bossesBeaten.includes(entry.kind)) {
+    const entry = museumEntry(id);
+    if (this.detailOpen && m.selected === id && entry?.k === 'boss' && career.bossesBeaten.includes(entry.kind)) {
       this.startTrial(rematchId(entry.kind));
       return;
     }
-    if (m.selected !== target.id) this.tick();
-    m.selected = target.id;
+    if (m.selected !== id) this.tick();
+    m.selected = id;
     this.detailOpen = true;
+    this.revealProgress = { k: 'museum', id };
   }
 
-  /** The Museum shelf on screen is being left: what was new on it has been seen. */
-  private leaveMuseumShelf(): void {
-    if (!this.isPage('progress') || this.progressPage.section !== 3) return;
+  /** The Museum is being left: what was new among the entries that were on screen has been seen. */
+  private leaveMuseum(): void {
+    if (this.progressPage.section !== 3) return;
     const career = this.save.career;
-    const shown = shelfEntries(this.progressPage.museum.shelf)
-      .map(museumId)
-      .filter((id) => career.museumNew.includes(id));
+    const shown = [...this.progressPage.museum.viewed].filter((id) => career.museumNew.includes(id));
+    this.progressPage.museum.viewed.clear();
     if (shown.length === 0) return;
     Careers.markMuseumSeen(career, shown);
     this.persist();
+  }
+
+  /** The Progress card just tapped glides into view above the sheet that opened for it. */
+  private revealProgressAboveSheet(): void {
+    const target = this.revealProgress;
+    if (!target || !this.detailOpen || this.sheetInset <= 0) return;
+    this.revealProgress = null;
+    const r = ProgressPage.rectOf(target, this.lastViewport, this.tabInset, this.save, this.today, this.progressPage);
+    if (!r) return;
+    const content = ProgressPage.layout(this.lastViewport, this.tabInset).content;
+    const window = { ...content, minY: content.minY + 4, maxY: this.lastViewport.y - this.tabInset - this.sheetInset - 12 };
+    this.progressPage.reveal(r, window, this.progressScrollRange);
   }
 
   /**
@@ -1287,6 +1373,7 @@ export class GameSession {
     if (!this.detailOpen) return;
     this.detailOpen = false;
     this.progressPage.museum.selected = null;
+    this.progressPage.feat = null;
     this.upgradePage.selected = null;
     this.shopPage.selectedItem = null;
     this.builderPage.selected = null;
@@ -1320,12 +1407,25 @@ export class GameSession {
         // Records has one sheet: the Elite track, opened from its card.
         if (this.progressPage.section === 0) return Details.elite(career, this.config, this.sceneTime - this.prestigeArmed <= GameSession.prestigeWindow);
         if (this.progressPage.section === 1) return Details.pass(career, this.config, this.today);
+        const feat = this.progressPage.feat;
+        if (this.progressPage.section === 2) return feat ? Details.feat(feat, career, this.config) : null;
         const selected = this.progressPage.museum.selected;
         return this.progressPage.section === 3 && selected ? Details.museum(selected, career, this.config) : null;
       }
       default:
         return null;
     }
+  }
+
+  /** The Progress list scrolls a sheet's height further, so its last card can come out from under it. */
+  private get progressScrollRange(): number {
+    const sheet = this.detailOpen ? this.sheetInset : 0;
+    return ProgressPage.scrollRange(this.lastViewport, this.tabInset, this.save, this.today, this.progressPage) + sheet;
+  }
+
+  private get collectionScrollRange(): number {
+    const sheet = this.detailOpen ? this.sheetInset : 0;
+    return ShopPage.collectionRange(this.lastViewport, this.tabInset, this.shopPage) + sheet;
   }
 
   private get upgradeScrollRange(): number {
@@ -1386,31 +1486,17 @@ export class GameSession {
         return true;
       }
       const section: ProgressSection | null = ProgressPage.sectionAt(point, this.lastViewport, this.tabInset);
-      if (section === 2 && !Unlocks.isOpen(this.save.career, 'trials', this.config)) {
-        this.showNotice(S.unlocks.opensAt(S.progress.section(2), Unlocks.level('trials', this.config)));
-        this.play(['denied'], []);
-        return true;
-      }
       if (section !== null) {
         if (this.progressPage.section !== section) {
           this.tick();
-          this.leaveMuseumShelf();
+          this.leaveMuseum();
           this.closeDetail();
         }
         this.progressPage.select(section);
         return true;
       }
-      // A trial: it waits, ready to play, on the Game tab.
-      const trial = this.progressPage.section === 2 ? ProgressPage.trialAt(point, this.lastViewport, this.tabInset) : null;
-      if (trial) this.startTrial(trial);
-      const open = this.progressPage.section;
-      const vp = this.lastViewport;
-      const career = this.save.career;
-      if (open === 0 && ProgressPage.eliteAt(point, vp, this.tabInset, career)) this.perform({ k: 'showElite' });
-      if (open === 1 && ProgressPage.weeklyAt(point, vp, this.tabInset)) this.startSpecial({ k: 'trial', trial: weeklyTrial(weekNumber(this.today)) });
-      if (open === 1 && ProgressPage.passAt(point, vp, this.tabInset)) this.perform({ k: 'showPass' });
-      const museum = open === 3 ? ProgressPage.museumAt(point, vp, this.tabInset, this.progressPage) : null;
-      if (museum) this.tapMuseum(museum);
+      // The list: a press is a tap or the start of a scroll; the lift decides (`tapProgress`).
+      if (ProgressPage.inList(point, this.lastViewport, this.tabInset)) this.progressPage.press(point.y);
       return true;
     }
     return null;
@@ -1762,15 +1848,23 @@ export class GameSession {
 
   // MARK: Render list
 
-  /** The world through `camera`: city, road, traffic, weather and the map's air; no HUD. */
-  private sceneList(camera: Camera, alpha: number, rm: boolean): RenderList {
+  /** How much of the background veils Big Screen's picture, so road and cars stay readable. */
+  static readonly backdropVeil = 0.3;
+
+  /**
+   * The world through `camera`: city, road, traffic, weather and the map's air; no HUD.
+   * `seeThrough`: Big Screen with its picture ready shows it instead of the city.
+   */
+  private sceneList(camera: Camera, alpha: number, rm: boolean, seeThrough = false): RenderList {
     const world = this.world;
     const career = this.save.career;
+    const screen = seeThrough && career.mapSkin === BIG_SCREEN;
     const theme = MapTheme.from(career.mapSkin);
     const list = new RenderList(camera, MapTheme.ground(theme));
     // A device that cannot keep 30 fps leaves out the decoration (`lowDetail`), never the game.
     list.groundGrain = !this.lowDetail;
-    CityLayer.add(list, world, theme, rm ? null : this.sceneTime, rm ? null : this.cityPulse, this.scars.isEmpty ? null : this.scars, this.sceneTime, this.playingMode === 'shift' && !this.special ? this.cityRise : null, !this.lowDetail);
+    if (screen) list.backdrop = GameSession.backdropVeil;
+    else CityLayer.add(list, world, theme, rm ? null : this.sceneTime, rm ? null : this.cityPulse, this.scars.isEmpty ? null : this.scars, this.sceneTime, this.playingMode === 'shift' && !this.special ? this.cityRise : null, !this.lowDetail);
     SceneBuilder.addRoad(list, world.layout, world.config);
     CityLayer.addMapSkin(list, Skins.color(career.mapSkin), world);
     MapTheme.addIsland(list, theme, world);
@@ -1828,7 +1922,7 @@ export class GameSession {
     };
     const career = this.save.career;
     this.lastCamera = camera;
-    const list = this.sceneList(camera, alpha, rm);
+    const list = this.sceneList(camera, alpha, rm, this.backdrop);
     addRecede(list, this.recede, world.layout);
     this.curtain?.add(list, viewport, rm);
     this.explosions.addFlash(list, viewport);
@@ -1886,7 +1980,7 @@ export class GameSession {
     if (this.isPage('streetBuilder')) StreetBuilderPage.add(list, career, this.config, this.builderPage, rm, inset, this.buildThumb);
     else if (this.isPage('upgrades')) UpgradePage.add(list, career, this.config, this.visibleUpgrades, this.upgradePage, rm, inset, this.buildThumb);
     else if (this.isPage('shop')) ShopPage.add(list, career, this.config, this.today, this.shopPage, rm, inset);
-    else if (this.isPage('progress')) ProgressPage.add(list, this.save, this.today, this.progressPage, rm, inset);
+    else if (this.isPage('progress')) ProgressPage.add(list, this.save, this.today, this.progressPage, rm, inset, this.progressScrollRange);
     else if (s.k === 'settings') list.s(rect({ x: viewport.x / 2, y: viewport.y / 2 }, viewport), 'background', 0.55);
     this.transitions.apply(list, s, overlayStart, rm);
     const notice = this.notices.shown;
@@ -1986,6 +2080,14 @@ export class GameSession {
 
   markNotesRead(): void {
     this.save.notesSeen = latestNote();
+    this.persist();
+  }
+
+  /** Big Screen got a picture: it goes on, if it was not on already. */
+  wearBigScreen(): void {
+    const career = this.save.career;
+    if (!Careers.owns(career, BIG_SCREEN) || career.mapSkin === BIG_SCREEN) return;
+    career.mapSkin = BIG_SCREEN;
     this.persist();
   }
 

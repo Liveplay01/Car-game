@@ -12,6 +12,7 @@ import {
   isForSale,
   rarityRank,
   isHonour,
+  BIG_SCREEN,
 } from '../core/loot';
 import type { VehicleType } from '../core/vehicle';
 import { type Vec2, v, add, sub, mul, fromAngle, TAU } from '../core/vec2';
@@ -30,23 +31,43 @@ import type { CasinoState, CasinoTarget } from './casino';
 import { Wallet } from './casinoWallet';
 import { casinoKit, loadCasino } from './casinoLoader';
 import { ChestReel, type Reel } from './chestReel';
+import { Scroller, clipTo } from './scroll';
 
-/** Shelves: car skins by rarity, the maps, and everything earned another way or a vehicle. */
-export type Shelf = 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7; // common rare epic legendary maps special honours pass
-export const SHELVES: Shelf[] = [0, 1, 2, 3, 4, 5, 6, 7];
+/**
+ * Shelves (01.10.2026, four instead of eight): Cars (what chests give: the skins by rarity, the
+ * vehicles, the season skins), Maps, Honours (earned by deeds: Legendary Shifts, Prestige, the
+ * Elite track, the Feats, the daily streak) and the Season Pass.
+ */
+export type Shelf = 0 | 1 | 2 | 3; // cars maps honours pass
+export const SHELVES: Shelf[] = [0, 1, 2, 3];
 
-// Honours (Legendary Shifts, Prestige, the Elite track) have their own shelf, so no shelf grows past 12.
+/** The Cars shelf's groups, each under its heading. */
+export type CarGroup = Rarity | 'vehicles' | 'seasons';
+const CAR_GROUPS: CarGroup[] = ['common', 'rare', 'epic', 'legendary', 'vehicles', 'seasons'];
+
+function carGroup(item: Cosmetic): CarGroup | null {
+  if (item.kind === 'vehicleType') return 'vehicles';
+  if (item.kind !== 'carSkin') return null;
+  if (item.source.kind === 'season') return 'seasons';
+  return item.source.kind === 'chest' ? item.rarity : null;
+}
 
 export function shelfItems(shelf: Shelf): Cosmetic[] {
+  if (shelf === 0) return CAR_GROUPS.flatMap((g) => COSMETICS.filter((item) => carGroup(item) === g));
   return COSMETICS.filter((item) => {
-    if (shelf === 4) return item.kind === 'mapSkin';
-    if (shelf === 6) return isHonour(item);
-    if (shelf === 7) return item.source.kind === 'pass';
-    if (shelf === 5) return item.kind === 'vehicleType' || (item.source.kind !== 'chest' && item.source.kind !== 'pass' && !isHonour(item));
-    return item.kind === 'carSkin' && item.source.kind === 'chest' && rarityRank(item.rarity) === shelf;
+    if (shelf === 1) return item.kind === 'mapSkin';
+    if (shelf === 2) return isHonour(item) || item.source.kind === 'streak';
+    return item.source.kind === 'pass';
   });
 }
-export const shelfOf = (item: Cosmetic): Shelf => SHELVES.find((s) => shelfItems(s).some((x) => x.id === item.id)) ?? 5;
+export const shelfOf = (item: Cosmetic): Shelf => SHELVES.find((s) => shelfItems(s).some((x) => x.id === item.id)) ?? 0;
+
+/** A shelf's grid with its headings, from the top of the grid (scroll 0). */
+interface ShelfLayout {
+  cells: [Cosmetic, Rect][];
+  headings: { label: string; items: Cosmetic[]; r: Rect }[];
+  height: number;
+}
 
 export type ShopTarget =
   | { k: 'section'; section: ShopSection }
@@ -76,7 +97,9 @@ export class ShopState {
   readonly wallet = new Wallet();
   private casinoState: CasinoState | null = null;
   sectionSlide: { from: ShopSection; age: number } | null = null;
-  shelfSlide: { from: Shelf; age: number } | null = null;
+  shelfSlide: { from: Shelf; age: number; scroll: number } | null = null;
+  /** The Collection's grid scrolls. */
+  readonly items = new Scroller();
   pressed: { target: ShopTarget; age: number } | null = null;
 
   /** The casino's state, once the casino has loaded (`casinoLoader.ts`); null before. */
@@ -96,8 +119,9 @@ export class ShopState {
 
   selectShelf(next: Shelf): void {
     if (next === this.shelf) return;
-    this.shelfSlide = { from: this.shelf, age: 0 };
+    this.shelfSlide = { from: this.shelf, age: 0, scroll: this.items.scroll };
     this.shelf = next;
+    this.items.reset();
   }
 
   advance(delta: number): void {
@@ -214,11 +238,62 @@ export const ShopPage = {
     return SHELVES.map((s, i) => [s, R.make(area.minX + i * (w + gap), area.minY, area.minX + i * (w + gap) + w, area.minY + ShopPage.shelfHeight)]);
   },
 
-  itemCells(l: Layout, shelf: Shelf): [Cosmetic, Rect][] {
+  /** The window the Collection's grid scrolls in: under the shelf chips. */
+  itemsArea: (l: Layout): Rect => ({ ...l.content, minY: l.content.minY + ShopPage.shelfHeight + ShopPage.gap }),
+
+  /** A shelf's cards, four to a row; the Cars shelf in groups under their headings. */
+  shelfLayout(width: number, shelf: Shelf): ShelfLayout {
+    const gap = ShopPage.gap;
+    const columns = 4;
+    const height = 118;
+    const cw = (width - gap * (columns - 1)) / columns;
     const items = shelfItems(shelf);
-    const area = { ...l.content, minY: l.content.minY + ShopPage.shelfHeight + ShopPage.gap };
-    const cells = ShopPage.grid(Math.max(items.length, 12), 4, area, 118);
-    return items.map((item, i) => [item, cells[i]]);
+    const groups: [string | null, Cosmetic[]][] = shelf === 0 ? CAR_GROUPS.map((g) => [S.shop.group(g), items.filter((i) => carGroup(i) === g)]) : [[null, items]];
+    const out: ShelfLayout = { cells: [], headings: [], height: 0 };
+    let y = 0;
+    for (const [label, group] of groups) {
+      if (group.length === 0) continue;
+      if (label) {
+        if (y > 0) y += 4;
+        out.headings.push({ label, items: group, r: R.make(0, y, width, y + 24) });
+        y += 28;
+      }
+      group.forEach((item, i) => {
+        const x = (i % columns) * (cw + gap);
+        const top = y + Math.floor(i / columns) * (height + gap);
+        out.cells.push([item, R.make(x, top, x + cw, top + height)]);
+      });
+      y += Math.ceil(group.length / columns) * (height + gap);
+    }
+    out.height = Math.max(0, y - gap);
+    return out;
+  },
+
+  /** The shelf's cards and headings where they are on screen at `scroll`. */
+  placedShelf(l: Layout, shelf: Shelf, scroll: number): ShelfLayout {
+    const area = ShopPage.itemsArea(l);
+    const at = v(area.minX, area.minY - scroll);
+    const s = ShopPage.shelfLayout(R.width(area), shelf);
+    return { cells: s.cells.map(([item, r]) => [item, R.offset(r, at)]), headings: s.headings.map((h) => ({ ...h, r: R.offset(h.r, at) })), height: s.height };
+  },
+
+  itemCells: (l: Layout, shelf: Shelf, scroll = 0): [Cosmetic, Rect][] => ShopPage.placedShelf(l, shelf, scroll).cells,
+
+  collectionRange(viewport: Vec2, bottomInset: number, state: ShopState): number {
+    const area = ShopPage.itemsArea(ShopPage.layout(viewport, bottomInset));
+    return Math.max(0, ShopPage.shelfLayout(R.width(area), state.shelf).height - R.height(area) + 8);
+  },
+
+  /** A press on the Collection's grid: a tap on a card or the start of a scroll. */
+  inItems(point: Vec2, viewport: Vec2, bottomInset: number, state: ShopState): boolean {
+    if (state.section !== 1 || state.opening || state.ad !== null) return false;
+    return R.contains(ShopPage.itemsArea(ShopPage.layout(viewport, bottomInset)), point);
+  },
+
+  itemAt(point: Vec2, viewport: Vec2, bottomInset: number, state: ShopState): ShopTarget | null {
+    if (!ShopPage.inItems(point, viewport, bottomInset, state)) return null;
+    const cell = ShopPage.itemCells(ShopPage.layout(viewport, bottomInset), state.shelf, state.items.scroll).find(([, r]) => R.contains(r, point));
+    return cell ? { k: 'item', id: cell[0].id } : null;
   },
 
   targets(viewport: Vec2, bottomInset: number, career: Career, state: ShopState): [ShopTarget, Rect][] {
@@ -228,8 +303,8 @@ export const ShopPage = {
     const out: [ShopTarget, Rect][] = l.segments.map(([section, r]) => [{ k: 'section', section }, r]);
     if (state.section === 0) out.push(...ShopPage.chestCards(l).map(([kind, r]): [ShopTarget, Rect] => [{ k: 'chest', kind }, r]));
     else if (state.section === 1) {
+      // The cards answer on the lift (`itemAt`): a press may be the start of a scroll.
       out.push(...ShopPage.shelfChips(l).map(([shelf, r]): [ShopTarget, Rect] => [{ k: 'shelf', shelf }, r]));
-      out.push(...ShopPage.itemCells(l, state.shelf).map(([item, r]): [ShopTarget, Rect] => [{ k: 'item', id: item.id }, r]));
     } else {
       const kit = casinoKit();
       const casino = state.casino;
@@ -428,22 +503,40 @@ export const ShopPage = {
       }
     }
     const start = list.items.length;
-    ShopPage.addShelfItems(list, state.shelf, l, career, state, enter);
-    if (!slide) return;
-    const side = state.shelf > slide.from ? 1 : -1;
-    const shift = v(reduceMotion ? 0 : side * R.width(l.content) * 0.35 * (1 - glide), 0);
-    const fade = Ease.outCubic(slide.age / 0.18);
-    for (let i = start; i < list.items.length; i++) list.items[i] = moved(list.items[i], shift, fade);
-    const gone = Ease.outCubic(slide.age / ShopPage.slideOut);
-    if (gone >= 1) return;
-    const old = new List(list.camera, list.background);
-    ShopPage.addShelfItems(old, slide.from, l, career, state, enter);
-    const away = v(reduceMotion ? 0 : -side * R.width(l.content) * 0.25 * gone, 0);
-    list.items.splice(start, 0, ...old.items.map((i) => moved(i, away, 1 - gone)));
+    ShopPage.addShelfItems(list, state.shelf, l, career, state, enter, state.items.scroll);
+    if (slide) {
+      const side = state.shelf > slide.from ? 1 : -1;
+      const shift = v(reduceMotion ? 0 : side * R.width(l.content) * 0.35 * (1 - glide), 0);
+      const fade = Ease.outCubic(slide.age / 0.18);
+      for (let i = start; i < list.items.length; i++) list.items[i] = moved(list.items[i], shift, fade);
+      const gone = Ease.outCubic(slide.age / ShopPage.slideOut);
+      if (gone < 1) {
+        const old = new List(list.camera, list.background);
+        ShopPage.addShelfItems(old, slide.from, l, career, state, enter, slide.scroll);
+        const away = v(reduceMotion ? 0 : -side * R.width(l.content) * 0.25 * gone, 0);
+        list.items.splice(start, 0, ...old.items.map((i) => moved(i, away, 1 - gone)));
+      }
+    }
+    // The grid scrolls under the chips and stops above the tab bar; sideways a shelf may slide out freely.
+    const area = ShopPage.itemsArea(l);
+    clipTo(list, start, R.make(0, area.minY - 4, list.camera.viewport.x, area.maxY));
+    const range = Math.max(0, ShopPage.shelfLayout(R.width(area), state.shelf).height - R.height(area) + 8);
+    state.items.addIndicator(list, area, range, Math.min(list.camera.viewport.x - 4, area.maxX + 5));
   },
 
-  addShelfItems(list: RenderList, shelf: Shelf, l: Layout, career: Career, state: ShopState, enter: number): void {
-    for (const [item, cell] of ShopPage.itemCells(l, shelf)) {
+  addShelfItems(list: RenderList, shelf: Shelf, l: Layout, career: Career, state: ShopState, enter: number, scroll: number): void {
+    const area = ShopPage.itemsArea(l);
+    const placed = ShopPage.placedShelf(l, shelf, scroll);
+    const visible = (r: Rect): boolean => r.maxY >= area.minY - 20 && r.minY <= area.maxY + 20;
+    for (const h of placed.headings) {
+      if (!visible(h.r)) continue;
+      const y = R.center(h.r).y + 2;
+      const owned = h.items.filter((i) => Careers.owns(career, i.id)).length;
+      t(list, h.label, v(h.r.minX + 4, y), 13, 'muted', { weight: 'bold', opacity: enter });
+      t(list, `${owned}/${h.items.length}`, v(h.r.maxX - 4, y), 12, owned === h.items.length ? ShopPage.rarityColor(h.items[0].rarity) : 'muted', { align: 'trailing', opacity: enter });
+    }
+    for (const [item, cell] of placed.cells) {
+      if (!visible(cell)) continue;
       const r = ShopPage.pressedRect(cell, { k: 'item', id: item.id }, state);
       const c = R.center(r);
       const owned = Careers.owns(career, item.id);
@@ -463,7 +556,7 @@ export const ShopPage = {
     }
   },
 
-  shelfColor: (s: Shelf): ColorToken => (['rarityCommon', 'rarityRare', 'rarityEpic', 'rarityLegendary', 'mapAurora', 'accent', 'coin'] as ColorToken[])[s],
+  shelfColor: (s: Shelf): ColorToken => (['rarityLegendary', 'mapAurora', 'coin', 'accent'] as ColorToken[])[s],
   rarityColor: (r: Rarity): ColorToken => ({ common: 'rarityCommon', rare: 'rarityRare', epic: 'rarityEpic', legendary: 'rarityLegendary' } as const)[r],
   chestColor: (k: ChestKind): ColorToken => ({ standard: 'rarityCommon', premium: 'coin', event: 'accent', criminalHunt: 'rarityEpic' } as const)[k],
 
@@ -479,13 +572,19 @@ export const ShopPage = {
     const preview = new List({ viewport: list.camera.viewport, center: v(0, 0), focus: center, scale: (30 * scale) / 60 }, list.background);
     preview.w(circle(v(2.5, -2.5), 61), 'shadow', 0.8);
     preview.w(circle(v(0, 0), 60), MapTheme.ground(theme));
-    MapTheme.addBadge(preview, theme);
+    const screen = id === BIG_SCREEN;
+    // Big Screen: the colour bars of a test card round the ring instead of a city.
+    const bars: ColorToken[] = ['primary', 'skinSunburst', 'skinSky', 'mapMeadow', 'juicePurple', 'juiceRed', 'juiceBlue'];
+    if (screen) bars.forEach((color, i) => preview.w(arc(v(0, 0), 45.5, 25, (i / bars.length) * TAU, ((i + 1) / bars.length) * TAU), color, 0.85));
+    else MapTheme.addBadge(preview, theme);
     preview.w(arc(v(0, 0), 27, 9, 0, TAU), 'surface');
     preview.w(circle(v(0, 0), 22.5), 'island');
     preview.w(circle(v(0, 0), 22.5), tint, 0.45);
     preview.w(arc(v(0, 0), 18, 2, 0, TAU), tint);
+    // And a play button on the island.
+    if (screen) preview.w(polygon([v(-5, 8), v(-5, -8), v(9, 0)]), 'primary');
     // Four plants, clear of the badge's pond, field or sea (which lie towards 1.4 rad).
-    [0.2, 2.6, 3.9, 5.2].forEach((angle, i) => MapTheme.addPlant(preview, theme, mul(fromAngle(angle), 44), 8.5, 3 + i * 7));
+    else [0.2, 2.6, 3.9, 5.2].forEach((angle, i) => MapTheme.addPlant(preview, theme, mul(fromAngle(angle), 44), 8.5, 3 + i * 7));
     preview.w(arc(v(0, 0), 59.5, 1, 0, TAU), 'primary', 0.12);
     for (const it of preview.items) list.items.push(pinned(it, preview.camera, opacity));
   },

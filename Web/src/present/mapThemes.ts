@@ -33,7 +33,9 @@ export type MapTheme =
   | 'highland'
   | 'lanterns'
   | 'crystal'
-  | 'beach';
+  | 'beach'
+  | 'gilded'
+  | 'eventHorizon';
 export const MAP_THEMES: MapTheme[] = [
   'dusk',
   'sand',
@@ -56,6 +58,8 @@ export const MAP_THEMES: MapTheme[] = [
   'lanterns',
   'crystal',
   'beach',
+  'gilded',
+  'eventHorizon',
 ];
 
 /** The maps that play in the sun: a bright ground, roofs in daylight colours. */
@@ -132,6 +136,8 @@ export const MapTheme = {
       lanterns: 'groundLanterns',
       crystal: 'groundCrystal',
       beach: 'groundBeach',
+      gilded: 'groundGilded',
+      eventHorizon: 'groundHorizon',
     } as const)[theme];
   },
 
@@ -478,6 +484,45 @@ export const MapTheme = {
         }
         break;
       }
+      case 'gilded': {
+        // Marble squares inlaid with gold, and gold leaf on the ground that catches the light.
+        for (let i = 0; i < 12; i++) soft(spot(i, 1001), 30 + 40 * hash(i, 1003), 'gildedMarble', 0.035);
+        for (let i = 0; i < 9; i++) {
+          const center = spot(i, 1005, 50, 320);
+          if (!onScreen(center, 40, cam)) continue;
+          list.w(arc(center, 16 + 10 * hash(i, 1007), 0.8, 0, TAU), 'mapGilded', 0.2);
+          list.w(rect(center, v(8, 8), 1, Math.PI / 4), 'mapGilded', 0.14);
+        }
+        still();
+        for (let i = 0; i < 70; i++) {
+          const at = spot(i, 1009, 10);
+          if (!onScreen(at, 3, cam)) continue;
+          const glint = time !== null ? Math.pow(Math.max(0, Math.sin(time * (0.9 + hash(i, 1011)) + i * 1.3)), 6) : 0.3;
+          add1(circle(at, 0.7 + 0.6 * hash(i, 1013) + 0.6 * glint), 'mapGilded', 0.25 + 0.7 * glint);
+        }
+        break;
+      }
+      case 'eventHorizon': {
+        // Deep space bent round the hole: faint glows, stars, and specks drawn slowly into it.
+        for (let i = 0; i < 10; i++) soft(spot(i, 1021), 40 + 60 * hash(i, 1023), i % 2 === 0 ? 'horizonViolet' : 'mapHorizon', 0.025);
+        still();
+        for (let i = 0; i < 140; i++) {
+          const at = spot(i, 1025, 8);
+          if (!onScreen(at, 2, cam)) continue;
+          const bright = hash(i, 1027);
+          const twinkle = time !== null ? 0.6 + 0.4 * Math.sin(time * (1 + 2 * bright) + i) : 0.8;
+          add1(circle(at, 0.5 + bright * bright), bright > 0.9 ? 'mapHorizon' : 'primary', (0.2 + 0.6 * bright) * twinkle);
+        }
+        const hole = MapTheme.pondCenter(layout);
+        if (hole && onScreen(hole, MapTheme.pondRadius * 5, cam)) {
+          for (let i = 0; i < 24; i++) {
+            const u = ((time ?? 0) * 0.07 + hash(i, 1029)) % 1;
+            const at = add(hole, mul(fromAngle(hash(i, 1031) * TAU + u * 7), MapTheme.pondRadius * (4 - 3.3 * u)));
+            add1(circle(at, 0.9 * (1 - 0.5 * u)), i % 3 === 0 ? 'horizonViolet' : 'mapHorizon', 0.7 * Math.sin(Math.PI * u));
+          }
+        }
+        break;
+      }
     }
     still();
     const pond = MapTheme.pondCenter(world.layout);
@@ -600,6 +645,10 @@ export const MapTheme = {
         return Centre.geode(list, at, time);
       case 'beach':
         return Centre.cove(list, at, time);
+      case 'gilded':
+        return Centre.obelisk(list, at, time);
+      case 'eventHorizon':
+        return Centre.blackHole(list, at, time);
       case 'sakura':
         return;
     }
@@ -757,6 +806,19 @@ export const MapTheme = {
         w(arc(v(0, 0), 55, 6, 1.1, 2.1), 'seaDeep', 0.7);
         w(arc(v(0, 0), 45.5, 1.4, 1.12, 2.08), 'primary', 0.85);
         return dots(12, 961, 0.9, ['skinCoral', 'skinPearl'], 0.9);
+      case 'gilded':
+        // Gold inlay rings on marble, and glints of gold leaf.
+        for (let i = 0; i < 4; i++) w(arc(at(i, 963, 40, 50), 5 + 2 * hash(i, 965), 0.7, 0, TAU), 'mapGilded', 0.7);
+        return dots(16, 967, 0.8, ['mapGilded', 'gildedMarble', 'fireCore'], 0.9);
+      case 'eventHorizon': {
+        // A little black hole with its disc of fire, and stars.
+        const hole = mul(fromAngle(1.4), 45);
+        w(circle(hole, 10), 'horizonViolet', 0.25);
+        w(arc(hole, 7, 2.6, 0.3, 4.6), 'mapHorizon', 0.9);
+        w(circle(hole, 4.2), 'groundHorizon');
+        w(arc(hole, 4.4, 0.6, 0, TAU), 'fireCore', 0.9);
+        return dots(22, 969, 0.7, ['primary', 'primary', 'horizonViolet'], 0.9);
+      }
     }
   },
 
@@ -858,6 +920,20 @@ export const MapTheme = {
           a(line(center, add(center, mul(fromAngle(hash(index, 471) * TAU), size * 0.8)), 1.4), 'fireOuter', 0.95);
         } else Plants.snowFir(list, center, size);
         break;
+      case 'gilded':
+        // Topiary clipped round and gilded at the tips, a gold lantern between them.
+        if (index % 4 === 1) Plants.lamp(list, center, size * 0.7, 'mapGilded');
+        else Plants.tree(list, center, size * 0.9, index, ['coinInk', 'mapCypress', 'mapGilded'], 0.95);
+        break;
+      case 'eventHorizon': {
+        // Rocks adrift, lit on one side by the disc of fire.
+        const turn = hash(index, 1041) * TAU;
+        a(circle(center, size * 0.75), 'wreck', 0.95);
+        a(circle(add(center, mul(fromAngle(turn), size * 0.25)), size * 0.5), 'stone', 0.6);
+        a(arc(center, size * 0.75, 1, turn - 0.9, turn + 0.9), 'mapHorizon', 0.8);
+        if (index % 3 === 0) a(circle(center, size * 1.6), 'horizonViolet', 0.06);
+        break;
+      }
       case 'cosmos': {
         const colors: ColorToken[] = ['skinCoral', 'skinSky', 'mapCosmos', 'skinTeal'];
         const color = colors[index % 4];
@@ -902,6 +978,13 @@ export const MapTheme = {
               break;
             case 'cosmos':
               Plants.lamp(list, at, size * 0.6, 'mapCosmos');
+              break;
+            case 'gilded':
+              if (isAccent) Plants.lamp(list, at, size * 0.8, 'mapGilded');
+              else MapTheme.addPlant(list, theme, at, size * 0.85, index * 4);
+              break;
+            case 'eventHorizon':
+              if (isAccent) Plants.lamp(list, at, size * 0.6, 'horizonViolet');
               break;
             case 'tropic':
               Plants.palm(list, at, size * 0.9, index);
@@ -1093,6 +1176,12 @@ export const MapTheme = {
         }
         return;
       }
+      case 'gilded':
+        // Gold dust in the warm night air.
+        return drift(list, 30, time, vp, ['mapGilded', 'fireCore', 'mapGilded'], 2.6, -4, 10, 14, true, 1051);
+      case 'eventHorizon':
+        // Embers of the disc, drifting off into the dark.
+        return drift(list, 22, time, vp, ['mapHorizon', 'horizonViolet', 'fireCore'], 2.4, 3, -6, 18, true, 1053);
       case 'crystal': {
         // Dust hanging in the light, and a shard of it catching the shine.
         for (let i = 0; i < 30; i++) {

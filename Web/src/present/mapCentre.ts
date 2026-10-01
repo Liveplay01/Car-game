@@ -398,6 +398,44 @@ export const Centre = {
     list.w(rect(add(tower, mul(across, 12.5)), v(3, 4), 0.3, turn), 'juiceRed', 0.95);
     Plants.parasol(list, add(c, add(mul(toRing, r + 8), mul(across, -r * 0.8))), 6, 5);
   },
+  /** Gilded City: a gold obelisk on a marble square, a fountain at each corner. */
+  obelisk(list: RenderList, c: Vec2, time: number | null): void {
+    const r = MapTheme.pondRadius;
+    const t = time ?? 0;
+    list.w(rect(c, v(r * 2, r * 2), 4, Math.PI / 4), 'gildedMarble', 0.16);
+    list.w(rect(c, v(r * 1.5, r * 1.5), 3, Math.PI / 4), 'mapGilded', 0.12);
+    for (let k = 0; k < 4; k++) {
+      const at = add(c, mul(fromAngle((k * Math.PI) / 2), r * 0.78));
+      list.w(circle(at, 5.5), 'gildedMarble', 0.75);
+      list.w(circle(at, 4.2), 'water', 1);
+      const phase = (t * 0.7 + k / 4) % 1;
+      list.w(arc(at, 1 + 3 * phase, 0.6, 0, TAU), 'primary', 0.45 * (1 - phase));
+    }
+    // From above the obelisk is four faces meeting at its tip, each lit a little differently.
+    const half = 7.5;
+    list.w(rect(add(c, v(6, -6)), v(half * 2, half * 2), 1, 0), 'shadow', 0.7);
+    const corners = [v(-half, -half), v(half, -half), v(half, half), v(-half, half)].map((p) => add(c, p));
+    const faces: ColorToken[] = ['coinInk', 'coin', 'fireCore', 'mapGilded'];
+    for (let k = 0; k < 4; k++) list.w(polygon([corners[k], corners[(k + 1) % 4], c]), faces[k], 1);
+    const glint = Math.pow(Math.max(0, Math.sin(t * 1.1)), 12);
+    list.w(circle(c, 1.2 + 4 * glint), 'primary', 0.3 + 0.7 * glint);
+  },
+  /** Event Horizon: a black hole, its disc of fire turning round it and a thin ring of light. */
+  blackHole(list: RenderList, c: Vec2, time: number | null): void {
+    const r = MapTheme.pondRadius;
+    const t = time ?? 0;
+    list.w(circle(c, r * 1.7), 'horizonViolet', 0.04);
+    list.w(circle(c, r * 1.25), 'mapHorizon', 0.06);
+    for (let band = 0; band < 4; band++) {
+      const spin = t * (0.9 - band * 0.15) + band * 1.3;
+      for (let k = 0; k < 3; k++) {
+        const from = spin + (k * TAU) / 3;
+        list.w(arc(c, r * (0.66 + band * 0.13), 3.2 - band * 0.5, from, from + 1.5), band % 2 === 0 ? 'mapHorizon' : 'fireCore', 0.55 - band * 0.09);
+      }
+    }
+    list.w(circle(c, r * 0.52), 'groundHorizon', 1);
+    list.w(arc(c, r * 0.54, 1.1, 0, TAU), 'fireCore', time !== null ? 0.65 + 0.25 * Math.sin(t * 2) : 0.8);
+  },
   planet(list: RenderList, c: Vec2, time: number | null): void {
     const radius = MapTheme.pondRadius * 0.55;
     const tilt = 0.35;

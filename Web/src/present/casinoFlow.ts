@@ -76,6 +76,7 @@ export class CasinoFlow {
       case 'slot':
         this.host.tick();
         this.collect();
+        this.clearFinishedUpgrade();
         s.picker = t.slot < 5 ? 'stake' : 'target';
         s.page = 0;
         break;
@@ -114,6 +115,16 @@ export class CasinoFlow {
     else if (!s.picker && s.sinceEnd >= 0.7) this.start();
   }
 
+  /**
+   * A finished upgrade stays on the table so its result can be read (the lost stake, the dial).
+   * Once the player starts setting up the next one it must go: the table draws the old round's
+   * skins while a round is kept, so new picks would not show up.
+   */
+  private clearFinishedUpgrade(): void {
+    const s = this.host.casino;
+    if (s.run?.k === 'upgrade' && !s.busy) s.run = null;
+  }
+
   /** The books as they stand before a round changes them: what the page shows until the reveal. */
   private books(): Books {
     const career = this.host.save.career;
@@ -130,6 +141,7 @@ export class CasinoFlow {
     if (s.game === 'upgrade') {
       if (s.staked.length === 0 || !s.target) {
         this.host.tick();
+        this.clearFinishedUpgrade();
         s.picker = s.staked.length === 0 ? 'stake' : 'target';
         s.page = 0;
         return;

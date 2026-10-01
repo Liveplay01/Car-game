@@ -1,8 +1,9 @@
 # Car Game server
 
-A small, self-hosted service next to the game: anonymous players with a name, and leaderboards.
+A small, self-hosted service next to the game: anonymous players with a name, leaderboards, a
+friends board, cloud saves by sync code, and relay logins for multiplayer.
 Node 22 · [Hono](https://hono.dev) · SQLite (built into Node, no native packages). The game
-works without it; it only adds the leaderboard.
+works without it; everything here is an extra.
 
 ```bash
 cd Server
@@ -25,8 +26,30 @@ only erasable syntax is allowed (no `enum`, no constructor parameter properties)
 | `GET /v1/boards` | The boards that exist |
 | `GET /v1/boards/:board?limit=50` | Top list (max 100). With a token: the player's own line is marked and `me` has their rank, even far down |
 | `PUT /v1/boards/:board/score` | Submit a score (token). Only a better one replaces the old: `{accepted, best}` |
+| `GET /v1/friends` | (token) Your friend code (`K7M2-9QXA`, made on first use) and your list |
+| `POST /v1/friends` `{code}` | (token) Add a friend by their code. One way, no answer needed. `404 unknown_code`, `422 invalid_code` / `own_code` / `too_many_friends` (100) |
+| `DELETE /v1/friends/:id` | (token) Take someone off your list |
+| `GET /v1/friends/boards/:board` | (token) The same board as the public one, ranked among you and your friends only |
+| `POST /v1/sync` `{save}` | Cloud save, no account: stores the save and answers `{code, updatedAt}` (`K7M2-9QXA-4TFB`) |
+| `GET /v1/sync` | The save of the code in `Authorization: Bearer <code>`: `{save, updatedAt}`. `404 unknown_code` |
+| `PUT /v1/sync` `{save, baseUpdatedAt}` | Stores a newer save. `409 conflict` (with the current `updatedAt`) when another device saved since `baseUpdatedAt`: the game then asks the player |
+| `DELETE /v1/sync` | Removes the cloud copy |
+| `GET /v1/rtc/ice` | `{iceServers, relay}` for multiplayer: STUN always, a short-lived TURN login when Cloudflare TURN is set up |
 
 The token travels as `Authorization: Bearer <token>`. Errors are `{error: {code, message}}`.
+
+**Friends** are one-way: typing a code puts that player on your list, and they do not have to agree
+(their scores are public on the boards anyway; the code only saves the search). Blocked players
+vanish from every list. Adding is limited to 20 tries a minute per player.
+
+**Cloud save** has no name and no password: the sync code is the key (12 characters from 31, about
+59 bits). Only its SHA-256 is stored, next to the save as the game wrote it (up to 96 KB, a real
+save is 1 to 25 KB). The game adds the player's leaderboard account (id, name, token) to the copy as
+`cloudAccount`, so a new device becomes the same player; the server stores it like the rest and does
+not look at it. The server knows nothing of the game's rules and does not check the content;
+the game reads it field by field like an imported file. Wrong codes count against 60 tries a minute
+per address, new codes against 10 an hour. Every write names the version it builds on
+(`baseUpdatedAt`), so two devices never overwrite each other quietly.
 
 **Boards** (`src/modules/leaderboard/boards.ts`):
 
@@ -78,6 +101,7 @@ A second resource next to the game, from the same GitHub repository:
 | `DB_PATH` | `/data/car-game.db` | Keep it inside the volume. |
 | `PORT` | `5051` | |
 | `TRUST_PROXY` | `true` | Read the caller's address from `X-Forwarded-For` (last entry). Keep it on behind Coolify. |
+| `CF_TURN_KEY_ID`, `CF_TURN_API_TOKEN` | unset | Cloudflare TURN, for multiplayer between phone networks (below). Unset: STUN only. |
 
 5. **Run exactly one instance.** SQLite lives in one file; do not scale it to several replicas.
 6. **Backup:** the volume is the whole state. Back it up with Coolify's scheduled backups or copy
@@ -87,6 +111,20 @@ A second resource next to the game, from the same GitHub repository:
 the game's resource → Build Variables / Build Args, the Dockerfile has `ARG VITE_API_URL`) and add
 that address to `connect-src` in `Web/nginx.conf`, both lines of `map $args $csp`. Without the
 variable the game has no leaderboard.
+
+## Multiplayer relay (Cloudflare TURN)
+
+Most players connect directly; phones on mobile data and school Wi-Fi often cannot, and need a relay
+(TURN). Nothing to host: Cloudflare's relay is free up to 1 TB a month.
+
+1. Cloudflare dashboard → **Realtime → TURN Server → Create**. Note the *Turn Token ID* and the *API token*.
+2. In Coolify set `CF_TURN_KEY_ID` (the ID) and `CF_TURN_API_TOKEN` (the token), redeploy.
+3. Check: `curl https://api.your-domain.tld/v1/rtc/ice` answers `"relay": true`.
+
+The game asks `/v1/rtc/ice` right before a room opens and gets a login that stops working after a
+day (the server keeps one for an hour and hands it to everyone, so Cloudflare is asked rarely).
+A slow or failed answer only means "STUN as before". PeerJS's public broker still introduces the
+players; it only passes on room codes, no match data, so it is not worth hosting ourselves.
 
 ## Moderation
 
@@ -102,6 +140,8 @@ curl -X DELETE -H "$H" "$API/v1/admin/players/<id>"                         # re
 ## Privacy
 
 Stored per player: the chosen name, a random id, a hash of the secret token, the scores (with the
-level / cars they came with) and two timestamps. No e-mail, no IP address (rate limits live in
-memory only). `DELETE /v1/me` removes all of it. Before the game sends anything, add a paragraph
+level / cars they came with), the friend code and the friends list, and two timestamps. No e-mail,
+no IP address (rate limits live in memory only). `DELETE /v1/me` removes all of it.
+Cloud saves belong to no player: a hash of the sync code, the save and two timestamps; `DELETE
+/v1/sync` removes one. The privacy page (`legal.ts`) describes Friends, Cloud sync and the relay. Before the game sends anything, add a paragraph
 to `Web/src/present/legal.ts` and bump `LEGAL_UPDATED` (see the project `CLAUDE.md`).
