@@ -61,7 +61,7 @@ ist ein Zusatz, der ausfallen darf.
 - **Größe:** ein Stand ist 1,3 KB (neu) bis etwa 22 KB (Level 120, alles gesammelt); 100.000 Spieler
   sind rund 1 GB. SQLite genügt.
 - **Ohne E-Mail gibt es keine „Passwort vergessen“-Funktion.** Vergessenes Passwort = Konto weg, das muss
-  beim Anlegen klar stehen. Mildern: der lokale Export bleibt, dazu ein einmaliger **Wiederherstellungs-
+  beim Anlegen klar stehen. Mildern: Cloud sync per Code bleibt, dazu ein einmaliger **Wiederherstellungs-
   schlüssel** beim Anlegen, den der Spieler sich notiert.
 - **Passwörter** nur als Argon2- oder bcrypt-Hash speichern, Anmeldeversuche begrenzen, Nutzername
   eindeutig und ohne Beleidigungen (Namensfilter wie beim Multiplayer).

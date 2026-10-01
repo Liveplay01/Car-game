@@ -974,6 +974,8 @@ export class GameSession {
     if (this.isPage('shop')) {
       const before = this.shopPage.opening?.age ?? null;
       this.shopPage.advance(realDelta);
+      // The Collection's grid glides on after a flick and springs back past its ends.
+      this.shopPage.items.follow(realDelta, this.collectionScrollRange);
       const after = this.shopPage.opening?.age ?? null;
       const opening = this.shopPage.opening;
       if (opening && before !== null && after !== null) this.reelCues(opening, before, after);

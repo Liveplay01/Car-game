@@ -22,6 +22,18 @@ export type PatchImpact = 'major' | 'minor' | 'fix';
 
 export const PATCH_NOTES: PatchNote[] = [
   {
+    id: '2026-10-01-smooth-scroll',
+    date: '1 October 2026',
+    title: 'Smoother scrolling, Cloud sync for your progress',
+    impact: 'minor',
+    items: [
+      'The Collection now glides on after a flick and springs back at its ends, like the other lists.',
+      'Scrolling with a mouse wheel or trackpad glides smoothly in every list.',
+      'Cloud sync replaces the export: Settings no longer writes a save file. A file you exported before can still be imported.',
+      'The Home Screen tip at Level 5 is now a simple recommendation, and the later tip points to Cloud sync.',
+    ],
+  },
+  {
     id: '2026-10-01-tidy-up',
     date: '1 October 2026',
     title: 'A tidier Progress and Collection',

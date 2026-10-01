@@ -379,11 +379,12 @@ export const S = {
 
   /** One-time tips that keep the progress safe (`Hint`). */
   hints: {
-    install: 'Tip · Install the game in Settings to keep your progress safe',
-    backup: 'Tip · Export your progress in Settings to keep a copy',
+    install: 'Tip · Install the game in Settings: its own window, one click away',
+    homeScreen: 'Tip · Add the game to your home screen in Settings: one tap, full screen',
+    backup: 'Tip · Turn on Cloud sync in Settings to keep a copy of your progress',
     reduceMotion: 'Tip · Running slow? Reduce motion in Settings can help',
     offline: 'Ready to play offline',
-    notSaved: 'This browser is not saving your progress · Export it in Settings to keep it',
+    notSaved: 'This browser is not saving your progress · Cloud sync in Settings can keep a copy',
     updated: 'Updated · See what’s new in Settings',
   },
 

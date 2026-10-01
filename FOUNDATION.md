@@ -337,7 +337,7 @@ einer Schicht ist sie ausgeblendet.
 | **Spiel (HUD)** | oben links Punkte, oben mittig die Autos, die noch fehlen ("12 cars"), darunter die Crash-Punkte (2.6), unten die Einsatzfahrt; Combo auf der Mittelinsel; unten die Warteschlange | Tippen |
 | **Unterbrechung** | Geht der Tab in den Hintergrund, hält die Schicht an und zählt beim Zurückkommen herunter | – |
 | **Ergebnis** | kein Menü: oben in der Szene "GAME OVER" bzw. "LEVEL 3 COMPLETE", Punkte groß, "New Highscore" oder Bestwert; auf der Mittelinsel "Tap for level 4" bzw. "Tap to try level 3 again", Zeit, beste Combo, Tight Fits, Geld | **Tap** (irgendwo) |
-| **Einstellungen** | Sound effects, Music, Haptics, Vehicle labels, Reduce Motion (Standard: aus, „System“ wählbar), Installieren, Export/Import des Spielstands; das Zahnrad auf dem Game-Tab öffnet ein Sheet | – |
+| **Einstellungen** | Sound effects, Music, Haptics, Vehicle labels, Reduce Motion (Standard: aus, „System“ wählbar), Installieren, Cloud sync, Import einer alten Spielstand-Datei; das Zahnrad auf dem Game-Tab öffnet ein Sheet | – |
 | **Build-Tab** | Segmented Control **Upgrades · Street Builder** (seit 26.09.2026 ein Tab, wie die Bereiche im Shop); öffnet dort, wo man ihn verlassen hat | – |
 | Build · Upgrades | Kontostand und eine Karte je Upgrade: Bild, Name, gekaufte Stufen, Preis der nächsten. Ein Tap öffnet unten die Details, ein Doppel-Tap kauft | Stufe kaufen |
 | Build · Street Builder | der Kreisverkehr von oben, die freien Steckplätze und eine Palette mit Teilen. Ein Teil wird auf einen Platz gezogen, ein Doppel-Tap baut es, ein einzelner nimmt es wieder weg | Zufahrt bauen |

@@ -7,13 +7,12 @@ import { AudioPlayer, Haptics } from '../audio/player';
 import { h, icon } from './dom';
 import { ICONS } from './icons';
 import { settingsSheet, patchNotesSheet, legalSheet, licensesSheet, installDialog, cloudIntroDialog, isSheetOpen, closeAnySheet } from './sheets';
-import { cloudIntroDue, markCloudIntroSeen } from '../net/cloud';
+import { cloudEnabled, cloudIntroDue, cloudView, markCloudIntroSeen } from '../net/cloud';
 import { legalDoc } from '../present/legal';
 import { PATCH_NOTES } from '../present/patchNotes';
 import { PhotoView } from './photo';
-import { exportSave } from '../storage/save';
 import { reportGameplay } from './crazygames';
-import { inPortal, isInstalled, isIos, isIpad, isStorageKept, keepStorage, renewStorage } from '../storage/device';
+import { inPortal, isInstalled, isIos, isIpad, keepStorage, renewStorage } from '../storage/device';
 import type { Hint } from '../core/career';
 import { decodeChallenge, type ChallengeSpec } from '../core/challenge';
 import { S, Fmt } from '../present/strings';
@@ -521,22 +520,20 @@ export class Shell {
   }
 
   /**
-   * A one-time hint came due. Level 3: ask the browser to keep the save and suggest installing
-   * (not when installed already). Level 12: suggest an export while the save is unprotected.
-   * On a portal neither: nothing to install, and the portal's login keeps the save.
+   * A one-time hint came due. Level 5: ask the browser to keep the save and recommend the Home
+   * Screen (not when installed already). Level 12: recommend Cloud sync while this device has no
+   * cloud copy (Leo, 01.10.2026: it replaced the export). On a portal neither: nothing to
+   * install, and the portal's login keeps the save.
    */
   private async giveHint(hint: Hint): Promise<void> {
-    const installed = isInstalled();
     if (hint === 'install') {
-      const kept = await keepStorage();
-      if (installed || inPortal) return;
-      // iPhone and iPad: the tip takes the screen until it is confirmed (Safari clears the save after a week).
+      await keepStorage();
+      if (isInstalled() || inPortal) return;
+      // iPhone and iPad: the tip takes the screen until it is confirmed.
       if (isIos()) installDialog(this.layers, isIpad(), () => undefined);
-      else if (this.installPrompt) this.session.announce(S.hints.install);
-      // Nothing to install here (Firefox): an export is the way to keep a copy.
-      else if (!kept) this.session.announce(S.hints.backup);
+      else if (this.installPrompt) this.session.announce(window.matchMedia('(pointer: coarse)').matches ? S.hints.homeScreen : S.hints.install);
     } else if (hint === 'backup') {
-      if (!installed && !inPortal && !(await isStorageKept())) this.session.announce(S.hints.backup);
+      if (cloudEnabled && cloudView().code === null) this.session.announce(S.hints.backup);
     }
   }
 
@@ -607,7 +604,6 @@ export class Shell {
         void this.backdrop.show(null);
         saveBackdrop(null);
       },
-      exportText: () => exportSave(s.save),
       importSave: (save) => s.importProgress(save),
       // The cloud sync page, over the settings; the settings come back when it closes.
       openCloud: () => this.openCloudPage(),

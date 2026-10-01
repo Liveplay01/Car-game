@@ -19,7 +19,7 @@ npm run preview    # serve dist/ on port 5050 (with the service worker)
 npm run sim        # balancing bots: node scripts/sim.mjs [shifts] [level]
 npm run sim:versus # multiplayer bots (the lobby bots): never out for a crash, same seed = same match
 npm run sim:casino # casino fairness: every game returns what its odds sheet says, the coin is fair
-npm test           # node:test: replays, the careful bot, saves (old, broken, export), unlocks, notices
+npm test           # node:test: replays, the careful bot, saves (old, broken, imported file), unlocks, notices
 ```
 
 `npm run sim` must show **0 crashes for the careful bot** at every level. A random
@@ -96,7 +96,8 @@ Only in the browser version:
   odds and returns in the sheet behind "Odds" (LOOT.md, Casino). Its looks and rounds are a
   chunk of their own (`present/casinoLoader.ts`), loaded when the Shop opens with the casino
   unlocked; the Shop's money chip (`casinoWallet.ts`) works without it.
-- **Export / import** of the whole progress in Settings, for moving to another device.
+- **Cloud sync** in Settings moves the progress to another device by code; "Import a save file"
+  still reads a file exported before the export gave way to it (01.10.2026).
 - Tyre marks after a skilled merge, stereo placement of sounds, keyboard hints on desktop.
 
 ## Multiplayer
@@ -175,8 +176,9 @@ leaderboard may refuse a name: then both keep the old one).
 Everything is stored in `localStorage` under `carGame.save.v2`, on this device only (an
 older `carGame.career.v1` is migrated). Loading is defensive: a damaged save falls back
 field by field instead of breaking the game. "Reset progress" in Settings erases it.
-"Export progress" writes it to a file (`car-game-save-<date>.json`), "Import progress" reads
-such a file back through the same checks, after showing what it replaces.
+Cloud sync (Settings, `net/cloud.ts`) keeps an optional copy. The file export is gone since
+01.10.2026; "Import a save file" still reads an old `car-game-save-<date>.json` back through the
+same checks, after showing what it replaces.
 
 **Big Screen** (Prestige ★5, `ui/backdrop.ts`): the player's own picture or video behind the
 roundabout, kept apart from the save under `carGame.backdrop.v1` (always plain `localStorage`,
@@ -187,12 +189,14 @@ youtube-nocookie.com, so `nginx.conf` allows `https:` images and media and that 
 
 Keeping it safe (`storage/device.ts`, one-time `hints` in the save): Safari clears a site's
 storage after about a week without a visit unless the game is on the home screen. After
-Level 3 the game asks the browser to keep its storage (`navigator.storage.persist()`, never
-on the first visit, since Firefox may ask the player) and suggests installing it (on an
-iPhone: Share → Add to Home Screen). After Level 12, if the storage is still unprotected, it
-suggests an export. From then on every visit asks again where asking is silent (Chrome,
-Safari; not Firefox), and installing the game asks at once. If a write fails (private
-window, full storage), the game says so once per session and points to Export.
+Level 4 the game asks the browser to keep its storage (`navigator.storage.persist()`, never
+on the first visit, since Firefox may ask the player) and recommends the Home Screen (on an
+iPhone: a full-screen tip, Share → Add to Home Screen; elsewhere a line, when the browser can
+install). After Level 12 it recommends Cloud sync while this device has no cloud copy. Cloud
+sync also has a pop-up of its own, once per device. From then on every visit asks again where
+asking is silent (Chrome, Safari; not Firefox), and installing the game asks at once. If a
+write fails (private window, full storage), the game says so once per session and points to
+Cloud sync.
 
 ## Unlocks and notices
 

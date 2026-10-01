@@ -417,10 +417,11 @@ export const baseConfig = {
   modeHintAfterLevel: 6,
   /**
    * Level cleared after which the game asks the browser to keep its storage and suggests
-   * installing it, once (Leo, 30.09.2026: from Level 5; on iPhone and iPad as a full-screen tip).
+   * recommends the Home Screen, once (Leo, 30.09.2026: from Level 5; on iPhone and iPad as a
+   * full-screen tip).
    */
   installHintAfterLevel: 4,
-  /** Level cleared after which an unprotected save suggests an export (once). */
+  /** Level cleared after which a device without a cloud copy recommends Cloud sync (once; Leo, 01.10.2026: it replaced the export). */
   backupHintAfterLevel: 12,
   // Unlocks (Leo, 29.09.2026, `core/unlocks.ts`): a new player meets the systems one at a time.
   // Spread out the same day (`npm run sim:career -- 12 --story=20`): five systems came in the

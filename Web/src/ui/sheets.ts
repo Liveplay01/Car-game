@@ -74,8 +74,8 @@ export function openSheet(layer: HTMLElement, title: string, body: HTMLElement, 
 
 /**
  * iPhone and iPad (Leo, 30.09.2026): the Home Screen tip takes the whole screen and stays until
- * it is confirmed. Safari clears a site's storage after a week without a visit; from the Home
- * Screen the progress stays, and the game plays full screen. Only the button closes it.
+ * it is confirmed. Only the button closes it. Since Cloud sync (Leo, 01.10.2026) it simply
+ * recommends the Home Screen; Cloud sync has a pop-up of its own (`cloudIntroDialog`).
  */
 export function installDialog(layer: HTMLElement, ipad: boolean, onDone: () => void): void {
   const previouslyFocused = document.activeElement as HTMLElement | null;
@@ -89,8 +89,8 @@ export function installDialog(layer: HTMLElement, ipad: boolean, onDone: () => v
       'div',
       { class: 'install-card' },
       h('div', { class: 'install-badge', 'aria-hidden': 'true' }, icon(ICONS.game)),
-      h('h2', { class: 'install-title', id: 'install-title' }, 'Keep your progress safe'),
-      h('p', { class: 'install-why', id: 'install-why' }, 'Safari deletes the progress of a website you have not opened for a week. Put Roundabout Timing on your Home Screen: your progress stays, and it plays full screen like an app.'),
+      h('h2', { class: 'install-title', id: 'install-title' }, 'Add it to your Home Screen'),
+      h('p', { class: 'install-why', id: 'install-why' }, 'Roundabout Timing plays best like an app: one tap to start, full screen, and Safari keeps your progress.'),
       h(
         'ol',
         { class: 'install-steps' },
@@ -264,8 +264,7 @@ export interface SettingsActions {
   /** Privacy Policy, Imprint or the open-source licenses, over the settings. */
   openLegal(page: LegalId | 'licenses'): void;
   reset(): void;
-  /** The save as file text, for Export progress. */
-  exportText(): string;
+  /** A save file from an earlier export (the export itself gave way to Cloud sync). */
   importSave(save: SaveGame): void;
   /** Cloud sync (a sync code), over the settings. */
   openCloud(): void;
@@ -415,8 +414,10 @@ export function settingsSheet(layer: HTMLElement, s: Settings, actions: Settings
       'p',
       { class: 'section-note', style: 'margin:0 4px 8px' },
       inPortal
-        ? 'Log in to CrazyGames to keep your progress on every device. You can also export it here as a file.'
-        : 'Your progress is saved on this device. To move it, export it here and import the file on the other device.',
+        ? 'Log in to CrazyGames to keep your progress on every device.'
+        : cloudEnabled
+          ? 'Your progress is saved on this device. Cloud sync keeps a copy and brings it to your other devices.'
+          : 'Your progress is saved on this device.',
     ),
     progressList,
     resetBtn,
@@ -432,33 +433,12 @@ export function settingsSheet(layer: HTMLElement, s: Settings, actions: Settings
   return close;
 }
 
-/** Export and import of the whole progress, for moving to another device. */
+/**
+ * Cloud sync, and the import of a save file (Leo, 01.10.2026: Cloud sync replaced the export;
+ * a file exported before still comes back in here).
+ */
 function progressRows(actions: SettingsActions, closeSheet: () => void): HTMLElement {
-  const exportSub = h('div', { class: 'row-sub' }, 'A file with your level, money, upgrades and collection.');
-  const exportBtn = h('button', { class: 'btn', type: 'button' }, 'Export');
-  exportBtn.addEventListener('click', () => {
-    const day = new Date().toISOString().slice(0, 10);
-    const name = `roundabout-timing-save-${day}.json`;
-    const text = actions.exportText();
-    const file = new File([text], name, { type: 'application/json' });
-    // On a phone the share sheet (AirDrop, messages, Files) is the natural way to hand it over.
-    const touch = window.matchMedia('(pointer: coarse)').matches;
-    if (touch && typeof navigator.canShare === 'function' && navigator.canShare({ files: [file] })) {
-      navigator.share({ files: [file], title: 'Roundabout Timing progress' }).catch(() => {
-        /* cancelled */
-      });
-      return;
-    }
-    const url = URL.createObjectURL(file);
-    const link = h('a', { href: url, download: name });
-    document.body.append(link);
-    link.click();
-    link.remove();
-    window.setTimeout(() => URL.revokeObjectURL(url), 1000);
-    exportSub.textContent = `Saved as ${name}.`;
-  });
-
-  const importSub = h('div', { class: 'row-sub' }, 'Replaces the progress on this device.');
+  const importSub = h('div', { class: 'row-sub' }, 'A file you exported earlier. Replaces the progress on this device.');
   const importBtn = h('button', { class: 'btn', type: 'button' }, 'Import');
   const picker = h('input', { type: 'file', accept: '.json,application/json', hidden: true, 'aria-hidden': 'true', tabindex: '-1' });
   let pending: SaveGame | null = null;
@@ -502,7 +482,6 @@ function progressRows(actions: SettingsActions, closeSheet: () => void): HTMLEle
     'div',
     { class: 'list', style: 'margin-bottom:24px' },
     cloudEnabled ? linkRow('Cloud sync', 'Keep your progress safe and move it to another device with a code.', () => actions.openCloud()) : null,
-    h('div', { class: 'row' }, h('div', { class: 'row-main' }, h('div', { class: 'row-title' }, 'Export progress'), exportSub), exportBtn),
-    h('div', { class: 'row' }, h('div', { class: 'row-main' }, h('div', { class: 'row-title' }, 'Import progress'), importSub), importBtn, picker),
+    h('div', { class: 'row' }, h('div', { class: 'row-main' }, h('div', { class: 'row-title' }, 'Import a save file'), importSub), importBtn, picker),
   );
 }

@@ -61,9 +61,9 @@ export class Scroller {
     this.indicator = 0;
   }
 
+  /** A mouse wheel or trackpad: the list glides to where the turns add up, never jumps. */
   wheel(dy: number, maxScroll: number): void {
-    this.scroll = Math.min(Math.max(this.scroll + dy, 0), maxScroll);
-    this.velocity = 0;
+    this.scrollTo(Math.min(Math.max((this.target ?? this.scroll) + dy, 0), maxScroll));
   }
 
   /** The fling decays; past an end it springs back. */
@@ -107,7 +107,7 @@ export class Scroller {
   /** A thin bar at `x`, beside `area`, while the list moves, like iOS. */
   addIndicator(list: RenderList, area: Rect, maxScroll: number, x: number): void {
     if (maxScroll <= 0) return;
-    const moving = this.drag?.moved || Math.abs(this.velocity) > 4;
+    const moving = this.drag?.moved || Math.abs(this.velocity) > 4 || this.target !== null;
     this.indicator += ((moving ? 1 : 0) - this.indicator) * 0.2;
     if (this.indicator < 0.02) return;
     const h = R.height(area);

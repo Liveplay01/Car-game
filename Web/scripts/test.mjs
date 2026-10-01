@@ -17,7 +17,7 @@ const { baseConfig } = await load('/src/core/config.ts');
 const { forLevel } = await load('/src/core/levels.ts');
 const { newSave, newCareer, Careers } = await load('/src/core/career.ts');
 const { encodeChallenge, decodeChallenge, challengeOf } = await load('/src/core/challenge.ts');
-const { loadSave, writeSave, exportSave, parseImport } = await load('/src/storage/save.ts');
+const { loadSave, writeSave, parseImport } = await load('/src/storage/save.ts');
 const { fingerprint } = await load('/src/net/cloud.ts');
 const { iceServers } = await load('/src/net/rtc.ts');
 const { NoticeQueue } = await load('/src/present/notices.ts');
@@ -149,12 +149,14 @@ test('the first web save (v1) carries over', () => {
   assert.equal(save.tutorialDone, true);
 });
 
-test('export and import give the same save; other files are refused', () => {
+test('a file exported earlier still imports; other files are refused', () => {
   const save = newSave();
   save.career.level = 21;
   save.unlimitedBest = 800;
   save.hints = ['modes', 'install'];
-  assert.deepEqual(parseImport(exportSave(save)), save);
+  // The format the export wrote before Cloud sync replaced it.
+  const file = JSON.stringify({ format: 'car-game-save', version: 2, exportedAt: '2026-09-30T12:00:00.000Z', save }, null, 2);
+  assert.deepEqual(parseImport(file), save);
   assert.equal(parseImport('{"hello": 1}'), null);
   assert.equal(parseImport('nope'), null);
 });

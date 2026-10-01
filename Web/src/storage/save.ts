@@ -255,16 +255,14 @@ export function writeSave(save: SaveGame): boolean {
   }
 }
 
-/** Marks an exported file as ours, so a random JSON file is not taken for a save. */
+/**
+ * Marks an exported file as ours, so a random JSON file is not taken for a save. The export
+ * gave way to Cloud sync (Leo, 01.10.2026); files exported before still read back.
+ */
 const EXPORT_TAG = 'car-game-save';
 
-/** The save as a file to carry to another device (Settings → Export progress). */
-export function exportSave(save: SaveGame): string {
-  return JSON.stringify({ format: EXPORT_TAG, version: 2, exportedAt: new Date().toISOString(), save }, null, 2);
-}
-
 /**
- * Reads an exported file back. Null when it is not a Car Game save; otherwise it goes through
+ * Reads an exported file (or the cloud copy) back. Null when it is not a Car Game save; otherwise it goes through
  * the same field-by-field checks as the stored save, so a hand-edited file cannot break the game.
  */
 export function parseImport(text: string): SaveGame | null {
