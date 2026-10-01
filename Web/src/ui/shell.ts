@@ -644,7 +644,6 @@ export class Shell {
         void this.backdrop.show(null);
         saveBackdrop(null);
       },
-      importSave: (save) => s.importProgress(save),
       // The cloud sync page, over the settings; the settings come back when it closes.
       openCloud: () => this.openCloudPage(),
       install: this.installPrompt

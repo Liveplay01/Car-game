@@ -2217,7 +2217,7 @@ export class GameSession {
     this.prepareShift(false);
   }
 
-  /** Progress brought from another device (Settings → Import progress) replaces this one. */
+  /** Progress brought from another device (Cloud sync) replaces this one. */
   importProgress(save: SaveGame, text = S.settings.imported(save.career.level)): void {
     this.save = save;
     this.store();

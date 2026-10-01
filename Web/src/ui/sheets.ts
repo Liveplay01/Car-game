@@ -1,10 +1,9 @@
 import { h, icon } from './dom';
-import { ICONS, CRAZYGAMES_LOGO } from './icons';
-import type { Settings, SaveGame } from '../core/career';
+import { ICONS, CRAZYGAMES_LOGO, FANDOM_LOGO } from './icons';
+import type { Settings } from '../core/career';
 import type { PatchNote, PatchImpact } from '../present/patchNotes';
 import { LEGAL_DOCS, type LegalDoc, type LegalId } from '../present/legal';
 import type { License } from '../present/licenses';
-import { parseImport } from '../storage/save';
 import { inPortal, isInstalled, isIos } from '../storage/device';
 import { cloudEnabled } from '../net/cloud';
 
@@ -259,15 +258,24 @@ function linkRow(title: string, sub: string, onOpen: () => void): HTMLElement {
 /** The game's page on CrazyGames (Leo, 01.10.2026). Not shown inside CrazyGames itself. */
 const CRAZYGAMES_PAGE = 'https://www.crazygames.com/game/roundabout-timing';
 
-function crazyGamesRow(): HTMLElement {
+/** The community wiki on Fandom (Leo, 01.10.2026). */
+const WIKI_PAGE = 'https://roundabout.fandom.com/';
+
+/** A row that opens a page elsewhere, with the brand's mark in front. */
+function externalRow(href: string, logo: string, title: string, sub: string): HTMLElement {
   return h(
     'a',
-    { class: 'row row-link', href: CRAZYGAMES_PAGE, target: '_blank', rel: 'noopener' },
-    h('span', { class: 'row-logo', html: CRAZYGAMES_LOGO }),
-    h('div', { class: 'row-main' }, h('div', { class: 'row-title' }, 'Roundabout Timing on CrazyGames'), h('div', { class: 'row-sub' }, 'Our official page. Rate the game and share it.')),
+    { class: 'row row-link', href, target: '_blank', rel: 'noopener' },
+    h('span', { class: 'row-logo', html: logo }),
+    h('div', { class: 'row-main' }, h('div', { class: 'row-title' }, title), h('div', { class: 'row-sub' }, sub)),
     icon(ICONS.external),
   );
 }
+
+const crazyGamesRow = (): HTMLElement =>
+  externalRow(CRAZYGAMES_PAGE, CRAZYGAMES_LOGO, 'Roundabout Timing on CrazyGames', 'Our official page. Rate the game and share it.');
+
+const wikiRow = (): HTMLElement => externalRow(WIKI_PAGE, FANDOM_LOGO, 'Roundabout Timing Wiki', 'Guides, vehicles and tips from the community.');
 
 export interface SettingsActions {
   changed(settings: Settings): void;
@@ -277,8 +285,6 @@ export interface SettingsActions {
   /** Privacy Policy, Imprint or the open-source licenses, over the settings. */
   openLegal(page: LegalId | 'licenses'): void;
   reset(): void;
-  /** A save file from an earlier export (the export itself gave way to Cloud sync). */
-  importSave(save: SaveGame): void;
   /** Cloud sync (a sync code), over the settings. */
   openCloud(): void;
   install: (() => void) | null;
@@ -356,7 +362,7 @@ export function settingsSheet(layer: HTMLElement, s: Settings, actions: Settings
     }
   }
 
-  const progressList = progressRows(actions, () => close());
+  const progressList = progressRows(actions);
 
   const resetBtn = h('button', { class: 'btn block destructive' }, 'Reset progress');
   let armed = false;
@@ -423,6 +429,7 @@ export function settingsSheet(layer: HTMLElement, s: Settings, actions: Settings
         h('button', { class: 'btn', type: 'button', onclick: () => actions.openNotes() }, 'Open'),
       ),
       inPortal ? null : crazyGamesRow(),
+      wikiRow(),
     ),
     h(
       'p',
@@ -447,55 +454,12 @@ export function settingsSheet(layer: HTMLElement, s: Settings, actions: Settings
   return close;
 }
 
-/**
- * Cloud sync, and the import of a save file (Leo, 01.10.2026: Cloud sync replaced the export;
- * a file exported before still comes back in here).
- */
-function progressRows(actions: SettingsActions, closeSheet: () => void): HTMLElement {
-  const importSub = h('div', { class: 'row-sub' }, 'A file you exported earlier. Replaces the progress on this device.');
-  const importBtn = h('button', { class: 'btn', type: 'button' }, 'Import');
-  const picker = h('input', { type: 'file', accept: '.json,application/json', hidden: true, 'aria-hidden': 'true', tabindex: '-1' });
-  let pending: SaveGame | null = null;
-  const showPending = (save: SaveGame | null, error: string | null): void => {
-    pending = save;
-    importSub.classList.toggle('error', error !== null);
-    if (error !== null) {
-      importSub.textContent = error;
-      importBtn.textContent = 'Import';
-      importBtn.classList.remove('destructive');
-    } else if (save) {
-      const money = save.career.money.toLocaleString('en-US');
-      importSub.textContent = `Level ${save.career.level} · ${money} coins. Replace the progress on this device?`;
-      importBtn.textContent = 'Replace';
-      importBtn.classList.add('destructive');
-    }
-  };
-  picker.addEventListener('change', () => {
-    const chosen = picker.files?.[0];
-    picker.value = '';
-    if (!chosen) return;
-    chosen
-      .text()
-      .then((text) => {
-        const save = parseImport(text);
-        showPending(save, save ? null : 'That file is not a Roundabout Timing save.');
-      })
-      .catch(() => showPending(null, 'That file could not be read.'));
-  });
-  importBtn.addEventListener('click', () => {
-    if (!pending) {
-      picker.click();
-      return;
-    }
-    const save = pending;
-    closeSheet();
-    actions.importSave(save);
-  });
-
+/** Cloud sync (Leo, 01.10.2026: it replaced the export, so the import of a save file is gone too). */
+function progressRows(actions: SettingsActions): HTMLElement | null {
+  if (!cloudEnabled) return null;
   return h(
     'div',
     { class: 'list', style: 'margin-bottom:24px' },
-    cloudEnabled ? linkRow('Cloud sync', 'Keep your progress safe and move it to another device with a code.', () => actions.openCloud()) : null,
-    h('div', { class: 'row' }, h('div', { class: 'row-main' }, h('div', { class: 'row-title' }, 'Import a save file'), importSub), importBtn, picker),
+    linkRow('Cloud sync', 'Keep your progress safe and move it to another device with a code.', () => actions.openCloud()),
   );
 }

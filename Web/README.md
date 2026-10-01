@@ -97,8 +97,8 @@ Only in the browser version:
   odds and returns in the sheet behind "Odds" (LOOT.md, Casino). Its looks and rounds are a
   chunk of their own (`present/casinoLoader.ts`), loaded when the Shop opens with the casino
   unlocked; the Shop's money chip (`casinoWallet.ts`) works without it.
-- **Cloud sync** in Settings moves the progress to another device by code; "Import a save file"
-  still reads a file exported before the export gave way to it (01.10.2026).
+- **Cloud sync** in Settings moves the progress to another device by code (01.10.2026: export
+  and "Import a save file" are gone).
 - Tyre marks after a skilled merge, stereo placement of sounds, keyboard hints on desktop.
 
 ## Multiplayer
@@ -181,9 +181,8 @@ Cloud sync (Settings, `net/cloud.ts`) keeps an optional copy, live: a change goe
 and a game on screen looks every 10 s (and on coming back or online) whether another device moved
 on. Newer cloud progress replaces the save by itself when this device has nothing unsent, between
 shifts and not on a page; when both devices played, the player chooses. With a cloud copy the
-day's login income is booked after that first look. The file export is gone since
-01.10.2026; "Import a save file" still reads an old `car-game-save-<date>.json` back through the
-same checks, after showing what it replaces.
+day's login income is booked after that first look. The file export and the
+import of a save file are gone since 01.10.2026.
 
 **Big Screen** (Prestige ★5, `ui/backdrop.ts`): the player's own picture or video behind the
 roundabout, kept apart from the save under `carGame.backdrop.v1` (always plain `localStorage`,

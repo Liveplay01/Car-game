@@ -30,6 +30,8 @@ export const PATCH_NOTES: PatchNote[] = [
     title: 'Briefings, Feats, Big Screen, Cloud sync and the Classic',
     impact: 'major',
     items: [
+      'Settings no longer has "Import a save file": Cloud sync is the way to bring your progress to another device.',
+      'Settings now links to the Roundabout Timing Wiki on Fandom: guides, vehicles and tips from the community.',
       'Fixed: after a crash you could spam cars into the slowed traffic and fill the roundabout with your own cars for a free combo and Unlimited record. A car that has to brake its way in behind slow traffic now shows "Jammed · no points": it scores nothing and does not count as a car in Unlimited.',
       'Dead Centre and Tight Squeeze now explain on their start screen what a Perfect Input and a Tight Fit need: a Perfect Input is the middle of a medium gap, not a huge one.',
       'Motorbikes are red now, with a light helmet and handlebars: the dark ones were hard to see on the asphalt.',

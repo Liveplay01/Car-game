@@ -29,6 +29,14 @@ export const ICONS = {
 } as const;
 
 /**
+ * A Fandom mark for the link to the wiki (Settings): a bold white F on Fandom's pink, drawn
+ * here as simple shapes, not their official artwork.
+ */
+export const FANDOM_LOGO =
+  '<svg viewBox="0 0 120 120" aria-hidden="true"><rect width="120" height="120" rx="27" fill="#FA005A"/>' +
+  '<path fill="#fff" d="M38 26h46a8 8 0 0 1 0 16H56v10h22a8 8 0 0 1 0 16H56v18a9 9 0 0 1-18 0z"/></svg>';
+
+/**
  * The CrazyGames logo (their pinned-tab mark, imgs.crazygames.com/favicons) in white on their
  * purple, as their app icon. Only for the link to the game's page there (Settings).
  */
