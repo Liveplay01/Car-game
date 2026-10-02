@@ -985,6 +985,16 @@ test('Eight syndicate bosses take turns; a rematch is its own boss one round on;
   assert.equal(w.events.filter((e) => e.type === 'heistRecovered').length, 1);
 });
 
+test('the recovered heist is paid only with a completed shift: a boss level cannot be farmed by losing it', () => {
+  const world = new World(forLevel(baseConfig, 15, 1), 7, { startsOnFirstTap: false });
+  const heist = baseConfig.heistRecoveryBase + baseConfig.heistRecoveryPerLevel * 15;
+  world.score.money = 500 + heist;
+  world.score.heistMoney = heist;
+  world.score.bossBusted = true;
+  assert.equal(world.result('completed', 1).money, 500 + heist, 'completed: the heist is kept');
+  for (const outcome of ['struckOut', 'escaped', 'failed']) assert.equal(world.result(outcome, 1).money, 500, `${outcome}: the heist is gone, the rest stays`);
+});
+
 // MARK: Street Builder
 
 test('Street Builder moves a built arm or module for free, only to a free slot, never the player’s arm', () => {

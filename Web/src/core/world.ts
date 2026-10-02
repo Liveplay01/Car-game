@@ -1775,7 +1775,8 @@ export class World {
       policeCrashes: s.policeCrashes,
       takedowns: s.takedowns,
       transporters: s.transporters,
-      money: s.money,
+      // The recovered heist is only paid out with a completed shift: a boss level cannot be farmed by losing it.
+      money: outcome === 'completed' ? s.money : s.money - s.heistMoney,
       costs: s.costs,
       covered: s.covered,
       seed: this.seed,

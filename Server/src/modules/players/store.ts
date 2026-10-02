@@ -30,6 +30,8 @@ export const PLAYER_MIGRATIONS: readonly string[] = [
     created_at INTEGER NOT NULL,
     renamed_at INTEGER NOT NULL
   )`,
+  // The title the player wears in the game (an id like 'roadVeteran'; the game knows its name), shown next to the name on the boards.
+  'ALTER TABLE players ADD COLUMN title TEXT',
 ];
 
 /** Thrown when another player already has the name (their `name_key` is the same). */
@@ -85,6 +87,15 @@ export class PlayerStore {
       if (isUniqueViolation(error)) throw new NameTaken();
       throw error;
     }
+  }
+
+  setTitle(id: string, title: string | null): void {
+    this.db.prepare('UPDATE players SET title = ? WHERE id = ?').run(title, id);
+  }
+
+  titleOf(id: string): string | null {
+    const row = this.db.prepare('SELECT title FROM players WHERE id = ?').get(id) as { title: string | null } | undefined;
+    return row?.title ?? null;
   }
 
   setBanned(id: string, banned: boolean): boolean {

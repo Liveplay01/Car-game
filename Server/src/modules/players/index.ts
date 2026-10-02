@@ -16,6 +16,8 @@ import { NameTaken, PLAYER_MIGRATIONS, PlayerStore, type Player } from './store.
 export type PlayerEnv = { Variables: AppEnv['Variables'] & { player: Player } };
 
 const RENAME_EVERY_MS = 10_000;
+/** A title id as the game writes it: letters and digits, like `roadVeteran`. */
+const TITLE_ID = /^[A-Za-z][A-Za-z0-9]{0,31}$/;
 
 function bearer(c: Context): string | null {
   const match = /^Bearer (\S+)$/.exec(c.req.header('authorization') ?? '');
@@ -82,6 +84,14 @@ export function playersModule(): ServerModule {
           throw error instanceof NameTaken ? nameTaken() : error;
         }
         return c.json({ player: publicPlayer({ id: player.id, name: checked.name }) });
+      });
+
+      // The worn title: an id the game knows how to name, or null for none. Only its shape is checked (Leo, 02.10.2026: plausibility only).
+      me.put('/title', rateLimit<PlayerEnv>({ max: 30, windowMs: 60_000 }, (c) => c.get('player').id, ctx.now), async (c) => {
+        const { title } = await readJson(c);
+        if (title !== null && !(typeof title === 'string' && TITLE_ID.test(title))) throw new ApiError(422, 'invalid_title', 'That title is not valid.');
+        store.setTitle(c.get('player').id, title as string | null);
+        return c.json({ title });
       });
 
       // Right to erasure: the player and everything that hangs off them is gone.

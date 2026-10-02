@@ -43,7 +43,7 @@ export function leaderboardModule(): ServerModule {
         c.header('Vary', 'Authorization');
         return c.json({
           board: describe(board),
-          entries: scores.top(board.id, period, limit).map((e) => ({ rank: e.rank, name: e.name, score: e.score, meta: e.meta, at: e.achievedAt, me: e.playerId === me?.id })),
+          entries: scores.top(board.id, period, limit).map((e) => ({ rank: e.rank, name: e.name, title: e.title, score: e.score, meta: e.meta, at: e.achievedAt, me: e.playerId === me?.id })),
           me: own && { rank: own.rank, score: own.score, meta: own.meta },
         });
       });

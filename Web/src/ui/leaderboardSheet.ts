@@ -21,8 +21,9 @@ import {
 } from '../net/leaderboard';
 import { NAME_MAX } from '../net/room';
 import { loadPlayerName, savePlayerName } from '../storage/profile';
-import { Fmt } from '../present/strings';
+import { Fmt, S } from '../present/strings';
 import { baseConfig } from '../core/config';
+import { TITLES, type TitleId } from '../core/elite';
 
 /**
  * Progress → the rank chip: the leaderboards. No sign-up (Leo, 30.09.2026): the player only
@@ -98,9 +99,19 @@ function entryRow(board: BoardId, e: BoardEntry | (Omit<BoardEntry, 'name'> & { 
     'div',
     { class: `row board-row${e.me ? ' me' : ''}${e.rank <= 3 ? ' podium' : ''}`, role: 'listitem' },
     h('span', { class: 'board-rank', 'aria-label': `Rank ${e.rank}` }, Fmt.number(e.rank)),
-    h('div', { class: 'row-main' }, h('div', { class: 'row-title board-name' }, h('span', {}, e.name), e.me ? h('span', { class: 'you-tag' }, 'You') : null)),
+    h(
+      'div',
+      { class: 'row-main' },
+      h('div', { class: 'row-title board-name' }, h('span', {}, e.name), e.me ? h('span', { class: 'you-tag' }, 'You') : null),
+      titleName(e.title) ? h('div', { class: 'row-sub board-title' }, titleName(e.title)) : null,
+    ),
     h('span', { class: 'row-value board-value' }, ...valueOf(board, e, onStar)),
   );
+}
+
+/** The name of a title the service sent, or null for none (or one this version of the game does not know). */
+function titleName(id: string | null | undefined): string | null {
+  return id && TITLES.includes(id as TitleId) ? S.titles.name(id as TitleId) : null;
 }
 
 /** Grey lines where the list will be, so the sheet does not jump when it arrives. */
@@ -357,7 +368,7 @@ export function leaderboardSheet(layer: HTMLElement, actions: LeaderboardActions
     // Further down than the top list: a gap, then your own line.
     if (view.me && account && !view.entries.some((e) => e.me)) {
       rows.push(h('div', { class: 'row board-gap', 'aria-hidden': 'true' }, '···'));
-      rows.push(entryRow(board, { rank: view.me.rank, name: account.name, score: view.me.score, meta: view.me.meta, me: true }, openInfo));
+      rows.push(entryRow(board, { rank: view.me.rank, name: account.name, title: actions.records().title, score: view.me.score, meta: view.me.meta, me: true }, openInfo));
     }
     if (rows.length === 0) {
       const empty = scope === 'friends' ? 'Add a friend with their code to compare your records.' : (BOARDS.find((b) => b.id === board)?.empty ?? '');

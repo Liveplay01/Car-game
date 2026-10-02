@@ -30,6 +30,8 @@ export const PATCH_NOTES: PatchNote[] = [
     title: 'New bosses, Ascension trials, Unlimited stages, Mastery IV and V, and more for the late game',
     impact: 'major',
     items: [
+      'Fixed: the money from a taken-down boss is only yours when you finish the level. Lose the round after the arrest and the recovered heist is gone, so a boss level can no longer be replayed for cash.',
+      'The leaderboards show the title each player wears under their name. Wear one under Progress → Records → Elite.',
       'Four new syndicate bosses from Level 75: the Twins, the Decoy, the Smuggler and the Kingpin. Each one has a rematch, and a new title waits for all eight.',
       'Ascension: one very hard trial for every Prestige rank, ★1 to ★10, under Progress → Goals. The last one gives the title Summit.',
       'Unlimited no longer stays the same after a few minutes: gas tankers join, night falls, a storm rolls in, military trucks come, then Overtime. New skins at 250, 500 and 1,000 cars in one run.',

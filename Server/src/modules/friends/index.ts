@@ -119,7 +119,7 @@ export function friendsModule(): ServerModule {
         const board = boardById(c.req.param('board'));
         const period = board.period(ctx.now());
         const ids = [me.id, ...friends.list(me.id).map((f) => f.id)];
-        const entries = scores.among(board.id, period, ids).map((e) => ({ rank: e.rank, name: e.name, score: e.score, meta: e.meta, at: e.achievedAt, me: e.playerId === me.id }));
+        const entries = scores.among(board.id, period, ids).map((e) => ({ rank: e.rank, name: e.name, title: e.title, score: e.score, meta: e.meta, at: e.achievedAt, me: e.playerId === me.id }));
         const own = entries.find((e) => e.me);
         c.header('Cache-Control', 'private, no-store');
         return c.json({ board: { id: board.id, title: board.title, period }, entries, me: own ? { rank: own.rank, score: own.score, meta: own.meta } : null, friends: ids.length - 1 });

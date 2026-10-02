@@ -31,6 +31,8 @@ export class ScoreBoard {
   bossBusted = false;
   /** Bosses caught this shift: the twins need two before the boss counts as busted. */
   bossesCaught = 0;
+  /** The recovered heist, already inside `money`: it only stays when the shift is completed (`World.result`). */
+  heistMoney = 0;
   /** Ambulances that got through with a clear road. */
   ambulances = 0;
   /** Close shaves past a motorbike. */

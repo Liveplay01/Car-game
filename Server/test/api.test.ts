@@ -121,6 +121,23 @@ test('a score needs a token and only a better one replaces the old', async () =>
   assert.deepEqual(better.json.best.meta, { cars: 55 });
 });
 
+test('the worn title shows next to the name on the boards and can be taken off', async () => {
+  const { call, join } = setup();
+  const a = await join('Anna');
+  const b = await join('Ben');
+  await call('PUT', '/v1/boards/unlimited/score', { token: a.token, body: { score: 3000, cars: 30 } });
+  await call('PUT', '/v1/boards/unlimited/score', { token: b.token, body: { score: 2000, cars: 20 } });
+  assert.equal((await call('PUT', '/v1/me/title', { token: a.token, body: { title: 'roadVeteran' } })).status, 200);
+  const list = await call('GET', '/v1/boards/unlimited');
+  assert.deepEqual(list.json.entries.map((e: { name: string; title: string | null }) => [e.name, e.title]), [['Anna', 'roadVeteran'], ['Ben', null]]);
+  assert.equal((await call('PUT', '/v1/me/title', { token: a.token, body: { title: null } })).status, 200);
+  assert.equal((await call('GET', '/v1/boards/unlimited')).json.entries[0].title, null);
+  // Only the shape is checked, and a token is needed.
+  assert.equal((await call('PUT', '/v1/me/title', { token: a.token, body: { title: '<b>x</b>' } })).status, 422);
+  assert.equal((await call('PUT', '/v1/me/title', { token: a.token, body: {} })).status, 422);
+  assert.equal((await call('PUT', '/v1/me/title', { body: { title: 'roadVeteran' } })).status, 401);
+});
+
 test('the list is ranked, ties go to whoever was first, and "me" is marked', async () => {
   const { call, join, clock } = setup();
   const a = await join('Anna');

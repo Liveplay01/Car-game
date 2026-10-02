@@ -32,6 +32,8 @@ export interface Account {
 export interface BoardEntry {
   rank: number;
   name: string;
+  /** The title the player wears (an id of `core/elite.ts`, which the sheet names), or null. */
+  title: string | null;
   score: number;
   /** Facts next to the score: `{ level, prestige }` on shift-level, `{ cars }` on unlimited. */
   meta: Record<string, number>;
@@ -283,6 +285,8 @@ export interface Records {
   unlimitedBest: number;
   /** The most cars sent in an Unlimited run (the plausibility check wants cars for a score). */
   unlimitedCars: number;
+  /** The title worn (`career.title`): shown next to the name on the boards. */
+  title: string | null;
 }
 
 /**
@@ -292,6 +296,20 @@ export interface Records {
 const confirmed: Partial<Record<BoardId, number>> = {};
 let syncing: Promise<void> | null = null;
 let retryAt = 0;
+/** The title the service has for this account; undefined while unknown (a start, a new account), so the next save sends it. */
+let titleSent: string | null | undefined;
+onAccountChange(() => {
+  titleSent = undefined;
+});
+
+/** Tells the service which title the player wears (null: none). */
+async function putTitle(account: Account, title: string | null): Promise<void> {
+  try {
+    await request<unknown>('PUT', '/v1/me/title', { token: account.token, body: { title } });
+  } catch (error) {
+    forgetIfRefused(error);
+  }
+}
 
 /** Ranked as the service ranks it (`Server/src/modules/leaderboard/boards.ts`): Prestige first. */
 const levelScore = (r: Records): number => r.prestige * 1000 + r.level;
@@ -308,11 +326,13 @@ function due(r: Records): [BoardId, Record<string, number>, number][] {
  * in the way of play (no account, offline or a failed send only means: later).
  */
 export function syncScores(r: Records): Promise<void> {
-  if (!leaderboardEnabled || !loadAccount()) return Promise.resolve();
+  const account = loadAccount();
+  if (!leaderboardEnabled || !account) return Promise.resolve();
   if (syncing) return syncing;
   if (Date.now() < retryAt) return Promise.resolve();
   const work = due(r);
-  if (work.length === 0) return Promise.resolve();
+  const titleDue = titleSent !== r.title;
+  if (work.length === 0 && !titleDue) return Promise.resolve();
   syncing = (async () => {
     try {
       for (const [board, body, value] of work) {
@@ -326,6 +346,11 @@ export function syncScores(r: Records): Promise<void> {
           if (error instanceof LeaderboardError && error.status === 422) confirmed[board] = value;
           else throw error;
         }
+      }
+      // After the scores: a service without titles yet must not hold a score back.
+      if (titleDue) {
+        await putTitle(account, r.title);
+        titleSent = r.title;
       }
     } catch {
       retryAt = Date.now() + RETRY_MS;

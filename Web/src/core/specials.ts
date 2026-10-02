@@ -131,6 +131,7 @@ export function criminalCaught(w: World, criminalId: number, policeId: number, p
     }
     const amount = c.heistRecoveryBase + c.heistRecoveryPerLevel * c.level;
     w.score.money += amount;
+    w.score.heistMoney += amount;
     w.score.bossBusted = true;
     w.escortsDue = null;
     w.events.push({ type: 'heistRecovered', vehicle: criminalId, point, time: now, amount });

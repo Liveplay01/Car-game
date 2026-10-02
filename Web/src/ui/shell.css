@@ -2020,6 +2020,12 @@ a.row-link {
   flex: none;
 }
 
+.board-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .sheet .board-value {
   color: var(--primary);
   font-size: 15px;

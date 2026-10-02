@@ -24,6 +24,8 @@ export interface Entry {
 export interface ListedEntry extends Entry {
   playerId: string;
   name: string;
+  /** The title the player wears, or null. */
+  title: string | null;
 }
 
 interface EntryRow {
@@ -33,6 +35,7 @@ interface EntryRow {
   achieved_at: number;
   player_id: string;
   name: string;
+  title: string | null;
 }
 
 const parseMeta = (text: string): Record<string, number> => {
@@ -43,9 +46,11 @@ const parseMeta = (text: string): Record<string, number> => {
   }
 };
 
+const listed = (r: EntryRow): ListedEntry => ({ rank: r.rank, playerId: r.player_id, name: r.name, title: r.title, score: r.score, meta: parseMeta(r.meta), achievedAt: r.achieved_at });
+
 /** Blocked players neither show up nor take a rank. */
 const RANKED = `
-  SELECT s.player_id, p.name, s.score, s.meta, s.achieved_at,
+  SELECT s.player_id, p.name, p.title, s.score, s.meta, s.achieved_at,
          ROW_NUMBER() OVER (ORDER BY s.score DESC, s.achieved_at ASC, s.player_id ASC) AS rank
   FROM scores s JOIN players p ON p.id = s.player_id
   WHERE s.board = ? AND s.period = ? AND p.banned = 0`;
@@ -72,7 +77,7 @@ export class ScoreStore {
 
   top(board: string, period: string, limit: number): ListedEntry[] {
     const rows = this.db.prepare(`SELECT * FROM (${RANKED}) ORDER BY rank LIMIT ?`).all(board, period, limit) as unknown as EntryRow[];
-    return rows.map((r) => ({ rank: r.rank, playerId: r.player_id, name: r.name, score: r.score, meta: parseMeta(r.meta), achievedAt: r.achieved_at }));
+    return rows.map(listed);
   }
 
   /** The same ranking among just these players (a friends list); ranks count only them. */
@@ -80,7 +85,7 @@ export class ScoreStore {
     if (playerIds.length === 0) return [];
     const marks = playerIds.map(() => '?').join(', ');
     const rows = this.db.prepare(`SELECT * FROM (${RANKED} AND s.player_id IN (${marks})) ORDER BY rank`).all(board, period, ...playerIds) as unknown as EntryRow[];
-    return rows.map((r) => ({ rank: r.rank, playerId: r.player_id, name: r.name, score: r.score, meta: parseMeta(r.meta), achievedAt: r.achieved_at }));
+    return rows.map(listed);
   }
 
   /** The player's own place, even far below the top list. Null without a score. */
