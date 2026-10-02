@@ -258,6 +258,9 @@ function linkRow(title: string, sub: string, onOpen: () => void): HTMLElement {
 /** The game's page on CrazyGames (Leo, 01.10.2026). Not shown inside CrazyGames itself. */
 const CRAZYGAMES_PAGE = 'https://www.crazygames.com/game/roundabout-timing';
 
+/** The game's homepage (Leo, 02.10.2026). Not shown inside CrazyGames, which keeps players on its own site. */
+const WEBSITE_PAGE = 'https://timing.love/';
+
 /** The community wiki on Fandom (Leo, 01.10.2026). */
 const WIKI_PAGE = 'https://roundabout.fandom.com/';
 
@@ -274,6 +277,9 @@ function externalRow(href: string, logo: string, title: string, sub: string): HT
 
 const crazyGamesRow = (): HTMLElement =>
   externalRow(CRAZYGAMES_PAGE, CRAZYGAMES_LOGO, 'Roundabout Timing on CrazyGames', 'Our official page. Rate the game and share it.');
+
+const websiteRow = (): HTMLElement =>
+  externalRow(WEBSITE_PAGE, '<img src="/icons/icon-192.png" alt="" width="30" height="30" decoding="async" />', 'Roundabout Timing Website', 'timing.love: the game, a trailer and the FAQ.');
 
 const wikiRow = (): HTMLElement => externalRow(WIKI_PAGE, FANDOM_LOGO, 'Roundabout Timing Wiki', 'Guides, vehicles and tips from the community.');
 
@@ -429,6 +435,7 @@ export function settingsSheet(layer: HTMLElement, s: Settings, actions: Settings
         h('button', { class: 'btn', type: 'button', onclick: () => actions.openNotes() }, 'Open'),
       ),
       inPortal || inPlayStore ? null : crazyGamesRow(),
+      inPortal ? null : websiteRow(),
       wikiRow(),
     ),
     h(

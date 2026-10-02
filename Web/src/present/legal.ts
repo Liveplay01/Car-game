@@ -15,7 +15,7 @@ export const OPERATOR = {
   street: 'Roonstraße 44',
   city: '42115 Wuppertal',
   country: 'Germany',
-  email: 'leonard@suhrreal.de',
+  email: 'support@timing.love',
 };
 
 /** Who runs the server the game is delivered from (Coolify's machine), and where. */

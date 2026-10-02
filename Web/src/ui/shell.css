@@ -399,10 +399,15 @@ a.row-link {
   height: 30px;
 }
 
-.row-logo svg {
+.row-logo svg,
+.row-logo img {
   display: block;
   width: 100%;
   height: 100%;
+}
+
+.row-logo img {
+  border-radius: 7px;
 }
 
 /* Privacy Policy, Imprint, Licenses: plain reading text. */
