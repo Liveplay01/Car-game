@@ -1,0 +1,13 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "dev.gustaff.roundabout",
+      "sha256_cert_fingerprints": [
+        "1A:8B:96:4B:0A:F5:04:63:95:8E:DE:FE:BA:96:8F:9C:E5:F7:FB:0E:A2:6C:87:43:E4:81:3C:80:6C:17:29:AB",
+        "8C:9E:49:CE:A4:3A:04:15:CF:52:D6:D7:17:F0:8C:29:C9:A3:83:F1:F2:62:4D:C8:13:E9:4F:91:A9:07:D3:01"
+      ]
+    }
+  }
+]
