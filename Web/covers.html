@@ -3,8 +3,8 @@
   Store covers (CrazyGames asks for 1920×1080, 800×1200 and 800×800): a real shift, played by
   the careful bot and drawn by the game's own renderer, the title on the roundabout's island.
   Dev server only (npm run dev, then /covers.html).
-  ?size=landscape|portrait|square  ?theme=sand  ?level=18  ?seed=14  ?t=10.51 (seconds played)
-  ?zoom=1.05 (bigger = closer)  ?fx=0.5&fy=0.5 (where the ring sits)  ?title=0 (the scene alone)
+  ?size=landscape|portrait|square|feature  ?theme=sand  ?level=18  ?seed=14  ?t=10.51 (seconds played)
+  ?zoom=1.05 (bigger = closer)  ?fx=0.5&fy=0.5 (where the ring sits)  ?title=0 (the scene alone)  ?scrim=0.7 (dark fade on the left)
   Save each by screenshotting #cover at its exact size (Playwright); the last set is in ../Marketing/covers/.
 -->
 <html lang="en">
@@ -33,6 +33,7 @@
         color: #fff;
         text-shadow: 0 0.05em 0 rgba(0, 0, 0, 0.45);
       }
+      #scrim { position: absolute; inset: 0; pointer-events: none; }
       .title span { display: block; }
       .title .accent { color: #ffd23f; }
     </style>
@@ -40,6 +41,7 @@
   <body>
     <div id="cover">
       <canvas id="scene"></canvas>
+      <div id="scrim" hidden></div>
       <h1 class="title" id="title"><span>Roundabout</span><span class="accent">Timing</span></h1>
     </div>
     <script type="module">
@@ -56,7 +58,7 @@
       import { v } from '/src/core/vec2.ts';
 
       const params = new URLSearchParams(location.search);
-      const SIZES = { landscape: [1920, 1080], portrait: [800, 1200], square: [800, 800] };
+      const SIZES = { landscape: [1920, 1080], portrait: [800, 1200], square: [800, 800], feature: [1024, 500] };
       const kind = params.get('size') ?? 'landscape';
       const [W, H] = SIZES[kind];
       const theme = params.get('theme') ?? 'sand';
@@ -80,6 +82,8 @@
         landscape: { focus: v(W * 0.5, H * 0.5), reach: H * 0.5, zoom: 1.08 },
         portrait: { focus: v(W * 0.5, H * 0.5), reach: W * 0.5, zoom: 1.02 },
         square: { focus: v(W * 0.5, H * 0.5), reach: W * 0.5, zoom: 1.02 },
+        // Google Play's feature graphic: the ring on the right, the name on the calm left.
+        feature: { focus: v(W * 0.74, H * 0.5), reach: H * 0.62, zoom: 1.0 },
       }[kind];
       // ?fx=0.7&fy=0.45 moves the ring (fractions of the cover).
       if (params.has('fx')) LAYOUT.focus = v(W * Number(params.get('fx')), LAYOUT.focus.y);
@@ -113,9 +117,16 @@
       // The title sits on the roundabout's island: the traffic circles the name.
       const title = document.getElementById('title');
       if (params.get('title') === '0') title.hidden = true;
-      title.style.left = `${LAYOUT.focus.x}px`;
-      title.style.top = `${LAYOUT.focus.y}px`;
-      title.style.fontSize = `${Math.round(R * scale * 0.23)}px`;
+      // ?scrim=0.6: a dark fade from the left edge, so the name reads on bright ground (feature graphic).
+      if (params.has('scrim')) {
+        const scrim = document.getElementById('scrim');
+        scrim.hidden = false;
+        scrim.style.background = `linear-gradient(90deg, rgba(11,13,16,${params.get('scrim')}) 0%, rgba(11,13,16,${params.get('scrim')}) 28%, rgba(11,13,16,0) 62%)`;
+      }
+      // The feature graphic moves the name off the island: ?tx=0.26 and ?ty=0.7 (fractions of the width and height), ?ts=96 (px).
+      title.style.left = `${params.has('tx') ? W * Number(params.get('tx')) : LAYOUT.focus.x}px`;
+      title.style.top = `${params.has('ty') ? H * Number(params.get('ty')) : LAYOUT.focus.y}px`;
+      title.style.fontSize = `${params.has('ts') ? Number(params.get('ts')) : Math.round(R * scale * 0.23)}px`;
       // ?video=1: the page is driven from outside (scripts: window.cover).
       let shift = 0;
       let offset = 0; // seconds played in the shifts before this one
