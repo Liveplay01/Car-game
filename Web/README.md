@@ -272,6 +272,25 @@ In the submission form, Progress Save must be "Yes, using the Data Module".
 Test locally: `npm run build`, serve `dist/` without the CSP and open `/?crazygames`
 (on localhost the SDK runs in its `local` mode).
 
+## Google Play
+
+The Play Store app is a Trusted Web Activity (made with PWABuilder or Bubblewrap): a small
+Android wrapper that opens `https://game.gustaff.dev/?googleplaystore` in Chrome, full screen.
+No separate build: every deploy reaches the app at once, and it shares save, offline mode and
+service worker with the browser game. `inPlayStore` (`src/storage/device.ts`) recognises the app
+by the query or Chrome's `android-app://` referrer and keeps that for the tab; the app shows no
+install tip or install row and no link to CrazyGames. Ads (AdSense) run as on the website.
+The query gets the default Content-Security-Policy.
+
+- **Start URL in the wrapper:** `/?googleplaystore`. Display fullscreen, orientation portrait.
+- **Digital Asset Links:** `public/.well-known/assetlinks.json` with the package name and the
+  SHA-256 fingerprints of the **app signing key from Play** (Play Console → App integrity) and of
+  the upload key. Without it the app shows an address bar. nginx answers a missing file with a 404,
+  never `index.html`. After a deploy, check with Google's Statement List tester; Cloudflare's bot
+  protection must let Google's fetcher through.
+- **Deleting data** (Data safety form): `https://game.gustaff.dev/privacy` → "Deleting your data".
+- `iarc_rating_id` goes into the manifest once Play has issued the rating.
+
 ## Google AdSense
 
 `src/ui/ads.ts` adds the AdSense tag once the game is on screen: production build only, and

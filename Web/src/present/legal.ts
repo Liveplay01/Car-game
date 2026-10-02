@@ -24,7 +24,7 @@ export const HOSTING = {
   location: 'Germany',
 };
 
-export const LEGAL_UPDATED = '1 October 2026';
+export const LEGAL_UPDATED = '2 October 2026';
 
 export const GAME_NAME = 'Roundabout Timing';
 
@@ -159,6 +159,20 @@ export const LEGAL_DOCS: LegalDoc[] = [
         ],
         after: ['Google is responsible for its own use of the data. How it uses data from sites that use its services, and how to turn personalised ads off:'],
         link: ['How Google uses data from partner sites', 'https://policies.google.com/technologies/partner-sites'],
+      },
+      {
+        heading: 'The Google Play app',
+        paragraphs: [
+          'The app from Google Play opens this same game at game.gustaff.dev in Chrome (or another browser on your phone), full screen. Everything in this policy applies to it the same way, including the ads; the app itself collects nothing more. Google (Google Ireland Limited) delivers the app and its updates; its privacy policy applies to Google Play.',
+        ],
+        link: ['Google Privacy Policy', 'https://policies.google.com/privacy'],
+      },
+      {
+        heading: 'Deleting your data',
+        paragraphs: [
+          "You have no account with us: your progress lives on your device. Deleting the game's data in your browser, or uninstalling the app and clearing Chrome's data for game.gustaff.dev, removes it from your device.",
+          'What our server keeps exists only if you chose it, and you can delete it yourself in the game at any time: your name, scores, friend code and friends list with Progress → Ranks → Remove me from the leaderboard; your cloud copy with Settings → Cloud sync → Delete the cloud copy. Both are gone for good at once. If you can no longer open the game, write to the email address above with your name on the leaderboard or your sync code, and we delete it within 30 days.',
+        ],
       },
       {
         heading: 'Playing on CrazyGames',

@@ -11,6 +11,27 @@
  */
 export const inPortal = typeof location !== 'undefined' && new URLSearchParams(location.search).has('crazygames');
 
+const PLAY_KEY = 'carGame.googlePlay';
+
+/**
+ * Started from the Google Play app (Leo, 02.10.2026): a Trusted Web Activity that opens the
+ * normal address with `?googleplaystore` in Chrome, full screen. It is the browser game with the
+ * same save, offline mode and updates; only what makes no sense in an installed store app is
+ * left out (installing, the link to CrazyGames). Chrome names the app as the referrer
+ * (`android-app://…`), and this tab remembers it, so a reload without the query stays the app.
+ */
+export const inPlayStore = ((): boolean => {
+  if (typeof location === 'undefined' || inPortal) return false;
+  let found = new URLSearchParams(location.search).has('googleplaystore') || document.referrer.startsWith('android-app://');
+  try {
+    if (found) sessionStorage.setItem(PLAY_KEY, '1');
+    else found = sessionStorage.getItem(PLAY_KEY) === '1';
+  } catch {
+    /* no storage: the query alone decides */
+  }
+  return found;
+})();
+
 /** iPhone or iPad (iPadOS says it is a Mac, but has touch). */
 export const isIos = (): boolean =>
   /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);

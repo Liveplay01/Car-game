@@ -12,7 +12,7 @@ import { legalDoc } from '../present/legal';
 import { PATCH_NOTES } from '../present/patchNotes';
 import { PhotoView } from './photo';
 import { reportGameplay } from './crazygames';
-import { inPortal, isInstalled, isIos, isIpad, keepStorage, renewStorage } from '../storage/device';
+import { inPlayStore, inPortal, isInstalled, isIos, isIpad, keepStorage, renewStorage } from '../storage/device';
 import type { Hint } from '../core/career';
 import { decodeChallenge, type ChallengeSpec } from '../core/challenge';
 import { knownShortLink, shortLink } from '../net/challengeLink';
@@ -548,13 +548,13 @@ export class Shell {
   /**
    * A one-time hint came due. Level 5: ask the browser to keep the save and recommend the Home
    * Screen (not when installed already). Level 12: recommend Cloud sync while this device has no
-   * cloud copy (Leo, 01.10.2026: it replaced the export). On a portal neither: nothing to
-   * install, and the portal's login keeps the save.
+   * cloud copy (Leo, 01.10.2026: it replaced the export). No install tip on a portal (nothing to
+   * install, the portal's login keeps the save) or in the Google Play app (installed already).
    */
   private async giveHint(hint: Hint): Promise<void> {
     if (hint === 'install') {
       await keepStorage();
-      if (isInstalled() || inPortal) return;
+      if (isInstalled() || inPortal || inPlayStore) return;
       // iPhone and iPad: the tip takes the screen until it is confirmed.
       if (isIos()) installDialog(this.layers, isIpad(), () => undefined);
       else if (this.installPrompt) this.session.announce(window.matchMedia('(pointer: coarse)').matches ? S.hints.homeScreen : S.hints.install);

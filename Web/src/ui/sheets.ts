@@ -4,7 +4,7 @@ import type { Settings } from '../core/career';
 import type { PatchNote, PatchImpact } from '../present/patchNotes';
 import { LEGAL_DOCS, type LegalDoc, type LegalId } from '../present/legal';
 import type { License } from '../present/licenses';
-import { inPortal, isInstalled, isIos } from '../storage/device';
+import { inPlayStore, inPortal, isInstalled, isIos } from '../storage/device';
 import { cloudEnabled } from '../net/cloud';
 
 interface OpenSheet {
@@ -338,7 +338,7 @@ export function settingsSheet(layer: HTMLElement, s: Settings, actions: Settings
   setMotion(s.reduceMotion);
 
   let installRow: HTMLElement | null = null;
-  if (!isInstalled() && !inPortal) {
+  if (!isInstalled() && !inPortal && !inPlayStore) {
     if (actions.install) {
       installRow = h(
         'div',
@@ -428,7 +428,7 @@ export function settingsSheet(layer: HTMLElement, s: Settings, actions: Settings
         actions.notesUnread ? h('span', { class: 'new-pill' }, 'New') : null,
         h('button', { class: 'btn', type: 'button', onclick: () => actions.openNotes() }, 'Open'),
       ),
-      inPortal ? null : crazyGamesRow(),
+      inPortal || inPlayStore ? null : crazyGamesRow(),
       wikiRow(),
     ),
     h(
