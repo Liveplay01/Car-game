@@ -61,7 +61,7 @@ src/
               messages and their checks (`messages.ts`: every field read, floods dropped);
               PeerJS loads only when a room opens
   ui/         the DOM shell: canvas, native-like tab bar, settings sheet, multiplayer lobby
-public/audio/ sounds (35) and music stems (7) as AAC
+public/audio/ sounds (44) and music stems (7) as AAC
 icon/        the icon master (make_icon.py → AppIcon.png)
 scripts/sim.mjs   headless balancing bots
 ```
@@ -227,6 +227,12 @@ Cloud sync.
   only when nothing would be lost (no shift running, no match or lobby, no photo); afterwards
   "Updated · See what's new in Settings" if there are unread patch notes.
 - iOS: Safari → Share → "Add to Home Screen". Android/Chrome: Settings → Install.
+- **App shortcuts** (a long press on the app icon; manifest `shortcuts`, icons from
+  `icon/make_shortcut_icons.py`): Daily Shift (`/?start=shift`, the Shift page, which brings the
+  Daily Shift when it is open), Unlimited (`/?start=unlimited`) and Multiplayer
+  (`/?start=multiplayer`, opens the lobby). `ui/shell.ts` (`readStartLink`) reads `start` once and
+  takes it out of the address; before the tutorial is done it is ignored. Installed PWAs pick
+  them up from the manifest; the Play app only with its next wrapper build (Google Play below).
 - Link previews (`index.html`, Open Graph): `public/og-image.jpg`, the CrazyGames landscape
   cover (`../Marketing/covers`) cut to 1200×630. Not precached: only link previews load it.
   Challenge links keep their own picture with the score (`Server/`, `/c/:id/preview.png`).
@@ -258,6 +264,19 @@ Exposes** to `5050` and add the domain; Coolify's proxy handles HTTPS. Every pus
 HTTPS matters: the service worker (offline play, install prompt) only works on
 `https://` or `localhost`.
 
+**When something goes wrong, the player still sees the game's look:**
+- **404:** the game is `/` (plus `/privacy`, `/imprint`); every other address gets
+  `public/404.html` ("This road is closed", a roundabout with one arm closed, a button back) with
+  a real 404 status (`error_page` in `nginx.conf`). Self-contained: no bundle, no script. The
+  service worker passes a 404 through instead of the cached game; a server that is down (5xx) or
+  no network still gets the cached game.
+- **The game does not start:** `index.html` holds a boot screen (the car circling the ring) that
+  `main.ts` fades out once the game is on screen. If that never happens, it turns into "The
+  roundabout did not start" with *Try again* after 20 s, by CSS alone (the CSP allows no inline
+  script); an error during the start shows it at once.
+- Not covered: a first visit while the container is down. Then Coolify's proxy answers before
+  nginx does (its own error page, configurable in Coolify).
+
 ## CrazyGames
 
 CrazyGames embeds the normal address with `?crazygames` added: `https://<domain>/?crazygames`.
@@ -268,6 +287,16 @@ is read): in the cloud for a logged-in player, in the browser for a guest; a sav
 that browser is copied over once. The SDK also hears `loadingStop` and `gameplayStart/Stop`.
 No service worker, no install or export hints there. Without the SDK (ad blocker, 6 s timeout)
 the game saves in `localStorage` as usual. Every other visit is the plain browser game.
+Since 02.10.2026 the game also uses (`src/ui/crazygames.ts`, names checked against the SDK v3 docs):
+- **Rewarded ad** (`ad.requestAd('rewarded')`) for the Shop's free Standard Chest, still three a
+  day: the chest only on `adFinished`, the sound suspended from `adStarted` until it ends; a cooldown,
+  an ad blocker or no ad says so and pays nothing; in CrazyGames' Basic Launch (no ads yet) the
+  placeholder plays as before. Everywhere else the placeholder ad stays. No
+  midgame ads: the shifts flow into each other without a break (IDEA.md principle 11).
+- **`happytime()`** for a boss busted, a completed Legendary Shift, a new Unlimited or Mayhem
+  record and a Prestige, at most once every 90 s ("use sparingly").
+- **Invite links** (`game.inviteLink({ room })`): a multiplayer invite opens the game on CrazyGames,
+  and `getInviteParam('room')` joins the room on arrival, like `#join=` elsewhere.
 In the submission form, Progress Save must be "Yes, using the Data Module".
 Test locally: `npm run build`, serve `dist/` without the CSP and open `/?crazygames`
 (on localhost the SDK runs in its `local` mode).
@@ -290,6 +319,10 @@ The query gets the default Content-Security-Policy.
   protection must let Google's fetcher through.
 - **Deleting data** (Data safety form): `https://game.gustaff.dev/privacy` → "Deleting your data".
 - `iarc_rating_id` goes into the manifest once Play has issued the rating.
+- **App shortcuts** come from the manifest's `shortcuts` when the wrapper is built (PWABuilder or
+  Bubblewrap): a change there needs a new wrapper build and release. Home-screen widgets would be
+  native Android code in the wrapper and could not read the game's save (it lives in Chrome's
+  storage): not planned.
 
 ## Google AdSense
 

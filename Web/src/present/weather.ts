@@ -1,4 +1,5 @@
 import type { World } from '../core/world';
+import type { Arm } from '../core/roundabout';
 import { type Weather, weatherSeverity } from '../core/config';
 import { type Vec2, v, add, mul, normalize, fromAngle, wrap } from '../core/vec2';
 import { type RenderList, rect, circle, arc, line, segments, dots, unitHash } from './render';
@@ -58,6 +59,16 @@ export const WeatherLayer = {
       list.s(rect(mul(vp, 0.5), vp), 'groundSnow', 0.1 * amount);
       return;
     }
+    if (weather === 'hail') {
+      // A grey, heavy sky, a little paler than rain.
+      list.s(rect(mul(vp, 0.5), vp), 'scrim', 0.14 * amount);
+      return;
+    }
+    if (weather === 'sandstorm') {
+      // Everything under a warm haze of dust.
+      list.s(rect(mul(vp, 0.5), vp), 'mapSand', 0.1 * amount);
+      return;
+    }
     const severity = weatherSeverity(weather);
     if (severity <= 0) return;
     list.s(rect(mul(vp, 0.5), vp), 'scrim', WeatherLayer.darkness[severity] * amount);
@@ -74,6 +85,8 @@ export const WeatherLayer = {
     if (amount <= 0) return;
     if (weather === 'fog') return WeatherLayer.addFog(list, world, reduceMotion ? 0 : time, amount);
     if (weather === 'snow') return WeatherLayer.addSnow(list, reduceMotion ? 0 : time, amount);
+    if (weather === 'hail') return WeatherLayer.addHail(list, reduceMotion ? 0 : time, amount);
+    if (weather === 'sandstorm') return WeatherLayer.addSandstorm(list, world, reduceMotion ? 0 : time, amount);
     const severity = weatherSeverity(weather);
     if (severity <= 0) return;
     const vp = list.camera.viewport;
@@ -156,6 +169,104 @@ export const WeatherLayer = {
     }
   },
 
+  /**
+   * Hail: small white stones falling fast and nearly straight, in one path per size like the
+   * snow; each lands with a short flash of a bounce.
+   */
+  hailStones: 110,
+
+  addHail(list: RenderList, time: number, amount = 1): void {
+    const vp = list.camera.viewport;
+    const stones = Math.round(WeatherLayer.hailStones * amount);
+    const small: Vec2[] = [];
+    const smallR: number[] = [];
+    const big: Vec2[] = [];
+    const bigR: number[] = [];
+    for (let i = 0; i < stones; i++) {
+      const speed = 520 + 260 * unitHash(i, 61);
+      const y = ((unitHash(i, 62) * vp.y + time * speed) % (vp.y + 20)) - 10;
+      const x = unitHash(i, 63) * vp.x + (y / vp.y) * -14;
+      if (unitHash(i, 64) < 0.7) {
+        small.push(v(x, y));
+        smallR.push(1.1 + 0.6 * unitHash(i, 65));
+      } else {
+        big.push(v(x, y));
+        bigR.push(1.8 + 0.8 * unitHash(i, 65));
+      }
+    }
+    if (small.length > 0) list.s(dots(small, smallR), 'primary', 0.45);
+    if (big.length > 0) list.s(dots(big, bigR), 'primary', 0.7);
+  },
+
+  /**
+   * A sandstorm: the fog's banks in the colour of sand, so the far side of the ring fades out,
+   * and long streaks of dust blowing across the picture.
+   */
+  dustStreaks: 46,
+
+  addSandstorm(list: RenderList, world: World, time: number, amount = 1): void {
+    const layout = world.layout;
+    const vp = list.camera.viewport;
+    list.s(rect(mul(vp, 0.5), vp), 'mapSand', 0.08 * amount);
+    const own = layout.player.angle;
+    for (let i = 0; i < WeatherLayer.fogBanks; i++) {
+      const angle = unitHash(i, 71) * Math.PI * 2 + time * (0.06 + 0.05 * unitHash(i, 72));
+      const away = Math.abs(Math.atan2(Math.sin(angle - own), Math.cos(angle - own)));
+      const thin = Math.min(1, Math.max(0.15, (away - 0.35) / 1.2));
+      const center = mul(fromAngle(angle), layout.ringRadius + (unitHash(i, 73) - 0.4) * 90);
+      const radius = 70 + 60 * unitHash(i, 74);
+      const a = 0.08 * thin * amount;
+      for (let k = 0; k < WeatherLayer.fogLayers; k++) {
+        const outer = radius * (1 - k * 0.2);
+        const inner = k + 1 < WeatherLayer.fogLayers ? radius * (1 - (k + 1) * 0.2) : 0;
+        const dense = 1 - (1 - a) ** (k + 1);
+        if (inner > 0) list.w(arc(center, (outer + inner) / 2, outer - inner, 0, Math.PI * 2), 'mapSand', dense);
+        else list.w(circle(center, outer), 'mapSand', dense);
+      }
+    }
+    const streaks = Math.round(WeatherLayer.dustStreaks * amount);
+    const ends: Vec2[] = [];
+    for (let i = 0; i < streaks; i++) {
+      const speed = 260 + 220 * unitHash(i, 75);
+      const length = 30 + 50 * unitHash(i, 76);
+      const x = ((unitHash(i, 77) * (vp.x + 120) + time * speed) % (vp.x + 120)) - 60;
+      const y = unitHash(i, 78) * vp.y + Math.sin(time * 0.8 + i) * 6;
+      ends.push(v(x, y), v(x - length, y + 3));
+    }
+    if (ends.length > 0) list.s(segments(ends, 1.4), 'mapSand', 0.28);
+  },
+
+  /** Runners per pass of the marathon, and how wide the field spreads over the crossing's time. */
+  runners: 14,
+
+  addRunners(list: RenderList, world: World, arm: Arm): void {
+    const layout = world.layout;
+    const stop = layout.stopPose(arm);
+    const back = fromAngle(stop.heading + Math.PI);
+    const across: Vec2 = fromAngle(stop.heading + Math.PI / 2);
+    const half = layout.laneWidth * 0.7;
+    // The crossing a little up the arm from the stop line: white bars across the way in.
+    const at = add(stop.position, mul(back, 10));
+    for (let k = -3; k <= 3; k++) {
+      const c = add(at, mul(across, (k * half) / 3.5));
+      list.w(line(add(c, mul(back, -4)), add(c, mul(back, 4)), 2.4), 'primary', 0.55);
+    }
+    const c = world.config;
+    const phase = world.marathonPhase();
+    if (phase >= c.marathonCrossing) return;
+    // Each runner sets off a little after the one before and crosses at its own pace.
+    const colors = ['juiceOrange', 'lightBlue', 'juiceGreen', 'rarityEpic', 'juiceYellow', 'primary'] as const;
+    for (let i = 0; i < WeatherLayer.runners; i++) {
+      const start = (unitHash(i, 81) * c.marathonCrossing) * 0.6;
+      const pace = 0.35 + 0.25 * unitHash(i, 82);
+      const x = (phase - start) * pace;
+      if (x < 0 || x > 1) continue;
+      const lane = (unitHash(i, 83) - 0.5) * 7;
+      const p = add(add(at, mul(across, -half * 1.4 + 2 * half * 1.4 * x)), mul(back, lane));
+      list.w(circle(p, 2.6), colors[i % colors.length]);
+    }
+  },
+
   addCityEvent(list: RenderList, world: World): void {
     const layout = world.layout;
     const stop = world.busStopS;
@@ -185,6 +296,10 @@ export const WeatherLayer = {
         list.w(circle(add(pose.position, mul(normalize(pose.position), layout.laneWidth / 2 + 4)), 3.5), 'hazard');
       }
     }
+    // The marathon: a crossing on the arm's way in, and the runners on it while they pass.
+    const marathon = world.config.cityEvent === 'marathon' ? world.config.marathonArmSlot : null;
+    const course = marathon === null ? undefined : layout.arms.find((a) => a.slot === marathon);
+    if (course) WeatherLayer.addRunners(list, world, course);
     const closed = world.config.closedArmSlot;
     const armItem = closed === null ? undefined : layout.arms.find((a) => a.slot === closed);
     if (armItem) {

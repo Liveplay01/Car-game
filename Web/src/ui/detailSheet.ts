@@ -190,7 +190,8 @@ export class DetailSheet {
   }
 
   private button(a: DetailAction): HTMLButtonElement {
-    const b = h('button', { class: `btn ${a.prominent ? 'primary' : 'buy'}`, type: 'button' }, h('span', {}, rich(a.label)));
+    const kind = a.destructive ? `destructive${a.prominent ? ' filled' : ''}` : a.prominent ? 'primary' : 'buy';
+    const b = h('button', { class: `btn ${kind}`, type: 'button' }, h('span', {}, rich(a.label)));
     b.disabled = !a.enabled;
     b.addEventListener('click', () => this.onAction(a.action));
     return b;

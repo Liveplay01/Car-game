@@ -21,6 +21,7 @@ import {
   drawCityEvent,
   armPrice as configArmPrice,
   canBuildArm,
+  bossInBlackout,
 } from './levels';
 import type { ShiftResult } from './events';
 import {
@@ -37,6 +38,7 @@ import {
   COSMETICS,
   legendaryReward,
   prestigeReward,
+  unlimitedRewards,
 } from './loot';
 import { type Challenge, challengesOf, challengeMet, challengeReward, STREAK_MILESTONES } from './daily';
 import type { CasinoPending, CasinoRound } from './casino';
@@ -79,21 +81,42 @@ export interface MasteryStats {
   shiftsCompleted: number;
   /** Ambulances that got through with a clear road. */
   ambulances: number;
+  /** Close shaves past a motorbike. */
+  shaves: number;
 }
 
-export type MasteryGoal = 'perfectTiming' | 'tightSpots' | 'closeCalls' | 'longChain' | 'crimeFighter' | 'secureRoute' | 'comboMaster' | 'veteran';
-export const MASTERY_GOALS: MasteryGoal[] = ['perfectTiming', 'tightSpots', 'closeCalls', 'longChain', 'crimeFighter', 'secureRoute', 'comboMaster', 'veteran'];
+export type MasteryGoal =
+  | 'perfectTiming'
+  | 'tightSpots'
+  | 'closeCalls'
+  | 'longChain'
+  | 'crimeFighter'
+  | 'secureRoute'
+  | 'comboMaster'
+  | 'veteran'
+  | 'lifesaver'
+  | 'closeShaves';
+export const MASTERY_GOALS: MasteryGoal[] = ['perfectTiming', 'tightSpots', 'closeCalls', 'longChain', 'crimeFighter', 'secureRoute', 'comboMaster', 'veteran', 'lifesaver', 'closeShaves'];
 
+/**
+ * Three tiers since the start; IV and V (Leo, 02.10.2026) for the players who finished them, and
+ * two goals for the late game: ambulances and fire engines let through, close shaves past bikes.
+ */
 export const MASTERY_THRESHOLDS: Record<MasteryGoal, number[]> = {
-  perfectTiming: [25, 150, 600],
-  tightSpots: [25, 150, 600],
-  closeCalls: [50, 300, 1200],
-  longChain: [8, 15, 25],
-  crimeFighter: [10, 75, 300],
-  secureRoute: [10, 75, 300],
-  comboMaster: [20, 40, 80],
-  veteran: [10, 75, 300],
+  perfectTiming: [25, 150, 600, 1500, 3000],
+  tightSpots: [25, 150, 600, 1500, 3000],
+  closeCalls: [50, 300, 1200, 3000, 6000],
+  longChain: [8, 15, 25, 35, 50],
+  crimeFighter: [10, 75, 300, 750, 1500],
+  secureRoute: [10, 75, 300, 750, 1500],
+  comboMaster: [20, 40, 80, 120, 160],
+  veteran: [10, 75, 300, 750, 1500],
+  lifesaver: [5, 25, 100, 250, 500],
+  closeShaves: [10, 50, 200, 500, 1000],
 };
+
+/** The tier that completed a mastery before IV and V came: its title still hangs on it. */
+export const MASTERY_CLASSIC_TIERS = 3;
 
 export function masteryValue(goal: MasteryGoal, s: MasteryStats): number {
   switch (goal) {
@@ -113,11 +136,18 @@ export function masteryValue(goal: MasteryGoal, s: MasteryStats): number {
       return s.bestCombo;
     case 'veteran':
       return s.shiftsCompleted;
+    case 'lifesaver':
+      return s.ambulances;
+    case 'closeShaves':
+      return s.shaves;
   }
 }
 
 export const masteryChest = (goal: MasteryGoal, tier: number): ChestKind =>
   goal === 'crimeFighter' ? (tier < 2 ? 'criminalHunt' : 'premium') : tier === 0 ? 'standard' : 'premium';
+
+/** I, II, III, IV, V. */
+export const masteryNumeral = (tier: number): string => ['I', 'II', 'III', 'IV', 'V'][tier] ?? String(tier + 1);
 
 export interface MasteryCompletion {
   goal: MasteryGoal;
@@ -236,7 +266,7 @@ export const newCareer = (): Career => ({
   upgrades: {},
   armSlots: [0, 4, 8, 12],
   modules: {},
-  mastery: { perfects: 0, tightFits: 0, nearMisses: 0, takedowns: 0, transporters: 0, bestChain: 0, bestCombo: 0, shiftsCompleted: 0, ambulances: 0 },
+  mastery: { perfects: 0, tightFits: 0, nearMisses: 0, takedowns: 0, transporters: 0, bestChain: 0, bestCombo: 0, shiftsCompleted: 0, ambulances: 0, shaves: 0 },
   masteryTiers: {},
   chests: [],
   collection: [],
@@ -356,9 +386,9 @@ export const Careers = {
     return forLegendary(forCityEvent(sky, event === undefined ? drawCityEvent(sky, level, seed) : event, seed), rule);
   },
 
-  /** The phantom boss comes in a blackout, and so does a Dark Storm; otherwise the seed decides. */
+  /** The phantom and the kingpin come in a blackout, and so does a Dark Storm; otherwise the seed decides. */
   darkness(shift: Config, rule: LegendaryRule | null, level: number, seed: number): Darkness {
-    if ((shift.convoy && shift.bossKind === 'phantom') || rule === 'darkStorm') return 'blackout';
+    if ((shift.convoy && bossInBlackout(shift.bossKind)) || rule === 'darkStorm') return 'blackout';
     return drawNight(shift, level, seed);
   },
 
@@ -454,6 +484,33 @@ export const Careers = {
   removeArm(c: Career, slot: number): boolean {
     if (!Careers.canRemoveArm(c, slot)) return false;
     c.armSlots = c.armSlots.filter((s) => s !== slot);
+    return true;
+  },
+
+  /**
+   * Moves a built arm to another free slot, free of charge (Leo, 02.10.2026): the ring keeps its
+   * arms, only where they join changes. The player's own arm (slot 0) stays where it is.
+   */
+  canMoveArm(c: Career, from: number, to: number, config: Config = baseConfig): boolean {
+    if (from === 0 || from === to || !c.armSlots.includes(from)) return false;
+    return canBuildArm(config, to, c.armSlots.filter((s) => s !== from));
+  },
+
+  moveArm(c: Career, from: number, to: number, config: Config = baseConfig): boolean {
+    if (!Careers.canMoveArm(c, from, to, config)) return false;
+    c.armSlots = [...c.armSlots.filter((s) => s !== from), to].sort((a, b) => a - b);
+    return true;
+  },
+
+  /** Moves a ring module to a free module slot, free of charge. */
+  canMoveModule: (c: Career, from: number, to: number, config: Config = baseConfig): boolean =>
+    from !== to && c.modules[from] !== undefined && c.modules[to] === undefined && to >= 0 && to < config.moduleSlotCount,
+
+  moveModule(c: Career, from: number, to: number, config: Config = baseConfig): boolean {
+    if (!Careers.canMoveModule(c, from, to, config)) return false;
+    const next = { ...c.modules, [to]: c.modules[from] };
+    delete next[from];
+    c.modules = next;
     return true;
   },
 
@@ -689,6 +746,13 @@ export const Careers = {
     }
   },
 
+  /** The Unlimited milestones a best run of `cars` has reached and the collection still lacks: collected now. */
+  claimUnlimited(c: Career, cars: number): string[] {
+    const fresh = unlimitedRewards(cars).filter((x) => !Careers.owns(c, x.id));
+    for (const item of fresh) Careers.collect(c, item.id);
+    return fresh.map((x) => x.id);
+  },
+
   /** A completed Legendary Shift: a Premium Chest, and a skin at some counts. Null otherwise. */
   completeLegendary(c: Career, r: ShiftResult): { item: string | null } | null {
     if (r.outcome !== 'completed' || !r.legendary) return null;
@@ -745,6 +809,7 @@ export const Careers = {
     m.bestChain = Math.max(m.bestChain, r.bestChain);
     m.bestCombo = Math.max(m.bestCombo, r.bestCombo);
     m.ambulances += r.ambulances;
+    m.shaves += r.shaves ?? 0;
     if (r.outcome === 'completed') m.shiftsCompleted++;
     const completed: MasteryCompletion[] = [];
     for (const goal of MASTERY_GOALS) {

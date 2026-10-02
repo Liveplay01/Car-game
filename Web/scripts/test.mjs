@@ -35,6 +35,10 @@ const { readGuestMessage, readHostMessage, RateLimit } = await load('/src/net/me
 const { settleSpecial } = await load('/src/present/specialRuns.ts');
 const { trial: trialById } = await load('/src/core/trials.ts');
 const { ResultBanner } = await load('/src/present/hud.ts');
+// Every module loaded at the top level comes before the first test: a load later down the file
+// can still be pending when the tests above it have finished and `after` has closed the server.
+const { parseBackdropLink, youtubeEmbed } = await load('/src/present/backdrop.ts');
+const { prestigeReward, BIG_SCREEN } = await load('/src/core/loot.ts');
 
 // MARK: Rules
 
@@ -772,9 +776,6 @@ test('the Season Pass pays its tiers once; the Hall of Fame keeps a plaque per r
 
 // MARK: Big Screen
 
-const { parseBackdropLink, youtubeEmbed } = await load('/src/present/backdrop.ts');
-const { prestigeReward, BIG_SCREEN } = await load('/src/core/loot.ts');
-
 test('Big Screen tells YouTube, video files and pictures apart, and refuses what is no web link', () => {
   for (const link of ['https://www.youtube.com/watch?v=dQw4w9WgXcQ&t=42', 'youtu.be/dQw4w9WgXcQ', 'https://m.youtube.com/shorts/dQw4w9WgXcQ', 'https://www.youtube.com/live/dQw4w9WgXcQ?si=x', 'https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ']) {
     assert.deepEqual(parseBackdropLink(link), { k: 'youtube', id: 'dQw4w9WgXcQ' }, link);
@@ -893,6 +894,118 @@ test('the Classic joins the queue once owned, drives like a car, and travels in 
   const spec = challengeOf(c, 'shift', 3, 99, null, 1000);
   assert.deepEqual(spec.cars, ['classic']);
   assert.deepEqual(decodeChallenge(encodeChallenge(spec)).cars, ['classic']);
+});
+
+// MARK: Late game (02.10.2026)
+
+test('Mastery has tiers IV and V; the mastery titles still hang on tier III, Mastermind on every V', async () => {
+  const { MASTERY_GOALS, MASTERY_THRESHOLDS, masteryNumeral } = await load('/src/core/career.ts');
+  const { Elite } = await load('/src/core/elite.ts');
+  for (const g of MASTERY_GOALS) {
+    const t = MASTERY_THRESHOLDS[g];
+    assert.equal(t.length, 5, `${g}: five tiers`);
+    for (let i = 1; i < t.length; i++) assert.ok(t[i] > t[i - 1], `${g}: tiers rise`);
+  }
+  assert.equal(masteryNumeral(3), 'IV');
+  const c = newCareer();
+  c.mastery.perfects = 600;
+  Careers.recordMastery(c, { outcome: 'failed', perfects: 0, tightFits: 0, nearMisses: 0, takedowns: 0, transporters: 0, bestChain: 0, bestCombo: 0, ambulances: 0, shaves: 0 });
+  assert.equal(c.masteryTiers.perfectTiming, 3);
+  assert.ok(Elite.titleEarned('precisionDriver', c), 'tier III still earns the title');
+  assert.ok(!Elite.titleEarned('mastermind', c));
+  for (const g of MASTERY_GOALS) c.masteryTiers[g] = MASTERY_THRESHOLDS[g].length;
+  assert.ok(Elite.titleEarned('mastermind', c));
+  // A save from before IV and V keeps its tiers, and a stored tier above the last is cut down.
+  fakeStorage();
+  const save = newSave();
+  save.career.masteryTiers = { perfectTiming: 3, veteran: 9 };
+  writeSave(save);
+  const read = loadSave();
+  assert.equal(read.career.masteryTiers.perfectTiming, 3);
+  assert.equal(read.career.masteryTiers.veteran, 5);
+});
+
+test('Prestige gives something on every rank from ★4 to ★20, and saves past a rank get its skin on load', async () => {
+  const { prestigeReward } = await load('/src/core/loot.ts');
+  const { TITLES, TITLE_RULES } = await load('/src/core/elite.ts');
+  for (let rank = 1; rank <= 20; rank++) {
+    const title = TITLES.some((t) => TITLE_RULES[t].k === 'prestige' && TITLE_RULES[t].rank === rank);
+    assert.ok(prestigeReward(rank) || title, `★${rank} gives a skin or a title`);
+  }
+  fakeStorage();
+  const save = newSave();
+  save.career.prestige = 9;
+  writeSave(save);
+  const read = loadSave();
+  for (const id of ['quasar', 'prism', 'meteor']) assert.ok(read.career.collection.includes(id), `${id} arrives for ★9`);
+  assert.ok(!read.career.collection.includes('eclipse'), 'not yet ★12');
+});
+
+test('Unlimited milestones come with the run that reaches them, and with an old best on load', async () => {
+  fakeStorage();
+  const save = newSave();
+  save.unlimitedBestCars = 520;
+  writeSave(save);
+  const read = loadSave();
+  assert.ok(read.career.collection.includes('endurance') && read.career.collection.includes('overdrive'));
+  assert.ok(!read.career.collection.includes('infinity'));
+  assert.deepEqual(Careers.claimUnlimited(read.career, 1000), ['infinity']);
+  assert.deepEqual(Careers.claimUnlimited(read.career, 1000), [], 'once');
+});
+
+test('Eight syndicate bosses take turns; a rematch is its own boss one round on; the twins need two arrests', async () => {
+  const { bossAt, forLevel: atLevel } = await load('/src/core/levels.ts');
+  const { rematch, trialConfig } = await load('/src/core/trials.ts');
+  const { criminalCaught } = await load('/src/core/specials.ts');
+  const { ScoreBoard } = await load('/src/core/scoring.ts');
+  const kinds = [15, 30, 45, 60, 75, 90, 105, 120].map((l) => bossAt(l, baseConfig).kind);
+  assert.deepEqual(kinds, ['convoy', 'getaway', 'armoured', 'phantom', 'twins', 'decoy', 'smuggler', 'kingpin']);
+  assert.deepEqual(bossAt(135, baseConfig), { kind: 'convoy', round: 1 }, 'then the next round');
+  const smuggler = atLevel(baseConfig, 105, 1);
+  assert.equal(smuggler.bossArmour, 2);
+  assert.equal(smuggler.convoyEscorts, 0);
+  assert.ok(atLevel(baseConfig, 90, 1).bossDisguise, 'the decoy dresses its escorts');
+  // A rematch keeps its level from before the eight, and still brings its own boss.
+  assert.equal(rematch('convoy').level, 75);
+  for (const kind of ['convoy', 'phantom', 'twins', 'kingpin']) {
+    const c = trialConfig(rematch(kind), baseConfig);
+    assert.equal(c.bossKind, kind, `${kind} rematch`);
+    assert.ok(c.convoy);
+  }
+  assert.ok(trialConfig(rematch('kingpin'), baseConfig).blackout, 'the kingpin comes in a blackout');
+  // The twins: the first arrest calls the second; only the second brings the heist back.
+  const config = atLevel(baseConfig, 75, 1);
+  const w = { config, score: new ScoreBoard(), isScoring: true, events: [], criminal: { kind: 'active', vehicle: 1, deadline: 99 }, escortsDue: null, criminalRng: { range: (lo) => lo }, vehicle: () => ({ role: 'boss' }), scoreTakedown: () => 1000 };
+  criminalCaught(w, 1, 2, { x: 0, y: 0 }, 10);
+  assert.ok(!w.score.bossBusted, 'one twin is not the boss busted');
+  assert.equal(w.criminal.kind, 'idle');
+  assert.ok(w.criminal.next < 12, 'the second comes at once');
+  criminalCaught(w, 3, 4, { x: 0, y: 0 }, 20);
+  assert.ok(w.score.bossBusted);
+  assert.equal(w.events.filter((e) => e.type === 'heistRecovered').length, 1);
+});
+
+// MARK: Street Builder
+
+test('Street Builder moves a built arm or module for free, only to a free slot, never the player’s arm', () => {
+  const c = newCareer();
+  c.money = 1000;
+  const cfg = baseConfig;
+  // The start arms sit on 0, 4, 8, 12; arms keep at least two slots between them.
+  assert.ok(!Careers.moveArm(c, 0, 2, cfg), 'the player’s own arm stays');
+  assert.ok(!Careers.moveArm(c, 4, 7, cfg), 'too close to the arm on 8');
+  assert.ok(!Careers.moveArm(c, 4, 8, cfg), 'a slot that has an arm');
+  assert.ok(Careers.moveArm(c, 4, 5, cfg));
+  assert.deepEqual(c.armSlots, [0, 5, 8, 12]);
+  assert.ok(Careers.moveArm(c, 5, 4, cfg), 'and back');
+  assert.ok(!Careers.moveArm(c, 3, 2, cfg), 'no arm on 3');
+  c.modules = { 1: 'tollBooth', 2: 'towDepot' };
+  assert.ok(!Careers.moveModule(c, 1, 2, cfg), 'a module slot that is taken');
+  assert.ok(!Careers.moveModule(c, 1, cfg.moduleSlotCount, cfg), 'off the ring');
+  assert.ok(!Careers.moveModule(c, 0, 3, cfg), 'nothing on 0 to move');
+  assert.ok(Careers.moveModule(c, 1, 4, cfg));
+  assert.deepEqual(c.modules, { 2: 'towDepot', 4: 'tollBooth' });
+  assert.equal(c.money, 1000, 'moving is free');
 });
 
 // MARK: What's new

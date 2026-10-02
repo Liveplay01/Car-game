@@ -27,12 +27,19 @@ export class BuilderState {
   builtModule: { slot: number; age: number } | null = null;
   moneyBefore: number | null = null;
   denied = 0;
+  /** Delete was tapped once in the sheet: the part glows red with a cross until the second tap. */
   marked: { part: Built; age: number } | null = null;
   tornDown: { part: Built; module: RoadModule | null; age: number } | null = null;
+  /** A built part tapped: its sheet is open (what it does, Move, Delete) and it is lit on the ring. */
+  inspected: { part: Built; age: number } | null = null;
+  /** Move was chosen: the part is lifted until it is dropped on a free slot or the move is called off. */
+  moving: { from: Built; part: Part; age: number } | null = null;
 
   advance(delta: number): void {
     const P = StreetBuilderPage;
     this.age += delta;
+    if (this.inspected) this.inspected.age += delta;
+    if (this.moving) this.moving.age += delta;
     if (this.removing > 0) this.removing += delta;
     if (this.denied > 0) {
       this.denied += delta;
@@ -67,8 +74,9 @@ const slotAngle = (slot: number, slots: number): number => -Math.PI / 2 + (slot 
 
 /**
  * The Street Builder: the roundabout from above, the parts to buy
- * and what they do. Drag a part onto a free slot, double-tap to build, one tap takes it away;
- * a built part tapped once is marked, a second tap tears it down.
+ * and what they do. Drag a part onto a free slot, double-tap to build, one tap takes it away.
+ * A built part tapped opens its sheet (Leo, 02.10.2026): what it does, Move (lift it and drag it,
+ * or tap, onto a free slot, free of charge) and Delete (asks once more; nothing is paid back).
  */
 export const StreetBuilderPage = {
   gap: 12,
@@ -153,6 +161,28 @@ export const StreetBuilderPage = {
     return StreetBuilderPage.cards(viewport, bottomInset).find((c) => R.contains(c.rect, point))?.part ?? null;
   },
 
+  /** The part a built one is, for its picture and name: an arm, or the module on that slot. */
+  partOf(built: Built, career: Career): Part | null {
+    if (built.k === 'arm') return career.armSlots.includes(built.slot) ? 'arm' : null;
+    return career.modules[built.slot] ?? null;
+  },
+
+  /** Where a lifted part may go: a free arm slot clear of the others, or an empty module slot. */
+  moveTargetAt(from: Built, point: Vec2, career: Career, config: Config, map: MapGeo): number | null {
+    if (from.k === 'module') {
+      const slot = StreetBuilderPage.moduleSlotAt(point, config.moduleSlotCount, map);
+      return slot !== null && Careers.canMoveModule(career, from.slot, slot, config) ? slot : null;
+    }
+    const slot = StreetBuilderPage.slotAt(point, config.armSlotCount, map);
+    return slot !== null && Careers.canMoveArm(career, from.slot, slot, config) ? slot : null;
+  },
+
+  /** Where the part under the finger would land: a move's target, or a new part's. */
+  dropTarget(state: BuilderState, point: Vec2, career: Career, config: Config, map: MapGeo): number | null {
+    if (state.moving) return StreetBuilderPage.moveTargetAt(state.moving.from, point, career, config, map);
+    return state.dragging ? StreetBuilderPage.targetFor(state.dragging.part, point, career, config, map) : null;
+  },
+
   builtPartAt(point: Vec2, career: Career, config: Config, map: MapGeo): Built | null {
     const m = StreetBuilderPage.moduleSlotAt(point, config.moduleSlotCount, map);
     if (m !== null && career.modules[m] !== undefined) return { k: 'module', slot: m };
@@ -191,11 +221,14 @@ export const StreetBuilderPage = {
     list.s(circle(map.center, map.radius - ringWidth / 2), 'island');
     list.s(arc(map.center, map.radius - ringWidth / 2 - 12, 1.5, 0, TAU), 'marking', 0.25);
 
-    const dragging = state.dragging?.part === 'arm';
+    // A lifted arm leaves its slot: the free slots are counted without it.
+    const lifted = state.moving?.from.k === 'arm' ? state.moving.from.slot : null;
+    const others = lifted === null ? built : built.filter((s) => s !== lifted);
+    const dragging = state.dragging?.part === 'arm' || lifted !== null;
     const slotOpacity = dragging ? 1 : 0.45;
     for (let slot = 0; slot < slots; slot++) {
-      if (built.includes(slot)) continue;
-      const free = canBuildArm(config, slot, built);
+      if (others.includes(slot) || slot === lifted) continue;
+      const free = canBuildArm(config, slot, others);
       if (!free && !dragging) continue;
       const isTarget = state.target === slot;
       if (free) P.addArm(list, slot, slots, map, 'surface', null, slotOpacity * (isTarget ? 1 : 0.55), isTarget ? 1 : 0.55);
@@ -204,7 +237,18 @@ export const StreetBuilderPage = {
     }
     for (const slot of built) {
       if (state.built?.slot === slot) continue;
+      if (slot === lifted) {
+        // Lifted: a ghost in its old place, breathing in the accent while it waits for a new one.
+        const breathe = reduceMotion ? 0.5 : 0.35 + 0.2 * Math.sin(state.moving!.age * 5);
+        P.addArm(list, slot, slots, map, 'surface', null, 0.35, 1);
+        P.addArm(list, slot, slots, map, 'accent', null, state.dragging ? 0.2 : breathe, 1);
+        continue;
+      }
       P.addArm(list, slot, slots, map, 'surface', slot === 0 ? 'accent' : 'marking', 1, 1);
+    }
+    const inspected = state.inspected;
+    if (inspected && inspected.part.k === 'arm' && built.includes(inspected.part.slot) && !state.marked) {
+      P.addArm(list, inspected.part.slot, slots, map, 'accent', null, 0.45 * Ease.outCubic(inspected.age / 0.2), 1);
     }
     if (state.built) {
       const grow = reduceMotion ? 1 : Ease.outCubic(state.built.age / P.buildDuration);
@@ -242,10 +286,18 @@ export const StreetBuilderPage = {
   addModules(list: RenderList, career: Career, config: Config, state: BuilderState, map: MapGeo, reduceMotion: boolean): void {
     const P = StreetBuilderPage;
     const count = config.moduleSlotCount;
-    const draggingModule = state.dragging !== null && partModule(state.dragging.part) !== null;
+    const lifted = state.moving?.from.k === 'module' ? state.moving.from.slot : null;
+    const draggingModule = (state.dragging !== null && partModule(state.dragging.part) !== null) || lifted !== null;
     for (let slot = 0; slot < count; slot++) {
       const at = P.moduleSlotPosition(slot, count, map);
       const module = career.modules[slot];
+      if (module && slot === lifted) {
+        // Lifted: a faded copy in its old place, with a breathing ring.
+        const breathe = reduceMotion ? 0.6 : 0.45 + 0.25 * Math.sin(state.moving!.age * 5);
+        P.addModuleIcon(list, module, at, 1, 0.35);
+        if (!state.dragging) list.s(arc(at, 12, 2.5, 0, TAU), 'accent', breathe);
+        continue;
+      }
       if (module) {
         let scale = 1;
         if (state.builtModule?.slot === slot && !reduceMotion) scale += 0.4 * (1 - Ease.outCubic(state.builtModule.age / P.buildDuration));
@@ -253,8 +305,15 @@ export const StreetBuilderPage = {
       }
       if (draggingModule) {
         const isTarget = state.target === slot;
-        list.s(arc(at, isTarget && !reduceMotion ? 13 : 10, 2, 0, TAU), isTarget ? 'accent' : module ? 'hazard' : 'marking', isTarget ? 1 : 0.7);
+        // Moving: a taken slot is no target (a new module could replace one, a moved one cannot).
+        const blocked = lifted !== null && module !== undefined;
+        list.s(arc(at, isTarget && !reduceMotion ? 13 : 10, 2, 0, TAU), isTarget ? 'accent' : blocked ? 'destructive' : module ? 'hazard' : 'marking', isTarget ? 1 : blocked ? 0.35 : 0.7);
       }
+    }
+    const inspected = state.inspected;
+    if (inspected && inspected.part.k === 'module' && career.modules[inspected.part.slot] && !state.marked) {
+      const at = P.moduleSlotPosition(inspected.part.slot, count, map);
+      list.s(arc(at, 12, 2.5, 0, TAU), 'accent', 0.8 * Ease.outCubic(inspected.age / 0.2));
     }
     const marked = state.marked;
     if (marked && marked.part.k === 'module' && career.modules[marked.part.slot]) {
@@ -276,6 +335,33 @@ export const StreetBuilderPage = {
       const at = P.moduleSlotPosition(pending.slot, count, map);
       list.s(arc(at, 13, 2.5, 0, TAU), state.denied > 0 ? 'destructive' : 'accent', opacity);
       P.addModuleIcon(list, pm, at, 1, opacity);
+    }
+  },
+
+  /**
+   * The roundabout in small for a built part's sheet: every arm and module, the one the sheet is
+   * about lit in the accent (red once Delete is armed), so it is clear which one even when the
+   * sheet covers it on the map.
+   */
+  addMiniMap(list: RenderList, art: { part: Built; arms: number[]; modules: Record<number, RoadModule>; armed: boolean }, center: Vec2, size: number, config: Config): void {
+    const P = StreetBuilderPage;
+    const map: MapGeo = { center, radius: size * 0.27 };
+    const lit: ColorToken = art.armed ? 'destructive' : 'accent';
+    const slots = config.armSlotCount;
+    // Arms 50 long at full growth: this share makes them a third of the picture's radius.
+    const grow = Math.min(1, (size * 0.17) / 50);
+    for (const slot of art.arms) {
+      const on = art.part.k === 'arm' && art.part.slot === slot;
+      P.addArm(list, slot, slots, map, on ? lit : 'surface', null, 1, grow);
+    }
+    list.s(arc(map.center, map.radius, 8, 0, TAU), 'kerb');
+    list.s(arc(map.center, map.radius, 5, 0, TAU), 'surface');
+    list.s(circle(map.center, map.radius - 3), 'island');
+    for (const [key, module] of Object.entries(art.modules)) {
+      const slot = Number(key);
+      const at = P.moduleSlotPosition(slot, config.moduleSlotCount, map);
+      P.addModuleIcon(list, module, at, 0.7, 1);
+      if (art.part.k === 'module' && art.part.slot === slot) list.s(arc(at, 9, 2, 0, TAU), lit);
     }
   },
 
@@ -367,8 +453,8 @@ export const StreetBuilderPage = {
     const vp = list.camera.viewport;
     const y = vp.y - bottomInset - BuildLayout.detailHeight / 2 - 2;
     const enter = Ease.outCubic((state.age - 0.1) / 0.25);
-    const hint = state.pending ? S.builder.buildHint : S.builder.pickOne;
+    const hint = state.moving ? S.builder.moveHint : state.pending ? S.builder.buildHint : S.builder.pickOne;
     const size = Math.max(9, Math.min(13, (13 * (Math.min(vp.x, 460) - 32)) / Math.max(1, measure(hint, 13, false))));
-    list.s(text(hint, v(vp.x / 2, y), size, 'center'), state.pending ? 'accent' : 'muted', enter);
+    list.s(text(hint, v(vp.x / 2, y), size, 'center'), state.pending || state.moving ? 'accent' : 'muted', enter);
   },
 };

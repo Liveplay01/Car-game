@@ -3,7 +3,7 @@ import { Unlocks } from '../core/unlocks';
 import { COSMETICS, cosmetic } from '../core/loot';
 import { FEATS, Feats, type Feat } from '../core/feats';
 import { type Challenge, challengesOf, challengeReward } from '../core/daily';
-import { type Trial, type TrialId, TRIALS, trialOpen } from '../core/trials';
+import { type Trial, type TrialId, TRIALS, ASCENSIONS, trialOpen } from '../core/trials';
 import { weekNumber, weekDaysLeft, weeklyTrial } from '../core/weekly';
 import { baseConfig } from '../core/config';
 import { Elite } from '../core/elite';
@@ -223,6 +223,13 @@ export const ProgressPage = {
       s.heading(S.progress.trials, `${trialsDone}/${TRIALS.length}`, trialsDone === TRIALS.length);
       if (!Unlocks.isOpen(career, 'trials')) s.row({ k: 'trialsLocked', level: Unlocks.level('trials') }, 56);
       else for (const trial of TRIALS) s.row({ k: 'trial', trial }, 64);
+      // Ascension: once the career has been through Prestige, one trial per rank.
+      if (career.prestige > 0) {
+        const ascended = ASCENSIONS.filter((x) => career.trialsDone.includes(x.id)).length;
+        s.heading(S.progress.ascension, `${ascended}/${ASCENSIONS.length}`, ascended === ASCENSIONS.length);
+        for (const trial of ASCENSIONS) s.row({ k: 'trial', trial }, 64);
+        s.row({ k: 'note', text: S.progress.ascensionHint }, 16);
+      }
       const mastered = MASTERY_GOALS.filter((g) => (career.masteryTiers[g] ?? 0) >= MASTERY_THRESHOLDS[g].length).length;
       s.heading(S.progress.mastery, `${mastered}/${MASTERY_GOALS.length}`, mastered === MASTERY_GOALS.length);
       for (const goal of MASTERY_GOALS) s.row({ k: 'mastery', goal }, 58);
@@ -588,7 +595,7 @@ export const ProgressPage = {
       const o = full * 0.55;
       ProgressPage.panel(list, r, o);
       ProgressPage.check(list, v(r.minX + 24, c.y), false, o);
-      ProgressPage.addCardRow(list, r, r.minX + 44, o, { title: S.trials.name(trial.id), line: S.trials.opensAt(trial.level), dim: true });
+      ProgressPage.addCardRow(list, r, r.minX + 44, o, { title: S.trials.name(trial.id), line: S.trials.opens(trial), dim: true });
       return;
     }
     ProgressPage.panel(list, r, full);

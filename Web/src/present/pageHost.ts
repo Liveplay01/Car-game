@@ -6,6 +6,7 @@ import type { SoundID, HapticID } from './feedback';
 import type { UpgradeState } from './upgrades';
 import type { BuilderState } from './builder';
 import type { ShopState } from './shop';
+import type { RewardedOutcome } from './session';
 
 /**
  * What the pages' flows (`buildFlow.ts`, `shopFlow.ts`) need from the session: the save, the
@@ -36,4 +37,6 @@ export interface PageHost {
   showNotice(text: string): void;
   /** A press began that may turn into a drag (a part picked up from the palette). */
   pressed(point: Vec2): void;
+  /** The portal's rewarded ad (CrazyGames); false where there is none and the placeholder plays. */
+  rewardedAd(done: (outcome: RewardedOutcome) => void): boolean;
 }

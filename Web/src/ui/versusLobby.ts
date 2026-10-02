@@ -1,6 +1,7 @@
 import { h, icon } from './dom';
 import { ICONS } from './icons';
 import { openSheet } from './sheets';
+import { inviteLink } from './crazygames';
 import { Room, NAME_MAX, cleanName, type RoomError, type HostMessage, type Member, type Reaction } from '../net/room';
 import { VersusMatch, type MatchFeel } from '../present/versus';
 import type { SessionOutput } from '../present/session';
@@ -517,7 +518,8 @@ export class VersusLobby {
 
   /** The link that opens the game and joins this room: the share sheet on a phone, else copied. */
   private async invite(code: string): Promise<void> {
-    const url = `${location.origin}${location.pathname}#join=${code}`;
+    // On CrazyGames the friend must land in their page around the game, not on our address.
+    const url = inviteLink(code) ?? `${location.origin}${location.pathname}#join=${code}`;
     const touch = window.matchMedia('(pointer: coarse)').matches;
     if (touch && typeof navigator.share === 'function') {
       try {

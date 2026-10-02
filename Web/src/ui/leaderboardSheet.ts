@@ -50,6 +50,9 @@ type Scope = 'all' | 'friends';
 let lastScope: Scope = 'all';
 
 /** The number a line stands for: the level (with its Prestige rank) or the Unlimited score. */
+/** The star's look by rank: silver, gold, iris, then ember (★4), prism (★10) and eternal (★20). */
+const starTier = (rank: number): number => (rank >= 20 ? 6 : rank >= 10 ? 5 : rank >= 4 ? 4 : Math.max(1, rank));
+
 function valueOf(board: BoardId, e: { score: number; meta: Record<string, number> }, onStar: () => void): (string | HTMLElement)[] {
   if (board === 'unlimited') return [Fmt.number(e.score)];
   const level = `Level ${Fmt.number(e.meta.level ?? e.score % 1000)}`;
@@ -64,7 +67,7 @@ function valueOf(board: BoardId, e: { score: number; meta: Record<string, number
 export function prestigeStar(rank: number, onTap: () => void): HTMLElement {
   return h(
     'button',
-    { class: `prestige-star tier-${Math.min(rank, 3)}`, type: 'button', 'aria-label': `Prestige rank ${rank}. How Prestige works`, onclick: onTap },
+    { class: `prestige-star tier-${starTier(rank)}`, type: 'button', 'aria-label': `Prestige rank ${rank}. How Prestige works`, onclick: onTap },
     h('span', { class: 'prestige-star-rank', 'aria-hidden': 'true' }, String(rank)),
   );
 }

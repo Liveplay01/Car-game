@@ -2,7 +2,7 @@ import './shell.css';
 import { v } from '../core/vec2';
 import { GameSession, type InputAction, type SessionOutput } from '../present/session';
 import { CanvasDrawer } from '../present/draw';
-import { TAB_BAR, barTab, screenTab, showsTabBar, type Tab } from '../present/flow';
+import { SWIPE_MODES, TAB_BAR, barTab, screenTab, showsTabBar, type Tab } from '../present/flow';
 import { AudioPlayer, Haptics } from '../audio/player';
 import { h, icon } from './dom';
 import { ICONS } from './icons';
@@ -11,7 +11,7 @@ import { cloudEnabled, cloudIntroDue, cloudView, markCloudIntroSeen } from '../n
 import { legalDoc } from '../present/legal';
 import { PATCH_NOTES } from '../present/patchNotes';
 import { PhotoView } from './photo';
-import { reportGameplay } from './crazygames';
+import { celebrate, invitedRoom, onAdAudio, reportGameplay, rewardedAd } from './crazygames';
 import { inPlayStore, inPortal, isInstalled, isIos, isIpad, keepStorage, renewStorage } from '../storage/device';
 import type { Hint } from '../core/career';
 import { decodeChallenge, type ChallengeSpec } from '../core/challenge';
@@ -125,6 +125,8 @@ export class Shell {
   private readonly reactBar: HTMLElement;
   /** A `#join=` link that arrived mid-shift: it opens once the shift is over. */
   private pendingJoin: string | null = null;
+  /** A CrazyGames invite is read once, on the first look. */
+  private portalInviteRead = false;
   private readonly live: LiveRegion;
   /** Big Screen: the player's picture or video behind the canvas. */
   private readonly backdrop: BackdropLayer;
@@ -138,7 +140,10 @@ export class Shell {
     const output: SessionOutput = {
       sound: (id, pitch, pan) => this.audio.play(id, pitch, pan),
       haptic: (id, softness) => this.haptics.play(id, softness),
+      celebrate: () => celebrate(),
+      rewardedAd: (done) => rewardedAd(done),
     };
+    onAdAudio((on) => this.audio.setSuspended(on || document.hidden));
     this.session = new GameSession(output);
     this.session.systemReduceMotion = this.motionQuery.matches;
     this.motionQuery.addEventListener('change', () => (this.session.systemReduceMotion = this.motionQuery.matches));
@@ -293,6 +298,7 @@ export class Shell {
     // (the level-3 hint came), every visit asks again where asking is silent.
     window.addEventListener('appinstalled', () => void keepStorage());
     if (this.session.save.hints.includes('install')) void renewStorage();
+    this.readStartLink();
     this.readChallengeLink();
     this.readJoinLink();
     window.addEventListener('hashchange', () => {
@@ -502,12 +508,36 @@ export class Shell {
     }
   }
 
-  /** `#join=1234` in the address: a friend's multiplayer game. Read once, then cleared. */
+  /**
+   * `?start=shift|unlimited|multiplayer`: an app shortcut (a long press on the app icon, the
+   * manifest's `shortcuts`). It picks that page of the mode swipe, so a Shift brings the Daily
+   * Shift when it is open; Multiplayer opens the lobby. Read once, then taken out of the address.
+   * Not before the tutorial is done: a new player starts at the beginning.
+   */
+  private readStartLink(): void {
+    const params = new URLSearchParams(location.search);
+    const start = params.get('start');
+    if (start === null) return;
+    params.delete('start');
+    const query = params.toString();
+    history.replaceState(null, '', location.pathname + (query ? `?${query}` : '') + location.hash);
+    const mode = SWIPE_MODES.find((m) => m === start);
+    if (!mode || !this.session.save.tutorialDone) return;
+    this.session.perform({ k: 'setGameMode', mode });
+    if (mode === 'multiplayer') this.versus.open();
+  }
+
+  /**
+   * `#join=1234` in the address, or a CrazyGames invite link: a friend's multiplayer game.
+   * Read once, then cleared.
+   */
   private readJoinLink(): void {
     const match = /^#join=(\d{4})$/.exec(location.hash);
-    if (!match) return;
-    history.replaceState(null, '', location.pathname + location.search);
-    this.pendingJoin = match[1];
+    if (match) history.replaceState(null, '', location.pathname + location.search);
+    const code = match?.[1] ?? (this.portalInviteRead ? null : invitedRoom());
+    this.portalInviteRead = true;
+    if (!code) return;
+    this.pendingJoin = code;
     this.openPendingJoin();
   }
 

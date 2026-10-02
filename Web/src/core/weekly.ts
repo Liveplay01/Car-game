@@ -1,5 +1,5 @@
 import { type Config, BOSS_KINDS, baseConfig } from './config';
-import { firstBossLevel } from './levels';
+import { firstBossLevel, bossInBlackout } from './levels';
 import { Rng } from './rng';
 import type { EliteKind, Trial } from './trials';
 
@@ -49,7 +49,7 @@ export function weeklyTrial(week: number, base: Config = baseConfig): Trial {
       return { ...shift, level: rng.int(18, 24), cars: rng.int(18, 22), legendary: 'dragnet' };
     case 'boss': {
       const kind = rng.pick(BOSS_KINDS);
-      return { ...shift, level: firstBossLevel(kind, base), goal: { k: 'boss' }, darkness: kind === 'phantom' ? 'blackout' : 'day' };
+      return { ...shift, level: firstBossLevel(kind, base), goal: { k: 'boss' }, darkness: bossInBlackout(kind) ? 'blackout' : 'day' };
     }
   }
 }

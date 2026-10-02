@@ -49,6 +49,10 @@ function pendingOf(e: MuseumEntry): ((w: World) => boolean) | null {
       return (w) => on(w.ambulance.kind);
     case 'learner':
       return (w) => on(w.learner.kind);
+    case 'oversize':
+      return (w) => on(w.oversize.kind);
+    case 'racer':
+      return (w) => on(w.race.kind);
     default:
       return null;
   }

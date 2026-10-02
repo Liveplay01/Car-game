@@ -54,14 +54,18 @@ export function bookShift(save: SaveGame, result: ShiftResult, ctx: ShiftContext
     save.highscore = result.score;
     save.highscoreSeed = result.seed;
   }
-  if (unlimited) save.unlimitedBestCars = Math.max(save.unlimitedBestCars, result.carsSent);
+  const milestones: string[] = [];
+  if (unlimited) {
+    save.unlimitedBestCars = Math.max(save.unlimitedBestCars, result.carsSent);
+    milestones.push(...Careers.claimUnlimited(career, save.unlimitedBestCars));
+  }
   save.shiftsPlayed += 1;
   const bankBefore = career.money;
   const eliteBefore = Elite.isOpen(career, ctx.config);
   const openBefore = Unlocks.open(career, ctx.config);
   const levelBefore = career.level;
   Careers.record(career, result, ctx.level);
-  const news: string[] = [];
+  const news: string[] = milestones.map((id) => S.modes.milestone(id));
   // The first level cleared: a chest to open within the first minute.
   if (ctx.mode === 'shift' && Careers.giveWelcomeChest(career, levelBefore, ctx.config)) news.push(S.daily.welcomeChest);
   // Level 5 cleared: the other modes are a swipe away (the waiting screen keeps a hint until the first swipe).

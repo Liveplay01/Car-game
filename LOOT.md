@@ -237,6 +237,25 @@ Prestige behält sie. Nur Aussehen, Titel und Truhen, nie ein Vorteil auf der St
 - **Ort:** Progress → Records, Elite-Karte oben. Ihr Sheet zeigt Leiste, Titel und
   Prestige (der Prestige-Knopf fragt zweimal).
 
+## Endgame-Items (02.10.2026)
+
+Nie in Truhen, Regal „Honours“, zählen zum Album „Honours“ (dort jetzt 29 Items).
+
+| Name | ID | Seltenheit | Wie | Look |
+| --- | --- | --- | --- | --- |
+| Quasar | `quasar` | Epic | Prestige ★4 | Obsidian, violetter Streifen, glänzend |
+| Prism | `prism` | Legendary | Prestige ★7 | Holo, Perlstreifen, glänzend + Glitzer |
+| Meteor | `meteor` | Legendary | Prestige ★9 | Carbon, Flammenstreifen, Glut-Effekt |
+| Eclipse | `eclipse` | Legendary | Prestige ★12 | Nachtblau, Goldstreifen, Lichtkrone |
+| Nebula | `nebula` | Legendary | Prestige ★14 | Pflaume, violetter Streifen, Polarlicht |
+| Comet | `comet` | Legendary | Prestige ★17 | Eisblau, blauer Streifen, Schneespur |
+| Starforge | `starforge` | Legendary | Prestige ★19 | Kupfer, Flammenstreifen, Flammen |
+| Endurance | `endurance` | Epic | 250 Autos in einem Unlimited-Lauf | Chrom, Mint-Streifen, glänzend |
+| Overdrive | `overdrive` | Legendary | 500 Autos in einem Unlimited-Lauf | Obsidian, Mint-Streifen, Neon |
+| Infinity | `infinity` | Legendary | 1.000 Autos in einem Unlimited-Lauf | Perlweiß, Regenbogen |
+
+Titel ohne Skin: ★6 Road Warden, ★8 Gridlord, ★11 Ringbearer, ★13 Unstoppable, ★16 Timekeeper, ★18 Paragon, ★25 Mythic, ★30 Ring Eternal; dazu Mastermind (alle Mastery-Ziele auf V), Summit (Aufstiegs-Trial ★10) und Syndicate's End (alle acht Bosse).
+
 ## Alben
 
 Ein vollständiger Satz zahlt einmal Geld und legt einen Rahmen in seiner Farbe um den
@@ -248,7 +267,7 @@ Kreisverkehr (der wertvollste abgeschlossene zählt). Fortschritt im Shop unter 
 | Commons / Rares / Epics / Legends | alle Car Skins dieser Seltenheit aus Truhen | 5.000 / 10.000 / 20.000 / 40.000 |
 | Seasons | alle 4 Saison-Items | 30.000 |
 | Loyalty | alle 3 Serien-Items | 20.000 |
-| Honours | alle 19 Legendary-, Prestige- und Elite-Items (auch die Feats) | 50.000 |
+| Honours | alle 29 Ehren-Items: Legendary Shifts, Prestige, Elite, Feats, Ruhmeshalle, Unlimited-Meilensteine (ohne den Classic) | 50.000 |
 
 ## Feats (Leo, 01.10.2026, `core/feats.ts`)
 

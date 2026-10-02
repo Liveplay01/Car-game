@@ -38,7 +38,7 @@ export function updateDrivers(w: World, dt: number): void {
   if (w.config.mayhem) return;
   const quarry = pursuitQuarry(w);
   const zones = Object.keys(w.config.modules).length > 0 || w.roadworksRingS !== null;
-  const hesitant = w.learner.kind === 'active' || w.vehicles.some((x) => w.owesStop(x) && x.phase.kind === 'ring');
+  const hesitant = w.learner.kind === 'active' || w.oversize.kind === 'active' || w.vehicles.some((x) => w.owesStop(x) && x.phase.kind === 'ring');
   if (!w.isTrafficDisturbed && quarry === null && !zones && !hesitant && !hasTransporterOnRing(w)) return;
   const lane = ringLaneOccupants(w);
   // The criminal ploughs on; it only keeps out of the transporter's secure zone.
@@ -57,6 +57,8 @@ export function updateDrivers(w: World, dt: number): void {
       let limit = zones ? speedLimitAt(w, p.s) : undefined;
       // The learner hesitates now and then: it brakes for nothing, and the traffic bunches up.
       if (isStalling(w, veh.id)) limit = Math.min(limit ?? w.ringSpeed, w.ringSpeed * w.config.learnerStallSpeed);
+      // The oversize load crawls all the way round; the traffic behind it follows suit.
+      if (veh.type === 'oversize') limit = Math.min(limit ?? w.ringSpeed, w.ringSpeed * w.config.oversizeSpeed);
       if (quarry !== null && leads[0]?.id === quarry && veh.isPlayerPolice) p.drive = pursue(w, p.drive, dt);
       else p.drive = drive(w, p.drive, leads, veh.id, dt, limit);
     } else if (p.kind === 'exiting') {

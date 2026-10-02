@@ -1,6 +1,6 @@
 import type { ShiftResult } from './events';
 import { Rng } from './rng';
-import { CITY_EVENTS, type CityEvent } from './config';
+import { DAILY_EVENTS, type CityEvent } from './config';
 
 /** Challenges (v1.2): three a day, each pays once. */
 export type Challenge = 'perfectInputs' | 'tightFits' | 'twoTakedowns' | 'twoTransporters' | 'longChain' | 'bigCombo' | 'perfectRun';
@@ -53,7 +53,7 @@ export function challengesOf(day: number): Challenge[] {
 export const dailySeed = (day: number): number => (Math.imul(day, 0xd1b54a32) ^ 0xda115a1f) >>> 0;
 
 /** The Daily Shift's city event: every day another one. */
-export const dailyEvent = (day: number): CityEvent => CITY_EVENTS[((day % CITY_EVENTS.length) + CITY_EVENTS.length) % CITY_EVENTS.length];
+export const dailyEvent = (day: number): CityEvent => DAILY_EVENTS[((day % DAILY_EVENTS.length) + DAILY_EVENTS.length) % DAILY_EVENTS.length];
 
 export const STREAK_MILESTONES: { days: number; item: string }[] = [
   { days: 7, item: 'streakBronze' },

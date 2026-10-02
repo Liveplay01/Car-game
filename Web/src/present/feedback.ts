@@ -150,11 +150,17 @@ export const Feedback = {
         return e.kind === 'bomb' ? 'detonation' : 'explosion';
       case 'ambulanceWarning':
       case 'learnerWarning':
+      case 'oversizeWarning':
         return 'dispatch';
+      case 'raceWarning':
+        return 'screech';
+      case 'racerStopped':
+        return 'takedown';
       case 'ambulanceBlocked':
         return 'cutOff';
       case 'ambulanceCleared':
       case 'learnerPassed':
+      case 'oversizePassed':
         return 'paid';
       case 'armourHit':
         return 'screech';

@@ -64,6 +64,11 @@ export type ScreenAction =
   | { k: 'placePart'; slot: number }
   | { k: 'buildPart' }
   | { k: 'removePart' }
+  /** The open sheet of a built part: lift it to move it, or tear it down (a second tap confirms). */
+  | { k: 'moveBuilt' }
+  | { k: 'deleteBuilt' }
+  /** The lifted part lands on this slot. */
+  | { k: 'movePart'; slot: number }
   | { k: 'openChest'; index: number }
   | { k: 'buyChest'; kind: ChestKind }
   | { k: 'watchAd' }

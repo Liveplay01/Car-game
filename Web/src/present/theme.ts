@@ -46,6 +46,10 @@ export const COLORS = {
   vehicleLadder: [196, 202, 210, 1],
   vehicleBus: [247, 190, 22, 1],
   vehicleLearner: [236, 238, 242, 1],
+  /** The oversize load: site amber, so it reads as a heavy transport and nothing else. */
+  vehicleOversize: [238, 166, 44, 1],
+  /** The street racers: hot pink, apart from the criminal's violet and the police's blue. */
+  vehicleRacer: [255, 72, 164, 1],
   /** A red motorbike: a dark one vanished on the dark asphalt (Leo, 01.10.2026). */
   vehicleMotorbike: [226, 52, 62, 1],
   /** The rider's jacket, a shade under the red, and the light helmet over it. */

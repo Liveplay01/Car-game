@@ -8,6 +8,7 @@ import { Scoring } from '../core/scoring';
 import { secureZone } from '../core/specials';
 import { clearZone } from '../core/ambulance';
 import { learnerZone } from '../core/learner';
+import { oversizeZone } from '../core/oversize';
 import { type Vec2, v, add, sub, mul, fromAngle, TAU } from '../core/vec2';
 import { type RenderList, type Rect, R, rect, circle, arc, line, text, Ease, Metrics, toScreen, moved, type Align } from './render';
 import type { ColorToken } from './theme';
@@ -178,6 +179,12 @@ export type PopupKind =
   | { k: 'learner' }
   | { k: 'crowded' }
   | { k: 'patient'; n: number }
+  /** The oversize load: announced, its space taken, or left with room all the way. */
+  | { k: 'oversize' }
+  | { k: 'wideLoad'; n: number }
+  /** The street racers: announced, and each one a police car stopped. */
+  | { k: 'race' }
+  | { k: 'raceStopped'; n: number }
   /** A close shave past a motorbike: its bonus points. */
   | { k: 'shave'; n: number }
   /** A car that crept in behind slow traffic: it scores nothing (`creepPace`). */
@@ -497,6 +504,41 @@ export const HUD = {
     }
   },
 
+  /** The oversize load: like the learner, an amber band ahead and behind for the space it needs. */
+  addOversize(list: RenderList, world: World, alpha: number): void {
+    const o = world.oversize;
+    if (o.kind === 'warning') HUD.addWedge(list, o.arm, world, 'vehicleOversize');
+    else if (o.kind === 'arriving') {
+      const veh = world.vehicle(o.vehicle);
+      if (veh) list.w(arc(interpolatedPose(veh, alpha).position, 32, 2, 0, TAU), 'vehicleOversize', 0.6);
+    } else if (o.kind === 'active') {
+      const veh = world.vehicle(o.vehicle);
+      const zone = oversizeZone(world);
+      if (!veh || veh.isCrashed || !zone) return;
+      const pos = interpolatedPose(veh, alpha).position;
+      const r = world.layout.laneRadius(veh.lane);
+      const mid = Math.atan2(pos.y, pos.x);
+      const half = zone.arc / world.layout.ringRadius;
+      const pulse = 0.5 + 0.5 * Math.sin(world.time * 3);
+      const lane = world.layout.laneWidth / 2 - 3;
+      for (const edge of [r - lane, r + lane]) list.w(arc(v(0, 0), edge, 1.6, mid - half, mid + half), 'vehicleOversize', 0.25 + 0.2 * pulse);
+      list.w(arc(v(0, 0), r, world.layout.laneWidth - 6, mid - half, mid + half), 'vehicleOversize', 0.05 + 0.03 * pulse);
+    }
+  },
+
+  /** The street racers: their arm marked before they come, then a pulsing ring round each one on the road. */
+  addRace(list: RenderList, world: World, alpha: number): void {
+    const r = world.race;
+    if (r.kind === 'warning') HUD.addWedge(list, r.arm, world, 'vehicleRacer');
+    if (r.kind !== 'arriving' && r.kind !== 'active') return;
+    const pulse = 0.5 + 0.5 * Math.sin(world.time * 8);
+    for (const id of r.vehicles) {
+      const veh = world.vehicle(id);
+      if (!veh || veh.isCrashed) continue;
+      list.w(arc(interpolatedPose(veh, alpha).position, 17 + 2 * pulse, 2, 0, TAU), 'vehicleRacer', 0.45 + 0.3 * pulse);
+    }
+  },
+
   addMilitary(list: RenderList, world: World, alpha: number): void {
     const m = world.military;
     const c = world.config;
@@ -703,6 +745,24 @@ export const HUD = {
         case 'patient':
           label = S.learner.patient(Fmt.signed(k.n));
           color = 'juiceGreen';
+          break;
+        case 'oversize':
+          label = S.oversize.incoming;
+          color = 'vehicleOversize';
+          size = Metrics.popupSize * 0.8;
+          break;
+        case 'wideLoad':
+          label = S.oversize.passed(Fmt.signed(k.n));
+          color = 'vehicleOversize';
+          break;
+        case 'race':
+          label = S.racers.incoming;
+          color = 'vehicleRacer';
+          size = Metrics.popupSize * 0.8;
+          break;
+        case 'raceStopped':
+          label = S.racers.stopped(Fmt.signed(k.n));
+          color = 'vehicleRacer';
           break;
         case 'shave':
           label = S.hud.shave(Fmt.signed(k.n));

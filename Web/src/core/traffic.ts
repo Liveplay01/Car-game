@@ -7,6 +7,8 @@ import { reservedCriminalArm, reservedTransporterArm, joinsTooClose } from './sp
 import { reservedMilitaryArm, isMilitaryOverdue } from './explosions';
 import { reservedAmbulanceArm, joinsClearRoad, longestExit } from './ambulance';
 import { reservedLearnerArm } from './learner';
+import { reservedOversizeArm } from './oversize';
+import { reservedRaceArm } from './racers';
 
 /**
  * AI traffic on the other arms (FOUNDATION.md 2.7). It only enters with a safe gap, counts
@@ -25,7 +27,9 @@ export function updateTraffic(w: World, dt: number): void {
       list.push(x.phase);
       queues.set(x.phase.arm.index, list);
     }
-    const reserved = [reservedCriminalArm(w), reservedTransporterArm(w), reservedMilitaryArm(w), reservedAmbulanceArm(w), reservedLearnerArm(w)].map((a) => a?.index);
+    const reserved = [reservedCriminalArm(w), reservedTransporterArm(w), reservedMilitaryArm(w), reservedAmbulanceArm(w), reservedLearnerArm(w), reservedOversizeArm(w), reservedRaceArm(w)].map(
+      (a) => a?.index,
+    );
     const takesAnother = (arm: Arm): boolean => {
       const queue = queues.get(arm.index);
       if (!queue || queue.length === 0) return true;
@@ -45,7 +49,7 @@ export function updateTraffic(w: World, dt: number): void {
     const p = veh.phase;
     if (p.kind !== 'waiting') continue;
     // The criminal never waits politely; the ambulance has right of way.
-    const barges = veh.type === 'pickup' || isEmergency(veh.type);
+    const barges = veh.type === 'pickup' || veh.type === 'racer' || isEmergency(veh.type);
     if (p.approach > 0) {
       p.approach = approachStep(w, p.approach, dt, c.aiRollingMerge || barges);
       if (p.approach === 0 && (c.aiRollingMerge || barges)) p.reaction = 0;
@@ -66,11 +70,12 @@ export function updateTraffic(w: World, dt: number): void {
         : patient
           ? canEnter(w, p.arm, veh.lane)
           : canPushIn(w, p.arm, veh.lane);
-    if (p.reaction <= 0 && clear && !joinsTooClose(w, veh, p.arm) && !joinsClearRoad(w, veh, p.arm)) {
+    // Runners crossing the arm (a marathon): everyone waits at the line, the criminal too.
+    if (p.reaction <= 0 && clear && !w.runnersCrossing(p.arm) && !joinsTooClose(w, veh, p.arm) && !joinsClearRoad(w, veh, p.arm)) {
       const merge: Merging = {
         kind: 'merging',
         arm: p.arm,
-        exitArm: isEmergency(veh.type) || veh.type === 'learner' ? longestExit(w, p.arm) : w.randomExit(p.arm),
+        exitArm: isEmergency(veh.type) || veh.type === 'learner' || veh.type === 'oversize' || veh.type === 'racer' ? longestExit(w, p.arm) : w.randomExit(p.arm),
         profile: w.profileFor(p.arm, veh.lane, veh.type),
         elapsed: 0,
         minGap: Infinity,
@@ -168,7 +173,9 @@ export function isFreeForWarning(w: World, arm: Arm): boolean {
     arm.index !== reservedTransporterArm(w)?.index &&
     arm.index !== reservedMilitaryArm(w)?.index &&
     arm.index !== reservedAmbulanceArm(w)?.index &&
-    arm.index !== reservedLearnerArm(w)?.index
+    arm.index !== reservedLearnerArm(w)?.index &&
+    arm.index !== reservedOversizeArm(w)?.index &&
+    arm.index !== reservedRaceArm(w)?.index
   );
 }
 

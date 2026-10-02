@@ -29,8 +29,14 @@ export class ScoreBoard {
   biggestChain = 0;
   /** The syndicate boss was taken down this shift (boss levels). */
   bossBusted = false;
+  /** Bosses caught this shift: the twins need two before the boss counts as busted. */
+  bossesCaught = 0;
   /** Ambulances that got through with a clear road. */
   ambulances = 0;
+  /** Close shaves past a motorbike. */
+  shaves = 0;
+  /** Street racers stopped by a police car. */
+  racers = 0;
   /** Critical Merges, and Jackpot transporters paid. */
   criticals = 0;
   jackpots = 0;

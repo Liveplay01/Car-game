@@ -127,11 +127,16 @@ export function bossAt(level: number, c: Config): { kind: BossKind; round: numbe
 /** The first level that brings `kind`. */
 export const firstBossLevel = (kind: BossKind, c: Config): number => c.convoyEvery * (BOSS_KINDS.indexOf(kind) + 1);
 
+/** The bosses that come in a blackout: the phantom, and the kingpin's finale. */
+export const bossInBlackout = (kind: BossKind): boolean => kind === 'phantom' || kind === 'kingpin';
+
 /** Escorts, time and armour of one boss; later rounds bring more escorts and less time. */
 export function applyBoss(c: Config, base: Config, kind: BossKind, round: number): void {
   let escorts = base.convoyEscorts;
   let time = base.convoyTimeFactor;
   let armour = 0;
+  let count = 1;
+  let disguise = false;
   switch (kind) {
     case 'convoy':
       break;
@@ -148,13 +153,37 @@ export function applyBoss(c: Config, base: Config, kind: BossKind, round: number
       escorts = base.phantomEscorts;
       time = base.phantomTimeFactor;
       break;
+    case 'twins':
+      escorts = 0;
+      time = base.twinsTimeFactor;
+      count = 2;
+      break;
+    case 'decoy':
+      escorts = base.decoyEscorts;
+      time = base.decoyTimeFactor;
+      disguise = true;
+      break;
+    case 'smuggler':
+      escorts = 0;
+      time = base.smugglerTimeFactor;
+      armour = base.smugglerArmour;
+      break;
+    case 'kingpin':
+      escorts = base.kingpinEscorts;
+      time = base.kingpinTimeFactor;
+      armour = base.kingpinArmour;
+      disguise = true;
+      break;
   }
-  // The getaway driver stays alone: its test is the time.
-  if (round > 0 && kind !== 'getaway') escorts = Math.min(base.maxBossEscorts, escorts + round * base.bossRoundEscorts);
+  // The getaway driver, the twins and the smuggler stay alone: their test is the time or the armour.
+  const alone = kind === 'getaway' || kind === 'twins' || kind === 'smuggler';
+  if (round > 0 && !alone) escorts = Math.min(base.maxBossEscorts, escorts + round * base.bossRoundEscorts);
   c.bossKind = kind;
   c.convoyEscorts = escorts;
   c.convoyTimeFactor = time * Math.pow(base.bossRoundTimeFactor, round);
   c.bossArmour = armour;
+  c.bossCount = count;
+  c.bossDisguise = disguise;
 }
 
 // MARK: Upgrades (Spiel.md)
@@ -290,6 +319,10 @@ export function firstLevelOf(c: Config, w: Weather): number {
       return c.fogLevel;
     case 'snow':
       return c.snowLevel;
+    case 'hail':
+      return c.hailLevel;
+    case 'sandstorm':
+      return c.sandstormLevel;
   }
 }
 
@@ -297,6 +330,8 @@ export function firstLevelOf(c: Config, w: Weather): number {
 function weatherWeight(c: Config, w: Weather): number {
   if (w === 'fog') return c.fogWeight;
   if (w === 'snow') return c.snowWeight;
+  if (w === 'hail') return c.hailWeight;
+  if (w === 'sandstorm') return c.sandstormWeight;
   return 5 - weatherSeverity(w);
 }
 
@@ -333,6 +368,25 @@ export function forWeather(base: Config, weather: Weather): Config {
     c.driverBrake *= base.snowBrake;
     c.driverReaction = { lo: base.driverReaction.lo + base.snowReactionDelay, hi: base.driverReaction.hi + base.snowReactionDelay };
     c.shiftPay = Math.round(base.shiftPay * base.snowPayFactor);
+    return c;
+  }
+  if (weather === 'hail') {
+    // Hailstones: the tyres slip a little, and nobody brakes well on them.
+    c.tireGripBrake *= base.hailGrip;
+    c.tireGripSide *= base.hailGrip;
+    c.driverBrake *= base.hailBrake;
+    c.driverReaction = { lo: base.driverReaction.lo + base.hailReactionDelay, hi: base.driverReaction.hi + base.hailReactionDelay };
+    c.densityStart += base.hailDensity;
+    c.densityEnd += base.hailDensity;
+    c.shiftPay = Math.round(base.shiftPay * base.hailPayFactor);
+    return c;
+  }
+  if (weather === 'sandstorm') {
+    // Dust takes the view across the ring, and sand on the road some of the grip.
+    c.tireGripBrake *= base.sandstormGrip;
+    c.tireGripSide *= base.sandstormGrip;
+    c.driverReaction = { lo: base.driverReaction.lo + base.sandstormReactionDelay, hi: base.driverReaction.hi + base.sandstormReactionDelay };
+    c.shiftPay = Math.round(base.shiftPay * base.sandstormPayFactor);
     return c;
   }
   const severity = weatherSeverity(weather);
@@ -374,8 +428,8 @@ export function forNight(base: Config, darkness: Darkness): Config {
   return c;
 }
 
-/** The first level a city event can come on: most from `cityEventLevel`, the School Run later. */
-export const eventLevel = (c: Config, e: CityEvent): number => (e === 'schoolRun' ? c.schoolRunLevel : c.cityEventLevel);
+/** The first level a city event can come on: most from `cityEventLevel`, the School Run and the Marathon later. */
+export const eventLevel = (c: Config, e: CityEvent): number => (e === 'schoolRun' ? c.schoolRunLevel : e === 'marathon' ? c.marathonLevel : c.cityEventLevel);
 
 /** The event of one shift at `level`, or null. */
 export function drawCityEvent(c: Config, level: number, seed: number): CityEvent | null {
@@ -416,6 +470,12 @@ export function forCityEvent(base: Config, event: CityEvent | null, seed: number
     case 'schoolRun':
       c.busStopAt = rng.unit();
       break;
+    case 'marathon': {
+      const aiSlots = builtArmSlots(base).slice(1);
+      c.marathonArmSlot = aiSlots.length === 0 ? null : rng.pick(aiSlots);
+      c.marathonOffset = rng.unit() * base.marathonPeriod;
+      break;
+    }
   }
   return c;
 }

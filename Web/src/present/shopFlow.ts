@@ -12,6 +12,9 @@ import type { PageHost } from './pageHost';
  * on to `CasinoFlow`.
  */
 export class ShopFlow {
+  /** A portal's ad was asked for and has not answered yet: a second tap waits. */
+  private adRequested = false;
+
   constructor(
     private readonly host: PageHost,
     /** The casino's rounds, once the casino has loaded. */
@@ -107,12 +110,27 @@ export class ShopFlow {
   }
 
   showAd(): void {
+    if (this.adRequested) return;
     if (Careers.adChestsLeft(this.host.save.career, this.host.today, this.host.config) <= 0 || this.host.shopPage.ad !== null) {
       this.host.play(['denied'], []);
       this.host.showNotice(S.shop.noAdsLeft);
       return;
     }
-    this.host.shopPage.ad = 0;
+    // On CrazyGames their rewarded ad; the chest only once it was watched to the end.
+    this.adRequested = this.host.rewardedAd((outcome) => {
+      this.adRequested = false;
+      if (outcome === 'watched') {
+        this.adWatched();
+        return;
+      }
+      if (outcome === 'disabled') {
+        this.host.shopPage.ad = 0;
+        return;
+      }
+      this.host.play(['denied'], []);
+      this.host.showNotice(S.shop.adFailed(outcome));
+    });
+    if (!this.adRequested) this.host.shopPage.ad = 0;
   }
 
   adWatched(): void {

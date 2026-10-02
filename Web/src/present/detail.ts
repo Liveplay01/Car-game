@@ -1,5 +1,5 @@
-import { type Career, Careers } from '../core/career';
-import type { Config } from '../core/config';
+import { type Career, Careers, MINIMUM_ARMS } from '../core/career';
+import type { Config, RoadModule } from '../core/config';
 import { type Upgrade, upgradeMaxSteps } from '../core/levels';
 import { type ChestKind, type Rarity, RARITIES, CHEST_ODDS, chestFinds, PITY_CHESTS, MAX_CAR_SKINS, BIG_SCREEN, cosmetic, isForSale } from '../core/loot';
 import { type CasinoGame, type SlotSymbol, SLOT_SYMBOLS, Casino } from '../core/casino';
@@ -11,7 +11,7 @@ import { ShopPage } from './shop';
 import { casinoKit } from './casinoLoader';
 import { UpgradeArt } from './upgrades';
 import { StreetBuilderPage } from './builder';
-import type { Part, ScreenAction } from './flow';
+import type { Built, Part, ScreenAction } from './flow';
 import { R, circle, line, text } from './render';
 import { Elite, TITLES, TITLE_RULES } from '../core/elite';
 import { SeasonPass, PASS_TIERS } from '../core/seasonPass';
@@ -32,6 +32,8 @@ export type DetailArt =
   | { k: 'item'; id: string; owned: boolean }
   | { k: 'casino'; game: CasinoGame }
   | { k: 'part'; part: Part }
+  /** A built part: the whole roundabout in small, that part lit (red once Delete is armed). */
+  | { k: 'built'; part: Built; arms: number[]; modules: Record<number, RoadModule>; armed: boolean }
   | { k: 'museum'; id: string; shown: boolean; time: number }
   | { k: 'elite'; level: number };
 
@@ -51,6 +53,8 @@ export interface DetailAction {
   action: ScreenAction;
   prominent: boolean;
   enabled: boolean;
+  /** It takes something away for good: red; prominent too, filled red (the second tap). */
+  destructive?: boolean;
 }
 
 export interface Detail {
@@ -403,6 +407,33 @@ export const Details = {
     };
   },
 
+  /**
+   * A part already on the ring (Leo, 02.10.2026): what it does, and Move or Delete. `armed`:
+   * Delete was tapped once and waits for the second tap. Null once the part is gone.
+   */
+  built(built: Built, career: Career, config: Config, armed: boolean): Detail | null {
+    const part = StreetBuilderPage.partOf(built, career);
+    if (!part) return null;
+    const canDelete = built.k === 'module' || Careers.canRemoveArm(career, built.slot);
+    const notes: Detail['notes'] = [{ text: S.builder.noRefund, color: 'muted' }];
+    if (!canDelete) notes.unshift({ text: S.builder.keepsArms(MINIMUM_ARMS), color: 'muted' });
+    return {
+      key: `built:${built.k}:${built.slot}`,
+      art: { k: 'built', part: built, arms: [...career.armSlots], modules: { ...career.modules }, armed },
+      eyebrow: { text: S.builder.onTheRing, color: 'accent' },
+      title: S.builder.builtName(part),
+      price: null,
+      steps: null,
+      body: [S.builder.explanation(part, config)],
+      rows: built.k === 'arm' ? [{ label: S.builder.arms, value: String(career.armSlots.length) }] : [],
+      notes,
+      actions: [
+        { label: S.builder.move, action: { k: 'moveBuilt' }, prominent: !armed, enabled: true },
+        { label: armed ? S.builder.deleteConfirm : S.builder.delete, action: { k: 'deleteBuilt' }, prominent: armed, enabled: canDelete, destructive: true },
+      ],
+    };
+  },
+
   /** A Museum entry: how it works once it has been met, where to find it before. */
   museum(id: string, career: Career, config: Config): Detail | null {
     const entry = museumEntry(id);
@@ -499,6 +530,9 @@ export const Details = {
         break;
       case 'part':
         StreetBuilderPage.addPartPicture(list, art.part, v(center.x - 10 * scale, center.y), 1.6 * scale, 1);
+        break;
+      case 'built':
+        StreetBuilderPage.addMiniMap(list, art, center, size, _config);
         break;
       case 'museum': {
         const entry = museumEntry(art.id);

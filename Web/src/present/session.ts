@@ -59,7 +59,7 @@ import { Feedback, Music, type MusicMix, type SoundID, type HapticID } from './f
 import { Details, type Detail } from './detail';
 import { TyreMarks } from './marks';
 import { type ChallengeSpec, challengeOf, challengeConfig, encodeChallenge } from '../core/challenge';
-import { TRIALS, trial as trialById, trialConfig, trialOpen, trialProgress, rematchId } from '../core/trials';
+import { TRIALS, ASCENSIONS, trial as trialById, trialConfig, trialOpen, trialProgress, rematchId } from '../core/trials';
 
 /** What the platform reports; key and touch mapping stays in `main.ts`. */
 export type InputAction =
@@ -80,10 +80,20 @@ export type InputAction =
   | { k: 'perform'; action: ScreenAction };
 
 /** Where sound and haptics go; the session decides what and when. */
+/**
+ * How a portal's rewarded ad went: only `watched` pays. `disabled`: the portal shows no ads yet,
+ * so the game's own placeholder plays instead.
+ */
+export type RewardedOutcome = 'watched' | 'cooldown' | 'blocked' | 'unavailable' | 'disabled';
+
 export interface SessionOutput {
   /** `pan`: -1 (left) … 1 (right), where on screen the sound happens. */
   sound(id: SoundID, pitch: number, pan: number): void;
   haptic(id: HapticID, softness: number): void;
+  /** A big moment (a boss busted, a Legendary Shift, a new Unlimited or Mayhem record, a Prestige). */
+  celebrate?(): void;
+  /** Plays the portal's rewarded ad; false where there is none (the game's own placeholder plays). */
+  rewardedAd?(done: (outcome: RewardedOutcome) => void): boolean;
 }
 
 /**
@@ -460,6 +470,15 @@ export class GameSession {
         this.builderPage.pending = null;
         this.builderPage.removing = 0;
         break;
+      case 'moveBuilt':
+        this.buildFlow.liftInspected();
+        break;
+      case 'deleteBuilt':
+        this.buildFlow.deleteInspected();
+        break;
+      case 'movePart':
+        this.buildFlow.move(action.slot);
+        break;
       case 'selectUpgrade':
         if (this.upgradePage.selected !== action.upgrade) this.tick();
         this.upgradePage.selected = action.upgrade;
@@ -655,8 +674,8 @@ export class GameSession {
     if (!t) return;
     // A mastery trial above the career's level is not played yet (rematches and the Weekly
     // Elite have their own conditions).
-    if (TRIALS.includes(t) && !trialOpen(t, this.save.career)) {
-      this.showNotice(S.trials.opensAt(t.level));
+    if ((TRIALS.includes(t) || ASCENSIONS.includes(t)) && !trialOpen(t, this.save.career)) {
+      this.showNotice(S.trials.opens(t));
       return;
     }
     this.startSpecial({ k: 'trial', trial: t });
@@ -681,6 +700,7 @@ export class GameSession {
     const titles = Careers.recordTitles(career, this.config);
     this.persist();
     this.play(['shiftComplete'], ['shiftComplete']);
+    this.output?.celebrate?.();
     this.announce(S.prestige.done(done.rank, done.item), ...(titles.length > 0 ? [S.titles.earned(titles)] : []));
     this.prepareShift(false, null, this.screen);
   }
@@ -854,6 +874,7 @@ export class GameSession {
       play: (sounds, haptics) => this.play(sounds, haptics),
       showNotice: (text) => this.showNotice(text),
       pressed: (point) => (this.pressAt = point),
+      rewardedAd: (done) => this.output?.rewardedAd?.(done) ?? false,
     };
   }
 
@@ -1150,7 +1171,7 @@ export class GameSession {
           if (!this.builderPage.pending) this.detailOpen = false;
         }
         this.builderPage.dragging.at = a.p;
-        this.builderPage.target = StreetBuilderPage.targetFor(this.builderPage.dragging.part, a.p, this.save.career, this.config, StreetBuilderPage.map(this.lastViewport, this.tabInset));
+        this.builderPage.target = StreetBuilderPage.dropTarget(this.builderPage, a.p, this.save.career, this.config, StreetBuilderPage.map(this.lastViewport, this.tabInset));
         break;
       case 'pointerUp': {
         if (this.pan.drag) {
@@ -1182,9 +1203,18 @@ export class GameSession {
         }
         const b = this.builderPage;
         if (!this.isPage('streetBuilder') || !b.dragging) return;
-        const slot = StreetBuilderPage.targetFor(b.dragging.part, a.p, this.save.career, this.config, StreetBuilderPage.map(this.lastViewport, this.tabInset));
+        const slot = StreetBuilderPage.dropTarget(b, a.p, this.save.career, this.config, StreetBuilderPage.map(this.lastViewport, this.tabInset));
         const wasTap = this.pressAt !== null;
         this.pressAt = null;
+        // A lifted part: dropped on a free slot it moves there; anywhere else it waits, still lifted.
+        if (b.moving) {
+          if (slot !== null) this.perform({ k: 'movePart', slot });
+          else {
+            b.dragging = null;
+            b.target = null;
+          }
+          break;
+        }
         if (slot !== null) this.perform({ k: 'placePart', slot });
         else {
           b.dragging = null;
@@ -1445,6 +1475,8 @@ export class GameSession {
     this.upgradePage.selected = null;
     this.shopPage.selectedItem = null;
     this.builderPage.selected = null;
+    this.builderPage.inspected = null;
+    this.builderPage.marked = null;
     if (this.builderPage.pending) {
       this.builderPage.pending = null;
       this.builderPage.removing = 0;
@@ -1467,6 +1499,7 @@ export class GameSession {
       }
       case 'streetBuilder': {
         const b = this.builderPage;
+        if (b.inspected) return Details.built(b.inspected.part, career, this.config, b.marked !== null);
         if (b.dragging && !this.pressAt) return null;
         const part = b.pending?.part ?? b.selected;
         return part ? Details.part(part, b.pending !== null, career, this.config) : null;
@@ -1645,6 +1678,27 @@ export class GameSession {
           this.addPopup({ k: 'ambulance', fire: e.fire }, world.layout.stopPose(e.arm).position);
           this.rim.signal('sweep', 'lightBlue');
           break;
+        case 'oversizeWarning':
+          this.brief({ k: 'special', kind: 'oversize' });
+          this.addPopup({ k: 'oversize' }, world.layout.stopPose(e.arm).position);
+          this.rim.signal('sweep', 'vehicleOversize');
+          break;
+        case 'oversizeSpoilt':
+          this.addPopup({ k: 'crowded' }, e.point);
+          break;
+        case 'oversizePassed':
+          this.addPopup({ k: 'wideLoad', n: e.amount }, e.point);
+          this.rim.signal('wave', 'vehicleOversize');
+          break;
+        case 'raceWarning':
+          this.brief({ k: 'special', kind: 'racer' });
+          this.addPopup({ k: 'race' }, world.layout.stopPose(e.arm).position);
+          this.rim.signal('sweep', 'vehicleRacer');
+          break;
+        case 'racerStopped':
+          this.addPopup({ k: 'raceStopped', n: e.amount }, e.point);
+          this.rim.signal('wave', 'vehicleRacer');
+          break;
         case 'learnerWarning':
           this.brief({ k: 'special', kind: 'learner' });
           this.addPopup({ k: 'learner' }, world.layout.stopPose(e.arm).position);
@@ -1677,6 +1731,11 @@ export class GameSession {
           break;
         case 'rushHour':
           this.rim.signal('sweep', 'accent');
+          break;
+        case 'unlimitedStage':
+          // Unlimited moves on: a light run round the ring, and the news at the top.
+          this.rim.signal('sweep', 'hazard');
+          this.showNotice(S.modes.stage(e.stage, e.overtime));
           break;
         case 'transporterSeized':
           this.addPopup({ k: 'seized' }, e.point);
@@ -1831,6 +1890,7 @@ export class GameSession {
   private finish(result: ShiftResult): void {
     const save = this.save;
     const career = save.career;
+    if (result.bossBusted || (result.outcome === 'completed' && result.legendary)) this.output?.celebrate?.();
     if (this.special) {
       this.finishSpecial(this.special, result);
       return;
@@ -1868,6 +1928,8 @@ export class GameSession {
     this.notices.announce(...booked.news, ...(found ? [found] : []));
     for (const hint of booked.due) this.onHint?.(hint);
     const { isNew, previous } = booked;
+    // A Shift's best grows with the level almost every time; a record in Unlimited or Mayhem is earned.
+    if (isNew && previous > 0 && this.playingMode !== 'shift') this.output?.celebrate?.();
     if (this.playingMode === 'mayhem') {
       this.pendingSummary = { result, level: this.playingLevel, isNewHighscore: isNew, previousHighscore: previous, mode: 'mayhem' };
       this.resultCountdown = this.resultDelayFor(result);
@@ -2028,6 +2090,8 @@ export class GameSession {
       HUD.addMilitary(list, world, alpha);
       HUD.addAmbulance(list, world, alpha);
       HUD.addLearner(list, world, alpha);
+      HUD.addOversize(list, world, alpha);
+      HUD.addRace(list, world, alpha);
       const since = world.shift.rushHourSince;
       HUD.add(list, {
         world,

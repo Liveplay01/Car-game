@@ -46,6 +46,8 @@ export interface ShiftResult {
   legendary: LegendaryRule | null;
   /** Ambulances that got through with a clear road. */
   ambulances: number;
+  /** Close shaves past a motorbike (a Tight Fit or Near Miss right next to one). */
+  shaves: number;
   /** Critical Merges this shift, and Jackpot transporters paid. */
   criticals: number;
   jackpots: number;
@@ -125,6 +127,11 @@ export type GameEvent =
   | ({ type: 'comboChanged' } & ComboChange)
   | { type: 'flowChanged'; isInFlow: boolean; chain: number; time: number }
   | { type: 'rushHour'; time: number }
+  /**
+   * Unlimited moved on (`endlessStages`): 1 gas tankers, 2 night, 3 storm, 4 military trucks,
+   * 5 and up Overtime (`overtime` counts them).
+   */
+  | { type: 'unlimitedStage'; stage: number; overtime: number; time: number }
   | { type: 'shiftEnded'; result: ShiftResult }
   | { type: 'tapRejected'; time: number }
   | { type: 'exited'; vehicle: number; arm: Arm }
@@ -154,6 +161,16 @@ export type GameEvent =
   /** The ambulance left the ring with its road kept clear. */
   | { type: 'ambulanceCleared'; vehicle: number; amount: number; point: Vec2; time: number }
   | { type: 'ambulanceLost'; vehicle: number; point: Vec2; time: number }
+  | { type: 'oversizeWarning'; arm: Arm; time: number }
+  | { type: 'oversizeEntered'; vehicle: number }
+  /** A car of yours joined right beside the oversize load: its bonus is gone. */
+  | { type: 'oversizeSpoilt'; vehicle: number; blocker: number; point: Vec2; time: number }
+  /** The oversize load left the ring with room around it all the way. */
+  | { type: 'oversizePassed'; vehicle: number; amount: number; point: Vec2; time: number }
+  | { type: 'raceWarning'; arm: Arm; time: number }
+  | { type: 'raceEntered'; vehicles: number[] }
+  /** A police car of yours stopped a street racer. */
+  | { type: 'racerStopped'; vehicle: number; police: number; amount: number; point: Vec2; time: number }
   | { type: 'learnerWarning'; arm: Arm; time: number }
   | { type: 'learnerEntered'; vehicle: number }
   /** A car of yours joined right beside the learner: its bonus is gone. */

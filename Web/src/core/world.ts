@@ -41,9 +41,11 @@ import {
 } from './specials';
 import { type MilitaryPhase, updateMilitary, explode, isEscorted, predictedZoneS, gapToZone } from './explosions';
 import { chargeModules, wreckClearRate, towDepotCovering } from './modules';
-import { tempoAt, densityAt } from './levels';
+import { tempoAt, densityAt, forWeather } from './levels';
 import { type AmbulancePhase, firstAmbulance, updateAmbulance, noteMergeNearAmbulance, ambulanceThrough } from './ambulance';
 import { type LearnerPhase, firstLearner, updateLearner, noteMergeNearLearner, learnerThrough } from './learner';
+import { type OversizePhase, firstOversize, updateOversize, noteMergeNearOversize, oversizeThrough } from './oversize';
+import { type RacePhase, firstRace, updateRace, isLiveRacer, racerStopped } from './racers';
 
 export const STEP_RATE = 120;
 export const STEP = 1 / STEP_RATE;
@@ -191,6 +193,8 @@ export class World {
   militaryCount = 0;
   ambulance: AmbulancePhase = { kind: 'done' };
   learner: LearnerPhase = { kind: 'done' };
+  oversize: OversizePhase = { kind: 'done' };
+  race: RacePhase = { kind: 'done' };
   /** The syndicate boss's escorts still to join, and where (boss levels). */
   escortsDue: { arm: Arm; left: number } | null = null;
   ringSpeed: number;
@@ -206,6 +210,8 @@ export class World {
   /** Newer draws each get a stream of their own, so older seeds keep their traffic. */
   fireRng: Rng;
   learnerRng: Rng;
+  oversizeRng: Rng;
+  racerRng: Rng;
   trafficRng: Rng;
   laneRng: Rng;
   /** Critical Merges and Jackpot transporters: its own stream, so older seeds keep their traffic. */
@@ -219,6 +225,8 @@ export class World {
   tempoGlide: { from: number; since: number } | null = null;
   /** Multiplayer: how far the match has escalated. */
   versusPhase: VersusPhase = 0;
+  /** Unlimited: the stages passed after its ramps (`endlessStages`), Overtime included. */
+  endlessStage = 0;
 
   constructor(
     readonly config: Config,
@@ -236,6 +244,8 @@ export class World {
     this.ambulanceRng = substream(seed, 0xa3b01a4c);
     this.fireRng = substream(seed, 0xf12e7c0c);
     this.learnerRng = substream(seed, 0x1ea24e25);
+    this.oversizeRng = substream(seed, 0x0f512e5a);
+    this.racerRng = substream(seed, 0x2ace2ace);
     this.trafficRng = substream(seed, 0x6b1ce5a1);
     this.laneRng = substream(seed, 0x2a4e5d11);
     this.luckRng = substream(seed, 0x1ac4c0de);
@@ -258,6 +268,8 @@ export class World {
     this.military = { kind: 'idle', next: comes ? this.militaryRng.range(config.militaryFirst.lo, config.militaryFirst.hi) : Infinity };
     this.ambulance = firstAmbulance(this);
     this.learner = firstLearner(this);
+    this.oversize = firstOversize(this);
+    this.race = firstRace(this);
     for (const q of this.seats) this.refillQueue(q);
     if (prefill) prefillRing(this, Math.max(this.targetDensity, config.minRingBots));
   }
@@ -370,6 +382,8 @@ export class World {
     updateMilitary(this, end);
     updateAmbulance(this, end);
     updateLearner(this, end);
+    updateOversize(this, end);
+    updateRace(this, end);
     updateEscorts(this);
     this.resolveContacts(end);
     this.resolveTrafficContacts(end);
@@ -404,6 +418,10 @@ export class World {
         return c.busLength;
       case 'motorbike':
         return c.motorbikeLength;
+      case 'oversize':
+        return c.oversizeLength;
+      case 'racer':
+        return c.racerLength;
       default:
         return c.carLength;
     }
@@ -419,6 +437,10 @@ export class World {
     switch (type) {
       case 'pickup':
         return c.criminalMass;
+      case 'oversize':
+        return c.oversizeMass;
+      case 'racer':
+        return c.racerMass;
       case 'transporter':
         return c.transporterMass;
       case 'truck':
@@ -461,6 +483,20 @@ export class World {
     const closed = this.config.closedArmSlot;
     const arms = this.isVersus ? this.layout.arms.filter((a) => !this.seats.some((q) => q.arm?.index === a.index)) : this.layout.aiArms;
     return closed === null ? arms : arms.filter((a) => a.slot !== closed);
+  }
+
+  /** Marathon: the runners are crossing `arm` right now, so its traffic waits at the line. */
+  runnersCrossing(arm: Arm, now = this.time): boolean {
+    const c = this.config;
+    if (c.cityEvent !== 'marathon' || c.marathonArmSlot === null || arm.slot !== c.marathonArmSlot) return false;
+    return this.marathonPhase(now) < c.marathonCrossing;
+  }
+
+  /** Seconds into the marathon's current pass: under `marathonCrossing` the runners are on the road. */
+  marathonPhase(now = this.time): number {
+    const c = this.config;
+    const period = Math.max(1, c.marathonPeriod);
+    return (((now + c.marathonOffset) % period) + period) % period;
   }
 
   /** Where the roadworks sit on the ring (ring distance of their start), if there are any. */
@@ -823,6 +859,11 @@ export class World {
     return (this.isLiveCriminal(a) && b.isPlayerPolice) || (this.isLiveCriminal(b) && a.isPlayerPolice);
   }
 
+  /** A police car of yours ran into a street racer: stopped, not a crash of yours. */
+  isRaceStop(a: Vehicle, b: Vehicle): boolean {
+    return (isLiveRacer(a) && b.isPlayerPolice) || (isLiveRacer(b) && a.isPlayerPolice);
+  }
+
   isSeizure(a: Vehicle, b: Vehicle): boolean {
     const truck = (x: Vehicle): boolean => x.type === 'transporter' && !x.isCrashed;
     return (truck(a) && b.isPlayerPolice) || (truck(b) && a.isPlayerPolice);
@@ -844,12 +885,13 @@ export class World {
     const takedown = this.isTakedown(first, second) && !criminalRanInto(this, first, second, point);
     if (takedown && this.shrugsOff(first, second, c, point, now)) return;
     const seizure = this.isSeizure(first, second);
+    const raceStop = this.isRaceStop(first, second) ? [first, second].find((x) => isLiveRacer(x)) : undefined;
     const wreckedCriminal = takedown ? undefined : [first, second].find((x) => this.isLiveCriminal(x));
     const wreckedTruck = seizure ? undefined : [first, second].find((x) => x.type === 'transporter' && !x.isCrashed);
     const explosives = [first, second].filter((x) => isExplosive(x.type) && !x.isCrashed).map((x) => x.id);
     const culprits = [first, second].filter((x) => this.causesStrike(x));
     const mergedAt = new Set([first, second].filter((x) => !x.isCrashed && x.activeMerge !== null).map((x) => x.id));
-    const strike = !takedown && !seizure && culprits.length > 0;
+    const strike = !takedown && !seizure && !raceStop && culprits.length > 0;
     const byPolice = strike && culprits.every((x) => x.type === 'police');
     const firstWasWreck = first.isCrashed;
     const secondWasWreck = second.isCrashed;
@@ -906,6 +948,7 @@ export class World {
       transporterSeized(this, truckId, policeId, point, now);
     }
     if (wreckedTruck) transporterWrecked(this, wreckedTruck.id, point, now);
+    if (raceStop) racerStopped(this, raceStop, raceStop === first ? second.id : first.id, point, now);
     if (wreckedCriminal) criminalWrecked(this, wreckedCriminal.id, point, now);
     if (this.isVersus) {
       // Only a merge that crashes counts: a chain reaction on the ring is nobody's fault.
@@ -992,10 +1035,12 @@ export class World {
       const points = (critical ? merged * Math.max(1, this.config.criticalFactor) : merged) + shave;
       this.score.points += points - merged;
       if (critical) this.score.criticals++;
+      if (shave > 0) this.score.shaves++;
       if (this.isVersus) this.noteVersusMerge(veh, rating, merge.minGap, now);
       this.setChain(Scoring.extendsChain(rating) ? this.score.chain + 1 : 0, now);
       noteMergeNearAmbulance(this, veh, s, now);
       noteMergeNearLearner(this, veh, s, now);
+      noteMergeNearOversize(this, veh, s, now);
       this.events.splice(at, 0, {
         type: 'merged',
         vehicle: veh.id,
@@ -1029,6 +1074,7 @@ export class World {
     const at = this.events.length;
     noteMergeNearAmbulance(this, veh, s, now);
     noteMergeNearLearner(this, veh, s, now);
+    noteMergeNearOversize(this, veh, s, now);
     this.events.splice(at, 0, {
       type: 'merged',
       vehicle: veh.id,
@@ -1585,6 +1631,56 @@ export class World {
     }
   }
 
+  /**
+   * Unlimited's late stages: each one changes this run's own config from its second on (the run
+   * keeps it; the next one starts from the normal Unlimited). Deterministic: only the clock and
+   * this world's own random streams decide.
+   */
+  private updateEndlessStages(now: number): void {
+    const c = this.config;
+    const time = this.shiftTime(now);
+    const stages = c.endlessStages;
+    const last = stages[stages.length - 1] ?? Infinity;
+    const due = stages.filter((t) => time >= t).length + (time >= last ? Math.floor((time - last) / Math.max(1, c.endlessOvertimeEvery)) : 0);
+    while (this.endlessStage < due) {
+      this.endlessStage++;
+      const stage = this.endlessStage;
+      switch (stage) {
+        case 1:
+          c.tankerShare = Math.max(c.tankerShare, c.tankerLevelShare);
+          break;
+        case 2:
+          c.night = true;
+          break;
+        case 3: {
+          const storm = forWeather(c, 'storm');
+          c.weather = storm.weather;
+          c.tireGripBrake = storm.tireGripBrake;
+          c.tireGripSide = storm.tireGripSide;
+          c.driverReaction = storm.driverReaction;
+          c.driverBrake = storm.driverBrake;
+          c.densityStart = storm.densityStart;
+          c.densityEnd = storm.densityEnd;
+          c.aiSafeGap = storm.aiSafeGap;
+          break;
+        }
+        case 4:
+          c.militaryPerShift = Infinity;
+          c.militaryInterval = c.endlessMilitaryInterval;
+          if (this.military.kind === 'idle') this.military = { kind: 'idle', next: now + this.militaryRng.range(c.endlessMilitaryFirst.lo, c.endlessMilitaryFirst.hi) };
+          break;
+        default: {
+          const overtime = stage - stages.length;
+          if (overtime > c.endlessMaxOvertime) break;
+          c.endlessMaxDensityBonus += 1;
+          c.endlessMaxTempo = Math.min(c.endlessLateMaxTempo, c.endlessMaxTempo + c.endlessOvertimeTempo);
+        }
+      }
+      if (stage > stages.length + c.endlessMaxOvertime) continue;
+      this.events.push({ type: 'unlimitedStage', stage, overtime: Math.max(0, stage - stages.length), time: now });
+    }
+  }
+
   startShift(waiting: boolean): void {
     this.shift.carsLeft = this.config.endless ? null : this.config.shiftCars;
     if (waiting) this.shift.phase = 'waiting';
@@ -1599,6 +1695,8 @@ export class World {
     if (this.military.kind === 'idle') this.military = { kind: 'idle', next: this.military.next + time };
     if (this.ambulance.kind === 'idle') this.ambulance = { kind: 'idle', next: this.ambulance.next + time };
     if (this.learner.kind === 'idle') this.learner = { kind: 'idle', next: this.learner.next + time };
+    if (this.oversize.kind === 'idle') this.oversize = { kind: 'idle', next: this.oversize.next + time };
+    if (this.race.kind === 'idle') this.race = { kind: 'idle', next: this.race.next + time };
     if (!this.config.endless && this.config.shiftCars <= this.config.rushHourCars) this.beginRushHour(time);
   }
 
@@ -1624,6 +1722,7 @@ export class World {
 
   updateShift(now: number): void {
     this.applyShiftCurves(now);
+    if (this.config.endless && this.shift.phase === 'running' && this.isScoring && !this.isVersus) this.updateEndlessStages(now);
     this.escalate(now);
     this.countIdle(STEP);
     if (this.shift.phase !== 'closing') return;
@@ -1634,6 +1733,7 @@ export class World {
     if (this.transporter.kind === 'active') transporterEscapes(this, this.transporter.vehicle, now);
     ambulanceThrough(this, now);
     learnerThrough(this, now);
+    oversizeThrough(this, now);
     const c = this.config;
     this.score.points += c.completionBonus;
     this.score.money += c.shiftPay;
@@ -1692,6 +1792,7 @@ export class World {
       bossKind: this.config.convoy ? this.config.bossKind : null,
       legendary: this.config.legendary,
       ambulances: s.ambulances,
+      shaves: s.shaves,
       criticals: s.criticals,
       jackpots: s.jackpots,
     };

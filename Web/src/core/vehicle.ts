@@ -32,7 +32,11 @@ export type VehicleType =
   /** A driving-school car: hesitates on the ring; keeping your distance pays. */
   | 'learner'
   /** A school bus (School Run): stops at the bus stop on the ring, the traffic behind waits. */
-  | 'bus';
+  | 'bus'
+  /** An oversize load: long, heavy and slow; keeping your distance pays (core/oversize.ts). */
+  | 'oversize'
+  /** A street racer: barges in; a police car that rams it stops it, for a bonus (core/racers.ts). */
+  | 'racer';
 
 export type Owner = 'player' | 'ai';
 
@@ -41,7 +45,7 @@ export type VehicleRole = 'boss' | 'escort' | null;
 
 export const isCarType = (t: VehicleType): boolean => t === 'car' || t === 'sportsCar' || t === 'compact' || t === 'van' || t === 'classic';
 /** A lorry of any kind: long and heavy, worth more flames in Mayhem. */
-export const isHeavy = (t: VehicleType): boolean => t === 'truck' || t === 'tanker' || t === 'military' || t === 'bus' || t === 'fireTruck';
+export const isHeavy = (t: VehicleType): boolean => t === 'truck' || t === 'tanker' || t === 'military' || t === 'bus' || t === 'fireTruck' || t === 'oversize';
 /** On an emergency run: the road ahead of it has to stay clear. */
 export const isEmergency = (t: VehicleType): boolean => t === 'ambulance' || t === 'fireTruck';
 /** Goes up when it is wrecked. */
@@ -217,7 +221,7 @@ export class Vehicle {
   /** Plain AI traffic: the bots whose gaps the player's cars have to hit. */
   get isBot(): boolean {
     const t = this.type;
-    return this.owner === 'ai' && t !== 'pickup' && t !== 'transporter' && t !== 'military' && !isEmergency(t) && t !== 'learner';
+    return this.owner === 'ai' && t !== 'pickup' && t !== 'transporter' && t !== 'military' && !isEmergency(t) && t !== 'learner' && t !== 'oversize' && t !== 'racer';
   }
 
   get isPlayerPolice(): boolean {

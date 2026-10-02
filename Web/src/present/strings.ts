@@ -1,20 +1,21 @@
 import { type Config, type Weather, type CityEvent, type BossKind, type LegendaryRule, weatherSeverity } from '../core/config';
 import type { Upgrade } from '../core/levels';
 import type { MasteryGoal, MasteryCompletion } from '../core/career';
-import { MASTERY_THRESHOLDS } from '../core/career';
+import { MASTERY_THRESHOLDS, masteryNumeral } from '../core/career';
 import type { SwipeMode } from './flow';
 import type { Rarity, ChestKind, Cosmetic, ChestOpening, Album } from '../core/loot';
 import type { Challenge } from '../core/daily';
 import type { NextGoal, NearMiss } from '../core/goals';
 import type { CasinoGame, SlotSymbol } from '../core/casino';
 import type { VehicleType, VehicleRole } from '../core/vehicle';
-import { type Trial, type TrialId, type RunId, type EliteKind, rematchKind } from '../core/trials';
+import { type Trial, type TrialId, type RunId, type EliteKind, rematchKind, ascensionRank } from '../core/trials';
 import type { SpecialKind, WeatherKind, DarkKind, MuseumEntry, ConditionEntry } from '../core/museum';
 import type { EliteStep, TitleId, TitleRule } from '../core/elite';
 import type { PassReward, PassStep, HallEntry } from '../core/seasonPass';
 import type { FeatGoal } from '../core/feats';
 import type { Season } from '../core/loot';
 import { MONEY_MARK } from './icons';
+import type { RewardedOutcome } from './session';
 
 /** Every text the game shows. English only. */
 
@@ -91,6 +92,38 @@ const BOSS_TEXT: Record<BossKind, MuseumText> = {
     explain: () => [
       'It comes in a blackout, and it drives without lights: you only see it where the street lights reach.',
       'Follow the ring and trust its warning. An escort rides behind it, so pick the gap carefully.',
+    ],
+  },
+  twins: {
+    line: 'Catch one, the other comes',
+    brief: 'Two bosses: the second comes as soon as the first is caught.',
+    explain: (c) => [
+      'The Twins run the syndicate together. There are two of them, and they come one after the other: the moment you catch the first, the second is already at another arm.',
+      `No escorts, about ${Math.round(c.criminalTime * c.twinsTimeFactor)} seconds each. Only when both are caught is the heist back. Keep a second police car in your queue.`,
+    ],
+  },
+  decoy: {
+    line: 'Its escorts wear its paint',
+    brief: 'Escorts in its paint: ram the pickup with the open bed and the ring.',
+    explain: () => [
+      "The Decoy's escorts are painted like the boss himself, black with a gold line, to draw your police cars in.",
+      'The real boss is the pickup: an open bed, and the countdown ring around it. The others are armoured vans, and ramming one is a plain crash.',
+    ],
+  },
+  smuggler: {
+    line: 'Takes three police cars',
+    brief: 'Armoured twice: it takes three police cars. Line them up.',
+    explain: (c) => [
+      'The Smuggler drives alone, but under heavy armour: the first two police cars only crack it, the third one stops it.',
+      `It stays about ${Math.round(c.criminalTime * c.smugglerTimeFactor)} seconds, enough for three runs at it if your queue holds the police cars.`,
+    ],
+  },
+  kingpin: {
+    line: 'The head of it all',
+    brief: 'Escorts in its paint, in the dark: ram the pickup with the ring twice.',
+    explain: () => [
+      'The Kingpin comes last, in a blackout, with three escorts painted like it and armour that takes a ram.',
+      'Read the shapes in the dark: the boss is the pickup with the ring. Two police cars in the gap behind it bring it down.',
     ],
   },
 };
@@ -195,6 +228,24 @@ const SPECIAL_TEXT: Record<SpecialKind, MuseumText & { name: string }> = {
       `If it leaves with room all the way, it pays ${money(Fmt.number(c.learnerPay))} and extends your chain. Joining close to it only costs that bonus.`,
     ],
   },
+  oversize: {
+    name: 'Oversize Load',
+    line: 'Slow, long, give it room',
+    brief: 'A slow, long load: keep your cars out of the amber band around it.',
+    explain: (c) => [
+      'A heavy transport, far longer than a lorry, crawls once round the ring. The traffic behind it slows down with it, so the gaps you know are gone.',
+      `An amber band shows the space it needs, ahead and behind. Keep your cars out of it and it pays ${money(Fmt.number(c.oversizePay))} and extends your chain when it leaves.`,
+    ],
+  },
+  racer: {
+    name: 'Street Racers',
+    line: 'Two of them: ram them',
+    brief: 'Two street racers barge in: ram each one with a police car for a bonus.',
+    explain: (c) => [
+      'Two racers rev at one of the other arms and barge into the ring one right after the other, in hot pink with white stripes.',
+      `Ram one with a police car to stop it: ${money(Fmt.number(c.racerPay))} and a link in your chain, each. If they get away nothing is lost; your ordinary cars cannot stop them, a crash is just a crash.`,
+    ],
+  },
   bus: {
     name: 'School Bus',
     line: 'Stops at the bus stop',
@@ -208,7 +259,9 @@ const SPECIAL_TEXT: Record<SpecialKind, MuseumText & { name: string }> = {
 
 /** The grip the tyres keep in a weather, as `forWeather` sets it. */
 const gripIn = (w: Weather, c: Config): string =>
-  percent(w === 'snow' ? c.snowGrip : w === 'fog' ? 1 : Math.max(0.35, 1 - weatherSeverity(w) * c.weatherGripLoss));
+  percent(
+    w === 'snow' ? c.snowGrip : w === 'hail' ? c.hailGrip : w === 'sandstorm' ? c.sandstormGrip : w === 'fog' ? 1 : Math.max(0.35, 1 - weatherSeverity(w) * c.weatherGripLoss),
+  );
 
 const WEATHER_TEXT: Record<WeatherKind, MuseumText> = {
   lightRain: {
@@ -257,6 +310,22 @@ const WEATHER_TEXT: Record<WeatherKind, MuseumText> = {
     explain: (c) => [
       `Snow and ice: tyres keep only ${gripIn('snow', c)} of their grip, and nobody stops quickly. A crash slides a long way.`,
       `Your tyre tracks stay in the snow. Leave clearly more room than usual. A snowy shift pays ${percent(c.snowPayFactor - 1)} more.`,
+    ],
+  },
+  hail: {
+    line: 'Nobody brakes well',
+    brief: 'Hail: drivers brake badly and late. Leave room behind every car.',
+    explain: (c) => [
+      `Hail drums on the roofs: drivers react later, brake only ${percent(c.hailBrake)} as hard, and the tyres keep ${gripIn('hail', c)} of their grip. A little more traffic, too.`,
+      `A car behind you needs longer to stop. Leave room behind your merge, not only in front of it. A hail shift pays ${percent(c.hailPayFactor - 1)} more.`,
+    ],
+  },
+  sandstorm: {
+    line: 'Dust across the ring',
+    brief: 'Sandstorm: the far side is gone in the dust. Watch what comes out of it.',
+    explain: (c) => [
+      `A sandstorm: dust hides the far side of the ring, drivers see a crash late, and sand on the road leaves ${gripIn('sandstorm', c)} of the grip.`,
+      `Watch the traffic coming out of the dust towards your arm; the warnings still shine through. A sandstorm pays ${percent(c.sandstormPayFactor - 1)} more.`,
     ],
   },
 };
@@ -321,6 +390,14 @@ const EVENT_TEXT: Record<CityEvent, MuseumText> = {
       'Criminals are easier to catch, and every police car is one more chance for a takedown. Use them.',
     ],
   },
+  marathon: {
+    line: 'Runners cross an arm',
+    brief: 'Runners cross one arm again and again: its cars wait, then flood in.',
+    explain: (c) => [
+      `A marathon runs through the city. Every ${c.marathonPeriod} seconds the runners cross one of the other arms, and for about ${c.marathonCrossing} seconds its traffic waits at the line.`,
+      'When they have passed, the cars that waited all want in at once. Expect a wave from that arm, and use the calm while the runners are on the road.',
+    ],
+  },
   schoolRun: {
     line: 'Buses stop on the ring',
     brief: 'School buses stop on the ring. Merge behind one as it pulls away.',
@@ -347,6 +424,8 @@ const INTRO_TEXT: {
     extreme: (c) => `Only ${gripIn('extreme', c)} grip and the heaviest traffic. Patience pays more than speed.`,
     fog: (c) => `Fog: the far side of the ring fades out, the warnings still shine through. Pays ${percent(c.fogPayFactor - 1)} more.`,
     snow: (c) => `Ice: ${gripIn('snow', c)} grip, nobody stops quickly. Leave more room. Pays ${percent(c.snowPayFactor - 1)} more.`,
+    hail: (c) => `Hail: drivers brake badly and late. Leave room behind your car too. Pays ${percent(c.hailPayFactor - 1)} more.`,
+    sandstorm: (c) => `Sandstorm: the far side fades in the dust, the warnings shine through. Pays ${percent(c.sandstormPayFactor - 1)} more.`,
   },
   dark: {
     night: (c) => `The city is dark: watch the headlights, not the cars. A night shift pays ${percent(c.nightPayFactor - 1)} more.`,
@@ -359,6 +438,7 @@ const INTRO_TEXT: {
     vipConvoy: (c) => `Every driver keeps ${percent(c.vipGapFactor - 1)} more distance: wider gaps, a new rhythm.`,
     policeOperation: (c) => `${percent(c.policeOperationShare)} more of your cars are police: more chances for a takedown.`,
     schoolRun: () => 'School buses stop at the bus stop on the ring. Merge behind a bus as it pulls away.',
+    marathon: () => 'Runners cross one arm again and again. Its cars wait, then come in a wave.',
   },
 };
 
@@ -456,6 +536,8 @@ export const S = {
       const boss = rematchKind(id);
       if (boss) return S.boss.rematch(boss);
       if (id === 'weekly') return S.weekly.title;
+      const rank = ascensionRank(id);
+      if (rank !== null) return `Ascension ★${rank}`;
       return {
         tightSqueeze: 'Tight Squeeze',
         deadCentre: 'Dead Centre',
@@ -468,6 +550,17 @@ export const S = {
     },
     goal(t: Trial): string {
       if (t.elite) return S.weekly.goal(t);
+      if (ascensionRank(t.id) !== null) {
+        const parts = [
+          `${t.cars} cars`,
+          t.weather !== 'clear' ? S.weather(t.weather) : null,
+          t.darkness === 'blackout' ? S.blackout : t.darkness === 'night' ? S.night : null,
+          t.legendary ? S.legendary.name(t.legendary) : null,
+          t.rule === 'flawless' ? 'no crash, no cut-off' : null,
+          t.goal.k === 'boss' ? 'take down the boss' : null,
+        ];
+        return parts.filter((p): p is string => p !== null).join(' · ');
+      }
       const boss = rematchKind(t.id);
       if (boss) return `${S.boss.name(boss)} again: more escorts, less time`;
       switch (t.id) {
@@ -493,6 +586,11 @@ export const S = {
     passed: 'PASSED',
     play: 'Play',
     opensAt: (l: number): string => `Opens at level ${l}`,
+    /** When a trial opens: its level, or an Ascension trial's Prestige rank. */
+    opens: (t: Trial): string => {
+      const rank = ascensionRank(t.id);
+      return rank !== null ? `Opens at Prestige ★${rank}` : S.trials.opensAt(t.level);
+    },
     /**
      * What a counting goal asks for, on the trial's ready screen (Leo, 01.10.2026: nobody knew
      * a Perfect Input wants a medium gap, not the biggest one). Same shape as `ConditionIntro`.
@@ -522,8 +620,27 @@ export const S = {
     incoming: 'SYNDICATE CONVOY',
     /** The warning over the arm: which boss is coming. */
     arriving: (k: BossKind): string =>
-      ({ convoy: 'SYNDICATE CONVOY', getaway: 'GETAWAY DRIVER', armoured: 'ARMOURED BOSS', phantom: 'THE PHANTOM' })[k],
-    name: (k: BossKind): string => ({ convoy: 'The Convoy', getaway: 'The Getaway Driver', armoured: 'The Armoured Boss', phantom: 'The Phantom' })[k],
+      ({
+        convoy: 'SYNDICATE CONVOY',
+        getaway: 'GETAWAY DRIVER',
+        armoured: 'ARMOURED BOSS',
+        phantom: 'THE PHANTOM',
+        twins: 'THE TWINS',
+        decoy: 'THE DECOY',
+        smuggler: 'THE SMUGGLER',
+        kingpin: 'THE KINGPIN',
+      })[k],
+    name: (k: BossKind): string =>
+      ({
+        convoy: 'The Convoy',
+        getaway: 'The Getaway Driver',
+        armoured: 'The Armoured Boss',
+        phantom: 'The Phantom',
+        twins: 'The Twins',
+        decoy: 'The Decoy',
+        smuggler: 'The Smuggler',
+        kingpin: 'The Kingpin',
+      })[k],
     rematch: (k: BossKind): string => `Rematch · ${S.boss.name(k)}`,
     beaten: 'Busted',
     armour: 'ARMOUR CRACKED',
@@ -643,6 +760,17 @@ export const S = {
         grandmaster: 'Grandmaster',
         centurion: 'Centurion',
         immortal: 'Immortal',
+        roadWarden: 'Road Warden',
+        gridlord: 'Gridlord',
+        ringbearer: 'Ringbearer',
+        unstoppable: 'Unstoppable',
+        timekeeper: 'Timekeeper',
+        paragon: 'Paragon',
+        mythic: 'Mythic',
+        ringEternal: 'Ring Eternal',
+        mastermind: 'Mastermind',
+        summit: 'Summit',
+        syndicateEnd: "Syndicate's End",
       })[id],
     rule(r: TitleRule): string {
       switch (r.k) {
@@ -651,13 +779,15 @@ export const S = {
         case 'mastery':
           return `Complete the ${S.mastery.name(r.goal)} mastery`;
         case 'bosses':
-          return 'Take down every syndicate boss';
+          return r.all ? 'Take down all eight syndicate bosses' : 'Take down the first four syndicate bosses';
         case 'trial':
           return `Pass the ${S.trials.name(r.id as RunId)} trial`;
         case 'legendary':
           return `Complete ${r.shifts} Legendary Shifts`;
         case 'prestige':
           return `Reach Prestige ★${r.rank}`;
+        case 'masteries':
+          return 'Reach tier V in every mastery';
       }
     },
     earned: (ids: TitleId[]): string => (ids.length === 1 ? `TITLE · ${S.titles.name(ids[0])}` : `${ids.length} NEW TITLES · ${ids.map((t) => S.titles.name(t)).join(', ')}`),
@@ -713,6 +843,16 @@ export const S = {
     standing: 'Standing on the island',
   },
 
+  oversize: {
+    incoming: 'WIDE LOAD',
+    passed: (amount: string): string => `WIDE LOAD ${amount}`,
+  },
+
+  racers: {
+    incoming: 'STREET RACE',
+    stopped: (amount: string): string => `RACE STOPPED ${amount}`,
+  },
+
   learner: {
     incoming: 'LEARNER DRIVER',
     crowded: 'TOO CLOSE',
@@ -733,6 +873,13 @@ export const S = {
     carsSent: (n: number): string => (n === 1 ? '1 car' : `${n} cars`),
     unlocked: 'New modes · swipe sideways for Unlimited, Mayhem and Multiplayer',
     swipeHint: 'Swipe for more modes',
+    /** Unlimited's late stages (`endlessStages`), as they come. */
+    stage: (stage: number, overtime: number): string =>
+      overtime > 0
+        ? `OVERTIME ${overtime} · more traffic, a little faster`
+        : (['', 'GAS TANKERS JOIN THE TRAFFIC', 'NIGHT FALLS', 'A STORM ROLLS IN', 'MILITARY TRUCKS ON THE ROAD'][stage] ?? ''),
+    /** An Unlimited milestone reached: its skin. */
+    milestone: (id: string): string => `UNLIMITED MILESTONE · ${S.shop.item(id)} unlocked`,
   },
 
   mayhem: {
@@ -797,6 +944,8 @@ export const S = {
     mastery: 'Mastery',
     feats: 'Feats',
     trialsLocked: (level: number): string => `Opens at Level ${level} · special shifts with a reward`,
+    ascension: 'Ascension',
+    ascensionHint: 'One trial for every Prestige rank: the hardest shifts in the game.',
     bosses: 'Syndicate bosses',
     prestige: 'Prestige',
     legendary: 'Legendary shifts',
@@ -968,13 +1117,23 @@ export const S = {
     title: 'Street Builder',
     ringFull: 'Ring full',
     drag: 'Drag onto the ring',
-    pickOne: 'Tap a part to see what it does · tap a built one to tear it down.',
+    pickOne: 'Tap a part to see what it does · tap a built one to move or remove it.',
     dragHint: 'Drag it onto a free slot on the ring.',
     buildHint: 'Double-tap the part to build it · one tap takes it away.',
-    tapAgainToRemove: 'Tap again to tear it down · nothing is paid back',
     keepsArms: (n: number): string => `A roundabout keeps at least ${n} arms`,
     name: (part: string): string =>
       part === 'arm' ? 'New arm' : part === 'tollBooth' ? 'Toll Booth' : part === 'speedCamera' ? 'Speed Camera' : 'Tow Depot',
+    /** A part that is already on the ring (its sheet). */
+    builtName: (part: string): string => (part === 'arm' ? 'Arm' : S.builder.name(part)),
+    onTheRing: 'On your roundabout',
+    arms: 'Arms on the ring',
+    move: 'Move',
+    delete: 'Delete',
+    deleteConfirm: 'Tap again to delete',
+    noRefund: 'Moving is free. Deleting pays nothing back.',
+    moveHint: 'Drag it to a free slot, or tap one · tap anywhere else to keep it where it is.',
+    moved: (name: string): string => `${name} moved`,
+    moveCancelled: 'Stays where it is',
     explanation(part: string, c: Config): string {
       switch (part) {
         case 'arm':
@@ -1021,6 +1180,7 @@ export const S = {
       if (item.source.kind === 'elite') return `Reach Elite ${item.source.level}.`;
       if (item.source.kind === 'pass') return `Tier ${item.source.tier} of the ${S.pass.seasonName(item.source.season)} Season Pass. It comes back every year.`;
       if (item.source.kind === 'hall') return 'Build the Hall of Fame (Records → Elite).';
+      if (item.source.kind === 'unlimited') return `Send ${Fmt.number(item.source.cars)} cars in one Unlimited run.`;
       if (item.source.kind === 'find')
         return `A rare find: ${S.shop.findOdds(item.source.chance)} ${S.shop.chest(item.source.chest)}. The only honour that is luck.`;
       return 'Not found yet: it comes out of chests.';
@@ -1029,6 +1189,13 @@ export const S = {
     watchAdShort: 'Watch ad',
     adReward: 'Ad watched · Standard chest added',
     noAdsLeft: 'No more ad chests today. Back tomorrow.',
+    /** A portal's rewarded ad that did not play to the end: no chest, and why. */
+    adFailed: (outcome: Exclude<RewardedOutcome, 'watched' | 'disabled'>): string =>
+      outcome === 'cooldown'
+        ? 'An ad just played. Try again in a few minutes.'
+        : outcome === 'blocked'
+          ? 'No ad could play: an ad blocker is on.'
+          : 'No ad available right now. Try again later.',
     adPlaceholder: 'Ad',
     adCountdown: (s: number): string => `Your chest in ${s} s`,
     watchAd: (left: number): string => `Watch ad · ${left} left`,
@@ -1169,6 +1336,16 @@ export const S = {
         harvestMoon: 'Harvest Moon',
         thunder: 'Thunderbolt',
         hallOfFame: 'Hall of Famer',
+        quasar: 'Quasar',
+        prism: 'Prism',
+        meteor: 'Meteor',
+        eclipse: 'Eclipse',
+        nebula: 'Nebula',
+        comet: 'Comet',
+        starforge: 'Starforge',
+        endurance: 'Endurance',
+        overdrive: 'Overdrive',
+        infinity: 'Infinity',
       };
       return names[id] ?? id;
     },
@@ -1338,6 +1515,10 @@ export const S = {
           return `A combo of ${n}`;
         case 'veteran':
           return `${n} shifts completed`;
+        case 'lifesaver':
+          return `${n} emergency runs let through`;
+        case 'closeShaves':
+          return `${n} close shaves past a bike`;
       }
     },
     name: (g: MasteryGoal): string =>
@@ -1350,9 +1531,11 @@ export const S = {
         secureRoute: 'Secure Route',
         comboMaster: 'Combo Master',
         veteran: 'Veteran',
+        lifesaver: 'Lifesaver',
+        closeShaves: 'Close Shaves',
       })[g],
     toast(done: MasteryCompletion[]): string {
-      const names = done.map((c) => `${S.mastery.name(c.goal)} ${'I'.repeat(c.tier + 1)}`);
+      const names = done.map((c) => `${S.mastery.name(c.goal)} ${masteryNumeral(c.tier)}`);
       const chests = done.length === 1 ? 'CHEST EARNED' : `${done.length} CHESTS EARNED`;
       return `MASTERY COMPLETE · ${names.join(', ')} · ${chests}`;
     },
@@ -1361,9 +1544,17 @@ export const S = {
   night: 'Night',
   blackout: 'Blackout',
   weather: (w: Weather): string =>
-    ({ clear: 'Clear', lightRain: 'Light Rain', heavyRain: 'Heavy Rain', storm: 'Storm', extreme: 'Extreme Weather', fog: 'Fog', snow: 'Snow & Ice' })[w],
+    ({ clear: 'Clear', lightRain: 'Light Rain', heavyRain: 'Heavy Rain', storm: 'Storm', extreme: 'Extreme Weather', fog: 'Fog', snow: 'Snow & Ice', hail: 'Hail', sandstorm: 'Sandstorm' })[w],
   cityEvent: (e: CityEvent): string =>
-    ({ roadworks: 'Roadworks', roadClosure: 'Road Closure', concert: 'Concert Traffic', vipConvoy: 'VIP Convoy', policeOperation: 'Police Operation', schoolRun: 'School Run' })[e],
+    ({
+      roadworks: 'Roadworks',
+      roadClosure: 'Road Closure',
+      concert: 'Concert Traffic',
+      vipConvoy: 'VIP Convoy',
+      policeOperation: 'Police Operation',
+      schoolRun: 'School Run',
+      marathon: 'Marathon',
+    })[e],
 
   upgrades: {
     title: 'Upgrades',
@@ -1557,6 +1748,10 @@ export const S = {
           return 'BUS';
         case 'motorbike':
           return 'BIKE';
+        case 'oversize':
+          return 'WIDE LOAD';
+        case 'racer':
+          return 'RACER';
         default:
           return null;
       }

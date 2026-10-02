@@ -1,4 +1,4 @@
-import { type SaveGame, type Career, type Hint, HINTS, newSave, newCareer, roundTimes, GAME_MODES, MASTERY_GOALS, type GameMode } from '../core/career';
+import { type SaveGame, type Career, type Hint, HINTS, newSave, newCareer, roundTimes, GAME_MODES, MASTERY_GOALS, MASTERY_THRESHOLDS, Careers, type GameMode } from '../core/career';
 import { UPGRADES, upgradeMaxSteps } from '../core/levels';
 import { COSMETICS, CHEST_KINDS, type ChestKind, type CosmeticSource, MAX_CAR_SKINS, cosmetic } from '../core/loot';
 import { ROAD_MODULES, type RoadModule, BOSS_KINDS, type BossKind, baseConfig } from '../core/config';
@@ -56,7 +56,7 @@ function readCareer(raw: unknown): Career {
   if (isObject(raw.masteryTiers)) {
     for (const goal of MASTERY_GOALS) {
       const t = int(raw.masteryTiers[goal], 0, 0);
-      if (t > 0) masteryTiers[goal] = Math.min(3, t);
+      if (t > 0) masteryTiers[goal] = Math.min(MASTERY_THRESHOLDS[goal].length, t);
     }
   }
   const bestTimes: Record<string, number[]> = {};
@@ -190,7 +190,7 @@ function readSave(raw: unknown): SaveGame {
     if (s.reduceMotion === 'on' || s.reduceMotion === 'off') settings.reduceMotion = s.reduceMotion;
     else if (s.reduceMotion === 'system' && settings.motionChosen) settings.reduceMotion = 'system';
   }
-  return {
+  const save: SaveGame = {
     version: 2,
     highscore: int(raw.highscore, 0, 0),
     highscoreSeed: typeof raw.highscoreSeed === 'number' ? raw.highscoreSeed : null,
@@ -206,6 +206,9 @@ function readSave(raw: unknown): SaveGame {
     mayhemBestChain: int(raw.mayhemBestChain, 0, 0),
     notesSeen: typeof raw.notesSeen === 'string' ? raw.notesSeen : null,
   };
+  // Unlimited milestones that came after the save's best run (Leo, 02.10.2026) arrive now, marked new.
+  Careers.claimUnlimited(save.career, save.unlimitedBestCars);
+  return save;
 }
 
 /** The first web version kept a smaller career; its progress carries over once. */

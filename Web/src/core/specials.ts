@@ -123,6 +123,12 @@ export function criminalCaught(w: World, criminalId: number, policeId: number, p
   w.criminal = { kind: 'idle', next: now + w.criminalRng.range(c.criminalInterval.lo, c.criminalInterval.hi) };
   w.events.push({ type: 'takedown', criminal: criminalId, police: policeId, point, time: now, points, timeLeft });
   if (w.vehicle(criminalId)?.role === 'boss' && w.isScoring) {
+    w.score.bossesCaught++;
+    // The twins: the second one is on its way at once; the heist comes back with the last one.
+    if (w.score.bossesCaught < c.bossCount) {
+      w.criminal = { kind: 'idle', next: now + w.criminalRng.range(c.twinsGap.lo, c.twinsGap.hi) };
+      return;
+    }
     const amount = c.heistRecoveryBase + c.heistRecoveryPerLevel * c.level;
     w.score.money += amount;
     w.score.bossBusted = true;

@@ -25,6 +25,27 @@ export type PatchImpact = 'major' | 'minor' | 'fix';
 
 export const PATCH_NOTES: PatchNote[] = [
   {
+    id: '2026-10-02',
+    date: '2 October 2026',
+    title: 'New bosses, Ascension trials, Unlimited stages, Mastery IV and V, and more for the late game',
+    impact: 'major',
+    items: [
+      'Four new syndicate bosses from Level 75: the Twins, the Decoy, the Smuggler and the Kingpin. Each one has a rematch, and a new title waits for all eight.',
+      'Ascension: one very hard trial for every Prestige rank, ★1 to ★10, under Progress → Goals. The last one gives the title Summit.',
+      'Unlimited no longer stays the same after a few minutes: gas tankers join, night falls, a storm rolls in, military trucks come, then Overtime. New skins at 250, 500 and 1,000 cars in one run.',
+      'Prestige gives something on every rank now: a skin or a title from ★4 to ★20, and two titles beyond. The leaderboard star changes its look at ★4, ★10 and ★20.',
+      'Mastery tiers IV and V, and two new masteries: Lifesaver and Close Shaves. Reach tier V in all of them for the title Mastermind.',
+      'New on the road from Level 85: the oversize load, slow and long; keep your distance for a bonus. From Level 90: street racers; ram them with a police car.',
+      'New weather: hail from Level 55, sandstorms from Level 65. New city event from Level 40: the Marathon.',
+      'Street Builder: tap a built arm or module to see what it does, then Move or Delete it. Moving is free: drag it to a free spot, or tap one. Delete asks once more, since nothing is paid back.',
+      'Installed the game? Press and hold its icon to jump straight into the Daily Shift, Unlimited or Multiplayer.',
+      'On CrazyGames the free chest in the Shop now comes with a real ad. The chest is yours once the ad has played to the end; still three a day.',
+      'On CrazyGames, a multiplayer invite now opens the game on CrazyGames for your friend and joins your room.',
+      'While the game loads, your car circles the roundabout. If it cannot start, it says so and lets you try again.',
+      'A link that leads nowhere now shows a "road closed" page with the way back to the roundabout.',
+    ],
+  },
+  {
     id: '2026-10-01',
     date: '1 October 2026',
     title: 'Briefings, Feats, Big Screen, Cloud sync and the Classic',

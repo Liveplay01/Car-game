@@ -502,6 +502,12 @@ a.row-link {
   color: var(--destructive);
 }
 
+/* The second tap of a destructive action: filled, so "this time it happens" is unmistakable. */
+.btn.destructive.filled {
+  background: var(--destructive);
+  color: var(--accent-ink);
+}
+
 .btn.block {
   width: 100%;
   min-height: 52px;
@@ -540,6 +546,9 @@ a.row-link {
   }
   .btn.primary:hover:not(:disabled) {
     background: #b3eddb;
+  }
+  .btn.destructive.filled:hover:not(:disabled) {
+    background: #ff7277;
   }
   .icon-btn:hover {
     background: rgba(40, 45, 52, 0.85);
@@ -2031,7 +2040,8 @@ a.row-link {
 }
 
 /* The Prestige star (ui/leaderboardSheet.ts): a five-point star with the rank inside and a
-   slow glint. Tiers follow the star skins: silver ★1, gold ★2, iris ★3 and up. */
+   slow glint. Tiers follow the star skins: silver ★1, gold ★2, iris ★3, then ember ★4, prism ★10
+   and eternal ★20 (02.10.2026, the ranks beyond the first three). */
 .prestige-star {
   --star-a: #f4f6fa;
   --star-b: #9aa3b2;
@@ -2074,6 +2084,21 @@ a.row-link {
 .prestige-star.tier-3 {
   --star-a: #ffd36e;
   --star-b: #c15cff;
+}
+
+.prestige-star.tier-4 {
+  --star-a: #ffc78a;
+  --star-b: #ff5a3c;
+}
+
+.prestige-star.tier-5 {
+  --star-a: #c8fff0;
+  --star-b: #6f9bff;
+}
+
+.prestige-star.tier-6 {
+  --star-a: #fff4d6;
+  --star-b: #ff62b8;
 }
 
 .prestige-star::after {

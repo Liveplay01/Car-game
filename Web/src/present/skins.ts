@@ -105,6 +105,16 @@ export const Skins = {
       harvestMoon: 'skinPumpkin',
       thunder: 'skinMidnight',
       hallOfFame: 'skinGold',
+      quasar: 'skinObsidian',
+      prism: 'skinHolo',
+      meteor: 'skinCarbon',
+      eclipse: 'skinMidnight',
+      nebula: 'skinPlum',
+      comet: 'skinIce',
+      starforge: 'skinCopper',
+      endurance: 'skinChrome',
+      overdrive: 'skinObsidian',
+      infinity: 'skinPearl',
     };
     return id ? (map[id] ?? null) : null;
   },
@@ -165,7 +175,21 @@ export const Skins = {
       case 'singularity':
         return 'horizonViolet';
       case 'undying':
+      case 'comet':
         return 'lightBlue';
+      case 'quasar':
+      case 'nebula':
+        return 'horizonViolet';
+      case 'prism':
+        return 'skinPearl';
+      case 'meteor':
+      case 'starforge':
+        return 'fireOuter';
+      case 'eclipse':
+        return 'skinGold';
+      case 'endurance':
+      case 'overdrive':
+        return 'skinMint';
       default:
         return null;
     }
@@ -191,6 +215,13 @@ export const Skins = {
       singularity: 'singularity',
       zenith: 'halo',
       undying: 'soulfire',
+      meteor: 'embers',
+      eclipse: 'halo',
+      nebula: 'aurora',
+      comet: 'snowTrail',
+      starforge: 'flame',
+      overdrive: 'neon',
+      infinity: 'rainbow',
     };
     return id ? (map[id] ?? null) : null;
   },
@@ -249,7 +280,18 @@ export const Skins = {
         return 'shinyGlitter';
       case 'singularity':
       case 'undying':
+      case 'quasar':
+      case 'endurance':
+      case 'nebula':
+      case 'overdrive':
         return 'shiny';
+      case 'prism':
+      case 'meteor':
+      case 'eclipse':
+      case 'comet':
+      case 'starforge':
+      case 'infinity':
+        return 'shinyGlitter';
       case 'northernLights':
       case 'thunder':
       case 'neonWave':

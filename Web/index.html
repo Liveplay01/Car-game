@@ -28,6 +28,73 @@
     <link rel="manifest" href="/manifest.webmanifest" />
     <link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32.png" />
     <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
+    <!--
+      The boot screen: the player's car circles the ring while the game loads, and main.ts takes it
+      away once the game is on screen. If that never happens (a broken download, an old browser, a
+      crash on start), it turns into a message in the game's own look after 20 s, without any
+      script (the CSP allows none inline); main.ts shows it at once when the start throws.
+      The same ring as public/404.html: only the ring, no arms.
+    -->
+    <style>
+      .boot {
+        position: fixed;
+        inset: 0;
+        z-index: 100;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding: calc(48px + env(safe-area-inset-top, 0px)) 24px calc(48px + env(safe-area-inset-bottom, 0px));
+        overflow-y: auto;
+        background: #0b0d10;
+        color: #f4f6f9;
+        font: 16px/1.6 -apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, 'Segoe UI', Roboto, sans-serif;
+        text-align: center;
+        -webkit-font-smoothing: antialiased;
+        transition: opacity 240ms cubic-bezier(0.23, 1, 0.32, 1);
+      }
+      .boot.gone { opacity: 0; pointer-events: none; }
+      .boot svg { width: 152px; height: 152px; flex: none; margin-top: auto; }
+      /* Counter-clockwise like the game's ring; it parks after eight laps, when the message comes. */
+      .boot-car { transform-box: view-box; transform-origin: 100px 100px; animation: boot-orbit 2.5s linear 8; }
+      /* Folded away while loading, so the ring sits centred (auto margins, which never cut off the top
+         on a short screen); it unfolds under the ring, which glides up. */
+      .boot-fail {
+        flex: none;
+        max-width: 34ch;
+        max-height: 0;
+        margin-top: 0;
+        margin-bottom: auto;
+        overflow: hidden;
+        opacity: 0;
+        visibility: hidden;
+        animation: boot-show 400ms cubic-bezier(0.23, 1, 0.32, 1) 20s forwards;
+      }
+      .boot.failed .boot-car { animation: none; }
+      .boot.failed .boot-fail { animation-delay: 0s; }
+      .boot h1 { margin: 0 0 12px; font: 700 28px/1.15 ui-rounded, 'SF Pro Rounded', -apple-system, system-ui, sans-serif; letter-spacing: -0.01em; text-wrap: balance; }
+      .boot p { margin: 0 0 24px; color: #99a2af; text-wrap: pretty; }
+      .boot a {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 50px;
+        min-width: 200px;
+        padding: 0 24px;
+        border-radius: 14px;
+        background: #9ee6cf;
+        color: #0e1013;
+        font-weight: 600;
+        font-size: 17px;
+        text-decoration: none;
+      }
+      .boot a:focus-visible { outline: 2px solid #9ee6cf; outline-offset: 3px; }
+      @keyframes boot-orbit { to { transform: rotate(-360deg); } }
+      @keyframes boot-show { from { visibility: visible; } to { max-height: 32rem; margin-top: 32px; opacity: 1; visibility: visible; } }
+      @media (prefers-reduced-motion: reduce) {
+        .boot-car { animation: none; }
+        .boot-fail { animation-duration: 1ms; }
+      }
+    </style>
   </head>
   <body>
     <div id="app" class="app" data-screen="ready" data-tabbar="shown">
@@ -35,7 +102,23 @@
       <nav id="tabbar" class="tabbar" aria-label="Main"></nav>
       <div id="layers"></div>
     </div>
-    <noscript>This game needs JavaScript.</noscript>
+    <div id="boot" class="boot" role="status">
+      <svg viewBox="18 18 164 164" aria-hidden="true">
+        <circle cx="100" cy="100" r="62" fill="none" stroke="#171b21" stroke-width="34" />
+        <circle cx="100" cy="100" r="62" fill="none" stroke="#ffffff" stroke-opacity="0.14" stroke-width="1.5" stroke-dasharray="6 8" />
+        <circle cx="100" cy="100" r="44" fill="#10141a" stroke="#9ee6cf" stroke-opacity="0.28" stroke-width="2" />
+        <g class="boot-car">
+          <rect x="89" y="32.5" width="22" height="12" rx="3.5" fill="#9ee6cf" />
+          <rect x="93" y="34.5" width="5" height="8" rx="1.5" fill="#0e1013" fill-opacity="0.55" />
+        </g>
+      </svg>
+      <div class="boot-fail">
+        <h1>The roundabout did not start.</h1>
+        <p>Something kept the game from loading. Check your connection and try again; your progress is safe on this device.</p>
+        <a href="">Try again</a>
+      </div>
+    </div>
+    <noscript><style>.boot-car { animation: none; } .boot-fail { animation-delay: 0s; }</style></noscript>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

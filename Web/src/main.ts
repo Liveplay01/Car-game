@@ -11,6 +11,12 @@ const layers = document.getElementById('layers')!;
 /** Set right before a reload into a new version (sessionStorage: this tab only). */
 const UPDATED_KEY = 'carGame.updated';
 
+// The boot screen (index.html) turns into its "did not start" message at once if the start throws.
+const boot = document.getElementById('boot');
+const bootFailed = (): void => boot?.classList.add('failed');
+window.addEventListener('error', bootFailed);
+window.addEventListener('unhandledrejection', bootFailed);
+
 // Opened by CrazyGames (`?crazygames`): the save lives in their SDK, which has to be ready
 // before the game reads it.
 if (inPortal) await startCrazyGames();
@@ -18,6 +24,17 @@ if (inPortal) await startCrazyGames();
 const shell = new Shell(app, canvas, layers);
 if (import.meta.env.DEV) (window as unknown as { __game: Shell }).__game = shell;
 gameLoaded();
+// The game is on screen: the boot screen fades away, and later errors are the game's own business.
+window.removeEventListener('error', bootFailed);
+window.removeEventListener('unhandledrejection', bootFailed);
+// `npm run dev` only, to look at the boot screen: `?boot=wait` keeps it (its message comes after
+// 20 s, as on a start that hangs), `?boot=fail` shows the message at once.
+const bootDemo = import.meta.env.DEV ? new URLSearchParams(location.search).get('boot') : null;
+if (bootDemo === 'fail') bootFailed();
+if (boot && bootDemo === null) {
+  boot.classList.add('gone');
+  window.setTimeout(() => boot.remove(), 300);
+}
 startAds();
 // Cloud sync, when the player turned it on: newer progress from another device comes over by itself.
 startCloud({

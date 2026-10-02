@@ -3,14 +3,15 @@ import type { RoadModule } from '../core/config';
 import type { Upgrade } from '../core/levels';
 import type { Vec2 } from '../core/vec2';
 import { type Built, partModule } from './flow';
-import { StreetBuilderPage, sameBuilt } from './builder';
+import { StreetBuilderPage } from './builder';
 import { S, Fmt } from './strings';
 import type { PageHost } from './pageHost';
 
 /**
  * The Build tab's actions: buying an upgrade (a second tap on the same card buys it), and on
- * the Street Builder picking up, placing, marking and tearing down parts. The rules are
- * `core/career.ts`, the looks `upgrades.ts` and `builder.ts`.
+ * the Street Builder picking up, placing and building parts, and for a built one its sheet:
+ * moving it (lift, then drag or tap onto a free slot) and tearing it down (a second tap
+ * confirms). The rules are `core/career.ts`, the looks `upgrades.ts` and `builder.ts`.
  */
 export class BuildFlow {
   /** A second tap within this long is a double tap (buy, build). */
@@ -79,18 +80,37 @@ export class BuildFlow {
     this.host.showNotice(module ? S.notice.placed(S.builder.name(pending.part)) : S.notice.built(S.builder.name(pending.part), career.armSlots.length));
   }
 
-  /** A press on the Street Builder: pick up a part, build or drop the pending one, mark or tear down. */
+  /** A press on the Street Builder: a lifted part, a palette card, the pending part, or a built one. */
   press(point: Vec2): void {
     const b = this.host.builderPage;
     const career = this.host.save.career;
+    const map = StreetBuilderPage.map(this.host.viewport, this.host.tabInset);
+    const moving = b.moving;
+    if (moving) {
+      // The lifted part: pick it up to drag it, tap a free slot to put it there, or anything else keeps it in place.
+      const from = moving.from;
+      const onIt =
+        from.k === 'arm'
+          ? StreetBuilderPage.slotAt(point, this.host.config.armSlotCount, map) === from.slot
+          : StreetBuilderPage.moduleSlotAt(point, this.host.config.moduleSlotCount, map) === from.slot;
+      if (onIt) {
+        b.dragging = { part: moving.part, at: point };
+        this.host.pressed(point);
+        return;
+      }
+      const slot = StreetBuilderPage.moveTargetAt(from, point, career, this.host.config, map);
+      if (slot !== null) this.move(slot);
+      else this.cancelMove();
+      return;
+    }
     const part = StreetBuilderPage.cardAt(point, this.host.viewport, this.host.tabInset);
     if (part) {
+      this.closeInspected();
       this.host.perform({ k: 'pickUpPart', part });
       b.dragging = { part, at: point };
       this.host.pressed(point);
       return;
     }
-    const map = StreetBuilderPage.map(this.host.viewport, this.host.tabInset);
     const pending = b.pending;
     if (pending) {
       const hit = partModule(pending.part)
@@ -109,22 +129,94 @@ export class BuildFlow {
     }
     const built = StreetBuilderPage.builtPartAt(point, career, this.host.config, map);
     if (!built) {
-      b.marked = null;
+      if (b.inspected) this.host.closeDetail();
       return;
     }
-    if (b.marked && sameBuilt(b.marked.part, built)) {
-      this.tearDown(built);
+    // A built part: its sheet, with what it does, Move and Delete.
+    if (pending) this.host.perform({ k: 'removePart' });
+    b.selected = null;
+    b.marked = null;
+    b.inspected = { part: built, age: 0 };
+    this.host.detailOpen = true;
+    this.host.play(['uiTick'], []);
+  }
+
+  /** The sheet's Move: the part is lifted, the sheet goes, and the ring shows where it may go. */
+  liftInspected(): void {
+    const b = this.host.builderPage;
+    const built = b.inspected?.part;
+    const part = built ? StreetBuilderPage.partOf(built, this.host.save.career) : null;
+    if (!built || !part) return;
+    b.inspected = null;
+    b.marked = null;
+    this.host.detailOpen = false;
+    b.moving = { from: built, part, age: 0 };
+    this.host.play(['uiTick'], ['comboUp']);
+  }
+
+  /** The lifted part lands on `slot`, free of charge. */
+  move(slot: number): void {
+    const b = this.host.builderPage;
+    const moving = b.moving;
+    if (!moving) return;
+    const career = this.host.save.career;
+    const from = moving.from;
+    const ok = from.k === 'arm' ? Careers.moveArm(career, from.slot, slot, this.host.config) : Careers.moveModule(career, from.slot, slot, this.host.config);
+    b.dragging = null;
+    b.target = null;
+    if (!ok) {
+      b.denied = 0.001;
+      this.host.play(['denied'], []);
       return;
     }
+    b.moving = null;
+    if (from.k === 'module') b.builtModule = { slot, age: 0 };
+    else b.built = { slot, age: 0 };
+    this.host.persist();
+    this.host.refreshWaitingShift();
+    this.host.play(['build'], ['comboUp']);
+    this.host.showNotice(S.builder.moved(S.builder.builtName(moving.part)));
+  }
+
+  /** The lifted part stays where it was. */
+  cancelMove(): void {
+    const b = this.host.builderPage;
+    if (!b.moving) return;
+    b.moving = null;
+    b.dragging = null;
+    b.target = null;
+    this.host.tick();
+    this.host.showNotice(S.builder.moveCancelled);
+  }
+
+  /** The sheet's Delete: the first tap marks the part red, the second tears it down. */
+  deleteInspected(): void {
+    const b = this.host.builderPage;
+    const built = b.inspected?.part;
+    if (!built) return;
+    const career = this.host.save.career;
     if (built.k === 'arm' && !Careers.canRemoveArm(career, built.slot)) {
       b.denied = 0.001;
       this.host.play(['denied'], []);
       this.host.showNotice(S.builder.keepsArms(4));
       return;
     }
-    b.marked = { part: built, age: 0 };
-    this.host.play(['uiTick'], []);
-    this.host.showNotice(S.builder.tapAgainToRemove);
+    if (!b.marked) {
+      b.marked = { part: built, age: 0 };
+      this.host.play(['uiTick'], []);
+      return;
+    }
+    b.inspected = null;
+    this.host.detailOpen = false;
+    this.tearDown(built);
+  }
+
+  private closeInspected(): void {
+    const b = this.host.builderPage;
+    if (!b.inspected) return;
+    b.inspected = null;
+    b.marked = null;
+    this.host.detailOpen = false;
   }
 
   private tearDown(part: Built): void {
@@ -135,7 +227,7 @@ export class BuildFlow {
     if (part.k === 'arm') {
       if (!Careers.removeArm(career, part.slot)) return;
       b.tornDown = { part, module: null, age: 0 };
-      name = S.builder.name('arm');
+      name = S.builder.builtName('arm');
     } else {
       const module: RoadModule | undefined = career.modules[part.slot];
       if (!module) return;

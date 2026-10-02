@@ -214,6 +214,10 @@ export const CarArt = {
         return 'vehicleLearner';
       case 'motorbike':
         return 'vehicleMotorbike';
+      case 'oversize':
+        return 'vehicleOversize';
+      case 'racer':
+        return 'vehicleRacer';
     }
   },
 
@@ -233,7 +237,10 @@ export const CarArt = {
       case 'classic':
       case 'learner':
       case 'bus':
+      case 'racer':
         return [...common, 'rearWindow'];
+      case 'oversize':
+        return ['cargo', ...common];
       case 'motorbike':
         return ['frontLeftWheel', 'rearLeftWheel', 'windscreen'];
       case 'fireTruck':
@@ -275,6 +282,10 @@ export const CarArt = {
         return c.busLength;
       case 'motorbike':
         return c.motorbikeLength;
+      case 'oversize':
+        return c.oversizeLength;
+      case 'racer':
+        return c.racerLength;
       default:
         return c.carLength;
     }
@@ -601,6 +612,17 @@ export const CarArt = {
       list.w(rect(at, v(7.5, 6.5), 1, pose.heading), 'primary', opacity);
       list.w(rect(worldOf(v(-L * 0.08, 1.2), pose), v(4.6, 1.3), 0.3, pose.heading), 'lightRed', opacity);
       list.w(rect(worldOf(v(-L * 0.08 - 1.7, -0.6), pose), v(1.3, 3.8), 0.3, pose.heading), 'lightRed', opacity);
+    }
+    if (type === 'oversize' && dents.length === 0) {
+      // Black and yellow warning boards on both ends: a load wider than it should be.
+      for (const x of [L / 2 - 2.2, -L / 2 + 2.2]) {
+        list.w(rect(worldOf(v(x, 0), pose), v(2.6, W + 1.6), 0.6, pose.heading), 'hazard', opacity);
+        for (const y of [-W * 0.32, 0, W * 0.32]) list.w(rect(worldOf(v(x, y), pose), v(2.6, 1.6), 0.2, pose.heading), 'vehicleTire', opacity);
+      }
+    }
+    if (type === 'racer' && dents.length === 0) {
+      // Two white racing stripes nose to tail.
+      for (const y of [-W * 0.14, W * 0.14]) list.w(line(worldOf(v(L / 2 - 1, y), pose), worldOf(v(-L / 2 + 1, y), pose), 1.2), 'primary', opacity * 0.85);
     }
     if (type === 'motorbike' && dents.length === 0) {
       // The handlebar across the front, wider than the bike: from above, what makes it a bike.

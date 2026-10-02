@@ -4,14 +4,25 @@
  * logged-in player, in the browser for a guest. The SDK also hears when the game has loaded
  * and when a shift is being played, so CrazyGames places its ads outside of play. Without the
  * SDK (an ad blocker, a slow network, CrazyGames not answering) the game saves as usual.
+ *
+ * Since 02.10.2026 (SDK v3 docs, docs.crazygames.com/sdk): the free chest's ad is their rewarded
+ * ad (paid only on `adFinished`; never a midgame ad, the shifts flow into each other), the big
+ * moments are a `happytime`, and a multiplayer invite is their invite link.
  */
 import { type KeyValueStore, useStore } from '../storage/store';
 import { SAVE_KEYS } from '../storage/save';
 import { ACCOUNT_KEY, NAME_KEY } from '../storage/profile';
+import type { RewardedOutcome } from '../present/session';
 
 const SDK_URL = 'https://sdk.crazygames.com/crazygames-sdk-v3.js';
 /** The game starts without the SDK rather than keep the player waiting longer than this. */
 const SDK_TIMEOUT = 6000;
+/** "Use this feature sparingly": at most one celebration in this long (ms). */
+const HAPPYTIME_GAP = 90_000;
+/** The invite link's parameter that carries the room code. */
+const ROOM_PARAM = 'room';
+
+type AdError = { code?: string };
 
 interface CrazyGamesSdk {
   init(): Promise<void>;
@@ -23,12 +34,21 @@ interface CrazyGamesSdk {
     loadingStop(): void;
     gameplayStart(): void;
     gameplayStop(): void;
+    happytime(): void;
+    inviteLink(params: Record<string, string>): string;
+    getInviteParam(name: string): string | null;
+  };
+  readonly ad: {
+    requestAd(type: 'midgame' | 'rewarded', callbacks: { adStarted?: () => void; adFinished?: () => void; adError?: (error: AdError) => void }): void;
   };
 }
 
 /** The SDK once it is ready; null outside CrazyGames or when it is missing or disabled. */
 let sdk: CrazyGamesSdk | null = null;
 let playing = false;
+let lastHappytime = -Infinity;
+/** Quiets the game while an ad plays (the shell's audio); set by the shell. */
+let quiet: (on: boolean) => void = () => undefined;
 
 function loadScript(): Promise<void> {
   return new Promise((resolve, reject) => {
@@ -68,6 +88,75 @@ export function reportGameplay(now: boolean): void {
   if (!sdk || now === playing) return;
   playing = now;
   call((s) => (now ? s.game.gameplayStart() : s.game.gameplayStop()));
+}
+
+/** How the game's sound goes quiet while an ad plays, and comes back after. */
+export function onAdAudio(fn: (on: boolean) => void): void {
+  quiet = fn;
+}
+
+/** A big moment (a boss busted, a Legendary Shift, a new record, a Prestige): CrazyGames celebrates it, now and then. */
+export function celebrate(): void {
+  const now = performance.now();
+  if (!sdk || now - lastHappytime < HAPPYTIME_GAP) return;
+  lastHappytime = now;
+  call((s) => s.game.happytime());
+}
+
+/**
+ * Plays CrazyGames' rewarded ad and says how it went. False when there is no SDK: the game then
+ * plays its own placeholder. The reward comes only with `adFinished`; the sound is off meanwhile.
+ */
+export function rewardedAd(done: (outcome: RewardedOutcome) => void): boolean {
+  if (!sdk) return false;
+  let settled = false;
+  const settle = (outcome: RewardedOutcome): void => {
+    if (settled) return;
+    settled = true;
+    quiet(false);
+    done(outcome);
+  };
+  try {
+    sdk.ad.requestAd('rewarded', {
+      adStarted: () => quiet(true),
+      adFinished: () => settle('watched'),
+      adError: (error) =>
+        settle(
+          error?.code === 'adCooldown'
+            ? 'cooldown'
+            : error?.code === 'adblock'
+              ? 'blocked'
+              : // No ads in CrazyGames' Basic Launch: the game's own placeholder plays, as before.
+                error?.code === 'adsDisabledBasicLaunch'
+                ? 'disabled'
+                : 'unavailable',
+        ),
+    });
+  } catch {
+    settle('unavailable');
+  }
+  return true;
+}
+
+/** The address a friend opens to join `code` on CrazyGames; null outside it. */
+export function inviteLink(code: string): string | null {
+  if (!sdk) return null;
+  try {
+    return sdk.game.inviteLink({ [ROOM_PARAM]: code });
+  } catch {
+    return null;
+  }
+}
+
+/** The room code a CrazyGames invite link brought, if any. */
+export function invitedRoom(): string | null {
+  if (!sdk) return null;
+  try {
+    const code = sdk.game.getInviteParam(ROOM_PARAM);
+    return code && /^\d{4}$/.test(code) ? code : null;
+  } catch {
+    return null;
+  }
 }
 
 function call(fn: (s: CrazyGamesSdk) => void): void {

@@ -13,16 +13,20 @@ const r = (lo: number, hi: number): Range => ({ lo, hi });
 
 /**
  * The sky of a shift. Rain gets rougher step by step (`weatherSeverity`); fog and snow
- * (Leo, 30.09.2026) are kinds of their own: fog takes the view, snow the grip.
+ * (Leo, 30.09.2026) are kinds of their own: fog takes the view, snow the grip. Hail and
+ * sandstorms (Leo, 02.10.2026) for the late levels: hail makes the drivers brake badly, a
+ * sandstorm takes the view and some grip.
  */
-export type Weather = 'clear' | 'lightRain' | 'heavyRain' | 'storm' | 'extreme' | 'fog' | 'snow';
-export const WEATHERS: Weather[] = ['clear', 'lightRain', 'heavyRain', 'storm', 'extreme', 'fog', 'snow'];
-const RAIN: Record<Weather, number> = { clear: 0, lightRain: 1, heavyRain: 2, storm: 3, extreme: 4, fog: 0, snow: 0 };
+export type Weather = 'clear' | 'lightRain' | 'heavyRain' | 'storm' | 'extreme' | 'fog' | 'snow' | 'hail' | 'sandstorm';
+export const WEATHERS: Weather[] = ['clear', 'lightRain', 'heavyRain', 'storm', 'extreme', 'fog', 'snow', 'hail', 'sandstorm'];
+const RAIN: Record<Weather, number> = { clear: 0, lightRain: 1, heavyRain: 2, storm: 3, extreme: 4, fog: 0, snow: 0, hail: 0, sandstorm: 0 };
 /** How hard it rains: 0 (clear, fog, snow) to 4 (extreme). */
 export const weatherSeverity = (w: Weather): number => RAIN[w];
 
-export type CityEvent = 'roadworks' | 'roadClosure' | 'concert' | 'vipConvoy' | 'policeOperation' | 'schoolRun';
-export const CITY_EVENTS: CityEvent[] = ['roadworks', 'roadClosure', 'concert', 'vipConvoy', 'policeOperation', 'schoolRun'];
+export type CityEvent = 'roadworks' | 'roadClosure' | 'concert' | 'vipConvoy' | 'policeOperation' | 'schoolRun' | 'marathon';
+export const CITY_EVENTS: CityEvent[] = ['roadworks', 'roadClosure', 'concert', 'vipConvoy', 'policeOperation', 'schoolRun', 'marathon'];
+/** The Daily Shift's events, one a day in turn: the first six, so a new player's Daily never brings a late-game event. */
+export const DAILY_EVENTS: CityEvent[] = ['roadworks', 'roadClosure', 'concert', 'vipConvoy', 'policeOperation', 'schoolRun'];
 
 export type RoadModule = 'tollBooth' | 'speedCamera' | 'towDepot';
 export const ROAD_MODULES: RoadModule[] = ['tollBooth', 'speedCamera', 'towDepot'];
@@ -36,9 +40,16 @@ export type TrialRule = 'flawless';
  * - getaway: no escorts, but gone quickly; a police car has to be ready.
  * - armoured: it shrugs off the first ram; a second police car finishes it.
  * - phantom: a blackout, and the boss drives without lights.
+ * Four more from Level 75 (Leo, 02.10.2026), so the second round brings new faces:
+ * - twins: two bosses, one right after the other; both have to be caught.
+ * - decoy: its escorts wear the boss's paint; only the real one has the open bed and the ring.
+ * - smuggler: armoured twice over: three police cars, no escorts, more time.
+ * - kingpin: the finale: a blackout, armour, and three escorts in its paint.
  */
-export type BossKind = 'convoy' | 'getaway' | 'armoured' | 'phantom';
-export const BOSS_KINDS: BossKind[] = ['convoy', 'getaway', 'armoured', 'phantom'];
+export type BossKind = 'convoy' | 'getaway' | 'armoured' | 'phantom' | 'twins' | 'decoy' | 'smuggler' | 'kingpin';
+export const BOSS_KINDS: BossKind[] = ['convoy', 'getaway', 'armoured', 'phantom', 'twins', 'decoy', 'smuggler', 'kingpin'];
+/** The first four, the syndicate as it was until 02.10.2026 (the title Syndicate Breaker, the rematch levels). */
+export const FIRST_BOSSES: BossKind[] = ['convoy', 'getaway', 'armoured', 'phantom'];
 
 /**
  * Legendary Shifts (Leo, 28.09.2026): now and then a career shift comes with one extra rule and
@@ -272,6 +283,21 @@ export const baseConfig = {
   endlessTempoPerMinute: 0.08,
   endlessMaxTempo: 1.6,
   endlessPayPerCar: 20,
+  /**
+   * Unlimited after its ramps (Leo, 02.10.2026): the density and the tempo stop rising after a
+   * few minutes, so the run moves on in stages, announced, at these seconds of the run: gas
+   * tankers join the lorries, night falls, a storm rolls in, military trucks come. After the last
+   * one, every `endlessOvertimeEvery` seconds is Overtime: one more car of density and a little
+   * more tempo, up to the limits below.
+   */
+  endlessStages: [240, 330, 420, 510] as readonly number[],
+  endlessOvertimeEvery: 90,
+  endlessMaxOvertime: 6,
+  endlessOvertimeTempo: 0.03,
+  endlessLateMaxTempo: 1.75,
+  /** The military trucks of the last stage: the first this soon after it, then this far apart. */
+  endlessMilitaryFirst: r(6, 12),
+  endlessMilitaryInterval: r(40, 60),
 
   // Mayhem
   mayhem: false,
@@ -371,9 +397,23 @@ export const baseConfig = {
   snowBrake: 0.6,
   snowReactionDelay: 0.15,
   snowPayFactor: 1.15,
+  /** Hail: drivers brake hard and badly on the stones; a little more traffic. It pays more. */
+  hailLevel: 55,
+  hailGrip: 0.8,
+  hailBrake: 0.7,
+  hailReactionDelay: 0.2,
+  hailDensity: 1,
+  hailPayFactor: 1.15,
+  /** Sandstorm: the far side fades out in the dust, sand on the road takes some grip. */
+  sandstormLevel: 65,
+  sandstormGrip: 0.85,
+  sandstormReactionDelay: 0.35,
+  sandstormPayFactor: 1.2,
   /** How often each kind comes when the sky turns bad (rain eases from 4 down to 1). */
   fogWeight: 3,
   snowWeight: 2,
+  hailWeight: 2,
+  sandstormWeight: 2,
 
   // Night: the city goes dark, you merge by the lights (only the picture changes, not the rules)
   night: false,
@@ -410,6 +450,22 @@ export const baseConfig = {
   armouredEscorts: 1,
   phantomEscorts: 1,
   phantomTimeFactor: 1.6,
+  /** The twins: how many bosses come, and how soon the second follows the first one caught. */
+  bossCount: 1,
+  twinsTimeFactor: 1,
+  twinsGap: r(0.8, 1.6),
+  /** The decoy: escorts in the boss's paint. */
+  decoyEscorts: 2,
+  decoyTimeFactor: 1.6,
+  /** The smuggler: rams it shrugs off, and its time. */
+  smugglerArmour: 2,
+  smugglerTimeFactor: 2.2,
+  /** The kingpin: everything at once, in a blackout. */
+  kingpinEscorts: 3,
+  kingpinArmour: 1,
+  kingpinTimeFactor: 2.2,
+  /** This boss's escorts wear its paint (`forLevel` sets it). */
+  bossDisguise: false,
   /** From the second round of bosses on: one more escort per round, at most `maxBossEscorts`… */
   bossRoundEscorts: 1,
   maxBossEscorts: 3,
@@ -521,6 +577,32 @@ export const baseConfig = {
   learnerZoneArc: 80,
   learnerPay: 250,
 
+  // Oversize load (Leo, 02.10.2026, core/oversize.ts): long, heavy and slow, once round the ring
+  oversizeLevel: 85,
+  /** Chance per shift; 0 turns it off (Mayhem, multiplayer). */
+  oversizeChance: 0.3,
+  /** Early in the shift: short shifts must still see it through. */
+  oversizeFirst: r(2, 6),
+  oversizeWarning: 2,
+  oversizeLength: 52,
+  oversizeMass: 4,
+  /** It crawls: at most this share of the ring's speed, and the traffic behind it with it. */
+  oversizeSpeed: 0.8,
+  /** Keep your cars this far away from it, ahead and behind, and it pays when it leaves. */
+  oversizeZoneArc: 70,
+  oversizePay: 400,
+
+  // Street racers (Leo, 02.10.2026, core/racers.ts): two of them barge in; a police car stops each
+  racerLevel: 90,
+  /** Chance per shift; 0 turns it off (Mayhem, multiplayer). */
+  racerChance: 0.25,
+  racerFirst: r(3, 8),
+  racerWarning: 2,
+  racerLength: 22,
+  racerMass: 0.9,
+  /** A racer stopped by a police car of yours pays this. */
+  racerPay: 500,
+
   // Mastery trials (core/trials.ts): an extra rule for this shift, broken ends it as 'failed'
   /** flawless: no crash, no cut-off (a broken rule ends the trial as failed). */
   trialRule: null as TrialRule | null,
@@ -550,6 +632,16 @@ export const baseConfig = {
   busMass: 2.4,
   /** Seconds a bus stands at the stop. */
   busDwell: 1.6,
+  /**
+   * Marathon (Leo, 02.10.2026): the runners cross one of the other arms where it joins the ring,
+   * again and again; while they cross, that arm's traffic waits at the line. Its rhythm is drawn
+   * per shift: crossing for `marathonCrossing` seconds of every `marathonPeriod`.
+   */
+  marathonLevel: 40,
+  marathonArmSlot: null as number | null,
+  marathonPeriod: 14,
+  marathonCrossing: 6,
+  marathonOffset: 0,
 
   // Motivation
   perfectRunPoints: 1500,

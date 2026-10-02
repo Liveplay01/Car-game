@@ -1,5 +1,5 @@
-import { baseConfig, BOSS_KINDS, type Config } from './config';
-import type { Career, MasteryGoal } from './career';
+import { baseConfig, BOSS_KINDS, FIRST_BOSSES, type Config } from './config';
+import { type Career, type MasteryGoal, MASTERY_CLASSIC_TIERS, MASTERY_GOALS, MASTERY_THRESHOLDS } from './career';
 import type { ShiftResult } from './events';
 import { type ChestKind, type Cosmetic, eliteReward } from './loot';
 
@@ -29,7 +29,18 @@ export type TitleId =
   | 'eternal'
   | 'grandmaster'
   | 'centurion'
-  | 'immortal';
+  | 'immortal'
+  | 'roadWarden'
+  | 'gridlord'
+  | 'ringbearer'
+  | 'unstoppable'
+  | 'timekeeper'
+  | 'paragon'
+  | 'mythic'
+  | 'ringEternal'
+  | 'mastermind'
+  | 'summit'
+  | 'syndicateEnd';
 
 export const TITLES: TitleId[] = [
   'eliteDriver',
@@ -52,16 +63,33 @@ export const TITLES: TitleId[] = [
   'grandmaster',
   'centurion',
   'immortal',
+  // Prestige from ★4 on (Leo, 02.10.2026): a title on every rank without a skin, and two beyond ★20.
+  'roadWarden',
+  'gridlord',
+  'ringbearer',
+  'unstoppable',
+  'timekeeper',
+  'paragon',
+  'mythic',
+  'ringEternal',
+  // Every mastery at tier V.
+  'mastermind',
+  // The last Ascension trial (core/trials.ts).
+  'summit',
+  // Every boss of the syndicate, the four from Level 75 too.
+  'syndicateEnd',
 ];
 
 /** What earns a title. */
 export type TitleRule =
   | { k: 'elite'; level: number }
   | { k: 'mastery'; goal: MasteryGoal }
-  | { k: 'bosses' }
+  | { k: 'bosses'; all?: boolean }
   | { k: 'trial'; id: string }
   | { k: 'legendary'; shifts: number }
-  | { k: 'prestige'; rank: number };
+  | { k: 'prestige'; rank: number }
+  /** Every mastery goal at its last tier. */
+  | { k: 'masteries' };
 
 export const TITLE_RULES: Record<TitleId, TitleRule> = {
   eliteDriver: { k: 'elite', level: 1 },
@@ -83,10 +111,19 @@ export const TITLE_RULES: Record<TitleId, TitleRule> = {
   grandmaster: { k: 'elite', level: 75 },
   centurion: { k: 'elite', level: 100 },
   immortal: { k: 'legendary', shifts: 50 },
+  roadWarden: { k: 'prestige', rank: 6 },
+  gridlord: { k: 'prestige', rank: 8 },
+  ringbearer: { k: 'prestige', rank: 11 },
+  unstoppable: { k: 'prestige', rank: 13 },
+  timekeeper: { k: 'prestige', rank: 16 },
+  paragon: { k: 'prestige', rank: 18 },
+  mythic: { k: 'prestige', rank: 25 },
+  ringEternal: { k: 'prestige', rank: 30 },
+  mastermind: { k: 'masteries' },
+  summit: { k: 'trial', id: 'ascension.10' },
+  syndicateEnd: { k: 'bosses', all: true },
 };
 
-/** The top tier of every mastery goal (`MASTERY_THRESHOLDS` has three). */
-const MASTERY_TOP = 3;
 
 /** What one Elite level pays. */
 export interface EliteStep {
@@ -165,15 +202,19 @@ export const Elite = {
       case 'elite':
         return Elite.level(c, config) >= rule.level;
       case 'mastery':
-        return (c.masteryTiers[rule.goal] ?? 0) >= MASTERY_TOP;
+        // Tier III, as before tiers IV and V came (read here: career.ts imports this module).
+        return (c.masteryTiers[rule.goal] ?? 0) >= MASTERY_CLASSIC_TIERS;
       case 'bosses':
-        return BOSS_KINDS.every((k) => c.bossesBeaten.includes(k));
+        // Syndicate Breaker stays the first four; Syndicate's End asks for all eight.
+        return (rule.all ? BOSS_KINDS : FIRST_BOSSES).every((k) => c.bossesBeaten.includes(k));
       case 'trial':
         return c.trialsDone.includes(rule.id);
       case 'legendary':
         return c.legendaryDone >= rule.shifts;
       case 'prestige':
         return c.prestige >= rule.rank;
+      case 'masteries':
+        return MASTERY_GOALS.every((g) => (c.masteryTiers[g] ?? 0) >= MASTERY_THRESHOLDS[g].length);
     }
   },
 

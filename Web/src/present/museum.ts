@@ -26,12 +26,19 @@ function t(list: RenderList, s: string, at: Vec2, size: number, color: ColorToke
 
 const seen = (c: Career, e: MuseumEntry): boolean => c.museumSeen.includes(museumId(e));
 
-/** How many escorts a boss brings in its first round (`applyBoss`). */
-const BOSS_ESCORTS: Record<BossKind, (c: Config) => number> = {
-  convoy: (c) => c.convoyEscorts,
-  getaway: () => 0,
-  armoured: (c) => c.armouredEscorts,
-  phantom: (c) => c.phantomEscorts,
+/**
+ * Who rides with a boss in its first round (`applyBoss`): how many, and whether they wear its
+ * paint (the decoy, the kingpin) or are a second boss (the twins).
+ */
+const BOSS_FOLLOWERS: Record<BossKind, (c: Config) => { count: number; look: 'escort' | 'disguised' | 'twin' }> = {
+  convoy: (c) => ({ count: c.convoyEscorts, look: 'escort' }),
+  getaway: () => ({ count: 0, look: 'escort' }),
+  armoured: (c) => ({ count: c.armouredEscorts, look: 'escort' }),
+  phantom: (c) => ({ count: c.phantomEscorts, look: 'escort' }),
+  twins: () => ({ count: 1, look: 'twin' }),
+  decoy: (c) => ({ count: c.decoyEscorts, look: 'disguised' }),
+  smuggler: () => ({ count: 0, look: 'escort' }),
+  kingpin: (c) => ({ count: c.kingpinEscorts, look: 'disguised' }),
 };
 
 type Look = typeof SYNDICATE_BOSS | typeof SYNDICATE_ESCORT;
@@ -99,6 +106,15 @@ const WEATHER_ICON: Record<WeatherKind, Icon> = {
     cloud(l, at, u, 'muted');
     for (const [y, w] of [[12, 40], [18, 30], [24, 36]]) l.s(line(at(-w / 2, y), at(w / 2, y), 3 * u), 'smokeLight');
   },
+  hail: (l, at, u) => {
+    cloud(l, at, u, 'muted');
+    stones(l, at, u);
+  },
+  sandstorm: (l, at, u) => {
+    // A low sun behind the dust, and the dust blowing across it.
+    l.s(circle(at(8, -6), 14 * u), 'juiceOrange');
+    for (const [y, w, x] of [[-10, 46, -4], [0, 38, 4], [10, 50, -2], [20, 34, 6]]) l.s(line(at(x - w / 2, y), at(x + w / 2, y), 3.4 * u), 'mapSand');
+  },
   snow: (l, at, u) => {
     // A snowflake: three bars and their tips.
     for (let k = 0; k < 3; k++) {
@@ -114,6 +130,11 @@ const WEATHER_ICON: Record<WeatherKind, Icon> = {
     }
   },
 };
+
+/** A few round hailstones under the cloud. */
+function stones(l: RenderList, at: (x: number, y: number) => Vec2, u: number): void {
+  for (const [x, y, r] of [[-14, 14, 3], [-3, 20, 3.6], [9, 13, 2.8], [17, 21, 3.2], [3, 27, 2.4]]) l.s(circle(at(x, y), r * u), 'primary');
+}
 
 const DARK_ICON: Record<DarkKind, Icon> = {
   night: (l, at, u) => {
@@ -132,6 +153,16 @@ const DARK_ICON: Record<DarkKind, Icon> = {
 };
 
 const EVENT_ICON: Record<CityEvent, Icon> = {
+  marathon: (l, at, u) => {
+    // A runner mid-stride: head, body, arms and legs, and the finishing tape.
+    l.s(circle(at(4, -18), 5 * u), 'juiceOrange');
+    l.s(line(at(3, -12), at(-2, 4), 4 * u), 'juiceOrange');
+    l.s(line(at(1, -8), at(12, -2), 3 * u), 'juiceOrange');
+    l.s(line(at(1, -8), at(-10, -10), 3 * u), 'juiceOrange');
+    l.s(line(at(-2, 4), at(10, 12), 3.4 * u), 'juiceOrange');
+    l.s(line(at(-2, 4), at(-10, 18), 3.4 * u), 'juiceOrange');
+    l.s(line(at(-26, 22), at(26, 22), 2.4 * u), 'primary');
+  },
   roadworks: (l, at, u) => {
     l.s(polygon([at(0, -20), at(-11, 14), at(11, 14)]), 'juiceOrange');
     l.s(rect(at(0, -4), v(10 * u, 4 * u), 0), 'primary');
@@ -180,8 +211,19 @@ const SPECIAL_COLOR: Record<SpecialKind, ColorToken> = {
   motorbike: 'juiceRed',
   learner: 'juiceGreen',
   bus: 'juiceYellow',
+  oversize: 'vehicleOversize',
+  racer: 'vehicleRacer',
 };
-const WEATHER_COLOR: Record<WeatherKind, ColorToken> = { lightRain: 'lightBlue', heavyRain: 'rarityRare', storm: 'coin', extreme: 'juiceRed', fog: 'smokeLight', snow: 'skinIce' };
+const WEATHER_COLOR: Record<WeatherKind, ColorToken> = {
+  lightRain: 'lightBlue',
+  heavyRain: 'rarityRare',
+  storm: 'coin',
+  extreme: 'juiceRed',
+  fog: 'smokeLight',
+  snow: 'skinIce',
+  hail: 'primary',
+  sandstorm: 'mapSand',
+};
 const DARK_COLOR: Record<DarkKind, ColorToken> = { night: 'rarityEpic', blackout: 'muted' };
 const EVENT_COLOR: Record<CityEvent, ColorToken> = {
   roadworks: 'juiceOrange',
@@ -190,6 +232,7 @@ const EVENT_COLOR: Record<CityEvent, ColorToken> = {
   vipConvoy: 'coin',
   policeOperation: 'lightBlue',
   schoolRun: 'juiceYellow',
+  marathon: 'juiceOrange',
 };
 
 /**
@@ -302,12 +345,17 @@ export const MuseumPage = {
     let length: number;
     if (entry.k === 'boss') {
       // The boss in front, its escorts behind it along its heading, the whole convoy centred.
-      const escorts = BOSS_ESCORTS[entry.kind](c);
+      const followers = BOSS_FOLLOWERS[entry.kind](c);
+      const escorts = followers.count;
       const step = c.carLength * 1.12;
       length = c.carLength + escorts * step;
       const front = mul(ahead, (escorts * step) / 2);
       cars.push({ type: 'pickup', at: front, look: SYNDICATE_BOSS });
-      for (let i = 1; i <= escorts; i++) cars.push({ type: 'van', at: add(front, mul(ahead, -i * step)), look: SYNDICATE_ESCORT });
+      for (let i = 1; i <= escorts; i++) {
+        const at = add(front, mul(ahead, -i * step));
+        if (followers.look === 'twin') cars.push({ type: 'pickup', at, look: SYNDICATE_BOSS });
+        else cars.push({ type: 'van', at, look: followers.look === 'disguised' ? SYNDICATE_BOSS : SYNDICATE_ESCORT });
+      }
     } else {
       const type = entry.kind as VehicleType;
       length = isHeavy(type) ? Math.max(c.truckLength, CarArt.length(type, c)) : CarArt.length(type, c);

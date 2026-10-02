@@ -329,7 +329,10 @@ export const SceneBuilder = {
         veh.role === 'boss'
           ? SYNDICATE_BOSS
           : veh.role === 'escort'
-            ? SYNDICATE_ESCORT
+            ? // The decoy and the kingpin dress their escorts like themselves; the shape and the ring still tell.
+              world.config.bossDisguise
+              ? SYNDICATE_BOSS
+              : SYNDICATE_ESCORT
             : veh.id === world.jackpotVehicle && veh.type === 'transporter'
               ? JACKPOT_TRANSPORTER
               : isCarType(veh.type)

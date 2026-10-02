@@ -1,6 +1,6 @@
-import { type Config, type Weather, type TrialRule, type BossKind, type LegendaryRule, BOSS_KINDS, baseConfig, cloneConfig } from './config';
+import { type Config, type Weather, type TrialRule, type BossKind, type LegendaryRule, BOSS_KINDS, FIRST_BOSSES, baseConfig, cloneConfig } from './config';
 import type { ShiftResult } from './events';
-import { type Darkness, forNight, forLegendary, firstBossLevel } from './levels';
+import { type Darkness, forNight, forLegendary, firstBossLevel, applyBoss, bossInBlackout } from './levels';
 import { type Career, Careers, newCareer } from './career';
 
 /**
@@ -15,8 +15,10 @@ import { type Career, Careers, newCareer } from './career';
  */
 export type TrialId = 'tightSqueeze' | 'deadCentre' | 'cleanSheet' | 'blackout' | 'stormWatch' | 'marathon' | 'mostWanted';
 export type RematchId = `rematch.${BossKind}`;
+/** An Ascension trial: one per Prestige rank (`ascension.1` … `ascension.10`). */
+export type AscensionId = `ascension.${number}`;
 /** Every run that is played like a trial. */
-export type RunId = TrialId | RematchId | 'weekly';
+export type RunId = TrialId | RematchId | AscensionId | 'weekly';
 
 /** The Weekly Elite's shapes, one per week in turn (core/weekly.ts). */
 export type EliteKind = 'flawless' | 'precision' | 'storm' | 'gridlock' | 'dragnet' | 'boss';
@@ -68,7 +70,11 @@ export const TRIALS: Trial[] = [
  * A trial can be played from its own level on (the Trials section itself opens at
  * `trialsUnlockLevel`). One passed before, or a Prestige, keeps it open.
  */
-export const trialOpen = (t: Trial, c: Career): boolean => c.level >= t.level || c.prestige > 0 || c.trialsDone.includes(t.id);
+export const trialOpen = (t: Trial, c: Career): boolean => {
+  const rank = ascensionRank(t.id);
+  if (rank !== null) return c.prestige >= rank || c.trialsDone.includes(t.id);
+  return c.level >= t.level || c.prestige > 0 || c.trialsDone.includes(t.id);
+};
 
 export const TRIAL_IDS: TrialId[] = TRIALS.map((t) => t.id as TrialId);
 
@@ -76,19 +82,31 @@ export const TRIAL_IDS: TrialId[] = TRIALS.map((t) => t.id as TrialId);
 
 export const rematchId = (kind: BossKind): RematchId => `rematch.${kind}`;
 
-const REMATCH_REWARD: Record<BossKind, number> = { convoy: 6000, getaway: 8000, armoured: 10000, phantom: 12000 };
+const REMATCH_REWARD: Record<BossKind, number> = {
+  convoy: 6000,
+  getaway: 8000,
+  armoured: 10000,
+  phantom: 12000,
+  twins: 14000,
+  decoy: 16000,
+  smuggler: 18000,
+  kingpin: 25000,
+};
 
-/** A boss again, one round later: its level brings the harder version (more escorts, less time). */
+/**
+ * A boss again, one round later: more escorts, less time. The boss is pinned (`trialConfig`), so
+ * the level stays where it was before the syndicate grew to eight (its own level + 60).
+ */
 export function rematch(kind: BossKind, base: Config = baseConfig): Trial {
   return {
     id: rematchId(kind),
-    level: firstBossLevel(kind, base) + base.convoyEvery * BOSS_KINDS.length,
+    level: firstBossLevel(kind, base) + base.convoyEvery * FIRST_BOSSES.length,
     seed: (0x7a11b001 + BOSS_KINDS.indexOf(kind)) >>> 0,
     cars: 20,
     goal: { k: 'boss' },
     rule: null,
     weather: 'clear',
-    darkness: kind === 'phantom' ? 'blackout' : 'day',
+    darkness: bossInBlackout(kind) ? 'blackout' : 'day',
     reward: REMATCH_REWARD[kind],
     legendary: null,
   };
@@ -99,9 +117,51 @@ export const REMATCH_IDS: RematchId[] = BOSS_KINDS.map(rematchId);
 export const rematchKind = (id: string): BossKind | null => BOSS_KINDS.find((k) => rematchId(k) === id) ?? null;
 
 /** Every run that pays once and is remembered in `trialsDone`. */
-export const RUN_IDS: string[] = [...TRIAL_IDS, ...REMATCH_IDS];
+// MARK: Ascension trials
 
-export const trial = (id: string): Trial | undefined => TRIALS.find((t) => t.id === id) ?? REMATCHES.find((t) => t.id === id);
+/**
+ * Ascension (Leo, 02.10.2026): one fixed, very hard shift per Prestige rank, ★1 to ★10, for the
+ * players past the first ranks (Prestige stops making the traffic harder at ★4). Each opens with
+ * its rank, is played on a fresh four-arm roundabout like every trial, and pays once; the last
+ * one gives the title Summit (core/elite.ts). Levels 66 to 120: two lanes from the fourth on.
+ */
+export const ASCENSION_RANKS = 10;
+
+const ASCENSION_PLAN: Omit<Trial, 'id' | 'seed' | 'reward'>[] = [
+  { level: 66, cars: 20, goal: { k: 'complete' }, rule: null, weather: 'storm', darkness: 'night', legendary: null },
+  { level: 72, cars: 22, goal: { k: 'complete' }, rule: null, weather: 'clear', darkness: 'blackout', legendary: null },
+  { level: 78, cars: 22, goal: { k: 'complete' }, rule: null, weather: 'snow', darkness: 'day', legendary: null },
+  { level: 84, cars: 24, goal: { k: 'complete' }, rule: null, weather: 'fog', darkness: 'day', legendary: 'gridlock' },
+  { level: 90, cars: 24, goal: { k: 'boss' }, rule: null, weather: 'clear', darkness: 'day', legendary: null },
+  { level: 96, cars: 26, goal: { k: 'complete' }, rule: 'flawless', weather: 'clear', darkness: 'day', legendary: null },
+  { level: 102, cars: 26, goal: { k: 'complete' }, rule: null, weather: 'extreme', darkness: 'day', legendary: null },
+  { level: 108, cars: 28, goal: { k: 'complete' }, rule: null, weather: 'clear', darkness: 'night', legendary: 'dragnet' },
+  { level: 114, cars: 28, goal: { k: 'complete' }, rule: null, weather: 'heavyRain', darkness: 'day', legendary: 'heavyLoad' },
+  { level: 120, cars: 30, goal: { k: 'complete' }, rule: null, weather: 'storm', darkness: 'blackout', legendary: 'darkStorm' },
+];
+
+export const ascensionId = (rank: number): AscensionId => `ascension.${rank}`;
+
+/** The Prestige rank an Ascension trial belongs to; null for any other run. */
+export function ascensionRank(id: string): number | null {
+  const m = /^ascension\.(\d+)$/.exec(id);
+  const rank = m ? Number(m[1]) : NaN;
+  return rank >= 1 && rank <= ASCENSION_RANKS ? rank : null;
+}
+
+export const ASCENSIONS: Trial[] = ASCENSION_PLAN.map((plan, i) => ({
+  ...plan,
+  id: ascensionId(i + 1),
+  seed: (0x7a11c001 + i) >>> 0,
+  reward: 10000 + 5000 * (i + 1),
+}));
+
+export const ASCENSION_IDS: AscensionId[] = ASCENSIONS.map((t) => t.id as AscensionId);
+
+export const RUN_IDS: string[] = [...TRIAL_IDS, ...REMATCH_IDS, ...ASCENSION_IDS];
+
+export const trial = (id: string): Trial | undefined =>
+  TRIALS.find((t) => t.id === id) ?? REMATCHES.find((t) => t.id === id) ?? ASCENSIONS.find((t) => t.id === id);
 
 /** The shift of a trial: a fresh four-arm roundabout at its level, its conditions pinned. */
 export function trialConfig(t: Trial, base: Config): Config {
@@ -110,9 +170,11 @@ export function trialConfig(t: Trial, base: Config): Config {
   const c = cloneConfig(forNight(shift, t.darkness));
   c.shiftCars = t.cars;
   c.trialRule = t.rule;
-  // The boss trials always bring the convoy; the others never do.
+  // The boss trials always bring the convoy; the others never do. A rematch is its own boss, one round on.
   c.convoy = t.goal.k === 'boss';
   c.criminalFirst = c.convoy ? base.convoyFirst : shift.criminalFirst;
+  const pinned = rematchKind(t.id);
+  if (pinned) applyBoss(c, base, pinned, 1);
   // The legendary rule last: it reads the shift's car count.
   return forLegendary(c, t.legendary);
 }

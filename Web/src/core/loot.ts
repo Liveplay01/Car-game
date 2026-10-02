@@ -38,6 +38,8 @@ export type CosmeticSource =
   | { kind: 'pass'; season: Season; tier: number }
   /** Built the Hall of Fame. */
   | { kind: 'hall' }
+  /** Sent this many cars in one Unlimited run (Leo, 02.10.2026). */
+  | { kind: 'unlimited'; cars: number }
   /**
    * The one honour that is luck (Leo, 01.10.2026): found in this chest with this chance per
    * opening, until it is found. On the Honours shelf, never in a chest's normal pool.
@@ -159,6 +161,19 @@ export const COSMETICS: Cosmetic[] = [
   c('harvestMoon', 'carSkin', 'legendary', { kind: 'pass', season: 'autumn', tier: 8 }),
   c('thunder', 'carSkin', 'legendary', { kind: 'pass', season: 'autumn', tier: 12 }),
   c('hallOfFame', 'carSkin', 'legendary', { kind: 'hall' }),
+  // Prestige from ★4 on, so no rank comes empty-handed (Leo, 02.10.2026): a skin here, a title on
+  // the ranks between (core/elite.ts). Looks only, like every honour.
+  c('quasar', 'carSkin', 'epic', { kind: 'prestige', rank: 4 }),
+  c('prism', 'carSkin', 'legendary', { kind: 'prestige', rank: 7 }),
+  c('meteor', 'carSkin', 'legendary', { kind: 'prestige', rank: 9 }),
+  c('eclipse', 'carSkin', 'legendary', { kind: 'prestige', rank: 12 }),
+  c('nebula', 'carSkin', 'legendary', { kind: 'prestige', rank: 14 }),
+  c('comet', 'carSkin', 'legendary', { kind: 'prestige', rank: 17 }),
+  c('starforge', 'carSkin', 'legendary', { kind: 'prestige', rank: 19 }),
+  // Unlimited milestones: cars sent in one run.
+  c('endurance', 'carSkin', 'epic', { kind: 'unlimited', cars: 250 }),
+  c('overdrive', 'carSkin', 'legendary', { kind: 'unlimited', cars: 500 }),
+  c('infinity', 'carSkin', 'legendary', { kind: 'unlimited', cars: 1000 }),
   // The Classic: one Standard Chest in 500 (Leo, 01.10.2026).
   c('classic', 'vehicleType', 'legendary', { kind: 'find', chest: 'standard', chance: 0.002 }),
 ];
@@ -176,12 +191,20 @@ export const BIG_SCREEN = 'bigScreen';
 /** The item a Prestige rank unlocks, if any. */
 export const prestigeReward = (rank: number): Cosmetic | undefined => COSMETICS.find((x) => x.source.kind === 'prestige' && x.source.rank === rank);
 
+/** The Unlimited milestones a run of `cars` has reached. */
+export const unlimitedRewards = (cars: number): Cosmetic[] => COSMETICS.filter((x) => x.source.kind === 'unlimited' && x.source.cars <= cars);
+
 /** The item an Elite level unlocks, if any. */
 export const eliteReward = (level: number): Cosmetic | undefined => COSMETICS.find((x) => x.source.kind === 'elite' && x.source.level === level);
 
 /** Earned by deeds, not found in chests: Legendary Shifts, Prestige and the Elite track. */
 export const isHonour = (item: Cosmetic): boolean =>
-  item.source.kind === 'legendary' || item.source.kind === 'prestige' || item.source.kind === 'elite' || item.source.kind === 'hall' || item.source.kind === 'find';
+  item.source.kind === 'legendary' ||
+  item.source.kind === 'prestige' ||
+  item.source.kind === 'elite' ||
+  item.source.kind === 'hall' ||
+  item.source.kind === 'unlimited' ||
+  item.source.kind === 'find';
 
 /** The next Legendary Shift milestone still to reach. */
 export function nextLegendaryReward(collection: readonly string[]): Cosmetic | undefined {

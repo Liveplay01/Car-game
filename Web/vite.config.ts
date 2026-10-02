@@ -97,7 +97,9 @@ self.addEventListener('fetch', (event) => {
     event.respondWith((async () => {
       const slow = new Promise((resolve) => setTimeout(resolve, NAV_TIMEOUT, null));
       const first = await Promise.race([network.catch(() => null), slow]);
-      if (first && first.ok) return first;
+      // A real 404 is the game's "road closed" page; a server that is down (5xx) or no network
+      // falls back to the cached game.
+      if (first && (first.ok || first.status === 404)) return first;
       const cached = (shell ? null : await caches.match(request, { ignoreSearch: true })) || (await caches.match('/index.html'));
       return cached || first || network;
     })());
