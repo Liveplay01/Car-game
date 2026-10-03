@@ -31,6 +31,7 @@ import { WeatherFade, WeatherLayer } from './weather';
 import { NightLayer } from './night';
 import { CityLights } from './cityLights';
 import { HUD, TopBar, RingSignals, ModeBanner, ModeHint, ReadyBanner, ResultBanner, type Popup, type PopupKind, type ShiftSummary, type ConditionIntro, POPUP_LIFETIME, settledPops } from './hud';
+import { inPortal } from '../storage/device';
 import { Tutorial } from './tutorial';
 import { NoticeQueue } from './notices';
 import { bookShift } from './booking';
@@ -323,6 +324,18 @@ export class GameSession {
     const income = Careers.collectLoginIncome(this.save.career, this.today, this.config);
     this.persist();
     if (income !== null) this.announce(S.daily.welcomeBack(Fmt.number(income)));
+    this.announceBuildWithUs();
+  }
+
+  /**
+   * Once for every player who knows the game (Leo, 03.10.2026): the website, where bugs and ideas
+   * can be sent and a bug hunter may get a gift. Not inside CrazyGames, which shows no links out.
+   */
+  private announceBuildWithUs(): void {
+    if (inPortal || !this.save.tutorialDone || this.save.hints.includes('buildWithUs')) return;
+    this.save.hints.push('buildWithUs');
+    this.store();
+    this.announce(...S.hints.buildWithUs);
   }
 
   /** Simulation speed with the short slow motions of a takedown and of the lost shift. */

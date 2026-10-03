@@ -504,6 +504,9 @@ export const S = {
     /** The same where there is no Cloud sync (CrazyGames, no service). */
     notSavedHere: 'This browser is not saving your progress · It lasts until you close the game',
     updated: 'Updated · See what’s new in Settings',
+    /** Once for every player (Leo, 03.10.2026): the website and its forms. */
+    /** Two short pills, one after the other: a notice is one line, about 55 characters on a phone. */
+    buildWithUs: ['New website: timing.love · Report bugs and ideas there', 'Bug hunters may get a gift · Settings → Build with us'],
   },
 
   /** Challenge links and mastery trials: shifts that are played for themselves. */

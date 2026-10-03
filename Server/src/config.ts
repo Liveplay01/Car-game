@@ -38,7 +38,8 @@ function address(value: string | undefined, name: string): string | null {
 export function readConfig(env: NodeJS.ProcessEnv = process.env): Config {
   const adminToken = env.ADMIN_TOKEN?.trim() || null;
   if (adminToken !== null && adminToken.length < 24) throw new Error('ADMIN_TOKEN must be at least 24 characters (try: openssl rand -base64 32).');
-  const corsOrigins = (env.CORS_ORIGINS ?? '*').split(',').map((o) => o.trim()).filter(Boolean);
+  // Commas, spaces or line breaks between the addresses (Coolify's multiline field writes line breaks); a trailing slash is dropped.
+  const corsOrigins = (env.CORS_ORIGINS ?? '*').split(/[\s,]+/).map((o) => o.trim().replace(/\/+$/, '')).filter(Boolean);
   return {
     port: integer(env.PORT, 5051, 1, 65535),
     dbPath: env.DB_PATH?.trim() || './data/car-game.db',
