@@ -69,6 +69,12 @@ export class PlayerStore {
     return row ? toPlayer(row) : null;
   }
 
+  /** The player whose name matches `key` (see `nameKey`: capitals and look-alikes do not count). */
+  byKey(key: string): Player | null {
+    const row = this.db.prepare(`SELECT ${COLUMNS} FROM players WHERE name_key = ?`).get(key) as PlayerRow | undefined;
+    return row ? toPlayer(row) : null;
+  }
+
   byId(id: string): Player | null {
     const row = this.db.prepare(`SELECT ${COLUMNS} FROM players WHERE id = ?`).get(id) as PlayerRow | undefined;
     return row ? toPlayer(row) : null;

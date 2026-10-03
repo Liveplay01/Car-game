@@ -18,18 +18,43 @@ export interface PatchNote {
    */
   impact: PatchImpact;
   /** Newest first. */
-  items: string[];
+  items: PatchItem[];
 }
 
 export type PatchImpact = 'major' | 'minor' | 'fix';
+
+/**
+ * One line of an entry. A plain string is ours. `from` marks what a player asked for or found
+ * (Build with us, Leo, 03.10.2026): `null` says "From a player", a name says "Thanks, Name"
+ * (only a name the player agreed to share).
+ */
+export type PatchItem = string | { text: string; from: string | null };
+
+/** The words of an item, whether or not a player is credited. */
+export const itemText = (item: PatchItem): string => (typeof item === 'string' ? item : item.text);
+
+/** Who the item thanks: a name, null for "a player", undefined when it came from us. */
+export const itemFrom = (item: PatchItem): string | null | undefined => (typeof item === 'string' ? undefined : item.from);
+
+/** The credit as the sheet prints it, or null for an item of ours. */
+export const itemCredit = (item: PatchItem): string | null => {
+  const from = itemFrom(item);
+  return from === undefined ? null : from === null ? 'From a player' : `Thanks, ${from}`;
+};
 
 export const PATCH_NOTES: PatchNote[] = [
   {
     id: '2026-10-03',
     date: '3 October 2026',
-    title: 'Build with us, the Ladybug skin, a smoother Elite climb and tidy Settings',
+    title: 'Boss Rush, the Étoile, a QR code for multiplayer, Build with us, a smoother Elite climb and fewer school buses',
     impact: 'major',
     items: [
+      'Boss Rush: take down all eight syndicate bosses back to back, on one clock. Lose a round and you start again at the first boss. It opens once you have caught every boss, pays 60,000 for the first clear and keeps your best time (Progress → Goals).',
+      'A new Landmark for Prestige ★5 and up: the Étoile, twelve roads running into one ring around the Arc de Triomphe. One hard shift, 40,000 the first time you pass it (Progress → Goals).',
+      'The multiplayer lobby shows a QR code beside the invite code: a friend in the same room scans it with their camera and lands in your game.',
+      'Fixed: a School Run no longer sends a crowd of school buses at the start of a shift. At most two buses wait for the stop at a time, so the ring no longer jams from the first second.',
+      'Prestige is easier to find: when it is ready, the Elite card on Progress glows gold and says "Prestige to ★n", and the Progress tab shows a dot until you have opened it.',
+      'Fixed: on a phone, the buttons in the Elite sheet (Prestige and the Hall of Fame) no longer run over each other. They sit one under the other now.',
       'Build with us: report a bug or suggest a feature on timing.love (Settings → Build with us). Add your friend code to a bug report and the Ladybug skin is yours, only for bug hunters.',
       'The Elite track and the Season Pass climb gradually now: the first levels and tiers come quicker, later ones ask a little more each. No level you already reached is lost.',
       'Reach Level 50 and the game tells you that Prestige is ready.',

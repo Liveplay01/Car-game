@@ -71,6 +71,8 @@ export interface Detail {
   sections?: { header: string; rows: DetailRow[] }[];
   notes: { text: string; color: ColorToken }[];
   actions: DetailAction[];
+  /** Long labels: every action gets a full-width row instead of sharing one. */
+  stacked?: boolean;
 }
 
 const rarityColor = (r: Rarity): ColorToken => ShopPage.rarityColor(r);
@@ -267,11 +269,15 @@ export const Details = {
         { header: S.hall.header, rows: plaques },
       ],
       notes,
+      // "Prestige to ★2" and the Hall's price do not fit side by side on a phone.
+      stacked: true,
       actions: [
         {
           label: armed ? S.elite.prestigeConfirm : S.elite.prestigeAction(career.prestige + 1),
           action: { k: 'prestige' },
-          prominent: armed,
+          // Ready: the sheet's main action in the accent colour; the second tap turns red, like every reset.
+          prominent: ready,
+          destructive: armed,
           enabled: ready,
         },
         ...(career.hallBuilt || !open

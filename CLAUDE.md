@@ -112,6 +112,14 @@ docker build -t car-game . ; docker run -p 5050:5050 car-game   # Container wie 
   Einstellungsknopf (`latestNote`: Tag und Anzahl der Punkte), auch im bestehenden Eintrag.
   `npm test` prüft: eine `id` pro Tag, neueste zuerst. Die Liste zeigt den neuesten Tag
   aufgeklappt, die anderen zu.
+  **Von Spielern angestoßen (Leo, 03.10.2026):** Ein Punkt, den ein Spieler gemeldet oder
+  vorgeschlagen hat (Build with us), ist `{ text, from: null }` („From a player“) oder
+  `{ text, from: 'Name' }` („Thanks, Name“, nur mit dem Einverständnis des Spielers) statt
+  eines Strings. Die Website (timing.love/changelog) übernimmt die Markierung.
+- **Website-Inhalte aus dem Spiel (Leo, 03.10.2026):** timing.love/changelog, /museum und die
+  Titel-Namen auf /ranks entstehen aus den Quellen des Spiels (`npm run content` im Website-Repo
+  liest `patchNotes.ts`, `strings.ts`, `core/museum.ts`, nichts wird hier geschrieben). Nach einem
+  neuen Patch-Notes-Eintrag, Boss oder Wetter dort einmal ausführen und die JSON-Dateien committen.
 - **Name (Leo, 30.09.2026):** Das Spiel heißt **Roundabout Timing** (kurz RAT); „Car Game“ ist nur noch der Ordner- und Repo-Name.
 - **CrazyGames (Leo, 30.09.2026):** Eingebettet über die normale URL mit `?crazygames`, kein eigener Build, kein Upload. Nur dann lädt das SDK und speichert über das Data Module (Web/README.md, CrazyGames).
 - **Google Play (Leo, 02.10.2026):** Trusted Web Activity auf `/?googleplaystore`, kein eigener Build. `inPlayStore` (`storage/device.ts`) blendet Installieren und den CrazyGames-Link aus; `public/.well-known/assetlinks.json` verknüpft App und Seite (Web/README.md, Google Play).

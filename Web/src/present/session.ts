@@ -46,7 +46,7 @@ import { Casino } from '../core/casino';
 import { BuildFlow } from './buildFlow';
 import { ShopFlow } from './shopFlow';
 import type { PageHost } from './pageHost';
-import { type SpecialRun, settleSpecial, runCard } from './specialRuns';
+import { type SpecialRun, settleSpecial, runCard, advanceRush, newRush } from './specialRuns';
 import { conditionIntro, streakEndsIn, addNotice, noticeHeight, noticePresence, type NoticePlace } from './readyScreen';
 import { Briefings, briefOf } from './briefing';
 
@@ -60,7 +60,7 @@ import { Feedback, Music, type MusicMix, type SoundID, type HapticID } from './f
 import { Details, type Detail } from './detail';
 import { TyreMarks } from './marks';
 import { type ChallengeSpec, challengeOf, challengeConfig, encodeChallenge } from '../core/challenge';
-import { TRIALS, ASCENSIONS, trial as trialById, trialConfig, trialOpen, trialProgress, rematchId } from '../core/trials';
+import { TRIALS, ASCENSIONS, LANDMARKS, trial as trialById, trialConfig, trialOpen, trialProgress, rematchId, rushOpen } from '../core/trials';
 
 /** What the platform reports; key and touch mapping stays in `main.ts`. */
 export type InputAction =
@@ -387,6 +387,7 @@ export class GameSession {
         else if (this.screen.k === 'ready' && !this.world.isArriving()) this.startPlaying();
         break;
       case 'restart':
+        this.special = advanceRush(this.special);
         this.prepareShift(false);
         break;
       case 'openSettings':
@@ -557,6 +558,7 @@ export class GameSession {
         break;
       case 'showElite':
       case 'showPass':
+        if (action.k === 'showElite') this.eliteSeen = true;
         if (!this.detailOpen) this.tick();
         this.detailOpen = true;
         break;
@@ -687,15 +689,23 @@ export class GameSession {
     if (!t) return;
     // A mastery trial above the career's level is not played yet (rematches and the Weekly
     // Elite have their own conditions).
-    if ((TRIALS.includes(t) || ASCENSIONS.includes(t)) && !trialOpen(t, this.save.career)) {
+    if ((TRIALS.includes(t) || ASCENSIONS.includes(t) || LANDMARKS.includes(t)) && !trialOpen(t, this.save.career)) {
       this.showNotice(S.trials.opens(t));
       return;
     }
     this.startSpecial({ k: 'trial', trial: t });
   }
 
+  /** Boss Rush: all eight bosses in a row, from the first. Waits, ready to play, on the Game tab. */
+  startRush(): void {
+    if (!rushOpen(this.save.career)) return;
+    this.startSpecial(newRush());
+  }
+
   /** Prestige asks twice: the first tap arms it, a second within a few seconds starts over. */
   private prestigeArmed = -Infinity;
+  /** The Elite sheet was opened this session: Prestige in reach stops lighting the Progress tab. */
+  private eliteSeen = false;
   static readonly prestigeWindow = 4;
 
   private tryPrestige(): void {
@@ -1098,6 +1108,7 @@ export class GameSession {
               this.sinceFatalCrash = Infinity;
               // A challenge or trial starts over fresh: that world is new, so it is shown first.
               if (this.special) {
+                this.special = advanceRush(this.special);
                 this.prepareShift(false);
                 break;
               }
@@ -1355,6 +1366,9 @@ export class GameSession {
       case 'trial':
         // It waits, ready to play, on the Game tab.
         this.startTrial(target.id);
+        break;
+      case 'rush':
+        this.startRush();
         break;
       case 'feat':
         if (p.feat !== target.id) this.tick();
@@ -2003,6 +2017,8 @@ export class GameSession {
       if (this.resultCountdown <= 0) {
         this.resultAge = 0;
         this.moneyLanded = false;
+        // A Boss Rush shows the next boss behind its result (or the first, after a loss or a clear).
+        this.special = advanceRush(this.special);
         this.prepareShift(!summary.result.detonated, null, { k: 'result', summary });
         this.play(['swoosh'], []);
       }
@@ -2194,7 +2210,7 @@ export class GameSession {
   /** Whether a tab has something waiting, like an iOS badge: the Shop's chests or new items. */
   badge(tab: Tab): { count: number } | 'dot' | null {
     const c = this.save.career;
-    if (barTab(tab) === 'progress') return c.museumNew.length > 0 ? 'dot' : null;
+    if (barTab(tab) === 'progress') return c.museumNew.length > 0 || (!this.eliteSeen && Careers.canPrestige(c, this.config)) ? 'dot' : null;
     if (barTab(tab) !== 'shop') return null;
     if (c.chests.length > 0) return { count: c.chests.length };
     // A skin a casino round has won stays quiet until the round shows it.

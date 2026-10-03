@@ -183,6 +183,9 @@ export interface Career {
   bestTimes: Record<string, number[]>;
   /** Mastery trials passed (core/trials.ts), each rewarded once. */
   trialsDone: string[];
+  /** Boss Rush: the fastest clear in seconds (0 until one), and the most bosses taken down in one rush. */
+  rushBest: number;
+  rushFurthest: number;
   /** Syndicate bosses taken down: the trophy count in Records. */
   bossTrophies: number;
   /** Boss kinds taken down at least once in the career: their rematches are open. */
@@ -286,6 +289,8 @@ export const newCareer = (): Career => ({
   albumsDone: [],
   bestTimes: {},
   trialsDone: [],
+  rushBest: 0,
+  rushFurthest: 0,
   bossTrophies: 0,
   bossesBeaten: [],
   prestige: 0,

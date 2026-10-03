@@ -26,6 +26,7 @@ only erasable syntax is allowed (no `enum`, no constructor parameter properties)
 | `PUT /v1/me/title` `{title}` | (token) The title the player wears, an id like `roadVeteran` (letters and digits only; the game names it), or `null`. `422 invalid_title` |
 | `GET /v1/boards` | The boards that exist |
 | `GET /v1/boards/:board?limit=50` | Top list (max 100); every entry has `name` and `title` (or `null`). With a token: the player's own line is marked and `me` has their rank, even far down |
+| `GET /v1/profiles/:name` | A player's page on the website (`/p/NAME`): `{player: {name, title}, boards: {'shift-level': {rank, score, meta, at} \| null, unlimited: …}}`. Public like the boards; the name is found however it is written (`nameKey`). Unknown and blocked players are the same `404 unknown_player`; no id is given out; 120 per minute and address |
 | `PUT /v1/boards/:board/score` | Submit a score (token). Only a better one replaces the old: `{accepted, best}` |
 | `GET /v1/friends` | (token) Your friend code (`K7M2-9QXA`, made on first use) and your list |
 | `POST /v1/friends` `{code}` | (token) Add a friend by their code. One way, no answer needed. `404 unknown_code`, `422 invalid_code` / `own_code` / `too_many_friends` (100) |

@@ -1,4 +1,4 @@
-// The Ascension trials (core/trials.ts) played by the careful bot from sim.mjs, several seeds each
+// The Ascension trials and the Landmarks (core/trials.ts) played by the careful bot from sim.mjs, several seeds each
 // (the trial's own seed first): every trial must be passable, the careful bot must never crash.
 //   node scripts/ascension-sim.mjs [tries]
 // The bot does not hunt criminals, so a trial it loses only to an escaped criminal is still fair.
@@ -9,14 +9,14 @@ const server = await createServer({ server: { middlewareMode: true }, appType: '
 try {
   const { World } = await server.ssrLoadModule('/src/core/world.ts');
   const { baseConfig } = await server.ssrLoadModule('/src/core/config.ts');
-  const { ASCENSIONS, trialConfig, trialPassed } = await server.ssrLoadModule('/src/core/trials.ts');
+  const { ASCENSIONS, LANDMARKS, trialConfig, trialPassed } = await server.ssrLoadModule('/src/core/trials.ts');
   const { joinsClearRoad } = await server.ssrLoadModule('/src/core/ambulance.ts');
 
   const lane = (world) => world.vehicle(world.queue.vehicles[0])?.lane ?? 0;
   const careful = (world) =>
     world.queue.isReady && world.predictedMergeGap(world.layout.player, 0, 40, -Infinity, lane(world)) > 0.04 && !joinsClearRoad(world, { type: 'car' }, world.layout.player);
 
-  for (const t of ASCENSIONS) {
+  for (const t of [...ASCENSIONS, ...LANDMARKS]) {
     let passed = 0, crashes = 0, escaped = 0, rule = 0, unfinished = 0, time = 0;
     for (let i = 0; i < tries; i++) {
       const seed = i === 0 ? t.seed : (t.seed + i * 7919) >>> 0;

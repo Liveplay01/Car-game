@@ -1,7 +1,7 @@
 import { h, icon } from './dom';
 import { ICONS, CRAZYGAMES_LOGO, FANDOM_LOGO } from './icons';
 import type { Settings } from '../core/career';
-import type { PatchNote, PatchImpact } from '../present/patchNotes';
+import { type PatchNote, type PatchImpact, itemText, itemCredit } from '../present/patchNotes';
 import { LEGAL_DOCS, type LegalDoc, type LegalId } from '../present/legal';
 import type { License } from '../present/licenses';
 import { inPlayStore, inPortal, isInstalled, isIos } from '../storage/device';
@@ -148,7 +148,14 @@ export function patchNotesSheet(layer: HTMLElement, notes: PatchNote[], onClose:
           ),
           icon(ICONS.chevronDown, {}),
         ),
-        h('ul', { class: 'note-items' }, ...note.items.map((item) => h('li', {}, item))),
+        h(
+          'ul',
+          { class: 'note-items' },
+          ...note.items.map((item) => {
+            const credit = itemCredit(item);
+            return h('li', {}, itemText(item), credit ? h('span', { class: 'note-credit' }, credit) : null);
+          }),
+        ),
       ),
     ),
   );

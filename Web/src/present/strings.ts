@@ -8,7 +8,7 @@ import type { Challenge } from '../core/daily';
 import type { NextGoal, NearMiss } from '../core/goals';
 import type { CasinoGame, SlotSymbol } from '../core/casino';
 import type { VehicleType, VehicleRole } from '../core/vehicle';
-import { type Trial, type TrialId, type RunId, type EliteKind, rematchKind, ascensionRank } from '../core/trials';
+import { type Trial, type TrialId, type RunId, type EliteKind, rematchKind, ascensionRank, LANDMARK_PRESTIGE } from '../core/trials';
 import type { SpecialKind, WeatherKind, DarkKind, MuseumEntry, ConditionEntry } from '../core/museum';
 import type { EliteStep, TitleId, TitleRule } from '../core/elite';
 import type { PassReward, PassStep, HallEntry } from '../core/seasonPass';
@@ -534,10 +534,39 @@ export const S = {
     shareText: (target: string): string => `Can you beat ${target} on my roundabout?`,
   },
 
+  /** Boss Rush: every syndicate boss in a row (core/trials.ts). */
+  rush: {
+    name: 'Boss Rush',
+    caption: 'BOSS RUSH',
+    clock: 'CLOCK',
+    best: 'BEST',
+    step: (n: number, total: number): string => `Boss ${n} of ${total}`,
+    time(seconds: number): string {
+      const whole = Math.max(0, Math.round(seconds));
+      return `${Math.floor(whole / 60)}:${String(whole % 60).padStart(2, '0')}`;
+    },
+    /** The waiting screen: which boss, and what a lost round does. */
+    shiftLine: (kind: BossKind, first: boolean): string => `${S.boss.name(kind)} · ${first ? 'lose a round and it starts over' : 'the clock keeps running'}`,
+    caught: (n: number, total: number): string => `BOSS ${n} OF ${total} CAUGHT`,
+    nextLine: (kind: BossKind): string => `Next: ${S.boss.name(kind)} · tap to go on`,
+    over: 'RUSH OVER',
+    overLine: (caught: number, total: number): string => `${caught} of ${total} bosses caught · tap to start over`,
+    cleared: 'RUSH CLEARED',
+    firstLine: (money: string): string => `All eight bosses down · ${money} paid`,
+    recordLine: 'New best time',
+    bestLine: (time: string): string => `Best ${time} · tap to run it again`,
+    /** Progress → Goals. */
+    rowTitle: 'All eight bosses',
+    line: 'Back to back, one clock',
+    furthest: (n: number, total: number): string => `furthest ${n}/${total}`,
+    locked: (beaten: number, total: number): string => `Take down all eight bosses to open it · ${beaten}/${total}`,
+  },
+
   trials: {
     name(id: RunId): string {
       const boss = rematchKind(id);
       if (boss) return S.boss.rematch(boss);
+      if (id === 'landmark.etoile') return 'The Étoile';
       if (id === 'weekly') return S.weekly.title;
       const rank = ascensionRank(id);
       if (rank !== null) return `Ascension ★${rank}`;
@@ -566,6 +595,7 @@ export const S = {
       }
       const boss = rematchKind(t.id);
       if (boss) return `${S.boss.name(boss)} again: more escorts, less time`;
+      if (t.arms) return `${t.arms} roads into one ring · ${t.cars} cars`;
       switch (t.id) {
         case 'tightSqueeze':
           return `${t.goal.k === 'skilled' ? t.goal.n : 0} Tight Fits or better in ${t.cars} cars`;
@@ -592,7 +622,8 @@ export const S = {
     /** When a trial opens: its level, or an Ascension trial's Prestige rank. */
     opens: (t: Trial): string => {
       const rank = ascensionRank(t.id);
-      return rank !== null ? `Opens at Prestige ★${rank}` : S.trials.opensAt(t.level);
+      if (rank !== null) return `Opens at Prestige ★${rank}`;
+      return t.arms ? `Opens at Prestige ★${LANDMARK_PRESTIGE}` : S.trials.opensAt(t.level);
     },
     /**
      * What a counting goal asks for, on the trial's ready screen (Leo, 01.10.2026: nobody knew
@@ -723,7 +754,6 @@ export const S = {
     title: 'Elite',
     caption: (level: number): string => `Elite ${level}`,
     locked: (level: number): string => `Reach Level ${level}: the Elite track and Prestige open`,
-    prestigeReady: 'Prestige ready',
     prestigeHeader: 'Prestige',
     rank: 'Rank',
     traffic: 'Traffic',
@@ -954,6 +984,8 @@ export const S = {
     mastery: 'Mastery',
     feats: 'Feats',
     trialsLocked: (level: number): string => `Opens at Level ${level} · special shifts with a reward`,
+    landmarks: 'Landmarks',
+    landmarksHint: 'Famous roundabouts, one hard shift each.',
     ascension: 'Ascension',
     ascensionHint: 'One trial for every Prestige rank: the hardest shifts in the game.',
     bosses: 'Syndicate bosses',

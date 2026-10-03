@@ -2,7 +2,8 @@ import { type Career, type GameMode, Careers } from '../core/career';
 import type { Config } from '../core/config';
 import type { ShiftResult } from '../core/events';
 import type { ChallengeSpec } from '../core/challenge';
-import { type Trial, trialPassed } from '../core/trials';
+import { BOSS_KINDS } from '../core/config';
+import { type Trial, trialPassed, rushTrial, RUSH_ID, RUSH_REWARD } from '../core/trials';
 import { weekNumber } from '../core/weekly';
 import type { ShiftSummary, RunCard } from './hud';
 import { S, Fmt, money as moneyText } from './strings';
@@ -12,7 +13,31 @@ import { S, Fmt, money as moneyText } from './strings';
  * trial. It always starts from a fresh world with its own seed, so the traffic is the same for
  * everyone; it earns no money or levels (a trial pays its reward once).
  */
-export type SpecialRun = { k: 'challenge'; spec: ChallengeSpec } | { k: 'trial'; trial: Trial };
+export type SpecialRun = { k: 'challenge'; spec: ChallengeSpec } | { k: 'trial'; trial: Trial; rush?: RushRun };
+
+/**
+ * A Boss Rush in progress (core/trials.ts): which boss is next, the seconds of the shifts finished
+ * so far, and how the last shift ended (`next`: on to the next boss, `cleared`: all eight down,
+ * `over`: a round was lost). `advanceRush` turns that into the next shift.
+ */
+export interface RushRun {
+  step: number;
+  time: number;
+  state: 'next' | 'cleared' | 'over' | null;
+}
+
+export const newRush = (): SpecialRun => ({ k: 'trial', trial: rushTrial(0), rush: { step: 0, time: 0, state: null } });
+
+/**
+ * After a rush shift ended: the shift to play next. A boss caught means the next boss; a lost
+ * round, or a clear, starts the rush over at the first. Without an outcome (nothing ended) the run stays.
+ */
+export function advanceRush(run: SpecialRun | null): SpecialRun | null {
+  if (!run || run.k !== 'trial' || !run.rush || run.rush.state === null) return run;
+  const { step, time, state } = run.rush;
+  if (state === 'next') return { k: 'trial', trial: rushTrial(step + 1), rush: { step: step + 1, time, state: null } };
+  return newRush();
+}
 
 /** What a finished challenge or trial puts on its result card. */
 export type RunSummary = NonNullable<ShiftSummary['run']>;
@@ -42,6 +67,7 @@ export function settleSpecial(run: SpecialRun, result: ShiftResult, career: Care
       news,
     };
   }
+  if (run.rush) return settleRush(run, run.rush, result, career, config);
   const t = run.trial;
   const passed = trialPassed(t, result);
   // The Weekly Elite pays once a week (with a Premium Chest); every other trial once ever.
@@ -69,6 +95,54 @@ export function settleSpecial(run: SpecialRun, result: ShiftResult, career: Care
   };
 }
 
+/** One shift of a Boss Rush done (or lost): the clock, the furthest boss, the first clear's reward and the best time. */
+function settleRush(run: Extract<SpecialRun, { k: 'trial' }>, rush: RushRun, result: ShiftResult, career: Career, config: Config): { summary: RunSummary; shareable: null; news: string[] } {
+  const news: string[] = [];
+  const total = BOSS_KINDS.length;
+  const passed = trialPassed(run.trial, result);
+  if (!passed) {
+    rush.state = 'over';
+    career.rushFurthest = Math.max(career.rushFurthest, rush.step);
+    return {
+      summary: { caption: S.rush.over, color: 'destructive', line: S.rush.overLine(rush.step, total), lineColor: 'muted', right: [S.rush.caption, S.rush.step(rush.step + 1, total)] },
+      shareable: null,
+      news,
+    };
+  }
+  rush.time += result.time;
+  const done = rush.step + 1;
+  career.rushFurthest = Math.max(career.rushFurthest, done);
+  if (done < total) {
+    rush.state = 'next';
+    return {
+      summary: { caption: S.rush.caught(done, total), color: 'accent', line: S.rush.nextLine(BOSS_KINDS[done]), lineColor: 'accent', right: [S.rush.clock, S.rush.time(rush.time)] },
+      shareable: null,
+      news,
+    };
+  }
+  rush.state = 'cleared';
+  const first = !career.trialsDone.includes(RUSH_ID);
+  const record = career.rushBest === 0 || rush.time < career.rushBest;
+  if (record) career.rushBest = Math.round(rush.time * 10) / 10;
+  if (first) {
+    career.trialsDone.push(RUSH_ID);
+    career.money += RUSH_REWARD;
+    const titles = Careers.recordTitles(career, config);
+    if (titles.length > 0) news.push(S.titles.earned(titles));
+  }
+  return {
+    summary: {
+      caption: S.rush.cleared,
+      color: 'accent',
+      line: first ? S.rush.firstLine(moneyText(Fmt.number(RUSH_REWARD))) : record ? S.rush.recordLine : S.rush.bestLine(S.rush.time(career.rushBest)),
+      lineColor: 'accent',
+      right: [S.rush.clock, S.rush.time(rush.time)],
+    },
+    shareable: null,
+    news,
+  };
+}
+
 /**
  * How the waiting screen names the shift: a challenge or trial being played, or a Legendary
  * Shift in the career (its rule and its Premium Chest). Null for a plain shift.
@@ -80,6 +154,17 @@ export function runCard(special: SpecialRun | null, config: Config, mode: GameMo
   }
   if (!special) return null;
   if (special.k === 'challenge') return { caption: S.run.challenge, color: 'accent', badge: S.run.fromFriend, line: null, right: [S.run.toBeat, Fmt.number(special.spec.target)] };
+  if (special.rush) {
+    const rush = special.rush;
+    const first = !career.trialsDone.includes(RUSH_ID);
+    return {
+      caption: S.rush.caption,
+      color: 'hazard',
+      badge: S.rush.step(rush.step + 1, BOSS_KINDS.length),
+      line: S.rush.shiftLine(BOSS_KINDS[rush.step], rush.step === 0),
+      right: rush.step > 0 ? [S.rush.clock, S.rush.time(rush.time)] : first ? [S.run.rewardCaption, moneyText(Fmt.number(RUSH_REWARD))] : [S.rush.best, S.rush.time(career.rushBest)],
+    };
+  }
   const weekly = special.trial.id === 'weekly';
   const done = weekly ? Careers.isWeeklyDone(career, weekNumber(today)) : career.trialsDone.includes(special.trial.id);
   return {

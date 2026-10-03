@@ -492,6 +492,13 @@ Sieben feste Schichten mit festem Seed (alle treffen denselben Verkehr), frische
 
 Nach einer Schicht macht „Challenge a friend“ einen Link (`#challenge=…`) mit Seed, Modus, Level, Upgrades, Zufahrten, Modulen und Event. Wer ihn öffnet, spielt dieselbe Schicht aus einer frischen Welt; Ziel ist die Punktzahl (in Mayhem die Flammen) des Absenders. Eine Challenge bringt nichts ein. **Mit dem Dienst** (01.10.2026) wird daraus beim Tippen ein Kurzlink (`…/c/K7M29QXA`), der im Chat ein Vorschaubild zeigt: Kreisverkehr bei Nacht und eine LED-Tafel mit „Beat 12,345“, mit Leaderboard-Namen auch „from Leo“. Ohne Dienst oder ohne Antwort in 2,5 s bleibt es der lange Link (`net/challengeLink.ts`, Server/README).
 
+### Boss Rush, Landmarks, Einladungs-QR (03.10.2026)
+
+- **Boss Rush** (Progress → Goals, öffnet, sobald alle acht Bosse einmal festgenommen sind): alle acht Syndikats-Bosse hintereinander, jeweils als Rematch (`rushTrial`, 20 Autos), **eine Uhr** (Summe der geschafften Schichten). Ein verlorener Boss beendet den Rush: der nächste Versuch beginnt wieder beim ersten (`advanceRush`, `present/specialRuns.ts`). Erster Durchlauf zahlt einmal **60.000** (`trialsDone` enthält `bossRush`), die **Bestzeit** (`rushBest`) und der weiteste Boss (`rushFurthest`) bleiben im Spielstand. Die Rematches zahlen im Rush nichts extra.
+- **Landmarks** (Progress → Goals, ab Prestige ★5, `LANDMARK_PRESTIGE`): berühmte Kreisverkehre als je eine feste, harte Schicht. Bisher **The Étoile**: zwölf Zufahrten in einem Ring (`armSlotCount` 12, jeder Platz gebaut), Level 60, 24 Autos, Tag, der Verkehr der zwölf Arme (`forArms`) auf 65 % gedämpft (`traffic`), weil der vorsichtige Bot bei vollem Verkehr in einer von acht Schichten crashte. Zahlt einmal 40.000. `node scripts/ascension-sim.mjs` prüft sie mit. **Noch offen:** Magic Roundabout (Swindon, fünf Mini-Ringe) braucht eigene Geometrie im Kern.
+- **Einladungs-QR:** Die Multiplayer-Lobby zeigt neben dem Code einen QR-Code für den Einladungslink (`ui/qr.ts`, `qrcode-generator` als zweite Laufzeit-Abhängigkeit, lädt erst mit der Lobby; Lizenz in Settings → Licenses).
+- **Patch Notes mit Spieler-Hinweis:** siehe CLAUDE.md.
+
 ### Multiplayer (nur Web)
 
 - **Bis zu 4 Freunde auf einem Kreisverkehr**, jeder mit eigener Zufahrt (je Platz eine Farbe: Mint, Koralle, Violett, Gold); 8 Arme, dazwischen KI-Verkehr (Unlimited-Level, keine Polizei, Verbrecher, Wetter, Nacht oder Events).
@@ -712,7 +719,7 @@ audio/ (Web Audio)   storage/ (localStorage, Gerät, Profil, Backdrop)   net/ (P
 ui/ (DOM-Hülle: Canvas, Tab-Bar, Sheets, Lobby, Backdrop, Werbung, CrazyGames, Live-Region)
 ```
 
-- **Vite + TypeScript + HTML5 Canvas**, kein UI-Framework, keine Game-Engine. Einzige Laufzeit-Abhängigkeit des Spiels: `peerjs` (Multiplayer, lädt erst beim Öffnen eines Raums). Der Dienst: Hono und `@hono/node-server`.
+- **Vite + TypeScript + HTML5 Canvas**, kein UI-Framework, keine Game-Engine. Laufzeit-Abhängigkeiten des Spiels: `peerjs` (Multiplayer, lädt erst beim Öffnen eines Raums) und `qrcode-generator` (QR-Code der Lobby, lädt mit ihr). Der Dienst: Hono und `@hono/node-server`.
 - **Gleicher Seed + gleiche Taps = gleiches Ergebnis** – Grundlage für Balancing-Bots, Challenge-Links, Trials, Weekly Shift und Multiplayer. Glück (Critical Merge, Jackpot) kommt aus einem eigenen Strom desselben Seeds, damit ältere Seeds ihren Verkehr behalten.
 - **Spielstand nur lokal:** `localStorage`, Schlüssel `carGame.save.v2` (alte `carGame.career.v1` werden übernommen); tolerant geladen, Feld für Feld. Optional Cloud sync per Code (die Quelle bleibt der Browser). Auf CrazyGames über deren Data Module.
 - **PWA und offline:** Manifest, Service Worker aus dem Build (precacht alle Dateien; Navigation network-first, nach 3 s oder ohne Netz die gespeicherte Seite). Nach dem ersten Laden läuft alles ohne Netz, nur der Multiplayer, die Bestenliste und Cloud sync brauchen es. Beim ersten Besuch: „Ready to play offline“.

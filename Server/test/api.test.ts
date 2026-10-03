@@ -138,6 +138,35 @@ test('the worn title shows next to the name on the boards and can be taken off',
   assert.equal((await call('PUT', '/v1/me/title', { body: { title: 'roadVeteran' } })).status, 401);
 });
 
+test("a player's page: their place on every board, found by name however it is written, and nothing about a blocked or unknown player", async () => {
+  const { call, join } = setup();
+  const a = await join('Anna Lee');
+  const b = await join('Ben');
+  await call('PUT', '/v1/boards/unlimited/score', { token: a.token, body: { score: 3000, cars: 30 } });
+  await call('PUT', '/v1/boards/unlimited/score', { token: b.token, body: { score: 9000, cars: 60 } });
+  await call('PUT', '/v1/boards/shift-level/score', { token: a.token, body: { level: 12, prestige: 2 } });
+  await call('PUT', '/v1/me/title', { token: a.token, body: { title: 'roadVeteran' } });
+
+  const page = await call('GET', '/v1/profiles/Anna%20Lee');
+  assert.equal(page.status, 200);
+  assert.deepEqual(page.json.player, { name: 'Anna Lee', title: 'roadVeteran' });
+  assert.equal(page.json.boards.unlimited.rank, 2);
+  assert.equal(page.json.boards.unlimited.score, 3000);
+  assert.deepEqual(page.json.boards['shift-level'].meta, { level: 12, prestige: 2 });
+  assert.equal(page.json.boards['shift-level'].rank, 1);
+  assert.equal(page.json.id, undefined, 'no id of the player is given out');
+  assert.equal(JSON.stringify(page.json).includes(a.id), false);
+
+  // The same name, written another way, is the same player; one without a score has empty boards.
+  assert.equal((await call('GET', '/v1/profiles/anna_lee')).json.player.name, 'Anna Lee');
+  assert.equal((await call('GET', '/v1/profiles/BEN')).json.boards['shift-level'], null);
+
+  assert.equal((await call('GET', '/v1/profiles/Nobody')).status, 404);
+  assert.equal((await call('GET', '/v1/profiles/x')).status, 404);
+  await call('PATCH', `/v1/admin/players/${b.id}`, { token: ADMIN, body: { banned: true } });
+  assert.equal((await call('GET', '/v1/profiles/Ben')).status, 404, 'a blocked player is a 404, like an unknown one');
+});
+
 test('the list is ranked, ties go to whoever was first, and "me" is marked', async () => {
   const { call, join, clock } = setup();
   const a = await join('Anna');

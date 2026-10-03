@@ -13,7 +13,7 @@ after(() => server.close());
 const load = (path) => server.ssrLoadModule(path);
 
 const { World } = await load('/src/core/world.ts');
-const { baseConfig } = await load('/src/core/config.ts');
+const { baseConfig, BOSS_KINDS } = await load('/src/core/config.ts');
 const { forLevel } = await load('/src/core/levels.ts');
 const { newSave, newCareer, Careers } = await load('/src/core/career.ts');
 const { encodeChallenge, decodeChallenge, challengeOf } = await load('/src/core/challenge.ts');
@@ -32,8 +32,10 @@ const { LEGENDARY_RULES, cloneConfig } = await load('/src/core/config.ts');
 const { versusConfig, VersusBot, INPUT_DELAY } = await load('/src/core/versus.ts');
 const { substream } = await load('/src/core/rng.ts');
 const { readGuestMessage, readHostMessage, RateLimit } = await load('/src/net/messages.ts');
-const { settleSpecial } = await load('/src/present/specialRuns.ts');
-const { trial: trialById } = await load('/src/core/trials.ts');
+const { settleSpecial, advanceRush, newRush, runCard } = await load('/src/present/specialRuns.ts');
+const { trial: trialById, trialOpen, trialConfig, landmarkOf, LANDMARKS, LANDMARK_PRESTIGE, RUN_IDS, RUSH_ID, RUSH_REWARD, rushOpen, rematchId } = await load('/src/core/trials.ts');
+const { PATCH_NOTES, latestNote, itemText, itemCredit } = await load('/src/present/patchNotes.ts');
+const { default: qrcode } = await import('qrcode-generator');
 const { ResultBanner } = await load('/src/present/hud.ts');
 // Every module loaded at the top level comes before the first test: a load later down the file
 // can still be pending when the tests above it have finished and `after` has closed the server.
@@ -725,7 +727,8 @@ test('learner drivers, fire engines, motorbikes and school buses come at their l
   const seen = new Set();
   let buses = 0;
   let stopped = 0;
-  for (let s = 1; s <= 12; s++) {
+  let mostOwing = 0;
+  for (let s = 1; s <= 40; s++) {
     const cfg = forCityEvent(forLevel(baseConfig, 40, s), 'schoolRun', s);
     const world = new World(cfg, s, { startsOnFirstTap: false });
     let warned = false;
@@ -733,6 +736,7 @@ test('learner drivers, fire engines, motorbikes and school buses come at their l
       if (laneAware(world)) world.tap(world.time);
       world.step();
       for (const x of world.vehicles) seen.add(x.type);
+      mostOwing = Math.max(mostOwing, world.vehicles.filter((x) => world.owesStop(x)).length);
       for (const e of world.takeEvents()) {
         if (e.type === 'learnerWarning') warned = true;
         if (e.type === 'learnerEntered') assert.ok(warned, 'the learner is announced first');
@@ -744,6 +748,7 @@ test('learner drivers, fire engines, motorbikes and school buses come at their l
   }
   for (const t of ['motorbike', 'bus', 'learner']) assert.ok(seen.has(t), `${t} came`);
   assert.ok(buses === 0 || stopped > 0, 'a school bus makes its stop');
+  assert.ok(mostOwing <= baseConfig.busMaxOwing, `at most ${baseConfig.busMaxOwing} buses wait for the stop at once, saw ${mostOwing}`);
   const low = new World(forLevel(baseConfig, 10, 5), 5, { startsOnFirstTap: false });
   for (let i = 0; i < 120 * 20; i++) low.step();
   assert.ok(!low.vehicles.some((x) => ['motorbike', 'learner', 'fireTruck', 'bus'].includes(x.type)), 'nothing new below its level');
@@ -1021,7 +1026,6 @@ test('Street Builder moves a built arm or module for free, only to a free slot, 
 // MARK: What's new
 
 test("What's new has one entry per day, newest first, and a new item lights the dot again", async () => {
-  const { PATCH_NOTES, latestNote } = await load('/src/present/patchNotes.ts');
   const days = PATCH_NOTES.map((n) => n.id);
   for (const day of days) assert.match(day, /^\d{4}-\d{2}-\d{2}$/, `${day}: the id is the day`);
   assert.equal(new Set(days).size, days.length, 'one entry per day: add to the day that is already there');
@@ -1037,4 +1041,132 @@ test("What's new has one entry per day, newest first, and a new item lights the 
   } finally {
     PATCH_NOTES[0].items.shift();
   }
+});
+
+test("a player's line in What's new says so: from a player, or thanks by name", () => {
+  assert.equal(itemCredit('Fixed: something of ours.'), null);
+  assert.equal(itemText('Fixed: something of ours.'), 'Fixed: something of ours.');
+  assert.equal(itemCredit({ text: 'Dark mode for the lobby.', from: null }), 'From a player');
+  assert.equal(itemCredit({ text: 'Dark mode for the lobby.', from: 'Mia' }), 'Thanks, Mia');
+  assert.equal(itemText({ text: 'Dark mode for the lobby.', from: 'Mia' }), 'Dark mode for the lobby.');
+  // A credited line counts like any other for the dot on the settings button.
+  const before = latestNote();
+  PATCH_NOTES[0].items.unshift({ text: 'From a player.', from: null });
+  try {
+    assert.notEqual(latestNote(), before);
+  } finally {
+    PATCH_NOTES[0].items.shift();
+  }
+});
+
+// MARK: Landmarks, Boss Rush, QR code
+
+test('the Étoile has twelve roads, opens at Prestige 5, and the careful bot drives through it without a crash', () => {
+  const etoile = landmarkOf('landmark.etoile');
+  assert.ok(etoile && LANDMARKS.includes(etoile) && trialById(etoile.id) === etoile);
+  const career = newCareer();
+  assert.ok(!trialOpen(etoile, career), 'closed at the start');
+  career.prestige = LANDMARK_PRESTIGE - 1;
+  assert.ok(!trialOpen(etoile, career), 'closed one rank short');
+  career.prestige = LANDMARK_PRESTIGE;
+  assert.ok(trialOpen(etoile, career), 'open at the rank');
+  career.prestige = 0;
+  career.trialsDone.push(etoile.id);
+  assert.ok(trialOpen(etoile, career), 'a passed landmark stays open');
+  assert.ok(RUN_IDS.includes(etoile.id), 'a save keeps it');
+  for (let i = 0; i < 4; i++) {
+    const seed = (etoile.seed + i) >>> 0;
+    const config = trialConfig({ ...etoile, seed }, baseConfig);
+    assert.equal(new World(config, seed, { startsOnFirstTap: false }).layout.arms.length, 12, 'twelve roads');
+    const { result } = playConfig(config, seed);
+    assert.ok(result, `seed ${i}: the shift ends`);
+    assert.equal(result.crashes, 0, `seed ${i}: the careful bot does not crash`);
+  }
+});
+
+/** A finished boss shift of a Boss Rush: caught (`won`) or lost. */
+const rushShift = (won, time) => ({ ...play(77, 5, careful).result, outcome: won ? 'completed' : 'struckOut', bossBusted: won, time });
+
+test('Boss Rush: opens when all bosses are down, goes boss by boss, starts over after a loss, pays the first clear once and keeps the best time', () => {
+  const career = newCareer();
+  assert.ok(!rushOpen(career));
+  career.bossesBeaten = BOSS_KINDS.slice(0, -1);
+  assert.ok(!rushOpen(career), 'one boss short');
+  career.bossesBeaten = [...BOSS_KINDS];
+  assert.ok(rushOpen(career));
+  const money = career.money;
+  const card = runCard(newRush(), baseConfig, 'shift', false, career, 20000);
+  assert.equal(card.caption, S.rush.caption);
+  assert.equal(card.badge, S.rush.step(1, BOSS_KINDS.length));
+
+  const clear = (secondsPerBoss) => {
+    let run = newRush();
+    for (let step = 0; step < BOSS_KINDS.length; step++) {
+      assert.equal(run.trial.id, rematchId(BOSS_KINDS[step]), `boss ${step + 1} of the rush`);
+      const settled = settleSpecial(run, rushShift(true, secondsPerBoss), career, 20000, baseConfig);
+      assert.equal(run.rush.state, step < BOSS_KINDS.length - 1 ? 'next' : 'cleared');
+      assert.ok(!career.trialsDone.includes(rematchId(BOSS_KINDS[step])), 'a rush shift pays no rematch reward');
+      if (step === BOSS_KINDS.length - 1) assert.equal(settled.summary.caption, S.rush.cleared);
+      run = advanceRush(run);
+    }
+    assert.equal(run.rush.step, 0, 'after a clear it starts again at the first boss');
+    assert.equal(run.rush.time, 0);
+  };
+
+  clear(60);
+  assert.equal(career.money, money + RUSH_REWARD, 'the first clear pays');
+  assert.ok(career.trialsDone.includes(RUSH_ID));
+  assert.equal(career.rushBest, 480, 'eight bosses of 60 s');
+  assert.equal(career.rushFurthest, BOSS_KINDS.length);
+
+  clear(70);
+  assert.equal(career.money, money + RUSH_REWARD, 'a second clear pays nothing');
+  assert.equal(career.rushBest, 480, 'a slower clear keeps the best time');
+  clear(50);
+  assert.equal(career.rushBest, 400, 'a faster clear is the new best');
+
+  // A lost round ends the rush: the next shift is the first boss again, with a clean clock.
+  let run = newRush();
+  for (let step = 0; step < 3; step++) {
+    settleSpecial(run, rushShift(true, 60), career, 20000, baseConfig);
+    run = advanceRush(run);
+  }
+  const lost = settleSpecial(run, rushShift(false, 20), career, 20000, baseConfig);
+  assert.equal(lost.summary.caption, S.rush.over);
+  assert.equal(run.rush.state, 'over');
+  run = advanceRush(run);
+  assert.equal(run.rush.step, 0);
+  assert.equal(run.rush.time, 0);
+  assert.equal(run.trial.id, rematchId(BOSS_KINDS[0]));
+  assert.equal(advanceRush(run), run, 'nothing ended: the run stays');
+  assert.equal(career.rushBest, 400, 'a lost rush does not touch the best time');
+});
+
+test('a save keeps its Boss Rush record and the landmark, and drops what it does not know', () => {
+  fakeStorage({
+    'carGame.save.v2': JSON.stringify({ career: { rushBest: 321.5, rushFurthest: 99, trialsDone: ['bossRush', 'landmark.etoile', 'landmark.nowhere', 'deadCentre'] } }),
+  });
+  const { career } = loadSave();
+  assert.equal(career.rushBest, 321.5);
+  assert.equal(career.rushFurthest, BOSS_KINDS.length, 'never more than there are bosses');
+  assert.deepEqual(career.trialsDone, ['bossRush', 'landmark.etoile', 'deadCentre']);
+  fakeStorage({ 'carGame.save.v2': JSON.stringify({ career: { rushBest: 'fast', rushFurthest: -3 } }) });
+  const old = loadSave().career;
+  assert.equal(old.rushBest, 0);
+  assert.equal(old.rushFurthest, 0);
+});
+
+test('the lobby QR code encodes the invite link in a proper square', () => {
+  const link = 'https://game.gustaff.dev/#join=4821';
+  const qr = qrcode(0, 'M');
+  qr.addData(link);
+  qr.make();
+  const n = qr.getModuleCount();
+  assert.ok(n >= 21 && (n - 21) % 4 === 0, `a valid QR size, got ${n}`);
+  // The three finder squares sit in the corners, their outer ring dark.
+  for (const [r, c] of [[0, 0], [0, n - 1], [n - 1, 0]]) assert.ok(qr.isDark(r, c), `finder corner ${r},${c}`);
+  const again = qrcode(0, 'M');
+  again.addData(link);
+  again.make();
+  assert.equal(again.createDataURL?.(2) ?? '', qr.createDataURL?.(2) ?? '', 'the same link gives the same code');
 });

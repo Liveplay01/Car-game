@@ -632,6 +632,11 @@ export const baseConfig = {
   busStopAt: 0,
   /** Share of the new AI traffic that is a school bus during a School Run. */
   busShare: 0.28,
+  /**
+   * At most this many buses owe their stop at once (Leo, 03.10.2026: six buses at the start of a
+   * high level jammed the ring for the whole shift). More just join as ordinary lorries.
+   */
+  busMaxOwing: 2,
   busLength: 44,
   busMass: 2.4,
   /** Seconds a bus stands at the stop. */

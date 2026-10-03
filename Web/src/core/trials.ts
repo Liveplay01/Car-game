@@ -17,8 +17,10 @@ export type TrialId = 'tightSqueeze' | 'deadCentre' | 'cleanSheet' | 'blackout' 
 export type RematchId = `rematch.${BossKind}`;
 /** An Ascension trial: one per Prestige rank (`ascension.1` … `ascension.10`). */
 export type AscensionId = `ascension.${number}`;
+/** A Landmark: a famous roundabout, played as a trial (`landmark.etoile`). */
+export type LandmarkId = 'landmark.etoile';
 /** Every run that is played like a trial. */
-export type RunId = TrialId | RematchId | AscensionId | 'weekly';
+export type RunId = TrialId | RematchId | AscensionId | LandmarkId | 'weekly';
 
 /** The Weekly Elite's shapes, one per week in turn (core/weekly.ts). */
 export type EliteKind = 'flawless' | 'precision' | 'storm' | 'gridlock' | 'dragnet' | 'boss';
@@ -47,6 +49,10 @@ export interface Trial {
   legendary: LegendaryRule | null;
   /** The Weekly Elite's shape, for its name and goal. */
   elite?: EliteKind;
+  /** A roundabout with this many arms, spaced evenly, instead of the four of a trial (a Landmark). */
+  arms?: number;
+  /** How much of the traffic those arms would bring: twelve roads at full strength would crash even the careful bot. */
+  traffic?: number;
 }
 
 const fixed = (t: Omit<Trial, 'legendary'>): Trial => ({ ...t, legendary: null });
@@ -73,6 +79,7 @@ export const TRIALS: Trial[] = [
 export const trialOpen = (t: Trial, c: Career): boolean => {
   const rank = ascensionRank(t.id);
   if (rank !== null) return c.prestige >= rank || c.trialsDone.includes(t.id);
+  if (landmarkOf(t.id)) return c.prestige >= LANDMARK_PRESTIGE || c.trialsDone.includes(t.id);
   return c.level >= t.level || c.prestige > 0 || c.trialsDone.includes(t.id);
 };
 
@@ -158,17 +165,61 @@ export const ASCENSIONS: Trial[] = ASCENSION_PLAN.map((plan, i) => ({
 
 export const ASCENSION_IDS: AscensionId[] = ASCENSIONS.map((t) => t.id as AscensionId);
 
-export const RUN_IDS: string[] = [...TRIAL_IDS, ...REMATCH_IDS, ...ASCENSION_IDS];
+// MARK: Landmarks
+
+/**
+ * Landmarks (Leo, 03.10.2026): famous roundabouts as one fixed, hard shift each, for players who
+ * have been through Prestige five times. The Étoile around the Arc de Triomphe has twelve roads
+ * into one wide ring; the traffic of twelve roads scales like a built-out junction (`forArms`), then
+ * eases to about twice the usual (`traffic`): the careful bot crashed in one shift of eight at full strength.
+ * Each pays once. They are played on a fresh roundabout like every trial, without upgrades.
+ */
+export const LANDMARK_PRESTIGE = 5;
+
+export const LANDMARKS: Trial[] = [
+  { id: 'landmark.etoile', level: 60, seed: 0x7a11d001, cars: 24, goal: { k: 'complete' }, rule: null, weather: 'clear', darkness: 'day', reward: 40000, legendary: null, arms: 12, traffic: 0.65 },
+];
+
+export const LANDMARK_IDS: LandmarkId[] = LANDMARKS.map((t) => t.id as LandmarkId);
+
+/** The landmark an id names; null for any other run. */
+export const landmarkOf = (id: string): Trial | null => LANDMARKS.find((t) => t.id === id) ?? null;
+
+// MARK: Boss Rush
+
+/**
+ * Boss Rush (Leo, 03.10.2026): every syndicate boss, one after the other, the rematches back to
+ * back. Opens once all eight have been taken down. Lose a round and the rush starts over at the
+ * first boss; the clock counts the shifts you finish. A first clear pays once; the best time is kept.
+ * The shifts are the rematches (`rematch`), but they pay nothing of their own here.
+ */
+export const RUSH_ID = 'bossRush';
+export const RUSH_REWARD = 60000;
+export const rushOpen = (c: Career): boolean => BOSS_KINDS.every((k) => c.bossesBeaten.includes(k));
+/** The shift of boss number `step` (0 first) in a rush. */
+export const rushTrial = (step: number): Trial => rematch(BOSS_KINDS[Math.max(0, Math.min(BOSS_KINDS.length - 1, step))]);
+
+export const RUN_IDS: string[] = [...TRIAL_IDS, ...REMATCH_IDS, ...ASCENSION_IDS, ...LANDMARK_IDS, RUSH_ID];
 
 export const trial = (id: string): Trial | undefined =>
-  TRIALS.find((t) => t.id === id) ?? REMATCHES.find((t) => t.id === id) ?? ASCENSIONS.find((t) => t.id === id);
+  TRIALS.find((t) => t.id === id) ?? REMATCHES.find((t) => t.id === id) ?? ASCENSIONS.find((t) => t.id === id) ?? landmarkOf(id) ?? undefined;
 
-/** The shift of a trial: a fresh four-arm roundabout at its level, its conditions pinned. */
+/** The shift of a trial: a fresh four-arm roundabout (a Landmark: its own) at its level, its conditions pinned. */
 export function trialConfig(t: Trial, base: Config): Config {
   const career = { ...newCareer(), level: t.level };
+  if (t.arms) {
+    // Evenly spaced around the ring: as many slots as arms, each one built.
+    base = { ...cloneConfig(base), armSlotCount: t.arms, armSlotSpacing: 1 };
+    career.armSlots = Array.from({ length: t.arms }, (_, i) => i);
+  }
   const shift = Careers.config(career, base, t.seed, t.weather, null, null);
   const c = cloneConfig(forNight(shift, t.darkness));
   c.shiftCars = t.cars;
+  if (t.traffic) {
+    c.densityStart = Math.round(c.densityStart * t.traffic);
+    c.densityEnd = Math.round(c.densityEnd * t.traffic);
+    c.minRingBots = Math.max(3, Math.round(c.minRingBots * t.traffic));
+  }
   c.trialRule = t.rule;
   // The boss trials always bring the convoy; the others never do. A rematch is its own boss, one round on.
   c.convoy = t.goal.k === 'boss';

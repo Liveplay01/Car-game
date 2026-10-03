@@ -514,6 +514,11 @@ export class World {
     return veh.type === 'bus' && !veh.served && this.busStopS !== null;
   }
 
+  /** School buses on the road that have not made their stop yet. */
+  private get busesOwing(): number {
+    return this.vehicles.reduce((n, veh) => n + (this.owesStop(veh) ? 1 : 0), 0);
+  }
+
   /** Every car leaves 1–3 arms after the one it came from, never at South. */
   randomExit(arm: Arm): Arm {
     const options: Arm[] = [];
@@ -1951,7 +1956,8 @@ export class World {
       if (c.level >= c.motorbikeLevel && c.motorbikeShare > 0 && this.trafficRng.unit() < c.motorbikeShare) return 'motorbike';
       return 'car';
     }
-    if (c.cityEvent === 'schoolRun' && this.trafficRng.unit() < c.busShare / Math.max(c.truckChance, 0.01)) return 'bus';
+    // The roll always happens, so the traffic streams stay as they were; the cap only turns the bus into a lorry.
+    if (c.cityEvent === 'schoolRun' && this.trafficRng.unit() < c.busShare / Math.max(c.truckChance, 0.01) && this.busesOwing < c.busMaxOwing) return 'bus';
     return c.tankerShare > 0 && this.tankerRng.unit() < c.tankerShare ? 'tanker' : 'truck';
   }
 

@@ -167,7 +167,8 @@ export class DetailSheet {
 
     this.actions.replaceChildren(...d.actions.map((a) => this.button(a)));
     this.actions.hidden = d.actions.length === 0;
-    this.actions.classList.toggle('many', d.actions.length > 2);
+    this.actions.classList.toggle('many', d.actions.length > 2 && !d.stacked);
+    this.actions.classList.toggle('stacked', !!d.stacked);
   }
 
   /** A grouped list; a row with an action is a button. */

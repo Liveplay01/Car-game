@@ -3,9 +3,9 @@ import { Unlocks } from '../core/unlocks';
 import { COSMETICS, cosmetic } from '../core/loot';
 import { FEATS, Feats, type Feat } from '../core/feats';
 import { type Challenge, challengesOf, challengeReward } from '../core/daily';
-import { type Trial, type TrialId, TRIALS, ASCENSIONS, trialOpen } from '../core/trials';
+import { type Trial, type TrialId, TRIALS, ASCENSIONS, LANDMARKS, LANDMARK_PRESTIGE, RUSH_ID, RUSH_REWARD, rushOpen, trialOpen } from '../core/trials';
 import { weekNumber, weekDaysLeft, weeklyTrial } from '../core/weekly';
-import { baseConfig } from '../core/config';
+import { baseConfig, BOSS_KINDS } from '../core/config';
 import { Elite } from '../core/elite';
 import { SeasonPass, PASS_TIERS } from '../core/seasonPass';
 import { type MuseumEntry, MUSEUM_SHELVES, shelfEntries, museumId } from '../core/museum';
@@ -61,6 +61,7 @@ export type ProgressTarget =
   | { k: 'weekly' }
   | { k: 'pass' }
   | { k: 'trial'; id: TrialId }
+  | { k: 'rush' }
   | { k: 'feat'; id: string }
   | { k: 'museum'; id: string };
 
@@ -80,6 +81,8 @@ type Block =
   | { k: 'quest'; challenge: Challenge }
   | { k: 'trialsLocked'; level: number }
   | { k: 'trial'; trial: Trial }
+  | { k: 'rush' }
+  | { k: 'rushLocked' }
   | { k: 'mastery'; goal: MasteryGoal }
   | { k: 'feat'; feat: Feat }
   | { k: 'museum'; entry: MuseumEntry };
@@ -230,6 +233,18 @@ export const ProgressPage = {
         for (const trial of ASCENSIONS) s.row({ k: 'trial', trial }, 64);
         s.row({ k: 'note', text: S.progress.ascensionHint }, 16);
       }
+      // Landmarks: famous roundabouts, for those who have been through Prestige five times.
+      if (ProgressPage.showsLandmarks(career)) {
+        const seen = LANDMARKS.filter((x) => career.trialsDone.includes(x.id)).length;
+        s.heading(S.progress.landmarks, `${seen}/${LANDMARKS.length}`, seen === LANDMARKS.length);
+        for (const trial of LANDMARKS) s.row({ k: 'trial', trial }, 64);
+        s.row({ k: 'note', text: S.progress.landmarksHint }, 16);
+      }
+      // Boss Rush: once a boss has been caught, it is there to look forward to.
+      if (career.bossesBeaten.length > 0) {
+        s.heading(S.rush.name, career.trialsDone.includes(RUSH_ID) ? '1/1' : '0/1', career.trialsDone.includes(RUSH_ID));
+        s.row({ k: rushOpen(career) ? 'rush' : 'rushLocked' }, 64);
+      }
       const mastered = MASTERY_GOALS.filter((g) => (career.masteryTiers[g] ?? 0) >= MASTERY_THRESHOLDS[g].length).length;
       s.heading(S.progress.mastery, `${mastered}/${MASTERY_GOALS.length}`, mastered === MASTERY_GOALS.length);
       for (const goal of MASTERY_GOALS) s.row({ k: 'mastery', goal }, 58);
@@ -285,6 +300,8 @@ export const ProgressPage = {
         return { k: 'pass' };
       case 'trial':
         return trialOpen(b.trial, career) ? { k: 'trial', id: b.trial.id as TrialId } : null;
+      case 'rush':
+        return { k: 'rush' };
       case 'feat':
         return { k: 'feat', id: b.feat.id };
       case 'museum':
@@ -431,6 +448,10 @@ export const ProgressPage = {
         return ProgressPage.addTrialsLocked(list, r, b.level, o);
       case 'trial':
         return ProgressPage.addTrial(list, r, career, b.trial, o);
+      case 'rush':
+        return ProgressPage.addRush(list, r, career, o);
+      case 'rushLocked':
+        return ProgressPage.addRushLocked(list, r, career, o);
       case 'mastery':
         return ProgressPage.addMastery(list, r, career, b.goal, o);
       case 'feat':
@@ -588,6 +609,33 @@ export const ProgressPage = {
     t(list, label, v(r.minX + 44, c.y), ShopPage.fitted(label, 13, R.width(r) - 60), 'muted', dim, { weight: 'bold' });
   },
 
+  /** Landmarks show from the Prestige rank that opens them, or once one was passed. */
+  showsLandmarks: (career: Career): boolean => career.prestige >= LANDMARK_PRESTIGE || LANDMARKS.some((x) => career.trialsDone.includes(x.id)),
+
+  /** Boss Rush: tap to run all eight bosses in a row; a clear pays once, the best time stays. */
+  addRush(list: RenderList, r: Rect, career: Career, full: number): void {
+    const c = R.center(r);
+    ProgressPage.panel(list, r, full);
+    const done = career.trialsDone.includes(RUSH_ID);
+    ProgressPage.check(list, v(r.minX + 24, c.y), done, full);
+    const extra = career.rushBest > 0 ? `best ${S.rush.time(career.rushBest)}` : career.rushFurthest > 0 ? S.rush.furthest(career.rushFurthest, BOSS_KINDS.length) : null;
+    ProgressPage.addCardRow(list, r, r.minX + 44, full, {
+      title: S.rush.rowTitle,
+      line: extra ? `${S.rush.line} · ${extra}` : S.rush.line,
+      ...(done ? { status: `${S.daily.done} ✓` } : { reward: RUSH_REWARD }),
+      link: `${S.trials.play} ›`,
+    });
+  },
+
+  /** Boss Rush before all eight bosses are down: quiet, and says what opens it. */
+  addRushLocked(list: RenderList, r: Rect, career: Career, full: number): void {
+    const o = full * 0.55;
+    const c = R.center(r);
+    ProgressPage.panel(list, r, o);
+    ProgressPage.check(list, v(r.minX + 24, c.y), false, o);
+    ProgressPage.addCardRow(list, r, r.minX + 44, o, { title: S.rush.rowTitle, line: S.rush.locked(career.bossesBeaten.length, BOSS_KINDS.length), dim: true });
+  },
+
   /** A trial: tap to play it; each pays once. One above the career's level waits, quieter, and says when it opens. */
   addTrial(list: RenderList, r: Rect, career: Career, trial: Trial, full: number): void {
     const c = R.center(r);
@@ -611,12 +659,22 @@ export const ProgressPage = {
 
   /** Elite level, title, the bar to the next level and what the next milestone brings. */
   addEliteCard(list: RenderList, card: Rect, c: Career, o: number): void {
-    ProgressPage.panel(list, card, o);
     const open = Elite.isOpen(c);
+    // Prestige in reach: a gold ring round the card and a gold pill say so, where the badges usually sit.
+    const ready = open && Careers.canPrestige(c);
+    if (ready) list.s(rect(R.center(card), v(R.width(card) + 4, R.height(card) + 4), ShopPage.corner + 2), 'coin', 0.9 * o);
+    ProgressPage.panel(list, card, o);
     const top = card.minY + 22;
     t(list, open ? S.elite.caption(Elite.level(c)) : S.elite.title, v(card.minX + 16, top), 15, open ? 'coin' : 'muted', o, { weight: 'bold' });
-    const badges = [c.prestige > 0 ? S.prestige.caption(c.prestige) : null, c.title ? S.titles.name(c.title) : null].filter((x): x is string => !!x);
-    t(list, [...badges, '›'].join(' · ').replace(' · ›', ' ›'), v(card.maxX - 16, top), 12, badges.length > 0 ? 'coin' : 'muted', o, { weight: 'bold', align: 'trailing' });
+    if (ready) {
+      const label = `${S.elite.prestigeAction(c.prestige + 1)} ›`;
+      const width = textWidth(label, 12) + 20;
+      list.s(rect(v(card.maxX - 16 - width / 2, top), v(width, 22), 11), 'coin', o);
+      t(list, label, v(card.maxX - 16 - width / 2, top), 12, 'background', o, { weight: 'bold', align: 'center' });
+    } else {
+      const badges = [c.prestige > 0 ? S.prestige.caption(c.prestige) : null, c.title ? S.titles.name(c.title) : null].filter((x): x is string => !!x);
+      t(list, [...badges, '›'].join(' · ').replace(' · ›', ' ›'), v(card.maxX - 16, top), 12, badges.length > 0 ? 'coin' : 'muted', o, { weight: 'bold', align: 'trailing' });
+    }
     const barY = card.minY + 42;
     const barWidth = R.width(card) - 32;
     list.s(rect(v(R.center(card).x, barY), v(barWidth, 5), 2.5), 'controlFill', o);
@@ -634,13 +692,11 @@ export const ProgressPage = {
     }
     const xp = S.elite.xp(into, need);
     t(list, xp, v(card.minX + 16, bottom), 11, 'muted', o);
-    // Prestige in reach says so; otherwise the card names what comes next.
     const next = Elite.nextMilestone(c);
-    const ready = Careers.canPrestige(c);
-    const lineText = ready ? S.elite.prestigeReady : next ? S.elite.next(next) : null;
+    const lineText = next ? S.elite.next(next) : null;
     if (lineText) {
       const room = barWidth - textWidth(xp, 11) - 16;
-      t(list, lineText, v(card.maxX - 16, bottom), ShopPage.fitted(lineText, 11, room), ready ? 'coin' : 'muted', o, { align: 'trailing', weight: ready ? 'bold' : 'regular' });
+      t(list, lineText, v(card.maxX - 16, bottom), ShopPage.fitted(lineText, 11, room), 'muted', o, { align: 'trailing' });
     }
   },
 

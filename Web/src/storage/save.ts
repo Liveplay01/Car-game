@@ -102,6 +102,8 @@ function readCareer(raw: unknown): Career {
     albumsDone: strings(raw.albumsDone),
     bestTimes,
     trialsDone: [...new Set(strings(raw.trialsDone).filter((id) => RUN_IDS.includes(id)))],
+    rushBest: num(raw.rushBest, 0, 0),
+    rushFurthest: Math.min(int(raw.rushFurthest, 0, 0), BOSS_KINDS.length),
     bossTrophies: int(raw.bossTrophies, 0, 0),
     bossesBeaten,
     prestige,

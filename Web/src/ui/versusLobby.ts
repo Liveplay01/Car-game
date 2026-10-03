@@ -457,8 +457,35 @@ export class VersusLobby {
       h('div', { class: 'join-code-label' }, room.isHost ? 'Your code: send it or the link' : 'Game'),
       h('div', { class: 'join-code', 'aria-label': `Code ${code.split('').join(' ')}` }, ...code.split('').map((d) => h('span', {}, d))),
     ];
-    if (room.isHost && room.code) items.push(h('button', { class: 'btn invite-btn', type: 'button', onclick: () => void this.invite(room.code!) }, icon(ICONS.share), 'Invite'));
+    if (room.isHost && room.code) {
+      items.push(h('button', { class: 'btn invite-btn', type: 'button', onclick: () => void this.invite(room.code!) }, icon(ICONS.share), 'Invite'));
+      items.push(this.qrCard(room.code));
+    }
     return items;
+  }
+
+  /**
+   * The invite link as a QR code, for a friend in the same room (a classroom, a LAN party): they
+   * scan it and the game opens and joins. It loads on demand, so the code appears a moment after the card.
+   */
+  private qrCard(code: string): HTMLElement {
+    const slot = h('div', { class: 'join-qr' });
+    slot.hidden = true;
+    const url = this.inviteUrl(code);
+    void import('./qr')
+      .then(({ qrSvg }) => {
+        slot.replaceChildren(qrSvg(url, `QR code to join the game with code ${code}`), h('span', { class: 'join-qr-label' }, 'Scan to join'));
+        slot.hidden = false;
+      })
+      .catch(() => {
+        /* the code and the link still work */
+      });
+    return slot;
+  }
+
+  /** The link that opens the game and joins this room. On CrazyGames the friend must land in their page around the game, not on our address. */
+  private inviteUrl(code: string): string {
+    return inviteLink(code) ?? `${location.origin}${location.pathname}#join=${code}`;
   }
 
   /** One row per lane: its colour and number, who drives it, and what the host can do with it. */
@@ -518,8 +545,7 @@ export class VersusLobby {
 
   /** The link that opens the game and joins this room: the share sheet on a phone, else copied. */
   private async invite(code: string): Promise<void> {
-    // On CrazyGames the friend must land in their page around the game, not on our address.
-    const url = inviteLink(code) ?? `${location.origin}${location.pathname}#join=${code}`;
+    const url = this.inviteUrl(code);
     const touch = window.matchMedia('(pointer: coarse)').matches;
     if (touch && typeof navigator.share === 'function') {
       try {

@@ -939,6 +939,21 @@ a.row-link {
   color: var(--accent);
 }
 
+/* "From a player": what players asked for or found, said once and quietly (never colour alone). */
+.note-credit {
+  display: inline-block;
+  margin-left: var(--s2);
+  padding: 0 8px;
+  border-radius: 999px;
+  background: var(--accent-soft, rgba(158, 230, 207, 0.12));
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 18px;
+  white-space: nowrap;
+  vertical-align: 1px;
+}
+
 .dispatch-btn {
   right: calc(var(--safe-right) + var(--s4));
   bottom: calc(var(--safe-bottom) + var(--s5));
@@ -1266,6 +1281,22 @@ a.row-link {
   border-radius: 14px;
 }
 
+/* Long labels (Prestige, the Hall of Fame's price): one full-width button per row, the text may wrap. */
+.detail-actions.stacked {
+  flex-direction: column;
+  gap: var(--s2);
+}
+
+.detail-actions.stacked .btn {
+  flex: none;
+  width: 100%;
+  min-height: 48px;
+  padding-block: var(--s2);
+  white-space: normal;
+  text-align: center;
+  line-height: 1.25;
+}
+
 /* The gold coin inside text, like the canvas one: a disc with a sunk ring. */
 .coin {
   display: inline-block;
@@ -1550,6 +1581,28 @@ a.row-link {
 .practice-title {
   font: 700 22px/1.2 var(--font-round);
   color: var(--primary);
+}
+
+.join-qr {
+  display: grid;
+  justify-items: center;
+  gap: var(--s2);
+  margin-top: var(--s3);
+}
+
+.join-qr[hidden] {
+  display: none;
+}
+
+.join-qr svg {
+  width: 148px;
+  height: 148px;
+  border-radius: 12px;
+}
+
+.join-qr-label {
+  color: var(--muted);
+  font-size: 13px;
 }
 
 .invite-btn {
