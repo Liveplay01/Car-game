@@ -836,7 +836,7 @@ test('every Feat pays its own reward where its deed happens, never in a chest', 
   assert.equal(Feats.count(c), 0);
   c.prestige = 20;
   c.legendaryDone = 50;
-  c.eliteXp = 99 * baseConfig.eliteXpPerLevel;
+  c.eliteXp = Elite.xpTo(100);
   assert.equal(Elite.level(c), 100);
   assert.equal(Feats.count(c), FEATS.length);
   assert.ok(['ascended', 'eternal', 'grandmaster', 'centurion', 'immortal'].every((t) => Elite.titleEarned(t, c)));

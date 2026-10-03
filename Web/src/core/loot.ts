@@ -40,6 +40,8 @@ export type CosmeticSource =
   | { kind: 'hall' }
   /** Sent this many cars in one Unlimited run (Leo, 02.10.2026). */
   | { kind: 'unlimited'; cars: number }
+  /** Reported a bug on the website with a friend code (Leo, 03.10.2026): the server hands it out. */
+  | { kind: 'bugReport' }
   /**
    * The one honour that is luck (Leo, 01.10.2026): found in this chest with this chance per
    * opening, until it is found. On the Honours shelf, never in a chest's normal pool.
@@ -174,6 +176,8 @@ export const COSMETICS: Cosmetic[] = [
   c('endurance', 'carSkin', 'epic', { kind: 'unlimited', cars: 250 }),
   c('overdrive', 'carSkin', 'legendary', { kind: 'unlimited', cars: 500 }),
   c('infinity', 'carSkin', 'legendary', { kind: 'unlimited', cars: 1000 }),
+  // The bug hunter (Leo, 03.10.2026): only for a bug reported on the website with a friend code.
+  c('ladybug', 'carSkin', 'epic', { kind: 'bugReport' }),
   // The Classic: one Standard Chest in 500 (Leo, 01.10.2026).
   c('classic', 'vehicleType', 'legendary', { kind: 'find', chest: 'standard', chance: 0.002 }),
 ];
@@ -204,6 +208,7 @@ export const isHonour = (item: Cosmetic): boolean =>
   item.source.kind === 'elite' ||
   item.source.kind === 'hall' ||
   item.source.kind === 'unlimited' ||
+  item.source.kind === 'bugReport' ||
   item.source.kind === 'find';
 
 /** The next Legendary Shift milestone still to reach. */
@@ -257,8 +262,9 @@ export function albumItems(album: Album): Cosmetic[] {
     case 'loyalty':
       return COSMETICS.filter((x) => x.source.kind === 'streak');
     case 'honours':
-      // Deeds only: a find is luck, and an album must not wait on it.
-      return COSMETICS.filter((x) => isHonour(x) && x.source.kind !== 'find');
+      // Deeds in the game only: a find is luck, and the Ladybug needs the website (not offered
+      // inside CrazyGames), so an album must not wait on either.
+      return COSMETICS.filter((x) => isHonour(x) && x.source.kind !== 'find' && x.source.kind !== 'bugReport');
     case 'pass':
       return COSMETICS.filter((x) => x.source.kind === 'pass');
   }

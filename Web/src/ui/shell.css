@@ -2301,3 +2301,115 @@ a.row-link {
     animation: none;
   }
 }
+
+/* MARK: Settings (tidied 03.10.2026): grouped lists with plain headers, as in iOS Settings. */
+
+.settings-group + .settings-group {
+  margin-top: var(--s5);
+}
+
+.settings-header {
+  margin: 0 var(--s4) var(--s2);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.3;
+  color: var(--muted);
+}
+
+/* An icon tile in front of a row; its glyph takes the colour of its role, never a vehicle colour. */
+.row-tile {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  background: var(--surface-3);
+}
+
+.row-tile svg {
+  width: 18px;
+  height: 18px;
+}
+
+.tile-red {
+  color: var(--destructive);
+}
+
+.tile-amber {
+  color: var(--money);
+}
+
+.tile-blue {
+  color: var(--accent);
+}
+
+/* Reduce motion: the title on the left, the three choices on the right; stacked when narrow. */
+.row-stack {
+  flex-wrap: wrap;
+  row-gap: var(--s3);
+}
+
+.row-stack .row-main {
+  min-width: 160px;
+}
+
+.motion-seg button {
+  min-width: 60px;
+}
+
+@media (max-width: 400px) {
+  .row-stack .motion-seg {
+    width: 100%;
+  }
+}
+
+.settings-foot {
+  margin: var(--s5) var(--s4) var(--s3);
+}
+
+/* Delete account: what goes, then the explicit button and the safe one. */
+.delete-lede {
+  margin: 0 0 var(--s4);
+  font-size: 16px;
+  line-height: 1.5;
+}
+
+.delete-list {
+  list-style: none;
+  margin: 0 0 var(--s5);
+  padding: 0;
+  border-radius: var(--r-row);
+  background: var(--surface-2);
+}
+
+.delete-list li {
+  display: grid;
+  gap: 2px;
+  padding: var(--s3) var(--s4);
+  position: relative;
+}
+
+.delete-list li + li::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: var(--s4);
+  right: 0;
+  border-top: 0.5px solid var(--separator);
+}
+
+.delete-list strong {
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.delete-list span {
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--muted);
+}
+
+.delete-account .field-help {
+  margin: 0 var(--s1) var(--s4);
+}

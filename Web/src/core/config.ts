@@ -508,7 +508,9 @@ export const baseConfig = {
   // Season Pass (core/seasonPass.ts): play money only, a track of 12 tiers per season
   seasonPassLevel: 15,
   seasonPassPrice: 150000,
-  seasonPassXpPerTier: 120,
+  /** Tier 1 needs this much XP, every tier after it `seasonPassXpGrowth` more (54 … 186, 1440 in all). */
+  seasonPassXpPerTier: 54,
+  seasonPassXpGrowth: 12,
   /** Hall of Fame: a monument in the city with a plaque per Prestige rank, and its own skin. */
   hallOfFamePrice: 250000,
 
@@ -520,7 +522,9 @@ export const baseConfig = {
 
   // Elite (Leo, 29.09.2026): from `prestigeLevel` on, shifts earn Elite XP on a track of their
   // own that Prestige keeps (core/elite.ts). Looks, titles and chests only, never a bonus.
-  eliteXpPerLevel: 100,
+  /** Elite 1 → 2 needs this much XP, every level after it `eliteXpGrowth` more (Leo, 03.10.2026: progressive). */
+  eliteXpPerLevel: 60,
+  eliteXpGrowth: 4,
   /** Per completed shift; every Perfect Input and Tight Fit adds 1. */
   eliteXpCompleted: 10,
   eliteXpBoss: 10,

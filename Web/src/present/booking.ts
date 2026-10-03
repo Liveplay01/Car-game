@@ -105,6 +105,8 @@ export function bookShift(save: SaveGame, result: ShiftResult, ctx: ShiftContext
     for (const step of elite.steps) if (eliteBefore || step.level > 1) news.push(S.elite.reached(step));
   }
   if (titles.length > 0) news.push(S.titles.earned(titles));
+  // Level 50 reached (again): Prestige is open, and the player hears about it once per rank.
+  if (levelBefore < ctx.config.prestigeLevel && Careers.canPrestige(career, ctx.config)) news.push(S.prestige.available(career.prestige + 1));
   const pass = SeasonPass.record(career, result, ctx.today, ctx.config);
   if (pass) for (const step of pass.steps) news.push(S.pass.reached(step));
   return { isNew, previous, bank: { before: bankBefore, after: career.money }, news, due };

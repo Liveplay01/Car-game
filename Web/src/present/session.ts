@@ -6,7 +6,7 @@ import { SeasonPass } from '../core/seasonPass';
 import { Unlocks } from '../core/unlocks';
 import type { GameEvent, ShiftResult } from '../core/events';
 import type { Upgrade } from '../core/levels';
-import { ALBUM_REWARD, BIG_SCREEN, cosmetic, rarityRank } from '../core/loot';
+import { ALBUM_REWARD, BIG_SCREEN, CHEST_KINDS, cosmetic, rarityRank, type ChestKind } from '../core/loot';
 import { dailySeed, dailyEvent, dayNumber } from '../core/daily';
 import { weekNumber, weeklyTrial } from '../core/weekly';
 import { Goals } from '../core/goals';
@@ -2273,7 +2273,30 @@ export class GameSession {
     this.persist();
   }
 
-  /** A fresh save (Settings → Reset progress). */
+  /** Rewards from the team (net/rewards.ts): the Ladybug skin, chests. Booked and announced. */
+  payRewards(items: readonly string[]): void {
+    const career = this.save.career;
+    const news: string[] = [];
+    for (const item of items) {
+      if (item.startsWith('chest:')) {
+        const kind = item.slice(6) as ChestKind;
+        if (!CHEST_KINDS.includes(kind)) continue;
+        career.chests.push(kind);
+        news.push(S.rewards.chest(kind));
+      } else if (cosmetic(item)) {
+        if (Careers.owns(career, item)) continue;
+        Careers.collect(career, item);
+        news.push(item === 'ladybug' ? S.rewards.ladybug : S.rewards.item(item));
+      }
+    }
+    this.persist();
+    if (news.length > 0) {
+      this.play(['shiftComplete'], ['shiftComplete']);
+      this.announce(...news);
+    }
+  }
+
+  /** A fresh save (Settings → Delete account, after the server forgot the player). */
   resetProgress(): void {
     this.save = newSave();
     this.store();

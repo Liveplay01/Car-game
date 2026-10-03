@@ -176,7 +176,7 @@ leaderboard may refuse a name: then both keep the old one).
 
 Everything is stored in `localStorage` under `carGame.save.v2`, on this device only (an
 older `carGame.career.v1` is migrated). Loading is defensive: a damaged save falls back
-field by field instead of breaking the game. "Reset progress" in Settings erases it.
+field by field instead of breaking the game. "Delete account" in Settings erases it (and the leaderboard entry, friend code and cloud copy on the server).
 Cloud sync (Settings, `net/cloud.ts`) keeps an optional copy, live: a change goes up 2 s later,
 and a game on screen looks every 10 s (and on coming back or online) whether another device moved
 on. Newer cloud progress replaces the save by itself when this device has nothing unsent, between

@@ -26,6 +26,9 @@ export const ICONS = {
   bot: '<rect x="4.5" y="8" width="15" height="11" rx="3"/><path d="M12 8V4.5M9.5 13h.01M14.5 13h.01M9.5 16h5"/>',
   truck: '<path d="M2.5 6.5h11v9h-11zM13.5 9.5h4l3 3v3h-7"/><circle cx="6.5" cy="17" r="1.8"/><circle cx="16.5" cy="17" r="1.8"/>',
   external: '<path d="M7 17 17 7M9 7h8v8"/>',
+  bug: '<rect x="7" y="8" width="10" height="13" rx="5"/><path d="M12 13v8M9 8a3 3 0 0 1 6 0M3 13h4M17 13h4M4 7l3 2.5M20 7l-3 2.5M4 19l3-2M20 19l-3-2"/>',
+  bulb: '<path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-3.5 10.9c.6.4 1 1.1 1 1.8V16h5v-.3c0-.7.4-1.4 1-1.8A6 6 0 0 0 12 3Z"/>',
+  cloud: '<path d="M7 19a4.5 4.5 0 0 1-.6-9A6 6 0 0 1 18 9.5a4.8 4.8 0 0 1-1 9.5H7Z"/>',
 } as const;
 
 /**

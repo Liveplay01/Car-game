@@ -7,6 +7,9 @@ import { checkName } from '../players/names.ts';
 import { NameTaken, PlayerStore } from '../players/store.ts';
 import { boardById } from '../leaderboard/boards.ts';
 import { ScoreStore } from '../leaderboard/store.ts';
+import { normalizeCode } from '../../codes.ts';
+import { FEEDBACK_KINDS, FEEDBACK_STATUSES, FeedbackStore, isRewardItem, REWARD_ITEMS, type FeedbackKind, type FeedbackStatus } from '../feedback/store.ts';
+import { ADMIN_PAGE } from './page.ts';
 
 /**
  * Moderation with a shared secret (`ADMIN_TOKEN` in Coolify); without it these routes do not
@@ -16,6 +19,12 @@ import { ScoreStore } from '../leaderboard/store.ts';
  *   PATCH  /v1/admin/players/:id  {banned, name}    block or unblock; rename (skips the name filter)
  *   DELETE /v1/admin/players/:id                    remove the player and all of their scores
  *   DELETE /v1/admin/scores/:board/:playerId        remove one score, keep the player
+ *   GET    /v1/admin/feedback?kind=bug&status=new   bug reports and ideas, newest first
+ *   PATCH  /v1/admin/feedback/:id  {status}          new · seen · done · wontfix
+ *   DELETE /v1/admin/feedback/:id                    remove one
+ *   POST   /v1/admin/rewards  {friendCode, item}     give a player a reward (the game picks it up)
+ *
+ * `/admin` is a small page for all of the feedback part; the token is typed there, never stored on the server.
  */
 export function adminModule(): ServerModule {
   return {
@@ -27,6 +36,7 @@ export function adminModule(): ServerModule {
       const expected = Buffer.from(secret);
       const players = new PlayerStore(ctx.db);
       const scores = new ScoreStore(ctx.db);
+      const feedback = new FeedbackStore(ctx.db);
 
       const admin = new Hono<AppEnv>();
       admin.use('*', async (c, next) => {
@@ -68,7 +78,48 @@ export function adminModule(): ServerModule {
         return c.body(null, 204);
       });
 
+      admin.get('/feedback', (c) => {
+        const kind = c.req.query('kind') as FeedbackKind | undefined;
+        const status = c.req.query('status') as FeedbackStatus | undefined;
+        const limit = Math.min(Math.max(Number(c.req.query('limit')) || 200, 1), 1000);
+        return c.json({
+          counts: feedback.counts(),
+          items: feedback.list({ kind: kind && FEEDBACK_KINDS.includes(kind) ? kind : undefined, status: status && FEEDBACK_STATUSES.includes(status) ? status : undefined, limit }),
+        });
+      });
+
+      admin.patch('/feedback/:id', async (c) => {
+        const { status } = await readJson(c);
+        if (!FEEDBACK_STATUSES.includes(status as FeedbackStatus)) throw new ApiError(422, 'invalid_status', `Status is one of ${FEEDBACK_STATUSES.join(', ')}.`);
+        if (!feedback.setStatus(c.req.param('id'), status as FeedbackStatus)) throw new ApiError(404, 'not_found', 'No such entry.');
+        return c.json({ status });
+      });
+
+      admin.delete('/feedback/:id', (c) => {
+        if (!feedback.delete(c.req.param('id'))) throw new ApiError(404, 'not_found', 'No such entry.');
+        return c.body(null, 204);
+      });
+
+      admin.post('/rewards', async (c) => {
+        const body = await readJson(c);
+        if (!isRewardItem(body.item)) throw new ApiError(422, 'invalid_item', `Item is one of ${REWARD_ITEMS.join(', ')}.`);
+        const code = normalizeCode(String(body.friendCode ?? ''), 8);
+        const row = code ? (ctx.db.prepare('SELECT player_id FROM friend_codes WHERE code = ?').get(code) as { player_id: string } | undefined) : undefined;
+        const playerId = row?.player_id ?? (typeof body.playerId === 'string' ? body.playerId : '');
+        if (!players.byId(playerId)) throw new ApiError(404, 'not_found', 'No player with that friend code.');
+        feedback.grant(playerId, body.item, typeof body.reason === 'string' ? body.reason.slice(0, 80) : 'thank you', ctx.now(), false);
+        return c.json({ given: body.item }, 201);
+      });
+
       app.route('/admin', admin);
+    },
+    pages(app, ctx: ServerContext) {
+      if (ctx.config.adminToken === null) return;
+      app.get('/admin', (c) => {
+        c.header('Content-Security-Policy', "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; connect-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'");
+        c.header('X-Robots-Tag', 'noindex');
+        return c.html(ADMIN_PAGE);
+      });
     },
   };
 }

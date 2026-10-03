@@ -115,6 +115,7 @@ export const Skins = {
       endurance: 'skinChrome',
       overdrive: 'skinObsidian',
       infinity: 'skinPearl',
+      ladybug: 'skinRacingRed',
     };
     return id ? (map[id] ?? null) : null;
   },
@@ -222,6 +223,7 @@ export const Skins = {
       starforge: 'flame',
       overdrive: 'neon',
       infinity: 'rainbow',
+      ladybug: 'ladybug',
     };
     return id ? (map[id] ?? null) : null;
   },
@@ -295,6 +297,7 @@ export const Skins = {
       case 'northernLights':
       case 'thunder':
       case 'neonWave':
+      case 'ladybug':
         return 'shiny';
       default:
         return null;

@@ -143,14 +143,34 @@ export const Elite = {
   /** Level 50 reached once: a Prestige later keeps the track open. */
   isOpen: (c: Career, config: Config = baseConfig): boolean => c.level >= config.prestigeLevel || c.prestige > 0,
 
-  /** 0 before the track opens; Level 50 itself is Elite 1. */
-  level: (c: Career, config: Config = baseConfig): number => (Elite.isOpen(c, config) ? 1 + Math.floor(c.eliteXp / config.eliteXpPerLevel) : 0),
+  /**
+   * Progressive (Leo, 03.10.2026): each Elite level asks `eliteXpGrowth` XP more than the one
+   * before. The XP from `level` to the next one.
+   */
+  need: (level: number, config: Config = baseConfig): number => config.eliteXpPerLevel + config.eliteXpGrowth * (Math.max(1, level) - 1),
+
+  /** All the Elite XP it takes to reach `level` (Elite 1 = 0). */
+  xpTo: (level: number, config: Config = baseConfig): number => {
+    const n = Math.max(0, level - 1);
+    return n * config.eliteXpPerLevel + (config.eliteXpGrowth * n * (n - 1)) / 2;
+  },
+
+  /**
+   * 0 before the track opens; Level 50 itself is Elite 1. Never below the levels already paid:
+   * a save from before the curve keeps what it reached.
+   */
+  level(c: Career, config: Config = baseConfig): number {
+    if (!Elite.isOpen(c, config)) return 0;
+    let level = 1;
+    while (c.eliteXp >= Elite.xpTo(level + 1, config)) level++;
+    return Math.max(level, c.eliteClaimed);
+  },
 
   /** XP into the current Elite level, and what the next one needs. */
-  progress: (c: Career, config: Config = baseConfig): { into: number; need: number } => ({
-    into: c.eliteXp % config.eliteXpPerLevel,
-    need: config.eliteXpPerLevel,
-  }),
+  progress(c: Career, config: Config = baseConfig): { into: number; need: number } {
+    const level = Math.max(1, Elite.level(c, config));
+    return { into: Math.max(0, c.eliteXp - Elite.xpTo(level, config)), need: Elite.need(level, config) };
+  },
 
   /** The XP a finished shift earns: skill counts even when the shift was lost. */
   xpOf(r: ShiftResult, config: Config = baseConfig): number {

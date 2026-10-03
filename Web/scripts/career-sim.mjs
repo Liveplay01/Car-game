@@ -223,7 +223,7 @@ try {
     // The Elite track (Level 50 is Elite 1, then `eliteXpPerLevel` XP a level): its pace, and where it leads.
     if (elite.openedAt && elite.shifts > 0) {
       const perHour = elite.xp / (elite.minutes / 60);
-      const hoursTo = (level) => ((level - 1) * baseConfig.eliteXpPerLevel) / perHour;
+      const hoursTo = (level) => Elite.xpTo(level, baseConfig) / perHour;
       console.log(
         `  elite: open at level ${elite.openedAt.level} (${(elite.openedAt.minutes / 60).toFixed(1)} h); since then ${elite.shifts} shifts, ${(elite.minutes / 60).toFixed(1)} h, ${(elite.xp / elite.shifts).toFixed(1)} XP a shift, ${Math.round(perHour)} XP an hour → Elite ${Elite.level(c, baseConfig)}; at this pace Elite 10 in ${hoursTo(10).toFixed(0)} h, 50 in ${hoursTo(50).toFixed(0)} h, 100 in ${hoursTo(100).toFixed(0)} h of play`,
       );

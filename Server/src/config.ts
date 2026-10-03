@@ -16,6 +16,8 @@ export interface Config {
   gameUrl: string | null;
   /** This service's own address, for the preview picture in a short link; null: read from the request. */
   publicUrl: string | null;
+  /** Bug reports and ideas (`/v1/feedback`) are also posted here (a Discord or Slack webhook); null: only stored. */
+  feedbackWebhookUrl: string | null;
 }
 
 function integer(value: string | undefined, fallback: number, min: number, max: number): number {
@@ -48,5 +50,6 @@ export function readConfig(env: NodeJS.ProcessEnv = process.env): Config {
     // Without GAME_URL the game's own origin from CORS_ORIGINS will do.
     gameUrl: address(env.GAME_URL, 'GAME_URL') ?? corsOrigins.find((o) => /^https?:\/\/[^\s/]+$/.test(o)) ?? null,
     publicUrl: address(env.PUBLIC_URL, 'PUBLIC_URL'),
+    feedbackWebhookUrl: address(env.FEEDBACK_WEBHOOK_URL, 'FEEDBACK_WEBHOOK_URL'),
   };
 }

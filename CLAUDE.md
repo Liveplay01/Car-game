@@ -40,7 +40,9 @@ App-Store-Arbeit mehr vorschlagen.
   seit 01.10.2026 ein **Freunde-Board** (Freundescode `K7M2-9QXA`, einseitig), einen optionalen **Cloud-Spielstand
   per Sync-Code** (`K7M2-9QXA-4TFB`, kein Konto, kein Passwort, Rückfrage bei Konflikt, nie still überschreiben),
   **TURN-Zugänge** für den Multiplayer (Cloudflare, `GET /v1/rtc/ice`) und **Kurzlinks für Challenges** (`/c/K7M29QXA`,
-  Vorschaubild zeichnet der Server selbst, kein Upload; `net/challengeLink.ts`); weitere Funktionen kommen als Module in
+  Vorschaubild zeichnet der Server selbst, kein Upload; `net/challengeLink.ts`), seit 03.10.2026 **Build with us**
+  (Bug-Reports und Ideen vom Formular auf timing.love/build, je 1 pro Tag, Inbox unter `/admin`; ein Bug-Report mit
+  Freundescode zahlt den Ladybug-Skin, das Spiel holt Belohnungen über `net/rewards.ts` ab); weitere Funktionen kommen als Module in
   `Server/src/modules/`. Anti-Cheat nur über Plausibilitätsgrenzen.
   Das Spiel läuft auch ohne ihn (offline-first, `net/leaderboard.ts`, `net/cloud.ts` und `net/rtc.ts` sind abgeschaltet
   bzw. fallen zurück ohne `VITE_API_URL`). Die Quelle des Spielstands bleibt der Browser (Cloud = optionale Kopie);

@@ -26,7 +26,9 @@ export type Effect =
   | 'nova'
   | 'singularity'
   | 'halo'
-  | 'soulfire';
+  | 'soulfire'
+  // The bug hunter's reward (Leo, 03.10.2026): a ladybird, spots and feelers.
+  | 'ladybug';
 
 /** A local point of the car in world space (x forward, y left). */
 const at = (pose: Pose, x: number, y: number): Vec2 => {
@@ -166,6 +168,14 @@ export const SkinEffects = {
         const pts = [0, 1, 2, 3].map((k) => at(pose, x0 + k * 1.8, (k % 2 === 0 ? -1 : 1) * W * 0.18 + (unitHash(id + i, k) - 0.5) * 3));
         for (let k = 1; k < pts.length; k++) list.w(line(pts[k - 1], pts[k], 1), 'fireOuter', o * pulse);
       }
+    } else if (e === 'ladybug') {
+      // A black head at the front, the seam between the wing cases, and seven spots.
+      list.w(rect(at(pose, L / 2 - L * 0.11, 0), v(L * 0.2, W - 1.4), W * 0.35, pose.heading), 'vehicleTire', o);
+      list.w(line(at(pose, -L / 2 + 1.2, 0), at(pose, L / 2 - L * 0.2, 0), 0.9), 'vehicleTire', o * 0.9);
+      const r = Math.min(W * 0.14, 1.9);
+      for (const [x, y] of [[0.18, 0.24], [0.18, -0.24], [-0.06, 0.3], [-0.06, -0.3], [-0.3, 0.2], [-0.3, -0.2], [0.02, 0]] as const) {
+        list.w(circle(at(pose, x * L, y * W), y === 0 ? r * 0.85 : r), 'vehicleTire', o);
+      }
     } else if (e === 'aurora') {
       const x = ((t * 0.4 + id * 0.1) % 1) * L - L / 2;
       list.w(rect(at(pose, x, 0), v(4, W - 2), 2, pose.heading + 0.4), 'mapAurora', o * 0.5);
@@ -230,6 +240,17 @@ export const SkinEffects = {
           const a = t * 1.1 + (i * Math.PI * 2) / 5 + id;
           const base = add(pose.position, mul(fromAngle(a), W * 0.62));
           list.w(polygon([add(base, mul(fromAngle(a - 0.35), 1.2)), add(pose.position, mul(fromAngle(a), W * 0.62 + 3.2)), add(base, mul(fromAngle(a + 0.35), 1.2))]), 'fireCore', o * 0.95);
+        }
+        break;
+      }
+      case 'ladybug': {
+        // Two feelers at the front, waving a little.
+        const wave = time === null ? 0 : Math.sin(t * 5 + id) * 0.6;
+        for (const y of [-1, 1]) {
+          const root = at(pose, L / 2 - 0.6, y * W * 0.18);
+          const tip = at(pose, L / 2 + 2.6, y * (W * 0.38 + wave));
+          list.w(line(root, tip, 0.6), 'vehicleTire', o * 0.9);
+          list.w(circle(tip, 0.75), 'vehicleTire', o);
         }
         break;
       }

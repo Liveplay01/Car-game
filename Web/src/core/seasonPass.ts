@@ -86,13 +86,28 @@ export const SeasonPass = {
     return true;
   },
 
-  /** Tiers reached with the XP so far (0…12). */
-  tier: (c: Career, config: Config = baseConfig): number => Math.min(PASS_TIERS, Math.floor(c.passXp / config.seasonPassXpPerTier)),
+  /** Progressive (Leo, 03.10.2026): the XP from tier `tier - 1` to `tier`, more for every tier. */
+  need: (tier: number, config: Config = baseConfig): number =>
+    config.seasonPassXpPerTier + config.seasonPassXpGrowth * (Math.min(Math.max(tier, 1), PASS_TIERS) - 1),
 
-  progress: (c: Career, config: Config = baseConfig): { into: number; need: number } => ({
-    into: SeasonPass.tier(c, config) >= PASS_TIERS ? config.seasonPassXpPerTier : c.passXp % config.seasonPassXpPerTier,
-    need: config.seasonPassXpPerTier,
-  }),
+  /** All the XP it takes to reach `tier`. */
+  xpTo: (tier: number, config: Config = baseConfig): number => {
+    const n = Math.min(Math.max(tier, 0), PASS_TIERS);
+    return n * config.seasonPassXpPerTier + (config.seasonPassXpGrowth * n * (n - 1)) / 2;
+  },
+
+  /** Tiers reached with the XP so far (0…12), never below the tiers already paid. */
+  tier(c: Career, config: Config = baseConfig): number {
+    let tier = 0;
+    while (tier < PASS_TIERS && c.passXp >= SeasonPass.xpTo(tier + 1, config)) tier++;
+    return Math.max(tier, Math.min(c.passClaimed, PASS_TIERS));
+  },
+
+  progress(c: Career, config: Config = baseConfig): { into: number; need: number } {
+    const tier = SeasonPass.tier(c, config);
+    if (tier >= PASS_TIERS) return { into: SeasonPass.need(PASS_TIERS, config), need: SeasonPass.need(PASS_TIERS, config) };
+    return { into: Math.max(0, c.passXp - SeasonPass.xpTo(tier, config)), need: SeasonPass.need(tier + 1, config) };
+  },
 
   /** Days until the season, and with it this pass, ends. */
   daysLeft(day: number): number {

@@ -538,7 +538,7 @@ Ab Level 50 (Progress → Records → Elite-Karte → Prestige, mit Rückfrage):
 
 ### Elite-Leiste (29.09.2026)
 
-Level 50 öffnet die Leiste (Elite-Karte oben in Records ab Level 40 sichtbar), Prestige behält sie. **Elite XP pro Schicht:** 10 für eine geschaffte Schicht, 1 je Perfect Input und Tight Fit (auch in einer verlorenen Schicht), je 10 für einen gestellten Boss und eine geschaffte Legendary Shift. Level 50 ist Elite 1, danach alle 100 XP eins mehr. **Jedes Elite-Level zahlt eine Standard Chest, jedes zehnte eine Premium Chest.** Mayhem und Trials zählen nicht.
+Level 50 öffnet die Leiste (Elite-Karte oben in Records ab Level 40 sichtbar), Prestige behält sie. **Elite XP pro Schicht:** 10 für eine geschaffte Schicht, 1 je Perfect Input und Tight Fit (auch in einer verlorenen Schicht), je 10 für einen gestellten Boss und eine geschaffte Legendary Shift. Level 50 ist Elite 1; progressiv (03.10.2026): Elite 1→2 braucht 60 XP, jedes weitere Level 4 XP mehr (`eliteXpPerLevel`, `eliteXpGrowth`). **Jedes Elite-Level zahlt eine Standard Chest, jedes zehnte eine Premium Chest.** Mayhem und Trials zählen nicht.
 
 - **Lackierungen:** Elite 5 Steel Chevron, 15 Blaze Chevron, 25 Jade Chevron, 35 Black Aurum, 45 Halo; Feats bei 75 (Zenith Crown) und 100 (Event Horizon).
 - **In der Welt:** goldener Innenrand auf der Mittelinsel, je 10 Elite-Level ein goldener Punkt bei der eigenen Spur (höchstens fünf); die Level-Anzeige oben wird golden.
@@ -560,7 +560,7 @@ Die schwersten Taten im Spiel, nie Glück, nie kaufbar. Jede zeigt Belohnung, Bi
 
 ### Saison-Pass (30.09.2026, Progress → Today, ab Level 15)
 
-150.000 Spielgeld pro Saison, nie Echtgeld. Jede Schicht bringt dieselben XP wie die Elite-Leiste; 120 XP pro Stufe, 12 Stufen. Der Pass gilt für die Saison, in der er gekauft wurde (Dezember zählt zum nächsten Winter); danach ist die Strecke zu. Die Strecke ist jede Saison gleich: Standard · 5.000 · **Skin 1** · Standard · 10.000 · Premium · Event · **Skin 2** · 20.000 · Premium · 30.000 · **Skin 3**. Die vier Saisons kommen jedes Jahr wieder, also auch ihre Skins; ein schon besessener Skin zahlt sein Duplikat-Geld. Pass-Skins gibt es in keiner Truhe und im Casino nicht.
+150.000 Spielgeld pro Saison, nie Echtgeld. Jede Schicht bringt dieselben XP wie die Elite-Leiste; progressiv (03.10.2026): Stufe 1 braucht 54 XP, jede weitere 12 XP mehr (bis 186), zusammen 1.440 XP, 12 Stufen. Der Pass gilt für die Saison, in der er gekauft wurde (Dezember zählt zum nächsten Winter); danach ist die Strecke zu. Die Strecke ist jede Saison gleich: Standard · 5.000 · **Skin 1** · Standard · 10.000 · Premium · Event · **Skin 2** · 20.000 · Premium · 30.000 · **Skin 3**. Die vier Saisons kommen jedes Jahr wieder, also auch ihre Skins; ein schon besessener Skin zahlt sein Duplikat-Geld. Pass-Skins gibt es in keiner Truhe und im Casino nicht.
 
 | Saison | Stufe 3 (Epic) | Stufe 8 (Legendary) | Stufe 12 (Legendary) |
 |---|---|---|---|

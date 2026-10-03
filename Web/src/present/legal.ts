@@ -24,7 +24,7 @@ export const HOSTING = {
   location: 'Germany',
 };
 
-export const LEGAL_UPDATED = '2 October 2026';
+export const LEGAL_UPDATED = '3 October 2026';
 
 export const GAME_NAME = 'Roundabout Timing';
 
@@ -94,7 +94,7 @@ export const LEGAL_DOCS: LegalDoc[] = [
         heading: 'Stored on your device',
         paragraphs: [
           "The game keeps your progress, your settings and, if you play multiplayer, the name you chose in your browser's local storage. It also stores its own files so it runs offline. None of this is sent to us. Storing it is what makes the game work as you asked (§ 25(2) no. 2 TDDDG).",
-          'To delete it: Settings → Reset progress, or clear the site data in your browser.',
+          'To delete it: Settings → Delete account, or clear the site data in your browser.',
         ],
       },
       {
@@ -152,6 +152,14 @@ export const LEGAL_DOCS: LegalDoc[] = [
         ],
       },
       {
+        heading: 'Bug reports and ideas',
+        paragraphs: [
+          'Settings → Build with us opens two forms on our website: one for bugs, one for feature ideas. What you type there goes to our server and is read by the developer. A bug report may carry your friend code; then it is tied to your leaderboard name, and you can receive a reward in the game (the Ladybug skin, sometimes a chest), which the game picks up the next time you open it.',
+          'To allow one report and one idea a day, the server keeps a hash of your IP address with each one for up to two days, then deletes it. Please do not type personal data into the forms. Deleting your account (or your name on the leaderboard) unlinks your reports from you; the text itself stays with us so the bug can be fixed.',
+          'Legal basis: Art. 6(1)(f) GDPR (our legitimate interest in fixing the game and hearing your ideas) and, for the reward, Art. 6(1)(b) GDPR.',
+        ],
+      },
+      {
         heading: 'Ads (Google AdSense)',
         paragraphs: [
           'On game.gustaff.dev (not on CrazyGames) Google AdSense may show ads. For that, your browser loads scripts from Google and sends it your IP address, your browser and device data and the page you are on. Google, and the advertisers it works with, may set or read cookies and similar identifiers on your device to choose and measure ads, to prevent fraud and, with your consent, to personalise ads. Google may process data in the USA; Google is certified under the EU-US Data Privacy Framework.',
@@ -171,7 +179,7 @@ export const LEGAL_DOCS: LegalDoc[] = [
         heading: 'Deleting your data',
         paragraphs: [
           "You have no account with us: your progress lives on your device. Deleting the game's data in your browser, or uninstalling the app and clearing Chrome's data for game.gustaff.dev, removes it from your device.",
-          'What our server keeps exists only if you chose it, and you can delete it yourself in the game at any time: your name, scores, friend code and friends list with Progress → Ranks → Remove me from the leaderboard; your cloud copy with Settings → Cloud sync → Delete the cloud copy. Both are gone for good at once. If you can no longer open the game, write to the email address above with your name on the leaderboard or your sync code, and we delete it within 30 days.',
+          'What our server keeps exists only if you chose it, and you can delete it yourself in the game at any time: everything at once with Settings → Delete account; or your name, scores, friend code and friends list with Progress → Ranks → Remove me from the leaderboard; your cloud copy with Settings → Cloud sync → Delete the cloud copy. Both are gone for good at once. If you can no longer open the game, write to the email address above with your name on the leaderboard or your sync code, and we delete it within 30 days.',
         ],
       },
       {

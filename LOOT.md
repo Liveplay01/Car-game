@@ -223,7 +223,7 @@ Prestige behält sie. Nur Aussehen, Titel und Truhen, nie ein Vorteil auf der St
 - **Elite XP pro Schicht:** 10 für eine geschaffte Schicht, 1 je Perfect Input und Tight
   Fit (auch in einer verlorenen Schicht), je 10 für einen gestellten Boss und eine geschaffte
   Legendary Shift. Mayhem und Trials zählen nicht.
-- **Elite-Level:** Level 50 ist Elite 1, danach alle 100 XP eins mehr. Jedes Elite-Level
+- **Elite-Level:** Level 50 ist Elite 1; progressiv (03.10.2026): Elite 1→2 braucht 60 XP, jedes weitere Level 4 XP mehr (`eliteXpPerLevel`, `eliteXpGrowth`). Jedes Elite-Level
   zahlt eine Standard Chest, jedes zehnte eine Premium Chest.
 - **Meilensteine** (alle fünf bis Elite 50): Titel bei 1, 10, 20, 30, 40, 50; Lackierungen
   bei 5, 15, 25, 35, 45 (Tabelle oben).

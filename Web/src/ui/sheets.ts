@@ -290,12 +290,22 @@ export interface SettingsActions {
   notesUnread: boolean;
   /** Privacy Policy, Imprint or the open-source licenses, over the settings. */
   openLegal(page: LegalId | 'licenses'): void;
-  reset(): void;
+  /** Delete account: a drawer over the settings explains what goes and asks once more. */
+  openDeleteAccount(): void;
   /** Cloud sync (a sync code), over the settings. */
   openCloud(): void;
+  /** Cloud sync is on for this device (the row says so). */
+  cloudOn: boolean;
+  /** The player's friend code, if they have a name: it fills in the bug form on the website. */
+  friendCode: (() => Promise<string | null>) | null;
   install: (() => void) | null;
   closed(): void;
 }
+
+/** Build with us (Leo, 03.10.2026): the two forms on the website. */
+export const BUILD_PAGE = `${WEBSITE_PAGE}build`;
+
+const buildLink = (form: 'bug' | 'idea', code: string | null): string => `${BUILD_PAGE}${code && form === 'bug' ? `?code=${encodeURIComponent(code)}` : ''}#${form}`;
 
 function switchRow(title: string, sub: string | null, on: boolean, onChange: (on: boolean) => void): HTMLElement {
   const sw = h('button', { class: 'switch', role: 'switch', 'aria-checked': String(on), 'aria-label': title });
@@ -312,6 +322,40 @@ function switchRow(title: string, sub: string | null, on: boolean, onChange: (on
   return row;
 }
 
+/** A group of rows with a plain header above it, as in iOS Settings. */
+function group(title: string, ...rows: (HTMLElement | null)[]): HTMLElement | null {
+  const kept = rows.filter((r): r is HTMLElement => r !== null);
+  if (kept.length === 0) return null;
+  const id = `set-${title.toLowerCase().replace(/[^a-z]+/g, '-')}`;
+  return h('section', { class: 'settings-group', 'aria-labelledby': id }, h('h3', { class: 'settings-header', id }, title), h('div', { class: 'list' }, ...kept));
+}
+
+/** A coloured icon tile in front of a row, as in iOS Settings. */
+const tile = (glyph: string, tone: string): HTMLElement => h('span', { class: `row-tile tile-${tone}`, 'aria-hidden': 'true' }, icon(glyph));
+
+/** A row that leaves for the website, with an icon tile in front. */
+function tileExternalRow(glyph: string, tone: string, title: string, sub: string, href: string): HTMLAnchorElement {
+  return h(
+    'a',
+    { class: 'row row-link', href, target: '_blank', rel: 'noopener' },
+    tile(glyph, tone),
+    h('div', { class: 'row-main' }, h('div', { class: 'row-title' }, title), h('div', { class: 'row-sub' }, sub)),
+    icon(ICONS.external),
+  ) as HTMLAnchorElement;
+}
+
+/** `linkRow` with an optional tile in front and something before the chevron (a pill). */
+function richLinkRow(title: string, sub: string, onOpen: () => void, front: HTMLElement | null, extra: HTMLElement | null): HTMLElement {
+  const row = linkRow(title, sub, onOpen);
+  if (front) row.prepend(front);
+  if (extra) row.insertBefore(extra, row.lastChild);
+  return row;
+}
+
+/**
+ * Settings, tidied up (Leo, 03.10.2026): what players change most sits on top (Game feel,
+ * Sound, Cloud sync), then Build with us, then links and the legal pages; Delete account last.
+ */
 export function settingsSheet(layer: HTMLElement, s: Settings, actions: SettingsActions): () => void {
   const hasVibration = typeof navigator.vibrate === 'function';
   const motionOptions: [Settings['reduceMotion'], string][] = [
@@ -319,7 +363,7 @@ export function settingsSheet(layer: HTMLElement, s: Settings, actions: Settings
     ['on', 'On'],
     ['off', 'Off'],
   ];
-  const motionSeg = h('div', { class: 'segmented', role: 'group', 'aria-label': 'Reduce motion' });
+  const motionSeg = h('div', { class: 'segmented motion-seg', role: 'group', 'aria-label': 'Reduce motion' });
   const thumb = h('span', { class: 'thumb', 'aria-hidden': 'true' });
   thumb.style.width = 'calc((100% - 4px) / 3)';
   motionSeg.append(thumb);
@@ -332,7 +376,6 @@ export function settingsSheet(layer: HTMLElement, s: Settings, actions: Settings
   };
   for (const [value, label] of motionOptions) {
     const b = h('button', { type: 'button', 'data-value': value }, label);
-    b.style.minWidth = '72px';
     b.addEventListener('click', () => {
       s.reduceMotion = value;
       s.motionChosen = value === 'system';
@@ -342,6 +385,13 @@ export function settingsSheet(layer: HTMLElement, s: Settings, actions: Settings
     motionSeg.append(b);
   }
   setMotion(s.reduceMotion);
+
+  const toggle =
+    (key: 'sound' | 'music' | 'haptics' | 'vehicleLabels' | 'leftHanded' | 'largeText') =>
+    (on: boolean): void => {
+      s[key] = on;
+      actions.changed(s);
+    };
 
   let installRow: HTMLElement | null = null;
   if (!isInstalled() && !inPortal && !inPlayStore) {
@@ -368,105 +418,127 @@ export function settingsSheet(layer: HTMLElement, s: Settings, actions: Settings
     }
   }
 
-  const progressList = progressRows(actions);
+  // Build with us: the bug form fills in the friend code once it is known. Not inside CrazyGames,
+  // which keeps players on its own site (like the website link).
+  let buildGroup: HTMLElement | null = null;
+  if (!inPortal) {
+    const bugRow = tileExternalRow(ICONS.bug, 'red', 'Report a bug', 'Add your friend code and get the Ladybug skin.', buildLink('bug', null));
+    buildGroup = group('Build with us', bugRow, tileExternalRow(ICONS.bulb, 'amber', 'Suggest a feature', 'Tell us what you would add. We read every idea.', buildLink('idea', null)));
+    actions
+      .friendCode?.()
+      .then((code) => {
+        if (code) bugRow.href = buildLink('bug', code);
+      })
+      .catch(() => undefined);
+  }
 
-  const resetBtn = h('button', { class: 'btn block destructive' }, 'Reset progress');
-  let armed = false;
-  resetBtn.addEventListener('click', () => {
-    if (!armed) {
-      armed = true;
-      resetBtn.textContent = 'Tap again to erase everything';
-      window.setTimeout(() => {
-        armed = false;
-        resetBtn.textContent = 'Reset progress';
-      }, 3000);
-      return;
-    }
-    close();
-    actions.reset();
-  });
+  const cloudRow = cloudEnabled
+    ? richLinkRow(
+        'Cloud sync',
+        actions.cloudOn ? 'On · your progress is backed up.' : 'Back up your progress and play on any device.',
+        () => actions.openCloud(),
+        tile(ICONS.cloud, 'blue'),
+        null,
+      )
+    : null;
 
   const body = h(
     'div',
-    {},
-    h(
-      'div',
-      { class: 'list' },
-      switchRow('Sound effects', null, s.sound, (on) => {
-        s.sound = on;
-        actions.changed(s);
-      }),
-      switchRow('Music', null, s.music, (on) => {
-        s.music = on;
-        actions.changed(s);
-      }),
-      switchRow('Haptics', hasVibration ? null : 'Not available in this browser', s.haptics, (on) => {
-        s.haptics = on;
-        actions.changed(s);
-      }),
-      switchRow('Vehicle labels', 'Names the special vehicles on the road.', s.vehicleLabels, (on) => {
-        s.vehicleLabels = on;
-        actions.changed(s);
-      }),
-      switchRow('Left-handed', 'Puts the buttons over the game on the left.', s.leftHanded, (on) => {
-        s.leftHanded = on;
-        actions.changed(s);
-      }),
-      switchRow('Larger text', 'Notices and cards over the game a step larger.', s.largeText, (on) => {
-        s.largeText = on;
-        actions.changed(s);
-      }),
+    { class: 'settings' },
+    group(
+      'Game feel',
+      switchRow('Larger text', 'Notices and cards over the game a step larger.', s.largeText, toggle('largeText')),
       h(
         'div',
-        { class: 'row' },
+        { class: 'row row-stack' },
         h('div', { class: 'row-main' }, h('div', { class: 'row-title' }, 'Reduce motion'), h('div', { class: 'row-sub' }, 'No shake, slow-mo or flying parts.')),
+        motionSeg,
       ),
+      switchRow('Left-handed', 'Puts the buttons over the game on the left.', s.leftHanded, toggle('leftHanded')),
+      switchRow('Vehicle labels', 'Names the special vehicles on the road.', s.vehicleLabels, toggle('vehicleLabels')),
+      switchRow('Haptics', hasVibration ? null : 'Not available in this browser', s.haptics, toggle('haptics')),
     ),
-    h('div', { style: 'display:flex;justify-content:flex-end;margin:10px 0 24px' }, motionSeg),
-    installRow ? h('div', { class: 'list', style: 'margin-bottom:24px' }, installRow) : null,
-    h(
-      'div',
-      { class: 'list', style: 'margin-bottom:24px' },
-      h(
-        'div',
-        { class: 'row' },
-        h('div', { class: 'row-main' }, h('div', { class: 'row-title' }, "What's new"), h('div', { class: 'row-sub' }, 'Patch notes and updates.')),
-        actions.notesUnread ? h('span', { class: 'new-pill' }, 'New') : null,
-        h('button', { class: 'btn', type: 'button', onclick: () => actions.openNotes() }, 'Open'),
-      ),
-      inPortal || inPlayStore ? null : crazyGamesRow(),
+    group('Sound', switchRow('Sound effects', null, s.sound, toggle('sound')), switchRow('Music', null, s.music, toggle('music'))),
+    group('Progress', cloudRow, installRow),
+    buildGroup,
+    group(
+      'More',
+      richLinkRow("What's new", 'Patch notes and updates.', () => actions.openNotes(), null, actions.notesUnread ? h('span', { class: 'new-pill' }, 'New') : null),
       inPortal ? null : websiteRow(),
       wikiRow(),
+      inPortal || inPlayStore ? null : crazyGamesRow(),
+    ),
+    group(
+      'Legal',
+      ...LEGAL_DOCS.map((doc) => linkRow(doc.title, doc.sub, () => actions.openLegal(doc.id))),
+      linkRow('Licenses', 'Open-source software in the game.', () => actions.openLegal('licenses')),
     ),
     h(
       'p',
-      { class: 'section-note', style: 'margin:0 4px 8px' },
+      { class: 'section-note settings-foot' },
       inPortal
         ? 'Log in to CrazyGames to keep your progress on every device.'
         : cloudEnabled
           ? 'Your progress is saved on this device. Cloud sync keeps a copy and brings it to your other devices.'
           : 'Your progress is saved on this device.',
     ),
-    progressList,
-    resetBtn,
-    h('p', { class: 'section-note', style: 'margin:24px 4px 8px' }, 'Legal'),
-    h(
-      'div',
-      { class: 'list', style: 'margin-bottom:8px' },
-      ...LEGAL_DOCS.map((doc) => linkRow(doc.title, doc.sub, () => actions.openLegal(doc.id))),
-      linkRow('Licenses', 'Open-source software in the game.', () => actions.openLegal('licenses')),
-    ),
+    h('button', { class: 'btn block destructive', type: 'button', onclick: () => actions.openDeleteAccount() }, 'Delete account'),
   );
-  const close = openSheet(layer, 'Settings', body, () => actions.closed());
-  return close;
+  return openSheet(layer, 'Settings', body, () => actions.closed());
 }
 
-/** Cloud sync (Leo, 01.10.2026: it replaced the export, so the import of a save file is gone too). */
-function progressRows(actions: SettingsActions): HTMLElement | null {
-  if (!cloudEnabled) return null;
-  return h(
+export interface DeleteAccountActions {
+  /** Something may live on our server (a leaderboard name, a cloud copy): the drawer says it goes too. */
+  online: boolean;
+  /** Deletes everything; rejects with a message to show when the server cannot be reached. */
+  run(): Promise<void>;
+  closed(): void;
+}
+
+/**
+ * Delete account (Leo, 03.10.2026; it replaced Reset progress): a drawer that lists what goes,
+ * on this device and on our server, and a second, explicit button that does it.
+ */
+export function deleteAccountSheet(layer: HTMLElement, actions: DeleteAccountActions): () => void {
+  const item = (title: string, sub: string): HTMLElement => h('li', {}, h('strong', {}, title), h('span', {}, sub));
+  const problem = h('p', { class: 'field-help error', role: 'alert' });
+  problem.hidden = true;
+  const confirm = h('button', { class: 'btn block destructive', type: 'button' }, 'Delete my account');
+  const cancel = h('button', { class: 'btn block quiet-btn', type: 'button' }, 'Cancel');
+  const body = h(
     'div',
-    { class: 'list', style: 'margin-bottom:24px' },
-    linkRow('Cloud sync', 'Keep your progress safe and move it to another device with a code.', () => actions.openCloud()),
+    { class: 'delete-account' },
+    h('p', { class: 'delete-lede' }, 'The game starts over from Level 1. This cannot be undone.'),
+    h(
+      'ul',
+      { class: 'delete-list' },
+      item('On this device', 'Level, Prestige, money, chests, collection, upgrades, records and settings.'),
+      actions.online ? item('On our server', 'Your leaderboard name and scores, friend code and friends list, your cloud copy and any rewards still waiting.') : null,
+      actions.online ? item('Bug reports and ideas you sent', 'They stay with us, but no longer point to you.') : null,
+    ),
+    problem,
+    h('div', { class: 'sheet-actions' }, confirm, cancel),
   );
+  let close: () => void = () => undefined;
+  confirm.addEventListener('click', () => {
+    confirm.disabled = true;
+    cancel.disabled = true;
+    confirm.textContent = 'Deleting…';
+    problem.hidden = true;
+    actions
+      .run()
+      .then(() => close())
+      .catch((error: unknown) => {
+        confirm.disabled = false;
+        cancel.disabled = false;
+        confirm.textContent = 'Delete my account';
+        problem.textContent = error instanceof Error ? error.message : 'Something went wrong. Try again.';
+        problem.hidden = false;
+      });
+  });
+  cancel.addEventListener('click', () => close());
+  close = openSheet(layer, 'Delete account?', body, () => actions.closed());
+  // The safe choice has the focus.
+  cancel.focus({ preventScroll: true });
+  return close;
 }

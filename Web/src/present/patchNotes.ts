@@ -25,6 +25,19 @@ export type PatchImpact = 'major' | 'minor' | 'fix';
 
 export const PATCH_NOTES: PatchNote[] = [
   {
+    id: '2026-10-03',
+    date: '3 October 2026',
+    title: 'Build with us, the Ladybug skin, a smoother Elite climb and tidy Settings',
+    impact: 'major',
+    items: [
+      'Build with us: report a bug or suggest a feature on timing.love (Settings → Build with us). Add your friend code to a bug report and the Ladybug skin is yours, only for bug hunters.',
+      'The Elite track and the Season Pass climb gradually now: the first levels and tiers come quicker, later ones ask a little more each. No level you already reached is lost.',
+      'Reach Level 50 and the game tells you that Prestige is ready.',
+      'Settings are tidied up: Game feel, Sound and Cloud sync come first, the rest is grouped below.',
+      'Reset progress is now Delete account: it also removes your leaderboard name, friend code and cloud copy from our server, after a clear second step.',
+    ],
+  },
+  {
     id: '2026-10-02',
     date: '2 October 2026',
     title: 'New bosses, Ascension trials, Unlimited stages, Mastery IV and V, and more for the late game',

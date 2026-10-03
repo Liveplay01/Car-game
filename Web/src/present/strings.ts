@@ -698,6 +698,12 @@ export const S = {
     passedThisWeek: 'Passed this week · new one on Monday',
   },
 
+  rewards: {
+    ladybug: 'LADYBUG UNLOCKED · thanks for hunting bugs',
+    chest: (kind: ChestKind): string => `A GIFT FROM THE TEAM · ${S.shop.chest(kind)} · thank you`,
+    item: (id: string): string => `A GIFT FROM THE TEAM · ${S.shop.item(id)} unlocked`,
+  },
+
   prestige: {
     title: 'Prestige',
     caption: (rank: number): string => `★${rank}`,
@@ -705,6 +711,7 @@ export const S = {
     locked: (level: number): string => `Reach Level ${level} to start over on a harder road`,
     keeps: 'Money, upgrades, roads and collection stay. Looks only, never a bonus.',
     confirm: 'Tap again to prestige · back to Level 1',
+    available: (rank: number): string => `PRESTIGE ★${rank} READY · start over in Progress → Elite for a harder road and new rewards`,
     done: (rank: number, item: string | null): string => `PRESTIGE ★${rank}${item ? ` · ${S.shop.item(item)} unlocked` : ''}`,
     headStart: (levels: number): string => `Traffic runs ${levels} levels harder`,
   },
@@ -729,7 +736,7 @@ export const S = {
       `ELITE ${step.level}${step.item ? ` · ${S.shop.item(step.item.id)} unlocked` : ''} · ${S.shop.chest(step.chest)}`,
     body: [
       'From Level 50 on, every shift earns Elite XP: 10 for a completed shift, 1 for each Perfect Input and Tight Fit, 10 more for a boss taken down or a Legendary Shift.',
-      'Each Elite level pays a Standard Chest, every tenth a Premium Chest. Titles and skins wait along the way. Prestige keeps the track.',
+      'Each Elite level asks a little more XP than the last. Each one pays a Standard Chest, every tenth a Premium Chest. Titles and skins wait along the way. Prestige keeps the track.',
       'Looks only, never a bonus on the road.',
     ],
     trackHeader: 'Along the track',
@@ -822,7 +829,7 @@ export const S = {
     bought: (s: Season): string => `${S.pass.caption(s).toUpperCase()} · every shift now climbs the track`,
     buy: (price: string): string => `Buy · ${price}`,
     body: (xpPerTier: number): string[] => [
-      `A track of twelve tiers for this season, bought with play money. Every shift earns XP towards it: 10 for a completed shift, 1 for every Perfect Input and Tight Fit, 10 more for a boss or a Legendary Shift. A tier needs ${xpPerTier} XP.`,
+      `A track of twelve tiers for this season, bought with play money. Every shift earns XP towards it: 10 for a completed shift, 1 for every Perfect Input and Tight Fit, 10 more for a boss or a Legendary Shift. The first tier needs ${xpPerTier} XP, every tier after it a little more.`,
       'Three of the tiers hold this season’s own skins, with effects no chest has. The four seasons come back every year, and so do their skins.',
       'Only looks, never a bonus on the road. Nothing here costs real money.',
     ],
@@ -1181,6 +1188,7 @@ export const S = {
       if (item.source.kind === 'pass') return `Tier ${item.source.tier} of the ${S.pass.seasonName(item.source.season)} Season Pass. It comes back every year.`;
       if (item.source.kind === 'hall') return 'Build the Hall of Fame (Records → Elite).';
       if (item.source.kind === 'unlimited') return `Send ${Fmt.number(item.source.cars)} cars in one Unlimited run.`;
+      if (item.source.kind === 'bugReport') return 'Report a bug on timing.love with your friend code. Only bug hunters get it.';
       if (item.source.kind === 'find')
         return `A rare find: ${S.shop.findOdds(item.source.chance)} ${S.shop.chest(item.source.chest)}. The only honour that is luck.`;
       return 'Not found yet: it comes out of chests.';
@@ -1346,6 +1354,7 @@ export const S = {
         endurance: 'Endurance',
         overdrive: 'Overdrive',
         infinity: 'Infinity',
+        ladybug: 'Ladybug',
       };
       return names[id] ?? id;
     },

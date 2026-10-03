@@ -39,6 +39,9 @@ only erasable syntax is allowed (no `enum`, no constructor parameter properties)
 | `POST /v1/challenges` `{code, mode, level, target}` | A short link for a challenge: `{id}` (`201`, or `200` with the id the same challenge already has). With a token the link carries the player's name. `422 invalid_challenge`, `503 not_configured` without a game address |
 | `GET /c/:id` | The page behind the short link (outside `/v1`, for people and chat apps): Open Graph tags with title, text and picture, then straight on to `GAME_URL/#challenge=<code>` |
 | `GET /c/:id/preview.png` | Its picture, 1200 × 630, drawn by the server |
+| `POST /v1/feedback` `{kind, text, friendCode?, website?}` | Build with us (the website's forms): `kind` is `bug` or `idea`, `text` 10–2000 characters. One of each a day per address and per friend code (`429 once_a_day`). A bug report with a valid friend code pays the Ladybug skin once: `{id, reward: 'ladybug' \| null}`. `website` is a honeypot: filled in, nothing is kept |
+| `GET /v1/me/rewards` · `POST /v1/me/rewards/claim` `{ids}` | (token) Rewards waiting for the player (`ladybug`, `chest:standard`, `chest:premium`, `chest:event`); the game pays them and claims them |
+| `GET /admin` | (with `ADMIN_TOKEN`) The inbox page for bug reports and ideas: filter, mark seen / done / won't fix, delete, give a reward by friend code |
 
 The token travels as `Authorization: Bearer <token>`. Errors are `{error: {code, message}}`.
 
@@ -108,13 +111,14 @@ A second resource next to the game, from the same GitHub repository:
 
 | Variable | Default | Meaning |
 | --- | --- | --- |
-| `CORS_ORIGINS` | `*` | The game's address(es), comma separated, e.g. `https://game.your-domain.tld`. Set it. |
+| `CORS_ORIGINS` | `*` | The game's address(es), comma separated, e.g. `https://game.your-domain.tld`. Set it, and add the website (`https://timing.love`) for the Build with us forms. |
 | `ADMIN_TOKEN` | unset | At least 24 characters (`openssl rand -base64 32`). Unset: no admin routes. |
 | `DB_PATH` | `/data/car-game.db` | Keep it inside the volume. |
 | `PORT` | `5051` | |
 | `TRUST_PROXY` | `true` | Read the caller's address from `X-Forwarded-For` (last entry). Keep it on behind Coolify. |
 | `CF_TURN_KEY_ID`, `CF_TURN_API_TOKEN` | unset | Cloudflare TURN, for multiplayer between phone networks (below). Unset: STUN only. |
 | `GAME_URL` | the first address in `CORS_ORIGINS` | Where a challenge's short link sends people, e.g. `https://game.your-domain.tld`. Neither set (`CORS_ORIGINS=*`): no short links, the game shares its long link. |
+| `FEEDBACK_WEBHOOK_URL` | unset | A Discord (or Slack) webhook: every new bug report and idea is posted there as well, so you hear of it at once. Unset: only stored, read them on `/admin`. |
 | `PUBLIC_URL` | read from the request | This service's own address, for the picture in a short link. Only needed if the proxy does not pass `X-Forwarded-Proto` and `X-Forwarded-Host` (Coolify does). |
 
 5. **Run exactly one instance.** SQLite lives in one file; do not scale it to several replicas.
@@ -149,13 +153,20 @@ curl -X PATCH  -H "$H" -d '{"banned":true}' "$API/v1/admin/players/<id>"    # hi
 curl -X PATCH  -H "$H" -d '{"name":"Player 123"}' "$API/v1/admin/players/<id>" # rename (skips the name filter)
 curl -X DELETE -H "$H" "$API/v1/admin/scores/unlimited/<id>"                # remove one score
 curl -X DELETE -H "$H" "$API/v1/admin/players/<id>"                         # remove player and scores
+curl -H "$H" "$API/v1/admin/feedback?kind=bug&status=new"                   # bug reports (kind=idea: ideas)
+curl -X PATCH  -H "$H" -d '{"status":"done"}' "$API/v1/admin/feedback/<id>" # new · seen · done · wontfix
+curl -X POST   -H "$H" -d '{"friendCode":"K7M2-9QXA","item":"chest:premium"}' "$API/v1/admin/rewards"
 ```
+
+Easier: open `https://api.your-domain.tld/admin`, type the admin token (kept in that tab only), and the
+inbox shows every bug report and idea with the sender's name and friend code.
 
 ## Privacy
 
 Stored per player: the chosen name, a random id, a hash of the secret token, the scores (with the
 level / cars they came with), the friend code and the friends list, and two timestamps. No e-mail,
 no IP address (rate limits live in memory only). `DELETE /v1/me` removes all of it.
+Bug reports and ideas: the text, the sender when they gave a friend code (deleting the player keeps the text without them), and a hash of the address for up to two days (the once-a-day limit). Rewards hang off the player and go with them.
 Cloud saves belong to no player: a hash of the sync code, the save and two timestamps; `DELETE
 /v1/sync` removes one. The privacy page (`legal.ts`) describes Friends, Cloud sync and the relay. Before the game sends anything, add a paragraph
 to `Web/src/present/legal.ts` and bump `LEGAL_UPDATED` (see the project `CLAUDE.md`).

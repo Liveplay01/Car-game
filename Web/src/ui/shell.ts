@@ -6,8 +6,10 @@ import { SWIPE_MODES, TAB_BAR, barTab, screenTab, showsTabBar, type Tab } from '
 import { AudioPlayer, Haptics } from '../audio/player';
 import { h, icon } from './dom';
 import { ICONS } from './icons';
-import { settingsSheet, patchNotesSheet, legalSheet, licensesSheet, installDialog, cloudIntroDialog, isSheetOpen, closeAnySheet } from './sheets';
-import { cloudEnabled, cloudIntroDue, cloudView, markCloudIntroSeen } from '../net/cloud';
+import { settingsSheet, deleteAccountSheet, patchNotesSheet, legalSheet, licensesSheet, installDialog, cloudIntroDialog, isSheetOpen, closeAnySheet } from './sheets';
+import { cloudEnabled, cloudIntroDue, cloudLinked, cloudView, deleteCloud, markCloudIntroSeen } from '../net/cloud';
+import { deleteAccount, describeError, fetchFriends, leaderboardEnabled, loadAccount } from '../net/leaderboard';
+import { collectRewards } from '../net/rewards';
 import { legalDoc } from '../present/legal';
 import { PATCH_NOTES } from '../present/patchNotes';
 import { PhotoView } from './photo';
@@ -308,6 +310,16 @@ export class Shell {
     this.syncChrome(true);
     requestAnimationFrame((t) => this.loop(t));
     this.scheduleCloudIntro();
+    window.setTimeout(() => this.collectRewards(), 3000);
+  }
+
+  /** Rewards from the team (a bug report's Ladybug skin, chests): picked up between shifts. */
+  private collectRewards(tries = 0): void {
+    if (this.session.screen.k === 'playing') {
+      if (tries < 20) window.setTimeout(() => this.collectRewards(tries + 1), 15000);
+      return;
+    }
+    void collectRewards((items) => this.session.payRewards(items));
   }
 
   get game(): GameSession {
@@ -669,11 +681,32 @@ export class Shell {
           .then(({ LICENSES }) => licensesSheet(this.layers, LICENSES, () => this.pageClosed()))
           .catch(() => this.pageClosed());
       },
-      reset: () => {
-        s.resetProgress();
-        void this.backdrop.show(null);
-        saveBackdrop(null);
+      // Delete account: a drawer over the settings; the settings come back if it is cancelled.
+      openDeleteAccount: () => {
+        this.pageOpen = true;
+        deleteAccountSheet(this.layers, {
+          online: leaderboardEnabled && (loadAccount() !== null || cloudLinked()),
+          run: async () => {
+            try {
+              const account = loadAccount();
+              if (account) await deleteAccount(account);
+              if (cloudEnabled) await deleteCloud();
+            } catch (error) {
+              throw new Error(`${describeError(error)} Nothing was deleted on this device. Try again when you are online.`);
+            }
+            s.resetProgress();
+            void this.backdrop.show(null);
+            saveBackdrop(null);
+            this.pageOpen = false;
+            s.perform({ k: 'closeSettings' });
+          },
+          closed: () => {
+            if (this.pageOpen) this.pageClosed();
+          },
+        });
       },
+      cloudOn: cloudLinked(),
+      friendCode: loadAccount() ? () => fetchFriends().then((f) => f.code) : null,
       // The cloud sync page, over the settings; the settings come back when it closes.
       openCloud: () => this.openCloudPage(),
       install: this.installPrompt
@@ -826,7 +859,10 @@ export class Shell {
     };
     document.addEventListener('visibilitychange', () => {
       if (document.hidden) away();
-      else back();
+      else {
+        back();
+        this.collectRewards();
+      }
       reportGameplay(this.session.screen.k === 'playing' && !document.hidden);
     });
     if (inPortal) return;
