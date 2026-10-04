@@ -1,6 +1,6 @@
 # Idea.md – offene Ideen
 
-Stand: 02.10.2026
+Stand: 04.10.2026
 
 Diese Datei enthält nur Ideen, die **noch nicht umgesetzt** sind. Was gebaut ist, steht in
 [Spiel.md](Spiel.md) und [FOUNDATION.md](FOUNDATION.md), die Zahlen in `Web/src/core/config.ts`.
@@ -45,3 +45,42 @@ Play-Store-Launch, um zu sehen, wo Spieler aussteigen und welche Fehler im Feld 
   ein neues `LEGAL_UPDATED`; auch das Data-Safety-Formular in der Play Console muss dazu passen.
 - Das Spiel sagt bisher „no tracking“ (Patch Notes, Legal): das ändert sich damit und muss ehrlich
   nachgezogen werden.
+
+---
+
+## Wachstum: mehr Spieler erreichen (Leo, 04.10.2026)
+
+Gebaut ist die Einladung per Link (beide bekommen bei Level 5 eine Chest). Was darüber hinaus am meisten
+bringen dürfte, grob nach Aufwand und Wirkung:
+
+1. **Daily zum Teilen, wie Wordle.** Nach der Daily Shift ein Text-Ergebnis in die Zwischenablage
+   („Roundabout Timing Daily · 7 Perfect · 12 Tight Fits“ plus Link mit `?ref=`). Die Daily ist für alle
+   gleich, also vergleichbar; Text braucht kein Bild und läuft in jedem Chat. Kleinster Aufwand, größte
+   Wiederkehr.
+2. **Clip-Knopf für die Crashes.** Die Physik (Blechschaden, Stoß, Verkehr reagiert) ist das Material, das
+   auf TikTok, Shorts und Reels läuft. `canvas.captureStream` + `MediaRecorder` hält die letzten 8 Sekunden
+   fest, ein Tipp teilt sie (mit Wasserzeichen und Link). Wirkt erst, wenn Spieler es auch posten wollen:
+   zuerst ein paar eigene Clips auf den Kanälen testen.
+3. **Mehr Portale.** CrazyGames läuft; Poki, GameDistribution, Y8, itch.io, Newgrounds und Kongregate nehmen
+   Browserspiele auch. Ein Eintrag je Portal, derselbe Build mit eigenem `?portal=`-Schalter nach dem Muster von
+   `?crazygames`. Portale bringen Besucher, ohne dass wir sie holen müssen.
+4. **Der Foto-Abzug trägt die Einladung.** Er wird schon geteilt; ein QR-Code oder Kurzlink mit `?ref=` unten
+   drauf macht jedes geteilte Bild zur Einladung (das QR-Modul für die Lobby gibt es).
+5. **Ein Konto bei Reddit, Hacker News und Discord, mit echter Geschichte.** „Show HN: Ein-Tap-Kreisverkehr im
+   Browser, ohne Engine und ohne Framework“ und r/WebGames sind die zwei Orte, an denen ein kleines, sauber gebautes
+   Browserspiel von selbst Anklang findet. Der Discord-Webhook für „Build with us“ existiert; ein Discord, in dem
+   Patch Notes erscheinen (aus `/changelog.json`), macht daraus einen Ort.
+6. **Google-Play-Eintrag als Suchmaschine.** Titel, Kurztext und die ersten zwei Screenshots entscheiden,
+   nicht das Spiel. Screenshots mit Beschriftung („Tap. Merge. Don't crash.“), ein 15-Sekunden-Video aus dem
+   Crash-Material, Stichwörter „roundabout“, „traffic“, „one tap“.
+7. **Landeseiten für Suchbegriffe** auf timing.love: „Car Circle Alternative“, „Kreisverkehr Spiel“, „One-Tap-Spiel
+   im Browser“. Das Museum liefert schon Text zu Bossen und Wetter; kurze Anleitungsseiten dazu ziehen Suchende an.
+8. **Teams statt Einzelner.** Ein Teamcode (wie der Freundescode) für Klassen, Büros, Discords: eine Rangliste
+   nur dafür. Schulklassen und Streamer-Communities teilen Links in Gruppen, nicht einzeln. Braucht ein Modul im
+   Server (`teams`), kein neues System.
+9. **Web Push für die Daily** („Neue Daily: Marathon“). Wirkt auf Wiederkehr, nicht auf Neue; braucht einen
+   Push-Dienst im Server und einen Absatz in `legal.ts`. Erst nach Analytics, wenn Zahlen zeigen, dass
+   Spieler nach Tag 2 gehen.
+
+Vor allem Weiteren: **Analytics** (oben). Ohne Zahlen, wo Neue aussteigen (Tutorial, Level 3, erster
+Absturz), ist jedes Wachstum geraten.

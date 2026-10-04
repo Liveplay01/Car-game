@@ -2,6 +2,20 @@
  * Car Game – web shell. Role tokens mirror `present/theme.ts`; vehicle colours
  * are game information and stay out of the UI (FOUNDATION.md, design principles).
  */
+
+/*
+ * Overpass, the website's heading face (Leo, 04.10.2026), heavy and italic: titles and big numbers. Only the
+ * latin italic is shipped (41 kB, bundled so it works offline); body text stays in the system font. `swap`:
+ * text shows at once and the canvas measures again when the font arrives (`present/measure.ts`).
+ */
+@font-face {
+  font-family: 'Overpass Variable';
+  font-style: italic;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url('../../node_modules/@fontsource-variable/overpass/files/overpass-latin-wght-italic.woff2') format('woff2-variations');
+}
+
 :root {
   --bg: #0b0d10;
   --surface-1: #121519;
@@ -12,9 +26,10 @@
   --muted: #99a2af;
   /* The quietest text: still 4.9:1 on a card and 6.2:1 on the page (WCAG AA). */
   --faint: #8a929e;
-  --accent: #9ee6cf;
+  /* Street-lamp amber (Leo, 04.10.2026; was mint #9ee6cf). Dark ink on it: 11:1. Mirrors `COLORS.accent`. */
+  --accent: #ffb703;
   --accent-ink: #0e1013;
-  --accent-soft: rgba(158, 230, 207, 0.14);
+  --accent-soft: rgba(255, 183, 3, 0.14);
   --destructive: #ff5a5f;
   --money: #e3c15a;
   --rarity-common: #9aa3ae;
@@ -31,7 +46,7 @@
   --scrim: rgba(14, 16, 19, 0.84);
 
   --font: -apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
-  --font-round: ui-rounded, 'SF Pro Rounded', -apple-system, BlinkMacSystemFont, system-ui, 'Segoe UI', Roboto, sans-serif;
+  --font-round: 'Overpass Variable', ui-rounded, 'SF Pro Rounded', -apple-system, BlinkMacSystemFont, system-ui, 'Segoe UI', Roboto, sans-serif;
 
   --s1: 4px;
   --s2: 8px;
@@ -617,9 +632,12 @@ a.row-link {
 
 .sheet-title {
   margin: 0;
+  font-family: var(--font-round);
   font-size: 22px;
-  font-weight: 700;
-  letter-spacing: -0.01em;
+  font-weight: 900;
+  font-style: italic;
+  text-transform: uppercase;
+  letter-spacing: -0.005em;
 }
 
 .sheet .list {
@@ -731,6 +749,15 @@ a.row-link {
 }
 
 .settings-btn {
+  /* A word beside the gear (Leo, 04.10.2026): Friends, Cloud sync and What's new live here, and a bare gear says little. */
+  display: inline-flex;
+  align-items: center;
+  width: auto;
+  gap: var(--s2);
+  padding: 0 var(--s4) 0 var(--s3);
+  border-radius: 22px;
+  font-size: 14px;
+  font-weight: 600;
   left: calc(var(--safe-left) + var(--s4));
   bottom: calc(var(--tabbar-h) + var(--safe-bottom) + var(--s4));
 }
@@ -1891,10 +1918,13 @@ a.row-link {
 
 .install-title {
   margin: 0;
+  font-family: var(--font-round);
   font-size: 26px;
-  font-weight: 700;
+  font-weight: 900;
+  font-style: italic;
+  text-transform: uppercase;
   line-height: 1.15;
-  letter-spacing: -0.01em;
+  letter-spacing: -0.005em;
 }
 
 .install-why {
@@ -2293,6 +2323,11 @@ a.row-link {
 .sync-input {
   font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
   letter-spacing: 0.06em;
+}
+
+.settings-code {
+  margin-top: 2px;
+  font-size: 20px;
 }
 
 .friends-panel {

@@ -1,0 +1,644 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Design-Vorschlag: Handgemacht vs. KI-Look</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <!-- Markante Typografie (Punkt 6.1): Space Grotesk für Display & Action, Plus Jakarta Sans für UI -->
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700&family=Space+Grotesk:wght@600;700;800&display=swap" rel="stylesheet">
+  <style>
+    /* ========================================================
+       NEUE DESIGN-TOKENS (Punkte 1.1, 1.3, 6.2)
+       Weg von sterilem Obsidian + Neon-Mint.
+       Hin zu warmem Asphalt, Straßenlaternen-Bernstein & warmem Weiß.
+       ======================================================== */
+    :root {
+      /* Neuer Look: "Warmes Nachtleben / Handgemachter Asphalt" */
+      --asphalt-deep: #121316;
+      --asphalt-road: #1c1e24;
+      --asphalt-kerb: #2a2d36;
+      --streetlamp-glow: #ffb703;
+      --streetlamp-amber: #fb8500;
+      --neon-brake: #e63946;
+      --warm-white: #f8f6f0;
+      --warm-muted: #a0a4b0;
+      --warm-card: #181a20;
+      --warm-card-border: rgba(255, 183, 3, 0.18);
+      --font-display: 'Space Grotesk', -apple-system, sans-serif;
+      --font-ui: 'Plus Jakarta Sans', -apple-system, sans-serif;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: #0d0e12;
+      color: var(--warm-white);
+      font-family: var(--font-ui);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 32px 16px 64px;
+      line-height: 1.5;
+    }
+
+    /* Subtiles analoges Filmkorn / Asphalt-Noise über die Seite (Punkt 6.3) */
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      opacity: 0.035;
+      pointer-events: none;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+      z-index: 999;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 980px;
+    }
+
+    /* Header */
+    header {
+      text-align: center;
+      margin-bottom: 36px;
+    }
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 12px;
+      border-radius: 999px;
+      background: rgba(255, 183, 3, 0.15);
+      border: 1px solid rgba(255, 183, 3, 0.35);
+      color: var(--streetlamp-glow);
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      margin-bottom: 12px;
+    }
+    h1 {
+      font-family: var(--font-display);
+      font-size: clamp(26px, 4vw, 42px);
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      color: var(--warm-white);
+      margin-bottom: 8px;
+    }
+    header p {
+      color: var(--warm-muted);
+      font-size: 16px;
+      max-width: 600px;
+      margin: 0 auto;
+    }
+
+    /* Live Switcher */
+    .controls {
+      display: flex;
+      justify-content: center;
+      gap: 12px;
+      margin-bottom: 32px;
+    }
+    .btn-toggle {
+      background: #181a20;
+      border: 1px solid #2a2d36;
+      color: var(--warm-muted);
+      padding: 10px 20px;
+      border-radius: 12px;
+      font-family: var(--font-display);
+      font-weight: 700;
+      font-size: 15px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    .btn-toggle.active {
+      background: var(--streetlamp-glow);
+      color: #0e0f12;
+      border-color: var(--streetlamp-glow);
+      box-shadow: 0 4px 20px rgba(255, 183, 3, 0.35);
+    }
+
+    /* Vergleichs-Grid */
+    .comparison-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 24px;
+      margin-bottom: 40px;
+    }
+
+    .card {
+      background: var(--warm-card);
+      border-radius: 20px;
+      padding: 24px;
+      border: 1px solid #262932;
+      position: relative;
+      overflow: hidden;
+      box-shadow: 0 12px 36px rgba(0, 0, 0, 0.4);
+    }
+
+    .card.new-design {
+      border-color: var(--warm-card-border);
+      background: linear-gradient(180deg, #1d2028 0%, #15161b 100%);
+    }
+
+    .card-title {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 18px;
+    }
+    .card-title h2 {
+      font-family: var(--font-display);
+      font-size: 20px;
+      font-weight: 700;
+    }
+    .tag-old {
+      font-size: 11px;
+      font-weight: 700;
+      background: rgba(255, 90, 95, 0.18);
+      color: #ff5a5f;
+      padding: 3px 8px;
+      border-radius: 6px;
+    }
+    .tag-new {
+      font-size: 11px;
+      font-weight: 700;
+      background: rgba(255, 183, 3, 0.2);
+      color: var(--streetlamp-glow);
+      padding: 3px 8px;
+      border-radius: 6px;
+      border: 1px solid rgba(255, 183, 3, 0.3);
+    }
+
+    /* Interactive Canvas Simulation Preview (Punkte 1.3, 6.3) */
+    .canvas-wrapper {
+      position: relative;
+      border-radius: 14px;
+      overflow: hidden;
+      margin-bottom: 20px;
+      background: #101115;
+      border: 1px solid #2a2d36;
+      aspect-ratio: 16 / 10;
+    }
+    canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    /* Color Swatch Bars (Punkte 1.1, 1.3, 6.2) */
+    .palette-box {
+      display: flex;
+      border-radius: 10px;
+      overflow: hidden;
+      height: 28px;
+      margin-bottom: 12px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    .swatch {
+      flex: 1;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 10px;
+      font-weight: 700;
+      color: #fff;
+      text-shadow: 0 1px 2px rgba(0,0,0,0.8);
+    }
+
+    /* UI Elemente & Buttons (Punkte 6.1, 6.4) */
+    .button-group {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      margin-top: 18px;
+    }
+
+    /* Alter Button (typisches KI-Glassmorphismus mit Cyan/Mint) */
+    .btn-ai {
+      background: #9ee6cf;
+      color: #0b0d10;
+      border: none;
+      padding: 14px 20px;
+      border-radius: 14px;
+      font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif;
+      font-size: 16px;
+      font-weight: 600;
+      text-align: center;
+      cursor: pointer;
+    }
+
+    /* Neuer Button (Griffig, warm, analoger Arcade-Charakter mit haptischem Schatten) */
+    .btn-handcrafted {
+      background: linear-gradient(180deg, #ffc021 0%, #f79d00 100%);
+      color: #1a1202;
+      border: none;
+      padding: 14px 20px;
+      border-radius: 12px;
+      font-family: var(--font-display);
+      font-size: 17px;
+      font-weight: 800;
+      letter-spacing: 0.02em;
+      text-align: center;
+      cursor: pointer;
+      box-shadow: 0 4px 0 #b36b00, 0 8px 18px rgba(251, 133, 0, 0.35);
+      transition: all 0.15s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+    .btn-handcrafted:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 0 #b36b00, 0 12px 24px rgba(251, 133, 0, 0.45);
+    }
+    .btn-handcrafted:active {
+      transform: translateY(3px);
+      box-shadow: 0 1px 0 #b36b00;
+    }
+
+    /* Mission / Story Box (Punkte 4.1 & 4.2 - Text-Vergleich) */
+    .story-box {
+      padding: 16px;
+      border-radius: 12px;
+      margin: 16px 0;
+      font-size: 14px;
+      line-height: 1.6;
+    }
+    .story-ai {
+      background: rgba(158, 230, 207, 0.06);
+      border-left: 3px solid #9ee6cf;
+      color: #c7ccd4;
+      font-style: italic;
+    }
+    .story-human {
+      background: rgba(255, 183, 3, 0.08);
+      border-left: 3px solid var(--streetlamp-glow);
+      color: #edebe4;
+    }
+    .story-human strong {
+      color: var(--streetlamp-glow);
+      font-family: var(--font-display);
+      display: block;
+      font-size: 15px;
+      margin-bottom: 4px;
+    }
+
+    /* Checkliste der umgesetzten Punkte */
+    .checklist-section {
+      background: #14161c;
+      border-radius: 20px;
+      padding: 28px;
+      border: 1px solid #232630;
+      margin-top: 24px;
+    }
+    .checklist-section h3 {
+      font-family: var(--font-display);
+      font-size: 20px;
+      margin-bottom: 16px;
+      color: var(--streetlamp-glow);
+    }
+    .checklist {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 16px;
+    }
+    .check-item {
+      display: flex;
+      gap: 12px;
+      font-size: 14px;
+      color: #c4c8d4;
+    }
+    .check-num {
+      flex: none;
+      background: rgba(255, 183, 3, 0.15);
+      color: var(--streetlamp-glow);
+      font-weight: 700;
+      font-family: var(--font-display);
+      padding: 2px 8px;
+      border-radius: 6px;
+      height: fit-content;
+      font-size: 13px;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <header>
+      <div class="badge">🎨 Design-Prototyp & Feedback</div>
+      <h1>Handgemachter Arcade-Charme vs. KI-Look</h1>
+      <p>Konkrete Gegenüberstellung: Wie das Spiel von der kühlen KI-Schablone zu einem warmen, lebendigen Indie-Hit wird.</p>
+    </header>
+
+    <div class="comparison-grid">
+
+      <!-- ==============================================
+           LINKE KARTE: DER BISHERIGE LOOK (KI-KLISCHEE)
+           ============================================== -->
+      <div class="card">
+        <div class="card-title">
+          <h2>Bisher: Kaltes Cyber-SaaS</h2>
+          <span class="tag-old">Punkte 1.1, 4.1</span>
+        </div>
+
+        <!-- Altes Farbschema -->
+        <p style="font-size: 12px; color: #8a929e; margin-bottom: 6px;">Palette: Cyber-Slate + Neon-Mint + Kaltweiß</p>
+        <div class="palette-box">
+          <div class="swatch" style="background: #0b0d10;">#0B0D10</div>
+          <div class="swatch" style="background: #181c21;">#181C21</div>
+          <div class="swatch" style="background: #9ee6cf; color: #000;">#9EE6CF</div>
+          <div class="swatch" style="background: #b45cf0;">#B45CF0</div>
+          <div class="swatch" style="background: #f4f6f9; color: #000;">#F4F6F9</div>
+        </div>
+
+        <!-- Alte Canvas-Simulation (kalt, mathematisch sauber) -->
+        <div class="canvas-wrapper">
+          <canvas id="canvasOld"></canvas>
+        </div>
+
+        <!-- Alter Text (Punkt 4.1: Poetisch-theatralische LLM-Copy) -->
+        <div class="story-box story-ai">
+          "The juice is in the moment, not in the chrome. It comes in a blackout, and it drives without lights: you only see it where the street lights reach. Ram the head of the syndicate in gold-striped black."
+        </div>
+
+        <!-- Alter Button (Apple-Pill / Mint-Flat) -->
+        <div class="button-group">
+          <button class="btn-ai" onclick="alert('Typischer flacher Mint-Button')">
+            TAP TO DRIVE
+          </button>
+        </div>
+      </div>
+
+
+      <!-- ==============================================
+           RECHTE KARTE: DAS NEUE DESIGN (ORGANISCH & WARM)
+           ============================================== -->
+      <div class="card new-design">
+        <div class="card-title">
+          <h2 style="color: var(--streetlamp-glow);">Neu: Warmer Arcade-Look</h2>
+          <span class="tag-new">Punkte 1.3, 6.1, 6.2, 6.3, 6.4</span>
+        </div>
+
+        <!-- Neues Farbschema (Punkte 1.3 & 6.2) -->
+        <p style="font-size: 12px; color: var(--warm-muted); margin-bottom: 6px;">Palette: Warmer Asphalt + Laternen-Bernstein + Racing-Rot</p>
+        <div class="palette-box">
+          <div class="swatch" style="background: #14151a;">#14151A</div>
+          <div class="swatch" style="background: #252833;">#252833</div>
+          <div class="swatch" style="background: #ffb703; color: #000;">#FFB703</div>
+          <div class="swatch" style="background: #e63946;">#E63946</div>
+          <div class="swatch" style="background: #f8f6f0; color: #000;">#F8F6F0</div>
+        </div>
+
+        <!-- Neue Canvas-Simulation (Punkte 1.3 & 6.3: warme Laternen-Lichtkegel, Scheinwerfer-Bloom, Reifenspuren) -->
+        <div class="canvas-wrapper">
+          <canvas id="canvasNew"></canvas>
+        </div>
+
+        <!-- Neuer Text (Punkte 4.1 & 4.2: Locker, sympathisch, kernig statt KI-Poesie) -->
+        <div class="story-box story-human">
+          <strong>🚨 Boss-Alarm: Don Corleone im Muscle-Car</strong>
+          Pass die Lücke ab und ramm den Boss seitlich von der Straße, bevor seine Bodyguards dir den Kofferraum eindrücken!
+        </div>
+
+        <!-- Neuer Button (Punkte 6.1 & 6.4: Fette Arcade-Schrift + haptischer 3D-Schatten) -->
+        <div class="button-group">
+          <button class="btn-handcrafted" onclick="spawnNewCar()">
+            <span>🔥</span> JETZT REINZIEHEN!
+          </button>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Zusammenfassung der berücksichtigen Punkte -->
+    <div class="checklist-section">
+      <h3>Berücksichtigte Punkte in dieser Demo</h3>
+      <div class="checklist">
+        <div class="check-item">
+          <span class="check-num">1.1 & 6.2</span>
+          <div>
+            <strong>Weg vom Cyber-Slate / Neon-Mint:</strong><br/>
+            Ersetzt durch warmes Asphalt-Schiefer (`#14151a`), warmen Natriumdampf-Bernstein (`#ffb703`) und cremefarbenes Weiß.
+          </div>
+        </div>
+        <div class="check-item">
+          <span class="check-num">1.3 & 6.3</span>
+          <div>
+            <strong>Lichtstimmung & Imperfektion:</strong><br/>
+            Echte warme Straßenlaternen-Lichtkegel, Scheinwerfer-Glow und dunkle Reifenspuren auf dem Asphalt statt rein steriler Geometrie.
+          </div>
+        </div>
+        <div class="check-item">
+          <span class="check-num">4.1 & 4.2</span>
+          <div>
+            <strong>Echte Menschliche Texte:</strong><br/>
+            Keine philosophische „Hemingway-KI-Lyrik“ mehr, sondern klare, humorvolle und motivierende Spielersprache.
+          </div>
+        </div>
+        <div class="check-item">
+          <span class="check-num">6.1 & 6.4</span>
+          <div>
+            <strong>Typografie & Griffigkeit:</strong><br/>
+            Schriftart <em>Space Grotesk</em> für markante Game-Präsenz und Buttons mit haptischem Klick-Gefühl statt flacher System-Apps.
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    /* ========================================================
+       CANVAS 1: ALTER LOOK (Kalt, steril, geometrisch)
+       ======================================================== */
+    const cvsOld = document.getElementById('canvasOld');
+    const ctxOld = cvsOld.getContext('2d');
+    let angleOld = 0;
+
+    function resizeCanvas(c) {
+      c.width = c.clientWidth * window.devicePixelRatio;
+      c.height = c.clientHeight * window.devicePixelRatio;
+    }
+    resizeCanvas(cvsOld);
+
+    function drawOld() {
+      const w = cvsOld.width;
+      const h = cvsOld.height;
+      ctxOld.save();
+      ctxOld.fillStyle = '#0b0d10';
+      ctxOld.fillRect(0, 0, w, h);
+
+      const cx = w / 2;
+      const cy = h / 2;
+      const r = Math.min(w, h) * 0.35;
+
+      // Straße: flach dunkelgrau
+      ctxOld.beginPath();
+      ctxOld.arc(cx, cy, r + 24, 0, Math.PI * 2);
+      ctxOld.fillStyle = '#181c21';
+      ctxOld.fill();
+
+      // Mittelinsel: steriles Grau
+      ctxOld.beginPath();
+      ctxOld.arc(cx, cy, r - 24, 0, Math.PI * 2);
+      ctxOld.fillStyle = '#121519';
+      ctxOld.fill();
+
+      // Autopfad
+      angleOld += 0.025;
+      const carX = cx + Math.cos(angleOld) * r;
+      const carY = cy + Math.sin(angleOld) * r;
+
+      ctxOld.save();
+      ctxOld.translate(carX, carY);
+      ctxOld.rotate(angleOld + Math.PI / 2);
+      // Auto: abgerundetes Pillen-Rechteck, eiskaltes Weiß
+      ctxOld.fillStyle = '#f4f6f9';
+      ctxOld.fillRect(-10, -18, 20, 36);
+      // Scheinwerfer: kaltblau
+      ctxOld.fillStyle = 'rgba(79, 163, 255, 0.4)';
+      ctxOld.beginPath();
+      ctxOld.moveTo(-8, -18);
+      ctxOld.lineTo(-24, -60);
+      ctxOld.lineTo(24, -60);
+      ctxOld.lineTo(8, -18);
+      ctxOld.fill();
+      ctxOld.restore();
+
+      ctxOld.restore();
+      requestAnimationFrame(drawOld);
+    }
+    drawOld();
+
+
+    /* ========================================================
+       CANVAS 2: NEUER LOOK (Warm, organisch, Straßenlicht-Glow)
+       ======================================================== */
+    const cvsNew = document.getElementById('canvasNew');
+    const ctxNew = cvsNew.getContext('2d');
+    resizeCanvas(cvsNew);
+
+    let angleNew = 0;
+    let skidMarks = [];
+
+    window.spawnNewCar = function() {
+      // Optisches Feedback beim Button-Klick
+      skidMarks.push({ x: cvsNew.width / 2, y: cvsNew.height / 2 + 50, alpha: 1.0 });
+    };
+
+    function drawNew() {
+      const w = cvsNew.width;
+      const h = cvsNew.height;
+      ctxNew.save();
+
+      // Warmer Schiefer-Hintergrund
+      ctxNew.fillStyle = '#131418';
+      ctxNew.fillRect(0, 0, w, h);
+
+      const cx = w / 2;
+      const cy = h / 2;
+      const r = Math.min(w, h) * 0.35;
+
+      // Warme Laternen auf dem Platz (Beleuchtungskegel)
+      const gradLamp = ctxNew.createRadialGradient(cx, cy, 10, cx, cy, r + 70);
+      gradLamp.addColorStop(0, 'rgba(255, 183, 3, 0.16)');
+      gradLamp.addColorStop(0.6, 'rgba(255, 150, 0, 0.05)');
+      gradLamp.addColorStop(1, 'rgba(0, 0, 0, 0)');
+      ctxNew.fillStyle = gradLamp;
+      ctxNew.fillRect(0, 0, w, h);
+
+      // Straße mit Textur-Gefühl (Asphalt-Ring)
+      ctxNew.beginPath();
+      ctxNew.arc(cx, cy, r + 26, 0, Math.PI * 2);
+      ctxNew.fillStyle = '#1e2129';
+      ctxNew.fill();
+      ctxNew.lineWidth = 2;
+      ctxNew.strokeStyle = '#2f3442';
+      ctxNew.stroke();
+
+      // Mittelinsel: begrünter/steiniger warmer Rand
+      ctxNew.beginPath();
+      ctxNew.arc(cx, cy, r - 26, 0, Math.PI * 2);
+      ctxNew.fillStyle = '#17181f';
+      ctxNew.fill();
+      ctxNew.lineWidth = 3;
+      ctxNew.strokeStyle = '#ffb703';
+      ctxNew.stroke();
+
+      // Reifenspuren (Abrieb) auf dem Asphalt
+      ctxNew.strokeStyle = 'rgba(10, 11, 14, 0.6)';
+      ctxNew.lineWidth = 5;
+      ctxNew.beginPath();
+      ctxNew.arc(cx, cy, r - 6, 0, Math.PI * 2);
+      ctxNew.arc(cx, cy, r + 6, 0, Math.PI * 2);
+      ctxNew.stroke();
+
+      // Laternenmast im Zentrum
+      ctxNew.beginPath();
+      ctxNew.arc(cx, cy, 6, 0, Math.PI * 2);
+      ctxNew.fillStyle = '#ffb703';
+      ctxNew.shadowColor = '#ffb703';
+      ctxNew.shadowBlur = 15;
+      ctxNew.fill();
+      ctxNew.shadowBlur = 0;
+
+      // Auto & warme Scheinwerfer
+      angleNew += 0.025;
+      const carX = cx + Math.cos(angleNew) * r;
+      const carY = cy + Math.sin(angleNew) * r;
+
+      ctxNew.save();
+      ctxNew.translate(carX, carY);
+      ctxNew.rotate(angleNew + Math.PI / 2);
+
+      // Scheinwerfer: warmes Gelb-Gold mit Bloom-Effekt
+      const lightGrad = ctxNew.createRadialGradient(0, -20, 4, 0, -65, 55);
+      lightGrad.addColorStop(0, 'rgba(255, 235, 170, 0.8)');
+      lightGrad.addColorStop(0.3, 'rgba(255, 183, 3, 0.45)');
+      lightGrad.addColorStop(1, 'rgba(255, 183, 3, 0)');
+
+      ctxNew.fillStyle = lightGrad;
+      ctxNew.beginPath();
+      ctxNew.moveTo(-7, -18);
+      ctxNew.lineTo(-34, -75);
+      ctxNew.lineTo(34, -75);
+      ctxNew.lineTo(7, -18);
+      ctxNew.fill();
+
+      // Auto-Karosserie (Klassischer roter Flitzer mit Schattentiefe)
+      ctxNew.shadowColor = 'rgba(0,0,0,0.6)';
+      ctxNew.shadowBlur = 8;
+      ctxNew.fillStyle = '#d90429';
+      ctxNew.fillRect(-11, -19, 22, 38);
+      ctxNew.shadowBlur = 0;
+
+      // Scheiben & Renndach
+      ctxNew.fillStyle = '#1b1d24';
+      ctxNew.fillRect(-8, -10, 16, 18);
+      ctxNew.fillStyle = '#ffb703';
+      ctxNew.fillRect(-2, -19, 4, 38); // Gelber Racing-Streifen!
+
+      // Rücklichter (Glühendes Karmesinrot)
+      ctxNew.fillStyle = '#ff3344';
+      ctxNew.shadowColor = '#ff2233';
+      ctxNew.shadowBlur = 10;
+      ctxNew.fillRect(-9, 17, 4, 3);
+      ctxNew.fillRect(5, 17, 4, 3);
+
+      ctxNew.restore();
+      ctxNew.restore();
+      requestAnimationFrame(drawNew);
+    }
+    drawNew();
+
+    window.addEventListener('resize', () => {
+      resizeCanvas(cvsOld);
+      resizeCanvas(cvsNew);
+    });
+  </script>
+</body>
+</html>

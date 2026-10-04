@@ -46,9 +46,14 @@ export const PATCH_NOTES: PatchNote[] = [
   {
     id: '2026-10-04',
     date: '4 October 2026',
-    title: 'Fairer money: saves are sealed and the Casino can no longer be predicted',
+    title: 'Invite friends for chests, a simpler Progress and fairer money',
     impact: 'minor',
     items: [
+      'Invite a friend: when a friend you invite reaches level 5, you both get a Standard Chest, and your 3rd and 10th friend each bring a Premium Chest on top. A challenge you share carries your invite too.',
+      'A new look: the green accent is now street-lamp amber, and titles and big numbers use the heavy italic typeface of the website. The app icon changed colour too.',
+      'Progress opens on Today, the page for what to do next; Records moved to the third place. The leaderboard chip now says "Rank #4", and the Settings button has a word next to its gear.',
+      'Tips (Cloud sync, installing, the website, inviting) now come one at a time, one per visit, instead of all at once.',
+      'New Friends page in Settings, at the very top: your friend code with a Copy button, a link to share, who you invited and how far they are, and adding a friend by their code. The leaderboard now only compares, with one Invite row that leads there.',
       'The "Jammed · no points" label is gone. A car that has to brake its way in behind slow traffic still scores nothing, it just no longer pops up a message.',
       'A Cloud sync copy that has not been opened or changed for 200 days is now deleted from our server. Opening the game with Cloud sync on keeps it.',
       'Fixed: money could be added by editing the save in the browser. A save now carries a seal; if it does not match, the game goes back to the last progress it saved itself.',
@@ -245,6 +250,38 @@ export const PATCH_NOTES: PatchNote[] = [
     ],
   },
 ];
+
+/**
+ * The changelog as a public JSON file (Leo, 04.10.2026): `/changelog.json`, written at every build
+ * (`vite.config.ts`), so the website shows the game's own list without it being typed twice. A line
+ * a player asked for carries `from` (null: "a player", a name: thanks), like the sheet's credit.
+ * Plain data: the shape is part of what the website reads, so extend it, never rename.
+ */
+export interface ChangelogFile {
+  version: 1;
+  game: string;
+  /** The newest day's `id`, so a reader can tell at a glance whether anything changed. */
+  updated: string;
+  days: { id: string; date: string; title: string; impact: PatchImpact; items: { text: string; from?: string | null }[] }[];
+}
+
+export function changelogFile(notes: readonly PatchNote[] = PATCH_NOTES): ChangelogFile {
+  return {
+    version: 1,
+    game: 'Roundabout Timing',
+    updated: notes[0]?.id ?? '',
+    days: notes.map((n) => ({
+      id: n.id,
+      date: n.date,
+      title: n.title,
+      impact: n.impact,
+      items: n.items.map((item) => {
+        const from = itemFrom(item);
+        return from === undefined ? { text: itemText(item) } : { text: itemText(item), from };
+      }),
+    })),
+  };
+}
 
 /**
  * What the save remembers as read: the newest day and how many items it had. A new item on the

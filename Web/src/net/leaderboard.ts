@@ -294,6 +294,13 @@ export interface Records {
  * a start sends once; after that only a better record makes a request.
  */
 const confirmed: Partial<Record<BoardId, number>> = {};
+const syncedListeners = new Set<() => void>();
+
+/** Told after records reached the service: what it pays for them (an invite's chest at level 5) is ready to pick up. */
+export function onScoresSynced(listener: () => void): void {
+  syncedListeners.add(listener);
+}
+
 let syncing: Promise<void> | null = null;
 let retryAt = 0;
 /** The title the service has for this account; undefined while unknown (a start, a new account), so the next save sends it. */
@@ -347,6 +354,7 @@ export function syncScores(r: Records): Promise<void> {
           else throw error;
         }
       }
+      for (const listener of syncedListeners) listener();
       // After the scores: a service without titles yet must not hold a score back.
       if (titleDue) {
         await putTitle(account, r.title);

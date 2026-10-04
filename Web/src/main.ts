@@ -5,6 +5,7 @@ import { gameLoaded, startCrazyGames } from './ui/crazygames';
 import { startCloud } from './net/cloud';
 import { startAds } from './ui/ads';
 import { Casino } from './core/casino';
+import { forgetMeasures } from './present/measure';
 
 // The casino draws on real randomness besides the save's seed, so no result can be worked out beforehand.
 Casino.useEntropy(() => crypto.getRandomValues(new Uint32Array(1))[0]);
@@ -24,6 +25,12 @@ window.addEventListener('unhandledrejection', bootFailed);
 // Opened by CrazyGames (`?crazygames`): the save lives in their SDK, which has to be ready
 // before the game reads it.
 if (inPortal) await startCrazyGames();
+
+// The heading face (Overpass, `ui/shell.css`) is measured and drawn by the canvas: give it a moment to arrive so the
+// first frame is laid out with it. Slow or offline-first-visit: the game starts with the stand-in and measures again
+// when the font is there (it is bundled, so it does arrive).
+document.fonts?.addEventListener('loadingdone', forgetMeasures);
+await Promise.race([document.fonts?.load('italic 900 30px "Overpass Variable"'), new Promise((resolve) => window.setTimeout(resolve, 1500))]).catch(() => undefined);
 
 const shell = new Shell(app, canvas, layers);
 if (import.meta.env.DEV) (window as unknown as { __game: Shell }).__game = shell;

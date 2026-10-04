@@ -8,7 +8,8 @@ import { h, icon } from './dom';
 import { ICONS } from './icons';
 import { settingsSheet, deleteAccountSheet, patchNotesSheet, legalSheet, licensesSheet, installDialog, cloudIntroDialog, isSheetOpen, closeAnySheet } from './sheets';
 import { cloudEnabled, cloudIntroDue, cloudLinked, cloudView, deleteCloud, markCloudIntroSeen } from '../net/cloud';
-import { deleteAccount, describeError, fetchFriends, leaderboardEnabled, loadAccount } from '../net/leaderboard';
+import { readInviteLink, redeemInvite } from '../net/invite';
+import { deleteAccount, describeError, fetchFriends, leaderboardEnabled, loadAccount, onAccountChange, onScoresSynced } from '../net/leaderboard';
 import { collectRewards } from '../net/rewards';
 import { legalDoc } from '../present/legal';
 import { PATCH_NOTES } from '../present/patchNotes';
@@ -21,6 +22,7 @@ import { knownShortLink, shortLink } from '../net/challengeLink';
 import { S, Fmt } from '../present/strings';
 import { DetailSheet } from './detailSheet';
 import { VersusLobby } from './versusLobby';
+import { friendsSheet } from './friendsSheet';
 import { leaderboardSheet } from './leaderboardSheet';
 import { cloudSheet } from './cloudSheet';
 import { REACTION_EMOJI } from '../present/versus';
@@ -160,6 +162,7 @@ export class Shell {
       'button',
       { class: 'icon-btn glass float-btn settings-btn', 'aria-label': 'Settings', 'aria-keyshortcuts': 'Escape', onclick: () => this.openSettings() },
       icon(ICONS.gear),
+      h('span', { class: 'settings-label' }, 'Settings'),
       keycap('esc'),
     );
     this.dispatchBtn = h(
@@ -213,7 +216,7 @@ export class Shell {
       const open = (): void => {
         if (isSheetOpen()) return;
         swallowNextClick();
-        leaderboardSheet(this.layers, { records: () => this.session.leaderboardRecords, closed: () => this.syncChrome(true) });
+        this.openLeaderboard();
       };
       if (this.pointerId === null) open();
       else afterRelease(open);
@@ -301,6 +304,7 @@ export class Shell {
     window.addEventListener('appinstalled', () => void keepStorage());
     if (this.session.save.hints.includes('install')) void renewStorage();
     this.readStartLink();
+    this.readInvite();
     this.readChallengeLink();
     this.readJoinLink();
     window.addEventListener('hashchange', () => {
@@ -310,7 +314,24 @@ export class Shell {
     this.syncChrome(true);
     requestAnimationFrame((t) => this.loop(t));
     this.scheduleCloudIntro();
-    window.setTimeout(() => this.collectRewards(), 3000);
+    // Gifts from the team and from invites: at the start, after a name (an invite is handed in then) and after a record reached the service (level 5 pays).
+    window.setTimeout(() => this.claimInvite(), 3000);
+    onAccountChange(() => this.claimInvite());
+    onScoresSynced(() => this.collectRewards());
+  }
+
+  /** Hands in an invite this device came with (`net/invite.ts`), then picks up whatever is waiting. */
+  private claimInvite(): void {
+    void redeemInvite().finally(() => this.collectRewards());
+  }
+
+  /**
+   * `?ref=CODE` in the address: a friend's invite (a shared challenge carries one too). Kept for a new
+   * player; both get a chest when this one reaches level 5. The player is told once, and that a name is needed.
+   */
+  private readInvite(): void {
+    if (!readInviteLink(this.session.save.career.level)) return;
+    this.session.announce(...(loadAccount() ? S.hints.invited : S.hints.invitedNeedsName));
   }
 
   /** Rewards from the team (a bug report's Ladybug skin, chests): picked up between shifts. */
@@ -597,11 +618,20 @@ export class Shell {
     if (hint === 'install') {
       await keepStorage();
       if (isInstalled() || inPortal || inPlayStore) return;
+      // A browser with nothing to offer (no install prompt, not an iPhone) has no tip to give, so it takes no turn.
+      if (!isIos() && !this.installPrompt) return;
+      if (!this.session.takeTip()) return this.session.deferHint(hint);
       // iPhone and iPad: the tip takes the screen until it is confirmed.
       if (isIos()) installDialog(this.layers, isIpad(), () => undefined);
       else if (this.installPrompt) this.session.announce(window.matchMedia('(pointer: coarse)').matches ? S.hints.homeScreen : S.hints.install);
+    } else if (hint === 'inviteReminder') {
+      if (!leaderboardEnabled || inPortal) return;
+      if (!this.session.takeTip()) return this.session.deferHint(hint);
+      this.session.announce(...S.hints.inviteReminder);
     } else if (hint === 'backup') {
-      if (cloudEnabled && cloudView().code === null) this.session.announce(S.hints.backup);
+      if (!cloudEnabled || cloudView().code !== null) return;
+      if (!this.session.takeTip()) return this.session.deferHint(hint);
+      this.session.announce(S.hints.backup);
     }
   }
 
@@ -609,6 +639,30 @@ export class Shell {
   private pageClosed(): void {
     this.pageOpen = false;
     this.syncChrome(true);
+  }
+
+  /** The leaderboard sheet (Progress → the rank chip). Its Invite row leads on to the Friends sheet. */
+  private openLeaderboard(): void {
+    leaderboardSheet(this.layers, {
+      records: () => this.session.leaderboardRecords,
+      openFriends: () => friendsSheet(this.layers, { openLeaderboard: () => this.openLeaderboard(), closed: () => this.syncChrome(true) }),
+      closed: () => this.syncChrome(true),
+    });
+  }
+
+  /** The Friends page over the settings: its code and invite link; a name is asked for in the leaderboard. */
+  private openFriendsPage(): void {
+    this.pageOpen = true;
+    friendsSheet(this.layers, {
+      // The leaderboard replaces this page and the settings behind it stay closed until it is.
+      openLeaderboard: () => {
+        this.pageOpen = false;
+        this.openLeaderboard();
+      },
+      closed: () => {
+        if (this.pageOpen) this.pageClosed();
+      },
+    });
   }
 
   /** The cloud sync page, over the settings; the settings come back when it closes. */
@@ -652,6 +706,8 @@ export class Shell {
       if (tries < 12) window.setTimeout(() => this.maybeShowCloudIntro(tries + 1), 5000);
       return;
     }
+    // One tip per visit: with another already shown this one waits for the next visit (it stays unseen).
+    if (!this.session.takeTip()) return;
     markCloudIntroSeen();
     cloudIntroDialog(this.layers, { open: () => this.openCloudFromIntro(), closed: () => undefined });
   }
@@ -707,6 +763,8 @@ export class Shell {
       },
       cloudOn: cloudLinked(),
       friendCode: loadAccount() ? () => fetchFriends().then((f) => f.code) : null,
+      // Friends, over the settings; the settings come back when it closes.
+      openFriends: leaderboardEnabled && !inPortal ? () => this.openFriendsPage() : null,
       // The cloud sync page, over the settings; the settings come back when it closes.
       openCloud: () => this.openCloudPage(),
       install: this.installPrompt

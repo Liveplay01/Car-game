@@ -43,11 +43,14 @@ App-Store-Arbeit mehr vorschlagen.
   **TURN-Zugänge** für den Multiplayer (Cloudflare, `GET /v1/rtc/ice`) und **Kurzlinks für Challenges** (`/c/K7M29QXA`,
   Vorschaubild zeichnet der Server selbst, kein Upload; `net/challengeLink.ts`), seit 03.10.2026 **Build with us**
   (Bug-Reports und Ideen vom Formular auf timing.love/build, je 1 pro Tag, Inbox unter `/admin`; ein Bug-Report mit
-  Freundescode zahlt den Ladybug-Skin, das Spiel holt Belohnungen über `net/rewards.ts` ab); weitere Funktionen kommen als Module in
+  Freundescode zahlt den Ladybug-Skin, das Spiel holt Belohnungen über `net/rewards.ts` ab); seit 04.10.2026 **Einladungen** (der Freundescode ist die Einladung, `/i/K7M29QXA`; erreicht der Eingeladene Level 5, bekommen beide eine Standard Chest, `Server/src/modules/referrals`, Spiel: `net/invite.ts`), weitere Funktionen kommen als Module in
   `Server/src/modules/`. Anti-Cheat nur über Plausibilitätsgrenzen.
   Das Spiel läuft auch ohne ihn (offline-first, `net/leaderboard.ts`, `net/cloud.ts` und `net/rtc.ts` sind abgeschaltet
   bzw. fallen zurück ohne `VITE_API_URL`). Die Quelle des Spielstands bleibt der Browser (Cloud = optionale Kopie);
   Geld und Truhen werden lokal berechnet, die Casino-Regel gilt weiter. Details: [Server/README.md](Server/README.md).
+- **Changelog-API (Leo, 04.10.2026):** Das Spiel schreibt bei jedem Build `/changelog.json` aus `present/patchNotes.ts`
+  (`vite.config.ts`, mit CORS in `nginx.conf`). Die Website liest sie im Browser; ein neuer Patch-Notes-Eintrag steht
+  dort mit dem nächsten Deployment des Spiels, ohne Kopieren. Die Form ist öffentlich: Felder ergänzen, nie umbenennen.
 - **Offline spielbar:** Nach dem ersten Laden läuft das Spiel ohne Netz (Service Worker aus
   `Web/vite.config.ts`, precacht alle Dateien). Nur der Multiplayer braucht Netz.
 - **Deployment:** Docker-Image aus dem `Dockerfile` im Repo-Root (Node baut, `nginx:alpine`

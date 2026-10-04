@@ -5,24 +5,21 @@ import {
   type BoardEntry,
   type BoardId,
   type BoardView,
-  type FriendsView,
   type Records,
-  addFriend,
   createAccount,
   deleteAccount,
   describeError,
   fetchBoard,
-  fetchFriends,
   fetchFriendsBoard,
   loadAccount,
-  removeFriend,
   renameAccount,
   syncScores,
 } from '../net/leaderboard';
+import { pendingInvite } from '../net/invite';
 import { NAME_MAX } from '../net/room';
 import { loadPlayerName, savePlayerName } from '../storage/profile';
 import { Fmt, S } from '../present/strings';
-import { baseConfig } from '../core/config';
+import { baseConfig, INVITE_LEVEL } from '../core/config';
 import { TITLES, type TitleId } from '../core/elite';
 
 /**
@@ -35,6 +32,8 @@ import { TITLES, type TitleId } from '../core/elite';
 export interface LeaderboardActions {
   /** The records as the save has them now, sent right after joining. */
   records(): Records;
+  /** The Friends sheet: your friend code, the invite link, adding and removing friends. */
+  openFriends(): void;
   closed(): void;
 }
 
@@ -189,13 +188,10 @@ function nameForm(value: string, action: string, submit: (name: string) => Promi
   return form;
 }
 
-/** A friend code as it is typed or pasted: `K7M2-9QXA`. */
-const tidyFriendCode = (text: string): string =>
-  text
-    .toUpperCase()
-    .replace(/[^A-Z0-9]/g, '')
-    .slice(0, 8)
-    .replace(/(.{4})(?=.)/g, '$1-');
+/** The friends boards are stale after the list changed (the Friends sheet adds and removes people). */
+export function forgetFriendsBoards(): void {
+  for (const b of BOARDS) cache.delete(`friends:${b.id}`);
+}
 
 export function leaderboardSheet(layer: HTMLElement, actions: LeaderboardActions): () => void {
   let board: BoardId = lastBoard;
@@ -204,7 +200,6 @@ export function leaderboardSheet(layer: HTMLElement, actions: LeaderboardActions
   let renaming = false;
   /** Which request's answer may still be shown: a newer one (another board) wins. */
   let asked = 0;
-  let friendsAsked = 0;
 
   const top = h('div', { class: 'board-top' });
   const list = h('div', { class: 'list board-list', role: 'list', 'aria-label': 'Leaderboard', 'aria-busy': 'false' });
@@ -236,7 +231,21 @@ export function leaderboardSheet(layer: HTMLElement, actions: LeaderboardActions
     scopeTabs.append(button);
     return button;
   });
-  const friendsPanel = h('div', { class: 'friends-panel' });
+  // Friends and invites have a sheet of their own (`friendsSheet.ts`); here is only the way to it, in both scopes.
+  const friendsPanel = h(
+    'div',
+    { class: 'friends-panel' },
+    h(
+      'div',
+      { class: 'list' },
+      h(
+        'div',
+        { class: 'row' },
+        h('div', { class: 'row-main' }, h('div', { class: 'row-title' }, 'Invite friends'), h('div', { class: 'row-sub' }, `You both get a chest when a friend reaches level ${INVITE_LEVEL}.`)),
+        h('button', { class: 'btn primary', type: 'button', onclick: () => actions.openFriends() }, 'Invite'),
+      ),
+    ),
+  );
 
   function pickScope(next: Scope): void {
     scope = next;
@@ -247,109 +256,6 @@ export function leaderboardSheet(layer: HTMLElement, actions: LeaderboardActions
       if (on) scopeThumb.style.transform = `translateX(${i * 100}%)`;
     });
     void load();
-    void renderFriends();
-  }
-
-  /** The friends lists are stale after adding or removing someone. */
-  function friendsChanged(): void {
-    for (const b of BOARDS) cache.delete(`friends:${b.id}`);
-    void load();
-    void renderFriends();
-  }
-
-  /** Under the friends list: your code to hand out, a field for theirs, and who is on your list. */
-  async function renderFriends(note?: string): Promise<void> {
-    if (scope !== 'friends' || !account) {
-      friendsPanel.replaceChildren();
-      return;
-    }
-    const ticket = ++friendsAsked;
-    let view: FriendsView;
-    try {
-      view = await fetchFriends();
-    } catch (error) {
-      if (ticket === friendsAsked && scope === 'friends') friendsPanel.replaceChildren(h('p', { class: 'field-help error', role: 'alert' }, describeError(error)));
-      return;
-    }
-    if (ticket !== friendsAsked || scope !== 'friends') return;
-
-    const copy = h('button', { class: 'btn', type: 'button' }, 'Copy');
-    copy.addEventListener('click', () => {
-      navigator.clipboard?.writeText(view.code).then(
-        () => {
-          copy.textContent = 'Copied';
-          window.setTimeout(() => (copy.textContent = 'Copy'), 1500);
-        },
-        () => undefined,
-      );
-    });
-
-    const input = h('input', {
-      class: 'text-input code-input sync-input',
-      type: 'text',
-      name: 'friend-code',
-      autocomplete: 'off',
-      autocapitalize: 'characters',
-      spellcheck: 'false',
-      enterkeyhint: 'go',
-      maxlength: '9',
-      placeholder: 'K7M2-9QXA',
-      'aria-label': "A friend's code",
-    });
-    const help = h('p', { class: 'field-help', 'aria-live': 'polite' }, note ?? 'Type the code your friend sees here. They do not have to add you back.');
-    const add = h('button', { class: 'btn', type: 'submit' }, 'Add');
-    input.addEventListener('input', () => {
-      input.value = tidyFriendCode(input.value);
-      help.classList.remove('error');
-    });
-    const form = h(
-      'form',
-      {
-        class: 'board-form',
-        novalidate: true,
-        onsubmit: (e: Event) => {
-          e.preventDefault();
-          if (input.value.replace(/-/g, '').length !== 8) {
-            help.textContent = 'A friend code has 8 letters and numbers, like K7M2-9QXA.';
-            help.classList.add('error');
-            return;
-          }
-          add.disabled = true;
-          addFriend(input.value).then(
-            (friend) => {
-              for (const b of BOARDS) cache.delete(`friends:${b.id}`);
-              void load();
-              void renderFriends(`${friend.name} is on your list.`);
-            },
-            (error: unknown) => {
-              add.disabled = false;
-              help.textContent = describeError(error);
-              help.classList.add('error');
-              input.focus();
-            },
-          );
-        },
-      },
-      h('div', { class: 'join-row' }, input, add),
-      help,
-    );
-
-    const people = view.friends.map((f) =>
-      h(
-        'div',
-        { class: 'row' },
-        h('div', { class: 'row-main' }, h('div', { class: 'row-title' }, f.name)),
-        h('button', { class: 'btn', type: 'button', 'aria-label': `Remove ${f.name} from your friends`, onclick: () => void removeFriend(f.id).then(friendsChanged) }, 'Remove'),
-      ),
-    );
-
-    friendsPanel.replaceChildren(
-      h('p', { class: 'section-note board-label' }, 'Your friend code'),
-      h('div', { class: 'list' }, h('div', { class: 'row' }, h('div', { class: 'row-main' }, h('div', { class: 'sync-code', 'aria-label': `Your friend code: ${view.code}` }, view.code)), copy)),
-      h('p', { class: 'section-note board-label' }, 'Add a friend'),
-      form,
-      ...(people.length > 0 ? [h('p', { class: 'section-note board-label' }, `Your friends (${people.length})`), h('div', { class: 'list' }, ...people)] : []),
-    );
   }
 
   function choose(next: BoardId): void {
@@ -371,7 +277,7 @@ export function leaderboardSheet(layer: HTMLElement, actions: LeaderboardActions
       rows.push(entryRow(board, { rank: view.me.rank, name: account.name, title: actions.records().title, score: view.me.score, meta: view.me.meta, me: true }, openInfo));
     }
     if (rows.length === 0) {
-      const empty = scope === 'friends' ? 'Add a friend with their code to compare your records.' : (BOARDS.find((b) => b.id === board)?.empty ?? '');
+      const empty = scope === 'friends' ? 'Invite a friend or add one with their code to compare your records.' : (BOARDS.find((b) => b.id === board)?.empty ?? '');
       rows.push(h('div', { class: 'row board-empty' }, h('div', { class: 'row-main' }, h('div', { class: 'row-title' }, 'Nobody here yet'), h('div', { class: 'row-sub' }, empty))));
     }
     list.replaceChildren(...rows);
@@ -427,7 +333,13 @@ export function leaderboardSheet(layer: HTMLElement, actions: LeaderboardActions
       return;
     }
     top.replaceChildren(
-      h('p', { class: 'section-note board-intro' }, 'Enter a name to see where you rank. Your level and your Unlimited record come from the progress on this device and stay up to date by themselves.'),
+      h(
+        'p',
+        { class: 'section-note board-intro' },
+        pendingInvite()
+          ? `A friend invited you. Enter a name, reach level ${INVITE_LEVEL} and you both get a chest. Your level and your Unlimited record come from the progress on this device.`
+          : 'Enter a name to see where you rank. Your level and your Unlimited record come from the progress on this device and stay up to date by themselves.',
+      ),
       nameForm(loadPlayerName(), 'Save', join, null),
     );
     renderFooter();
@@ -530,7 +442,6 @@ export function leaderboardSheet(layer: HTMLElement, actions: LeaderboardActions
       // Your records go up at once, then the list shows you in it.
       await syncScores(actions.records());
       cache.clear();
-      void renderFriends();
       await load();
       return null;
     } catch (error) {

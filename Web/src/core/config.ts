@@ -27,6 +27,13 @@ export type CityEvent = 'roadworks' | 'roadClosure' | 'concert' | 'vipConvoy' | 
 export const CITY_EVENTS: CityEvent[] = ['roadworks', 'roadClosure', 'concert', 'vipConvoy', 'policeOperation', 'schoolRun', 'marathon'];
 /** The Daily Shift's events, one a day in turn: the first six, so a new player's Daily never brings a late-game event. */
 export const DAILY_EVENTS: CityEvent[] = ['roadworks', 'roadClosure', 'concert', 'vipConvoy', 'policeOperation', 'schoolRun'];
+/**
+ * Invite a friend (Leo, 04.10.2026): the Shift level a friend must reach for both to get a chest. The
+ * service decides and pays (`Server/src/modules/referrals`, same number); the game only names it.
+ */
+export const INVITE_LEVEL = 5;
+/** The game mentions it once to everyone, and again when a player reaches this level (Leo, 04.10.2026): one who has the hang of it is who shares it. */
+export const INVITE_REMINDER_LEVEL = 10;
 
 export type RoadModule = 'tollBooth' | 'speedCamera' | 'towDepot';
 export const ROAD_MODULES: RoadModule[] = ['tollBooth', 'speedCamera', 'towDepot'];

@@ -36,7 +36,12 @@ export const screenTab = (s: Screen): Tab => (s.k === 'page' ? s.tab : 'game');
 export const showsTabBar = (s: Screen): boolean => s.k !== 'settings' && s.k !== 'playing';
 
 export type ShopSection = 0 | 1 | 2; // chests · collection · casino
-export type ProgressSection = 0 | 1 | 2 | 3; // records · today · goals (trials, mastery, feats) · museum
+export type ProgressSection = 0 | 1 | 2 | 3;
+/**
+ * The Progress tab's sections, left to right (Leo, 04.10.2026: what to do comes first, the long list of stats third):
+ * today (daily, weekly, pass, quests) · goals (trials, mastery, feats) · records (stats) · museum. The tab opens on `today`.
+ */
+export const PROGRESS = { today: 0, goals: 1, records: 2, museum: 3 } as const satisfies Record<string, ProgressSection>;
 
 export type Part = 'arm' | RoadModule;
 export const PARTS: Part[] = ['arm', 'tollBooth', 'speedCamera', 'towDepot'];

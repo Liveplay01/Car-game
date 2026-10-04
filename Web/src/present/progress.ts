@@ -17,14 +17,14 @@ import { MenuKit } from './menukit';
 import { moneyTag, textWidth } from './icons';
 import { S, Fmt } from './strings';
 import { ShopPage } from './shop';
-import type { ProgressSection } from './flow';
+import { PROGRESS, type ProgressSection } from './flow';
 import { MuseumPage, MuseumState } from './museum';
 import { Scroller, clipTo } from './scroll';
 import { knownRank, leaderboardEnabled } from '../net/leaderboard';
 
 /** What the Progress tab shows and animates (`ProgressPage.State`); each section is a list that scrolls. */
 export class ProgressState extends Scroller {
-  section: ProgressSection = 0;
+  section: ProgressSection = PROGRESS.today;
   age = 0;
   /** Seconds the page has been open: the police lights in the Museum keep flashing. */
   time = 0;
@@ -198,7 +198,7 @@ export const ProgressPage = {
   blocks(section: ProgressSection, save: SaveGame, today: number, state: ProgressState, width: number): Stack {
     const s = new Stack(width);
     const career = save.career;
-    if (section === 0) {
+    if (section === PROGRESS.records) {
       if (ProgressPage.showsElite(career)) s.row({ k: 'elite' }, 76);
       const stats = ProgressPage.stats(save);
       s.grid(
@@ -212,7 +212,7 @@ export const ProgressPage = {
         s.row({ k: 'more', count: rest.length, open: state.statsOpen }, 48);
         if (state.statsOpen) s.row({ k: 'stats', stats: rest }, rest.length * STAT_ROW);
       }
-    } else if (section === 1) {
+    } else if (section === PROGRESS.today) {
       s.row({ k: 'daily' }, 64);
       s.row({ k: 'weekly' }, 64);
       s.row({ k: 'pass' }, 64);
@@ -221,7 +221,7 @@ export const ProgressPage = {
       s.heading(S.progress.quests, `${done}/${quests.length}`, done === quests.length);
       for (const challenge of quests) s.row({ k: 'quest', challenge }, 56);
       s.row({ k: 'note', text: S.progress.questsHint }, 16);
-    } else if (section === 2) {
+    } else if (section === PROGRESS.goals) {
       const trialsDone = TRIALS.filter((x) => career.trialsDone.includes(x.id)).length;
       s.heading(S.progress.trials, `${trialsDone}/${TRIALS.length}`, trialsDone === TRIALS.length);
       if (!Unlocks.isOpen(career, 'trials')) s.row({ k: 'trialsLocked', level: Unlocks.level('trials') }, 56);
@@ -329,13 +329,16 @@ export const ProgressPage = {
   rankChip(viewport: Vec2, money: number): { frame: Rect; label: string | null } | null {
     if (!leaderboardEnabled) return null;
     const rank = knownRank('shift-level');
-    const label = rank === null ? S.leaderboard.chip : S.leaderboard.rank(rank);
+    // "Rank #4", then "#4" where the title leaves less room, then the podium alone.
+    const labels = rank === null ? [S.leaderboard.chip] : [S.leaderboard.rank(rank), `#${Fmt.number(rank)}`];
     const cash = Fmt.number(money);
     const right = MenuKit.headerChip(viewport, cash).x - MenuKit.chipWidth(cash) / 2 - 8;
-    const titleEnd = MenuKit.headerInset(viewport) + textWidth(S.tabs.progress, MenuKit.titleSize) + 12;
+    const titleEnd = MenuKit.headerInset(viewport) + textWidth(S.tabs.progress.toUpperCase(), MenuKit.titleSize) + 12;
     const y = MenuKit.headerY;
-    const full = 12 + PODIUM_WIDTH + 6 + textWidth(label, 15) + 14;
-    if (right - full >= titleEnd) return { frame: R.make(right - full, y - 16, right, y + 16), label };
+    for (const label of labels) {
+      const full = 12 + PODIUM_WIDTH + 6 + textWidth(label, 15) + 14;
+      if (right - full >= titleEnd) return { frame: R.make(right - full, y - 16, right, y + 16), label };
+    }
     return { frame: R.make(right - 32, y - 16, right, y + 16), label: null };
   },
 
@@ -384,8 +387,8 @@ export const ProgressPage = {
     const last = l.segments[l.segments.length - 1][1];
     MenuKit.segmented(list, PROGRESS_SECTIONS.map((i) => S.progress.section(i)), chosen, thumb, R.make(l.segments[0][1].minX, l.segments[0][1].minY, last.maxX, last.maxY));
     if (save.career.museumNew.length > 0) {
-      const r = l.segments[3][1];
-      ShopPage.badgeDot(list, v(R.center(r).x + textWidth(S.progress.section(3), 13) / 2 + 7, R.center(r).y - 6), 1);
+      const r = l.segments[PROGRESS_SECTIONS.indexOf(PROGRESS.museum)][1];
+      ShopPage.badgeDot(list, v(R.center(r).x + textWidth(S.progress.section(PROGRESS.museum), 13) / 2 + 7, R.center(r).y - 6), 1);
     }
 
     const start = list.items.length;

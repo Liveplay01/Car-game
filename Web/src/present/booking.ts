@@ -1,4 +1,4 @@
-import type { Config } from '../core/config';
+import { INVITE_REMINDER_LEVEL, type Config } from '../core/config';
 import { type SaveGame, type GameMode, type Hint, Careers } from '../core/career';
 import { Elite } from '../core/elite';
 import { SeasonPass } from '../core/seasonPass';
@@ -73,7 +73,10 @@ export function bookShift(save: SaveGame, result: ShiftResult, ctx: ShiftContext
   if (ctx.mode === 'shift' && !save.hints.includes('modes') && ctx.level <= cap && career.level > cap) news.push(S.modes.unlocked);
   // What this shift opened; the Casino opens quietly (PRODUCT.md: nothing points the player there).
   for (const f of Unlocks.open(career, ctx.config)) if (!openBefore.includes(f) && f !== 'casino') news.push(S.unlocks[f]);
-  const due = (['install', 'backup'] as const).filter((h) => !save.hints.includes(h) && career.level > (h === 'install' ? ctx.config.installHintAfterLevel : ctx.config.backupHintAfterLevel));
+  const due: Hint[] = (['install', 'backup'] as const).filter((h) => !save.hints.includes(h) && career.level > (h === 'install' ? ctx.config.installHintAfterLevel : ctx.config.backupHintAfterLevel));
+  // Level 10 reached (Leo, 04.10.2026): a small reminder that a friend brings both a chest. By level, not by crossing it:
+  // a reminder that had to wait (`takeTip`) comes at the next shift.
+  if (ctx.mode === 'shift' && !save.hints.includes('inviteReminder') && career.level >= INVITE_REMINDER_LEVEL) due.push('inviteReminder');
   save.hints.push(...due);
   if (result.isPerfectRun) {
     // The first one says what it is and what it pays (early on only: a veteran knows).

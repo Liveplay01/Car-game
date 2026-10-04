@@ -10,7 +10,8 @@ export const COLORS = {
   marking: [69, 76, 86, 1],
   primary: [244, 246, 249, 1],
   muted: [153, 162, 175, 1],
-  accent: [158, 230, 207, 1],
+  /** Street-lamp amber (Leo, 04.10.2026; was mint [158, 230, 207]). `--accent` in `ui/shell.css` is the same. */
+  accent: [255, 183, 3, 1],
   accentInk: [14, 16, 19, 1],
   destructive: [255, 90, 95, 1],
   scrim: [14, 16, 19, 0.8392],

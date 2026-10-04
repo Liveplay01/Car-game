@@ -38,7 +38,7 @@ export const FRIENDS_MIGRATIONS: readonly string[] = [
 const CODE_LENGTH = 8;
 export const MAX_FRIENDS = 100;
 
-class FriendStore {
+export class FriendStore {
   private readonly db: Db;
 
   constructor(db: Db) {

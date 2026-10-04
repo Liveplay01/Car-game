@@ -37,7 +37,9 @@ const { substream } = await load('/src/core/rng.ts');
 const { readGuestMessage, readHostMessage, RateLimit } = await load('/src/net/messages.ts');
 const { settleSpecial, advanceRush, newRush, runCard } = await load('/src/present/specialRuns.ts');
 const { trial: trialById, trialOpen, trialConfig, landmarkOf, LANDMARKS, LANDMARK_PRESTIGE, RUN_IDS, RUSH_ID, RUSH_REWARD, rushOpen, rematchId } = await load('/src/core/trials.ts');
-const { PATCH_NOTES, latestNote, itemText, itemCredit } = await load('/src/present/patchNotes.ts');
+const { PATCH_NOTES, latestNote, itemText, itemCredit, changelogFile } = await load('/src/present/patchNotes.ts');
+const { parseInviteCode } = await load('/src/net/invite.ts');
+const { INVITE_LEVEL, INVITE_REMINDER_LEVEL } = await load('/src/core/config.ts');
 const { default: qrcode } = await import('qrcode-generator');
 const { ResultBanner } = await load('/src/present/hud.ts');
 // Every module loaded at the top level comes before the first test: a load later down the file
@@ -366,9 +368,30 @@ test('the install and backup hints come due once, at their levels', () => {
   assert.deepEqual(bookShift(save, completed(level), context(level)).due, ['install']);
   save.career.level = level;
   assert.deepEqual(bookShift(save, completed(level), context(level)).due, []);
+  save.hints.push('inviteReminder'); // its own test below
   save.career.level = baseConfig.backupHintAfterLevel;
   const later = save.career.level;
   assert.deepEqual(bookShift(save, completed(later), context(later)).due, ['backup']);
+});
+
+test('reaching level 10 brings the invite reminder once, and only to a shift that gets there', () => {
+  const save = newSave();
+  save.career.level = INVITE_REMINDER_LEVEL - 1;
+  save.hints = ['modes', 'install', 'backup'];
+  const before = INVITE_REMINDER_LEVEL - 1;
+  // A shift that stays below it says nothing.
+  const low = { ...completed(before - 1) };
+  assert.deepEqual(bookShift(save, low, context(before - 1)).due, []);
+  save.career.level = INVITE_REMINDER_LEVEL - 1;
+  assert.deepEqual(bookShift(save, completed(before), context(before)).due, ['inviteReminder']);
+  assert.ok(save.hints.includes('inviteReminder'));
+  // Played again at 10 and beyond: not told twice. A veteran who has had the news (the start-up message marks both) is not told at all.
+  save.career.level = INVITE_REMINDER_LEVEL;
+  assert.deepEqual(bookShift(save, completed(INVITE_REMINDER_LEVEL), context(INVITE_REMINDER_LEVEL)).due, []);
+  const veteran = newSave();
+  veteran.hints = ['modes', 'install', 'backup', 'invite', 'inviteReminder'];
+  veteran.career.level = INVITE_REMINDER_LEVEL - 1;
+  assert.deepEqual(bookShift(veteran, completed(before), context(before)).due, []);
 });
 
 test('Mayhem keeps its own best and leaves the career alone', () => {
@@ -1168,6 +1191,41 @@ test("a player's line in What's new says so: from a player, or thanks by name", 
   } finally {
     PATCH_NOTES[0].items.shift();
   }
+});
+
+test("the changelog file is the same list as What's new, as plain data for the website", () => {
+  const file = changelogFile();
+  assert.equal(file.version, 1);
+  assert.equal(file.updated, PATCH_NOTES[0].id, 'the newest day tells a reader whether anything changed');
+  assert.deepEqual(file.days.map((d) => d.id), PATCH_NOTES.map((n) => n.id));
+  assert.deepEqual(JSON.parse(JSON.stringify(file)), file, 'nothing but JSON');
+  for (const [i, day] of file.days.entries()) {
+    assert.equal(day.items.length, PATCH_NOTES[i].items.length);
+    assert.equal(day.items[0].text, itemText(PATCH_NOTES[i].items[0]));
+  }
+  // A line from a player keeps its credit; one of ours has no `from` at all.
+  const custom = changelogFile([
+    { id: '2026-01-02', date: '2 January 2026', title: 'T', impact: 'fix', items: ['Ours.', { text: 'Theirs.', from: null }, { text: 'Named.', from: 'Mia' }] },
+  ]);
+  assert.deepEqual(custom.days[0].items, [{ text: 'Ours.' }, { text: 'Theirs.', from: null }, { text: 'Named.', from: 'Mia' }]);
+});
+
+// MARK: Invite a friend
+
+test('an invite code is read in any spelling, and only a real friend code is kept', () => {
+  assert.equal(parseInviteCode('k7m2-9qxa'), 'K7M29QXA');
+  assert.equal(parseInviteCode(' K7M2 9QXA '), 'K7M29QXA');
+  for (const bad of [null, '', 'K7M2', 'K7M2-9QXA-4TFB', 'K7M2-9QX0', 'K7M2-9QXI', '<script>', 'K7M2-9QX!']) assert.equal(parseInviteCode(bad), null, String(bad));
+});
+
+test('the chest from an invite says why it came, any other chest stays a gift from the team', () => {
+  assert.equal(S.rewards.invite('invite:friend:Anna', 'standard'), `INVITE REWARD · ${S.shop.chest('standard')} · Anna reached level ${INVITE_LEVEL}`);
+  assert.equal(S.rewards.invite('invite:welcome:Anna', 'standard'), `INVITE REWARD · ${S.shop.chest('standard')} · you joined through Anna`);
+  assert.equal(S.rewards.invite('invite:milestone:3', 'premium'), `INVITE BONUS · ${S.shop.chest('premium')} · 3 friends joined`);
+  // A colon in a name stays in the name.
+  assert.match(S.rewards.invite('invite:friend:A:B', 'standard'), /A:B reached/);
+  assert.equal(S.rewards.invite('bug report', 'standard'), null);
+  assert.equal(S.rewards.invite('invite:other:x', 'standard'), null);
 });
 
 // MARK: Landmarks, Boss Rush, QR code

@@ -2,6 +2,7 @@ import { defineConfig, type Plugin } from 'vite';
 import { createHash } from 'node:crypto';
 import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { changelogFile } from './src/present/patchNotes.ts';
 import { LEGAL_DOCS, type LegalDoc, GAME_NAME, missingLegal } from './src/present/legal.ts';
 
 /** The sound effects and music stems, so the game sounds right offline too. */
@@ -38,7 +39,8 @@ function serviceWorker(): Plugin {
     name: 'car-game-service-worker',
     apply: 'build',
     generateBundle(_options, bundle) {
-      const files = Object.keys(bundle).filter((f) => !f.endsWith('.map') && f !== 'sw.js');
+      // The changelog is for the website and always fetched fresh; the game never needs it.
+      const files = Object.keys(bundle).filter((f) => !f.endsWith('.map') && f !== 'sw.js' && f !== 'changelog.json');
       const assets = [
         '/',
         '/index.html',
@@ -148,7 +150,7 @@ function legalPage(doc: LegalDoc): string {
 <meta name="color-scheme" content="dark" />
 <link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32.png" />
 <style>
-  :root { --bg: #0b0d10; --primary: #f4f6f9; --muted: #99a2af; --accent: #9ee6cf; --separator: rgba(255, 255, 255, 0.08); }
+  :root { --bg: #0b0d10; --primary: #f4f6f9; --muted: #99a2af; --accent: #ffb703; --separator: rgba(255, 255, 255, 0.08); }
   * { box-sizing: border-box; }
   body { margin: 0; background: var(--bg); color: var(--primary); font: 16px/1.6 -apple-system, BlinkMacSystemFont, system-ui, 'Segoe UI', Roboto, sans-serif; }
   main { max-width: 680px; margin: 0 auto; padding: 48px 16px 64px; }
@@ -185,9 +187,31 @@ function legalPages(): Plugin {
   };
 }
 
+/**
+ * `/changelog.json`: the game's "What's new" as data, for the website (timing.love/changelog) and
+ * anyone else. Written from `src/present/patchNotes.ts` at every build, so it is never typed twice and
+ * is live with every deploy; `nginx.conf` lets other sites read it. The dev server answers it too.
+ */
+function changelogApi(): Plugin {
+  const body = (): string => JSON.stringify(changelogFile(), null, 2) + '\n';
+  return {
+    name: 'car-game-changelog',
+    generateBundle() {
+      this.emitFile({ type: 'asset', fileName: 'changelog.json', source: body() });
+    },
+    configureServer(server) {
+      server.middlewares.use('/changelog.json', (_req, res) => {
+        res.setHeader('Content-Type', 'application/json; charset=utf-8');
+        res.setHeader('Access-Control-Allow-Origin', '*');
+        res.end(body());
+      });
+    },
+  };
+}
+
 export default defineConfig({
   // The legal pages first: the service worker precaches everything the bundle holds by then.
-  plugins: [legalPages(), serviceWorker()],
+  plugins: [legalPages(), changelogApi(), serviceWorker()],
   build: {
     target: 'es2022',
     assetsInlineLimit: 0,

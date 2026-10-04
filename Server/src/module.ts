@@ -8,6 +8,17 @@ export interface ServerContext {
   config: Config;
   /** The clock, so tests can move it. Milliseconds since 1970. */
   now: () => number;
+  /**
+   * Heard when a score was taken onto a board (the leaderboard calls them). A module that reacts to
+   * progress (an invite that reaches its level) adds itself here instead of the leaderboard knowing it.
+   */
+  onScore: ((event: ScoreEvent) => void)[];
+}
+
+export interface ScoreEvent {
+  playerId: string;
+  board: string;
+  score: number;
 }
 
 /** The address of whoever is calling, for rate limits (set by the app before any route runs). */

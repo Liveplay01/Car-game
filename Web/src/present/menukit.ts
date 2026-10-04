@@ -28,7 +28,8 @@ export const MenuKit = {
     const y = MenuKit.headerY;
     const tag = list.tag;
     list.tag = 'headerTitle';
-    list.s(text(title, v(MenuKit.headerInset(viewport), y), MenuKit.titleSize, 'leading', 'bold'), 'primary');
+    // Capitals like the website's page titles (Leo, 04.10.2026); `progress.ts` measures the same text.
+    list.s(text(title.toUpperCase(), v(MenuKit.headerInset(viewport), y), MenuKit.titleSize, 'leading', 'bold'), 'primary');
     list.tag = 'headerChip';
     const size = 15;
     const chip = MenuKit.headerChip(viewport, money);

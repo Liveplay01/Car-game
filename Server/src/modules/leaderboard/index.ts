@@ -80,6 +80,8 @@ export function leaderboardModule(): ServerModule {
           const accepted = scores.submit(board.id, period, player.id, score, meta, ctx.now());
           const best = scores.of(board.id, period, player.id);
           if (!best) throw new ApiError(500, 'internal', 'The score was not saved.');
+          // Also an unchanged best counts: whoever hears it (an invite waiting for level 5) looks at the standing, not at news.
+          for (const listen of ctx.onScore) listen({ playerId: player.id, board: board.id, score: best.score });
           return c.json({ accepted, best: { rank: best.rank, score: best.score, meta: best.meta } });
         },
       );

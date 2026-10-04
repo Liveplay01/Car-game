@@ -115,6 +115,7 @@ wins. Every value below is in `core/config.ts` (`versus…`).
   perfect 4); a full bar (16) sends a lorry in your colour onto the arm just before a
   rival's lane, once round the ring. Five merges without a cut-off earn a **shield** that
   forgives one light bump (impact ≤ 60).
+- **Type and colour (Leo, 04.10.2026):** the accent is street-lamp amber (`COLORS.accent` in `present/theme.ts` = `--accent` in `ui/shell.css`; the icons come from `icon/make_icon.py` + `make_pwa_icons.py`). Titles and big numbers are Overpass Variable, italic 900, like the website's headings: `@font-face` in `ui/shell.css` (latin italic only, bundled and precached), `FONT_DISPLAY` for the canvas, `main.ts` waits for it up to 1.5 s and `forgetMeasures` re-measures when it arrives.
 - **Identity:** each lobby slot has a colour (mint, coral, violet, gold; `player1…4` in
   `theme.ts`, never a vehicle colour): the roof and glow of that player's cars, their lane
   line, pill and badge. The top shows clock, phase and one badge per player (cars sent,
@@ -171,6 +172,29 @@ leaderboard may refuse a name: then both keep the old one).
   sends wait a minute. Without `VITE_API_URL` in the build everything here is off.
 - The service's address must be in `connect-src` in `nginx.conf` (both CSP lines).
 - Privacy: `present/legal.ts`, section Leaderboard.
+
+## Invite a friend
+
+The friend code is the invite (`net/invite.ts`, `Server/src/modules/referrals`): Settings → **Friends** (`ui/friendsSheet.ts`, also the Invite row in the leaderboard) has
+your friend code with Copy, an **invite link** (the share sheet on a phone, the clipboard elsewhere), the friends you brought and how far they
+are, and adding a friend by code. A friend opens `…/i/K7M29QXA` (a preview with the inviter's name that sends on to the game) or a
+challenge link its sender shared, and arrives with `?ref=K7M29QXA`. `readInviteLink` keeps it (`carGame.invite.v1`)
+for a player below level 5 and takes it out of the address; once there is a leaderboard name `redeemInvite` hands it in
+(at start and on every account change). When the friend reaches `INVITE_LEVEL` (`core/config.ts`, the same number as
+the service's) both get a Standard Chest, which the game picks up like any gift from the team (`net/rewards.ts`:
+`collectRewards` runs at start, when the tab comes back, and after a record reached the service). A one-time message tells every player
+who knows the game (`hints: invite`), and another comes on reaching level 10 (`inviteReminder`, `bookShift`); a new
+player is told they need a name. Without `VITE_API_URL` none of it exists.
+
+## Changelog API
+
+`/changelog.json` is the game's What's new as data, written at every build from `present/patchNotes.ts` (plugin
+`changelogApi` in `vite.config.ts`; `changelogFile()` is the shape, tested in `npm test`). `nginx.conf` serves it with
+`Access-Control-Allow-Origin: *` and five minutes of cache; the service worker leaves it out of the precache. The
+website (timing.love/changelog and the home page's "Latest update") reads it in the browser, so a patch note shows
+there with the next deploy of the game, without `npm run content` or a commit in the website repo. The file is
+`{version: 1, game, updated: <newest day>, days: [{id, date, title, impact, items: [{text, from?}]}]}`: add fields,
+never rename them.
 
 ## Saving
 

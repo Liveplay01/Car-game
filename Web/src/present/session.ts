@@ -1,5 +1,5 @@
 import { World, STEP } from '../core/world';
-import { baseConfig, gravity, builtArmSlots, type Config } from '../core/config';
+import { baseConfig, gravity, builtArmSlots, INVITE_REMINDER_LEVEL, type Config } from '../core/config';
 import { type SaveGame, type GameMode, type Hint, Careers, newSave } from '../core/career';
 import { Elite } from '../core/elite';
 import { SeasonPass } from '../core/seasonPass';
@@ -17,7 +17,8 @@ import { Scoring } from '../core/scoring';
 import { type Vec2, v, add } from '../core/vec2';
 import { loadSave, saveTrust, writeSave } from '../storage/save';
 import { loadPlayerName } from '../storage/profile';
-import { syncScores, type Records } from '../net/leaderboard';
+import { leaderboardEnabled, syncScores, type Records } from '../net/leaderboard';
+import type { Reward } from '../net/rewards';
 import { cloudChanged, cloudEnabled, cloudLinked } from '../net/cloud';
 import { RenderList, R, Ease, toScreen, rect, type Camera } from './render';
 import { S, Fmt, money as moneyText } from './strings';
@@ -35,7 +36,7 @@ import { inPortal } from '../storage/device';
 import { Tutorial } from './tutorial';
 import { NoticeQueue } from './notices';
 import { bookShift } from './booking';
-import { type Screen, type Tab, type SwipeMode, SWIPE_MODES, type ScreenAction, type ProgressSection, TAB_BAR, BUILD_PAGES, barTab, screenTab, showsTabBar, BuildLayout } from './flow';
+import { type Screen, type Tab, type SwipeMode, SWIPE_MODES, type ScreenAction, type ProgressSection, PROGRESS, TAB_BAR, BUILD_PAGES, barTab, screenTab, showsTabBar, BuildLayout } from './flow';
 import { CameraRig, perspectiveOf, addRecede } from './perspective';
 import { PhotoCard } from './photo';
 import { TransitionTracker, ModePan } from './transitions';
@@ -327,6 +328,26 @@ export class GameSession {
     this.persist();
     if (income !== null) this.announce(S.daily.welcomeBack(Fmt.number(income)));
     this.announceBuildWithUs();
+    this.announceInvite();
+  }
+
+  private tipTaken = false;
+
+  /**
+   * One tip per visit (Leo, 04.10.2026): Cloud sync, installing, the website, the invite and its reminder all
+   * wait for their turn, so the game never opens on a stack of them. True for the first one asked in a visit; a
+   * tip refused here is not marked as given and comes back at the next visit (or shift).
+   */
+  takeTip(): boolean {
+    if (this.tipTaken) return false;
+    this.tipTaken = true;
+    return true;
+  }
+
+  /** A hint that came due but had to wait (`takeTip`): it is due again the next time. */
+  deferHint(hint: Hint): void {
+    this.save.hints = this.save.hints.filter((h) => h !== hint);
+    this.persist();
   }
 
   /**
@@ -334,10 +355,24 @@ export class GameSession {
    * can be sent and a bug hunter may get a gift. Not inside CrazyGames, which shows no links out.
    */
   private announceBuildWithUs(): void {
-    if (inPortal || !this.save.tutorialDone || this.save.hints.includes('buildWithUs')) return;
+    if (inPortal || !this.save.tutorialDone || this.save.hints.includes('buildWithUs') || !this.takeTip()) return;
     this.save.hints.push('buildWithUs');
     this.store();
     this.announce(...S.hints.buildWithUs);
+  }
+
+  /**
+   * Once for everyone who knows the game (Leo, 04.10.2026): the friend code is an invite, and both get a chest
+   * when the friend reaches level 5. Only where the service can pay (`leaderboardEnabled`) and links work (not
+   * inside CrazyGames); one tip per visit (`takeTip`). A player already past level 10 has had
+   * the message now, so the level 10 reminder (`bookShift`) is not told again.
+   */
+  private announceInvite(): void {
+    if (inPortal || !leaderboardEnabled || !this.save.tutorialDone || this.save.hints.includes('invite') || !this.takeTip()) return;
+    this.save.hints.push('invite');
+    if (this.save.career.level >= INVITE_REMINDER_LEVEL) this.save.hints.push('inviteReminder');
+    this.store();
+    this.announce(...S.hints.invite);
   }
 
   /** Simulation speed with the short slow motions of a takedown and of the lost shift. */
@@ -1060,7 +1095,7 @@ export class GameSession {
       this.progressPage.advance(realDelta);
       this.revealProgressAboveSheet();
       this.progressPage.follow(realDelta, this.progressScrollRange);
-    } else if (this.progressPage.age !== 0 || this.progressPage.section !== 0) {
+    } else if (this.progressPage.age !== 0 || this.progressPage.section !== PROGRESS.today) {
       this.leaveMuseum();
       this.progressPage = new ProgressState();
     }
@@ -1405,7 +1440,7 @@ export class GameSession {
 
   /** The Museum is being left: what was new among the entries that were on screen has been seen. */
   private leaveMuseum(): void {
-    if (this.progressPage.section !== 3) return;
+    if (this.progressPage.section !== PROGRESS.museum) return;
     const career = this.save.career;
     const shown = [...this.progressPage.museum.viewed].filter((id) => career.museumNew.includes(id));
     this.progressPage.museum.viewed.clear();
@@ -1535,12 +1570,12 @@ export class GameSession {
       }
       case 'progress': {
         // Records has one sheet: the Elite track, opened from its card.
-        if (this.progressPage.section === 0) return Details.elite(career, this.config, this.sceneTime - this.prestigeArmed <= GameSession.prestigeWindow);
-        if (this.progressPage.section === 1) return Details.pass(career, this.config, this.today);
+        if (this.progressPage.section === PROGRESS.records) return Details.elite(career, this.config, this.sceneTime - this.prestigeArmed <= GameSession.prestigeWindow);
+        if (this.progressPage.section === PROGRESS.today) return Details.pass(career, this.config, this.today);
         const feat = this.progressPage.feat;
-        if (this.progressPage.section === 2) return feat ? Details.feat(feat, career, this.config) : null;
+        if (this.progressPage.section === PROGRESS.goals) return feat ? Details.feat(feat, career, this.config) : null;
         const selected = this.progressPage.museum.selected;
-        return this.progressPage.section === 3 && selected ? Details.museum(selected, career, this.config) : null;
+        return this.progressPage.section === PROGRESS.museum && selected ? Details.museum(selected, career, this.config) : null;
       }
       default:
         return null;
@@ -1606,8 +1641,8 @@ export class GameSession {
       const showsCars = this.screen.k === 'ready' || ResultBanner.settled(this.resultAge) >= 0.5;
       // The money leads to the chests it buys, never straight into the casino.
       if (column === 'left') return { k: 'perform', action: { k: 'showShop', section: 0 } };
-      if (column === 'center') return { k: 'perform', action: showsCars ? { k: 'showShop', section: 1 } : { k: 'showProgress', section: 0 } };
-      return { k: 'perform', action: { k: 'showProgress', section: 0 } };
+      if (column === 'center') return { k: 'perform', action: showsCars ? { k: 'showShop', section: 1 } : { k: 'showProgress', section: PROGRESS.records } };
+      return { k: 'perform', action: { k: 'showProgress', section: PROGRESS.records } };
     }
     if (this.isPage('progress')) {
       if (ProgressPage.rankChipAt(point, this.lastViewport, this.save.career.money)) {
@@ -2301,16 +2336,16 @@ export class GameSession {
     this.persist();
   }
 
-  /** Rewards from the team (net/rewards.ts): the Ladybug skin, chests. Booked and announced. */
-  payRewards(items: readonly string[]): void {
+  /** Rewards from the team (net/rewards.ts): the Ladybug skin, chests, an invite's chest. Booked and announced. */
+  payRewards(rewards: readonly Pick<Reward, 'item' | 'reason'>[]): void {
     const career = this.save.career;
     const news: string[] = [];
-    for (const item of items) {
+    for (const { item, reason } of rewards) {
       if (item.startsWith('chest:')) {
         const kind = item.slice(6) as ChestKind;
         if (!CHEST_KINDS.includes(kind)) continue;
         career.chests.push(kind);
-        news.push(S.rewards.chest(kind));
+        news.push(S.rewards.invite(reason, kind) ?? S.rewards.chest(kind));
       } else if (cosmetic(item)) {
         if (Careers.owns(career, item)) continue;
         Careers.collect(career, item);

@@ -1,8 +1,8 @@
 /** Text measuring for layout: the renderers measure exactly. */
 export const FONT = '"SF Pro Text", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, Roboto, "Helvetica Neue", sans-serif';
 
-/** Titles and big numbers: rounded and heavy where the system has it, like the earlier web UI. */
-export const FONT_DISPLAY = 'ui-rounded, "SF Pro Rounded", "SF Pro Display", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, Roboto, sans-serif';
+/** Titles and big numbers (Leo, 04.10.2026): Overpass, heavy italic like the website's headings; the system's rounded face until it has loaded. */
+export const FONT_DISPLAY = '"Overpass Variable", ui-rounded, "SF Pro Rounded", "SF Pro Display", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, Roboto, sans-serif';
 
 /**
  * Fonts made so far, by size (bold as a negative size). Every text of every frame asks for
@@ -16,7 +16,7 @@ export function fontFor(size: number, bold: boolean): string {
   const key = bold ? -size - 1 : size;
   let font = fonts.get(key);
   if (font === undefined) {
-    font = bold && size >= 20 ? `800 ${size}px ${FONT_DISPLAY}` : `${bold ? 700 : 500} ${size}px ${FONT}`;
+    font = bold && size >= 20 ? `italic 900 ${size}px ${FONT_DISPLAY}` : `${bold ? 700 : 500} ${size}px ${FONT}`;
     // A text that grows or shrinks asks for a new size every frame: keep the map small.
     if (fonts.size > 2000) fonts.clear();
     fonts.set(key, font);
@@ -29,6 +29,12 @@ let measureCanvas: CanvasRenderingContext2D | null = null;
 /** Widths by size in tenths of a point (bold as negative), then by text: no key is built per call. */
 const widthCache = new Map<number, Map<string, number>>();
 let widths = 0;
+
+/** A font arrived (the heading face, `ui/shell.css`): widths measured with its stand-in are wrong, so they are measured again. */
+export function forgetMeasures(): void {
+  widthCache.clear();
+  widths = 0;
+}
 
 /** Exact width of a run of text at `size` points (the renderers measure exactly). */
 export function measure(textRun: string, size: number, bold: boolean): number {

@@ -14,6 +14,7 @@ import { feedbackModule } from './modules/feedback/index.ts';
 import { friendsModule } from './modules/friends/index.ts';
 import { leaderboardModule } from './modules/leaderboard/index.ts';
 import { playersModule } from './modules/players/index.ts';
+import { referralsModule } from './modules/referrals/index.ts';
 import { rtcModule } from './modules/rtc/index.ts';
 import { syncModule } from './modules/sync/index.ts';
 
@@ -21,7 +22,7 @@ import { syncModule } from './modules/sync/index.ts';
  * The features of the server, in the order they are set up. A module may use the ones above it
  * (the leaderboard needs players). Add a new feature here.
  */
-export const modules = (): ServerModule[] => [playersModule(), leaderboardModule(), friendsModule(), syncModule(), rtcModule(), challengesModule(), feedbackModule(), adminModule()];
+export const modules = (): ServerModule[] => [playersModule(), leaderboardModule(), friendsModule(), syncModule(), rtcModule(), challengesModule(), feedbackModule(), referralsModule(), adminModule()];
 
 /**
  * Who is calling. Behind Coolify's proxy that is the last address the proxy wrote into
@@ -48,7 +49,7 @@ export interface AppOptions {
 }
 
 export function createApp(options: AppOptions): Hono<AppEnv> {
-  const ctx: ServerContext = { db: options.db, config: options.config, now: options.now ?? Date.now };
+  const ctx: ServerContext = { db: options.db, config: options.config, now: options.now ?? Date.now, onScore: [] };
   const list = options.modules ?? modules();
   for (const m of list) migrate(ctx.db, m.name, m.migrations, ctx.now());
 

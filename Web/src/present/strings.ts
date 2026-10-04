@@ -1,4 +1,4 @@
-import { type Config, type Weather, type CityEvent, type BossKind, type LegendaryRule, weatherSeverity } from '../core/config';
+import { INVITE_LEVEL, INVITE_REMINDER_LEVEL, type Config, type Weather, type CityEvent, type BossKind, type LegendaryRule, weatherSeverity } from '../core/config';
 import type { Upgrade } from '../core/levels';
 import type { MasteryGoal, MasteryCompletion } from '../core/career';
 import { MASTERY_THRESHOLDS, masteryNumeral } from '../core/career';
@@ -510,6 +510,12 @@ export const S = {
     updated: 'Updated · See what’s new in Settings',
     /** Once for every player (Leo, 03.10.2026): the website and its forms. */
     /** Two short pills, one after the other: a notice is one line, about 55 characters on a phone. */
+    /** A friend's invite was kept (`?ref=`): with a name already, or still needing one. */
+    invited: [`Invited by a friend · Reach level ${INVITE_LEVEL} and you both get a chest`],
+    invitedNeedsName: [`Invited by a friend · Reach level ${INVITE_LEVEL} and you both get a chest`, 'Enter a name in Settings → Friends so your chest finds you'],
+    /** Once for everyone (`announceInvite`), and again at level 10 (`inviteReminder`): the friend code is the invite, and Settings → Friends is where it is. */
+    invite: [`New · Invite a friend and you both get a chest at level ${INVITE_LEVEL}`, 'Settings → Friends has your code and link'],
+    inviteReminder: [`Level ${INVITE_REMINDER_LEVEL} · Invite a friend and you both get a chest`, 'Settings → Friends has your code and link'],
     buildWithUs: ['New website: timing.love · Report bugs and ideas there', 'Bug hunters may get a gift · Settings → Build with us'],
   },
 
@@ -736,10 +742,30 @@ export const S = {
     passedThisWeek: 'Passed this week · new one on Monday',
   },
 
+  /** Invite a friend (Ranks → Friends). */
+  invite: {
+    shareText: (level: number): string => `Join me in Roundabout Timing! Reach level ${level} and we both get a free chest.`,
+  },
+
   rewards: {
     ladybug: 'LADYBUG UNLOCKED · thanks for hunting bugs',
     chest: (kind: ChestKind): string => `A GIFT FROM THE TEAM · ${S.shop.chest(kind)} · thank you`,
     item: (id: string): string => `A GIFT FROM THE TEAM · ${S.shop.item(id)} unlocked`,
+    /** A chest from an invite (`reason` as the service writes it: `invite:welcome:Name`, `invite:friend:Name`, `invite:milestone:3`); null for any other reason. */
+    invite: (reason: string, kind: ChestKind): string | null => {
+      const [, what, ...rest] = reason.startsWith('invite:') ? reason.split(':') : [];
+      const who = rest.join(':');
+      switch (what) {
+        case 'welcome':
+          return `INVITE REWARD · ${S.shop.chest(kind)} · you joined through ${who}`;
+        case 'friend':
+          return `INVITE REWARD · ${S.shop.chest(kind)} · ${who} reached level ${INVITE_LEVEL}`;
+        case 'milestone':
+          return `INVITE BONUS · ${S.shop.chest(kind)} · ${who} friends joined`;
+        default:
+          return null;
+      }
+    },
   },
 
   prestige: {
@@ -978,7 +1004,7 @@ export const S = {
   },
 
   progress: {
-    section: (i: number): string => ['Records', 'Today', 'Goals', 'Museum'][i],
+    section: (i: number): string => ['Today', 'Goals', 'Records', 'Museum'][i],
     /** The headings inside the sections: Records' long list, Today's quests, the three kinds of goal. */
     allStats: 'All stats',
     statsMore: (n: number): string => `${n} more ›`,
@@ -1026,7 +1052,7 @@ export const S = {
   leaderboard: {
     /** The header chip before a rank is known (not joined yet, or offline). */
     chip: 'Ranks',
-    rank: (n: number): string => `#${Fmt.number(n)}`,
+    rank: (n: number): string => `Rank #${Fmt.number(n)}`,
     chipLabel: 'Leaderboard',
   },
 

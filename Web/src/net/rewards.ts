@@ -12,6 +12,8 @@ export type RewardItem = 'ladybug' | 'chest:standard' | 'chest:premium' | 'chest
 export interface Reward {
   id: string;
   item: RewardItem;
+  /** Why it was given: `invite:welcome:Name`, `invite:friend:Name`, `invite:milestone:3`, `bug report` … (`Server/src/modules/referrals`). */
+  reason: string;
 }
 
 const PAID_KEY = 'carGame.rewardsPaid.v1';
@@ -39,7 +41,7 @@ let busy = false;
  * Picks up waiting rewards: `pay` books them in the save (and returns once it is written), then
  * the service hears they arrived. Quiet without a name, offline or without the service.
  */
-export async function collectRewards(pay: (items: RewardItem[]) => void): Promise<void> {
+export async function collectRewards(pay: (rewards: Reward[]) => void): Promise<void> {
   const account = loadAccount();
   if (!leaderboardEnabled || !account || busy) return;
   busy = true;
@@ -49,7 +51,7 @@ export async function collectRewards(pay: (items: RewardItem[]) => void): Promis
     const paid = paidIds();
     const fresh = rewards.filter((r) => !paid.includes(r.id));
     if (fresh.length > 0) {
-      pay(fresh.map((r) => r.item));
+      pay(fresh);
       rememberPaid(fresh.map((r) => r.id));
     }
     await apiRequest('POST', '/v1/me/rewards/claim', { token: account.token, body: { ids: rewards.map((r) => r.id) } });

@@ -1,7 +1,7 @@
 # Car Game server
 
 A small, self-hosted service next to the game: anonymous players with a name, leaderboards, a
-friends board, cloud saves by sync code, and relay logins for multiplayer.
+friends board, invites, cloud saves by sync code, and relay logins for multiplayer.
 Node 22 · [Hono](https://hono.dev) · SQLite (built into Node, no native packages). The game
 works without it; everything here is an extra.
 
@@ -42,6 +42,9 @@ only erasable syntax is allowed (no `enum`, no constructor parameter properties)
 | `GET /c/:id/preview.png` | Its picture, 1200 × 630, drawn by the server |
 | `POST /v1/feedback` `{kind, text, friendCode?, website?}` | Build with us (the website's forms): `kind` is `bug` or `idea`, `text` 10–2000 characters. One of each a day per address and per friend code (`429 once_a_day`). A bug report with a valid friend code pays the Ladybug skin once: `{id, reward: 'ladybug' \| null}`. `website` is a honeypot: filled in, nothing is kept |
 | `GET /v1/me/rewards` · `POST /v1/me/rewards/claim` `{ids}` | (token) Rewards waiting for the player (`ladybug`, `chest:standard`, `chest:premium`, `chest:event`); the game pays them and claims them |
+| `GET /v1/me/referral` | (token) Invite a friend: `{code, link, level, reward, milestones, invitedBy, invited: [{name, done, at}], done, max}`. `link` is the share page `/i/<code>` (null without a game address). Also settles the player's own invite when they are at the level already |
+| `POST /v1/me/referral` `{code}` | (token) A new player hands in the friend code they came with, once: `201` with the same view (`200` for the same inviter again). `404 unknown_code`, `422 invalid_code` / `own_code` / `not_new` (account older than 14 days) / `invite_loop`, `409 already_invited`; 10 an hour per player |
+| `GET /i/:code` | The invite page (outside `/v1`): Open Graph tags with the inviter's name and the game's own `og-image.jpg`, then straight on to `GAME_URL/?ref=<code>`. An unknown code still goes to the game, only without `?ref` |
 | `GET /admin` | (with `ADMIN_TOKEN`) The inbox page for bug reports and ideas: filter, mark seen / done / won't fix, delete, give a reward by friend code |
 
 The token travels as `Authorization: Bearer <token>`. Errors are `{error: {code, message}}`.
@@ -53,6 +56,17 @@ sign in a 5 × 7 dot font, drawn in code (`raster.ts`, `preview.ts`: no canvas, 
 package) and kept in memory for the most recent 64 links. Nobody can upload a picture. The sender's name
 comes from their leaderboard account and follows it: renamed, deleted or blocked, the link changes with
 it. A link lives a year. New links count against 60 an hour per address.
+
+**Invites** (`src/modules/referrals/`, Leo, 04.10.2026): the friend code is the invite. A friend who opens
+`/i/K7M29QXA` (or a challenge link its sender shared: `/c/:id` carries the sender's code as `?ref=`) lands in the
+game with the code and hands it in once they have a name. When their Shift level (the leaderboard's own score, so
+the service needs no extra report) reaches 5 (`INVITE_LEVEL`), both get a `chest:standard` through the rewards table
+the feedback module already has; the inviter's 3rd and 10th friend add a `chest:premium`. The module listens to
+accepted scores through `ctx.onScore` (`module.ts`), so the leaderboard does not know about invites. Plausibility
+only, like the boards: one invite per player, new accounts only (14 days), no loops (A invites B, B invites A), the
+inviter is paid for at most 25 friends (the friend still is), 10 hand-ins an hour per player. Someone who makes
+accounts for themselves wins a few chests and nothing else (no money can be bought: CLAUDE.md, Casino rule).
+Rewards carry their `reason` (`invite:welcome:<inviter>`, `invite:friend:<invitee>`, `invite:milestone:<n>`) so the game can say why.
 
 **Friends** are one-way: typing a code puts that player on your list, and they do not have to agree
 (their scores are public on the boards anyway; the code only saves the search). Blocked players
@@ -167,6 +181,7 @@ inbox shows every bug report and idea with the sender's name and friend code.
 Stored per player: the chosen name, a random id, a hash of the secret token, the scores (with the
 level / cars they came with), the friend code and the friends list, and two timestamps. No e-mail,
 no IP address (rate limits live in memory only). `DELETE /v1/me` removes all of it.
+Invites: one line per invited player (who brought them, when they reached the level); it goes when either player is deleted.
 Bug reports and ideas: the text, the sender when they gave a friend code (deleting the player keeps the text without them), and a hash of the address for up to two days (the once-a-day limit). Rewards hang off the player and go with them.
 Cloud saves belong to no player: a hash of the sync code, the save and three timestamps; `DELETE
 /v1/sync` removes one. A copy nobody has opened or changed for 200 days (`IDLE_SAVE_DAYS`,

@@ -1,4 +1,3 @@
-import type { Context } from 'hono';
 import { normalizeCode, randomCode } from '../../codes.ts';
 import type { Db } from '../../db.ts';
 import { ApiError } from '../../errors.ts';
@@ -6,6 +5,7 @@ import { integerField, readJson } from '../../http.ts';
 import type { AppEnv, ServerContext, ServerModule } from '../../module.ts';
 import { rateLimit } from '../../rateLimit.ts';
 import { PlayerStore, maybePlayer } from '../players/index.ts';
+import { escapeHtml, origin, page, PAGE_HEADERS, withHeaders } from '../../pages.ts';
 import { PREVIEW_HEIGHT, PREVIEW_WIDTH, renderPreview, type PreviewText } from './preview.ts';
 
 /**
@@ -47,6 +47,8 @@ const PICTURE_CACHE = 64;
 interface Challenge extends PreviewText {
   id: string;
   code: string;
+  /** The sender's friend code: whoever is new takes it along as an invite (`modules/referrals`). */
+  invite: string | null;
 }
 
 class ChallengeStore {
@@ -75,43 +77,13 @@ class ChallengeStore {
   get(id: string, now: number): Challenge | null {
     const row = this.db
       .prepare(
-        `SELECT c.id, c.code, c.mode, c.level, c.target, CASE WHEN p.banned = 0 THEN p.name END AS name
-         FROM challenges c LEFT JOIN players p ON p.id = c.player_id WHERE c.id = ? AND c.created_at >= ?`,
+        `SELECT c.id, c.code, c.mode, c.level, c.target, CASE WHEN p.banned = 0 THEN p.name END AS name, CASE WHEN p.banned = 0 THEN f.code END AS invite
+         FROM challenges c LEFT JOIN players p ON p.id = c.player_id LEFT JOIN friend_codes f ON f.player_id = c.player_id WHERE c.id = ? AND c.created_at >= ?`,
       )
-      .get(id, now - CHALLENGE_LIFETIME_MS) as { id: string; code: string; mode: Mode; level: number; target: number; name: string | null } | undefined;
-    return row ? { ...row, name: row.name ?? null } : null;
+      .get(id, now - CHALLENGE_LIFETIME_MS) as { id: string; code: string; mode: Mode; level: number; target: number; name: string | null; invite: string | null } | undefined;
+    return row ? { ...row, name: row.name ?? null, invite: row.invite ?? null } : null;
   }
 }
-
-const escapeHtml = (text: string): string =>
-  text.replace(/[&<>"']/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[ch]!);
-
-/** This service's address as the caller sees it, for absolute links in the page. */
-function origin(c: Context, ctx: ServerContext): string {
-  if (ctx.config.publicUrl) return ctx.config.publicUrl;
-  const url = new URL(c.req.url);
-  const proto = (ctx.config.trustProxy && c.req.header('x-forwarded-proto')?.split(',')[0]?.trim()) || url.protocol.replace(':', '');
-  const host = (ctx.config.trustProxy && c.req.header('x-forwarded-host')?.split(',')[0]?.trim()) || c.req.header('host') || url.host;
-  return `${proto}://${host}`;
-}
-
-const page = (title: string, head: string, body: string): string => `<!doctype html>
-<html lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>${escapeHtml(title)}</title>
-${head}
-<style>
-  :root { color-scheme: dark; }
-  body { margin: 0; min-height: 100vh; display: grid; place-items: center; background: #0e1116; color: #e3e6ea;
-    font: 17px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; text-align: center; padding: 0 16px; }
-  a { color: #9ee6cf; font-weight: 600; }
-</style>
-</head>
-<body><main>${body}</main></body>
-</html>
-`;
 
 function sharePage(ch: Challenge, self: string, game: string): string {
   const score = ch.target.toLocaleString('en-US');
@@ -119,7 +91,8 @@ function sharePage(ch: Challenge, self: string, game: string): string {
   const title = `Beat ${score} ${unit}`;
   const shift = ch.mode === 'shift' ? `the same level ${ch.level} shift` : ch.mode === 'mayhem' ? 'the same Mayhem run' : 'the same Unlimited run';
   const description = `${ch.name ? `${ch.name} challenges you` : 'A challenge'}: ${shift}, the very same traffic. One tap sends a car into the roundabout.`;
-  const target = `${game}/#challenge=${ch.code}`;
+  // A new player who follows it is invited by the sender at the same time (the game ignores it for anyone who is not new).
+  const target = `${game}/${ch.invite ? `?ref=${ch.invite}` : ''}#challenge=${ch.code}`;
   const picture = `${self}/c/${ch.id}/preview.png`;
   const head = [
     `<meta name="description" content="${escapeHtml(description)}">`,
@@ -146,18 +119,6 @@ const gonePage = (game: string | null): string =>
     '<meta name="robots" content="noindex">',
     `<p>This challenge link has expired or never existed.</p>${game ? `<p><a href="${escapeHtml(`${game}/`)}">Play Roundabout Timing</a></p>` : ''}`,
   );
-
-/** Sets the headers, replacing the app's defaults (`Cache-Control: no-store`). */
-function withHeaders(c: Context, headers: Record<string, string>): void {
-  for (const [name, value] of Object.entries(headers)) c.header(name, value);
-}
-
-const PAGE_HEADERS: Record<string, string> = {
-  'Content-Type': 'text/html; charset=utf-8',
-  'Cache-Control': 'public, max-age=300',
-  'Content-Security-Policy': "default-src 'none'; style-src 'unsafe-inline'; img-src 'self'",
-  'Referrer-Policy': 'no-referrer',
-};
 
 export function challengesModule(): ServerModule {
   let store: ChallengeStore;

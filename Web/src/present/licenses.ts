@@ -2,7 +2,7 @@
  * Open-source code inside the game (Settings → Legal → Licenses). Their licenses ask for the
  * notice to travel with every copy, so the texts come straight from the packages.
  * Only what ships to players: PeerJS (multiplayer, loaded on demand) and its dependencies, and
- * qrcode-generator (the lobby's QR code, also on demand).
+ * qrcode-generator (the lobby's QR code, also on demand), and the Overpass typeface (SIL Open Font License).
  */
 import peerjs from '../../node_modules/peerjs/LICENSE?raw';
 import msgpack from '../../node_modules/@msgpack/msgpack/LICENSE?raw';
@@ -10,6 +10,7 @@ import eventemitter3 from '../../node_modules/eventemitter3/LICENSE?raw';
 import binarypack from '../../node_modules/peerjs-js-binarypack/LICENSE?raw';
 import webrtcAdapter from '../../node_modules/webrtc-adapter/LICENSE.md?raw';
 import sdp from '../../node_modules/sdp/LICENSE?raw';
+import overpass from '../../node_modules/@fontsource-variable/overpass/LICENSE?raw';
 
 /** qrcode-generator ships no license file, only the notice in its source: the MIT text, with its copyright. */
 const qrcodeGenerator = `Copyright (c) 2009 Kazuhiko Arase
@@ -34,4 +35,5 @@ export const LICENSES: License[] = [
   { name: 'EventEmitter3', license: 'MIT', text: eventemitter3 },
   { name: '@msgpack/msgpack', license: 'ISC', text: msgpack },
   { name: 'qrcode-generator', license: 'MIT', text: qrcodeGenerator },
+  { name: 'Overpass (typeface, via Fontsource)', license: 'OFL-1.1', text: overpass },
 ].map((l) => ({ ...l, text: l.text.trim() }));

@@ -15,7 +15,7 @@ OUT = os.path.join(HERE, "..", "public", "icons")
 
 S = 1536  # 8 × 192
 BACKGROUND = (20, 24, 29)
-ACCENT = (158, 230, 207)
+ACCENT = (255, 183, 3)
 LINE = int(S * 0.055)
 
 
