@@ -33,6 +33,7 @@ App-Store-Arbeit mehr vorschlagen.
   Touch ohne Doppeltipp-Zoom (`touch-action`), Tastatur (Leertaste/Enter) auf dem Desktop.
 - **Spielsprache nur Englisch.** Die Projektdokumente sind auf Deutsch.
 - **Spielstand nur lokal im Browser** (`localStorage`, Schlüssel `carGame.save.v2`, alte `carGame.career.v1` werden übernommen).
+  **Versiegelt (Leo, 04.10.2026):** Speicherstand und Cloud-Kopie tragen ein HMAC-Siegel (`storage/seal.ts`, Web/README.md, „Sealed save“); eine von Hand geänderte Kopie wird verworfen. Das ist Reibung gegen DevTools-Edits, kein Beweis: der Schlüssel liegt im Bundle.
   Das Spiel selbst bleibt ohne Backend: nginx liefert nur statische Dateien aus, Geld, Truhen und Fortschritt liegen lokal.
 - **Ranglisten-Dienst (Leo, 30.09.2026):** Es gibt **einen kleinen, optionalen Server** in `Server/`
   (Node 22 + Hono + SQLite, eigener Container, eigene Coolify-Ressource auf einer Subdomain, Port 5051).

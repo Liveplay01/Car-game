@@ -503,6 +503,10 @@ export const S = {
     notSaved: 'This browser is not saving your progress · Cloud sync in Settings can keep a copy',
     /** The same where there is no Cloud sync (CrazyGames, no service). */
     notSavedHere: 'This browser is not saving your progress · It lasts until you close the game',
+    /** The save was changed outside the game (Leo, 04.10.2026): the last one the game wrote is back. */
+    saveRestored: 'Your save was changed outside the game · The last saved progress is back',
+    /** ...and there was nothing to go back to: what was played stays, money and chests do not. */
+    saveDistrusted: 'Your save was changed outside the game · Money and chests were reset',
     updated: 'Updated · See what’s new in Settings',
     /** Once for every player (Leo, 03.10.2026): the website and its forms. */
     /** Two short pills, one after the other: a notice is one line, about 55 characters on a phone. */
@@ -1751,8 +1755,6 @@ export const S = {
     rushHour: 'RUSH HOUR',
     tight: 'TIGHT!',
     cutOff: 'CUT OFF',
-    /** A car that braked its way in behind slow traffic: no timing, no points. */
-    crept: 'JAMMED · NO POINTS',
     busted: 'BUSTED!',
     dispatch: 'DISPATCH',
     seized: 'SEIZED',

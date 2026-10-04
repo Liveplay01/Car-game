@@ -44,6 +44,19 @@ export const itemCredit = (item: PatchItem): string | null => {
 
 export const PATCH_NOTES: PatchNote[] = [
   {
+    id: '2026-10-04',
+    date: '4 October 2026',
+    title: 'Fairer money: saves are sealed and the Casino can no longer be predicted',
+    impact: 'minor',
+    items: [
+      'The "Jammed · no points" label is gone. A car that has to brake its way in behind slow traffic still scores nothing, it just no longer pops up a message.',
+      'A Cloud sync copy that has not been opened or changed for 200 days is now deleted from our server. Opening the game with Cloud sync on keeps it.',
+      'Fixed: money could be added by editing the save in the browser. A save now carries a seal; if it does not match, the game goes back to the last progress it saved itself.',
+      'Fixed: the Casino’s next results could be worked out from the save. Every round now draws on randomness that never touches the save, and a Crash drive no longer stores where it will end.',
+      'Fixed: a Cloud sync copy could be edited on its way to another device. Copies are sealed the same way now, and one that does not match is refused.',
+    ],
+  },
+  {
     id: '2026-10-03',
     date: '3 October 2026',
     title: 'Boss Rush, the Étoile, a QR code for multiplayer, Build with us, a smoother Elite climb and fewer school buses',

@@ -675,7 +675,7 @@ Ein kleiner, **optionaler** Server auf `api-game.gustaff.dev` (Node 22, Hono, SQ
 | `challenges` | **Kurzlinks** (`/c/K7M29QXA`) mit Vorschaubild 1200 × 630, das der Server selbst zeichnet (kein Upload) |
 | `admin` | Moderation per Token: Spieler suchen, sperren, umbenennen, Einträge löschen |
 
-**Anti-Cheat nur über Plausibilitätsgrenzen** (`422 invalid_score`); wer DevTools hat, kann eine glaubhafte Fälschung schicken. **Geld und Truhen werden lokal berechnet, die Casino-Regel gilt weiter.** Rate-Limits im Speicher (kein IP-Speichern).
+**Anti-Cheat nur über Plausibilitätsgrenzen** (`422 invalid_score`); wer DevTools hat, kann eine glaubhafte Fälschung schicken. **Geld und Truhen werden lokal berechnet, die Casino-Regel gilt weiter.** Seit 04.10.2026 ist der Spielstand versiegelt (HMAC, Backup, Cloud-Kopie auch) und das Casino zieht Zufall, der nie im Spielstand steht (Web/README.md, „Sealed save“). Rate-Limits im Speicher (kein IP-Speichern).
 
 **Cloud sync im Spiel** (Settings → Cloud sync, `net/cloud.ts`): Sicherung per Code; eine Änderung geht 2 s später hoch, ein offenes Spiel schaut alle 10 s (und beim Zurückkommen oder Online-Gehen), ob ein anderes Gerät weiterspielt. Neuerer Stand ersetzt den lokalen von selbst, wenn dieses Gerät nichts Ungesendetes hat, zwischen den Schichten und nicht auf einer Seite; haben beide Geräte gespielt, wählt der Spieler. Das Spiel legt Leaderboard-Name, Token und Freunde mit in die Kopie: ein neues Gerät wird derselbe Spieler. Der Browser kann den Code im Passwortmanager merken. Löschen geht für alle Geräte. Der Export einer Datei und „Import a save file“ sind seit 01.10.2026 weg.
 

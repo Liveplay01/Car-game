@@ -1,6 +1,6 @@
 import type { SaveGame } from '../core/career';
 import { inPortal } from '../storage/device';
-import { parseImport } from '../storage/save';
+import { parseImport, SEAL_FIELD, sealSave } from '../storage/save';
 import { savePlayerName } from '../storage/profile';
 import { storage } from '../storage/store';
 import { type Account, apiRequest, leaderboardEnabled, LeaderboardError, loadAccount, onAccountChange, saveAccount } from './leaderboard';
@@ -123,12 +123,14 @@ export function fingerprint(text: string): string {
 }
 
 /**
- * What goes to the cloud: the save, plus the leaderboard account (`cloudAccount`: id, name and
- * the secret that proves the name). The game's own save reader ignores the extra field.
+ * What goes to the cloud: the save with its seal (a copy edited on the way no longer matches it,
+ * `storage/save.ts`), plus the leaderboard account (`cloudAccount`: id, name and the secret that
+ * proves the name). The game's own save reader ignores the extra fields.
  */
 function payload(save: SaveGame): Record<string, unknown> {
   const account = loadAccount();
-  return account ? { ...save, cloudAccount: account } : { ...save };
+  const sealed = { ...save, [SEAL_FIELD]: sealSave(save) };
+  return account ? { ...sealed, cloudAccount: account } : sealed;
 }
 
 /** Fingerprint of everything that goes up: a changed save or a changed account both count. */

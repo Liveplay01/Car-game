@@ -24,7 +24,7 @@ export const HOSTING = {
   location: 'Germany',
 };
 
-export const LEGAL_UPDATED = '3 October 2026';
+export const LEGAL_UPDATED = '4 October 2026';
 
 export const GAME_NAME = 'Roundabout Timing';
 
@@ -129,7 +129,7 @@ export const LEGAL_DOCS: LegalDoc[] = [
       {
         heading: 'Cloud sync',
         paragraphs: [
-          'Only if you turn on Cloud sync (Settings → Cloud sync), the game sends a copy of your progress (the same data as the progress file you can export: level, money, upgrades, collection, records, settings) to our server. No name, e-mail address or password is needed: the server makes a random sync code, and the code is the only key to the copy. Only its hash is stored, together with the copy and the times it was made and last changed. The copy is not public. Your IP address reaches the server with every request, as with any website; it is used only in memory to stop abuse and is not stored.',
+          'Only if you turn on Cloud sync (Settings → Cloud sync), the game sends a copy of your progress (the same data as the progress file you can export: level, money, upgrades, collection, records, settings) to our server. No name, e-mail address or password is needed: the server makes a random sync code, and the code is the only key to the copy. Only its hash is stored, together with the copy and the times it was made, last changed and last opened. The copy is not public. A copy that has not been opened or changed for 200 days is deleted automatically. Your IP address reaches the server with every request, as with any website; it is used only in memory to stop abuse and is not stored.',
           'Anyone who knows your sync code can load or replace your copy, so keep it private. A picture you chose for Big Screen is not part of it. If you have a name on the leaderboard, the copy also holds that name and the secret key that proves it is yours, so that on a new device you are the same player again, with the same name, scores and friends. Anyone with the sync code could therefore also act as that player.',
           'Legal basis: Art. 6(1)(b) GDPR (the backup you chose to make). To delete the copy for good: Settings → Cloud sync → Delete the cloud copy. Stopping on one device leaves the copy for your other devices.',
         ],

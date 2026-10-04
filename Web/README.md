@@ -184,6 +184,19 @@ shifts and not on a page; when both devices played, the player chooses. With a c
 day's login income is booked after that first look. The file export and the
 import of a save file are gone since 01.10.2026.
 
+**Sealed save (04.10.2026, players edited their money in DevTools):** `writeSave` adds a seal
+(`_seal`, HMAC-SHA-256 over the save's JSON, `storage/seal.ts`) and keeps the same text under
+`carGame.save.v2.bak`; `carGame.sealed.v1` marks that this browser has sealed once. `loadSave`
+checks the seal: a save that does not match (or lost its seal after the marker was set) is replaced
+by the backup (`saveTrust()` = `restored`), without a backup money and chests are reset
+(`distrusted`); the session tells the player. A save from before the seal is taken in once and sealed by
+its next write. Cloud copies carry the seal too (`net/cloud.ts`, `payload`); `parseImport` refuses a
+copy that does not match, and one without a seal after `UNSEALED_UNTIL` (01.11.2026). The key ships
+with the game, so this stops editing the stored text, not someone who reads the code. The casino
+draws on real randomness besides the saved seed (`Casino.useEntropy`, `main.ts`) and a Crash drive's
+seed is not saved. What stays open: copying the whole origin's storage back after a loss
+(save scumming) and a key taken from the bundle. A real guarantee needs the money on the server.
+
 **Big Screen** (Prestige ★5, `ui/backdrop.ts`): the player's own picture or video behind the
 roundabout, kept apart from the save under `carGame.backdrop.v1` (always plain `localStorage`,
 also on CrazyGames: an uploaded picture is hundreds of kilobytes). An upload is shrunk to a

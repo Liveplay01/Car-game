@@ -168,6 +168,8 @@ Stored per player: the chosen name, a random id, a hash of the secret token, the
 level / cars they came with), the friend code and the friends list, and two timestamps. No e-mail,
 no IP address (rate limits live in memory only). `DELETE /v1/me` removes all of it.
 Bug reports and ideas: the text, the sender when they gave a friend code (deleting the player keeps the text without them), and a hash of the address for up to two days (the once-a-day limit). Rewards hang off the player and go with them.
-Cloud saves belong to no player: a hash of the sync code, the save and two timestamps; `DELETE
-/v1/sync` removes one. The privacy page (`legal.ts`) describes Friends, Cloud sync and the relay. Before the game sends anything, add a paragraph
+Cloud saves belong to no player: a hash of the sync code, the save and three timestamps; `DELETE
+/v1/sync` removes one. A copy nobody has opened or changed for 200 days (`IDLE_SAVE_DAYS`,
+`src/modules/sync/index.ts`; `last_seen_at`, written by `GET`/`PUT`, at most hourly) is deleted: a sweep runs when the
+server starts and every six hours (`src/server.ts`). Leaderboard entries are not touched. The privacy page (`legal.ts`) describes Friends, Cloud sync and the relay. Before the game sends anything, add a paragraph
 to `Web/src/present/legal.ts` and bump `LEGAL_UPDATED` (see the project `CLAUDE.md`).

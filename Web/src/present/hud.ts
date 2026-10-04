@@ -186,9 +186,7 @@ export type PopupKind =
   | { k: 'race' }
   | { k: 'raceStopped'; n: number }
   /** A close shave past a motorbike: its bonus points. */
-  | { k: 'shave'; n: number }
-  /** A car that crept in behind slow traffic: it scores nothing (`creepPace`). */
-  | { k: 'crept' };
+  | { k: 'shave'; n: number };
 
 export interface Popup {
   serial: number;
@@ -659,11 +657,6 @@ export const HUD = {
         case 'cutOff':
           label = S.hud.cutOff;
           color = 'muted';
-          break;
-        case 'crept':
-          label = S.hud.crept;
-          color = 'muted';
-          size = Metrics.popupSize * 0.8;
           break;
         case 'penalty':
           label = Fmt.signed(-k.n);

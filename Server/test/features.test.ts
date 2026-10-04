@@ -4,6 +4,7 @@ import { createApp } from '../src/app.ts';
 import { normalizeCode, randomCode } from '../src/codes.ts';
 import { readConfig } from '../src/config.ts';
 import { openDb } from '../src/db.ts';
+import { purgeIdleSaves } from '../src/modules/sync/index.ts';
 
 const ADMIN = 'a'.repeat(32);
 
@@ -58,6 +59,28 @@ test('sync: a save is stored under a new code and comes back on another device',
   assert.deepEqual(same.json, { updatedAt: made.json.updatedAt });
   const older = await call('GET', `/v1/sync?have=${made.json.updatedAt - 1}`, { token: typed, ip: '10.9.9.9' });
   assert.deepEqual(older.json.save, SAVE);
+});
+
+test('sync: a copy nobody has opened for 200 days is deleted; opening or saving keeps it', async () => {
+  const { call, clock, db } = setup();
+  const day = 86_400_000;
+  const idle = await call('POST', '/v1/sync', { body: { save: SAVE }, ip: '10.4.0.1' });
+  const reader = await call('POST', '/v1/sync', { body: { save: SAVE }, ip: '10.4.0.2' });
+  const writer = await call('POST', '/v1/sync', { body: { save: SAVE }, ip: '10.4.0.3' });
+  clock.now += 150 * day;
+  // The game on screen asks for the save; another device saves.
+  await call('GET', `/v1/sync?have=${reader.json.updatedAt}`, { token: reader.json.code, ip: '10.4.1.1' });
+  const put = await call('PUT', '/v1/sync', { token: writer.json.code, body: { save: SAVE, baseUpdatedAt: writer.json.updatedAt }, ip: '10.4.1.2' });
+  assert.equal(put.status, 200);
+  clock.now += 100 * day;
+  assert.equal(purgeIdleSaves(db, clock.now), 1, 'only the copy nobody touched goes');
+  assert.equal((await call('GET', '/v1/sync', { token: idle.json.code, ip: '10.4.2.1' })).status, 404);
+  assert.equal((await call('GET', '/v1/sync', { token: reader.json.code, ip: '10.4.2.2' })).status, 200);
+  assert.equal((await call('GET', '/v1/sync', { token: writer.json.code, ip: '10.4.2.3' })).status, 200);
+  clock.now += 199 * day;
+  assert.equal(purgeIdleSaves(db, clock.now), 0, 'a copy that was opened 199 days ago stays');
+  clock.now += 2 * day;
+  assert.equal(purgeIdleSaves(db, clock.now), 2);
 });
 
 test('sync: wrong, unknown and missing codes are refused', async () => {

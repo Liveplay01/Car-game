@@ -7,12 +7,25 @@ import { MUSEUM_IDS, MUSEUM_SHELVES, type MuseumShelf, inferredSightings } from 
 import { TITLES, type TitleId } from '../core/elite';
 import { type CasinoGame, type CasinoPending, type CasinoRound, CASINO_GAMES } from '../core/casino';
 import { storage } from './store';
+import { sealOf } from './seal';
 import { PASS_TIERS, type HallEntry } from '../core/seasonPass';
 
 const KEY = 'carGame.save.v2';
 const LEGACY_KEY = 'carGame.career.v1';
+/** The save as last written, sealed: what comes back when the main entry was edited by hand. */
+const BACKUP_KEY = 'carGame.save.v2.bak';
+/** Set with the first sealed write: from then on a save without a seal is not an old one, it was tampered with. */
+const SEALED_KEY = 'carGame.sealed.v1';
 /** Everything the save is made of, for a switch to another store (`useStore`). */
-export const SAVE_KEYS = [KEY, LEGACY_KEY] as const;
+export const SAVE_KEYS = [KEY, LEGACY_KEY, BACKUP_KEY, SEALED_KEY] as const;
+
+/** The field that carries the seal, in the stored save and in the cloud copy. */
+export const SEAL_FIELD = '_seal';
+/**
+ * Saves and cloud copies written before the seal (04.10.2026) have none. They are taken in until this
+ * day, so nobody with a copy from an older version loses it; after it a copy has to carry a valid seal.
+ */
+const UNSEALED_UNTIL = Date.UTC(2026, 10, 1);
 
 type Raw = Record<string, unknown>;
 const isObject = (x: unknown): x is Raw => typeof x === 'object' && x !== null && !Array.isArray(x);
@@ -234,11 +247,62 @@ function readLegacy(raw: unknown): SaveGame | null {
   return save;
 }
 
+/**
+ * Whether a stored or sent save carries a valid seal: 'none' (written before seals), 'bad' (changed
+ * after it was sealed). The cloud copy's account and the seal itself are not part of what is sealed.
+ */
+export function checkSeal(raw: unknown): 'ok' | 'bad' | 'none' {
+  if (!isObject(raw) || typeof raw[SEAL_FIELD] !== 'string') return 'none';
+  const { [SEAL_FIELD]: seal, cloudAccount: _account, ...save } = raw;
+  return seal === sealOf(JSON.stringify(save)) ? 'ok' : 'bad';
+}
+
+/** The seal for a save, to send along with it. */
+export const sealSave = (save: SaveGame): string => sealOf(JSON.stringify(save));
+
+/**
+ * How the last `loadSave` went: 'fine', 'restored' (the stored save did not match its seal; the last
+ * one the game wrote is back) or 'distrusted' (changed and nothing to go back to: money and chests are
+ * gone, the rest stays). The session tells the player.
+ */
+export type SaveTrust = 'fine' | 'restored' | 'distrusted';
+let trust: SaveTrust = 'fine';
+export const saveTrust = (): SaveTrust => trust;
+
+function readBackup(): SaveGame | null {
+  try {
+    const text = storage().getItem(BACKUP_KEY);
+    if (!text) return null;
+    const raw: unknown = JSON.parse(text);
+    return checkSeal(raw) === 'ok' ? readSave(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
+/** A save nobody can vouch for keeps what was played, not what was handed out. */
+function distrust(save: SaveGame): SaveGame {
+  save.career.money = 0;
+  save.career.chests = [];
+  save.career.casinoPending = null;
+  return save;
+}
+
 /** Reads the save game; anything missing or malformed falls back field by field. */
 export function loadSave(): SaveGame {
+  trust = 'fine';
   try {
     const text = storage().getItem(KEY);
-    if (text) return readSave(JSON.parse(text));
+    if (text) {
+      const raw: unknown = JSON.parse(text);
+      const seal = checkSeal(raw);
+      // A save from before the seal is taken in (and sealed with its next write); once this browser
+      // has sealed one, a missing seal means someone took it off.
+      if (seal === 'ok' || (seal === 'none' && storage().getItem(SEALED_KEY) === null)) return readSave(raw);
+      const backup = readBackup();
+      trust = backup ? 'restored' : 'distrusted';
+      return backup ?? distrust(readSave(raw));
+    }
     const legacy = storage().getItem(LEGACY_KEY);
     if (legacy) {
       const migrated = readLegacy(JSON.parse(legacy));
@@ -253,7 +317,14 @@ export function loadSave(): SaveGame {
 /** Writes the save game. Storage can be full or blocked (private mode): the game plays on. */
 export function writeSave(save: SaveGame): boolean {
   try {
-    storage().setItem(KEY, JSON.stringify(save));
+    const text = JSON.stringify({ ...save, [SEAL_FIELD]: sealSave(save) });
+    storage().setItem(KEY, text);
+    try {
+      storage().setItem(BACKUP_KEY, text);
+      storage().setItem(SEALED_KEY, '1');
+    } catch {
+      /* no room for the backup: the save itself is written */
+    }
     return true;
   } catch {
     return false;
@@ -270,7 +341,7 @@ const EXPORT_TAG = 'car-game-save';
  * Reads an exported file (or the cloud copy) back. Null when it is not a Car Game save; otherwise it goes through
  * the same field-by-field checks as the stored save, so a hand-edited file cannot break the game.
  */
-export function parseImport(text: string): SaveGame | null {
+export function parseImport(text: string, now: number = Date.now()): SaveGame | null {
   let raw: unknown;
   try {
     raw = JSON.parse(text);
@@ -280,6 +351,9 @@ export function parseImport(text: string): SaveGame | null {
   if (!isObject(raw)) return null;
   const inner = raw.format === EXPORT_TAG ? raw.save : raw;
   if (!isObject(inner) || !isObject(inner.career)) return null;
+  // A copy that does not match its seal was edited; one without a seal is only an old copy until the cut-off.
+  const seal = checkSeal(inner);
+  if (seal === 'bad' || (seal === 'none' && now >= UNSEALED_UNTIL)) return null;
   return readSave(inner);
 }
 
@@ -287,6 +361,7 @@ export function eraseSave(): SaveGame {
   try {
     storage().removeItem(KEY);
     storage().removeItem(LEGACY_KEY);
+    storage().removeItem(BACKUP_KEY);
   } catch {
     /* nothing to remove */
   }

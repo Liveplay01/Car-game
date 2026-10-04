@@ -63,6 +63,14 @@ export interface CoinFlip {
   lost: string[];
 }
 
+/**
+ * Entropy the save does not hold (Leo, 04.10.2026): without it a player could read `casinoSeed` and
+ * the round count from their save and work out every coming result. The browser plugs in a source
+ * of real randomness at start (`useEntropy`); the rules and the bots run without one, and then the
+ * same seed still gives the same result.
+ */
+let entropy: (() => number) | null = null;
+
 const SALT: Record<CasinoGame | 'flip', number> = { crash: 0x0c4a54, slots: 0x5107b0, upgrade: 0x09e4ad, flip: 0x0f11b5 };
 
 /** Skins that can go on the table: a chest's car and map skins (no vehicles, nothing earned once). */
@@ -71,9 +79,14 @@ export const isStakeable = (item: Cosmetic): boolean => item.source.kind === 'ch
 export const Casino = {
   // MARK: Randomness
 
-  /** The stream of round `n`: the career's own seed, the round and the game. */
+  /** Where a round's unseen share of randomness comes from (a 32-bit number each call), or none. */
+  useEntropy(source: (() => number) | null): void {
+    entropy = source;
+  },
+
+  /** The stream of round `n`: the career's own seed, the round and the game, and the unsaved entropy. */
   rng(c: Career, game: CasinoGame | 'flip'): Rng {
-    return new Rng((c.casinoSeed ^ Math.imul(c.casinoRounds + 1, 0x9e3779b1) ^ SALT[game]) >>> 0);
+    return new Rng((c.casinoSeed ^ Math.imul(c.casinoRounds + 1, 0x9e3779b1) ^ SALT[game] ^ (entropy ? entropy() : 0)) >>> 0);
   },
 
   // MARK: Stakes
@@ -111,7 +124,12 @@ export const Casino = {
     c.casinoRounds++;
     Casino.book(c, day, -stake);
     c.money -= stake;
-    c.casinoPending = { k: 'crash', stake, seed };
+    // The seed decides where the drive crashes, so it lives in memory only: not enumerable, it is neither
+    // saved nor sent to the cloud, and a save read in DevTools does not say when to cash out. A reload
+    // pays the stake back anyway (`resume`).
+    const pending: CasinoPending = { k: 'crash', stake, seed: 0 };
+    Object.defineProperty(pending, 'seed', { value: seed, enumerable: false, writable: true });
+    c.casinoPending = pending;
     return Casino.crashPoint(seed, config);
   },
 

@@ -31,7 +31,23 @@ export const SYNC_MIGRATIONS: readonly string[] = [
     created_at INTEGER NOT NULL,
     updated_at INTEGER NOT NULL
   ) WITHOUT ROWID`,
+  // When the game last asked for or sent the save (Leo, 04.10.2026): a copy nobody has opened for
+  // IDLE_SAVE_DAYS is deleted (`purgeIdleSaves`). Copies that exist already start from their last change.
+  `ALTER TABLE sync_saves ADD COLUMN last_seen_at INTEGER NOT NULL DEFAULT 0;
+   UPDATE sync_saves SET last_seen_at = updated_at;
+   CREATE INDEX sync_saves_by_seen ON sync_saves (last_seen_at)`,
 ];
+
+const DAY_MS = 86_400_000;
+/** A cloud copy that has not been opened or changed for this long is deleted (privacy page, Cloud sync). */
+export const IDLE_SAVE_DAYS = 200;
+/** A game on screen asks every 10 s: the time of the last visit is written at most this often. */
+const SEEN_EVERY_MS = 3_600_000;
+
+/** Deletes the copies nobody has used for `IDLE_SAVE_DAYS`. Returns how many went. */
+export function purgeIdleSaves(db: Db, now: number): number {
+  return Number(db.prepare('DELETE FROM sync_saves WHERE last_seen_at < ?').run(now - IDLE_SAVE_DAYS * DAY_MS).changes);
+}
 
 /**
  * A save grows with the career (best times per level, chests, collection): a few KB early on,
@@ -59,7 +75,7 @@ class SyncStore {
   }
 
   create(raw: string, save: string, now: number): void {
-    this.db.prepare('INSERT INTO sync_saves (code_hash, save, created_at, updated_at) VALUES (?, ?, ?, ?)').run(hashCode(raw), save, now, now);
+    this.db.prepare('INSERT INTO sync_saves (code_hash, save, created_at, updated_at, last_seen_at) VALUES (?, ?, ?, ?, ?)').run(hashCode(raw), save, now, now, now);
   }
 
   get(raw: string): { save: string; updatedAt: number } | null {
@@ -71,8 +87,13 @@ class SyncStore {
   update(raw: string, save: string, base: number, now: number): number | null {
     // Strictly newer, so two saves within the same millisecond never share a version.
     const next = Math.max(now, base + 1);
-    const changed = Number(this.db.prepare('UPDATE sync_saves SET save = ?, updated_at = ? WHERE code_hash = ? AND updated_at = ?').run(save, next, hashCode(raw), base).changes);
+    const changed = Number(this.db.prepare('UPDATE sync_saves SET save = ?, updated_at = ?, last_seen_at = ? WHERE code_hash = ? AND updated_at = ?').run(save, next, next, hashCode(raw), base).changes);
     return changed > 0 ? next : null;
+  }
+
+  /** Notes a visit (the game asked for the save), not more than once an hour. */
+  seen(raw: string, now: number): void {
+    this.db.prepare('UPDATE sync_saves SET last_seen_at = ? WHERE code_hash = ? AND last_seen_at < ?').run(now, hashCode(raw), now - SEEN_EVERY_MS);
   }
 
   delete(raw: string): boolean {
@@ -118,8 +139,10 @@ export function syncModule(): ServerModule {
       });
 
       app.get('/sync', perAddress, (c) => {
-        const found = store.get(codeOf(c));
+        const raw = codeOf(c);
+        const found = store.get(raw);
         if (!found) throw unknownCode();
+        store.seen(raw, ctx.now());
         if (c.req.query('have') === String(found.updatedAt)) return c.json({ updatedAt: found.updatedAt });
         return c.json({ save: JSON.parse(found.save) as unknown, updatedAt: found.updatedAt });
       });

@@ -15,7 +15,7 @@ import { latestNote } from './patchNotes';
 import { ChestReel } from './chestReel';
 import { Scoring } from '../core/scoring';
 import { type Vec2, v, add } from '../core/vec2';
-import { loadSave, writeSave } from '../storage/save';
+import { loadSave, saveTrust, writeSave } from '../storage/save';
 import { loadPlayerName } from '../storage/profile';
 import { syncScores, type Records } from '../net/leaderboard';
 import { cloudChanged, cloudEnabled, cloudLinked } from '../net/cloud';
@@ -267,6 +267,8 @@ export class GameSession {
     // With a cloud copy the day begins after the first look at the cloud (`net/cloud.ts`, ready).
     if (!cloudLinked()) this.collectLoginIncome();
     this.resumeCasino();
+    const trust = saveTrust();
+    if (trust !== 'fine') this.announce(trust === 'restored' ? S.hints.saveRestored : S.hints.saveDistrusted);
   }
 
   private nextSeed(): number {
@@ -1636,11 +1638,8 @@ export class GameSession {
       this.tutorial?.react(e);
       switch (e.type) {
         case 'merged':
-          // Braked in behind slow traffic: nothing was timed, so it says so and counts for nothing.
-          if (e.crept) {
-            this.addPopup({ k: 'crept' }, e.position);
-            break;
-          }
+          // Braked in behind slow traffic: nothing was timed, so it counts for nothing and shows nothing.
+          if (e.crept) break;
           if (e.critical) {
             this.addPopup({ k: 'critical', n: e.points }, e.position);
             this.rim.signal('wave', 'coin');

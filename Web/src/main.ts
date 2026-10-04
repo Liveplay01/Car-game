@@ -4,6 +4,10 @@ import { inPortal } from './storage/device';
 import { gameLoaded, startCrazyGames } from './ui/crazygames';
 import { startCloud } from './net/cloud';
 import { startAds } from './ui/ads';
+import { Casino } from './core/casino';
+
+// The casino draws on real randomness besides the save's seed, so no result can be worked out beforehand.
+Casino.useEntropy(() => crypto.getRandomValues(new Uint32Array(1))[0]);
 
 const app = document.getElementById('app')!;
 const canvas = document.getElementById('scene') as HTMLCanvasElement;

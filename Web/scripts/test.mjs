@@ -7,6 +7,7 @@
 import { test, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { createServer } from 'vite';
+import { createHmac } from 'node:crypto';
 
 const server = await createServer({ server: { middlewareMode: true }, appType: 'custom', logLevel: 'error' });
 after(() => server.close());
@@ -17,7 +18,9 @@ const { baseConfig, BOSS_KINDS } = await load('/src/core/config.ts');
 const { forLevel } = await load('/src/core/levels.ts');
 const { newSave, newCareer, Careers } = await load('/src/core/career.ts');
 const { encodeChallenge, decodeChallenge, challengeOf } = await load('/src/core/challenge.ts');
-const { loadSave, writeSave, parseImport } = await load('/src/storage/save.ts');
+const { loadSave, writeSave, parseImport, saveTrust, sealSave, SEAL_FIELD } = await load('/src/storage/save.ts');
+const { sealOf } = await load('/src/storage/seal.ts');
+const { Casino } = await load('/src/core/casino.ts');
 const { fingerprint } = await load('/src/net/cloud.ts');
 const { iceServers } = await load('/src/net/rtc.ts');
 const { NoticeQueue } = await load('/src/present/notices.ts');
@@ -163,9 +166,10 @@ test('a file exported earlier still imports; other files are refused', () => {
   save.hints = ['modes', 'install'];
   // The format the export wrote before Cloud sync replaced it.
   const file = JSON.stringify({ format: 'car-game-save', version: 2, exportedAt: '2026-09-30T12:00:00.000Z', save }, null, 2);
-  assert.deepEqual(parseImport(file), save);
-  assert.equal(parseImport('{"hello": 1}'), null);
-  assert.equal(parseImport('nope'), null);
+  const before = Date.UTC(2026, 9, 20);
+  assert.deepEqual(parseImport(file, before), save);
+  assert.equal(parseImport('{"hello": 1}', before), null);
+  assert.equal(parseImport('nope', before), null);
 });
 
 test('a save survives the trip through the cloud unchanged, and a change is noticed', () => {
@@ -175,11 +179,118 @@ test('a save survives the trip through the cloud unchanged, and a change is noti
   save.unlimitedBest = 1500;
   save.hints = ['modes']; // what reading a save with a record adds anyway
   // The cloud stores the save as the game wrote it and sends it back as JSON.
-  const back = parseImport(JSON.stringify(JSON.parse(JSON.stringify(save))));
+  const back = parseImport(JSON.stringify(JSON.parse(JSON.stringify({ ...save, [SEAL_FIELD]: sealSave(save), cloudAccount: { id: 'a', name: 'Ann', token: 't' } }))));
   assert.deepEqual(back, save);
   assert.equal(fingerprint(JSON.stringify(back)), fingerprint(JSON.stringify(save)), 'a clean copy is not "changed"');
   save.career.money += 1;
   assert.notEqual(fingerprint(JSON.stringify(save)), fingerprint(JSON.stringify(back)));
+});
+
+// MARK: Sealed saves
+
+test('the seal is an HMAC-SHA-256, cut to 128 bits', () => {
+  for (const text of ['', 'abc', 'x'.repeat(55), 'x'.repeat(56), 'x'.repeat(64), 'Größe ✓ '.repeat(500)]) {
+    const key = ['rat', 'seal', '2026-10', String(0x5ea1ed), 'keep-the-money-honest'].join('·');
+    assert.equal(sealOf(text), createHmac('sha256', key).update(text, 'utf8').digest('hex').slice(0, 32), `${text.length} characters`);
+  }
+});
+
+const sealedWith = (money) => {
+  const map = fakeStorage();
+  const save = newSave();
+  save.career.money = money;
+  assert.equal(writeSave(save), true);
+  return { map, save };
+};
+
+test('a written save reads back sealed and trusted', () => {
+  const { save } = sealedWith(1234);
+  assert.equal(loadSave().career.money, 1234);
+  assert.equal(saveTrust(), 'fine');
+  assert.ok(JSON.parse(localStorage.getItem('carGame.save.v2'))[SEAL_FIELD]);
+  assert.ok(!(SEAL_FIELD in loadSave()), 'the seal is not part of the save');
+  assert.deepEqual(loadSave(), save);
+});
+
+test('money edited in the stored save is undone: the last written save comes back', () => {
+  const { map } = sealedWith(1234);
+  const edited = JSON.parse(map.get('carGame.save.v2'));
+  edited.career.money = 999_999_999;
+  map.set('carGame.save.v2', JSON.stringify(edited));
+  assert.equal(loadSave().career.money, 1234);
+  assert.equal(saveTrust(), 'restored');
+});
+
+test('taking the seal off does not help once this browser has sealed a save', () => {
+  const { map } = sealedWith(1234);
+  const edited = JSON.parse(map.get('carGame.save.v2'));
+  edited.career.money = 999_999_999;
+  delete edited[SEAL_FIELD];
+  map.set('carGame.save.v2', JSON.stringify(edited));
+  assert.equal(loadSave().career.money, 1234);
+  assert.equal(saveTrust(), 'restored');
+});
+
+test('edited save and no backup: what was played stays, money and chests do not', () => {
+  const { map } = sealedWith(1234);
+  const edited = JSON.parse(map.get('carGame.save.v2'));
+  edited.career.money = 999_999_999;
+  edited.career.level = 17;
+  edited.career.chests = ['premium'];
+  map.set('carGame.save.v2', JSON.stringify(edited));
+  map.delete('carGame.save.v2.bak');
+  const save = loadSave();
+  assert.equal(save.career.money, 0);
+  assert.deepEqual(save.career.chests, []);
+  assert.equal(save.career.level, 17);
+  assert.equal(saveTrust(), 'distrusted');
+});
+
+test('a save from before the seal is taken in, and is sealed by its next write', () => {
+  const map = fakeStorage({ 'carGame.save.v2': JSON.stringify({ career: { level: 9, money: 4000 } }) });
+  const save = loadSave();
+  assert.equal(save.career.money, 4000);
+  assert.equal(saveTrust(), 'fine');
+  writeSave(save);
+  assert.ok(map.get('carGame.sealed.v1'));
+  assert.equal(loadSave().career.money, 4000);
+});
+
+test('a cloud copy must match its seal; an unsealed one is only accepted until the cut-off', () => {
+  const save = newSave();
+  save.career.money = 700;
+  const copy = { ...save, [SEAL_FIELD]: sealSave(save), cloudAccount: { id: 'a', name: 'Ann', token: 't' } };
+  const late = Date.UTC(2027, 0, 1);
+  assert.equal(parseImport(JSON.stringify(copy), late)?.career.money, 700);
+  assert.equal(parseImport(JSON.stringify({ ...copy, career: { ...copy.career, money: 9e9 } }), late), null, 'edited after sealing');
+  const unsealed = { ...save };
+  assert.equal(parseImport(JSON.stringify(unsealed), Date.UTC(2026, 9, 20))?.career.money, 700);
+  assert.equal(parseImport(JSON.stringify(unsealed), late), null);
+});
+
+test('the casino cannot be worked out from the save, and a Crash drive keeps its end to itself', () => {
+  const career = newCareer();
+  career.money = 10_000;
+  career.casinoSeed = 4242;
+  // Without entropy the same save gives the same result (the bots rely on it).
+  const a = structuredClone(career);
+  const b = structuredClone(career);
+  assert.deepEqual(Casino.spin(a, 100, 1), Casino.spin(b, 100, 1));
+  // With it, the save alone no longer says what comes: the same save, many different draws.
+  let n = 1;
+  Casino.useEntropy(() => (n = (Math.imul(n, 1664525) + 1013904223) >>> 0));
+  try {
+    const stops = new Set();
+    for (let i = 0; i < 30; i++) stops.add(Casino.spin({ ...structuredClone(career), money: 10_000 }, 100, 1).stops.join());
+    assert.ok(stops.size > 10, `${stops.size} different spins from one save`);
+    const drive = structuredClone(career);
+    const point = Casino.startCrash(drive, 100, 1);
+    assert.ok(point >= 1);
+    assert.ok(!('seed' in JSON.parse(JSON.stringify(drive.casinoPending))), 'the drive is saved without its seed');
+    assert.equal(Casino.cashOut(drive, 1, 1), 0, 'a cash-out at 1.00× is a crash');
+  } finally {
+    Casino.useEntropy(null);
+  }
 });
 
 test('the ice servers always start with STUN, also without the service', async () => {
