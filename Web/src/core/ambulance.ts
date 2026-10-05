@@ -38,11 +38,6 @@ export const clearArc = (w: World, type: VehicleType): number =>
 
 export const reservedAmbulanceArm = (w: World): Arm | null => (w.ambulance.kind === 'warning' ? w.ambulance.arm : null);
 
-export function ambulanceVehicle(w: World): number | null {
-  const a = w.ambulance;
-  return a.kind === 'arriving' || a.kind === 'active' ? a.vehicle : null;
-}
-
 /** The ambulance's run takes it round the ring the long way: out at the last arm before its own. */
 export function longestExit(w: World, arm: Arm): Arm {
   const n = w.layout.arms.length;

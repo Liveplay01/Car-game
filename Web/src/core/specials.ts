@@ -22,12 +22,6 @@ export type CriminalPhase =
  */
 export const bossDue = (w: World): boolean => w.config.convoy && !w.score.bossBusted;
 
-/** The boss on the road right now, if there is one. */
-export function bossVehicle(w: World): number | null {
-  const id = criminalVehicle(w);
-  return id !== null && w.vehicle(id)?.role === 'boss' ? id : null;
-}
-
 export const reservedCriminalArm = (w: World): Arm | null => (w.criminal.kind === 'warning' ? w.criminal.arm : null);
 
 export const isChased = (w: World, id: number): boolean => w.criminal.kind === 'active' && w.criminal.vehicle === id;

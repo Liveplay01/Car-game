@@ -1,7 +1,7 @@
 import type { World } from '../core/world';
 import type { Layout } from '../core/roundabout';
 import { type Vec2, v, add, sub, mul, dot, dist, length, left, normalize, fromAngle, angleOf, TAU } from '../core/vec2';
-import { type RenderList, type Camera, rect, circle, arc, line, polygon, unitHash, toScreen } from './render';
+import { type RenderList, type Camera, rect, circle, arc, line, polygon, unitHash as hash, toScreen } from './render';
 import type { ColorToken } from './theme';
 import { Plants } from './mapPlants';
 import { Centre } from './mapCentre';
@@ -64,8 +64,6 @@ export const MAP_THEMES: MapTheme[] = [
 
 /** The maps that play in the sun: a bright ground, roofs in daylight colours. */
 export const DAYLIGHT: readonly MapTheme[] = ['sand', 'forest', 'autumn', 'sakura', 'meadow', 'tropic', 'snowfall', 'vineyard', 'canyon', 'highland', 'beach'];
-
-const hash = (i: number, salt: number): number => unitHash(i, salt);
 
 function onScreen(center: Vec2, radius: number, cam: Camera): boolean {
   const at = toScreen(cam, center);

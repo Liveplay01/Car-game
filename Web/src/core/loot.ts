@@ -211,11 +211,6 @@ export const isHonour = (item: Cosmetic): boolean =>
   item.source.kind === 'bugReport' ||
   item.source.kind === 'find';
 
-/** The next Legendary Shift milestone still to reach. */
-export function nextLegendaryReward(collection: readonly string[]): Cosmetic | undefined {
-  return COSMETICS.find((x) => x.source.kind === 'legendary' && !collection.includes(x.id));
-}
-
 export const cosmetic = (id: string): Cosmetic | undefined => COSMETICS.find((x) => x.id === id);
 
 export function seasonOf(day: number): Season {

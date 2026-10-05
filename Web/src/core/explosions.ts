@@ -1,7 +1,7 @@
 import type { Arm } from './roundabout';
 import { type Capsule, capsule, gap } from './collision';
 import { Vehicle, type Waiting, isHeavy, isExplosive, mergeProfile } from './vehicle';
-import { type Vec2, add, sub, mul, dot, cross, left, normalize, length, lengthSq, fromAngle, v, dist, wrap } from './vec2';
+import { type Vec2, add, sub, mul, dot, cross, left, normalize, length, lengthSq, fromAngle, v, dist, wrap, clamp } from './vec2';
 import type { World } from './world';
 import { unitHashId } from './world';
 import { criminalWrecked, transporterWrecked } from './specials';
@@ -23,7 +23,7 @@ function closestOnSegment(a: Vec2, b: Vec2, p: Vec2): Vec2 {
   const ab = sub(b, a);
   const l = lengthSq(ab);
   if (l <= 1e-12) return a;
-  const t = Math.min(Math.max(dot(sub(p, a), ab) / l, 0), 1);
+  const t = clamp(dot(sub(p, a), ab) / l, 0, 1);
   return add(a, mul(ab, t));
 }
 

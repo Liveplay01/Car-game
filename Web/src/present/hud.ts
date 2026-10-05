@@ -9,7 +9,7 @@ import { secureZone } from '../core/specials';
 import { clearZone } from '../core/ambulance';
 import { learnerZone } from '../core/learner';
 import { oversizeZone } from '../core/oversize';
-import { type Vec2, v, add, sub, mul, fromAngle, TAU } from '../core/vec2';
+import { type Vec2, v, add, sub, mul, fromAngle, TAU, clamp } from '../core/vec2';
 import { type RenderList, type Rect, R, rect, circle, arc, line, text, Ease, Metrics, toScreen, moved, type Align } from './render';
 import type { ColorToken } from './theme';
 import { MenuKit } from './menukit';
@@ -783,7 +783,7 @@ export const HUD = {
       }
       // Never half off the screen: a popup at a side arm moves in until it fits.
       const half = textWidth(label, size * scale) / 2 + 12;
-      if (half * 2 < cam.viewport.x) at = v(Math.min(Math.max(at.x, half), cam.viewport.x - half), at.y);
+      if (half * 2 < cam.viewport.x) at = v(clamp(at.x, half, cam.viewport.x - half), at.y);
       placed.push({ at, height });
       list.s(text(label, add(at, v(0, -rise)), size * scale, 'center', 'bold'), color, opacity);
     }

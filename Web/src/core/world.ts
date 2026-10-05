@@ -4,7 +4,7 @@ import { type Pose } from './paths';
 import { Rng, substream } from './rng';
 import { capsule, contact, contactPoint, type Capsule, type Contact } from './collision';
 import { collide, skid, unitInertia, type RigidBody } from './crash';
-import { type Vec2, add, sub, mul, dot, fromAngle, left, normalize, angleDelta, wrap, lengthSq, v, length } from './vec2';
+import { type Vec2, add, sub, mul, dot, fromAngle, left, normalize, angleDelta, wrap, lengthSq, v, length, clamp } from './vec2';
 import {
   Vehicle,
   type VehicleType,
@@ -79,11 +79,11 @@ function hermite(u: number, start: number, startSlope: number, end: number, endS
 
 /** How far (0…1) the next car has come towards the line; it brakes softly at the end. */
 export const approach = (progress: number, startSpeed = 0): number =>
-  hermite(Math.min(Math.max(progress, 0), 1), 0, Math.min(Math.max(startSpeed, 0), 1), 1, 0);
+  hermite(clamp(progress, 0, 1), 0, clamp(startSpeed, 0, 1), 1, 0);
 
 export const approachSpeed = (progress: number, startSpeed = 0): number => {
-  const x = Math.min(Math.max(progress, 0), 1);
-  const s = Math.min(Math.max(startSpeed, 0), 1);
+  const x = clamp(progress, 0, 1);
+  const s = clamp(startSpeed, 0, 1);
   return 6 * x * (1 - x) + s * (3 * x * x - 4 * x + 1);
 };
 
@@ -674,7 +674,7 @@ export class World {
   /** Crumples the sheet metal where the car was hit: the harder, the deeper. */
   addDent(veh: Vehicle, point: Vec2, impact: number): void {
     const local = this.localPoint(point, veh);
-    const depth = Math.min(Math.max(impact * this.config.dentPerImpact, 0.6), this.config.maxDent);
+    const depth = clamp(impact * this.config.dentPerImpact, 0.6, this.config.maxDent);
     const near = veh.dents.find((dent) => length(sub(dent.point, local)) < 4);
     if (near) {
       near.depth = Math.min(this.config.maxDent * 1.3, near.depth + depth * 0.5);
@@ -1507,11 +1507,11 @@ export class World {
         return 1 - approach(driven / c.queueSpacing, q.rollingSpeed);
       }
       case 'advancing': {
-        const x = c.queueAdvanceDuration > 0 ? Math.min(Math.max(state.elapsed / c.queueAdvanceDuration, 0), 1) : 1;
+        const x = c.queueAdvanceDuration > 0 ? clamp(state.elapsed / c.queueAdvanceDuration, 0, 1) : 1;
         return (1 - x) * (1 - x) * (1 - x);
       }
       case 'filling': {
-        const x = c.queueFillSeconds > 0 ? Math.min(Math.max(state.elapsed / c.queueFillSeconds, 0), 1) : 1;
+        const x = c.queueFillSeconds > 0 ? clamp(state.elapsed / c.queueFillSeconds, 0, 1) : 1;
         return c.queueFillSlots * (1 - x * x * (3 - 2 * x));
       }
     }
@@ -1628,7 +1628,7 @@ export class World {
     const since = this.shift.rushHourSince === null ? null : this.shift.rushHourSince - (this.shift.startedAt ?? 0);
     const target = c.ringSpeed * tempoAt(time, since, c) * this.versusTempo(time);
     if (this.tempoGlide) {
-      const x = Math.min(Math.max((now - this.tempoGlide.since) / c.tempoGlideSeconds, 0), 1);
+      const x = clamp((now - this.tempoGlide.since) / c.tempoGlideSeconds, 0, 1);
       this.ringSpeed = this.tempoGlide.from + (target - this.tempoGlide.from) * x * x * (3 - 2 * x);
       if (x >= 1) this.tempoGlide = null;
     } else {
@@ -1851,7 +1851,7 @@ export class World {
     if (!this.isVersus) return 1;
     const c = this.config;
     const glide = (at: number): number => {
-      const x = Math.min(Math.max((time - at) / Math.max(c.versusPhaseGlide, 1e-6), 0), 1);
+      const x = clamp((time - at) / Math.max(c.versusPhaseGlide, 1e-6), 0, 1);
       return x * x * (3 - 2 * x);
     };
     return 1 + (c.versusRushTempo - 1) * glide(c.versusRushAt) + (c.versusSuddenDeathTempo - c.versusRushTempo) * glide(c.versusSuddenDeathAt);

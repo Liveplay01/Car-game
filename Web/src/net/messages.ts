@@ -1,4 +1,5 @@
 import { VERSUS_MAX_PLAYERS, BEST_OF, type BestOf, type Series } from '../core/versus';
+import { type Raw, isObject, isInt } from '../core/guards';
 
 /**
  * What travels between the devices of a multiplayer room, and the checks at the door. The
@@ -72,11 +73,7 @@ export const cleanName = (name: string): string =>
 
 // MARK: Checks
 
-type Raw = Record<string, unknown>;
-const isObject = (x: unknown): x is Raw => typeof x === 'object' && x !== null && !Array.isArray(x);
 const isNumber = (x: unknown): x is number => typeof x === 'number' && Number.isFinite(x);
-/** A whole number in [min, max]. */
-const isInt = (x: unknown, min: number, max: number): x is number => Number.isInteger(x) && (x as number) >= min && (x as number) <= max;
 /** Longer than any name or token the game makes: anything above is not one of ours. */
 const TEXT_MAX = 64;
 const isText = (x: unknown): x is string => typeof x === 'string' && x.length <= TEXT_MAX;

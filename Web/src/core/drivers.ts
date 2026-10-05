@@ -3,7 +3,7 @@ import { type Drive, type Merging, isInFlow, newDrive, profileDistance, type Veh
 import type { Arm } from './roundabout';
 import { capsule } from './collision';
 import { nearestOnPath } from './paths';
-import { type Vec2, add, sub, mul, dot, length, normalize, angleOf, fromAngle, wrap, TAU } from './vec2';
+import { type Vec2, add, sub, mul, dot, length, normalize, angleOf, fromAngle, wrap, TAU, clamp } from './vec2';
 import { Rng } from './rng';
 import type { World } from './world';
 import { transporterAhead } from './specials';
@@ -126,7 +126,7 @@ function paceMerge(w: World, p: Merging, occupants: Occupant[], id: number, lane
     p.braking = false;
     return;
   }
-  p.pace = nominal > 1e-9 ? Math.min(Math.max(next / nominal, 0), 1) : 1;
+  p.pace = nominal > 1e-9 ? clamp(next / nominal, 0, 1) : 1;
   p.braking = next < current - 1e-9 || next <= c.standingSpeed;
 }
 

@@ -40,6 +40,12 @@ interface AdBreak {
 
 type AdCommand = AdBreak | { preloadAdBreaks?: 'on' | 'auto'; sound?: 'on' | 'off' };
 
+declare global {
+  interface Window {
+    adsbygoogle?: AdCommand[];
+  }
+}
+
 /** How long a failed ask rests before the game asks again (an ad may be there next time). */
 const RETRY_MS = 30_000;
 
@@ -51,7 +57,6 @@ let showAd: (() => void) | null = null;
 let asking = false;
 let lastAsk = -Infinity;
 let quiet: (on: boolean) => void = () => undefined;
-const readyListeners = new Set<() => void>();
 
 /** How the game's sound goes quiet while Google's ad plays, and comes back after. */
 export function onRewardedAudio(fn: (on: boolean) => void): void {
@@ -59,8 +64,7 @@ export function onRewardedAudio(fn: (on: boolean) => void): void {
 }
 
 function push(command: AdCommand): void {
-  const queue = ((window as unknown as { adsbygoogle?: unknown[] }).adsbygoogle ??= []);
-  queue.push(command);
+  (window.adsbygoogle ??= []).push(command);
 }
 
 export function startAds(): void {
@@ -95,7 +99,6 @@ function prepare(): void {
     name: 'reward',
     beforeReward: (show) => {
       showAd = show;
-      readyListeners.forEach((fn) => fn());
     },
     beforeAd: () => quiet(true),
     afterAd: () => quiet(false),
@@ -122,12 +125,6 @@ export function adReady(): boolean {
   if (!rewardedAdsLive) return true;
   if (showAd === null) prepare();
   return showAd !== null;
-}
-
-/** Calls `fn` when an ad becomes ready, so a page that waits for one can show its offer. */
-export function onAdReady(fn: () => void): () => void {
-  readyListeners.add(fn);
-  return () => readyListeners.delete(fn);
 }
 
 /**

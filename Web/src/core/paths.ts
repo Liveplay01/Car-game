@@ -1,4 +1,4 @@
-import { type Vec2, add, sub, mul, dist, lengthSq, angleOf, fromAngle, wrap, TAU, v } from './vec2';
+import { type Vec2, add, sub, mul, dist, lengthSq, angleOf, fromAngle, wrap, TAU, v, clamp } from './vec2';
 
 export interface Pose {
   position: Vec2;
@@ -100,7 +100,7 @@ export function curvePath(segments: Bezier[], samplesPerSegment = 96): Path {
   };
 
   const pose = (at: number): Pose => {
-    const [segment, t] = parameter(Math.min(Math.max(at, 0), length));
+    const [segment, t] = parameter(clamp(at, 0, length));
     const bez = segments[segment];
     const d = bezierDerivative(bez, t);
     const heading = lengthSq(d) > 1e-12 ? angleOf(d) : angleOf(sub(bez.p3, bez.p0));
@@ -124,7 +124,7 @@ export function nearestOnPath(path: Path, p: Vec2, step = 4): { s: number; dista
   }
   const fine = path.length / count / 8;
   for (let k = -8; k <= 8; k++) {
-    const s = Math.min(Math.max(best + k * fine, 0), path.length);
+    const s = clamp(best + k * fine, 0, path.length);
     const d = dist(path.point(s), p);
     if (d < bestDistance) {
       best = s;

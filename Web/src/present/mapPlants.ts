@@ -1,10 +1,8 @@
 import { type Vec2, v, add, sub, mul, left, fromAngle, TAU } from '../core/vec2';
-import { type RenderList, rect, circle, arc, line, polygon, unitHash } from './render';
+import { type RenderList, rect, circle, arc, line, polygon, unitHash as hash } from './render';
 import type { ColorToken } from './theme';
 
 /** The plants, lamps and small things a map skin grows around the ring (`MapTheme`). */
-const hash = (i: number, salt: number): number => unitHash(i, salt);
-
 export const Plants = {
   /**
    * A tree from above: its shadow, a lobed crown in three tones (`palette`: shade, leaf,

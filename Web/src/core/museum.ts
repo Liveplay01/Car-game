@@ -80,8 +80,6 @@ export const MUSEUM_IDS: string[] = [...BY_ID.keys()];
 
 export const museumEntry = (id: string): MuseumEntry | null => BY_ID.get(id) ?? null;
 
-export const shelfOfEntry = (e: MuseumEntry): MuseumShelf => (e.k === 'boss' ? 0 : e.k === 'special' ? 1 : 2);
-
 /** The first level whose shifts can bring it (1: from the start). */
 export function firstLevel(e: MuseumEntry, c: Config): number {
   switch (e.k) {

@@ -1,6 +1,7 @@
 import type { Arm } from './roundabout';
 import type { Vec2 } from './vec2';
 import type { Pose } from './paths';
+import { clamp } from './vec2';
 
 /** Vehicle types (FOUNDATION.md 4.6). */
 export type VehicleType =
@@ -70,12 +71,12 @@ export function mergeProfile(pathLength: number, duration: number, ringSpeed: nu
 }
 
 export function profileDistance(p: MergeProfile, time: number): number {
-  const t = Math.min(Math.max(time, 0), p.duration);
+  const t = clamp(time, 0, p.duration);
   return p.startSpeed * t + ((p.endSpeed - p.startSpeed) * t * t) / (2 * p.duration);
 }
 
 export function profileSpeed(p: MergeProfile, time: number): number {
-  const t = Math.min(Math.max(time, 0), p.duration);
+  const t = clamp(time, 0, p.duration);
   return p.startSpeed + ((p.endSpeed - p.startSpeed) * t) / p.duration;
 }
 

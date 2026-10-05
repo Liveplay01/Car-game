@@ -16,8 +16,8 @@ import {
   BIG_SCREEN,
 } from '../core/loot';
 import type { VehicleType } from '../core/vehicle';
-import { type Vec2, v, add, sub, mul, fromAngle, TAU } from '../core/vec2';
-import { type RenderList, type Rect, RenderList as List, R, rect, circle, arc, line, polygon, text, Ease, Metrics, moved, pinned, unitHash, vlerp, type Align, type Weight } from './render';
+import { type Vec2, v, add, sub, mul, fromAngle, TAU, clamp, lerpV } from '../core/vec2';
+import { type RenderList, type Rect, RenderList as List, R, rect, circle, arc, line, polygon, Ease, Metrics, moved, pinned, unitHash, drawText } from './render';
 import type { ColorToken } from './theme';
 import { MenuKit } from './menukit';
 import { land } from './hud';
@@ -157,10 +157,6 @@ interface Layout {
 
 export const JUICE: ColorToken[] = ['juiceRed', 'juiceOrange', 'juiceYellow', 'juiceGreen', 'juiceBlue', 'juicePurple'];
 const unit = (index: number, salt: number): number => unitHash(index, salt + 101);
-
-function t(list: RenderList, s: string, at: Vec2, size: number, color: ColorToken, o: { weight?: Weight; align?: Align; opacity?: number } = {}): void {
-  list.s(text(s, at, size, o.align ?? 'leading', o.weight ?? 'regular'), color, o.opacity ?? 1);
-}
 
 /**
  * The Shop tab: chests to open or buy, the collection to wear from, and
@@ -377,7 +373,7 @@ export const ShopPage = {
     let thumb: number = chosen;
     if (state.sectionSlide) {
       thumb = state.sectionSlide.from + (chosen - state.sectionSlide.from) * Ease.settle(state.sectionSlide.age / ShopPage.slideDuration);
-      thumb = Math.min(Math.max(thumb, 0), 2);
+      thumb = clamp(thumb, 0, 2);
     }
     MenuKit.segmented(list, labels, chosen, thumb, all, l.segments.map(([s]) => s === 2 && !Unlocks.isOpen(career, 'casino')));
     if (state.wallet.unseen(career.unseen).length > 0) {
@@ -413,13 +409,13 @@ export const ShopPage = {
       MenuKit.glow(list, iconAt, Math.min(Math.min(R.width(r), R.height(r)) * 0.42, iconAt.y - r.minY - 4), ShopPage.chestColor(kind), (count > 0 ? 0.5 : 0.25) * enter * (available ? 1 : 0.4));
       ShopPage.addChestIcon(list, kind, iconAt, Math.min(1.2, R.height(r) / 130), enter * (available ? 1 : 0.45));
       const name = S.shop.chest(kind);
-      t(list, name, v(c.x, r.maxY - 36), ShopPage.fitted(name, 14, R.width(r) - 28), 'primary', { weight: 'bold', align: 'center', opacity: enter });
+      drawText(list, name, v(c.x, r.maxY - 36), ShopPage.fitted(name, 14, R.width(r) - 28), 'primary', { weight: 'bold', align: 'center', opacity: enter });
       const status = count > 0 ? S.shop.waiting(count) : S.shop.source(kind);
-      t(list, status, v(c.x, r.maxY - 17), ShopPage.fitted(status, 11, R.width(r) - 28), count > 0 ? 'accent' : 'muted', { align: 'center', opacity: enter });
+      drawText(list, status, v(c.x, r.maxY - 17), ShopPage.fitted(status, 11, R.width(r) - 28), count > 0 ? 'accent' : 'muted', { align: 'center', opacity: enter });
       if (count > 0) {
         const badge = v(r.maxX - 18, r.minY + 18);
         list.s(circle(badge, 10), 'accent', enter);
-        t(list, String(count), badge, 11, 'accentInk', { weight: 'bold', align: 'center', opacity: enter });
+        drawText(list, String(count), badge, 11, 'accentInk', { weight: 'bold', align: 'center', opacity: enter });
       }
     });
   },
@@ -479,8 +475,8 @@ export const ShopPage = {
     if (to) {
       const target = ShopPage.pressedRect(to, { k: 'shelf', shelf: state.shelf }, state);
       const from = (slide && chips.find(([s]) => s === slide.from)?.[1]) || target;
-      const center = vlerp(R.center(from), R.center(target), glide);
-      const size = vlerp(v(R.width(from), R.height(from)), v(R.width(target), R.height(target)), glide);
+      const center = lerpV(R.center(from), R.center(target), glide);
+      const size = lerpV(v(R.width(from), R.height(from)), v(R.width(target), R.height(target)), glide);
       // The chosen shelf is a white chip, like the earlier web UI; it glides to the next one.
       list.s(rect(center, size, 10), 'primary', enter);
     }
@@ -494,11 +490,11 @@ export const ShopPage = {
       // Over the white chip the labels turn dark as it arrives.
       const on = shelf === state.shelf ? glide : slide && shelf === slide.from ? 1 - glide : 0;
       const label = ShopPage.fitted(S.shop.shelf(shelf), 11, R.width(r) - 14);
-      t(list, S.shop.shelf(shelf), v(c.x, c.y - 7), label, 'muted', { weight: 'bold', align: 'center', opacity: enter * (1 - on) });
-      t(list, `${owned}/${items.length}`, v(c.x, c.y + 8), 10, owned === items.length ? ShopPage.shelfColor(shelf) : 'muted', { align: 'center', opacity: enter * (1 - on) });
+      drawText(list, S.shop.shelf(shelf), v(c.x, c.y - 7), label, 'muted', { weight: 'bold', align: 'center', opacity: enter * (1 - on) });
+      drawText(list, `${owned}/${items.length}`, v(c.x, c.y + 8), 10, owned === items.length ? ShopPage.shelfColor(shelf) : 'muted', { align: 'center', opacity: enter * (1 - on) });
       if (on > 0) {
-        t(list, S.shop.shelf(shelf), v(c.x, c.y - 7), label, 'background', { weight: 'bold', align: 'center', opacity: enter * on });
-        t(list, `${owned}/${items.length}`, v(c.x, c.y + 8), 10, 'background', { align: 'center', opacity: 0.6 * enter * on });
+        drawText(list, S.shop.shelf(shelf), v(c.x, c.y - 7), label, 'background', { weight: 'bold', align: 'center', opacity: enter * on });
+        drawText(list, `${owned}/${items.length}`, v(c.x, c.y + 8), 10, 'background', { align: 'center', opacity: 0.6 * enter * on });
       }
     }
     const start = list.items.length;
@@ -531,8 +527,8 @@ export const ShopPage = {
       if (!visible(h.r)) continue;
       const y = R.center(h.r).y + 2;
       const owned = h.items.filter((i) => Careers.owns(career, i.id)).length;
-      t(list, h.label, v(h.r.minX + 4, y), 13, 'muted', { weight: 'bold', opacity: enter });
-      t(list, `${owned}/${h.items.length}`, v(h.r.maxX - 4, y), 12, owned === h.items.length ? ShopPage.rarityColor(h.items[0].rarity) : 'muted', { align: 'trailing', opacity: enter });
+      drawText(list, h.label, v(h.r.minX + 4, y), 13, 'muted', { weight: 'bold', opacity: enter });
+      drawText(list, `${owned}/${h.items.length}`, v(h.r.maxX - 4, y), 12, owned === h.items.length ? ShopPage.rarityColor(h.items[0].rarity) : 'muted', { align: 'trailing', opacity: enter });
     }
     for (const [item, cell] of placed.cells) {
       if (!visible(cell)) continue;
@@ -545,12 +541,12 @@ export const ShopPage = {
       ShopPage.panel(list, r, 'card', enter);
       ShopPage.addPreview(list, item, v(c.x, r.minY + R.height(r) * 0.4), Math.min(1, R.height(r) / 110), opacity);
       const name = owned ? S.shop.item(item.id) : S.shop.locked;
-      t(list, name, v(c.x, r.maxY - 14), ShopPage.fitted(name, 11, R.width(r) - 12), owned ? 'primary' : 'muted', { weight: 'bold', align: 'center', opacity: enter });
-      if (Careers.isWorn(career, item.id)) t(list, S.shop.worn, v(r.maxX - 10, r.minY + 12), 10, 'accent', { weight: 'bold', align: 'trailing', opacity: enter });
+      drawText(list, name, v(c.x, r.maxY - 14), ShopPage.fitted(name, 11, R.width(r) - 12), owned ? 'primary' : 'muted', { weight: 'bold', align: 'center', opacity: enter });
+      if (Careers.isWorn(career, item.id)) drawText(list, S.shop.worn, v(r.maxX - 10, r.minY + 12), 10, 'accent', { weight: 'bold', align: 'trailing', opacity: enter });
       if (career.unseen.includes(item.id)) {
         const at = v(r.minX + 22, r.minY + 12);
         list.s(rect(at, v(30, 15), 7.5), 'accent', enter);
-        t(list, S.shop.newBadge, at, 9, 'accentInk', { weight: 'bold', align: 'center', opacity: enter });
+        drawText(list, S.shop.newBadge, at, 9, 'accentInk', { weight: 'bold', align: 'center', opacity: enter });
       }
     }
   },
@@ -642,8 +638,8 @@ export const ShopPage = {
     const c = mul(vp, 0.5);
     list.s(rect(c, vp), 'background', 0.96);
     const left = Math.max(0, Math.ceil(duration - age));
-    t(list, S.shop.adPlaceholder, sub(c, v(0, 16)), 18, 'primary', { weight: 'bold', align: 'center' });
-    t(list, S.shop.adCountdown(reward, left), add(c, v(0, 14)), 13, 'muted', { align: 'center' });
+    drawText(list, S.shop.adPlaceholder, sub(c, v(0, 16)), 18, 'primary', { weight: 'bold', align: 'center' });
+    drawText(list, S.shop.adCountdown(reward, left), add(c, v(0, 14)), 13, 'muted', { align: 'center' });
     const progress = Math.min(1, age / duration);
     list.s(rect(add(c, v(-90 + 90 * progress, 44)), v(180 * progress, 4), 2), 'accent');
   },
@@ -866,7 +862,7 @@ export const ShopPage = {
     const place = (o: Vec2): Vec2 => add(center, v(o.x * sx, o.y * sy));
 
     const slam = reduceMotion ? 1 : tt < 0.15 ? 0 : Ease.spring((tt - 0.15) / 0.35);
-    t(list, S.shop.rarity(opening.item.rarity).toUpperCase(), place(v(0, -122)), 16 * (1 + 0.9 * (1 - slam)), color, { weight: 'bold', align: 'center', opacity: Math.min(1, slam * 2) });
+    drawText(list, S.shop.rarity(opening.item.rarity).toUpperCase(), place(v(0, -122)), 16 * (1 + 0.9 * (1 - slam)), color, { weight: 'bold', align: 'center', opacity: Math.min(1, slam * 2) });
 
     const itemPop = reduceMotion ? 1 : Ease.spring((tt - 0.08) / 0.45);
     const float = reduceMotion ? 0 : Math.sin(tt * 2.4) * 4 * Math.min(1, Math.max(0, tt - 0.5) / 0.3);
@@ -875,15 +871,15 @@ export const ShopPage = {
       ShopPage.addPreview(list, opening.item, add(place(v(0, -34)), v(0, float)), 1.9 * itemPop, 1);
     }
     const name = appear(0.18);
-    t(list, S.shop.item(opening.item.id), add(place(v(0, 52)), v(0, 10 * (1 - name))), 22, 'primary', { weight: 'bold', align: 'center', opacity: name });
+    drawText(list, S.shop.item(opening.item.id), add(place(v(0, 52)), v(0, 10 * (1 - name))), 22, 'primary', { weight: 'bold', align: 'center', opacity: name });
     const kind = appear(0.24);
-    t(list, S.shop.kind(opening.item), add(place(v(0, 78)), v(0, 10 * (1 - kind))), 13, 'muted', { align: 'center', opacity: kind });
+    drawText(list, S.shop.kind(opening.item), add(place(v(0, 78)), v(0, 10 * (1 - kind))), 13, 'muted', { align: 'center', opacity: kind });
     if (opening.isDuplicate) {
       const m = appear(0.3);
-      t(list, S.shop.duplicate(Fmt.number(opening.money)), add(place(v(0, 102)), v(0, 10 * (1 - m))), 13, 'accent', { weight: 'bold', align: 'center', opacity: m });
+      drawText(list, S.shop.duplicate(Fmt.number(opening.money)), add(place(v(0, 102)), v(0, 10 * (1 - m))), 13, 'accent', { weight: 'bold', align: 'center', opacity: m });
     }
     // The hint comes when a tap can close the card, not before.
-    t(list, S.shop.tapToClose, place(v(0, 132)), 11, 'muted', { align: 'center', opacity: 0.8 * appear(ShopPage.closeAfter) });
+    drawText(list, S.shop.tapToClose, place(v(0, 132)), 11, 'muted', { align: 'center', opacity: 0.8 * appear(ShopPage.closeAfter) });
 
     if (reduceMotion || tt <= 0.3) return;
     const stars = rarityRank(opening.item.rarity) >= 2 ? 10 : 6;

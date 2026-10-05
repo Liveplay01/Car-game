@@ -17,6 +17,12 @@ import { describeError } from '../net/leaderboard';
 import type { SaveGame } from '../core/career';
 import { Fmt } from '../present/strings';
 
+declare global {
+  interface Window {
+    PasswordCredential?: new (data: { id: string; password: string; name?: string }) => Credential;
+  }
+}
+
 /**
  * Settings → Cloud sync: keep the progress safe and bring it to another device with a code.
  * Three looks of one sheet: not set up yet (back up, or type a code), set up (the code, how it
@@ -65,7 +71,7 @@ const KEEPER_NAME = 'Roundabout Timing';
  * Support differs and a browser may stay silent; the code is on screen either way.
  */
 async function offerToPasswordManager(code: string): Promise<void> {
-  const Credential = (window as unknown as { PasswordCredential?: new (data: { id: string; password: string; name?: string }) => Credential }).PasswordCredential;
+  const Credential = window.PasswordCredential;
   if (Credential && navigator.credentials?.store) {
     try {
       await navigator.credentials.store(new Credential({ id: KEEPER_NAME, password: code, name: KEEPER_NAME }));

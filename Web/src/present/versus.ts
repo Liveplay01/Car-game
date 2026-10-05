@@ -3,7 +3,7 @@ import { versusConfig, VersusBot, INPUT_DELAY, standings, addRound, isSeriesOver
 import type { EliminationReason, GameEvent, MergeRating, VersusPhase } from '../core/events';
 import type { Vehicle } from '../core/vehicle';
 import { substream } from '../core/rng';
-import { type Vec2, v, add, sub, mul, dot, normalize } from '../core/vec2';
+import { type Vec2, v, add, sub, mul, dot, normalize, clamp } from '../core/vec2';
 import { armOutward } from '../core/roundabout';
 import { RenderList, rect, circle, line, polygon, text, fitCamera, toScreen, Ease, type Camera } from './render';
 import { CrashEffects } from './effects';
@@ -294,7 +294,7 @@ export class VersusMatch {
   // MARK: Frame
 
   frame(delta: number, viewport: Vec2, reduceMotion: boolean): RenderList {
-    const dt = Math.min(Math.max(delta, 0), 0.25);
+    const dt = clamp(delta, 0, 0.25);
     this.reduceMotion = reduceMotion;
     this.frameDt = dt;
     if (this.countIn > 0) this.countDown(dt);

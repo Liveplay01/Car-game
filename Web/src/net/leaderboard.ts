@@ -216,12 +216,6 @@ export async function submitScore(board: BoardId, body: Record<string, number>):
   }
 }
 
-/** Shift level: the level reached, after any Prestige (`core/career.ts`). */
-export const submitShiftLevel = (level: number, prestige: number): Promise<SubmitResult | null> => submitScore('shift-level', { level, prestige });
-
-/** Unlimited: the record score and the cars sent in that run. */
-export const submitUnlimited = (score: number, cars: number): Promise<SubmitResult | null> => submitScore('unlimited', { score, cars });
-
 // MARK: Friends
 
 export interface Friend {

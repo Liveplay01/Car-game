@@ -27,12 +27,6 @@ export function firstRace(w: World): RacePhase {
 
 export const reservedRaceArm = (w: World): Arm | null => (w.race.kind === 'warning' || w.race.kind === 'arriving' ? w.race.arm : null);
 
-/** The racers still on the road. */
-export function racerVehicles(w: World): number[] {
-  const r = w.race;
-  return r.kind === 'arriving' || r.kind === 'active' ? r.vehicles : [];
-}
-
 export function updateRace(w: World, now: number): void {
   const c = w.config;
   const r = w.race;

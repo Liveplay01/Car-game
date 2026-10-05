@@ -1,4 +1,11 @@
 import { type SoundID, type HapticID, type MusicMix, type MusicLayer, SOUND_IDS, MUSIC_LAYERS, Music } from '../present/feedback';
+import { clamp } from '../core/vec2';
+
+declare global {
+  interface Window {
+    webkitAudioContext?: typeof AudioContext;
+  }
+}
 
 const base = import.meta.env.BASE_URL;
 
@@ -28,7 +35,7 @@ export class AudioPlayer {
       if (this.ctx.state === 'suspended') void this.ctx.resume();
       return;
     }
-    const AC = window.AudioContext ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+    const AC = window.AudioContext ?? window.webkitAudioContext;
     if (!AC) return;
     const ctx = new AC({ latencyHint: 'interactive' });
     const limiter = ctx.createDynamicsCompressor();
@@ -204,7 +211,7 @@ export class AudioPlayer {
         break;
       case 'reelTick': {
         // `pitch` 0.55 (crawling) … 1.3 (spinning): slow ticks are deeper, louder, with a knock under them.
-        const slow = Math.min(Math.max((1.3 - pitch) / 0.75, 0), 1);
+        const slow = clamp((1.3 - pitch) / 0.75, 0, 1);
         tone('square', 1800 * pitch, 1200 * pitch, 0, 0.035, 0.05 + 0.12 * slow);
         if (slow > 0.3) tone('sine', 150 * pitch, 70, 0, 0.09, 0.5 * slow);
         break;
@@ -362,7 +369,7 @@ export class Haptics {
 
   play(id: HapticID, softness: number): void {
     if (!this.supported) return;
-    const scale = 1 - 0.35 * Math.min(Math.max(softness, 0), 1);
+    const scale = 1 - 0.35 * clamp(softness, 0, 1);
     const pattern = Haptics.patterns[id].map((ms, i) => (i % 2 === 0 ? Math.max(1, Math.round(ms * scale)) : ms));
     try {
       navigator.vibrate(pattern);

@@ -45,6 +45,7 @@ import type { CasinoPending, CasinoRound } from './casino';
 import { randomSeed, Rng } from './rng';
 import { Elite, type EliteGain, type EliteStep, type TitleId, TITLES } from './elite';
 import type { HallEntry } from './seasonPass';
+import { clamp } from './vec2';
 
 export type GameMode = 'shift' | 'unlimited' | 'mayhem';
 export const GAME_MODES: GameMode[] = ['shift', 'unlimited', 'mayhem'];
@@ -354,7 +355,7 @@ export const MINIMUM_ARMS = 4;
 export const Careers = {
   owns: (c: Career, id: string): boolean => c.collection.includes(id),
 
-  steps: (c: Career, u: Upgrade): number => Math.min(Math.max(0, c.upgrades[u] ?? 0), upgradeMaxSteps[u]),
+  steps: (c: Career, u: Upgrade): number => clamp(c.upgrades[u] ?? 0, 0, upgradeMaxSteps[u]),
 
   /** Price of the next step; null once maxed or not offered yet at this level. */
   priceOf(c: Career, u: Upgrade, config: Config = baseConfig): number | null {

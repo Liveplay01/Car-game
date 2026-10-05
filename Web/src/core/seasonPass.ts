@@ -3,6 +3,7 @@ import type { Career } from './career';
 import type { ShiftResult } from './events';
 import { Elite } from './elite';
 import { type ChestKind, type Cosmetic, type Season, COSMETICS, DUPLICATE_MONEY, seasonOf } from './loot';
+import { clamp } from './vec2';
 
 /**
  * The Season Pass (Leo, 30.09.2026): bought with play money for the season it is (never with
@@ -62,7 +63,7 @@ export const SeasonPass = {
 
   /** What tier `tier` (1 = the first) pays in `season`. */
   reward(tier: number, season: Season): PassReward {
-    const slot = TRACK[Math.min(Math.max(tier, 1), PASS_TIERS) - 1];
+    const slot = TRACK[clamp(tier, 1, PASS_TIERS) - 1];
     if (slot.k !== 'skin') return slot;
     const index = TRACK.slice(0, tier).filter((x) => x.k === 'skin').length - 1;
     return { k: 'skin', item: SeasonPass.skins(season)[index] };
@@ -88,11 +89,11 @@ export const SeasonPass = {
 
   /** Progressive (Leo, 03.10.2026): the XP from tier `tier - 1` to `tier`, more for every tier. */
   need: (tier: number, config: Config = baseConfig): number =>
-    config.seasonPassXpPerTier + config.seasonPassXpGrowth * (Math.min(Math.max(tier, 1), PASS_TIERS) - 1),
+    config.seasonPassXpPerTier + config.seasonPassXpGrowth * (clamp(tier, 1, PASS_TIERS) - 1),
 
   /** All the XP it takes to reach `tier`. */
   xpTo: (tier: number, config: Config = baseConfig): number => {
-    const n = Math.min(Math.max(tier, 0), PASS_TIERS);
+    const n = clamp(tier, 0, PASS_TIERS);
     return n * config.seasonPassXpPerTier + (config.seasonPassXpGrowth * n * (n - 1)) / 2;
   },
 

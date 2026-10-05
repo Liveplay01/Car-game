@@ -14,7 +14,7 @@ import { noteTap } from '../core/timing';
 import { latestNote } from './patchNotes';
 import { ChestReel } from './chestReel';
 import { Scoring } from '../core/scoring';
-import { type Vec2, v, add } from '../core/vec2';
+import { type Vec2, v, add, clamp } from '../core/vec2';
 import { loadSave, saveTrust, writeSave } from '../storage/save';
 import { loadPlayerName } from '../storage/profile';
 import { leaderboardEnabled, syncScores, type Records } from '../net/leaderboard';
@@ -980,7 +980,7 @@ export class GameSession {
 
   /** Advances by one display frame and returns what to draw. */
   frame(delta: number, actions: InputAction[], viewport: Vec2, bottomInset: number): RenderList {
-    const realDelta = Math.min(Math.max(delta, 0), GameSession.maxFrameDelta);
+    const realDelta = clamp(delta, 0, GameSession.maxFrameDelta);
     const simDelta = realDelta * this.timeScale;
     this.lastViewport = viewport;
     this.lastInset = bottomInset;
@@ -1400,7 +1400,7 @@ export class GameSession {
     let target = this.upgradePage.scroll;
     if (card.rect.maxY > bottom) target += Math.min(card.rect.maxY - bottom, card.rect.minY - top);
     else if (card.rect.minY < top) target -= top - card.rect.minY;
-    if (target !== this.upgradePage.scroll) this.upgradePage.scrollTo(Math.min(Math.max(target, 0), this.upgradeScrollRange));
+    if (target !== this.upgradePage.scroll) this.upgradePage.scrollTo(clamp(target, 0, this.upgradeScrollRange));
   }
 
   /** A tap in a Progress list: a card's sheet, a shift to play, the stats folding open. */

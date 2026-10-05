@@ -1,4 +1,4 @@
-import { type Vec2, v, add, sub, mul } from '../core/vec2';
+import { type Vec2, v, add, sub, mul, clamp01 } from '../core/vec2';
 import type { ColorToken } from './theme';
 
 /** Coordinate space of a render item: world units (y up) or screen points (y down). */
@@ -94,7 +94,6 @@ export interface Camera {
 }
 
 export const toScreen = (c: Camera, p: Vec2): Vec2 => v(c.focus.x + (p.x - c.center.x) * c.scale, c.focus.y - (p.y - c.center.y) * c.scale);
-export const toWorld = (c: Camera, p: Vec2): Vec2 => v(c.center.x + (p.x - c.focus.x) / c.scale, c.center.y - (p.y - c.focus.y) / c.scale);
 
 export interface Insets {
   top: number;
@@ -200,6 +199,11 @@ export class RenderList {
   }
 }
 
+/** Text at `at` in the page's usual look: leading, regular, fully opaque unless `o` says otherwise. */
+export function drawText(list: RenderList, s: string, at: Vec2, size: number, color: ColorToken, o: { weight?: Weight; align?: Align; opacity?: number } = {}): void {
+  list.s(text(s, at, size, o.align ?? 'leading', o.weight ?? 'regular'), color, o.opacity ?? 1);
+}
+
 /** A screen item shifted by `offset` and faded by `factor` (world items keep their place). */
 export function moved(item: RenderItem, offset: Vec2, factor: number): RenderItem {
   const out: RenderItem = { ...item, opacity: item.opacity * factor };
@@ -303,7 +307,7 @@ export function pinned(item: RenderItem, cam: Camera, factor = 1): RenderItem {
 
 /** Easing curves (FOUNDATION.md 3, motion rules). */
 export const Ease = {
-  clamp01: (x: number): number => (x < 0 ? 0 : x > 1 ? 1 : x),
+  clamp01,
   outCubic(x: number): number {
     const u = 1 - Ease.clamp01(x);
     return 1 - u * u * u;
@@ -343,8 +347,6 @@ export function unitHash(index: number, salt: number): number {
   return (x >>> 0) / 4294967296;
 }
 
-export const lerp = (a: number, b: number, t: number): number => a + (b - a) * t;
-export const vlerp = (a: Vec2, b: Vec2, t: number): Vec2 => add(a, mul(sub(b, a), t));
 
 /** Screen measures in points. */
 export const Metrics = {
@@ -361,6 +363,3 @@ export const Metrics = {
   sceneVerticalBias: 0.6,
   vehicleCornerRadius: 4.5,
 };
-
-/** The height of the tab bar the pages leave room for. */
-export const TAB_BAR_HEIGHT = 52;

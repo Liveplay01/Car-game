@@ -11,8 +11,7 @@ import { SeasonPass, PASS_TIERS } from '../core/seasonPass';
 import { type MuseumEntry, MUSEUM_SHELVES, shelfEntries, museumId } from '../core/museum';
 import { averageOffset } from '../core/timing';
 import { type Vec2, v, add } from '../core/vec2';
-import { type RenderList, type Rect, RenderList as List, R, rect, circle, line, text, Ease, Metrics, moved, type Align, type Weight } from './render';
-import type { ColorToken } from './theme';
+import { type RenderList, type Rect, RenderList as List, R, rect, circle, line, Ease, Metrics, moved, drawText } from './render';
 import { MenuKit } from './menukit';
 import { moneyTag, textWidth } from './icons';
 import { S, Fmt } from './strings';
@@ -105,10 +104,6 @@ const PODIUM_WIDTH = 14;
 
 const STAT_ROW = 40;
 const HEADING = 26;
-
-function t(list: RenderList, s: string, at: Vec2, size: number, color: ColorToken, opacity: number, o: { weight?: Weight; align?: Align } = {}): void {
-  list.s(text(s, at, size, o.align ?? 'leading', o.weight ?? 'regular'), color, opacity);
-}
 
 /** Lays blocks out one under the other (or side by side in a grid), `gap` apart, from y = 0. */
 class Stack {
@@ -351,7 +346,7 @@ export const ProgressPage = {
     list.s(rect(R.center(frame), v(R.width(frame), R.height(frame)), 16), 'controlFill');
     const podiumX = label === null ? R.center(frame).x - PODIUM_WIDTH / 2 : frame.minX + 12;
     ProgressPage.podium(list, v(podiumX, R.center(frame).y + 6));
-    if (label !== null) t(list, label, v(podiumX + PODIUM_WIDTH + 6, R.center(frame).y), 15, 'primary', 1, { weight: 'bold' });
+    if (label !== null) drawText(list, label, v(podiumX + PODIUM_WIDTH + 6, R.center(frame).y), 15, 'primary', { weight: 'bold' });
     list.tag = tag;
   },
 
@@ -438,7 +433,7 @@ export const ProgressPage = {
       case 'heading':
         return ProgressPage.addHeading(list, r, b, o);
       case 'note':
-        return t(list, b.text, v(r.minX + 4, R.center(r).y), ShopPage.fitted(b.text, 11, R.width(r) - 8), 'muted', o);
+        return drawText(list, b.text, v(r.minX + 4, R.center(r).y), ShopPage.fitted(b.text, 11, R.width(r) - 8), 'muted', { opacity: o });
       case 'daily':
         return ProgressPage.addDaily(list, r, career, today, o);
       case 'weekly':
@@ -499,33 +494,33 @@ export const ProgressPage = {
     const right = r.maxX - 16;
     const linkWidth = row.link ? textWidth(row.link, 11) + 12 : 0;
     const topWidth = row.reward !== undefined ? textWidth(Fmt.number(row.reward), 13) + 30 : row.status ? textWidth(row.status, 13) + 12 : 0;
-    t(list, row.title, v(x, c.y - 9), ShopPage.fitted(row.title, 14, right - x - topWidth), row.dim ? 'muted' : 'primary', o, { weight: 'bold' });
-    t(list, row.line, v(x, c.y + 11), ShopPage.fitted(row.line, 11, right - x - linkWidth), 'muted', o);
+    drawText(list, row.title, v(x, c.y - 9), ShopPage.fitted(row.title, 14, right - x - topWidth), row.dim ? 'muted' : 'primary', { opacity: o, weight: 'bold' });
+    drawText(list, row.line, v(x, c.y + 11), ShopPage.fitted(row.line, 11, right - x - linkWidth), 'muted', { opacity: o });
     if (row.reward !== undefined) moneyTag(list, Fmt.number(row.reward), v(right, c.y - 9), 13, 'trailing', 'primary', 'accent', o);
-    else if (row.status) t(list, row.status, v(right, c.y - 9), 13, row.dim ? 'muted' : 'accent', o, { weight: 'bold', align: 'trailing' });
-    if (row.link) t(list, row.link, v(right, c.y + 11), 11, row.dim ? 'muted' : 'accent', o, { weight: 'bold', align: 'trailing' });
+    else if (row.status) drawText(list, row.status, v(right, c.y - 9), 13, row.dim ? 'muted' : 'accent', { opacity: o, weight: 'bold', align: 'trailing' });
+    if (row.link) drawText(list, row.link, v(right, c.y + 11), 11, row.dim ? 'muted' : 'accent', { opacity: o, weight: 'bold', align: 'trailing' });
   },
 
   addHeading(list: RenderList, r: Rect, b: Extract<Block, { k: 'heading' }>, o: number): void {
     const y = R.center(r).y + 2;
-    t(list, b.label, v(r.minX + 4, y), 13, 'muted', o, { weight: 'bold' });
+    drawText(list, b.label, v(r.minX + 4, y), 13, 'muted', { opacity: o, weight: 'bold' });
     if (b.dot) ShopPage.badgeDot(list, v(r.minX + 4 + textWidth(b.label, 13) + 8, y - 4), o);
-    if (b.count) t(list, b.count, v(r.maxX - 4, y), 12, b.full ? 'coin' : 'muted', o, { align: 'trailing' });
+    if (b.count) drawText(list, b.count, v(r.maxX - 4, y), 12, b.full ? 'coin' : 'muted', { opacity: o, align: 'trailing' });
   },
 
   addStat(list: RenderList, r: Rect, stat: Stat, o: number): void {
     ProgressPage.panel(list, r, o);
     const c = R.center(r);
     const empty = stat.value === S.progress.none;
-    t(list, stat.value, v(r.minX + 16, c.y - 8), ShopPage.fitted(stat.value, 22, R.width(r) - 32), empty ? 'muted' : 'primary', o, { weight: 'bold' });
-    t(list, stat.label, v(r.minX + 16, c.y + 16), ShopPage.fitted(stat.label, 11, R.width(r) - 32), 'muted', o);
+    drawText(list, stat.value, v(r.minX + 16, c.y - 8), ShopPage.fitted(stat.value, 22, R.width(r) - 32), empty ? 'muted' : 'primary', { opacity: o, weight: 'bold' });
+    drawText(list, stat.label, v(r.minX + 16, c.y + 16), ShopPage.fitted(stat.label, 11, R.width(r) - 32), 'muted', { opacity: o });
   },
 
   addMore(list: RenderList, r: Rect, count: number, open: boolean, o: number): void {
     ProgressPage.panel(list, r, o);
     const c = R.center(r);
-    t(list, S.progress.allStats, v(r.minX + 16, c.y), 14, 'primary', o, { weight: 'bold' });
-    t(list, open ? S.progress.statsHide : S.progress.statsMore(count), v(r.maxX - 16, c.y), 12, 'accent', o, { weight: 'bold', align: 'trailing' });
+    drawText(list, S.progress.allStats, v(r.minX + 16, c.y), 14, 'primary', { opacity: o, weight: 'bold' });
+    drawText(list, open ? S.progress.statsHide : S.progress.statsMore(count), v(r.maxX - 16, c.y), 12, 'accent', { opacity: o, weight: 'bold', align: 'trailing' });
   },
 
   /** The rest of the stats as one grouped list: label left, value right, hairlines between. */
@@ -535,8 +530,8 @@ export const ProgressPage = {
       const y = r.minY + i * STAT_ROW + STAT_ROW / 2;
       if (i > 0) list.s(line(v(r.minX + 16, y - STAT_ROW / 2), v(r.maxX, y - STAT_ROW / 2), 0.5), 'separator', o);
       const valueWidth = textWidth(stat.value, 13) + 8;
-      t(list, stat.label, v(r.minX + 16, y), ShopPage.fitted(stat.label, 13, R.width(r) - 32 - valueWidth), 'muted', o);
-      t(list, stat.value, v(r.maxX - 16, y), 13, 'primary', o, { weight: 'bold', align: 'trailing' });
+      drawText(list, stat.label, v(r.minX + 16, y), ShopPage.fitted(stat.label, 13, R.width(r) - 32 - valueWidth), 'muted', { opacity: o });
+      drawText(list, stat.value, v(r.maxX - 16, y), 13, 'primary', { opacity: o, weight: 'bold', align: 'trailing' });
     });
   },
 
@@ -598,8 +593,8 @@ export const ProgressPage = {
     ProgressPage.panel(list, r, o);
     ProgressPage.check(list, v(r.minX + 24, c.y), done, o);
     const label = S.daily.challenge(challenge);
-    t(list, label, v(r.minX + 44, c.y), ShopPage.fitted(label, 13, R.width(r) - 44 - 80), done ? 'muted' : 'primary', o, { weight: 'bold' });
-    if (done) t(list, `${S.daily.done} ✓`, v(r.maxX - 16, c.y), 13, 'accent', o, { weight: 'bold', align: 'trailing' });
+    drawText(list, label, v(r.minX + 44, c.y), ShopPage.fitted(label, 13, R.width(r) - 44 - 80), done ? 'muted' : 'primary', { opacity: o, weight: 'bold' });
+    if (done) drawText(list, `${S.daily.done} ✓`, v(r.maxX - 16, c.y), 13, 'accent', { opacity: o, weight: 'bold', align: 'trailing' });
     else moneyTag(list, Fmt.number(challengeReward(challenge)), v(r.maxX - 16, c.y), 13, 'trailing', 'primary', 'accent', o);
   },
 
@@ -609,7 +604,7 @@ export const ProgressPage = {
     const c = R.center(r);
     ProgressPage.check(list, v(r.minX + 24, c.y), false, dim);
     const label = S.progress.trialsLocked(level);
-    t(list, label, v(r.minX + 44, c.y), ShopPage.fitted(label, 13, R.width(r) - 60), 'muted', dim, { weight: 'bold' });
+    drawText(list, label, v(r.minX + 44, c.y), ShopPage.fitted(label, 13, R.width(r) - 60), 'muted', { opacity: dim, weight: 'bold' });
   },
 
   /** Landmarks show from the Prestige rank that opens them, or once one was passed. */
@@ -668,15 +663,15 @@ export const ProgressPage = {
     if (ready) list.s(rect(R.center(card), v(R.width(card) + 4, R.height(card) + 4), ShopPage.corner + 2), 'coin', 0.9 * o);
     ProgressPage.panel(list, card, o);
     const top = card.minY + 22;
-    t(list, open ? S.elite.caption(Elite.level(c)) : S.elite.title, v(card.minX + 16, top), 15, open ? 'coin' : 'muted', o, { weight: 'bold' });
+    drawText(list, open ? S.elite.caption(Elite.level(c)) : S.elite.title, v(card.minX + 16, top), 15, open ? 'coin' : 'muted', { opacity: o, weight: 'bold' });
     if (ready) {
       const label = `${S.elite.prestigeAction(c.prestige + 1)} ›`;
       const width = textWidth(label, 12) + 20;
       list.s(rect(v(card.maxX - 16 - width / 2, top), v(width, 22), 11), 'coin', o);
-      t(list, label, v(card.maxX - 16 - width / 2, top), 12, 'background', o, { weight: 'bold', align: 'center' });
+      drawText(list, label, v(card.maxX - 16 - width / 2, top), 12, 'background', { opacity: o, weight: 'bold', align: 'center' });
     } else {
       const badges = [c.prestige > 0 ? S.prestige.caption(c.prestige) : null, c.title ? S.titles.name(c.title) : null].filter((x): x is string => !!x);
-      t(list, [...badges, '›'].join(' · ').replace(' · ›', ' ›'), v(card.maxX - 16, top), 12, badges.length > 0 ? 'coin' : 'muted', o, { weight: 'bold', align: 'trailing' });
+      drawText(list, [...badges, '›'].join(' · ').replace(' · ›', ' ›'), v(card.maxX - 16, top), 12, badges.length > 0 ? 'coin' : 'muted', { opacity: o, weight: 'bold', align: 'trailing' });
     }
     const barY = card.minY + 42;
     const barWidth = R.width(card) - 32;
@@ -690,16 +685,16 @@ export const ProgressPage = {
     const bottom = card.minY + 60;
     if (!open) {
       const hint = S.elite.locked(baseConfig.prestigeLevel);
-      t(list, hint, v(card.minX + 16, bottom), ShopPage.fitted(hint, 11, barWidth), 'muted', o);
+      drawText(list, hint, v(card.minX + 16, bottom), ShopPage.fitted(hint, 11, barWidth), 'muted', { opacity: o });
       return;
     }
     const xp = S.elite.xp(into, need);
-    t(list, xp, v(card.minX + 16, bottom), 11, 'muted', o);
+    drawText(list, xp, v(card.minX + 16, bottom), 11, 'muted', { opacity: o });
     const next = Elite.nextMilestone(c);
     const lineText = next ? S.elite.next(next) : null;
     if (lineText) {
       const room = barWidth - textWidth(xp, 11) - 16;
-      t(list, lineText, v(card.maxX - 16, bottom), ShopPage.fitted(lineText, 11, room), 'muted', o, { align: 'trailing' });
+      drawText(list, lineText, v(card.maxX - 16, bottom), ShopPage.fitted(lineText, 11, room), 'muted', { opacity: o, align: 'trailing' });
     }
   },
 
@@ -724,10 +719,10 @@ export const ProgressPage = {
     const right = complete ? S.feats.done : S.feats.have(have, need);
     const rightWidth = textWidth(right, 12) + 4;
     const name = S.shop.item(feat.id);
-    t(list, name, v(x, top), ShopPage.fitted(name, 14, r.maxX - 16 - rightWidth - x - 8), complete ? 'coin' : 'primary', o, { weight: 'bold' });
-    t(list, right, v(r.maxX - 16, top), 12, complete ? 'accent' : 'muted', o, { weight: 'bold', align: 'trailing' });
+    drawText(list, name, v(x, top), ShopPage.fitted(name, 14, r.maxX - 16 - rightWidth - x - 8), complete ? 'coin' : 'primary', { opacity: o, weight: 'bold' });
+    drawText(list, right, v(r.maxX - 16, top), 12, complete ? 'accent' : 'muted', { opacity: o, weight: 'bold', align: 'trailing' });
     const goal = feat.title ? `${S.feats.goal(feat.goal)} · ${S.feats.withTitle(S.titles.name(feat.title))}` : S.feats.goal(feat.goal);
-    t(list, goal, v(x, c.y + R.height(r) * 0.02), ShopPage.fitted(goal, 11, r.maxX - 16 - x), 'muted', o);
+    drawText(list, goal, v(x, c.y + R.height(r) * 0.02), ShopPage.fitted(goal, 11, r.maxX - 16 - x), 'muted', { opacity: o });
     const barY = c.y + R.height(r) * 0.27;
     const barWidth = r.maxX - 16 - x;
     list.s(rect(v(x + barWidth / 2, barY), v(barWidth, 4), 2), 'controlFill', o);
@@ -747,8 +742,8 @@ export const ProgressPage = {
     const complete = reached >= tiers;
     const top = c.y - R.height(r) * 0.2;
     const pipsWidth = tiers * 14;
-    t(list, S.mastery.name(goal), v(r.minX + 16, top), 13, 'primary', o, { weight: 'bold' });
-    t(list, S.mastery.detail(goal, reached), v(r.maxX - 16 - pipsWidth - 6, top), 11, complete ? 'accent' : 'muted', o, { align: 'trailing' });
+    drawText(list, S.mastery.name(goal), v(r.minX + 16, top), 13, 'primary', { opacity: o, weight: 'bold' });
+    drawText(list, S.mastery.detail(goal, reached), v(r.maxX - 16 - pipsWidth - 6, top), 11, complete ? 'accent' : 'muted', { opacity: o, align: 'trailing' });
     for (let tier = 0; tier < tiers; tier++) list.s(circle(v(r.maxX - 16 - pipsWidth + tier * 14 + 7, top), 5), tier < reached ? 'accent' : 'controlFill', o);
     const from = reached === 0 ? 0 : thresholds[reached - 1];
     const fraction = complete ? 1 : Ease.clamp01((masteryValue(goal, career.mastery) - from) / Math.max(1, thresholds[reached] - from));

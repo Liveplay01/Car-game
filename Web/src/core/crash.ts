@@ -1,5 +1,5 @@
 import { type Config, gravity } from './config';
-import { type Vec2, add, sub, mul, dot, cross, left, length, normalize, fromAngle, ZERO } from './vec2';
+import { type Vec2, add, sub, mul, dot, cross, left, length, normalize, fromAngle, ZERO, clamp } from './vec2';
 
 /** A car as a rigid body in the plane, for crashes only. */
 export interface RigidBody {
@@ -38,7 +38,7 @@ export function collide(a: RigidBody, b: RigidBody, point: Vec2, n: Vec2, restit
     const t = normalize(sliding);
     const wanted = -dot(relative, t) / effectiveMass(t);
     const limit = friction * normalImpulse;
-    impulse = add(impulse, mul(t, Math.min(Math.max(wanted, -limit), limit)));
+    impulse = add(impulse, mul(t, clamp(wanted, -limit, limit)));
   }
   a.velocity = add(a.velocity, mul(impulse, 1 / a.mass));
   a.angularVelocity += cross(ra, impulse) / a.inertia;

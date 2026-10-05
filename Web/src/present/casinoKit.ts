@@ -1,8 +1,7 @@
 import { baseConfig } from '../core/config';
 import type { SlotSymbol, UpgradeRoll } from '../core/casino';
 import type { VehicleType } from '../core/vehicle';
-import type { Vec2 } from '../core/vec2';
-import { type RenderList, text, Ease, unitHash, type Align, type Weight } from './render';
+import { Ease, unitHash } from './render';
 import type { ColorToken } from './theme';
 import type { CasinoRun } from './casino';
 
@@ -71,10 +70,6 @@ export const unit = (index: number, salt: number): number => unitHash(index, sal
 
 /** How loud a win is (`casinoWinTiers`): 0 below the first step, up to 4. */
 export const winTier = (times: number): number => baseConfig.casinoWinTiers.filter((x) => times >= x).length;
-
-export function t(list: RenderList, s: string, at: Vec2, size: number, color: ColorToken, o: { weight?: Weight; align?: Align; opacity?: number } = {}): void {
-  list.s(text(s, at, size, o.align ?? 'leading', o.weight ?? 'regular'), color, o.opacity ?? 1);
-}
 
 export const SYMBOL: Record<SlotSymbol, { type: VehicleType; tint: ColorToken }> = {
   car: { type: 'car', tint: 'rarityCommon' },

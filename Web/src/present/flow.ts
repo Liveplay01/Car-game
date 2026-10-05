@@ -8,7 +8,7 @@ import type { ChestKind } from '../core/loot';
 import type { CasinoGame } from '../core/casino';
 import type { Upgrade } from '../core/levels';
 import type { RoadModule } from '../core/config';
-import { type Vec2, v } from '../core/vec2';
+import { type Vec2, v, clamp } from '../core/vec2';
 import { type Rect, R, Metrics } from './render';
 import type { ShiftSummary } from './hud';
 
@@ -118,7 +118,7 @@ export const BuildLayout = {
     const r = BuildLayout.segmentsRect(viewport);
     if (!R.contains(r, point)) return null;
     const index = Math.floor((point.x - r.minX) / (R.width(r) / BUILD_PAGES.length));
-    return BUILD_PAGES[Math.min(Math.max(index, 0), BUILD_PAGES.length - 1)];
+    return BUILD_PAGES[clamp(index, 0, BUILD_PAGES.length - 1)];
   },
 
   /** The Street Builder's map: where the ring is drawn and how big it is on screen. */

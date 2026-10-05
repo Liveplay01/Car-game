@@ -2,15 +2,15 @@ import { type Career, Careers } from '../core/career';
 import { baseConfig } from '../core/config';
 import { type CasinoGame, type CasinoRound, type SlotSpin, type SlotSymbol, type UpgradeRoll, type CoinFlip, CASINO_GAMES, Casino } from '../core/casino';
 import { type Cosmetic, rarityRank } from '../core/loot';
-import { type Vec2, v, add, mul, TAU } from '../core/vec2';
-import { type RenderList, type Rect, R, rect, arc, line, polygon, Ease, vlerp, moved } from './render';
+import { type Vec2, v, add, mul, TAU, lerpV } from '../core/vec2';
+import { type RenderList, type Rect, R, rect, arc, line, polygon, Ease, moved, drawText } from './render';
 import type { ColorToken } from './theme';
 import { MenuKit } from './menukit';
 import { textWidth } from './icons';
 import { S, Fmt, money, percent } from './strings';
 import { ShopPage } from './shop';
 import { CasinoGames } from './casinoGames';
-import { TIMES, slotEnd, reelStop, creepAt, crashStep, needleTime, needleTurn, unit, t } from './casinoKit';
+import { TIMES, slotEnd, reelStop, creepAt, crashStep, needleTime, needleTurn, unit } from './casinoKit';
 export { winTier } from './casinoKit';
 import { Wallet } from './casinoWallet';
 import type { AdOffer } from './adFlow';
@@ -423,8 +423,8 @@ export const CasinoPage = {
         if (x <= 0 || x >= 1) continue;
         const e = Ease.inOutSine(x);
         const bend = v((from.x + to.x) / 2 + (unit(i, 61) - 0.5) * 140, Math.min(from.y, to.y) - 30 - 70 * unit(i, 62));
-        const a = vlerp(from, bend, e);
-        const p = vlerp(a, vlerp(bend, to, e), e);
+        const a = lerpV(from, bend, e);
+        const p = lerpV(a, lerpV(bend, to, e), e);
         const turn = Math.abs(Math.cos(f.age * (9 + 5 * unit(i, 63)) + i));
         const r = (f.toStage ? 5 : 6) * (0.75 + 0.25 * (1 - x));
         const w = Math.max(0.2, turn);
@@ -470,28 +470,28 @@ export const CasinoPage = {
     const to = l.chips.find(([g]) => g === state.game)?.[1];
     if (to) {
       const from = (slide && l.chips.find(([g]) => g === slide.from)?.[1]) || to;
-      list.s(rect(vlerp(R.center(from), R.center(to), glide), v(R.width(to), R.height(to)), 10), 'primary', enter);
+      list.s(rect(lerpV(R.center(from), R.center(to), glide), v(R.width(to), R.height(to)), 10), 'primary', enter);
     }
     for (const [game, chip] of l.chips) {
       const r = CasinoPage.pressedRect(chip, { k: 'game', game }, state);
       const on = game === state.game ? glide : slide && game === slide.from ? 1 - glide : 0;
       const label = S.casino.game(game);
       const dim = busy && game !== state.game ? 0.4 : 1;
-      t(list, label, R.center(r), 13, 'muted', { weight: 'bold', align: 'center', opacity: enter * (1 - on) * dim });
-      if (on > 0) t(list, label, R.center(r), 13, 'background', { weight: 'bold', align: 'center', opacity: enter * on });
+      drawText(list, label, R.center(r), 13, 'muted', { weight: 'bold', align: 'center', opacity: enter * (1 - on) * dim });
+      if (on > 0) drawText(list, label, R.center(r), 13, 'background', { weight: 'bold', align: 'center', opacity: enter * on });
     }
   },
 
   /** Today's balance as it is, the odds a tap away, and what the last rounds really gave. */
   addInfo(list: RenderList, l: Layout, career: Career, today: number, state: CasinoState, enter: number): void {
     const net = state.wallet.net(Casino.today(career, today));
-    t(list, S.casino.today(net), l.today, 13, net > 0 ? 'accent' : net < 0 ? 'destructive' : 'muted', { weight: 'bold', opacity: enter });
+    drawText(list, S.casino.today(net), l.today, 13, net > 0 ? 'accent' : net < 0 ? 'destructive' : 'muted', { weight: 'bold', opacity: enter });
     const odds = CasinoPage.pressedRect(l.odds, { k: 'odds' }, state);
     list.s(rect(R.center(odds), v(R.width(odds), R.height(odds)), R.height(odds) / 2), 'controlFill', enter);
-    t(list, S.casino.odds, R.center(odds), 12, 'primary', { weight: 'bold', align: 'center', opacity: enter });
+    drawText(list, S.casino.odds, R.center(odds), 12, 'primary', { weight: 'bold', align: 'center', opacity: enter });
     const rounds = state.wallet.log(career.casinoLog).filter((r) => r.game === state.game).slice(-8);
     if (rounds.length === 0) {
-      t(list, S.casino.noHistory, v(l.history.minX, R.center(l.history).y), 12, 'muted', { opacity: 0.8 * enter });
+      drawText(list, S.casino.noHistory, v(l.history.minX, R.center(l.history).y), 12, 'muted', { opacity: 0.8 * enter });
       return;
     }
     let x = l.history.minX;
@@ -502,7 +502,7 @@ export const CasinoPage = {
       if (x + w > l.history.maxX) break;
       const won = round.win > 0;
       list.s(rect(v(x + w / 2, y), v(w, 22), 11), won ? 'accent' : 'controlFill', (won ? 0.18 : 1) * enter);
-      t(list, label, v(x + w / 2, y), 11, won ? 'accent' : 'muted', { weight: 'bold', align: 'center', opacity: enter });
+      drawText(list, label, v(x + w / 2, y), 11, won ? 'accent' : 'muted', { weight: 'bold', align: 'center', opacity: enter });
       x += w + 6;
     }
   },
@@ -526,8 +526,8 @@ export const CasinoPage = {
     const label = on ? S.ads.boostOn(p) : left <= 0 ? S.ads.noBoosts : !state.ad.ready ? S.ads.unavailable : S.ads.boostWatch(p);
     const detail = on || left <= 0 || !state.ad.ready ? '' : S.ads.boostLeft(left);
     const room = size.x - 24 - (detail ? textWidth(detail, 11) + 10 : 0);
-    t(list, label, v(r.minX + 12, c.y), ShopPage.fitted(label, 13, room), on ? 'accent' : usable ? 'primary' : 'muted', { weight: 'bold', opacity: enter * (usable || on ? 1 : 0.7) });
-    if (detail) t(list, detail, v(r.maxX - 12, c.y), 11, 'muted', { align: 'trailing', opacity: enter });
+    drawText(list, label, v(r.minX + 12, c.y), ShopPage.fitted(label, 13, room), on ? 'accent' : usable ? 'primary' : 'muted', { weight: 'bold', opacity: enter * (usable || on ? 1 : 0.7) });
+    if (detail) drawText(list, detail, v(r.maxX - 12, c.y), 11, 'muted', { align: 'trailing', opacity: enter });
   },
 
   roundLabel(r: CasinoRound): string {
@@ -554,18 +554,18 @@ export const CasinoPage = {
       const o = enter * (busy ? 0.45 : 1);
       list.s(rect(R.center(r), v(R.width(r), R.height(r)), 9), chosen ? 'primary' : 'controlFill', o);
       const label = i === stakes.length - 1 ? S.casino.allIn : S.casino.stakeShort(stakes[i]);
-      t(list, label, R.center(r), ShopPage.fitted(label, 12, R.width(r) - 6), chosen ? 'background' : affordable ? 'primary' : 'muted', { weight: 'bold', align: 'center', opacity: o * (affordable || chosen ? 1 : 0.6) });
+      drawText(list, label, R.center(r), ShopPage.fitted(label, 12, R.width(r) - 6), chosen ? 'background' : affordable ? 'primary' : 'muted', { weight: 'bold', align: 'center', opacity: o * (affordable || chosen ? 1 : 0.6) });
     });
     if (l.autos.length > 0) {
       const label = v(l.stage.minX + 2, R.center(l.autos[0]).y);
-      t(list, S.casino.auto, label, 12, 'muted', { weight: 'bold', opacity: enter * (busy ? 0.45 : 1) });
+      drawText(list, S.casino.auto, label, 12, 'muted', { weight: 'bold', opacity: enter * (busy ? 0.45 : 1) });
       l.autos.forEach((cell, i) => {
         const r = CasinoPage.pressedRect(cell, { k: 'auto', index: i }, state);
         const chosen = i === state.auto;
         const o = enter * (busy ? 0.45 : 1);
         list.s(rect(R.center(r), v(R.width(r), R.height(r)), 8), chosen ? 'cardRaised' : 'controlFill', o);
         const target = baseConfig.crashAutoTargets[i];
-        t(list, target === 0 ? S.casino.autoOff : S.casino.times(target), R.center(r), 12, chosen ? 'accent' : 'muted', { weight: 'bold', align: 'center', opacity: o });
+        drawText(list, target === 0 ? S.casino.autoOff : S.casino.times(target), R.center(r), 12, chosen ? 'accent' : 'muted', { weight: 'bold', align: 'center', opacity: o });
       });
     }
     const button = (r: Rect, target: CasinoTarget, label: string, prominent: boolean, enabled: boolean, tint: ColorToken = 'accent'): void => {
@@ -574,11 +574,11 @@ export const CasinoPage = {
       const size = v(R.width(p), R.height(p));
       if (prominent) {
         list.s(rect(c, size, 14), tint, enter * (enabled ? 1 : 0.35));
-        t(list, label, c, ShopPage.fitted(label, 16, size.x - 20), 'accentInk', { weight: 'bold', align: 'center', opacity: enter * (enabled ? 1 : 0.6) });
+        drawText(list, label, c, ShopPage.fitted(label, 16, size.x - 20), 'accentInk', { weight: 'bold', align: 'center', opacity: enter * (enabled ? 1 : 0.6) });
       } else {
         list.s(rect(c, size, 14), tint, enter * (enabled ? 1 : 0.35));
         list.s(rect(c, v(size.x - 3, size.y - 3), 12.5), 'cardRaised', enter);
-        t(list, label, c, ShopPage.fitted(label, 15, size.x - 20), enabled ? 'primary' : 'muted', { weight: 'bold', align: 'center', opacity: enter });
+        drawText(list, label, c, ShopPage.fitted(label, 15, size.x - 20), enabled ? 'primary' : 'muted', { weight: 'bold', align: 'center', opacity: enter });
       }
     };
     if (state.picker) {
@@ -590,7 +590,7 @@ export const CasinoPage = {
       if (run?.k === 'crash') {
         const m = Casino.multiplierAt(run.age, baseConfig);
         button(l.main, { k: 'cashOut' }, S.casino.cashOut(money(Fmt.number(Math.floor(run.stake * m)))), true, m > 1, 'hazard');
-      } else t(list, S.casino.tapToSkip, R.center(l.main), 12, 'muted', { align: 'center', opacity: 0.8 * enter });
+      } else drawText(list, S.casino.tapToSkip, R.center(l.main), 12, 'muted', { align: 'center', opacity: 0.8 * enter });
       return;
     }
     if (pending) {

@@ -43,6 +43,12 @@ interface CrazyGamesSdk {
   };
 }
 
+declare global {
+  interface Window {
+    CrazyGames?: { SDK?: CrazyGamesSdk };
+  }
+}
+
 /** The SDK once it is ready; null outside CrazyGames or when it is missing or disabled. */
 let sdk: CrazyGamesSdk | null = null;
 let playing = false;
@@ -66,7 +72,7 @@ const timeout = (): Promise<never> => new Promise((_, reject) => window.setTimeo
 export async function startCrazyGames(): Promise<void> {
   try {
     await Promise.race([loadScript(), timeout()]);
-    const found = (window as unknown as { CrazyGames?: { SDK?: CrazyGamesSdk } }).CrazyGames?.SDK;
+    const found = window.CrazyGames?.SDK;
     if (!found) return;
     await Promise.race([found.init(), timeout()]);
     if (found.environment === 'disabled') return;

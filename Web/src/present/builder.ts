@@ -13,8 +13,6 @@ import { measure } from './measure';
 
 type MapGeo = { center: Vec2; radius: number };
 
-export const sameBuilt = (a: Built | null | undefined, b: Built | null | undefined): boolean => !!a && !!b && a.k === b.k && a.slot === b.slot;
-
 /** What the Street Builder shows and animates (`StreetBuilderPage.State`). */
 export class BuilderState {
   selected: Part | null = null;

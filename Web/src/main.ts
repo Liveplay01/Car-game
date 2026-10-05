@@ -7,6 +7,12 @@ import { startAds } from './ui/ads';
 import { Casino } from './core/casino';
 import { forgetMeasures } from './present/measure';
 
+declare global {
+  interface Window {
+    __game?: Shell;
+  }
+}
+
 // The casino draws on real randomness besides the save's seed, so no result can be worked out beforehand.
 Casino.useEntropy(() => crypto.getRandomValues(new Uint32Array(1))[0]);
 
@@ -33,7 +39,7 @@ document.fonts?.addEventListener('loadingdone', forgetMeasures);
 await Promise.race([document.fonts?.load('italic 900 30px "Overpass Variable"'), new Promise((resolve) => window.setTimeout(resolve, 1500))]).catch(() => undefined);
 
 const shell = new Shell(app, canvas, layers);
-if (import.meta.env.DEV) (window as unknown as { __game: Shell }).__game = shell;
+if (import.meta.env.DEV) window.__game = shell;
 gameLoaded();
 // The game is on screen: the boot screen fades away, and later errors are the game's own business.
 window.removeEventListener('error', bootFailed);

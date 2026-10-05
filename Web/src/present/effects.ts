@@ -3,7 +3,7 @@ import { STEP } from '../core/world';
 import type { Vehicle, Crashed } from '../core/vehicle';
 import type { CrashReport } from '../core/events';
 import { gravity } from '../core/config';
-import { type Vec2, v, add, sub, mul, length, left, fromAngle, angleOf, TAU, normalize } from '../core/vec2';
+import { type Vec2, v, add, sub, mul, length, left, fromAngle, angleOf, TAU, normalize, clamp } from '../core/vec2';
 import { Rng } from '../core/rng';
 import { type RenderList, rect, circle, arc, line, Ease } from './render';
 import type { ColorToken } from './theme';
@@ -65,7 +65,7 @@ export class CrashEffects {
   }
 
   static severity(r: CrashReport): number {
-    return Math.min(Math.max(r.impact / CrashEffects.typicalImpact, 0.4), 1.6);
+    return clamp(r.impact / CrashEffects.typicalImpact, 0.4, 1.6);
   }
 
   spawn(r: CrashReport, world: World, reduceMotion: boolean, boost = 0): void {

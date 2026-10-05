@@ -1,4 +1,4 @@
-import { v } from '../core/vec2';
+import { v, clamp } from '../core/vec2';
 import { type RenderList, type Rect, R, rect, Ease } from './render';
 
 /**
@@ -63,7 +63,7 @@ export class Scroller {
 
   /** A mouse wheel or trackpad: the list glides to where the turns add up, never jumps. */
   wheel(dy: number, maxScroll: number): void {
-    this.scrollTo(Math.min(Math.max((this.target ?? this.scroll) + dy, 0), maxScroll));
+    this.scrollTo(clamp((this.target ?? this.scroll) + dy, 0, maxScroll));
   }
 
   /** The fling decays; past an end it springs back. */
@@ -85,7 +85,7 @@ export class Scroller {
     }
     this.scroll += this.velocity * delta;
     this.velocity *= Math.exp(-delta / 0.325);
-    const target = Math.min(Math.max(this.scroll, 0), maxScroll);
+    const target = clamp(this.scroll, 0, maxScroll);
     if (target !== this.scroll) {
       this.velocity *= Math.exp(-delta / 0.05);
       this.scroll += (target - this.scroll) * Math.min(1, delta / 0.09);
@@ -100,7 +100,7 @@ export class Scroller {
     let target = this.scroll;
     if (r.maxY > window.maxY) target += Math.min(r.maxY - window.maxY, r.minY - window.minY);
     else if (r.minY < window.minY) target -= window.minY - r.minY;
-    target = Math.min(Math.max(target, 0), maxScroll);
+    target = clamp(target, 0, maxScroll);
     if (Math.abs(target - this.scroll) > 0.5) this.scrollTo(target);
   }
 

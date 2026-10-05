@@ -39,11 +39,18 @@ export const isIos = (): boolean =>
 /** An iPad: its Share button sits at the top of Safari, not at the bottom. */
 export const isIpad = (): boolean => /iPad/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 
+declare global {
+  interface Navigator {
+    /** Safari's flag for a game started from the home screen. */
+    standalone?: boolean;
+  }
+}
+
 /** Started from the home screen (or as an installed app on the desktop). */
 export const isInstalled = (): boolean =>
   window.matchMedia('(display-mode: standalone)').matches ||
   window.matchMedia('(display-mode: fullscreen)').matches ||
-  (navigator as unknown as { standalone?: boolean }).standalone === true;
+  navigator.standalone === true;
 
 /** Whether the storage is already persistent (false when the browser cannot say). */
 export async function isStorageKept(): Promise<boolean> {

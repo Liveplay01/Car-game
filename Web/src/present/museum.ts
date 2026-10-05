@@ -4,7 +4,7 @@ import { type MuseumShelf, type MuseumEntry, type SpecialKind, type WeatherKind,
 import { rematch } from '../core/trials';
 import { type VehicleType, isHeavy } from '../core/vehicle';
 import { type Vec2, v, add, mul, fromAngle, TAU } from '../core/vec2';
-import { type RenderList, type RenderItem, type Rect, RenderList as List, R, rect, circle, arc, line, polygon, text, pinned, type Align, type Weight } from './render';
+import { type RenderList, type RenderItem, type Rect, RenderList as List, R, rect, circle, arc, line, polygon, pinned, drawText } from './render';
 import type { ColorToken } from './theme';
 import { MenuKit } from './menukit';
 import { moneyTag } from './icons';
@@ -18,10 +18,6 @@ export class MuseumState {
   selected: string | null = null;
   /** Entries that were on screen: leaving the Museum, what was new among them counts as seen. */
   readonly viewed = new Set<string>();
-}
-
-function t(list: RenderList, s: string, at: Vec2, size: number, color: ColorToken, opacity: number, o: { weight?: Weight; align?: Align } = {}): void {
-  list.s(text(s, at, size, o.align ?? 'leading', o.weight ?? 'regular'), color, opacity);
 }
 
 const seen = (c: Career, e: MuseumEntry): boolean => c.museumSeen.includes(museumId(e));
@@ -282,7 +278,7 @@ export const MuseumPage = {
     if (career.museumNew.includes(id)) {
       const at = v(r.minX + 22, r.minY + 12);
       list.s(rect(at, v(30, 15), 7.5), 'accent', o);
-      t(list, S.museum.newBadge, at, 9, 'accentInk', o, { weight: 'bold', align: 'center' });
+      drawText(list, S.museum.newBadge, at, 9, 'accentInk', { opacity: o, weight: 'bold', align: 'center' });
     }
   },
 
@@ -298,15 +294,15 @@ export const MuseumPage = {
     const won = career.trialsDone.includes(match.id);
     const right = beaten ? 86 : 16;
     const title = shown ? S.museum.name(entry) : S.museum.unknown;
-    t(list, title, v(x, c.y - 16), ShopPage.fitted(title, 14, r.maxX - right - x), beaten ? 'coin' : shown ? 'primary' : 'muted', o, { weight: 'bold' });
+    drawText(list, title, v(x, c.y - 16), ShopPage.fitted(title, 14, r.maxX - right - x), beaten ? 'coin' : shown ? 'primary' : 'muted', { opacity: o, weight: 'bold' });
     const lineText = shown ? S.museum.line(entry) : S.museum.firstAt(firstLevel(entry, baseConfig));
-    t(list, lineText, v(x, c.y + 3), ShopPage.fitted(lineText, 11, r.maxX - 16 - x), 'muted', o);
+    drawText(list, lineText, v(x, c.y + 3), ShopPage.fitted(lineText, 11, r.maxX - 16 - x), 'muted', { opacity: o });
     const status = beaten ? S.boss.beaten : shown ? S.museum.met : S.museum.notSeen;
-    t(list, status, v(x, c.y + 21), 11, beaten ? 'accent' : 'muted', o, { weight: 'bold' });
+    drawText(list, status, v(x, c.y + 21), 11, beaten ? 'accent' : 'muted', { opacity: o, weight: 'bold' });
     if (!beaten) return;
-    if (won) t(list, S.trials.passed, v(r.maxX - 16, c.y - 16), 12, 'accent', o, { weight: 'bold', align: 'trailing' });
+    if (won) drawText(list, S.trials.passed, v(r.maxX - 16, c.y - 16), 12, 'accent', { opacity: o, weight: 'bold', align: 'trailing' });
     else moneyTag(list, Fmt.number(match.reward), v(r.maxX - 16, c.y - 16), 13, 'trailing', 'primary', 'accent', o);
-    t(list, `${S.museum.rematch} ›`, v(r.maxX - 16, c.y + 21), 11, won ? 'muted' : 'coin', o, { weight: 'bold', align: 'trailing' });
+    drawText(list, `${S.museum.rematch} ›`, v(r.maxX - 16, c.y + 21), 11, won ? 'muted' : 'coin', { opacity: o, weight: 'bold', align: 'trailing' });
   },
 
   /** A card: the picture on top, the name and one line below. */
@@ -316,10 +312,10 @@ export const MuseumPage = {
     const scale = Math.min(1, R.height(r) / 118);
     MuseumPage.art(list, entry, v(c.x, r.minY + R.height(r) * 0.38), scale, shown, time, o, R.width(r) - 24);
     const name = shown ? S.museum.name(entry) : S.museum.unknown;
-    t(list, name, v(c.x, r.maxY - 30), ShopPage.fitted(name, 13, R.width(r) - 12), shown ? 'primary' : 'muted', o, { weight: 'bold', align: 'center' });
+    drawText(list, name, v(c.x, r.maxY - 30), ShopPage.fitted(name, 13, R.width(r) - 12), shown ? 'primary' : 'muted', { opacity: o, weight: 'bold', align: 'center' });
     const level = firstLevel(entry, baseConfig);
     const lineText = shown ? S.museum.line(entry) : level > 1 ? S.museum.firstAt(level) : S.museum.notSeen;
-    t(list, lineText, v(c.x, r.maxY - 13), ShopPage.fitted(lineText, 10, R.width(r) - 10), 'muted', o, { align: 'center' });
+    drawText(list, lineText, v(c.x, r.maxY - 13), ShopPage.fitted(lineText, 10, R.width(r) - 10), 'muted', { opacity: o, align: 'center' });
   },
 
   /**

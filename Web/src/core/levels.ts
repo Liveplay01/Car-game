@@ -14,11 +14,12 @@ import {
   slotDistance,
 } from './config';
 import { Rng } from './rng';
+import { clamp } from './vec2';
 
 // MARK: Shift curves (FOUNDATION.md 2.5)
 
 /** 0 at the start, 1 once `rampSeconds` have passed. */
-const ramp = (time: number, c: Config): number => (c.rampSeconds > 0 ? Math.min(Math.max(time / c.rampSeconds, 0), 1) : 1);
+const ramp = (time: number, c: Config): number => (c.rampSeconds > 0 ? clamp(time / c.rampSeconds, 0, 1) : 1);
 
 /** Cars the AI fills the road up to: rises over the ramp; rush hour adds a bonus. */
 export function densityAt(time: number, rushHour: boolean, c: Config): number {
@@ -39,7 +40,7 @@ export function tempoAt(time: number, rushHourSince: number | null, c: Config): 
     base = Math.min(Math.max(base, c.endlessMaxTempo), base + (beyond / 60) * c.endlessTempoPerMinute);
   }
   if (rushHourSince === null) return base;
-  const x = c.rushHourRamp > 0 ? Math.min(Math.max((time - rushHourSince) / c.rushHourRamp, 0), 1) : 1;
+  const x = c.rushHourRamp > 0 ? clamp((time - rushHourSince) / c.rushHourRamp, 0, 1) : 1;
   const smooth = x * x * (3 - 2 * x);
   return base + (Math.max(c.rushHourTempo, base) - base) * smooth;
 }
@@ -250,7 +251,7 @@ export function upgradePrice(u: Upgrade, step: number, c: Config): number {
 /** This config with the bought steps applied. */
 export function upgraded(base: Config, steps: (u: Upgrade) => number): Config {
   const c = cloneConfig(base);
-  const step = (u: Upgrade): number => Math.min(Math.max(0, steps(u)), upgradeMaxSteps[u]);
+  const step = (u: Upgrade): number => clamp(steps(u), 0, upgradeMaxSteps[u]);
   c.policeShare = Math.min(1, base.policeShare + step('morePatrols') * base.patrolsPerStep);
   c.criminalTime += step('longerPursuit') * base.pursuitPerStep;
   c.criminalChance = Math.max(0, base.criminalChance - step('quietStreets') * base.quietStreetsPerStep);

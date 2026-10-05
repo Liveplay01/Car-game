@@ -4,6 +4,7 @@ import { Scoring } from '../core/scoring';
 import type { Vec2 } from '../core/vec2';
 import { Ease, unitHash } from './render';
 import { CrashEffects } from './effects';
+import { clamp } from '../core/vec2';
 
 /** Sound effects; the value is the file name under `/audio/sounds/`. */
 export type SoundID =
@@ -172,7 +173,7 @@ export const Feedback = {
   pitch(sound: SoundID, combo: number, serial: number): number {
     switch (sound) {
       case 'merge': {
-        const step = Math.min(Math.max(combo - 1, 0), Feedback.comboLadder.length - 1);
+        const step = clamp(combo - 1, 0, Feedback.comboLadder.length - 1);
         return Math.pow(2, Feedback.comboLadder[step] / 12);
       }
       case 'toll':
@@ -244,7 +245,7 @@ export const Feedback = {
       case 'perfect':
       case 'comboUp':
       case 'flow':
-        return Math.min(Math.max(flow, 0), 1);
+        return clamp(flow, 0, 1);
       default:
         return 0;
     }
@@ -296,7 +297,7 @@ export const Feedback = {
   pan(screenX: number, width: number): number {
     if (width <= 0) return 0;
     const x = (screenX - width / 2) / (width / 2);
-    return Math.min(Math.max(x, -1), 1) * Feedback.panWidth;
+    return clamp(x, -1, 1) * Feedback.panWidth;
   },
 
   panWidth: 0.6,
@@ -316,7 +317,7 @@ export const Music = {
   breathDepth: 0.85,
 
   /** 20 kHz (open) down to 350 Hz, geometric so the steps are even to the ear. */
-  cutoff: (lowPass: number): number => 20000 * Math.pow(350 / 20000, Math.min(Math.max(lowPass, 0), 1)),
+  cutoff: (lowPass: number): number => 20000 * Math.pow(350 / 20000, clamp(lowPass, 0, 1)),
 
   /** The music breathes in when a criminal is announced or rush hour begins. */
   breath(t: number): number {
@@ -367,7 +368,7 @@ export const Music = {
       lead: tier >= 3 ? 0.9 : 0,
       siren: k === 'warning' || k === 'arriving' || k === 'active' ? 0.7 : 0,
       rush: world.shift.isRushHour ? 1 : 0,
-      flow: Math.min(Math.max(flow, 0), 1) * 0.8,
+      flow: clamp(flow, 0, 1) * 0.8,
     };
     let breath = 0;
     if (world.criminal.kind === 'warning') breath = Music.breath(world.time - (world.criminal.until - c.criminalWarning));

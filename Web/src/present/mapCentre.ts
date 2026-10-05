@@ -1,13 +1,11 @@
 import { type Vec2, v, add, sub, mul, left, normalize, fromAngle, angleOf, TAU } from '../core/vec2';
-import { type RenderList, rect, circle, arc, line, polygon, unitHash } from './render';
+import { type RenderList, rect, circle, arc, line, polygon, unitHash as hash } from './render';
 import type { ColorToken } from './theme';
 import { rotated } from './carArt';
 import { Plants } from './mapPlants';
 import { MapTheme } from './mapThemes';
 
 /** The centrepiece a map skin puts on the island (`MapTheme.addIsland`). */
-const hash = (i: number, salt: number): number => unitHash(i, salt);
-
 export const Centre = {
   fountain(list: RenderList, c: Vec2, time: number | null): void {
     list.w(rect(c, v(58, 58), 6, Math.PI / 4), 'stone', 0.22);

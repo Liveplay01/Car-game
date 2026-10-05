@@ -3,8 +3,8 @@ import { baseConfig } from '../core/config';
 import { type SlotSpin, type SlotSymbol, Casino } from '../core/casino';
 import { cosmetic } from '../core/loot';
 import type { VehicleType } from '../core/vehicle';
-import { type Vec2, v, add, mul, fromAngle, TAU } from '../core/vec2';
-import { type RenderList, type Rect, RenderList as List, R, rect, circle, arc, line, polygon, Ease, pinned, vlerp, zoomed } from './render';
+import { type Vec2, v, add, mul, fromAngle, TAU, lerpV } from '../core/vec2';
+import { type RenderList, type Rect, RenderList as List, R, rect, circle, arc, line, polygon, Ease, pinned, zoomed, drawText } from './render';
 import type { ColorToken } from './theme';
 import { MenuKit } from './menukit';
 import { S, Fmt, money } from './strings';
@@ -13,7 +13,7 @@ import { SYNDICATE_BOSS } from './scene';
 import { land } from './hud';
 import { ShopPage } from './shop';
 import { CasinoPage, type CasinoRun, CasinoState } from './casino';
-import { TIMES, HEAT, SYMBOL, slotEnd, reelStop, reelAt, needleTime, needleTurn, heatOf, unit, winTier, t } from './casinoKit';
+import { TIMES, HEAT, SYMBOL, slotEnd, reelStop, reelAt, needleTime, needleTurn, heatOf, unit, winTier } from './casinoKit';
 
 /**
  * The four tables of the casino, drawn as pure functions of their age: Crash, Slots, the Skin
@@ -146,7 +146,7 @@ export const CasinoGames = {
     if (lean > 1.001) for (let i = leanFrom; i < list.items.length; i++) list.items[i] = zoomed(list.items[i], head, lean);
     list.clip = saved;
     for (const [label, y] of labels) {
-      if (y > s.minY + 8 && y < s.maxY - 8) t(list, label, v(plot.minX - 18, y), 10, 'muted', { align: 'trailing', opacity: 0.8 * enter });
+      if (y > s.minY + 8 && y < s.maxY - 8) drawText(list, label, v(plot.minX - 18, y), 10, 'muted', { align: 'trailing', opacity: 0.8 * enter });
     }
 
     // Warning lights in the danger zone.
@@ -170,16 +170,16 @@ export const CasinoGames = {
       if (crashed !== null) pop = land((blast ?? 0) / 0.4, 0.35);
     }
     const size = driving && heat === 3 ? 54 : 40;
-    t(list, S.casino.times(m), big, size * pop, run ? color : 'muted', { weight: 'bold', align: 'center', opacity: enter });
+    drawText(list, S.casino.times(m), big, size * pop, run ? color : 'muted', { weight: 'bold', align: 'center', opacity: enter });
     const line2 = v(big.x, s.minY + 72);
-    if (!run) t(list, S.casino.crashHint, line2, 12, 'muted', { align: 'center', opacity: enter });
+    if (!run) drawText(list, S.casino.crashHint, line2, 12, 'muted', { align: 'center', opacity: enter });
     else if (out) {
       // The win counts up from the stake, as the coins leave for the money chip.
       const counted = reduceMotion ? out.win : Math.floor(run.stake + (out.win - run.stake) * Ease.outCubic(Ease.clamp01(out.age / 0.6)));
-      t(list, S.casino.cashedOut(money(Fmt.number(counted))), line2, 13, 'accent', { weight: 'bold', align: 'center', opacity: enter * Ease.outCubic(out.age / 0.2) });
+      drawText(list, S.casino.cashedOut(money(Fmt.number(counted))), line2, 13, 'accent', { weight: 'bold', align: 'center', opacity: enter * Ease.outCubic(out.age / 0.2) });
     }
-    else if (crashed !== null) t(list, S.casino.crashed, line2, 13, 'destructive', { weight: 'bold', align: 'center', opacity: enter });
-    else t(list, heat === 3 ? S.casino.dangerZone : S.casino.riding(money(Fmt.number(Math.floor(run.stake * m)))), line2, 12, heat === 3 ? 'destructive' : 'muted', { weight: heat === 3 ? 'bold' : 'regular', align: 'center', opacity: enter });
+    else if (crashed !== null) drawText(list, S.casino.crashed, line2, 13, 'destructive', { weight: 'bold', align: 'center', opacity: enter });
+    else drawText(list, heat === 3 ? S.casino.dangerZone : S.casino.riding(money(Fmt.number(Math.floor(run.stake * m)))), line2, 12, heat === 3 ? 'destructive' : 'muted', { weight: heat === 3 ? 'bold' : 'regular', align: 'center', opacity: enter });
 
     // Got out just in time: a stamp slams onto the stage.
     if (out && out.clutch !== null) CasinoPage.clutchStamp(list, v(R.center(s).x, s.maxY - 64), out.age, out.clutch, reduceMotion, enter);
@@ -229,8 +229,8 @@ export const CasinoGames = {
     const size = v(236 * scale, 46 * scale);
     list.s(rect(center, add(size, v(6, 6)), 10, -0.08), 'hazard', 0.95 * fade * opacity);
     list.s(rect(center, size, 8, -0.08), 'card', fade * opacity);
-    t(list, S.casino.clutch, add(center, v(0, -6 * scale)), 18 * scale, 'hazard', { weight: 'bold', align: 'center', opacity: fade * opacity });
-    t(list, S.casino.clutchSaved(margin.toFixed(2)), add(center, v(0, 13 * scale)), 11 * scale, 'primary', { weight: 'bold', align: 'center', opacity: fade * opacity });
+    drawText(list, S.casino.clutch, add(center, v(0, -6 * scale)), 18 * scale, 'hazard', { weight: 'bold', align: 'center', opacity: fade * opacity });
+    drawText(list, S.casino.clutchSaved(margin.toFixed(2)), add(center, v(0, 13 * scale)), 11 * scale, 'primary', { weight: 'bold', align: 'center', opacity: fade * opacity });
   },
 
   /** The display's edge glows in `color`, for the hottest moments of a drive. */
@@ -345,10 +345,10 @@ export const CasinoGames = {
       if (triple && !reduceMotion) CasinoPage.coinFountain(list, center, since, win.pay >= 40 ? 1.6 : 1);
       const counted = triple && !reduceMotion ? Math.floor(win.win * Ease.outCubic(since / TIMES.countUp)) : win.win;
       const pop = reduceMotion ? 1 : triple && since < TIMES.countUp ? 1 + 0.06 * (1 - ((since / TIMES.ding) % 1)) : land((since - (triple ? TIMES.countUp : 0)) / 0.4, 0.3);
-      t(list, `+${money(Fmt.number(counted))}`, under, (triple ? 30 : 24) * pop, triple ? 'coin' : 'accent', { weight: 'bold', align: 'center', opacity: enter });
-      t(list, S.casino.slotRule(win.rule, win.pay, win.line), v(under.x, under.y + (triple ? 26 : 22)), 12, 'muted', { align: 'center', opacity: enter });
-    } else if (run && done) t(list, S.casino.noWin, under, 13, 'muted', { align: 'center', opacity: enter * (reduceMotion ? 1 : Ease.outCubic(since / 0.2)) });
-    else if (!run) t(list, S.casino.slotsHint, under, 12, 'muted', { align: 'center', opacity: enter });
+      drawText(list, `+${money(Fmt.number(counted))}`, under, (triple ? 30 : 24) * pop, triple ? 'coin' : 'accent', { weight: 'bold', align: 'center', opacity: enter });
+      drawText(list, S.casino.slotRule(win.rule, win.pay, win.line), v(under.x, under.y + (triple ? 26 : 22)), 12, 'muted', { align: 'center', opacity: enter });
+    } else if (run && done) drawText(list, S.casino.noWin, under, 13, 'muted', { align: 'center', opacity: enter * (reduceMotion ? 1 : Ease.outCubic(since / 0.2)) });
+    else if (!run) drawText(list, S.casino.slotsHint, under, 12, 'muted', { align: 'center', opacity: enter });
   },
 
   winningReels(spin: SlotSpin): number[] {
@@ -456,12 +456,12 @@ export const CasinoGames = {
       const pop = reduceMotion ? 1 : Ease.spring(since / 0.45);
       MenuKit.glow(list, center, radius * 0.9, ShopPage.rarityColor(targetItem.rarity), 0.45 * enter);
       ShopPage.addPreview(list, targetItem, v(center.x, center.y - 10), (radius / 75) * (0.6 + 0.4 * pop), enter);
-      t(list, S.casino.upgraded, v(center.x, center.y + radius * 0.55), 13, 'accent', { weight: 'bold', align: 'center', opacity: enter });
+      drawText(list, S.casino.upgraded, v(center.x, center.y + radius * 0.55), 13, 'accent', { weight: 'bold', align: 'center', opacity: enter });
       // A skin won is a reveal like a chest's: confetti at least, louder the more it outgrew the stake.
       const grew = Casino.value(targetItem.rarity, baseConfig) / Math.max(1, stakeValue);
       CasinoPage.celebrate(list, center, since, Math.max(2, winTier(grew)), ShopPage.rarityColor(targetItem.rarity), reduceMotion);
     } else if (done) {
-      t(list, S.casino.lostSkins(run!.roll.staked.length), center, 15, 'destructive', { weight: 'bold', align: 'center', opacity: enter });
+      drawText(list, S.casino.lostSkins(run!.roll.staked.length), center, 15, 'destructive', { weight: 'bold', align: 'center', opacity: enter });
       // The stake breaks apart in the pot: shards in the colours of what was lost.
       if (!reduceMotion && since < 1) {
         const colors = run!.roll.staked.map((id) => ShopPage.rarityColor(cosmetic(id)?.rarity ?? 'common'));
@@ -473,8 +473,8 @@ export const CasinoGames = {
         }
       }
     } else {
-      t(list, chance > 0 ? `${(chance * 100).toFixed(1)} %` : '–', v(center.x, center.y - 6), Math.min(34, radius * 0.5), chance > 0 ? 'primary' : 'muted', { weight: 'bold', align: 'center', opacity: enter });
-      t(list, boosted && chance > 0 ? S.casino.chanceBoosted : S.casino.chance, v(center.x, center.y + radius * 0.3), 12, boosted && chance > 0 ? 'accent' : 'muted', { align: 'center', opacity: enter });
+      drawText(list, chance > 0 ? `${(chance * 100).toFixed(1)} %` : '–', v(center.x, center.y - 6), Math.min(34, radius * 0.5), chance > 0 ? 'primary' : 'muted', { weight: 'bold', align: 'center', opacity: enter });
+      drawText(list, boosted && chance > 0 ? S.casino.chanceBoosted : S.casino.chance, v(center.x, center.y + radius * 0.3), 12, boosted && chance > 0 ? 'accent' : 'muted', { align: 'center', opacity: enter });
     }
     // The table: five skins staked, the arrow, the one to win.
     slots.forEach((cell, i) => {
@@ -490,23 +490,23 @@ export const CasinoGames = {
       list.s(rect(R.center(r), v(R.width(r) + 3, R.height(r) + 3), 11.5), edge, (item ? 0.6 : 1) * enter * fade);
       list.s(rect(R.center(r), v(R.width(r), R.height(r)), 10), 'cardRaised', enter * fade);
       if (item && flown < 1) {
-        const at = vlerp(R.center(r), center, Ease.inOutSine(flown));
+        const at = lerpV(R.center(r), center, Ease.inOutSine(flown));
         ShopPage.addPreview(list, item, at, (R.width(r) / 70) * (1 - 0.55 * flown), enter * (staking && reduceMotion ? fade : 1 - 0.5 * flown));
-      } else if (!item) t(list, i < 5 ? '+' : '?', R.center(r), 18, 'muted', { weight: 'bold', align: 'center', opacity: enter });
+      } else if (!item) drawText(list, i < 5 ? '+' : '?', R.center(r), 18, 'muted', { weight: 'bold', align: 'center', opacity: enter });
     });
     const arrowAt = v(slots[4].maxX + 14, R.center(slots[5]).y);
     list.s(polygon([add(arrowAt, v(-5, -6)), add(arrowAt, v(5, 0)), add(arrowAt, v(-5, 6))]), 'muted', enter);
-    t(list, S.casino.stakeValue(money(Fmt.number(stakeValue))), v(slots[0].minX, slots[0].minY - 12), 11, 'muted', { opacity: enter });
-    if (target && targetItem) t(list, S.shop.item(target), v(slots[5].maxX, slots[5].minY - 12), 11, ShopPage.rarityColor(targetItem.rarity), { weight: 'bold', align: 'trailing', opacity: enter });
+    drawText(list, S.casino.stakeValue(money(Fmt.number(stakeValue))), v(slots[0].minX, slots[0].minY - 12), 11, 'muted', { opacity: enter });
+    if (target && targetItem) drawText(list, S.shop.item(target), v(slots[5].maxX, slots[5].minY - 12), 11, ShopPage.rarityColor(targetItem.rarity), { weight: 'bold', align: 'trailing', opacity: enter });
   },
 
   addPicker(list: RenderList, stage: Rect, career: Career, state: CasinoState, enter: number): void {
     ShopPage.panel(list, stage, 'card', enter);
     const items = CasinoPage.pickerItems(career, state);
     const title = state.picker === 'stake' ? S.casino.pickStakesTitle(state.staked.length, baseConfig.upgradeMaxStake) : S.casino.pickTargetTitle;
-    t(list, title, v(stage.minX + 14, stage.minY + 16), 13, 'primary', { weight: 'bold', opacity: enter });
+    drawText(list, title, v(stage.minX + 14, stage.minY + 16), 13, 'primary', { weight: 'bold', opacity: enter });
     if (items.length === 0) {
-      t(list, state.picker === 'stake' ? S.casino.noSkins : S.casino.noTargets, R.center(stage), 13, 'muted', { align: 'center', opacity: enter });
+      drawText(list, state.picker === 'stake' ? S.casino.noSkins : S.casino.noTargets, R.center(stage), 13, 'muted', { align: 'center', opacity: enter });
       return;
     }
     const inner = R.inset(stage, 10, 0);
@@ -517,20 +517,20 @@ export const CasinoGames = {
       list.s(rect(R.center(r), v(R.width(r) + 3, R.height(r) + 3), 11.5), chosen ? 'accent' : ShopPage.rarityColor(item.rarity), (chosen ? 1 : 0.45) * enter);
       list.s(rect(R.center(r), v(R.width(r), R.height(r)), 10), 'cardRaised', enter);
       ShopPage.addPreview(list, item, v(R.center(r).x, R.center(r).y - 4), R.width(r) / 80, enter);
-      if (Careers.isWorn(career, item.id)) t(list, S.shop.worn, v(r.maxX - 6, r.minY + 9), 9, 'accent', { weight: 'bold', align: 'trailing', opacity: enter });
-      t(list, S.shop.item(item.id), v(R.center(r).x, r.maxY - 8), ShopPage.fitted(S.shop.item(item.id), 9, R.width(r) - 6), 'muted', { align: 'center', opacity: enter });
+      if (Careers.isWorn(career, item.id)) drawText(list, S.shop.worn, v(r.maxX - 6, r.minY + 9), 9, 'accent', { weight: 'bold', align: 'trailing', opacity: enter });
+      drawText(list, S.shop.item(item.id), v(R.center(r).x, r.maxY - 8), ShopPage.fitted(S.shop.item(item.id), 9, R.width(r) - 6), 'muted', { align: 'center', opacity: enter });
       if (chosen) {
         const at = v(r.minX + 9, r.minY + 9);
         list.s(circle(at, 7), 'accent', enter);
-        t(list, '✓', at, 9, 'accentInk', { weight: 'bold', align: 'center', opacity: enter });
+        drawText(list, '✓', at, 9, 'accentInk', { weight: 'bold', align: 'center', opacity: enter });
       }
     }
     if (pages > 1) {
       const y = stage.maxY - 14;
       const page = Math.min(state.page, pages - 1);
-      t(list, `${page + 1} / ${pages}`, v(R.center(stage).x, y), 12, 'muted', { align: 'center', opacity: enter });
-      t(list, '‹', v(stage.minX + 24, y), 20, page > 0 ? 'primary' : 'muted', { weight: 'bold', align: 'center', opacity: enter * (page > 0 ? 1 : 0.4) });
-      t(list, '›', v(stage.maxX - 24, y), 20, page < pages - 1 ? 'primary' : 'muted', { weight: 'bold', align: 'center', opacity: enter * (page < pages - 1 ? 1 : 0.4) });
+      drawText(list, `${page + 1} / ${pages}`, v(R.center(stage).x, y), 12, 'muted', { align: 'center', opacity: enter });
+      drawText(list, '‹', v(stage.minX + 24, y), 20, page > 0 ? 'primary' : 'muted', { weight: 'bold', align: 'center', opacity: enter * (page > 0 ? 1 : 0.4) });
+      drawText(list, '›', v(stage.maxX - 24, y), 20, page < pages - 1 ? 'primary' : 'muted', { weight: 'bold', align: 'center', opacity: enter * (page < pages - 1 ? 1 : 0.4) });
     }
   },
 
@@ -558,7 +558,7 @@ export const CasinoGames = {
       list.s(rect(at, v(34, 8), 4, turn), tint, o);
       list.s(rect(add(at, v(0, -1.5)), v(26, 3), 1.5, turn), 'primary', 0.35 * o);
     }
-    if (fall === 0) t(list, S.casino.chainTimes(2 ** count), v(foot.x, foot.y - 4 - count * 7 - 12), 11, tint, { weight: 'bold', align: 'center', opacity: enter });
+    if (fall === 0) drawText(list, S.casino.chainTimes(2 ** count), v(foot.x, foot.y - 4 - count * 7 - 12), 11, tint, { weight: 'bold', align: 'center', opacity: enter });
   },
 
   /** A coin with a car on one face and a crash on the other; it jumps, turns and lands. */
@@ -601,17 +601,17 @@ export const CasinoGames = {
     }
     const below = v(rest.x, stage.maxY - 40);
     if (!done) {
-      t(list, S.casino.flipping, below, 13, 'muted', { align: 'center', opacity: enter });
+      drawText(list, S.casino.flipping, below, 13, 'muted', { align: 'center', opacity: enter });
       return;
     }
     const pop = reduceMotion ? 1 : land(since / 0.4, 0.3);
     if (run.flip.won) {
       const text = run.items ? S.casino.doubledSkin(S.shop.item(run.flip.item ?? '')) : S.casino.doubled(money(Fmt.number(run.flip.money)));
-      t(list, text, below, 18 * pop, 'accent', { weight: 'bold', align: 'center', opacity: enter });
+      drawText(list, text, below, 18 * pop, 'accent', { weight: 'bold', align: 'center', opacity: enter });
       CasinoPage.celebrate(list, rest, since, winTier(2 ** run.chain), 'accent', reduceMotion);
-    } else t(list, run.items ? S.casino.flipLostSkin : S.casino.flipLost, below, 16, 'destructive', { weight: 'bold', align: 'center', opacity: enter });
+    } else drawText(list, run.items ? S.casino.flipLostSkin : S.casino.flipLost, below, 16, 'destructive', { weight: 'bold', align: 'center', opacity: enter });
     const p = career.casinoPending;
-    if (p?.k === 'win') t(list, S.casino.flipsLeft(baseConfig.doubleMaxChain - p.flips), v(below.x, below.y + 22), 11, 'muted', { align: 'center', opacity: enter });
+    if (p?.k === 'win') drawText(list, S.casino.flipsLeft(baseConfig.doubleMaxChain - p.flips), v(below.x, below.y + 22), 11, 'muted', { align: 'center', opacity: enter });
   },
 
   /** The picture of a game for the sheet. */

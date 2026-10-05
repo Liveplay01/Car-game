@@ -27,11 +27,6 @@ export function firstLearner(w: World): LearnerPhase {
 
 export const reservedLearnerArm = (w: World): Arm | null => (w.learner.kind === 'warning' ? w.learner.arm : null);
 
-export function learnerVehicle(w: World): number | null {
-  const l = w.learner;
-  return l.kind === 'arriving' || l.kind === 'active' ? l.vehicle : null;
-}
-
 /** The learner is hesitating right now: it brakes down to `learnerStallSpeed`. */
 export function isStalling(w: World, id: number, now = w.time): boolean {
   const l = w.learner;

@@ -1,6 +1,6 @@
 import type { Layout as RoundaboutLayout } from '../core/roundabout';
-import { type Vec2, v, mul, fromAngle, length } from '../core/vec2';
-import { type Camera, type RenderList, fitCamera, toScreen, arc, Ease, Metrics, vlerp } from './render';
+import { type Vec2, v, mul, fromAngle, length, lerpV } from '../core/vec2';
+import { type Camera, type RenderList, fitCamera, toScreen, arc, Ease, Metrics } from './render';
 import { type Screen, BuildLayout } from './flow';
 
 /**
@@ -72,8 +72,8 @@ export function perspectiveCamera(p: Perspective, layout: RoundaboutLayout, view
 /** Between two cameras: the zoom in steps of equal feel (geometric), the rest straight. */
 export const blendCameras = (a: Camera, b: Camera, t: number): Camera => ({
   viewport: b.viewport,
-  center: vlerp(a.center, b.center, t),
-  focus: vlerp(a.focus, b.focus, t),
+  center: lerpV(a.center, b.center, t),
+  focus: lerpV(a.focus, b.focus, t),
   scale: a.scale * Math.pow(b.scale / a.scale, t),
 });
 

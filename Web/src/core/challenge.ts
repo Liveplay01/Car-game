@@ -1,6 +1,7 @@
 import { type Config, type CityEvent, type RoadModule, type LegendaryRule, CITY_EVENTS, ROAD_MODULES, LEGENDARY_RULES } from './config';
 import { UPGRADES, upgradeMaxSteps, type Upgrade } from './levels';
 import { type Career, type GameMode, GAME_MODES, Careers, newCareer } from './career';
+import { isInt } from './guards';
 
 /**
  * A shareable challenge (a link, no server): everything that makes up one shift, so a friend
@@ -108,8 +109,6 @@ export function encodeChallenge(s: ChallengeSpec): string {
   ];
   return toBase64Url(JSON.stringify(packed));
 }
-
-const isInt = (x: unknown, min: number, max: number): x is number => typeof x === 'number' && Number.isInteger(x) && x >= min && x <= max;
 
 /** Null for anything that is not a valid challenge: a link can be typed or cut short. */
 export function decodeChallenge(code: string): ChallengeSpec | null {

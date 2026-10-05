@@ -6,6 +6,7 @@ import { RUN_IDS } from '../core/trials';
 import { MUSEUM_IDS, MUSEUM_SHELVES, type MuseumShelf, inferredSightings } from '../core/museum';
 import { TITLES, type TitleId } from '../core/elite';
 import { type CasinoGame, type CasinoPending, type CasinoRound, CASINO_GAMES } from '../core/casino';
+import { isObject } from '../core/guards';
 import { storage } from './store';
 import { sealOf } from './seal';
 import { PASS_TIERS, type HallEntry } from '../core/seasonPass';
@@ -27,8 +28,6 @@ export const SEAL_FIELD = '_seal';
  */
 const UNSEALED_UNTIL = Date.UTC(2026, 10, 1);
 
-type Raw = Record<string, unknown>;
-const isObject = (x: unknown): x is Raw => typeof x === 'object' && x !== null && !Array.isArray(x);
 const num = (x: unknown, fallback: number, min = -Infinity): number => (typeof x === 'number' && Number.isFinite(x) ? Math.max(min, x) : fallback);
 const int = (x: unknown, fallback: number, min = -Infinity): number => Math.floor(num(x, fallback, min));
 const strings = (x: unknown): string[] => (Array.isArray(x) ? x.filter((s): s is string => typeof s === 'string') : []);
@@ -360,15 +359,4 @@ export function parseImport(text: string, now: number = Date.now()): SaveGame | 
   const seal = checkSeal(inner);
   if (seal === 'bad' || (seal === 'none' && now >= UNSEALED_UNTIL)) return null;
   return readSave(inner);
-}
-
-export function eraseSave(): SaveGame {
-  try {
-    storage().removeItem(KEY);
-    storage().removeItem(LEGACY_KEY);
-    storage().removeItem(BACKUP_KEY);
-  } catch {
-    /* nothing to remove */
-  }
-  return newSave();
 }

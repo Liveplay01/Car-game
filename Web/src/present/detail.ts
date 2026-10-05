@@ -1,7 +1,7 @@
 import { type Career, Careers, MINIMUM_ARMS } from '../core/career';
 import type { Config, RoadModule } from '../core/config';
 import { type Upgrade, upgradeMaxSteps } from '../core/levels';
-import { type ChestKind, type Rarity, RARITIES, CHEST_ODDS, chestFinds, PITY_CHESTS, MAX_CAR_SKINS, BIG_SCREEN, cosmetic, isForSale } from '../core/loot';
+import { type ChestKind, RARITIES, CHEST_ODDS, chestFinds, PITY_CHESTS, MAX_CAR_SKINS, BIG_SCREEN, cosmetic, isForSale } from '../core/loot';
 import { type CasinoGame, type SlotSymbol, SLOT_SYMBOLS, Casino } from '../core/casino';
 import { type Vec2, v } from '../core/vec2';
 import type { RenderList } from './render';
@@ -76,8 +76,6 @@ export interface Detail {
   stacked?: boolean;
 }
 
-const rarityColor = (r: Rarity): ColorToken => ShopPage.rarityColor(r);
-
 export const Details = {
   upgrade(u: Upgrade, career: Career, config: Config, today: number, ads: AdOffer): Detail {
     const steps = Careers.steps(career, u);
@@ -118,7 +116,7 @@ export const Details = {
   chest(kind: ChestKind, career: Career, config: Config, today: number, ads: AdOffer): Detail {
     const count = Careers.count(career, kind);
     const odds = CHEST_ODDS[kind];
-    const rows: DetailRow[] = RARITIES.map((r, i) => ({ label: S.shop.rarity(r), value: percent(odds[i]), labelColor: rarityColor(r) }));
+    const rows: DetailRow[] = RARITIES.map((r, i) => ({ label: S.shop.rarity(r), value: percent(odds[i]), labelColor: ShopPage.rarityColor(r) }));
     const notes: Detail['notes'] = [{ text: S.shop.pity(PITY_CHESTS - career.chestsSinceEpic), color: 'muted' }];
     // A find (the Classic) is part of the odds too: shown with them, honestly, also once it is found.
     for (const find of chestFinds(kind)) {
@@ -170,7 +168,7 @@ export const Details = {
     return {
       key: `item:${id}`,
       art: { k: 'item', id, owned },
-      eyebrow: { text: S.shop.kind(item), color: rarityColor(item.rarity) },
+      eyebrow: { text: S.shop.kind(item), color: ShopPage.rarityColor(item.rarity) },
       title: owned ? S.shop.item(id) : S.shop.lockedTitle(item.kind),
       price: Careers.isWorn(career, id) ? { text: S.shop.worn, color: 'accent' } : owned && item.kind === 'vehicleType' ? { text: S.shop.inTraffic, color: 'accent' } : null,
       steps: null,
@@ -312,7 +310,7 @@ export const Details = {
         label: S.pass.tier(i + 1, PASS_TIERS),
         value: S.pass.reward(reward),
         labelColor: reached ? 'coin' : 'muted',
-        valueColor: reached ? 'accent' : reward.k === 'skin' ? rarityColor(reward.item.rarity) : 'muted',
+        valueColor: reached ? 'accent' : reward.k === 'skin' ? ShopPage.rarityColor(reward.item.rarity) : 'muted',
       };
     });
     const crown = SeasonPass.skins(season)[2];
@@ -377,7 +375,7 @@ export const Details = {
       }
       case 'upgrade':
         body = D.upgrade;
-        for (const r of RARITIES) rows.push({ label: D.value(S.shop.rarity(r)), value: money(Fmt.number(config.skinValue[r])), labelColor: rarityColor(r) });
+        for (const r of RARITIES) rows.push({ label: D.value(S.shop.rarity(r)), value: money(Fmt.number(config.skinValue[r])), labelColor: ShopPage.rarityColor(r) });
         notes.push({ text: D.returns(pct(1 - config.upgradeEdge)), color: 'accent' }, { text: D.maxChance(pct(config.upgradeMaxChance)), color: 'muted' });
         if (ads.offers) notes.push({ text: S.ads.boostNote(pct(config.upgradeAdBoost), config.adBoostsPerDay), color: 'muted' });
         break;
@@ -539,7 +537,7 @@ export const Details = {
       case 'item': {
         const item = cosmetic(art.id);
         if (!item) return;
-        MenuKit.glow(list, center, size * 0.5, rarityColor(item.rarity), 0.3);
+        MenuKit.glow(list, center, size * 0.5, ShopPage.rarityColor(item.rarity), 0.3);
         ShopPage.addPreview(list, item, center, 1.35 * scale, art.owned ? 1 : 0.45);
         break;
       }

@@ -2,7 +2,7 @@ import type { Config } from '../core/config';
 import type { Dent, VehicleType } from '../core/vehicle';
 import { isCarType, isExplosive, isEmergency } from '../core/vehicle';
 import type { Pose } from '../core/paths';
-import { type Vec2, v, add, sub, mul, dist, length, fromAngle, lerpV } from '../core/vec2';
+import { type Vec2, v, add, sub, mul, dist, length, fromAngle, lerpV, clamp } from '../core/vec2';
 import { type RenderList, rect, circle, line, polygon, Ease, Metrics, unitHash } from './render';
 import type { ColorToken } from './theme';
 import { type Finish, isShiny, glitters } from './skins';
@@ -421,7 +421,7 @@ export const CarArt = {
     const amount = CarArt.push(point, dents);
     if (amount <= 0.01) return point;
     const reach = Math.max(0, c.carLength / 2 - c.carWidth / 2);
-    const anchor = v(Math.min(Math.max(point.x, -reach), reach), 0);
+    const anchor = v(clamp(point.x, -reach, reach), 0);
     const inward = sub(anchor, point);
     const d = length(inward);
     if (d <= 1e-6) return point;

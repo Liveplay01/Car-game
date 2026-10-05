@@ -100,7 +100,7 @@ docker build -t car-game . ; docker run -p 5050:5050 car-game   # Container wie 
 - **Museum wächst mit (Leo, 28.09.2026):** Der Katalog in `core/museum.ts` folgt den Inhaltslisten
   (`BOSS_KINDS`, Fahrzeugtypen, `WEATHERS`, `CITY_EVENTS`, Dunkelheit). Neuer Boss, neues
   Spezialfahrzeug, neues Wetter oder Ereignis erscheint dort automatisch; der Build bricht ab,
-  bis Level (`core/museum.ts`), Text (`present/strings.ts`, `*_TEXT`) und Bild/Farbe
+  bis Level (`core/museum.ts`), Text (`present/museumText.ts`, `*_TEXT`) und Bild/Farbe
   (`present/museum.ts`) eingetragen sind. Ein gewöhnlicher Fahrzeugtyp kommt in `ORDINARY`.
   Eine ganz neue Inhaltsart bekommt ein eigenes Regal (`MUSEUM_SHELVES`); alte Spielstände
   erhalten dafür automatisch, was sie schon gesehen haben müssen (`museumShelves`).
@@ -133,3 +133,12 @@ docker build -t car-game . ; docker run -p 5050:5050 car-game   # Container wie 
 - Das Icon-Original liegt in `Web/icon/` (`python Web/icon/make_icon.py`).
 - Die Casino-Klänge entstehen in `Web/audio-src/make_casino_sounds.py` (numpy, scipy, ffmpeg)
   und landen als `.m4a` in `Web/public/audio/sounds/`.
+
+## Code Quality & Style Guidelines
+
+- No AI Chatter or Over-Engineering: Write lean, direct code. Avoid unnecessary abstraction layers, wrapper functions, or redundant boilerplate.
+- Prefer Native Standards: Do not add dependencies for simple operations. Use native language features instead of external utility libraries.
+- Minimal, Meaningful Comments: Write self-documenting code. Do not write line-by-line explanatory comments or state the obvious.
+- Clean Naming & Strict Types: Use concise, idiomatic variable names. Avoid overly verbose LLM naming styles. Enforce strict typing (no `any` or loose fallbacks).
+- Idiomatic Architecture: Respect the modern conventions of the current framework/language. Keep files focused, modular, and single-purpose.
+- Robust Error Handling: Never catch errors just to `console.log` them. Handle edge cases explicitly or let errors bubble up correctly.
