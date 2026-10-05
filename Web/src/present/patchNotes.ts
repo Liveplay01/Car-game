@@ -44,6 +44,18 @@ export const itemCredit = (item: PatchItem): string | null => {
 
 export const PATCH_NOTES: PatchNote[] = [
   {
+    id: '2026-10-05',
+    date: '5 October 2026',
+    title: 'Optional ads for a free upgrade step and a better Skin Upgrade chance, and codes that send themselves',
+    impact: 'major',
+    items: [
+      'Watch an ad, your choice, for a free step of one upgrade: once a day the game picks one (a "Free step" badge on its card in Build → Upgrades) and you can still buy it as usual. Not on CrazyGames.',
+      'Watch an ad to add 10 points to the chance of your next Skin Upgrade round, up to 3 times a day (Shop → Casino → Upgrade). The dial shows the chance it really rolls, and one round uses the boost up, won or lost. Not on CrazyGames.',
+      'The free Standard Chest for an ad is a real ad now on the website and in the Google Play app. It, and the two new ones, pay only when the ad was watched to the end, and the offers show only when an ad is ready.',
+      'Codes send themselves: a multiplayer game, a friend code and a Cloud sync code start the moment the last character is in, so you no longer tap Join, Add or Load. The buttons are still there.',
+    ],
+  },
+  {
     id: '2026-10-04',
     date: '4 October 2026',
     title: 'Invite friends for chests, a simpler Progress and fairer money',

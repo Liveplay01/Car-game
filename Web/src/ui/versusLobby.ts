@@ -379,6 +379,8 @@ export class VersusLobby {
       input.value = input.value.replace(/\D/g, '').slice(0, 4);
       this.draft = input.value;
       joinBtn.disabled = !isJoinCode(this.draft);
+      // The fourth digit completes the code: no need to tap Join (Leo, 05.10.2026).
+      if (isJoinCode(this.draft)) this.join();
     });
     input.addEventListener('keydown', (e) => {
       if (e.key === 'Enter') {

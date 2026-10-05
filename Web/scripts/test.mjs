@@ -15,7 +15,8 @@ const load = (path) => server.ssrLoadModule(path);
 
 const { World } = await load('/src/core/world.ts');
 const { baseConfig, BOSS_KINDS } = await load('/src/core/config.ts');
-const { forLevel } = await load('/src/core/levels.ts');
+const { forLevel, UPGRADES, upgradeMaxSteps } = await load('/src/core/levels.ts');
+const { COSMETICS } = await load('/src/core/loot.ts');
 const { newSave, newCareer, Careers } = await load('/src/core/career.ts');
 const { encodeChallenge, decodeChallenge, challengeOf } = await load('/src/core/challenge.ts');
 const { loadSave, writeSave, parseImport, saveTrust, sealSave, SEAL_FIELD } = await load('/src/storage/save.ts');
@@ -1338,4 +1339,83 @@ test('the lobby QR code encodes the invite link in a proper square', () => {
   again.addData(link);
   again.make();
   assert.equal(again.createDataURL?.(2) ?? '', qr.createDataURL?.(2) ?? '', 'the same link gives the same code');
+});
+
+test('an ad pays one free step of one upgrade a day: the same pick all day, an upgrade that can be bought, nothing twice', () => {
+  const c = newCareer();
+  c.level = 30;
+  c.casinoSeed = 4242;
+  const offer = Careers.adUpgradeOffer(c, 100);
+  assert.ok(offer, 'there is a pick');
+  assert.equal(Careers.adUpgradeOffer(c, 100), offer, 'the same all day');
+  assert.ok(Careers.priceOf(c, offer) !== null, 'one the player could buy');
+  const picks = new Set(Array.from({ length: 40 }, (_, day) => Careers.adUpgradeOffer(c, day)));
+  assert.ok(picks.size > 3, 'it varies from day to day');
+  const before = Careers.steps(c, offer);
+  const money = c.money;
+  assert.equal(Careers.rewardAdUpgrade(c, 100), offer);
+  assert.equal(Careers.steps(c, offer), before + 1, 'one step');
+  assert.equal(c.money, money, 'for free');
+  assert.equal(Careers.adUpgradeOffer(c, 100), null, 'taken for today');
+  assert.equal(Careers.rewardAdUpgrade(c, 100), null);
+  assert.ok(Careers.adUpgradeOffer(c, 101), 'a new pick tomorrow');
+  // A maxed upgrade is never the pick; with everything maxed there is none.
+  const all = newCareer();
+  all.level = 99;
+  for (const u of UPGRADES) all.upgrades[u] = upgradeMaxSteps[u];
+  assert.equal(Careers.adUpgradeOffer(all, 5), null);
+  // Upgrades not unlocked yet are never given away.
+  const early = newCareer();
+  for (let day = 0; day < 40; day++) {
+    const u = Careers.adUpgradeOffer(early, day);
+    assert.ok(u === null || Careers.priceOf(early, u) !== null, `day ${day}: ${u}`);
+  }
+});
+
+test('the Skin Upgrade boost: an ad adds its points to the chance, is spent by one round, wins or loses, and is limited per day', () => {
+  const skins = COSMETICS.filter((x) => x.source.kind === 'chest' && x.kind === 'carSkin');
+  const common = skins.filter((x) => x.rarity === 'common').map((x) => x.id);
+  const epic = skins.find((x) => x.rarity === 'epic').id;
+  const base = Casino.upgradeChance(common.slice(0, 3), epic);
+  assert.ok(Math.abs(Casino.upgradeChance(common.slice(0, 3), epic, baseConfig, true) - (base + baseConfig.upgradeAdBoost)) < 1e-9);
+  const c = newCareer();
+  c.casinoSeed = 99;
+  assert.equal(Careers.rewardAdBoost(c, 7), true);
+  assert.equal(c.upgradeBoost, true);
+  assert.equal(Careers.rewardAdBoost(c, 7), false, 'one waits already: no second ad for it');
+  c.collection = common.slice(0, 3);
+  const roll = Casino.upgrade(c, common.slice(0, 3), epic, 7);
+  assert.ok(roll.boosted && Math.abs(roll.chance - (base + baseConfig.upgradeAdBoost)) < 1e-9, 'the dial shows what is rolled');
+  assert.equal(c.upgradeBoost, false, 'spent by the round');
+  assert.equal(Casino.upgrade(c, [], epic, 7), null, 'a refused round keeps nothing from the boost');
+  // Not enough skins to play: the boost waits.
+  const waiting = newCareer();
+  waiting.upgradeBoost = true;
+  assert.equal(Casino.upgrade(waiting, common.slice(0, 1), epic, 7), null);
+  assert.equal(waiting.upgradeBoost, true, 'a round that did not happen does not use it');
+  // The day's limit.
+  const d = newCareer();
+  let used = 0;
+  while (Careers.rewardAdBoost(d, 3)) {
+    used++;
+    d.upgradeBoost = false;
+  }
+  assert.equal(used, baseConfig.adBoostsPerDay);
+  assert.equal(Careers.adBoostsLeft(d, 3), 0);
+  assert.equal(Careers.adBoostsLeft(d, 4), baseConfig.adBoostsPerDay, 'back tomorrow');
+});
+
+test('a save keeps the ads of the day and the waiting boost, and old saves start without them', () => {
+  const c = newCareer();
+  c.adUpgradeDay = 12;
+  c.adUpgrades = 1;
+  c.adBoostDay = 12;
+  c.adBoosts = 2;
+  c.upgradeBoost = true;
+  fakeStorage({ 'carGame.save.v2': JSON.stringify({ career: c }) });
+  const back = loadSave().career;
+  assert.deepEqual([back.adUpgradeDay, back.adUpgrades, back.adBoostDay, back.adBoosts, back.upgradeBoost], [12, 1, 12, 2, true]);
+  fakeStorage({ 'carGame.save.v2': JSON.stringify({ career: { level: 3 } }) });
+  const old = loadSave().career;
+  assert.deepEqual([old.adUpgradeDay, old.adUpgrades, old.adBoostDay, old.adBoosts, old.upgradeBoost], [-1, 0, -1, 0, false]);
 });

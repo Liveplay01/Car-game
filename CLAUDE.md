@@ -51,6 +51,7 @@ App-Store-Arbeit mehr vorschlagen.
 - **Changelog-API (Leo, 04.10.2026):** Das Spiel schreibt bei jedem Build `/changelog.json` aus `present/patchNotes.ts`
   (`vite.config.ts`, mit CORS in `nginx.conf`). Die Website liest sie im Browser; ein neuer Patch-Notes-Eintrag steht
   dort mit dem nächsten Deployment des Spiels, ohne Kopieren. Die Form ist öffentlich: Felder ergänzen, nie umbenennen.
+- **Freiwillige Werbung (Leo, 05.10.2026):** Die einzige Werbung im Spiel sind **Rewarded Ads**, immer auf Tap und nur bezahlt, wenn sie zu Ende gesehen wurde: Gratis-Standard-Truhe (3/Tag), ein Gratis-Schritt eines vom Spiel gezogenen Upgrades (1/Tag) und +10 Prozentpunkte Chance auf die nächste Runde des Skin-Upgrades (3/Tag, `upgradeAdBoost`, im Rad sichtbar). **Die beiden neuen nur auf der normalen Seite und in der Google-Play-App, nie auf CrazyGames** (dort nur die Truhe, deren SDK). Echte Werbung über Googles Ad Placement API (`ui/ads.ts`, `present/adFlow.ts`), eingeschaltet mit dem Build-Arg `VITE_REWARDED_ADS=1`, sobald das AdSense-Konto für H5 Games Ads freigegeben ist; bis dahin läuft die Platzhalter-Werbung. Keine Pflicht-, Midgame- oder Banner-Werbung. Details: Web/README.md, „Rewarded ads“.
 - **Offline spielbar:** Nach dem ersten Laden läuft das Spiel ohne Netz (Service Worker aus
   `Web/vite.config.ts`, precacht alle Dateien). Nur der Multiplayer braucht Netz.
 - **Deployment:** Docker-Image aus dem `Dockerfile` im Repo-Root (Node baut, `nginx:alpine`

@@ -17,6 +17,11 @@ ENV VITE_TURN_URL=$VITE_TURN_URL VITE_TURN_USERNAME=$VITE_TURN_USERNAME VITE_TUR
 # Empty by default: the game then has no leaderboard. nginx.conf must allow it in connect-src.
 ARG VITE_API_URL=""
 ENV VITE_API_URL=$VITE_API_URL
+# Optional: "1" switches on Google's rewarded ads (free chest, free upgrade step, Skin Upgrade boost) on the
+# normal site and in the Play app (Web/README.md, Rewarded ads). Needs an AdSense account approved for H5 Games Ads.
+# Empty by default: the game's own three-second placeholder plays instead.
+ARG VITE_REWARDED_ADS=""
+ENV VITE_REWARDED_ADS=$VITE_REWARDED_ADS
 RUN npm run build
 
 # Stage 2: only the built files and nginx.

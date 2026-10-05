@@ -683,7 +683,7 @@ Ein kleiner, **optionaler** Server auf `api-game.gustaff.dev` (Node 22, Hono, SQ
 ### Werbung
 
 - **AdSense** (`ui/ads.ts`): lädt erst, wenn das Spiel auf dem Bildschirm steht, nur im Produktions-Build und nie auf `?crazygames`. Einwilligungs-Meldung für EWR/UK über AdSense; keine Anker- oder Vollbild-Formate, ein Tap auf die Szene darf nie eine Anzeige treffen. `ads.txt` liegt auf der Hauptdomain `gustaff.dev`, nicht im Repo.
-- **Im Spiel selbst** gibt es für die Standard-Truhe (bis 3 pro Tag) auf CrazyGames deren Rewarded Ad, überall sonst eine Platzhalter-Werbung (kein Werbepartner).
+- **Im Spiel selbst** nur freiwillige **Rewarded Ads** (Leo, 05.10.2026), bezahlt wird nur eine zu Ende gesehene: die Standard-Truhe (bis 3 pro Tag), ein **Gratis-Schritt** eines vom Spiel gezogenen Upgrades (einmal am Tag) und **+10 Prozentpunkte** auf die nächste Runde des Skin-Upgrades (bis 3 pro Tag). Auf CrazyGames deren Rewarded Ad, nur für die Truhe; auf der normalen Seite und in der Play-App Googles Ad Placement API (`VITE_REWARDED_ADS=1`, Konto für H5 Games Ads freigegeben); ohne Anbieter eine Platzhalter-Werbung (`present/adFlow.ts`, Web/README.md).
 
 ### Recht & Datenschutz
 

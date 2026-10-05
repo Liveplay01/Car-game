@@ -83,6 +83,27 @@ try {
     check('Upgrade return (3 common → epic)', won / staked, 1 - config.upgradeEdge - 0.02, 1 - config.upgradeEdge + 0.02);
   }
 
+  // Skin upgrade with an ad's boost (+upgradeAdBoost): the dial shows chance + boost, it is spent by one round, and the draw follows it.
+  {
+    const common = COSMETICS.filter((x) => x.source.kind === 'chest' && x.kind === 'carSkin' && x.rarity === 'common').map((x) => x.id);
+    const epic = COSMETICS.find((x) => x.source.kind === 'chest' && x.kind === 'carSkin' && x.rarity === 'epic').id;
+    const chance = (3 * config.skinValue.common) / config.skinValue.epic * (1 - config.upgradeEdge) + config.upgradeAdBoost;
+    let staked = 0;
+    let won = 0;
+    const n = rounds / 10;
+    for (let i = 0; i < n; i++) {
+      const c = newCareer();
+      c.casinoSeed = i * 7919;
+      c.collection = common.slice(0, 3);
+      c.upgradeBoost = true;
+      const r = Casino.upgrade(c, common.slice(0, 3), epic, 0, config);
+      if (c.upgradeBoost || !r.boosted || Math.abs(r.chance - chance) > 1e-9) check('Upgrade boost is spent and shown in the chance', 0, 1, 1);
+      staked += 3 * config.skinValue.common;
+      if (r.won) won += config.skinValue.epic;
+    }
+    check('Upgrade return with the ad boost (3 common → epic)', won / staked, (chance * config.skinValue.epic) / (3 * config.skinValue.common) - 0.03, (chance * config.skinValue.epic) / (3 * config.skinValue.common) + 0.03);
+  }
+
   // Double or nothing: a fair coin.
   {
     const c = newCareer();

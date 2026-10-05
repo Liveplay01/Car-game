@@ -1,4 +1,5 @@
 import type { Career } from '../core/career';
+import type { AdReward } from './adFlow';
 import { Careers } from '../core/career';
 import { Unlocks } from '../core/unlocks';
 import type { Config } from '../core/config';
@@ -93,7 +94,6 @@ export class ShopState {
   age = 0;
   opening: { opening: ChestOpening; age: number; reel: Reel } | null = null;
   denied = 0;
-  ad: number | null = null;
   /** The money as the casino shows it: the header and badges read it before the casino loads. */
   readonly wallet = new Wallet();
   private casinoState: CasinoState | null = null;
@@ -130,7 +130,6 @@ export class ShopState {
   advance(delta: number): void {
     this.age += delta;
     if (this.opening) this.opening.age += delta;
-    if (this.ad !== null) this.ad += delta;
     if (this.sectionSlide) {
       this.sectionSlide.age += delta;
       if (this.sectionSlide.age >= ShopPage.slideDuration) this.sectionSlide = null;
@@ -179,7 +178,6 @@ export const ShopPage = {
   pressDepth: 0.04,
   slideDuration: 0.45,
   slideOut: 0.2,
-  adDuration: 3,
   /**
    * When the chest bursts: a Common or Rare opens after a short wobble; an Epic or Legendary
    * charges up first, so you feel something big is inside before the reel runs.
@@ -289,7 +287,7 @@ export const ShopPage = {
 
   /** A press on the Collection's grid: a tap on a card or the start of a scroll. */
   inItems(point: Vec2, viewport: Vec2, bottomInset: number, state: ShopState): boolean {
-    if (state.section !== 1 || state.opening || state.ad !== null) return false;
+    if (state.section !== 1 || state.opening) return false;
     return R.contains(ShopPage.itemsArea(ShopPage.layout(viewport, bottomInset)), point);
   },
 
@@ -301,7 +299,6 @@ export const ShopPage = {
 
   targets(viewport: Vec2, bottomInset: number, career: Career, state: ShopState): [ShopTarget, Rect][] {
     if (state.opening) return [[{ k: 'dismiss' }, R.make(0, 0, viewport.x, viewport.y)]];
-    if (state.ad !== null) return [];
     const l = ShopPage.layout(viewport, bottomInset);
     const out: [ShopTarget, Rect][] = l.segments.map(([section, r]) => [{ k: 'section', section }, r]);
     if (state.section === 0) out.push(...ShopPage.chestCards(l).map(([kind, r]): [ShopTarget, Rect] => [{ k: 'chest', kind }, r]));
@@ -350,7 +347,6 @@ export const ShopPage = {
         list.items.splice(start, 0, ...old.items.map((i) => moved(i, away, 1 - gone)));
       }
     }
-    if (state.ad !== null) ShopPage.addAd(list, state.ad);
     if (state.opening) ShopPage.addReveal(list, state.opening.opening, state.opening.reel, state.opening.age, reduceMotion);
   },
 
@@ -641,14 +637,14 @@ export const ShopPage = {
 
   // MARK: Ad placeholder
 
-  addAd(list: RenderList, age: number): void {
+  addAd(list: RenderList, reward: AdReward, age: number, duration: number): void {
     const vp = list.camera.viewport;
     const c = mul(vp, 0.5);
     list.s(rect(c, vp), 'background', 0.96);
-    const left = Math.max(0, Math.ceil(ShopPage.adDuration - age));
+    const left = Math.max(0, Math.ceil(duration - age));
     t(list, S.shop.adPlaceholder, sub(c, v(0, 16)), 18, 'primary', { weight: 'bold', align: 'center' });
-    t(list, S.shop.adCountdown(left), add(c, v(0, 14)), 13, 'muted', { align: 'center' });
-    const progress = Math.min(1, age / ShopPage.adDuration);
+    t(list, S.shop.adCountdown(reward, left), add(c, v(0, 14)), 13, 'muted', { align: 'center' });
+    const progress = Math.min(1, age / duration);
     list.s(rect(add(c, v(-90 + 90 * progress, 44)), v(180 * progress, 4), 2), 'accent');
   },
 

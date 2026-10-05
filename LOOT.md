@@ -26,8 +26,16 @@ Namen in `Web/src/present/strings.ts` (`S.shop`). Wird ein Item ergänzt, gehör
   Standard-Truhe **26.000**, Premium-Truhe **52.000** Ingame-Geld (seit 25.09.2026 alles Kaufbare +30 %)
   (`standardChestPrice`, `premiumChestPrice`).
 - **Werbung:** Eine Standard-Truhe gibt es auch für eine angesehene Werbung, bis zu
-  **3 pro Tag** (`adChestsPerDay`). Im Browser läuft eine kurze Platzhalter-Werbung; ein
-  echter Werbe-Anbieter ist nicht angebunden.
+  **3 pro Tag** (`adChestsPerDay`). Immer freiwillig, bezahlt wird nur eine zu Ende gesehene Werbung.
+  Auf CrazyGames deren Rewarded Ad; auf der normalen Seite und in der Google-Play-App Googles Rewarded Ads
+  (Web/README.md, „Rewarded ads“); ohne Anbieter läuft eine kurze Platzhalter-Werbung.
+- **Weitere Werbe-Angebote (Leo, 05.10.2026; nicht auf CrazyGames):**
+  - **Gratis-Upgrade-Schritt:** einmal am Tag zieht das Spiel einen kaufbaren, noch nicht vollen Upgrade
+    (aus dem eigenen Strom des Spielstands und dem Tag, den ganzen Tag derselbe); eine Werbung gibt einen
+    Schritt davon gratis (`adUpgradesPerDay`, `Careers.adUpgradeOffer`).
+  - **Skin-Upgrade-Boost:** eine Werbung gibt der nächsten Runde **+10 Prozentpunkte** Chance
+    (`upgradeAdBoost`, bis zu 3 pro Tag, `adBoostsPerDay`), auch über der Grenze von 75 %. Er gilt für eine Runde,
+    gewonnen oder verloren, und das Rad zeigt genau die Chance, die gewürfelt wird.
 
 ## Truhen
 
@@ -77,7 +85,7 @@ Code: `Web/src/core/casino.ts` (Regeln), `Web/src/present/casino.ts` (Darstellun
 | --- | --- | --- |
 | **Crash** | Multiplikator e^(0,18·t); Crash-Punkt vorab gezogen, P(≥ m) = 0,96 / m, gedeckelt bei 100×; 4,95 % crashen sofort bei 1,00× | **96 %** für jedes Ziel |
 | **Slots** | 3 Walzen à 20 gleich wahrscheinliche Stopps (Streifen `slotStrip`) | **95,45 %** exakt, Gewinn in 1 von 4,7 Spins |
-| **Skin-Upgrade** | 1–5 Truhen-Skins (Car/Map) auf einen fehlenden, seltener als alle Einsätze; Chance = Einsatzwert / Zielwert × 0,95, höchstens 75 % | **95 %** (bis zur Obergrenze) |
+| **Skin-Upgrade** | 1–5 Truhen-Skins (Car/Map) auf einen fehlenden, seltener als alle Einsätze; Chance = Einsatzwert / Zielwert × 0,95, höchstens 75 %; mit Werbung-Boost +10 Punkte (nicht auf CrazyGames) | **95 %** (bis zur Obergrenze); mit Boost mehr, bewusst: freiwillig gegen eine Werbung, sichtbar im Rad |
 | **Doppelt oder nichts** | Nach jedem Gewinn, freiwillig: faire Münze, genau 50 %, höchstens 5× in Folge | 100 % |
 
 Slots-Gewinntabelle (×Einsatz): drei Boss 500 · Transporter 150 · Ambulance 100 · Sports car 40 ·

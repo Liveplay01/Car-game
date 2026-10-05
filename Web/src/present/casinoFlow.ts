@@ -21,6 +21,8 @@ export interface CasinoHost {
   persist(): void;
   showNotice(text: string): void;
   announceAlbums(): void;
+  /** The Skin Upgrade's boost for a watched ad (`adFlow.ts`). */
+  watchAdBoost(): void;
 }
 
 /**
@@ -46,6 +48,10 @@ export class CasinoFlow {
         this.host.tick();
         if (this.host.detailOpen) this.host.closeDetail();
         else this.host.detailOpen = true;
+        break;
+      case 'boost':
+        if (s.busy) return;
+        this.host.watchAdBoost();
         break;
       case 'stake':
         if (s.busy) return;

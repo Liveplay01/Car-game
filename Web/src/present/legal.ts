@@ -24,7 +24,7 @@ export const HOSTING = {
   location: 'Germany',
 };
 
-export const LEGAL_UPDATED = '4 October 2026';
+export const LEGAL_UPDATED = '5 October 2026';
 
 export const GAME_NAME = 'Roundabout Timing';
 
@@ -164,6 +164,7 @@ export const LEGAL_DOCS: LegalDoc[] = [
         heading: 'Ads (Google AdSense)',
         paragraphs: [
           'On game.gustaff.dev (not on CrazyGames) Google AdSense may show ads. For that, your browser loads scripts from Google and sends it your IP address, your browser and device data and the page you are on. Google, and the advertisers it works with, may set or read cookies and similar identifiers on your device to choose and measure ads, to prevent fraud and, with your consent, to personalise ads. Google may process data in the USA; Google is certified under the EU-US Data Privacy Framework.',
+          'The ads are voluntary. The game shows an ad only when you tap "Watch ad" for a reward you can see before you tap: a free chest, a free upgrade step or a boost on the Skin Upgrade. Nothing plays by itself, and nothing in the game depends on watching one. You get the reward only when the ad was watched to the end. Not on CrazyGames.',
           'If you are in the European Economic Area or the United Kingdom, a consent message from Google asks you first. Without your consent, only the ads that need no personal data are possible, or none at all. Legal basis: your consent, Art. 6(1)(a) GDPR and § 25(1) TDDDG. You can change your choice at any time with the privacy settings link of the consent message, or by clearing the site data in your browser.',
         ],
         after: ['Google is responsible for its own use of the data. How it uses data from sites that use its services, and how to turn personalised ads off:'],

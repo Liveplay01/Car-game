@@ -156,9 +156,19 @@ export function cloudSheet(layer: HTMLElement, actions: CloudActions): () => voi
       placeholder: 'K7M2-9QXA-4TFB',
       'aria-label': 'Sync code',
     });
+    /** The last code sent, so a code that was refused is not sent again until it is changed. */
+    let tried = '';
+    const submit = (): void => {
+      if (load.disabled) return;
+      if (input.value.replace(/-/g, '').length !== 12) return say('A sync code has 12 letters and numbers, like K7M2-9QXA-4TFB.');
+      tried = input.value;
+      run(load, () => connectCloud(input.value));
+    };
     input.addEventListener('input', () => {
       input.value = tidy(input.value);
       say('');
+      // A whole code is all it takes: no need to tap Load (Leo, 05.10.2026).
+      if (input.value.replace(/-/g, '').length === 12 && input.value !== tried) submit();
     });
     const load = h('button', { class: 'btn', type: 'submit' }, 'Load');
     const backup = h('button', { class: 'btn primary block', type: 'button' }, 'Back up to the cloud');
@@ -180,8 +190,7 @@ export function cloudSheet(layer: HTMLElement, actions: CloudActions): () => voi
           novalidate: true,
           onsubmit: (e: Event) => {
             e.preventDefault();
-            if (input.value.replace(/-/g, '').length !== 12) return say('A sync code has 12 letters and numbers, like K7M2-9QXA-4TFB.');
-            run(load, () => connectCloud(input.value));
+            submit();
           },
         },
         // The browser pairs a saved password with this name.

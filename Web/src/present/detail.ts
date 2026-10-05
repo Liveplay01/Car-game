@@ -7,6 +7,7 @@ import { type Vec2, v } from '../core/vec2';
 import type { RenderList } from './render';
 import type { ColorToken } from './theme';
 import { S, Fmt, money, percent } from './strings';
+import type { AdOffer } from './adFlow';
 import { ShopPage } from './shop';
 import { casinoKit } from './casinoLoader';
 import { UpgradeArt } from './upgrades';
@@ -78,7 +79,7 @@ export interface Detail {
 const rarityColor = (r: Rarity): ColorToken => ShopPage.rarityColor(r);
 
 export const Details = {
-  upgrade(u: Upgrade, career: Career, config: Config): Detail {
+  upgrade(u: Upgrade, career: Career, config: Config, today: number, ads: AdOffer): Detail {
     const steps = Careers.steps(career, u);
     const max = upgradeMaxSteps[u];
     const price = Careers.priceOf(career, u, config);
@@ -88,6 +89,17 @@ export const Details = {
     const notes: Detail['notes'] = [];
     if (price === null) notes.push({ text: S.upgrades.everyStepBought, color: 'muted' });
     else if (!affordable) notes.push({ text: S.upgrades.missing(money(Fmt.number(price - career.money))), color: 'destructive' });
+    const actions: DetailAction[] =
+      price === null
+        ? []
+        : [{ label: affordable ? S.detail.buy(money(Fmt.number(price))) : S.upgrades.missing(money(Fmt.number(price - career.money))), action: { k: 'buy', upgrade: u }, prominent: true, enabled: affordable }];
+    // Today's pick (Leo, 05.10.2026): one free step for a watched ad. The player's choice, the buy button stays.
+    const free = ads.offers && Careers.adUpgradeOffer(career, today, config) === u;
+    if (free) {
+      notes.push({ text: S.ads.freeStepHint, color: 'accent' });
+      if (!ads.ready) notes.push({ text: S.ads.unavailable, color: 'muted' });
+      actions.push({ label: S.ads.freeStepAction, action: { k: 'watchAdUpgrade' }, prominent: false, enabled: ads.ready });
+    }
     return {
       key: `upgrade:${u}`,
       art: { k: 'upgrade', upgrade: u },
@@ -98,14 +110,12 @@ export const Details = {
       body: [S.upgrades.explanation(u)],
       rows,
       notes,
-      actions:
-        price === null
-          ? []
-          : [{ label: affordable ? S.detail.buy(money(Fmt.number(price))) : S.upgrades.missing(money(Fmt.number(price - career.money))), action: { k: 'buy', upgrade: u }, prominent: true, enabled: affordable }],
+      actions,
+      stacked: free,
     };
   },
 
-  chest(kind: ChestKind, career: Career, config: Config, today: number): Detail {
+  chest(kind: ChestKind, career: Career, config: Config, today: number, ads: AdOffer): Detail {
     const count = Careers.count(career, kind);
     const odds = CHEST_ODDS[kind];
     const rows: DetailRow[] = RARITIES.map((r, i) => ({ label: S.shop.rarity(r), value: percent(odds[i]), labelColor: rarityColor(r) }));
@@ -127,7 +137,8 @@ export const Details = {
     }
     if (kind === 'standard') {
       const left = Careers.adChestsLeft(career, today, config);
-      actions.push({ label: S.shop.watchAdShort, action: { k: 'watchAd' }, prominent: false, enabled: left > 0 });
+      if (left > 0 && !ads.ready) notes.push({ text: S.ads.unavailable, color: 'muted' });
+      actions.push({ label: S.shop.watchAdShort, action: { k: 'watchAd' }, prominent: false, enabled: left > 0 && ads.ready });
     }
     return {
       key: `chest:${kind}`,
@@ -334,7 +345,7 @@ export const Details = {
   },
 
   /** A casino game: how it plays, its odds and its return, exactly (LOOT.md, Casino). */
-  casino(game: CasinoGame, career: Career, config: Config): Detail {
+  casino(game: CasinoGame, career: Career, config: Config, ads: AdOffer): Detail {
     const pct = (x: number): string => `${(x * 100).toFixed(x < 0.1 ? 2 : 1)} %`;
     const D = S.casino.detail;
     const rows: DetailRow[] = [];
@@ -368,6 +379,7 @@ export const Details = {
         body = D.upgrade;
         for (const r of RARITIES) rows.push({ label: D.value(S.shop.rarity(r)), value: money(Fmt.number(config.skinValue[r])), labelColor: rarityColor(r) });
         notes.push({ text: D.returns(pct(1 - config.upgradeEdge)), color: 'accent' }, { text: D.maxChance(pct(config.upgradeMaxChance)), color: 'muted' });
+        if (ads.offers) notes.push({ text: S.ads.boostNote(pct(config.upgradeAdBoost), config.adBoostsPerDay), color: 'muted' });
         break;
     }
     if (career.casinoBestWin > 0 && game !== 'upgrade') rows.push({ label: D.bestWin, value: money(Fmt.number(career.casinoBestWin)), valueColor: 'accent' });

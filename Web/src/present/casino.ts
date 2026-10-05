@@ -1,4 +1,4 @@
-import type { Career } from '../core/career';
+import { type Career, Careers } from '../core/career';
 import { baseConfig } from '../core/config';
 import { type CasinoGame, type CasinoRound, type SlotSpin, type SlotSymbol, type UpgradeRoll, type CoinFlip, CASINO_GAMES, Casino } from '../core/casino';
 import { type Cosmetic, rarityRank } from '../core/loot';
@@ -7,12 +7,13 @@ import { type RenderList, type Rect, R, rect, arc, line, polygon, Ease, vlerp, m
 import type { ColorToken } from './theme';
 import { MenuKit } from './menukit';
 import { textWidth } from './icons';
-import { S, Fmt, money } from './strings';
+import { S, Fmt, money, percent } from './strings';
 import { ShopPage } from './shop';
 import { CasinoGames } from './casinoGames';
 import { TIMES, slotEnd, reelStop, creepAt, crashStep, needleTime, needleTurn, unit, t } from './casinoKit';
 export { winTier } from './casinoKit';
 import { Wallet } from './casinoWallet';
+import type { AdOffer } from './adFlow';
 export { Wallet, type Books } from './casinoWallet';
 
 /**
@@ -24,6 +25,8 @@ export { Wallet, type Books } from './casinoWallet';
 export type CasinoTarget =
   | { k: 'game'; game: CasinoGame }
   | { k: 'odds' }
+  /** The Skin Upgrade's boost for a watched ad (Leo, 05.10.2026). */
+  | { k: 'boost' }
   | { k: 'stake'; index: number }
   | { k: 'auto'; index: number }
   | { k: 'play' }
@@ -80,6 +83,8 @@ export class CasinoState {
   page = 0;
   gameSlide: { from: CasinoGame; age: number } | null = null;
   pressed: { t: CasinoTarget; age: number } | null = null;
+  /** The ads on offer (the session sets it every frame): the boost row shows only where they are on. */
+  ad: AdOffer = { offers: false, ready: false };
 
   /** A drive, spin, dial or coin still under way: the controls wait for it. */
   get busy(): boolean {
@@ -242,6 +247,8 @@ interface Layout {
   today: Vec2;
   odds: Rect;
   history: Rect;
+  /** The Skin Upgrade's boost row under the history; null where there are no ad offers. */
+  boost: Rect | null;
   stage: Rect;
   autos: Rect[];
   stakes: Rect[];
@@ -256,10 +263,14 @@ export const CasinoPage = {
   gap: 8,
   mainHeight: 50,
   stakeHeight: 34,
+  boostHeight: 34,
   autoHeight: 28,
   pickerColumns: 5,
 
-  layout(a: Rect, game: CasinoGame): Layout {
+  /** The layout of the table for the state: the Skin Upgrade makes room for its boost row where ads are on. */
+  layoutOf: (a: Rect, state: CasinoState): Layout => CasinoPage.layout(a, state.game, state.game === 'upgrade' && state.ad.offers),
+
+  layout(a: Rect, game: CasinoGame, withBoost = false): Layout {
     const P = CasinoPage;
     const w = R.width(a);
     const cw = (w - 2 * 6) / 3;
@@ -280,8 +291,10 @@ export const CasinoPage = {
     };
     const stakes = game === 'upgrade' ? [] : row(baseConfig.casinoStakes.length + 1, P.stakeHeight);
     const autos = game === 'crash' ? row(baseConfig.crashAutoTargets.length + 1, P.autoHeight).slice(1) : [];
-    const stage = R.make(a.minX, history.maxY + 10, a.maxX, Math.max(history.maxY + 150, bottom - 2));
-    return { chips, today: v(a.minX, infoY), odds, history, stage, autos, stakes, main, pair };
+    const boost = withBoost ? R.make(a.minX, history.maxY + 8, a.maxX, history.maxY + 8 + P.boostHeight) : null;
+    const top = (boost ?? history).maxY + 10;
+    const stage = R.make(a.minX, top, a.maxX, Math.max(top + 140, bottom - 2));
+    return { chips, today: v(a.minX, infoY), odds, history, boost, stage, autos, stakes, main, pair };
   },
 
   /** Where the Upgrade's five stake slots and its target slot sit under the dial. */
@@ -326,7 +339,7 @@ export const CasinoPage = {
       : Casino.targets(career, state.staked).sort((a, b) => rarityRank(a.rarity) - rarityRank(b.rarity)),
 
   targets(a: Rect, career: Career, state: CasinoState): [CasinoTarget, Rect][] {
-    const l = CasinoPage.layout(a, state.game);
+    const l = CasinoPage.layoutOf(a, state);
     const out: [CasinoTarget, Rect][] = [];
     const busy = state.busy;
     if (!busy) out.push(...l.chips.map(([game, r]): [CasinoTarget, Rect] => [{ k: 'game', game }, r]));
@@ -336,6 +349,7 @@ export const CasinoPage = {
       else out.push([{ k: 'skip' }, R.make(a.minX, l.stage.minY, a.maxX, a.maxY)]);
       return out;
     }
+    if (l.boost) out.push([{ k: 'boost' }, l.boost]);
     if (state.picker) {
       const { cells, pages } = CasinoPage.pickerCells(R.inset(l.stage, 10, 0), CasinoPage.pickerItems(career, state), state.page);
       out.push(...cells.map(([item, r]): [CasinoTarget, Rect] => [{ k: 'pick', id: item.id }, r]));
@@ -380,9 +394,10 @@ export const CasinoPage = {
 
   add(list: RenderList, a: Rect, career: Career, today: number, state: CasinoState, reduceMotion: boolean, age: number): void {
     const enter = reduceMotion ? 1 : Ease.outCubic(age / 0.25);
-    const l = CasinoPage.layout(a, state.game);
+    const l = CasinoPage.layoutOf(a, state);
     CasinoPage.addChips(list, l, state, reduceMotion, enter);
     CasinoPage.addInfo(list, l, career, today, state, enter);
+    CasinoPage.addBoost(list, l, career, today, state, enter);
     const start = list.items.length;
     CasinoPage.addGame(list, l, career, state, state.game, reduceMotion, enter);
     const slide = state.gameSlide;
@@ -443,7 +458,7 @@ export const CasinoPage = {
     else if (game === 'crash') CasinoPage.addCrash(list, l.stage, run?.k === 'crash' ? run : null, reduceMotion, enter);
     else if (game === 'slots') CasinoPage.addSlots(list, l.stage, state, run?.k === 'slots' ? run : null, reduceMotion, enter);
     else if (state.picker) CasinoPage.addPicker(list, l.stage, career, state, enter);
-    else CasinoPage.addUpgrade(list, l.stage, state, run?.k === 'upgrade' ? run : null, reduceMotion, enter);
+    else CasinoPage.addUpgrade(list, l.stage, state, run?.k === 'upgrade' ? run : null, career.upgradeBoost, reduceMotion, enter);
     CasinoPage.addControls(list, l, career, state, enter);
   },
 
@@ -490,6 +505,29 @@ export const CasinoPage = {
       t(list, label, v(x + w / 2, y), 11, won ? 'accent' : 'muted', { weight: 'bold', align: 'center', opacity: enter });
       x += w + 6;
     }
+  },
+
+  /**
+   * The Skin Upgrade's boost row: a watched ad adds `upgradeAdBoost` to the next round's chance
+   * (Leo, 05.10.2026). Offered, never pushed: it only waits here, and says what it does and how
+   * many are left. The dial shows the chance it really rolls.
+   */
+  addBoost(list: RenderList, l: Layout, career: Career, today: number, state: CasinoState, enter: number): void {
+    if (!l.boost) return;
+    const left = Careers.adBoostsLeft(career, today, baseConfig);
+    const on = career.upgradeBoost;
+    const usable = !on && left > 0 && state.ad.ready && !state.busy;
+    const r = CasinoPage.pressedRect(l.boost, { k: 'boost' }, state);
+    const c = R.center(r);
+    const size = v(R.width(r), R.height(r));
+    const p = percent(baseConfig.upgradeAdBoost);
+    list.s(rect(c, size, 12), on ? 'accent' : 'controlFill', enter);
+    if (on) list.s(rect(c, v(size.x - 3, size.y - 3), 10.5), 'cardRaised', enter);
+    const label = on ? S.ads.boostOn(p) : left <= 0 ? S.ads.noBoosts : !state.ad.ready ? S.ads.unavailable : S.ads.boostWatch(p);
+    const detail = on || left <= 0 || !state.ad.ready ? '' : S.ads.boostLeft(left);
+    const room = size.x - 24 - (detail ? textWidth(detail, 11) + 10 : 0);
+    t(list, label, v(r.minX + 12, c.y), ShopPage.fitted(label, 13, room), on ? 'accent' : usable ? 'primary' : 'muted', { weight: 'bold', opacity: enter * (usable || on ? 1 : 0.7) });
+    if (detail) t(list, detail, v(r.maxX - 12, c.y), 11, 'muted', { align: 'trailing', opacity: enter });
   },
 
   roundLabel(r: CasinoRound): string {
@@ -572,7 +610,7 @@ export const CasinoPage = {
     if (state.game === 'upgrade') {
       if (state.staked.length === 0) return { label: Casino.stakeable(career).length === 0 ? S.casino.noSkins : S.casino.pickStakes, enabled: Casino.stakeable(career).length > 0 };
       if (!state.target) return { label: S.casino.pickTarget, enabled: Casino.targets(career, state.staked).length > 0 };
-      return { label: S.casino.upgrade(Casino.upgradeChance(state.staked, state.target, baseConfig)), enabled: Casino.canUpgrade(career, state.staked, state.target, baseConfig) };
+      return { label: S.casino.upgrade(Casino.upgradeChance(state.staked, state.target, baseConfig, career.upgradeBoost)), enabled: Casino.canUpgrade(career, state.staked, state.target, baseConfig) };
     }
     const stake = CasinoPage.stakeOf(career, state);
     if (stake <= 0 || stake > career.money) return { label: S.casino.notEnough, enabled: false };

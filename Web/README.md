@@ -372,6 +372,25 @@ not in this repo; it covers `game.gustaff.dev`. The consent message (EEA/UK) is 
 AdSense under Privacy & messaging. Auto ads (and which formats) are also set there: no anchor
 or full-screen formats on this site, a tap on the scene must never hit an ad.
 
+### Rewarded ads
+
+The only ads the game itself shows, and always the player's tap (Leo, 05.10.2026): the free Standard
+Chest (3 a day), a **free step of one upgrade** the game picks (once a day, a "Free step" badge on its
+card and an action in its sheet) and **+10 points on the Skin Upgrade's chance** (3 a day, a row above
+the dial; it is used up by one round, won or lost, and the dial shows the chance it really rolls).
+`present/adFlow.ts` is the one place all three go through; the rules are `Careers.rewardAd*` and
+`Casino.upgradeChance` in `core/`. The reward is paid only when the ad was watched to the end.
+
+- **CrazyGames** (`?crazygames`): their rewarded ad, for the chest only. The other two are not offered there.
+- **Normal site and Google Play app** (the app opens the same page): Google's Ad Placement API (H5 Games
+  Ads, `adBreak({ type: 'reward' })` in `ui/ads.ts`). The game asks for an ad ahead of time and shows the
+  offers only once one is ready; sound is off while it plays. Switched on by the build argument
+  `VITE_REWARDED_ADS=1` (Coolify: Build Arg of the game's resource). It needs an AdSense account that is
+  **approved for H5 Games Ads** (separate sign-up). Without the switch the game's own three-second
+  placeholder plays, and pays, as before. Try it with Google's test ads on a production build:
+  `VITE_REWARDED_ADS=1 npm run build && npm run preview`, then open `/?adtest`.
+- Where the chance of an ad is limited (`frequencyCapped`), the game says "try again in a few minutes".
+
 ## Legal pages
 
 Privacy Policy and Imprint live in `src/present/legal.ts`: the game shows them under

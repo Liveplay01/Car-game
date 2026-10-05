@@ -1134,6 +1134,7 @@ export const S = {
       return '';
     },
     chance: 'chance',
+    chanceBoosted: 'chance · boosted',
     upgraded: 'Upgraded',
     lostSkins: (n: number): string => (n === 1 ? 'The skin is gone' : `${n} skins are gone`),
     stakeValue: (m: string): string => `Stake worth ${m}`,
@@ -1220,6 +1221,37 @@ export const S = {
     },
   },
 
+  /** Rewarded ads (Leo, 05.10.2026): always the player's choice, paid only when watched to the end. */
+  ads: {
+    watch: 'Watch ad',
+    /** A rewarded ad that did not play to the end: no reward, and why. */
+    failed: (outcome: Exclude<RewardedOutcome, 'watched' | 'disabled'>): string =>
+      outcome === 'cooldown'
+        ? 'An ad just played. Try again in a few minutes.'
+        : outcome === 'blocked'
+          ? 'No ad could play: an ad blocker is on.'
+          : outcome === 'dismissed'
+            ? 'The ad was closed early, so there is no reward.'
+            : 'No ad available right now. Try again in a moment.',
+    notHere: 'This is not offered here.',
+    unavailable: 'No ad available right now. Try again in a moment.',
+    /** The upgrade sheet of today's pick. */
+    freeStep: 'Free step',
+    freeStepAction: 'Watch ad · free step',
+    freeStepHint: "Today's pick: watch an ad and get one step of it for free. Once a day, your choice.",
+    upgradeReward: (name: string, steps: number, max: number): string => `Free upgrade · ${name} ${steps}/${max}`,
+    noUpgrade: 'No free upgrade left today. A new one tomorrow.',
+    /** The Skin Upgrade's boost. */
+    boost: (p: string): string => `+${p} chance`,
+    boostWatch: (p: string): string => `Watch ad · +${p} chance`,
+    boostOn: (p: string): string => `Boost on · +${p} for this round`,
+    boostLeft: (n: number): string => `${n} left today`,
+    boostReward: (p: string): string => `Boost on · +${p} on your next Upgrade`,
+    boostWaiting: 'A boost is already waiting for your next Upgrade.',
+    noBoosts: 'No more boosts today. Back tomorrow.',
+    boostNote: (p: string, perDay: number): string =>
+      `Your choice: watch an ad before a round and its chance gets ${p} on top, even above the cap. One round uses it up, won or lost. Up to ${perDay} a day. The dial shows the chance it really rolls.`,
+  },
   shop: {
     open: 'Open',
     wear: 'Wear',
@@ -1262,15 +1294,8 @@ export const S = {
     watchAdShort: 'Watch ad',
     adReward: 'Ad watched · Standard chest added',
     noAdsLeft: 'No more ad chests today. Back tomorrow.',
-    /** A portal's rewarded ad that did not play to the end: no chest, and why. */
-    adFailed: (outcome: Exclude<RewardedOutcome, 'watched' | 'disabled'>): string =>
-      outcome === 'cooldown'
-        ? 'An ad just played. Try again in a few minutes.'
-        : outcome === 'blocked'
-          ? 'No ad could play: an ad blocker is on.'
-          : 'No ad available right now. Try again later.',
     adPlaceholder: 'Ad',
-    adCountdown: (s: number): string => `Your chest in ${s} s`,
+    adCountdown: (reward: 'chest' | 'upgrade' | 'boost', s: number): string => `${{ chest: 'Your chest', upgrade: 'Your free step', boost: 'Your boost' }[reward]} in ${s} s`,
     watchAd: (left: number): string => `Watch ad · ${left} left`,
     skinsOn: (n: number, max: number): string => `${n} of ${max} car skins on · they mix on the road`,
     skinsFull: (max: number): string => `${max} car skins are on. Take one off first.`,

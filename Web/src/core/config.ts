@@ -671,6 +671,14 @@ export const baseConfig = {
   standardChestPrice: 26000,
   premiumChestPrice: 52000,
   adChestsPerDay: 3,
+  /**
+   * More ads, always the player's choice and never on CrazyGames (Leo, 05.10.2026): a free step of
+   * one upgrade the game picks, once a day, and a boost that adds this many points to the Skin
+   * Upgrade's chance (shown on the dial), a few times a day. It holds until the next upgrade round.
+   */
+  adUpgradesPerDay: 1,
+  adBoostsPerDay: 3,
+  upgradeAdBoost: 0.1,
 
   // Engagement (Leo, 28.09.2026): surprises on top of skill, never instead of it
   /** A Perfect or a Near Miss is now and then a Critical Merge: its points count this many times. */

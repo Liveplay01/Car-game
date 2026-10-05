@@ -405,7 +405,7 @@ export const CasinoGames = {
 
   // MARK: Skin Upgrade
 
-  addUpgrade(list: RenderList, stage: Rect, state: CasinoState, run: Extract<CasinoRun, { k: 'upgrade' }> | null, reduceMotion: boolean, enter: number): void {
+  addUpgrade(list: RenderList, stage: Rect, state: CasinoState, run: Extract<CasinoRun, { k: 'upgrade' }> | null, waitingBoost: boolean, reduceMotion: boolean, enter: number): void {
     ShopPage.panel(list, stage, 'card', enter);
     const slots = CasinoPage.slots(stage);
     const dialBottom = slots[0].minY - 26;
@@ -415,7 +415,8 @@ export const CasinoGames = {
     const staked = run ? run.roll.staked : state.staked;
     const stakeValue = staked.reduce((sum, id) => sum + Casino.value(cosmetic(id)?.rarity ?? 'common', baseConfig), 0);
     const target = run ? run.roll.target : state.target;
-    const chance = run ? run.roll.chance : target ? Casino.upgradeChance(staked, target, baseConfig) : 0;
+    const boosted = run ? run.roll.boosted : waitingBoost;
+    const chance = run ? run.roll.chance : target ? Casino.upgradeChance(staked, target, baseConfig, boosted) : 0;
     const end = run ? needleTime(run.roll) : 0;
     const done = run !== null && run.age >= end;
     const since = run ? run.age - end : 0;
@@ -473,7 +474,7 @@ export const CasinoGames = {
       }
     } else {
       t(list, chance > 0 ? `${(chance * 100).toFixed(1)} %` : '–', v(center.x, center.y - 6), Math.min(34, radius * 0.5), chance > 0 ? 'primary' : 'muted', { weight: 'bold', align: 'center', opacity: enter });
-      t(list, S.casino.chance, v(center.x, center.y + radius * 0.3), 12, 'muted', { align: 'center', opacity: enter });
+      t(list, boosted && chance > 0 ? S.casino.chanceBoosted : S.casino.chance, v(center.x, center.y + radius * 0.3), 12, boosted && chance > 0 ? 'accent' : 'muted', { align: 'center', opacity: enter });
     }
     // The table: five skins staked, the arrow, the one to win.
     slots.forEach((cell, i) => {

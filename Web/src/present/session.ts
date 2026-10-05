@@ -46,6 +46,7 @@ import { casinoKit, loadCasino } from './casinoLoader';
 import { Casino } from '../core/casino';
 import { BuildFlow } from './buildFlow';
 import { ShopFlow } from './shopFlow';
+import { AdFlow, type AdOffer } from './adFlow';
 import type { PageHost } from './pageHost';
 import { type SpecialRun, settleSpecial, runCard, advanceRush, newRush } from './specialRuns';
 import { conditionIntro, streakEndsIn, addNotice, noticeHeight, noticePresence, type NoticePlace } from './readyScreen';
@@ -83,10 +84,10 @@ export type InputAction =
 
 /** Where sound and haptics go; the session decides what and when. */
 /**
- * How a portal's rewarded ad went: only `watched` pays. `disabled`: the portal shows no ads yet,
- * so the game's own placeholder plays instead.
+ * How a rewarded ad went: only `watched` pays (`dismissed`: closed before the end). `disabled`: the
+ * portal shows no ads yet, so the game's own placeholder plays instead.
  */
-export type RewardedOutcome = 'watched' | 'cooldown' | 'blocked' | 'unavailable' | 'disabled';
+export type RewardedOutcome = 'watched' | 'dismissed' | 'cooldown' | 'blocked' | 'unavailable' | 'disabled';
 
 export interface SessionOutput {
   /** `pan`: -1 (left) … 1 (right), where on screen the sound happens. */
@@ -94,8 +95,12 @@ export interface SessionOutput {
   haptic(id: HapticID, softness: number): void;
   /** A big moment (a boss busted, a Legendary Shift, a new Unlimited or Mayhem record, a Prestige). */
   celebrate?(): void;
-  /** Plays the portal's rewarded ad; false where there is none (the game's own placeholder plays). */
+  /** Plays a rewarded ad (the portal's, or Google's); false where there is none (the game's own placeholder plays). */
   rewardedAd?(done: (outcome: RewardedOutcome) => void): boolean;
+  /** An ad is ready to play, so its offers may show. Without it (the placeholder) they always do. */
+  adReady?(): boolean;
+  /** The ad offers beyond the free chest (a free upgrade step, the Skin Upgrade's boost): not on a portal. Default: on. */
+  adOffers?: boolean;
 }
 
 /**
@@ -189,6 +194,8 @@ export class GameSession {
   /** The Build and Shop tabs' actions (`buildFlow.ts`, `shopFlow.ts`), through one host. */
   private readonly buildFlow = new BuildFlow(this.pageHost());
   private readonly shopFlow = new ShopFlow(this.pageHost(), () => this.casinoFlow);
+  /** Every rewarded ad: the free chest, a free upgrade step, the Skin Upgrade's boost (`adFlow.ts`). */
+  private readonly adFlow = new AdFlow(this.pageHost());
   progressPage = new ProgressState();
   /** Museum entries first met during this shift, for the line on its result. */
   private museumFound: string[] = [];
@@ -570,7 +577,13 @@ export class GameSession {
         this.play(['purchase'], ['comboUp']);
         break;
       case 'watchAd':
-        this.shopFlow.showAd();
+        this.adFlow.watch('chest');
+        break;
+      case 'watchAdUpgrade':
+        this.adFlow.watch('upgrade');
+        break;
+      case 'watchAdBoost':
+        this.adFlow.watch('boost');
         break;
       case 'showCasino':
         this.perform({ k: 'showShop', section: 2 });
@@ -884,6 +897,7 @@ export class GameSession {
       persist: () => this.persist(),
       showNotice: (text) => this.showNotice(text),
       announceAlbums: () => this.announceAlbums(),
+      watchAdBoost: () => this.perform({ k: 'watchAdBoost' }),
     };
   }
 
@@ -935,6 +949,9 @@ export class GameSession {
       showNotice: (text) => this.showNotice(text),
       pressed: (point) => (this.pressAt = point),
       rewardedAd: (done) => this.output?.rewardedAd?.(done) ?? false,
+      get adOffers() {
+        return session.adOffer.offers;
+      },
     };
   }
 
@@ -1063,6 +1080,7 @@ export class GameSession {
     this.tutorial?.advance(realDelta);
     if (this.tutorial?.isDone) this.tutorial = null;
     this.transitions.advance(realDelta);
+    this.adFlow.advance(realDelta);
 
     if (this.isPage('upgrades')) {
       this.upgradePage.advance(realDelta);
@@ -1079,10 +1097,10 @@ export class GameSession {
       const after = this.shopPage.opening?.age ?? null;
       const opening = this.shopPage.opening;
       if (opening && before !== null && after !== null) this.reelCues(opening, before, after);
-      if (this.shopPage.ad !== null && this.shopPage.ad >= ShopPage.adDuration) this.shopFlow.adWatched();
       // Once the casino is open it loads in the background, so its section is there at once.
       if (Unlocks.isOpen(this.save.career, 'casino', this.config)) loadCasino().catch(() => undefined);
       const casino = this.shopPage.casino;
+      if (casino) casino.ad = this.adOffer;
       const flow = this.casinoFlow;
       if (casino && flow) for (const cue of casino.advance(realDelta)) flow.cue(cue);
       this.tension = this.shopPage.section === 2 && casino ? casino.tension : 0;
@@ -1333,6 +1351,8 @@ export class GameSession {
 
   /** A press anywhere on the canvas: chrome first, then the page under it, else the game. */
   private pointerDown(point: Vec2, ago: number | undefined, simDelta: number): void {
+    // The stand-in ad covers the page: it waits.
+    if (this.adFlow.placeholder) return;
     const page = this.pageAction(point);
     if (page === true) return;
     if (page) {
@@ -1547,19 +1567,25 @@ export class GameSession {
     }
   }
 
+  /** What the ads on offer look like right now: the extra ones are on, and an ad is ready to play. */
+  get adOffer(): AdOffer {
+    return { offers: this.output?.adOffers ?? true, ready: this.output?.adReady?.() ?? true };
+  }
+
   /** What the detail sheet shows right now; null while it is closed or something covers the page. */
   get detail(): Detail | null {
-    if (!this.detailOpen || this.screen.k !== 'page') return null;
+    if (!this.detailOpen || this.screen.k !== 'page' || this.adFlow.placeholder) return null;
     const career = this.save.career;
+    const ads = this.adOffer;
     switch (this.screen.tab) {
       case 'upgrades':
-        return this.upgradePage.selected ? Details.upgrade(this.upgradePage.selected, career, this.config) : null;
+        return this.upgradePage.selected ? Details.upgrade(this.upgradePage.selected, career, this.config, this.today, ads) : null;
       case 'shop': {
         const s = this.shopPage;
-        if (s.opening || s.ad !== null) return null;
-        if (s.section === 0) return Details.chest(s.selectedChest, career, this.config, this.today);
+        if (s.opening) return null;
+        if (s.section === 0) return Details.chest(s.selectedChest, career, this.config, this.today, ads);
         if (s.section === 1) return s.selectedItem ? Details.item(s.selectedItem, career) : null;
-        return s.casino ? Details.casino(s.casino.game, career, this.config) : null;
+        return s.casino ? Details.casino(s.casino.game, career, this.config, ads) : null;
       }
       case 'streetBuilder': {
         const b = this.builderPage;
@@ -2201,10 +2227,12 @@ export class GameSession {
     // Where a notice would sit: above the settings button; it fades out as the shift starts.
     if (this.modeHint > 0 && (s.k === 'ready' || s.k === 'playing')) ModeHint.add(list, v(viewport.x / 2, viewport.y - inset - 92), this.modeHint, this.sceneTime, rm);
     if (this.isPage('streetBuilder')) StreetBuilderPage.add(list, career, this.config, this.builderPage, rm, inset, this.buildThumb);
-    else if (this.isPage('upgrades')) UpgradePage.add(list, career, this.config, this.visibleUpgrades, this.upgradePage, rm, inset, this.buildThumb);
+    else if (this.isPage('upgrades')) UpgradePage.add(list, career, this.config, this.visibleUpgrades, this.upgradePage, rm, inset, this.buildThumb, this.adOffer.offers ? Careers.adUpgradeOffer(career, this.today, this.config) : null);
     else if (this.isPage('shop')) ShopPage.add(list, career, this.config, this.today, this.shopPage, rm, inset);
     else if (this.isPage('progress')) ProgressPage.add(list, this.save, this.today, this.progressPage, rm, inset, this.progressScrollRange);
     else if (s.k === 'settings') list.s(rect({ x: viewport.x / 2, y: viewport.y / 2 }, viewport), 'background', 0.55);
+    const standIn = this.adFlow.placeholder;
+    if (standIn) ShopPage.addAd(list, standIn.reward, standIn.age, AdFlow.placeholderSeconds);
     this.transitions.apply(list, s, overlayStart, rm);
     const notice = this.notices.shown;
     if (notice) addNotice(list, notice, { at: this.noticePlace(s, underCard, inset), textScale: this.textScale, reduceMotion: rm });

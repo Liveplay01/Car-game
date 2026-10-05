@@ -7,14 +7,11 @@ import { S } from './strings';
 import type { PageHost } from './pageHost';
 
 /**
- * The Shop tab's actions: its sections and shelves, the chests (open, buy, the free one for
- * an ad), the collection (wear, mark as seen) and the opening itself. The casino's rounds go
- * on to `CasinoFlow`.
+ * The Shop tab's actions: its sections and shelves, the chests (open, buy; the free one for an
+ * ad is `adFlow.ts`), the collection (wear, mark as seen) and the opening itself. The casino's
+ * rounds go on to `CasinoFlow`.
  */
 export class ShopFlow {
-  /** A portal's ad was asked for and has not answered yet: a second tap waits. */
-  private adRequested = false;
-
   constructor(
     private readonly host: PageHost,
     /** The casino's rounds, once the casino has loaded. */
@@ -107,38 +104,5 @@ export class ShopFlow {
         break;
       }
     }
-  }
-
-  showAd(): void {
-    if (this.adRequested) return;
-    if (Careers.adChestsLeft(this.host.save.career, this.host.today, this.host.config) <= 0 || this.host.shopPage.ad !== null) {
-      this.host.play(['denied'], []);
-      this.host.showNotice(S.shop.noAdsLeft);
-      return;
-    }
-    // On CrazyGames their rewarded ad; the chest only once it was watched to the end.
-    this.adRequested = this.host.rewardedAd((outcome) => {
-      this.adRequested = false;
-      if (outcome === 'watched') {
-        this.adWatched();
-        return;
-      }
-      if (outcome === 'disabled') {
-        this.host.shopPage.ad = 0;
-        return;
-      }
-      this.host.play(['denied'], []);
-      this.host.showNotice(S.shop.adFailed(outcome));
-    });
-    if (!this.adRequested) this.host.shopPage.ad = 0;
-  }
-
-  adWatched(): void {
-    if (!Careers.rewardAd(this.host.save.career, this.host.today, this.host.config)) return;
-    this.host.persist();
-    this.host.shopPage.ad = null;
-    this.host.play(['purchase'], ['paid']);
-    this.host.shopPage.selectedChest = 'standard';
-    this.host.showNotice(S.shop.adReward);
   }
 }

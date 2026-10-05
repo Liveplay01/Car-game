@@ -37,6 +37,8 @@ export interface PageHost {
   showNotice(text: string): void;
   /** A press began that may turn into a drag (a part picked up from the palette). */
   pressed(point: Vec2): void;
-  /** The portal's rewarded ad (CrazyGames); false where there is none and the placeholder plays. */
+  /** The rewarded ad (the portal's, or Google's); false where there is none and the placeholder plays. */
   rewardedAd(done: (outcome: RewardedOutcome) => void): boolean;
+  /** The ad offers beyond the free chest are on (not on a portal). */
+  readonly adOffers: boolean;
 }

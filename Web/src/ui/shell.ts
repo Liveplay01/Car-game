@@ -15,6 +15,7 @@ import { legalDoc } from '../present/legal';
 import { PATCH_NOTES } from '../present/patchNotes';
 import { PhotoView } from './photo';
 import { celebrate, invitedRoom, onAdAudio, reportGameplay, rewardedAd } from './crazygames';
+import { adReady, onRewardedAudio, rewardedAdsense } from './ads';
 import { inPlayStore, inPortal, isInstalled, isIos, isIpad, keepStorage, renewStorage } from '../storage/device';
 import type { Hint } from '../core/career';
 import { decodeChallenge, type ChallengeSpec } from '../core/challenge';
@@ -145,9 +146,15 @@ export class Shell {
       sound: (id, pitch, pan) => this.audio.play(id, pitch, pan),
       haptic: (id, softness) => this.haptics.play(id, softness),
       celebrate: () => celebrate(),
-      rewardedAd: (done) => rewardedAd(done),
+      // On CrazyGames their ad; on the normal site and in the Play app Google's; otherwise the game's own placeholder.
+      rewardedAd: (done) => rewardedAd(done) || rewardedAdsense(done),
+      adReady: () => adReady(),
+      // A free upgrade step and the Skin Upgrade's boost are for the normal site and the Play app, not CrazyGames.
+      adOffers: !inPortal,
     };
-    onAdAudio((on) => this.audio.setSuspended(on || document.hidden));
+    const quietForAd = (on: boolean): void => this.audio.setSuspended(on || document.hidden);
+    onAdAudio(quietForAd);
+    onRewardedAudio(quietForAd);
     this.session = new GameSession(output);
     this.session.systemReduceMotion = this.motionQuery.matches;
     this.motionQuery.addEventListener('change', () => (this.session.systemReduceMotion = this.motionQuery.matches));

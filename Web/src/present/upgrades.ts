@@ -132,7 +132,7 @@ export const UpgradePage = {
     return state.moneyBefore + Math.round((career.money - state.moneyBefore) * x);
   },
 
-  add(list: RenderList, career: Career, config: Config, upgrades: readonly Upgrade[], state: UpgradeState, reduceMotion: boolean, bottomInset: number, thumb: number): void {
+  add(list: RenderList, career: Career, config: Config, upgrades: readonly Upgrade[], state: UpgradeState, reduceMotion: boolean, bottomInset: number, thumb: number, freeStep: Upgrade | null): void {
     const vp = list.camera.viewport;
     MenuKit.backdrop(list);
     BuildTab.addChrome(list, 'upgrades', thumb, Fmt.number(UpgradePage.countedMoney(career, state)), vp);
@@ -140,7 +140,7 @@ export const UpgradePage = {
     list.clip = area;
     UpgradePage.cards(vp, bottomInset, upgrades, state.scroll).forEach((card, i) => {
       if (card.rect.maxY < area.minY - 20 || card.rect.minY > area.maxY + 20) return;
-      UpgradePage.addCard(list, card.upgrade, i, card.rect, career, config, state, reduceMotion);
+      UpgradePage.addCard(list, card.upgrade, i, card.rect, career, config, state, reduceMotion, card.upgrade === freeStep);
     });
     list.clip = undefined;
     UpgradePage.addScrollIndicator(list, area, state, upgrades.length, bottomInset);
@@ -152,7 +152,7 @@ export const UpgradePage = {
     state.addIndicator(list, area, l.maxScroll, Math.min(list.camera.viewport.x - 4, l.left + 2 * l.cardWidth + UpgradePage.gap + 5));
   },
 
-  addCard(list: RenderList, upgrade: Upgrade, index: number, r: Rect, career: Career, config: Config, state: UpgradeState, reduceMotion: boolean): void {
+  addCard(list: RenderList, upgrade: Upgrade, index: number, r: Rect, career: Career, config: Config, state: UpgradeState, reduceMotion: boolean, freeStep: boolean): void {
     const U = UpgradePage;
     const steps = Careers.steps(career, upgrade);
     const maxSteps = upgradeMaxSteps[upgrade];
@@ -192,6 +192,14 @@ export const UpgradePage = {
     list.s(rect(tile, v(R.width(picture), pictureHeight), 10), 'background', o);
     MenuKit.glow(list, tile, pictureHeight * 0.62, U.tint(upgrade), 0.45 * o);
     UpgradeArt.add(list, upgrade, picture, o);
+    // Today's pick: one step for a watched ad (Leo, 05.10.2026). Opens in the sheet like any card.
+    if (freeStep) {
+      const label = S.ads.freeStep;
+      const width = measure(label, 9, true) + 12;
+      const badge = v(picture.maxX - 4 - width / 2, picture.minY + 4 + 7);
+      list.s(rect(badge, v(width, 14), 7), 'accent', o);
+      list.s(text(label, badge, 9, 'center', 'bold'), 'accentInk', o);
+    }
 
     const textLeft = center.x - size.x / 2 + 12;
     const textRight = center.x + size.x / 2 - 12;

@@ -42,7 +42,7 @@ import {
 } from './loot';
 import { type Challenge, challengesOf, challengeMet, challengeReward, STREAK_MILESTONES } from './daily';
 import type { CasinoPending, CasinoRound } from './casino';
-import { randomSeed } from './rng';
+import { randomSeed, Rng } from './rng';
 import { Elite, type EliteGain, type EliteStep, type TitleId, TITLES } from './elite';
 import type { HallEntry } from './seasonPass';
 
@@ -171,6 +171,12 @@ export interface Career {
   mapSkin: string | null;
   adChests: number;
   adDay: number;
+  /** The free upgrade step an ad gave (the day and how many that day), and the Upgrade's ad boosts (same) and whether one waits for the next round. */
+  adUpgradeDay: number;
+  adUpgrades: number;
+  adBoostDay: number;
+  adBoosts: number;
+  upgradeBoost: boolean;
   chestsOpened: number;
   chestsSinceEpic: number;
   dailyDone: number;
@@ -278,6 +284,11 @@ export const newCareer = (): Career => ({
   mapSkin: null,
   adChests: 0,
   adDay: -1,
+  adUpgradeDay: -1,
+  adUpgrades: 0,
+  adBoostDay: -1,
+  adBoosts: 0,
+  upgradeBoost: false,
   chestsOpened: 0,
   chestsSinceEpic: 0,
   dailyDone: -1,
@@ -618,6 +629,49 @@ export const Careers = {
     }
     c.adChests++;
     c.chests.push('standard');
+    return true;
+  },
+
+  /**
+   * The upgrade today's ad offers one free step of (Leo, 05.10.2026), or null: today's is taken, or
+   * nothing is left to give. The game draws it from the career's own stream and the day, so it is
+   * the same all day and a reload does not draw again. It lands on an upgrade the player could buy.
+   */
+  adUpgradeOffer(c: Career, day: number, config: Config = baseConfig): Upgrade | null {
+    if (c.adUpgradeDay === day && c.adUpgrades >= config.adUpgradesPerDay) return null;
+    const open = (u: Upgrade): boolean => upgradeUnlockLevel(u, config) <= c.level && Careers.steps(c, u) < upgradeMaxSteps[u];
+    const start = Math.floor(new Rng((c.casinoSeed ^ Math.imul(day + 1, 0x9e3779b1) ^ 0xad0f5e1) >>> 0).unit() * UPGRADES.length);
+    for (let i = 0; i < UPGRADES.length; i++) {
+      const u = UPGRADES[(start + i) % UPGRADES.length];
+      if (open(u)) return u;
+    }
+    return null;
+  },
+
+  /** A watched ad: one free step of `adUpgradeOffer`. Null when there is none today. */
+  rewardAdUpgrade(c: Career, day: number, config: Config = baseConfig): Upgrade | null {
+    const u = Careers.adUpgradeOffer(c, day, config);
+    if (u === null) return null;
+    if (c.adUpgradeDay !== day) {
+      c.adUpgradeDay = day;
+      c.adUpgrades = 0;
+    }
+    c.adUpgrades++;
+    c.upgrades[u] = Careers.steps(c, u) + 1;
+    return u;
+  },
+
+  adBoostsLeft: (c: Career, day: number, config: Config = baseConfig): number => Math.max(0, config.adBoostsPerDay - (c.adBoostDay === day ? c.adBoosts : 0)),
+
+  /** A watched ad: the next Skin Upgrade round gets `upgradeAdBoost` more chance. False when one is already waiting or today's are used up. */
+  rewardAdBoost(c: Career, day: number, config: Config = baseConfig): boolean {
+    if (c.upgradeBoost || Careers.adBoostsLeft(c, day, config) <= 0) return false;
+    if (c.adBoostDay !== day) {
+      c.adBoostDay = day;
+      c.adBoosts = 0;
+    }
+    c.adBoosts++;
+    c.upgradeBoost = true;
     return true;
   },
 

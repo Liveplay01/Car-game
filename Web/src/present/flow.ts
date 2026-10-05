@@ -77,6 +77,9 @@ export type ScreenAction =
   | { k: 'openChest'; index: number }
   | { k: 'buyChest'; kind: ChestKind }
   | { k: 'watchAd' }
+  /** A free step of today's upgrade, and the Skin Upgrade's boost, each for an ad (`adFlow.ts`). */
+  | { k: 'watchAdUpgrade' }
+  | { k: 'watchAdBoost' }
   | { k: 'showCasino'; game: CasinoGame }
   | { k: 'wear'; id: string }
   /** Big Screen: choose the picture or video behind the roundabout (the shell's sheet). */

@@ -48,6 +48,8 @@ export interface SlotSpin {
 export interface UpgradeRoll {
   won: boolean;
   chance: number;
+  /** An ad's boost was in this round's chance (`upgradeAdBoost`). */
+  boosted: boolean;
   /** Where the needle stops, 0…1 round the dial; a win below `chance`. */
   roll: number;
   target: string;
@@ -218,12 +220,15 @@ export const Casino = {
     return COSMETICS.filter((x) => isStakeable(x) && !Careers.owns(c, x.id) && rarityRank(x.rarity) > top);
   },
 
-  /** P(win): what the stake is worth against the target, less the edge, at most `upgradeMaxChance`. */
-  upgradeChance(staked: string[], target: string, config: Config = baseConfig): number {
+  /**
+   * P(win): what the stake is worth against the target, less the edge, at most `upgradeMaxChance`;
+   * a watched ad (`boosted`) adds `upgradeAdBoost` on top, so the dial shows exactly what is rolled.
+   */
+  upgradeChance(staked: string[], target: string, config: Config = baseConfig, boosted = false): number {
     const t = cosmetic(target);
     if (!t || staked.length === 0) return 0;
     const stake = staked.reduce((sum, id) => sum + Casino.value(cosmetic(id)?.rarity ?? 'common', config), 0);
-    return Math.min(config.upgradeMaxChance, (stake / Casino.value(t.rarity, config)) * (1 - config.upgradeEdge));
+    return Math.min(config.upgradeMaxChance, (stake / Casino.value(t.rarity, config)) * (1 - config.upgradeEdge)) + (boosted ? config.upgradeAdBoost : 0);
   },
 
   canUpgrade(c: Career, staked: string[], target: string, config: Config = baseConfig): boolean {
@@ -235,7 +240,10 @@ export const Casino = {
   /** Stakes the skins on the target: they are traded for it on a win, and simply gone on a loss. */
   upgrade(c: Career, staked: string[], target: string, day: number, config: Config = baseConfig): UpgradeRoll | null {
     if (!Casino.canUpgrade(c, staked, target, config)) return null;
-    const chance = Casino.upgradeChance(staked, target, config);
+    // An ad's boost is for one round, won or lost.
+    const boosted = c.upgradeBoost;
+    c.upgradeBoost = false;
+    const chance = Casino.upgradeChance(staked, target, config, boosted);
     const roll = Casino.rng(c, 'upgrade').unit();
     const won = roll < chance;
     c.casinoRounds++;
@@ -248,7 +256,7 @@ export const Casino = {
       Careers.collect(c, target);
       c.casinoPending = { k: 'win', game: 'upgrade', money: 0, items: [target], flips: 0 };
     }
-    return { won, chance, roll, target, staked: [...staked] };
+    return { won, chance, boosted, roll, target, staked: [...staked] };
   },
 
   /** Skins gone from the collection: off the road too. Completed albums stay completed. */

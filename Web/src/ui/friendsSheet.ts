@@ -141,9 +141,36 @@ export function friendsSheet(layer: HTMLElement, actions: FriendsActions): () =>
     });
     const help = h('p', { class: 'field-help', 'aria-live': 'polite' }, message ?? 'Type the code your friend sees here. They do not have to add you back.');
     const add = h('button', { class: 'btn', type: 'submit' }, 'Add');
+    /** The last code sent, so a code that was refused is not sent again until it is changed. */
+    let tried = '';
+    const submit = (): void => {
+      if (add.disabled) return;
+      if (input.value.replace(/-/g, '').length !== 8) {
+        help.textContent = 'A friend code has 8 letters and numbers, like K7M2-9QXA.';
+        help.classList.add('error');
+        return;
+      }
+      tried = input.value;
+      add.disabled = true;
+      help.textContent = 'Adding…';
+      addFriend(input.value).then(
+        (friend) => {
+          forgetFriendsBoards();
+          void render(`${friend.name} is on your list.`);
+        },
+        (error: unknown) => {
+          add.disabled = false;
+          help.textContent = describeError(error);
+          help.classList.add('error');
+          input.focus();
+        },
+      );
+    };
     input.addEventListener('input', () => {
       input.value = tidyFriendCode(input.value);
       help.classList.remove('error');
+      // A whole code is all it takes: no need to tap Add (Leo, 05.10.2026).
+      if (input.value.replace(/-/g, '').length === 8 && input.value !== tried) submit();
     });
     const form = h(
       'form',
@@ -152,24 +179,7 @@ export function friendsSheet(layer: HTMLElement, actions: FriendsActions): () =>
         novalidate: true,
         onsubmit: (e: Event) => {
           e.preventDefault();
-          if (input.value.replace(/-/g, '').length !== 8) {
-            help.textContent = 'A friend code has 8 letters and numbers, like K7M2-9QXA.';
-            help.classList.add('error');
-            return;
-          }
-          add.disabled = true;
-          addFriend(input.value).then(
-            (friend) => {
-              forgetFriendsBoards();
-              void render(`${friend.name} is on your list.`);
-            },
-            (error: unknown) => {
-              add.disabled = false;
-              help.textContent = describeError(error);
-              help.classList.add('error');
-              input.focus();
-            },
-          );
+          submit();
         },
       },
       h('div', { class: 'join-row' }, input, add),
