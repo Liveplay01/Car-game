@@ -67,6 +67,8 @@
   --safe-left: env(safe-area-inset-left, 0px);
   --safe-right: env(safe-area-inset-right, 0px);
   --tabbar-h: 56px;
+  /* Settings, Picture, Friends and Leave: the glass pills over the scene share one width. */
+  --pill-w: 168px;
 
   /* Stacking order, lowest first. */
   --z-hud: 10;
@@ -649,6 +651,25 @@ a.row-link {
   gap: var(--s2);
 }
 
+/* The Friends sheet's tabs stay at the top while the list under them scrolls. */
+.sheet-tabs {
+  position: sticky;
+  top: calc(-1 * var(--s2));
+  z-index: 2;
+  margin-bottom: var(--s4);
+  box-shadow: 0 0 0 var(--s2) var(--surface-1);
+}
+
+.friends-content {
+  display: grid;
+  align-content: start;
+  gap: var(--s3);
+}
+
+.friends-content > .board-label {
+  margin-bottom: calc(-1 * var(--s2));
+}
+
 @keyframes sheet-in {
   from {
     transform: translateY(100%);
@@ -749,10 +770,11 @@ a.row-link {
 }
 
 .settings-btn {
-  /* A word beside the gear (Leo, 04.10.2026): Friends, Cloud sync and What's new live here, and a bare gear says little. */
+  /* A word beside the gear (Leo, 04.10.2026): Cloud sync and What's new live here, and a bare gear says little. */
   display: inline-flex;
   align-items: center;
-  width: auto;
+  width: var(--pill-w);
+  justify-content: flex-start;
   gap: var(--s2);
   padding: 0 var(--s4) 0 var(--s3);
   border-radius: 22px;
@@ -762,8 +784,8 @@ a.row-link {
   bottom: calc(var(--tabbar-h) + var(--safe-bottom) + var(--s4));
 }
 
-/* Leave challenge · Challenge a friend · Picture: glass pills stacked above Settings, on the same side. The other
-   side is where the thumb starts the next shift and the dispatch button sits (Leo, 05.10.2026). */
+/* Leave · Picture · Friends: glass pills stacked above Settings, on the same side, all one size (Leo, 05.10.2026).
+   The other side is where the thumb starts the next shift and the dispatch button sits. */
 .run-bar {
   position: absolute;
   z-index: var(--z-hud);
@@ -795,7 +817,13 @@ a.row-link {
   transition: opacity 200ms var(--ease-out), transform 200ms var(--ease-out);
 }
 
-.run-btn svg {
+.run-bar .run-btn {
+  width: var(--pill-w);
+  justify-content: flex-start;
+}
+
+.run-btn svg,
+.settings-btn svg {
   width: 18px;
   height: 18px;
 }
@@ -2349,10 +2377,6 @@ a.row-link {
 
 .friends-panel:empty {
   display: none;
-}
-
-.scope-tabs {
-  margin-bottom: var(--s2);
 }
 
 /* The one-time Cloud sync pop-up: a card on a dimmed screen (the install dialog is the full-screen sibling). */

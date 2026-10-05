@@ -117,7 +117,8 @@ export function friendsModule(): ServerModule {
       group.get('/boards/:board', (c) => {
         const me = c.get('player');
         const board = boardById(c.req.param('board'));
-        const period = board.period(ctx.now());
+        const day = Number.isInteger(Number(c.req.query('day'))) ? Number(c.req.query('day')) : undefined;
+        const period = board.period(ctx.now(), day);
         const ids = [me.id, ...friends.list(me.id).map((f) => f.id)];
         const entries = scores.among(board.id, period, ids).map((e) => ({ rank: e.rank, name: e.name, title: e.title, score: e.score, meta: e.meta, at: e.achievedAt, me: e.playerId === me.id }));
         const own = entries.find((e) => e.me);

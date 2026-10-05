@@ -5,6 +5,8 @@ import { SeasonPass } from '../core/seasonPass';
 import type { ShiftResult } from '../core/events';
 import { challengeReward } from '../core/daily';
 import { Unlocks } from '../core/unlocks';
+import { tierOf, UNLIMITED_MARKS } from '../core/tiers';
+import { heatXp } from '../core/heat';
 import { S, Fmt } from './strings';
 
 /** What a finished career shift needs to know besides its result. */
@@ -55,6 +57,8 @@ export function bookShift(save: SaveGame, result: ShiftResult, ctx: ShiftContext
     save.highscoreSeed = result.seed;
   }
   const milestones: string[] = [];
+  const carsBefore = save.unlimitedBestCars;
+  const tierBefore = tierOf(carsBefore);
   if (unlimited) {
     save.unlimitedBestCars = Math.max(save.unlimitedBestCars, result.carsSent);
     milestones.push(...Careers.claimUnlimited(career, save.unlimitedBestCars));
@@ -66,6 +70,22 @@ export function bookShift(save: SaveGame, result: ShiftResult, ctx: ShiftContext
   const levelBefore = career.level;
   Careers.record(career, result, ctx.level);
   const news: string[] = milestones.map((id) => S.modes.milestone(id));
+  const heat = ctx.mode === 'shift' && !ctx.daily ? ctx.shiftConfig.heat : 0;
+  if (heat > 0 && result.outcome === 'completed' && Careers.recordHeat(career, heat, ctx.config)) news.push(S.heat.cleared(heat, Careers.maxHeat(career, ctx.config)));
+  // Tailwind: the pay it promised was in this shift; a shift lost within reach of its goal earns the next one (once a day, never chained).
+  if (ctx.mode === 'shift' && !ctx.daily) {
+    const cars = ctx.shiftConfig.shiftCars;
+    const left = cars - result.carsSent;
+    const close = result.outcome !== 'completed' && left >= 1 && left <= ctx.config.tailwindMaxLeft && result.carsSent >= cars * ctx.config.tailwindMinShare;
+    if (career.tailwind) career.tailwind = false;
+    else if (close && career.tailwindDay !== ctx.today) {
+      career.tailwind = true;
+      career.tailwindDay = ctx.today;
+      news.push(S.goals.tailwind(ctx.config.tailwindPay));
+    }
+  }
+  const tier = tierOf(save.unlimitedBestCars);
+  if (unlimited && tier && tier !== tierBefore) news.unshift(S.modes.tierUp(tier));
   // The first level cleared: a chest to open within the first minute.
   if (ctx.mode === 'shift' && Careers.giveWelcomeChest(career, levelBefore, ctx.config)) news.push(S.daily.welcomeChest);
   // Level 5 cleared: the other modes are a swipe away (the waiting screen keeps a hint until the first swipe).
@@ -87,6 +107,10 @@ export function bookShift(save: SaveGame, result: ShiftResult, ctx: ShiftContext
   const legendary = Careers.completeLegendary(career, result);
   if (legendary) news.push(S.legendary.done(legendary.item));
   const pay = ctx.daily && result.outcome === 'completed' ? Careers.completeDaily(career, ctx.today, ctx.config) : null;
+  if (pay !== null) {
+    save.dailyDay = ctx.today;
+    save.dailyScore = result.score;
+  }
   if (pay !== null) news.push(S.daily.dailyDone(Fmt.number(pay), career.dailyStreak));
   else if (!ctx.daily && Careers.rollEventChest(career, result, ctx.shiftConfig, result.seed)) news.push(S.daily.eventChestFound);
   else if (Careers.rollLuckyDrop(career, result, ctx.shiftConfig, result.seed)) news.push(S.daily.luckyDrop);
@@ -98,7 +122,10 @@ export function bookShift(save: SaveGame, result: ShiftResult, ctx: ShiftContext
   }
   news.push(...Careers.recordChallenges(career, result, ctx.today).map((ch) => S.daily.challengeDone(ch, Fmt.number(challengeReward(ch)))));
   const completed = Careers.recordMastery(career, result);
-  const elite = Careers.recordElite(career, result, ctx.config);
+  // Each Unlimited mark counts once in a career, like the tier it belongs to.
+  const markXp = unlimited ? UNLIMITED_MARKS.filter((m) => m > carsBefore && m <= result.carsSent).length * ctx.config.eliteXpMark : 0;
+  const heatBonus = heat > 0 && result.outcome === 'completed' ? heatXp(heat, ctx.config) : 0;
+  const elite = Careers.recordElite(career, result, ctx.config, markXp + heatBonus);
   const titles = Careers.recordTitles(career, ctx.config);
   if (completed.length > 0) news.push(S.mastery.toast(completed));
   if (elite) {
@@ -110,7 +137,7 @@ export function bookShift(save: SaveGame, result: ShiftResult, ctx: ShiftContext
   if (titles.length > 0) news.push(S.titles.earned(titles));
   // Level 50 reached (again): Prestige is open, and the player hears about it once per rank.
   if (levelBefore < ctx.config.prestigeLevel && Careers.canPrestige(career, ctx.config)) news.push(S.prestige.available(career.prestige + 1));
-  const pass = SeasonPass.record(career, result, ctx.today, ctx.config);
+  const pass = SeasonPass.record(career, result, ctx.today, ctx.config, markXp + heatBonus);
   if (pass) for (const step of pass.steps) news.push(S.pass.reached(step));
   return { isNew, previous, bank: { before: bankBefore, after: career.money }, news, due };
 }

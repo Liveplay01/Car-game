@@ -1,9 +1,11 @@
 import { type Config, baseConfig, cloneConfig } from './config';
-import { type Career, type MasteryGoal, Careers, MASTERY_GOALS, MASTERY_THRESHOLDS, masteryValue } from './career';
+import { type Career, type GameMode, type MasteryGoal, Careers, MASTERY_GOALS, MASTERY_THRESHOLDS, masteryValue } from './career';
 import type { ShiftResult } from './events';
+
 import { type Challenge, challengesOf, challengeReward } from './daily';
 import type { Upgrade } from './levels';
 import { Scoring } from './scoring';
+import { type TierId, nextTier } from './tiers';
 
 /**
  * Open loops (Leo, 28.09.2026): there is always a next thing within reach, and after a lost
@@ -72,6 +74,12 @@ export const Goals = {
     return best;
   },
 
+  /** After an Unlimited run: how few cars it was short of the tier above the best, when it came within a quarter of it. */
+  tierMiss(carsSent: number, bestCars: number): { short: number; tier: TierId } | null {
+    const next = nextTier(bestCars);
+    return next && carsSent < next.cars && carsSent >= next.cars * 0.75 ? { short: next.cars - carsSent, tier: next.id } : null;
+  },
+
   /**
    * After a lost shift: the cars that were still missing, the points to the best, or the
    * combo one step short of the next multiplier. Null when it was not close.
@@ -93,19 +101,28 @@ export const Goals = {
 
   // MARK: Daily streak
 
-  /** The streak as it stands today: gone once a day was missed. */
-  streak: (c: Career, day: number): number => (c.dailyPlayed >= day - 1 ? c.dailyStreak : 0),
+  /** The streak as it stands today: gone once more days were missed than Streak Freezes cover. */
+  streak: (c: Career, day: number): number => (day - c.dailyPlayed - 1 <= c.streakFreezes ? c.dailyStreak : 0),
 
   /** A long enough streak pays more on every shift, as long as it lives. */
   streakBonus: (c: Career, day: number, config: Config = baseConfig): boolean => Goals.streak(c, day) >= Math.max(1, config.streakBonusDays),
 
-  /** Yesterday counted, today's Daily Shift is still open: the streak breaks at midnight. */
-  streakAtRisk: (c: Career, day: number): boolean => c.dailyStreak > 0 && c.dailyPlayed === day - 1,
+  /** Yesterday counted, today's Daily Shift is still open and no Freeze waits: the streak breaks at midnight. */
+  streakAtRisk: (c: Career, day: number): boolean => c.dailyStreak > 0 && c.dailyPlayed === day - 1 && c.streakFreezes === 0,
+
+  /** The next shift pays more: Tailwind waits, and this one is a plain career shift. */
+  tailwindOn: (c: Career, mode: GameMode, daily: boolean): boolean => c.tailwind && mode === 'shift' && !daily,
+
+  /** Days of streak until the next Streak Freeze, null while the stock is full. */
+  daysToFreeze: (c: Career, config: Config = baseConfig): number | null => (c.streakFreezes >= config.streakFreezeMax ? null : config.streakFreezeEvery - (c.dailyStreak % config.streakFreezeEvery)),
 
   /** This shift with the streak bonus on its pay. */
-  forStreak(base: Config): Config {
+  forStreak: (base: Config): Config => Goals.forPay(base, base.streakBonusPay),
+
+  /** This shift with `bonus` (0.15 = 15 %) more on its pay. */
+  forPay(base: Config, bonus: number): Config {
     const c = cloneConfig(base);
-    const f = 1 + base.streakBonusPay;
+    const f = 1 + bonus;
     c.shiftPay = Math.round(base.shiftPay * f);
     c.transporterPay = Math.round(base.transporterPay * f);
     c.shieldBonus = Math.round(base.shieldBonus * f);

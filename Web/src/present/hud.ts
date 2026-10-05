@@ -221,6 +221,8 @@ export interface HudInput {
   best: string | null;
   comboPop: number;
   race: { delta: number; pop: number } | null;
+  /** Unlimited: the mark just passed ("100 cars · GOLD"), shown in place of the car count for a moment. */
+  mark: string | null;
   pops: Pops;
   flames: number;
   flamePop: number;
@@ -240,7 +242,7 @@ export const HUD = {
     HUD.addTopCard(list, h);
     if (h.world.config.endless) {
       const frame = TopBar.frame(list.camera.viewport.x);
-      const label = S.modes.carsSent(h.world.shift.carsSent);
+      const label = h.mark ?? S.modes.carsSent(h.world.shift.carsSent);
       const at = v(R.center(frame).x, frame.maxY + 18);
       MenuKit.chromePill(list, at, v(textWidth(label, 12) + 28, 26), 1);
       list.s(text(label, at, 12 * land(h.pops.cars, 0.2), 'center', 'bold'), 'primary');
@@ -935,6 +937,8 @@ export interface DailyCard {
   bonus: number | null;
   /** Hours until the streak breaks, when that is close; null otherwise. */
   endsIn: number | null;
+  /** Streak Freezes in stock. */
+  freezes: number;
   next: { days: number; item: string; left: number } | null;
   splash: number | null;
 }
@@ -970,6 +974,10 @@ export const ReadyBanner = {
       money: string;
       conditions: string | null;
       daily: DailyCard | null;
+      /** Tailwind waits: the next shift pays this much more (0.25), shown as a pill. */
+      tailwind?: number | null;
+      /** The Heat this career shift runs at (0 = off), in the same pill. */
+      heat?: number;
       mode: GameMode;
       /** The multiplayer page of the swipe: no level, no daily, a code instead. */
       versus?: boolean;
@@ -1028,7 +1036,7 @@ export const ReadyBanner = {
     }
     else TopBar.addColumn(list, cols.right, 'trailing', S.hud.bestLabel, o.highscore ?? '–', { valueColor: o.highscore === null ? 'muted' : 'primary', opacity });
     list.tag = undefined;
-    const pillText = run ? run.badge : o.daily ? S.daily.streakPill(o.daily.streak, o.daily.bonus, o.daily.endsIn) : null;
+    const pillText = run ? run.badge : o.daily ? S.daily.streakPill(o.daily.streak, o.daily.bonus, o.daily.endsIn, o.daily.freezes) : S.heat.pill(o.heat ?? 0, o.tailwind ?? null);
     if (pillText) {
       const under = v(width / 2, frame.maxY + 18);
       const lineText = pillText;

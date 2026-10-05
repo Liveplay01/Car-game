@@ -19,7 +19,7 @@ Namen in `Web/src/present/strings.ts` (`S.shop`). Wird ein Item ergänzt, gehör
   auf Polizei und Transporter nicht, sie würden Lichtbalken und Münze verdecken. Weiterhin
   keine Skins in Polizeiblau oder Verbrecher-Violett.
 - **Odds sind immer sichtbar**, direkt neben der Truhe im Shop.
-- **Pity:** Spätestens die 10. Truhe in Folge ohne Epic ist mindestens Epic.
+- **Pity:** Spätestens die 10. Truhe in Folge ohne Epic ist mindestens Epic, spätestens die **40. ohne Legendary eine Legendary** (05.10.2026, `PITY_LEGENDARY_CHESTS`, `chestsSinceLegendary`; beide Zähler stehen im Chest-Sheet. In der Event Chest ersetzt das Saison-Item eine so garantierte Legendary nicht).
 - **Duplikate** werden zu Geld: Common 250 · Rare 600 · Epic 1.500 · Legendary 4.000.
 - **Kein Echtgeld.** Der Store ist entfernt (Leo, 28.09.2026). Geld und Truhen gibt es nur im
   Spiel, solange das Casino existiert, ist keine Währung kaufbar (CLAUDE.md, „Casino statt Store“).

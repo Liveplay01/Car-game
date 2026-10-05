@@ -1,4 +1,4 @@
-import { INVITE_LEVEL, INVITE_REMINDER_LEVEL, type Config, type Weather, type CityEvent, type BossKind, type LegendaryRule } from '../core/config';
+import { baseConfig, INVITE_LEVEL, INVITE_REMINDER_LEVEL, type Config, type Weather, type CityEvent, type BossKind, type LegendaryRule } from '../core/config';
 import type { Upgrade } from '../core/levels';
 import type { MasteryGoal, MasteryCompletion } from '../core/career';
 import { MASTERY_THRESHOLDS, masteryNumeral } from '../core/career';
@@ -14,6 +14,7 @@ import type { EliteStep, TitleId, TitleRule } from '../core/elite';
 import type { PassReward, PassStep, HallEntry } from '../core/seasonPass';
 import type { FeatGoal } from '../core/feats';
 import type { Season } from '../core/loot';
+import type { TierId } from '../core/tiers';
 import { MONEY_MARK } from './icons';
 import { Fmt, money, percent, multiplier, comboMultiplier } from './format';
 import { museumText, INTRO_TEXT, SPECIAL_TEXT } from './museumText';
@@ -65,10 +66,10 @@ export const S = {
     /** Two short pills, one after the other: a notice is one line, about 55 characters on a phone. */
     /** A friend's invite was kept (`?ref=`): with a name already, or still needing one. */
     invited: [`Invited by a friend · Reach level ${INVITE_LEVEL} and you both get a chest`],
-    invitedNeedsName: [`Invited by a friend · Reach level ${INVITE_LEVEL} and you both get a chest`, 'Enter a name in Settings → Friends so your chest finds you'],
-    /** Once for everyone (`announceInvite`), and again at level 10 (`inviteReminder`): the friend code is the invite, and Settings → Friends is where it is. */
-    invite: [`New · Invite a friend and you both get a chest at level ${INVITE_LEVEL}`, 'Settings → Friends has your code and link'],
-    inviteReminder: [`Level ${INVITE_REMINDER_LEVEL} · Invite a friend and you both get a chest`, 'Settings → Friends has your code and link'],
+    invitedNeedsName: [`Invited by a friend · Reach level ${INVITE_LEVEL} and you both get a chest`, 'Pick a name under Friends so your chest finds you'],
+    /** Once for everyone (`announceInvite`), and again at level 10 (`inviteReminder`): the friend code is the invite, and the Friends button is where it is. */
+    invite: [`New · Invite a friend and you both get a chest at level ${INVITE_LEVEL}`, 'The Friends button has your code and link'],
+    inviteReminder: [`Level ${INVITE_REMINDER_LEVEL} · Invite a friend and you both get a chest`, 'The Friends button has your code and link'],
     buildWithUs: ['New website: timing.love · Report bugs and ideas there', 'Bug hunters may get a gift · Settings → Build with us'],
   },
 
@@ -378,6 +379,12 @@ export const S = {
         stormChaser: 'Storm Chaser',
         legendHunter: 'Legend Hunter',
         starDriver: 'Star Driver',
+        marathoner: 'Marathoner',
+        overdriver: 'Overdriver',
+        endless: 'Endless',
+        scorcher: 'Scorcher',
+        inferno: 'Inferno',
+        meltdown: 'Meltdown',
         ascended: 'Ascended',
         eternal: 'Eternal',
         grandmaster: 'Grandmaster',
@@ -409,6 +416,10 @@ export const S = {
           return `Complete ${r.shifts} Legendary Shifts`;
         case 'prestige':
           return `Reach Prestige ★${r.rank}`;
+        case 'heat':
+          return S.heat.rule(r.level);
+        case 'item':
+          return `Unlock ${S.shop.item(r.id)} in Unlimited`;
         case 'masteries':
           return 'Reach tier V in every mastery';
       }
@@ -501,6 +512,13 @@ export const S = {
       overtime > 0
         ? `OVERTIME ${overtime} · more traffic, a little faster`
         : (['', 'GAS TANKERS JOIN THE TRAFFIC', 'NIGHT FALLS', 'A STORM ROLLS IN', 'MILITARY TRUCKS ON THE ROAD'][stage] ?? ''),
+    tier: (id: TierId): string => ({ bronze: 'Bronze', silver: 'Silver', gold: 'Gold', platinum: 'Platinum', diamond: 'Diamond', master: 'Master' })[id],
+    /** A tier reached in a run: its name over the ring, and in the shift's news. */
+    mark: (cars: number, reward: { tier: TierId | null; skin: string | null }): string =>
+      reward.tier ? `${cars} cars · ${S.modes.tier(reward.tier).toUpperCase()}` : reward.skin ? `${cars} cars · ${S.shop.item(reward.skin).toUpperCase()}` : `${cars} cars`,
+    tierUp: (id: TierId): string => `NEW TIER · ${S.modes.tier(id).toUpperCase()} in Unlimited`,
+    /** Its line in Records: the tier, and how far the next one is. */
+    tierLine: (id: TierId | null, next: { cars: number; id: TierId } | null): string => [id ? S.modes.tier(id) : '–', next ? `${next.cars} cars for ${S.modes.tier(next.id)}` : null].filter(Boolean).join(' · '),
     /** An Unlimited milestone reached: its skin. */
     milestone: (id: string): string => `UNLIMITED MILESTONE · ${S.shop.item(id)} unlocked`,
   },
@@ -587,6 +605,7 @@ export const S = {
     transporters: 'Transporters paid',
     unlimitedBest: 'Unlimited best',
     unlimitedCars: 'Unlimited cars',
+    unlimitedTier: 'Unlimited tier',
     mayhemBest: 'Mayhem flames',
     mayhemChain: 'Mayhem chain',
     perfects: 'Perfect Inputs',
@@ -595,6 +614,7 @@ export const S = {
     none: '–',
     days: (d: number): string => (d === 1 ? '1 day' : `${d} days`),
     owned: (o: number, t: number): string => `${o} / ${t}`,
+    collected: (o: number, t: number): string => `${o} / ${t} · ${Math.floor((o / t) * 100)} %`,
     questsHint: 'Quests pay once each and change at midnight.',
     timingLabel: (n: number): string => `Your timing · last ${n} merges`,
     /** How far from the middle of the gap the taps land on average; null: not enough merges yet. */
@@ -861,6 +881,7 @@ export const S = {
     waiting: (n: number): string => (n === 1 ? '1 waiting' : `${n} waiting`),
     buy: (price: string): string => `Buy · ${price}`,
     pity: (n: number): string => `Epic or better within ${n} chests. Duplicates pay out ${MONEY_MARK}.`,
+    pityLegendary: (n: number): string => `A Legendary within ${n} chests.`,
     duplicate: (m: string): string => `Duplicate · +${money(m)}`,
     ownedHint(item: Cosmetic): string {
       if (item.kind === 'carSkin') return 'Paints the cars on the road. Mix up to five. Only looks, never a bonus.';
@@ -1068,23 +1089,30 @@ export const S = {
     streakLine: (streak: number): string => (streak > 0 ? `${streak} ${streak === 1 ? 'day' : 'days'} in a row · keep it going` : 'Play it every day for a streak'),
     nextMilestone: (left: number, item: string): string => `${left} more ${left === 1 ? 'day' : 'days'} for ${S.shop.item(item)}`,
     /** The second line of its row under Progress → Today: what it is, or the streak and what it brings next. */
-    rowLine(streak: number, open: boolean, next: { left: number; item: string } | null): string {
+    rowLine(streak: number, open: boolean, next: { left: number; item: string } | null, freezes = 0, toFreeze: number | null = null): string {
       if (streak <= 0) return open ? S.daily.readyHint : 'Back tomorrow · play it every day for a streak';
       const days = `${streak} ${streak === 1 ? 'day' : 'days'} in a row`;
-      const parts = [days, next ? S.daily.nextMilestone(next.left, next.item) : null, open ? null : 'back tomorrow'];
+      // Whichever reward is nearer: the next skin or the next Freeze.
+      const ahead = next && (toFreeze === null || next.left <= toFreeze) ? S.daily.nextMilestone(next.left, next.item) : toFreeze !== null ? S.daily.freezeLine(toFreeze) : null;
+      const parts = [days, freezes > 0 ? S.daily.freezes(freezes) : null, ahead, open ? null : 'back tomorrow'];
       return parts.filter((p): p is string => p !== null).join(' · ');
     },
+    freezeLine: (days: number): string => `${days} more ${days === 1 ? 'day' : 'days'} for a Streak Freeze`,
+    freezes: (n: number): string => `${n} Streak ${n === 1 ? 'Freeze' : 'Freezes'}`,
+    freezeUsed: (n: number): string => `STREAK FROZEN · ${n === 1 ? 'a missed day was' : `${n} missed days were`} covered`,
+    freezeEarned: 'STREAK FREEZE EARNED · it covers a missed day',
     milestone: (days: number, item: string): string => `${days} DAYS IN A ROW · ${S.shop.item(item)} unlocked`,
     eventChestFound: 'EVENT CHEST FOUND',
     luckyDrop: 'LUCKY DROP · STANDARD CHEST',
     welcomeChest: 'YOUR FIRST CHEST · open it in the Shop',
     perfectRunFirst: (pay: number): string => `PERFECT RUN · no crash or cut-off · +${pay} % pay`,
     /** The pill over the Daily Shift: the streak, its bonus, and when it breaks. */
-    streakPill(streak: number, bonus: number | null, endsIn: number | null): string {
+    streakPill(streak: number, bonus: number | null, endsIn: number | null, freezes = 0): string {
       if (streak <= 0) return S.daily.streakLine(0);
       const days = `${streak} ${streak === 1 ? 'day' : 'days'} in a row`;
       if (endsIn !== null) return `${days} · ends in ${endsIn < 1 ? 'under 1 h' : `${Math.floor(endsIn)} h`}`;
-      return bonus !== null ? `${days} · +${Math.round(bonus * 100)} % pay on every shift` : `${days} · keep it going`;
+      const freeze = freezes > 0 ? ` · ${S.daily.freezes(freezes)}` : '';
+      return bonus !== null ? `${days} · +${Math.round(bonus * 100)} % pay${freeze || ' on every shift'}` : `${days}${freeze || ' · keep it going'}`;
     },
     challenge(c: Challenge): string {
       switch (c) {
@@ -1287,7 +1315,21 @@ export const S = {
     },
   },
 
+  heat: {
+    row: (heat: number): string => (heat > 0 ? `Heat ${heat}` : 'Heat'),
+    line: (heat: number, max: number): string => (heat > 0 ? `Harder traffic · +${Math.round(heat * baseConfig.heatPay * 100)} % pay · +${heat * baseConfig.eliteXpHeat} Elite XP a shift` : max > 0 ? 'Off · harder traffic for more pay and Elite XP' : 'Clear a shift to open the next Heat'),
+    link: (heat: number, max: number): string => `${heat}/${max} · change ›`,
+    cleared: (heat: number, max: number): string => (heat < max ? `HEAT ${heat} CLEARED · Heat ${heat + 1} is open` : `HEAT ${heat} CLEARED`),
+    /** The waiting screen's pill: Heat and Tailwind together; null when neither is on. */
+    pill: (heat: number, tailwind: number | null): string | null =>
+      [tailwind ? `TAILWIND +${Math.round(tailwind * 100)} %` : null, heat > 0 ? `HEAT ${heat} · +${Math.round(heat * baseConfig.heatPay * 100)} % pay` : null].filter(Boolean).join(' · ') || null,
+    rule: (level: number): string => `Clear a shift on Heat ${level}`,
+  },
+
   goals: {
+    /** So close: the next career shift pays more (once a day). */
+    tierMiss: (m: { short: number; tier: TierId }): string => `${m.short} ${m.short === 1 ? 'car' : 'cars'} short of ${S.modes.tier(m.tier)}`,
+    tailwind: (pay: number): string => `TAILWIND · so close · your next shift pays +${Math.round(pay * 100)} %`,
     next(g: NextGoal): string {
       if (g.k === 'challenge') return `Today · ${S.daily.challenge(g.challenge)} · +${money(String(g.reward))}`;
       return `${S.mastery.name(g.goal)} · ${g.have}/${g.need}`;

@@ -47,6 +47,13 @@ import { Elite, type EliteGain, type EliteStep, type TitleId, TITLES } from './e
 import type { HallEntry } from './seasonPass';
 import { clamp } from './vec2';
 
+/** What counting a day into the Daily streak brought: a milestone item, Freezes used on missed days, a new Freeze. */
+export interface StreakNews {
+  item: string | null;
+  frozen: number;
+  earned: boolean;
+}
+
 export type GameMode = 'shift' | 'unlimited' | 'mayhem';
 export const GAME_MODES: GameMode[] = ['shift', 'unlimited', 'mayhem'];
 
@@ -180,9 +187,18 @@ export interface Career {
   upgradeBoost: boolean;
   chestsOpened: number;
   chestsSinceEpic: number;
+  chestsSinceLegendary: number;
   dailyDone: number;
   lastLoginDay: number;
   dailyStreak: number;
+  /** Streak Freezes in stock: each one covers a missed day instead of breaking the streak. */
+  streakFreezes: number;
+  /** Tailwind waits for the next career shift, and the day one was last given. */
+  tailwind: boolean;
+  tailwindDay: number;
+  /** The Heat chosen for career shifts, and the highest Heat a shift was cleared at. */
+  heat: number;
+  heatCleared: number;
   challengeDay: number;
   challengesDone: string[];
   dailyPlayed: number;
@@ -260,6 +276,9 @@ export interface SaveGame {
   unlimitedBestCars: number;
   mayhemBest: number;
   mayhemBestChain: number;
+  /** The Daily Shift cleared most recently: its day and score, for the Daily board. */
+  dailyDay: number;
+  dailyScore: number;
   /** The newest patch notes the player has opened (`present/patchNotes.ts`); null: none yet. */
   notesSeen: string | null;
 }
@@ -292,9 +311,15 @@ export const newCareer = (): Career => ({
   upgradeBoost: false,
   chestsOpened: 0,
   chestsSinceEpic: 0,
+  chestsSinceLegendary: 0,
   dailyDone: -1,
   lastLoginDay: -1,
   dailyStreak: 0,
+  streakFreezes: 0,
+  tailwind: false,
+  tailwindDay: -1,
+  heat: 0,
+  heatCleared: 0,
   challengeDay: -1,
   challengesDone: [],
   dailyPlayed: -1,
@@ -346,6 +371,8 @@ export const newSave = (): SaveGame => ({
   unlimitedBestCars: 0,
   mayhemBest: 0,
   mayhemBestChain: 0,
+  dailyDay: -1,
+  dailyScore: 0,
   notesSeen: null,
 });
 
@@ -433,6 +460,28 @@ export const Careers = {
     return { rank: c.prestige, item: reward.id };
   },
 
+  // MARK: Heat
+
+  /** The highest Heat that can be chosen: closed before the Elite track, then one above the best cleared. */
+  maxHeat: (c: Career, config: Config = baseConfig): number => (Elite.isOpen(c, config) ? Math.min(config.maxHeat, c.heatCleared + 1) : 0),
+
+  /** The Heat career shifts run at: the chosen one, as far as it is open. */
+  activeHeat: (c: Career, config: Config = baseConfig): number => Math.min(c.heat, Careers.maxHeat(c, config)),
+
+  /** The next Heat, and round to off after the highest. */
+  cycleHeat(c: Career, config: Config = baseConfig): number {
+    const next = Careers.activeHeat(c, config) + 1;
+    c.heat = next > Careers.maxHeat(c, config) ? 0 : next;
+    return c.heat;
+  },
+
+  /** A shift cleared at `heat` opens the next one; true when that is new. */
+  recordHeat(c: Career, heat: number, config: Config = baseConfig): boolean {
+    if (heat <= c.heatCleared || heat > config.maxHeat) return false;
+    c.heatCleared = heat;
+    return true;
+  },
+
   // MARK: Hall of Fame
 
   /** The Hall of Fame can be built once the Elite track is open (Level 50 reached once). */
@@ -453,9 +502,9 @@ export const Careers = {
    * Books a finished shift on the Elite track (nothing before Level 50): its XP, then every
    * Elite level reached pays its chest and, at a milestone, its skin. Null while the track is shut.
    */
-  recordElite(c: Career, r: ShiftResult, config: Config = baseConfig): EliteGain | null {
+  recordElite(c: Career, r: ShiftResult, config: Config = baseConfig, extraXp = 0): EliteGain | null {
     if (!Elite.isOpen(c, config)) return null;
-    const xp = Elite.xpOf(r, config);
+    const xp = Elite.xpOf(r, config) + extraXp;
     c.eliteXp += xp;
     const steps: EliteStep[] = [];
     const reached = Elite.level(c, config);
@@ -586,9 +635,10 @@ export const Careers = {
   openChest(c: Career, index: number, seed: number, day: number | null): ChestOpening | null {
     if (index < 0 || index >= c.chests.length) return null;
     const kind = c.chests.splice(index, 1)[0];
-    const roll = rollChest(kind, c.collection, c.chestsSinceEpic, (seed ^ Math.imul(c.chestsOpened, 7919) ^ 0xc4e57b0c) >>> 0, day);
+    const roll = rollChest(kind, c.collection, c.chestsSinceEpic, (seed ^ Math.imul(c.chestsOpened, 7919) ^ 0xc4e57b0c) >>> 0, day, c.chestsSinceLegendary);
     c.chestsOpened++;
     c.chestsSinceEpic = roll.chestsSinceEpic;
+    c.chestsSinceLegendary = roll.chestsSinceLegendary;
     if (c.collection.includes(roll.item.id)) {
       const money = DUPLICATE_MONEY[roll.item.rarity];
       c.money += money;
@@ -692,14 +742,27 @@ export const Careers = {
 
   isDailyOpen: (c: Career, day: number): boolean => c.dailyPlayed !== day && c.dailyDone !== day,
 
-  startDaily(c: Career, day: number): string | null {
+  startDaily(c: Career, day: number, config: Config = baseConfig): StreakNews | null {
     if (!Careers.isDailyOpen(c, day)) return null;
-    c.dailyStreak = c.dailyPlayed === day - 1 ? c.dailyStreak + 1 : 1;
-    c.dailyPlayed = day;
+    const news = Careers.advanceStreak(c, day, config);
     const milestone = STREAK_MILESTONES.find((m) => m.days === c.dailyStreak);
-    if (!milestone || c.collection.includes(milestone.item)) return null;
-    Careers.collect(c, milestone.item);
-    return milestone.item;
+    if (milestone && !c.collection.includes(milestone.item)) {
+      Careers.collect(c, milestone.item);
+      news.item = milestone.item;
+    }
+    return news;
+  },
+
+  /** Counts today into the streak: yesterday continues it, missed days are covered by Freezes (one each), otherwise it starts again. */
+  advanceStreak(c: Career, day: number, config: Config = baseConfig): StreakNews {
+    const missed = day - c.dailyPlayed - 1;
+    const frozen = c.dailyStreak > 0 && missed > 0 && missed <= c.streakFreezes ? missed : 0;
+    c.streakFreezes -= frozen;
+    c.dailyStreak = missed === 0 || frozen > 0 ? c.dailyStreak + 1 : 1;
+    c.dailyPlayed = day;
+    const earned = c.dailyStreak % config.streakFreezeEvery === 0 && c.streakFreezes < config.streakFreezeMax;
+    if (earned) c.streakFreezes++;
+    return { item: null, frozen, earned };
   },
 
   nextStreakMilestone(c: Career): { days: number; item: string; left: number } | null {
@@ -709,10 +772,7 @@ export const Careers = {
 
   completeDaily(c: Career, day: number, config: Config = baseConfig): number | null {
     if (c.dailyDone === day) return null;
-    if (c.dailyPlayed !== day) {
-      c.dailyStreak = c.dailyPlayed === day - 1 ? c.dailyStreak + 1 : 1;
-      c.dailyPlayed = day;
-    }
+    if (c.dailyPlayed !== day) Careers.advanceStreak(c, day, config);
     c.dailyDone = day;
     const money = config.dailyPay * Math.min(c.dailyStreak, 7);
     c.money += money;

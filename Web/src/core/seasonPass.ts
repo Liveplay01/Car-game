@@ -122,9 +122,9 @@ export const SeasonPass = {
    * Books a finished shift on this season's pass: its XP, then every tier reached pays. Null
    * without the pass (or with last season's: that track has closed).
    */
-  record(c: Career, r: ShiftResult, day: number, config: Config = baseConfig): { xp: number; steps: PassStep[] } | null {
+  record(c: Career, r: ShiftResult, day: number, config: Config = baseConfig, extraXp = 0): { xp: number; steps: PassStep[] } | null {
     if (!SeasonPass.owns(c, day)) return null;
-    const xp = Elite.xpOf(r, config);
+    const xp = Elite.xpOf(r, config) + extraXp;
     c.passXp += xp;
     const steps: PassStep[] = [];
     const season = SeasonPass.season(day);

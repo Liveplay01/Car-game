@@ -13,7 +13,14 @@ import { integerField } from '../../http.ts';
 export interface ParsedScore {
   score: number;
   meta: Record<string, number>;
+  /** The day a daily board's score belongs to (the player's own day: the Daily Shift follows local time). */
+  day?: number;
 }
+
+const DAY_MS = 86_400_000;
+const utcDay = (now: number): number => Math.floor(now / DAY_MS);
+/** The day a daily list is for: the player's own, as long as it is today somewhere on Earth (one day either side of ours). */
+const dayOf = (now: number, day: number | undefined): number => (day !== undefined && Math.abs(day - utcDay(now)) <= 1 ? day : utcDay(now));
 
 export interface BoardDef {
   id: string;
@@ -22,9 +29,9 @@ export interface BoardDef {
    * Which list a score belongs on right now. 'all' is one list for ever; a daily board would
    * answer `day:<number>` so every day starts a fresh list, and old days stay readable.
    */
-  period(now: number): string;
+  period(now: number, day?: number): string;
   /** Checks a submitted body (422 when it is impossible) and turns it into a score. */
-  parse(body: Record<string, unknown>): ParsedScore;
+  parse(body: Record<string, unknown>, now: number): ParsedScore;
 }
 
 /** The most the rules allow; generous on purpose (`core/config.ts` has the real values). */
@@ -35,7 +42,15 @@ export const LIMITS = {
   /** Unlimited: cars in one run, and points per car (best merge 150 × 3 combo × 2 rush hour, plus takedowns of 1000). */
   maxCars: 50_000,
   maxPointsPerCar: 5_000,
+  /** The Daily Shift is a career shift: at most this many cars. */
+  maxDailyCars: 60,
+  /** Boss Rush in hundredths of a second: nobody clears eight bosses in under 30 seconds, or takes two hours. */
+  rushMinCs: 3_000,
+  rushMaxCs: 720_000,
 } as const;
+
+/** A lower time must rank higher: the board ranks by the biggest number. */
+const RUSH_BASE = 10_000_000;
 
 /** Prestige counts first, then the level: 'Prestige 1 · Level 2' beats 'Prestige 0 · Level 49'. */
 const PRESTIGE_STEP = 1000;
@@ -59,6 +74,25 @@ export const BOARDS: readonly BoardDef[] = [
       const cars = integerField(body, 'cars', 1, LIMITS.maxCars);
       const score = integerField(body, 'score', 1, LIMITS.maxPointsPerCar * cars);
       return { score, meta: { cars } };
+    },
+  },
+  {
+    id: 'daily',
+    title: 'Daily Shift',
+    period: (now, day) => `day:${dayOf(now, day)}`,
+    parse(body, now) {
+      const day = integerField(body, 'day', utcDay(now) - 1, utcDay(now) + 1);
+      const score = integerField(body, 'score', 1, LIMITS.maxPointsPerCar * LIMITS.maxDailyCars);
+      return { score, meta: {}, day };
+    },
+  },
+  {
+    id: 'rush',
+    title: 'Boss Rush',
+    period: () => 'all',
+    parse(body) {
+      const cs = integerField(body, 'cs', LIMITS.rushMinCs, LIMITS.rushMaxCs);
+      return { score: RUSH_BASE - cs, meta: { cs } };
     },
   },
 ];

@@ -99,7 +99,7 @@ test('registering is limited per address', async () => {
 test('the boards are listed', async () => {
   const { call } = setup();
   const r = await call('GET', '/v1/boards');
-  assert.deepEqual(r.json.boards.map((b: { id: string }) => b.id), ['shift-level', 'unlimited']);
+  assert.deepEqual(r.json.boards.map((b: { id: string }) => b.id), ['shift-level', 'unlimited', 'daily', 'rush']);
   assert.equal((await call('GET', '/v1/boards/nope')).status, 404);
 });
 
@@ -319,4 +319,33 @@ test('migrations run once and survive a restart on the same file', async () => {
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
+});
+
+test('the Daily board is one list per day, the Boss Rush board ranks the fastest time first', async () => {
+  const { call, join, clock, db } = setup();
+  const a = await join('Anna');
+  const b = await join('Ben');
+  const today = Math.floor(clock.now / 86_400_000);
+
+  assert.equal((await call('PUT', '/v1/boards/daily/score', { token: a.token, body: { score: 4000, day: today + 5 } })).status, 422, 'a day that is nowhere today');
+  assert.equal((await call('PUT', '/v1/boards/daily/score', { token: a.token, body: { score: 4000, day: today } })).status, 200);
+  await call('PUT', '/v1/boards/daily/score', { token: b.token, body: { score: 6000, day: today } });
+  await call('PUT', '/v1/boards/daily/score', { token: b.token, body: { score: 900, day: today } });
+  const list = await call('GET', `/v1/boards/daily?day=${today}`);
+  assert.deepEqual(list.json.entries.map((e: { name: string; score: number }) => [e.name, e.score]), [['Ben', 6000], ['Anna', 4000]], 'the better one stays');
+
+  // Another day starts a fresh list; today's stays readable.
+  await call('PUT', '/v1/boards/daily/score', { token: a.token, body: { score: 100, day: today + 1 } });
+  assert.deepEqual((await call('GET', `/v1/boards/daily?day=${today + 1}`)).json.entries.map((e: { name: string }) => e.name), ['Anna']);
+  assert.equal((await call('GET', `/v1/boards/daily?day=${today}`)).json.entries.length, 2);
+  assert.equal((await call('GET', '/v1/boards/daily?day=999999')).json.board.period, `day:${today}`, 'an impossible day falls back to ours');
+
+  assert.equal((await call('PUT', '/v1/boards/rush/score', { token: a.token, body: { cs: 100 } })).status, 422, 'too fast to be true');
+  await call('PUT', '/v1/boards/rush/score', { token: a.token, body: { cs: 9000 } });
+  await call('PUT', '/v1/boards/rush/score', { token: b.token, body: { cs: 8000 } });
+  const slower = await call('PUT', '/v1/boards/rush/score', { token: b.token, body: { cs: 9500 } });
+  assert.equal(slower.json.accepted, false, 'a slower time does not count');
+  const rush = await call('GET', '/v1/boards/rush');
+  assert.deepEqual(rush.json.entries.map((e: { name: string; meta: { cs: number } }) => [e.name, e.meta.cs]), [['Ben', 8000], ['Anna', 9000]]);
+  db.close();
 });

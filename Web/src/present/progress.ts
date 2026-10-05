@@ -1,5 +1,7 @@
 import { type SaveGame, type Career, type MasteryGoal, Careers, MASTERY_GOALS, MASTERY_THRESHOLDS, masteryValue } from '../core/career';
 import { Unlocks } from '../core/unlocks';
+import { Goals } from '../core/goals';
+import { tierOf, nextTier } from '../core/tiers';
 import { COSMETICS, cosmetic } from '../core/loot';
 import { FEATS, Feats, type Feat } from '../core/feats';
 import { type Challenge, challengesOf, challengeReward } from '../core/daily';
@@ -58,6 +60,7 @@ export type ProgressTarget =
   | { k: 'elite' }
   | { k: 'stats' }
   | { k: 'weekly' }
+  | { k: 'heat' }
   | { k: 'pass' }
   | { k: 'trial'; id: TrialId }
   | { k: 'rush' }
@@ -76,6 +79,7 @@ type Block =
   | { k: 'note'; text: string }
   | { k: 'daily' }
   | { k: 'weekly' }
+  | { k: 'heat' }
   | { k: 'pass' }
   | { k: 'quest'; challenge: Challenge }
   | { k: 'trialsLocked'; level: number }
@@ -156,8 +160,8 @@ export const ProgressPage = {
       { label: P.level, value: Fmt.number(c.level) },
       { label: P.highscore, value: count(save.highscore) },
       { label: P.bestCombo, value: count(m.bestCombo) },
-      { label: P.streak, value: c.dailyStreak > 0 ? P.days(c.dailyStreak) : P.none },
-      { label: P.collection, value: P.owned(COSMETICS.filter((x) => Careers.owns(c, x.id)).length, COSMETICS.length) },
+      { label: P.streak, value: c.dailyStreak > 0 ? P.days(c.dailyStreak) + (c.streakFreezes > 0 ? ` · ${S.daily.freezes(c.streakFreezes)}` : '') : P.none },
+      { label: P.collection, value: P.collected(COSMETICS.filter((x) => Careers.owns(c, x.id)).length, COSMETICS.length) },
       { label: P.timingLabel(baseConfig.timingSamples), value: P.timing(averageOffset(c, baseConfig), baseConfig.timingOnBeat) },
       { label: P.bestChain, value: count(m.bestChain) },
       { label: P.shiftsPlayed, value: count(save.shiftsPlayed) },
@@ -169,6 +173,7 @@ export const ProgressPage = {
       { label: P.bosses, value: count(c.bossTrophies) },
       { label: P.unlimitedBest, value: count(save.unlimitedBest) },
       { label: P.unlimitedCars, value: count(save.unlimitedBestCars) },
+      { label: P.unlimitedTier, value: S.modes.tierLine(tierOf(save.unlimitedBestCars), nextTier(save.unlimitedBestCars)) },
       { label: P.mayhemBest, value: count(save.mayhemBest) },
       { label: P.mayhemChain, value: save.mayhemBestChain > 0 ? `×${save.mayhemBestChain}` : P.none },
       { label: P.weeklies, value: count(c.weekliesDone) },
@@ -210,6 +215,7 @@ export const ProgressPage = {
     } else if (section === PROGRESS.today) {
       s.row({ k: 'daily' }, 64);
       s.row({ k: 'weekly' }, 64);
+      if (Careers.maxHeat(career) > 0 || career.heat > 0) s.row({ k: 'heat' }, 64);
       s.row({ k: 'pass' }, 64);
       const quests = challengesOf(today);
       const done = quests.filter((q) => Careers.isChallengeDone(career, q, today)).length;
@@ -291,6 +297,8 @@ export const ProgressPage = {
         return { k: 'stats' };
       case 'weekly':
         return { k: 'weekly' };
+      case 'heat':
+        return { k: 'heat' };
       case 'pass':
         return { k: 'pass' };
       case 'trial':
@@ -325,7 +333,8 @@ export const ProgressPage = {
     if (!leaderboardEnabled) return null;
     const rank = knownRank('shift-level');
     // "Rank #4", then "#4" where the title leaves less room, then the podium alone.
-    const labels = rank === null ? [S.leaderboard.chip] : [S.leaderboard.rank(rank), `#${Fmt.number(rank)}`];
+    // The arrow says it opens something: a chip drawn on the canvas looks like a status otherwise.
+    const labels = (rank === null ? [S.leaderboard.chip] : [S.leaderboard.rank(rank), `#${Fmt.number(rank)}`]).map((l) => `${l} ›`);
     const cash = Fmt.number(money);
     const right = MenuKit.headerChip(viewport, cash).x - MenuKit.chipWidth(cash) / 2 - 8;
     const titleEnd = MenuKit.headerInset(viewport) + textWidth(S.tabs.progress.toUpperCase(), MenuKit.titleSize) + 12;
@@ -438,6 +447,8 @@ export const ProgressPage = {
         return ProgressPage.addDaily(list, r, career, today, o);
       case 'weekly':
         return ProgressPage.addWeekly(list, r, career, today, o);
+      case 'heat':
+        return ProgressPage.addHeat(list, r, career, o);
       case 'pass':
         return ProgressPage.addPass(list, r, career, today, o);
       case 'quest':
@@ -545,7 +556,7 @@ export const ProgressPage = {
     }
     const open = Careers.isDailyOpen(career, today);
     const next = Careers.nextStreakMilestone(career);
-    ProgressPage.addCardRow(list, r, r.minX + 16, o, { title: S.daily.name, line: S.daily.rowLine(career.dailyStreak, open, next), status: open ? S.daily.ready : `${S.daily.done} ✓` });
+    ProgressPage.addCardRow(list, r, r.minX + 16, o, { title: S.daily.name, line: S.daily.rowLine(career.dailyStreak, open, next, career.streakFreezes, Goals.daysToFreeze(career, baseConfig)), status: open ? S.daily.ready : `${S.daily.done} ✓` });
   },
 
   /** The Weekly Shift: one shift for the whole week, tap to play it. */
@@ -560,6 +571,14 @@ export const ProgressPage = {
       ...(passed ? { status: `${S.daily.done} ✓` } : { reward: shift.reward }),
       link: `${S.weekly.daysLeft(weekDaysLeft(today))} · ${S.trials.play} ›`,
     });
+  },
+
+  /** Heat: tap to step up through the open levels, and back to off. */
+  addHeat(list: RenderList, r: Rect, career: Career, o: number): void {
+    ProgressPage.panel(list, r, o);
+    const heat = Careers.activeHeat(career);
+    const max = Careers.maxHeat(career);
+    ProgressPage.addCardRow(list, r, r.minX + 16, o, { title: S.heat.row(heat), line: S.heat.line(heat, max), link: S.heat.link(heat, max) });
   },
 
   /** The Season Pass: this season's track, tap for the sheet. */

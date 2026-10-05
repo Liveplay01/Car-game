@@ -1,7 +1,6 @@
 import { h, icon } from './dom';
 import { ICONS, CRAZYGAMES_LOGO, FANDOM_LOGO } from './icons';
 import type { Settings } from '../core/career';
-import { INVITE_LEVEL } from '../core/config';
 import { type PatchNote, type PatchImpact, itemText, itemCredit } from '../present/patchNotes';
 import { LEGAL_DOCS, type LegalDoc, type LegalId } from '../present/legal';
 import type { License } from '../present/licenses';
@@ -304,8 +303,6 @@ export interface SettingsActions {
   openCloud(): void;
   /** Cloud sync is on for this device (the row says so). */
   cloudOn: boolean;
-  /** The Friends sheet (friend code, invite link, adding friends), over the settings; null where there is no service or no links (CrazyGames). */
-  openFriends: (() => void) | null;
   /** The player's friend code, if they have a name: it fills in the bug form on the website. */
   friendCode: (() => Promise<string | null>) | null;
   install: (() => void) | null;
@@ -442,36 +439,6 @@ export function settingsSheet(layer: HTMLElement, s: Settings, actions: Settings
       .catch(() => undefined);
   }
 
-  // Friends first (Leo, 04.10.2026): asked for a friend code, a player should find it in two taps, here.
-  let friendsGroup: HTMLElement | null = null;
-  if (actions.openFriends) {
-    const open = actions.openFriends;
-    const rows: HTMLElement[] = [richLinkRow('Invite friends', `You both get a chest when a friend reaches level ${INVITE_LEVEL}.`, open, tile(ICONS.people, 'blue'), null)];
-    if (actions.friendCode) {
-      const code = h('div', { class: 'row-title sync-code settings-code' }, '…');
-      const copy = h('button', { class: 'btn', type: 'button', disabled: true }, 'Copy');
-      copy.addEventListener('click', () => {
-        void navigator.clipboard?.writeText(code.textContent ?? '').then(
-          () => {
-            copy.textContent = 'Copied';
-            window.setTimeout(() => (copy.textContent = 'Copy'), 1600);
-          },
-          () => window.prompt('Copy your friend code', code.textContent ?? ''),
-        );
-      });
-      rows.push(h('div', { class: 'row' }, h('div', { class: 'row-main' }, h('div', { class: 'row-sub' }, 'Your friend code'), code), copy));
-      actions
-        .friendCode()
-        .then((value) => {
-          if (!value) return;
-          code.textContent = value;
-          copy.disabled = false;
-        })
-        .catch(() => (code.textContent = 'Offline'));
-    }
-    friendsGroup = group('Friends', ...rows);
-  }
-
   const cloudRow = cloudEnabled
     ? richLinkRow(
         'Cloud sync',
@@ -485,7 +452,6 @@ export function settingsSheet(layer: HTMLElement, s: Settings, actions: Settings
   const body = h(
     'div',
     { class: 'settings' },
-    friendsGroup,
     group(
       'Game feel',
       switchRow('Larger text', 'Notices and cards over the game a step larger.', s.largeText, toggle('largeText')),

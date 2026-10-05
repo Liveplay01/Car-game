@@ -16,7 +16,11 @@ const load = (path) => server.ssrLoadModule(path);
 const { World } = await load('/src/core/world.ts');
 const { baseConfig, BOSS_KINDS } = await load('/src/core/config.ts');
 const { forLevel, UPGRADES, upgradeMaxSteps } = await load('/src/core/levels.ts');
-const { COSMETICS } = await load('/src/core/loot.ts');
+const { COSMETICS, rollChest, PITY_LEGENDARY_CHESTS } = await load('/src/core/loot.ts');
+const { Goals } = await load('/src/core/goals.ts');
+const { forHeat, heatPay, heatXp } = await load('/src/core/heat.ts');
+const { due: dueBoards } = await load('/src/net/leaderboard.ts');
+const { UNLIMITED_TIERS, UNLIMITED_MARKS, tierOf, nextTier, markPassed, markReward } = await load('/src/core/tiers.ts');
 const { newSave, newCareer, Careers } = await load('/src/core/career.ts');
 const { encodeChallenge, decodeChallenge, challengeOf } = await load('/src/core/challenge.ts');
 const { loadSave, writeSave, parseImport, saveTrust, sealSave, SEAL_FIELD } = await load('/src/storage/save.ts');
@@ -1418,4 +1422,263 @@ test('a save keeps the ads of the day and the waiting boost, and old saves start
   fakeStorage({ 'carGame.save.v2': JSON.stringify({ career: { level: 3 } }) });
   const old = loadSave().career;
   assert.deepEqual([old.adUpgradeDay, old.adUpgrades, old.adBoostDay, old.adBoosts, old.upgradeBoost], [-1, 0, -1, 0, false]);
+});
+
+// MARK: Streak Freeze, tiers, pity
+
+test('a Streak Freeze is earned every seven days and covers one missed day', () => {
+  const c = newCareer();
+  for (let day = 100; day < 107; day++) Careers.startDaily(c, day, baseConfig);
+  assert.equal(c.dailyStreak, 7);
+  assert.equal(c.streakFreezes, 1, 'the seventh day earns one');
+  assert.equal(Goals.streak(c, 108), 7, 'a missed day is covered while the streak is shown');
+  const news = Careers.startDaily(c, 108, baseConfig);
+  assert.equal(news.frozen, 1);
+  assert.equal(c.dailyStreak, 8, 'the streak goes on');
+  assert.equal(c.streakFreezes, 0, 'the Freeze is used up');
+});
+
+test('without enough Freezes a gap breaks the streak, and the stock is capped', () => {
+  const c = newCareer();
+  for (let day = 100; day < 107; day++) Careers.startDaily(c, day, baseConfig);
+  assert.equal(Goals.streak(c, 109), 0, 'two missed days, one Freeze');
+  assert.equal(Careers.startDaily(c, 109, baseConfig).frozen, 0);
+  assert.equal(c.dailyStreak, 1);
+  assert.equal(c.streakFreezes, 1, 'an unused Freeze stays');
+  const long = newCareer();
+  for (let day = 0; day < 28; day++) Careers.startDaily(long, day, baseConfig);
+  assert.equal(long.streakFreezes, baseConfig.streakFreezeMax);
+  assert.ok(!Goals.streakAtRisk({ ...long, dailyPlayed: 27 }, 28), 'a Freeze waits: nothing to warn about');
+  assert.equal(Careers.completeDaily(newCareer(), 5, baseConfig), baseConfig.dailyPay, 'the Daily Shift pays through the same path');
+});
+
+test('a save keeps its Streak Freezes and the pity counter, old saves start with none', () => {
+  const c = newCareer();
+  c.streakFreezes = 2;
+  c.chestsSinceLegendary = 17;
+  fakeStorage({ 'carGame.save.v2': JSON.stringify({ career: c }) });
+  const back = loadSave().career;
+  assert.deepEqual([back.streakFreezes, back.chestsSinceLegendary], [2, 17]);
+  fakeStorage({ 'carGame.save.v2': JSON.stringify({ career: { level: 3 } }) });
+  const old = loadSave().career;
+  assert.deepEqual([old.streakFreezes, old.chestsSinceLegendary], [0, 0]);
+});
+
+test('the Legendary pity guarantees one by the last chest and leaves the old draws alone', () => {
+  for (let seed = 0; seed < 2000; seed++) {
+    for (const kind of ['standard', 'premium', 'event']) {
+      assert.equal(rollChest(kind, [], 0, seed, 100, PITY_LEGENDARY_CHESTS - 1).item.rarity, 'legendary');
+    }
+    assert.equal(rollChest('standard', [], 0, seed, 100).item.id, rollChest('standard', [], 0, seed, 100, 0).item.id);
+  }
+  const c = newCareer();
+  c.chestsSinceLegendary = PITY_LEGENDARY_CHESTS - 1;
+  c.chests.push('standard');
+  assert.equal(Careers.openChest(c, 0, 7, 100).item.rarity, 'legendary');
+  assert.equal(c.chestsSinceLegendary, 0, 'the counter starts again');
+  c.chests.push('standard');
+  Careers.openChest(c, 0, 8, 100);
+  assert.ok(c.chestsSinceLegendary <= 1);
+});
+
+test('Unlimited tiers climb with the best run, and the run marks the same cars', () => {
+  assert.equal(tierOf(24), null);
+  assert.equal(tierOf(25), 'bronze');
+  assert.equal(tierOf(199), 'gold');
+  assert.equal(tierOf(5000), 'master');
+  assert.equal(nextTier(0).cars, 25);
+  assert.equal(nextTier(500), null);
+  for (const t of UNLIMITED_TIERS) assert.ok(UNLIMITED_MARKS.includes(t.cars));
+  for (const cars of [250, 1000]) assert.ok(UNLIMITED_MARKS.includes(cars), `the ${cars}-car skin is a mark too`);
+  assert.equal(markPassed(0, 24), null);
+  assert.equal(markPassed(24, 25), 25);
+  assert.equal(markPassed(25, 26), null, 'once per mark');
+  assert.equal(markPassed(49, 50), 50);
+});
+
+test('an Unlimited run into a new tier says so, and a repeat does not', () => {
+  const save = newSave();
+  const run = { ...completed(3), carsSent: 30 };
+  const first = bookShift(save, run, context(3, { mode: 'unlimited' }));
+  assert.equal(first.news[0], S.modes.tierUp('bronze'));
+  assert.ok(!bookShift(save, run, context(3, { mode: 'unlimited' })).news.includes(S.modes.tierUp('bronze')));
+  const worse = bookShift(newSave(), { ...run, carsSent: 10 }, context(3, { mode: 'unlimited' }));
+  assert.ok(!worse.news.some((n) => n.startsWith('NEW TIER')));
+});
+
+test('the new Daily, tier and pity texts read well', () => {
+  assert.equal(S.daily.freezes(1), '1 Streak Freeze');
+  assert.equal(S.daily.freezes(2), '2 Streak Freezes');
+  assert.ok(S.daily.rowLine(8, false, null, 1).includes('1 Streak Freeze'));
+  assert.equal(S.modes.mark(100, markReward(100)), '100 cars · GOLD');
+  assert.equal(S.modes.mark(250, markReward(250)), '250 cars · ENDURANCE', 'a skin mark names the skin, not the tier below');
+  assert.equal(S.modes.mark(500, markReward(500)), '500 cars · MASTER', 'a tier wins over the skin');
+  assert.equal(S.modes.mark(1000, markReward(1000)), '1000 cars · INFINITY');
+  assert.equal(S.modes.tierLine(null, { cars: 25, id: 'bronze' }), '– · 25 cars for Bronze');
+  assert.equal(S.progress.collected(35, 70), '35 / 70 · 50 %');
+  assert.ok(S.shop.pityLegendary(40).includes('40'));
+});
+
+// MARK: Tailwind, mark XP, links
+
+const lostAt = (level, left, over = {}) => ({ ...completed(level), outcome: 'struckOut', carsSent: forLevel(baseConfig, level, 1).shiftCars - left, ...over });
+
+test('Tailwind: a shift lost within reach pays the next one more, once a day and never chained', () => {
+  const save = newSave();
+  const career = save.career;
+  const level = 3;
+  const book = (result, over = {}) => bookShift(save, result, context(level, over));
+  assert.ok(!book(lostAt(level, 5)).news.includes(S.goals.tailwind(baseConfig.tailwindPay)), 'too far from the goal');
+  assert.ok(!book(lostAt(level, 2, { carsSent: 1 })).news.some((n) => n.startsWith('TAILWIND')), 'a crash at the very start earns nothing');
+  assert.ok(!book(lostAt(level, 2), { daily: true }).news.some((n) => n.startsWith('TAILWIND')), 'never over the Daily Shift');
+  assert.equal(career.tailwind, false);
+  assert.ok(book(lostAt(level, 2)).news.includes(S.goals.tailwind(baseConfig.tailwindPay)));
+  assert.equal(career.tailwind, true);
+  assert.ok(Goals.tailwindOn(career, 'shift', false) && !Goals.tailwindOn(career, 'shift', true) && !Goals.tailwindOn(career, 'unlimited', false));
+  assert.ok(!book(lostAt(level, 1)).news.some((n) => n.startsWith('TAILWIND')), 'the shift that used it earns none');
+  assert.equal(career.tailwind, false, 'used up');
+  assert.ok(!book(lostAt(level, 1)).news.some((n) => n.startsWith('TAILWIND')), 'once a day');
+  assert.ok(book(lostAt(level, 1), { today: 20001 }).news.some((n) => n.startsWith('TAILWIND')), 'the next day again');
+});
+
+test('Tailwind and the streak add up on the pay of a shift', () => {
+  const both = Goals.forPay(baseConfig, baseConfig.streakBonusPay + baseConfig.tailwindPay);
+  assert.equal(both.shiftPay, Math.round(baseConfig.shiftPay * 1.4));
+  assert.equal(Goals.forStreak(baseConfig).shiftPay, Math.round(baseConfig.shiftPay * 1.15));
+  const c = newCareer();
+  assert.equal(Goals.daysToFreeze(c, baseConfig), 7);
+  c.dailyStreak = 4;
+  assert.equal(Goals.daysToFreeze(c, baseConfig), 3);
+  c.streakFreezes = baseConfig.streakFreezeMax;
+  assert.equal(Goals.daysToFreeze(c, baseConfig), null);
+  assert.ok(S.daily.rowLine(4, false, { left: 3, item: 'streakBronze' }, 0, 3).includes(S.shop.item('streakBronze')), 'the skin is as near as the Freeze: the skin shows');
+  assert.ok(S.daily.rowLine(4, false, { left: 10, item: 'streakBronze' }, 0, 3).includes(S.daily.freezeLine(3)), 'the Freeze is nearer');
+  assert.ok(S.daily.streakPill(8, 0.15, null, 1).includes('1 Streak Freeze'));
+  assert.ok(!S.daily.streakPill(8, 0.15, null, 0).includes('Freeze'));
+});
+
+test('an Unlimited mark pays Elite XP once per career, and tiers show on the board', () => {
+  const save = newSave();
+  save.career.level = baseConfig.prestigeLevel;
+  const run = { ...completed(3), carsSent: 60, outcome: 'struckOut', perfects: 0, tightFits: 0 };
+  const first = bookShift(save, run, context(3, { mode: 'unlimited' }));
+  assert.equal(save.career.eliteXp, 2 * baseConfig.eliteXpMark, 'the 25 and 50 marks');
+  assert.equal(first.news[0], S.modes.tierUp('silver'));
+  bookShift(save, run, context(3, { mode: 'unlimited' }));
+  assert.equal(save.career.eliteXp, 2 * baseConfig.eliteXpMark, 'the same marks again pay nothing');
+  bookShift(save, { ...run, carsSent: 110 }, context(3, { mode: 'unlimited' }));
+  assert.equal(save.career.eliteXp, 3 * baseConfig.eliteXpMark, 'the 100 mark is new');
+  assert.equal(S.modes.tier(tierOf(save.unlimitedBestCars)), 'Gold');
+});
+
+// MARK: Tailwind pill, tier misses, Unlimited titles
+
+test('an Unlimited run just short of the next tier says how far, and only when it was close', () => {
+  assert.equal(Goals.tierMiss(20, 0).short, 5);
+  assert.equal(Goals.tierMiss(20, 0).tier, 'bronze');
+  assert.equal(Goals.tierMiss(18, 0), null, 'not within a quarter of 25');
+  assert.equal(Goals.tierMiss(48, 30).tier, 'silver', 'the tier above the best');
+  assert.equal(Goals.tierMiss(30, 30), null, 'a run that reaches no new tier and is not close to the next');
+  assert.equal(Goals.tierMiss(499, 600), null, 'nothing above Master');
+  assert.equal(S.goals.tierMiss({ short: 1, tier: 'gold' }), '1 car short of Gold');
+  assert.equal(S.goals.tierMiss({ short: 5, tier: 'bronze' }), '5 cars short of Bronze');
+  assert.equal(S.heat.pill(0, 0.25), 'TAILWIND +25 %');
+});
+
+test('the Unlimited skins earn a title, which shows with its rule', async () => {
+  const { Elite } = await load('/src/core/elite.ts');
+  const c = newCareer();
+  const earned = () => Elite.titles(c, baseConfig).filter((t) => ['marathoner', 'overdriver', 'endless'].includes(t));
+  assert.deepEqual(earned(), []);
+  Careers.claimUnlimited(c, 520);
+  assert.deepEqual(earned(), ['marathoner', 'overdriver']);
+  Careers.claimUnlimited(c, 1000);
+  assert.deepEqual(earned(), ['marathoner', 'overdriver', 'endless']);
+  assert.equal(S.titles.rule({ k: 'item', id: 'endurance' }), 'Unlock Endurance in Unlimited');
+  assert.equal(S.titles.name('endless'), 'Endless');
+});
+
+// MARK: Heat and the new boards
+
+test('Heat makes the road harder step by step and leaves Heat 0 alone', () => {
+  const base = forLevel(baseConfig, 60, 1);
+  assert.equal(forHeat(base, 0), base, 'off: the very same config');
+  let last = base;
+  for (let heat = 1; heat <= baseConfig.maxHeat; heat++) {
+    const c = forHeat(base, heat);
+    assert.equal(c.heat, heat);
+    assert.ok(c.tempoStart > last.tempoStart && c.tempoEnd > last.tempoEnd, `Heat ${heat} is faster`);
+    assert.ok(c.densityStart >= last.densityStart && c.criminalTime <= last.criminalTime && c.aiSpawnDelay.lo <= last.aiSpawnDelay.lo);
+    last = c;
+  }
+  assert.ok(last.criminalTime >= baseConfig.heatMinCriminalTime && last.aiSpawnDelay.lo >= base.aiSpawnDelay.lo * baseConfig.heatMinSpawnFactor - 1e-9, 'the floors hold');
+  assert.equal(base.heat, 0, 'the original is untouched');
+  assert.equal(heatPay(3, baseConfig), 3 * baseConfig.heatPay);
+  assert.equal(heatXp(3, baseConfig), 3 * baseConfig.eliteXpHeat);
+});
+
+test('Heat opens with the Elite track, one step above the best cleared, and cycles back to off', () => {
+  const c = newCareer();
+  assert.equal(Careers.maxHeat(c, baseConfig), 0, 'closed before Level 50');
+  c.level = baseConfig.prestigeLevel;
+  assert.equal(Careers.maxHeat(c, baseConfig), 1);
+  assert.equal(Careers.cycleHeat(c, baseConfig), 1);
+  assert.equal(Careers.cycleHeat(c, baseConfig), 0, 'round to off');
+  assert.ok(Careers.recordHeat(c, 1, baseConfig));
+  assert.ok(!Careers.recordHeat(c, 1, baseConfig), 'new only once');
+  assert.equal(Careers.maxHeat(c, baseConfig), 2);
+  c.heat = 2;
+  assert.equal(Careers.activeHeat(c, baseConfig), 2);
+  c.heat = 6;
+  assert.equal(Careers.activeHeat(c, baseConfig), 2, 'never above what is open');
+  c.heatCleared = 99;
+  assert.equal(Careers.maxHeat(c, baseConfig), baseConfig.maxHeat);
+});
+
+test('a shift cleared on Heat opens the next one and pays Elite XP; the Daily and a loss do not', () => {
+  const save = newSave();
+  save.career.level = baseConfig.prestigeLevel;
+  const heated = (heat, over = {}) => context(baseConfig.prestigeLevel, { shiftConfig: forHeat(forLevel(baseConfig, 3, 1), heat), ...over });
+  const won = completed(3, { perfects: 0, tightFits: 0 });
+  assert.ok(bookShift(save, { ...won, outcome: 'struckOut' }, heated(1)).news.every((n) => !n.startsWith('HEAT')), 'a loss clears nothing');
+  assert.equal(save.career.heatCleared, 0);
+  const before = save.career.eliteXp;
+  assert.ok(bookShift(save, won, heated(1)).news.includes(S.heat.cleared(1, 2)));
+  assert.equal(save.career.heatCleared, 1);
+  assert.equal(save.career.eliteXp - before, baseConfig.eliteXpCompleted + heatXp(1, baseConfig), 'the shift and the Heat');
+  bookShift(save, won, heated(2, { daily: true }));
+  assert.equal(save.career.heatCleared, 1, 'never over the Daily Shift');
+});
+
+test('Heat 3, 5 and 8 earn their titles, and Heat and the Daily score survive a save', async () => {
+  const { Elite } = await load('/src/core/elite.ts');
+  const c = newCareer();
+  c.heatCleared = 5;
+  const got = Elite.titles(c, baseConfig).filter((t) => ['scorcher', 'inferno', 'meltdown'].includes(t));
+  assert.deepEqual(got, ['scorcher', 'inferno']);
+  assert.equal(S.titles.rule({ k: 'heat', level: 3 }), 'Clear a shift on Heat 3');
+  const save = newSave();
+  save.career.heat = 3;
+  save.career.heatCleared = 4;
+  save.dailyDay = 20000;
+  save.dailyScore = 4321;
+  fakeStorage({ 'carGame.save.v2': JSON.stringify(save) });
+  const back = loadSave();
+  assert.deepEqual([back.career.heat, back.career.heatCleared, back.dailyDay, back.dailyScore], [3, 4, 20000, 4321]);
+  fakeStorage({ 'carGame.save.v2': JSON.stringify({ career: { level: 3 } }) });
+  const old = loadSave();
+  assert.deepEqual([old.career.heat, old.career.heatCleared, old.dailyDay, old.dailyScore], [0, 0, -1, 0]);
+});
+
+test('a cleared Daily Shift is kept for the Daily board, and both new boards are sent when they improve', () => {
+  const save = newSave();
+  bookShift(save, completed(4, { score: 4321 }), context(4, { daily: true, today: 20005 }));
+  assert.deepEqual([save.dailyDay, save.dailyScore], [20005, 4321]);
+  const records = { level: 3, prestige: 0, unlimitedBest: 0, unlimitedCars: 0, dailyDay: save.dailyDay, dailyScore: save.dailyScore, rushBest: 123.45, title: null };
+  const list = dueBoards(records);
+  const daily = list.find(([board]) => board === 'daily');
+  assert.deepEqual(daily.slice(0, 2), ['daily', { score: 4321, day: 20005 }]);
+  assert.deepEqual(list.find(([board]) => board === 'rush').slice(0, 2), ['rush', { cs: 12345 }]);
+  assert.equal(list.find(([board]) => board === 'rush')[2], 10_000_000 - 12345, 'a faster time is a bigger number');
+  assert.ok(!dueBoards({ ...records, dailyDay: -1, dailyScore: 0, rushBest: 0 }).some(([board]) => board === 'daily' || board === 'rush'), 'nothing to send without a clear');
 });

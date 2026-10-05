@@ -86,7 +86,7 @@ Only in the browser version:
 - **Syndicate convoy** (every 15th level, `convoyEvery`): the criminal is a boss with
   armoured escorts right behind it; a police car must be timed into the gap. Busting it pays
   the heist back and counts as a trophy in Records (`core/specials.ts`).
-- **Challenge links** (`core/challenge.ts`): after a shift, "Challenge a friend" makes a
+- **Challenge links** (`core/challenge.ts`): after a shift, Friends → "Challenge a friend" makes a
   link (`#challenge=…`) with the seed and everything that shapes that shift. A challenge
   always starts from a fresh world, so everyone who opens the link meets the same traffic;
   it earns nothing, the score to beat is the goal.
@@ -175,8 +175,8 @@ leaderboard may refuse a name: then both keep the old one).
 
 ## Invite a friend
 
-The friend code is the invite (`net/invite.ts`, `Server/src/modules/referrals`): Settings → **Friends** (`ui/friendsSheet.ts`, also the Invite row in the leaderboard) has
-your friend code with Copy, an **invite link** (the share sheet on a phone, the clipboard elsewhere), the friends you brought and how far they
+The friend code is the invite (`net/invite.ts`, `Server/src/modules/referrals`): the **Friends** sheet (`ui/friendsSheet.ts`, one drawer with four tabs: Friends · Ranking · Play · Invite; opened by the Friends pill above Settings or the Friends row in the leaderboard) has
+a name field (if there is no name yet), your friend code with Copy, a ranking among friends, Challenge a friend and the way to Multiplayer, an **invite link** (the share sheet on a phone, the clipboard elsewhere), the friends you brought and how far they
 are, and adding a friend by code. A friend opens `…/i/K7M29QXA` (a preview with the inviter's name that sends on to the game) or a
 challenge link its sender shared, and arrives with `?ref=K7M29QXA`. `readInviteLink` keeps it (`carGame.invite.v1`)
 for a player below level 5 and takes it out of the address; once there is a leaderboard name `redeemInvite` hands it in

@@ -536,6 +536,8 @@ export const baseConfig = {
   eliteXpCompleted: 10,
   eliteXpBoss: 10,
   eliteXpLegendary: 10,
+  /** An Unlimited mark (core/tiers.ts) passed for the first time in a career, on the Elite track and the pass. */
+  eliteXpMark: 5,
   /** Every Elite level pays a Standard Chest, every this many a Premium Chest instead. */
   elitePremiumEvery: 10,
 
@@ -697,6 +699,24 @@ export const baseConfig = {
   /** From this many Daily Shifts in a row, every shift pays `streakBonusPay` more while the streak lives. */
   streakBonusDays: 3,
   streakBonusPay: 0.15,
+  /** A Streak Freeze covers one missed day: one more for every this many days of the streak, at most `streakFreezeMax` in stock. */
+  streakFreezeEvery: 7,
+  streakFreezeMax: 2,
+  /** Tailwind: a shift lost within `tailwindMaxLeft` cars of its goal, after `tailwindMinShare` of it, makes the next career shift pay this much more. Once a day, never over a Daily Shift. */
+  tailwindPay: 0.25,
+  tailwindMaxLeft: 3,
+  tailwindMinShare: 0.6,
+  /** Heat (core/heat.ts): the shift's Heat (set per shift, 0 = off), the highest one, and what each step adds. */
+  heat: 0,
+  maxHeat: 8,
+  heatTempo: 0.04,
+  heatDensityEvery: 2,
+  heatCriminal: 0.05,
+  heatMinCriminalTime: 6,
+  heatSpawn: 0.05,
+  heatMinSpawnFactor: 0.25,
+  heatPay: 0.1,
+  eliteXpHeat: 2,
   /** Hours before midnight from which the waiting card warns that the streak is about to break. */
   streakWarningHours: 6,
   /**

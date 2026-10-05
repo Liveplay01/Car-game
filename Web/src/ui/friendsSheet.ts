@@ -1,22 +1,40 @@
 import { h } from './dom';
-import { forgetFriendsBoards } from './leaderboardSheet';
+import { boardPanel, forgetFriendsBoards, nameForm, openAccount, tabsControl } from './leaderboardSheet';
 import { openSheet } from './sheets';
-import { type InviteView, fetchInvite, inviteUrl } from '../net/invite';
-import { type FriendsView, addFriend, describeError, fetchFriends, loadAccount, removeFriend } from '../net/leaderboard';
+import { INVITE_LEVEL } from '../core/config';
+import { type InviteView, fetchInvite, inviteUrl, pendingInvite } from '../net/invite';
+import { type FriendsView, type Records, addFriend, describeError, fetchFriends, loadAccount, removeFriend, syncScores } from '../net/leaderboard';
 import { S } from '../present/strings';
+import { loadPlayerName } from '../storage/profile';
 
 /**
- * Friends (Leo, 04.10.2026): everything about people in one place, one tap from Settings and from the
- * leaderboard. Before this the friend code sat under the Friends list inside the leaderboard, three taps in.
- * In the order people need it: your code (to read out or copy), the invite link (to send), who you invited,
- * then adding a friend by their code and your list. The leaderboard keeps only what it is for: comparing.
+ * Friends (Leo, 05.10.2026): everything about people, in one drawer with tabs like a page.
+ * The Friends pill above Settings and the leaderboard's Friends row lead here. Four tabs:
+ * Friends (your code, adding, your list) · Ranking (the boards among you) · Play (challenge a friend, the
+ * multiplayer lobby) · Invite (the link, who joined). Without a name the page asks for one first, no detour.
  */
 
 export interface FriendsActions {
-  /** No name yet: the leaderboard asks for one (this sheet has no form of its own). */
-  openLeaderboard(): void;
+  /** The records as the save has them now, sent right after a name is chosen. */
+  records(): Records;
+  /** Leaves this sheet for the multiplayer lobby. */
+  playTogether(): void;
+  /**
+   * Sends the shift on screen as a challenge link; the answer is what to tell the player, if anything.
+   * Null while there is no finished shift to send (the row says so instead).
+   */
+  challenge: (() => Promise<string | null>) | null;
   closed(): void;
 }
+
+type FriendsTab = 'friends' | 'ranking' | 'play' | 'invite';
+const TABS: { id: FriendsTab; label: string }[] = [
+  { id: 'friends', label: 'Friends' },
+  { id: 'ranking', label: 'Ranking' },
+  { id: 'play', label: 'Play' },
+  { id: 'invite', label: 'Invite' },
+];
+let lastTab: FriendsTab = 'friends';
 
 /** 1 → 1st, 3 → 3rd, 10 → 10th. */
 const ordinal = (n: number): string => `${n}${n % 100 >= 11 && n % 100 <= 13 ? 'th' : ({ 1: 'st', 2: 'nd', 3: 'rd' } as Record<number, string>)[n % 10] ?? 'th'}`;
@@ -55,78 +73,129 @@ async function shareInvite(invite: InviteView, button: HTMLElement): Promise<voi
   await copyText(button, url, 'Share invite link');
 }
 
+/**
+ * The drawer rises with its content (a longer list, another tab, a ranking that arrives) and glides there instead of
+ * jumping. It only grows: the tallest tab so far is kept, so switching tabs never makes it sink.
+ */
+function glideHeight(body: HTMLElement, content: HTMLElement): void {
+  const sheet = body.closest<HTMLElement>('.sheet');
+  if (!sheet) return;
+  let before = sheet.offsetHeight;
+  let tallest = 0;
+  new ResizeObserver(() => {
+    if (content.isConnected && content.offsetHeight > tallest) {
+      tallest = content.offsetHeight;
+      content.style.minHeight = `${tallest}px`;
+    }
+    // Gliding already: the end of it takes the new height as it is.
+    if (sheet.style.height) return;
+    const after = sheet.offsetHeight;
+    if (before > 0 && after !== before) {
+      const done = (e: TransitionEvent): void => {
+        if (e.target !== sheet || e.propertyName !== 'height') return;
+        sheet.removeEventListener('transitionend', done);
+        sheet.style.height = '';
+        sheet.style.transition = '';
+        before = sheet.offsetHeight;
+      };
+      sheet.style.height = `${before}px`;
+      sheet.getBoundingClientRect();
+      sheet.style.transition = 'height 240ms var(--ease-drawer)';
+      sheet.style.height = `${after}px`;
+      sheet.addEventListener('transitionend', done);
+      return;
+    }
+    before = after;
+  }).observe(body);
+}
+
+const label = (text: string): HTMLElement => h('p', { class: 'section-note board-label' }, text);
+const note = (text: string, error = false): HTMLElement => h('p', { class: `field-help${error ? ' error' : ''}`, ...(error ? { role: 'alert' } : {}) }, text);
+
 export function friendsSheet(layer: HTMLElement, actions: FriendsActions): () => void {
-  const body = h('div', { class: 'friends' });
+  const body = h('div', { class: 'friends' }, h('p', { class: 'section-note' }, 'Loading your friends…'));
+  const content = h('div', { class: 'friends-content' });
+  let tab: FriendsTab = lastTab;
+  let view: FriendsView | null = null;
+  let invite: InviteView | null = null;
+  /** Under the add field: what the last add did. Shown once. */
+  let message: string | undefined;
   let asked = 0;
 
-  const note = (text: string, error = false): HTMLElement => h('p', { class: `field-help${error ? ' error' : ''}`, ...(error ? { role: 'alert' } : {}) }, text);
+  const tabs = tabsControl('Friends', TABS, (next) => {
+    tab = next;
+    lastTab = next;
+    show();
+  });
+  tabs.el.classList.add('sheet-tabs');
+  const ranking = boardPanel('friends', { account: loadAccount, records: actions.records, signedOut: () => void render() });
 
-  /** Without a name there is no friend code: say so and send the player to the one place that asks for it. */
+  /** Without a name there is no friend code: ask for it here, and the sheet fills in when it is chosen. */
   function needsName(): void {
+    const join = async (name: string): Promise<string | null> => {
+      try {
+        await openAccount(name);
+      } catch (error) {
+        return describeError(error);
+      }
+      void syncScores(actions.records());
+      void render();
+      return null;
+    };
     body.replaceChildren(
-      h('p', { class: 'section-note' }, 'Friends use your name on the leaderboard. Pick one, and you get a friend code to hand out and an invite link that earns you chests.'),
-      h('button', { class: 'btn primary block', type: 'button', onclick: () => actions.openLeaderboard() }, 'Choose a name'),
+      h(
+        'p',
+        { class: 'section-note' },
+        pendingInvite()
+          ? `A friend invited you. Pick a name, reach level ${INVITE_LEVEL} and you both get a chest. You get a friend code of your own too.`
+          : 'Friends know you by your name on the leaderboard. Pick one, and you get a friend code to hand out, a ranking among friends and an invite link that earns you chests.',
+      ),
+      nameForm(loadPlayerName(), 'Save', join, null),
     );
   }
 
-  async function render(message?: string): Promise<void> {
+  async function render(): Promise<void> {
     if (!loadAccount()) return needsName();
     const ticket = ++asked;
     // The invite is an extra: without it (an older service) the friend code and the list are all there is.
     const inviteAsked = fetchInvite().catch(() => null);
-    let view: FriendsView;
     try {
       view = await fetchFriends();
     } catch (error) {
       if (ticket === asked) body.replaceChildren(note(describeError(error), true), h('button', { class: 'btn block', type: 'button', onclick: () => void render() }, 'Try again'));
       return;
     }
-    const invite = await inviteAsked;
+    invite = await inviteAsked;
     if (ticket !== asked) return;
-    body.replaceChildren(...codeRows(view, invite), ...(invite ? inviteRows(invite) : []), ...addRows(message), ...listRows(view));
+    body.replaceChildren(tabs.el, content);
+    show();
   }
 
-  /** Your code, big, with Copy and the invite link under it: the first thing, because it is what people ask for. */
-  function codeRows(view: FriendsView, invite: InviteView | null): HTMLElement[] {
+  function show(): void {
+    tabs.set(tab);
+    if (!view) return;
+    const rows = { friends: () => friendRows(view!), ranking: () => [ranking.el], play: playRows, invite: inviteRows }[tab]();
+    message = undefined;
+    content.replaceChildren(...rows);
+    if (tab === 'ranking') ranking.open();
+  }
+
+  // MARK: Friends
+
+  /** Your code, big, with Copy; then adding a friend and your list. */
+  function friendRows(now: FriendsView): HTMLElement[] {
     const copy = h('button', { class: 'btn', type: 'button' }, 'Copy');
-    copy.addEventListener('click', () => void copyText(copy, view.code, 'Copy'));
-    const rows: HTMLElement[] = [
-      h('p', { class: 'section-note board-label' }, 'Your friend code'),
-      h('div', { class: 'list' }, h('div', { class: 'row' }, h('div', { class: 'row-main' }, h('div', { class: 'sync-code', 'aria-label': `Your friend code: ${view.code}` }, view.code)), copy)),
+    copy.addEventListener('click', () => void copyText(copy, now.code, 'Copy'));
+    return [
+      label('Your friend code'),
+      h('div', { class: 'list' }, h('div', { class: 'row' }, h('div', { class: 'row-main' }, h('div', { class: 'sync-code', 'aria-label': `Your friend code: ${now.code}` }, now.code)), copy)),
+      ...addRows(),
+      ...listRows(now),
     ];
-    if (invite) {
-      const share = h('button', { class: 'btn primary block', type: 'button' }, 'Share invite link');
-      share.addEventListener('click', () => void shareInvite(invite, share));
-      const bonus = invite.milestones.map((m) => ordinal(m.invites));
-      rows.push(
-        share,
-        h(
-          'p',
-          { class: 'section-note' },
-          `You both get a chest when a friend reaches level ${invite.level}.${bonus.length > 0 ? ` Your ${bonus.join(' and ')} friend each bring a bonus Premium Chest.` : ''}`,
-        ),
-      );
-    }
-    return rows;
-  }
-
-  /** Who joined through you, and how far they are; and who brought you. */
-  function inviteRows(invite: InviteView): HTMLElement[] {
-    const lines = invite.invited.map((i) =>
-      h('div', { class: 'row' }, h('div', { class: 'row-main' }, h('div', { class: 'row-title' }, i.name), h('div', { class: 'row-sub' }, i.done ? `Reached level ${invite.level} · chest sent` : `Playing · not at level ${invite.level} yet`))),
-    );
-    if (invite.invitedBy) {
-      const by = invite.invitedBy;
-      lines.unshift(
-        h('div', { class: 'row' }, h('div', { class: 'row-main' }, h('div', { class: 'row-title' }, `Invited by ${by.name}`), h('div', { class: 'row-sub' }, by.done ? 'You both got your chest' : `Reach level ${invite.level} and you both get a chest`))),
-      );
-    }
-    if (lines.length === 0) return [];
-    return [h('p', { class: 'section-note board-label' }, `Invites (${invite.done} of ${invite.invited.length} at level ${invite.level})`), h('div', { class: 'list' }, ...lines)];
   }
 
   /** A field for a friend's code. They do not have to add you back. */
-  function addRows(message?: string): HTMLElement[] {
+  function addRows(): HTMLElement[] {
     const input = h('input', {
       class: 'text-input code-input sync-input',
       type: 'text',
@@ -156,7 +225,8 @@ export function friendsSheet(layer: HTMLElement, actions: FriendsActions): () =>
       addFriend(input.value).then(
         (friend) => {
           forgetFriendsBoards();
-          void render(`${friend.name} is on your list.`);
+          message = `${friend.name} is on your list.`;
+          void render();
         },
         (error: unknown) => {
           add.disabled = false;
@@ -185,12 +255,12 @@ export function friendsSheet(layer: HTMLElement, actions: FriendsActions): () =>
       h('div', { class: 'join-row' }, input, add),
       help,
     );
-    return [h('p', { class: 'section-note board-label' }, 'Add a friend'), form];
+    return [label('Add a friend'), form];
   }
 
-  function listRows(view: FriendsView): HTMLElement[] {
-    if (view.friends.length === 0) return [];
-    const people = view.friends.map((f) =>
+  function listRows(now: FriendsView): HTMLElement[] {
+    if (now.friends.length === 0) return [label('Your friends'), h('div', { class: 'list' }, h('div', { class: 'row board-empty' }, h('div', { class: 'row-main' }, h('div', { class: 'row-title' }, 'Nobody yet'), h('div', { class: 'row-sub' }, 'Add a friend with their code, or send an invite.'))))];
+    const people = now.friends.map((f) =>
       h(
         'div',
         { class: 'row' },
@@ -198,9 +268,69 @@ export function friendsSheet(layer: HTMLElement, actions: FriendsActions): () =>
         h('button', { class: 'btn', type: 'button', 'aria-label': `Remove ${f.name} from your friends`, onclick: () => void removeFriend(f.id).then(() => (forgetFriendsBoards(), render())) }, 'Remove'),
       ),
     );
-    return [h('p', { class: 'section-note board-label' }, `Your friends (${people.length})`), h('div', { class: 'list' }, ...people)];
+    return [label(`Your friends (${people.length})`), h('div', { class: 'list' }, ...people)];
+  }
+
+  // MARK: Play
+
+  /** Challenge a friend and the multiplayer lobby: the two ways to play with them. */
+  function playRows(): HTMLElement[] {
+    const send = actions.challenge;
+    const sub = h('div', { class: 'row-sub', 'aria-live': 'polite' }, send ? 'Send the shift you just played and the score to beat.' : 'Finish a shift, then send it to a friend to beat.');
+    const challenge = h('button', { class: 'btn', type: 'button', disabled: !send }, 'Send');
+    challenge.addEventListener('click', () => {
+      if (!send) return;
+      challenge.disabled = true;
+      void send().then((answer) => {
+        challenge.disabled = false;
+        if (answer) sub.textContent = answer;
+      });
+    });
+    return [
+      h(
+        'div',
+        { class: 'list' },
+        h('div', { class: 'row' }, h('div', { class: 'row-main' }, h('div', { class: 'row-title' }, 'Challenge a friend'), sub), challenge),
+        h(
+          'div',
+          { class: 'row' },
+          h('div', { class: 'row-main' }, h('div', { class: 'row-title' }, 'Multiplayer'), h('div', { class: 'row-sub' }, 'Host a room and send the code, or join your friend’s.')),
+          h('button', { class: 'btn', type: 'button', onclick: () => actions.playTogether() }, 'Open lobby'),
+        ),
+      ),
+    ];
+  }
+
+  // MARK: Invite
+
+  /** The invite link to send, and who joined through you and how far they are; and who brought you. */
+  function inviteRows(): HTMLElement[] {
+    if (!invite) return [note('Invites are not available right now. Try again later.')];
+    const now = invite;
+    const share = h('button', { class: 'btn primary block', type: 'button' }, 'Share invite link');
+    share.addEventListener('click', () => void shareInvite(now, share));
+    const bonus = now.milestones.map((m) => ordinal(m.invites));
+    const lines = now.invited.map((i) =>
+      h('div', { class: 'row' }, h('div', { class: 'row-main' }, h('div', { class: 'row-title' }, i.name), h('div', { class: 'row-sub' }, i.done ? `Reached level ${now.level} · chest sent` : `Playing · not at level ${now.level} yet`))),
+    );
+    if (now.invitedBy) {
+      const by = now.invitedBy;
+      lines.unshift(
+        h('div', { class: 'row' }, h('div', { class: 'row-main' }, h('div', { class: 'row-title' }, `Invited by ${by.name}`), h('div', { class: 'row-sub' }, by.done ? 'You both got your chest' : `Reach level ${now.level} and you both get a chest`))),
+      );
+    }
+    return [
+      share,
+      h('p', { class: 'section-note' }, `You both get a chest when a friend reaches level ${now.level}.${bonus.length > 0 ? ` Your ${bonus.join(' and ')} friend each bring a bonus Premium Chest.` : ''}`),
+      label(`Invites (${now.done} of ${now.invited.length} at level ${now.level})`),
+      lines.length > 0
+        ? h('div', { class: 'list' }, ...lines)
+        : h('div', { class: 'list' }, h('div', { class: 'row board-empty' }, h('div', { class: 'row-main' }, h('div', { class: 'row-title' }, 'Nobody yet'), h('div', { class: 'row-sub' }, 'Send your link to a friend. It shows up here when they join.')))),
+    ];
   }
 
   void render();
-  return openSheet(layer, 'Friends', body, actions.closed);
+  const close = openSheet(layer, 'Friends', body, actions.closed);
+  glideHeight(body, content);
+  return close;
 }

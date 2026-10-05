@@ -1,7 +1,7 @@
 import { type Career, Careers, MINIMUM_ARMS } from '../core/career';
 import type { Config, RoadModule } from '../core/config';
 import { type Upgrade, upgradeMaxSteps } from '../core/levels';
-import { type ChestKind, RARITIES, CHEST_ODDS, chestFinds, PITY_CHESTS, MAX_CAR_SKINS, BIG_SCREEN, cosmetic, isForSale } from '../core/loot';
+import { type ChestKind, RARITIES, CHEST_ODDS, chestFinds, PITY_CHESTS, PITY_LEGENDARY_CHESTS, MAX_CAR_SKINS, BIG_SCREEN, cosmetic, isForSale } from '../core/loot';
 import { type CasinoGame, type SlotSymbol, SLOT_SYMBOLS, Casino } from '../core/casino';
 import { type Vec2, v } from '../core/vec2';
 import type { RenderList } from './render';
@@ -117,7 +117,10 @@ export const Details = {
     const count = Careers.count(career, kind);
     const odds = CHEST_ODDS[kind];
     const rows: DetailRow[] = RARITIES.map((r, i) => ({ label: S.shop.rarity(r), value: percent(odds[i]), labelColor: ShopPage.rarityColor(r) }));
-    const notes: Detail['notes'] = [{ text: S.shop.pity(PITY_CHESTS - career.chestsSinceEpic), color: 'muted' }];
+    const notes: Detail['notes'] = [
+      { text: S.shop.pity(PITY_CHESTS - career.chestsSinceEpic), color: 'muted' },
+      { text: S.shop.pityLegendary(PITY_LEGENDARY_CHESTS - career.chestsSinceLegendary), color: 'muted' },
+    ];
     // A find (the Classic) is part of the odds too: shown with them, honestly, also once it is found.
     for (const find of chestFinds(kind)) {
       if (find.source.kind !== 'find') continue;

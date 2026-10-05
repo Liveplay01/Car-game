@@ -35,6 +35,31 @@ einer Stadt, die mit dem Spieler wächst.
 
 ---
 
+## Für Vielspieler und Verzahnung (Leo, 05.10.2026)
+
+Gebaut am 05.10.: Streak Freeze, Unlimited-Stufen und -Marken (Ring, Elite-XP, Titel, Bestenliste), Legendary-Pity,
+Rückenwind, **Heat** (freiwillige Schwierigkeit ab Level 50), Bestenlisten **Daily** und **Boss Rush**. Offen:
+
+- **Gauntlet:** Unlimited mit Auswahl: nach jeder Marke (25, 50, 100 …) wählt man 1 von 3 Lauf-Effekten, die nur
+  für den Lauf gelten. Eigene Rangliste, damit die reine Unlimited-Liste ehrlich bleibt. Mittel bis groß, braucht Balancing.
+- **Teams:** Teamcode wie der Freundescode, Team-Ranking und ein wöchentliches Gemeinschaftsziel mit Truhe für alle.
+  Ein neuer Baustein im Dienst (`teams`).
+- **Neue Elemente für späte Level:** z. B. Falschfahrer, Traktor oder eine zusätzliche Boss-Runde ab ★5. Regeln,
+  Grafik und Museum.
+- **Mastery pro Fahrzeug** mit kosmetischen Effekten oder Hupen-Sounds (auch in LOOT.md, „Ideen für später“).
+- **Heat verfeinern:** Heat-Stufe als Zusatz auf der Shift-Level-Liste (der Dienst bräuchte ein `heat` im Meta);
+  eigene Heat-Auflagen statt nur Stufen (z. B. nur Nebel oder nur dichter Verkehr), wenn Spieler es wünschen.
+- **Endowed Progress:** bewusst nicht als Fake-Vorsprung gebaut; echte Vorsprünge gibt es schon.
+
+**Bewusst nicht gebaut (nicht neu vorschlagen):**
+- Luck-Bonus aus der Serie auf Casino, Truhen oder Verkehr: bricht die ehrlichen Odds und die Rückzahlquote.
+- Set-Boni mit Münzen oder Spawn-Chancen: Skins geben keine Boni (Alben zahlen schon Geld und Rahmen).
+- Style Profiling, Session-Bonus, Retry-Bonus, Lucky-Drop-Boost: unsichtbar oder Anreiz zum Dauerspielen.
+- Prestige-Vorsprung über ★4 hinaus: Heat übernimmt das, freiwillig und mit Lohn.
+- Boss Rush, Daily-Kalender, Pity-Zähler, Sammlungs-Hinweise: gab es schon.
+
+---
+
 ## Später: Analytics und Fehlerberichte (Leo, 02.10.2026)
 
 Das Spiel bleibt offline-first; das ist ein Zusatz, der ausfallen darf. Gedacht als Coolify-Dienste ohne

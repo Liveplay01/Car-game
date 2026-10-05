@@ -28,13 +28,14 @@ export function leaderboardModule(): ServerModule {
       const players = new PlayerStore(ctx.db);
       const guest = maybePlayer(players);
 
-      const describe = (b: BoardDef) => ({ id: b.id, title: b.title, period: b.period(ctx.now()) });
+      const describe = (b: BoardDef, day?: number) => ({ id: b.id, title: b.title, period: b.period(ctx.now(), day) });
 
       app.get('/boards', (c) => c.json({ boards: BOARDS.map(describe) }));
 
       app.get('/boards/:board', (c) => {
         const board = boardById(c.req.param('board'));
-        const period = board.period(ctx.now());
+        const day = Number.isInteger(Number(c.req.query('day'))) ? Number(c.req.query('day')) : undefined;
+        const period = board.period(ctx.now(), day);
         const asked = Number(c.req.query('limit') ?? DEFAULT_LIMIT);
         const limit = Number.isInteger(asked) ? Math.min(MAX_LIMIT, Math.max(1, asked)) : DEFAULT_LIMIT;
         const me = guest(c);
@@ -44,7 +45,7 @@ export function leaderboardModule(): ServerModule {
         // The same address answers differently with a token: a cache must not mix the two.
         c.header('Vary', 'Authorization');
         return c.json({
-          board: describe(board),
+          board: describe(board, day),
           entries: scores.top(board.id, period, limit).map((e) => ({ rank: e.rank, name: e.name, title: e.title, score: e.score, meta: e.meta, at: e.achievedAt, me: e.playerId === me?.id })),
           me: own && { rank: own.rank, score: own.score, meta: own.meta },
         });
@@ -74,9 +75,9 @@ export function leaderboardModule(): ServerModule {
         rateLimit<PlayerEnv>({ max: 30, windowMs: 60_000 }, (c) => c.get('player').id, ctx.now),
         async (c) => {
           const board = boardById(c.req.param('board'));
-          const { score, meta } = board.parse(await readJson(c));
+          const { score, meta, day } = board.parse(await readJson(c), ctx.now());
           const player = c.get('player');
-          const period = board.period(ctx.now());
+          const period = board.period(ctx.now(), day);
           const accepted = scores.submit(board.id, period, player.id, score, meta, ctx.now());
           const best = scores.of(board.id, period, player.id);
           if (!best) throw new ApiError(500, 'internal', 'The score was not saved.');

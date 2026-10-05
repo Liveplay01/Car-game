@@ -20,6 +20,8 @@ export const isForSale = (k: ChestKind): boolean => k === 'standard' || k === 'p
 export const DUPLICATE_MONEY: Record<Rarity, number> = { common: 250, rare: 600, epic: 1500, legendary: 4000 };
 
 export const PITY_CHESTS = 10;
+/** Spätestens die 40. Truhe in Folge ohne Legendary ist eine. */
+export const PITY_LEGENDARY_CHESTS = 40;
 export const MAX_CAR_SKINS = 5;
 
 export type CosmeticKind = 'carSkin' | 'mapSkin' | 'vehicleType';
@@ -300,14 +302,15 @@ export function chestReel(kind: ChestKind, prize: Cosmetic, seed: number, length
   return cards;
 }
 
-/** Draws a rarity by the chest's public odds; the pity counter guarantees an Epic. */
+/** Draws a rarity by the chest's public odds; the pity counters guarantee an Epic and, later, a Legendary. */
 export function rollChest(
   kind: ChestKind,
   collection: readonly string[],
   chestsSinceEpic: number,
   seed: number,
   day: number | null,
-): { item: Cosmetic; rarity: Rarity; chestsSinceEpic: number } {
+  chestsSinceLegendary = 0,
+): { item: Cosmetic; rarity: Rarity; chestsSinceEpic: number; chestsSinceLegendary: number } {
   const rng = new Rng(seed >>> 0);
   let rarity: Rarity = 'common';
   let pick = rng.unit();
@@ -317,11 +320,13 @@ export function rollChest(
     pick -= odds[i];
     if (pick < 0) break;
   }
-  if (chestsSinceEpic >= PITY_CHESTS - 1 && rarityRank(rarity) < 2) rarity = 'epic';
+  const guaranteed = chestsSinceLegendary >= PITY_LEGENDARY_CHESTS - 1;
+  if (guaranteed) rarity = 'legendary';
+  else if (chestsSinceEpic >= PITY_CHESTS - 1 && rarityRank(rarity) < 2) rarity = 'epic';
   const since = rarityRank(rarity) >= 2 ? 0 : chestsSinceEpic + 1;
   const pool = COSMETICS.filter((x) => x.rarity === rarity && x.source.kind === 'chest');
   let item = rng.pick(pool);
-  if (kind === 'event' && day !== null && rng.unit() < 0.5) {
+  if (kind === 'event' && day !== null && !guaranteed && rng.unit() < 0.5) {
     const seasonal = seasonItems(seasonOf(day)).find((x) => !collection.includes(x.id));
     if (seasonal) item = seasonal;
   }
@@ -329,5 +334,5 @@ export function rollChest(
   for (const find of chestFinds(kind)) {
     if (find.source.kind === 'find' && !collection.includes(find.id) && rng.unit() < find.source.chance) item = find;
   }
-  return { item, rarity: item.rarity, chestsSinceEpic: since };
+  return { item, rarity: item.rarity, chestsSinceEpic: since, chestsSinceLegendary: item.rarity === 'legendary' ? 0 : chestsSinceLegendary + 1 };
 }

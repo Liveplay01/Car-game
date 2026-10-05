@@ -92,7 +92,7 @@ export class Shell {
   private focusByKeyboard = false;
   private readonly settingsBtn: HTMLButtonElement;
   private readonly dispatchBtn: HTMLButtonElement;
-  private readonly shareBtn: HTMLButtonElement;
+  private readonly friendsBtn: HTMLButtonElement;
   private readonly photoBtn: HTMLButtonElement;
   private readonly photo: PhotoView;
   /**
@@ -184,8 +184,8 @@ export class Shell {
       keycap('D'),
     );
     for (const b of [this.settingsBtn, this.dispatchBtn]) b.addEventListener('pointerdown', (e) => e.stopPropagation());
-    // Under a result: send this shift to a friend. In a challenge or trial: leave it.
-    this.shareBtn = h('button', { class: 'btn glass run-btn', type: 'button', onclick: () => void this.share() }, icon(ICONS.share), h('span', {}, 'Challenge a friend'));
+    // Friends: the code, the invite link, challenging a friend with the shift on screen, and the way to Multiplayer. In a challenge or trial: leave it.
+    this.friendsBtn = h('button', { class: 'btn glass run-btn', type: 'button', 'aria-haspopup': 'dialog', onclick: () => this.openFriends() }, icon(ICONS.people), h('span', {}, 'Friends'));
     // Under any result: the picture on the screen, to send or keep.
     this.photoBtn = h('button', { class: 'btn glass run-btn', type: 'button', 'aria-label': S.photo.buttonLabel, 'aria-haspopup': 'dialog', onclick: () => this.takePicture() }, icon(ICONS.camera), h('span', {}, S.photo.button));
     this.photo = new PhotoView(app, {
@@ -257,7 +257,7 @@ export class Shell {
           open();
         });
     };
-    const runBar = h('div', { class: 'run-bar' }, this.leaveBtn, this.shareBtn, this.photoBtn);
+    const runBar = h('div', { class: 'run-bar' }, this.leaveBtn, this.photoBtn, this.friendsBtn);
     // After a match: Ready (everyone taps it, then the next round starts), and for the host a
     // way back to the lobby to change the format or the bots.
     this.againLabel = h('span', {}, 'Play again');
@@ -281,7 +281,7 @@ export class Shell {
       h('button', { class: 'react-btn', type: 'button', 'aria-label': `React ${r}`, 'aria-keyshortcuts': String(i + 1), onclick: () => this.versus.react(r) }, REACTION_EMOJI[r]),
     );
     this.reactBar = h('div', { class: 'react-bar', role: 'group', 'aria-label': 'Reactions' }, ...reactButtons, this.revengeBtn);
-    for (const b of [this.settingsBtn, this.dispatchBtn, this.shareBtn, this.photoBtn, this.leaveBtn, this.againBtn, this.lobbyBtn, quitBtn, this.reactBar]) b.addEventListener('pointerdown', (e) => e.stopPropagation());
+    for (const b of [this.settingsBtn, this.dispatchBtn, this.friendsBtn, this.photoBtn, this.leaveBtn, this.againBtn, this.lobbyBtn, quitBtn, this.reactBar]) b.addEventListener('pointerdown', (e) => e.stopPropagation());
     app.append(this.settingsBtn, this.dispatchBtn, runBar, this.reactBar, this.versusBar);
     this.detail = new DetailSheet(
       app,
@@ -443,7 +443,7 @@ export class Shell {
     this.settingsBtn.classList.toggle('show', screen.k === 'ready' || screen.k === 'result');
     this.dispatchBtn.classList.toggle('show', screen.k === 'playing');
     const onGame = screen.k === 'ready' || screen.k === 'result';
-    this.shareBtn.classList.toggle('show', screen.k === 'result' && s.shareable !== null);
+    this.friendsBtn.classList.toggle('show', onGame && leaderboardEnabled && !inPortal);
     this.photoBtn.classList.toggle('show', screen.k === 'result' && !match);
     this.leaveBtn.classList.toggle('show', onGame && s.special !== null);
     this.leaveLabel.textContent = s.special?.k === 'trial' ? 'Leave trial' : 'Leave challenge';
@@ -466,16 +466,16 @@ export class Shell {
     if (!pill.dataset.placed) requestAnimationFrame(() => (pill.dataset.placed = 'true'));
   }
 
-  /** The finished shift as a link: the share sheet on a phone, the clipboard elsewhere. */
-  private async share(): Promise<void> {
+  /** The finished shift as a link: the share sheet on a phone, the clipboard elsewhere. Answers what to tell the player. */
+  private async share(): Promise<string | null> {
     const s = this.session;
     const long = s.shareLink(location.origin + location.pathname);
     const spec = s.shareable;
     const code = s.shareCode();
-    if (!long || !spec || !code) return;
+    if (!long || !spec || !code) return null;
     // The short link with its picture (`net/challengeLink.ts`), else the long one as before.
     const url = (await shortLink(spec, code)) ?? long;
-    if (s.shareable !== spec) return;
+    if (s.shareable !== spec) return null;
     const text = S.run.shareText(Fmt.number(spec.target));
     const touch = window.matchMedia('(pointer: coarse)').matches;
     if (touch && typeof navigator.share === 'function') {
@@ -483,15 +483,16 @@ export class Shell {
         await navigator.share({ title: S.gameTitle, text, url });
       } catch (error) {
         // Some browsers allow the share sheet only right after the tap. The link is ready now: one more tap shares it at once.
-        if (error instanceof DOMException && error.name === 'NotAllowedError') s.showNotice(S.run.linkReady);
+        if (error instanceof DOMException && error.name === 'NotAllowedError') return S.run.linkReady;
       }
-      return;
+      return null;
     }
     try {
       await navigator.clipboard.writeText(url);
-      s.showNotice(S.run.copied);
+      return S.run.copied;
     } catch {
       window.prompt('Copy this link', url);
+      return null;
     }
   }
 
@@ -652,24 +653,29 @@ export class Shell {
   private openLeaderboard(): void {
     leaderboardSheet(this.layers, {
       records: () => this.session.leaderboardRecords,
-      openFriends: () => friendsSheet(this.layers, { openLeaderboard: () => this.openLeaderboard(), closed: () => this.syncChrome(true) }),
+      openFriends: () => this.openFriends(),
       closed: () => this.syncChrome(true),
     });
   }
 
-  /** The Friends page over the settings: its code and invite link; a name is asked for in the leaderboard. */
-  private openFriendsPage(): void {
-    this.pageOpen = true;
+  /** The Friends sheet: the pill above Settings and the leaderboard's Friends row lead here. It asks for a name itself. */
+  private openFriends(): void {
+    const s = this.session;
     friendsSheet(this.layers, {
-      // The leaderboard replaces this page and the settings behind it stay closed until it is.
-      openLeaderboard: () => {
-        this.pageOpen = false;
-        this.openLeaderboard();
-      },
-      closed: () => {
-        if (this.pageOpen) this.pageClosed();
-      },
+      records: () => s.leaderboardRecords,
+      playTogether: () => this.openLobby(),
+      // The shift on screen: only a finished one can be sent.
+      challenge: s.screen.k === 'result' && s.shareable !== null ? () => this.share() : null,
+      closed: () => this.syncChrome(true),
     });
+  }
+
+  /** From a sheet to the multiplayer lobby: behind it the Game tab swipes on to the Multiplayer page. */
+  private openLobby(): void {
+    const s = this.session;
+    if (s.screen.k === 'page') s.perform({ k: 'showTab', tab: 'game' });
+    s.goToMode('multiplayer');
+    this.versus.open();
   }
 
   /** The cloud sync page, over the settings; the settings come back when it closes. */
@@ -770,8 +776,6 @@ export class Shell {
       },
       cloudOn: cloudLinked(),
       friendCode: loadAccount() ? () => fetchFriends().then((f) => f.code) : null,
-      // Friends, over the settings; the settings come back when it closes.
-      openFriends: leaderboardEnabled && !inPortal ? () => this.openFriendsPage() : null,
       // The cloud sync page, over the settings; the settings come back when it closes.
       openCloud: () => this.openCloudPage(),
       install: this.installPrompt

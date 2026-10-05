@@ -1,5 +1,5 @@
 // Headless balancing check, like `swift run Sim`: plays whole shifts with bots.
-//   node scripts/sim.mjs [shifts] [level] [--mayhem] [--legendary=gridlock|dragnet|heavyLoad|darkStorm|zeroTolerance]
+//   node scripts/sim.mjs [shifts] [level] [--mayhem] [--legendary=gridlock|dragnet|heavyLoad|darkStorm|zeroTolerance] [--heat=0..8]
 // A careful bot (taps only when the predicted merge gap is safe) must never crash;
 // a random tapper must crash often. Boss levels are every 15th (15 convoy, 30 getaway,
 // 45 armoured, 60 phantom); ambulances come from level 8.
@@ -7,6 +7,7 @@ import { createServer } from 'vite';
 
 const shifts = Number(process.argv[2] ?? 60);
 const level = Number(process.argv[3] ?? 5);
+const heat = Number(process.argv.find((a) => a.startsWith('--heat='))?.split('=')[1] ?? 0);
 const legendary = process.argv.find((a) => a.startsWith('--legendary='))?.split('=')[1] ?? null;
 
 const server = await createServer({ server: { middlewareMode: true }, appType: 'custom', logLevel: 'error' });
@@ -14,11 +15,12 @@ try {
   const { World, STEP } = await server.ssrLoadModule('/src/core/world.ts');
   const { baseConfig } = await server.ssrLoadModule('/src/core/config.ts');
   const { forLevel, forMayhem, forLegendary } = await server.ssrLoadModule('/src/core/levels.ts');
+  const { forHeat } = await server.ssrLoadModule('/src/core/heat.ts');
   const { joinsClearRoad } = await server.ssrLoadModule('/src/core/ambulance.ts');
   const mayhem = process.argv.includes('--mayhem');
 
   const play = (seed, strategy) => {
-    const shift = forLegendary(forLevel(baseConfig, level, seed), legendary);
+    const shift = forHeat(forLegendary(forLevel(baseConfig, level, seed), legendary), heat);
     const config = mayhem ? forMayhem(shift) : shift;
     const world = new World(config, seed, { startsOnFirstTap: false });
     let result = null;

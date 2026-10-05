@@ -49,6 +49,8 @@ import { ShopFlow } from './shopFlow';
 import { AdFlow, type AdOffer } from './adFlow';
 import type { PageHost } from './pageHost';
 import { type SpecialRun, settleSpecial, runCard, advanceRush, newRush } from './specialRuns';
+import { markPassed, markReward } from '../core/tiers';
+import { forHeat, heatPay } from '../core/heat';
 import { conditionIntro, streakEndsIn, addNotice, noticeHeight, noticePresence, type NoticePlace } from './readyScreen';
 import { Briefings, briefOf } from './briefing';
 
@@ -168,6 +170,9 @@ export class GameSession {
   private resultBank = { before: 0, after: 0 };
   private sinceComboTier = Infinity;
   private sinceCarSent = Infinity;
+  private sinceMark = Infinity;
+  private markCars = 0;
+  private topMark = 0;
   private sinceStrike = Infinity;
   private sincePoliceCrash = Infinity;
   private seen = { carsSent: 0, strikes: 0, policeCrashes: 0 };
@@ -304,7 +309,7 @@ export class GameSession {
   /** The records the leaderboards rank (`net/leaderboard.ts`). */
   get leaderboardRecords(): Records {
     const { save } = this;
-    return { level: save.career.level, prestige: save.career.prestige, unlimitedBest: save.unlimitedBest, unlimitedCars: save.unlimitedBestCars, title: save.career.title };
+    return { level: save.career.level, prestige: save.career.prestige, unlimitedBest: save.unlimitedBest, unlimitedCars: save.unlimitedBestCars, dailyDay: save.dailyDay, dailyScore: save.dailyScore, rushBest: save.career.rushBest, title: save.career.title };
   }
 
   get visibleUpgrades(): readonly Upgrade[] {
@@ -706,6 +711,8 @@ export class GameSession {
     this.pendingSummary = null;
     this.shownScore = 0;
     this.sinceComboTier = Infinity;
+    this.sinceMark = Infinity;
+    this.topMark = 0;
     for (const id of this.briefings.clear()) this.owed.add(id);
     this.screen = next;
     this.onChrome?.();
@@ -714,9 +721,13 @@ export class GameSession {
   private shiftConfig(seed: number): Config {
     // The Daily Shift pins its city event and is never a Legendary Shift.
     const daily = this.dailySelected;
-    const cfg = Careers.shiftConfig(this.save.career, this.save.mode, this.config, seed, daily ? dailyEvent(this.today) : undefined, daily ? null : undefined);
-    // A living Daily streak pays more on every career shift (Mayhem pays in flames).
-    return this.save.mode !== 'mayhem' && Goals.streakBonus(this.save.career, this.today, this.config) ? Goals.forStreak(cfg) : cfg;
+    const base = Careers.shiftConfig(this.save.career, this.save.mode, this.config, seed, daily ? dailyEvent(this.today) : undefined, daily ? null : undefined);
+    // A living Daily streak, a waiting Tailwind and a chosen Heat pay more on a career shift (Mayhem pays in flames).
+    if (this.save.mode === 'mayhem') return base;
+    const heat = !daily && this.save.mode === 'shift' ? Careers.activeHeat(this.save.career, this.config) : 0;
+    const cfg = forHeat(base, heat);
+    const bonus = (Goals.streakBonus(this.save.career, this.today, this.config) ? this.config.streakBonusPay : 0) + (Goals.tailwindOn(this.save.career, this.save.mode, daily) ? this.config.tailwindPay : 0) + heatPay(heat, this.config);
+    return bonus > 0 ? Goals.forPay(cfg, bonus) : cfg;
   }
 
   private specialConfig(run: SpecialRun): Config {
@@ -1033,12 +1044,20 @@ export class GameSession {
     this.shownFlames = this.reduceMotion || Math.abs(flames - this.shownFlames) < 1 ? flames : this.shownFlames + (flames - this.shownFlames) * Math.min(1, realDelta / GameSession.scoreCatchUp);
     this.sinceComboTier += realDelta;
     this.sinceCarSent += realDelta;
+    this.sinceMark += realDelta;
     this.sinceStrike += realDelta;
     this.sincePoliceCrash += realDelta;
     const counts = { carsSent: this.world.shift.carsSent, strikes: this.world.score.strikes, policeCrashes: this.world.score.policeCrashes };
     if (counts.carsSent > this.seen.carsSent) {
       this.sinceCarSent = 0;
       if (this.screen.k === 'playing') this.cityPulse.beat(this.flowLevel);
+      const mark = this.screen.k === 'playing' && this.playingMode === 'unlimited' ? markPassed(Math.max(this.topMark, this.seen.carsSent), counts.carsSent) : null;
+      if (mark) {
+        this.topMark = this.markCars = mark;
+        this.sinceMark = 0;
+        this.rim.signal('sweep', 'coin');
+        this.play(['flowIn'], ['shiftComplete']);
+      }
       const start = this.world.shift.startedAt;
       if (this.screen.k === 'playing' && this.playingMode === 'shift' && start !== null) {
         this.splits.push(this.world.time - start);
@@ -1419,6 +1438,12 @@ export class GameSession {
         break;
       case 'weekly':
         this.startSpecial({ k: 'trial', trial: weeklyTrial(weekNumber(this.today)) });
+        break;
+      case 'heat':
+        this.tick();
+        Careers.cycleHeat(this.save.career, this.config);
+        this.persist();
+        this.refreshWaitingShift();
         break;
       case 'trial':
         // It waits, ready to play, on the Game tab.
@@ -1895,10 +1920,12 @@ export class GameSession {
     this.onChrome?.();
     if (!this.playingDaily) return;
     const career = this.save.career;
-    const milestone = Careers.startDaily(career, this.today);
+    const news = Careers.startDaily(career, this.today, this.config);
     const toasts: string[] = [];
-    if (milestone) {
-      toasts.push(S.daily.milestone(career.dailyStreak, milestone));
+    if (news?.frozen) toasts.push(S.daily.freezeUsed(news.frozen));
+    if (news?.earned) toasts.push(S.daily.freezeEarned);
+    if (news?.item) {
+      toasts.push(S.daily.milestone(career.dailyStreak, news.item));
       toasts.push(...this.completeAlbums());
     }
     this.persist();
@@ -2032,6 +2059,8 @@ export class GameSession {
    */
   private closeCall(result: ShiftResult, best: number): ShiftSummary['closeCall'] {
     if (result.outcome !== 'completed') {
+      const tier = this.playingMode === 'unlimited' ? Goals.tierMiss(result.carsSent, this.save.unlimitedBestCars) : null;
+      if (tier) return { text: S.goals.tierMiss(tier), color: 'hazard' };
       const miss = Goals.nearMiss(result, this.playingMode === 'shift' ? this.world.config.shiftCars : 0, this.playingLevel, best, this.world.config);
       return miss ? { text: S.goals.nearMiss(miss), color: 'hazard' } : null;
     }
@@ -2043,6 +2072,28 @@ export class GameSession {
     return result.detonated ? SmokeCurtain.swapAt : GameSession.resultDelay;
   }
 
+  /** The page the mode swipe is travelling to, one swipe at a time (`goToMode`). */
+  private modeGoal: SwipeMode | null = null;
+
+  /** Swipes through the pages until `mode` is shown, so the map moves on screen (Friends → Open lobby). */
+  goToMode(mode: SwipeMode): void {
+    this.modeGoal = mode;
+    this.stepToGoal();
+  }
+
+  private stepToGoal(): void {
+    while (this.modeGoal) {
+      const here = this.swipeMode;
+      const way = SWIPE_MODES.indexOf(this.modeGoal) - SWIPE_MODES.indexOf(here);
+      if (way === 0) break;
+      this.handle({ k: 'swipeMode', step: Math.sign(way) }, 0);
+      // Swiping: the next step comes when this page has landed. Refused (a tutorial, a shift under way): stay where we are.
+      if (this.pan.travel) return;
+      if (this.swipeMode === here) break;
+    }
+    this.modeGoal = null;
+  }
+
   private followModePan(delta: number): void {
     if (!(this.screen.k === 'ready' || this.isShowingResult)) {
       this.pan.reset();
@@ -2052,6 +2103,7 @@ export class GameSession {
     if (switched) {
       this.perform({ k: 'setGameMode', mode: switched });
       this.play([], ['comboUp']);
+      this.stepToGoal();
     }
   }
 
@@ -2189,6 +2241,7 @@ export class GameSession {
         money: Math.round(this.shownMoney),
         best: this.currentBest,
         comboPop: rm ? 0 : Ease.clamp01(this.sinceComboTier / GameSession.comboPop),
+        mark: this.sinceMark < 2.5 ? S.modes.mark(this.markCars, markReward(this.markCars)) : null,
         race: this.raceDelta === null ? null : { delta: this.raceDelta, pop: rm ? 1 : Ease.clamp01(this.sinceCarSent / 0.35) },
         pops: rm
           ? settledPops()
@@ -2290,6 +2343,7 @@ export class GameSession {
           splash: this.dailySplash,
           bonus: Goals.streakBonus(career, this.today, this.config) ? this.config.streakBonusPay : null,
           endsIn: streakEndsIn(career, this.today, this.config),
+          freezes: career.streakFreezes,
         }
       : null;
     // The next goal in reach: only on a plain career shift, never over a challenge, trial or match.
@@ -2306,6 +2360,8 @@ export class GameSession {
       elite: !this.special && Elite.isOpen(career, this.config),
       playerName: this.versusSelected ? loadPlayerName() : undefined,
       daily,
+      tailwind: !this.special && !this.versusSelected && Goals.tailwindOn(career, this.playingMode, this.playingDaily) ? this.config.tailwindPay : null,
+      heat: !this.special && !this.versusSelected && !this.playingDaily && this.playingMode === 'shift' ? Careers.activeHeat(career, this.config) : 0,
       mode: this.playingMode,
       versus: this.versusSelected,
       prompt,
@@ -2319,7 +2375,7 @@ export class GameSession {
       noticeRoom: this.noticeRoom,
     });
     if (this.modeBanner) {
-      const top = TopBar.frame(list.camera.viewport.x).maxY + (daily ? 40 : 14);
+      const top = TopBar.frame(list.camera.viewport.x).maxY + (daily || Goals.tailwindOn(career, this.playingMode, this.playingDaily) || (this.playingMode === 'shift' && Careers.activeHeat(career, this.config) > 0) ? 40 : 14);
       ModeBanner.add(list, this.modeBanner.mode, this.modeBanner.age, top, this.reduceMotion);
     }
     return under;

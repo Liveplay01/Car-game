@@ -40,7 +40,13 @@ export type TitleId =
   | 'ringEternal'
   | 'mastermind'
   | 'summit'
-  | 'syndicateEnd';
+  | 'syndicateEnd'
+  | 'marathoner'
+  | 'overdriver'
+  | 'endless'
+  | 'scorcher'
+  | 'inferno'
+  | 'meltdown';
 
 export const TITLES: TitleId[] = [
   'eliteDriver',
@@ -78,6 +84,14 @@ export const TITLES: TitleId[] = [
   'summit',
   // Every boss of the syndicate, the four from Level 75 too.
   'syndicateEnd',
+  // The Unlimited skins at 250, 500 and 1000 cars in one run.
+  'marathoner',
+  'overdriver',
+  'endless',
+  // Shifts cleared on Heat 3, 5 and 8.
+  'scorcher',
+  'inferno',
+  'meltdown',
 ];
 
 /** What earns a title. */
@@ -88,6 +102,10 @@ export type TitleRule =
   | { k: 'trial'; id: string }
   | { k: 'legendary'; shifts: number }
   | { k: 'prestige'; rank: number }
+  /** An item of the collection: the Unlimited skins. */
+  | { k: 'item'; id: string }
+  /** A shift cleared at this Heat. */
+  | { k: 'heat'; level: number }
   /** Every mastery goal at its last tier. */
   | { k: 'masteries' };
 
@@ -122,6 +140,12 @@ export const TITLE_RULES: Record<TitleId, TitleRule> = {
   mastermind: { k: 'masteries' },
   summit: { k: 'trial', id: 'ascension.10' },
   syndicateEnd: { k: 'bosses', all: true },
+  marathoner: { k: 'item', id: 'endurance' },
+  overdriver: { k: 'item', id: 'overdrive' },
+  endless: { k: 'item', id: 'infinity' },
+  scorcher: { k: 'heat', level: 3 },
+  inferno: { k: 'heat', level: 5 },
+  meltdown: { k: 'heat', level: 8 },
 };
 
 
@@ -233,6 +257,10 @@ export const Elite = {
         return c.legendaryDone >= rule.shifts;
       case 'prestige':
         return c.prestige >= rule.rank;
+      case 'heat':
+        return c.heatCleared >= rule.level;
+      case 'item':
+        return c.collection.includes(rule.id);
       case 'masteries':
         return MASTERY_GOALS.every((g) => (c.masteryTiers[g] ?? 0) >= MASTERY_THRESHOLDS[g].length);
     }

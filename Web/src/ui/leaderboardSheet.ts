@@ -6,6 +6,7 @@ import {
   type BoardId,
   type BoardView,
   type Records,
+  BOARD_TOP,
   createAccount,
   deleteAccount,
   describeError,
@@ -21,6 +22,7 @@ import { loadPlayerName, savePlayerName } from '../storage/profile';
 import { Fmt, S } from '../present/strings';
 import { baseConfig, INVITE_LEVEL } from '../core/config';
 import { TITLES, type TitleId } from '../core/elite';
+import { tierOf } from '../core/tiers';
 
 /**
  * Progress → the rank chip: the leaderboards. No sign-up (Leo, 30.09.2026): the player only
@@ -40,6 +42,8 @@ export interface LeaderboardActions {
 const BOARDS: { id: BoardId; label: string; empty: string }[] = [
   { id: 'shift-level', label: 'Shift level', empty: 'Clear a shift to be the first one here.' },
   { id: 'unlimited', label: 'Unlimited', empty: 'Set an Unlimited record to be the first one here.' },
+  { id: 'daily', label: 'Daily', empty: 'Clear today’s Daily Shift to be the first one here.' },
+  { id: 'rush', label: 'Boss Rush', empty: 'Clear a Boss Rush to set the first time.' },
 ];
 
 /** The last list of each board: shown at once when the sheet opens again, then refreshed. */
@@ -47,14 +51,14 @@ const cache = new Map<string, BoardView>();
 let lastBoard: BoardId = 'shift-level';
 /** Everyone, or only you and the friends whose codes you added. */
 type Scope = 'all' | 'friends';
-let lastScope: Scope = 'all';
 
 /** The number a line stands for: the level (with its Prestige rank) or the Unlimited score. */
 /** The star's look by rank: silver, gold, iris, then ember (★4), prism (★10) and eternal (★20). */
 const starTier = (rank: number): number => (rank >= 20 ? 6 : rank >= 10 ? 5 : rank >= 4 ? 4 : Math.max(1, rank));
 
 function valueOf(board: BoardId, e: { score: number; meta: Record<string, number> }, onStar: () => void): (string | HTMLElement)[] {
-  if (board === 'unlimited') return [Fmt.number(e.score)];
+  if (board === 'unlimited' || board === 'daily') return [Fmt.number(e.score)];
+  if (board === 'rush') return [S.rush.time((e.meta.cs ?? 0) / 100)];
   const level = `Level ${Fmt.number(e.meta.level ?? e.score % 1000)}`;
   const prestige = e.meta.prestige ?? Math.floor(e.score / 1000);
   return prestige > 0 ? [prestigeStar(prestige, onStar), level] : [level];
@@ -93,6 +97,12 @@ function prestigeInfo(back: () => void): HTMLElement {
   );
 }
 
+/** The line under a name: the title, and on the Unlimited board the tier the run reached. */
+function boardSub(board: BoardId, e: { title: string | null; meta: Record<string, number> }): string {
+  const tier = board === 'unlimited' ? tierOf(e.meta.cars ?? 0) : null;
+  return [titleName(e.title), tier ? S.modes.tier(tier) : null].filter(Boolean).join(' · ');
+}
+
 function entryRow(board: BoardId, e: BoardEntry | (Omit<BoardEntry, 'name'> & { name: string }), onStar: () => void): HTMLElement {
   return h(
     'div',
@@ -102,7 +112,7 @@ function entryRow(board: BoardId, e: BoardEntry | (Omit<BoardEntry, 'name'> & { 
       'div',
       { class: 'row-main' },
       h('div', { class: 'row-title board-name' }, h('span', {}, e.name), e.me ? h('span', { class: 'you-tag' }, 'You') : null),
-      titleName(e.title) ? h('div', { class: 'row-sub board-title' }, titleName(e.title)) : null,
+      boardSub(board, e) ? h('div', { class: 'row-sub board-title' }, boardSub(board, e)) : null,
     ),
     h('span', { class: 'row-value board-value' }, ...valueOf(board, e, onStar)),
   );
@@ -124,7 +134,7 @@ function skeleton(): HTMLElement[] {
  * A name field with its button, for joining and for renaming. Returns the form; `submit` gets
  * the name and says what went wrong (a sentence) or null when it worked.
  */
-function nameForm(value: string, action: string, submit: (name: string) => Promise<string | null>, cancel: (() => void) | null): HTMLElement {
+export function nameForm(value: string, action: string, submit: (name: string) => Promise<string | null>, cancel: (() => void) | null): HTMLElement {
   const input = h('input', {
     class: 'text-input',
     type: 'text',
@@ -193,91 +203,81 @@ export function forgetFriendsBoards(): void {
   for (const b of BOARDS) cache.delete(`friends:${b.id}`);
 }
 
-export function leaderboardSheet(layer: HTMLElement, actions: LeaderboardActions): () => void {
+/** Opens the account under `name` (also the multiplayer name). Throws like `createAccount`; the lists are stale after. */
+export async function openAccount(name: string): Promise<Account> {
+  const account = await createAccount(name);
+  savePlayerName(account.name);
+  cache.clear();
+  return account;
+}
+
+/** A segmented control (the one for Reduce motion in the settings): `set` moves the highlight to an item. */
+export function tabsControl<T extends string>(label: string, items: { id: T; label: string }[], pick: (id: T) => void): { el: HTMLElement; set(id: T): void } {
+  const el = h('div', { class: 'segmented board-tabs', role: 'group', 'aria-label': label });
+  const thumb = h('span', { class: 'thumb', 'aria-hidden': 'true' });
+  thumb.style.width = `calc((100% - 4px) / ${items.length})`;
+  el.append(thumb);
+  const buttons = items.map((item) => {
+    const button = h('button', { type: 'button', 'aria-pressed': 'false', onclick: () => pick(item.id) }, item.label);
+    el.append(button);
+    return button;
+  });
+  return {
+    el,
+    set(id) {
+      items.forEach((item, i) => {
+        const on = item.id === id;
+        buttons[i].setAttribute('aria-pressed', String(on));
+        if (on) thumb.style.transform = `translateX(${i * 100}%)`;
+      });
+    },
+  };
+}
+
+export interface BoardPanel {
+  el: HTMLElement;
+  /** Shows the list (from the cache at once) and refreshes it. */
+  open(): void;
+}
+
+export interface BoardHost {
+  account(): Account | null;
+  /** The records as the save has them now: your own line shows your title. */
+  records(): Records;
+  /** The service no longer knew the token: the host asks for a name again. */
+  signedOut?(): void;
+}
+
+/**
+ * The board tabs (Shift level, Unlimited, Daily, Boss Rush) with their list, for everyone or for the
+ * friends only. The leaderboard sheet shows the first, the Friends page the second.
+ */
+export function boardPanel(scope: Scope, host: BoardHost): BoardPanel {
   let board: BoardId = lastBoard;
-  let scope: Scope = lastScope;
-  let account: Account | null = loadAccount();
-  let renaming = false;
   /** Which request's answer may still be shown: a newer one (another board) wins. */
   let asked = 0;
-
-  const top = h('div', { class: 'board-top' });
-  const list = h('div', { class: 'list board-list', role: 'list', 'aria-label': 'Leaderboard', 'aria-busy': 'false' });
-  const footer = h('div', { class: 'board-footer' });
-
-  // Shift level | Unlimited, the same control as Reduce motion in the settings.
-  const tabs = h('div', { class: 'segmented board-tabs', role: 'group', 'aria-label': 'Leaderboard' });
-  const thumb = h('span', { class: 'thumb', 'aria-hidden': 'true' });
-  thumb.style.width = `calc((100% - 4px) / ${BOARDS.length})`;
-  tabs.append(thumb);
-  const tabButtons = BOARDS.map((b, i) => {
-    const button = h('button', { type: 'button', 'aria-pressed': 'false', onclick: () => choose(b.id) }, b.label);
-    button.dataset.index = String(i);
-    tabs.append(button);
-    return button;
-  });
-
-  // Everyone | Friends: the second shows only you and the people whose friend code you added.
-  const scopeTabs = h('div', { class: 'segmented board-tabs scope-tabs', role: 'group', 'aria-label': 'Who to rank against' });
-  const scopeThumb = h('span', { class: 'thumb', 'aria-hidden': 'true' });
-  scopeThumb.style.width = 'calc((100% - 4px) / 2)';
-  scopeTabs.append(scopeThumb);
-  const SCOPES: { id: Scope; label: string }[] = [
-    { id: 'all', label: 'Everyone' },
-    { id: 'friends', label: 'Friends' },
-  ];
-  const scopeButtons = SCOPES.map((s) => {
-    const button = h('button', { type: 'button', 'aria-pressed': 'false', onclick: () => pickScope(s.id) }, s.label);
-    scopeTabs.append(button);
-    return button;
-  });
-  // Friends and invites have a sheet of their own (`friendsSheet.ts`); here is only the way to it, in both scopes.
-  const friendsPanel = h(
-    'div',
-    { class: 'friends-panel' },
-    h(
-      'div',
-      { class: 'list' },
-      h(
-        'div',
-        { class: 'row' },
-        h('div', { class: 'row-main' }, h('div', { class: 'row-title' }, 'Invite friends'), h('div', { class: 'row-sub' }, `You both get a chest when a friend reaches level ${INVITE_LEVEL}.`)),
-        h('button', { class: 'btn primary', type: 'button', onclick: () => actions.openFriends() }, 'Invite'),
-      ),
-    ),
-  );
-
-  function pickScope(next: Scope): void {
-    scope = next;
-    lastScope = next;
-    SCOPES.forEach((s, i) => {
-      const on = s.id === next;
-      scopeButtons[i].setAttribute('aria-pressed', String(on));
-      if (on) scopeThumb.style.transform = `translateX(${i * 100}%)`;
-    });
-    void load();
-  }
+  const list = h('div', { class: 'list board-list', role: 'list', 'aria-label': scope === 'friends' ? 'Ranking among friends' : 'Leaderboard', 'aria-busy': 'false' });
+  const tabs = tabsControl('Boards', BOARDS, choose);
+  const el = h('div', { class: 'board' }, tabs.el, list);
 
   function choose(next: BoardId): void {
     board = next;
     lastBoard = next;
-    BOARDS.forEach((b, i) => {
-      const on = b.id === next;
-      tabButtons[i].setAttribute('aria-pressed', String(on));
-      if (on) thumb.style.transform = `translateX(${i * 100}%)`;
-    });
+    tabs.set(next);
     void load();
   }
 
   function showList(view: BoardView): void {
-    const rows = view.entries.map((e) => entryRow(board, e, openInfo));
-    // Further down than the top list: a gap, then your own line.
-    if (view.me && account && !view.entries.some((e) => e.me)) {
+    const account = host.account();
+    // The top 50 and nothing more (the friends board has no limit of its own); your place follows when it is further down.
+    const top = view.entries.slice(0, BOARD_TOP);
+    const rows = top.map((e) => entryRow(board, e, openInfo));
+    if (view.me && account && !top.some((e) => e.me)) {
       rows.push(h('div', { class: 'row board-gap', 'aria-hidden': 'true' }, '···'));
-      rows.push(entryRow(board, { rank: view.me.rank, name: account.name, title: actions.records().title, score: view.me.score, meta: view.me.meta, me: true }, openInfo));
+      rows.push(entryRow(board, { rank: view.me.rank, name: account.name, title: host.records().title, score: view.me.score, meta: view.me.meta, me: true }, openInfo));
     }
     if (rows.length === 0) {
-      const empty = scope === 'friends' ? 'Invite a friend or add one with their code to compare your records.' : (BOARDS.find((b) => b.id === board)?.empty ?? '');
+      const empty = scope === 'friends' ? 'Add a friend with their code to compare your records.' : (BOARDS.find((b) => b.id === board)?.empty ?? '');
       rows.push(h('div', { class: 'row board-empty' }, h('div', { class: 'row-main' }, h('div', { class: 'row-title' }, 'Nobody here yet'), h('div', { class: 'row-sub' }, empty))));
     }
     list.replaceChildren(...rows);
@@ -286,13 +286,6 @@ export function leaderboardSheet(layer: HTMLElement, actions: LeaderboardActions
 
   async function load(): Promise<void> {
     const ticket = ++asked;
-    if (scope === 'friends' && !account) {
-      list.replaceChildren(
-        h('div', { class: 'row board-empty' }, h('div', { class: 'row-main' }, h('div', { class: 'row-title' }, 'Enter a name first'), h('div', { class: 'row-sub' }, 'Friends need a name on the leaderboard. Enter one above.'))),
-      );
-      list.setAttribute('aria-busy', 'false');
-      return;
-    }
     const key = `${scope}:${board}`;
     const cached = cache.get(key);
     if (cached) showList(cached);
@@ -318,12 +311,52 @@ export function leaderboardSheet(layer: HTMLElement, actions: LeaderboardActions
         ),
       );
     }
-    // The service no longer knew the token (the account was removed): back to the name form.
-    if (account && !loadAccount()) {
+    if (host.account() && !loadAccount()) host.signedOut?.();
+  }
+
+  /** The star's explanation replaces the list inside the panel; Back brings the list as it was. */
+  function openInfo(): void {
+    const info = prestigeInfo(() => {
+      el.replaceChildren(tabs.el, list);
+      el.querySelector<HTMLElement>('.prestige-star')?.focus({ preventScroll: true });
+    });
+    el.replaceChildren(info);
+    info.querySelector<HTMLElement>('button')?.focus({ preventScroll: true });
+  }
+
+  return { el, open: () => choose(board) };
+}
+
+export function leaderboardSheet(layer: HTMLElement, actions: LeaderboardActions): () => void {
+  let account: Account | null = loadAccount();
+  let renaming = false;
+
+  const top = h('div', { class: 'board-top' });
+  const footer = h('div', { class: 'board-footer' });
+  const panel = boardPanel('all', {
+    account: () => account,
+    records: actions.records,
+    signedOut: () => {
       account = null;
       renderTop();
-    }
-  }
+    },
+  });
+
+  // Friends have a page of their own (`friendsSheet.ts`: code, invites, challenges, multiplayer and the ranking among them); here is only the way to it.
+  const friendsPanel = h(
+    'div',
+    { class: 'friends-panel' },
+    h(
+      'div',
+      { class: 'list' },
+      h(
+        'div',
+        { class: 'row' },
+        h('div', { class: 'row-main' }, h('div', { class: 'row-title' }, 'Friends'), h('div', { class: 'row-sub' }, `Rank against them and invite more: you both get a chest when a friend reaches level ${INVITE_LEVEL}.`)),
+        h('button', { class: 'btn primary', type: 'button', onclick: () => actions.openFriends() }, 'Open'),
+      ),
+    ),
+  );
 
   /** Above the tabs: the name form while the player is not on the leaderboard yet. */
   function renderTop(): void {
@@ -365,7 +398,7 @@ export function leaderboardSheet(layer: HTMLElement, actions: LeaderboardActions
               savePlayerName(account.name);
               cache.clear();
               stopRenaming();
-              void load();
+              panel.open();
               return null;
             } catch (error) {
               account = loadAccount();
@@ -398,7 +431,7 @@ export function leaderboardSheet(layer: HTMLElement, actions: LeaderboardActions
           account = null;
           cache.clear();
           renderTop();
-          void load();
+          panel.open();
         })
         .catch((error: unknown) => {
           remove.disabled = false;
@@ -436,33 +469,21 @@ export function leaderboardSheet(layer: HTMLElement, actions: LeaderboardActions
 
   async function join(name: string): Promise<string | null> {
     try {
-      account = await createAccount(name);
-      savePlayerName(account.name);
+      account = await openAccount(name);
       renderTop();
       // Your records go up at once, then the list shows you in it.
       await syncScores(actions.records());
       cache.clear();
-      await load();
+      panel.open();
       return null;
     } catch (error) {
       return describeError(error);
     }
   }
 
-  const body = h('div', { class: 'board' }, top, scopeTabs, tabs, list, friendsPanel, footer);
-
-  /** The star's explanation replaces the list inside the sheet; Back brings the list as it was. */
-  function openInfo(): void {
-    const info = prestigeInfo(() => {
-      body.replaceChildren(top, scopeTabs, tabs, list, friendsPanel, footer);
-      body.querySelector<HTMLElement>('.prestige-star')?.focus({ preventScroll: true });
-    });
-    body.replaceChildren(info);
-    info.querySelector<HTMLElement>('button')?.focus({ preventScroll: true });
-  }
+  const body = h('div', { class: 'board' }, top, panel.el, friendsPanel, footer);
 
   renderTop();
-  pickScope(scope);
-  choose(board);
+  panel.open();
   return openSheet(layer, 'Leaderboard', body, actions.closed);
 }

@@ -1,5 +1,6 @@
 import { ACCOUNT_KEY } from '../storage/profile';
 import { storage } from '../storage/store';
+import { dayNumber } from '../core/daily';
 
 /**
  * The client of the leaderboard service (`Server/`, see its README). It is an extra: the game
@@ -21,7 +22,7 @@ const TIMEOUT_MS = 8000;
 const RETRY_MS = 60_000;
 
 /** The boards the service offers (`Server/src/modules/leaderboard/boards.ts`). */
-export type BoardId = 'shift-level' | 'unlimited';
+export type BoardId = 'shift-level' | 'unlimited' | 'daily' | 'rush';
 
 export interface Account {
   id: string;
@@ -195,9 +196,15 @@ const ranks: Partial<Record<BoardId, number>> = {};
 
 export const knownRank = (board: BoardId): number | null => (loadAccount() ? (ranks[board] ?? null) : null);
 
+/** The Daily board is one list per day: ask for the player's own day, as the Daily Shift follows it. */
+const dayQuery = (board: BoardId): string => (board === 'daily' ? `&day=${dayNumber()}` : '');
+
+/** Every board shows this many lines, then your own place if it is further down (Leo, 05.10.2026). */
+export const BOARD_TOP = 50;
+
 /** The top of a board; the player's own line is marked when they have an account. */
-export async function fetchBoard(board: BoardId, limit = 50): Promise<BoardView> {
-  const view = await request<BoardView>('GET', `/v1/boards/${board}?limit=${limit}`, { token: loadAccount()?.token });
+export async function fetchBoard(board: BoardId): Promise<BoardView> {
+  const view = await request<BoardView>('GET', `/v1/boards/${board}?limit=${BOARD_TOP}${dayQuery(board)}`, { token: loadAccount()?.token });
   if (view.me) ranks[board] = view.me.rank;
   return view;
 }
@@ -266,7 +273,7 @@ export async function fetchFriendsBoard(board: BoardId): Promise<BoardView & { f
   const account = loadAccount();
   if (!account) throw new LeaderboardError('unauthorized', 'Enter a name first.', 401);
   try {
-    return await request<BoardView & { friends: number }>('GET', `/v1/friends/boards/${board}`, { token: account.token });
+    return await request<BoardView & { friends: number }>('GET', `/v1/friends/boards/${board}${dayQuery(board).replace('&', '?')}`, { token: account.token });
   } catch (error) {
     return forgetIfRefused(error);
   }
@@ -279,6 +286,11 @@ export interface Records {
   unlimitedBest: number;
   /** The most cars sent in an Unlimited run (the plausibility check wants cars for a score). */
   unlimitedCars: number;
+  /** The Daily Shift cleared last: its day and points (day -1: none). */
+  dailyDay: number;
+  dailyScore: number;
+  /** Boss Rush: the fastest clear in seconds, 0 until one. */
+  rushBest: number;
   /** The title worn (`career.title`): shown next to the name on the boards. */
   title: string | null;
 }
@@ -312,13 +324,21 @@ async function putTitle(account: Account, title: string | null): Promise<void> {
   }
 }
 
+/** The Boss Rush board ranks the biggest number: the service turns hundredths of a second into `RUSH_BASE - cs`. */
+const RUSH_BASE = 10_000_000;
+
 /** Ranked as the service ranks it (`Server/src/modules/leaderboard/boards.ts`): Prestige first. */
 const levelScore = (r: Records): number => r.prestige * 1000 + r.level;
 
-function due(r: Records): [BoardId, Record<string, number>, number][] {
+export function due(r: Records): [BoardId, Record<string, number>, number][] {
   const list: [BoardId, Record<string, number>, number][] = [];
   if ((confirmed['shift-level'] ?? -1) < levelScore(r)) list.push(['shift-level', { level: r.level, prestige: r.prestige }, levelScore(r)]);
   if (r.unlimitedBest > 0 && (confirmed.unlimited ?? -1) < r.unlimitedBest) list.push(['unlimited', { score: r.unlimitedBest, cars: Math.max(1, r.unlimitedCars) }, r.unlimitedBest]);
+  // A day counts as one growing number with its score, so a new day always counts as better than the day before.
+  const daily = r.dailyDay * 1_000_000 + r.dailyScore;
+  if (r.dailyDay >= 0 && r.dailyScore > 0 && (confirmed.daily ?? -1) < daily) list.push(['daily', { score: r.dailyScore, day: r.dailyDay }, daily]);
+  const cs = Math.round(r.rushBest * 100);
+  if (r.rushBest > 0 && (confirmed.rush ?? -1) < RUSH_BASE - cs) list.push(['rush', { cs }, RUSH_BASE - cs]);
   return list;
 }
 
