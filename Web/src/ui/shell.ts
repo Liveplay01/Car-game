@@ -16,7 +16,7 @@ import { PATCH_NOTES } from '../present/patchNotes';
 import { PhotoView } from './photo';
 import { celebrate, invitedRoom, onAdAudio, reportGameplay, rewardedAd } from './crazygames';
 import { adReady, onRewardedAudio, rewardedAdsense } from './ads';
-import { inPlayStore, inPortal, isInstalled, isIos, isIpad, keepStorage, renewStorage } from '../storage/device';
+import { inItch, inPlayStore, inPortal, isInstalled, isIos, isIpad, keepStorage, renewStorage } from '../storage/device';
 import type { Hint } from '../core/career';
 import { decodeChallenge, type ChallengeSpec } from '../core/challenge';
 import { knownShortLink, shortLink } from '../net/challengeLink';
@@ -149,8 +149,8 @@ export class Shell {
       // On CrazyGames their ad; on the normal site and in the Play app Google's; otherwise the game's own placeholder.
       rewardedAd: (done) => rewardedAd(done) || rewardedAdsense(done),
       adReady: () => adReady(),
-      // A free upgrade step and the Skin Upgrade's boost are for the normal site and the Play app, not CrazyGames.
-      adOffers: !inPortal,
+      // A free upgrade step and the Skin Upgrade's boost are for the normal site and the Play app, not CrazyGames or itch.io.
+      adOffers: !inPortal && !inItch,
     };
     const quietForAd = (on: boolean): void => this.audio.setSuspended(on || document.hidden);
     onAdAudio(quietForAd);
@@ -625,7 +625,7 @@ export class Shell {
   private async giveHint(hint: Hint): Promise<void> {
     if (hint === 'install') {
       await keepStorage();
-      if (isInstalled() || inPortal || inPlayStore) return;
+      if (isInstalled() || inPortal || inItch || inPlayStore) return;
       // A browser with nothing to offer (no install prompt, not an iPhone) has no tip to give, so it takes no turn.
       if (!isIos() && !this.installPrompt) return;
       if (!this.session.takeTip()) return this.session.deferHint(hint);

@@ -13,7 +13,8 @@
     "sim": "node scripts/sim.mjs",
     "sim:versus": "node scripts/versus-sim.mjs",
     "sim:casino": "node scripts/casino-sim.mjs",
-    "sim:career": "node scripts/career-sim.mjs"
+    "sim:career": "node scripts/career-sim.mjs",
+    "itch": "node scripts/itch-zip.mjs"
   },
   "devDependencies": {
     "@types/node": "^22.20.4",

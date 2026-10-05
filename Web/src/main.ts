@@ -1,6 +1,6 @@
 import { Shell } from './ui/shell';
 import { S } from './present/strings';
-import { inPortal } from './storage/device';
+import { inItch, inPortal } from './storage/device';
 import { gameLoaded, startCrazyGames } from './ui/crazygames';
 import { startCloud } from './net/cloud';
 import { startAds } from './ui/ads';
@@ -64,8 +64,9 @@ startCloud({
 
 // Offline and installable: the service worker caches the built app (production only). The
 // first time everything is cached, the game says it now runs without internet. Not on a portal:
-// there the game lives in someone else's page, and the portal ships the updates.
-if ('serviceWorker' in navigator && import.meta.env.PROD && !inPortal) {
+// there the game lives in someone else's page, and the portal ships the updates. Nor on itch.io:
+// a service worker in a nested frame is blocked or partitioned, and the wrapper always loads the live game.
+if ('serviceWorker' in navigator && import.meta.env.PROD && !inPortal && !inItch) {
   const firstVisit = !navigator.serviceWorker.controller;
   window.addEventListener('load', () => {
     navigator.serviceWorker

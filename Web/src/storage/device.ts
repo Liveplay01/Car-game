@@ -11,6 +11,13 @@
  */
 export const inPortal = typeof location !== 'undefined' && new URLSearchParams(location.search).has('crazygames');
 
+/**
+ * Opened from itch.io (Leo, 05.10.2026): the page there is a one-file wrapper (`itch/index.html`)
+ * whose iframe points at the normal address with `?itch`. The game, the server and the save work
+ * as on the website; what needs a top-level site is left out (ads, service worker, installing).
+ */
+export const inItch = typeof location !== 'undefined' && new URLSearchParams(location.search).has('itch');
+
 const PLAY_KEY = 'carGame.googlePlay';
 
 /**
@@ -21,7 +28,7 @@ const PLAY_KEY = 'carGame.googlePlay';
  * (`android-app://…`), and this tab remembers it, so a reload without the query stays the app.
  */
 export const inPlayStore = ((): boolean => {
-  if (typeof location === 'undefined' || inPortal) return false;
+  if (typeof location === 'undefined' || inPortal || inItch) return false;
   let found = new URLSearchParams(location.search).has('googleplaystore') || document.referrer.startsWith('android-app://');
   try {
     if (found) sessionStorage.setItem(PLAY_KEY, '1');

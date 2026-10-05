@@ -338,6 +338,21 @@ In the submission form, Progress Save must be "Yes, using the Data Module".
 Test locally: `npm run build`, serve `dist/` without the CSP and open `/?crazygames`
 (on localhost the SDK runs in its `local` mode).
 
+## itch.io
+
+The itch.io page holds one file: `itch/index.html`, a full-screen iframe on
+`https://game.gustaff.dev/?itch`. No separate build: every deploy reaches itch.io at once.
+`npm run itch` packs it into `itch/roundabout-timing-itch.zip` (only needed if the address or the
+iframe changes). Upload it as *Kind of project: HTML*, tick *This file will be played in the
+browser*, a portrait viewport (e.g. 480 × 854) and *Fullscreen button*.
+
+The frame's origin is the game's own, so the leaderboard, friends, cloud sync, TURN and challenge
+links work as on the website. `inItch` (`src/storage/device.ts`) leaves out what needs a top-level
+site: ads (and the free upgrade step and boost that only exist with them), the service worker
+(blocked or partitioned in a nested frame), the install tip and row, and the link to CrazyGames.
+nginx gives `?itch` the default policy without AdSense. The save lives in `localStorage` of the
+nested frame (partitioned per itch.io; Safari may clear it), which is what cloud sync is for.
+
 ## Google Play
 
 The Play Store app is a Trusted Web Activity (made with PWABuilder or Bubblewrap): a small

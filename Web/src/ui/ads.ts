@@ -14,14 +14,14 @@
  * (Dockerfile): the account has to be approved for H5 Games Ads first. Without it the game's own
  * placeholder plays, as before. `?adtest` loads Google's test ads (`data-adbreak-test`).
  */
-import { inPortal } from '../storage/device';
+import { inItch, inPortal } from '../storage/device';
 import type { RewardedOutcome } from '../present/session';
 
 const CLIENT = 'ca-pub-8814590710596560';
 const SCRIPT_URL = `https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${CLIENT}`;
 
 /** Rewarded ads are Google's (not the portal's, not the placeholder): the normal site and the Play app, built with the switch on. */
-export const rewardedAdsLive = !inPortal && import.meta.env.PROD && import.meta.env.VITE_REWARDED_ADS === '1';
+export const rewardedAdsLive = !inPortal && !inItch && import.meta.env.PROD && import.meta.env.VITE_REWARDED_ADS === '1';
 
 interface AdPlacementInfo {
   breakStatus?: string;
@@ -68,7 +68,7 @@ function push(command: AdCommand): void {
 }
 
 export function startAds(): void {
-  if (inPortal || !import.meta.env.PROD || document.querySelector('script[src^="https://pagead2.googlesyndication.com/"]')) return;
+  if (inPortal || inItch || !import.meta.env.PROD || document.querySelector('script[src^="https://pagead2.googlesyndication.com/"]')) return;
   const script = document.createElement('script');
   script.async = true;
   script.crossOrigin = 'anonymous';

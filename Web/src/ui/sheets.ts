@@ -4,7 +4,7 @@ import type { Settings } from '../core/career';
 import { type PatchNote, type PatchImpact, itemText, itemCredit } from '../present/patchNotes';
 import { LEGAL_DOCS, type LegalDoc, type LegalId } from '../present/legal';
 import type { License } from '../present/licenses';
-import { inPlayStore, inPortal, isInstalled, isIos } from '../storage/device';
+import { inItch, inPlayStore, inPortal, isInstalled, isIos } from '../storage/device';
 import { cloudEnabled } from '../net/cloud';
 
 interface OpenSheet {
@@ -401,7 +401,7 @@ export function settingsSheet(layer: HTMLElement, s: Settings, actions: Settings
     };
 
   let installRow: HTMLElement | null = null;
-  if (!isInstalled() && !inPortal && !inPlayStore) {
+  if (!isInstalled() && !inPortal && !inItch && !inPlayStore) {
     if (actions.install) {
       installRow = h(
         'div',
@@ -473,7 +473,7 @@ export function settingsSheet(layer: HTMLElement, s: Settings, actions: Settings
       richLinkRow("What's new", 'Patch notes and updates.', () => actions.openNotes(), null, actions.notesUnread ? h('span', { class: 'new-pill' }, 'New') : null),
       inPortal ? null : websiteRow(),
       wikiRow(),
-      inPortal || inPlayStore ? null : crazyGamesRow(),
+      inPortal || inItch || inPlayStore ? null : crazyGamesRow(),
     ),
     group(
       'Legal',
