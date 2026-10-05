@@ -1,0 +1,9 @@
+{
+  "name": "rat-trailer",
+  "private": true,
+  "type": "module",
+  "description": "Trailer pipeline for Roundabout Timing: records the real game, renders the graphics layer, cuts with ffmpeg.",
+  "devDependencies": {
+    "playwright": "^1.58.0"
+  }
+}

@@ -257,7 +257,7 @@ export class Shell {
           open();
         });
     };
-    const runBar = h('div', { class: 'run-bar' }, this.photoBtn, this.shareBtn, this.leaveBtn);
+    const runBar = h('div', { class: 'run-bar' }, this.leaveBtn, this.shareBtn, this.photoBtn);
     // After a match: Ready (everyone taps it, then the next round starts), and for the host a
     // way back to the lobby to change the format or the bots.
     this.againLabel = h('span', {}, 'Play again');

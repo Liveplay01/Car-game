@@ -141,12 +141,15 @@ export const SceneBuilder = {
     // Asphalt grain over the whole road once it is drawn: the markings wear with it.
     const grain = list.grain;
     list.grain = 'asphalt';
-    for (const a of layout.arms) list.w(rect(mul(fromAngle(a.angle), reach / 2), v(reach, lane * 2 + 7), 0, a.angle), 'kerb');
     // Two lanes: the road grows inwards, the island shrinks.
     const width = lane * layout.lanes;
     const middle = layout.ringRadius - (lane * (layout.lanes - 1)) / 2;
+    // The arms end in the ring, never run on through the island.
+    const armLength = reach - middle;
+    const armCentre = (reach + middle) / 2;
+    for (const a of layout.arms) list.w(rect(mul(fromAngle(a.angle), armCentre), v(armLength, lane * 2 + 7), 0, a.angle), 'kerb');
     list.w(arc(v(0, 0), middle, width + 7, 0, TAU), 'kerb');
-    for (const a of layout.arms) list.w(rect(mul(fromAngle(a.angle), reach / 2), v(reach, lane * 2), 0, a.angle), 'surface');
+    for (const a of layout.arms) list.w(rect(mul(fromAngle(a.angle), armCentre), v(armLength, lane * 2), 0, a.angle), 'surface');
     list.w(arc(v(0, 0), middle, width, 0, TAU), 'surface');
     if (layout.lanes > 1) {
       // The dashed line between the lanes.

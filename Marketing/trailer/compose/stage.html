@@ -1,0 +1,202 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<style>
+  @font-face {
+    font-family: 'Overpass';
+    font-style: italic;
+    font-weight: 100 900;
+    src: url('../../../Web/node_modules/@fontsource-variable/overpass/files/overpass-latin-wght-italic.woff2') format('woff2');
+  }
+  @font-face {
+    font-family: 'Overpass';
+    font-style: normal;
+    font-weight: 100 900;
+    src: url('../../../Web/node_modules/@fontsource-variable/overpass/files/overpass-latin-wght-normal.woff2') format('woff2');
+  }
+  :root {
+    --bg: #0b0d10;
+    --accent: #ffd23f;
+    --ink: #ffffff;
+    --mint: #9ee8d0;
+    --danger: #ff4d4d;
+  }
+  html, body { margin: 0; background: #000; overflow: hidden; }
+  #root { position: relative; width: 1080px; height: 1920px; overflow: hidden; background: var(--bg); font-family: 'Overpass', system-ui, sans-serif; }
+  .layer { position: absolute; inset: 0; }
+  #bg { overflow: hidden; display: none; }
+  #bg img { position: absolute; left: 50%; top: 50%; width: 100%; filter: blur(40px) saturate(1.5) brightness(0.8); transform: translate(-50%, -50%) scale(1.5); }
+  #cam { transform-origin: 50% 50%; will-change: transform; }
+  #cam img, #bg img { display: block; }
+  #cam img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+  #phone { position: absolute; overflow: hidden; }
+  #vig { pointer-events: none; background:
+    radial-gradient(120% 90% at 50% 45%, transparent 55%, rgba(0,0,0,.55) 100%),
+    linear-gradient(to bottom, rgba(0,0,0,.35), transparent 22%, transparent 70%, rgba(0,0,0,.5)); }
+  #dim { pointer-events: none; background: #000; opacity: 0; }
+  #flash { pointer-events: none; opacity: 0; }
+  #grain { pointer-events: none; opacity: .07; mix-blend-mode: overlay; }
+  .t { position: absolute; left: 0; top: 0; transform-origin: 50% 50%; white-space: nowrap; text-align: center; will-change: transform, opacity; }
+  .line { display: block; font-style: italic; font-weight: 900; text-transform: uppercase; letter-spacing: -0.02em; line-height: .86;
+    color: var(--ink); text-shadow: 0 .06em 0 rgba(0,0,0,.5), 0 .02em .5em rgba(0,0,0,.45); }
+  .line.accent { color: var(--accent); }
+  .line.mint { color: var(--mint); }
+  .line.red { color: var(--danger); }
+  .kicker { display: inline-block; font-style: normal; font-weight: 800; text-transform: uppercase; letter-spacing: .14em;
+    padding: .38em .9em .34em; border-radius: 999px; background: var(--accent); color: #14110a; margin-bottom: .55em; line-height: 1; }
+  .kicker.dark { background: rgba(11,13,16,.82); color: var(--ink); box-shadow: 0 0 0 .08em rgba(255,255,255,.18) inset; }
+  .logo { display: block; }
+</style>
+</head>
+<body>
+<div id="root">
+  <div id="bg" class="layer"><img id="bgimg" /></div>
+  <div id="phone" class="layer">
+    <div id="cam" class="layer"><img id="a" /><img id="b" /></div>
+  </div>
+  <div id="vig" class="layer"></div>
+  <div id="titles" class="layer"></div>
+  <div id="dim" class="layer"></div>
+  <div id="flash" class="layer"></div>
+</div>
+<script>
+const clamp = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x));
+const E = {
+  outCubic: (x) => 1 - Math.pow(1 - x, 3),
+  outExpo: (x) => (x >= 1 ? 1 : 1 - Math.pow(2, -10 * x)),
+  outBack: (x, s = 1.9) => 1 + (s + 1) * Math.pow(x - 1, 3) + s * Math.pow(x - 1, 2),
+  inCubic: (x) => x * x * x,
+  inOut: (x) => (x < .5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2),
+};
+const noise = (n) => { const s = Math.sin(n * 127.1 + 311.7) * 43758.5453; return (s - Math.floor(s)) * 2 - 1; };
+const pad = (n) => String(n).padStart(5, '0');
+const fmt = (n) => Math.round(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+
+// Source seconds that have played after `local` seconds of the shot: speed is a number or [[time, speed], ...].
+const integrate = (speed, local) => {
+  if (typeof speed === 'number') return local * speed;
+  let sum = 0;
+  for (let i = 0; i < speed.length - 1; i++) {
+    const [t0, v0] = speed[i], [t1, v1] = speed[i + 1];
+    if (local <= t0) break;
+    const end = Math.min(local, t1);
+    const v = v0 + (v1 - v0) * ((end - t0) / (t1 - t0));
+    sum += ((v0 + v) / 2) * (end - t0);
+  }
+  const [tl, vl] = speed[speed.length - 1];
+  if (local > tl) sum += vl * (local - tl);
+  return sum;
+};
+window.integrate = integrate;
+
+let EDL = null;
+const els = {};
+const A = document.getElementById('a'), B = document.getElementById('b');
+const decode = (img, src) => { if (img.getAttribute('src') !== src) { img.src = src; return img.decode().catch(() => {}); } return Promise.resolve(); };
+
+window.setup = (edl) => {
+  EDL = edl;
+  const root = document.getElementById('root');
+  root.style.width = edl.w + 'px';
+  root.style.height = edl.h + 'px';
+  const phone = document.getElementById('phone');
+  const bg = document.getElementById('bg');
+  if (edl.layout === 'landscape') {
+    const ph = edl.h * (edl.phoneHeight ?? 0.94), pw = ph * 1080 / 1920;
+    window.phoneStyle = { inset: 'auto', left: (edl.phoneX ?? (edl.w - pw) / 2) + 'px', top: (edl.h - ph) / 2 + 'px', width: pw + 'px', height: ph + 'px', borderRadius: '44px', boxShadow: '0 40px 120px rgba(0,0,0,.65), 0 0 0 6px rgba(255,255,255,.1)' };
+    window.fullStyle = { inset: '0', left: '0', top: '0', width: edl.w + 'px', height: edl.h + 'px', borderRadius: '0', boxShadow: 'none' };
+  }
+  const holder = document.getElementById('titles');
+  edl.titles.forEach((t, i) => {
+    const el = document.createElement('div');
+    el.className = 't';
+    el.style.fontSize = '100px';
+    let html = '';
+    if (t.kicker) html += `<span class="kicker ${t.kickerClass ?? ''}" style="font-size:${(t.kickerSize ?? 0.3) * 100}px">${t.kicker}</span><br>`;
+    if (t.html) html += t.html;
+    (t.lines ?? []).forEach((l) => { html += `<span class="line ${l.c ?? ''}" style="font-size:${(l.size ?? 2) * 100}px">${l.text}</span>`; });
+    el.innerHTML = html;
+    holder.appendChild(el);
+    els[i] = el;
+    el.style.opacity = 0;
+  });
+};
+
+// One frame of the cut at time t: the footage with its camera moves, then the titles, then the flashes.
+window.frame = async (t) => {
+  const e = EDL;
+  const shot = e.shots.find((s) => t >= s.t && t < s.t + s.dur) ?? e.shots[e.shots.length - 1];
+  const local = t - shot.t;
+  const srcT = shot.at + integrate(shot.speed ?? 1, local);
+  const f = srcT * 60 - shot.first;
+  const i0 = Math.max(0, Math.floor(f)), frac = f - Math.floor(f);
+  const url = (i) => `${e.cache}/${shot.id}/${pad(Math.max(0, Math.min(shot.frames - 1, i)))}.jpg`;
+  const blend = frac > 0.02 && (shot.blend ?? true);
+  const jobs = [decode(A, url(i0))];
+  if (blend) jobs.push(decode(B, url(i0 + 1)));
+  await Promise.all(jobs);
+  B.style.opacity = blend ? frac : 0;
+
+  // camera: a punch in at the start of the shot, a slow push, a shake
+  const p = clamp(local / shot.dur);
+  const punch = shot.punch ?? 0.1;
+  let scale = (shot.scale ?? 1) * (1 + (shot.push ?? 0.04) * p) * (1 + punch * (1 - E.outExpo(clamp(local / 0.22))));
+  if (shot.pulse) { const beat = (t % 0.5) / 0.5; scale *= 1 + shot.pulse * Math.pow(1 - beat, 3); }
+  const sh = (shot.shake ?? 0) * Math.pow(1 - clamp(local / (shot.shakeDur ?? 0.4)), 2);
+  const fr = Math.floor(t * 60);
+  const [ax, ay] = shot.anchor ?? [0.5, 0.5];
+  const cam = document.getElementById('cam');
+  cam.style.transformOrigin = `${ax * 100}% ${ay * 100}%`;
+  cam.style.transform = `translate(${noise(fr * 1.7) * sh * 34}px, ${noise(fr * 2.3 + 9) * sh * 34}px) rotate(${(shot.tilt ?? 0) + noise(fr * 0.9 + 3) * sh * 1.2}deg) scale(${scale})`;
+  cam.style.filter = shot.filter ?? 'none';
+  if (e.layout === 'landscape') {
+    const full = shot.src.startsWith('L-');
+    Object.assign(document.getElementById('phone').style, full ? window.fullStyle : window.phoneStyle);
+    document.getElementById('bg').style.display = full ? 'none' : 'block';
+    if (!full) await decode(document.getElementById('bgimg'), url(i0));
+  }
+
+  // titles
+  e.titles.forEach((tt, i) => {
+    const el = els[i];
+    const lt = t - tt.t;
+    if (lt < 0 || lt > tt.dur) { el.style.opacity = 0; return; }
+    const inP = clamp(lt / (tt.inDur ?? 0.16));
+    const outP = clamp((lt - (tt.dur - (tt.outDur ?? 0.1))) / (tt.outDur ?? 0.1));
+    const kind = tt.anim ?? 'slam';
+    let s = 1, ty = 0, tx = 0, o = 1, rot = tt.rot ?? 0;
+    if (kind === 'slam') { s = 1 + 1.3 * (1 - E.outBack(inP, 1.5)); o = clamp(inP * 4); rot += (1 - E.outExpo(inP)) * -6; }
+    else if (kind === 'rise') { ty = 60 * (1 - E.outExpo(inP)); o = E.outCubic(inP); }
+    else if (kind === 'pop') { s = E.outBack(inP, 2.4); o = clamp(inP * 5); }
+    else if (kind === 'fade') { o = inP; }
+    else if (kind === 'wipe') { tx = -140 * (1 - E.outExpo(inP)); o = clamp(inP * 3); }
+    // landing shake of the slam
+    const hit = kind === 'slam' ? Math.pow(1 - clamp(lt / 0.25), 2) * 10 : 0;
+    s *= 1 + (tt.drift ?? 0.025) * clamp(lt / tt.dur);
+    if (outP > 0) { o *= 1 - outP; s *= 1 + 0.12 * E.inCubic(outP); }
+    const w = el.offsetWidth, h = el.offsetHeight;
+    const fit = Math.min(1, (tt.maxWidth ?? 0.9) * e.w / w);
+    const cx = (tt.x ?? 0.5) * e.w, cy = (tt.y ?? 0.5) * e.h;
+    el.style.transform = `translate(${cx - w / 2 + tx + noise(fr * 3.1) * hit}px, ${cy - h / 2 + ty + noise(fr * 4.7) * hit}px) rotate(${rot}deg) scale(${s * (tt.scale ?? 1) * fit})`;
+    el.style.opacity = o;
+    if (tt.count) {
+      const c = tt.count;
+      const v = c.from + (c.to - c.from) * E.outExpo(clamp(lt / (c.dur ?? 0.8)));
+      el.querySelector('.cnt').textContent = (c.prefix ?? '') + fmt(v) + (c.suffix ?? '');
+    }
+  });
+
+  // dim (fade to black) and flashes
+  const dim = document.getElementById('dim');
+  dim.style.opacity = (e.fades ?? []).reduce((m, d) => Math.max(m, d.t <= t && t <= d.t + d.dur ? (d.to > d.from ? E.inOut((t - d.t) / d.dur) : 1 - E.inOut((t - d.t) / d.dur)) * Math.abs(d.to - d.from) + Math.min(d.from, d.to) : 0), 0);
+  const fl = document.getElementById('flash');
+  let fo = 0, fc = '#fff';
+  for (const k of e.flashes ?? []) { const x = (t - k.t) / (k.dur ?? 0.14); if (x >= 0 && x < 1) { const v = (k.a ?? 0.9) * Math.pow(1 - x, 2); if (v > fo) { fo = v; fc = k.c ?? '#fff'; } } }
+  fl.style.background = fc;
+  fl.style.opacity = fo;
+  document.getElementById('vig').style.opacity = shot.vig ?? 1;
+};
+</script>
+</body>
+</html>

@@ -49,6 +49,8 @@ export const PATCH_NOTES: PatchNote[] = [
     title: 'Optional ads for a free upgrade step and a better Skin Upgrade chance, and codes that send themselves',
     impact: 'major',
     items: [
+      'Fixed: the roads no longer run on through the roundabout. They end at the ring, so no crosshair can show on the island.',
+      'Challenge a friend and Picture no longer sit where you tap to start the next shift: they stack above Settings on the left (on the right if you play left-handed), and the other side stays free.',
       'Watch an ad, your choice, for a free step of one upgrade: once a day the game picks one (a "Free step" badge on its card in Build → Upgrades) and you can still buy it as usual. Not on CrazyGames.',
       'Watch an ad to add 10 points to the chance of your next Skin Upgrade round, up to 3 times a day (Shop → Casino → Upgrade). The dial shows the chance it really rolls, and one round uses the boost up, won or lost. Not on CrazyGames.',
       'The free Standard Chest for an ad is a real ad now on the website and in the Google Play app. It, and the two new ones, pay only when the ad was watched to the end, and the offers show only when an ad is ready.',
