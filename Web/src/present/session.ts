@@ -539,6 +539,9 @@ export class GameSession {
       case 'deleteBuilt':
         this.buildFlow.deleteInspected();
         break;
+      case 'upgradeBuilt':
+        this.buildFlow.upgradeInspected();
+        break;
       case 'movePart':
         this.buildFlow.move(action.slot);
         break;
@@ -1869,7 +1872,7 @@ export class GameSession {
           }
           break;
         case 'modulePaid':
-          this.addPopup({ k: 'modulePulse', color: e.module === 'speedCamera' ? 'lightBlue' : 'hazard' }, e.point);
+          this.addPopup({ k: 'modulePulse', color: e.module === 'speedCamera' ? 'lightBlue' : e.module === 'billboard' ? 'accent' : 'hazard' }, e.point);
           this.addPopup({ k: 'earned', n: e.amount }, e.point);
           break;
         case 'towed':

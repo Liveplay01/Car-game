@@ -1,4 +1,4 @@
-import { type Config, type CityEvent, type RoadModule, type LegendaryRule, CITY_EVENTS, ROAD_MODULES, LEGENDARY_RULES } from './config';
+import { type Config, type CityEvent, type RoadModule, type LegendaryRule, CITY_EVENTS, ROAD_MODULES, MODULE_MAX_LEVEL, LEGENDARY_RULES } from './config';
 import { UPGRADES, upgradeMaxSteps, type Upgrade } from './levels';
 import { type Career, type GameMode, GAME_MODES, Careers, newCareer } from './career';
 import { isInt } from './guards';
@@ -16,6 +16,7 @@ export interface ChallengeSpec {
   upgrades: Partial<Record<Upgrade, number>>;
   armSlots: number[];
   modules: Record<number, RoadModule>;
+  moduleLevels: Record<number, number>;
   /** Unlockable car types the sender owns: they change the traffic mix. */
   cars: string[];
   event: CityEvent | null;
@@ -48,6 +49,7 @@ export function challengeOf(
     upgrades: { ...c.upgrades },
     armSlots: [...c.armSlots],
     modules: { ...c.modules },
+    moduleLevels: { ...c.moduleLevels },
     cars: CAR_TYPES.filter((id) => Careers.owns(c, id)),
     event,
     target: Math.max(0, Math.round(target)),
@@ -62,6 +64,7 @@ export function challengeCareer(s: ChallengeSpec): Career {
     upgrades: { ...s.upgrades },
     armSlots: [...s.armSlots],
     modules: { ...s.modules },
+    moduleLevels: { ...s.moduleLevels },
     collection: [...s.cars],
     prestige: s.prestige,
   };
@@ -89,7 +92,7 @@ const fromBase64Url = (code: string): string => {
 /** Short and URL-safe: a versioned array, base64url. */
 export function encodeChallenge(s: ChallengeSpec): string {
   const upgrades = UPGRADES.map((u) => s.upgrades[u] ?? 0);
-  const modules = Object.entries(s.modules).map(([slot, m]) => [Number(slot), ROAD_MODULES.indexOf(m)]);
+  const modules = Object.entries(s.modules).map(([slot, m]) => [Number(slot), ROAD_MODULES.indexOf(m), s.moduleLevels[Number(slot)] ?? 1]);
   // Prestige and the legendary rule came later: at the end, so older links still read. The 0
   // after the cars held the Cash Boost of the old store; it stays, so the positions keep.
   const packed = [
@@ -130,8 +133,11 @@ export function decodeChallenge(code: string): ChallengeSpec | null {
   const armSlots = [...new Set(arms.filter((x): x is number => isInt(x, 0, 15)))].sort((a, b) => a - b);
   if (!armSlots.includes(0) || armSlots.length < 4) return null;
   const modules: Record<number, RoadModule> = {};
+  const moduleLevels: Record<number, number> = {};
   for (const m of mods) {
-    if (Array.isArray(m) && isInt(m[0], 0, 5) && isInt(m[1], 0, ROAD_MODULES.length - 1)) modules[m[0]] = ROAD_MODULES[m[1]];
+    if (!Array.isArray(m) || !isInt(m[0], 0, 5) || !isInt(m[1], 0, ROAD_MODULES.length - 1)) continue;
+    modules[m[0]] = ROAD_MODULES[m[1]];
+    if (isInt(m[2], 2, MODULE_MAX_LEVEL)) moduleLevels[m[0]] = m[2];
   }
   return {
     seed,
@@ -140,6 +146,7 @@ export function decodeChallenge(code: string): ChallengeSpec | null {
     upgrades,
     armSlots,
     modules,
+    moduleLevels,
     cars: cars.filter((x): x is number => isInt(x, 0, CAR_TYPES.length - 1)).map((i) => CAR_TYPES[i]),
     event: isInt(event, 0, CITY_EVENTS.length - 1) ? CITY_EVENTS[event] : null,
     target,

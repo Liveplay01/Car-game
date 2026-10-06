@@ -1,13 +1,14 @@
 import { type Career, Careers } from '../core/career';
-import { type Config, type RoadModule, modulePrice } from '../core/config';
+import { type Config, type RoadModule, builtArmSlots, modulePrice, moduleZone } from '../core/config';
+import { detourArmSlot } from '../core/modules';
 import { canBuildArm } from '../core/levels';
-import { type Vec2, v, add, sub, mul, dist, fromAngle, normalize, right, TAU } from '../core/vec2';
-import { type RenderList, type Rect, R, rect, circle, arc, line, text, Ease } from './render';
+import { type Vec2, v, add, sub, mul, dist, fromAngle, normalize, right, wrap, TAU } from '../core/vec2';
+import { type RenderList, type Rect, R, rect, circle, arc, line, polygon, text, Ease } from './render';
 import type { ColorToken } from './theme';
 import { MenuKit } from './menukit';
 import { moneyTag } from './icons';
 import { S, Fmt } from './strings';
-import { BuildLayout, PARTS, partModule, type Part, type Built } from './flow';
+import { BuildLayout, MODULE_COLORS, PARTS, partModule, type Part, type Built } from './flow';
 import { BuildTab } from './upgrades';
 import { measure } from './measure';
 
@@ -281,11 +282,51 @@ export const StreetBuilderPage = {
     }
   },
 
+  /** One dot per level above the first, side by side just outside the module's icon. */
+  addLevelPips(list: RenderList, level: number, at: Vec2, map: MapGeo): void {
+    if (level < 2) return;
+    const outward = normalize(sub(at, map.center));
+    const along = right(outward);
+    const base = add(at, mul(outward, 20));
+    for (let i = 0; i < level; i++) list.s(circle(add(base, mul(along, (i - (level - 1) / 2) * 6)), 2), 'accent');
+  },
+
+  /**
+   * Where a module works, on the builder's ring (Leo, 06.10.2026): the stretch of road its zone
+   * covers, or for a detour sign the way to the exit it points to, with that arm lit.
+   */
+  addZone(list: RenderList, module: RoadModule, slot: number, armSlots: number[], config: Config, map: MapGeo, opacity: number, thickness = 9): void {
+    const P = StreetBuilderPage;
+    const probe = { ...config, armSlots };
+    const sign = (TAU * (slot + 0.5)) / Math.max(1, config.moduleSlotCount);
+    const color = MODULE_COLORS[module];
+    if (module === 'detour') {
+      const arm = detourArmSlot(probe, slot);
+      if (arm === null) return;
+      const exit = -Math.PI / 2 + (arm * TAU) / Math.max(3, config.armSlotCount) - config.mergeAngle;
+      list.s(arc(map.center, map.radius, thickness, -(sign + wrap(exit - sign)), -sign), color, opacity);
+      P.addArm(list, arm, config.armSlotCount, map, color, null, opacity * 0.8, 1);
+      return;
+    }
+    const radius = config.ringRadius + config.ringRadiusPerArm * Math.max(0, builtArmSlots(probe).length - 4);
+    const half = moduleZone(config, module).arc / 2 / radius;
+    list.s(arc(map.center, map.radius, thickness, -sign - half, -sign + half), color, opacity);
+  },
+
   addModules(list: RenderList, career: Career, config: Config, state: BuilderState, map: MapGeo, reduceMotion: boolean): void {
     const P = StreetBuilderPage;
     const count = config.moduleSlotCount;
     const lifted = state.moving?.from.k === 'module' ? state.moving.from.slot : null;
     const draggingModule = (state.dragging !== null && partModule(state.dragging.part) !== null) || lifted !== null;
+    const inspectedSlot = state.inspected?.part.k === 'module' && !state.marked ? state.inspected.part.slot : null;
+    for (const [slot, module] of Object.entries(career.modules)) {
+      if (Number(slot) !== lifted) P.addZone(list, module, Number(slot), career.armSlots, config, map, Number(slot) === inspectedSlot ? 0.6 : 0.22);
+    }
+    // What the part under the finger (or waiting to be built) would cover.
+    const aimed = state.moving ? (lifted === null ? null : career.modules[lifted]) : state.dragging ? partModule(state.dragging.part) : null;
+    const waiting = state.pending ? partModule(state.pending.part) : null;
+    if (aimed && state.target !== null) P.addZone(list, aimed, state.target, career.armSlots, config, map, 0.6);
+    else if (state.pending && waiting) P.addZone(list, waiting, state.pending.slot, career.armSlots, config, map, 0.6);
     for (let slot = 0; slot < count; slot++) {
       const at = P.moduleSlotPosition(slot, count, map);
       const module = career.modules[slot];
@@ -293,31 +334,32 @@ export const StreetBuilderPage = {
         // Lifted: a faded copy in its old place, with a breathing ring.
         const breathe = reduceMotion ? 0.6 : 0.45 + 0.25 * Math.sin(state.moving!.age * 5);
         P.addModuleIcon(list, module, at, 1, 0.35);
-        if (!state.dragging) list.s(arc(at, 12, 2.5, 0, TAU), 'accent', breathe);
+        if (!state.dragging) list.s(arc(at, 15, 2.5, 0, TAU), 'accent', breathe);
         continue;
       }
       if (module) {
         let scale = 1;
         if (state.builtModule?.slot === slot && !reduceMotion) scale += 0.4 * (1 - Ease.outCubic(state.builtModule.age / P.buildDuration));
         P.addModuleIcon(list, module, at, scale, 1);
+        P.addLevelPips(list, career.moduleLevels[slot] ?? 1, at, map);
       }
       if (draggingModule) {
         const isTarget = state.target === slot;
         // Moving: a taken slot is no target (a new module could replace one, a moved one cannot).
         const blocked = lifted !== null && module !== undefined;
-        list.s(arc(at, isTarget && !reduceMotion ? 13 : 10, 2, 0, TAU), isTarget ? 'accent' : blocked ? 'destructive' : module ? 'hazard' : 'marking', isTarget ? 1 : blocked ? 0.35 : 0.7);
+        list.s(arc(at, isTarget && !reduceMotion ? 17 : 14, 2, 0, TAU), isTarget ? 'accent' : blocked ? 'destructive' : module ? 'hazard' : 'marking', isTarget ? 1 : blocked ? 0.35 : 0.7);
       }
     }
     const inspected = state.inspected;
     if (inspected && inspected.part.k === 'module' && career.modules[inspected.part.slot] && !state.marked) {
       const at = P.moduleSlotPosition(inspected.part.slot, count, map);
-      list.s(arc(at, 12, 2.5, 0, TAU), 'accent', 0.8 * Ease.outCubic(inspected.age / 0.2));
+      list.s(arc(at, 15, 2.5, 0, TAU), 'accent', 0.8 * Ease.outCubic(inspected.age / 0.2));
     }
     const marked = state.marked;
     if (marked && marked.part.k === 'module' && career.modules[marked.part.slot]) {
       const at = P.moduleSlotPosition(marked.part.slot, count, map);
-      list.s(arc(at, 12, 2.5, 0, TAU), 'destructive', reduceMotion ? 0.8 : 0.6 + 0.3 * Math.sin(marked.age * 9));
-      P.addCross(list, add(at, mul(normalize(sub(at, map.center)), 20)), marked.age, reduceMotion);
+      list.s(arc(at, 15, 2.5, 0, TAU), 'destructive', reduceMotion ? 0.8 : 0.6 + 0.3 * Math.sin(marked.age * 9));
+      P.addCross(list, add(at, mul(normalize(sub(at, map.center)), 24)), marked.age, reduceMotion);
     }
     const torn = state.tornDown;
     if (torn && torn.part.k === 'module' && torn.module) {
@@ -331,7 +373,7 @@ export const StreetBuilderPage = {
       if (state.removing > 0) opacity *= 1 - Ease.clamp01(state.removing / P.removeDuration);
       if (state.denied > 0 && !reduceMotion) opacity = 0.6 + 0.25 * Math.sin(state.denied * 40);
       const at = P.moduleSlotPosition(pending.slot, count, map);
-      list.s(arc(at, 13, 2.5, 0, TAU), state.denied > 0 ? 'destructive' : 'accent', opacity);
+      list.s(arc(at, 16, 2.5, 0, TAU), state.denied > 0 ? 'destructive' : 'accent', opacity);
       P.addModuleIcon(list, pm, at, 1, opacity);
     }
   },
@@ -359,7 +401,10 @@ export const StreetBuilderPage = {
       const slot = Number(key);
       const at = P.moduleSlotPosition(slot, config.moduleSlotCount, map);
       P.addModuleIcon(list, module, at, 0.7, 1);
-      if (art.part.k === 'module' && art.part.slot === slot) list.s(arc(at, 9, 2, 0, TAU), lit);
+      if (art.part.k === 'module' && art.part.slot === slot) {
+        list.s(arc(at, 11, 2, 0, TAU), lit);
+        P.addZone(list, module, slot, art.arms, config, map, 0.7, 4);
+      }
     }
   },
 
@@ -374,20 +419,53 @@ export const StreetBuilderPage = {
   },
 
   addModuleIcon(list: RenderList, module: RoadModule, center: Vec2, scale: number, opacity: number): void {
-    list.s(circle(center, 8 * scale), 'background', opacity);
     const at = (x: number, y: number): Vec2 => add(center, mul(v(x, y), scale));
+    const stroke = (x1: number, y1: number, x2: number, y2: number, width: number, color: ColorToken): void =>
+      list.s(line(at(x1, y1), at(x2, y2), width * scale), color, opacity);
+    const box = (x: number, y: number, w: number, h: number, color: ColorToken, corner = 1): void =>
+      list.s(rect(at(x, y), mul(v(w, h), scale), corner * scale), color, opacity);
+    list.s(circle(center, 11 * scale), 'background', opacity);
+    list.s(circle(center, 10 * scale), MODULE_COLORS[module], opacity);
     switch (module) {
       case 'tollBooth':
-        list.s(line(at(-6, 0), at(6, 0), 2.5 * scale), 'hazard', opacity);
-        list.s(rect(at(-6, 0), mul(v(4, 4), scale), 1), 'hazard', opacity);
+        // A barrier: red and white arm across a post, the booth beside it.
+        box(-5.5, 1.5, 4.5, 7, 'accentInk');
+        stroke(-2, -2.5, 0.5, -2.5, 2.8, 'lightRed');
+        stroke(0.5, -2.5, 3, -2.5, 2.8, 'primary');
+        stroke(3, -2.5, 6, -2.5, 2.8, 'lightRed');
         break;
       case 'speedCamera':
-        list.s(rect(center, mul(v(10, 7), scale), 2), 'marking', opacity);
-        list.s(circle(center, 2.2 * scale), 'lightBlue', opacity);
+        // A camera on a pole: white body, dark lens, a red flash.
+        stroke(0, 2, 0, 6.5, 2, 'accentInk');
+        box(0, -1.5, 12, 7.5, 'primary', 1.8);
+        list.s(circle(at(0.5, -1.5), 2.8 * scale), 'accentInk', opacity);
+        list.s(circle(at(0.5, -1.5), 1.1 * scale), 'lightBlue', opacity);
+        list.s(circle(at(-4, -4), 1.1 * scale), 'lightRed', opacity);
         break;
       case 'towDepot':
-        list.s(rect(at(-1.5, 0), mul(v(10, 6), scale), 1.5), 'hazard', opacity);
-        list.s(line(at(3, -1), at(7, -5), 1.5 * scale), 'marking', opacity);
+        // A tow truck: white cab and bed, a dark crane arm with its hook.
+        box(-1.5, 2.2, 10, 4, 'primary');
+        box(4.8, 0.5, 4.5, 5.5, 'primary');
+        stroke(-5, 1.5, -0.5, -4, 1.8, 'accentInk');
+        stroke(-0.5, -4, 2.5, -4, 1.4, 'accentInk');
+        stroke(2.5, -4, 2.5, -1, 1.4, 'accentInk');
+        list.s(circle(at(-4, 5), 1.5 * scale), 'accentInk', opacity);
+        list.s(circle(at(4.5, 5), 1.5 * scale), 'accentInk', opacity);
+        break;
+      case 'billboard':
+        // A board on two legs, with lines of copy and a coin.
+        stroke(-3.5, 2, -3.5, 6.5, 1.8, 'primary');
+        stroke(3.5, 2, 3.5, 6.5, 1.8, 'primary');
+        box(0, -2, 14, 8.5, 'primary', 1.5);
+        stroke(-5, -3.8, 1, -3.8, 1.5, MODULE_COLORS.billboard);
+        stroke(-5, -0.8, -1, -0.8, 1.5, MODULE_COLORS.billboard);
+        list.s(circle(at(4, -0.5), 2 * scale), 'accent', opacity);
+        break;
+      case 'detour':
+        // A sign for the turn: an arrow that goes up and bends to the right.
+        stroke(-4, 5, -4, -1.5, 2.8, 'primary');
+        stroke(-4, -1.5, 1.5, -1.5, 2.8, 'primary');
+        list.s(polygon([at(1.5, -5.5), at(7, -1.5), at(1.5, 2.5)]), 'primary', opacity);
         break;
     }
   },
@@ -439,7 +517,7 @@ export const StreetBuilderPage = {
     list.s(arc(center, 16 * scale, 5 * scale, 0, TAU), 'surface', opacity);
     const m = partModule(part);
     if (m) {
-      StreetBuilderPage.addModuleIcon(list, m, add(center, mul(v(16, 0), scale)), scale * 1.1, opacity);
+      StreetBuilderPage.addModuleIcon(list, m, add(center, mul(v(16, 0), scale)), scale * 1.3, opacity);
       return;
     }
     list.s(arc(center, 16 * scale, 5 * scale, -0.9, 0.9), 'marking', opacity);

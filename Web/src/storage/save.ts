@@ -1,7 +1,7 @@
 import { type SaveGame, type Career, type Hint, HINTS, newSave, newCareer, roundTimes, GAME_MODES, MASTERY_GOALS, MASTERY_THRESHOLDS, Careers, type GameMode } from '../core/career';
 import { UPGRADES, upgradeMaxSteps } from '../core/levels';
 import { COSMETICS, CHEST_KINDS, type ChestKind, type CosmeticSource, MAX_CAR_SKINS, cosmetic } from '../core/loot';
-import { ROAD_MODULES, type RoadModule, BOSS_KINDS, type BossKind, baseConfig } from '../core/config';
+import { ROAD_MODULES, MODULE_MAX_LEVEL, type RoadModule, BOSS_KINDS, type BossKind, baseConfig } from '../core/config';
 import { RUN_IDS } from '../core/trials';
 import { MUSEUM_IDS, MUSEUM_SHELVES, type MuseumShelf, inferredSightings } from '../core/museum';
 import { TITLES, type TitleId } from '../core/elite';
@@ -62,6 +62,13 @@ function readCareer(raw: unknown): Career {
       if (Number.isInteger(n) && n >= 0 && n < 6 && ROAD_MODULES.includes(m as RoadModule)) modules[n] = m as RoadModule;
     }
   }
+  const moduleLevels: Record<number, number> = {};
+  if (isObject(raw.moduleLevels)) {
+    for (const slot of Object.keys(modules)) {
+      const level = int(raw.moduleLevels[slot], 1, 1);
+      if (level > 1) moduleLevels[Number(slot)] = Math.min(level, MODULE_MAX_LEVEL);
+    }
+  }
   const mastery = { ...fresh.mastery };
   if (isObject(raw.mastery)) for (const k of Object.keys(mastery) as (keyof typeof mastery)[]) mastery[k] = int(raw.mastery[k], 0, 0);
   const masteryTiers: Career['masteryTiers'] = {};
@@ -92,6 +99,7 @@ function readCareer(raw: unknown): Career {
     upgrades,
     armSlots: armSlots.length >= 4 ? armSlots : fresh.armSlots,
     modules,
+    moduleLevels,
     mastery,
     masteryTiers,
     chests: strings(raw.chests).filter((c): c is ChestKind => CHEST_KINDS.includes(c as ChestKind)),

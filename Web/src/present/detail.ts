@@ -1,5 +1,5 @@
 import { type Career, Careers, MINIMUM_ARMS } from '../core/career';
-import type { Config, RoadModule } from '../core/config';
+import { type Config, type RoadModule, MODULE_MAX_LEVEL } from '../core/config';
 import { type Upgrade, upgradeMaxSteps } from '../core/levels';
 import { type ChestKind, RARITIES, CHEST_ODDS, chestFinds, PITY_CHESTS, PITY_LEGENDARY_CHESTS, MAX_CAR_SKINS, BIG_SCREEN, cosmetic, isForSale } from '../core/loot';
 import { type CasinoGame, type SlotSymbol, SLOT_SYMBOLS, Casino } from '../core/casino';
@@ -436,20 +436,38 @@ export const Details = {
     const canDelete = built.k === 'module' || Careers.canRemoveArm(career, built.slot);
     const notes: Detail['notes'] = [{ text: S.builder.noRefund, color: 'muted' }];
     if (!canDelete) notes.unshift({ text: S.builder.keepsArms(MINIMUM_ARMS), color: 'muted' });
+    const level = built.k === 'module' ? (career.moduleLevels[built.slot] ?? 1) : 1;
+    const upgradePrice = built.k === 'module' ? Careers.moduleUpgradePrice(career, built.slot, config) : null;
+    const affordable = upgradePrice !== null && career.money >= upgradePrice;
+    const rows: DetailRow[] = built.k === 'arm' ? [{ label: S.builder.arms, value: String(career.armSlots.length) }] : [{ label: S.detail.now, value: S.builder.effect(part, config, level) }];
+    const actions: DetailAction[] = [];
+    if (built.k === 'module') {
+      if (upgradePrice === null) notes.unshift({ text: S.builder.maxLevel, color: 'accent' });
+      else {
+        rows.push({ label: S.builder.nextLevel, value: S.builder.effect(part, config, level + 1), valueColor: 'accent' });
+        actions.push({
+          label: affordable ? S.builder.upgrade(money(Fmt.number(upgradePrice))) : S.upgrades.missing(money(Fmt.number(upgradePrice - career.money))),
+          action: { k: 'upgradeBuilt' },
+          prominent: !armed,
+          enabled: affordable,
+        });
+      }
+    }
+    actions.push(
+      { label: S.builder.move, action: { k: 'moveBuilt' }, prominent: !armed && actions.length === 0, enabled: true },
+      { label: armed ? S.builder.deleteConfirm : S.builder.delete, action: { k: 'deleteBuilt' }, prominent: armed, enabled: canDelete, destructive: true },
+    );
     return {
-      key: `built:${built.k}:${built.slot}`,
+      key: `built:${built.k}:${built.slot}:${level}`,
       art: { k: 'built', part: built, arms: [...career.armSlots], modules: { ...career.modules }, armed },
       eyebrow: { text: S.builder.onTheRing, color: 'accent' },
       title: S.builder.builtName(part),
       price: null,
-      steps: null,
-      body: [S.builder.explanation(part, config)],
-      rows: built.k === 'arm' ? [{ label: S.builder.arms, value: String(career.armSlots.length) }] : [],
+      steps: built.k === 'module' ? { done: level, total: MODULE_MAX_LEVEL } : null,
+      body: [S.builder.explanation(part, config, level)],
+      rows,
       notes,
-      actions: [
-        { label: S.builder.move, action: { k: 'moveBuilt' }, prominent: !armed, enabled: true },
-        { label: armed ? S.builder.deleteConfirm : S.builder.delete, action: { k: 'deleteBuilt' }, prominent: armed, enabled: canDelete, destructive: true },
-      ],
+      actions,
     };
   },
 

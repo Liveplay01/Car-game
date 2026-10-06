@@ -1,4 +1,5 @@
-import { type RoadModule, moduleZone } from './config';
+import { type Config, type RoadModule, builtArmSlots, detourExtraAt, moduleLevel, moduleZone, towSpeedupAt } from './config';
+import type { Arm } from './roundabout';
 import type { Vehicle } from './vehicle';
 import { type Vec2, length, angleOf, wrap, TAU } from './vec2';
 import type { World } from './world';
@@ -45,21 +46,68 @@ export function towDepotCovering(w: World, point: Vec2): number | null {
 
 /** How fast a wreck at `point` ages towards being cleared: 1, or faster by the depot. */
 export function wreckClearRate(w: World, point: Vec2): number {
-  if (!Object.values(w.config.modules).includes('towDepot') || towDepotCovering(w, point) === null) return 1;
-  return 1 / Math.max(0.1, 1 - w.config.towSpeedup);
+  const slot = towDepotCovering(w, point);
+  if (slot === null) return 1;
+  return 1 / Math.max(0.1, 1 - towSpeedupAt(w.config, moduleLevel(w.config, slot)));
 }
 
-/** Money a module pays for one vehicle passing it. */
-function fee(w: World, module: RoadModule, veh: Vehicle): number {
+/** Money a module pays for one vehicle passing it; every level pays one more times the base. */
+function fee(w: World, module: RoadModule, veh: Vehicle, level: number): number {
   const c = w.config;
   switch (module) {
     case 'tollBooth':
-      return veh.type === 'truck' || veh.type === 'tanker' ? c.tollPerTruck : 0;
+      return veh.type === 'truck' || veh.type === 'tanker' ? c.tollPerTruck * level : 0;
     case 'speedCamera':
-      return w.ringSpeed > c.ringSpeed * c.cameraLimitFactor ? c.cameraFine : 0;
+      return w.ringSpeed > c.ringSpeed * c.cameraLimitFactor ? c.cameraFine * level : 0;
+    case 'billboard':
+      return c.billboardPerCar * level;
     case 'towDepot':
+    case 'detour':
       return 0;
   }
+}
+
+/**
+ * The arm slot a detour sign in module `slot` sends cars to: the first exit ahead of it
+ * (never the player's arm, nobody leaves there). From the angles alone, so the Street Builder
+ * shows the same exit the traffic takes.
+ */
+export function detourArmSlot(c: Config, slot: number): number | null {
+  const sign = (TAU * (slot + 0.5)) / Math.max(1, c.moduleSlotCount);
+  const count = Math.max(3, c.armSlotCount);
+  let best: number | null = null;
+  let nearest = Infinity;
+  for (const arm of builtArmSlots(c)) {
+    if (arm === 0) continue;
+    const exit = -Math.PI / 2 + (arm * TAU) / count - c.mergeAngle;
+    const ahead = wrap(exit - sign);
+    if (ahead < nearest) {
+      nearest = ahead;
+      best = arm;
+    }
+  }
+  return best;
+}
+
+/**
+ * The exits a car joining at `arm` may leave by, each detour sign on its way adding copies of
+ * the exit it points to: a plain list when there is no sign, so the draws stay as they were.
+ */
+export function withDetours(w: World, arm: Arm, options: Arm[]): Arm[] {
+  const c = w.config;
+  const out = [...options];
+  for (const [slotText, module] of Object.entries(c.modules)) {
+    if (module !== 'detour') continue;
+    const slot = Number(slotText);
+    const target = detourArmSlot(c, slot);
+    const exit = options.find((a) => a.slot === target);
+    if (!exit) continue;
+    const sign = w.layout.moduleRingS(slot, c.moduleSlotCount);
+    const entry = w.layout.entryS(arm);
+    if (w.layout.ringDistance(entry, sign) > w.layout.ringDistance(entry, w.layout.exitS(exit))) continue;
+    for (let k = detourExtraAt(c, moduleLevel(c, slot)); k > 0; k--) out.push(exit);
+  }
+  return out;
 }
 
 /** Charges every module a vehicle drove past in this step. */
@@ -74,7 +122,7 @@ export function chargeModules(w: World, veh: Vehicle, s: number, travelled: numb
     const centre = w.layout.moduleRingS(slot, c.moduleSlotCount);
     const ahead = w.layout.ringDistance(s, centre);
     if (ahead < 0 || ahead >= travelled) continue;
-    const amount = fee(w, module, veh);
+    const amount = fee(w, module, veh, moduleLevel(c, slot));
     if (amount <= 0) continue;
     w.score.money += amount;
     w.events.push({ type: 'modulePaid', module, slot, amount, point: w.layout.ring.pose(centre).position, time: now });

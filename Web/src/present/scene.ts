@@ -10,6 +10,7 @@ import { CarArt } from './carArt';
 import { lookFor } from './skins';
 import { S } from './strings';
 import { towDepotCovering } from '../core/modules';
+import { MODULE_COLORS } from './flow';
 import { criminalVehicle } from '../core/specials';
 import { isCarType, isEmergency } from '../core/vehicle';
 
@@ -221,20 +222,41 @@ export const SceneBuilder = {
       const zone = moduleZone(c, module);
       const radius = layout.ringRadius;
       const start = (s - zone.arc / 2) / radius;
-      list.w(arc(v(0, 0), radius, lane, start, start + zone.arc / radius), 'kerb', 0.5);
+      if (zone.arc > 0) list.w(arc(v(0, 0), radius, lane, start, start + zone.arc / radius), 'kerb', 0.5);
       const pose = layout.ring.pose(s);
       const across = mul(right(fromAngle(pose.heading)), lane / 2);
+      const ahead = fromAngle(pose.heading);
       if (module === 'tollBooth') {
-        list.w(line(sub(pose.position, across), add(pose.position, across), 2), 'hazard', 0.85);
+        // The barrier: a red and white arm across the lane, a booth at each kerb.
+        for (const [from, to, color] of [[-1, -0.35, 'lightRed'], [-0.35, 0.35, 'primary'], [0.35, 1, 'lightRed']] as const) {
+          list.w(line(add(pose.position, mul(across, from)), add(pose.position, mul(across, to)), 2.2), color, 0.95);
+        }
         for (const side of [-1, 1]) {
           list.w(rect(add(pose.position, mul(across, side)), v(5, 5), 1.5, pose.heading), 'surface');
-          list.w(rect(add(pose.position, mul(across, side)), v(3.5, 3.5), 1, pose.heading), 'hazard', 0.9);
+          list.w(rect(add(pose.position, mul(across, side)), v(3.5, 3.5), 1, pose.heading), MODULE_COLORS.tollBooth, 0.95);
         }
       } else if (module === 'speedCamera') {
         list.w(line(sub(pose.position, mul(across, 0.9)), add(pose.position, mul(across, 0.9)), 1.5), 'marking', 0.8);
         const mast = sub(pose.position, mul(across, 1.25));
-        list.w(rect(mast, v(7, 5), 1.5, pose.heading), 'surface');
-        list.w(circle(mast, 1.6), 'lightBlue', 0.9);
+        list.w(rect(mast, v(7, 5), 1.5, pose.heading), 'primary');
+        list.w(circle(mast, 1.8), 'accentInk');
+        list.w(circle(mast, 0.9), MODULE_COLORS.speedCamera);
+        list.w(circle(add(mast, mul(ahead, -2.2)), 0.8), 'lightRed');
+      } else if (module === 'detour') {
+        const board = add(pose.position, mul(normalize(pose.position), lane * 1.4));
+        const tail = sub(board, mul(ahead, 3.6));
+        const tip = add(board, mul(ahead, 3.6));
+        list.w(rect(board, v(13, 13), 1.8, pose.heading), 'primary');
+        list.w(rect(board, v(11, 11), 1.2, pose.heading), MODULE_COLORS.detour);
+        list.w(line(tail, tip, 2.2), 'primary');
+        for (const side of [-1, 1]) list.w(line(tip, add(sub(tip, mul(ahead, 2.4)), mul(right(ahead), 2.4 * side)), 1.8), 'primary');
+      } else if (module === 'billboard') {
+        const board = add(pose.position, mul(normalize(pose.position), lane * 1.6));
+        list.w(rect(board, v(3, 3), 0.5, pose.heading), 'surface');
+        list.w(rect(board, v(25, 7), 1.5, pose.heading), 'primary');
+        list.w(rect(board, v(23, 5), 1, pose.heading), MODULE_COLORS.billboard);
+        list.w(line(add(board, mul(ahead, -9)), add(board, mul(ahead, 2)), 1.2), 'primary', 0.95);
+        list.w(circle(add(board, mul(ahead, 8)), 1.7), 'accent');
       } else {
         const yardPose = cachedYard(slot, layout, c);
         const yard = yardPose.position;
@@ -242,7 +264,7 @@ export const SceneBuilder = {
         list.w(rect(yard, TOW_YARD_SIZE, 4, heading), 'kerb');
         list.w(rect(yard, sub(TOW_YARD_SIZE, v(4, 4)), 3, heading), 'surface');
         list.w(rect(add(yard, mul(fromAngle(heading), 7)), v(11, 7), 2, heading + 0.3), 'vehicleCarGraphite', 0.8);
-        list.w(rect(sub(yard, mul(fromAngle(heading), 7)), v(12, 7), 2, heading), 'hazard', 0.9);
+        list.w(rect(sub(yard, mul(fromAngle(heading), 7)), v(12, 7), 2, heading), MODULE_COLORS.towDepot, 0.95);
       }
     }
   },
@@ -280,7 +302,7 @@ export const SceneBuilder = {
       const target = add(wreck.position, mul(normalize(wreck.position), world.config.carWidth + 4));
       const at = add(yard, mul(sub(target, yard), out));
       const heading = Math.atan2(target.y - yard.y, target.x - yard.x);
-      list.w(rect(at, v(16, 9), 2, heading), 'hazard');
+      list.w(rect(at, v(16, 9), 2, heading), MODULE_COLORS.towDepot);
       list.w(rect(add(at, mul(fromAngle(heading), 5)), v(5, 8), 1.5, heading), 'surface');
     }
   },

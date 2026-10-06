@@ -154,6 +154,30 @@ export class BuildFlow {
     this.host.play(['uiTick'], ['comboUp']);
   }
 
+  /** The sheet's Upgrade: the module on that slot goes one level up, for money. */
+  upgradeInspected(): void {
+    const b = this.host.builderPage;
+    const built = b.inspected?.part;
+    if (built?.k !== 'module') return;
+    const career = this.host.save.career;
+    const module = career.modules[built.slot];
+    const price = Careers.moduleUpgradePrice(career, built.slot, this.host.config);
+    if (!module || price === null) return;
+    const money = career.money;
+    if (!Careers.upgradeModule(career, built.slot, this.host.config)) {
+      b.denied = 0.001;
+      this.host.play(['denied'], []);
+      this.host.showNotice(S.notice.notEnoughMoney(Fmt.number(price)));
+      return;
+    }
+    b.builtModule = { slot: built.slot, age: 0 };
+    b.moneyBefore = money;
+    this.host.persist();
+    this.host.refreshWaitingShift();
+    this.host.play(['build'], ['comboUp']);
+    this.host.showNotice(S.notice.upgraded(S.builder.name(module), career.moduleLevels[built.slot] ?? 1));
+  }
+
   /** The lifted part lands on `slot`, free of charge. */
   move(slot: number): void {
     const b = this.host.builderPage;

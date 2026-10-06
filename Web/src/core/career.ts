@@ -1,5 +1,5 @@
 import { MUSEUM_SHELVES } from './museum';
-import { baseConfig, cloneConfig, type Config, type RoadModule, type Weather, type CityEvent, type BossKind, type LegendaryRule, modulePrice } from './config';
+import { baseConfig, cloneConfig, type Config, type RoadModule, type Weather, type CityEvent, type BossKind, type LegendaryRule, MODULE_MAX_LEVEL, modulePrice, moduleUpgradePrice } from './config';
 import {
   forLevel,
   drawLegendary,
@@ -170,6 +170,8 @@ export interface Career {
   upgrades: Partial<Record<Upgrade, number>>;
   armSlots: number[];
   modules: Record<number, RoadModule>;
+  /** Module slots upgraded above level 1 (`moduleLevel` in config.ts). */
+  moduleLevels: Record<number, number>;
   mastery: MasteryStats;
   masteryTiers: Partial<Record<MasteryGoal, number>>;
   chests: ChestKind[];
@@ -295,6 +297,7 @@ export const newCareer = (): Career => ({
   upgrades: {},
   armSlots: [0, 4, 8, 12],
   modules: {},
+  moduleLevels: {},
   mastery: { perfects: 0, tightFits: 0, nearMisses: 0, takedowns: 0, transporters: 0, bestChain: 0, bestCombo: 0, shiftsCompleted: 0, ambulances: 0, shaves: 0 },
   masteryTiers: {},
   chests: [],
@@ -418,6 +421,7 @@ export const Careers = {
     const cfg = cloneConfig(base);
     cfg.armSlots = [...c.armSlots];
     cfg.modules = { ...c.modules };
+    cfg.moduleLevels = { ...c.moduleLevels };
     cfg.sportsCarShare = Careers.owns(c, 'sportsCar') ? base.sportsCarShareOwned : 0;
     cfg.compactShare = Careers.owns(c, 'compact') ? base.compactShareOwned : 0;
     cfg.vanShare = Careers.owns(c, 'van') ? base.vanShareOwned : 0;
@@ -577,6 +581,10 @@ export const Careers = {
     const next = { ...c.modules, [to]: c.modules[from] };
     delete next[from];
     c.modules = next;
+    const levels = { ...c.moduleLevels };
+    if (levels[from] !== undefined) levels[to] = levels[from];
+    delete levels[from];
+    c.moduleLevels = levels;
     return true;
   },
 
@@ -593,6 +601,24 @@ export const Careers = {
     const next = { ...c.modules };
     delete next[slot];
     c.modules = next;
+    const levels = { ...c.moduleLevels };
+    delete levels[slot];
+    c.moduleLevels = levels;
+  },
+
+  /** The price of the next level of the module in `slot`, or null at the top (or with no module). */
+  moduleUpgradePrice(c: Career, slot: number, config: Config = baseConfig): number | null {
+    const module = c.modules[slot];
+    const level = c.moduleLevels[slot] ?? 1;
+    return module === undefined || level >= MODULE_MAX_LEVEL ? null : moduleUpgradePrice(config, module, level + 1);
+  },
+
+  upgradeModule(c: Career, slot: number, config: Config = baseConfig): boolean {
+    const price = Careers.moduleUpgradePrice(c, slot, config);
+    if (price === null || c.money < price) return false;
+    c.money -= price;
+    c.moduleLevels = { ...c.moduleLevels, [slot]: (c.moduleLevels[slot] ?? 1) + 1 };
+    return true;
   },
 
   // MARK: Chests and collection
@@ -733,7 +759,7 @@ export const Careers = {
     c.lastLoginDay = Math.max(c.lastLoginDay, day);
     if (last < 0 || day <= last) return null;
     const days = Math.min(day - last, config.loginMaxDays);
-    const booths = Object.values(c.modules).filter((m) => m === 'tollBooth').length;
+    const booths = Object.entries(c.modules).reduce((n, [slot, m]) => (m === 'tollBooth' ? n + (c.moduleLevels[Number(slot)] ?? 1) : n), 0);
     const income = booths * config.tollIncomePerDay * days;
     if (income <= 0) return null;
     c.money += income;

@@ -1,4 +1,4 @@
-import { type Config, gravity } from './config';
+import { type Config, gravity, moduleZone } from './config';
 import { Layout, type Arm } from './roundabout';
 import { type Pose } from './paths';
 import { Rng, substream } from './rng';
@@ -40,7 +40,7 @@ import {
   updateEscorts,
 } from './specials';
 import { type MilitaryPhase, updateMilitary, explode, isEscorted, predictedZoneS, gapToZone } from './explosions';
-import { chargeModules, wreckClearRate, towDepotCovering } from './modules';
+import { chargeModules, wreckClearRate, towDepotCovering, withDetours } from './modules';
 import { tempoAt, densityAt, forWeather } from './levels';
 import { type AmbulancePhase, firstAmbulance, updateAmbulance, noteMergeNearAmbulance, ambulanceThrough } from './ambulance';
 import { type LearnerPhase, firstLearner, updateLearner, noteMergeNearLearner, learnerThrough } from './learner';
@@ -526,7 +526,7 @@ export class World {
       const a = this.layout.advance(arm, k);
       if (a.index !== 0) options.push(a);
     }
-    return options.length === 0 ? this.layout.advance(arm, 1) : this.rng.pick(options);
+    return options.length === 0 ? this.layout.advance(arm, 1) : this.rng.pick(withDetours(this, arm, options));
   }
 
   // MARK: Movement
@@ -1978,12 +1978,12 @@ export function seatArms(layout: Layout, players: number): Arm[] {
 
 export function isModuleQueueAt(w: World, s: number): boolean {
   const c = w.config;
-  const slow = Object.entries(c.modules).filter(([, m]) => (m === 'tollBooth' ? c.tollSpeedFactor : m === 'speedCamera' ? c.cameraSpeedFactor : 1) < 1);
+  const slow = Object.entries(c.modules).filter(([, m]) => moduleZone(c, m).speedFactor < 1);
   if (slow.length === 0) return false;
   const reach = c.jamLookahead * w.ringSpeed;
   const L = w.layout.ring.length;
   return slow.some(([slot, m]) => {
-    const arc = m === 'tollBooth' ? c.tollZoneArc : c.cameraZoneArc;
+    const { arc } = moduleZone(c, m);
     const start = wrap(w.layout.moduleRingS(Number(slot), c.moduleSlotCount) - arc / 2, L);
     return w.layout.ringDistance(wrap(start - reach, L), s) <= reach + arc;
   });

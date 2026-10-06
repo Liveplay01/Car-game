@@ -295,7 +295,7 @@ Geld bleibt auch aus verlorenen Schichten. Der Kontostand steht immer links in d
 |---|---|---|
 | **Upgrades** (Build → Upgrades) | 13 Upgrades, 86 Stufen | erste Stufe 2.600 × Faktor, jede weitere ×1,5 |
 | **Zufahrten** (Build → Street Builder) | 5.–8. Arm; je Arm Ring +18 breiter, +25 % Verkehr, Transporter 15 % früher, +10 % Lohn | 32.500 / 65.000 / 130.000 / 260.000 = **487.500** |
-| **Module** (Street Builder) | Toll Booth, Speed Camera, Tow Depot auf 6 festen Modulplätzen | 10.400 / 15.600 / 13.000 |
+| **Module** (Street Builder) | Toll Booth, Speed Camera, Tow Depot, Billboard, Detour Sign auf 6 festen Modulplätzen | 10.400 / 15.600 / 13.000 / 9.100 / 7.800 |
 | **Truhen** (Shop) | Standard, Premium | 26.000 / 52.000 |
 | **Saison-Pass** (Progress → Today, ab Level 15) | 12 Stufen pro Saison | 150.000 |
 | **Ruhmeshalle** (Records → Elite) | Monument mit Plakette pro Prestige-Rang, eigener Skin | 250.000 |
@@ -379,6 +379,10 @@ Ein neuer Spieler trifft die Systeme nacheinander (`core/unlocks.ts`, Werte in `
 - **Toll Booth:** Lkw zahlen, der Abschnitt staut (Zone 150 Einheiten, Tempo ×0,55). Der Stau behindert Polizei → Verbrecher entkommen leichter.
 - **Speed Camera:** kurze, scharfe Zone (44 Einheiten), alle bremsen (×0,7); zahlt nur über 108 % Grundtempo.
 - **Tow Depot:** Wracks in seiner Zone (180 Einheiten) verschwinden 30 % schneller; nach einem Crash fährt kurz ein Abschleppwagen hin.
+- **Billboard:** jedes Fahrzeug, das vorbeifährt, zahlt in den ersten 60 s einer Schicht; kurze Zone (110 Einheiten), Tempo ×0,85.
+- **Detour Sign:** Autos, die am Schild vorbeifahren, wählen die erste Ausfahrt dahinter (nie die des Spielers) 3-mal so oft (Stufe 3: 5-mal). Wer erst hinter dem Schild einfährt, bleibt unberührt. Modulplatz 2 zeigt auf den Arm direkt vor dem Spielerarm (`detourArmSlot`, `core/modules.ts`).
+- **Modulstufen** (Leo, 06.10.2026): jedes Modul hat 3 Stufen; Stufe 2 kostet das 1,5-Fache, Stufe 3 das 2,5-Fache des Preises (`moduleUpgradePrice`). Toll Booth, Speed Camera und Billboard zahlen pro Stufe das Einfache der Basis, das Tow Depot räumt 10 Prozentpunkte schneller, das Detour Sign wählt die Ausfahrt eine Stufe öfter. Verschieben behält die Stufe, Abreißen löscht sie; Speicherstand (`moduleLevels`) und Challenge-Link tragen sie.
+- **Zonen-Vorschau:** der Builder zeigt die Zone jedes Moduls auf dem Ring (stärker beim Antippen, Ziehen und Verschieben), beim Detour Sign den Weg bis zur Ausfahrt mit dem Arm.
 - **City Evolution:** um den Kreisverkehr wachsen mit Level, Zufahrten und Modulen Stadtblöcke, Bäume und Infrastruktur – rein Darstellung.
 
 ---

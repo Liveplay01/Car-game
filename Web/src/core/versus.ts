@@ -34,6 +34,7 @@ export function versusConfig(players: number, seed: number): Config {
   c.cityEvent = null;
   c.closedArmSlot = null;
   c.modules = {};
+  c.moduleLevels = {};
   c.trialRule = null;
   return c;
 }

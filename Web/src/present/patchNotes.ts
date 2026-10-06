@@ -44,6 +44,19 @@ export const itemCredit = (item: PatchItem): string | null => {
 
 export const PATCH_NOTES: PatchNote[] = [
   {
+    id: '2026-10-06',
+    date: '6 October 2026',
+    title: 'Detour Sign, Billboard and upgradable modules in the Street Builder',
+    impact: 'major',
+    items: [
+      'Street Builder parts have new icons: a coloured badge each with a picture of what it does (a barrier, a camera, a tow truck, a board, a turn arrow), and the same colours on the road signs in the city.',
+      'Modules can be upgraded twice now: tap a built Toll Booth, Speed Camera, Tow Depot, Billboard or Detour Sign in the Street Builder and choose Upgrade. Every level pays more (or clears wrecks faster, or steers more cars); a built module shows one dot per level above the first.',
+      'The Street Builder shows where a module works: the stretch of road it covers is lit on the ring while you drag it, move it or look at it. A Detour Sign shows the exit it points to.',
+      'New in the Street Builder: the Detour Sign. Cars that drive past it choose the next exit much more often, so fewer cars are left to reach the arm behind it. Put it just before your own arm and merging gets easier.',
+      'New in the Street Builder: the Billboard. Every car that drives past pays a little in the first minute of a shift, and drivers look up and ease off a bit around it.',
+    ],
+  },
+  {
     id: '2026-10-05',
     date: '5 October 2026',
     title: 'Optional ads for a free upgrade step and a better Skin Upgrade chance, and codes that send themselves',

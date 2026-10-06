@@ -35,8 +35,13 @@ export const INVITE_LEVEL = 5;
 /** The game mentions it once to everyone, and again when a player reaches this level (Leo, 04.10.2026): one who has the hang of it is who shares it. */
 export const INVITE_REMINDER_LEVEL = 10;
 
-export type RoadModule = 'tollBooth' | 'speedCamera' | 'towDepot';
-export const ROAD_MODULES: RoadModule[] = ['tollBooth', 'speedCamera', 'towDepot'];
+// New modules go at the end: a challenge link stores their positions.
+export type RoadModule = 'tollBooth' | 'speedCamera' | 'towDepot' | 'billboard' | 'detour';
+export const ROAD_MODULES: RoadModule[] = ['tollBooth', 'speedCamera', 'towDepot', 'billboard', 'detour'];
+
+/** A module can be upgraded to this level; level 2 and 3 cost this share of its price each. */
+export const MODULE_MAX_LEVEL = 3;
+export const MODULE_UPGRADE_SHARE = [1.5, 2.5];
 
 export type TrialRule = 'flawless';
 
@@ -211,6 +216,8 @@ export const baseConfig = {
   // Ring modules and trucks
   moduleSlotCount: 6,
   modules: {} as Record<number, RoadModule>,
+  /** The level of a module slot above 1 (a missing slot is level 1). */
+  moduleLevels: {} as Record<number, number>,
   truckChance: 0.22,
   truckLength: 36,
   truckMass: 2.2,
@@ -248,6 +255,15 @@ export const baseConfig = {
   towZoneArc: 180,
   towSpeedup: 0.3,
   towDepotCost: 13000,
+  billboardZoneArc: 110,
+  billboardSpeedFactor: 0.85,
+  billboardPerCar: 1,
+  billboardCost: 9100,
+  /** Detour sign: cars that pass it choose the next exit this many times more often (+1 per level). */
+  detourExtra: 2,
+  detourCost: 7800,
+  /** Tow Depot: the faster clearing grows by this much per level. */
+  towSpeedupPerLevel: 0.1,
 
   // Explosives
   tankerShare: 0,
@@ -819,6 +835,7 @@ export const cloneConfig = (c: Config): Config => ({
   ...c,
   armSlots: [...c.armSlots],
   modules: { ...c.modules },
+  moduleLevels: { ...c.moduleLevels },
   comboThresholds: [...c.comboThresholds],
   comboMultipliers: [...c.comboMultipliers],
   crashCosts: [...c.crashCosts],
@@ -855,11 +872,36 @@ export const moduleEntries = (c: Config): [number, RoadModule][] =>
     .sort((a, b) => a[0] - b[0]);
 
 export function modulePrice(c: Config, m: RoadModule): number {
-  return m === 'tollBooth' ? c.tollBoothCost : m === 'speedCamera' ? c.speedCameraCost : c.towDepotCost;
+  switch (m) {
+    case 'tollBooth':
+      return c.tollBoothCost;
+    case 'speedCamera':
+      return c.speedCameraCost;
+    case 'towDepot':
+      return c.towDepotCost;
+    case 'billboard':
+      return c.billboardCost;
+    case 'detour':
+      return c.detourCost;
+  }
 }
+
+/** The level of the module in `slot`: 1 to MODULE_MAX_LEVEL. */
+export const moduleLevel = (c: Config, slot: number): number => Math.min(MODULE_MAX_LEVEL, Math.max(1, c.moduleLevels[slot] ?? 1));
+
+/** What it costs to take a module to `level` (2 or 3). */
+export const moduleUpgradePrice = (c: Config, m: RoadModule, level: number): number => Math.round(modulePrice(c, m) * MODULE_UPGRADE_SHARE[level - 2]);
+
+/** How much faster a Tow Depot of this level clears wrecks (a share of their time). */
+export const towSpeedupAt = (c: Config, level: number): number => c.towSpeedup + c.towSpeedupPerLevel * (level - 1);
+
+/** How many times more often cars take the exit a detour sign of this level points to. */
+export const detourExtraAt = (c: Config, level: number): number => c.detourExtra + level - 1;
 
 export function moduleZone(c: Config, m: RoadModule): { arc: number; speedFactor: number } {
   if (m === 'tollBooth') return { arc: c.tollZoneArc, speedFactor: c.tollSpeedFactor };
   if (m === 'speedCamera') return { arc: c.cameraZoneArc, speedFactor: c.cameraSpeedFactor };
+  if (m === 'billboard') return { arc: c.billboardZoneArc, speedFactor: c.billboardSpeedFactor };
+  if (m === 'detour') return { arc: 0, speedFactor: 1 };
   return { arc: c.towZoneArc, speedFactor: 1 };
 }

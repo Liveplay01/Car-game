@@ -11,6 +11,7 @@ import type { RoadModule } from '../core/config';
 import { type Vec2, v, clamp } from '../core/vec2';
 import { type Rect, R, Metrics } from './render';
 import type { ShiftSummary } from './hud';
+import type { ColorToken } from './theme';
 
 /**
  * The pages. The tab bar shows four (`TAB_BAR`); the Street Builder shares
@@ -44,8 +45,17 @@ export type ProgressSection = 0 | 1 | 2 | 3;
 export const PROGRESS = { today: 0, goals: 1, records: 2, museum: 3 } as const satisfies Record<string, ProgressSection>;
 
 export type Part = 'arm' | RoadModule;
-export const PARTS: Part[] = ['arm', 'tollBooth', 'speedCamera', 'towDepot'];
+export const PARTS: Part[] = ['arm', 'tollBooth', 'speedCamera', 'towDepot', 'billboard', 'detour'];
 export const partModule = (p: Part): RoadModule | null => (p === 'arm' ? null : p);
+
+/** Each module's colour: its icon's badge, its zone in the Street Builder and its sign on the road. */
+export const MODULE_COLORS: Record<RoadModule, ColorToken> = {
+  tollBooth: 'hazard',
+  speedCamera: 'lightBlue',
+  towDepot: 'torii',
+  billboard: 'sakuraDeep',
+  detour: 'groundMeadow',
+};
 
 export type Built = { k: 'arm'; slot: number } | { k: 'module'; slot: number };
 
@@ -72,6 +82,8 @@ export type ScreenAction =
   /** The open sheet of a built part: lift it to move it, or tear it down (a second tap confirms). */
   | { k: 'moveBuilt' }
   | { k: 'deleteBuilt' }
+  /** The open sheet of a built module: take it one level up. */
+  | { k: 'upgradeBuilt' }
   /** The lifted part lands on this slot. */
   | { k: 'movePart'; slot: number }
   | { k: 'openChest'; index: number }
@@ -96,7 +108,7 @@ export type ScreenAction =
 export const BuildLayout = {
   gap: 12,
   segmentHeight: 32,
-  paletteHeight: 112,
+  paletteHeight: 162,
   /** Share of the room the builder's ring uses, and its largest radius (points). */
   mapZoom: 0.8,
   maxMapRadius: 170,

@@ -1,4 +1,4 @@
-import { baseConfig, INVITE_LEVEL, INVITE_REMINDER_LEVEL, type Config, type Weather, type CityEvent, type BossKind, type LegendaryRule } from '../core/config';
+import { baseConfig, INVITE_LEVEL, INVITE_REMINDER_LEVEL, detourExtraAt, towSpeedupAt, type Config, type Weather, type CityEvent, type BossKind, type LegendaryRule } from '../core/config';
 import type { Upgrade } from '../core/levels';
 import type { MasteryGoal, MasteryCompletion } from '../core/career';
 import { MASTERY_THRESHOLDS, masteryNumeral } from '../core/career';
@@ -768,7 +768,7 @@ export const S = {
     buildHint: 'Double-tap the part to build it · one tap takes it away.',
     keepsArms: (n: number): string => `A roundabout keeps at least ${n} arms`,
     name: (part: string): string =>
-      part === 'arm' ? 'New arm' : part === 'tollBooth' ? 'Toll Booth' : part === 'speedCamera' ? 'Speed Camera' : 'Tow Depot',
+      part === 'arm' ? 'New arm' : part === 'tollBooth' ? 'Toll Booth' : part === 'speedCamera' ? 'Speed Camera' : part === 'billboard' ? 'Billboard' : part === 'detour' ? 'Detour Sign' : 'Tow Depot',
     /** A part that is already on the ring (its sheet). */
     builtName: (part: string): string => (part === 'arm' ? 'Arm' : S.builder.name(part)),
     onTheRing: 'On your roundabout',
@@ -780,16 +780,41 @@ export const S = {
     moveHint: 'Drag it to a free slot, or tap one · tap anywhere else to keep it where it is.',
     moved: (name: string): string => `${name} moved`,
     moveCancelled: 'Stays where it is',
-    explanation(part: string, c: Config): string {
+    level: (level: number, max: number): string => `Level ${level} of ${max}`,
+    upgrade: (price: string): string => `Upgrade · ${price}`,
+    maxLevel: 'Fully upgraded',
+    nextLevel: 'Next level',
+    upgraded: (name: string, level: number): string => `${name} is level ${level} now`,
+    zone: 'Where it works',
+    /** What a module of this level does in a few words (the sheet's Now and Next level). */
+    effect(part: string, c: Config, level: number): string {
+      switch (part) {
+        case 'tollBooth':
+          return `${money(String(c.tollPerTruck * level))} per lorry`;
+        case 'speedCamera':
+          return `${money(String(c.cameraFine * level))} per speeder`;
+        case 'billboard':
+          return `${money(String(c.billboardPerCar * level))} per car`;
+        case 'detour':
+          return `Exit used ${1 + detourExtraAt(c, level)}× as often`;
+        default:
+          return `Wrecks gone ${percent(towSpeedupAt(c, level))} faster`;
+      }
+    },
+    explanation(part: string, c: Config, level = 1): string {
       switch (part) {
         case 'arm':
           return `A wider ring with one more way in and out: ${percent(c.trafficPerArm)} more traffic, transporters more often, and ${percent(c.payPerArm)} more pay per shift.`;
         case 'tollBooth':
-          return `Every lorry pays ${money(String(c.tollPerTruck))} here, in the first ${Math.round(c.moduleEarningSeconds)} s of a shift. Traffic slows down around it, and so do your police cars.`;
+          return `Every lorry pays ${money(String(c.tollPerTruck * level))} here, in the first ${Math.round(c.moduleEarningSeconds)} s of a shift. Traffic slows down around it, and so do your police cars.`;
         case 'speedCamera':
-          return `Fines every car over the limit ${money(String(c.cameraFine))} in the first ${Math.round(c.moduleEarningSeconds)} s of a shift: nothing in a calm shift, a lot in rush hour. Everyone brakes hard at it.`;
+          return `Fines every car over the limit ${money(String(c.cameraFine * level))} in the first ${Math.round(c.moduleEarningSeconds)} s of a shift: nothing in a calm shift, a lot in rush hour. Everyone brakes hard at it.`;
+        case 'billboard':
+          return `Every car that drives past pays ${money(String(c.billboardPerCar * level))} in the first ${Math.round(c.moduleEarningSeconds)} s of a shift. Drivers look up and ease off a little.`;
+        case 'detour':
+          return `A sign for the next exit: cars that drive past it choose that exit ${1 + detourExtraAt(c, level)} times as often, so fewer cars are left to reach the arm behind it. Put it just before your own arm and merging gets easier.`;
         default:
-          return `Wrecks near it are towed away ${percent(c.towSpeedup)} faster, so the ring flows again sooner.`;
+          return `Wrecks near it are towed away ${percent(towSpeedupAt(c, level))} faster, so the ring flows again sooner.`;
       }
     },
   },
@@ -1465,6 +1490,7 @@ export const S = {
     built: (name: string, arms: number): string => `${name} built · ${arms} arms`,
     placed: (name: string): string => `${name} built on the ring`,
     removed: (name: string): string => `${name} torn down`,
+    upgraded: (name: string, level: number): string => `${name} is level ${level} now`,
     bought: (name: string, steps: number, max: number): string => `${name} ${steps}/${max}`,
   },
 };

@@ -1162,6 +1162,65 @@ test('Street Builder moves a built arm or module for free, only to a free slot, 
   assert.equal(c.money, 1000, 'moving is free');
 });
 
+test('a module goes up two levels for money, keeps its level when moved and loses it when torn down', () => {
+  const c = newCareer();
+  const cfg = baseConfig;
+  c.modules = { 1: 'tollBooth' };
+  c.money = 100000;
+  assert.equal(Careers.moduleUpgradePrice(c, 1, cfg), 15600);
+  assert.ok(Careers.upgradeModule(c, 1, cfg));
+  assert.equal(Careers.moduleUpgradePrice(c, 1, cfg), 26000);
+  assert.ok(Careers.upgradeModule(c, 1, cfg));
+  assert.equal(c.moduleLevels[1], 3);
+  assert.equal(Careers.moduleUpgradePrice(c, 1, cfg), null, 'level 3 is the top');
+  assert.ok(!Careers.upgradeModule(c, 1, cfg));
+  assert.equal(c.money, 100000 - 15600 - 26000);
+  assert.ok(Careers.moveModule(c, 1, 4, cfg));
+  assert.deepEqual(c.moduleLevels, { 4: 3 });
+  Careers.removeModule(c, 4);
+  assert.deepEqual(c.moduleLevels, {});
+  assert.equal(Careers.moduleUpgradePrice(c, 4, cfg), null, 'nothing on that slot');
+  c.modules = { 2: 'billboard' };
+  c.money = 10;
+  assert.ok(!Careers.upgradeModule(c, 2, cfg), 'too poor');
+  assert.deepEqual(c.moduleLevels, {});
+});
+
+test('module levels survive a save and a challenge link', () => {
+  const career = newCareer();
+  career.modules = { 0: 'detour', 3: 'billboard', 5: 'tollBooth' };
+  career.moduleLevels = { 3: 2, 5: 3 };
+  const spec = challengeOf(career, 'shift', 1, 5, null, 0, null);
+  assert.deepEqual(decodeChallenge(encodeChallenge(spec)), spec);
+  assert.deepEqual(decodeChallenge(encodeChallenge(spec)).moduleLevels, { 3: 2, 5: 3 });
+  fakeStorage();
+  const save = newSave();
+  save.career = career;
+  writeSave(save);
+  assert.deepEqual(loadSave().career.moduleLevels, { 3: 2, 5: 3 });
+  assert.deepEqual(Careers.config(career, baseConfig, 1).moduleLevels, { 3: 2, 5: 3 });
+});
+
+test('a detour sign sends the cars that pass it to the next exit more often, and not the ones that join after it', () => {
+  const share = (modules, entry, target, level = 1) => {
+    const cfg = cloneConfig(baseConfig);
+    cfg.modules = modules;
+    cfg.moduleLevels = level > 1 ? { 2: level, 3: level } : {};
+    const world = new World(cfg, 7, { startsOnFirstTap: false });
+    const arm = world.layout.arms.find((a) => a.slot === entry);
+    let hits = 0;
+    for (let i = 0; i < 4000; i++) if (world.randomExit(arm).slot === target) hits++;
+    return hits / 4000;
+  };
+  // Arms on 0, 4, 8, 12; the sign on module slot 2 sits just before the exit of arm 12.
+  assert.ok(Math.abs(share({}, 8, 12) - 0.5) < 0.04, 'no sign: an even draw between the two exits');
+  assert.ok(Math.abs(share({ 2: 'detour' }, 8, 12) - 0.75) < 0.04, 'level 1: three to one');
+  assert.ok(Math.abs(share({ 2: 'detour' }, 8, 12, 3) - 5 / 6) < 0.04, 'level 3: five to one');
+  // Module slot 3 points at arm 4; a car joining at the player’s arm is already past it.
+  assert.ok(Math.abs(share({ 3: 'detour' }, 0, 4) - 1 / 3) < 0.04, 'joined after the sign: untouched');
+  assert.ok(share({ 3: 'detour' }, 12, 4) > 0.6, 'joined before the sign: steered');
+});
+
 // MARK: What's new
 
 test("What's new has one entry per day, newest first, and a new item lights the dot again", async () => {
