@@ -26,7 +26,9 @@ export const FEATS: Feat[] = [
   { id: 'singularity', goal: { k: 'prestige', rank: 20 }, title: 'eternal' },
   { id: 'zenith', goal: { k: 'elite', level: 75 }, title: 'grandmaster' },
   { id: 'eventHorizon', goal: { k: 'elite', level: 100 }, title: 'centurion' },
+  { id: 'glowtide', goal: { k: 'elite', level: 85 }, title: null },
   { id: 'undying', goal: { k: 'legendary', shifts: 50 }, title: 'immortal' },
+  { id: 'moonmirror', goal: { k: 'prestige', rank: 25 }, title: null },
 ];
 
 export const Feats = {

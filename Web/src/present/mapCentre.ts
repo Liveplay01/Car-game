@@ -434,6 +434,155 @@ export const Centre = {
     list.w(circle(c, r * 0.52), 'groundHorizon', 1);
     list.w(arc(c, r * 0.54, 1.1, 0, TAU), 'fireCore', time !== null ? 0.65 + 0.25 * Math.sin(t * 2) : 0.8);
   },
+  /** Savanna: a waterhole in trampled mud, elephants drinking at its rim and antelope grazing round it. */
+  waterhole(list: RenderList, c: Vec2, time: number | null): void {
+    const r = MapTheme.pondRadius;
+    const t = time ?? 0;
+    list.w(circle(c, r * 1.4), 'savannaDry', 0.35);
+    list.w(circle(c, r * 1.12), 'skinMocha', 0.55);
+    list.w(circle(c, r * 0.86), 'water', 1);
+    for (let k = 0; k < 2; k++) {
+      const phase = (t * 0.25 + k / 2) % 1;
+      list.w(arc(c, r * (0.2 + 0.6 * phase), 0.8, 0, TAU), 'primary', 0.35 * (1 - phase));
+    }
+    for (let k = 0; k < 9; k++) {
+      const a = (k / 9) * TAU + 0.4;
+      const root = add(c, mul(fromAngle(a), r * 0.96));
+      for (let b = -1; b <= 1; b++) list.w(line(root, add(root, mul(fromAngle(a + b * 0.5), 3.4)), 0.9), 'savannaAcacia', 0.85);
+    }
+    for (let i = 0; i < 3; i++) {
+      const a = [0.6, 2.5, 4.4][i] + 0.05 * Math.sin(t * 0.3 + i);
+      const body = add(c, mul(fromAngle(a), r * 1.08));
+      const toward = mul(fromAngle(a + Math.PI), 1);
+      list.w(circle(add(body, v(1.4, -1.4)), 4.4), 'shadow', 0.35);
+      list.w(circle(body, 3.6), 'stone', 0.98);
+      for (const side of [-1, 1]) list.w(circle(add(body, add(mul(toward, 1.2), mul(left(toward), side * 3.2))), 1.7), 'wreck', 0.9);
+      const head = add(body, mul(toward, 3.6));
+      list.w(circle(head, 2), 'stone', 0.98);
+      const sway = Math.sin(t * 1.2 + i) * 0.4;
+      list.w(line(head, add(head, mul(fromAngle(a + Math.PI + sway), 4)), 1.2), 'wreck', 0.9);
+    }
+    for (let i = 0; i < 4; i++) {
+      const a = i * 1.7 + t * 0.03 * (1 + i);
+      const at = add(c, mul(fromAngle(a), r * (1.55 + 0.1 * i)));
+      list.w(rect(at, v(1.8, 4), 0.8, a), 'skinCopper', 0.95);
+      list.w(circle(add(at, mul(fromAngle(a + Math.PI / 2), 2.4)), 1), 'skinCopper', 0.95);
+    }
+  },
+  /** Rainforest: a plunge pool under a waterfall, ringed with rocks, lily pads and mist. */
+  jungleFalls(list: RenderList, c: Vec2, time: number | null): void {
+    const r = MapTheme.pondRadius;
+    const t = time ?? 0;
+    list.w(circle(c, r * 1.35), 'firDark', 0.18);
+    list.w(circle(c, r * 1.06), 'stone', 0.9);
+    list.w(circle(c, r * 0.92), 'water', 1);
+    list.w(circle(c, r * 0.92), 'palmDark', 0.28);
+    for (let k = 0; k < 10; k++) {
+      const at = add(c, mul(fromAngle((k / 10) * TAU + 0.3), r * 1.0));
+      list.w(circle(at, 3.2 + 1.6 * hash(k, 1401)), k % 2 === 0 ? 'stone' : 'wreck', 0.95);
+      list.w(circle(add(at, v(-0.8, 0.8)), 1.4), 'primary', 0.35);
+    }
+    const down = fromAngle(-Math.PI / 2);
+    const ledge = add(c, mul(fromAngle(Math.PI / 2), r * 0.98));
+    for (let s = -2; s <= 2; s++) {
+      const phase = (t * 0.9 + s * 0.23 + 1) % 1;
+      const from = add(ledge, v(s * 2.6, -phase * r * 0.2));
+      list.w(line(from, add(from, mul(down, r * 0.34)), 1.6), 'primary', 0.75 * (1 - 0.5 * phase));
+    }
+    const base = add(c, mul(fromAngle(Math.PI / 2), r * 0.42));
+    for (let k = 0; k < 3; k++) {
+      const phase = (t * 0.5 + k / 3) % 1;
+      list.w(arc(base, 2 + r * 0.38 * phase, 0.9, 0, TAU), 'primary', 0.5 * (1 - phase));
+    }
+    list.w(circle(base, r * 0.5), 'primary', 0.07 + 0.03 * Math.sin(t * 1.3));
+    for (let i = 0; i < 4; i++) {
+      const at = add(c, mul(fromAngle(i * 1.9 + 0.5 + 0.08 * Math.sin(t * 0.4 + i)), r * (0.35 + 0.18 * i * 0.6)));
+      list.w(circle(at, 3), 'palmLeaf', 0.95);
+      list.w(circle(at, 0.9), i % 2 === 0 ? 'rainforestBloom' : 'primary', 0.95);
+    }
+  },
+  /** Alps: a summit from above, faces of rock lit from the upper left, snow on top and a cloud sliding past. */
+  summit(list: RenderList, c: Vec2, time: number | null): void {
+    const r = MapTheme.pondRadius;
+    const t = time ?? 0;
+    const n = 7;
+    const ring = Array.from({ length: n }, (_, i) => add(c, mul(fromAngle((i / n) * TAU + 0.2), r * (0.95 + 0.25 * hash(i, 1431)))));
+    list.w(circle(add(c, v(r * 0.18, -r * 0.18)), r * 1.25), 'shadow', 0.2);
+    for (let i = 0; i < n; i++) {
+      const mid = ((i + 0.5) / n) * TAU + 0.2;
+      const lit = Math.cos(mid - 2.36);
+      list.w(polygon([c, ring[i], ring[(i + 1) % n]]), lit > 0.35 ? 'stone' : lit > -0.3 ? 'alpsRock' : 'wreck', 1);
+      const cap = r * (0.5 + 0.1 * hash(i, 1433));
+      list.w(polygon([c, add(c, mul(fromAngle((i / n) * TAU + 0.2), cap)), add(c, mul(fromAngle(((i + 1) / n) * TAU + 0.2), cap))]), lit > 0 ? 'primary' : 'mapSnow', 0.95);
+      list.w(line(c, ring[i], 0.8), 'wreck', 0.45);
+    }
+    list.w(circle(c, 1.8), 'primary', 1);
+    for (let j = 0; j < 2; j++) {
+      const a = t * 0.12 + j * 3.1;
+      list.w(circle(add(c, mul(fromAngle(a), r * 0.85)), r * 0.42), 'primary', 0.16);
+      list.w(circle(add(c, mul(fromAngle(a + 0.25), r * 0.95)), r * 0.3), 'primary', 0.12);
+    }
+  },
+  /** Glowtide: a tide pool with a jellyfish pulsing in it and ripples crossing the glow. */
+  tidepool(list: RenderList, c: Vec2, time: number | null): void {
+    const r = MapTheme.pondRadius;
+    const t = time ?? 0;
+    list.w(circle(c, r * 1.5), 'mapGlowtide', 0.035);
+    list.w(circle(c, r * 1.15), 'glowtideBlue', 0.07);
+    list.w(circle(c, r), 'groundGlowtide', 1);
+    list.w(arc(c, r, 1.4, 0, TAU), 'glowtideBlue', 0.8);
+    for (let k = 0; k < 3; k++) {
+      const phase = (t * 0.22 + k / 3) % 1;
+      list.w(arc(c, r * (0.25 + 0.7 * phase), 0.8, 0, TAU), 'mapGlowtide', 0.5 * (1 - phase));
+    }
+    const pulse = 0.5 + 0.5 * Math.sin(t * 1.8);
+    for (let i = 0; i < 7; i++) {
+      const a = (i / 7) * TAU + t * 0.15;
+      const from = add(c, mul(fromAngle(a), r * 0.2));
+      const to = add(c, mul(fromAngle(a + 0.5 * Math.sin(t * 1.4 + i)), r * (0.55 + 0.1 * pulse)));
+      list.w(line(from, to, 0.9), 'mapGlowtide', 0.45);
+    }
+    list.w(circle(c, r * (0.26 + 0.05 * pulse)), 'mapGlowtide', 0.38);
+    list.w(circle(c, r * 0.17), 'primary', 0.55);
+    for (let i = 0; i < 10; i++) {
+      const a = hash(i, 1141) * TAU + t * (0.2 + 0.3 * hash(i, 1142));
+      list.w(circle(add(c, mul(fromAngle(a), r * (0.35 + 0.55 * hash(i, 1143)))), 0.8), i % 3 === 0 ? 'glowtideBlue' : 'mapGlowtide', 0.4 + 0.5 * Math.sin(t * 2 + i) ** 2);
+    }
+  },
+  /** Moonmirror: a round mirror pool, a crescent standing over it and its dimmer, wobbling reflection. */
+  moonPool(list: RenderList, c: Vec2, time: number | null): void {
+    const r = MapTheme.pondRadius;
+    const t = time ?? 0;
+    const crescent = (at: Vec2, size: number, opacity: number): void => {
+      list.w(circle(at, size), 'mapMoonmirror', opacity);
+      list.w(circle(add(at, v(size * 0.38, -size * 0.32)), size * 0.86), 'groundMoonmirror', 1);
+    };
+    list.w(circle(c, r * 1.3), 'mapMoonmirror', 0.04);
+    list.w(circle(c, r), 'groundMoonmirror', 1);
+    list.w(arc(c, r, 1.2, 0, TAU), 'mapMoonmirror', 0.7);
+    crescent(add(c, v(0.8 * Math.sin(t * 1.3), r * 0.2)), r * 0.38, 0.22);
+    crescent(add(c, v(0, -r * 0.14)), r * 0.4, 0.95);
+    // The eight phases of the moon on the rim, the full one lit as the night goes on.
+    for (let k = 0; k < 8; k++) {
+      const a = (k / 8) * TAU - Math.PI / 2;
+      const at = add(c, mul(fromAngle(a), r * 1.2));
+      const lit = 0.45 + 0.4 * Math.max(0, Math.cos(t * 0.35 - (k / 8) * TAU));
+      list.w(circle(at, 3.1), 'mapMoonmirror', 0.2 + 0.7 * lit * (k === 4 ? 1 : 0.7));
+      const shade = Math.cos((k / 8) * TAU);
+      if (k !== 4) list.w(circle(add(at, v(shade * 2.4, 0)), 3), 'groundMoonmirror', 0.85);
+    }
+    for (let i = 0; i < 6; i++) {
+      const a = t * (0.18 + 0.05 * i) + i * 1.05;
+      list.w(circle(add(c, mul(fromAngle(a), r * (0.55 + 0.3 * hash(i, 1161)))), 0.9), i % 2 === 0 ? 'moonmirrorPink' : 'primary', 0.55 + 0.35 * Math.sin(t * 2 + i));
+    }
+    const drop = (t * 0.3) % 1;
+    list.w(arc(add(c, v(r * 0.35, r * 0.3)), r * 0.05 + r * 0.5 * drop, 0.7, 0, TAU), 'primary', 0.45 * (1 - drop));
+    for (let i = 0; i < 8; i++) {
+      const a = hash(i, 1151) * TAU;
+      const at = add(c, mul(fromAngle(a), r * 0.85 * Math.sqrt(hash(i, 1152))));
+      list.w(circle(at, 0.6 + 0.4 * hash(i, 1153)), i % 3 === 0 ? 'moonmirrorPink' : 'primary', 0.3 + 0.5 * Math.sin(t * 1.5 + i) ** 2);
+    }
+  },
   planet(list: RenderList, c: Vec2, time: number | null): void {
     const radius = MapTheme.pondRadius * 0.55;
     const tilt = 0.35;

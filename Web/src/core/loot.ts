@@ -121,6 +121,9 @@ export const COSMETICS: Cosmetic[] = [
   c('lanterns', 'mapSkin', 'epic'),
   c('crystal', 'mapSkin', 'legendary'),
   c('beach', 'mapSkin', 'common'),
+  c('savanna', 'mapSkin', 'rare'),
+  c('rainforest', 'mapSkin', 'epic'),
+  c('alps', 'mapSkin', 'epic'),
   c('compact', 'vehicleType', 'rare'),
   c('sportsCar', 'vehicleType', 'epic'),
   c('van', 'vehicleType', 'epic'),
@@ -174,6 +177,12 @@ export const COSMETICS: Cosmetic[] = [
   c('nebula', 'carSkin', 'legendary', { kind: 'prestige', rank: 14 }),
   c('comet', 'carSkin', 'legendary', { kind: 'prestige', rank: 17 }),
   c('starforge', 'carSkin', 'legendary', { kind: 'prestige', rank: 19 }),
+  // More honours for the long road (Leo, 06.10.2026): looks only, never luck. A map for Elite 85 and one for Prestige ★25 are Feats.
+  c('chrono', 'carSkin', 'legendary', { kind: 'elite', level: 55 }),
+  c('biolume', 'carSkin', 'legendary', { kind: 'elite', level: 65 }),
+  c('dragon', 'carSkin', 'legendary', { kind: 'legendary', shifts: 30 }),
+  c('glowtide', 'mapSkin', 'legendary', { kind: 'elite', level: 85 }),
+  c('moonmirror', 'mapSkin', 'legendary', { kind: 'prestige', rank: 25 }),
   // Unlimited milestones: cars sent in one run.
   c('endurance', 'carSkin', 'epic', { kind: 'unlimited', cars: 250 }),
   c('overdrive', 'carSkin', 'legendary', { kind: 'unlimited', cars: 500 }),

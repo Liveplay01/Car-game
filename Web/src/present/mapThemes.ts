@@ -35,7 +35,12 @@ export type MapTheme =
   | 'crystal'
   | 'beach'
   | 'gilded'
-  | 'eventHorizon';
+  | 'eventHorizon'
+  | 'glowtide'
+  | 'moonmirror'
+  | 'savanna'
+  | 'rainforest'
+  | 'alps';
 export const MAP_THEMES: MapTheme[] = [
   'dusk',
   'sand',
@@ -60,10 +65,15 @@ export const MAP_THEMES: MapTheme[] = [
   'beach',
   'gilded',
   'eventHorizon',
+  'glowtide',
+  'moonmirror',
+  'savanna',
+  'rainforest',
+  'alps',
 ];
 
 /** The maps that play in the sun: a bright ground, roofs in daylight colours. */
-export const DAYLIGHT: readonly MapTheme[] = ['sand', 'forest', 'autumn', 'sakura', 'meadow', 'tropic', 'snowfall', 'vineyard', 'canyon', 'highland', 'beach'];
+export const DAYLIGHT: readonly MapTheme[] = ['sand', 'forest', 'autumn', 'sakura', 'meadow', 'tropic', 'snowfall', 'vineyard', 'canyon', 'highland', 'beach', 'savanna', 'rainforest', 'alps'];
 
 function onScreen(center: Vec2, radius: number, cam: Camera): boolean {
   const at = toScreen(cam, center);
@@ -136,6 +146,11 @@ export const MapTheme = {
       beach: 'groundBeach',
       gilded: 'groundGilded',
       eventHorizon: 'groundHorizon',
+      glowtide: 'groundGlowtide',
+      moonmirror: 'groundMoonmirror',
+      savanna: 'groundSavanna',
+      rainforest: 'groundRainforest',
+      alps: 'groundAlps',
     } as const)[theme];
   },
 
@@ -500,6 +515,136 @@ export const MapTheme = {
         }
         break;
       }
+      case 'savanna': {
+        // Dry gold grass in the sun: pale and dark patches, bare red soil, game trails worn into it, and tufts.
+        for (let i = 0; i < 14; i++) soft(spot(i, 1201), 30 + 44 * hash(i, 1203), 'savannaGrass', 0.3);
+        for (let i = 0; i < 10; i++) soft(spot(i, 1205), 26 + 36 * hash(i, 1207), 'savannaDry', 0.16);
+        for (let i = 0; i < 6; i++) soft(spot(i, 1209, 60, 340), 20 + 26 * hash(i, 1211), 'canyonSand', 0.2);
+        for (let i = 0; i < 5; i++) {
+          const center = spot(i, 1213, 90, 330);
+          if (!onScreen(center, 120, cam)) continue;
+          const start = hash(i, 1215) * TAU;
+          for (const rail of [-1.4, 1.4]) list.w(arc(center, 70 + 20 * hash(i, 1217) + rail, 0.9, start, start + 0.9), 'savannaDry', 0.3);
+        }
+        for (let i = 0; i < 110; i++) {
+          const at = spot(i, 1219, 10);
+          if (!onScreen(at, 5, cam)) continue;
+          const turn = hash(i, 1221) * TAU;
+          for (let k = 0; k < 4; k++) list.w(line(at, add(at, mul(fromAngle(turn + (k - 1.5) * 0.35), 2.8 + 2 * hash(i, 1223))), 0.8), k % 2 === 0 ? 'savannaDry' : 'skinLemon', 0.5);
+        }
+        break;
+      }
+      case 'rainforest': {
+        // A jungle floor: deep shade under the canopy, wet moss, ferns and blooms, and shafts of sun that move.
+        for (let i = 0; i < 16; i++) soft(spot(i, 1231), 28 + 40 * hash(i, 1233), 'firDark', 0.22);
+        for (let i = 0; i < 10; i++) soft(spot(i, 1235), 22 + 30 * hash(i, 1237), 'palmDark', 0.18);
+        for (let i = 0; i < 70; i++) {
+          const at = spot(i, 1239, 12);
+          if (!onScreen(at, 7, cam)) continue;
+          const turn = hash(i, 1241) * TAU;
+          for (let k = 0; k < 5; k++) list.w(line(at, add(at, mul(fromAngle(turn + (k - 2) * 0.5), 4 + 3 * hash(i, 1243))), 0.9), 'palmLeaf', 0.45);
+        }
+        for (let i = 0; i < 34; i++) {
+          const at = spot(i, 1245, 14);
+          if (onScreen(at, 3, cam)) add1(circle(at, 1 + 0.9 * hash(i, 1247)), i % 3 === 0 ? 'rainforestBloom' : i % 3 === 1 ? 'skinSunburst' : 'primary', 0.85);
+        }
+        still();
+        for (let i = 0; i < 7; i++) {
+          const center = spot(i, 1249, 50, 330);
+          const pulse = time !== null ? 0.5 + 0.5 * Math.sin(time * 0.6 + i * 1.9) : 0.6;
+          soft(center, 20 + 16 * hash(i, 1251), 'palmLeaf', 0.03 + 0.09 * pulse);
+        }
+        break;
+      }
+      case 'alps': {
+        // A mountain meadow above the tree line: grass, scree, patches of old snow, gentians and edelweiss.
+        for (let i = 0; i < 14; i++) soft(spot(i, 1261), 30 + 40 * hash(i, 1263), 'alpsMeadow', 0.24);
+        for (let i = 0; i < 10; i++) soft(spot(i, 1265), 26 + 34 * hash(i, 1267), 'alpsRock', 0.2);
+        for (let i = 0; i < 10; i++) {
+          // A patch of old snow with a crisp edge and a shaded side.
+          const center = spot(i, 1269, 60, 340);
+          if (!onScreen(center, 24, cam)) continue;
+          const edge = Array.from({ length: 9 }, (_, k) => add(center, mul(fromAngle((k * TAU) / 9 + hash(i, 1272)), (9 + 9 * hash(i, 1271)) * (0.7 + 0.5 * hash(i * 9 + k, 1274)))));
+          list.w(polygon(edge.map((q) => add(q, v(1.2, -1.2)))), 'snowShade', 0.7);
+          list.w(polygon(edge), 'primary', 0.92);
+        }
+        for (let i = 0; i < 90; i++) {
+          const at = spot(i, 1273, 10);
+          if (!onScreen(at, 3, cam)) continue;
+          const turn = hash(i, 1275) * TAU;
+          list.w(polygon([0, 1, 2].map((k) => add(at, mul(fromAngle(turn + (k * TAU) / 3), 1 + 1.4 * hash(i * 3 + k, 1277))))), 'alpsRock', 0.5);
+        }
+        for (let i = 0; i < 46; i++) {
+          const at = spot(i, 1279, 12);
+          if (onScreen(at, 3, cam)) add1(circle(at, 0.9 + 0.8 * hash(i, 1281)), i % 3 === 0 ? 'primary' : 'alpsGentian', 0.9);
+        }
+        still();
+        for (let i = 0; i < 40; i++) {
+          const at = spot(i, 1283, 12);
+          if (!onScreen(at, 2, cam)) continue;
+          const glint = time !== null ? Math.pow(Math.max(0, Math.sin(time * (1 + hash(i, 1285)) + i * 1.9)), 8) : 0.3;
+          add1(circle(at, 0.6 + 0.9 * glint), 'primary', 0.2 + 0.7 * glint);
+        }
+        break;
+      }
+      case 'glowtide': {
+        // A shore at night: pools of plankton that light up, the tide's lines on the wet sand, and sparks in the water.
+        for (let i = 0; i < 12; i++) soft(spot(i, 1081), 28 + 44 * hash(i, 1083), i % 3 === 0 ? 'glowtideBlue' : 'mapGlowtide', 0.04);
+        for (let i = 0; i < 8; i++) {
+          const center = spot(i, 1085, 60, 330);
+          if (!onScreen(center, 60, cam)) continue;
+          const start = hash(i, 1087) * TAU;
+          for (let r = 0; r < 4; r++) list.w(arc(center, 22 + r * 8, 1, start, start + 1.1 - r * 0.15), 'glowtideBlue', 0.2 - r * 0.03);
+        }
+        still();
+        for (let i = 0; i < 90; i++) {
+          const at = spot(i, 1089, 10);
+          if (!onScreen(at, 3, cam)) continue;
+          const glint = time !== null ? Math.pow(Math.max(0, Math.sin(time * (0.8 + hash(i, 1091)) + i * 1.7)), 4) : 0.35;
+          add1(circle(at, 0.7 + 0.7 * hash(i, 1093) + 0.8 * glint), i % 4 === 0 ? 'glowtideBlue' : 'mapGlowtide', 0.2 + 0.75 * glint);
+        }
+        break;
+      }
+      case 'moonmirror': {
+        // A salt flat under the stars: cracked crust in hexagons, thin sheets of water, stars with their reflection.
+        for (let i = 0; i < 10; i++) soft(spot(i, 1101), 36 + 50 * hash(i, 1103), 'mapMoonmirror', 0.035);
+        for (let i = 0; i < 6; i++) soft(spot(i, 1115, 80, 380), 70 + 70 * hash(i, 1116), i % 2 === 0 ? 'moonmirrorPink' : 'juicePurple', 0.03);
+        for (let i = 0; i < 8; i++) {
+          // A shallow pool, its edge a little ragged, a thin bright rim, and a mirror inside.
+          const center = spot(i, 1117, 50, 330);
+          if (!onScreen(center, 40, cam)) continue;
+          const rim = Array.from({ length: 10 }, (_, k) => add(center, mul(fromAngle((k * TAU) / 10 + hash(i, 1118)), (14 + 12 * hash(i, 1119)) * (0.8 + 0.4 * hash(i * 10 + k, 1120)))));
+          list.w(polygon(rim), 'mapMoonmirror', 0.07);
+          for (let k = 0; k < 10; k++) list.w(line(rim[k], rim[(k + 1) % 10], 0.8), 'mapMoonmirror', 0.22);
+          list.w(circle(add(center, v(2, -3)), 3.2 + 2 * hash(i, 1121)), 'primary', 0.1);
+        }
+        for (let i = 0; i < 26; i++) {
+          const center = spot(i, 1105, 24, 340);
+          if (!onScreen(center, 20, cam)) continue;
+          const turn = hash(i, 1107) * TAU;
+          const corners = [0, 1, 2, 3, 4, 5].map((k) => add(center, mul(fromAngle(turn + (k * TAU) / 6), 15 + 6 * hash(i, 1109))));
+          for (let k = 0; k < 6; k++) list.w(line(corners[k], corners[(k + 1) % 6], 0.7), 'mapMoonmirror', 0.1);
+        }
+        still();
+        for (let i = 0; i < 70; i++) {
+          const at = spot(i, 1111, 8);
+          if (!onScreen(at, 3, cam)) continue;
+          const bright = hash(i, 1113);
+          const twinkle = time !== null ? 0.55 + 0.45 * Math.sin(time * (1 + 2 * bright) + i) : 0.8;
+          add1(circle(at, 0.5 + bright * bright * 1.1), bright > 0.85 ? 'moonmirrorPink' : 'primary', (0.25 + 0.6 * bright) * twinkle);
+          add1(circle(add(at, v(0.6, 3.4 + 2 * bright)), 0.4 + bright * 0.5), 'mapMoonmirror', 0.22 * twinkle);
+        }
+        // The path of the moon across the flat: short bright strokes, wider and sparser the further out.
+        for (let i = 0; i < 46; i++) {
+          const reach = ring + 30 + (i / 46) * 330;
+          const across = (hash(i, 1131) - 0.5) * (14 + (i / 46) * 70);
+          const at = add(mul(fromAngle(1.15), reach), mul(fromAngle(1.15 + Math.PI / 2), across));
+          if (!onScreen(at, 8, cam)) continue;
+          const glint = time !== null ? Math.pow(Math.max(0, Math.sin(time * (0.9 + hash(i, 1133)) + i * 2.3)), 3) : 0.4;
+          list.w(rect(at, v(5 + 9 * hash(i, 1135), 0.9), 0.4, 1.15 + Math.PI / 2), 'primary', (0.1 + 0.4 * glint) * (1 - 0.5 * (i / 46)));
+        }
+        break;
+      }
       case 'eventHorizon': {
         // Deep space bent round the hole: faint glows, stars, and specks drawn slowly into it.
         for (let i = 0; i < 10; i++) soft(spot(i, 1021), 40 + 60 * hash(i, 1023), i % 2 === 0 ? 'horizonViolet' : 'mapHorizon', 0.025);
@@ -539,7 +684,7 @@ export const MapTheme = {
     const spot = (i: number, salt: number, from = 12, to = 360): Vec2 => mul(fromAngle(hash(i, salt) * TAU), ring + from + hash(i, salt + 1) * (to - from));
     // Fresh spring lawns: deeper green in the shade of the trees, sunlit patches, pink under the blossom.
     for (let i = 0; i < 14; i++) soft(spot(i, 331, 40), 28 + 36 * hash(i, 332), 'grassDeep', 0.18);
-    for (let i = 0; i < 12; i++) soft(spot(i, 333, 30), 24 + 30 * hash(i, 337), 'grassLight', 0.24);
+    for (let i = 0; i < 12; i++) soft(spot(i, 333, 30), 24 + 30 * hash(i, 337), 'grassLight', 0.1);
     for (let i = 0; i < 10; i++) soft(spot(i, 334, 30), 22 + 30 * hash(i, 335), 'mapSakura', 0.12);
     for (let i = 0; i < 80; i++) {
       const at = spot(i, 336);
@@ -647,6 +792,16 @@ export const MapTheme = {
         return Centre.obelisk(list, at, time);
       case 'eventHorizon':
         return Centre.blackHole(list, at, time);
+      case 'glowtide':
+        return Centre.tidepool(list, at, time);
+      case 'savanna':
+        return Centre.waterhole(list, at, time);
+      case 'rainforest':
+        return Centre.jungleFalls(list, at, time);
+      case 'alps':
+        return Centre.summit(list, at, time);
+      case 'moonmirror':
+        return Centre.moonPool(list, at, time);
       case 'sakura':
         return;
     }
@@ -808,6 +963,41 @@ export const MapTheme = {
         // Gold inlay rings on marble, and glints of gold leaf.
         for (let i = 0; i < 4; i++) w(arc(at(i, 963, 40, 50), 5 + 2 * hash(i, 965), 0.7, 0, TAU), 'mapGilded', 0.7);
         return dots(16, 967, 0.8, ['mapGilded', 'gildedMarble', 'fireCore'], 0.9);
+      case 'savanna': {
+        // An acacia and its shadow, tufts of dry grass.
+        const tree = mul(fromAngle(1.3), 44);
+        w(rect(add(tree, v(3, -3)), v(14, 7), 3.5, -0.6), 'shadow', 0.5);
+        w(rect(tree, v(13, 7), 3.5, 0.2), 'savannaAcacia');
+        return dots(16, 977, 0.9, ['savannaDry', 'skinLemon'], 0.8);
+      }
+      case 'rainforest':
+        // A pool under green leaves, with a bloom or two.
+        w(circle(mul(fromAngle(1.3), 44), 6), 'water', 0.95);
+        for (let i = 0; i < 5; i++) w(circle(at(i, 979, 34, 52), 3 + 2 * hash(i, 980)), i % 2 === 0 ? 'palmLeaf' : 'palmDark', 0.9);
+        return dots(14, 981, 0.9, ['rainforestBloom', 'skinSunburst', 'primary'], 0.9);
+      case 'alps': {
+        // A little peak, light on one face, with snow.
+        const peak = mul(fromAngle(1.3), 44);
+        const p = [0, 1, 2].map((k) => add(peak, mul(fromAngle(0.6 + (k * TAU) / 3), 9)));
+        w(polygon([peak, p[0], p[1]]), 'stone');
+        w(polygon([peak, p[1], p[2]]), 'alpsRock');
+        w(polygon([peak, p[2], p[0]]), 'wreck');
+        w(circle(peak, 2.6), 'primary', 0.95);
+        return dots(16, 983, 0.8, ['alpsGentian', 'primary', 'alpsMeadow'], 0.9);
+      }
+      case 'glowtide':
+        // Pools that glow, the tide's line on the sand, and sparks.
+        for (let i = 0; i < 5; i++) glow(at(i, 971, 34, 50), 4 + 2 * hash(i, 972), i % 2 === 0 ? 'mapGlowtide' : 'glowtideBlue', 0.5);
+        w(arc(v(0, 0), 49, 1.2, 0.2, 1.6), 'glowtideBlue', 0.7);
+        return dots(18, 973, 0.7, ['mapGlowtide', 'glowtideBlue', 'primary'], 0.9);
+      case 'moonmirror': {
+        // A crescent over a sheet of water, and its pale reflection.
+        const moon = mul(fromAngle(1.3), 44);
+        w(circle(add(moon, v(0, -7)), 7), 'mapMoonmirror', 0.9);
+        w(circle(add(moon, v(2.4, -9.2)), 6.2), 'groundMoonmirror');
+        w(circle(add(moon, v(0, 8)), 6), 'mapMoonmirror', 0.25);
+        return dots(20, 975, 0.7, ['primary', 'mapMoonmirror', 'moonmirrorPink'], 0.9);
+      }
       case 'eventHorizon': {
         // A little black hole with its disc of fire, and stars.
         const hole = mul(fromAngle(1.4), 45);
@@ -923,6 +1113,87 @@ export const MapTheme = {
         if (index % 4 === 1) Plants.lamp(list, center, size * 0.7, 'mapGilded');
         else Plants.tree(list, center, size * 0.9, index, ['coinInk', 'mapCypress', 'mapGilded'], 0.95);
         break;
+      case 'savanna':
+        if (index % 3 === 0) {
+          // An acacia: a flat crown on a thin stem, its shadow lying wide beside it.
+          const lean = hash(index, 1271) * 0.6 - 0.3;
+          a(rect(add(center, v(size * 0.7, -size * 0.6)), v(size * 2.4, size * 1), size * 0.5, -0.6), 'shadow', 0.6);
+          a(rect(center, v(size * 2.1, size * 1.15), size * 0.55, lean), 'savannaAcacia', 0.97);
+          a(rect(add(center, v(-size * 0.25, size * 0.2)), v(size * 1.3, size * 0.6), size * 0.3, lean), 'firLight', 0.7);
+        } else if (index % 3 === 1) {
+          // A tuft of tall dry grass.
+          for (let k = 0; k < 7; k++) a(line(center, add(center, mul(fromAngle((k / 7) * TAU + hash(index, 1273)), size * (0.8 + 0.3 * hash(index * 7 + k, 1274)))), 1.3), k % 2 === 0 ? 'savannaDry' : 'savannaGrass', 0.9);
+        } else {
+          // A termite mound.
+          a(circle(add(center, v(size * 0.3, -size * 0.3)), size * 0.8), 'shadow', 0.4);
+          a(circle(center, size * 0.6), 'canyonRock', 0.95);
+          a(circle(add(center, v(-size * 0.15, size * 0.15)), size * 0.35), 'canyonSand', 0.8);
+        }
+        break;
+      case 'rainforest':
+        if (index % 4 === 0) Plants.tree(list, center, size * 1.15, index, ['firDark', 'palmDark', 'palmLeaf'], 0.97);
+        else if (index % 4 === 1) {
+          // A fern or banana plant: broad leaves round a point.
+          for (let k = 0; k < 7; k++) {
+            const turn = (k / 7) * TAU + hash(index, 1251);
+            a(polygon([center, add(center, mul(fromAngle(turn - 0.2), size * 0.55)), add(center, mul(fromAngle(turn), size * 1.05)), add(center, mul(fromAngle(turn + 0.2), size * 0.55))]), k % 2 === 0 ? 'palmDark' : 'palmLeaf', 0.92);
+          }
+        } else if (index % 4 === 2) {
+          // A bush in bloom.
+          a(circle(center, size * 0.7), 'palmDark', 0.95);
+          a(circle(add(center, v(-size * 0.15, size * 0.15)), size * 0.45), 'palmLeaf', 0.9);
+          for (let k = 0; k < 4; k++) a(circle(add(center, mul(fromAngle(k * 1.6 + hash(index, 1253)), size * 0.45)), size * 0.17), 'rainforestBloom', 0.95);
+        } else Plants.palm(list, center, size, index);
+        break;
+      case 'alps':
+        if (index % 5 === 3) {
+          // A small peak seen from above: a lit face, two in shade, a cap of snow, a long shadow.
+          const turn = hash(index, 1261) * TAU;
+          const p = [0, 1, 2].map((k) => add(center, mul(fromAngle(turn + (k * TAU) / 3), size * 1.1)));
+          a(circle(add(center, v(size * 0.5, -size * 0.5)), size * 1.1), 'shadow', 0.45);
+          a(polygon([center, p[0], p[1]]), 'stone', 1);
+          a(polygon([center, p[1], p[2]]), 'alpsRock', 1);
+          a(polygon([center, p[2], p[0]]), 'wreck', 1);
+          a(polygon([center, add(center, mul(fromAngle(turn), size * 0.5)), add(center, mul(fromAngle(turn + TAU / 3), size * 0.5))]), 'primary', 0.95);
+        } else if (index % 5 === 4) {
+          // A tuft of gentians in the grass.
+          a(circle(center, size * 0.7), 'alpsMeadow', 0.9);
+          for (let k = 0; k < 5; k++) a(circle(add(center, mul(fromAngle(k * 1.3 + hash(index, 1263)), size * 0.4)), size * 0.16), k % 2 === 0 ? 'alpsGentian' : 'primary', 0.95);
+        } else if (index % 5 === 2) {
+          // A boulder with a little snow on it.
+          a(circle(add(center, v(size * 0.35, -size * 0.35)), size * 0.8), 'shadow', 0.45);
+          a(circle(center, size * 0.7), 'alpsRock', 1);
+          a(circle(add(center, v(-size * 0.2, size * 0.2)), size * 0.38), 'primary', 0.8);
+        } else if (index % 5 === 1) Plants.snowFir(list, center, size);
+        else Plants.fir(list, center, size, index);
+        break;
+      case 'glowtide': {
+        // A frond of glow-weed: three leaning stalks, each ending in a bright bead, in a faint halo.
+        a(circle(center, size * 1.5), 'mapGlowtide', 0.06);
+        for (let k = -1; k <= 1; k++) {
+          const lean = fromAngle(-Math.PI / 2 + k * 0.7 + (hash(index, 1061 + k) - 0.5) * 0.5);
+          const tip = add(center, mul(lean, size * (0.9 + 0.25 * hash(index, 1065 + k))));
+          a(line(center, tip, 1.3), 'glowtideBlue', 0.85);
+          a(circle(tip, size * 0.22), index % 2 === 0 ? 'mapGlowtide' : 'primary', 0.95);
+        }
+        break;
+      }
+      case 'moonmirror': {
+        if (index % 3 === 1) {
+          // A salt flower: a rosette of pale petals around a bright heart.
+          for (let k = 0; k < 7; k++) {
+            const turn = (k / 7) * TAU + hash(index, 1171);
+            a(polygon([add(center, mul(fromAngle(turn - 0.28), size * 0.2)), add(center, mul(fromAngle(turn), size * 0.95)), add(center, mul(fromAngle(turn + 0.28), size * 0.2))]), k % 2 === 0 ? 'mapMoonmirror' : 'primary', 0.8);
+          }
+          a(circle(center, size * 0.2), 'moonmirrorPink', 0.9);
+          break;
+        }
+        // A salt pillar with a pale puddle at its foot.
+        a(circle(add(center, v(size * 0.5, size * 0.45)), size * 0.9), 'mapMoonmirror', 0.07);
+        a(rect(center, v(size * 0.62, size * 0.95), size * 0.14, hash(index, 1073) * 0.6 - 0.3), 'mapMoonmirror', 0.9);
+        a(rect(add(center, v(-size * 0.12, -size * 0.1)), v(size * 0.22, size * 0.62), size * 0.1, hash(index, 1073) * 0.6 - 0.3), 'primary', 0.6);
+        break;
+      }
       case 'eventHorizon': {
         // Rocks adrift, lit on one side by the disc of fire.
         const turn = hash(index, 1041) * TAU;
@@ -983,6 +1254,14 @@ export const MapTheme = {
               break;
             case 'eventHorizon':
               if (isAccent) Plants.lamp(list, at, size * 0.6, 'horizonViolet');
+              break;
+            case 'glowtide':
+              if (isAccent) Plants.lamp(list, at, size * 0.7, 'mapGlowtide');
+              else MapTheme.addPlant(list, theme, at, size * 0.9, index);
+              break;
+            case 'moonmirror':
+              if (isAccent) Plants.lamp(list, at, size * 0.7, 'mapMoonmirror');
+              else if (index % 2 === 0) MapTheme.addPlant(list, theme, at, size * 0.9, index);
               break;
             case 'tropic':
               Plants.palm(list, at, size * 0.9, index);
@@ -1177,6 +1456,68 @@ export const MapTheme = {
       case 'gilded':
         // Gold dust in the warm night air.
         return drift(list, 30, time, vp, ['mapGilded', 'fireCore', 'mapGilded'], 2.6, -4, 10, 14, true, 1051);
+      case 'savanna': {
+        // Dust and dry seeds on the warm wind, and the shadows of clouds crossing the plain.
+        drift(list, 22, time, vp, ['savannaGrass', 'primary', 'skinLemon'], 2.4, 2, 14, 12, true, 1301);
+        for (let j = 0; j < 3; j++) {
+          const span = vp.x + 700;
+          const x = ((hash(j, 1303) * span + time * (7 + 5 * hash(j, 1305))) % span) - 350;
+          list.s(circle(v(x, hash(j, 1307) * vp.y), 120 + 80 * hash(j, 1309)), 'shadow', 0.07);
+        }
+        return;
+      }
+      case 'rainforest': {
+        // Leaves let go and fall, mist hangs between the trees, and a few butterflies cross the clearing.
+        drift(list, 16, time, vp, ['palmLeaf', 'palmDark', 'rainforestBloom'], 7, 26, 10, 22, false, 1311);
+        for (let j = 0; j < 4; j++) {
+          const span = vp.x + 500;
+          const x = ((hash(j, 1313) * span + time * (4 + 4 * hash(j, 1315))) % span) - 250;
+          list.s(rect(v(x, hash(j, 1317) * vp.y), v(300 + 120 * hash(j, 1319), 54 + 30 * hash(j, 1321)), 30, 0), 'primary', 0.035);
+        }
+        for (let j = 0; j < 3; j++) {
+          const phase = hash(j, 1323) * TAU;
+          const at = v(((hash(j, 1325) * vp.x + time * 14 * (0.6 + hash(j, 1327))) % (vp.x + 80)) - 40, hash(j, 1329) * vp.y + Math.sin(time * 1.3 + phase) * 24);
+          const flap = 0.35 + 0.65 * Math.abs(Math.sin(time * 9 + phase));
+          for (const side of [-1, 1]) list.s(circle(add(at, v(side * 3 * flap, 0)), 3 * flap), j % 2 === 0 ? 'skinSunburst' : 'rainforestBloom', 0.9);
+        }
+        return;
+      }
+      case 'alps': {
+        // Thin snow flurries, and the shadows of clouds sliding across the mountainside.
+        drift(list, 24, time, vp, ['primary', 'mapSnow'], 3.2, 22, 10, 12, true, 1331);
+        for (let j = 0; j < 3; j++) {
+          const span = vp.x + 700;
+          const x = ((hash(j, 1333) * span + time * (9 + 6 * hash(j, 1335))) % span) - 350;
+          list.s(circle(v(x, hash(j, 1337) * vp.y), 130 + 90 * hash(j, 1339)), 'shadow', 0.08);
+        }
+        return;
+      }
+      case 'glowtide':
+        // Sparks of plankton lifting off the water, slowly, the way the bubbles in a glass do.
+        return drift(list, 34, time, vp, ['mapGlowtide', 'glowtideBlue', 'primary'], 2.6, -14, 5, 14, true, 1121);
+      case 'moonmirror': {
+        // Salt dust on a windless night, hanging and glinting, and now and then a falling star.
+        drift(list, 26, time, vp, ['mapMoonmirror', 'primary', 'moonmirrorPink'], 2.2, 3, 4, 10, true, 1123);
+        // Low mist, drifting slowly across the flat.
+        for (let j = 0; j < 5; j++) {
+          const span = vp.x + 500;
+          const x = ((hash(j, 1141) * span + time * (5 + 5 * hash(j, 1143))) % span) - 250;
+          list.s(rect(v(x, hash(j, 1145) * vp.y), v(280 + 140 * hash(j, 1147), 50 + 30 * hash(j, 1149)), 30, 0), j % 2 === 0 ? 'mapMoonmirror' : 'moonmirrorPink', 0.028);
+        }
+        const period = 7;
+        const cycle = Math.floor(time / period);
+        const into = time - cycle * period;
+        if (into >= 0.9) return;
+        const start = v(hash(cycle, 1125) * vp.x * 0.8, hash(cycle, 1126) * vp.y * 0.4);
+        const dir = fromAngle(0.4 + 0.4 * hash(cycle, 1127));
+        const head = add(start, mul(dir, (into / 0.9) * 240));
+        const fade = Math.sin((Math.PI * into) / 0.9);
+        for (let piece = 0; piece < 4; piece++) {
+          const from = sub(head, mul(dir, piece * 12));
+          list.s(line(from, sub(from, mul(dir, 12)), 1.8 - 0.35 * piece), 'primary', fade * (0.9 - 0.2 * piece));
+        }
+        return;
+      }
       case 'eventHorizon':
         // Embers of the disc, drifting off into the dark.
         return drift(list, 22, time, vp, ['mapHorizon', 'horizonViolet', 'fireCore'], 2.4, 3, -6, 18, true, 1053);

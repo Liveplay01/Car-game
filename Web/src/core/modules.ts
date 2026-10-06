@@ -1,4 +1,4 @@
-import { type Config, type RoadModule, builtArmSlots, detourExtraAt, moduleLevel, moduleZone, towSpeedupAt } from './config';
+import { type Config, type RoadModule, builtArmSlots, detourShareAt, moduleLevel, moduleZone, towSpeedupAt } from './config';
 import type { Arm } from './roundabout';
 import type { Vehicle } from './vehicle';
 import { type Vec2, length, angleOf, wrap, TAU } from './vec2';
@@ -68,19 +68,24 @@ function fee(w: World, module: RoadModule, veh: Vehicle, level: number): number 
 }
 
 /**
- * The arm slot a detour sign in module `slot` sends cars to: the first exit ahead of it
- * (never the player's arm, nobody leaves there). From the angles alone, so the Street Builder
- * shows the same exit the traffic takes.
+ * The arm slot a detour sign in module `slot` sends cars to: the first exit ahead of it, as long as
+ * that exit comes before the player's own arm. Where no exit lies between the sign and the player,
+ * or no arm joins upstream of it, there is nobody to turn around and the sign does nothing: null.
+ * From the angles alone, so the Street Builder shows the same exit the traffic takes.
  */
 export function detourArmSlot(c: Config, slot: number): number | null {
   const sign = (TAU * (slot + 0.5)) / Math.max(1, c.moduleSlotCount);
   const count = Math.max(3, c.armSlotCount);
+  const exitAt = (arm: number): number => -Math.PI / 2 + (arm * TAU) / count - c.mergeAngle;
+  const entryAt = (arm: number): number => -Math.PI / 2 + (arm * TAU) / count + c.mergeAngle;
+  const sincePlayer = wrap(sign - entryAt(0));
+  if (sincePlayer > TAU - 2 * c.mergeAngle) return null;
+  const arms = builtArmSlots(c).filter((arm) => arm !== 0);
+  if (!arms.some((arm) => wrap(sign - entryAt(arm)) < sincePlayer)) return null;
   let best: number | null = null;
-  let nearest = Infinity;
-  for (const arm of builtArmSlots(c)) {
-    if (arm === 0) continue;
-    const exit = -Math.PI / 2 + (arm * TAU) / count - c.mergeAngle;
-    const ahead = wrap(exit - sign);
+  let nearest = wrap(exitAt(0) - sign);
+  for (const arm of arms) {
+    const ahead = wrap(exitAt(arm) - sign);
     if (ahead < nearest) {
       nearest = ahead;
       best = arm;
@@ -90,24 +95,30 @@ export function detourArmSlot(c: Config, slot: number): number | null {
 }
 
 /**
- * The exits a car joining at `arm` may leave by, each detour sign on its way adding copies of
- * the exit it points to: a plain list when there is no sign, so the draws stay as they were.
+ * A car about to join at `arm` meets every detour sign on its way: if the sign's exit comes
+ * before the one it planned, the sign turns it there with the sign's chance, and it forgets its laps.
+ * Rolled only when there is a sign, so a ring without one draws what it always did.
  */
-export function withDetours(w: World, arm: Arm, options: Arm[]): Arm[] {
+export function detourExit(w: World, arm: Arm, planned: Arm, laps: number, lane: number): Arm | null {
   const c = w.config;
-  const out = [...options];
+  const layout = w.layout;
+  const plannedDistance = layout.ringDistanceArms(arm, planned, lane) + laps * layout.ring.length;
+  const entry = layout.entryS(arm, lane);
+  const signs: { slot: number; at: number; exit: Arm }[] = [];
   for (const [slotText, module] of Object.entries(c.modules)) {
     if (module !== 'detour') continue;
     const slot = Number(slotText);
     const target = detourArmSlot(c, slot);
-    const exit = options.find((a) => a.slot === target);
-    if (!exit) continue;
-    const sign = w.layout.moduleRingS(slot, c.moduleSlotCount);
-    const entry = w.layout.entryS(arm);
-    if (w.layout.ringDistance(entry, sign) > w.layout.ringDistance(entry, w.layout.exitS(exit))) continue;
-    for (let k = detourExtraAt(c, moduleLevel(c, slot)); k > 0; k--) out.push(exit);
+    const exit = layout.arms.find((a) => a.slot === target);
+    if (!exit || exit.index === arm.index) continue;
+    const at = layout.ringDistance(entry, layout.moduleRingS(slot, c.moduleSlotCount));
+    if (at > layout.ringDistanceArms(arm, exit, lane) || layout.ringDistanceArms(arm, exit, lane) >= plannedDistance) continue;
+    signs.push({ slot, at, exit });
   }
-  return out;
+  for (const sign of signs.sort((a, b) => a.at - b.at)) {
+    if (w.rng.unit() < detourShareAt(c, moduleLevel(c, sign.slot))) return sign.exit;
+  }
+  return null;
 }
 
 /** Charges every module a vehicle drove past in this step. */

@@ -1,5 +1,5 @@
 import type { Pose } from '../core/paths';
-import { type Vec2, v, add, mul, fromAngle } from '../core/vec2';
+import { type Vec2, v, add, sub, mul, length, fromAngle, TAU } from '../core/vec2';
 import { type RenderList, rect, circle, arc, line, polygon, unitHash } from './render';
 import type { ColorToken } from './theme';
 
@@ -28,7 +28,11 @@ export type Effect =
   | 'halo'
   | 'soulfire'
   // The bug hunter's reward (Leo, 03.10.2026): a ladybird, spots and feelers.
-  | 'ladybug';
+  | 'ladybug'
+  // More honours (Leo, 06.10.2026): a clock that leaves echoes, glowing plankton, a dragon's scales and breath.
+  | 'chrono'
+  | 'biolume'
+  | 'dragon';
 
 /** A local point of the car in world space (x forward, y left). */
 const at = (pose: Pose, x: number, y: number): Vec2 => {
@@ -48,12 +52,71 @@ function cycle(colors: ColorToken[], phase: number): [ColorToken, ColorToken, nu
   return [colors[i], colors[(i + 1) % n], p - i];
 }
 
-/** Particles streaming off the back of the car: 0 at the bumper, 1 where they vanish. */
+/** Where a car has been: its middle and heading every `STEP` units it drove, newest first. */
+interface Track {
+  points: { p: Vec2; h: number }[];
+  seen: number;
+}
+const STEP = 1.2;
+const TRACK_LENGTH = 70;
+const tracks = new Map<number, Track>();
+
+/** Notes where the car is, so what trails it can follow the way it really drove (round a bend too). */
+function record(pose: Pose, id: number, L: number, time: number | null): void {
+  if (time === null) {
+    tracks.delete(id);
+    return;
+  }
+  let track = tracks.get(id);
+  if (!track || time < track.seen - 0.5 || length(sub(track.points[0].p, pose.position)) > L * 4) {
+    track = { points: [], seen: time };
+    tracks.set(id, track);
+  }
+  track.seen = time;
+  const last = track.points[0];
+  if (!last || length(sub(last.p, pose.position)) >= STEP) {
+    track.points.unshift({ p: pose.position, h: pose.heading });
+    let total = 0;
+    for (let i = 1; i < track.points.length; i++) {
+      total += length(sub(track.points[i - 1].p, track.points[i].p));
+      if (total > TRACK_LENGTH) {
+        track.points.length = i + 1;
+        break;
+      }
+    }
+  }
+  if (tracks.size > 300) for (const [key, t] of tracks) if (Math.abs(time - t.seen) > 3) tracks.delete(key);
+}
+
+/** The point `distance` behind the car's middle along the way it came, and its heading there; straight back where the track is short or unknown. */
+function behind(pose: Pose, id: number, distance: number): { p: Vec2; h: number } {
+  const track = tracks.get(id);
+  let from = pose.position;
+  let left = distance;
+  let heading = pose.heading;
+  if (track) {
+    for (const point of track.points) {
+      const seg = length(sub(from, point.p));
+      if (seg >= left && seg > 1e-6) {
+        const k = left / seg;
+        const turn = ((((point.h - heading) % TAU) + 3 * Math.PI) % TAU) - Math.PI;
+        return { p: add(from, mul(sub(point.p, from), k)), h: heading + turn * k };
+      }
+      left -= seg;
+      from = point.p;
+      heading = point.h;
+    }
+  }
+  return { p: add(from, v(-Math.cos(heading) * left, -Math.sin(heading) * left)), h: heading };
+}
+
+/** Particles streaming off the back of the car along the way it drove: 0 at the bumper, 1 where they vanish. */
 function trail(pose: Pose, L: number, W: number, t: number, id: number, count: number, rate: number, reach: number, draw: (p: Vec2, u: number, i: number) => void): void {
   for (let i = 0; i < count; i++) {
     const u = (t * rate + i / count + unitHash(id, i)) % 1;
-    const side = (unitHash(id * 13 + i, 7) - 0.5) * W * (0.6 + u * 0.8);
-    draw(at(pose, -L / 2 - u * reach, side + Math.sin(t * 3 + i) * u * 2), u, i);
+    const side = (unitHash(id * 13 + i, 7) - 0.5) * W * (0.6 + u * 0.8) + Math.sin(t * 3 + i) * u * 2;
+    const spot = behind(pose, id, L / 2 + u * reach);
+    draw(add(spot.p, v(-Math.sin(spot.h) * side, Math.cos(spot.h) * side)), u, i);
   }
 }
 
@@ -61,6 +124,7 @@ export const SkinEffects = {
   /** Under the body: glows and trails, so the paint stays on top. */
   under(list: RenderList, e: Effect, pose: Pose, L: number, W: number, time: number | null, id: number, o: number): void {
     const t = time ?? 0.35;
+    record(pose, id, L, time);
     const glow = (colors: ColorToken[], speed: number, strength: number): void => {
       const [a, b, k] = cycle(colors, t * speed + id * 0.3);
       for (const [grow, share] of [[12, 0.5], [6, 1]] as const) {
@@ -143,10 +207,29 @@ export const SkinEffects = {
           list.w(circle(p, 3.2 * (1 - u * 0.6)), color, o * 0.85 * (1 - u));
         });
         break;
+      case 'chrono':
+        // Time stutters: four echoes of the car, each a beat further back and paler.
+        for (let k = 1; k <= 4; k++) {
+          const echo = behind(pose, id, 8 * k + (time === null ? 0 : Math.sin(t * 2.2 + k * 1.3) * 1.2));
+          list.w(rect(echo.p, v(L, W), 4.5, echo.h), k % 2 === 0 ? 'skinIce' : 'lightBlue', o * (0.24 - 0.045 * k));
+        }
+        break;
+      case 'biolume':
+        glow(['mapGlowtide', 'glowtideBlue'], 0.6, 0.38);
+        trail(pose, L, W, t, id, 15, 0.5, 46, (p, u, i) => list.w(circle(p, 1.6 * (1 - u * 0.5)), i % 2 === 0 ? 'mapGlowtide' : 'glowtideBlue', o * 0.9 * (1 - u)));
+        break;
+      case 'dragon':
+        glow(['fireOuter', 'fireDeep'], 0.8, 0.22);
+        trail(pose, L, W, t, id, 16, 1.4, 36, (p, u) => {
+          const color: ColorToken = u < 0.28 ? 'fireCore' : u < 0.62 ? 'fireOuter' : 'fireDeep';
+          list.w(circle(p, 3 * (1 - u * 0.6)), color, o * 0.85 * (1 - u));
+        });
+        break;
       case 'ghost':
         // Afterimages: where it just was.
         for (const [back, share] of [[10, 0.18], [20, 0.08]] as const) {
-          list.w(rect(at(pose, -back, 0), v(L, W), 4.5, pose.heading), 'skinIce', o * share);
+          const echo = behind(pose, id, back);
+          list.w(rect(echo.p, v(L, W), 4.5, echo.h), 'skinIce', o * share);
         }
         break;
       default:
@@ -175,6 +258,25 @@ export const SkinEffects = {
       const r = Math.min(W * 0.14, 1.9);
       for (const [x, y] of [[0.18, 0.24], [0.18, -0.24], [-0.06, 0.3], [-0.06, -0.3], [-0.3, 0.2], [-0.3, -0.2], [0.02, 0]] as const) {
         list.w(circle(at(pose, x * L, y * W), y === 0 ? r * 0.85 : r), 'vehicleTire', o);
+      }
+    } else if (e === 'dragon') {
+      // Scales: rows of small arcs, open towards the tail, darker than the paint.
+      for (let row = 0; row < 4; row++) {
+        for (let col = 0; col < 5; col++) {
+          const at0 = at(pose, -L * 0.4 + (col + (row % 2) * 0.5) * (L * 0.18), (row - 1.5) * W * 0.22);
+          list.w(arc(at0, 1.5, 0.55, pose.heading + Math.PI * 0.55, pose.heading + Math.PI * 1.45), 'fireDeep', o * 0.55);
+        }
+      }
+    } else if (e === 'chrono') {
+      // A clock face on the roof: a ring, the hour hand creeping and the minute hand running.
+      list.w(arc(pose.position, W * 0.3, 0.7, 0, Math.PI * 2), 'lightBlue', o * 0.75);
+      list.w(line(pose.position, add(pose.position, mul(fromAngle(t * 0.5 + id), W * 0.18)), 0.9), 'primary', o * 0.9);
+      list.w(line(pose.position, add(pose.position, mul(fromAngle(t * 3 + id), W * 0.28)), 0.6), 'primary', o * 0.9);
+    } else if (e === 'biolume') {
+      // Spots of light on the hull that breathe one after the other.
+      for (let i = 0; i < 6; i++) {
+        const glint = Math.max(0, Math.sin(t * 2 + i * 1.9 + id));
+        list.w(circle(at(pose, (unitHash(id, i) - 0.5) * L * 0.7, (unitHash(id, i + 9) - 0.5) * W * 0.6), 0.8 + 0.5 * glint), 'mapGlowtide', o * (0.3 + 0.7 * glint));
       }
     } else if (e === 'aurora') {
       const x = ((t * 0.4 + id * 0.1) % 1) * L - L / 2;
@@ -254,6 +356,27 @@ export const SkinEffects = {
         }
         break;
       }
+      case 'chrono': {
+        // The second hand: one spark running round the car.
+        const a = t * 2.4 + id;
+        list.w(circle(add(pose.position, mul(fromAngle(a), L * 0.62)), 1.4), 'primary', o * 0.95);
+        list.w(circle(add(pose.position, mul(fromAngle(a - 0.35), L * 0.62)), 0.9), 'lightBlue', o * 0.6);
+        break;
+      }
+      case 'biolume':
+        // Motes of plankton drifting round it, each its own pace.
+        for (let i = 0; i < 5; i++) {
+          const a = t * (0.5 + 0.3 * unitHash(id, i)) + i * 1.3 + id;
+          const twinkle = time === null ? 0.8 : 0.5 + 0.5 * Math.sin(t * 2.5 + i * 2);
+          list.w(circle(add(pose.position, mul(fromAngle(a), L * (0.55 + 0.1 * unitHash(id, i + 4)))), 1.1), i % 2 === 0 ? 'mapGlowtide' : 'primary', o * 0.9 * twinkle);
+        }
+        break;
+      case 'dragon':
+        // Two golden horns at the front corners, and a little smoke from the nostrils of the grille.
+        for (const y of [-1, 1]) {
+          list.w(polygon([at(pose, L / 2 - 2.2, y * W * 0.3), at(pose, L / 2 - 2.2, y * W * 0.46), at(pose, L / 2 + 3.2, y * W * 0.52)]), 'skinGold', o);
+        }
+        break;
       case 'neon':
         for (const y of [-1, 1]) list.w(line(at(pose, -L / 2 + 2, y * (W / 2 - 0.6)), at(pose, L / 2 - 2, y * (W / 2 - 0.6)), 0.9), 'mapNeon', o * 0.9);
         break;

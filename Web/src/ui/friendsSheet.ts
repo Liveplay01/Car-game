@@ -1,6 +1,6 @@
 import { h } from './dom';
 import { boardPanel, forgetFriendsBoards, nameForm, openAccount, tabsControl } from './leaderboardSheet';
-import { openSheet } from './sheets';
+import { openSheet, glideHeight } from './sheets';
 import { INVITE_LEVEL } from '../core/config';
 import { type InviteView, fetchInvite, inviteUrl, pendingInvite } from '../net/invite';
 import { type FriendsView, type Records, addFriend, describeError, fetchFriends, loadAccount, removeFriend, syncScores } from '../net/leaderboard';
@@ -71,42 +71,6 @@ async function shareInvite(invite: InviteView, button: HTMLElement): Promise<voi
     }
   }
   await copyText(button, url, 'Share invite link');
-}
-
-/**
- * The drawer rises with its content (a longer list, another tab, a ranking that arrives) and glides there instead of
- * jumping. It only grows: the tallest tab so far is kept, so switching tabs never makes it sink.
- */
-function glideHeight(body: HTMLElement, content: HTMLElement): void {
-  const sheet = body.closest<HTMLElement>('.sheet');
-  if (!sheet) return;
-  let before = sheet.offsetHeight;
-  let tallest = 0;
-  new ResizeObserver(() => {
-    if (content.isConnected && content.offsetHeight > tallest) {
-      tallest = content.offsetHeight;
-      content.style.minHeight = `${tallest}px`;
-    }
-    // Gliding already: the end of it takes the new height as it is.
-    if (sheet.style.height) return;
-    const after = sheet.offsetHeight;
-    if (before > 0 && after !== before) {
-      const done = (e: TransitionEvent): void => {
-        if (e.target !== sheet || e.propertyName !== 'height') return;
-        sheet.removeEventListener('transitionend', done);
-        sheet.style.height = '';
-        sheet.style.transition = '';
-        before = sheet.offsetHeight;
-      };
-      sheet.style.height = `${before}px`;
-      sheet.getBoundingClientRect();
-      sheet.style.transition = 'height 240ms var(--ease-drawer)';
-      sheet.style.height = `${after}px`;
-      sheet.addEventListener('transitionend', done);
-      return;
-    }
-    before = after;
-  }).observe(body);
 }
 
 const label = (text: string): HTMLElement => h('p', { class: 'section-note board-label' }, text);

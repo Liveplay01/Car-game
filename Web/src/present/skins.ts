@@ -85,6 +85,9 @@ export const Skins = {
       lanterns: 'mapLanterns',
       crystal: 'mapCrystal',
       beach: 'sea',
+      savanna: 'mapSavanna',
+      rainforest: 'mapRainforest',
+      alps: 'mapAlps',
       bigScreen: 'skinHolo',
       gilded: 'mapGilded',
       eventHorizon: 'mapHorizon',
@@ -116,6 +119,11 @@ export const Skins = {
       overdrive: 'skinObsidian',
       infinity: 'skinPearl',
       ladybug: 'skinRacingRed',
+      chrono: 'skinChrome',
+      biolume: 'skinLagoon',
+      dragon: 'skinRuby',
+      glowtide: 'mapGlowtide',
+      moonmirror: 'mapMoonmirror',
     };
     return id ? (map[id] ?? null) : null;
   },
@@ -191,6 +199,12 @@ export const Skins = {
       case 'endurance':
       case 'overdrive':
         return 'skinMint';
+      case 'chrono':
+        return 'lightBlue';
+      case 'biolume':
+        return 'mapGlowtide';
+      case 'dragon':
+        return 'skinGold';
       default:
         return null;
     }
@@ -224,6 +238,9 @@ export const Skins = {
       overdrive: 'neon',
       infinity: 'rainbow',
       ladybug: 'ladybug',
+      chrono: 'chrono',
+      biolume: 'biolume',
+      dragon: 'dragon',
     };
     return id ? (map[id] ?? null) : null;
   },
@@ -293,7 +310,11 @@ export const Skins = {
       case 'comet':
       case 'starforge':
       case 'infinity':
+      case 'chrono':
+      case 'dragon':
         return 'shinyGlitter';
+      case 'biolume':
+        return 'shiny';
       case 'northernLights':
       case 'thunder':
       case 'neonWave':

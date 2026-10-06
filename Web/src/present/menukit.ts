@@ -1,8 +1,7 @@
 import { type Vec2, v, add } from '../core/vec2';
 import { type RenderList, type Rect, R, rect, circle, line, text, Ease, Metrics } from './render';
 import type { ColorToken } from './theme';
-import { moneyTag } from './icons';
-import { textWidth } from './icons';
+import { moneyTag, textWidth, fitText } from './icons';
 
 const PAGE_BACKDROP = 0.92;
 
@@ -67,7 +66,8 @@ export const MenuKit = {
     list.tag = 'segLabels';
     labels.forEach((label, i) => {
       // A section that opens later stays in its place, faded.
-      list.s(text(label, v(r.minX + cell * (i + 0.5), R.center(r).y), 13, 'center', i === chosen ? 'bold' : 'regular'), i === chosen ? 'primary' : 'muted', locked[i] ? 0.4 : 1);
+      const fit = fitText(label, 13, cell - 12, true);
+      list.s(text(fit.text, v(r.minX + cell * (i + 0.5), R.center(r).y), fit.size, 'center', i === chosen ? 'bold' : 'regular'), i === chosen ? 'primary' : 'muted', locked[i] ? 0.4 : 1);
     });
     list.tag = tag;
   },
@@ -77,12 +77,14 @@ export const MenuKit = {
     const radius = Math.min(12, size.y / 2);
     if (prominent) {
       list.s(rect(center, size, radius), 'accent', enabled ? 1 : 0.35);
-      list.s(text(label, center, 14, 'center', 'bold'), 'accentInk', enabled ? 1 : 0.6);
+      const fit = fitText(label, 14, size.x - 20);
+      list.s(text(fit.text, center, fit.size, 'center', 'bold'), 'accentInk', enabled ? 1 : 0.6);
       return;
     }
     if (enabled) list.s(rect(center, size, radius), 'accent');
     list.s(rect(center, v(size.x - 3, size.y - 3), radius - 1.5), 'cardRaised', enabled ? 1 : 0.6);
-    list.s(text(label, center, 14, 'center', 'bold'), enabled ? 'primary' : 'muted', enabled ? 1 : 0.7);
+    const fit = fitText(label, 14, size.x - 20);
+    list.s(text(fit.text, center, fit.size, 'center', 'bold'), enabled ? 'primary' : 'muted', enabled ? 1 : 0.7);
   },
 
   /** Soft light: stacked discs, faint at the rim and brighter towards the middle. */

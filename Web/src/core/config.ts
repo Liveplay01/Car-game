@@ -259,8 +259,9 @@ export const baseConfig = {
   billboardSpeedFactor: 0.85,
   billboardPerCar: 1,
   billboardCost: 9100,
-  /** Detour sign: cars that pass it choose the next exit this many times more often (+1 per level). */
-  detourExtra: 2,
+  /** Detour sign: the share of cars that pass it and would drive on past its exit but leave there (+ per level). */
+  detourShare: 0.45,
+  detourSharePerLevel: 0.15,
   detourCost: 7800,
   /** Tow Depot: the faster clearing grows by this much per level. */
   towSpeedupPerLevel: 0.1,
@@ -383,6 +384,9 @@ export const baseConfig = {
   overtimePerStep: 0.04,
   insurancePerStep: 0.15,
   freightPerStep: 0.015,
+  /** The two upgrades that make the road busier pay back a little for it: more pay per shift each step (Leo, 06.10.2026: they cost more in crashes and time than they brought). */
+  freightPayPerStep: 0.01,
+  recoveryPayPerStep: 0.01,
   doubleRunPerStep: 0.04,
   recoveryPerStep: 0.2,
 
@@ -768,16 +772,17 @@ export const baseConfig = {
   rouletteEdge: 0.05,
   /**
    * Scratch Card: nine cells, three alike win. Each prize shows as a multiple of the card's price,
-   * drawn with `weight` out of `scratchWeightTotal` (the rest win nothing): 85 % back on average,
-   * stingier than the other games (Leo, 06.10.2026), since the streak hands cards out for free.
+   * drawn with `weight` out of `scratchWeightTotal` (the rest win nothing): 92 % back on average and
+   * a win on about every fourth card. A little stingier than the other games, since the streak hands
+   * cards out for free; players found the first 85 % / one in six too low (Leo, 06.10.2026).
    */
   scratchPrice: 1000,
   scratchPrizes: [
-    { x: 2, weight: 1150 },
-    { x: 5, weight: 350 },
-    { x: 10, weight: 160 },
-    { x: 25, weight: 50 },
-    { x: 100, weight: 11 },
+    { x: 2, weight: 2150 },
+    { x: 5, weight: 360 },
+    { x: 10, weight: 130 },
+    { x: 25, weight: 36 },
+    { x: 100, weight: 4 },
     { x: 500, weight: 1 },
   ] as readonly { x: number; weight: number }[],
   scratchWeightTotal: 10000,
@@ -919,8 +924,8 @@ export const moduleUpgradePrice = (c: Config, m: RoadModule, level: number): num
 /** How much faster a Tow Depot of this level clears wrecks (a share of their time). */
 export const towSpeedupAt = (c: Config, level: number): number => c.towSpeedup + c.towSpeedupPerLevel * (level - 1);
 
-/** How many times more often cars take the exit a detour sign of this level points to. */
-export const detourExtraAt = (c: Config, level: number): number => c.detourExtra + level - 1;
+/** The share of cars that pass a detour sign of this level and leave by its exit. */
+export const detourShareAt = (c: Config, level: number): number => c.detourShare + c.detourSharePerLevel * (level - 1);
 
 export function moduleZone(c: Config, m: RoadModule): { arc: number; speedFactor: number } {
   if (m === 'tollBooth') return { arc: c.tollZoneArc, speedFactor: c.tollSpeedFactor };

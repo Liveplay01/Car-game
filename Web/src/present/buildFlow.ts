@@ -1,5 +1,6 @@
 import { Careers } from '../core/career';
 import type { RoadModule } from '../core/config';
+import { detourArmSlot } from '../core/modules';
 import type { Upgrade } from '../core/levels';
 import type { Vec2 } from '../core/vec2';
 import { type Built, partModule } from './flow';
@@ -77,7 +78,8 @@ export class BuildFlow {
     this.host.persist();
     this.host.refreshWaitingShift();
     this.host.play(['build'], ['comboUp']);
-    this.host.showNotice(module ? S.notice.placed(S.builder.name(pending.part)) : S.notice.built(S.builder.name(pending.part), career.armSlots.length));
+    const idle = module === 'detour' && detourArmSlot({ ...this.host.config, armSlots: career.armSlots }, pending.slot) === null;
+    this.host.showNotice(idle ? S.notice.detourIdle : module ? S.notice.placed(S.builder.name(pending.part)) : S.notice.built(S.builder.name(pending.part), career.armSlots.length));
   }
 
   /** A press on the Street Builder: a lifted part, a palette card, the pending part, or a built one. */

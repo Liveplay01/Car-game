@@ -1,5 +1,5 @@
 import { h } from './dom';
-import { openSheet } from './sheets';
+import { openSheet, glideHeight } from './sheets';
 import {
   type Account,
   type BoardEntry,
@@ -485,5 +485,7 @@ export function leaderboardSheet(layer: HTMLElement, actions: LeaderboardActions
 
   renderTop();
   panel.open();
-  return openSheet(layer, 'Leaderboard', body, actions.closed);
+  const close = openSheet(layer, 'Leaderboard', body, actions.closed);
+  glideHeight(body, panel.el);
+  return close;
 }

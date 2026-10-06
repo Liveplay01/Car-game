@@ -1,6 +1,6 @@
 # LOOT.md – Was in den Truhen steckt
 
-Stand: 01.10.2026 · Code: `Web/src/core/loot.ts` (Katalog, Odds, Pity),
+Stand: 06.10.2026 · Code: `Web/src/core/loot.ts` (Katalog, Odds, Pity),
 `Web/src/present/skins.ts` (Farben, Streifen, Dächer, Effekte),
 `Web/src/present/mapThemes.ts` (was eine Map in der Stadt zeigt),
 Namen in `Web/src/present/strings.ts` (`S.shop`). Wird ein Item ergänzt, gehört es in alle und hierher.
@@ -87,7 +87,7 @@ Code: `Web/src/core/casino.ts` (Regeln), `Web/src/present/casino.ts` (Darstellun
 | **Slots** | 3 Walzen à 20 gleich wahrscheinliche Stopps (Streifen `slotStrip`) | **95,45 %** exakt, Gewinn in 1 von 4,7 Spins |
 | **Skin-Upgrade** | 1–5 Truhen-Skins (Car/Map) auf einen fehlenden, seltener als alle Einsätze; Chance = Einsatzwert / Zielwert × 0,95, höchstens 75 %; mit Werbung-Boost +10 Punkte (nicht auf CrazyGames) | **95 %** (bis zur Obergrenze); mit Boost mehr, bewusst: freiwillig gegen eine Werbung, sichtbar im Rad |
 | **Roundabout Roulette** (06.10.2026) | Ring mit 20 Ausfahrten (je eine pro Stopp von `slotStrip`); Wette auf einen Fahrzeugtyp, Auszahlung (1 − 0,05) / Anteil der Ausfahrten (Car 3,17× … Boss, Ambulance, Transporter 19×); die Ausfahrt wird vorab gezogen, die Fahrt ist Inszenierung | **95 %** für jede Wette |
-| **Scratch Card** (06.10.2026) | 9 Felder, drei gleiche gewinnen; Preis 1.000, Gewinne 2× (11,5 %) · 5× (3,5 %) · 10× (1,6 %) · 25× (0,5 %) · 100× (0,11 %) · 500× (0,01 %); sonst zeigt kein Feld mehr als zweimal. Karten kauft man im Casino, jeder dritte Tag der Daily-Streak schenkt eine (höchstens 30 in der Hand); die Karte wird beim Rubbeln gezogen und vor der Enthüllung bezahlt | **85 %** exakt (absichtlich knapper als die anderen: die Streak verschenkt Karten) |
+| **Scratch Card** (06.10.2026) | 9 Felder, drei gleiche gewinnen; Preis 1.000, Gewinne 2× (21,5 %) · 5× (3,6 %) · 10× (1,3 %) · 25× (0,36 %) · 100× (0,04 %) · 500× (0,01 %), zusammen jede vierte Karte; sonst zeigt kein Feld mehr als zweimal. Karten kauft man im Casino, jeder dritte Tag der Daily-Streak schenkt eine (höchstens 30 in der Hand); die Karte wird beim Rubbeln gezogen und vor der Enthüllung bezahlt | **92 %** exakt (leicht knapper als die anderen: die Streak verschenkt Karten; auf 92 % angehoben, weil 85 % und nur jede sechste Karte zu knapp wirkten) |
 | **Doppelt oder nichts** | Nach jedem Gewinn, freiwillig: faire Münze, genau 50 %, höchstens 5× in Folge | 100 % |
 
 Slots-Gewinntabelle (×Einsatz): drei Boss 500 · Transporter 150 · Ambulance 100 · Sports car 40 ·
@@ -173,7 +173,7 @@ sichtbar, mit dem Hinweis, wie man sie bekommt.
 | Sunburst | `sunburst` | Epic | Event Chest im Sommer (Jun–Aug) | Sonnengelb mit Orange-Streifen |
 | Pumpkin | `pumpkin` | Epic | Event Chest im Herbst (Sep–Nov) | Kürbisorange mit schwarzem Streifen |
 
-## Nur über Legendary Shifts, Prestige und die Elite-Leiste (19, Regal „Honours“, die Maps auch im Regal „Maps“)
+## Nur über Legendary Shifts, Prestige und die Elite-Leiste (24, Regal „Honours“, die Maps auch im Regal „Maps“)
 
 Seit 28.09.2026, Elite-Items seit 29.09.2026. Nie in Truhen, eigenes Regal im Shop. Einzige
 Ausnahme seit 01.10.2026: der **Classic** (Fahrzeugtyp, Legendary), ein seltener Fund in der
@@ -200,6 +200,18 @@ Standard Chest (oben, „Truhen“). Er steht im Regal „Honours“, zählt abe
 | Jade Chevron | `eliteJade` | Epic | Elite 25 | Lagune, Perlstreifen, glänzend |
 | Black Aurum | `eliteAurum` | Legendary | Elite 35 | Obsidian, Goldstreifen, glänzend + Glitzer |
 | Halo | `eliteHalo` | Legendary | Elite 45 | Eisweiß, Goldstreifen, glänzend + Glitzer |
+
+**Mehr Honours (Leo, 06.10.2026)**, nie in Truhen, die Maps zugleich Feats:
+
+| Name | ID | Seltenheit | Wie | Look |
+| --- | --- | --- | --- | --- |
+| Chrono | `chrono` | Legendary | Elite 55 | Chrom, hellblauer Streifen, glänzend + Glitzer; Effekt: vier Echos des Autos, Uhr auf dem Dach, ein Funke als Sekundenzeiger |
+| Biolume | `biolume` | Legendary | Elite 65 | Lagune, Streifen in Plankton-Grün, glänzend; Effekt: leuchtende Punkte auf der Haube, Plankton-Spur, kreisende Funken |
+| Dragonfire | `dragon` | Legendary | 30 Legendary Shifts | Rubinrot, Goldstreifen, glänzend + Glitzer; Effekt: Schuppen, zwei goldene Hörner, Flammenspur |
+| Glowtide | `glowtide` | Legendary | Elite 85 (Feat) | Map Skin: nächtliche Küste mit leuchtendem Plankton, Gezeitenlinien, Tidepool mit pulsierender Qualle, Leuchttang |
+| Moonmirror | `moonmirror` | Legendary | Prestige ★25 (Feat) | Map Skin: Salzsee unter Sternen, Kruste in Sechsecken, Mondsichel mit Spiegelbild im Rundbecken, Sternschnuppen |
+
+Spielstände, die einen dieser Meilensteine schon hinter sich haben, bekommen das Item beim Laden (`storage/save.ts`), außer Feats, deren Ziel noch offen ist.
 
 Kein Elite-Item ist ganz gold lackiert: Gold am ganzen Auto bleibt dem Jackpot-Transporter
 vorbehalten (Fahrzeugfarben sind Spielinformation).
@@ -298,7 +310,7 @@ Details mit (`MapTheme`, Entscheidung Leo 25.09.2026). **Jede Map säumt ihre St
 
 **Tag und Nacht (Leo, 29.09.2026: „die Maps wirken traurig“):** Maps, die in der Sonne spielen
 (`DAYLIGHT` in `mapThemes.ts`: Sand, Forest, Autumn, Sakura, Meadow, Tropic, Snowfall, Vineyard,
-Red Canyon, Highlands, Beach), haben einen hellen, satten Boden in der Farbe ihres Ortes –
+Red Canyon, Highlands, Beach, Savanna, Rainforest, Alps), haben einen hellen, satten Boden in der Farbe ihres Ortes –
 hellgrüner Rasen in Sakura, knalliger Sand, Neuschnee – und Dächer in Tagesfarben (Ziegel,
 Schiefer, Beton; unter Schnee weiß). Die Nacht-Maps (Dusk, Neon, Aurora, Ember, Cosmos, Harbour,
 Mushroom Grove, Abyss, Lantern Festival, Crystal Cavern) bleiben dunkel, weil ihr Licht das Thema
@@ -323,6 +335,7 @@ gut lesbar sind. Die Bodentextur ist auf hellen Böden schwächer (sonst wirkt s
 - **Beach** (Leo, 29.09.2026) heißer Sand mit Flutlinien, Muscheln und Seesternen, Palmen und
   Sonnenschirme an den Straßen, Sandburgen, eine **türkise Bucht** mit Brandung, Bojen, Surfbrett
   und **Rettungsturm**, **Möwen** ziehen mit ihren Schatten drüber.
+- **Natur-Maps (Leo, 06.10.2026):** **Savanna** goldenes Dürregras, Wildpfade, Akazien mit langem Schatten, Termitenhügel, ein **Wasserloch** mit trinkenden Elefanten und weidenden Antilopen, Staub und ziehende Wolkenschatten · **Rainforest** dunkler Urwaldboden mit Farnen und Blüten, Sonnenstrahlen, die wandern, Riesenblätter, ein **Gumpen unter einem Wasserfall** mit Seerosen und Nebel, fallende Blätter und Schmetterlinge · **Alps** Bergwiese mit Geröll, Altschneeflecken, Enzian und Edelweiß, Tannen, kleine Gipfel, ein **Gipfel von oben** (Flächen von links oben beleuchtet) mit ziehender Wolke, Schneegestöber und Wolkenschatten.
 - **Snowfall** verschneite Tannen und warme Laternen, Schneemänner, Schlittenspuren, ein
   **zugefrorener Teich** mit Kufenspuren und zwei Eisläufern, **Schneefall**.
 - **Cosmos** Tiefraum mit Nebeln und funkelnden Sternen, kleine Planeten, Leuchtbaken an den
@@ -376,6 +389,9 @@ einer neuen Schicht nicht neu an.
 | Lantern Festival | `lanterns` | Epic | Laternengold |
 | Crystal Cavern | `crystal` | Legendary | Kristallviolett |
 | Beach | `beach` | Common | Meerestürkis |
+| Savanna | `savanna` | Rare | Savannen-Orange |
+| Rainforest | `rainforest` | Epic | Urwaldgrün |
+| Alps | `alps` | Epic | Gletscherblau |
 
 ## Fahrzeugtypen (3)
 

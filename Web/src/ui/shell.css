@@ -613,6 +613,10 @@ a.row-link {
   animation: sheet-out 200ms var(--ease-out) both;
 }
 
+.sheet-root.stacked .sheet-scrim {
+  background: rgba(5, 6, 8, 0.3);
+}
+
 .sheet-root.closing .sheet-scrim {
   animation: fade-out 200ms ease both;
 }

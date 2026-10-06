@@ -6,7 +6,7 @@ import { type Vec2, v, add, sub, mul, dist, fromAngle, normalize, right, wrap, T
 import { type RenderList, type Rect, R, rect, circle, arc, line, polygon, text, Ease } from './render';
 import type { ColorToken } from './theme';
 import { MenuKit } from './menukit';
-import { moneyTag } from './icons';
+import { moneyTag, drawFitted } from './icons';
 import { S, Fmt } from './strings';
 import { BuildLayout, MODULE_COLORS, PARTS, partModule, type Part, type Built } from './flow';
 import { BuildTab } from './upgrades';
@@ -292,6 +292,20 @@ export const StreetBuilderPage = {
   },
 
   /**
+   * The mark of a module that can still be upgraded (Leo, 06.10.2026): an arrow in a badge at the
+   * icon's corner. Bright, with a ring that breathes, when the money is there; dim when it is not.
+   */
+  addUpgradeBadge(list: RenderList, at: Vec2, affordable: boolean, age: number, reduceMotion: boolean): void {
+    const badge = add(at, v(11, -11));
+    if (affordable && !reduceMotion) list.s(circle(badge, 7 + 2.5 * (0.5 + 0.5 * Math.sin(age * 3))), 'accent', 0.28);
+    list.s(circle(badge, 7.5), 'background');
+    list.s(circle(badge, 6.5), affordable ? 'accent' : 'controlFill');
+    const ink: ColorToken = affordable ? 'accentInk' : 'muted';
+    list.s(line(add(badge, v(-3, 1.6)), add(badge, v(0, -1.6)), 1.8), ink);
+    list.s(line(add(badge, v(0, -1.6)), add(badge, v(3, 1.6)), 1.8), ink);
+  },
+
+  /**
    * Where a module works, on the builder's ring (Leo, 06.10.2026): the stretch of road its zone
    * covers, or for a detour sign the way to the exit it points to, with that arm lit.
    */
@@ -342,6 +356,8 @@ export const StreetBuilderPage = {
         if (state.builtModule?.slot === slot && !reduceMotion) scale += 0.4 * (1 - Ease.outCubic(state.builtModule.age / P.buildDuration));
         P.addModuleIcon(list, module, at, scale, 1);
         P.addLevelPips(list, career.moduleLevels[slot] ?? 1, at, map);
+        const upgradePrice = Careers.moduleUpgradePrice(career, slot, config);
+        if (upgradePrice !== null && !draggingModule && !state.pending) P.addUpgradeBadge(list, at, career.money >= upgradePrice, state.age, reduceMotion);
       }
       if (draggingModule) {
         const isTarget = state.target === slot;
@@ -501,15 +517,16 @@ export const StreetBuilderPage = {
       list.s(rect(center, size, P.cardCorner), 'card', enter);
     }
     const wide = size.x >= 300;
-    P.addPartPicture(list, part, v(center.x - size.x / 2 + (wide ? 36 : 28), center.y), 0.85, enter);
+    const narrow = size.x < 150;
+    P.addPartPicture(list, part, v(center.x - size.x / 2 + (wide ? 36 : narrow ? 22 : 28), center.y), narrow ? 0.65 : 0.85, enter);
     // Clear of the picture (the new arm's road sticks out to the right); a long name shrinks.
-    const textLeft = center.x - size.x / 2 + (wide ? 76 : 64);
-    const name = S.builder.name(part);
+    const textLeft = center.x - size.x / 2 + (wide ? 76 : narrow ? 46 : 64);
     const room = center.x + size.x / 2 - 12 - textLeft - (wide ? measure(S.builder.drag, 12, false) + 24 : 0);
-    list.s(text(name, v(textLeft, center.y - 12), Math.max(11, Math.min(16, (16 * room) / Math.max(1, measure(name, 16, true)))), 'leading', 'bold'), 'primary', enter);
+    drawFitted(list, S.builder.name(part), v(textLeft, center.y - 12), 16, room, 'primary', { weight: 'bold', opacity: enter });
     const priceColor: ColorToken = price !== null && career.money >= price ? 'accent' : 'muted';
-    if (price !== null) moneyTag(list, Fmt.number(price), v(textLeft, center.y + 12), 15, 'leading', priceColor, priceColor, enter);
-    else list.s(text(S.builder.ringFull, v(textLeft, center.y + 12), 15, 'leading', 'bold'), 'muted', enter);
+    const priceSize = narrow ? 13 : 15;
+    if (price !== null) moneyTag(list, Fmt.number(price), v(textLeft, center.y + 12), priceSize, 'leading', priceColor, priceColor, enter);
+    else drawFitted(list, S.builder.ringFull, v(textLeft, center.y + 12), priceSize, room, 'muted', { weight: 'bold', opacity: enter });
     if (wide) list.s(text(S.builder.drag, v(center.x + size.x / 2 - 18, center.y), 12, 'trailing'), 'muted', 0.75 * enter);
   },
 

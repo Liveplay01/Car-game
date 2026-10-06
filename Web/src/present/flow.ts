@@ -99,6 +99,8 @@ export type ScreenAction =
   | { k: 'startTrial'; id: string }
   | { k: 'wearTitle'; id: TitleId }
   | { k: 'showElite' }
+  /** The Hall of Fame's own sheet, opened from its row in the Elite sheet. */
+  | { k: 'showHall' }
   | { k: 'prestige' }
   | { k: 'showPass' }
   | { k: 'buyPass' }

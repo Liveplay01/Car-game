@@ -314,8 +314,8 @@ Abreißen (Zufahrten und Module) ist möglich, **nichts wird erstattet.** Versch
 | Backup | +1 Polizei-Crash pro Schicht | 3 | 7.800 |
 | Cash Route | Transporter 0,4 s früher & öfter | 8 | 2.600 |
 | Overtime | +4 % Schichtlohn | 10 | 2.600 |
-| Freight | +1,5 % Lkw (mehr Maut, dichterer Verkehr) | 8 | 2.600 |
-| Quick Recovery | Verkehr beschleunigt 20 % stärker (schneller wieder auf Tempo nach Unfällen) | 5 | 3.100 |
+| Freight | +1,5 % Lkw (mehr Maut, dichterer Verkehr), dafür +1 % Schichtlohn pro Stufe (`freightPayPerStep`, 06.10.2026: die Stufen kosteten gemessen mehr, als sie brachten) | 8 | 2.600 |
+| Quick Recovery | Verkehr beschleunigt 20 % stärker (schneller wieder auf Tempo nach Unfällen), dafür +1 % Schichtlohn pro Stufe (`recoveryPayPerStep`) | 5 | 3.100 |
 | Double Run | +4 % Chance auf zweiten Transporter | 5 | 3.900 |
 | Insurance* | −15 % Crash-Kosten (Stufe 7 = 100 %) | 7 | 5.200 |
 | Robbery Insurance* | −15 % Verlust bei Flucht (Stufe 7 = 100 %) | 7 | 5.200 |
@@ -336,7 +336,7 @@ Crash, Slots, Skin-Upgrade und Doppelt oder nichts, nur mit Spielgeld **und Skin
 | **Slots** | 3 Walzen à 20 gleich wahrscheinliche Stopps; drei Boss 500×, Transporter 150×, Ambulance 100×, Sports Car 40×, Van 15×, Compact 10×, Car 6×, zwei Bosse irgendwo 10×, erste zwei Walzen gleich 2× | 95,45 % |
 | **Skin-Upgrade** | 1–5 Truhen-Skins auf einen selteneren; Chance = Einsatzwert / Zielwert × 0,95, höchstens 75 % | 95 % |
 | **Roundabout Roulette** | 20 Ausfahrten wie die Stopps der Slots; Wette auf einen Fahrzeugtyp, Auszahlung 0,95 / Anteil der Ausfahrten | 95 % |
-| **Scratch Card** | 9 Felder, drei gleiche gewinnen (2× … 500× des Kartenpreises 1.000); Karten kaufen oder über die Daily-Streak verdienen (jeder 3. Tag) | 85 % |
+| **Scratch Card** | 9 Felder, drei gleiche gewinnen (2× … 500× des Kartenpreises 1.000); Karten kaufen oder über die Daily-Streak verdienen (jeder 3. Tag) | 92 % |
 | **Doppelt oder nichts** | nach jedem Gewinn freiwillig, faire Münze, höchstens 5× in Folge | 100 % |
 
 **Streak-Karte (06.10.2026):** Progress → Records beginnt mit einer großen Karte für die Daily-Streak: ein Auspuff, dessen Flamme mit den Tagen wächst (Engine off · Idling · Revving ab 3 Tagen · Backfiring ab 7 · Afterburner ab 14 · Inferno ab 30). Ab 7 Tagen knallt der Auspuff in Abständen (Backfire: Blitz, Funken, Ruck). Code: `present/streakFlame.ts`.
@@ -384,7 +384,7 @@ Ein neuer Spieler trifft die Systeme nacheinander (`core/unlocks.ts`, Werte in `
 - **Speed Camera:** kurze, scharfe Zone (44 Einheiten), alle bremsen (×0,7); zahlt nur über 108 % Grundtempo.
 - **Tow Depot:** Wracks in seiner Zone (180 Einheiten) verschwinden 30 % schneller; nach einem Crash fährt kurz ein Abschleppwagen hin.
 - **Billboard:** jedes Fahrzeug, das vorbeifährt, zahlt in den ersten 60 s einer Schicht; kurze Zone (110 Einheiten), Tempo ×0,85.
-- **Detour Sign:** Autos, die am Schild vorbeifahren, wählen die erste Ausfahrt dahinter (nie die des Spielers) 3-mal so oft (Stufe 3: 5-mal). Wer erst hinter dem Schild einfährt, bleibt unberührt. Modulplatz 2 zeigt auf den Arm direkt vor dem Spielerarm (`detourArmSlot`, `core/modules.ts`).
+- **Detour Sign** (überarbeitet 06.10.2026): Autos, die am Schild vorbeifahren und weiterfahren würden, als sie die Ausfahrt des Schilds nehmen, biegen mit 45 % (Stufe 2: 60 %, Stufe 3: 75 %) dort ab und vergessen ihre Extrarunden (`World.applyDetour`, `detourExit`). Ziel ist die erste Ausfahrt hinter dem Schild, aber nur eine **vor dem Spielerarm** und nur, wenn vor dem Schild ein Arm einmündet; sonst tut das Schild nichts (`detourArmSlot` gibt null, der Builder warnt). Vorher bekam die Ausfahrt nur mehr Gewicht in der Auswahl, die ab Level 12 (zwei Ausfahrten Mindestweg) meist gar nicht mehr zur Wahl stand: gemessen kaum Wirkung. Jetzt bis zu 21 % weniger Autos an der Einfahrt des Spielers. Wer erst hinter dem Schild einfährt, bleibt unberührt; Einsatzfahrzeuge, Fahrschulauto, Schwertransport und Rennfahrer fahren ihre feste Route.
 - **Modulstufen** (Leo, 06.10.2026): jedes Modul hat 3 Stufen; Stufe 2 kostet das 1,5-Fache, Stufe 3 das 2,5-Fache des Preises (`moduleUpgradePrice`). Toll Booth, Speed Camera und Billboard zahlen pro Stufe das Einfache der Basis, das Tow Depot räumt 10 Prozentpunkte schneller, das Detour Sign wählt die Ausfahrt eine Stufe öfter. Verschieben behält die Stufe, Abreißen löscht sie; Speicherstand (`moduleLevels`) und Challenge-Link tragen sie.
 - **Zonen-Vorschau:** der Builder zeigt die Zone jedes Moduls auf dem Ring (stärker beim Antippen, Ziehen und Verschieben), beim Detour Sign den Weg bis zur Ausfahrt mit dem Arm.
 - **City Evolution:** um den Kreisverkehr wachsen mit Level, Zufahrten und Modulen Stadtblöcke, Bäume und Infrastruktur – rein Darstellung.
@@ -396,7 +396,7 @@ Ein neuer Spieler trifft die Systeme nacheinander (`core/unlocks.ts`, Werte in `
 Details und alle Item-Listen: [LOOT.md](LOOT.md) (Liste im Code: `Web/src/core/loot.ts`).
 
 - **Nur Aussehen.** Kein Skin gibt einen Spielvorteil. Sonderfahrzeuge bleiben an der **Form** erkennbar, nicht an der Farbe.
-- **102 Items:** 74 Car Skins (39 aus Truhen, 3 Daily-Serie, 4 Saison, 12 Saison-Pass, 16 Ehren-Skins aus Legendary Shifts, Prestige, Elite und Ruhmeshalle), 24 Map Skins (21 aus Truhen, 3 Ehren-Maps) und 4 Fahrzeugtypen (der Classic ist ein Honour). Im Shop vier Regale (seit 01.10.2026): **Cars** (Truhen-Skins nach Seltenheit mit Überschriften, dazu Fahrzeuge und Saison-Skins), **Maps**, **Honours** (Legendary Shifts, Prestige, Elite, Feats, Ruhmeshalle, Daily-Serie, der Classic), **Pass**. Das Raster scrollt (4 Spalten); Chips und Überschriften zeigen den Fortschritt.
+- **121 Items:** 88 Car Skins (39 aus Truhen, 3 Daily-Serie, 4 Saison, 12 Saison-Pass, Ehren-Skins aus Legendary Shifts, Prestige, Elite, Unlimited und Ruhmeshalle), 29 Map Skins (24 aus Truhen, 5 Ehren-Maps) und 4 Fahrzeugtypen (der Classic ist ein Honour). Im Shop vier Regale (seit 01.10.2026): **Cars** (Truhen-Skins nach Seltenheit mit Überschriften, dazu Fahrzeuge und Saison-Skins), **Maps**, **Honours** (Legendary Shifts, Prestige, Elite, Feats, Ruhmeshalle, Daily-Serie, der Classic), **Pass**. Das Raster scrollt (4 Spalten); Chips und Überschriften zeigen den Fortschritt.
 - **Skins mischen:** bis zu **5 Car Skins** gleichzeitig; **jedes Fahrzeug** im Level trägt einen davon, fest pro Fahrzeug. Ein Map Skin.
 - **Map Skins** färben den Boden der Stadt (Tag-Maps hell und satt, Nacht-Maps dunkel), tönen die Mittelinsel, säumen die Straßen mit eigenen Pflanzen und bringen ein **Herzstück** mit Animation. Jede Map hat ein kleines Diorama in der Collection.
 - **Car Skins:** Farben, Rennstreifen, zweifarbige Dächer, **Shiny** (Lichtstreif) und **Glitter** (Funkeln); Pass- und Feat-Skins mit eigenen Effekten (Schneespur, Regenbogen, Lavarisse, Blitze, kreisende Lichtkrone …).
@@ -444,7 +444,7 @@ Ein voller Satz zahlt einmal Geld und legt einen **Rahmen** in seiner Farbe um d
 | Maps | alle 21 Map Skins aus Truhen | 10.000 |
 | Seasons | 4 Saison-Items | 30.000 |
 | Loyalty | 3 Serien-Items | 20.000 |
-| Honours | alle 19 Ehren-Items (Legendary Shifts, Prestige, Elite, Feats, Ruhmeshalle; ohne den Classic, der Glück ist) | 50.000 |
+| Honours | alle 34 Ehren-Items (Legendary Shifts, Prestige, Elite, Unlimited, Feats, Ruhmeshalle; ohne den Classic, der Glück ist) | 50.000 |
 | Season Pass | alle 12 Pass-Skins | 60.000 |
 
 ---
@@ -463,7 +463,7 @@ Ein voller Satz zahlt einmal Geld und legt einen **Rahmen** in seiner Farbe um d
 
 ### Quests
 
-3 kleine Ziele pro Tag, für alle gleich, je einmal bezahlt, wechseln um Mitternacht. Unter **Progress → Today**. Sieben mögliche: 3 Perfect Inputs (250) · 3 Tight Fits (250) · Combo 15 (250) · 2 Takedowns (350) · 2 Transporter (350) · Perfect Chain 8 (350) · ein Perfect Run (500).
+3 kleine Ziele pro Tag, für alle gleich, je einmal bezahlt, wechseln um Mitternacht. Unter **Progress → Today**. Vierzehn mögliche (seit 06.10.2026, `core/daily.ts`): 3 Perfect Inputs (250) · 3 Tight Fits (250) · Combo 15 (250) · ein Takedown (250) · 8 Clean Merges (250) · 2 Takedowns (350) · 2 Transporter (350) · Perfect Chain 8 (350) · Perfect Chain 5 (350) · 2 Near Misses (350) · 6 Tight Fits (400) · 5 Perfect Inputs (400) · Combo 25 (400) · ein Perfect Run (500).
 
 ### Weekly Shift
 
@@ -752,7 +752,7 @@ Die Web-Version ist das ganze Spiel. Zuletzt dazugekommen (aus den Patch Notes):
 | Sonderverkehr | Polizei & Verbrecher, vier Bosse, Transporter (Jackpot), Lkw, Tanklaster, Militär-Truck, Krankenwagen, Feuerwehr, Motorrad, Fahrschulauto, Schulbus | ✅ |
 | Modi | Shift, Unlimited, Mayhem, Multiplayer (Wischen, Runden, Relay) | ✅ |
 | Schwierigkeit | Level-Kurve, Wetter (7), Nacht/Blackout, City Events (6), zwei Spuren, Risiko & Versicherung | ✅ |
-| Meta | Geld, 13 Upgrades, Street Builder mit Modulen, Truhen, Sammlung (102 Items), Alben, Mastery, Daily, Serie, Quests, Trials, Records, Casino, Freischaltungen | ✅ |
+| Meta | Geld, 13 Upgrades, Street Builder mit Modulen, Truhen, Sammlung (121 Items), Alben, Mastery, Daily, Serie, Quests, Trials, Records, Casino, Freischaltungen | ✅ |
 | Langzeit | Legendary Shifts, Prestige, Elite-Leiste, Titel, Feats, Saison-Pass, Ruhmeshalle, Weekly Shift, Museum, Big Screen | ✅ |
 | Hülle | Tab-Bar, Einstellungen, PWA, Offline, Speicherschutz, Docker/Coolify, Patch Notes, Rechtliches | ✅ |
 | Online | Bestenlisten, Freunde-Board, Cloud sync, TURN-Relay, Kurzlinks mit Vorschaubild (`Server/`) | ✅ gebaut (Relay braucht die Cloudflare-Zugangsdaten in Coolify) |

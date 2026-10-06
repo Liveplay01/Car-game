@@ -1,4 +1,5 @@
 import { type Career, Careers, MINIMUM_ARMS } from '../core/career';
+import { detourArmSlot } from '../core/modules';
 import { type Config, type RoadModule, MODULE_MAX_LEVEL } from '../core/config';
 import { type Upgrade, upgradeMaxSteps } from '../core/levels';
 import { type ChestKind, RARITIES, CHEST_ODDS, chestFinds, PITY_CHESTS, PITY_LEGENDARY_CHESTS, MAX_CAR_SKINS, BIG_SCREEN, cosmetic, isForSale } from '../core/loot';
@@ -255,8 +256,9 @@ export const Details = {
     if (plaques.length === 0) plaques.push({ label: S.hall.empty, value: '', labelColor: 'muted' });
     plaques.push({
       label: S.hall.title,
+      action: { k: 'showHall' },
       value: career.hallBuilt ? S.hall.standing : money(Fmt.number(config.hallOfFamePrice)),
-      sub: career.hallBuilt ? undefined : open ? S.hall.notBuilt : S.hall.open(config.prestigeLevel),
+      sub: career.hallBuilt ? S.hall.tapMore : open ? S.hall.notBuilt : S.hall.open(config.prestigeLevel),
       labelColor: career.hallBuilt ? 'coin' : 'primary',
       valueColor: career.hallBuilt ? 'accent' : career.money >= config.hallOfFamePrice ? 'primary' : 'muted',
     });
@@ -296,6 +298,42 @@ export const Details = {
           ? []
           : [{ label: S.hall.build(money(Fmt.number(config.hallOfFamePrice))), action: { k: 'buildHall' } as const, prominent: false, enabled: Careers.canBuildHall(career, config) }]),
       ],
+    };
+  },
+
+  /** The Hall of Fame explained (Leo, 06.10.2026): what it is, what building it gives, and the way to build it. */
+  hall(career: Career, config: Config): Detail {
+    const open = Elite.isOpen(career, config);
+    const price = config.hallOfFamePrice;
+    const affordable = Careers.canBuildHall(career, config);
+    const rows: DetailRow[] = [
+      { label: S.hall.wall, value: S.hall.wallValue(career.prestige), valueColor: career.hallBuilt ? 'accent' : 'muted' },
+      { label: S.hall.plaques, value: S.hall.plaquesValue(career.hallOfFame.length), valueColor: 'muted' },
+      { label: S.hall.skin, value: S.hall.skinValue, valueColor: 'coin' },
+    ];
+    const notes: Detail['notes'] = [{ text: S.hall.looks, color: 'muted' }];
+    if (!career.hallBuilt && !open) notes.unshift({ text: S.hall.open(config.prestigeLevel), color: 'muted' });
+    const actions: DetailAction[] = [];
+    if (!career.hallBuilt) {
+      actions.push({
+        label: affordable || !open ? S.hall.build(money(Fmt.number(price))) : S.upgrades.missing(money(Fmt.number(price - career.money))),
+        action: { k: 'buildHall' },
+        prominent: true,
+        enabled: affordable,
+      });
+    }
+    actions.push({ label: S.hall.back, action: { k: 'showElite' }, prominent: career.hallBuilt, enabled: true });
+    return {
+      key: 'hall',
+      art: { k: 'elite', level: Elite.level(career, config) },
+      eyebrow: { text: career.hallBuilt ? S.hall.standing : S.hall.gives, color: career.hallBuilt ? 'accent' : 'muted' },
+      title: S.hall.title,
+      price: career.hallBuilt ? null : { text: money(Fmt.number(price)), color: affordable ? 'primary' : 'muted' },
+      steps: null,
+      body: S.hall.about,
+      rows,
+      notes,
+      actions,
     };
   },
 
@@ -451,6 +489,7 @@ export const Details = {
     const canDelete = built.k === 'module' || Careers.canRemoveArm(career, built.slot);
     const notes: Detail['notes'] = [{ text: S.builder.noRefund, color: 'muted' }];
     if (!canDelete) notes.unshift({ text: S.builder.keepsArms(MINIMUM_ARMS), color: 'muted' });
+    if (part === 'detour' && built.k === 'module' && detourArmSlot({ ...config, armSlots: career.armSlots }, built.slot) === null) notes.unshift({ text: S.builder.detourIdle, color: 'destructive' });
     const level = built.k === 'module' ? (career.moduleLevels[built.slot] ?? 1) : 1;
     const upgradePrice = built.k === 'module' ? Careers.moduleUpgradePrice(career, built.slot, config) : null;
     const affordable = upgradePrice !== null && career.money >= upgradePrice;

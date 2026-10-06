@@ -5,7 +5,7 @@ import { type Vec2, v, add, sub, mul, TAU } from '../core/vec2';
 import { type RenderList, type Rect, type Primitive, R, rect, circle, arc, line, polygon, text, Ease } from './render';
 import type { ColorToken } from './theme';
 import { MenuKit } from './menukit';
-import { moneyTag } from './icons';
+import { moneyTag, moneyTagWidth, drawFitted, textWidth } from './icons';
 import { S, Fmt } from './strings';
 import { measure } from './measure';
 import { BuildLayout, BUILD_PAGES, type Tab } from './flow';
@@ -204,23 +204,34 @@ export const UpgradePage = {
     const textLeft = center.x - size.x / 2 + 12;
     const textRight = center.x + size.x / 2 - 12;
     const nameY = picture.maxY + (center.y + size.y / 2 - picture.maxY) * 0.36;
-    list.s(text(S.upgrades.name(upgrade), v(textLeft, nameY), 14, 'leading', 'bold'), 'primary', o);
-    list.s(text(S.upgrades.steps(steps, maxSteps), v(textRight, nameY), 12, 'trailing'), 'muted', o);
+    const stepsText = S.upgrades.steps(steps, maxSteps);
+    const stepsWidth = textWidth(stepsText, 12, false);
+    drawFitted(list, S.upgrades.name(upgrade), v(textLeft, nameY), 14, textRight - textLeft - stepsWidth - 8, 'primary', { weight: 'bold', opacity: o });
+    list.s(text(stepsText, v(textRight, nameY), 12, 'trailing'), 'muted', o);
 
     const priceY = center.y + size.y / 2 - 14;
+    const priceLabel = price === null ? S.upgrades.maxed : Fmt.number(price);
+    const priceWidth = price === null ? textWidth(priceLabel, 14) : moneyTagWidth(priceLabel, 14);
+    // The pips take the room the price leaves; where there is not enough for one each, a single bar shows the progress.
     const pipGap = 2.5;
-    const pipWidth = Math.min(9, (size.x - 24 - 82 - pipGap * (maxSteps - 1)) / maxSteps);
-    for (let step = 0; step < maxSteps; step++) {
-      const filled = step < steps;
-      let pipSize = v(pipWidth, 5);
-      if (purchase && step === purchase.steps && !reduceMotion) pipSize = mul(pipSize, 1 + 0.6 * Math.sin(Math.PI * Ease.outCubic(purchase.age / 0.3)));
-      list.s(rect(v(textLeft + pipWidth / 2 + step * (pipWidth + pipGap), priceY), pipSize, 2.5), filled ? 'accent' : 'marking', (filled ? 1 : 0.6) * o);
+    const pipRoom = textRight - textLeft - priceWidth - 10;
+    const pipWidth = Math.min(9, (pipRoom - pipGap * (maxSteps - 1)) / maxSteps);
+    if (pipWidth >= 3) {
+      for (let step = 0; step < maxSteps; step++) {
+        const filled = step < steps;
+        let pipSize = v(pipWidth, 5);
+        if (purchase && step === purchase.steps && !reduceMotion) pipSize = mul(pipSize, 1 + 0.6 * Math.sin(Math.PI * Ease.outCubic(purchase.age / 0.3)));
+        list.s(rect(v(textLeft + pipWidth / 2 + step * (pipWidth + pipGap), priceY), pipSize, 2.5), filled ? 'accent' : 'marking', (filled ? 1 : 0.6) * o);
+      }
+    } else if (pipRoom >= 16) {
+      list.s(rect(v(textLeft + pipRoom / 2, priceY), v(pipRoom, 5), 2.5), 'marking', 0.6 * o);
+      if (steps > 0) list.s(rect(v(textLeft + (pipRoom * steps) / maxSteps / 2, priceY), v((pipRoom * steps) / maxSteps, 5), 2.5), 'accent', o);
     }
     let priceColor: ColorToken = price === null ? 'accent' : career.money >= price ? 'primary' : 'muted';
     if (denied) priceColor = 'destructive';
     const priceAt = v(textRight, priceY);
-    if (price !== null) moneyTag(list, Fmt.number(price), priceAt, 14, 'trailing', priceColor, priceColor, o);
-    else list.s(text(S.upgrades.maxed, priceAt, 14, 'trailing', 'bold'), priceColor, o);
+    if (price !== null) moneyTag(list, priceLabel, priceAt, 14, 'trailing', priceColor, priceColor, o);
+    else list.s(text(priceLabel, priceAt, 14, 'trailing', 'bold'), priceColor, o);
   },
 
 };

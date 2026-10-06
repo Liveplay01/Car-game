@@ -8,6 +8,7 @@ import { type RenderList, type Rect, RenderList as List, R, rect, circle, arc, l
 import type { ColorToken } from './theme';
 import { MenuKit } from './menukit';
 import { S, Fmt, money } from './strings';
+import { drawFitted } from './icons';
 import { CarArt } from './carArt';
 import { SYNDICATE_BOSS } from './scene';
 import { land } from './hud';
@@ -420,9 +421,14 @@ export const CasinoGames = {
     const tier = won ? winTier(spin.pay) : 0;
     stage = R.offset(stage, CasinoPage.jolt(since, tier, reduceMotion));
     ShopPage.panel(list, stage, 'card', enter);
-    const room = 70;
-    const center = v(R.center(stage).x, stage.minY + (R.height(stage) - room) / 2 + 4);
-    const radius = Math.max(40, Math.min(R.width(stage) * 0.3, (R.height(stage) - room) / 2 - 36));
+    // The wheel (its tiles stand 14 outside the radius) fits above the line under it, on a short stage too.
+    const room = 46;
+    const center = v(R.center(stage).x, stage.minY + (R.height(stage) - room) / 2 + 2);
+    const base = Math.min(R.width(stage) * 0.3, 70);
+    // The tiles reach 47 beyond the radius; on a short stage everything of the wheel shrinks together.
+    const shrink = Math.min(1, (R.height(stage) - room - 8) / 2 / (base + 47));
+    const radius = base * shrink;
+    const u = shrink;
     const top = -Math.PI / 2;
     const bet = spin ? spin.bet : state.bet;
     const at = (a: number, d: number): Vec2 => add(center, mul(fromAngle(a), d));
@@ -434,7 +440,7 @@ export const CasinoGames = {
     const lastExit = Math.floor(passed) % n;
     const frac = passed - Math.floor(passed);
 
-    list.s(arc(center, radius, 28, 0, TAU), 'background', 0.55 * enter);
+    list.s(arc(center, radius, 28 * u, 0, TAU), 'background', 0.55 * enter);
     for (let k = 0; k < 40; k++) list.s(circle(at(top + (k / 40) * TAU, radius), 1.3), 'marking', 0.6 * enter);
 
     for (let i = 0; i < n; i++) {
@@ -447,12 +453,12 @@ export const CasinoGames = {
       if (run && !done && !reduceMotion && passed > 0 && i === lastExit) pop += 0.35 * (1 - frac) ** 2;
       if (hit) pop += 0.35 * (reduceMotion ? 1 : Ease.spring(Ease.clamp01(since / 0.45)));
       const o = enter * (done ? (hit ? 1 : 0.28) : mine ? 1 : 0.5);
-      list.s(line(at(a, radius + 14), at(a, radius + 22), 7), 'marking', 0.5 * o);
-      const tile = at(a, radius + 32);
-      if (hit && !reduceMotion) MenuKit.glow(list, tile, 30, won ? 'accent' : tint, (won ? 0.7 : 0.45) * enter * (0.8 + 0.2 * Math.sin(since * 9)));
-      if (mine && !done) list.s(rect(tile, v(25 * pop, 25 * pop), 8), 'primary', 0.9 * o);
-      if (hit && won) list.s(rect(tile, v(26 * pop, 26 * pop), 8), 'accent', enter);
-      list.s(rect(tile, v(20 * pop, 20 * pop), 6), tint, o);
+      list.s(line(at(a, radius + 14 * u), at(a, radius + 22 * u), 7 * u), 'marking', 0.5 * o);
+      const tile = at(a, radius + 32 * u);
+      if (hit && !reduceMotion) MenuKit.glow(list, tile, 30 * u, won ? 'accent' : tint, (won ? 0.7 : 0.45) * enter * (0.8 + 0.2 * Math.sin(since * 9)));
+      if (mine && !done) list.s(rect(tile, v(25 * u * pop, 25 * u * pop), 8 * u), 'primary', 0.9 * o);
+      if (hit && won) list.s(rect(tile, v(26 * u * pop, 26 * u * pop), 8 * u), 'accent', enter);
+      list.s(rect(tile, v(20 * u * pop, 20 * u * pop), 6 * u), tint, o);
     }
 
     // The car: round the ring, then in to its exit, turning from the road into the arm.
@@ -464,7 +470,7 @@ export const CasinoGames = {
       const d = ((radial(angle) - heading + 3 * Math.PI) % TAU) - Math.PI;
       heading += d * Ease.clamp01(leave * 3);
     }
-    const carAt = at(angle, radius + 32 * Ease.inOutSine(leave));
+    const carAt = at(angle, radius + 32 * u * Ease.inOutSine(leave));
     const carOpacity = enter * (1 - Ease.clamp01((leave - 0.6) / 0.4));
     if (run && !done && !reduceMotion) {
       const speed = (rouletteTurn(run, driveAge) - rouletteTurn(run, Math.max(0, driveAge - 1 / 60))) * 60;
@@ -476,12 +482,12 @@ export const CasinoGames = {
       }
     }
     if (carOpacity > 0) {
-      MenuKit.glow(list, carAt, 22, 'primary', 0.28 * carOpacity);
-      CasinoPage.vehicle(list, SYMBOL[bet].type, bet === 'boss' ? SYNDICATE_BOSS : null, carAt, 30, heading, carOpacity);
+      MenuKit.glow(list, carAt, 22 * u, 'primary', 0.28 * carOpacity);
+      CasinoPage.vehicle(list, SYMBOL[bet].type, bet === 'boss' ? SYNDICATE_BOSS : null, carAt, 30 * u, heading, carOpacity);
     }
 
     // The island: the bet and what it pays; a win counts up here.
-    list.s(circle(center, radius - 20), 'cardRaised', enter);
+    list.s(circle(center, radius - 20 * u), 'cardRaised', enter);
     const pay = Casino.roulettePay(bet, cfg);
     CasinoPage.symbol(list, bet, v(center.x, center.y - 7), Math.min(radius * 0.7, 46), enter * (done && !won ? 0.5 : 1), 0);
     drawText(list, `${pay.toFixed(2)}×`, v(center.x, center.y + Math.min(radius * 0.42, 32)), 13, 'primary', { weight: 'bold', align: 'center', opacity: enter });
@@ -496,7 +502,7 @@ export const CasinoGames = {
         drawText(list, `+${money(Fmt.number(counted))}`, under, 26 * pop, 'accent', { weight: 'bold', align: 'center', opacity: enter });
         drawText(list, S.casino.rouletteWin(S.casino.symbol(spin.symbol), spin.pay), v(under.x, under.y + 24), 12, 'muted', { align: 'center', opacity: enter });
       } else drawText(list, S.casino.rouletteLose(S.casino.symbol(spin.symbol)), under, 13, 'muted', { align: 'center', opacity: enter * (reduceMotion ? 1 : Ease.outCubic(since / 0.25)) });
-    } else if (!run) drawText(list, S.casino.rouletteHint, under, ShopPage.fitted(S.casino.rouletteHint, 12, R.width(stage) - 24), 'muted', { align: 'center', opacity: enter });
+    } else if (!run) drawFitted(list, S.casino.rouletteHint, under, 12, R.width(stage) - 24, 'muted', { align: 'center', opacity: enter });
   },
 
   // MARK: Scratch Card

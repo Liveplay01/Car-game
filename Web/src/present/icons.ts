@@ -1,5 +1,5 @@
 import { type Vec2, v, add } from '../core/vec2';
-import { type RenderList, type Primitive, type Align, circle, arc, polygon, text } from './render';
+import { type RenderList, type Primitive, type Align, type Weight, circle, arc, polygon, text, drawText } from './render';
 import type { ColorToken } from './theme';
 import { measure } from './measure';
 
@@ -33,6 +33,30 @@ export const coinSize = (size: number): number => size * 0.78;
 export function textWidth(s: string, size: number, bold = true): number {
   return textPieces(s).reduce((w, piece) => w + (piece === null ? inlineMoneyWidth(size) : measure(piece, size, bold)), 0);
 }
+
+/**
+ * `s` for a space `width` wide: at `size` if it fits, else shrunk to at most 80 % of it (never
+ * under 9 points), else cut with an ellipsis. Pills, rows and cards use it so no label runs out
+ * of its box on a narrow screen.
+ */
+export function fitText(s: string, size: number, width: number, bold = true): { text: string; size: number } {
+  const natural = textWidth(s, size, bold);
+  if (natural <= width) return { text: s, size };
+  const fitted = Math.max(9, size * 0.8, Math.min(size, (size * width) / natural));
+  if (textWidth(s, fitted, bold) <= width) return { text: s, size: fitted };
+  let cut = s;
+  while (cut.length > 1 && textWidth(`${cut}…`, fitted, bold) > width) cut = cut.slice(0, -1);
+  return { text: `${cut.trimEnd()}…`, size: fitted };
+}
+
+/** `drawText` that keeps the text inside `width` (see `fitText`). */
+export function drawFitted(list: RenderList, s: string, at: Vec2, size: number, width: number, color: ColorToken, o: { weight?: Weight; align?: Align; opacity?: number } = {}): void {
+  const fit = fitText(s, size, width, o.weight === 'bold');
+  drawText(list, fit.text, at, fit.size, color, o);
+}
+
+/** How wide a `moneyTag` is. */
+export const moneyTagWidth = (label: string, size: number): number => coinSize(size) + size * 0.34 + textWidth(label, size);
 
 export interface Shape {
   p: Primitive;

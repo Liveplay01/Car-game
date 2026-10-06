@@ -125,7 +125,7 @@ try {
 
   // Scratch Card: the exact return, then played; a win shows its multiple three times, nothing else more than twice.
   {
-    check('Scratch return (exact)', Casino.scratchRtp(config), 0.849, 0.851);
+    check('Scratch return (exact)', Casino.scratchRtp(config), 0.919, 0.921);
     const c = newCareer();
     c.casinoSeed = 2468;
     c.money = 0;
@@ -142,7 +142,7 @@ try {
       const triples = [...counts].filter(([, k]) => k >= 3);
       if (card.x > 0 ? triples.length !== 1 || triples[0][0] !== card.x || triples[0][1] !== 3 : triples.length > 0) broken++;
     }
-    check('Scratch return (played)', paid / (config.scratchPrice * n), 0.85 - 0.06, 0.85 + 0.06);
+    check('Scratch return (played)', paid / (config.scratchPrice * n), 0.92 - 0.06, 0.92 + 0.06);
     check('Scratch cards that break the three-alike rule', broken, 0, 0);
   }
 

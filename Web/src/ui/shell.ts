@@ -673,6 +673,8 @@ export class Shell {
   /** From a sheet to the multiplayer lobby: behind it the Game tab swipes on to the Multiplayer page. */
   private openLobby(): void {
     const s = this.session;
+    // The lobby takes the place of the sheet it was opened from: that one goes at once, so only the lobby moves.
+    closeAnySheet(true);
     if (s.screen.k === 'page') s.perform({ k: 'showTab', tab: 'game' });
     s.goToMode('multiplayer');
     this.versus.open();

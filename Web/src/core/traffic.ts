@@ -72,10 +72,11 @@ export function updateTraffic(w: World, dt: number): void {
           : canPushIn(w, p.arm, veh.lane);
     // Runners crossing the arm (a marathon): everyone waits at the line, the criminal too.
     if (p.reaction <= 0 && clear && !w.runnersCrossing(p.arm) && !joinsTooClose(w, veh, p.arm) && !joinsClearRoad(w, veh, p.arm)) {
+      const ordinary = !(isEmergency(veh.type) || veh.type === 'learner' || veh.type === 'oversize' || veh.type === 'racer');
       const merge: Merging = {
         kind: 'merging',
         arm: p.arm,
-        exitArm: isEmergency(veh.type) || veh.type === 'learner' || veh.type === 'oversize' || veh.type === 'racer' ? longestExit(w, p.arm) : w.randomExit(p.arm),
+        exitArm: ordinary ? w.randomExit(p.arm) : longestExit(w, p.arm),
         profile: w.profileFor(p.arm, veh.lane, veh.type),
         elapsed: 0,
         minGap: Infinity,
@@ -85,6 +86,7 @@ export function updateTraffic(w: World, dt: number): void {
       if (c.aiLapChance > 0 && w.rng.unit() < c.aiLapChance) {
         merge.extraLaps = 1 + (w.rng.unit() < 0.6 ? 1 : 0) + (w.rng.unit() < 0.3 ? 1 : 0);
       }
+      if (ordinary) w.applyDetour(merge, veh.lane);
       // A lorry sent in a match passes every lane once before it leaves.
       if (veh.sentBy !== null) merge.extraLaps = Math.max(merge.extraLaps, 1);
       veh.phase = merge;

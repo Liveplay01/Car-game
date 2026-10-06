@@ -1,4 +1,4 @@
-import { baseConfig, INVITE_LEVEL, INVITE_REMINDER_LEVEL, detourExtraAt, towSpeedupAt, type Config, type Weather, type CityEvent, type BossKind, type LegendaryRule } from '../core/config';
+import { baseConfig, INVITE_LEVEL, INVITE_REMINDER_LEVEL, detourShareAt, towSpeedupAt, type Config, type Weather, type CityEvent, type BossKind, type LegendaryRule } from '../core/config';
 import type { Upgrade } from '../core/levels';
 import type { MasteryGoal, MasteryCompletion } from '../core/career';
 import { MASTERY_THRESHOLDS, masteryNumeral } from '../core/career';
@@ -468,13 +468,29 @@ export const S = {
     header: 'Hall of Fame',
     build: (price: string): string => `Build the Hall of Fame · ${price}`,
     built: 'HALL OF FAME BUILT · a wall of honour on the island · Hall of Famer unlocked',
-    notBuilt: 'A gold wall on the island with a star for every Prestige rank, and a skin of its own.',
+    notBuilt: 'A gold wall on the island with a star for every Prestige rank, and a skin of its own. Tap to see what it gives.',
+    tapMore: 'Tap to see what it gives.',
     open: (level: number): string => `Opens once you reach Level ${level}`,
     plaque: (e: HallEntry): string => `★${e.rank}`,
     plaqueLine: (e: HallEntry, date: string | null): string =>
       [date, e.elite > 0 ? `Elite ${e.elite}` : null, `${e.bosses} ${e.bosses === 1 ? 'boss' : 'bosses'}`, e.legendary > 0 ? `${e.legendary} legendary` : null].filter((x) => x).join(' · '),
     empty: 'Your first Prestige gets the first plaque.',
     standing: 'Standing on the island',
+    /** The Hall's own sheet: what building it gives you. */
+    about: [
+      'A monument that stays on your island for good: a gold wall of honour along the top, with a star for every Prestige rank you have earned.',
+      'It keeps your story. Every Prestige adds a plaque to the list in the Elite sheet: the day, your Elite level, the bosses you took down and the legendary shifts you cleared by then.',
+      'And it unlocks the Hall of Famer skin, gold with a laurel that glows, for your cars.',
+    ],
+    looks: 'Only looks and honour: no bonus on the road, nothing to lose when you Prestige.',
+    gives: 'What you get',
+    wall: 'Gold wall on the island',
+    wallValue: (ranks: number): string => (ranks > 0 ? `${ranks} ${ranks === 1 ? 'star' : 'stars'} now` : 'No stars yet'),
+    plaques: 'A plaque per Prestige',
+    plaquesValue: (n: number): string => (n > 0 ? `${n} so far` : 'None yet'),
+    skin: 'Hall of Famer skin',
+    skinValue: 'Gold, with a laurel',
+    back: 'Back to Elite',
   },
 
   oversize: {
@@ -795,7 +811,7 @@ export const S = {
     title: 'Street Builder',
     ringFull: 'Ring full',
     drag: 'Drag onto the ring',
-    pickOne: 'Tap a part to see what it does · tap a built one to move or remove it.',
+    pickOne: 'Tap a part for details · tap a built one to upgrade, move or remove it.',
     dragHint: 'Drag it onto a free slot on the ring.',
     buildHint: 'Double-tap the part to build it · one tap takes it away.',
     keepsArms: (n: number): string => `A roundabout keeps at least ${n} arms`,
@@ -818,6 +834,8 @@ export const S = {
     nextLevel: 'Next level',
     upgraded: (name: string, level: number): string => `${name} is level ${level} now`,
     zone: 'Where it works',
+    /** A detour sign on a slot where no exit lies between it and the player's arm. */
+    detourIdle: 'Nothing to turn off here: no exit between this spot and your arm. Move it to an earlier slot.',
     /** What a module of this level does in a few words (the sheet's Now and Next level). */
     effect(part: string, c: Config, level: number): string {
       switch (part) {
@@ -828,7 +846,7 @@ export const S = {
         case 'billboard':
           return `${money(String(c.billboardPerCar * level))} per car`;
         case 'detour':
-          return `Exit used ${1 + detourExtraAt(c, level)}× as often`;
+          return `${percent(detourShareAt(c, level))} of cars turn off`;
         default:
           return `Wrecks gone ${percent(towSpeedupAt(c, level))} faster`;
       }
@@ -844,7 +862,7 @@ export const S = {
         case 'billboard':
           return `Every car that drives past pays ${money(String(c.billboardPerCar * level))} in the first ${Math.round(c.moduleEarningSeconds)} s of a shift. Drivers look up and ease off a little.`;
         case 'detour':
-          return `A sign for the next exit: cars that drive past it choose that exit ${1 + detourExtraAt(c, level)} times as often, so fewer cars are left to reach the arm behind it. Put it just before your own arm and merging gets easier.`;
+          return `Sends cars off the ring early: ${percent(detourShareAt(c, level))} of the cars that pass it and would drive on leave at the next exit instead, so fewer reach your arm. It only helps with an exit between the sign and your arm, and with cars joining before the sign.`;
         default:
           return `Wrecks near it are towed away ${percent(towSpeedupAt(c, level))} faster, so the ring flows again sooner.`;
       }
@@ -1031,6 +1049,9 @@ export const S = {
         lanterns: 'Lantern Festival',
         crystal: 'Crystal Cavern',
         beach: 'Beach',
+        savanna: 'Savanna',
+        rainforest: 'Rainforest',
+        alps: 'Alps',
         compact: 'Compact',
         van: 'Van',
         classic: 'Classic',
@@ -1076,6 +1097,11 @@ export const S = {
         overdrive: 'Overdrive',
         infinity: 'Infinity',
         ladybug: 'Ladybug',
+        chrono: 'Chrono',
+        biolume: 'Biolume',
+        dragon: 'Dragonfire',
+        glowtide: 'Glowtide',
+        moonmirror: 'Moonmirror',
       };
       return names[id] ?? id;
     },
@@ -1188,6 +1214,20 @@ export const S = {
           return 'A combo of 15';
         case 'perfectRun':
           return 'A Perfect Run: no crash, no cut-off';
+        case 'oneTakedown':
+          return 'Take down a criminal';
+        case 'cleanMerges':
+          return '8 Clean Merges in one shift';
+        case 'sixTightFits':
+          return '6 Tight Fits in one shift';
+        case 'fivePerfects':
+          return '5 Perfect Inputs in one shift';
+        case 'chainFive':
+          return 'A Perfect Chain of 5';
+        case 'hugeCombo':
+          return 'A combo of 25';
+        case 'twoNearMisses':
+          return '2 Near Misses in one shift';
       }
     },
     challengeDone: (c: Challenge, reward: string): string => `CHALLENGE · ${S.daily.challenge(c)} · +${money(reward)}`,
@@ -1329,8 +1369,8 @@ export const S = {
         backup: 'Your shift survives one police car crash more.',
         cashRoute: 'Money transporters show up sooner and more often.',
         overtime: 'Every shift you finish pays more.',
-        freight: 'More lorries on the road: more tolls, but denser traffic.',
-        quickRecovery: 'Drivers pull away harder, so after a crash the traffic is back up to speed sooner.',
+        freight: 'More lorries on the road: denser traffic, but every shift pays more and every toll is worth more.',
+        quickRecovery: 'Drivers pull away harder, so after a crash the traffic is back up to speed sooner. A busier road pays a little more per shift.',
         doubleRun: 'Sometimes a second money transporter follows right after the first.',
         insurance: 'Pays part of what a crash costs you.',
         robberyInsurance: 'Pays part of what an escaped criminal costs you.',
@@ -1356,9 +1396,9 @@ export const S = {
         case 'overtime':
           return `+${percent(t * c.overtimePerStep)} pay`;
         case 'freight':
-          return `+${percent(t * c.freightPerStep)} lorries`;
+          return `+${percent(t * c.freightPerStep)} lorries · +${percent(t * c.freightPayPerStep)} pay`;
         case 'quickRecovery':
-          return `+${percent(t * c.recoveryPerStep)} acceleration`;
+          return `+${percent(t * c.recoveryPerStep)} accel. · +${percent(t * c.recoveryPayPerStep)} pay`;
         case 'doubleRun':
           return `${percent(t * c.doubleRunPerStep)} double runs`;
         case 'insurance':
@@ -1521,7 +1561,8 @@ export const S = {
   notice: {
     notEnoughMoney: (price: string): string => `Not enough ${MONEY_MARK} · ${money(price)} needed`,
     built: (name: string, arms: number): string => `${name} built · ${arms} arms`,
-    placed: (name: string): string => `${name} built on the ring`,
+    placed: (name: string): string => `${name} built · tap it to upgrade`,
+    detourIdle: 'Built, but it does nothing here: no exit between it and your arm',
     removed: (name: string): string => `${name} torn down`,
     upgraded: (name: string, level: number): string => `${name} is level ${level} now`,
     bought: (name: string, steps: number, max: number): string => `${name} ${steps}/${max}`,

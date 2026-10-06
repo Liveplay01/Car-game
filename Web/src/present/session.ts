@@ -615,8 +615,10 @@ export class GameSession {
         this.tryPrestige();
         break;
       case 'showElite':
+      case 'showHall':
       case 'showPass':
         if (action.k === 'showElite') this.eliteSeen = true;
+        this.hallOpen = action.k === 'showHall';
         if (!this.detailOpen) this.tick();
         this.detailOpen = true;
         break;
@@ -770,6 +772,8 @@ export class GameSession {
   private prestigeArmed = -Infinity;
   /** The Elite sheet was opened this session: Prestige in reach stops lighting the Progress tab. */
   private eliteSeen = false;
+  /** The Elite sheet shows the Hall of Fame's own page. */
+  private hallOpen = false;
   static readonly prestigeWindow = 4;
 
   private tryPrestige(): void {
@@ -1582,6 +1586,7 @@ export class GameSession {
   closeDetail(): void {
     if (!this.detailOpen) return;
     this.detailOpen = false;
+    this.hallOpen = false;
     this.progressPage.museum.selected = null;
     this.progressPage.feat = null;
     this.upgradePage.selected = null;
@@ -1624,6 +1629,7 @@ export class GameSession {
       }
       case 'progress': {
         // Records has one sheet: the Elite track, opened from its card.
+        if (this.progressPage.section === PROGRESS.records && this.hallOpen) return Details.hall(career, this.config);
         if (this.progressPage.section === PROGRESS.records) return Details.elite(career, this.config, this.sceneTime - this.prestigeArmed <= GameSession.prestigeWindow);
         if (this.progressPage.section === PROGRESS.today) return Details.pass(career, this.config, this.today);
         const feat = this.progressPage.feat;

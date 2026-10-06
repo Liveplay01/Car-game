@@ -25,7 +25,8 @@ export const StreakFlame = {
   add(list: RenderList, r: Rect, days: number, clock: number, reduceMotion: boolean, o: number): void {
     const tier = flameTier(days);
     const t = reduceMotion ? 0 : clock;
-    const s = R.height(r) / 168;
+    // The scene is drawn for 168 points; the rest of the card is the text under the road.
+    const s = (R.height(r) - 28) / 168;
     const groundY = r.minY + 124 * s;
     const pop = !reduceMotion && POP_EVERY[tier] > 0 ? (t % POP_EVERY[tier]) / POP_TIME : 2;
     const popping = pop < 1;

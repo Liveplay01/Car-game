@@ -14,6 +14,8 @@ after(() => server.close());
 const load = (path) => server.ssrLoadModule(path);
 
 const { World } = await load('/src/core/world.ts');
+const { detourArmSlot } = await load('/src/core/modules.ts');
+const { CHALLENGES, challengesOf, challengeMet, challengeReward } = await load('/src/core/daily.ts');
 const { baseConfig, BOSS_KINDS } = await load('/src/core/config.ts');
 const { forLevel, UPGRADES, upgradeMaxSteps } = await load('/src/core/levels.ts');
 const { COSMETICS, rollChest, PITY_LEGENDARY_CHESTS } = await load('/src/core/loot.ts');
@@ -978,7 +980,7 @@ test('every Feat pays its own reward where its deed happens, never in a chest', 
   }
   const c = newCareer();
   assert.equal(Feats.count(c), 0);
-  c.prestige = 20;
+  c.prestige = 25;
   c.legendaryDone = 50;
   c.eliteXp = Elite.xpTo(100);
   assert.equal(Elite.level(c), 100);
@@ -994,7 +996,9 @@ test('a save already past a Feat gets its reward when it loads', () => {
   fakeStorage({ 'carGame.save.v2': JSON.stringify(old) });
   const c = loadSave().career;
   for (const id of ['bigScreen', 'nova', 'zenith', 'starSilver', 'eliteHalo', 'crown']) assert.ok(c.collection.includes(id), id);
-  for (const id of ['gilded', 'singularity', 'eventHorizon', 'undying', 'phoenix']) assert.ok(!c.collection.includes(id), id);
+  for (const id of ['gilded', 'singularity', 'eventHorizon', 'undying', 'phoenix', 'glowtide', 'moonmirror']) assert.ok(!c.collection.includes(id), id);
+  for (const id of ['chrono', 'biolume']) assert.ok(c.collection.includes(id), `${id}: Elite 55 and 65 are behind a save at 80`);
+  assert.ok(!c.collection.includes('dragon'), 'Legendary 30 is not behind a save at 12');
 });
 
 // MARK: The Classic
@@ -1201,24 +1205,92 @@ test('module levels survive a save and a challenge link', () => {
   assert.deepEqual(Careers.config(career, baseConfig, 1).moduleLevels, { 3: 2, 5: 3 });
 });
 
-test('a detour sign sends the cars that pass it to the next exit more often, and not the ones that join after it', () => {
-  const share = (modules, entry, target, level = 1) => {
+test('a detour sign turns the cars that pass it off at its exit, and leaves the rest alone', () => {
+  // Arms on 0, 4, 8, 12; the sign on module slot 2 sits just before the exit of arm 12.
+  const turned = (modules, entry, planned, laps = 0, level = 1) => {
     const cfg = cloneConfig(baseConfig);
     cfg.modules = modules;
-    cfg.moduleLevels = level > 1 ? { 2: level, 3: level } : {};
+    cfg.moduleLevels = level > 1 ? { 2: level } : {};
     const world = new World(cfg, 7, { startsOnFirstTap: false });
-    const arm = world.layout.arms.find((a) => a.slot === entry);
+    const slot = (n) => world.layout.arms.find((a) => a.slot === n);
     let hits = 0;
-    for (let i = 0; i < 4000; i++) if (world.randomExit(arm).slot === target) hits++;
-    return hits / 4000;
+    let lapsLeft = 0;
+    for (let i = 0; i < 4000; i++) {
+      const merge = { arm: slot(entry), exitArm: slot(planned), extraLaps: laps };
+      world.applyDetour(merge, 0);
+      if (merge.exitArm.slot !== planned) hits++;
+      lapsLeft += merge.extraLaps;
+    }
+    return { share: hits / 4000, laps: lapsLeft / 4000 };
   };
-  // Arms on 0, 4, 8, 12; the sign on module slot 2 sits just before the exit of arm 12.
-  assert.ok(Math.abs(share({}, 8, 12) - 0.5) < 0.04, 'no sign: an even draw between the two exits');
-  assert.ok(Math.abs(share({ 2: 'detour' }, 8, 12) - 0.75) < 0.04, 'level 1: three to one');
-  assert.ok(Math.abs(share({ 2: 'detour' }, 8, 12, 3) - 5 / 6) < 0.04, 'level 3: five to one');
-  // Module slot 3 points at arm 4; a car joining at the player’s arm is already past it.
-  assert.ok(Math.abs(share({ 3: 'detour' }, 0, 4) - 1 / 3) < 0.04, 'joined after the sign: untouched');
-  assert.ok(share({ 3: 'detour' }, 12, 4) > 0.6, 'joined before the sign: steered');
+  assert.equal(turned({}, 8, 4).share, 0, 'no sign: nobody is turned');
+  assert.ok(Math.abs(turned({ 2: 'detour' }, 8, 4).share - 0.45) < 0.04, 'level 1: 45 %');
+  assert.ok(Math.abs(turned({ 2: 'detour' }, 8, 4, 0, 3).share - 0.75) < 0.04, 'level 3: 75 %');
+  const lapper = turned({ 2: 'detour' }, 8, 4, 2, 3);
+  assert.ok(Math.abs(lapper.laps - 2 * 0.25) < 0.1, 'a turned car forgets its laps');
+  assert.equal(turned({ 2: 'detour' }, 12, 4).share, 0, 'joined after the sign: untouched');
+  assert.equal(turned({ 2: 'detour' }, 4, 8).share, 0, 'its own exit comes before the sign: untouched');
+  assert.equal(turned({ 2: 'detour' }, 8, 12).share, 0, 'it leaves at the sign’s exit anyway');
+  assert.equal(turned({ 1: 'detour', 2: 'detour' }, 4, 8, 1).share > 0.45, true, 'two signs turn more cars than one');
+});
+
+test('a detour sign only counts where an exit lies between it and the player’s arm', () => {
+  const at = (slot, armSlots = [0, 4, 8, 12]) => detourArmSlot({ ...baseConfig, armSlots }, slot);
+  assert.equal(at(0), 8);
+  assert.equal(at(1), 12);
+  assert.equal(at(2), 12);
+  assert.equal(at(3), null, 'no exit left before the player’s arm');
+  assert.equal(at(4), null, 'on the player’s own arm');
+  assert.equal(at(5), null, 'after the player’s arm no arm joins before it');
+  assert.equal(at(5, [0, 2, 4, 8, 12]), 4, 'a built arm upstream gives it something to turn');
+});
+
+// MARK: Quests, upgrades, Hall of Fame
+
+test('there are plenty of daily quests: three different ones a day, each with a text, a reward and a rule', () => {
+  assert.ok(CHALLENGES.length >= 14);
+  const seen = new Set();
+  for (let day = 20000; day < 20200; day++) {
+    const today = challengesOf(day);
+    assert.equal(today.length, 3);
+    assert.equal(new Set(today).size, 3, 'no quest twice in a day');
+    for (const q of today) seen.add(q);
+  }
+  assert.equal(seen.size, CHALLENGES.length, 'every quest turns up');
+  const none = { perfects: 0, tightFits: 0, takedowns: 0, transporters: 0, bestChain: 0, bestCombo: 0, isPerfectRun: false, cleanMerges: 0, nearMisses: 0 };
+  for (const q of CHALLENGES) {
+    assert.notEqual(S.daily.challenge(q), undefined, `${q} has a text`);
+    assert.ok(challengeReward(q) >= 250, `${q} pays`);
+    assert.equal(challengeMet(q, none), false, `${q} is not met by an empty shift`);
+  }
+  assert.ok(challengeMet('oneTakedown', { ...none, takedowns: 1 }));
+  assert.ok(challengeMet('hugeCombo', { ...none, bestCombo: 25 }) && !challengeMet('hugeCombo', { ...none, bestCombo: 24 }));
+  assert.ok(challengeMet('twoNearMisses', { ...none, nearMisses: 2 }));
+});
+
+test('Freight and Quick Recovery pay a little for the busier road, and nothing else about pay changes', async () => {
+  const { upgraded } = await load('/src/core/levels.ts');
+  const none = upgraded(baseConfig, () => 0);
+  assert.equal(none.shiftPay, baseConfig.shiftPay);
+  const freight = upgraded(baseConfig, (u) => (u === 'freight' ? 8 : 0));
+  assert.equal(freight.shiftPay, Math.round(baseConfig.shiftPay * (1 + 8 * baseConfig.freightPayPerStep)));
+  const both = upgraded(baseConfig, (u) => (u === 'freight' ? 8 : u === 'quickRecovery' ? 5 : u === 'overtime' ? 10 : 0));
+  assert.ok(both.shiftPay > freight.shiftPay);
+});
+
+test('the Hall of Fame has its own sheet that says what building it gives', async () => {
+  const { Details } = await load('/src/present/detail.ts');
+  const c = newCareer();
+  c.prestige = 2;
+  const sheet = Details.hall(c, baseConfig);
+  assert.equal(sheet.title, 'Hall of Fame');
+  assert.ok(sheet.body.length >= 3 && sheet.body.every((p) => p.length > 30));
+  assert.ok(sheet.rows.some((r) => r.value.includes('2 stars')));
+  assert.ok(sheet.actions.some((a) => a.action.k === 'buildHall') && sheet.actions.some((a) => a.action.k === 'showElite'));
+  const elite = Details.elite(c, baseConfig, false);
+  assert.ok(elite.sections.flatMap((x) => x.rows).some((r) => r.action?.k === 'showHall'), 'the Elite sheet opens it from the Hall row');
+  c.hallBuilt = true;
+  assert.ok(!Details.hall(c, baseConfig).actions.some((a) => a.action.k === 'buildHall'), 'built: nothing left to build');
 });
 
 // MARK: What's new

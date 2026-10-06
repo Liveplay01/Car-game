@@ -9,17 +9,26 @@ import { cloudEnabled } from '../net/cloud';
 
 interface OpenSheet {
   root: HTMLElement;
-  close: () => void;
+  title: string;
+  close: (instant?: boolean) => void;
 }
 
-let current: OpenSheet | null = null;
+/**
+ * The open sheets, the one on top last. A sheet that opens over another leaves it where it is, fixed and
+ * out of reach, and rises over it; closing it just lowers it again (Leo, 06.10.2026: the one underneath
+ * used to close and come back, which looked like a glitch).
+ */
+const stack: OpenSheet[] = [];
 
 /**
  * A bottom sheet (like an iOS sheet): scrim, grabber, focus kept inside,
  * Escape and a tap on the scrim close it.
  */
 export function openSheet(layer: HTMLElement, title: string, body: HTMLElement, onClose?: () => void): () => void {
-  current?.close();
+  // The same sheet again replaces itself; anything else stacks.
+  const same = stack.find((x) => x.title === title);
+  same?.close(true);
+  const below = stack[stack.length - 1] ?? null;
   const previouslyFocused = document.activeElement as HTMLElement | null;
   const titleId = `sheet-${Math.random().toString(36).slice(2, 8)}`;
   const closeBtn = h('button', { class: 'icon-btn', 'aria-label': 'Close', onclick: () => close() }, icon(ICONS.close));
@@ -31,9 +40,11 @@ export function openSheet(layer: HTMLElement, title: string, body: HTMLElement, 
     body,
   );
   const scrim = h('div', { class: 'sheet-scrim', onclick: () => close() });
-  const root = h('div', { class: 'sheet-root' }, scrim, sheet);
+  const root = h('div', { class: below ? 'sheet-root stacked' : 'sheet-root' }, scrim, sheet);
+  if (below) below.root.inert = true;
   let closed = false;
   const onKey = (e: KeyboardEvent): void => {
+    if (stack[stack.length - 1]?.root !== root) return;
     if (e.key === 'Escape') {
       e.preventDefault();
       close();
@@ -52,23 +63,64 @@ export function openSheet(layer: HTMLElement, title: string, body: HTMLElement, 
     }
     e.stopPropagation();
   };
-  function close(): void {
+  function close(instant = false): void {
     if (closed) return;
     closed = true;
     document.removeEventListener('keydown', onKey, true);
     root.classList.add('closing');
     const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    window.setTimeout(() => root.remove(), reduce ? 0 : 200);
-    if (current?.root === root) current = null;
+    if (instant) root.remove();
+    else window.setTimeout(() => root.remove(), reduce ? 0 : 200);
+    const at = stack.findIndex((x) => x.root === root);
+    if (at >= 0) stack.splice(at, 1);
+    // The sheet under this one is in reach again.
+    const top = stack[stack.length - 1];
+    if (top) top.root.inert = false;
     previouslyFocused?.focus?.();
     onClose?.();
   }
   document.addEventListener('keydown', onKey, true);
   layer.append(root);
-  current = { root, close };
+  stack.push({ root, title, close });
   const firstAction = sheet.querySelector<HTMLElement>('.sheet-actions button, .list button');
   (firstAction ?? closeBtn).focus({ preventScroll: true });
   return close;
+}
+
+/**
+ * A drawer rises with its content (a longer list, another tab, a ranking that arrives) and glides there instead of
+ * jumping. It only grows: the tallest tab so far is kept, so switching tabs never makes it sink (Friends and the Leaderboard).
+ */
+export function glideHeight(body: HTMLElement, content: HTMLElement): void {
+  const sheet = body.closest<HTMLElement>('.sheet');
+  if (!sheet) return;
+  let before = sheet.offsetHeight;
+  let tallest = 0;
+  new ResizeObserver(() => {
+    if (content.isConnected && content.offsetHeight > tallest) {
+      tallest = content.offsetHeight;
+      content.style.minHeight = `${tallest}px`;
+    }
+    // Gliding already: the end of it takes the new height as it is.
+    if (sheet.style.height) return;
+    const after = sheet.offsetHeight;
+    if (before > 0 && after !== before) {
+      const done = (e: TransitionEvent): void => {
+        if (e.target !== sheet || e.propertyName !== 'height') return;
+        sheet.removeEventListener('transitionend', done);
+        sheet.style.height = '';
+        sheet.style.transition = '';
+        before = sheet.offsetHeight;
+      };
+      sheet.style.height = `${before}px`;
+      sheet.getBoundingClientRect();
+      sheet.style.transition = 'height 240ms var(--ease-drawer)';
+      sheet.style.height = `${after}px`;
+      sheet.addEventListener('transitionend', done);
+      return;
+    }
+    before = after;
+  }).observe(body);
 }
 
 /**
@@ -118,8 +170,11 @@ export function installDialog(layer: HTMLElement, ipad: boolean, onDone: () => v
   ok.focus({ preventScroll: true });
 }
 
-export const closeAnySheet = (): void => current?.close();
-export const isSheetOpen = (): boolean => current !== null;
+/** Closes every open sheet, the top one first; `instant` for a sheet that is replaced by a page of its own. */
+export const closeAnySheet = (instant = false): void => {
+  for (const open of [...stack].reverse()) open.close(instant);
+};
+export const isSheetOpen = (): boolean => stack.length > 0;
 
 /** Settings → What's new: the patch notes, newest first. */
 /** How much an update changes, as its badge says it (colour and word, never colour alone). */

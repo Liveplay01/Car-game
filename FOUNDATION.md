@@ -312,9 +312,9 @@ nicht. Mehr Geld heißt ein schwererer Ring (IDEA.md, „Wirtschaft schafft Gefa
 | Speed Camera | 15.600 | 45 pro Auto, nur wenn das Ring-Tempo über 108 % liegt (ruhiger Start: nichts, Rush Hour: jedes Auto) | 44 lang, Tempo × 0,7 | kurz und scharf: alle bremsen am Blitzer |
 | Tow Depot | 13.000 | nichts | 180 lang, kein Tempolimit | Wracks in der Zone verschwinden 30 % schneller, der Ring fließt früher wieder |
 | Billboard | 9.100 | 20 pro Auto (jedes Fahrzeug, immer) | 110 lang, Tempo × 0,85 | gleichmäßiges Grundeinkommen, dafür bremst der Verkehr leicht ab |
-| Detour Sign | 7.800 | nichts | keine, wirkt auf die Ausfahrtwahl | Wer vorbeifährt, nimmt die nächste Ausfahrt 3-mal so oft (Stufe 2: 4-mal, Stufe 3: 5-mal); weniger Autos erreichen den Arm dahinter |
+| Detour Sign | 7.800 | nichts | keine, wirkt auf die Ausfahrtwahl | Von den Autos, die vorbeifahren und weiterfahren würden, biegen 45 % (Stufe 2: 60 %, Stufe 3: 75 %) an der nächsten Ausfahrt vor dem Spielerarm ab; weniger Autos erreichen den Spielerarm |
 
-Jedes Modul hat drei Stufen (Preis Stufe 2 = 1,5 ×, Stufe 3 = 2,5 × Modulpreis): Einnahmen der Zahler ×1/×2/×3, Tow Depot 30/40/50 %, Detour Sign 3-/4-/5-fach.
+Jedes Modul hat drei Stufen (Preis Stufe 2 = 1,5 ×, Stufe 3 = 2,5 × Modulpreis): Einnahmen der Zahler ×1/×2/×3, Tow Depot 30/40/50 %, Detour Sign 45/60/75 %.
 
 - **Wer zahlt:** jedes Fahrzeug, das die Modulmitte passiert, außer Wracks und dem
   Verbrecher-Pickup.

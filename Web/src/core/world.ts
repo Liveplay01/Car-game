@@ -40,7 +40,7 @@ import {
   updateEscorts,
 } from './specials';
 import { type MilitaryPhase, updateMilitary, explode, isEscorted, predictedZoneS, gapToZone } from './explosions';
-import { chargeModules, wreckClearRate, towDepotCovering, withDetours } from './modules';
+import { chargeModules, wreckClearRate, towDepotCovering, detourExit } from './modules';
 import { tempoAt, densityAt, forWeather } from './levels';
 import { type AmbulancePhase, firstAmbulance, updateAmbulance, noteMergeNearAmbulance, ambulanceThrough } from './ambulance';
 import { type LearnerPhase, firstLearner, updateLearner, noteMergeNearLearner, learnerThrough } from './learner';
@@ -526,7 +526,15 @@ export class World {
       const a = this.layout.advance(arm, k);
       if (a.index !== 0) options.push(a);
     }
-    return options.length === 0 ? this.layout.advance(arm, 1) : this.rng.pick(withDetours(this, arm, options));
+    return options.length === 0 ? this.layout.advance(arm, 1) : this.rng.pick(options);
+  }
+
+  /** A detour sign on the way may turn the car to its exit and cancel its laps. */
+  applyDetour(merge: Merging, lane: number): void {
+    const exit = detourExit(this, merge.arm, merge.exitArm, merge.extraLaps, lane);
+    if (!exit) return;
+    merge.exitArm = exit;
+    merge.extraLaps = 0;
   }
 
   // MARK: Movement
@@ -1426,6 +1434,7 @@ export class World {
       closest: null,
       extraLaps: 0,
     };
+    this.applyDetour(merge, veh.lane);
     veh.phase = merge;
     this.events.push({ type: 'launched', vehicle: id, time });
     this.noteLaunch(time);

@@ -3,8 +3,37 @@ import { Rng } from './rng';
 import { DAILY_EVENTS, type CityEvent } from './config';
 
 /** Challenges (v1.2): three a day, each pays once. */
-export type Challenge = 'perfectInputs' | 'tightFits' | 'twoTakedowns' | 'twoTransporters' | 'longChain' | 'bigCombo' | 'perfectRun';
-export const CHALLENGES: Challenge[] = ['perfectInputs', 'tightFits', 'twoTakedowns', 'twoTransporters', 'longChain', 'bigCombo', 'perfectRun'];
+export type Challenge =
+  | 'perfectInputs'
+  | 'tightFits'
+  | 'twoTakedowns'
+  | 'twoTransporters'
+  | 'longChain'
+  | 'bigCombo'
+  | 'perfectRun'
+  | 'oneTakedown'
+  | 'cleanMerges'
+  | 'sixTightFits'
+  | 'fivePerfects'
+  | 'chainFive'
+  | 'hugeCombo'
+  | 'twoNearMisses';
+export const CHALLENGES: Challenge[] = [
+  'perfectInputs',
+  'tightFits',
+  'twoTakedowns',
+  'twoTransporters',
+  'longChain',
+  'bigCombo',
+  'perfectRun',
+  'oneTakedown',
+  'cleanMerges',
+  'sixTightFits',
+  'fivePerfects',
+  'chainFive',
+  'hugeCombo',
+  'twoNearMisses',
+];
 
 export function challengeMet(c: Challenge, r: ShiftResult): boolean {
   switch (c) {
@@ -22,6 +51,20 @@ export function challengeMet(c: Challenge, r: ShiftResult): boolean {
       return r.bestCombo >= 15;
     case 'perfectRun':
       return r.isPerfectRun;
+    case 'oneTakedown':
+      return r.takedowns >= 1;
+    case 'cleanMerges':
+      return r.cleanMerges >= 8;
+    case 'sixTightFits':
+      return r.tightFits >= 6;
+    case 'fivePerfects':
+      return r.perfects >= 5;
+    case 'chainFive':
+      return r.bestChain >= 5;
+    case 'hugeCombo':
+      return r.bestCombo >= 25;
+    case 'twoNearMisses':
+      return r.nearMisses >= 2;
   }
 }
 
@@ -30,11 +73,19 @@ export function challengeReward(c: Challenge): number {
     case 'perfectInputs':
     case 'tightFits':
     case 'bigCombo':
+    case 'oneTakedown':
+    case 'cleanMerges':
       return 250;
     case 'twoTakedowns':
     case 'twoTransporters':
     case 'longChain':
+    case 'chainFive':
+    case 'twoNearMisses':
       return 350;
+    case 'sixTightFits':
+    case 'fivePerfects':
+    case 'hugeCombo':
+      return 400;
     case 'perfectRun':
       return 500;
   }

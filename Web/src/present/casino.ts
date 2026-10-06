@@ -280,6 +280,9 @@ interface Layout {
   today: Vec2;
   odds: Rect;
   history: Rect;
+  showHistory: boolean;
+  /** The stage got its minimum height without running into the rows under it. */
+  fits: boolean;
   /** The Skin Upgrade's boost row under the history; null where there are no ad offers. */
   boost: Rect | null;
   stage: Rect;
@@ -294,47 +297,71 @@ interface Layout {
   pair: [Rect, Rect];
 }
 
+/**
+ * The table's sizes, roomiest first: a short screen takes the first row that leaves the stage its
+ * minimum, the last one whatever the room (nothing then overlaps on any phone held upright).
+ */
+interface TableSizes {
+  chip: number;
+  gap: number;
+  main: number;
+  stake: number;
+  boost: number;
+  auto: number;
+  bet: number;
+  stageMin: number;
+  /** The last rounds' strip under the balance; the tightest table leaves it out. */
+  history: boolean;
+}
+
+const TABLE_SIZES: TableSizes[] = [
+  { chip: 34, gap: 8, main: 50, stake: 34, boost: 34, auto: 28, bet: 56, stageMin: 140, history: true },
+  { chip: 30, gap: 6, main: 44, stake: 30, boost: 30, auto: 24, bet: 48, stageMin: 112, history: true },
+  { chip: 28, gap: 5, main: 40, stake: 28, boost: 28, auto: 22, bet: 44, stageMin: 84, history: false },
+];
+
 export const CasinoPage = {
   ...CasinoGames,
-  chipHeight: 34,
-  gap: 8,
-  mainHeight: 50,
-  stakeHeight: 34,
-  boostHeight: 34,
-  autoHeight: 28,
-  betHeight: 56,
   pickerColumns: 5,
 
   /** The layout of the table for the state: the Skin Upgrade makes room for its boost row where ads are on. */
   layoutOf: (a: Rect, state: CasinoState): Layout => CasinoPage.layout(a, state.game, state.game === 'upgrade' && state.ad.offers),
 
   layout(a: Rect, game: CasinoGame, withBoost = false): Layout {
-    const P = CasinoPage;
+    let last: Layout | null = null;
+    for (const sizes of TABLE_SIZES) {
+      last = CasinoPage.place(a, game, withBoost, sizes);
+      if (last.fits) break;
+    }
+    return last!;
+  },
+
+  place(a: Rect, game: CasinoGame, withBoost: boolean, m: TableSizes): Layout {
     const w = R.width(a);
     const cw = (w - (CASINO_GAMES.length - 1) * 6) / CASINO_GAMES.length;
-    const chips = CASINO_GAMES.map((g, i): [CasinoGame, Rect] => [g, R.make(a.minX + i * (cw + 6), a.minY, a.minX + i * (cw + 6) + cw, a.minY + P.chipHeight)]);
-    const infoY = a.minY + P.chipHeight + P.gap + 11;
+    const chips = CASINO_GAMES.map((g, i): [CasinoGame, Rect] => [g, R.make(a.minX + i * (cw + 6), a.minY, a.minX + i * (cw + 6) + cw, a.minY + m.chip)]);
+    const infoY = a.minY + m.chip + m.gap + 11;
     const odds = R.make(a.maxX - 76, infoY - 12, a.maxX, infoY + 12);
-    const history = R.make(a.minX, infoY + 18, a.maxX, infoY + 42);
-    const main = R.make(a.minX, a.maxY - P.mainHeight, a.maxX, a.maxY);
-    const half = (w - P.gap) / 2;
-    const pair: [Rect, Rect] = [R.make(a.minX, main.minY, a.minX + half, main.maxY), R.make(a.minX + half + P.gap, main.minY, a.maxX, main.maxY)];
+    const history = m.history ? R.make(a.minX, infoY + 18, a.maxX, infoY + 42) : R.make(a.minX, infoY + 12, a.maxX, infoY + 12);
+    const main = R.make(a.minX, a.maxY - m.main, a.maxX, a.maxY);
+    const half = (w - m.gap) / 2;
+    const pair: [Rect, Rect] = [R.make(a.minX, main.minY, a.minX + half, main.maxY), R.make(a.minX + half + m.gap, main.minY, a.maxX, main.maxY)];
     let bottom = main.minY - 10;
     const row = (count: number, height: number): Rect[] => {
       const g = 6;
       const cell = (w - g * (count - 1)) / count;
       const out = Array.from({ length: count }, (_, i) => R.make(a.minX + i * (cell + g), bottom - height, a.minX + i * (cell + g) + cell, bottom));
-      bottom -= height + P.gap;
+      bottom -= height + m.gap;
       return out;
     };
-    const stakes = game === 'upgrade' || game === 'scratch' ? [] : row(baseConfig.casinoStakes.length + 1, P.stakeHeight);
-    const autos = game === 'crash' ? row(baseConfig.crashAutoTargets.length + 1, P.autoHeight).slice(1) : [];
-    const bets = game === 'roulette' ? row(SLOT_SYMBOLS.length, P.betHeight).map((r, i): [SlotSymbol, Rect] => [SLOT_SYMBOLS[i], r]) : [];
-    const buy = game === 'scratch' ? row(1, P.stakeHeight + 6)[0] : null;
-    const boost = withBoost ? R.make(a.minX, history.maxY + 8, a.maxX, history.maxY + 8 + P.boostHeight) : null;
+    const stakes = game === 'upgrade' || game === 'scratch' ? [] : row(baseConfig.casinoStakes.length + 1, m.stake);
+    const autos = game === 'crash' ? row(baseConfig.crashAutoTargets.length + 1, m.auto).slice(1) : [];
+    const bets = game === 'roulette' ? row(SLOT_SYMBOLS.length, m.bet).map((r, i): [SlotSymbol, Rect] => [SLOT_SYMBOLS[i], r]) : [];
+    const buy = game === 'scratch' ? row(1, m.stake + 6)[0] : null;
+    const boost = withBoost ? R.make(a.minX, history.maxY + 8, a.maxX, history.maxY + 8 + m.boost) : null;
     const top = (boost ?? history).maxY + 10;
-    const stage = R.make(a.minX, top, a.maxX, Math.max(top + 140, bottom - 2));
-    return { chips, today: v(a.minX, infoY), odds, history, boost, stage, autos, stakes, bets, buy, main, pair };
+    const stage = R.make(a.minX, top, a.maxX, Math.max(top + m.stageMin, bottom - 2));
+    return { chips, today: v(a.minX, infoY), odds, history, showHistory: m.history, fits: bottom - 2 - top >= m.stageMin, boost, stage, autos, stakes, bets, buy, main, pair };
   },
 
   /** Where the Upgrade's five stake slots and its target slot sit under the dial. */
@@ -534,6 +561,7 @@ export const CasinoPage = {
     const odds = CasinoPage.pressedRect(l.odds, { k: 'odds' }, state);
     list.s(rect(R.center(odds), v(R.width(odds), R.height(odds)), R.height(odds) / 2), 'controlFill', enter);
     drawText(list, S.casino.odds, R.center(odds), 12, 'primary', { weight: 'bold', align: 'center', opacity: enter });
+    if (!l.showHistory) return;
     const rounds = state.wallet.log(career.casinoLog).filter((r) => r.game === state.game).slice(-8);
     if (rounds.length === 0) {
       drawText(list, S.casino.noHistory, v(l.history.minX, R.center(l.history).y), 12, 'muted', { opacity: 0.8 * enter });

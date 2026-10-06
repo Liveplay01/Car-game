@@ -17,9 +17,10 @@ import { type RenderList, type Rect, RenderList as List, R, rect, circle, line, 
 import { MenuKit } from './menukit';
 import type { ColorToken } from './theme';
 import { StreakFlame, flameTier } from './streakFlame';
-import { moneyTag, textWidth } from './icons';
+import { moneyTag, textWidth, drawFitted } from './icons';
 import { S, Fmt } from './strings';
 import { ShopPage } from './shop';
+import { PassArt, SEASON_TINT } from './passArt';
 import { PROGRESS, type ProgressSection } from './flow';
 import { MuseumPage, MuseumState } from './museum';
 import { Scroller, clipTo } from './scroll';
@@ -151,7 +152,9 @@ class Stack {
 export const ProgressPage = {
   gap: 12,
   /** The streak card at the top of Records: the tailpipe scene and the days. */
-  streakHeight: 168,
+  streakHeight: 196,
+  /** The Season Pass card once it is open: a picture tile of the season, the track and its bar. */
+  passHeight: 128,
   /** Records: this many stats as big tiles, the rest in a list that folds away. */
   highlights: 6,
 
@@ -222,7 +225,7 @@ export const ProgressPage = {
       s.row({ k: 'daily' }, 64);
       s.row({ k: 'weekly' }, 64);
       if (Careers.maxHeat(career) > 0 || career.heat > 0) s.row({ k: 'heat' }, 64);
-      s.row({ k: 'pass' }, 64);
+      s.row({ k: 'pass' }, SeasonPass.isOpen(career) ? ProgressPage.passHeight : 64);
       const quests = challengesOf(today);
       const done = quests.filter((q) => Careers.isChallengeDone(career, q, today)).length;
       s.heading(S.progress.quests, `${done}/${quests.length}`, done === quests.length);
@@ -458,7 +461,7 @@ export const ProgressPage = {
       case 'heat':
         return ProgressPage.addHeat(list, r, career, o);
       case 'pass':
-        return ProgressPage.addPass(list, r, career, today, o);
+        return ProgressPage.addPass(list, r, career, today, state.time, reduceMotion, o);
       case 'quest':
         return ProgressPage.addQuest(list, r, career, b.challenge, today, o);
       case 'trialsLocked':
@@ -513,8 +516,8 @@ export const ProgressPage = {
     const right = r.maxX - 16;
     const linkWidth = row.link ? textWidth(row.link, 11) + 12 : 0;
     const topWidth = row.reward !== undefined ? textWidth(Fmt.number(row.reward), 13) + 30 : row.status ? textWidth(row.status, 13) + 12 : 0;
-    drawText(list, row.title, v(x, c.y - 9), ShopPage.fitted(row.title, 14, right - x - topWidth), row.dim ? 'muted' : 'primary', { opacity: o, weight: 'bold' });
-    drawText(list, row.line, v(x, c.y + 11), ShopPage.fitted(row.line, 11, right - x - linkWidth), 'muted', { opacity: o });
+    drawFitted(list, row.title, v(x, c.y - 9), 14, right - x - topWidth, row.dim ? 'muted' : 'primary', { opacity: o, weight: 'bold' });
+    drawFitted(list, row.line, v(x, c.y + 11), 11, right - x - linkWidth, 'muted', { opacity: o });
     if (row.reward !== undefined) moneyTag(list, Fmt.number(row.reward), v(right, c.y - 9), 13, 'trailing', 'primary', 'accent', o);
     else if (row.status) drawText(list, row.status, v(right, c.y - 9), 13, row.dim ? 'muted' : 'accent', { opacity: o, weight: 'bold', align: 'trailing' });
     if (row.link) drawText(list, row.link, v(right, c.y + 11), 11, row.dim ? 'muted' : 'accent', { opacity: o, weight: 'bold', align: 'trailing' });
@@ -616,29 +619,68 @@ export const ProgressPage = {
     ProgressPage.addCardRow(list, r, r.minX + 16, o, { title: S.heat.row(heat), line: S.heat.line(heat, max), link: S.heat.link(heat, max) });
   },
 
-  /** The Season Pass: this season's track, tap for the sheet. */
-  addPass(list: RenderList, r: Rect, career: Career, today: number, o: number): void {
-    ProgressPage.panel(list, r, o);
+  /**
+   * The Season Pass: this season's track, tap for the sheet. Open, it is the loudest card of Today
+   * (Leo, 06.10.2026): a picture of the season with its top skin, a halo in the season's colour that
+   * breathes, a glint that sweeps across, and the whole track as a row of dots.
+   */
+  addPass(list: RenderList, r: Rect, career: Career, today: number, clock: number, reduceMotion: boolean, o: number): void {
     const season = SeasonPass.season(today);
     const title = S.pass.caption(season);
     const days = `${S.pass.daysLeft(SeasonPass.daysLeft(today))} ›`;
     if (!SeasonPass.isOpen(career)) {
+      ProgressPage.panel(list, r, o);
       ProgressPage.addCardRow(list, r, r.minX + 16, o, { title, line: S.pass.locked(baseConfig.seasonPassLevel), status: S.unlocks.lockedTag(baseConfig.seasonPassLevel), dim: true });
       return;
     }
-    if (!SeasonPass.owns(career, today)) {
-      ProgressPage.addCardRow(list, r, r.minX + 16, o, { title, line: S.pass.buyHint, reward: baseConfig.seasonPassPrice, link: days });
-      return;
+    const tint = SEASON_TINT[season];
+    const t = reduceMotion ? 0 : clock;
+    const pulse = reduceMotion ? 0.5 : 0.5 + 0.5 * Math.sin(t * 2.2);
+    const c = R.center(r);
+    const size = v(R.width(r), R.height(r));
+    list.s(rect(c, add(size, v(10 + 4 * pulse, 10 + 4 * pulse)), ShopPage.corner + 5), tint, (0.1 + 0.1 * pulse) * o);
+    list.s(rect(c, add(size, v(3, 3)), ShopPage.corner + 1.5), tint, 0.6 * o);
+    ProgressPage.panel(list, r, o);
+    list.s(rect(c, size, ShopPage.corner), tint, 0.06 * o);
+    if (!reduceMotion) {
+      // A glint sweeping across every few seconds.
+      const sweep = (t % 5) / 1.1;
+      if (sweep < 1) {
+        const saved = list.clip;
+        list.clip = r;
+        list.s(rect(v(r.minX - 30 + (R.width(r) + 60) * sweep, c.y), v(22, R.height(r) * 1.6), 6, 0.35), 'primary', 0.1 * Math.sin(Math.PI * sweep) * o);
+        list.clip = saved;
+      }
     }
-    const tier = SeasonPass.tier(career);
-    const { into, need } = SeasonPass.progress(career);
-    ProgressPage.addCardRow(list, r, r.minX + 16, o, { title, line: `${S.pass.tier(tier, PASS_TIERS)} · ${S.pass.xp(into, need)}`, link: days });
-    // The track's bar where a price would stand.
-    const pc = R.center(r);
-    const bar = R.make(r.maxX - 112, pc.y - 12, r.maxX - 16, pc.y - 6);
+    const side = Math.min(92, R.width(r) * 0.3);
+    const tile = R.make(r.minX + 12, r.minY + 12, r.minX + 12 + side, r.maxY - 12);
+    PassArt.add(list, tile, season, SeasonPass.skins(season)[2], clock, reduceMotion, o);
+    const x = tile.maxX + 14;
+    const top = R.make(r.minX, r.minY, r.maxX, r.minY + 64);
+    const owned = SeasonPass.owns(career, today);
+    const tier = owned ? SeasonPass.tier(career) : 0;
+    if (owned) {
+      const { into, need } = SeasonPass.progress(career);
+      ProgressPage.addCardRow(list, top, x, o, { title, line: `${S.pass.tier(tier, PASS_TIERS)} · ${S.pass.xp(into, need)}`, link: days });
+    } else ProgressPage.addCardRow(list, top, x, o, { title, line: S.pass.buyHint, reward: baseConfig.seasonPassPrice, link: days });
+    // The whole track: one dot a tier, the three skin tiers bigger and in the season's colour.
+    const right = r.maxX - 16;
+    const step = (right - x) / (PASS_TIERS - 1);
+    for (let k = 1; k <= PASS_TIERS; k++) {
+      const at = v(x + (k - 1) * step, r.minY + 82);
+      const skinTier = SeasonPass.reward(k, season).k === 'skin';
+      const reached = k <= tier;
+      if (skinTier) list.s(circle(at, 5), reached ? tint : 'controlFill', o * (reached ? 1 : 0.9));
+      list.s(circle(at, skinTier ? 2.6 : 2.4), reached ? (skinTier ? 'primary' : 'accent') : skinTier ? tint : 'controlFill', o * (reached || skinTier ? 1 : 0.8));
+    }
+    // And the next tier's progress under it.
+    const bar = R.make(x, r.maxY - 26, right, r.maxY - 20);
     list.s(rect(R.center(bar), v(R.width(bar), R.height(bar)), 3), 'controlFill', o);
-    const share = tier >= PASS_TIERS ? 1 : into / need;
-    if (share > 0) list.s(rect(v(bar.minX + (R.width(bar) * share) / 2, R.center(bar).y), v(R.width(bar) * share, R.height(bar)), 3), 'accent', o);
+    if (owned) {
+      const { into, need } = SeasonPass.progress(career);
+      const share = tier >= PASS_TIERS ? 1 : into / need;
+      if (share > 0) list.s(rect(v(bar.minX + (R.width(bar) * share) / 2, R.center(bar).y), v(R.width(bar) * share, R.height(bar)), 3), 'accent', o);
+    }
   },
 
   addQuest(list: RenderList, r: Rect, career: Career, challenge: Challenge, today: number, o: number): void {
