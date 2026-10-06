@@ -761,6 +761,30 @@ export const baseConfig = {
   slotBossPair: 10,
   /** The first two reels alike (not a boss). Every win pays at least twice the stake. */
   slotPair: 2,
+  /**
+   * Roundabout Roulette: the ring has one exit per stop of `slotStrip`. A bet on a vehicle type wins
+   * when the car leaves by one of that type's exits and pays (1 − edge) / its share of the exits.
+   */
+  rouletteEdge: 0.05,
+  /**
+   * Scratch Card: nine cells, three alike win. Each prize shows as a multiple of the card's price,
+   * drawn with `weight` out of `scratchWeightTotal` (the rest win nothing): 85 % back on average,
+   * stingier than the other games (Leo, 06.10.2026), since the streak hands cards out for free.
+   */
+  scratchPrice: 1000,
+  scratchPrizes: [
+    { x: 2, weight: 1150 },
+    { x: 5, weight: 350 },
+    { x: 10, weight: 160 },
+    { x: 25, weight: 50 },
+    { x: 100, weight: 11 },
+    { x: 500, weight: 1 },
+  ] as readonly { x: number; weight: number }[],
+  scratchWeightTotal: 10000,
+  /** A free card for every this many days of the Daily streak. */
+  scratchStreakEvery: 3,
+  /** Cards in hand, at most (a free one that would not fit is lost). */
+  scratchMax: 30,
   /** Skin upgrade: what a skin of each rarity is worth; chance = stake / target × (1 − edge). */
   skinValue: { common: 1000, rare: 3000, epic: 9000, legendary: 30000 },
   upgradeEdge: 0.05,

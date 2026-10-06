@@ -104,6 +104,48 @@ try {
     check('Upgrade return with the ad boost (3 common → epic)', won / staked, (chance * config.skinValue.epic) / (3 * config.skinValue.common) - 0.03, (chance * config.skinValue.epic) / (3 * config.skinValue.common) + 0.03);
   }
 
+  // Roundabout Roulette: whatever the bet, 1 − edge back (exact by the exits, then played).
+  for (const bet of ['car', 'compact', 'van', 'sportsCar', 'boss']) {
+    const exact = Casino.rouletteChance(bet, config) * Casino.roulettePay(bet, config);
+    check(`Roulette return (exact, ${bet})`, exact, 1 - config.rouletteEdge - 1e-9, 1 - config.rouletteEdge + 1e-9);
+    const c = newCareer();
+    c.casinoSeed = 31337;
+    c.money = rounds * 100;
+    const n = rounds / 4;
+    let paid = 0;
+    for (let i = 0; i < n; i++) {
+      c.casinoPending = null;
+      const spin = Casino.roulette(c, 100, bet, 0, config);
+      if (spin.won && spin.pay < 2) check('Roulette win pays at least twice the stake', spin.pay, 2, Infinity);
+      paid += spin.win;
+    }
+    const band = bet === 'boss' ? 0.12 : 0.04;
+    check(`Roulette return (played, ${bet})`, paid / (100 * n), 1 - config.rouletteEdge - band, 1 - config.rouletteEdge + band);
+  }
+
+  // Scratch Card: the exact return, then played; a win shows its multiple three times, nothing else more than twice.
+  {
+    check('Scratch return (exact)', Casino.scratchRtp(config), 0.849, 0.851);
+    const c = newCareer();
+    c.casinoSeed = 2468;
+    c.money = 0;
+    const n = rounds / 4;
+    let paid = 0;
+    let broken = 0;
+    for (let i = 0; i < n; i++) {
+      c.casinoPending = null;
+      c.scratchCards = 1;
+      const card = Casino.scratch(c, 0, config);
+      paid += card.win;
+      const counts = new Map();
+      for (const x of card.cells) counts.set(x, (counts.get(x) ?? 0) + 1);
+      const triples = [...counts].filter(([, k]) => k >= 3);
+      if (card.x > 0 ? triples.length !== 1 || triples[0][0] !== card.x || triples[0][1] !== 3 : triples.length > 0) broken++;
+    }
+    check('Scratch return (played)', paid / (config.scratchPrice * n), 0.85 - 0.06, 0.85 + 0.06);
+    check('Scratch cards that break the three-alike rule', broken, 0, 0);
+  }
+
   // Double or nothing: a fair coin.
   {
     const c = newCareer();

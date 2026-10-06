@@ -1927,6 +1927,8 @@ export class GameSession {
     const toasts: string[] = [];
     if (news?.frozen) toasts.push(S.daily.freezeUsed(news.frozen));
     if (news?.earned) toasts.push(S.daily.freezeEarned);
+    // The casino opens quietly: until it has, the cards wait in hand without a word.
+    if (news?.cards && Unlocks.isOpen(career, 'casino', this.config)) toasts.push(S.daily.cardEarned(career.dailyStreak));
     if (news?.item) {
       toasts.push(S.daily.milestone(career.dailyStreak, news.item));
       toasts.push(...this.completeAlbums());

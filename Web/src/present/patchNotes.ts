@@ -46,9 +46,12 @@ export const PATCH_NOTES: PatchNote[] = [
   {
     id: '2026-10-06',
     date: '6 October 2026',
-    title: 'Detour Sign, Billboard and upgradable modules in the Street Builder',
+    title: 'Roundabout Roulette, Scratch Cards, a streak with a backfiring tailpipe, and the Street Builder',
     impact: 'major',
     items: [
+      'New casino game: Roundabout Roulette. A ring with 20 exits, one for every stop of the slot reels. Bet on a vehicle type: the car circles, clicks past the exits and leaves by the drawn one. The fewer exits a type has, the more it pays, and every bet returns 95 % on average.',
+      'New casino game: Scratch Card. Nine foil cells, three alike win. Buy cards in Shop → Casino → Scratch, and every third day of your Daily streak gives you one for free. The odds are in the sheet.',
+      'Your Daily streak has its own big card at the top of Progress → Records: a tailpipe whose flame grows with every day. From a week on it backfires with a bang and a burst of sparks, and at 30 days it is an inferno.',
       'Street Builder parts have new icons: a coloured badge each with a picture of what it does (a barrier, a camera, a tow truck, a board, a turn arrow), and the same colours on the road signs in the city.',
       'Modules can be upgraded twice now: tap a built Toll Booth, Speed Camera, Tow Depot, Billboard or Detour Sign in the Street Builder and choose Upgrade. Every level pays more (or clears wrecks faster, or steers more cars); a built module shows one dot per level above the first.',
       'The Street Builder shows where a module works: the stretch of road it covers is lit on the ring while you drag it, move it or look at it. A Detour Sign shows the exit it points to.',

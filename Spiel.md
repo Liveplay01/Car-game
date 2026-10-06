@@ -335,7 +335,11 @@ Crash, Slots, Skin-Upgrade und Doppelt oder nichts, nur mit Spielgeld **und Skin
 | **Crash** | Multiplikator e^(0,18·t), Crash-Punkt vorab gezogen, höchstens 100×; Auto-Ausstieg bei 1,5× / 2× / 5× wählbar | 96 % für jedes Ziel |
 | **Slots** | 3 Walzen à 20 gleich wahrscheinliche Stopps; drei Boss 500×, Transporter 150×, Ambulance 100×, Sports Car 40×, Van 15×, Compact 10×, Car 6×, zwei Bosse irgendwo 10×, erste zwei Walzen gleich 2× | 95,45 % |
 | **Skin-Upgrade** | 1–5 Truhen-Skins auf einen selteneren; Chance = Einsatzwert / Zielwert × 0,95, höchstens 75 % | 95 % |
+| **Roundabout Roulette** | 20 Ausfahrten wie die Stopps der Slots; Wette auf einen Fahrzeugtyp, Auszahlung 0,95 / Anteil der Ausfahrten | 95 % |
+| **Scratch Card** | 9 Felder, drei gleiche gewinnen (2× … 500× des Kartenpreises 1.000); Karten kaufen oder über die Daily-Streak verdienen (jeder 3. Tag) | 85 % |
 | **Doppelt oder nichts** | nach jedem Gewinn freiwillig, faire Münze, höchstens 5× in Folge | 100 % |
+
+**Streak-Karte (06.10.2026):** Progress → Records beginnt mit einer großen Karte für die Daily-Streak: ein Auspuff, dessen Flamme mit den Tagen wächst (Engine off · Idling · Revving ab 3 Tagen · Backfiring ab 7 · Afterburner ab 14 · Inferno ab 30). Ab 7 Tagen knallt der Auspuff in Abständen (Backfire: Blitz, Funken, Ruck). Code: `present/streakFlame.ts`.
 
 Einsätze: 100 · 500 · 1.000 · 5.000 · 25.000 oder All in. Jeder Gewinn zahlt mindestens das Doppelte des Einsatzes. Der Einsatz wird abgezogen und der Stand gespeichert, **bevor** etwas enthüllt wird: Neu laden würfelt nicht neu; eine abgebrochene Crash-Fahrt gibt den Einsatz zurück.
 

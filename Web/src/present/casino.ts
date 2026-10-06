@@ -1,16 +1,16 @@
 import { type Career, Careers } from '../core/career';
 import { baseConfig } from '../core/config';
-import { type CasinoGame, type CasinoRound, type SlotSpin, type SlotSymbol, type UpgradeRoll, type CoinFlip, CASINO_GAMES, Casino } from '../core/casino';
+import { type CasinoGame, type CasinoRound, type SlotSpin, type SlotSymbol, type UpgradeRoll, type CoinFlip, type RouletteSpin, type ScratchCard, CASINO_GAMES, SLOT_SYMBOLS, Casino } from '../core/casino';
 import { type Cosmetic, rarityRank } from '../core/loot';
-import { type Vec2, v, add, mul, TAU, lerpV } from '../core/vec2';
-import { type RenderList, type Rect, R, rect, arc, line, polygon, Ease, moved, drawText } from './render';
+import { type Vec2, v, add, mul, fromAngle, TAU, lerpV } from '../core/vec2';
+import { type RenderList, type Rect, R, rect, circle, arc, line, polygon, Ease, moved, drawText } from './render';
 import type { ColorToken } from './theme';
 import { MenuKit } from './menukit';
 import { textWidth } from './icons';
 import { S, Fmt, money, percent } from './strings';
 import { ShopPage } from './shop';
 import { CasinoGames } from './casinoGames';
-import { TIMES, slotEnd, reelStop, creepAt, crashStep, needleTime, needleTurn, unit } from './casinoKit';
+import { TIMES, slotEnd, reelStop, creepAt, crashStep, needleTime, needleTurn, unit, rouletteEnd, rouletteTurn, scratchEnd, scratchAt } from './casinoKit';
 export { winTier } from './casinoKit';
 import { Wallet } from './casinoWallet';
 import type { AdOffer } from './adFlow';
@@ -29,6 +29,9 @@ export type CasinoTarget =
   | { k: 'boost' }
   | { k: 'stake'; index: number }
   | { k: 'auto'; index: number }
+  /** Roulette: the vehicle type the bet is on. */
+  | { k: 'bet'; symbol: SlotSymbol }
+  | { k: 'buyCard' }
   | { k: 'play' }
   | { k: 'cashOut' }
   | { k: 'double' }
@@ -51,6 +54,8 @@ export type CasinoRun =
   | { k: 'crash'; stake: number; point: number; end: { at: number; cashOut: boolean }; age: number; out: CashOut | null; crash: number | null }
   | { k: 'slots'; spin: SlotSpin; from: [number, number, number]; anticipate: boolean; age: number }
   | { k: 'upgrade'; roll: UpgradeRoll; age: number }
+  | { k: 'roulette'; spin: RouletteSpin; age: number }
+  | { k: 'scratch'; card: ScratchCard; age: number }
   /** `chain`: how many flips in a row this one is (1 the first). */
   | { k: 'flip'; flip: CoinFlip; items: boolean; age: number; chain: number };
 
@@ -74,6 +79,8 @@ export class CasinoState {
   game: CasinoGame = 'crash';
   stake = 0;
   auto = 0;
+  /** Roulette: the vehicle type bet on. */
+  bet: SlotSymbol = 'sportsCar';
   run: CasinoRun | null = null;
   /** Where the reels rest between spins. */
   reels: [number, number, number] = [0, 7, 15];
@@ -97,6 +104,10 @@ export class CasinoState {
         return r.age < slotEnd(r);
       case 'upgrade':
         return r.age < needleTime(r.roll);
+      case 'roulette':
+        return r.age < rouletteEnd;
+      case 'scratch':
+        return r.age < scratchEnd;
       case 'flip':
         return r.age < TIMES.flip;
     }
@@ -121,6 +132,10 @@ export class CasinoState {
         const d = Math.min(Math.abs(at - r.roll.chance), at, 1 - at);
         return 0.2 + 0.75 * (1 - Ease.clamp01(d / 0.15)) * Ease.clamp01((x - 0.4) / 0.3);
       }
+      case 'roulette':
+        return 0.15 + 0.5 * Ease.clamp01(r.age / TIMES.rouletteDrive);
+      case 'scratch':
+        return 0.1;
       case 'flip':
         return 0.35;
     }
@@ -137,6 +152,10 @@ export class CasinoState {
         return r.age - slotEnd(r);
       case 'upgrade':
         return r.age - needleTime(r.roll);
+      case 'roulette':
+        return r.age - rouletteEnd;
+      case 'scratch':
+        return r.age - scratchEnd;
       case 'flip':
         return r.age - TIMES.flip;
     }
@@ -159,7 +178,7 @@ export class CasinoState {
     const r = this.run;
     if (!r || !this.busy) return;
     // Just before the end: the next frame crosses it and plays the result.
-    const end = r.k === 'slots' ? slotEnd(r) : r.k === 'upgrade' ? needleTime(r.roll) : r.k === 'flip' ? TIMES.flip : r.age;
+    const end = r.k === 'slots' ? slotEnd(r) : r.k === 'upgrade' ? needleTime(r.roll) : r.k === 'roulette' ? rouletteEnd : r.k === 'scratch' ? scratchEnd : r.k === 'flip' ? TIMES.flip : r.age;
     r.age = Math.max(r.age, end - 1e-4);
   }
 
@@ -223,6 +242,20 @@ export class CasinoState {
         if (crossed(end)) cues.push({ k: 'result' });
         break;
       }
+      case 'roulette': {
+        // The car clicks past every exit on its way round.
+        const exits = baseConfig.slotStrip.length;
+        const p0 = Math.floor(rouletteTurn(r, Math.min(before, TIMES.rouletteDrive)) * exits);
+        const p1 = Math.floor(rouletteTurn(r, Math.min(after, TIMES.rouletteDrive)) * exits);
+        if (p1 > p0 && wasBusy) cues.push({ k: 'peg', slow: after / TIMES.rouletteDrive > 0.6 });
+        if (crossed(rouletteEnd)) cues.push({ k: 'result' });
+        break;
+      }
+      case 'scratch': {
+        for (let i = 0; i < 9; i++) if (crossed(scratchAt(i))) cues.push({ k: 'peg', slow: false });
+        if (crossed(scratchEnd)) cues.push({ k: 'result' });
+        break;
+      }
       case 'flip': {
         const h0 = Math.floor(Ease.outCubic(before / TIMES.flip) * TIMES.flipHalfTurns);
         const h1 = Math.floor(Ease.outCubic(after / TIMES.flip) * TIMES.flipHalfTurns);
@@ -252,6 +285,10 @@ interface Layout {
   stage: Rect;
   autos: Rect[];
   stakes: Rect[];
+  /** Roulette: one tile per vehicle type to bet on. */
+  bets: [SlotSymbol, Rect][];
+  /** Scratch: the button that buys a card. */
+  buy: Rect | null;
   main: Rect;
   /** Double or nothing, then Collect: they share the main button's row. */
   pair: [Rect, Rect];
@@ -265,6 +302,7 @@ export const CasinoPage = {
   stakeHeight: 34,
   boostHeight: 34,
   autoHeight: 28,
+  betHeight: 56,
   pickerColumns: 5,
 
   /** The layout of the table for the state: the Skin Upgrade makes room for its boost row where ads are on. */
@@ -273,7 +311,7 @@ export const CasinoPage = {
   layout(a: Rect, game: CasinoGame, withBoost = false): Layout {
     const P = CasinoPage;
     const w = R.width(a);
-    const cw = (w - 2 * 6) / 3;
+    const cw = (w - (CASINO_GAMES.length - 1) * 6) / CASINO_GAMES.length;
     const chips = CASINO_GAMES.map((g, i): [CasinoGame, Rect] => [g, R.make(a.minX + i * (cw + 6), a.minY, a.minX + i * (cw + 6) + cw, a.minY + P.chipHeight)]);
     const infoY = a.minY + P.chipHeight + P.gap + 11;
     const odds = R.make(a.maxX - 76, infoY - 12, a.maxX, infoY + 12);
@@ -289,12 +327,14 @@ export const CasinoPage = {
       bottom -= height + P.gap;
       return out;
     };
-    const stakes = game === 'upgrade' ? [] : row(baseConfig.casinoStakes.length + 1, P.stakeHeight);
+    const stakes = game === 'upgrade' || game === 'scratch' ? [] : row(baseConfig.casinoStakes.length + 1, P.stakeHeight);
     const autos = game === 'crash' ? row(baseConfig.crashAutoTargets.length + 1, P.autoHeight).slice(1) : [];
+    const bets = game === 'roulette' ? row(SLOT_SYMBOLS.length, P.betHeight).map((r, i): [SlotSymbol, Rect] => [SLOT_SYMBOLS[i], r]) : [];
+    const buy = game === 'scratch' ? row(1, P.stakeHeight + 6)[0] : null;
     const boost = withBoost ? R.make(a.minX, history.maxY + 8, a.maxX, history.maxY + 8 + P.boostHeight) : null;
     const top = (boost ?? history).maxY + 10;
     const stage = R.make(a.minX, top, a.maxX, Math.max(top + 140, bottom - 2));
-    return { chips, today: v(a.minX, infoY), odds, history, boost, stage, autos, stakes, main, pair };
+    return { chips, today: v(a.minX, infoY), odds, history, boost, stage, autos, stakes, bets, buy, main, pair };
   },
 
   /** Where the Upgrade's five stake slots and its target slot sit under the dial. */
@@ -362,6 +402,8 @@ export const CasinoPage = {
     }
     out.push(...l.stakes.map((r, index): [CasinoTarget, Rect] => [{ k: 'stake', index }, r]));
     out.push(...l.autos.map((r, index): [CasinoTarget, Rect] => [{ k: 'auto', index }, r]));
+    out.push(...l.bets.map(([symbol, r]): [CasinoTarget, Rect] => [{ k: 'bet', symbol }, r]));
+    if (l.buy) out.push([{ k: 'buyCard' }, l.buy]);
     if (state.game === 'upgrade') out.push(...CasinoPage.slots(l.stage).map((r, slot): [CasinoTarget, Rect] => [{ k: 'slot', slot }, r]));
     if (career.casinoPending?.k === 'win') {
       if (Casino.canFlip(career, baseConfig)) out.push([{ k: 'double' }, l.pair[0]], [{ k: 'collect' }, l.pair[1]]);
@@ -457,6 +499,8 @@ export const CasinoPage = {
     if (run?.k === 'flip') CasinoPage.addFlip(list, l.stage, run, career, reduceMotion, enter);
     else if (game === 'crash') CasinoPage.addCrash(list, l.stage, run?.k === 'crash' ? run : null, reduceMotion, enter);
     else if (game === 'slots') CasinoPage.addSlots(list, l.stage, state, run?.k === 'slots' ? run : null, reduceMotion, enter);
+    else if (game === 'roulette') CasinoPage.addRoulette(list, l.stage, state, run?.k === 'roulette' ? run : null, reduceMotion, enter);
+    else if (game === 'scratch') CasinoPage.addScratch(list, l.stage, career, run?.k === 'scratch' ? run : null, reduceMotion, enter);
     else if (state.picker) CasinoPage.addPicker(list, l.stage, career, state, enter);
     else CasinoPage.addUpgrade(list, l.stage, state, run?.k === 'upgrade' ? run : null, career.upgradeBoost, reduceMotion, enter);
     CasinoPage.addControls(list, l, career, state, enter);
@@ -477,8 +521,9 @@ export const CasinoPage = {
       const on = game === state.game ? glide : slide && game === slide.from ? 1 - glide : 0;
       const label = S.casino.game(game);
       const dim = busy && game !== state.game ? 0.4 : 1;
-      drawText(list, label, R.center(r), 13, 'muted', { weight: 'bold', align: 'center', opacity: enter * (1 - on) * dim });
-      if (on > 0) drawText(list, label, R.center(r), 13, 'background', { weight: 'bold', align: 'center', opacity: enter * on });
+      const size = ShopPage.fitted(label, 13, R.width(r) - 8);
+      drawText(list, label, R.center(r), size, 'muted', { weight: 'bold', align: 'center', opacity: enter * (1 - on) * dim });
+      if (on > 0) drawText(list, label, R.center(r), size, 'background', { weight: 'bold', align: 'center', opacity: enter * on });
     }
   },
 
@@ -538,6 +583,10 @@ export const CasinoPage = {
         return r.win > 0 ? `+${Fmt.number(r.win)}` : '–';
       case 'upgrade':
         return `${r.win > 0 ? '✓' : '✕'} ${Math.round(r.x * 100)} %`;
+      case 'roulette':
+        return r.win > 0 ? `+${Fmt.number(r.win)}` : '–';
+      case 'scratch':
+        return r.win > 0 ? `${r.x}×` : '–';
     }
   },
 
@@ -581,6 +630,21 @@ export const CasinoPage = {
         drawText(list, label, c, ShopPage.fitted(label, 15, size.x - 20), enabled ? 'primary' : 'muted', { weight: 'bold', align: 'center', opacity: enter });
       }
     };
+    l.bets.forEach(([symbol, cell]) => {
+      const r = CasinoPage.pressedRect(cell, { k: 'bet', symbol }, state);
+      const chosen = symbol === state.bet;
+      const o = enter * (busy ? 0.45 : 1);
+      const c = R.center(r);
+      // The chosen tile lifts a little and glows; the rest wait flat.
+      const lift = chosen && !busy ? -2 : 0;
+      list.s(rect(v(c.x, c.y + lift), v(R.width(r), R.height(r)), 10), chosen ? 'primary' : 'controlFill', o);
+      CasinoPage.symbol(list, symbol, v(c.x, c.y - 8 + lift), Math.min(28, R.width(r) - 10), o, 0);
+      drawText(list, `${Casino.roulettePay(symbol, baseConfig).toFixed(1)}×`, v(c.x, r.maxY - 9 + lift), 10, chosen ? 'background' : 'muted', { weight: 'bold', align: 'center', opacity: o });
+    });
+    if (l.buy) {
+      const full = career.scratchCards >= baseConfig.scratchMax;
+      button(l.buy, { k: 'buyCard' }, full ? S.casino.cardFull : S.casino.buyCard(money(Fmt.number(baseConfig.scratchPrice))), false, Casino.canBuyCard(career, baseConfig) && !busy, 'coin');
+    }
     if (state.picker) {
       button(l.main, { k: 'done' }, S.casino.done, true, true);
       return;
@@ -612,10 +676,11 @@ export const CasinoPage = {
       if (!state.target) return { label: S.casino.pickTarget, enabled: Casino.targets(career, state.staked).length > 0 };
       return { label: S.casino.upgrade(Casino.upgradeChance(state.staked, state.target, baseConfig, career.upgradeBoost)), enabled: Casino.canUpgrade(career, state.staked, state.target, baseConfig) };
     }
+    if (state.game === 'scratch') return { label: S.casino.scratch(career.scratchCards), enabled: career.scratchCards > 0 };
     const stake = CasinoPage.stakeOf(career, state);
     if (stake <= 0 || stake > career.money) return { label: S.casino.notEnough, enabled: false };
     const m = money(Fmt.number(stake));
-    return { label: state.game === 'crash' ? S.casino.drive(m) : S.casino.spin(m), enabled: true };
+    return { label: state.game === 'crash' ? S.casino.drive(m) : state.game === 'roulette' ? S.casino.bet(m) : S.casino.spin(m), enabled: true };
   },
 
   art(list: RenderList, game: CasinoGame, center: Vec2, size: number): void {
@@ -629,6 +694,17 @@ export const CasinoPage = {
       case 'slots':
         MenuKit.glow(list, center, size * 0.5, 'coin', 0.3);
         (['sportsCar', 'boss', 'sportsCar'] as SlotSymbol[]).forEach((s, i) => CasinoPage.symbol(list, s, v(center.x + (i - 1) * size * 0.3, center.y), size * 0.27, 1, 0));
+        break;
+      case 'roulette':
+        MenuKit.glow(list, center, size * 0.5, 'primary', 0.25);
+        list.s(arc(center, size * 0.3, 6, 0, TAU), 'controlFill');
+        for (let i = 0; i < 8; i++) list.s(circle(add(center, mul(fromAngle((i / 8) * TAU), size * 0.3)), 3), i === 2 ? 'accent' : 'marking');
+        CasinoPage.vehicle(list, 'car', null, add(center, mul(fromAngle(-0.9), size * 0.3)), size * 0.3, 0.7, 1);
+        break;
+      case 'scratch':
+        MenuKit.glow(list, center, size * 0.5, 'coin', 0.3);
+        list.s(rect(center, v(size * 0.56, size * 0.56), 8), 'cardRaised');
+        for (let i = 0; i < 9; i++) list.s(rect(add(center, v(((i % 3) - 1) * size * 0.17, (Math.floor(i / 3) - 1) * size * 0.17)), v(size * 0.13, size * 0.13), 3), i < 3 ? 'coin' : 'marking', i < 3 ? 1 : 0.7);
         break;
       case 'upgrade':
         MenuKit.glow(list, center, size * 0.5, 'accent', 0.3);

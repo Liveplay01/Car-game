@@ -12,8 +12,8 @@ import { Rng } from './rng';
  * The stake leaves the balance and the save is written before anything is revealed, so a
  * reload never draws again; a round cut short (the page closed) pays its stake back.
  */
-export type CasinoGame = 'crash' | 'slots' | 'upgrade';
-export const CASINO_GAMES: CasinoGame[] = ['crash', 'slots', 'upgrade'];
+export type CasinoGame = 'crash' | 'slots' | 'upgrade' | 'roulette' | 'scratch';
+export const CASINO_GAMES: CasinoGame[] = ['crash', 'slots', 'upgrade', 'roulette', 'scratch'];
 
 export type SlotSymbol = (typeof baseConfig.slotStrip)[number];
 export const SLOT_SYMBOLS: SlotSymbol[] = ['car', 'compact', 'van', 'sportsCar', 'ambulance', 'transporter', 'boss'];
@@ -45,6 +45,26 @@ export interface SlotSpin {
   rule: 'triple' | 'bossPair' | 'pair' | null;
 }
 
+export interface RouletteSpin {
+  stake: number;
+  bet: SlotSymbol;
+  /** The exit the car leaves by: an index on the ring, `slotStrip[exit]` is its type. */
+  exit: number;
+  symbol: SlotSymbol;
+  /** Times the stake the bet pays when it wins. */
+  pay: number;
+  won: boolean;
+  win: number;
+}
+
+export interface ScratchCard {
+  /** The nine cells, as multiples of the price; a prize is three alike. */
+  cells: number[];
+  /** The multiple that won (0: nothing). */
+  x: number;
+  win: number;
+}
+
 export interface UpgradeRoll {
   won: boolean;
   chance: number;
@@ -73,7 +93,7 @@ export interface CoinFlip {
  */
 let entropy: (() => number) | null = null;
 
-const SALT: Record<CasinoGame | 'flip', number> = { crash: 0x0c4a54, slots: 0x5107b0, upgrade: 0x09e4ad, flip: 0x0f11b5 };
+const SALT: Record<CasinoGame | 'flip', number> = { crash: 0x0c4a54, slots: 0x5107b0, upgrade: 0x09e4ad, roulette: 0x0a7e11, scratch: 0x05c4a7, flip: 0x0f11b5 };
 
 /** Skins that can go on the table: a chest's car and map skins (no vehicles, nothing earned once). */
 export const isStakeable = (item: Cosmetic): boolean => item.source.kind === 'chest' && (item.kind === 'carSkin' || item.kind === 'mapSkin');
@@ -205,6 +225,91 @@ export const Casino = {
     Casino.log(c, { game: 'slots', stake, win, x: pay, day }, config);
     if (win > 0) c.casinoPending = { k: 'win', game: 'slots', money: win, items: [], flips: 0 };
     return { stops, line, pay, win, rule };
+  },
+
+  // MARK: Roundabout Roulette
+
+  /** P(the car leaves by an exit of type `s`): its share of the ring's exits. */
+  rouletteChance: (s: SlotSymbol, config: Config = baseConfig): number => config.slotStrip.filter((x) => x === s).length / config.slotStrip.length,
+
+  /** What a winning bet on `s` pays, times the stake. */
+  roulettePay: (s: SlotSymbol, config: Config = baseConfig): number => (1 - config.rouletteEdge) / Casino.rouletteChance(s, config),
+
+  roulette(c: Career, stake: number, bet: SlotSymbol, day: number, config: Config = baseConfig): RouletteSpin | null {
+    if (!Casino.canStake(c, stake) || !SLOT_SYMBOLS.includes(bet)) return null;
+    const exit = Casino.rng(c, 'roulette').int(0, config.slotStrip.length - 1);
+    const symbol = config.slotStrip[exit];
+    const pay = Casino.roulettePay(bet, config);
+    const won = symbol === bet;
+    const win = won ? Math.floor(stake * pay) : 0;
+    c.casinoRounds++;
+    c.money += win - stake;
+    Casino.book(c, day, win - stake);
+    Casino.log(c, { game: 'roulette', stake, win, x: won ? pay : 0, day }, config);
+    if (win > 0) c.casinoPending = { k: 'win', game: 'roulette', money: win, items: [], flips: 0 };
+    return { stake, bet, exit, symbol, pay, won, win };
+  },
+
+  // MARK: Scratch Card
+
+  /** The exact return of a card: every prize times its weight, over the total. */
+  scratchRtp: (config: Config = baseConfig): number => config.scratchPrizes.reduce((sum, p) => sum + p.x * p.weight, 0) / config.scratchWeightTotal,
+
+  /** The multiple a draw `u` (0 ≤ u < 1) wins; 0 when it wins nothing. */
+  scratchDraw(u: number, config: Config = baseConfig): number {
+    let left = Math.floor(u * config.scratchWeightTotal);
+    for (const p of config.scratchPrizes) {
+      if (left < p.weight) return p.x;
+      left -= p.weight;
+    }
+    return 0;
+  },
+
+  /** Nine cells: a win shows its multiple three times, nothing else shows any multiple more than twice. */
+  scratchCells(rng: Rng, x: number, config: Config = baseConfig): number[] {
+    const symbols = config.scratchPrizes.map((p) => p.x);
+    const cells = new Array<number>(9).fill(0);
+    const counts = new Map<number, number>();
+    const open = [0, 1, 2, 3, 4, 5, 6, 7, 8];
+    if (x > 0) {
+      for (let k = 0; k < 3; k++) cells[open.splice(rng.int(0, open.length - 1), 1)[0]] = x;
+      counts.set(x, 3);
+    }
+    for (const i of open) {
+      let s: number;
+      do s = rng.pick(symbols);
+      while ((counts.get(s) ?? 0) >= 2);
+      counts.set(s, (counts.get(s) ?? 0) + 1);
+      cells[i] = s;
+    }
+    return cells;
+  },
+
+  canBuyCard: (c: Career, config: Config = baseConfig): boolean => c.casinoPending === null && c.scratchCards < config.scratchMax && c.money >= config.scratchPrice,
+
+  /** Buys a card at the price; it waits in hand until it is scratched. */
+  buyCard(c: Career, day: number, config: Config = baseConfig): boolean {
+    if (!Casino.canBuyCard(c, config)) return false;
+    c.money -= config.scratchPrice;
+    c.scratchCards++;
+    Casino.book(c, day, -config.scratchPrice);
+    return true;
+  },
+
+  /** Scratches a card from the hand: the prize is paid and saved before the cells show. */
+  scratch(c: Career, day: number, config: Config = baseConfig): ScratchCard | null {
+    if (c.casinoPending !== null || c.scratchCards <= 0) return null;
+    const rng = Casino.rng(c, 'scratch');
+    const x = Casino.scratchDraw(rng.unit(), config);
+    const cells = Casino.scratchCells(rng, x, config);
+    const win = x * config.scratchPrice;
+    c.scratchCards--;
+    c.casinoRounds++;
+    c.money += win;
+    Casino.book(c, day, win);
+    Casino.log(c, { game: 'scratch', stake: config.scratchPrice, win, x, day }, config);
+    if (win > 0) c.casinoPending = { k: 'win', game: 'scratch', money: win, items: [], flips: 0 };
+    return { cells, x, win };
   },
 
   // MARK: Skin Upgrade

@@ -13,7 +13,7 @@ import { SYNDICATE_BOSS } from './scene';
 import { land } from './hud';
 import { ShopPage } from './shop';
 import { CasinoPage, type CasinoRun, CasinoState } from './casino';
-import { TIMES, HEAT, SYMBOL, slotEnd, reelStop, reelAt, needleTime, needleTurn, heatOf, unit, winTier } from './casinoKit';
+import { TIMES, HEAT, SYMBOL, slotEnd, reelStop, reelAt, needleTime, needleTurn, heatOf, unit, winTier, rouletteEnd, rouletteTurn, scratchAt, scratchEnd, type RouletteRun } from './casinoKit';
 
 /**
  * The four tables of the casino, drawn as pure functions of their age: Crash, Slots, the Skin
@@ -401,6 +401,200 @@ export const CasinoGames = {
     const preview = new List({ viewport: list.camera.viewport, center: v(0, 0), focus: center, scale: length / long }, list.background);
     CarArt.add(preview, { id: 5, type, pose: { position: v(0, 0), heading }, dents: [], skin: look?.paint ?? null, stripe: look?.stripe ?? null, roof: look?.roof ?? null, finish: null, finishTime: null }, c);
     for (const it of preview.items) list.items.push({ ...pinned(it, preview.camera, opacity), clip: list.clip });
+  },
+
+  // MARK: Roundabout Roulette
+
+  /**
+   * A roundabout seen from above with one tile per exit, tinted by the vehicle type it leads to.
+   * The bet's exits stay lit. The car circles fast, clicks past every exit (its tile pops) and
+   * eases onto the drawn one, turns in and arrives; a win lights that exit and showers coins.
+   */
+  addRoulette(list: RenderList, stage: Rect, state: CasinoState, run: RouletteRun | null, reduceMotion: boolean, enter: number): void {
+    const cfg = baseConfig;
+    const n = cfg.slotStrip.length;
+    const done = run !== null && run.age >= rouletteEnd;
+    const since = run ? run.age - rouletteEnd : 0;
+    const spin = run?.spin ?? null;
+    const won = done && spin !== null && spin.won;
+    const tier = won ? winTier(spin.pay) : 0;
+    stage = R.offset(stage, CasinoPage.jolt(since, tier, reduceMotion));
+    ShopPage.panel(list, stage, 'card', enter);
+    const room = 70;
+    const center = v(R.center(stage).x, stage.minY + (R.height(stage) - room) / 2 + 4);
+    const radius = Math.max(40, Math.min(R.width(stage) * 0.3, (R.height(stage) - room) / 2 - 36));
+    const top = -Math.PI / 2;
+    const bet = spin ? spin.bet : state.bet;
+    const at = (a: number, d: number): Vec2 => add(center, mul(fromAngle(a), d));
+    const age = run ? (reduceMotion ? rouletteEnd : run.age) : 0;
+    const driveAge = Math.min(age, TIMES.rouletteDrive);
+    const turn = run ? rouletteTurn(run, driveAge) : 0;
+    const angle = top + turn * TAU;
+    const passed = turn * n;
+    const lastExit = Math.floor(passed) % n;
+    const frac = passed - Math.floor(passed);
+
+    list.s(arc(center, radius, 28, 0, TAU), 'background', 0.55 * enter);
+    for (let k = 0; k < 40; k++) list.s(circle(at(top + (k / 40) * TAU, radius), 1.3), 'marking', 0.6 * enter);
+
+    for (let i = 0; i < n; i++) {
+      const sym = cfg.slotStrip[i];
+      const tint = SYMBOL[sym].tint;
+      const a = top + (i / n) * TAU;
+      const mine = sym === bet;
+      const hit = done && spin !== null && i === spin.exit;
+      let pop = 1;
+      if (run && !done && !reduceMotion && passed > 0 && i === lastExit) pop += 0.35 * (1 - frac) ** 2;
+      if (hit) pop += 0.35 * (reduceMotion ? 1 : Ease.spring(Ease.clamp01(since / 0.45)));
+      const o = enter * (done ? (hit ? 1 : 0.28) : mine ? 1 : 0.5);
+      list.s(line(at(a, radius + 14), at(a, radius + 22), 7), 'marking', 0.5 * o);
+      const tile = at(a, radius + 32);
+      if (hit && !reduceMotion) MenuKit.glow(list, tile, 30, won ? 'accent' : tint, (won ? 0.7 : 0.45) * enter * (0.8 + 0.2 * Math.sin(since * 9)));
+      if (mine && !done) list.s(rect(tile, v(25 * pop, 25 * pop), 8), 'primary', 0.9 * o);
+      if (hit && won) list.s(rect(tile, v(26 * pop, 26 * pop), 8), 'accent', enter);
+      list.s(rect(tile, v(20 * pop, 20 * pop), 6), tint, o);
+    }
+
+    // The car: round the ring, then in to its exit, turning from the road into the arm.
+    const tangent = (a: number): number => Math.atan2(-Math.cos(a), -Math.sin(a));
+    const radial = (a: number): number => Math.atan2(-Math.sin(a), Math.cos(a));
+    const leave = run && !reduceMotion ? Ease.clamp01((age - TIMES.rouletteDrive) / TIMES.rouletteLeave) : done ? 1 : 0;
+    let heading = tangent(angle);
+    if (leave > 0) {
+      const d = ((radial(angle) - heading + 3 * Math.PI) % TAU) - Math.PI;
+      heading += d * Ease.clamp01(leave * 3);
+    }
+    const carAt = at(angle, radius + 32 * Ease.inOutSine(leave));
+    const carOpacity = enter * (1 - Ease.clamp01((leave - 0.6) / 0.4));
+    if (run && !done && !reduceMotion) {
+      const speed = (rouletteTurn(run, driveAge) - rouletteTurn(run, Math.max(0, driveAge - 1 / 60))) * 60;
+      const trail = Ease.clamp01(speed / 1.1);
+      if (trail > 0) list.s(arc(center, radius, 6, angle - 0.55 * trail, angle), 'primary', 0.22 * trail * enter);
+      for (let k = 1; k <= 6; k++) {
+        const back = top + rouletteTurn(run, Math.max(0, driveAge - k * 0.028)) * TAU;
+        list.s(circle(at(back, radius), 5 * (1 - k / 7)), 'primary', 0.3 * trail * (1 - k / 7) * enter);
+      }
+    }
+    if (carOpacity > 0) {
+      MenuKit.glow(list, carAt, 22, 'primary', 0.28 * carOpacity);
+      CasinoPage.vehicle(list, SYMBOL[bet].type, bet === 'boss' ? SYNDICATE_BOSS : null, carAt, 30, heading, carOpacity);
+    }
+
+    // The island: the bet and what it pays; a win counts up here.
+    list.s(circle(center, radius - 20), 'cardRaised', enter);
+    const pay = Casino.roulettePay(bet, cfg);
+    CasinoPage.symbol(list, bet, v(center.x, center.y - 7), Math.min(radius * 0.7, 46), enter * (done && !won ? 0.5 : 1), 0);
+    drawText(list, `${pay.toFixed(2)}×`, v(center.x, center.y + Math.min(radius * 0.42, 32)), 13, 'primary', { weight: 'bold', align: 'center', opacity: enter });
+
+    const under = v(R.center(stage).x, stage.maxY - 40);
+    if (spin && done) {
+      if (won) {
+        CasinoPage.celebrate(list, center, since, tier, 'accent', reduceMotion);
+        if (tier >= 2 && !reduceMotion) CasinoPage.coinFountain(list, center, since, tier >= 3 ? 1.4 : 0.8);
+        const counted = reduceMotion ? spin.win : Math.floor(spin.win * Ease.outCubic(Ease.clamp01(since / 0.6)));
+        const pop = reduceMotion ? 1 : land(since / 0.4, 0.3);
+        drawText(list, `+${money(Fmt.number(counted))}`, under, 26 * pop, 'accent', { weight: 'bold', align: 'center', opacity: enter });
+        drawText(list, S.casino.rouletteWin(S.casino.symbol(spin.symbol), spin.pay), v(under.x, under.y + 24), 12, 'muted', { align: 'center', opacity: enter });
+      } else drawText(list, S.casino.rouletteLose(S.casino.symbol(spin.symbol)), under, 13, 'muted', { align: 'center', opacity: enter * (reduceMotion ? 1 : Ease.outCubic(since / 0.25)) });
+    } else if (!run) drawText(list, S.casino.rouletteHint, under, ShopPage.fitted(S.casino.rouletteHint, 12, R.width(stage) - 24), 'muted', { align: 'center', opacity: enter });
+  },
+
+  // MARK: Scratch Card
+
+  /**
+   * The card: nine foil cells. Each is scratched clear in turn (the foil wipes away with a few
+   * scratch marks and flakes, the number lands with a pop); three alike hop, glow and pay.
+   */
+  addScratch(list: RenderList, stage: Rect, career: Career, run: Extract<CasinoRun, { k: 'scratch' }> | null, reduceMotion: boolean, enter: number): void {
+    const card = run?.card ?? null;
+    const done = run !== null && run.age >= scratchEnd;
+    const since = run ? run.age - scratchEnd : 0;
+    const won = done && card !== null && card.win > 0;
+    const tier = won ? winTier(card.x) : 0;
+    stage = R.offset(stage, CasinoPage.jolt(since, tier, reduceMotion));
+    ShopPage.panel(list, stage, 'card', enter);
+    const room = 64;
+    const side = Math.max(120, Math.min(R.width(stage) - 36, R.height(stage) - room - 16, 290));
+    const c = v(R.center(stage).x, stage.minY + 10 + (R.height(stage) - room - 10) / 2);
+    const w = side;
+    const h = side * 1.04;
+    const body = R.make(c.x - w / 2, c.y - h / 2, c.x + w / 2, c.y + h / 2);
+    list.s(rect(c, v(w + 5, h + 5), 15), won ? 'accent' : 'coin', enter * (won ? 0.5 + 0.5 * (reduceMotion ? 1 : 0.5 + 0.5 * Math.sin(since * 8)) : 0.9));
+    list.s(rect(c, v(w, h), 13), 'cardRaised', enter);
+    list.s(rect(v(c.x, body.minY + 17), v(w - 10, 26), 9), 'coin', 0.16 * enter);
+    drawText(list, S.casino.scratchTitle, v(c.x, body.minY + 17), 13, 'coin', { weight: 'bold', align: 'center', opacity: enter });
+
+    const pad = 12;
+    const gap = 6;
+    const cell = Math.min((w - 2 * pad - 2 * gap) / 3, (h - 40 - pad - 2 * gap) / 3);
+    const gx = c.x - (3 * cell + 2 * gap) / 2;
+    const gy = body.minY + 36 + (h - 36 - pad - (3 * cell + 2 * gap)) / 2;
+    const order = card ? [...card.cells.keys()].filter((i) => card.cells[i] === card.x && card.x > 0) : [];
+    for (let i = 0; i < 9; i++) {
+      const x0 = gx + (i % 3) * (cell + gap);
+      const y0 = gy + Math.floor(i / 3) * (cell + gap);
+      const r = R.make(x0, y0, x0 + cell, y0 + cell);
+      const cc = R.center(r);
+      const wipe = run ? (reduceMotion ? 1 : Ease.clamp01((run.age - scratchAt(i)) / TIMES.scratchWipe)) : 0;
+      list.s(rect(cc, v(cell, cell), 9), 'background', 0.6 * enter);
+      if (run && card && wipe > 0) {
+        const value = card.cells[i];
+        const winning = won && value === card.x;
+        const rank = order.indexOf(i);
+        const dim = done ? (winning ? 1 : won ? 0.3 : 0.7) : 1;
+        let at = cc;
+        let squash = 0;
+        if (winning && !reduceMotion) {
+          const x = (since - 0.08 * rank) / 0.34;
+          if (x > 0 && x < 1) {
+            at = add(at, v(0, -11 * Math.sin(Math.PI * x)));
+            squash = 0.5 * Math.cos(2 * Math.PI * x) * Math.sin(Math.PI * x);
+          }
+        }
+        if (winning) MenuKit.glow(list, at, cell * 0.8, 'accent', 0.6 * enter * (reduceMotion ? 1 : 0.7 + 0.3 * Math.sin(since * 9 + rank)));
+        const pop = reduceMotion ? 1 : land((run.age - scratchAt(i) - TIMES.scratchWipe * 0.45) / 0.3, 0.28);
+        const color: ColorToken = value >= 100 ? 'coin' : value >= 10 ? 'accent' : 'primary';
+        list.s(rect(at, v(cell * (1 + 0.1 * squash), cell * (1 - 0.1 * squash)), 9), 'cardRaised', enter * dim);
+        drawText(list, `${value}×`, at, ShopPage.fitted(`${value}×`, cell * 0.36, cell - 8) * pop, color, { weight: 'bold', align: 'center', opacity: enter * dim });
+      }
+      if (wipe < 1) {
+        // The foil: what is left of it, with its shine; scratch marks and flakes at the wiped edge.
+        const edge = x0 + wipe * cell;
+        const left = R.make(edge, y0, x0 + cell, y0 + cell);
+        const saved = list.clip;
+        list.clip = left;
+        list.s(rect(cc, v(cell, cell), 9), 'muted', 0.95 * enter);
+        list.s(line(v(x0 - 4, y0 + cell * 0.8), v(x0 + cell * 0.8, y0 - 4), 5), 'primary', 0.16 * enter);
+        list.s(line(v(x0 + cell * 0.3, y0 + cell + 4), v(x0 + cell + 4, y0 + cell * 0.3), 3), 'primary', 0.12 * enter);
+        list.clip = saved;
+        if (wipe > 0 && !reduceMotion) {
+          for (let k = 0; k < 3; k++) {
+            const y = y0 + cell * (0.2 + 0.3 * k);
+            list.s(line(v(edge - 4, y + 5), v(edge + 6, y - 5), 2), 'primary', 0.55 * (1 - wipe) * enter);
+          }
+          for (let k = 0; k < 6; k++) {
+            const t = wipe * (0.6 + 0.8 * unit(i * 7 + k, 81));
+            const p = v(edge + (unit(i * 7 + k, 82) - 0.2) * 16, y0 + cell * unit(i * 7 + k, 83) + 70 * t * t);
+            list.s(rect(p, v(4 + 3 * unit(k, 84), 3), 1, unit(k, 85) * 3 + t * 6), 'muted', (1 - wipe) * 0.9 * enter);
+          }
+        }
+      }
+    }
+
+    const under = v(c.x, stage.maxY - 40);
+    if (card && done) {
+      if (won) {
+        CasinoPage.celebrate(list, c, since, tier, 'coin', reduceMotion);
+        if (tier >= 2 && !reduceMotion) CasinoPage.coinFountain(list, c, since, tier >= 3 ? 1.5 : 0.8);
+        const counted = reduceMotion ? card.win : Math.floor(card.win * Ease.outCubic(Ease.clamp01(since / 0.6)));
+        const pop = reduceMotion ? 1 : land(since / 0.4, 0.3);
+        drawText(list, `+${money(Fmt.number(counted))}`, under, 26 * pop, 'coin', { weight: 'bold', align: 'center', opacity: enter });
+        drawText(list, S.casino.cardWon(card.x), v(under.x, under.y + 24), 12, 'muted', { align: 'center', opacity: enter });
+      } else drawText(list, S.casino.cardLost, under, 13, 'muted', { align: 'center', opacity: enter * (reduceMotion ? 1 : Ease.outCubic(since / 0.25)) });
+    } else if (!run) {
+      drawText(list, S.casino.scratchHand(career.scratchCards), under, 14, career.scratchCards > 0 ? 'coin' : 'muted', { weight: 'bold', align: 'center', opacity: enter });
+      drawText(list, S.casino.scratchHint, v(under.x, under.y + 22), 11, 'muted', { align: 'center', opacity: enter });
+    }
   },
 
   // MARK: Skin Upgrade

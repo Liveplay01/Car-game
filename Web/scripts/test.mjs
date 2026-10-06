@@ -1497,6 +1497,46 @@ test('a Streak Freeze is earned every seven days and covers one missed day', () 
   assert.equal(c.streakFreezes, 0, 'the Freeze is used up');
 });
 
+test('every third streak day gives a free Scratch Card; a card is bought at its price, paid before it shows, and a save keeps the hand', () => {
+  const c = newCareer();
+  c.casinoSeed = 77;
+  const gained = [];
+  for (let day = 100; day < 106; day++) gained.push(Careers.startDaily(c, day, baseConfig).cards);
+  assert.deepEqual(gained, [0, 0, 1, 0, 0, 1]);
+  assert.equal(c.scratchCards, 2);
+  c.money = baseConfig.scratchPrice - 1;
+  assert.equal(Casino.buyCard(c, 1), false, 'not enough money');
+  c.money = baseConfig.scratchPrice;
+  assert.equal(Casino.buyCard(c, 1), true);
+  assert.equal(c.money, 0);
+  assert.equal(c.scratchCards, 3);
+  const card = Casino.scratch(c, 1);
+  assert.equal(c.scratchCards, 2);
+  assert.equal(c.money, card.win, 'the prize is already paid when the cells show');
+  assert.equal(card.cells.length, 9);
+  c.casinoPending = null;
+  fakeStorage({ 'carGame.save.v2': JSON.stringify({ career: c }) });
+  assert.equal(loadSave().career.scratchCards, 2);
+  fakeStorage({ 'carGame.save.v2': JSON.stringify({ career: { level: 3 } }) });
+  assert.equal(loadSave().career.scratchCards, 0, 'old saves start with none');
+  assert.equal(Casino.scratch({ ...c, scratchCards: 0 }, 1), null, 'no card in hand, no round');
+});
+
+test('Roundabout Roulette pays only the bet type, at least twice, and takes the stake first', () => {
+  const c = newCareer();
+  c.casinoSeed = 5;
+  c.money = 100_000;
+  for (let i = 0; i < 40; i++) {
+    c.casinoPending = null;
+    const before = c.money;
+    const spin = Casino.roulette(c, 1000, 'van', 1);
+    assert.equal(spin.won, spin.symbol === 'van');
+    assert.equal(c.money, before - 1000 + spin.win);
+    if (spin.won) assert.ok(spin.win >= 2000);
+  }
+  assert.equal(Casino.roulette(c, 1000, 'nothing', 1), null);
+});
+
 test('without enough Freezes a gap breaks the streak, and the stock is capped', () => {
   const c = newCareer();
   for (let day = 100; day < 107; day++) Careers.startDaily(c, day, baseConfig);

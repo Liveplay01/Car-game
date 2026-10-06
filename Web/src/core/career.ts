@@ -52,6 +52,8 @@ export interface StreakNews {
   item: string | null;
   frozen: number;
   earned: boolean;
+  /** Scratch Cards the day brought. */
+  cards: number;
 }
 
 export type GameMode = 'shift' | 'unlimited' | 'mayhem';
@@ -195,6 +197,8 @@ export interface Career {
   dailyStreak: number;
   /** Streak Freezes in stock: each one covers a missed day instead of breaking the streak. */
   streakFreezes: number;
+  /** Scratch Cards in hand (casino, `Casino.scratch`): the streak gives them, the casino sells them. */
+  scratchCards: number;
   /** Tailwind waits for the next career shift, and the day one was last given. */
   tailwind: boolean;
   tailwindDay: number;
@@ -319,6 +323,7 @@ export const newCareer = (): Career => ({
   lastLoginDay: -1,
   dailyStreak: 0,
   streakFreezes: 0,
+  scratchCards: 0,
   tailwind: false,
   tailwindDay: -1,
   heat: 0,
@@ -788,7 +793,9 @@ export const Careers = {
     c.dailyPlayed = day;
     const earned = c.dailyStreak % config.streakFreezeEvery === 0 && c.streakFreezes < config.streakFreezeMax;
     if (earned) c.streakFreezes++;
-    return { item: null, frozen, earned };
+    const cards = c.dailyStreak % config.scratchStreakEvery === 0 && c.scratchCards < config.scratchMax ? 1 : 0;
+    c.scratchCards += cards;
+    return { item: null, frozen, earned, cards };
   },
 
   nextStreakMilestone(c: Career): { days: number; item: string; left: number } | null {

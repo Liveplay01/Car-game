@@ -63,6 +63,14 @@ export class CasinoFlow {
         this.host.tick();
         s.auto = t.index;
         break;
+      case 'bet':
+        if (s.busy) return;
+        this.host.tick();
+        s.bet = t.symbol;
+        break;
+      case 'buyCard':
+        this.buyCard();
+        break;
       case 'play':
         this.start();
         break;
@@ -166,7 +174,30 @@ export class CasinoFlow {
       this.host.play(['chipsIn', 'swoosh'], ['tap']);
       return;
     }
+    if (s.game === 'scratch') {
+      const card = Casino.scratch(career, this.host.today, this.host.config);
+      if (!card) {
+        this.host.play(['denied'], []);
+        return;
+      }
+      this.host.persist();
+      s.wallet.stake(before, 0, this.host.reduceMotion);
+      s.run = { k: 'scratch', card, age: 0 };
+      if (this.host.reduceMotion) s.skip();
+      this.host.play(['swoosh'], ['tap']);
+      return;
+    }
     const stake = CasinoPage.stakeOf(career, s);
+    if (s.game === 'roulette') {
+      const spin = Casino.roulette(career, stake, s.bet, this.host.today, this.host.config);
+      if (!spin) return this.denied(stake);
+      this.host.persist();
+      s.wallet.stake(before, stake, this.host.reduceMotion);
+      s.run = { k: 'roulette', spin, age: 0 };
+      if (this.host.reduceMotion) s.skip();
+      this.host.play(['chipsIn', 'go'], ['tap']);
+      return;
+    }
     if (s.game === 'crash') {
       const point = Casino.startCrash(career, stake, this.host.today, this.host.config);
       if (point === null) return this.denied(stake);
@@ -185,6 +216,24 @@ export class CasinoFlow {
     s.run = { k: 'slots', spin, from, anticipate: spin.line[0] === spin.line[1], age: 0 };
     if (this.host.reduceMotion) s.skip();
     this.host.play(['chipsIn', 'reelSpin'], ['tap']);
+  }
+
+  /** A card bought: the price leaves for the table at once and the card waits in hand. */
+  private buyCard(): void {
+    const s = this.host.casino;
+    const career = this.host.save.career;
+    if (s.busy) return;
+    this.collect();
+    const before = this.books();
+    if (!Casino.buyCard(career, this.host.today, this.host.config)) {
+      this.host.play(['denied'], []);
+      if (career.scratchCards < this.host.config.scratchMax) this.host.showNotice(S.notice.notEnoughMoney(Fmt.number(this.host.config.scratchPrice)));
+      return;
+    }
+    this.host.persist();
+    s.wallet.stake(before, this.host.config.scratchPrice, this.host.reduceMotion);
+    s.wallet.reveal(career.money, 0, 0, this.host.reduceMotion);
+    this.host.play(['chipsIn', 'swoosh'], ['tap']);
   }
 
   private denied(stake: number): void {
@@ -288,6 +337,11 @@ export class CasinoFlow {
           const tier = winTier(run.spin.pay);
           this.host.casino.wallet.reveal(bank, run.spin.win, tier, rm);
           if (run.spin.win > 0) this.host.play([tier >= 3 ? 'chestBurstRare' : 'chestBurst'], ['chest']);
+        } else if (run.k === 'roulette' || run.k === 'scratch') {
+          const win = run.k === 'roulette' ? run.spin.win : run.card.win;
+          const tier = win > 0 ? winTier(run.k === 'roulette' ? run.spin.pay : run.card.x) : 0;
+          this.host.casino.wallet.reveal(bank, win, tier, rm);
+          if (win > 0) this.host.play([tier >= 3 ? 'chestBurstRare' : 'chestBurst'], ['chest']);
         } else if (run.k === 'upgrade') {
           this.host.casino.wallet.reveal(bank, 0, 0, rm);
           if (run.roll.won) {

@@ -382,6 +382,21 @@ export const Details = {
         notes.push({ text: D.returns(pct(1 - config.upgradeEdge)), color: 'accent' }, { text: D.maxChance(pct(config.upgradeMaxChance)), color: 'muted' });
         if (ads.offers) notes.push({ text: S.ads.boostNote(pct(config.upgradeAdBoost), config.adBoostsPerDay), color: 'muted' });
         break;
+      case 'roulette':
+        body = D.roulette;
+        for (const sym of [...SLOT_SYMBOLS].reverse()) {
+          const exits = config.slotStrip.filter((x) => x === sym).length;
+          rows.push({ label: D.exitsOf(S.casino.symbol(sym), exits), value: `${Casino.roulettePay(sym, config).toFixed(2)}× · ${pct(Casino.rouletteChance(sym, config))}`, labelColor: sym === 'boss' ? 'coin' : undefined });
+        }
+        notes.push({ text: D.returns(pct(1 - config.rouletteEdge)), color: 'accent' });
+        break;
+      case 'scratch': {
+        body = D.scratch;
+        for (const p of [...config.scratchPrizes].reverse()) rows.push({ label: D.cardPrize(p.x), value: `${money(Fmt.number(p.x * config.scratchPrice))} · ${D.oneIn(Fmt.number(config.scratchWeightTotal / p.weight))}` });
+        const hit = config.scratchPrizes.reduce((sum, p) => sum + p.weight, 0) / config.scratchWeightTotal;
+        notes.push({ text: D.returns(pct(Casino.scratchRtp(config))), color: 'accent' }, { text: D.cardHit((1 / hit).toFixed(1)), color: 'muted' });
+        break;
+      }
     }
     if (career.casinoBestWin > 0 && game !== 'upgrade') rows.push({ label: D.bestWin, value: money(Fmt.number(career.casinoBestWin)), valueColor: 'accent' });
     notes.push({ text: D.double, color: 'muted' }, { text: D.fair, color: 'muted' });

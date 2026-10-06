@@ -123,6 +123,7 @@ function readCareer(raw: unknown): Career {
     lastLoginDay: int(raw.lastLoginDay, -1),
     dailyStreak: int(raw.dailyStreak, 0, 0),
     streakFreezes: int(raw.streakFreezes, 0, 0),
+    scratchCards: Math.min(int(raw.scratchCards, 0, 0), baseConfig.scratchMax),
     tailwind: raw.tailwind === true,
     tailwindDay: int(raw.tailwindDay, -1),
     heat: int(raw.heat, 0, 0),

@@ -15,6 +15,8 @@ import { averageOffset } from '../core/timing';
 import { type Vec2, v, add } from '../core/vec2';
 import { type RenderList, type Rect, RenderList as List, R, rect, circle, line, Ease, Metrics, moved, drawText } from './render';
 import { MenuKit } from './menukit';
+import type { ColorToken } from './theme';
+import { StreakFlame, flameTier } from './streakFlame';
 import { moneyTag, textWidth } from './icons';
 import { S, Fmt } from './strings';
 import { ShopPage } from './shop';
@@ -72,6 +74,7 @@ type Stat = { label: string; value: string };
 /** What a section's list is made of, top to bottom. */
 type Block =
   | { k: 'elite' }
+  | { k: 'streak' }
   | { k: 'stat'; stat: Stat }
   | { k: 'more'; count: number; open: boolean }
   | { k: 'stats'; stats: Stat[] }
@@ -147,6 +150,8 @@ class Stack {
 /** The Progress tab: records, today's shifts and quests, the long goals, the Museum. */
 export const ProgressPage = {
   gap: 12,
+  /** The streak card at the top of Records: the tailpipe scene and the days. */
+  streakHeight: 168,
   /** Records: this many stats as big tiles, the rest in a list that folds away. */
   highlights: 6,
 
@@ -199,6 +204,7 @@ export const ProgressPage = {
     const s = new Stack(width);
     const career = save.career;
     if (section === PROGRESS.records) {
+      if (Unlocks.isOpen(career, 'daily')) s.row({ k: 'streak' }, ProgressPage.streakHeight);
       if (ProgressPage.showsElite(career)) s.row({ k: 'elite' }, 76);
       const stats = ProgressPage.stats(save);
       s.grid(
@@ -424,15 +430,17 @@ export const ProgressPage = {
     for (const p of ProgressPage.placed(vp, bottomInset, save, today, state, section, scroll)) {
       if (p.r.maxY < window.minY - 30 || p.r.minY > window.maxY + 30) continue;
       const [r, o] = ProgressPage.entering(p.r, age, Math.min(index++, 12), reduceMotion);
-      ProgressPage.addBlock(list, p.b, r, save, today, state, o);
+      ProgressPage.addBlock(list, p.b, r, save, today, state, o, reduceMotion);
     }
   },
 
-  addBlock(list: RenderList, b: Block, r: Rect, save: SaveGame, today: number, state: ProgressState, o: number): void {
+  addBlock(list: RenderList, b: Block, r: Rect, save: SaveGame, today: number, state: ProgressState, o: number, reduceMotion: boolean): void {
     const career = save.career;
     switch (b.k) {
       case 'elite':
         return ProgressPage.addEliteCard(list, r, career, o);
+      case 'streak':
+        return ProgressPage.addStreak(list, r, career, today, state.time, reduceMotion, o);
       case 'stat':
         return ProgressPage.addStat(list, r, b.stat, o);
       case 'more':
@@ -544,6 +552,33 @@ export const ProgressPage = {
       drawText(list, stat.label, v(r.minX + 16, y), ShopPage.fitted(stat.label, 13, R.width(r) - 32 - valueWidth), 'muted', { opacity: o });
       drawText(list, stat.value, v(r.maxX - 16, y), 13, 'primary', { opacity: o, weight: 'bold', align: 'trailing' });
     });
+  },
+
+  /**
+   * The streak, big: a car's tailpipe with a flame that grows with the days (`streakFlame.ts`),
+   * the number beside it, and what the streak is about to give (a free Scratch Card).
+   */
+  addStreak(list: RenderList, r: Rect, career: Career, today: number, clock: number, reduceMotion: boolean, o: number): void {
+    const P = S.progress;
+    const days = career.dailyStreak;
+    const tier = flameTier(days);
+    ProgressPage.panel(list, r, o);
+    if (tier >= 3) list.s(rect(R.center(r), v(R.width(r), R.height(r)), ShopPage.corner), 'fireDeep', 0.05 * tier * o);
+    StreakFlame.add(list, r, days, clock, reduceMotion, o);
+    const x = r.minX + R.width(r) * 0.72;
+    const hot: ColorToken = tier >= 4 ? 'fireCore' : tier >= 1 ? 'fireOuter' : 'muted';
+    drawText(list, P.flameTier(tier), v(x, r.minY + 24), 11, hot, { opacity: o, weight: 'bold', align: 'center' });
+    const pop = reduceMotion ? 1 : 1 + 0.04 * Math.max(0, Math.sin(clock * 3.1)) * Math.min(1, tier / 3);
+    drawText(list, String(days), v(x, r.minY + 66), ShopPage.fitted(String(days), 52, R.width(r) * 0.28) * pop, days > 0 ? 'primary' : 'muted', { opacity: o, weight: 'bold', align: 'center' });
+    drawText(list, days === 1 ? P.streakDay : P.streakDays, v(x, r.minY + 98), 12, 'muted', { opacity: o, align: 'center' });
+    const open = Careers.isDailyOpen(career, today);
+    const wide = R.width(r) - 32;
+    const status = days === 0 ? P.streakStart : open ? P.streakKeep : P.streakDone;
+    drawText(list, status, v(r.minX + 16, r.maxY - 42), ShopPage.fitted(status, 12, wide), open || days === 0 ? 'accent' : 'muted', { opacity: o, weight: 'bold' });
+    const every = baseConfig.scratchStreakEvery;
+    const toCard = every - (days % every);
+    const extra = [P.streakCard(toCard), career.streakFreezes > 0 ? S.daily.freezes(career.streakFreezes) : null].filter((x): x is string => x !== null).join(' · ');
+    drawText(list, extra, v(r.minX + 16, r.maxY - 22), ShopPage.fitted(extra, 11, wide), 'muted', { opacity: o });
   },
 
   addDaily(list: RenderList, r: Rect, career: Career, today: number, o: number): void {

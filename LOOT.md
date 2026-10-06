@@ -86,6 +86,8 @@ Code: `Web/src/core/casino.ts` (Regeln), `Web/src/present/casino.ts` (Darstellun
 | **Crash** | Multiplikator e^(0,18·t); Crash-Punkt vorab gezogen, P(≥ m) = 0,96 / m, gedeckelt bei 100×; 4,95 % crashen sofort bei 1,00× | **96 %** für jedes Ziel |
 | **Slots** | 3 Walzen à 20 gleich wahrscheinliche Stopps (Streifen `slotStrip`) | **95,45 %** exakt, Gewinn in 1 von 4,7 Spins |
 | **Skin-Upgrade** | 1–5 Truhen-Skins (Car/Map) auf einen fehlenden, seltener als alle Einsätze; Chance = Einsatzwert / Zielwert × 0,95, höchstens 75 %; mit Werbung-Boost +10 Punkte (nicht auf CrazyGames) | **95 %** (bis zur Obergrenze); mit Boost mehr, bewusst: freiwillig gegen eine Werbung, sichtbar im Rad |
+| **Roundabout Roulette** (06.10.2026) | Ring mit 20 Ausfahrten (je eine pro Stopp von `slotStrip`); Wette auf einen Fahrzeugtyp, Auszahlung (1 − 0,05) / Anteil der Ausfahrten (Car 3,17× … Boss, Ambulance, Transporter 19×); die Ausfahrt wird vorab gezogen, die Fahrt ist Inszenierung | **95 %** für jede Wette |
+| **Scratch Card** (06.10.2026) | 9 Felder, drei gleiche gewinnen; Preis 1.000, Gewinne 2× (11,5 %) · 5× (3,5 %) · 10× (1,6 %) · 25× (0,5 %) · 100× (0,11 %) · 500× (0,01 %); sonst zeigt kein Feld mehr als zweimal. Karten kauft man im Casino, jeder dritte Tag der Daily-Streak schenkt eine (höchstens 30 in der Hand); die Karte wird beim Rubbeln gezogen und vor der Enthüllung bezahlt | **85 %** exakt (absichtlich knapper als die anderen: die Streak verschenkt Karten) |
 | **Doppelt oder nichts** | Nach jedem Gewinn, freiwillig: faire Münze, genau 50 %, höchstens 5× in Folge | 100 % |
 
 Slots-Gewinntabelle (×Einsatz): drei Boss 500 · Transporter 150 · Ambulance 100 · Sports car 40 ·

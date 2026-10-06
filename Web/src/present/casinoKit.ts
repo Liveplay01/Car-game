@@ -32,7 +32,22 @@ export const TIMES = {
   clutch: 0.35,
   countUp: 1.3,
   ding: 0.075,
+  /** The roulette car drives round the ring for this long, easing out, then leaves by its exit. */
+  rouletteDrive: 3.4,
+  rouletteLeave: 0.55,
+  rouletteTurns: 3,
+  /** The scratch card clears one cell after another: the first at `scratchFrom`, then every `scratchEvery`, each over `scratchWipe`. */
+  scratchFrom: 0.45,
+  scratchEvery: 0.2,
+  scratchWipe: 0.3,
 };
+
+export type RouletteRun = Extract<CasinoRun, { k: 'roulette' }>;
+export const rouletteEnd = TIMES.rouletteDrive + TIMES.rouletteLeave;
+/** Turns the roulette car has gone round the ring, `age` into the drive: fast, then easing out onto the drawn exit. */
+export const rouletteTurn = (run: RouletteRun, age: number): number => (TIMES.rouletteTurns + run.spin.exit / baseConfig.slotStrip.length) * (1 - (1 - Ease.clamp01(age / TIMES.rouletteDrive)) ** 3);
+export const scratchAt = (cell: number): number => TIMES.scratchFrom + cell * TIMES.scratchEvery;
+export const scratchEnd = scratchAt(8) + TIMES.scratchWipe;
 
 export type SlotRun = Extract<CasinoRun, { k: 'slots' }>;
 export const slotEnd = (run: SlotRun): number => TIMES.reelStops[2] + (run.anticipate ? TIMES.anticipation : 0);
