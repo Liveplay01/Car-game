@@ -48,6 +48,8 @@ export class DetailSheet {
   private json = '';
   private open = false;
   private expanded = false;
+  /** The sheet's height, kept by the observer: reading it from the layout every frame would force one. */
+  private height = 0;
   private drag: { startY: number; dy: number; id: number; t: number } | null = null;
   private hideTimer = 0;
 
@@ -73,13 +75,14 @@ export class DetailSheet {
     this.actions = h('div', { class: 'detail-actions' });
     this.root = h('section', { class: 'detail-sheet', role: 'dialog', 'aria-modal': 'false', 'aria-labelledby': 'detail-title', hidden: true }, handle, this.scroller, this.actions);
     parent.append(this.root);
+    new ResizeObserver(([entry]) => (this.height = entry.borderBoxSize[0].blockSize)).observe(this.root);
     this.bindDrag(handle);
     this.bindDrag(head, true);
   }
 
   /** Height the sheet covers above the tab bar, for the page behind (0 when closed). */
   get inset(): number {
-    return this.open ? this.root.getBoundingClientRect().height : 0;
+    return this.open ? this.height : 0;
   }
 
   /** Once per frame: shows, swaps, refreshes or hides the sheet. */

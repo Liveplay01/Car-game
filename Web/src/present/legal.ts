@@ -24,7 +24,7 @@ export const HOSTING = {
   location: 'Germany',
 };
 
-export const LEGAL_UPDATED = '5 October 2026';
+export const LEGAL_UPDATED = '7 October 2026';
 
 export const GAME_NAME = 'Roundabout Timing';
 
@@ -75,7 +75,7 @@ export const LEGAL_DOCS: LegalDoc[] = [
     sections: [
       {
         paragraphs: [
-          `${GAME_NAME} has no sign-up and no analytics of its own. Your progress stays on your device. This page explains the few things that do leave it, and the ads Google may show on this site.`,
+          `${GAME_NAME} has no sign-up. Your progress stays on your device. This page explains the few things that do leave it, the anonymous visit statistics, and the ads Google may show on this site.`,
           `Last updated: ${LEGAL_UPDATED}.`,
         ],
       },
@@ -88,6 +88,13 @@ export const LEGAL_DOCS: LegalDoc[] = [
         paragraphs: [
           `When you open the game, your browser asks our server for its files. Like every web server, it receives your IP address, the time, the file requested and your browser's identification (user agent). We use this only to deliver the game and to keep the server secure; server logs are deleted after a short time. The server is operated by ${or(HOSTING.provider, 'Hosting provider')} in ${or(HOSTING.location, 'Country')}.`,
           'Legal basis: Art. 6(1)(f) GDPR (our legitimate interest in delivering the game safely).',
+        ],
+      },
+      {
+        heading: 'Visit statistics (Umami)',
+        paragraphs: [
+          'On game.gustaff.dev (not on CrazyGames or itch.io) the game counts visits with Umami, which we run ourselves at analytics.kestrel.nrw. It sets no cookie and stores nothing on your device. It records the page, the referring site, your browser, system and screen size and your country, and a few game steps: the tutorial done, and each shift played with its mode, level and whether it was won. There is no ID, no name and no progress in it, and your IP address is not stored; a visit cannot be tied to you or to another visit.',
+          'We use it to see where new players give up and to balance the game. Legal basis: Art. 6(1)(f) GDPR (our legitimate interest in improving the game). Nothing is sent when your browser says Do Not Track.',
         ],
       },
       {

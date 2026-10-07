@@ -260,6 +260,8 @@ export class GameSession {
   onChrome: (() => void) | null = null;
   /** A one-time hint came due (installing, a backup): the shell knows whether it applies. */
   onHint: ((hint: Hint) => void) | null = null;
+  /** A funnel step for the shell's analytics: the tutorial done, a shift played. */
+  onStep: ((step: string, data?: Record<string, string | number>) => void) | null = null;
   /** The challenge or trial being played, until the player leaves it. */
   special: SpecialRun | null = null;
   /** The last finished shift as a challenge a friend can play; null when it cannot be shared. */
@@ -2036,7 +2038,9 @@ export class GameSession {
       this.tutorial.end();
       if (this.tutorial.isDone) this.tutorial = null;
       save.tutorialDone = true;
+      this.onStep?.('tutorial-done');
     }
+    this.onStep?.('shift', { mode: this.playingMode, level: this.playingLevel, outcome: result.outcome });
     const booked = bookShift(save, result, {
       mode: this.playingMode,
       level: this.playingLevel,

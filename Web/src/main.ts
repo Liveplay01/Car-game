@@ -4,6 +4,7 @@ import { inItch, inPortal } from './storage/device';
 import { gameLoaded, startCrazyGames } from './ui/crazygames';
 import { startCloud } from './net/cloud';
 import { startAds } from './ui/ads';
+import { startAnalytics } from './ui/analytics';
 import { Casino } from './core/casino';
 import { forgetMeasures } from './present/measure';
 
@@ -53,6 +54,7 @@ if (boot && bootDemo === null) {
   window.setTimeout(() => boot.remove(), 300);
 }
 startAds();
+startAnalytics();
 // Cloud sync, when the player turned it on: newer progress from another device comes over by itself.
 startCloud({
   save: () => shell.game.save,

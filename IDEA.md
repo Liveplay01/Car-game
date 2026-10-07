@@ -60,16 +60,11 @@ Rückenwind, **Heat** (freiwillige Schwierigkeit ab Level 50), Bestenlisten **Da
 
 ---
 
-## Später: Analytics und Fehlerberichte (Leo, 02.10.2026)
+## Später: Fehlerberichte (Leo, 02.10.2026)
 
-Das Spiel bleibt offline-first; das ist ein Zusatz, der ausfallen darf. Gedacht als Coolify-Dienste ohne
-eigenen Code: Umami oder Plausible für Analytics, GlitchTip für Fehlerberichte. Nützlich nach dem
-Play-Store-Launch, um zu sehen, wo Spieler aussteigen und welche Fehler im Feld auftreten.
-
-- **Rechtliches:** Ein Dienst, der Daten bekommt, braucht einen Absatz in `Web/src/present/legal.ts` und
-  ein neues `LEGAL_UPDATED`; auch das Data-Safety-Formular in der Play Console muss dazu passen.
-- Das Spiel sagt bisher „no tracking“ (Patch Notes, Legal): das ändert sich damit und muss ehrlich
-  nachgezogen werden.
+Umami läuft seit 07.10.2026 (`ui/analytics.ts`). Offen ist nur noch GlitchTip als Coolify-Dienst für
+Fehlerberichte aus dem Feld. Es braucht wie jeder Dienst einen Absatz in `Web/src/present/legal.ts`, ein
+neues `LEGAL_UPDATED` und muss zum Data-Safety-Formular in der Play Console passen.
 
 ---
 
@@ -89,23 +84,21 @@ bringen dürfte, grob nach Aufwand und Wirkung:
 3. **Mehr Portale.** CrazyGames läuft; Poki, GameDistribution, Y8, itch.io, Newgrounds und Kongregate nehmen
    Browserspiele auch. Ein Eintrag je Portal, derselbe Build mit eigenem `?portal=`-Schalter nach dem Muster von
    `?crazygames`. Portale bringen Besucher, ohne dass wir sie holen müssen.
-4. **Der Foto-Abzug trägt die Einladung.** Er wird schon geteilt; ein QR-Code oder Kurzlink mit `?ref=` unten
-   drauf macht jedes geteilte Bild zur Einladung (das QR-Modul für die Lobby gibt es).
-5. **Ein Konto bei Reddit, Hacker News und Discord, mit echter Geschichte.** „Show HN: Ein-Tap-Kreisverkehr im
+4. **Ein Konto bei Reddit, Hacker News und Discord, mit echter Geschichte.** „Show HN: Ein-Tap-Kreisverkehr im
    Browser, ohne Engine und ohne Framework“ und r/WebGames sind die zwei Orte, an denen ein kleines, sauber gebautes
    Browserspiel von selbst Anklang findet. Der Discord-Webhook für „Build with us“ existiert; ein Discord, in dem
    Patch Notes erscheinen (aus `/changelog.json`), macht daraus einen Ort.
-6. **Google-Play-Eintrag als Suchmaschine.** Titel, Kurztext und die ersten zwei Screenshots entscheiden,
+5. **Google-Play-Eintrag als Suchmaschine.** Titel, Kurztext und die ersten zwei Screenshots entscheiden,
    nicht das Spiel. Screenshots mit Beschriftung („Tap. Merge. Don't crash.“), ein 15-Sekunden-Video aus dem
    Crash-Material, Stichwörter „roundabout“, „traffic“, „one tap“.
-7. **Landeseiten für Suchbegriffe** auf timing.love: „Car Circle Alternative“, „Kreisverkehr Spiel“, „One-Tap-Spiel
+6. **Landeseiten für Suchbegriffe** auf timing.love: „Car Circle Alternative“, „Kreisverkehr Spiel“, „One-Tap-Spiel
    im Browser“. Das Museum liefert schon Text zu Bossen und Wetter; kurze Anleitungsseiten dazu ziehen Suchende an.
-8. **Teams statt Einzelner.** Ein Teamcode (wie der Freundescode) für Klassen, Büros, Discords: eine Rangliste
+7. **Teams statt Einzelner.** Ein Teamcode (wie der Freundescode) für Klassen, Büros, Discords: eine Rangliste
    nur dafür. Schulklassen und Streamer-Communities teilen Links in Gruppen, nicht einzeln. Braucht ein Modul im
    Server (`teams`), kein neues System.
-9. **Web Push für die Daily** („Neue Daily: Marathon“). Wirkt auf Wiederkehr, nicht auf Neue; braucht einen
-   Push-Dienst im Server und einen Absatz in `legal.ts`. Erst nach Analytics, wenn Zahlen zeigen, dass
+8. **Web Push für die Daily** („Neue Daily: Marathon“). Wirkt auf Wiederkehr, nicht auf Neue; braucht einen
+   Push-Dienst im Server und einen Absatz in `legal.ts`. Erst wenn die Zahlen aus Umami zeigen, dass
    Spieler nach Tag 2 gehen.
 
-Vor allem Weiteren: **Analytics** (oben). Ohne Zahlen, wo Neue aussteigen (Tutorial, Level 3, erster
-Absturz), ist jedes Wachstum geraten.
+Die Zahlen kommen aus Umami (Ereignisse `tutorial-done` und `shift` mit Modus, Level und Ausgang): wo Neue
+aussteigen, entscheidet, welcher Punkt hier als Nächstes dran ist.

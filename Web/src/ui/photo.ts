@@ -35,6 +35,8 @@ export interface PhotoHooks {
   reduceMotion(): boolean;
   /** The challenge link to send along, when the shift has one. */
   link(): string | null;
+  /** Where the QR code on the print leads: an invite, or the game's own address. */
+  invite(): Promise<string>;
 }
 
 const EASE_OUT = 'cubic-bezier(0.23, 1, 0.32, 1)';
@@ -76,7 +78,7 @@ export class PhotoView {
     scrim.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 240, easing: EASE_OUT, fill: 'forwards' });
     scrim.addEventListener('click', () => this.close());
 
-    const print = await makePrint(shot);
+    const print = await makePrint(shot, this.hooks.invite());
     if (this.root !== root || this.closing) return;
     const blob = await new Promise<Blob | null>((resolve) => print.toBlob(resolve, 'image/png'));
     if (!blob || this.root !== root || this.closing) return this.close();
@@ -230,12 +232,12 @@ function confirm(button: HTMLButtonElement, label: HTMLElement, text: string): v
 
 // MARK: The print
 
-async function makePrint(shot: PhotoShot): Promise<HTMLCanvasElement> {
+async function makePrint(shot: PhotoShot, invite: Promise<string>): Promise<HTMLCanvasElement> {
   const scene = document.createElement('canvas');
   const drawer = new CanvasDrawer(scene);
   drawer.resize(SCENE, SCENE, 2);
   drawer.draw(shot.list);
-  const logo = await loadImage(new URL('icons/icon-192.png', document.baseURI).href);
+  const [logo, code] = await Promise.all([loadImage(new URL('icons/icon-192.png', document.baseURI).href), inviteCode(invite)]);
 
   const out = document.createElement('canvas');
   out.width = W;
@@ -245,8 +247,36 @@ async function makePrint(shot: PhotoShot): Promise<HTMLCanvasElement> {
   photo(g, scene);
   stickers(g, shot.card);
   caption(g, shot.card, logo);
+  if (code) qrCode(g, code);
   tape(g, shot.card.mapColor);
   return out;
+}
+
+/** The QR code's modules for the invite, or null when it is late (the print never waits long) or the code cannot be made. */
+async function inviteCode(invite: Promise<string>): Promise<boolean[][] | null> {
+  const late = new Promise<null>((resolve) => window.setTimeout(resolve, 800, null));
+  const url = await Promise.race([invite, late]).catch(() => null);
+  if (!url) return null;
+  const { qrModules } = await import('./qr');
+  return qrModules(url);
+}
+
+/** The invite under the date: dark modules on a white card, right of the game's name, above the dare. */
+function qrCode(g: CanvasRenderingContext2D, modules: boolean[][]): void {
+  const cell = modules.length > 29 ? 3 : 4;
+  const pad = 6;
+  const size = modules.length * cell + 2 * pad;
+  const x = W - M - 16 - size;
+  const y = M + P + 130;
+  g.save();
+  g.fillStyle = '#ffffff';
+  roundRect(g, x, y, size, size, 10);
+  g.fill();
+  g.fillStyle = '#0b0d10';
+  modules.forEach((row, r) => row.forEach((dark, c) => {
+    if (dark) g.fillRect(x + pad + c * cell, y + pad + r * cell, cell, cell);
+  }));
+  g.restore();
 }
 
 function loadImage(src: string): Promise<HTMLImageElement | null> {

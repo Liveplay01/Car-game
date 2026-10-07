@@ -2,6 +2,15 @@ import qrcode from 'qrcode-generator';
 
 const SVG = 'http://www.w3.org/2000/svg';
 
+/** The code's dark modules, row by row, without the quiet zone. */
+export function qrModules(text: string): boolean[][] {
+  const qr = qrcode(0, 'M');
+  qr.addData(text);
+  qr.make();
+  const n = qr.getModuleCount();
+  return Array.from({ length: n }, (_, r) => Array.from({ length: n }, (_, c) => qr.isDark(r, c)));
+}
+
 /**
  * A QR code for `text` as an inline SVG: dark modules on a white card with its quiet zone, so
  * a phone camera reads it on the game's dark page. Built by hand from the module matrix (no
@@ -9,17 +18,13 @@ const SVG = 'http://www.w3.org/2000/svg';
  * code, so a friend in the same room scans it and lands in the game.
  */
 export function qrSvg(text: string, label: string): SVGSVGElement {
-  const qr = qrcode(0, 'M');
-  qr.addData(text);
-  qr.make();
-  const n = qr.getModuleCount();
+  const modules = qrModules(text);
+  const n = modules.length;
   const quiet = 4;
   let d = '';
-  for (let r = 0; r < n; r++) {
-    for (let c = 0; c < n; c++) {
-      if (qr.isDark(r, c)) d += `M${c + quiet} ${r + quiet}h1v1h-1z`;
-    }
-  }
+  modules.forEach((row, r) => row.forEach((dark, c) => {
+    if (dark) d += `M${c + quiet} ${r + quiet}h1v1h-1z`;
+  }));
   const svg = document.createElementNS(SVG, 'svg');
   svg.setAttribute('viewBox', `0 0 ${n + quiet * 2} ${n + quiet * 2}`);
   svg.setAttribute('role', 'img');

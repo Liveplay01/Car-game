@@ -8,7 +8,7 @@ import { h, icon } from './dom';
 import { ICONS } from './icons';
 import { settingsSheet, deleteAccountSheet, patchNotesSheet, legalSheet, licensesSheet, installDialog, cloudIntroDialog, isSheetOpen, closeAnySheet } from './sheets';
 import { cloudEnabled, cloudIntroDue, cloudLinked, cloudView, deleteCloud, markCloudIntroSeen } from '../net/cloud';
-import { readInviteLink, redeemInvite } from '../net/invite';
+import { fetchInvite, inviteUrl, readInviteLink, redeemInvite } from '../net/invite';
 import { deleteAccount, describeError, fetchFriends, leaderboardEnabled, loadAccount, onAccountChange, onScoresSynced } from '../net/leaderboard';
 import { collectRewards } from '../net/rewards';
 import { legalDoc } from '../present/legal';
@@ -16,6 +16,7 @@ import { PATCH_NOTES } from '../present/patchNotes';
 import { PhotoView } from './photo';
 import { celebrate, invitedRoom, onAdAudio, reportGameplay, rewardedAd } from './crazygames';
 import { adReady, onRewardedAudio, rewardedAdsense } from './ads';
+import { track } from './analytics';
 import { inItch, inPlayStore, inPortal, isInstalled, isIos, isIpad, keepStorage, renewStorage } from '../storage/device';
 import type { Hint } from '../core/career';
 import { decodeChallenge, type ChallengeSpec } from '../core/challenge';
@@ -199,6 +200,11 @@ export class Shell {
         const code = this.session.shareCode();
         return (code && knownShortLink(code)) ?? this.session.shareLink(location.origin + location.pathname);
       },
+      invite: async () => {
+        const game = location.origin + location.pathname;
+        if (!leaderboardEnabled || !loadAccount()) return game;
+        return fetchInvite().then(inviteUrl, () => game);
+      },
     });
     this.leaveLabel = h('span', {}, 'Leave');
     this.leaveBtn = h('button', { class: 'btn glass run-btn', type: 'button', 'aria-keyshortcuts': 'Escape', onclick: () => this.session.leaveSpecial() }, icon(ICONS.close), this.leaveLabel);
@@ -298,6 +304,7 @@ export class Shell {
       this.scheduleCloudIntro();
     };
     this.session.onHint = (hint) => void this.giveHint(hint);
+    this.session.onStep = track;
     this.bindInput(canvas);
     this.resize();
     window.addEventListener('resize', () => this.resize());

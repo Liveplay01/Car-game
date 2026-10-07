@@ -44,6 +44,18 @@ export const itemCredit = (item: PatchItem): string | null => {
 
 export const PATCH_NOTES: PatchNote[] = [
   {
+    id: '2026-10-07',
+    date: '7 October 2026',
+    title: 'Your photo carries an invite, anonymous visit counts, and tabs that fit',
+    impact: 'minor',
+    items: [
+      'Your photo print has a QR code now. A friend who scans it lands in the game, and with a leaderboard name it is your invite: you both get a chest when they reach level 5.',
+      'The game now counts visits and a few steps (the tutorial done, shifts played) anonymously, to find where new players give up. No cookie, no ID, no name and no progress, and nothing is sent when your browser says Do Not Track. The Privacy Policy says it all.',
+      'Fixed: the leaderboard and friends tabs no longer let their text run out of the pills on a phone. The tabs are the same width now and the highlight sits exactly behind the one you chose.',
+      'Smoother: a sheet that slides up over the game no longer makes the page measure itself on every frame.',
+    ],
+  },
+  {
     id: '2026-10-06',
     date: '6 October 2026',
     title: 'Two new maps and three new skins, a Detour Sign that works, more quests, Roulette, Scratch Cards and the Street Builder',
