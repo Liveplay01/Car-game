@@ -266,6 +266,8 @@ export class GameSession {
   special: SpecialRun | null = null;
   /** The last finished shift as a challenge a friend can play; null when it cannot be shared. */
   shareable: ChallengeSpec | null = null;
+  /** The Daily Shift just cleared as a line for a chat; null after any other shift. */
+  dailyShare: string | null = null;
 
   constructor(private output: SessionOutput | null = null) {
     this.save = loadSave();
@@ -833,6 +835,7 @@ export class GameSession {
     const settled = settleSpecial(run, result, career, this.today, this.config);
     const summary = settled.summary;
     this.shareable = settled.shareable;
+    this.dailyShare = null;
     if (settled.news.length > 0) this.announce(...settled.news);
     if (this.tutorial) {
       this.tutorial.end();
@@ -2051,6 +2054,10 @@ export class GameSession {
       splits: this.splits,
     });
     this.persist();
+    this.dailyShare =
+      this.playingDaily && result.outcome === 'completed'
+        ? S.run.dailyShare(Fmt.number(result.score), result.perfects, result.tightFits, career.dailyStreak)
+        : null;
     this.dailySelected = false;
     this.resultBank = booked.bank;
     const found = this.takeMuseumNotice();

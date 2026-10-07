@@ -483,7 +483,8 @@ export class Shell {
     // The short link with its picture (`net/challengeLink.ts`), else the long one as before.
     const url = (await shortLink(spec, code)) ?? long;
     if (s.shareable !== spec) return null;
-    const text = S.run.shareText(Fmt.number(spec.target));
+    const daily = s.dailyShare;
+    const text = daily ?? S.run.shareText(Fmt.number(spec.target));
     const touch = window.matchMedia('(pointer: coarse)').matches;
     if (touch && typeof navigator.share === 'function') {
       try {
@@ -495,10 +496,10 @@ export class Shell {
       return null;
     }
     try {
-      await navigator.clipboard.writeText(url);
-      return S.run.copied;
+      await navigator.clipboard.writeText(daily ? `${daily}\n${url}` : url);
+      return daily ? S.run.dailyCopied : S.run.copied;
     } catch {
-      window.prompt('Copy this link', url);
+      window.prompt('Copy this link', daily ? `${daily}\n${url}` : url);
       return null;
     }
   }

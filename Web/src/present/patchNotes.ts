@@ -46,9 +46,10 @@ export const PATCH_NOTES: PatchNote[] = [
   {
     id: '2026-10-07',
     date: '7 October 2026',
-    title: 'Your photo carries an invite, anonymous visit counts, and tabs that fit',
+    title: 'Share your Daily result, your photo carries an invite, anonymous visit counts, and tabs that fit',
     impact: 'minor',
     items: [
+      'Share your Daily Shift like a puzzle result: Challenge a friend after a cleared Daily now sends one line (score, Perfects, Tight Fits, streak) with the link to the same shift. On a computer it lands in your clipboard, ready to paste in a chat.',
       'Your photo print has a QR code now. A friend who scans it lands in the game, and with a leaderboard name it is your invite: you both get a chest when they reach level 5.',
       'The game now counts visits and a few steps (the tutorial done, shifts played) anonymously, to find where new players give up. No cookie, no ID, no name and no progress, and nothing is sent when your browser says Do Not Track. The Privacy Policy says it all.',
       'Fixed: the leaderboard and friends tabs no longer let their text run out of the pills on a phone. The tabs are the same width now and the highlight sits exactly behind the one you chose.',

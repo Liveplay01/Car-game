@@ -96,6 +96,17 @@ export const S = {
     pictureSaved: 'Picture saved',
     pictureCopied: 'Picture copied',
     shareText: (target: string): string => `Can you beat ${target} on my roundabout?`,
+    dailyCopied: 'Daily result copied',
+    /** The finished Daily Shift as one line to paste in a chat: the same shift for everyone that day. */
+    dailyShare: (score: string, perfects: number, tightFits: number, streak: number): string =>
+      [
+        `Roundabout Timing Daily · ${score}`,
+        perfects > 0 ? `${perfects} Perfect` : '',
+        tightFits > 0 ? `${tightFits} Tight Fit${tightFits === 1 ? '' : 's'}` : '',
+        streak > 1 ? `${streak} days in a row` : '',
+      ]
+        .filter(Boolean)
+        .join(' · '),
   },
 
   /** Boss Rush: every syndicate boss in a row (core/trials.ts). */
