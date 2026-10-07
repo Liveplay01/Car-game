@@ -32,6 +32,7 @@ Stand: 02.10.2026 · Überblick über das ganze Spiel. Das Spiel heißt **Rounda
 | **Shift** | „Clear the level, move up“ | die Karriere: feste Autozahl pro Schicht, Level, Geld (siehe unten) |
 | **Unlimited** | „Endless · until you crash“ | spielt auf Level 3 (ohne Prestige-Vorsprung, ohne Legendary-Regel), ohne Autozahl, bis zum ersten Verlust. Nach der 20-s-Rampe alle 25 s +1 Auto Dichte (bis +8), Tempo +8 % pro Minute (bis 160 %). Lohn 20 pro geschicktem Auto, keine Crash-Kosten. Ein „Jammed“-Auto (siehe 4) zählt nicht als Auto. Rekorde: Punkte und Autos; die Punkte gehen auf die Bestenliste. **Stufen (05.10.2026, `core/tiers.ts`):** Bronze 25 · Silber 50 · Gold 100 · Platin 200 · Diamant 350 · Master 500 Autos (beste Fahrt, unter Records); dieselben Marken (plus die Skin-Marken 250/1000) lassen im Lauf den Ring aufleuchten und zeigen kurz Marke und Stufe statt der Autozahl. Jede Marke zahlt beim **ersten** Überschreiten in der Karriere **5 Elite-XP** (`eliteXpMark`, auch auf den Saison-Pass); die Bestenliste (auch Freunde) zeigt die Stufe unter dem Namen. Knapp verfehlt (ab 75 % der nächsten Stufe) sagt das Schichtende „N cars short of Gold“ (`Goals.tierMiss`). Die Skins bei 250/500/1000 Autos geben die Titel Marathoner, Overdriver, Endless (Regel `item` in `core/elite.ts`) |
 | **Mayhem** | „12 cars · aim for the tankers“ | Crashes sind das Ziel: 12 Autos auf Level 6 (ohne Prestige-Vorsprung), +3 Dichte, 1,1 s Nachladen zwischen den Autos, keine Polizei, keine Verbrecher, kein Krankenwagen, kein Lohn, keine Critical Merges. 34 % Lkw, davon 60 % Tanklaster, bis zu 4 Militär-Trucks (erster nach 9–15 s, dann alle 6–10 s); Verkehr erholt sich doppelt so schnell. Jedes neue Wrack gibt **Flammen**; ein Folge-Crash innerhalb von 1,5 s verlängert die Kette (Flammen = Kettenlänge, höchstens 10, Lkw ×2). Wracks treffen nur, solange sie noch fliegen. Die Schicht endet, wenn die letzte Kettenreaktion ausgebrannt ist. Rekorde: Flammen und längste Kette |
+| **Chill** | „No pressure · crashes never end it“ | Leo, 07.10.2026 (`forChill`, `World.finish`): Unlimited ohne Druck. Ruhiges Tempo und gleichmäßige Dichte (`chill*` in `config.ts`), nur ein milder Himmel (meist klar, manchmal Nieselregen, Nebel, Schnee, abends), keine Polizei, Verbrecher, Sonderfahrzeuge, Tanklaster, kein Geld, keine Critical Merges. Ein Crash gibt Blechschaden und der Verkehr reagiert, beendet aber nichts. Die Fahrt endet mit **Done** (Knopf unten, an der Stelle des Dispatch-Knopfs). Zählt nicht für Karriere, Mastery, Elite oder Bestenlisten; eigene Rekorde: längste Fahrt in Autos, alle Autos, Zeit (unter Records). Nicht teilbar als Challenge. |
 | **Multiplayer** | „Up to 4 friends · last one standing“ | siehe 11 |
 
 Das Wischen geht von Anfang an; ein Hinweis weist erst nach Level 6 darauf hin (siehe „Freischaltungen“ in 9). Die Gefahrenstufe *Normal Duty / High Alert* wurde am 26.09.2026 **entfernt** und durch die Modi ersetzt.
@@ -241,6 +242,8 @@ Chance ab Level 6: +2 % pro Level (Level 6 = 2 %), höchstens 40 %. Vorher auf d
 Fair bleibt es: Das Tap-Timing ändert sich nie; Sonderfahrzeuge, Warnungen und Countdown-Ringe liegen immer über den Wettereffekten.
 
 **Wetter zieht auf (01.10.2026):** Beim Schichtwechsel springt das Bild nicht um. Das alte Wetter dünnt in 2,5 s aus, das neue setzt ein: Regen Tropfen für Tropfen, Nebel, Schnee und die Abdunklung im Sturm blenden über (`WeatherFade` in `present/weather.ts`). Nur das Bild; die Regeln haben das neue Wetter sofort, die Ready-Karte nennt es. Regen und Schnee sind außerdem deutlich leichter für schwache Handys gezeichnet.
+
+**Saison-Regel (Leo, 07.10.2026, `core/seasons.ts`):** Die Jahreszeit kippt den Himmel der Karriere-Schichten (nicht Unlimited, Trials, Chill): wie oft schlechtes Wetter kommt, welche Art und wie früh die Nacht fällt. Wie schlecht es werden kann, bleibt. Winter *Deep Winter* (Nebel ×2, Schnee ×3, Nächte ×1,5), Frühling *April Showers* (Regen ×2/×1,5, öfter Wetter), Sommer *Summer Storms* (selten, dann Sturm, Extrem, Hagel, Sandsturm), Herbst *Fog & Dusk* (Nebel ×3, Nächte ×1,4). Progress → Today nennt Saison und Regel.
 
 ### Nacht und Blackout (nur Web)
 
@@ -454,6 +457,7 @@ Ein voller Satz zahlt einmal Geld und legt einen **Rahmen** in seiner Farbe um d
 ### Daily Shift (ab Level 4)
 
 - Automatisch die **erste Schicht des Tages**, ein Versuch, Titel „DAILY SHIFT“. Ein Tages-Seed für alle, immer mit einem City Event (jeden Tag ein anderes, im Kreis über die sechs). Nie eine Legendary-Regel. Geschafft → 300 × Serie Geld (bis 7 Tage) + Event Chest. Die allererste Schicht ist nie die Daily.
+- **Mutator des Tages (Leo, 07.10.2026, `core/mutators.ts`):** Jeden Tag eine Wendung für alle: **Open Road** (−2 Dichte), **Speedway** (+12 % Tempo, −1 Dichte), **Fog Bank**, **Night Shift**, **Lights Out** (Blackout), **Storm Front**, **Rush All Day** (Gridlock-Regel), **Dragnet**, **Heavy Load**, **Cash Convoy** (Transporter doppelt so oft). Jeder kommt einmal pro Zyklus von zehn Tagen, nie zweimal in Folge. Anders, nicht schwerer; die geliehenen Regeln zählen nicht als Legendary Shift (keine Premium-Truhe). Zeigt sich im Start-Splash und statt der Bestleistung oben rechts auf der Wartekarte; der Challenge-Link trägt Mutator und Saison mit (hinten angehängt, alte Links lesen weiter).
 - **Serie:** zählt gespielte Tage. 7 / 14 / 30 Tage geben exklusive Skins (Bronze Badge, Silver Badge, Gold Laurel). Ab **3 Tagen in Folge zahlt jede Schicht 15 % mehr** (Schichtlohn, Transporter, Abschirm-Bonus, Krankenwagen), solange die Serie lebt. Sechs Stunden vor Mitternacht warnt die Wartekarte, dass sie bald reißt.
 - **Streak Freeze (05.10.2026):** Alle 7 Tage der Serie gibt es einen Freeze (höchstens 2 im Vorrat, `streakFreezeEvery`, `streakFreezeMax`). Ein verpasster Tag verbraucht einen statt die Serie zu brechen (n verpasste Tage = n Freezes, sonst reißt sie). Nur verdient, nie gekauft; die Warnung vor Mitternacht entfällt, solange ein Freeze wartet. Anzeige: Daily-Zeile unter Progress → Today (mit den Tagen bis zum nächsten Freeze oder Skin, was näher ist) und die Serien-Pille über der Daily. Code: `Careers.advanceStreak`, `Goals.streak`.
 - **Heat (05.10.2026, `core/heat.ts`):** Freiwillige Schwierigkeit für Karriere-Schichten, ab der Elite-Leiste (Level 50). Progress → Today, Zeile „Heat“, Tippen schaltet durch die offenen Stufen und zurück auf Aus. Jede Stufe: Tempo +4 %, alle 2 Stufen +1 Dichte, kürzere Verbrecherzeit (−5 %, mindestens 6 s), schnelleres Nachströmen (−5 %, mindestens ×0,25); dafür **+10 % Lohn** und **+2 Elite-XP** (auch Saison-Pass) je Stufe bei geschaffter Schicht. Eine bei Heat n geschaffte Schicht öffnet n + 1 (bis 8). Titel: Scorcher (3), Inferno (5), Meltdown (8). Nie über die Daily Shift, Unlimited, Mayhem und Trials. Werte: `heat*` in `config.ts`; `npm run sim -- 40 58 --heat=8` zeigt, wie der vorsichtige Bot damit zurechtkommt (er schafft weniger Schichten, der Heat-0-Wert bleibt unberührt). Pille auf der Wartekarte: „HEAT 3 · +30 % pay“.
@@ -464,6 +468,17 @@ Ein voller Satz zahlt einmal Geld und legt einen **Rahmen** in seiner Farbe um d
 ### Quests
 
 3 kleine Ziele pro Tag, für alle gleich, je einmal bezahlt, wechseln um Mitternacht. Unter **Progress → Today**. Vierzehn mögliche (seit 06.10.2026, `core/daily.ts`): 3 Perfect Inputs (250) · 3 Tight Fits (250) · Combo 15 (250) · ein Takedown (250) · 8 Clean Merges (250) · 2 Takedowns (350) · 2 Transporter (350) · Perfect Chain 8 (350) · Perfect Chain 5 (350) · 2 Near Misses (350) · 6 Tight Fits (400) · 5 Perfect Inputs (400) · Combo 25 (400) · ein Perfect Run (500).
+
+### Tours (Leo, 07.10.2026, `core/tours.ts`)
+
+Zeitlich begrenzte Ereignisse, die jedes Jahr wiederkommen (Progress → Today, ab Level 9 wie die Trials). Eine Tour hat **sieben Stopps**, jeder ein fester Trial mit eigenem Himmel und Ziel; sein **Level folgt dem Spieler** (Karrierelevel + Prestige-Vorsprung + Versatz −4 … +2), der Seed ist fest, alle treffen denselben Verkehr. Jeder Stopp zahlt **einmal pro Lauf der Tour** (`toursDone`: `halloween-2026.3`): Geld, Truhe oder ein Skin der Tour. Die Stopps werden auf der Karte der Tour gezeichnet (`autumn`, `snowfall`), egal was der Spieler trägt. Der letzte Stopp ist ein Boss (Phantom / Convoy, eine Runde härter) und gibt den legendären Skin. Die Skins gibt es nur dort (Quelle `tour`, Regal Honours, eigenes Album **Tours**, 30.000; die Honours-Alben warten nicht auf sie), eine verpasste Tour kommt nächstes Jahr wieder.
+
+| Tour | Zeit | Skins (Stopp 3 · 5 · 7) |
+|---|---|---|
+| **Haunted Ring** | 24.10. – 02.11. | Jack-o'-Lantern (Rare) · Witching Hour (Epic) · Wraith (Legendary) |
+| **Winter Lights** | 18.12. – 03.01. | Candy Cane (Rare) · Snow Globe (Epic) · Midnight Sleigh (Legendary) |
+
+Stopps Haunted Ring: Dusk, Fog Bank, Blackout (Skin), Perfects bei Regen, Nebel im Blackout (Skin, Event Chest), flawless bei Nacht (Premium Chest), das Phantom (Skin, 5.000). Neue Touren stehen als Eintrag in `TOURS`; ein Skin braucht Eintrag in `loot.ts`, `skins.ts` und `strings.ts`. `node scripts/tour-sim.mjs` prüft, dass der vorsichtige Bot auf keinem Level crasht.
 
 ### Weekly Shift
 
@@ -576,6 +591,10 @@ Die schwersten Taten im Spiel, nie Glück, nie kaufbar. Jede zeigt Belohnung, Bi
 | Zenith Crown | Elite 75 | Skin + Titel *Grandmaster* |
 | Event Horizon | Elite 100 | Map + Titel *Centurion* |
 | Undying Flame | 50 Legendary Shifts | Skin + Titel *Immortal* |
+
+### Achievements (Leo, 07.10.2026, `core/achievements.ts`)
+
+**123 Stufen in 31 Familien** (Progress → Goals, unter den Feats): Wracks, Explosionen, Perfect Runs, Jackpots, Critical Merges, gesendete Autos, verdientes Geld, Schichten bei schlechtem Wetter / Sturm / Nebel und Schnee / Nacht / Blackout / mit City Event, längster Unlimited-Lauf, Dailies, Serie, Weeklies, Trials, Bosse, gebaute Straßen und Module, Upgrade-Stufen, Truhen, Sammlung, Level, Elite, Prestige, Heat, Casino-Runden, Chill, Tour-Stopps. Jede Stufe zahlt einmal 250 / 600 / 1.500 / 4.000 und meldet sich als Toast. Gezählt wird, was kein anderer Rekord führt (`Career.stats`); Wetter, Nacht und Events zählen nur in einer geschafften Karriere-Schicht, Mayhem und Chill gar nicht. Ausgezahlt wird beim Speichern (`persist`), also auch für Dinge wie das Bauen.
 
 ### Saison-Pass (30.09.2026, Progress → Today, ab Level 15)
 
@@ -788,6 +807,9 @@ Geprüft wird mit `npm test` (Web: 62 Tests, node:test; Server: 42 Tests), `npm 
 ---
 
 ## 17. Ideen danach
+
+(07.10.2026 gebaut: Touren mit Halloween und Winter, Mutatoren, Saison-Regeln, Chill, Achievements. Offen aus der Liste: Wochenligen, Community-Raid, Fahrprüfung, Co-op, Challenge-Builder, neue Verkehrselemente, siehe IDEA.md.)
+
 
 Offene Ideen stehen in [IDEA.md](IDEA.md). Stand 02.10.2026 ist dort nur noch **Analytics und Fehlerberichte** (Umami oder Plausible, GlitchTip als Coolify-Dienste, ohne eigenen Code; braucht einen Absatz in `legal.ts` und passt zum Data-Safety-Formular in der Play Console). Die übrigen Ideen (Konto mit Passwort, Daily-Bestenliste mit Replay-Prüfung, Ghost Racing) sind gestrichen.
 

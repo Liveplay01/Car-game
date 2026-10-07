@@ -33,6 +33,7 @@ export function explode(w: World, sourceId: number, now: number): void {
   if (index < 0 || !isExplosive(w.vehicles[index].type)) return;
   const source = w.vehicles[index];
   const kind = source.type === 'military' ? 'bomb' : 'tanker';
+  w.score.blasts++;
   const center = source.position;
   const c = w.config;
   const radius = kind === 'bomb' ? c.bombBlastRadius : c.tankerBlastRadius;

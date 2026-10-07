@@ -4,6 +4,9 @@
  * Units: world units (wu), seconds, wu per second. The world has the same size on every
  * device, only the camera zooms, so timing is identical everywhere.
  */
+import type { Season } from './loot';
+import type { MutatorId } from './mutators';
+
 export interface Range {
   readonly lo: number;
   readonly hi: number;
@@ -334,6 +337,12 @@ export const baseConfig = {
   mayhemExtraTraffic: 3,
   mayhemChainWindow: 1.5,
   mayhemMaxChainFlames: 10,
+
+  // Chill (Leo, 07.10.2026): the calm mode. No strikes, no money, no specials; it ends when the player says so.
+  chill: false,
+  chillLevel: 3,
+  chillDensity: 5,
+  chillTempo: 0.95,
   rampSeconds: 20,
   densityStart: 6,
   densityEnd: 10,
@@ -501,6 +510,13 @@ export const baseConfig = {
 
   // Legendary Shifts (core/legendary.ts)
   legendary: null as LegendaryRule | null,
+  /** The season's rule (core/seasons.ts): which weather it brings more of, and how much sooner night falls. */
+  season: null as Season | null,
+  weatherBias: {} as Partial<Record<Weather, number>>,
+  nightBias: 1,
+  weatherChanceBias: 1,
+  /** The Daily Shift's mutator for the day (core/mutators.ts). */
+  mutator: null as MutatorId | null,
   legendaryLevel: 25,
   legendaryChance: 0.06,
   gridlockDensityBonus: 2,
@@ -865,6 +881,7 @@ export const cloneConfig = (c: Config): Config => ({
   armSlots: [...c.armSlots],
   modules: { ...c.modules },
   moduleLevels: { ...c.moduleLevels },
+  weatherBias: { ...c.weatherBias },
   comboThresholds: [...c.comboThresholds],
   comboMultipliers: [...c.comboMultipliers],
   crashCosts: [...c.crashCosts],

@@ -60,6 +60,24 @@ Rückenwind, **Heat** (freiwillige Schwierigkeit ab Level 50), Bestenlisten **Da
 
 ---
 
+## Aus der Langzeit-Liste (Leo, 07.10.2026)
+
+Gebaut am 07.10.: Touren (Haunted Ring, Winter Lights), Mutator des Tages, Saison-Regeln, Chill, Achievements.
+Offen, grob nach Wirkung:
+
+- **Wochenligen:** Bestenlisten ohne Reset sind für Neue aussichtslos. Eine Liga mit Wochen-Reset (Bronze bis Diamant,
+  Auf- und Abstieg) gibt jeder Woche ein Ziel; Belohnung nur Rahmen und Titel. Braucht ein Modul `leagues` im Dienst.
+- **Community-Raid:** alle Takedowns der Spieler füllen eine Woche lang die Leiste eines Riesen-Bosses; ist sie leer,
+  bekommen alle eine Truhe. Passt zu den Teams (oben), ein Zähler im Dienst.
+- **Fahrprüfung:** 30 bis 50 handgebaute Mini-Szenarien mit 1 bis 3 Sternen für das Mittelspiel (Level 10 bis 40).
+- **Co-op-Multiplayer:** zwei bis vier Spieler auf einem Ring in Unlimited, ein Crash trifft alle.
+- **Challenge-Builder:** Wetter, Boss, Autozahl und Level selbst einstellen und als Link teilen (kein Freitext, keine Moderation).
+- **Neue Verkehrselemente:** Falschfahrer, Traktor, Hochzeitskorso, Radrennen; Parade und Straßenbahn stehen schon offen.
+- **Mehr Touren:** weitere Einträge in `TOURS`, z. B. im Frühling und Sommer, jeder mit drei Skins.
+- **Mutator auf der Daily-Bestenliste** (eigener Rang je Mutator): braucht eine Änderung im Dienst.
+
+---
+
 ## Später: Fehlerberichte (Leo, 02.10.2026)
 
 Umami läuft seit 07.10.2026 (`ui/analytics.ts`). Offen ist nur noch GlitchTip als Coolify-Dienst für

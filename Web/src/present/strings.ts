@@ -14,6 +14,8 @@ import type { EliteStep, TitleId, TitleRule } from '../core/elite';
 import type { PassReward, PassStep, HallEntry } from '../core/seasonPass';
 import type { FeatGoal } from '../core/feats';
 import type { Season } from '../core/loot';
+import type { MutatorId } from '../core/mutators';
+import type { TourId, TourReward } from '../core/tours';
 import type { TierId } from '../core/tiers';
 import { MONEY_MARK } from './icons';
 import { Fmt, money, percent, multiplier, comboMultiplier } from './format';
@@ -143,6 +145,7 @@ export const S = {
       if (boss) return S.boss.rematch(boss);
       if (id === 'landmark.etoile') return 'The Étoile';
       if (id === 'weekly') return S.weekly.title;
+      if (id.startsWith('tour.')) return S.tours.stopName(id);
       const rank = ascensionRank(id);
       if (rank !== null) return `Ascension ★${rank}`;
       return {
@@ -156,6 +159,7 @@ export const S = {
       }[id as TrialId];
     },
     goal(t: Trial): string {
+      if (t.tour) return S.tours.goal(t);
       if (t.elite) return S.weekly.goal(t);
       if (ascensionRank(t.id) !== null) {
         const parts = [
@@ -521,9 +525,9 @@ export const S = {
   },
 
   modes: {
-    name: (m: SwipeMode): string => (m === 'shift' ? 'SHIFT' : m === 'unlimited' ? 'UNLIMITED' : m === 'mayhem' ? 'MAYHEM' : 'MULTIPLAYER'),
+    name: (m: SwipeMode): string => (m === 'shift' ? 'SHIFT' : m === 'unlimited' ? 'UNLIMITED' : m === 'mayhem' ? 'MAYHEM' : m === 'chill' ? 'CHILL' : 'MULTIPLAYER'),
     line: (m: SwipeMode): string =>
-      m === 'shift' ? 'Clear the level, move up' : m === 'unlimited' ? 'Endless · until you crash' : m === 'mayhem' ? '12 cars · aim for the tankers' : 'Up to 4 friends · last one standing',
+      m === 'shift' ? 'Clear the level, move up' : m === 'unlimited' ? 'Endless · until you crash' : m === 'mayhem' ? '12 cars · aim for the tankers' : m === 'chill' ? 'No pressure · crashes never end it' : 'Up to 4 friends · last one standing',
     unlimitedCaption: 'UNLIMITED',
     endless: '∞',
     versusPlayers: '2–4',
@@ -532,7 +536,7 @@ export const S = {
     runOver: 'RUN OVER',
     again: 'Tap for another run',
     carsSent: (n: number): string => (n === 1 ? '1 car' : `${n} cars`),
-    unlocked: 'New modes · swipe sideways for Unlimited, Mayhem and Multiplayer',
+    unlocked: 'New modes · swipe sideways for Unlimited, Mayhem, Chill and Multiplayer',
     swipeHint: 'Swipe for more modes',
     /** Unlimited's late stages (`endlessStages`), as they come. */
     stage: (stage: number, overtime: number): string =>
@@ -559,6 +563,190 @@ export const S = {
     again: 'Tap for more mayhem',
     summary: (wrecks: number, chain: number): string => `${wrecks} ${wrecks === 1 ? 'wreck' : 'wrecks'} · biggest chain ×${chain}`,
     popup: (flames: number): string => `+${flames}`,
+  },
+
+  /** Chill (Leo, 07.10.2026): the calm mode. */
+  chill: {
+    caption: 'CHILL',
+    time: 'TIME',
+    done: 'Done',
+    doneLabel: 'Done: end this drive',
+    over: 'GOOD DRIVE',
+    again: 'Tap to drive again',
+    summary: (cars: number, time: string): string => `${cars === 1 ? '1 car' : `${cars} cars`} · ${time}`,
+    best: (cars: number): string => `Your longest drive: ${cars === 1 ? '1 car' : `${cars} cars`}`,
+  },
+
+  /** Daily mutators (core/mutators.ts). */
+  mutator: {
+    caption: 'TODAY',
+    name: (id: MutatorId): string =>
+      ({
+        openRoad: 'Open Road',
+        speedway: 'Speedway',
+        fogBank: 'Fog Bank',
+        nightShift: 'Night Shift',
+        lightsOut: 'Lights Out',
+        stormFront: 'Storm Front',
+        rushAllDay: 'Rush All Day',
+        dragnet: 'Dragnet',
+        heavyLoad: 'Heavy Load',
+        cashConvoy: 'Cash Convoy',
+      })[id],
+    line: (id: MutatorId): string =>
+      ({
+        openRoad: 'Fewer cars on the ring',
+        speedway: 'Faster, with a little less traffic',
+        fogBank: 'Fog all shift',
+        nightShift: 'After dark',
+        lightsOut: 'Night, and the street lamps are out',
+        stormFront: 'A storm all shift',
+        rushAllDay: 'Rush hour from the first car',
+        dragnet: 'Criminals twice as often',
+        heavyLoad: 'Lorries and tankers everywhere',
+        cashConvoy: 'Money transporters twice as often',
+      })[id],
+    /** The pill on the Daily Shift's waiting card. */
+    pill: (id: MutatorId): string => `TODAY · ${S.mutator.name(id).toUpperCase()}`,
+  },
+
+  /** Season rules (core/seasons.ts). */
+  seasonRule: {
+    name: (s: Season): string => ({ winter: 'Deep Winter', spring: 'April Showers', summer: 'Summer Storms', autumn: 'Fog & Dusk' })[s],
+    line: (s: Season): string =>
+      ({
+        winter: 'Fog and snow come more often, and night falls early',
+        spring: 'More rain, more often',
+        summer: 'Mostly clear, but when it turns it is a storm',
+        autumn: 'More fog, and the evenings come early',
+      })[s],
+  },
+
+  /** Tours (core/tours.ts). */
+  tours: {
+    caption: 'TOUR',
+    name: (id: TourId): string => ({ halloween: 'Haunted Ring', winter: 'Winter Lights' })[id],
+    tagline: (id: TourId): string =>
+      ({
+        halloween: 'Seven stops after dark. Three skins, only here.',
+        winter: 'Seven snowy stops. Three skins, only here.',
+      })[id],
+    stop: (n: number, of: number): string => `Stop ${n}/${of}`,
+    stopName: (id: string): string => {
+      const m = /^tour\.([a-z]+)\.(\d+)$/.exec(id);
+      return m ? `${S.tours.name(m[1] as TourId)} · stop ${m[2]}` : '';
+    },
+    left: (n: number): string => (n <= 1 ? 'last day' : `${n} days left`),
+    opensIn: (n: number): string => (n === 1 ? 'tomorrow' : `in ${n} days`),
+    comingSoon: (id: TourId, inDays: number): string => `${S.tours.name(id)} starts ${S.tours.opensIn(inDays)}`,
+    locked: (level: number): string => `Tours open at level ${level}`,
+    progress: (done: number, total: number): string => `${done}/${total} stops`,
+    play: 'Play ›',
+    /** What a stop asks for, from its trial. */
+    goal(t: Trial): string {
+      const parts = [
+        `${t.cars} cars`,
+        t.weather !== 'clear' ? S.weather(t.weather) : null,
+        t.darkness === 'blackout' ? S.blackout : t.darkness === 'night' ? S.night : null,
+        t.legendary ? S.legendary.name(t.legendary) : null,
+        t.rule === 'flawless' ? 'no crash, no cut-off' : null,
+        t.goal.k === 'perfects' ? `${t.goal.n} Perfect Inputs` : null,
+        t.goal.k === 'boss' ? 'take down the boss' : null,
+      ];
+      return parts.filter((p): p is string => p !== null).join(' · ');
+    },
+    reward(r: TourReward): string {
+      const parts = [r.item ? S.shop.item(r.item) : null, r.chest ? S.shop.chest(r.chest) : null, r.money ? `${Fmt.number(r.money)} coins` : null];
+      return parts.filter((p): p is string => p !== null).join(' + ');
+    },
+    /** The reward in a few characters, for a column: the skin first, else the chest, else the money. */
+    rewardShort: (r: TourReward): string => (r.item ? S.shop.item(r.item) : r.chest ? S.shop.chest(r.chest) : money(Fmt.number(r.money ?? 0))),
+    stopDone: (n: number, of: number, reward: string): string => `TOUR STOP ${n}/${of} · ${reward}`,
+    complete: (id: TourId): string => `${S.tours.name(id).toUpperCase()} COMPLETE`,
+    passedBefore: 'Done on this tour already',
+  },
+
+  /** Achievements (core/achievements.ts). */
+  ach: {
+    heading: 'Achievements',
+    name: (id: string): string =>
+      ({
+        scrapyard: 'Scrapyard',
+        fireworks: 'Fireworks',
+        spotless: 'Spotless',
+        jackpot: 'Jackpot Hunter',
+        critical: 'Critical Hits',
+        wizard: 'Traffic Wizard',
+        earner: 'Big Earner',
+        weatherproof: 'Weatherproof',
+        stormRider: 'Storm Rider',
+        whiteout: 'Whiteout',
+        moonlighter: 'Moonlighter',
+        lightsOut: 'Lights Out',
+        cityLife: 'City Life',
+        longHaul: 'Long Haul',
+        clockwork: 'Clockwork',
+        onARoll: 'On a Roll',
+        regular: 'Regular',
+        testDriver: 'Test Driver',
+        hunter: 'Syndicate Hunter',
+        roadBuilder: 'Road Builder',
+        foreman: 'Foreman',
+        tuner: 'Tuner',
+        chestOpener: 'Chest Opener',
+        collector: 'Collector',
+        climber: 'Climber',
+        elite: 'Elite Driver',
+        reborn: 'Reborn',
+        heatSeeker: 'Heat Seeker',
+        gambler: 'High Roller',
+        zen: 'Zen Driver',
+        tourist: 'Tourist',
+      })[id] ?? id,
+    /** What a tier asks for. */
+    goal: (id: string, n: number): string => {
+      const N = Fmt.number(n);
+      return (
+        {
+          scrapyard: `Cause ${N} wrecks`,
+          fireworks: `Set off ${N} explosions`,
+          spotless: `${N} Perfect Runs`,
+          jackpot: `Deliver ${N} Jackpot ${n === 1 ? 'transporter' : 'transporters'}`,
+          critical: `Land ${N} Critical Merges`,
+          wizard: `Send ${N} cars`,
+          earner: `Earn ${N} coins on the road`,
+          weatherproof: `Clear ${N} shifts in bad weather`,
+          stormRider: `Clear ${N} shifts in a storm, hail or sandstorm`,
+          whiteout: `Clear ${N} shifts in fog or snow`,
+          moonlighter: `Clear ${N} shifts at night`,
+          lightsOut: `Clear ${N} shifts in a blackout`,
+          cityLife: `Clear ${N} shifts with a city event`,
+          longHaul: `Last ${Fmt.seconds(n)} in one Unlimited run`,
+          clockwork: `Clear ${N} Daily Shifts`,
+          onARoll: `A ${N}-day Daily streak`,
+          regular: `Pass ${N} Weekly ${n === 1 ? 'Shift' : 'Shifts'}`,
+          testDriver: `Pass ${N} ${n === 1 ? 'trial' : 'trials'}`,
+          hunter: `Take down ${N} ${n === 1 ? 'syndicate boss' : 'different syndicate bosses'}`,
+          roadBuilder: `Build ${N} extra ${n === 1 ? 'road' : 'roads'}`,
+          foreman: `Have ${N} ${n === 1 ? 'module' : 'modules'} standing`,
+          tuner: `Own ${N} upgrade steps`,
+          chestOpener: `Open ${N} chests`,
+          collector: `Collect ${N} items`,
+          climber: `Reach level ${N}`,
+          elite: `Reach Elite ${N}`,
+          reborn: `Prestige ${N} ${n === 1 ? 'time' : 'times'}`,
+          heatSeeker: `Clear a shift at Heat ${N}`,
+          gambler: `Play ${N} casino rounds`,
+          zen: `Send ${N} cars in Chill`,
+          tourist: `Pass ${N} tour ${n === 1 ? 'stop' : 'stops'}`,
+        } as Record<string, string>
+      )[id] ?? '';
+    },
+    tier: (n: number): string => ['I', 'II', 'III', 'IV'][n - 1] ?? String(n),
+    reached: (id: string, tier: number, reward: string): string => `ACHIEVEMENT · ${S.ach.name(id)} ${S.ach.tier(tier)} · +${money(reward)}`,
+    count: (done: number, total: number): string => `${done}/${total}`,
+    /** Many at once (a save from before the achievements): one line, not a queue. */
+    many: (n: number, reward: string): string => `${n} ACHIEVEMENTS · +${money(reward)} · see Progress → Goals`,
   },
 
   /** A condition met for the first time, on the ready screen (`ConditionIntro`). */
@@ -642,6 +830,11 @@ export const S = {
     unlimitedTier: 'Unlimited tier',
     mayhemBest: 'Mayhem flames',
     mayhemChain: 'Mayhem chain',
+    chillBest: 'Longest Chill drive',
+    chillCars: 'Cars sent in Chill',
+    chillTime: 'Time in Chill',
+    minutes: (s: number): string => (s < 3600 ? `${Math.max(1, Math.round(s / 60))} min` : `${Math.floor(s / 3600)} h ${Math.round((s % 3600) / 60)} min`),
+    tours: 'Tour stops',
     perfects: 'Perfect Inputs',
     chestsOpened: 'Chests opened',
     none: '–',
@@ -943,6 +1136,7 @@ export const S = {
       if (item.source.kind === 'pass') return `Tier ${item.source.tier} of the ${S.pass.seasonName(item.source.season)} Season Pass. It comes back every year.`;
       if (item.source.kind === 'hall') return 'Build the Hall of Fame (Records → Elite).';
       if (item.source.kind === 'unlimited') return `Send ${Fmt.number(item.source.cars)} cars in one Unlimited run.`;
+      if (item.source.kind === 'tour') return `A stop of the ${S.tours.name(item.source.tour as TourId)} tour. It comes back every year.`;
       if (item.source.kind === 'bugReport') return 'Report a bug on timing.love with your friend code. Only bug hunters get it.';
       if (item.source.kind === 'find')
         return `A rare find: ${S.shop.findOdds(item.source.chance)} ${S.shop.chest(item.source.chest)}. The only honour that is luck.`;
@@ -1031,6 +1225,12 @@ export const S = {
         blossom: 'Blossom',
         sunburst: 'Sunburst',
         pumpkin: 'Pumpkin',
+        jackOLantern: "Jack-o'-Lantern",
+        witchingHour: 'Witching Hour',
+        wraith: 'Wraith',
+        candyCane: 'Candy Cane',
+        snowGlobe: 'Snow Globe',
+        sleigh: 'Midnight Sleigh',
         lemon: 'Lemon',
         plum: 'Plum',
         fern: 'Fern',
@@ -1245,7 +1445,7 @@ export const S = {
 
   albums: {
     name: (a: Album): string =>
-      ({ maps: 'Maps', commons: 'Commons', rares: 'Rares', epics: 'Epics', legends: 'Legends', seasons: 'Seasons', loyalty: 'Loyalty', honours: 'Honours', pass: 'Season Pass' })[a],
+      ({ maps: 'Maps', commons: 'Commons', rares: 'Rares', epics: 'Epics', legends: 'Legends', seasons: 'Seasons', loyalty: 'Loyalty', honours: 'Honours', pass: 'Season Pass', tours: 'Tours' })[a],
     complete: (a: Album, reward: string): string => `ALBUM COMPLETE · ${S.albums.name(a)} · +${money(reward)} · new frame`,
     progress: (entries: { album: Album; owned: number; total: number }[]): string =>
       'Albums · ' + entries.map((e) => `${S.albums.name(e.album)} ${e.owned}/${e.total}`).join(' · '),
@@ -1467,9 +1667,11 @@ export const S = {
     close: 'Close',
     score: 'SCORE',
     flames: 'FLAMES',
+    cars: 'CARS',
     newBest: 'NEW BEST',
     hook: (score: string): string => `Can you beat ${score}?`,
     hookFlames: (flames: string): string => `Can you top ${flames} flames?`,
+    hookChill: 'Come for a drive.',
     combo: (n: number): string => `×${n} combo`,
     tightFits: (n: number): string => (n === 1 ? '1 tight fit' : `${n} tight fits`),
     busted: (n: number): string => `${n} busted`,

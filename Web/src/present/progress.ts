@@ -25,6 +25,9 @@ import { PROGRESS, type ProgressSection } from './flow';
 import { MuseumPage, MuseumState } from './museum';
 import { Scroller, clipTo } from './scroll';
 import { knownRank, leaderboardEnabled } from '../net/leaderboard';
+import { tourOn, nextTour, tourOpen, tourStopsDone, stopDoneKey, TOUR_LEVEL } from '../core/tours';
+import { FAMILIES, Achievements, achievementTotal, type Family } from '../core/achievements';
+import { seasonOf } from '../core/loot';
 
 /** What the Progress tab shows and animates (`ProgressPage.State`); each section is a list that scrolls. */
 export class ProgressState extends Scroller {
@@ -67,6 +70,7 @@ export type ProgressTarget =
   | { k: 'pass' }
   | { k: 'trial'; id: TrialId }
   | { k: 'rush' }
+  | { k: 'tour'; stop: number }
   | { k: 'feat'; id: string }
   | { k: 'museum'; id: string };
 
@@ -90,6 +94,10 @@ type Block =
   | { k: 'trial'; trial: Trial }
   | { k: 'rush' }
   | { k: 'rushLocked' }
+  | { k: 'tour' }
+  | { k: 'tourInfo'; line: string }
+  | { k: 'season' }
+  | { k: 'ach'; family: Family }
   | { k: 'mastery'; goal: MasteryGoal }
   | { k: 'feat'; feat: Feat }
   | { k: 'museum'; entry: MuseumEntry };
@@ -185,6 +193,10 @@ export const ProgressPage = {
       { label: P.unlimitedTier, value: S.modes.tierLine(tierOf(save.unlimitedBestCars), nextTier(save.unlimitedBestCars)) },
       { label: P.mayhemBest, value: count(save.mayhemBest) },
       { label: P.mayhemChain, value: save.mayhemBestChain > 0 ? `×${save.mayhemBestChain}` : P.none },
+      { label: P.chillBest, value: save.chillBest > 0 ? S.chill.best(save.chillBest).replace('Your longest drive: ', '') : P.none },
+      { label: P.chillCars, value: count(save.chillCars) },
+      { label: P.chillTime, value: save.chillTime > 0 ? P.minutes(save.chillTime) : P.none },
+      { label: P.tours, value: count(c.toursDone.length) },
       { label: P.weeklies, value: count(c.weekliesDone) },
       { label: P.legendary, value: count(c.legendaryDone) },
       { label: P.prestige, value: c.prestige > 0 ? S.prestige.caption(c.prestige) : P.none },
@@ -225,8 +237,10 @@ export const ProgressPage = {
     } else if (section === PROGRESS.today) {
       s.row({ k: 'daily' }, 64);
       s.row({ k: 'weekly' }, 64);
+      ProgressPage.tourRows(s, career, today);
       if (Careers.maxHeat(career) > 0 || career.heat > 0) s.row({ k: 'heat' }, 64);
       s.row({ k: 'pass' }, SeasonPass.isOpen(career) ? ProgressPage.passHeight : 64);
+      s.row({ k: 'season' }, 64);
       const quests = challengesOf(today);
       const done = quests.filter((q) => Careers.isChallengeDone(career, q, today)).length;
       s.heading(S.progress.quests, `${done}/${quests.length}`, done === quests.length);
@@ -262,6 +276,9 @@ export const ProgressPage = {
       const feats = Feats.count(career);
       s.heading(S.progress.feats, `${feats}/${FEATS.length}`, feats === FEATS.length);
       for (const feat of FEATS) s.row({ k: 'feat', feat }, 66);
+      const achieved = Achievements.done(career);
+      s.heading(S.ach.heading, S.ach.count(achieved, achievementTotal()), achieved === achievementTotal());
+      for (const family of FAMILIES) s.row({ k: 'ach', family }, 58);
     } else {
       for (const shelf of MUSEUM_SHELVES) {
         const { shown, all } = MuseumPage.count(career, shelf);
@@ -276,6 +293,25 @@ export const ProgressPage = {
       }
     }
     return s;
+  },
+
+  /** The tour of the day, or when the next one comes; locked until the Trials open. */
+  tourRows(s: Stack, career: Career, today: number): void {
+    const run = tourOn(today);
+    if (run && !tourOpen(career)) s.row({ k: 'tourInfo', line: S.tours.locked(TOUR_LEVEL) }, 64);
+    else if (run) s.row({ k: 'tour' }, 96);
+    else {
+      const next = nextTour(today);
+      if (next && next.inDays <= 60) s.row({ k: 'tourInfo', line: S.tours.comingSoon(next.tour.id, next.inDays) }, 64);
+    }
+  },
+
+  /** The stop a tap on the tour card plays: the first one not done yet, else the first again. */
+  nextStop(career: Career, today: number): number {
+    const run = tourOn(today);
+    if (!run) return 1;
+    const open = run.tour.stops.findIndex((_, i) => !career.toursDone.includes(stopDoneKey(run.key, i + 1)));
+    return open < 0 ? 1 : open + 1;
   },
 
   /** How far the section's list can scroll in its window. */
@@ -296,10 +332,10 @@ export const ProgressPage = {
   targetAt(point: Vec2, viewport: Vec2, bottomInset: number, save: SaveGame, today: number, state: ProgressState): ProgressTarget | null {
     if (!ProgressPage.inList(point, viewport, bottomInset)) return null;
     const hit = ProgressPage.placed(viewport, bottomInset, save, today, state).find((p) => R.contains(p.r, point));
-    return hit ? ProgressPage.targetOf(hit.b, save.career) : null;
+    return hit ? ProgressPage.targetOf(hit.b, save.career, today) : null;
   },
 
-  targetOf(b: Block, career: Career): ProgressTarget | null {
+  targetOf(b: Block, career: Career, today: number): ProgressTarget | null {
     switch (b.k) {
       case 'elite':
         return { k: 'elite' };
@@ -315,6 +351,8 @@ export const ProgressPage = {
         return trialOpen(b.trial, career) ? { k: 'trial', id: b.trial.id as TrialId } : null;
       case 'rush':
         return { k: 'rush' };
+      case 'tour':
+        return { k: 'tour', stop: ProgressPage.nextStop(career, today) };
       case 'feat':
         return { k: 'feat', id: b.feat.id };
       case 'museum':
@@ -327,7 +365,7 @@ export const ProgressPage = {
   /** Where a target's block is on screen now (to bring it out from under the sheet). */
   rectOf(target: ProgressTarget, viewport: Vec2, bottomInset: number, save: SaveGame, today: number, state: ProgressState): Rect | null {
     const key = JSON.stringify(target);
-    return ProgressPage.placed(viewport, bottomInset, save, today, state).find((p) => JSON.stringify(ProgressPage.targetOf(p.b, save.career)) === key)?.r ?? null;
+    return ProgressPage.placed(viewport, bottomInset, save, today, state).find((p) => JSON.stringify(ProgressPage.targetOf(p.b, save.career, today)) === key)?.r ?? null;
   },
 
   /** A press in the list's window: a tap or the start of a scroll. */
@@ -473,6 +511,14 @@ export const ProgressPage = {
         return ProgressPage.addRush(list, r, career, o);
       case 'rushLocked':
         return ProgressPage.addRushLocked(list, r, career, o);
+      case 'tour':
+        return ProgressPage.addTour(list, r, career, today, o);
+      case 'tourInfo':
+        return ProgressPage.addInfoRow(list, r, S.tours.caption, b.line, o);
+      case 'season':
+        return ProgressPage.addSeason(list, r, today, o);
+      case 'ach':
+        return ProgressPage.addAchievement(list, r, save, b.family, o);
       case 'mastery':
         return ProgressPage.addMastery(list, r, career, b.goal, o);
       case 'feat':
@@ -750,6 +796,81 @@ export const ProgressPage = {
       ...(done ? { status: `${S.daily.done} ✓` } : { reward: trial.reward }),
       link: `${S.trials.play} ›`,
     });
+  },
+
+  /** A quiet row with nothing to tap: a title and a line under it. */
+  addInfoRow(list: RenderList, r: Rect, title: string, line: string, o: number): void {
+    ProgressPage.panel(list, r, o);
+    ProgressPage.addCardRow(list, r, r.minX + 16, o, { title, line });
+  },
+
+  /** The season and its rule for the sky. */
+  addSeason(list: RenderList, r: Rect, today: number, o: number): void {
+    const season = seasonOf(today);
+    ProgressPage.panel(list, r, o);
+    ProgressPage.addCardRow(list, r, r.minX + 16, o, { title: S.seasonRule.name(season), line: S.seasonRule.line(season), status: S.pass.seasonName(season) });
+  },
+
+  /** The tour running today: its name and days left, the stops as dots, and the way in. */
+  addTour(list: RenderList, r: Rect, career: Career, today: number, o: number): void {
+    const run = tourOn(today);
+    if (!run) return;
+    ProgressPage.panel(list, r, o);
+    const done = tourStopsDone(career, run);
+    const total = run.tour.stops.length;
+    const x = r.minX + 16;
+    const right = r.maxX - 16;
+    const name = S.tours.name(run.tour.id);
+    drawText(list, name, v(x, r.minY + 22), 15, done === total ? 'coin' : 'primary', { opacity: o, weight: 'bold' });
+    drawText(list, S.tours.left(run.daysLeft), v(right, r.minY + 22), 12, run.daysLeft <= 2 ? 'hazard' : 'muted', { opacity: o, weight: 'bold', align: 'trailing' });
+    const tagline = S.tours.tagline(run.tour.id);
+    drawFitted(list, tagline, v(x, r.minY + 42), 11, right - x, 'muted', { opacity: o });
+    // The stops as dots; the next one has a ring, and the last one is bigger (it holds the boss).
+    const next = ProgressPage.nextStop(career, today);
+    const gap = Math.min(30, (R.width(r) - 32 - 70) / Math.max(1, total - 1));
+    for (let i = 0; i < total; i++) {
+      const at = v(x + 7 + i * gap, r.maxY - 24);
+      const finished = career.toursDone.includes(stopDoneKey(run.key, i + 1));
+      const last = i === total - 1;
+      if (i + 1 === next && done < total) list.s(circle(at, (last ? 11 : 9.5) + 1.5), 'accent', 0.55 * o);
+      list.s(circle(at, last ? 9 : 7.5), finished ? 'accent' : 'controlFill', o);
+      if (finished) {
+        list.s(line(add(at, v(-3.5, 0)), add(at, v(-1, 2.8)), 1.8), 'accentInk', o);
+        list.s(line(add(at, v(-1, 2.8)), add(at, v(4, -3)), 1.8), 'accentInk', o);
+      }
+    }
+    const status = done === total ? `${S.daily.done} ✓` : S.tours.progress(done, total);
+    drawText(list, status, v(right, r.maxY - 36), 11, done === total ? 'accent' : 'muted', { opacity: o, align: 'trailing' });
+    drawText(list, S.tours.play, v(right, r.maxY - 18), 12, 'accent', { opacity: o, weight: 'bold', align: 'trailing' });
+  },
+
+  /** One achievement family: its name, the next tier's ask, pips for the tiers and a bar towards the next. */
+  addAchievement(list: RenderList, r: Rect, save: SaveGame, f: Family, o: number): void {
+    ProgressPage.panel(list, r, o);
+    const c = R.center(r);
+    const reached = Achievements.reached(save.career, f);
+    const tiers = f.tiers.length;
+    const complete = reached >= tiers;
+    const have = f.value(save);
+    const need = f.tiers[Math.min(reached, tiers - 1)];
+    const top = c.y - R.height(r) * 0.2;
+    const pipsWidth = tiers * 14;
+    drawText(list, S.ach.name(f.id), v(r.minX + 16, top), 13, complete ? 'coin' : 'primary', { opacity: o, weight: 'bold' });
+    for (let tier = 0; tier < tiers; tier++) list.s(circle(v(r.maxX - 16 - pipsWidth + tier * 14 + 7, top), 5), tier < reached ? 'accent' : 'controlFill', o);
+    const goal = S.ach.goal(f.id, need);
+    const count = complete ? '' : `${Fmt.number(Math.min(have, need))}/${Fmt.number(need)}`;
+    const lineY = c.y + R.height(r) * 0.04;
+    drawText(list, count, v(r.maxX - 16, lineY), 11, 'muted', { opacity: o, align: 'trailing' });
+    drawFitted(list, goal, v(r.minX + 16, lineY), 11, R.width(r) - 32 - textWidth(count, 11) - 10, 'muted', { opacity: o });
+    const from = reached === 0 ? 0 : f.tiers[reached - 1];
+    const fraction = complete ? 1 : Ease.clamp01((have - from) / Math.max(1, need - from));
+    const barY = c.y + R.height(r) * 0.3;
+    const barWidth = R.width(r) - 32;
+    list.s(rect(v(c.x, barY), v(barWidth, 4), 2), 'controlFill', o);
+    if (fraction > 0) {
+      const filled = Math.max(4, barWidth * fraction);
+      list.s(rect(v(r.minX + 16 + filled / 2, barY), v(filled, 4), 2), complete ? 'coin' : 'accent', o);
+    }
   },
 
   /** Elite level, title, the bar to the next level and what the next milestone brings. */

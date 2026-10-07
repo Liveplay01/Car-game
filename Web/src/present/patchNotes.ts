@@ -46,9 +46,14 @@ export const PATCH_NOTES: PatchNote[] = [
   {
     id: '2026-10-07',
     date: '7 October 2026',
-    title: 'Share your Daily result, your photo carries an invite, anonymous visit counts, and tabs that fit',
-    impact: 'minor',
+    title: 'Tours with a Halloween run, a twist on every Daily, seasons that change the sky, Chill mode and 123 achievements',
+    impact: 'major',
     items: [
+      'Tours: limited-time events that come back every year. Each is seven stops with a sky and a goal of its own, set at your level, and every stop pays once: coins, chests and three skins you can only win there. The first is the Haunted Ring, from 24 October to 2 November; Winter Lights follows on 18 December. Find it under Progress → Today once Trials are open (level 9).',
+      'The Daily Shift has a twist every day: Open Road, Speedway, Fog Bank, Night Shift, Lights Out, Storm Front, Rush All Day, Dragnet, Heavy Load or Cash Convoy. It is the same for everyone, it shows on the waiting card and in the start splash, and a challenge link carries it along.',
+      'Seasons now change the sky of your shifts. Winter brings more fog and snow and early nights, spring more rain, summer fewer but fiercer storms, autumn more fog and early evenings. Progress → Today names the season and its rule.',
+      'New mode: Chill. Swipe past Mayhem. No strikes, no police, no money, no rush: crashes happen and the traffic reacts, but nothing ends the drive until you tap Done. It has its own records, and your result makes a nice photo.',
+      '123 achievements in 31 families, under Progress → Goals: wrecks, explosions, weather, nights, builds, collecting and more. Each tier pays a little coin and you get a toast when one lands.',
       'Fixed: in Roulette, a new bet after a round now lights its exits and shows on the island at once, instead of the old bet staying lit.',
       'Fixed: in Progress → Records the streak text no longer touches the car, the engine label says what it is ("ENGINE IDLING") and the Collection tile reads "9 / 121" with the percentage in its label.',
       'Share your Daily Shift like a puzzle result: Challenge a friend after a cleared Daily now sends one line (score, Perfects, Tight Fits, streak) with the link to the same shift. On a computer it lands in your clipboard, ready to paste in a chat.',

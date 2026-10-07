@@ -5,6 +5,7 @@ import type { ChallengeSpec } from '../core/challenge';
 import { BOSS_KINDS } from '../core/config';
 import { type Trial, trialPassed, rushTrial, RUSH_ID, RUSH_REWARD } from '../core/trials';
 import { weekNumber } from '../core/weekly';
+import { tourStopOf, completeStop, stopDoneKey, tourStopsDone } from '../core/tours';
 import type { ShiftSummary, RunCard } from './hud';
 import { S, Fmt, money as moneyText } from './strings';
 
@@ -72,8 +73,14 @@ export function settleSpecial(run: SpecialRun, result: ShiftResult, career: Care
   const passed = trialPassed(t, result);
   // The Weekly Elite pays once a week (with a Premium Chest); every other trial once ever.
   const weekly = t.id === 'weekly';
-  const first = passed && (weekly ? !Careers.isWeeklyDone(career, weekNumber(today)) : !career.trialsDone.includes(t.id));
-  if (first && weekly) {
+  const stop = t.tour ? tourStopOf(t.id, today) : null;
+  const first = passed && (stop ? !career.toursDone.includes(stopDoneKey(stop.run.key, stop.stop)) : weekly ? !Careers.isWeeklyDone(career, weekNumber(today)) : !career.trialsDone.includes(t.id));
+  if (first && stop) {
+    const paid = completeStop(career, stop.run, stop.stop);
+    const total = stop.run.tour.stops.length;
+    if (paid) news.push(S.tours.stopDone(stop.stop, total, S.tours.reward(paid.reward)));
+    if (paid && tourStopsDone(career, stop.run) === total) news.push(S.tours.complete(stop.run.tour.id));
+  } else if (first && weekly) {
     const pay = Careers.completeWeekly(career, weekNumber(today), config);
     if (pay !== null) news.push(S.weekly.done(Fmt.number(pay)));
   } else if (first) {
@@ -86,9 +93,9 @@ export function settleSpecial(run: SpecialRun, result: ShiftResult, career: Care
     summary: {
       caption: passed ? S.run.passed : S.run.failed,
       color: passed ? 'accent' : 'destructive',
-      line: passed && !first ? S.run.passedBefore : S.trials.goal(t),
+      line: passed && !first ? (stop ? S.tours.passedBefore : S.run.passedBefore) : S.trials.goal(t),
       lineColor: passed ? 'accent' : 'muted',
-      right: [S.run.trial, S.trials.level(t.level)],
+      right: stop ? [S.tours.caption, S.tours.stop(stop.stop, stop.run.tour.stops.length)] : [S.run.trial, S.trials.level(t.level)],
     },
     shareable: null,
     news,
@@ -163,6 +170,18 @@ export function runCard(special: SpecialRun | null, config: Config, mode: GameMo
       badge: S.rush.step(rush.step + 1, BOSS_KINDS.length),
       line: S.rush.shiftLine(BOSS_KINDS[rush.step], rush.step === 0),
       right: rush.step > 0 ? [S.rush.clock, S.rush.time(rush.time)] : first ? [S.run.rewardCaption, moneyText(Fmt.number(RUSH_REWARD))] : [S.rush.best, S.rush.time(career.rushBest)],
+    };
+  }
+  const stop = special.trial.tour ? tourStopOf(special.trial.id, today) : null;
+  if (stop) {
+    const done = career.toursDone.includes(stopDoneKey(stop.run.key, stop.stop));
+    const reward = stop.run.tour.stops[stop.stop - 1].reward;
+    return {
+      caption: S.tours.caption,
+      color: 'hazard',
+      badge: `${S.tours.name(stop.run.tour.id)} · ${S.tours.stop(stop.stop, stop.run.tour.stops.length)}`,
+      line: S.trials.goal(special.trial),
+      right: done ? [S.trials.passed, '✓'] : [S.run.rewardCaption, S.tours.rewardShort(reward)],
     };
   }
   const weekly = special.trial.id === 'weekly';

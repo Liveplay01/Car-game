@@ -44,6 +44,8 @@ export type CosmeticSource =
   | { kind: 'unlimited'; cars: number }
   /** Reported a bug on the website with a friend code (Leo, 03.10.2026): the server hands it out. */
   | { kind: 'bugReport' }
+  /** A stop of a limited-time Tour (core/tours.ts); the tour comes back every year. */
+  | { kind: 'tour'; tour: string }
   /**
    * The one honour that is luck (Leo, 01.10.2026): found in this chest with this chance per
    * opening, until it is found. On the Honours shelf, never in a chest's normal pool.
@@ -189,6 +191,13 @@ export const COSMETICS: Cosmetic[] = [
   c('infinity', 'carSkin', 'legendary', { kind: 'unlimited', cars: 1000 }),
   // The bug hunter (Leo, 03.10.2026): only for a bug reported on the website with a friend code.
   c('ladybug', 'carSkin', 'epic', { kind: 'bugReport' }),
+  // Tours (Leo, 07.10.2026): earned at the stops of a limited-time event, which returns every year.
+  c('jackOLantern', 'carSkin', 'rare', { kind: 'tour', tour: 'halloween' }),
+  c('witchingHour', 'carSkin', 'epic', { kind: 'tour', tour: 'halloween' }),
+  c('wraith', 'carSkin', 'legendary', { kind: 'tour', tour: 'halloween' }),
+  c('candyCane', 'carSkin', 'rare', { kind: 'tour', tour: 'winter' }),
+  c('snowGlobe', 'carSkin', 'epic', { kind: 'tour', tour: 'winter' }),
+  c('sleigh', 'carSkin', 'legendary', { kind: 'tour', tour: 'winter' }),
   // The Classic: one Standard Chest in 500 (Leo, 01.10.2026).
   c('classic', 'vehicleType', 'legendary', { kind: 'find', chest: 'standard', chance: 0.002 }),
 ];
@@ -220,6 +229,7 @@ export const isHonour = (item: Cosmetic): boolean =>
   item.source.kind === 'hall' ||
   item.source.kind === 'unlimited' ||
   item.source.kind === 'bugReport' ||
+  item.source.kind === 'tour' ||
   item.source.kind === 'find';
 
 export const cosmetic = (id: string): Cosmetic | undefined => COSMETICS.find((x) => x.id === id);
@@ -235,11 +245,12 @@ export function seasonOf(day: number): Season {
 export const seasonItems = (season: Season): Cosmetic[] =>
   COSMETICS.filter((x) => x.source.kind === 'season' && x.source.season === season);
 
-export type Album = 'maps' | 'commons' | 'rares' | 'epics' | 'legends' | 'seasons' | 'loyalty' | 'honours' | 'pass';
-export const ALBUMS: Album[] = ['maps', 'commons', 'rares', 'epics', 'legends', 'seasons', 'loyalty', 'honours', 'pass'];
+export type Album = 'maps' | 'commons' | 'rares' | 'epics' | 'legends' | 'seasons' | 'loyalty' | 'honours' | 'pass' | 'tours';
+export const ALBUMS: Album[] = ['maps', 'commons', 'rares', 'epics', 'legends', 'seasons', 'loyalty', 'honours', 'pass', 'tours'];
 
 export const ALBUM_REWARD: Record<Album, number> = {
   pass: 60000,
+  tours: 30000,
   honours: 50000,
   commons: 5000,
   maps: 10000,
@@ -270,9 +281,11 @@ export function albumItems(album: Album): Cosmetic[] {
     case 'honours':
       // Deeds in the game only: a find is luck, and the Ladybug needs the website (not offered
       // inside CrazyGames), so an album must not wait on either.
-      return COSMETICS.filter((x) => isHonour(x) && x.source.kind !== 'find' && x.source.kind !== 'bugReport');
+      return COSMETICS.filter((x) => isHonour(x) && x.source.kind !== 'find' && x.source.kind !== 'bugReport' && x.source.kind !== 'tour');
     case 'pass':
       return COSMETICS.filter((x) => x.source.kind === 'pass');
+    case 'tours':
+      return COSMETICS.filter((x) => x.source.kind === 'tour');
   }
 }
 

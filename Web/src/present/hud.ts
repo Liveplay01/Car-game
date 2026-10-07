@@ -1,4 +1,5 @@
 import type { World } from '../core/world';
+import type { MutatorId } from '../core/mutators';
 import type { Arm } from '../core/roundabout';
 import type { ShiftResult } from '../core/events';
 import type { GameMode } from '../core/career';
@@ -239,6 +240,10 @@ export const HUD = {
       HUD.addMayhem(list, h);
       return;
     }
+    if (h.world.config.chill) {
+      HUD.addChill(list, h);
+      return;
+    }
     HUD.addTopCard(list, h);
     if (h.world.config.endless) {
       const frame = TopBar.frame(list.camera.viewport.x);
@@ -261,6 +266,19 @@ export const HUD = {
     const last = world.score.lastCrashAt;
     if (last === null || world.time - last > world.config.mayhemChainWindow) return 0;
     return world.score.crashChain;
+  },
+
+  /** Chill: how long the drive has gone on, the cars sent, and the longest drive so far. Nothing to lose. */
+  addChill(list: RenderList, h: HudInput): void {
+    TopBar.addScrim(list);
+    const frame = TopBar.frame(list.camera.viewport.x);
+    const cols = TopBar.columns(frame);
+    TopBar.addCard(list, frame);
+    list.tag = 'topbarLabels';
+    TopBar.addColumn(list, cols.left, 'leading', S.chill.time, Fmt.seconds(h.world.shiftTime(h.world.time)));
+    TopBar.addColumn(list, cols.center, 'center', S.chill.caption, Fmt.number(h.world.shift.carsSent), { captionColor: 'lightBlue', valueSize: Metrics.timerSize * land(h.pops.cars, 0.12) });
+    TopBar.addColumn(list, cols.right, 'trailing', S.hud.bestLabel, h.best ?? '–', { valueColor: h.best === null ? 'muted' : 'primary' });
+    list.tag = undefined;
   },
 
   addMayhem(list: RenderList, h: HudInput): void {
@@ -897,7 +915,7 @@ export class RingSignals {
 
 export const ModeBanner = {
   duration: 1.8,
-  tint: (m: SwipeMode): ColorToken => (m === 'shift' || m === 'multiplayer' ? 'primary' : m === 'unlimited' ? 'accent' : 'fireOuter'),
+  tint: (m: SwipeMode): ColorToken => (m === 'shift' || m === 'multiplayer' ? 'primary' : m === 'unlimited' ? 'accent' : m === 'chill' ? 'lightBlue' : 'fireOuter'),
   add(list: RenderList, mode: SwipeMode, age: number, top: number, reduceMotion: boolean): void {
     if (age >= ModeBanner.duration) return;
     const width = list.camera.viewport.x;
@@ -941,6 +959,8 @@ export interface DailyCard {
   freezes: number;
   next: { days: number; item: string; left: number } | null;
   splash: number | null;
+  /** Today's twist (core/mutators.ts). */
+  mutator: MutatorId | null;
 }
 
 /** A condition met for the first time, as the ready screen explains it. */
@@ -1024,11 +1044,18 @@ export const ReadyBanner = {
           : [S.daily.title, 'hazard']
         : o.mode === 'unlimited'
           ? [S.modes.unlimitedCaption, 'accent']
-          : [S.mayhem.caption, 'fireOuter'];
-    const value = o.versus ? S.modes.versusPlayers : o.mode === 'unlimited' ? S.modes.endless : S.hud.cars(o.cars);
+          : o.mode === 'chill'
+            ? [S.chill.caption, 'lightBlue']
+            : [S.mayhem.caption, 'fireOuter'];
+    const value = o.versus ? S.modes.versusPlayers : o.mode === 'unlimited' || o.mode === 'chill' ? S.modes.endless : S.hud.cars(o.cars);
     TopBar.addColumn(list, cols.center, 'center', caption, value, { captionColor, valueSize: Metrics.timerSize, opacity });
     if (run) TopBar.addColumn(list, cols.right, 'trailing', run.right[0], run.right[1], { opacity });
-    else if (o.versus) {
+    else if (o.daily?.mutator) {
+      // Today's twist takes the place of the best score: the Daily is one try a day.
+      const twist = S.mutator.name(o.daily.mutator);
+      const room = R.width(cols.right) - 32;
+      TopBar.addColumn(list, cols.right, 'trailing', S.mutator.caption, twist, { opacity, valueSize: Math.max(11, Math.min(20, (20 * room) / Math.max(1, textWidth(twist, 20)))) });
+    } else if (o.versus) {
       // A long name shrinks to fit its column.
       const name = o.playerName || S.modes.defaultName;
       const room = R.width(cols.right) - 32;
@@ -1121,14 +1148,21 @@ export const ReadyBanner = {
     list.s(rect(mul(vp, 0.5), vp), 'background', 0.7 * alpha);
     const pop = reduceMotion ? 1 : Ease.spring(age / 0.5);
     const center = add(mul(vp, 0.5), v(0, reduceMotion ? 0 : -70 * Ease.inCubic(leave) - 20));
-    const size = mul(v(Math.min(vp.x - 40, 340), 176), 0.85 + 0.15 * pop);
+    const twist = daily.mutator;
+    const size = mul(v(Math.min(vp.x - 40, 340), twist ? 212 : 176), 0.85 + 0.15 * pop);
     list.s(rect(center, add(size, v(6, 6)), 25), 'hazard', 0.35 * alpha);
     list.s(rect(center, size, 22), 'surface', alpha);
     const ln = (s: string, dy: number, sz: number, weight: 'regular' | 'bold', color: ColorToken): void => list.s(text(s, add(center, v(0, dy)), sz, 'center', weight), color, alpha);
-    ln(S.daily.title, -48, 30 * (0.8 + 0.2 * pop), 'bold', 'hazard');
-    if (daily.event) ln(S.daily.splashLine(daily.event), -8, 14, 'regular', 'primary');
-    ln(S.daily.streakLine(daily.streak), 20, 13, 'regular', 'muted');
-    if (daily.next) ln(S.daily.nextMilestone(daily.next.left, daily.next.item), 46, 12, 'bold', 'accent');
+    // A twist adds two lines on top; the rest keeps its order.
+    const shift = twist ? 18 : 0;
+    ln(S.daily.title, -48 - shift, 30 * (0.8 + 0.2 * pop), 'bold', 'hazard');
+    if (twist) {
+      ln(S.mutator.name(twist), -14 - shift, 17, 'bold', 'accent');
+      ln(S.mutator.line(twist), 6 - shift, 12, 'regular', 'muted');
+    }
+    if (daily.event) ln(S.daily.splashLine(daily.event), -8 + shift, 14, 'regular', 'primary');
+    ln(S.daily.streakLine(daily.streak), 20 + shift, 13, 'regular', 'muted');
+    if (daily.next) ln(S.daily.nextMilestone(daily.next.left, daily.next.item), 46 + shift, 12, 'bold', 'accent');
   },
 };
 
@@ -1182,6 +1216,7 @@ export const ResultBanner = {
           : [S.result.escaped, 'vehicleCriminal'];
     if (summary.mode === 'unlimited' && r.outcome === 'struckOut') title = S.modes.runOver;
     if (summary.mode === 'mayhem') [title, titleColor] = [S.mayhem.over, 'fireOuter'];
+    if (summary.mode === 'chill') [title, titleColor] = [S.chill.over, 'lightBlue'];
     // On a boss level the criminal that got away was the syndicate's head.
     if (r.outcome === 'escaped' && r.convoy && !r.bossBusted) title = S.boss.escaped;
     // A Legendary Shift's rule was broken (Zero Tolerance).
@@ -1197,9 +1232,11 @@ export const ResultBanner = {
     const detail =
       summary.mode === 'mayhem'
         ? S.mayhem.summary(r.wrecks, r.biggestChain)
-        : S.result.stats(r.bestCombo, r.tightFits, r.takedowns, r.transporters, Fmt.seconds(r.time));
+        : summary.mode === 'chill'
+          ? S.chill.summary(r.carsSent, Fmt.seconds(r.time))
+          : S.result.stats(r.bestCombo, r.tightFits, r.takedowns, r.transporters, Fmt.seconds(r.time));
     const best = summary.isNewHighscore ? `. ${S.result.newBest}` : '';
-    return `${title}. ${Fmt.number(r.score)} points${best}. ${detail}`;
+    return summary.mode === 'chill' ? `${title}. ${detail}${best}` : `${title}. ${Fmt.number(r.score)} points${best}. ${detail}`;
   },
 
   add(list: RenderList, summary: ShiftSummary, nextLevel: number, bank: { before: number; after: number }, age: number, reduceMotion: boolean): void {
@@ -1223,6 +1260,8 @@ export const ResultBanner = {
       if (summary.mode === 'mayhem' && !run) {
         list.s(text(title, v(R.center(cols.center).x, cols.center.minY + TopBar.captionRow), 10, 'center', 'bold'), titleColor, shown);
         flameTag(list, Fmt.number(r.flames), v(R.center(cols.center).x, cols.center.minY + TopBar.valueRow), Metrics.timerSize * pop, 'center', 'primary', shown);
+      } else if (summary.mode === 'chill') {
+        TopBar.addColumn(list, cols.center, 'center', title, Fmt.number(r.carsSent), { captionColor: titleColor, valueSize: Metrics.timerSize * pop, opacity: shown });
       } else {
         TopBar.addColumn(list, cols.center, 'center', title, Fmt.number(r.score), { captionColor: titleColor, valueSize: Metrics.timerSize * pop, opacity: shown });
       }
@@ -1230,7 +1269,7 @@ export const ResultBanner = {
         const [caption, value] = run.right;
         TopBar.addColumn(list, cols.right, 'trailing', caption, value, { valueSize: 16, opacity: shown });
       } else if (summary.isNewHighscore) {
-        TopBar.addColumn(list, cols.right, 'trailing', S.result.newBest, Fmt.number(summary.mode === 'mayhem' ? r.flames : r.score), { captionColor: 'accent', valueColor: 'accent', opacity: shown });
+        TopBar.addColumn(list, cols.right, 'trailing', S.result.newBest, Fmt.number(summary.mode === 'mayhem' ? r.flames : summary.mode === 'chill' ? r.carsSent : r.score), { captionColor: 'accent', valueColor: 'accent', opacity: shown });
       } else {
         TopBar.addColumn(list, cols.right, 'trailing', S.hud.bestLabel, summary.previousHighscore > 0 ? Fmt.number(summary.previousHighscore) : '–', {
           valueColor: summary.previousHighscore > 0 ? 'primary' : 'muted',
@@ -1254,7 +1293,9 @@ export const ResultBanner = {
         ? S.modes.again
         : summary.mode === 'mayhem'
           ? S.mayhem.again
-          : r.outcome === 'completed'
+          : summary.mode === 'chill'
+            ? S.chill.again
+            : r.outcome === 'completed'
             ? S.result.nextLevel(nextLevel)
             : S.result.retryLevel(nextLevel);
     list.s(text(next, island, 17, 'center', 'bold'), 'primary', prompt);
@@ -1265,7 +1306,8 @@ export const ResultBanner = {
     else if (r.covered > 0) list.s(text(S.result.covered(Fmt.number(r.covered)), sub(island, v(0, 28)), 14, 'center', 'bold'), 'muted', details);
     else if (summary.mode === 'unlimited') list.s(text(S.modes.carsSent(r.carsSent), sub(island, v(0, 28)), 14, 'center', 'bold'), 'accent', details);
     else if (summary.mode === 'mayhem') list.s(text(S.mayhem.summary(r.wrecks, r.biggestChain), sub(island, v(0, 28)), 14, 'center', 'bold'), 'fireOuter', details);
-    if (summary.mode !== 'mayhem') {
+    else if (summary.mode === 'chill') list.s(text(S.chill.summary(r.carsSent, Fmt.seconds(r.time)), sub(island, v(0, 28)), 14, 'center', 'bold'), 'lightBlue', details);
+    if (summary.mode !== 'mayhem' && summary.mode !== 'chill') {
       list.s(text(S.result.stats(r.bestCombo, r.tightFits, r.takedowns, r.transporters, Fmt.seconds(r.time)), add(island, v(0, 28)), 13, 'center'), 'muted', details);
     }
     const close = summary.closeCall;

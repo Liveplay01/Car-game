@@ -278,6 +278,19 @@ Nie in Truhen, Regal „Honours“, zählen zum Album „Honours“ (dort jetzt 
 
 Titel ohne Skin: ★6 Road Warden, ★8 Gridlord, ★11 Ringbearer, ★13 Unstoppable, ★16 Timekeeper, ★18 Paragon, ★25 Mythic, ★30 Ring Eternal; dazu Mastermind (alle Mastery-Ziele auf V), Summit (Aufstiegs-Trial ★10) und Syndicate's End (alle acht Bosse).
 
+## Tour-Skins (Leo, 07.10.2026, `core/tours.ts`)
+
+Nur an den Stopps 3, 5 und 7 einer Tour, nie in Truhen. Eine verpasste Tour kommt nächstes Jahr wieder. Regal „Honours“, eigenes Album „Tours“ (30.000, alle sechs); das Honours-Album verlangt sie nicht.
+
+| Skin | Tour | Seltenheit | Aussehen |
+|---|---|---|---|
+| Jack-o'-Lantern | Haunted Ring · Stopp 3 | Rare | Kürbisorange, schwarzer Streifen, Glitzer |
+| Witching Hour | Haunted Ring · Stopp 5 | Epic | Pflaume mit grünem Streifen, Aurora-Effekt |
+| Wraith | Haunted Ring · Stopp 7 (Phantom) | Legendary | Mitternacht, blauer Streifen, Geister-Effekt |
+| Candy Cane | Winter Lights · Stopp 3 | Rare | Rot mit weißem Streifen, Glanz |
+| Snow Globe | Winter Lights · Stopp 5 | Epic | Eisblau, Schneespur, Glitzer |
+| Midnight Sleigh | Winter Lights · Stopp 7 (Convoy) | Legendary | Rubinrot mit Gold, Lichtkrone |
+
 ## Alben
 
 Ein vollständiger Satz zahlt einmal Geld und legt einen Rahmen in seiner Farbe um den

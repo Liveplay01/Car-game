@@ -2,6 +2,11 @@ import { type Config, type CityEvent, type RoadModule, type LegendaryRule, CITY_
 import { UPGRADES, upgradeMaxSteps, type Upgrade } from './levels';
 import { type Career, type GameMode, GAME_MODES, Careers, newCareer } from './career';
 import { isInt } from './guards';
+import { type MutatorId, MUTATORS } from './mutators';
+import { forSeason } from './seasons';
+import type { Season } from './loot';
+
+const SEASONS: Season[] = ['winter', 'spring', 'summer', 'autumn'];
 
 /**
  * A shareable challenge (a link, no server): everything that makes up one shift, so a friend
@@ -25,6 +30,9 @@ export interface ChallengeSpec {
   prestige: number;
   /** The legendary rule of the shift, if it was a Legendary Shift. */
   legendary: LegendaryRule | null;
+  /** The Daily Shift's mutator and the season whose rule shaped the sky: both change what the traffic does. */
+  mutator: MutatorId | null;
+  season: Season | null;
 }
 
 // New types go at the end: a link stores their positions.
@@ -39,6 +47,8 @@ export function challengeOf(
   event: CityEvent | null,
   target: number,
   legendary: LegendaryRule | null = null,
+  mutator: MutatorId | null = null,
+  season: Season | null = null,
 ): ChallengeSpec {
   return {
     prestige: mode === 'shift' ? c.prestige : 0,
@@ -53,6 +63,8 @@ export function challengeOf(
     cars: CAR_TYPES.filter((id) => Careers.owns(c, id)),
     event,
     target: Math.max(0, Math.round(target)),
+    mutator,
+    season: mode === 'shift' ? season : null,
   };
 }
 
@@ -71,7 +83,7 @@ export function challengeCareer(s: ChallengeSpec): Career {
 }
 
 export function challengeConfig(s: ChallengeSpec, base: Config): Config {
-  return Careers.shiftConfig(challengeCareer(s), s.mode, base, s.seed, s.event, s.legendary);
+  return Careers.shiftConfig(challengeCareer(s), s.mode, forSeason(base, s.season), s.seed, s.event, s.legendary, s.mutator);
 }
 
 // MARK: Link text
@@ -109,6 +121,8 @@ export function encodeChallenge(s: ChallengeSpec): string {
     s.target,
     s.prestige,
     s.legendary ? LEGENDARY_RULES.indexOf(s.legendary) : -1,
+    s.mutator ? MUTATORS.indexOf(s.mutator) : -1,
+    s.season ? SEASONS.indexOf(s.season) : -1,
   ];
   return toBase64Url(JSON.stringify(packed));
 }
@@ -122,7 +136,7 @@ export function decodeChallenge(code: string): ChallengeSpec | null {
     return null;
   }
   if (!Array.isArray(packed) || packed[0] !== 1 || packed.length < 11) return null;
-  const [, seed, mode, level, ups, arms, mods, cars, , event, target, prestige, legendary] = packed as unknown[];
+  const [, seed, mode, level, ups, arms, mods, cars, , event, target, prestige, legendary, mutator, season] = packed as unknown[];
   if (!isInt(seed, 0, 0xffffffff) || !isInt(mode, 0, GAME_MODES.length - 1) || !isInt(level, 1, 999) || !isInt(target, 0, 1e9)) return null;
   if (!Array.isArray(ups) || !Array.isArray(arms) || !Array.isArray(mods) || !Array.isArray(cars)) return null;
   const upgrades: Partial<Record<Upgrade, number>> = {};
@@ -152,5 +166,7 @@ export function decodeChallenge(code: string): ChallengeSpec | null {
     target,
     prestige: isInt(prestige, 0, 99) ? prestige : 0,
     legendary: isInt(legendary, 0, LEGENDARY_RULES.length - 1) ? LEGENDARY_RULES[legendary] : null,
+    mutator: isInt(mutator, 0, MUTATORS.length - 1) ? MUTATORS[mutator] : null,
+    season: isInt(season, 0, SEASONS.length - 1) ? SEASONS[season] : null,
   };
 }

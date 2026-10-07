@@ -20,7 +20,9 @@ export type AscensionId = `ascension.${number}`;
 /** A Landmark: a famous roundabout, played as a trial (`landmark.etoile`). */
 export type LandmarkId = 'landmark.etoile';
 /** Every run that is played like a trial. */
-export type RunId = TrialId | RematchId | AscensionId | LandmarkId | 'weekly';
+/** A stop of a Tour (`tour.halloween.3`, core/tours.ts). */
+export type TourStopId = `tour.${string}.${number}`;
+export type RunId = TrialId | RematchId | AscensionId | LandmarkId | TourStopId | 'weekly';
 
 /** The Weekly Elite's shapes, one per week in turn (core/weekly.ts). */
 export type EliteKind = 'flawless' | 'precision' | 'storm' | 'gridlock' | 'dragnet' | 'boss';
@@ -53,6 +55,10 @@ export interface Trial {
   arms?: number;
   /** How much of the traffic those arms would bring: twelve roads at full strength would crash even the careful bot. */
   traffic?: number;
+  /** A stop of a Tour: which run of it (`halloween-2026`), the stop (1…), and the map its scene wears. */
+  tour?: { key: string; stop: number; map: string | null };
+  /** The boss this shift pins (a Tour stop); a rematch pins its own. */
+  boss?: BossKind;
 }
 
 const fixed = (t: Omit<Trial, 'legendary'>): Trial => ({ ...t, legendary: null });
@@ -224,7 +230,7 @@ export function trialConfig(t: Trial, base: Config): Config {
   // The boss trials always bring the convoy; the others never do. A rematch is its own boss, one round on.
   c.convoy = t.goal.k === 'boss';
   c.criminalFirst = c.convoy ? base.convoyFirst : shift.criminalFirst;
-  const pinned = rematchKind(t.id);
+  const pinned = rematchKind(t.id) ?? t.boss ?? null;
   if (pinned) applyBoss(c, base, pinned, 1);
   // The legendary rule last: it reads the shift's car count.
   return forLegendary(c, t.legendary);

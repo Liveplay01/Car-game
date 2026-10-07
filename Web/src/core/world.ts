@@ -262,7 +262,7 @@ export class World {
     this.criminal = { kind: 'idle', next: this.criminalRng.unit() < config.criminalChance ? first : Infinity };
     this.transporter = {
       kind: 'idle',
-      next: config.mayhem || config.players > 1 ? Infinity : this.transporterRng.range(config.transporterFirst.lo, config.transporterFirst.hi),
+      next: config.mayhem || config.chill || config.players > 1 ? Infinity : this.transporterRng.range(config.transporterFirst.lo, config.transporterFirst.hi),
     };
     const comes = this.militaryRng.unit() < config.militaryChance;
     this.military = { kind: 'idle', next: comes ? this.militaryRng.range(config.militaryFirst.lo, config.militaryFirst.hi) : Infinity };
@@ -1610,7 +1610,7 @@ export class World {
 
   /** The next car becomes a police car, for part of the combo (`dispatchComboFactor`). */
   dispatchPolice(): boolean {
-    if (!this.shift.acceptsTaps || this.queue.vehicles.length === 0) return false;
+    if (this.config.chill || !this.shift.acceptsTaps || this.queue.vehicles.length === 0) return false;
     const veh = this.vehicle(this.queue.vehicles[0]);
     if (!veh || veh.type === 'police') return false;
     veh.type = 'police';
@@ -1758,6 +1758,11 @@ export class World {
     this.endShift('completed', now);
   }
 
+  /** Chill has no end of its own: the player ends it. */
+  finish(): void {
+    if (this.shift.phase !== 'ended') this.endShift('completed', this.time);
+  }
+
   get isPerfectSoFar(): boolean {
     return this.score.strikes === 0 && this.score.policeCrashes === 0 && this.score.cutOffs === 0;
   }
@@ -1810,6 +1815,7 @@ export class World {
       shaves: s.shaves,
       criticals: s.criticals,
       jackpots: s.jackpots,
+      blasts: s.blasts,
     };
   }
 

@@ -53,6 +53,13 @@ const { ResultBanner } = await load('/src/present/hud.ts');
 // can still be pending when the tests above it have finished and `after` has closed the server.
 const { parseBackdropLink, youtubeEmbed } = await load('/src/present/backdrop.ts');
 const { prestigeReward, BIG_SCREEN } = await load('/src/core/loot.ts');
+const { MUTATORS, mutatorOf, mutatorSky } = await load('/src/core/mutators.ts');
+const { forSeason } = await load('/src/core/seasons.ts');
+const { drawWeather } = await load('/src/core/levels.ts');
+const { TOURS, tourOn, nextTour, tourTrial, tourStopOf, completeStop, tourStopsDone, stopDoneKey } = await load('/src/core/tours.ts');
+const { FAMILIES, Achievements, achievementTotal, STAT_KEYS, TIER_PAY } = await load('/src/core/achievements.ts');
+const { Skins } = await load('/src/present/skins.ts');
+const { albumItems } = await load('/src/core/loot.ts');
 
 // MARK: Rules
 
@@ -1852,4 +1859,260 @@ test('a cleared Daily Shift is kept for the Daily board, and both new boards are
   assert.deepEqual(list.find(([board]) => board === 'rush').slice(0, 2), ['rush', { cs: 12345 }]);
   assert.equal(list.find(([board]) => board === 'rush')[2], 10_000_000 - 12345, 'a faster time is a bigger number');
   assert.ok(!dueBoards({ ...records, dailyDay: -1, dailyScore: 0, rushBest: 0 }).some(([board]) => board === 'daily' || board === 'rush'), 'nothing to send without a clear');
+});
+
+
+// MARK: Mutators, seasons, tours, achievements, Chill (07.10.2026)
+
+const dayOf = (y, m, d) => Math.floor(Date.UTC(y, m - 1, d) / 86400000);
+
+test('every mutator comes once per cycle of days, and never twice running', () => {
+  const n = MUTATORS.length;
+  for (let cycle = 0; cycle < 30; cycle++) {
+    const seen = new Set();
+    for (let i = 0; i < n; i++) seen.add(mutatorOf(cycle * n + i));
+    assert.equal(seen.size, n, `cycle ${cycle} repeats one`);
+  }
+  for (let day = 20000; day < 20400; day++) assert.notEqual(mutatorOf(day), mutatorOf(day + 1), `day ${day}`);
+  assert.equal(mutatorOf(20123), mutatorOf(20123), 'the same for everyone');
+});
+
+test('a mutator pins its sky and its rule, and the Daily never counts as a Legendary Shift', () => {
+  const career = newCareer();
+  career.level = 30;
+  for (const id of MUTATORS) {
+    const cfg = Careers.shiftConfig(career, 'shift', baseConfig, 77, 'roadworks', null, id);
+    const pin = mutatorSky(id);
+    assert.equal(cfg.mutator, id);
+    assert.equal(cfg.legendary, null, `${id} must not pay a Legendary chest`);
+    if (pin.weather) assert.equal(cfg.weather, pin.weather);
+    if (pin.darkness) assert.equal(cfg.night, pin.darkness !== 'day');
+    if (pin.darkness === 'blackout') assert.equal(cfg.blackout, true);
+  }
+  const dragnet = Careers.shiftConfig(career, 'shift', baseConfig, 77, 'roadworks', null, 'dragnet');
+  assert.equal(dragnet.criminalChance, 1);
+  const open = Careers.shiftConfig(career, 'shift', baseConfig, 77, 'roadworks', null, 'openRoad');
+  const plain = Careers.shiftConfig(career, 'shift', baseConfig, 77, 'roadworks', null, null);
+  assert.equal(open.densityStart, Math.max(3, plain.densityStart - 2));
+});
+
+test('a season tilts the weather mix and leaves how bad it can get alone', () => {
+  const count = (cfg, kind) => {
+    let n = 0;
+    for (let seed = 1; seed <= 3000; seed++) if (drawWeather(cfg, 50, seed) === kind) n++;
+    return n;
+  };
+  const bad = (cfg) => {
+    let n = 0;
+    for (let seed = 1; seed <= 3000; seed++) if (drawWeather(cfg, 50, seed) !== 'clear') n++;
+    return n;
+  };
+  const winter = forSeason(baseConfig, 'winter');
+  const summer = forSeason(baseConfig, 'summer');
+  assert.equal(winter.season, 'winter');
+  assert.ok(count(winter, 'snow') > count(baseConfig, 'snow'), 'winter brings more snow');
+  assert.ok(bad(summer) < bad(baseConfig) && bad(forSeason(baseConfig, 'spring')) > bad(baseConfig), 'summer is clearer, spring wetter');
+  assert.equal(forSeason(baseConfig, null), baseConfig);
+  assert.equal(baseConfig.season, null, 'the base config is never changed');
+});
+
+test('a challenge link carries the twist and the season, and an older link still reads', () => {
+  const career = newCareer();
+  career.level = 12;
+  const spec = challengeOf(career, 'shift', 12, 4242, 'concert', 5000, null, 'fogBank', 'autumn');
+  const code = encodeChallenge(spec);
+  const back = decodeChallenge(code);
+  assert.equal(back.mutator, 'fogBank');
+  assert.equal(back.season, 'autumn');
+  const packed = JSON.parse(Buffer.from(code.replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString('utf8')).slice(0, 13);
+  const legacy = Buffer.from(JSON.stringify(packed)).toString('base64').replace(/[+]/g, '-').replace(/[/]/g, '_').replace(/=+$/, '');
+  const old = decodeChallenge(legacy);
+  assert.ok(old, 'a link from before still decodes');
+  assert.deepEqual([old.mutator, old.season], [null, null]);
+});
+
+test('a tour runs on its days, names its year, and crosses New Year', () => {
+  assert.equal(tourOn(dayOf(2026, 10, 7)), null);
+  assert.equal(tourOn(dayOf(2026, 10, 23)), null);
+  const first = tourOn(dayOf(2026, 10, 24));
+  assert.equal(first.tour.id, 'halloween');
+  assert.equal(first.key, 'halloween-2026');
+  assert.equal(first.daysLeft, 10);
+  assert.equal(tourOn(dayOf(2026, 11, 2)).daysLeft, 1);
+  assert.equal(tourOn(dayOf(2026, 11, 3)), null);
+  assert.equal(tourOn(dayOf(2026, 12, 31)).key, 'winter-2026');
+  assert.equal(tourOn(dayOf(2027, 1, 2)).key, 'winter-2026', 'named for the year it began in');
+  assert.equal(tourOn(dayOf(2027, 10, 25)).key, 'halloween-2027');
+  assert.equal(nextTour(dayOf(2026, 10, 7)).tour.id, 'halloween');
+  assert.equal(nextTour(dayOf(2026, 10, 7)).inDays, 17);
+});
+
+test('a tour stop follows the player, is the same traffic for everyone, and pays once', () => {
+  const run = tourOn(dayOf(2026, 10, 28));
+  const low = newCareer();
+  low.level = 12;
+  const high = newCareer();
+  high.level = 50;
+  const a = tourTrial(run, 3, low);
+  const b = tourTrial(run, 3, high);
+  assert.ok(b.level > a.level, 'the level follows the career');
+  assert.equal(a.seed, b.seed);
+  assert.equal(tourStopOf(a.id, dayOf(2026, 10, 28)).stop, 3);
+  assert.equal(tourStopOf(a.id, dayOf(2026, 11, 20)), null, 'over once the tour is');
+  const cfg = trialConfig(tourTrial(run, 7, high), baseConfig);
+  assert.equal(cfg.convoy, true);
+  assert.equal(cfg.bossKind, 'phantom');
+  const career = newCareer();
+  const money = career.money;
+  assert.ok(completeStop(career, run, 1));
+  assert.equal(career.money, money + 1500);
+  assert.equal(completeStop(career, run, 1), null);
+  completeStop(career, run, 3);
+  assert.ok(career.collection.includes('jackOLantern'));
+  assert.equal(tourStopsDone(career, run), 2);
+  assert.equal(career.toursDone.includes(stopDoneKey('halloween-2027', 1)), false, 'next year the stops are open again');
+});
+
+test('a passed tour stop settles through the special run and says so', () => {
+  const today = dayOf(2026, 10, 27);
+  const run = tourOn(today);
+  const career = newCareer();
+  career.level = 20;
+  const t = tourTrial(run, 2, career);
+  const win = { outcome: 'completed', tightFits: 0, nearMisses: 0, perfects: 0, bossBusted: false, time: 20 };
+  const first = settleSpecial({ k: 'trial', trial: t }, win, career, today, baseConfig);
+  assert.equal(career.chests.length, 1, 'stop 2 pays a Standard Chest');
+  assert.ok(first.news[0].includes('TOUR STOP 2/7'));
+  const again = settleSpecial({ k: 'trial', trial: t }, win, career, today, baseConfig);
+  assert.equal(career.chests.length, 1);
+  assert.deepEqual(again.news, []);
+  const lost = settleSpecial({ k: 'trial', trial: tourTrial(run, 1, career) }, { ...win, outcome: 'struckOut' }, career, today, baseConfig);
+  assert.equal(career.toursDone.length, 1);
+  assert.equal(lost.summary.color, 'destructive');
+});
+
+test('every tour reward is a real skin with a look, and the tours have an album', () => {
+  const items = COSMETICS.filter((x) => x.source.kind === 'tour');
+  assert.equal(items.length, 6);
+  for (const x of items) assert.ok(Skins.color(x.id), `${x.id} has a colour`);
+  const ids = new Set(items.map((x) => x.id));
+  for (const tour of TOURS) {
+    for (const stop of tour.stops) if (stop.reward.item) assert.ok(ids.has(stop.reward.item), `${stop.reward.item} is a tour skin`);
+    assert.equal(tour.stops.filter((s) => s.reward.item).length, 3);
+    assert.equal(tour.stops.at(-1).goal.k, 'boss');
+  }
+  assert.equal(albumItems('tours').length, 6);
+  assert.ok(!albumItems('honours').some((x) => x.source.kind === 'tour'), 'a missed tour does not block the Honours album');
+});
+
+test('achievements pay each tier once, count what the shift did, and survive the save', () => {
+  const save = newSave();
+  assert.equal(Achievements.sync(save).length, 0);
+  save.career.chestsOpened = 5;
+  save.career.stats.wrecks = 60;
+  const steps = Achievements.sync(save);
+  assert.deepEqual(steps.map((x) => `${x.family}.${x.tier}`).sort(), ['chestOpener.1', 'scrapyard.1']);
+  assert.equal(save.career.money, TIER_PAY[0] * 2);
+  assert.equal(Achievements.sync(save).length, 0, 'nothing is paid twice');
+  save.career.stats.wrecks = 5000;
+  assert.equal(Achievements.sync(save).filter((x) => x.family === 'scrapyard').length, 3);
+  assert.equal(achievementTotal(), FAMILIES.reduce((n, f) => n + f.tiers.length, 0));
+  for (const f of FAMILIES) {
+    assert.deepEqual(f.tiers, [...f.tiers].sort((a, b) => a - b), `${f.id} climbs`);
+    assert.ok(S.ach.name(f.id) !== f.id, `${f.id} has a name`);
+    assert.ok(S.ach.goal(f.id, f.tiers[0]).length > 0, `${f.id} has a goal`);
+  }
+  // Counters from a shift: bad weather and nights only count in a cleared career shift.
+  const c = newCareer();
+  const foggy = { ...forLevel(baseConfig, 40, 1), weather: 'fog', night: true, blackout: false, cityEvent: 'concert' };
+  Achievements.record(c, { ...completed(5), wrecks: 3, blasts: 2, carsSent: 20, money: 400 }, foggy, 'shift');
+  assert.deepEqual([c.stats.badWeather, c.stats.murky, c.stats.nights, c.stats.events, c.stats.wrecks, c.stats.blasts, c.stats.cars, c.stats.earned], [1, 1, 1, 1, 3, 2, 20, 400]);
+  Achievements.record(c, { ...completed(5), outcome: 'struckOut' }, foggy, 'shift');
+  assert.equal(c.stats.badWeather, 1, 'a lost shift does not count for the weather');
+  Achievements.record(c, completed(5), foggy, 'mayhem');
+  assert.equal(c.stats.badWeather, 1, 'Mayhem counts for nothing');
+  // The save keeps counters and tiers, and drops what it does not know.
+  const keep = newSave();
+  keep.career.stats = { wrecks: 12, bogus: 9 };
+  keep.career.achievements = ['scrapyard.1', 'nonsense.1'];
+  keep.career.toursDone = ['halloween-2026.3', 'garbage'];
+  keep.chillBest = 30;
+  keep.chillCars = 90;
+  keep.chillTime = 600;
+  fakeStorage();
+  writeSave(keep);
+  const back = loadSave();
+  assert.deepEqual(back.career.stats, { wrecks: 12 });
+  assert.deepEqual(back.career.achievements, ['scrapyard.1']);
+  assert.deepEqual(back.career.toursDone, ['halloween-2026.3']);
+  assert.deepEqual([back.chillBest, back.chillCars, back.chillTime], [30, 90, 600]);
+  assert.ok(STAT_KEYS.includes('wrecks'));
+});
+
+test('Chill never ends by itself, has nothing to lose, and ends when the player says so', () => {
+  const career = newCareer();
+  career.level = 40;
+  const cfg = Careers.shiftConfig(career, 'chill', baseConfig, 321);
+  assert.equal(cfg.chill, true);
+  assert.equal(cfg.endless, true);
+  assert.equal(cfg.criminalChance, 0);
+  assert.equal(cfg.militaryChance, 0);
+  assert.equal(cfg.tankerShare, 0);
+  assert.equal(cfg.shiftPay, 0);
+  const world = new World(cfg, 321, { startsOnFirstTap: false });
+  let ended = null;
+  let crashes = 0;
+  // Tap every half second, careful or not: crashes must not end the drive.
+  for (let i = 0; i < 120 * 120 && !ended; i++) {
+    if (i % 60 === 0 && world.queue.isReady) world.tap(world.time);
+    world.step();
+    for (const e of world.takeEvents()) {
+      if (e.type === 'crash' && e.isStrike) crashes++;
+      if (e.type === 'shiftEnded') ended = e.result;
+    }
+  }
+  assert.ok(crashes > 0, 'the reckless tapping did crash');
+  assert.equal(ended, null, 'no crash ended the drive');
+  assert.ok(world.shift.carsSent > 10);
+  world.finish();
+  const done = world.takeEvents().find((e) => e.type === 'shiftEnded');
+  assert.ok(done, 'finish ends the drive');
+  assert.equal(done.result.outcome, 'completed');
+  // Booking it touches nothing of the career.
+  const save = newSave();
+  save.career.money = 500;
+  save.career.level = 9;
+  const booked = bookShift(save, { ...done.result, carsSent: 42, time: 90 }, context(3, { mode: 'chill', shiftConfig: cfg }));
+  assert.equal(save.career.money, 500);
+  assert.equal(save.career.level, 9);
+  assert.deepEqual([save.chillBest, save.chillCars, save.chillTime], [42, 42, 90]);
+  assert.equal(booked.isNew, true);
+  bookShift(save, { ...done.result, carsSent: 10, time: 30 }, context(3, { mode: 'chill', shiftConfig: cfg }));
+  assert.deepEqual([save.chillBest, save.chillCars], [42, 52]);
+  fakeStorage();
+  save.mode = 'chill';
+  writeSave(save);
+  assert.equal(loadSave().mode, 'chill');
+  assert.equal(S.modes.name('chill'), 'CHILL');
+});
+
+test('the Daily Shift with its twist replays the same', () => {
+  const career = newCareer();
+  career.level = 25;
+  const make = () => Careers.shiftConfig(career, 'shift', forSeason(baseConfig, 'winter'), 555, 'vipConvoy', null, 'stormFront');
+  const once = () => {
+    const world = new World(make(), 555, { startsOnFirstTap: false });
+    for (let i = 0; i < 120 * 60; i++) {
+      if (careful(world)) world.tap(world.time);
+      world.step();
+      for (const e of world.takeEvents()) if (e.type === 'shiftEnded') return e.result;
+    }
+    return null;
+  };
+  const a = once();
+  const b = once();
+  assert.ok(a);
+  assert.equal(a.score, b.score);
+  assert.equal(a.carsSent, b.carsSent);
+  assert.equal(make().weather, 'storm');
 });

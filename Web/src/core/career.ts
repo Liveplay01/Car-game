@@ -17,6 +17,7 @@ import {
   drawNight,
   forCityEvent,
   forMayhem,
+  forChill,
   drawWeather,
   drawCityEvent,
   armPrice as configArmPrice,
@@ -46,6 +47,7 @@ import { randomSeed, Rng } from './rng';
 import { Elite, type EliteGain, type EliteStep, type TitleId, TITLES } from './elite';
 import type { HallEntry } from './seasonPass';
 import { clamp } from './vec2';
+import { type MutatorId, mutatorSky, withMutator } from './mutators';
 
 /** What counting a day into the Daily streak brought: a milestone item, Freezes used on missed days, a new Freeze. */
 export interface StreakNews {
@@ -56,8 +58,9 @@ export interface StreakNews {
   cards: number;
 }
 
-export type GameMode = 'shift' | 'unlimited' | 'mayhem';
-export const GAME_MODES: GameMode[] = ['shift', 'unlimited', 'mayhem'];
+// New modes go at the end: a challenge link stores their positions.
+export type GameMode = 'shift' | 'unlimited' | 'mayhem' | 'chill';
+export const GAME_MODES: GameMode[] = ['shift', 'unlimited', 'mayhem', 'chill'];
 
 export type ReduceMotion = 'system' | 'on' | 'off';
 
@@ -256,6 +259,12 @@ export interface Career {
   /** The Hall of Fame: built or not, and a plaque for every Prestige rank. */
   hallBuilt: boolean;
   hallOfFame: HallEntry[];
+  /** Tour stops passed, each once per run of its tour (`core/tours.ts`: `halloween-2026.3`). */
+  toursDone: string[];
+  /** Counters for the achievements that no other record keeps (`core/achievements.ts`). */
+  stats: Record<string, number>;
+  /** Achievement tiers paid, as `family.tier`. */
+  achievements: string[];
 }
 
 /**
@@ -282,6 +291,10 @@ export interface SaveGame {
   unlimitedBestCars: number;
   mayhemBest: number;
   mayhemBestChain: number;
+  /** Chill: the most cars in one run, all cars sent, and the seconds spent. */
+  chillBest: number;
+  chillCars: number;
+  chillTime: number;
   /** The Daily Shift cleared most recently: its day and score, for the Daily board. */
   dailyDay: number;
   dailyScore: number;
@@ -363,6 +376,9 @@ export const newCareer = (): Career => ({
   passClaimed: 0,
   hallBuilt: false,
   hallOfFame: [],
+  toursDone: [],
+  stats: {},
+  achievements: [],
 });
 
 export const newSave = (): SaveGame => ({
@@ -379,12 +395,18 @@ export const newSave = (): SaveGame => ({
   unlimitedBestCars: 0,
   mayhemBest: 0,
   mayhemBestChain: 0,
+  chillBest: 0,
+  chillCars: 0,
+  chillTime: 0,
   dailyDay: -1,
   dailyScore: 0,
   notesSeen: null,
 });
 
 export const MINIMUM_ARMS = 4;
+
+/** The skies Chill draws from: mostly clear. */
+const CHILL_WEATHER: Weather[] = ['clear', 'clear', 'lightRain', 'fog', 'snow'];
 
 /** All career rules as functions on the plain save data. */
 export const Careers = {
@@ -422,6 +444,7 @@ export const Careers = {
     weather: Weather | null = null,
     event: CityEvent | null | undefined = undefined,
     legendary: LegendaryRule | null | undefined = undefined,
+    mutator: MutatorId | null = null,
   ): Config {
     const cfg = cloneConfig(base);
     cfg.armSlots = [...c.armSlots];
@@ -433,10 +456,12 @@ export const Careers = {
     cfg.classicShare = Careers.owns(c, 'classic') ? base.classicShareOwned : 0;
     const level = c.level + Careers.headStart(c, base);
     const shift = upgraded(forArms(forLevel(cfg, level, seed, c.level)), (u) => Careers.steps(c, u));
-    const rule = legendary === undefined ? drawLegendary(shift, level, seed) : legendary;
+    const pinned = mutator ? mutatorSky(mutator) : {};
+    const rule = pinned.rule ?? (legendary === undefined ? drawLegendary(shift, level, seed) : legendary);
     const stormy = rule === 'darkStorm' ? 'storm' : null;
-    const sky = forNight(forWeather(shift, weather ?? stormy ?? drawWeather(shift, level, seed)), Careers.darkness(shift, rule, level, seed));
-    return forLegendary(forCityEvent(sky, event === undefined ? drawCityEvent(sky, level, seed) : event, seed), rule);
+    const sky = forNight(forWeather(shift, weather ?? pinned.weather ?? stormy ?? drawWeather(shift, level, seed)), pinned.darkness ?? Careers.darkness(shift, rule, level, seed));
+    const out = forLegendary(forCityEvent(sky, event === undefined ? drawCityEvent(sky, level, seed) : event, seed), rule);
+    return mutator ? withMutator(out, mutator) : out;
   },
 
   /** The phantom and the kingpin come in a blackout, and so does a Dark Storm; otherwise the seed decides. */
@@ -941,7 +966,15 @@ export const Careers = {
     seed: number,
     event: CityEvent | null | undefined = undefined,
     legendary: LegendaryRule | null | undefined = undefined,
+    mutator: MutatorId | null = null,
   ): Config {
+    if (mode === 'chill') {
+      // A calm sky and, now and then, an evening: drawn from the seed, never harsh.
+      const rng = new Rng((seed ^ 0xc41117) >>> 0);
+      const weather = rng.pick(CHILL_WEATHER);
+      const sky = Careers.config({ ...c, level: base.chillLevel, prestige: 0 }, base, seed, weather, null, null);
+      return forChill(forNight(sky, rng.unit() < 0.35 ? 'night' : 'day'));
+    }
     // Unlimited and Mayhem have their own fixed level: no Prestige head start, no legendary rule.
     if (mode === 'unlimited') {
       const cfg = Careers.config({ ...c, level: base.endlessLevel, prestige: 0 }, base, seed, null, event, null);
@@ -949,7 +982,7 @@ export const Careers = {
       return cfg;
     }
     if (mode === 'mayhem') return forMayhem(Careers.config({ ...c, level: base.mayhemLevel, prestige: 0 }, base, seed, null, event, null));
-    return Careers.config(c, base, seed, null, event, legendary);
+    return Careers.config(c, base, seed, null, event, legendary, mutator);
   },
 
   recordMastery(c: Career, r: ShiftResult): MasteryCompletion[] {

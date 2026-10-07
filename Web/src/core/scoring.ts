@@ -42,6 +42,8 @@ export class ScoreBoard {
   /** Critical Merges, and Jackpot transporters paid. */
   criticals = 0;
   jackpots = 0;
+  /** Tanker and bomb explosions this shift. */
+  blasts = 0;
   lastCrashAt: number | null = null;
 
   get merges(): number {

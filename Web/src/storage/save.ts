@@ -10,6 +10,7 @@ import { isObject } from '../core/guards';
 import { storage } from './store';
 import { sealOf } from './seal';
 import { PASS_TIERS, type HallEntry } from '../core/seasonPass';
+import { familyOf, STAT_KEYS } from '../core/achievements';
 
 const KEY = 'carGame.save.v2';
 const LEGACY_KEY = 'carGame.career.v1';
@@ -170,7 +171,21 @@ function readCareer(raw: unknown): Career {
       const e = x as Record<string, unknown>;
       return [{ rank: int(e.rank, 1, 1), day: int(e.day, -1), bosses: int(e.bosses, 0, 0), legendary: int(e.legendary, 0, 0), elite: int(e.elite, 0, 0) }];
     }).slice(0, 100),
+    toursDone: [...new Set(strings(raw.toursDone).filter((id) => /^[a-z]+-\d{4}\.\d{1,2}$/.test(id)))].slice(-200),
+    stats: readStats(raw.stats),
+    achievements: [...new Set(strings(raw.achievements).filter((id) => familyOf(id.split('.')[0]) !== undefined))],
   };
+}
+
+/** Counters are whole numbers; the ones the game does not know are dropped. */
+function readStats(raw: unknown): Record<string, number> {
+  const stats: Record<string, number> = {};
+  if (!isObject(raw)) return stats;
+  for (const key of STAT_KEYS) {
+    const n = int(raw[key], 0, 0);
+    if (n > 0) stats[key] = n;
+  }
+  return stats;
 }
 
 /** Ranks reached before the Hall of Fame kept plaques get one each, without a date. */
@@ -238,6 +253,9 @@ function readSave(raw: unknown): SaveGame {
     unlimitedBestCars: int(raw.unlimitedBestCars, 0, 0),
     mayhemBest: int(raw.mayhemBest, 0, 0),
     mayhemBestChain: int(raw.mayhemBestChain, 0, 0),
+    chillBest: int(raw.chillBest, 0, 0),
+    chillCars: int(raw.chillCars, 0, 0),
+    chillTime: int(raw.chillTime, 0, 0),
     dailyDay: int(raw.dailyDay, -1),
     dailyScore: int(raw.dailyScore, 0, 0),
     notesSeen: typeof raw.notesSeen === 'string' ? raw.notesSeen : null,

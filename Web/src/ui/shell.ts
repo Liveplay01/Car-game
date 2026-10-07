@@ -93,6 +93,8 @@ export class Shell {
   private focusByKeyboard = false;
   private readonly settingsBtn: HTMLButtonElement;
   private readonly dispatchBtn: HTMLButtonElement;
+  /** Chill has no end of its own: this ends the drive. */
+  private readonly doneBtn: HTMLButtonElement;
   private readonly friendsBtn: HTMLButtonElement;
   private readonly photoBtn: HTMLButtonElement;
   private readonly photo: PhotoView;
@@ -184,7 +186,13 @@ export class Shell {
       icon(ICONS.siren),
       keycap('D'),
     );
-    for (const b of [this.settingsBtn, this.dispatchBtn]) b.addEventListener('pointerdown', (e) => e.stopPropagation());
+    this.doneBtn = h(
+      'button',
+      { class: 'icon-btn glass float-btn done-btn', type: 'button', 'aria-label': S.chill.doneLabel, onclick: () => this.push({ k: 'finishChill' }) },
+      icon(ICONS.check),
+      h('span', {}, S.chill.done),
+    );
+    for (const b of [this.settingsBtn, this.dispatchBtn, this.doneBtn]) b.addEventListener('pointerdown', (e) => e.stopPropagation());
     // Friends: the code, the invite link, challenging a friend with the shift on screen, and the way to Multiplayer. In a challenge or trial: leave it.
     this.friendsBtn = h('button', { class: 'btn glass run-btn', type: 'button', 'aria-haspopup': 'dialog', onclick: () => this.openFriends() }, icon(ICONS.people), h('span', {}, 'Friends'));
     // Under any result: the picture on the screen, to send or keep.
@@ -287,8 +295,8 @@ export class Shell {
       h('button', { class: 'react-btn', type: 'button', 'aria-label': `React ${r}`, 'aria-keyshortcuts': String(i + 1), onclick: () => this.versus.react(r) }, REACTION_EMOJI[r]),
     );
     this.reactBar = h('div', { class: 'react-bar', role: 'group', 'aria-label': 'Reactions' }, ...reactButtons, this.revengeBtn);
-    for (const b of [this.settingsBtn, this.dispatchBtn, this.friendsBtn, this.photoBtn, this.leaveBtn, this.againBtn, this.lobbyBtn, quitBtn, this.reactBar]) b.addEventListener('pointerdown', (e) => e.stopPropagation());
-    app.append(this.settingsBtn, this.dispatchBtn, runBar, this.reactBar, this.versusBar);
+    for (const b of [this.settingsBtn, this.dispatchBtn, this.doneBtn, this.friendsBtn, this.photoBtn, this.leaveBtn, this.againBtn, this.lobbyBtn, quitBtn, this.reactBar]) b.addEventListener('pointerdown', (e) => e.stopPropagation());
+    app.append(this.settingsBtn, this.dispatchBtn, this.doneBtn, runBar, this.reactBar, this.versusBar);
     this.detail = new DetailSheet(
       app,
       (action) => {
@@ -417,7 +425,7 @@ export class Shell {
       : '';
     let badgeKey = '';
     for (const b of badges) badgeKey += b === null ? '-' : b === 'dot' ? '.' : `${b.count};`;
-    const key = `${screen.k}|${selected}|${badgeKey}|${s.world.shift.phase}|${s.special?.k ?? ''}|${s.shareable ? 1 : 0}|${match ? 1 : 0}|${versusKey}|${s.save.settings.leftHanded}|${s.notesUnread}`;
+    const key = `${screen.k}|${selected}|${badgeKey}|${s.world.shift.phase}|${s.playingMode}|${s.special?.k ?? ''}|${s.shareable ? 1 : 0}|${match ? 1 : 0}|${versusKey}|${s.save.settings.leftHanded}|${s.notesUnread}`;
     if (!force && key === this.chromeKey) return;
     this.chromeKey = key;
     reportGameplay(screen.k === 'playing' && !document.hidden);
@@ -448,12 +456,14 @@ export class Shell {
     }
     // Settings come back as soon as a shift is over, on the result as on the waiting screen.
     this.settingsBtn.classList.toggle('show', screen.k === 'ready' || screen.k === 'result');
-    this.dispatchBtn.classList.toggle('show', screen.k === 'playing');
+    const chill = s.playingMode === 'chill';
+    this.dispatchBtn.classList.toggle('show', screen.k === 'playing' && !chill);
+    this.doneBtn.classList.toggle('show', screen.k === 'playing' && chill);
     const onGame = screen.k === 'ready' || screen.k === 'result';
     this.friendsBtn.classList.toggle('show', onGame && leaderboardEnabled && !inPortal);
     this.photoBtn.classList.toggle('show', screen.k === 'result' && !match);
     this.leaveBtn.classList.toggle('show', onGame && s.special !== null);
-    this.leaveLabel.textContent = s.special?.k === 'trial' ? 'Leave trial' : 'Leave challenge';
+    this.leaveLabel.textContent = s.special?.k === 'trial' ? (s.special.trial.tour ? 'Leave tour' : 'Leave trial') : 'Leave challenge';
     if (screen.k === 'settings' && !isSheetOpen()) this.showSettingsSheet();
     if (screen.k !== 'settings' && this.closeSettings) {
       const close = this.closeSettings;

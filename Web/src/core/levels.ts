@@ -339,11 +339,13 @@ function weatherWeight(c: Config, w: Weather): number {
 /** The weather of one shift at `level`, drawn from the seed. */
 export function drawWeather(c: Config, level: number, seed: number): Weather {
   const rng = new Rng((seed ^ 0x7e571a2b) >>> 0);
-  const chance = Math.min(c.maxBadWeatherChance, c.badWeatherPerLevel * Math.max(0, level - c.lightRainLevel + 1));
+  const raw = Math.min(c.maxBadWeatherChance, c.badWeatherPerLevel * Math.max(0, level - c.lightRainLevel + 1));
+  // A season tilts the odds a little, also where the level already holds them at the limit.
+  const chance = Math.min(c.maxBadWeatherChance * 1.5, raw * c.weatherChanceBias);
   if (chance <= 0 || rng.unit() >= chance) return 'clear';
   const options = WEATHERS.filter((w) => w !== 'clear' && firstLevelOf(c, w) <= level);
   if (options.length === 0) return 'clear';
-  const weights = options.map((w) => weatherWeight(c, w));
+  const weights = options.map((w) => weatherWeight(c, w) * (c.weatherBias[w] ?? 1));
   let pick = rng.unit() * weights.reduce((a, b) => a + b, 0);
   for (let i = 0; i < options.length; i++) {
     pick -= weights[i];
@@ -415,7 +417,7 @@ export type Darkness = 'day' | 'night' | 'blackout';
 export function drawNight(c: Config, level: number, seed: number): Darkness {
   if (level < c.nightLevel) return 'day';
   const rng = new Rng((seed ^ 0x6e176e17) >>> 0);
-  const chance = Math.min(c.maxNightChance, c.nightChancePerLevel * (level - c.nightLevel + 1));
+  const chance = Math.min(c.maxNightChance, c.nightChancePerLevel * (level - c.nightLevel + 1) * c.nightBias);
   if (rng.unit() >= chance) return 'day';
   return level >= c.blackoutLevel && rng.unit() < c.blackoutChance ? 'blackout' : 'night';
 }
@@ -528,6 +530,41 @@ export function forLegendary(base: Config, rule: LegendaryRule | null): Config {
       c.trialRule = 'flawless';
       break;
   }
+  return c;
+}
+
+/**
+ * Chill (Leo, 07.10.2026): the calm mode. Unlimited's endless queue at a gentle, even pace, with
+ * nothing that can end it: no strikes, no police, no specials, no money. Crashes still happen and
+ * the traffic still reacts; the run ends when the player says so (`World.finish`).
+ */
+export function forChill(base: Config): Config {
+  const c = cloneConfig(base);
+  c.endless = true;
+  c.chill = true;
+  c.maxStrikes = Infinity;
+  c.maxPoliceCrashes = Infinity;
+  c.endlessStages = [];
+  c.endlessMaxDensityBonus = 0;
+  c.endlessTempoPerMinute = 0;
+  c.endlessPayPerCar = 0;
+  c.densityStart = base.chillDensity;
+  c.densityEnd = base.chillDensity;
+  c.tempoStart = base.chillTempo;
+  c.tempoEnd = base.chillTempo;
+  c.endlessMaxTempo = base.chillTempo;
+  c.criminalChance = 0;
+  c.policeShare = 0;
+  c.ambulanceChance = 0;
+  c.learnerChance = 0;
+  c.oversizeChance = 0;
+  c.racerChance = 0;
+  c.militaryChance = 0;
+  c.tankerShare = 0;
+  c.shiftPay = 0;
+  c.completionBonus = 0;
+  c.perfectRunPoints = 0;
+  c.criticalChance = 0;
   return c;
 }
 

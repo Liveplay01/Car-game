@@ -124,6 +124,12 @@ export const Skins = {
       dragon: 'skinRuby',
       glowtide: 'mapGlowtide',
       moonmirror: 'mapMoonmirror',
+      jackOLantern: 'skinPumpkin',
+      witchingHour: 'skinPlum',
+      wraith: 'skinMidnight',
+      candyCane: 'skinRacingRed',
+      snowGlobe: 'skinIce',
+      sleigh: 'skinRuby',
     };
     return id ? (map[id] ?? null) : null;
   },
@@ -205,6 +211,17 @@ export const Skins = {
         return 'mapGlowtide';
       case 'dragon':
         return 'skinGold';
+      case 'jackOLantern':
+        return 'vehicleTire';
+      case 'witchingHour':
+        return 'juiceGreen';
+      case 'wraith':
+        return 'lightBlue';
+      case 'candyCane':
+      case 'snowGlobe':
+        return 'skinPearl';
+      case 'sleigh':
+        return 'skinGold';
       default:
         return null;
     }
@@ -241,6 +258,10 @@ export const Skins = {
       chrono: 'chrono',
       biolume: 'biolume',
       dragon: 'dragon',
+      witchingHour: 'aurora',
+      wraith: 'ghost',
+      snowGlobe: 'snowTrail',
+      sleigh: 'halo',
     };
     return id ? (map[id] ?? null) : null;
   },
@@ -314,7 +335,14 @@ export const Skins = {
       case 'dragon':
         return 'shinyGlitter';
       case 'biolume':
+      case 'wraith':
+      case 'candyCane':
         return 'shiny';
+      case 'jackOLantern':
+      case 'snowGlobe':
+        return 'glitter';
+      case 'sleigh':
+        return 'shinyGlitter';
       case 'northernLights':
       case 'thunder':
       case 'neonWave':

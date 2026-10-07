@@ -89,6 +89,7 @@ export const CityLayer = {
         loyalty: 'skinBronze',
         honours: 'skinPhoenix',
         pass: 'mapNeon',
+        tours: 'skinPumpkin',
       } as const
     )[album];
   },

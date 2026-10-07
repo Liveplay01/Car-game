@@ -7,6 +7,7 @@ import { challengeReward } from '../core/daily';
 import { Unlocks } from '../core/unlocks';
 import { tierOf, UNLIMITED_MARKS } from '../core/tiers';
 import { heatXp } from '../core/heat';
+import { Achievements } from '../core/achievements';
 import { S, Fmt } from './strings';
 
 /** What a finished career shift needs to know besides its result. */
@@ -48,6 +49,15 @@ export function bookShift(save: SaveGame, result: ShiftResult, ctx: ShiftContext
     save.mayhemBestChain = Math.max(save.mayhemBestChain, result.biggestChain);
     return { isNew, previous, bank: { before: career.money, after: career.money }, news: [], due: [] };
   }
+  if (ctx.mode === 'chill') {
+    // Nothing is won or lost here: the drive only counts for the records of the mode.
+    const previous = save.chillBest;
+    const isNew = result.carsSent > previous;
+    if (isNew) save.chillBest = result.carsSent;
+    save.chillCars += result.carsSent;
+    save.chillTime += Math.round(result.time);
+    return { isNew, previous, bank: { before: career.money, after: career.money }, news: [], due: [] };
+  }
   const unlimited = ctx.mode === 'unlimited';
   const previous = unlimited ? save.unlimitedBest : save.highscore;
   const isNew = (unlimited || result.outcome === 'completed') && result.score > previous;
@@ -69,6 +79,7 @@ export function bookShift(save: SaveGame, result: ShiftResult, ctx: ShiftContext
   const openBefore = Unlocks.open(career, ctx.config);
   const levelBefore = career.level;
   Careers.record(career, result, ctx.level);
+  Achievements.record(career, result, ctx.shiftConfig, ctx.mode);
   const news: string[] = milestones.map((id) => S.modes.milestone(id));
   const heat = ctx.mode === 'shift' && !ctx.daily ? ctx.shiftConfig.heat : 0;
   if (heat > 0 && result.outcome === 'completed' && Careers.recordHeat(career, heat, ctx.config)) news.push(S.heat.cleared(heat, Careers.maxHeat(career, ctx.config)));
@@ -108,6 +119,7 @@ export function bookShift(save: SaveGame, result: ShiftResult, ctx: ShiftContext
   if (legendary) news.push(S.legendary.done(legendary.item));
   const pay = ctx.daily && result.outcome === 'completed' ? Careers.completeDaily(career, ctx.today, ctx.config) : null;
   if (pay !== null) {
+    Achievements.countDaily(career);
     save.dailyDay = ctx.today;
     save.dailyScore = result.score;
   }

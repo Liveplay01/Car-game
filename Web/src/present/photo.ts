@@ -27,20 +27,23 @@ export const PhotoCard = {
     const r = summary.result;
     const [headline, tint] = ResultBanner.title(summary);
     const mayhem = summary.mode === 'mayhem';
-    const value = Fmt.number(mayhem ? r.flames : r.score);
-    const facts = mayhem
+    const chill = summary.mode === 'chill';
+    const value = Fmt.number(mayhem ? r.flames : chill ? r.carsSent : r.score);
+    const facts = chill
+      ? [Fmt.seconds(r.time)]
+      : mayhem
       ? [r.wrecks > 0 ? S.photo.wrecks(r.wrecks) : null, r.biggestChain > 1 ? S.photo.chain(r.biggestChain) : null, Fmt.seconds(r.time)]
       : [r.bestCombo > 1 ? S.photo.combo(r.bestCombo) : null, r.tightFits > 0 ? S.photo.tightFits(r.tightFits) : null, r.takedowns > 0 ? S.photo.busted(r.takedowns) : null, Fmt.seconds(r.time)];
     return {
       headline,
       tint,
       score: value,
-      scoreLabel: mayhem ? S.photo.flames : S.photo.score,
+      scoreLabel: mayhem ? S.photo.flames : chill ? S.photo.cars : S.photo.score,
       newBest: summary.isNewHighscore && !summary.run,
       facts: facts.filter((x): x is string => x !== null).slice(0, 3),
       place: mapSkin ? S.shop.item(mapSkin) : S.photo.city,
       mapColor: Skins.color(mapSkin),
-      hook: mayhem ? S.photo.hookFlames(value) : S.photo.hook(value),
+      hook: mayhem ? S.photo.hookFlames(value) : chill ? S.photo.hookChill : S.photo.hook(value),
     };
   },
 };

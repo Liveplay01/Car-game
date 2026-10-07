@@ -64,6 +64,11 @@ import { Feedback, Music, type MusicMix, type SoundID, type HapticID } from './f
 import { Details, type Detail } from './detail';
 import { TyreMarks } from './marks';
 import { type ChallengeSpec, challengeOf, challengeConfig, encodeChallenge } from '../core/challenge';
+import { forSeason } from '../core/seasons';
+import { mutatorOf } from '../core/mutators';
+import { Achievements } from '../core/achievements';
+import { tourOn, tourTrial, tourStopOf, tourOpen, TOUR_LEVEL } from '../core/tours';
+import { seasonOf } from '../core/loot';
 import { TRIALS, ASCENSIONS, LANDMARKS, trial as trialById, trialConfig, trialOpen, trialProgress, rematchId, rushOpen } from '../core/trials';
 
 /** What the platform reports; key and touch mapping stays in `main.ts`. */
@@ -73,6 +78,8 @@ export type InputAction =
   | { k: 'back' }
   | { k: 'restart' }
   | { k: 'dispatch' }
+  /** Chill has no end of its own: the player ends the drive. */
+  | { k: 'finishChill' }
   | { k: 'focusLost' }
   | { k: 'focusGained' }
   | { k: 'pointerDown'; p: Vec2; ago?: number }
@@ -321,6 +328,9 @@ export class GameSession {
   }
 
   private persist(): void {
+    const earned = Achievements.sync(this.save);
+    if (earned.length > 3) this.announce(S.ach.many(earned.length, Fmt.number(earned.reduce((n, e) => n + e.reward, 0))));
+    else if (earned.length > 0) this.announce(...earned.map((e) => S.ach.reached(e.family, e.tier, Fmt.number(e.reward))));
     this.store();
     // A better level or Unlimited record goes to the leaderboard; nothing happens without a name.
     void syncScores(this.leaderboardRecords);
@@ -730,9 +740,19 @@ export class GameSession {
   private shiftConfig(seed: number): Config {
     // The Daily Shift pins its city event and is never a Legendary Shift.
     const daily = this.dailySelected;
-    const base = Careers.shiftConfig(this.save.career, this.save.mode, this.config, seed, daily ? dailyEvent(this.today) : undefined, daily ? null : undefined);
+    // The season tilts the sky of career shifts; the Daily Shift also carries the day's twist.
+    const season = this.save.mode === 'shift' ? seasonOf(this.today) : null;
+    const base = Careers.shiftConfig(
+      this.save.career,
+      this.save.mode,
+      forSeason(this.config, season),
+      seed,
+      daily ? dailyEvent(this.today) : undefined,
+      daily ? null : undefined,
+      daily ? mutatorOf(this.today) : null,
+    );
     // A living Daily streak, a waiting Tailwind and a chosen Heat pay more on a career shift (Mayhem pays in flames).
-    if (this.save.mode === 'mayhem') return base;
+    if (this.save.mode === 'mayhem' || this.save.mode === 'chill') return base;
     const heat = !daily && this.save.mode === 'shift' ? Careers.activeHeat(this.save.career, this.config) : 0;
     const cfg = forHeat(base, heat);
     const bonus = (Goals.streakBonus(this.save.career, this.today, this.config) ? this.config.streakBonusPay : 0) + (Goals.tailwindOn(this.save.career, this.save.mode, daily) ? this.config.tailwindPay : 0) + heatPay(heat, this.config);
@@ -754,7 +774,25 @@ export class GameSession {
     this.startSpecial({ k: 'challenge', spec });
   }
 
+  /** Stop `stop` (1…) of the tour running today; it waits, ready to play, on the Game tab. */
+  startTour(stop: number): void {
+    const run = tourOn(this.today);
+    const career = this.save.career;
+    if (!run) return;
+    if (!tourOpen(career)) {
+      this.showNotice(S.tours.locked(TOUR_LEVEL));
+      return;
+    }
+    const t = tourTrial(run, stop, career);
+    if (t) this.startSpecial({ k: 'trial', trial: t });
+  }
+
   startTrial(id: string): void {
+    const tour = tourStopOf(id, this.today);
+    if (tour) {
+      this.startTour(tour.stop);
+      return;
+    }
     const t = trialById(id);
     if (!t) return;
     // A mastery trial above the career's level is not played yet (rematches and the Weekly
@@ -1365,6 +1403,9 @@ export class GameSession {
       case 'dispatch':
         if (this.screen.k === 'playing') this.world.dispatchPolice();
         break;
+      case 'finishChill':
+        if (this.screen.k === 'playing' && this.playingMode === 'chill') this.world.finish();
+        break;
       case 'focusLost':
         if (this.screen.k === 'playing') this.isInterrupted = true;
         break;
@@ -1464,6 +1505,9 @@ export class GameSession {
       case 'rush':
         this.startRush();
         break;
+      case 'tour':
+        this.startTour(target.stop);
+        break;
       case 'feat':
         if (p.feat !== target.id) this.tick();
         p.feat = target.id;
@@ -1540,6 +1584,8 @@ export class GameSession {
   private noteSightings(): void {
     // The tutorial teaches the first shift itself; what it meets there is met again right after.
     if (this.tutorial && !this.tutorial.isOver) return;
+    // Chill is not part of the career: what rolls past there is not met yet.
+    if (this.world.config.chill) return;
     const seen = sightings(this.world);
     // A briefing owed from a shift that ended too soon comes when its vehicle is back.
     if (this.owed.size > 0) for (const id of seen) if (this.owed.has(id)) this.brief(museumEntry(id));
@@ -1552,7 +1598,7 @@ export class GameSession {
 
   /** Whether briefings belong on the top card now: a shift of your own, past the tutorial. */
   private get briefs(): boolean {
-    return this.screen.k === 'playing' && !this.versusSelected && this.playingMode !== 'mayhem' && (this.tutorial?.isOver ?? true);
+    return this.screen.k === 'playing' && !this.versusSelected && this.playingMode !== 'mayhem' && this.playingMode !== 'chill' && (this.tutorial?.isOver ?? true);
   }
 
   /**
@@ -2026,7 +2072,7 @@ export class GameSession {
       return;
     }
     // Any finished shift can go to a friend as a challenge (not while learning the game).
-    this.shareable = save.tutorialDone
+    this.shareable = save.tutorialDone && this.playingMode !== 'chill'
       ? challengeOf(
           career,
           this.playingMode,
@@ -2035,6 +2081,8 @@ export class GameSession {
           this.world.config.cityEvent,
           this.playingMode === 'mayhem' ? result.flames : result.score,
           this.world.config.legendary,
+          this.world.config.mutator,
+          this.world.config.season,
         )
       : null;
     if (this.tutorial && this.playingMode !== 'mayhem') {
@@ -2071,7 +2119,7 @@ export class GameSession {
       this.resultCountdown = this.resultDelayFor(result);
       return;
     }
-    this.pendingSummary = { result, level: this.playingLevel, isNewHighscore: isNew, previousHighscore: previous, mode: this.playingMode, closeCall: this.closeCall(result, previous) };
+    this.pendingSummary = { result, level: this.playingLevel, isNewHighscore: isNew, previousHighscore: previous, mode: this.playingMode, closeCall: this.playingMode === 'chill' ? null : this.closeCall(result, previous) };
     this.resultCountdown = this.resultDelayFor(result);
   }
 
@@ -2172,14 +2220,16 @@ export class GameSession {
     const world = this.world;
     const career = this.save.career;
     const screen = seeThrough && career.mapSkin === BIG_SCREEN;
-    const theme = MapTheme.from(career.mapSkin);
+    // A tour stop is drawn on the tour's own map, whatever the player wears.
+    const mapSkin = this.special?.k === 'trial' && this.special.trial.tour?.map ? this.special.trial.tour.map : career.mapSkin;
+    const theme = MapTheme.from(mapSkin);
     const list = new RenderList(camera, MapTheme.ground(theme));
     // A device that cannot keep 30 fps leaves out the decoration (`lowDetail`), never the game.
     list.groundGrain = !this.lowDetail;
     if (screen) list.backdrop = GameSession.backdropVeil;
     else CityLayer.add(list, world, theme, rm ? null : this.sceneTime, rm ? null : this.cityPulse, this.scars.isEmpty ? null : this.scars, this.sceneTime, this.playingMode === 'shift' && !this.special ? this.cityRise : null, !this.lowDetail);
     SceneBuilder.addRoad(list, world.layout, world.config);
-    CityLayer.addMapSkin(list, Skins.color(career.mapSkin), world);
+    CityLayer.addMapSkin(list, Skins.color(mapSkin), world);
     MapTheme.addIsland(list, theme, world);
     if (!this.special) CityLayer.addElite(list, Elite.level(career, this.config), world);
     if (!this.special) CityLayer.addHall(list, career.hallBuilt, career.prestige, world);
@@ -2340,7 +2390,8 @@ export class GameSession {
   }
 
   get currentBest(): string | null {
-    const best = this.playingMode === 'shift' ? this.save.highscore : this.playingMode === 'unlimited' ? this.save.unlimitedBest : this.save.mayhemBest;
+    const best =
+      this.playingMode === 'shift' ? this.save.highscore : this.playingMode === 'unlimited' ? this.save.unlimitedBest : this.playingMode === 'chill' ? this.save.chillBest : this.save.mayhemBest;
     return best > 0 ? Fmt.number(best) : null;
   }
 
@@ -2366,6 +2417,7 @@ export class GameSession {
           bonus: Goals.streakBonus(career, this.today, this.config) ? this.config.streakBonusPay : null,
           endsIn: streakEndsIn(career, this.today, this.config),
           freezes: career.streakFreezes,
+          mutator: this.world.config.mutator,
         }
       : null;
     // The next goal in reach: only on a plain career shift, never over a challenge, trial or match.
@@ -2405,6 +2457,7 @@ export class GameSession {
 
   /** The ready screen's card: what a trial's goal asks for, then the conditions new to this player. */
   private get readyIntro(): ConditionIntro[] {
+    if (this.playingMode === 'chill') return [];
     const howTo = this.special?.k === 'trial' ? S.trials.howTo(this.special.trial) : null;
     return [...(howTo ? [howTo] : []), ...conditionIntro(this.world.config, this.save.career)];
   }

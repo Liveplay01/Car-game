@@ -51,6 +51,8 @@ export interface ShiftResult {
   /** Critical Merges this shift, and Jackpot transporters paid. */
   criticals: number;
   jackpots: number;
+  /** Tanker and military-truck explosions. */
+  blasts: number;
 }
 
 export interface ComboChange {
