@@ -430,8 +430,10 @@ export const CasinoGames = {
     const radius = base * shrink;
     const u = shrink;
     const top = -Math.PI / 2;
-    const bet = spin ? spin.bet : state.bet;
-    const at = (a: number, d: number): Vec2 => add(center, mul(fromAngle(a), d));
+    // After a round the old result stays up; a new pick takes over the lit exits and the island.
+    const repicked = done && spin !== null && state.bet !== spin.bet;
+    const bet = spin && !repicked ? spin.bet : state.bet;
+    const at =(a: number, d: number): Vec2 => add(center, mul(fromAngle(a), d));
     const age = run ? (reduceMotion ? rouletteEnd : run.age) : 0;
     const driveAge = Math.min(age, TIMES.rouletteDrive);
     const turn = run ? rouletteTurn(run, driveAge) : 0;
@@ -452,11 +454,11 @@ export const CasinoGames = {
       let pop = 1;
       if (run && !done && !reduceMotion && passed > 0 && i === lastExit) pop += 0.35 * (1 - frac) ** 2;
       if (hit) pop += 0.35 * (reduceMotion ? 1 : Ease.spring(Ease.clamp01(since / 0.45)));
-      const o = enter * (done ? (hit ? 1 : 0.28) : mine ? 1 : 0.5);
+      const o = enter * (done ? (hit || (repicked && mine) ? 1 : 0.28) : mine ? 1 : 0.5);
       list.s(line(at(a, radius + 14 * u), at(a, radius + 22 * u), 7 * u), 'marking', 0.5 * o);
       const tile = at(a, radius + 32 * u);
       if (hit && !reduceMotion) MenuKit.glow(list, tile, 30 * u, won ? 'accent' : tint, (won ? 0.7 : 0.45) * enter * (0.8 + 0.2 * Math.sin(since * 9)));
-      if (mine && !done) list.s(rect(tile, v(25 * u * pop, 25 * u * pop), 8 * u), 'primary', 0.9 * o);
+      if (mine && (!done || repicked)) list.s(rect(tile, v(25 * u * pop, 25 * u * pop), 8 * u), 'primary', 0.9 * o);
       if (hit && won) list.s(rect(tile, v(26 * u * pop, 26 * u * pop), 8 * u), 'accent', enter);
       list.s(rect(tile, v(20 * u * pop, 20 * u * pop), 6 * u), tint, o);
     }
@@ -489,7 +491,7 @@ export const CasinoGames = {
     // The island: the bet and what it pays; a win counts up here.
     list.s(circle(center, radius - 20 * u), 'cardRaised', enter);
     const pay = Casino.roulettePay(bet, cfg);
-    CasinoPage.symbol(list, bet, v(center.x, center.y - 7), Math.min(radius * 0.7, 46), enter * (done && !won ? 0.5 : 1), 0);
+    CasinoPage.symbol(list, bet, v(center.x, center.y - 7), Math.min(radius * 0.7, 46), enter * (done && !won && !repicked ? 0.5 : 1), 0);
     drawText(list, `${pay.toFixed(2)}×`, v(center.x, center.y + Math.min(radius * 0.42, 32)), 13, 'primary', { weight: 'bold', align: 'center', opacity: enter });
 
     const under = v(R.center(stage).x, stage.maxY - 40);

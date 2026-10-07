@@ -164,12 +164,13 @@ export const ProgressPage = {
     const m = c.mastery;
     const P = S.progress;
     const count = (n: number): string => (n > 0 ? Fmt.number(n) : P.none);
+    const owned = COSMETICS.filter((x) => Careers.owns(c, x.id)).length;
     return [
       { label: P.level, value: Fmt.number(c.level) },
       { label: P.highscore, value: count(save.highscore) },
       { label: P.bestCombo, value: count(m.bestCombo) },
       { label: P.streak, value: c.dailyStreak > 0 ? P.days(c.dailyStreak) + (c.streakFreezes > 0 ? ` · ${S.daily.freezes(c.streakFreezes)}` : '') : P.none },
-      { label: P.collection, value: P.collected(COSMETICS.filter((x) => Careers.owns(c, x.id)).length, COSMETICS.length) },
+      { label: P.collectionShare(owned, COSMETICS.length), value: P.owned(owned, COSMETICS.length) },
       { label: P.timingLabel(baseConfig.timingSamples), value: P.timing(averageOffset(c, baseConfig), baseConfig.timingOnBeat) },
       { label: P.bestChain, value: count(m.bestChain) },
       { label: P.shiftsPlayed, value: count(save.shiftsPlayed) },
@@ -568,7 +569,7 @@ export const ProgressPage = {
     ProgressPage.panel(list, r, o);
     if (tier >= 3) list.s(rect(R.center(r), v(R.width(r), R.height(r)), ShopPage.corner), 'fireDeep', 0.05 * tier * o);
     StreakFlame.add(list, r, days, clock, reduceMotion, o);
-    const x = r.minX + R.width(r) * 0.72;
+    const x = r.minX + R.width(r) * 0.8;
     const hot: ColorToken = tier >= 4 ? 'fireCore' : tier >= 1 ? 'fireOuter' : 'muted';
     drawText(list, P.flameTier(tier), v(x, r.minY + 24), 11, hot, { opacity: o, weight: 'bold', align: 'center' });
     const pop = reduceMotion ? 1 : 1 + 0.04 * Math.max(0, Math.sin(clock * 3.1)) * Math.min(1, tier / 3);

@@ -49,6 +49,8 @@ export const PATCH_NOTES: PatchNote[] = [
     title: 'Share your Daily result, your photo carries an invite, anonymous visit counts, and tabs that fit',
     impact: 'minor',
     items: [
+      'Fixed: in Roulette, a new bet after a round now lights its exits and shows on the island at once, instead of the old bet staying lit.',
+      'Fixed: in Progress → Records the streak text no longer touches the car, the engine label says what it is ("ENGINE IDLING") and the Collection tile reads "9 / 121" with the percentage in its label.',
       'Share your Daily Shift like a puzzle result: Challenge a friend after a cleared Daily now sends one line (score, Perfects, Tight Fits, streak) with the link to the same shift. On a computer it lands in your clipboard, ready to paste in a chat.',
       'Your photo print has a QR code now. A friend who scans it lands in the game, and with a leaderboard name it is your invite: you both get a chest when they reach level 5.',
       'The game now counts visits and a few steps (the tutorial done, shifts played) anonymously, to find where new players give up. No cookie, no ID, no name and no progress, and nothing is sent when your browser says Do Not Track. The Privacy Policy says it all.',

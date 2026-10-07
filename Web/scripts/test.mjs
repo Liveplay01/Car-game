@@ -1686,7 +1686,7 @@ test('the new Daily, tier and pity texts read well', () => {
   assert.equal(S.modes.mark(500, markReward(500)), '500 cars · MASTER', 'a tier wins over the skin');
   assert.equal(S.modes.mark(1000, markReward(1000)), '1000 cars · INFINITY');
   assert.equal(S.modes.tierLine(null, { cars: 25, id: 'bronze' }), '– · 25 cars for Bronze');
-  assert.equal(S.progress.collected(35, 70), '35 / 70 · 50 %');
+  assert.equal(S.progress.collectionShare(35, 70), 'Collection · 50 %');
   assert.ok(S.shop.pityLegendary(40).includes('40'));
 });
 
