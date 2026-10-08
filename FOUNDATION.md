@@ -218,11 +218,28 @@ aber keinen Strike.
 
 - **Schild als Upgrade** *(08.10.2026, `shieldPrices`)*: Es gibt kein Gratis-Schild. Das
   Upgrade „Shield“ hat 4 Stufen (1.500 / 20.000 / 45.000 / 90.000); jede erhöht
-  `maxStrikes` um 1 (Karriere-Schichten, Challenges und Daily; nicht Unlimited). Das HUD
-  zeigt Strike-Punkte nur, wenn es mehr als einen gibt, daneben blau umrandet die
-  Polizei-Crashes. Ein verziehener Crash (Schild oder Polizei innerhalb des Limits) zeigt
+  `maxStrikes` um 1 (Karriere-Schichten, Challenges und Daily; nicht Unlimited). Die obere
+  Leiste zeigt, was noch verzeiht, als Plus-Zeichen (Leo, 08.10.2026): ein grünes je
+  Schild-Stufe, daneben ein blaues je erlaubtem Polizei-Crash; ein verbrauchtes wird grau.
+  Ein verziehener Crash (Schild oder Polizei innerhalb des Limits) zeigt
   keine Meldung: der Ring um die Mitte leuchtet grün (Polizei: blau/rot) mit aufsteigenden
   Plus-Zeichen (`RingSignals.heal`); im Multiplayer in der Farbe des Spielers.
+- **Der Ring als Signalspur** *(Leo, 08.10.2026)*: Ankündigungen, Auszahlungen und verpasste
+  Boni stehen nicht als Text über der Szene, sondern als Ring-Signal in der Farbe der Sache:
+  **Lichtlauf** (und Leuchten am Arm) = kommt gleich, **Welle nach außen** = gelungen, **Welle
+  nach innen** (`miss`) = Bonus verpasst, **Blitz** = Schlag für den ganzen Ring (Crash rot,
+  Verbrecher entkommen lila, Krankenwagen blockiert rot), **Plus-Zeichen** = Crash verziehen,
+  **Spritzer** (`splash`) = Combo-Stufe geschafft (mehr Tropfen je Stufe, oben mit Gold).
+  **Farben haben je eine Bedeutung:** Grün gehört dem Spieler (Combo, Schild, Schichtende),
+  Limette (`rushHour`) ist Rush Hour (Lichtlauf, Kante, Leiste und Schriftzug), Amber bleibt die Farbe der Oberfläche, Weiß die Stufe im Unlimited, Gold das Große
+  (Boss, Jackpot, Marken, Perfect Run), Blau Polizei und Rettung, Violett der Verbrecher; jedes
+  Spezialfahrzeug hat seinen eigenen Ton (Learner: Türkis, `learnerSign`).
+  Als Text bleiben nur Zahlen, die etwas kosten, und der Kern eines Modus (Critical, Jackpot,
+  Penalty/Cost, Boom/Flames, Tight, Cut-off, Shave). Das Museum erklärt die Signale seiner
+  Einträge (`present/museumSignal.ts`, `SPECIAL_SIGNAL`); ein neues Signal braucht dort
+  seine Zeile, Shield und Backup erklären das Heilen in ihrem Text.
+  **Nachts leuchten sie** (Leo, 08.10.2026): Ring-Signale, Armmarkierungen und Bänder liegen über dem Nachtschleier und
+  bekommen einen weichen Hof in ihrer Farbe (`HUD.bloom`), statt abgedunkelt zu werden; nicht auf schwachen Geräten (`lowDetail`).
 - **Wer ist schuld:** Es zählt das Auto, das gerade einfädelt (oder in der Sekunde
   danach). Fädelt ein Polizeiauto in dein eigenes normales Auto im Ring ein, ist das
   ein Polizei-Crash. Ist ein normales Auto mitschuld, ist es ein Strike.

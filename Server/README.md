@@ -45,6 +45,9 @@ only erasable syntax is allowed (no `enum`, no constructor parameter properties)
 | `GET /v1/me/referral` | (token) Invite a friend: `{code, link, level, reward, milestones, invitedBy, invited: [{name, done, at}], done, max}`. `link` is the share page `/i/<code>` (null without a game address). Also settles the player's own invite when they are at the level already |
 | `POST /v1/me/referral` `{code}` | (token) A new player hands in the friend code they came with, once: `201` with the same view (`200` for the same inviter again). `404 unknown_code`, `422 invalid_code` / `own_code` / `not_new` (account older than 14 days) / `invite_loop`, `409 already_invited`; 10 an hour per player |
 | `GET /i/:code` | The invite page (outside `/v1`): Open Graph tags with the inviter's name and the game's own `og-image.jpg`, then straight on to `GAME_URL/?ref=<code>`. An unknown code still goes to the game, only without `?ref` |
+| `GET /v1/push/key` | The public VAPID key the game subscribes with: `{key}`. `404 push_off` without `VAPID_*` |
+| `PUT /v1/push` `{endpoint, p256dh, auth, tz, home?, timers}` | This device's push subscription (token optional: with one, ranks and rewards reach it). `tz` minutes east of UTC; `home` the path a tap opens (`/` or `/?googleplaystore`); `timers` up to six `{topic: streak \| gift \| pass, at, until?, title, body}`, replacing the ones sent before. Marks the device as seen. Answers `{timers: [{topic, at}]}`. `422 invalid_subscription` (only Google, Apple, Mozilla and Microsoft push services) / `invalid_timers` / `invalid_tz`; 60 an hour per address |
+| `DELETE /v1/push` `{endpoint}` | Forget this device (`204`) |
 | `GET /admin` | (with `ADMIN_TOKEN`) The inbox page for bug reports and ideas: filter, mark seen / done / won't fix, delete, give a reward by friend code |
 
 The token travels as `Authorization: Bearer <token>`. Errors are `{error: {code, message}}`.
@@ -56,6 +59,17 @@ sign in a 5 × 7 dot font, drawn in code (`raster.ts`, `preview.ts`: no canvas, 
 package) and kept in memory for the most recent 64 links. Nobody can upload a picture. The sender's name
 comes from their leaderboard account and follows it: renamed, deleted or blocked, the link changes with
 it. A link lives a year. New links count against 60 an hour per address.
+
+**Notifications** (`src/modules/push/`, Leo, 08.10.2026): Web Push with `node:crypto` only (`webpush.ts`:
+RFC 8291 encryption, RFC 8292 VAPID; checked against `http_ece`, the library behind `web-push`). The game sends
+its own reminders as timers with their words (the streak this evening, tomorrow's free chest, the next Season
+Pass) whenever it opens or closes; the server adds three of its own: **rank** (someone passed a player who
+was in the top 20 of an all-time board: `push_ranks` keeps the last rank of every subscribed player),
+**reward** (a reward waiting that came after the device was last seen: an invite's chest) and **comeback**
+(3, 7, 14 and 30 days away, then quiet). Every minute a sweep sends what is due: only between 9:00 and 20:59
+on the device's clock, at most one per 20 hours (the streak may come on top), the most important first
+(`TOPICS`); a timer past its `until` is dropped. A push service answering 404/410 means the browser dropped the
+subscription: the device is forgotten. Devices not seen for 120 days go too.
 
 **Invites** (`src/modules/referrals/`, Leo, 04.10.2026): the friend code is the invite. A friend who opens
 `/i/K7M29QXA` (or a challenge link its sender shared: `/c/:id` carries the sender's code as `?ref=`) lands in the
@@ -136,6 +150,8 @@ A second resource next to the game, from the same GitHub repository:
 | `CF_TURN_KEY_ID`, `CF_TURN_API_TOKEN` | unset | Cloudflare TURN, for multiplayer between phone networks (below). Unset: STUN only. |
 | `GAME_URL` | the first address in `CORS_ORIGINS` | Where a challenge's short link sends people, e.g. `https://game.your-domain.tld`. Neither set (`CORS_ORIGINS=*`): no short links, the game shares its long link. |
 | `FEEDBACK_WEBHOOK_URL` | unset | A Discord (or Slack) webhook: every new bug report and idea is posted there as well, so you hear of it at once. Unset: only stored, read them on `/admin`. |
+| `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY` | unset | Notifications: a pair from `npm run vapid`, set once and kept (a new pair cuts off every device that subscribed with the old one). Unset: no notifications. |
+| `VAPID_SUBJECT` | `GAME_URL` | A contact for the push services, `mailto:you@example.org` or an https address. |
 | `PUBLIC_URL` | read from the request | This service's own address, for the picture in a short link. Only needed if the proxy does not pass `X-Forwarded-Proto` and `X-Forwarded-Host` (Coolify does). |
 
 5. **Run exactly one instance.** SQLite lives in one file; do not scale it to several replicas.
@@ -185,6 +201,10 @@ level / cars they came with), the friend code and the friends list, and two time
 no IP address (rate limits live in memory only). `DELETE /v1/me` removes all of it.
 Invites: one line per invited player (who brought them, when they reached the level); it goes when either player is deleted.
 Bug reports and ideas: the text, the sender when they gave a friend code (deleting the player keeps the text without them), and a hash of the address for up to two days (the once-a-day limit). Rewards hang off the player and go with them.
+Notifications: per device the push address and its two keys, the time zone, the start path, when it was last
+seen and last notified, how many come-back nudges went out, the timers the game sent (with their words) and,
+with a name, the link to the player and their last rank on the all-time boards. `DELETE /v1/push` removes the
+device; deleting the player removes the devices linked to it; a device not seen for 120 days is deleted.
 Cloud saves belong to no player: a hash of the sync code, the save and three timestamps; `DELETE
 /v1/sync` removes one. A copy nobody has opened or changed for 200 days (`IDLE_SAVE_DAYS`,
 `src/modules/sync/index.ts`; `last_seen_at`, written by `GET`/`PUT`, at most hourly) is deleted: a sweep runs when the

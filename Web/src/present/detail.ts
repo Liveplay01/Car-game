@@ -19,6 +19,7 @@ import { Elite, TITLES, TITLE_RULES } from '../core/elite';
 import { SeasonPass, PASS_TIERS } from '../core/seasonPass';
 import { MenuKit } from './menukit';
 import { MuseumPage } from './museum';
+import { type SignalDetail, signalDetail } from './museumSignal';
 import { museumEntry, firstLevel } from '../core/museum';
 import { rematch } from '../core/trials';
 import { Feats } from '../core/feats';
@@ -75,6 +76,8 @@ export interface Detail {
   actions: DetailAction[];
   /** Long labels: every action gets a full-width row instead of sharing one. */
   stacked?: boolean;
+  /** A Museum entry that announces itself on the ring: a small roundabout plays how, above the text. */
+  signal?: SignalDetail | null;
 }
 
 export const Details = {
@@ -525,11 +528,15 @@ export const Details = {
     };
   },
 
-  /** A Museum entry: how it works once it has been met, where to find it before. */
-  museum(id: string, career: Career, config: Config): Detail | null {
+  /**
+   * A Museum entry: how it works once it has been met, where to find it before. `ahead`: a
+   * condition of the waiting shift (its icon on the Game tab), explained before it is met.
+   */
+  museum(id: string, career: Career, config: Config, ahead = false): Detail | null {
     const entry = museumEntry(id);
     if (!entry) return null;
-    const shown = career.museumSeen.includes(id);
+    const met = career.museumSeen.includes(id);
+    const shown = met || ahead;
     const level = firstLevel(entry, config);
     const art: DetailArt = { k: 'museum', id, shown, time: 0 };
     if (!shown) {
@@ -552,12 +559,13 @@ export const Details = {
         art,
         eyebrow: { text: S.museum.kind(entry), color: MuseumPage.color(entry) },
         title: S.museum.name(entry),
-        price: null,
+        price: met ? null : { text: S.museum.firstTime, color: 'accent' },
         steps: null,
         body: S.museum.explanation(entry, config),
         rows: [],
         notes: [],
         actions: [],
+        signal: signalDetail(entry),
       };
     }
     const kind = entry.kind;
@@ -580,6 +588,7 @@ export const Details = {
       rows,
       notes: [],
       actions: beaten ? [{ label: won ? S.museum.rematch : `${S.museum.rematch} · ${money(Fmt.number(match.reward))}`, action: { k: 'startTrial', id: match.id }, prominent: true, enabled: true }] : [],
+      signal: signalDetail(entry),
     };
   },
 

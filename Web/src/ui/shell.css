@@ -29,6 +29,9 @@
   /* Street-lamp amber (Leo, 04.10.2026; was mint #9ee6cf). Dark ink on it: 11:1. Mirrors `COLORS.accent`. */
   --accent: #ffb703;
   --accent-ink: #0e1013;
+  /* Hover, one per kind of button (Leo, 08.10.2026): amber lightens, red lightens, everything else lifts to --hover-fill. */
+  --accent-hover: #ffc94d;
+  --destructive-hover: #ff7277;
   --accent-soft: rgba(255, 183, 3, 0.14);
   --destructive: #ff5a5f;
   --money: #e3c15a;
@@ -70,14 +73,18 @@
 
   --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
   --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
+  /* Leaving: speeds up to the end, so a drawer is gone at full speed and does not linger at the lowest point. */
+  --ease-exit: cubic-bezier(0.4, 0, 1, 1);
 
   --safe-top: env(safe-area-inset-top, 0px);
   --safe-bottom: env(safe-area-inset-bottom, 0px);
   --safe-left: env(safe-area-inset-left, 0px);
   --safe-right: env(safe-area-inset-right, 0px);
   --tabbar-h: 56px;
-  /* Settings, Leave and Open chest: the labelled glass pills over the scene share one width (the round row too). */
+  /* Settings, Leave, the chest pill, Picture and Friends: the labelled glass pills over the scene share one width. */
   --pill-w: 168px;
+  --pill-h: 44px;
+  --pill-gap: 8px;
 
   /* Stacking order, lowest first. */
   --z-hud: 10;
@@ -568,17 +575,17 @@ a.row-link {
 }
 
 @media (hover: hover) and (pointer: fine) {
-  .btn:hover:not(:disabled) {
-    background: #2c323a;
+  .btn:hover:not(:disabled),
+  .icon-btn:hover,
+  .react-btn:hover {
+    background: var(--hover-fill);
   }
-  .btn.primary:hover:not(:disabled) {
-    background: #b3eddb;
+  .btn.primary:hover:not(:disabled),
+  .run-btn.primary-run:not(.waiting):hover:not(:disabled) {
+    background: var(--accent-hover);
   }
   .btn.destructive.filled:hover:not(:disabled) {
-    background: #ff7277;
-  }
-  .icon-btn:hover {
-    background: var(--hover-fill);
+    background: var(--destructive-hover);
   }
 }
 
@@ -615,7 +622,7 @@ a.row-link {
 }
 
 .sheet-root.closing .sheet {
-  animation: sheet-out 200ms var(--ease-out) both;
+  animation: sheet-out 200ms var(--ease-exit) both;
 }
 
 .sheet-root.stacked .sheet-scrim {
@@ -687,7 +694,7 @@ a.row-link {
 
 @keyframes sheet-out {
   to {
-    transform: translateY(100%);
+    transform: translateY(calc(100% + 48px));
   }
 }
 
@@ -786,14 +793,15 @@ a.row-link {
   justify-content: flex-start;
   gap: var(--s2);
   padding: 0 var(--s4) 0 var(--s3);
-  border-radius: 22px;
+  height: var(--pill-h);
+  border-radius: calc(var(--pill-h) / 2);
   font-size: 14px;
   font-weight: 600;
   left: calc(var(--safe-left) + var(--s4));
   bottom: calc(var(--tabbar-h) + var(--safe-bottom) + var(--s4));
 }
 
-/* Open chest · Leave · the round row: stacked above Settings, on the same side, all one width (Leo, 05.10.2026).
+/* The chest pill · Leave · Picture · Friends: stacked above Settings, on the same side, all one width (Leo, 05.10.2026).
    The other side is where the thumb starts the next shift and the dispatch button sits. */
 .run-bar {
   position: absolute;
@@ -803,14 +811,14 @@ a.row-link {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: var(--s2);
+  gap: var(--pill-gap);
   pointer-events: none;
   transition: transform 200ms var(--ease-out);
 }
 
 /* Settings keeps the bottom place whenever it is shown; the pills stack above it. */
 .app:has(.settings-btn.show) .run-bar {
-  transform: translateY(calc(-1 * (44px + var(--s2))));
+  transform: translateY(calc(-1 * (var(--pill-h) + var(--pill-gap))));
 }
 
 .run-btn {
@@ -828,85 +836,64 @@ a.row-link {
 
 .run-bar .run-btn {
   width: var(--pill-w);
+  min-height: var(--pill-h);
+  border-radius: calc(var(--pill-h) / 2);
   justify-content: flex-start;
-}
-
-/* Picture · Challenge · Friends (08.10.2026): round glass buttons in one row under the one labelled action, as wide as
-   the pills, so the stack stays short and left of the road. Gone with all three. */
-.run-icons {
-  display: flex;
-  gap: var(--s2);
-  width: var(--pill-w);
-}
-
-.run-icons:not(:has(.run-btn.show)) {
-  display: none;
-}
-
-.run-bar .run-btn.round {
-  position: relative;
-  width: 44px;
-  height: 44px;
-  padding: 0;
-  justify-content: center;
-  border-radius: 50%;
-}
-
-.run-btn.round svg {
-  width: 20px;
-  height: 20px;
-}
-
-[data-hand='left'] .run-icons {
-  justify-content: flex-end;
-}
-
-/* With a mouse the name comes on hover, beside the button towards the scene (never over the pill above); on touch the
-   icon says it, and the label goes to a screen reader. */
-@media (hover: hover) and (pointer: fine) {
-  .run-btn.round::after {
-    content: attr(data-tip);
-    position: absolute;
-    top: 50%;
-    left: calc(100% + var(--s2));
-    padding: var(--s1) 10px;
-    border-radius: 8px;
-    background: var(--surface-3);
-    box-shadow: 0 0 0 0.5px var(--glass-edge);
-    color: var(--primary);
-    font-size: 12px;
-    font-weight: 600;
-    white-space: nowrap;
-    opacity: 0;
-    transform: translate(-4px, -50%);
-    pointer-events: none;
-    transition: opacity 150ms var(--ease-out), transform 150ms var(--ease-out);
-  }
-
-  .run-btn.round:hover {
-    z-index: 1;
-  }
-
-  .run-btn.round:hover::after {
-    opacity: 1;
-    transform: translate(0, -50%);
-  }
-
-  [data-hand='left'] .run-btn.round::after {
-    left: auto;
-    right: calc(100% + var(--s2));
-    transform: translate(4px, -50%);
-  }
-
-  [data-hand='left'] .run-btn.round:hover::after {
-    transform: translate(0, -50%);
-  }
 }
 
 .run-btn svg,
 .settings-btn svg {
   width: 18px;
   height: 18px;
+}
+
+/* The chest pill wears the waiting chest itself, flat and a little larger than a line icon. */
+.run-btn svg.chest-flat {
+  width: 24px;
+  height: 22px;
+}
+
+/* On a phone the pills are smaller (Leo, 08.10.2026): the stack took too much of the road. The look is 36 px tall,
+   the touch area stays 40 px, and the gap is the rest of it. */
+@media (pointer: coarse) and (max-width: 560px), (pointer: coarse) and (max-height: 480px) {
+  :root {
+    --pill-w: 144px;
+    --pill-h: 36px;
+    --pill-gap: 4px;
+  }
+
+  .settings-btn,
+  .run-bar .run-btn {
+    font-size: 13px;
+    padding: 0 var(--s3);
+  }
+
+  .run-bar .run-btn {
+    position: relative;
+  }
+
+  .run-bar .run-btn svg,
+  .settings-btn svg {
+    width: 16px;
+    height: 16px;
+  }
+
+  .run-bar .run-btn svg.chest-flat {
+    width: 20px;
+    height: 18px;
+  }
+
+  .settings-btn::before,
+  .run-bar .run-btn::before {
+    content: '';
+    position: absolute;
+    inset: -2px 0;
+  }
+
+  .settings-btn.has-news::after {
+    top: 2px;
+    left: 2px;
+  }
 }
 
 .run-btn.show {
@@ -1223,12 +1210,28 @@ a.row-link {
   transition: none;
 }
 
+/* Pulled up, the sheet leaves a gap under it: this fill reaches down to the tab bar and follows it back (detailSheet.ts). */
+.detail-fill {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 100%;
+  height: 0;
+  background: var(--sheet-bg);
+  transition: height 340ms var(--ease-drawer);
+  pointer-events: none;
+}
+
+.detail-sheet.dragging .detail-fill {
+  transition: none;
+}
+
 .detail-sheet.entering {
   animation: detail-in 360ms var(--ease-drawer) backwards;
 }
 
 .detail-sheet.closing {
-  animation: detail-out 220ms var(--ease-out) forwards;
+  animation: detail-out 220ms var(--ease-exit) forwards;
   pointer-events: none;
 }
 
@@ -1238,9 +1241,10 @@ a.row-link {
   }
 }
 
+/* Down past the tab bar too, which is see-through: the sheet must be fully gone from behind it. */
 @keyframes detail-out {
   to {
-    transform: translateY(100%);
+    transform: translateY(calc(100% + var(--tabbar-h) + var(--safe-bottom) + 48px));
   }
 }
 
@@ -1364,6 +1368,69 @@ a.row-link {
   line-height: 1.55;
   color: #d5dae1;
   text-wrap: pretty;
+}
+
+/* A Museum entry's signal: a small roundabout that plays how the vehicle announces itself and ends (ui/detailSheet.ts). */
+.detail-signal {
+  margin: 0 0 var(--s4);
+}
+
+.detail-signal-head {
+  display: flex;
+  align-items: center;
+  gap: var(--s4);
+}
+
+.detail-signal-art {
+  flex: none;
+  border-radius: 20px;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.07);
+}
+
+.detail-signal-label {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.detail-signal-text {
+  margin: var(--s1) 0 0;
+  font-size: 15px;
+  line-height: 1.45;
+  color: #d5dae1;
+  text-wrap: pretty;
+}
+
+.detail-signal-lines {
+  margin: var(--s3) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.detail-signal-lines li {
+  display: flex;
+  gap: var(--s3);
+  margin-top: var(--s2);
+  font-size: 15px;
+  line-height: 1.45;
+  color: #d5dae1;
+  text-wrap: pretty;
+  transition: opacity 200ms var(--ease-out);
+}
+
+.detail-signal-lines li.dim {
+  opacity: 0.5;
+}
+
+.detail-signal-lines .dot {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  margin-top: 7px;
+  border-radius: 50%;
+  background: var(--muted);
 }
 
 .detail-rows {
@@ -1890,12 +1957,6 @@ a.row-link {
 
 .react-bar .revenge-btn {
   margin-left: var(--s1);
-}
-
-@media (hover: hover) and (pointer: fine) {
-  .react-btn:hover {
-    background: var(--hover-fill);
-  }
 }
 
 @media (max-width: 380px) {

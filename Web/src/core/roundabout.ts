@@ -57,6 +57,9 @@ export class Layout {
   readonly islandRadius: number;
   /** World area the camera keeps in view: the ring and the visible queue. */
   readonly viewBounds: Rect;
+  /** How far, along the ring, an arm's merge and exit reach to either side of it, and a car's half length on top: for the outer lane, and with two lanes the inner one too. */
+  private readonly outerReach: number;
+  private readonly allReach: number;
 
   readonly armSlotCount: number;
 
@@ -112,6 +115,8 @@ export class Layout {
     this.laneEntryS = [this.entryRingS, this.arms.map((a) => wrap(a.angle + inner.mergeAngle) * radius)];
     this.laneExitS = [this.exitRingS, this.arms.map((a) => wrap(a.angle - inner.mergeAngle) * radius)];
     this.islandRadius = radius - config.laneWidth / 2 - (this.lanes - 1) * config.laneWidth;
+    this.outerReach = config.mergeAngle * radius + config.carLength / 2;
+    this.allReach = Math.max(config.mergeAngle, this.lanes > 1 ? inner.mergeAngle : 0) * radius + config.carLength / 2;
 
     const edge = radius + config.laneWidth / 2 + 18;
     const queueEnd = stop + config.queueSpacing * (config.queueVisible - 1) + config.carLength / 2 + 10;
@@ -168,6 +173,26 @@ export class Layout {
   moduleRingS(slot: number, count: number): number {
     const n = Math.max(1, count);
     return wrap((TAU * (slot + 0.5)) / n) * this.ringRadius;
+  }
+
+  /**
+   * A stretch of the ring clear of every entry and exit, for what is painted on the road (roadworks, the bus stop):
+   * cars driving in or out must not cross it. `share` (0…1) picks one of the gaps that hold `want`; when none does,
+   * the widest gap gives what it has. The stretch sits in the middle of its gap. Between the arms of a crowded
+   * two-lane ring there is no room clear of the inner lane's junctions too: then only the outer lane's count.
+   */
+  clearStretch(share: number, want: number): { start: number; arc: number } {
+    const length = this.ring.length;
+    const marks = this.arms.map((a) => wrap(a.angle) * this.ringRadius).sort((a, b) => a - b);
+    const gapsFor = (reach: number): { start: number; arc: number }[] =>
+      marks.map((s, i) => ({ start: s + reach, arc: (marks[i + 1] ?? marks[0] + length) - s - 2 * reach }));
+    const widest = (gaps: { arc: number }[]): number => Math.max(...gaps.map((g) => g.arc));
+    let gaps = gapsFor(this.allReach);
+    if (widest(gaps) < Math.min(want, 56)) gaps = gapsFor(this.outerReach);
+    const fits = gaps.filter((g) => g.arc >= want);
+    const gap = fits.length > 0 ? fits[Math.min(fits.length - 1, Math.floor(share * fits.length))] : gaps.reduce((a, b) => (b.arc > a.arc ? b : a));
+    const arc = Math.max(0, Math.min(want, gap.arc));
+    return { start: wrap(gap.start + (gap.arc - arc) / 2, length), arc };
   }
 
   /** Ring distance a car drives from joining at `entryArm` until it leaves at `exitArm`. */

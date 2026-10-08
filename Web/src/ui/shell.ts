@@ -5,8 +5,9 @@ import { CanvasDrawer } from '../present/draw';
 import { SWIPE_MODES, TAB_BAR, barTab, screenTab, type Tab } from '../present/flow';
 import { AudioPlayer, Haptics } from '../audio/player';
 import { h, icon } from './dom';
-import { ICONS } from './icons';
-import { settingsSheet, deleteAccountSheet, patchNotesSheet, legalSheet, licensesSheet, installDialog, cloudIntroDialog, isSheetOpen, closeAnySheet } from './sheets';
+import { ICONS, CHEST_FLAT } from './icons';
+import { settingsSheet, deleteAccountSheet, patchNotesSheet, legalSheet, licensesSheet, installDialog, cloudIntroDialog, pushOfferDialog, isSheetOpen, closeAnySheet } from './sheets';
+import { disablePush, enablePush, pushState, pushTimers, syncPush, type PushState, type PushTimer } from '../net/push';
 import { cloudEnabled, cloudIntroDue, cloudLinked, cloudView, deleteCloud, markCloudIntroSeen } from '../net/cloud';
 import { fetchInvite, inviteUrl, readInviteLink, redeemInvite } from '../net/invite';
 import { deleteAccount, describeError, fetchFriends, leaderboardEnabled, loadAccount, onAccountChange, onScoresSynced } from '../net/leaderboard';
@@ -31,6 +32,8 @@ import { REACTION_EMOJI } from '../present/versus';
 import { REACTIONS } from '../net/room';
 import { LiveRegion } from './liveRegion';
 import { ResultBanner } from '../present/hud';
+import { ShopPage } from '../present/shop';
+import { css } from '../present/theme';
 import { BackdropLayer, backdropSheet } from './backdrop';
 import { loadBackdrop, saveBackdrop } from '../storage/backdrop';
 import { BIG_SCREEN } from '../core/loot';
@@ -97,7 +100,7 @@ export class Shell {
   private readonly doneBtn: HTMLButtonElement;
   private readonly friendsBtn: HTMLButtonElement;
   private readonly photoBtn: HTMLButtonElement;
-  /** On the Game tab while chests wait: the first one opens right there (`GameSession.sceneChest`). */
+  /** On the Game tab while chests wait: the way to the Chests page, in the paint of the first one. */
   private readonly chestBtn: HTMLButtonElement;
   private readonly chestLabel: HTMLElement;
   private readonly photo: PhotoView;
@@ -198,15 +201,19 @@ export class Shell {
     );
     for (const b of [this.settingsBtn, this.dispatchBtn, this.doneBtn]) b.addEventListener('pointerdown', (e) => e.stopPropagation());
     // Friends: the code, the invite link, challenging a friend with the shift on screen, and the way to Multiplayer. In a challenge or trial: leave it.
-    // Picture and Friends: one row of round glass buttons under the one labelled action, so the stack stays
-    // small and left of the road. The name shows on hover where there is a mouse (`data-tip`), always to a screen reader.
-    const round = (label: string, tip: string, svg: string, onclick: () => void, dialog = false): HTMLButtonElement =>
-      h('button', { class: 'btn glass run-btn round', type: 'button', 'aria-label': label, 'data-tip': tip, 'aria-haspopup': dialog ? 'dialog' : undefined, onclick }, icon(svg));
-    this.friendsBtn = round('Friends', 'Friends', ICONS.people, () => this.openFriends(), true);
+    // Picture and Friends are labelled pills like Settings and the chest pill, all one size (Leo, 08.10.2026).
+    const pill = (label: string, text: string, svg: string, onclick: () => void): HTMLButtonElement =>
+      h('button', { class: 'btn glass run-btn', type: 'button', 'aria-label': label, 'aria-haspopup': 'dialog', onclick }, icon(svg), h('span', {}, text));
+    this.friendsBtn = pill('Friends', 'Friends', ICONS.people, () => this.openFriends());
     // Under any result: the picture on the screen, to send or keep.
-    this.photoBtn = round(S.photo.buttonLabel, S.photo.button, ICONS.camera, () => this.takePicture(), true);
+    this.photoBtn = pill(S.photo.buttonLabel, S.photo.button, ICONS.camera, () => this.takePicture());
     this.chestLabel = h('span', {}, S.run.openChest(1));
-    this.chestBtn = h('button', { class: 'btn glass run-btn primary-run', type: 'button', onclick: () => this.push({ k: 'perform', action: { k: 'openChestHere' } }) }, icon(ICONS.chest), this.chestLabel);
+    const chest = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    chest.setAttribute('viewBox', '0 0 52 48');
+    chest.setAttribute('class', 'chest-flat');
+    chest.setAttribute('aria-hidden', 'true');
+    chest.innerHTML = CHEST_FLAT;
+    this.chestBtn = h('button', { class: 'btn glass run-btn primary-run', type: 'button', onclick: () => this.push({ k: 'perform', action: { k: 'showShop', section: 0 } }) }, chest, this.chestLabel);
     this.photo = new PhotoView(app, {
       shutter: () => {
         this.audio.unlock();
@@ -287,7 +294,7 @@ export class Shell {
           open();
         });
     };
-    const runBar = h('div', { class: 'run-bar' }, this.chestBtn, this.leaveBtn, h('div', { class: 'run-icons' }, this.photoBtn, this.friendsBtn));
+    const runBar = h('div', { class: 'run-bar' }, this.chestBtn, this.leaveBtn, this.photoBtn, this.friendsBtn);
     // After a match: Ready (everyone taps it, then the next round starts), and for the host a
     // way back to the lobby to change the format or the bots.
     this.againLabel = h('span', {}, 'Play again');
@@ -358,8 +365,26 @@ export class Shell {
     this.scheduleCloudIntro();
     // Gifts from the team and from invites: at the start, after a name (an invite is handed in then) and after a record reached the service (level 5 pays).
     window.setTimeout(() => this.claimInvite(), 3000);
-    onAccountChange(() => this.claimInvite());
+    syncPush(this.pushTimers);
+    onAccountChange(() => {
+      this.claimInvite();
+      // A name links this device's notifications to the leaderboard (someone passing you in the top 20).
+      syncPush(this.pushTimers);
+    });
     onScoresSynced(() => this.collectRewards());
+  }
+
+  private get pushTimers(): PushTimer[] {
+    return pushTimers(this.session.save.career, this.session.config);
+  }
+
+  /** Turns notifications on from a tap and says how it went. */
+  private enablePush(): Promise<PushState> {
+    return enablePush(this.pushTimers).then((state) => {
+      if (state === 'on') this.session.announce(S.push.on);
+      else if (state === 'blocked') this.session.announce(S.push.denied);
+      return state;
+    });
   }
 
   /** CrazyGames hears how far the career is: the levels up to Prestige, all of it after one. */
@@ -452,7 +477,7 @@ export class Shell {
       : '';
     let badgeKey = '';
     for (const b of badges) badgeKey += b === null ? '-' : b === 'dot' ? '.' : `${b.count};`;
-    const key = `${screen.k}|${selected}|${badgeKey}|${s.world.shift.phase}|${s.playingMode}|${s.special?.k ?? ''}|${s.shareable ? 1 : 0}|${match ? 1 : 0}|${versusKey}|${s.save.settings.leftHanded}|${s.notesUnread}|${s.showsChrome}|${s.chestOffer}`;
+    const key = `${screen.k}|${selected}|${badgeKey}|${s.world.shift.phase}|${s.playingMode}|${s.special?.k ?? ''}|${s.shareable ? 1 : 0}|${match ? 1 : 0}|${versusKey}|${s.save.settings.leftHanded}|${s.notesUnread}|${s.showsChrome}|${s.chestOffer}|${s.save.career.chests[0] ?? ''}`;
     if (!force && key === this.chromeKey) return;
     this.chromeKey = key;
     reportGameplay(screen.k === 'playing' && (inPortal || !document.hidden));
@@ -493,6 +518,13 @@ export class Shell {
     this.chestBtn.classList.toggle('show', chests > 0);
     this.chestLabel.textContent = S.run.openChest(chests);
     this.chestBtn.setAttribute('aria-label', S.run.openChestLabel(chests));
+    const first = s.save.career.chests[0];
+    if (first) {
+      const paint = ShopPage.chestPaint(first);
+      this.chestBtn.style.setProperty('--chest-body', css(paint.body));
+      this.chestBtn.style.setProperty('--chest-lid', css(paint.lid));
+      this.chestBtn.style.setProperty('--chest-band', css(paint.band));
+    }
     this.leaveBtn.classList.toggle('show', onGame && s.special !== null);
     this.leaveLabel.textContent = s.special?.k === 'trial' ? (s.special.trial.tour ? 'Leave tour' : 'Leave trial') : 'Leave challenge';
     if (screen.k === 'settings' && !isSheetOpen()) this.showSettingsSheet();
@@ -695,6 +727,17 @@ export class Shell {
         if (this.session.screen.k === 'playing') this.session.deferHint(hint);
         else void offerLogin();
       }, 2000);
+    } else if (hint === 'notifications') {
+      const state = pushState();
+      // Not on the Home Screen yet (iPhone): offered again with a later streak, once it can be turned on.
+      if (state === 'install') return this.session.deferHint(hint);
+      if (state !== 'off') return;
+      if (!this.session.takeTip()) return this.session.deferHint(hint);
+      // After the result has come up, never over a shift.
+      window.setTimeout(() => {
+        if (this.session.screen.k === 'playing' || isSheetOpen()) this.session.deferHint(hint);
+        else pushOfferDialog(this.layers, { enable: () => void this.enablePush().catch(() => this.session.announce(S.push.failed)), closed: () => undefined });
+      }, 2000);
     } else if (hint === 'backup') {
       if (!cloudEnabled || cloudView().code !== null) return;
       if (!this.session.takeTip()) return this.session.deferHint(hint);
@@ -819,6 +862,7 @@ export class Shell {
           run: async () => {
             try {
               const account = loadAccount();
+              await disablePush();
               if (account) await deleteAccount(account);
               if (cloudEnabled) await deleteCloud();
             } catch (error) {
@@ -836,6 +880,7 @@ export class Shell {
         });
       },
       cloudOn: cloudLinked(),
+      push: pushState() === 'none' ? null : { state: pushState(), toggle: (on) => (on ? this.enablePush() : disablePush().then((): PushState => 'off')) },
       friendCode: loadAccount() ? () => fetchFriends().then((f) => f.code) : null,
       // The cloud sync page, over the settings; the settings come back when it closes.
       openCloud: () => this.openCloudPage(),
@@ -988,6 +1033,8 @@ export class Shell {
       this.last = performance.now();
     };
     document.addEventListener('visibilitychange', () => {
+      // The reminders follow the save: handed over as the game goes away, and "seen" again as it comes back.
+      syncPush(this.pushTimers, document.hidden);
       if (document.hidden) away();
       else {
         back();
@@ -1077,6 +1124,7 @@ export class Shell {
     s.sheetInset = this.detail.inset;
     this.audio.updateMusic(match ? match.music : s.musicMix, s.save.settings.music, Math.min(delta, 0.1));
     this.audio.updateTension(match ? 0 : s.tension, s.save.settings.sound, Math.min(delta, 0.1));
+    this.audio.updateWeather(match ? { rain: 0, strikes: s.weatherSound.strikes } : s.weatherSound, s.save.settings.mapSounds);
     this.app.classList.toggle('reduce-motion', s.reduceMotion);
     if (this.pendingChallenge) this.openPendingChallenge();
     if (this.pendingJoin) this.openPendingJoin();

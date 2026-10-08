@@ -29,6 +29,7 @@ export const ICONS = {
   bug: '<rect x="7" y="8" width="10" height="13" rx="5"/><path d="M12 13v8M9 8a3 3 0 0 1 6 0M3 13h4M17 13h4M4 7l3 2.5M20 7l-3 2.5M4 19l3-2M20 19l-3-2"/>',
   bulb: '<path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-3.5 10.9c.6.4 1 1.1 1 1.8V16h5v-.3c0-.7.4-1.4 1-1.8A6 6 0 0 0 12 3Z"/>',
   cloud: '<path d="M7 19a4.5 4.5 0 0 1-.6-9A6 6 0 0 1 18 9.5a4.8 4.8 0 0 1-1 9.5H7Z"/>',
+  bell: '<path d="M6 16.5V11a6 6 0 0 1 12 0v5.5l1.5 2h-15l1.5-2Z"/><path d="M10 21h4"/>',
 } as const;
 
 /**
@@ -50,3 +51,15 @@ export const CRAZYGAMES_LOGO =
   '<path d="M4315 7421c-148-24-270-86-370-186-80-80-125-151-163-257l-27-73-3-746c-3-841-4-830 69-979 59-119 170-230 289-289 96-47 194-71 290-71 292 0 557 208 630 496 18 71 20 112 20 498l0 421-70 2c-227 7-427 165-485 384-31 117-13 278 43 383 39 75 154 185 230 220 34 16 62 33 62 36 0 11-81 66-146 98-107 54-260 80-369 63z"/>' +
   '<path d="M6451 7419c-200-30-383-162-479-346-75-144-73-119-70-976l3-762 23-65c136-381 552-556 907-381 151 74 277 220 332 384l28 82 3 466 3 466-55-5c-71-6-188 21-268 60-36 19-88 57-124 94-245 244-184 663 120 825l59 32-24 20c-100 81-305 128-458 106z"/>' +
   '</g></g></svg>';
+
+/**
+ * A chest as the Shop draws it (`ShopPage.addChestIcon`), flat, in a 52 × 48 box (Leo, 08.10.2026).
+ * Painted by `--chest-body`, `--chest-lid` and `--chest-band`, so one picture serves every kind.
+ */
+export const CHEST_FLAT =
+  '<path fill="var(--chest-lid)" d="M0 19V11A10 10 0 0 1 10 1h32a10 10 0 0 1 10 10v8Z"/>' +
+  '<rect fill="var(--chest-body)" y="19" width="52" height="28" rx="5"/>' +
+  '<path fill="var(--chest-band)" fill-opacity=".75" d="M8 1h5v46H8zM39 1h5v46h-5z"/>' +
+  '<rect fill="var(--chest-band)" fill-opacity=".9" y="19" width="52" height="5"/>' +
+  '<rect fill="var(--chest-band)" x="21" y="15" width="10" height="12" rx="2.5"/>' +
+  '<circle fill="var(--chest-body)" cx="26" cy="21" r="2"/>';

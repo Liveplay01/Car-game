@@ -42,6 +42,9 @@ export const WeatherLayer = {
   darkness: [0, 0.08, 0.16, 0.24, 0.3],
   streaks: [0, 40, 90, 130, 170],
 
+  /** Seconds between two flashes of lightning: a storm flashes, an extreme one more often, rain alone never (0). */
+  flashPeriod: (severity: number): number => (severity >= 4 ? 4.5 : severity === 3 ? 7 : 0),
+
   /** Fog: soft banks drift round the ring; the stretch in front of your own arm stays clearer. */
   fogBanks: 16,
   fogLayers: 4,
@@ -109,8 +112,8 @@ export const WeatherLayer = {
       }
       list.s(segments(ends, 1.2), 'primary', 0.1 + 0.03 * severity);
     }
-    if (reduceMotion || severity < 3) return;
-    const period = severity >= 4 ? 4.5 : 7;
+    const period = WeatherLayer.flashPeriod(severity);
+    if (reduceMotion || period === 0) return;
     const into = time % period;
     if (into < 0.14) list.s(rect(mul(vp, 0.5), vp), 'primary', 0.16 * (1 - into / 0.14) * amount);
   },
@@ -281,9 +284,9 @@ export const WeatherLayer = {
       list.w(circle(sign, 5), 'vehicleBus');
       list.w(circle(sign, 3.6), 'juiceGreen');
     }
-    const start = world.roadworksRingS;
-    if (start !== null) {
-      const arcLen = world.config.roadworksArc;
+    const works = world.roadworks;
+    if (works) {
+      const { start, arc: arcLen } = works;
       const radius = layout.ringRadius + layout.laneWidth / 2 - 3;
       const pieces = Math.max(2, Math.floor(arcLen / 12));
       for (let piece = 0; piece < pieces; piece += 2) {

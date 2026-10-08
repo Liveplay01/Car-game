@@ -9,7 +9,10 @@ import { MuseumPage } from './museum';
  * Something new on the road, and what to do about it (Leo, 01.10.2026): the first time a special
  * vehicle, a boss or a condition meets the player, the top card's numbers make way for one
  * sentence of instructions. A task with an end (catch the criminal, keep the ambulance's road
- * clear) stays until it is over; anything else stays a few seconds. Then the numbers come back.
+ * clear) stays until it is over, but not for long; anything else stays a few seconds. Then the numbers come back.
+ *
+ * The card is the player's scoreboard, so it never stays hidden for long (Leo, 08.10.2026): a briefing has a time
+ * limit, the numbers get a breather before the next briefing, and nothing new comes on the last cars of a shift.
  */
 export interface Brief {
   /** The Museum entry it explains: one briefing per entry and shift. */
@@ -28,7 +31,7 @@ export interface BriefView {
   card: number;
   /** The briefing's words, faded while one briefing hands over to the next. */
   words: number;
-  /** How much of a timed briefing's time is used up (0–1); null while it waits for a task. */
+  /** How much of the briefing's time is used up (0–1): the line along the card's foot runs down with it. */
   used: number | null;
 }
 
@@ -76,8 +79,12 @@ export class Briefings {
   static readonly least = 3.5;
   /** A briefing without a task stays this long. */
   static readonly timed = 5;
-  /** A task that drags on: the numbers come back after this at the latest. */
-  static readonly most = 40;
+  /** A task that drags on: the numbers come back after this at the latest (the ring still shows the task). */
+  static readonly most = 10;
+  /** After a briefing the numbers stay this long before the next one, unless that one is a task. */
+  static readonly breather = 6;
+  /** With this many cars left or fewer, no briefing starts and one on the card makes way. */
+  static readonly lastCars = 3;
 
   private current: { brief: Brief; age: number; endedAt: number | null; handedOver: boolean } | null = null;
   /** The one that just ended, still on the card while the numbers come back. */
@@ -85,6 +92,8 @@ export class Briefings {
   private waiting: Brief[] = [];
   private given = new Set<string>();
   private amount = 0;
+  /** Seconds the numbers have had the card since the last briefing left it. */
+  private sinceEnd = Infinity;
 
   /** Queues a briefing, once per entry until `clear`. A task goes before a few seconds of news. */
   add(brief: Brief): void {
@@ -102,15 +111,21 @@ export class Briefings {
   }
 
   advance(dt: number, world: World): void {
-    if (!this.current && this.waiting.length > 0) this.begin(this.amount > 0.5);
+    const calm = (world.carsLeft ?? Infinity) > Briefings.lastCars;
+    if (!this.current) this.sinceEnd += dt;
+    const first = this.waiting[0];
+    if (!this.current && first && calm && (this.sinceEnd >= Briefings.breather || first.pending !== null)) this.begin(this.amount > 0.5);
     const cur = this.current;
     if (cur) {
       cur.age += dt;
-      if (cur.endedAt === null && this.isOver(cur.brief, cur.age, world)) cur.endedAt = cur.age;
+      if (cur.endedAt === null && (this.isOver(cur.brief, cur.age, world) || (!calm && cur.age >= Briefings.least))) cur.endedAt = cur.age;
       if (cur.endedAt !== null) {
-        if (this.waiting.length === 0) {
+        // Only a task takes over from a briefing at once; news waits for the numbers to have the card again.
+        const next = this.waiting[0];
+        if (!next || next.pending === null || !calm) {
           this.last = cur.brief;
           this.current = null;
+          this.sinceEnd = 0;
         } else if (cur.age - cur.endedAt >= Briefings.swap) this.begin(true);
       }
     }
@@ -129,7 +144,7 @@ export class Briefings {
       if (cur.handedOver) words = Ease.clamp01(cur.age / Briefings.swap);
       if (cur.endedAt !== null && this.waiting.length > 0) words *= 1 - Ease.clamp01((cur.age - cur.endedAt) / Briefings.swap);
     }
-    const used = brief.pending === null && cur ? Ease.clamp01(cur.age / Briefings.timed) : brief.pending === null ? 1 : null;
+    const used = cur ? Ease.clamp01(cur.age / (brief.pending === null ? Briefings.timed : Briefings.most)) : 1;
     return { brief, card: Ease.smoothstep(this.amount), words, used };
   }
 
@@ -150,6 +165,7 @@ export class Briefings {
     this.waiting = [];
     this.given.clear();
     this.amount = 0;
+    this.sinceEnd = Infinity;
     return owed;
   }
 

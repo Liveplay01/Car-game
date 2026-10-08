@@ -9,7 +9,7 @@ import type { NextGoal, NearMiss } from '../core/goals';
 import type { CasinoGame, SlotSymbol } from '../core/casino';
 import type { VehicleType, VehicleRole } from '../core/vehicle';
 import { type Trial, type TrialId, type RunId, type EliteKind, rematchKind, ascensionRank, LANDMARK_PRESTIGE } from '../core/trials';
-import type { MuseumEntry, ConditionEntry } from '../core/museum';
+import type { MuseumEntry } from '../core/museum';
 import type { EliteStep, TitleId, TitleRule } from '../core/elite';
 import type { PassReward, PassStep, HallEntry } from '../core/seasonPass';
 import type { FeatGoal } from '../core/feats';
@@ -19,7 +19,7 @@ import type { TourId, TourReward } from '../core/tours';
 import type { TierId } from '../core/tiers';
 import { MONEY_MARK } from './icons';
 import { Fmt, money, percent, multiplier, comboMultiplier } from './format';
-import { museumText, INTRO_TEXT, SPECIAL_TEXT } from './museumText';
+import { museumText, SPECIAL_TEXT } from './museumText';
 import type { RewardedOutcome } from './session';
 
 export { Fmt, money, percent, multiplier, comboMultiplier };
@@ -95,9 +95,9 @@ export const S = {
     brokenLink: 'That challenge link is broken or cut short.',
     copied: 'Challenge link copied',
     linkReady: 'Link ready. Tap Challenge a friend again to share it.',
-    /** The pill on the Game tab that opens the first waiting chest right there. */
-    openChest: (n: number): string => (n > 1 ? `Open chest · ${n}` : 'Open chest'),
-    openChestLabel: (n: number): string => (n > 1 ? `Open a chest, ${n} waiting` : 'Open your chest'),
+    /** The pill on the Game tab that leads to the Chests page while chests wait. */
+    openChest: (n: number): string => (n > 1 ? `${n} chests ready` : 'Chest ready'),
+    openChestLabel: (n: number): string => (n > 1 ? `Your chests: ${n} ready to open` : 'Your chest: ready to open'),
     pictureText: 'My shift in Roundabout Timing',
     pictureSaved: 'Picture saved',
     pictureCopied: 'Picture copied',
@@ -235,21 +235,7 @@ export const S = {
 
   boss: {
     incoming: 'SYNDICATE CONVOY',
-    /** The scout level (`Config.scout`): a criminal with an escort, ahead of the bosses. */
-    scout: 'SYNDICATE SCOUT',
     scoutFirst: 'A scout with an escort: ram it with a police car, in the gap before the escort',
-    /** The warning over the arm: which boss is coming. */
-    arriving: (k: BossKind): string =>
-      ({
-        convoy: 'SYNDICATE CONVOY',
-        getaway: 'GETAWAY DRIVER',
-        armoured: 'ARMOURED BOSS',
-        phantom: 'THE PHANTOM',
-        twins: 'THE TWINS',
-        decoy: 'THE DECOY',
-        smuggler: 'THE SMUGGLER',
-        kingpin: 'THE KINGPIN',
-      })[k],
     name: (k: BossKind): string =>
       ({
         convoy: 'The Convoy',
@@ -263,8 +249,6 @@ export const S = {
       })[k],
     rematch: (k: BossKind): string => `Rematch · ${S.boss.name(k)}`,
     beaten: 'Busted',
-    armour: 'ARMOUR CRACKED',
-    heist: (amount: string): string => `HEIST RECOVERED ${amount}`,
     escaped: 'BOSS ESCAPED',
     wanted: (seconds: number): string => `BOSS ${Math.ceil(Math.max(0, seconds))}`,
     busted: (amount: string): string => `Boss busted · ${amount} recovered`,
@@ -450,14 +434,6 @@ export const S = {
     none: 'No title',
   },
 
-  ambulance: {
-    incoming: 'AMBULANCE',
-    fire: 'FIRE ENGINE',
-    blocked: 'BLOCKED',
-    clear: (amount: string): string => `CLEAR ROAD ${amount}`,
-    lost: 'AMBULANCE LOST',
-  },
-
   pass: {
     title: 'Season Pass',
     seasonName: (s: Season): string => ({ winter: 'Winter', spring: 'Spring', summer: 'Summer', autumn: 'Autumn' })[s],
@@ -515,27 +491,6 @@ export const S = {
     back: 'Back to Elite',
   },
 
-  oversize: {
-    incoming: 'WIDE LOAD',
-    passed: (amount: string): string => `WIDE LOAD ${amount}`,
-  },
-
-  wedding: {
-    incoming: 'WEDDING',
-    passed: (amount: string): string => `WEDDING ${amount}`,
-  },
-
-  racers: {
-    incoming: 'STREET RACE',
-    stopped: (amount: string): string => `RACE STOPPED ${amount}`,
-  },
-
-  learner: {
-    incoming: 'LEARNER DRIVER',
-    crowded: 'TOO CLOSE',
-    patient: (amount: string): string => `PATIENCE ${amount}`,
-  },
-
   modes: {
     name: (m: SwipeMode): string => (m === 'shift' ? 'SHIFT' : m === 'unlimited' ? 'UNLIMITED' : m === 'mayhem' ? 'MAYHEM' : m === 'chill' ? 'CHILL' : 'MULTIPLAYER'),
     line: (m: SwipeMode): string =>
@@ -553,6 +508,7 @@ export const S = {
     tryUnlimited: 'Swipe sideways for Unlimited: no levels, just go until you crash',
     /** Taught once, on a later visit or after a few shifts: the scoring pays for close merges. */
     tightFit: 'Closer pays more: join right behind a car for a Tight Fit, twice the points',
+    swipeCaption: 'GAME MODES',
     swipeHint: 'Swipe for more modes',
     /** Unlimited's late stages (`endlessStages`), as they come. */
     stage: (stage: number, overtime: number): string =>
@@ -766,22 +722,6 @@ export const S = {
     many: (n: number, reward: string): string => `${n} ACHIEVEMENTS · +${money(reward)} · see Progress → Goals`,
   },
 
-  /** A condition met for the first time, on the ready screen (`ConditionIntro`). */
-  intro: {
-    title: (e: ConditionEntry): string => `New · ${S.museum.name(e)}`,
-    text: (e: ConditionEntry, c: Config): string =>
-      e.k === 'road'
-        ? 'The ring has two lanes now. The arrow at your stop line shows where your car is headed; the inner lane crosses the outer one.'
-        : e.k === 'dark'
-          ? INTRO_TEXT.dark[e.kind](c)
-          : e.k === 'weather'
-            ? INTRO_TEXT.weather[e.kind](c)
-            : INTRO_TEXT.event[e.kind](c),
-
-    /** The Museum's few words, where the sentence has no room. */
-    short: (e: ConditionEntry): string => museumText(e).line,
-  },
-
   /** The top card's briefing (`Briefings`): what meets you and what to do about it. */
   brief: {
     /** `again`: shown once more after this one cost the last shift. */
@@ -789,14 +729,31 @@ export const S = {
     text: (e: MuseumEntry): string => museumText(e).brief,
   },
 
+  /** Notifications (`net/push.ts`): what reaches the phone while the game is closed, and the switch for it. */
+  push: {
+    streakTitle: (days: number): string => `Your ${days}-day streak`,
+    streakBody: "Play today's Daily Shift before midnight to keep it going.",
+    giftTitle: 'Your free chest is ready',
+    giftBody: 'A Standard Chest is waiting for you. Open the game to collect it.',
+    passTitle: (season: Season): string => `${S.pass.seasonName(season)} is here`,
+    passBody: 'A new Season Pass is out, with three new skins to earn.',
+    row: 'Notifications',
+    rowSub: 'Your streak, a free chest, a new season, or a player passing you in the top 20. At most one a day.',
+    rowInstall: 'Add the game to your Home Screen first, then turn them on here.',
+    rowBlocked: 'Blocked for this site. Allow notifications in your browser settings to turn them on.',
+    offerTitle: 'Keep your streak',
+    offerWhy: 'Get a nudge before your streak ends, when a free chest is ready or a new season starts. At most one a day, never at night.',
+    offerOn: 'Turn on notifications',
+    offerLater: 'Not now',
+    on: 'Notifications on. At most one a day, never at night.',
+    failed: 'Notifications could not be turned on. Try again later.',
+    denied: 'Notifications are blocked for this site in your browser settings.',
+  },
+
   ready: {
     tapToStart: 'Tap to start',
     tapForFriends: 'Tap to play with friends',
     levelCaption: (level: number, prestige = 0): string => (prestige > 0 ? `★${prestige} · LEVEL ${level}` : `LEVEL ${level}`),
-    conditions(weather: Weather, event: CityEvent | null, night = false, blackout = false): string | null {
-      const parts = [blackout ? S.blackout : night ? S.night : null, weather === 'clear' ? null : S.weather(weather), event ? S.cityEvent(event) : null].filter((x): x is string => !!x);
-      return parts.length ? parts.join(' · ') : null;
-    },
   },
 
   tabs: {
@@ -877,6 +834,8 @@ export const S = {
     unknown: '???',
     notSeen: 'Not seen yet',
     newBadge: 'NEW',
+    /** A condition's sheet from its icon on the Game tab, before the player has met it. */
+    firstTime: 'New for you',
     firstAt: (level: number): string => `From Level ${level}`,
     undiscovered: 'Not discovered yet',
     lockedHint: (level: number): string =>
@@ -887,6 +846,13 @@ export const S = {
     discovered: (names: string[]): string => `New in the Museum: ${names.join(', ')}`,
     kind: (e: MuseumEntry): string => ({ boss: 'Syndicate boss', special: 'Special vehicle', weather: 'Weather', dark: 'Darkness', event: 'City event', road: 'Road' })[e.k],
     met: 'Met, still at large',
+    onRing: 'On the ring',
+    signalArrive: (arm: string | null, sweep: string | null): string =>
+      arm && sweep ? `The arm it comes from glows ${arm}, then a ${sweep} light runs round the island.` : arm ? `The arm it comes from glows ${arm} before it joins the ring.` : `A ${sweep} light runs round the island.`,
+    signalPaid: (color: string): string => `Done right: a ${color} ring widens out from the island.`,
+    signalMissed: (color: string): string => `Missed: a ${color} ring pulls back into the island.`,
+    signalNote: (n: 'escaped' | 'blocked'): string =>
+      n === 'escaped' ? 'If it gets away, the whole ring flashes purple.' : 'A car that joins right in front of it flashes the whole ring red and breaks your combo.',
     heist: 'Heist recovered',
     firstMet: 'Boss level',
     rematch: 'Rematch',
@@ -1171,9 +1137,11 @@ export const S = {
     section: (i: number): string => ['Chests', 'Collection', 'Casino'][i],
     newBadge: 'NEW',
     shelf: (i: number): string => ['Cars', 'Maps', 'Honours', 'Pass'][i],
-    /** The headings on the Cars shelf: the chest skins by rarity, then the vehicles and the season skins. */
-    group: (g: Rarity | 'vehicles' | 'seasons'): string =>
-      ({ common: 'Common', rare: 'Rare', epic: 'Epic', legendary: 'Legendary', vehicles: 'Vehicles', seasons: 'Seasons' })[g],
+    /** The headings on the Cars shelf (the chest skins by rarity, the vehicles, the season skins) and on the Honours shelf (the cars by rarity, the vehicles, the maps). */
+    group: (g: Rarity | 'vehicles' | 'seasons' | 'maps', honours = false): string => {
+      const name = { common: 'Common', rare: 'Rare', epic: 'Epic', legendary: 'Legendary', vehicles: 'Vehicles', seasons: 'Seasons', maps: 'Maps' }[g];
+      return honours && g !== 'vehicles' && g !== 'seasons' && g !== 'maps' ? `${name} cars` : name;
+    },
     waiting: (n: number): string => (n === 1 ? '1 waiting' : `${n} waiting`),
     buy: (price: string): string => `Buy · ${price}`,
     pity: (n: number): string => `Epic or better within ${n} chests. Duplicates pay out ${MONEY_MARK}.`,
@@ -1598,7 +1566,7 @@ export const S = {
         quietStreets: 'Some shifts come with no criminal at all.',
         interceptor: 'A police car right behind a criminal runs it down faster.',
         dispatchRadio: 'Calling a police car to the front of the queue costs less of your combo.',
-        backup: 'Your shift survives one police car crash more.',
+        backup: 'Your shift survives one police car crash more. The ring flashes blue and red with little plus signs, and each blue plus in the top bar is one crash still forgiven.',
         cashRoute: 'Money transporters show up sooner and more often.',
         overtime: 'Every shift you finish pays more.',
         freight: 'More lorries on the road: denser traffic, but every shift pays more and every toll is worth more.',
@@ -1606,7 +1574,7 @@ export const S = {
         doubleRun: 'Sometimes a second money transporter follows right after the first.',
         insurance: 'Pays part of what a crash costs you.',
         robberyInsurance: 'Pays part of what an escaped criminal costs you.',
-        shield: 'Your own car may crash once more per shift: the ring lights up green and the shift goes on. Not in Unlimited.',
+        shield: 'Your own car may crash once more per shift. The ring flashes green with little plus signs, the combo breaks and the shift goes on; each green plus in the top bar is one crash still forgiven. Not in Unlimited.',
       }[u];
     },
     total(u: Upgrade, steps: number, c: Config): string {
@@ -1740,20 +1708,15 @@ export const S = {
     rushHour: 'RUSH HOUR',
     tight: 'TIGHT!',
     cutOff: 'CUT OFF',
-    busted: 'BUSTED!',
     dispatch: 'DISPATCH',
-    seized: 'SEIZED',
-    lost: 'LOST',
     danger: 'DANGER',
     boom: 'BOOM!',
     covered: 'COVERED',
-    paid: (amount: string): string => `PAID ${amount}`,
     combo: (n: number): string => `COMBO ${n}`,
     cars: (n: number): string => (n === 1 ? '1 car' : `${n} cars`),
     wanted: (seconds: number): string => `WANTED ${Math.ceil(Math.max(0, seconds))}`,
     rushFactor: (value: number): string => `RUSH HOUR ${multiplier(value)}`,
     critical: (points: string): string => `CRITICAL ${points}`,
-    jackpotIncoming: 'JACKPOT!',
     transporterTimer: (seconds: number): string => `${Math.ceil(Math.max(0, seconds))} s`,
     jackpotPaid: (amount: string): string => `JACKPOT ${amount}`,
     shave: (points: string): string => `CLOSE SHAVE ${points}`,

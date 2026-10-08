@@ -317,6 +317,17 @@ export interface MusicMix {
   lowPass: number;
 }
 
+/** What the sky sounds like: how hard it rains (0…1), and how many flashes of lightning there have been (thunder follows each). */
+export interface WeatherSound {
+  rain: number;
+  strikes: number;
+}
+
+export const Sky = {
+  /** Rain by `weatherSeverity`: none, light, heavy, storm, extreme. */
+  rain: [0, 0.3, 0.55, 0.8, 1],
+};
+
 export const Music = {
   silent: { volumes: {}, lowPass: 0 } as MusicMix,
   breathDepth: 0.85,

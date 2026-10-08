@@ -5,7 +5,9 @@ import { Details } from '../present/detail';
 import { RenderList } from '../present/render';
 import { CanvasDrawer } from '../present/draw';
 import { css } from '../present/theme';
+import { type SignalDetail, SignalLoop } from '../present/museumSignal';
 import { MONEY_MARK } from '../present/icons';
+import { S } from '../present/strings';
 import type { ScreenAction } from '../present/flow';
 import { h, icon } from './dom';
 import { ICONS } from './icons';
@@ -44,6 +46,16 @@ export class DetailSheet {
   private readonly scroller: HTMLElement;
   private readonly body: HTMLElement;
   private readonly actions: HTMLElement;
+  private readonly signalRow: HTMLElement;
+  private readonly signalCanvas: HTMLCanvasElement;
+  private readonly signalDrawer: CanvasDrawer;
+  private readonly signalLabel: HTMLElement;
+  private readonly signalText: HTMLElement;
+  private readonly signalList: HTMLElement;
+  private outcome: string | null = null;
+  private signal: SignalDetail | null = null;
+  private loop = new SignalLoop();
+  private signalClock = 0;
   private key: string | null = null;
   private json = '';
   private open = false;
@@ -51,6 +63,7 @@ export class DetailSheet {
   /** The sheet's height, kept by the observer: reading it from the layout every frame would force one. */
   private height = 0;
   private drag: { startY: number; dy: number; id: number; t: number } | null = null;
+  private readonly fill = h('div', { class: 'detail-fill', 'aria-hidden': 'true' });
   private hideTimer = 0;
 
   constructor(
@@ -63,6 +76,15 @@ export class DetailSheet {
     this.art.style.height = `${ART}px`;
     this.drawer = new CanvasDrawer(this.art);
     this.drawer.resize(ART, ART, 2);
+    this.signalCanvas = h('canvas', { class: 'detail-signal-art', width: SignalLoop.size * 2, height: SignalLoop.size * 2, 'aria-hidden': 'true' });
+    this.signalCanvas.style.width = `${SignalLoop.size}px`;
+    this.signalCanvas.style.height = `${SignalLoop.size}px`;
+    this.signalDrawer = new CanvasDrawer(this.signalCanvas);
+    this.signalDrawer.resize(SignalLoop.size, SignalLoop.size, 2);
+    this.signalLabel = h('div', { class: 'detail-signal-label' }, S.museum.onRing);
+    this.signalText = h('p', { class: 'detail-signal-text' });
+    this.signalList = h('ul', { class: 'detail-signal-lines' });
+    this.signalRow = h('div', { class: 'detail-signal' }, h('div', { class: 'detail-signal-head' }, this.signalCanvas, h('div', {}, this.signalLabel, this.signalText)), this.signalList);
     this.eyebrow = h('div', { class: 'detail-eyebrow' });
     this.title = h('h2', { class: 'detail-title', id: 'detail-title' });
     this.price = h('div', { class: 'detail-price' });
@@ -73,7 +95,7 @@ export class DetailSheet {
     this.body = h('div', { class: 'detail-body' });
     this.scroller = h('div', { class: 'detail-scroll' }, head, this.body);
     this.actions = h('div', { class: 'detail-actions' });
-    this.root = h('section', { class: 'detail-sheet', role: 'dialog', 'aria-modal': 'false', 'aria-labelledby': 'detail-title', hidden: true }, handle, this.scroller, this.actions);
+    this.root = h('section', { class: 'detail-sheet', role: 'dialog', 'aria-modal': 'false', 'aria-labelledby': 'detail-title', hidden: true }, handle, this.scroller, this.actions, this.fill);
     parent.append(this.root);
     new ResizeObserver(([entry]) => (this.height = entry.borderBoxSize[0].blockSize)).observe(this.root);
     this.bindDrag(handle);
@@ -91,6 +113,11 @@ export class DetailSheet {
       if (this.open) this.hide();
       return;
     }
+    this.sync(detail);
+    this.paintSignal();
+  }
+
+  private sync(detail: Detail): void {
     const json = JSON.stringify(detail);
     if (!this.open) this.show();
     if (detail.key !== this.key) {
@@ -128,10 +155,31 @@ export class DetailSheet {
     this.key = null;
     this.json = '';
     this.root.classList.add('closing');
-    const reduce = document.querySelector('.app.reduce-motion') !== null || window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     this.hideTimer = window.setTimeout(() => {
       if (!this.open) this.root.hidden = true;
-    }, reduce ? 0 : 220);
+    }, this.reducedMotion() ? 0 : 220);
+  }
+
+  private reducedMotion(): boolean {
+    return document.querySelector('.app.reduce-motion') !== null || window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  }
+
+  /** The small roundabout of a Museum entry plays its signal as long as the sheet is open. */
+  private paintSignal(): void {
+    const signal = this.signal;
+    if (!signal) return;
+    const now = performance.now();
+    this.loop.update((now - this.signalClock) / 1000, signal);
+    this.signalClock = now;
+    const outcome = signal.paid && signal.missed ? this.loop.outcome(signal) : null;
+    if (outcome !== this.outcome) {
+      this.outcome = outcome;
+      for (const li of this.signalList.children) (li as HTMLElement).classList.toggle('dim', outcome !== null && (li as HTMLElement).dataset.kind !== outcome && (li as HTMLElement).dataset.kind !== 'note');
+    }
+    const size = SignalLoop.size;
+    const list = new RenderList({ viewport: v(size, size), center: v(0, 0), focus: v(size / 2, size / 2), scale: 1 }, 'card');
+    this.loop.draw(list, signal, this.reducedMotion());
+    this.signalDrawer.draw(list);
   }
 
   private render(d: Detail, fresh: boolean): void {
@@ -155,6 +203,21 @@ export class DetailSheet {
 
     const keep = this.scroller.scrollTop;
     const body: Node[] = d.body.map((p) => h('p', { class: 'detail-text' }, rich(p)));
+    this.signal = d.signal ?? null;
+    if (this.signal) {
+      if (fresh) this.loop = new SignalLoop();
+      const [arrive, ...rest] = this.signal.lines;
+      this.signalText.textContent = arrive.text;
+      this.outcome = null;
+      this.signalList.replaceChildren(
+        ...rest.map((line) => {
+          const dot = h('span', { class: 'dot', 'aria-hidden': 'true' });
+          if (line.color) dot.style.background = css(line.color);
+          return h('li', { 'data-kind': line.kind }, dot, line.text);
+        }),
+      );
+      body.push(this.signalRow);
+    }
     if (d.rows.length > 0) body.push(this.list(d.rows));
     for (const section of d.sections ?? []) {
       body.push(h('h3', { class: 'detail-section' }, section.header));
@@ -217,6 +280,7 @@ export class DetailSheet {
       // Up gives way with resistance, down follows the finger.
       const y = d.dy < 0 ? -Math.sqrt(-d.dy) * 4 : d.dy;
       this.root.style.transform = `translateY(${y}px)`;
+      this.fill.style.height = `${Math.max(0, -y)}px`;
     });
     const end = (e: PointerEvent): void => {
       const d = this.drag;
@@ -224,6 +288,7 @@ export class DetailSheet {
       this.drag = null;
       this.root.classList.remove('dragging');
       this.root.style.transform = '';
+      this.fill.style.height = '';
       const speed = d.dy / Math.max(1, performance.now() - d.t);
       if (d.dy > 90 || speed > 0.6) {
         if (this.expanded && d.dy < 260) this.setExpanded(false);

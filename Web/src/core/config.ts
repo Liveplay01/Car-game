@@ -708,7 +708,9 @@ export const baseConfig = {
   cityEvent: null as CityEvent | null,
   cityEventLevel: 4,
   cityEventChance: 0.25,
+  /** Which of the gaps between the junctions the roadworks take (share 0…1), drawn per shift. */
   roadworksAt: 0,
+  /** The longest the roadworks get; where the junctions leave less room, they are shorter. */
   roadworksArc: 110,
   roadworksSpeedFactor: 0.6,
   closedArmSlot: null as number | null,
@@ -721,15 +723,15 @@ export const baseConfig = {
    * ring; the traffic behind them waits. Merge behind a bus, not into the queue it leaves.
    */
   schoolRunLevel: 30,
-  /** Where the bus stop sits on the ring (share of the ring), drawn per shift. */
+  /** Which of the gaps between the junctions the bus stop takes (share 0…1), drawn per shift. */
   busStopAt: 0,
   /** Share of the new AI traffic that is a school bus during a School Run. */
   busShare: 0.28,
   /**
-   * At most this many buses owe their stop at once (Leo, 03.10.2026: six buses at the start of a
-   * high level jammed the ring for the whole shift). More just join as ordinary lorries.
+   * At most this many buses are on the road at once, served or not (Leo, 03.10.2026: six buses at the start of a
+   * high level jammed the ring; 08.10.2026: still too many, so one). More just join as ordinary lorries.
    */
-  busMaxOwing: 2,
+  busMax: 1,
   busLength: 44,
   busMass: 2.4,
   /** Seconds a bus stands at the stop. */

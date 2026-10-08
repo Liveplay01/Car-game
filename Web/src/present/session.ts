@@ -1,5 +1,5 @@
 import { World, STEP } from '../core/world';
-import { baseConfig, gravity, builtArmSlots, INVITE_REMINDER_LEVEL, type Config } from '../core/config';
+import { baseConfig, gravity, builtArmSlots, weatherSeverity, INVITE_REMINDER_LEVEL, type Config } from '../core/config';
 import { type SaveGame, type GameMode, type Hint, Careers, newSave } from '../core/career';
 import { Elite } from '../core/elite';
 import { SeasonPass } from '../core/seasonPass';
@@ -19,7 +19,7 @@ import { loadPlayerName } from '../storage/profile';
 import { leaderboardEnabled, syncScores, type Records } from '../net/leaderboard';
 import type { Reward } from '../net/rewards';
 import { cloudChanged, cloudEnabled, cloudLinked } from '../net/cloud';
-import { RenderList, R, Ease, toScreen, rect, type Camera } from './render';
+import { RenderList, R, Ease, toScreen, rect, type Camera, type Rect } from './render';
 import type { ColorToken } from './theme';
 import { S, Fmt, money as moneyText } from './strings';
 import { CrashEffects } from './effects';
@@ -31,7 +31,7 @@ import { Skins } from './skins';
 import { WeatherFade, WeatherLayer } from './weather';
 import { NightLayer } from './night';
 import { CityLights } from './cityLights';
-import { HUD, TopBar, RingSignals, ModeBanner, ModeHint, ReadyBanner, ResultBanner, type Popup, type PopupKind, type ShiftSummary, type ConditionIntro, POPUP_LIFETIME, settledPops } from './hud';
+import { HUD, TopBar, RingSignals, ModeMessage, ReadyBanner, type TopMessage, ResultBanner, type Popup, type PopupKind, type ShiftSummary, type ConditionIntro, POPUP_LIFETIME, settledPops } from './hud';
 import { inPortal } from '../storage/device';
 import { Tutorial } from './tutorial';
 import { NoticeQueue } from './notices';
@@ -52,7 +52,7 @@ import type { PageHost } from './pageHost';
 import { type SpecialRun, settleSpecial, runCard, advanceRush, newRush } from './specialRuns';
 import { markPassed, markReward } from '../core/tiers';
 import { forHeat, heatPay } from '../core/heat';
-import { conditionIntro, streakEndsIn, addNotice, noticeHeight, noticePresence, type NoticePlace } from './readyScreen';
+import { conditionChips, ConditionChips, streakEndsIn, addNotice, noticeHeight, noticePresence, type NoticePlace } from './readyScreen';
 import { Briefings, briefOf } from './briefing';
 
 export type { SpecialRun } from './specialRuns';
@@ -61,7 +61,7 @@ import { MuseumPage } from './museum';
 import { sightings, museumEntry, museumId, conditionsOf, type MuseumEntry } from '../core/museum';
 import { UpgradePage, UpgradeState } from './upgrades';
 import { StreetBuilderPage, BuilderState } from './builder';
-import { Feedback, Music, type MusicMix, type SoundID, type HapticID } from './feedback';
+import { Feedback, Music, Sky, type MusicMix, type WeatherSound, type SoundID, type HapticID } from './feedback';
 import { Details, type Detail } from './detail';
 import { TyreMarks } from './marks';
 import { type ChallengeSpec, challengeOf, challengeConfig, encodeChallenge } from '../core/challenge';
@@ -223,12 +223,24 @@ export class GameSession {
   buildPage: Tab = 'upgrades';
   private buildSlide: { from: Tab; age: number } | null = null;
   private pan = new ModePan();
-  private modeBanner: { mode: SwipeMode; age: number } | null = null;
+  private readonly modeMessage = new ModeMessage();
+  /** The waiting shift each mode was left on: swiping back finds the same sky and city, until that shift is played. */
+  private readonly parked = new Map<GameMode, number>();
+  /** The camera's kick as the mode changes: how long ago, and which way the swipe went. */
+  private sinceModeKick = Infinity;
+  /** Seconds since the last swipe to another mode: the swipe hint waits for a quiet screen after one. */
+  private sinceModeSwipe = Infinity;
+  private modeKickDir = 1;
   /** Houses the career's city had at the last look, and what rises since (`CityLayer.add`). */
   private cityCount: number | null = null;
   private cityRise: CityRise | null = null;
   /** The swipe hint after Level 5: 0 hidden, 1 shown, fading between. */
+  /** The swipe hint on the top card (0–1): after `hintIdle` seconds on the waiting screen (`hintIdleKnown` for someone who has swiped before), shown `hintShown` seconds in every `hintEvery`. */
   private modeHint = 0;
+  private static readonly hintIdle = 3.5;
+  private static readonly hintIdleKnown = 7;
+  private static readonly hintShown = 6;
+  private static readonly hintEvery = 26;
   /** The multiplayer page of the mode swipe is showing: a tap opens the lobby. */
   versusSelected = false;
   /** Opens the multiplayer lobby (the shell's sheet). */
@@ -262,6 +274,9 @@ export class GameSession {
   private raceDelta: number | null = null;
   /** The mix the music should play; `main.ts` fades its stems to it. */
   musicMix: MusicMix = Music.silent;
+  /** The sky as heard: rain while the scene is on screen, and a strike for each flash of lightning. */
+  weatherSound: WeatherSound = { rain: 0, strikes: 0 };
+  private flash = { period: 0, index: 0 };
   /** How tense the casino is right now, 0…1: the shell turns it into a riser and a heartbeat. */
   tension = 0;
   /** The detail sheet over a page: open after a card was tapped (`ui/detailSheet.ts`). */
@@ -514,8 +529,13 @@ export class GameSession {
         if (mode === this.swipeMode || this.world.shift.phase !== 'waiting' || !(this.screen.k === 'ready' || this.isShowingResult)) return;
         // Multiplayer is a page of the swipe, not a career mode: the career keeps its mode.
         const fromVersus = this.versusSelected;
+        const from = this.swipeMode;
         this.versusSelected = mode === 'multiplayer';
-        this.modeBanner = { mode, age: 0 };
+        // The swipe hint on the card hands over to the mode's name, and stays away until the screen has been quiet again.
+        this.modeMessage.swipe(mode, this.modeHint > 0.05 ? { brief: TopBar.swipeBrief(), amount: this.modeHint } : undefined);
+        this.modeHint = 0;
+        this.sinceModeSwipe = 0;
+        this.kickCamera(SWIPE_MODES.indexOf(mode) - SWIPE_MODES.indexOf(from));
         if (!this.save.hints.includes('modes')) {
           this.save.hints.push('modes');
           this.persist();
@@ -525,9 +545,12 @@ export class GameSession {
           this.onChrome?.();
           break;
         }
+        if (!this.special) this.parked.set(this.gameMode, this.world.seed);
+        const parkedSeed = this.parked.get(mode) ?? null;
+        this.parked.delete(mode);
         save.mode = mode;
         this.persist();
-        this.prepareShift(false, null, { k: 'ready' });
+        this.prepareShift(false, parkedSeed, { k: 'ready' });
         break;
       }
       case 'showTab': {
@@ -554,6 +577,8 @@ export class GameSession {
         if (!this.isPage('shop')) return;
         this.shopPage.section = action.section === 2 && !Unlocks.isOpen(this.save.career, 'casino', this.config) ? 0 : action.section;
         this.shopPage.sectionSlide = null;
+        // The chest waiting first is the one picked out on the shelf.
+        if (this.shopPage.section === 0 && this.save.career.chests.length > 0) this.shopPage.selectedChest = this.save.career.chests[0];
         break;
       case 'showProgress':
         this.perform({ k: 'showTab', tab: 'progress' });
@@ -617,12 +642,6 @@ export class GameSession {
         this.shopPage.shelf = shelfOf(open.opening.item);
         this.shopPage.selectedItem = open.opening.item.id;
         this.shopPage.opening = open;
-        break;
-      }
-      case 'openChestHere': {
-        if (this.chestOffer === 0) return;
-        this.sceneChest = this.openChestAt(0);
-        this.onChrome?.();
         break;
       }
       case 'buyChest':
@@ -745,13 +764,7 @@ export class GameSession {
     return { opening, reel, age: this.reduceMotion ? ShopPage.stages(opening, reel).reveal : 0 };
   }
 
-  /**
-   * A chest opened right where the player is (research of 08.10.2026: a reward lands best in the scene, not a tab away):
-   * the Shop's reveal over the Game tab, from the pill under the result or the waiting screen. A tap moves it on.
-   */
-  sceneChest: ShopState['opening'] = null;
-
-  /** Chests waiting to be opened from the Game tab's pill; 0 where it does not show (a shift, a challenge, a match, a page). */
+  /** Chests waiting, for the Game tab's pill to the Chests page; 0 where it does not show (a shift, a challenge, a match, a page). */
   get chestOffer(): number {
     const k = this.screen.k;
     if (!this.showsChrome || (k !== 'ready' && k !== 'result') || this.special || this.versusSelected || this.adFlow.placeholder) return 0;
@@ -886,6 +899,10 @@ export class GameSession {
   private eliteSeen = false;
   /** The Elite sheet shows the Hall of Fame's own page. */
   private hallOpen = false;
+  /** The condition whose sheet is open over the Game tab (a tap on its icon). */
+  private conditionShown: string | null = null;
+  /** The condition icons' tap targets as last drawn; empty while there are none to tap. */
+  private conditionTargets: { id: string; rect: Rect }[] = [];
   static readonly prestigeWindow = 4;
 
   private tryPrestige(): void {
@@ -980,7 +997,7 @@ export class GameSession {
    * phone a first tap that lands in a menu loses the player): until then the screen is the game and nothing else.
    */
   get showsChrome(): boolean {
-    return showsTabBar(this.screen) && this.save.tutorialDone && !this.sceneChest;
+    return showsTabBar(this.screen) && this.save.tutorialDone;
   }
 
   // MARK: Casino (present/casinoFlow.ts)
@@ -1132,6 +1149,9 @@ export class GameSession {
     }
     this.keepDailyInStep();
     for (const a of actions) this.handle(a, simDelta);
+    // A condition's sheet belongs to the waiting shift it was opened on.
+    const shown = this.conditionShown;
+    if (shown && (!(this.screen.k === 'ready' || this.screen.k === 'result') || !conditionChips(this.world.config, this.save.career).some((c) => c.id === shown))) this.closeDetail();
 
     const events: GameEvent[] = [];
     if (runs) {
@@ -1235,12 +1255,6 @@ export class GameSession {
     if (this.tutorial?.isDone) this.tutorial = null;
     this.transitions.advance(realDelta);
     this.adFlow.advance(realDelta);
-    const chest = this.sceneChest;
-    if (chest) {
-      const before = chest.age;
-      chest.age += realDelta;
-      this.reelCues(chest, before, chest.age);
-    }
 
     if (this.isPage('upgrades')) {
       this.upgradePage.advance(realDelta);
@@ -1282,7 +1296,9 @@ export class GameSession {
       if (this.buildSlide.age >= BuildLayout.glide) this.buildSlide = null;
     }
     this.followModePan(realDelta);
-    if (this.modeBanner) this.modeBanner = this.modeBanner.age + realDelta < ModeBanner.duration ? { mode: this.modeBanner.mode, age: this.modeBanner.age + realDelta } : null;
+    this.modeMessage.advance(realDelta);
+    this.sinceModeKick += realDelta;
+    this.sinceModeSwipe += realDelta;
     if (this.isPage('streetBuilder')) {
       this.builderPage.advance(realDelta);
       if (this.builderPage.removing > StreetBuilderPage.removeDuration) this.perform({ k: 'removePart' });
@@ -1293,7 +1309,20 @@ export class GameSession {
     this.notices.held = this.screen.k === 'playing';
     this.notices.advance(realDelta);
     this.musicMix = this.screen.k === 'playing' && runs ? Music.playing(this.world, this.flowLevel) : Music.silent;
+    this.hearSky();
     return this.renderList(viewport, realDelta);
+  }
+
+  /** Rain on the Game tab's scene, and a strike whenever the scene's clock passes a flash of lightning (`WeatherLayer.addAirOf`). */
+  private hearSky(): void {
+    const severity = weatherSeverity(this.world.config.weather);
+    const period = WeatherLayer.flashPeriod(severity);
+    const index = period > 0 ? Math.floor(this.sceneTime / period) : 0;
+    const strikes = this.weatherSound.strikes + (period === this.flash.period && index > this.flash.index ? 1 : 0);
+    this.flash = { period, index };
+    const k = this.screen.k;
+    const onScreen = k === 'ready' || k === 'playing' || k === 'result' || k === 'settings';
+    this.weatherSound = { rain: onScreen ? Sky.rain[severity] : 0, strikes };
   }
 
   private followRim(): void {
@@ -1304,7 +1333,7 @@ export class GameSession {
       return;
     }
     const total = this.world.config.shiftCars;
-    this.rim.follow(total, Math.max(0, total - left), this.world.shift.isRushHour ? 'juiceGreen' : 'primary');
+    this.rim.follow(total, Math.max(0, total - left), this.world.shift.isRushHour ? 'rushHour' : 'primary');
   }
 
   /** A tap for the world, timestamped when it happened (not when the frame saw it). */
@@ -1315,13 +1344,6 @@ export class GameSession {
   }
 
   private handle(a: InputAction, simDelta: number): void {
-    if (this.sceneChest && (a.k === 'tap' || a.k === 'confirm' || a.k === 'back' || a.k === 'pointerDown' || a.k === 'swipeMode')) {
-      if (a.k !== 'swipeMode' && !ShopPage.stepOpening(this.sceneChest)) {
-        this.sceneChest = null;
-        this.onChrome?.();
-      }
-      return;
-    }
     switch (a.k) {
       case 'tap':
         switch (this.screen.k) {
@@ -1374,7 +1396,7 @@ export class GameSession {
         else if (this.screen.k === 'settings') this.perform({ k: 'closeSettings' });
         break;
       case 'back':
-        if (this.detailOpen && this.screen.k === 'page') {
+        if (this.detailOpen && (this.screen.k === 'page' || this.conditionShown)) {
           this.closeDetail();
           this.tick();
         } else if (this.screen.k === 'settings') this.perform({ k: 'closeSettings' });
@@ -1739,11 +1761,23 @@ export class GameSession {
     return names.length > 0 ? S.museum.discovered(names) : null;
   }
 
+  /** A tap on a condition's icon: its Museum sheet over the Game tab; a second tap closes it. */
+  private showCondition(id: string): void {
+    this.tick();
+    if (this.conditionShown === id) {
+      this.closeDetail();
+      return;
+    }
+    this.conditionShown = id;
+    this.detailOpen = true;
+  }
+
   /** Closes the detail sheet; what it was about is no longer chosen. */
   closeDetail(): void {
     if (!this.detailOpen) return;
     this.detailOpen = false;
     this.hallOpen = false;
+    this.conditionShown = null;
     this.progressPage.museum.selected = null;
     this.progressPage.feat = null;
     this.upgradePage.selected = null;
@@ -1764,6 +1798,7 @@ export class GameSession {
 
   /** What the detail sheet shows right now; null while it is closed or something covers the page. */
   get detail(): Detail | null {
+    if (this.conditionShown && this.detailOpen && (this.screen.k === 'ready' || this.screen.k === 'result')) return Details.museum(this.conditionShown, this.save.career, this.config, true);
     if (!this.detailOpen || this.screen.k !== 'page' || this.adFlow.placeholder) return null;
     const career = this.save.career;
     const ads = this.adOffer;
@@ -1831,12 +1866,51 @@ export class GameSession {
     this.cityCount = count;
   }
 
-  /** After Level 5, until the first swipe, on the waiting screen of a career shift (not under a notice). */
+  /**
+   * After Level 5, on the waiting screen of a career shift (not under a notice): after a while without a tap the top
+   * card says the modes are a swipe away, for a few seconds, and again now and then. Someone who has swiped before
+   * gets it too, but later (Leo, 08.10.2026).
+   */
   private get showsModeHint(): boolean {
     const career = this.save.career;
     const due = career.level > this.config.modeHintAfterLevel || this.save.hints.includes('unlimitedTip');
-    if (this.save.hints.includes('modes') || !due || this.versusSelected || !this.notices.isEmpty) return false;
-    return this.screen.k === 'ready' && this.sinceReady > 0.6 && this.takesModeSwipe;
+    if (!due || !this.notices.isEmpty) return false;
+    if (this.screen.k !== 'ready' || !this.takesModeSwipe) return false;
+    // After a swipe the hint is gone for a whole quiet stretch, then it counts as before.
+    const swiped = this.sinceModeSwipe < this.sinceReady;
+    const wait = swiped ? GameSession.hintEvery : this.save.hints.includes('modes') ? GameSession.hintIdleKnown : GameSession.hintIdle;
+    const idle = Math.min(this.sinceReady, this.sinceModeSwipe) - wait;
+    return idle >= 0 && idle % GameSession.hintEvery < GameSession.hintShown;
+  }
+
+  /** What the waiting screen's top card says instead of its numbers: the mode just swiped to, or the swipe hint. */
+  private get topMessage(): TopMessage | null {
+    const message = this.modeMessage.view(this.sceneTime);
+    if (message) return message;
+    return this.modeHint > 0 ? { brief: TopBar.swipeBrief(), previous: null, amount: this.modeHint, swap: 1, pulse: 1, time: this.sceneTime, ...this.swipeSides } : null;
+  }
+
+  /** A short kick of the camera as the mode changes: a small lean in, and a damped shake the way the swipe went. */
+  private kickCamera(direction: number): void {
+    if (this.reduceMotion) return;
+    this.sinceModeKick = 0;
+    this.modeKickDir = direction < 0 ? -1 : 1;
+    this.sincePunch = 0;
+    this.punchAt = v(0, 0);
+    this.punchSize = 0.03;
+  }
+
+  private get modeKick(): Vec2 {
+    const t = this.sinceModeKick;
+    if (this.reduceMotion || t > 0.8) return v(0, 0);
+    const decay = Math.exp(-t * 7);
+    return v(this.modeKickDir * 9 * decay * Math.sin(t * 30), 3 * decay * Math.sin(t * 37 + 1));
+  }
+
+  /** Which ways a swipe leads to another mode from this page: none to the left of the first, none to the right of the last. */
+  private get swipeSides(): { left: boolean; right: boolean } {
+    const at = SWIPE_MODES.indexOf(this.swipeMode);
+    return { left: at > 0, right: at < SWIPE_MODES.length - 1 };
   }
 
   private get takesModeSwipe(): boolean {
@@ -1854,6 +1928,17 @@ export class GameSession {
     }
     if (this.screen.k === 'ready' || this.screen.k === 'result') {
       if (this.screen.k === 'result' && this.resultAge < ResultBanner.inputLock) return null;
+      const chip = this.conditionTargets.find((t) => R.contains(t.rect, point));
+      if (chip) {
+        this.showCondition(chip.id);
+        return true;
+      }
+      // With a condition's sheet open, a tap on the scene closes it: it never starts the shift.
+      if (this.conditionShown) {
+        this.closeDetail();
+        this.tick();
+        return true;
+      }
       const column = TopBar.column(point, this.lastViewport.x);
       if (!column) return null;
       const showsCars = this.screen.k === 'ready' || ResultBanner.settled(this.resultAge) >= 0.5;
@@ -1920,10 +2005,12 @@ export class GameSession {
         case 'comboChanged':
           if (e.isTierUp) {
             this.sinceComboTier = 0;
-            this.rim.signal('wave', 'juiceGreen');
-            // The top multiplier lands with a blink of stillness.
+            // The higher the tier, the juicier the splash; the top one throws gold in with the green.
             const c = world.config;
-            if (e.tier >= Math.min(c.comboThresholds.length, c.comboMultipliers.length)) this.landMerge(0.06, 0);
+            const tiers = Math.min(c.comboThresholds.length, c.comboMultipliers.length);
+            this.rim.signal('splash', 'juiceGreen', e.tier >= tiers ? 'coin' : 'skinMint', e.tier / tiers);
+            // The top multiplier lands with a blink of stillness.
+            if (e.tier >= tiers) this.landMerge(0.06, 0);
           }
           break;
         case 'shiftEnded':
@@ -1943,123 +2030,99 @@ export class GameSession {
           this.finish(e.result);
           break;
         case 'takedown':
-          this.addPopup({ k: 'busted', n: e.points }, e.point);
           this.sinceTakedown = 0;
           this.cameraFx.leanTo(e.point, CameraFxTuning.takedownZoom, 0.3);
           this.rim.signal('wave', 'lightBlue');
           break;
         case 'criminalWarning':
           this.brief(e.boss ? { k: 'boss', kind: world.config.bossKind } : { k: 'special', kind: 'pickup' });
-          if (e.boss) {
-            this.addPopup({ k: 'convoy', kind: world.config.bossKind }, world.layout.stopPose(e.arm).position);
-            this.rim.signal('sweep', 'coin');
-          } else if (e.scout) {
-            this.addPopup({ k: 'scout' }, world.layout.stopPose(e.arm).position);
-            this.rim.signal('sweep', 'vehicleCriminal');
-            if (!this.save.hints.includes('scout')) {
-              this.save.hints.push('scout');
-              this.showNotice(S.boss.scoutFirst);
-            }
+          this.rim.signal('sweep', e.boss ? 'coin' : 'vehicleCriminal');
+          if (e.scout && !this.save.hints.includes('scout')) {
+            this.save.hints.push('scout');
+            this.showNotice(S.boss.scoutFirst);
           }
           break;
         case 'armourHit':
-          this.addPopup({ k: 'armour' }, add(e.point, v(0, 20)));
           this.rim.signal('wave', 'coin');
           break;
         case 'ambulanceWarning':
           this.brief({ k: 'special', kind: e.fire ? 'fireTruck' : 'ambulance' });
-          this.addPopup({ k: 'ambulance', fire: e.fire }, world.layout.stopPose(e.arm).position);
           this.rim.signal('sweep', 'lightBlue');
           break;
         case 'oversizeWarning':
           this.brief({ k: 'special', kind: 'oversize' });
-          this.addPopup({ k: 'oversize' }, world.layout.stopPose(e.arm).position);
           this.rim.signal('sweep', 'vehicleOversize');
           break;
         case 'oversizeSpoilt':
-          this.addPopup({ k: 'crowded' }, e.point);
+          this.rim.signal('miss', 'vehicleOversize');
           break;
         case 'oversizePassed':
-          this.addPopup({ k: 'wideLoad', n: e.amount }, e.point);
           this.rim.signal('wave', 'vehicleOversize');
           break;
         case 'weddingWarning':
           this.brief({ k: 'special', kind: 'wedding' });
-          this.addPopup({ k: 'wedding' }, world.layout.stopPose(e.arm).position);
           this.rim.signal('sweep', 'vehicleWedding');
           break;
         case 'weddingSpoilt':
-          this.addPopup({ k: 'crowded' }, e.point);
+          this.rim.signal('miss', 'vehicleWedding');
           break;
         case 'weddingPassed':
-          this.addPopup({ k: 'weddingPaid', n: e.amount }, e.point);
           this.rim.signal('wave', 'vehicleWedding');
           break;
         case 'raceWarning':
           this.brief({ k: 'special', kind: 'racer' });
-          this.addPopup({ k: 'race' }, world.layout.stopPose(e.arm).position);
           this.rim.signal('sweep', 'vehicleRacer');
           break;
         case 'racerStopped':
-          this.addPopup({ k: 'raceStopped', n: e.amount }, e.point);
           this.rim.signal('wave', 'vehicleRacer');
           break;
         case 'learnerWarning':
           this.brief({ k: 'special', kind: 'learner' });
-          this.addPopup({ k: 'learner' }, world.layout.stopPose(e.arm).position);
-          this.rim.signal('sweep', 'juiceGreen');
+          this.rim.signal('sweep', 'learnerSign');
           break;
         case 'learnerSpoilt':
-          this.addPopup({ k: 'crowded' }, e.point);
+          this.rim.signal('miss', 'learnerSign');
           break;
         case 'learnerPassed':
-          this.addPopup({ k: 'patient', n: e.amount }, e.point);
-          this.rim.signal('wave', 'juiceGreen');
+          this.rim.signal('wave', 'learnerSign');
           break;
         case 'ambulanceBlocked':
-          this.addPopup({ k: 'blocked' }, e.point);
           this.rim.signal('flush', 'destructive');
           break;
         case 'ambulanceCleared':
-          this.addPopup({ k: 'clearRoad', n: e.amount }, e.point);
           this.rim.signal('wave', 'lightBlue');
           break;
         case 'ambulanceLost':
-          this.addPopup({ k: 'lost' }, e.point);
+          this.rim.signal('miss', 'lightBlue');
           break;
         case 'heistRecovered':
-          this.addPopup({ k: 'heist', n: e.amount }, add(e.point, v(0, 24)));
           this.rim.signal('wave', 'coin');
           break;
         case 'dispatched':
           this.addPopup({ k: 'dispatch' }, world.layout.stopPose(world.layout.player).position);
           break;
         case 'rushHour':
-          this.rim.signal('sweep', 'juiceGreen');
+          this.rim.signal('sweep', 'rushHour');
           break;
         case 'unlimitedStage':
           // Unlimited moves on: a light run round the ring, and the news at the top.
-          this.rim.signal('sweep', 'hazard');
+          this.rim.signal('sweep', 'primary');
           this.showNotice(S.modes.stage(e.stage, e.overtime));
           break;
         case 'transporterSeized':
-          this.addPopup({ k: 'seized' }, e.point);
-          break;
         case 'transporterLost':
-          this.addPopup({ k: 'lost' }, e.point);
+          this.rim.signal('miss', 'vehicleCargo');
           break;
         case 'transporterWarning':
           this.brief({ k: 'special', kind: 'transporter' });
-          if (e.jackpot) {
-            this.addPopup({ k: 'jackpot' }, world.layout.stopPose(e.arm).position);
-            this.rim.signal('sweep', 'coin');
-          }
+          this.rim.signal('sweep', e.jackpot ? 'coin' : 'vehicleCargo');
           break;
         case 'transporterPaid':
-          if (e.amount > 0) {
-            this.addPopup({ k: 'paid', n: e.amount, jackpot: e.jackpot }, world.layout.stopPose(world.layout.player).position);
-            this.rim.signal(e.jackpot ? 'sweep' : 'wave', e.jackpot ? 'coin' : 'vehicleCargo');
-          }
+          if (e.amount <= 0) break;
+          if (e.jackpot) {
+            this.addPopup({ k: 'jackpotPaid', n: e.amount }, world.layout.stopPose(world.layout.player).position);
+            this.rim.signal('sweep', 'coin');
+          } else this.rim.signal('wave', 'vehicleCargo');
           break;
         case 'modulePaid':
           this.addPopup({ k: 'modulePulse', color: e.module === 'speedCamera' ? 'lightBlue' : e.module === 'billboard' ? 'accent' : 'hazard' }, e.point);
@@ -2070,6 +2133,7 @@ export class GameSession {
           break;
         case 'militaryWarning':
           this.brief({ k: 'special', kind: 'military' });
+          this.rim.signal('sweep', 'lightRed');
           break;
         case 'criminalEscaped': {
           // It cost the shift: the next one explains it again.
@@ -2406,7 +2470,7 @@ export class GameSession {
     if (!this.special) CityLayer.addElite(list, Elite.level(career, this.config), world);
     if (!this.special) CityLayer.addHall(list, career.hallBuilt, career.prestige, world);
     CityLayer.addFrame(list, Careers.frame(career), world);
-    this.rim.add(list, world, rm);
+    if (!world.config.night) this.rim.add(list, world, rm);
     WeatherLayer.addCityEvent(list, world);
     const weather = this.weatherFade.mix(world.config.weather, this.sceneTime);
     WeatherLayer.addGround(list, world, weather);
@@ -2419,7 +2483,13 @@ export class GameSession {
     SceneBuilder.addShadows(list, world, alpha);
     SceneBuilder.addVehicles(list, world, alpha, career.carSkins, rm ? null : world.time, rm ? null : world.time, this.lamps);
     SceneBuilder.addTowTrucks(list, world);
-    if (world.config.night) NightLayer.add(list, world, alpha, this.lamps, rm ? null : world.time);
+    if (world.config.night) {
+      NightLayer.add(list, world, alpha, this.lamps, rm ? null : world.time);
+      // The ring's light goes on above the dark, not under it, and glows (`HUD.bloom`).
+      const lit = list.items.length;
+      this.rim.add(list, world, rm);
+      if (!this.lowDetail) HUD.bloom(list, lit);
+    }
     if (this.save.settings.vehicleLabels) SceneBuilder.addLabels(list, world, alpha);
     this.effects.addAir(list);
     this.explosions.addAir(list);
@@ -2454,7 +2524,8 @@ export class GameSession {
     const shake = add(this.effects.shakeOffset, this.explosions.shakeOffset);
     const pulled = { ...cam, scale: cam.scale * (1 - GameSession.lossPullBack * this.lossPull) * (1 + this.explosions.punch) };
     const leaned = zoomAbout(this.cameraFx.apply(pulled, world.layout.stopPose(world.layout.player).position, rm), this.punchAt, 1 + this.punch);
-    const camera = { ...leaned, focus: v(leaned.focus.x + shake.x + this.pan.pan, leaned.focus.y + shake.y) };
+    const kick = this.modeKick;
+    const camera = { ...leaned, focus: v(leaned.focus.x + shake.x + this.pan.pan + kick.x, leaned.focus.y + shake.y + kick.y) };
     const career = this.save.career;
     this.lastCamera = camera;
     const list = this.sceneList(camera, alpha, rm, this.backdrop);
@@ -2469,7 +2540,9 @@ export class GameSession {
     const s = this.screen;
     // Where the chrome under the top card ends: a notice hangs below it.
     let underCard = TopBar.frame(viewport.x).maxY;
+    this.conditionTargets = [];
     if (s.k === 'playing') {
+      const lit = list.items.length;
       HUD.addFlowGlow(list, world, this.flowLevel, rm ? 0 : 1 - Ease.clamp01(this.sinceCarSent / 0.3));
       HUD.addChase(list, world, alpha);
       HUD.addTransporter(list, world, alpha);
@@ -2479,6 +2552,7 @@ export class GameSession {
       HUD.addOversize(list, world, alpha);
       HUD.addWedding(list, world);
       HUD.addRace(list, world, alpha);
+      if (world.config.night && !this.lowDetail) HUD.bloom(list, lit);
       const since = world.shift.rushHourSince;
       HUD.add(list, {
         world,
@@ -2524,7 +2598,6 @@ export class GameSession {
     }
     const inset = this.tabInset;
     // Where a notice would sit: above the settings button; it fades out as the shift starts.
-    if (this.modeHint > 0 && (s.k === 'ready' || s.k === 'playing')) ModeHint.add(list, v(viewport.x / 2, viewport.y - inset - 92), this.modeHint, this.sceneTime, rm);
     if (this.isPage('streetBuilder')) StreetBuilderPage.add(list, career, this.config, this.builderPage, rm, inset, this.buildThumb);
     else if (this.isPage('upgrades')) UpgradePage.add(list, career, this.config, this.visibleUpgrades, this.upgradePage, rm, inset, this.buildThumb, this.adOffer.offers ? Careers.adUpgradeOffer(career, this.today, this.config) : null);
     else if (this.isPage('shop')) ShopPage.add(list, career, this.config, this.today, this.shopPage, rm, inset);
@@ -2533,7 +2606,6 @@ export class GameSession {
     const standIn = this.adFlow.placeholder;
     if (standIn) ShopPage.addAd(list, standIn.reward, standIn.age, AdFlow.placeholderSeconds);
     this.transitions.apply(list, s, overlayStart, rm);
-    if (this.sceneChest) ShopPage.addReveal(list, this.sceneChest.opening, this.sceneChest.reel, this.sceneChest.age, rm);
     const notice = this.notices.shown;
     if (notice) addNotice(list, notice, { at: this.noticePlace(s, underCard, inset), textScale: this.textScale, reduceMotion: rm });
     return list;
@@ -2597,14 +2669,19 @@ export class GameSession {
       : null;
     // The next goal in reach: only on a plain career shift, never over a challenge, trial or match.
     const goal = !this.special && !this.versusSelected && this.playingMode === 'shift' && (this.tutorial?.isOver ?? true) ? Goals.next(career, this.today) : null;
+    const run = runCard(this.special, this.world.config, this.playingMode, this.versusSelected, career, this.today);
+    // A trial's goal already names its conditions; the tutorial and a match have none to show.
+    // While the Daily's opening is on, nothing else of the waiting screen shows through it.
+    const opening = daily !== null && daily.splash !== null;
+    const chips = opening || this.special?.k === 'trial' || this.versusSelected || (this.tutorial && !this.tutorial.isOver) ? [] : conditionChips(this.world.config, career);
+    const chipsAt = ConditionChips.center(toScreen(list.camera, v(0, 0)), !!run?.line);
     const under = ReadyBanner.add(list, {
       level: this.playingLevel,
       cars: this.world.carsLeft ?? 0,
       highscore: this.currentBest,
       money: Fmt.number(career.money),
-      // A trial's goal already names its conditions.
-      conditions: this.special?.k === 'trial' || this.versusSelected ? null : S.ready.conditions(this.world.config.weather, this.world.config.cityEvent, this.world.config.night, this.world.config.blackout),
-      run: runCard(this.special, this.world.config, this.playingMode, this.versusSelected, career, this.today),
+      iconsTop: chips.length > 0 ? chipsAt.y - ConditionChips.hit / 2 : null,
+      run,
       prestige: this.special ? 0 : career.prestige,
       elite: !this.special && Elite.isOpen(career, this.config),
       playerName: this.versusSelected ? loadPlayerName() : undefined,
@@ -2613,7 +2690,7 @@ export class GameSession {
       heat: !this.special && !this.versusSelected && !this.playingDaily && this.playingMode === 'shift' ? Careers.activeHeat(career, this.config) : 0,
       mode: this.playingMode,
       versus: this.versusSelected,
-      prompt,
+      prompt: opening ? null : prompt,
       time: this.sinceReady,
       reduceMotion: this.reduceMotion,
       drawsCard,
@@ -2622,12 +2699,15 @@ export class GameSession {
       intro: this.versusSelected || (this.tutorial && !this.tutorial.isOver) ? null : this.readyIntro,
       textScale: this.textScale,
       noticeRoom: this.noticeRoom,
+      message: this.topMessage,
       ringTop: toScreen(list.camera, v(0, this.world.layout.ringRadius + this.world.layout.laneWidth)).y,
     });
-    if (this.modeBanner) {
-      const top = TopBar.frame(list.camera.viewport.x).maxY + (daily || Goals.tailwindOn(career, this.playingMode, this.playingDaily) || (this.playingMode === 'shift' && Careers.activeHeat(career, this.config) > 0) ? 40 : 14);
-      ModeBanner.add(list, this.modeBanner.mode, this.modeBanner.age, top, this.reduceMotion);
+    if (chips.length > 0) {
+      ConditionChips.add(list, chips, chipsAt, { time: this.sinceReady - ReadyBanner.introDelay, reduceMotion: this.reduceMotion, opacity, selected: this.conditionShown });
+      if (opacity > 0.5 && this.showsChrome) this.conditionTargets = ConditionChips.targets(chips.length, chipsAt).map((rect, i) => ({ id: chips[i].id, rect }));
     }
+    // The Daily's splash covers the whole screen for a moment: above the condition icons, never under them.
+    if (daily && daily.splash !== null) ReadyBanner.addSplash(list, daily, daily.splash, this.reduceMotion);
     return under;
   }
 
@@ -2639,11 +2719,10 @@ export class GameSession {
     return S.daily.giftIn((midnight.getTime() - now.getTime()) / 3600000);
   }
 
-  /** The ready screen's card: what a trial's goal asks for, then the conditions new to this player. */
+  /** The ready screen's card: what a trial's goal asks for (the conditions are icons, `ConditionChips`). */
   private get readyIntro(): ConditionIntro[] {
-    if (this.playingMode === 'chill') return [];
-    const howTo = this.special?.k === 'trial' ? S.trials.howTo(this.special.trial) : null;
-    return [...(howTo ? [howTo] : []), ...conditionIntro(this.world.config, this.save.career)];
+    const howTo = this.special?.k === 'trial' && this.playingMode !== 'chill' ? S.trials.howTo(this.special.trial) : null;
+    return howTo ? [howTo] : [];
   }
 
   /** Screen point of the island centre (for DOM overlays that follow the camera). */
@@ -2704,7 +2783,6 @@ export class GameSession {
 
   /** A fresh save (Settings → Delete account, after the server forgot the player). */
   resetProgress(): void {
-    this.sceneChest = null;
     this.save = newSave();
     this.store();
     this.tutorial = new Tutorial();
@@ -2713,7 +2791,6 @@ export class GameSession {
 
   /** Progress brought from another device (Cloud sync) replaces this one. */
   importProgress(save: SaveGame, text = S.settings.imported(save.career.level)): void {
-    this.sceneChest = null;
     this.save = save;
     this.store();
     this.tutorial = save.tutorialDone ? null : new Tutorial();

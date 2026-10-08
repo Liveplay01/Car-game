@@ -21,11 +21,12 @@ import { moneyTag, textWidth, drawFitted } from './icons';
 import { S, Fmt } from './strings';
 import { ShopPage } from './shop';
 import { PassArt, SEASON_TINT } from './passArt';
+import { TourArt, TOUR_TINT } from './tourArt';
 import { PROGRESS, type ProgressSection } from './flow';
 import { MuseumPage, MuseumState } from './museum';
 import { Scroller, clipTo } from './scroll';
 import { knownRank, leaderboardEnabled } from '../net/leaderboard';
-import { tourOn, nextTour, tourOpen, tourStopsDone, stopDoneKey, TOUR_LEVEL } from '../core/tours';
+import { type TourId, type TourDef, TOURS, tourOn, nextTour, tourOpen, tourStopsDone, stopDoneKey, TOUR_LEVEL } from '../core/tours';
 import { FAMILIES, Achievements, achievementTotal, type Family } from '../core/achievements';
 import { seasonOf } from '../core/loot';
 
@@ -95,7 +96,7 @@ type Block =
   | { k: 'rush' }
   | { k: 'rushLocked' }
   | { k: 'tour' }
-  | { k: 'tourInfo'; title: string; line: string }
+  | { k: 'tourInfo'; tour: TourId; title: string; line: string; locked: boolean }
   | { k: 'season' }
   | { k: 'ach'; family: Family }
   | { k: 'mastery'; goal: MasteryGoal }
@@ -163,6 +164,10 @@ export const ProgressPage = {
   streakHeight: 196,
   /** The Season Pass card once it is open: a picture tile of the season, the track and its bar. */
   passHeight: 128,
+  /** The running tour's card: a picture tile of its sky and top skin, the stops and the way in. */
+  tourHeight: 120,
+  /** A tour that has not started, or is still locked: the same picture, smaller, and one line. */
+  tourInfoHeight: 88,
   /** Records: this many stats as big tiles, the rest in a list that folds away. */
   highlights: 6,
 
@@ -298,11 +303,11 @@ export const ProgressPage = {
   /** The tour of the day, or when the next one comes; locked until the Trials open. */
   tourRows(s: Stack, career: Career, today: number): void {
     const run = tourOn(today);
-    if (run && !tourOpen(career)) s.row({ k: 'tourInfo', title: S.tours.name(run.tour.id), line: S.tours.locked(TOUR_LEVEL) }, 64);
-    else if (run) s.row({ k: 'tour' }, 96);
+    if (run && !tourOpen(career)) s.row({ k: 'tourInfo', tour: run.tour.id, title: S.tours.name(run.tour.id), line: S.tours.locked(TOUR_LEVEL), locked: true }, ProgressPage.tourInfoHeight);
+    else if (run) s.row({ k: 'tour' }, ProgressPage.tourHeight);
     else {
       const next = nextTour(today);
-      if (next && next.inDays <= 60) s.row({ k: 'tourInfo', title: S.tours.name(next.tour.id), line: S.tours.startsIn(next.inDays) }, 64);
+      if (next && next.inDays <= 60) s.row({ k: 'tourInfo', tour: next.tour.id, title: S.tours.name(next.tour.id), line: S.tours.startsIn(next.inDays), locked: false }, ProgressPage.tourInfoHeight);
     }
   },
 
@@ -512,9 +517,9 @@ export const ProgressPage = {
       case 'rushLocked':
         return ProgressPage.addRushLocked(list, r, career, o);
       case 'tour':
-        return ProgressPage.addTour(list, r, career, today, o);
+        return ProgressPage.addTour(list, r, career, today, state.time, reduceMotion, o);
       case 'tourInfo':
-        return ProgressPage.addInfoRow(list, r, b.title, b.line, o);
+        return ProgressPage.addTourInfo(list, r, b, state.time, reduceMotion, o);
       case 'season':
         return ProgressPage.addSeason(list, r, today, o);
       case 'ach':
@@ -811,25 +816,51 @@ export const ProgressPage = {
     ProgressPage.addCardRow(list, r, r.minX + 16, o, { title: S.seasonRule.name(season), line: S.seasonRule.line(season), status: S.pass.seasonName(season) });
   },
 
-  /** The tour running today: its name and days left, the stops as dots, and the way in. */
-  addTour(list: RenderList, r: Rect, career: Career, today: number, o: number): void {
+  /** The tour's top skin: what its last stop pays. */
+  tourSkin: (tour: TourDef) => cosmetic(tour.stops[tour.stops.length - 1].reward.item ?? ''),
+
+  /** A tour that has not started (or is locked for this level yet): its picture with the name and when it comes. */
+  addTourInfo(list: RenderList, r: Rect, b: Extract<Block, { k: 'tourInfo' }>, clock: number, reduceMotion: boolean, o: number): void {
+    ProgressPage.panel(list, r, o);
+    const side = R.height(r) - 24;
+    const tile = R.make(r.minX + 12, r.minY + 12, r.minX + 12 + side, r.maxY - 12);
+    const def = TOURS.find((x) => x.id === b.tour);
+    TourArt.add(list, tile, b.tour, def && ProgressPage.tourSkin(def), clock, reduceMotion, o * (b.locked ? 0.55 : 1));
+    ProgressPage.addCardRow(list, r, tile.maxX + 14, o, { title: b.title, line: b.line, dim: true });
+  },
+
+  /**
+   * The tour running today (Leo, 08.10.2026: a picture like the Season Pass's): the tour's sky with its top skin on the
+   * left, its name and days left, the stops as dots, and the way in.
+   */
+  addTour(list: RenderList, r: Rect, career: Career, today: number, clock: number, reduceMotion: boolean, o: number): void {
     const run = tourOn(today);
     if (!run) return;
+    const tint = TOUR_TINT[run.tour.id];
+    const t = reduceMotion ? 0 : clock;
+    const pulse = reduceMotion ? 0.5 : 0.5 + 0.5 * Math.sin(t * 2.2);
+    const c = R.center(r);
+    const size = v(R.width(r), R.height(r));
+    list.s(rect(c, add(size, v(10 + 4 * pulse, 10 + 4 * pulse)), ShopPage.corner + 5), tint, (0.1 + 0.1 * pulse) * o);
     ProgressPage.panel(list, r, o);
+    list.s(rect(c, size, ShopPage.corner), tint, 0.06 * o);
+    const side = Math.min(92, R.width(r) * 0.3);
+    const tile = R.make(r.minX + 12, r.minY + 12, r.minX + 12 + side, r.maxY - 12);
+    TourArt.add(list, tile, run.tour.id, ProgressPage.tourSkin(run.tour), clock, reduceMotion, o);
     const done = tourStopsDone(career, run);
     const total = run.tour.stops.length;
-    const x = r.minX + 16;
+    const x = tile.maxX + 14;
     const right = r.maxX - 16;
     const name = S.tours.name(run.tour.id);
-    drawText(list, name, v(x, r.minY + 22), 15, done === total ? 'coin' : 'primary', { opacity: o, weight: 'bold' });
-    drawText(list, S.tours.left(run.daysLeft), v(right, r.minY + 22), 12, run.daysLeft <= 2 ? 'hazard' : 'muted', { opacity: o, weight: 'bold', align: 'trailing' });
-    const tagline = S.tours.tagline(run.tour.id);
-    drawFitted(list, tagline, v(x, r.minY + 42), 11, right - x, 'muted', { opacity: o });
+    const left = S.tours.left(run.daysLeft);
+    drawText(list, left, v(right, r.minY + 24), 12, run.daysLeft <= 2 ? 'hazard' : 'muted', { opacity: o, weight: 'bold', align: 'trailing' });
+    drawFitted(list, name, v(x, r.minY + 24), 15, right - x - textWidth(left, 12) - 8, done === total ? 'coin' : 'primary', { opacity: o, weight: 'bold' });
+    drawFitted(list, S.tours.tagline(run.tour.id), v(x, r.minY + 44), 11, right - x, 'muted', { opacity: o });
     // The stops as dots; the next one has a ring, and the last one is bigger (it holds the boss).
     const next = ProgressPage.nextStop(career, today);
-    const gap = Math.min(30, (R.width(r) - 32 - 70) / Math.max(1, total - 1));
+    const gap = Math.min(30, (right - x - 18) / Math.max(1, total - 1));
     for (let i = 0; i < total; i++) {
-      const at = v(x + 7 + i * gap, r.maxY - 24);
+      const at = v(x + 9 + i * gap, r.minY + 72);
       const finished = career.toursDone.includes(stopDoneKey(run.key, i + 1));
       const last = i === total - 1;
       if (i + 1 === next && done < total) list.s(circle(at, (last ? 11 : 9.5) + 1.5), 'accent', 0.55 * o);
@@ -840,7 +871,7 @@ export const ProgressPage = {
       }
     }
     const status = done === total ? `${S.daily.done} ✓` : S.tours.progress(done, total);
-    drawText(list, status, v(right, r.maxY - 36), 11, done === total ? 'accent' : 'muted', { opacity: o, align: 'trailing' });
+    drawText(list, status, v(x, r.maxY - 18), 11, done === total ? 'accent' : 'muted', { opacity: o });
     drawText(list, S.tours.play, v(right, r.maxY - 18), 12, 'accent', { opacity: o, weight: 'bold', align: 'trailing' });
   },
 

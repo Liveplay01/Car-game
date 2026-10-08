@@ -186,6 +186,22 @@ the service's) both get a Standard Chest, which the game picks up like any gift 
 who knows the game (`hints: invite`), and another comes on reaching level 10 (`inviteReminder`, `bookShift`); a new
 player is told they need a name. Without `VITE_API_URL` none of it exists.
 
+## Notifications
+
+Web Push through the service (`net/push.ts`, `Server/src/modules/push`, Leo, 08.10.2026): only what matters,
+at most one a day besides the streak, never at night on the player's clock. The game works out its reminders
+from the save (`pushTimers`: the Daily streak of two days or more this evening, or tomorrow evening once today's
+is played; tomorrow's free chest at 10:00; the next Season Pass on its first morning) and hands them to the
+service when it starts, when it goes to the background (`keepalive`) and when a name is entered. The service adds
+a rank lost in the top 20, an invite's chest and a nudge after 3, 7, 14 and 30 days away. The service worker shows
+them (`push`) and opens or focuses the game on a tap (`notificationclick`, at `/?googleplaystore` in the app).
+
+Turned on in **Settings → Progress → Notifications**, or from the offer that comes once when a Daily streak
+reaches two days (`hints: notifications`, `bookShift`; on an iPhone it waits until the game is on the Home
+Screen). Chrome, Edge, Firefox and the Play Store app everywhere; Safari only from the Home Screen (iOS 16.4+).
+Not on CrazyGames or itch.io, not without `VITE_API_URL`, and not in `npm run dev` (no service worker): try it
+with `npm run build` + `npm run preview` and a service with `VAPID_*` set. Delete account turns it off too.
+
 ## Changelog API
 
 `/changelog.json` is the game's What's new as data, written at every build from `present/patchNotes.ts` (plugin
@@ -385,6 +401,9 @@ The query gets the default Content-Security-Policy.
   protection must let Google's fetcher through.
 - **Deleting data** (Data safety form): `https://game.gustaff.dev/privacy` → "Deleting your data".
 - `iarc_rating_id` goes into the manifest once Play has issued the rating.
+- **A new wrapper build** (wrapper options, name, icon, manifest `shortcuts`, a permission) is collected
+  in [NEW-PLAYSTORE-BUILD.md](../NEW-PLAYSTORE-BUILD.md), with the steps to build and release it. First on
+  the list: notification delegation, so notifications reach the app.
 - **App shortcuts** come from the manifest's `shortcuts` when the wrapper is built (PWABuilder or
   Bubblewrap): a change there needs a new wrapper build and release. Home-screen widgets would be
   native Android code in the wrapper and could not read the game's save (it lives in Chrome's

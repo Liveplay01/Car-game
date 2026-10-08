@@ -1,4 +1,4 @@
-import { type SoundID, type HapticID, type MusicMix, type MusicLayer, SOUND_IDS, MUSIC_LAYERS, Music } from '../present/feedback';
+import { type SoundID, type HapticID, type MusicMix, type MusicLayer, type WeatherSound, SOUND_IDS, MUSIC_LAYERS, Music } from '../present/feedback';
 import { clamp } from '../core/vec2';
 
 declare global {
@@ -8,6 +8,12 @@ declare global {
 }
 
 const base = import.meta.env.BASE_URL;
+
+interface RainVoice {
+  gain: GainNode;
+  hiss: BiquadFilterNode;
+  body: GainNode;
+}
 
 /**
  * The real sounds and the adaptive music (`AppAudio`, `AppMusic`): every effect is a
@@ -319,6 +325,131 @@ export class AudioPlayer {
     const loud = 0.25 + 0.45 * on;
     thump(0, loud);
     thump(0.17, loud * 0.6);
+  }
+
+  private noiseLoop: AudioBuffer | null = null;
+  private rainVoice: RainVoice | null = null;
+  private strikes = 0;
+
+  private noise(ctx: AudioContext): AudioBuffer {
+    if (this.noiseLoop) return this.noiseLoop;
+    const frames = ctx.sampleRate * 4;
+    const buffer = ctx.createBuffer(1, frames, ctx.sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let i = 0; i < frames; i++) data[i] = Math.random() * 2 - 1;
+    this.noiseLoop = buffer;
+    return buffer;
+  }
+
+  /**
+   * The weather as a bed of sound (`GameSession.weatherSound`): rain is looping noise, a hiss on top and a low body
+   * under it that grow with the downpour, and every flash of lightning is followed by thunder.
+   */
+  updateWeather(sky: WeatherSound, enabled: boolean): void {
+    const ctx = this.ctx;
+    if (!ctx || !this.sfx || ctx.state !== 'running') return;
+    const rain = enabled ? sky.rain : 0;
+    if (!this.rainVoice) {
+      if (rain === 0) {
+        this.strikes = sky.strikes;
+        return;
+      }
+      this.rainVoice = this.startRain(ctx, this.sfx);
+    }
+    const now = ctx.currentTime;
+    const voice = this.rainVoice;
+    voice.gain.gain.setTargetAtTime(AudioPlayer.rainVolume * rain, now, 0.7);
+    voice.hiss.frequency.setTargetAtTime(3200 + 3200 * rain, now, 0.7);
+    voice.body.gain.setTargetAtTime(rain * rain * 0.9, now, 0.7);
+    if (sky.strikes !== this.strikes) {
+      if (sky.strikes > this.strikes && rain > 0) this.thunder(ctx, this.sfx);
+      this.strikes = sky.strikes;
+    }
+  }
+
+  private static readonly rainVolume = 0.16;
+
+  private startRain(ctx: AudioContext, out: GainNode): RainVoice {
+    const gain = ctx.createGain();
+    gain.gain.value = 0;
+    gain.connect(out);
+    const src = ctx.createBufferSource();
+    src.buffer = this.noise(ctx);
+    src.loop = true;
+    const high = ctx.createBiquadFilter();
+    high.type = 'highpass';
+    high.frequency.value = 700;
+    const hiss = ctx.createBiquadFilter();
+    hiss.type = 'lowpass';
+    hiss.frequency.value = 3200;
+    src.connect(high);
+    high.connect(hiss);
+    hiss.connect(gain);
+    const low = ctx.createBiquadFilter();
+    low.type = 'lowpass';
+    low.frequency.value = 420;
+    const body = ctx.createGain();
+    body.gain.value = 0;
+    src.connect(low);
+    low.connect(body);
+    body.connect(gain);
+    src.start();
+    return { gain, hiss, body };
+  }
+
+  /** Thunder after the flash: a crack when the strike is near, a long rumble that rolls and dies away, a sub under it. */
+  private thunder(ctx: AudioContext, out: GainNode): void {
+    const delay = 0.12 + Math.random() * 1.2;
+    const far = delay / 1.32;
+    const at = ctx.currentTime + delay;
+    const level = 0.95 - 0.4 * far;
+    const noise = (length: number): AudioBufferSourceNode => {
+      const src = ctx.createBufferSource();
+      src.buffer = this.noise(ctx);
+      src.loop = true;
+      src.start(at, Math.random() * 3);
+      src.stop(at + length);
+      return src;
+    };
+    const rumble = ctx.createBiquadFilter();
+    rumble.type = 'lowpass';
+    rumble.Q.value = 0.8;
+    rumble.frequency.setValueAtTime(650 - 300 * far, at);
+    rumble.frequency.exponentialRampToValueAtTime(70, at + 3);
+    const roll = ctx.createGain();
+    roll.gain.setValueAtTime(0.0001, at);
+    roll.gain.exponentialRampToValueAtTime(level, at + 0.1 + 0.3 * far);
+    roll.gain.exponentialRampToValueAtTime(level * 0.35, at + 0.9);
+    roll.gain.exponentialRampToValueAtTime(level * 0.75, at + 1.35);
+    roll.gain.exponentialRampToValueAtTime(0.0001, at + 3.4);
+    noise(3.5).connect(rumble);
+    rumble.connect(roll);
+    roll.connect(out);
+    const sub = ctx.createOscillator();
+    const subGain = ctx.createGain();
+    sub.type = 'sine';
+    sub.frequency.setValueAtTime(58, at);
+    sub.frequency.exponentialRampToValueAtTime(28, at + 1.8);
+    subGain.gain.setValueAtTime(0.0001, at);
+    subGain.gain.exponentialRampToValueAtTime(0.7 * (1 - 0.6 * far), at + 0.15);
+    subGain.gain.exponentialRampToValueAtTime(0.0001, at + 2);
+    sub.connect(subGain);
+    subGain.connect(out);
+    sub.start(at);
+    sub.stop(at + 2.1);
+    if (far < 0.5) {
+      const band = ctx.createBiquadFilter();
+      band.type = 'bandpass';
+      band.frequency.value = 2400;
+      band.Q.value = 0.7;
+      const crack = ctx.createGain();
+      crack.gain.setValueAtTime(0.0001, at);
+      crack.gain.exponentialRampToValueAtTime(0.8 * (1 - far), at + 0.01);
+      crack.gain.exponentialRampToValueAtTime(0.0001, at + 0.28);
+      noise(0.3).connect(band);
+      band.connect(crack);
+      crack.connect(out);
+    }
   }
 
   updateMusic(mix: MusicMix, enabled: boolean, delta: number): void {

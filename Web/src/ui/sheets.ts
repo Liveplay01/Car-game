@@ -6,6 +6,8 @@ import { LEGAL_DOCS, type LegalDoc, type LegalId } from '../present/legal';
 import type { License } from '../present/licenses';
 import { inItch, inPlayStore, inPortal, isInstalled, isIos } from '../storage/device';
 import { cloudEnabled } from '../net/cloud';
+import type { PushState } from '../net/push';
+import { S } from '../present/strings';
 
 interface OpenSheet {
   root: HTMLElement;
@@ -361,7 +363,88 @@ export interface SettingsActions {
   /** The player's friend code, if they have a name: it fills in the bug form on the website. */
   friendCode: (() => Promise<string | null>) | null;
   install: (() => void) | null;
+  /** Notifications on this device (`net/push.ts`); null where there are none (inside a portal, no service). */
+  push: { state: PushState; toggle(on: boolean): Promise<PushState> } | null;
   closed(): void;
+}
+
+/**
+ * The notifications switch. Turning it on asks the browser, so the switch waits for the answer and
+ * shows what came of it; where it cannot be turned on (blocked, not on the Home Screen) it says why.
+ */
+function pushRow(push: NonNullable<SettingsActions['push']>): HTMLElement {
+  const sub = h('div', { class: 'row-sub' });
+  const sw = h('button', { class: 'switch', role: 'switch', 'aria-label': S.push.row });
+  const show = (state: PushState): void => {
+    sw.setAttribute('aria-checked', String(state === 'on'));
+    sw.disabled = state === 'blocked' || state === 'install';
+    sub.textContent = state === 'blocked' ? S.push.rowBlocked : state === 'install' ? S.push.rowInstall : S.push.rowSub;
+  };
+  show(push.state);
+  sw.addEventListener('click', () => {
+    const on = sw.getAttribute('aria-checked') !== 'true';
+    sw.setAttribute('aria-checked', String(on));
+    sw.disabled = true;
+    push
+      .toggle(on)
+      .then(show)
+      .catch(() => {
+        show(on ? 'off' : 'on');
+        sub.textContent = S.push.failed;
+      });
+  });
+  const row = h('div', { class: 'row switch-row' }, h('div', { class: 'row-main' }, h('div', { class: 'row-title' }, S.push.row), sub), sw);
+  row.addEventListener('click', (e) => {
+    if (e.target !== sw && !sw.disabled) sw.click();
+  });
+  return row;
+}
+
+/**
+ * Offered once, when a Daily streak reaches two days (`notifications` hint): a reminder before it
+ * breaks is the one notification a player is most glad of. "Turn on" asks the browser right away.
+ */
+export function pushOfferDialog(layer: HTMLElement, actions: { enable(): void; closed(): void }): void {
+  const previouslyFocused = document.activeElement as HTMLElement | null;
+  const on = h('button', { class: 'btn primary block', type: 'button' }, S.push.offerOn);
+  const later = h('button', { class: 'btn block quiet-btn', type: 'button' }, S.push.offerLater);
+  const card = h(
+    'div',
+    { class: 'intro-card', role: 'alertdialog', 'aria-modal': 'true', 'aria-labelledby': 'push-title', 'aria-describedby': 'push-why' },
+    h('div', { class: 'install-badge', 'aria-hidden': 'true' }, icon(ICONS.bell)),
+    h('h2', { class: 'install-title intro-title', id: 'push-title' }, S.push.offerTitle),
+    h('p', { class: 'install-why', id: 'push-why' }, S.push.offerWhy),
+    on,
+    later,
+  );
+  const root = h('div', { class: 'intro-root' }, card);
+  const finish = (): void => {
+    document.removeEventListener('keydown', onKey, true);
+    root.classList.add('closing');
+    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    window.setTimeout(() => root.remove(), reduce ? 0 : 200);
+    previouslyFocused?.focus?.();
+    actions.closed();
+  };
+  const onKey = (e: KeyboardEvent): void => {
+    e.stopPropagation();
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      finish();
+    } else if (e.key === 'Tab') {
+      e.preventDefault();
+      (document.activeElement === on ? later : on).focus();
+    }
+  };
+  // The browser asks only from inside the tap itself.
+  on.addEventListener('click', () => {
+    actions.enable();
+    finish();
+  });
+  later.addEventListener('click', finish);
+  document.addEventListener('keydown', onKey, true);
+  layer.append(root);
+  on.focus({ preventScroll: true });
 }
 
 /** Build with us (Leo, 03.10.2026): the two forms on the website. */
@@ -449,7 +532,7 @@ export function settingsSheet(layer: HTMLElement, s: Settings, actions: Settings
   setMotion(s.reduceMotion);
 
   const toggle =
-    (key: 'sound' | 'music' | 'haptics' | 'vehicleLabels' | 'leftHanded' | 'largeText') =>
+    (key: 'sound' | 'music' | 'mapSounds' | 'haptics' | 'vehicleLabels' | 'leftHanded' | 'largeText') =>
     (on: boolean): void => {
       s[key] = on;
       actions.changed(s);
@@ -520,8 +603,13 @@ export function settingsSheet(layer: HTMLElement, s: Settings, actions: Settings
       switchRow('Vehicle labels', 'Names the special vehicles on the road.', s.vehicleLabels, toggle('vehicleLabels')),
       switchRow('Haptics', hasVibration ? null : 'Not available in this browser', s.haptics, toggle('haptics')),
     ),
-    group('Sound', switchRow('Sound effects', null, s.sound, toggle('sound')), switchRow('Music', null, s.music, toggle('music'))),
-    group('Progress', cloudRow, installRow),
+    group(
+      'Sound',
+      switchRow('Sound effects', null, s.sound, toggle('sound')),
+      switchRow('Music', null, s.music, toggle('music')),
+      switchRow('Map sounds', 'Rain and thunder on the road.', s.mapSounds, toggle('mapSounds')),
+    ),
+    group('Progress', cloudRow, actions.push && actions.push.state !== 'none' ? pushRow(actions.push) : null, installRow),
     buildGroup,
     group(
       'More',

@@ -13,6 +13,8 @@ export const COLORS = {
   /** Street-lamp amber (Leo, 04.10.2026; was mint [158, 230, 207]). `--accent` in `ui/shell.css` is the same. */
   accent: [255, 183, 3, 1],
   accentInk: [14, 16, 19, 1],
+  /** Rush Hour: electric lime, apart from the lamp amber of the interface and the green that belongs to the player's combo. */
+  rushHour: [196, 240, 38, 1],
   destructive: [255, 90, 95, 1],
   scrim: [14, 16, 19, 0.8392],
   vehicleCar: [227, 230, 234, 1],
@@ -47,6 +49,8 @@ export const COLORS = {
   vehicleLadder: [196, 202, 210, 1],
   vehicleBus: [247, 190, 22, 1],
   vehicleLearner: [236, 238, 242, 1],
+  /** The learner's signal and band: teal, so the green stays the player's own (combo, Shield). */
+  learnerSign: [32, 201, 190, 1],
   /** The oversize load: site amber, so it reads as a heavy transport and nothing else. */
   vehicleOversize: [238, 166, 44, 1],
   /** The street racers: hot pink, apart from the criminal's violet and the police's blue. */

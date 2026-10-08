@@ -17,6 +17,7 @@ App-Store-Arbeit mehr vorschlagen.
 | [FOUNDATION.md](FOUNDATION.md) | Regeln mit Startwerten, Motion-Regeln, Architektur |
 | [LOOT.md](LOOT.md) | Was in den Truhen steckt: Skins, Fahrzeugtypen, Odds |
 | [IDEA.md](IDEA.md) | Offene Ideen (Umgesetztes und Gestrichenes wird entfernt) |
+| [NEW-PLAYSTORE-BUILD.md](NEW-PLAYSTORE-BUILD.md) | Sammelliste für den nächsten Build der Android-App, mit Anleitung |
 
 ## Feste Entscheidungen – nicht neu vorschlagen
 
@@ -52,6 +53,11 @@ App-Store-Arbeit mehr vorschlagen.
   (`vite.config.ts`, mit CORS in `nginx.conf`). Die Website liest sie im Browser; ein neuer Patch-Notes-Eintrag steht
   dort mit dem nächsten Deployment des Spiels, ohne Kopieren. Die Form ist öffentlich: Felder ergänzen, nie umbenennen.
 - **Analytics (Leo, 07.10.2026):** Das Spiel zählt Besuche mit **Umami** auf Leos eigener Instanz (`analytics.kestrel.nrw`, `ui/analytics.ts`): ohne Cookie, ohne ID, nur auf der normalen Seite und in der Play-App (nie CrazyGames oder itch.io), nicht bei Do Not Track, ohne Wirkung aufs Spiel, wenn blockiert. Ereignisse nur `tutorial-done` und `shift` (Modus, Level, Ausgang), gemeldet über `GameSession.onStep`; neue Ereignisse tragen nie Namen, Codes oder Spielstand. Datenschutzerklärung („Visit statistics“) und CSP in `nginx.conf` nennen den Dienst; „no tracking“ gilt nicht mehr. Kein zweites Analytics-System bauen.
+- **Benachrichtigungen (Leo, 08.10.2026):** Web Push über den Ranglisten-Dienst (`Server/src/modules/push`, VAPID-Schlüssel per
+  `npm run vapid`; Spiel: `net/push.ts`, Schalter in Settings, einmaliges Angebot ab einer Daily-Streak von 2). **Nur Wichtiges:**
+  Streak, im Top 20 überholt, Gratis-Truhe (Geschenk, Einladung), neuer Season Pass, Rückkehr-Stupser nach 3/7/14/30 Tagen. Höchstens
+  eine pro 20 Stunden (die Streak darf dazukommen), nie zwischen 21 und 9 Uhr Ortszeit. Keine Werbung, keine Casino- oder Kauf-Hinweise
+  per Benachrichtigung. Web/README.md, „Notifications“.
 - **Freiwillige Werbung (Leo, 05.10.2026):** Die einzige Werbung im Spiel sind **Rewarded Ads**, immer auf Tap und nur bezahlt, wenn sie zu Ende gesehen wurde: Gratis-Standard-Truhe (3/Tag), ein Gratis-Schritt eines vom Spiel gezogenen Upgrades (1/Tag) und +10 Prozentpunkte Chance auf die nächste Runde des Skin-Upgrades (3/Tag, `upgradeAdBoost`, im Rad sichtbar). **Die beiden neuen nur auf der normalen Seite und in der Google-Play-App, nie auf CrazyGames** (dort nur die Truhe, deren SDK). Echte Werbung über Googles Ad Placement API (`ui/ads.ts`, `present/adFlow.ts`), eingeschaltet mit dem Build-Arg `VITE_REWARDED_ADS=1`, sobald das AdSense-Konto für H5 Games Ads freigegeben ist; bis dahin läuft die Platzhalter-Werbung. Keine Pflicht-, Midgame- oder Banner-Werbung. Details: Web/README.md, „Rewarded ads“.
 - **Offline spielbar:** Nach dem ersten Laden läuft das Spiel ohne Netz (Service Worker aus
   `Web/vite.config.ts`, precacht alle Dateien). Nur der Multiplayer braucht Netz.
@@ -130,6 +136,7 @@ docker build -t car-game . ; docker run -p 5050:5050 car-game   # Container wie 
 - **Name (Leo, 30.09.2026):** Das Spiel heißt **Roundabout Timing** (kurz RAT); „Car Game“ ist nur noch der Ordner- und Repo-Name.
 - **CrazyGames (Leo, 30.09.2026):** Eingebettet über die normale URL mit `?crazygames`, kein eigener Build, kein Upload. Nur dann lädt das SDK und speichert über das Data Module (Web/README.md, CrazyGames).
 - **Google Play (Leo, 02.10.2026):** Trusted Web Activity auf `/?googleplaystore`, kein eigener Build. `inPlayStore` (`storage/device.ts`) blendet Installieren und den CrazyGames-Link aus; `public/.well-known/assetlinks.json` verknüpft App und Seite (Web/README.md, Google Play).
+  **Neuer App-Build gesammelt (Leo, 08.10.2026):** Braucht eine Änderung einen neuen Build der Android-Hülle (Wrapper-Option, Name, Icon, Manifest-`shortcuts`, Berechtigung), kommt sie als Punkt in [NEW-PLAYSTORE-BUILD.md](NEW-PLAYSTORE-BUILD.md); Leo baut, wenn genug zusammen ist.
 - **Rechtliches:** Datenschutz und Impressum in `Web/src/present/legal.ts` (Settings → Legal, `/privacy`, `/imprint`). Neuer Dienst, der Daten bekommt (Werbung, Analyse, Server) = Absatz dort und neues `LEGAL_UPDATED`.
 - Vor jedem Commit: `npm test` und `npm run build` müssen grün sein (in `Web/`, und in `Server/` `npm test` und `npm run typecheck`, wenn er berührt wurde).
 - Das Icon-Original liegt in `Web/icon/` (`python Web/icon/make_icon.py`).

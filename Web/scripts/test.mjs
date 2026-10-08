@@ -32,6 +32,8 @@ const { fingerprint } = await load('/src/net/cloud.ts');
 const { iceServers } = await load('/src/net/rtc.ts');
 const { NoticeQueue } = await load('/src/present/notices.ts');
 const { Briefings, briefOf } = await load('/src/present/briefing.ts');
+const { Details } = await load('/src/present/detail.ts');
+const { conditionChips, ConditionChips } = await load('/src/present/readyScreen.ts');
 const { bookShift } = await load('/src/present/booking.ts');
 const { S, Fmt } = await load('/src/present/strings.ts');
 const { Unlocks } = await load('/src/core/unlocks.ts');
@@ -46,6 +48,8 @@ const { settleSpecial, advanceRush, newRush, runCard } = await load('/src/presen
 const { trial: trialById, trialOpen, trialConfig, landmarkOf, LANDMARKS, LANDMARK_PRESTIGE, RUN_IDS, RUSH_ID, RUSH_REWARD, rushOpen, rematchId } = await load('/src/core/trials.ts');
 const { PATCH_NOTES, latestNote, itemText, itemCredit, changelogFile } = await load('/src/present/patchNotes.ts');
 const { parseInviteCode } = await load('/src/net/invite.ts');
+const { pushTimers } = await load('/src/net/push.ts');
+const { dayNumber } = await load('/src/core/daily.ts');
 const { INVITE_LEVEL, INVITE_REMINDER_LEVEL } = await load('/src/core/config.ts');
 const { default: qrcode } = await import('qrcode-generator');
 const { ResultBanner } = await load('/src/present/hud.ts');
@@ -512,14 +516,32 @@ test('a condition counts as met once the shift runs, so the ready screen can exp
   assert.ok(sightings(world).includes('weather.lightRain'));
 });
 
-test('every condition has a short first-meeting line', () => {
+test('a condition icon opens its full sheet, even before the player has met it', () => {
+  const career = newCareer();
   for (const e of shelfEntries(2)) {
-    const title = S.intro.title(e);
-    const line = S.intro.text(e, baseConfig);
-    assert.match(title, /^New · \S/, museumId(e));
-    assert.ok(!/undefined|NaN/.test(title + line), `${museumId(e)}: ${line}`);
-    assert.ok(line.length <= 130, `${museumId(e)} is ${line.length} characters: ${line}`);
+    const id = museumId(e);
+    assert.ok(!career.museumSeen.includes(id), id);
+    const d = Details.museum(id, career, baseConfig, true);
+    assert.notEqual(d.title, S.museum.unknown, id);
+    assert.equal(d.price?.text, S.museum.firstTime, id);
+    assert.ok(d.body.length > 0 && !/undefined|NaN/.test(d.title + d.body.join(' ')), id);
+    assert.equal(Details.museum(id, career, baseConfig).title, S.museum.unknown, `${id} stays a secret in the Museum`);
   }
+});
+
+test('condition icons: one per condition of the shift, tap targets of 64 points that never overlap', () => {
+  const config = cloneConfig(baseConfig);
+  Object.assign(config, { weather: 'heavyRain', cityEvent: 'roadClosure', night: true, blackout: false, lanes: 2 });
+  const chips = conditionChips(config, newCareer());
+  assert.deepEqual(chips.map((c) => c.id), ['dark.night', 'weather.heavyRain', 'event.roadClosure']);
+  assert.ok(chips.every((c) => c.isNew));
+  const targets = ConditionChips.targets(chips.length, { x: 200, y: 400 });
+  for (const [i, r] of targets.entries()) {
+    assert.ok(r.maxX - r.minX >= 64 && r.maxY - r.minY >= 64);
+    if (i > 0) assert.ok(r.minX >= targets[i - 1].maxX);
+  }
+  // Clear of the prompt drawn on the island's centre.
+  assert.ok(ConditionChips.center({ x: 200, y: 400 }, false).y + ConditionChips.hit / 2 <= 400 - 16);
 });
 
 test('everything in the Museum has a briefing short enough for two lines of the top card', () => {
@@ -532,18 +554,49 @@ test('everything in the Museum has a briefing short enough for two lines of the 
   }
 });
 
-test('a briefing with a task stays until the task is over, then the numbers come back', () => {
+test('a briefing with a task stays while the task is on, but never for long, then the numbers come back', () => {
   const world = { criminal: { kind: 'warning' } };
   const briefs = new Briefings();
   briefs.add(briefOf({ k: 'special', kind: 'pickup' }));
   briefs.add(briefOf({ k: 'special', kind: 'pickup' }));
-  for (let t = 0; t < 20; t += 0.1) briefs.advance(0.1, world);
+  for (let t = 0; t < 8; t += 0.1) briefs.advance(0.1, world);
   assert.equal(briefs.view?.brief.id, 'special.pickup', 'still on while the criminal is');
-  assert.equal(briefs.view?.used, null);
+  assert.ok(briefs.view?.used > 0 && briefs.view.used < 1, 'its time runs down along the card');
   world.criminal.kind = 'idle';
   for (let t = 0; t < 1; t += 0.1) briefs.advance(0.1, world);
   assert.equal(briefs.view, null);
   assert.ok(briefs.isEmpty, 'given once per shift');
+  // A task that drags on gives the card back to the numbers after its limit.
+  const long = new Briefings();
+  const chase = { criminal: { kind: 'active' } };
+  long.add(briefOf({ k: 'special', kind: 'pickup' }));
+  for (let t = 0; t < Briefings.most + 2; t += 0.1) long.advance(0.1, chase);
+  assert.equal(long.view, null, 'numbers are back though the task is not over');
+});
+
+test('news waits for a breather between briefings and stays off the last cars', () => {
+  const world = { criminal: { kind: 'idle' }, carsLeft: 20 };
+  const briefs = new Briefings();
+  briefs.add(briefOf({ k: 'weather', kind: 'fog' }));
+  briefs.add(briefOf({ k: 'event', kind: 'roadworks' }));
+  let hidden = 0;
+  let longestRun = 0;
+  let run = 0;
+  for (let t = 0; t < 40; t += 0.05) {
+    briefs.advance(0.05, world);
+    if (briefs.view && briefs.view.card > 0.5) {
+      hidden += 0.05;
+      run += 0.05;
+      longestRun = Math.max(longestRun, run);
+    } else run = 0;
+  }
+  assert.ok(longestRun < Briefings.timed + 1, `one briefing at a time, longest ${longestRun.toFixed(1)} s`);
+  assert.ok(hidden < 14, `the numbers are hidden ${hidden.toFixed(1)} s of 40`);
+  const late = new Briefings();
+  late.add(briefOf({ k: 'weather', kind: 'fog' }));
+  for (let t = 0; t < 10; t += 0.1) late.advance(0.1, { criminal: { kind: 'idle' }, carsLeft: Briefings.lastCars });
+  assert.equal(late.view, null, 'nothing new on the last cars');
+  assert.equal(late.clear().length, 1, 'it is owed for the next shift');
 });
 
 test('briefings without a task stay a few seconds each, a task goes first', () => {
@@ -887,7 +940,7 @@ test('learner drivers, fire engines, motorbikes and school buses come at their l
   const seen = new Set();
   let buses = 0;
   let stopped = 0;
-  let mostOwing = 0;
+  let mostBuses = 0;
   for (let s = 1; s <= 40; s++) {
     const cfg = forCityEvent(forLevel(baseConfig, 40, s), 'schoolRun', s);
     const world = new World(cfg, s, { startsOnFirstTap: false });
@@ -896,7 +949,7 @@ test('learner drivers, fire engines, motorbikes and school buses come at their l
       if (laneAware(world)) world.tap(world.time);
       world.step();
       for (const x of world.vehicles) seen.add(x.type);
-      mostOwing = Math.max(mostOwing, world.vehicles.filter((x) => world.owesStop(x)).length);
+      mostBuses = Math.max(mostBuses, world.vehicles.filter((x) => x.type === 'bus').length);
       for (const e of world.takeEvents()) {
         if (e.type === 'learnerWarning') warned = true;
         if (e.type === 'learnerEntered') assert.ok(warned, 'the learner is announced first');
@@ -908,10 +961,39 @@ test('learner drivers, fire engines, motorbikes and school buses come at their l
   }
   for (const t of ['motorbike', 'bus', 'learner']) assert.ok(seen.has(t), `${t} came`);
   assert.ok(buses === 0 || stopped > 0, 'a school bus makes its stop');
-  assert.ok(mostOwing <= baseConfig.busMaxOwing, `at most ${baseConfig.busMaxOwing} buses wait for the stop at once, saw ${mostOwing}`);
+  assert.ok(mostBuses <= baseConfig.busMax, `at most ${baseConfig.busMax} school bus is on the road at once, saw ${mostBuses}`);
   const low = new World(forLevel(baseConfig, 10, 5), 5, { startsOnFirstTap: false });
   for (let i = 0; i < 120 * 20; i++) low.step();
   assert.ok(!low.vehicles.some((x) => ['motorbike', 'learner', 'fireTruck', 'bus'].includes(x.type)), 'nothing new below its level');
+});
+
+test('roadworks and the bus stop never cover an entry or an exit', async () => {
+  const { forCityEvent } = await load('/src/core/levels.ts');
+  const layouts = [[8], [4, 12], [4, 8, 12], [2, 5, 8, 11, 14]];
+  let drawn = 0;
+  for (const armSlots of layouts) {
+    for (const lanes of [1, 2]) {
+      for (let s = 1; s <= 12; s++) {
+        for (const event of ['roadworks', 'schoolRun']) {
+          const cfg = forCityEvent({ ...forLevel(baseConfig, 40, s), armSlots, lanes }, event, s);
+          const world = new World(cfg, s, { startsOnFirstTap: false });
+          const stretch = world.roadworks ?? world.layout.clearStretch(cfg.busStopAt, baseConfig.busLength + 12);
+          if (!world.roadworks) assert.equal(world.busStopS, stretch.start + stretch.arc);
+          assert.ok(stretch.arc >= 36, `${event} keeps a usable length, got ${stretch.arc} on ${armSlots}`);
+          drawn++;
+          for (const arm of world.layout.arms) {
+            // A crowded two-lane ring has no room clear of the inner lane too: there the outer lane's junctions are what count.
+            for (let lane = 0; lane < (armSlots.length <= 3 ? world.layout.lanes : 1); lane++) {
+              for (const at of [world.layout.entryS(arm, lane), world.layout.exitS(arm, lane)]) {
+                assert.ok(world.layout.ringDistance(stretch.start, at) > stretch.arc, `${event} on arms ${armSlots}, ${lanes} lanes, seed ${s} covers a junction`);
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+  assert.ok(drawn > 0);
 });
 
 test('the Season Pass pays its tiers once; the Hall of Fame keeps a plaque per rank', async () => {
@@ -1018,6 +1100,22 @@ test('a save already past a Feat gets its reward when it loads', () => {
   for (const id of ['gilded', 'singularity', 'eventHorizon', 'undying', 'phoenix', 'glowtide', 'moonmirror']) assert.ok(!c.collection.includes(id), id);
   for (const id of ['chrono', 'biolume']) assert.ok(c.collection.includes(id), `${id}: Elite 55 and 65 are behind a save at 80`);
   assert.ok(!c.collection.includes('dragon'), 'Legendary 30 is not behind a save at 12');
+});
+
+// MARK: The Honours shelf
+
+test('the Honours shelf stands in rarity order, the cars first, then the vehicles, then the maps', async () => {
+  const { rarityRank } = await load('/src/core/loot.ts');
+  const { shelfItems } = await load('/src/present/shop.ts');
+  const items = shelfItems(2);
+  assert.ok(items.length > 20);
+  const kindRank = (i) => (i.kind === 'mapSkin' ? 2 : i.kind === 'vehicleType' ? 1 : 0);
+  for (let i = 1; i < items.length; i++) {
+    const [a, b] = [items[i - 1], items[i]];
+    assert.ok(kindRank(a) <= kindRank(b), `${a.id} before ${b.id}: cars, vehicles, maps`);
+    if (kindRank(a) === kindRank(b) && kindRank(a) !== 1) assert.ok(rarityRank(a.rarity) <= rarityRank(b.rarity), `${a.id} before ${b.id}: by rarity`);
+  }
+  assert.equal(new Set(items.map((i) => i.id)).size, items.length, 'nothing twice');
 });
 
 // MARK: The Classic
@@ -2289,4 +2387,31 @@ test('the tension camera keeps the stop line in place, settles still, and stays 
   assert.equal(fx.vignette, 0.8, 'the vignette stays under Reduce Motion');
   const world = new World(forLevel(baseConfig, 3, 11), 11, { startsOnFirstTap: false });
   assert.equal(tensionOf(world, 'chill'), 0);
+});
+
+test('notifications: the game asks only for what matters, at sensible hours on its own clock', () => {
+  const at = (d, h, m = 0) => new Date(2026, 9, d, h, m).getTime();
+  const morning = new Date(2026, 9, 8, 10);
+  const today = dayNumber(morning);
+  assert.deepEqual(pushTimers(newCareer(), baseConfig, morning), [], 'a new career: nothing to remind');
+
+  const career = newCareer();
+  Object.assign(career, { dailyStreak: 3, dailyPlayed: today });
+  const [played] = pushTimers(career, baseConfig, morning);
+  assert.deepEqual([played.topic, played.at, played.until, played.title], ['streak', at(9, 18), at(9, 23, 59), 'Your 3-day streak'], "today's Daily done: tomorrow evening");
+  career.dailyPlayed = today - 1;
+  assert.equal(pushTimers(career, baseConfig, morning)[0].at, at(8, 18), 'still open today: this evening');
+  assert.deepEqual(pushTimers(career, baseConfig, new Date(2026, 9, 8, 19)), [], 'past the evening the game is open anyway');
+  career.dailyStreak = 1;
+  assert.deepEqual(pushTimers(career, baseConfig, morning), [], 'one day is not a streak yet');
+
+  const gift = newCareer();
+  gift.giftDay = today + 1;
+  assert.deepEqual(pushTimers(gift, baseConfig, morning).map((t) => [t.topic, t.at]), [['gift', at(9, 10)]]);
+
+  const veteran = newCareer();
+  veteran.level = baseConfig.seasonPassLevel;
+  const [pass] = pushTimers(veteran, baseConfig, morning);
+  assert.deepEqual([pass.topic, pass.at, pass.title], ['pass', new Date(2026, 11, 1, 10).getTime(), 'Winter is here']);
+  assert.deepEqual(pushTimers(veteran, baseConfig, new Date(2026, 8, 1, 10)), [], 'a season more than 59 days away waits');
 });

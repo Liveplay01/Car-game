@@ -37,7 +37,7 @@ export function updateDrivers(w: World, dt: number): void {
   // Mayhem: nobody brakes, for nothing. Traffic keeps flowing.
   if (w.config.mayhem) return;
   const quarry = pursuitQuarry(w);
-  const zones = Object.keys(w.config.modules).length > 0 || w.roadworksRingS !== null;
+  const zones = Object.keys(w.config.modules).length > 0 || w.roadworks !== null;
   const hesitant = w.learner.kind === 'active' || w.oversize.kind === 'active' || w.vehicles.some((x) => w.owesStop(x) && x.phase.kind === 'ring');
   if (!w.isTrafficDisturbed && quarry === null && !zones && !hesitant && !hasTransporterOnRing(w)) return;
   const lane = ringLaneOccupants(w);

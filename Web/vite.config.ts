@@ -117,6 +117,35 @@ self.addEventListener('fetch', (event) => {
     })),
   );
 });
+
+// Notifications (net/push.ts, the service's push module): show what came, and open the game on a tap,
+// in a window that is already open where there is one.
+self.addEventListener('push', (event) => {
+  let message = {};
+  try {
+    message = event.data ? event.data.json() : {};
+  } catch {
+    return;
+  }
+  if (!message.title) return;
+  event.waitUntil(self.registration.showNotification(message.title, {
+    body: message.body || '',
+    tag: message.tag || 'rat',
+    icon: '/icons/icon-192.png',
+    data: { url: message.url || '/' },
+  }));
+});
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const url = new URL((event.notification.data && event.notification.data.url) || '/', self.location.origin).href;
+  event.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((windows) => {
+      const open = windows.find((w) => new URL(w.url).origin === self.location.origin);
+      return open ? open.focus() : self.clients.openWindow(url);
+    }),
+  );
+});
 `;
       this.emitFile({ type: 'asset', fileName: 'sw.js', source });
     },

@@ -70,6 +70,8 @@ export interface Settings {
   sound: boolean;
   /** The adaptive music, apart from the effects. */
   music: boolean;
+  /** The sound of the map's weather (rain, thunder), apart from the effects and the music. */
+  mapSounds: boolean;
   haptics: boolean;
   reduceMotion: ReduceMotion;
   vehicleLabels: boolean;
@@ -280,7 +282,7 @@ export interface Career {
  * and a backup of the progress (each once, from its level on; `config.*HintAfterLevel`), and
  * what a Perfect Run is, the first time one happens.
  */
-export const HINTS = ['modes', 'install', 'backup', 'perfectRun', 'reduceMotion', 'buildWithUs', 'invite', 'inviteReminder', 'scout', 'tightFit', 'unlimitedTip', 'portalLogin'] as const;
+export const HINTS = ['modes', 'install', 'backup', 'perfectRun', 'reduceMotion', 'buildWithUs', 'invite', 'inviteReminder', 'scout', 'tightFit', 'unlimitedTip', 'portalLogin', 'notifications'] as const;
 export type Hint = (typeof HINTS)[number];
 
 /** Everything that is saved (`storage/save.ts` reads and writes it). */
@@ -396,7 +398,7 @@ export const newSave = (): SaveGame => ({
   highscore: 0,
   highscoreSeed: null,
   shiftsPlayed: 0,
-  settings: { sound: true, music: true, haptics: true, reduceMotion: 'off', vehicleLabels: false, leftHanded: false, largeText: false, motionChosen: false },
+  settings: { sound: true, music: true, mapSounds: true, haptics: true, reduceMotion: 'off', vehicleLabels: false, leftHanded: false, largeText: false, motionChosen: false },
   career: newCareer(),
   tutorialDone: false,
   hints: [],

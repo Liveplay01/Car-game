@@ -175,10 +175,10 @@ export const SPECIAL_TEXT: Record<SpecialKind, MuseumText & { name: string }> = 
   learner: {
     name: 'Learner Driver',
     line: 'Give it room, it hesitates',
-    brief: 'Keep your cars out of the green band around the learner.',
+    brief: 'Keep your cars out of the teal band around the learner.',
     explain: (c) => [
       'A driving-school car goes once round the ring, and now and then it brakes for no reason. The traffic behind it bunches up.',
-      'A green band shows the space around it, ahead and behind. Keep your cars out of it while it drives.',
+      'A teal band shows the space around it, ahead and behind. Keep your cars out of it while it drives.',
       `If it leaves with room all the way, it pays ${money(Fmt.number(c.learnerPay))} and extends your chain. Joining close to it only costs that bonus.`,
     ],
   },
@@ -368,40 +368,6 @@ const EVENT_TEXT: Record<CityEvent, MuseumText> = {
       `School's out: yellow school buses join the traffic, and each one stops for ${Math.round(c.busDwell * 10) / 10} seconds at the bus stop on the ring.`,
       'The cars behind a bus wait for it. Your cars brake behind a queue too, but the best gap opens right after a bus pulls away.',
     ],
-  },
-};
-
-/**
- * What the ready screen says the first time a shift brings a condition: what changes and what
- * to do about it, in one breath. A new weather, darkness or city event needs its line here.
- */
-export const INTRO_TEXT: {
-  weather: Record<WeatherKind, (c: Config) => string>;
-  dark: Record<DarkKind, (c: Config) => string>;
-  event: Record<CityEvent, (c: Config) => string>;
-} = {
-  weather: {
-    lightRain: (c) => `Wet road: tyres keep ${gripIn('lightRain', c)} of their grip, so crashes slide further. Leave a little more room.`,
-    heavyRain: (c) => `Pouring rain: ${gripIn('heavyRain', c)} grip and more cars on the ring. Wait for gaps that are clearly big enough.`,
-    storm: (c) => `Storm: ${gripIn('storm', c)} grip, and drivers squeeze into small gaps. Merge with care.`,
-    extreme: (c) => `Only ${gripIn('extreme', c)} grip and the heaviest traffic. Patience pays more than speed.`,
-    fog: (c) => `Fog: the far side of the ring fades out, the warnings still shine through. Pays ${percent(c.fogPayFactor - 1)} more.`,
-    snow: (c) => `Ice: ${gripIn('snow', c)} grip, nobody stops quickly. Leave more room. Pays ${percent(c.snowPayFactor - 1)} more.`,
-    hail: (c) => `Hail: drivers brake badly and late. Leave room behind your car too. Pays ${percent(c.hailPayFactor - 1)} more.`,
-    sandstorm: (c) => `Sandstorm: the far side fades in the dust, the warnings shine through. Pays ${percent(c.sandstormPayFactor - 1)} more.`,
-  },
-  dark: {
-    night: (c) => `The city is dark: watch the headlights, not the cars. A night shift pays ${percent(c.nightPayFactor - 1)} more.`,
-    blackout: (c) => `The street lamps are out: only headlights show the cars. A blackout pays ${percent(c.blackoutPayFactor - 1)} more.`,
-  },
-  event: {
-    roadworks: (c) => `Traffic slows to ${percent(c.roadworksSpeedFactor)} on the striped part of the ring. Cars queue behind it, so the gaps change.`,
-    roadClosure: () => 'One arm is closed: no cars come in from it and none can leave there.',
-    concert: (c) => `${c.concertDensityBonus} more cars and new ones twice as often. Take a good gap when it comes.`,
-    vipConvoy: (c) => `Every driver keeps ${percent(c.vipGapFactor - 1)} more distance: wider gaps, a new rhythm.`,
-    policeOperation: (c) => `${percent(c.policeOperationShare)} more of your cars are police: more chances for a takedown.`,
-    schoolRun: () => 'School buses stop at the bus stop on the ring. Merge behind a bus as it pulls away.',
-    marathon: () => 'Runners cross one arm again and again. Its cars wait, then come in a wave.',
   },
 };
 

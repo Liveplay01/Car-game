@@ -232,6 +232,7 @@ function readSave(raw: unknown): SaveGame {
     if (typeof s.sound === 'boolean') settings.sound = s.sound;
     // One switch for both until 30.09.2026: whoever turned the sound off hears no music either.
     settings.music = typeof s.music === 'boolean' ? s.music : settings.sound;
+    if (typeof s.mapSounds === 'boolean') settings.mapSounds = s.mapSounds;
     if (typeof s.haptics === 'boolean') settings.haptics = s.haptics;
     if (typeof s.vehicleLabels === 'boolean') settings.vehicleLabels = s.vehicleLabels;
     if (typeof s.leftHanded === 'boolean') settings.leftHanded = s.leftHanded;

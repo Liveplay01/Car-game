@@ -24,7 +24,7 @@ export const HOSTING = {
   location: 'Germany',
 };
 
-export const LEGAL_UPDATED = '7 October 2026';
+export const LEGAL_UPDATED = '8 October 2026';
 
 export const GAME_NAME = 'Roundabout Timing';
 
@@ -143,6 +143,14 @@ export const LEGAL_DOCS: LegalDoc[] = [
         ],
       },
       {
+        heading: 'Notifications',
+        paragraphs: [
+          "Only if you turn on notifications (Settings → Notifications, or when the game offers them) and your browser allows them, your browser creates a push address for this device at its push service (Google for Chrome and the Google Play app, Apple for Safari, Mozilla for Firefox, Microsoft for Edge) and the game sends it to our server, with two keys that let only your browser read the messages. With it the server keeps your device's time zone (so nothing arrives at night), the page the game opens at, when the game was last opened, when the last notification went out, and the reminders the game asked for: your Daily streak (with its length), tomorrow's free chest and the next Season Pass. If you have a name on the leaderboard, the push address is linked to it, so the server can tell you when another player passes you in the top 20 or a chest from an invite is waiting.",
+          "Each notification is encrypted on our server and handed to your browser's push service, which delivers it; the push service sees when a message goes to which address, not what it says. At most one a day besides the streak reminder, only between 9:00 and 21:00 your time. If you stay away, the server sends at most four reminders (after 3, 7, 14 and 30 days) and then stays quiet. Your IP address is handled as described under Cloud sync.",
+          'Legal basis: Art. 6(1)(a) GDPR (your consent). Turn the switch off, or take the permission back in your browser, and the server forgets the push address with everything above. A device not opened for 120 days is forgotten automatically, and Settings → Delete account removes it too.',
+        ],
+      },
+      {
         heading: 'Big Screen',
         paragraphs: [
           'Big Screen (a map you earn at Prestige ★5) shows your own picture or video behind the roundabout. A picture you upload is made smaller and kept in your browser only; it is never sent to us or anyone else.',
@@ -188,7 +196,7 @@ export const LEGAL_DOCS: LegalDoc[] = [
         heading: 'Deleting your data',
         paragraphs: [
           "You have no account with us: your progress lives on your device. Deleting the game's data in your browser, or uninstalling the app and clearing Chrome's data for game.gustaff.dev, removes it from your device.",
-          'What our server keeps exists only if you chose it, and you can delete it yourself in the game at any time: everything at once with Settings → Delete account; or your name, scores, friend code and friends list with Progress → Ranks → Remove me from the leaderboard; your cloud copy with Settings → Cloud sync → Delete the cloud copy. Both are gone for good at once. If you can no longer open the game, write to the email address above with your name on the leaderboard or your sync code, and we delete it within 30 days.',
+          'What our server keeps exists only if you chose it, and you can delete it yourself in the game at any time: everything at once with Settings → Delete account; your notifications with Settings → Notifications; or your name, scores, friend code and friends list with Progress → Ranks → Remove me from the leaderboard; your cloud copy with Settings → Cloud sync → Delete the cloud copy. Both are gone for good at once. If you can no longer open the game, write to the email address above with your name on the leaderboard or your sync code, and we delete it within 30 days.',
         ],
       },
       {

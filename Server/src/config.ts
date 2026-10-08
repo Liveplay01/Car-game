@@ -1,3 +1,5 @@
+import { validVapidKeys, type VapidKeys } from './modules/push/webpush.ts';
+
 /** Everything the server reads from its environment, parsed once at start. */
 export interface Config {
   port: number;
@@ -18,6 +20,8 @@ export interface Config {
   publicUrl: string | null;
   /** Bug reports and ideas (`/v1/feedback`) are also posted here (a Discord or Slack webhook); null: only stored. */
   feedbackWebhookUrl: string | null;
+  /** Web Push keys (`npm run vapid`); null: no notifications, `/v1/push/key` answers 404. */
+  vapid: VapidKeys | null;
 }
 
 function integer(value: string | undefined, fallback: number, min: number, max: number): number {
@@ -35,11 +39,24 @@ function address(value: string | undefined, name: string): string | null {
   return text;
 }
 
+/** Both VAPID keys, or neither (notifications off). Push services want a contact: VAPID_SUBJECT, else the game's address. */
+function vapidOf(env: NodeJS.ProcessEnv, gameUrl: string | null): VapidKeys | null {
+  const publicKey = env.VAPID_PUBLIC_KEY?.trim() ?? '';
+  const privateKey = env.VAPID_PRIVATE_KEY?.trim() ?? '';
+  if (!publicKey && !privateKey) return null;
+  if (!validVapidKeys(publicKey, privateKey)) throw new Error('VAPID_PUBLIC_KEY and VAPID_PRIVATE_KEY must be a pair from `npm run vapid`.');
+  const subject = env.VAPID_SUBJECT?.trim() || gameUrl;
+  if (!subject || !/^(mailto:\S+@\S+|https:\/\/\S+)$/.test(subject)) throw new Error('VAPID_SUBJECT must be a mailto: or https: address (or set GAME_URL).');
+  return { publicKey, privateKey, subject };
+}
+
 export function readConfig(env: NodeJS.ProcessEnv = process.env): Config {
   const adminToken = env.ADMIN_TOKEN?.trim() || null;
   if (adminToken !== null && adminToken.length < 24) throw new Error('ADMIN_TOKEN must be at least 24 characters (try: openssl rand -base64 32).');
   // Commas, spaces or line breaks between the addresses (Coolify's multiline field writes line breaks); a trailing slash is dropped.
   const corsOrigins = (env.CORS_ORIGINS ?? '*').split(/[\s,]+/).map((o) => o.trim().replace(/\/+$/, '')).filter(Boolean);
+  // Without GAME_URL the game's own origin from CORS_ORIGINS will do.
+  const gameUrl = address(env.GAME_URL, 'GAME_URL') ?? corsOrigins.find((o) => /^https?:\/\/[^\s/]+$/.test(o)) ?? null;
   return {
     port: integer(env.PORT, 5051, 1, 65535),
     dbPath: env.DB_PATH?.trim() || './data/car-game.db',
@@ -48,9 +65,9 @@ export function readConfig(env: NodeJS.ProcessEnv = process.env): Config {
     trustProxy: env.TRUST_PROXY !== 'false',
     turnKeyId: env.CF_TURN_KEY_ID?.trim() || null,
     turnApiToken: env.CF_TURN_API_TOKEN?.trim() || null,
-    // Without GAME_URL the game's own origin from CORS_ORIGINS will do.
-    gameUrl: address(env.GAME_URL, 'GAME_URL') ?? corsOrigins.find((o) => /^https?:\/\/[^\s/]+$/.test(o)) ?? null,
+    gameUrl,
     publicUrl: address(env.PUBLIC_URL, 'PUBLIC_URL'),
     feedbackWebhookUrl: address(env.FEEDBACK_WEBHOOK_URL, 'FEEDBACK_WEBHOOK_URL'),
+    vapid: vapidOf(env, gameUrl),
   };
 }

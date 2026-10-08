@@ -115,6 +115,8 @@ export function bookShift(save: SaveGame, result: ShiftResult, ctx: ShiftContext
   // Level 10 reached (Leo, 04.10.2026): a small reminder that a friend brings both a chest. By level, not by crossing it:
   // a reminder that had to wait (`takeTip`) comes at the next shift.
   if (ctx.mode === 'shift' && !save.hints.includes('inviteReminder') && career.level >= INVITE_REMINDER_LEVEL) due.push('inviteReminder');
+  // A Daily streak of two days (Leo, 08.10.2026): the moment a reminder before it breaks is worth something.
+  if (ctx.daily && !save.hints.includes('notifications') && career.dailyStreak >= 2) due.push('notifications');
   save.hints.push(...due);
   // The first Perfect Run says what it is and what it pays (early on only: a veteran knows). After that the ring's gold
   // sweep says it (`GameSession.react`): early on nearly every shift is one, and a line every time stops meaning anything.

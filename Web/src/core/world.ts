@@ -181,6 +181,10 @@ export function unitHashId(id: number): number {
  */
 export class World {
   readonly layout: Layout;
+  /** The roadworks' stretch of the ring (ring distance of its start, and its length), clear of every junction. */
+  readonly roadworks: { start: number; arc: number } | null;
+  /** Where the bus stop sits on the ring during a School Run (ring distance), clear of every junction, else null. */
+  readonly busStopS: number | null;
   stepCount = 0;
   vehicles: Vehicle[] = [];
   queue = new PlayerQueue();
@@ -241,6 +245,9 @@ export class World {
   ) {
     const { prefill = true, startsOnFirstTap = false, firstVehicleId = 1 } = options;
     this.layout = new Layout(config);
+    this.roadworks = config.cityEvent === 'roadworks' ? this.layout.clearStretch(config.roadworksAt, config.roadworksArc) : null;
+    const stop = config.cityEvent === 'schoolRun' ? this.layout.clearStretch(config.busStopAt, config.busLength + 12) : null;
+    this.busStopS = stop && stop.start + stop.arc;
     this.rng = new Rng(seed);
     this.queueRng = substream(seed, 0x51ed2701);
     this.criminalRng = substream(seed, 0xb5ad4ece);
@@ -508,24 +515,14 @@ export class World {
     return (((now + c.marathonOffset) % period) + period) % period;
   }
 
-  /** Where the roadworks sit on the ring (ring distance of their start), if there are any. */
-  get roadworksRingS(): number | null {
-    return this.config.cityEvent === 'roadworks' ? this.config.roadworksAt * this.layout.ring.length : null;
-  }
-
-  /** Where the bus stop sits on the ring during a School Run, else null. */
-  get busStopS(): number | null {
-    return this.config.cityEvent === 'schoolRun' ? this.config.busStopAt * this.layout.ring.length : null;
-  }
-
   /** A school bus that still has its stop to make: it stays on the ring until it has. */
   owesStop(veh: Vehicle): boolean {
     return veh.type === 'bus' && !veh.served && this.busStopS !== null;
   }
 
-  /** School buses on the road that have not made their stop yet. */
-  private get busesOwing(): number {
-    return this.vehicles.reduce((n, veh) => n + (this.owesStop(veh) ? 1 : 0), 0);
+  /** School buses on the road, whether or not they have made their stop. */
+  private get busesOnRoad(): number {
+    return this.vehicles.reduce((n, veh) => n + (veh.type === 'bus' ? 1 : 0), 0);
   }
 
   /** Every car leaves 1–3 arms after the one it came from, never at South. */
@@ -1992,7 +1989,7 @@ export class World {
       return 'car';
     }
     // The roll always happens, so the traffic streams stay as they were; the cap only turns the bus into a lorry.
-    if (c.cityEvent === 'schoolRun' && this.trafficRng.unit() < c.busShare / Math.max(c.truckChance, 0.01) && this.busesOwing < c.busMaxOwing) return 'bus';
+    if (c.cityEvent === 'schoolRun' && this.trafficRng.unit() < c.busShare / Math.max(c.truckChance, 0.01) && this.busesOnRoad < c.busMax) return 'bus';
     return c.tankerShare > 0 && this.tankerRng.unit() < c.tankerShare ? 'tanker' : 'truck';
   }
 

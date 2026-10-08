@@ -7,6 +7,9 @@ import { startAds } from './ui/ads';
 import { startAnalytics } from './ui/analytics';
 import { Casino } from './core/casino';
 import { forgetMeasures } from './present/measure';
+import { newSave } from './core/career';
+import { writeSave } from './storage/save';
+import { shelfEntries, museumId } from './core/museum';
 
 declare global {
   interface Window {
@@ -28,6 +31,20 @@ const boot = document.getElementById('boot');
 const bootFailed = (): void => boot?.classList.add('failed');
 window.addEventListener('error', bootFailed);
 window.addEventListener('unhandledrejection', bootFailed);
+
+// `npm run dev` only: `?demo` replaces this address's save with one to look around in (Level 30, two Shield steps,
+// two chests waiting, every vehicle met but no weather or city event yet, so the condition icons show their dot).
+// `?demo=night` has met the weather: no forced rain, and the first shift is still the guaranteed first night.
+if (import.meta.env.DEV && new URLSearchParams(location.search).has('demo')) {
+  const demo = newSave();
+  demo.tutorialDone = true;
+  demo.shiftsPlayed = 40;
+  Object.assign(demo.career, { level: 30, money: 50000, chests: ['premium', 'standard'], upgrades: { shield: 2 } });
+  const weather = new URLSearchParams(location.search).get('demo') === 'night' ? shelfEntries(2).filter((e) => e.k === 'weather') : [];
+  demo.career.museumSeen = [...shelfEntries(0), ...shelfEntries(1), ...weather].map(museumId);
+  writeSave(demo);
+  history.replaceState(null, '', location.pathname);
+}
 
 // Opened by CrazyGames (`?crazygames`): the save lives in their SDK, which has to be ready
 // before the game reads it.
@@ -71,7 +88,7 @@ startCloud({
 // a service worker in a nested frame is blocked or partitioned, and the wrapper always loads the live game.
 if ('serviceWorker' in navigator && import.meta.env.PROD && !inPortal && !inItch) {
   const firstVisit = !navigator.serviceWorker.controller;
-  window.addEventListener('load', () => {
+  const register = (): void => {
     navigator.serviceWorker
       .register('/sw.js')
       .then((registration) => {
@@ -89,7 +106,11 @@ if ('serviceWorker' in navigator && import.meta.env.PROD && !inPortal && !inItch
       .catch(() => {
         /* no offline mode, the game still runs */
       });
-  });
+  };
+  // After the page has loaded, so the worker's downloads do not slow the start. The wait for the font above can
+  // outlast the page's load event, which then never comes again: register at once in that case.
+  if (document.readyState === 'complete') register();
+  else window.addEventListener('load', register);
 
   // A new version took over while this page runs the old one. The page reloads while nobody
   // looks at it (the tab or app in the background) and only when nothing would be lost; the

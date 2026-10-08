@@ -4,7 +4,7 @@ import type { Arm } from '../core/roundabout';
 import type { ShiftResult } from '../core/events';
 import type { GameMode } from '../core/career';
 import type { SwipeMode } from './flow';
-import type { CityEvent, BossKind } from '../core/config';
+import type { CityEvent } from '../core/config';
 import { Scoring } from '../core/scoring';
 import { secureZone } from '../core/specials';
 import { clearZone } from '../core/ambulance';
@@ -12,14 +12,14 @@ import { learnerZone } from '../core/learner';
 import { oversizeZone } from '../core/oversize';
 import { weddingZone } from '../core/wedding';
 import { type Vec2, v, add, sub, mul, fromAngle, TAU, clamp } from '../core/vec2';
-import { type RenderList, type Rect, R, rect, circle, arc, line, text, Ease, Metrics, toScreen, moved, type Align } from './render';
+import { type RenderList, type Rect, type Primitive, R, rect, circle, arc, line, polygon, text, Ease, Metrics, toScreen, moved, type Align } from './render';
 import type { ColorToken } from './theme';
 import { MenuKit } from './menukit';
 import { moneyTag, flameTag, textWidth } from './icons';
 import { S, Fmt, money as moneyText, comboMultiplier } from './strings';
 import { interpolatedPose } from './scene';
 import { wrapText } from './upgrades';
-import type { BriefView } from './briefing';
+import type { Brief, BriefView } from './briefing';
 
 // MARK: Top bar
 
@@ -116,6 +116,47 @@ export const TopBar = {
     }
   },
 
+  /** The mode swipe's hint is a briefing of its own (`ReadyBanner`): the card's edge and caption in this colour. */
+  swipeBrief: (): Brief => ({ id: 'swipe', caption: S.modes.swipeCaption, text: S.modes.swipeHint, color: 'lightBlue', pending: null }),
+
+  /**
+   * A message on the waiting screen's card, like a briefing but centred: its words between two arrows, one in each corner,
+   * each gliding out the way a swipe goes and fading as it leaves. A page with no mode beyond it has no arrow on that
+   * side (`left`, `right`: there is a mode that way). With Reduce Motion the arrows stand still.
+   */
+  addMessage(list: RenderList, frame: Rect, view: BriefView, o: { time: number; left: boolean; right: boolean; previous: TopMessage['previous']; reduceMotion: boolean; textScale: number }): void {
+    const alpha = view.card;
+    if (alpha <= 0.001) return;
+    const center = R.center(frame);
+    const drop = o.reduceMotion ? 0 : (1 - view.card) * TopBar.briefTravel;
+    const room = 52;
+    const captionSize = 10;
+    const gap = 4;
+    const words = (brief: Brief, a: number, lift: number): void => {
+      const fit = TopBar.fitBrief(brief.text, R.width(frame) - 2 * room, o.textScale);
+      const height = fit.size * 1.2;
+      const top = frame.minY + (TopBar.height - (captionSize + gap + fit.lines.length * height)) / 2 + drop + lift;
+      list.s(text(brief.caption, v(center.x, top + captionSize / 2), captionSize, 'center', 'bold'), brief.color, a);
+      fit.lines.forEach((ln, i) => list.s(text(ln, v(center.x, top + captionSize + gap + height * (i + 0.5)), fit.size, 'center', 'bold'), 'primary', a));
+    };
+    // The words overlap while one message hands over to the next: the old ones lift away, the new ones rise in.
+    const travel = o.reduceMotion ? 0 : 4;
+    if (o.previous) words(o.previous.brief, alpha * o.previous.alpha, -travel * (1 - o.previous.alpha));
+    words(view.brief, alpha * (o.previous ? 1 - o.previous.alpha : 1), o.previous ? travel * o.previous.alpha : 0);
+    const arrow = (side: -1 | 1): void => {
+      const cycle = (o.time * 0.8) % 1;
+      const glide = o.reduceMotion ? 0.5 : Ease.outCubic(cycle);
+      const fade = o.reduceMotion ? 1 : Math.sin(Math.PI * cycle);
+      const x = (side < 0 ? frame.minX + 26 : frame.maxX - 26) + side * 9 * glide;
+      const y = center.y + drop;
+      const tip = v(x + side * 4, y);
+      list.s(line(add(tip, v(-side * 7, -7)), tip, 2.6), view.brief.color, alpha * (0.25 + 0.75 * fade));
+      list.s(line(add(tip, v(-side * 7, 7)), tip, 2.6), view.brief.color, alpha * (0.25 + 0.75 * fade));
+    };
+    if (o.left) arrow(-1);
+    if (o.right) arrow(1);
+  },
+
   /** The briefing's size: one line up to 15 points; else two lines, 13 points or smaller. */
   fitBrief(s: string, width: number, textScale = 1): { size: number; lines: string[] } {
     const single = Math.min(16, 15 * textScale);
@@ -156,42 +197,17 @@ export type PopupKind =
   | { k: 'perfect' }
   | { k: 'cutOff' }
   | { k: 'penalty'; n: number }
-  | { k: 'busted'; n: number }
   | { k: 'dispatch' }
-  | { k: 'seized' }
-  | { k: 'lost' }
-  | { k: 'paid'; n: number; jackpot?: boolean }
   /** A Critical Merge: its points, already multiplied. */
   | { k: 'critical'; n: number }
-  /** A Jackpot transporter is announced at its arm. */
-  | { k: 'jackpot' }
+  /** A Jackpot got through: the one payout told in words, the rest is a gold wave on the ring. */
+  | { k: 'jackpotPaid'; n: number }
   | { k: 'earned'; n: number }
   | { k: 'cost'; n: number }
   | { k: 'covered' }
   | { k: 'modulePulse'; color: ColorToken }
   | { k: 'flames'; n: number; chain: number }
   | { k: 'boom' }
-  | { k: 'convoy'; kind: BossKind }
-  /** The scout level's criminal with its escort, announced at its arm. */
-  | { k: 'scout' }
-  | { k: 'heist'; n: number }
-  | { k: 'armour' }
-  | { k: 'ambulance'; fire?: boolean }
-  | { k: 'blocked' }
-  | { k: 'clearRoad'; n: number }
-  /** The learner driver: announced, its space taken, or left with room all the way. */
-  | { k: 'learner' }
-  | { k: 'crowded' }
-  | { k: 'patient'; n: number }
-  /** The oversize load: announced, its space taken, or left with room all the way. */
-  | { k: 'oversize' }
-  | { k: 'wideLoad'; n: number }
-  /** The wedding convoy: announced, and paid when it left with its gaps shut. */
-  | { k: 'wedding' }
-  | { k: 'weddingPaid'; n: number }
-  /** The street racers: announced, and each one a police car stopped. */
-  | { k: 'race' }
-  | { k: 'raceStopped'; n: number }
   /** A close shave past a motorbike: its bonus points. */
   | { k: 'shave'; n: number };
 
@@ -240,6 +256,14 @@ export interface HudInput {
 }
 
 /** The in-game HUD: the top card, the combo on the island, the specials. */
+/** A plus sign, one shape (no overlap that a faint one would show), `size` across. */
+function plusSign(at: Vec2, size: number): Primitive {
+  const a = size / 2;
+  const b = size * 0.18;
+  const corners: [number, number][] = [[-b, -a], [b, -a], [b, -b], [a, -b], [a, b], [b, b], [b, a], [-b, a], [-b, b], [-a, b], [-a, -b], [-b, -b]];
+  return polygon(corners.map(([x, y]) => v(at.x + x, at.y + y)));
+}
+
 export const HUD = {
   add(list: RenderList, h: HudInput): void {
     if (h.world.config.mayhem) {
@@ -327,30 +351,36 @@ export const HUD = {
     if (rush) {
       const open = Ease.spring(h.pops.rushHour);
       const inset = R.inset(c, 4);
-      list.s(rect(R.center(inset), v(R.width(inset) * (0.7 + 0.3 * open), R.height(inset) * (0.7 + 0.3 * open)), TopBar.corner - 4), 'accent', Ease.outCubic(h.pops.rushHour / 0.4));
+      list.s(rect(R.center(inset), v(R.width(inset) * (0.7 + 0.3 * open), R.height(inset) * (0.7 + 0.3 * open)), TopBar.corner - 4), 'rushHour', Ease.outCubic(h.pops.rushHour / 0.4));
     }
     list.s(text(Fmt.number(h.score), v(R.center(c).x, c.minY + TopBar.valueRow), Metrics.timerSize * tick, 'center', 'bold'), rush ? 'accentInk' : 'primary');
 
-    const dots: { used: boolean; ring: ColorToken }[] = [];
-    if (world.config.maxStrikes > 1) {
-      for (let i = 0; i < world.config.maxStrikes; i++) dots.push({ used: i < world.score.strikes, ring: rush ? 'accentInk' : 'muted' });
-    }
-    const firstPolice = dots.length;
-    for (let i = 0; i < world.config.maxPoliceCrashes; i++) dots.push({ used: i < world.score.policeCrashes, ring: 'lightBlue' });
-    const groupGap = firstPolice > 0 && dots.length > firstPolice ? 0.5 : 0;
-    const span = dots.length - 1 + groupGap;
-    dots.forEach((dot, index) => {
+    // What still forgives a crash, as the heal's plus signs (Leo, 08.10.2026): green the Shield's, blue the police's.
+    const pluses: { used: boolean; color: ColorToken }[] = [];
+    const shields = Number.isFinite(world.config.maxStrikes) ? world.config.maxStrikes - 1 : 0;
+    for (let i = 0; i < shields; i++) pluses.push({ used: i < world.score.strikes, color: 'juiceGreen' });
+    const firstPolice = pluses.length;
+    for (let i = 0; i < world.config.maxPoliceCrashes; i++) pluses.push({ used: i < world.score.policeCrashes, color: 'lightBlue' });
+    const groupGap = firstPolice > 0 && pluses.length > firstPolice ? 0.5 : 0;
+    const span = pluses.length - 1 + groupGap;
+    const size = Metrics.strikeRadius * 2.75;
+    pluses.forEach((p, index) => {
       const slot = index + (index >= firstPolice ? groupGap : 0);
       const at = v(R.center(c).x + (slot - span / 2) * Metrics.strikeSpacing, Metrics.strikeRow);
       const isNewest = index < firstPolice ? index === world.score.strikes - 1 : index - firstPolice === world.score.policeCrashes - 1;
-      const pop = !isNewest ? 1 : index < firstPolice ? h.pops.strike : h.pops.policeCrash;
-      if (dot.used) {
+      const pop = isNewest && p.used ? (index < firstPolice ? h.pops.strike : h.pops.policeCrash) : 1;
+      if (p.used) {
+        // Spent: it lifts off in its colour and leaves a faint grey one behind.
         if (pop < 1) {
           const x = Ease.outCubic(pop);
-          list.s(arc(at, Metrics.strikeRadius * (1 + 1.6 * x), 1.5, 0, TAU), 'destructive', 1 - x);
+          list.s(plusSign(add(at, v(0, -6 * x)), size * (1 + 0.6 * x)), p.color, 1 - x);
         }
-        list.s(circle(at, Metrics.strikeRadius * land(pop, 0.7)), 'destructive');
-      } else list.s(arc(at, Metrics.strikeRadius - 0.75, 1.5, 0, TAU), dot.ring);
+        list.s(plusSign(at, size), rush ? 'accentInk' : 'muted', 0.35 * Ease.clamp01(pop / 0.4));
+        return;
+      }
+      // On the lime of Rush Hour each one stands on a dark edge, so the green and blue still read.
+      if (rush) list.s(plusSign(at, size + 3), 'accentInk');
+      list.s(plusSign(at, size), p.color);
     });
 
     if (h.race) {
@@ -394,7 +424,7 @@ export const HUD = {
     list.s(text(comboMultiplier(Scoring.multiplierOfTier(tier, c)), center, size, 'center', 'bold'), color);
     if (world.score.combo > 0) list.s(text(S.hud.combo(world.score.combo), add(center, v(0, 34)), Metrics.comboLabelSize, 'center', 'bold'), 'muted');
     HUD.addComboProgress(list, world, add(center, v(0, 50)));
-    if (world.shift.isRushHour) list.s(text(S.hud.rushFactor(c.rushHourScoreFactor), add(center, v(0, -38)), Metrics.comboLabelSize, 'center', 'bold'), 'accent');
+    if (world.shift.isRushHour) list.s(text(S.hud.rushFactor(c.rushHourScoreFactor), add(center, v(0, -38)), Metrics.comboLabelSize, 'center', 'bold'), 'rushHour');
     if (world.criminal.kind === 'active') {
       const left = world.criminal.deadline - world.time;
       const boss = world.vehicle(world.criminal.vehicle)?.role === 'boss';
@@ -421,12 +451,30 @@ export const HUD = {
     if (share > 0) list.s(rect(v(at.x - width / 2 + (width * share) / 2, at.y), v(width * share, height), height / 2), 'accent', 0.9);
   },
 
+  /**
+   * At night the ring's colours are light, not paint: every shape drawn since `from` gets two soft halos of its own
+   * colour, wider and fainter, so it glows into the dark the way coloured light does.
+   */
+  bloom(list: RenderList, from: number): void {
+    const halos: [number, number][] = [
+      [5, 0.26],
+      [13, 0.1],
+    ];
+    const lit = list.items.slice(from).filter((it) => it.space === 'world' && it.opacity > 0.04);
+    for (const it of lit) {
+      const p = it.p;
+      for (const [grow, fade] of halos) {
+        const opacity = it.opacity * fade;
+        if (p.k === 'arc') list.w({ ...p, thickness: p.thickness + grow }, it.color, opacity);
+        else if (p.k === 'line') list.w({ ...p, thickness: p.thickness + grow }, it.color, opacity);
+        else if (p.k === 'circle') list.w({ ...p, radius: p.radius + grow / 2 }, it.color, opacity);
+        else if (p.k === 'rect') list.w({ ...p, size: add(p.size, v(grow, grow)), radius: p.radius + grow / 2 }, it.color, opacity);
+      }
+    }
+  },
+
   addWedge(list: RenderList, armItem: Arm, world: World, color: ColorToken): void {
-    const pulse = (world.time * 1.6) % 1;
-    const radius = RingSignals.rim(world);
-    const half = 0.35;
-    list.w(arc(v(0, 0), radius, 3 + 7 * pulse, armItem.angle - half, armItem.angle + half), color, 1 - pulse);
-    list.w(arc(v(0, 0), radius, 2.5, armItem.angle - half, armItem.angle + half), color);
+    RingSignals.wedge(list, RingSignals.rim(world), armItem.angle, (world.time * 1.6) % 1, color);
   },
 
   countdownRing(list: RenderList, at: Vec2, radius: number, left: number, color: ColorToken, label: string, labelSize = 14, labelOpacity = 1): void {
@@ -509,10 +557,10 @@ export const HUD = {
    */
   addLearner(list: RenderList, world: World, alpha: number): void {
     const l = world.learner;
-    if (l.kind === 'warning') HUD.addWedge(list, l.arm, world, 'juiceGreen');
+    if (l.kind === 'warning') HUD.addWedge(list, l.arm, world, 'learnerSign');
     else if (l.kind === 'arriving') {
       const veh = world.vehicle(l.vehicle);
-      if (veh) list.w(arc(interpolatedPose(veh, alpha).position, 20, 2, 0, TAU), 'juiceGreen', 0.6);
+      if (veh) list.w(arc(interpolatedPose(veh, alpha).position, 20, 2, 0, TAU), 'learnerSign', 0.6);
     } else if (l.kind === 'active') {
       const veh = world.vehicle(l.vehicle);
       const zone = learnerZone(world);
@@ -523,8 +571,8 @@ export const HUD = {
       const half = zone.arc / world.layout.ringRadius;
       const pulse = 0.5 + 0.5 * Math.sin(world.time * 4);
       const lane = world.layout.laneWidth / 2 - 3;
-      for (const edge of [r - lane, r + lane]) list.w(arc(v(0, 0), edge, 1.6, mid - half, mid + half), 'juiceGreen', 0.25 + 0.2 * pulse);
-      list.w(arc(v(0, 0), r, world.layout.laneWidth - 6, mid - half, mid + half), 'juiceGreen', 0.05 + 0.03 * pulse);
+      for (const edge of [r - lane, r + lane]) list.w(arc(v(0, 0), edge, 1.6, mid - half, mid + half), 'learnerSign', 0.25 + 0.2 * pulse);
+      list.w(arc(v(0, 0), r, world.layout.laneWidth - 6, mid - half, mid + half), 'learnerSign', 0.05 + 0.03 * pulse);
     }
   },
 
@@ -694,11 +742,6 @@ export const HUD = {
           color = 'coin';
           size = Metrics.popupSize * 1.15 * (reduceMotion ? 1 : land(p.age / 0.3, 0.25));
           break;
-        case 'jackpot':
-          label = S.hud.jackpotIncoming;
-          color = 'coin';
-          size = Metrics.popupSize * 0.8;
-          break;
         case 'tightFit':
           label = S.hud.tight;
           color = 'accent';
@@ -711,26 +754,14 @@ export const HUD = {
           label = Fmt.signed(-k.n);
           color = 'destructive';
           break;
-        case 'busted':
-          label = `${S.hud.busted} ${Fmt.signed(k.n)}`;
-          color = 'lightBlue';
-          break;
         case 'dispatch':
           label = S.hud.dispatch;
           color = 'lightBlue';
           break;
-        case 'seized':
-          label = S.hud.seized;
-          color = 'vehicleCargo';
-          break;
-        case 'lost':
-          label = S.hud.lost;
-          color = 'destructive';
-          break;
-        case 'paid':
-          label = k.jackpot ? S.hud.jackpotPaid(Fmt.signed(k.n)) : S.hud.paid(Fmt.signed(k.n));
-          color = k.jackpot ? 'coin' : 'vehicleCargo';
-          if (k.jackpot) size = Metrics.popupSize * 1.3 * (reduceMotion ? 1 : land(p.age / 0.35, 0.3));
+        case 'jackpotPaid':
+          label = S.hud.jackpotPaid(Fmt.signed(k.n));
+          color = 'coin';
+          size = Metrics.popupSize * 1.3 * (reduceMotion ? 1 : land(p.age / 0.35, 0.3));
           break;
         case 'earned':
           label = Fmt.signed(k.n);
@@ -755,83 +786,10 @@ export const HUD = {
           color = 'fireCore';
           size = Metrics.popupSize * 1.6;
           break;
-        case 'convoy':
-          label = S.boss.arriving(k.kind);
-          color = 'coin';
-          size = Metrics.popupSize * 0.8;
-          break;
-        case 'scout':
-          label = S.boss.scout;
-          color = 'vehicleCriminal';
-          size = Metrics.popupSize * 0.8;
-          break;
-        case 'heist':
-          label = S.boss.heist(moneyText(Fmt.number(k.n)));
-          color = 'coin';
-          break;
-        case 'armour':
-          label = S.boss.armour;
-          color = 'coin';
-          size = Metrics.popupSize * 0.8;
-          break;
-        case 'ambulance':
-          label = k.fire ? S.ambulance.fire : S.ambulance.incoming;
-          color = 'lightBlue';
-          size = Metrics.popupSize * 0.8;
-          break;
-        case 'learner':
-          label = S.learner.incoming;
-          color = 'juiceGreen';
-          size = Metrics.popupSize * 0.8;
-          break;
-        case 'crowded':
-          label = S.learner.crowded;
-          color = 'muted';
-          size = Metrics.popupSize * 0.8;
-          break;
-        case 'patient':
-          label = S.learner.patient(Fmt.signed(k.n));
-          color = 'juiceGreen';
-          break;
-        case 'oversize':
-          label = S.oversize.incoming;
-          color = 'vehicleOversize';
-          size = Metrics.popupSize * 0.8;
-          break;
-        case 'wideLoad':
-          label = S.oversize.passed(Fmt.signed(k.n));
-          color = 'vehicleOversize';
-          break;
-        case 'wedding':
-          label = S.wedding.incoming;
-          color = 'vehicleWedding';
-          size = Metrics.popupSize * 0.8;
-          break;
-        case 'weddingPaid':
-          label = S.wedding.passed(Fmt.signed(k.n));
-          color = 'vehicleWedding';
-          break;
-        case 'race':
-          label = S.racers.incoming;
-          color = 'vehicleRacer';
-          size = Metrics.popupSize * 0.8;
-          break;
-        case 'raceStopped':
-          label = S.racers.stopped(Fmt.signed(k.n));
-          color = 'vehicleRacer';
-          break;
         case 'shave':
           label = S.hud.shave(Fmt.signed(k.n));
           color = 'juiceOrange';
           size = Metrics.popupSize * 0.85;
-          break;
-        case 'blocked':
-          label = S.ambulance.blocked;
-          color = 'destructive';
-          break;
-        case 'clearRoad':
-          label = S.ambulance.clear(Fmt.signed(k.n));
-          color = 'lightBlue';
           break;
       }
       let at = add(toScreen(cam, p.position), v(0, -30));
@@ -855,20 +813,41 @@ export const HUD = {
 
 // MARK: Ring signals
 
-export type SignalKind = 'wave' | 'flush' | 'sweep' | 'heal';
-const SIGNAL_DURATION: Record<SignalKind, number> = { wave: 0.7, flush: 0.6, sweep: 1.1, heal: 1.1 };
+/**
+ * wave: paid, a ring widens out · miss: a bonus slipped away, a ring pulls back in · flush: a blow to the whole ring ·
+ * sweep: something is coming · heal: a crash forgiven · splash: the combo climbed, juice sprays out of the rim.
+ */
+export type SignalKind = 'wave' | 'miss' | 'flush' | 'sweep' | 'heal' | 'splash';
+const SIGNAL_DURATION: Record<SignalKind, number> = { wave: 0.7, miss: 0.7, flush: 0.6, sweep: 1.1, heal: 1.1, splash: 0.85 };
 
 interface Signal {
   kind: SignalKind;
   color: ColorToken;
-  /** A heal's plus signs take turns between `color` and this one (the police: blue and red). */
+  /** A heal's plus signs take turns between `color` and this one (the police: blue and red); a splash mixes it in. */
   second: ColorToken;
+  /** A splash's strength, 0 → 1: how many drops it throws. */
+  power: number;
   age: number;
+}
+
+/** Where the signals run: the rim on the island, its start (the player's arm) and the road's outer edge. */
+export interface RingFrame {
+  rim: number;
+  start: number;
+  outer: number;
 }
 
 /** The island's rim as the game's signal track. */
 export class RingSignals {
   static rim = (world: World): number => world.layout.islandRadius - 14;
+
+  /** The glow on the rim in front of an arm a vehicle is about to come from; `phase` runs 0 → 1 and repeats. */
+  static wedge(list: RenderList, rim: number, angle: number, phase: number, color: ColorToken): void {
+    const half = 0.35;
+    list.w(arc(v(0, 0), rim, 3 + 7 * phase, angle - half, angle + half), color, 1 - phase);
+    list.w(arc(v(0, 0), rim, 2.5, angle - half, angle + half), color);
+  }
+
   static readonly hold = 0.9;
   total = 0;
   sent = 0;
@@ -889,9 +868,9 @@ export class RingSignals {
     this.signals = this.signals.filter((s) => s.age < SIGNAL_DURATION[s.kind]);
   }
 
-  signal(kind: SignalKind, color: ColorToken, second: ColorToken = color): void {
+  signal(kind: SignalKind, color: ColorToken, second: ColorToken = color, power = 0): void {
     this.signals = this.signals.filter((s) => !(s.kind === kind && s.color === color));
-    this.signals.push({ kind, color, second, age: 0 });
+    this.signals.push({ kind, color, second, power, age: 0 });
   }
 
   follow(total: number, sent: number, lit: ColorToken): void {
@@ -909,14 +888,15 @@ export class RingSignals {
   }
 
   add(list: RenderList, world: World, reduceMotion: boolean): void {
-    const rim = RingSignals.rim(world);
-    const start = world.layout.player.angle;
+    this.addAt(list, { rim: RingSignals.rim(world), start: world.layout.player.angle, outer: world.layout.ringRadius + world.layout.laneWidth / 2 }, reduceMotion);
+  }
+
+  addAt(list: RenderList, { rim, start, outer }: RingFrame, reduceMotion: boolean): void {
     if (this.leaving) {
       const fade = 1 - Ease.outCubic(this.leaving.age / 0.35);
       this.ticks(list, this.leaving.total, this.leaving.sent, this.leaving.lit, start, rim, fade, Infinity, Infinity, reduceMotion);
     }
     this.ticks(list, this.total, this.sent, this.lit, start, rim, 1, this.arrival, this.sinceSent, reduceMotion);
-    const outer = world.layout.ringRadius + world.layout.laneWidth / 2;
     for (const s of this.signals) {
       const x = Ease.clamp01(s.age / SIGNAL_DURATION[s.kind]);
       if (s.kind === 'heal') {
@@ -931,6 +911,11 @@ export class RingSignals {
       } else if (kind === 'wave') {
         const radius = rim + (outer - rim) * Ease.outCubic(x);
         list.w(arc(v(0, 0), radius, 1 + 2.5 * (1 - x), 0, TAU), s.color, 0.55 * (1 - x));
+      } else if (kind === 'splash') {
+        RingSignals.splash(list, s, rim, outer);
+      } else if (kind === 'miss') {
+        const radius = outer - (outer - rim) * Ease.outCubic(x);
+        list.w(arc(v(0, 0), radius, 1 + 2.5 * (1 - x), 0, TAU), s.color, 0.55 * (1 - x));
       } else {
         const run = Ease.inOutSine(x / 0.8);
         const head = start + TAU * run;
@@ -940,6 +925,28 @@ export class RingSignals {
           list.w(arc(v(0, 0), rim, 3.5, Math.max(start, head - 0.7), head), s.color, 0.9 * fade);
         }
       }
+    }
+  }
+
+  /** The combo climbed a tier: the rim flares and juice sprays out of it, more drops the higher the tier. */
+  static splash(list: RenderList, s: Signal, rim: number, outer: number): void {
+    const x = Ease.clamp01(s.age / SIGNAL_DURATION.splash);
+    const flare = 1 - Ease.outCubic(x);
+    list.w(arc(v(0, 0), rim, 12, 0, TAU), s.color, 0.2 * flare);
+    list.w(arc(v(0, 0), rim + (outer - rim) * 0.7 * Ease.outCubic(x), 0.5 + 3 * (1 - x), 0, TAU), s.color, 0.6 * (1 - x));
+    const drops = 12 + Math.round(18 * s.power);
+    for (let i = 0; i < drops; i++) {
+      // Each drop leaves a hair later and flies its own distance; the golden angle spreads them evenly.
+      const t = Ease.clamp01((s.age - (i % 4) * 0.03) / (SIGNAL_DURATION.splash - 0.1));
+      if (t <= 0) continue;
+      const dir = fromAngle(i * 2.399963);
+      const fly = Ease.outCubic(t);
+      const reach = (outer - rim + 22) * (0.5 + 0.5 * (((i * 7) % 5) / 4));
+      const head = mul(dir, rim + reach * fly);
+      const color = i % 2 === 0 ? s.color : s.second;
+      const fade = 1 - Ease.clamp01((t - 0.65) / 0.35);
+      list.w(line(sub(head, mul(dir, 12 * (1 - t))), head, 2.4 * (1 - 0.5 * t)), color, 0.85 * fade);
+      list.w(circle(head, (i % 3 === 0 ? 4.6 : 3.2) * (1 - 0.45 * t)), color, fade);
     }
   }
 
@@ -992,40 +999,74 @@ export class RingSignals {
 
 // MARK: Banners
 
+/** A message on the waiting screen's top card (the swipe hint, a mode's name): the numbers make way for it, as for a briefing. */
+export interface TopMessage {
+  brief: Brief;
+  /** The message it takes over from while that one is still fading: both show for a moment. */
+  previous: { brief: Brief; alpha: number } | null;
+  /** How far the card is in (0–1), and how far the words have swapped (0 the old ones, 1 the new). */
+  amount: number;
+  swap: number;
+  /** 0 as it is struck, 1 once the card's ripple has gone: the card flashes its edge to catch the eye. */
+  pulse: number;
+  time: number;
+  /** Arrows in the corners: there is a mode to the left, to the right. */
+  left: boolean;
+  right: boolean;
+}
+
+/** The mode's name when the player swipes to it: on the top card, in the mode's colour. */
 export const ModeBanner = {
-  duration: 1.8,
   tint: (m: SwipeMode): ColorToken => (m === 'shift' || m === 'multiplayer' ? 'primary' : m === 'unlimited' ? 'accent' : m === 'chill' ? 'lightBlue' : 'fireOuter'),
-  add(list: RenderList, mode: SwipeMode, age: number, top: number, reduceMotion: boolean): void {
-    if (age >= ModeBanner.duration) return;
-    const width = list.camera.viewport.x;
-    const leave = Ease.clamp01((age - (ModeBanner.duration - 0.35)) / 0.35);
-    const opacity = Ease.outCubic(age / 0.15) * (1 - leave);
-    if (opacity <= 0.01) return;
-    const pop = reduceMotion ? 1 : Ease.spring(age / 0.45);
-    const rise = reduceMotion ? 0 : -14 * Ease.outCubic(leave);
-    const center = v(width / 2, top + 30 + rise);
-    const size = mul(v(Math.min(width - 48, 260), 60), 0.7 + 0.3 * pop);
-    MenuKit.chromePill(list, center, size, opacity, ModeBanner.tint(mode));
-    list.s(text(S.modes.name(mode), add(center, v(0, -9)), 20 * (0.8 + 0.2 * pop), 'center', 'bold'), ModeBanner.tint(mode), opacity);
-    list.s(text(S.modes.line(mode), add(center, v(0, 14)), 12, 'center'), 'muted', opacity);
-  },
+  brief: (mode: SwipeMode): Brief => ({ id: `mode.${mode}`, caption: S.modes.name(mode).toUpperCase(), text: S.modes.line(mode), color: ModeBanner.tint(mode), pending: null }),
 };
 
-/** After Level 5, until the first swipe: a pill says the other modes are a swipe away, its arrows nudging outward. */
-export const ModeHint = {
-  add(list: RenderList, center: Vec2, shown: number, time: number, reduceMotion: boolean): void {
-    const alpha = Ease.outCubic(shown);
-    if (alpha <= 0.01) return;
-    const label = S.modes.swipeHint;
-    const size = v(textWidth(label, 13) + 64, 32);
-    const at = add(center, v(0, reduceMotion ? 0 : 10 * (1 - alpha)));
-    MenuKit.chromePill(list, at, size, alpha);
-    list.s(text(label, at, 13, 'center', 'bold'), 'primary', alpha);
-    const nudge = reduceMotion ? 0 : 4 * Math.max(0, Math.sin(time * 3.2));
-    list.s(text('‹', add(at, v(-size.x / 2 + 17 - nudge, -1)), 19, 'center', 'bold'), 'accent', alpha);
-    list.s(text('›', add(at, v(size.x / 2 - 17 + nudge, -1)), 19, 'center', 'bold'), 'accent', alpha);
-  },
-};
+/**
+ * The mode swiped to, as a message on the top card. Swiping on while it shows does not cut: the card stays, and the
+ * old words and the new overlap while one fades into the other (Leo, 08.10.2026), with a ripple round the card each time.
+ */
+export class ModeMessage {
+  static readonly hold = 1.6;
+  static readonly swapTime = 0.2;
+  static readonly ripple = 0.55;
+
+  private mode: SwipeMode | null = null;
+  private previous: Brief | null = null;
+  private shown = 0;
+  private swap = 1;
+  private age = Infinity;
+
+  /** `carried`: a message that was on the card (the swipe hint): it hands over to the mode's name like an earlier mode does. */
+  swipe(mode: SwipeMode, carried?: { brief: Brief; amount: number }): void {
+    if (this.mode !== null && this.shown > 0.05) this.previous = ModeBanner.brief(this.mode);
+    else if (carried) {
+      this.previous = carried.brief;
+      this.shown = carried.amount;
+    } else this.previous = null;
+    this.mode = mode;
+    this.swap = this.previous === null ? 1 : 0;
+    this.age = 0;
+  }
+
+  advance(dt: number): void {
+    this.age += dt;
+    this.swap = Math.min(1, this.swap + dt / ModeMessage.swapTime);
+    const target = this.mode !== null && this.age < ModeMessage.hold ? 1 : 0;
+    const step = dt / (target > this.shown ? 0.18 : 0.35);
+    this.shown = target > this.shown ? Math.min(target, this.shown + step) : Math.max(target, this.shown - step);
+    if (this.shown === 0 && target === 0) {
+      this.mode = null;
+      this.previous = null;
+    }
+  }
+
+  view(time: number): TopMessage | null {
+    if (this.mode === null || this.shown <= 0) return null;
+    const swap = Ease.smoothstep(this.swap);
+    const previous = this.previous !== null && swap < 1 ? { brief: this.previous, alpha: 1 - swap } : null;
+    return { brief: ModeBanner.brief(this.mode), previous, amount: this.shown, swap, pulse: Ease.clamp01(this.age / ModeMessage.ripple), time, left: false, right: false };
+  }
+}
 
 export interface DailyCard {
   event: CityEvent | null;
@@ -1042,7 +1083,7 @@ export interface DailyCard {
   mutator: MutatorId | null;
 }
 
-/** A condition met for the first time, as the ready screen explains it. */
+/** What a trial asks for, as the ready screen explains it. */
 export interface ConditionIntro {
   title: string;
   /** What changes and what to do, one sentence or two. */
@@ -1063,7 +1104,7 @@ interface IntroLayout {
 }
 
 export const ReadyBanner = {
-  splashDuration: 2.4,
+  splashDuration: 3,
   add(
     list: RenderList,
     o: {
@@ -1071,7 +1112,8 @@ export const ReadyBanner = {
       cars: number;
       highscore: string | null;
       money: string;
-      conditions: string | null;
+      /** Where the row of condition icons starts (`ConditionChips`): the intro card stays above it. Null: no icons. */
+      iconsTop?: number | null;
       daily: DailyCard | null;
       /** Tailwind waits: the next shift pays this much more (0.25), shown as a pill. */
       tailwind?: number | null;
@@ -1094,12 +1136,14 @@ export const ReadyBanner = {
       playerName?: string;
       /** The next goal in reach, under the prompt. */
       goal?: string | null;
-      /** Conditions met for the first time: what they are and what they do. */
+      /** A trial's goal: what it asks for. */
       intro?: ConditionIntro[] | null;
       /** Larger text (Settings): the intro card's type a step up. */
       textScale?: number;
       /** Room a notice takes under the top card right now: the intro card makes way for it. */
       noticeRoom?: number;
+      /** The mode swipe's hint on the top card: how far it is in (0–1), the clock, and which ways there is a mode. */
+      message?: TopMessage | null;
       /** Where the ring's outer edge is on screen: the intro card stays above it (the scene is never covered). */
       ringTop?: number;
     },
@@ -1109,11 +1153,19 @@ export const ReadyBanner = {
     const opacity = o.opacity ?? 1;
     const frame = TopBar.frame(width);
     const cols = TopBar.columns(frame);
+    const hint = o.message ?? null;
+    const hintView: BriefView | null = hint ? { brief: hint.brief, card: Ease.smoothstep(hint.amount), words: 1, used: null } : null;
     if (o.drawsCard ?? true) {
       TopBar.addScrim(list);
-      TopBar.addCard(list, frame);
+      // A new message sends a ripple off the card's edge, so the eye goes there.
+      if (hint && hint.pulse < 1 && !o.reduceMotion) {
+        const e = Ease.outCubic(hint.pulse);
+        list.s(rect(R.center(frame), v(R.width(frame) + 20 * e, R.height(frame) + 20 * e), TopBar.corner + 10 * e), hint.brief.color, 0.4 * (1 - e) * opacity);
+      }
+      TopBar.addCard(list, frame, 1, hintView);
     }
     list.tag = 'topbarLabels';
+    const numbers = list.items.length;
     TopBar.addMoneyColumn(list, cols.left, 'leading', o.money, { opacity });
     const [caption, captionColor]: [string, ColorToken] = o.versus
       ? [S.modes.name('multiplayer'), 'primary']
@@ -1143,6 +1195,16 @@ export const ReadyBanner = {
       TopBar.addColumn(list, cols.right, 'trailing', S.modes.youLabel, name, { opacity, valueSize: Math.max(11, Math.min(20, (20 * room) / Math.max(1, textWidth(name, 20)))) });
     }
     else TopBar.addColumn(list, cols.right, 'trailing', S.hud.bestLabel, o.highscore ?? '–', { valueColor: o.highscore === null ? 'muted' : 'primary', opacity });
+    if (hint && hintView) {
+      // The numbers fade and lift away while the hint settles in from below, and back: as a briefing does in a shift.
+      const shown = hintView.card;
+      if (shown >= 0.999) list.items.length = numbers;
+      else {
+        const lift = v(0, o.reduceMotion ? 0 : -TopBar.briefTravel * shown);
+        for (let i = numbers; i < list.items.length; i++) list.items[i] = moved(list.items[i], lift, 1 - shown);
+      }
+      TopBar.addMessage(list, frame, { ...hintView, card: hintView.card * opacity }, { time: hint.time, left: hint.left, right: hint.right, previous: hint.previous, reduceMotion: o.reduceMotion, textScale: o.textScale ?? 1 });
+    }
     list.tag = undefined;
     const pillText = run ? run.badge : o.daily ? S.daily.streakPill(o.daily.streak, o.daily.bonus, o.daily.endsIn, o.daily.freezes) : S.heat.pill(o.heat ?? 0, o.tailwind ?? null);
     if (pillText) {
@@ -1153,27 +1215,23 @@ export const ReadyBanner = {
       list.s(text(lineText, under, 12, 'center'), !run && o.daily?.endsIn != null ? 'hazard' : 'primary', opacity);
     }
     const island = toScreen(list.camera, v(0, 0));
-    // The card names the new conditions itself, so the line on the island makes way for it.
-    const introBottom = Math.min(island.y - (run?.line ? 49 : 26), (o.ringTop ?? Infinity) - 10);
+    const introBottom = Math.min((o.iconsTop ?? island.y - (run?.line ? 49 : 26)) - 10, (o.ringTop ?? Infinity) - 10);
     const under = frame.maxY + (pillText ? 31 : 0);
     const intro = o.intro && o.intro.length > 0 ? ReadyBanner.introLayout(o.intro, frame, under + 12 + (o.noticeRoom ?? 0), introBottom, o.textScale ?? 1) : null;
-    const conditions = intro ? null : o.conditions;
     if (o.prompt) {
       const breath = o.reduceMotion ? 1 : 0.7 + 0.3 * (0.5 + 0.5 * Math.cos(o.time * 2.4));
       list.s(text(o.prompt, island, 17, 'center', 'bold'), 'primary', breath * opacity);
     }
-    const line = run ? [run.line, conditions].filter((x): x is string => !!x).join(' · ') : conditions;
-    if (line) list.s(text(line, sub(island, v(0, 28)), 14, 'center', 'bold'), run ? run.color : 'hazard', opacity);
+    if (run?.line) list.s(text(run.line, sub(island, v(0, 28)), 14, 'center', 'bold'), run.color, opacity);
     if (o.goal && o.prompt) list.s(text(o.goal, add(island, v(0, 28)), 13, 'center'), 'muted', opacity * (o.reduceMotion ? 1 : Ease.outCubic(o.time / 0.4)));
     if (intro) ReadyBanner.addIntro(list, intro, o.time, o.reduceMotion, opacity);
-    if (o.daily && o.daily.splash !== null) ReadyBanner.addSplash(list, o.daily, o.daily.splash, o.reduceMotion);
     return under;
   },
 
   /** The intro comes a beat after the ready screen, so it reads as news, not as part of the card. */
   introDelay: 0.35,
 
-  /** Wide enough for two conditions, narrow enough that a line stays easy to read (about 60 characters). */
+  /** Wide enough for a goal and its rule, narrow enough that a line stays easy to read (about 60 characters). */
   introMaxWidth: 440,
 
   /**
@@ -1197,9 +1255,8 @@ export const ReadyBanner = {
   },
 
   /**
-   * A condition met for the first time, under the top card: its name in the colour of the
-   * conditions line, and what changes. It comes a beat after the ready screen and goes when
-   * the shift starts; the Museum keeps the longer story.
+   * A trial's goal under the top card: its name and what it asks. It comes a beat after the
+   * ready screen and goes when the shift starts.
    */
   addIntro(list: RenderList, l: IntroLayout, time: number, reduceMotion: boolean, opacity: number): void {
     const age = time - ReadyBanner.introDelay;
@@ -1221,29 +1278,60 @@ export const ReadyBanner = {
     }
   },
 
+  /**
+   * The Daily Shift's opening (Leo, 08.10.2026: not a warning box): the scene dims, and the day arrives in a few lines
+   * without a card round them, one after the other: the date, the name, a rule that draws itself out, today's city and
+   * twist, and the streak as a week of dots with today lit. The words keep their size and only rise and fade.
+   */
   addSplash(list: RenderList, daily: DailyCard, age: number, reduceMotion: boolean): void {
     const vp = list.camera.viewport;
-    const leave = Ease.clamp01((age - (ReadyBanner.splashDuration - 0.45)) / 0.45);
-    const alpha = Ease.outCubic(age / 0.25) * (1 - Ease.outCubic(leave));
+    const leave = Ease.outCubic((age - (ReadyBanner.splashDuration - 0.5)) / 0.5);
+    const alpha = Ease.outCubic(age / 0.3) * (1 - leave);
     if (alpha <= 0.001) return;
-    list.s(rect(mul(vp, 0.5), vp), 'background', 0.7 * alpha);
-    const pop = reduceMotion ? 1 : Ease.spring(age / 0.5);
-    const center = add(mul(vp, 0.5), v(0, reduceMotion ? 0 : -70 * Ease.inCubic(leave) - 20));
+    const middle = mul(vp, 0.5);
+    list.s(rect(middle, vp), 'background', 0.9 * alpha);
+    MenuKit.glow(list, add(middle, v(0, -30)), Math.min(vp.x, 460) * 0.7, 'hazard', 0.1 * alpha);
+    const date = new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' });
     const twist = daily.mutator;
-    const size = mul(v(Math.min(vp.x - 40, 340), twist ? 212 : 176), 0.85 + 0.15 * pop);
-    list.s(rect(center, add(size, v(6, 6)), 25), 'hazard', 0.35 * alpha);
-    list.s(rect(center, size, 22), 'surface', alpha);
-    const ln = (s: string, dy: number, sz: number, weight: 'regular' | 'bold', color: ColorToken): void => list.s(text(s, add(center, v(0, dy)), sz, 'center', weight), color, alpha);
-    // A twist adds two lines on top; the rest keeps its order.
-    const shift = twist ? 18 : 0;
-    ln(S.daily.title, -48 - shift, 30 * (0.8 + 0.2 * pop), 'bold', 'hazard');
+    const rows: { height: number; draw: (at: Vec2, a: number, e: number) => void }[] = [];
+    const words = (s: string, size: number, weight: 'regular' | 'bold', color: ColorToken): void => {
+      rows.push({ height: size * 1.35, draw: (at, a) => list.s(text(s, at, size, 'center', weight), color, a) });
+    };
+    words(date, 13, 'regular', 'muted');
+    words(S.daily.name, 34, 'bold', 'primary');
+    rows.push({
+      height: 18,
+      draw: (at, a, e) => {
+        const half = 56 * e;
+        list.s(line(sub(at, v(half, 0)), add(at, v(half, 0)), 2), 'hazard', a * 0.9);
+      },
+    });
+    if (daily.event) words(S.daily.splashLine(daily.event), 15, 'regular', 'primary');
     if (twist) {
-      ln(S.mutator.name(twist), -14 - shift, 17, 'bold', 'accent');
-      ln(S.mutator.line(twist), 6 - shift, 12, 'regular', 'muted');
+      words(S.mutator.name(twist), 17, 'bold', 'accent');
+      words(S.mutator.line(twist), 12, 'regular', 'muted');
     }
-    if (daily.event) ln(S.daily.splashLine(daily.event), -8 + shift, 14, 'regular', 'primary');
-    ln(S.daily.streakLine(daily.streak), 20 + shift, 13, 'regular', 'muted');
-    if (daily.next) ln(S.daily.nextMilestone(daily.next.left, daily.next.item), 46 + shift, 12, 'bold', 'accent');
+    const lit = daily.streak > 0 ? ((daily.streak - 1) % 7) + 1 : 0;
+    rows.push({
+      height: 30,
+      draw: (at, a) => {
+        for (let d = 0; d < 7; d++) {
+          const dot = v(at.x + (d - 3) * 17, at.y - 4);
+          if (d === lit - 1) list.s(circle(dot, reduceMotion ? 7 : 7 + 1.5 * Math.sin(age * 4)), 'hazard', a * 0.28);
+          list.s(circle(dot, 4), d < lit ? 'hazard' : 'controlFill', a);
+        }
+      },
+    });
+    words(S.daily.streakLine(daily.streak), 13, 'regular', 'muted');
+    if (daily.next) words(S.daily.nextMilestone(daily.next.left, daily.next.item), 12, 'bold', 'accent');
+    const total = rows.reduce((h, r) => h + r.height, 0);
+    let y = middle.y - 30 - total / 2;
+    rows.forEach((r, i) => {
+      const e = reduceMotion ? 1 : Ease.outCubic((age - 0.08 * i) / 0.35);
+      const at = v(middle.x, y + r.height / 2 + (reduceMotion ? 0 : (1 - e) * 10 - 8 * leave));
+      r.draw(at, alpha * e, e);
+      y += r.height;
+    });
   },
 };
 

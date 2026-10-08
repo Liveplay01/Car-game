@@ -15,6 +15,10 @@ export const SEASON_TINT: Record<Season, ColorToken> = {
 
 const fract = (x: number): number => x - Math.floor(x);
 
+/** Particle `i` of a picture in `tile` at time `t`: it falls (or rises, with a negative speed) and sways, wrapping round the tile. */
+export const drift = (tile: Rect, t: number, i: number, speed: number, sway: number, salt: number): Vec2 =>
+  v(tile.minX + fract(hash(i, salt) + Math.sin(t * 0.8 + i) * sway) * R.width(tile), tile.minY + fract(hash(i, salt + 1) + t * speed) * (R.height(tile) + 12) - 6);
+
 /**
  * The Season Pass's picture on Progress → Today (Leo, 06.10.2026): a tile as big as the streak's scene,
  * in the season's weather (snow, petals, sun and heat, falling leaves) with the season's top skin
@@ -32,8 +36,7 @@ export const PassArt = {
     const saved = list.clip;
     list.clip = tile;
     MenuKit.glow(list, add(c, v(0, 6)), w * 0.62, tint, (0.5 + 0.12 * Math.sin(t * 2.2)) * o);
-    const at = (i: number, speed: number, sway: number, salt: number): Vec2 =>
-      v(tile.minX + fract(hash(i, salt) + Math.sin(t * 0.8 + i) * sway) * w, tile.minY + fract(hash(i, salt + 1) + t * speed) * (h + 12) - 6);
+    const at = (i: number, speed: number, sway: number, salt: number): Vec2 => drift(tile, t, i, speed, sway, salt);
     switch (season) {
       case 'winter':
         for (let i = 0; i < 16; i++) list.s(circle(at(i, 0.06 + 0.05 * hash(i, 5), 0.03, 11), 1 + 1.1 * hash(i, 7)), 'primary', (0.5 + 0.4 * hash(i, 9)) * o);

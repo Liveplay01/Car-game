@@ -13,8 +13,8 @@ import type { World } from './world';
 export function speedLimitAt(w: World, s: number): number {
   let limit = w.ringSpeed;
   const L = w.layout.ring.length;
-  const start = w.roadworksRingS;
-  if (start !== null && w.layout.ringDistance(start, s) <= w.config.roadworksArc) {
+  const works = w.roadworks;
+  if (works && w.layout.ringDistance(works.start, s) <= works.arc) {
     limit = Math.min(limit, w.ringSpeed * w.config.roadworksSpeedFactor);
   }
   for (const [slotText, module] of Object.entries(w.config.modules)) {

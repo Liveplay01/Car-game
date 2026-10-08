@@ -42,9 +42,12 @@ import { Scroller, clipTo } from './scroll';
 export type Shelf = 0 | 1 | 2 | 3; // cars maps honours pass
 export const SHELVES: Shelf[] = [0, 1, 2, 3];
 
-/** The Cars shelf's groups, each under its heading. */
+/** The groups of the Cars and Honours shelves, each under its heading. */
 export type CarGroup = Rarity | 'vehicles' | 'seasons';
+export type ShelfGroup = CarGroup | 'maps';
 const CAR_GROUPS: CarGroup[] = ['common', 'rare', 'epic', 'legendary', 'vehicles', 'seasons'];
+/** The Honours shelf (Leo, 08.10.2026): the cars by rarity, then the vehicles, then the maps, also by rarity. */
+const HONOUR_GROUPS: ShelfGroup[] = ['common', 'rare', 'epic', 'legendary', 'vehicles', 'maps'];
 
 function carGroup(item: Cosmetic): CarGroup | null {
   // A vehicle that is an honour (the Classic) stands on the Honours shelf only.
@@ -54,13 +57,34 @@ function carGroup(item: Cosmetic): CarGroup | null {
   return item.source.kind === 'chest' ? item.rarity : null;
 }
 
+const onHonours = (item: Cosmetic): boolean => isHonour(item) || item.source.kind === 'streak';
+
+function honourGroup(item: Cosmetic): ShelfGroup {
+  if (item.kind === 'mapSkin') return 'maps';
+  return item.kind === 'vehicleType' ? 'vehicles' : item.rarity;
+}
+
+const GROUPS = new Map<Shelf, [ShelfGroup, Cosmetic[]][]>();
+
+/** The shelves that stand in groups under headings (Cars, Honours); null for the others. */
+function shelfGroups(shelf: Shelf): [ShelfGroup, Cosmetic[]][] | null {
+  if (shelf !== 0 && shelf !== 2) return null;
+  let groups = GROUPS.get(shelf);
+  if (!groups) {
+    const honours = COSMETICS.filter(onHonours);
+    groups =
+      shelf === 0
+        ? CAR_GROUPS.map((g) => [g, COSMETICS.filter((item) => carGroup(item) === g)])
+        : HONOUR_GROUPS.map((g) => [g, honours.filter((item) => honourGroup(item) === g).sort((a, b) => rarityRank(a.rarity) - rarityRank(b.rarity))]);
+    GROUPS.set(shelf, groups);
+  }
+  return groups;
+}
+
 export function shelfItems(shelf: Shelf): Cosmetic[] {
-  if (shelf === 0) return CAR_GROUPS.flatMap((g) => COSMETICS.filter((item) => carGroup(item) === g));
-  return COSMETICS.filter((item) => {
-    if (shelf === 1) return item.kind === 'mapSkin';
-    if (shelf === 2) return isHonour(item) || item.source.kind === 'streak';
-    return item.source.kind === 'pass';
-  });
+  const groups = shelfGroups(shelf);
+  if (groups) return groups.flatMap(([, items]) => items);
+  return COSMETICS.filter((item) => (shelf === 1 ? item.kind === 'mapSkin' : item.source.kind === 'pass'));
 }
 export const shelfOf = (item: Cosmetic): Shelf => SHELVES.find((s) => shelfItems(s).some((x) => x.id === item.id)) ?? 0;
 
@@ -250,14 +274,14 @@ export const ShopPage = {
   /** The window the Collection's grid scrolls in: under the shelf chips. */
   itemsArea: (l: Layout): Rect => ({ ...l.content, minY: l.content.minY + ShopPage.shelfHeight + ShopPage.gap }),
 
-  /** A shelf's cards, four to a row; the Cars shelf in groups under their headings. */
+  /** A shelf's cards, four to a row; the Cars and Honours shelves in groups under their headings. */
   shelfLayout(width: number, shelf: Shelf): ShelfLayout {
     const gap = ShopPage.gap;
     const columns = 4;
     const height = 118;
     const cw = (width - gap * (columns - 1)) / columns;
     const items = shelfItems(shelf);
-    const groups: [string | null, Cosmetic[]][] = shelf === 0 ? CAR_GROUPS.map((g) => [S.shop.group(g), items.filter((i) => carGroup(i) === g)]) : [[null, items]];
+    const groups: [string | null, Cosmetic[]][] = shelfGroups(shelf)?.map(([g, group]) => [S.shop.group(g, shelf === 2), group]) ?? [[null, items]];
     const out: ShelfLayout = { cells: [], headings: [], height: 0 };
     let y = 0;
     for (const [label, group] of groups) {

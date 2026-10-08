@@ -205,7 +205,7 @@ const SPECIAL_COLOR: Record<SpecialKind, ColorToken> = {
   military: 'juiceGreen',
   fireTruck: 'juiceRed',
   motorbike: 'juiceRed',
-  learner: 'juiceGreen',
+  learner: 'learnerSign',
   bus: 'juiceYellow',
   oversize: 'vehicleOversize',
   racer: 'vehicleRacer',
