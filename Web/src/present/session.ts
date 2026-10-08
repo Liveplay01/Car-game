@@ -13,7 +13,6 @@ import { Goals } from '../core/goals';
 import { noteTap } from '../core/timing';
 import { latestNote } from './patchNotes';
 import { ChestReel } from './chestReel';
-import { Scoring } from '../core/scoring';
 import { type Vec2, v, add, clamp } from '../core/vec2';
 import { loadSave, saveTrust, writeSave } from '../storage/save';
 import { loadPlayerName } from '../storage/profile';
@@ -21,6 +20,7 @@ import { leaderboardEnabled, syncScores, type Records } from '../net/leaderboard
 import type { Reward } from '../net/rewards';
 import { cloudChanged, cloudEnabled, cloudLinked } from '../net/cloud';
 import { RenderList, R, Ease, toScreen, rect, type Camera } from './render';
+import type { ColorToken } from './theme';
 import { S, Fmt, money as moneyText } from './strings';
 import { CrashEffects } from './effects';
 import { ExplosionEffects, MapScars, SmokeCurtain } from './explosionsFx';
@@ -38,6 +38,7 @@ import { NoticeQueue } from './notices';
 import { bookShift } from './booking';
 import { type Screen, type Tab, type SwipeMode, SWIPE_MODES, type ScreenAction, type ProgressSection, PROGRESS, TAB_BAR, BUILD_PAGES, barTab, screenTab, showsTabBar, BuildLayout } from './flow';
 import { CameraRig, perspectiveOf, addRecede } from './perspective';
+import { CameraFx, CameraFxTuning, tensionOf, zoomAbout } from './cameraFx';
 import { PhotoCard } from './photo';
 import { TransitionTracker, ModePan } from './transitions';
 import { ShopPage, ShopState, shelfOf } from './shop';
@@ -110,6 +111,8 @@ export interface SessionOutput {
   adReady?(): boolean;
   /** The ad offers beyond the free chest (a free upgrade step, the Skin Upgrade's boost): not on a portal. Default: on. */
   adOffers?: boolean;
+  /** The device can vibrate. Without it (iPhones) the camera's punch on the best merges is stronger. */
+  feelsHaptics?: boolean;
 }
 
 /**
@@ -125,8 +128,6 @@ export class GameSession {
   static readonly countInSeconds = 2;
   static readonly restartLock = 0.5;
   static readonly lossPullBack = 0.05;
-  /** At the top multiplier the camera leans in by this much. */
-  static readonly topTierLean = 0.03;
   static readonly flowFade = 0.6;
 
   readonly config: Config = baseConfig;
@@ -162,10 +163,17 @@ export class GameSession {
   private resultAge = 0;
   private moneyLanded = false;
   private sinceTakedown = Infinity;
-  /** A hit-stop: the world holds for a blink on a Critical Merge and on reaching the top multiplier. */
+  /** A hit-stop: the world holds for a blink on a Critical Merge and on reaching the top multiplier, a shorter one on a Tight Fit. */
   private sinceHitStop = Infinity;
-  /** 0 → 1 while the combo is at its top multiplier: the camera leans in a little. */
-  private topTier = 0;
+  private hitStopFor = 0.06;
+  /** The camera's punch on the best merges: how long ago, how far it leans in (a share of the scale) and towards which car. */
+  private sincePunch = Infinity;
+  private punchSize = 0;
+  private punchAt = v(0, 0);
+  /** Tension, relief and the leans towards a crash, a takedown or a last car that only just fits. */
+  private cameraFx = new CameraFx();
+  /** Where the player's last crash happened: the camera leans towards it if it ends the shift. */
+  private lastCrashAt = v(0, 0);
   private lamps = new VehicleLamps();
   private sinceFatalCrash = Infinity;
   private sinceLoss = Infinity;
@@ -293,6 +301,8 @@ export class GameSession {
     this.resumeCasino();
     const trust = saveTrust();
     if (trust !== 'fine') this.announce(trust === 'restored' ? S.hints.saveRestored : S.hints.saveDistrusted);
+    // A later visit of someone who has played a little.
+    if (this.save.shiftsPlayed >= 3) this.teachTightFit();
   }
 
   private nextSeed(): number {
@@ -351,8 +361,10 @@ export class GameSession {
 
   collectLoginIncome(): void {
     const income = Careers.collectLoginIncome(this.save.career, this.today, this.config);
+    const gift = Careers.collectGift(this.save.career, this.today);
     this.persist();
     if (income !== null) this.announce(S.daily.welcomeBack(Fmt.number(income)));
+    if (gift) this.announce(S.daily.giftCollected);
     this.announceBuildWithUs();
     this.announceInvite();
   }
@@ -403,13 +415,43 @@ export class GameSession {
 
   /** Simulation speed with the short slow motions of a takedown and of the lost shift. */
   get timeScale(): number {
-    return Math.min(this.takedownSlowMotion, this.fatalSlowMotion, this.hitStop);
+    return Math.min(this.takedownSlowMotion, this.fatalSlowMotion, this.hitStop, this.reduceMotion ? 1 : this.cameraFx.finalScale);
   }
 
   private get hitStop(): number {
     if (this.reduceMotion) return 1;
-    return this.sinceHitStop < 0.06 ? 0.08 : 1;
+    return this.sinceHitStop < this.hitStopFor ? 0.08 : 1;
   }
+
+  /**
+   * The best merges land with weight (research of 08.10.2026): a blink of stillness and a short lean of the camera,
+   * gone under Reduce Motion. A Tight Fit is frequent, so its hold is the shortest the eye still feels; on a device that
+   * cannot vibrate the punch does the work a vibration would.
+   */
+  private landMerge(hold: number, punch: number, at = this.punchAt): void {
+    if (this.sinceHitStop >= this.hitStopFor || hold > this.hitStopFor - this.sinceHitStop) {
+      this.sinceHitStop = 0;
+      this.hitStopFor = hold;
+    }
+    if (punch <= 0) return;
+    this.sincePunch = 0;
+    this.punchAt = at;
+    this.punchSize = punch * (this.output?.feelsHaptics === false ? 1.6 : 1);
+  }
+
+  /**
+   * How far the camera leans in from a punch right now: eased in over `punchIn`, back over `punchOut`. Never in one
+   * frame: a jump of the whole scene at once read as a twitch on every Tight Fit (Leo, 08.10.2026).
+   */
+  private get punch(): number {
+    const t = this.sincePunch;
+    if (this.reduceMotion || t >= GameSession.punchIn + GameSession.punchOut) return 0;
+    if (t < GameSession.punchIn) return this.punchSize * Ease.outCubic(t / GameSession.punchIn);
+    return this.punchSize * (1 - Ease.inOutSine((t - GameSession.punchIn) / GameSession.punchOut));
+  }
+
+  static readonly punchIn = 0.07;
+  static readonly punchOut = 0.26;
 
   private get fatalSlowMotion(): number {
     if (this.reduceMotion) return 1;
@@ -454,7 +496,7 @@ export class GameSession {
         this.prepareShift(false);
         break;
       case 'openSettings':
-        if (this.screen.k === 'ready' || this.screen.k === 'result') {
+        if (this.showsChrome && (this.screen.k === 'ready' || this.screen.k === 'result')) {
           this.screen = { k: 'settings' };
           this.tick();
           this.onChrome?.();
@@ -490,7 +532,7 @@ export class GameSession {
       }
       case 'showTab': {
         const tab = action.tab;
-        if (!showsTabBar(this.screen) || (tab === screenTab(this.screen) && screenTab(this.screen) !== 'game')) return;
+        if (!this.showsChrome || (tab === screenTab(this.screen) && screenTab(this.screen) !== 'game')) return;
         const next: Screen = tab === 'game' ? { k: 'ready' } : { k: 'page', tab };
         const same = next.k === this.screen.k && (next.k !== 'page' || (this.screen.k === 'page' && this.screen.tab === next.tab));
         if (!same) {
@@ -570,21 +612,17 @@ export class GameSession {
         this.buildFlow.buy(action.upgrade);
         break;
       case 'openChest': {
-        const seed = save.shiftsPlayed * 7919 + this.popupSerial;
-        const opening = Careers.openChest(career, action.index, seed, this.today);
-        if (!opening) return;
-        const albums = this.completeAlbums();
-        this.persist();
-        if (albums.length > 0) this.announce(...albums);
-        this.shopPage.shelf = shelfOf(opening.item);
-        this.shopPage.selectedItem = opening.item.id;
-        // Reduced motion: no build-up, no reel, the prize at once.
-        const reel = ChestReel.make(opening.chest, opening.item, (seed ^ Math.imul(career.chestsOpened, 0x9e3779b1)) >>> 0, this.config.chestTeaserChance);
-        this.shopPage.opening = { opening, reel, age: this.reduceMotion ? ShopPage.stages(opening, reel).reveal : 0 };
-        const rare = rarityRank(opening.item.rarity) >= 2;
-        if (this.reduceMotion) this.play([rare ? 'chestBurstRare' : 'chestBurst'], ['chest']);
-        // Something big inside: a sub-bass charges up under the chest until it bursts.
-        else this.play(rare ? ['chestCharge', 'chargeUp'] : ['chestCharge'], ['wanted']);
+        const open = this.openChestAt(action.index);
+        if (!open) return;
+        this.shopPage.shelf = shelfOf(open.opening.item);
+        this.shopPage.selectedItem = open.opening.item.id;
+        this.shopPage.opening = open;
+        break;
+      }
+      case 'openChestHere': {
+        if (this.chestOffer === 0) return;
+        this.sceneChest = this.openChestAt(0);
+        this.onChrome?.();
         break;
       }
       case 'buyChest':
@@ -686,6 +724,41 @@ export class GameSession {
     }
   }
 
+  /**
+   * Opens the chest at `index` (books it, says what albums it completed) and starts its reveal, with the sound of the
+   * chest charging up. Null when there is no such chest.
+   */
+  private openChestAt(index: number): ShopState['opening'] {
+    const career = this.save.career;
+    const seed = this.save.shiftsPlayed * 7919 + this.popupSerial;
+    const opening = Careers.openChest(career, index, seed, this.today);
+    if (!opening) return null;
+    const albums = this.completeAlbums();
+    this.persist();
+    if (albums.length > 0) this.announce(...albums);
+    // Reduced motion: no build-up, no reel, the prize at once.
+    const reel = ChestReel.make(opening.chest, opening.item, (seed ^ Math.imul(career.chestsOpened, 0x9e3779b1)) >>> 0, this.config.chestTeaserChance);
+    const rare = rarityRank(opening.item.rarity) >= 2;
+    if (this.reduceMotion) this.play([rare ? 'chestBurstRare' : 'chestBurst'], ['chest']);
+    // Something big inside: a sub-bass charges up under the chest until it bursts.
+    else this.play(rare ? ['chestCharge', 'chargeUp'] : ['chestCharge'], ['wanted']);
+    return { opening, reel, age: this.reduceMotion ? ShopPage.stages(opening, reel).reveal : 0 };
+  }
+
+  /**
+   * A chest opened right where the player is (research of 08.10.2026: a reward lands best in the scene, not a tab away):
+   * the Shop's reveal over the Game tab, from the pill under the result or the waiting screen. A tap moves it on.
+   */
+  sceneChest: ShopState['opening'] = null;
+
+  /** Chests waiting to be opened from the Game tab's pill; 0 where it does not show (a shift, a challenge, a match, a page). */
+  get chestOffer(): number {
+    const k = this.screen.k;
+    if (!this.showsChrome || (k !== 'ready' && k !== 'result') || this.special || this.versusSelected || this.adFlow.placeholder) return 0;
+    if (k === 'result' && this.resultAge < ResultBanner.inputLock) return 0;
+    return this.save.career.chests.length;
+  }
+
   /** A reply to what the player just did: shown at once. */
   showNotice(textValue: string): void {
     this.notices.say(textValue);
@@ -742,15 +815,12 @@ export class GameSession {
     const daily = this.dailySelected;
     // The season tilts the sky of career shifts; the Daily Shift also carries the day's twist.
     const season = this.save.mode === 'shift' ? seasonOf(this.today) : null;
-    const base = Careers.shiftConfig(
-      this.save.career,
-      this.save.mode,
-      forSeason(this.config, season),
-      seed,
-      daily ? dailyEvent(this.today) : undefined,
-      daily ? null : undefined,
-      daily ? mutatorOf(this.today) : null,
-    );
+    const seasonal = forSeason(this.config, season);
+    // A plain career shift is eased by what this career has been through (`Careers.careerShift`); the Daily never is.
+    const base =
+      this.save.mode === 'shift' && !daily
+        ? Careers.careerShift(this.save.career, seasonal, seed)
+        : Careers.shiftConfig(this.save.career, this.save.mode, seasonal, seed, daily ? dailyEvent(this.today) : undefined, daily ? null : undefined, daily ? mutatorOf(this.today) : null);
     // A living Daily streak, a waiting Tailwind and a chosen Heat pay more on a career shift (Mayhem pays in flames).
     if (this.save.mode === 'mayhem' || this.save.mode === 'chill') return base;
     const heat = !daily && this.save.mode === 'shift' ? Careers.activeHeat(this.save.career, this.config) : 0;
@@ -902,7 +972,15 @@ export class GameSession {
 
   /** The tab bar's height where it shows. */
   private get tabInset(): number {
-    return showsTabBar(this.screen) ? this.lastInset : 0;
+    return this.showsChrome ? this.lastInset : 0;
+  }
+
+  /**
+   * The tab bar and the buttons over the scene. Not before the first shift is over (the research of 08.10.2026: on a
+   * phone a first tap that lands in a menu loses the player): until then the screen is the game and nothing else.
+   */
+  get showsChrome(): boolean {
+    return showsTabBar(this.screen) && this.save.tutorialDone && !this.sceneChest;
   }
 
   // MARK: Casino (present/casinoFlow.ts)
@@ -1031,6 +1109,7 @@ export class GameSession {
     this.accumulator = 0;
     this.effects = new CrashEffects(this.world.seed);
     this.explosions = new ExplosionEffects(this.world.seed);
+    this.cameraFx.reset();
     this.scars = new MapScars();
     this.tyreMarks.clear();
     this.popups = [];
@@ -1079,9 +1158,10 @@ export class GameSession {
     }
     this.sinceTakedown += realDelta;
     this.sinceHitStop += realDelta;
-    const tiers = Math.min(this.world.config.comboThresholds.length, this.world.config.comboMultipliers.length);
-    const atTop = this.screen.k === 'playing' && tiers > 0 && Scoring.tier(this.world.score.combo, this.world.config) >= tiers ? 1 : 0;
-    this.topTier += (atTop - this.topTier) * Math.min(1, realDelta / 0.6);
+    this.sincePunch += realDelta;
+    const tense = this.screen.k === 'playing' && !this.tutorial;
+    this.cameraFx.update(tense ? tensionOf(this.world, this.playingMode) : 0, realDelta);
+    this.cameraFx.watchFinal(this.world, tense);
     this.sinceFatalCrash += realDelta;
     this.sinceLoss += realDelta;
     let lossShown = false;
@@ -1118,13 +1198,18 @@ export class GameSession {
     if (this.dailySplash !== null && this.screen.k === 'ready') {
       this.dailySplash = this.dailySplash + realDelta < ReadyBanner.splashDuration ? this.dailySplash + realDelta : null;
     }
+    // A crash the shift survives (the shield, a police car within its limit) heals the ring; the last one flushes it.
+    // Chill has no limit: nothing to forgive there.
+    const limits = this.world.config;
     if (counts.strikes > this.seen.strikes) {
       this.sinceStrike = 0;
-      this.rim.signal('flush', 'destructive');
+      if (counts.strikes < limits.maxStrikes && Number.isFinite(limits.maxStrikes)) this.healRing('juiceGreen', 'juiceGreen');
+      else this.rim.signal('flush', 'destructive');
     }
     if (counts.policeCrashes > this.seen.policeCrashes) {
       this.sincePoliceCrash = 0;
-      this.rim.signal('flush', 'lightBlue');
+      if (counts.policeCrashes <= limits.maxPoliceCrashes && Number.isFinite(limits.maxPoliceCrashes)) this.healRing('lightBlue', 'lightRed');
+      else this.rim.signal('flush', 'lightBlue');
     }
     this.seen = counts;
     const flowTarget = this.screen.k === 'playing' && this.world.isInFlow ? 1 : 0;
@@ -1150,6 +1235,12 @@ export class GameSession {
     if (this.tutorial?.isDone) this.tutorial = null;
     this.transitions.advance(realDelta);
     this.adFlow.advance(realDelta);
+    const chest = this.sceneChest;
+    if (chest) {
+      const before = chest.age;
+      chest.age += realDelta;
+      this.reelCues(chest, before, chest.age);
+    }
 
     if (this.isPage('upgrades')) {
       this.upgradePage.advance(realDelta);
@@ -1199,6 +1290,7 @@ export class GameSession {
       this.builderPage = new BuilderState();
     }
     this.buildFlow.advance(realDelta, this.isPage('streetBuilder'));
+    this.notices.held = this.screen.k === 'playing';
     this.notices.advance(realDelta);
     this.musicMix = this.screen.k === 'playing' && runs ? Music.playing(this.world, this.flowLevel) : Music.silent;
     return this.renderList(viewport, realDelta);
@@ -1223,6 +1315,13 @@ export class GameSession {
   }
 
   private handle(a: InputAction, simDelta: number): void {
+    if (this.sceneChest && (a.k === 'tap' || a.k === 'confirm' || a.k === 'back' || a.k === 'pointerDown' || a.k === 'swipeMode')) {
+      if (a.k !== 'swipeMode' && !ShopPage.stepOpening(this.sceneChest)) {
+        this.sceneChest = null;
+        this.onChrome?.();
+      }
+      return;
+    }
     switch (a.k) {
       case 'tap':
         switch (this.screen.k) {
@@ -1245,22 +1344,20 @@ export class GameSession {
             break;
           }
           case 'ready':
-            if (this.pan.travel || Math.abs(this.pan.pan) >= ModePan.swipeThreshold || this.world.isArriving()) return;
+            if (this.pan.travel || Math.abs(this.pan.pan) >= ModePan.swipeThreshold) return;
             if (this.versusSelected) {
               this.onVersus?.();
               return;
             }
-            this.startPlaying();
-            this.tapWorld(a.ago, simDelta);
+            this.startOrCatchUp(a.ago, simDelta);
             break;
           case 'result':
-            if (this.resultAge >= ResultBanner.inputLock && !this.pan.travel && Math.abs(this.pan.pan) < ModePan.swipeThreshold && !this.world.isArriving()) {
+            if (this.resultAge >= ResultBanner.inputLock && !this.pan.travel && Math.abs(this.pan.pan) < ModePan.swipeThreshold) {
               if (this.versusSelected) {
                 this.onVersus?.();
                 return;
               }
-              this.startPlaying();
-              this.tapWorld(a.ago, simDelta);
+              this.startOrCatchUp(a.ago, simDelta);
             }
             break;
           case 'page':
@@ -1272,10 +1369,8 @@ export class GameSession {
         break;
       case 'confirm':
         if ((this.screen.k === 'ready' || this.screen.k === 'result') && this.versusSelected) this.onVersus?.();
-        else if ((this.screen.k === 'ready' || this.screen.k === 'result') && !this.world.isArriving()) {
-          this.startPlaying();
-          this.tapWorld(undefined, simDelta);
-        } else if (this.isPage('upgrades') && this.upgradePage.selected) this.perform({ k: 'buy', upgrade: this.upgradePage.selected });
+        else if (this.screen.k === 'ready' || this.screen.k === 'result') this.startOrCatchUp(undefined, simDelta);
+        else if (this.isPage('upgrades') && this.upgradePage.selected) this.perform({ k: 'buy', upgrade: this.upgradePage.selected });
         else if (this.screen.k === 'settings') this.perform({ k: 'closeSettings' });
         break;
       case 'back':
@@ -1419,6 +1514,17 @@ export class GameSession {
         this.perform(a.action);
         break;
     }
+  }
+
+  /**
+   * The tap that starts a shift sends its first car. While the queue is still rolling up to the line it is not lost
+   * either: the shift starts (its HUD, its sound) and the next tap, once the cars are there, sends the first one, as
+   * after a lost shift.
+   */
+  private startOrCatchUp(ago: number | undefined, simDelta: number): void {
+    const arriving = this.world.isArriving();
+    this.startPlaying();
+    if (!arriving) this.tapWorld(ago, simDelta);
   }
 
   /** A press anywhere on the canvas: chrome first, then the page under it, else the game. */
@@ -1728,7 +1834,8 @@ export class GameSession {
   /** After Level 5, until the first swipe, on the waiting screen of a career shift (not under a notice). */
   private get showsModeHint(): boolean {
     const career = this.save.career;
-    if (this.save.hints.includes('modes') || career.level <= this.config.modeHintAfterLevel || this.versusSelected || !this.notices.isEmpty) return false;
+    const due = career.level > this.config.modeHintAfterLevel || this.save.hints.includes('unlimitedTip');
+    if (this.save.hints.includes('modes') || !due || this.versusSelected || !this.notices.isEmpty) return false;
     return this.screen.k === 'ready' && this.sinceReady > 0.6 && this.takesModeSwipe;
   }
 
@@ -1740,7 +1847,7 @@ export class GameSession {
 
   /** The chrome every screen shares: the Build tab's segments, the top card, the Progress tab. */
   private pageAction(point: Vec2): InputAction | true | null {
-    if (!showsTabBar(this.screen)) return null;
+    if (!this.showsChrome) return null;
     if (this.isPage('upgrades') || this.isPage('streetBuilder')) {
       const tab = BuildLayout.pageAt(point, this.lastViewport);
       return tab ? { k: 'perform', action: { k: 'showTab', tab } } : null;
@@ -1789,8 +1896,9 @@ export class GameSession {
           if (e.critical) {
             this.addPopup({ k: 'critical', n: e.points }, e.position);
             this.rim.signal('wave', 'coin');
-            this.sinceHitStop = 0;
+            this.landMerge(0.06, 0.025, e.position);
           } else if (e.rating !== 'clean') this.addPopup({ k: e.rating } as PopupKind, e.position);
+          if (!e.critical && e.rating === 'tightFit') this.landMerge(0.03, 0.008, e.position);
           if (e.shave > 0) this.addPopup({ k: 'shave', n: e.shave }, add(e.position, v(0, 22)));
           // In the snow every merge leaves its tracks, and they stay.
           if (TyreMarks.leavesMark(e.rating) || world.config.weather === 'snow') this.tyreMarks.add(world.config.weather === 'snow');
@@ -1799,6 +1907,7 @@ export class GameSession {
           break;
         case 'crash':
           this.effects.spawn(e, world, this.reduceMotion, e.chain);
+          if (e.involvesPlayer || e.isStrike) this.lastCrashAt = e.point;
           if (e.flames > 0) {
             this.addPopup({ k: 'flames', n: e.flames, chain: e.chain }, e.point);
             this.sinceFlames = 0;
@@ -1814,14 +1923,18 @@ export class GameSession {
             this.rim.signal('wave', 'juiceGreen');
             // The top multiplier lands with a blink of stillness.
             const c = world.config;
-            if (e.tier >= Math.min(c.comboThresholds.length, c.comboMultipliers.length)) this.sinceHitStop = 0;
+            if (e.tier >= Math.min(c.comboThresholds.length, c.comboMultipliers.length)) this.landMerge(0.06, 0);
           }
           break;
         case 'shiftEnded':
-          if (e.result.outcome === 'completed') this.rim.signal('sweep', 'juiceGreen');
-          else if (e.result.outcome === 'struckOut') {
+          // Gold for a Perfect Run (no crash, no cut-off): only the first one is told in words (`bookShift`).
+          if (e.result.outcome === 'completed') {
+            this.rim.signal('sweep', e.result.isPerfectRun ? 'coin' : 'juiceGreen');
+            this.cameraFx.relieve();
+          } else if (e.result.outcome === 'struckOut') {
             this.rim.signal('flush', 'destructive');
             this.sinceFatalCrash = 0;
+            this.cameraFx.leanTo(this.lastCrashAt, CameraFxTuning.crashZoom, 0.45);
             this.sinceLoss = 0;
           } else {
             this.rim.signal('flush', 'vehicleCriminal');
@@ -1832,6 +1945,7 @@ export class GameSession {
         case 'takedown':
           this.addPopup({ k: 'busted', n: e.points }, e.point);
           this.sinceTakedown = 0;
+          this.cameraFx.leanTo(e.point, CameraFxTuning.takedownZoom, 0.3);
           this.rim.signal('wave', 'lightBlue');
           break;
         case 'criminalWarning':
@@ -1839,6 +1953,13 @@ export class GameSession {
           if (e.boss) {
             this.addPopup({ k: 'convoy', kind: world.config.bossKind }, world.layout.stopPose(e.arm).position);
             this.rim.signal('sweep', 'coin');
+          } else if (e.scout) {
+            this.addPopup({ k: 'scout' }, world.layout.stopPose(e.arm).position);
+            this.rim.signal('sweep', 'vehicleCriminal');
+            if (!this.save.hints.includes('scout')) {
+              this.save.hints.push('scout');
+              this.showNotice(S.boss.scoutFirst);
+            }
           }
           break;
         case 'armourHit':
@@ -1981,6 +2102,28 @@ export class GameSession {
     this.play(cues.sounds, cues.haptics, cues.origins);
   }
 
+  /** A crash forgiven: the ring lights up with plus signs and a soft chord, no words over the shift. */
+  private healRing(color: ColorToken, second: ColorToken): void {
+    this.rim.signal('heal', color, second);
+    if (this.screen.k === 'playing') this.play(['heal'], ['secured']);
+  }
+
+  /**
+   * Taught once (research of 08.10.2026: the tutorial says "wait for a gap", the scoring pays most for close merges):
+   * on a later visit, or after a few shifts at the latest. Someone who already merges close is not told.
+   */
+  private teachTightFit(): void {
+    const save = this.save;
+    if (!save.tutorialDone || save.hints.includes('tightFit')) return;
+    save.hints.push('tightFit');
+    this.store();
+    if (save.career.mastery.tightFits < GameSession.tightFitsKnown) this.announce(S.modes.tightFit);
+  }
+
+  /** Shifts after which `teachTightFit` comes in the same visit, and how many Tight Fits mean it is known. */
+  static readonly tightFitTipShifts = 6;
+  static readonly tightFitsKnown = 10;
+
   private startPlaying(): void {
     this.screen = { k: 'playing' };
     this.shiftStartMoney = this.save.career.money;
@@ -2009,7 +2152,12 @@ export class GameSession {
   /** The waiting shift follows the day: today's Daily Shift while open, a normal one after. */
   private keepDailyInStep(): void {
     if (this.world.shift.phase !== 'waiting' || this.screen.k === 'playing' || this.special) return;
-    this.today = dayNumber();
+    const day = dayNumber();
+    if (day !== this.today && Careers.collectGift(this.save.career, day)) {
+      this.persist();
+      this.announce(S.daily.giftCollected);
+    }
+    this.today = day;
     if (this.wantsDaily !== this.dailySelected) this.prepareShift(true, null, this.screen);
   }
 
@@ -2083,8 +2231,8 @@ export class GameSession {
       this.finishSpecial(this.special, result);
       return;
     }
-    // Any finished shift can go to a friend as a challenge (not while learning the game).
-    this.shareable = save.tutorialDone && this.playingMode !== 'chill'
+    // Any finished shift can go to a friend as a challenge (not while learning the game, not one eased for this career).
+    this.shareable = save.tutorialDone && this.playingMode !== 'chill' && !this.world.config.assisted
       ? challengeOf(
           career,
           this.playingMode,
@@ -2121,8 +2269,9 @@ export class GameSession {
     this.dailySelected = false;
     this.resultBank = booked.bank;
     const found = this.takeMuseumNotice();
-    this.notices.announce(...booked.news, ...(found ? [found] : []));
+    this.notices.announce(...GameSession.budget([...booked.news, ...(found ? [found] : [])]));
     for (const hint of booked.due) this.onHint?.(hint);
+    if (save.shiftsPlayed >= GameSession.tightFitTipShifts) this.teachTightFit();
     const { isNew, previous } = booked;
     // A Shift's best grows with the level almost every time; a record in Unlimited or Mayhem is earned.
     if (isNew && previous > 0 && this.playingMode !== 'shift') this.output?.celebrate?.();
@@ -2148,6 +2297,15 @@ export class GameSession {
     }
     const goal = Goals.money(this.save.career, this.config);
     return goal ? { text: S.goals.money(Fmt.number(goal.short), goal.upgrade), color: 'accent' } : null;
+  }
+
+  /** Lines a result tells at most; the rest are counted in one more (they are all in Progress, or on the chest pill). */
+  static readonly resultNews = 3;
+
+  /** A result's news within its budget: the first lines as they are, then how many more there are. */
+  static budget(news: string[]): string[] {
+    const max = GameSession.resultNews;
+    return news.length <= max + 1 ? news : [...news.slice(0, max), S.notice.more(news.length - max)];
   }
 
   private resultDelayFor(result: ShiftResult): number {
@@ -2291,13 +2449,12 @@ export class GameSession {
     const world = this.world;
     const rm = this.reduceMotion;
     const alpha = Math.min(1, this.accumulator / STEP);
-    const cam = this.cameraRig.camera(perspectiveOf(this.screen), world.layout, viewport, this.tabInset, delta, rm);
+    // The bar's height even where it is hidden (a shift, the first one): the street view does not jump when it comes and goes.
+    const cam = this.cameraRig.camera(perspectiveOf(this.screen), world.layout, viewport, this.lastInset, delta, rm);
     const shake = add(this.effects.shakeOffset, this.explosions.shakeOffset);
-    const camera = {
-      ...cam,
-      focus: v(cam.focus.x + shake.x + this.pan.pan, cam.focus.y + shake.y),
-      scale: cam.scale * (1 - GameSession.lossPullBack * this.lossPull) * (1 + this.explosions.punch) * (1 + (rm ? 0 : GameSession.topTierLean * this.topTier)),
-    };
+    const pulled = { ...cam, scale: cam.scale * (1 - GameSession.lossPullBack * this.lossPull) * (1 + this.explosions.punch) };
+    const leaned = zoomAbout(this.cameraFx.apply(pulled, world.layout.stopPose(world.layout.player).position, rm), this.punchAt, 1 + this.punch);
+    const camera = { ...leaned, focus: v(leaned.focus.x + shake.x + this.pan.pan, leaned.focus.y + shake.y) };
     const career = this.save.career;
     this.lastCamera = camera;
     const list = this.sceneList(camera, alpha, rm, this.backdrop);
@@ -2305,13 +2462,15 @@ export class GameSession {
     addRecede(list, this.recede, world.layout);
     this.curtain?.add(list, viewport, rm);
     this.explosions.addFlash(list, viewport);
+    list.vignette = this.cameraFx.vignette;
+    list.vignetteAt = list.items.length;
 
     const overlayStart = list.items.length;
     const s = this.screen;
     // Where the chrome under the top card ends: a notice hangs below it.
     let underCard = TopBar.frame(viewport.x).maxY;
     if (s.k === 'playing') {
-      HUD.addFlowGlow(list, world, this.flowLevel);
+      HUD.addFlowGlow(list, world, this.flowLevel, rm ? 0 : 1 - Ease.clamp01(this.sinceCarSent / 0.3));
       HUD.addChase(list, world, alpha);
       HUD.addTransporter(list, world, alpha);
       HUD.addMilitary(list, world, alpha);
@@ -2374,6 +2533,7 @@ export class GameSession {
     const standIn = this.adFlow.placeholder;
     if (standIn) ShopPage.addAd(list, standIn.reward, standIn.age, AdFlow.placeholderSeconds);
     this.transitions.apply(list, s, overlayStart, rm);
+    if (this.sceneChest) ShopPage.addReveal(list, this.sceneChest.opening, this.sceneChest.reel, this.sceneChest.age, rm);
     const notice = this.notices.shown;
     if (notice) addNotice(list, notice, { at: this.noticePlace(s, underCard, inset), textScale: this.textScale, reduceMotion: rm });
     return list;
@@ -2458,16 +2618,25 @@ export class GameSession {
       reduceMotion: this.reduceMotion,
       drawsCard,
       opacity,
-      goal: goal ? S.goals.next(goal) : null,
+      goal: this.giftLine ?? (goal ? S.goals.next(goal) : null),
       intro: this.versusSelected || (this.tutorial && !this.tutorial.isOver) ? null : this.readyIntro,
       textScale: this.textScale,
       noticeRoom: this.noticeRoom,
+      ringTop: toScreen(list.camera, v(0, this.world.layout.ringRadius + this.world.layout.laneWidth)).y,
     });
     if (this.modeBanner) {
       const top = TopBar.frame(list.camera.viewport.x).maxY + (daily || Goals.tailwindOn(career, this.playingMode, this.playingDaily) || (this.playingMode === 'shift' && Careers.activeHeat(career, this.config) > 0) ? 40 : 14);
       ModeBanner.add(list, this.modeBanner.mode, this.modeBanner.age, top, this.reduceMotion);
     }
     return under;
+  }
+
+  /** Tomorrow's gift on the Game tab, counted down (a plain career shift only, like the next goal). */
+  private get giftLine(): string | null {
+    if (this.special || this.versusSelected || this.playingMode !== 'shift' || !Careers.giftAhead(this.save.career, this.today)) return null;
+    const now = new Date();
+    const midnight = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+    return S.daily.giftIn((midnight.getTime() - now.getTime()) / 3600000);
   }
 
   /** The ready screen's card: what a trial's goal asks for, then the conditions new to this player. */
@@ -2535,6 +2704,7 @@ export class GameSession {
 
   /** A fresh save (Settings → Delete account, after the server forgot the player). */
   resetProgress(): void {
+    this.sceneChest = null;
     this.save = newSave();
     this.store();
     this.tutorial = new Tutorial();
@@ -2543,6 +2713,7 @@ export class GameSession {
 
   /** Progress brought from another device (Cloud sync) replaces this one. */
   importProgress(save: SaveGame, text = S.settings.imported(save.career.level)): void {
+    this.sceneChest = null;
     this.save = save;
     this.store();
     this.tutorial = save.tutorialDone ? null : new Tutorial();

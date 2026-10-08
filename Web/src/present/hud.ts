@@ -65,7 +65,7 @@ export const TopBar = {
 
   addScrimBands(list: RenderList): void {
     const width = list.camera.viewport.x;
-    const steps = 12;
+    const steps = 30;
     for (let step = 0; step < steps; step++) {
       const slice = TopBar.scrim / steps;
       const opacity = 0.94 * (1 - Ease.smoothstep((step + 0.5) / steps));
@@ -172,6 +172,8 @@ export type PopupKind =
   | { k: 'flames'; n: number; chain: number }
   | { k: 'boom' }
   | { k: 'convoy'; kind: BossKind }
+  /** The scout level's criminal with its escort, announced at its arm. */
+  | { k: 'scout' }
   | { k: 'heist'; n: number }
   | { k: 'armour' }
   | { k: 'ambulance'; fire?: boolean }
@@ -445,7 +447,7 @@ export const HUD = {
       if (!pickup || pickup.isCrashed) return;
       const pos = interpolatedPose(pickup, alpha).position;
       const boss = pickup.role === 'boss';
-      const time = world.config.criminalTime * (boss ? world.config.convoyTimeFactor : 1);
+      const time = world.criminalTimeOf(pickup.id);
       HUD.countdownRing(list, pos, boss ? 24 : 20, Math.max(0, cr.deadline - world.time) / time, boss ? 'coin' : 'vehicleCriminal', String(Math.ceil(cr.deadline - world.time)));
     }
   },
@@ -646,17 +648,24 @@ export const HUD = {
     }
   },
 
-  /** The ring glow: grows a little with the combo tier and more in the Flow State. */
-  addFlowGlow(list: RenderList, world: World, flow: number): void {
+  /**
+   * The ring glow: grows a little with the combo tier and more in the Flow State. In Flow it steps up every
+   * `flowGlowStep` merges more (three steps), and each car sent pulses it (`beat`, 1 → 0): a streak worth keeping.
+   */
+  addFlowGlow(list: RenderList, world: World, flow: number, beat: number): void {
     const c = world.config;
     const tiers = Math.min(c.comboThresholds.length, c.comboMultipliers.length);
     const tier = Scoring.tier(world.score.combo, c) / Math.max(1, tiers);
     const glow = Math.min(1, 0.3 * tier + 0.7 * flow);
     if (glow <= 0.01) return;
+    const stage = world.isInFlow ? Math.min(3, 1 + Math.floor((world.score.chain - c.flowChain) / HUD.flowGlowStep)) : 0;
     const radius = world.layout.islandRadius - 3;
-    list.w(arc(v(0, 0), radius, 12, 0, TAU), 'juiceGreen', 0.12 * glow);
-    list.w(arc(v(0, 0), radius, 3, 0, TAU), 'juiceGreen', 0.45 * glow);
+    const lift = (stage / 3) * flow;
+    list.w(arc(v(0, 0), radius, 12 + 8 * lift, 0, TAU), 'juiceGreen', 0.12 * glow + 0.08 * lift);
+    list.w(arc(v(0, 0), radius, 3 + lift, 0, TAU), 'juiceGreen', Math.min(1, 0.45 * glow + 0.25 * lift + 0.3 * beat * flow));
   },
+
+  flowGlowStep: 5,
 
   addPopups(list: RenderList, popups: Popup[], reduceMotion: boolean): void {
     const cam = list.camera;
@@ -751,6 +760,11 @@ export const HUD = {
           color = 'coin';
           size = Metrics.popupSize * 0.8;
           break;
+        case 'scout':
+          label = S.boss.scout;
+          color = 'vehicleCriminal';
+          size = Metrics.popupSize * 0.8;
+          break;
         case 'heist':
           label = S.boss.heist(moneyText(Fmt.number(k.n)));
           color = 'coin';
@@ -841,12 +855,14 @@ export const HUD = {
 
 // MARK: Ring signals
 
-export type SignalKind = 'wave' | 'flush' | 'sweep';
-const SIGNAL_DURATION: Record<SignalKind, number> = { wave: 0.7, flush: 0.6, sweep: 1.1 };
+export type SignalKind = 'wave' | 'flush' | 'sweep' | 'heal';
+const SIGNAL_DURATION: Record<SignalKind, number> = { wave: 0.7, flush: 0.6, sweep: 1.1, heal: 1.1 };
 
 interface Signal {
   kind: SignalKind;
   color: ColorToken;
+  /** A heal's plus signs take turns between `color` and this one (the police: blue and red). */
+  second: ColorToken;
   age: number;
 }
 
@@ -873,9 +889,9 @@ export class RingSignals {
     this.signals = this.signals.filter((s) => s.age < SIGNAL_DURATION[s.kind]);
   }
 
-  signal(kind: SignalKind, color: ColorToken): void {
+  signal(kind: SignalKind, color: ColorToken, second: ColorToken = color): void {
     this.signals = this.signals.filter((s) => !(s.kind === kind && s.color === color));
-    this.signals.push({ kind, color, age: 0 });
+    this.signals.push({ kind, color, second, age: 0 });
   }
 
   follow(total: number, sent: number, lit: ColorToken): void {
@@ -903,6 +919,10 @@ export class RingSignals {
     const outer = world.layout.ringRadius + world.layout.laneWidth / 2;
     for (const s of this.signals) {
       const x = Ease.clamp01(s.age / SIGNAL_DURATION[s.kind]);
+      if (s.kind === 'heal') {
+        RingSignals.heal(list, s, rim, reduceMotion);
+        continue;
+      }
       const kind = reduceMotion ? 'flush' : s.kind;
       if (kind === 'flush') {
         const fade = 1 - Ease.outCubic(x);
@@ -922,6 +942,36 @@ export class RingSignals {
       }
     }
   }
+
+  /**
+   * A crash forgiven (the shield, a police car within its limit): the rim lights up and small plus signs rise out of
+   * it, here and there round the ring, so the broken combo in the middle does not read as the end.
+   */
+  static heal(list: RenderList, s: Signal, rim: number, reduceMotion: boolean): void {
+    const x = Ease.clamp01(s.age / SIGNAL_DURATION.heal);
+    const glow = (reduceMotion ? 1 : Ease.outCubic(x / 0.14)) * (1 - Ease.inOutSine(Ease.clamp01((x - 0.25) / 0.75)));
+    const radius = rim + (reduceMotion ? 0 : 3 * Ease.outCubic(x));
+    list.w(arc(v(0, 0), radius, 16, 0, TAU), s.color, 0.14 * glow);
+    list.w(arc(v(0, 0), radius, 7, 0, TAU), s.color, 0.26 * glow);
+    list.w(arc(v(0, 0), radius, 2.5, 0, TAU), s.color, 0.95 * glow);
+    const count = RingSignals.healPluses;
+    for (let i = 0; i < count; i++) {
+      // Not one after the other round the ring: they bubble up in a scattered order.
+      const t = (s.age - (((i * 5) % count) / count) * 0.35) / 0.65;
+      if (t <= 0 || t >= 1) continue;
+      const angle = (i / count) * TAU + 0.21 * Math.sin(i * 2.7);
+      const from = mul(fromAngle(angle), rim + 2);
+      const rise = Ease.outCubic(t);
+      const at = reduceMotion ? from : add(from, add(mul(fromAngle(angle), 6 * rise), v(0, -22 * rise)));
+      const size = (i % 3 === 0 ? 9 : 7) * (reduceMotion ? 1 : Math.min(1.15, Ease.spring(t / 0.35)));
+      const opacity = Ease.clamp01(t / 0.12) * (1 - Ease.clamp01((t - 0.55) / 0.45));
+      const color = i % 2 === 0 ? s.color : s.second;
+      list.w(rect(at, v(size, size * 0.3), size * 0.15), color, opacity);
+      list.w(rect(at, v(size * 0.3, size), size * 0.15), color, opacity);
+    }
+  }
+
+  static readonly healPluses = 12;
 
   private ticks(list: RenderList, total: number, sent: number, lit: ColorToken, start: number, rim: number, opacity: number, arrival: number, sinceSent: number, reduceMotion: boolean): void {
     if (total <= 0 || opacity <= 0.001) return;
@@ -1050,6 +1100,8 @@ export const ReadyBanner = {
       textScale?: number;
       /** Room a notice takes under the top card right now: the intro card makes way for it. */
       noticeRoom?: number;
+      /** Where the ring's outer edge is on screen: the intro card stays above it (the scene is never covered). */
+      ringTop?: number;
     },
   ): number {
     const width = list.camera.viewport.x;
@@ -1102,7 +1154,7 @@ export const ReadyBanner = {
     }
     const island = toScreen(list.camera, v(0, 0));
     // The card names the new conditions itself, so the line on the island makes way for it.
-    const introBottom = island.y - (run?.line ? 49 : 26);
+    const introBottom = Math.min(island.y - (run?.line ? 49 : 26), (o.ringTop ?? Infinity) - 10);
     const under = frame.maxY + (pillText ? 31 : 0);
     const intro = o.intro && o.intro.length > 0 ? ReadyBanner.introLayout(o.intro, frame, under + 12 + (o.noticeRoom ?? 0), introBottom, o.textScale ?? 1) : null;
     const conditions = intro ? null : o.conditions;

@@ -50,6 +50,8 @@ export class CanvasDrawer {
   /** The context drawn on: the canvas's own, or the ground picture's while it is baked. */
   private ctx: CanvasRenderingContext2D;
   dpr = 1;
+  /** Whether glass frosts what lies under it; off on a device that cannot keep its frames. */
+  glassBlur = true;
   width = 0;
   height = 0;
   offset = v(0, 0);
@@ -179,7 +181,46 @@ export class CanvasDrawer {
     }
     if (start === 0) this.paintGround(list, 0, list.camera);
     this.prepare();
-    this.paintItems(list, start, list.items.length, list.camera, still);
+    if (list.vignette > 0.002) {
+      const at = Math.max(start, Math.min(list.vignetteAt, list.items.length));
+      this.paintItems(list, start, at, list.camera, still);
+      this.paintVignette(list.vignette * (isBright(list.background) ? CanvasDrawer.vignetteBright : CanvasDrawer.vignetteDark));
+      this.paintItems(list, at, list.items.length, list.camera, still);
+    } else this.paintItems(list, start, list.items.length, list.camera, still);
+  }
+
+  /** The strongest vignette's corners, on a daylight ground and on a dark one (where black shows less). */
+  static readonly vignetteBright = 0.3;
+  static readonly vignetteDark = 0.5;
+  /** Made once, small: a soft gradient loses nothing when stretched, and copying it is one cheap draw. */
+  private vignetteArt: HTMLCanvasElement | null = null;
+
+  /** Dark edges over the whole canvas (an ellipse that follows its shape), clear across the middle. */
+  private paintVignette(opacity: number): void {
+    if (!this.vignetteArt) {
+      const size = 256;
+      const art = document.createElement('canvas');
+      art.width = art.height = size;
+      const g = art.getContext('2d');
+      if (!g) return;
+      const half = size / 2;
+      const gradient = g.createRadialGradient(half, half, 0, half, half, half * Math.SQRT2);
+      gradient.addColorStop(0, 'rgba(0,0,0,0)');
+      gradient.addColorStop(0.5, 'rgba(0,0,0,0)');
+      gradient.addColorStop(0.7, 'rgba(0,0,0,0.2)');
+      gradient.addColorStop(0.85, 'rgba(0,0,0,0.55)');
+      gradient.addColorStop(1, 'rgba(0,0,0,1)');
+      g.fillStyle = gradient;
+      g.fillRect(0, 0, size, size);
+      this.vignetteArt = art;
+    }
+    const ctx = this.ctx;
+    ctx.save();
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.globalAlpha = Math.min(1, opacity);
+    ctx.drawImage(this.vignetteArt, 0, 0, this.canvas.width, this.canvas.height);
+    ctx.restore();
+    this.prepare();
   }
 
   /** The world transform (safe area and a baked picture's margin included), on `this.ctx`. */
@@ -454,6 +495,91 @@ export class CanvasDrawer {
   private fill: string | null = null;
   private stroke: string | null = null;
 
+  /** The soft shadow of a glass panel, only where the panel is not: through the glass it would show as a dark patch. */
+  private glassShadow(x: number, y: number, w: number, h: number, r: number, opacity: number): void {
+    const ctx = this.ctx;
+    const d = this.dpr;
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(-this.offset.x - 40, -this.offset.y - 40, this.width + 80, this.height + 80);
+    ctx.roundRect(x, y, w, h, r);
+    ctx.clip('evenodd');
+    ctx.shadowColor = css('shadow', opacity * 0.9);
+    ctx.shadowBlur = 14 * d;
+    ctx.shadowOffsetY = 4 * d;
+    ctx.fillStyle = '#000';
+    ctx.beginPath();
+    ctx.roundRect(x, y, w, h, r);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  /** Whether the context can blur by itself (`ctx.filter`); Safari cannot, there `softBlur` does the same by shrinking. */
+  nativeFilter = typeof CanvasRenderingContext2D !== 'undefined' && 'filter' in CanvasRenderingContext2D.prototype;
+  private readonly shrunk: HTMLCanvasElement[] = [];
+
+  /**
+   * Frosted glass: what is already drawn under the rect (the cars driving behind it too),
+   * blurred and saturated, laid back in it: the canvas twin of `backdrop-filter`. The copy
+   * reaches past the rect so the blur has something to average at its edge.
+   */
+  private frost(x: number, y: number, w: number, h: number, r: number, blur: number): void {
+    const ctx = this.ctx;
+    const d = this.dpr;
+    const reach = Math.ceil(blur * 2 * d);
+    const sx = Math.max(0, Math.floor((x + this.offset.x) * d + this.pad) - reach);
+    const sy = Math.max(0, Math.floor((y + this.offset.y) * d + this.pad) - reach);
+    const ex = Math.min(ctx.canvas.width, Math.ceil((x + w + this.offset.x) * d + this.pad) + reach);
+    const ey = Math.min(ctx.canvas.height, Math.ceil((y + h + this.offset.y) * d + this.pad) + reach);
+    if (ex <= sx || ey <= sy) return;
+    ctx.save();
+    ctx.beginPath();
+    ctx.roundRect(x, y, w, h, r);
+    ctx.clip();
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    if (this.nativeFilter) {
+      ctx.filter = `blur(${blur * d}px) saturate(1.4)`;
+      ctx.drawImage(ctx.canvas, sx, sy, ex - sx, ey - sy, sx, sy, ex - sx, ey - sy);
+    } else this.softBlur(sx, sy, ex - sx, ey - sy, blur * d);
+    ctx.restore();
+  }
+
+  /**
+   * A blur without `ctx.filter`: the region is halved a few times (every step averages four
+   * pixels), then blown back up in the same steps,
+   * so the smoothing never shows blocks. Close to a Gaussian, and no filter needed.
+   */
+  private softBlur(sx: number, sy: number, w: number, h: number, sigma: number): void {
+    const levels = Math.max(1, Math.min(6, Math.round(Math.log2(sigma * 2))));
+    let from: CanvasImageSource = this.ctx.canvas;
+    let [fx, fy, fw, fh] = [sx, sy, w, h];
+    for (let i = 0; i < levels; i++) {
+      const c = (this.shrunk[i] ??= document.createElement('canvas'));
+      const cw = Math.max(1, Math.ceil(fw / 2));
+      const ch = Math.max(1, Math.ceil(fh / 2));
+      if (c.width !== cw || c.height !== ch) {
+        c.width = cw;
+        c.height = ch;
+      }
+      const g = c.getContext('2d');
+      if (!g) return;
+      g.imageSmoothingQuality = 'high';
+      g.clearRect(0, 0, cw, ch);
+      g.drawImage(from, fx, fy, fw, fh, 0, 0, cw, ch);
+      from = c;
+      [fx, fy, fw, fh] = [0, 0, cw, ch];
+    }
+    for (let i = levels - 1; i > 0; i--) {
+      const up = this.shrunk[i - 1].getContext('2d');
+      if (!up) return;
+      up.imageSmoothingQuality = 'high';
+      up.drawImage(this.shrunk[i], 0, 0, this.shrunk[i].width, this.shrunk[i].height, 0, 0, this.shrunk[i - 1].width, this.shrunk[i - 1].height);
+    }
+    const ctx = this.ctx;
+    ctx.imageSmoothingQuality = 'high';
+    ctx.drawImage(this.shrunk[0], 0, 0, this.shrunk[0].width, this.shrunk[0].height, sx, sy, w, h);
+  }
+
   private setFill(color: string): void {
     if (color === this.fill) return;
     this.ctx.fillStyle = color;
@@ -549,6 +675,17 @@ export class CanvasDrawer {
         if (w <= 0 || h <= 0) return;
         const rot = world ? -p.rotation : p.rotation;
         const r = Math.max(0, Math.min(len(p.radius), w / 2, h / 2));
+        if (item.glass !== undefined && !world && rot === 0) {
+          this.glassShadow(cx - w / 2, cy - h / 2, w, h, r, item.opacity);
+          if (this.glassBlur) this.frost(cx - w / 2, cy - h / 2, w, h, r, item.glass);
+          else {
+            this.setFill(css('chromeSolid', item.opacity));
+            ctx.beginPath();
+            ctx.roundRect(cx - w / 2, cy - h / 2, w, h, r);
+            ctx.fill();
+            return;
+          }
+        }
         this.setFill(color);
         if (rot !== 0 && r <= 0.3) {
           // A turned square-cornered rect: its four corners, no change of transform needed.

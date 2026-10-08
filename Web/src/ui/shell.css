@@ -41,9 +41,18 @@
   --player-2: #ff8a5c;
   --player-3: #b084ff;
   --player-4: #ffd166;
-  --glass: rgba(20, 23, 28, 0.72);
-  --glass-edge: rgba(255, 255, 255, 0.09);
+  /* One glass for every floating control: mirrors `COLORS.chrome`, the canvas HUD's material. */
+  --glass: rgba(20, 23, 28, 0.76);
+  --glass-edge: rgba(255, 255, 255, 0.1);
+  --glass-blur: 18px;
+  /* The glass on a device that cannot afford the blur (`lowDetail`); mirrors `COLORS.chromeSolid`. */
+  --glass-solid: rgba(20, 23, 28, 0.92);
+  --hover-fill: rgba(40, 45, 52, 0.85);
+  /* Two dimmers, no third: a sheet leaves the screen readable behind it; a full-screen layer takes it (a stacked sheet dims less). */
+  --scrim-sheet: rgba(5, 6, 8, 0.55);
+  --scrim-sheet-stacked: rgba(5, 6, 8, 0.3);
   --scrim: rgba(14, 16, 19, 0.84);
+  --scrim-solid: rgba(11, 13, 16, 0.96);
 
   --font: -apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
   --font-round: 'Overpass Variable', ui-rounded, 'SF Pro Rounded', -apple-system, BlinkMacSystemFont, system-ui, 'Segoe UI', Roboto, sans-serif;
@@ -67,7 +76,7 @@
   --safe-left: env(safe-area-inset-left, 0px);
   --safe-right: env(safe-area-inset-right, 0px);
   --tabbar-h: 56px;
-  /* Settings, Picture, Friends and Leave: the glass pills over the scene share one width. */
+  /* Settings, Leave and Open chest: the labelled glass pills over the scene share one width (the round row too). */
   --pill-w: 168px;
 
   /* Stacking order, lowest first. */
@@ -162,25 +171,21 @@ button {
 
 .glass {
   background: var(--glass);
-  -webkit-backdrop-filter: blur(18px) saturate(1.4);
-  backdrop-filter: blur(18px) saturate(1.4);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(1.4);
+  backdrop-filter: blur(var(--glass-blur)) saturate(1.4);
   border: 1px solid var(--glass-edge);
 }
 
 /* A device that cannot keep its frames (`lowDetail`, ui/shell.ts) gets the glass near solid:
    the blur over the moving scene is redone every frame. A strong device never sees this. */
 .app[data-detail='low'] {
-  --glass: rgba(20, 23, 28, 0.9);
+  --glass: var(--glass-solid);
 }
 
 .app[data-detail='low'] .glass,
 .app[data-detail='low'] .tabbar {
   -webkit-backdrop-filter: none;
   backdrop-filter: none;
-}
-
-.app[data-detail='low'] .tabbar {
-  background: rgba(14, 16, 19, 0.95);
 }
 
 .icon-btn {
@@ -262,9 +267,9 @@ button {
   padding: 0 calc(var(--safe-right) + var(--s2)) var(--safe-bottom) calc(var(--safe-left) + var(--s2));
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  background: rgba(14, 16, 19, 0.8);
-  -webkit-backdrop-filter: blur(20px) saturate(1.5);
-  backdrop-filter: blur(20px) saturate(1.5);
+  background: var(--glass);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(1.4);
+  backdrop-filter: blur(var(--glass-blur)) saturate(1.4);
   border-top: 0.5px solid var(--separator);
   transition: transform 260ms var(--ease-drawer), visibility 0s;
 }
@@ -573,7 +578,7 @@ a.row-link {
     background: #ff7277;
   }
   .icon-btn:hover {
-    background: rgba(40, 45, 52, 0.85);
+    background: var(--hover-fill);
   }
 }
 
@@ -593,7 +598,7 @@ a.row-link {
 .sheet-scrim {
   position: absolute;
   inset: 0;
-  background: rgba(5, 6, 8, 0.55);
+  background: var(--scrim-sheet);
   animation: fade-in 200ms ease both;
 }
 
@@ -614,7 +619,7 @@ a.row-link {
 }
 
 .sheet-root.stacked .sheet-scrim {
-  background: rgba(5, 6, 8, 0.3);
+  background: var(--scrim-sheet-stacked);
 }
 
 .sheet-root.closing .sheet-scrim {
@@ -788,7 +793,7 @@ a.row-link {
   bottom: calc(var(--tabbar-h) + var(--safe-bottom) + var(--s4));
 }
 
-/* Leave · Picture · Friends: glass pills stacked above Settings, on the same side, all one size (Leo, 05.10.2026).
+/* Open chest · Leave · the round row: stacked above Settings, on the same side, all one width (Leo, 05.10.2026).
    The other side is where the thumb starts the next shift and the dispatch button sits. */
 .run-bar {
   position: absolute;
@@ -824,6 +829,78 @@ a.row-link {
 .run-bar .run-btn {
   width: var(--pill-w);
   justify-content: flex-start;
+}
+
+/* Picture · Challenge · Friends (08.10.2026): round glass buttons in one row under the one labelled action, as wide as
+   the pills, so the stack stays short and left of the road. Gone with all three. */
+.run-icons {
+  display: flex;
+  gap: var(--s2);
+  width: var(--pill-w);
+}
+
+.run-icons:not(:has(.run-btn.show)) {
+  display: none;
+}
+
+.run-bar .run-btn.round {
+  position: relative;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  justify-content: center;
+  border-radius: 50%;
+}
+
+.run-btn.round svg {
+  width: 20px;
+  height: 20px;
+}
+
+[data-hand='left'] .run-icons {
+  justify-content: flex-end;
+}
+
+/* With a mouse the name comes on hover, beside the button towards the scene (never over the pill above); on touch the
+   icon says it, and the label goes to a screen reader. */
+@media (hover: hover) and (pointer: fine) {
+  .run-btn.round::after {
+    content: attr(data-tip);
+    position: absolute;
+    top: 50%;
+    left: calc(100% + var(--s2));
+    padding: var(--s1) 10px;
+    border-radius: 8px;
+    background: var(--surface-3);
+    box-shadow: 0 0 0 0.5px var(--glass-edge);
+    color: var(--primary);
+    font-size: 12px;
+    font-weight: 600;
+    white-space: nowrap;
+    opacity: 0;
+    transform: translate(-4px, -50%);
+    pointer-events: none;
+    transition: opacity 150ms var(--ease-out), transform 150ms var(--ease-out);
+  }
+
+  .run-btn.round:hover {
+    z-index: 1;
+  }
+
+  .run-btn.round:hover::after {
+    opacity: 1;
+    transform: translate(0, -50%);
+  }
+
+  [data-hand='left'] .run-btn.round::after {
+    left: auto;
+    right: calc(100% + var(--s2));
+    transform: translate(4px, -50%);
+  }
+
+  [data-hand='left'] .run-btn.round:hover::after {
+    transform: translate(0, -50%);
+  }
 }
 
 .run-btn svg,
@@ -1817,7 +1894,7 @@ a.row-link {
 
 @media (hover: hover) and (pointer: fine) {
   .react-btn:hover {
-    background: rgba(40, 45, 52, 0.85);
+    background: var(--hover-fill);
   }
 }
 
@@ -1852,7 +1929,7 @@ a.row-link {
 .photo-scrim {
   position: absolute;
   inset: 0;
-  background: rgba(8, 9, 11, 0.74);
+  background: var(--scrim);
   -webkit-backdrop-filter: blur(12px) saturate(1.2);
   backdrop-filter: blur(12px) saturate(1.2);
 }
@@ -1953,7 +2030,7 @@ a.row-link {
   align-items: center;
   justify-content: center;
   padding: calc(var(--safe-top) + var(--s5)) var(--s4) calc(var(--safe-bottom) + var(--s5));
-  background: rgba(11, 13, 16, 0.96);
+  background: var(--scrim-solid);
   animation: fade-in 240ms ease both;
 }
 

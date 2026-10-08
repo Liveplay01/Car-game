@@ -2,7 +2,7 @@ import './shell.css';
 import { v } from '../core/vec2';
 import { GameSession, type InputAction, type SessionOutput } from '../present/session';
 import { CanvasDrawer } from '../present/draw';
-import { SWIPE_MODES, TAB_BAR, barTab, screenTab, showsTabBar, type Tab } from '../present/flow';
+import { SWIPE_MODES, TAB_BAR, barTab, screenTab, type Tab } from '../present/flow';
 import { AudioPlayer, Haptics } from '../audio/player';
 import { h, icon } from './dom';
 import { ICONS } from './icons';
@@ -14,7 +14,7 @@ import { collectRewards } from '../net/rewards';
 import { legalDoc } from '../present/legal';
 import { PATCH_NOTES } from '../present/patchNotes';
 import { PhotoView } from './photo';
-import { celebrate, invitedRoom, onAdAudio, reportGameplay, rewardedAd } from './crazygames';
+import { celebrate, invitedRoom, offerLogin, onAdAudio, reportGameplay, reportProgress, rewardedAd } from './crazygames';
 import { adReady, onRewardedAudio, rewardedAdsense } from './ads';
 import { track } from './analytics';
 import { inItch, inPlayStore, inPortal, isInstalled, isIos, isIpad, keepStorage, renewStorage } from '../storage/device';
@@ -97,6 +97,9 @@ export class Shell {
   private readonly doneBtn: HTMLButtonElement;
   private readonly friendsBtn: HTMLButtonElement;
   private readonly photoBtn: HTMLButtonElement;
+  /** On the Game tab while chests wait: the first one opens right there (`GameSession.sceneChest`). */
+  private readonly chestBtn: HTMLButtonElement;
+  private readonly chestLabel: HTMLElement;
   private readonly photo: PhotoView;
   /**
    * A page opened from the settings (patch notes, a legal page) is showing: closing the
@@ -154,6 +157,7 @@ export class Shell {
       adReady: () => adReady(),
       // A free upgrade step and the Skin Upgrade's boost are for the normal site and the Play app, not CrazyGames or itch.io.
       adOffers: !inPortal && !inItch,
+      feelsHaptics: this.haptics.supported,
     };
     const quietForAd = (on: boolean): void => this.audio.setSuspended(on || document.hidden);
     onAdAudio(quietForAd);
@@ -194,9 +198,15 @@ export class Shell {
     );
     for (const b of [this.settingsBtn, this.dispatchBtn, this.doneBtn]) b.addEventListener('pointerdown', (e) => e.stopPropagation());
     // Friends: the code, the invite link, challenging a friend with the shift on screen, and the way to Multiplayer. In a challenge or trial: leave it.
-    this.friendsBtn = h('button', { class: 'btn glass run-btn', type: 'button', 'aria-haspopup': 'dialog', onclick: () => this.openFriends() }, icon(ICONS.people), h('span', {}, 'Friends'));
+    // Picture and Friends: one row of round glass buttons under the one labelled action, so the stack stays
+    // small and left of the road. The name shows on hover where there is a mouse (`data-tip`), always to a screen reader.
+    const round = (label: string, tip: string, svg: string, onclick: () => void, dialog = false): HTMLButtonElement =>
+      h('button', { class: 'btn glass run-btn round', type: 'button', 'aria-label': label, 'data-tip': tip, 'aria-haspopup': dialog ? 'dialog' : undefined, onclick }, icon(svg));
+    this.friendsBtn = round('Friends', 'Friends', ICONS.people, () => this.openFriends(), true);
     // Under any result: the picture on the screen, to send or keep.
-    this.photoBtn = h('button', { class: 'btn glass run-btn', type: 'button', 'aria-label': S.photo.buttonLabel, 'aria-haspopup': 'dialog', onclick: () => this.takePicture() }, icon(ICONS.camera), h('span', {}, S.photo.button));
+    this.photoBtn = round(S.photo.buttonLabel, S.photo.button, ICONS.camera, () => this.takePicture(), true);
+    this.chestLabel = h('span', {}, S.run.openChest(1));
+    this.chestBtn = h('button', { class: 'btn glass run-btn primary-run', type: 'button', onclick: () => this.push({ k: 'perform', action: { k: 'openChestHere' } }) }, icon(ICONS.chest), this.chestLabel);
     this.photo = new PhotoView(app, {
       shutter: () => {
         this.audio.unlock();
@@ -204,9 +214,15 @@ export class Shell {
         if (this.session.save.settings.haptics) this.haptics.play('tap', 0);
       },
       reduceMotion: () => this.session.reduceMotion,
-      link: () => {
-        const code = this.session.shareCode();
-        return (code && knownShortLink(code)) ?? this.session.shareLink(location.origin + location.pathname);
+      // The picture is the way to send a challenge (Leo, 08.10.2026): its short link is made as the print develops.
+      // Not inside CrazyGames, which shows no links out.
+      challenge: () => {
+        const s = this.session;
+        const spec = s.shareable;
+        const code = s.shareCode();
+        const long = s.shareLink(location.origin + location.pathname);
+        if (inPortal || !spec || !code || !long) return null;
+        return { text: s.dailyShare ?? S.run.shareText(Fmt.number(spec.target)), fallback: knownShortLink(code) ?? long, link: shortLink(spec, code).then((url) => url ?? long, () => long) };
       },
       invite: async () => {
         const game = location.origin + location.pathname;
@@ -271,7 +287,7 @@ export class Shell {
           open();
         });
     };
-    const runBar = h('div', { class: 'run-bar' }, this.leaveBtn, this.photoBtn, this.friendsBtn);
+    const runBar = h('div', { class: 'run-bar' }, this.chestBtn, this.leaveBtn, h('div', { class: 'run-icons' }, this.photoBtn, this.friendsBtn));
     // After a match: Ready (everyone taps it, then the next round starts), and for the host a
     // way back to the lobby to change the format or the bots.
     this.againLabel = h('span', {}, 'Play again');
@@ -295,7 +311,7 @@ export class Shell {
       h('button', { class: 'react-btn', type: 'button', 'aria-label': `React ${r}`, 'aria-keyshortcuts': String(i + 1), onclick: () => this.versus.react(r) }, REACTION_EMOJI[r]),
     );
     this.reactBar = h('div', { class: 'react-bar', role: 'group', 'aria-label': 'Reactions' }, ...reactButtons, this.revengeBtn);
-    for (const b of [this.settingsBtn, this.dispatchBtn, this.doneBtn, this.friendsBtn, this.photoBtn, this.leaveBtn, this.againBtn, this.lobbyBtn, quitBtn, this.reactBar]) b.addEventListener('pointerdown', (e) => e.stopPropagation());
+    for (const b of [this.settingsBtn, this.dispatchBtn, this.doneBtn, this.friendsBtn, this.photoBtn, this.chestBtn, this.leaveBtn, this.againBtn, this.lobbyBtn, quitBtn, this.reactBar]) b.addEventListener('pointerdown', (e) => e.stopPropagation());
     app.append(this.settingsBtn, this.dispatchBtn, this.doneBtn, runBar, this.reactBar, this.versusBar);
     this.detail = new DetailSheet(
       app,
@@ -312,7 +328,11 @@ export class Shell {
       this.scheduleCloudIntro();
     };
     this.session.onHint = (hint) => void this.giveHint(hint);
-    this.session.onStep = track;
+    this.session.onStep = (step, data) => {
+      track(step, data);
+      this.reportProgress();
+    };
+    this.reportProgress();
     this.bindInput(canvas);
     this.resize();
     window.addEventListener('resize', () => this.resize());
@@ -340,6 +360,13 @@ export class Shell {
     window.setTimeout(() => this.claimInvite(), 3000);
     onAccountChange(() => this.claimInvite());
     onScoresSynced(() => this.collectRewards());
+  }
+
+  /** CrazyGames hears how far the career is: the levels up to Prestige, all of it after one. */
+  private reportProgress(): void {
+    const c = this.session.save.career;
+    const top = this.session.config.prestigeLevel;
+    reportProgress(c.prestige > 0 ? 100 : ((c.level - 1) / Math.max(1, top - 1)) * 100);
   }
 
   /** Hands in an invite this device came with (`net/invite.ts`), then picks up whatever is waiting. */
@@ -425,10 +452,10 @@ export class Shell {
       : '';
     let badgeKey = '';
     for (const b of badges) badgeKey += b === null ? '-' : b === 'dot' ? '.' : `${b.count};`;
-    const key = `${screen.k}|${selected}|${badgeKey}|${s.world.shift.phase}|${s.playingMode}|${s.special?.k ?? ''}|${s.shareable ? 1 : 0}|${match ? 1 : 0}|${versusKey}|${s.save.settings.leftHanded}|${s.notesUnread}`;
+    const key = `${screen.k}|${selected}|${badgeKey}|${s.world.shift.phase}|${s.playingMode}|${s.special?.k ?? ''}|${s.shareable ? 1 : 0}|${match ? 1 : 0}|${versusKey}|${s.save.settings.leftHanded}|${s.notesUnread}|${s.showsChrome}|${s.chestOffer}`;
     if (!force && key === this.chromeKey) return;
     this.chromeKey = key;
-    reportGameplay(screen.k === 'playing' && !document.hidden);
+    reportGameplay(screen.k === 'playing' && (inPortal || !document.hidden));
     this.app.dataset.versus = match ? 'on' : 'off';
     this.app.dataset.hand = s.save.settings.leftHanded ? 'left' : 'right';
     this.settingsBtn.classList.toggle('has-news', s.notesUnread);
@@ -442,7 +469,7 @@ export class Shell {
     const watching = !!match && match.isOut && !match.isOver;
     this.reactBar.classList.toggle('show', watching);
     this.revengeBtn.classList.toggle('show', watching && match.canRevenge);
-    this.app.dataset.tabbar = showsTabBar(screen) && !match ? 'shown' : 'hidden';
+    this.app.dataset.tabbar = s.showsChrome && !match ? 'shown' : 'hidden';
     this.app.dataset.screen = screen.k;
     this.moveTabIndicator(TAB_BAR.indexOf(selected));
     for (const [tab, { button, badge: el }] of this.tabs) {
@@ -454,14 +481,18 @@ export class Shell {
       el.style.minWidth = b === 'dot' ? '10px' : '';
       el.style.height = b === 'dot' ? '10px' : '';
     }
-    // Settings come back as soon as a shift is over, on the result as on the waiting screen.
-    this.settingsBtn.classList.toggle('show', screen.k === 'ready' || screen.k === 'result');
+    // Settings come back as soon as a shift is over, on the result as on the waiting screen (from the first result on).
+    const onGame = s.showsChrome && (screen.k === 'ready' || screen.k === 'result');
+    this.settingsBtn.classList.toggle('show', onGame);
     const chill = s.playingMode === 'chill';
     this.dispatchBtn.classList.toggle('show', screen.k === 'playing' && !chill);
     this.doneBtn.classList.toggle('show', screen.k === 'playing' && chill);
-    const onGame = screen.k === 'ready' || screen.k === 'result';
     this.friendsBtn.classList.toggle('show', onGame && leaderboardEnabled && !inPortal);
-    this.photoBtn.classList.toggle('show', screen.k === 'result' && !match);
+    this.photoBtn.classList.toggle('show', screen.k === 'result' && !match && s.showsChrome);
+    const chests = match ? 0 : s.chestOffer;
+    this.chestBtn.classList.toggle('show', chests > 0);
+    this.chestLabel.textContent = S.run.openChest(chests);
+    this.chestBtn.setAttribute('aria-label', S.run.openChestLabel(chests));
     this.leaveBtn.classList.toggle('show', onGame && s.special !== null);
     this.leaveLabel.textContent = s.special?.k === 'trial' ? (s.special.trial.tour ? 'Leave tour' : 'Leave trial') : 'Leave challenge';
     if (screen.k === 'settings' && !isSheetOpen()) this.showSettingsSheet();
@@ -550,14 +581,16 @@ export class Shell {
       this.resize();
     } else if (this.slowFor > 2 && !s.lowDetail) {
       s.lowDetail = true;
-      // The glass over the scene goes solid too: its blur is redone every frame (shell.css).
+      // The glass over the scene goes solid too: its blur is redone every frame (shell.css, `CanvasDrawer.frost`).
       this.app.dataset.detail = 'low';
+      this.drawer.glassBlur = false;
       this.slowFor = 0;
     } else if (this.slowFor > 4) {
       this.slowFor = 0;
       s.recommendReduceMotion();
     } else if (this.fastFor > 12 && s.lowDetail) {
       s.lowDetail = false;
+      this.drawer.glassBlur = true;
       delete this.app.dataset.detail;
       this.fastFor = 0;
     } else if (this.fastFor > 12 && this.dprCap < Math.min(2, device)) {
@@ -654,6 +687,14 @@ export class Shell {
       if (!leaderboardEnabled || inPortal) return;
       if (!this.session.takeTip()) return this.session.deferHint(hint);
       this.session.announce(...S.hints.inviteReminder);
+    } else if (hint === 'portalLogin') {
+      if (!inPortal) return;
+      if (!this.session.takeTip()) return this.session.deferHint(hint);
+      // After the result has come up, not over the shift's last moment, and never over the next shift.
+      window.setTimeout(() => {
+        if (this.session.screen.k === 'playing') this.session.deferHint(hint);
+        else void offerLogin();
+      }, 2000);
     } else if (hint === 'backup') {
       if (!cloudEnabled || cloudView().code !== null) return;
       if (!this.session.takeTip()) return this.session.deferHint(hint);
@@ -832,7 +873,7 @@ export class Shell {
       }
       if (e.pointerType === 'mouse' && e.button !== 0) return;
       this.keyboardNav = false;
-      this.audio.unlock();
+      // The sound is unlocked by the document's listener below (it runs first): whatever it does, the tap is taken.
       if (isSheetOpen() || this.photo.isOpen) return;
       if (this.versus.match) {
         e.preventDefault();
@@ -952,7 +993,8 @@ export class Shell {
         back();
         this.collectRewards();
       }
-      reportGameplay(this.session.screen.k === 'playing' && !document.hidden);
+      // CrazyGames: "don't call gameplayStop when the user switches focus"; their page knows the tab is hidden.
+      if (!inPortal) reportGameplay(this.session.screen.k === 'playing' && !document.hidden);
     });
     if (inPortal) return;
     window.addEventListener('blur', () => {
@@ -980,7 +1022,43 @@ export class Shell {
 
   // MARK: Loop
 
+  /**
+   * One frame, and the next one asked for whatever it does: an exception in a frame used to stop the loop for good (the
+   * canvas froze while the tab bar went on). It is reported as an uncaught error would be, and the game carries on;
+   * only when every frame fails for a while does the player get the way out.
+   */
   private loop(now: number): void {
+    try {
+      this.frame(now);
+      this.faults = 0;
+    } catch (error) {
+      reportError(error);
+      if (++this.faults >= Shell.faultLimit) {
+        this.stalled();
+        return;
+      }
+    }
+    requestAnimationFrame((t) => this.loop(t));
+  }
+
+  /** Frames in a row that may fail before the game gives up (about two seconds). */
+  private static readonly faultLimit = 120;
+  private faults = 0;
+
+  /** The boot screen (`index.html`, kept by `main.ts`) comes back with a reload: the save is written on every change. */
+  private stalled(): void {
+    const boot = document.getElementById('boot');
+    if (!boot) return;
+    const [title, body, link] = [boot.querySelector('h1'), boot.querySelector('p'), boot.querySelector('a')];
+    if (title) title.textContent = 'The roundabout stopped.';
+    if (body) body.textContent = 'Something went wrong in the game. Reload to carry on; your progress is safe on this device.';
+    if (link) link.textContent = 'Reload';
+    boot.hidden = false;
+    boot.classList.remove('gone');
+    boot.classList.add('failed');
+  }
+
+  private frame(now: number): void {
     const delta = Math.max(0, (now - this.last) / 1000);
     this.last = now;
     const actions = this.actions;
@@ -1003,7 +1081,6 @@ export class Shell {
     if (this.pendingChallenge) this.openPendingChallenge();
     if (this.pendingJoin) this.openPendingJoin();
     this.syncChrome();
-    requestAnimationFrame((t) => this.loop(t));
   }
 
   /** For tests: close any sheet the shell opened. */

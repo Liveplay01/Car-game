@@ -7,6 +7,7 @@ import { type Vec2, v, add, sub, mul, dot, normalize, clamp } from '../core/vec2
 import { armOutward } from '../core/roundabout';
 import { RenderList, rect, circle, line, polygon, text, fitCamera, toScreen, Ease, type Camera } from './render';
 import { CrashEffects } from './effects';
+import { RingSignals } from './hud';
 import { SceneBuilder, VehicleLamps, type VehicleMark } from './scene';
 import { CityLayer } from './city';
 import { MapTheme } from './mapThemes';
@@ -106,6 +107,8 @@ export class VersusMatch {
   private lastCount = COUNT_IN + 1;
   private phaseAge = 99;
   private duelSince: number | null = null;
+  /** The island's rim: a shield taking a hit heals it in that player's colour. */
+  private rim = new RingSignals();
   private notes: Note[] = [];
   private floats: Float[] = [];
   private confetti: Confetti[] = [];
@@ -327,6 +330,7 @@ export class VersusMatch {
 
   private age(dt: number): void {
     if (this.flash) this.flash = this.flash.age + dt < 0.35 ? { vehicle: this.flash.vehicle, age: this.flash.age + dt } : null;
+    this.rim.age(dt);
     for (const n of this.notes) n.age += dt;
     this.notes = this.notes.filter((n) => n.age < 2.6);
     for (const f of this.floats) f.age += dt;
@@ -405,12 +409,13 @@ export class VersusMatch {
           if (this.isHost) this.scheduleOut(e.seat, 'c');
           break;
         case 'shieldGained':
-          this.note(e.seat === this.you ? 'Shield ready: one light bump is forgiven' : `${this.nameOf(e.seat)} has a shield`, e.seat);
+          this.rim.signal('wave', this.colorOf(e.seat));
           if (e.seat === this.you) this.sound('comboUp');
           break;
         case 'shielded':
-          this.note(e.seat === this.you ? 'Your shield took the hit' : `${this.nameOf(e.seat)}'s shield took the hit`, e.seat);
-          this.sound('secured');
+          this.rim.signal('heal', this.colorOf(e.seat));
+          this.sound('heal', e.seat === this.you ? 1 : 0.8);
+          if (e.seat === this.you) this.haptic('secured');
           break;
         case 'rivalSent':
           if (e.seat === this.you) this.note(e.revenge ? 'You strike back with a lorry' : 'Your lorry is on its way', e.seat);
@@ -544,6 +549,7 @@ export class VersusMatch {
       SceneBuilder.addLaneMark(list, w.layout, w.config, w.armOf(q), this.colorOf(q.seat), q.out ? 0.12 : mine ? 0.75 : 0.45, mine ? 3 : 2);
     }
     MapTheme.addIsland(list, null, w);
+    this.rim.add(list, w, rm);
     this.effects.addGround(list, w, alpha, !rm);
     SceneBuilder.addShadows(list, w, alpha);
     const lamps = {

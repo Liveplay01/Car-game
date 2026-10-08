@@ -32,12 +32,19 @@ export class AudioPlayer {
   /** Call from a user gesture; later calls only resume a suspended context. */
   unlock(): void {
     if (this.ctx) {
-      if (this.ctx.state === 'suspended') void this.ctx.resume();
+      // Refused outside a gesture the browser accepts: the next tap asks again.
+      if (this.ctx.state === 'suspended') this.ctx.resume().catch(() => undefined);
       return;
     }
     const AC = window.AudioContext ?? window.webkitAudioContext;
     if (!AC) return;
-    const ctx = new AC({ latencyHint: 'interactive' });
+    let ctx: AudioContext;
+    try {
+      ctx = new AC({ latencyHint: 'interactive' });
+    } catch {
+      // No audio on this device right now (an embedded iOS view can refuse it): the game plays on silent, the next tap tries again.
+      return;
+    }
     const limiter = ctx.createDynamicsCompressor();
     limiter.threshold.value = -6;
     limiter.ratio.value = 8;
@@ -221,6 +228,11 @@ export class AudioPlayer {
         tone('sine', 2093 * pitch, 2093 * pitch, 0, 0.3, 0.1);
         tone('sine', 3136 * pitch, 3136 * pitch, 0.02, 0.26, 0.06);
         break;
+      case 'heal':
+        // A crash forgiven: a soft chord climbing up, under the crash itself.
+        [1047, 1319, 1568].forEach((f, i) => tone('sine', f * pitch, f * pitch, i * 0.07, 0.4, 0.09));
+        tone('triangle', 2093 * pitch, 2093 * pitch, 0.2, 0.35, 0.04);
+        break;
       case 'reelLand':
         tone('sine', 120, 55, 0, 0.22, 0.8);
         tone('square', 900, 600, 0, 0.05, 0.12);
@@ -234,7 +246,7 @@ export class AudioPlayer {
     return true;
   }
 
-  private static readonly synthIds: SoundID[] = ['critical', 'jackpot', 'chargeUp', 'reelSpin', 'reelTick', 'shimmer', 'reelLand', 'reelLandBig'];
+  private static readonly synthIds: SoundID[] = ['critical', 'jackpot', 'chargeUp', 'reelSpin', 'reelTick', 'shimmer', 'reelLand', 'reelLandBig', 'heal'];
 
   /** Once per frame: each stem glides towards its volume, the filter follows the breath. */
   /** The casino's tension (`GameSession.tension`): a riser and a heartbeat, built lazily. */
@@ -327,8 +339,8 @@ export class AudioPlayer {
   setSuspended(suspended: boolean): void {
     const ctx = this.ctx;
     if (!ctx) return;
-    if (suspended && ctx.state === 'running') void ctx.suspend();
-    else if (!suspended && ctx.state === 'suspended') void ctx.resume();
+    if (suspended && ctx.state === 'running') ctx.suspend().catch(() => undefined);
+    else if (!suspended && ctx.state === 'suspended') ctx.resume().catch(() => undefined);
   }
 
   get ready(): Promise<void> {
@@ -365,7 +377,7 @@ export class Haptics {
     reelTick: [8],
     reelStop: [30, 50, 60],
   };
-  private readonly supported = typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function';
+  readonly supported = typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function';
 
   play(id: HapticID, softness: number): void {
     if (!this.supported) return;

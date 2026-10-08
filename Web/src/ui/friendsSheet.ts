@@ -229,7 +229,21 @@ export function friendsSheet(layer: HTMLElement, actions: FriendsActions): () =>
         'div',
         { class: 'row' },
         h('div', { class: 'row-main' }, h('div', { class: 'row-title' }, f.name)),
-        h('button', { class: 'btn', type: 'button', 'aria-label': `Remove ${f.name} from your friends`, onclick: () => void removeFriend(f.id).then(() => (forgetFriendsBoards(), render())) }, 'Remove'),
+        h(
+          'button',
+          {
+            class: 'btn',
+            type: 'button',
+            'aria-label': `Remove ${f.name} from your friends`,
+            // Failed (offline): the list comes back with the reason under the code field.
+            onclick: () =>
+              void removeFriend(f.id).then(
+                () => (forgetFriendsBoards(), render()),
+                (error: unknown) => ((message = describeError(error)), render()),
+              ),
+          },
+          'Remove',
+        ),
       ),
     );
     return [label(`Your friends (${people.length})`), h('div', { class: 'list' }, ...people)];

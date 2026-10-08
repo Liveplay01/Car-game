@@ -10,7 +10,7 @@ import { joinsMilitaryZone } from './explosions';
 
 export type CriminalPhase =
   | { kind: 'idle'; next: number }
-  | { kind: 'warning'; arm: Arm; until: number; boss: boolean }
+  | { kind: 'warning'; arm: Arm; until: number; boss: boolean; scout: boolean }
   | { kind: 'arriving'; vehicle: number }
   | { kind: 'active'; vehicle: number; deadline: number }
   | { kind: 'leaving'; vehicle: number };
@@ -68,8 +68,11 @@ export function updateCriminals(w: World, now: number): void {
       if (candidates.length === 0) return;
       const arm = w.criminalRng.pick(candidates);
       const boss = bossDue(w);
-      w.criminal = { kind: 'warning', arm, until: now + (boss ? c.convoyWarning : c.criminalWarning), boss };
-      w.events.push({ type: 'criminalWarning', arm, time: now, boss });
+      // The scout level: the shift's first criminal brings an escort (`Config.scout`).
+      const scout = !boss && c.scout && !w.scoutSent;
+      if (scout) w.scoutSent = true;
+      w.criminal = { kind: 'warning', arm, until: now + (boss || scout ? c.convoyWarning : c.criminalWarning), boss, scout };
+      w.events.push({ type: 'criminalWarning', arm, time: now, boss, scout });
       return;
     }
     case 'warning': {
@@ -79,6 +82,9 @@ export function updateCriminals(w: World, now: number): void {
         pickup.role = 'boss';
         pickup.armour = c.bossArmour;
         w.escortsDue = c.convoyEscorts > 0 ? { arm: cr.arm, left: c.convoyEscorts } : null;
+      } else if (cr.scout) {
+        w.scoutVehicle = pickup.id;
+        w.escortsDue = c.scoutEscorts > 0 ? { arm: cr.arm, left: c.scoutEscorts } : null;
       }
       w.criminal = { kind: 'arriving', vehicle: pickup.id };
       return;
@@ -91,7 +97,7 @@ export function updateCriminals(w: World, now: number): void {
       }
       if (pickup.phase.kind === 'merging') {
         const boss = pickup.role === 'boss';
-        const deadline = now + c.criminalTime * (boss ? c.convoyTimeFactor : 1);
+        const deadline = now + w.criminalTimeOf(pickup.id);
         w.criminal = { kind: 'active', vehicle: cr.vehicle, deadline };
         w.events.push({ type: 'criminalEntered', vehicle: cr.vehicle, deadline, boss });
       }

@@ -179,6 +179,18 @@ export const ShopPage = {
    * charges up first, so you feel something big is inside before the reel runs.
    */
   burstTime: (opening: ChestOpening): number => (rarityRank(opening.item.rarity) >= 2 ? 1.4 : 0.45),
+  /**
+   * A tap moves an opening on a step (open the chest, stop the reel, show the prize); the prize itself stays at least
+   * `closeAfter` before a tap closes it. False when this tap closes it.
+   */
+  stepOpening(o: { opening: ChestOpening; reel: Reel; age: number }): boolean {
+    const stage = ShopPage.stages(o.opening, o.reel);
+    if (o.age < stage.burst) o.age = stage.burst - 0.001;
+    else if (o.age < stage.landed) o.age = stage.landed - 0.001;
+    else if (o.age < stage.reveal) o.age = stage.reveal - 0.001;
+    else if (o.age - stage.reveal >= ShopPage.closeAfter) return false;
+    return true;
+  },
   /** The stages of one opening, in seconds from its start: burst, reel at rest, prize card. */
   stages(opening: ChestOpening, reel: Reel): { burst: number; landed: number; reveal: number } {
     const burst = ShopPage.burstTime(opening);

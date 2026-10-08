@@ -33,8 +33,11 @@ export interface PhotoHooks {
   /** Shutter sound and a light haptic, each only when the player has them on. */
   shutter(): void;
   reduceMotion(): boolean;
-  /** The challenge link to send along, when the shift has one. */
-  link(): string | null;
+  /**
+   * The shift as a challenge to send with the picture: the line that dares, the link to use at once, and the short link
+   * on its way (asked for as the print opens, so it is there by the tap). Null when the shift cannot be sent.
+   */
+  challenge(): { text: string; fallback: string; link: Promise<string> } | null;
   /** Where the QR code on the print leads: an invite, or the game's own address. */
   invite(): Promise<string>;
 }
@@ -48,6 +51,8 @@ export class PhotoView {
   private url: string | null = null;
   private opener: HTMLElement | null = null;
   private closing = false;
+  /** This print's challenge, and its link as soon as the short one is made. */
+  private dare: { text: string; url: string } | null = null;
 
   constructor(
     private readonly app: HTMLElement,
@@ -63,6 +68,10 @@ export class PhotoView {
     if (this.root) return;
     const shot = capture();
     if (!shot) return;
+    const challenge = this.hooks.challenge();
+    const dare = challenge ? { text: challenge.text, url: challenge.fallback } : null;
+    this.dare = dare;
+    void challenge?.link.then((url) => dare && (dare.url = url));
     const rm = this.hooks.reduceMotion();
     this.opener = opener;
     this.closing = false;
@@ -94,7 +103,7 @@ export class PhotoView {
 
     const canShareFile = typeof navigator.canShare === 'function' && navigator.canShare({ files: [file] });
     const canCopy = typeof ClipboardItem === 'function' && !!navigator.clipboard?.write;
-    const shareLabel = h('span', {}, canShareFile ? S.photo.share : S.photo.copy);
+    const shareLabel = h('span', {}, dare ? (canShareFile ? S.photo.sendChallenge : S.photo.copyChallenge) : canShareFile ? S.photo.share : S.photo.copy);
     const shareBtn = h('button', { class: 'btn primary photo-btn', type: 'button' }, icon(ICONS.share), shareLabel);
     shareBtn.addEventListener('click', () => void this.share(file, shot.card, canShareFile, shareBtn, shareLabel));
     const downloadLabel = h('span', {}, S.photo.download);
@@ -156,6 +165,7 @@ export class PhotoView {
       root.remove();
       if (this.url) URL.revokeObjectURL(this.url);
       this.url = null;
+      this.dare = null;
       this.root = null;
       this.closing = false;
       this.app.inert = false;
@@ -181,18 +191,35 @@ export class PhotoView {
     }
   };
 
+  /**
+   * The picture goes out with its challenge: the dare and the link in the text (many apps drop a separate url next to a
+   * file), so the photo is what the friend sees first. Without a share sheet, picture and link go to the clipboard
+   * together where the browser takes both, else the picture alone.
+   */
   private async share(file: File, card: PhotoCard, withFile: boolean, button: HTMLButtonElement, label: HTMLElement): Promise<void> {
+    const dare = this.dare;
+    const text = dare ? `${dare.text}
+${dare.url}` : `${card.hook} ${S.run.pictureText}`;
     if (withFile) {
-      const url = this.hooks.link();
       try {
-        await navigator.share({ files: [file], title: S.gameTitle, text: `${card.hook} ${S.run.pictureText}`, ...(url ? { url } : {}) });
+        await navigator.share({ files: [file], title: S.gameTitle, text });
       } catch {
         /* cancelled */
       }
       return;
     }
+    const image = { 'image/png': file };
+    if (dare) {
+      try {
+        await navigator.clipboard.write([new ClipboardItem({ ...image, 'text/plain': new Blob([text], { type: 'text/plain' }) })]);
+        confirm(button, label, S.photo.challengeCopied);
+        return;
+      } catch {
+        // Picture and text in one item is not taken everywhere: the picture alone then.
+      }
+    }
     try {
-      await navigator.clipboard.write([new ClipboardItem({ 'image/png': file })]);
+      await navigator.clipboard.write([new ClipboardItem(image)]);
       confirm(button, label, S.run.pictureCopied);
     } catch {
       this.download(file, button, label);

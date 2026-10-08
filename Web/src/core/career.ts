@@ -23,6 +23,7 @@ import {
   armPrice as configArmPrice,
   canBuildArm,
   bossInBlackout,
+  shiftCarsRange,
 } from './levels';
 import type { ShiftResult } from './events';
 import {
@@ -197,6 +198,13 @@ export interface Career {
   chestsSinceLegendary: number;
   dailyDone: number;
   lastLoginDay: number;
+  /**
+   * Tomorrow's gift (research of 08.10.2026, a reason for day two): -1 not promised yet, else the day its Standard
+   * Chest waits from; -2 given.
+   */
+  giftDay: number;
+  /** Shifts lost in a row on the level the career is on (`Careers.noteShift`); the level cleared starts it over. */
+  levelLosses: number;
   dailyStreak: number;
   /** Streak Freezes in stock: each one covers a missed day instead of breaking the streak. */
   streakFreezes: number;
@@ -272,7 +280,7 @@ export interface Career {
  * and a backup of the progress (each once, from its level on; `config.*HintAfterLevel`), and
  * what a Perfect Run is, the first time one happens.
  */
-export const HINTS = ['modes', 'install', 'backup', 'perfectRun', 'reduceMotion', 'buildWithUs', 'invite', 'inviteReminder'] as const;
+export const HINTS = ['modes', 'install', 'backup', 'perfectRun', 'reduceMotion', 'buildWithUs', 'invite', 'inviteReminder', 'scout', 'tightFit', 'unlimitedTip', 'portalLogin'] as const;
 export type Hint = (typeof HINTS)[number];
 
 /** Everything that is saved (`storage/save.ts` reads and writes it). */
@@ -334,6 +342,8 @@ export const newCareer = (): Career => ({
   chestsSinceLegendary: 0,
   dailyDone: -1,
   lastLoginDay: -1,
+  giftDay: -1,
+  levelLosses: 0,
   dailyStreak: 0,
   streakFreezes: 0,
   scratchCards: 0,
@@ -487,6 +497,7 @@ export const Careers = {
     c.prestige++;
     c.hallOfFame.push({ rank: c.prestige, day, bosses: c.bossTrophies, legendary: c.legendaryDone, elite: Elite.level(c, config) });
     c.level = 1;
+    c.levelLosses = 0;
     c.bestTimes = {};
     const reward = prestigeReward(c.prestige);
     if (!reward || Careers.owns(c, reward.id)) return { rank: c.prestige, item: null };
@@ -747,9 +758,11 @@ export const Careers = {
   adUpgradeOffer(c: Career, day: number, config: Config = baseConfig): Upgrade | null {
     if (c.adUpgradeDay === day && c.adUpgrades >= config.adUpgradesPerDay) return null;
     const open = (u: Upgrade): boolean => upgradeUnlockLevel(u, config) <= c.level && Careers.steps(c, u) < upgradeMaxSteps[u];
-    const start = Math.floor(new Rng((c.casinoSeed ^ Math.imul(day + 1, 0x9e3779b1) ^ 0xad0f5e1) >>> 0).unit() * UPGRADES.length);
-    for (let i = 0; i < UPGRADES.length; i++) {
-      const u = UPGRADES[(start + i) % UPGRADES.length];
+    // The shield's dear steps are bought, never watched for.
+    const offered = UPGRADES.filter((u) => u !== 'shield');
+    const start = Math.floor(new Rng((c.casinoSeed ^ Math.imul(day + 1, 0x9e3779b1) ^ 0xad0f5e1) >>> 0).unit() * offered.length);
+    for (let i = 0; i < offered.length; i++) {
+      const u = offered[(start + i) % offered.length];
       if (open(u)) return u;
     }
     return null;
@@ -794,6 +807,29 @@ export const Careers = {
     if (income <= 0) return null;
     c.money += income;
     return income;
+  },
+
+  /** Promises tomorrow's gift, once in a career's life: true when it was promised now. */
+  promiseGift(c: Career, day: number): boolean {
+    if (c.giftDay !== -1) return false;
+    c.giftDay = day + 1;
+    return true;
+  },
+
+  /** Tomorrow's gift is still to come (the Game tab counts down to it). */
+  giftAhead: (c: Career, day: number): boolean => c.giftDay > day,
+
+  /** The promised gift, on its day or any day after: a Standard Chest. True when it was given now. */
+  collectGift(c: Career, day: number): boolean {
+    if (c.giftDay < 0 || day < c.giftDay) return false;
+    c.giftDay = -2;
+    c.chests.push('standard');
+    return true;
+  },
+
+  /** A career shift on the career's level was won or lost: counts the losses in a row there. */
+  noteShift(c: Career, won: boolean): void {
+    c.levelLosses = won ? 0 : c.levelLosses + 1;
   },
 
   isDailyOpen: (c: Career, day: number): boolean => c.dailyPlayed !== day && c.dailyDone !== day,
@@ -979,10 +1015,36 @@ export const Careers = {
     if (mode === 'unlimited') {
       const cfg = Careers.config({ ...c, level: base.endlessLevel, prestige: 0 }, base, seed, null, event, null);
       cfg.endless = true;
+      // One crash ends every run: the Unlimited board compares them.
+      cfg.maxStrikes = base.maxStrikes;
       return cfg;
     }
     if (mode === 'mayhem') return forMayhem(Careers.config({ ...c, level: base.mayhemLevel, prestige: 0 }, base, seed, null, event, null));
-    return Careers.config(c, base, seed, null, event, legendary, mutator);
+    const cfg = Careers.config(c, base, seed, null, event, legendary, mutator);
+    // The scout goes by the level alone: a challenge from such a shift brings it as well.
+    cfg.scout = c.level === base.scoutLevel && !cfg.convoy;
+    return cfg;
+  },
+
+  /**
+   * A plain career shift (not the Daily, a challenge or a trial), eased by what this career has been through: after
+   * `easeAfterLosses` lost shifts on the level the fewest cars it has, and the first bad weather and the first night
+   * for sure once their level is passed. Either marks the shift `assisted`.
+   */
+  careerShift(c: Career, base: Config, seed: number): Config {
+    let cfg = Careers.shiftConfig(c, 'shift', base, seed);
+    const eased = (next: Config): Config => ({ ...next, assisted: true });
+    if (c.levelLosses >= base.easeAfterLosses && !cfg.convoy) {
+      const fewest = shiftCarsRange(cfg.level, base)[0];
+      if (cfg.shiftCars > fewest) cfg = eased({ ...cfg, shiftCars: fewest });
+    }
+    // A Legendary Shift has its own sky; a career after a Prestige has met it all.
+    if (cfg.legendary === null && c.prestige === 0) {
+      const met = (shelf: string): boolean => c.museumSeen.some((id) => id.startsWith(shelf));
+      if (cfg.weather === 'clear' && c.level >= base.firstWeatherLevel && !met('weather.')) cfg = eased(forWeather(cfg, 'lightRain'));
+      if (!cfg.night && c.level >= base.firstNightLevel && !met('dark.')) cfg = eased(forNight(cfg, 'night'));
+    }
+    return cfg;
   },
 
   recordMastery(c: Career, r: ShiftResult): MasteryCompletion[] {

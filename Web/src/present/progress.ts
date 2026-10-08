@@ -95,7 +95,7 @@ type Block =
   | { k: 'rush' }
   | { k: 'rushLocked' }
   | { k: 'tour' }
-  | { k: 'tourInfo'; line: string }
+  | { k: 'tourInfo'; title: string; line: string }
   | { k: 'season' }
   | { k: 'ach'; family: Family }
   | { k: 'mastery'; goal: MasteryGoal }
@@ -298,11 +298,11 @@ export const ProgressPage = {
   /** The tour of the day, or when the next one comes; locked until the Trials open. */
   tourRows(s: Stack, career: Career, today: number): void {
     const run = tourOn(today);
-    if (run && !tourOpen(career)) s.row({ k: 'tourInfo', line: S.tours.locked(TOUR_LEVEL) }, 64);
+    if (run && !tourOpen(career)) s.row({ k: 'tourInfo', title: S.tours.name(run.tour.id), line: S.tours.locked(TOUR_LEVEL) }, 64);
     else if (run) s.row({ k: 'tour' }, 96);
     else {
       const next = nextTour(today);
-      if (next && next.inDays <= 60) s.row({ k: 'tourInfo', line: S.tours.comingSoon(next.tour.id, next.inDays) }, 64);
+      if (next && next.inDays <= 60) s.row({ k: 'tourInfo', title: S.tours.name(next.tour.id), line: S.tours.startsIn(next.inDays) }, 64);
     }
   },
 
@@ -514,7 +514,7 @@ export const ProgressPage = {
       case 'tour':
         return ProgressPage.addTour(list, r, career, today, o);
       case 'tourInfo':
-        return ProgressPage.addInfoRow(list, r, S.tours.caption, b.line, o);
+        return ProgressPage.addInfoRow(list, r, b.title, b.line, o);
       case 'season':
         return ProgressPage.addSeason(list, r, today, o);
       case 'ach':
@@ -685,8 +685,8 @@ export const ProgressPage = {
     const pulse = reduceMotion ? 0.5 : 0.5 + 0.5 * Math.sin(t * 2.2);
     const c = R.center(r);
     const size = v(R.width(r), R.height(r));
+    // One edge only: the halo breathes around the card, the card itself keeps the panel's look (no second rim).
     list.s(rect(c, add(size, v(10 + 4 * pulse, 10 + 4 * pulse)), ShopPage.corner + 5), tint, (0.1 + 0.1 * pulse) * o);
-    list.s(rect(c, add(size, v(3, 3)), ShopPage.corner + 1.5), tint, 0.6 * o);
     ProgressPage.panel(list, r, o);
     list.s(rect(c, size, ShopPage.corner), tint, 0.06 * o);
     if (!reduceMotion) {

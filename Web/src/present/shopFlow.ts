@@ -91,18 +91,9 @@ export class ShopFlow {
       case 'casino':
         this.casino()?.tap(target.t);
         break;
-      case 'dismiss': {
-        // A tap moves the opening on a step (open the chest, stop the reel, show the prize);
-        // the prize itself stays at least `closeAfter` before a tap closes it.
-        const o = s.opening;
-        if (!o) break;
-        const stage = ShopPage.stages(o.opening, o.reel);
-        if (o.age < stage.burst) o.age = stage.burst - 0.001;
-        else if (o.age < stage.landed) o.age = stage.landed - 0.001;
-        else if (o.age < stage.reveal) o.age = stage.reveal - 0.001;
-        else if (o.age - stage.reveal >= ShopPage.closeAfter) s.opening = null;
+      case 'dismiss':
+        if (s.opening && !ShopPage.stepOpening(s.opening)) s.opening = null;
         break;
-      }
     }
   }
 }

@@ -216,9 +216,13 @@ eigenes Budget:** Drei Polizei-Crashes pro Schicht übersteht man (`maxPoliceCra
 der vierte beendet sie. Ein Polizei-Crash kostet wie jeder Crash Punkte und die Combo,
 aber keinen Strike.
 
-- Die weiche Variante aus IDEA.md bleibt für den Vergleich umschaltbar:
-  `maxStrikes = 3`. Das HUD zeigt Strike-Punkte nur, wenn es mehr als einen gibt,
-  daneben blau umrandet die Polizei-Crashes; ein benutzter Punkt wird rot.
+- **Schild als Upgrade** *(08.10.2026, `shieldPrices`)*: Es gibt kein Gratis-Schild. Das
+  Upgrade „Shield“ hat 4 Stufen (1.500 / 20.000 / 45.000 / 90.000); jede erhöht
+  `maxStrikes` um 1 (Karriere-Schichten, Challenges und Daily; nicht Unlimited). Das HUD
+  zeigt Strike-Punkte nur, wenn es mehr als einen gibt, daneben blau umrandet die
+  Polizei-Crashes. Ein verziehener Crash (Schild oder Polizei innerhalb des Limits) zeigt
+  keine Meldung: der Ring um die Mitte leuchtet grün (Polizei: blau/rot) mit aufsteigenden
+  Plus-Zeichen (`RingSignals.heal`); im Multiplayer in der Farbe des Spielers.
 - **Wer ist schuld:** Es zählt das Auto, das gerade einfädelt (oder in der Sekunde
   danach). Fädelt ein Polizeiauto in dein eigenes normales Auto im Ring ein, ist das
   ein Polizei-Crash. Ist ein normales Auto mitschuld, ist es ein Strike.
@@ -392,16 +396,20 @@ gilt dasselbe. Die Bild-Spalte steckt in `Web/src/present/`, die Haptik-Spalte i
 | --- | --- | --- | --- |
 | Tap → Auto fährt los | 15× pro Schicht, oft kurz hintereinander | sofort, keine Animation davor | keine (die Bewegung ist das Feedback) |
 | Sauber eingefädelt | sehr oft | kein Text | feinster Klick, nur allein im Frame; im Flow tiefer und weicher wie alle Einfädel-Muster |
-| Tight Fit | oft | Swoosh + kurzes "TIGHT!" (von 0,9 auf 1 skaliert mit Einblendung, < 250 ms, ease-out) | ein scharfer Transient |
+| Tight Fit | oft | Swoosh + kurzes "TIGHT!" (von 0,9 auf 1 skaliert mit Einblendung, < 250 ms, ease-out); seit 08.10.2026 ein Halt von 30 ms und ein Anlehnen der Kamera von 0,8 % zum Auto (in 70 ms weich hin, 0,26 s zurück; nie in einem Frame, das zuckte), auf Geräten ohne Vibration ×1,6 | ein scharfer Transient |
+| Critical Merge, oberste Combo-Stufe | gelegentlich | Halt von 60 ms; der Critical zusätzlich Anlehnen 2,5 % (gleiche Kurve) | eigenes Muster |
+| Flow | pro Serie | Ringglühen in drei Stufen (alle 5 Einfädelungen im Flow heller, jedes gesendete Auto pulst es kurz) | weicher |
 | Neue Combo-Stufe | gelegentlich | Spring auf dem Multiplikator (Dauer 0,35 s, Bounce 0,2), Glow | Doppel-Tick |
-| Crash | gelegentlich | Wracks mit Beulen, abreißende Teile, Splitter, Funken, Rauch; bei harten Treffern (≈ jeder 4.) Feuerball und Brand; Shake je nach Aufprallstärke. Wracks und Rauch liegen unter dem Verkehr, damit keine Lücke verdeckt wird | kräftiger Stoß + kurzes Rumpeln, nur beim eigenen Crash |
+| Crash | gelegentlich | Wracks mit Beulen, abreißende Teile, Splitter, Funken, Rauch; bei harten Treffern (≈ jeder 4.) Feuerball und Brand; Shake je nach Aufprallstärke, seit 08.10.2026 in Flugrichtung der Wracks (Stoß längs, wenig quer). Wracks und Rauch liegen unter dem Verkehr, damit keine Lücke verdeckt wird | kräftiger Stoß + kurzes Rumpeln, nur beim eigenen Crash |
 | Rush Hour beginnt | 1× pro Schicht | Zustandswechsel am Auto-Zähler (Akzent-Pill) | ansteigendes Muster |
-| Slow-Mo | beim Verbrecher-Takedown und beim Crash, der die Schicht beendet (0,2× für 0,45 s, dazu 5 % Zurücktreten) | nie für häufige Ereignisse | eigenes Muster |
+| Slow-Mo | beim Verbrecher-Takedown und beim Crash, der die Schicht beendet (0,2× für 0,45 s; die Kamera lehnt sich 8 % zum Aufprall, beim Takedown 5 %, danach 5 % Zurücktreten). Seit 08.10.2026 auch 0,5× für höchstens 0,9 s mit 6 % Blick darauf, wenn das letzte Auto einer Schicht dicht neben anderem Verkehr einfädelt (dann ist kein Tap mehr offen) | nie für häufige Ereignisse (Ausnahme seit 08.10.2026: der kurze Halt beim Tight Fit, kürzer als ein Blinzeln) | eigenes Muster |
+| Spannung (08.10.2026, `present/cameraFx.ts`) | Zustand, pro Schicht | Rush Hour (steigt mit jedem Auto), letztes Auto, Verbrecher (Boss stärker), Militär-Truck, oberste Combo-Stufe, Unlimited nach Dauer: die Kamera lehnt sich bis 4 % vor, **Drehpunkt ist die Haltelinie**, damit die Lücken stillstehen; die Ränder dunkeln ab (Vignette bis 30 % auf hellen, 50 % auf dunklen Karten, unter dem HUD). Geschafft: die Spannung fällt schnell, die Kamera atmet 2 % aus. Nie in Chill und im Tutorial. Die Spannung rastet auf Stufen ein, damit der Boden gebacken bleibt | keine |
 | Menüs (Sheets, Tabs) | selten | ≤ 250 ms, `cubic-bezier(0.23, 1, 0.32, 1)`; Knöpfe geben beim Drücken leicht nach | nur bei Bestätigungen |
 
 **Reduce Motion** ist eine Einstellung und folgt standardmäßig der des Systems
 (`prefers-reduced-motion`). Sie entfernt Shake, Zoom, Slow-Mo und fliegende Teile. Ein-
-und Ausblenden sowie Farbwechsel bleiben, weil sie Information tragen.
+und Ausblenden sowie Farbwechsel bleiben, weil sie Information tragen; auch die Vignette der
+Spannung bleibt (sie ist eine Blende), sie trägt dann die Spannung allein.
 
 ---
 

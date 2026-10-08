@@ -297,6 +297,36 @@ export const baseConfig = {
   // Strikes
   maxStrikes: 1,
   maxPoliceCrashes: 3,
+  /**
+   * The Shield upgrade (Leo, 08.10.2026): there is no free shield: each step forgives one more crash of your own car per shift
+   * (`maxStrikes`, a dot in the HUD), Unlimited aside. The first step is cheap, the other three are dear.
+   */
+  shieldPrices: [1500, 20000, 45000, 90000] as readonly number[],
+  /**
+   * After this many lost shifts in a row on one level the next attempt draws the fewest cars the level has
+   * (`shiftCarsSpread` below the middle), until the level is cleared. A plain career shift only, never the Daily.
+   */
+  easeAfterLosses: 3,
+  /**
+   * The first bad weather and the first night come for sure, not only by chance: a plain career shift from this level
+   * on brings light rain, or night, if this career has never met one.
+   */
+  firstWeatherLevel: 7,
+  firstNightLevel: 11,
+  /**
+   * The scout: at this career level the first criminal of a shift comes with an escort of its own, a taste of the
+   * syndicate bosses from level 15 (no boss, no trophy), with this much more time to catch it.
+   */
+  scoutLevel: 6,
+  scoutEscorts: 1,
+  scoutTimeFactor: 1.4,
+  /** This shift brings the scout (set per shift, `Careers.shiftConfig`). */
+  scout: false,
+  /**
+   * This shift was eased for this career (`Careers.careerShift`: fewer cars, a first rain or night): it is not
+   * sent as a challenge and sets no best time, since a friend could not play the same one.
+   */
+  assisted: false,
 
   // Shift
   shiftCars: 15,
@@ -537,12 +567,17 @@ export const baseConfig = {
   backupHintAfterLevel: 12,
   /** Level from which the one-time Cloud sync pop-up comes (Leo, 01.10.2026: not before there is progress to keep). */
   cloudIntroFromLevel: 3,
+  /** Level cleared after which a CrazyGames guest is offered their login, once (research of 08.10.2026: after a success). */
+  portalLoginAfterLevel: 5,
   // Unlocks (Leo, 29.09.2026, `core/unlocks.ts`): a new player meets the systems one at a time.
   // Spread out the same day (`npm run sim:career -- 12 --story=20`): five systems came in the
   // first three minutes; now about one every one to four (Daily ~1 min, modes ~2, Trials ~4,
   // Casino ~8), after the core is learned. Whoever used one already keeps it.
-  /** The Daily Shift (and its streak) from this level on. */
-  dailyUnlockLevel: 4,
+  /**
+   * The Daily Shift (and its streak) from this level on. Level 2 since 08.10.2026 (research: a reason to come back
+   * tomorrow has to be there in the first session; before, it came at level 4, after most first sessions had ended).
+   */
+  dailyUnlockLevel: 2,
   /** The Trials section in Progress from this level on; each trial opens at its own level. */
   trialsUnlockLevel: 9,
   /** The Casino in the Shop from this level on; it opens quietly, nothing points there. */

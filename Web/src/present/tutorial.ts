@@ -82,7 +82,7 @@ export class Tutorial {
     const sa = this.strikeAge;
     if (sa !== null && sa < Tutorial.hintDuration) {
       const at = v(cam.viewport.x / 2, TopBar.top + TopBar.height + 28);
-      Tutorial.pill(list, S.tutorial.strikes(world.config.maxPoliceCrashes), at, sa, sa - (Tutorial.hintDuration - 0.3), reduceMotion, 'destructive');
+      Tutorial.pill(list, S.tutorial.strikes(world.config.maxStrikes, world.config.maxPoliceCrashes), at, sa, sa - (Tutorial.hintDuration - 0.3), reduceMotion, 'destructive');
     }
   }
 

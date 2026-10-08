@@ -137,7 +137,7 @@ export type GameEvent =
   | { type: 'shiftEnded'; result: ShiftResult }
   | { type: 'tapRejected'; time: number }
   | { type: 'exited'; vehicle: number; arm: Arm }
-  | { type: 'criminalWarning'; arm: Arm; time: number; boss: boolean }
+  | { type: 'criminalWarning'; arm: Arm; time: number; boss: boolean; scout: boolean }
   | { type: 'criminalEntered'; vehicle: number; deadline: number; boss: boolean }
   /** The syndicate boss was taken down: the stolen money comes back. */
   | { type: 'heistRecovered'; vehicle: number; point: Vec2; time: number; amount: number }

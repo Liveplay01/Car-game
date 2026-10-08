@@ -41,7 +41,7 @@ Namen in `Web/src/present/strings.ts` (`S.shop`). Wird ein Item ergänzt, gehör
 
 | Truhe | Woher | Common | Rare | Epic | Legendary |
 | --- | --- | --- | --- | --- | --- |
-| Standard Chest | Shop (26.000), Werbung (3/Tag), Mastery Stufe I, Daily Shift | 70 % | 22 % | 7 % | 1 % |
+| Standard Chest | Shop (26.000), Werbung (3/Tag), Mastery Stufe I, Daily Shift, Willkommens-Truhe, Geschenk für morgen (einmal pro Karriere, seit 08.10.2026) | 70 % | 22 % | 7 % | 1 % |
 | Premium Chest | Shop (52.000), Mastery Stufe II und III | 35 % | 35 % | 22 % | 8 % |
 | Criminal Hunt Chest | Mastery "Crime Fighter" (Takedowns) | 50 % | 30 % | 15 % | 5 % |
 | Event Chest | Jede geschaffte Daily Shift; 15 % Chance nach jeder geschafften Schicht mit City Event (`eventChestChance`). Enthält in der Hälfte der Fälle das Saison-Item, bis man es hat | 40 % | 35 % | 20 % | 5 % |

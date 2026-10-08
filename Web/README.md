@@ -241,12 +241,21 @@ Cloud sync.
 
 ## Unlocks and notices
 
-- `core/unlocks.ts`: the Daily Shift opens at Level 4, the Trials at 9 (each trial at its own level), the Casino at 12
+- `core/unlocks.ts`: the Daily Shift opens at Level 2 (since 08.10.2026, before 4), the Trials at 9 (each trial at its own level), the Casino at 12
   (`*UnlockLevel` in `config.ts`); whoever used one before keeps it. Locked segments stay in
   place, faded, and say when they open. The Casino opens quietly (nothing points there).
 - After Level 5 a pill on the Game tab says "Swipe for more modes" until the first switch.
 - `present/notices.ts`: news (what a shift earned, an unlock, a hint) takes turns in the
-  notice pill; a reply to the player's own action shows at once.
+  notice pill; a reply to the player's own action shows at once. A result tells at most three
+  lines and counts the rest (`GameSession.budget`).
+- The first shift is only the game: no tab bar, no Settings, no Friends until it is over
+  (`GameSession.showsChrome`). Chests open on the Game tab from the "Open chest" pill
+  (`GameSession.sceneChest`, the Shop's reveal over the scene). Under it the round buttons
+  Picture and Friends share one row (`.run-icons`, their names on hover with a mouse). The
+  picture is the way to send a challenge (Leo, 08.10.2026): opening it makes the short link,
+  and "Send as challenge" shares the photo with the dare and the link (`PhotoHooks.challenge`;
+  not on CrazyGames). News waits while a shift runs (`NoticeQueue.held`); replies to the
+  player's own action still show.
 - `present/booking.ts`: books a finished career shift into the save and lists its news.
 
 ## PWA
@@ -321,7 +330,8 @@ Only that address loads the CrazyGames SDK v3 (`src/ui/crazygames.ts`), and only
 sends a Content-Security-Policy that allows their domains (`map $args $csp` in `nginx.conf`).
 There the save goes through the SDK's Data Module (`storage/store.ts` is switched before the save
 is read): in the cloud for a logged-in player, in the browser for a guest; a save already in
-that browser is copied over once. The SDK also hears `loadingStop` and `gameplayStart/Stop`.
+that browser is copied over once. The SDK also hears `loadingStop` and `gameplayStart/Stop`
+(not `gameplayStop` for a hidden tab: their docs say not to send it when focus moves).
 No service worker, no install or export hints there. Without the SDK (ad blocker, 6 s timeout)
 the game saves in `localStorage` as usual. Every other visit is the plain browser game.
 Since 02.10.2026 the game also uses (`src/ui/crazygames.ts`, names checked against the SDK v3 docs):
@@ -334,6 +344,10 @@ Since 02.10.2026 the game also uses (`src/ui/crazygames.ts`, names checked again
   record and a Prestige, at most once every 90 s ("use sparingly").
 - **Invite links** (`game.inviteLink({ room })`): a multiplayer invite opens the game on CrazyGames,
   and `getInviteParam('room')` joins the room on arrival, like `#join=` elsewhere.
+- **Login after a success** (08.10.2026, `user.showAuthPrompt`): after Level 5, once, a guest is
+  offered CrazyGames' login (never someone logged in, never during a shift); the Data Module then
+  keeps the save on every device. **`reportGameCompletedPercentage`**: the levels up to Prestige
+  as 0–100, 100 after one.
 In the submission form, Progress Save must be "Yes, using the Data Module".
 Test locally: `npm run build`, serve `dist/` without the CSP and open `/?crazygames`
 (on localhost the SDK runs in its `local` mode).

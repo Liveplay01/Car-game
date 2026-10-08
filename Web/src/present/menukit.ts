@@ -8,6 +8,8 @@ const PAGE_BACKDROP = 0.92;
 /** The iOS look of the drawn pages. */
 export const MenuKit = {
   margin: 20,
+  /** The frost of floating chrome, in points: `--glass-blur` in `ui/shell.css` is the same. */
+  glassBlur: 18,
   titleSize: 30,
   /** How much the pages dim the city behind them: it stays faintly there, one world. */
   pageBackdrop: PAGE_BACKDROP,
@@ -108,13 +110,14 @@ export const MenuKit = {
     MenuKit.chromePanel(list, R.make(center.x - size.x / 2, center.y - size.y / 2, center.x + size.x / 2, center.y + size.y / 2), size.y / 2, opacity, tint);
   },
 
-  /** A floating panel of chrome: a soft shadow, the material, a hairline of light along the top. */
+  /** A floating panel of chrome: the glass (it casts its own soft shadow, `CanvasDrawer`), a hairline of light along the top. */
   chromePanel(list: RenderList, frame: Rect, radius: number, opacity: number, tint: ColorToken | null = null, tintOpacity = 1): void {
     const center = R.center(frame);
     const size = v(R.width(frame), R.height(frame));
-    list.s(rect(add(center, v(0, 3)), add(size, v(4, 4)), radius + 2), 'shadow', opacity);
-    if (tint) list.s(rect(center, add(size, v(3, 3)), radius + 1.5), tint, 0.55 * opacity * tintOpacity);
+    if (tint) list.s(rect(center, add(size, v(3, 3)), radius + 1.5), tint, 0.4 * opacity * tintOpacity);
+    list.glass = MenuKit.glassBlur;
     list.s(rect(center, size, radius), 'chrome', opacity);
+    list.glass = undefined;
     const inset = Math.min(radius * 1.3, size.x / 2 - 1);
     list.s(line(add(center, v(-size.x / 2 + inset, -size.y / 2 + 1)), add(center, v(size.x / 2 - inset, -size.y / 2 + 1)), 1), 'chromeEdge', opacity);
   },

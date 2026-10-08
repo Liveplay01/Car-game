@@ -367,12 +367,12 @@ test('the first level cleared gives one welcome chest, and only then', () => {
   assert.ok(!welcomed(again, completed(1), 1));
 });
 
-test('the first Perfect Run says what it is, later ones only its name', () => {
+test('the first Perfect Run says what it is, later ones leave it to the ring', () => {
   const save = newSave();
   const first = bookShift(save, completed(1, { isPerfectRun: true }), context(1));
   assert.ok(first.news.some((n) => n.startsWith('PERFECT RUN ·')));
   const later = bookShift(save, completed(2, { isPerfectRun: true }), context(2));
-  assert.ok(later.news.includes(S.daily.perfectRun));
+  assert.ok(!later.news.some((n) => n.startsWith('PERFECT RUN')));
 });
 
 test('the install and backup hints come due once, at their levels', () => {
@@ -382,7 +382,7 @@ test('the install and backup hints come due once, at their levels', () => {
   assert.deepEqual(bookShift(save, completed(level), context(level)).due, ['install']);
   save.career.level = level;
   assert.deepEqual(bookShift(save, completed(level), context(level)).due, []);
-  save.hints.push('inviteReminder'); // its own test below
+  save.hints.push('inviteReminder', 'portalLogin'); // their own tests below
   save.career.level = baseConfig.backupHintAfterLevel;
   const later = save.career.level;
   assert.deepEqual(bookShift(save, completed(later), context(later)).due, ['backup']);
@@ -391,7 +391,7 @@ test('the install and backup hints come due once, at their levels', () => {
 test('reaching level 10 brings the invite reminder once, and only to a shift that gets there', () => {
   const save = newSave();
   save.career.level = INVITE_REMINDER_LEVEL - 1;
-  save.hints = ['modes', 'install', 'backup'];
+  save.hints = ['modes', 'install', 'backup', 'portalLogin'];
   const before = INVITE_REMINDER_LEVEL - 1;
   // A shift that stays below it says nothing.
   const low = { ...completed(before - 1) };
@@ -403,9 +403,21 @@ test('reaching level 10 brings the invite reminder once, and only to a shift tha
   save.career.level = INVITE_REMINDER_LEVEL;
   assert.deepEqual(bookShift(save, completed(INVITE_REMINDER_LEVEL), context(INVITE_REMINDER_LEVEL)).due, []);
   const veteran = newSave();
-  veteran.hints = ['modes', 'install', 'backup', 'invite', 'inviteReminder'];
+  veteran.hints = ['modes', 'install', 'backup', 'invite', 'inviteReminder', 'portalLogin'];
   veteran.career.level = INVITE_REMINDER_LEVEL - 1;
   assert.deepEqual(bookShift(veteran, completed(before), context(before)).due, []);
+});
+
+test('a CrazyGames guest is offered the login once, after clearing its level', () => {
+  const save = newSave();
+  save.hints = ['install'];
+  const at = baseConfig.portalLoginAfterLevel;
+  save.career.level = at - 1;
+  assert.deepEqual(bookShift(save, completed(at - 1), context(at - 1)).due, []);
+  save.career.level = at;
+  assert.deepEqual(bookShift(save, completed(at), context(at)).due, ['portalLogin']);
+  save.career.level = at;
+  assert.deepEqual(bookShift(save, completed(at), context(at)).due, []);
 });
 
 test('Mayhem keeps its own best and leaves the career alone', () => {
@@ -2149,4 +2161,132 @@ test('the wedding convoy comes from level 100, drives in the flow, and never wit
     assert.equal(seen.slowed, 0);
   }
   assert.ok(entered > 0);
+});
+
+// MARK: Forgiveness and reasons to come back (research of 08.10.2026)
+
+test('the Shield upgrade has four steps, a cheap first and dear rest, forgives crashes for challenges too, and not in Unlimited', async () => {
+  const { challengeConfig } = await load('/src/core/challenge.ts');
+  const { upgradePrice } = await load('/src/core/levels.ts');
+  assert.equal(upgradeMaxSteps.shield, 4);
+  const prices = [1, 2, 3, 4].map((step) => upgradePrice('shield', step, baseConfig));
+  assert.ok(prices[0] < baseConfig.upgradeBaseCost, 'the first step is cheap');
+  assert.ok(prices[1] >= 5 * prices[0] && prices[1] < prices[2] && prices[2] < prices[3], 'the rest are dear and climb');
+  const at = (level, steps) => {
+    const c = newCareer();
+    c.level = level;
+    if (steps) c.upgrades.shield = steps;
+    return c;
+  };
+  assert.equal(Careers.shiftConfig(at(4, 0), 'shift', baseConfig, 7).maxStrikes, 1, 'no free shield');
+  assert.equal(Careers.shiftConfig(at(4, 1), 'shift', baseConfig, 7).maxStrikes, 2);
+  assert.equal(Careers.shiftConfig(at(30, 3), 'shift', baseConfig, 7).maxStrikes, 4);
+  assert.equal(Careers.shiftConfig(at(30, 3), 'unlimited', baseConfig, 7).maxStrikes, 1);
+  const spec = challengeOf(at(4, 1), 'shift', 4, 77, null, 1000);
+  assert.equal(challengeConfig(spec, baseConfig).maxStrikes, 2, 'a friend plays the same shift, shield and all');
+  // A tap on every step crashes: the shift goes on after the first strike and ends with the second.
+  const { result, seen } = playConfig(Careers.shiftConfig(at(4, 1), 'shift', baseConfig, 31), 31, () => true);
+  assert.equal(result.outcome, 'struckOut');
+  assert.ok(seen.filter((e) => e.type === 'crash' && e.isStrike).length >= 2);
+  const poor = at(4, 0);
+  poor.money = 0;
+  assert.ok(!Careers.buy(poor, 'shield', baseConfig), 'too poor for the first step');
+  poor.money = prices[0];
+  assert.ok(Careers.buy(poor, 'shield', baseConfig));
+  assert.equal(Careers.steps(poor, 'shield'), 1);
+});
+
+test('three losses on a level ease the next shift to its fewest cars, until the level is cleared', async () => {
+  const { shiftCarsRange } = await load('/src/core/levels.ts');
+  const c = newCareer();
+  c.level = 9;
+  c.museumSeen = ['weather.lightRain', 'dark.night'];
+  const [fewest] = shiftCarsRange(9, baseConfig);
+  for (let i = 0; i < baseConfig.easeAfterLosses; i++) Careers.noteShift(c, false);
+  for (const seed of [1, 2, 3, 4, 5]) {
+    const cfg = Careers.careerShift(c, baseConfig, seed);
+    assert.equal(cfg.shiftCars, fewest, `seed ${seed}`);
+  }
+  Careers.noteShift(c, true);
+  assert.equal(c.levelLosses, 0);
+  assert.ok([1, 2, 3, 4, 5].some((seed) => Careers.careerShift(c, baseConfig, seed).shiftCars > fewest), 'cleared: the spread is back');
+  assert.ok([1, 2, 3, 4, 5].every((seed) => !Careers.careerShift(c, baseConfig, seed).assisted));
+});
+
+test('the first bad weather and the first night come for sure, and such a shift is marked as eased', () => {
+  const c = newCareer();
+  c.level = baseConfig.firstWeatherLevel;
+  const rainy = Careers.careerShift(c, baseConfig, 5);
+  assert.equal(rainy.weather, 'lightRain');
+  assert.equal(rainy.assisted, true);
+  c.museumSeen.push(museumId({ k: 'weather', kind: 'lightRain' }));
+  assert.ok([1, 2, 3, 4, 5, 6].some((seed) => Careers.careerShift(c, baseConfig, seed).weather === 'clear'), 'once met, the seed decides again');
+  c.level = baseConfig.firstNightLevel;
+  assert.equal(Careers.careerShift(c, baseConfig, 5).night, true);
+  c.museumSeen.push(museumId({ k: 'dark', kind: 'night' }));
+  assert.ok([1, 2, 3, 4, 5, 6].some((seed) => !Careers.careerShift(c, baseConfig, seed).night));
+});
+
+test('the scout level sends one criminal with an escort, announced, and no boss', () => {
+  const c = newCareer();
+  c.level = baseConfig.scoutLevel;
+  const cfg = Careers.shiftConfig(c, 'shift', baseConfig, 13);
+  assert.equal(cfg.scout, true);
+  assert.equal(cfg.convoy, false);
+  c.level = baseConfig.scoutLevel + 1;
+  assert.equal(Careers.shiftConfig(c, 'shift', baseConfig, 13).scout, false);
+  let scouts = 0;
+  for (const seed of [13, 14, 15]) {
+    const { result, seen } = playConfig({ ...cfg }, seed);
+    assert.ok(result, `seed ${seed}: the shift ends`);
+    const warnings = seen.filter((e) => e.type === 'criminalWarning');
+    if (warnings.length === 0) continue;
+    scouts++;
+    assert.equal(warnings[0].scout, true, `seed ${seed}: the first criminal is the scout`);
+    assert.ok(warnings.slice(1).every((w) => !w.scout && !w.boss), `seed ${seed}: one scout a shift`);
+    assert.ok(!result.bossBusted);
+  }
+  assert.ok(scouts > 0, 'a criminal comes in some shift');
+});
+
+test('tomorrow’s gift is promised once and waits for its day', () => {
+  const c = newCareer();
+  assert.equal(Careers.promiseGift(c, 100), true);
+  assert.equal(Careers.promiseGift(c, 100), false);
+  assert.equal(Careers.giftAhead(c, 100), true);
+  assert.equal(Careers.collectGift(c, 100), false);
+  assert.equal(Careers.collectGift(c, 103), true);
+  assert.deepEqual(c.chests, ['standard']);
+  assert.equal(Careers.collectGift(c, 104), false);
+  assert.equal(Careers.promiseGift(c, 104), false, 'once in a career');
+  // The first booked shift promises it, and the save keeps it.
+  const save = newSave();
+  bookShift(save, completed(1), context(1, { today: 500 }));
+  assert.equal(save.career.giftDay, 501);
+  assert.ok(writeSave(save));
+  assert.equal(loadSave().career.giftDay, 501);
+  // The Daily Shift opens at level 2 now: in the first session.
+  const two = newCareer();
+  two.level = 2;
+  assert.equal(Unlocks.isOpen(two, 'daily'), true);
+});
+
+test('the tension camera keeps the stop line in place, settles still, and stays out of Chill and Reduce Motion', async () => {
+  const { CameraFx, CameraFxTuning, tensionOf } = await load('/src/present/cameraFx.ts');
+  const { toScreen } = await load('/src/present/render.ts');
+  const cam = { viewport: { x: 390, y: 844 }, center: { x: 0, y: -20 }, focus: { x: 195, y: 400 }, scale: 1.5 };
+  const stop = { x: 0, y: -150 };
+  const fx = new CameraFx();
+  for (let i = 0; i < 240; i++) fx.update(0.8, 1 / 60);
+  assert.equal(fx.tension, 0.8, 'snaps onto its plateau, so the ground can be baked again');
+  const leaned = fx.apply(cam, stop, false);
+  const before = toScreen(cam, stop);
+  const after = toScreen(leaned, stop);
+  assert.ok(Math.abs(before.x - after.x) < 1e-9 && Math.abs(before.y - after.y) < 1e-9, 'the stop line does not move');
+  assert.ok(Math.abs(leaned.scale - cam.scale * (1 + CameraFxTuning.tensionZoom * 0.8)) < 1e-9);
+  assert.deepEqual(fx.apply(cam, stop, false), leaned, 'a settled camera holds still');
+  assert.equal(fx.apply(cam, stop, true), cam, 'Reduce Motion: no zoom');
+  assert.equal(fx.vignette, 0.8, 'the vignette stays under Reduce Motion');
+  const world = new World(forLevel(baseConfig, 3, 11), 11, { startsOnFirstTap: false });
+  assert.equal(tensionOf(world, 'chill'), 0);
 });

@@ -113,6 +113,7 @@ export const UpgradePage = {
         return 'juicePurple';
       case 'quietStreets':
       case 'quickRecovery':
+      case 'shield':
         return 'juiceGreen';
       case 'cashRoute':
       case 'overtime':
@@ -188,8 +189,8 @@ export const UpgradePage = {
     }
     const pictureHeight = Math.min(56, size.y * 0.44);
     const picture = R.make(center.x - size.x / 2 + 10, center.y - size.y / 2 + 10, center.x + size.x / 2 - 10, center.y - size.y / 2 + 10 + pictureHeight);
+    // The picture stands on the card itself, in its glow: no second surface inside the card.
     const tile = R.center(picture);
-    list.s(rect(tile, v(R.width(picture), pictureHeight), 10), 'background', o);
     MenuKit.glow(list, tile, pictureHeight * 0.62, U.tint(upgrade), 0.45 * o);
     UpgradeArt.add(list, upgrade, picture, o);
     // Today's pick: one step for a watched ad (Leo, 05.10.2026). Opens in the sheet like any card.
@@ -342,6 +343,11 @@ export const UpgradeArt = {
       case 'robberyInsurance':
         shield('accent', 0.85);
         car(center, 0.55, upgrade === 'insurance' ? 'vehicleCar' : 'vehicleCriminal', upgrade === 'insurance' ? null : 'vehicleBed', false);
+        break;
+      case 'shield':
+        shield('juiceGreen');
+        put(rect(center, mul(v(16, 5), unit), 2 * unit), 'primary');
+        put(rect(center, mul(v(5, 16), unit), 2 * unit), 'primary');
         break;
       case 'overtime':
         for (let coin = 0; coin < 3; coin++) {

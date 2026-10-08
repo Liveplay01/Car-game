@@ -122,6 +122,8 @@ function readCareer(raw: unknown): Career {
     chestsSinceLegendary: int(raw.chestsSinceLegendary, 0, 0),
     dailyDone: int(raw.dailyDone, -1),
     lastLoginDay: int(raw.lastLoginDay, -1),
+    giftDay: int(raw.giftDay, -1, -2),
+    levelLosses: int(raw.levelLosses, 0, 0),
     dailyStreak: int(raw.dailyStreak, 0, 0),
     streakFreezes: int(raw.streakFreezes, 0, 0),
     scratchCards: Math.min(int(raw.scratchCards, 0, 0), baseConfig.scratchMax),

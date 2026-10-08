@@ -49,9 +49,10 @@ window.removeEventListener('unhandledrejection', bootFailed);
 // 20 s, as on a start that hangs), `?boot=fail` shows the message at once.
 const bootDemo = import.meta.env.DEV ? new URLSearchParams(location.search).get('boot') : null;
 if (bootDemo === 'fail') bootFailed();
+// Hidden, not removed: should the game stop later, the shell shows it again with a reload (`Shell.stalled`).
 if (boot && bootDemo === null) {
   boot.classList.add('gone');
-  window.setTimeout(() => boot.remove(), 300);
+  window.setTimeout(() => (boot.hidden = true), 300);
 }
 startAds();
 startAnalytics();

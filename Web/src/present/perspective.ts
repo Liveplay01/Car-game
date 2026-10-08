@@ -38,19 +38,22 @@ export const PerspectiveTuning = {
 /**
  * The game's own view. On a phone the ring sits high so the queue has room; on a wide screen
  * (desktop) that leaves the ring stuck to the top, so it moves most of the way to the middle
- * (Leo, 27.09.2026). The queue below still shows its front cars.
+ * (Leo, 27.09.2026). The queue below still shows its front cars: the move stops where the front car would go under the
+ * tab bar (`bottomInset`), which on a phone held sideways takes a large share of the height.
  */
-export function streetCamera(layout: RoundaboutLayout, viewport: Vec2): Camera {
+export function streetCamera(layout: RoundaboutLayout, viewport: Vec2, bottomInset = 0): Camera {
   const fit = fitCamera(layout.viewBounds, viewport, Metrics.sceneInsets, Metrics.sceneVerticalBias);
   const landscape = Ease.clamp01((viewport.x / viewport.y - 0.9) / 0.5);
   if (landscape <= 0) return fit;
   const ringY = fit.focus.y + fit.center.y * fit.scale;
   const middle = (Metrics.sceneInsets.top + viewport.y) / 2 - 10;
-  return { ...fit, focus: v(fit.focus.x, fit.focus.y + (middle - ringY) * 0.8 * landscape) };
+  const front = toScreen(fit, layout.stopPose(layout.player).position).y + layout.laneWidth * fit.scale;
+  const room = Math.max(0, viewport.y - bottomInset - 12 - front);
+  return { ...fit, focus: v(fit.focus.x, fit.focus.y + Math.min((middle - ringY) * 0.8 * landscape, room)) };
 }
 
 export function perspectiveCamera(p: Perspective, layout: RoundaboutLayout, viewport: Vec2, bottomInset: number): Camera {
-  const street = streetCamera(layout, viewport);
+  const street = streetCamera(layout, viewport, bottomInset);
   const T = PerspectiveTuning;
   switch (p) {
     case 'street':

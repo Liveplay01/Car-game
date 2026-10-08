@@ -52,6 +52,8 @@ export type SoundID =
   | 'shimmer'
   | 'reelLand'
   | 'reelLandBig'
+  /** A crash forgiven: the shield, or a police car within its limit. */
+  | 'heal'
   /** The casino's own: samples rendered by `Web/audio-src/make_casino_sounds.py`. */
   | 'casinoStop'
   | 'coinClink'
@@ -104,7 +106,8 @@ export type HapticID =
  */
 export const Feedback = {
   /** A clean merge climbs the A-minor pentatonic with the combo, the key the music plays in. */
-  comboLadder: [0, 3, 5, 7, 10, 12, 15, 17],
+  /** The merge sound climbs the minor pentatonic with the combo: two octaves, so a long combo still climbs (to 11). */
+  comboLadder: [0, 3, 5, 7, 10, 12, 15, 17, 19, 22, 24],
 
   sound(e: GameEvent): SoundID | null {
     switch (e.type) {

@@ -79,6 +79,7 @@ export function bookShift(save: SaveGame, result: ShiftResult, ctx: ShiftContext
   const openBefore = Unlocks.open(career, ctx.config);
   const levelBefore = career.level;
   Careers.record(career, result, ctx.level);
+  if (ctx.mode === 'shift') Careers.noteShift(career, result.outcome === 'completed');
   Achievements.record(career, result, ctx.shiftConfig, ctx.mode);
   const news: string[] = milestones.map((id) => S.modes.milestone(id));
   const heat = ctx.mode === 'shift' && !ctx.daily ? ctx.shiftConfig.heat : 0;
@@ -99,21 +100,27 @@ export function bookShift(save: SaveGame, result: ShiftResult, ctx: ShiftContext
   if (unlimited && tier && tier !== tierBefore) news.unshift(S.modes.tierUp(tier));
   // The first level cleared: a chest to open within the first minute.
   if (ctx.mode === 'shift' && Careers.giveWelcomeChest(career, levelBefore, ctx.config)) news.push(S.daily.welcomeChest);
+  // The first lost shift after the first one: Unlimited is a swipe away, without levels (the swipe hint shows from now on).
+  if (ctx.mode === 'shift' && !ctx.daily && result.outcome !== 'completed' && save.shiftsPlayed >= 2 && !save.hints.includes('modes') && !save.hints.includes('unlimitedTip')) {
+    save.hints.push('unlimitedTip');
+    news.push(S.modes.tryUnlimited);
+  }
   // Level 5 cleared: the other modes are a swipe away (the waiting screen keeps a hint until the first swipe).
   const cap = ctx.config.modeHintAfterLevel;
   if (ctx.mode === 'shift' && !save.hints.includes('modes') && ctx.level <= cap && career.level > cap) news.push(S.modes.unlocked);
   // What this shift opened; the Casino opens quietly (PRODUCT.md: nothing points the player there).
   for (const f of Unlocks.open(career, ctx.config)) if (!openBefore.includes(f) && f !== 'casino') news.push(S.unlocks[f]);
-  const due: Hint[] = (['install', 'backup'] as const).filter((h) => !save.hints.includes(h) && career.level > (h === 'install' ? ctx.config.installHintAfterLevel : ctx.config.backupHintAfterLevel));
+  const after = { install: ctx.config.installHintAfterLevel, backup: ctx.config.backupHintAfterLevel, portalLogin: ctx.config.portalLoginAfterLevel };
+  const due: Hint[] = (['install', 'backup', 'portalLogin'] as const).filter((h) => !save.hints.includes(h) && career.level > after[h]);
   // Level 10 reached (Leo, 04.10.2026): a small reminder that a friend brings both a chest. By level, not by crossing it:
   // a reminder that had to wait (`takeTip`) comes at the next shift.
   if (ctx.mode === 'shift' && !save.hints.includes('inviteReminder') && career.level >= INVITE_REMINDER_LEVEL) due.push('inviteReminder');
   save.hints.push(...due);
-  if (result.isPerfectRun) {
-    // The first one says what it is and what it pays (early on only: a veteran knows).
-    const first = !save.hints.includes('perfectRun');
-    if (first) save.hints.push('perfectRun');
-    news.push(first && career.level <= 10 ? S.daily.perfectRunFirst(Math.round(ctx.config.perfectRunPayFactor * 100)) : S.daily.perfectRun);
+  // The first Perfect Run says what it is and what it pays (early on only: a veteran knows). After that the ring's gold
+  // sweep says it (`GameSession.react`): early on nearly every shift is one, and a line every time stops meaning anything.
+  if (result.isPerfectRun && !save.hints.includes('perfectRun')) {
+    save.hints.push('perfectRun');
+    news.push(career.level <= 10 ? S.daily.perfectRunFirst(Math.round(ctx.config.perfectRunPayFactor * 100)) : S.daily.perfectRun);
   }
   const legendary = Careers.completeLegendary(career, result);
   if (legendary) news.push(S.legendary.done(legendary.item));
@@ -126,7 +133,8 @@ export function bookShift(save: SaveGame, result: ShiftResult, ctx: ShiftContext
   if (pay !== null) news.push(S.daily.dailyDone(Fmt.number(pay), career.dailyStreak));
   else if (!ctx.daily && Careers.rollEventChest(career, result, ctx.shiftConfig, result.seed)) news.push(S.daily.eventChestFound);
   else if (Careers.rollLuckyDrop(career, result, ctx.shiftConfig, result.seed)) news.push(S.daily.luckyDrop);
-  if (result.outcome === 'completed') {
+  // An eased shift (fewer cars) would set a best time the level never had.
+  if (result.outcome === 'completed' && !ctx.shiftConfig.assisted) {
     const times = [...ctx.splits];
     if ((times[times.length - 1] ?? -1) < result.time - 0.001) times.push(result.time);
     const hadBest = Careers.bestTimes(career, ctx.level) !== null;
@@ -151,5 +159,7 @@ export function bookShift(save: SaveGame, result: ShiftResult, ctx: ShiftContext
   if (levelBefore < ctx.config.prestigeLevel && Careers.canPrestige(career, ctx.config)) news.push(S.prestige.available(career.prestige + 1));
   const pass = SeasonPass.record(career, result, ctx.today, ctx.config, markXp + heatBonus);
   if (pass) for (const step of pass.steps) news.push(S.pass.reached(step));
+  // A reason to come back tomorrow, from the first shift on: told last, then counted down on the Game tab.
+  if (Careers.promiseGift(career, ctx.today)) news.push(S.daily.giftPromised);
   return { isNew, previous, bank: { before: bankBefore, after: career.money }, news, due };
 }

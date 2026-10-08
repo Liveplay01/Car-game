@@ -87,6 +87,8 @@ export type ScreenAction =
   /** The lifted part lands on this slot. */
   | { k: 'movePart'; slot: number }
   | { k: 'openChest'; index: number }
+  /** The first chest waiting, opened on the Game tab (its pill), not in the Shop. */
+  | { k: 'openChestHere' }
   | { k: 'buyChest'; kind: ChestKind }
   | { k: 'watchAd' }
   /** A free step of today's upgrade, and the Skin Upgrade's boost, each for an ad (`adFlow.ts`). */

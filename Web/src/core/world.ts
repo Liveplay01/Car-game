@@ -197,8 +197,11 @@ export class World {
   oversize: OversizePhase = { kind: 'done' };
   race: RacePhase = { kind: 'done' };
   wedding: WeddingPhase = { kind: 'done' };
-  /** The syndicate boss's escorts still to join, and where (boss levels). */
+  /** The syndicate boss's escorts still to join, and where (boss levels, and the scout's one). */
   escortsDue: { arm: Arm; left: number } | null = null;
+  /** The scout level: whether this shift's scout has been announced, and which criminal it is. */
+  scoutSent = false;
+  scoutVehicle: number | null = null;
   ringSpeed: number;
   targetDensity: number;
 
@@ -1264,6 +1267,13 @@ export class World {
 
   get isRushHourScoring(): boolean {
     return this.shift.isRushHour;
+  }
+
+  /** Seconds the police have to catch this criminal: a boss and the scout bring more. */
+  criminalTimeOf(id: number): number {
+    const c = this.config;
+    const factor = this.vehicle(id)?.role === 'boss' ? c.convoyTimeFactor : id === this.scoutVehicle ? c.scoutTimeFactor : 1;
+    return c.criminalTime * factor;
   }
 
   get isInFlow(): boolean {

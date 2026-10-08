@@ -33,6 +33,8 @@ export interface RenderItem {
   tag?: string;
   /** Screen rectangle the item is cut to (a scrolling list). */
   clip?: Rect;
+  /** A rect that frosts what lies under it: the blur radius in points (`CanvasDrawer.glassBlur` allowing). */
+  glass?: number;
 }
 
 /** A still stretch of the list (`RenderList.bake`): null key, its shapes are compared instead. */
@@ -119,6 +121,8 @@ export class RenderList {
   tag: string | undefined = undefined;
   /** Set while drawing a group that is cut to a screen rectangle. */
   clip: Rect | undefined = undefined;
+  /** Set while drawing the material of a floating panel: its blur radius. */
+  glass: number | undefined = undefined;
   /** Set while drawing a group that gets a texture over it (the roads). */
   grain: Grain | undefined = undefined;
   /** The ground between everything gets a faint texture, anchored to the world. */
@@ -147,6 +151,9 @@ export class RenderList {
    * without it and only moved by it, so a crash does not repaint them every frame.
    */
   shake: Vec2 = v(0, 0);
+  /** Dark edges over the scene, 0…1 of the drawer's strongest (`CameraFx`), laid in before item `vignetteAt`: under the HUD. */
+  vignette = 0;
+  vignetteAt = 0;
   constructor(
     public camera: Camera,
     public background: ColorToken,
@@ -157,6 +164,7 @@ export class RenderList {
     const item: RenderItem = { p, color, opacity, space };
     if (this.tag !== undefined) item.tag = this.tag;
     if (this.clip !== undefined) item.clip = this.clip;
+    if (this.glass !== undefined && space === 'screen') item.glass = this.glass;
     if (this.grain !== undefined && space === 'world') item.grain = this.grain;
     this.items.push(item);
   }

@@ -37,6 +37,14 @@ interface CrazyGamesSdk {
     happytime(): void;
     inviteLink(params: Record<string, string>): string;
     getInviteParam(name: string): string | null;
+    /** 0–100: CrazyGames offers a restart or an update notice from it (docs.crazygames.com/sdk/game). */
+    reportGameCompletedPercentage?(percent: number): void;
+  };
+  /** Their account (docs.crazygames.com/sdk/user): a login carries the Data Module's save to every device. */
+  readonly user?: {
+    readonly isUserAccountAvailable: boolean;
+    getUser(): Promise<unknown>;
+    showAuthPrompt(): Promise<unknown>;
   };
   readonly ad: {
     requestAd(type: 'midgame' | 'rewarded', callbacks: { adStarted?: () => void; adFinished?: () => void; adError?: (error: AdError) => void }): void;
@@ -94,6 +102,33 @@ export function reportGameplay(now: boolean): void {
   if (!sdk || now === playing) return;
   playing = now;
   call((s) => (now ? s.game.gameplayStart() : s.game.gameplayStop()));
+}
+
+let reportedProgress = -1;
+
+/** How far the career is, 0–100 (`reportGameCompletedPercentage`); told again only when it changes. */
+export function reportProgress(percent: number): void {
+  const p = Math.max(0, Math.min(100, Math.round(percent)));
+  if (!sdk || p === reportedProgress) return;
+  reportedProgress = p;
+  call((s) => s.game.reportGameCompletedPercentage?.(p));
+}
+
+/**
+ * After a success, once (research of 08.10.2026): a guest is offered CrazyGames' login, which keeps the save on every
+ * device (the Data Module moves the guest's save to the account and reloads the game). Never before playing, never
+ * for someone logged in already. False where there is nothing to offer.
+ */
+export async function offerLogin(): Promise<boolean> {
+  const user = sdk?.user;
+  if (!user?.isUserAccountAvailable) return false;
+  try {
+    if (await user.getUser()) return false;
+    await user.showAuthPrompt();
+  } catch {
+    /* closed or refused: the guest plays on, the save stays in this browser */
+  }
+  return true;
 }
 
 /** How the game's sound goes quiet while an ad plays, and comes back after. */

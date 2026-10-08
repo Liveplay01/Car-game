@@ -203,6 +203,8 @@ export const UPGRADES = [
   'doubleRun',
   'insurance',
   'robberyInsurance',
+  // New upgrades go last: a challenge link carries the steps by position.
+  'shield',
 ] as const;
 
 export type Upgrade = (typeof UPGRADES)[number];
@@ -221,9 +223,11 @@ export const upgradeMaxSteps: Record<Upgrade, number> = {
   doubleRun: 5,
   quickRecovery: 5,
   backup: 3,
+  shield: 4,
 };
 
-const priceFactor: Record<Upgrade, number> = {
+/** The shield has its own prices (`shieldPrices`); the others grow by `upgradeCostGrowth`. */
+const priceFactor: Record<Exclude<Upgrade, 'shield'>, number> = {
   morePatrols: 1,
   cashRoute: 1,
   overtime: 1,
@@ -240,10 +244,14 @@ const priceFactor: Record<Upgrade, number> = {
 };
 
 /** The insurances only once there is something to insure. */
-export const upgradeUnlockLevel = (u: Upgrade, c: Config): number => (u === 'insurance' || u === 'robberyInsurance' ? c.crashCostLevel : 1);
+export function upgradeUnlockLevel(u: Upgrade, c: Config): number {
+  if (u === 'insurance' || u === 'robberyInsurance') return c.crashCostLevel;
+  return 1;
+}
 
 /** Price of step `step` (1 = the first), rounded to 50. */
 export function upgradePrice(u: Upgrade, step: number, c: Config): number {
+  if (u === 'shield') return c.shieldPrices[clamp(step, 1, c.shieldPrices.length) - 1];
   const raw = c.upgradeBaseCost * priceFactor[u] * Math.pow(c.upgradeCostGrowth, Math.max(1, step) - 1);
   return Math.round(raw / 50) * 50;
 }
@@ -258,6 +266,7 @@ export function upgraded(base: Config, steps: (u: Upgrade) => number): Config {
   c.policeChaseSpeedFactor += step('interceptor') * base.interceptorPerStep;
   c.dispatchComboFactor = Math.min(1, base.dispatchComboFactor + step('dispatchRadio') * base.dispatchRadioPerStep);
   c.maxPoliceCrashes += step('backup') * base.backupPerStep;
+  c.maxStrikes += step('shield');
   const sooner = step('cashRoute') * base.cashRoutePerStep;
   c.transporterFirst = { lo: Math.max(1, base.transporterFirst.lo - sooner), hi: Math.max(1, base.transporterFirst.hi - sooner) };
   c.transporterInterval = { lo: Math.max(1, base.transporterInterval.lo - sooner), hi: Math.max(1, base.transporterInterval.hi - sooner) };

@@ -23,6 +23,26 @@ export class NoticeQueue {
   private current: { text: string; age: number; announcement: boolean } | null = null;
   private waiting: string[] = [];
 
+  /**
+   * While a shift runs (08.10.2026), news waits: only replies to what the player does show (a shield used, the scout).
+   * An announcement on screen when it starts goes back in line, unless it was read already.
+   */
+  get held(): boolean {
+    return this.holding;
+  }
+
+  set held(on: boolean) {
+    if (on === this.holding) return;
+    this.holding = on;
+    const cur = this.current;
+    if (on && cur?.announcement) {
+      if (cur.age < NoticeQueue.seenAfter) this.waiting.unshift(cur.text);
+      this.current = null;
+    } else if (!on && !cur) this.next();
+  }
+
+  private holding = false;
+
   /** A reply to the player's own action: shown now. */
   say(text: string): void {
     const cur = this.current;
@@ -40,7 +60,7 @@ export class NoticeQueue {
       if (!text || this.current?.text === text || this.waiting.includes(text)) continue;
       this.waiting.push(text);
     }
-    if (!this.current) this.next();
+    if (!this.current && !this.holding) this.next();
     const max = NoticeQueue.maxWaiting;
     if (this.waiting.length > max) this.waiting = [...this.waiting.slice(0, max - 1), this.waiting.slice(max - 1).join('  ·  ')];
   }
@@ -71,6 +91,10 @@ export class NoticeQueue {
   }
 
   private next(): void {
+    if (this.holding) {
+      this.current = null;
+      return;
+    }
     const text = this.waiting.shift();
     this.current = text === undefined ? null : { text, age: 0, announcement: true };
   }

@@ -35,6 +35,7 @@ try {
   const { bookShift } = await server.ssrLoadModule('/src/present/booking.ts');
   const { joinsClearRoad } = await server.ssrLoadModule('/src/core/ambulance.ts');
   const { Elite } = await server.ssrLoadModule('/src/core/elite.ts');
+  const { conditionsOf, museumId } = await server.ssrLoadModule('/src/core/museum.ts');
 
   // A seeded source of chance, so a run is the same every time.
   const random = (seed) => () => {
@@ -151,9 +152,12 @@ try {
     paid.jackpotCount = 0;
     while (c.level < target && shifts < 4000) {
       const seed = shifts * 7919 + 17;
-      const shiftConfig = Careers.config(c, baseConfig, seed);
+      // As the game deals a plain career shift: the shield, the scout, and the easing after lost shifts.
+      const shiftConfig = Careers.careerShift(c, baseConfig, seed);
       const level = c.level;
       const res = playShift(shiftConfig, seed, p, r);
+      // The sky and the dark it was played in are met now (the game's Museum), so the first rain comes only once.
+      Careers.discover(c, conditionsOf(shiftConfig).map(museumId));
       shifts++;
       band.shifts++;
       if (!res) continue;
@@ -258,7 +262,8 @@ try {
         const c = newSave().career;
         c.level = level;
         const seed = level * 100003 + k * 7919;
-        const cfg = Careers.config(c, baseConfig, seed);
+        // A fresh career has lost nothing yet: the level's own shift, shield and scout included.
+        const cfg = Careers.shiftConfig(c, 'shift', baseConfig, seed);
         const res = playShift(cfg, seed, p, r);
         if (!res) continue;
         if (res.outcome !== 'completed') lost++;

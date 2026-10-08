@@ -61,7 +61,7 @@ Das Wischen geht von Anfang an; ein Hinweis weist erst nach Level 6 darauf hin (
 | Ereignis | Konsequenz |
 |---|---|
 | **Verbrecher-Pickup entkommt** (Countdown abgelaufen) | **Hard Fail** – Schicht verloren (ab Level 20 zusätzlich 350 Verlust) |
-| **Normales Auto crasht** | **Hard Fail** (`maxStrikes = 1`; ab Level 20 kostet der Crash Geld) |
+| **Normales Auto crasht** | **Hard Fail** (`maxStrikes = 1`; ab Level 20 kostet der Crash Geld). **Schild** (08.10.2026, Upgrade „Shield“, 4 Stufen, die erste günstig, der Rest teuer): jede Stufe verzeiht einen weiteren Crash des eigenen Autos pro Schicht (nicht in Unlimited). Ein verziehener Crash lässt den Ring grün aufleuchten, kein Text |
 | **Polizeiauto crasht** | Soft Fail: kostet 250 Punkte & Combo, **3 erlaubt** (`maxPoliceCrashes = 3`, Upgrade *Backup* +1 pro Stufe), der 4. = Hard Fail |
 | **Militär-Truck geht hoch** | Hard Fail („KABOOM“, dasselbe Level noch einmal); in Mayhem das Finale |
 | **Folgeunfälle im Verkehr** | Kosten standardmäßig **keine** Strikes (umschaltbar); wer in einen sichtbaren Unfall einfädelt, bleibt 1 s verantwortlich |
@@ -69,7 +69,9 @@ Das Wischen geht von Anfang an; ein Hinweis weist erst nach Level 6 darauf hin (
 
 In Mayhem beendet kein Crash die Schicht, in Unlimited beendet ihn der erste Hard Fail.
 
-**Verlorene Schicht ohne Game-Over-Screen:** Der Crash, der die Schicht beendet, läuft kurz in Zeitlupe, die Kamera tritt etwas zurück, der Inselrand flackert rot. Der Verkehr fährt weiter. Kurz nach dem Crash startet ein Tap sofort den nächsten Versuch auf demselben Level. Wer nicht tippt, sieht das Ergebnis in der oberen Karte. Reduce Motion: keine Zeitlupe, kein Zurücktreten.
+**Erleichterung nach Niederlagen (08.10.2026, `Careers.careerShift`):** Nach 3 verlorenen Karriere-Schichten in Folge auf einem Level (`easeAfterLosses`, gezählt in `levelLosses`) zieht der nächste Versuch die **kleinste Autozahl** des Levels (unteres Ende von ±2), bis das Level geschafft ist. Nur normale Karriere-Schichten, nie die Daily. Eine so erleichterte Schicht (`assisted`) setzt keine Bestzeit und wird nicht als Challenge verschickt, weil ein Freund sie nicht genauso spielen könnte.
+
+**Verlorene Schicht ohne Game-Over-Screen:** Der Crash, der die Schicht beendet, läuft kurz in Zeitlupe, die Kamera lehnt sich zum Aufprall und tritt dann etwas zurück, der Inselrand flackert rot. Der Verkehr fährt weiter. Kurz nach dem Crash startet ein Tap sofort den nächsten Versuch auf demselben Level. Wer nicht tippt, sieht das Ergebnis in der oberen Karte. Reduce Motion: keine Zeitlupe, kein Zurücktreten.
 
 **Crashes sind echte Physik** (`Web/src/core/crash.ts`, `drivers.ts`): Stoß-Impuls am Kontaktpunkt, 30 % Rückprall, Reifenreibung, reagierender Verkehr mit Kettenunfällen (Fahrer reagieren nach 0,5–1,5 s), Blechschaden mit Beulen und abreißenden Teilen. Keine geskripteten Animationen.
 
@@ -125,6 +127,7 @@ Jede Einfädelung wird nach dem engsten Abstand (surface to surface) bewertet:
 
 ### Syndikats-Bosse (28.09.2026, Werte in `config.ts`)
 
+- **Scout auf Level 6 (08.10.2026, `scoutLevel`):** Der erste Verbrecher der Schicht bringt einen gepanzerten Begleiter mit (`scoutEscorts` 1), angekündigt mit „SYNDICATE SCOUT“ und 3 s Warnung, und bleibt ×1,4 so lange (`scoutTimeFactor`). Ein Vorgeschmack auf die Bosse, aber kein Boss: keine Trophäe, kein Museum-Eintrag, kein Heist-Geld. Beim ersten Mal sagt eine Zeile, wie man ihn erwischt.
 - **Jedes 15. Level** (15, 30, 45 …) ist der erste Verbrecher der Schicht der **Boss** des Syndikats. Er kommt früh (nach 1,5–3 s), mit 3 s Warnung („SYNDICATE CONVOY“ usw.), und bleibt länger im Ring als ein normaler Verbrecher. Die vier Bosse wechseln der Reihe nach, jede Runde beginnt von vorn:
 
 | Boss | Level | Eskorte | Zeit (× Verbrecher-Countdown) | Besonderheit |
@@ -248,6 +251,7 @@ Fair bleibt es: Das Tap-Timing ändert sich nie; Sonderfahrzeuge, Warnungen und 
 ### Nacht und Blackout (nur Web)
 
 - **Nacht** ab Level 10: Chance 3 % pro Level ab Level 10 (Level 10 = 3 %), höchstens 20 %. Die Stadt wird dunkel, man fädelt nach den Lichtern der Autos ein.
+- **Erstes Wetter, erste Nacht sicher (08.10.2026, `firstWeatherLevel`, `firstNightLevel`):** Wer bis Level 7 noch kein schlechtes Wetter erlebt hat, bekommt in der nächsten normalen Karriere-Schicht leichten Regen; wer bis Level 11 keine Nacht hatte, eine Nacht. Danach entscheidet wieder der Seed. Vorher sah ein Spieler in den ersten 30 Minuten Wetter meist höchstens einmal und die Nacht fast nie. Nie über die Daily, eine Legendary Shift oder nach einem Prestige; die Schicht gilt als erleichtert (`assisted`, keine Challenge).
 - **Blackout** ab Level 20: 35 % der Nächte, auch die Straßenlaternen sind aus; nur Scheinwerfer und Rücklichter zeigen den Verkehr. Der Phantom-Boss und der Legendary Shift *Dark Storm* erzwingen einen Blackout.
 - **Nur das Bild ändert sich, nicht die Regeln.** Dafür zahlt die Schicht mehr: Nacht ×1,1, Blackout ×1,25 Lohn.
 
@@ -360,7 +364,7 @@ Ein neuer Spieler trifft die Systeme nacheinander (`core/unlocks.ts`, Werte in `
 
 | Was | Ab | Wie es sich zeigt |
 |---|---|---|
-| Daily Shift (und Serie) | Level 4 | Hinweis „New · the Daily Shift …“; vorher sagt die Quest-Zeile, ab wann |
+| Daily Shift (und Serie) | Level 2 (seit 08.10.2026, vorher 4: ein Grund für morgen schon in der ersten Sitzung) | Hinweis „New · the Daily Shift …“; vorher sagt die Quest-Zeile, ab wann |
 | Modus-Wischen | nie gesperrt; Hinweis, sobald Level 6 geschafft ist (`modeHintAfterLevel`) | Meldung „New modes · swipe sideways …“, danach bis zum ersten Wechsel die Zeile „Swipe for more modes“ am Game-Tab |
 | Trials (Progress) | Level 9 | Hinweis „New · Trials in Progress …“; vorher ist das Segment blass und sagt beim Tippen, ab wann. Jede Trial öffnet erst bei ihrem eigenen Level („Opens at level X“) |
 | Casino (Shop) | Level 12 | ohne Hinweis; vorher ist das Segment blass |
@@ -370,10 +374,18 @@ Ein neuer Spieler trifft die Systeme nacheinander (`core/unlocks.ts`, Werte in `
 **Entzerrt (Leo, 29.09.2026):** vorher Daily 3, Modi 5, Trials 8, Casino 10: fünf neue Systeme in den ersten drei Minuten. Jetzt etwa eins alle ein bis vier Minuten (Daily nach ~1 min, Modi ~2, Trials ~4, Casino ~8). Wer ein System schon vorher benutzt hat (oder ein Prestige hat), behält es.
 
 **Einmalige Hinweise** (`hints` im Spielstand; `present/notices.ts`: jede Meldung in ihrer eigenen Zeile, nacheinander, oben unter der Punktzahl, damit der Daumen sie nicht verdeckt):
-- **Willkommens-Truhe:** beim ersten geschafften Level (Level 2 erreicht) eine Standard Chest, einmal, nie nach einem Prestige.
+- **Erste Schicht ohne Menüs (08.10.2026):** Bis die erste Schicht vorbei ist, fehlen Tab-Bar, Settings und Friends (`GameSession.showsChrome`); auch die Karte oben führt dann nirgends hin. Ein Tap landet so immer im Spiel.
+- **Willkommens-Truhe:** beim ersten geschafften Level (Level 2 erreicht) eine Standard Chest, einmal, nie nach einem Prestige. Sie öffnet sich **direkt auf dem Game-Tab** (08.10.2026): Unter dem Ergebnis und auf der Wartekarte steht, solange Truhen warten, die Pille „Open chest“; sie spielt die Truhen-Animation des Shops über der Szene (`GameSession.sceneChest`).
+- **Geschenk für morgen (08.10.2026, `Careers.promiseGift`):** Nach der ersten Karriere-Schicht verspricht das Spiel einmal eine Standard Chest für den nächsten Tag; die Wartekarte zählt herunter („Free chest tomorrow · in 9 h“), am nächsten Besuchstag liegt sie bereit. Einmal pro Karriere, ohne Werbung (auch in CrazyGames' Basic Launch).
+- **Meldungs-Budget (08.10.2026):** Nach einer Schicht höchstens drei Zeilen, der Rest als „+N more · see Progress“ (`GameSession.budget`). Erfolge, die beim Speichern kommen, zählen nicht mit. Während einer Schicht warten Meldungen (`NoticeQueue.held`), nur Antworten auf das eigene Tun (Schild, Scout) und die Briefings erscheinen.
+- **Knöpfe über der Szene (08.10.2026):** links eine beschriftete Hauptaktion (Open chest, Leave), darunter Picture und Friends als Reihe runder Glasknöpfe, ganz unten Settings; alles links der Straße. Mit Maus steht der Name beim Darüberfahren daneben. **Das Foto ist die Challenge** (Leo, 08.10.2026): Beim Öffnen entsteht der Kurzlink, „Send as challenge“ teilt das Foto mit Satz und Link (auf dem Desktop beides in die Zwischenablage). Einen eigenen Challenge-Knopf über der Szene gibt es nicht; „Challenge a friend“ bleibt in der Friends-Schublade. Nicht auf CrazyGames.
+- **Neue Bedingungen auf der Wartekarte** bleiben über dem Ring (`ringTop`); passt die Karte nicht, nennt die Zeile auf der Insel sie, das Briefing erklärt sie beim Start.
 - Nach Level 4 (also ab Level 5) bittet das Spiel den Browser, den Speicher dauerhaft zu behalten (`storage.persist()`), und schlägt die Installation vor: auf iPhone und iPad als bildschirmfüllender Hinweis mit den drei Schritten zum Home-Bildschirm (`installDialog` in `ui/sheets.ts`), sonst als Zeile. Nicht im Play-Store-Rahmen und nicht auf CrazyGames.
 - Ab Level 3 erscheint einmal pro Gerät ein Cloud-sync-Hinweis (`cloudIntroFromLevel`); nach Level 12 empfiehlt das Spiel Cloud sync, solange das Gerät keine Cloud-Kopie hat.
-- Der erste Perfect Run sagt, was er bringt.
+- Der erste Perfect Run sagt, was er bringt; danach nur noch ein goldener Lauf um den Inselrand, keine Zeile (08.10.2026).
+- Die erste verlorene Schicht nach der ersten: „Swipe sideways for Unlimited …“, danach die Wisch-Zeile bis zum ersten Moduswechsel.
+- Beim nächsten Besuch (ab 3 Schichten) oder spätestens nach 6 Schichten: „Closer pays more … Tight Fit“, außer man fädelt schon knapp ein (10 Tight Fits).
+- **CrazyGames:** Nach Level 5 bekommt ein Gast einmal CrazyGames' Login angeboten (`showAuthPrompt`, nur wenn noch nicht angemeldet, nie während einer Schicht); der Spielstand reist dann übers Data Module mit. Der Fortschritt bis Prestige geht als `reportGameCompletedPercentage` an CrazyGames.
 - Läuft ein Gerät langsam, wird einmal Reduce Motion empfohlen (nie von selbst eingeschaltet).
 - Schreibt der Browser nicht mehr (privates Fenster, Speicher voll), sagt das Spiel es einmal pro Sitzung.
 
@@ -454,7 +466,7 @@ Ein voller Satz zahlt einmal Geld und legt einen **Rahmen** in seiner Farbe um d
 
 ## 11. Täglich, wöchentlich & Mitspielen
 
-### Daily Shift (ab Level 4)
+### Daily Shift (ab Level 2)
 
 - Automatisch die **erste Schicht des Tages**, ein Versuch, Titel „DAILY SHIFT“. Ein Tages-Seed für alle, immer mit einem City Event (jeden Tag ein anderes, im Kreis über die sechs). Nie eine Legendary-Regel. Geschafft → 300 × Serie Geld (bis 7 Tage) + Event Chest. Die allererste Schicht ist nie die Daily.
 - **Mutator des Tages (Leo, 07.10.2026, `core/mutators.ts`):** Jeden Tag eine Wendung für alle: **Open Road** (−2 Dichte), **Speedway** (+12 % Tempo, −1 Dichte), **Fog Bank**, **Night Shift**, **Lights Out** (Blackout), **Storm Front**, **Rush All Day** (Gridlock-Regel), **Dragnet**, **Heavy Load**, **Cash Convoy** (Transporter doppelt so oft). Jeder kommt einmal pro Zyklus von zehn Tagen, nie zweimal in Folge. Anders, nicht schwerer; die geliehenen Regeln zählen nicht als Legendary Shift (keine Premium-Truhe). Zeigt sich im Start-Splash und statt der Bestleistung oben rechts auf der Wartekarte; der Challenge-Link trägt Mutator und Saison mit (hinten angehängt, alte Links lesen weiter).
@@ -655,11 +667,12 @@ Für Spieler ab ★4 (Prestige macht den Verkehr ab dort nicht mehr schwerer). W
 | **Die Stadt atmet** | Bäume wiegen sich, Fenster glimmen, Wolkenschatten ziehen; lebhafter bei dichtem Verkehr und in der Rush Hour. Asphalt mit Körnung und abgenutzten Markierungen, Häuser mit echten Dächern, Laternen mit Lichtpfützen, Autos mit weichem Schatten und Glanz |
 | **Lichter der Autos** | Bremslichter zeigen, was die Fahrer tun (Schlange an der Linie, Stau hinter einem Wrack); die Lichthupe blinkt, wenn ein früher Tap gehalten wird. Bei Nacht tragen Scheinwerfer und Rücklichter das Bild |
 | **Perspektiven** | Die Kamera gleitet je Tab: Build – der Ring liegt unter dem Plan; Shop – Schwenk, der Ring rutscht an den Rand; Progress – eigener Blick. Die Seiten decken die Stadt nie ganz zu |
+| **Kamera unter Druck** (08.10.2026) | In Rush Hour, bei Verbrecher, Boss oder Militär-Truck, auf der obersten Combo-Stufe, am letzten Auto und in langen Unlimited-Fahrten lehnt sich die Kamera bis 4 % vor (Drehpunkt Haltelinie, die Lücken bleiben stehen) und die Ränder dunkeln ab; geschafft atmet sie aus. Crash und Takedown ziehen den Blick zum Aufprall, das Wackeln folgt den Wracks, ein knappes letztes Auto läuft in halber Zeitlupe. Reduce Motion behält nur die Vignette (`present/cameraFx.ts`, FOUNDATION.md Motion-Regeln) |
 | **Grafik** | Canvas 2D, clean, minimalistisch, flache Vektorformen, ein **Bernstein-Akzent** (`#ffb703`, Straßenlaterne; seit 04.10.2026, vorher Mint) für das, was der Spieler verdient. **Überschriften und große Zahlen** in Overpass (Variable, kursiv, 900; die Schrift der Website, mitgeliefert, OFL), die Tab-Titel in Großbuchstaben; Fließtext bleibt in der Systemschrift. Der Kreisverkehr bleibt auf jeder Map dunkel, damit Autos und Text gleich gut lesbar sind |
 | **Farben** | Tokens nach Rolle. Fahrzeugfarben = Spielinfo, nie UI-Akzent |
 | **Schrift** | Systemschrift: auf Apple-Geräten SF Pro, in der Spielszene SF Pro Rounded (`ui-rounded`), sonst Segoe UI / Roboto; Tabular Figures für Zahlen |
 | **Obere Anzeige** | schwebende Karte mit drei Spalten (MONEY · CARS/SCORE · BEST), im Ergebnis zählt das Geld hoch. Auf dem Wartebildschirm führt Geld → Chests, Autos → Collection, Best → Records. Zeigt auch die Briefings (siehe 8) |
-| **Navigation** | DOM-Tab-Bar wie in iOS: **Progress · Game · Shop · Build**; zwischen den Schichten sichtbar, während einer Schicht ausgeblendet. Build hat die Segmente Upgrades / Street Builder, Shop Chests / Collection / Casino |
+| **Navigation** | DOM-Tab-Bar wie in iOS: **Progress · Game · Shop · Build**; zwischen den Schichten sichtbar, während einer Schicht ausgeblendet, ebenso bis zum Ende der allerersten Schicht und während eine Truhe auf dem Game-Tab aufgeht. Build hat die Segmente Upgrades / Street Builder, Shop Chests / Collection / Casino |
 | **Progress-Tab** (aufgeräumt 01.10.2026) | vier Segmente ohne Unter-Tabs, seit 04.10.2026 in der Reihenfolge **Today** (öffnet zuerst: Daily Shift mit Serie, Weekly Shift, Season Pass, drei Quests, alle im selben Kartenstil) · **Goals** (Trials, Mastery, Feats untereinander mit Überschriften) · **Records** (Elite-Karte ab Level 40, sechs große Werte, der Rest unter „All stats“; die Zahlen `PROGRESS` in `present/flow.ts`) · **Museum**; der Chip oben heißt „Rank #4“ und öffnet die Bestenliste, Freunde, Einladungen und „Challenge a friend“ liegen auf der eigenen Friends-Schublade mit vier Tabs (Friends · Ranking · Play · Invite; Knopf „Friends“ über Settings, seit 05.10.2026). **Hinweise (Cloud sync, Installieren, Website, Einladung) kommen höchstens einer pro Besuch** (`takeTip`, `present/session.ts`); ein zurückgestellter kommt beim nächsten Besuch wieder. Die Schaltfläche unten links heißt „Settings“ (Zahnrad mit Wort). (Bosse, Specials, Conditions untereinander). Jede Liste scrollt (`present/scroll.ts`) mit Schwung und Überrollen wie in iOS; Mausrad und Trackpad gleiten; Tastatur: Pfeile, Bild↑/↓, Pos1/Ende; getippt wird beim Loslassen |
 | **Menüs** | native Anmutung: gruppierte Listen, Sheets, Schalter, Segmented Controls; Glas nur für schwebende Bedienelemente über der Szene. Kritisch gedämpfte Federn, kein harter Schnitt |
 | **Einstellungen** | Sheet: Sound effects und Music (getrennt), Haptics, Vehicle Labels, **Left-handed** (schwebende Knöpfe auf die andere Seite, Dispatch links), **Larger text** (Hinweise und Karten über der Szene ×1,2), Reduce Motion (System / On / Off), Install (wo möglich), **What's new** (Patch Notes aus `present/patchNotes.ts`; ungelesen: Punkt am Einstellungsknopf), Links zu CrazyGames (nicht in der Play-App und nicht auf CrazyGames selbst), zur **Homepage timing.love** (nicht auf CrazyGames) und zum **Roundabout Timing Wiki auf Fandom**, **Cloud sync**, Reset Progress, **Legal** (Privacy Policy, Imprint, Licenses) |
@@ -802,7 +815,8 @@ Geprüft wird mit `npm test` (Web: 62 Tests, node:test; Server: 42 Tests), `npm 
 ### Gemessen (Karriere-Bot)
 
 - **Level laufen dem Geld davon** (`npm run sim:career`, 29.09.2026): Level 60 ist nach 1,1 h (Könner) bis 1,6 h (Gelegenheitsspieler) reiner Spielzeit erreicht, bis dahin sind 130.000–150.000 verdient. Alle Upgrades zusammen kosten 1,6 Mio.; mit Level 60 besitzt man 28–30 von 86 Stufen. Die erste zusätzliche Zufahrt (32.500) und die Module (10.400–15.600) werden nie erschwinglich, solange man Upgrades kauft. Leo, 29.09.2026: bleibt so.
-- **Die ersten Minuten** (`npm run sim:career -- 12 --story=20`): Schichten dauern anfangs 6–10 s. Ein Gelegenheitsspieler verliert bei **Level 10 vier Schichten am Stück** (Minute 5–7). Die Freischaltungen sind inzwischen entzerrt (siehe 9). **Die Kurve ab Level 8** (Leo, 29.09.2026: bleibt so): `npm run sim:career -- --curve=3-16 --per=60` (verlorene Schichten je Level, frische Karriere ohne Upgrades): Könner 8 % bis Level 7, dann 13 → 22 → 27 → 35 → 47 % (Level 8–12); Gelegenheitsspieler 23–35 % bis Level 7, dann 45 → 45 → 63 → 77 → 65 %. Es gibt keinen einzelnen Auslöser: ab Level 8 kommen mehr Autos (+1,1 je Level, ab Level 9 fünf Ring-Bots statt vier), Krankenwagen (8), der Verbrecher hat weniger Zeit, dazu Regen, City Events und ab 10 die Nacht.
+- **Die ersten Minuten** (`npm run sim:career -- 12 --story=20`): Schichten dauern anfangs 6–10 s. Ein Gelegenheitsspieler verliert bei **Level 10 vier Schichten am Stück** (Minute 5–7). Die Freischaltungen sind inzwischen entzerrt (siehe 9). **Die Kurve ab Level 8** (Leo, 29.09.2026: bleibt so; am 08.10.2026 mit Schild und Erleichterung abgefedert, Messung unten): `npm run sim:career -- --curve=3-16 --per=60` (verlorene Schichten je Level, frische Karriere ohne Upgrades): Könner 8 % bis Level 7, dann 13 → 22 → 27 → 35 → 47 % (Level 8–12); Gelegenheitsspieler 23–35 % bis Level 7, dann 45 → 45 → 63 → 77 → 65 %. Es gibt keinen einzelnen Auslöser: ab Level 8 kommen mehr Autos (+1,1 je Level, ab Level 9 fünf Ring-Bots statt vier), Krankenwagen (8), der Verbrecher hat weniger Zeit, dazu Regen, City Events und ab 10 die Nacht.
+- **Schild und Scout (08.10.2026):** Die Spielzeit auf CrazyGames (5:45 mobil, 6:47 Desktop) endete genau an dieser Wand. Mit Schild bis Level 10 verliert der Gelegenheits-Bot (`--curve=3-16 --per=60`) bis Level 7 nur noch 3–13 % statt 5–38 %, bei Level 8–10 20 → 25 → 30 % statt 30 → 48 → 45 %; ab Level 11 bleibt die Kurve (die Werte streuen bei 60 Schichten um ±10 Punkte). Eine Karriere bis Level 25 braucht 52 statt 60 Schichten. Gemessen ohne die Erleichterung nach drei Niederlagen (die Kurve spielt frische Karrieren).
 - **Jackpot und Elite-Tempo** (`npm run sim:career -- 70`, 01.10.2026): Geldtransporter bringen 27–29 % des Geldes auf der Straße, Jackpot-Transporter davon 11–14 % (der Aufschlag durch `jackpotFactor` 5 allein: 9–11 %), bei nur 6 Jackpots in 120–206 Schichten, also stark vom Zufall abhängig. Die **Elite-Leiste** läuft schnell: Level 50–70 bringen 17 (Gelegenheitsspieler) bis 29 XP (Könner) pro Schicht, rund 1.500–2.700 XP pro Stunde. In dem Tempo wäre **Elite 100 nach 4–7 h** reiner Spielzeit erreicht, Elite 50 nach 2–3 h. Gemessen nur bis Level 70 und ohne Prestige; schwerere Level bringen vermutlich weniger XP pro Stunde. Noch nicht entschieden.
 
 ---

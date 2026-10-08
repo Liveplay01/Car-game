@@ -33,7 +33,8 @@ export const S = {
     sendCar: 'Tap to send your first car',
     findGap: 'Wait for a gap, then tap',
     combo: 'Clean merges build your combo',
-    strikes: (police: number): string => `Cars crash instantly. Police get ${police} chances.`,
+    /** With the Shield upgrade a car may crash more than once (`cars` > 1). */
+    strikes: (cars: number, police: number): string => (cars > 1 ? `Your car may crash once. Police get ${police} chances.` : `Cars crash instantly. Police get ${police} chances.`),
   },
 
   settings: {
@@ -94,6 +95,9 @@ export const S = {
     brokenLink: 'That challenge link is broken or cut short.',
     copied: 'Challenge link copied',
     linkReady: 'Link ready. Tap Challenge a friend again to share it.',
+    /** The pill on the Game tab that opens the first waiting chest right there. */
+    openChest: (n: number): string => (n > 1 ? `Open chest · ${n}` : 'Open chest'),
+    openChestLabel: (n: number): string => (n > 1 ? `Open a chest, ${n} waiting` : 'Open your chest'),
     pictureText: 'My shift in Roundabout Timing',
     pictureSaved: 'Picture saved',
     pictureCopied: 'Picture copied',
@@ -231,6 +235,9 @@ export const S = {
 
   boss: {
     incoming: 'SYNDICATE CONVOY',
+    /** The scout level (`Config.scout`): a criminal with an escort, ahead of the bosses. */
+    scout: 'SYNDICATE SCOUT',
+    scoutFirst: 'A scout with an escort: ram it with a police car, in the gap before the escort',
     /** The warning over the arm: which boss is coming. */
     arriving: (k: BossKind): string =>
       ({
@@ -458,7 +465,7 @@ export const S = {
     tier: (n: number, total: number): string => `Tier ${n} of ${total}`,
     xp: (into: number, need: number): string => `${into} / ${need} XP`,
     locked: (level: number): string => `Opens at Level ${level}`,
-    buyHint: 'Twelve tiers of chests, money and three animated skins',
+    buyHint: 'Chests, money and three skins',
     daysLeft: (n: number): string => (n === 1 ? 'last day' : `${n} days left`),
     complete: 'Track complete · see you next season',
     reward(r: PassReward): string {
@@ -542,6 +549,10 @@ export const S = {
     again: 'Tap for another run',
     carsSent: (n: number): string => (n === 1 ? '1 car' : `${n} cars`),
     unlocked: 'New modes · swipe sideways for Unlimited, Mayhem, Chill and Multiplayer',
+    /** After the first lost shift: the mode without levels. */
+    tryUnlimited: 'Swipe sideways for Unlimited: no levels, just go until you crash',
+    /** Taught once, on a later visit or after a few shifts: the scoring pays for close merges. */
+    tightFit: 'Closer pays more: join right behind a car for a Tight Fit, twice the points',
     swipeHint: 'Swipe for more modes',
     /** Unlimited's late stages (`endlessStages`), as they come. */
     stage: (stage: number, overtime: number): string =>
@@ -643,7 +654,8 @@ export const S = {
     },
     left: (n: number): string => (n <= 1 ? 'last day' : `${n} days left`),
     opensIn: (n: number): string => (n === 1 ? 'tomorrow' : `in ${n} days`),
-    comingSoon: (id: TourId, inDays: number): string => `${S.tours.name(id)} starts ${S.tours.opensIn(inDays)}`,
+    /** Under the tour's name on Progress → Today, before it runs. */
+    startsIn: (inDays: number): string => `Starts ${S.tours.opensIn(inDays)}`,
     locked: (level: number): string => `Tours open at level ${level}`,
     progress: (done: number, total: number): string => `${done}/${total} stops`,
     play: 'Play ›',
@@ -1403,7 +1415,11 @@ export const S = {
     milestone: (days: number, item: string): string => `${days} DAYS IN A ROW · ${S.shop.item(item)} unlocked`,
     eventChestFound: 'EVENT CHEST FOUND',
     luckyDrop: 'LUCKY DROP · STANDARD CHEST',
-    welcomeChest: 'YOUR FIRST CHEST · open it in the Shop',
+    welcomeChest: 'YOUR FIRST CHEST · open it right here',
+    /** Tomorrow's gift (`Careers.promiseGift`): said once, then counted down on the Game tab. */
+    giftPromised: 'A gift waits for you tomorrow: a free chest',
+    giftIn: (hours: number): string => (hours >= 1 ? `Free chest tomorrow · in ${Math.ceil(hours)} h` : `Free chest tomorrow · in ${Math.max(1, Math.ceil(hours * 60))} min`),
+    giftCollected: 'You came back: your free chest is here',
     perfectRunFirst: (pay: number): string => `PERFECT RUN · no crash or cut-off · +${pay} % pay`,
     /** The pill over the Daily Shift: the streak, its bonus, and when it breaks. */
     streakPill(streak: number, bonus: number | null, endsIn: number | null, freezes = 0): string {
@@ -1572,6 +1588,7 @@ export const S = {
         doubleRun: 'Double Run',
         insurance: 'Insurance',
         robberyInsurance: 'Robbery Insurance',
+        shield: 'Shield',
       }[u];
     },
     explanation(u: Upgrade): string {
@@ -1589,6 +1606,7 @@ export const S = {
         doubleRun: 'Sometimes a second money transporter follows right after the first.',
         insurance: 'Pays part of what a crash costs you.',
         robberyInsurance: 'Pays part of what an escaped criminal costs you.',
+        shield: 'Your own car may crash once more per shift: the ring lights up green and the shift goes on. Not in Unlimited.',
       }[u];
     },
     total(u: Upgrade, steps: number, c: Config): string {
@@ -1619,6 +1637,8 @@ export const S = {
         case 'insurance':
         case 'robberyInsurance':
           return t * c.insurancePerStep >= 1 ? 'FULL COVERAGE' : `${percent(t * c.insurancePerStep)} covered`;
+        case 'shield':
+          return t === 1 ? '1 crash forgiven' : `${t} crashes forgiven`;
       }
     },
     stepEffect(u: Upgrade, steps: number, max: number, c: Config): string {
@@ -1667,6 +1687,10 @@ export const S = {
     dialog: 'Picture of your shift',
     share: 'Share',
     copy: 'Copy',
+    /** A shift that can be sent: the picture carries its challenge link. */
+    sendChallenge: 'Send as challenge',
+    copyChallenge: 'Copy with link',
+    challengeCopied: 'Picture and link copied',
     download: 'Download',
     saved: 'Saved',
     close: 'Close',
@@ -1778,6 +1802,8 @@ export const S = {
   },
 
   notice: {
+    /** The rest of a result's news, counted (`GameSession.budget`). */
+    more: (n: number): string => `+${n} more · see Progress`,
     notEnoughMoney: (price: string): string => `Not enough ${MONEY_MARK} · ${money(price)} needed`,
     built: (name: string, arms: number): string => `${name} built · ${arms} arms`,
     placed: (name: string): string => `${name} built · tap it to upgrade`,

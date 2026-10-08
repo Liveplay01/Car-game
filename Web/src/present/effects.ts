@@ -51,6 +51,8 @@ export class CrashEffects {
   torn = new Map<number, Set<Part>>();
   shakeAge = Infinity;
   private shakeStrength = 0;
+  /** Which way the wrecks fly, on screen: the shake kicks along it (research of 08.10.2026), only a little across. */
+  private shakeDir = v(1, 0);
   private rng: Rng;
   private smokeTimer = 0;
 
@@ -60,8 +62,12 @@ export class CrashEffects {
 
   get shakeOffset(): Vec2 {
     if (this.shakeAge >= CrashEffects.shakeDuration) return v(0, 0);
-    const strength = this.shakeStrength * Math.exp(-this.shakeAge / 0.09);
-    return v(Math.sin(this.shakeAge * 71) * strength, Math.cos(this.shakeAge * 89) * strength);
+    const t = this.shakeAge;
+    const strength = this.shakeStrength * Math.exp(-t / 0.09);
+    const along = Math.cos(t * 55) * strength;
+    const across = Math.sin(t * 89) * strength * 0.35;
+    const d = this.shakeDir;
+    return v(d.x * along - d.y * across, d.y * along + d.x * across);
   }
 
   static severity(r: CrashReport): number {
@@ -98,6 +104,8 @@ export class CrashEffects {
     if (reduceMotion) return;
     this.shakeAge = 0;
     this.shakeStrength = CrashEffects.shakeAmplitude * severity;
+    const speed = length(average);
+    this.shakeDir = speed > 1 ? v(average.x / speed, -average.y / speed) : fromAngle(rng.unit() * TAU);
     const pieces = Math.floor(6 + 8 * severity);
     for (let i = 0; i < pieces; i++) {
       const color: ColorToken = i % 3 === 2 ? 'vehicleGlass' : 'vehicleCar';
