@@ -44,6 +44,17 @@ export const itemCredit = (item: PatchItem): string | null => {
 
 export const PATCH_NOTES: PatchNote[] = [
   {
+    id: '2026-10-08',
+    date: '8 October 2026',
+    title: 'A wedding convoy, one road between the modes, and a green ring again',
+    impact: 'minor',
+    items: [
+      'Wedding Convoy, from level 100: three decorated cars join together and go once round the ring at the speed of the traffic, so nothing slows down. Keep your cars out of the rose band around them and it pays 350 and extends your chain.',
+      'Swiping between game modes: the road now runs on from one roundabout to the next, so the maps stay connected while they slide past.',
+      'The ring around the island glows green again for combos, Rush Hour and a finished shift.',
+    ],
+  },
+  {
     id: '2026-10-07',
     date: '7 October 2026',
     title: 'Tours with a Halloween run, a twist on every Daily, seasons that change the sky, Chill mode and 123 achievements',

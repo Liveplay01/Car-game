@@ -1212,7 +1212,7 @@ export class GameSession {
       return;
     }
     const total = this.world.config.shiftCars;
-    this.rim.follow(total, Math.max(0, total - left), this.world.shift.isRushHour ? 'accent' : 'primary');
+    this.rim.follow(total, Math.max(0, total - left), this.world.shift.isRushHour ? 'juiceGreen' : 'primary');
   }
 
   /** A tap for the world, timestamped when it happened (not when the frame saw it). */
@@ -1811,14 +1811,14 @@ export class GameSession {
         case 'comboChanged':
           if (e.isTierUp) {
             this.sinceComboTier = 0;
-            this.rim.signal('wave', 'accent');
+            this.rim.signal('wave', 'juiceGreen');
             // The top multiplier lands with a blink of stillness.
             const c = world.config;
             if (e.tier >= Math.min(c.comboThresholds.length, c.comboMultipliers.length)) this.sinceHitStop = 0;
           }
           break;
         case 'shiftEnded':
-          if (e.result.outcome === 'completed') this.rim.signal('sweep', 'accent');
+          if (e.result.outcome === 'completed') this.rim.signal('sweep', 'juiceGreen');
           else if (e.result.outcome === 'struckOut') {
             this.rim.signal('flush', 'destructive');
             this.sinceFatalCrash = 0;
@@ -1862,6 +1862,18 @@ export class GameSession {
           this.addPopup({ k: 'wideLoad', n: e.amount }, e.point);
           this.rim.signal('wave', 'vehicleOversize');
           break;
+        case 'weddingWarning':
+          this.brief({ k: 'special', kind: 'wedding' });
+          this.addPopup({ k: 'wedding' }, world.layout.stopPose(e.arm).position);
+          this.rim.signal('sweep', 'vehicleWedding');
+          break;
+        case 'weddingSpoilt':
+          this.addPopup({ k: 'crowded' }, e.point);
+          break;
+        case 'weddingPassed':
+          this.addPopup({ k: 'weddingPaid', n: e.amount }, e.point);
+          this.rim.signal('wave', 'vehicleWedding');
+          break;
         case 'raceWarning':
           this.brief({ k: 'special', kind: 'racer' });
           this.addPopup({ k: 'race' }, world.layout.stopPose(e.arm).position);
@@ -1902,7 +1914,7 @@ export class GameSession {
           this.addPopup({ k: 'dispatch' }, world.layout.stopPose(world.layout.player).position);
           break;
         case 'rushHour':
-          this.rim.signal('sweep', 'accent');
+          this.rim.signal('sweep', 'juiceGreen');
           break;
         case 'unlimitedStage':
           // Unlimited moves on: a light run round the ring, and the news at the top.
@@ -2228,7 +2240,9 @@ export class GameSession {
     list.groundGrain = !this.lowDetail;
     if (screen) list.backdrop = GameSession.backdropVeil;
     else CityLayer.add(list, world, theme, rm ? null : this.sceneTime, rm ? null : this.cityPulse, this.scars.isEmpty ? null : this.scars, this.sceneTime, this.playingMode === 'shift' && !this.special ? this.cityRise : null, !this.lowDetail);
-    SceneBuilder.addRoad(list, world.layout, world.config);
+    // A mode swipe: the road runs on towards the map coming in, from this one and from the next.
+    const link = Math.min(1, Math.abs(this.pan.pan) / (camera.viewport.x * 0.25));
+    SceneBuilder.addRoad(list, world.layout, world.config, world.layout.player, link, this.pan.pan < 0 ? 0 : Math.PI);
     CityLayer.addMapSkin(list, Skins.color(mapSkin), world);
     MapTheme.addIsland(list, theme, world);
     if (!this.special) CityLayer.addElite(list, Elite.level(career, this.config), world);
@@ -2304,6 +2318,7 @@ export class GameSession {
       HUD.addAmbulance(list, world, alpha);
       HUD.addLearner(list, world, alpha);
       HUD.addOversize(list, world, alpha);
+      HUD.addWedding(list, world);
       HUD.addRace(list, world, alpha);
       const since = world.shift.rushHourSince;
       HUD.add(list, {

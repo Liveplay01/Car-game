@@ -9,6 +9,7 @@ import { reservedAmbulanceArm, joinsClearRoad, longestExit } from './ambulance';
 import { reservedLearnerArm } from './learner';
 import { reservedOversizeArm } from './oversize';
 import { reservedRaceArm } from './racers';
+import { reservedWeddingArm } from './wedding';
 
 /**
  * AI traffic on the other arms (FOUNDATION.md 2.7). It only enters with a safe gap, counts
@@ -27,7 +28,7 @@ export function updateTraffic(w: World, dt: number): void {
       list.push(x.phase);
       queues.set(x.phase.arm.index, list);
     }
-    const reserved = [reservedCriminalArm(w), reservedTransporterArm(w), reservedMilitaryArm(w), reservedAmbulanceArm(w), reservedLearnerArm(w), reservedOversizeArm(w), reservedRaceArm(w)].map(
+    const reserved = [reservedCriminalArm(w), reservedTransporterArm(w), reservedMilitaryArm(w), reservedAmbulanceArm(w), reservedLearnerArm(w), reservedOversizeArm(w), reservedRaceArm(w), reservedWeddingArm(w)].map(
       (a) => a?.index,
     );
     const takesAnother = (arm: Arm): boolean => {
@@ -49,7 +50,7 @@ export function updateTraffic(w: World, dt: number): void {
     const p = veh.phase;
     if (p.kind !== 'waiting') continue;
     // The criminal never waits politely; the ambulance has right of way.
-    const barges = veh.type === 'pickup' || veh.type === 'racer' || isEmergency(veh.type);
+    const barges = veh.type === 'pickup' || veh.type === 'racer' || veh.type === 'wedding' || isEmergency(veh.type);
     if (p.approach > 0) {
       p.approach = approachStep(w, p.approach, dt, c.aiRollingMerge || barges);
       if (p.approach === 0 && (c.aiRollingMerge || barges)) p.reaction = 0;
@@ -72,7 +73,7 @@ export function updateTraffic(w: World, dt: number): void {
           : canPushIn(w, p.arm, veh.lane);
     // Runners crossing the arm (a marathon): everyone waits at the line, the criminal too.
     if (p.reaction <= 0 && clear && !w.runnersCrossing(p.arm) && !joinsTooClose(w, veh, p.arm) && !joinsClearRoad(w, veh, p.arm)) {
-      const ordinary = !(isEmergency(veh.type) || veh.type === 'learner' || veh.type === 'oversize' || veh.type === 'racer');
+      const ordinary = !(isEmergency(veh.type) || veh.type === 'learner' || veh.type === 'oversize' || veh.type === 'racer' || veh.type === 'wedding');
       const merge: Merging = {
         kind: 'merging',
         arm: p.arm,
@@ -177,7 +178,8 @@ export function isFreeForWarning(w: World, arm: Arm): boolean {
     arm.index !== reservedAmbulanceArm(w)?.index &&
     arm.index !== reservedLearnerArm(w)?.index &&
     arm.index !== reservedOversizeArm(w)?.index &&
-    arm.index !== reservedRaceArm(w)?.index
+    arm.index !== reservedRaceArm(w)?.index &&
+    arm.index !== reservedWeddingArm(w)?.index
   );
 }
 

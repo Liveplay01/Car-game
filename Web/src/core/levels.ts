@@ -559,6 +559,7 @@ export function forChill(base: Config): Config {
   c.learnerChance = 0;
   c.oversizeChance = 0;
   c.racerChance = 0;
+  c.weddingChance = 0;
   c.militaryChance = 0;
   c.tankerShare = 0;
   c.shiftPay = 0;

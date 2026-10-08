@@ -173,6 +173,12 @@ export type GameEvent =
   | { type: 'raceEntered'; vehicles: number[] }
   /** A police car of yours stopped a street racer. */
   | { type: 'racerStopped'; vehicle: number; police: number; amount: number; point: Vec2; time: number }
+  | { type: 'weddingWarning'; arm: Arm; time: number }
+  | { type: 'weddingEntered'; vehicles: number[] }
+  /** A car of yours joined inside the wedding convoy: its bonus is gone. */
+  | { type: 'weddingSpoilt'; blocker: number; point: Vec2; time: number }
+  /** The convoy left the ring with its gaps kept shut. */
+  | { type: 'weddingPassed'; amount: number; point: Vec2; time: number }
   | { type: 'learnerWarning'; arm: Arm; time: number }
   | { type: 'learnerEntered'; vehicle: number }
   /** A car of yours joined right beside the learner: its bonus is gone. */

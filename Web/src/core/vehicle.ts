@@ -37,7 +37,9 @@ export type VehicleType =
   /** An oversize load: long, heavy and slow; keeping your distance pays (core/oversize.ts). */
   | 'oversize'
   /** A street racer: barges in; a police car that rams it stops it, for a bonus (core/racers.ts). */
-  | 'racer';
+  | 'racer'
+  /** A wedding car: three of them drive as a convoy at ring speed; keep your cars out of it (core/wedding.ts). */
+  | 'wedding';
 
 export type Owner = 'player' | 'ai';
 

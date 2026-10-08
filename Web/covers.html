@@ -4,6 +4,7 @@
   the careful bot and drawn by the game's own renderer, the title on the roundabout's island.
   Dev server only (npm run dev, then /covers.html).
   ?size=landscape|portrait|square|feature  ?theme=sand  ?level=18  ?seed=14  ?t=10.51 (seconds played)
+  ?near=1 (close crop on a near miss; ?zoom=12 is the scale, ?alert=1&alertSize=520 a red warning ring, ?size=itch is 630×500)
   ?zoom=1.05 (bigger = closer)  ?fx=0.5&fy=0.5 (where the ring sits)  ?title=0 (the scene alone)  ?scrim=0.7 (dark fade on the left)
   Save each by screenshotting #cover at its exact size (Playwright); the last set is in ../Marketing/covers/.
 -->
@@ -58,7 +59,7 @@
       import { v } from '/src/core/vec2.ts';
 
       const params = new URLSearchParams(location.search);
-      const SIZES = { landscape: [1920, 1080], portrait: [800, 1200], square: [800, 800], feature: [1024, 500] };
+      const SIZES = { landscape: [1920, 1080], portrait: [800, 1200], square: [800, 800], feature: [1024, 500], itch: [630, 500] };
       const kind = params.get('size') ?? 'landscape';
       const [W, H] = SIZES[kind];
       const theme = params.get('theme') ?? 'sand';
@@ -70,10 +71,46 @@
       // A shift played by the careful bot (scripts/sim.mjs): it only takes safe gaps.
       let world = new World(forLevel(baseConfig, level, seed), seed, { startsOnFirstTap: false });
       const careful = () => world.queue.isReady && world.predictedMergeGap(world.layout.player, 0, 40) > 0.04 && !joinsClearRoad(world, { type: 'car' }, world.layout.player);
-      while (world.time < seconds) {
-        if (careful()) world.tap(world.time);
-        world.step();
-        world.takeEvents();
+      // ?near=1: a bot that takes thin gaps; the cover is the moment its merging car comes closest to the traffic.
+      const near = params.get('near') === '1';
+      const thin = () => world.queue.isReady && world.predictedMergeGap(world.layout.player, 0, 40) > 0 && world.predictedMergeGap(world.layout.player, 0, 40) < 0.3 && Math.floor(world.time * 3) % 2 === 0;
+      const closestPair = () => {
+        let best = null;
+        for (const a of world.vehicles) {
+          if (a.phase.kind !== 'merging' || a.owner !== 'player') continue;
+          for (const b of world.vehicles) {
+            if (b === a || !b.isCollidable) continue;
+            const d = Math.hypot(a.position.x - b.position.x, a.position.y - b.position.y);
+            if (!best || d < best.d) best = { d, a, b };
+          }
+        }
+        return best;
+      };
+      let nearPoint = null;
+      if (near) {
+        let bestD = Infinity;
+        let bestTime = 0;
+        while (world.time < Number(params.get('window') ?? 40)) {
+          if (thin()) world.tap(world.time);
+          world.step();
+          world.takeEvents();
+          const pair = closestPair();
+          if (pair && pair.d < bestD && world.time > 6) { bestD = pair.d; bestTime = world.time; }
+        }
+        world = new World(forLevel(baseConfig, level, seed), seed, { startsOnFirstTap: false });
+        while (world.time < bestTime) {
+          if (thin()) world.tap(world.time);
+          world.step();
+          world.takeEvents();
+        }
+        const pair = closestPair();
+        if (pair) nearPoint = v((pair.a.position.x + pair.b.position.x) / 2, (pair.a.position.y + pair.b.position.y) / 2);
+      } else {
+        while (world.time < seconds) {
+          if (careful()) world.tap(world.time);
+          world.step();
+          world.takeEvents();
+        }
       }
 
       // Where the ring sits and how big, per format: the title gets the calm side.
@@ -84,12 +121,14 @@
         square: { focus: v(W * 0.5, H * 0.5), reach: W * 0.5, zoom: 1.02 },
         // Google Play's feature graphic: the ring on the right, the name on the calm left.
         feature: { focus: v(W * 0.74, H * 0.5), reach: H * 0.62, zoom: 1.0 },
+        itch: { focus: v(W * 0.5, H * 0.5), reach: H * 0.5, zoom: 1.0 },
       }[kind];
       // ?fx=0.7&fy=0.45 moves the ring (fractions of the cover).
       if (params.has('fx')) LAYOUT.focus = v(W * Number(params.get('fx')), LAYOUT.focus.y);
       if (params.has('fy')) LAYOUT.focus = v(LAYOUT.focus.x, H * Number(params.get('fy')));
       const scale = (LAYOUT.reach / (R + 70)) * (zoomParam === null ? LAYOUT.zoom : Number(zoomParam));
-      const camera = { viewport: v(W, H), center: v(0, 0), focus: LAYOUT.focus, scale };
+      // ?near=1&zoom=N: a close crop on the near miss (scale = zoom, world units to pixels), the pair at ?fx/?fy.
+      const camera = { viewport: v(W, H), center: nearPoint ?? v(0, 0), focus: LAYOUT.focus, scale: nearPoint ? Number(zoomParam ?? 9) : scale };
 
       const cover = document.getElementById('cover');
       cover.style.width = `${W}px`;
@@ -114,6 +153,13 @@
       }
       render();
 
+      // ?alert=1: a red warning ring around the near miss.
+      if (nearPoint && params.get('alert') === '1') {
+        const ring = document.createElement('div');
+        const d = Number(params.get('alertSize') ?? 340);
+        ring.style.cssText = `position:absolute;left:${LAYOUT.focus.x - d / 2}px;top:${LAYOUT.focus.y - d / 2}px;width:${d}px;height:${d}px;box-sizing:border-box;border:${Math.round(d / 28)}px solid #ff3b30;border-radius:50%;box-shadow:0 0 ${d / 5}px #ff3b30,inset 0 0 ${d / 5}px rgba(255,59,48,0.45);`;
+        cover.appendChild(ring);
+      }
       // The title sits on the roundabout's island: the traffic circles the name.
       const title = document.getElementById('title');
       if (params.get('title') === '0') title.hidden = true;

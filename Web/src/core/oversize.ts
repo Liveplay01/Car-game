@@ -2,6 +2,7 @@ import type { Arm } from './roundabout';
 import { Vehicle, type Waiting } from './vehicle';
 import type { World } from './world';
 import { isFreeForWarning } from './traffic';
+import { weddingOn } from './wedding';
 
 /**
  * The oversize load (Leo, 02.10.2026): from Level 85 a heavy transport, long and slow, is
@@ -51,7 +52,7 @@ export function updateOversize(w: World, now: number): void {
   }
   switch (o.kind) {
     case 'idle': {
-      if (now < o.next) return;
+      if (now < o.next || weddingOn(w)) return;
       const candidates = w.openAIArms.filter((arm) => isFreeForWarning(w, arm));
       if (candidates.length === 0) return;
       const arm = w.oversizeRng.pick(candidates);

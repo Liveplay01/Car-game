@@ -152,6 +152,7 @@ export const Feedback = {
       case 'ambulanceWarning':
       case 'learnerWarning':
       case 'oversizeWarning':
+      case 'weddingWarning':
         return 'dispatch';
       case 'raceWarning':
         return 'screech';
@@ -162,6 +163,7 @@ export const Feedback = {
       case 'ambulanceCleared':
       case 'learnerPassed':
       case 'oversizePassed':
+      case 'weddingPassed':
         return 'paid';
       case 'armourHit':
         return 'screech';

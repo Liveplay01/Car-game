@@ -652,6 +652,17 @@ export const baseConfig = {
   /** A racer stopped by a police car of yours pays this. */
   racerPay: 500,
 
+  // Wedding convoy (Leo, 08.10.2026, core/wedding.ts): three cars at ring speed, nothing slows down
+  weddingLevel: 100,
+  /** Chance per shift; 0 turns it off (Mayhem, multiplayer, Chill). */
+  weddingChance: 0.3,
+  weddingFirst: r(3, 9),
+  weddingWarning: 2,
+  weddingCars: 3,
+  /** Keep your cars this far from the first and the last car, and out of the gaps between them. */
+  weddingZoneArc: 26,
+  weddingPay: 350,
+
   // Mastery trials (core/trials.ts): an extra rule for this shift, broken ends it as 'failed'
   /** flawless: no crash, no cut-off (a broken rule ends the trial as failed). */
   trialRule: null as TrialRule | null,

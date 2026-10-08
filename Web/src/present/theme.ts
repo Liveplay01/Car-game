@@ -51,6 +51,8 @@ export const COLORS = {
   vehicleOversize: [238, 166, 44, 1],
   /** The street racers: hot pink, apart from the criminal's violet and the police's blue. */
   vehicleRacer: [255, 72, 164, 1],
+  /** The wedding convoy: blush white with a gold ribbon, soft beside the loud pink of the racers. */
+  vehicleWedding: [250, 222, 228, 1],
   /** A red motorbike: a dark one vanished on the dark asphalt (Leo, 01.10.2026). */
   vehicleMotorbike: [226, 52, 62, 1],
   /** The rider's jacket, a shade under the red, and the light helmet over it. */

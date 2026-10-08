@@ -10,6 +10,7 @@ import { secureZone } from '../core/specials';
 import { clearZone } from '../core/ambulance';
 import { learnerZone } from '../core/learner';
 import { oversizeZone } from '../core/oversize';
+import { weddingZone } from '../core/wedding';
 import { type Vec2, v, add, sub, mul, fromAngle, TAU, clamp } from '../core/vec2';
 import { type RenderList, type Rect, R, rect, circle, arc, line, text, Ease, Metrics, toScreen, moved, type Align } from './render';
 import type { ColorToken } from './theme';
@@ -183,6 +184,9 @@ export type PopupKind =
   /** The oversize load: announced, its space taken, or left with room all the way. */
   | { k: 'oversize' }
   | { k: 'wideLoad'; n: number }
+  /** The wedding convoy: announced, and paid when it left with its gaps shut. */
+  | { k: 'wedding' }
+  | { k: 'weddingPaid'; n: number }
   /** The street racers: announced, and each one a police car stopped. */
   | { k: 'race' }
   | { k: 'raceStopped'; n: number }
@@ -544,6 +548,22 @@ export const HUD = {
     }
   },
 
+  /** The wedding convoy: its arm marked before it comes, then one soft band over all three cars and the room at its ends. */
+  addWedding(list: RenderList, world: World): void {
+    const o = world.wedding;
+    if (o.kind === 'warning') HUD.addWedge(list, o.arm, world, 'vehicleWedding');
+    if (o.kind !== 'active') return;
+    const zone = weddingZone(world);
+    if (!zone) return;
+    const radius = world.layout.laneRadius(0);
+    const from = zone.start / world.layout.ringRadius;
+    const to = from + zone.length / world.layout.ringRadius;
+    const pulse = 0.5 + 0.5 * Math.sin(world.time * 3);
+    const lane = world.layout.laneWidth / 2 - 3;
+    for (const edge of [radius - lane, radius + lane]) list.w(arc(v(0, 0), edge, 1.6, from, to), 'vehicleWedding', 0.3 + 0.2 * pulse);
+    list.w(arc(v(0, 0), radius, world.layout.laneWidth - 6, from, to), 'vehicleWedding', 0.06 + 0.04 * pulse);
+  },
+
   /** The street racers: their arm marked before they come, then a pulsing ring round each one on the road. */
   addRace(list: RenderList, world: World, alpha: number): void {
     const r = world.race;
@@ -634,8 +654,8 @@ export const HUD = {
     const glow = Math.min(1, 0.3 * tier + 0.7 * flow);
     if (glow <= 0.01) return;
     const radius = world.layout.islandRadius - 3;
-    list.w(arc(v(0, 0), radius, 12, 0, TAU), 'accent', 0.12 * glow);
-    list.w(arc(v(0, 0), radius, 3, 0, TAU), 'accent', 0.45 * glow);
+    list.w(arc(v(0, 0), radius, 12, 0, TAU), 'juiceGreen', 0.12 * glow);
+    list.w(arc(v(0, 0), radius, 3, 0, TAU), 'juiceGreen', 0.45 * glow);
   },
 
   addPopups(list: RenderList, popups: Popup[], reduceMotion: boolean): void {
@@ -767,6 +787,15 @@ export const HUD = {
         case 'wideLoad':
           label = S.oversize.passed(Fmt.signed(k.n));
           color = 'vehicleOversize';
+          break;
+        case 'wedding':
+          label = S.wedding.incoming;
+          color = 'vehicleWedding';
+          size = Metrics.popupSize * 0.8;
+          break;
+        case 'weddingPaid':
+          label = S.wedding.passed(Fmt.signed(k.n));
+          color = 'vehicleWedding';
           break;
         case 'race':
           label = S.racers.incoming;

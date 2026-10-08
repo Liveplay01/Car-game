@@ -218,6 +218,8 @@ export const CarArt = {
         return 'vehicleOversize';
       case 'racer':
         return 'vehicleRacer';
+      case 'wedding':
+        return 'vehicleWedding';
     }
   },
 
@@ -238,6 +240,7 @@ export const CarArt = {
       case 'learner':
       case 'bus':
       case 'racer':
+      case 'wedding':
         return [...common, 'rearWindow'];
       case 'oversize':
         return ['cargo', ...common];
@@ -623,6 +626,13 @@ export const CarArt = {
     if (type === 'racer' && dents.length === 0) {
       // Two white racing stripes nose to tail.
       for (const y of [-W * 0.14, W * 0.14]) list.w(line(worldOf(v(L / 2 - 1, y), pose), worldOf(v(-L / 2 + 1, y), pose), 1.2), 'primary', opacity * 0.85);
+    }
+    if (type === 'wedding' && dents.length === 0) {
+      // A gold ribbon over the roof and a bow on the bonnet: a wedding car at a glance.
+      list.w(line(worldOf(v(L / 2 - 2, 0), pose), worldOf(v(-L / 2 + 2, 0), pose), 1.6), 'coin', opacity);
+      const bow = worldOf(v(L * 0.3, 0), pose);
+      for (const side of [-1, 1]) list.w(circle(worldOf(v(L * 0.3, side * W * 0.18), pose), W * 0.13), 'coin', opacity);
+      list.w(circle(bow, W * 0.08), 'primary', opacity);
     }
     if (type === 'motorbike' && dents.length === 0) {
       // The handlebar across the front, wider than the bike: from above, what makes it a bike.

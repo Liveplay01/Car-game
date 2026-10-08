@@ -53,6 +53,8 @@ function pendingOf(e: MuseumEntry): ((w: World) => boolean) | null {
       return (w) => on(w.oversize.kind);
     case 'racer':
       return (w) => on(w.race.kind);
+    case 'wedding':
+      return (w) => on(w.wedding.kind);
     default:
       return null;
   }

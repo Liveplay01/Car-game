@@ -513,6 +513,11 @@ export const S = {
     passed: (amount: string): string => `WIDE LOAD ${amount}`,
   },
 
+  wedding: {
+    incoming: 'WEDDING',
+    passed: (amount: string): string => `WEDDING ${amount}`,
+  },
+
   racers: {
     incoming: 'STREET RACE',
     stopped: (amount: string): string => `RACE STOPPED ${amount}`,
@@ -1754,6 +1759,8 @@ export const S = {
           return 'WIDE LOAD';
         case 'racer':
           return 'RACER';
+        case 'wedding':
+          return 'WEDDING';
         default:
           return null;
       }

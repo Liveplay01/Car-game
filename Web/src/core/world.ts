@@ -46,6 +46,7 @@ import { type AmbulancePhase, firstAmbulance, updateAmbulance, noteMergeNearAmbu
 import { type LearnerPhase, firstLearner, updateLearner, noteMergeNearLearner, learnerThrough } from './learner';
 import { type OversizePhase, firstOversize, updateOversize, noteMergeNearOversize, oversizeThrough } from './oversize';
 import { type RacePhase, firstRace, updateRace, isLiveRacer, racerStopped } from './racers';
+import { type WeddingPhase, firstWedding, updateWedding, noteMergeNearWedding, weddingThrough } from './wedding';
 
 export const STEP_RATE = 120;
 export const STEP = 1 / STEP_RATE;
@@ -195,6 +196,7 @@ export class World {
   learner: LearnerPhase = { kind: 'done' };
   oversize: OversizePhase = { kind: 'done' };
   race: RacePhase = { kind: 'done' };
+  wedding: WeddingPhase = { kind: 'done' };
   /** The syndicate boss's escorts still to join, and where (boss levels). */
   escortsDue: { arm: Arm; left: number } | null = null;
   ringSpeed: number;
@@ -212,6 +214,7 @@ export class World {
   learnerRng: Rng;
   oversizeRng: Rng;
   racerRng: Rng;
+  weddingRng: Rng;
   trafficRng: Rng;
   laneRng: Rng;
   /** Critical Merges and Jackpot transporters: its own stream, so older seeds keep their traffic. */
@@ -246,6 +249,7 @@ export class World {
     this.learnerRng = substream(seed, 0x1ea24e25);
     this.oversizeRng = substream(seed, 0x0f512e5a);
     this.racerRng = substream(seed, 0x2ace2ace);
+    this.weddingRng = substream(seed, 0x3edd1a95);
     this.trafficRng = substream(seed, 0x6b1ce5a1);
     this.laneRng = substream(seed, 0x2a4e5d11);
     this.luckRng = substream(seed, 0x1ac4c0de);
@@ -270,6 +274,7 @@ export class World {
     this.learner = firstLearner(this);
     this.oversize = firstOversize(this);
     this.race = firstRace(this);
+    this.wedding = firstWedding(this);
     for (const q of this.seats) this.refillQueue(q);
     if (prefill) prefillRing(this, Math.max(this.targetDensity, config.minRingBots));
   }
@@ -384,6 +389,7 @@ export class World {
     updateLearner(this, end);
     updateOversize(this, end);
     updateRace(this, end);
+    updateWedding(this, end);
     updateEscorts(this);
     this.resolveContacts(end);
     this.resolveTrafficContacts(end);
@@ -1054,6 +1060,7 @@ export class World {
       noteMergeNearAmbulance(this, veh, s, now);
       noteMergeNearLearner(this, veh, s, now);
       noteMergeNearOversize(this, veh, s, now);
+      noteMergeNearWedding(this, veh, s, now);
       this.events.splice(at, 0, {
         type: 'merged',
         vehicle: veh.id,
@@ -1088,6 +1095,7 @@ export class World {
     noteMergeNearAmbulance(this, veh, s, now);
     noteMergeNearLearner(this, veh, s, now);
     noteMergeNearOversize(this, veh, s, now);
+    noteMergeNearWedding(this, veh, s, now);
     this.events.splice(at, 0, {
       type: 'merged',
       vehicle: veh.id,
@@ -1711,6 +1719,7 @@ export class World {
     if (this.learner.kind === 'idle') this.learner = { kind: 'idle', next: this.learner.next + time };
     if (this.oversize.kind === 'idle') this.oversize = { kind: 'idle', next: this.oversize.next + time };
     if (this.race.kind === 'idle') this.race = { kind: 'idle', next: this.race.next + time };
+    if (this.wedding.kind === 'idle') this.wedding = { kind: 'idle', next: this.wedding.next + time };
     if (!this.config.endless && this.config.shiftCars <= this.config.rushHourCars) this.beginRushHour(time);
   }
 
@@ -1748,6 +1757,7 @@ export class World {
     ambulanceThrough(this, now);
     learnerThrough(this, now);
     oversizeThrough(this, now);
+    weddingThrough(this, now);
     const c = this.config;
     this.score.points += c.completionBonus;
     this.score.money += c.shiftPay;

@@ -200,6 +200,15 @@ export const SPECIAL_TEXT: Record<SpecialKind, MuseumText & { name: string }> = 
       `Ram one with a police car to stop it: ${money(Fmt.number(c.racerPay))} and a link in your chain, each. If they get away nothing is lost; your ordinary cars cannot stop them, a crash is just a crash.`,
     ],
   },
+  wedding: {
+    name: 'Wedding Convoy',
+    line: 'Three cars: keep them whole',
+    brief: 'A wedding convoy: keep your cars out of the rose band around all three.',
+    explain: (c) => [
+      'Three decorated cars, blush white with a gold ribbon, join from one of the other arms and go once round the ring together. They drive at the speed of the traffic, so nothing slows down.',
+      `A rose band shows their stretch of the ring, the gaps between them and a little room at both ends. Keep your cars out of it and the convoy pays ${money(Fmt.number(c.weddingPay))} and extends your chain when it leaves. Joining inside it only costs that bonus.`,
+    ],
+  },
   bus: {
     name: 'School Bus',
     line: 'Stops at the bus stop',

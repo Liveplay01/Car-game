@@ -37,6 +37,7 @@ const SPECIAL_LEVEL: Record<SpecialKind, (c: Config) => number> = {
   learner: (c) => c.learnerLevel,
   oversize: (c) => c.oversizeLevel,
   racer: (c) => c.racerLevel,
+  wedding: (c) => c.weddingLevel,
   bus: (c) => c.schoolRunLevel,
   fireTruck: (c) => c.fireTruckLevel,
 };

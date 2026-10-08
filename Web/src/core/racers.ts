@@ -3,6 +3,7 @@ import { Vehicle, type Waiting } from './vehicle';
 import type { Vec2 } from './vec2';
 import type { World } from './world';
 import { isFreeForWarning } from './traffic';
+import { weddingOn } from './wedding';
 
 /**
  * Street racers (Leo, 02.10.2026): from Level 90 two racers rev at one of the other arms,
@@ -41,7 +42,7 @@ export function updateRace(w: World, now: number): void {
   }
   switch (r.kind) {
     case 'idle': {
-      if (now < r.next) return;
+      if (now < r.next || weddingOn(w)) return;
       const candidates = w.openAIArms.filter((arm) => isFreeForWarning(w, arm));
       if (candidates.length === 0) return;
       const arm = w.racerRng.pick(candidates);

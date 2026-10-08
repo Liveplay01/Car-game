@@ -2,6 +2,7 @@ import type { Arm } from './roundabout';
 import { Vehicle, type Waiting } from './vehicle';
 import type { World } from './world';
 import { isFreeForWarning } from './traffic';
+import { weddingOn } from './wedding';
 
 /**
  * The learner driver (Leo, 30.09.2026): a driving-school car, announced like every special,
@@ -57,7 +58,7 @@ export function updateLearner(w: World, now: number): void {
   }
   switch (l.kind) {
     case 'idle': {
-      if (now < l.next) return;
+      if (now < l.next || weddingOn(w)) return;
       const candidates = w.openAIArms.filter((arm) => isFreeForWarning(w, arm));
       if (candidates.length === 0) return;
       const arm = w.learnerRng.pick(candidates);

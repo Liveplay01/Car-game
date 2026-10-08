@@ -135,7 +135,11 @@ export const SYNDICATE_ESCORT ={ paint: 'syndicateEscort', stripe: null, roof: '
 /** Builds the game scene, roads and vehicles, as render items in world space. */
 export const SceneBuilder = {
   /** `own`: the lane marked as yours; null marks none (multiplayer marks every lane itself). */
-  addRoad(list: RenderList, layout: Layout, c: Config, own: Arm | null = layout.player): void {
+  /**
+   * `own`: the lane marked as yours; null marks none. `link` (0…1): during a mode swipe the road
+   * runs on towards the neighbouring map, `linkAngle` its way, so both roundabouts share one road.
+   */
+  addRoad(list: RenderList, layout: Layout, c: Config, own: Arm | null = layout.player, link = 0, linkAngle = 0): void {
     const lane = layout.laneWidth;
     const reach = 700;
     const from = list.items.length;
@@ -145,12 +149,17 @@ export const SceneBuilder = {
     // Two lanes: the road grows inwards, the island shrinks.
     const width = lane * layout.lanes;
     const middle = layout.ringRadius - (lane * (layout.lanes - 1)) / 2;
+    const roads = layout.arms.map((a) => ({ angle: a.angle, reach, marked: reach / 2 }));
+    if (link > 0) {
+      const { viewport, scale } = list.camera;
+      const linkReach = middle + ((viewport.x * 1.6) / scale) * link;
+      roads.push({ angle: linkAngle, reach: linkReach, marked: linkReach });
+    }
     // The arms end in the ring, never run on through the island.
-    const armLength = reach - middle;
-    const armCentre = (reach + middle) / 2;
-    for (const a of layout.arms) list.w(rect(mul(fromAngle(a.angle), armCentre), v(armLength, lane * 2 + 7), 0, a.angle), 'kerb');
+    const spans = roads.map((r) => ({ ...r, length: r.reach - middle, centre: mul(fromAngle(r.angle), (r.reach + middle) / 2) }));
+    for (const r of spans) list.w(rect(r.centre, v(r.length, lane * 2 + 7), 0, r.angle), 'kerb');
     list.w(arc(v(0, 0), middle, width + 7, 0, TAU), 'kerb');
-    for (const a of layout.arms) list.w(rect(mul(fromAngle(a.angle), armCentre), v(armLength, lane * 2), 0, a.angle), 'surface');
+    for (const r of spans) list.w(rect(r.centre, v(r.length, lane * 2), 0, r.angle), 'surface');
     list.w(arc(v(0, 0), middle, width, 0, TAU), 'surface');
     if (layout.lanes > 1) {
       // The dashed line between the lanes.
@@ -158,11 +167,11 @@ export const SceneBuilder = {
       const dashes = Math.round((TAU * r) / 22);
       for (let k = 0; k < dashes; k++) list.w(arc(v(0, 0), r, 1.5, (k * TAU) / dashes, (k * TAU) / dashes + (TAU / dashes) * 0.55), 'marking', 0.8);
     }
-    for (const a of layout.arms) {
-      const out = fromAngle(a.angle);
+    for (const r of roads) {
+      const out = fromAngle(r.angle);
       let distance = layout.ringRadius + lane / 2 + 10;
-      while (distance < reach / 2) {
-        const next = Math.min(distance + 16, reach / 2);
+      while (distance < r.marked) {
+        const next = Math.min(distance + 16, r.marked);
         list.w(line(mul(out, distance), mul(out, next), 1.5), 'marking', 0.8);
         distance = next + 12;
       }
