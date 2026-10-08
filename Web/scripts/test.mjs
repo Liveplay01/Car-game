@@ -2116,3 +2116,37 @@ test('the Daily Shift with its twist replays the same', () => {
   assert.equal(a.carsSent, b.carsSent);
   assert.equal(make().weather, 'storm');
 });
+
+test('the wedding convoy comes from level 100, drives in the flow, and never with another slow special', () => {
+  const lane = (world) => world.vehicle(world.queue.vehicles[0])?.lane ?? 0;
+  const careful = (world) => world.queue.isReady && world.predictedMergeGap(world.layout.player, 0, 40, -Infinity, lane(world)) > 0.04;
+  const run = (level, seed) => {
+    const config = forLevel(baseConfig, level, seed);
+    config.weddingChance = 1;
+    const world = new World(config, seed, { startsOnFirstTap: false });
+    const seen = { entered: 0, crowded: 0, slowed: 0 };
+    for (let i = 0; i < 120 * 90; i++) {
+      if (careful(world)) world.tap(world.time);
+      world.step();
+      const on = (kind) => kind === 'warning' || kind === 'arriving' || kind === 'active';
+      if (on(world.wedding.kind) && (on(world.oversize.kind) || on(world.learner.kind) || on(world.race.kind))) seen.crowded++;
+      for (const x of world.vehicles) {
+        if (x.type === 'wedding' && x.phase.kind === 'ring' && x.phase.drive.speed !== null && !world.isTrafficDisturbed) seen.slowed++;
+      }
+      for (const e of world.takeEvents()) {
+        if (e.type === 'weddingEntered') seen.entered++;
+        if (e.type === 'shiftEnded') return seen;
+      }
+    }
+    return seen;
+  };
+  assert.equal(new World(forLevel(baseConfig, 99, 7919), 7919).wedding.kind, 'done');
+  let entered = 0;
+  for (let s = 1; s <= 20; s++) {
+    const seen = run(100, s * 7919);
+    entered += seen.entered;
+    assert.equal(seen.crowded, 0);
+    assert.equal(seen.slowed, 0);
+  }
+  assert.ok(entered > 0);
+});

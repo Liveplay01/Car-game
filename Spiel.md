@@ -638,6 +638,7 @@ Für Spieler ab ★4 (Prestige macht den Verkehr ab dort nicht mehr schwerer). W
 - **Neue Spezialfahrzeuge** (`core/oversize.ts`, `core/racers.ts`):
   - **Oversize Load** ab Level 85: 30 % der Schichten, 52 lang, fährt mit 80 % Tempo eine Runde. Ein bernsteinfarbenes Band vorne und hinten (70) frei halten, dann zahlt er 400 und Chain +1.
   - **Street Racers** ab Level 90: 25 % der Schichten, zwei drängen sich nacheinander ein. Jeder, den ein Polizeiauto rammt, zahlt 500 und Chain +1. Entkommen kostet nichts.
+  - **Hochzeitskorso** (Leo, 08.10.2026, `core/wedding.ts`) ab Level 100: 30 % der Schichten, drei geschmückte Autos (Blush-Weiß, Goldband) reihen sich an einer Zufahrt ein und fahren eine Runde im Tempo des Verkehrs, **ohne irgendetwas zu bremsen**. Ein rosa Band zeigt ihren Ringabschnitt samt Lücken und etwas Raum an beiden Enden; wer seine Autos draußen hält, bekommt 350 und Chain +1, wer hineinfährt, verliert nur den Bonus. Kommt nie zusammen mit Oversize, Learner oder Street Racers (die warten auf ihn). Geprüft mit `npm run sim:wedding` (gleiche Schichten mit und ohne Korso: Abstürze, Dauer, Autos außerhalb des Flusses, Bots auf dem Ring).
 - **Neues Wetter:**
   - **Hail** ab Level 55: Grip 80 %, Bremse 70 %, +0,2 s Reaktion, +1 Dichte, Lohn ×1,15.
   - **Sandstorm** ab Level 65: Sicht wie Nebel in Sandfarbe, Grip 85 %, +0,35 s Reaktion, Lohn ×1,2.

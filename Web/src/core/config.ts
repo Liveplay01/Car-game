@@ -656,9 +656,11 @@ export const baseConfig = {
   weddingLevel: 100,
   /** Chance per shift; 0 turns it off (Mayhem, multiplayer, Chill). */
   weddingChance: 0.3,
-  weddingFirst: r(3, 9),
+  weddingFirst: r(2, 5),
   weddingWarning: 2,
   weddingCars: 3,
+  /** Announced only while this many cars of the shift are still to be sent: it needs time to come round. */
+  weddingMinCarsLeft: 6,
   /** Keep your cars this far from the first and the last car, and out of the gaps between them. */
   weddingZoneArc: 26,
   weddingPay: 350,

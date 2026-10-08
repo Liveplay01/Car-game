@@ -12,6 +12,7 @@
     "test": "node --test-reporter=spec scripts/test.mjs",
     "sim": "node scripts/sim.mjs",
     "sim:versus": "node scripts/versus-sim.mjs",
+    "sim:wedding": "node scripts/wedding-sim.mjs",
     "sim:casino": "node scripts/casino-sim.mjs",
     "sim:career": "node scripts/career-sim.mjs",
     "itch": "node scripts/itch-zip.mjs"

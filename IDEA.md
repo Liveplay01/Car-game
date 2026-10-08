@@ -45,7 +45,7 @@ Rückenwind, **Heat** (freiwillige Schwierigkeit ab Level 50), Bestenlisten **Da
 - **Teams:** Teamcode wie der Freundescode, Team-Ranking und ein wöchentliches Gemeinschaftsziel mit Truhe für alle.
   Ein neuer Baustein im Dienst (`teams`).
 - **Neue Elemente für späte Level:** z. B. Falschfahrer, Traktor oder eine zusätzliche Boss-Runde ab ★5. Regeln,
-  Grafik und Museum.
+  Grafik und Museum. Der Hochzeitskorso (Level 100) ist gebaut. Der Hochzeitskorso (Level 100) ist gebaut.
 - **Mastery pro Fahrzeug** mit kosmetischen Effekten oder Hupen-Sounds (auch in LOOT.md, „Ideen für später“).
 - **Heat verfeinern:** Heat-Stufe als Zusatz auf der Shift-Level-Liste (der Dienst bräuchte ein `heat` im Meta);
   eigene Heat-Auflagen statt nur Stufen (z. B. nur Nebel oder nur dichter Verkehr), wenn Spieler es wünschen.

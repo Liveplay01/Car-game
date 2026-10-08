@@ -85,6 +85,7 @@ cd Web; npm run preview                 # Build lokal ausliefern, Port 5050
 cd Web; npm test                        # Tests: Replays, Spielstände, Meldungen (node:test)
 cd Web; npm run sim -- 60 5             # Balancing-Bots: Schichten, Level
 cd Web; npm run sim:casino              # Casino: Rückzahlquoten, faire Münze, Determinismus
+cd Web; npm run sim:wedding -- 40 100   # Hochzeitskorso: Fluss mit und ohne (Abstürze, Dauer, Bots auf dem Ring)
 cd Web; npm run sim:career -- 60        # Ganze Karriere bis Level 60: Spielzeit, Geld, Upgrades
 cd Server; npm install                  # einmalig
 cd Server; npm run dev                  # Ranglisten-Dienst: http://localhost:5051

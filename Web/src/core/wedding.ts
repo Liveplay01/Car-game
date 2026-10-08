@@ -1,7 +1,7 @@
 import type { Arm } from './roundabout';
 import { Vehicle, type Waiting } from './vehicle';
 import type { World } from './world';
-import { isFreeForWarning } from './traffic';
+import { isUnreserved } from './traffic';
 
 /**
  * The wedding convoy (Leo, 08.10.2026): from Level 100 three decorated cars come in from one
@@ -35,8 +35,6 @@ export function firstWedding(w: World): WeddingPhase {
 
 export const reservedWeddingArm = (w: World): Arm | null => (w.wedding.kind === 'warning' || w.wedding.kind === 'arriving' ? w.wedding.arm : null);
 
-const isArmBusy = (w: World, arm: Arm): boolean => w.vehicles.some((x) => x.phase.kind === 'waiting' && x.phase.arm.index === arm.index);
-
 export function updateWedding(w: World, now: number): void {
   const c = w.config;
   const o = w.wedding;
@@ -52,7 +50,11 @@ export function updateWedding(w: World, now: number): void {
   switch (o.kind) {
     case 'idle': {
       if (now < o.next || ringBusy(w)) return;
-      const candidates = w.openAIArms.filter((arm) => isFreeForWarning(w, arm));
+      if ((w.shift.carsLeft ?? Infinity) < c.weddingMinCarsLeft) {
+        w.wedding = { kind: 'done' };
+        return;
+      }
+      const candidates = w.openAIArms.filter((arm) => isUnreserved(w, arm));
       if (candidates.length === 0) return;
       const arm = w.weddingRng.pick(candidates);
       w.wedding = { kind: 'warning', arm, until: now + c.weddingWarning };
@@ -60,15 +62,13 @@ export function updateWedding(w: World, now: number): void {
       return;
     }
     case 'warning': {
-      if (now < o.until || isArmBusy(w, o.arm)) return;
-      w.wedding = { kind: 'arriving', arm: o.arm, vehicles: [spawnWeddingCar(w, o.arm).id] };
+      if (now < o.until) return;
+      // All three at once, one behind the other, at the back of whatever queue the arm has.
+      const vehicles = Array.from({ length: c.weddingCars }, (_, k) => spawnWeddingCar(w, o.arm, k).id);
+      w.wedding = { kind: 'arriving', arm: o.arm, vehicles };
       return;
     }
     case 'arriving': {
-      if (o.vehicles.length < c.weddingCars && w.shift.acceptsTaps) {
-        if (!isArmBusy(w, o.arm)) o.vehicles.push(spawnWeddingCar(w, o.arm).id);
-        return;
-      }
       const live = o.vehicles.filter((id) => w.vehicle(id) !== undefined);
       if (live.length === 0) {
         w.wedding = { kind: 'done' };
@@ -95,8 +95,9 @@ export function updateWedding(w: World, now: number): void {
   }
 }
 
-function spawnWeddingCar(w: World, arm: Arm): Vehicle {
-  const waiting: Waiting = { kind: 'waiting', arm, reaction: 0, approach: w.config.aiApproachDistance };
+function spawnWeddingCar(w: World, arm: Arm, place: number): Vehicle {
+  const c = w.config;
+  const waiting: Waiting = { kind: 'waiting', arm, reaction: 0, approach: c.aiApproachDistance + place * c.queueSpacing };
   const veh = new Vehicle(w.makeId(), 'wedding', 'ai', waiting, w.approachPose(waiting));
   veh.lane = 0;
   w.vehicles.push(veh);

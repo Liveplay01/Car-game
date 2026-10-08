@@ -170,8 +170,15 @@ function approachStep(w: World, distance: number, dt: number, rolling: boolean):
 /** Whether a criminal or a transporter can be announced for `arm`. */
 export function isFreeForWarning(w: World, arm: Arm): boolean {
   const waiting = w.vehicles.some((x) => x.phase.kind === 'waiting' && x.phase.arm.index === arm.index);
+  return !waiting && isUnreserved(w, arm);
+}
+
+/**
+ * No special has the arm. The wedding convoy only needs this: its arm is reserved with the
+ * warning, so the queue there runs out before the convoy starts (on a busy ring every arm has one).
+ */
+export function isUnreserved(w: World, arm: Arm): boolean {
   return (
-    !waiting &&
     arm.index !== reservedCriminalArm(w)?.index &&
     arm.index !== reservedTransporterArm(w)?.index &&
     arm.index !== reservedMilitaryArm(w)?.index &&
