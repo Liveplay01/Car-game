@@ -8,12 +8,12 @@ export type FeedbackStatus = 'new' | 'seen' | 'done' | 'wontfix';
 export const FEEDBACK_STATUSES: readonly FeedbackStatus[] = ['new', 'seen', 'done', 'wontfix'];
 
 /** What the server can hand to a player; the game knows how to pay each one. */
-export const REWARD_ITEMS = ['ladybug', 'chest:standard', 'chest:premium', 'chest:event'] as const;
+export const REWARD_ITEMS = ['ladybug', 'goldbug', 'scarab', 'bluebottle', 'orchid', 'firefly', 'chest:standard', 'chest:premium', 'chest:event'] as const;
 export type RewardItem = (typeof REWARD_ITEMS)[number];
 export const isRewardItem = (x: unknown): x is RewardItem => typeof x === 'string' && (REWARD_ITEMS as readonly string[]).includes(x);
 
-/** The skin for a bug report with a friend code (the game: `core/loot.ts`, source `bugReport`). */
-export const BUG_HUNTER_SKIN: RewardItem = 'ladybug';
+/** The skins for bug reports with a friend code, in the order they pay: the first report the Ladybug, the sixth the Firefly (the game: `core/loot.ts`, source `bugReport`). */
+export const BUG_HUNTER_SKINS: readonly RewardItem[] = ['ladybug', 'goldbug', 'scarab', 'bluebottle', 'orchid', 'firefly'];
 
 export const FEEDBACK_MIGRATIONS: readonly string[] = [
   // player_id: who sent it, when they gave their friend code. Deleting the player keeps the report, without them.
@@ -145,6 +145,12 @@ export class FeedbackStore {
     }
     this.db.prepare('INSERT INTO rewards (id, player_id, item, reason, created_at) VALUES (?, ?, ?, ?, ?)').run(randomUUID(), playerId, item, reason, now);
     return true;
+  }
+
+  /** The next bug hunter skin this player does not have yet, or null once they have all six. */
+  nextBugHunterSkin(playerId: string): RewardItem | null {
+    const has = this.db.prepare('SELECT item FROM rewards WHERE player_id = ?').all(playerId) as unknown as { item: string }[];
+    return BUG_HUNTER_SKINS.find((item) => !has.some((r) => r.item === item)) ?? null;
   }
 
   pending(playerId: string): { id: string; item: RewardItem; reason: string }[] {

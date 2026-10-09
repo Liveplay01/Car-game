@@ -1223,6 +1223,31 @@ a.row-link {
   height: 26px;
 }
 
+.dispatch-count {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 10px;
+  background: var(--accent);
+  color: #111;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 20px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.dispatch-btn.spent.show {
+  opacity: 0.45;
+}
+
+.dispatch-btn.spent .dispatch-count {
+  background: var(--muted);
+}
+
 .done-btn {
   right: calc(var(--safe-right) + var(--s4));
   bottom: calc(var(--safe-bottom) + var(--s5));

@@ -5,12 +5,12 @@ import { readJson } from '../../http.ts';
 import type { AppEnv, ServerContext, ServerModule } from '../../module.ts';
 import { rateLimit } from '../../rateLimit.ts';
 import { PlayerStore, requirePlayer, type PlayerEnv } from '../players/index.ts';
-import { BUG_HUNTER_SKIN, DAY_MS, FEEDBACK_KINDS, FEEDBACK_MIGRATIONS, FeedbackStore, hashIp, type FeedbackKind } from './store.ts';
+import { DAY_MS, FEEDBACK_KINDS, FEEDBACK_MIGRATIONS, FeedbackStore, hashIp, type FeedbackKind } from './store.ts';
 
 /**
  * Build with us (Leo, 03.10.2026): bug reports and feature ideas from the website's form.
  * One of each a day per address (and per friend code); a honeypot field catches simple bots.
- * A bug report with a friend code pays the Ladybug skin once (and whatever a moderator
+ * A bug report with a friend code pays the next bug hunter skin (Ladybug, then Goldbug and so on, six in all; and whatever a moderator
  * grants later); the game picks rewards up with its token.
  *
  *   POST /v1/feedback            {kind, text, friendCode?, website?}   → {id, reward}
@@ -85,7 +85,8 @@ export function feedbackModule(): ServerModule {
         }
 
         const id = store.add(kind, text, player?.id ?? null, ipHash, now);
-        const reward = player && store.grant(player.id, BUG_HUNTER_SKIN, 'bug report', now, true) ? BUG_HUNTER_SKIN : null;
+        const skin = player ? store.nextBugHunterSkin(player.id) : null;
+        const reward = player && skin && store.grant(player.id, skin, 'bug report', now, true) ? skin : null;
         notify(ctx.config.feedbackWebhookUrl, kind, text, player?.name ?? null);
         return c.json({ id, reward }, 201);
       });

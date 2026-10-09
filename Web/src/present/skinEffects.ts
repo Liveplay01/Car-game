@@ -27,8 +27,13 @@ export type Effect =
   | 'singularity'
   | 'halo'
   | 'soulfire'
-  // The bug hunter's reward (Leo, 03.10.2026): a ladybird, spots and feelers.
+  // The bug hunter's rewards (Leo, 03.10.2026; five more 10.10.2026, one per bug report up to six): beetles with feelers.
   | 'ladybug'
+  | 'goldbug'
+  | 'scarab'
+  | 'bluebottle'
+  | 'orchid'
+  | 'firefly'
   // More honours (Leo, 06.10.2026): a clock that leaves echoes, glowing plankton, a dragon's scales and breath.
   | 'chrono'
   | 'biolume'
@@ -40,6 +45,9 @@ const at = (pose: Pose, x: number, y: number): Vec2 => {
   const s = Math.sin(pose.heading);
   return add(pose.position, v(x * c - y * s, x * s + y * c));
 };
+
+/** The bug hunter's beetles: all get feelers. */
+const BEETLES: readonly Effect[] = ['ladybug', 'goldbug', 'scarab', 'bluebottle', 'orchid', 'firefly'];
 
 const RAINBOW: ColorToken[] = ['juiceRed', 'juiceOrange', 'juiceYellow', 'juiceGreen', 'juiceBlue', 'juicePurple'];
 const AURORA: ColorToken[] = ['mapAurora', 'skinLagoon', 'juicePurple', 'mapNeon'];
@@ -207,6 +215,10 @@ export const SkinEffects = {
           list.w(circle(p, 3.2 * (1 - u * 0.6)), color, o * 0.85 * (1 - u));
         });
         break;
+      case 'firefly':
+        glow(['juiceYellow', 'mapGlowtide'], 0.9, 0.2);
+        trail(pose, L, W, t, id, 6, 0.35, 22, (p, u) => list.w(circle(p, 1.4 * (1 - u * 0.5)), 'juiceYellow', o * 0.85 * (1 - u)));
+        break;
       case 'chrono':
         // Time stutters: four echoes of the car, each a beat further back and paler.
         for (let k = 1; k <= 4; k++) {
@@ -251,13 +263,26 @@ export const SkinEffects = {
         const pts = [0, 1, 2, 3].map((k) => at(pose, x0 + k * 1.8, (k % 2 === 0 ? -1 : 1) * W * 0.18 + (unitHash(id + i, k) - 0.5) * 3));
         for (let k = 1; k < pts.length; k++) list.w(line(pts[k - 1], pts[k], 1), 'fireOuter', o * pulse);
       }
-    } else if (e === 'ladybug') {
-      // A black head at the front, the seam between the wing cases, and seven spots.
+    } else if (BEETLES.includes(e)) {
+      // A black head at the front and the seam between the wing cases; each beetle adds its own markings.
       list.w(rect(at(pose, L / 2 - L * 0.11, 0), v(L * 0.2, W - 1.4), W * 0.35, pose.heading), 'vehicleTire', o);
       list.w(line(at(pose, -L / 2 + 1.2, 0), at(pose, L / 2 - L * 0.2, 0), 0.9), 'vehicleTire', o * 0.9);
       const r = Math.min(W * 0.14, 1.9);
-      for (const [x, y] of [[0.18, 0.24], [0.18, -0.24], [-0.06, 0.3], [-0.06, -0.3], [-0.3, 0.2], [-0.3, -0.2], [0.02, 0]] as const) {
-        list.w(circle(at(pose, x * L, y * W), y === 0 ? r * 0.85 : r), 'vehicleTire', o);
+      const spots = (color: ColorToken, points: readonly (readonly [number, number])[]): void => {
+        for (const [x, y] of points) list.w(circle(at(pose, x * L, y * W), y === 0 ? r * 0.85 : r), color, o);
+      };
+      if (e === 'ladybug') spots('vehicleTire', [[0.18, 0.24], [0.18, -0.24], [-0.06, 0.3], [-0.06, -0.3], [-0.3, 0.2], [-0.3, -0.2], [0.02, 0]]);
+      else if (e === 'goldbug') {
+        for (const x of [0.12, -0.12, -0.34]) list.w(rect(at(pose, x * L, 0), v(L * 0.09, W - 1.6), 0.6, pose.heading), 'vehicleTire', o * 0.9);
+      } else if (e === 'scarab') {
+        list.w(rect(at(pose, L * 0.22, 0), v(L * 0.14, W - 1.6), 1.2, pose.heading), 'skinGold', o);
+        spots('skinGold', [[-0.1, 0.22], [-0.1, -0.22], [-0.3, 0]]);
+      } else if (e === 'bluebottle') {
+        for (const y of [-1, 1]) list.w(rect(at(pose, -L * 0.12, y * W * 0.22), v(L * 0.5, W * 0.3), 1.6, pose.heading), 'skinIce', o * 0.55);
+      } else if (e === 'orchid') spots('skinPearl', [[0.14, 0.26], [0.14, -0.26], [-0.1, 0], [-0.3, 0.24], [-0.3, -0.24]]);
+      else {
+        const glint = 0.5 + 0.5 * Math.sin(t * 3 + id);
+        list.w(rect(at(pose, -L / 2 + L * 0.13, 0), v(L * 0.24, W - 1.6), 1.6, pose.heading), 'juiceYellow', o * (0.55 + 0.45 * glint));
       }
     } else if (e === 'dragon') {
       // Scales: rows of small arcs, open towards the tail, darker than the paint.
@@ -345,7 +370,12 @@ export const SkinEffects = {
         }
         break;
       }
-      case 'ladybug': {
+      case 'ladybug':
+      case 'goldbug':
+      case 'scarab':
+      case 'bluebottle':
+      case 'orchid':
+      case 'firefly': {
         // Two feelers at the front, waving a little.
         const wave = time === null ? 0 : Math.sin(t * 5 + id) * 0.6;
         for (const y of [-1, 1]) {

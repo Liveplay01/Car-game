@@ -80,6 +80,8 @@ export interface Settings {
   leftHanded: boolean;
   /** Notices and the cards over the scene a step larger. */
   largeText: boolean;
+  /** Half the frames and a softer picture, for a phone that gets hot or empties too fast (Leo, 10.10.2026). */
+  batterySaver: boolean;
   /**
    * The player chose "System" themselves (Leo, 29.09.2026: Reduce Motion is off unless chosen).
    * A "system" saved before without this was the old default and reads as off.
@@ -401,7 +403,7 @@ export const newSave = (): SaveGame => ({
   highscore: 0,
   highscoreSeed: null,
   shiftsPlayed: 0,
-  settings: { sound: true, music: true, mapSounds: true, haptics: true, reduceMotion: 'off', vehicleLabels: false, leftHanded: false, largeText: false, motionChosen: false },
+  settings: { sound: true, music: true, mapSounds: true, haptics: true, reduceMotion: 'off', vehicleLabels: false, leftHanded: false, largeText: false, batterySaver: false, motionChosen: false },
   career: newCareer(),
   tutorialDone: false,
   hints: [],
@@ -723,7 +725,7 @@ export const Careers = {
     return { chest: kind, item: roll.item, isDuplicate: false, money: 0 };
   },
 
-  /** Wears or takes off: up to five car skins, one map skin. */
+  /** Wears or takes off: up to eight car skins, one map skin. */
   wear(c: Career, id: string): boolean {
     const item = cosmetic(id);
     if (!item || !c.collection.includes(id)) return false;

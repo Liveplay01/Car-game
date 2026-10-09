@@ -67,7 +67,7 @@ export const ADMIN_PAGE = `<!doctype html>
     <h2>Give a reward</h2>
     <form class="bar" id="reward" style="margin:0">
       <input id="code" placeholder="Friend code (K7M2-9QXA)" style="flex:1;min-width:180px" required>
-      <select id="item"><option value="chest:premium">Premium Chest</option><option value="chest:standard">Standard Chest</option><option value="chest:event">Event Chest</option><option value="ladybug">Ladybug skin</option></select>
+      <select id="item"><option value="chest:premium">Premium Chest</option><option value="chest:standard">Standard Chest</option><option value="chest:event">Event Chest</option><option value="ladybug">Ladybug skin</option><option value="goldbug">Goldbug skin</option><option value="scarab">Scarab skin</option><option value="bluebottle">Bluebottle skin</option><option value="orchid">Orchid Beetle skin</option><option value="firefly">Firefly skin</option></select>
       <button class="primary" type="submit">Give</button>
     </form>
     <p class="msg" id="rewardMsg">The game picks it up the next time the player opens it.</p>

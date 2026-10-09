@@ -480,7 +480,7 @@ export const HUD = {
 
   countdownRing(list: RenderList, at: Vec2, radius: number, left: number, color: ColorToken, label: string, labelSize = 14, labelOpacity = 1): void {
     list.w(arc(at, radius, 1, 0, TAU), color, 0.3);
-    if (left > 0.001) list.w(arc(at, radius, 3, Math.PI / 2, Math.PI / 2 + TAU * left), color);
+    if (left > 0.001) list.w(arc(at, radius, 3, Math.PI / 2, Math.PI / 2 + TAU * left, true), color);
     const s = toScreen(list.camera, at);
     list.s(text(label, add(s, v(0, -radius * list.camera.scale - 12)), labelSize, 'center', 'bold'), color, labelOpacity);
   },
@@ -846,8 +846,8 @@ export class RingSignals {
   /** The glow on the rim in front of an arm a vehicle is about to come from; `phase` runs 0 → 1 and repeats. */
   static wedge(list: RenderList, rim: number, angle: number, phase: number, color: ColorToken): void {
     const half = 0.35;
-    list.w(arc(v(0, 0), rim, 3 + 7 * phase, angle - half, angle + half), color, 1 - phase);
-    list.w(arc(v(0, 0), rim, 2.5, angle - half, angle + half), color);
+    list.w(arc(v(0, 0), rim, 3 + 7 * phase, angle - half, angle + half, true), color, 1 - phase);
+    list.w(arc(v(0, 0), rim, 2.5, angle - half, angle + half, true), color);
   }
 
   static readonly hold = 0.9;
@@ -925,8 +925,8 @@ export class RingSignals {
         const head = start + TAU * run;
         const fade = 1 - Ease.clamp01((x - 0.8) / 0.2);
         if (run > 0.001) {
-          list.w(arc(v(0, 0), rim, 6, start, head), s.color, 0.18 * fade);
-          list.w(arc(v(0, 0), rim, 3.5, Math.max(start, head - 0.7), head), s.color, 0.9 * fade);
+          list.w(arc(v(0, 0), rim, 6, start, head, true), s.color, 0.18 * fade);
+          list.w(arc(v(0, 0), rim, 3.5, Math.max(start, head - 0.7), head, true), s.color, 0.9 * fade);
         }
       }
     }
@@ -966,8 +966,8 @@ export class RingSignals {
     const head = start + TAU * run;
     const trail = 1 - Ease.clamp01((s.age - lap) / 0.3);
     if (run > 0.001 && trail > 0) {
-      list.w(arc(v(0, 0), rim, 10, start, head), s.color, 0.2 * trail);
-      list.w(arc(v(0, 0), rim, 4.5, Math.max(start, head - 1.1), head), s.color, 0.95 * trail);
+      list.w(arc(v(0, 0), rim, 10, start, head, true), s.color, 0.2 * trail);
+      list.w(arc(v(0, 0), rim, 4.5, Math.max(start, head - 1.1), head, true), s.color, 0.95 * trail);
     }
     const u = s.age - lap;
     if (u <= 0) return;
@@ -996,20 +996,6 @@ export class RingSignals {
 
   static readonly eliteFill = 1.1;
 
-  /** The half disc that rounds the end of a band on the rim at `angle`; `dir` 1 points ahead, -1 back. */
-  private static roundCap(rim: number, thickness: number, angle: number, dir: 1 | -1): Primitive {
-    const r = thickness / 2;
-    const at = mul(fromAngle(angle), rim);
-    const out = fromAngle(angle);
-    const along = fromAngle(angle + (dir * Math.PI) / 2);
-    const points: Vec2[] = [];
-    for (let i = 0; i <= 8; i++) {
-      const phi = (Math.PI * i) / 8;
-      points.push(add(at, add(mul(out, r * Math.cos(phi)), mul(along, r * Math.sin(phi)))));
-    }
-    return polygon(points);
-  }
-
   /**
    * After a shift the rim is the Elite track (Leo, 09.10.2026): the XP the shift earned runs into a gold bar round the
    * ring, from the player's arm. A level climbed fills the bar, flares the rim and starts it over. `age` counts from the
@@ -1025,9 +1011,7 @@ export class RingSignals {
     if (fraction > 0.002) {
       const head = start + TAU * fraction;
       for (const [thickness, alpha] of [[9, 0.18], [4.5, 0.95]] as const) {
-        list.w(arc(v(0, 0), rim, thickness, start, head), 'coin', alpha * appear);
-        list.w(RingSignals.roundCap(rim, thickness, start, -1), 'coin', alpha * appear);
-        list.w(RingSignals.roundCap(rim, thickness, head, 1), 'coin', alpha * appear);
+        list.w(arc(v(0, 0), rim, thickness, start, head, true), 'coin', alpha * appear);
       }
     }
     // A level climbed: where the bar closes, the victory lap's flare, shock rings, juice and sparkles, in gold.
@@ -1082,7 +1066,7 @@ export class RingSignals {
       let thickness = isLit ? 3 : 2;
       if (isLit && i === sent - 1 && !reduceMotion) thickness *= land(sinceSent / 0.35, 0.8);
       const grow = reduceMotion ? 1 : 0.4 + 0.6 * appear;
-      list.w(arc(v(0, 0), rim, thickness, center - half * grow, center + half * grow), isLit ? lit : 'marking', (isLit ? 0.85 : 0.6) * opacity * appear);
+      list.w(arc(v(0, 0), rim, thickness, center - half * grow, center + half * grow, true), isLit ? lit : 'marking', (isLit ? 0.85 : 0.6) * opacity * appear);
     }
   }
 }

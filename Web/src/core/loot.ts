@@ -22,7 +22,7 @@ export const DUPLICATE_MONEY: Record<Rarity, number> = { common: 250, rare: 600,
 export const PITY_CHESTS = 10;
 /** Spätestens die 40. Truhe in Folge ohne Legendary ist eine. */
 export const PITY_LEGENDARY_CHESTS = 40;
-export const MAX_CAR_SKINS = 5;
+export const MAX_CAR_SKINS = 8;
 
 export type CosmeticKind = 'carSkin' | 'mapSkin' | 'vehicleType';
 export type Season = 'winter' | 'spring' | 'summer' | 'autumn';
@@ -42,8 +42,8 @@ export type CosmeticSource =
   | { kind: 'hall' }
   /** Sent this many cars in one Unlimited run (Leo, 02.10.2026). */
   | { kind: 'unlimited'; cars: number }
-  /** Reported a bug on the website with a friend code (Leo, 03.10.2026): the server hands it out. */
-  | { kind: 'bugReport' }
+  /** Reported this many bugs on the website with a friend code (Leo, 03.10.2026; up to six, 10.10.2026): the server hands it out. */
+  | { kind: 'bugReport'; reports: number }
   /** A stop of a limited-time Tour (core/tours.ts); the tour comes back every year. */
   | { kind: 'tour'; tour: string }
   /**
@@ -185,12 +185,24 @@ export const COSMETICS: Cosmetic[] = [
   c('dragon', 'carSkin', 'legendary', { kind: 'legendary', shifts: 30 }),
   c('glowtide', 'mapSkin', 'legendary', { kind: 'elite', level: 85 }),
   c('moonmirror', 'mapSkin', 'legendary', { kind: 'prestige', rank: 25 }),
+  // Past Elite 100 (Leo, 10.10.2026): six more skins along the track up to Elite 200, looks only.
+  c('monolith', 'carSkin', 'legendary', { kind: 'elite', level: 110 }),
+  c('tempest', 'carSkin', 'legendary', { kind: 'elite', level: 130 }),
+  c('solstice', 'carSkin', 'legendary', { kind: 'elite', level: 145 }),
+  c('abyssal', 'carSkin', 'legendary', { kind: 'elite', level: 165 }),
+  c('regalia', 'carSkin', 'legendary', { kind: 'elite', level: 185 }),
+  c('apotheosis', 'carSkin', 'legendary', { kind: 'elite', level: 195 }),
   // Unlimited milestones: cars sent in one run.
   c('endurance', 'carSkin', 'epic', { kind: 'unlimited', cars: 250 }),
   c('overdrive', 'carSkin', 'legendary', { kind: 'unlimited', cars: 500 }),
   c('infinity', 'carSkin', 'legendary', { kind: 'unlimited', cars: 1000 }),
-  // The bug hunter (Leo, 03.10.2026): only for a bug reported on the website with a friend code.
-  c('ladybug', 'carSkin', 'epic', { kind: 'bugReport' }),
+  // The bug hunter (Leo, 03.10.2026): only for bugs reported on the website with a friend code, one more skin per report (up to six, 10.10.2026).
+  c('ladybug', 'carSkin', 'epic', { kind: 'bugReport', reports: 1 }),
+  c('goldbug', 'carSkin', 'epic', { kind: 'bugReport', reports: 2 }),
+  c('scarab', 'carSkin', 'epic', { kind: 'bugReport', reports: 3 }),
+  c('bluebottle', 'carSkin', 'legendary', { kind: 'bugReport', reports: 4 }),
+  c('orchid', 'carSkin', 'legendary', { kind: 'bugReport', reports: 5 }),
+  c('firefly', 'carSkin', 'legendary', { kind: 'bugReport', reports: 6 }),
   // Tours (Leo, 07.10.2026): earned at the stops of a limited-time event, which returns every year.
   c('jackOLantern', 'carSkin', 'rare', { kind: 'tour', tour: 'halloween' }),
   c('witchingHour', 'carSkin', 'epic', { kind: 'tour', tour: 'halloween' }),
@@ -279,7 +291,7 @@ export function albumItems(album: Album): Cosmetic[] {
     case 'loyalty':
       return COSMETICS.filter((x) => x.source.kind === 'streak');
     case 'honours':
-      // Deeds in the game only: a find is luck, and the Ladybug needs the website (not offered
+      // Deeds in the game only: a find is luck, and the bug hunter skins need the website (not offered
       // inside CrazyGames), so an album must not wait on either.
       return COSMETICS.filter((x) => isHonour(x) && x.source.kind !== 'find' && x.source.kind !== 'bugReport' && x.source.kind !== 'tour');
     case 'pass':

@@ -265,6 +265,7 @@ export function upgraded(base: Config, steps: (u: Upgrade) => number): Config {
   c.criminalChance = Math.max(0, base.criminalChance - step('quietStreets') * base.quietStreetsPerStep);
   c.policeChaseSpeedFactor += step('interceptor') * base.interceptorPerStep;
   c.dispatchComboFactor = Math.min(1, base.dispatchComboFactor + step('dispatchRadio') * base.dispatchRadioPerStep);
+  c.dispatchLimit = base.dispatchLimit + step('dispatchRadio') * base.dispatchLimitPerStep;
   c.maxPoliceCrashes += step('backup') * base.backupPerStep;
   c.maxStrikes += step('shield');
   const sooner = step('cashRoute') * base.cashRoutePerStep;

@@ -237,6 +237,7 @@ export class World {
   versusPhase: VersusPhase = 0;
   /** Unlimited: the stages passed after its ramps (`endlessStages`), Overtime included. */
   endlessStage = 0;
+  private dispatches = 0;
 
   constructor(
     readonly config: Config,
@@ -1231,15 +1232,15 @@ export class World {
     }
   }
 
-  /** Smallest gap (s) a car launched at `arm` would have to anyone during its merge. */
-  predictedMergeGap(arm: Arm, launchDelay = 0, samples = 60, stopBelow = -Infinity, lane = 0): number {
+  /** Smallest gap (s) a vehicle of `type` launched at `arm` would have to anyone during its merge: its own length, width and pace. */
+  predictedMergeGap(arm: Arm, launchDelay = 0, samples = 60, stopBelow = -Infinity, lane = 0, type: VehicleType = 'car'): number {
     const path = this.layout.entry(arm, lane);
-    const profile = this.profileFor(arm, lane, 'car');
+    const profile = this.profileFor(arm, lane, type);
     const others = this.vehicles.filter((x) => x.isCollidable || this.isObstacle(x));
     let smallest = Infinity;
     for (let k = 0; k <= samples; k++) {
       const t = (profile.duration * k) / samples;
-      const me = this.hitbox(path.pose(profileDistance(profile, t)));
+      const me = this.hitbox(path.pose(profileDistance(profile, t)), type);
       for (const other of others) {
         const pose = this.predictedPose(other, launchDelay + t);
         if (!pose) continue;
@@ -1623,12 +1624,18 @@ export class World {
     }
   }
 
+  /** Police cars dispatched this shift (`config.dispatchLimit` is the most). */
+  get dispatchesLeft(): number {
+    return Math.max(0, this.config.dispatchLimit - this.dispatches);
+  }
+
   /** The next car becomes a police car, for part of the combo (`dispatchComboFactor`). */
   dispatchPolice(): boolean {
-    if (this.config.chill || !this.shift.acceptsTaps || this.queue.vehicles.length === 0) return false;
+    if (this.config.chill || !this.shift.acceptsTaps || this.dispatchesLeft <= 0 || this.queue.vehicles.length === 0) return false;
     const veh = this.vehicle(this.queue.vehicles[0]);
     if (!veh || veh.type === 'police') return false;
     veh.type = 'police';
+    this.dispatches++;
     this.setCombo(Math.floor(this.score.combo * this.config.dispatchComboFactor));
     this.events.push({ type: 'dispatched', vehicle: veh.id, combo: this.score.combo });
     return true;

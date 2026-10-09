@@ -22,7 +22,7 @@ function setup() {
   return { call, clock };
 }
 
-test('feedback: one bug report and one idea a day, a honeypot, and the Ladybug for a friend code', async () => {
+test('feedback: one bug report and one idea a day, a honeypot, and a bug hunter skin per report with a friend code', async () => {
   const { call, clock } = setup();
   const joined = await call('POST', '/v1/players', { body: { name: 'Bughunter' }, ip: '10.1.0.1' });
   const token = joined.json.token as string;
@@ -50,13 +50,13 @@ test('feedback: one bug report and one idea a day, a honeypot, and the Ladybug f
   await call('POST', '/v1/me/rewards/claim', { token, body: { ids: rewards.json.rewards.map((r: { id: string }) => r.id) } });
   assert.equal((await call('GET', '/v1/me/rewards', { token })).json.rewards.length, 0);
 
-  // A day later another report is welcome, but the skin comes only once.
+  // A day later another report is welcome, and pays the next skin.
   clock.now += 86_400_000;
   const next = await call('POST', '/v1/feedback', { body: { kind: 'bug', text: 'The fire engine flickers at night.', friendCode: code } });
   assert.equal(next.status, 201);
-  assert.equal(next.json.reward, null);
+  assert.equal(next.json.reward, 'goldbug');
 
-  // The inbox: two bugs, one idea, the bot's never arrived.
+  // The inbox: two bugs (more below), one idea, the bot's never arrived.
   assert.equal((await call('GET', '/v1/admin/feedback')).status, 401);
   const inbox = await call('GET', '/v1/admin/feedback', { token: ADMIN });
   assert.equal(inbox.json.items.length, 3);
@@ -66,6 +66,15 @@ test('feedback: one bug report and one idea a day, a honeypot, and the Ladybug f
   assert.equal((await call('PATCH', `/v1/admin/feedback/${id}`, { token: ADMIN, body: { status: 'done' } })).status, 200);
   assert.equal((await call('GET', '/v1/admin/feedback?status=done', { token: ADMIN })).json.items.length, 1);
 
+  // Four more reports pay the rest of the six; after that a report pays nothing.
+  const paid: (string | null)[] = [];
+  for (let n = 0; n < 5; n++) {
+    clock.now += 86_400_000;
+    paid.push((await call('POST', '/v1/feedback', { body: { kind: 'bug', text: `Another bug, number ${n}.`, friendCode: code } })).json.reward);
+  }
+  assert.deepEqual(paid, ['scarab', 'bluebottle', 'orchid', 'firefly', null]);
+  await call('POST', '/v1/me/rewards/claim', { token, body: { ids: (await call('GET', '/v1/me/rewards', { token })).json.rewards.map((r: { id: string }) => r.id) } });
+
   // A chest from the team, by friend code.
   assert.equal((await call('POST', '/v1/admin/rewards', { token: ADMIN, body: { friendCode: code, item: 'chest:premium' } })).status, 201);
   assert.deepEqual((await call('GET', '/v1/me/rewards', { token })).json.rewards.map((r: { item: string }) => r.item), ['chest:premium']);
@@ -73,7 +82,7 @@ test('feedback: one bug report and one idea a day, a honeypot, and the Ladybug f
   // Deleting the account keeps the reports, without the player; their rewards go.
   assert.equal((await call('DELETE', '/v1/me', { token })).status, 204);
   const after = await call('GET', '/v1/admin/feedback?kind=bug', { token: ADMIN });
-  assert.equal(after.json.items.length, 2);
+  assert.equal(after.json.items.length, 7);
   assert.ok(after.json.items.every((f: { player: unknown }) => f.player === null));
 
   // The inbox page exists for the moderator.

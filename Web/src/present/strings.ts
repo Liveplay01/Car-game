@@ -307,7 +307,7 @@ export const S = {
   },
 
   rewards: {
-    ladybug: 'LADYBUG UNLOCKED · thanks for hunting bugs',
+    bugHunter: (id: string): string => `${S.shop.item(id).toUpperCase()} UNLOCKED · thanks for hunting bugs`,
     chest: (kind: ChestKind): string => `A GIFT FROM THE TEAM · ${S.shop.chest(kind)} · thank you`,
     item: (id: string): string => `A GIFT FROM THE TEAM · ${S.shop.item(id)} unlocked`,
     /** A chest from an invite (`reason` as the service writes it: `invite:welcome:Name`, `invite:friend:Name`, `invite:milestone:3`); null for any other reason. */
@@ -394,6 +394,10 @@ export const S = {
         scorcher: 'Scorcher',
         inferno: 'Inferno',
         meltdown: 'Meltdown',
+        sovereign: 'Sovereign',
+        timeless: 'Timeless',
+        apex: 'Apex',
+        boundless: 'Boundless',
         ascended: 'Ascended',
         eternal: 'Eternal',
         grandmaster: 'Grandmaster',
@@ -1149,7 +1153,10 @@ export const S = {
       if (item.source.kind === 'hall') return 'Build the Hall of Fame (Records → Elite).';
       if (item.source.kind === 'unlimited') return `Send ${Fmt.number(item.source.cars)} cars in one Unlimited run.`;
       if (item.source.kind === 'tour') return `A stop of the ${S.tours.name(item.source.tour as TourId)} tour. It comes back every year.`;
-      if (item.source.kind === 'bugReport') return 'Report a bug on timing.love with your friend code. Only bug hunters get it.';
+      if (item.source.kind === 'bugReport')
+        return item.source.reports === 1
+          ? 'Report a bug on timing.love with your friend code. Only bug hunters get it.'
+          : `Report ${item.source.reports} bugs on timing.love with your friend code, one a day. Only bug hunters get it.`;
       if (item.source.kind === 'find')
         return `A rare find: ${S.shop.findOdds(item.source.chance)} ${S.shop.chest(item.source.chest)}. The only honour that is luck.`;
       return 'Not found yet: it comes out of chests.';
@@ -1179,7 +1186,7 @@ export const S = {
     pityLegendary: (n: number): string => `A Legendary within ${n} chests.`,
     duplicate: (m: string): string => `Duplicate · +${money(m)}`,
     ownedHint(item: Cosmetic): string {
-      if (item.kind === 'carSkin') return 'Paints the cars on the road. Mix up to five. Only looks, never a bonus.';
+      if (item.kind === 'carSkin') return 'Paints the cars on the road. Mix up to eight. Only looks, never a bonus.';
       if (item.id === 'bigScreen') return 'Your own picture or video behind the roundabout: upload a picture, or paste a link to a YouTube video, an image or a video file. Only looks, never a bonus.';
       if (item.kind === 'mapSkin') return 'Turns the city into its own place. Only looks, never a bonus.';
       return `Shows up in your queue now and then: ${S.shop.trait(item.id)}.`;
@@ -1323,6 +1330,17 @@ export const S = {
         overdrive: 'Overdrive',
         infinity: 'Infinity',
         ladybug: 'Ladybug',
+        goldbug: 'Goldbug',
+        scarab: 'Scarab',
+        bluebottle: 'Bluebottle',
+        orchid: 'Orchid Beetle',
+        firefly: 'Firefly',
+        monolith: 'Monolith',
+        tempest: 'Tempest',
+        solstice: 'Solstice',
+        abyssal: 'Abyssal',
+        regalia: 'Regalia',
+        apotheosis: 'Apotheosis',
         chrono: 'Chrono',
         biolume: 'Biolume',
         dragon: 'Dragonfire',
@@ -1593,7 +1611,7 @@ export const S = {
         longerPursuit: 'Criminals take longer to get away, which leaves you more time to catch them.',
         quietStreets: 'Some shifts come with no criminal at all.',
         interceptor: 'A police car right behind a criminal runs it down faster.',
-        dispatchRadio: 'Calling a police car to the front of the queue costs less of your combo.',
+        dispatchRadio: 'Every shift allows 3 dispatches of a police car to the front of the queue; each step adds one more and makes a call cost less of your combo.',
         backup: 'Your shift survives one police car crash more. The ring flashes blue and red with little plus signs, and each blue plus in the top bar is one crash still forgiven.',
         cashRoute: 'Money transporters show up sooner and more often.',
         overtime: 'Every shift you finish pays more.',
@@ -1617,7 +1635,7 @@ export const S = {
         case 'interceptor':
           return `+${percent(t * c.interceptorPerStep)} chase speed`;
         case 'dispatchRadio':
-          return `+${percent(t * c.dispatchRadioPerStep)} combo kept`;
+          return `+${t * c.dispatchLimitPerStep} dispatches · +${percent(t * c.dispatchRadioPerStep)} combo kept`;
         case 'backup':
           return `+${steps * c.backupPerStep} police crashes`;
         case 'cashRoute':

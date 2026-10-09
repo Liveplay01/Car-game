@@ -296,6 +296,14 @@ export const closeAnySheet = (instant = false): void => {
 };
 export const isSheetOpen = (): boolean => stack.length > 0;
 
+/** Closes the sheet on top (Android's back gesture); false when none is open. */
+export function closeTopSheet(): boolean {
+  const top = stack[stack.length - 1];
+  if (!top) return false;
+  top.close();
+  return true;
+}
+
 /** Settings → What's new: the patch notes, newest first. */
 /** How much an update changes, as its badge says it (colour and word, never colour alone). */
 const IMPACT: Record<PatchImpact, string> = { major: 'Big update', minor: 'Update', fix: 'Fixes' };
@@ -656,7 +664,7 @@ export function settingsSheet(layer: HTMLElement, s: Settings, actions: Settings
   setMotion(s.reduceMotion);
 
   const toggle =
-    (key: 'sound' | 'music' | 'mapSounds' | 'haptics' | 'vehicleLabels' | 'leftHanded' | 'largeText') =>
+    (key: 'sound' | 'music' | 'mapSounds' | 'haptics' | 'vehicleLabels' | 'leftHanded' | 'largeText' | 'batterySaver') =>
     (on: boolean): void => {
       s[key] = on;
       actions.changed(s);
@@ -691,7 +699,7 @@ export function settingsSheet(layer: HTMLElement, s: Settings, actions: Settings
   // which keeps players on its own site (like the website link).
   let buildGroup: HTMLElement | null = null;
   if (!inPortal) {
-    const bugRow = tileExternalRow(ICONS.bug, 'red', 'Report a bug', 'Add your friend code and get the Ladybug skin.', buildLink('bug', null));
+    const bugRow = tileExternalRow(ICONS.bug, 'red', 'Report a bug', 'Add your friend code and get a bug hunter skin. Up to six.', buildLink('bug', null));
     buildGroup = group('Build with us', bugRow, tileExternalRow(ICONS.bulb, 'amber', 'Suggest a feature', 'Tell us what you would add. We read every idea.', buildLink('idea', null)));
     actions
       .friendCode?.()
@@ -726,6 +734,7 @@ export function settingsSheet(layer: HTMLElement, s: Settings, actions: Settings
       switchRow('Left-handed', 'Puts the buttons over the game on the left.', s.leftHanded, toggle('leftHanded')),
       switchRow('Vehicle labels', 'Names the special vehicles on the road.', s.vehicleLabels, toggle('vehicleLabels')),
       switchRow('Haptics', hasVibration ? null : 'Not available in this browser', s.haptics, toggle('haptics')),
+      switchRow('Battery saver', 'Draws 30 frames a second and a softer picture. Easier on the battery.', s.batterySaver, toggle('batterySaver')),
     ),
     group(
       'Sound',

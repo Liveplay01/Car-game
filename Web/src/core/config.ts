@@ -205,6 +205,8 @@ export const baseConfig = {
   criminalEntryGap: 0.05,
   criminalMass: 2.5,
   dispatchComboFactor: 0.5,
+  /** Police cars a shift can dispatch (Leo, 10.10.2026); each Dispatch Radio step adds `dispatchLimitPerStep`. */
+  dispatchLimit: 3,
   policeChaseSpeedFactor: 1.4,
 
   // Money transporter
@@ -420,6 +422,7 @@ export const baseConfig = {
   quietStreetsPerStep: 0.1,
   interceptorPerStep: 0.1,
   dispatchRadioPerStep: 0.1,
+  dispatchLimitPerStep: 1,
   backupPerStep: 1,
   cashRoutePerStep: 0.4,
   overtimePerStep: 0.04,

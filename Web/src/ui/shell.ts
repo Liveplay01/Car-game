@@ -6,7 +6,8 @@ import { SWIPE_MODES, TAB_BAR, barTab, screenTab, type Tab } from '../present/fl
 import { AudioPlayer, Haptics } from '../audio/player';
 import { h, icon } from './dom';
 import { ICONS, CHEST_FLAT } from './icons';
-import { settingsSheet, deleteAccountSheet, patchNotesSheet, legalSheet, licensesSheet, installDialog, cloudIntroDialog, pushOfferDialog, isSheetOpen, closeAnySheet } from './sheets';
+import { settingsSheet, deleteAccountSheet, patchNotesSheet, legalSheet, licensesSheet, installDialog, cloudIntroDialog, pushOfferDialog, isSheetOpen, closeAnySheet, closeTopSheet } from './sheets';
+import { installBackGesture, inSystemGestureZone } from './backGesture';
 import { disablePush, enablePush, pushChoiceOn, pushDelivers, pushState, pushTimers, setPushChoice, syncPush, type PushState, type PushTimer } from '../net/push';
 import { cloudEnabled, cloudIntroDue, cloudLinked, cloudView, deleteCloud, markCloudIntroSeen } from '../net/cloud';
 import { fetchInvite, inviteUrl, readInviteLink, redeemInvite } from '../net/invite';
@@ -96,6 +97,7 @@ export class Shell {
   private focusByKeyboard = false;
   private readonly settingsBtn: HTMLButtonElement;
   private readonly dispatchBtn: HTMLButtonElement;
+  private readonly dispatchCount: HTMLSpanElement;
   /** Chill has no end of its own: this ends the drive. */
   private readonly doneBtn: HTMLButtonElement;
   private readonly friendsBtn: HTMLButtonElement;
@@ -182,6 +184,7 @@ export class Shell {
       h('span', { class: 'settings-label' }, 'Settings'),
       keycap('esc'),
     );
+    this.dispatchCount = h('span', { class: 'dispatch-count', 'aria-hidden': 'true' });
     this.dispatchBtn = h(
       'button',
       {
@@ -192,6 +195,7 @@ export class Shell {
       },
       icon(ICONS.siren),
       keycap('D'),
+      this.dispatchCount,
     );
     this.doneBtn = h(
       'button',
@@ -342,6 +346,7 @@ export class Shell {
     this.session.flushVisit();
     this.reportProgress();
     this.bindInput(canvas);
+    if (!inPortal) installBackGesture(() => this.stepBack());
     this.resize();
     window.addEventListener('resize', () => this.resize());
     window.visualViewport?.addEventListener('resize', () => this.resize());
@@ -413,7 +418,7 @@ export class Shell {
     this.session.announce(...(loadAccount() ? S.hints.invited : S.hints.invitedNeedsName));
   }
 
-  /** Rewards from the team (a bug report's Ladybug skin, chests): picked up between shifts. */
+  /** Rewards from the team (a bug report's skin, chests): picked up between shifts. */
   private collectRewards(tries = 0): void {
     if (this.session.screen.k === 'playing') {
       if (tries < 20) window.setTimeout(() => this.collectRewards(tries + 1), 15000);
@@ -482,7 +487,7 @@ export class Shell {
       : '';
     let badgeKey = '';
     for (const b of badges) badgeKey += b === null ? '-' : b === 'dot' ? '.' : `${b.count};`;
-    const key = `${screen.k}|${selected}|${badgeKey}|${s.world.shift.phase}|${s.playingMode}|${s.special?.k ?? ''}|${s.shareable ? 1 : 0}|${match ? 1 : 0}|${versusKey}|${s.save.settings.leftHanded}|${s.notesUnread}|${s.showsChrome}|${s.chestOffer}|${s.save.career.chests[0] ?? ''}`;
+    const key = `${screen.k}|${selected}|${badgeKey}|${s.world.shift.phase}|${s.playingMode}|${s.special?.k ?? ''}|${s.shareable ? 1 : 0}|${match ? 1 : 0}|${versusKey}|${s.save.settings.leftHanded}|${s.notesUnread}|${s.showsChrome}|${s.chestOffer}|${s.save.career.chests[0] ?? ''}|${s.world.dispatchesLeft}`;
     if (!force && key === this.chromeKey) return;
     this.chromeKey = key;
     reportGameplay(screen.k === 'playing' && (inPortal || !document.hidden));
@@ -516,6 +521,10 @@ export class Shell {
     this.settingsBtn.classList.toggle('show', onGame);
     const chill = s.playingMode === 'chill';
     this.dispatchBtn.classList.toggle('show', screen.k === 'playing' && !chill);
+    const dispatches = s.world.dispatchesLeft;
+    this.dispatchCount.textContent = String(dispatches);
+    this.dispatchBtn.classList.toggle('spent', dispatches === 0);
+    this.dispatchBtn.setAttribute('aria-label', `Emergency dispatch: the next car becomes a police car, ${dispatches} left this shift`);
     this.doneBtn.classList.toggle('show', screen.k === 'playing' && chill);
     this.friendsBtn.classList.toggle('show', onGame && leaderboardEnabled && !inPortal);
     this.photoBtn.classList.toggle('show', screen.k === 'result' && !match && s.showsChrome);
@@ -854,6 +863,7 @@ export class Shell {
       changed: () => {
         s.saveSettings();
         this.syncChrome(true);
+        this.resize();
       },
       notesUnread: s.notesUnread,
       // The notes open over the settings; closing them brings the settings back.
@@ -932,6 +942,24 @@ export class Shell {
 
   // MARK: Input
 
+  /** Android's back gesture, the Back button, a browser's Back: closes what is on top, or false at the start of the game (ui/backGesture.ts). */
+  private stepBack(): boolean {
+    if (closeTopSheet()) return true;
+    if (this.photo.isOpen) {
+      this.photo.close();
+      return true;
+    }
+    if (this.versus.match) {
+      this.versus.leave();
+      return true;
+    }
+    // A shift in progress keeps its run: a stray Back never ends it.
+    if (this.session.screen.k === 'playing') return true;
+    if (!this.session.canStepBack) return false;
+    this.push({ k: 'back' });
+    return true;
+  }
+
   private toViewport(e: PointerEvent): { x: number; y: number } {
     return v(e.clientX - this.safe.left, e.clientY - this.safe.top);
   }
@@ -954,6 +982,7 @@ export class Shell {
         return;
       }
       if (this.pointerId !== null) return;
+      if (inSystemGestureZone(e)) return;
       e.preventDefault();
       this.pointerId = e.pointerId;
       try {
@@ -1090,7 +1119,8 @@ export class Shell {
     const hgt = window.innerHeight;
     // Above 2× the eye sees no difference, but a 3× phone would fill 2.25 times the pixels;
     // a device that struggles gets less (`adaptQuality`).
-    this.drawer.resize(w, hgt, Math.min(window.devicePixelRatio || 1, this.dprCap));
+    const cap = this.session.save.settings.batterySaver ? Math.min(this.dprCap, Shell.saverDpr) : this.dprCap;
+    this.drawer.resize(w, hgt, Math.min(window.devicePixelRatio || 1, cap));
     this.drawer.offset = v(this.safe.left, this.safe.top);
     this.size = v(Math.max(1, w - this.safe.left - this.safe.right), Math.max(1, hgt - this.safe.top - this.safe.bottom));
   }
@@ -1103,6 +1133,13 @@ export class Shell {
    * only when every frame fails for a while does the player get the way out.
    */
   private loop(now: number): void {
+    // The battery: the simulation runs on its own clock, so the picture may skip frames. A 120 Hz screen draws 60 a
+    // second (never twice what the eye can use), the battery saver 30; a 60 Hz screen loses nothing.
+    if (now - this.lastPaint < (this.session.save.settings.batterySaver ? Shell.saverFrame : Shell.frameGap)) {
+      requestAnimationFrame((t) => this.loop(t));
+      return;
+    }
+    this.lastPaint = now;
     try {
       this.frame(now);
       this.faults = 0;
@@ -1115,6 +1152,12 @@ export class Shell {
     }
     requestAnimationFrame((t) => this.loop(t));
   }
+
+  private lastPaint = 0;
+  /** Shortest time (ms) between two frames: under a 60 Hz frame, so a 60 Hz screen never skips one; the saver's, between a 30 Hz frame and a 60 Hz one. */
+  private static readonly frameGap = 12;
+  private static readonly saverFrame = 28;
+  private static readonly saverDpr = 1.5;
 
   /** Frames in a row that may fail before the game gives up (about two seconds). */
   private static readonly faultLimit = 120;

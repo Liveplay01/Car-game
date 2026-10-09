@@ -46,7 +46,11 @@ export type TitleId =
   | 'endless'
   | 'scorcher'
   | 'inferno'
-  | 'meltdown';
+  | 'meltdown'
+  | 'sovereign'
+  | 'timeless'
+  | 'apex'
+  | 'boundless';
 
 export const TITLES: TitleId[] = [
   'eliteDriver',
@@ -92,6 +96,11 @@ export const TITLES: TitleId[] = [
   'scorcher',
   'inferno',
   'meltdown',
+  // Past Elite 100 (Leo, 10.10.2026): the track goes on to 200, so nobody ends up with nothing to reach.
+  'sovereign',
+  'timeless',
+  'apex',
+  'boundless',
 ];
 
 /** What earns a title. */
@@ -146,8 +155,15 @@ export const TITLE_RULES: Record<TitleId, TitleRule> = {
   scorcher: { k: 'heat', level: 3 },
   inferno: { k: 'heat', level: 5 },
   meltdown: { k: 'heat', level: 8 },
+  sovereign: { k: 'elite', level: 125 },
+  timeless: { k: 'elite', level: 150 },
+  apex: { k: 'elite', level: 175 },
+  boundless: { k: 'elite', level: 200 },
 };
 
+
+/** The last Elite level that brings a title or a skin; the track itself has no end. */
+export const ELITE_LAST_MILESTONE = 200;
 
 /** What one Elite level pays. */
 export interface EliteStep {
@@ -260,7 +276,7 @@ export const Elite = {
       const rule = TITLE_RULES[t];
       if (rule.k === 'elite') levels.add(rule.level);
     }
-    for (let level = 1; level <= 100; level++) if (eliteReward(level)) levels.add(level);
+    for (let level = 1; level <= ELITE_LAST_MILESTONE; level++) if (eliteReward(level)) levels.add(level);
     return [...levels].sort((a, b) => a - b);
   },
 

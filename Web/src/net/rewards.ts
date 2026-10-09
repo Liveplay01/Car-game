@@ -2,13 +2,13 @@ import { storage } from '../storage/store';
 import { apiRequest, leaderboardEnabled, loadAccount } from './leaderboard';
 
 /**
- * Rewards from the team (Leo, 03.10.2026): the Ladybug skin for a bug report on the website with
+ * Rewards from the team (Leo, 03.10.2026): a bug hunter skin (Ladybug first, up to six) for each bug report on the website with
  * a friend code, and whatever a moderator hands out (`Server/src/modules/feedback`). The game
  * asks with its leaderboard token, pays them locally and tells the service they arrived. Ids
  * already paid are remembered here, so a lost answer never pays twice.
  */
 
-export type RewardItem = 'ladybug' | 'chest:standard' | 'chest:premium' | 'chest:event';
+export type RewardItem = 'ladybug' | 'goldbug' | 'scarab' | 'bluebottle' | 'orchid' | 'firefly' | 'chest:standard' | 'chest:premium' | 'chest:event';
 export interface Reward {
   id: string;
   item: RewardItem;

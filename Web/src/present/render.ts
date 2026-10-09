@@ -10,7 +10,7 @@ export type Weight = 'regular' | 'bold';
 export type Primitive =
   | { k: 'rect'; center: Vec2; size: Vec2; radius: number; rotation: number }
   | { k: 'circle'; center: Vec2; radius: number }
-  | { k: 'arc'; center: Vec2; radius: number; thickness: number; start: number; end: number }
+  | { k: 'arc'; center: Vec2; radius: number; thickness: number; start: number; end: number; round?: boolean }
   | { k: 'line'; from: Vec2; to: Vec2; thickness: number }
   | { k: 'polygon'; points: Vec2[] }
   /** Many thin lines in one colour, drawn as one path: `points` in pairs, from and to (rain). */
@@ -46,14 +46,9 @@ export interface Bake {
 
 export const rect = (center: Vec2, size: Vec2, radius = 0, rotation = 0): Primitive => ({ k: 'rect', center, size, radius, rotation });
 export const circle = (center: Vec2, radius: number): Primitive => ({ k: 'circle', center, radius });
-export const arc = (center: Vec2, radius: number, thickness: number, start: number, end: number): Primitive => ({
-  k: 'arc',
-  center,
-  radius,
-  thickness,
-  start,
-  end,
-});
+/** `round`: an open arc ends in half discs instead of square ends (the ring's signals). */
+export const arc = (center: Vec2, radius: number, thickness: number, start: number, end: number, round = false): Primitive =>
+  round ? { k: 'arc', center, radius, thickness, start, end, round } : { k: 'arc', center, radius, thickness, start, end };
 export const line = (from: Vec2, to: Vec2, thickness: number): Primitive => ({ k: 'line', from, to, thickness });
 export const polygon = (points: Vec2[]): Primitive => ({ k: 'polygon', points });
 export const segments = (points: Vec2[], thickness: number): Primitive => ({ k: 'segments', points, thickness });

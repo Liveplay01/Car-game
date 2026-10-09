@@ -65,12 +65,12 @@ export function updateTraffic(w: World, dt: number): void {
     const patient = p.waited < c.aiPatience;
     // A motorbike slips into gaps a car would not take.
     const clear = barges
-      ? canBargeIn(w, p.arm)
+      ? canBargeIn(w, p.arm, veh.type)
       : veh.type === 'motorbike'
         ? canSlipIn(w, p.arm, veh.lane)
         : patient
-          ? canEnter(w, p.arm, veh.lane)
-          : canPushIn(w, p.arm, veh.lane);
+          ? canEnter(w, p.arm, veh.lane, veh.type)
+          : canPushIn(w, p.arm, veh.lane, veh.type);
     // Runners crossing the arm (a marathon): everyone waits at the line, the criminal too.
     if (p.reaction <= 0 && clear && !w.runnersCrossing(p.arm) && !joinsTooClose(w, veh, p.arm) && !joinsClearRoad(w, veh, p.arm)) {
       const ordinary = !(isEmergency(veh.type) || veh.type === 'learner' || veh.type === 'oversize' || veh.type === 'racer' || veh.type === 'wedding');
@@ -247,10 +247,10 @@ export function prefillRing(w: World, count: number): void {
 }
 
 /** True if an AI car launched now at `arm` keeps a safe gap on the ring and on its path. */
-function canEnter(w: World, arm: Arm, lane: 0 | 1 = 0): boolean {
+function canEnter(w: World, arm: Arm, lane: 0 | 1 = 0, type: VehicleType = 'car'): boolean {
   if (isDisturbedNear(w, arm)) return false;
   const c = w.config;
-  const profile = w.profileFor(arm, lane, 'car');
+  const profile = w.profileFor(arm, lane, type);
   const circumference = w.layout.ring.length;
   const arrival = w.layout.entryS(arm, lane);
   const minimumArc = c.carLength + c.aiSafeGap * w.ringSpeed;
@@ -261,27 +261,30 @@ function canEnter(w: World, arm: Arm, lane: 0 | 1 = 0): boolean {
     const ahead = w.layout.ringDistance(arrival, s);
     if (Math.min(ahead, circumference - ahead) < minimumArc) return false;
   }
-  return w.predictedMergeGap(arm, 0, 30, c.aiPathClearance, lane) >= c.aiPathClearance;
+  return w.predictedMergeGap(arm, 0, 30, c.aiPathClearance, lane, type) >= c.aiPathClearance;
 }
 
-/** The criminal's rule: any gap it gets through without touching anyone will do. */
-function canBargeIn(w: World, arm: Arm): boolean {
-  return !isDisturbedNear(w, arm) && w.predictedMergeGap(arm, 0, 30, w.config.criminalEntryGap) >= w.config.criminalEntryGap;
+/**
+ * The criminal's rule: any gap it gets through without touching anyone will do. Slow traffic never
+ * holds it back (a toll booth's zone in front of the entry kept it out for good); only a wreck does.
+ */
+function canBargeIn(w: World, arm: Arm, type: VehicleType): boolean {
+  return !isDisturbedNear(w, arm, true) && w.predictedMergeGap(arm, 0, 30, w.config.criminalEntryGap, 0, type) >= w.config.criminalEntryGap;
 }
 
 /** A motorbike: any gap of `motorbikeEntryGap` will do, as long as nothing is wrecked nearby. */
 function canSlipIn(w: World, arm: Arm, lane: 0 | 1): boolean {
   const gap = w.config.motorbikeEntryGap;
-  return !isDisturbedNear(w, arm, true) && w.predictedMergeGap(arm, 0, 30, gap, lane) >= gap;
+  return !isDisturbedNear(w, arm, true) && w.predictedMergeGap(arm, 0, 30, gap, lane, 'motorbike') >= gap;
 }
 
 /**
  * A car out of patience (`aiPatience`): a gap of `aiPushInGap` will do, and cars braking near
  * the join no longer hold it back; only a wreck there does.
  */
-function canPushIn(w: World, arm: Arm, lane: 0 | 1): boolean {
+function canPushIn(w: World, arm: Arm, lane: 0 | 1, type: VehicleType): boolean {
   const gap = w.config.aiPushInGap;
-  return !isDisturbedNear(w, arm, true) && w.predictedMergeGap(arm, 0, 30, gap, lane) >= gap;
+  return !isDisturbedNear(w, arm, true) && w.predictedMergeGap(arm, 0, 30, gap, lane, type) >= gap;
 }
 
 /**

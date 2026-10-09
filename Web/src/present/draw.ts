@@ -738,7 +738,8 @@ export class CanvasDrawer {
         this.setStroke(color);
         ctx.lineWidth = t;
         ctx.beginPath();
-        if (Math.abs(p.end - p.start) >= Math.PI * 2 - 1e-9) {
+        const open = Math.abs(p.end - p.start) < Math.PI * 2 - 1e-9;
+        if (!open) {
           ctx.arc(c.x, c.y, r, 0, Math.PI * 2);
         } else if (world) {
           // World angles turn counter-clockwise, screen angles clockwise.
@@ -746,7 +747,11 @@ export class CanvasDrawer {
         } else {
           ctx.arc(c.x, c.y, r, Math.min(p.start, p.end), Math.max(p.start, p.end));
         }
-        ctx.stroke();
+        if (p.round && open) {
+          ctx.lineCap = 'round';
+          ctx.stroke();
+          ctx.lineCap = 'butt';
+        } else ctx.stroke();
         return;
       }
       case 'line': {

@@ -119,6 +119,17 @@ export const Skins = {
       overdrive: 'skinObsidian',
       infinity: 'skinPearl',
       ladybug: 'skinRacingRed',
+      goldbug: 'skinLemon',
+      scarab: 'skinFern',
+      bluebottle: 'skinOcean',
+      orchid: 'skinPlum',
+      firefly: 'skinCarbon',
+      monolith: 'skinCarbon',
+      tempest: 'skinMidnight',
+      solstice: 'skinSunburst',
+      abyssal: 'skinLagoon',
+      regalia: 'skinRuby',
+      apotheosis: 'skinPearl',
       chrono: 'skinChrome',
       biolume: 'skinLagoon',
       dragon: 'skinRuby',
@@ -206,7 +217,16 @@ export const Skins = {
       case 'overdrive':
         return 'skinMint';
       case 'chrono':
+      case 'tempest':
         return 'lightBlue';
+      case 'monolith':
+      case 'solstice':
+      case 'regalia':
+        return 'skinGold';
+      case 'abyssal':
+        return 'mapGlowtide';
+      case 'apotheosis':
+        return 'horizonViolet';
       case 'biolume':
         return 'mapGlowtide';
       case 'dragon':
@@ -255,6 +275,17 @@ export const Skins = {
       overdrive: 'neon',
       infinity: 'rainbow',
       ladybug: 'ladybug',
+      goldbug: 'goldbug',
+      scarab: 'scarab',
+      bluebottle: 'bluebottle',
+      orchid: 'orchid',
+      firefly: 'firefly',
+      monolith: 'embers',
+      tempest: 'lightning',
+      solstice: 'halo',
+      abyssal: 'crystal',
+      regalia: 'laurel',
+      apotheosis: 'nova',
       chrono: 'chrono',
       biolume: 'biolume',
       dragon: 'dragon',
@@ -333,7 +364,14 @@ export const Skins = {
       case 'infinity':
       case 'chrono':
       case 'dragon':
+      case 'tempest':
+      case 'solstice':
+      case 'regalia':
+      case 'apotheosis':
         return 'shinyGlitter';
+      case 'monolith':
+      case 'abyssal':
+        return 'shiny';
       case 'biolume':
       case 'wraith':
       case 'candyCane':
@@ -347,6 +385,11 @@ export const Skins = {
       case 'thunder':
       case 'neonWave':
       case 'ladybug':
+      case 'goldbug':
+      case 'scarab':
+      case 'bluebottle':
+      case 'orchid':
+      case 'firefly':
         return 'shiny';
       default:
         return null;

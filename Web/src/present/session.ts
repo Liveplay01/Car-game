@@ -2882,7 +2882,12 @@ export class GameSession {
     this.persist();
   }
 
-  /** Rewards from the team (net/rewards.ts): the Ladybug skin, chests, an invite's chest. Booked and announced. */
+  /** Back from the phone (ui/backGesture.ts) has a step to take here; false at the start of the game, where the app may close. */
+  get canStepBack(): boolean {
+    return !(this.screen.k === 'ready' && !this.special && !(this.detailOpen && this.conditionShown));
+  }
+
+  /** Rewards from the team (net/rewards.ts): the bug hunter skins, chests, an invite's chest. Booked and announced. */
   payRewards(rewards: readonly Pick<Reward, 'item' | 'reason'>[]): void {
     const career = this.save.career;
     const news: string[] = [];
@@ -2895,7 +2900,7 @@ export class GameSession {
       } else if (cosmetic(item)) {
         if (Careers.owns(career, item)) continue;
         Careers.collect(career, item);
-        news.push(item === 'ladybug' ? S.rewards.ladybug : S.rewards.item(item));
+        news.push(cosmetic(item)?.source.kind === 'bugReport' ? S.rewards.bugHunter(item) : S.rewards.item(item));
       }
     }
     this.persist();
