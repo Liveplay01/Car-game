@@ -14,7 +14,7 @@ import { sendPush, type PushTarget } from './webpush.ts';
  * Notifications (Leo, 08.10.2026): only what matters, at most one a day besides the streak.
  *
  *   GET    /v1/push/key   the public VAPID key the game subscribes with (404: notifications are off)
- *   PUT    /v1/push       this device's subscription, its time zone and the game's timers (token optional)
+ *   PUT    /v1/push       this device's subscription, its time zone, the topics turned off and the game's timers (token optional)
  *   DELETE /v1/push       forget this device ({endpoint})
  *
  * The game knows its own clock: it sends timers for the streak (this evening, if today's Daily
@@ -89,6 +89,8 @@ export const PUSH_MIGRATIONS: readonly string[] = [
     rank INTEGER NOT NULL,
     PRIMARY KEY (player_id, board)
   ) WITHOUT ROWID`,
+  // Topics the player turned off in the settings, comma separated.
+  `ALTER TABLE push_subs ADD COLUMN muted TEXT NOT NULL DEFAULT ''`,
 ];
 
 /** What the game asks to be told later. */
@@ -111,6 +113,7 @@ interface Sub {
   seen_at: number;
   sent_at: number;
   nudges: number;
+  muted: string;
 }
 
 /** Sends one message to one browser and returns the push service's status. */
@@ -165,6 +168,14 @@ function timersOf(value: unknown, now: number): Timer[] {
   });
 }
 
+/** The topics a device turned off; the game sends them with every PUT. */
+function mutedOf(value: unknown): Topic[] {
+  if (value === undefined) return [];
+  const known = Array.isArray(value) ? value.filter((v): v is Topic => TOPICS.some((t) => t === v)) : [];
+  if (!Array.isArray(value) || known.length !== value.length) throw new ApiError(422, 'invalid_muted', '"muted" lists the topics to leave out.');
+  return [...new Set(known)];
+}
+
 class PushStore {
   private readonly db: Db;
 
@@ -173,20 +184,22 @@ class PushStore {
   }
 
   /** Takes this device in (or refreshes it): it is seen now, and its game timers are the ones sent. */
-  save(target: PushTarget, playerId: string | null, tz: number, home: string, timers: Timer[], now: number): string {
+  save(target: PushTarget, playerId: string | null, tz: number, home: string, muted: Topic[], timers: Timer[], now: number): string {
     return transaction(this.db, () => {
       const known = this.db.prepare('SELECT id FROM push_subs WHERE endpoint = ?').get(target.endpoint) as { id: string } | undefined;
       const id = known?.id ?? randomUUID();
       if (known) {
-        this.db.prepare('UPDATE push_subs SET p256dh = ?, auth = ?, player_id = ?, tz = ?, home = ?, seen_at = ?, nudges = 0 WHERE id = ?').run(target.p256dh, target.auth, playerId, tz, home, now, id);
+        this.db.prepare('UPDATE push_subs SET p256dh = ?, auth = ?, player_id = ?, tz = ?, home = ?, muted = ?, seen_at = ?, nudges = 0 WHERE id = ?').run(target.p256dh, target.auth, playerId, tz, home, muted.join(','), now, id);
       } else {
         this.db
-          .prepare('INSERT INTO push_subs (id, endpoint, p256dh, auth, player_id, tz, home, created_at, seen_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)')
-          .run(id, target.endpoint, target.p256dh, target.auth, playerId, tz, home, now, now);
+          .prepare('INSERT INTO push_subs (id, endpoint, p256dh, auth, player_id, tz, home, muted, created_at, seen_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
+          .run(id, target.endpoint, target.p256dh, target.auth, playerId, tz, home, muted.join(','), now, now);
       }
       // Back in the game: a nudge to come back is no longer news.
       this.db.prepare(`DELETE FROM push_timers WHERE sub_id = ? AND topic IN ('comeback', ${GAME_TOPICS.map(() => '?').join(', ')})`).run(id, ...GAME_TOPICS);
       for (const t of timers) this.timer(id, t);
+      // A topic turned off takes its waiting timers with it.
+      for (const topic of muted) this.drop(id, topic);
       return id;
     });
   }
@@ -262,6 +275,7 @@ class PushStore {
       .all(now) as unknown as (Sub & Timer)[];
     const out = new Map<string, { sub: Sub; timers: Timer[] }>();
     for (const r of rows) {
+      if (r.muted.split(',').includes(r.topic)) continue;
       const entry = out.get(r.id) ?? { sub: r, timers: [] };
       entry.timers.push({ topic: r.topic, at: r.at, until: r.until, title: r.title, body: r.body });
       out.set(r.id, entry);
@@ -370,7 +384,7 @@ export function pushModule(options: PushOptions = {}): PushModule {
         if (typeof home !== 'string' || !HOME.test(home)) throw new ApiError(422, 'invalid_home', '"home" is the path the game starts at, like /?googleplaystore.');
         const now = ctx.now();
         const player = guest(c);
-        const id = store.save(sub, player?.id ?? null, tz, home, timersOf(body.timers, now), now);
+        const id = store.save(sub, player?.id ?? null, tz, home, mutedOf(body.muted), timersOf(body.timers, now), now);
         if (player) noteRanks(player.id);
         return c.json({ timers: store.timers(id).map((t) => ({ topic: t.topic, at: t.at })) });
       });

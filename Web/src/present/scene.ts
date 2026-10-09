@@ -1,4 +1,4 @@
-import type { World } from '../core/world';
+import { type World, STEP } from '../core/world';
 import type { Vehicle } from '../core/vehicle';
 import type { Pose } from '../core/paths';
 import type { Layout, Arm } from '../core/roundabout';
@@ -7,6 +7,7 @@ import { type Vec2, v, add, sub, mul, dot, dist, left, right, fromAngle, length,
 import { type RenderList, rect, circle, arc, line, polygon, text, Ease, Metrics, toScreen } from './render';
 import type { ColorToken } from './theme';
 import { CarArt } from './carArt';
+import { Headlights } from './headlights';
 import { lookFor } from './skins';
 import { S } from './strings';
 import { towDepotCovering } from '../core/modules';
@@ -37,16 +38,33 @@ export interface VehicleMark {
 }
 
 /**
+ * How a car's headlights look right now (`Headlights`): `glow` 0 (queued) → 1 (driving), `reach` the length of the
+ * cones relative to full speed, `swing` how far they point into a turn, in radians.
+ */
+export interface Beam {
+  glow: number;
+  reach: number;
+  swing: number;
+}
+
+/**
  * The lights of the traffic: brake lights come on quickly and fade a
- * little slower; the headlights flash twice when a tap is held for the car rolling up.
+ * little slower; the headlights flash twice when a tap is held for the car rolling up, and their beams
+ * follow the car (it rolls up, it speeds, it turns) instead of switching.
  */
 export class VehicleLamps {
   private brakes = new Map<number, number>();
+  private beams = new Map<number, Beam>();
   private flash: { vehicle: number; age: number } | null = null;
   private hadHeldTap = false;
 
   brake(id: number): number {
     return this.brakes.get(id) ?? 0;
+  }
+
+  /** The car's beam; a car not followed yet is lit when it is not in the queue. */
+  beam(id: number, waiting: boolean): Beam {
+    return this.beams.get(id) ?? Headlights.rest(waiting);
   }
 
   headlights(id: number): number {
@@ -61,18 +79,36 @@ export class VehicleLamps {
 
   update(world: World, delta: number): void {
     const next = new Map<number, number>();
+    const beams = new Map<number, Beam>();
+    const front = world.queue.vehicles[0];
     for (const veh of world.vehicles) {
       if (veh.isCrashed) continue;
       const target = world.isBraking(veh) ? 1 : 0;
       const current = this.brakes.get(veh.id) ?? target;
       const time = target > current ? 0.05 : 0.14;
       next.set(veh.id, current + (target - current) * Math.min(1, delta / time));
+      beams.set(veh.id, this.followBeam(veh, veh.phase.kind === 'queued' && veh.id !== front, world.config.ringSpeed, delta));
     }
     this.brakes = next;
+    this.beams = beams;
     const held = world.queue.heldTap !== null;
     if (held && !this.hadHeldTap && world.queue.vehicles.length > 0) this.flash = { vehicle: world.queue.vehicles[0], age: 0 };
     else if (this.flash) this.flash = this.flash.age + delta < 0.3 ? { vehicle: this.flash.vehicle, age: this.flash.age + delta } : null;
     this.hadHeldTap = held;
+  }
+
+  /** The beam eases towards what the car does: dim while queued, longer with speed, swung into a turn. */
+  private followBeam(veh: Vehicle, waiting: boolean, ringSpeed: number, delta: number): Beam {
+    const rolling = Math.min(1, dist(veh.prevPosition, veh.position) / STEP / ringSpeed);
+    const turning = angleDelta(veh.prevHeading, veh.heading) / STEP;
+    const target: Beam = { glow: waiting ? 0 : 1, reach: waiting ? 0.7 : 0.85 + 0.3 * rolling, swing: Math.max(-0.3, Math.min(0.3, turning * 0.14)) };
+    const now = this.beams.get(veh.id) ?? target;
+    const ease = (from: number, to: number, seconds: number): number => from + (to - from) * Math.min(1, delta / seconds);
+    return {
+      glow: ease(now.glow, target.glow, target.glow > now.glow ? 0.2 : 0.45),
+      reach: ease(now.reach, target.reach, 0.4),
+      swing: ease(now.swing, target.swing, 0.2),
+    };
   }
 }
 

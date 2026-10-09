@@ -20,10 +20,25 @@ import { apiRequest, leaderboardEnabled, loadAccount } from './leaderboard';
 
 /** This device asked for notifications ('1'); the browser's permission says whether they still may come. */
 const KEY = 'carGame.push.v1';
+/** The choices this device turned off. */
+const MUTED_KEY = 'carGame.push.muted.v1';
 const HOUR = 3_600_000;
 
-/** What the settings row shows. */
+/** What the settings row shows; 'none': this place cannot show notifications at all. */
 export type PushState = 'on' | 'off' | 'blocked' | 'install' | 'none';
+
+export type PushTopic = 'streak' | 'rank' | 'reward' | 'gift' | 'pass' | 'comeback';
+
+/** What the settings let a player turn off; a choice covers one or two of the service's topics. */
+export const PUSH_CHOICES = [
+  { id: 'streak', topics: ['streak'] },
+  { id: 'chests', topics: ['gift', 'reward'] },
+  { id: 'pass', topics: ['pass'] },
+  { id: 'rank', topics: ['rank'] },
+  { id: 'comeback', topics: ['comeback'] },
+] as const satisfies readonly { id: string; topics: readonly PushTopic[] }[];
+
+export type PushChoice = (typeof PUSH_CHOICES)[number]['id'];
 
 export interface PushTimer {
   topic: 'streak' | 'gift' | 'pass';
@@ -83,12 +98,49 @@ function remember(on: boolean): void {
   }
 }
 
+function mutedChoices(): PushChoice[] {
+  try {
+    const raw: unknown = JSON.parse(localStorage.getItem(MUTED_KEY) ?? '[]');
+    return PUSH_CHOICES.map((c) => c.id).filter((id) => Array.isArray(raw) && raw.includes(id));
+  } catch {
+    return [];
+  }
+}
+
+export const pushChoiceOn = (id: PushChoice): boolean => !mutedChoices().includes(id);
+
+/** Remembers a choice; `syncPush` then tells the service. */
+export function setPushChoice(id: PushChoice, on: boolean): void {
+  const muted = mutedChoices().filter((m) => m !== id);
+  if (!on) muted.push(id);
+  try {
+    localStorage.setItem(MUTED_KEY, JSON.stringify(muted));
+  } catch {
+    /* the choice holds until the page closes */
+  }
+}
+
+const mutedTopics = (): PushTopic[] => PUSH_CHOICES.filter((c) => mutedChoices().includes(c.id)).flatMap((c) => c.topics);
+
 export function pushState(): PushState {
-  if (!leaderboardEnabled || inPortal || inItch || !import.meta.env.PROD) return 'none';
+  if (inPortal || inItch || !('Notification' in window)) return 'none';
   if (isIos() && !isInstalled()) return 'install';
-  if (!supported()) return 'none';
   if (Notification.permission === 'denied') return 'blocked';
   return asked() && Notification.permission === 'granted' ? 'on' : 'off';
+}
+
+/**
+ * Whether reminders can reach this device while the game is closed: it needs the service and a build with
+ * a service worker (not `npm run dev`). Without it a notification only shows while the game is open.
+ */
+export const pushDelivers = (): boolean => leaderboardEnabled && import.meta.env.PROD && supported();
+
+/** Shows one notification right now: the answer to turning them on. */
+async function confirm(): Promise<void> {
+  const options = { body: S.push.on, tag: 'rat-on', icon: '/icons/icon-192.png' };
+  const registration = 'serviceWorker' in navigator ? await navigator.serviceWorker.getRegistration() : undefined;
+  if (registration) await registration.showNotification(S.push.confirmTitle, options);
+  else new Notification(S.push.confirmTitle, options);
 }
 
 /** The subscription this device has with the browser's push service, made if missing. */
@@ -107,10 +159,11 @@ let current: PushSubscription | null = null;
 
 function send(sub: PushSubscription, timers: PushTimer[], keepalive: boolean): Promise<unknown> {
   const json = sub.toJSON();
+  const muted = mutedTopics();
   return apiRequest('PUT', '/v1/push', {
     token: loadAccount()?.token,
     keepalive,
-    body: { endpoint: json.endpoint, p256dh: json.keys?.p256dh, auth: json.keys?.auth, tz: -new Date().getTimezoneOffset(), home: inPlayStore ? '/?googleplaystore' : '/', timers },
+    body: { endpoint: json.endpoint, p256dh: json.keys?.p256dh, auth: json.keys?.auth, tz: -new Date().getTimezoneOffset(), home: inPlayStore ? '/?googleplaystore' : '/', muted, timers: timers.filter((t) => !muted.includes(t.topic)) },
   });
 }
 
@@ -121,18 +174,22 @@ function send(sub: PushSubscription, timers: PushTimer[], keepalive: boolean): P
 export async function enablePush(timers: PushTimer[]): Promise<PushState> {
   const permission = await Notification.requestPermission();
   if (permission !== 'granted') return permission === 'denied' ? 'blocked' : 'off';
-  const sub = await subscription(true);
-  if (!sub) return 'off';
-  await send(sub, timers, false);
-  current = sub;
   remember(true);
+  if (pushDelivers()) {
+    const sub = await subscription(true);
+    if (sub) {
+      await send(sub, timers, false);
+      current = sub;
+    }
+  }
+  await confirm().catch(() => undefined);
   return 'on';
 }
 
 /** Turns them off here and on the service; the switch is off even when the service cannot be reached. */
 export async function disablePush(): Promise<void> {
   remember(false);
-  const sub = current ?? (supported() ? await subscription(false).catch(() => null) : null);
+  const sub = current ?? (pushDelivers() ? await subscription(false).catch(() => null) : null);
   current = null;
   if (!sub) return;
   const endpoint = sub.endpoint;
@@ -145,7 +202,7 @@ export async function disablePush(): Promise<void> {
  * going to the background, so the request must outlive the page.
  */
 export function syncPush(timers: PushTimer[], closing = false): void {
-  if (pushState() !== 'on') return;
+  if (pushState() !== 'on' || !pushDelivers()) return;
   if (closing && current) {
     void send(current, timers, true).catch(() => undefined);
     return;

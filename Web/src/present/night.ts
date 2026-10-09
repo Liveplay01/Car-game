@@ -1,8 +1,9 @@
 import type { World } from '../core/world';
 import { isExplosive, isEmergency } from '../core/vehicle';
-import { type Vec2, v, add, mul, left, fromAngle } from '../core/vec2';
-import { type RenderList, rect, circle, polygon } from './render';
+import { v, add, mul, left, fromAngle } from '../core/vec2';
+import { type RenderList, rect, circle } from './render';
 import { CarArt, PoliceLights, worldOf } from './carArt';
+import { Headlights } from './headlights';
 import { criminalVehicle } from '../core/specials';
 import { interpolatedPose, type VehicleLamps } from './scene';
 
@@ -45,18 +46,13 @@ export const NightLayer = {
       const flash = lamps ? lamps.headlights(veh.id) : 0;
       const brake = lamps ? lamps.brake(veh.id) : 0;
       const waiting = veh.phase.kind === 'queued' && veh.id !== world.queue.vehicles[0];
-      const beam = NightLayer.coneStrength * (waiting ? NightLayer.queueDim : 1) * (1 + 1.5 * flash);
+      const beam = lamps ? lamps.beam(veh.id, waiting) : Headlights.rest(waiting);
+      const intensity = (NightLayer.queueDim + (1 - NightLayer.queueDim) * beam.glow) * (1 + 1.5 * flash);
 
-      // The cone: layered trapezoids, brightest near the car.
-      const reach = CarArt.length('car', c) * NightLayer.coneReach;
-      for (let layer = 0; layer < NightLayer.coneLayers; layer++) {
-        const k = (layer + 1) / NightLayer.coneLayers;
-        const far = L / 2 + reach * k;
-        const spread = W * (0.45 + (NightLayer.coneSpread - 0.45) * k);
-        const points: Vec2[] = [v(L / 2, W * 0.4), v(far, spread), v(far, -spread), v(L / 2, -W * 0.4)];
-        list.w(polygon(points.map((p) => worldOf(p, pose))), 'headlight', beam);
-      }
-      for (const y of [W * 0.3, -W * 0.3]) list.w(circle(worldOf(v(L / 2 - 0.4, y), pose), 1), 'headlight', 0.95);
+      // Two soft cones that follow the car, brightest near it; the queue behind the front car dims.
+      const look = { layers: NightLayer.coneLayers, reach: CarArt.length('car', c) * NightLayer.coneReach, spread: NightLayer.coneSpread, strength: NightLayer.coneStrength };
+      Headlights.add(list, pose, L, W, look, beam, intensity, time, veh.id);
+      Headlights.addBulbs(list, pose, L, W, intensity);
 
       // Tail lights: always on at night, brighter when braking.
       list.w(rect(worldOf(v(-L / 2 - 2.5, 0), pose), v(9, W * 1.3), 4.5, pose.heading), 'lightRed', 0.07 + 0.16 * brake);

@@ -7,7 +7,7 @@ import { AudioPlayer, Haptics } from '../audio/player';
 import { h, icon } from './dom';
 import { ICONS, CHEST_FLAT } from './icons';
 import { settingsSheet, deleteAccountSheet, patchNotesSheet, legalSheet, licensesSheet, installDialog, cloudIntroDialog, pushOfferDialog, isSheetOpen, closeAnySheet } from './sheets';
-import { disablePush, enablePush, pushState, pushTimers, syncPush, type PushState, type PushTimer } from '../net/push';
+import { disablePush, enablePush, pushChoiceOn, pushDelivers, pushState, pushTimers, setPushChoice, syncPush, type PushState, type PushTimer } from '../net/push';
 import { cloudEnabled, cloudIntroDue, cloudLinked, cloudView, deleteCloud, markCloudIntroSeen } from '../net/cloud';
 import { fetchInvite, inviteUrl, readInviteLink, redeemInvite } from '../net/invite';
 import { deleteAccount, describeError, fetchFriends, leaderboardEnabled, loadAccount, onAccountChange, onScoresSynced } from '../net/leaderboard';
@@ -714,11 +714,11 @@ export class Shell {
       if (!this.session.takeTip()) return this.session.deferHint(hint);
       // iPhone and iPad: the tip takes the screen until it is confirmed.
       if (isIos()) installDialog(this.layers, isIpad(), () => undefined);
-      else if (this.installPrompt) this.session.announce(window.matchMedia('(pointer: coarse)').matches ? S.hints.homeScreen : S.hints.install);
+      else if (this.installPrompt) this.session.tip(window.matchMedia('(pointer: coarse)').matches ? S.hints.homeScreen : S.hints.install);
     } else if (hint === 'inviteReminder') {
       if (!leaderboardEnabled || inPortal) return;
       if (!this.session.takeTip()) return this.session.deferHint(hint);
-      this.session.announce(...S.hints.inviteReminder);
+      this.session.tip(S.hints.inviteReminder);
     } else if (hint === 'portalLogin') {
       if (!inPortal) return;
       if (!this.session.takeTip()) return this.session.deferHint(hint);
@@ -731,7 +731,7 @@ export class Shell {
       const state = pushState();
       // Not on the Home Screen yet (iPhone): offered again with a later streak, once it can be turned on.
       if (state === 'install') return this.session.deferHint(hint);
-      if (state !== 'off') return;
+      if (state !== 'off' || !pushDelivers()) return;
       if (!this.session.takeTip()) return this.session.deferHint(hint);
       // After the result has come up, never over a shift.
       window.setTimeout(() => {
@@ -741,7 +741,7 @@ export class Shell {
     } else if (hint === 'backup') {
       if (!cloudEnabled || cloudView().code !== null) return;
       if (!this.session.takeTip()) return this.session.deferHint(hint);
-      this.session.announce(S.hints.backup);
+      this.session.tip(S.hints.backup);
     }
   }
 
@@ -880,7 +880,16 @@ export class Shell {
         });
       },
       cloudOn: cloudLinked(),
-      push: pushState() === 'none' ? null : { state: pushState(), toggle: (on) => (on ? this.enablePush() : disablePush().then((): PushState => 'off')) },
+      push: {
+        state: pushState(),
+        delivers: pushDelivers(),
+        toggle: (on) => (on ? this.enablePush() : disablePush().then((): PushState => 'off')),
+        choiceOn: pushChoiceOn,
+        setChoice: (id, on) => {
+          setPushChoice(id, on);
+          syncPush(this.pushTimers);
+        },
+      },
       friendCode: loadAccount() ? () => fetchFriends().then((f) => f.code) : null,
       // The cloud sync page, over the settings; the settings come back when it closes.
       openCloud: () => this.openCloudPage(),

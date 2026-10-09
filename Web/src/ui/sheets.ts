@@ -6,7 +6,7 @@ import { LEGAL_DOCS, type LegalDoc, type LegalId } from '../present/legal';
 import type { License } from '../present/licenses';
 import { inItch, inPlayStore, inPortal, isInstalled, isIos } from '../storage/device';
 import { cloudEnabled } from '../net/cloud';
-import type { PushState } from '../net/push';
+import { PUSH_CHOICES, type PushChoice, type PushState } from '../net/push';
 import { S } from '../present/strings';
 
 interface OpenSheet {
@@ -22,9 +22,21 @@ interface OpenSheet {
  */
 const stack: OpenSheet[] = [];
 
+/** True when the touch started on something that is scrolled down, so the swipe is its scrolling and not a pull. */
+function scrolledDown(target: EventTarget | null, sheet: HTMLElement): boolean {
+  for (let el = target as HTMLElement | null; el; el = el.parentElement) {
+    if (el.scrollTop > 0) return true;
+    if (el === sheet) return false;
+  }
+  return false;
+}
+
 /**
  * Pulling the grabber or the title bar down moves the sheet with the finger and the scrim fades with it. A long or
  * quick pull closes it from where the finger let go; a short one lets it settle back.
+ * On touch, a pull down from anywhere in the sheet does the same, as long as the swipe starts with the content at the
+ * top: scrolling back up to the start never closes it, only the next swipe down does (Leo, 09.10.2026), so the thumb
+ * stays where it is.
  */
 function dragToClose(sheet: HTMLElement, scrim: HTMLElement, handles: HTMLElement[], close: () => void): void {
   let drag: { startY: number; dy: number; id: number; t: number } | null = null;
@@ -35,48 +47,93 @@ function dragToClose(sheet: HTMLElement, scrim: HTMLElement, handles: HTMLElemen
     scrim.style.animation = '';
     scrim.style.opacity = '';
   };
+  const begin = (y: number, id: number): void => {
+    drag = { startY: y, dy: 0, id, t: performance.now() };
+    sheet.style.transition = '';
+    sheet.style.animation = 'none';
+    scrim.style.animation = 'none';
+  };
+  const move = (y: number): void => {
+    if (!drag) return;
+    drag.dy = y - drag.startY;
+    // Up gives way with resistance, down follows the finger.
+    const dy = drag.dy < 0 ? -Math.sqrt(-drag.dy) * 2 : drag.dy;
+    sheet.style.transform = `translateY(${dy}px)`;
+    scrim.style.opacity = String(Math.max(0, 1 - Math.max(0, dy) / Math.max(1, sheet.offsetHeight)));
+  };
+  const release = (): void => {
+    if (!drag) return;
+    const { dy, t } = drag;
+    drag = null;
+    const speed = dy / Math.max(1, performance.now() - t);
+    if (dy > 90 || speed > 0.6) {
+      // The closing animation carries on from where the finger left the sheet.
+      sheet.style.animation = '';
+      scrim.style.animation = '';
+      close();
+      return;
+    }
+    sheet.style.transition = 'transform 240ms var(--ease-drawer)';
+    sheet.style.transform = 'translateY(0)';
+    scrim.style.transition = 'opacity 240ms var(--ease-drawer)';
+    scrim.style.opacity = '1';
+    window.setTimeout(() => {
+      scrim.style.transition = '';
+      settle();
+    }, 240);
+  };
   for (const el of handles) {
     el.classList.add('sheet-handle');
     el.addEventListener('pointerdown', (e) => {
       if (drag || (e.target as HTMLElement).closest('button')) return;
-      drag = { startY: e.clientY, dy: 0, id: e.pointerId, t: performance.now() };
+      begin(e.clientY, e.pointerId);
       el.setPointerCapture(e.pointerId);
-      sheet.style.transition = '';
-      sheet.style.animation = 'none';
-      scrim.style.animation = 'none';
     });
     el.addEventListener('pointermove', (e) => {
-      if (!drag || e.pointerId !== drag.id) return;
-      drag.dy = e.clientY - drag.startY;
-      // Up gives way with resistance, down follows the finger.
-      const y = drag.dy < 0 ? -Math.sqrt(-drag.dy) * 2 : drag.dy;
-      sheet.style.transform = `translateY(${y}px)`;
-      scrim.style.opacity = String(Math.max(0, 1 - Math.max(0, y) / Math.max(1, sheet.offsetHeight)));
+      if (drag?.id === e.pointerId) move(e.clientY);
     });
     const end = (e: PointerEvent): void => {
-      if (!drag || e.pointerId !== drag.id) return;
-      const { dy, t } = drag;
-      drag = null;
-      const speed = dy / Math.max(1, performance.now() - t);
-      if (dy > 90 || speed > 0.6) {
-        // The closing animation carries on from where the finger left the sheet.
-        sheet.style.animation = '';
-        scrim.style.animation = '';
-        close();
-        return;
-      }
-      sheet.style.transition = 'transform 240ms var(--ease-drawer)';
-      sheet.style.transform = 'translateY(0)';
-      scrim.style.transition = 'opacity 240ms var(--ease-drawer)';
-      scrim.style.opacity = '1';
-      window.setTimeout(() => {
-        scrim.style.transition = '';
-        settle();
-      }, 240);
+      if (drag?.id === e.pointerId) release();
     };
     el.addEventListener('pointerup', end);
     el.addEventListener('pointercancel', end);
   }
+
+  // Touch: the sheet is a scroller, so the pull only takes over once a swipe that began at the top goes down.
+  let touch: { y0: number; pulling: boolean } | null = null;
+  sheet.addEventListener(
+    'touchstart',
+    (e) => {
+      const target = e.target as HTMLElement;
+      touch = e.touches.length === 1 && !drag && !target.closest('.sheet-handle, input, textarea, select') && !scrolledDown(target, sheet) ? { y0: e.touches[0].clientY, pulling: false } : null;
+    },
+    { passive: true },
+  );
+  sheet.addEventListener(
+    'touchmove',
+    (e) => {
+      if (!touch) return;
+      const y = e.touches[0].clientY;
+      if (!touch.pulling) {
+        // Already scrolling (the swipe went up first): it stays a scroll.
+        if (scrolledDown(e.target, sheet)) touch = null;
+        else if (y - touch.y0 >= 8) {
+          touch.pulling = true;
+          begin(y, -1);
+        }
+        if (!touch?.pulling) return;
+      }
+      e.preventDefault();
+      move(y);
+    },
+    { passive: false },
+  );
+  const touchEnd = (): void => {
+    if (touch?.pulling) release();
+    touch = null;
+  };
+  sheet.addEventListener('touchend', touchEnd);
+  sheet.addEventListener('touchcancel', touchEnd);
 }
 
 /**
@@ -423,22 +480,28 @@ export interface SettingsActions {
   /** The player's friend code, if they have a name: it fills in the bug form on the website. */
   friendCode: (() => Promise<string | null>) | null;
   install: (() => void) | null;
-  /** Notifications on this device (`net/push.ts`); null where there are none (inside a portal, no service). */
-  push: { state: PushState; toggle(on: boolean): Promise<PushState> } | null;
+  /** Notifications on this device (`net/push.ts`); `delivers`: reminders reach it while the game is closed. */
+  push: { state: PushState; delivers: boolean; toggle(on: boolean): Promise<PushState>; choiceOn(id: PushChoice): boolean; setChoice(id: PushChoice, on: boolean): void };
   closed(): void;
 }
 
 /**
  * The notifications switch. Turning it on asks the browser, so the switch waits for the answer and
  * shows what came of it; where it cannot be turned on (blocked, not on the Home Screen) it says why.
+ * Below it, one switch per kind of notification, only while they are on.
  */
-function pushRow(push: NonNullable<SettingsActions['push']>): HTMLElement {
+function pushRows(push: SettingsActions['push']): HTMLElement[] {
+  const choices = PUSH_CHOICES.map(({ id }) => {
+    const text = S.push.choices[id];
+    return switchRow(text.title, text.sub, push.choiceOn(id), (on) => push.setChoice(id, on));
+  });
   const sub = h('div', { class: 'row-sub' });
   const sw = h('button', { class: 'switch', role: 'switch', 'aria-label': S.push.row });
   const show = (state: PushState): void => {
     sw.setAttribute('aria-checked', String(state === 'on'));
-    sw.disabled = state === 'blocked' || state === 'install';
-    sub.textContent = state === 'blocked' ? S.push.rowBlocked : state === 'install' ? S.push.rowInstall : S.push.rowSub;
+    sw.disabled = state === 'blocked' || state === 'install' || state === 'none';
+    sub.textContent = state === 'none' ? S.push.rowNone : state === 'blocked' ? S.push.rowBlocked : state === 'install' ? S.push.rowInstall : state === 'on' && !push.delivers ? S.push.rowLocal : S.push.rowSub;
+    for (const row of choices) row.hidden = state !== 'on';
   };
   show(push.state);
   sw.addEventListener('click', () => {
@@ -457,7 +520,7 @@ function pushRow(push: NonNullable<SettingsActions['push']>): HTMLElement {
   row.addEventListener('click', (e) => {
     if (e.target !== sw && !sw.disabled) sw.click();
   });
-  return row;
+  return [row, ...choices];
 }
 
 /**
@@ -669,7 +732,7 @@ export function settingsSheet(layer: HTMLElement, s: Settings, actions: Settings
       switchRow('Music', null, s.music, toggle('music')),
       switchRow('Map sounds', 'Rain and thunder on the road.', s.mapSounds, toggle('mapSounds')),
     ),
-    group('Progress', cloudRow, actions.push && actions.push.state !== 'none' ? pushRow(actions.push) : null, installRow),
+    group('Progress', cloudRow, ...pushRows(actions.push), installRow),
     buildGroup,
     group(
       'More',

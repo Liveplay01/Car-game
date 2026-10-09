@@ -163,6 +163,20 @@ export interface EliteGain {
   steps: EliteStep[];
 }
 
+/** The track after a shift as the ring draws it: where its bar started, where it ends, what is missing. */
+export interface EliteBar {
+  /** The Elite level now. */
+  level: number;
+  /** How full the bar was at the start (0–1) and is at the end, within its level. */
+  from: number;
+  to: number;
+  /** Levels climbed by this shift: the bar fills up, flares and starts over. */
+  climbed: number;
+  /** XP this shift earned, and XP still missing to the next level. */
+  gained: number;
+  left: number;
+}
+
 export const Elite = {
   /** Level 50 reached once: a Prestige later keeps the track open. */
   isOpen: (c: Career, config: Config = baseConfig): boolean => c.level >= config.prestigeLevel || c.prestige > 0,
@@ -194,6 +208,23 @@ export const Elite = {
   progress(c: Career, config: Config = baseConfig): { into: number; need: number } {
     const level = Math.max(1, Elite.level(c, config));
     return { into: Math.max(0, c.eliteXp - Elite.xpTo(level, config)), need: Elite.need(level, config) };
+  },
+
+  /** The track after a shift that began at `xpBefore` Elite XP (the career holds the XP after it). */
+  bar(c: Career, xpBefore: number, config: Config = baseConfig): EliteBar {
+    const level = Math.max(1, Elite.level(c, config));
+    let start = 1;
+    while (xpBefore >= Elite.xpTo(start + 1, config)) start++;
+    start = Math.min(start, level);
+    const fill = (xp: number, at: number): number => Math.min(1, Math.max(0, (xp - Elite.xpTo(at, config)) / Elite.need(at, config)));
+    return {
+      level,
+      from: fill(xpBefore, start),
+      to: fill(c.eliteXp, level),
+      climbed: level - start,
+      gained: c.eliteXp - xpBefore,
+      left: Math.max(0, Elite.xpTo(level + 1, config) - c.eliteXp),
+    };
   },
 
   /** The XP a finished shift earns: skill counts even when the shift was lost. */

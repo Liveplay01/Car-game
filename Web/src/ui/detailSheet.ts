@@ -110,6 +110,7 @@ export class DetailSheet {
     });
     this.bindDrag(handle);
     this.bindDrag(head, true);
+    this.bindTouchPull();
   }
 
   /** Height the sheet covers above the tab bar, for the page behind (0 when closed). */
@@ -367,40 +368,93 @@ export class DetailSheet {
     el.addEventListener('pointerdown', (e) => {
       if (this.drag || (e.target as HTMLElement).closest('button')) return;
       if (onlyWhenTop && this.scroller.scrollTop > 0) return;
-      window.cancelAnimationFrame(this.raf);
-      this.vh = this.vy = 0;
-      this.drag = { id: e.pointerId, y0: e.clientY, pos0: this.h - this.y, ...this.fits(), last: [] };
+      this.beginDrag(e.pointerId, e.clientY);
       el.setPointerCapture(e.pointerId);
     });
     el.addEventListener('pointermove', (e) => {
-      const d = this.drag;
-      if (!d || e.pointerId !== d.id) return;
-      const pos = d.pos0 - (e.clientY - d.y0);
-      d.last.push({ pos, t: e.timeStamp });
-      if (d.last.length > 6) d.last.shift();
-      this.hold(pos, d.half, d.full);
+      if (this.drag?.id === e.pointerId) this.moveDrag(e.clientY, e.timeStamp);
     });
     const end = (e: PointerEvent): void => {
-      const d = this.drag;
-      if (!d || e.pointerId !== d.id) return;
-      this.drag = null;
-      const tip = d.last[d.last.length - 1];
-      const from = d.last.find((s) => tip && tip.t - s.t <= 100);
-      // Speed of the last 100 ms (up is positive); a finger that stopped before lifting throws nothing.
-      const v = tip && from && from !== tip && e.timeStamp - tip.t < 80 ? (tip.pos - from.pos) / (tip.t - from.t) : 0;
-      const pos = tip?.pos ?? d.pos0;
-      const projected = pos + v * 200;
-      if (projected < d.half - 70) {
-        this.dismiss(v);
-        return;
-      }
-      this.mode = Math.abs(projected - d.full) < Math.abs(projected - d.half) ? 'full' : 'half';
-      this.vh = pos >= d.half && pos <= d.full ? v : 0;
-      this.vy = pos < d.half ? -v : 0;
-      this.glide(this.mode === 'full' ? d.full : d.half, 0);
+      if (this.drag?.id === e.pointerId) this.endDrag(e.timeStamp);
     };
     el.addEventListener('pointerup', end);
     el.addEventListener('pointercancel', end);
+  }
+
+  /**
+   * On touch, a swipe down that starts with the text at its top pulls the sheet from anywhere on it, so the thumb stays
+   * where it is. Scrolling back up to the start does not pull; only the next swipe down does (Leo, 09.10.2026).
+   */
+  private bindTouchPull(): void {
+    let touch: { y0: number; pulling: boolean } | null = null;
+    this.root.addEventListener(
+      'touchstart',
+      (e) => {
+        const target = e.target as HTMLElement;
+        touch = e.touches.length === 1 && !this.drag && !target.closest('.detail-handle, .detail-head') && this.scroller.scrollTop === 0 ? { y0: e.touches[0].clientY, pulling: false } : null;
+      },
+      { passive: true },
+    );
+    this.root.addEventListener(
+      'touchmove',
+      (e) => {
+        if (!touch) return;
+        const y = e.touches[0].clientY;
+        if (!touch.pulling) {
+          // Already scrolling (the swipe went up first): it stays a scroll.
+          if (this.scroller.scrollTop > 0) touch = null;
+          else if (y - touch.y0 >= 8) {
+            touch.pulling = true;
+            this.beginDrag(-1, y);
+          }
+          if (!touch?.pulling) return;
+        }
+        e.preventDefault();
+        this.moveDrag(y, e.timeStamp);
+      },
+      { passive: false },
+    );
+    const end = (e: TouchEvent): void => {
+      if (touch?.pulling) this.endDrag(e.timeStamp);
+      touch = null;
+    };
+    this.root.addEventListener('touchend', end);
+    this.root.addEventListener('touchcancel', end);
+  }
+
+  private beginDrag(id: number, y: number): void {
+    window.cancelAnimationFrame(this.raf);
+    this.vh = this.vy = 0;
+    this.drag = { id, y0: y, pos0: this.h - this.y, ...this.fits(), last: [] };
+  }
+
+  private moveDrag(y: number, t: number): void {
+    const d = this.drag;
+    if (!d) return;
+    const pos = d.pos0 - (y - d.y0);
+    d.last.push({ pos, t });
+    if (d.last.length > 6) d.last.shift();
+    this.hold(pos, d.half, d.full);
+  }
+
+  private endDrag(t: number): void {
+    const d = this.drag;
+    if (!d) return;
+    this.drag = null;
+    const tip = d.last[d.last.length - 1];
+    const from = d.last.find((s) => tip && tip.t - s.t <= 100);
+    // Speed of the last 100 ms (up is positive); a finger that stopped before lifting throws nothing.
+    const v = tip && from && from !== tip && t - tip.t < 80 ? (tip.pos - from.pos) / (tip.t - from.t) : 0;
+    const pos = tip?.pos ?? d.pos0;
+    const projected = pos + v * 200;
+    if (projected < d.half - 70) {
+      this.dismiss(v);
+      return;
+    }
+    this.mode = Math.abs(projected - d.full) < Math.abs(projected - d.half) ? 'full' : 'half';
+    this.vh = pos >= d.half && pos <= d.full ? v : 0;
+    this.vy = pos < d.half ? -v : 0;
+    this.glide(this.mode === 'full' ? d.full : d.half, 0);
   }
 }
 

@@ -1,6 +1,6 @@
 import { INVITE_REMINDER_LEVEL, type Config } from '../core/config';
 import { type SaveGame, type GameMode, type Hint, Careers } from '../core/career';
-import { Elite } from '../core/elite';
+import { Elite, type EliteBar } from '../core/elite';
 import { SeasonPass } from '../core/seasonPass';
 import type { ShiftResult } from '../core/events';
 import { challengeReward } from '../core/daily';
@@ -9,6 +9,7 @@ import { tierOf, UNLIMITED_MARKS } from '../core/tiers';
 import { heatXp } from '../core/heat';
 import { Achievements } from '../core/achievements';
 import { S, Fmt } from './strings';
+import type { Tip } from './notices';
 
 /** What a finished career shift needs to know besides its result. */
 export interface ShiftContext {
@@ -31,6 +32,10 @@ export interface Booking {
   bank: { before: number; after: number };
   /** The news of the shift, in the order it is told (`NoticeQueue.announce`). */
   news: string[];
+  /** Tips for the waiting screen's top card (`TipQueue`), not lines of news. */
+  tips: Tip[];
+  /** The Elite track after the shift, for the ring on the result; null while the track is shut. */
+  elite: EliteBar | null;
   /** Hints this shift made due (its level crossed their threshold); the shell decides what to say. */
   due: Hint[];
 }
@@ -47,7 +52,7 @@ export function bookShift(save: SaveGame, result: ShiftResult, ctx: ShiftContext
     const isNew = result.flames > previous;
     if (isNew) save.mayhemBest = result.flames;
     save.mayhemBestChain = Math.max(save.mayhemBestChain, result.biggestChain);
-    return { isNew, previous, bank: { before: career.money, after: career.money }, news: [], due: [] };
+    return { isNew, previous, bank: { before: career.money, after: career.money }, news: [], tips: [], elite: null, due: [] };
   }
   if (ctx.mode === 'chill') {
     // Nothing is won or lost here: the drive only counts for the records of the mode.
@@ -56,7 +61,7 @@ export function bookShift(save: SaveGame, result: ShiftResult, ctx: ShiftContext
     if (isNew) save.chillBest = result.carsSent;
     save.chillCars += result.carsSent;
     save.chillTime += Math.round(result.time);
-    return { isNew, previous, bank: { before: career.money, after: career.money }, news: [], due: [] };
+    return { isNew, previous, bank: { before: career.money, after: career.money }, news: [], tips: [], elite: null, due: [] };
   }
   const unlimited = ctx.mode === 'unlimited';
   const previous = unlimited ? save.unlimitedBest : save.highscore;
@@ -67,6 +72,7 @@ export function bookShift(save: SaveGame, result: ShiftResult, ctx: ShiftContext
     save.highscoreSeed = result.seed;
   }
   const milestones: string[] = [];
+  const tips: Tip[] = [];
   const carsBefore = save.unlimitedBestCars;
   const tierBefore = tierOf(carsBefore);
   if (unlimited) {
@@ -99,15 +105,15 @@ export function bookShift(save: SaveGame, result: ShiftResult, ctx: ShiftContext
   const tier = tierOf(save.unlimitedBestCars);
   if (unlimited && tier && tier !== tierBefore) news.unshift(S.modes.tierUp(tier));
   // The first level cleared: a chest to open within the first minute.
-  if (ctx.mode === 'shift' && Careers.giveWelcomeChest(career, levelBefore, ctx.config)) news.push(S.daily.welcomeChest);
+  if (ctx.mode === 'shift') Careers.giveWelcomeChest(career, levelBefore, ctx.config);
   // The first lost shift after the first one: Unlimited is a swipe away, without levels (the swipe hint shows from now on).
   if (ctx.mode === 'shift' && !ctx.daily && result.outcome !== 'completed' && save.shiftsPlayed >= 2 && !save.hints.includes('modes') && !save.hints.includes('unlimitedTip')) {
     save.hints.push('unlimitedTip');
-    news.push(S.modes.tryUnlimited);
+    tips.push(S.modes.tryUnlimited);
   }
   // Level 5 cleared: the other modes are a swipe away (the waiting screen keeps a hint until the first swipe).
   const cap = ctx.config.modeHintAfterLevel;
-  if (ctx.mode === 'shift' && !save.hints.includes('modes') && ctx.level <= cap && career.level > cap) news.push(S.modes.unlocked);
+  if (ctx.mode === 'shift' && !save.hints.includes('modes') && ctx.level <= cap && career.level > cap) tips.push(S.modes.unlocked);
   // What this shift opened; the Casino opens quietly (PRODUCT.md: nothing points the player there).
   for (const f of Unlocks.open(career, ctx.config)) if (!openBefore.includes(f) && f !== 'casino') news.push(S.unlocks[f]);
   const after = { install: ctx.config.installHintAfterLevel, backup: ctx.config.backupHintAfterLevel, portalLogin: ctx.config.portalLoginAfterLevel };
@@ -133,8 +139,8 @@ export function bookShift(save: SaveGame, result: ShiftResult, ctx: ShiftContext
     save.dailyScore = result.score;
   }
   if (pay !== null) news.push(S.daily.dailyDone(Fmt.number(pay), career.dailyStreak));
-  else if (!ctx.daily && Careers.rollEventChest(career, result, ctx.shiftConfig, result.seed)) news.push(S.daily.eventChestFound);
-  else if (Careers.rollLuckyDrop(career, result, ctx.shiftConfig, result.seed)) news.push(S.daily.luckyDrop);
+  // A chest found says nothing: the Game tab's pill and the Shop's badge already show it.
+  else if (ctx.daily || !Careers.rollEventChest(career, result, ctx.shiftConfig, result.seed)) Careers.rollLuckyDrop(career, result, ctx.shiftConfig, result.seed);
   // An eased shift (fewer cars) would set a best time the level never had.
   if (result.outcome === 'completed' && !ctx.shiftConfig.assisted) {
     const times = [...ctx.splits];
@@ -147,21 +153,22 @@ export function bookShift(save: SaveGame, result: ShiftResult, ctx: ShiftContext
   // Each Unlimited mark counts once in a career, like the tier it belongs to.
   const markXp = unlimited ? UNLIMITED_MARKS.filter((m) => m > carsBefore && m <= result.carsSent).length * ctx.config.eliteXpMark : 0;
   const heatBonus = heat > 0 && result.outcome === 'completed' ? heatXp(heat, ctx.config) : 0;
+  const xpBefore = career.eliteXp;
   const elite = Careers.recordElite(career, result, ctx.config, markXp + heatBonus);
   const titles = Careers.recordTitles(career, ctx.config);
   if (completed.length > 0) news.push(S.mastery.toast(completed));
   if (elite) {
     // The shift that opens the track says so; later ones show their XP or the level they reached.
     if (!eliteBefore) news.push(S.elite.opened);
-    else if (elite.steps.length === 0 && elite.xp > 0) news.push(S.elite.gained(elite.xp));
-    for (const step of elite.steps) if (eliteBefore || step.level > 1) news.push(S.elite.reached(step));
+    // A level climbed shows on the ring (`RingSignals.elite`); only a skin it brings is told.
+    for (const step of elite.steps) if (step.item && (eliteBefore || step.level > 1)) news.push(S.elite.reached(step));
   }
   if (titles.length > 0) news.push(S.titles.earned(titles));
   // Level 50 reached (again): Prestige is open, and the player hears about it once per rank.
   if (levelBefore < ctx.config.prestigeLevel && Careers.canPrestige(career, ctx.config)) news.push(S.prestige.available(career.prestige + 1));
   const pass = SeasonPass.record(career, result, ctx.today, ctx.config, markXp + heatBonus);
-  if (pass) for (const step of pass.steps) news.push(S.pass.reached(step));
-  // A reason to come back tomorrow, from the first shift on: told last, then counted down on the Game tab.
-  if (Careers.promiseGift(career, ctx.today)) news.push(S.daily.giftPromised);
-  return { isNew, previous, bank: { before: bankBefore, after: career.money }, news, due };
+  if (pass) for (const step of pass.steps) if (step.reward.k !== 'chest') news.push(S.pass.reached(step));
+  // A reason to come back tomorrow, from the first shift on: not told, but counted down on the Game tab.
+  Careers.promiseGift(career, ctx.today);
+  return { isNew, previous, bank: { before: bankBefore, after: career.money }, news, tips, elite: elite ? Elite.bar(career, xpBefore, ctx.config) : null, due };
 }

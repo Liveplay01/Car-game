@@ -43,8 +43,8 @@ function setup(options: { vapid?: boolean } = {}) {
     return { status: response.status, json: text.startsWith('{') ? JSON.parse(text) : null };
   };
   const join = async (name: string) => (await call('POST', '/v1/players', { body: { name } })).json.token as string;
-  const subscribe = (device: ReturnType<typeof browser>, o: { token?: string; tz?: number; timers?: unknown[] } = {}) =>
-    call('PUT', '/v1/push', { token: o.token, body: { ...device, tz: o.tz ?? 0, timers: o.timers ?? [] } });
+  const subscribe = (device: ReturnType<typeof browser>, o: { token?: string; tz?: number; timers?: unknown[]; muted?: unknown } = {}) =>
+    call('PUT', '/v1/push', { token: o.token, body: { ...device, tz: o.tz ?? 0, timers: o.timers ?? [], muted: o.muted } });
   const level = (token: string, l: number) => call('PUT', '/v1/boards/shift-level/score', { token, body: { level: l, prestige: 0 } });
   return { clock, call, join, subscribe, level, outbox, status, tick: () => push.tick(), keys };
 }
@@ -117,6 +117,31 @@ test('push: one a day at most, only the streak may come on top', async () => {
   clock.now = now + 26 * HOUR;
   assert.equal(await tick(), 1);
   assert.equal(outbox[2]!.message.tag, 'pass');
+});
+
+test('push: a topic turned off is never sent, from the game or from the server, and can come back', async () => {
+  const { clock, join, subscribe, level, tick, outbox } = setup();
+  const now = clock.now;
+  const device = browser(1);
+  const timers = [{ topic: 'gift', at: now, title: 'Free chest', body: 'Your chest is ready.' }, { topic: 'pass', at: now, title: 'New pass', body: 'Winter is here.' }];
+  assert.equal((await subscribe(device, { muted: ['nope'] })).status, 422);
+  assert.equal((await subscribe(device, { muted: 'gift' })).status, 422);
+  const made = await subscribe(device, { timers, muted: ['gift'] });
+  assert.deepEqual(made.json.timers, [{ topic: 'pass', at: now }]);
+  assert.equal(await tick(), 1);
+  assert.equal(outbox[0]!.message.tag, 'pass');
+  // Turned on again: the game sends its timers again.
+  clock.now = now + DAY;
+  await subscribe(device, { timers: [{ topic: 'gift', at: now + DAY, title: 'Free chest', body: 'Your chest is ready.' }] });
+  assert.equal(await tick(), 1);
+  assert.equal(outbox[1]!.message.tag, 'gift');
+  // What only the server knows is left out too.
+  const anna = await join('Anna');
+  const cara = await join('Cara');
+  await level(anna, 30);
+  await subscribe(browser(2), { token: anna, muted: ['rank'] });
+  await level(cara, 31);
+  assert.equal(await tick(), 0);
 });
 
 test('push: a browser that dropped the subscription is forgotten; a busy push service gets another try', async () => {

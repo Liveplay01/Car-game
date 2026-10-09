@@ -3,10 +3,12 @@ import type { Config } from '../core/config';
 import { Goals } from '../core/goals';
 import { type ConditionEntry, museumId, conditionsOf } from '../core/museum';
 import { type Vec2, v, add } from '../core/vec2';
-import { type RenderList, type Rect, R, Ease, text, circle, Metrics } from './render';
+import { type RenderList, type Rect, R, Ease, text, drawText, circle, Metrics } from './render';
 import { MenuKit } from './menukit';
 import { MuseumPage } from './museum';
-import { textWidth } from './icons';
+import { textWidth, drawFitted } from './icons';
+import { S } from './strings';
+import type { AchievementCard, ShownNotice } from './notices';
 
 /** A condition of the waiting shift, as a button over the island; `isNew`: this player has never played in it. */
 export interface ConditionChip {
@@ -76,8 +78,8 @@ export function streakEndsIn(career: Career, today: number, config: Config): num
 /** Where a notice sits: hanging under `top` (the Game tab), or standing on `bottom` (the pages). */
 export type NoticePlace = { top: number } | { bottom: number };
 
-/** How tall a notice is, Larger text included. */
-export const noticeHeight = (textScale: number): number => 30 * textScale;
+/** How tall a notice is, Larger text included; an achievement's card is nearly twice a line. */
+export const noticeHeight = (textScale: number, achievement = false): number => (achievement ? 54 : 30) * textScale;
 
 /** How much a notice shows at `age` (0–1): it fades in quickly and out a little slower. */
 export const noticePresence = (age: number, duration: number): number => Ease.outCubic(age / 0.2) * (1 - Ease.clamp01((age - (duration - 0.5)) / 0.5));
@@ -87,14 +89,18 @@ export const noticePresence = (age: number, duration: number): number => Ease.ou
  * a tap covered it at the bottom), and drops in from under the card; on the pages it stands
  * above the tab bar. Larger text makes it a step bigger.
  */
-export function addNotice(list: RenderList, notice: { text: string; age: number; duration: number }, o: { at: NoticePlace; textScale: number; reduceMotion: boolean }): void {
-  const { text: textValue, age, duration } = notice;
+export function addNotice(list: RenderList, notice: ShownNotice, o: { at: NoticePlace; textScale: number; reduceMotion: boolean }): void {
+  const { text: textValue, age, duration, achievement } = notice;
   const vp = list.camera.viewport;
   const opacity = noticePresence(age, duration);
-  const travel = o.reduceMotion ? 0 : (1 - Ease.settle(age / 0.4)) * 10;
   const scale = o.textScale;
-  const height = noticeHeight(scale);
+  const height = noticeHeight(scale, achievement !== null);
+  const travel = o.reduceMotion ? 0 : (1 - Ease.settle(age / 0.4)) * (achievement ? 18 : 10);
   const center = 'top' in o.at ? v(vp.x / 2, o.at.top + height / 2 - travel) : v(vp.x / 2, o.at.bottom - height / 2 + travel);
+  if (achievement) {
+    addAchievementCard(list, achievement, center, height, { age, opacity, scale, reduceMotion: o.reduceMotion });
+    return;
+  }
   const size = Metrics.noticeSize * scale;
   const maxWidth = vp.x - 24;
   let fontSize = size;
@@ -103,4 +109,36 @@ export function addNotice(list: RenderList, notice: { text: string; age: number;
   const width = Math.min(maxWidth, textWidth(textValue, fontSize) + 32);
   MenuKit.chromePill(list, center, v(width, height), opacity);
   list.s(text(textValue, center, fontSize, 'center'), 'primary', opacity);
+}
+
+/**
+ * An achievement is not a line of news: a gold-rimmed card with a medal (the tier in it, a ring
+ * of light spreading from it once), the family's name and what it paid.
+ */
+function addAchievementCard(list: RenderList, card: AchievementCard, center: Vec2, height: number, o: { age: number; opacity: number; scale: number; reduceMotion: boolean }): void {
+  const { age, opacity, scale } = o;
+  const pad = 14 * scale;
+  const medal = 18 * scale;
+  const gap = 12 * scale;
+  const captionSize = 10 * scale;
+  const titleSize = 16 * scale;
+  const rewardSize = 14 * scale;
+  const reward = textWidth(card.reward, rewardSize);
+  const caption = S.ach.caption;
+  const maxWidth = list.camera.viewport.x - 24;
+  const chrome = pad * 2 + medal * 2 + gap * 2 + reward;
+  const textRoom = Math.min(maxWidth - chrome, Math.max(textWidth(card.title, titleSize), textWidth(caption, captionSize)));
+  const width = chrome + textRoom;
+  const left = center.x - width / 2;
+  MenuKit.chromePanel(list, R.make(left, center.y - height / 2, left + width, center.y + height / 2), height / 2, opacity, 'coin');
+  const medalAt = v(left + pad + medal, center.y);
+  const pulse = o.reduceMotion ? 1 : Ease.clamp01((age - 0.15) / 0.9);
+  if (pulse < 1) list.s(circle(medalAt, medal * (1 + 0.9 * Ease.outCubic(pulse))), 'coin', 0.4 * (1 - pulse) * opacity);
+  list.s(circle(medalAt, medal), 'coin', opacity);
+  list.s(circle(medalAt, medal - 3 * scale), 'coin', opacity * 0.35);
+  drawText(list, card.tier, medalAt, 15 * scale, 'background', { opacity, weight: 'bold', align: 'center' });
+  const textLeft = left + pad + medal * 2 + gap;
+  drawText(list, caption, v(textLeft, center.y - height * 0.2), captionSize, 'coin', { opacity, weight: 'bold' });
+  drawFitted(list, card.title, v(textLeft, center.y + height * 0.14), titleSize, textRoom, 'primary', { opacity, weight: 'bold' });
+  drawText(list, card.reward, v(left + width - pad, center.y), rewardSize, 'coin', { opacity, weight: 'bold', align: 'trailing' });
 }

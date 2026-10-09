@@ -1,8 +1,9 @@
 import type { World } from '../core/world';
 import { v, add, mul, left, fromAngle } from '../core/vec2';
-import { type RenderList, circle, polygon } from './render';
-import { CarArt, worldOf } from './carArt';
-import { interpolatedPose } from './scene';
+import { type RenderList, circle } from './render';
+import { CarArt } from './carArt';
+import { Headlights } from './headlights';
+import { interpolatedPose, type VehicleLamps } from './scene';
 import type { MapTheme } from './mapThemes';
 
 /**
@@ -20,10 +21,10 @@ export const CityLights = {
   coneReach: 1.6,
   coneStrength: 0.012,
 
-  add(list: RenderList, world: World, alpha: number, theme: MapTheme | null): void {
+  add(list: RenderList, world: World, alpha: number, theme: MapTheme | null, lamps: VehicleLamps | null, time: number | null): void {
     if (world.config.night) return;
     if (!theme) CityLights.addLamps(list, world);
-    CityLights.addHeadlights(list, world, alpha);
+    CityLights.addHeadlights(list, world, alpha, lamps, time);
   },
 
   /** Lamps along both kerbs of every arm, alternating sides, each with its pool of light. */
@@ -43,24 +44,17 @@ export const CityLights = {
     }
   },
 
-  /** A faint cone ahead of every car on the road; the queue behind the front car stays dark. */
-  addHeadlights(list: RenderList, world: World, alpha: number): void {
+  /** A faint pair of cones ahead of every car on the road; the queue behind the front car fades out. */
+  addHeadlights(list: RenderList, world: World, alpha: number, lamps: VehicleLamps | null, time: number | null): void {
     const c = world.config;
-    const W = c.carWidth;
-    const reach = CarArt.length('car', c) * CityLights.coneReach;
+    const look = { layers: CityLights.coneLayers, reach: CarArt.length('car', c) * CityLights.coneReach, spread: 1.05, strength: CityLights.coneStrength };
     for (const veh of world.vehicles) {
       if (veh.isCrashed) continue;
-      if (veh.phase.kind === 'queued' && veh.id !== world.queue.vehicles[0]) continue;
       // The Phantom drives without lights.
       if (veh.role === 'boss' && c.bossKind === 'phantom') continue;
-      const pose = interpolatedPose(veh, alpha);
-      const L = CarArt.length(veh.type, c);
-      for (let layer = 0; layer < CityLights.coneLayers; layer++) {
-        const k = (layer + 1) / CityLights.coneLayers;
-        const far = L / 2 + reach * k;
-        const spread = W * (0.45 + 0.6 * k);
-        list.w(polygon([v(L / 2, W * 0.4), v(far, spread), v(far, -spread), v(L / 2, -W * 0.4)].map((p) => worldOf(p, pose))), 'headlight', CityLights.coneStrength);
-      }
+      const waiting = veh.phase.kind === 'queued' && veh.id !== world.queue.vehicles[0];
+      const beam = lamps ? lamps.beam(veh.id, waiting) : Headlights.rest(waiting);
+      Headlights.add(list, interpolatedPose(veh, alpha), CarArt.length(veh.type, c), c.carWidth, look, beam, beam.glow, time, veh.id);
     }
   },
 };

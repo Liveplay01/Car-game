@@ -3,6 +3,7 @@ import type { MutatorId } from '../core/mutators';
 import type { Arm } from '../core/roundabout';
 import type { ShiftResult } from '../core/events';
 import type { GameMode } from '../core/career';
+import type { EliteBar } from '../core/elite';
 import type { SwipeMode } from './flow';
 import type { CityEvent } from '../core/config';
 import { Scoring } from '../core/scoring';
@@ -993,6 +994,52 @@ export class RingSignals {
     }
   }
 
+  static readonly eliteFill = 1.1;
+
+  /** The half disc that rounds the end of a band on the rim at `angle`; `dir` 1 points ahead, -1 back. */
+  private static roundCap(rim: number, thickness: number, angle: number, dir: 1 | -1): Primitive {
+    const r = thickness / 2;
+    const at = mul(fromAngle(angle), rim);
+    const out = fromAngle(angle);
+    const along = fromAngle(angle + (dir * Math.PI) / 2);
+    const points: Vec2[] = [];
+    for (let i = 0; i <= 8; i++) {
+      const phi = (Math.PI * i) / 8;
+      points.push(add(at, add(mul(out, r * Math.cos(phi)), mul(along, r * Math.sin(phi)))));
+    }
+    return polygon(points);
+  }
+
+  /**
+   * After a shift the rim is the Elite track (Leo, 09.10.2026): the XP the shift earned runs into a gold bar round the
+   * ring, from the player's arm. A level climbed fills the bar, flares the rim and starts it over. `age` counts from the
+   * ring's first look, `opacity` takes it away again when the next shift's ticks come back.
+   */
+  static elite(list: RenderList, frame: RingFrame, bar: EliteBar, age: number, reduceMotion: boolean, opacity: number): void {
+    const { rim, start } = frame;
+    const appear = Ease.outCubic(age / 0.3) * opacity;
+    if (appear <= 0.001) return;
+    list.w(arc(v(0, 0), rim, 2.5, 0, TAU), 'marking', 0.6 * appear);
+    const t = reduceMotion ? 1 : Ease.inOutSine(Ease.clamp01((age - 0.3) / RingSignals.eliteFill));
+    const fraction = bar.climbed > 0 ? (t < 0.5 ? bar.from + (1 - bar.from) * t * 2 : bar.to * (t * 2 - 1)) : bar.from + (bar.to - bar.from) * t;
+    if (fraction > 0.002) {
+      const head = start + TAU * fraction;
+      for (const [thickness, alpha] of [[9, 0.18], [4.5, 0.95]] as const) {
+        list.w(arc(v(0, 0), rim, thickness, start, head), 'coin', alpha * appear);
+        list.w(RingSignals.roundCap(rim, thickness, start, -1), 'coin', alpha * appear);
+        list.w(RingSignals.roundCap(rim, thickness, head, 1), 'coin', alpha * appear);
+      }
+    }
+    // A level climbed: where the bar closes, the victory lap's flare, shock rings, juice and sparkles, in gold.
+    const closed = age - RingSignals.eliteClosesAt;
+    if (bar.climbed > 0 && !reduceMotion && closed > 0 && closed < 1.6 && opacity > 0.5) {
+      RingSignals.victory(list, { kind: 'victory', color: 'coin', second: 'vehicleCargo', power: 0.8, age: closed + RingSignals.victoryLap }, frame);
+    }
+  }
+
+  /** When a climbing bar is full, on the ring's own clock (`age` of `elite`). */
+  static readonly eliteClosesAt = 0.3 + RingSignals.eliteFill / 2;
+
   /**
    * A crash forgiven (the shield, a police car within its limit): the rim lights up and small plus signs rise out of
    * it, here and there round the ring, so the broken combo in the middle does not read as the end.
@@ -1388,6 +1435,8 @@ export interface ShiftSummary {
   run?: { caption: string; color: ColorToken; line: string; lineColor: ColorToken; right: [string, string] };
   /** Under the stats: how close a lost shift came, or what the money is close to. */
   closeCall?: { text: string; color: ColorToken } | null;
+  /** The Elite track after this shift: the ring runs it, the middle says what is missing (`RingSignals.elite`). */
+  elite?: EliteBar | null;
 }
 
 /** How the waiting screen names a challenge or trial. */
@@ -1448,7 +1497,8 @@ export const ResultBanner = {
           ? S.chill.summary(r.carsSent, Fmt.seconds(r.time))
           : S.result.stats(r.bestCombo, r.tightFits, r.takedowns, r.transporters, Fmt.seconds(r.time));
     const best = summary.isNewHighscore ? `. ${S.result.newBest}` : '';
-    return summary.mode === 'chill' ? `${title}. ${detail}${best}` : `${title}. ${Fmt.number(r.score)} points${best}. ${detail}`;
+    const elite = summary.elite ? `. ${S.elite.toGo(summary.elite)}` : '';
+    return summary.mode === 'chill' ? `${title}. ${detail}${best}` : `${title}. ${Fmt.number(r.score)} points${best}. ${detail}${elite}`;
   },
 
   add(list: RenderList, summary: ShiftSummary, nextLevel: number, bank: { before: number; after: number }, age: number, reduceMotion: boolean): void {
@@ -1528,6 +1578,16 @@ export const ResultBanner = {
       const enter = reduceMotion ? 1 : Ease.outCubic((age - ResultBanner.inputLock - 0.15) / 0.3);
       const rise = reduceMotion ? 0 : 6 * (1 - Ease.clamp01(enter));
       if (enter > 0) list.s(text(close.text, add(island, v(0, 54 + rise)), 14, 'center', 'bold'), close.color, details * Ease.clamp01(enter));
+    }
+    const elite = summary.elite;
+    if (elite) {
+      // The ring starts its bar when the shift's ticks are gone; the words follow it. A level climbed waits until
+      // the bar closes, then the words land bigger.
+      const climbed = elite.climbed > 0;
+      const since = age - RingSignals.hold - (climbed ? RingSignals.eliteClosesAt : 0.3);
+      const enter = reduceMotion ? 1 : Ease.outCubic(since / 0.3);
+      const size = climbed ? 16 * (reduceMotion ? 1 : land(since / 0.45, 0.25)) : 13;
+      if (enter > 0) list.s(text(S.elite.toGo(elite), add(island, v(0, close ? 80 : 56)), size, 'center', 'bold'), 'coin', details * enter);
     }
   },
 };

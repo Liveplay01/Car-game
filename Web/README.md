@@ -196,6 +196,11 @@ service when it starts, when it goes to the background (`keepalive`) and when a 
 a rank lost in the top 20, an invite's chest and a nudge after 3, 7, 14 and 30 days away. The service worker shows
 them (`push`) and opens or focuses the game on a tap (`notificationclick`, at `/?googleplaystore` in the app).
 
+With the main switch on, Settings lists one switch per kind (`PUSH_CHOICES`: streak, free chests = the Daily chest and invite gifts, new season, overtaken, come back). The choices stay on this device (`carGame.push.muted.v1`)
+and go to the service with every sync as `muted`: the game leaves those timers out, the service drops them (`push_subs.muted`).
+
+The row is always in Settings; turning it on asks the browser and shows one notification at once (`confirm`). Without the service or a service worker (`npm run dev`, a build without `VITE_API_URL`; `pushDelivers`) it still works for that, but sends no reminders and says so. Inside a portal it is greyed out.
+
 Turned on in **Settings → Progress → Notifications**, or from the offer that comes once when a Daily streak
 reaches two days (`hints: notifications`, `bookShift`; on an iPhone it waits until the game is on the Home
 Screen). Chrome, Edge, Firefox and the Play Store app everywhere; Safari only from the Home Screen (iOS 16.4+).
@@ -264,7 +269,13 @@ Cloud sync.
 - After Level 5 a pill on the Game tab says "Swipe for more modes" until the first switch.
 - `present/notices.ts`: news (what a shift earned, an unlock, a hint) takes turns in the
   notice pill; a reply to the player's own action shows at once. A result tells at most three
-  lines and counts the rest (`GameSession.budget`).
+  lines and counts the rest (`GameSession.budget`). An achievement is the one news item with a
+  look of its own (`NoticeQueue.achieve`, `addAchievementCard` in `readyScreen.ts`): a gold card
+  with a tier medal, longer on screen, never folded into the tail of a list. A chest found, a gift
+  waiting and the like get no notice: the chest pill and the Shop badge show them. Tips (install,
+  backup, invite, the website, Tight Fit, the other modes) are no notices: `TipQueue` shows them on
+  the waiting screen's top card, like the swipe hint, five seconds each, one after the other; a
+  tip cut off before it was read starts over (`GameSession.tip`, `Booking.tips`).
 - The first shift is only the game: no tab bar, no Settings, no Friends until it is over
   (`GameSession.showsChrome`). Chests open on the Game tab from the "Open chest" pill
   (`GameSession.sceneChest`, the Shop's reveal over the scene). Under it the round buttons
@@ -273,7 +284,10 @@ Cloud sync.
   and "Send as challenge" shares the photo with the dare and the link (`PhotoHooks.challenge`;
   not on CrazyGames). News waits while a shift runs (`NoticeQueue.held`); replies to the
   player's own action still show.
-- `present/booking.ts`: books a finished career shift into the save and lists its news.
+- `present/booking.ts`: books a finished career shift into the save and lists its news. It also
+  hands back the Elite track as an `EliteBar` (`Elite.bar`): on the result the island's rim is that
+  bar (`RingSignals.elite`, gold, running from the player's arm; the shift's ticks wait until the
+  next shift's banner arrives) and the middle says the XP missing (`S.elite.toGo`).
 
 ## PWA
 

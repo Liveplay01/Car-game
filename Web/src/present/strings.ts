@@ -10,7 +10,7 @@ import type { CasinoGame, SlotSymbol } from '../core/casino';
 import type { VehicleType, VehicleRole } from '../core/vehicle';
 import { type Trial, type TrialId, type RunId, type EliteKind, rematchKind, ascensionRank, LANDMARK_PRESTIGE } from '../core/trials';
 import type { MuseumEntry } from '../core/museum';
-import type { EliteStep, TitleId, TitleRule } from '../core/elite';
+import type { EliteStep, EliteBar, TitleId, TitleRule } from '../core/elite';
 import type { PassReward, PassStep, HallEntry } from '../core/seasonPass';
 import type { FeatGoal } from '../core/feats';
 import type { Season } from '../core/loot';
@@ -21,6 +21,7 @@ import { MONEY_MARK } from './icons';
 import { Fmt, money, percent, multiplier, comboMultiplier } from './format';
 import { museumText, SPECIAL_TEXT } from './museumText';
 import type { RewardedOutcome } from './session';
+import type { AchievementCard } from './notices';
 
 export { Fmt, money, percent, multiplier, comboMultiplier };
 
@@ -52,11 +53,11 @@ export const S = {
 
   /** One-time tips that keep the progress safe (`Hint`). */
   hints: {
-    install: 'Tip · Install the game in Settings: its own window, one click away',
-    homeScreen: 'Tip · Add the game to your home screen in Settings: one tap, full screen',
-    backup: 'Tip · Turn on Cloud sync in Settings to keep a copy of your progress',
-    reduceMotion: 'Tip · Running slow? Reduce motion in Settings can help',
-    offline: 'Ready to play offline',
+    /** The tips are `Tip`s: they take the top card on the waiting screen (`TipQueue`). */
+    install: { caption: 'TIP', text: 'Install the game in Settings: its own window, one click away' },
+    homeScreen: { caption: 'TIP', text: 'Add the game to your home screen in Settings: one tap, full screen' },
+    backup: { caption: 'TIP', text: 'Turn on Cloud sync in Settings to keep a copy of your progress' },
+    reduceMotion: { caption: 'TIP', text: 'Running slow? Reduce motion in Settings can help' },
     notSaved: 'This browser is not saving your progress · Cloud sync in Settings can keep a copy',
     /** The same where there is no Cloud sync (CrazyGames, no service). */
     notSavedHere: 'This browser is not saving your progress · It lasts until you close the game',
@@ -65,15 +66,13 @@ export const S = {
     /** ...and there was nothing to go back to: what was played stays, money and chests do not. */
     saveDistrusted: 'Your save was changed outside the game · Money and chests were reset',
     updated: 'Updated · See what’s new in Settings',
-    /** Once for every player (Leo, 03.10.2026): the website and its forms. */
-    /** Two short pills, one after the other: a notice is one line, about 55 characters on a phone. */
     /** A friend's invite was kept (`?ref=`): with a name already, or still needing one. */
     invited: [`Invited by a friend · Reach level ${INVITE_LEVEL} and you both get a chest`],
     invitedNeedsName: [`Invited by a friend · Reach level ${INVITE_LEVEL} and you both get a chest`, 'Pick a name under Friends so your chest finds you'],
-    /** Once for everyone (`announceInvite`), and again at level 10 (`inviteReminder`): the friend code is the invite, and the Friends button is where it is. */
-    invite: [`New · Invite a friend and you both get a chest at level ${INVITE_LEVEL}`, 'The Friends button has your code and link'],
-    inviteReminder: [`Level ${INVITE_REMINDER_LEVEL} · Invite a friend and you both get a chest`, 'The Friends button has your code and link'],
-    buildWithUs: ['New website: timing.love · Report bugs and ideas there', 'Bug hunters may get a gift · Settings → Build with us'],
+    /** Once for everyone (`announceInvite`), and again at level 10 (`inviteReminder`): the friend code is the invite, and the Friends button is where it is. The website (`buildWithUs`) is told once, too. */
+    invite: { caption: 'INVITE A FRIEND', text: `You both get a chest at level ${INVITE_LEVEL}. The Friends button has your code and link` },
+    inviteReminder: { caption: 'INVITE A FRIEND', text: `Level ${INVITE_REMINDER_LEVEL}! Bring a friend: you both get a chest at level ${INVITE_LEVEL}. Code under Friends` },
+    buildWithUs: { caption: 'NEW WEBSITE', text: 'timing.love: report bugs and ideas there. Bug hunters may get a gift' },
   },
 
   /** Challenge links and mastery trials: shifts that are played for themselves. */
@@ -269,7 +268,7 @@ export const S = {
       })[r],
     reward: 'REWARD',
     chest: 'Premium',
-    done: (item: string | null): string => `LEGENDARY SHIFT DONE · PREMIUM CHEST${item ? ` · ${S.shop.item(item)} unlocked` : ''}`,
+    done: (item: string | null): string => `LEGENDARY SHIFT DONE${item ? ` · ${S.shop.item(item)} unlocked` : ''}`,
     broken: 'RULE BROKEN',
   },
 
@@ -298,7 +297,7 @@ export const S = {
     },
     daysLeft: (n: number): string => (n === 1 ? 'last day' : `${n} days left`),
     hint: 'The same shift for everyone this week. Play it as often as you like; it pays once.',
-    done: (m: string): string => `WEEKLY SHIFT DONE · +${money(m)} · PREMIUM CHEST`,
+    done: (m: string): string => `WEEKLY SHIFT DONE · +${money(m)}`,
     passedThisWeek: 'Passed this week · new one on Monday',
   },
 
@@ -353,10 +352,14 @@ export const S = {
     xp: (into: number, need: number): string => `${into} / ${need} XP`,
     next: (step: EliteStep): string => `Next at Elite ${step.level}: ${S.elite.reward(step)}`,
     reward: (step: EliteStep): string => (step.item ? S.shop.item(step.item.id) : step.title ? `title “${S.titles.name(step.title)}”` : S.shop.chest(step.chest)),
-    gained: (xp: number): string => `+${xp} ELITE XP`,
+    /** The line in the ring after a shift: the XP it earned and what is missing to the next level. */
+    toGo: (b: EliteBar): string => {
+      const next = `${Fmt.number(b.left)} XP to Elite ${b.level + 1}`;
+      if (b.climbed > 0) return `ELITE ${b.level} · ${next}`;
+      return b.gained > 0 ? `+${Fmt.number(b.gained)} XP · ${next}` : next;
+    },
     opened: 'ELITE DRIVER · the Elite track is open',
-    reached: (step: EliteStep): string =>
-      `ELITE ${step.level}${step.item ? ` · ${S.shop.item(step.item.id)} unlocked` : ''} · ${S.shop.chest(step.chest)}`,
+    reached: (step: EliteStep): string => `ELITE ${step.level}${step.item ? ` · ${S.shop.item(step.item.id)} unlocked` : ''}`,
     body: [
       'From Level 50 on, every shift earns Elite XP: 10 for a completed shift, 1 for each Perfect Input and Tight Fit, 10 more for a boss taken down or a Legendary Shift.',
       'Each Elite level asks a little more XP than the last. Each one pays a Standard Chest, every tenth a Premium Chest. Titles and skins wait along the way. Prestige keeps the track.',
@@ -503,11 +506,11 @@ export const S = {
     runOver: 'RUN OVER',
     again: 'Tap for another run',
     carsSent: (n: number): string => (n === 1 ? '1 car' : `${n} cars`),
-    unlocked: 'New modes · swipe sideways for Unlimited, Mayhem, Chill and Multiplayer',
+    unlocked: { caption: 'NEW MODES', text: 'Swipe sideways for Unlimited, Mayhem, Chill and Multiplayer' },
     /** After the first lost shift: the mode without levels. */
-    tryUnlimited: 'Swipe sideways for Unlimited: no levels, just go until you crash',
+    tryUnlimited: { caption: 'GAME MODES', text: 'Swipe sideways for Unlimited: no levels, just go until you crash' },
     /** Taught once, on a later visit or after a few shifts: the scoring pays for close merges. */
-    tightFit: 'Closer pays more: join right behind a car for a Tight Fit, twice the points',
+    tightFit: { caption: 'TIP', text: 'Closer pays more: join right behind a car for a Tight Fit, twice the points' },
     swipeCaption: 'GAME MODES',
     swipeHint: 'Swipe for more modes',
     /** Unlimited's late stages (`endlessStages`), as they come. */
@@ -716,10 +719,22 @@ export const S = {
       )[id] ?? '';
     },
     tier: (n: number): string => ['I', 'II', 'III', 'IV'][n - 1] ?? String(n),
-    reached: (id: string, tier: number, reward: string): string => `ACHIEVEMENT · ${S.ach.name(id)} ${S.ach.tier(tier)} · +${money(reward)}`,
+    /** The small line over the name on the card that announces one (`AchievementCard`). */
+    caption: 'ACHIEVEMENT',
+    reached: (id: string, tier: number, reward: string): AchievementCard => ({
+      title: S.ach.name(id),
+      tier: S.ach.tier(tier),
+      reward: `+${money(reward)}`,
+      text: `Achievement · ${S.ach.name(id)} ${S.ach.tier(tier)} · +${money(reward)}`,
+    }),
     count: (done: number, total: number): string => `${done}/${total}`,
-    /** Many at once (a save from before the achievements): one line, not a queue. */
-    many: (n: number, reward: string): string => `${n} ACHIEVEMENTS · +${money(reward)} · see Progress → Goals`,
+    /** Many at once (a save from before the achievements): one card, not a queue. */
+    many: (n: number, reward: string): AchievementCard => ({
+      title: `${n} achievements`,
+      tier: '★',
+      reward: `+${money(reward)}`,
+      text: `${n} achievements · +${money(reward)} · see Progress → Goals`,
+    }),
   },
 
   /** The top card's briefing (`Briefings`): what meets you and what to do about it. */
@@ -740,6 +755,16 @@ export const S = {
     row: 'Notifications',
     rowSub: 'Your streak, a free chest, a new season, or a player passing you in the top 20. At most one a day.',
     rowInstall: 'Add the game to your Home Screen first, then turn them on here.',
+    choices: {
+      streak: { title: 'Daily streak', sub: 'A nudge in the evening before your streak ends.' },
+      chests: { title: 'Free chests', sub: 'The Daily chest for tomorrow, and gifts from invites.' },
+      pass: { title: 'New season', sub: 'When a new Season Pass starts.' },
+      rank: { title: 'Overtaken', sub: 'When a player passes you in the top 20.' },
+      comeback: { title: 'Come back', sub: 'A reminder after a few days away.' },
+    },
+    rowNone: 'Not available here. Open the game in your browser to turn on notifications.',
+    rowLocal: 'On. Reminders for when the game is closed need the online service, which this version of the game does not have.',
+    confirmTitle: 'Notifications are on',
     rowBlocked: 'Blocked for this site. Allow notifications in your browser settings to turn them on.',
     offerTitle: 'Keep your streak',
     offerWhy: 'Get a nudge before your streak ends, when a free chest is ready or a new season starts. At most one a day, never at night.',
@@ -1366,7 +1391,7 @@ export const S = {
     done: 'Done',
     readyHint: 'Your first shift of the day. One try, the same shift for everyone.',
     doneHint: (streak: number): string => (streak > 1 ? `Done · ${streak} days in a row · back tomorrow` : 'Done · back tomorrow'),
-    dailyDone: (m: string, streak: number): string => `DAILY SHIFT DONE · +${money(m)}${streak > 1 ? ` · ${streak} days in a row` : ''} · EVENT CHEST`,
+    dailyDone: (m: string, streak: number): string => `DAILY SHIFT DONE · +${money(m)}${streak > 1 ? ` · ${streak} days in a row` : ''}`,
     splashLine: (e: CityEvent): string => `Today's city: ${S.cityEvent(e)} · one try`,
     streakLine: (streak: number): string => (streak > 0 ? `${streak} ${streak === 1 ? 'day' : 'days'} in a row · keep it going` : 'Play it every day for a streak'),
     nextMilestone: (left: number, item: string): string => `${left} more ${left === 1 ? 'day' : 'days'} for ${S.shop.item(item)}`,
@@ -1385,13 +1410,8 @@ export const S = {
     freezeUsed: (n: number): string => `STREAK FROZEN · ${n === 1 ? 'a missed day was' : `${n} missed days were`} covered`,
     freezeEarned: 'STREAK FREEZE EARNED · it covers a missed day',
     milestone: (days: number, item: string): string => `${days} DAYS IN A ROW · ${S.shop.item(item)} unlocked`,
-    eventChestFound: 'EVENT CHEST FOUND',
-    luckyDrop: 'LUCKY DROP · STANDARD CHEST',
-    welcomeChest: 'YOUR FIRST CHEST · open it right here',
-    /** Tomorrow's gift (`Careers.promiseGift`): said once, then counted down on the Game tab. */
-    giftPromised: 'A gift waits for you tomorrow: a free chest',
+    /** Tomorrow's gift (`Careers.promiseGift`): counted down on the Game tab. */
     giftIn: (hours: number): string => (hours >= 1 ? `Free chest tomorrow · in ${Math.ceil(hours)} h` : `Free chest tomorrow · in ${Math.max(1, Math.ceil(hours * 60))} min`),
-    giftCollected: 'You came back: your free chest is here',
     perfectRunFirst: (pay: number): string => `PERFECT RUN · no crash or cut-off · +${pay} % pay`,
     /** The pill over the Daily Shift: the streak, its bonus, and when it breaks. */
     streakPill(streak: number, bonus: number | null, endsIn: number | null, freezes = 0): string {
@@ -1517,8 +1537,7 @@ export const S = {
       })[g],
     toast(done: MasteryCompletion[]): string {
       const names = done.map((c) => `${S.mastery.name(c.goal)} ${masteryNumeral(c.tier)}`);
-      const chests = done.length === 1 ? 'CHEST EARNED' : `${done.length} CHESTS EARNED`;
-      return `MASTERY COMPLETE · ${names.join(', ')} · ${chests}`;
+      return `MASTERY COMPLETE · ${names.join(', ')}`;
     },
   },
 

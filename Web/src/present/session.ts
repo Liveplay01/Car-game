@@ -34,7 +34,7 @@ import { CityLights } from './cityLights';
 import { HUD, TopBar, RingSignals, ModeMessage, ReadyBanner, type TopMessage, ResultBanner, type Popup, type PopupKind, type ShiftSummary, type ConditionIntro, POPUP_LIFETIME, settledPops } from './hud';
 import { inPortal } from '../storage/device';
 import { Tutorial } from './tutorial';
-import { NoticeQueue } from './notices';
+import { NoticeQueue, TipQueue, type Tip } from './notices';
 import { bookShift } from './booking';
 import { type Screen, type Tab, type SwipeMode, SWIPE_MODES, type ScreenAction, type ProgressSection, PROGRESS, TAB_BAR, BUILD_PAGES, barTab, screenTab, showsTabBar, BuildLayout } from './flow';
 import { CameraRig, perspectiveOf, addRecede } from './perspective';
@@ -53,7 +53,7 @@ import { type SpecialRun, settleSpecial, runCard, advanceRush, newRush } from '.
 import { markPassed, markReward } from '../core/tiers';
 import { forHeat, heatPay } from '../core/heat';
 import { conditionChips, ConditionChips, streakEndsIn, addNotice, noticeHeight, noticePresence, type NoticePlace } from './readyScreen';
-import { Briefings, briefOf } from './briefing';
+import { Briefings, briefOf, type Brief } from './briefing';
 
 export type { SpecialRun } from './specialRuns';
 import { ProgressPage, ProgressState, type ProgressTarget } from './progress';
@@ -146,7 +146,7 @@ export class GameSession {
     if (this.reduceMotion || this.save.hints.includes('reduceMotion')) return;
     this.save.hints.push('reduceMotion');
     this.persist();
-    this.announce(S.hints.reduceMotion);
+    this.tip(S.hints.reduceMotion);
   }
   today = dayNumber();
 
@@ -259,6 +259,7 @@ export class GameSession {
   private lastCamera: Camera | null = null;
   private lastInset = 0;
   private readonly notices = new NoticeQueue();
+  private readonly tips = new TipQueue();
   /** Something new on the road takes the top card for a while, with what to do (`Briefings`). */
   private readonly briefings = new Briefings();
   /** Entries whose task cost a shift (a criminal got away): explained once more next time. */
@@ -354,8 +355,8 @@ export class GameSession {
 
   private persist(): void {
     const earned = Achievements.sync(this.save);
-    if (earned.length > 3) this.announce(S.ach.many(earned.length, Fmt.number(earned.reduce((n, e) => n + e.reward, 0))));
-    else if (earned.length > 0) this.announce(...earned.map((e) => S.ach.reached(e.family, e.tier, Fmt.number(e.reward))));
+    if (earned.length > 3) this.notices.achieve(S.ach.many(earned.length, Fmt.number(earned.reduce((n, e) => n + e.reward, 0))));
+    else this.notices.achieve(...earned.map((e) => S.ach.reached(e.family, e.tier, Fmt.number(e.reward))));
     this.store();
     // A better level or Unlimited record goes to the leaderboard; nothing happens without a name.
     void syncScores(this.leaderboardRecords);
@@ -376,10 +377,9 @@ export class GameSession {
 
   collectLoginIncome(): void {
     const income = Careers.collectLoginIncome(this.save.career, this.today, this.config);
-    const gift = Careers.collectGift(this.save.career, this.today);
+    Careers.collectGift(this.save.career, this.today);
     this.persist();
     if (income !== null) this.announce(S.daily.welcomeBack(Fmt.number(income)));
-    if (gift) this.announce(S.daily.giftCollected);
     this.announceBuildWithUs();
     this.announceInvite();
   }
@@ -411,7 +411,7 @@ export class GameSession {
     if (inPortal || !this.save.tutorialDone || this.save.hints.includes('buildWithUs') || !this.takeTip()) return;
     this.save.hints.push('buildWithUs');
     this.store();
-    this.announce(...S.hints.buildWithUs);
+    this.tip(S.hints.buildWithUs);
   }
 
   /**
@@ -425,7 +425,7 @@ export class GameSession {
     this.save.hints.push('invite');
     if (this.save.career.level >= INVITE_REMINDER_LEVEL) this.save.hints.push('inviteReminder');
     this.store();
-    this.announce(...S.hints.invite);
+    this.tip(S.hints.invite);
   }
 
   /** Simulation speed with the short slow motions of a takedown and of the lost shift. */
@@ -532,7 +532,9 @@ export class GameSession {
         const from = this.swipeMode;
         this.versusSelected = mode === 'multiplayer';
         // The swipe hint on the card hands over to the mode's name, and stays away until the screen has been quiet again.
-        this.modeMessage.swipe(mode, this.modeHint > 0.05 ? { brief: TopBar.swipeBrief(), amount: this.modeHint } : undefined);
+        const tip = this.tips.view;
+        this.modeMessage.swipe(mode, tip ? { brief: GameSession.tipBrief(tip.tip), amount: tip.amount } : this.modeHint > 0.05 ? { brief: TopBar.swipeBrief(), amount: this.modeHint } : undefined);
+        this.tips.dismiss();
         this.modeHint = 0;
         this.sinceModeSwipe = 0;
         this.kickCamera(SWIPE_MODES.indexOf(mode) - SWIPE_MODES.indexOf(from));
@@ -823,6 +825,11 @@ export class GameSession {
   /** News for the player: each line gets its own turn. */
   announce(...texts: string[]): void {
     this.notices.announce(...texts);
+  }
+
+  /** A tip: it waits for the waiting screen and takes the top card for a few seconds (`TipQueue`). */
+  tip(...tips: Tip[]): void {
+    this.tips.add(...tips);
   }
 
   private get wantsDaily(): boolean {
@@ -1286,6 +1293,8 @@ export class GameSession {
     else this.shownMoney += (money - this.shownMoney) * Math.min(1, realDelta / GameSession.scoreCatchUp);
     this.sinceReady = this.screen.k === 'ready' ? this.sinceReady + realDelta : 0;
     this.watchCity(realDelta);
+    const cardFree = this.screen.k === 'ready' && this.takesModeSwipe && !this.versusSelected;
+    this.tips.advance(realDelta, cardFree, cardFree && this.notices.isEmpty && this.modeHint < 0.05 && this.modeMessage.view(0) === null, this.reduceMotion);
     const hintTarget = this.showsModeHint ? 1 : 0;
     this.modeHint = this.reduceMotion ? hintTarget : Math.max(0, Math.min(1, this.modeHint + (hintTarget ? 1 : -1) * (realDelta / 0.35)));
     this.tutorial?.advance(realDelta);
@@ -1363,7 +1372,14 @@ export class GameSession {
   }
 
   private followRim(): void {
-    if (this.screen.k === 'result' && this.resultAge < RingSignals.hold) return;
+    if (this.screen.k === 'result') {
+      if (this.resultAge < RingSignals.hold) return;
+      // The Elite bar has the rim until the next shift's ticks arrive with its banner.
+      if (this.screen.summary.elite && ResultBanner.settled(this.resultAge) < 0.5) {
+        this.rim.follow(0, 0, 'primary');
+        return;
+      }
+    }
     const left = this.world.carsLeft;
     if (left === null) {
       this.rim.follow(0, 0, 'primary');
@@ -1371,6 +1387,16 @@ export class GameSession {
     }
     const total = this.world.config.shiftCars;
     this.rim.follow(total, Math.max(0, total - left), this.world.shift.isRushHour ? 'rushHour' : 'primary');
+  }
+
+  /** The rim's signals, and on a result the Elite bar the shift just fed (`RingSignals.elite`). */
+  private addRim(list: RenderList, world: World, reduceMotion: boolean): void {
+    this.rim.add(list, world, reduceMotion);
+    const screen = this.screen;
+    if (screen.k !== 'result' || !screen.summary.elite) return;
+    const frame = { rim: RingSignals.rim(world), start: world.layout.player.angle, outer: world.layout.ringRadius + world.layout.laneWidth / 2 };
+    const opacity = 1 - Ease.clamp01(ResultBanner.settled(this.resultAge) * 2);
+    RingSignals.elite(list, frame, screen.summary.elite, this.resultAge - RingSignals.hold, reduceMotion, opacity);
   }
 
   /** A tap for the world, timestamped when it happened (not when the frame saw it). */
@@ -1924,7 +1950,7 @@ export class GameSession {
   private get showsModeHint(): boolean {
     const career = this.save.career;
     const due = career.level > this.config.modeHintAfterLevel || this.save.hints.includes('unlimitedTip');
-    if (!due || !this.notices.isEmpty) return false;
+    if (!due || !this.notices.isEmpty || this.tips.isActive) return false;
     if (this.screen.k !== 'ready' || !this.takesModeSwipe) return false;
     // After a swipe the hint is gone for a whole quiet stretch, then it counts as before.
     const swiped = this.sinceModeSwipe < this.sinceReady;
@@ -1933,10 +1959,14 @@ export class GameSession {
     return idle >= 0 && idle % GameSession.hintEvery < GameSession.hintShown;
   }
 
-  /** What the waiting screen's top card says instead of its numbers: the mode just swiped to, or the swipe hint. */
+  private static tipBrief = (tip: Tip): Brief => ({ id: 'tip', caption: tip.caption, text: tip.text, color: 'accent', pending: null });
+
+  /** What the waiting screen's top card says instead of its numbers: the mode just swiped to, a tip, or the swipe hint. */
   private get topMessage(): TopMessage | null {
     const message = this.modeMessage.view(this.sceneTime);
     if (message) return message;
+    const tip = this.tips.view;
+    if (tip) return { brief: GameSession.tipBrief(tip.tip), previous: null, amount: tip.amount, swap: 1, pulse: 1, time: this.sceneTime, left: false, right: false };
     return this.modeHint > 0 ? { brief: TopBar.swipeBrief(), previous: null, amount: this.modeHint, swap: 1, pulse: 1, time: this.sceneTime, ...this.swipeSides } : null;
   }
 
@@ -2232,7 +2262,7 @@ export class GameSession {
     if (!save.tutorialDone || save.hints.includes('tightFit')) return;
     save.hints.push('tightFit');
     this.store();
-    if (save.career.mastery.tightFits < GameSession.tightFitsKnown) this.announce(S.modes.tightFit);
+    if (save.career.mastery.tightFits < GameSession.tightFitsKnown) this.tip(S.modes.tightFit);
   }
 
   /** Shifts after which `teachTightFit` comes in the same visit, and how many Tight Fits mean it is known. */
@@ -2268,10 +2298,7 @@ export class GameSession {
   private keepDailyInStep(): void {
     if (this.world.shift.phase !== 'waiting' || this.screen.k === 'playing' || this.special) return;
     const day = dayNumber();
-    if (day !== this.today && Careers.collectGift(this.save.career, day)) {
-      this.persist();
-      this.announce(S.daily.giftCollected);
-    }
+    if (day !== this.today && Careers.collectGift(this.save.career, day)) this.persist();
     this.today = day;
     if (this.wantsDaily !== this.dailySelected) this.prepareShift(true, null, this.screen);
   }
@@ -2385,6 +2412,7 @@ export class GameSession {
     this.resultBank = booked.bank;
     const found = this.takeMuseumNotice();
     this.notices.announce(...GameSession.budget([...booked.news, ...(found ? [found] : [])]));
+    this.tips.add(...booked.tips);
     for (const hint of booked.due) this.onHint?.(hint);
     if (save.shiftsPlayed >= GameSession.tightFitTipShifts) this.teachTightFit();
     const { isNew, previous } = booked;
@@ -2395,7 +2423,7 @@ export class GameSession {
       this.resultCountdown = this.resultDelayFor(result);
       return;
     }
-    this.pendingSummary = { result, level: this.playingLevel, isNewHighscore: isNew, previousHighscore: previous, mode: this.playingMode, closeCall: this.playingMode === 'chill' ? null : this.closeCall(result, previous) };
+    this.pendingSummary = { result, level: this.playingLevel, isNewHighscore: isNew, previousHighscore: previous, mode: this.playingMode, closeCall: this.playingMode === 'chill' ? null : this.closeCall(result, previous), elite: booked.elite };
     this.resultCountdown = this.resultDelayFor(result);
   }
 
@@ -2521,7 +2549,7 @@ export class GameSession {
     if (!this.special) CityLayer.addElite(list, Elite.level(career, this.config), world);
     if (!this.special) CityLayer.addHall(list, career.hallBuilt, career.prestige, world);
     CityLayer.addFrame(list, Careers.frame(career), world);
-    if (!world.config.night) this.rim.add(list, world, rm);
+    if (!world.config.night) this.addRim(list, world, rm);
     WeatherLayer.addCityEvent(list, world);
     const weather = this.weatherFade.mix(world.config.weather, this.sceneTime);
     WeatherLayer.addGround(list, world, weather);
@@ -2530,7 +2558,7 @@ export class GameSession {
     SceneBuilder.addLaneArrow(list, world);
     this.explosions.addGround(list);
     this.effects.addGround(list, world, alpha, !rm);
-    CityLights.add(list, world, alpha, theme);
+    CityLights.add(list, world, alpha, theme, this.lamps, rm ? null : world.time);
     SceneBuilder.addShadows(list, world, alpha);
     SceneBuilder.addVehicles(list, world, alpha, career.carSkins, rm ? null : world.time, rm ? null : world.time, this.lamps);
     SceneBuilder.addTowTrucks(list, world);
@@ -2538,7 +2566,7 @@ export class GameSession {
       NightLayer.add(list, world, alpha, this.lamps, rm ? null : world.time);
       // The ring's light goes on above the dark, not under it, and glows (`HUD.bloom`).
       const lit = list.items.length;
-      this.rim.add(list, world, rm);
+      this.addRim(list, world, rm);
       if (!this.lowDetail) HUD.bloom(list, lit);
     }
     if (this.save.settings.vehicleLabels) SceneBuilder.addLabels(list, world, alpha);
@@ -2675,7 +2703,7 @@ export class GameSession {
   private get noticeRoom(): number {
     const notice = this.notices.shown;
     if (!notice) return 0;
-    return (noticeHeight(this.textScale) + 10) * Ease.smoothstep(noticePresence(notice.age, notice.duration));
+    return (noticeHeight(this.textScale, notice.achievement !== null) + 10) * Ease.smoothstep(noticePresence(notice.age, notice.duration));
   }
 
   /** The Build tab's segment thumb: 0 on Upgrades, 1 on the Street Builder, gliding between. */

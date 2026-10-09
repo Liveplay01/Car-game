@@ -624,6 +624,7 @@ a.row-link {
   width: min(520px, 100%);
   max-height: calc(100% - var(--safe-top) - var(--s5));
   overflow-y: auto;
+  overscroll-behavior: contain;
   background: var(--surface-1);
   border-radius: var(--r-sheet) var(--r-sheet) 0 0;
   padding: var(--s2) var(--s4) calc(var(--safe-bottom) + var(--s5));

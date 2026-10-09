@@ -30,7 +30,7 @@ const { sealOf } = await load('/src/storage/seal.ts');
 const { Casino } = await load('/src/core/casino.ts');
 const { fingerprint } = await load('/src/net/cloud.ts');
 const { iceServers } = await load('/src/net/rtc.ts');
-const { NoticeQueue } = await load('/src/present/notices.ts');
+const { NoticeQueue, TipQueue } = await load('/src/present/notices.ts');
 const { Briefings, briefOf } = await load('/src/present/briefing.ts');
 const { Details } = await load('/src/present/detail.ts');
 const { conditionChips, ConditionChips } = await load('/src/present/readyScreen.ts');
@@ -334,10 +334,10 @@ test('clearing the mode-hint level tells about the other modes, once', () => {
   save.career.level = at;
   const booked = bookShift(save, completed(at), context(at));
   assert.equal(save.career.level, at + 1);
-  assert.equal(booked.news[0], S.modes.unlocked);
+  assert.equal(booked.tips[0], S.modes.unlocked);
   save.hints.push('modes');
   save.career.level = at;
-  assert.ok(!bookShift(save, completed(at), context(at)).news.includes(S.modes.unlocked));
+  assert.ok(!bookShift(save, completed(at), context(at)).tips.includes(S.modes.unlocked));
 });
 
 test('Tight Squeeze counts Tight Fits or better; trials open one by one', async () => {
@@ -357,18 +357,21 @@ test('Tight Squeeze counts Tight Fits or better; trials open one by one', async 
 });
 
 test('the first level cleared gives one welcome chest, and only then', () => {
-  const welcomed = (save, result, level) => bookShift(save, result, context(level)).news.includes(S.daily.welcomeChest);
   const save = newSave();
-  const booked = bookShift(save, completed(1), context(1));
+  bookShift(save, completed(1), context(1));
   assert.equal(save.career.level, 2);
-  assert.equal(booked.news[0], S.daily.welcomeChest);
   assert.ok(save.career.chests.includes('standard'));
-  assert.ok(!welcomed(save, completed(2), 2));
+  const welcome = (level, prestige, levelBefore) => {
+    const c = newCareer();
+    Object.assign(c, { level, prestige });
+    return Careers.giveWelcomeChest(c, levelBefore, baseConfig);
+  };
+  assert.ok(welcome(2, 0, 1));
+  assert.ok(!welcome(3, 0, 2), 'not again');
   // A lost first shift gives nothing yet; after a Prestige the chest does not come again.
-  assert.ok(!welcomed(newSave(), { ...completed(1), outcome: 'struckOut' }, 1));
-  const again = newSave();
-  again.career.prestige = 1;
-  assert.ok(!welcomed(again, completed(1), 1));
+  assert.ok(!welcome(1, 0, 1));
+  assert.ok(!welcome(2, 1, 1));
+  assert.ok(!bookShift(save, completed(2), context(2)).news.some((n) => /chest/i.test(n)), 'a chest found is not announced');
 });
 
 test('the first Perfect Run says what it is, later ones leave it to the ring', () => {
@@ -500,6 +503,48 @@ test('a long list folds its tail into the last line', () => {
   }
   assert.equal(seen.length, 1 + NoticeQueue.maxWaiting);
   assert.equal(seen[seen.length - 1], '5  ·  6  ·  7');
+});
+
+test('an achievement is a card of its own and is never folded into the tail', () => {
+  const card = { title: 'Scrapyard', tier: 'II', reward: '+600', text: 'Achievement · Scrapyard II · +600' };
+  const q = new NoticeQueue();
+  q.announce('1', '2', '3', '4', '5', '6', '7');
+  q.achieve(card);
+  const seen = [];
+  while (q.shown) {
+    seen.push(q.shown);
+    q.advance(10);
+  }
+  assert.equal(seen.filter((n) => n.achievement).length, 1);
+  assert.equal(seen.find((n) => n.achievement).achievement, card);
+  assert.equal(seen.filter((n) => !n.achievement).at(-1).text, '5  ·  6  ·  7');
+  const alone = new NoticeQueue();
+  alone.achieve(card);
+  assert.ok(alone.shown.duration > NoticeQueue.duration);
+});
+
+test('a tip waits for the free top card, stays its time, and starts over when cut off too early', () => {
+  const a = { caption: 'TIP', text: 'A' };
+  const b = { caption: 'TIP', text: 'B' };
+  const q = new TipQueue();
+  q.add(a, b, a);
+  q.advance(0.1, true, false, true);
+  assert.equal(q.view, null, 'nothing starts while something else asks for the eye');
+  q.advance(0.1, true, true, true);
+  assert.equal(q.view.tip, a);
+  q.advance(1, false, false, true);
+  assert.equal(q.view, null);
+  assert.ok(q.isActive, 'a tip cut off before it was read stays in line');
+  q.advance(0.1, true, true, true);
+  assert.equal(q.view.tip, a);
+  q.advance(TipQueue.hold + 0.1, true, true, true);
+  assert.equal(q.view, null);
+  q.advance(0.1, true, true, true);
+  assert.equal(q.view.tip, b, 'a tip told twice shows once');
+  q.advance(TipQueue.readAfter + 0.1, true, true, true);
+  q.advance(0.1, false, false, true);
+  q.advance(0.1, true, true, true);
+  assert.equal(q.view, null, 'a tip read for long enough does not come back');
 });
 
 // MARK: First meetings
@@ -1087,6 +1132,26 @@ test('every Feat pays its own reward where its deed happens, never in a chest', 
   assert.equal(Elite.level(c), 100);
   assert.equal(Feats.count(c), FEATS.length);
   assert.ok(['ascended', 'eternal', 'grandmaster', 'centurion', 'immortal'].every((t) => Elite.titleEarned(t, c)));
+});
+
+test('the Elite bar says where a shift moved the track and what is missing to the next level', async () => {
+  const { Elite } = await load('/src/core/elite.ts');
+  const c = newCareer();
+  c.prestige = 1;
+  const need = Elite.need(1);
+  c.eliteXp = need / 4;
+  const before = c.eliteXp;
+  c.eliteXp += need / 4;
+  const bar = Elite.bar(c, before);
+  assert.deepEqual([bar.level, bar.climbed, bar.gained], [1, 0, need / 4]);
+  assert.ok(Math.abs(bar.from - 0.25) < 1e-9 && Math.abs(bar.to - 0.5) < 1e-9);
+  assert.equal(bar.left, need - c.eliteXp);
+  c.eliteXp = Elite.xpTo(2) + 3;
+  const up = Elite.bar(c, Elite.xpTo(2) - 2);
+  assert.equal(up.climbed, 1);
+  assert.equal(up.level, 2);
+  assert.ok(up.from > 0.9 && up.to < 0.1);
+  assert.equal(up.left, Elite.need(2) - 3);
 });
 
 test('a save already past a Feat gets its reward when it loads', () => {
