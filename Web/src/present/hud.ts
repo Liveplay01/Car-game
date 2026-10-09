@@ -1501,7 +1501,7 @@ export const ResultBanner = {
     return summary.mode === 'chill' ? `${title}. ${detail}${best}` : `${title}. ${Fmt.number(r.score)} points${best}. ${detail}${elite}`;
   },
 
-  add(list: RenderList, summary: ShiftSummary, nextLevel: number, bank: { before: number; after: number }, age: number, reduceMotion: boolean): void {
+  add(list: RenderList, summary: ShiftSummary, nextLevel: number, bank: { before: number; after: number }, age: number, reduceMotion: boolean, gift: string | null = null): void {
     const r = summary.result;
     const frame = TopBar.frame(list.camera.viewport.x);
     const cols = TopBar.columns(frame);
@@ -1561,6 +1561,8 @@ export const ResultBanner = {
             ? S.result.nextLevel(nextLevel)
             : S.result.retryLevel(nextLevel);
     list.s(text(next, island, 17, 'center', 'bold'), 'primary', prompt);
+    // Once the result's details are gone the prompt stays alone: the promise for tomorrow takes their place, as on the ready screen.
+    if (gift) list.s(text(gift, add(island, v(0, 28)), 13, 'center'), 'muted', prompt * ResultBanner.arriving(age));
     const details = prompt * (1 - ResultBanner.leaving(age));
     if (details <= 0.001) return;
     if (run) list.s(text(run.line, sub(island, v(0, 28)), 14, 'center', 'bold'), run.lineColor, details);

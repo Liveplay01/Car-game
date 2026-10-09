@@ -1,5 +1,7 @@
 import type { World } from '../core/world';
-import { isExplosive, isEmergency } from '../core/vehicle';
+import type { Config } from '../core/config';
+import type { Pose } from '../core/paths';
+import { isExplosive, isEmergency, type VehicleType } from '../core/vehicle';
 import { v, add, mul, left, fromAngle } from '../core/vec2';
 import { type RenderList, rect, circle } from './render';
 import { CarArt, PoliceLights, worldOf } from './carArt';
@@ -19,15 +21,17 @@ export const NightLayer = {
   /** A blackout: no street lamps, and darker still; the lights of the cars are all there is. */
   blackoutDarkness: 0.76,
   /** Headlight cone: length ahead of the bumper and width at its far end, in car widths. */
-  coneReach: 2,
+  coneReach: 2.6,
   coneSpread: 1.15,
   /** Many faint layers read as one soft gradient instead of visible steps. */
-  coneLayers: 6,
-  coneStrength: 0.022,
+  coneLayers: 9,
+  coneStrength: 0.055,
   /** Cars waiting behind the front car: dimmed, so the queue does not glare. */
   queueDim: 0.4,
+  /** How far the blue strobes tint the street around a siren (per side, at full flash). */
+  strobeSpill: 0.22,
   lampPool: [36, 29, 22, 15, 9],
-  lampStrength: 0.022,
+  lampStrength: 0.028,
 
   add(list: RenderList, world: World, alpha: number, lamps: VehicleLamps | null, time: number | null): void {
     const vp = list.camera.viewport;
@@ -71,12 +75,31 @@ export const NightLayer = {
       }
       if (isExplosive(veh.type)) list.w(circle(pose.position, 1.4), 'hazard', 0.8);
 
-      // Police and ambulance strobes light up the street around them.
+      // Police and ambulance strobes light up the street around them, and flash at the corners of the body too.
       if ((veh.type === 'police' && (chase || veh.phase.kind !== 'queued')) || isEmergency(veh.type)) {
         const spill = PoliceLights.spill(world.time / CarArt.strobeCycle + (veh.id % 7) * 0.37);
         const across = mul(left(fromAngle(pose.heading)), W * 0.9);
-        if (spill.left > 0.01) list.w(circle(add(pose.position, across), L * 0.9), 'lightBlue', 0.1 * spill.left);
-        if (spill.right > 0.01) list.w(circle(add(pose.position, mul(across, -1)), L * 0.9), 'lightBlue', 0.1 * spill.right);
+        if (spill.left > 0.01) list.w(circle(add(pose.position, across), L * 0.9), 'lightBlue', NightLayer.strobeSpill * spill.left);
+        if (spill.right > 0.01) list.w(circle(add(pose.position, mul(across, -1)), L * 0.9), 'lightBlue', NightLayer.strobeSpill * spill.right);
+        NightLayer.addBeacons(list, veh.type, pose, spill, L, c);
+      }
+    }
+  },
+
+  /** The roof bar shines through the dark, and the front and the rear flash on their own side, so the van reads from any angle. */
+  addBeacons(list: RenderList, type: VehicleType, pose: Pose, spill: { left: number; right: number }, L: number, c: Config): void {
+    const W = CarArt.width(type, c);
+    const bar = CarArt.shape('lightBar', type, c).center;
+    for (const [side, glow] of [[1, spill.left], [-1, spill.right]] as const) {
+      if (glow <= 0.01) continue;
+      const roof = worldOf(add(bar, v(0, side * W * 0.25)), pose);
+      list.w(circle(roof, W * 1.1), 'lightBlue', 0.3 * glow);
+      list.w(circle(roof, W * 0.35), 'primary', 0.75 * glow);
+      for (const x of [L / 2 - 1.2, -L / 2 + 1.2]) {
+        const at = worldOf(v(x, side * W * 0.3), pose);
+        list.w(circle(at, W * 0.8), 'lightBlue', 0.35 * glow);
+        list.w(rect(at, v(1.8, W * 0.3), 0.6, pose.heading), 'lightBlue', 0.95 * glow);
+        list.w(circle(at, 0.7), 'primary', 0.8 * glow);
       }
     }
   },

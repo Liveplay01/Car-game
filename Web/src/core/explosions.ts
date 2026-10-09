@@ -5,7 +5,7 @@ import { type Vec2, add, sub, mul, dot, cross, left, normalize, length, lengthSq
 import type { World } from './world';
 import { unitHashId } from './world';
 import { criminalWrecked, transporterWrecked } from './specials';
-import { isFreeForWarning } from './traffic';
+import { warningArms } from './traffic';
 
 /**
  * Explosives (Leo, 27.09.2026): the gas tanker in normal traffic and the military truck with
@@ -139,7 +139,7 @@ export function updateMilitary(w: World, now: number): void {
   switch (m.kind) {
     case 'idle': {
       if (!w.shift.acceptsTaps || now < m.next || w.militaryCount >= c.militaryPerShift) return;
-      const candidates = w.openAIArms.filter((arm) => isFreeForWarning(w, arm));
+      const candidates = warningArms(w);
       if (candidates.length === 0) return;
       const arm = w.militaryRng.pick(candidates);
       w.military = { kind: 'warning', arm, until: now + c.militaryWarning };

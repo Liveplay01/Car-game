@@ -339,6 +339,7 @@ export class Shell {
       track(step, data);
       this.reportProgress();
     };
+    this.session.flushVisit();
     this.reportProgress();
     this.bindInput(canvas);
     this.resize();
@@ -350,7 +351,10 @@ export class Shell {
     });
     // An installed game is kept more readily; and once the player has something to lose
     // (the level-3 hint came), every visit asks again where asking is silent.
-    window.addEventListener('appinstalled', () => void keepStorage());
+    window.addEventListener('appinstalled', () => {
+      track('install');
+      void keepStorage();
+    });
     if (this.session.save.hints.includes('install')) void renewStorage();
     this.readStartLink();
     this.readInvite();
@@ -405,6 +409,7 @@ export class Shell {
    */
   private readInvite(): void {
     if (!readInviteLink(this.session.save.career.level)) return;
+    track('invite-open');
     this.session.announce(...(loadAccount() ? S.hints.invited : S.hints.invitedNeedsName));
   }
 
@@ -683,6 +688,7 @@ export class Shell {
       this.session.showNotice(S.run.brokenLink);
       return;
     }
+    track('challenge-open');
     this.pendingChallenge = spec;
     this.openPendingChallenge();
   }
@@ -727,16 +733,29 @@ export class Shell {
         if (this.session.screen.k === 'playing') this.session.deferHint(hint);
         else void offerLogin();
       }, 2000);
-    } else if (hint === 'notifications') {
+    } else if (hint === 'notifications' || hint === 'notificationsStreak') {
       const state = pushState();
-      // Not on the Home Screen yet (iPhone): offered again with a later streak, once it can be turned on.
+      // Not on the Home Screen yet (iPhone): offered again with a later shift, once it can be turned on.
       if (state === 'install') return this.session.deferHint(hint);
       if (state !== 'off' || !pushDelivers()) return;
       if (!this.session.takeTip()) return this.session.deferHint(hint);
       // After the result has come up, never over a shift.
       window.setTimeout(() => {
-        if (this.session.screen.k === 'playing' || isSheetOpen()) this.session.deferHint(hint);
-        else pushOfferDialog(this.layers, { enable: () => void this.enablePush().catch(() => this.session.announce(S.push.failed)), closed: () => undefined });
+        if (this.session.screen.k === 'playing' || isSheetOpen()) return this.session.deferHint(hint);
+        track('push', { step: 'offer', kind: hint === 'notifications' ? 'first' : 'streak' });
+        pushOfferDialog(
+          this.layers,
+          {
+            enable: () => {
+              track('push', { step: 'accept' });
+              void this.enablePush()
+                .then((result) => track('push', { step: result }))
+                .catch(() => this.session.announce(S.push.failed));
+            },
+            closed: () => undefined,
+          },
+          hint === 'notifications',
+        );
       }, 2000);
     } else if (hint === 'backup') {
       if (!cloudEnabled || cloudView().code !== null) return;

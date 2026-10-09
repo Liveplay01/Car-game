@@ -37,6 +37,8 @@ export const DAILY_EVENTS: CityEvent[] = ['roadworks', 'roadClosure', 'concert',
 export const INVITE_LEVEL = 5;
 /** The game mentions it once to everyone, and again when a player reaches this level (Leo, 04.10.2026): one who has the hang of it is who shares it. */
 export const INVITE_REMINDER_LEVEL = 10;
+/** The website (bugs and ideas) is mentioned from this level on (Leo, 09.10.2026): before it, a visit's one tip belongs to what brings the player back. */
+export const BUILD_WITH_US_LEVEL = 5;
 
 // New modules go at the end: a challenge link stores their positions.
 export type RoadModule = 'tollBooth' | 'speedCamera' | 'towDepot' | 'billboard' | 'detour';
@@ -787,6 +789,8 @@ export const baseConfig = {
   streakBonusPay: 0.15,
   /** A Streak Freeze covers one missed day: one more for every this many days of the streak, at most `streakFreezeMax` in stock. */
   streakFreezeEvery: 7,
+  /** The first Freeze comes earlier (Leo, 09.10.2026): a first missed day in week one need not end the streak; then one every `streakFreezeEvery` days. */
+  streakFreezeFirst: 3,
   streakFreezeMax: 2,
   /** Tailwind: a shift lost within `tailwindMaxLeft` cars of its goal, after `tailwindMinShare` of it, makes the next career shift pay this much more. Once a day, never over a Daily Shift. */
   tailwindPay: 0.25,

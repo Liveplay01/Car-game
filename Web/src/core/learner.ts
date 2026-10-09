@@ -1,7 +1,7 @@
 import type { Arm } from './roundabout';
 import { Vehicle, type Waiting } from './vehicle';
 import type { World } from './world';
-import { isFreeForWarning } from './traffic';
+import { warningArms } from './traffic';
 import { weddingOn } from './wedding';
 
 /**
@@ -59,7 +59,7 @@ export function updateLearner(w: World, now: number): void {
   switch (l.kind) {
     case 'idle': {
       if (now < l.next || weddingOn(w)) return;
-      const candidates = w.openAIArms.filter((arm) => isFreeForWarning(w, arm));
+      const candidates = warningArms(w);
       if (candidates.length === 0) return;
       const arm = w.learnerRng.pick(candidates);
       w.learner = { kind: 'warning', arm, until: now + c.learnerWarning };

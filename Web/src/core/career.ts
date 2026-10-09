@@ -49,7 +49,7 @@ import { randomSeed, Rng } from './rng';
 import { Elite, type EliteGain, type EliteStep, type TitleId, TITLES } from './elite';
 import type { HallEntry } from './seasonPass';
 import { clamp } from './vec2';
-import { type MutatorId, mutatorSky, withMutator } from './mutators';
+import { type MutatorId, mutatorOf, mutatorSky, withMutator } from './mutators';
 
 /** What counting a day into the Daily streak brought: a milestone item, Freezes used on missed days, a new Freeze. */
 export interface StreakNews {
@@ -283,7 +283,7 @@ export interface Career {
  * and a backup of the progress (each once, from its level on; `config.*HintAfterLevel`), and
  * what a Perfect Run is, the first time one happens.
  */
-export const HINTS = ['modes', 'install', 'backup', 'perfectRun', 'reduceMotion', 'buildWithUs', 'invite', 'inviteReminder', 'scout', 'tightFit', 'unlimitedTip', 'portalLogin', 'notifications'] as const;
+export const HINTS = ['modes', 'install', 'backup', 'perfectRun', 'reduceMotion', 'buildWithUs', 'invite', 'inviteReminder', 'scout', 'tightFit', 'unlimitedTip', 'portalLogin', 'notifications', 'notificationsStreak'] as const;
 export type Hint = (typeof HINTS)[number];
 
 /** Everything that is saved (`storage/save.ts` reads and writes it). */
@@ -309,6 +309,8 @@ export interface SaveGame {
   /** The Daily Shift cleared most recently: its day and score, for the Daily board. */
   dailyDay: number;
   dailyScore: number;
+  /** The day this save was first played (a new save only; -1: older than the field), for the visit count that tells how long players stay. */
+  firstDay: number;
   /** The newest patch notes the player has opened (`present/patchNotes.ts`); null: none yet. */
   notesSeen: string | null;
 }
@@ -413,6 +415,7 @@ export const newSave = (): SaveGame => ({
   chillTime: 0,
   dailyDay: -1,
   dailyScore: 0,
+  firstDay: -1,
   notesSeen: null,
 });
 
@@ -839,6 +842,9 @@ export const Careers = {
 
   isDailyOpen: (c: Career, day: number): boolean => c.dailyPlayed !== day && c.dailyDone !== day,
 
+  /** The day's twist for the Daily Shift; a career's very first Daily goes without it, so a new player's second shift is no blackout. */
+  dailyMutator: (c: Career, day: number): MutatorId | null => (c.dailyPlayed < 0 ? null : mutatorOf(day)),
+
   startDaily(c: Career, day: number, config: Config = baseConfig): StreakNews | null {
     if (!Careers.isDailyOpen(c, day)) return null;
     const news = Careers.advanceStreak(c, day, config);
@@ -857,7 +863,7 @@ export const Careers = {
     c.streakFreezes -= frozen;
     c.dailyStreak = missed === 0 || frozen > 0 ? c.dailyStreak + 1 : 1;
     c.dailyPlayed = day;
-    const earned = c.dailyStreak % config.streakFreezeEvery === 0 && c.streakFreezes < config.streakFreezeMax;
+    const earned = (c.dailyStreak === config.streakFreezeFirst || c.dailyStreak % config.streakFreezeEvery === 0) && c.streakFreezes < config.streakFreezeMax;
     if (earned) c.streakFreezes++;
     const cards = c.dailyStreak % config.scratchStreakEvery === 0 && c.scratchCards < config.scratchMax ? 1 : 0;
     c.scratchCards += cards;

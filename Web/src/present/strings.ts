@@ -757,7 +757,7 @@ export const S = {
     rowInstall: 'Add the game to your Home Screen first, then turn them on here.',
     choices: {
       streak: { title: 'Daily streak', sub: 'A nudge in the evening before your streak ends.' },
-      chests: { title: 'Free chests', sub: 'The Daily chest for tomorrow, and gifts from invites.' },
+      chests: { title: 'Free chests', sub: 'Your free chest for tomorrow, and gifts from invites.' },
       pass: { title: 'New season', sub: 'When a new Season Pass starts.' },
       rank: { title: 'Overtaken', sub: 'When a player passes you in the top 20.' },
       comeback: { title: 'Come back', sub: 'A reminder after a few days away.' },
@@ -766,6 +766,8 @@ export const S = {
     rowLocal: 'On. Reminders for when the game is closed need the online service, which this version of the game does not have.',
     confirmTitle: 'Notifications are on',
     rowBlocked: 'Blocked for this site. Allow notifications in your browser settings to turn them on.',
+    offerFirstTitle: 'Free chest tomorrow',
+    offerFirstWhy: "Get a nudge when tomorrow's free chest is ready, and again before a streak ends. At most one a day, never at night.",
     offerTitle: 'Keep your streak',
     offerWhy: 'Get a nudge before your streak ends, when a free chest is ready or a new season starts. At most one a day, never at night.',
     offerOn: 'Turn on notifications',
@@ -1388,6 +1390,9 @@ export const S = {
     ready: 'Ready',
     perfectRun: 'PERFECT RUN',
     welcomeBack: (m: string): string => `Welcome back · your toll booths earned +${money(m)}`,
+    /** The first visit after a streak ran out (Leo, 09.10.2026): said plainly, with the way to the next one. */
+    streakEnded: (days: number): string => `Your ${days}-day streak ended · a new one starts with today's Daily Shift`,
+    backForDaily: "Welcome back · today's Daily Shift is ready",
     done: 'Done',
     readyHint: 'Your first shift of the day. One try, the same shift for everyone.',
     doneHint: (streak: number): string => (streak > 1 ? `Done · ${streak} days in a row · back tomorrow` : 'Done · back tomorrow'),

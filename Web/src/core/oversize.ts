@@ -1,7 +1,7 @@
 import type { Arm } from './roundabout';
 import { Vehicle, type Waiting } from './vehicle';
 import type { World } from './world';
-import { isFreeForWarning } from './traffic';
+import { warningArms } from './traffic';
 import { weddingOn } from './wedding';
 
 /**
@@ -53,7 +53,7 @@ export function updateOversize(w: World, now: number): void {
   switch (o.kind) {
     case 'idle': {
       if (now < o.next || weddingOn(w)) return;
-      const candidates = w.openAIArms.filter((arm) => isFreeForWarning(w, arm));
+      const candidates = warningArms(w);
       if (candidates.length === 0) return;
       const arm = w.oversizeRng.pick(candidates);
       w.oversize = { kind: 'warning', arm, until: now + c.oversizeWarning };

@@ -384,6 +384,7 @@ test('the first Perfect Run says what it is, later ones leave it to the ring', (
 
 test('the install and backup hints come due once, at their levels', () => {
   const save = newSave();
+  save.hints.push('notifications'); // its own test below
   save.career.level = baseConfig.installHintAfterLevel;
   const level = save.career.level;
   assert.deepEqual(bookShift(save, completed(level), context(level)).due, ['install']);
@@ -398,7 +399,7 @@ test('the install and backup hints come due once, at their levels', () => {
 test('reaching level 10 brings the invite reminder once, and only to a shift that gets there', () => {
   const save = newSave();
   save.career.level = INVITE_REMINDER_LEVEL - 1;
-  save.hints = ['modes', 'install', 'backup', 'portalLogin'];
+  save.hints = ['modes', 'install', 'backup', 'portalLogin', 'notifications'];
   const before = INVITE_REMINDER_LEVEL - 1;
   // A shift that stays below it says nothing.
   const low = { ...completed(before - 1) };
@@ -410,14 +411,34 @@ test('reaching level 10 brings the invite reminder once, and only to a shift tha
   save.career.level = INVITE_REMINDER_LEVEL;
   assert.deepEqual(bookShift(save, completed(INVITE_REMINDER_LEVEL), context(INVITE_REMINDER_LEVEL)).due, []);
   const veteran = newSave();
-  veteran.hints = ['modes', 'install', 'backup', 'invite', 'inviteReminder', 'portalLogin'];
+  veteran.hints = ['modes', 'install', 'backup', 'invite', 'inviteReminder', 'portalLogin', 'notifications'];
   veteran.career.level = INVITE_REMINDER_LEVEL - 1;
   assert.deepEqual(bookShift(veteran, completed(before), context(before)).due, []);
 });
 
+test('the notifications offer comes after the first shift won, and again at a streak of two days', () => {
+  const save = newSave();
+  assert.deepEqual(bookShift(save, { ...completed(1) }, context(1)).due, ['notifications'], 'a free chest tomorrow is the reason to ask');
+  assert.deepEqual(bookShift(save, completed(2), context(2)).due, [], 'asked once');
+  save.career.dailyStreak = 1;
+  assert.deepEqual(bookShift(save, completed(3), context(3, { daily: true })).due, [], 'one day is no streak yet');
+  save.career.dailyStreak = 2;
+  assert.deepEqual(bookShift(save, completed(3), context(3, { daily: true })).due, ['notificationsStreak']);
+  assert.deepEqual(bookShift(save, completed(3), context(3, { daily: true })).due, [], 'asked again once');
+});
+
+test('a save remembers the day it was first played, old saves have none', () => {
+  const save = newSave();
+  save.firstDay = 20_000;
+  fakeStorage({ 'carGame.save.v2': JSON.stringify(save) });
+  assert.equal(loadSave().firstDay, 20_000);
+  fakeStorage({ 'carGame.save.v2': JSON.stringify({ career: { level: 3 } }) });
+  assert.equal(loadSave().firstDay, -1);
+});
+
 test('a CrazyGames guest is offered the login once, after clearing its level', () => {
   const save = newSave();
-  save.hints = ['install'];
+  save.hints = ['install', 'notifications'];
   const at = baseConfig.portalLoginAfterLevel;
   save.career.level = at - 1;
   assert.deepEqual(bookShift(save, completed(at - 1), context(at - 1)).due, []);
@@ -1742,16 +1763,19 @@ test('a save keeps the ads of the day and the waiting boost, and old saves start
 
 // MARK: Streak Freeze, tiers, pity
 
-test('a Streak Freeze is earned every seven days and covers one missed day', () => {
+test('a Streak Freeze is earned on the third day and every seven days after, and covers one missed day', () => {
   const c = newCareer();
-  for (let day = 100; day < 107; day++) Careers.startDaily(c, day, baseConfig);
-  assert.equal(c.dailyStreak, 7);
-  assert.equal(c.streakFreezes, 1, 'the seventh day earns one');
-  assert.equal(Goals.streak(c, 108), 7, 'a missed day is covered while the streak is shown');
-  const news = Careers.startDaily(c, 108, baseConfig);
+  for (let day = 100; day < 103; day++) Careers.startDaily(c, day, baseConfig);
+  assert.equal(c.dailyStreak, 3);
+  assert.equal(c.streakFreezes, 1, 'the third day earns the first');
+  assert.equal(Goals.streak(c, 104), 3, 'a missed day is covered while the streak is shown');
+  const news = Careers.startDaily(c, 104, baseConfig);
   assert.equal(news.frozen, 1);
-  assert.equal(c.dailyStreak, 8, 'the streak goes on');
+  assert.equal(c.dailyStreak, 4, 'the streak goes on');
   assert.equal(c.streakFreezes, 0, 'the Freeze is used up');
+  for (let day = 105; day < 108; day++) Careers.startDaily(c, day, baseConfig);
+  assert.equal(c.dailyStreak, 7);
+  assert.equal(c.streakFreezes, 1, 'the seventh day earns the next');
 });
 
 test('every third streak day gives a free Scratch Card; a card is bought at its price, paid before it shows, and a save keeps the hand', () => {
@@ -1797,10 +1821,12 @@ test('Roundabout Roulette pays only the bet type, at least twice, and takes the 
 test('without enough Freezes a gap breaks the streak, and the stock is capped', () => {
   const c = newCareer();
   for (let day = 100; day < 107; day++) Careers.startDaily(c, day, baseConfig);
-  assert.equal(Goals.streak(c, 109), 0, 'two missed days, one Freeze');
-  assert.equal(Careers.startDaily(c, 109, baseConfig).frozen, 0);
+  assert.equal(c.streakFreezes, 2, 'day three and day seven each earned one');
+  assert.equal(Goals.streak(c, 109), 7, 'two missed days, two Freezes');
+  assert.equal(Goals.streak(c, 110), 0, 'three missed days, two Freezes');
+  assert.equal(Careers.startDaily(c, 110, baseConfig).frozen, 0);
   assert.equal(c.dailyStreak, 1);
-  assert.equal(c.streakFreezes, 1, 'an unused Freeze stays');
+  assert.equal(c.streakFreezes, 2, 'unused Freezes stay');
   const long = newCareer();
   for (let day = 0; day < 28; day++) Careers.startDaily(long, day, baseConfig);
   assert.equal(long.streakFreezes, baseConfig.streakFreezeMax);
@@ -1930,7 +1956,9 @@ test('Tailwind and the streak add up on the pay of a shift', () => {
   assert.equal(both.shiftPay, Math.round(baseConfig.shiftPay * 1.4));
   assert.equal(Goals.forStreak(baseConfig).shiftPay, Math.round(baseConfig.shiftPay * 1.15));
   const c = newCareer();
-  assert.equal(Goals.daysToFreeze(c, baseConfig), 7);
+  assert.equal(Goals.daysToFreeze(c, baseConfig), baseConfig.streakFreezeFirst);
+  c.dailyStreak = 2;
+  assert.equal(Goals.daysToFreeze(c, baseConfig), 1);
   c.dailyStreak = 4;
   assert.equal(Goals.daysToFreeze(c, baseConfig), 3);
   c.streakFreezes = baseConfig.streakFreezeMax;
@@ -2081,6 +2109,14 @@ test('every mutator comes once per cycle of days, and never twice running', () =
   }
   for (let day = 20000; day < 20400; day++) assert.notEqual(mutatorOf(day), mutatorOf(day + 1), `day ${day}`);
   assert.equal(mutatorOf(20123), mutatorOf(20123), 'the same for everyone');
+});
+
+test('a career’s very first Daily goes without the day’s twist, every later one carries it', () => {
+  const c = newCareer();
+  const day = 20123;
+  assert.equal(Careers.dailyMutator(c, day), null, 'nothing played yet');
+  Careers.startDaily(c, day, baseConfig);
+  assert.equal(Careers.dailyMutator(c, day + 1), mutatorOf(day + 1), 'the next day brings the twist');
 });
 
 test('a mutator pins its sky and its rule, and the Daily never counts as a Legendary Shift', () => {

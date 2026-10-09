@@ -1,5 +1,5 @@
 import { World, STEP } from '../core/world';
-import { baseConfig, gravity, builtArmSlots, weatherSeverity, INVITE_REMINDER_LEVEL, type Config } from '../core/config';
+import { baseConfig, gravity, builtArmSlots, weatherSeverity, INVITE_REMINDER_LEVEL, BUILD_WITH_US_LEVEL, type Config } from '../core/config';
 import { type SaveGame, type GameMode, type Hint, Careers, newSave } from '../core/career';
 import { Elite } from '../core/elite';
 import { SeasonPass } from '../core/seasonPass';
@@ -32,7 +32,7 @@ import { WeatherFade, WeatherLayer } from './weather';
 import { NightLayer } from './night';
 import { CityLights } from './cityLights';
 import { HUD, TopBar, RingSignals, ModeMessage, ReadyBanner, type TopMessage, ResultBanner, type Popup, type PopupKind, type ShiftSummary, type ConditionIntro, POPUP_LIFETIME, settledPops } from './hud';
-import { inPortal } from '../storage/device';
+import { inPortal, inPlayStore, isInstalled } from '../storage/device';
 import { Tutorial } from './tutorial';
 import { NoticeQueue, TipQueue, type Tip } from './notices';
 import { bookShift } from './booking';
@@ -66,7 +66,6 @@ import { Details, type Detail } from './detail';
 import { TyreMarks } from './marks';
 import { type ChallengeSpec, challengeOf, challengeConfig, encodeChallenge } from '../core/challenge';
 import { forSeason } from '../core/seasons';
-import { mutatorOf } from '../core/mutators';
 import { Achievements } from '../core/achievements';
 import { tourOn, tourTrial, tourStopOf, tourOpen, TOUR_LEVEL } from '../core/tours';
 import { seasonOf } from '../core/loot';
@@ -375,13 +374,52 @@ export class GameSession {
     this.announce(cloudEnabled ? S.hints.notSaved : S.hints.notSavedHere);
   }
 
+  private visit: Record<string, string> | null = null;
+  private visitNoted = false;
+
+  /**
+   * One count per start (Leo, 09.10.2026), worked out on this device from the save and sent as coarse steps: no date,
+   * no ID. It is how D1 and D7 are read without cohorts: the starts whose `since` is 1 or 4-7 against the starts of the
+   * days before. Called before the day's login is booked, which overwrites the last day.
+   */
+  private noteVisit(): void {
+    if (this.visitNoted) return;
+    this.visitNoted = true;
+    const { save, today } = this;
+    const last = save.career.lastLoginDay;
+    if (save.firstDay < 0 && last < 0 && save.shiftsPlayed === 0) save.firstDay = today;
+    const bucket = (days: number): string => (days <= 1 ? String(Math.max(0, days)) : days <= 3 ? '2-3' : days <= 7 ? '4-7' : days <= 14 ? '8-14' : days <= 30 ? '15-30' : '31+');
+    this.visit = {
+      kind: last >= 0 ? 'back' : 'new',
+      since: last >= 0 ? bucket(today - last) : 'new',
+      first: save.firstDay >= 0 ? bucket(today - save.firstDay) : 'old',
+      channel: inPlayStore ? 'play' : isInstalled() ? 'app' : 'tab',
+      build: latestNote().split('#')[0] ?? '',
+    };
+    this.flushVisit();
+  }
+
+  /** Hands the visit on once someone listens (`onStep` is set after the session is built). */
+  flushVisit(): void {
+    if (!this.visit || !this.onStep) return;
+    this.onStep('visit', this.visit);
+    this.visit = null;
+  }
+
   collectLoginIncome(): void {
-    const income = Careers.collectLoginIncome(this.save.career, this.today, this.config);
-    Careers.collectGift(this.save.career, this.today);
+    this.noteVisit();
+    const career = this.save.career;
+    // Worked out before the login is booked: the last day is overwritten there.
+    const away = career.lastLoginDay >= 0 ? this.today - career.lastLoginDay : 0;
+    const endedStreak = away > 0 && career.dailyStreak >= 2 && Goals.streak(career, this.today) === 0 ? career.dailyStreak : 0;
+    const income = Careers.collectLoginIncome(career, this.today, this.config);
+    Careers.collectGift(career, this.today);
     this.persist();
     if (income !== null) this.announce(S.daily.welcomeBack(Fmt.number(income)));
-    this.announceBuildWithUs();
+    else if (this.save.tutorialDone && endedStreak > 0) this.announce(S.daily.streakEnded(endedStreak));
+    else if (this.save.tutorialDone && away >= 3 && career.level >= this.config.dailyUnlockLevel && Careers.isDailyOpen(career, this.today)) this.announce(S.daily.backForDaily);
     this.announceInvite();
+    this.announceBuildWithUs();
   }
 
   private tipTaken = false;
@@ -405,10 +443,11 @@ export class GameSession {
 
   /**
    * Once for every player who knows the game (Leo, 03.10.2026): the website, where bugs and ideas
-   * can be sent and a bug hunter may get a gift. Not inside CrazyGames, which shows no links out.
+   * can be sent and a bug hunter may get a gift. Not inside CrazyGames, which shows no links out. Not before level 5
+   * (09.10.2026): the second visit is the one that must lead to a third, so it does not spend its one tip on a link out.
    */
   private announceBuildWithUs(): void {
-    if (inPortal || !this.save.tutorialDone || this.save.hints.includes('buildWithUs') || !this.takeTip()) return;
+    if (inPortal || !this.save.tutorialDone || this.save.career.level < BUILD_WITH_US_LEVEL || this.save.hints.includes('buildWithUs') || !this.takeTip()) return;
     this.save.hints.push('buildWithUs');
     this.store();
     this.tip(S.hints.buildWithUs);
@@ -877,7 +916,7 @@ export class GameSession {
     const base =
       this.save.mode === 'shift' && !daily
         ? Careers.careerShift(this.save.career, seasonal, seed)
-        : Careers.shiftConfig(this.save.career, this.save.mode, seasonal, seed, daily ? dailyEvent(this.today) : undefined, daily ? null : undefined, daily ? mutatorOf(this.today) : null);
+        : Careers.shiftConfig(this.save.career, this.save.mode, seasonal, seed, daily ? dailyEvent(this.today) : undefined, daily ? null : undefined, daily ? Careers.dailyMutator(this.save.career, this.today) : null);
     // A living Daily streak, a waiting Tailwind and a chosen Heat pay more on a career shift (Mayhem pays in flames).
     if (this.save.mode === 'mayhem' || this.save.mode === 'chill') return base;
     const heat = !daily && this.save.mode === 'shift' ? Careers.activeHeat(this.save.career, this.config) : 0;
@@ -1010,7 +1049,9 @@ export class GameSession {
       this.tutorial.end();
       if (this.tutorial.isDone) this.tutorial = null;
       this.save.tutorialDone = true;
+      this.onStep?.('tutorial-done');
     }
+    this.onStep?.('special', { kind: run.k, outcome: result.outcome });
     this.persist();
     this.resultBank = { before: bankBefore, after: career.money };
     const shown: ShiftResult = { ...result, money: career.money - bankBefore, costs: 0, covered: 0 };
@@ -2393,7 +2434,7 @@ export class GameSession {
       save.tutorialDone = true;
       this.onStep?.('tutorial-done');
     }
-    this.onStep?.('shift', { mode: this.playingMode, level: this.playingLevel, outcome: result.outcome });
+    this.onStep?.('shift', { mode: this.playingMode, level: this.playingLevel, outcome: result.outcome, daily: this.playingDaily ? 1 : 0, nth: Math.min(save.shiftsPlayed + 1, 10) });
     const booked = bookShift(save, result, {
       mode: this.playingMode,
       level: this.playingLevel,
@@ -2667,7 +2708,7 @@ export class GameSession {
       HUD.addPopups(list, this.popups, rm);
       if (this.countIn > 0 || this.isInterrupted) HUD.addCountIn(list, this.isInterrupted ? GameSession.countInSeconds : this.countIn);
     } else if (s.k === 'result') {
-      ResultBanner.add(list, s.summary, this.playingLevel, this.resultBank, this.resultAge, rm);
+      ResultBanner.add(list, s.summary, this.playingLevel, this.resultBank, this.resultAge, rm, this.giftLine);
       this.tutorial?.add(list, world, alpha, this.sceneTime, rm);
       const arriving = ResultBanner.arriving(this.resultAge);
       if (arriving > 0) underCard = this.addReadyBanner(list, null, false, arriving);
@@ -2724,7 +2765,11 @@ export class GameSession {
   /** Whether a tab has something waiting, like an iOS badge: the Shop's chests or new items. */
   badge(tab: Tab): { count: number } | 'dot' | null {
     const c = this.save.career;
-    if (barTab(tab) === 'progress') return c.museumNew.length > 0 || (!this.eliteSeen && Careers.canPrestige(c, this.config)) ? 'dot' : null;
+    // Progress → Today is where the day's shifts wait: the dot stays until the Daily Shift is played (09.10.2026).
+    if (barTab(tab) === 'progress') {
+      const dailyWaits = this.save.tutorialDone && c.level >= this.config.dailyUnlockLevel && Careers.isDailyOpen(c, this.today);
+      return dailyWaits || c.museumNew.length > 0 || (!this.eliteSeen && Careers.canPrestige(c, this.config)) ? 'dot' : null;
+    }
     if (barTab(tab) !== 'shop') return null;
     if (c.chests.length > 0) return { count: c.chests.length };
     // A skin a casino round has won stays quiet until the round shows it.

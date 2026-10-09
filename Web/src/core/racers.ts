@@ -2,7 +2,7 @@ import type { Arm } from './roundabout';
 import { Vehicle, type Waiting } from './vehicle';
 import type { Vec2 } from './vec2';
 import type { World } from './world';
-import { isFreeForWarning } from './traffic';
+import { warningArms } from './traffic';
 import { weddingOn } from './wedding';
 
 /**
@@ -43,7 +43,7 @@ export function updateRace(w: World, now: number): void {
   switch (r.kind) {
     case 'idle': {
       if (now < r.next || weddingOn(w)) return;
-      const candidates = w.openAIArms.filter((arm) => isFreeForWarning(w, arm));
+      const candidates = warningArms(w);
       if (candidates.length === 0) return;
       const arm = w.racerRng.pick(candidates);
       w.race = { kind: 'warning', arm, until: now + c.racerWarning };

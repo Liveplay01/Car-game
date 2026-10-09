@@ -1,7 +1,7 @@
 import type { Arm } from './roundabout';
 import { Vehicle, type Waiting, type VehicleType, mergeProfile, isEmergency } from './vehicle';
 import type { World } from './world';
-import { isFreeForWarning } from './traffic';
+import { warningArms } from './traffic';
 
 /**
  * The ambulance (Leo, 28.09.2026): now and then one comes in, announced like every special, and
@@ -73,7 +73,7 @@ export function updateAmbulance(w: World, now: number): void {
   switch (a.kind) {
     case 'idle': {
       if (now < a.next) return;
-      const candidates = w.openAIArms.filter((arm) => isFreeForWarning(w, arm));
+      const candidates = warningArms(w);
       if (candidates.length === 0) return;
       const arm = w.ambulanceRng.pick(candidates);
       const fire = isFireRun(w);

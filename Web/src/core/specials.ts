@@ -3,7 +3,7 @@ import { Vehicle, type Waiting, mergeProfile } from './vehicle';
 import { type Vec2, sub, dot, fromAngle, wrap } from './vec2';
 import type { World } from './world';
 import type { Lead } from './drivers';
-import { isFreeForWarning } from './traffic';
+import { warningArms } from './traffic';
 import { joinsMilitaryZone } from './explosions';
 
 // MARK: Criminal (Spiel.md)
@@ -64,7 +64,7 @@ export function updateCriminals(w: World, now: number): void {
   switch (cr.kind) {
     case 'idle': {
       if (!w.shift.acceptsTaps || now < cr.next) return;
-      const candidates = w.openAIArms.filter((arm) => isFreeForWarning(w, arm));
+      const candidates = warningArms(w);
       if (candidates.length === 0) return;
       const arm = w.criminalRng.pick(candidates);
       const boss = bossDue(w);
@@ -211,7 +211,7 @@ export function updateTransporters(w: World, now: number): void {
   switch (t.kind) {
     case 'idle': {
       if (!w.shift.acceptsTaps || now < t.next) return;
-      const candidates = w.openAIArms.filter((arm) => isFreeForWarning(w, arm));
+      const candidates = warningArms(w);
       if (candidates.length === 0) return;
       const arm = w.transporterRng.pick(candidates);
       w.transporter = { kind: 'warning', arm, until: now + c.transporterWarning };

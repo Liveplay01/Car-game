@@ -261,6 +261,7 @@ function readSave(raw: unknown): SaveGame {
     chillTime: int(raw.chillTime, 0, 0),
     dailyDay: int(raw.dailyDay, -1),
     dailyScore: int(raw.dailyScore, 0, 0),
+    firstDay: int(raw.firstDay, -1),
     notesSeen: typeof raw.notesSeen === 'string' ? raw.notesSeen : null,
   };
   // Unlimited milestones that came after the save's best run (Leo, 02.10.2026) arrive now, marked new.

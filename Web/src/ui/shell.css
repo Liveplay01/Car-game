@@ -2327,6 +2327,8 @@ a.row-link {
 
 .board {
   display: grid;
+  /* glideHeight keeps the panel at its tallest list: the extra height must not stretch the tabs. */
+  align-content: start;
   gap: var(--s4);
 }
 

@@ -21,6 +21,9 @@ declare global {
 
 const on = !inPortal && !inItch && import.meta.env.PROD;
 
+/** Steps that came before the script did (the visit is counted while the game opens); sent when it is there. */
+let waiting: [string, EventData | undefined][] = [];
+
 export function startAnalytics(): void {
   if (!on || document.querySelector(`script[src^="${HOST}/"]`)) return;
   const script = document.createElement('script');
@@ -29,11 +32,20 @@ export function startAnalytics(): void {
   script.dataset.websiteId = WEBSITE;
   script.dataset.doNotTrack = 'true';
   script.dataset.domains = location.hostname;
-  script.onerror = () => script.remove();
+  script.onload = () => {
+    for (const [event, data] of waiting) window.umami?.track(event, data);
+    waiting = [];
+  };
+  script.onerror = () => {
+    script.remove();
+    waiting = [];
+  };
   document.head.append(script);
 }
 
-/** A funnel step; dropped while the script is not there. */
+/** A funnel step; kept until the script is there, dropped when it never comes. */
 export function track(event: string, data?: EventData): void {
-  if (on) window.umami?.track(event, data);
+  if (!on) return;
+  if (window.umami) window.umami.track(event, data);
+  else if (waiting.length < 50) waiting.push([event, data]);
 }

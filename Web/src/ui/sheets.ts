@@ -524,10 +524,11 @@ function pushRows(push: SettingsActions['push']): HTMLElement[] {
 }
 
 /**
- * Offered once, when a Daily streak reaches two days (`notifications` hint): a reminder before it
- * breaks is the one notification a player is most glad of. "Turn on" asks the browser right away.
+ * Offered after the first shift won (`notifications` hint: tomorrow's free chest is the reason) and again when a Daily
+ * streak reaches two days (`notificationsStreak`: a reminder before it breaks). "Not now" costs nothing, since only
+ * "Turn on" asks the browser, which can be asked once. "Turn on" asks right away.
  */
-export function pushOfferDialog(layer: HTMLElement, actions: { enable(): void; closed(): void }): void {
+export function pushOfferDialog(layer: HTMLElement, actions: { enable(): void; closed(): void }, first = false): void {
   const previouslyFocused = document.activeElement as HTMLElement | null;
   const on = h('button', { class: 'btn primary block', type: 'button' }, S.push.offerOn);
   const later = h('button', { class: 'btn block quiet-btn', type: 'button' }, S.push.offerLater);
@@ -535,8 +536,8 @@ export function pushOfferDialog(layer: HTMLElement, actions: { enable(): void; c
     'div',
     { class: 'intro-card', role: 'alertdialog', 'aria-modal': 'true', 'aria-labelledby': 'push-title', 'aria-describedby': 'push-why' },
     h('div', { class: 'install-badge', 'aria-hidden': 'true' }, icon(ICONS.bell)),
-    h('h2', { class: 'install-title intro-title', id: 'push-title' }, S.push.offerTitle),
-    h('p', { class: 'install-why', id: 'push-why' }, S.push.offerWhy),
+    h('h2', { class: 'install-title intro-title', id: 'push-title' }, first ? S.push.offerFirstTitle : S.push.offerTitle),
+    h('p', { class: 'install-why', id: 'push-why' }, first ? S.push.offerFirstWhy : S.push.offerWhy),
     on,
     later,
   );

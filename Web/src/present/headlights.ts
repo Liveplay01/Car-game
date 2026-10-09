@@ -48,7 +48,8 @@ export const Headlights = {
   addBulbs(list: RenderList, pose: Pose, length: number, width: number, intensity: number): void {
     for (const y of [width * 0.3, -width * 0.3]) {
       const at = worldOf(v(length / 2 - 0.4, y), pose);
-      list.w(circle(at, 2.8), 'headlight', 0.1 * Math.min(1, intensity));
+      list.w(circle(at, 5), 'headlight', 0.16 * Math.min(1, intensity));
+      list.w(circle(at, 2.8), 'headlight', 0.3 * Math.min(1, intensity));
       list.w(circle(at, 1), 'headlight', 0.95);
     }
   },

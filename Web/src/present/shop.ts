@@ -215,6 +215,8 @@ export const ShopPage = {
    * runs (Leo, 09.10.2026), the taps before it look alike too.
    */
   burstTime: 0.4,
+  /** How long the opened chest stays visible under the reel, in seconds from the burst. */
+  burstOpen: 0.5,
   /** The taps that broke the chest may still be coming: for this long after it bursts a tap does not skip. */
   openLock: 1,
   /**
@@ -394,7 +396,7 @@ export const ShopPage = {
         list.items.splice(start, 0, ...old.items.map((i) => moved(i, away, 1 - gone)));
       }
     }
-    if (state.opening) ShopPage.addReveal(list, state.opening.opening, state.opening.reel, state.opening.age, reduceMotion);
+    if (state.opening) ShopPage.addReveal(list, state.opening.opening, state.opening.reel, state.opening.age, config.chestTaps, reduceMotion);
     else if (state.charging) ShopPage.addCharge(list, state.charging, config.chestTaps, config.chestTapWindow, reduceMotion);
   },
 
@@ -491,7 +493,7 @@ export const ShopPage = {
    * lock plate with its keyhole. `squash` stretches it round its bottom edge (the jelly of
    * the opening), `lidLift` lifts the lid off the seam.
    */
-  addChestIcon(list: RenderList, kind: ChestKind, center: Vec2, scale: number, opacity: number, squash: Vec2 = v(1, 1), lidLift = 0): void {
+  addChestIcon(list: RenderList, kind: ChestKind, center: Vec2, scale: number, opacity: number, squash: Vec2 = v(1, 1), lidLift = 0, withLid = true): void {
     const c = ShopPage.chestPaint(kind);
     const u = scale * 1.05;
     const base = add(center, v(0, 23 * u * (1 - squash.y)));
@@ -504,13 +506,33 @@ export const ShopPage = {
     list.s(rect(at(0, 3), size(44, 2), 1 * u), 'primary', 0.06 * opacity);
     for (const x of [-15.5, 15.5]) list.s(rect(at(x, 9), size(5, 28), 0), c.band, 0.75 * opacity);
     // Lid: rounded on top, square where it meets the body.
-    list.s(rect(at(0, -14 + lift), size(52, 18), 10 * u), c.lid, opacity);
-    list.s(rect(at(0, -8 + lift), size(52, 6), 0), c.lid, opacity);
-    for (const x of [-15.5, 15.5]) list.s(rect(at(x, -14 + lift), size(5, 18), 0), c.band, 0.75 * opacity);
+    if (withLid) {
+      list.s(rect(at(0, -14 + lift), size(52, 18), 10 * u), c.lid, opacity);
+      list.s(rect(at(0, -8 + lift), size(52, 6), 0), c.lid, opacity);
+      for (const x of [-15.5, 15.5]) list.s(rect(at(x, -14 + lift), size(5, 18), 0), c.band, 0.75 * opacity);
+    }
     // The band round the seam and the lock.
     list.s(rect(at(0, -2.5 + lift * 0.5), size(52, 5), 0), c.band, 0.9 * opacity);
+    if (!withLid) return;
     list.s(rect(at(0, -3 + lift * 0.5), size(10, 12), 2.5 * u), c.band, opacity);
     list.s(circle(at(0, -3 + lift * 0.5), 2 * u * Math.min(squash.x, squash.y)), c.body, opacity);
+  },
+
+  /** The chest the moment it bursts: the lid is off, light pours out of the body, which fades as shards fly. */
+  addBurst(list: RenderList, chest: ChestKind, center: Vec2, x: number): void {
+    const out = Ease.outCubic(x);
+    const fade = 1 - x * x;
+    const top = v(center.x, center.y - 10);
+    list.s(polygon([add(top, v(-34, 0)), add(top, v(34, 0)), add(top, v(110 * out, -460)), add(top, v(-110 * out, -460))]), 'primary', 0.45 * fade);
+    MenuKit.glow(list, center, 90 + 170 * out, 'primary', 0.55 * fade);
+    ShopPage.addChestIcon(list, chest, center, 1.6 * (1 + 0.15 * out), fade, v(1 + 0.1 * out, 1 - 0.08 * out), 0, false);
+    const body = ShopPage.chestPaint(chest).body;
+    for (let i = 0; i < 8; i++) {
+      const a = -Math.PI / 2 + (unit(i, 80) - 0.5) * 3.2;
+      const reach = 70 + 150 * unit(i, 81);
+      const at = add(center, v(Math.cos(a) * reach * out, Math.sin(a) * reach * out + 160 * x * x));
+      list.s(rect(at, v(10 + 10 * unit(i, 82), 6 + 6 * unit(i, 83)), 2, 8 * x * (unit(i, 84) - 0.5)), body, fade);
+    }
   },
 
   // MARK: Collection
@@ -703,7 +725,7 @@ export const ShopPage = {
    * ducks before it bursts; then flash, lid off, shockwaves, fruit splashes, juice drops,
    * confetti, rays and a jelly card. A pure function of the age, so it never stutters.
    */
-  addReveal(list: RenderList, opening: ChestOpening, reel: Reel, age: number, reduceMotion: boolean): void {
+  addReveal(list: RenderList, opening: ChestOpening, reel: Reel, age: number, taps: number, reduceMotion: boolean): void {
     const vp = list.camera.viewport;
     const center = sub(mul(vp, 0.5), v(0, 20));
     const rarity = opening.item.rarity;
@@ -718,12 +740,14 @@ export const ShopPage = {
     }
     const stage = ShopPage.stages(reel);
     if (age < stage.burst) {
-      ShopPage.addChestCharge(list, opening.chest, center, { age, hits: 1, of: 1, hit: age, strong: true, duck: age / stage.burst, power: 1, streak: 0 }, false);
+      // Every crack of the tapping is still in it as it ducks, and it does not spring in again (age + 1).
+      ShopPage.addChestCharge(list, opening.chest, center, { age: age + 1, hits: taps, of: taps, hit: age, strong: true, duck: age / stage.burst, power: 1, streak: 0 }, false);
       return;
     }
     // The chest bursts open and the reel runs out of it; the lid flies off over it.
     if (age < stage.reveal) {
       const spun = age - stage.burst;
+      if (spun < ShopPage.burstOpen) ShopPage.addBurst(list, opening.chest, center, spun / ShopPage.burstOpen);
       ChestReel.add(
         list,
         reel,

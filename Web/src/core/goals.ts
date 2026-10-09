@@ -114,7 +114,8 @@ export const Goals = {
   tailwindOn: (c: Career, mode: GameMode, daily: boolean): boolean => c.tailwind && mode === 'shift' && !daily,
 
   /** Days of streak until the next Streak Freeze, null while the stock is full. */
-  daysToFreeze: (c: Career, config: Config = baseConfig): number | null => (c.streakFreezes >= config.streakFreezeMax ? null : config.streakFreezeEvery - (c.dailyStreak % config.streakFreezeEvery)),
+  daysToFreeze: (c: Career, config: Config = baseConfig): number | null =>
+    c.streakFreezes >= config.streakFreezeMax ? null : c.dailyStreak < config.streakFreezeFirst ? config.streakFreezeFirst - c.dailyStreak : config.streakFreezeEvery - (c.dailyStreak % config.streakFreezeEvery),
 
   /** This shift with the streak bonus on its pay. */
   forStreak: (base: Config): Config => Goals.forPay(base, base.streakBonusPay),

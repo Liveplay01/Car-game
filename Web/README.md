@@ -201,9 +201,10 @@ and go to the service with every sync as `muted`: the game leaves those timers o
 
 The row is always in Settings; turning it on asks the browser and shows one notification at once (`confirm`). Without the service or a service worker (`npm run dev`, a build without `VITE_API_URL`; `pushDelivers`) it still works for that, but sends no reminders and says so. Inside a portal it is greyed out.
 
-Turned on in **Settings → Progress → Notifications**, or from the offer that comes once when a Daily streak
-reaches two days (`hints: notifications`, `bookShift`; on an iPhone it waits until the game is on the Home
-Screen). Chrome, Edge, Firefox and the Play Store app everywhere; Safari only from the Home Screen (iOS 16.4+).
+Turned on in **Settings → Progress → Notifications**, or from the offer that comes after the first
+shift won (`hints: notifications`, `bookShift`: tomorrow's free chest is the reason) and once more when a Daily streak
+reaches two days (`notificationsStreak`). "Not now" costs nothing: only "Turn on" asks the browser, which asks once. On an
+iPhone the offer waits until the game is on the Home Screen. Chrome, Edge, Firefox and the Play Store app everywhere; Safari only from the Home Screen (iOS 16.4+).
 Not on CrazyGames or itch.io, not without `VITE_API_URL`, and not in `npm run dev` (no service worker): try it
 with `npm run build` + `npm run preview` and a service with `VAPID_*` set. Delete account turns it off too.
 

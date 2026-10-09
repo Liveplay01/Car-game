@@ -167,10 +167,17 @@ function approachStep(w: World, distance: number, dt: number, rolling: boolean):
   return Math.max(0, distance - speed * dt);
 }
 
-/** Whether a criminal or a transporter can be announced for `arm`. */
-export function isFreeForWarning(w: World, arm: Arm): boolean {
-  const waiting = w.vehicles.some((x) => x.phase.kind === 'waiting' && x.phase.arm.index === arm.index);
-  return !waiting && isUnreserved(w, arm);
+/**
+ * The arms a special (criminal, racers, transporter …) can be announced on: the ones nobody has
+ * reserved with the shortest queue. An empty arm wins; on a busy ring (two lanes) every arm has a
+ * queue, and waiting for an empty one would keep the special out for good. The queue runs out
+ * while the arm is reserved, and the special leaves the line only once it has.
+ */
+export function warningArms(w: World): Arm[] {
+  const open = w.openAIArms.filter((arm) => isUnreserved(w, arm));
+  const queue = (arm: Arm): number => w.vehicles.filter((x) => x.phase.kind === 'waiting' && x.phase.arm.index === arm.index).length;
+  const shortest = Math.min(...open.map(queue));
+  return open.filter((arm) => queue(arm) === shortest);
 }
 
 /**
