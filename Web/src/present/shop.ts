@@ -718,7 +718,7 @@ export const ShopPage = {
     }
     const stage = ShopPage.stages(reel);
     if (age < stage.burst) {
-      ShopPage.addChestCharge(list, opening.chest, center, { age, hits: 1, of: 1, hit: age, strong: true, duck: age / stage.burst }, false);
+      ShopPage.addChestCharge(list, opening.chest, center, { age, hits: 1, of: 1, hit: age, strong: true, duck: age / stage.burst, power: 1, streak: 0 }, false);
       return;
     }
     // The chest bursts open and the reel runs out of it; the lid flies off over it.
@@ -850,7 +850,10 @@ export const ShopPage = {
     list.s(rect(mul(vp, 0.5), vp), 'background', 0.92 * Math.min(1, c.age / 0.25));
     const strong = strongTaps(c.times, window);
     const hits = c.times.length;
-    ShopPage.addChestCharge(list, c.kind, center, { age: c.age, hits, of: taps, hit: c.sinceHit, strong: strong[hits - 1] ?? true, duck: 0 }, reduceMotion);
+    let streak = 0;
+    while (streak < hits && strong[hits - 1 - streak]) streak++;
+    const power = strong.filter(Boolean).length / taps;
+    ShopPage.addChestCharge(list, c.kind, center, { age: c.age, hits, of: taps, hit: c.sinceHit, strong: strong[hits - 1] ?? true, duck: 0, power, streak }, reduceMotion);
 
     const pitch = 17;
     const row = center.y + 112;
@@ -875,23 +878,39 @@ export const ShopPage = {
     list: RenderList,
     chest: ChestKind,
     center: Vec2,
-    look: { age: number; hits: number; of: number; hit: number; strong: boolean; duck: number },
+    look: { age: number; hits: number; of: number; hit: number; strong: boolean; duck: number; power: number; streak: number },
     reduceMotion: boolean,
   ): void {
-    const { age, hits, hit, strong, duck } = look;
+    const { age, hits, hit, strong, duck, power, streak } = look;
+    const vp = list.camera.viewport;
     const cracks = hits / look.of;
     const enter = reduceMotion ? 1 : Ease.spring(age / 0.35);
     const jolt = reduceMotion ? 0 : Math.exp(-hit * 12) * (strong ? 1 : 0.55);
     const shake = v(Math.sin(hit * 70) * 7 * jolt, Math.cos(hit * 55) * 3 * jolt);
     const stretch = 1 + 0.12 * jolt * Math.sin(hit * 45) - 0.22 * Ease.outCubic(duck);
     const squash = v(1 / Math.sqrt(stretch), stretch);
+    // Turning rays behind the chest: they grow with the cracks and burn brighter the stronger the taps.
+    const reach = 110 + 190 * cracks + 80 * duck;
+    for (let i = 0; i < 14; i++) {
+      const a = (i / 14) * TAU + (reduceMotion ? 0 : age * (0.3 + 0.6 * cracks));
+      const half = 0.05 + 0.03 * unit(i, 60);
+      const ray = (0.03 + 0.2 * cracks) * (0.4 + 0.6 * power) + 0.25 * duck;
+      list.s(polygon([center, add(center, mul(fromAngle(a - half), reach)), add(center, mul(fromAngle(a + half), reach))]), JUICE[i % JUICE.length], ray * (0.7 + 0.3 * Math.sin(age * 4 + i)));
+    }
+    if (!reduceMotion && hits > 0 && hits < look.of) {
+      // The power ring: the share of strong taps, gold when every tap has been.
+      list.s(arc(center, 104, 5, 0, TAU), 'controlFill', 0.5);
+      if (power > 0) list.s(arc(center, 104, 5 + 2 * jolt, -Math.PI / 2, -Math.PI / 2 + TAU * power), power >= 1 ? 'rarityLegendary' : 'accent', 0.95);
+    }
     MenuKit.glow(list, center, 70 + 120 * cracks + 40 * jolt + 60 * duck, 'primary', 0.1 + 0.4 * cracks * cracks + 0.3 * duck);
+    if (jolt > 0.05) list.s(rect(mul(vp, 0.5), vp), strong ? 'primary' : 'accent', 0.13 * jolt * jolt);
     const beads = Math.floor(4 + 8 * cracks);
     for (let i = 0; i < beads; i++) {
       const a = (i / beads) * TAU + age * (2 + 3 * cracks);
       list.s(circle(add(center, mul(fromAngle(a), 120 - 40 * cracks)), 3 + 2 * cracks), JUICE[i % JUICE.length], Math.min(1, age / 0.3) * (0.3 + 0.6 * cracks));
     }
-    const scale = 1.6 * enter * (1 + 0.06 * cracks + 0.08 * duck);
+    const breath = reduceMotion ? 0 : 0.015 * (1 + cracks) * Math.sin(age * 5);
+    const scale = 1.6 * enter * (1 + 0.06 * cracks + 0.08 * duck + breath + 0.06 * jolt);
     const at = add(center, shake);
     const lid = (2 + 6 * cracks) * jolt + (reduceMotion ? 0 : 1.5 * cracks * (1 + Math.sin(age * 40)));
     ShopPage.addChestIcon(list, chest, at, scale, 1, squash, lid);
@@ -911,14 +930,37 @@ export const ShopPage = {
       }
     }
 
-    if (reduceMotion || hits === 0 || hit >= 0.45) return;
-    for (let i = 0; i < (strong ? 12 : 5); i++) {
+    // Light pours out of the cracks in beams, flickering, longer with every tap.
+    if (!reduceMotion) {
+      for (let i = 0; i < hits; i++) {
+        const out = -Math.PI / 2 + (unit(i, 33) - 0.5) * 3.2;
+        const from = add(at, mul(v((unit(i, 31) - 0.5) * 40, -14 + unit(i, 32) * 36), u));
+        const length = (40 + 90 * cracks) * (0.8 + 0.2 * Math.sin(age * 17 + i * 2));
+        list.s(polygon([from, add(from, mul(fromAngle(out - 0.07), length)), add(from, mul(fromAngle(out + 0.07), length))]), 'primary', 0.12 + 0.3 * cracks);
+      }
+    }
+    // A run of strong taps counts up above the chest, popping with every tap.
+    if (!reduceMotion && streak >= 2 && hit < 0.6) {
+      const pop = 1 + 0.7 * (1 - Ease.outCubic(hit / 0.2));
+      drawText(list, '×' + streak, v(center.x, center.y - 120 - 18 * Ease.outCubic(hit / 0.6)), Math.min(34, 20 + 2 * streak) * pop, streak >= 6 ? 'rarityLegendary' : 'accent', { weight: 'bold', align: 'center', opacity: 1 - Ease.clamp01((hit - 0.25) / 0.35) });
+    }
+    if (reduceMotion || hits === 0 || hit >= 0.6) return;
+    if (strong) {
+      for (let i = 0; i < 4; i++) {
+        const a = unit(i + hits * 5, 70) * TAU;
+        const star = add(at, mul(fromAngle(a), (40 + 130 * unit(i + hits * 5, 71)) * Ease.outCubic(hit / 0.4)));
+        ShopPage.addStar(list, star, (5 + 7 * unit(i + hits * 5, 72)) * (1 - hit / 0.6), JUICE[(i + hits) % JUICE.length], 1 - hit / 0.6);
+      }
+    }
+    if (hit >= 0.45) return;
+    for (let i = 0; i < (strong ? 18 : 6); i++) {
       const a = -Math.PI / 2 + (unit(i + hits * 17, 50) - 0.5) * 2.6;
       const speed = 150 + 230 * unit(i + hits * 17, 51);
       const spark = add(at, v(Math.cos(a) * speed * hit, Math.sin(a) * speed * hit + 520 * hit * hit));
       list.s(circle(spark, 2 + 3.5 * unit(i + hits * 17, 52)), JUICE[(i + hits) % JUICE.length], 1 - hit / 0.45);
     }
     const wave = hit / 0.3;
+    if (duck > 0.6) list.s(arc(at, 30 + 260 * Ease.outCubic((duck - 0.6) / 0.4), 9 * (1 - duck) + 2, 0, TAU), 'primary', 0.8 * (1 - duck) + 0.2);
     if (strong && wave < 1) list.s(arc(at, 26 + 90 * Ease.outCubic(wave), 4 * (1 - wave) + 1, 0, TAU), 'primary', 0.55 * (1 - wave));
   },
 

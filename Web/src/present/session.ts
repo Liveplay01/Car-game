@@ -771,6 +771,7 @@ export class GameSession {
     const hits = c.times.length;
     const strong = strongTaps(c.times, chestTapWindow)[hits - 1];
     this.playReel('chestHit', 0.8 + (0.7 * hits) / chestTaps, [strong ? 'reelStop' : 'reelTick']);
+    if (strong && hits >= 3) this.playReel('shimmer', 0.7 + 0.12 * hits, []);
     if (hits < chestTaps) return;
     const index = this.save.career.chests.indexOf(c.kind);
     this.shopPage.charging = null;
