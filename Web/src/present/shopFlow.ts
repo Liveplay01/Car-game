@@ -92,7 +92,8 @@ export class ShopFlow {
         this.casino()?.tap(target.t);
         break;
       case 'dismiss':
-        if (s.opening && !ShopPage.stepOpening(s.opening)) s.opening = null;
+        if (s.charging) this.host.perform({ k: 'hitChest' });
+        else if (s.opening && !ShopPage.stepOpening(s.opening)) s.opening = null;
         break;
     }
   }

@@ -123,8 +123,17 @@ docker build -t car-game . ; docker run -p 5050:5050 car-game   # Container wie 
   Spiel zu ändern; `fix` grün: nur Fehlerbehebungen; reine Fixes beginnen mit „Fixed:“).
   Erst am nächsten Tag beginnt ein neuer Eintrag. Ein neuer Punkt zeigt den Punkt am
   Einstellungsknopf (`latestNote`: Tag und Anzahl der Punkte), auch im bestehenden Eintrag.
-  `npm test` prüft: eine `id` pro Tag, neueste zuerst. Die Liste zeigt den neuesten Tag
-  aufgeklappt, die anderen zu.
+  `npm test` prüft: eine `id` pro Tag, neueste zuerst.
+  **Kurzfassung und Langfassung (Leo, 09.10.2026):** Jeder Tag hat zwei Teile. `summary` ist die
+  Mini-Zusammenfassung, die Spieler sofort sehen: 1 bis 4 kurze Zeilen (höchstens 100 Zeichen,
+  `SUMMARY_LINES`, `SUMMARY_LENGTH`), nur was Spieler merken, ohne Technik und ohne Kleinkram.
+  `items` bleibt die lange, ausführliche Liste; sie klappt unter der Kurzfassung auf
+  („All changes · n“, zu bis zum Tippen). Jede neue Änderung kommt wie bisher oben in `items`;
+  ist sie wichtig, kommt zusätzlich eine Zeile oben in `summary` (die unwichtigste fliegt raus,
+  wenn es mehr als vier werden). Reine Fixes und Politur gehören nur in `items`. Die Zeilen der
+  `summary` dürfen wie `items` `{ text, from }` sein. `changelog.json` trägt beides
+  (`summary` und `items`, Felder nur ergänzen, nie umbenennen); die Website kann die Kurzfassung
+  zeigen und die lange Liste aufklappen. `npm test` prüft Länge und Anzahl.
   **Von Spielern angestoßen (Leo, 03.10.2026):** Ein Punkt, den ein Spieler gemeldet oder
   vorgeschlagen hat (Build with us), ist `{ text, from: null }` („From a player“) oder
   `{ text, from: 'Name' }` („Thanks, Name“, nur mit dem Einverständnis des Spielers) statt

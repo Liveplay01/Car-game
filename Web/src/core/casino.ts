@@ -13,7 +13,8 @@ import { Rng } from './rng';
  * reload never draws again; a round cut short (the page closed) pays its stake back.
  */
 export type CasinoGame = 'crash' | 'slots' | 'upgrade' | 'roulette' | 'scratch';
-export const CASINO_GAMES: CasinoGame[] = ['crash', 'slots', 'upgrade', 'roulette', 'scratch'];
+/** The tab order; the Skin Upgrade is always the last, on the right (Leo, 09.10.2026). */
+export const CASINO_GAMES: CasinoGame[] = ['crash', 'slots', 'roulette', 'scratch', 'upgrade'];
 
 export type SlotSymbol = (typeof baseConfig.slotStrip)[number];
 export const SLOT_SYMBOLS: SlotSymbol[] = ['car', 'compact', 'van', 'sportsCar', 'ambulance', 'transporter', 'boss'];

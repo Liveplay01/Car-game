@@ -35,12 +35,14 @@ window.addEventListener('unhandledrejection', bootFailed);
 // `npm run dev` only: `?demo` replaces this address's save with one to look around in (Level 30, two Shield steps,
 // two chests waiting, every vehicle met but no weather or city event yet, so the condition icons show their dot).
 // `?demo=night` has met the weather: no forced rain, and the first shift is still the guaranteed first night.
+// `&level=12&money=5000000` set the level and the money instead of 30 and 50,000.
 if (import.meta.env.DEV && new URLSearchParams(location.search).has('demo')) {
+  const query = new URLSearchParams(location.search);
   const demo = newSave();
   demo.tutorialDone = true;
   demo.shiftsPlayed = 40;
-  Object.assign(demo.career, { level: 30, money: 50000, chests: ['premium', 'standard'], upgrades: { shield: 2 } });
-  const weather = new URLSearchParams(location.search).get('demo') === 'night' ? shelfEntries(2).filter((e) => e.k === 'weather') : [];
+  Object.assign(demo.career, { level: Number(query.get('level') ?? 30), money: Number(query.get('money') ?? 50000), chests: ['premium', 'standard'], upgrades: { shield: 2 } });
+  const weather = query.get('demo') === 'night' ? shelfEntries(2).filter((e) => e.k === 'weather') : [];
   demo.career.museumSeen = [...shelfEntries(0), ...shelfEntries(1), ...weather].map(museumId);
   writeSave(demo);
   history.replaceState(null, '', location.pathname);

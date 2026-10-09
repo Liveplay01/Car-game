@@ -1,5 +1,5 @@
 import { h } from './dom';
-import { openSheet, glideHeight } from './sheets';
+import { openSheet, glideHeight, fadeIn } from './sheets';
 import {
   type Account,
   type BoardEntry,
@@ -280,14 +280,17 @@ export function boardPanel(scope: Scope, host: BoardHost): BoardPanel {
       const empty = scope === 'friends' ? 'Add a friend with their code to compare your records.' : (BOARDS.find((b) => b.id === board)?.empty ?? '');
       rows.push(h('div', { class: 'row board-empty' }, h('div', { class: 'row-main' }, h('div', { class: 'row-title' }, 'Nobody here yet'), h('div', { class: 'row-sub' }, empty))));
     }
+    const arriving = list.getAttribute('aria-busy') === 'true';
     list.replaceChildren(...rows);
     list.setAttribute('aria-busy', 'false');
+    if (arriving) fadeIn(list);
   }
 
   async function load(): Promise<void> {
     const ticket = ++asked;
     const key = `${scope}:${board}`;
     const cached = cache.get(key);
+    fadeIn(list);
     if (cached) showList(cached);
     else {
       list.replaceChildren(...skeleton());

@@ -2,7 +2,7 @@ import { type Career, Careers, MINIMUM_ARMS } from '../core/career';
 import { detourArmSlot } from '../core/modules';
 import { type Config, type RoadModule, MODULE_MAX_LEVEL } from '../core/config';
 import { type Upgrade, upgradeMaxSteps } from '../core/levels';
-import { type ChestKind, RARITIES, CHEST_ODDS, chestFinds, PITY_CHESTS, PITY_LEGENDARY_CHESTS, MAX_CAR_SKINS, BIG_SCREEN, cosmetic, isForSale } from '../core/loot';
+import { type ChestKind, RARITIES, CHEST_ODDS, chestFinds, tappedOdds, PITY_CHESTS, PITY_LEGENDARY_CHESTS, MAX_CAR_SKINS, BIG_SCREEN, cosmetic, isForSale } from '../core/loot';
 import { type CasinoGame, type SlotSymbol, SLOT_SYMBOLS, Casino } from '../core/casino';
 import { type Vec2, v } from '../core/vec2';
 import type { RenderList } from './render';
@@ -132,6 +132,8 @@ export const Details = {
       rows.push({ label: S.shop.findRow(find.id), value: found ? S.shop.found : S.shop.oneIn(find.source.chance), labelColor: 'coin', valueColor: found ? 'muted' : undefined });
       if (!found) notes.push({ text: S.shop.findHint(find.id), color: 'muted' });
     }
+    const tapped = tappedOdds(kind, 1, config.chestTapBoost);
+    notes.push({ text: S.shop.tapOdds(RARITIES.map((r, i) => `${S.shop.rarity(r)} ${percent(tapped[i])}`).join(' · ')), color: 'muted' });
     if (kind === 'event') notes.push({ text: S.shop.seasonHint, color: 'accent' });
     const actions: DetailAction[] = [];
     const index = career.chests.indexOf(kind);

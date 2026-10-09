@@ -343,6 +343,10 @@ button {
   color: var(--accent);
 }
 
+.tab .badge-dot:not([hidden]) {
+  animation: pop-in 320ms var(--ease-drawer) backwards;
+}
+
 .tab .badge-dot {
   position: absolute;
   top: 8px;
@@ -591,6 +595,12 @@ a.row-link {
 
 /* Upgrades */
 
+/* Scroll bars: thin, a soft thumb and no track, instead of the browser's grey bar (Leo, 09.10.2026). Touch screens draw their own. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.22) transparent;
+}
+
 /* MARK: Sheets (pause, settings) */
 
 .sheet-root {
@@ -634,11 +644,25 @@ a.row-link {
 }
 
 .grabber {
+  position: relative;
   width: 36px;
   height: 5px;
   border-radius: 3px;
   background: rgba(255, 255, 255, 0.18);
   margin: 0 auto var(--s3);
+}
+
+/* Pulling the grabber or the title bar down closes a sheet (ui/sheets.ts, dragToClose); the grabber gets a finger-sized grip. */
+.sheet-handle {
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.sheet > .grabber::before {
+  content: '';
+  position: absolute;
+  inset: -10px -48px;
 }
 
 .sheet-head {
@@ -695,6 +719,25 @@ a.row-link {
 @keyframes sheet-out {
   to {
     transform: translateY(calc(100% + 48px));
+  }
+}
+
+/* A sheet's view that is replaced (a tab, a list, a lobby step) arrives instead of popping in (ui/sheets.ts, `fadeIn`). */
+.view-in {
+  animation: view-in 240ms var(--ease-out) backwards;
+}
+
+@keyframes view-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+
+@keyframes pop-in {
+  from {
+    opacity: 0;
+    transform: scale(0.4);
   }
 }
 
@@ -831,14 +874,31 @@ a.row-link {
   display: none;
   opacity: 0;
   transform: translateY(6px);
-  transition: opacity 200ms var(--ease-out), transform 200ms var(--ease-out);
+  transition: opacity 200ms var(--ease-out), transform 200ms var(--ease-out), display 200ms allow-discrete;
 }
 
+/* A pill in the stack grows in and folds away (height and the gap with it), so the ones beside it glide instead of jumping. */
 .run-bar .run-btn {
   width: var(--pill-w);
-  min-height: var(--pill-h);
+  height: 0;
+  min-height: 0;
+  margin-bottom: calc(-1 * var(--pill-gap) - 2px);
+  overflow: clip;
   border-radius: calc(var(--pill-h) / 2);
   justify-content: flex-start;
+  transition:
+    opacity 200ms var(--ease-out),
+    transform 200ms var(--ease-out),
+    height 240ms var(--ease-drawer),
+    margin-bottom 240ms var(--ease-drawer),
+    display 240ms allow-discrete;
+}
+
+.run-bar .run-btn.show {
+  height: var(--pill-h);
+  min-height: var(--pill-h);
+  margin-bottom: 0;
+  overflow: visible;
 }
 
 .run-btn svg,
@@ -896,6 +956,32 @@ a.row-link {
   }
 }
 
+/* On a phone the pills stay round but are squeezed against the screen edge: they end before the road starts (Leo, 09.10.2026). */
+@media (pointer: coarse) and (max-width: 560px), (pointer: coarse) and (max-height: 480px) {
+  :root {
+    --pill-w: 128px;
+    --pill-edge: 6px;
+  }
+
+  .settings-btn,
+  .run-bar {
+    left: calc(var(--safe-left) + var(--pill-edge));
+  }
+
+  .settings-btn,
+  .run-bar .run-btn {
+    gap: 6px;
+    padding: 0 var(--s2) 0 10px;
+    font-size: 12px;
+  }
+
+  .app[data-hand='left'] .settings-btn,
+  .app[data-hand='left'] .run-bar {
+    left: auto;
+    right: calc(var(--safe-right) + var(--pill-edge));
+  }
+}
+
 .run-btn.show {
   display: inline-flex;
   opacity: 1;
@@ -907,6 +993,11 @@ a.row-link {
   .run-btn.show {
     opacity: 0;
     transform: translateY(6px);
+  }
+
+  .run-bar .run-btn.show {
+    height: 0;
+    margin-bottom: calc(-1 * var(--pill-gap) - 2px);
   }
 }
 
@@ -959,47 +1050,17 @@ a.row-link {
   font-weight: 700;
 }
 
-/* What's new: one fold per update, newest first and open (ui/sheets.ts, patchNotesSheet). */
+/* What's new: a card per day. The short version is always showing; the long list folds open under it (ui/sheets.ts, patchNotesSheet). */
+.note {
+  padding: var(--s4) 0;
+}
+
 .note + .note {
   border-top: 0.5px solid var(--separator);
 }
 
 .note-head {
-  display: flex;
-  align-items: center;
-  gap: var(--s3);
-  min-height: 44px;
-  padding: var(--s4) 0;
-  cursor: pointer;
-  list-style: none;
-  -webkit-tap-highlight-color: transparent;
-}
-
-.note-head::-webkit-details-marker {
-  display: none;
-}
-
-.note-head:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 2px;
-  border-radius: 8px;
-}
-
-.note-heading {
-  flex: 1;
-  min-width: 0;
-}
-
-.note-head svg {
-  flex: none;
-  width: 20px;
-  height: 20px;
-  color: var(--muted);
-  transition: transform 220ms var(--ease-out);
-}
-
-.note[open] .note-head svg {
-  transform: rotate(180deg);
+  margin-bottom: var(--s3);
 }
 
 .note-meta {
@@ -1046,9 +1107,10 @@ a.row-link {
   text-wrap: balance;
 }
 
+.note-summary,
 .note-items {
   margin: 0;
-  padding: 0 0 var(--s5) 20px;
+  padding: 0 0 0 20px;
   display: grid;
   gap: var(--s2);
   font-size: 15px;
@@ -1056,8 +1118,67 @@ a.row-link {
   text-wrap: pretty;
 }
 
+.note-summary {
+  font-weight: 600;
+}
+
+/* The full list: a native disclosure, so keys and screen readers know it. It opens in a glide where the browser can animate it. */
+.note-more {
+  margin-top: var(--s2);
+  interpolate-size: allow-keywords;
+}
+
+.note-more::details-content {
+  block-size: 0;
+  overflow: clip;
+  transition: block-size 280ms var(--ease-drawer), content-visibility 280ms allow-discrete;
+}
+
+.note-more[open]::details-content {
+  block-size: auto;
+}
+
+.note-more-head {
+  display: flex;
+  align-items: center;
+  gap: var(--s1);
+  min-height: 44px;
+  cursor: pointer;
+  list-style: none;
+  color: var(--muted);
+  font-size: 14px;
+  font-weight: 600;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.note-more-head::-webkit-details-marker {
+  display: none;
+}
+
+.note-more-head:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 8px;
+}
+
+.note-more-head svg {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  transition: transform 220ms var(--ease-out);
+}
+
+.note-more[open] .note-more-head svg {
+  transform: rotate(180deg);
+}
+
+.note-items {
+  padding-top: var(--s2);
+  font-weight: 400;
+}
+
 /* Opening: the lines settle in from a little above; closing is instant (a fold, not a show). */
-.note[open] .note-items {
+.note-more[open] .note-items {
   animation: note-open 240ms var(--ease-out);
 }
 
@@ -1068,6 +1189,7 @@ a.row-link {
   }
 }
 
+.note-summary li::marker,
 .note-items li::marker {
   color: var(--accent);
 }
@@ -1199,31 +1321,17 @@ a.row-link {
   background: var(--sheet-bg);
   border-radius: var(--r-sheet) var(--r-sheet) 0 0;
   box-shadow: 0 -1px 0 rgba(255, 255, 255, 0.06), 0 -16px 40px rgba(0, 0, 0, 0.45);
-  transition: max-height 340ms var(--ease-drawer), transform 340ms var(--ease-drawer);
 }
 
+/* Full height: the tallest the sheet gets, measured by detailSheet.ts (`fits`). */
 .detail-sheet.expanded {
   max-height: calc(100% - var(--tabbar-h) - var(--safe-bottom) - var(--safe-top) - 16px);
 }
 
-.detail-sheet.dragging {
-  transition: none;
-}
-
-/* Pulled up, the sheet leaves a gap under it: this fill reaches down to the tab bar and follows it back (detailSheet.ts). */
-.detail-fill {
-  position: absolute;
-  left: 0;
-  right: 0;
-  top: 100%;
-  height: 0;
-  background: var(--sheet-bg);
-  transition: height 340ms var(--ease-drawer);
-  pointer-events: none;
-}
-
-.detail-sheet.dragging .detail-fill {
-  transition: none;
+/* Height and position are then driven by a spring in detailSheet.ts, which may pull past the full height a little. */
+.detail-sheet.controlled {
+  max-height: none;
+  will-change: height, transform;
 }
 
 .detail-sheet.entering {
@@ -1231,7 +1339,7 @@ a.row-link {
 }
 
 .detail-sheet.closing {
-  animation: detail-out 220ms var(--ease-exit) forwards;
+  animation: detail-out var(--out-ms, 220ms) var(--ease-exit) forwards;
   pointer-events: none;
 }
 
@@ -1570,17 +1678,29 @@ a.row-link {
   transform: translateX(-50%);
   display: none;
   gap: var(--s2);
+  opacity: 0;
+  transition: opacity 200ms var(--ease-out), display 200ms allow-discrete;
 }
 
 .app[data-versus='on'] .versus-bar {
   display: flex;
+  opacity: 1;
+}
+
+@starting-style {
+  .app[data-versus='on'] .versus-bar {
+    opacity: 0;
+  }
 }
 
 .app[data-versus='on'] .settings-btn,
 .app[data-versus='on'] .dispatch-btn,
 .app[data-versus='on'] .done-btn,
 .app[data-versus='on'] .run-bar {
-  display: none;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity 180ms var(--ease-out), transform 200ms var(--ease-out), visibility 0s linear 180ms;
 }
 
 .run-btn.primary-run {
@@ -1920,10 +2040,12 @@ a.row-link {
   align-items: center;
   gap: var(--s2);
   max-width: calc(100% - 2 * var(--s4));
+  opacity: 0;
 }
 
 .app[data-versus='on'] .react-bar.show {
   display: flex;
+  opacity: 1;
 }
 
 @starting-style {
@@ -1934,7 +2056,7 @@ a.row-link {
 }
 
 .react-bar {
-  transition: opacity 200ms var(--ease-out), transform 200ms var(--ease-out);
+  transition: opacity 200ms var(--ease-out), transform 200ms var(--ease-out), display 200ms allow-discrete;
 }
 
 .react-btn {

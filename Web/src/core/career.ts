@@ -35,6 +35,7 @@ import {
   albumItems,
   cosmetic,
   rollChest,
+  tappedOdds,
   DUPLICATE_MONEY,
   MAX_CAR_SKINS,
   COSMETICS,
@@ -701,10 +702,12 @@ export const Careers = {
 
   isWorn: (c: Career, id: string): boolean => c.carSkins.includes(id) || c.mapSkin === id,
 
-  openChest(c: Career, index: number, seed: number, day: number | null): ChestOpening | null {
+  /** Opens the chest at `index`; `power` 0…1 is how well the player's taps broke it open (`tappedOdds`). */
+  openChest(c: Career, index: number, seed: number, day: number | null, power = 0, config: Config = baseConfig): ChestOpening | null {
     if (index < 0 || index >= c.chests.length) return null;
     const kind = c.chests.splice(index, 1)[0];
-    const roll = rollChest(kind, c.collection, c.chestsSinceEpic, (seed ^ Math.imul(c.chestsOpened, 7919) ^ 0xc4e57b0c) >>> 0, day, c.chestsSinceLegendary);
+    const odds = tappedOdds(kind, power, config.chestTapBoost);
+    const roll = rollChest(kind, c.collection, c.chestsSinceEpic, (seed ^ Math.imul(c.chestsOpened, 7919) ^ 0xc4e57b0c) >>> 0, day, c.chestsSinceLegendary, odds);
     c.chestsOpened++;
     c.chestsSinceEpic = roll.chestsSinceEpic;
     c.chestsSinceLegendary = roll.chestsSinceLegendary;

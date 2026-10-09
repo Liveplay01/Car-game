@@ -46,7 +46,7 @@ const { substream } = await load('/src/core/rng.ts');
 const { readGuestMessage, readHostMessage, RateLimit } = await load('/src/net/messages.ts');
 const { settleSpecial, advanceRush, newRush, runCard } = await load('/src/present/specialRuns.ts');
 const { trial: trialById, trialOpen, trialConfig, landmarkOf, LANDMARKS, LANDMARK_PRESTIGE, RUN_IDS, RUSH_ID, RUSH_REWARD, rushOpen, rematchId } = await load('/src/core/trials.ts');
-const { PATCH_NOTES, latestNote, itemText, itemCredit, changelogFile } = await load('/src/present/patchNotes.ts');
+const { PATCH_NOTES, latestNote, itemText, itemCredit, changelogFile, SUMMARY_LINES, SUMMARY_LENGTH } = await load('/src/present/patchNotes.ts');
 const { parseInviteCode } = await load('/src/net/invite.ts');
 const { pushTimers } = await load('/src/net/push.ts');
 const { dayNumber } = await load('/src/core/daily.ts');
@@ -1419,6 +1419,8 @@ test("What's new has one entry per day, newest first, and a new item lights the 
   assert.deepEqual([...days].sort().reverse(), days, 'newest day first');
   for (const n of PATCH_NOTES) {
     assert.ok(n.items.length > 0 && n.title.length > 0, `${n.id} says something`);
+    assert.ok(n.summary.length > 0 && n.summary.length <= SUMMARY_LINES, `${n.id}: the summary has 1 to ${SUMMARY_LINES} lines`);
+    for (const line of n.summary) assert.ok(itemText(line).length <= SUMMARY_LENGTH, `${n.id}: a summary line is short (${itemText(line).length} > ${SUMMARY_LENGTH})`);
     assert.equal(new Date(`${n.id}T12:00:00Z`).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' }), n.date, `${n.id}: the date matches`);
   }
   const before = latestNote();
@@ -1455,10 +1457,11 @@ test("the changelog file is the same list as What's new, as plain data for the w
   for (const [i, day] of file.days.entries()) {
     assert.equal(day.items.length, PATCH_NOTES[i].items.length);
     assert.equal(day.items[0].text, itemText(PATCH_NOTES[i].items[0]));
+    assert.deepEqual(day.summary.map((l) => l.text), PATCH_NOTES[i].summary.map(itemText), 'the short version travels too');
   }
   // A line from a player keeps its credit; one of ours has no `from` at all.
   const custom = changelogFile([
-    { id: '2026-01-02', date: '2 January 2026', title: 'T', impact: 'fix', items: ['Ours.', { text: 'Theirs.', from: null }, { text: 'Named.', from: 'Mia' }] },
+    { id: '2026-01-02', date: '2 January 2026', title: 'T', impact: 'fix', summary: ['Ours.'], items: ['Ours.', { text: 'Theirs.', from: null }, { text: 'Named.', from: 'Mia' }] },
   ]);
   assert.deepEqual(custom.days[0].items, [{ text: 'Ours.' }, { text: 'Theirs.', from: null }, { text: 'Named.', from: 'Mia' }]);
 });
@@ -1767,6 +1770,34 @@ test('the Legendary pity guarantees one by the last chest and leaves the old dra
   c.chests.push('standard');
   Careers.openChest(c, 0, 8, 100);
   assert.ok(c.chestsSinceLegendary <= 1);
+});
+
+test('chest taps tilt the odds a little: strong taps count, Common pays, pity and no-tap draws stay as they were', async () => {
+  const { tappedOdds, tapPower, strongTaps, CHEST_ODDS } = await load('/src/core/loot.ts');
+  assert.deepEqual(strongTaps([0, 0.4, 1.2, 1.6], 0.5), [true, true, false, true]);
+  assert.equal(tapPower([0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7], 8, 0.5), 1);
+  assert.equal(tapPower([0, 2, 4, 6, 8, 10, 12, 14], 8, 0.5), 1 / 8);
+  for (const kind of ['standard', 'premium', 'event', 'criminalHunt']) {
+    assert.deepEqual(tappedOdds(kind, 0, baseConfig.chestTapBoost), CHEST_ODDS[kind].map((p, i) => (i === 0 ? 1 - CHEST_ODDS[kind].slice(1).reduce((a, b) => a + b, 0) : p)));
+    const full = tappedOdds(kind, 1, baseConfig.chestTapBoost);
+    assert.ok(Math.abs(full.reduce((a, b) => a + b, 0) - 1) < 1e-12);
+    for (let i = 1; i < 4; i++) assert.ok(Math.abs(full[i] / CHEST_ODDS[kind][i] - (1 + baseConfig.chestTapBoost)) < 1e-12);
+    assert.ok(full[0] < CHEST_ODDS[kind][0] && full[0] > 0);
+  }
+  const better = (odds) => {
+    let rare = 0;
+    for (let seed = 0; seed < 40000; seed++) if (rollChest('standard', [], 0, seed, 100, 0, odds).rarity !== 'common') rare++;
+    return rare;
+  };
+  assert.ok(better(tappedOdds('standard', 1, baseConfig.chestTapBoost)) > better(tappedOdds('standard', 0, baseConfig.chestTapBoost)));
+  for (let seed = 0; seed < 500; seed++) {
+    assert.equal(rollChest('standard', [], 0, seed, 100, PITY_LEGENDARY_CHESTS - 1, tappedOdds('standard', 1, 0.1)).item.rarity, 'legendary');
+    const a = newCareer();
+    a.chests.push('standard');
+    const b = newCareer();
+    b.chests.push('standard');
+    assert.equal(Careers.openChest(a, 0, seed, 100, 1).item.id, Careers.openChest(b, 0, seed, 100, 1).item.id, 'same seed and power, same prize');
+  }
 });
 
 test('Unlimited tiers climb with the best run, and the run marks the same cars', () => {

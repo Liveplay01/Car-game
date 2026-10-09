@@ -810,6 +810,14 @@ export const baseConfig = {
    * shows a Legendary card right next to it. Display only, the drop odds stay the same; 0 turns it off.
    */
   chestTeaserChance: 0.7,
+  /**
+   * Chest taps (Leo, 09.10.2026): a chest takes this many taps to break open. A tap within
+   * `chestTapWindow` seconds of the one before is strong; the share of strong taps is the power.
+   * At full power every chance above Common grows by `chestTapBoost` of itself, paid by Common.
+   */
+  chestTaps: 8,
+  chestTapWindow: 0.5,
+  chestTapBoost: 0.1,
 
   // Casino (core/casino.ts, LOOT.md): honest odds, a small house edge, all of it on screen.
   /** The stakes on offer; "All in" stakes whatever there is. */
@@ -870,6 +878,11 @@ export const baseConfig = {
    * then a gold flash.
    */
   casinoWinTiers: [2, 10, 40, 150] as readonly number[],
+  /**
+   * The same tiers by the profit of a round (Leo, 09.10.2026): 1,000,000 must not feel like 10,
+   * whatever multiple it was. A round is as loud as the louder of the two.
+   */
+  casinoWinAmounts: [1_000, 10_000, 100_000, 1_000_000] as readonly number[],
 
   // Late levels
   lateLevel: 6,

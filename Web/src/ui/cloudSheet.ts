@@ -1,5 +1,5 @@
 import { h } from './dom';
-import { openSheet } from './sheets';
+import { openSheet, fadeIn } from './sheets';
 import {
   type CloudView,
   cloudView,
@@ -277,11 +277,16 @@ export function cloudSheet(layer: HTMLElement, actions: CloudActions): () => voi
     ];
   }
 
+  let state: 'choose' | 'linked' | 'off' | null = null;
+
   function render(): void {
     const view = cloudView();
     say('');
     const parts = view.status === 'choose' ? choose(view) : view.code ? linked(view) : off();
     body.replaceChildren(...parts, problem);
+    const shown = view.status === 'choose' ? 'choose' : view.code ? 'linked' : 'off';
+    if (state !== null && shown !== state) fadeIn(body);
+    state = shown;
   }
 
   const stop = onCloudChange(render);

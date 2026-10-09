@@ -352,7 +352,7 @@ Einsätze: 100 · 500 · 1.000 · 5.000 · 25.000 oder All in. Jeder Gewinn zahl
 
 **Darstellung (Leo, 29.09.2026):**
 - **Erst die Enthüllung, dann das Geld:** Die Regeln verbuchen eine Runde sofort (fair beim Neuladen). Geld-Chip, Tagessaldo und Verlauf zeigen das Ergebnis aber erst mit der Enthüllung (`Wallet` in `present/casinoWallet.ts`). Der Einsatz fliegt als Münzen vom Chip auf die Bühne, ein Gewinn fliegt zurück und zählt dort hoch.
-- **Gewinnstufen nach Vielfachem des Einsatzes, in allen Spielen gleich** (`casinoWinTiers`: 2 · 10 · 40 · 150): mehr Münzen, dann Konfetti, dann Strahlen und ein Stoß, dann ein Goldblitz. Ein gewonnener Skin bekommt mindestens Konfetti.
+- **Gewinnstufen nach Vielfachem des Einsatzes, in allen Spielen gleich** (`casinoWinTiers`: 2 · 10 · 40 · 150): mehr Münzen, dann Konfetti, dann Strahlen und ein Stoß, dann ein Goldblitz. Ein gewonnener Skin bekommt mindestens Konfetti. **Auch die Summe zählt** (`casinoWinAmounts`: 1K · 10K · 100K · 1M Gewinn): die lautere von beiden Stufen gilt. Ab Stufe 2 ein BIG/HUGE/MEGA-WIN-Stempel, ab 3 Münzregen, längeres Zählen (bis 2,6 s); die Zahl springt bei jeder Marke, die sie beim Zählen passiert, und landet mit einem Spritzer wie beim Combo-Aufstieg.
 - **Pro Spiel:** Crash lehnt die Kamera mit dem Multiplikator bis 8 % ans Auto und zählt den Gewinn hoch. Slots verwischen schnelle Walzen, Gewinnsymbole hüpfen nacheinander, die Gewinnlinie zeichnet sich, ein Verlust dunkelt kurz ab. Beim Skin-Upgrade fliegen die Einsätze in den Topf und zerspringen bei Verlust, die Nadel zieht einen Schweif. Bei Doppelt oder nichts wächst ein Münzstapel mit jeder Verdopplung und kippt bei Verlust.
 - **Eigene Klänge,** synthetisiert (`Web/audio-src/make_casino_sounds.py`): Walzenstopp, Münzklimpern, Nadel, Crash-Zähler, Münzwurf und -landung, Chips, Splittern.
 - **Ehrlich bleibt es:** keine vorgetäuschten Beinahe-Gewinne, kein Jubel bei Verlust, jede Enthüllung überspringbar, Reduce Motion zeigt nur Zählen und Blenden. Die Inszenierung ändert nie das Ergebnis.
@@ -850,7 +850,7 @@ Offene Ideen stehen in [IDEA.md](IDEA.md). Stand 02.10.2026 ist dort nur noch **
 
 **Playtest-Routine:** 3 Schichten spielen, am Desktop und auf einem echten Handy → Fairness der Crashes, Feedback-Wahrnehmung, Ruckler, Motivation („Will ich noch eine?“). Auffälligkeiten **mit Seed** notieren (ein Challenge-Link hält die Schicht fest).
 
-**Patch Notes:** Jede größere Neuerung und jeder spürbare Bugfix kommt in `Web/src/present/patchNotes.ts` (Settings → What's new), Englisch, für Spieler geschrieben, **ein Eintrag pro Tag**, neueste zuerst (CLAUDE.md).
+**Patch Notes:** Jede größere Neuerung und jeder spürbare Bugfix kommt in `Web/src/present/patchNotes.ts` (Settings → What's new), Englisch, für Spieler geschrieben, **ein Eintrag pro Tag**, neueste zuerst, mit einer Kurzfassung (`summary`, sofort sichtbar) und der langen Liste (`items`, klappt auf) (CLAUDE.md).
 
 ---
 

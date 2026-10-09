@@ -30,7 +30,6 @@ export const TIMES = {
   hitstop: 0.06,
   /** A cash-out this close before the crash is a Clutch Cash-out. */
   clutch: 0.35,
-  countUp: 1.3,
   ding: 0.075,
   /** The roulette car drives round the ring for this long, easing out, then leaves by its exit. */
   rouletteDrive: 3.4,
@@ -85,6 +84,15 @@ export const unit = (index: number, salt: number): number => unitHash(index, sal
 
 /** How loud a win is (`casinoWinTiers`): 0 below the first step, up to 4. */
 export const winTier = (times: number): number => baseConfig.casinoWinTiers.filter((x) => times >= x).length;
+/** The tier of a round's payout `win` at `times` the stake: the louder of its multiple and its profit. */
+export const payTier = (times: number, win: number): number => {
+  const profit = times > 1 ? win - win / times : 0;
+  return Math.max(winTier(times), baseConfig.casinoWinAmounts.filter((x) => profit >= x).length);
+};
+/** How long a win of `tier` counts up: the bigger, the longer the number keeps the player waiting. */
+export const countTime = (tier: number): number => [0.6, 0.8, 1.2, 1.8, 2.6][tier] ?? 2.6;
+/** The coins of a big win rain this long. */
+export const rainTime = (tier: number): number => (tier >= 4 ? 3 : 2.2);
 
 export const SYMBOL: Record<SlotSymbol, { type: VehicleType; tint: ColorToken }> = {
   car: { type: 'car', tint: 'rarityCommon' },

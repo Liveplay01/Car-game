@@ -1,6 +1,6 @@
 import { h } from './dom';
 import { boardPanel, forgetFriendsBoards, nameForm, openAccount, tabsControl } from './leaderboardSheet';
-import { openSheet, glideHeight } from './sheets';
+import { openSheet, glideHeight, fadeIn } from './sheets';
 import { INVITE_LEVEL } from '../core/config';
 import { type InviteView, fetchInvite, inviteUrl, pendingInvite } from '../net/invite';
 import { type FriendsView, type Records, addFriend, describeError, fetchFriends, loadAccount, removeFriend, syncScores } from '../net/leaderboard';
@@ -141,6 +141,7 @@ export function friendsSheet(layer: HTMLElement, actions: FriendsActions): () =>
     const rows = { friends: () => friendRows(view!), ranking: () => [ranking.el], play: playRows, invite: inviteRows }[tab]();
     message = undefined;
     content.replaceChildren(...rows);
+    fadeIn(content);
     if (tab === 'ranking') ranking.open();
   }
 

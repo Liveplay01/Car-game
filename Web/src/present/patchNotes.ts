@@ -3,23 +3,30 @@
  * day has its entry, everything new that day goes into it (an item at the top, the title and the
  * impact grown with it); the next day starts a new entry. In the game's language, for players:
  * what they can do or will notice, not how it was built (CLAUDE.md). New items light a dot on the
- * settings button until they are read, also when they join today's entry. The list shows the
- * newest day open, the rest folded, each with a badge for how much that day changed.
+ * settings button until they are read, also when they join today's entry. Every day shows its
+ * short `summary` straight away (Leo, 09.10.2026: what matters, at a glance) and folds the long
+ * `items` list open under it; a badge says how much that day changed.
  */
 export interface PatchNote {
   /** The day, `YYYY-MM-DD`: unique and stable. */
   id: string;
   date: string;
   title: string;
+  /** The mini version players see at once: at most four short lines, only what they will notice. Newest first. */
+  summary: PatchItem[];
   /**
    * How much the day changed how the game plays (Leo, 29.09.2026), its strongest change:
    * `major` (red) changes rules, levels or rewards players feel; `minor` (yellow) adds or
    * polishes without changing how it plays; `fix` (green) only fixes.
    */
   impact: PatchImpact;
-  /** Newest first. */
+  /** The long list, folded under the summary. Newest first. */
   items: PatchItem[];
 }
+
+/** The most lines a day's summary may have, and the longest line: it has to be read at a glance. */
+export const SUMMARY_LINES = 4;
+export const SUMMARY_LENGTH = 100;
 
 export type PatchImpact = 'major' | 'minor' | 'fix';
 
@@ -44,10 +51,44 @@ export const itemCredit = (item: PatchItem): string | null => {
 
 export const PATCH_NOTES: PatchNote[] = [
   {
+    id: '2026-10-09',
+    date: '9 October 2026',
+    title: 'Tap your chests open, casino wins that feel like wins, and drawers you can pull',
+    impact: 'major',
+    summary: [
+      'Tap your chests open: fast taps crack them, burst them into the reel and tilt the odds a little.',
+      'Casino wins hit harder the more you win: a stamp, coin rain and a count that bumps along.',
+      'Pull a drawer down to close it, or tap beside it: every drawer closes both ways.',
+      'Card drawers move like an Apple sheet, and Museum entries open all the way.',
+    ],
+    items: [
+      'A chest is opened by tapping it: eight taps crack it open, light shines through the cracks, and the last one bursts it into the reel. Nothing about the chest shows what is inside any more, not even for an Epic or a Legendary.',
+      'Tap fast: every tap within half a second of the one before counts as strong (the dots under the chest show it). At full power every chance above Common grows by a tenth of itself, so a Standard chest’s Legendary goes from 1 % to 1.1 %. The odds with full power are in the chest’s details, and the pity counters stay as they were.',
+      'What’s new is easier to read: every day opens with a short summary of what matters, and the full list folds open under it (All changes).',
+      'Casino wins are as big as the money: the louder of the multiple and the profit decides. A million no longer feels like a ten. Big wins get a BIG / HUGE / MEGA WIN stamp, a rain of coins, a longer count and more coins flying to your balance.',
+      'The win counts up like the combo climbs: every mark it passes (1K, 10K, 100K, 1M) bumps the number and sprays juice, and it lands with a burst. Slots got chasing bulbs round the reels, big scratch numbers sparkle.',
+      'The Skin Upgrade is now always the last game, on the right.',
+      'Tapping beside a drawer closes it, now also the drawers of cards (chests, Collection, upgrades, Progress, Museum).',
+      'Drawers close when you pull them down by the grabber or the title, and they follow your finger and fade the screen behind them.',
+      'Scroll bars are thin and soft instead of the browser’s grey bar.',
+      'Smoother: the buttons in the corner fade away instead of vanishing and the ones beside them glide together, a tab’s badge pops in, and the views of Friends, the Leaderboard, Cloud sync and Multiplayer fade in when they change.',
+      'The drawer of a card moves like an Apple sheet: it stretches against a rubber band when you pull it up, snaps to half or full height by how you throw it, and a quick flick down closes it.',
+      'A Museum entry now opens all the way, so you can read the whole text without pulling.',
+      'Finishing a shift is celebrated on the ring: a light closes the circle, then the rim flares, shock rings roll out and juice and sparkles burst. A Perfect Run does it in gold.',
+      'On a phone the pills in the corner are squeezed a little narrower and sit closer to the edge, so they no longer reach the road.',
+    ],
+  },
+  {
     id: '2026-10-08',
     date: '8 October 2026',
     title: 'Rain and thunder you can hear, tour pictures, a Shield upgrade, notifications, and a wedding convoy',
     impact: 'major',
+    summary: [
+      'Rain and thunder have sound (Settings → Sound → Map sounds).',
+      'New Shield upgrade that forgives crashes, shown as plus signs in the top bar.',
+      'Wedding Convoy from level 100, and tours get a picture on Progress → Today.',
+      'Notifications if you want them, and the ring tells you what is coming instead of messages.',
+    ],
     items: [
       'The swipe hint for the game modes now sits in the top card, like a briefing: after a few seconds without a tap (a little longer once you have swiped before) it shows "Swipe for more modes" with an arrow for each way there is another mode. The name of the mode you swipe to shows there as well, overlapping the last one when you swipe fast, with a ripple round the card and a short kick of the camera. Fixed: swipe away from Shift and back and you get the same sky and city event again, until you play that shift. Briefings in a shift now stay on the card for 10 seconds at most, get a pause of 6 seconds before the next one, and stop for the last 3 cars, so your numbers are back quickly. The Daily Shift opening is calmer too: the date, the name, the city of the day and your streak as a week of dots, no warning box.',
       'Rain, storms and thunder now have sound: a steady rain under the road that grows with the downpour, and a rumble of thunder after every flash of lightning. It has its own switch in Settings → Sound: Map sounds.',
@@ -92,6 +133,12 @@ export const PATCH_NOTES: PatchNote[] = [
     date: '7 October 2026',
     title: 'Tours with a Halloween run, a twist on every Daily, seasons that change the sky, Chill mode and 123 achievements',
     impact: 'major',
+    summary: [
+      'Tours: limited-time events, the first is the Haunted Ring on 24 October.',
+      'A twist on every Daily Shift, and seasons that change the sky.',
+      'New Chill mode and 123 achievements.',
+      'Share your Daily like a puzzle result.',
+    ],
     items: [
       'Tours: limited-time events that come back every year. Each is seven stops with a sky and a goal of its own, set at your level, and every stop pays once: coins, chests and three skins you can only win there. The first is the Haunted Ring, from 24 October to 2 November; Winter Lights follows on 18 December. Find it under Progress → Today once Trials are open (level 9).',
       'The Daily Shift has a twist every day: Open Road, Speedway, Fog Bank, Night Shift, Lights Out, Storm Front, Rush All Day, Dragnet, Heavy Load or Cash Convoy. It is the same for everyone, it shows on the waiting card and in the start splash, and a challenge link carries it along.',
@@ -112,6 +159,12 @@ export const PATCH_NOTES: PatchNote[] = [
     date: '6 October 2026',
     title: 'Two new maps and three new skins, a Detour Sign that works, more quests, Roulette, Scratch Cards and the Street Builder',
     impact: 'major',
+    summary: [
+      'Three new nature maps and three new skins: Chrono, Biolume and Dragonfire.',
+      'Roundabout Roulette and Scratch Cards in the Casino.',
+      'The Detour Sign works, modules upgrade twice, and there are seven new quests.',
+      'The Season Pass is the star of Progress → Today.',
+    ],
     items: [
       { text: 'Three new nature maps from the chests: Savanna (Rare), with acacias, a waterhole and elephants, Rainforest (Epic), with a waterfall pool, ferns and butterflies, and Alps (Epic), with a summit seen from above, gentians and cloud shadows.', from: null },
       { text: 'The Season Pass is the star of Progress → Today now: a picture of the season with its top skin, a halo in the colour of the season that breathes, a glint that sweeps across, and the whole track as dots.', from: null },
@@ -142,6 +195,12 @@ export const PATCH_NOTES: PatchNote[] = [
     date: '5 October 2026',
     title: 'Optional ads for a free upgrade step and a better Skin Upgrade chance, and codes that send themselves',
     impact: 'major',
+    summary: [
+      'Optional ads for a free upgrade step or a better Skin Upgrade chance.',
+      'A Friends drawer with four tabs, and Streak Freezes for your Daily.',
+      'Heat for veterans, Unlimited tiers and two new leaderboards.',
+      'Codes send themselves when the last character is typed.',
+    ],
     items: [
       'Friends has its own drawer now, with four tabs like a page: Friends (your code, adding, your list), Ranking (the leaderboards among you and your friends), Play (Challenge a friend, and a button straight to Multiplayer) and Invite (your link and who joined). Open it with the Friends button above Settings; it asks for your name itself, so there is no detour. The Ranks chip on Progress carries an arrow, so it looks like what it is: a way into the leaderboards.',
       'Streak Freeze: every 7 days of your Daily streak earns a Freeze (up to 2). A missed day uses one up instead of breaking the streak, and the Daily row under Progress → Today shows how many you hold. You earn them by playing, never by buying.',
@@ -168,6 +227,11 @@ export const PATCH_NOTES: PatchNote[] = [
     date: '4 October 2026',
     title: 'Invite friends for chests, a simpler Progress and fairer money',
     impact: 'minor',
+    summary: [
+      'Invite a friend: you both get a chest when they reach level 5.',
+      'A new amber look and a simpler Progress that opens on Today.',
+      'Saves and Cloud sync copies are sealed against edits.',
+    ],
     items: [
       'Invite a friend: when a friend you invite reaches level 5, you both get a Standard Chest, and your 3rd and 10th friend each bring a Premium Chest on top. A challenge you share carries your invite too.',
       'A new look: the green accent is now street-lamp amber, and titles and big numbers use the heavy italic typeface of the website. The app icon changed colour too.',
@@ -186,6 +250,12 @@ export const PATCH_NOTES: PatchNote[] = [
     date: '3 October 2026',
     title: 'Boss Rush, the Étoile, a QR code for multiplayer, Build with us, a smoother Elite climb and fewer school buses',
     impact: 'major',
+    summary: [
+      'Boss Rush and a new Landmark, the Étoile.',
+      'Build with us: report a bug and get the Ladybug skin.',
+      'A QR code for multiplayer, and a gentler Elite and Season Pass climb.',
+      'Reset progress is now Delete account.',
+    ],
     items: [
       'Boss Rush: take down all eight syndicate bosses back to back, on one clock. Lose a round and you start again at the first boss. It opens once you have caught every boss, pays 60,000 for the first clear and keeps your best time (Progress → Goals).',
       'A new Landmark for Prestige ★5 and up: the Étoile, twelve roads running into one ring around the Arc de Triomphe. One hard shift, 40,000 the first time you pass it (Progress → Goals).',
@@ -205,6 +275,11 @@ export const PATCH_NOTES: PatchNote[] = [
     date: '2 October 2026',
     title: 'New bosses, Ascension trials, Unlimited stages, Mastery IV and V, and more for the late game',
     impact: 'major',
+    summary: [
+      'Four new bosses from level 75, Ascension trials and Unlimited stages.',
+      'Mastery IV and V, hail, sandstorms and the oversize load.',
+      'Move or delete what you built in the Street Builder.',
+    ],
     items: [
       'Settings links to the new homepage, timing.love, with a trailer and answers to common questions.',
       'Fixed: the money from a taken-down boss is only yours when you finish the level. Lose the round after the arrest and the recovered heist is gone, so a boss level can no longer be replayed for cash.',
@@ -229,6 +304,12 @@ export const PATCH_NOTES: PatchNote[] = [
     date: '1 October 2026',
     title: 'Briefings, Feats, Big Screen, Cloud sync and the Classic',
     impact: 'major',
+    summary: [
+      'Cloud sync: carry your progress to any device with a short code.',
+      'Progress has four sections, and Feats hold the hardest rewards.',
+      'Briefings tell you what to do the first time something new is on the road.',
+      'Big Screen map, the Classic car and a Friends board.',
+    ],
     items: [
       'Settings no longer has "Import a save file": Cloud sync is the way to bring your progress to another device.',
       'Settings now links to the Roundabout Timing Wiki on Fandom: guides, vehicles and tips from the community.',
@@ -289,6 +370,11 @@ export const PATCH_NOTES: PatchNote[] = [
     date: '30 September 2026',
     title: 'Leaderboards, two lanes, a Season Pass and a name',
     impact: 'major',
+    summary: [
+      'Leaderboards: see how you rank, no sign-up.',
+      'Two lanes from level 80, plus motorbikes, learner drivers, fire engines, fog and snow.',
+      'The Season Pass, and the game is now called Roundabout Timing.',
+    ],
     items: [
       'See how you rank: tap Ranks at the top of Progress. One list for the level you have reached, one for your Unlimited record.',
       'No sign-up: just enter a name. Your level and your Unlimited record come from the progress on this device and go on the leaderboard by themselves whenever they improve.',
@@ -317,6 +403,12 @@ export const PATCH_NOTES: PatchNote[] = [
     date: '29 September 2026',
     title: 'Sunny maps, eight new maps, photos and a smoother game',
     impact: 'major',
+    summary: [
+      'Eight new maps, and every city looks richer and brighter in daylight.',
+      'Picture takes a real photo you can share.',
+      'The game runs smoother, also on older phones.',
+      'An easier start for new players.',
+    ],
     items: [
       'Fixed: on some devices the cars flickered or vanished on busy maps like Mushroom Grove.',
       'The city now takes up to half the time to draw on every map, so the game runs smoother and saves battery. It looks exactly the same.',
@@ -364,6 +456,10 @@ export const PATCH_NOTES: PatchNote[] = [
     date: '28 September 2026',
     title: 'Casino and Museum',
     impact: 'major',
+    summary: [
+      'The Casino in the Shop, with the odds one tap away.',
+      'The Museum in Progress.',
+    ],
     items: [
       'The Casino in the Shop: Crash, Slots, Skin Upgrade and double or nothing. Play money only, with the odds one tap away.',
       'The Museum in Progress: every boss, special vehicle and condition you have met, and how to deal with it.',
@@ -382,8 +478,16 @@ export interface ChangelogFile {
   game: string;
   /** The newest day's `id`, so a reader can tell at a glance whether anything changed. */
   updated: string;
-  days: { id: string; date: string; title: string; impact: PatchImpact; items: { text: string; from?: string | null }[] }[];
+  days: { id: string; date: string; title: string; impact: PatchImpact; summary: ChangelogLine[]; items: ChangelogLine[] }[];
 }
+
+/** `summary` is the short version to show at once (added 09.10.2026), `items` the long list to fold open. */
+export type ChangelogLine = { text: string; from?: string | null };
+
+const line = (item: PatchItem): ChangelogLine => {
+  const from = itemFrom(item);
+  return from === undefined ? { text: itemText(item) } : { text: itemText(item), from };
+};
 
 export function changelogFile(notes: readonly PatchNote[] = PATCH_NOTES): ChangelogFile {
   return {
@@ -395,10 +499,8 @@ export function changelogFile(notes: readonly PatchNote[] = PATCH_NOTES): Change
       date: n.date,
       title: n.title,
       impact: n.impact,
-      items: n.items.map((item) => {
-        const from = itemFrom(item);
-        return from === undefined ? { text: itemText(item) } : { text: itemText(item), from };
-      }),
+      summary: n.summary.map(line),
+      items: n.items.map(line),
     })),
   };
 }

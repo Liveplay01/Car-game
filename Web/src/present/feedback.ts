@@ -46,7 +46,7 @@ export type SoundID =
   /** Made in `audio/player.ts` (no sample): a Critical Merge, a Jackpot paid, and the chest reel. */
   | 'critical'
   | 'jackpot'
-  | 'chargeUp'
+  | 'chestHit'
   | 'reelSpin'
   | 'reelTick'
   | 'shimmer'

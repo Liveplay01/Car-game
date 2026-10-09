@@ -815,10 +815,11 @@ export const HUD = {
 
 /**
  * wave: paid, a ring widens out · miss: a bonus slipped away, a ring pulls back in · flush: a blow to the whole ring ·
- * sweep: something is coming · heal: a crash forgiven · splash: the combo climbed, juice sprays out of the rim.
+ * sweep: something is coming · heal: a crash forgiven · splash: the combo climbed, juice sprays out of the rim ·
+ * victory: the shift is done, a light closes the ring and bursts into rings, juice and sparkles.
  */
-export type SignalKind = 'wave' | 'miss' | 'flush' | 'sweep' | 'heal' | 'splash';
-const SIGNAL_DURATION: Record<SignalKind, number> = { wave: 0.7, miss: 0.7, flush: 0.6, sweep: 1.1, heal: 1.1, splash: 0.85 };
+export type SignalKind = 'wave' | 'miss' | 'flush' | 'sweep' | 'heal' | 'splash' | 'victory';
+const SIGNAL_DURATION: Record<SignalKind, number> = { wave: 0.7, miss: 0.7, flush: 0.6, sweep: 1.1, heal: 1.1, splash: 0.85, victory: 1.8 };
 
 interface Signal {
   kind: SignalKind;
@@ -913,6 +914,8 @@ export class RingSignals {
         list.w(arc(v(0, 0), radius, 1 + 2.5 * (1 - x), 0, TAU), s.color, 0.55 * (1 - x));
       } else if (kind === 'splash') {
         RingSignals.splash(list, s, rim, outer);
+      } else if (kind === 'victory') {
+        RingSignals.victory(list, s, { rim, start, outer });
       } else if (kind === 'miss') {
         const radius = outer - (outer - rim) * Ease.outCubic(x);
         list.w(arc(v(0, 0), radius, 1 + 2.5 * (1 - x), 0, TAU), s.color, 0.55 * (1 - x));
@@ -947,6 +950,46 @@ export class RingSignals {
       const fade = 1 - Ease.clamp01((t - 0.65) / 0.35);
       list.w(line(sub(head, mul(dir, 12 * (1 - t))), head, 2.4 * (1 - 0.5 * t)), color, 0.85 * fade);
       list.w(circle(head, (i % 3 === 0 ? 4.6 : 3.2) * (1 - 0.45 * t)), color, fade);
+    }
+  }
+
+  static readonly victoryLap = 0.55;
+
+  /**
+   * The shift is done (Leo, 09.10.2026: more reward): a light runs once round the rim, and where it closes the ring the
+   * rim flares, shock rings roll out, juice sprays and sparkles twinkle. `power` is the strength: a Perfect Run is 1.
+   */
+  static victory(list: RenderList, s: Signal, { rim, start, outer }: RingFrame): void {
+    const lap = RingSignals.victoryLap;
+    const run = Ease.inOutSine(Ease.clamp01(s.age / lap));
+    const head = start + TAU * run;
+    const trail = 1 - Ease.clamp01((s.age - lap) / 0.3);
+    if (run > 0.001 && trail > 0) {
+      list.w(arc(v(0, 0), rim, 10, start, head), s.color, 0.2 * trail);
+      list.w(arc(v(0, 0), rim, 4.5, Math.max(start, head - 1.1), head), s.color, 0.95 * trail);
+    }
+    const u = s.age - lap;
+    if (u <= 0) return;
+    const flare = 1 - Ease.outCubic(Ease.clamp01(u / 0.75));
+    list.w(arc(v(0, 0), rim, 20, 0, TAU), s.color, 0.22 * flare);
+    list.w(arc(v(0, 0), rim, 3.5, 0, TAU), s.color, 0.9 * flare);
+    for (let k = 0; k < 3; k++) {
+      const t = Ease.clamp01((u - k * 0.13) / 0.8);
+      if (t <= 0 || t >= 1) continue;
+      const radius = rim + (outer + 26 - rim) * Ease.outCubic(t);
+      list.w(arc(v(0, 0), radius, 1 + 3.5 * (1 - t), 0, TAU), k % 2 === 0 ? s.color : s.second, 0.65 * (1 - t));
+    }
+    RingSignals.splash(list, { ...s, kind: 'splash', age: u }, rim, outer);
+    const sparkles = 7 + Math.round(7 * s.power);
+    for (let i = 0; i < sparkles; i++) {
+      const t = Ease.clamp01((u - 0.1 - (i % 5) * 0.07) / 0.55);
+      if (t <= 0 || t >= 1) continue;
+      const at = mul(fromAngle(i * 2.399963 + 0.7), rim + (outer - rim) * (0.15 + 0.8 * (((i * 3) % 7) / 6)));
+      const size = (6 + 6 * s.power) * Math.sin(Math.PI * t) * (i % 3 === 0 ? 1.3 : 1);
+      const color = i % 2 === 0 ? s.color : s.second;
+      list.w(line(add(at, v(-size, 0)), add(at, v(size, 0)), 2), color, 0.9);
+      list.w(line(add(at, v(0, -size)), add(at, v(0, size)), 2), color, 0.9);
+      list.w(circle(at, 2.2), color, 0.9);
     }
   }
 

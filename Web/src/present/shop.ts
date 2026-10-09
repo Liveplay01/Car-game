@@ -13,6 +13,7 @@ import {
   isForSale,
   rarityRank,
   isHonour,
+  strongTaps,
   BIG_SCREEN,
 } from '../core/loot';
 import type { VehicleType } from '../core/vehicle';
@@ -117,6 +118,8 @@ export class ShopState {
   selectedItem: string | null = null;
   age = 0;
   opening: { opening: ChestOpening; age: number; reel: Reel } | null = null;
+  /** A chest being tapped open: `times` are the taps in seconds since it appeared, `sinceHit` the last one's age. */
+  charging: { kind: ChestKind; age: number; times: number[]; sinceHit: number } | null = null;
   denied = 0;
   /** The money as the casino shows it: the header and badges read it before the casino loads. */
   readonly wallet = new Wallet();
@@ -151,9 +154,18 @@ export class ShopState {
     this.items.reset();
   }
 
+  /** A chest is being tapped open or its prize is showing: the page waits. */
+  get busy(): boolean {
+    return this.opening !== null || this.charging !== null;
+  }
+
   advance(delta: number): void {
     this.age += delta;
     if (this.opening) this.opening.age += delta;
+    if (this.charging) {
+      this.charging.age += delta;
+      this.charging.sinceHit += delta;
+    }
     if (this.sectionSlide) {
       this.sectionSlide.age += delta;
       if (this.sectionSlide.age >= ShopPage.slideDuration) this.sectionSlide = null;
@@ -199,16 +211,19 @@ export const ShopPage = {
   slideDuration: 0.45,
   slideOut: 0.2,
   /**
-   * When the chest bursts: a Common or Rare opens after a short wobble; an Epic or Legendary
-   * charges up first, so you feel something big is inside before the reel runs.
+   * The last crack to the burst, the same for every chest: what it holds shows only once the reel
+   * runs (Leo, 09.10.2026), the taps before it look alike too.
    */
-  burstTime: (opening: ChestOpening): number => (rarityRank(opening.item.rarity) >= 2 ? 1.4 : 0.45),
+  burstTime: 0.4,
+  /** The taps that broke the chest may still be coming: for this long after it bursts a tap does not skip. */
+  openLock: 1,
   /**
    * A tap moves an opening on a step (open the chest, stop the reel, show the prize); the prize itself stays at least
    * `closeAfter` before a tap closes it. False when this tap closes it.
    */
-  stepOpening(o: { opening: ChestOpening; reel: Reel; age: number }): boolean {
-    const stage = ShopPage.stages(o.opening, o.reel);
+  stepOpening(o: { reel: Reel; age: number }): boolean {
+    const stage = ShopPage.stages(o.reel);
+    if (o.age < ShopPage.openLock && o.age < stage.reveal) return true;
     if (o.age < stage.burst) o.age = stage.burst - 0.001;
     else if (o.age < stage.landed) o.age = stage.landed - 0.001;
     else if (o.age < stage.reveal) o.age = stage.reveal - 0.001;
@@ -216,8 +231,8 @@ export const ShopPage = {
     return true;
   },
   /** The stages of one opening, in seconds from its start: burst, reel at rest, prize card. */
-  stages(opening: ChestOpening, reel: Reel): { burst: number; landed: number; reveal: number } {
-    const burst = ShopPage.burstTime(opening);
+  stages(reel: Reel): { burst: number; landed: number; reveal: number } {
+    const burst = ShopPage.burstTime;
     return { burst, landed: burst + ChestReel.spin, reveal: burst + ChestReel.duration(reel) };
   },
   /** The prize stays at least this long before a tap can close it. */
@@ -319,7 +334,7 @@ export const ShopPage = {
 
   /** A press on the Collection's grid: a tap on a card or the start of a scroll. */
   inItems(point: Vec2, viewport: Vec2, bottomInset: number, state: ShopState): boolean {
-    if (state.section !== 1 || state.opening) return false;
+    if (state.section !== 1 || state.busy) return false;
     return R.contains(ShopPage.itemsArea(ShopPage.layout(viewport, bottomInset)), point);
   },
 
@@ -330,7 +345,7 @@ export const ShopPage = {
   },
 
   targets(viewport: Vec2, bottomInset: number, career: Career, state: ShopState): [ShopTarget, Rect][] {
-    if (state.opening) return [[{ k: 'dismiss' }, R.make(0, 0, viewport.x, viewport.y)]];
+    if (state.busy) return [[{ k: 'dismiss' }, R.make(0, 0, viewport.x, viewport.y)]];
     const l = ShopPage.layout(viewport, bottomInset);
     const out: [ShopTarget, Rect][] = l.segments.map(([section, r]) => [{ k: 'section', section }, r]);
     if (state.section === 0) out.push(...ShopPage.chestCards(l).map(([kind, r]): [ShopTarget, Rect] => [{ k: 'chest', kind }, r]));
@@ -356,7 +371,7 @@ export const ShopPage = {
     MenuKit.backdrop(list);
     // The casino holds back what a round has not shown yet, and counts a win up as it lands.
     const wallet = state.wallet;
-    MenuKit.header(list, S.tabs.shop, Fmt.number(wallet.money(career.money)), vp, reduceMotion ? 1 : land(wallet.sinceLanded / 0.35, 0.14));
+    MenuKit.header(list, S.tabs.shop, Fmt.number(wallet.money(career.money)), vp, reduceMotion ? 1 : land(wallet.sinceLanded / (0.35 + 0.1 * wallet.landedTier), 0.14 + 0.06 * wallet.landedTier));
     const l = ShopPage.layout(vp, bottomInset);
     ShopPage.addSegments(list, l, state, career);
     const start = list.items.length;
@@ -380,6 +395,7 @@ export const ShopPage = {
       }
     }
     if (state.opening) ShopPage.addReveal(list, state.opening.opening, state.opening.reel, state.opening.age, reduceMotion);
+    else if (state.charging) ShopPage.addCharge(list, state.charging, config.chestTaps, config.chestTapWindow, reduceMotion);
   },
 
   addSection(list: RenderList, l: Layout, career: Career, _config: Config, today: number, state: ShopState, section: ShopSection, reduceMotion: boolean, forcedEnter: number | null = null): void {
@@ -700,9 +716,9 @@ export const ShopPage = {
       if (fade > 0) list.s(rect(mul(vp, 0.5), vp), 'background', fade);
       return;
     }
-    const stage = ShopPage.stages(opening, reel);
+    const stage = ShopPage.stages(reel);
     if (age < stage.burst) {
-      ShopPage.addBuildUp(list, opening.chest, age, center, color, stage.burst, rarityRank(rarity) >= 2);
+      ShopPage.addChestCharge(list, opening.chest, center, { age, hits: 1, of: 1, hit: age, strong: true, duck: age / stage.burst }, false);
       return;
     }
     // The chest bursts open and the reel runs out of it; the lid flies off over it.
@@ -827,53 +843,83 @@ export const ShopPage = {
     }
   },
 
+  /** A chest on the dimmed page, tapped open: cracks grow with every tap, a pip row shows which taps were strong. */
+  addCharge(list: RenderList, c: NonNullable<ShopState['charging']>, taps: number, window: number, reduceMotion: boolean): void {
+    const vp = list.camera.viewport;
+    const center = sub(mul(vp, 0.5), v(0, 20));
+    list.s(rect(mul(vp, 0.5), vp), 'background', 0.92 * Math.min(1, c.age / 0.25));
+    const strong = strongTaps(c.times, window);
+    const hits = c.times.length;
+    ShopPage.addChestCharge(list, c.kind, center, { age: c.age, hits, of: taps, hit: c.sinceHit, strong: strong[hits - 1] ?? true, duck: 0 }, reduceMotion);
+
+    const pitch = 17;
+    const row = center.y + 112;
+    for (let i = 0; i < taps; i++) {
+      const at = v(center.x + (i - (taps - 1) / 2) * pitch, row);
+      const done = i < hits;
+      const pop = done && i === hits - 1 && !reduceMotion ? 1 + 0.6 * (1 - Ease.clamp01(c.sinceHit / 0.2)) : 1;
+      list.s(circle(at, (done ? 4.5 : 3.5) * pop), done ? (strong[i] ? 'accent' : 'muted') : 'controlFill', 1);
+    }
+    if (hits === 0) {
+      const pulse = reduceMotion ? 1 : 0.65 + 0.35 * Math.sin(c.age * 6);
+      drawText(list, S.shop.tapToBreak, v(center.x, row + 34), 16, 'primary', { weight: 'bold', align: 'center', opacity: Ease.outCubic((c.age - 0.3) / 0.3) * pulse });
+    }
+  },
+
   /**
-   * The chest before it bursts. `big` (an Epic or Legendary inside): it lifts off the ground,
-   * shakes wildly and light of the prize's colour shoots out through its seams.
+   * The chest as it is tapped open, the same for every prize (what it holds shows only on the reel,
+   * Leo, 09.10.2026): `hits` of `of` cracks in it with light shining through, a tap (`hit` seconds
+   * ago, `strong` or not) jolts it and throws sparks, `duck` (0…1) is its last crouch before it bursts.
    */
-  addBuildUp(list: RenderList, chest: ChestKind, age: number, center: Vec2, color: ColorToken, duration: number, big: boolean): void {
-    const x = Ease.clamp01(age / duration);
-    const enter = Ease.spring(age / 0.35);
-    const intensity = x * x;
-    const wild = big ? 1.8 : 1;
-    const shake = mul(v(Math.sin(age * 55) * 7 * wild, Math.cos(age * 47) * 3 * wild), intensity);
-    let stretch = 1 + 0.1 * Math.sin(age * 26) * (0.3 + intensity);
-    const duck = Math.max(0, (x - 0.83) / 0.17);
-    stretch -= 0.22 * Ease.outCubic(duck);
+  addChestCharge(
+    list: RenderList,
+    chest: ChestKind,
+    center: Vec2,
+    look: { age: number; hits: number; of: number; hit: number; strong: boolean; duck: number },
+    reduceMotion: boolean,
+  ): void {
+    const { age, hits, hit, strong, duck } = look;
+    const cracks = hits / look.of;
+    const enter = reduceMotion ? 1 : Ease.spring(age / 0.35);
+    const jolt = reduceMotion ? 0 : Math.exp(-hit * 12) * (strong ? 1 : 0.55);
+    const shake = v(Math.sin(hit * 70) * 7 * jolt, Math.cos(hit * 55) * 3 * jolt);
+    const stretch = 1 + 0.12 * jolt * Math.sin(hit * 45) - 0.22 * Ease.outCubic(duck);
     const squash = v(1 / Math.sqrt(stretch), stretch);
-    MenuKit.glow(list, center, 70 + 110 * x, color, 0.2 + 0.4 * intensity);
-    MenuKit.glow(list, center, 30 + 50 * x, 'primary', 0.15 * intensity);
-    const beads = Math.floor(6 + 6 * x);
+    MenuKit.glow(list, center, 70 + 120 * cracks + 40 * jolt + 60 * duck, 'primary', 0.1 + 0.4 * cracks * cracks + 0.3 * duck);
+    const beads = Math.floor(4 + 8 * cracks);
     for (let i = 0; i < beads; i++) {
-      const a = (i / beads) * TAU + age * (2 + 3 * x);
-      list.s(circle(add(center, mul(fromAngle(a), 120 - 40 * x)), 3 + 2 * x), JUICE[i % JUICE.length], Math.min(1, age / 0.3) * 0.9);
+      const a = (i / beads) * TAU + age * (2 + 3 * cracks);
+      list.s(circle(add(center, mul(fromAngle(a), 120 - 40 * cracks)), 3 + 2 * cracks), JUICE[i % JUICE.length], Math.min(1, age / 0.3) * (0.3 + 0.6 * cracks));
     }
-    const scale = 1.6 * enter * (1 + 0.08 * intensity);
-    const lift = big ? 20 * Ease.outCubic(Ease.clamp01((x - 0.2) / 0.5)) : 0;
-    const at = add(center, add(shake, v(0, -lift)));
-    if (big) {
-      // Light through the seams: thin beams from the chest, longer and brighter as it charges.
-      const beams = 9;
-      for (let i = 0; i < beams; i++) {
-        const a = -Math.PI / 2 + ((i / (beams - 1)) - 0.5) * 2.6 + Math.sin(age * 3 + i) * 0.06;
-        const flicker = 0.6 + 0.4 * Math.sin(age * 31 + i * 1.7);
-        const length = (60 + 170 * intensity) * (0.7 + 0.3 * unit(i, 23));
-        const half = 0.035 + 0.02 * intensity;
-        const from = add(at, mul(fromAngle(a), 18 * scale / 1.6));
-        list.s(polygon([from, add(from, mul(fromAngle(a - half), length)), add(from, mul(fromAngle(a + half), length))]), color, 0.55 * intensity * flicker);
+    const scale = 1.6 * enter * (1 + 0.06 * cracks + 0.08 * duck);
+    const at = add(center, shake);
+    const lid = (2 + 6 * cracks) * jolt + (reduceMotion ? 0 : 1.5 * cracks * (1 + Math.sin(age * 40)));
+    ShopPage.addChestIcon(list, chest, at, scale, 1, squash, lid);
+
+    // Cracks, each a jagged run over the chest's front with light behind it; the newest still opens up.
+    const u = scale * 1.05;
+    for (let i = 0; i < hits; i++) {
+      const grow = i === hits - 1 && !reduceMotion ? Ease.outCubic(hit / 0.15) : 1;
+      let p = v((unit(i, 31) - 0.5) * 40, -14 + unit(i, 32) * 36);
+      let a = unit(i, 33) * TAU;
+      for (let k = 0; k < 4; k++) {
+        const from = p;
+        a += (unit(i, 34 + k) - 0.5) * 1.4;
+        p = add(p, mul(fromAngle(a), (6 + 5 * unit(i, 40 + k)) * Math.min(1, Math.max(0, grow * 4 - k))));
+        list.s(line(add(at, mul(from, u)), add(at, mul(p, u)), 2.4), 'shadow', 0.8);
+        list.s(line(add(at, mul(from, u)), add(at, mul(p, u)), 1.1), 'primary', 0.45 + 0.55 * cracks);
       }
-      // A flat shadow left on the ground: it shrinks as the chest rises.
-      list.s(rect(add(center, v(0, 44)), v(110 * (1 - 0.25 * lift / 20), 14), 7), 'background', 0.6 * (lift / 20));
     }
-    ShopPage.addChestIcon(list, chest, at, scale, 1, squash, 3 * intensity * (1 + Math.sin(age * 40)));
-    for (let i = 0; i < Math.floor(6 + 16 * x); i++) {
-      const phase = (age * 2.2 + unit(i, 9)) % 1;
-      const side = unit(i, 10) - 0.5;
-      const from = add(at, v(side * 80, (-18 * scale) / 1.6));
-      const to = add(from, mul(v(side * 40, -50), phase));
-      if (i % 2 === 0) list.s(line(to, add(to, v(side * 4, -6)), 1.5), color, (1 - phase) * intensity);
-      else list.s(circle(to, 2.5), JUICE[i % JUICE.length], (1 - phase) * intensity);
+
+    if (reduceMotion || hits === 0 || hit >= 0.45) return;
+    for (let i = 0; i < (strong ? 12 : 5); i++) {
+      const a = -Math.PI / 2 + (unit(i + hits * 17, 50) - 0.5) * 2.6;
+      const speed = 150 + 230 * unit(i + hits * 17, 51);
+      const spark = add(at, v(Math.cos(a) * speed * hit, Math.sin(a) * speed * hit + 520 * hit * hit));
+      list.s(circle(spark, 2 + 3.5 * unit(i + hits * 17, 52)), JUICE[(i + hits) % JUICE.length], 1 - hit / 0.45);
     }
+    const wave = hit / 0.3;
+    if (strong && wave < 1) list.s(arc(at, 26 + 90 * Ease.outCubic(wave), 4 * (1 - wave) + 1, 0, TAU), 'primary', 0.55 * (1 - wave));
   },
 
   addRevealCard(list: RenderList, opening: ChestOpening, center: Vec2, tt: number, color: ColorToken, reduceMotion: boolean): void {

@@ -916,7 +916,9 @@ export const S = {
     done: 'Done',
     crashHint: 'The car speeds up. Cash out before it crashes.',
     riding: (m: string): string => `${m} if you cash out now`,
-    cashedOut: (m: string): string => `Cashed out · +${m}`,
+    /** The stamp that slams onto the table, by win tier (2…4). */
+    winBanner: (tier: number): string => (tier >= 4 ? 'MEGA WIN!' : tier >= 3 ? 'HUGE WIN!' : 'BIG WIN!'),
+    upgradedBanner: 'UPGRADED!',
     crashed: 'Crashed · the stake is gone',
     dangerZone: 'Danger zone',
     clutch: 'CLUTCH CASH-OUT!',
@@ -1126,6 +1128,8 @@ export const S = {
       return 'Not found yet: it comes out of chests.';
     },
     tapToClose: 'Tap to close',
+    tapToBreak: 'Tap fast!',
+    tapOdds: (odds: string): string => `Tap fast to break the chest open: every tap within half a second of the last one counts, and at full power the odds are ${odds}. Slower taps land in between.`,
     watchAdShort: 'Watch ad',
     adReward: 'Ad watched · Standard chest added',
     noAdsLeft: 'No more ad chests today. Back tomorrow.',

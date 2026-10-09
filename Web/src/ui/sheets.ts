@@ -1,7 +1,7 @@
 import { h, icon } from './dom';
 import { ICONS, CRAZYGAMES_LOGO, FANDOM_LOGO } from './icons';
 import type { Settings } from '../core/career';
-import { type PatchNote, type PatchImpact, itemText, itemCredit } from '../present/patchNotes';
+import { type PatchNote, type PatchImpact, type PatchItem, itemText, itemCredit } from '../present/patchNotes';
 import { LEGAL_DOCS, type LegalDoc, type LegalId } from '../present/legal';
 import type { License } from '../present/licenses';
 import { inItch, inPlayStore, inPortal, isInstalled, isIos } from '../storage/device';
@@ -23,8 +23,65 @@ interface OpenSheet {
 const stack: OpenSheet[] = [];
 
 /**
+ * Pulling the grabber or the title bar down moves the sheet with the finger and the scrim fades with it. A long or
+ * quick pull closes it from where the finger let go; a short one lets it settle back.
+ */
+function dragToClose(sheet: HTMLElement, scrim: HTMLElement, handles: HTMLElement[], close: () => void): void {
+  let drag: { startY: number; dy: number; id: number; t: number } | null = null;
+  const settle = (): void => {
+    sheet.style.transition = '';
+    sheet.style.transform = '';
+    sheet.style.animation = '';
+    scrim.style.animation = '';
+    scrim.style.opacity = '';
+  };
+  for (const el of handles) {
+    el.classList.add('sheet-handle');
+    el.addEventListener('pointerdown', (e) => {
+      if (drag || (e.target as HTMLElement).closest('button')) return;
+      drag = { startY: e.clientY, dy: 0, id: e.pointerId, t: performance.now() };
+      el.setPointerCapture(e.pointerId);
+      sheet.style.transition = '';
+      sheet.style.animation = 'none';
+      scrim.style.animation = 'none';
+    });
+    el.addEventListener('pointermove', (e) => {
+      if (!drag || e.pointerId !== drag.id) return;
+      drag.dy = e.clientY - drag.startY;
+      // Up gives way with resistance, down follows the finger.
+      const y = drag.dy < 0 ? -Math.sqrt(-drag.dy) * 2 : drag.dy;
+      sheet.style.transform = `translateY(${y}px)`;
+      scrim.style.opacity = String(Math.max(0, 1 - Math.max(0, y) / Math.max(1, sheet.offsetHeight)));
+    });
+    const end = (e: PointerEvent): void => {
+      if (!drag || e.pointerId !== drag.id) return;
+      const { dy, t } = drag;
+      drag = null;
+      const speed = dy / Math.max(1, performance.now() - t);
+      if (dy > 90 || speed > 0.6) {
+        // The closing animation carries on from where the finger left the sheet.
+        sheet.style.animation = '';
+        scrim.style.animation = '';
+        close();
+        return;
+      }
+      sheet.style.transition = 'transform 240ms var(--ease-drawer)';
+      sheet.style.transform = 'translateY(0)';
+      scrim.style.transition = 'opacity 240ms var(--ease-drawer)';
+      scrim.style.opacity = '1';
+      window.setTimeout(() => {
+        scrim.style.transition = '';
+        settle();
+      }, 240);
+    };
+    el.addEventListener('pointerup', end);
+    el.addEventListener('pointercancel', end);
+  }
+}
+
+/**
  * A bottom sheet (like an iOS sheet): scrim, grabber, focus kept inside,
- * Escape and a tap on the scrim close it.
+ * Escape, a tap on the scrim and a pull down on the grabber close it.
  */
 export function openSheet(layer: HTMLElement, title: string, body: HTMLElement, onClose?: () => void): () => void {
   // The same sheet again replaces itself; anything else stacks.
@@ -34,14 +91,11 @@ export function openSheet(layer: HTMLElement, title: string, body: HTMLElement, 
   const previouslyFocused = document.activeElement as HTMLElement | null;
   const titleId = `sheet-${Math.random().toString(36).slice(2, 8)}`;
   const closeBtn = h('button', { class: 'icon-btn', 'aria-label': 'Close', onclick: () => close() }, icon(ICONS.close));
-  const sheet = h(
-    'div',
-    { class: 'sheet', role: 'dialog', 'aria-modal': 'true', 'aria-labelledby': titleId },
-    h('div', { class: 'grabber', 'aria-hidden': 'true' }),
-    h('div', { class: 'sheet-head' }, h('h2', { class: 'sheet-title', id: titleId }, title), closeBtn),
-    body,
-  );
+  const grabber = h('div', { class: 'grabber', 'aria-hidden': 'true' });
+  const head = h('div', { class: 'sheet-head' }, h('h2', { class: 'sheet-title', id: titleId }, title), closeBtn);
+  const sheet = h('div', { class: 'sheet', role: 'dialog', 'aria-modal': 'true', 'aria-labelledby': titleId }, grabber, head, body);
   const scrim = h('div', { class: 'sheet-scrim', onclick: () => close() });
+  dragToClose(sheet, scrim, [grabber, head], () => close());
   const root = h('div', { class: below ? 'sheet-root stacked' : 'sheet-root' }, scrim, sheet);
   if (below) below.root.inert = true;
   let closed = false;
@@ -87,6 +141,13 @@ export function openSheet(layer: HTMLElement, title: string, body: HTMLElement, 
   const firstAction = sheet.querySelector<HTMLElement>('.sheet-actions button, .list button');
   (firstAction ?? closeBtn).focus({ preventScroll: true });
   return close;
+}
+
+/** What a sheet shows has just been replaced (another tab, a list that arrived): the new view fades and rises in. */
+export function fadeIn(view: HTMLElement): void {
+  view.classList.remove('view-in');
+  void view.offsetWidth;
+  view.classList.add('view-in');
 }
 
 /**
@@ -182,36 +243,35 @@ export const isSheetOpen = (): boolean => stack.length > 0;
 /** How much an update changes, as its badge says it (colour and word, never colour alone). */
 const IMPACT: Record<PatchImpact, string> = { major: 'Big update', minor: 'Update', fix: 'Fixes' };
 
+const noteLine = (item: PatchItem): HTMLElement => {
+  const credit = itemCredit(item);
+  return h('li', {}, itemText(item), credit ? h('span', { class: 'note-credit' }, credit) : null);
+};
+
 /**
- * What's new: every update folds open and shut (a native disclosure, so keys and screen
- * readers know it); the newest is open. A badge beside each says how much it changes.
+ * What's new: every day shows its short summary at once, with a badge for how much it changes; the long
+ * list folds open under it (a native disclosure, so keys and screen readers know it).
  */
 export function patchNotesSheet(layer: HTMLElement, notes: PatchNote[], onClose: () => void): () => void {
   const body = h(
     'div',
     { class: 'notes' },
-    ...notes.map((note, i) =>
+    ...notes.map((note) =>
       h(
-        'details',
-        { class: 'note', open: i === 0 },
+        'article',
+        { class: 'note' },
         h(
-          'summary',
+          'div',
           { class: 'note-head' },
-          h(
-            'div',
-            { class: 'note-heading' },
-            h('div', { class: 'note-meta' }, h('span', { class: 'note-date' }, note.date), h('span', { class: `impact impact-${note.impact}` }, IMPACT[note.impact])),
-            h('h3', { class: 'note-title' }, note.title),
-          ),
-          icon(ICONS.chevronDown, {}),
+          h('div', { class: 'note-meta' }, h('span', { class: 'note-date' }, note.date), h('span', { class: `impact impact-${note.impact}` }, IMPACT[note.impact])),
+          h('h3', { class: 'note-title' }, note.title),
         ),
+        h('ul', { class: 'note-summary' }, ...note.summary.map(noteLine)),
         h(
-          'ul',
-          { class: 'note-items' },
-          ...note.items.map((item) => {
-            const credit = itemCredit(item);
-            return h('li', {}, itemText(item), credit ? h('span', { class: 'note-credit' }, credit) : null);
-          }),
+          'details',
+          { class: 'note-more' },
+          h('summary', { class: 'note-more-head' }, `All changes · ${note.items.length}`, icon(ICONS.chevronDown, {})),
+          h('ul', { class: 'note-items' }, ...note.items.map(noteLine)),
         ),
       ),
     ),

@@ -10,8 +10,9 @@ import { textWidth } from './icons';
 import { S, Fmt, money, percent } from './strings';
 import { ShopPage } from './shop';
 import { CasinoGames } from './casinoGames';
-import { TIMES, slotEnd, reelStop, creepAt, crashStep, needleTime, needleTurn, unit, rouletteEnd, rouletteTurn, scratchEnd, scratchAt } from './casinoKit';
-export { winTier } from './casinoKit';
+import { TIMES, slotEnd, reelStop, creepAt, crashStep, needleTime, needleTurn, unit, rouletteEnd, rouletteTurn, scratchEnd, scratchAt, payTier, countTime, rainTime } from './casinoKit';
+import { land } from './hud';
+export { winTier, payTier } from './casinoKit';
 import { Wallet } from './casinoWallet';
 import type { AdOffer } from './adFlow';
 export { Wallet, type Books } from './casinoWallet';
@@ -200,12 +201,20 @@ export class CasinoState {
     r.age += delta;
     const after = r.age;
     const crossed = (t: number): boolean => before < t && after >= t;
+    // A win's number counts up, ding by ding, as long as its tier counts.
+    const dings = (tier: number, since0: number, since1: number): void => {
+      if (tier < 1 || since1 <= 0) return;
+      const d0 = Math.floor(Math.max(0, since0) / TIMES.ding);
+      const d1 = Math.floor(Math.min(countTime(tier), since1) / TIMES.ding);
+      if (d1 > d0) cues.push({ k: 'ding', step: d1 });
+    };
     switch (r.k) {
       case 'crash': {
         if (r.out) {
           const o = r.out;
           if (o.clutch !== null && o.age < o.clutch && o.age + delta >= o.clutch) cues.push({ k: 'clutchBoom' });
           o.age += delta;
+          dings(payTier(o.m, o.win), o.age - delta, o.age);
         }
         if (r.crash !== null) r.crash += delta;
         if (!wasBusy) break;
@@ -226,12 +235,7 @@ export class CasinoState {
         }
         const end = slotEnd(r);
         if (crossed(end)) cues.push({ k: 'result' });
-        // A triple counts its win up, ding by ding.
-        if (r.spin.rule === 'triple' && after > end && before - end < TIMES.countUp) {
-          const d0 = Math.floor(Math.max(0, before - end) / TIMES.ding);
-          const d1 = Math.floor(Math.min(TIMES.countUp, after - end) / TIMES.ding);
-          if (d1 > d0) cues.push({ k: 'ding', step: d1 });
-        }
+        if (r.spin.win > 0) dings(payTier(r.spin.pay, r.spin.win), before - end, after - end);
         break;
       }
       case 'upgrade': {
@@ -249,11 +253,13 @@ export class CasinoState {
         const p1 = Math.floor(rouletteTurn(r, Math.min(after, TIMES.rouletteDrive)) * exits);
         if (p1 > p0 && wasBusy) cues.push({ k: 'peg', slow: after / TIMES.rouletteDrive > 0.6 });
         if (crossed(rouletteEnd)) cues.push({ k: 'result' });
+        if (r.spin.won) dings(payTier(r.spin.pay, r.spin.win), before - rouletteEnd, after - rouletteEnd);
         break;
       }
       case 'scratch': {
         for (let i = 0; i < 9; i++) if (crossed(scratchAt(i))) cues.push({ k: 'peg', slow: false });
         if (crossed(scratchEnd)) cues.push({ k: 'result' });
+        if (r.card.win > 0) dings(payTier(r.card.x, r.card.win), before - scratchEnd, after - scratchEnd);
         break;
       }
       case 'flip': {
@@ -503,23 +509,154 @@ export const CasinoPage = {
     }
   },
 
-  /** A win as loud as its tier: confetti from the second, rays from the third, a gold flash on the last. */
-  celebrate(list: RenderList, center: Vec2, since: number, tier: number, color: ColorToken, reduceMotion: boolean): void {
-    if (reduceMotion || tier < 2 || since < 0 || since >= 2) return;
+  /**
+   * A win as loud as its tier (`payTier`: the louder of its multiple and its profit). From the
+   * second a ring, confetti and a stamp; from the third rays and a rain of coins over the whole
+   * display; the last adds a gold flash and a glowing edge. It all fades out together.
+   */
+  celebrate(list: RenderList, stage: Rect, center: Vec2, since: number, tier: number, color: ColorToken, reduceMotion: boolean, banner: string = S.casino.winBanner(tier)): void {
+    if (tier < 2 || since < 0) return;
+    CasinoPage.winBanner(list, R.center(stage), since, tier, color, banner, reduceMotion);
+    const life = [0, 0, 2.2, 3, 4][tier] ?? 4;
+    if (reduceMotion || since >= life) return;
+    const from = list.items.length;
     if (tier >= 3) ShopPage.addRays(list, center, since, tier >= 4 ? 1.3 : 0.9, color, true, tier >= 4);
+    else if (since < 0.6) {
+      const x = Ease.outCubic(since / 0.6);
+      list.s(arc(center, 30 + 220 * x, 8 * (1 - x) + 1, 0, TAU), color, 0.8 * (1 - x));
+    }
     ShopPage.addConfetti(list, center, since, [0, 0, 0.8, 1.1, 1.5][tier] ?? 1.5, color, tier >= 4);
-    if (tier >= 4 && since < 0.3) {
+    if (tier >= 3) CasinoPage.coinRain(list, since, tier);
+    if (tier >= 4) CasinoPage.edgeGlow(list, 'coin', 0.9 * (0.75 + 0.25 * Math.sin(since * 9)));
+    const fade = 1 - Ease.clamp01((since - (life - 0.6)) / 0.6);
+    if (fade < 1) for (let i = from; i < list.items.length; i++) list.items[i] = moved(list.items[i], v(0, 0), fade);
+    const flash = tier >= 4 ? 0.3 : tier >= 3 ? 0.14 : 0;
+    if (flash > 0 && since < 0.3) {
       const vp = list.camera.viewport;
-      list.s(rect(mul(vp, 0.5), vp), 'coin', 0.22 * (1 - since / 0.3));
+      list.s(rect(mul(vp, 0.5), vp), 'coin', flash * (1 - since / 0.3));
     }
   },
 
-  /** The stage jolts under a win from the third tier. */
-  jolt(since: number, tier: number, reduceMotion: boolean): Vec2 {
-    if (reduceMotion || tier < 3 || since < 0 || since >= 0.35) return v(0, 0);
-    const a = (tier >= 4 ? 6 : 3) * (1 - since / 0.35);
-    return v(Math.sin(since * 70) * a, Math.cos(since * 55) * a * 0.5);
+  /** "Big win!" slams onto the table, holds a moment and lifts away; the bigger the win, the bigger the stamp. */
+  winBanner(list: RenderList, at: Vec2, since: number, tier: number, color: ColorToken, label: string, reduceMotion: boolean): void {
+    const hold = 0.9 + 0.5 * (tier - 2);
+    const gone = reduceMotion ? since >= 1.2 : since >= hold + 0.35;
+    if (gone) return;
+    const slam = reduceMotion ? 1 : Ease.clamp01(since / 0.16);
+    const breathe = reduceMotion || tier < 3 ? 0 : 0.03 * Math.sin(since * 12);
+    const scale = reduceMotion ? 1 : 1 + 0.9 * (1 - slam) + (slam >= 1 ? 0.1 * (1 - Ease.spring((since - 0.16) / 0.4)) : 0) + breathe;
+    const fade = reduceMotion ? 1 : Ease.clamp01(since / 0.08) * (1 - Ease.outCubic(Ease.clamp01((since - hold) / 0.35)));
+    const lift = reduceMotion ? 0 : -30 * Ease.inOutSine(Ease.clamp01((since - hold) / 0.35));
+    const size = v([0, 0, 190, 224, 260][tier] * scale, [0, 0, 42, 50, 58][tier] * scale);
+    const center = add(at, v(0, lift));
+    const tilt = reduceMotion ? -0.05 : -0.05 + (tier >= 3 ? 0.025 * Math.sin(since * 9) : 0);
+    if (!reduceMotion) MenuKit.glow(list, center, size.x * 0.6, color, 0.4 * fade);
+    list.s(rect(center, add(size, v(6, 6)), 11, tilt), color, 0.95 * fade);
+    list.s(rect(center, size, 8, tilt), 'card', fade);
+    drawText(list, label, center, ShopPage.fitted(label, [0, 0, 22, 26, 30][tier] * scale, size.x - 24), color, { weight: 'bold', align: 'center', opacity: fade });
   },
+
+  /** Coins pour down the whole display, turning as they fall: the big wins. */
+  coinRain(list: RenderList, since: number, tier: number): void {
+    const vp = list.camera.viewport;
+    const life = 1.6;
+    const gap = rainTime(tier) - life;
+    const gravity = (2 * (vp.y + 60)) / (life * life);
+    for (let i = 0; i < (tier >= 4 ? 70 : 34); i++) {
+      const tt = since - unit(i, 91) * gap;
+      if (tt <= 0 || tt >= life) continue;
+      const p = v(unit(i, 92) * vp.x + Math.sin(tt * 4 + i) * 10, -24 + 0.5 * gravity * (0.8 + 0.4 * unit(i, 93)) * tt * tt);
+      const turn = Math.max(0.15, Math.abs(Math.cos(tt * (7 + 6 * unit(i, 94)) + i)));
+      const r = 6 + 3 * unit(i, 95);
+      const fade = 1 - Ease.clamp01((tt - (life - 0.25)) / 0.25);
+      list.s(rect(p, v(2 * r * turn, 2 * r), r * turn), 'coin', fade);
+      if (turn > 0.5) list.s(rect(p, v(r * turn, r), r * 0.5 * turn), 'rarityLegendary', 0.8 * fade);
+    }
+  },
+
+  /**
+   * A win's number, counting up ding by ding. The higher the tier the bigger it is, the longer it
+   * counts and the harder it pulses; at the end it lands with a thud and a ring. Returns the
+   * height of its text, so the caption under it can keep clear.
+   */
+  winCount(list: RenderList, at: Vec2, win: number, since: number, tier: number, size: number, width: number, color: ColorToken, reduceMotion: boolean, opacity: number): number {
+    const time = countTime(tier);
+    const x = reduceMotion ? 1 : Ease.clamp01(since / time);
+    const label = `+${money(Fmt.number(Math.floor(win * Ease.outCubic(x))))}`;
+    const grown = ShopPage.fitted(`+${money(Fmt.number(win))}`, size * (1 + 0.14 * tier), width);
+    const second: ColorToken = color === 'coin' ? 'rarityLegendary' : 'primary';
+    let pop = 1;
+    let shake = v(0, 0);
+    if (!reduceMotion) {
+      // Like the combo climbing a tier: every mark the number passes on its way up (1K, 10K, 100K, 1M)
+      // bumps it and sprays juice, so a million passes four of them and a ten none.
+      baseConfig.casinoWinAmounts.filter((m) => m < win).forEach((m, k) => {
+        const age = since - (1 - (1 - m / win) ** (1 / 3)) * time;
+        if (age < 0 || age >= 0.7) return;
+        pop = Math.max(pop, 1 + (0.12 + 0.03 * k) * Math.sin(Math.PI * Ease.outCubic(Ease.clamp01(age / 0.35))));
+        CasinoPage.splash(list, at, age, 0.35 + 0.25 * k, color, second, 60 + 22 * k, opacity);
+      });
+      if (x < 1) {
+        pop = Math.max(pop, 1 + (tier >= 1 ? 0.04 + 0.025 * tier : 0) * (1 - ((since / TIMES.ding) % 1)));
+        if (tier >= 3) shake = v(Math.sin(since * 83), Math.cos(since * 71));
+        if (tier >= 2) MenuKit.glow(list, at, grown * 2.2, color, 0.22 * opacity);
+      } else {
+        const landed = since - time;
+        pop = Math.max(pop, land(landed / 0.45, 0.2 + 0.05 * tier));
+        CasinoPage.splash(list, at, landed, 0.5 + 0.25 * tier, color, second, 90 + 30 * tier, opacity);
+      }
+    }
+    drawText(list, label, add(at, shake), grown * pop, color, { weight: 'bold', align: 'center', opacity });
+    return grown;
+  },
+
+  /**
+   * The combo's tier-up, for a win: a thin shock ring, streaks and drops that fly out on the golden
+   * angle in two colours, and plus-shaped sparkles that twinkle. `power` 0…1.5, `reach` in points.
+   */
+  splash(list: RenderList, at: Vec2, age: number, power: number, color: ColorToken, second: ColorToken, reach: number, opacity: number): void {
+    const life = 0.7;
+    if (age < 0 || age >= life) return;
+    const x = age / life;
+    list.s(arc(at, 10 + reach * 0.8 * Ease.outCubic(x), 0.5 + 3 * (1 - x), 0, TAU), color, 0.6 * (1 - x) * opacity);
+    const drops = 10 + Math.round(14 * power);
+    for (let i = 0; i < drops; i++) {
+      const t = Ease.clamp01((age - (i % 4) * 0.03) / (life - 0.1));
+      if (t <= 0) continue;
+      const dir = fromAngle(i * 2.399963);
+      const head = add(at, mul(dir, (12 + reach * (0.5 + 0.5 * (((i * 7) % 5) / 4))) * Ease.outCubic(t)));
+      const tint = i % 2 === 0 ? color : second;
+      const fade = (1 - Ease.clamp01((t - 0.65) / 0.35)) * opacity;
+      list.s(line(add(head, mul(dir, -12 * (1 - t))), head, 2.4 * (1 - 0.5 * t)), tint, 0.85 * fade);
+      list.s(circle(head, (i % 3 === 0 ? 4.2 : 3) * (1 - 0.45 * t)), tint, fade);
+    }
+    const sparkles = 5 + Math.round(5 * power);
+    for (let i = 0; i < sparkles; i++) {
+      const t = Ease.clamp01((age - 0.08 - (i % 5) * 0.06) / 0.5);
+      if (t <= 0 || t >= 1) continue;
+      const p = add(at, mul(fromAngle(i * 2.399963 + 0.7), reach * (0.25 + 0.65 * (((i * 3) % 7) / 6))));
+      const s = (5 + 5 * power) * Math.sin(Math.PI * t);
+      const tint = i % 2 === 0 ? color : second;
+      list.s(line(add(p, v(-s, 0)), add(p, v(s, 0)), 2), tint, 0.9 * opacity);
+      list.s(line(add(p, v(0, -s)), add(p, v(0, s)), 2), tint, 0.9 * opacity);
+    }
+  },
+
+  /** The stage jolts under a win from the second tier, and a big count lands with a second thud. */
+  jolt(since: number, tier: number, reduceMotion: boolean): Vec2 {
+    if (reduceMotion || tier < 2 || since < 0) return v(0, 0);
+    const power = [0, 0, 1.5, 3, 6][tier] ?? 6;
+    const thud = (t: number, a: number): Vec2 => {
+      const life = 0.35 + 0.08 * tier;
+      if (t < 0 || t >= life) return v(0, 0);
+      const k = a * (1 - t / life);
+      return v(Math.sin(t * 70) * k, Math.cos(t * 55) * k * 0.5);
+    };
+    return add(thud(since, power), tier >= 3 ? thud(since - countTime(tier), power * 0.6) : v(0, 0));
+  },
+
+  /** How hard the coins spray out of a table for a win of `tier`. */
+  fountain: (tier: number): number => [0, 0, 0.8, 1.4, 2.2][tier] ?? 2.2,
 
   addGame(list: RenderList, l: Layout, career: Career, state: CasinoState, game: CasinoGame, reduceMotion: boolean, enter: number): void {
     const run = state.run;

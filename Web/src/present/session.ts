@@ -6,7 +6,7 @@ import { SeasonPass } from '../core/seasonPass';
 import { Unlocks } from '../core/unlocks';
 import type { GameEvent, ShiftResult } from '../core/events';
 import type { Upgrade } from '../core/levels';
-import { ALBUM_REWARD, BIG_SCREEN, CHEST_KINDS, cosmetic, rarityRank, type ChestKind } from '../core/loot';
+import { ALBUM_REWARD, BIG_SCREEN, CHEST_KINDS, cosmetic, rarityRank, tapPower, strongTaps, type ChestKind } from '../core/loot';
 import { dailySeed, dailyEvent, dayNumber } from '../core/daily';
 import { weekNumber, weeklyTrial } from '../core/weekly';
 import { Goals } from '../core/goals';
@@ -637,13 +637,15 @@ export class GameSession {
         this.buildFlow.buy(action.upgrade);
         break;
       case 'openChest': {
-        const open = this.openChestAt(action.index);
-        if (!open) return;
-        this.shopPage.shelf = shelfOf(open.opening.item);
-        this.shopPage.selectedItem = open.opening.item.id;
-        this.shopPage.opening = open;
+        const kind = this.save.career.chests[action.index];
+        if (!kind) return;
+        this.shopPage.charging = { kind, age: 0, times: [], sinceHit: Infinity };
+        this.play(['swoosh'], []);
         break;
       }
+      case 'hitChest':
+        this.hitChest();
+        break;
       case 'buyChest':
         if (!Careers.buyChest(career, action.kind, this.config)) {
           this.shopPage.denied = 0.001;
@@ -744,24 +746,58 @@ export class GameSession {
   }
 
   /**
-   * Opens the chest at `index` (books it, says what albums it completed) and starts its reveal, with the sound of the
-   * chest charging up. Null when there is no such chest.
+   * Space or Enter on the Shop tab: taps the chest being opened, opens the chest whose sheet is up,
+   * or plays the casino round. False when it does none of these.
    */
-  private openChestAt(index: number): ShopState['opening'] {
+  private shopKey(ago: number): boolean {
+    const s = this.shopPage;
+    if (s.busy) this.shopFlow.tapShop({ k: 'dismiss' });
+    else if (s.section === 0 && this.detailOpen && Careers.count(this.save.career, s.selectedChest) > 0) this.shopFlow.tapShop({ k: 'open', kind: s.selectedChest });
+    else if (s.section === 2) this.casinoFlow?.key(ago);
+    else return false;
+    return true;
+  }
+
+  /**
+   * A tap on the chest being tapped open: it cracks, rising in pitch; the last one breaks it and the reel
+   * starts. How fast the taps came is the power that tilts the odds a little (`tappedOdds`).
+   */
+  private hitChest(): void {
+    const c = this.shopPage.charging;
+    if (!c) return;
+    const { chestTaps, chestTapWindow } = this.config;
+    c.times.push(c.age);
+    c.sinceHit = 0;
+    const hits = c.times.length;
+    const strong = strongTaps(c.times, chestTapWindow)[hits - 1];
+    this.playReel('chestHit', 0.8 + (0.7 * hits) / chestTaps, [strong ? 'reelStop' : 'reelTick']);
+    if (hits < chestTaps) return;
+    const index = this.save.career.chests.indexOf(c.kind);
+    this.shopPage.charging = null;
+    const open = this.openChestAt(index, tapPower(c.times, chestTaps, chestTapWindow));
+    if (!open) return;
+    this.shopPage.shelf = shelfOf(open.opening.item);
+    this.shopPage.selectedItem = open.opening.item.id;
+    this.shopPage.opening = open;
+  }
+
+  /**
+   * Opens the chest at `index` (books it, says what albums it completed) and starts its reveal, with the sound of the
+   * last crack. Null when there is no such chest.
+   */
+  private openChestAt(index: number, power: number): ShopState['opening'] {
     const career = this.save.career;
     const seed = this.save.shiftsPlayed * 7919 + this.popupSerial;
-    const opening = Careers.openChest(career, index, seed, this.today);
+    const opening = Careers.openChest(career, index, seed, this.today, power, this.config);
     if (!opening) return null;
     const albums = this.completeAlbums();
     this.persist();
     if (albums.length > 0) this.announce(...albums);
     // Reduced motion: no build-up, no reel, the prize at once.
     const reel = ChestReel.make(opening.chest, opening.item, (seed ^ Math.imul(career.chestsOpened, 0x9e3779b1)) >>> 0, this.config.chestTeaserChance);
-    const rare = rarityRank(opening.item.rarity) >= 2;
-    if (this.reduceMotion) this.play([rare ? 'chestBurstRare' : 'chestBurst'], ['chest']);
-    // Something big inside: a sub-bass charges up under the chest until it bursts.
-    else this.play(rare ? ['chestCharge', 'chargeUp'] : ['chestCharge'], ['wanted']);
-    return { opening, reel, age: this.reduceMotion ? ShopPage.stages(opening, reel).reveal : 0 };
+    if (this.reduceMotion) this.play([rarityRank(opening.item.rarity) >= 2 ? 'chestBurstRare' : 'chestBurst'], ['chest']);
+    else this.play(['chestCharge'], ['wanted']);
+    return { opening, reel, age: this.reduceMotion ? ShopPage.stages(reel).reveal : 0 };
   }
 
   /** Chests waiting, for the Game tab's pill to the Chests page; 0 where it does not show (a shift, a challenge, a match, a page). */
@@ -1383,7 +1419,7 @@ export class GameSession {
             }
             break;
           case 'page':
-            if (this.isPage('shop') && this.shopPage.section === 2) this.casinoFlow?.key(a.ago ?? 0);
+            if (this.isPage('shop')) this.shopKey(a.ago ?? 0);
             break;
           default:
             break;
@@ -1392,6 +1428,7 @@ export class GameSession {
       case 'confirm':
         if ((this.screen.k === 'ready' || this.screen.k === 'result') && this.versusSelected) this.onVersus?.();
         else if (this.screen.k === 'ready' || this.screen.k === 'result') this.startOrCatchUp(undefined, simDelta);
+        else if (this.isPage('shop') && this.shopKey(0)) break;
         else if (this.isPage('upgrades') && this.upgradePage.selected) this.perform({ k: 'buy', upgrade: this.upgradePage.selected });
         else if (this.screen.k === 'settings') this.perform({ k: 'closeSettings' });
         break;
@@ -1403,7 +1440,8 @@ export class GameSession {
         else if (this.special && (this.screen.k === 'ready' || this.screen.k === 'result')) this.leaveSpecial();
         else if (this.screen.k === 'ready') this.perform({ k: 'openSettings' });
         else if (this.screen.k === 'result' || this.screen.k === 'page') {
-          if (this.isPage('shop') && this.shopPage.opening) this.shopFlow.tapShop({ k: 'dismiss' });
+          if (this.isPage('shop') && this.shopPage.charging) this.shopPage.charging = null;
+          else if (this.isPage('shop') && this.shopPage.opening) this.shopFlow.tapShop({ k: 'dismiss' });
           else this.perform({ k: 'showTab', tab: 'game' });
         }
         break;
@@ -1449,6 +1487,7 @@ export class GameSession {
           if (this.upgradePage.release()) {
             const upgrade = UpgradePage.cardAt(a.p, this.lastViewport, this.tabInset, this.visibleUpgrades, this.upgradePage.scroll);
             if (upgrade) this.buildFlow.tapUpgrade(upgrade);
+            else this.tapAway();
           }
           return;
         }
@@ -1456,6 +1495,7 @@ export class GameSession {
           if (this.progressPage.release()) {
             const target = ProgressPage.targetAt(a.p, this.lastViewport, this.tabInset, this.save, this.today, this.progressPage);
             if (target) this.tapProgress(target);
+            else this.tapAway();
           }
           return;
         }
@@ -1463,6 +1503,7 @@ export class GameSession {
           if (this.shopPage.items.release()) {
             const target = ShopPage.itemAt(a.p, this.lastViewport, this.tabInset, this.shopPage);
             if (target) this.shopFlow.tapShop(target);
+            else this.tapAway();
           }
           return;
         }
@@ -1573,6 +1614,7 @@ export class GameSession {
       }
       const target = ShopPage.targetAt(point, this.lastViewport, inset, this.save.career, this.shopPage);
       if (target) this.shopFlow.tapShop(target);
+      else this.tapAway();
       return;
     }
     if (this.isPage('streetBuilder')) {
@@ -1772,6 +1814,13 @@ export class GameSession {
     this.detailOpen = true;
   }
 
+  /** A tap on the page beside a card closes the detail sheet, as a tap beside any other sheet does. */
+  private tapAway(): void {
+    if (!this.detailOpen || this.shopPage.busy) return;
+    this.closeDetail();
+    this.tick();
+  }
+
   /** Closes the detail sheet; what it was about is no longer chosen. */
   closeDetail(): void {
     if (!this.detailOpen) return;
@@ -1807,7 +1856,7 @@ export class GameSession {
         return this.upgradePage.selected ? Details.upgrade(this.upgradePage.selected, career, this.config, this.today, ads) : null;
       case 'shop': {
         const s = this.shopPage;
-        if (s.opening) return null;
+        if (s.busy) return null;
         if (s.section === 0) return Details.chest(s.selectedChest, career, this.config, this.today, ads);
         if (s.section === 1) return s.selectedItem ? Details.item(s.selectedItem, career) : null;
         return s.casino ? Details.casino(s.casino.game, career, this.config, ads) : null;
@@ -2016,7 +2065,8 @@ export class GameSession {
         case 'shiftEnded':
           // Gold for a Perfect Run (no crash, no cut-off): only the first one is told in words (`bookShift`).
           if (e.result.outcome === 'completed') {
-            this.rim.signal('sweep', e.result.isPerfectRun ? 'coin' : 'juiceGreen');
+            if (e.result.isPerfectRun) this.rim.signal('victory', 'coin', 'juiceGreen', 1);
+            else this.rim.signal('victory', 'juiceGreen', 'skinMint', 0.5);
             this.cameraFx.relieve();
           } else if (e.result.outcome === 'struckOut') {
             this.rim.signal('flush', 'destructive');
@@ -2240,7 +2290,7 @@ export class GameSession {
    * passes, a heavy double knock when it lands, and the burst when the prize comes.
    */
   private reelCues(o: NonNullable<ShopState['opening']>, before: number, after: number): void {
-    const stage = ShopPage.stages(o.opening, o.reel);
+    const stage = ShopPage.stages(o.reel);
     const passes = (at: number): boolean => before < at && after >= at;
     const legendary = o.opening.item.rarity === 'legendary';
     if (passes(stage.burst)) this.play(['swoosh', 'reelSpin'], ['comboUp']);

@@ -212,10 +212,11 @@ export class AudioPlayer {
         [880, 1109, 1319, 1760].forEach((f, i) => tone('triangle', f, f, 0.05 + i * 0.065, 0.3, 0.14));
         tone('sine', 98, 55, 0, 0.35, 0.7);
         break;
-      case 'chargeUp':
-        // A sub-bass that rises and swells for the Epic/Legendary build-up (1.4 s), with a whine over it.
-        tone('sine', 38, 96, 0, 1.45, 0.8);
-        tone('sawtooth', 220, 880, 0.3, 1.15, 0.03);
+      case 'chestHit':
+        // A tap on the chest: a knock with a crack on top, brighter with every tap (`pitch` climbs).
+        tone('sine', 170 * pitch, 60, 0, 0.14, 0.8);
+        noise(0, 0.07, 3200 * pitch, 1100, 0.3);
+        tone('triangle', 660 * pitch, 660 * pitch, 0.02, 0.18, 0.08);
         break;
       case 'reelSpin':
         // The reel setting off: a full, rolling whirr that slows down with it.
@@ -252,7 +253,7 @@ export class AudioPlayer {
     return true;
   }
 
-  private static readonly synthIds: SoundID[] = ['critical', 'jackpot', 'chargeUp', 'reelSpin', 'reelTick', 'shimmer', 'reelLand', 'reelLandBig', 'heal'];
+  private static readonly synthIds: SoundID[] = ['critical', 'jackpot', 'chestHit', 'reelSpin', 'reelTick', 'shimmer', 'reelLand', 'reelLandBig', 'heal'];
 
   /** Once per frame: each stem glides towards its volume, the filter follows the breath. */
   /** The casino's tension (`GameSession.tension`): a riser and a heartbeat, built lazily. */

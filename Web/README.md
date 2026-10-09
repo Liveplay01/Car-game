@@ -209,7 +209,8 @@ with `npm run build` + `npm run preview` and a service with `VAPID_*` set. Delet
 `Access-Control-Allow-Origin: *` and five minutes of cache; the service worker leaves it out of the precache. The
 website (timing.love/changelog and the home page's "Latest update") reads it in the browser, so a patch note shows
 there with the next deploy of the game, without `npm run content` or a commit in the website repo. The file is
-`{version: 1, game, updated: <newest day>, days: [{id, date, title, impact, items: [{text, from?}]}]}`: add fields,
+`{version: 1, game, updated: <newest day>, days: [{id, date, title, impact, summary: [{text, from?}], items: [{text, from?}]}]}`:
+`summary` is the short version (up to four lines) to show at once, `items` the long list to fold open. Add fields,
 never rename them.
 
 ## Saving

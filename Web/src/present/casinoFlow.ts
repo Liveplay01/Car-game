@@ -1,7 +1,8 @@
 import type { SaveGame } from '../core/career';
 import type { Config } from '../core/config';
 import { Casino } from '../core/casino';
-import { CasinoPage, type Books, type CasinoState, type CasinoTarget, type CasinoCue, winTier } from './casino';
+import { cosmetic } from '../core/loot';
+import { CasinoPage, type Books, type CasinoState, type CasinoTarget, type CasinoCue, payTier } from './casino';
 import type { SoundID, HapticID } from './feedback';
 import { S, Fmt, money as moneyText } from './strings';
 
@@ -258,7 +259,7 @@ export class CasinoFlow {
     if (!run || run.k !== 'crash') return;
     const win = m === null ? Casino.crashed(this.host.save.career, this.host.today, this.host.config) : Casino.cashOut(this.host.save.career, m, this.host.today, this.host.config);
     this.host.persist();
-    const tier = win > 0 && m !== null ? winTier(m) : 0;
+    const tier = win > 0 && m !== null ? payTier(m, win) : 0;
     this.host.casino.wallet.reveal(this.host.save.career.money, win, tier, this.host.reduceMotion);
     if (win > 0 && m !== null) {
       const clutch = CasinoPage.clutchOf(run.point, m);
@@ -292,7 +293,12 @@ export class CasinoFlow {
 
   /** The fanfare a win of `tier` gets on top of its own sound. */
   static fanfare(tier: number): SoundID[] {
-    return tier >= 3 ? ['chestBurstRare'] : tier >= 2 ? ['chestBurst'] : [];
+    return tier >= 4 ? ['chestBurstRare', 'jackpot'] : tier >= 3 ? ['chestBurstRare'] : tier >= 2 ? ['chestBurst'] : [];
+  }
+
+  /** The sound of a win that has no sound of its own yet (a reveal): every win bursts, the big ones louder. */
+  static cheer(tier: number): SoundID[] {
+    return tier >= 2 ? CasinoFlow.fanfare(tier) : ['chestBurst'];
   }
 
   cue(cue: CasinoCue): void {
@@ -334,18 +340,19 @@ export class CasinoFlow {
         const bank = this.host.save.career.money;
         const rm = this.host.reduceMotion;
         if (run.k === 'slots') {
-          const tier = winTier(run.spin.pay);
+          const tier = payTier(run.spin.pay, run.spin.win);
           this.host.casino.wallet.reveal(bank, run.spin.win, tier, rm);
-          if (run.spin.win > 0) this.host.play([tier >= 3 ? 'chestBurstRare' : 'chestBurst'], ['chest']);
+          if (run.spin.win > 0) this.host.play(CasinoFlow.cheer(tier), ['chest']);
         } else if (run.k === 'roulette' || run.k === 'scratch') {
           const win = run.k === 'roulette' ? run.spin.win : run.card.win;
-          const tier = win > 0 ? winTier(run.k === 'roulette' ? run.spin.pay : run.card.x) : 0;
+          const tier = win > 0 ? (run.k === 'roulette' ? payTier(run.spin.pay, win) : payTier(run.card.x, win)) : 0;
           this.host.casino.wallet.reveal(bank, win, tier, rm);
-          if (win > 0) this.host.play([tier >= 3 ? 'chestBurstRare' : 'chestBurst'], ['chest']);
+          if (win > 0) this.host.play(CasinoFlow.cheer(tier), ['chest']);
         } else if (run.k === 'upgrade') {
           this.host.casino.wallet.reveal(bank, 0, 0, rm);
           if (run.roll.won) {
-            this.host.play(['chestBurstRare'], ['chest']);
+            const legendary = cosmetic(run.roll.target)?.rarity === 'legendary';
+            this.host.play(legendary ? ['chestBurstRare', 'jackpot'] : ['chestBurstRare'], ['chest']);
             this.host.announceAlbums();
           } else {
             this.host.play(['shatter', 'shiftFailed'], ['crash']);
@@ -354,10 +361,11 @@ export class CasinoFlow {
         } else if (run.k === 'flip') {
           // A doubled win flies in: what the coin added, as loud as the chain has grown.
           const gained = run.flip.won && !run.items ? run.flip.money / 2 : 0;
-          this.host.casino.wallet.reveal(bank, gained, winTier(2 ** run.chain), rm);
+          const tier = payTier(2 ** run.chain, run.flip.money);
+          this.host.casino.wallet.reveal(bank, gained, tier, rm);
           this.host.play(['coinLand'], []);
           if (run.flip.won) {
-            this.host.play(['chestBurst'], ['chest']);
+            this.host.play(CasinoFlow.cheer(tier), ['chest']);
             if (run.items) this.host.announceAlbums();
           } else this.host.play(['shiftFailed'], ['crash']);
         }

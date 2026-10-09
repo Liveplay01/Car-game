@@ -36,8 +36,9 @@ export class Wallet {
   private held: Books | null = null;
   private count: { from: number; to: number; age: number; delay: number; duration: number } | null = null;
   flights: CoinFlight[] = [];
-  /** Seconds since a win's coins reached the chip: it swells. */
+  /** Seconds since a win's coins reached the chip: it swells, harder the higher the tier. */
   sinceLanded = Infinity;
+  landedTier = 0;
 
   money(bank: number): number {
     const c = this.count;
@@ -74,8 +75,8 @@ export class Wallet {
     this.count = null;
     if (reduceMotion || from === bank) return;
     if (win > 0) {
-      this.flights.push({ toStage: false, count: 5 + 4 * tier, age: 0, tier });
-      this.count = { from, to: bank, age: 0, delay: Wallet.flight, duration: 0.45 + 0.15 * tier };
+      this.flights.push({ toStage: false, count: 5 + 7 * tier, age: 0, tier });
+      this.count = { from, to: bank, age: 0, delay: Wallet.flight, duration: 0.45 + 0.4 * tier };
     } else this.count = { from, to: bank, age: 0, delay: 0, duration: 0.3 };
   }
 
@@ -90,6 +91,7 @@ export class Wallet {
       f.age += delta;
       if (!f.toStage && before < Wallet.flight && f.age >= Wallet.flight) {
         this.sinceLanded = 0;
+        this.landedTier = f.tier;
         cues.push({ k: 'coins', tier: f.tier });
       }
     }

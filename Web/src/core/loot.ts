@@ -324,7 +324,21 @@ export function chestReel(kind: ChestKind, prize: Cosmetic, seed: number, length
   return cards;
 }
 
-/** Draws a rarity by the chest's public odds; the pity counters guarantee an Epic and, later, a Legendary. */
+/** Which taps were strong: the first, and each one within `window` seconds of the one before. */
+export const strongTaps = (times: readonly number[], window: number): boolean[] => times.map((t, i) => i === 0 || t - times[i - 1] <= window);
+
+/** The power of a chest break, 0…1: the strong taps out of the `taps` it takes. */
+export const tapPower = (times: readonly number[], taps: number, window: number): number =>
+  Math.min(1, strongTaps(times, window).filter(Boolean).length / taps);
+
+/** A chest's odds at tap `power` 0…1: each chance above Common grows by up to `boost` of itself, Common pays. */
+export function tappedOdds(kind: ChestKind, power: number, boost: number): number[] {
+  const [, ...rest] = CHEST_ODDS[kind];
+  const grown = rest.map((p) => p * (1 + boost * Math.min(1, Math.max(0, power))));
+  return [1 - grown.reduce((a, b) => a + b, 0), ...grown];
+}
+
+/** Draws a rarity by the chest's odds (public, or as tapped: `tappedOdds`); the pity counters guarantee an Epic and, later, a Legendary. */
 export function rollChest(
   kind: ChestKind,
   collection: readonly string[],
@@ -332,11 +346,11 @@ export function rollChest(
   seed: number,
   day: number | null,
   chestsSinceLegendary = 0,
+  odds: readonly number[] = CHEST_ODDS[kind],
 ): { item: Cosmetic; rarity: Rarity; chestsSinceEpic: number; chestsSinceLegendary: number } {
   const rng = new Rng(seed >>> 0);
   let rarity: Rarity = 'common';
   let pick = rng.unit();
-  const odds = CHEST_ODDS[kind];
   for (let i = 0; i < RARITIES.length; i++) {
     rarity = RARITIES[i];
     pick -= odds[i];
