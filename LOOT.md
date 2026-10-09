@@ -201,6 +201,18 @@ Standard Chest (oben, „Truhen“). Er steht im Regal „Honours“, zählt abe
 | Jade Chevron | `eliteJade` | Epic | Elite 25 | Lagune, Perlstreifen, glänzend |
 | Black Aurum | `eliteAurum` | Legendary | Elite 35 | Obsidian, Goldstreifen, glänzend + Glitzer |
 | Halo | `eliteHalo` | Legendary | Elite 45 | Eisweiß, Goldstreifen, glänzend + Glitzer |
+| Monolith | `monolith` | Legendary | Elite 110 | Carbon, Goldstreifen, glänzend; Effekt: Glut |
+| Tempest | `tempest` | Legendary | Elite 130 | Nachtblau, blauer Streifen, glänzend + Glitzer; Effekt: Blitze |
+| Solstice | `solstice` | Legendary | Elite 145 | Sonnengelb, Goldstreifen, glänzend + Glitzer; Effekt: Lichtkrone |
+| Abyssal | `abyssal` | Legendary | Elite 165 | Lagune, Planktonstreifen, glänzend; Effekt: Kristallsplitter |
+| Regalia | `regalia` | Legendary | Elite 185 | Rubin, Goldstreifen, glänzend + Glitzer; Effekt: Lorbeersterne |
+| Apotheosis | `apotheosis` | Legendary | Elite 195 | Perlweiß, violetter Streifen, glänzend + Glitzer; Effekt: weiße Strahlen |
+| Ladybug | `ladybug` | Epic | 1. Bug-Report (Website, mit Freundescode) | Rot, schwarzer Kopf, sieben Punkte, Fühler |
+| Goldbug | `goldbug` | Epic | 2. Bug-Report | Gelb, drei schwarze Streifen, Fühler |
+| Scarab | `scarab` | Epic | 3. Bug-Report | Grün, goldener Halsschild und Punkte, Fühler |
+| Bluebottle | `bluebottle` | Legendary | 4. Bug-Report | Ozeanblau, schimmernde Flügeldecken, Fühler |
+| Orchid Beetle | `orchid` | Legendary | 5. Bug-Report | Pflaume, fünf helle Punkte, Fühler |
+| Firefly | `firefly` | Legendary | 6. Bug-Report | Carbon, glimmendes Hinterteil, Lichtspur und Glühen, Fühler |
 
 **Mehr Honours (Leo, 06.10.2026)**, nie in Truhen, die Maps zugleich Feats:
 

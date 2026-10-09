@@ -32,11 +32,11 @@ tapper should crash in almost every shift.
 | Tap / click / Space | send the front car (the first tap starts the shift); Space and Enter play even on a button the mouse left focused, only a control reached with `Tab` keeps them |
 | Swipe left/right on the waiting screen, `←` / `→` | Shift · Unlimited · Mayhem · Multiplayer (after Level 5 a toast and a “Swipe for more modes” hint point it out, until the first switch) |
 | Tap after a lost shift | the next try at once |
-| Dispatch button, `D`, `E`, right-click | turn the next car into a police car (costs part of the combo) |
+| Dispatch button, `D`, `E`, right-click | turn the next car into a police car (costs part of the combo; 3 a shift, one more per Dispatch Radio step) |
 | Tab bar, `Tab` | Progress · Game · Shop · Build (Upgrades, Street Builder) |
 | Top card on the waiting screen | money → Chests, cars → Collection, best → Records |
 | `Enter` | start / buy the open upgrade |
-| `Esc` | settings on the waiting screen, back to the game from a page |
+| `Esc`, Android back gesture or button | settings on the waiting screen, back to the game from a page, closes a sheet (`ui/backGesture.ts`: one history entry above the page; at the start of the game Back leaves; a shift in progress ignores it). A touch within 24 px of the sides and top or 40 px of the bottom edge is the system's (home, back), never a tap |
 | `R` | restart the shift |
 | `↑` / `↓`, Page Up/Down, Home/End | scroll the open list (Collection, Upgrades, Progress), gliding like the wheel |
 

@@ -120,7 +120,7 @@ Jede Einfädelung wird nach dem engsten Abstand (surface to surface) bewertet:
 | **Entkommt er** | Schicht verloren (Hard Fail); beim nächsten Verbrecher erinnert das Spiel, wie man ihn fängt |
 | **Takedown** | 1.000 Pkt × Multiplikator × Rush Hour, kurze Slow-Mo, Soft-Body-Deformation, Splitter in Polizeifarben, „BUSTED!“, Combo bleibt |
 | **Zählt nicht** | wenn der Verbrecher selbst ins Polizeiauto fährt |
-| **Einsatzfahrt (Dispatch)** | Dispatch-Button, `D`, `E` oder Rechtsklick: das nächste Auto wird Polizei, Combo × 0,5 (*Dispatch Radio* +10 % pro Stufe zurück) |
+| **Einsatzfahrt (Dispatch)** | Dispatch-Button, `D`, `E` oder Rechtsklick: das nächste Auto wird Polizei, Combo × 0,5 (*Dispatch Radio* +10 % pro Stufe zurück). **Höchstens 3 pro Schicht** (Leo, 10.10.2026, `dispatchLimit`); jede Stufe *Dispatch Radio* erlaubt eine mehr, der Knopf zeigt, wie viele übrig sind |
 | **Verfolgung im Ring** | Polizeiauto direkt hinter dem Pickup jagt mit bis ×1,4 Tempo (*Interceptor* +0,1/Stufe) und rammt ihn |
 | **Masse** | Pickup = 2,5× Auto. **Was beschädigt ist, fährt nicht mehr:** Jeder Treffer ohne Takedown macht auch den Pickup zum Wrack – die Jagd endet ohne Punkte und ohne verlorene Schicht |
 | **Blaulicht** | nur Blau (deutscher Lichtbalken), LED-Doppelblitze, weicher Schein auf der Straße, jedes Polizeiauto im eigenen Takt |
@@ -317,7 +317,7 @@ Abreißen (Zufahrten und Module) ist möglich, **nichts wird erstattet.** Versch
 | Longer Pursuit | +1 s Verbrecher-Countdown | 8 | 3.100 |
 | Quiet Streets | 10 % der Schichten ohne Verbrecher | 5 | 3.900 |
 | Interceptor | Polizei jagt 10 % schneller im Ring | 5 | 3.900 |
-| Dispatch Radio | Einsatzfahrt behält 10 % mehr Combo | 5 | 3.100 |
+| Dispatch Radio | Einsatzfahrt behält 10 % mehr Combo, +1 Einsatzfahrt pro Schicht (Grundwert 3) | 5 | 3.100 |
 | Backup | +1 Polizei-Crash pro Schicht | 3 | 7.800 |
 | Cash Route | Transporter 0,4 s früher & öfter | 8 | 2.600 |
 | Overtime | +4 % Schichtlohn | 10 | 2.600 |
@@ -586,7 +586,7 @@ Ab Level 50 (Progress → Records → Elite-Karte → Prestige, mit Rückfrage):
 
 Level 50 öffnet die Leiste (Elite-Karte oben in Records ab Level 40 sichtbar), Prestige behält sie. **Elite XP pro Schicht:** 10 für eine geschaffte Schicht, 1 je Perfect Input und Tight Fit (auch in einer verlorenen Schicht), je 10 für einen gestellten Boss und eine geschaffte Legendary Shift. Level 50 ist Elite 1; progressiv (03.10.2026): Elite 1→2 braucht 60 XP, jedes weitere Level 4 XP mehr (`eliteXpPerLevel`, `eliteXpGrowth`). **Jedes Elite-Level zahlt eine Standard Chest, jedes zehnte eine Premium Chest.** Mayhem und Trials zählen nicht.
 
-- **Lackierungen:** Elite 5 Steel Chevron, 15 Blaze Chevron, 25 Jade Chevron, 35 Black Aurum, 45 Halo; Feats bei 75 (Zenith Crown) und 100 (Event Horizon).
+- **Lackierungen:** Elite 5 Steel Chevron, 15 Blaze Chevron, 25 Jade Chevron, 35 Black Aurum, 45 Halo; Feats bei 75 (Zenith Crown) und 100 (Event Horizon). **Über 100 (Leo, 10.10.2026):** sechs weitere Skins bei Elite 110 Monolith, 130 Tempest, 145 Solstice, 165 Abyssal, 185 Regalia, 195 Apotheosis und die Titel *Sovereign* (125), *Timeless* (150), *Apex* (175), *Boundless* (200). Die Leiste selbst hat kein Ende (`ELITE_LAST_MILESTONE` in `core/elite.ts` ist nur der letzte Meilenstein); ein Spielstand, der schon weiter ist, bekommt die Skins beim Laden.
 - **In der Welt:** goldener Innenrand auf der Mittelinsel, je 10 Elite-Level ein goldener Punkt bei der eigenen Spur (höchstens fünf); die Level-Anzeige oben wird golden.
 - **Titel (19):** Elite Driver (1), Road Veteran (10), Ring Master (20), Iron Nerves (30), Road Royalty (40), Living Legend (50); Precision Driver, Combo Master, Close Call Artist (je ein Mastery ganz); Syndicate Breaker (alle Bosse); Night Owl, Storm Chaser (Trials Blackout, Storm Watch); Legend Hunter (15 Legendary Shifts); Star Driver (★3); Ascended (★10), Eternal (★20), Grandmaster (Elite 75), Centurion (Elite 100), Immortal (50 Legendary Shifts). Der erste verdiente Titel wird getragen, jeder andere lässt sich im Elite-Sheet antippen.
 
@@ -677,6 +677,7 @@ Für Spieler ab ★4 (Prestige macht den Verkehr ab dort nicht mehr schwerer). W
 | **Menüs** | native Anmutung: gruppierte Listen, Sheets, Schalter, Segmented Controls; Glas nur für schwebende Bedienelemente über der Szene. Kritisch gedämpfte Federn, kein harter Schnitt |
 | **Einstellungen** | Sheet: Sound effects und Music (getrennt), Haptics, Vehicle Labels, **Left-handed** (schwebende Knöpfe auf die andere Seite, Dispatch links), **Larger text** (Hinweise und Karten über der Szene ×1,2), Reduce Motion (System / On / Off), Install (wo möglich), **What's new** (Patch Notes aus `present/patchNotes.ts`; ungelesen: Punkt am Einstellungsknopf), Links zu CrazyGames (nicht in der Play-App und nicht auf CrazyGames selbst), zur **Homepage timing.love** (nicht auf CrazyGames) und zum **Roundabout Timing Wiki auf Fandom**, **Cloud sync**, Reset Progress, **Legal** (Privacy Policy, Imprint, Licenses) |
 | **Ergebnis teilen** | Unter jedem Ergebnis „Picture“: Blitz mit Auslöser-Geräusch, dann fällt ein **Sofortbild** gekippt ein und entwickelt sich aus Weiß. Der Abzug (1080×1350, 4:5) zeigt den Kreisverkehr von oben ohne HUD, mit Film-Look, Klebestreifen in der Map-Farbe, Sticker mit dem Ergebnis, **NEW BEST**-Stempel, orangem Datum, darunter Score, die besten Fakten, Map-Name, „Can you beat …?“ und Spielname mit Icon. Nur zwei Knöpfe: **Share** (Teilen-Menü mit Challenge-Link; ohne Datei-Teilen: Bild kopieren) und **Download**. Reduce Motion: nur Überblenden (`ui/photo.ts`, Text in `present/photo.ts`) |
+| **Akku** (Leo, 10.10.2026) | Das Spiel zeichnet höchstens 60 Bilder pro Sekunde (`Shell.frameGap`): auf einem 120-Hz-Bildschirm (iPhone Pro) jedes zweite, die Simulation läuft unabhängig mit 120 Hz weiter. Einstellung **Battery saver**: 30 Bilder und Pixeldichte höchstens 1,5. |
 | **Adaptive Auflösung** | Kommen die Frames dauerhaft langsam und unregelmäßig, sinkt die Pixeldichte 2 → 1,5 → 1, dann die Deko (Bodentextur, Luft, Wolkenschatten); nach 12 s flüssigem Lauf steigt sie wieder. Gleichmäßige 30 fps (Stromsparmodus) bleiben unangetastet. Verborgene Knöpfe und Tab-Bar kosten während der Schicht nichts; Crash-Wackeln zeichnet die Stadt nicht neu |
 | **Sound** | Web Audio: 44 Effekte und 7 Musik-Stems (base, bass, rhythm, lead, flow, rush, siren) als AAC in `Web/public/audio/`, mit Tonhöhen-Variation und Stereo-Position. Adaptive Musik: Combo baut Instrumente auf, Verbrecher → Sirene, Rush Hour → Beat zieht an, Flow verdichtet; bei Verbrecher-Warnung und Rush-Hour-Beginn atmet die Musik durch einen Tiefpass ein. Im Multiplayer baut sie mit den Phasen auf |
 | **Haptik** | über `navigator.vibrate` – nur wo der Browser es kann (Android/Chrome); iOS-Safari hat keine Vibration, der Schalter zeigt das an |

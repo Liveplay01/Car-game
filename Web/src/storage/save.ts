@@ -237,6 +237,7 @@ function readSave(raw: unknown): SaveGame {
     if (typeof s.vehicleLabels === 'boolean') settings.vehicleLabels = s.vehicleLabels;
     if (typeof s.leftHanded === 'boolean') settings.leftHanded = s.leftHanded;
     if (typeof s.largeText === 'boolean') settings.largeText = s.largeText;
+    if (typeof s.batterySaver === 'boolean') settings.batterySaver = s.batterySaver;
     if (typeof s.motionChosen === 'boolean') settings.motionChosen = s.motionChosen;
     // "System" was the default until 29.09.2026: kept only when the player picked it since.
     if (s.reduceMotion === 'on' || s.reduceMotion === 'off') settings.reduceMotion = s.reduceMotion;

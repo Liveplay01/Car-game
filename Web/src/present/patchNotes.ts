@@ -51,6 +51,30 @@ export const itemCredit = (item: PatchItem): string | null => {
 
 export const PATCH_NOTES: PatchNote[] = [
   {
+    id: '2026-10-10',
+    date: '10 October 2026',
+    title: 'Five more bug hunter skins, eight skins at once, Elite up to 200 and a gentler battery',
+    impact: 'major',
+    summary: [
+      'Each bug report with your friend code now pays a new skin: Ladybug, Goldbug, Scarab and three more.',
+      'Mix up to eight car skins on the road.',
+      'The Elite track goes on to Elite 200: six new skins and four new titles.',
+      'A shift allows 3 dispatches; Dispatch Radio adds one per step. Battery saver in Settings.',
+    ],
+    items: [
+      'Bug hunters: every bug report on timing.love with your friend code pays the next skin. The second is the yellow Goldbug, then the Scarab, the Bluebottle, the Orchid Beetle and, with the sixth, the glowing Firefly. The Ladybug stays the first.',
+      'You can wear up to eight car skins at once, up from five.',
+      'More Elite: the track pays skins at Elite 110, 130, 145, 165, 185 and 195, and titles at Elite 125, 150, 175 and 200. Anyone who is already past a level gets its skin right away.',
+      'Dispatching a police car is limited to 3 per shift. Each step of Dispatch Radio adds one more, and the button shows how many are left.',
+      'The signals on the ring (the ticks, the glow before a criminal arrives, the lap of light, the Elite bar and the countdown rings) now have round ends.',
+      'The game now draws at most 60 frames a second, which spares the battery on phones with a 120 Hz screen (iPhone Pro). New: Settings → Battery saver draws 30 frames a second and a slightly softer picture.',
+      'The Android back gesture and the Back button now close sheets and pages inside the game instead of leaving it. A shift in progress ignores them.',
+      'Swiping up from the bottom edge (the home gesture) or in from the side edges no longer sends a car.',
+      'Fixed: criminals, street racers and weddings could wait outside the ring for good when a toll booth slowed the traffic in front of the entrance.',
+      'Fixed: on two-lane rings (Level 80 and up) motorbikes and long vehicles misjudged gaps and crashed into traffic without anyone playing.',
+    ],
+  },
+  {
     id: '2026-10-09',
     date: '9 October 2026',
     title: 'Tap your chests open, casino wins that feel like wins, and drawers you can pull',

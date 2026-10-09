@@ -17,7 +17,8 @@ const { World } = await load('/src/core/world.ts');
 const { detourArmSlot } = await load('/src/core/modules.ts');
 const { CHALLENGES, challengesOf, challengeMet, challengeReward } = await load('/src/core/daily.ts');
 const { baseConfig, BOSS_KINDS } = await load('/src/core/config.ts');
-const { forLevel, UPGRADES, upgradeMaxSteps } = await load('/src/core/levels.ts');
+const { forLevel, upgraded, UPGRADES, upgradeMaxSteps } = await load('/src/core/levels.ts');
+const { Elite, TITLES, TITLE_RULES, ELITE_LAST_MILESTONE } = await load('/src/core/elite.ts');
 const { COSMETICS, rollChest, PITY_LEGENDARY_CHESTS } = await load('/src/core/loot.ts');
 const { Goals } = await load('/src/core/goals.ts');
 const { forHeat, heatPay, heatXp } = await load('/src/core/heat.ts');
@@ -2546,4 +2547,82 @@ test('notifications: the game asks only for what matters, at sensible hours on i
   const [pass] = pushTimers(veteran, baseConfig, morning);
   assert.deepEqual([pass.topic, pass.at, pass.title], ['pass', new Date(2026, 11, 1, 10).getTime(), 'Winter is here']);
   assert.deepEqual(pushTimers(veteran, baseConfig, new Date(2026, 8, 1, 10)), [], 'a season more than 59 days away waits');
+});
+
+test('a shift allows 3 dispatches, and each Dispatch Radio step adds one', () => {
+  assert.equal(baseConfig.dispatchLimit, 3);
+  assert.equal(upgraded(baseConfig, (u) => (u === 'dispatchRadio' ? 2 : 0)).dispatchLimit, 5);
+  const world = new World(forLevel(baseConfig, 3, 5), 5, { startsOnFirstTap: false });
+  assert.equal(world.dispatchesLeft, 3);
+  assert.ok(world.dispatchPolice());
+  assert.equal(world.dispatchesLeft, 2);
+  assert.ok(!world.dispatchPolice(), 'the car at the front is a police car already');
+  assert.equal(world.dispatchesLeft, 2, 'a refused call costs nothing');
+  const spent = new World({ ...forLevel(baseConfig, 3, 5), dispatchLimit: 0 }, 5, { startsOnFirstTap: false });
+  assert.ok(!spent.dispatchPolice());
+});
+
+test('bug hunter skins: one per report, up to six, each with its own look', async () => {
+  const { Skins } = await load('/src/present/skins.ts');
+  const hunters = COSMETICS.filter((x) => x.source.kind === 'bugReport');
+  assert.deepEqual(hunters.map((x) => x.source.reports), [1, 2, 3, 4, 5, 6]);
+  for (const item of hunters) {
+    assert.ok(Skins.color(item.id) && Skins.effect(item.id), `${item.id} has a colour and a look of its own`);
+    assert.ok(S.shop.item(item.id) !== item.id, `${item.id} has a name`);
+  }
+});
+
+test('the Elite track pays beyond 100: skins and titles up to Elite 200', () => {
+  assert.equal(ELITE_LAST_MILESTONE, 200);
+  const milestones = Elite.milestones();
+  assert.equal(milestones.at(-1), 200);
+  for (const level of [110, 125, 150, 175, 200]) assert.ok(milestones.includes(level), `Elite ${level} pays something`);
+  const career = newCareer();
+  Object.assign(career, { level: 50, eliteXp: Elite.xpTo(200), eliteClaimed: 0 });
+  Careers.recordElite(career, { outcome: 'completed', perfects: 0, tightFits: 0, bossBusted: false, legendary: false }, baseConfig);
+  assert.equal(Elite.level(career), 200);
+  for (const id of ['monolith', 'apotheosis']) assert.ok(career.collection.includes(id), `${id} came with the levels`);
+  for (const title of ['sovereign', 'boundless']) assert.ok(Elite.titleEarned(title, career), `${title} is earned`);
+  assert.ok(TITLES.every((t) => TITLE_RULES[t]));
+});
+
+test('a criminal gets into a ring whose toll booth slows the traffic at the entrance', () => {
+  let entered = 0;
+  for (const seed of [1, 2, 3, 4]) {
+    const config = forLevel(baseConfig, 10, seed * 31);
+    config.criminalChance = 1;
+    config.modules[2] = 'tollBooth';
+    config.moduleLevels[2] = 1;
+    const world = new World(config, seed * 31, { startsOnFirstTap: false });
+    let lastTap = -9;
+    let warned = false;
+    let came = false;
+    for (let i = 0; i < 120 * 90 && !came; i++) {
+      if (world.time - lastTap > 1.6 && world.queue.isReady && world.predictedMergeGap(world.layout.player, 0, 40) > 0.04) {
+        world.tap(world.time);
+        lastTap = world.time;
+      }
+      world.step();
+      for (const e of world.takeEvents()) {
+        if (e.type === 'criminalWarning') warned = true;
+        if (e.type === 'criminalEntered') came = true;
+      }
+    }
+    if (warned && came) entered++;
+  }
+  assert.ok(entered >= 3, `the criminal came in ${entered} of 4 shifts`);
+});
+
+test('nobody crashes on a two-lane ring when the player sends nothing', () => {
+  for (const seed of [1, 2, 3]) {
+    const config = forLevel(baseConfig, 85, seed * 17);
+    config.criminalChance = 0;
+    const world = new World(config, seed * 17, { startsOnFirstTap: false });
+    let crashes = 0;
+    for (let i = 0; i < 120 * 80; i++) {
+      world.step();
+      crashes += world.takeEvents().filter((e) => e.type === 'crash').length;
+    }
+    assert.equal(crashes, 0, `seed ${seed}: the traffic drove into each other ${crashes} times`);
+  }
 });
