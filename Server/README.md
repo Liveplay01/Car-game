@@ -149,6 +149,8 @@ A second resource next to the game, from the same GitHub repository:
 | `DB_PATH` | `/data/car-game.db` | Keep it inside the volume. |
 | `PORT` | `5051` | |
 | `TRUST_PROXY` | `true` | Read the caller's address from `X-Forwarded-For` (last entry). Keep it on behind Coolify. |
+| `CLIENT_IP_HEADER` | unset | Behind Cloudflare: `cf-connecting-ip`. The last `X-Forwarded-For` entry is then Cloudflare's own address, the same for many players, so every per-address limit (new names, cloud copies, one report a day) would count them together. With this set the real caller is read from that header first. **Only safe when the server takes traffic from Cloudflare alone** (firewall to Cloudflare's address ranges, https://www.cloudflare.com/ips/, or a Cloudflare Tunnel): otherwise anyone can send the header and dodge the limits. |
+| `FEEDBACK_IP_SECRET` | unset | At least 24 characters (`openssl rand -base64 32`). Keys the hash of the address kept for two days for the once-a-day rule of bug reports and ideas (HMAC-SHA-256 instead of a plain hash, which could be worked out from the few IPv4 addresses). Keep it; changing it only resets that rule once. |
 | `CF_TURN_KEY_ID`, `CF_TURN_API_TOKEN` | unset | Cloudflare TURN, for multiplayer between phone networks (below). Unset: STUN only. |
 | `GAME_URL` | the first address in `CORS_ORIGINS` | Where a challenge's short link sends people, e.g. `https://game.your-domain.tld`. Neither set (`CORS_ORIGINS=*`): no short links, the game shares its long link. |
 | `FEEDBACK_WEBHOOK_URL` | unset | A Discord (or Slack) webhook: every new bug report and idea is posted there as well, so you hear of it at once. Unset: only stored, read them on `/admin`. |

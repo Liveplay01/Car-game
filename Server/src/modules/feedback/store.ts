@@ -1,4 +1,4 @@
-import { createHash, randomUUID } from 'node:crypto';
+import { createHash, createHmac, randomUUID } from 'node:crypto';
 import type { Db } from '../../db.ts';
 
 export type FeedbackKind = 'bug' | 'idea';
@@ -61,7 +61,8 @@ interface FeedbackRow {
 }
 
 /** Only a hash of the address is kept, and only for a day or two (the once-a-day limit). */
-export const hashIp = (ip: string): string => createHash('sha256').update(`feedback:${ip}`).digest('hex');
+export const hashIp = (ip: string, secret: string | null): string =>
+  (secret ? createHmac('sha256', secret) : createHash('sha256')).update(`feedback:${ip}`).digest('hex');
 
 export const DAY_MS = 86_400_000;
 

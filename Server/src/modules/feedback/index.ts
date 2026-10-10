@@ -76,7 +76,7 @@ export function feedbackModule(): ServerModule {
         }
 
         const now = ctx.now();
-        const ipHash = hashIp(c.get('ip'));
+        const ipHash = hashIp(c.get('ip'), ctx.config.feedbackIpSecret);
         const last = Math.max(store.lastFrom(ipHash, kind) ?? 0, player ? (store.lastBy(player.id, kind) ?? 0) : 0);
         if (now - last < DAY_MS) {
           const wait = Math.ceil((last + DAY_MS - now) / 1000);

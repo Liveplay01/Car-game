@@ -349,3 +349,25 @@ test('the Daily board is one list per day, the Boss Rush board ranks the fastest
   assert.deepEqual(rush.json.entries.map((e: { name: string; meta: { cs: number } }) => [e.name, e.meta.cs]), [['Ben', 8000], ['Anna', 9000]]);
   db.close();
 });
+
+test('CLIENT_IP_HEADER: behind Cloudflare the real caller counts, not the address Cloudflare shows', async () => {
+  const app = createApp({ db: openDb(':memory:'), config: readConfig({ DB_PATH: ':memory:', TRUST_PROXY: 'true', CLIENT_IP_HEADER: 'CF-Connecting-IP' }), now: () => 1_700_000_000_000 });
+  let n = 0;
+  // Every request reaches the server from the same Cloudflare address (last in X-Forwarded-For); the real caller is in the header.
+  const register = async (headers: Record<string, string>) =>
+    (await app.request('/v1/players', { method: 'POST', headers: { 'content-type': 'application/json', 'x-forwarded-for': '203.0.113.7', ...headers }, body: JSON.stringify({ name: `Walker ${String.fromCharCode(97 + (n % 26))}${n++}` }) })).status;
+  for (let i = 0; i < 20; i++) assert.equal(await register({ 'cf-connecting-ip': '198.51.100.1' }), 201);
+  assert.equal(await register({ 'cf-connecting-ip': '198.51.100.1' }), 429, 'one caller reaches the limit');
+  assert.equal(await register({ 'cf-connecting-ip': '198.51.100.2' }), 201, 'another caller behind the same Cloudflare address does not');
+  for (let i = 0; i < 20; i++) assert.equal(await register({}), 201);
+  assert.equal(await register({}), 429, 'without the header the shared address counts, as before');
+});
+
+test('CLIENT_IP_HEADER and FEEDBACK_IP_SECRET: only a header name and a long enough secret are taken', () => {
+  assert.throws(() => readConfig({ DB_PATH: ':memory:', CLIENT_IP_HEADER: 'cf connecting ip' }), /CLIENT_IP_HEADER/);
+  assert.throws(() => readConfig({ DB_PATH: ':memory:', FEEDBACK_IP_SECRET: 'short' }), /FEEDBACK_IP_SECRET/);
+  const config = readConfig({ DB_PATH: ':memory:', CLIENT_IP_HEADER: ' CF-Connecting-IP ', FEEDBACK_IP_SECRET: 'x'.repeat(24) });
+  assert.equal(config.clientIpHeader, 'cf-connecting-ip');
+  assert.equal(readConfig({ DB_PATH: ':memory:' }).clientIpHeader, null);
+  assert.equal(readConfig({ DB_PATH: ':memory:' }).feedbackIpSecret, null);
+});

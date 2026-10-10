@@ -31,6 +31,9 @@ export const modules = (): ServerModule[] => [playersModule(), leaderboardModule
  * X-Forwarded-For (the one it saw itself; earlier ones come from the caller and can be made up).
  */
 function clientIp(c: Context, config: Config): string {
+  // Behind Cloudflare that is the real caller; XFF below would only name Cloudflare's own address (`CLIENT_IP_HEADER`).
+  const real = config.clientIpHeader ? c.req.header(config.clientIpHeader)?.split(',')[0]?.trim() : undefined;
+  if (real) return real;
   if (config.trustProxy) {
     const forwarded = c.req.header('x-forwarded-for')?.split(',').at(-1)?.trim();
     if (forwarded) return forwarded;

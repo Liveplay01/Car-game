@@ -11,6 +11,14 @@ export interface Config {
   adminToken: string | null;
   /** Behind Coolify's proxy the client's address is in X-Forwarded-For. */
   trustProxy: boolean;
+  /**
+   * Behind Cloudflare the last `X-Forwarded-For` entry is Cloudflare's own address, the same for many players.
+   * Name the header that carries the real one (`cf-connecting-ip`) and it is read first. Only safe when the server
+   * accepts traffic from Cloudflare alone, otherwise anyone can send that header. Null: not used.
+   */
+  clientIpHeader: string | null;
+  /** Keys the hash of an address kept for the once-a-day rule of bug reports and ideas (`feedback`); null: a plain hash. */
+  feedbackIpSecret: string | null;
   /** Cloudflare TURN key (Realtime → TURN Server); both set: multiplayer gets a relay (`/v1/rtc/ice`). */
   turnKeyId: string | null;
   turnApiToken: string | null;
@@ -39,6 +47,22 @@ function address(value: string | undefined, name: string): string | null {
   return text;
 }
 
+/** A header name in lower case (what `Context.req.header` expects), or null. */
+function headerName(value: string | undefined): string | null {
+  const name = value?.trim().toLowerCase();
+  if (!name) return null;
+  if (!/^[a-z0-9-]+$/.test(name)) throw new Error('CLIENT_IP_HEADER must be a header name, e.g. cf-connecting-ip.');
+  return name;
+}
+
+/** A secret from the environment: at least 24 characters (try: openssl rand -base64 32), or null when unset. */
+function secret(value: string | undefined, name: string): string | null {
+  const text = value?.trim();
+  if (!text) return null;
+  if (text.length < 24) throw new Error(`${name} must be at least 24 characters (try: openssl rand -base64 32).`);
+  return text;
+}
+
 /** Both VAPID keys, or neither (notifications off). Push services want a contact: VAPID_SUBJECT, else the game's address. */
 function vapidOf(env: NodeJS.ProcessEnv, gameUrl: string | null): VapidKeys | null {
   const publicKey = env.VAPID_PUBLIC_KEY?.trim() ?? '';
@@ -63,6 +87,8 @@ export function readConfig(env: NodeJS.ProcessEnv = process.env): Config {
     corsOrigins,
     adminToken,
     trustProxy: env.TRUST_PROXY !== 'false',
+    clientIpHeader: headerName(env.CLIENT_IP_HEADER),
+    feedbackIpSecret: secret(env.FEEDBACK_IP_SECRET, 'FEEDBACK_IP_SECRET'),
     turnKeyId: env.CF_TURN_KEY_ID?.trim() || null,
     turnApiToken: env.CF_TURN_API_TOKEN?.trim() || null,
     gameUrl,

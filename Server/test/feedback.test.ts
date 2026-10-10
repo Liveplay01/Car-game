@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { createApp } from '../src/app.ts';
 import { readConfig } from '../src/config.ts';
 import { openDb } from '../src/db.ts';
+import { hashIp } from '../src/modules/feedback/store.ts';
 
 const ADMIN = 'a'.repeat(32);
 
@@ -108,4 +109,18 @@ test('feedback: the webhook post never pings anyone, whatever the text says', as
   } finally {
     globalThis.fetch = realFetch;
   }
+});
+
+test('feedback: with FEEDBACK_IP_SECRET the stored address hash cannot be worked out from the address alone, and the daily rule still holds', async () => {
+  const db = openDb(':memory:');
+  const secret = 'k'.repeat(32);
+  const app = createApp({ db, config: readConfig({ DB_PATH: ':memory:', TRUST_PROXY: 'true', FEEDBACK_IP_SECRET: secret }), now: () => 1_700_000_000_000 });
+  const send = async () =>
+    (await app.request('/v1/feedback', { method: 'POST', headers: { 'content-type': 'application/json', 'x-forwarded-for': '10.0.0.1' }, body: JSON.stringify({ kind: 'idea', text: 'Please add a night mode.' }) })).status;
+  assert.equal(await send(), 201);
+  const { ip_hash } = db.prepare('SELECT ip_hash FROM feedback').get() as { ip_hash: string };
+  assert.equal(ip_hash, hashIp('10.0.0.1', secret));
+  assert.notEqual(ip_hash, hashIp('10.0.0.1', null), 'not the plain hash anyone could compute');
+  assert.notEqual(ip_hash, hashIp('10.0.0.1', 'z'.repeat(32)), 'another secret, another hash');
+  assert.equal(await send(), 429, 'one idea a day per address');
 });
