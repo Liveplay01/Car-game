@@ -1134,6 +1134,12 @@ export const S = {
   club: {
     title: 'Club',
     projectName: (project: string): string => ({ fountain: 'Fountain', lighthouse: 'Lighthouse', skybridge: 'Sky Bridge' } as Record<string, string>)[project] ?? project,
+    projectText: (project: string): string =>
+      ({
+        fountain: 'A fountain for the middle of the roundabout, where the traffic circles and the whole city can see the water.',
+        lighthouse: 'A lighthouse on the shore beside the ring, its beam sweeping over the cars at night.',
+        skybridge: 'A glass bridge high above the city, the biggest project of them all.',
+      } as Record<string, string>)[project] ?? '',
     goalName: (goal: ContractGoal): string => ({ clean: 'Clean sheet', sharp: 'Sharp', flawless: 'Flawless' })[goal],
     goalText(goal: ContractGoal, cars: number): string {
       const need = Contracts.need(goal, cars);

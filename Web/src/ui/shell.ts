@@ -802,6 +802,7 @@ export class Shell {
   private clubHost(): ClubHost {
     const s = this.session;
     return {
+      layer: this.layers,
       career: () => s.save.career,
       today: () => s.today,
       shiftCars: () => s.world.config.shiftCars,

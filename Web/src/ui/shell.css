@@ -3242,7 +3242,7 @@ a.row-link {
 
 .club-bar {
   display: block;
-  height: 6px;
+  height: 8px;
   margin: var(--s2) 0;
   border-radius: 3px;
   background: var(--surface-3);
@@ -3277,4 +3277,106 @@ a.row-link {
   flex: none;
   border-radius: 12px;
   background: var(--surface-2);
+}
+
+/* City Fund: a project is a row that opens its drawer; the ones still waiting are greyed out. */
+.club-project.waiting {
+  opacity: 0.45;
+  filter: grayscale(1);
+}
+
+.text-input + .btn.block {
+  margin-top: var(--s3);
+}
+
+.fund-hero {
+  display: flex;
+  justify-content: center;
+  margin: var(--s2) 0 var(--s4);
+}
+
+.fund-hero .club-art {
+  background: var(--surface-2);
+  border-radius: 24px;
+}
+
+.fund-sheet .club-bar {
+  height: 10px;
+  margin: 0 0 var(--s4);
+}
+
+.fund-thanks {
+  text-align: center;
+}
+
+.fund-thanks-badge {
+  display: grid;
+  place-items: center;
+  width: 64px;
+  height: 64px;
+  margin: var(--s2) auto var(--s3);
+  border-radius: 50%;
+  background: var(--money);
+  color: var(--accent-ink);
+  box-shadow: 0 0 0 8px rgba(227, 193, 90, 0.18), 0 0 32px rgba(227, 193, 90, 0.45);
+  animation: pop-in 520ms var(--ease-drawer) backwards;
+}
+
+.fund-thanks-badge svg {
+  width: 32px;
+  height: 32px;
+  stroke-width: 3;
+}
+
+.fund-thanks-label {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.fund-thanks-amount {
+  margin: var(--s1) 0 var(--s4);
+  font-family: var(--font-round);
+  font-size: 40px;
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+  color: var(--money);
+  animation: pop-in 520ms 120ms var(--ease-drawer) backwards;
+}
+
+.fund-thanks-project {
+  margin-bottom: var(--s4);
+  padding: var(--s3) var(--s4);
+  border-radius: var(--r-row);
+  background: var(--surface-2);
+  text-align: left;
+}
+
+.fund-thanks-project .club-bar {
+  height: 10px;
+}
+
+.fund-thanks-project .club-bar + .row-sub + .club-bar {
+  height: 6px;
+  margin-top: var(--s3);
+}
+
+.fund-thanks .btn.block {
+  margin-top: var(--s2);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .fund-thanks .club-bar-fill {
+    transition-duration: 1200ms;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fund-thanks-badge,
+  .fund-thanks-amount {
+    animation: none;
+  }
 }

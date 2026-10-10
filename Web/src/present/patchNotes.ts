@@ -56,12 +56,15 @@ export const PATCH_NOTES: PatchNote[] = [
     title: 'A Social tab, the Club for big balances, five new upgrades and skins with their own car shapes',
     impact: 'major',
     summary: [
-      'Give the City Fund any amount, up to 20,000,000 a day. The Heat button lights up when on.',
+      'City Fund: pick or type an amount, then tap Give. Tap a project to see what you are building.',
       'Tidier menus: a Social tab, five Progress sections, tabbed Settings and a Heat button.',
       'For big balances: the Club (Auction, City Fund, Contracts), Diamond Chests and High Roller stakes.',
       'Five new upgrades: Tight Fit Tip, Dashcam, Chain Saver, Winter Tyres and Fog Lamps.',
     ],
     items: [
+      'City Fund gifts take two steps now: pick a quick amount or type your own (the field only says "Your own amount"), then tap Give. Tapping an amount gives nothing yet.',
+      'Tap a City Fund project to open its drawer: a picture, what it will be, how far it is, what you gave and which skin it pays. Projects that are still waiting are greyed out.',
+      'A gift ends in a thank-you drawer with confetti, the amount in gold, a bar for every project it went into and a bar towards the skin of the project you gave to.',
       'The City Fund has a daily limit: one player can give 20,000,000 in 24 hours. A gift that crosses it is cut to fit, and after that the Fund asks you to come back tomorrow, so nobody can build a project alone.',
       'Fixed: turning on Cloud sync could show "Your cloud save has other progress" after your first change, although you only have one device.',
       'Fixed: the game open in two tabs or windows at once let the older one overwrite the other one’s progress. A second tab now waits ("The roundabout is open elsewhere") and starts by itself once the other one is closed.',

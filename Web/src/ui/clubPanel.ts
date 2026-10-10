@@ -1,12 +1,13 @@
-import { h } from './dom';
+import { h, icon } from './dom';
+import { ICONS } from './icons';
 import { nameForm, openAccount } from './ranksPanel';
 import { tabsControl } from './tabs';
-import { fadeIn, scrollSheetToTop } from './sheets';
+import { fadeIn, openSheet, scrollSheetToTop } from './sheets';
 import { baseConfig } from '../core/config';
 import type { Career } from '../core/career';
 import { Auction, type AuctionEvent, type AuctionRun, type Lot } from '../core/auction';
 import { CONTRACT_GOALS, Contracts, type ContractGoal } from '../core/contracts';
-import { Fund, GIFTS, type FundView } from '../core/fund';
+import { Fund, GIFTS, type FundProject, type FundView } from '../core/fund';
 import { cosmetic } from '../core/loot';
 import { fetchFund, fundEnabled, giveToFund } from '../net/fund';
 import { describeError, loadAccount, syncScores, type Records } from '../net/leaderboard';
@@ -27,6 +28,8 @@ import { v } from '../core/vec2';
  */
 
 export interface ClubHost {
+  /** Where drawers open (the City Fund's project details and thanks). */
+  layer: HTMLElement;
   career(): Career;
   today(): number;
   /** How many cars the next career shift has: a contract's goals are counted from it. */
@@ -60,19 +63,30 @@ const cash = (n: number): string => money(Fmt.number(n));
 const row = (title: string, sub: string, ...end: HTMLElement[]): HTMLElement =>
   h('div', { class: 'row' }, h('div', { class: 'row-main' }, h('div', { class: 'row-title' }, title), h('div', { class: 'row-sub' }, sub)), ...end);
 
-/** A lot's picture, drawn with the game's own art like the Shop's: the car in its paint, the map as its little city, the chest. */
-function swatch(lot: Lot): HTMLElement {
-  const size = 56;
+/** A picture drawn with the game's own art like the Shop's: the car in its paint, the map as its little city, the chest. */
+function picture(art: DetailArt, size = 56): HTMLElement {
   const canvas = h('canvas', { class: 'club-art', width: size * 2, height: size * 2, 'aria-hidden': 'true' });
   canvas.style.width = `${size}px`;
   canvas.style.height = `${size}px`;
   const drawer = new CanvasDrawer(canvas);
   drawer.resize(size, size, 2);
   const list = new RenderList({ viewport: v(size, size), center: v(0, 0), focus: v(size / 2, size / 2), scale: 1 }, 'card');
-  const art: DetailArt = lot.k === 'chest' ? { k: 'chest', kind: lot.chest } : { k: 'item', id: lot.id, owned: true };
   Details.drawArt(list, art, v(size / 2, size / 2), size, baseConfig);
   drawer.draw(list);
   return canvas;
+}
+
+const swatch = (lot: Lot): HTMLElement => picture(lot.k === 'chest' ? { k: 'chest', kind: lot.chest } : { k: 'item', id: lot.id, owned: true });
+
+/** A progress bar; `from` is where the fill starts when it should glide to `share` (the thanks). */
+function bar(share: number, from = share): { el: HTMLElement; go(): void } {
+  const fill = h('span', { class: 'club-bar-fill' });
+  const width = (x: number): string => `${Math.min(100, Math.max(x > 0 ? 1 : 0, Math.round(x * 100)))}%`;
+  fill.style.width = width(from);
+  return {
+    el: h('span', { class: 'club-bar', 'aria-hidden': 'true' }, fill),
+    go: () => requestAnimationFrame(() => requestAnimationFrame(() => (fill.style.width = width(share)))),
+  };
 }
 
 /** The money mark in a text becomes the gold coin, as in the other sheets (`DetailSheet`), built from nodes. */
@@ -112,6 +126,9 @@ export function clubPanel(host: ClubHost): ClubPanel {
   let fund: FundView | null = null;
   let fundError: string | null = null;
   let fundBusy = false;
+  /** The gift picked (a quick amount or typed) and the text of the field; nothing is given before "Give". */
+  let gift = 0;
+  let giftText = '';
   let contractGoal: ContractGoal = 'clean';
   let contractStake = baseConfig.contractStakes[1];
 
@@ -541,23 +558,22 @@ export function clubPanel(host: ClubHost): ClubPanel {
     if (!fund) return [note('Loading the city…')];
     const view = fund;
     const projects = view.projects.map((p) => {
-      const skin = Fund.skinOf(p.id);
-      const state = p.done ? 'Built' : p.active ? 'Being built' : 'Waiting';
-      const fill = h('span', { class: 'club-bar-fill' });
-      fill.style.width = `${Math.round((p.raised / p.goal) * 100)}%`;
-      const thanks = skin ? (career.collection.includes(skin.id) ? `You have the ${S.shop.item(skin.id)} skin.` : `Give ${cash(baseConfig.fundBenefactor)} or more and the ${S.shop.item(skin.id)} skin is yours when it is built.`) : '';
-      return h(
-        'div',
-        { class: 'row' },
+      const waiting = !p.done && !p.active;
+      const progress = bar(p.raised / p.goal);
+      const open = h(
+        'button',
+        { class: `row row-link club-project${waiting ? ' waiting' : ''}`, type: 'button', 'aria-label': `${S.club.projectName(p.id)}, details` },
         h(
           'div',
           { class: 'row-main' },
-          h('div', { class: 'row-title' }, `${S.club.projectName(p.id)} · ${state}`),
-          h('span', { class: 'club-bar', 'aria-hidden': 'true' }, fill),
-          h('div', { class: 'row-sub' }, `${cash(p.raised)} of ${cash(p.goal)}${p.mine > 0 ? ` · you gave ${cash(p.mine)}` : ''}`),
-          h('div', { class: 'row-sub' }, thanks),
+          h('div', { class: 'row-title' }, `${S.club.projectName(p.id)} · ${projectState(p)}`),
+          progress.el,
+          h('div', { class: 'row-sub' }, waiting ? `Goal ${cash(p.goal)}` : `${cash(p.raised)} of ${cash(p.goal)}${p.mine > 0 ? ` · you gave ${cash(p.mine)}` : ''}`),
         ),
+        icon(ICONS.chevronRight),
       );
+      open.addEventListener('click', () => projectSheet(view, p));
+      return open;
     });
     const out: HTMLElement[] = [
       note('Everyone builds one city. Gifts go to the project being built, from all players together; money given does not come back.'),
@@ -581,20 +597,38 @@ export function clubPanel(host: ClubHost): ClubPanel {
       out.push(note('Everything is built. Thank you.'));
     } else {
       const offers = Fund.offers(career, view);
-      const gifts = GIFTS.filter((g) => g >= view.minGift && g <= view.maxGift).map((amount) => {
-        const button = h('button', { class: 'btn', type: 'button', disabled: !offers.includes(amount) || fundBusy }, S.casino.stakeShort(amount));
-        button.addEventListener('click', () => void give(amount));
-        return button;
-      });
       const most = Math.min(view.maxGift, career.money);
-      const input = h('input', { class: 'text-input', type: 'number', inputmode: 'numeric', min: String(view.minGift), max: String(most), step: '1', placeholder: `Your own amount, ${cash(view.minGift)} or more`, 'aria-label': 'Your own gift' });
-      const custom = h('button', { class: 'btn primary', type: 'button', disabled: true }, 'Give');
-      input.addEventListener('input', () => {
-        const value = Number(input.value);
-        custom.disabled = fundBusy || !Number.isInteger(value) || value < view.minGift || value > most;
+      const input = h('input', { class: 'text-input', type: 'number', inputmode: 'numeric', min: String(view.minGift), max: String(most), step: '1', placeholder: 'Your own amount', 'aria-label': 'Your own amount' });
+      input.value = giftText;
+      const send = h('button', { class: 'btn primary block', type: 'button' }, 'Give');
+      const quick = GIFTS.filter((g) => g >= view.minGift && g <= view.maxGift).map((amount) => {
+        const button = h('button', { class: 'btn', type: 'button', disabled: !offers.includes(amount) || fundBusy }, S.casino.stakeShort(amount));
+        button.addEventListener('click', () => {
+          gift = amount;
+          giftText = input.value = '';
+          pick();
+        });
+        return { amount, button };
       });
-      custom.addEventListener('click', () => void give(Number(input.value)));
-      out.push(label('Give'), h('div', { class: 'club-gifts' }, ...gifts), h('div', { class: 'join-row' }, input, custom));
+      const pick = (): void => {
+        for (const { amount, button } of quick) {
+          const on = giftText === '' && gift === amount;
+          button.classList.toggle('primary', on);
+          button.setAttribute('aria-pressed', String(on));
+        }
+        const ready = Number.isInteger(gift) && gift >= view.minGift && gift <= most;
+        send.disabled = fundBusy || !ready;
+        send.textContent = ready ? `Give ${cash(gift)}` : 'Give';
+        withCoins(send);
+      };
+      input.addEventListener('input', () => {
+        giftText = input.value;
+        gift = giftText === '' ? 0 : Number(giftText);
+        pick();
+      });
+      send.addEventListener('click', () => void give(gift));
+      pick();
+      out.push(label('Give'), h('div', { class: 'club-gifts' }, ...quick.map((q) => q.button)), input, send);
     }
     if (view.top.length > 0) out.push(label('Most generous'), h('div', { class: 'list' }, ...view.top.map((t, i) => row(`${i + 1}. ${t.name}`, cash(t.amount)))));
     return out;
@@ -604,18 +638,96 @@ export function clubPanel(host: ClubHost): ClubPanel {
     if (fundBusy) return;
     fundBusy = true;
     show();
+    const before = fund;
     try {
       const answer = await giveToFund(amount);
       Fund.gave(career, answer.accepted);
       fund = answer;
+      gift = 0;
+      giftText = '';
       host.changed();
-      host.notice(`GIVEN · ${cash(answer.accepted)} to the City Fund`);
       claim(answer);
+      if (before && !closed) thanks(before, answer);
     } catch (error) {
       fundError = describeError(error);
     }
     fundBusy = false;
     if (!closed) show();
+  }
+
+  const projectState = (p: FundProject): string => (p.done ? 'Built' : p.active ? 'Being built' : 'Waiting');
+  const stat = (name: string, value: string): HTMLElement => h('div', { class: 'row' }, h('div', { class: 'row-main' }, h('div', { class: 'row-title' }, name)), h('div', { class: 'row-value' }, value));
+
+  /** What a project is: its picture (the skin it pays), what it will be, how far it is and what a gift earns. */
+  function projectSheet(view: FundView, p: FundProject): void {
+    const skin = Fund.skinOf(p.id);
+    const before = view.projects[view.projects.indexOf(p) - 1];
+    const progress = bar(p.raised / p.goal);
+    const rows = [stat('Status', projectState(p)), stat('Raised', cash(p.raised)), stat('Goal', cash(p.goal)), stat('You gave', cash(p.mine))];
+    const body = h(
+      'div',
+      { class: 'fund-sheet' },
+      skin ? h('div', { class: 'fund-hero' }, picture({ k: 'item', id: skin.id, owned: true }, 112)) : '',
+      h('p', { class: 'detail-text' }, S.club.projectText(p.id)),
+      progress.el,
+      h('div', { class: 'list' }, ...rows),
+      skin
+        ? note(
+            career.collection.includes(skin.id)
+              ? `You have the ${S.shop.item(skin.id)} skin.`
+              : `Give ${cash(baseConfig.fundBenefactor)} or more to this project and the ${S.shop.item(skin.id)} skin is yours when it is built.`,
+          )
+        : '',
+      !p.done && !p.active && before ? note(`It is started when the ${S.club.projectName(before.id)} is built.`) : '',
+    );
+    withCoins(body);
+    openSheet(host.layer, S.club.projectName(p.id), body);
+  }
+
+  /** After a gift: the amount, a bar for every project it went into and how close the skin is. */
+  function thanks(before: FundView, after: FundView & { accepted: number }): void {
+    const benefactor = baseConfig.fundBenefactor;
+    const glides: { go(): void }[] = [];
+    const projects = after.projects.flatMap((p) => {
+      const was = before.projects.find((x) => x.id === p.id);
+      if (!was || p.raised <= was.raised) return [];
+      const skin = Fund.skinOf(p.id);
+      const raised = bar(p.raised / p.goal, was.raised / p.goal);
+      const mine = skin ? bar(Math.min(1, p.mine / benefactor), Math.min(1, was.mine / benefactor)) : null;
+      glides.push(raised, ...(mine ? [mine] : []));
+      const skinLine = !skin
+        ? ''
+        : career.collection.includes(skin.id)
+          ? `The ${S.shop.item(skin.id)} skin is yours.`
+          : p.mine >= benefactor
+            ? `The ${S.shop.item(skin.id)} skin is yours when it is built.`
+            : `Your gifts: ${cash(p.mine)} of ${cash(benefactor)} for the ${S.shop.item(skin.id)} skin`;
+      return [
+        h(
+          'div',
+          { class: 'fund-thanks-project' },
+          h('div', { class: 'row-title' }, `${S.club.projectName(p.id)}${p.done ? ' · Built!' : ''}`),
+          raised.el,
+          h('div', { class: 'row-sub' }, `${cash(p.raised)} of ${cash(p.goal)}`),
+          ...(mine ? [mine.el, h('div', { class: 'row-sub' }, skinLine)] : []),
+        ),
+      ];
+    });
+    const done = h('button', { class: 'btn primary block', type: 'button' }, 'Done');
+    const body = h(
+      'div',
+      { class: 'fund-thanks' },
+      h('div', { class: 'fund-thanks-badge', 'aria-hidden': 'true' }, icon(ICONS.check)),
+      h('p', { class: 'fund-thanks-label' }, 'Thank you for giving'),
+      h('div', { class: 'fund-thanks-amount' }, cash(after.accepted)),
+      ...projects,
+      done,
+    );
+    withCoins(body);
+    const close = openSheet(host.layer, 'City Fund', body);
+    done.addEventListener('click', () => close());
+    host.celebrate();
+    for (const g of glides) g.go();
   }
 
   // MARK: Contracts
