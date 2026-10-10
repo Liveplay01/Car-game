@@ -586,7 +586,15 @@ export function clubPanel(host: ClubHost): ClubPanel {
         button.addEventListener('click', () => void give(amount));
         return button;
       });
-      out.push(label('Give'), h('div', { class: 'club-gifts' }, ...gifts));
+      const most = Math.min(view.maxGift, career.money);
+      const input = h('input', { class: 'text-input', type: 'number', inputmode: 'numeric', min: String(view.minGift), max: String(most), step: '1', placeholder: `Your own amount, ${cash(view.minGift)} or more`, 'aria-label': 'Your own gift' });
+      const custom = h('button', { class: 'btn primary', type: 'button', disabled: true }, 'Give');
+      input.addEventListener('input', () => {
+        const value = Number(input.value);
+        custom.disabled = fundBusy || !Number.isInteger(value) || value < view.minGift || value > most;
+      });
+      custom.addEventListener('click', () => void give(Number(input.value)));
+      out.push(label('Give'), h('div', { class: 'club-gifts' }, ...gifts), h('div', { class: 'join-row' }, input, custom));
     }
     if (view.top.length > 0) out.push(label('Most generous'), h('div', { class: 'list' }, ...view.top.map((t, i) => row(`${i + 1}. ${t.name}`, cash(t.amount)))));
     return out;

@@ -2775,7 +2775,13 @@ export class GameSession {
   get heatPill(): string | null {
     const career = this.save.career;
     if (this.screen.k !== 'ready' || this.special || this.versusSelected || this.playingDaily || this.playingMode !== 'shift' || !(this.tutorial?.isOver ?? true)) return null;
-    return Careers.maxHeat(career, this.config) > 0 || career.heat > 0 ? S.heat.button(Careers.activeHeat(career, this.config)) : null;
+    const max = Careers.maxHeat(career, this.config);
+    return max > 0 || career.heat > 0 ? S.heat.button(Careers.activeHeat(career, this.config), max) : null;
+  }
+
+  /** A Heat is switched on for the waiting career shift (the pill lights up). */
+  get heatOn(): boolean {
+    return Careers.activeHeat(this.save.career, this.config) > 0;
   }
 
   /** On the Social tab the notice is the DOM page's pill (`ui/socialPage.ts`): the drawn one would sit under the page. */

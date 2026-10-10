@@ -893,6 +893,8 @@ a.row-link {
     transform 200ms var(--ease-out),
     height 240ms var(--ease-drawer),
     margin-bottom 240ms var(--ease-drawer),
+    background-color 220ms var(--ease-out),
+    color 220ms var(--ease-out),
     display 240ms allow-discrete;
 }
 
@@ -2064,6 +2066,45 @@ a.row-link {
 
 .run-btn:disabled {
   opacity: 0.5;
+}
+
+/* Heat on: the pill takes the flame's colour; switching it on flares the flame and sends one ring out. */
+.run-bar .run-btn.heat-on {
+  background: #ff6a1f;
+  color: var(--accent-ink);
+  animation: heat-ring 620ms var(--ease-out);
+}
+
+.run-btn.heat-on svg {
+  animation: heat-flare 520ms var(--ease-out);
+}
+
+@keyframes heat-ring {
+  from {
+    box-shadow: 0 0 0 0 rgba(255, 106, 31, 0.7);
+  }
+  to {
+    box-shadow: 0 0 0 16px rgba(255, 106, 31, 0);
+  }
+}
+
+@keyframes heat-flare {
+  0% {
+    transform: scale(0.6) rotate(-14deg);
+  }
+  45% {
+    transform: scale(1.45) rotate(6deg);
+  }
+  100% {
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .run-bar .run-btn.heat-on,
+  .run-btn.heat-on svg {
+    animation: none;
+  }
 }
 
 /* Out of the match: reactions and one lorry, above the Leave button, in thumb reach. */

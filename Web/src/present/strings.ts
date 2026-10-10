@@ -171,7 +171,7 @@ export const S = {
           t.weather !== 'clear' ? S.weather(t.weather) : null,
           t.darkness === 'blackout' ? S.blackout : t.darkness === 'night' ? S.night : null,
           t.legendary ? S.legendary.name(t.legendary) : null,
-          t.rule === 'flawless' ? 'no crash, no cut-off' : null,
+          t.rule === 'flawless' ? 'no crash' : null,
           t.goal.k === 'boss' ? 'take down the boss' : null,
         ];
         return parts.filter((p): p is string => p !== null).join(' · ');
@@ -185,7 +185,7 @@ export const S = {
         case 'deadCentre':
           return `${t.goal.k === 'perfects' ? t.goal.n : 0} Perfect Inputs in ${t.cars} cars`;
         case 'cleanSheet':
-          return `${t.cars} cars, no crash and no cut-off`;
+          return `${t.cars} cars, no crash`;
         case 'blackout':
           return `${t.cars} cars at night, the street lamps out`;
         case 'stormWatch':
@@ -265,7 +265,7 @@ export const S = {
         dragnet: 'Criminals twice as often',
         heavyLoad: 'Lorries everywhere, half of them gas',
         darkStorm: 'A storm in a blackout',
-        zeroTolerance: 'One crash or cut-off ends it',
+        zeroTolerance: 'One crash ends it',
       })[r],
     reward: 'REWARD',
     chest: 'Premium',
@@ -281,7 +281,7 @@ export const S = {
     goal(t: Trial): string {
       switch (t.elite) {
         case 'flawless':
-          return `Level ${t.level} · ${t.cars} cars, no crash and no cut-off`;
+          return `Level ${t.level} · ${t.cars} cars, no crash`;
         case 'precision':
           return `Level ${t.level} · ${t.goal.k === 'perfects' ? t.goal.n : 0} Perfect Inputs in ${t.cars} cars`;
         case 'storm':
@@ -630,7 +630,7 @@ export const S = {
         t.weather !== 'clear' ? S.weather(t.weather) : null,
         t.darkness === 'blackout' ? S.blackout : t.darkness === 'night' ? S.night : null,
         t.legendary ? S.legendary.name(t.legendary) : null,
-        t.rule === 'flawless' ? 'no crash, no cut-off' : null,
+        t.rule === 'flawless' ? 'no crash' : null,
         t.goal.k === 'perfects' ? `${t.goal.n} Perfect Inputs` : null,
         t.goal.k === 'boss' ? 'take down the boss' : null,
       ];
@@ -1137,7 +1137,7 @@ export const S = {
     goalName: (goal: ContractGoal): string => ({ clean: 'Clean sheet', sharp: 'Sharp', flawless: 'Flawless' })[goal],
     goalText(goal: ContractGoal, cars: number): string {
       const need = Contracts.need(goal, cars);
-      const base = 'Complete the next career shift with a Perfect Run: no crash, no police crash, no cut-off';
+      const base = 'Complete the next career shift with a Perfect Run: no crash, no police crash';
       if (goal === 'sharp') return `${base}, and ${need.perfects} Perfect merges.`;
       if (goal === 'flawless') return `${base}, and a chain of ${need.chain} merges.`;
       return `${base}.`;
@@ -1482,7 +1482,7 @@ export const S = {
     milestone: (days: number, item: string): string => `${days} DAYS IN A ROW · ${S.shop.item(item)} unlocked`,
     /** Tomorrow's gift (`Careers.promiseGift`): counted down on the Game tab. */
     giftIn: (hours: number): string => (hours >= 1 ? `Free chest tomorrow · in ${Math.ceil(hours)} h` : `Free chest tomorrow · in ${Math.max(1, Math.ceil(hours * 60))} min`),
-    perfectRunFirst: (pay: number): string => `PERFECT RUN · no crash or cut-off · +${pay} % pay`,
+    perfectRunFirst: (pay: number): string => `PERFECT RUN · no crash · +${pay} % pay`,
     /** The pill over the Daily Shift: the streak, its bonus, and when it breaks. */
     streakPill(streak: number, bonus: number | null, endsIn: number | null, freezes = 0): string {
       if (streak <= 0) return S.daily.streakLine(0);
@@ -1506,7 +1506,7 @@ export const S = {
         case 'bigCombo':
           return 'A combo of 15';
         case 'perfectRun':
-          return 'A Perfect Run: no crash, no cut-off';
+          return 'A Perfect Run: no crash';
         case 'oneTakedown':
           return 'Take down a criminal';
         case 'cleanMerges':
@@ -1677,7 +1677,7 @@ export const S = {
         shield: 'Your own car may crash once more per shift. The ring flashes green with little plus signs, the combo breaks and the shift goes on; each green plus in the top bar is one crash still forgiven. Not in Unlimited.',
         tightFitTip: 'Every Tight Fit pays a tip on the spot, a share of the shift pay. Not in Unlimited.',
         dashcam: 'The camera sees how close you cut it: every Near Miss pays a tip on the spot, a share of the shift pay. Not in Unlimited.',
-        chainSaver: 'While you are in the flow, a plain merge a shift leaves your chain alone instead of ending it. A cut-off still does. Not in Unlimited.',
+        chainSaver: 'While you are in the flow, a plain merge a shift leaves your chain alone instead of ending it. Not in Unlimited.',
         winterTyres: 'Rain, snow and hail take less grip and braking from the road: crashes slide shorter and traffic stops better.',
         fogLamps: 'Drivers lose less time to bad weather and see hazards sooner, and fog and dust lie thinner on the screen.',
       }[u];
@@ -1734,9 +1734,9 @@ export const S = {
   heat: {
     row: (heat: number): string => (heat > 0 ? `Heat ${heat}` : 'Heat'),
     /** The Game tab's pill: tap for the next step. */
-    button: (heat: number): string => (heat > 0 ? `Heat ${heat}` : 'Heat off'),
+    button: (heat: number, max: number): string => (heat === 0 ? 'Heat off' : max > 1 ? `Heat ${heat}` : 'Heat on'),
     line: (heat: number, max: number): string => (heat > 0 ? `Harder traffic · +${Math.round(heat * baseConfig.heatPay * 100)} % pay · +${heat * baseConfig.eliteXpHeat} Elite XP a shift` : max > 0 ? 'Off · harder traffic for more pay and Elite XP' : 'Clear a shift to open the next Heat'),
-    link: (heat: number, max: number): string => `${heat}/${max} · change ›`,
+    link: (heat: number, max: number): string => `${max > 1 ? `${heat}/${max}` : heat > 0 ? 'On' : 'Off'} · change ›`,
     cleared: (heat: number, max: number): string => (heat < max ? `HEAT ${heat} CLEARED · Heat ${heat + 1} is open` : `HEAT ${heat} CLEARED`),
     /** The waiting screen's pill: Heat and Tailwind together; null when neither is on. */
     pill: (heat: number, tailwind: number | null): string | null =>

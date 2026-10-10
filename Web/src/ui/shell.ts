@@ -545,6 +545,7 @@ export class Shell {
     const heat = s.heatPill;
     this.heatBtn.classList.toggle('show', onGame && heat !== null && !match);
     if (heat !== null) this.heatLabel.textContent = heat;
+    this.heatBtn.classList.toggle('heat-on', s.heatOn);
     this.photoBtn.classList.toggle('show', screen.k === 'result' && !match && s.showsChrome);
     const chests = match ? 0 : s.chestOffer;
     this.chestBtn.classList.toggle('show', chests > 0);
