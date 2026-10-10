@@ -56,12 +56,17 @@ export const PATCH_NOTES: PatchNote[] = [
     title: 'A Social tab, the Club for big balances, five new upgrades and skins with their own car shapes',
     impact: 'major',
     summary: [
-      'Give the City Fund an amount of your own. The Heat button lights up when it is on.',
+      'Give the City Fund any amount, up to 20,000,000 a day. The Heat button lights up when on.',
       'Tidier menus: a Social tab, five Progress sections, tabbed Settings and a Heat button.',
       'For big balances: the Club (Auction, City Fund, Contracts), Diamond Chests and High Roller stakes.',
       'Five new upgrades: Tight Fit Tip, Dashcam, Chain Saver, Winter Tyres and Fog Lamps.',
     ],
     items: [
+      'The City Fund has a daily limit: one player can give 20,000,000 in 24 hours. A gift that crosses it is cut to fit, and after that the Fund asks you to come back tomorrow, so nobody can build a project alone.',
+      'Fixed: turning on Cloud sync could show "Your cloud save has other progress" after your first change, although you only have one device.',
+      'Fixed: the game open in two tabs or windows at once let the older one overwrite the other one’s progress. A second tab now waits ("The roundabout is open elsewhere") and starts by itself once the other one is closed.',
+      'Fixed: a changed sound, icon or the offline start page no longer stays on the old version for one more update.',
+      'Fixed: the leaderboards stay quick with very many players, and old Daily lists are cleaned up.',
       'The City Fund takes an amount of your own: type it under the quick gifts, from 10,000 up to what you have (5,000,000 at most).',
       'The Heat button flares and turns orange when a Heat is switched on. While Heat 1 is the only one open it reads "Heat on" and "Heat off" instead of "Heat 1".',
       'Fixed: Perfect Runs, contracts and flawless trials no longer ask for "no cut-off". Cut-offs never happened in the game, so the only rule left is the one that counted: no crash.',

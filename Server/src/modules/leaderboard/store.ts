@@ -75,9 +75,17 @@ export class ScoreStore {
     return Number(result.changes) > 0;
   }
 
+  /** The best `limit` scores, read in index order and cut off: a big board costs no more than a small one. The rank is the line. */
   top(board: string, period: string, limit: number): ListedEntry[] {
-    const rows = this.db.prepare(`SELECT * FROM (${RANKED}) ORDER BY rank LIMIT ?`).all(board, period, limit) as unknown as EntryRow[];
-    return rows.map(listed);
+    const rows = this.db
+      .prepare(
+        `SELECT s.player_id, p.name, p.title, s.score, s.meta, s.achieved_at
+         FROM scores s JOIN players p ON p.id = s.player_id
+         WHERE s.board = ? AND s.period = ? AND p.banned = 0
+         ORDER BY s.score DESC, s.achieved_at ASC, s.player_id ASC LIMIT ?`,
+      )
+      .all(board, period, limit) as unknown as Omit<EntryRow, 'rank'>[];
+    return rows.map((row, i) => listed({ ...row, rank: i + 1 }));
   }
 
   /** The same ranking among just these players (a friends list); ranks count only them. */
@@ -92,6 +100,11 @@ export class ScoreStore {
   of(board: string, period: string, playerId: string): Entry | null {
     const row = this.db.prepare(`SELECT * FROM (${RANKED}) WHERE player_id = ?`).get(board, period, playerId) as EntryRow | undefined;
     return row ? { rank: row.rank, score: row.score, meta: parseMeta(row.meta), achievedAt: row.achieved_at } : null;
+  }
+
+  /** Daily lists before `fromDay` are never asked for again (only today and a day either side are): they go. */
+  purgeDaily(fromDay: number): number {
+    return Number(this.db.prepare("DELETE FROM scores WHERE board = 'daily' AND CAST(substr(period, 5) AS INTEGER) < ?").run(fromDay).changes);
   }
 
   remove(board: string, playerId: string): boolean {

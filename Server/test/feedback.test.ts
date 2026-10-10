@@ -90,3 +90,22 @@ test('feedback: one bug report and one idea a day, a honeypot, and a bug hunter 
   assert.equal(page.status, 200);
   assert.match(page.text, /Build with us · Inbox/);
 });
+
+test('feedback: the webhook post never pings anyone, whatever the text says', async () => {
+  const posted: { content: string; allowed_mentions: unknown }[] = [];
+  const realFetch = globalThis.fetch;
+  globalThis.fetch = (async (_url: unknown, init?: RequestInit) => {
+    posted.push(JSON.parse(String(init?.body)));
+    return new Response(null, { status: 204 });
+  }) as typeof fetch;
+  try {
+    const app = createApp({ db: openDb(':memory:'), config: readConfig({ DB_PATH: ':memory:', TRUST_PROXY: 'true', FEEDBACK_WEBHOOK_URL: 'https://hooks.example.org/x' }), now: () => 1_700_000_000_000 });
+    const sent = await app.request('/v1/feedback', { method: 'POST', headers: { 'content-type': 'application/json', 'x-forwarded-for': '10.0.0.1' }, body: JSON.stringify({ kind: 'idea', text: '@everyone wake up, this is an idea' }) });
+    assert.equal(sent.status, 201);
+    assert.equal(posted.length, 1);
+    assert.match(posted[0]!.content, /@everyone/);
+    assert.deepEqual(posted[0]!.allowed_mentions, { parse: [] });
+  } finally {
+    globalThis.fetch = realFetch;
+  }
+});

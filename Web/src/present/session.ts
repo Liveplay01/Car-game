@@ -54,12 +54,12 @@ import { type SpecialRun, settleSpecial, runCard, advanceRush, newRush } from '.
 import { markPassed, markReward } from '../core/tiers';
 import { forHeat, heatPay } from '../core/heat';
 import { conditionChips, ConditionChips, streakEndsIn, addNotice, noticeHeight, noticePresence, type NoticePlace } from './readyScreen';
-import { Briefings, briefOf, type Brief } from './briefing';
+import { Briefings, type Brief } from './briefing';
 
 export type { SpecialRun } from './specialRuns';
 import { ProgressPage, ProgressState, type ProgressTarget } from './progress';
-import { MuseumPage } from './museum';
-import { sightings, museumEntry, museumId, conditionsOf, type MuseumEntry } from '../core/museum';
+import { MuseumFlow, type MuseumHost } from './museumFlow';
+import { museumEntry, museumId } from '../core/museum';
 import { UpgradePage, UpgradeState } from './upgrades';
 import { StreetBuilderPage, BuilderState } from './builder';
 import { Feedback, Music, Sky, type MusicMix, type WeatherSound, type SoundID, type HapticID } from './feedback';
@@ -219,8 +219,6 @@ export class GameSession {
   progressPage = new ProgressState();
   /** The Social tab's segment; its content is the shell's DOM (`ui/socialPage.ts`), which reads it every frame. */
   socialPage = new SocialState();
-  /** Museum entries first met during this shift, for the line on its result. */
-  private museumFound: string[] = [];
   builderPage = new BuilderState();
   buildPage: Tab = 'upgrades';
   private buildSlide: { from: Tab; age: number } | null = null;
@@ -262,10 +260,8 @@ export class GameSession {
   private readonly tips = new TipQueue();
   /** Something new on the road takes the top card for a while, with what to do (`Briefings`). */
   private readonly briefings = new Briefings();
-  /** Entries whose task cost a shift (a criminal got away): explained once more next time. */
-  private readonly relearn = new Set<string>();
-  /** Entries met for the first time whose briefing never got its turn (the shift ended first). */
-  private readonly owed = new Set<string>();
+  /** What the Museum notes and explains on the road (`museumFlow.ts`), through its host. */
+  private readonly museum = new MuseumFlow(this.museumHost());
   private transitions = new TransitionTracker();
   playingLevel = 1;
   dailySelected = false;
@@ -917,7 +913,7 @@ export class GameSession {
     this.sinceComboTier = Infinity;
     this.sinceMark = Infinity;
     this.topMark = 0;
-    for (const id of this.briefings.clear()) this.owed.add(id);
+    this.museum.owe(this.briefings.clear());
     this.screen = next;
     this.onChrome?.();
   }
@@ -1158,6 +1154,28 @@ export class GameSession {
     };
   }
 
+  private museumHost(): MuseumHost {
+    const session = this;
+    return {
+      get save() {
+        return session.save;
+      },
+      get world() {
+        return session.world;
+      },
+      get tutorial() {
+        return session.tutorial;
+      },
+      get briefings() {
+        return session.briefings;
+      },
+      get briefs() {
+        return session.briefs;
+      },
+      persist: () => this.persist(),
+    };
+  }
+
   private pageHost(): PageHost {
     const session = this;
     return {
@@ -1265,7 +1283,7 @@ export class GameSession {
       }
       if (steps >= 60) this.accumulator = 0;
       this.react(events);
-      this.noteSightings();
+      this.museum.noteSightings();
       this.briefings.advance(simDelta, this.world);
       this.age(simDelta);
       this.lamps.update(this.world, simDelta);
@@ -1829,61 +1847,9 @@ export class GameSession {
     this.progressPage.reveal(r, window, this.progressScrollRange);
   }
 
-  /**
-   * Special vehicles and bosses on the road for the first time go on show in the Museum, and the
-   * top card says what they are and what to do (`brief`). Conditions have the ready screen and
-   * their briefing as the shift starts (`briefConditions`).
-   */
-  private noteSightings(): void {
-    // The tutorial teaches the first shift itself; what it meets there is met again right after.
-    if (this.tutorial && !this.tutorial.isOver) return;
-    // Chill is not part of the career: what rolls past there is not met yet.
-    if (this.world.config.chill) return;
-    const seen = sightings(this.world);
-    // A briefing owed from a shift that ended too soon comes when its vehicle is back.
-    if (this.owed.size > 0) for (const id of seen) if (this.owed.has(id)) this.brief(museumEntry(id));
-    const found = Careers.discover(this.save.career, seen);
-    if (found.length === 0) return;
-    this.museumFound.push(...found);
-    this.persist();
-    for (const e of found.map(museumEntry)) if (e && (e.k === 'special' || e.k === 'boss')) this.brief(e, true);
-  }
-
   /** Whether briefings belong on the top card now: a shift of your own, past the tutorial. */
   private get briefs(): boolean {
     return this.screen.k === 'playing' && !this.versusSelected && this.playingMode !== 'mayhem' && this.playingMode !== 'chill' && (this.tutorial?.isOver ?? true);
-  }
-
-  /**
-   * Explains `e` on the top card if it is new to this player or cost the last shift. `found`:
-   * the Museum has just taken it in, so it is new for sure.
-   */
-  private brief(e: MuseumEntry | null, found = false): void {
-    if (!e) return;
-    const id = museumId(e);
-    // Met where there is no top card to explain it (Mayhem): owed for a shift that has one.
-    if (!this.briefs) {
-      if (found) this.owed.add(id);
-      return;
-    }
-    const again = this.relearn.has(id);
-    const owed = this.owed.has(id);
-    if (!found && !again && !owed && this.save.career.museumSeen.includes(id)) return;
-    this.relearn.delete(id);
-    this.owed.delete(id);
-    this.briefings.add(briefOf(e, again && !found && !owed));
-  }
-
-  /** The shift's conditions new to this player: each on the top card for a few seconds as it starts. */
-  private briefConditions(): void {
-    for (const e of conditionsOf(this.world.config)) this.brief(e);
-  }
-
-  /** The Museum's new entries of the shift, as a line for the result; empties the list. */
-  private takeMuseumNotice(): string | null {
-    const names = this.museumFound.map((id) => museumEntry(id)).flatMap((e) => (e ? [MuseumPage.name(e)] : []));
-    this.museumFound = [];
-    return names.length > 0 ? S.museum.discovered(names) : null;
   }
 
   /** A tap on a condition's icon: its Museum sheet over the Game tab; a second tap closes it. */
@@ -2186,7 +2152,7 @@ export class GameSession {
           this.rim.signal('wave', 'lightBlue');
           break;
         case 'criminalWarning':
-          this.brief(e.boss ? { k: 'boss', kind: world.config.bossKind } : { k: 'special', kind: 'pickup' });
+          this.museum.brief(e.boss ? { k: 'boss', kind: world.config.bossKind } : { k: 'special', kind: 'pickup' });
           this.rim.signal('sweep', e.boss ? 'coin' : 'vehicleCriminal');
           if (e.scout && !this.save.hints.includes('scout')) {
             this.save.hints.push('scout');
@@ -2197,11 +2163,11 @@ export class GameSession {
           this.rim.signal('wave', 'coin');
           break;
         case 'ambulanceWarning':
-          this.brief({ k: 'special', kind: e.fire ? 'fireTruck' : 'ambulance' });
+          this.museum.brief({ k: 'special', kind: e.fire ? 'fireTruck' : 'ambulance' });
           this.rim.signal('sweep', 'lightBlue');
           break;
         case 'oversizeWarning':
-          this.brief({ k: 'special', kind: 'oversize' });
+          this.museum.brief({ k: 'special', kind: 'oversize' });
           this.rim.signal('sweep', 'vehicleOversize');
           break;
         case 'oversizeSpoilt':
@@ -2211,7 +2177,7 @@ export class GameSession {
           this.rim.signal('wave', 'vehicleOversize');
           break;
         case 'weddingWarning':
-          this.brief({ k: 'special', kind: 'wedding' });
+          this.museum.brief({ k: 'special', kind: 'wedding' });
           this.rim.signal('sweep', 'vehicleWedding');
           break;
         case 'weddingSpoilt':
@@ -2221,14 +2187,14 @@ export class GameSession {
           this.rim.signal('wave', 'vehicleWedding');
           break;
         case 'raceWarning':
-          this.brief({ k: 'special', kind: 'racer' });
+          this.museum.brief({ k: 'special', kind: 'racer' });
           this.rim.signal('sweep', 'vehicleRacer');
           break;
         case 'racerStopped':
           this.rim.signal('wave', 'vehicleRacer');
           break;
         case 'learnerWarning':
-          this.brief({ k: 'special', kind: 'learner' });
+          this.museum.brief({ k: 'special', kind: 'learner' });
           this.rim.signal('sweep', 'learnerSign');
           break;
         case 'learnerSpoilt':
@@ -2265,7 +2231,7 @@ export class GameSession {
           this.rim.signal('miss', 'vehicleCargo');
           break;
         case 'transporterWarning':
-          this.brief({ k: 'special', kind: 'transporter' });
+          this.museum.brief({ k: 'special', kind: 'transporter' });
           this.rim.signal('sweep', e.jackpot ? 'coin' : 'vehicleCargo');
           break;
         case 'transporterPaid':
@@ -2283,17 +2249,17 @@ export class GameSession {
           this.addPopup({ k: 'modulePulse', color: 'hazard' }, towYard(e.slot, world.layout, world.config));
           break;
         case 'militaryWarning':
-          this.brief({ k: 'special', kind: 'military' });
+          this.museum.brief({ k: 'special', kind: 'military' });
           this.rim.signal('sweep', 'lightRed');
           break;
         case 'criminalEscaped': {
           // It cost the shift: the next one explains it again.
           const boss = world.vehicle(e.vehicle)?.role === 'boss';
-          if (this.briefs) this.relearn.add(museumId(boss ? { k: 'boss', kind: world.config.bossKind } : { k: 'special', kind: 'pickup' }));
+          if (this.briefs) this.museum.relearn(museumId(boss ? { k: 'boss', kind: world.config.bossKind } : { k: 'special', kind: 'pickup' }));
           break;
         }
         case 'explosion':
-          if (e.kind === 'bomb' && this.briefs) this.relearn.add(museumId({ k: 'special', kind: 'military' }));
+          if (e.kind === 'bomb' && this.briefs) this.museum.relearn(museumId({ k: 'special', kind: 'military' }));
           this.explosions.spawn(e, this.reduceMotion);
           this.scars.add(e, this.sceneTime);
           this.effects.ignite([...e.wrecked, e.source], 1.5);
@@ -2346,7 +2312,7 @@ export class GameSession {
     this.sinceMoney = Infinity;
     this.dailySplash = null;
     this.play(['go'], []);
-    this.briefConditions();
+    this.museum.briefConditions();
     this.onChrome?.();
     if (!this.playingDaily) return;
     const career = this.save.career;
@@ -2480,7 +2446,7 @@ export class GameSession {
         : null;
     this.dailySelected = false;
     this.resultBank = booked.bank;
-    const found = this.takeMuseumNotice();
+    const found = this.museum.takeNotice();
     this.notices.announce(...GameSession.budget([...booked.news, ...(found ? [found] : [])]));
     this.tips.add(...booked.tips);
     for (const hint of booked.due) this.onHint?.(hint);

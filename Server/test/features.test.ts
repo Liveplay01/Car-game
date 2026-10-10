@@ -5,6 +5,7 @@ import { normalizeCode, randomCode } from '../src/codes.ts';
 import { readConfig } from '../src/config.ts';
 import { openDb } from '../src/db.ts';
 import { purgeIdleSaves } from '../src/modules/sync/index.ts';
+import { ScoreStore } from '../src/modules/leaderboard/store.ts';
 
 const ADMIN = 'a'.repeat(32);
 
@@ -303,4 +304,25 @@ test('rtc: STUN without a relay, a login with one, and a failing relay does not 
   } finally {
     globalThis.fetch = original;
   }
+});
+
+test('sync: the version the cloud answers on create is the stored one, also when the clock moves on between the two', async () => {
+  let t = 1_700_000_000_000;
+  const app = createApp({ db: openDb(':memory:'), config: readConfig({ DB_PATH: ':memory:' }), now: () => t++ });
+  const send = (method: string, body: unknown, code?: string) =>
+    app.request('/v1/sync', { method, headers: { 'content-type': 'application/json', ...(code ? { authorization: `Bearer ${code}` } : {}) }, body: JSON.stringify(body) });
+  const made = (await (await send('POST', { save: SAVE })).json()) as { code: string; updatedAt: number };
+  const put = await send('PUT', { save: SAVE, baseUpdatedAt: made.updatedAt }, made.code);
+  assert.equal(put.status, 200, 'the first update builds on the version create answered');
+});
+
+test('leaderboard: daily lists older than a day either side of today are deleted, the others stay', async () => {
+  const { call, join, db } = setup();
+  const { token } = await join('Dayly');
+  const day = Math.floor(1_700_000_000_000 / 86_400_000);
+  assert.equal((await call('PUT', '/v1/boards/daily/score', { token, body: { score: 500, day } })).status, 200);
+  const scores = new ScoreStore(db);
+  assert.equal(scores.purgeDaily(day), 0, 'today stays');
+  assert.equal(scores.purgeDaily(day + 1), 1, 'yesterday goes');
+  assert.equal(scores.top('daily', `day:${day}`, 10).length, 0);
 });

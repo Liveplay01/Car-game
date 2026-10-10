@@ -134,8 +134,9 @@ export function syncModule(): ServerModule {
       app.post('/sync', perAddress, creating, big, async (c) => {
         const save = saveText((await bodyOf(c)).save);
         const raw = randomCode(CODE_LENGTH);
-        store.create(raw, save, ctx.now());
-        return c.json({ code: displayCode(raw), updatedAt: ctx.now() }, 201);
+        const now = ctx.now();
+        store.create(raw, save, now);
+        return c.json({ code: displayCode(raw), updatedAt: now }, 201);
       });
 
       app.get('/sync', perAddress, (c) => {

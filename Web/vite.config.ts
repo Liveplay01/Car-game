@@ -79,6 +79,10 @@ self.addEventListener('activate', (event) => {
   );
 });
 
+// This version's cache first: \`caches.match\` alone searches the oldest cache first, and the one before this build is kept, so a file
+// that keeps its name (sounds, icons, the shell) would come from the old version.
+const fromCache = async (request, options) => (await (await caches.open(CACHE)).match(request, options)) || caches.match(request, options);
+
 self.addEventListener('fetch', (event) => {
   const request = event.request;
   if (request.method !== 'GET') return;
@@ -102,13 +106,13 @@ self.addEventListener('fetch', (event) => {
       // A real 404 is the game's "road closed" page; a server that is down (5xx) or no network
       // falls back to the cached game.
       if (first && (first.ok || first.status === 404)) return first;
-      const cached = (shell ? null : await caches.match(request, { ignoreSearch: true })) || (await caches.match('/index.html'));
+      const cached = (shell ? null : await fromCache(request, { ignoreSearch: true })) || (await fromCache('/index.html'));
       return cached || first || network;
     })());
     return;
   }
   event.respondWith(
-    caches.match(request).then((hit) => hit || fetch(request).then((response) => {
+    fromCache(request).then((hit) => hit || fetch(request).then((response) => {
       if (response.ok && (url.pathname.startsWith('/assets/') || url.pathname.startsWith('/audio/'))) {
         const copy = response.clone();
         caches.open(CACHE).then((cache) => cache.put(request, copy));

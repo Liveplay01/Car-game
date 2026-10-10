@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { createApp } from '../src/app.ts';
 import { readConfig } from '../src/config.ts';
 import { openDb } from '../src/db.ts';
-import { MAX_GIFT, MIN_GIFT, PROJECTS } from '../src/modules/fund/index.ts';
+import { DAILY_LIMIT, MAX_GIFT, MIN_GIFT, PROJECTS } from '../src/modules/fund/index.ts';
 
 function setup() {
   const clock = { now: 1_700_000_000_000 };
@@ -77,8 +77,8 @@ test('fund: when everything is built a gift is turned away', async () => {
   const total = PROJECTS.reduce((sum, p) => sum + p.goal, 0);
   let given = 0;
   while (given < total) {
-    // The rate limit counts in the clock's minutes.
-    clock.now += 61_000;
+    // Every gift on a day of its own: the rate limit counts minutes, the daily limit 24 hours.
+    clock.now += 86_400_001;
     const amount = Math.min(MAX_GIFT, total - given);
     // The last gift may be smaller than the minimum: top it up with a minimum gift that is cut to fit.
     const ask = Math.max(MIN_GIFT, amount);
@@ -91,4 +91,20 @@ test('fund: when everything is built a gift is turned away', async () => {
   const late = await call('POST', '/v1/fund/gifts', { token: anna, body: { amount: MIN_GIFT } });
   assert.equal(late.status, 409);
   assert.equal(late.json.error.code, 'fund_complete');
+});
+
+test('fund: one player can give only so much in 24 hours, then it opens again', async () => {
+  const { call, clock, join } = setup();
+  const anna = await join('Anna');
+  for (let i = 0; i < DAILY_LIMIT / MAX_GIFT; i++) {
+    const gift = await call('POST', '/v1/fund/gifts', { token: anna, body: { amount: MAX_GIFT } });
+    assert.equal(gift.json.accepted, MAX_GIFT);
+  }
+  const over = await call('POST', '/v1/fund/gifts', { token: anna, body: { amount: MIN_GIFT } });
+  assert.equal(over.status, 429);
+  assert.equal(over.json.error.code, 'daily_limit');
+  const bob = await join('Bob');
+  assert.equal((await call('POST', '/v1/fund/gifts', { token: bob, body: { amount: MIN_GIFT } })).status, 201, 'the limit is per player');
+  clock.now += 86_400_001;
+  assert.equal((await call('POST', '/v1/fund/gifts', { token: anna, body: { amount: MIN_GIFT } })).status, 201);
 });

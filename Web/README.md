@@ -240,6 +240,8 @@ shifts and not on a page; when both devices played, the player chooses. With a c
 day's login income is booked after that first look. The file export and the
 import of a save file are gone since 01.10.2026.
 
+**One page plays at a time:** each page loads the save once and writes all of it, so two pages (two tabs, or the installed app next to a tab) would overwrite each other. `main.ts` takes a Web Lock (`rat-play`) before the game starts; a second page shows "The roundabout is open elsewhere" on the boot screen and starts by itself when the first one is closed. A browser without locks, or a sandboxed frame that refuses them, plays as before.
+
 **Sealed save (04.10.2026, players edited their money in DevTools):** `writeSave` adds a seal
 (`_seal`, HMAC-SHA-256 over the save's JSON, `storage/seal.ts`) and keeps the same text under
 `carGame.save.v2.bak`; `carGame.sealed.v1` marks that this browser has sealed once. `loadSave`

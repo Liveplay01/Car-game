@@ -28,6 +28,9 @@ export const PROJECTS = [
 
 export const MIN_GIFT = 10_000;
 export const MAX_GIFT = 5_000_000;
+/** The most one player can give in 24 hours: one script must not finish what everyone builds together. */
+export const DAILY_LIMIT = 20_000_000;
+const DAY_MS = 86_400_000;
 const TOP_GIVERS = 10;
 
 export const FUND_MIGRATIONS: readonly string[] = [
@@ -93,10 +96,12 @@ export class FundStore {
       .all(TOP_GIVERS) as unknown as { name: string; amount: number }[];
   }
 
-  /** Puts a gift into the projects being built; returns how much went in (less than asked once everything is built). */
+  /** Puts a gift into the projects being built; returns how much went in (less than asked once everything is built or the day's limit is reached). */
   give(playerId: string, amount: number, now: number): number {
     return transaction(this.db, () => {
-      let left = amount;
+      const { given } = this.db.prepare('SELECT COALESCE(SUM(amount), 0) AS given FROM fund_gifts WHERE player_id = ? AND given_at > ?').get(playerId, now - DAY_MS) as { given: number };
+      const allowed = Math.min(amount, Math.max(0, DAILY_LIMIT - given));
+      let left = allowed;
       for (const project of this.projects(null)) {
         if (left <= 0) break;
         if (project.done) continue;
@@ -104,7 +109,7 @@ export class FundStore {
         this.db.prepare('INSERT INTO fund_gifts (player_id, project, amount, given_at) VALUES (?, ?, ?, ?)').run(playerId, project.id, put, now);
         left -= put;
       }
-      return amount - left;
+      return allowed - left;
     });
   }
 }
@@ -128,6 +133,7 @@ export function fundModule(): ServerModule {
         const amount = integerField(await readJson(c), 'amount', MIN_GIFT, MAX_GIFT);
         if (fund.projects(null).every((p) => p.done)) throw new ApiError(409, 'fund_complete', 'Everything is built. Thank you.');
         const accepted = fund.give(me.id, amount, ctx.now());
+        if (accepted === 0) throw new ApiError(429, 'daily_limit', 'You have given a lot today. Come back tomorrow.');
         return c.json({ accepted, ...view(me.id) }, 201);
       });
       app.route('/fund/gifts', give);

@@ -45,6 +45,8 @@ export const IDLE_DAYS = 120;
 const DAY_MS = 86_400_000;
 const RETRY_MS = 15 * 60_000;
 const MAX_TIMERS = 6;
+/** Messages on their way to push services at the same time. */
+const SENDS_AT_ONCE = 20;
 
 const COMEBACK_TEXT: readonly { title: string; body: string }[] = [
   { title: 'The roundabout is busy', body: 'Cars are queuing at your stop line. One quick shift?' },
@@ -406,11 +408,13 @@ export function pushModule(options: PushOptions = {}): PushModule {
           store.nudge(now);
           store.rewards(now);
           store.clean(now);
-          for (const { sub, timers } of store.due(now)) {
-            if (!awake(now, sub.tz)) continue;
+          const jobs = store.due(now).flatMap(({ sub, timers }) => {
             const capped = now - sub.sent_at < CAP_MS;
             const next = timers.find((t) => t.topic === 'streak' || !capped);
-            if (!next) continue;
+            return next && awake(now, sub.tz) ? [{ sub, next }] : [];
+          });
+          /** Sends one and books what the push service answered: 1 when it went out. */
+          const deliver = async ({ sub, next }: (typeof jobs)[number]): Promise<number> => {
             const payload = JSON.stringify({ title: next.title, body: next.body, tag: next.topic, url: sub.home });
             let status: number;
             try {
@@ -420,13 +424,19 @@ export function pushModule(options: PushOptions = {}): PushModule {
             }
             if (status >= 200 && status < 300) {
               store.sent(sub.id, next.topic, ctx.now());
-              sent++;
-            } else if (status === 404 || status === 410) store.forget(sub.id);
+              return 1;
+            }
+            if (status === 404 || status === 410) store.forget(sub.id);
             else if (status === 0 || status === 429 || status >= 500) store.later(sub.id, next.topic, now + RETRY_MS);
             else {
               console.error(`Push to ${new URL(sub.endpoint).hostname} refused (${status}); dropped`);
               store.drop(sub.id, next.topic);
             }
+            return 0;
+          };
+          // A group at a time: one slow push service does not hold up the rest, and a thousand devices at once do not wait in line.
+          for (let i = 0; i < jobs.length; i += SENDS_AT_ONCE) {
+            for (const went of await Promise.all(jobs.slice(i, i + SENDS_AT_ONCE).map(deliver))) sent += went;
           }
         } finally {
           running = false;

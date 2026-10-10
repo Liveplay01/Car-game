@@ -17,7 +17,10 @@ interface PlayerRow {
 
 const toPlayer = (row: PlayerRow): Player => ({ id: row.id, name: row.name, banned: row.banned === 1, createdAt: row.created_at });
 
-/** Only the hash of a token is stored: a leaked database does not let anyone in. */
+/**
+ * Only the hash of a token is stored here. One exception: a player with Cloud sync has the account (token included) in their
+ * cloud copy (`sync_saves.save`, so a new device becomes the same player). A leaked database lets in those players only.
+ */
 const hashToken = (token: string): string => createHash('sha256').update(token).digest('hex');
 
 export const PLAYER_MIGRATIONS: readonly string[] = [

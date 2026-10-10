@@ -3,7 +3,7 @@ import type { Db } from '../../db.ts';
 import { ApiError } from '../../errors.ts';
 import { integerField, readJson } from '../../http.ts';
 import type { AppEnv, ServerContext, ServerModule } from '../../module.ts';
-import { rateLimit } from '../../rateLimit.ts';
+import { rateLimit, RateLimiter } from '../../rateLimit.ts';
 import { PlayerStore, maybePlayer } from '../players/index.ts';
 import { escapeHtml, origin, page, PAGE_HEADERS, withHeaders } from '../../pages.ts';
 import { PREVIEW_HEIGHT, PREVIEW_WIDTH, renderPreview, type PreviewText } from './preview.ts';
@@ -41,6 +41,8 @@ type Mode = (typeof MODES)[number];
 const CODE_PATTERN = /^[A-Za-z0-9_-]{8,2000}$/;
 /** A link lives a year; then it is gone and the page says so. */
 export const CHALLENGE_LIFETIME_MS = 365 * 86_400_000;
+/** New pictures drawn per minute, all callers together: drawing one blocks the server for about a quarter of a second. */
+const DRAWS_PER_MINUTE = 20;
 /** Drawn pictures kept in memory (each about 100 KB). */
 const PICTURE_CACHE = 64;
 
@@ -124,12 +126,15 @@ export function challengesModule(): ServerModule {
   let store: ChallengeStore;
   /** Drawn pictures, the most recently used last (a Map keeps the order things went in). */
   const pictures = new Map<string, Buffer>();
-  const picture = (ch: Challenge): Buffer => {
+  const draws = new RateLimiter({ max: DRAWS_PER_MINUTE, windowMs: 60_000 });
+  const picture = (ch: Challenge, now: number): Buffer => {
     const key = `${ch.id}:${ch.name ?? ''}`;
     let png = pictures.get(key);
     if (png) {
       pictures.delete(key);
     } else {
+      const wait = draws.take('all', now);
+      if (wait > 0) throw new ApiError(429, 'rate_limited', 'Too many new pictures. Try again in a moment.', { 'Retry-After': String(wait) });
       png = renderPreview(ch);
       if (pictures.size >= PICTURE_CACHE) pictures.delete(pictures.keys().next().value!);
     }
@@ -172,8 +177,10 @@ export function challengesModule(): ServerModule {
         const id = normalizeCode(c.req.param('id'), ID_LENGTH);
         const ch = id ? store.get(id, ctx.now()) : null;
         if (!ch) throw new ApiError(404, 'not_found', 'There is nothing here.');
+        // Drawn first: a refusal must not carry the day-long cache header.
+        const png = picture(ch, ctx.now());
         withHeaders(c, { 'Content-Type': 'image/png', 'Cache-Control': 'public, max-age=86400' });
-        return c.body(new Uint8Array(picture(ch)), 200);
+        return c.body(new Uint8Array(png), 200);
       });
     },
   };

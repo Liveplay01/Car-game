@@ -33,6 +33,28 @@ const bootFailed = (): void => boot?.classList.add('failed');
 window.addEventListener('error', bootFailed);
 window.addEventListener('unhandledrejection', bootFailed);
 
+/** Holds the lock for as long as this page lives; false when another page has it (with `ifAvailable`). A browser that refuses locks here (a sandboxed frame) plays on. */
+const holdPlay = (options: LockOptions): Promise<boolean> =>
+  new Promise((resolve) => {
+    navigator.locks
+      .request('rat-play', options, (lock) => {
+        resolve(lock !== null);
+        return lock ? new Promise<never>(() => undefined) : undefined;
+      })
+      .catch(() => resolve(true));
+  });
+
+// One page plays at a time: each keeps its own copy of the save and writes all of it, so a second page would write over the first one's progress.
+const fail = boot?.querySelector('.boot-fail');
+if (boot && fail && 'locks' in navigator && !(await holdPlay({ ifAvailable: true }))) {
+  const message = fail.innerHTML;
+  fail.innerHTML = '<h1>The roundabout is open elsewhere.</h1><p>Roundabout Timing is already running in another tab or window. Two at once would overwrite each other’s progress. Close the other one and this one starts by itself.</p>';
+  boot.classList.add('failed');
+  await holdPlay({});
+  fail.innerHTML = message;
+  boot.classList.remove('failed');
+}
+
 // `npm run dev` only: `?demo` replaces this address's save with one to look around in (Level 30, two Shield steps,
 // two chests waiting, every vehicle met but no weather or city event yet, so the condition icons show their dot).
 // `?demo=night` has met the weather: no forced rain, and the first shift is still the guaranteed first night.

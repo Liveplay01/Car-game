@@ -9,7 +9,7 @@
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview --host",
     "typecheck": "tsc --noEmit",
-    "test": "node --test-reporter=spec scripts/test.mjs",
+    "test": "node --test-reporter=spec scripts/test.mjs && node --test-reporter=spec scripts/cloud-test.mjs",
     "sim": "node scripts/sim.mjs",
     "sim:versus": "node scripts/versus-sim.mjs",
     "sim:wedding": "node scripts/wedding-sim.mjs",

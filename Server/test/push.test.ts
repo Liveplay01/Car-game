@@ -222,3 +222,31 @@ test('push: a tap opens the game where the device started it (the Play Store app
   assert.equal(await tick(), 1);
   assert.equal(outbox[0]!.message.url, '/?googleplaystore');
 });
+
+test('push: many devices due at once are sent to in groups, and all of them get theirs', async () => {
+  const clock = { now: Date.UTC(2026, 9, 8, 18) };
+  let inFlight = 0;
+  let most = 0;
+  const reached = new Set<string>();
+  const push = pushModule({
+    every: null,
+    send: async (target) => {
+      inFlight++;
+      most = Math.max(most, inFlight);
+      await new Promise((resolve) => setTimeout(resolve, 2));
+      inFlight--;
+      reached.add(target.endpoint);
+      return 201;
+    },
+  });
+  const keys = newVapidKeys();
+  const env = { DB_PATH: ':memory:', TRUST_PROXY: 'true', CORS_ORIGINS: 'https://game.example.org', VAPID_PUBLIC_KEY: keys.publicKey, VAPID_PRIVATE_KEY: keys.privateKey };
+  const app = createApp({ db: openDb(':memory:'), config: readConfig(env), now: () => clock.now, modules: modules().map((m) => (m.name === 'push' ? push : m)) });
+  for (let n = 1; n <= 45; n++) {
+    const put = await app.request('/v1/push', { method: 'PUT', headers: { 'content-type': 'application/json', 'x-forwarded-for': '10.2.0.1' }, body: JSON.stringify({ ...browser(n), tz: 0, timers: [streak(clock.now)] }) });
+    assert.equal(put.status, 200);
+  }
+  assert.equal(await push.tick(), 45);
+  assert.equal(reached.size, 45);
+  assert.ok(most > 1 && most <= 20, `up to 20 at a time, saw ${most}`);
+});

@@ -103,3 +103,17 @@ test('challenges: without a game address there are no short links', async () => 
 test('challenges: the sign shows any name it is given, unknown letters as spaces', () => {
   assert.equal(signText('Léo_9-x'), 'L O_9-X');
 });
+
+test('challenges: only so many new pictures are drawn a minute, pictures already drawn are always served, a refusal is not cached', async () => {
+  const { request, share, clock } = setup();
+  const ids: string[] = [];
+  for (let i = 0; i < 21; i++) ids.push((await share({ ...CHALLENGE, code: `${CODE}${i}` })).json.id!);
+  for (const id of ids.slice(0, 20)) assert.equal((await request('GET', `/c/${id}/preview.png`)).status, 200);
+  const refused = await request('GET', `/c/${ids[20]}/preview.png`);
+  assert.equal(refused.status, 429);
+  assert.ok(Number(refused.headers.get('retry-after')) > 0);
+  assert.notEqual(refused.headers.get('cache-control'), 'public, max-age=86400');
+  assert.equal((await request('GET', `/c/${ids[0]}/preview.png`)).status, 200, 'a drawn one is served from memory');
+  clock.now += 61_000;
+  assert.equal((await request('GET', `/c/${ids[20]}/preview.png`)).status, 200);
+});

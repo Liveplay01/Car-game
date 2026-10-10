@@ -41,7 +41,7 @@ function notify(url: string | null, kind: FeedbackKind, text: string, player: st
   if (!url) return;
   const head = kind === 'bug' ? '🐞 New bug report' : '💡 New feature idea';
   const content = `**${head}**${player ? ` from ${player}` : ''}\n${text}`.slice(0, 1900);
-  fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ content, text: content }), signal: AbortSignal.timeout(5000) }).catch(() => undefined);
+  fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ content, text: content, allowed_mentions: { parse: [] } }), signal: AbortSignal.timeout(5000) }).catch(() => undefined);
 }
 
 export function feedbackModule(): ServerModule {

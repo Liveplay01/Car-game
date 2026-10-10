@@ -27,7 +27,7 @@ export interface BoardDef {
   title: string;
   /**
    * Which list a score belongs on right now. 'all' is one list for ever; a daily board would
-   * answer `day:<number>` so every day starts a fresh list, and old days stay readable.
+   * answer `day:<number>` so every day starts a fresh list. Only today and a day either side can be read (`dayOf`); older lists are deleted (`ScoreStore.purgeDaily`).
    */
   period(now: number, day?: number): string;
   /** Checks a submitted body (422 when it is impossible) and turns it into a score. */
