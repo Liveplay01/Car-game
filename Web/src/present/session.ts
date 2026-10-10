@@ -36,7 +36,8 @@ import { inPortal, inPlayStore, isInstalled } from '../storage/device';
 import { Tutorial } from './tutorial';
 import { NoticeQueue, TipQueue, type Tip } from './notices';
 import { bookShift } from './booking';
-import { type Screen, type Tab, type SwipeMode, SWIPE_MODES, type ScreenAction, type ProgressSection, PROGRESS, TAB_BAR, BUILD_PAGES, barTab, screenTab, showsTabBar, BuildLayout } from './flow';
+import { type Screen, type Tab, type SwipeMode, SWIPE_MODES, type ScreenAction, type ProgressSection, PROGRESS, SOCIAL, TAB_BAR, BUILD_PAGES, barTab, screenTab, showsTabBar, BuildLayout } from './flow';
+import { SocialPage, SocialState } from './social';
 import { CameraRig, perspectiveOf, addRecede } from './perspective';
 import { CameraFx, CameraFxTuning, tensionOf, zoomAbout } from './cameraFx';
 import { PhotoCard } from './photo';
@@ -216,6 +217,8 @@ export class GameSession {
   /** Every rewarded ad: the free chest, a free upgrade step, the Skin Upgrade's boost (`adFlow.ts`). */
   private readonly adFlow = new AdFlow(this.pageHost());
   progressPage = new ProgressState();
+  /** The Social tab's segment; its content is the shell's DOM (`ui/socialPage.ts`), which reads it every frame. */
+  socialPage = new SocialState();
   /** Museum entries first met during this shift, for the line on its result. */
   private museumFound: string[] = [];
   builderPage = new BuilderState();
@@ -244,12 +247,8 @@ export class GameSession {
   versusSelected = false;
   /** Opens the multiplayer lobby (the shell's sheet). */
   onVersus: (() => void) | null = null;
-  /** Opens the leaderboards (the shell's sheet): the rank chip on Progress. */
-  onLeaderboard: (() => void) | null = null;
   /** Opens Big Screen's sheet (the shell's): pick a picture or paste a link. */
   onBackdrop: (() => void) | null = null;
-  /** Opens the Club's sheet (the shell's): the Auction House, the City Fund and Contracts. */
-  onClub: (() => void) | null = null;
   /** The player's own picture or video is ready behind the canvas (`ui/backdrop.ts`). */
   backdrop = false;
   playingMode: GameMode = 'shift';
@@ -628,6 +627,17 @@ export class GameSession {
         // The chest waiting first is the one picked out on the shelf.
         if (this.shopPage.section === 0 && this.save.career.chests.length > 0) this.shopPage.selectedChest = this.save.career.chests[0];
         break;
+      case 'cycleHeat':
+        this.tick();
+        Careers.cycleHeat(career, this.config);
+        this.persist();
+        this.refreshWaitingShift();
+        break;
+      case 'showSocial':
+        this.perform({ k: 'showTab', tab: 'social' });
+        if (!this.isPage('social')) return;
+        this.socialPage.select(action.section === SOCIAL.club && !SocialPage.clubOpen(career) ? SOCIAL.friends : action.section);
+        break;
       case 'showProgress':
         this.perform({ k: 'showTab', tab: 'progress' });
         if (!this.isPage('progress')) return;
@@ -693,9 +703,6 @@ export class GameSession {
       }
       case 'hitChest':
         this.hitChest();
-        break;
-      case 'openClub':
-        this.onClub?.();
         break;
       case 'buyChest':
         if (!Careers.buyChest(career, action.kind, this.config)) {
@@ -1387,6 +1394,7 @@ export class GameSession {
       this.leaveMuseum();
       this.progressPage = new ProgressState();
     }
+    if (this.isPage('social')) this.socialPage.advance(realDelta);
     if (this.buildSlide) {
       this.buildSlide.age += realDelta;
       if (this.buildSlide.age >= BuildLayout.glide) this.buildSlide = null;
@@ -1730,6 +1738,7 @@ export class GameSession {
         this.perform({ k: 'showElite' });
         break;
       case 'pass':
+        p.feat = null;
         this.perform({ k: 'showPass' });
         break;
       case 'stats':
@@ -1740,10 +1749,7 @@ export class GameSession {
         this.startSpecial({ k: 'trial', trial: weeklyTrial(weekNumber(this.today)) });
         break;
       case 'heat':
-        this.tick();
-        Careers.cycleHeat(this.save.career, this.config);
-        this.persist();
-        this.refreshWaitingShift();
+        this.perform({ k: 'cycleHeat' });
         break;
       case 'trial':
         // It waits, ready to play, on the Game tab.
@@ -1949,9 +1955,8 @@ export class GameSession {
         // Records has one sheet: the Elite track, opened from its card.
         if (this.progressPage.section === PROGRESS.records && this.hallOpen) return Details.hall(career, this.config);
         if (this.progressPage.section === PROGRESS.records) return Details.elite(career, this.config, this.sceneTime - this.prestigeArmed <= GameSession.prestigeWindow);
-        if (this.progressPage.section === PROGRESS.today) return Details.pass(career, this.config, this.today);
         const feat = this.progressPage.feat;
-        if (this.progressPage.section === PROGRESS.goals) return feat ? Details.feat(feat, career, this.config) : null;
+        if (this.progressPage.section === PROGRESS.goals) return feat ? Details.feat(feat, career, this.config) : Details.pass(career, this.config, this.today);
         const selected = this.progressPage.museum.selected;
         return this.progressPage.section === PROGRESS.museum && selected ? Details.museum(selected, career, this.config) : null;
       }
@@ -1973,7 +1978,7 @@ export class GameSession {
 
   private get upgradeScrollRange(): number {
     const sheet = this.detailOpen ? this.sheetInset : 0;
-    return UpgradePage.layoutOf(this.lastViewport, this.tabInset, this.visibleUpgrades.length).maxScroll + sheet;
+    return UpgradePage.layoutOf(this.lastViewport, this.tabInset, this.visibleUpgrades).maxScroll + sheet;
   }
 
   /**
@@ -2077,10 +2082,20 @@ export class GameSession {
       if (column === 'center') return { k: 'perform', action: showsCars ? { k: 'showShop', section: 1 } : { k: 'showProgress', section: PROGRESS.records } };
       return { k: 'perform', action: { k: 'showProgress', section: PROGRESS.records } };
     }
+    if (this.isPage('social')) {
+      const section = SocialPage.sectionAt(point, this.lastViewport);
+      if (section !== null && section !== this.socialPage.section) {
+        if (section === SOCIAL.club && !SocialPage.clubOpen(this.save.career)) this.showNotice(S.social.clubClosed);
+        else {
+          this.tick();
+          this.socialPage.select(section);
+        }
+      }
+      return true;
+    }
     if (this.isPage('progress')) {
       if (ProgressPage.rankChipAt(point, this.lastViewport, this.save.career.money)) {
-        this.tick();
-        this.onLeaderboard?.();
+        this.perform({ k: 'showSocial', section: SOCIAL.ranks });
         return true;
       }
       const section: ProgressSection | null = ProgressPage.sectionAt(point, this.lastViewport, this.tabInset);
@@ -2737,12 +2752,13 @@ export class GameSession {
     else if (this.isPage('upgrades')) UpgradePage.add(list, career, this.config, this.visibleUpgrades, this.upgradePage, rm, inset, this.buildThumb, this.adOffer.offers ? Careers.adUpgradeOffer(career, this.today, this.config) : null);
     else if (this.isPage('shop')) ShopPage.add(list, career, this.config, this.today, this.shopPage, rm, inset);
     else if (this.isPage('progress')) ProgressPage.add(list, this.save, this.today, this.progressPage, rm, inset, this.progressScrollRange);
+    else if (this.isPage('social')) SocialPage.add(list, career, this.today, this.socialPage, rm);
     else if (s.k === 'settings') list.s(rect({ x: viewport.x / 2, y: viewport.y / 2 }, viewport), 'background', 0.55);
     const standIn = this.adFlow.placeholder;
     if (standIn) ShopPage.addAd(list, standIn.reward, standIn.age, AdFlow.placeholderSeconds);
     this.transitions.apply(list, s, overlayStart, rm);
     const notice = this.notices.shown;
-    if (notice) addNotice(list, notice, { at: this.noticePlace(s, underCard, inset), textScale: this.textScale, reduceMotion: rm });
+    if (notice && !this.isPage('social')) addNotice(list, notice, { at: this.noticePlace(s, underCard, inset), textScale: this.textScale, reduceMotion: rm });
     return list;
   }
 
@@ -2753,6 +2769,19 @@ export class GameSession {
   private noticePlace(s: Screen, underCard: number, inset: number): NoticePlace {
     if (s.k === 'ready' || s.k === 'result' || s.k === 'playing') return { top: underCard + 10 };
     return { bottom: this.lastViewport.y - inset - 21 };
+  }
+
+  /** The Game tab's Heat pill: its text while a career shift waits and a Heat is open, else null. */
+  get heatPill(): string | null {
+    const career = this.save.career;
+    if (this.screen.k !== 'ready' || this.special || this.versusSelected || this.playingDaily || this.playingMode !== 'shift' || !(this.tutorial?.isOver ?? true)) return null;
+    return Careers.maxHeat(career, this.config) > 0 || career.heat > 0 ? S.heat.button(Careers.activeHeat(career, this.config)) : null;
+  }
+
+  /** On the Social tab the notice is the DOM page's pill (`ui/socialPage.ts`): the drawn one would sit under the page. */
+  get socialNotice(): { text: string; presence: number } | null {
+    const notice = this.notices.shown;
+    return notice && this.isPage('social') ? { text: notice.text, presence: noticePresence(notice.age, notice.duration) } : null;
   }
 
   /** How much room a notice under the top card takes right now, for the ready screen's intro to make way. */
@@ -2785,6 +2814,8 @@ export class GameSession {
       const dailyWaits = this.save.tutorialDone && c.level >= this.config.dailyUnlockLevel && Careers.isDailyOpen(c, this.today);
       return dailyWaits || c.museumNew.length > 0 || (!this.eliteSeen && Careers.canPrestige(c, this.config)) ? 'dot' : null;
     }
+    // A new auction day waits in the Club: the dot stays until it was looked at.
+    if (barTab(tab) === 'social') return c.auctionDay !== this.today && SocialPage.clubOpen(c) ? 'dot' : null;
     if (barTab(tab) !== 'shop') return null;
     if (c.chests.length > 0) return { count: c.chests.length };
     // A skin a casino round has won stays quiet until the round shows it.

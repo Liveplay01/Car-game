@@ -380,7 +380,7 @@ Das HUD und das Ergebnis-Banner gehören zur Spielszene und kommen deshalb kompl
 aus der Render-Liste. Nur schwebende Knöpfe (Einstellungen, Einsatzfahrt, Challenge) liegen
 als DOM-Elemente darüber.
 
-**Navigation (Progress · Game · Shop · Build):** Die Tab-Bar ist DOM (`Web/src/ui/shell.ts`),
+**Navigation (Progress · Social · Game · Shop · Build):** Die Tab-Bar ist DOM (`Web/src/ui/shell.ts`),
 `flow.ts` modelliert die Tabs (`Tab`, `Screen.page`).
 
 ### Design-Grundsätze

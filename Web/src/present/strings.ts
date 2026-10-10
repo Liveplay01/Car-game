@@ -47,7 +47,7 @@ export const S = {
   /** Systems that open with the level (`core/unlocks.ts`). */
   unlocks: {
     daily: 'New · the Daily Shift: one try a day, the same shift for everyone',
-    trials: 'New · Trials in Progress → Goals: special shifts with a reward',
+    trials: 'New · Trials in Progress → Trials: special shifts with a reward',
     opensAt: (name: string, level: number): string => `${name} ${name.endsWith('s') ? 'open' : 'opens'} at Level ${level}`,
     lockedTag: (level: number): string => `LEVEL ${level}`,
   },
@@ -69,10 +69,10 @@ export const S = {
     updated: 'Updated · See what’s new in Settings',
     /** A friend's invite was kept (`?ref=`): with a name already, or still needing one. */
     invited: [`Invited by a friend · Reach level ${INVITE_LEVEL} and you both get a chest`],
-    invitedNeedsName: [`Invited by a friend · Reach level ${INVITE_LEVEL} and you both get a chest`, 'Pick a name under Friends so your chest finds you'],
-    /** Once for everyone (`announceInvite`), and again at level 10 (`inviteReminder`): the friend code is the invite, and the Friends button is where it is. The website (`buildWithUs`) is told once, too. */
-    invite: { caption: 'INVITE A FRIEND', text: `You both get a chest at level ${INVITE_LEVEL}. The Friends button has your code and link` },
-    inviteReminder: { caption: 'INVITE A FRIEND', text: `Level ${INVITE_REMINDER_LEVEL}! Bring a friend: you both get a chest at level ${INVITE_LEVEL}. Code under Friends` },
+    invitedNeedsName: [`Invited by a friend · Reach level ${INVITE_LEVEL} and you both get a chest`, 'Pick a name under Social so your chest finds you'],
+    /** Once for everyone (`announceInvite`), and again at level 10 (`inviteReminder`): the friend code is the invite, and the Social tab is where it is. The website (`buildWithUs`) is told once, too. */
+    invite: { caption: 'INVITE A FRIEND', text: `You both get a chest at level ${INVITE_LEVEL}. The Social tab has your code and link` },
+    inviteReminder: { caption: 'INVITE A FRIEND', text: `Level ${INVITE_REMINDER_LEVEL}! Bring a friend: you both get a chest at level ${INVITE_LEVEL}. Code under Social` },
     buildWithUs: { caption: 'NEW WEBSITE', text: 'timing.love: report bugs and ideas there. Bug hunters may get a gift' },
   },
 
@@ -790,13 +790,14 @@ export const S = {
 
   tabs: {
     progress: 'Progress',
+    social: 'Social',
     game: 'Game',
     shop: 'Shop',
     build: 'Build',
   },
 
   progress: {
-    section: (i: number): string => ['Today', 'Goals', 'Records', 'Museum'][i],
+    section: (i: number): string => ['Today', 'Trials', 'Goals', 'Records', 'Museum'][i],
     /** The headings inside the sections: Records' long list, Today's quests, the three kinds of goal. */
     allStats: 'All stats',
     statsMore: (n: number): string => `${n} more ›`,
@@ -852,6 +853,14 @@ export const S = {
     /** How far from the middle of the gap the taps land on average; null: not enough merges yet. */
     timing: (ms: number | null, onBeat: number): string =>
       ms === null ? '–' : Math.abs(ms) <= onBeat ? 'On the beat' : ms < 0 ? `${-ms} ms early` : `${ms} ms late`,
+  },
+
+  /** The Social tab (Leo, 10.10.2026): its segments, and what the Club says while it is still shut. */
+  social: {
+    section: (i: number): string => ['Friends', 'Ranks', 'Club'][i],
+    clubClosed: 'The Club opens at Level 50: an Auction House, the City Fund and Contracts for big balances.',
+    offline: 'Friends and Ranks need the online service, which this copy of the game is not connected to.',
+    noFriends: 'Friends are not available here. Ranks and the Club are.',
   },
 
   leaderboard: {
@@ -1121,10 +1130,9 @@ export const S = {
     boostNote: (p: string, perDay: number): string =>
       `Your choice: watch an ad before a round and its chance gets ${p} on top, even above the cap. One round uses it up, won or lost. Up to ${perDay} a day. The dial shows the chance it really rolls.`,
   },
-  /** The Club (Leo, 10.10.2026): the Auction House, the City Fund and Contracts. Its sheet is `ui/clubSheet.ts`. */
+  /** The Club (Leo, 10.10.2026): the Auction House, the City Fund and Contracts, the third segment of the Social tab (`ui/clubPanel.ts`). */
   club: {
     title: 'Club',
-    cardLine: 'Auction · City Fund · Contracts',
     projectName: (project: string): string => ({ fountain: 'Fountain', lighthouse: 'Lighthouse', skybridge: 'Sky Bridge' } as Record<string, string>)[project] ?? project,
     goalName: (goal: ContractGoal): string => ({ clean: 'Clean sheet', sharp: 'Sharp', flawless: 'Flawless' })[goal],
     goalText(goal: ContractGoal, cars: number): string {
@@ -1178,8 +1186,8 @@ export const S = {
       if (item.source.kind === 'hall') return 'Build the Hall of Fame (Records → Elite).';
       if (item.source.kind === 'unlimited') return `Send ${Fmt.number(item.source.cars)} cars in one Unlimited run.`;
       if (item.source.kind === 'tour') return `A stop of the ${S.tours.name(item.source.tour as TourId)} tour. It comes back every year.`;
-      if (item.source.kind === 'auction') return 'Only ever a lot at the Auction House (Shop → Club). A new lot every few days.';
-      if (item.source.kind === 'fund') return `Give ${Fmt.number(baseConfig.fundBenefactor)} to the ${S.club.projectName(item.source.project)} project in the City Fund (Shop → Club).`;
+      if (item.source.kind === 'auction') return 'Only ever a lot at the Auction House (Social → Club). A new lot every few days.';
+      if (item.source.kind === 'fund') return `Give ${Fmt.number(baseConfig.fundBenefactor)} to the ${S.club.projectName(item.source.project)} project in the City Fund (Social → Club).`;
       if (item.source.kind === 'bugReport')
         return item.source.reports === 1
           ? 'Report a bug on timing.love with your friend code. Only bug hunters get it.'
@@ -1200,8 +1208,9 @@ export const S = {
     skinsOn: (n: number, max: number): string => `${n} of ${max} car skins on · they mix on the road`,
     skinsFull: (max: number): string => `${max} car skins are on. Take one off first.`,
     section: (i: number): string => ['Chests', 'Collection', 'Casino'][i],
+    earnedHeading: 'Earned, not sold',
     newBadge: 'NEW',
-    shelf: (i: number): string => ['Cars', 'Maps', 'Honours', 'Pass'][i],
+    shelf: (i: number): string => ['Cars', 'Maps', 'Earned', 'Pass'][i],
     /** The headings on the Cars shelf (the chest skins by rarity, the vehicles, the season skins) and on the Honours shelf (the cars by rarity, the vehicles, the maps). */
     group: (g: Rarity | 'vehicles' | 'seasons' | 'maps', honours = false): string => {
       const name = { common: 'Common', rare: 'Rare', epic: 'Epic', legendary: 'Legendary', vehicles: 'Vehicles', seasons: 'Seasons', maps: 'Maps' }[g];
@@ -1441,7 +1450,7 @@ export const S = {
 
   daily: {
     title: 'DAILY SHIFT',
-    /** Its row under Progress → Today. */
+    /** Its row under Progress → Goals. */
     name: 'Daily Shift',
     ready: 'Ready',
     perfectRun: 'PERFECT RUN',
@@ -1619,6 +1628,8 @@ export const S = {
 
   upgrades: {
     title: 'Upgrades',
+    /** The headings of the Upgrades page (Leo, 10.10.2026): what an upgrade is for. */
+    group: (g: 0 | 1 | 2): string => ['POLICE', 'MONEY', 'DRIVING'][g],
     maxed: 'Max',
     steps: (s: number, max: number): string => `${s}/${max}`,
     pickOne: 'Tap an upgrade to see what it does.',
@@ -1722,6 +1733,8 @@ export const S = {
 
   heat: {
     row: (heat: number): string => (heat > 0 ? `Heat ${heat}` : 'Heat'),
+    /** The Game tab's pill: tap for the next step. */
+    button: (heat: number): string => (heat > 0 ? `Heat ${heat}` : 'Heat off'),
     line: (heat: number, max: number): string => (heat > 0 ? `Harder traffic · +${Math.round(heat * baseConfig.heatPay * 100)} % pay · +${heat * baseConfig.eliteXpHeat} Elite XP a shift` : max > 0 ? 'Off · harder traffic for more pay and Elite XP' : 'Clear a shift to open the next Heat'),
     link: (heat: number, max: number): string => `${heat}/${max} · change ›`,
     cleared: (heat: number, max: number): string => (heat < max ? `HEAT ${heat} CLEARED · Heat ${heat + 1} is open` : `HEAT ${heat} CLEARED`),

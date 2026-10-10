@@ -26,11 +26,11 @@ import { knownShortLink, shortLink } from '../net/challengeLink';
 import { S, Fmt } from '../present/strings';
 import { DetailSheet } from './detailSheet';
 import { VersusLobby } from './versusLobby';
-import { friendsSheet } from './friendsSheet';
-import { clubSheet } from './clubSheet';
+import { SocialView } from './socialPage';
+import type { ClubHost } from './clubPanel';
+import { SocialPage } from '../present/social';
 import { Fund } from '../core/fund';
 import { fetchFund, fundEnabled } from '../net/fund';
-import { leaderboardSheet } from './leaderboardSheet';
 import { cloudSheet } from './cloudSheet';
 import { REACTION_EMOJI } from '../present/versus';
 import { REACTIONS } from '../net/room';
@@ -54,8 +54,8 @@ const PHOTO_SCENE = v(492, 492);
 
 /** A key hint on a floating button; CSS shows it only where there is a keyboard and a mouse. */
 const keycap = (label: string): HTMLElement => h('kbd', { class: 'keycap', 'aria-hidden': 'true' }, label);
-const TAB_LABEL: Record<Tab, string> = { progress: 'Progress', game: 'Game', shop: 'Shop', upgrades: 'Build', streetBuilder: 'Build' };
-const TAB_ICON: Record<Tab, string> = { progress: ICONS.progress, game: ICONS.game, shop: ICONS.shop, upgrades: ICONS.build, streetBuilder: ICONS.build };
+const TAB_LABEL: Record<Tab, string> = { progress: 'Progress', social: 'Social', game: 'Game', shop: 'Shop', upgrades: 'Build', streetBuilder: 'Build' };
+const TAB_ICON: Record<Tab, string> = { progress: ICONS.progress, social: ICONS.people, game: ICONS.game, shop: ICONS.shop, upgrades: ICONS.build, streetBuilder: ICONS.build };
 /** Keys that scroll a list, in points; ±1 means a page (most of the window's height). */
 const SCROLL_KEYS: Partial<Record<string, number>> = { ArrowDown: 60, ArrowUp: -60, PageDown: 1, PageUp: -1, Home: -1e6, End: 1e6 };
 
@@ -103,8 +103,12 @@ export class Shell {
   private readonly dispatchCount: HTMLSpanElement;
   /** Chill has no end of its own: this ends the drive. */
   private readonly doneBtn: HTMLButtonElement;
-  private readonly friendsBtn: HTMLButtonElement;
   private readonly photoBtn: HTMLButtonElement;
+  /** On the Game tab while a Heat is open: the next step of the waiting shift. */
+  private readonly heatBtn: HTMLButtonElement;
+  private readonly heatLabel: HTMLElement;
+  /** The Social tab's content: Friends, Ranks and the Club under the canvas' segments. */
+  private readonly social: SocialView;
   /** On the Game tab while chests wait: the way to the Chests page, in the paint of the first one. */
   private readonly chestBtn: HTMLButtonElement;
   private readonly chestLabel: HTMLElement;
@@ -207,13 +211,21 @@ export class Shell {
       h('span', {}, S.chill.done),
     );
     for (const b of [this.settingsBtn, this.dispatchBtn, this.doneBtn]) b.addEventListener('pointerdown', (e) => e.stopPropagation());
-    // Friends: the code, the invite link, challenging a friend with the shift on screen, and the way to Multiplayer. In a challenge or trial: leave it.
-    // Picture and Friends are labelled pills like Settings and the chest pill, all one size (Leo, 08.10.2026).
-    const pill = (label: string, text: string, svg: string, onclick: () => void): HTMLButtonElement =>
-      h('button', { class: 'btn glass run-btn', type: 'button', 'aria-label': label, 'aria-haspopup': 'dialog', onclick }, icon(svg), h('span', {}, text));
-    this.friendsBtn = pill('Friends', 'Friends', ICONS.people, () => this.openFriends());
+    // Picture is a labelled pill like Settings and the chest pill, all one size (Leo, 08.10.2026). Friends moved to the Social tab (Leo, 10.10.2026).
+    this.heatLabel = h('span', {}, '');
+    this.heatBtn = h(
+      'button',
+      { class: 'btn glass run-btn', type: 'button', onclick: () => this.push({ k: 'perform', action: { k: 'cycleHeat' } }) },
+      icon(ICONS.flame),
+      this.heatLabel,
+    );
     // Under any result: the picture on the screen, to send or keep.
-    this.photoBtn = pill(S.photo.buttonLabel, S.photo.button, ICONS.camera, () => this.takePicture());
+    this.photoBtn = h(
+      'button',
+      { class: 'btn glass run-btn', type: 'button', 'aria-label': S.photo.buttonLabel, 'aria-haspopup': 'dialog', onclick: () => this.takePicture() },
+      icon(ICONS.camera),
+      h('span', {}, S.photo.button),
+    );
     this.chestLabel = h('span', {}, S.run.openChest(1));
     const chest = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
     chest.setAttribute('viewBox', '0 0 52 48');
@@ -260,28 +272,16 @@ export class Shell {
     this.session.onVersus = () => {
       if (!isSheetOpen()) this.versus.open();
     };
-    // Progress → the rank chip: the leaderboards. The chip reacts on the press, the sheet opens
-    // when the finger lifts, and the click that follows is swallowed: otherwise it lands on the
-    // scrim that just appeared under the finger and closes the sheet again.
-    this.session.onLeaderboard = () => {
-      const open = (): void => {
-        if (isSheetOpen()) return;
-        swallowNextClick();
-        this.openLeaderboard();
-      };
-      if (this.pointerId === null) open();
-      else afterRelease(open);
-    };
-    // Shop → the Club's card: the Club's sheet, opened on the lift like the leaderboards.
-    this.session.onClub = () => {
-      const open = (): void => {
-        if (isSheetOpen()) return;
-        swallowNextClick();
-        this.openClub();
-      };
-      if (this.pointerId === null) open();
-      else afterRelease(open);
-    };
+    // The Social tab: Friends, Ranks and the Club under the canvas' segments (Progress → the rank chip leads to Ranks).
+    const s = this.session;
+    this.social = new SocialView(app, {
+      friends: () => ({ records: () => s.leaderboardRecords, playTogether: () => this.openLobby(), challenge: s.shareable !== null ? () => this.share() : null }),
+      ranks: () => ({ records: () => s.leaderboardRecords }),
+      club: () => this.clubHost(),
+      clubOpen: () => SocialPage.clubOpen(s.save.career),
+      online: leaderboardEnabled,
+      friendsAllowed: leaderboardEnabled && !inPortal,
+    });
     // Big Screen: what the player chose last time comes back (only once they own it: nothing
     // loads from another site before), and its sheet opens from the Collection.
     this.backdrop = new BackdropLayer(app, canvas);
@@ -311,7 +311,7 @@ export class Shell {
           open();
         });
     };
-    const runBar = h('div', { class: 'run-bar' }, this.chestBtn, this.leaveBtn, this.photoBtn, this.friendsBtn);
+    const runBar = h('div', { class: 'run-bar' }, this.chestBtn, this.heatBtn, this.leaveBtn, this.photoBtn);
     // After a match: Ready (everyone taps it, then the next round starts), and for the host a
     // way back to the lobby to change the format or the bots.
     this.againLabel = h('span', {}, 'Play again');
@@ -335,7 +335,7 @@ export class Shell {
       h('button', { class: 'react-btn', type: 'button', 'aria-label': `React ${r}`, 'aria-keyshortcuts': String(i + 1), onclick: () => this.versus.react(r) }, REACTION_EMOJI[r]),
     );
     this.reactBar = h('div', { class: 'react-bar', role: 'group', 'aria-label': 'Reactions' }, ...reactButtons, this.revengeBtn);
-    for (const b of [this.settingsBtn, this.dispatchBtn, this.doneBtn, this.friendsBtn, this.photoBtn, this.chestBtn, this.leaveBtn, this.againBtn, this.lobbyBtn, quitBtn, this.reactBar]) b.addEventListener('pointerdown', (e) => e.stopPropagation());
+    for (const b of [this.settingsBtn, this.dispatchBtn, this.doneBtn, this.heatBtn, this.photoBtn, this.chestBtn, this.leaveBtn, this.againBtn, this.lobbyBtn, quitBtn, this.reactBar]) b.addEventListener('pointerdown', (e) => e.stopPropagation());
     app.append(this.settingsBtn, this.dispatchBtn, this.doneBtn, runBar, this.reactBar, this.versusBar);
     this.detail = new DetailSheet(
       app,
@@ -501,9 +501,11 @@ export class Shell {
       : '';
     let badgeKey = '';
     for (const b of badges) badgeKey += b === null ? '-' : b === 'dot' ? '.' : `${b.count};`;
-    const key = `${screen.k}|${selected}|${badgeKey}|${s.world.shift.phase}|${s.playingMode}|${s.special?.k ?? ''}|${s.shareable ? 1 : 0}|${match ? 1 : 0}|${versusKey}|${s.save.settings.leftHanded}|${s.notesUnread}|${s.showsChrome}|${s.chestOffer}|${s.save.career.chests[0] ?? ''}|${s.world.dispatchesLeft}`;
+    const onSocial = screen.k === 'page' && screen.tab === 'social' && s.showsChrome && !match;
+    const key = `${screen.k}|${selected}|${onSocial ? s.socialPage.section : -1}|${this.size.x}|${badgeKey}|${s.world.shift.phase}|${s.playingMode}|${s.special?.k ?? ''}|${s.shareable ? 1 : 0}|${match ? 1 : 0}|${versusKey}|${s.save.settings.leftHanded}|${s.notesUnread}|${s.showsChrome}|${s.chestOffer}|${s.save.career.chests[0] ?? ''}|${s.world.dispatchesLeft}|${s.heatPill ?? ''}`;
     if (!force && key === this.chromeKey) return;
     this.chromeKey = key;
+    this.social.sync(onSocial, s.socialPage.section, SocialPage.column(this.size));
     reportGameplay(screen.k === 'playing' && (inPortal || !document.hidden));
     this.app.dataset.versus = match ? 'on' : 'off';
     this.app.dataset.hand = s.save.settings.leftHanded ? 'left' : 'right';
@@ -540,7 +542,9 @@ export class Shell {
     this.dispatchBtn.classList.toggle('spent', dispatches === 0);
     this.dispatchBtn.setAttribute('aria-label', `Emergency dispatch: the next car becomes a police car, ${dispatches} left this shift`);
     this.doneBtn.classList.toggle('show', screen.k === 'playing' && chill);
-    this.friendsBtn.classList.toggle('show', onGame && leaderboardEnabled && !inPortal);
+    const heat = s.heatPill;
+    this.heatBtn.classList.toggle('show', onGame && heat !== null && !match);
+    if (heat !== null) this.heatLabel.textContent = heat;
     this.photoBtn.classList.toggle('show', screen.k === 'result' && !match && s.showsChrome);
     const chests = match ? 0 : s.chestOffer;
     this.chestBtn.classList.toggle('show', chests > 0);
@@ -793,19 +797,10 @@ export class Shell {
     this.syncChrome(true);
   }
 
-  /** The leaderboard sheet (Progress → the rank chip). Its Invite row leads on to the Friends sheet. */
-  private openLeaderboard(): void {
-    leaderboardSheet(this.layers, {
-      records: () => this.session.leaderboardRecords,
-      openFriends: () => this.openFriends(),
-      closed: () => this.syncChrome(true),
-    });
-  }
-
-  /** The Club's sheet (Shop → its card): the Auction House, the City Fund and Contracts. */
-  private openClub(): void {
+  /** What the Club (Social → Club) needs from the game: the Auction House, the City Fund and Contracts. */
+  private clubHost(): ClubHost {
     const s = this.session;
-    clubSheet(this.layers, {
+    return {
       career: () => s.save.career,
       today: () => s.today,
       shiftCars: () => s.world.config.shiftCars,
@@ -820,8 +815,7 @@ export class Shell {
       sound: (id, pitch) => {
         if (s.save.settings.sound) this.audio.play(id, pitch ?? 1);
       },
-      closed: () => this.syncChrome(true),
-    });
+    };
   }
 
   /** Thanks for a finished project, from a visit when it was built: the skin is paid out at the start (a gift needs a name). */
@@ -838,19 +832,7 @@ export class Shell {
       .catch(() => undefined);
   }
 
-  /** The Friends sheet: the pill above Settings and the leaderboard's Friends row lead here. It asks for a name itself. */
-  private openFriends(): void {
-    const s = this.session;
-    friendsSheet(this.layers, {
-      records: () => s.leaderboardRecords,
-      playTogether: () => this.openLobby(),
-      // The shift on screen: only a finished one can be sent.
-      challenge: s.screen.k === 'result' && s.shareable !== null ? () => this.share() : null,
-      closed: () => this.syncChrome(true),
-    });
-  }
-
-  /** From a sheet to the multiplayer lobby: behind it the Game tab swipes on to the Multiplayer page. */
+  /** From the Friends page to the multiplayer lobby: behind it the Game tab swipes on to the Multiplayer page. */
   private openLobby(): void {
     const s = this.session;
     // The lobby takes the place of the sheet it was opened from: that one goes at once, so only the lobby moves.
@@ -1075,6 +1057,8 @@ export class Shell {
     document.addEventListener('keydown', (e) => {
       if (isSheetOpen() || this.photo.isOpen) return;
       const target = e.target as HTMLElement;
+      // The Social page is a form and a list: typing, Space, Enter and the arrows are its own (Escape still steps back).
+      if (e.key !== 'Escape' && target.closest('.social-page')) return;
       const onControl = target.closest('button, input, a, [role="switch"]') !== null;
       const key = e.key;
       if (key === 'Tab') this.focusByKeyboard = true;
@@ -1247,6 +1231,7 @@ export class Shell {
     this.audio.updateTension(match ? 0 : s.tension, s.save.settings.sound, Math.min(delta, 0.1));
     this.audio.updateWeather(match ? { rain: 0, strikes: s.weatherSound.strikes } : s.weatherSound, s.save.settings.mapSounds);
     this.app.classList.toggle('reduce-motion', s.reduceMotion);
+    this.social.toast(s.socialNotice);
     if (this.pendingChallenge) this.openPendingChallenge();
     if (this.pendingJoin) this.openPendingJoin();
     this.syncChrome();

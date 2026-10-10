@@ -12,7 +12,7 @@ export const CHEST_KINDS: ChestKind[] = ['standard', 'premium', 'diamond', 'even
 export const CHEST_ODDS: Record<ChestKind, number[]> = {
   standard: [0.7, 0.22, 0.07, 0.01],
   premium: [0.35, 0.35, 0.22, 0.08],
-  diamond: [0, 0.3, 0.45, 0.25],
+  diamond: [0, 0.4, 0.47, 0.13],
   event: [0.4, 0.35, 0.2, 0.05],
   criminalHunt: [0.5, 0.3, 0.15, 0.05],
 };

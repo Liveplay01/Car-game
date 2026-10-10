@@ -1,6 +1,6 @@
 import { h } from './dom';
-import { boardPanel, forgetFriendsBoards, nameForm, openAccount, tabsControl } from './leaderboardSheet';
-import { openSheet, glideHeight, fadeIn } from './sheets';
+import { forgetFriendsBoards, nameForm, openAccount } from './ranksPanel';
+import { fadeIn } from './sheets';
 import { INVITE_LEVEL } from '../core/config';
 import { type InviteView, fetchInvite, inviteUrl, pendingInvite } from '../net/invite';
 import { type FriendsView, type Records, addFriend, describeError, fetchFriends, loadAccount, removeFriend, syncScores } from '../net/leaderboard';
@@ -8,33 +8,22 @@ import { S } from '../present/strings';
 import { loadPlayerName } from '../storage/profile';
 
 /**
- * Friends (Leo, 05.10.2026): everything about people, in one drawer with tabs like a page.
- * The Friends pill above Settings and the leaderboard's Friends row lead here. Four tabs:
- * Friends (your code, adding, your list) · Ranking (the boards among you) · Play (challenge a friend, the
- * multiplayer lobby) · Invite (the link, who joined). Without a name the page asks for one first, no detour.
+ * Social → Friends (Leo, 05.10.2026, one page since 10.10.2026): everything about people, top to bottom: your friend code, adding a friend, your list,
+ * playing together (challenge a friend, the multiplayer lobby) and the invite link with who joined. The ranking among friends is Ranks → Friends.
+ * Without a name the page asks for one first, no detour.
  */
 
 export interface FriendsActions {
   /** The records as the save has them now, sent right after a name is chosen. */
   records(): Records;
-  /** Leaves this sheet for the multiplayer lobby. */
+  /** Leaves this page for the multiplayer lobby. */
   playTogether(): void;
   /**
-   * Sends the shift on screen as a challenge link; the answer is what to tell the player, if anything.
+   * Sends the last finished shift as a challenge link; the answer is what to tell the player, if anything.
    * Null while there is no finished shift to send (the row says so instead).
    */
   challenge: (() => Promise<string | null>) | null;
-  closed(): void;
 }
-
-type FriendsTab = 'friends' | 'ranking' | 'play' | 'invite';
-const TABS: { id: FriendsTab; label: string }[] = [
-  { id: 'friends', label: 'Friends' },
-  { id: 'ranking', label: 'Ranking' },
-  { id: 'play', label: 'Play' },
-  { id: 'invite', label: 'Invite' },
-];
-let lastTab: FriendsTab = 'friends';
 
 /** 1 → 1st, 3 → 3rd, 10 → 10th. */
 const ordinal = (n: number): string => `${n}${n % 100 >= 11 && n % 100 <= 13 ? 'th' : ({ 1: 'st', 2: 'nd', 3: 'rd' } as Record<number, string>)[n % 10] ?? 'th'}`;
@@ -76,23 +65,14 @@ async function shareInvite(invite: InviteView, button: HTMLElement): Promise<voi
 const label = (text: string): HTMLElement => h('p', { class: 'section-note board-label' }, text);
 const note = (text: string, error = false): HTMLElement => h('p', { class: `field-help${error ? ' error' : ''}`, ...(error ? { role: 'alert' } : {}) }, text);
 
-export function friendsSheet(layer: HTMLElement, actions: FriendsActions): () => void {
+export function friendsPanel(actions: FriendsActions): HTMLElement {
   const body = h('div', { class: 'friends' }, h('p', { class: 'section-note' }, 'Loading your friends…'));
   const content = h('div', { class: 'friends-content' });
-  let tab: FriendsTab = lastTab;
   let view: FriendsView | null = null;
   let invite: InviteView | null = null;
   /** Under the add field: what the last add did. Shown once. */
   let message: string | undefined;
   let asked = 0;
-
-  const tabs = tabsControl('Friends', TABS, (next) => {
-    tab = next;
-    lastTab = next;
-    show();
-  });
-  tabs.el.classList.add('sheet-tabs');
-  const ranking = boardPanel('friends', { account: loadAccount, records: actions.records, signedOut: () => void render() });
 
   /** Without a name there is no friend code: ask for it here, and the sheet fills in when it is chosen. */
   function needsName(): void {
@@ -131,18 +111,16 @@ export function friendsSheet(layer: HTMLElement, actions: FriendsActions): () =>
     }
     invite = await inviteAsked;
     if (ticket !== asked) return;
-    body.replaceChildren(tabs.el, content);
+    body.replaceChildren(content);
     show();
   }
 
   function show(): void {
-    tabs.set(tab);
     if (!view) return;
-    const rows = { friends: () => friendRows(view!), ranking: () => [ranking.el], play: playRows, invite: inviteRows }[tab]();
+    const rows = [...friendRows(view), label('Play together'), ...playRows(), label('Invite friends'), ...inviteRows()];
     message = undefined;
     content.replaceChildren(...rows);
     fadeIn(content);
-    if (tab === 'ranking') ranking.open();
   }
 
   // MARK: Friends
@@ -255,7 +233,7 @@ export function friendsSheet(layer: HTMLElement, actions: FriendsActions): () =>
   /** Challenge a friend and the multiplayer lobby: the two ways to play with them. */
   function playRows(): HTMLElement[] {
     const send = actions.challenge;
-    const sub = h('div', { class: 'row-sub', 'aria-live': 'polite' }, send ? 'Send the shift you just played and the score to beat.' : 'Finish a shift, then send it to a friend to beat.');
+    const sub = h('div', { class: 'row-sub', 'aria-live': 'polite' }, send ? 'Send your last shift and the score to beat.' : 'Finish a shift, then send it to a friend to beat.');
     const challenge = h('button', { class: 'btn', type: 'button', disabled: !send }, 'Send');
     challenge.addEventListener('click', () => {
       if (!send) return;
@@ -309,7 +287,5 @@ export function friendsSheet(layer: HTMLElement, actions: FriendsActions): () =>
   }
 
   void render();
-  const close = openSheet(layer, 'Friends', body, actions.closed);
-  glideHeight(body, content);
-  return close;
+  return body;
 }

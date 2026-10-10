@@ -27,7 +27,7 @@ sie nur an, wenn der Wrapper sie an Android weiterreicht.
       (Bubblewrap, `twa-manifest.json`)
 - [ ] Play Console → App-Inhalte → Datensicherheit: „Geräte- oder andere IDs“ ergänzen
       (wird erhoben, Zweck: App-Funktionen, optional für den Nutzer). Die Push-Adresse zählt dazu.
-- [ ] Testen auf dem Handy: Settings → Notifications einschalten → Android fragt (ab Android 13) nach der
+- [ ] Testen auf dem Handy: Settings → Account → Notifications einschalten → Android fragt (ab Android 13) nach der
       Erlaubnis → Schalter bleibt an. Ein Tipp auf eine Benachrichtigung öffnet die App, nicht Chrome.
 
 ## So geht der Build

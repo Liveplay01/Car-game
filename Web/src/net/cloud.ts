@@ -217,7 +217,7 @@ function conflict(found: Incoming): void {
   incoming = found;
   waiting = null;
   set('choose');
-  if (first && found.updatedAt !== declined) deps?.notify('Your cloud save has other progress. Open Settings → Cloud sync to choose.');
+  if (first && found.updatedAt !== declined) deps?.notify('Your cloud save has other progress. Open Settings → Account → Cloud sync to choose.');
 }
 
 /**

@@ -46,6 +46,21 @@ export function speedLimitAt(w: World, s: number): number {
   return limit;
 }
 
+/**
+ * How fast a driver at `s` may be going: the limit right here, and no more than it can still bring down to a
+ * zone's limit by the time it gets there, braking as gently as `drive` eases off. Without this a car only began
+ * to slow inside the roadworks and never got down to their speed in a stretch that short.
+ */
+export function approachLimitAt(w: World, s: number): number {
+  const easing = w.config.driverAcceleration * gravity(w.config);
+  let limit = speedLimitAt(w, s);
+  for (const zone of zonesOf(w)) {
+    const v = w.ringSpeed * zone.factor;
+    limit = Math.min(limit, Math.sqrt(v * v + 2 * easing * w.layout.ringDistance(s, zone.start)));
+  }
+  return limit;
+}
+
 /** The sampling step of a forecast, in seconds. */
 const FORECAST_STEP = 0.05;
 /** How far ahead (seconds of driving) a driver reads the road for a slower stretch, and how often it looks. */
@@ -65,7 +80,7 @@ export function travelAhead(w: World, s: number, speed: number, t: number): numb
   let v = speed;
   for (let left = t; left > 1e-9; left -= FORECAST_STEP) {
     const dt = Math.min(FORECAST_STEP, left);
-    const limit = speedLimitAt(w, wrap(s + travelled, circumference));
+    const limit = approachLimitAt(w, wrap(s + travelled, circumference));
     if (v > limit) v = Math.max(limit, v - easing * dt);
     travelled += v * dt;
   }

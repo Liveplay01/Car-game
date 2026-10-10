@@ -6,6 +6,7 @@ import type { World } from './world';
 import { reservedCriminalArm, reservedTransporterArm, joinsTooClose } from './specials';
 import { reservedMilitaryArm, isMilitaryOverdue } from './explosions';
 import { reservedAmbulanceArm, joinsClearRoad, longestExit } from './ambulance';
+import { plannedSpeed } from './modules';
 import { reservedLearnerArm } from './learner';
 import { reservedOversizeArm } from './oversize';
 import { reservedRaceArm } from './racers';
@@ -246,9 +247,36 @@ export function prefillRing(w: World, count: number): void {
   }
 }
 
+/** A joining car plans its braking with this share of the hardest (`drivers.ts` keeps the same margin). */
+const JOIN_BRAKE_SHARE = 0.75;
+
+/**
+ * A car joins at the ring's speed. Slower traffic in front of the spot it joins at (a toll, the roadworks, a jam) has to be
+ * far enough away for it to brake down to that pace: its braking distance, or a second of the closing speed for the
+ * criminal, who never brakes. The merge itself is checked by `predictedMergeGap`; this is what follows it.
+ */
+function closesSafely(w: World, arm: Arm, lane: number, type: VehicleType): boolean {
+  const c = w.config;
+  const brake = c.driverBrake * gravity(c) * JOIN_BRAKE_SHARE;
+  const profile = w.profileFor(arm, lane, type);
+  const arrival = w.layout.entryS(arm, lane);
+  const mine = w.lengthOf(type);
+  for (const other of w.vehicles) {
+    const p = other.phase;
+    if (other.lane !== lane || p.kind !== 'ring') continue;
+    const s = w.virtualRingPosition(other, profile.duration);
+    if (s === null) continue;
+    const closing = w.ringSpeed - plannedSpeed(w, p.s, p.drive.speed ?? w.ringSpeed);
+    if (closing <= 0) continue;
+    const gap = w.layout.ringDistance(arrival, s) - (mine + w.lengthOf(other.type)) / 2 - c.stopGap;
+    if (gap < (type === 'pickup' ? closing : (closing * closing) / (2 * brake))) return false;
+  }
+  return true;
+}
+
 /** True if an AI car launched now at `arm` keeps a safe gap on the ring and on its path. */
 function canEnter(w: World, arm: Arm, lane: 0 | 1 = 0, type: VehicleType = 'car'): boolean {
-  if (isDisturbedNear(w, arm)) return false;
+  if (isDisturbedNear(w, arm) || !closesSafely(w, arm, lane, type)) return false;
   const c = w.config;
   const profile = w.profileFor(arm, lane, type);
   const circumference = w.layout.ring.length;
@@ -269,13 +297,13 @@ function canEnter(w: World, arm: Arm, lane: 0 | 1 = 0, type: VehicleType = 'car'
  * holds it back (a toll booth's zone in front of the entry kept it out for good); only a wreck does.
  */
 function canBargeIn(w: World, arm: Arm, type: VehicleType): boolean {
-  return !isDisturbedNear(w, arm, true) && w.predictedMergeGap(arm, 0, 30, w.config.criminalEntryGap, 0, type) >= w.config.criminalEntryGap;
+  return !isDisturbedNear(w, arm, true) && closesSafely(w, arm, 0, type) && w.predictedMergeGap(arm, 0, 30, w.config.criminalEntryGap, 0, type) >= w.config.criminalEntryGap;
 }
 
 /** A motorbike: any gap of `motorbikeEntryGap` will do, as long as nothing is wrecked nearby. */
 function canSlipIn(w: World, arm: Arm, lane: 0 | 1): boolean {
   const gap = w.config.motorbikeEntryGap;
-  return !isDisturbedNear(w, arm, true) && w.predictedMergeGap(arm, 0, 30, gap, lane, 'motorbike') >= gap;
+  return !isDisturbedNear(w, arm, true) && closesSafely(w, arm, lane, 'motorbike') && w.predictedMergeGap(arm, 0, 30, gap, lane, 'motorbike') >= gap;
 }
 
 /**
@@ -284,7 +312,7 @@ function canSlipIn(w: World, arm: Arm, lane: 0 | 1): boolean {
  */
 function canPushIn(w: World, arm: Arm, lane: 0 | 1, type: VehicleType): boolean {
   const gap = w.config.aiPushInGap;
-  return !isDisturbedNear(w, arm, true) && w.predictedMergeGap(arm, 0, 30, gap, lane, type) >= gap;
+  return !isDisturbedNear(w, arm, true) && closesSafely(w, arm, lane, type) && w.predictedMergeGap(arm, 0, 30, gap, lane, type) >= gap;
 }
 
 /**

@@ -2,7 +2,6 @@ import type { Career } from '../core/career';
 import type { AdReward } from './adFlow';
 import { Careers } from '../core/career';
 import { Unlocks } from '../core/unlocks';
-import { Auction } from '../core/auction';
 import type { Config } from '../core/config';
 import {
   type ChestKind,
@@ -107,8 +106,6 @@ export type ShopTarget =
   | { k: 'watchAd' }
   | { k: 'item'; id: string }
   | { k: 'wear'; id: string }
-  /** The Club's card after the chests: the Auction House, the City Fund and Contracts (the shell's sheet). */
-  | { k: 'club' }
   | { k: 'dismiss' }
   | { k: 'casino'; t: CasinoTarget };
 
@@ -210,6 +207,9 @@ export const ShopPage = {
   detailHeight: 0,
   segmentHeight: 32,
   shelfHeight: 36,
+  /** Chests that are only earned: the cards' height and the heading's room above them. */
+  earnedHeight: 112,
+  earnedHeading: 24,
   pressDuration: 0.28,
   pressDepth: 0.04,
   slideDuration: 0.45,
@@ -220,7 +220,7 @@ export const ShopPage = {
    */
   burstTime: 0.4,
   /** How long the opened chest stays visible under the reel, in seconds from the burst. */
-  burstOpen: 0.5,
+  burstOpen: 0.7,
   /** The taps that broke the chest may still be coming: for this long after it bursts a tap does not skip. */
   openLock: 1,
   /**
@@ -280,13 +280,18 @@ export const ShopPage = {
     });
   },
 
-  chestCards: (l: Layout, club = false): [ChestKind, Rect][] => {
-    const cells = ShopPage.grid(CHEST_KINDS.length + (club ? 1 : 0), 2, l.content, 188);
-    return CHEST_KINDS.map((k, i) => [k, cells[i]]);
+  /** The chests for sale in a grid, and under their own heading the ones that are only earned (smaller: nothing to buy there). */
+  chestCards: (l: Layout): { cards: [ChestKind, Rect][]; headingY: number } => {
+    const P = ShopPage;
+    const sale = CHEST_KINDS.filter(isForSale);
+    const earned = CHEST_KINDS.filter((k) => !isForSale(k));
+    const area = l.content;
+    const saleCells = P.grid(sale.length, 2, R.make(area.minX, area.minY, area.maxX, area.maxY - P.earnedHeight - P.earnedHeading - P.gap), 188);
+    const bottom = Math.max(...saleCells.map((r) => r.maxY));
+    const top = bottom + P.gap + P.earnedHeading;
+    const earnedCells = P.grid(earned.length, 2, R.make(area.minX, top, area.maxX, top + P.earnedHeight), P.earnedHeight);
+    return { cards: [...sale.map((k, i): [ChestKind, Rect] => [k, saleCells[i]]), ...earned.map((k, i): [ChestKind, Rect] => [k, earnedCells[i]])], headingY: bottom + P.gap + P.earnedHeading / 2 };
   },
-
-  /** The Club's card, the one after the chests. */
-  clubCard: (l: Layout): Rect => ShopPage.grid(CHEST_KINDS.length + 1, 2, l.content, 188)[CHEST_KINDS.length],
 
   shelfChips(l: Layout): [Shelf, Rect][] {
     const area = l.content;
@@ -358,9 +363,7 @@ export const ShopPage = {
     const l = ShopPage.layout(viewport, bottomInset);
     const out: [ShopTarget, Rect][] = l.segments.map(([section, r]) => [{ k: 'section', section }, r]);
     if (state.section === 0) {
-      const club = Auction.isOpen(career);
-      out.push(...ShopPage.chestCards(l, club).map(([kind, r]): [ShopTarget, Rect] => [{ k: 'chest', kind }, r]));
-      if (club) out.push([{ k: 'club' }, ShopPage.clubCard(l)]);
+      out.push(...ShopPage.chestCards(l).cards.map(([kind, r]): [ShopTarget, Rect] => [{ k: 'chest', kind }, r]));
     } else if (state.section === 1) {
       // The cards answer on the lift (`itemAt`): a press may be the start of a scroll.
       out.push(...ShopPage.shelfChips(l).map(([shelf, r]): [ShopTarget, Rect] => [{ k: 'shelf', shelf }, r]));
@@ -411,7 +414,7 @@ export const ShopPage = {
   },
 
   addSection(list: RenderList, l: Layout, career: Career, _config: Config, today: number, state: ShopState, section: ShopSection, reduceMotion: boolean, forcedEnter: number | null = null): void {
-    if (section === 0) ShopPage.addChests(list, l, career, today, state, reduceMotion, forcedEnter);
+    if (section === 0) ShopPage.addChests(list, l, career, state, reduceMotion, forcedEnter);
     else if (section === 1) ShopPage.addCollection(list, l, career, state, reduceMotion ? 1 : (forcedEnter ?? Ease.outCubic(state.age / 0.25)), reduceMotion);
     else {
       const kit = casinoKit();
@@ -459,10 +462,10 @@ export const ShopPage = {
 
   // MARK: Chests
 
-  addChests(list: RenderList, l: Layout, career: Career, today: number, state: ShopState, reduceMotion: boolean, forcedEnter: number | null): void {
-    const club = Auction.isOpen(career);
-    if (club) ShopPage.addClubCard(list, ShopPage.clubCard(l), career, today, state, reduceMotion, forcedEnter === null ? state.age : 10);
-    ShopPage.chestCards(l, club).forEach(([kind, card], index) => {
+  addChests(list: RenderList, l: Layout, career: Career, state: ShopState, reduceMotion: boolean, forcedEnter: number | null): void {
+    const { cards, headingY } = ShopPage.chestCards(l);
+    drawText(list, S.shop.earnedHeading, v(l.content.minX + 4, headingY), 12, 'muted', { weight: 'bold', opacity: ShopPage.cardRect(cards[cards.length - 1][1], forcedEnter === null ? state.age : 10, cards.length - 1, reduceMotion).enter });
+    cards.forEach(([kind, card], index) => {
       const placed = ShopPage.cardRect(card, forcedEnter === null ? state.age : 10, index, reduceMotion);
       const enter = placed.enter;
       const r = ShopPage.pressedRect(placed.rect, { k: 'chest', kind }, state);
@@ -484,27 +487,6 @@ export const ShopPage = {
         drawText(list, String(count), badge, 11, 'accentInk', { weight: 'bold', align: 'center', opacity: enter });
       }
     });
-  },
-
-  /** The Club's card after the chests: an auction paddle, and a dot while there are lots left to try today. */
-  addClubCard(list: RenderList, card: Rect, career: Career, today: number, state: ShopState, reduceMotion: boolean, age: number): void {
-    const placed = ShopPage.cardRect(card, age, CHEST_KINDS.length, reduceMotion);
-    const r = ShopPage.pressedRect(placed.rect, { k: 'club' }, state);
-    const enter = placed.enter;
-    const c = R.center(r);
-    ShopPage.panel(list, r, 'card', enter);
-    const iconAt = v(c.x, r.minY + R.height(r) * 0.36);
-    MenuKit.glow(list, iconAt, Math.min(Math.min(R.width(r), R.height(r)) * 0.42, iconAt.y - r.minY - 4), 'coin', 0.4 * enter);
-    const u = Math.min(1.2, R.height(r) / 130);
-    list.s(rect(add(iconAt, v(0, 16 * u)), v(6 * u, 26 * u), 2 * u), 'coinInk', enter);
-    list.s(circle(add(iconAt, v(0, -8 * u)), 17 * u), 'coin', enter);
-    list.s(circle(add(iconAt, v(0, -8 * u)), 12.5 * u), 'card', enter);
-    drawText(list, '★', add(iconAt, v(0, -8 * u)), 15 * u, 'coin', { weight: 'bold', align: 'center', opacity: enter });
-    const name = S.club.title;
-    drawText(list, name, v(c.x, r.maxY - 36), ShopPage.fitted(name, 14, R.width(r) - 28), 'primary', { weight: 'bold', align: 'center', opacity: enter });
-    const line = S.club.cardLine;
-    drawText(list, line, v(c.x, r.maxY - 17), ShopPage.fitted(line, 11, R.width(r) - 28), 'muted', { align: 'center', opacity: enter });
-    if (career.auctionDay !== today || career.auctionTaken.length < baseConfig.auctionLots) ShopPage.badgeDot(list, v(r.maxX - 16, r.minY + 16), enter);
   },
 
   /** A chest's paint: body, lid and the metal of its bands (the earlier web UI's chests). */
@@ -553,14 +535,20 @@ export const ShopPage = {
     list.s(circle(at(0, -3 + lift * 0.5), 2 * u * Math.min(squash.x, squash.y)), c.body, opacity);
   },
 
-  /** The chest the moment it bursts: the lid is off, light pours out of the body, which fades as shards fly. */
+  /** The chest the moment it bursts: the lid pops (`addBurstLid`), light pours out of the open body, which fades as shards fly. */
   addBurst(list: RenderList, chest: ChestKind, center: Vec2, x: number): void {
     const out = Ease.outCubic(x);
-    const fade = 1 - x * x;
+    const fade = 1 - Ease.smoothstep((x - 0.5) / 0.5);
     const top = v(center.x, center.y - 10);
     list.s(polygon([add(top, v(-34, 0)), add(top, v(34, 0)), add(top, v(110 * out, -460)), add(top, v(-110 * out, -460))]), 'primary', 0.45 * fade);
     MenuKit.glow(list, center, 90 + 170 * out, 'primary', 0.55 * fade);
-    ShopPage.addChestIcon(list, chest, center, 1.6 * (1 + 0.15 * out), fade, v(1 + 0.1 * out, 1 - 0.08 * out), 0, false);
+    const squash = v(1 + 0.1 * out, 1 - 0.08 * out);
+    const scale = 1.6 * (1 + 0.15 * out);
+    ShopPage.addChestIcon(list, chest, center, scale, fade, squash, 0, false);
+    // The inside under the lid, bright with what is in it.
+    const u = scale * 1.05;
+    const rim = add(center, v(0, (23 * (1 - squash.y) - 4 * squash.y) * u));
+    list.s(rect(rim, v(46 * squash.x * u, 7 * squash.y * u), 3 * u), 'primary', 0.9 * Math.min(1, x / 0.2) * fade);
     const body = ShopPage.chestPaint(chest).body;
     for (let i = 0; i < 8; i++) {
       const a = -Math.PI / 2 + (unit(i, 80) - 0.5) * 3.2;
@@ -568,6 +556,24 @@ export const ShopPage = {
       const at = add(center, v(Math.cos(a) * reach * out, Math.sin(a) * reach * out + 160 * x * x));
       list.s(rect(at, v(10 + 10 * unit(i, 82), 6 + 6 * unit(i, 83)), 2, 8 * x * (unit(i, 84) - 0.5)), body, fade);
     }
+  },
+
+  /** The lid of a bursting chest, `spun` seconds after the burst: it pops off the seam and tips back to let the light out, then spins away. */
+  addBurstLid(list: RenderList, chest: ChestKind, center: Vec2, spun: number): void {
+    const life = 0.8;
+    const popTime = 0.16;
+    if (spun >= life) return;
+    const paint = ShopPage.chestPaint(chest);
+    const u = 1.6 * (1 + 0.15 * Ease.outCubic(spun / ShopPage.burstOpen)) * 1.05;
+    const pop = Ease.outCubic(spun / popTime);
+    const t = Ease.clamp01((spun - popTime) / (life - popTime));
+    const at = add(center, v(70 * t, (-14 - 26 * pop) * u - 250 * t + 420 * t * t));
+    const turn = 0.35 * pop + 4 * t;
+    const height = 18 * u * (1 - 0.25 * pop);
+    const part = (x: number): Vec2 => add(at, v(x * u * Math.cos(turn), x * u * Math.sin(turn)));
+    const opacity = 1 - t * t;
+    list.s(rect(at, v(52 * u, height), 10 * u, turn), paint.lid, opacity);
+    for (const x of [-15.5, 15.5]) list.s(rect(part(x), v(5 * u, height), 0, turn), paint.band, 0.75 * opacity);
   },
 
   // MARK: Collection
@@ -792,11 +798,8 @@ export const ShopPage = {
         (item) => ShopPage.rarityColor(item.rarity),
         (item, at, scale, opacity) => ShopPage.addPreview(list, item, at, scale, opacity),
       );
-      if (spun < 0.8) {
-        const x = spun / 0.8;
-        list.s(rect(add(center, v(80 * x, -40 - 300 * x + 420 * x * x)), v(55, 19), 9, 6 * x), ShopPage.chestPaint(opening.chest).lid, 1 - x);
-      }
-      if (spun < 0.18) list.s(rect(mul(vp, 0.5), vp), 'primary', 0.5 * (1 - spun / 0.18));
+      ShopPage.addBurstLid(list, opening.chest, center, spun);
+      if (spun < 0.12) list.s(rect(mul(vp, 0.5), vp), 'primary', 0.2 * (1 - spun / 0.12));
       return;
     }
     const tt = age - stage.reveal;

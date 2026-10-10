@@ -71,7 +71,7 @@ export function feedbackModule(): ServerModule {
           const row = ctx.db.prepare('SELECT p.id, p.name FROM friend_codes f JOIN players p ON p.id = f.player_id WHERE f.code = ? AND p.banned = 0').get(code) as
             | { id: string; name: string }
             | undefined;
-          if (!row) throw new ApiError(404, 'unknown_code', 'Nobody has that friend code. Check it in the game: Progress → Ranks → Friends.');
+          if (!row) throw new ApiError(404, 'unknown_code', 'Nobody has that friend code. Check it in the game: Social → Friends.');
           player = row;
         }
 

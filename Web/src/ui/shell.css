@@ -273,7 +273,7 @@ button {
   height: calc(var(--tabbar-h) + var(--safe-bottom));
   padding: 0 calc(var(--safe-right) + var(--s2)) var(--safe-bottom) calc(var(--safe-left) + var(--s2));
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(5, 1fr);
   background: var(--glass);
   -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(1.4);
   backdrop-filter: blur(var(--glass-blur)) saturate(1.4);
@@ -291,7 +291,7 @@ button {
   position: absolute;
   top: 6px;
   left: calc(var(--safe-left) + var(--s2));
-  width: calc((100% - var(--safe-left) - var(--safe-right) - 2 * var(--s2)) / 4);
+  width: calc((100% - var(--safe-left) - var(--safe-right) - 2 * var(--s2)) / 5);
   height: 44px;
   pointer-events: none;
   transition: transform 260ms var(--ease-drawer);
@@ -683,7 +683,8 @@ a.row-link {
   letter-spacing: -0.005em;
 }
 
-.sheet .list {
+.sheet .list,
+.social-page .list {
   background: var(--surface-2);
 }
 
@@ -692,7 +693,7 @@ a.row-link {
   gap: var(--s2);
 }
 
-/* The Friends sheet's tabs stay at the top while the list under them scrolls. */
+/* A drawer's tabs stay at the top while the list under them scrolls (the Social page has the page's own scroll). */
 .sheet-tabs {
   position: sticky;
   top: calc(-1 * var(--s2));
@@ -1240,6 +1241,14 @@ a.row-link {
   font-variant-numeric: tabular-nums;
 }
 
+/* With a keyboard the key hint takes the top corner; the count moves to the bottom one. */
+@media (hover: hover) and (pointer: fine) {
+  .dispatch-count {
+    top: auto;
+    bottom: -4px;
+  }
+}
+
 .dispatch-btn.spent.show {
   opacity: 0.45;
 }
@@ -1299,11 +1308,13 @@ a.row-link {
   }
 }
 
-.sheet .list + .list {
+.sheet .list + .list,
+.social-page .list + .list {
   margin-top: var(--s5);
 }
 
-.sheet .row-value {
+.sheet .row-value,
+.social-page .row-value {
   color: var(--muted);
 }
 
@@ -2348,7 +2359,7 @@ a.row-link {
   }
 }
 
-/* MARK: Leaderboard (ui/leaderboardSheet.ts) */
+/* MARK: Leaderboard (ui/ranksPanel.ts) */
 
 .board {
   display: grid;
@@ -2482,7 +2493,8 @@ a.row-link {
   white-space: nowrap;
 }
 
-.sheet .board-value {
+.sheet .board-value,
+.social-page .board-value {
   color: var(--primary);
   font-size: 15px;
 }
@@ -2501,7 +2513,7 @@ a.row-link {
   border-top-color: transparent;
 }
 
-/* The Prestige star (ui/leaderboardSheet.ts): a five-point star with the rank inside and a
+/* The Prestige star (ui/ranksPanel.ts): a five-point star with the rank inside and a
    slow glint. Tiers follow the star skins: silver ★1, gold ★2, iris ★3, then ember ★4, prism ★10
    and eternal ★20 (02.10.2026, the ranks beyond the first three). */
 .prestige-star {
@@ -2866,11 +2878,63 @@ a.row-link {
   margin: 0 var(--s1) var(--s4);
 }
 
-/* The Club (Leo, 10.10.2026): the Auction House, the City Fund and Contracts in one drawer (`clubSheet.ts`). */
-.club-balance {
-  margin: 0 0 var(--s3);
-  font-variant-numeric: tabular-nums;
+/* MARK: Social page (Leo, 10.10.2026) – Friends, Ranks and the Club under the canvas' title and segments (`ui/socialPage.ts`). */
+
+.social-page {
+  position: absolute;
+  z-index: var(--z-pages);
+  left: 0;
+  right: 0;
+  bottom: calc(var(--tabbar-h) + var(--safe-bottom));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  touch-action: pan-y;
+  padding: 0 calc(var(--safe-right) + var(--s3)) var(--s5) calc(var(--safe-left) + var(--s3));
+  opacity: 0;
+  transform: translateY(8px);
+  pointer-events: none;
+  transition: opacity 200ms var(--ease-out), transform 260ms var(--ease-drawer);
 }
+
+.social-page.show {
+  opacity: 1;
+  transform: none;
+  pointer-events: auto;
+}
+
+.social-inner {
+  margin: 0 auto;
+}
+
+.club > .board-tabs {
+  margin-bottom: var(--s3);
+}
+
+/* What the game says while this page covers the canvas: the same pill as on the other tabs, above the tab bar. */
+.social-toast {
+  position: absolute;
+  z-index: 25;
+  left: 50%;
+  bottom: calc(var(--tabbar-h) + var(--safe-bottom) + var(--s4));
+  max-width: min(calc(100% - 24px), 440px);
+  padding: 8px 16px;
+  border-radius: 999px;
+  transform: translateX(-50%);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.25;
+  text-align: center;
+  opacity: 0;
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .social-page {
+    transition-duration: 1ms;
+  }
+}
+
+/* The Club (Leo, 10.10.2026): the Auction House, the City Fund and Contracts, the third segment of the Social page (`clubPanel.ts`). */
 
 .club-swatch {
   flex: none;

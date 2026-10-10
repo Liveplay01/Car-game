@@ -57,13 +57,13 @@ Chest-Sheet bei den anderen Odds (`chestFinds`, Quelle `{ kind: 'find' }` in `co
 
 Innerhalb einer Seltenheit ist jedes Item gleich wahrscheinlich.
 
-**Die Diamond Chest hat kein Common.** Beim Aufklopfen wachsen die Chancen über der untersten (hier Rare) wie bei jeder Truhe, die unterste zahlt (`tappedOdds`); Pity und Duplikate-Geld gelten wie immer.
+**Die Diamond Chest hat kein Common.** Beim Aufklopfen wachsen die Chancen über der untersten (hier Rare) wie bei jeder Truhe, die unterste zahlt (`tappedOdds`); Pity und Duplikate-Geld gelten wie immer. Legendary bleibt unter 15 %, auch bei voller Klopfkraft (13 % × 1,1 = 14,3 %).
 
 ## Der Club (Leo, 10.10.2026): Auktion, Stadtfonds, Verträge
 
 Drei Geldsenken für große Kontostände, aus einer Schublade im Shop (Karte nach den Truhen, ab der Elite-Leiste, Level 50). Alles nur Aussehen und Dank, nie ein Vorteil auf der Straße.
 
-**Auktionshaus** (`core/auction.ts`, `ui/clubSheet.ts`, `npm run sim:auction`): Jeden Tag drei Lose, je ein Versuch: zwei Skins aus dem Truhen-Pool, die dem Spieler fehlen (Epic und Legendary zuerst, sonst darunter), und der **Skin des Hauses** (siehe unten). Ist nichts mehr anzubieten, ist das Los eine Diamond Chest. Die Lose stehen im Spielstand und gelten den ganzen Tag. Der Spieler bietet gegen **computergesteuerte Sammler** (3 bis 4, mit Namen, auf dem Bildschirm als solche benannt): **7 von 10 sind Haie**, die bis zum 1,4- bis 3,6-Fachen der Schätzung mitbieten, der Rest hört beim 0,5- bis 1,2-Fachen auf. Die Gebote beginnen bei 35 % der Schätzung und steigen in Schritten von 5 %; ein Sammler, der den nächsten Schritt noch zahlen kann, setzt mit 85 % dagegen (und springt bis zu 3 Schritte). Wer ausscheidet, zeigt, dass seine Grenze unter dem Gebot lag. Bezahlt wird **Zuschlag + 10 % Aufgeld**. Weggehen kostet nichts, das Los ist dann aber für heute weg (so gibt es keinen zweiten Blick per Neuladen). Die Grenzen der Sammler stehen nirgends im Spielstand; sie kommen aus dem Seed des Spielstands und dem unsichtbaren Zufall wie im Casino.
+**Auktionshaus** (`core/auction.ts`, `ui/clubPanel.ts`, `npm run sim:auction`): Jeden Tag drei Lose, je ein Versuch: zwei Skins aus dem Truhen-Pool, die dem Spieler fehlen (Epic und Legendary zuerst, sonst darunter), und der **Skin des Hauses** (siehe unten). Ist nichts mehr anzubieten, ist das Los eine Diamond Chest. Die Lose stehen im Spielstand und gelten den ganzen Tag. Der Spieler bietet gegen **computergesteuerte Sammler** (3 bis 4, mit Namen, auf dem Bildschirm als solche benannt): **7 von 10 sind Haie**, die bis zum 1,4- bis 3,6-Fachen der Schätzung mitbieten, der Rest hört beim 0,5- bis 1,2-Fachen auf. Die Gebote beginnen bei 35 % der Schätzung und steigen in Schritten von 5 %; ein Sammler, der den nächsten Schritt noch zahlen kann, setzt mit 85 % dagegen (und springt bis zu 3 Schritte). Wer ausscheidet, zeigt, dass seine Grenze unter dem Gebot lag. Bezahlt wird **Zuschlag + 10 % Aufgeld**. Weggehen kostet nichts, das Los ist dann aber für heute weg (so gibt es keinen zweiten Blick per Neuladen). Die Grenzen der Sammler stehen nirgends im Spielstand; sie kommen aus dem Seed des Spielstands und dem unsichtbaren Zufall wie im Casino.
 Schätzungen: Common 15.000 · Rare 45.000 · Epic 150.000 · Legendary 500.000 · Haus-Skin 1.000.000 · Truhe zum Ladenpreis. `npm run sim:auction`: wer bis zum 2-Fachen bietet, gewinnt in etwa 30 %; ein Zuschlag kostet im Schnitt etwa das 2,4-Fache der Schätzung (plus Aufgeld).
 **Skins des Hauses** (nur hier zu gewinnen, Legendary, Regal „Honours“, zählen nicht für das Honours-Album): Sterling (Chrom, Heiligenschein) · Magnate (Carbon und Gold, Lorbeer) · Baron (Rubin, Glut) · Bullion (Gold, Nova) · Sovereign (Obsidian, Aurora) · Provenance (Perlweiß, Kristall). Alle mit eigener Karosserie (GT Coupé, Roadster, Hot Rod, Jeep).
 
@@ -265,7 +265,7 @@ vorbehalten (Fahrzeugfarben sind Spielinformation).
 
 ## Saison-Pass und Ruhmeshalle (Leo, 30.09.2026, `core/seasonPass.ts`)
 
-- **Saison-Pass** (Progress → Today, ab Level 15): 150.000 Spielgeld pro Saison, nie Echtgeld.
+- **Saison-Pass** (Progress → Goals, ab Level 15): 150.000 Spielgeld pro Saison, nie Echtgeld.
   Jede Schicht bringt dieselben XP wie die Elite-Leiste; 120 XP pro Stufe, 12 Stufen:
   Standard, 5.000, **Skin 1**, Standard, 10.000, Premium, Event, **Skin 2**, 20.000, Premium,
   30.000, **Skin 3**. Die vier Saisons (Dezember zählt zum nächsten Winter) kommen jedes Jahr

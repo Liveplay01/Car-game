@@ -1,6 +1,6 @@
 import { type Career, Careers } from '../core/career';
 import type { Config } from '../core/config';
-import { type Upgrade, upgradeMaxSteps } from '../core/levels';
+import { type Upgrade, UPGRADES, upgradeMaxSteps } from '../core/levels';
 import { type Vec2, v, add, sub, mul, TAU } from '../core/vec2';
 import { type RenderList, type Rect, type Primitive, R, rect, circle, arc, line, polygon, text, Ease } from './render';
 import type { ColorToken } from './theme';
@@ -49,6 +49,38 @@ export const BuildTab = {
 };
 
 /**
+ * The Upgrades page's headings (Leo, 10.10.2026): what an upgrade is for. Only the display is sorted: `UPGRADES` keeps its order,
+ * a challenge link carries the steps by position.
+ */
+const UPGRADE_GROUP: Record<Upgrade, 0 | 1 | 2> = {
+  morePatrols: 0,
+  longerPursuit: 0,
+  quietStreets: 0,
+  interceptor: 0,
+  dispatchRadio: 0,
+  backup: 0,
+  cashRoute: 1,
+  overtime: 1,
+  freight: 1,
+  doubleRun: 1,
+  insurance: 1,
+  robberyInsurance: 1,
+  quickRecovery: 2,
+  shield: 2,
+  chainSaver: 2,
+  tightFitTip: 2,
+  dashcam: 2,
+  winterTyres: 2,
+  fogLamps: 2,
+};
+
+/** The upgrades under their headings, in the page's order; a heading with nothing under it is left out. */
+const groupsOf = (upgrades: readonly Upgrade[]): { label: string; items: Upgrade[] }[] =>
+  ([0, 1, 2] as const)
+    .map((g) => ({ label: S.upgrades.group(g), items: UPGRADES.filter((u) => UPGRADE_GROUP[u] === g && upgrades.includes(u)) }))
+    .filter((g) => g.items.length > 0);
+
+/**
  * The Upgrades page: a card per upgrade with a picture of what it does,
  * the steps bought and the next price. One tap opens the details, a double tap buys. Only
  * the purchase celebrates.
@@ -67,6 +99,8 @@ export const UpgradePage = {
   /** The details live in a sheet; the list runs down to the tab bar. */
   detailHeight: 0,
   minCardHeight: 116,
+  /** The room of a group's heading. */
+  headingHeight: 28,
 
   /** The list's window: under the segments, above the detail panel. */
   listArea(viewport: Vec2, bottomInset: number): Rect {
@@ -75,26 +109,40 @@ export const UpgradePage = {
   },
 
   /** Card height: they fill the window if they can stay readable, else the list scrolls. */
-  layoutOf(viewport: Vec2, bottomInset: number, count: number): { cardWidth: number; cardHeight: number; left: number; maxScroll: number } {
+  layoutOf(viewport: Vec2, bottomInset: number, upgrades: readonly Upgrade[]): { cardWidth: number; cardHeight: number; left: number; maxScroll: number } {
     const U = UpgradePage;
     const width = Math.min(viewport.x - 2 * U.gap, 460);
-    const rows = Math.ceil(count / U.columns);
+    const groups = groupsOf(upgrades);
+    const rows = groups.reduce((n, g) => n + Math.ceil(g.items.length / U.columns), 0);
     const available = viewport.y - bottomInset - U.detailHeight - U.gap - BuildLayout.contentTop;
-    const fit = (available - U.gap * (rows - 1)) / rows;
+    const fit = (available - groups.length * U.headingHeight - U.gap * (rows - 1)) / rows;
     const cardHeight = fit >= U.minCardHeight ? Math.min(132, fit) : U.minCardHeight;
-    const total = rows * cardHeight + U.gap * (rows - 1);
+    const total = rows * cardHeight + groups.length * U.headingHeight + U.gap * (rows - 1);
     return { cardWidth: (width - U.gap * (U.columns - 1)) / U.columns, cardHeight, left: (viewport.x - width) / 2, maxScroll: Math.max(0, total - available + 8) };
   },
 
-  cards(viewport: Vec2, bottomInset: number, upgrades: readonly Upgrade[], scroll = 0): { upgrade: Upgrade; rect: Rect }[] {
+  /** The cards, group by group, and where each group's heading stands. */
+  arrange(viewport: Vec2, bottomInset: number, upgrades: readonly Upgrade[], scroll = 0): { cards: { upgrade: Upgrade; rect: Rect }[]; headings: { label: string; y: number; x: number }[] } {
     const U = UpgradePage;
-    const l = U.layoutOf(viewport, bottomInset, upgrades.length);
-    const top = BuildLayout.contentTop - scroll;
-    return upgrades.map((upgrade, i) => {
-      const x = l.left + (i % U.columns) * (l.cardWidth + U.gap);
-      const y = top + Math.floor(i / U.columns) * (l.cardHeight + U.gap);
-      return { upgrade, rect: R.make(x, y, x + l.cardWidth, y + l.cardHeight) };
-    });
+    const l = U.layoutOf(viewport, bottomInset, upgrades);
+    const cards: { upgrade: Upgrade; rect: Rect }[] = [];
+    const headings: { label: string; y: number; x: number }[] = [];
+    let y = BuildLayout.contentTop - scroll;
+    for (const group of groupsOf(upgrades)) {
+      headings.push({ label: group.label, y: y + U.headingHeight / 2, x: l.left + 4 });
+      y += U.headingHeight;
+      group.items.forEach((upgrade, i) => {
+        const x = l.left + (i % U.columns) * (l.cardWidth + U.gap);
+        const top = y + Math.floor(i / U.columns) * (l.cardHeight + U.gap);
+        cards.push({ upgrade, rect: R.make(x, top, x + l.cardWidth, top + l.cardHeight) });
+      });
+      y += Math.ceil(group.items.length / U.columns) * (l.cardHeight + U.gap);
+    }
+    return { cards, headings };
+  },
+
+  cards(viewport: Vec2, bottomInset: number, upgrades: readonly Upgrade[], scroll = 0): { upgrade: Upgrade; rect: Rect }[] {
+    return UpgradePage.arrange(viewport, bottomInset, upgrades, scroll).cards;
   },
 
   cardAt(point: Vec2, viewport: Vec2, bottomInset: number, upgrades: readonly Upgrade[], scroll = 0): Upgrade | null {
@@ -146,17 +194,19 @@ export const UpgradePage = {
     BuildTab.addChrome(list, 'upgrades', thumb, Fmt.number(UpgradePage.countedMoney(career, state)), vp);
     const area = UpgradePage.listArea(vp, bottomInset);
     list.clip = area;
-    UpgradePage.cards(vp, bottomInset, upgrades, state.scroll).forEach((card, i) => {
+    const { cards, headings } = UpgradePage.arrange(vp, bottomInset, upgrades, state.scroll);
+    for (const heading of headings) list.s(text(heading.label, v(heading.x, heading.y), 12, 'leading', 'bold'), 'muted', Ease.outCubic(state.age / UpgradePage.enterDuration));
+    cards.forEach((card, i) => {
       if (card.rect.maxY < area.minY - 20 || card.rect.minY > area.maxY + 20) return;
       UpgradePage.addCard(list, card.upgrade, i, card.rect, career, config, state, reduceMotion, card.upgrade === freeStep);
     });
     list.clip = undefined;
-    UpgradePage.addScrollIndicator(list, area, state, upgrades.length, bottomInset);
+    UpgradePage.addScrollIndicator(list, area, state, upgrades, bottomInset);
   },
 
   /** A thin bar at the right edge while the list moves, like iOS. */
-  addScrollIndicator(list: RenderList, area: Rect, state: UpgradeState, count: number, bottomInset: number): void {
-    const l = UpgradePage.layoutOf(list.camera.viewport, bottomInset, count);
+  addScrollIndicator(list: RenderList, area: Rect, state: UpgradeState, upgrades: readonly Upgrade[], bottomInset: number): void {
+    const l = UpgradePage.layoutOf(list.camera.viewport, bottomInset, upgrades);
     state.addIndicator(list, area, l.maxScroll, Math.min(list.camera.viewport.x - 4, l.left + 2 * l.cardWidth + UpgradePage.gap + 5));
   },
 

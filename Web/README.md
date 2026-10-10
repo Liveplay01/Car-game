@@ -87,7 +87,7 @@ Only in the browser version:
 - **Syndicate convoy** (every 15th level, `convoyEvery`): the criminal is a boss with
   armoured escorts right behind it; a police car must be timed into the gap. Busting it pays
   the heist back and counts as a trophy in Records (`core/specials.ts`).
-- **Challenge links** (`core/challenge.ts`): after a shift, Friends → "Challenge a friend" makes a
+- **Challenge links** (`core/challenge.ts`): after a shift, Social → Friends → "Challenge a friend" makes a
   link (`#challenge=…`) with the seed and everything that shapes that shift. A challenge
   always starts from a fresh world, so everyone who opens the link meets the same traffic;
   it earns nothing, the score to beat is the goal.
@@ -98,11 +98,11 @@ Only in the browser version:
   odds and returns in the sheet behind "Odds" (LOOT.md, Casino). Its looks and rounds are a
   chunk of their own (`present/casinoLoader.ts`), loaded when the Shop opens with the casino
   unlocked; the Shop's money chip (`casinoWallet.ts`) works without it.
-- **The Club** (Leo, 10.10.2026; Shop → Chests, from Level 50): three sinks for big balances in one sheet (`ui/clubSheet.ts`).
+- **The Club** (Leo, 10.10.2026; Social → Club, from Level 50): three sinks for big balances on the Social tab (`ui/clubPanel.ts`).
   The **Auction House** (`core/auction.ts`): three lots a day against computer-controlled collectors, most of them sharks
   that push the price over the estimate; the hammer price plus a 10 % premium is paid, walking away is free. The **City
   Fund** (`core/fund.ts`, `net/fund.ts`, the service's `fund` module): everyone gives to the same projects; a gift of
-  100,000 or more earns the skin of a built project, which the game picks up at the start and when the sheet opens.
+  100,000 or more earns the skin of a built project, which the game picks up at the start and when the Club opens.
   **Contracts** (`core/contracts.ts`, settled in `present/booking.ts`): money on a Perfect Run of the next career shift.
   Also the Diamond Chest and the casino's High Roller stakes (`Casino.highRoller`). The odds, prices and limits are in
   LOOT.md, "Der Club"; the fund is gone without the service (`VITE_API_URL`), the rest plays offline.
@@ -169,8 +169,8 @@ wins. Every value below is in `core/config.ts` (`versus…`).
 
 ## Leaderboard
 
-Progress → **Ranks** (the chip beside the balance; it shows the Shift level rank once known) opens
-`ui/leaderboardSheet.ts`: two boards, Shift level and Unlimited, the top 50 and your own place.
+Social → **Ranks** (the Rank chip beside the balance on Progress leads there too; it shows the Shift level rank once known) is
+`ui/ranksPanel.ts`: everyone or friends only, four boards (Shift level, Unlimited, Daily, Boss Rush), the top 50 and your own place.
 There is no sign-up: the player enters a name, and the records come from this device's save. The
 service (`../Server/`) answers with a secret token kept in `carGame.account.v1`; the name is the
 multiplayer name too (`carGame.player.v1`), and renaming in either place renames both (the
@@ -184,9 +184,9 @@ leaderboard may refuse a name: then both keep the old one).
 
 ## Invite a friend
 
-The friend code is the invite (`net/invite.ts`, `Server/src/modules/referrals`): the **Friends** sheet (`ui/friendsSheet.ts`, one drawer with four tabs: Friends · Ranking · Play · Invite; opened by the Friends pill above Settings or the Friends row in the leaderboard) has
-a name field (if there is no name yet), your friend code with Copy, a ranking among friends, Challenge a friend and the way to Multiplayer, an **invite link** (the share sheet on a phone, the clipboard elsewhere), the friends you brought and how far they
-are, and adding a friend by code. A friend opens `…/i/K7M29QXA` (a preview with the inviter's name that sends on to the game) or a
+The friend code is the invite (`net/invite.ts`, `Server/src/modules/referrals`): Social → **Friends** (`ui/friendsPanel.ts`, one page, top to bottom: code, add, list, play together, invite) has
+a name field (if there is no name yet), your friend code with Copy, adding a friend by code, Challenge a friend (the last finished shift) and the way to Multiplayer, an **invite link** (the share sheet on a phone, the clipboard elsewhere), the friends you brought and how far they
+are. The ranking among friends is Ranks → Friends. A friend opens `…/i/K7M29QXA` (a preview with the inviter's name that sends on to the game) or a
 challenge link its sender shared, and arrives with `?ref=K7M29QXA`. `readInviteLink` keeps it (`carGame.invite.v1`)
 for a player below level 5 and takes it out of the address; once there is a leaderboard name `redeemInvite` hands it in
 (at start and on every account change). When the friend reaches `INVITE_LEVEL` (`core/config.ts`, the same number as
@@ -210,7 +210,7 @@ and go to the service with every sync as `muted`: the game leaves those timers o
 
 The row is always in Settings; turning it on asks the browser and shows one notification at once (`confirm`). Without the service or a service worker (`npm run dev`, a build without `VITE_API_URL`; `pushDelivers`) it still works for that, but sends no reminders and says so. Inside a portal it is greyed out.
 
-Turned on in **Settings → Progress → Notifications**, or from the offer that comes after the first
+Turned on in **Settings → Account → Notifications**, or from the offer that comes after the first
 shift won (`hints: notifications`, `bookShift`: tomorrow's free chest is the reason) and once more when a Daily streak
 reaches two days (`notificationsStreak`). "Not now" costs nothing: only "Turn on" asks the browser, which asks once. On an
 iPhone the offer waits until the game is on the Home Screen. Chrome, Edge, Firefox and the Play Store app everywhere; Safari only from the Home Screen (iOS 16.4+).
@@ -286,10 +286,10 @@ Cloud sync.
   backup, invite, the website, Tight Fit, the other modes) are no notices: `TipQueue` shows them on
   the waiting screen's top card, like the swipe hint, five seconds each, one after the other; a
   tip cut off before it was read starts over (`GameSession.tip`, `Booking.tips`).
-- The first shift is only the game: no tab bar, no Settings, no Friends until it is over
+- The first shift is only the game: no tab bar and no Settings until it is over
   (`GameSession.showsChrome`). Chests open on the Game tab from the "Open chest" pill
-  (`GameSession.sceneChest`, the Shop's reveal over the scene). Under it the round buttons
-  Picture and Friends share one row (`.run-icons`, their names on hover with a mouse). The
+  (`GameSession.sceneChest`, the Shop's reveal over the scene). Under it the round button
+  Picture sits in its own row (`.run-icons`, its name on hover with a mouse). The
   picture is the way to send a challenge (Leo, 08.10.2026): opening it makes the short link,
   and "Send as challenge" shares the photo with the dare and the link (`PhotoHooks.challenge`;
   not on CrazyGames). News waits while a shift runs (`NoticeQueue.held`); replies to the

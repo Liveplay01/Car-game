@@ -8,7 +8,7 @@ import { type Screen, BuildLayout } from './flow';
  * under every tab; the camera glides to the view that tab needs. Never a zoom on start/end:
  * the Game tab, playing and the result all share the street view.
  */
-export type Perspective = 'street' | 'builder' | 'shop' | 'upgrades' | 'progress';
+export type Perspective = 'street' | 'builder' | 'shop' | 'upgrades' | 'progress' | 'social';
 
 export const perspectiveOf = (s: Screen): Perspective => {
   if (s.k !== 'page') return 'street';
@@ -21,6 +21,8 @@ export const perspectiveOf = (s: Screen): Perspective => {
       return 'upgrades';
     case 'progress':
       return 'progress';
+    case 'social':
+      return 'social';
     case 'game':
       return 'street';
   }
@@ -32,6 +34,7 @@ export const PerspectiveTuning = {
   shopDistance: 150,
   shopZoom: 0.74,
   progressDirection: -0.9,
+  socialDirection: -2.3,
   upgradesZoom: 1.06,
 };
 
@@ -63,8 +66,9 @@ export function perspectiveCamera(p: Perspective, layout: RoundaboutLayout, view
       return { viewport, center: v(0, 0), focus: map.center, scale: map.radius / layout.ringRadius };
     }
     case 'shop':
-    case 'progress': {
-      const dir = p === 'shop' ? T.shopDirection : T.progressDirection;
+    case 'progress':
+    case 'social': {
+      const dir = p === 'shop' ? T.shopDirection : p === 'social' ? T.socialDirection : T.progressDirection;
       return { viewport, center: mul(fromAngle(dir), layout.ringRadius + T.shopDistance), focus: v(viewport.x / 2, viewport.y * 0.45), scale: street.scale * T.shopZoom };
     }
     case 'upgrades':

@@ -7,7 +7,7 @@ import { type Vec2, add, sub, mul, dot, length, normalize, angleOf, fromAngle, w
 import { Rng } from './rng';
 import type { World } from './world';
 import { transporterAhead } from './specials';
-import { plannedSpeed, speedLimitAt } from './modules';
+import { approachLimitAt, plannedSpeed } from './modules';
 import { isStalling } from './learner';
 
 /** The nearest thing ahead a driver has to mind. */
@@ -43,12 +43,15 @@ export function updateDrivers(w: World, dt: number): void {
   const lane = ringLaneOccupants(w, true);
   // A car joining plans with the speeds as they are: it brakes for what it sees, and the traffic behind cannot count on a pace that changes under its tyres.
   const joining = zones ? ringLaneOccupants(w, false) : lane;
-  // The criminal ploughs on; it only keeps out of the transporter's secure zone.
+  // The criminal keeps the ring's pace and keeps out of the transporter's secure zone, but does not plough into slower traffic.
   for (const veh of w.vehicles) {
     if (veh.type !== 'pickup' || veh.phase.kind !== 'ring') continue;
     const truck = transporterAhead(w, veh.phase.s);
-    if (!truck && isInFlow(veh.phase.drive)) continue;
-    veh.phase.drive = drive(w, veh.phase.drive, truck ? [truck] : [], veh.id, dt);
+    const leads = leadsOnRing(w, veh.phase.s, lane, veh.id, veh.lane);
+    if (truck) leads.push(truck);
+    leads.sort((a, b) => a.gap - b.gap || a.id - b.id);
+    if (leads.length === 0 && isInFlow(veh.phase.drive)) continue;
+    veh.phase.drive = drive(w, veh.phase.drive, leads, veh.id, dt);
   }
   for (const veh of w.vehicles) {
     if (veh.type === 'pickup') continue;
@@ -56,7 +59,7 @@ export function updateDrivers(w: World, dt: number): void {
     if (p.kind === 'ring') {
       const leads = leadsOnRing(w, p.s, lane, veh.id, veh.lane);
       if (w.owesStop(veh)) busStop(w, veh, p.s, p.drive.speed ?? w.ringSpeed, leads, dt);
-      let limit = zones ? speedLimitAt(w, p.s) : undefined;
+      let limit = zones ? approachLimitAt(w, p.s) : undefined;
       // The learner hesitates now and then: it brakes for nothing, and the traffic bunches up.
       if (isStalling(w, veh.id)) limit = Math.min(limit ?? w.ringSpeed, w.ringSpeed * w.config.learnerStallSpeed);
       // The oversize load crawls all the way round; the traffic behind it follows suit.

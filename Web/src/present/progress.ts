@@ -114,7 +114,7 @@ interface Layout {
   content: Rect;
 }
 
-const PROGRESS_SECTIONS: ProgressSection[] = [0, 1, 2, 3];
+const PROGRESS_SECTIONS: ProgressSection[] = [0, 1, 2, 3, 4];
 
 /** The podium glyph: three steps of 4 points with 1 point between. */
 const PODIUM_WIDTH = 14;
@@ -225,7 +225,6 @@ export const ProgressPage = {
     const s = new Stack(width);
     const career = save.career;
     if (section === PROGRESS.records) {
-      if (Unlocks.isOpen(career, 'daily')) s.row({ k: 'streak' }, ProgressPage.streakHeight);
       if (ProgressPage.showsElite(career)) s.row({ k: 'elite' }, 76);
       const stats = ProgressPage.stats(save);
       s.grid(
@@ -241,17 +240,16 @@ export const ProgressPage = {
       }
     } else if (section === PROGRESS.today) {
       s.row({ k: 'daily' }, 64);
+      if (Unlocks.isOpen(career, 'daily')) s.row({ k: 'streak' }, ProgressPage.streakHeight);
       s.row({ k: 'weekly' }, 64);
       ProgressPage.tourRows(s, career, today);
-      if (Careers.maxHeat(career) > 0 || career.heat > 0) s.row({ k: 'heat' }, 64);
-      s.row({ k: 'pass' }, SeasonPass.isOpen(career) ? ProgressPage.passHeight : 64);
-      s.row({ k: 'season' }, 64);
       const quests = challengesOf(today);
       const done = quests.filter((q) => Careers.isChallengeDone(career, q, today)).length;
       s.heading(S.progress.quests, `${done}/${quests.length}`, done === quests.length);
       for (const challenge of quests) s.row({ k: 'quest', challenge }, 56);
       s.row({ k: 'note', text: S.progress.questsHint }, 16);
-    } else if (section === PROGRESS.goals) {
+    } else if (section === PROGRESS.trials) {
+      if (Careers.maxHeat(career) > 0 || career.heat > 0) s.row({ k: 'heat' }, 64);
       const trialsDone = TRIALS.filter((x) => career.trialsDone.includes(x.id)).length;
       s.heading(S.progress.trials, `${trialsDone}/${TRIALS.length}`, trialsDone === TRIALS.length);
       if (!Unlocks.isOpen(career, 'trials')) s.row({ k: 'trialsLocked', level: Unlocks.level('trials') }, 56);
@@ -275,6 +273,9 @@ export const ProgressPage = {
         s.heading(S.rush.name, career.trialsDone.includes(RUSH_ID) ? '1/1' : '0/1', career.trialsDone.includes(RUSH_ID));
         s.row({ k: rushOpen(career) ? 'rush' : 'rushLocked' }, 64);
       }
+    } else if (section === PROGRESS.goals) {
+      s.row({ k: 'pass' }, SeasonPass.isOpen(career) ? ProgressPage.passHeight : 64);
+      s.row({ k: 'season' }, 64);
       const mastered = MASTERY_GOALS.filter((g) => (career.masteryTiers[g] ?? 0) >= MASTERY_THRESHOLDS[g].length).length;
       s.heading(S.progress.mastery, `${mastered}/${MASTERY_GOALS.length}`, mastered === MASTERY_GOALS.length);
       for (const goal of MASTERY_GOALS) s.row({ k: 'mastery', goal }, 58);

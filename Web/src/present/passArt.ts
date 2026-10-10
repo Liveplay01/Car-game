@@ -20,7 +20,7 @@ export const drift = (tile: Rect, t: number, i: number, speed: number, sway: num
   v(tile.minX + fract(hash(i, salt) + Math.sin(t * 0.8 + i) * sway) * R.width(tile), tile.minY + fract(hash(i, salt + 1) + t * speed) * (R.height(tile) + 12) - 6);
 
 /**
- * The Season Pass's picture on Progress → Today (Leo, 06.10.2026): a tile as big as the streak's scene,
+ * The Season Pass's picture on Progress → Goals (Leo, 06.10.2026): a tile as big as the streak's scene,
  * in the season's weather (snow, petals, sun and heat, falling leaves) with the season's top skin
  * glowing in the middle. With Reduce Motion everything stands still.
  */

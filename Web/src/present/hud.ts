@@ -381,8 +381,6 @@ export const HUD = {
         list.s(plusSign(at, size), rush ? 'accentInk' : 'muted', 0.35 * Ease.clamp01(pop / 0.4));
         return;
       }
-      // On the lime of Rush Hour each one stands on a dark edge, so the green and blue still read.
-      if (rush) list.s(plusSign(at, size + 3), 'accentInk');
       list.s(plusSign(at, size), p.color);
     });
 

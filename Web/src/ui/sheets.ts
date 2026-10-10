@@ -1,4 +1,5 @@
 import { h, icon } from './dom';
+import { tabsControl } from './tabs';
 import { ICONS, CRAZYGAMES_LOGO, FANDOM_LOGO } from './icons';
 import type { Settings } from '../core/career';
 import { type PatchNote, type PatchImpact, type PatchItem, itemText, itemCredit } from '../present/patchNotes';
@@ -205,6 +206,13 @@ export function fadeIn(view: HTMLElement): void {
   view.classList.remove('view-in');
   void view.offsetWidth;
   view.classList.add('view-in');
+}
+
+/** What a drawer or the Social page shows is now another view (an auction that ended, another tab): it glides back to its start. */
+export function scrollSheetToTop(from: HTMLElement): void {
+  const sheet = from.closest<HTMLElement>('.sheet, .social-page');
+  if (!sheet || sheet.scrollTop === 0) return;
+  sheet.scrollTo({ top: 0, behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
 }
 
 /**
@@ -629,9 +637,18 @@ function richLinkRow(title: string, sub: string, onOpen: () => void, front: HTML
   return row;
 }
 
+type SettingsTab = 'play' | 'account' | 'about';
+const SETTINGS_TABS: { id: SettingsTab; label: string }[] = [
+  { id: 'play', label: 'Play' },
+  { id: 'account', label: 'Account' },
+  { id: 'about', label: 'About' },
+];
+/** Kept between visits: coming back from a page opened here (What's new, a legal text) lands where it left. */
+let lastSettingsTab: SettingsTab = 'play';
+
 /**
- * Settings, tidied up (Leo, 03.10.2026): what players change most sits on top (Game feel,
- * Sound, Cloud sync), then Build with us, then links and the legal pages; Delete account last.
+ * Settings, tidied up (Leo, 03.10.2026) and split into tabs (Leo, 10.10.2026): Play (Game feel, Sound), Account (Cloud sync,
+ * notifications, install, Delete account) and About (What's new, Build with us, links, the legal pages).
  */
 export function settingsSheet(layer: HTMLElement, s: Settings, actions: SettingsActions): () => void {
   const hasVibration = typeof navigator.vibrate === 'function';
@@ -719,55 +736,73 @@ export function settingsSheet(layer: HTMLElement, s: Settings, actions: Settings
       )
     : null;
 
-  const body = h(
-    'div',
-    { class: 'settings' },
-    group(
-      'Game feel',
-      switchRow('Larger text', 'Notices and cards over the game a step larger.', s.largeText, toggle('largeText')),
-      h(
-        'div',
-        { class: 'row row-stack' },
-        h('div', { class: 'row-main' }, h('div', { class: 'row-title' }, 'Reduce motion'), h('div', { class: 'row-sub' }, 'No shake, slow-mo or flying parts.')),
-        motionSeg,
+  // Three tabs (Leo, 10.10.2026): how it plays, what belongs to the player, and everything about the game. Built once, so a switch keeps its state.
+  const panes: Record<SettingsTab, (HTMLElement | null)[]> = {
+    play: [
+      group(
+        'Game feel',
+        switchRow('Larger text', 'Notices and cards over the game a step larger.', s.largeText, toggle('largeText')),
+        h(
+          'div',
+          { class: 'row row-stack' },
+          h('div', { class: 'row-main' }, h('div', { class: 'row-title' }, 'Reduce motion'), h('div', { class: 'row-sub' }, 'No shake, slow-mo or flying parts.')),
+          motionSeg,
+        ),
+        switchRow('Left-handed', 'Puts the buttons over the game on the left.', s.leftHanded, toggle('leftHanded')),
+        switchRow('Vehicle labels', 'Names the special vehicles on the road.', s.vehicleLabels, toggle('vehicleLabels')),
+        switchRow('Haptics', hasVibration ? null : 'Not available in this browser', s.haptics, toggle('haptics')),
+        switchRow('Battery saver', 'Draws 30 frames a second and a softer picture. Easier on the battery.', s.batterySaver, toggle('batterySaver')),
       ),
-      switchRow('Left-handed', 'Puts the buttons over the game on the left.', s.leftHanded, toggle('leftHanded')),
-      switchRow('Vehicle labels', 'Names the special vehicles on the road.', s.vehicleLabels, toggle('vehicleLabels')),
-      switchRow('Haptics', hasVibration ? null : 'Not available in this browser', s.haptics, toggle('haptics')),
-      switchRow('Battery saver', 'Draws 30 frames a second and a softer picture. Easier on the battery.', s.batterySaver, toggle('batterySaver')),
-    ),
-    group(
-      'Sound',
-      switchRow('Sound effects', null, s.sound, toggle('sound')),
-      switchRow('Music', null, s.music, toggle('music')),
-      switchRow('Map sounds', 'Rain and thunder on the road.', s.mapSounds, toggle('mapSounds')),
-    ),
-    group('Progress', cloudRow, ...pushRows(actions.push), installRow),
-    buildGroup,
-    group(
-      'More',
-      richLinkRow("What's new", 'Patch notes and updates.', () => actions.openNotes(), null, actions.notesUnread ? h('span', { class: 'new-pill' }, 'New') : null),
-      inPortal ? null : websiteRow(),
-      wikiRow(),
-      inPortal || inItch || inPlayStore ? null : crazyGamesRow(),
-    ),
-    group(
-      'Legal',
-      ...LEGAL_DOCS.map((doc) => linkRow(doc.title, doc.sub, () => actions.openLegal(doc.id))),
-      linkRow('Licenses', 'Open-source software in the game.', () => actions.openLegal('licenses')),
-    ),
-    h(
-      'p',
-      { class: 'section-note settings-foot' },
-      inPortal
-        ? 'Log in to CrazyGames to keep your progress on every device.'
-        : cloudEnabled
-          ? 'Your progress is saved on this device. Cloud sync keeps a copy and brings it to your other devices.'
-          : 'Your progress is saved on this device.',
-    ),
-    h('button', { class: 'btn block destructive', type: 'button', onclick: () => actions.openDeleteAccount() }, 'Delete account'),
-  );
-  return openSheet(layer, 'Settings', body, () => actions.closed());
+      group(
+        'Sound',
+        switchRow('Sound effects', null, s.sound, toggle('sound')),
+        switchRow('Music', null, s.music, toggle('music')),
+        switchRow('Map sounds', 'Rain and thunder on the road.', s.mapSounds, toggle('mapSounds')),
+      ),
+    ],
+    account: [
+      group('Backup & device', cloudRow, ...pushRows(actions.push), installRow),
+      h(
+        'p',
+        { class: 'section-note settings-foot' },
+        inPortal
+          ? 'Log in to CrazyGames to keep your progress on every device.'
+          : cloudEnabled
+            ? 'Your progress is saved on this device. Cloud sync keeps a copy and brings it to your other devices.'
+            : 'Your progress is saved on this device.',
+      ),
+      h('button', { class: 'btn block destructive', type: 'button', onclick: () => actions.openDeleteAccount() }, 'Delete account'),
+    ],
+    about: [
+      group(
+        'The game',
+        richLinkRow("What's new", 'Patch notes and updates.', () => actions.openNotes(), null, actions.notesUnread ? h('span', { class: 'new-pill' }, 'New') : null),
+        inPortal ? null : websiteRow(),
+        wikiRow(),
+        inPortal || inItch || inPlayStore ? null : crazyGamesRow(),
+      ),
+      buildGroup,
+      group(
+        'Legal',
+        ...LEGAL_DOCS.map((doc) => linkRow(doc.title, doc.sub, () => actions.openLegal(doc.id))),
+        linkRow('Licenses', 'Open-source software in the game.', () => actions.openLegal('licenses')),
+      ),
+    ],
+  };
+  const content = h('div', { class: 'settings-content' });
+  const tabs = tabsControl('Settings', SETTINGS_TABS, (next) => show(next, true));
+  tabs.el.classList.add('sheet-tabs');
+  function show(next: SettingsTab, animate: boolean): void {
+    lastSettingsTab = next;
+    tabs.set(next);
+    content.replaceChildren(...panes[next].filter((pane): pane is HTMLElement => pane !== null));
+    if (animate) fadeIn(content);
+  }
+  show(lastSettingsTab, false);
+  const body = h('div', { class: 'settings' }, tabs.el, content);
+  const close = openSheet(layer, 'Settings', body, () => actions.closed());
+  glideHeight(body, content);
+  return close;
 }
 
 export interface DeleteAccountActions {

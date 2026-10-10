@@ -101,7 +101,7 @@ export const LEGAL_DOCS: LegalDoc[] = [
         heading: 'Stored on your device',
         paragraphs: [
           "The game keeps your progress, your settings and, if you play multiplayer, the name you chose in your browser's local storage. It also stores its own files so it runs offline. None of this is sent to us. Storing it is what makes the game work as you asked (§ 25(2) no. 2 TDDDG).",
-          'To delete it: Settings → Delete account, or clear the site data in your browser.',
+          'To delete it: Settings → Account → Delete account, or clear the site data in your browser.',
         ],
       },
       {
@@ -121,15 +121,15 @@ export const LEGAL_DOCS: LegalDoc[] = [
       {
         heading: 'Leaderboard',
         paragraphs: [
-          'Only if you enter a name for the leaderboard (Progress → Ranks), the game sends it to our leaderboard server, which runs on the same machine as the game. From then on it sends your level (with your Prestige rank) and your Unlimited record whenever they improve.',
+          'Only if you enter a name for the leaderboard (Social → Ranks), the game sends it to our leaderboard server, which runs on the same machine as the game. From then on it sends your level (with your Prestige rank) and your Unlimited record whenever they improve.',
           'The server stores the name, a random ID, a secret key that proves the name is yours (only its hash is kept), your best scores and when you reached them. The name and the scores are public: everyone can see them on the leaderboard. Your IP address reaches the server with every request, as with any website; it is used only in memory to stop abuse and is not stored. Offensive names are removed.',
-          'Legal basis: Art. 6(1)(b) GDPR (the leaderboard you chose to join). To remove your name and all your scores at once: Progress → Ranks → Remove me from the leaderboard.',
+          'Legal basis: Art. 6(1)(b) GDPR (the leaderboard you chose to join). To remove your name and all your scores at once: Social → Ranks → Remove me from the leaderboard.',
         ],
       },
       {
         heading: 'Friends',
         paragraphs: [
-          'If you open Friends on the leaderboard, the server makes a friend code for you (like K7M2-9QXA). Whoever types your code adds you to their friends list and then sees your name and your best scores on their friends board, which they could already see on the public leaderboard. You can see and remove the people on your own list; the list is stored with your leaderboard entry.',
+          'If you open Friends under Social, the server makes a friend code for you (like K7M2-9QXA). Whoever types your code adds you to their friends list and then sees your name and your best scores on their friends board, which they could already see on the public leaderboard. You can see and remove the people on your own list; the list is stored with your leaderboard entry.',
           'Your friend code is also your invite. A friend who opens your invite link (like …/i/K7M29QXA, or a challenge link you shared while you have a name on the leaderboard) arrives with your code. Once they have a name on the leaderboard, their game tells our server that they came through you, and the server keeps one line: who invited whom, and whether they reached level 5. When they do, you both get a chest in the game, which the game picks up the next time you open it. You see the names of the friends you invited and how far they are; they see who invited them. Opening the link without a name sends nothing to us.',
           'Legal basis: Art. 6(1)(b) GDPR (the friends board and invites you chose to use). Removing your name from the leaderboard deletes your friend code, your list and your invites as well.',
         ],
@@ -137,24 +137,24 @@ export const LEGAL_DOCS: LegalDoc[] = [
       {
         heading: 'City Fund',
         paragraphs: [
-          'If you have a name on the leaderboard and give money to the City Fund (Shop → Club), the server stores the amount, the project it went to and the time next to your player account. The fund shows the totals of every project and a list of the most generous names, which are the names you chose for the leaderboard. The money is play money inside the game; nothing real is paid.',
+          'If you have a name on the leaderboard and give money to the City Fund (Social → Club), the server stores the amount, the project it went to and the time next to your player account. The fund shows the totals of every project and a list of the most generous names, which are the names you chose for the leaderboard. The money is play money inside the game; nothing real is paid.',
           'Legal basis: Art. 6(1)(b) GDPR (the fund you chose to give to). Removing your name from the leaderboard or deleting your account takes your name off the list; your gifts then stay in the totals without a name, so a project that was built stays built.',
         ],
       },
       {
         heading: 'Cloud sync',
         paragraphs: [
-          'Only if you turn on Cloud sync (Settings → Cloud sync), the game sends a copy of your progress (the same data as the progress file you can export: level, money, upgrades, collection, records, settings) to our server. No name, e-mail address or password is needed: the server makes a random sync code, and the code is the only key to the copy. Only its hash is stored, together with the copy and the times it was made, last changed and last opened. The copy is not public. A copy that has not been opened or changed for 200 days is deleted automatically. Your IP address reaches the server with every request, as with any website; it is used only in memory to stop abuse and is not stored.',
+          'Only if you turn on Cloud sync (Settings → Account → Cloud sync), the game sends a copy of your progress (the same data as the progress file you can export: level, money, upgrades, collection, records, settings) to our server. No name, e-mail address or password is needed: the server makes a random sync code, and the code is the only key to the copy. Only its hash is stored, together with the copy and the times it was made, last changed and last opened. The copy is not public. A copy that has not been opened or changed for 200 days is deleted automatically. Your IP address reaches the server with every request, as with any website; it is used only in memory to stop abuse and is not stored.',
           'Anyone who knows your sync code can load or replace your copy, so keep it private. A picture you chose for Big Screen is not part of it. If you have a name on the leaderboard, the copy also holds that name and the secret key that proves it is yours, so that on a new device you are the same player again, with the same name, scores and friends. Anyone with the sync code could therefore also act as that player.',
-          'Legal basis: Art. 6(1)(b) GDPR (the backup you chose to make). To delete the copy for good: Settings → Cloud sync → Delete the cloud copy. Stopping on one device leaves the copy for your other devices.',
+          'Legal basis: Art. 6(1)(b) GDPR (the backup you chose to make). To delete the copy for good: Settings → Account → Cloud sync → Delete the cloud copy. Stopping on one device leaves the copy for your other devices.',
         ],
       },
       {
         heading: 'Notifications',
         paragraphs: [
-          "Only if you turn on notifications (Settings → Notifications, or when the game offers them) and your browser allows them, your browser creates a push address for this device at its push service (Google for Chrome and the Google Play app, Apple for Safari, Mozilla for Firefox, Microsoft for Edge) and the game sends it to our server, with two keys that let only your browser read the messages. With it the server keeps your device's time zone (so nothing arrives at night), the page the game opens at, when the game was last opened, when the last notification went out, and the reminders the game asked for: your Daily streak (with its length), tomorrow's free chest and the next Season Pass. If you have a name on the leaderboard, the push address is linked to it, so the server can tell you when another player passes you in the top 20 or a chest from an invite is waiting.",
+          "Only if you turn on notifications (Settings → Account → Notifications, or when the game offers them) and your browser allows them, your browser creates a push address for this device at its push service (Google for Chrome and the Google Play app, Apple for Safari, Mozilla for Firefox, Microsoft for Edge) and the game sends it to our server, with two keys that let only your browser read the messages. With it the server keeps your device's time zone (so nothing arrives at night), the page the game opens at, when the game was last opened, when the last notification went out, and the reminders the game asked for: your Daily streak (with its length), tomorrow's free chest and the next Season Pass. If you have a name on the leaderboard, the push address is linked to it, so the server can tell you when another player passes you in the top 20 or a chest from an invite is waiting.",
           "Each notification is encrypted on our server and handed to your browser's push service, which delivers it; the push service sees when a message goes to which address, not what it says. At most one a day besides the streak reminder, only between 9:00 and 21:00 your time. If you stay away, the server sends at most four reminders (after 3, 7, 14 and 30 days) and then stays quiet. Your IP address is handled as described under Cloud sync.",
-          'Legal basis: Art. 6(1)(a) GDPR (your consent). Turn the switch off, or take the permission back in your browser, and the server forgets the push address with everything above. A device not opened for 120 days is forgotten automatically, and Settings → Delete account removes it too.',
+          'Legal basis: Art. 6(1)(a) GDPR (your consent). Turn the switch off, or take the permission back in your browser, and the server forgets the push address with everything above. A device not opened for 120 days is forgotten automatically, and Settings → Account → Delete account removes it too.',
         ],
       },
       {
@@ -177,7 +177,7 @@ export const LEGAL_DOCS: LegalDoc[] = [
       {
         heading: 'Bug reports and ideas',
         paragraphs: [
-          'Settings → Build with us opens two forms on our website: one for bugs, one for feature ideas. What you type there goes to our server and is read by the developer. A bug report may carry your friend code; then it is tied to your leaderboard name, and you can receive a reward in the game (the Ladybug skin, sometimes a chest), which the game picks up the next time you open it.',
+          'Settings → About → Build with us opens two forms on our website: one for bugs, one for feature ideas. What you type there goes to our server and is read by the developer. A bug report may carry your friend code; then it is tied to your leaderboard name, and you can receive a reward in the game (the Ladybug skin, sometimes a chest), which the game picks up the next time you open it.',
           'To allow one report and one idea a day, the server keeps a hash of your IP address with each one for up to two days, then deletes it. Please do not type personal data into the forms. Deleting your account (or your name on the leaderboard) unlinks your reports from you; the text itself stays with us so the bug can be fixed.',
           'Legal basis: Art. 6(1)(f) GDPR (our legitimate interest in fixing the game and hearing your ideas) and, for the reward, Art. 6(1)(b) GDPR.',
         ],
@@ -203,7 +203,7 @@ export const LEGAL_DOCS: LegalDoc[] = [
         heading: 'Deleting your data',
         paragraphs: [
           "You have no account with us: your progress lives on your device. Deleting the game's data in your browser, or uninstalling the app and clearing Chrome's data for game.gustaff.dev, removes it from your device.",
-          'What our server keeps exists only if you chose it, and you can delete it yourself in the game at any time: everything at once with Settings → Delete account; your notifications with Settings → Notifications; or your name, scores, friend code and friends list with Progress → Ranks → Remove me from the leaderboard; your cloud copy with Settings → Cloud sync → Delete the cloud copy. Both are gone for good at once. If you can no longer open the game, write to the email address above with your name on the leaderboard or your sync code, and we delete it within 30 days.',
+          'What our server keeps exists only if you chose it, and you can delete it yourself in the game at any time: everything at once with Settings → Account → Delete account; your notifications with Settings → Notifications; or your name, scores, friend code and friends list with Social → Ranks → Remove me from the leaderboard; your cloud copy with Settings → Account → Cloud sync → Delete the cloud copy. Both are gone for good at once. If you can no longer open the game, write to the email address above with your name on the leaderboard or your sync code, and we delete it within 30 days.',
         ],
       },
       {

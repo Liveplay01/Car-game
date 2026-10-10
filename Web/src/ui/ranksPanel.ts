@@ -1,5 +1,6 @@
 import { h } from './dom';
-import { openSheet, glideHeight, fadeIn } from './sheets';
+import { fadeIn } from './sheets';
+import { tabsControl } from './tabs';
 import {
   type Account,
   type BoardEntry,
@@ -25,18 +26,15 @@ import { TITLES, type TitleId } from '../core/elite';
 import { tierOf } from '../core/tiers';
 
 /**
- * Progress → the rank chip: the leaderboards. No sign-up (Leo, 30.09.2026): the player only
+ * Social → Ranks: the leaderboards (the Progress tab's rank chip leads here). No sign-up (Leo, 30.09.2026): the player only
  * enters a name (the same one as in multiplayer), and the records come from this device's
- * progress. Switch between Shift level and Unlimited, see the top 50 and your own place. Scores are sent by the game on its own (`syncScores` on every save); this sheet only
- * shows them.
+ * progress. Everyone or friends only (Leo, 10.10.2026: the Friends page's own ranking is this one), Shift level, Unlimited, Daily and Boss Rush, the top 50
+ * and your own place. Scores are sent by the game on its own (`syncScores` on every save); this page only shows them.
  */
 
-export interface LeaderboardActions {
+export interface RanksActions {
   /** The records as the save has them now, sent right after joining. */
   records(): Records;
-  /** The Friends sheet: your friend code, the invite link, adding and removing friends. */
-  openFriends(): void;
-  closed(): void;
 }
 
 const BOARDS: { id: BoardId; label: string; empty: string }[] = [
@@ -198,7 +196,7 @@ export function nameForm(value: string, action: string, submit: (name: string) =
   return form;
 }
 
-/** The friends boards are stale after the list changed (the Friends sheet adds and removes people). */
+/** The friends boards are stale after the list changed (the Friends page adds and removes people). */
 export function forgetFriendsBoards(): void {
   for (const b of BOARDS) cache.delete(`friends:${b.id}`);
 }
@@ -209,29 +207,6 @@ export async function openAccount(name: string): Promise<Account> {
   savePlayerName(account.name);
   cache.clear();
   return account;
-}
-
-/** A segmented control (the one for Reduce motion in the settings): `set` moves the highlight to an item. */
-export function tabsControl<T extends string>(label: string, items: { id: T; label: string }[], pick: (id: T) => void): { el: HTMLElement; set(id: T): void } {
-  const el = h('div', { class: 'segmented board-tabs', role: 'group', 'aria-label': label });
-  const thumb = h('span', { class: 'thumb', 'aria-hidden': 'true' });
-  thumb.style.width = `calc((100% - 4px) / ${items.length})`;
-  el.append(thumb);
-  const buttons = items.map((item) => {
-    const button = h('button', { type: 'button', 'aria-pressed': 'false', onclick: () => pick(item.id) }, item.label);
-    el.append(button);
-    return button;
-  });
-  return {
-    el,
-    set(id) {
-      items.forEach((item, i) => {
-        const on = item.id === id;
-        buttons[i].setAttribute('aria-pressed', String(on));
-        if (on) thumb.style.transform = `translateX(${i * 100}%)`;
-      });
-    },
-  };
 }
 
 export interface BoardPanel {
@@ -330,36 +305,39 @@ export function boardPanel(scope: Scope, host: BoardHost): BoardPanel {
   return { el, open: () => choose(board) };
 }
 
-export function leaderboardSheet(layer: HTMLElement, actions: LeaderboardActions): () => void {
+const SCOPES: { id: Scope; label: string }[] = [
+  { id: 'all', label: 'Everyone' },
+  { id: 'friends', label: 'Friends' },
+];
+let lastScope: Scope = 'all';
+
+export function ranksPanel(actions: RanksActions): HTMLElement {
   let account: Account | null = loadAccount();
   let renaming = false;
+  let scope: Scope = lastScope;
 
   const top = h('div', { class: 'board-top' });
   const footer = h('div', { class: 'board-footer' });
-  const panel = boardPanel('all', {
+  const host: BoardHost = {
     account: () => account,
     records: actions.records,
     signedOut: () => {
       account = null;
       renderTop();
     },
+  };
+  const boards = { all: boardPanel('all', host), friends: boardPanel('friends', host) };
+  const shown = (): BoardPanel => boards[scope];
+  const scopes = tabsControl('Show', SCOPES, (next) => {
+    scope = next;
+    lastScope = next;
+    scopes.set(next);
+    view.replaceChildren(shown().el);
+    fadeIn(view);
+    shown().open();
   });
-
-  // Friends have a page of their own (`friendsSheet.ts`: code, invites, challenges, multiplayer and the ranking among them); here is only the way to it.
-  const friendsPanel = h(
-    'div',
-    { class: 'friends-panel' },
-    h(
-      'div',
-      { class: 'list' },
-      h(
-        'div',
-        { class: 'row' },
-        h('div', { class: 'row-main' }, h('div', { class: 'row-title' }, 'Friends'), h('div', { class: 'row-sub' }, `Rank against them and invite more: you both get a chest when a friend reaches level ${INVITE_LEVEL}.`)),
-        h('button', { class: 'btn primary', type: 'button', onclick: () => actions.openFriends() }, 'Open'),
-      ),
-    ),
-  );
+  scopes.set(scope);
+  const view = h('div', { class: 'board-view' }, shown().el);
 
   /** Above the tabs: the name form while the player is not on the leaderboard yet. */
   function renderTop(): void {
@@ -401,7 +379,7 @@ export function leaderboardSheet(layer: HTMLElement, actions: LeaderboardActions
               savePlayerName(account.name);
               cache.clear();
               stopRenaming();
-              panel.open();
+              shown().open();
               return null;
             } catch (error) {
               account = loadAccount();
@@ -434,7 +412,7 @@ export function leaderboardSheet(layer: HTMLElement, actions: LeaderboardActions
           account = null;
           cache.clear();
           renderTop();
-          panel.open();
+          shown().open();
         })
         .catch((error: unknown) => {
           remove.disabled = false;
@@ -477,18 +455,14 @@ export function leaderboardSheet(layer: HTMLElement, actions: LeaderboardActions
       // Your records go up at once, then the list shows you in it.
       await syncScores(actions.records());
       cache.clear();
-      panel.open();
+      shown().open();
       return null;
     } catch (error) {
       return describeError(error);
     }
   }
 
-  const body = h('div', { class: 'board' }, top, panel.el, friendsPanel, footer);
-
   renderTop();
-  panel.open();
-  const close = openSheet(layer, 'Leaderboard', body, actions.closed);
-  glideHeight(body, panel.el);
-  return close;
+  shown().open();
+  return h('div', { class: 'board' }, top, scopes.el, view, footer);
 }

@@ -1,6 +1,7 @@
 import { h } from './dom';
-import { nameForm, openAccount, tabsControl } from './leaderboardSheet';
-import { fadeIn, glideHeight, openSheet } from './sheets';
+import { nameForm, openAccount } from './ranksPanel';
+import { tabsControl } from './tabs';
+import { fadeIn, scrollSheetToTop } from './sheets';
 import { baseConfig } from '../core/config';
 import type { Career } from '../core/career';
 import { Auction, type AuctionEvent, type AuctionRun, type Lot } from '../core/auction';
@@ -20,8 +21,8 @@ import { CanvasDrawer } from '../present/draw';
 import { v } from '../core/vec2';
 
 /**
- * The Club (Leo, 10.10.2026): three sinks for big balances in one drawer with tabs, opened from its card in
- * the Shop. The Auction House (`core/auction.ts`), the City Fund (`core/fund.ts`, the service) and Contracts
+ * The Club (Leo, 10.10.2026): three sinks for big balances, the third segment of the Social tab (from Level 50; it began as a card in
+ * the Shop). The Auction House (`core/auction.ts`), the City Fund (`core/fund.ts`, the service) and Contracts
  * (`core/contracts.ts`). Money only buys looks, thanks and a chance at a payout for skill: never an edge on the road.
  */
 
@@ -37,7 +38,12 @@ export interface ClubHost {
   notice(text: string): void;
   celebrate(): void;
   sound?(id: SoundID, pitch?: number): void;
-  closed(): void;
+}
+
+export interface ClubPanel {
+  el: HTMLElement;
+  /** The page is left: the auction's clock stops and the answers that are still on their way are dropped. */
+  dispose(): void;
 }
 
 type ClubTab = 'auction' | 'fund' | 'contracts';
@@ -93,9 +99,8 @@ function lotKind(lot: Lot): string {
   return item.source.kind === 'auction' ? 'Auction House exclusive' : S.shop.kind(item);
 }
 
-export function clubSheet(layer: HTMLElement, host: ClubHost): () => void {
+export function clubPanel(host: ClubHost): ClubPanel {
   const career = host.career();
-  const balance = h('p', { class: 'section-note club-balance', 'aria-live': 'polite' });
   const body = h('div', { class: 'club' });
   const content = h('div', { class: 'club-content' });
   let tab: ClubTab = lastTab;
@@ -185,15 +190,18 @@ export function clubSheet(layer: HTMLElement, host: ClubHost): () => void {
     }
     show();
   });
-  tabs.el.classList.add('sheet-tabs');
+
+  let view = '';
 
   function show(): void {
     tabs.set(tab);
-    balance.textContent = `Your money · ${cash(career.money)}`;
-    withCoins(balance);
     const rows = { auction: auctionRows, fund: fundRows, contracts: contractRows }[tab]();
     content.replaceChildren(...rows);
     withCoins(content);
+    // A new view (another tab, the room opening, the hammer falling, back to the lots) starts at the top; a new bid stays where it is.
+    const next = tab === 'auction' ? `auction:${run?.phase ?? 'lots'}` : tab;
+    if (next !== view) scrollSheetToTop(content);
+    view = next;
     fadeIn(content);
     if (tab === 'fund' && !fund && !fundBusy && !fundError && fundEnabled) void loadFund();
   }
@@ -653,13 +661,13 @@ export function clubSheet(layer: HTMLElement, host: ClubHost): () => void {
     ];
   }
 
-  body.replaceChildren(balance, tabs.el, content);
+  body.replaceChildren(tabs.el, content);
   show();
-  const close = openSheet(layer, 'Club', body, () => {
-    closed = true;
-    stopTimer();
-    host.closed();
-  });
-  glideHeight(body, content);
-  return close;
+  return {
+    el: body,
+    dispose: () => {
+      closed = true;
+      stopTimer();
+    },
+  };
 }

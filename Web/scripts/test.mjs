@@ -2777,6 +2777,7 @@ test('the Diamond Chest is for sale, never holds a Common, and its tapped odds s
   for (const power of [0, 0.5, 1]) {
     const odds = tapped('diamond', power, baseConfig.chestTapBoost);
     assert.equal(odds[0], 0, 'tapping never makes a Common appear');
+    assert.ok(odds[3] <= 0.15, 'Legendary stays at 15 % or less, tapped or not');
     assert.ok(odds.every((p) => p >= 0));
     assert.ok(Math.abs(odds.reduce((a, b) => a + b, 0) - 1) < 1e-12);
   }
@@ -2991,4 +2992,31 @@ test('the City Fund: skins are owed for built projects given enough to, a gift l
   assert.equal(c.fundGiven, 250_000);
   Fund.gave(c, 9_000_000);
   assert.equal(c.money, 0, 'never below nothing');
+});
+
+test('the tab bar runs Progress, Social, Game, Shop, Build, and Social has its three segments under the title', async () => {
+  const { TAB_BAR, SOCIAL } = await load('/src/present/flow.ts');
+  const { SocialPage } = await load('/src/present/social.ts');
+  assert.deepEqual(TAB_BAR, ['progress', 'social', 'game', 'shop', 'upgrades']);
+  const viewport = { x: 430, y: 900 };
+  const cells = SocialPage.segments(viewport);
+  assert.deepEqual(cells.map(([section]) => section), [SOCIAL.friends, SOCIAL.ranks, SOCIAL.club]);
+  for (const [section, r] of cells) assert.equal(SocialPage.sectionAt({ x: (r.minX + r.maxX) / 2, y: (r.minY + r.maxY) / 2 }, viewport), section);
+  assert.ok(SocialPage.column(viewport).top > cells[0][1].maxY, 'the content starts under the segments');
+  assert.equal(SocialPage.sectionAt({ x: 10, y: 5 }, viewport), null);
+  const c = newCareer();
+  assert.equal(SocialPage.clubOpen(c), false, 'the Club waits for Level 50');
+});
+
+test('Progress has five sections that each carry a label, and every upgrade stands once under a heading', async () => {
+  const { PROGRESS } = await load('/src/present/flow.ts');
+  const { UpgradePage } = await load('/src/present/upgrades.ts');
+  const { UPGRADES } = await load('/src/core/levels.ts');
+  assert.deepEqual(Object.values(PROGRESS), [0, 1, 2, 3, 4]);
+  for (const i of Object.values(PROGRESS)) assert.ok(S.progress.section(i).length > 0);
+  const { cards, headings } = UpgradePage.arrange({ x: 430, y: 900 }, 56, UPGRADES);
+  assert.deepEqual([...cards.map((c) => c.upgrade)].sort(), [...UPGRADES].sort(), 'each upgrade once');
+  assert.deepEqual(headings.map((h) => h.label), ['POLICE', 'MONEY', 'DRIVING']);
+  const some = UPGRADES.slice(0, 3);
+  assert.equal(UpgradePage.arrange({ x: 430, y: 900 }, 56, some).headings.length, 1, 'a heading with nothing under it is left out');
 });

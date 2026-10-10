@@ -1,0 +1,17 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "layout-transition",
+        "value": "*",
+        "files": [
+          "Web/src/ui/shell.css"
+        ],
+        "createdAt": "2026-10-10T13:47:24.071Z",
+        "reason": "user confirmed: the auction timer bar (.auction-timer-bar) and the City Fund progress bar (.club-bar-fill) animate their width on purpose"
+      }
+    ]
+  }
+}

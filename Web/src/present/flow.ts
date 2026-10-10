@@ -14,11 +14,11 @@ import type { ShiftSummary } from './hud';
 import type { ColorToken } from './theme';
 
 /**
- * The pages. The tab bar shows four (`TAB_BAR`); the Street Builder shares
+ * The pages. The tab bar shows five (`TAB_BAR`, Leo, 10.10.2026: Progress · Social · Game · Shop · Build); the Street Builder shares
  * the Build tab with the Upgrades, one segment each. Game is where you play; no start menu.
  */
-export type Tab = 'streetBuilder' | 'game' | 'shop' | 'upgrades' | 'progress';
-export const TAB_BAR: Tab[] = ['progress', 'game', 'shop', 'upgrades'];
+export type Tab = 'streetBuilder' | 'game' | 'shop' | 'upgrades' | 'progress' | 'social';
+export const TAB_BAR: Tab[] = ['progress', 'social', 'game', 'shop', 'upgrades'];
 export const BUILD_PAGES: Tab[] = ['upgrades', 'streetBuilder'];
 export const barTab = (t: Tab): Tab => (t === 'streetBuilder' ? 'upgrades' : t);
 
@@ -37,12 +37,20 @@ export const screenTab = (s: Screen): Tab => (s.k === 'page' ? s.tab : 'game');
 export const showsTabBar = (s: Screen): boolean => s.k !== 'settings' && s.k !== 'playing';
 
 export type ShopSection = 0 | 1 | 2; // chests · collection · casino
-export type ProgressSection = 0 | 1 | 2 | 3;
+export type ProgressSection = 0 | 1 | 2 | 3 | 4;
 /**
- * The Progress tab's sections, left to right (Leo, 04.10.2026: what to do comes first, the long list of stats third):
- * today (daily, weekly, pass, quests) · goals (trials, mastery, feats) · records (stats) · museum. The tab opens on `today`.
+ * The Progress tab's sections, left to right (Leo, 04.10.2026: what to do comes first; five since 10.10.2026, sorted by what they ask of the player):
+ * today (daily and its streak, weekly, tour, quests) · trials (Heat, trials, ascension, landmarks, Boss Rush: shifts to play) · goals (season pass, mastery, feats, achievements: boxes to tick) ·
+ * records (Elite and Prestige, the stats) · museum. The tab opens on `today`.
  */
-export const PROGRESS = { today: 0, goals: 1, records: 2, museum: 3 } as const satisfies Record<string, ProgressSection>;
+export const PROGRESS = { today: 0, trials: 1, goals: 2, records: 3, museum: 4 } as const satisfies Record<string, ProgressSection>;
+
+export type SocialSection = 0 | 1 | 2;
+/**
+ * The Social tab (Leo, 10.10.2026): the people and the shared things. Friends (code, list, play together, invite) · Ranks (the boards, everyone
+ * or friends only) · Club (from Level 50: Auction House, City Fund, Contracts). Its content is the shell's DOM (`ui/socialPage.ts`); the canvas draws the title and the segments.
+ */
+export const SOCIAL = { friends: 0, ranks: 1, club: 2 } as const satisfies Record<string, SocialSection>;
 
 export type Part = 'arm' | RoadModule;
 export const PARTS: Part[] = ['arm', 'tollBooth', 'speedCamera', 'towDepot', 'billboard', 'detour'];
@@ -73,6 +81,9 @@ export type ScreenAction =
   | { k: 'showTab'; tab: Tab }
   | { k: 'showShop'; section: ShopSection }
   | { k: 'showProgress'; section: ProgressSection }
+  | { k: 'showSocial'; section: SocialSection }
+  /** The next Heat step of the waiting career shift, round to off (the Game tab's pill and Progress → Trials). */
+  | { k: 'cycleHeat' }
   | { k: 'selectUpgrade'; upgrade: Upgrade }
   | { k: 'buy'; upgrade: Upgrade }
   | { k: 'pickUpPart'; part: Part }
@@ -98,8 +109,6 @@ export type ScreenAction =
   | { k: 'wear'; id: string }
   /** Big Screen: choose the picture or video behind the roundabout (the shell's sheet). */
   | { k: 'editBackdrop' }
-  /** The Club: the Auction House, the City Fund and Contracts (the shell's sheet). */
-  | { k: 'openClub' }
   | { k: 'startTrial'; id: string }
   | { k: 'wearTitle'; id: TitleId }
   | { k: 'showElite' }

@@ -240,7 +240,7 @@ export function cloudSheet(layer: HTMLElement, actions: CloudActions): () => voi
     const now = h('button', { class: 'btn', type: 'button' }, 'Sync now');
     now.addEventListener('click', () => run(now, () => syncNow()));
     return [
-      h('p', { class: 'section-note' }, 'Your progress is copied to the cloud while you play. On another device open Settings → Cloud sync and type this code.'),
+      h('p', { class: 'section-note' }, 'Your progress is copied to the cloud while you play. On another device open Settings → Account → Cloud sync and type this code.'),
       h('div', { class: 'list' }, h('div', { class: 'row' }, h('div', { class: 'row-main' }, h('div', { class: 'row-sub' }, 'Your sync code'), h('div', { class: 'sync-code', 'aria-label': `Your sync code: ${view.code}` }, view.code ?? '')), copy)),
       h('div', { class: 'list' }, row('Cloud copy', state, now), row('Password manager', 'Let your browser remember the code, then it fills it in on a new device.', keep)),
       h('p', { class: 'section-note' }, 'Anyone with this code can load or replace your progress. Keep it private.'),
