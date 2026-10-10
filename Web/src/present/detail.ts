@@ -2,7 +2,7 @@ import { type Career, Careers, MINIMUM_ARMS } from '../core/career';
 import { detourArmSlot } from '../core/modules';
 import { type Config, type RoadModule, MODULE_MAX_LEVEL } from '../core/config';
 import { type Upgrade, upgradeMaxSteps } from '../core/levels';
-import { type ChestKind, RARITIES, CHEST_ODDS, chestFinds, tappedOdds, PITY_CHESTS, PITY_LEGENDARY_CHESTS, MAX_CAR_SKINS, BIG_SCREEN, cosmetic, isForSale } from '../core/loot';
+import { type ChestKind, RARITIES, CHEST_ODDS, chestFinds, chestPrice, tappedOdds, PITY_CHESTS, PITY_LEGENDARY_CHESTS, MAX_CAR_SKINS, BIG_SCREEN, cosmetic, isForSale } from '../core/loot';
 import { type CasinoGame, type SlotSymbol, SLOT_SYMBOLS, Casino } from '../core/casino';
 import { type Vec2, v } from '../core/vec2';
 import type { RenderList } from './render';
@@ -138,10 +138,8 @@ export const Details = {
     const actions: DetailAction[] = [];
     const index = career.chests.indexOf(kind);
     actions.push({ label: count > 1 ? `${S.shop.open} · ${count}` : S.shop.open, action: { k: 'openChest', index: Math.max(0, index) }, prominent: true, enabled: count > 0 });
-    if (isForSale(kind)) {
-      const price = kind === 'standard' ? config.standardChestPrice : config.premiumChestPrice;
-      actions.push({ label: S.shop.buy(money(Fmt.number(price))), action: { k: 'buyChest', kind }, prominent: false, enabled: career.money >= price });
-    }
+    const price = chestPrice(kind, config);
+    if (isForSale(kind) && price !== null) actions.push({ label: S.shop.buy(money(Fmt.number(price))), action: { k: 'buyChest', kind }, prominent: false, enabled: career.money >= price });
     if (kind === 'standard') {
       const left = Careers.adChestsLeft(career, today, config);
       if (left > 0 && !ads.ready) notes.push({ text: S.ads.unavailable, color: 'muted' });

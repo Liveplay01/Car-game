@@ -2,6 +2,7 @@ import type { Career } from '../core/career';
 import type { AdReward } from './adFlow';
 import { Careers } from '../core/career';
 import { Unlocks } from '../core/unlocks';
+import { Auction } from '../core/auction';
 import type { Config } from '../core/config';
 import {
   type ChestKind,
@@ -10,6 +11,7 @@ import {
   type Rarity,
   CHEST_KINDS,
   COSMETICS,
+  chestPrice,
   isForSale,
   rarityRank,
   isHonour,
@@ -105,6 +107,8 @@ export type ShopTarget =
   | { k: 'watchAd' }
   | { k: 'item'; id: string }
   | { k: 'wear'; id: string }
+  /** The Club's card after the chests: the Auction House, the City Fund and Contracts (the shell's sheet). */
+  | { k: 'club' }
   | { k: 'dismiss' }
   | { k: 'casino'; t: CasinoTarget };
 
@@ -276,10 +280,13 @@ export const ShopPage = {
     });
   },
 
-  chestCards: (l: Layout): [ChestKind, Rect][] => {
-    const cells = ShopPage.grid(CHEST_KINDS.length, 2, l.content, 188);
+  chestCards: (l: Layout, club = false): [ChestKind, Rect][] => {
+    const cells = ShopPage.grid(CHEST_KINDS.length + (club ? 1 : 0), 2, l.content, 188);
     return CHEST_KINDS.map((k, i) => [k, cells[i]]);
   },
+
+  /** The Club's card, the one after the chests. */
+  clubCard: (l: Layout): Rect => ShopPage.grid(CHEST_KINDS.length + 1, 2, l.content, 188)[CHEST_KINDS.length],
 
   shelfChips(l: Layout): [Shelf, Rect][] {
     const area = l.content;
@@ -350,8 +357,11 @@ export const ShopPage = {
     if (state.busy) return [[{ k: 'dismiss' }, R.make(0, 0, viewport.x, viewport.y)]];
     const l = ShopPage.layout(viewport, bottomInset);
     const out: [ShopTarget, Rect][] = l.segments.map(([section, r]) => [{ k: 'section', section }, r]);
-    if (state.section === 0) out.push(...ShopPage.chestCards(l).map(([kind, r]): [ShopTarget, Rect] => [{ k: 'chest', kind }, r]));
-    else if (state.section === 1) {
+    if (state.section === 0) {
+      const club = Auction.isOpen(career);
+      out.push(...ShopPage.chestCards(l, club).map(([kind, r]): [ShopTarget, Rect] => [{ k: 'chest', kind }, r]));
+      if (club) out.push([{ k: 'club' }, ShopPage.clubCard(l)]);
+    } else if (state.section === 1) {
       // The cards answer on the lift (`itemAt`): a press may be the start of a scroll.
       out.push(...ShopPage.shelfChips(l).map(([shelf, r]): [ShopTarget, Rect] => [{ k: 'shelf', shelf }, r]));
     } else {
@@ -401,7 +411,7 @@ export const ShopPage = {
   },
 
   addSection(list: RenderList, l: Layout, career: Career, _config: Config, today: number, state: ShopState, section: ShopSection, reduceMotion: boolean, forcedEnter: number | null = null): void {
-    if (section === 0) ShopPage.addChests(list, l, career, state, reduceMotion, forcedEnter);
+    if (section === 0) ShopPage.addChests(list, l, career, today, state, reduceMotion, forcedEnter);
     else if (section === 1) ShopPage.addCollection(list, l, career, state, reduceMotion ? 1 : (forcedEnter ?? Ease.outCubic(state.age / 0.25)), reduceMotion);
     else {
       const kit = casinoKit();
@@ -449,8 +459,10 @@ export const ShopPage = {
 
   // MARK: Chests
 
-  addChests(list: RenderList, l: Layout, career: Career, state: ShopState, reduceMotion: boolean, forcedEnter: number | null): void {
-    ShopPage.chestCards(l).forEach(([kind, card], index) => {
+  addChests(list: RenderList, l: Layout, career: Career, today: number, state: ShopState, reduceMotion: boolean, forcedEnter: number | null): void {
+    const club = Auction.isOpen(career);
+    if (club) ShopPage.addClubCard(list, ShopPage.clubCard(l), career, today, state, reduceMotion, forcedEnter === null ? state.age : 10);
+    ShopPage.chestCards(l, club).forEach(([kind, card], index) => {
       const placed = ShopPage.cardRect(card, forcedEnter === null ? state.age : 10, index, reduceMotion);
       const enter = placed.enter;
       const r = ShopPage.pressedRect(placed.rect, { k: 'chest', kind }, state);
@@ -474,6 +486,27 @@ export const ShopPage = {
     });
   },
 
+  /** The Club's card after the chests: an auction paddle, and a dot while there are lots left to try today. */
+  addClubCard(list: RenderList, card: Rect, career: Career, today: number, state: ShopState, reduceMotion: boolean, age: number): void {
+    const placed = ShopPage.cardRect(card, age, CHEST_KINDS.length, reduceMotion);
+    const r = ShopPage.pressedRect(placed.rect, { k: 'club' }, state);
+    const enter = placed.enter;
+    const c = R.center(r);
+    ShopPage.panel(list, r, 'card', enter);
+    const iconAt = v(c.x, r.minY + R.height(r) * 0.36);
+    MenuKit.glow(list, iconAt, Math.min(Math.min(R.width(r), R.height(r)) * 0.42, iconAt.y - r.minY - 4), 'coin', 0.4 * enter);
+    const u = Math.min(1.2, R.height(r) / 130);
+    list.s(rect(add(iconAt, v(0, 16 * u)), v(6 * u, 26 * u), 2 * u), 'coinInk', enter);
+    list.s(circle(add(iconAt, v(0, -8 * u)), 17 * u), 'coin', enter);
+    list.s(circle(add(iconAt, v(0, -8 * u)), 12.5 * u), 'card', enter);
+    drawText(list, '★', add(iconAt, v(0, -8 * u)), 15 * u, 'coin', { weight: 'bold', align: 'center', opacity: enter });
+    const name = S.club.title;
+    drawText(list, name, v(c.x, r.maxY - 36), ShopPage.fitted(name, 14, R.width(r) - 28), 'primary', { weight: 'bold', align: 'center', opacity: enter });
+    const line = S.club.cardLine;
+    drawText(list, line, v(c.x, r.maxY - 17), ShopPage.fitted(line, 11, R.width(r) - 28), 'muted', { align: 'center', opacity: enter });
+    if (career.auctionDay !== today || career.auctionTaken.length < baseConfig.auctionLots) ShopPage.badgeDot(list, v(r.maxX - 16, r.minY + 16), enter);
+  },
+
   /** A chest's paint: body, lid and the metal of its bands (the earlier web UI's chests). */
   chestPaint(kind: ChestKind): { body: ColorToken; lid: ColorToken; band: ColorToken } {
     switch (kind) {
@@ -481,6 +514,8 @@ export const ShopPage = {
         return { body: 'chestStdBody', lid: 'chestStdLid', band: 'chestStdBand' };
       case 'premium':
         return { body: 'chestPremBody', lid: 'chestPremLid', band: 'coin' };
+      case 'diamond':
+        return { body: 'chestDiamondBody', lid: 'chestDiamondLid', band: 'lightBlue' };
       case 'criminalHunt':
         return { body: 'chestHuntBody', lid: 'chestHuntLid', band: 'rarityEpic' };
       case 'event':
@@ -627,7 +662,7 @@ export const ShopPage = {
 
   shelfColor: (s: Shelf): ColorToken => (['rarityLegendary', 'mapAurora', 'coin', 'accent'] as ColorToken[])[s],
   rarityColor: (r: Rarity): ColorToken => ({ common: 'rarityCommon', rare: 'rarityRare', epic: 'rarityEpic', legendary: 'rarityLegendary' } as const)[r],
-  chestColor: (k: ChestKind): ColorToken => ({ standard: 'rarityCommon', premium: 'coin', event: 'accent', criminalHunt: 'rarityEpic' } as const)[k],
+  chestColor: (k: ChestKind): ColorToken => ({ standard: 'rarityCommon', premium: 'coin', diamond: 'lightBlue', event: 'accent', criminalHunt: 'rarityEpic' } as const)[k],
 
   /**
    * A map as a little diorama, so the maps tell apart at a glance: a disc of its ground, the
@@ -678,6 +713,7 @@ export const ShopPage = {
         roof: look?.roof ?? null,
         finish: look?.finish ?? null,
         effect: look?.effect ?? null,
+        model: look?.model ?? null,
         finishTime: null,
       },
       baseConfig,
@@ -688,7 +724,7 @@ export const ShopPage = {
   // MARK: Detail panel
 
   buttonStyle(target: ShopTarget, career: Career, config: Config, _today: number): { label: string; enabled: boolean; prominent: boolean } {
-    const price = (k: ChestKind): number | null => (k === 'standard' ? config.standardChestPrice : k === 'premium' ? config.premiumChestPrice : null);
+    const price = (k: ChestKind): number | null => chestPrice(k, config);
     switch (target.k) {
       case 'open':
         return { label: S.shop.open, enabled: Careers.count(career, target.kind) > 0, prominent: true };

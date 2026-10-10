@@ -98,6 +98,8 @@ export type ScreenAction =
   | { k: 'wear'; id: string }
   /** Big Screen: choose the picture or video behind the roundabout (the shell's sheet). */
   | { k: 'editBackdrop' }
+  /** The Club: the Auction House, the City Fund and Contracts (the shell's sheet). */
+  | { k: 'openClub' }
   | { k: 'startTrial'; id: string }
   | { k: 'wearTitle'; id: TitleId }
   | { k: 'showElite' }

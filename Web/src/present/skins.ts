@@ -1,5 +1,6 @@
 import type { ColorToken } from './theme';
 import type { Effect } from './skinEffects';
+import type { CarModel } from './carModels';
 
 /** What each skin looks like (LOOT.md). */
 export type Finish = 'shiny' | 'glitter' | 'shinyGlitter';
@@ -141,12 +142,35 @@ export const Skins = {
       candyCane: 'skinRacingRed',
       snowGlobe: 'skinIce',
       sleigh: 'skinRuby',
+      sterling: 'skinChrome',
+      magnate: 'skinCarbon',
+      baron: 'skinRuby',
+      bullion: 'skinGold',
+      sovereign: 'skinObsidian',
+      provenance: 'skinPearl',
+      fountain: 'skinLagoon',
+      lighthouse: 'skinPearl',
+      skybridge: 'skinSky',
     };
     return id ? (map[id] ?? null) : null;
   },
 
   stripe(id: string | null): ColorToken | null {
     switch (id) {
+      case 'sterling':
+      case 'magnate':
+      case 'baron':
+      case 'provenance':
+        return 'skinGold';
+      case 'bullion':
+        return 'skinCarbon';
+      case 'sovereign':
+        return 'horizonViolet';
+      case 'fountain':
+      case 'skybridge':
+        return 'skinPearl';
+      case 'lighthouse':
+        return 'skinRacingRed';
       case 'redStripe':
       case 'blossom':
       case 'ocean':
@@ -293,6 +317,67 @@ export const Skins = {
       wraith: 'ghost',
       snowGlobe: 'snowTrail',
       sleigh: 'halo',
+      sterling: 'halo',
+      magnate: 'laurel',
+      baron: 'embers',
+      bullion: 'nova',
+      sovereign: 'aurora',
+      provenance: 'crystal',
+      fountain: 'bloom',
+      lighthouse: 'halo',
+      skybridge: 'rainbow',
+    };
+    return id ? (map[id] ?? null) : null;
+  },
+
+  /** The body a skin brings along (Leo, 10.10.2026); none means the plain car. */
+  model(id: string | null): CarModel | null {
+    const map: Record<string, CarModel> = {
+      // The bug hunters are beetles, and only the bug reports pay them.
+      ladybug: 'beetle',
+      goldbug: 'beetle',
+      scarab: 'beetle',
+      bluebottle: 'beetle',
+      orchid: 'beetle',
+      firefly: 'beetle',
+      mint: 'pocket',
+      lemon: 'pocket',
+      coral: 'pocket',
+      rose: 'pocket',
+      cherry: 'pocket',
+      sky: 'pocket',
+      hanami: 'pocket',
+      carbon: 'coupe',
+      blackGold: 'coupe',
+      chrome: 'coupe',
+      obsidian: 'coupe',
+      diamond: 'coupe',
+      holo: 'coupe',
+      nightMint: 'coupe',
+      sunset: 'roadster',
+      ice: 'roadster',
+      teal: 'roadster',
+      pearlShine: 'roadster',
+      lagoon: 'roadster',
+      royal: 'roadster',
+      olive: 'jeep',
+      fern: 'jeep',
+      latte: 'jeep',
+      lime: 'jeep',
+      copper: 'jeep',
+      tiger: 'jeep',
+      volcano: 'jeep',
+      redStripe: 'hotrod',
+      ruby: 'hotrod',
+      gold: 'hotrod',
+      phoenix: 'hotrod',
+      dragon: 'hotrod',
+      sterling: 'coupe',
+      bullion: 'coupe',
+      magnate: 'roadster',
+      sovereign: 'roadster',
+      baron: 'hotrod',
+      provenance: 'jeep',
     };
     return id ? (map[id] ?? null) : null;
   },
@@ -380,7 +465,17 @@ export const Skins = {
       case 'snowGlobe':
         return 'glitter';
       case 'sleigh':
+      case 'sterling':
+      case 'magnate':
+      case 'baron':
+      case 'bullion':
+      case 'sovereign':
+      case 'provenance':
+      case 'lighthouse':
         return 'shinyGlitter';
+      case 'fountain':
+      case 'skybridge':
+        return 'shiny';
       case 'northernLights':
       case 'thunder':
       case 'neonWave':
@@ -406,13 +501,20 @@ export interface Look {
   roof: ColorToken | null;
   finish: Finish | null;
   effect?: Effect | null;
+  model?: CarModel | null;
+}
+
+/** The skin a vehicle wears out of the skins that are on, picked by its id. */
+export function skinFor(id: number, skins: string[]): string | null {
+  if (skins.length === 0) return null;
+  let h = Math.imul(id ^ 0x6659fd93, 0xd6e8feb8) ^ (id * 2654435761);
+  h ^= h >>> 16;
+  return skins[(h >>> 0) % skins.length];
 }
 
 /** Every vehicle on the road wears one of the skins that are on, picked by its id. */
 export function lookFor(id: number, skins: string[]): Look | null {
-  if (skins.length === 0) return null;
-  let h = Math.imul(id ^ 0x6659fd93, 0xd6e8feb8) ^ (id * 2654435761);
-  h ^= h >>> 16;
-  const skin = skins[(h >>> 0) % skins.length];
-  return { paint: Skins.color(skin), stripe: Skins.stripe(skin), roof: Skins.roof(skin), finish: Skins.finish(skin), effect: Skins.effect(skin) };
+  const skin = skinFor(id, skins);
+  if (skin === null) return null;
+  return { paint: Skins.color(skin), stripe: Skins.stripe(skin), roof: Skins.roof(skin), finish: Skins.finish(skin), effect: Skins.effect(skin), model: Skins.model(skin) };
 }

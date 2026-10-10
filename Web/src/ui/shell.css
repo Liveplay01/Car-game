@@ -2865,3 +2865,311 @@ a.row-link {
 .delete-account .field-help {
   margin: 0 var(--s1) var(--s4);
 }
+
+/* The Club (Leo, 10.10.2026): the Auction House, the City Fund and Contracts in one drawer (`clubSheet.ts`). */
+.club-balance {
+  margin: 0 0 var(--s3);
+  font-variant-numeric: tabular-nums;
+}
+
+.club-swatch {
+  flex: none;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.14);
+}
+
+.club-price {
+  font-size: 28px;
+  font-weight: 800;
+  line-height: 1.15;
+  font-variant-numeric: tabular-nums;
+  color: var(--money);
+}
+
+.club-bots {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s2);
+  margin: var(--s3) 0;
+}
+
+.club-bot {
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--primary);
+}
+
+.club-bot.out {
+  color: var(--faint);
+  text-decoration: line-through;
+}
+
+.club-log {
+  min-height: 5.6em;
+  margin: 0 0 var(--s3);
+  padding: var(--s3) var(--s4);
+  border-radius: var(--r-row);
+  background: var(--surface-1);
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--muted);
+}
+
+.club-log p {
+  margin: 0;
+}
+
+.club-log p:last-child {
+  color: var(--primary);
+}
+
+/* Auction House Polish */
+.auction-status-banner {
+  padding: var(--s3) var(--s4);
+  border-radius: var(--r-row);
+  background: var(--surface-2);
+  border: 1px solid var(--separator);
+  margin-bottom: var(--s3);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.auction-status-banner.lead {
+  border-color: rgba(227, 193, 90, 0.5);
+  background: linear-gradient(135deg, rgba(227, 193, 90, 0.12), var(--surface-2));
+}
+
+.auction-status-banner.outbid {
+  border-color: rgba(255, 90, 95, 0.5);
+  background: linear-gradient(135deg, rgba(255, 90, 95, 0.14), var(--surface-2));
+}
+
+.auction-status-banner.open {
+  border-color: rgba(79, 163, 255, 0.5);
+  background: linear-gradient(135deg, rgba(79, 163, 255, 0.12), var(--surface-2));
+}
+
+.auction-status-banner.won {
+  border-color: rgba(0, 245, 212, 0.5);
+  background: linear-gradient(135deg, rgba(0, 245, 212, 0.14), var(--surface-2));
+}
+
+.auction-status-badge {
+  display: inline-flex;
+  align-items: center;
+  align-self: flex-start;
+  gap: 6px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.auction-status-banner.lead .auction-status-badge {
+  background: rgba(227, 193, 90, 0.2);
+  color: var(--money);
+}
+
+.auction-status-banner.outbid .auction-status-badge {
+  background: rgba(255, 90, 95, 0.2);
+  color: var(--destructive);
+}
+
+.auction-status-banner.open .auction-status-badge {
+  background: rgba(79, 163, 255, 0.2);
+  color: var(--rarity-rare);
+}
+
+.auction-status-banner.won .auction-status-badge {
+  background: rgba(0, 245, 212, 0.2);
+  color: var(--player-1);
+}
+
+.auction-status-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--primary);
+  margin: 0;
+}
+
+.auction-status-desc {
+  font-size: 12px;
+  color: var(--muted);
+  margin: 0;
+  line-height: 1.35;
+}
+
+.auction-timer {
+  margin: 0 0 var(--s3);
+  padding: var(--s3) var(--s4);
+  border-radius: var(--r-row);
+  background: var(--surface-1);
+  border: 1px solid var(--separator);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.auction-timer.urgent {
+  border-color: rgba(255, 90, 95, 0.6);
+  box-shadow: 0 0 12px rgba(255, 90, 95, 0.2);
+}
+
+.auction-timer-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 13px;
+}
+
+.auction-timer-stage {
+  font-weight: 700;
+  color: var(--primary);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.auction-timer.urgent .auction-timer-stage {
+  color: var(--destructive);
+  animation: auction-pulse 0.8s infinite alternate ease-in-out;
+}
+
+.auction-timer-digits {
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  font-size: 15px;
+  color: var(--accent);
+}
+
+.auction-timer.urgent .auction-timer-digits {
+  color: var(--destructive);
+}
+
+.auction-timer-track {
+  width: 100%;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--surface-3);
+  overflow: hidden;
+  position: relative;
+}
+
+.auction-timer-bar {
+  height: 100%;
+  width: 100%;
+  border-radius: 999px;
+  background: var(--accent);
+  transition: width 0.1s linear, background-color 0.2s ease;
+}
+
+.auction-timer.urgent .auction-timer-bar {
+  background: var(--destructive);
+}
+
+@keyframes auction-pulse {
+  from { opacity: 0.75; transform: scale(0.99); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .auction-timer.urgent .auction-timer-stage {
+    animation: none;
+  }
+}
+
+.club-bot.leader {
+  background: rgba(227, 193, 90, 0.2);
+  color: var(--money);
+  border: 1px solid rgba(227, 193, 90, 0.5);
+  font-weight: 700;
+}
+
+.auction-offer-tag {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  padding: 1px 6px;
+  border-radius: 4px;
+  text-transform: uppercase;
+  margin-right: 6px;
+  vertical-align: middle;
+}
+
+.auction-offer-tag.min {
+  background: rgba(79, 163, 255, 0.2);
+  color: var(--rarity-rare);
+}
+
+.auction-offer-tag.raise {
+  background: rgba(255, 183, 3, 0.2);
+  color: var(--accent);
+}
+
+.auction-offer-tag.jump {
+  background: rgba(180, 92, 240, 0.2);
+  color: var(--rarity-epic);
+}
+
+.auction-guide-box {
+  margin: var(--s2) 0 var(--s3);
+  padding: var(--s3) var(--s4);
+  border-radius: var(--r-row);
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px dashed var(--separator);
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--muted);
+}
+
+.auction-guide-box strong {
+  color: var(--primary);
+}
+
+.club-bar {
+  display: block;
+  height: 6px;
+  margin: var(--s2) 0;
+  border-radius: 3px;
+  background: var(--surface-3);
+  overflow: hidden;
+}
+
+.club-bar-fill {
+  display: block;
+  height: 100%;
+  border-radius: 3px;
+  background: var(--money);
+}
+
+.club-gifts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s2);
+  margin-bottom: var(--s3);
+}
+
+.club-gifts .btn {
+  flex: 1 0 64px;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .club-bar-fill {
+    transition: width 400ms var(--ease-drawer, ease);
+  }
+}
+
+.club-art {
+  flex: none;
+  border-radius: 12px;
+  background: var(--surface-2);
+}

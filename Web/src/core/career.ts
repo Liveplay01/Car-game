@@ -36,6 +36,7 @@ import {
   cosmetic,
   rollChest,
   tappedOdds,
+  chestPrice,
   DUPLICATE_MONEY,
   MAX_CAR_SKINS,
   COSMETICS,
@@ -45,6 +46,7 @@ import {
 } from './loot';
 import { type Challenge, challengesOf, challengeMet, challengeReward, STREAK_MILESTONES } from './daily';
 import type { CasinoPending, CasinoRound } from './casino';
+import type { Contract } from './contracts';
 import { randomSeed, Rng } from './rng';
 import { Elite, type EliteGain, type EliteStep, type TitleId, TITLES } from './elite';
 import type { HallEntry } from './seasonPass';
@@ -278,6 +280,20 @@ export interface Career {
   stats: Record<string, number>;
   /** Achievement tiers paid, as `family.tier`. */
   achievements: string[];
+  /**
+   * The Auction House (core/auction.ts): the day the lots belong to, the lots (`skin:id` or `chest:kind`),
+   * the slots already tried today, the auctions begun in all, the lots won and the money they cost.
+   */
+  auctionDay: number;
+  auctionLots: string[];
+  auctionTaken: number[];
+  auctionRuns: number;
+  auctionWins: number;
+  auctionSpent: number;
+  /** Everything given to the City Fund (core/fund.ts). */
+  fundGiven: number;
+  /** The contract waiting for the next career shift (core/contracts.ts); its stake is paid already. */
+  contract: Contract | null;
 }
 
 /**
@@ -396,6 +412,14 @@ export const newCareer = (): Career => ({
   toursDone: [],
   stats: {},
   achievements: [],
+  auctionDay: -1,
+  auctionLots: [],
+  auctionTaken: [],
+  auctionRuns: 0,
+  auctionWins: 0,
+  auctionSpent: 0,
+  fundGiven: 0,
+  contract: null,
 });
 
 export const newSave = (): SaveGame => ({
@@ -675,7 +699,7 @@ export const Careers = {
   count: (c: Career, kind: ChestKind): number => c.chests.filter((k) => k === kind).length,
 
   buyChest(c: Career, kind: ChestKind, config: Config = baseConfig): boolean {
-    const price = kind === 'standard' ? config.standardChestPrice : kind === 'premium' ? config.premiumChestPrice : null;
+    const price = chestPrice(kind, config);
     if (price === null || c.money < price) return false;
     c.money -= price;
     c.chests.push(kind);
@@ -1030,6 +1054,10 @@ export const Careers = {
       cfg.endless = true;
       // One crash ends every run: the Unlimited board compares them.
       cfg.maxStrikes = base.maxStrikes;
+      // The precision upgrades pay and forgive in shifts, not in a run the board compares.
+      cfg.tightFitTip = 0;
+      cfg.nearMissTip = 0;
+      cfg.chainSaves = 0;
       return cfg;
     }
     if (mode === 'mayhem') return forMayhem(Careers.config({ ...c, level: base.mayhemLevel, prestige: 0 }, base, seed, null, event, null));

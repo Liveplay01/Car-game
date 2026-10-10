@@ -47,6 +47,8 @@ export const WeatherLayer = {
 
   /** Fog: soft banks drift round the ring; the stretch in front of your own arm stays clearer. */
   fogBanks: 16,
+  /** How much of the fog and the dust the Fog Lamps clear at full aid. */
+  lampClearing: 0.6,
   fogLayers: 4,
 
   /** `mix`: the weathers and how strongly they show (`WeatherFade`); by default the world's own, at full. */
@@ -86,10 +88,12 @@ export const WeatherLayer = {
 
   addAirOf(list: RenderList, world: World, weather: Weather, amount: number, time: number, reduceMotion: boolean): void {
     if (amount <= 0) return;
-    if (weather === 'fog') return WeatherLayer.addFog(list, world, reduceMotion ? 0 : time, amount);
+    // Fog Lamps thin the picture too: the dust and the mist lie lighter.
+    const seen = amount * (1 - WeatherLayer.lampClearing * world.config.lampAid);
+    if (weather === 'fog') return WeatherLayer.addFog(list, world, reduceMotion ? 0 : time, seen);
     if (weather === 'snow') return WeatherLayer.addSnow(list, reduceMotion ? 0 : time, amount);
     if (weather === 'hail') return WeatherLayer.addHail(list, reduceMotion ? 0 : time, amount);
-    if (weather === 'sandstorm') return WeatherLayer.addSandstorm(list, world, reduceMotion ? 0 : time, amount);
+    if (weather === 'sandstorm') return WeatherLayer.addSandstorm(list, world, reduceMotion ? 0 : time, seen);
     const severity = weatherSeverity(weather);
     if (severity <= 0) return;
     const vp = list.camera.viewport;

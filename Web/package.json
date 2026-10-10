@@ -14,6 +14,7 @@
     "sim:versus": "node scripts/versus-sim.mjs",
     "sim:wedding": "node scripts/wedding-sim.mjs",
     "sim:casino": "node scripts/casino-sim.mjs",
+    "sim:auction": "node scripts/auction-sim.mjs",
     "sim:career": "node scripts/career-sim.mjs",
     "itch": "node scripts/itch-zip.mjs"
   },

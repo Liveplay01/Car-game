@@ -24,7 +24,7 @@ export const HOSTING = {
   location: 'Germany',
 };
 
-export const LEGAL_UPDATED = '9 October 2026';
+export const LEGAL_UPDATED = '10 October 2026';
 
 export const GAME_NAME = 'Roundabout Timing';
 
@@ -132,6 +132,13 @@ export const LEGAL_DOCS: LegalDoc[] = [
           'If you open Friends on the leaderboard, the server makes a friend code for you (like K7M2-9QXA). Whoever types your code adds you to their friends list and then sees your name and your best scores on their friends board, which they could already see on the public leaderboard. You can see and remove the people on your own list; the list is stored with your leaderboard entry.',
           'Your friend code is also your invite. A friend who opens your invite link (like …/i/K7M29QXA, or a challenge link you shared while you have a name on the leaderboard) arrives with your code. Once they have a name on the leaderboard, their game tells our server that they came through you, and the server keeps one line: who invited whom, and whether they reached level 5. When they do, you both get a chest in the game, which the game picks up the next time you open it. You see the names of the friends you invited and how far they are; they see who invited them. Opening the link without a name sends nothing to us.',
           'Legal basis: Art. 6(1)(b) GDPR (the friends board and invites you chose to use). Removing your name from the leaderboard deletes your friend code, your list and your invites as well.',
+        ],
+      },
+      {
+        heading: 'City Fund',
+        paragraphs: [
+          'If you have a name on the leaderboard and give money to the City Fund (Shop → Club), the server stores the amount, the project it went to and the time next to your player account. The fund shows the totals of every project and a list of the most generous names, which are the names you chose for the leaderboard. The money is play money inside the game; nothing real is paid.',
+          'Legal basis: Art. 6(1)(b) GDPR (the fund you chose to give to). Removing your name from the leaderboard or deleting your account takes your name off the list; your gifts then stay in the totals without a name, so a project that was built stays built.',
         ],
       },
       {

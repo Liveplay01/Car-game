@@ -102,6 +102,10 @@ export interface MergeReport {
   shave: number;
   /** It crept in behind slow traffic (`creepPace`): rated nothing, scored nothing. */
   crept?: boolean;
+  /** Money a Tight Fit or a Near Miss paid on the spot (Tight Fit Tip, Dashcam). */
+  tip?: number;
+  /** A plain merge that left the chain alone (Chain Saver). */
+  chainSaved?: boolean;
 }
 
 export interface ExplosionReport {

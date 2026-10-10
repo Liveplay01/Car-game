@@ -44,6 +44,7 @@ Namen in `Web/src/present/strings.ts` (`S.shop`). Wird ein Item ergänzt, gehör
 | --- | --- | --- | --- | --- | --- |
 | Standard Chest | Shop (26.000), Werbung (3/Tag), Mastery Stufe I, Daily Shift, Willkommens-Truhe, Geschenk für morgen (einmal pro Karriere, seit 08.10.2026) | 70 % | 22 % | 7 % | 1 % |
 | Premium Chest | Shop (52.000), Mastery Stufe II und III | 35 % | 35 % | 22 % | 8 % |
+| Diamond Chest | Shop (250.000, `diamondChestPrice`, Leo 10.10.2026: eine Geldsenke für große Kontostände), Auktion (als Lot) | – | 30 % | 45 % | 25 % |
 | Criminal Hunt Chest | Mastery "Crime Fighter" (Takedowns) | 50 % | 30 % | 15 % | 5 % |
 | Event Chest | Jede geschaffte Daily Shift; 15 % Chance nach jeder geschafften Schicht mit City Event (`eventChestChance`). Enthält in der Hälfte der Fälle das Saison-Item, bis man es hat | 40 % | 35 % | 20 % | 5 % |
 
@@ -55,6 +56,22 @@ Er ist das einzige Honour, das Glück ist, und in keiner anderen Truhe. Die Chan
 Chest-Sheet bei den anderen Odds (`chestFinds`, Quelle `{ kind: 'find' }` in `core/loot.ts`).
 
 Innerhalb einer Seltenheit ist jedes Item gleich wahrscheinlich.
+
+**Die Diamond Chest hat kein Common.** Beim Aufklopfen wachsen die Chancen über der untersten (hier Rare) wie bei jeder Truhe, die unterste zahlt (`tappedOdds`); Pity und Duplikate-Geld gelten wie immer.
+
+## Der Club (Leo, 10.10.2026): Auktion, Stadtfonds, Verträge
+
+Drei Geldsenken für große Kontostände, aus einer Schublade im Shop (Karte nach den Truhen, ab der Elite-Leiste, Level 50). Alles nur Aussehen und Dank, nie ein Vorteil auf der Straße.
+
+**Auktionshaus** (`core/auction.ts`, `ui/clubSheet.ts`, `npm run sim:auction`): Jeden Tag drei Lose, je ein Versuch: zwei Skins aus dem Truhen-Pool, die dem Spieler fehlen (Epic und Legendary zuerst, sonst darunter), und der **Skin des Hauses** (siehe unten). Ist nichts mehr anzubieten, ist das Los eine Diamond Chest. Die Lose stehen im Spielstand und gelten den ganzen Tag. Der Spieler bietet gegen **computergesteuerte Sammler** (3 bis 4, mit Namen, auf dem Bildschirm als solche benannt): **7 von 10 sind Haie**, die bis zum 1,4- bis 3,6-Fachen der Schätzung mitbieten, der Rest hört beim 0,5- bis 1,2-Fachen auf. Die Gebote beginnen bei 35 % der Schätzung und steigen in Schritten von 5 %; ein Sammler, der den nächsten Schritt noch zahlen kann, setzt mit 85 % dagegen (und springt bis zu 3 Schritte). Wer ausscheidet, zeigt, dass seine Grenze unter dem Gebot lag. Bezahlt wird **Zuschlag + 10 % Aufgeld**. Weggehen kostet nichts, das Los ist dann aber für heute weg (so gibt es keinen zweiten Blick per Neuladen). Die Grenzen der Sammler stehen nirgends im Spielstand; sie kommen aus dem Seed des Spielstands und dem unsichtbaren Zufall wie im Casino.
+Schätzungen: Common 15.000 · Rare 45.000 · Epic 150.000 · Legendary 500.000 · Haus-Skin 1.000.000 · Truhe zum Ladenpreis. `npm run sim:auction`: wer bis zum 2-Fachen bietet, gewinnt in etwa 30 %; ein Zuschlag kostet im Schnitt etwa das 2,4-Fache der Schätzung (plus Aufgeld).
+**Skins des Hauses** (nur hier zu gewinnen, Legendary, Regal „Honours“, zählen nicht für das Honours-Album): Sterling (Chrom, Heiligenschein) · Magnate (Carbon und Gold, Lorbeer) · Baron (Rubin, Glut) · Bullion (Gold, Nova) · Sovereign (Obsidian, Aurora) · Provenance (Perlweiß, Kristall). Alle mit eigener Karosserie (GT Coupé, Roadster, Hot Rod, Jeep).
+
+**Stadtfonds** (`core/fund.ts`, `Server/src/modules/fund`, `net/fund.ts`): Alle Spieler mit Namen schenken Geld in dieselben Projekte, eines nach dem anderen: **Fountain** (10 Mio), **Lighthouse** (50 Mio), **Sky Bridge** (250 Mio). Ein Geschenk: 10.000 bis 5.000.000, nur der angenommene Teil verlässt den Spielstand. Wer einem Projekt **100.000 oder mehr** (`fundBenefactor`) gegeben hat, bekommt dessen Skin, sobald es gebaut ist: Fountain (Epic, Lagune, Blüte) · Lighthouse (Legendary, Perlweiß mit rotem Streifen, Heiligenschein) · Sky Bridge (Legendary, Himmelblau, Regenbogen). Das Spiel holt die Skins beim Start und beim Öffnen des Fonds ab. Geld ist lokal, der Dienst zählt nur (Plausibilitätsgrenzen).
+
+**Verträge** (`core/contracts.ts`): Vor einer Karriere-Schicht setzt der Spieler 10.000 / 50.000 / 100.000 / 250.000 auf ein Ziel. Der Einsatz ist sofort bezahlt; wird das Ziel erreicht, kommt das Vielfache zurück, sonst ist er weg. Ziele (alle verlangen eine **Perfect Run**: kein Crash, kein Polizei-Crash, kein Schnitt): **Clean sheet** ×1,15 · **Sharp** ×3 (zusätzlich ein Viertel der Autos als Perfect Merges) · **Flawless** ×4,5 (zusätzlich eine Kette über 55 % der Autos). Der vorsichtige Bot schafft Clean sheet in etwa neun von zehn Schichten, die anderen beiden selten. Nie über Daily, Unlimited, Trial oder Challenge; eine erleichterte Schicht (`assisted`) macht den Vertrag ungültig, der Einsatz kommt zurück. Vor der Schicht lässt er sich zerreißen (alles zurück).
+
+**High Roller** (Casino): ab **200.000** Geld rücken die Einsätze auf 10K · 50K · 250K · 1M · 5M (`casinoHighStakes`); gleiche Spiele, gleiche Chancen, ein Schild „HIGH ROLLER“ neben dem Tagessaldo.
 
 ## Casino (Shop · Casino)
 
@@ -158,6 +175,23 @@ Effekt-Animation.
 | Koi | `koi` | Legendary | Perlweiß, Dach Koi-Orange, goldene Streifen, **Shiny** |
 | Obsidian | `obsidian` | Legendary | Tiefschwarz, **Shiny + Glitter** |
 | Ruby | `ruby` | Legendary | Rubinrot mit goldenen Streifen, **Glitter** |
+
+### Auto-Formen (Leo, 10.10.2026, `present/carModels.ts`, `Skins.model`)
+
+38 Skins bringen neben dem Lack eine eigene Karosserie mit. Nur normale Autos (`car`) tragen
+sie; Fahrzeugtypen (Polizei, Transporter, Lkw, Compact, Van …) behalten ihre Form und nur den
+Lack. Jede Form passt ins Rechteck des normalen Autos und folgt der Kapsel-Hitbox, damit es keine
+Geisterunfälle gibt (`npm test` prüft es). Reine Optik: Länge, Breite und Kollision bleiben.
+Wracks behalten die Form. Das Dach (Zweifarbig) entfällt beim Roadster.
+
+| Form | Aussehen von oben | Skins |
+| --- | --- | --- |
+| Beetle | Ei mit Kotflügeln und Taille, runde Scheinwerfer, Motorraumlamellen | die sechs Bug Hunters (nur über Bug-Reports) |
+| Pocket | Kissenform, große Fenster, große runde Scheinwerfer | Mint, Lemon, Coral, Rose, Cherry Top, Sky Top, Hanami |
+| GT Coupé | Keilform mit spitzer Nase, Haubenschlitze, Heckspoiler | Carbon, Black & Gold, Chrome, Obsidian, Diamond, Holo, Night Mint |
+| Roadster | offenes Cockpit mit zwei Sitzen, Überrollbügel | Sunset, Ice, Teal, Pearl Shine, Lagoon, Royal |
+| Jeep | kantig, Dachträger, Reserverad am Heck, Kotflügelverbreiterungen | Olive, Fern, Latte, Lime, Copper, Tiger, Volcano |
+| Hot Rod | schmale Nase mit Kompressor, sichtbare Vorderräder, Auspuffrohre | Red Stripe, Ruby, Gold, Phoenix, Dragonfire |
 
 ## Nur über Daily-Serie und Saison (7)
 

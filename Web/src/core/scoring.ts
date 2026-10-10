@@ -20,6 +20,8 @@ export class ScoreBoard {
   perfects = 0;
   chain = 0;
   bestChain = 0;
+  /** Chains a plain merge left alone (Chain Saver). */
+  chainsSaved = 0;
   costs = 0;
   covered = 0;
   /** Mayhem: flames earned, wrecks made, the chain reaction running and the biggest one. */

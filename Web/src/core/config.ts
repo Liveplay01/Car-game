@@ -155,7 +155,6 @@ export const baseConfig = {
   waveTime: 6,
   hazardBraking: 0.05,
   chainCrashesCostStrikes: false,
-  mergeResponsibility: 1,
 
   // Rating
   tightFitSeconds: 0.12,
@@ -433,6 +432,23 @@ export const baseConfig = {
   recoveryPayPerStep: 0.01,
   doubleRunPerStep: 0.04,
   recoveryPerStep: 0.2,
+  /**
+   * The precision upgrades (Leo, 10.10.2026), all for the player who merges close: a Tight Fit and a Near Miss pay a
+   * tip of this share of the shift pay per step (`tightFitTip`, `nearMissTip`: money, set by `upgraded`); each Chain
+   * Saver step lets one plain merge a shift leave a chain in the flow alone; Winter Tyres give back this share of the
+   * grip and the bite bad weather takes, Fog Lamps this share of the extra time drivers need to react. Not in Unlimited.
+   */
+  tightFitTipPerStep: 0.008,
+  nearMissTipPerStep: 0.006,
+  chainSavesPerStep: 1,
+  winterTyresPerStep: 0.15,
+  fogLampsPerStep: 0.15,
+  /** What the bought steps come to in this shift. */
+  tightFitTip: 0,
+  nearMissTip: 0,
+  chainSaves: 0,
+  tyreAid: 0,
+  lampAid: 0,
 
   // Risk and insurance
   level: 1,
@@ -763,6 +779,8 @@ export const baseConfig = {
   loginMaxDays: 3,
   standardChestPrice: 26000,
   premiumChestPrice: 52000,
+  /** The Diamond Chest (Leo, 10.10.2026): a sink for big balances, never a Common inside. */
+  diamondChestPrice: 250000,
   adChestsPerDay: 3,
   /**
    * More ads, always the player's choice and never on CrazyGames (Leo, 05.10.2026): a free step of
@@ -829,6 +847,9 @@ export const baseConfig = {
   // Casino (core/casino.ts, LOOT.md): honest odds, a small house edge, all of it on screen.
   /** The stakes on offer; "All in" stakes whatever there is. */
   casinoStakes: [100, 500, 1000, 5000, 25000],
+  /** High Roller (Leo, 10.10.2026): with at least this much, the table moves up to bigger stakes; same games, same odds. */
+  casinoHighRollerFrom: 200_000,
+  casinoHighStakes: [10_000, 50_000, 250_000, 1_000_000, 5_000_000],
   /** Crash: the multiplier grows e^(rate·t); P(crash ≥ m) = (1 − edge)/m, so every cash-out returns 1 − edge. */
   crashEdge: 0.04,
   crashRate: 0.18,
@@ -879,6 +900,42 @@ export const baseConfig = {
   /** Double or nothing: a fair coin, at most this many times in a row. */
   doubleMaxChain: 5,
   casinoLogLength: 20,
+
+  // Auction House (Leo, 10.10.2026; core/auction.ts): a sink for big balances. The bidders are computer-controlled collectors, said so on screen.
+  /** Lots on offer each day, one try each. */
+  auctionLots: 3,
+  /** What a lot is thought to be worth, by the rarity of the skin; the exclusives ask for more. */
+  auctionEstimate: { common: 15_000, rare: 45_000, epic: 150_000, legendary: 500_000 },
+  auctionExclusiveEstimate: 1_000_000,
+  /** The buyer's premium on top of the price the hammer falls at. */
+  auctionPremium: 0.1,
+  /** The bidding opens at this share of the estimate and rises in steps of `auctionStep` of it. */
+  auctionStartShare: 0.35,
+  auctionStep: 0.05,
+  /** Collectors in the room: at least, at most. */
+  auctionBots: [3, 4] as readonly [number, number],
+  /** Each collector's ceiling, as a multiple of the estimate: most are sharks who will pay far over it, the rest pennies. */
+  auctionSharkShare: 0.7,
+  auctionShark: [1.4, 3.6] as readonly [number, number],
+  auctionPenny: [0.5, 1.2] as readonly [number, number],
+  /** A collector who can still afford the next step counters with this chance. */
+  auctionNerve: 0.85,
+  /** A counter-bid is one to this many steps at once. */
+  auctionJump: 3,
+
+  // Contracts (Leo, 10.10.2026; core/contracts.ts): money on a clean shift. The stake is paid when signed; a goal met pays it back times `contractPay`.
+  contractStakes: [10_000, 50_000, 100_000, 250_000] as readonly number[],
+  contractPay: { clean: 1.15, sharp: 3, flawless: 4.5 },
+  /** Sharp and Flawless ask for this share of the shift's cars to be Perfects / one unbroken chain. */
+  contractSharpShare: 0.25,
+  contractFlawlessShare: 0.55,
+
+  // City Fund (Leo, 10.10.2026; Server/src/modules/fund): one gift goes in, the whole city builds.
+  fundMinGift: 10_000,
+  fundMaxGift: 5_000_000,
+  /** Gifts to a project add up to this much for the Benefactor skin it unlocks. */
+  fundBenefactor: 100_000,
+
   /**
    * How loud a win is, by how many times the stake it pays, the same in every game
    * (`present/casino.ts`): from the first more coins, then confetti, then rays and a jolt,

@@ -262,6 +262,8 @@ export const COLORS = {
   chestStdBand: [154, 163, 174, 1],
   chestPremBody: [59, 44, 85, 1],
   chestPremLid: [76, 58, 107, 1],
+  chestDiamondBody: [28, 62, 88, 1],
+  chestDiamondLid: [40, 84, 116, 1],
   chestHuntBody: [46, 35, 64, 1],
   chestHuntLid: [60, 45, 84, 1],
   chestEventBody: [30, 60, 54, 1],

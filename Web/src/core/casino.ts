@@ -114,8 +114,14 @@ export const Casino = {
 
   // MARK: Stakes
 
+  /** The unsaved share of randomness other systems mix into their own streams (the Auction House). */
+  salt: (): number => (entropy ? entropy() : 0),
+
+  /** The High Roller table (Leo, 10.10.2026): with this much, the stakes move up. Same games, same odds. */
+  highRoller: (c: Career, config: Config = baseConfig): boolean => c.money >= config.casinoHighRollerFrom,
+
   /** The stakes on offer; the last one is "All in". */
-  stakes: (c: Career, config: Config = baseConfig): number[] => [...config.casinoStakes, c.money],
+  stakes: (c: Career, config: Config = baseConfig): number[] => [...(Casino.highRoller(c, config) ? config.casinoHighStakes : config.casinoStakes), c.money],
 
   canStake: (c: Career, stake: number): boolean => c.casinoPending === null && Number.isInteger(stake) && stake > 0 && stake <= c.money,
 

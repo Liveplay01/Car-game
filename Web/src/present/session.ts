@@ -6,7 +6,7 @@ import { SeasonPass } from '../core/seasonPass';
 import { Unlocks } from '../core/unlocks';
 import type { GameEvent, ShiftResult } from '../core/events';
 import type { Upgrade } from '../core/levels';
-import { ALBUM_REWARD, BIG_SCREEN, CHEST_KINDS, cosmetic, rarityRank, tapPower, strongTaps, type ChestKind } from '../core/loot';
+import { ALBUM_REWARD, BIG_SCREEN, CHEST_KINDS, chestPrice, cosmetic, rarityRank, tapPower, strongTaps, type ChestKind } from '../core/loot';
 import { dailySeed, dailyEvent, dayNumber } from '../core/daily';
 import { weekNumber, weeklyTrial } from '../core/weekly';
 import { Goals } from '../core/goals';
@@ -248,6 +248,8 @@ export class GameSession {
   onLeaderboard: (() => void) | null = null;
   /** Opens Big Screen's sheet (the shell's): pick a picture or paste a link. */
   onBackdrop: (() => void) | null = null;
+  /** Opens the Club's sheet (the shell's): the Auction House, the City Fund and Contracts. */
+  onClub: (() => void) | null = null;
   /** The player's own picture or video is ready behind the canvas (`ui/backdrop.ts`). */
   backdrop = false;
   playingMode: GameMode = 'shift';
@@ -350,6 +352,11 @@ export class GameSession {
 
   get visibleUpgrades(): readonly Upgrade[] {
     return Careers.availableUpgrades(this.save.career, this.config);
+  }
+
+  /** The Club's sheet changed the career (a lot begun or won, a gift, a contract): written now. */
+  clubChanged(): void {
+    this.persist();
   }
 
   private persist(): void {
@@ -687,12 +694,14 @@ export class GameSession {
       case 'hitChest':
         this.hitChest();
         break;
+      case 'openClub':
+        this.onClub?.();
+        break;
       case 'buyChest':
         if (!Careers.buyChest(career, action.kind, this.config)) {
           this.shopPage.denied = 0.001;
           this.play(['denied'], []);
-          const price = action.kind === 'standard' ? this.config.standardChestPrice : this.config.premiumChestPrice;
-          this.showNotice(S.notice.notEnoughMoney(Fmt.number(price)));
+          this.showNotice(S.notice.notEnoughMoney(Fmt.number(chestPrice(action.kind, this.config) ?? 0)));
           return;
         }
         this.persist();
@@ -2106,6 +2115,11 @@ export class GameSession {
           } else if (e.rating !== 'clean') this.addPopup({ k: e.rating } as PopupKind, e.position);
           if (!e.critical && e.rating === 'tightFit') this.landMerge(0.03, 0.008, e.position);
           if (e.shave > 0) this.addPopup({ k: 'shave', n: e.shave }, add(e.position, v(0, 22)));
+          if (e.tip) this.addPopup({ k: 'earned', n: e.tip }, add(e.position, v(0, 22)));
+          if (e.chainSaved) {
+            this.addPopup({ k: 'chainHeld' }, add(e.position, v(0, 22)));
+            this.rim.signal('wave', 'juiceGreen');
+          }
           // In the snow every merge leaves its tracks, and they stay.
           if (TyreMarks.leavesMark(e.rating) || world.config.weather === 'snow') this.tyreMarks.add(world.config.weather === 'snow');
           // The Records keep how early or late the taps come (saved with the shift).
@@ -2598,6 +2612,7 @@ export class GameSession {
     this.tyreMarks.addGround(list, world.layout, world.config);
     SceneBuilder.addLaneArrow(list, world);
     this.explosions.addGround(list);
+    this.effects.carSkins = career.carSkins;
     this.effects.addGround(list, world, alpha, !rm);
     CityLights.add(list, world, alpha, theme, this.lamps, rm ? null : world.time);
     SceneBuilder.addShadows(list, world, alpha);

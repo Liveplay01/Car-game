@@ -7,7 +7,7 @@ import { type Vec2, add, sub, mul, dot, length, normalize, angleOf, fromAngle, w
 import { Rng } from './rng';
 import type { World } from './world';
 import { transporterAhead } from './specials';
-import { speedLimitAt } from './modules';
+import { plannedSpeed, speedLimitAt } from './modules';
 import { isStalling } from './learner';
 
 /** The nearest thing ahead a driver has to mind. */
@@ -40,7 +40,9 @@ export function updateDrivers(w: World, dt: number): void {
   const zones = Object.keys(w.config.modules).length > 0 || w.roadworks !== null;
   const hesitant = w.learner.kind === 'active' || w.oversize.kind === 'active' || w.vehicles.some((x) => w.owesStop(x) && x.phase.kind === 'ring');
   if (!w.isTrafficDisturbed && quarry === null && !zones && !hesitant && !hasTransporterOnRing(w)) return;
-  const lane = ringLaneOccupants(w);
+  const lane = ringLaneOccupants(w, true);
+  // A car joining plans with the speeds as they are: it brakes for what it sees, and the traffic behind cannot count on a pace that changes under its tyres.
+  const joining = zones ? ringLaneOccupants(w, false) : lane;
   // The criminal ploughs on; it only keeps out of the transporter's secure zone.
   for (const veh of w.vehicles) {
     if (veh.type !== 'pickup' || veh.phase.kind !== 'ring') continue;
@@ -65,7 +67,7 @@ export function updateDrivers(w: World, dt: number): void {
       const lead = leadOnExit(w, p.arm, p.s, veh.id, veh.lane);
       p.drive = drive(w, p.drive, lead ? [lead] : [], veh.id, dt);
     } else if (p.kind === 'merging') {
-      paceMerge(w, p, lane, veh.id, veh.lane, dt);
+      paceMerge(w, p, joining, veh.id, veh.lane, dt);
     }
   }
 }
@@ -233,8 +235,11 @@ function wreckPoints(w: World, veh: Vehicle): Vec2[] {
   return [sub(cap.a, forward), veh.position, add(cap.b, forward)];
 }
 
-/** Ring cars, wrecks lying in the lane and cars just turning off, by ring distance. */
-function ringLaneOccupants(w: World): Occupant[] {
+/**
+ * Ring cars, wrecks lying in the lane and cars just turning off, by ring distance. `foresight`: a
+ * ring car counts with the speed a zone ahead is about to slow it to, so the traffic behind brakes in good time.
+ */
+function ringLaneOccupants(w: World, foresight: boolean): Occupant[] {
   const c = w.config;
   const circumference = w.layout.ring.length;
   const halfLane = c.laneWidth / 2 + c.carWidth / 2;
@@ -243,7 +248,8 @@ function ringLaneOccupants(w: World): Occupant[] {
     const p = veh.phase;
     const lane = veh.lane;
     if (p.kind === 'ring') {
-      out.push({ id: veh.id, lane, s: p.s, speed: p.drive.speed ?? w.ringSpeed, length: w.lengthOf(veh.type) });
+      const speed = p.drive.speed ?? w.ringSpeed;
+      out.push({ id: veh.id, lane, s: p.s, speed: foresight ? plannedSpeed(w, p.s, speed) : speed, length: w.lengthOf(veh.type) });
     } else if (p.kind === 'merging' && (p.pace ?? 1) < 1 && w.mergeRemaining(p, lane) < c.carLength * JOINING_REACH) {
       // Held up by the jam right at the join: the ring traffic behind has to mind it too.
       const s = wrap(w.layout.entryS(p.arm, lane) - w.mergeRemaining(p, lane), circumference);

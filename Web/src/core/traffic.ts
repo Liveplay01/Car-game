@@ -213,7 +213,7 @@ export function spawnRingCar(w: World, s: number, exitArm: Arm, type: VehicleTyp
         distanceToExit: w.layout.ringDistance(at, w.layout.exitS(exitArm, lane)),
         justMerged: null,
         drive: { speed: null, reaction: null, isPursuing: false, hazardTime: 0, outOfFlowTime: 0, isBraking: false },
-        sinceMerge: Infinity,
+        answerable: 0,
         isLeaving: false,
       },
       w.layout.rings[lane].pose(at),

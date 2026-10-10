@@ -141,7 +141,7 @@ bleibt die Bewertung fair, wenn das Tempo in der Rush Hour steigt.
 
 | Ergebnis | Bedingung | Punkte | Combo | Feedback |
 | --- | --- | --- | --- | --- |
-| **Crash** | Fahrzeuge berühren sich (beim Einfädeln oder bis 1 s danach) | −250 (nie unter 0) | auf 0 | normales Auto: Strike (Standard: Game Over), Polizeiauto: Polizei-Crash (2.6) |
+| **Crash** | Fahrzeuge berühren sich (beim Einfädeln oder bis zur ersten Ausfahrt danach) | −250 (nie unter 0) | auf 0 | normales Auto: Strike (Standard: Game Over), Polizeiauto: Polizei-Crash (2.6) |
 | **Tight Fit** | kleinster Abstand < 0,12 s | 200 × Multiplikator | +2 | Swoosh, dazu ein scharfer Haptik-Klick, wo das Gerät vibrieren kann |
 | **Sauber** | alles andere | 100 × Multiplikator | +1 | dezenter Ton |
 | **Eingekrochen** *(01.10.2026)* | fährt beim Erreichen des Rings noch unter 90 % seines geplanten Tempos, hat also hinter langsamem Verkehr gebremst (`creepPace`) | 0 | bleibt | "JAMMED · NO POINTS"; Kette bleibt; in Unlimited zählt das Auto nicht (weder Zähler noch Geld) |
@@ -568,6 +568,7 @@ Car-game/
    Einfädelungen und hält es oft die ganze Schicht. Höhere Schwellen oder ein Abklingen
    der Combo würden die Stufen spürbarer machen.
 5. Sollen Folgeunfälle Strikes kosten (`chainCrashesCostStrikes`)? Und wie lange
-   bleibt ein eingefädeltes Auto in deiner Verantwortung (`mergeResponsibility`, 1 s)?
+   bleibt ein eingefädeltes Auto in deiner Verantwortung? (Entschieden, Leo 10.10.2026:
+   bis es die erste Ausfahrt hinter sich hat, `Ring.answerable`.)
 6. Wie lange sollen Wracks liegen bleiben (`crashDuration`, 2,2 s)? Länger heißt
    mehr Stau und mehr Folgeunfälle, aber auch längere Wartezeit an der Einfahrt.

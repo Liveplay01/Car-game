@@ -64,7 +64,13 @@ const { drawWeather } = await load('/src/core/levels.ts');
 const { TOURS, tourOn, nextTour, tourTrial, tourStopOf, completeStop, tourStopsDone, stopDoneKey } = await load('/src/core/tours.ts');
 const { FAMILIES, Achievements, achievementTotal, STAT_KEYS, TIER_PAY } = await load('/src/core/achievements.ts');
 const { Skins } = await load('/src/present/skins.ts');
+const { CarModels, CAR_MODELS } = await load('/src/present/carModels.ts');
+const { CarArt } = await load('/src/present/carArt.ts');
 const { albumItems } = await load('/src/core/loot.ts');
+const { CHEST_ODDS: ODDS, CHEST_KINDS, tappedOdds: tapped, chestPrice, isForSale, cosmetic } = await load('/src/core/loot.ts');
+const { Auction, readLot, lotKey } = await load('/src/core/auction.ts');
+const { Contracts, readContract } = await load('/src/core/contracts.ts');
+const { Fund } = await load('/src/core/fund.ts');
 
 // MARK: Rules
 
@@ -2427,6 +2433,58 @@ test('the Shield upgrade has four steps, a cheap first and dear rest, forgives c
   assert.equal(Careers.steps(poor, 'shield'), 1);
 });
 
+test('the precision upgrades: close merges pay a tip, a chain in the flow is left alone, bad weather bites less, none of it in Unlimited', async () => {
+  const { forWeather } = await load('/src/core/levels.ts');
+  const gear = { tightFitTip: 6, dashcam: 6, chainSaver: 3, winterTyres: 5, fogLamps: 5 };
+  const at = (steps) => {
+    const c = newCareer();
+    c.level = 20;
+    Object.assign(c.upgrades, steps);
+    return c;
+  };
+  const plain = Careers.shiftConfig(at({}), 'shift', baseConfig, 5);
+  assert.deepEqual([plain.tightFitTip, plain.nearMissTip, plain.chainSaves, plain.tyreAid, plain.lampAid], [0, 0, 0, 0, 0], 'nothing is free');
+  const geared = Careers.shiftConfig(at(gear), 'shift', baseConfig, 5);
+  assert.ok(geared.tightFitTip > geared.nearMissTip && geared.nearMissTip > 0, 'the closer merge pays more');
+  assert.equal(geared.chainSaves, 3);
+  assert.ok(Math.abs(geared.tyreAid - 5 * baseConfig.winterTyresPerStep) < 1e-9);
+  const unlimited = Careers.shiftConfig(at(gear), 'unlimited', baseConfig, 5);
+  assert.deepEqual([unlimited.tightFitTip, unlimited.nearMissTip, unlimited.chainSaves], [0, 0, 0], 'a run the board compares has no tips');
+  assert.equal(Careers.availableUpgrades({ ...newCareer(), level: baseConfig.lightRainLevel - 1 }).includes('winterTyres'), false, 'no weather upgrades before the first rain');
+  assert.equal(Careers.availableUpgrades({ ...newCareer(), level: baseConfig.lightRainLevel }).includes('fogLamps'), true);
+
+  const kitted = upgraded(baseConfig, (u) => gear[u] ?? 0);
+  for (const weather of ['lightRain', 'storm', 'snow', 'hail', 'sandstorm', 'fog']) {
+    const bare = forWeather(baseConfig, weather);
+    const eased = forWeather(kitted, weather);
+    assert.ok(eased.tireGripBrake >= bare.tireGripBrake && eased.tireGripSide >= bare.tireGripSide, `${weather}: more grip`);
+    assert.ok(eased.driverBrake >= bare.driverBrake, `${weather}: better braking`);
+    assert.ok(eased.driverReaction.lo <= bare.driverReaction.lo && eased.driverReaction.hi <= bare.driverReaction.hi, `${weather}: quicker eyes`);
+    assert.ok(eased.driverReaction.lo >= baseConfig.driverReaction.lo, `${weather}: never better than a clear day`);
+  }
+  assert.ok(forWeather(kitted, 'snow').tireGripBrake > forWeather(baseConfig, 'snow').tireGripBrake, 'the tyres bite on ice');
+  assert.deepEqual(forWeather(kitted, 'clear').driverReaction, baseConfig.driverReaction, 'a clear day is the same');
+
+  // A tip lands in the pay of the shift, for exactly the merges it names.
+  const run = (tightFitTip) => playConfig({ ...forLevel(baseConfig, 5, 9), tightFitTip }, 9, careful);
+  const free = run(0);
+  const tipped = run(7);
+  const tights = tipped.seen.filter((e) => e.type === 'merged' && e.rating === 'tightFit');
+  assert.ok(tights.length > 0, 'the careful bot slips in tight now and then');
+  assert.ok(tights.every((e) => e.tip === 7));
+  assert.equal(tipped.result.money - free.result.money, 7 * tights.length);
+
+  // The Chain Saver: only in the flow, only a plain merge, only as many as the steps say.
+  const world = new World({ ...baseConfig, chainSaves: 2 }, 3, { startsOnFirstTap: false });
+  assert.equal(world.savesChain('clean'), false, 'no flow, nothing to save');
+  world.setChain(baseConfig.flowChain + 1, 0);
+  assert.equal(world.savesChain('cutOff'), false, 'a cut-off still ends the chain');
+  assert.equal(world.savesChain('perfect'), false, 'a good merge needs no saving');
+  assert.equal(world.savesChain('clean'), true);
+  assert.equal(world.savesChain('clean'), true);
+  assert.equal(world.savesChain('clean'), false, 'two saves a shift');
+});
+
 test('three losses on a level ease the next shift to its fewest cars, until the level is cleared', async () => {
   const { shiftCarsRange } = await load('/src/core/levels.ts');
   const c = newCareer();
@@ -2572,6 +2630,89 @@ test('bug hunter skins: one per report, up to six, each with its own look', asyn
   }
 });
 
+// MARK: Car models
+
+/** Whether the point lies inside the polygon (even-odd). */
+const inside = (poly, p) => {
+  let in_ = false;
+  for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+    const a = poly[i];
+    const b = poly[j];
+    if (a.y > p.y !== b.y > p.y && p.x < ((b.x - a.x) * (p.y - a.y)) / (b.y - a.y) + a.x) in_ = !in_;
+  }
+  return in_;
+};
+
+/** How far the point is from the polygon's edge. */
+const edgeDistance = (poly, p) => {
+  let best = Infinity;
+  for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+    const a = poly[j];
+    const b = poly[i];
+    const len2 = (b.x - a.x) ** 2 + (b.y - a.y) ** 2;
+    const t = len2 === 0 ? 0 : Math.max(0, Math.min(1, ((p.x - a.x) * (b.x - a.x) + (p.y - a.y) * (b.y - a.y)) / len2));
+    best = Math.min(best, Math.hypot(p.x - (a.x + t * (b.x - a.x)), p.y - (a.y + t * (b.y - a.y))));
+  }
+  return best;
+};
+
+test('every car model sits inside the car and hugs its hitbox: no ghost collisions', () => {
+  const { carLength: L, carWidth: W } = baseConfig;
+  const reach = L / 2 - W / 2;
+  const beyondCapsule = (p) => Math.hypot(p.x - Math.max(-reach, Math.min(reach, p.x)), p.y) - W / 2;
+  for (const model of CAR_MODELS) {
+    const outline = CarModels.outline(model, L, W);
+    for (const p of outline) {
+      assert.ok(Math.abs(p.x) <= L / 2 + 1e-9 && Math.abs(p.y) <= W / 2 + 1e-9, `${model} stays inside the car's footprint`);
+      assert.ok(beyondCapsule(p) <= 1.2, `${model} is ${beyondCapsule(p).toFixed(2)} outside the hitbox at ${p.x.toFixed(1)}, ${p.y.toFixed(1)}`);
+    }
+    // And the hitbox is covered: every point of its rim is in the body or close to it.
+    for (let k = 0; k < 72; k++) {
+      const a = (k / 72) * Math.PI * 2;
+      const centre = Math.cos(a) >= 0 ? reach : -reach;
+      const rim = { x: centre + (W / 2) * Math.cos(a), y: (W / 2) * Math.sin(a) };
+      assert.ok(inside(outline, rim) || edgeDistance(outline, rim) <= 1.6, `${model} leaves the hitbox bare at ${rim.x.toFixed(1)}, ${rim.y.toFixed(1)}`);
+    }
+  }
+});
+
+test('the parts and lamps of every car model sit on its body', () => {
+  const { carLength: L, carWidth: W } = baseConfig;
+  const corners = (c, sx, sy) => [-1, 1].flatMap((x) => [-1, 1].map((y) => ({ x: c.x + (x * sx) / 2, y: c.y + (y * sy) / 2 })));
+  const ring = (c, r) => Array.from({ length: 8 }, (_, k) => ({ x: c.x + r * Math.cos((k * Math.PI) / 4), y: c.y + r * Math.sin((k * Math.PI) / 4) }));
+  for (const model of CAR_MODELS) {
+    const outline = CarModels.outline(model, L, W);
+    const on = (p, what) => assert.ok(inside(outline, p), `${model}: ${what} pokes out at ${p.x.toFixed(1)}, ${p.y.toFixed(1)}`);
+    for (const part of ['frontBumper', 'rearBumper', 'windscreen', ...(CarModels.hasRoof(model) ? ['rearWindow'] : [])]) {
+      const s = CarArt.shape(part, 'car', baseConfig, model);
+      for (const p of corners(s.center, s.size.x, s.size.y)) on(p, part);
+    }
+    const lamps = CarModels.lamps(model, L, W);
+    for (const lamp of [lamps.head, lamps.tail]) {
+      for (const side of [1, -1]) {
+        const c = { x: lamp.x, y: side * lamp.y };
+        for (const p of lamp.round ? ring(c, lamp.h / 2) : corners(c, lamp.w, lamp.h)) on(p, lamp === lamps.head ? 'head lamp' : 'tail lamp');
+      }
+    }
+    // The stripes run nose to tail on the body.
+    for (const x of [-(L / 2 - 2), L / 2 - 2]) for (const y of [-1.6, 1.6]) on({ x, y }, 'stripe');
+  }
+});
+
+test('skins with a body of their own: the bug hunters are Beetles and nobody else is', () => {
+  const skins = COSMETICS.filter((x) => x.kind === 'carSkin');
+  const hunters = skins.filter((x) => x.source.kind === 'bugReport');
+  assert.equal(hunters.length, 6);
+  for (const item of hunters) assert.equal(Skins.model(item.id), 'beetle', `${item.id} is a Beetle`);
+  for (const item of skins.filter((x) => x.source.kind !== 'bugReport')) assert.notEqual(Skins.model(item.id), 'beetle', `${item.id} is not a Beetle`);
+  for (const model of CAR_MODELS) {
+    const wearing = skins.filter((x) => Skins.model(x.id) === model);
+    assert.ok(wearing.length >= 5, `${model} has skins to wear it`);
+  }
+  assert.equal(Skins.model('midnight'), null);
+  assert.equal(Skins.model(null), null);
+});
+
 test('the Elite track pays beyond 100: skins and titles up to Elite 200', () => {
   assert.equal(ELITE_LAST_MILESTONE, 200);
   const milestones = Elite.milestones();
@@ -2625,4 +2766,229 @@ test('nobody crashes on a two-lane ring when the player sends nothing', () => {
     }
     assert.equal(crashes, 0, `seed ${seed}: the traffic drove into each other ${crashes} times`);
   }
+});
+
+test('the Diamond Chest is for sale, never holds a Common, and its tapped odds stay whole', () => {
+  assert.ok(CHEST_KINDS.includes('diamond') && isForSale('diamond'));
+  assert.equal(chestPrice('diamond', baseConfig), baseConfig.diamondChestPrice);
+  assert.equal(chestPrice('event', baseConfig), null);
+  assert.ok(Math.abs(ODDS.diamond.reduce((a, b) => a + b, 0) - 1) < 1e-12);
+  assert.equal(ODDS.diamond[0], 0);
+  for (const power of [0, 0.5, 1]) {
+    const odds = tapped('diamond', power, baseConfig.chestTapBoost);
+    assert.equal(odds[0], 0, 'tapping never makes a Common appear');
+    assert.ok(odds.every((p) => p >= 0));
+    assert.ok(Math.abs(odds.reduce((a, b) => a + b, 0) - 1) < 1e-12);
+  }
+  for (let seed = 0; seed < 2000; seed++) assert.notEqual(rollChest('diamond', [], 0, seed, 100).rarity, 'common');
+  const c = newCareer();
+  c.money = baseConfig.diamondChestPrice - 1;
+  assert.equal(Careers.buyChest(c, 'diamond', baseConfig), false);
+  c.money += 1;
+  assert.equal(Careers.buyChest(c, 'diamond', baseConfig), true);
+  assert.equal(c.money, 0);
+  assert.deepEqual(c.chests, ['diamond']);
+});
+
+test('the High Roller table moves the stakes up with the balance, and All in stays last', () => {
+  const c = newCareer();
+  c.money = baseConfig.casinoHighRollerFrom - 1;
+  assert.deepEqual(Casino.stakes(c, baseConfig).slice(0, 5), baseConfig.casinoStakes);
+  c.money = baseConfig.casinoHighRollerFrom;
+  const stakes = Casino.stakes(c, baseConfig);
+  assert.ok(Casino.highRoller(c, baseConfig));
+  assert.deepEqual(stakes.slice(0, 5), baseConfig.casinoHighStakes);
+  assert.equal(stakes.at(-1), c.money);
+  assert.equal(stakes.length, baseConfig.casinoStakes.length + 1, 'the same number of chips: the table does not change shape');
+});
+
+test('the new skins have looks, names and a way to get them', () => {
+  const sources = { auction: 6, fund: 3 };
+  for (const [kind, count] of Object.entries(sources)) {
+    const items = COSMETICS.filter((x) => x.source.kind === kind);
+    assert.equal(items.length, count, `${count} ${kind} skins`);
+    for (const x of items) {
+      assert.ok(Skins.color(x.id), `${x.id} has a colour`);
+      assert.ok(Skins.effect(x.id), `${x.id} has an effect`);
+      assert.notEqual(S.shop.item(x.id), x.id, `${x.id} has a name`);
+      assert.ok(S.shop.lockedHint(x).length > 20, `${x.id} says where it comes from`);
+    }
+  }
+  assert.ok(!albumItems('honours').some((x) => x.source.kind === 'auction' || x.source.kind === 'fund'), 'the Honours album never waits on the Club');
+});
+
+/** The career as a save brings it back. */
+const careerAfterSave = (career) => {
+  const save = newSave();
+  save.career = career;
+  return parseImport(JSON.stringify({ ...save, [SEAL_FIELD]: sealSave(save) })).career;
+};
+
+test('the Auction House: lots hold through the day, a lot is tried once, and walking away costs nothing', () => {
+  const c = newCareer();
+  c.level = 60;
+  c.money = 50_000_000;
+  const day = 20_000;
+  const lots = Auction.today(c, day);
+  assert.equal(lots.length, baseConfig.auctionLots);
+  assert.deepEqual(Auction.today(c, day).map(lotKey), lots.map(lotKey), 'the same lots all day');
+  const last = lots.at(-1);
+  assert.ok(last.k === 'skin' && cosmetic(last.id).source.kind === 'auction', 'the last lot is the Auction House own skin');
+  assert.notDeepEqual(Auction.today(c, day + 1).map(lotKey), lots.map(lotKey), 'a new set tomorrow');
+  Auction.today(c, day);
+  const keep = c.money;
+  const run = Auction.begin(c, 0, day);
+  assert.ok(run && run.phase === 'bidding' && run.price === 0);
+  assert.equal(Auction.begin(c, 0, day), null, 'a lot is not tried twice');
+  assert.ok(run.bots.length >= baseConfig.auctionBots[0] && run.bots.length <= baseConfig.auctionBots[1]);
+  assert.equal(run.start % run.step, 0);
+  assert.equal(Auction.bid(c, run, run.start - run.step), null, 'under the opening price');
+  assert.equal(Auction.bid(c, run, run.start + 1), null, 'off the steps');
+  Auction.walk(run);
+  assert.equal(run.phase, 'lost');
+  assert.equal(c.money, keep, 'walking away is free');
+  assert.equal(Auction.bid(c, run, run.start), null, 'no bidding after leaving');
+  // Without the Elite track the House is shut.
+  const low = newCareer();
+  Auction.today(low, day);
+  assert.equal(Auction.canStart(low, 0, day), false);
+});
+
+test('the Auction House: a win pays the hammer price and the premium and hands over the lot, and it saves', () => {
+  const day = 20_001;
+  const base = newCareer();
+  base.level = 60;
+  base.money = 100_000_000;
+  const lots = Auction.today(base, day);
+  const slot = lots.findIndex((l) => l.k === 'skin');
+  let won = null;
+  for (let attempt = 1; attempt < 400 && !won; attempt++) {
+    const d = newCareer();
+    d.level = 60;
+    d.money = base.money;
+    d.casinoSeed = attempt;
+    d.auctionDay = base.auctionDay;
+    d.auctionLots = [...base.auctionLots];
+    const run = Auction.begin(d, slot, day);
+    for (let n = 0; n < 200 && run.phase === 'bidding'; n++) assert.ok(Auction.bid(d, run, Auction.minBid(run)));
+    if (run.phase === 'won') won = { d, run };
+  }
+  assert.ok(won, 'some auction is won at the least bids');
+  const { d, run } = won;
+  assert.equal(run.paid, run.price + Math.floor(run.price * baseConfig.auctionPremium));
+  assert.equal(d.money, 100_000_000 - run.paid);
+  assert.ok(Careers.owns(d, run.lot.id), 'the skin is in the collection');
+  assert.equal(d.auctionWins, 1);
+  assert.equal(d.auctionSpent, run.paid);
+  const back = careerAfterSave(d);
+  assert.deepEqual(back.auctionLots, d.auctionLots);
+  assert.deepEqual(back.auctionTaken, d.auctionTaken);
+  assert.equal(back.auctionSpent, d.auctionSpent);
+  assert.equal(Auction.canStart(d, slot, day), false, 'taken');
+});
+
+test('an auction cannot be bid on past the money, and a stored lot is checked', () => {
+  const c = newCareer();
+  c.level = 60;
+  c.money = 1_000_000;
+  const day = 20_002;
+  Auction.today(c, day);
+  const run = Auction.begin(c, 1, day);
+  const offers = Auction.offers(c, run);
+  assert.ok(offers.length >= 1 && offers.every((bid) => Auction.cost(bid) <= c.money));
+  c.money = Auction.cost(run.start) - 1;
+  assert.deepEqual(Auction.offers(c, run), []);
+  assert.equal(Auction.bid(c, run, run.start), null);
+  assert.equal(readLot('skin:nobody'), null);
+  assert.equal(readLot('chest:nothing'), null);
+  assert.deepEqual(readLot('chest:diamond'), { k: 'chest', chest: 'diamond' });
+  const edited = newCareer();
+  edited.auctionLots = ['skin:gold', 'skin:nobody', 'chest:diamond'];
+  assert.deepEqual(careerAfterSave(edited).auctionLots, ['skin:gold', 'chest:diamond']);
+});
+
+test('Contracts: the stake is paid at once, a goal met pays the multiple, a miss loses it, an eased shift gives it back', () => {
+  const c = newCareer();
+  c.level = 60;
+  c.money = 1_000_000;
+  const clean = { outcome: 'completed', isPerfectRun: true, perfects: 3, bestChain: 5 };
+  assert.equal(Contracts.sign(c, 'clean', 12_345), false, 'only the stakes on offer');
+  assert.equal(Contracts.sign(c, 'clean', 50_000), true);
+  assert.equal(c.money, 950_000);
+  assert.equal(Contracts.sign(c, 'sharp', 10_000), false, 'one at a time');
+  assert.deepEqual(readContract(JSON.parse(JSON.stringify(c.contract))), { goal: 'clean', stake: 50_000 });
+  const won = Contracts.settle(c, clean, 29, false);
+  assert.equal(won.result, 'won');
+  assert.equal(c.money, 950_000 + Math.round(50_000 * baseConfig.contractPay.clean));
+  assert.equal(c.contract, null);
+  assert.equal(Contracts.settle(c, clean, 29, false), null, 'nothing waits any more');
+  // A miss.
+  Contracts.sign(c, 'sharp', 10_000);
+  const before = c.money;
+  assert.equal(Contracts.met('sharp', clean, 29), false, 'three Perfects are not a Sharp shift');
+  assert.equal(Contracts.settle(c, clean, 29, false).result, 'lost');
+  assert.equal(c.money, before);
+  // A crash or no completion: lost whatever the goal.
+  for (const result of [{ ...clean, isPerfectRun: false }, { ...clean, outcome: 'struckOut' }]) assert.equal(Contracts.met('clean', result, 29), false);
+  // Flawless asks for the chain.
+  const need = Contracts.need('flawless', 29);
+  assert.equal(Contracts.met('flawless', { ...clean, bestChain: need.chain }, 29), true);
+  assert.equal(Contracts.met('flawless', { ...clean, bestChain: need.chain - 1 }, 29), false);
+  // An eased shift voids it.
+  Contracts.sign(c, 'clean', 10_000);
+  const kept = c.money;
+  assert.equal(Contracts.settle(c, clean, 29, true).result, 'void');
+  assert.equal(c.money, kept + 10_000);
+  // Tearing it up gives everything back; the Club is shut below the Elite track.
+  Contracts.sign(c, 'clean', 10_000);
+  assert.equal(Contracts.cancel(c), true);
+  assert.equal(c.money, kept + 10_000);
+  const low = newCareer();
+  low.money = 1_000_000;
+  assert.equal(Contracts.canSign(low, 10_000), false);
+  assert.equal(readContract({ goal: 'nope', stake: 5 }), null);
+  assert.equal(readContract({ goal: 'clean', stake: -5 }), null);
+  assert.deepEqual(careerAfterSave({ ...newCareer(), contract: { goal: 'sharp', stake: 100_000 } }).contract, { goal: 'sharp', stake: 100_000 });
+});
+
+test('a contract settles on the result of a career shift, and never on the Daily Shift', () => {
+  const save = newSave();
+  save.career.level = 60;
+  save.career.money = 1_000_000;
+  Contracts.sign(save.career, 'clean', 50_000);
+  const result = { outcome: 'struckOut', score: 100, completionBonus: 0, bestCombo: 0, cleanMerges: 0, tightFits: 0, cutOffs: 0, nearMisses: 0, perfects: 0, crashes: 1, policeCrashes: 0, takedowns: 0, transporters: 0, money: 0, costs: 0, covered: 0, seed: 1, time: 5, bestChain: 0, isPerfectRun: false, carsSent: 3, flames: 0, wrecks: 0, biggestChain: 0, detonated: false, convoy: false, bossBusted: false, bossKind: null, legendary: null, ambulances: 0, shaves: 0, criticals: 0, jackpots: 0, blasts: 0 };
+  const shiftConfig = { ...baseConfig, shiftCars: 29, assisted: false, heat: 0 };
+  const ctx = { mode: 'shift', level: 60, daily: true, today: 20_000, config: baseConfig, shiftConfig, splits: [] };
+  bookShift(save, result, ctx);
+  assert.deepEqual(save.career.contract, { goal: 'clean', stake: 50_000 }, 'the Daily leaves it waiting');
+  const booked = bookShift(save, result, { ...ctx, daily: false });
+  assert.equal(save.career.contract, null);
+  assert.ok(booked.news.some((line) => line.startsWith('CONTRACT LOST')), booked.news.join(' | '));
+});
+
+test('the City Fund: skins are owed for built projects given enough to, a gift leaves the save only as far as it was accepted', () => {
+  const c = newCareer();
+  const view = {
+    projects: [
+      { id: 'fountain', goal: 10, raised: 10, done: true, active: false, mine: baseConfig.fundBenefactor },
+      { id: 'lighthouse', goal: 50, raised: 20, done: false, active: true, mine: 5_000_000 },
+      { id: 'skybridge', goal: 250, raised: 0, done: false, active: false, mine: 0 },
+    ],
+    top: [],
+    minGift: baseConfig.fundMinGift,
+    maxGift: baseConfig.fundMaxGift,
+  };
+  assert.deepEqual(Fund.owed(c, view).map((x) => x.id), ['fountain'], 'only a built project pays its skin');
+  assert.deepEqual(Fund.claim(c, view), ['fountain']);
+  assert.ok(Careers.owns(c, 'fountain'));
+  assert.deepEqual(Fund.claim(c, view), [], 'once');
+  view.projects[0].mine = baseConfig.fundBenefactor - 1;
+  assert.deepEqual(Fund.owed(newCareer(), view).map((x) => x.id), [], 'a smaller gift earns no skin');
+  c.money = 1_000_000;
+  assert.deepEqual(Fund.offers(c, view), [10_000, 50_000, 250_000, 1_000_000]);
+  Fund.gave(c, 250_000);
+  assert.equal(c.money, 750_000);
+  assert.equal(c.fundGiven, 250_000);
+  Fund.gave(c, 9_000_000);
+  assert.equal(c.money, 0, 'never below nothing');
 });

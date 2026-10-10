@@ -40,7 +40,7 @@ import {
   updateEscorts,
 } from './specials';
 import { type MilitaryPhase, updateMilitary, explode, isEscorted, predictedZoneS, gapToZone } from './explosions';
-import { chargeModules, wreckClearRate, towDepotCovering, detourExit } from './modules';
+import { chargeModules, wreckClearRate, towDepotCovering, detourExit, travelAhead } from './modules';
 import { tempoAt, densityAt, forWeather } from './levels';
 import { type AmbulancePhase, firstAmbulance, updateAmbulance, noteMergeNearAmbulance, ambulanceThrough } from './ambulance';
 import { type LearnerPhase, firstLearner, updateLearner, noteMergeNearLearner, learnerThrough } from './learner';
@@ -576,7 +576,7 @@ export class World {
               distanceToExit: layout.ringDistanceArms(phase.arm, phase.exitArm, veh.lane) + phase.extraLaps * circumference - overflow,
               justMerged: phase,
               drive,
-              sinceMerge: 0,
+              answerable: layout.ringDistanceArms(phase.arm, layout.advance(phase.arm, 1), veh.lane) - overflow,
               isLeaving: false,
             };
             veh.phase = ring;
@@ -588,8 +588,8 @@ export class World {
           break;
         }
         case 'ring': {
-          phase.sinceMerge += dt;
           const d = (phase.drive.speed ?? this.ringSpeed) * dt;
+          phase.answerable -= d;
           chargeModules(this, veh, phase.s, d, now);
           phase.s = wrap(phase.s + d, circumference);
           phase.distanceToExit -= d;
@@ -891,9 +891,10 @@ export class World {
 
   causesStrike(veh: Vehicle): boolean {
     if (veh.owner !== 'player' || veh.isCrashed) return false;
-    if (this.config.chainCrashesCostStrikes || veh.activeMerge) return true;
-    if (veh.phase.kind === 'ring') return veh.phase.sinceMerge < this.config.mergeResponsibility;
-    return false;
+    if (this.config.chainCrashesCostStrikes) return true;
+    // The player answers for a car until it passes the first exit; what happens on the ring after that is not its doing.
+    if (veh.activeMerge) return true;
+    return veh.phase.kind === 'ring' && veh.phase.answerable > 0;
   }
 
   /**
@@ -1057,7 +1058,9 @@ export class World {
       if (critical) this.score.criticals++;
       if (shave > 0) this.score.shaves++;
       if (this.isVersus) this.noteVersusMerge(veh, rating, merge.minGap, now);
-      this.setChain(Scoring.extendsChain(rating) ? this.score.chain + 1 : 0, now);
+      const tip = this.tipFor(rating);
+      const chainSaved = this.savesChain(rating);
+      this.setChain(Scoring.extendsChain(rating) ? this.score.chain + 1 : chainSaved ? this.score.chain : 0, now);
       noteMergeNearAmbulance(this, veh, s, now);
       noteMergeNearLearner(this, veh, s, now);
       noteMergeNearOversize(this, veh, s, now);
@@ -1078,9 +1081,26 @@ export class World {
         chain: this.score.chain,
         critical,
         shave,
+        tip,
+        chainSaved,
       });
       if (this.breaksTrial(rating)) this.endShift('failed', now);
     }
+  }
+
+  /** The Tight Fit Tip and the Dashcam: a close merge pays at once. */
+  private tipFor(rating: MergeRating): number {
+    const c = this.config;
+    const tip = rating === 'tightFit' ? c.tightFitTip : rating === 'nearMiss' ? c.nearMissTip : 0;
+    this.score.money += tip;
+    return tip;
+  }
+
+  /** The Chain Saver: a few plain merges a shift leave a chain in the flow alone (a cut-off still ends it). */
+  private savesChain(rating: MergeRating): boolean {
+    if (rating !== 'clean' || !this.isInFlow || this.score.chainsSaved >= this.config.chainSaves) return false;
+    this.score.chainsSaved++;
+    return true;
   }
 
   /**
@@ -1184,7 +1204,7 @@ export class World {
       return wrap(this.layout.entryS(p.arm, veh.lane) + travelled, circumference);
     }
     if (p.kind === 'ring') {
-      const travelled = (p.drive.speed ?? this.ringSpeed) * t;
+      const travelled = travelAhead(this, p.s, p.drive.speed ?? this.ringSpeed, t);
       if (travelled >= p.distanceToExit && !this.staysOnRing(veh)) return null;
       return wrap(p.s + travelled, circumference);
     }
@@ -1213,7 +1233,7 @@ export class World {
       }
       case 'ring': {
         const exit = this.staysOnRing(veh) ? Infinity : p.distanceToExit;
-        return ringOrExit(p.s, exit, p.exitArm, (p.drive.speed ?? this.ringSpeed) * t);
+        return ringOrExit(p.s, exit, p.exitArm, travelAhead(this, p.s, p.drive.speed ?? this.ringSpeed, t));
       }
       case 'exiting': {
         const s = p.s + (p.drive.speed ?? this.ringSpeed) * t;

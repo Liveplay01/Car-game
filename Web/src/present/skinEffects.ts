@@ -264,8 +264,7 @@ export const SkinEffects = {
         for (let k = 1; k < pts.length; k++) list.w(line(pts[k - 1], pts[k], 1), 'fireOuter', o * pulse);
       }
     } else if (BEETLES.includes(e)) {
-      // A black head at the front and the seam between the wing cases; each beetle adds its own markings.
-      list.w(rect(at(pose, L / 2 - L * 0.11, 0), v(L * 0.2, W - 1.4), W * 0.35, pose.heading), 'vehicleTire', o);
+      // The seam between the wing cases on a body shaped like the Beetle's; each bug adds its own markings.
       list.w(line(at(pose, -L / 2 + 1.2, 0), at(pose, L / 2 - L * 0.2, 0), 0.9), 'vehicleTire', o * 0.9);
       const r = Math.min(W * 0.14, 1.9);
       const spots = (color: ColorToken, points: readonly (readonly [number, number])[]): void => {
@@ -273,16 +272,16 @@ export const SkinEffects = {
       };
       if (e === 'ladybug') spots('vehicleTire', [[0.18, 0.24], [0.18, -0.24], [-0.06, 0.3], [-0.06, -0.3], [-0.3, 0.2], [-0.3, -0.2], [0.02, 0]]);
       else if (e === 'goldbug') {
-        for (const x of [0.12, -0.12, -0.34]) list.w(rect(at(pose, x * L, 0), v(L * 0.09, W - 1.6), 0.6, pose.heading), 'vehicleTire', o * 0.9);
+        for (const x of [0.12, -0.12, -0.34]) list.w(rect(at(pose, x * L, 0), v(L * 0.09, W - 3), 0.6, pose.heading), 'vehicleTire', o * 0.9);
       } else if (e === 'scarab') {
-        list.w(rect(at(pose, L * 0.22, 0), v(L * 0.14, W - 1.6), 1.2, pose.heading), 'skinGold', o);
+        list.w(rect(at(pose, L * 0.22, 0), v(L * 0.14, W - 3), 1.2, pose.heading), 'skinGold', o);
         spots('skinGold', [[-0.1, 0.22], [-0.1, -0.22], [-0.3, 0]]);
       } else if (e === 'bluebottle') {
         for (const y of [-1, 1]) list.w(rect(at(pose, -L * 0.12, y * W * 0.22), v(L * 0.5, W * 0.3), 1.6, pose.heading), 'skinIce', o * 0.55);
       } else if (e === 'orchid') spots('skinPearl', [[0.14, 0.26], [0.14, -0.26], [-0.1, 0], [-0.3, 0.24], [-0.3, -0.24]]);
       else {
         const glint = 0.5 + 0.5 * Math.sin(t * 3 + id);
-        list.w(rect(at(pose, -L / 2 + L * 0.13, 0), v(L * 0.24, W - 1.6), 1.6, pose.heading), 'juiceYellow', o * (0.55 + 0.45 * glint));
+        list.w(rect(at(pose, -L / 2 + L * 0.17, 0), v(L * 0.2, W * 0.5), W * 0.25, pose.heading), 'juiceYellow', o * (0.55 + 0.45 * glint));
       }
     } else if (e === 'dragon') {
       // Scales: rows of small arcs, open towards the tail, darker than the paint.

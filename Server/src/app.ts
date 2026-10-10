@@ -12,6 +12,7 @@ import { adminModule } from './modules/admin/index.ts';
 import { challengesModule } from './modules/challenges/index.ts';
 import { feedbackModule } from './modules/feedback/index.ts';
 import { friendsModule } from './modules/friends/index.ts';
+import { fundModule } from './modules/fund/index.ts';
 import { leaderboardModule } from './modules/leaderboard/index.ts';
 import { playersModule } from './modules/players/index.ts';
 import { pushModule } from './modules/push/index.ts';
@@ -23,7 +24,7 @@ import { syncModule } from './modules/sync/index.ts';
  * The features of the server, in the order they are set up. A module may use the ones above it
  * (the leaderboard needs players). Add a new feature here.
  */
-export const modules = (): ServerModule[] => [playersModule(), leaderboardModule(), friendsModule(), syncModule(), rtcModule(), challengesModule(), feedbackModule(), referralsModule(), pushModule(), adminModule()];
+export const modules = (): ServerModule[] => [playersModule(), leaderboardModule(), friendsModule(), syncModule(), rtcModule(), challengesModule(), feedbackModule(), referralsModule(), fundModule(), pushModule(), adminModule()];
 
 /**
  * Who is calling. Behind Coolify's proxy that is the last address the proxy wrote into

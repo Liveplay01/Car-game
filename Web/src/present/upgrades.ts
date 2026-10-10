@@ -114,13 +114,20 @@ export const UpgradePage = {
       case 'quietStreets':
       case 'quickRecovery':
       case 'shield':
+      case 'chainSaver':
         return 'juiceGreen';
       case 'cashRoute':
       case 'overtime':
       case 'doubleRun':
+      case 'tightFitTip':
         return 'juiceYellow';
       case 'freight':
+      case 'fogLamps':
         return 'juiceOrange';
+      case 'dashcam':
+        return 'juicePurple';
+      case 'winterTyres':
+        return 'juiceBlue';
       case 'insurance':
       case 'robberyInsurance':
         return 'juiceRed';
@@ -348,6 +355,36 @@ export const UpgradeArt = {
         shield('juiceGreen');
         put(rect(center, mul(v(16, 5), unit), 2 * unit), 'primary');
         put(rect(center, mul(v(5, 16), unit), 2 * unit), 'primary');
+        break;
+      case 'tightFitTip':
+        car(at(-17, 2), 0.75, 'vehicleCar', null, false);
+        car(at(17, 2), 0.75, 'vehicleCar', null, false);
+        put(circle(at(0, 0), 9 * unit), 'vehicleCargo');
+        put(circle(at(0, 0), 6 * unit), 'hazard', 0.7);
+        break;
+      case 'dashcam':
+        put(rect(center, mul(v(34, 20), unit), 5 * unit), 'primary', 0.9);
+        put(circle(center, 7 * unit), 'card');
+        put(circle(center, 4 * unit), 'lightBlue');
+        put(circle(at(-12, -6), 2 * unit), 'destructive');
+        put(line(at(0, -10), at(0, -17), 3 * unit), 'muted');
+        break;
+      case 'chainSaver':
+        put(arc(at(-8, 0), 10 * unit, 3.5 * unit, 0, TAU), 'accent');
+        put(arc(at(8, 0), 10 * unit, 3.5 * unit, 0, TAU), 'juiceGreen');
+        break;
+      case 'winterTyres':
+        put(circle(center, 18 * unit), 'primary', 0.85);
+        put(circle(center, 7 * unit), 'card');
+        for (let spoke = 0; spoke < 3; spoke++) {
+          const a = (spoke * TAU) / 6;
+          const d = v(Math.cos(a), Math.sin(a));
+          put(line(add(center, mul(d, 11 * unit)), add(center, mul(d, -11 * unit)), 2 * unit), 'lightBlue', 0.9);
+        }
+        break;
+      case 'fogLamps':
+        put(polygon([at(-6, -6), at(-22, -26), at(22, -26), at(6, -6)]), 'hazard', 0.35);
+        car(at(0, 8), 0.8, 'vehicleCar', null, true);
         break;
       case 'overtime':
         for (let coin = 0; coin < 3; coin++) {

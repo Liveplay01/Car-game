@@ -7,6 +7,8 @@ import { MUSEUM_IDS, MUSEUM_SHELVES, type MuseumShelf, inferredSightings } from 
 import { TITLES, type TitleId } from '../core/elite';
 import { type CasinoGame, type CasinoPending, type CasinoRound, CASINO_GAMES } from '../core/casino';
 import { isObject } from '../core/guards';
+import { readLot } from '../core/auction';
+import { readContract } from '../core/contracts';
 import { storage } from './store';
 import { sealOf } from './seal';
 import { PASS_TIERS, type HallEntry } from '../core/seasonPass';
@@ -176,6 +178,14 @@ function readCareer(raw: unknown): Career {
     toursDone: [...new Set(strings(raw.toursDone).filter((id) => /^[a-z]+-\d{4}\.\d{1,2}$/.test(id)))].slice(-200),
     stats: readStats(raw.stats),
     achievements: [...new Set(strings(raw.achievements).filter((id) => familyOf(id.split('.')[0]) !== undefined))],
+    auctionDay: int(raw.auctionDay, -1),
+    auctionLots: strings(raw.auctionLots).filter((key) => readLot(key) !== null).slice(0, baseConfig.auctionLots),
+    auctionTaken: [...new Set((Array.isArray(raw.auctionTaken) ? raw.auctionTaken : []).filter((x): x is number => Number.isInteger(x) && x >= 0 && x < baseConfig.auctionLots))],
+    auctionRuns: int(raw.auctionRuns, 0, 0),
+    auctionWins: int(raw.auctionWins, 0, 0),
+    auctionSpent: int(raw.auctionSpent, 0, 0),
+    fundGiven: int(raw.fundGiven, 0, 0),
+    contract: readContract(raw.contract),
   };
 }
 

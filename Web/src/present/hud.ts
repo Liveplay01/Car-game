@@ -210,7 +210,9 @@ export type PopupKind =
   | { k: 'flames'; n: number; chain: number }
   | { k: 'boom' }
   /** A close shave past a motorbike: its bonus points. */
-  | { k: 'shave'; n: number };
+  | { k: 'shave'; n: number }
+  /** The Chain Saver left a chain alone. */
+  | { k: 'chainHeld' };
 
 export interface Popup {
   serial: number;
@@ -790,6 +792,11 @@ export const HUD = {
         case 'shave':
           label = S.hud.shave(Fmt.signed(k.n));
           color = 'juiceOrange';
+          size = Metrics.popupSize * 0.85;
+          break;
+        case 'chainHeld':
+          label = S.hud.chainHeld;
+          color = 'juiceGreen';
           size = Metrics.popupSize * 0.85;
           break;
       }

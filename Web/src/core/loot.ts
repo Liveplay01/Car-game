@@ -1,3 +1,4 @@
+import type { Config } from './config';
 import { Rng } from './rng';
 
 /** What is in the chests (LOOT.md): looks only; a vehicle type is different, not better. */
@@ -5,17 +6,22 @@ export type Rarity = 'common' | 'rare' | 'epic' | 'legendary';
 export const RARITIES: Rarity[] = ['common', 'rare', 'epic', 'legendary'];
 export const rarityRank = (r: Rarity): number => RARITIES.indexOf(r);
 
-export type ChestKind = 'standard' | 'premium' | 'event' | 'criminalHunt';
-export const CHEST_KINDS: ChestKind[] = ['standard', 'premium', 'event', 'criminalHunt'];
+export type ChestKind = 'standard' | 'premium' | 'diamond' | 'event' | 'criminalHunt';
+export const CHEST_KINDS: ChestKind[] = ['standard', 'premium', 'diamond', 'event', 'criminalHunt'];
 
 export const CHEST_ODDS: Record<ChestKind, number[]> = {
   standard: [0.7, 0.22, 0.07, 0.01],
   premium: [0.35, 0.35, 0.22, 0.08],
+  diamond: [0, 0.3, 0.45, 0.25],
   event: [0.4, 0.35, 0.2, 0.05],
   criminalHunt: [0.5, 0.3, 0.15, 0.05],
 };
 
-export const isForSale = (k: ChestKind): boolean => k === 'standard' || k === 'premium';
+export const isForSale = (k: ChestKind): boolean => k === 'standard' || k === 'premium' || k === 'diamond';
+
+/** What a chest costs in the shop; null for the ones that are only earned. */
+export const chestPrice = (k: ChestKind, config: Config): number | null =>
+  k === 'standard' ? config.standardChestPrice : k === 'premium' ? config.premiumChestPrice : k === 'diamond' ? config.diamondChestPrice : null;
 
 export const DUPLICATE_MONEY: Record<Rarity, number> = { common: 250, rare: 600, epic: 1500, legendary: 4000 };
 
@@ -46,6 +52,10 @@ export type CosmeticSource =
   | { kind: 'bugReport'; reports: number }
   /** A stop of a limited-time Tour (core/tours.ts); the tour comes back every year. */
   | { kind: 'tour'; tour: string }
+  /** Won at the Auction House (core/auction.ts), where a new lot of these comes up every few days. */
+  | { kind: 'auction' }
+  /** A thank-you for a gift to a City Fund project (core/fund.ts), once it is built. */
+  | { kind: 'fund'; project: string }
   /**
    * The one honour that is luck (Leo, 01.10.2026): found in this chest with this chance per
    * opening, until it is found. On the Honours shelf, never in a chest's normal pool.
@@ -210,6 +220,17 @@ export const COSMETICS: Cosmetic[] = [
   c('candyCane', 'carSkin', 'rare', { kind: 'tour', tour: 'winter' }),
   c('snowGlobe', 'carSkin', 'epic', { kind: 'tour', tour: 'winter' }),
   c('sleigh', 'carSkin', 'legendary', { kind: 'tour', tour: 'winter' }),
+  // The Auction House (Leo, 10.10.2026): only ever won at a lot, for a lot of money. Looks only.
+  c('sterling', 'carSkin', 'legendary', { kind: 'auction' }),
+  c('magnate', 'carSkin', 'legendary', { kind: 'auction' }),
+  c('baron', 'carSkin', 'legendary', { kind: 'auction' }),
+  c('bullion', 'carSkin', 'legendary', { kind: 'auction' }),
+  c('sovereign', 'carSkin', 'legendary', { kind: 'auction' }),
+  c('provenance', 'carSkin', 'legendary', { kind: 'auction' }),
+  // The City Fund (Leo, 10.10.2026): one skin for every project that was built, for those who gave to it.
+  c('fountain', 'carSkin', 'epic', { kind: 'fund', project: 'fountain' }),
+  c('lighthouse', 'carSkin', 'legendary', { kind: 'fund', project: 'lighthouse' }),
+  c('skybridge', 'carSkin', 'legendary', { kind: 'fund', project: 'skybridge' }),
   // The Classic: one Standard Chest in 500 (Leo, 01.10.2026).
   c('classic', 'vehicleType', 'legendary', { kind: 'find', chest: 'standard', chance: 0.002 }),
 ];
@@ -242,6 +263,8 @@ export const isHonour = (item: Cosmetic): boolean =>
   item.source.kind === 'unlimited' ||
   item.source.kind === 'bugReport' ||
   item.source.kind === 'tour' ||
+  item.source.kind === 'auction' ||
+  item.source.kind === 'fund' ||
   item.source.kind === 'find';
 
 export const cosmetic = (id: string): Cosmetic | undefined => COSMETICS.find((x) => x.id === id);
@@ -293,7 +316,7 @@ export function albumItems(album: Album): Cosmetic[] {
     case 'honours':
       // Deeds in the game only: a find is luck, and the bug hunter skins need the website (not offered
       // inside CrazyGames), so an album must not wait on either.
-      return COSMETICS.filter((x) => isHonour(x) && x.source.kind !== 'find' && x.source.kind !== 'bugReport' && x.source.kind !== 'tour');
+      return COSMETICS.filter((x) => isHonour(x) && !['find', 'bugReport', 'tour', 'auction', 'fund'].includes(x.source.kind));
     case 'pass':
       return COSMETICS.filter((x) => x.source.kind === 'pass');
     case 'tours':
@@ -343,11 +366,12 @@ export const strongTaps = (times: readonly number[], window: number): boolean[] 
 export const tapPower = (times: readonly number[], taps: number, window: number): number =>
   Math.min(1, strongTaps(times, window).filter(Boolean).length / taps);
 
-/** A chest's odds at tap `power` 0…1: each chance above Common grows by up to `boost` of itself, Common pays. */
+/** A chest's odds at tap `power` 0…1: each chance above its lowest rarity grows by up to `boost` of itself, the lowest pays. */
 export function tappedOdds(kind: ChestKind, power: number, boost: number): number[] {
-  const [, ...rest] = CHEST_ODDS[kind];
-  const grown = rest.map((p) => p * (1 + boost * Math.min(1, Math.max(0, power))));
-  return [1 - grown.reduce((a, b) => a + b, 0), ...grown];
+  const odds = CHEST_ODDS[kind];
+  const floor = odds.findIndex((p) => p > 0);
+  const grown = odds.slice(floor + 1).map((p) => p * (1 + boost * Math.min(1, Math.max(0, power))));
+  return [...odds.slice(0, floor), 1 - grown.reduce((a, b) => a + b, 0), ...grown];
 }
 
 /** Draws a rarity by the chest's odds (public, or as tapped: `tappedOdds`); the pity counters guarantee an Epic and, later, a Legendary. */

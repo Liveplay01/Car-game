@@ -17,7 +17,7 @@ Stand: 02.10.2026 · Überblick über das ganze Spiel. Das Spiel heißt **Rounda
 - **Krankenwagen und Feuerwehr** (die Straße vor ihnen frei halten), **Motorräder**, **Fahrschulauto**, **Schulbusse**
 - dazu **Wetter**, **Nacht** und **City Events**, die den Verkehr oder die Sicht verändern, ab Level 80 ein **zweispuriger Ring**
 
-**Meta:** Geld → Upgrades kaufen, Kreisverkehr im Street Builder ausbauen (Zufahrten, Module), Truhen mit Skins öffnen, Quests, Trials und Feats abhaken, Casino. Die Stadt wächst sichtbar mit. Langzeitziele: Legendary Shifts, Prestige, Elite-Leiste, Saison-Pass, Ruhmeshalle.
+**Meta:** Geld → Upgrades kaufen, Kreisverkehr im Street Builder ausbauen (Zufahrten, Module), Truhen mit Skins öffnen, Quests, Trials und Feats abhaken, Casino, ab der Elite-Leiste der Club für große Kontostände (Auktion, Stadtfonds, Verträge, Diamond Chest; LOOT.md, „Der Club“). Die Stadt wächst sichtbar mit. Langzeitziele: Legendary Shifts, Prestige, Elite-Leiste, Saison-Pass, Ruhmeshalle.
 
 **Plattform:** Browser auf Handy (Hochformat, einhändig) und Desktop, installierbar als PWA, offline spielbar nach dem ersten Besuch. Läuft außerdem auf **CrazyGames** und (in Vorbereitung) im **Google Play Store** als Trusted Web Activity (siehe 14). Spielsprache nur Englisch, Projektdokumente auf Deutsch.
 
@@ -300,7 +300,7 @@ Geld bleibt auch aus verlorenen Schichten. Der Kontostand steht immer links in d
 
 | Bereich | Was | Preis |
 |---|---|---|
-| **Upgrades** (Build → Upgrades) | 13 Upgrades, 86 Stufen | erste Stufe 2.600 × Faktor, jede weitere ×1,5 |
+| **Upgrades** (Build → Upgrades) | 19 Upgrades, 115 Stufen | erste Stufe 2.600 × Faktor, jede weitere ×1,5 |
 | **Zufahrten** (Build → Street Builder) | 5.–8. Arm; je Arm Ring +18 breiter, +25 % Verkehr, Transporter 15 % früher, +10 % Lohn | 32.500 / 65.000 / 130.000 / 260.000 = **487.500** |
 | **Module** (Street Builder) | Toll Booth, Speed Camera, Tow Depot, Billboard, Detour Sign auf 6 festen Modulplätzen | 10.400 / 15.600 / 13.000 / 9.100 / 7.800 |
 | **Truhen** (Shop) | Standard, Premium | 26.000 / 52.000 |
@@ -328,6 +328,19 @@ Abreißen (Zufahrten und Module) ist möglich, **nichts wird erstattet.** Versch
 | Robbery Insurance* | −15 % Verlust bei Flucht (Stufe 7 = 100 %) | 7 | 5.200 |
 
 \* freigeschaltet ab Level 20.
+
+**Präzisions-Upgrades (Leo, 10.10.2026)** für Spieler, die knapp einfädeln; alle kosten Geld wie die anderen (Preisfaktoren 1,2 · 1,2 · 2 · 1,5 · 1,5), keine zählt in Unlimited:
+
+| Upgrade | Wirkung pro Stufe | Stufen | Erste Stufe |
+|---|---|---|---|
+| Tight Fit Tip | jeder Tight Fit zahlt sofort 0,8 % des Schichtlohns | 6 | 3.100 |
+| Dashcam | jeder Near Miss zahlt sofort 0,6 % des Schichtlohns | 6 | 3.100 |
+| Chain Saver | im Flow lässt ein einfacher (Clean-)Merge die Kette in Ruhe, so oft pro Schicht wie Stufen; Cut-off beendet sie weiter | 3 | 5.200 |
+| Winter Tyres* | gibt 15 % des Grips und Bremsbisses zurück, die Regen, Schnee, Hagel und Sand nehmen | 5 | 3.900 |
+| Fog Lamps* | Fahrer verlieren 15 % weniger der Reaktionszeit, die schlechtes Wetter kostet; Nebel und Staub liegen auf dem Bild dünner | 5 | 3.900 |
+
+\* ab Level 6 (erster Regen).
+**Shield** (4 Stufen, eigene Preise 1.500 / 20.000 / 45.000 / 90.000): ein Crash des eigenen Autos pro Schicht mehr verziehen, nicht in Unlimited.
 
 ### Risiko & Versicherung (ab Level 20)
 
@@ -786,7 +799,7 @@ Die Web-Version ist das ganze Spiel. Zuletzt dazugekommen (aus den Patch Notes):
 | Sonderverkehr | Polizei & Verbrecher, vier Bosse, Transporter (Jackpot), Lkw, Tanklaster, Militär-Truck, Krankenwagen, Feuerwehr, Motorrad, Fahrschulauto, Schulbus | ✅ |
 | Modi | Shift, Unlimited, Mayhem, Multiplayer (Wischen, Runden, Relay) | ✅ |
 | Schwierigkeit | Level-Kurve, Wetter (7), Nacht/Blackout, City Events (6), zwei Spuren, Risiko & Versicherung | ✅ |
-| Meta | Geld, 13 Upgrades, Street Builder mit Modulen, Truhen, Sammlung (121 Items), Alben, Mastery, Daily, Serie, Quests, Trials, Records, Casino, Freischaltungen | ✅ |
+| Meta | Geld, 19 Upgrades, Street Builder mit Modulen, Truhen, Sammlung (121 Items), Alben, Mastery, Daily, Serie, Quests, Trials, Records, Casino, Freischaltungen | ✅ |
 | Langzeit | Legendary Shifts, Prestige, Elite-Leiste, Titel, Feats, Saison-Pass, Ruhmeshalle, Weekly Shift, Museum, Big Screen | ✅ |
 | Hülle | Tab-Bar, Einstellungen, PWA, Offline, Speicherschutz, Docker/Coolify, Patch Notes, Rechtliches | ✅ |
 | Online | Bestenlisten, Freunde-Board, Cloud sync, TURN-Relay, Kurzlinks mit Vorschaubild (`Server/`) | ✅ gebaut (Relay braucht die Cloudflare-Zugangsdaten in Coolify) |

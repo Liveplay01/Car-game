@@ -78,6 +78,8 @@ App-Store-Arbeit mehr vorschlagen.
   Skin-Upgrade, Doppelt oder nichts; `core/casino.ts`). Der Store ist entfernt. **Solange das Casino
   existiert, gibt es keine kaufbare Währung und keine Truhen gegen Echtgeld.** Chancen bleiben sichtbar
   und ehrlich (LOOT.md, Casino); `npm run sim:casino` prüft die Rückzahlquoten.
+- **Der Club (Leo, 10.10.2026), Geldsenken für große Kontostände:** Ab der Elite-Leiste (Level 50) hat der Shop unter den Truhen eine Karte „Club“ mit einer Schublade (`ui/clubSheet.ts`): **Auktionshaus** (drei Lose am Tag gegen computergesteuerte Sammler, meist Haie, die den Preis weit über die Schätzung treiben; Zuschlag plus 10 % Aufgeld, Weggehen ist gratis; sechs Skins, die es nur dort gibt; `core/auction.ts`, `npm run sim:auction`), **Stadtfonds** (alle Spieler schenken denselben Projekten Geld, wer ab 100.000 gibt, bekommt den Skin des gebauten Projekts; `core/fund.ts`, Server-Modul `Server/src/modules/fund`), **Verträge** (Geld auf eine Perfect Run der nächsten Karriere-Schicht, `core/contracts.ts`). Dazu die **Diamond Chest** (250.000, nie ein Common) und der **High-Roller-Tisch** im Casino (ab 200.000 größere Einsätze, gleiche Chancen). Die Sammler sind auf dem Bildschirm als Computer benannt, die Chancen stehen daneben; nie ein Vorteil auf der Straße, nur Aussehen. Siehe LOOT.md, „Der Club“.
+- **Auto-Formen (Leo, 10.10.2026):** Skins können eine eigene Karosserie mitbringen (`present/carModels.ts`, `Skins.model`; LOOT.md, „Auto-Formen“): Beetle (die Bug Hunters, nur über Bug-Reports), Pocket, GT Coupé, Roadster, Jeep, Hot Rod. Nur normale Autos tragen sie. **Jede Form bleibt im Rechteck des normalen Autos und folgt der Kapsel-Hitbox**, damit Optik und Kollision übereinstimmen (kein Geisterunfall); `npm test` prüft Umriss, Teile und Lampen. Eine neue Form braucht Umriss, Teile, Lampen und Details dort.
 - **Crashes sind echte Physik** (`Web/src/core/crash.ts`, `drivers.ts`): Stoß-Impuls,
   Reifenreibung, reagierender Verkehr, Blechschaden. Keine geskripteten Animationen.
 
@@ -91,6 +93,7 @@ cd Web; npm run preview                 # Build lokal ausliefern, Port 5050
 cd Web; npm test                        # Tests: Replays, Spielstände, Meldungen (node:test)
 cd Web; npm run sim -- 60 5             # Balancing-Bots: Schichten, Level
 cd Web; npm run sim:casino              # Casino: Rückzahlquoten, faire Münze, Determinismus
+cd Web; npm run sim:auction             # Auktionshaus: wie oft welches Limit gewinnt, was ein Zuschlag kostet
 cd Web; npm run sim:wedding -- 40 100   # Hochzeitskorso: Fluss mit und ohne (Abstürze, Dauer, Bots auf dem Ring)
 cd Web; npm run sim:career -- 60        # Ganze Karriere bis Level 60: Spielzeit, Geld, Upgrades
 cd Server; npm install                  # einmalig

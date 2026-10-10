@@ -8,6 +8,8 @@ import { Rng } from '../core/rng';
 import { type RenderList, rect, circle, arc, line, Ease } from './render';
 import type { ColorToken } from './theme';
 import { CarArt, type Part, worldOf } from './carArt';
+import type { CarModel } from './carModels';
+import { Skins, skinFor } from './skins';
 import { interpolatedPose } from './scene';
 
 type ParticleKind = { k: 'debris'; color: ColorToken } | { k: 'part'; color: ColorToken } | { k: 'spark' } | { k: 'smoke' };
@@ -49,6 +51,8 @@ export class CrashEffects {
   blasts: Blast[] = [];
   fires = new Map<number, number>();
   torn = new Map<number, Set<Part>>();
+  /** The skins that are on: a wreck keeps the shape of the body it wore. */
+  carSkins: string[] = [];
   shakeAge = Infinity;
   private shakeStrength = 0;
   /** Which way the wrecks fly, on screen: the shake kicks along it (research of 08.10.2026), only a little across. */
@@ -233,12 +237,16 @@ export class CrashEffects {
     }
   }
 
+  private modelOf(veh: Vehicle): CarModel | null {
+    return veh.type === 'car' ? Skins.model(skinFor(veh.id, this.carSkins)) : null;
+  }
+
   private addWreck(list: RenderList, veh: Vehicle, state: Crashed, pose: { position: Vec2; heading: number }, world: World, springTime: number | null): void {
     const c = world.config;
     const fade = 1 - Ease.clamp01((state.elapsed - (c.crashDuration - CrashEffects.wreckFade)) / CrashEffects.wreckFade);
     const fire = this.fires.get(veh.id);
     const char = fire === undefined ? 0.35 : Ease.outCubic(state.elapsed / 0.5);
-    CarArt.add(list, { id: veh.id, type: veh.type, pose, dents: veh.dents, char, opacity: fade, springTime }, c);
+    CarArt.add(list, { id: veh.id, type: veh.type, pose, dents: veh.dents, char, opacity: fade, springTime, model: this.modelOf(veh) }, c);
     if (fire === undefined) return;
     const heat = fade * (1 - Ease.clamp01((state.elapsed - 0.3) / 1.3));
     if (heat <= 0.02) return;
@@ -264,10 +272,11 @@ export class CrashEffects {
     }
     const done = this.torn.get(wreck.id) ?? new Set<Part>();
     const pose = { position: wreck.position, heading: wreck.heading };
-    for (const part of CarArt.parts(wreck.type)) {
-      if (done.has(part) || !CarArt.isBroken(part, wreck.type, wreck.dents, c)) continue;
+    const model = this.modelOf(wreck);
+    for (const part of CarArt.parts(wreck.type, model)) {
+      if (done.has(part) || !CarArt.isBroken(part, wreck.type, wreck.dents, c, model)) continue;
       done.add(part);
-      const shape = CarArt.shape(part, wreck.type, c);
+      const shape = CarArt.shape(part, wreck.type, c, model);
       const center = worldOf(shape.center, pose);
       const armVec = sub(center, wreck.position);
       const carried = add(velocity, mul(left(armVec), spin));

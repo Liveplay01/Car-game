@@ -424,6 +424,7 @@ export const SceneBuilder = {
           roof: mark?.roof ? mark.color : (look?.roof ?? null),
           finish: look?.finish ?? null,
           effect: look && 'effect' in look ? (look.effect ?? null) : null,
+          model: look && 'model' in look ? (look.model ?? null) : null,
           finishTime,
           springTime,
         },

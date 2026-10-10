@@ -7,6 +7,7 @@ import type { Rarity, ChestKind, Cosmetic, ChestOpening, Album } from '../core/l
 import type { Challenge } from '../core/daily';
 import type { NextGoal, NearMiss } from '../core/goals';
 import type { CasinoGame, SlotSymbol } from '../core/casino';
+import { Contracts, type ContractGoal, type ContractOutcome } from '../core/contracts';
 import type { VehicleType, VehicleRole } from '../core/vehicle';
 import { type Trial, type TrialId, type RunId, type EliteKind, rematchKind, ascensionRank, LANDMARK_PRESTIGE } from '../core/trials';
 import type { MuseumEntry } from '../core/museum';
@@ -932,7 +933,8 @@ export const S = {
     noHistory: 'No rounds yet',
     times: (m: number): string => `${m.toFixed(2)}×`,
     allIn: 'All in',
-    stakeShort: (n: number): string => (n >= 1000 && n % 1000 === 0 ? `${n / 1000}K` : Fmt.number(n)),
+    stakeShort: (n: number): string => (n >= 1_000_000 && n % 1_000_000 === 0 ? `${n / 1_000_000}M` : n >= 1000 && n % 1000 === 0 ? `${n / 1000}K` : Fmt.number(n)),
+    highRoller: 'High Roller',
     auto: 'Auto',
     autoOff: 'Off',
     drive: (m: string): string => `Drive · ${m}`,
@@ -1119,6 +1121,27 @@ export const S = {
     boostNote: (p: string, perDay: number): string =>
       `Your choice: watch an ad before a round and its chance gets ${p} on top, even above the cap. One round uses it up, won or lost. Up to ${perDay} a day. The dial shows the chance it really rolls.`,
   },
+  /** The Club (Leo, 10.10.2026): the Auction House, the City Fund and Contracts. Its sheet is `ui/clubSheet.ts`. */
+  club: {
+    title: 'Club',
+    cardLine: 'Auction · City Fund · Contracts',
+    projectName: (project: string): string => ({ fountain: 'Fountain', lighthouse: 'Lighthouse', skybridge: 'Sky Bridge' } as Record<string, string>)[project] ?? project,
+    goalName: (goal: ContractGoal): string => ({ clean: 'Clean sheet', sharp: 'Sharp', flawless: 'Flawless' })[goal],
+    goalText(goal: ContractGoal, cars: number): string {
+      const need = Contracts.need(goal, cars);
+      const base = 'Complete the next career shift with a Perfect Run: no crash, no police crash, no cut-off';
+      if (goal === 'sharp') return `${base}, and ${need.perfects} Perfect merges.`;
+      if (goal === 'flawless') return `${base}, and a chain of ${need.chain} merges.`;
+      return `${base}.`;
+    },
+    /** What a settled contract says on the result. */
+    contractSettled(outcome: ContractOutcome): string {
+      const name = S.club.goalName(outcome.contract.goal).toUpperCase();
+      if (outcome.result === 'won') return `CONTRACT WON · ${name} · +${money(Fmt.number(outcome.pay))}`;
+      if (outcome.result === 'void') return `CONTRACT VOID · this shift was eased · ${money(Fmt.number(outcome.pay))} back`;
+      return `CONTRACT LOST · ${name} · ${money(Fmt.number(outcome.contract.stake))} gone`;
+    },
+  },
   shop: {
     open: 'Open',
     wear: 'Wear',
@@ -1134,6 +1157,8 @@ export const S = {
           return 'For sale · or watch an ad';
         case 'premium':
           return 'For sale · or by hard masteries';
+        case 'diamond':
+          return 'For sale · never a Common';
         case 'event':
           return 'City events · Daily Shift';
         case 'criminalHunt':
@@ -1153,6 +1178,8 @@ export const S = {
       if (item.source.kind === 'hall') return 'Build the Hall of Fame (Records → Elite).';
       if (item.source.kind === 'unlimited') return `Send ${Fmt.number(item.source.cars)} cars in one Unlimited run.`;
       if (item.source.kind === 'tour') return `A stop of the ${S.tours.name(item.source.tour as TourId)} tour. It comes back every year.`;
+      if (item.source.kind === 'auction') return 'Only ever a lot at the Auction House (Shop → Club). A new lot every few days.';
+      if (item.source.kind === 'fund') return `Give ${Fmt.number(baseConfig.fundBenefactor)} to the ${S.club.projectName(item.source.project)} project in the City Fund (Shop → Club).`;
       if (item.source.kind === 'bugReport')
         return item.source.reports === 1
           ? 'Report a bug on timing.love with your friend code. Only bug hunters get it.'
@@ -1197,6 +1224,8 @@ export const S = {
           return 'Standard Chest';
         case 'premium':
           return 'Premium Chest';
+        case 'diamond':
+          return 'Diamond Chest';
         case 'event':
           return 'Event Chest';
         case 'criminalHunt':
@@ -1254,6 +1283,15 @@ export const S = {
         candyCane: 'Candy Cane',
         snowGlobe: 'Snow Globe',
         sleigh: 'Midnight Sleigh',
+        sterling: 'Sterling',
+        magnate: 'Magnate',
+        baron: 'Baron',
+        bullion: 'Bullion',
+        sovereign: 'Sovereign',
+        provenance: 'Provenance',
+        fountain: 'Fountain',
+        lighthouse: 'Lighthouse',
+        skybridge: 'Sky Bridge',
         lemon: 'Lemon',
         plum: 'Plum',
         fern: 'Fern',
@@ -1603,6 +1641,11 @@ export const S = {
         insurance: 'Insurance',
         robberyInsurance: 'Robbery Insurance',
         shield: 'Shield',
+        tightFitTip: 'Tight Fit Tip',
+        dashcam: 'Dashcam',
+        chainSaver: 'Chain Saver',
+        winterTyres: 'Winter Tyres',
+        fogLamps: 'Fog Lamps',
       }[u];
     },
     explanation(u: Upgrade): string {
@@ -1621,6 +1664,11 @@ export const S = {
         insurance: 'Pays part of what a crash costs you.',
         robberyInsurance: 'Pays part of what an escaped criminal costs you.',
         shield: 'Your own car may crash once more per shift. The ring flashes green with little plus signs, the combo breaks and the shift goes on; each green plus in the top bar is one crash still forgiven. Not in Unlimited.',
+        tightFitTip: 'Every Tight Fit pays a tip on the spot, a share of the shift pay. Not in Unlimited.',
+        dashcam: 'The camera sees how close you cut it: every Near Miss pays a tip on the spot, a share of the shift pay. Not in Unlimited.',
+        chainSaver: 'While you are in the flow, a plain merge a shift leaves your chain alone instead of ending it. A cut-off still does. Not in Unlimited.',
+        winterTyres: 'Rain, snow and hail take less grip and braking from the road: crashes slide shorter and traffic stops better.',
+        fogLamps: 'Drivers lose less time to bad weather and see hazards sooner, and fog and dust lie thinner on the screen.',
       }[u];
     },
     total(u: Upgrade, steps: number, c: Config): string {
@@ -1653,6 +1701,16 @@ export const S = {
           return t * c.insurancePerStep >= 1 ? 'FULL COVERAGE' : `${percent(t * c.insurancePerStep)} covered`;
         case 'shield':
           return t === 1 ? '1 crash forgiven' : `${t} crashes forgiven`;
+        case 'tightFitTip':
+          return `${percent(t * c.tightFitTipPerStep)} of the shift pay per Tight Fit`;
+        case 'dashcam':
+          return `${percent(t * c.nearMissTipPerStep)} of the shift pay per Near Miss`;
+        case 'chainSaver':
+          return t === 1 ? '1 chain saved a shift' : `${t} chains saved a shift`;
+        case 'winterTyres':
+          return `${percent(t * c.winterTyresPerStep)} of the lost grip back`;
+        case 'fogLamps':
+          return `${percent(t * c.fogLampsPerStep)} less lost reaction time`;
       }
     },
     stepEffect(u: Upgrade, steps: number, max: number, c: Config): string {
@@ -1766,6 +1824,7 @@ export const S = {
     transporterTimer: (seconds: number): string => `${Math.ceil(Math.max(0, seconds))} s`,
     jackpotPaid: (amount: string): string => `JACKPOT ${amount}`,
     shave: (points: string): string => `CLOSE SHAVE ${points}`,
+    chainHeld: 'CHAIN HELD',
     label(t: VehicleType): string | null {
       switch (t) {
         case 'police':

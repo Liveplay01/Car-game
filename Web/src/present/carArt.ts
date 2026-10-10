@@ -7,6 +7,7 @@ import { type RenderList, rect, circle, line, polygon, Ease, Metrics, unitHash }
 import type { ColorToken } from './theme';
 import { type Finish, isShiny, glitters } from './skins';
 import { type Effect, SkinEffects } from './skinEffects';
+import { type CarModel, CarModels, partShape as S } from './carModels';
 
 /** Rotates a vector counter-clockwise. */
 export const rotated = (p: Vec2, a: number): Vec2 => v(p.x * Math.cos(a) - p.y * Math.sin(a), p.x * Math.sin(a) + p.y * Math.cos(a));
@@ -48,8 +49,8 @@ export interface Shape {
  * asks for them every frame: built once per config, they stop feeding the garbage collector.
  */
 const shapes = new WeakMap<Config, Map<string, Shape>>();
-const outlines = new WeakMap<Config, Map<VehicleType, readonly Vec2[]>>();
-const partLists = new Map<VehicleType, readonly Part[]>();
+const outlines = new WeakMap<Config, Map<string, readonly Vec2[]>>();
+const partLists = new Map<string, readonly Part[]>();
 
 const PAINTS: ColorToken[] = ['vehicleCar', 'vehicleCarSilver', 'vehicleCarGraphite', 'vehicleCarSand'];
 
@@ -173,6 +174,8 @@ export interface CarDraw {
   springTime?: number | null;
   /** A loud skin's animation; a wreck has lost it. */
   effect?: Effect | null;
+  /** A skin's own body; only plain cars wear one. */
+  model?: CarModel | null;
 }
 
 /** How a vehicle looks and how it breaks. */
@@ -223,9 +226,13 @@ export const CarArt = {
     }
   },
 
-  parts(type: VehicleType): readonly Part[] {
-    let parts = partLists.get(type);
-    if (!parts) partLists.set(type, (parts = CarArt.makeParts(type)));
+  parts(type: VehicleType, model: CarModel | null = null): readonly Part[] {
+    const key = `${model ?? type}`;
+    let parts = partLists.get(key);
+    if (!parts) {
+      const plain = CarArt.makeParts(type);
+      partLists.set(key, (parts = CarModels.hasRoof(model) ? plain : plain.filter((p) => p !== 'rearWindow')));
+    }
     return parts;
   },
 
@@ -297,31 +304,24 @@ export const CarArt = {
   /** Every vehicle is as wide as a car, except the slim motorbike. */
   width: (type: VehicleType, c: Config): number => (type === 'motorbike' ? c.motorbikeWidth : c.carWidth),
 
-  shape(part: Part, type: VehicleType, c: Config): Shape {
+  shape(part: Part, type: VehicleType, c: Config, model: CarModel | null = null): Shape {
     let byConfig = shapes.get(c);
     if (!byConfig) shapes.set(c, (byConfig = new Map()));
-    const key = `${type}.${part}`;
+    const key = `${model ?? type}.${part}`;
     let shape = byConfig.get(key);
-    if (!shape) byConfig.set(key, (shape = CarArt.makeShape(part, type, c)));
+    if (!shape) byConfig.set(key, (shape = CarArt.makeShape(part, type, c, model)));
     return shape;
   },
 
-  makeShape(part: Part, type: VehicleType, c: Config): Shape {
+  makeShape(part: Part, type: VehicleType, c: Config, model: CarModel | null = null): Shape {
     const l = CarArt.length(type, c);
     const w = CarArt.width(type, c);
     const body = CarArt.bodyColor(type);
+    const own = model && CarModels.shape(model, part, l, w, body);
+    if (own) return own;
     const lorry = type === 'truck' || type === 'tanker' || type === 'military' || type === 'fireTruck';
     // The ambulance is built like a van: a short cab, then the long box.
     const boxy = type === 'van' || type === 'ambulance';
-    const S = (cx: number, cy: number, sx: number, sy: number, radius: number, color: ColorToken, breaksAt: number, reach: number, visible: boolean): Shape => ({
-      center: v(cx, cy),
-      size: v(sx, sy),
-      radius,
-      color,
-      breaksAt,
-      reach,
-      visible,
-    });
     // The Classic: chrome bumpers across the whole width, a long bonnet, the cabin far back.
     const classic = type === 'classic';
     switch (part) {
@@ -377,16 +377,17 @@ export const CarArt = {
 
   isGlass: (p: Part): boolean => p === 'windscreen' || p === 'rearWindow',
 
-  isBroken(part: Part, type: VehicleType, dents: Dent[], c: Config): boolean {
-    const s = CarArt.shape(part, type, c);
+  isBroken(part: Part, type: VehicleType, dents: Dent[], c: Config, model: CarModel | null = null): boolean {
+    const s = CarArt.shape(part, type, c, model);
     return dents.some((d) => d.depth >= s.breaksAt && dist(d.point, s.center) <= s.reach + s.size.x / 2);
   },
 
-  outline(type: VehicleType, c: Config): readonly Vec2[] {
+  outline(type: VehicleType, c: Config, model: CarModel | null = null): readonly Vec2[] {
     let byConfig = outlines.get(c);
     if (!byConfig) outlines.set(c, (byConfig = new Map()));
-    let points = byConfig.get(type);
-    if (!points) byConfig.set(type, (points = CarArt.makeOutline(type, c)));
+    const key = model ?? type;
+    let points = byConfig.get(key);
+    if (!points) byConfig.set(key, (points = model ? CarModels.outline(model, CarArt.length(type, c), CarArt.width(type, c)) : CarArt.makeOutline(type, c)));
     return points;
   },
 
@@ -432,8 +433,8 @@ export const CarArt = {
     return add(point, mul(inward, m / d));
   },
 
-  deformedOutline(type: VehicleType, dents: Dent[], c: Config): Vec2[] {
-    return CarArt.outline(type, c).map((p, i) => CarArt.deformed(p, dents, c, i % 2 === 0 ? 0.35 : -0.35));
+  deformedOutline(type: VehicleType, dents: Dent[], c: Config, model: CarModel | null = null): Vec2[] {
+    return CarArt.outline(type, c, model).map((p, i) => CarArt.deformed(p, dents, c, i % 2 === 0 ? 0.35 : -0.35));
   },
 
   /** A vehicle, intact or wrecked: the dented body, charred as it burns, parts, glass, lights. */
@@ -449,6 +450,7 @@ export const CarArt = {
     const L = CarArt.length(type, c);
     const W = CarArt.width(type, c);
     const lights = d.lights ?? null;
+    const model = type === 'car' ? (d.model ?? null) : null;
 
     if (lights !== null && (type === 'police' || isEmergency(type))) {
       const spill = PoliceLights.spill(lights);
@@ -481,33 +483,41 @@ export const CarArt = {
 
     if (effect) SkinEffects.under(list, effect, pose, L, W, d.finishTime ?? null, d.id, opacity);
     if (dents.length === 0) {
-      list.w(rect(pose.position, v(L + 2.5, W + 2.5), Metrics.vehicleCornerRadius + 1, pose.heading), 'kerb', opacity);
-      list.w(rect(pose.position, v(L, W), Metrics.vehicleCornerRadius, pose.heading), body, opacity);
+      if (model) {
+        const hull = CarArt.outline(type, c, model);
+        list.w(polygon(hull.map((p) => worldOf(v((p.x * (L + 2.5)) / L, (p.y * (W + 2.5)) / W), pose))), 'kerb', opacity);
+        list.w(polygon(hull.map((p) => worldOf(p, pose))), body, opacity);
+      } else {
+        list.w(rect(pose.position, v(L + 2.5, W + 2.5), Metrics.vehicleCornerRadius + 1, pose.heading), 'kerb', opacity);
+        list.w(rect(pose.position, v(L, W), Metrics.vehicleCornerRadius, pose.heading), body, opacity);
+      }
       if (effect) SkinEffects.paint(list, effect, pose, L, W, d.finishTime ?? null, d.id, opacity);
     } else {
-      const local = CarArt.deformedOutline(type, dents, c);
+      const local = CarArt.deformedOutline(type, dents, c, model);
       list.w(polygon(local.map((p) => worldOf(mul(p, 1.1), pose))), 'kerb', opacity);
       const outline = local.map((p) => worldOf(p, pose));
       list.w(polygon(outline), body, opacity * (1 - char));
       if (char > 0) list.w(polygon(outline), 'wreck', opacity * char);
-      if (CarArt.isBroken('hood', type, dents, c)) {
-        const bay = CarArt.shape('hood', type, c);
+      if (CarArt.isBroken('hood', type, dents, c, model)) {
+        const bay = CarArt.shape('hood', type, c, model);
         list.w(rect(worldOf(CarArt.deformed(bay.center, dents, c), pose), mul(bay.size, 0.85), 1, pose.heading), 'vehicleTire', opacity);
       }
     }
 
-    if (d.roof && isCarType(type) && dents.length === 0) {
-      const front = CarArt.shape('windscreen', type, c);
-      const back = CarArt.shape('rearWindow', type, c);
+    if (d.roof && isCarType(type) && dents.length === 0 && CarModels.hasRoof(model)) {
+      const front = CarArt.shape('windscreen', type, c, model);
+      const back = CarArt.shape('rearWindow', type, c, model);
       const from = back.center.x - back.size.x / 2 - 0.5;
       const to = front.center.x + front.size.x / 2 - 1;
       list.w(rect(worldOf(v((from + to) / 2, 0), pose), v(to - from, W * 0.8), 2, pose.heading), d.roof, opacity);
     }
 
-    for (const part of CarArt.parts(type)) {
-      const shape = CarArt.shape(part, type, c);
+    if (model && dents.length === 0) CarModels.decor(list, model, pose, L, W, body, opacity);
+
+    for (const part of CarArt.parts(type, model)) {
+      const shape = CarArt.shape(part, type, c, model);
       if (!shape.visible) continue;
-      const broken = dents.length > 0 && CarArt.isBroken(part, type, dents, c);
+      const broken = dents.length > 0 && CarArt.isBroken(part, type, dents, c, model);
       if (broken && !CarArt.isGlass(part)) continue;
       const center = dents.length === 0 ? shape.center : CarArt.deformed(shape.center, dents, c);
       const twist = dents.length === 0 ? 0 : Math.min(CarArt.push(shape.center, dents), 3) * 0.08;
@@ -535,13 +545,12 @@ export const CarArt = {
       }
     }
 
-    const lampSize = v(1.3, W * 0.22);
-    const lampY = W * 0.3;
+    const lamps = CarModels.lamps(model, L, W);
     if (brake !== null && brake > 0.02) {
-      for (const y of [lampY, -lampY]) list.w(rect(worldOf(v(-L / 2 + 0.8, y), pose), lampSize, 0.5, pose.heading), 'lightRed', opacity * Math.min(brake, 1));
+      for (const side of [1, -1]) CarModels.lamp(list, pose, lamps.tail, side, 'lightRed', opacity * Math.min(brake, 1));
     }
     if (head > 0.01) {
-      for (const y of [lampY, -lampY]) list.w(rect(worldOf(v(L / 2 - 0.8, y), pose), lampSize, 0.5, pose.heading), 'primary', opacity * head);
+      for (const side of [1, -1]) CarModels.lamp(list, pose, lamps.head, side, 'primary', opacity * head);
     }
 
     const finishTime = d.finishTime ?? null;

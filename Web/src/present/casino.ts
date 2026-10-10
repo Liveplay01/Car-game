@@ -695,6 +695,16 @@ export const CasinoPage = {
   addInfo(list: RenderList, l: Layout, career: Career, today: number, state: CasinoState, enter: number): void {
     const net = state.wallet.net(Casino.today(career, today));
     drawText(list, S.casino.today(net), l.today, 13, net > 0 ? 'accent' : net < 0 ? 'destructive' : 'muted', { weight: 'bold', opacity: enter });
+    // The stakes moved up with the balance (Leo, 10.10.2026): said next to the day's balance.
+    if (Casino.highRoller(career, baseConfig)) {
+      const label = S.casino.highRoller.toUpperCase();
+      const w = textWidth(label, 10) + 14;
+      const x = l.today.x + textWidth(S.casino.today(net), 13) + 10 + w / 2;
+      if (x + w / 2 < l.odds.minX - 6) {
+        list.s(rect(v(x, l.today.y), v(w, 18), 9), 'coin', 0.18 * enter);
+        drawText(list, label, v(x, l.today.y), 10, 'coin', { weight: 'bold', align: 'center', opacity: enter });
+      }
+    }
     const odds = CasinoPage.pressedRect(l.odds, { k: 'odds' }, state);
     list.s(rect(R.center(odds), v(R.width(odds), R.height(odds)), R.height(odds) / 2), 'controlFill', enter);
     drawText(list, S.casino.odds, R.center(odds), 12, 'primary', { weight: 'bold', align: 'center', opacity: enter });

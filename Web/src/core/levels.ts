@@ -205,6 +205,11 @@ export const UPGRADES = [
   'robberyInsurance',
   // New upgrades go last: a challenge link carries the steps by position.
   'shield',
+  'tightFitTip',
+  'dashcam',
+  'chainSaver',
+  'winterTyres',
+  'fogLamps',
 ] as const;
 
 export type Upgrade = (typeof UPGRADES)[number];
@@ -224,6 +229,11 @@ export const upgradeMaxSteps: Record<Upgrade, number> = {
   quickRecovery: 5,
   backup: 3,
   shield: 4,
+  tightFitTip: 6,
+  dashcam: 6,
+  chainSaver: 3,
+  winterTyres: 5,
+  fogLamps: 5,
 };
 
 /** The shield has its own prices (`shieldPrices`); the others grow by `upgradeCostGrowth`. */
@@ -241,11 +251,17 @@ const priceFactor: Record<Exclude<Upgrade, 'shield'>, number> = {
   insurance: 2,
   robberyInsurance: 2,
   backup: 3,
+  tightFitTip: 1.2,
+  dashcam: 1.2,
+  chainSaver: 2,
+  winterTyres: 1.5,
+  fogLamps: 1.5,
 };
 
-/** The insurances only once there is something to insure. */
+/** The insurances only once there is something to insure, the weather upgrades once there is weather. */
 export function upgradeUnlockLevel(u: Upgrade, c: Config): number {
   if (u === 'insurance' || u === 'robberyInsurance') return c.crashCostLevel;
+  if (u === 'winterTyres' || u === 'fogLamps') return c.lightRainLevel;
   return 1;
 }
 
@@ -277,6 +293,11 @@ export function upgraded(base: Config, steps: (u: Upgrade) => number): Config {
   c.doubleRunChance = Math.min(1, base.doubleRunChance + step('doubleRun') * base.doubleRunPerStep);
   c.crashInsurance = Math.min(1, base.crashInsurance + step('insurance') * base.insurancePerStep);
   c.robberyInsurance = Math.min(1, base.robberyInsurance + step('robberyInsurance') * base.insurancePerStep);
+  c.tightFitTip = Math.round(c.shiftPay * step('tightFitTip') * base.tightFitTipPerStep);
+  c.nearMissTip = Math.round(c.shiftPay * step('dashcam') * base.nearMissTipPerStep);
+  c.chainSaves = step('chainSaver') * base.chainSavesPerStep;
+  c.tyreAid = step('winterTyres') * base.winterTyresPerStep;
+  c.lampAid = step('fogLamps') * base.fogLampsPerStep;
   return c;
 }
 
@@ -368,27 +389,35 @@ export function drawWeather(c: Config, level: number, seed: number): Weather {
 export function forWeather(base: Config, weather: Weather): Config {
   const c = cloneConfig(base);
   c.weather = weather;
+  // Winter Tyres give back a share of what the weather takes from the grip and the brakes, Fog Lamps of the time drivers lose.
+  const kept = (share: number): number => share + (1 - share) * base.tyreAid;
+  const grip = (share: number): void => {
+    c.tireGripBrake *= kept(share);
+    c.tireGripSide *= kept(share);
+  };
+  const delay = (extra: number): void => {
+    const slower = extra * (1 - base.lampAid);
+    c.driverReaction = { lo: base.driverReaction.lo + slower, hi: base.driverReaction.hi + slower };
+  };
   if (weather === 'fog') {
     // Only the view and the drivers' eyes: the far side fades out, a hazard is seen later.
-    c.driverReaction = { lo: base.driverReaction.lo + base.fogReactionDelay, hi: base.driverReaction.hi + base.fogReactionDelay };
+    delay(base.fogReactionDelay);
     c.shiftPay = Math.round(base.shiftPay * base.fogPayFactor);
     return c;
   }
   if (weather === 'snow') {
     // Ice under the tyres: crashes slide a long way, and nobody stops quickly.
-    c.tireGripBrake *= base.snowGrip;
-    c.tireGripSide *= base.snowGrip;
-    c.driverBrake *= base.snowBrake;
-    c.driverReaction = { lo: base.driverReaction.lo + base.snowReactionDelay, hi: base.driverReaction.hi + base.snowReactionDelay };
+    grip(base.snowGrip);
+    c.driverBrake *= kept(base.snowBrake);
+    delay(base.snowReactionDelay);
     c.shiftPay = Math.round(base.shiftPay * base.snowPayFactor);
     return c;
   }
   if (weather === 'hail') {
     // Hailstones: the tyres slip a little, and nobody brakes well on them.
-    c.tireGripBrake *= base.hailGrip;
-    c.tireGripSide *= base.hailGrip;
-    c.driverBrake *= base.hailBrake;
-    c.driverReaction = { lo: base.driverReaction.lo + base.hailReactionDelay, hi: base.driverReaction.hi + base.hailReactionDelay };
+    grip(base.hailGrip);
+    c.driverBrake *= kept(base.hailBrake);
+    delay(base.hailReactionDelay);
     c.densityStart += base.hailDensity;
     c.densityEnd += base.hailDensity;
     c.shiftPay = Math.round(base.shiftPay * base.hailPayFactor);
@@ -396,20 +425,16 @@ export function forWeather(base: Config, weather: Weather): Config {
   }
   if (weather === 'sandstorm') {
     // Dust takes the view across the ring, and sand on the road some of the grip.
-    c.tireGripBrake *= base.sandstormGrip;
-    c.tireGripSide *= base.sandstormGrip;
-    c.driverReaction = { lo: base.driverReaction.lo + base.sandstormReactionDelay, hi: base.driverReaction.hi + base.sandstormReactionDelay };
+    grip(base.sandstormGrip);
+    delay(base.sandstormReactionDelay);
     c.shiftPay = Math.round(base.shiftPay * base.sandstormPayFactor);
     return c;
   }
   const severity = weatherSeverity(weather);
   if (severity <= 0) return c;
-  const grip = Math.max(0.35, 1 - severity * base.weatherGripLoss);
-  c.tireGripBrake *= grip;
-  c.tireGripSide *= grip;
-  const reaction = severity * base.weatherReactionDelay;
-  c.driverReaction = { lo: base.driverReaction.lo + reaction, hi: base.driverReaction.hi + reaction };
-  c.driverBrake *= Math.max(0.4, 1 - severity * base.weatherBrakeLoss);
+  grip(Math.max(0.35, 1 - severity * base.weatherGripLoss));
+  delay(severity * base.weatherReactionDelay);
+  c.driverBrake *= kept(Math.max(0.4, 1 - severity * base.weatherBrakeLoss));
   const denser = Math.max(0, severity - 1) * base.weatherDensityPerStep;
   c.densityStart += denser;
   c.densityEnd += denser;

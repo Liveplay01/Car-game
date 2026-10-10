@@ -19,6 +19,7 @@ npm run preview    # serve dist/ on port 5050 (with the service worker)
 npm run sim        # balancing bots: node scripts/sim.mjs [shifts] [level]
 npm run sim:versus # multiplayer bots (the lobby bots): never out for a crash, same seed = same match
 npm run sim:casino # casino fairness: every game returns what its odds sheet says, the coin is fair
+npm run sim:auction # Auction House: how often each bidding limit wins, what a win costs, same seed = same auction
 npm test           # node:test: replays, the careful bot, saves (old, broken, imported file), unlocks, notices
 ```
 
@@ -97,6 +98,14 @@ Only in the browser version:
   odds and returns in the sheet behind "Odds" (LOOT.md, Casino). Its looks and rounds are a
   chunk of their own (`present/casinoLoader.ts`), loaded when the Shop opens with the casino
   unlocked; the Shop's money chip (`casinoWallet.ts`) works without it.
+- **The Club** (Leo, 10.10.2026; Shop → Chests, from Level 50): three sinks for big balances in one sheet (`ui/clubSheet.ts`).
+  The **Auction House** (`core/auction.ts`): three lots a day against computer-controlled collectors, most of them sharks
+  that push the price over the estimate; the hammer price plus a 10 % premium is paid, walking away is free. The **City
+  Fund** (`core/fund.ts`, `net/fund.ts`, the service's `fund` module): everyone gives to the same projects; a gift of
+  100,000 or more earns the skin of a built project, which the game picks up at the start and when the sheet opens.
+  **Contracts** (`core/contracts.ts`, settled in `present/booking.ts`): money on a Perfect Run of the next career shift.
+  Also the Diamond Chest and the casino's High Roller stakes (`Casino.highRoller`). The odds, prices and limits are in
+  LOOT.md, "Der Club"; the fund is gone without the service (`VITE_API_URL`), the rest plays offline.
 - **Cloud sync** in Settings moves the progress to another device by code (01.10.2026: export
   and "Import a save file" are gone).
 - Tyre marks after a skilled merge, stereo placement of sounds, keyboard hints on desktop.

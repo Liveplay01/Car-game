@@ -88,6 +88,9 @@ export class ShopFlow {
       case 'wear':
         this.host.perform({ k: 'wear', id: target.id });
         break;
+      case 'club':
+        this.host.perform({ k: 'openClub' });
+        break;
       case 'casino':
         this.casino()?.tap(target.t);
         break;

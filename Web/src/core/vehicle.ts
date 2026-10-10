@@ -145,7 +145,8 @@ export interface Ring {
   /** The finished merge, kept for exactly the step in which it ended so it can be rated. */
   justMerged: Merging | null;
   drive: Drive;
-  sinceMerge: number;
+  /** How much further round the ring the player still answers for this car: up to its first exit. */
+  answerable: number;
   isLeaving: boolean;
   /** Inner lane: the way out across the outer lane was checked for this lap. */
   exitChecked?: boolean;

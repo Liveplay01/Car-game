@@ -27,6 +27,9 @@ import { S, Fmt } from '../present/strings';
 import { DetailSheet } from './detailSheet';
 import { VersusLobby } from './versusLobby';
 import { friendsSheet } from './friendsSheet';
+import { clubSheet } from './clubSheet';
+import { Fund } from '../core/fund';
+import { fetchFund, fundEnabled } from '../net/fund';
 import { leaderboardSheet } from './leaderboardSheet';
 import { cloudSheet } from './cloudSheet';
 import { REACTION_EMOJI } from '../present/versus';
@@ -269,6 +272,16 @@ export class Shell {
       if (this.pointerId === null) open();
       else afterRelease(open);
     };
+    // Shop → the Club's card: the Club's sheet, opened on the lift like the leaderboards.
+    this.session.onClub = () => {
+      const open = (): void => {
+        if (isSheetOpen()) return;
+        swallowNextClick();
+        this.openClub();
+      };
+      if (this.pointerId === null) open();
+      else afterRelease(open);
+    };
     // Big Screen: what the player chose last time comes back (only once they own it: nothing
     // loads from another site before), and its sheet opens from the Collection.
     this.backdrop = new BackdropLayer(app, canvas);
@@ -374,6 +387,7 @@ export class Shell {
     this.scheduleCloudIntro();
     // Gifts from the team and from invites: at the start, after a name (an invite is handed in then) and after a record reached the service (level 5 pays).
     window.setTimeout(() => this.claimInvite(), 3000);
+    window.setTimeout(() => this.claimFund(), 5000);
     syncPush(this.pushTimers);
     onAccountChange(() => {
       this.claimInvite();
@@ -786,6 +800,42 @@ export class Shell {
       openFriends: () => this.openFriends(),
       closed: () => this.syncChrome(true),
     });
+  }
+
+  /** The Club's sheet (Shop → its card): the Auction House, the City Fund and Contracts. */
+  private openClub(): void {
+    const s = this.session;
+    clubSheet(this.layers, {
+      career: () => s.save.career,
+      today: () => s.today,
+      shiftCars: () => s.world.config.shiftCars,
+      records: () => s.leaderboardRecords,
+      changed: () => s.clubChanged(),
+      notice: (text) => s.announce(text),
+      celebrate: () => {
+        celebrate();
+        if (s.save.settings.sound) this.audio.play('shiftComplete', 1);
+        if (s.save.settings.haptics) this.haptics.play('shiftComplete', 0);
+      },
+      sound: (id, pitch) => {
+        if (s.save.settings.sound) this.audio.play(id, pitch ?? 1);
+      },
+      closed: () => this.syncChrome(true),
+    });
+  }
+
+  /** Thanks for a finished project, from a visit when it was built: the skin is paid out at the start (a gift needs a name). */
+  private claimFund(): void {
+    const s = this.session;
+    if (!fundEnabled || !loadAccount() || s.save.career.fundGiven <= 0) return;
+    void fetchFund()
+      .then((view) => {
+        const ids = Fund.claim(s.save.career, view);
+        if (ids.length === 0) return;
+        s.clubChanged();
+        s.announce(...ids.map((id) => `THANK YOU · the ${S.club.projectName(id)} is built · ${S.shop.item(id)} is yours`));
+      })
+      .catch(() => undefined);
   }
 
   /** The Friends sheet: the pill above Settings and the leaderboard's Friends row lead here. It asks for a name itself. */
