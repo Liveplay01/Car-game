@@ -2,7 +2,7 @@ import { type SaveGame, type Career, type Hint, HINTS, newSave, newCareer, round
 import { UPGRADES, upgradeMaxSteps } from '../core/levels';
 import { COSMETICS, CHEST_KINDS, type ChestKind, type CosmeticSource, MAX_CAR_SKINS, cosmetic } from '../core/loot';
 import { ROAD_MODULES, MODULE_MAX_LEVEL, type RoadModule, BOSS_KINDS, type BossKind, baseConfig } from '../core/config';
-import { RUN_IDS } from '../core/trials';
+import { isRunId } from '../core/trials';
 import { MUSEUM_IDS, MUSEUM_SHELVES, type MuseumShelf, inferredSightings } from '../core/museum';
 import { Elite, TITLES, type TitleId } from '../core/elite';
 import { type CasinoGame, type CasinoPending, type CasinoRound, CASINO_GAMES } from '../core/casino';
@@ -139,7 +139,7 @@ function readCareer(raw: unknown): Career {
     dailyPlayed: int(raw.dailyPlayed, int(raw.dailyDone, -1)),
     albumsDone: strings(raw.albumsDone),
     bestTimes,
-    trialsDone: [...new Set(strings(raw.trialsDone).filter((id) => RUN_IDS.includes(id)))],
+    trialsDone: [...new Set(strings(raw.trialsDone).filter(isRunId))],
     rushBest: num(raw.rushBest, 0, 0),
     rushFurthest: Math.min(int(raw.rushFurthest, 0, 0), BOSS_KINDS.length),
     bossTrophies: int(raw.bossTrophies, 0, 0),

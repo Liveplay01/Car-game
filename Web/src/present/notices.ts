@@ -104,7 +104,7 @@ export class NoticeQueue {
 
   /**
    * While a shift runs (08.10.2026), news waits: only replies to what the player does show (a shield used, the scout).
-   * An announcement on screen when it starts goes back in line, unless it was read already.
+   * One already on screen when the shift starts stays until its time is up (Leo, 11.10.2026): a tap to start never wipes it.
    */
   get held(): boolean {
     return this.holding;
@@ -113,11 +113,7 @@ export class NoticeQueue {
   set held(on: boolean) {
     if (on === this.holding) return;
     this.holding = on;
-    const cur = this.current;
-    if (on && cur?.announcement) {
-      if (cur.age < NoticeQueue.seenAfter) this.waiting.unshift({ text: cur.text, achievement: cur.achievement });
-      this.current = null;
-    } else if (!on && !cur) this.next();
+    if (!on && !this.current) this.next();
   }
 
   private holding = false;

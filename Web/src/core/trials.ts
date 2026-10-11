@@ -1,19 +1,21 @@
 import { type Config, type Weather, type TrialRule, type BossKind, type LegendaryRule, BOSS_KINDS, FIRST_BOSSES, baseConfig, cloneConfig } from './config';
 import type { ShiftResult } from './events';
-import { type Darkness, forNight, forLegendary, firstBossLevel, applyBoss, bossInBlackout } from './levels';
+import { type Darkness, type Upgrade, type UpgradeGroup, UPGRADES, UPGRADE_GROUP, forNight, forLegendary, firstBossLevel, applyBoss, bossInBlackout } from './levels';
 import { type Career, Careers, newCareer } from './career';
+import { Rng } from './rng';
 
 /**
  * Mastery trials: fixed skill tests. Each is one set shift (level, seed, conditions) with a
  * goal and sometimes an extra rule; the seed is fixed, so everyone meets the same traffic, and
  * the world waits for the first tap. The career's upgrades and roads play no part: a trial
- * tests the player, not the build. Passing one pays its reward once.
+ * tests the player, not the build. Passing one pays its reward once. The exception are the Build
+ * trials (Leo, 11.10.2026): they play on the career's own upgrades, with a group of them taken away (`strip`).
  *
  * Boss rematches (Leo, 28.09.2026) are trials too: a syndicate boss the career has taken down,
  * again, one round of bosses later (more escorts, less time). The Weekly Elite (core/weekly.ts)
  * is a trial whose shift changes every Monday.
  */
-export type TrialId = 'tightSqueeze' | 'deadCentre' | 'cleanSheet' | 'blackout' | 'stormWatch' | 'marathon' | 'mostWanted';
+export type TrialId = 'tightSqueeze' | 'deadCentre' | 'cleanSheet' | 'blackout' | 'stormWatch' | 'marathon' | 'mostWanted' | 'noPolice' | 'noDriving' | 'bareBuild';
 export type RematchId = `rematch.${BossKind}`;
 /** An Ascension trial: one per Prestige rank (`ascension.1` … `ascension.10`). */
 export type AscensionId = `ascension.${number}`;
@@ -22,7 +24,9 @@ export type LandmarkId = 'landmark.etoile';
 /** Every run that is played like a trial. */
 /** A stop of a Tour (`tour.halloween.3`, core/tours.ts). */
 export type TourStopId = `tour.${string}.${number}`;
-export type RunId = TrialId | RematchId | AscensionId | LandmarkId | TourStopId | 'weekly';
+/** A Level trial: the one trial that comes with a career level (`level.37`). */
+export type LevelTrialId = `level.${number}`;
+export type RunId = TrialId | LevelTrialId | RematchId | AscensionId | LandmarkId | TourStopId | 'weekly';
 
 /** The Weekly Elite's shapes, one per week in turn (core/weekly.ts). */
 export type EliteKind = 'flawless' | 'precision' | 'storm' | 'gridlock' | 'dragnet' | 'boss';
@@ -59,6 +63,8 @@ export interface Trial {
   tour?: { key: string; stop: number; map: string | null };
   /** The boss this shift pins (a Tour stop); a rematch pins its own. */
   boss?: BossKind;
+  /** A Build trial: the career's upgrades count, but not these groups (`UPGRADE_GROUP`). */
+  strip?: readonly UpgradeGroup[];
 }
 
 const fixed = (t: Omit<Trial, 'legendary'>): Trial => ({ ...t, legendary: null });
@@ -76,6 +82,9 @@ export const TRIALS: Trial[] = [
   fixed({ id: 'mostWanted', level: 15, seed: 0x7a11a007, cars: 24, goal: { k: 'boss' }, rule: null, weather: 'clear', darkness: 'day', reward: 5000 }),
   fixed({ id: 'blackout', level: 16, seed: 0x7a11a004, cars: 16, goal: { k: 'complete' }, rule: null, weather: 'clear', darkness: 'blackout', reward: 3000 }),
   fixed({ id: 'stormWatch', level: 20, seed: 0x7a11a005, cars: 18, goal: { k: 'complete' }, rule: null, weather: 'storm', darkness: 'night', reward: 4000 }),
+  fixed({ id: 'noPolice', level: 22, seed: 0x7a11a008, cars: 20, goal: { k: 'complete' }, rule: null, weather: 'clear', darkness: 'day', reward: 4500, strip: [0] }),
+  fixed({ id: 'noDriving', level: 24, seed: 0x7a11a009, cars: 20, goal: { k: 'complete' }, rule: null, weather: 'clear', darkness: 'day', reward: 5000, strip: [2] }),
+  fixed({ id: 'bareBuild', level: 28, seed: 0x7a11a00a, cars: 22, goal: { k: 'complete' }, rule: null, weather: 'clear', darkness: 'day', reward: 7000, strip: [0, 2] }),
 ];
 
 /**
@@ -83,6 +92,7 @@ export const TRIALS: Trial[] = [
  * `trialsUnlockLevel`). One passed before, or a Prestige, keeps it open.
  */
 export const trialOpen = (t: Trial, c: Career): boolean => {
+  if (levelTrialLevel(t.id) !== null) return c.level >= t.level || c.prestige > 0 || c.trialsDone.includes(t.id);
   const rank = ascensionRank(t.id);
   if (rank !== null) return c.prestige >= rank || c.trialsDone.includes(t.id);
   if (landmarkOf(t.id)) return c.prestige >= LANDMARK_PRESTIGE || c.trialsDone.includes(t.id);
@@ -188,8 +198,92 @@ export const LANDMARKS: Trial[] = [
 
 export const LANDMARK_IDS: LandmarkId[] = LANDMARKS.map((t) => t.id as LandmarkId);
 
+/** The Level trial an id names; null for any other run. */
+const levelTrialOf = (id: string): Trial | null => {
+  const level = levelTrialLevel(id);
+  return level === null ? null : levelTrial(level);
+};
+
 /** The landmark an id names; null for any other run. */
 export const landmarkOf = (id: string): Trial | null => LANDMARKS.find((t) => t.id === id) ?? null;
+
+// MARK: Level trials
+
+/**
+ * Level trials (Leo, 11.10.2026): from level 30 on, every level brings one more trial, up to level 120. They are made from the
+ * level (`levelTrial`): the shape follows `LEVEL_KINDS` in turn, the weather, the boss or the rule come from the level's own
+ * seed, and the goal and the reward grow with it. Played like every trial (fresh four-arm roundabout, no upgrades), except the
+ * Handicap, which is a Build trial. The Trials page shows the first few that are open and still unplayed (`LEVEL_TRIALS_SHOWN`).
+ */
+export const LEVEL_TRIAL_FIRST = 30;
+export const LEVEL_TRIAL_LAST = 120;
+export const LEVEL_TRIALS_SHOWN = 4;
+export const LEVEL_KINDS = ['precision', 'sharpEyes', 'cleanRun', 'weatherRun', 'nightShift', 'manhunt', 'ruleBreaker', 'handicap', 'longHaul'] as const;
+export type LevelKind = (typeof LEVEL_KINDS)[number];
+
+export const levelTrialId = (level: number): LevelTrialId => `level.${level}`;
+
+/** The level a Level trial belongs to; null for any other run. */
+export function levelTrialLevel(id: string): number | null {
+  const m = /^level\.(\d+)$/.exec(id);
+  const level = m ? Number(m[1]) : NaN;
+  return level >= LEVEL_TRIAL_FIRST && level <= LEVEL_TRIAL_LAST ? level : null;
+}
+
+export const levelKind = (level: number): LevelKind => LEVEL_KINDS[(level - LEVEL_TRIAL_FIRST) % LEVEL_KINDS.length];
+
+const STRIPS: readonly (readonly UpgradeGroup[])[] = [[0], [2], [0, 2]];
+const TOUGH_WEATHER: readonly Weather[] = ['heavyRain', 'storm', 'extreme', 'fog', 'snow', 'hail', 'sandstorm'];
+
+export function levelTrial(level: number): Trial {
+  const rank = level - LEVEL_TRIAL_FIRST;
+  const rng = new Rng((0x7a11e000 + level) >>> 0);
+  const t: Trial = {
+    id: levelTrialId(level),
+    level,
+    seed: (0x7a11f000 + level) >>> 0,
+    cars: 20,
+    goal: { k: 'complete' },
+    rule: null,
+    weather: 'clear',
+    darkness: 'day',
+    reward: Math.round((5000 + 300 * rank) / 100) * 100,
+    legendary: null,
+  };
+  switch (levelKind(level)) {
+    case 'precision': {
+      const n = 4 + Math.floor(rank / 20);
+      return { ...t, goal: { k: 'perfects', n }, cars: n * 3 };
+    }
+    case 'sharpEyes': {
+      const n = 6 + Math.floor(rank / 10);
+      return { ...t, goal: { k: 'skilled', n }, cars: n + 6, weather: rng.pick(['clear', 'lightRain', 'fog']) };
+    }
+    case 'cleanRun':
+      return { ...t, rule: 'flawless', cars: 18 + Math.floor(rank / 8), weather: rng.pick(['clear', 'lightRain', 'snow']) };
+    case 'weatherRun':
+      return { ...t, weather: rng.pick(TOUGH_WEATHER), darkness: 'night', cars: 20 + Math.floor(rank / 10) };
+    case 'nightShift':
+      return { ...t, darkness: 'blackout', weather: rng.pick(['clear', 'fog', 'lightRain']), cars: 18 + Math.floor(rank / 10) };
+    case 'manhunt': {
+      const boss = BOSS_KINDS[Math.floor(rank / LEVEL_KINDS.length) % BOSS_KINDS.length];
+      return { ...t, goal: { k: 'boss' }, boss, cars: 24, darkness: bossInBlackout(boss) ? 'blackout' : 'day' };
+    }
+    case 'ruleBreaker': {
+      const legendary = rng.pick<LegendaryRule>(['gridlock', 'dragnet', 'heavyLoad', 'zeroTolerance']);
+      return { ...t, legendary, cars: 20 + Math.floor(rank / 12) };
+    }
+    case 'handicap':
+      return { ...t, strip: STRIPS[Math.floor(rank / LEVEL_KINDS.length) % STRIPS.length], cars: 22 + Math.floor(rank / 10) };
+    case 'longHaul':
+      return { ...t, cars: 40 + Math.floor(rank / 3) };
+  }
+}
+
+export const LEVEL_TRIALS: Trial[] = Array.from({ length: LEVEL_TRIAL_LAST - LEVEL_TRIAL_FIRST + 1 }, (_, i) => levelTrial(LEVEL_TRIAL_FIRST + i));
+
+/** The Level trials the page lists: open, not passed yet, lowest first, a few at a time. */
+export const levelTrialsWaiting = (c: Career): Trial[] => LEVEL_TRIALS.filter((t) => trialOpen(t, c) && !c.trialsDone.includes(t.id));
 
 // MARK: Boss Rush
 
@@ -207,12 +301,25 @@ export const rushTrial = (step: number): Trial => rematch(BOSS_KINDS[Math.max(0,
 
 export const RUN_IDS: string[] = [...TRIAL_IDS, ...REMATCH_IDS, ...ASCENSION_IDS, ...LANDMARK_IDS, RUSH_ID];
 
-export const trial = (id: string): Trial | undefined =>
-  TRIALS.find((t) => t.id === id) ?? REMATCHES.find((t) => t.id === id) ?? ASCENSIONS.find((t) => t.id === id) ?? landmarkOf(id) ?? undefined;
+/** A run a save may remember as passed. */
+export const isRunId = (id: string): boolean => RUN_IDS.includes(id) || levelTrialLevel(id) !== null;
 
-/** The shift of a trial: a fresh four-arm roundabout (a Landmark: its own) at its level, its conditions pinned. */
-export function trialConfig(t: Trial, base: Config): Config {
-  const career = { ...newCareer(), level: t.level };
+export const trial = (id: string): Trial | undefined =>
+  TRIALS.find((t) => t.id === id) ?? REMATCHES.find((t) => t.id === id) ?? ASCENSIONS.find((t) => t.id === id) ?? landmarkOf(id) ?? levelTrialOf(id) ?? undefined;
+
+/** The upgrades a Build trial leaves the player: all but the groups it strips. */
+export function keptUpgrades(t: Trial, owned: Partial<Record<Upgrade, number>>): Partial<Record<Upgrade, number>> {
+  const kept: Partial<Record<Upgrade, number>> = {};
+  for (const u of UPGRADES) if (owned[u] && !t.strip?.includes(UPGRADE_GROUP[u])) kept[u] = owned[u];
+  return kept;
+}
+
+/**
+ * The shift of a trial: a fresh four-arm roundabout (a Landmark: its own) at its level, its conditions pinned.
+ * A Build trial also gets `owned`, the career's upgrades, less the groups it strips.
+ */
+export function trialConfig(t: Trial, base: Config, owned: Partial<Record<Upgrade, number>> = {}): Config {
+  const career = { ...newCareer(), level: t.level, upgrades: t.strip ? keptUpgrades(t, owned) : {} };
   if (t.arms) {
     // Evenly spaced around the ring: as many slots as arms, each one built.
     base = { ...cloneConfig(base), armSlotCount: t.arms, armSlotSpacing: 1 };

@@ -1,6 +1,6 @@
 import { type Career, Careers } from '../core/career';
 import type { Config } from '../core/config';
-import { type Upgrade, UPGRADES, upgradeMaxSteps } from '../core/levels';
+import { type Upgrade, UPGRADES, UPGRADE_GROUP, upgradeMaxSteps } from '../core/levels';
 import { type Vec2, v, add, sub, mul, TAU } from '../core/vec2';
 import { type RenderList, type Rect, type Primitive, R, rect, circle, arc, line, polygon, text, Ease } from './render';
 import type { ColorToken } from './theme';
@@ -46,32 +46,6 @@ export const BuildTab = {
     MenuKit.header(list, S.tabs.build, money, viewport);
     MenuKit.segmented(list, [S.upgrades.title, S.builder.title], Math.max(0, BUILD_PAGES.indexOf(page)), thumb, BuildLayout.segmentsRect(viewport));
   },
-};
-
-/**
- * The Upgrades page's headings (Leo, 10.10.2026): what an upgrade is for. Only the display is sorted: `UPGRADES` keeps its order,
- * a challenge link carries the steps by position.
- */
-const UPGRADE_GROUP: Record<Upgrade, 0 | 1 | 2> = {
-  morePatrols: 0,
-  longerPursuit: 0,
-  quietStreets: 0,
-  interceptor: 0,
-  dispatchRadio: 0,
-  backup: 0,
-  cashRoute: 1,
-  overtime: 1,
-  freight: 1,
-  doubleRun: 1,
-  insurance: 1,
-  robberyInsurance: 1,
-  quickRecovery: 2,
-  shield: 2,
-  chainSaver: 2,
-  tightFitTip: 2,
-  dashcam: 2,
-  winterTyres: 2,
-  fogLamps: 2,
 };
 
 /** The upgrades under their headings, in the page's order; a heading with nothing under it is left out. */

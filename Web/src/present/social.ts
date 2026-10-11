@@ -2,7 +2,6 @@ import { type Career } from '../core/career';
 import { Auction } from '../core/auction';
 import { DAY_MS, Mafia } from '../core/mafia';
 import { inPortal } from '../storage/device';
-import { baseConfig } from '../core/config';
 import { type Vec2, v, clamp } from '../core/vec2';
 import { type RenderList, type Rect, R, Ease, Metrics } from './render';
 import { MenuKit } from './menukit';
@@ -60,16 +59,13 @@ export const SocialPage = {
   /** The Club opens with the Auction House (Level 50). */
   clubOpen: (career: Career): boolean => Auction.isOpen(career),
 
-  /** A new auction day, or lots still to try: the Club is worth a visit. */
-  clubWaits: (career: Career, today: number): boolean => SocialPage.clubOpen(career) && (career.auctionDay !== today || career.auctionTaken.length < baseConfig.auctionLots),
-
   /** The Mafia talks to whoever has put the first boss away: not inside CrazyGames, whose rules for ages and themes are stricter. */
   mafiaOpen: (career: Career): boolean => Mafia.isOpen(career) && !inPortal,
 
   /** A loan that is late or falls due within a day: the Mafia segment calls. */
   mafiaWaits: (career: Career, now: number): boolean => career.loan !== null && (career.loan.late || career.loan.due - now < DAY_MS),
 
-  add(list: RenderList, career: Career, today: number, state: SocialState, reduceMotion: boolean): void {
+  add(list: RenderList, career: Career, state: SocialState, reduceMotion: boolean): void {
     const vp = list.camera.viewport;
     MenuKit.backdrop(list);
     MenuKit.header(list, S.tabs.social, Fmt.number(career.money), vp);
@@ -89,14 +85,9 @@ export const SocialPage = {
       all,
       SOCIAL_SECTIONS.map((i) => (i === SOCIAL.club && !SocialPage.clubOpen(career)) || (i === SOCIAL.mafia && !SocialPage.mafiaOpen(career))),
     );
-    const dots: [SocialSection, boolean][] = [
-      [SOCIAL.club, SocialPage.clubWaits(career, today)],
-      [SOCIAL.mafia, SocialPage.mafiaWaits(career, Date.now())],
-    ];
-    for (const [section, on] of dots) {
-      if (!on) continue;
-      const r = cells[section][1];
-      ShopPage.badgeDot(list, v(R.center(r).x + textWidth(S.social.section(section), 13) / 2 + 8, R.center(r).y - 6), 1);
+    if (SocialPage.mafiaWaits(career, Date.now())) {
+      const r = cells[SOCIAL.mafia][1];
+      ShopPage.badgeDot(list, v(R.center(r).x + textWidth(S.social.section(SOCIAL.mafia), 13) / 2 + 8, R.center(r).y - 6), 1);
     }
   },
 };

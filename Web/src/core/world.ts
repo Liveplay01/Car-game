@@ -1105,13 +1105,13 @@ export class World {
 
   /**
    * A car of yours that braked its way into the ring behind slow traffic (`creepPace`): it took
-   * no timing, so it earns nothing and leaves the combo and the chain as they are. In Unlimited
-   * it does not count as a car either, so it adds nothing to the count or the pay. An ambulance
-   * or a learner it crowds still notices it.
+   * no timing, so it earns nothing and leaves the combo and the chain as they are. It still counts
+   * as a car, but it takes the next exit (Leo, 11.10.2026): spammed cars never pile up on the ring,
+   * and the bots get their chance to break an endless chain. An ambulance or a learner it crowds still notices it.
    */
   private noteCreep(veh: Vehicle, merge: Merging, s: number, behind: number, ahead: number, now: number): void {
     this.score.crept++;
-    if (this.config.endless) this.shift.carsSent = Math.max(0, this.shift.carsSent - 1);
+    this.leaveAtNextExit(veh, merge);
     const at = this.events.length;
     noteMergeNearAmbulance(this, veh, s, now);
     noteMergeNearLearner(this, veh, s, now);
@@ -1135,6 +1135,20 @@ export class World {
       shave: 0,
       crept: true,
     });
+  }
+
+  /** Turns a car that has just joined to the first exit after its arm (never South). */
+  private leaveAtNextExit(veh: Vehicle, merge: Merging): void {
+    const ring = veh.phase;
+    if (ring.kind !== 'ring') return;
+    const { layout } = this;
+    let exit = layout.advance(merge.arm, 1);
+    if (exit.index === 0) exit = layout.advance(merge.arm, 2);
+    const was = layout.ringDistanceArms(merge.arm, ring.exitArm, veh.lane) + merge.extraLaps * layout.ring.length;
+    const short = layout.ringDistanceArms(merge.arm, exit, veh.lane);
+    if (short >= was) return;
+    ring.distanceToExit -= was - short;
+    ring.exitArm = exit;
   }
 
   /**

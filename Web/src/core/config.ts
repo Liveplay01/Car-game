@@ -163,7 +163,8 @@ export const baseConfig = {
    * A merge that still drives slower than this share of its planned speed as it joins the ring
    * braked in behind slow traffic: nothing was timed, so it scores nothing (Leo, 01.10.2026:
    * after a crash, cars spammed one behind the other crept in safely, each one +1 combo, and in
-   * Unlimited the ring filled with your own cars for a record without playing).
+   * Unlimited the ring filled with your own cars for a record without playing). Since 11.10.2026
+   * such a car counts as a car again but takes the next exit, so the ring never fills with them.
    */
   creepPace: 0.9,
   nearMissSeconds: 0.2,
@@ -304,9 +305,11 @@ export const baseConfig = {
   maxPoliceCrashes: 3,
   /**
    * The Shield upgrade (Leo, 08.10.2026): there is no free shield: each step forgives one more crash of your own car per shift
-   * (`maxStrikes`, a dot in the HUD), Unlimited aside. The first step is cheap, the other three are dear.
+   * (`maxStrikes`, a dot in the HUD), Unlimited aside. Two steps only (Leo, 11.10.2026): 20.000 and 200.000.
    */
-  shieldPrices: [1500, 20000, 45000, 90000] as readonly number[],
+  shieldPrices: [20000, 200000] as readonly number[],
+  /** The Backup upgrade (police crashes) has fixed, dear prices too: still three steps (Leo, 11.10.2026). */
+  backupPrices: [25000, 75000, 200000] as readonly number[],
   /**
    * After this many lost shifts in a row on one level the next attempt draws the fewest cars the level has
    * (`shiftCarsSpread` below the middle), until the level is cleared. A plain career shift only, never the Daily.

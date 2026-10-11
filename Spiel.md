@@ -61,7 +61,7 @@ Das Wischen geht von Anfang an; ein Hinweis weist erst nach Level 6 darauf hin (
 | Ereignis | Konsequenz |
 |---|---|
 | **Verbrecher-Pickup entkommt** (Countdown abgelaufen) | **Hard Fail** – Schicht verloren (ab Level 20 zusätzlich 350 Verlust) |
-| **Normales Auto crasht** | **Hard Fail** (`maxStrikes = 1`; ab Level 20 kostet der Crash Geld). **Schild** (08.10.2026, Upgrade „Shield“, 4 Stufen, die erste günstig, der Rest teuer): jede Stufe verzeiht einen weiteren Crash des eigenen Autos pro Schicht (nicht in Unlimited). Ein verziehener Crash lässt den Ring grün aufleuchten, kein Text |
+| **Normales Auto crasht** | **Hard Fail** (`maxStrikes = 1`; ab Level 20 kostet der Crash Geld). **Schild** (08.10.2026, Upgrade „Shield“, 2 Stufen für 20.000 und 200.000; 11.10.2026): jede Stufe verzeiht einen weiteren Crash des eigenen Autos pro Schicht (nicht in Unlimited). Ein verziehener Crash lässt den Ring grün aufleuchten, kein Text |
 | **Polizeiauto crasht** | Soft Fail: kostet 250 Punkte & Combo, **3 erlaubt** (`maxPoliceCrashes = 3`, Upgrade *Backup* +1 pro Stufe), der 4. = Hard Fail |
 | **Militär-Truck geht hoch** | Hard Fail („KABOOM“, dasselbe Level noch einmal); in Mayhem das Finale |
 | **Folgeunfälle im Verkehr** | Kosten standardmäßig **keine** Strikes (umschaltbar); wer in einen sichtbaren Unfall einfädelt, bleibt 1 s verantwortlich |
@@ -318,7 +318,7 @@ Abreißen (Zufahrten und Module) ist möglich, **nichts wird erstattet.** Versch
 | Quiet Streets | 10 % der Schichten ohne Verbrecher | 5 | 3.900 |
 | Interceptor | Polizei jagt 10 % schneller im Ring | 5 | 3.900 |
 | Dispatch Radio | Einsatzfahrt behält 10 % mehr Combo, +1 Einsatzfahrt pro Schicht (Grundwert 3) | 5 | 3.100 |
-| Backup | +1 Polizei-Crash pro Schicht | 3 | 7.800 |
+| Backup | +1 Polizei-Crash pro Schicht | 3 | 25.000 · 75.000 · 200.000 (fest, 11.10.2026) |
 | Cash Route | Transporter 0,4 s früher & öfter | 8 | 2.600 |
 | Overtime | +4 % Schichtlohn | 10 | 2.600 |
 | Freight | +1,5 % Lkw (mehr Maut, dichterer Verkehr), dafür +1 % Schichtlohn pro Stufe (`freightPayPerStep`, 06.10.2026: die Stufen kosteten gemessen mehr, als sie brachten) | 8 | 2.600 |
@@ -528,7 +528,7 @@ Eine Schicht pro Woche (neu jeden Montag), für alle gleich (Seed aus der Woche,
 
 ### Trials (Progress → Trials, ab Level 9)
 
-Sieben feste Schichten mit festem Seed (alle treffen denselben Verkehr), frischem Kreisverkehr mit 4 Armen, ohne eigene Upgrades. Eine Zusatzregel beendet die Schicht als *failed*, wenn sie gebrochen wird. Jede Trial zahlt einmal. **Die leichteste steht oben, und jede öffnet erst bei ihrem Level.** Trials, die Perfects oder Tight Fits zählen, zeigen den Fortschritt live unter der oberen Karte und erklären auf ihrem Startbildschirm, was ein Perfect Input (die Mitte einer mittleren Lücke, nicht der größten) und ein Tight Fit verlangt. Die vier Boss-Rematches gehören ebenfalls dazu (siehe 5).
+Zehn feste Schichten mit festem Seed (alle treffen denselben Verkehr), frischem Kreisverkehr mit 4 Armen, ohne eigene Upgrades. Eine Zusatzregel beendet die Schicht als *failed*, wenn sie gebrochen wird. Jede Trial zahlt einmal. **Die leichteste steht oben, und jede öffnet erst bei ihrem Level.** Trials, die Perfects oder Tight Fits zählen, zeigen den Fortschritt live unter der oberen Karte und erklären auf ihrem Startbildschirm, was ein Perfect Input (die Mitte einer mittleren Lücke, nicht der größten) und ein Tight Fit verlangt. Die vier Boss-Rematches gehören ebenfalls dazu (siehe 5).
 
 | Trial | Level | Autos | Ziel / Bedingung | Belohnung |
 |---|---|---|---|---|
@@ -539,6 +539,13 @@ Sieben feste Schichten mit festem Seed (alle treffen denselben Verkehr), frische
 | Most Wanted | 15 | 24 | den Syndikats-Boss festnehmen | 5.000 |
 | Blackout | 16 | 16 | Nacht, Laternen aus | 3.000 |
 | Storm Watch | 20 | 18 | Sturm bei Nacht | 4.000 |
+| Off the Force | 22 | 20 | **Build-Trial:** deine Upgrades ohne die Police-Gruppe | 4.500 |
+| Hands Only | 24 | 20 | **Build-Trial:** deine Upgrades ohne die Driving-Gruppe (kein Shield) | 5.000 |
+| Bare Bones | 28 | 22 | **Build-Trial:** deine Upgrades ohne Police und Driving | 7.000 |
+
+**Level-Trials (Leo, 11.10.2026, `levelTrial` in `core/trials.ts`):** Ab Level 30 bis 120 bringt jedes Level einen Trial mehr (`level.37`, 91 Stück), erzeugt aus dem Level: neun Formen der Reihe nach (Precision, Sharp Eyes, Clean Run, Rough Weather, Night Shift, Manhunt, Ruthless, Handicap, Long Haul), Wetter, Boss oder Regel aus dem Seed des Levels, Ziel und Belohnung (5.000 + 300 je Level) wachsen mit. Kein Upgrade zählt, nur Handicap ist ein Build-Trial. Offen ab dem Level (oder mit Prestige); Progress → Trials zeigt die ersten vier offenen, noch nicht geschafften (`LEVEL_TRIALS_SHOWN`) und „n/91“. Der Spielstand erkennt die IDs am Muster (`isRunId`). Der vorsichtige Bot schafft sie bis auf entkommene Verbrecher, die er nicht jagt.
+
+**Build-Trials (Leo, 11.10.2026):** Die einzigen Trials mit den eigenen Upgrades (`Trial.strip`, `keptUpgrades` in `core/trials.ts`): die Gruppe der Upgrades-Seite (`UPGRADE_GROUP`) fällt weg, der Rest bleibt, Zufahrten und Module nicht. Money wird nie gesperrt (es macht nur den Lohn kleiner, nicht die Schicht schwerer).
 
 ### Challenge-Links (nur Web)
 

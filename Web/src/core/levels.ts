@@ -213,6 +213,33 @@ export const UPGRADES = [
 ] as const;
 
 export type Upgrade = (typeof UPGRADES)[number];
+export type UpgradeGroup = 0 | 1 | 2;
+
+/**
+ * The Upgrades page's headings (Leo, 10.10.2026): what an upgrade is for (0 Police, 1 Money, 2 Driving). The page's order is sorted by it, and the Build trials take a group away: `UPGRADES` keeps its order,
+ * a challenge link carries the steps by position.
+ */
+export const UPGRADE_GROUP: Record<Upgrade, UpgradeGroup> = {
+  morePatrols: 0,
+  longerPursuit: 0,
+  quietStreets: 0,
+  interceptor: 0,
+  dispatchRadio: 0,
+  backup: 0,
+  cashRoute: 1,
+  overtime: 1,
+  freight: 1,
+  doubleRun: 1,
+  insurance: 1,
+  robberyInsurance: 1,
+  quickRecovery: 2,
+  shield: 2,
+  chainSaver: 2,
+  tightFitTip: 2,
+  dashcam: 2,
+  winterTyres: 2,
+  fogLamps: 2,
+};
 
 export const upgradeMaxSteps: Record<Upgrade, number> = {
   morePatrols: 10,
@@ -228,7 +255,7 @@ export const upgradeMaxSteps: Record<Upgrade, number> = {
   doubleRun: 5,
   quickRecovery: 5,
   backup: 3,
-  shield: 4,
+  shield: 2,
   tightFitTip: 6,
   dashcam: 6,
   chainSaver: 3,
@@ -236,8 +263,8 @@ export const upgradeMaxSteps: Record<Upgrade, number> = {
   fogLamps: 5,
 };
 
-/** The shield has its own prices (`shieldPrices`); the others grow by `upgradeCostGrowth`. */
-const priceFactor: Record<Exclude<Upgrade, 'shield'>, number> = {
+/** The shield and backup have fixed prices (`shieldPrices`, `backupPrices`); the others grow by `upgradeCostGrowth`. */
+const priceFactor: Record<Exclude<Upgrade, 'shield' | 'backup'>, number> = {
   morePatrols: 1,
   cashRoute: 1,
   overtime: 1,
@@ -250,7 +277,6 @@ const priceFactor: Record<Exclude<Upgrade, 'shield'>, number> = {
   doubleRun: 1.5,
   insurance: 2,
   robberyInsurance: 2,
-  backup: 3,
   tightFitTip: 1.2,
   dashcam: 1.2,
   chainSaver: 2,
@@ -267,7 +293,10 @@ export function upgradeUnlockLevel(u: Upgrade, c: Config): number {
 
 /** Price of step `step` (1 = the first), rounded to 50. */
 export function upgradePrice(u: Upgrade, step: number, c: Config): number {
-  if (u === 'shield') return c.shieldPrices[clamp(step, 1, c.shieldPrices.length) - 1];
+  if (u === 'shield' || u === 'backup') {
+    const prices = u === 'shield' ? c.shieldPrices : c.backupPrices;
+    return prices[clamp(step, 1, prices.length) - 1];
+  }
   const raw = c.upgradeBaseCost * priceFactor[u] * Math.pow(c.upgradeCostGrowth, Math.max(1, step) - 1);
   return Math.round(raw / 50) * 50;
 }

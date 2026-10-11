@@ -5,7 +5,7 @@ import { tierOf, nextTier } from '../core/tiers';
 import { COSMETICS, cosmetic } from '../core/loot';
 import { FEATS, Feats, type Feat } from '../core/feats';
 import { type Challenge, challengesOf, challengeReward } from '../core/daily';
-import { type Trial, type TrialId, TRIALS, ASCENSIONS, LANDMARKS, LANDMARK_PRESTIGE, RUSH_ID, RUSH_REWARD, rushOpen, trialOpen } from '../core/trials';
+import { type Trial, type TrialId, TRIALS, ASCENSIONS, LANDMARKS, LANDMARK_PRESTIGE, LEVEL_TRIALS, LEVEL_TRIALS_SHOWN, levelTrialsWaiting, RUSH_ID, RUSH_REWARD, rushOpen, trialOpen } from '../core/trials';
 import { weekNumber, weekDaysLeft, weeklyTrial } from '../core/weekly';
 import { baseConfig, BOSS_KINDS } from '../core/config';
 import { Elite } from '../core/elite';
@@ -25,7 +25,6 @@ import { TourArt, TOUR_TINT } from './tourArt';
 import { PROGRESS, type ProgressSection } from './flow';
 import { MuseumPage, MuseumState } from './museum';
 import { Scroller, clipTo } from './scroll';
-import { knownRank, leaderboardEnabled } from '../net/leaderboard';
 import { type TourId, type TourDef, TOURS, tourOn, nextTour, tourOpen, tourStopsDone, stopDoneKey, TOUR_LEVEL } from '../core/tours';
 import { FAMILIES, Achievements, achievementTotal, type Family } from '../core/achievements';
 import { seasonOf } from '../core/loot';
@@ -115,9 +114,6 @@ interface Layout {
 }
 
 const PROGRESS_SECTIONS: ProgressSection[] = [0, 1, 2, 3, 4];
-
-/** The podium glyph: three steps of 4 points with 1 point between. */
-const PODIUM_WIDTH = 14;
 
 const STAT_ROW = 40;
 const HEADING = 26;
@@ -254,6 +250,14 @@ export const ProgressPage = {
       s.heading(S.progress.trials, `${trialsDone}/${TRIALS.length}`, trialsDone === TRIALS.length);
       if (!Unlocks.isOpen(career, 'trials')) s.row({ k: 'trialsLocked', level: Unlocks.level('trials') }, 56);
       else for (const trial of TRIALS) s.row({ k: 'trial', trial }, 64);
+      // Level trials: one more with every level from 30 on; the first few that wait.
+      const waiting = levelTrialsWaiting(career);
+      const passed = LEVEL_TRIALS.filter((x) => career.trialsDone.includes(x.id)).length;
+      if (waiting.length > 0 || passed > 0) {
+        s.heading(S.progress.levelTrials, `${passed}/${LEVEL_TRIALS.length}`, passed === LEVEL_TRIALS.length);
+        for (const trial of waiting.slice(0, LEVEL_TRIALS_SHOWN)) s.row({ k: 'trial', trial }, 64);
+        s.row({ k: 'note', text: S.progress.levelTrialsHint(waiting.length, Math.min(waiting.length, LEVEL_TRIALS_SHOWN)) }, 16);
+      }
       // Ascension: once the career has been through Prestige, one trial per rank.
       if (career.prestige > 0) {
         const ascended = ASCENSIONS.filter((x) => career.trialsDone.includes(x.id)).length;
@@ -379,64 +383,14 @@ export const ProgressPage = {
     return R.contains(ProgressPage.layout(viewport, bottomInset).content, point);
   },
 
-  /**
-   * The way to the leaderboards: a chip beside the balance with the player's Shift level rank
-   * (or "Ranks" until one is known). Where the title leaves too little room it is the podium alone.
-   */
-  rankChip(viewport: Vec2, money: number): { frame: Rect; label: string | null } | null {
-    if (!leaderboardEnabled) return null;
-    const rank = knownRank('shift-level');
-    // "Rank #4", then "#4" where the title leaves less room, then the podium alone.
-    // The arrow says it opens something: a chip drawn on the canvas looks like a status otherwise.
-    const labels = (rank === null ? [S.leaderboard.chip] : [S.leaderboard.rank(rank), `#${Fmt.number(rank)}`]).map((l) => `${l} ›`);
-    const cash = Fmt.number(money);
-    const right = MenuKit.headerChip(viewport, cash).x - MenuKit.chipWidth(cash) / 2 - 8;
-    const titleEnd = MenuKit.headerInset(viewport) + textWidth(S.tabs.progress.toUpperCase(), MenuKit.titleSize) + 12;
-    const y = MenuKit.headerY;
-    for (const label of labels) {
-      const full = 12 + PODIUM_WIDTH + 6 + textWidth(label, 15) + 14;
-      if (right - full >= titleEnd) return { frame: R.make(right - full, y - 16, right, y + 16), label };
-    }
-    return { frame: R.make(right - 32, y - 16, right, y + 16), label: null };
-  },
-
-  addRankChip(list: RenderList, viewport: Vec2, money: number): void {
-    const chip = ProgressPage.rankChip(viewport, money);
-    if (!chip) return;
-    const { frame, label } = chip;
-    const tag = list.tag;
-    list.tag = 'headerChip';
-    list.s(rect(R.center(frame), v(R.width(frame), R.height(frame)), 16), 'controlFill');
-    const podiumX = label === null ? R.center(frame).x - PODIUM_WIDTH / 2 : frame.minX + 12;
-    ProgressPage.podium(list, v(podiumX, R.center(frame).y + 6));
-    if (label !== null) drawText(list, label, v(podiumX + PODIUM_WIDTH + 6, R.center(frame).y), 15, 'primary', { weight: 'bold' });
-    list.tag = tag;
-  },
-
-  /** Three steps, the middle one highest: the leaderboard's mark. `base` is its bottom left. */
-  podium(list: RenderList, base: Vec2): void {
-    const step = 4;
-    const gap = 1;
-    [8, 12, 5].forEach((height, i) => {
-      const x = base.x + i * (step + gap) + step / 2;
-      list.s(rect(v(x, base.y - height / 2), v(step, height), 1), 'accent');
-    });
-  },
-
-  rankChipAt(point: Vec2, viewport: Vec2, money: number): boolean {
-    const chip = ProgressPage.rankChip(viewport, money);
-    return chip !== null && R.contains(R.inset(chip.frame, -6), point);
-  },
-
   sectionAt(point: Vec2, viewport: Vec2, bottomInset: number): ProgressSection | null {
     return ProgressPage.layout(viewport, bottomInset).segments.find(([, r]) => R.contains(r, point))?.[0] ?? null;
   },
 
-  add(list: RenderList, save: SaveGame, today: number, state: ProgressState, reduceMotion: boolean, bottomInset: number, maxScroll: number): void {
+  add(list: RenderList, save: SaveGame, today: number, state: ProgressState, reduceMotion: boolean, bottomInset: number, maxScroll: number, dots: readonly ProgressSection[]): void {
     const vp = list.camera.viewport;
     MenuKit.backdrop(list);
     MenuKit.header(list, S.tabs.progress, Fmt.number(save.career.money), vp);
-    ProgressPage.addRankChip(list, vp, save.career.money);
     const l = ProgressPage.layout(vp, bottomInset);
     const chosen = state.section;
     let thumb: number = chosen;
@@ -444,9 +398,9 @@ export const ProgressPage = {
     if (slide) thumb = slide.from + (chosen - slide.from) * (reduceMotion ? 1 : Ease.settle(slide.age / ShopPage.slideDuration));
     const last = l.segments[l.segments.length - 1][1];
     MenuKit.segmented(list, PROGRESS_SECTIONS.map((i) => S.progress.section(i)), chosen, thumb, R.make(l.segments[0][1].minX, l.segments[0][1].minY, last.maxX, last.maxY));
-    if (save.career.museumNew.length > 0) {
-      const r = l.segments[PROGRESS_SECTIONS.indexOf(PROGRESS.museum)][1];
-      ShopPage.badgeDot(list, v(R.center(r).x + textWidth(S.progress.section(PROGRESS.museum), 13) / 2 + 7, R.center(r).y - 6), 1);
+    for (const section of dots) {
+      const r = l.segments[PROGRESS_SECTIONS.indexOf(section)][1];
+      ShopPage.badgeDot(list, v(R.center(r).x + textWidth(S.progress.section(section), 13) / 2 + 7, R.center(r).y - 6), 1);
     }
 
     const start = list.items.length;

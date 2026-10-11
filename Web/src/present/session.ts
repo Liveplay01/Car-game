@@ -71,7 +71,7 @@ import { forSeason } from '../core/seasons';
 import { Achievements } from '../core/achievements';
 import { tourOn, tourTrial, tourStopOf, tourOpen, TOUR_LEVEL } from '../core/tours';
 import { seasonOf } from '../core/loot';
-import { TRIALS, ASCENSIONS, LANDMARKS, trial as trialById, trialConfig, trialOpen, trialProgress, rematchId, rushOpen } from '../core/trials';
+import { TRIALS, ASCENSIONS, LANDMARKS, LEVEL_TRIALS, trial as trialById, trialConfig, trialOpen, trialProgress, rematchId, rushOpen } from '../core/trials';
 
 /** What the platform reports; key and touch mapping stays in `main.ts`. */
 export type InputAction =
@@ -942,7 +942,7 @@ export class GameSession {
   }
 
   private specialConfig(run: SpecialRun): Config {
-    return run.k === 'challenge' ? challengeConfig(run.spec, this.config) : trialConfig(run.trial, this.config);
+    return run.k === 'challenge' ? challengeConfig(run.spec, this.config) : trialConfig(run.trial, this.config, this.save.career.upgrades);
   }
 
   private static specialSeed(run: SpecialRun): number {
@@ -979,7 +979,7 @@ export class GameSession {
     if (!t) return;
     // A mastery trial above the career's level is not played yet (rematches and the Weekly
     // Elite have their own conditions).
-    if ((TRIALS.includes(t) || ASCENSIONS.includes(t) || LANDMARKS.includes(t)) && !trialOpen(t, this.save.career)) {
+    if ((TRIALS.includes(t) || ASCENSIONS.includes(t) || LANDMARKS.includes(t) || LEVEL_TRIALS.some((x) => x.id === t.id)) && !trialOpen(t, this.save.career)) {
       this.showNotice(S.trials.opens(t));
       return;
     }
@@ -2066,10 +2066,6 @@ export class GameSession {
       return true;
     }
     if (this.isPage('progress')) {
-      if (ProgressPage.rankChipAt(point, this.lastViewport, this.save.career.money)) {
-        this.perform({ k: 'showSocial', section: SOCIAL.ranks });
-        return true;
-      }
       const section: ProgressSection | null = ProgressPage.sectionAt(point, this.lastViewport, this.tabInset);
       if (section !== null) {
         if (this.progressPage.section !== section) {
@@ -2742,8 +2738,8 @@ export class GameSession {
     if (this.isPage('streetBuilder')) StreetBuilderPage.add(list, career, this.config, this.builderPage, rm, inset, this.buildThumb);
     else if (this.isPage('upgrades')) UpgradePage.add(list, career, this.config, this.visibleUpgrades, this.upgradePage, rm, inset, this.buildThumb, this.adOffer.offers ? Careers.adUpgradeOffer(career, this.today, this.config) : null);
     else if (this.isPage('shop')) ShopPage.add(list, career, this.config, this.today, this.shopPage, rm, inset);
-    else if (this.isPage('progress')) ProgressPage.add(list, this.save, this.today, this.progressPage, rm, inset, this.progressScrollRange);
-    else if (this.isPage('social')) SocialPage.add(list, career, this.today, this.socialPage, rm);
+    else if (this.isPage('progress')) ProgressPage.add(list, this.save, this.today, this.progressPage, rm, inset, this.progressScrollRange, this.progressDots);
+    else if (this.isPage('social')) SocialPage.add(list, career, this.socialPage, rm);
     else if (s.k === 'settings') list.s(rect({ x: viewport.x / 2, y: viewport.y / 2 }, viewport), 'background', 0.55);
     const standIn = this.adFlow.placeholder;
     if (standIn) ShopPage.addAd(list, standIn.reward, standIn.age, AdFlow.placeholderSeconds);
@@ -2803,17 +2799,23 @@ export class GameSession {
     return best > 0 ? Fmt.number(best) : null;
   }
 
+  /** The Progress segments with something waiting: the Daily Shift (Today), a prestige in reach (Records), new Museum entries. */
+  get progressDots(): ProgressSection[] {
+    const c = this.save.career;
+    const dots: ProgressSection[] = [];
+    if (this.save.tutorialDone && c.level >= this.config.dailyUnlockLevel && Careers.isDailyOpen(c, this.today)) dots.push(PROGRESS.today);
+    if (!this.eliteSeen && Careers.canPrestige(c, this.config)) dots.push(PROGRESS.records);
+    if (c.museumNew.length > 0) dots.push(PROGRESS.museum);
+    return dots;
+  }
+
   /** Whether a tab has something waiting, like an iOS badge: the Shop's chests or new items. */
   badge(tab: Tab): { count: number } | 'dot' | null {
     const c = this.save.career;
-    // Progress → Today is where the day's shifts wait: the dot stays until the Daily Shift is played (09.10.2026).
-    if (barTab(tab) === 'progress') {
-      const dailyWaits = this.save.tutorialDone && c.level >= this.config.dailyUnlockLevel && Careers.isDailyOpen(c, this.today);
-      return dailyWaits || c.museumNew.length > 0 || (!this.eliteSeen && Careers.canPrestige(c, this.config)) ? 'dot' : null;
-    }
-    // A new auction day waits in the Club: the dot stays until it was looked at.
-    // A loan that is late or due within a day waits in the Mafia the same way.
-    if (barTab(tab) === 'social') return (c.auctionDay !== this.today && SocialPage.clubOpen(c)) || SocialPage.mafiaWaits(c, Date.now()) ? 'dot' : null;
+    // Progress: the page puts the same dot on the segment that waits (`progressDots`); the Daily Shift's dot stays until it is played (09.10.2026).
+    if (barTab(tab) === 'progress') return this.progressDots.length > 0 ? 'dot' : null;
+    // A loan that is late or due within a day waits in the Mafia. The Club never calls (Leo, 11.10.2026).
+    if (barTab(tab) === 'social') return SocialPage.mafiaWaits(c, Date.now()) ? 'dot' : null;
     if (barTab(tab) !== 'shop') return null;
     if (c.chests.length > 0) return { count: c.chests.length };
     // A skin a casino round has won stays quiet until the round shows it.

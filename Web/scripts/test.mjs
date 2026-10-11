@@ -46,7 +46,7 @@ const { versusConfig, VersusBot, INPUT_DELAY } = await load('/src/core/versus.ts
 const { substream } = await load('/src/core/rng.ts');
 const { readGuestMessage, readHostMessage, RateLimit } = await load('/src/net/messages.ts');
 const { settleSpecial, advanceRush, newRush, runCard } = await load('/src/present/specialRuns.ts');
-const { trial: trialById, trialOpen, trialConfig, landmarkOf, LANDMARKS, LANDMARK_PRESTIGE, RUN_IDS, RUSH_ID, RUSH_REWARD, rushOpen, rematchId } = await load('/src/core/trials.ts');
+const { trial: trialById, trialOpen, trialConfig, landmarkOf, LANDMARKS, LANDMARK_PRESTIGE, RUN_IDS, isRunId, LEVEL_TRIALS, LEVEL_TRIAL_FIRST, LEVEL_TRIAL_LAST, LEVEL_KINDS, levelTrialsWaiting, RUSH_ID, RUSH_REWARD, rushOpen, rematchId } = await load('/src/core/trials.ts');
 const { PATCH_NOTES, latestNote, itemText, itemCredit, changelogFile, SUMMARY_LINES, SUMMARY_LENGTH } = await load('/src/present/patchNotes.ts');
 const { parseInviteCode } = await load('/src/net/invite.ts');
 const { pushTimers } = await load('/src/net/push.ts');
@@ -521,6 +521,18 @@ test('a reply shows at once; a barely seen announcement comes back', () => {
   assert.equal(q.shown.text, 'Level news');
 });
 
+test('a shift that starts keeps the announcement on screen, and holds the rest back', () => {
+  const q = new NoticeQueue();
+  q.announce('Casino opens', 'Daily opens');
+  q.advance(2);
+  q.held = true;
+  assert.equal(q.shown.text, 'Casino opens', 'a tap to start does not wipe it');
+  q.advance(NoticeQueue.queuedDuration);
+  assert.equal(q.shown, null, 'the next one waits for the shift to end');
+  q.held = false;
+  assert.equal(q.shown.text, 'Daily opens');
+});
+
 test('a long list folds its tail into the last line', () => {
   const q = new NoticeQueue();
   q.announce('1', '2', '3', '4', '5', '6', '7');
@@ -690,7 +702,7 @@ test('briefings without a task stay a few seconds each, a task goes first', () =
   assert.equal(briefs.view, null);
 });
 
-test('cars spammed into the slow traffic after a crash creep in for nothing (Unlimited exploit)', async () => {
+test('cars spammed into the slow traffic after a crash score nothing and leave at the next exit (Unlimited)', async () => {
   const { upgradeMaxSteps } = await load('/src/core/levels.ts');
   const career = { ...newCareer(), level: 40, upgrades: { ...upgradeMaxSteps } };
   const cfg = Careers.shiftConfig(career, 'unlimited', baseConfig, 37);
@@ -699,6 +711,7 @@ test('cars spammed into the slow traffic after a crash creep in for nothing (Unl
   world.tap(1.5);
   let next = Infinity;
   let launched = 0;
+  const exits = new Set();
   while (world.time < 12 && world.shift.phase !== 'ended') {
     if (world.time >= next) {
       world.tap(world.time);
@@ -708,11 +721,16 @@ test('cars spammed into the slow traffic after a crash creep in for nothing (Unl
     for (const e of world.takeEvents()) {
       if (e.type === 'crash' && e.isPoliceCrash && next === Infinity) next = world.time + 2;
       if (e.type === 'launched') launched++;
+      if (e.type === 'merged' && e.crept) {
+        const phase = world.vehicle(e.vehicle)?.phase;
+        if (phase?.kind === 'ring') exits.add(phase.exitArm.index);
+      }
     }
   }
   assert.ok(world.score.crept >= 5, `crept ${world.score.crept}`);
   assert.ok(world.score.combo <= 2 && world.score.points <= 300, `combo ${world.score.combo}, points ${world.score.points}`);
-  assert.ok(world.shift.carsSent <= launched - world.score.crept, 'a car that crept in is no car in Unlimited');
+  assert.equal(world.shift.carsSent, launched, 'a car that crept in still counts');
+  assert.deepEqual([...exits], [world.layout.advance(world.layout.player, 1).index], 'it leaves at the next exit');
 });
 
 test('nothing counts as met while the shift waits for its first tap', () => {
@@ -2402,13 +2420,15 @@ test('the wedding convoy comes from level 100, drives in the flow, and never wit
 
 // MARK: Forgiveness and reasons to come back (research of 08.10.2026)
 
-test('the Shield upgrade has four steps, a cheap first and dear rest, forgives crashes for challenges too, and not in Unlimited', async () => {
+test('the Shield upgrade has two dear steps, Backup three, forgives crashes for challenges too, and not in Unlimited', async () => {
   const { challengeConfig } = await load('/src/core/challenge.ts');
   const { upgradePrice } = await load('/src/core/levels.ts');
-  assert.equal(upgradeMaxSteps.shield, 4);
-  const prices = [1, 2, 3, 4].map((step) => upgradePrice('shield', step, baseConfig));
-  assert.ok(prices[0] < baseConfig.upgradeBaseCost, 'the first step is cheap');
-  assert.ok(prices[1] >= 5 * prices[0] && prices[1] < prices[2] && prices[2] < prices[3], 'the rest are dear and climb');
+  assert.equal(upgradeMaxSteps.shield, 2);
+  assert.equal(upgradeMaxSteps.backup, 3);
+  const prices = [1, 2].map((step) => upgradePrice('shield', step, baseConfig));
+  assert.deepEqual(prices, [20000, 200000]);
+  const backup = [1, 2, 3].map((step) => upgradePrice('backup', step, baseConfig));
+  assert.ok(backup[0] >= 20000 && backup.every((p, i) => i === 0 || p > backup[i - 1]), 'backup is dear and climbs');
   const at = (level, steps) => {
     const c = newCareer();
     c.level = level;
@@ -2417,8 +2437,8 @@ test('the Shield upgrade has four steps, a cheap first and dear rest, forgives c
   };
   assert.equal(Careers.shiftConfig(at(4, 0), 'shift', baseConfig, 7).maxStrikes, 1, 'no free shield');
   assert.equal(Careers.shiftConfig(at(4, 1), 'shift', baseConfig, 7).maxStrikes, 2);
-  assert.equal(Careers.shiftConfig(at(30, 3), 'shift', baseConfig, 7).maxStrikes, 4);
-  assert.equal(Careers.shiftConfig(at(30, 3), 'unlimited', baseConfig, 7).maxStrikes, 1);
+  assert.equal(Careers.shiftConfig(at(30, 2), 'shift', baseConfig, 7).maxStrikes, 3);
+  assert.equal(Careers.shiftConfig(at(30, 2), 'unlimited', baseConfig, 7).maxStrikes, 1);
   const spec = challengeOf(at(4, 1), 'shift', 4, 77, null, 1000);
   assert.equal(challengeConfig(spec, baseConfig).maxStrikes, 2, 'a friend plays the same shift, shield and all');
   // A tap on every step crashes: the shift goes on after the first strike and ends with the second.
@@ -2431,6 +2451,41 @@ test('the Shield upgrade has four steps, a cheap first and dear rest, forgives c
   poor.money = prices[0];
   assert.ok(Careers.buy(poor, 'shield', baseConfig));
   assert.equal(Careers.steps(poor, 'shield'), 1);
+});
+
+test('Build trials play on your upgrades minus a group; the other trials ignore them', () => {
+  const owned = { backup: 3, morePatrols: 5, shield: 2, overtime: 4 };
+  const cfg = (id) => trialConfig(trialById(id), baseConfig, owned);
+  assert.equal(cfg('noPolice').maxPoliceCrashes, baseConfig.maxPoliceCrashes, 'no Backup');
+  assert.equal(cfg('noPolice').maxStrikes, 3, 'the Shield stays');
+  assert.equal(cfg('noDriving').maxStrikes, 1, 'no Shield');
+  assert.equal(cfg('noDriving').maxPoliceCrashes, baseConfig.maxPoliceCrashes + 3, 'Backup stays');
+  assert.equal(cfg('bareBuild').maxStrikes, 1);
+  assert.equal(cfg('bareBuild').maxPoliceCrashes, baseConfig.maxPoliceCrashes);
+  assert.ok(cfg('bareBuild').shiftPay > trialConfig(trialById('bareBuild'), baseConfig).shiftPay, 'Money upgrades stay in a Build trial');
+  assert.equal(cfg('deadCentre').maxStrikes, 1, 'a plain trial ignores the build');
+  assert.ok(RUN_IDS.includes('noPolice') && RUN_IDS.includes('bareBuild'), 'a save keeps them');
+});
+
+test('every level from 30 to 120 brings one more trial, in turn of nine shapes', () => {
+  assert.equal(LEVEL_TRIALS.length, LEVEL_TRIAL_LAST - LEVEL_TRIAL_FIRST + 1);
+  assert.equal(new Set(LEVEL_TRIALS.map((t) => t.id)).size, LEVEL_TRIALS.length);
+  assert.equal(new Set(LEVEL_TRIALS.map((t) => t.seed)).size, LEVEL_TRIALS.length, 'each its own traffic');
+  for (const t of LEVEL_TRIALS) {
+    assert.equal(trialById(t.id).seed, t.seed, 'found by id');
+    assert.ok(isRunId(t.id), 'a save keeps it');
+    assert.ok(trialConfig(t, baseConfig, {}).shiftCars === t.cars);
+  }
+  assert.ok(!isRunId('level.29') && !isRunId('level.121'));
+  assert.equal(new Set(LEVEL_TRIALS.slice(0, LEVEL_KINDS.length).map((t) => `${t.goal.k}${t.rule}${t.weather}${t.darkness}${t.legendary}${t.strip}`)).size, LEVEL_KINDS.length, 'a shape each');
+  assert.ok(LEVEL_TRIALS.at(-1).reward > LEVEL_TRIALS[0].reward, 'the reward grows');
+  const career = newCareer();
+  career.level = 31;
+  assert.deepEqual(levelTrialsWaiting(career).map((t) => t.level), [30, 31]);
+  career.trialsDone.push('level.30');
+  assert.deepEqual(levelTrialsWaiting(career).map((t) => t.level), [31]);
+  career.level = 10;
+  assert.equal(trialOpen(LEVEL_TRIALS[5], career), false);
 });
 
 test('the precision upgrades: close merges pay a tip, a chain in the flow is left alone, bad weather bites less, none of it in Unlimited', async () => {

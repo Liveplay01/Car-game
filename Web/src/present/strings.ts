@@ -9,7 +9,7 @@ import type { NextGoal, NearMiss } from '../core/goals';
 import type { CasinoGame, SlotSymbol } from '../core/casino';
 import { Contracts, type ContractGoal, type ContractOutcome } from '../core/contracts';
 import type { VehicleType, VehicleRole } from '../core/vehicle';
-import { type Trial, type TrialId, type RunId, type EliteKind, rematchKind, ascensionRank, LANDMARK_PRESTIGE } from '../core/trials';
+import { type Trial, type TrialId, type RunId, type EliteKind, type LevelKind, rematchKind, ascensionRank, levelTrialLevel, levelKind, LANDMARK_PRESTIGE } from '../core/trials';
 import type { MuseumEntry } from '../core/museum';
 import type { EliteStep, EliteBar, TitleId, TitleRule } from '../core/elite';
 import type { PassReward, PassStep, HallEntry } from '../core/seasonPass';
@@ -152,6 +152,8 @@ export const S = {
       if (id.startsWith('tour.')) return S.tours.stopName(id);
       const rank = ascensionRank(id);
       if (rank !== null) return `Ascension ★${rank}`;
+      const level = levelTrialLevel(id);
+      if (level !== null) return `${S.trials.kindName[levelKind(level)]} · Lv ${level}`;
       return {
         tightSqueeze: 'Tight Squeeze',
         deadCentre: 'Dead Centre',
@@ -160,11 +162,38 @@ export const S = {
         stormWatch: 'Storm Watch',
         marathon: 'Marathon',
         mostWanted: 'Most Wanted',
+        noPolice: 'Off the Force',
+        noDriving: 'Hands Only',
+        bareBuild: 'Bare Bones',
       }[id as TrialId];
     },
+    kindName: {
+      precision: 'Precision',
+      sharpEyes: 'Sharp Eyes',
+      cleanRun: 'Clean Run',
+      weatherRun: 'Rough Weather',
+      nightShift: 'Night Shift',
+      manhunt: 'Manhunt',
+      ruleBreaker: 'Ruthless',
+      handicap: 'Handicap',
+      longHaul: 'Long Haul',
+    } satisfies Record<LevelKind, string>,
     goal(t: Trial): string {
       if (t.tour) return S.tours.goal(t);
       if (t.elite) return S.weekly.goal(t);
+      if (levelTrialLevel(t.id) !== null) {
+        const strip = t.strip ?? [];
+        const parts = [
+          t.goal.k === 'perfects' ? `${t.goal.n} Perfect Inputs` : t.goal.k === 'skilled' ? `${t.goal.n} Tight Fits or better` : t.goal.k === 'boss' ? `take down ${S.boss.name(t.boss ?? 'convoy')}` : null,
+          `${t.cars} cars`,
+          t.weather !== 'clear' ? S.weather(t.weather) : null,
+          t.darkness === 'blackout' ? S.blackout : t.darkness === 'night' ? S.night : null,
+          t.legendary ? S.legendary.name(t.legendary) : null,
+          t.rule === 'flawless' ? 'no crash' : null,
+          strip.length > 0 ? `your build without ${strip.map((g) => ['Police', 'Money', 'Driving'][g]).join(' and ')}` : null,
+        ];
+        return parts.filter((p): p is string => p !== null).join(' · ');
+      }
       if (ascensionRank(t.id) !== null) {
         const parts = [
           `${t.cars} cars`,
@@ -194,6 +223,12 @@ export const S = {
           return `${t.cars} cars in one shift`;
         case 'mostWanted':
           return 'Take down the syndicate boss';
+        case 'noPolice':
+          return `${t.cars} cars with your build, but no Police upgrades`;
+        case 'noDriving':
+          return `${t.cars} cars with your build, but no Driving upgrades (no Shield)`;
+        case 'bareBuild':
+          return `${t.cars} cars with your build, but no Police and no Driving upgrades`;
         default:
           return '';
       }
@@ -812,6 +847,9 @@ export const S = {
     landmarksHint: 'Famous roundabouts, one hard shift each.',
     ascension: 'Ascension',
     ascensionHint: 'One trial for every Prestige rank: the hardest shifts in the game.',
+    levelTrials: 'Level trials',
+    levelTrialsHint: (waiting: number, shown: number): string =>
+      waiting > shown ? `One more with every level. ${waiting - shown} more are waiting: pass one and the next shows up.` : 'One more with every level, from Level 30 to 120.',
     bosses: 'Syndicate bosses',
     prestige: 'Prestige',
     legendary: 'Legendary shifts',
@@ -863,13 +901,6 @@ export const S = {
     mafiaClosed: "The Family has no time for a rookie. Put the Syndicate's first boss away (Level 15) or get past it, and they will call.",
     offline: 'Friends and Ranks need the online service, which this copy of the game is not connected to.',
     noFriends: 'Friends are not available here. Ranks and the Club are.',
-  },
-
-  leaderboard: {
-    /** The header chip before a rank is known (not joined yet, or offline). */
-    chip: 'Ranks',
-    rank: (n: number): string => `Rank #${Fmt.number(n)}`,
-    chipLabel: 'Leaderboard',
   },
 
   museum: {
