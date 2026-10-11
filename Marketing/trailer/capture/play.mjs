@@ -11,6 +11,9 @@ export const stage = (save, mods, a) => {
   c.unseen = [];
   c.carSkins = a.skins ?? ['gold', 'diamond', 'holo', 'royal', 'lagoon', 'chrome', 'starlight', 'carbon'];
   c.mapSkin = a.map;
+  // today's Daily counts as played, so the waiting card is the normal shift (`core/daily.ts`, dayNumber)
+  const now = new Date();
+  c.dailyDone = c.dailyPlayed = Math.floor((now.getTime() / 1000 - now.getTimezoneOffset() * 60) / 86400);
   c.museumSeen = [...mods.MUSEUM_IDS];
   c.museumNew = [];
   c.bossesBeaten = [...mods.BOSS_KINDS];

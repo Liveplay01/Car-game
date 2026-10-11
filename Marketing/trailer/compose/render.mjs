@@ -34,7 +34,7 @@ const integrate = (speed, local) => {
 };
 
 // Shots → frame folders (cached by clip, start and span).
-edl.shots.forEach((s, i) => {
+[...edl.shots, ...(edl.bottoms ?? [])].forEach((s) => {
   s.id = `${s.src}_${Math.round(s.at * 60)}_${Math.round(integrate(s.speed ?? 1, s.dur) * 60)}`;
   s.first = Math.round(s.at * 60);
   const dir = join(CACHE, s.id);

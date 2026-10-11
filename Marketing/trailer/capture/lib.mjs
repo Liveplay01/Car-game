@@ -23,6 +23,8 @@ export async function open(format = PORTRAIT) {
     colorScheme: 'dark',
   });
   const page = await ctx.newPage();
+  // the fake clock from the first script on (it runs in real time until `freeze`): installed later, the game's day jumps to 0
+  await page.clock.install({ time: Date.now() });
   page.on('pageerror', (e) => console.log('[page error]', e.message));
   const cdp = await ctx.newCDPSession(page);
   return { browser, ctx, page, cdp, format };
@@ -52,6 +54,16 @@ export async function boot(s, patch = null, args = {}, { mode = 'shift' } = {}) 
   }, { patchSrcs: [].concat(patch ?? []).map((f) => f.toString()), mode, args });
   await page.reload({ waitUntil: 'load' });
   await page.waitForFunction(() => window.__game, null, { timeout: 60000 });
+  // Headless frames are slow, so the game would lower its resolution and detail (`Shell.adaptQuality`); hold them at full.
+  await page.evaluate((dpr) => {
+    const shell = window.__game;
+    shell.adaptQuality = () => {};
+    shell.dprCap = dpr;
+    shell.session.lowDetail = false;
+    shell.app.dataset.detail = '';
+    shell.drawer.glassBlur = true;
+    shell.resize();
+  }, s.format.dpr);
   await page.waitForTimeout(1800);
 }
 
@@ -93,6 +105,12 @@ export async function installBot(s) {
         const lane = front?.lane ?? 0;
         if (bot.mode === 'careful' && gapOf(w, lane) > bot.gap) press();
         else if (bot.mode === 'bold' && gapOf(w, lane) > 0.0) press();
+        // taps on the peak of the predicted gap: the car lands in the middle, mostly a Perfect
+        else if (bot.mode === 'peak') {
+          const gap = gapOf(w, lane);
+          if ((gap > 0.3 && gap < bot.prev - 0.001) || (gap > 0.22 && bot.frame - bot.lastTap > 90)) press();
+          bot.prev = gap;
+        }
         else if (bot.mode === 'wild' && Math.random() < bot.rate) press();
         else if (bot.mode === 'hunter') {
           const crim = w.vehicles.find((x) => w.isLiveCriminal(x));
@@ -104,7 +122,11 @@ export async function installBot(s) {
             if (gapOf(w, lane) > bot.gap) press();
           }
         }
-      } else if (bot.mode !== 'off' && game.screen.k === 'ready') press();
+      } else if (bot.mode !== 'off' && game.screen.k === 'ready') {
+        // the tap that starts the shift launches the first car too: only into a gap
+        const lane = w.vehicle(w.queue.vehicles[0])?.lane ?? 0;
+        if (bot.mode === 'wild' || gapOf(w, lane) > 0.3) press();
+      }
       requestAnimationFrame(tick);
     };
     bot.gap = 0.12;
@@ -118,8 +140,7 @@ export const markStart = (s) => s.page.evaluate(() => { window.__bot.recStart = 
 
 /** Deterministic capture: the page clock is held, and every frame is one 1/60 s step followed by a screenshot at 2x. */
 export async function freeze(s) {
-  await s.page.clock.install();
-  await s.page.clock.pauseAt(Date.now() + 500);
+  await s.page.clock.pauseAt((await s.page.evaluate(() => Date.now())) + 4000);
 }
 
 export class Recorder {
@@ -143,7 +164,7 @@ export class Recorder {
     const n = Math.round(seconds * 60);
     for (let i = 0; i < n; i++) {
       await page.clock.runFor(1000 / 60);
-      const r = await cdp.send('Page.captureScreenshot', { format: 'jpeg', quality: 93, optimizeForSpeed: true, clip });
+      const r = await cdp.send('Page.captureScreenshot', { format: 'jpeg', quality: 98, clip });
       this.pending.push(writeFile(join(this.dir, `f${String(this.frames++).padStart(6, '0')}.jpg`), Buffer.from(r.data, 'base64')));
       if (this.pending.length > 40) await Promise.all(this.pending.splice(0));
     }
@@ -152,7 +173,7 @@ export class Recorder {
   async stop() {
     await Promise.all(this.pending);
     const out = join(CLIPS, `${this.name}.mp4`);
-    const r = spawnSync('ffmpeg', ['-v', 'error', '-y', '-framerate', '60', '-i', join(this.dir, 'f%06d.jpg'), '-c:v', 'libx264', '-crf', '14', '-preset', 'fast', '-pix_fmt', 'yuv420p', out], { encoding: 'utf8' });
+    const r = spawnSync('ffmpeg', ['-v', 'error', '-y', '-framerate', '60', '-i', join(this.dir, 'f%06d.jpg'), '-c:v', 'libx264', '-crf', '10', '-preset', 'medium', '-pix_fmt', 'yuv420p', out], { encoding: 'utf8' });
     if (r.status !== 0) throw new Error(r.stderr);
     rmSync(this.dir, { recursive: true, force: true });
     return { out, frames: this.frames, seconds: this.frames / 60 };

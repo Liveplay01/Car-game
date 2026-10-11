@@ -16,6 +16,19 @@ const SHOTS = [
   ['g-aurora', 30, 'aurora', 'shift', 'careful', 20],
   ['g-unlimited', 20, 'sand', 'unlimited', 'careful', 40],
 ];
+// Shoots for the social ads (Oct 2026): node capture/batch.mjs h-neon h-sakura ...
+SHOTS.push(
+  ['h-neon', 25, 'neon', 'shift', 'peak', 30],
+  ['h-sakura', 22, 'sakura', 'shift', 'peak', 26],
+  ['h-snow', 24, 'snowfall', 'shift', 'peak', 26],
+  ['h-aurora', 30, 'aurora', 'shift', 'peak', 26],
+  ['h-tropic', 18, 'tropic', 'shift', 'peak', 26],
+  ['h-meadow', 12, 'meadow', 'shift', 'peak', 30],
+  ['h-crash', 8, 'meadow', 'shift', 'wild', 22],
+  ['h-crash2', 8, 'sand', 'shift', 'wild', 22],
+  ['h-hunt', 10, 'meadow', 'shift', 'hunter', 40],
+  ['h-boss', 15, 'sand', 'shift', 'bold', 36],
+);
 const LAND = [
   ['L-crash2', 8, 'meadow', 'shift', 'wild', 22],
   ['L-crash3', 8, 'sand', 'shift', 'wild', 22],
@@ -36,7 +49,7 @@ const only = process.argv.slice(2).filter((a) => !a.startsWith('--'));
 const queue = SHOTS.filter(([n]) => only.length === 0 || only.includes(n));
 let running = 0;
 const next = () => {
-  while (running < 3 && queue.length) {
+  while (running < 5 && queue.length) {
     const [name, level, map, mode, bot, seconds] = queue.shift();
     running++;
     const p = spawn('node', ['capture/play.mjs', name, level, map, mode, bot, seconds, name.startsWith('L-') ? 'landscape' : 'portrait'], { stdio: 'inherit' });

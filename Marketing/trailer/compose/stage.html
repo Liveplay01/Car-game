@@ -27,14 +27,15 @@
   .layer { position: absolute; inset: 0; }
   #bg { overflow: hidden; display: none; }
   #bg img { position: absolute; left: 50%; top: 50%; width: 100%; filter: blur(40px) saturate(1.5) brightness(0.8); transform: translate(-50%, -50%) scale(1.5); }
-  #cam { transform-origin: 50% 50%; will-change: transform; }
+  #cam { transform-origin: 50% 50%; }
   #cam img, #bg img { display: block; }
   #cam img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
   #phone { position: absolute; overflow: hidden; }
   #vig { pointer-events: none; background:
     radial-gradient(120% 90% at 50% 45%, transparent 55%, rgba(0,0,0,.55) 100%),
     linear-gradient(to bottom, rgba(0,0,0,.35), transparent 22%, transparent 70%, rgba(0,0,0,.5)); }
-  #dim { pointer-events: none; background: #000; opacity: 0; }
+  #dim, #shade { pointer-events: none; background: #000; opacity: 0; }
+  #qr { position: absolute; left: 0; top: 0; opacity: 0; border-radius: 32px; box-shadow: 0 24px 80px rgba(0,0,0,.6); will-change: transform, opacity; }
   #flash { pointer-events: none; opacity: 0; }
   #grain { pointer-events: none; opacity: .07; mix-blend-mode: overlay; }
   .t { position: absolute; left: 0; top: 0; transform-origin: 50% 50%; white-space: nowrap; text-align: center; will-change: transform, opacity; }
@@ -46,7 +47,17 @@
   .kicker { display: inline-block; font-style: normal; font-weight: 800; text-transform: uppercase; letter-spacing: .14em;
     padding: .38em .9em .34em; border-radius: 999px; background: var(--accent); color: #14110a; margin-bottom: .55em; line-height: 1; }
   .kicker.dark { background: rgba(11,13,16,.82); color: var(--ink); box-shadow: 0 0 0 .08em rgba(255,255,255,.18) inset; }
+  .line.lower { text-transform: none; letter-spacing: 0; }
+  .line.mono { font-family: 'Cascadia Mono', Consolas, ui-monospace, monospace; font-style: normal; font-weight: 700; letter-spacing: 0; text-transform: none; }
+  .t.calm .line { font-style: normal; font-weight: 300; text-transform: none; letter-spacing: .01em; line-height: 1.05; text-shadow: none; }
+  .t.calm .kicker { background: none; color: rgba(255,255,255,.55); font-weight: 400; letter-spacing: .3em; box-shadow: none; padding: 0; }
+  #bottom { display: none; top: auto; overflow: hidden; border-top: 8px solid var(--accent); box-shadow: 0 -24px 60px rgba(0,0,0,.5); }
+  #cam2 img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
   .logo { display: block; }
+  .tap { position: absolute; left: 0; top: 0; width: 200px; height: 200px; margin: -100px 0 0 -100px; opacity: 0; pointer-events: none; }
+  .tap i { position: absolute; inset: 0; border-radius: 50%; }
+  .tap .dot { inset: 58px; background: rgba(255,255,255,.92); box-shadow: 0 6px 24px rgba(0,0,0,.45); }
+  .tap .ring { border: 6px solid #fff; }
 </style>
 </head>
 <body>
@@ -55,9 +66,13 @@
   <div id="phone" class="layer">
     <div id="cam" class="layer"><img id="a" /><img id="b" /></div>
   </div>
+  <div id="bottom" class="layer"><div id="cam2" class="layer"><img id="c" /><img id="d" /></div></div>
   <div id="vig" class="layer"></div>
+  <div id="shade" class="layer"></div>
+  <div id="taps" class="layer"></div>
   <div id="titles" class="layer"></div>
   <div id="dim" class="layer"></div>
+  <img id="qr" src="qr.svg" alt="" />
   <div id="flash" class="layer"></div>
 </div>
 <script>
@@ -107,10 +122,17 @@ window.setup = (edl) => {
     window.phoneStyle = { inset: 'auto', left: (edl.phoneX ?? (edl.w - pw) / 2) + 'px', top: (edl.h - ph) / 2 + 'px', width: pw + 'px', height: ph + 'px', borderRadius: '44px', boxShadow: '0 40px 120px rgba(0,0,0,.65), 0 0 0 6px rgba(255,255,255,.1)' };
     window.fullStyle = { inset: '0', left: '0', top: '0', width: edl.w + 'px', height: edl.h + 'px', borderRadius: '0', boxShadow: 'none' };
   }
+  const taps = document.getElementById('taps');
+  (edl.taps ?? []).forEach((k) => {
+    k.el = document.createElement('div');
+    k.el.className = 'tap';
+    k.el.innerHTML = '<i class="ring"></i><i class="dot"></i>';
+    taps.appendChild(k.el);
+  });
   const holder = document.getElementById('titles');
   edl.titles.forEach((t, i) => {
     const el = document.createElement('div');
-    el.className = 't';
+    el.className = 't' + (t.calm ? ' calm' : '');
     el.style.fontSize = '100px';
     let html = '';
     if (t.kicker) html += `<span class="kicker ${t.kickerClass ?? ''}" style="font-size:${(t.kickerSize ?? 0.3) * 100}px">${t.kicker}</span><br>`;
@@ -127,16 +149,32 @@ window.setup = (edl) => {
 window.frame = async (t) => {
   const e = EDL;
   const shot = e.shots.find((s) => t >= s.t && t < s.t + s.dur) ?? e.shots[e.shots.length - 1];
-  const local = t - shot.t;
-  const srcT = shot.at + integrate(shot.speed ?? 1, local);
-  const f = srcT * 60 - shot.first;
-  const i0 = Math.max(0, Math.floor(f)), frac = f - Math.floor(f);
-  const url = (i) => `${e.cache}/${shot.id}/${pad(Math.max(0, Math.min(shot.frames - 1, i)))}.jpg`;
-  const blend = frac > 0.02 && (shot.blend ?? true);
-  const jobs = [decode(A, url(i0))];
-  if (blend) jobs.push(decode(B, url(i0 + 1)));
-  await Promise.all(jobs);
-  B.style.opacity = blend ? frac : 0;
+  // plays one shot into an image pair; returns its local time and the first frame's url
+  const play = async (s, a, b) => {
+    const local = t - s.t;
+    const f = (s.at + integrate(s.speed ?? 1, local)) * 60 - s.first;
+    const i0 = Math.max(0, Math.floor(f)), frac = f - Math.floor(f);
+    const url = (i) => `${e.cache}/${s.id}/${pad(Math.max(0, Math.min(s.frames - 1, i)))}.jpg`;
+    const blend = frac > 0.02 && (s.blend ?? true);
+    await Promise.all([decode(a, url(i0)), blend ? decode(b, url(i0 + 1)) : 0]);
+    b.style.opacity = blend ? frac : 0;
+    return { local, first: url(i0) };
+  };
+  const { local, first } = await play(shot, A, B);
+
+  // split screen: a second clip fills the lower part
+  const bottom = (e.bottoms ?? []).find((s) => t >= s.t && t < s.t + s.dur);
+  const panel = document.getElementById('bottom');
+  panel.style.display = bottom ? 'block' : 'none';
+  if (bottom) {
+    panel.style.height = e.h - e.split + 'px';
+    const { local: bl } = await play(bottom, document.getElementById('c'), document.getElementById('d'));
+    const bp = clamp(bl / bottom.dur);
+    const punch = 1 + (bottom.punch ?? 0.08) * (1 - E.outExpo(clamp(bl / 0.22)));
+    const c2 = document.getElementById('cam2');
+    c2.style.transform = `scale(${(bottom.scale ?? 1) * (1 + 0.04 * bp) * punch})`;
+    for (const img of c2.querySelectorAll('img')) img.style.objectPosition = bottom.pos ?? '50% 45%';
+  }
 
   // camera: a punch in at the start of the shot, a slow push, a shake
   const p = clamp(local / shot.dur);
@@ -148,13 +186,13 @@ window.frame = async (t) => {
   const [ax, ay] = shot.anchor ?? [0.5, 0.5];
   const cam = document.getElementById('cam');
   cam.style.transformOrigin = `${ax * 100}% ${ay * 100}%`;
-  cam.style.transform = `translate(${noise(fr * 1.7) * sh * 34}px, ${noise(fr * 2.3 + 9) * sh * 34}px) rotate(${(shot.tilt ?? 0) + noise(fr * 0.9 + 3) * sh * 1.2}deg) scale(${scale})`;
+  cam.style.transform = `translate(${noise(fr * 1.7) * sh * 34}px, ${(shot.ty ?? 0) + noise(fr * 2.3 + 9) * sh * 34}px) rotate(${(shot.tilt ?? 0) + noise(fr * 0.9 + 3) * sh * 1.2}deg) scale(${scale})`;
   cam.style.filter = shot.filter ?? 'none';
   if (e.layout === 'landscape') {
     const full = shot.src.startsWith('L-');
     Object.assign(document.getElementById('phone').style, full ? window.fullStyle : window.phoneStyle);
     document.getElementById('bg').style.display = full ? 'none' : 'block';
-    if (!full) await decode(document.getElementById('bgimg'), url(i0));
+    if (!full) await decode(document.getElementById('bgimg'), first);
   }
 
   // titles
@@ -183,11 +221,38 @@ window.frame = async (t) => {
     if (tt.count) {
       const c = tt.count;
       const v = c.from + (c.to - c.from) * E.outExpo(clamp(lt / (c.dur ?? 0.8)));
-      el.querySelector('.cnt').textContent = (c.prefix ?? '') + fmt(v) + (c.suffix ?? '');
+      el.querySelector('.cnt').textContent = (c.prefix ?? '') + (c.dec ? v.toFixed(c.dec) : fmt(v)) + (c.suffix ?? '');
     }
   });
 
+  // taps: a finger dot presses in on the moment, a ring rings out
+  for (const k of e.taps ?? []) {
+    const lt = t - k.t;
+    if (lt < -0.12 || lt > 0.45) { k.el.style.opacity = 0; continue; }
+    const press = lt < 0 ? 1 + 0.2 * (-lt / 0.12) : 1 - 0.18 * Math.pow(1 - clamp(lt / 0.25), 2);
+    const dot = k.el.querySelector('.dot'), ring = k.el.querySelector('.ring');
+    k.el.style.transform = `translate(${(k.x ?? 0.5) * e.w}px, ${(k.y ?? 0.8) * e.h}px)`;
+    k.el.style.opacity = lt < 0 ? clamp(1 + lt / 0.12) : 1 - clamp((lt - 0.25) / 0.2);
+    dot.style.transform = `scale(${press})`;
+    const r = clamp(lt / 0.4);
+    ring.style.opacity = lt < 0 ? 0 : 1 - r;
+    ring.style.transform = `scale(${0.4 + 1.1 * E.outCubic(r)})`;
+  }
+
+  // QR code of the end card: pops in above the dimming
+  const qr = document.getElementById('qr'), q = e.qr;
+  if (q) {
+    const lt = t - q.t, p = clamp(lt / 0.35);
+    const size = q.size ?? 420;
+    qr.style.width = qr.style.height = size + 'px';
+    qr.style.opacity = lt >= 0 && lt <= q.dur ? clamp(lt / 0.12) : 0;
+    qr.style.transform = `translate(${(q.x ?? 0.5) * e.w - size / 2}px, ${q.y * e.h - size / 2}px) scale(${E.outBack(p, 1.6)})`;
+  }
+
   // dim (fade to black) and flashes
+  // fades darken everything, shades only the footage under the titles
+  const level = (list) => (list ?? []).reduce((m, d) => Math.max(m, d.t <= t && t <= d.t + d.dur ? (d.to > d.from ? E.inOut((t - d.t) / d.dur) : 1 - E.inOut((t - d.t) / d.dur)) * Math.abs(d.to - d.from) + Math.min(d.from, d.to) : 0), 0);
+  document.getElementById('shade').style.opacity = level(e.shades);
   const dim = document.getElementById('dim');
   dim.style.opacity = (e.fades ?? []).reduce((m, d) => Math.max(m, d.t <= t && t <= d.t + d.dur ? (d.to > d.from ? E.inOut((t - d.t) / d.dur) : 1 - E.inOut((t - d.t) / d.dur)) * Math.abs(d.to - d.from) + Math.min(d.from, d.to) : 0), 0);
   const fl = document.getElementById('flash');

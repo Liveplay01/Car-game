@@ -3,7 +3,7 @@
 python compose/audio.py out/<name>.audio.json out/<name>.wav
 
 The JSON comes from the cut: music = [{stem, from, to, gain, fade}], sfx = [{name, t, gain, rate}],
-booms = [{t, gain}], risers = [{from, to, gain}]. Everything sits on the music's 120 BPM grid.
+booms = [{t, gain}], risers = [{from, to, gain}], engines = [{from, to, f0, f1, gain}]. Everything sits on the music's 120 BPM grid.
 """
 import json
 import subprocess
@@ -85,6 +85,19 @@ def riser(length: float, gain: float) -> np.ndarray:
     return np.stack([out, out], axis=1)
 
 
+def engine(length: float, f0: float, f1: float, gain: float) -> np.ndarray:
+    n = int(length * SR)
+    p = np.linspace(0, 1, n)
+    freq = f0 + (f1 - f0) * p**1.6
+    ph = 2 * np.pi * np.cumsum(freq) / SR
+    tone = np.sin(ph) + 0.55 * np.sin(2 * ph) + 0.3 * np.sin(3 * ph) + 0.25 * (2 * ((ph / (2 * np.pi)) % 1) - 1)
+    tone *= 1 + 0.25 * np.sin(2 * np.pi * freq / 6 * np.arange(n) / SR)
+    env = (0.35 + 0.65 * p) * np.minimum(1, np.arange(n) / (0.12 * SR))
+    env[-int(0.015 * SR) :] *= np.linspace(1, 0, int(0.015 * SR))
+    mono = (tone * env * 0.3 * gain).astype(np.float32)
+    return np.stack([mono, mono], axis=1)
+
+
 def main() -> None:
     spec = json.loads(Path(sys.argv[1]).read_text())
     out = Path(sys.argv[2])
@@ -105,6 +118,9 @@ def main() -> None:
         place(mix, boom(b.get("gain", 1.0)), b["t"], 1.0)
     for r in spec.get("risers", []):
         place(mix, riser(r["to"] - r["from"], r.get("gain", 1.0)), r["from"], 1.0)
+
+    for e in spec.get("engines", []):
+        place(mix, engine(e["to"] - e["from"], e["f0"], e["f1"], e.get("gain", 1.0)), e["from"], 1.0)
 
     # final fade and a soft limiter that keeps the peaks under -1 dBFS
     tail = int(spec.get("fadeOut", 0.35) * SR)
