@@ -4,6 +4,7 @@ import { type SaveGame, type GameMode, type Hint, Careers, newSave } from '../co
 import { Elite } from '../core/elite';
 import { SeasonPass } from '../core/seasonPass';
 import { Unlocks } from '../core/unlocks';
+import { Mafia } from '../core/mafia';
 import type { GameEvent, ShiftResult } from '../core/events';
 import type { Upgrade } from '../core/levels';
 import { ALBUM_REWARD, BIG_SCREEN, CHEST_KINDS, chestPrice, cosmetic, rarityRank, tapPower, strongTaps, type ChestKind } from '../core/loot';
@@ -342,7 +343,7 @@ export class GameSession {
   /** The records the leaderboards rank (`net/leaderboard.ts`). */
   get leaderboardRecords(): Records {
     const { save } = this;
-    return { level: save.career.level, prestige: save.career.prestige, unlimitedBest: save.unlimitedBest, unlimitedCars: save.unlimitedBestCars, dailyDay: save.dailyDay, dailyScore: save.dailyScore, rushBest: save.career.rushBest, title: save.career.title };
+    return { level: save.career.level, prestige: save.career.prestige, unlimitedBest: save.unlimitedBest, unlimitedCars: save.unlimitedBestCars, dailyDay: save.dailyDay, dailyScore: save.dailyScore, rushBest: save.career.rushBest, title: Mafia.late(save.career) ? 'mafia' : save.career.title };
   }
 
   get visibleUpgrades(): readonly Upgrade[] {
@@ -416,7 +417,10 @@ export class GameSession {
     const endedStreak = away > 0 && career.dailyStreak >= 2 && Goals.streak(career, this.today) === 0 ? career.dailyStreak : 0;
     const income = Careers.collectLoginIncome(career, this.today, this.config);
     Careers.collectGift(career, this.today);
+    // A loan that fell due while the game was shut: one day of grace, so staying away never costs a loan.
+    const graced = Mafia.returned(career, Date.now());
     this.persist();
+    if (graced) this.announce(S.mafia.notices.grace);
     if (income !== null) this.announce(S.daily.welcomeBack(Fmt.number(income)));
     else if (this.save.tutorialDone && endedStreak > 0) this.announce(S.daily.streakEnded(endedStreak));
     else if (this.save.tutorialDone && away >= 3 && career.level >= this.config.dailyUnlockLevel && Careers.isDailyOpen(career, this.today)) this.announce(S.daily.backForDaily);
@@ -632,7 +636,7 @@ export class GameSession {
       case 'showSocial':
         this.perform({ k: 'showTab', tab: 'social' });
         if (!this.isPage('social')) return;
-        this.socialPage.select(action.section === SOCIAL.club && !SocialPage.clubOpen(career) ? SOCIAL.friends : action.section);
+        this.socialPage.select((action.section === SOCIAL.club && !SocialPage.clubOpen(career)) || (action.section === SOCIAL.mafia && !SocialPage.mafiaOpen(career)) ? SOCIAL.friends : action.section);
         break;
       case 'showProgress':
         this.perform({ k: 'showTab', tab: 'progress' });
@@ -1267,6 +1271,7 @@ export class GameSession {
       this.sceneTime += simDelta;
     }
     this.keepDailyInStep();
+    this.keepMafiaInStep();
     for (const a of actions) this.handle(a, simDelta);
     // A condition's sheet belongs to the waiting shift it was opened on.
     const shown = this.conditionShown;
@@ -2052,6 +2057,7 @@ export class GameSession {
       const section = SocialPage.sectionAt(point, this.lastViewport);
       if (section !== null && section !== this.socialPage.section) {
         if (section === SOCIAL.club && !SocialPage.clubOpen(this.save.career)) this.showNotice(S.social.clubClosed);
+        else if (section === SOCIAL.mafia && !SocialPage.mafiaOpen(this.save.career)) this.showNotice(S.social.mafiaClosed);
         else {
           this.tick();
           this.socialPage.select(section);
@@ -2328,6 +2334,25 @@ export class GameSession {
     }
     this.persist();
     this.announce(...toasts);
+  }
+
+  private mafiaChecked = 0;
+
+  /** The loan follows the clock (core/mafia.ts): it turns late on its day, and the Don's letters are told as they arrive. */
+  private keepMafiaInStep(): void {
+    const career = this.save.career;
+    const now = Date.now();
+    if (!career.loan || this.screen.k === 'playing' || now - this.mafiaChecked < 1000) return;
+    this.mafiaChecked = now;
+    const event = Mafia.sync(career, now);
+    const letters = Mafia.news(career, now);
+    const letter = letters.some((l) => l.kind !== 'late' && l.kind !== 'taken');
+    if (!event && !letter) return;
+    this.persist();
+    this.play([event === 'late' ? 'alarm' : event === 'writeoff' ? 'seized' : 'wanted'], [event ? 'seized' : 'wanted']);
+    this.announce(event === 'late' ? S.mafia.notices.late : event === 'writeoff' ? S.mafia.notices.writtenOff : S.mafia.notices.letter);
+    // Late, the Casino shuts: whoever sits in it is shown out.
+    if (event === 'late' && this.isPage('shop') && this.shopPage.section === 2) this.perform({ k: 'showShop', section: 0 });
   }
 
   /** The waiting shift follows the day: today's Daily Shift while open, a normal one after. */
@@ -2787,7 +2812,8 @@ export class GameSession {
       return dailyWaits || c.museumNew.length > 0 || (!this.eliteSeen && Careers.canPrestige(c, this.config)) ? 'dot' : null;
     }
     // A new auction day waits in the Club: the dot stays until it was looked at.
-    if (barTab(tab) === 'social') return c.auctionDay !== this.today && SocialPage.clubOpen(c) ? 'dot' : null;
+    // A loan that is late or due within a day waits in the Mafia the same way.
+    if (barTab(tab) === 'social') return (c.auctionDay !== this.today && SocialPage.clubOpen(c)) || SocialPage.mafiaWaits(c, Date.now()) ? 'dot' : null;
     if (barTab(tab) !== 'shop') return null;
     if (c.chests.length > 0) return { count: c.chests.length };
     // A skin a casino round has won stays quiet until the round shows it.

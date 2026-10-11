@@ -3000,12 +3000,118 @@ test('the tab bar runs Progress, Social, Game, Shop, Build, and Social has its t
   assert.deepEqual(TAB_BAR, ['progress', 'social', 'game', 'shop', 'upgrades']);
   const viewport = { x: 430, y: 900 };
   const cells = SocialPage.segments(viewport);
-  assert.deepEqual(cells.map(([section]) => section), [SOCIAL.friends, SOCIAL.ranks, SOCIAL.club]);
+  assert.deepEqual(cells.map(([section]) => section), [SOCIAL.friends, SOCIAL.ranks, SOCIAL.club, SOCIAL.mafia]);
   for (const [section, r] of cells) assert.equal(SocialPage.sectionAt({ x: (r.minX + r.maxX) / 2, y: (r.minY + r.maxY) / 2 }, viewport), section);
   assert.ok(SocialPage.column(viewport).top > cells[0][1].maxY, 'the content starts under the segments');
   assert.equal(SocialPage.sectionAt({ x: 10, y: 5 }, viewport), null);
   const c = newCareer();
   assert.equal(SocialPage.clubOpen(c), false, 'the Club waits for Level 50');
+  assert.equal(SocialPage.mafiaOpen(c), false, 'the Mafia waits for the first boss');
+  c.bossesBeaten.push('convoy');
+  assert.equal(SocialPage.mafiaOpen(c), true);
+});
+
+test('Mafia: a loan is paid out, repaid in time it makes the next one kinder, late it shuts the Casino and takes the loot', async () => {
+  const { Mafia, DAY_MS, readLoan } = await load('/src/core/mafia.ts');
+  const now = 1_000_000_000_000;
+  const c = newCareer();
+  c.level = 20;
+  const [small, , big] = Mafia.amounts(c);
+  assert.ok(small < big, 'three loans, smallest first');
+  assert.equal(Mafia.borrow(c, small, 'miss', now), null, 'no boss put away yet: no loan');
+  c.bossesBeaten.push('convoy');
+
+  const table = Mafia.table(c, big);
+  assert.deepEqual(Mafia.table(c, big), table, 'the same loan gives the same bar');
+  assert.ok(Mafia.table(c, big).speed > Mafia.table(c, small).speed, 'the bigger the loan, the faster the pointer');
+  const centre = (table.zone.from + table.zone.to) / 2;
+  assert.equal(Mafia.grade(table, centre), 'perfect');
+  assert.equal(Mafia.grade(table, table.zone.from + 0.001), 'good');
+  assert.equal(Mafia.grade(table, 0), 'miss');
+  for (const ms of [0, 137, 4000, 123_456]) assert.ok(Mafia.pointer(table, ms) >= 0 && Mafia.pointer(table, ms) <= 1);
+  const plain = Mafia.terms(c, 'miss');
+  const best = Mafia.terms(c, 'perfect');
+  assert.ok(best.interest < plain.interest && best.days > plain.days, 'a Perfect is the kinder deal');
+
+  const loan = Mafia.borrow(c, big, 'perfect', now);
+  assert.equal(c.money, big, 'paid out at once');
+  assert.equal(loan.owed, Math.round(big * (1 + best.interest)));
+  assert.equal(loan.due, now + best.days * DAY_MS);
+  assert.equal(Mafia.borrow(c, small, 'miss', now), null, 'one loan at a time');
+  assert.deepEqual(readLoan(JSON.parse(JSON.stringify(loan))), loan, 'the save keeps it');
+  assert.equal(readLoan({ amount: 5, owed: 1, due: 9 }), null, 'a loan that owes less than it lent is not one');
+
+  assert.equal(Mafia.sync(c, now + DAY_MS), null);
+  assert.equal(Mafia.late(c), false);
+  assert.equal(Unlocks.isOpen(c, 'casino'), true);
+  assert.equal(Careers.careerShift(c, baseConfig, 7).criminalChance, 1, 'in time, the criminals still come');
+  assert.equal(Mafia.sync(c, loan.due), 'late', 'its day has come');
+  assert.equal(Mafia.late(c), true);
+  assert.equal(Unlocks.isOpen(c, 'casino'), false, 'late: the Casino is shut');
+  const shift = Careers.careerShift(c, baseConfig, 7);
+  assert.equal(shift.criminalChance, 0, 'late: no criminal and no boss');
+  assert.equal(shift.convoy, false);
+  assert.ok(shift.transporterFirst.lo > 1e6, 'late: no transporter');
+  assert.equal(Mafia.sync(c, now), null, 'a clock set back gives nothing back');
+  assert.equal(Mafia.late(c), true);
+
+  assert.equal(Mafia.debt(c, loan.due + 3 * DAY_MS), loan.owed + Math.round(loan.owed * baseConfig.mafiaLateRate * 3), 'the debt grows by the day');
+  assert.equal(Mafia.debt(c, loan.due + 400 * DAY_MS), loan.owed + Math.round(loan.owed * baseConfig.mafiaLateCap), 'and stops at the cap');
+  assert.equal(Mafia.garnish(c, 1000, loan.due), Math.round(1000 * baseConfig.mafiaGarnish), 'the Family takes its share of a shift');
+  c.money = 1e6;
+  const repaid = Mafia.repay(c, 1e12, loan.due);
+  assert.equal(repaid.cleared, true);
+  assert.equal(repaid.inTime, false, 'late is not clean');
+  assert.equal(c.loan, null);
+  assert.equal(c.cleanLoans, 0);
+  assert.equal(Unlocks.isOpen(c, 'casino'), true, 'paid: the Casino is open again');
+  assert.equal(Careers.careerShift(c, baseConfig, 7).criminalChance, 1);
+
+  const before = { interest: Mafia.baseTerms(c).interest, zone: Mafia.zoneWidth(c) };
+  c.money = 1e6;
+  Mafia.borrow(c, small, 'good', now);
+  assert.equal(Mafia.repay(c, 1e12, now + DAY_MS).inTime, true);
+  assert.equal(c.cleanLoans, 1);
+  assert.ok(Mafia.baseTerms(c).interest < before.interest, 'repaid in time: the next loan is cheaper');
+  assert.ok(Mafia.zoneWidth(c) > before.zone, 'and the green zone is wider');
+
+  Mafia.borrow(c, small, 'miss', now);
+  const letters = Mafia.letters(c.loan).map((l) => l.kind);
+  assert.deepEqual(letters, ['taken', 'half', 'day', 'late', 'later']);
+  assert.equal(Mafia.news(c, now).length, 0, 'the first letter is told by the deal itself');
+  assert.deepEqual(Mafia.news(c, c.loan.due).map((l) => l.kind), ['half', 'day', 'late']);
+  assert.equal(Mafia.news(c, c.loan.due).length, 0, 'each letter is told once');
+});
+
+test('Mafia: a day of grace for whoever was away, a write-off after two weeks late, and a steady hand', async () => {
+  const { Mafia, DAY_MS } = await load('/src/core/mafia.ts');
+  const now = 1_000_000_000_000;
+  const c = newCareer();
+  c.level = 20;
+  c.bossesBeaten.push('convoy');
+  const [small] = Mafia.amounts(c);
+  const loan = Mafia.borrow(c, small, 'miss', now);
+  assert.equal(Mafia.returned(c, now + DAY_MS), false, 'not due yet: no grace');
+  const back = loan.due + 3 * DAY_MS;
+  assert.equal(Mafia.returned(c, back), true, 'the day passed while the game was shut');
+  assert.equal(loan.due, back + baseConfig.mafiaGraceDays * DAY_MS);
+  assert.equal(Mafia.sync(c, back), null, 'one more day');
+  assert.equal(Mafia.returned(c, loan.due + DAY_MS), false, 'only once per loan');
+  assert.equal(Mafia.sync(c, loan.due), 'late');
+  const writeoff = loan.due + baseConfig.mafiaWriteOffDays * DAY_MS;
+  assert.equal(Mafia.sync(c, writeoff - 1), null);
+  assert.equal(Mafia.sync(c, writeoff), 'writeoff', 'the Family gives up: no debt is for ever');
+  assert.equal(c.loan, null);
+  assert.equal(Mafia.canBorrow(c, small, baseConfig, writeoff + DAY_MS), false, 'the doors are shut');
+  assert.equal(Mafia.canBorrow(c, small, baseConfig, writeoff + (baseConfig.mafiaBanDays + 1) * DAY_MS), true);
+
+  const t = Mafia.table(c, small);
+  const steady = Mafia.table(c, small, baseConfig, true);
+  assert.deepEqual(steady.zone, t.zone, 'the same bar');
+  assert.ok(steady.speed < t.speed, 'a slower pointer');
+  const centre = (t.zone.from + t.zone.to) / 2;
+  assert.equal(Mafia.grade(t, centre), 'perfect');
+  assert.equal(Mafia.grade(steady, centre), 'good', 'a steady hand cannot earn a Perfect');
 });
 
 test('Progress has five sections that each carry a label, and every upgrade stands once under a heading', async () => {

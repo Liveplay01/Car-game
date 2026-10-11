@@ -47,6 +47,7 @@ import {
 import { type Challenge, challengesOf, challengeMet, challengeReward, STREAK_MILESTONES } from './daily';
 import type { CasinoPending, CasinoRound } from './casino';
 import type { Contract } from './contracts';
+import { Mafia, type Loan } from './mafia';
 import { randomSeed, Rng } from './rng';
 import { Elite, type EliteGain, type EliteStep, type TitleId, TITLES } from './elite';
 import type { HallEntry } from './seasonPass';
@@ -294,6 +295,12 @@ export interface Career {
   fundGiven: number;
   /** The contract waiting for the next career shift (core/contracts.ts); its stake is paid already. */
   contract: Contract | null;
+  /** The Mafia's loan (core/mafia.ts), the loans repaid in time in a row (they make the next one kinder) and the loans taken in all. */
+  loan: Loan | null;
+  cleanLoans: number;
+  loansTaken: number;
+  /** After a write-off the Family takes no calls until this time (ms; 0: never shut out). */
+  mafiaBan: number;
 }
 
 /**
@@ -420,6 +427,10 @@ export const newCareer = (): Career => ({
   auctionSpent: 0,
   fundGiven: 0,
   contract: null,
+  loan: null,
+  cleanLoans: 0,
+  loansTaken: 0,
+  mafiaBan: 0,
 });
 
 export const newSave = (): SaveGame => ({
@@ -1085,7 +1096,7 @@ export const Careers = {
       if (cfg.weather === 'clear' && c.level >= base.firstWeatherLevel && !met('weather.')) cfg = eased(forWeather(cfg, 'lightRain'));
       if (!cfg.night && c.level >= base.firstNightLevel && !met('dark.')) cfg = eased(forNight(cfg, 'night'));
     }
-    return cfg;
+    return Mafia.late(c) ? Mafia.withoutLoot(cfg) : cfg;
   },
 
   recordMastery(c: Career, r: ShiftResult): MasteryCompletion[] {

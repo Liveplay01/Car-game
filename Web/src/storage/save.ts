@@ -4,11 +4,12 @@ import { COSMETICS, CHEST_KINDS, type ChestKind, type CosmeticSource, MAX_CAR_SK
 import { ROAD_MODULES, MODULE_MAX_LEVEL, type RoadModule, BOSS_KINDS, type BossKind, baseConfig } from '../core/config';
 import { RUN_IDS } from '../core/trials';
 import { MUSEUM_IDS, MUSEUM_SHELVES, type MuseumShelf, inferredSightings } from '../core/museum';
-import { TITLES, type TitleId } from '../core/elite';
+import { Elite, TITLES, type TitleId } from '../core/elite';
 import { type CasinoGame, type CasinoPending, type CasinoRound, CASINO_GAMES } from '../core/casino';
 import { isObject } from '../core/guards';
 import { readLot } from '../core/auction';
 import { readContract } from '../core/contracts';
+import { readLoan } from '../core/mafia';
 import { storage } from './store';
 import { sealOf } from './seal';
 import { PASS_TIERS, type HallEntry } from '../core/seasonPass';
@@ -145,7 +146,8 @@ function readCareer(raw: unknown): Career {
     bossesBeaten,
     prestige,
     legendaryDone,
-    eliteXp: int(raw.eliteXp, 0, 0),
+    // A level paid before the progressive curve (03.10.2026) sits above the XP the curve asks for it: lifted, so new XP fills the bar at once.
+    eliteXp: Math.max(int(raw.eliteXp, 0, 0), eliteClaimed > 1 ? Elite.xpTo(eliteClaimed) : 0),
     eliteClaimed,
     title: TITLES.includes(raw.title as TitleId) ? (raw.title as TitleId) : null,
     titlesSeen: [...new Set(strings(raw.titlesSeen).filter((t): t is TitleId => TITLES.includes(t as TitleId)))],
@@ -186,6 +188,10 @@ function readCareer(raw: unknown): Career {
     auctionSpent: int(raw.auctionSpent, 0, 0),
     fundGiven: int(raw.fundGiven, 0, 0),
     contract: readContract(raw.contract),
+    loan: readLoan(raw.loan),
+    cleanLoans: int(raw.cleanLoans, 0, 0),
+    loansTaken: int(raw.loansTaken, 0, 0),
+    mafiaBan: int(raw.mafiaBan, 0, 0),
   };
 }
 

@@ -1287,11 +1287,11 @@ export class World {
     return this.shift.isRushHour;
   }
 
-  /** Seconds the police have to catch this criminal: a boss and the scout bring more. */
+  /** Seconds the police have to catch this criminal: a boss and the scout bring more, and never less than a lap of the ring with traffic in the way. */
   criminalTimeOf(id: number): number {
     const c = this.config;
     const factor = this.vehicle(id)?.role === 'boss' ? c.convoyTimeFactor : id === this.scoutVehicle ? c.scoutTimeFactor : 1;
-    return c.criminalTime * factor;
+    return Math.max(c.criminalTime * factor, (this.layout.ring.length / c.ringSpeed) * c.criminalLapMargin);
   }
 
   get isInFlow(): boolean {

@@ -1,5 +1,6 @@
 import type { Career } from './career';
 import { baseConfig, type Config } from './config';
+import { Mafia } from './mafia';
 
 /**
  * Systems that open with the level, so a new player meets them one at a time (Leo,
@@ -14,6 +15,8 @@ export const Unlocks = {
     f === 'daily' ? config.dailyUnlockLevel : f === 'trials' ? config.trialsUnlockLevel : config.casinoUnlockLevel,
 
   isOpen(c: Career, f: Feature, config: Config = baseConfig): boolean {
+    // A late loan shuts the Casino until it is paid (core/mafia.ts).
+    if (f === 'casino' && Mafia.late(c)) return false;
     if (c.level >= Unlocks.level(f, config) || c.prestige > 0) return true;
     if (f === 'daily') return c.dailyPlayed >= 0 || c.dailyDone >= 0;
     if (f === 'trials') return c.trialsDone.length > 0;

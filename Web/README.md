@@ -195,6 +195,18 @@ the service's) both get a Standard Chest, which the game picks up like any gift 
 who knows the game (`hints: invite`), and another comes on reaching level 10 (`inviteReminder`, `bookShift`); a new
 player is told they need a name. Without `VITE_API_URL` none of it exists.
 
+## The Mafia
+
+Social → Mafia (from the first boss, not inside CrazyGames): `core/mafia.ts` has the rules, `ui/mafiaPanel.ts` the page, `ui/mafia.css` the room. One loan at a
+time, in three sizes that grow with the level. The deal is struck on a bar: a pointer sweeps across it (faster for a bigger loan), the tap stops it, the green zone
+is a deal and its middle a Perfect (less interest, more days); a miss is the plain offer. A steady hand (switch on the page) slows the pointer and rules out a
+Perfect. The term runs in real time (`loan.seen` keeps a clock set back from giving days back); letters arrive at half time, one day before and when it falls
+due. A loan that fell due while the game was shut gets one day of grace (`Mafia.returned`). Repaid in time: the next loan is cheaper and the zone wider
+(`career.cleanLoans`). **Late:** the debt grows 3 % a day (up to +50 %), 25 % of every career shift's pay goes to the Family (`Mafia.garnish`), career shifts
+bring no transporter, criminal or boss (`Mafia.withoutLoot`; Unlimited, Daily and Trials are untouched), the Casino is shut (`Unlocks.isOpen`) and the boards show
+a "Mafia" badge (the title id `mafia`, sent like any worn title). After 14 days late the Family writes the debt off and takes no calls for 14 days. Values:
+`mafia*` in `core/config.ts`. In `npm run dev` the browser console has `mafiaDebug` (`ui/mafiaDebug.ts`) to set any state.
+
 ## Notifications
 
 Web Push through the service (`net/push.ts`, `Server/src/modules/push`, Leo, 08.10.2026): only what matters,

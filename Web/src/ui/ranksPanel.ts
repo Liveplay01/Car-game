@@ -118,6 +118,7 @@ function entryRow(board: BoardId, e: BoardEntry | (Omit<BoardEntry, 'name'> & { 
 
 /** The name of a title the service sent, or null for none (or one this version of the game does not know). */
 function titleName(id: string | null | undefined): string | null {
+  if (id === 'mafia') return S.mafia.badge;
   return id && TITLES.includes(id as TitleId) ? S.titles.name(id as TitleId) : null;
 }
 

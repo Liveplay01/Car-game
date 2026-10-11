@@ -858,8 +858,9 @@ export const S = {
 
   /** The Social tab (Leo, 10.10.2026): its segments, and what the Club says while it is still shut. */
   social: {
-    section: (i: number): string => ['Friends', 'Ranks', 'Club'][i],
+    section: (i: number): string => ['Friends', 'Ranks', 'Club', 'Mafia'][i],
     clubClosed: 'The Club opens at Level 50: an Auction House, the City Fund and Contracts for big balances.',
+    mafiaClosed: "The Family has no time for a rookie. Put the Syndicate's first boss away (Level 15) and they will call.",
     offline: 'Friends and Ranks need the online service, which this copy of the game is not connected to.',
     noFriends: 'Friends are not available here. Ranks and the Club are.',
   },
@@ -1156,6 +1157,81 @@ export const S = {
       if (outcome.result === 'void') return `CONTRACT VOID · this shift was eased · ${money(Fmt.number(outcome.pay))} back`;
       return `CONTRACT LOST · ${name} · ${money(Fmt.number(outcome.contract.stake))} gone`;
     },
+  },
+
+  /** The Mafia (Social → Mafia, core/mafia.ts): the Family lends money against a deal struck on a pointer bar. */
+  mafia: {
+    title: 'The Family',
+    tagline: 'They respect a driver who put their boss away. They lend, and they collect.',
+    /** The badge next to a name on the boards while a loan is late. */
+    badge: 'Mafia',
+    don: 'The Don',
+    pitch: 'Pick a loan, sit down at the table and stop the pointer inside the green zone. The nearer the middle, the kinder the deal. The bigger the loan, the faster the pointer.',
+    rules: (rate: number, cap: number, garnish: number): string =>
+      `Pay it back by the day on the letter. Late, the debt grows ${Math.round(rate * 100)}% a day (up to +${Math.round(cap * 100)}%), ${Math.round(garnish * 100)}% of every shift's pay goes to the Family, no transporter, criminal or boss pays out, the Casino is shut and your name wears the Mafia badge on the boards. Pay it off and all of that is gone. Each loan repaid in time makes the next one cheaper and the green zone wider.`,
+    grade: (g: 'perfect' | 'good' | 'miss'): string => ({ perfect: 'PERFECT', good: 'GOOD', miss: 'MISSED' })[g],
+    gradeText: (g: 'perfect' | 'good' | 'miss'): string => ({ perfect: 'Right on the money. The Don smiles.', good: 'A fair handshake.', miss: 'The Don shrugs. The plain offer stands.' })[g],
+    set: 'Sit down',
+    stop: 'STOP',
+    tapToStop: 'Tap to stop the pointer',
+    setting: 'The Don is waiting…',
+    loanLabel: 'Loan',
+    perDay: (days: number): string => `${days} ${days === 1 ? 'day' : 'days'}`,
+    offer: (interest: number, days: number): string => `${Math.round(interest * 100)}% interest · ${days} ${days === 1 ? 'day' : 'days'}`,
+    zone: (width: number, clean: number): string => `Green zone ${Math.round(width * 100)}% of the bar${clean > 0 ? ` · ${clean} ${clean === 1 ? 'loan' : 'loans'} repaid in time` : ''}`,
+    struck: (grade: 'perfect' | 'good' | 'miss', amount: string, owed: string): string => `DEAL · ${S.mafia.grade(grade)} · ${money(amount)} in your hands, ${money(owed)} to pay back`,
+    ledger: 'Ledger',
+    lent: 'Lent',
+    owed: 'You owe',
+    due: 'Due',
+    late: 'LATE',
+    paid: 'Paid so far',
+    countdown: (ms: number): string => {
+      const mins = Math.max(0, Math.floor(ms / 60_000));
+      const days = Math.floor(mins / 1440);
+      const hours = Math.floor((mins % 1440) / 60);
+      if (days > 0) return `${days}d ${hours}h left`;
+      return hours > 0 ? `${hours}h ${mins % 60}m left` : `${mins}m left`;
+    },
+    lateFor: (ms: number): string => {
+      const days = Math.floor(ms / 86_400_000);
+      return days > 0 ? `${days} ${days === 1 ? 'day' : 'days'} late` : 'Just turned late';
+    },
+    repayShare: (share: number): string => (share >= 1 ? 'Pay in full' : `Pay ${Math.round(share * 100)}%`),
+    noMoney: 'Not enough money to pay that.',
+    waiting: 'The Don is watching',
+    atStake: 'If you are late',
+    inForce: 'In force until you pay',
+    consequences: (garnish: number): string[] => ['Casino shut', 'No transporters, criminals or bosses', `${Math.round(garnish * 100)}% of every shift's pay`, 'Mafia badge on the boards'],
+    overdue: 'OVERDUE',
+    overdueText: 'The Family is collecting. Every shift pays them first.',
+    paidStamp: 'PAID',
+    assist: 'Steady hand',
+    assistText: 'Slower pointer, but no Perfect deal',
+    banned: (date: string): string => `The Family is not taking your calls. They will talk again on ${date}.`,
+    nextStep: (interest: number, nextInterest: number, zone: number, nextZone: number): string =>
+      `Repay the next loan in time: interest ${Math.round(interest * 100)}% → ${Math.round(nextInterest * 100)}%, green zone ${Math.round(zone * 100)}% → ${Math.round(nextZone * 100)}%`,
+    shiftsToClear: (n: number): string => `About ${n} ${n === 1 ? 'shift' : 'shifts'} of pay to clear it`,
+    onlyOne: 'One loan at a time. Settle this one first.',
+    letters: 'Letters',
+    letter: (kind: 'taken' | 'half' | 'day' | 'late' | 'later', owed: string, date: string): string =>
+      ({
+        taken: `Pleasure doing business. ${owed} by ${date}, not a day later. Do not make me come looking for you.`,
+        half: 'Half your time is gone. The Family remembers every debt, and every friend who paid early.',
+        day: 'One day left. Be a friend and settle up before it gets personal.',
+        late: 'Time is up. Your name is on the list. The road pays us first now, and the Casino is closed to you.',
+        later: 'Every day the number grows. Pay, and we are friends again.',
+      })[kind],
+    notices: {
+      late: 'THE FAMILY IS WAITING · your loan is late · the Casino is shut',
+      letter: 'A LETTER FROM THE DON · Social → Mafia',
+      grace: 'THE FAMILY GIVES YOU ONE MORE DAY · the loan fell due while you were away',
+      writtenOff: 'THE FAMILY WRITES YOU OFF · the debt is gone, their doors stay shut for 14 days',
+      repaidInTime: 'DEBT PAID IN TIME · the Family is pleased · the next loan is kinder',
+      repaidLate: 'DEBT PAID · the badge is gone, the Casino is open',
+    },
+    garnished: (cut: string, cleared: boolean): string => (cleared ? `THE FAMILY TOOK ${money(cut)} · debt paid, you are free` : `THE FAMILY TOOK ${money(cut)} of the pay`),
+    casinoShut: 'The Casino is closed while the Family waits for its money.',
   },
   shop: {
     open: 'Open',

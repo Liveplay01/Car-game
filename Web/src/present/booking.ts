@@ -8,6 +8,7 @@ import { Unlocks } from '../core/unlocks';
 import { tierOf, UNLIMITED_MARKS } from '../core/tiers';
 import { heatXp } from '../core/heat';
 import { Contracts } from '../core/contracts';
+import { Mafia } from '../core/mafia';
 import { Achievements } from '../core/achievements';
 import { S, Fmt } from './strings';
 import type { Tip } from './notices';
@@ -89,6 +90,9 @@ export function bookShift(save: SaveGame, result: ShiftResult, ctx: ShiftContext
   if (ctx.mode === 'shift') Careers.noteShift(career, result.outcome === 'completed');
   Achievements.record(career, result, ctx.shiftConfig, ctx.mode);
   const news: string[] = milestones.map((id) => S.modes.milestone(id));
+  // A late loan takes its share of the pay before anything else is booked against it.
+  const garnished = Mafia.garnish(career, career.money - bankBefore, Date.now(), ctx.config);
+  if (garnished > 0) news.push(S.mafia.garnished(Fmt.number(garnished), career.loan === null));
   // A contract signed for this shift is settled now: paid back with its multiple, lost, or voided by an eased shift.
   const contract = ctx.mode === 'shift' && !ctx.daily ? Contracts.settle(career, result, ctx.shiftConfig.shiftCars, ctx.shiftConfig.assisted, ctx.config) : null;
   if (contract) news.push(S.club.contractSettled(contract));

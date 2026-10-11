@@ -1,5 +1,6 @@
 import { Careers } from '../core/career';
 import { Unlocks } from '../core/unlocks';
+import { Mafia } from '../core/mafia';
 import type { ChestKind } from '../core/loot';
 import { ShopPage, type ShopTarget, shelfItems } from './shop';
 import type { CasinoFlow } from './casinoFlow';
@@ -37,7 +38,7 @@ export class ShopFlow {
     switch (target.k) {
       case 'section':
         if (target.section === 2 && !Unlocks.isOpen(career, 'casino', this.host.config)) {
-          this.host.showNotice(S.unlocks.opensAt(S.shop.section(2), Unlocks.level('casino', this.host.config)));
+          this.host.showNotice(Mafia.late(career) ? S.mafia.casinoShut : S.unlocks.opensAt(S.shop.section(2), Unlocks.level('casino', this.host.config)));
           this.host.play(['denied'], []);
           break;
         }

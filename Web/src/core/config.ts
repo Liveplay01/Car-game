@@ -200,6 +200,8 @@ export const baseConfig = {
   criminalInterval: r(10, 16),
   criminalWarning: 2,
   criminalTime: 12,
+  /** A criminal stays at least one lap of the ring at base speed times this (Leo, 11.10.2026): a big ring or a jam must not let it go before the police can reach it. */
+  criminalLapMargin: 1.4,
   takedownPoints: 1000,
   criminalEntryGap: 0.05,
   criminalMass: 2.5,
@@ -925,10 +927,47 @@ export const baseConfig = {
 
   // Contracts (Leo, 10.10.2026; core/contracts.ts): money on a clean shift. The stake is paid when signed; a goal met pays it back times `contractPay`.
   contractStakes: [10_000, 50_000, 100_000, 250_000] as readonly number[],
-  contractPay: { clean: 1.15, sharp: 3, flawless: 4.5 },
+  contractPay: { clean: 1.1, sharp: 2.2, flawless: 3.2 },
   /** Sharp and Flawless ask for this share of the shift's cars to be Perfects / one unbroken chain. */
-  contractSharpShare: 0.25,
-  contractFlawlessShare: 0.55,
+  contractSharpShare: 0.3,
+  contractFlawlessShare: 0.6,
+
+  // The Mafia (Leo, 11.10.2026; core/mafia.ts): after the first boss it lends money against a deal struck on a pointer bar.
+  // The biggest loan grows with the level; the interest and the green zone get kinder with every loan repaid in time.
+  mafiaLoanBase: 5_000,
+  mafiaLoanPerLevel: 1_500,
+  mafiaLoanPerPrestige: 40_000,
+  mafiaLoanMax: 1_000_000,
+  /** The loan buttons: shares of the biggest loan. */
+  mafiaLoanShares: [0.25, 0.5, 1] as readonly number[],
+  mafiaInterest: 0.2,
+  /** Interest points off per loan repaid in time, and the least interest ever. */
+  mafiaInterestPerClean: 0.02,
+  mafiaInterestMin: 0.05,
+  mafiaDays: 5,
+  /** The green zone's width as a share of the bar, and what each clean repayment adds (up to `mafiaZoneMax`). */
+  mafiaZone: 0.1,
+  mafiaZonePerClean: 0.01,
+  mafiaZoneMax: 0.18,
+  /** The middle of the zone (this share of its width) is a Perfect: the best deal. */
+  mafiaPerfect: 0.2,
+  /** Deal by the pointer's stop: interest points off and days on. A miss is the plain offer. */
+  mafiaPerfectDeal: { interest: 0.08, days: 2 },
+  mafiaGoodDeal: { interest: 0.04, days: 1 },
+  /** Sweeps of the bar per second at the smallest and at the biggest loan. */
+  mafiaSpeed: { lo: 0.8, hi: 2.0 },
+  /** The pointer waits this long after the table is set, so a double tap cannot stop it. */
+  mafiaArmMs: 450,
+  /** Late: the debt grows by this share per day, up to `mafiaLateCap`, and this share of every shift's pay goes to the Family. */
+  mafiaLateRate: 0.03,
+  mafiaLateCap: 0.5,
+  mafiaGarnish: 0.25,
+  /** Back after the day passed unseen: one day of grace (once per loan). A loan late for this many days is written off, and the Family shuts its doors for `mafiaBanDays`. */
+  mafiaGraceDays: 1,
+  mafiaWriteOffDays: 14,
+  mafiaBanDays: 14,
+  /** A steady hand: the pointer is this much slower, and the deal cannot be a Perfect. */
+  mafiaAssistSpeed: 0.5,
 
   // City Fund (Leo, 10.10.2026; Server/src/modules/fund): one gift goes in, the whole city builds.
   fundMinGift: 10_000,

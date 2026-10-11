@@ -28,6 +28,8 @@ import { DetailSheet } from './detailSheet';
 import { VersusLobby } from './versusLobby';
 import { SocialView } from './socialPage';
 import type { ClubHost } from './clubPanel';
+import type { MafiaHost } from './mafiaPanel';
+import { installMafiaDebug } from './mafiaDebug';
 import { SocialPage } from '../present/social';
 import { Fund } from '../core/fund';
 import { fetchFund, fundEnabled } from '../net/fund';
@@ -274,11 +276,14 @@ export class Shell {
     };
     // The Social tab: Friends, Ranks and the Club under the canvas' segments (Progress → the rank chip leads to Ranks).
     const s = this.session;
+    if (import.meta.env.DEV) installMafiaDebug(s);
     this.social = new SocialView(app, {
       friends: () => ({ records: () => s.leaderboardRecords, playTogether: () => this.openLobby(), challenge: s.shareable !== null ? () => this.share() : null }),
       ranks: () => ({ records: () => s.leaderboardRecords }),
       club: () => this.clubHost(),
       clubOpen: () => SocialPage.clubOpen(s.save.career),
+      mafia: () => this.mafiaHost(),
+      mafiaOpen: () => SocialPage.mafiaOpen(s.save.career),
       online: leaderboardEnabled,
       friendsAllowed: leaderboardEnabled && !inPortal,
     });
@@ -816,6 +821,29 @@ export class Shell {
       },
       sound: (id, pitch) => {
         if (s.save.settings.sound) this.audio.play(id, pitch ?? 1);
+      },
+    };
+  }
+
+  /** What the Mafia (Social → Mafia) needs from the game: the save, a notice, the cheer and the sounds. */
+  private mafiaHost(): MafiaHost {
+    const s = this.session;
+    return {
+      career: () => s.save.career,
+      changed: () => s.clubChanged(),
+      notice: (text) => s.announce(text),
+      reduceMotion: () => s.reduceMotion,
+      lite: () => s.save.settings.batterySaver,
+      celebrate: () => {
+        celebrate();
+        if (s.save.settings.sound) this.audio.play('shiftComplete', 1);
+        if (s.save.settings.haptics) this.haptics.play('shiftComplete', 0);
+      },
+      sound: (id, pitch) => {
+        if (s.save.settings.sound) this.audio.play(id, pitch ?? 1);
+      },
+      feel: (id) => {
+        if (s.save.settings.haptics) this.haptics.play(id, 0);
       },
     };
   }

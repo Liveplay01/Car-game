@@ -1,5 +1,7 @@
 import { type Career } from '../core/career';
 import { Auction } from '../core/auction';
+import { DAY_MS, Mafia } from '../core/mafia';
+import { inPortal } from '../storage/device';
 import { baseConfig } from '../core/config';
 import { type Vec2, v, clamp } from '../core/vec2';
 import { type RenderList, type Rect, R, Ease, Metrics } from './render';
@@ -9,7 +11,7 @@ import { S, Fmt } from './strings';
 import { ShopPage } from './shop';
 import { SOCIAL, type SocialSection } from './flow';
 
-const SOCIAL_SECTIONS: SocialSection[] = [SOCIAL.friends, SOCIAL.ranks, SOCIAL.club];
+const SOCIAL_SECTIONS: SocialSection[] = [SOCIAL.friends, SOCIAL.ranks, SOCIAL.club, SOCIAL.mafia];
 
 /** What the Social tab animates: the chosen segment and the thumb gliding to it. */
 export class SocialState {
@@ -61,6 +63,12 @@ export const SocialPage = {
   /** A new auction day, or lots still to try: the Club is worth a visit. */
   clubWaits: (career: Career, today: number): boolean => SocialPage.clubOpen(career) && (career.auctionDay !== today || career.auctionTaken.length < baseConfig.auctionLots),
 
+  /** The Mafia talks to whoever has put the first boss away: not inside CrazyGames, whose rules for ages and themes are stricter. */
+  mafiaOpen: (career: Career): boolean => Mafia.isOpen(career) && !inPortal,
+
+  /** A loan that is late or falls due within a day: the Mafia segment calls. */
+  mafiaWaits: (career: Career, now: number): boolean => career.loan !== null && (career.loan.late || career.loan.due - now < DAY_MS),
+
   add(list: RenderList, career: Career, today: number, state: SocialState, reduceMotion: boolean): void {
     const vp = list.camera.viewport;
     MenuKit.backdrop(list);
@@ -73,10 +81,22 @@ export const SocialPage = {
       const spring = reduceMotion ? 1 : Ease.settle(state.sectionSlide.age / ShopPage.slideDuration);
       thumb = clamp(state.sectionSlide.from + (chosen - state.sectionSlide.from) * spring, 0, SOCIAL_SECTIONS.length - 1);
     }
-    MenuKit.segmented(list, SOCIAL_SECTIONS.map((i) => S.social.section(i)), chosen, thumb, all, SOCIAL_SECTIONS.map((i) => i === SOCIAL.club && !SocialPage.clubOpen(career)));
-    if (SocialPage.clubWaits(career, today)) {
-      const r = cells[SOCIAL.club][1];
-      ShopPage.badgeDot(list, v(R.center(r).x + textWidth(S.social.section(SOCIAL.club), 13) / 2 + 8, R.center(r).y - 6), 1);
+    MenuKit.segmented(
+      list,
+      SOCIAL_SECTIONS.map((i) => S.social.section(i)),
+      chosen,
+      thumb,
+      all,
+      SOCIAL_SECTIONS.map((i) => (i === SOCIAL.club && !SocialPage.clubOpen(career)) || (i === SOCIAL.mafia && !SocialPage.mafiaOpen(career))),
+    );
+    const dots: [SocialSection, boolean][] = [
+      [SOCIAL.club, SocialPage.clubWaits(career, today)],
+      [SOCIAL.mafia, SocialPage.mafiaWaits(career, Date.now())],
+    ];
+    for (const [section, on] of dots) {
+      if (!on) continue;
+      const r = cells[section][1];
+      ShopPage.badgeDot(list, v(R.center(r).x + textWidth(S.social.section(section), 13) / 2 + 8, R.center(r).y - 6), 1);
     }
   },
 };

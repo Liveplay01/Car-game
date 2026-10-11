@@ -1187,7 +1187,7 @@ function islandLine(list: RenderList, s: string, radius: number, dy: number, siz
   const r = radius * list.camera.scale - 8;
   const reach = Math.abs(dy) + size / 2;
   const width = Math.max(60, 2 * Math.sqrt(Math.max(0, r * r - reach * reach)));
-  drawFitted(list, s, add(toScreen(list.camera, v(0, 0)), v(0, dy)), size, width, color, { weight, opacity });
+  drawFitted(list, s, add(toScreen(list.camera, v(0, 0)), v(0, dy)), size, width, color, { weight, opacity, align: 'center' });
 }
 
 export const ReadyBanner = {

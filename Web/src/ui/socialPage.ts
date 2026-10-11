@@ -2,6 +2,7 @@ import { h } from './dom';
 import { friendsPanel, type FriendsActions } from './friendsPanel';
 import { ranksPanel, type RanksActions } from './ranksPanel';
 import { clubPanel, type ClubHost, type ClubPanel } from './clubPanel';
+import { mafiaPanel, type MafiaHost, type MafiaPanel } from './mafiaPanel';
 import { fadeIn } from './sheets';
 import { SOCIAL, type SocialSection } from '../present/flow';
 import { S } from '../present/strings';
@@ -11,6 +12,8 @@ export interface SocialHost {
   ranks(): RanksActions;
   club(): ClubHost;
   clubOpen(): boolean;
+  mafia(): MafiaHost;
+  mafiaOpen(): boolean;
   /** The ranking service is there (`VITE_API_URL`): without it Friends and Ranks have nothing to show. */
   online: boolean;
   /** Friend codes and invite links are not shown inside CrazyGames. */
@@ -35,6 +38,7 @@ export class SocialView {
   private readonly toastEl = h('div', { class: 'social-toast glass', role: 'presentation', 'aria-hidden': 'true' });
   private section: SocialSection | null = null;
   private club: ClubPanel | null = null;
+  private mafia: MafiaPanel | null = null;
   private clearing = 0;
 
   constructor(
@@ -83,6 +87,8 @@ export class SocialView {
     this.clearing = window.setTimeout(() => {
       this.club?.dispose();
       this.club = null;
+      this.mafia?.dispose();
+      this.mafia = null;
       this.inner.replaceChildren();
       this.el.hidden = true;
     }, 220);
@@ -91,8 +97,15 @@ export class SocialView {
   private build(section: SocialSection): HTMLElement {
     this.club?.dispose();
     this.club = null;
+    this.mafia?.dispose();
+    this.mafia = null;
     if (section === SOCIAL.friends) return this.host.friendsAllowed ? friendsPanel(this.host.friends()) : h('p', { class: 'section-note' }, this.host.online ? S.social.noFriends : S.social.offline);
     if (section === SOCIAL.ranks) return this.host.online ? ranksPanel(this.host.ranks()) : h('p', { class: 'section-note' }, S.social.offline);
+    if (section === SOCIAL.mafia) {
+      if (!this.host.mafiaOpen()) return h('p', { class: 'section-note' }, S.social.mafiaClosed);
+      this.mafia = mafiaPanel(this.host.mafia());
+      return this.mafia.el;
+    }
     if (!this.host.clubOpen()) return h('p', { class: 'section-note' }, S.social.clubClosed);
     this.club = clubPanel(this.host.club());
     return this.club.el;

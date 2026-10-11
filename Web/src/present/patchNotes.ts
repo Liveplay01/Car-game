@@ -53,14 +53,20 @@ export const PATCH_NOTES: PatchNote[] = [
   {
     id: '2026-10-11',
     date: '11 October 2026',
-    title: 'Combos up to ×6, a harder Heat, special cars that find their gap on two lanes',
+    title: 'The Mafia lends money, combos up to ×6, a harder Heat, special cars that find their gap',
     impact: 'major',
     summary: [
+      'The Mafia (Social tab, after your first boss) lends money. Pay it back in time, or else.',
       'Combos now climb to ×6: new steps at 30, 45 and 60 merges.',
       'Heat is much harder: faster, denser traffic and quicker criminals.',
       'On two lanes the criminal and the street racers no longer wait outside for good.',
     ],
     items: [
+      { text: 'Fixed: on a big roundabout or in a jam the criminal could get away before your police car even reached it. It now stays at least a full lap, with room for traffic.', from: null },
+      'Contracts pay less and ask more: Clean sheet ×1.1 (was ×1.15), Sharp ×2.2 (was ×3) from 30 % Perfect merges (was 25 %), Flawless ×3.2 (was ×4.5) with a chain of 60 % of the cars (was 55 %).',
+      'The Mafia gives you a day of grace if the loan fell due while you were away, writes a debt off after two weeks late (and shuts its doors for two weeks), and has a Steady hand switch: a slower pointer, but no Perfect deal.',
+      'New: the Mafia, a fourth segment of the Social tab once you have put the first boss away. Pick a loan, then stop a pointer inside the green zone: the closer to the middle, the lower the interest and the longer you have. The bigger the loan, the faster the pointer. Pay it back by the day on the letter, in real time. Repaid in time, the next loan is cheaper and the zone wider. Late, the debt grows each day, a quarter of every shift pays the Family, no transporter, criminal or boss pays out, the Casino is shut and a Mafia badge sits next to your name on the boards until you pay.',
+      { text: 'Fixed: Elite XP stopped showing after a level that was paid before the progressive curve (e.g. Elite 105). The bar now starts at that level and fills with every shift.', from: null },
       'The combo multiplier now goes up to ×6: ×4 at 30, ×5 at 45 and ×6 at 60 merges in a row.',
       { text: 'Heat is harder at every step: 6 % more tempo, one more car on the road, a shorter time to catch the criminal and faster traffic.', from: null },
       { text: 'Fixed: on a busy two-lane roundabout the criminal or the street racers could wait at the line for a minute. They now take whichever lane has a gap.', from: null },
