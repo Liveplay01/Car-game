@@ -2704,7 +2704,7 @@ export class GameSession {
       HUD.addPopups(list, this.popups, rm);
       if (this.countIn > 0 || this.isInterrupted) HUD.addCountIn(list, this.isInterrupted ? GameSession.countInSeconds : this.countIn);
     } else if (s.k === 'result') {
-      ResultBanner.add(list, s.summary, this.playingLevel, this.resultBank, this.resultAge, rm, this.giftLine);
+      ResultBanner.add(list, s.summary, this.playingLevel, this.resultBank, this.resultAge, rm, this.giftLine, world.layout.islandRadius);
       this.tutorial?.add(list, world, alpha, this.sceneTime, rm);
       const arriving = ResultBanner.arriving(this.resultAge);
       if (arriving > 0) underCard = this.addReadyBanner(list, null, false, arriving);
@@ -2843,6 +2843,7 @@ export class GameSession {
       noticeRoom: this.noticeRoom,
       message: this.topMessage,
       ringTop: toScreen(list.camera, v(0, this.world.layout.ringRadius + this.world.layout.laneWidth)).y,
+      island: this.world.layout.islandRadius,
     });
     if (chips.length > 0) {
       ConditionChips.add(list, chips, chipsAt, { time: this.sinceReady - ReadyBanner.introDelay, reduceMotion: this.reduceMotion, opacity, selected: this.conditionShown });
@@ -2915,6 +2916,11 @@ export class GameSession {
         if (!CHEST_KINDS.includes(kind)) continue;
         career.chests.push(kind);
         news.push(S.rewards.invite(reason, kind) ?? S.rewards.chest(kind));
+      } else if (item.startsWith('money:')) {
+        const amount = Number(item.slice(6));
+        if (!Number.isSafeInteger(amount) || amount < 1) continue;
+        career.money += amount;
+        news.push(S.rewards.money(amount));
       } else if (cosmetic(item)) {
         if (Careers.owns(career, item)) continue;
         Careers.collect(career, item);

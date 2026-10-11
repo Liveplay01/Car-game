@@ -8,7 +8,7 @@ import { apiRequest, leaderboardEnabled, loadAccount } from './leaderboard';
  * already paid are remembered here, so a lost answer never pays twice.
  */
 
-export type RewardItem = 'ladybug' | 'goldbug' | 'scarab' | 'bluebottle' | 'orchid' | 'firefly' | 'chest:standard' | 'chest:premium' | 'chest:event';
+export type RewardItem = 'ladybug' | 'goldbug' | 'scarab' | 'bluebottle' | 'orchid' | 'firefly' | 'chest:standard' | 'chest:premium' | 'chest:diamond' | 'chest:event' | `money:${number}`;
 export interface Reward {
   id: string;
   item: RewardItem;

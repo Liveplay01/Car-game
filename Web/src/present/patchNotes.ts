@@ -51,6 +51,24 @@ export const itemCredit = (item: PatchItem): string | null => {
 
 export const PATCH_NOTES: PatchNote[] = [
   {
+    id: '2026-10-11',
+    date: '11 October 2026',
+    title: 'Combos up to ×6, a harder Heat, special cars that find their gap on two lanes',
+    impact: 'major',
+    summary: [
+      'Combos now climb to ×6: new steps at 30, 45 and 60 merges.',
+      'Heat is much harder: faster, denser traffic and quicker criminals.',
+      'On two lanes the criminal and the street racers no longer wait outside for good.',
+    ],
+    items: [
+      'The combo multiplier now goes up to ×6: ×4 at 30, ×5 at 45 and ×6 at 60 merges in a row.',
+      { text: 'Heat is harder at every step: 6 % more tempo, one more car on the road, a shorter time to catch the criminal and faster traffic.', from: null },
+      { text: 'Fixed: on a busy two-lane roundabout the criminal or the street racers could wait at the line for a minute. They now take whichever lane has a gap.', from: null },
+      { text: 'Fixed: long lines in the middle of the roundabout, before and after a shift, shrink to fit the island instead of running onto the road.', from: null },
+      { text: 'Fixed: the City Fund shows the Fountain as a fountain, not as its car skin.', from: null },
+    ],
+  },
+  {
     id: '2026-10-10',
     date: '10 October 2026',
     title: 'A Social tab, the Club for big balances, five new upgrades and skins with their own car shapes',

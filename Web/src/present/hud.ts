@@ -13,10 +13,10 @@ import { learnerZone } from '../core/learner';
 import { oversizeZone } from '../core/oversize';
 import { weddingZone } from '../core/wedding';
 import { type Vec2, v, add, sub, mul, fromAngle, TAU, clamp } from '../core/vec2';
-import { type RenderList, type Rect, type Primitive, R, rect, circle, arc, line, polygon, text, Ease, Metrics, toScreen, moved, type Align } from './render';
+import { type RenderList, type Rect, type Primitive, R, rect, circle, arc, line, polygon, text, Ease, Metrics, toScreen, moved, type Align, type Weight } from './render';
 import type { ColorToken } from './theme';
 import { MenuKit } from './menukit';
-import { moneyTag, flameTag, textWidth } from './icons';
+import { moneyTag, flameTag, textWidth, drawFitted } from './icons';
 import { S, Fmt, money as moneyText, comboMultiplier } from './strings';
 import { interpolatedPose } from './scene';
 import { wrapText } from './upgrades';
@@ -1182,6 +1182,14 @@ interface IntroLayout {
   rows: { title: string; lines: string[] }[];
 }
 
+/** A line in the middle of the island, shrunk or cut to the grass at its height so it never runs onto the road (`radius` in world units, `dy` in points below the centre). */
+function islandLine(list: RenderList, s: string, radius: number, dy: number, size: number, color: ColorToken, opacity: number, weight: Weight = 'regular'): void {
+  const r = radius * list.camera.scale - 8;
+  const reach = Math.abs(dy) + size / 2;
+  const width = Math.max(60, 2 * Math.sqrt(Math.max(0, r * r - reach * reach)));
+  drawFitted(list, s, add(toScreen(list.camera, v(0, 0)), v(0, dy)), size, width, color, { weight, opacity });
+}
+
 export const ReadyBanner = {
   splashDuration: 3,
   add(
@@ -1225,6 +1233,8 @@ export const ReadyBanner = {
       message?: TopMessage | null;
       /** Where the ring's outer edge is on screen: the intro card stays above it (the scene is never covered). */
       ringTop?: number;
+      /** The island's radius in world units: the lines in the middle stay inside it. */
+      island: number;
     },
   ): number {
     const width = list.camera.viewport.x;
@@ -1299,10 +1309,10 @@ export const ReadyBanner = {
     const intro = o.intro && o.intro.length > 0 ? ReadyBanner.introLayout(o.intro, frame, under + 12 + (o.noticeRoom ?? 0), introBottom, o.textScale ?? 1) : null;
     if (o.prompt) {
       const breath = o.reduceMotion ? 1 : 0.7 + 0.3 * (0.5 + 0.5 * Math.cos(o.time * 2.4));
-      list.s(text(o.prompt, island, 17, 'center', 'bold'), 'primary', breath * opacity);
+      islandLine(list, o.prompt, o.island, 0, 17, 'primary', breath * opacity, 'bold');
     }
-    if (run?.line) list.s(text(run.line, sub(island, v(0, 28)), 14, 'center', 'bold'), run.color, opacity);
-    if (o.goal && o.prompt) list.s(text(o.goal, add(island, v(0, 28)), 13, 'center'), 'muted', opacity * (o.reduceMotion ? 1 : Ease.outCubic(o.time / 0.4)));
+    if (run?.line) islandLine(list, run.line, o.island, -28, 14, run.color, opacity, 'bold');
+    if (o.goal && o.prompt) islandLine(list, o.goal, o.island, 28, 13, 'muted', opacity * (o.reduceMotion ? 1 : Ease.outCubic(o.time / 0.4)));
     if (intro) ReadyBanner.addIntro(list, intro, o.time, o.reduceMotion, opacity);
     return under;
   },
@@ -1490,7 +1500,7 @@ export const ResultBanner = {
     return summary.mode === 'chill' ? `${title}. ${detail}${best}` : `${title}. ${Fmt.number(r.score)} points${best}. ${detail}${elite}`;
   },
 
-  add(list: RenderList, summary: ShiftSummary, nextLevel: number, bank: { before: number; after: number }, age: number, reduceMotion: boolean, gift: string | null = null): void {
+  add(list: RenderList, summary: ShiftSummary, nextLevel: number, bank: { before: number; after: number }, age: number, reduceMotion: boolean, gift: string | null, islandRadius: number): void {
     const r = summary.result;
     const frame = TopBar.frame(list.camera.viewport.x);
     const cols = TopBar.columns(frame);
@@ -1549,26 +1559,27 @@ export const ResultBanner = {
             : r.outcome === 'completed'
             ? S.result.nextLevel(nextLevel)
             : S.result.retryLevel(nextLevel);
-    list.s(text(next, island, 17, 'center', 'bold'), 'primary', prompt);
+    islandLine(list, next, islandRadius, 0, 17, 'primary', prompt, 'bold');
     // Once the result's details are gone the prompt stays alone: the promise for tomorrow takes their place, as on the ready screen.
-    if (gift) list.s(text(gift, add(island, v(0, 28)), 13, 'center'), 'muted', prompt * ResultBanner.arriving(age));
+    if (gift) islandLine(list, gift, islandRadius, 28, 13, 'muted', prompt * ResultBanner.arriving(age));
     const details = prompt * (1 - ResultBanner.leaving(age));
     if (details <= 0.001) return;
-    if (run) list.s(text(run.line, sub(island, v(0, 28)), 14, 'center', 'bold'), run.lineColor, details);
-    else if (r.costs > 0) list.s(text(S.result.loss(Fmt.number(r.costs), r.outcome === 'escaped'), sub(island, v(0, 28)), 14, 'center', 'bold'), 'destructive', details);
-    else if (r.covered > 0) list.s(text(S.result.covered(Fmt.number(r.covered)), sub(island, v(0, 28)), 14, 'center', 'bold'), 'muted', details);
-    else if (summary.mode === 'unlimited') list.s(text(S.modes.carsSent(r.carsSent), sub(island, v(0, 28)), 14, 'center', 'bold'), 'accent', details);
-    else if (summary.mode === 'mayhem') list.s(text(S.mayhem.summary(r.wrecks, r.biggestChain), sub(island, v(0, 28)), 14, 'center', 'bold'), 'fireOuter', details);
-    else if (summary.mode === 'chill') list.s(text(S.chill.summary(r.carsSent, Fmt.seconds(r.time)), sub(island, v(0, 28)), 14, 'center', 'bold'), 'lightBlue', details);
+    const above = (s: string, color: ColorToken): void => islandLine(list, s, islandRadius, -28, 14, color, details, 'bold');
+    if (run) above(run.line, run.lineColor);
+    else if (r.costs > 0) above(S.result.loss(Fmt.number(r.costs), r.outcome === 'escaped'), 'destructive');
+    else if (r.covered > 0) above(S.result.covered(Fmt.number(r.covered)), 'muted');
+    else if (summary.mode === 'unlimited') above(S.modes.carsSent(r.carsSent), 'accent');
+    else if (summary.mode === 'mayhem') above(S.mayhem.summary(r.wrecks, r.biggestChain), 'fireOuter');
+    else if (summary.mode === 'chill') above(S.chill.summary(r.carsSent, Fmt.seconds(r.time)), 'lightBlue');
     if (summary.mode !== 'mayhem' && summary.mode !== 'chill') {
-      list.s(text(S.result.stats(r.bestCombo, r.tightFits, r.takedowns, r.transporters, Fmt.seconds(r.time)), add(island, v(0, 28)), 13, 'center'), 'muted', details);
+      islandLine(list, S.result.stats(r.bestCombo, r.tightFits, r.takedowns, r.transporters, Fmt.seconds(r.time)), islandRadius, 28, 13, 'muted', details);
     }
     const close = summary.closeCall;
     if (close) {
       // It lands a moment after the prompt: the thing to read after "tap to try again".
       const enter = reduceMotion ? 1 : Ease.outCubic((age - ResultBanner.inputLock - 0.15) / 0.3);
       const rise = reduceMotion ? 0 : 6 * (1 - Ease.clamp01(enter));
-      if (enter > 0) list.s(text(close.text, add(island, v(0, 54 + rise)), 14, 'center', 'bold'), close.color, details * Ease.clamp01(enter));
+      if (enter > 0) islandLine(list, close.text, islandRadius, 54 + rise, 14, close.color, details * Ease.clamp01(enter), 'bold');
     }
     const elite = summary.elite;
     if (elite) {
@@ -1578,7 +1589,7 @@ export const ResultBanner = {
       const since = age - RingSignals.hold - (climbed ? RingSignals.eliteClosesAt : 0.3);
       const enter = reduceMotion ? 1 : Ease.outCubic(since / 0.3);
       const size = climbed ? 16 * (reduceMotion ? 1 : land(since / 0.45, 0.25)) : 13;
-      if (enter > 0) list.s(text(S.elite.toGo(elite), add(island, v(0, close ? 80 : 56)), size, 'center', 'bold'), 'coin', details * enter);
+      if (enter > 0) islandLine(list, S.elite.toGo(elite), islandRadius, close ? 80 : 56, size, 'coin', details * enter, 'bold');
     }
   },
 };

@@ -41,7 +41,7 @@ only erasable syntax is allowed (no `enum`, no constructor parameter properties)
 | `GET /c/:id` | The page behind the short link (outside `/v1`, for people and chat apps): Open Graph tags with title, text and picture, then straight on to `GAME_URL/#challenge=<code>` |
 | `GET /c/:id/preview.png` | Its picture, 1200 × 630, drawn by the server. A new picture takes about a quarter of a second, so at most 20 are drawn a minute (all callers together, `429` with `Retry-After`); pictures already drawn are served from memory |
 | `POST /v1/feedback` `{kind, text, friendCode?, website?}` | Build with us (the website's forms): `kind` is `bug` or `idea`, `text` 10–2000 characters. One of each a day per address and per friend code (`429 once_a_day`). A bug report with a valid friend code pays the next bug hunter skin (`ladybug`, `goldbug`, `scarab`, `bluebottle`, `orchid`, `firefly`, in that order, one per report, six in all): `{id, reward: <skin> \| null}`. `website` is a honeypot: filled in, nothing is kept |
-| `GET /v1/me/rewards` · `POST /v1/me/rewards/claim` `{ids}` | (token) Rewards waiting for the player (the bug hunter skins, `chest:standard`, `chest:premium`, `chest:event`); the game pays them and claims them |
+| `GET /v1/me/rewards` · `POST /v1/me/rewards/claim` `{ids}` | (token) Rewards waiting for the player (the bug hunter skins, `chest:standard`, `chest:premium`, `chest:diamond`, `chest:event`, `money:50000`); the game pays them and claims them |
 | `GET /v1/me/referral` | (token) Invite a friend: `{code, link, level, reward, milestones, invitedBy, invited: [{name, done, at}], done, max}`. `link` is the share page `/i/<code>` (null without a game address). Also settles the player's own invite when they are at the level already |
 | `POST /v1/me/referral` `{code}` | (token) A new player hands in the friend code they came with, once: `201` with the same view (`200` for the same inviter again). `404 unknown_code`, `422 invalid_code` / `own_code` / `not_new` (account older than 14 days) / `invite_loop`, `409 already_invited`; 10 an hour per player |
 | `GET /i/:code` | The invite page (outside `/v1`): Open Graph tags with the inviter's name and the game's own `og-image.jpg`, then straight on to `GAME_URL/?ref=<code>`. An unknown code still goes to the game, only without `?ref` |
@@ -193,6 +193,7 @@ curl -X DELETE -H "$H" "$API/v1/admin/players/<id>"                         # re
 curl -H "$H" "$API/v1/admin/feedback?kind=bug&status=new"                   # bug reports (kind=idea: ideas)
 curl -X PATCH  -H "$H" -d '{"status":"done"}' "$API/v1/admin/feedback/<id>" # new · seen · done · wontfix
 curl -X POST   -H "$H" -d '{"friendCode":"K7M2-9QXA","item":"chest:premium"}' "$API/v1/admin/rewards"
+curl -X POST   -H "$H" -d '{"friendCode":"K7M2-9QXA","item":"money","amount":50000}' "$API/v1/admin/rewards"
 ```
 
 Easier: open `https://api.your-domain.tld/admin`, type the admin token (kept in that tab only), and the

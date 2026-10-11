@@ -310,6 +310,7 @@ export const S = {
   rewards: {
     bugHunter: (id: string): string => `${S.shop.item(id).toUpperCase()} UNLOCKED · thanks for hunting bugs`,
     chest: (kind: ChestKind): string => `A GIFT FROM THE TEAM · ${S.shop.chest(kind)} · thank you`,
+    money: (amount: number): string => `A GIFT FROM THE TEAM · ${amount.toLocaleString('en-US')} money · thank you`,
     item: (id: string): string => `A GIFT FROM THE TEAM · ${S.shop.item(id)} unlocked`,
     /** A chest from an invite (`reason` as the service writes it: `invite:welcome:Name`, `invite:friend:Name`, `invite:milestone:3`); null for any other reason. */
     invite: (reason: string, kind: ChestKind): string | null => {

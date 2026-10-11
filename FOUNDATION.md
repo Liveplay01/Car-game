@@ -161,9 +161,9 @@ Entschieden wird im Playtest.
 
 ### 2.4 Combo-Multiplikator
 
-| Combo | 0–4 | 5–9 | 10–19 | 20+ |
-| --- | --- | --- | --- | --- |
-| Multiplikator | ×1 | ×1,5 | ×2 | ×3 |
+| Combo | 0–4 | 5–9 | 10–19 | 20–29 | 30–44 | 45–59 | 60+ |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| Multiplikator | ×1 | ×1,5 | ×2 | ×3 | ×4 | ×5 | ×6 |
 
 ### 2.5 Die Schicht
 

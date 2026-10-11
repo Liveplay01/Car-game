@@ -80,6 +80,12 @@ test('feedback: one bug report and one idea a day, a honeypot, and a bug hunter 
   assert.equal((await call('POST', '/v1/admin/rewards', { token: ADMIN, body: { friendCode: code, item: 'chest:premium' } })).status, 201);
   assert.deepEqual((await call('GET', '/v1/me/rewards', { token })).json.rewards.map((r: { item: string }) => r.item), ['chest:premium']);
 
+  // A diamond chest and money with a custom amount; a bad amount is refused.
+  assert.equal((await call('POST', '/v1/admin/rewards', { token: ADMIN, body: { friendCode: code, item: 'chest:diamond' } })).status, 201);
+  assert.equal((await call('POST', '/v1/admin/rewards', { token: ADMIN, body: { friendCode: code, item: 'money', amount: 12_345 } })).status, 201);
+  for (const amount of [0, -5, 1.5, 1_000_000_000, 'lots']) assert.equal((await call('POST', '/v1/admin/rewards', { token: ADMIN, body: { friendCode: code, item: 'money', amount } })).status, 422);
+  assert.deepEqual((await call('GET', '/v1/me/rewards', { token })).json.rewards.map((r: { item: string }) => r.item).sort(), ['chest:diamond', 'chest:premium', 'money:12345']);
+
   // Deleting the account keeps the reports, without the player; their rewards go.
   assert.equal((await call('DELETE', '/v1/me', { token })).status, 204);
   const after = await call('GET', '/v1/admin/feedback?kind=bug', { token: ADMIN });

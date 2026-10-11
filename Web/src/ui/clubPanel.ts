@@ -17,7 +17,8 @@ import { money, percent } from '../present/format';
 import { Details, type DetailArt } from '../present/detail';
 import { MONEY_MARK } from '../present/icons';
 import type { SoundID } from '../present/feedback';
-import { RenderList } from '../present/render';
+import { RenderList, circle } from '../present/render';
+import { Centre } from '../present/mapCentre';
 import { CanvasDrawer } from '../present/draw';
 import { v } from '../core/vec2';
 
@@ -64,14 +65,18 @@ const row = (title: string, sub: string, ...end: HTMLElement[]): HTMLElement =>
   h('div', { class: 'row' }, h('div', { class: 'row-main' }, h('div', { class: 'row-title' }, title), h('div', { class: 'row-sub' }, sub)), ...end);
 
 /** A picture drawn with the game's own art like the Shop's: the car in its paint, the map as its little city, the chest. */
-function picture(art: DetailArt, size = 56): HTMLElement {
+function picture(art: DetailArt | { k: 'fountain' }, size = 56): HTMLElement {
   const canvas = h('canvas', { class: 'club-art', width: size * 2, height: size * 2, 'aria-hidden': 'true' });
   canvas.style.width = `${size}px`;
   canvas.style.height = `${size}px`;
   const drawer = new CanvasDrawer(canvas);
   drawer.resize(size, size, 2);
-  const list = new RenderList({ viewport: v(size, size), center: v(0, 0), focus: v(size / 2, size / 2), scale: 1 }, 'card');
-  Details.drawArt(list, art, v(size / 2, size / 2), size, baseConfig);
+  const fountain = art.k === 'fountain';
+  const list = new RenderList({ viewport: v(size, size), center: v(0, 0), focus: v(size / 2, size / 2), scale: fountain ? size / 100 : 1 }, 'card');
+  if (fountain) {
+    list.w(circle(v(0, 0), 50), 'mapForest', 0.4);
+    Centre.fountain(list, v(0, 0), null);
+  } else Details.drawArt(list, art, v(size / 2, size / 2), size, baseConfig);
   drawer.draw(list);
   return canvas;
 }
@@ -667,7 +672,7 @@ export function clubPanel(host: ClubHost): ClubPanel {
     const body = h(
       'div',
       { class: 'fund-sheet' },
-      skin ? h('div', { class: 'fund-hero' }, picture({ k: 'item', id: skin.id, owned: true }, 112)) : '',
+      p.id === 'fountain' ? h('div', { class: 'fund-hero' }, picture({ k: 'fountain' }, 112)) : skin ? h('div', { class: 'fund-hero' }, picture({ k: 'item', id: skin.id, owned: true }, 112)) : '',
       h('p', { class: 'detail-text' }, S.club.projectText(p.id)),
       progress.el,
       h('div', { class: 'list' }, ...rows),

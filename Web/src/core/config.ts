@@ -190,8 +190,8 @@ export const baseConfig = {
   flowChain: 5,
   crashPenalty: 250,
   completionBonus: 1000,
-  comboThresholds: [5, 10, 20],
-  comboMultipliers: [1.5, 2, 3],
+  comboThresholds: [5, 10, 20, 30, 45, 60],
+  comboMultipliers: [1.5, 2, 3, 4, 5, 6],
 
   // Police and criminals
   policeShare: 0.2,
@@ -820,12 +820,12 @@ export const baseConfig = {
   /** Heat (core/heat.ts): the shift's Heat (set per shift, 0 = off), the highest one, and what each step adds. */
   heat: 0,
   maxHeat: 8,
-  heatTempo: 0.04,
-  heatDensityEvery: 2,
-  heatCriminal: 0.05,
-  heatMinCriminalTime: 6,
-  heatSpawn: 0.05,
-  heatMinSpawnFactor: 0.25,
+  heatTempo: 0.06,
+  heatDensityEvery: 1,
+  heatCriminal: 0.07,
+  heatMinCriminalTime: 5,
+  heatSpawn: 0.07,
+  heatMinSpawnFactor: 0.2,
   heatPay: 0.1,
   eliteXpHeat: 2,
   /** Hours before midnight from which the waiting card warns that the streak is about to break. */

@@ -66,7 +66,7 @@ export function updateTraffic(w: World, dt: number): void {
     const patient = p.waited < c.aiPatience;
     // A motorbike slips into gaps a car would not take.
     const clear = barges
-      ? canBargeIn(w, p.arm, veh.type)
+      ? bargesIn(w, p.arm, veh)
       : veh.type === 'motorbike'
         ? canSlipIn(w, p.arm, veh.lane)
         : patient
@@ -296,8 +296,17 @@ function canEnter(w: World, arm: Arm, lane: 0 | 1 = 0, type: VehicleType = 'car'
  * The criminal's rule: any gap it gets through without touching anyone will do. Slow traffic never
  * holds it back (a toll booth's zone in front of the entry kept it out for good); only a wreck does.
  */
-function canBargeIn(w: World, arm: Arm, type: VehicleType): boolean {
-  return !isDisturbedNear(w, arm, true) && closesSafely(w, arm, 0, type) && w.predictedMergeGap(arm, 0, 30, w.config.criminalEntryGap, 0, type) >= w.config.criminalEntryGap;
+function canBargeIn(w: World, arm: Arm, type: VehicleType, lane: 0 | 1): boolean {
+  return !isDisturbedNear(w, arm, true) && closesSafely(w, arm, lane, type) && w.predictedMergeGap(arm, 0, 30, w.config.criminalEntryGap, lane, type) >= w.config.criminalEntryGap;
+}
+
+/** On two lanes the criminal and the racers take whichever lane has the gap: a busy outer lane no longer keeps them out. */
+function bargesIn(w: World, arm: Arm, veh: Vehicle): boolean {
+  const lanes: (0 | 1)[] = w.layout.lanes >= 2 && (veh.type === 'pickup' || veh.type === 'racer') ? [veh.lane, veh.lane === 0 ? 1 : 0] : [veh.lane];
+  const lane = lanes.find((l) => canBargeIn(w, arm, veh.type, l));
+  if (lane === undefined) return false;
+  veh.lane = lane;
+  return true;
 }
 
 /** A motorbike: any gap of `motorbikeEntryGap` will do, as long as nothing is wrecked nearby. */

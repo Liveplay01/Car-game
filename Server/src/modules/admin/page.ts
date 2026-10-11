@@ -67,7 +67,8 @@ export const ADMIN_PAGE = `<!doctype html>
     <h2>Give a reward</h2>
     <form class="bar" id="reward" style="margin:0">
       <input id="code" placeholder="Friend code (K7M2-9QXA)" style="flex:1;min-width:180px" required>
-      <select id="item"><option value="chest:premium">Premium Chest</option><option value="chest:standard">Standard Chest</option><option value="chest:event">Event Chest</option><option value="ladybug">Ladybug skin</option><option value="goldbug">Goldbug skin</option><option value="scarab">Scarab skin</option><option value="bluebottle">Bluebottle skin</option><option value="orchid">Orchid Beetle skin</option><option value="firefly">Firefly skin</option></select>
+      <select id="item"><option value="chest:premium">Premium Chest</option><option value="chest:diamond">Diamond Chest</option><option value="chest:standard">Standard Chest</option><option value="chest:event">Event Chest</option><option value="money">Money</option><option value="ladybug">Ladybug skin</option><option value="goldbug">Goldbug skin</option><option value="scarab">Scarab skin</option><option value="bluebottle">Bluebottle skin</option><option value="orchid">Orchid Beetle skin</option><option value="firefly">Firefly skin</option></select>
+      <input id="amount" type="number" min="1" max="999999999" step="1" placeholder="Amount" hidden style="width:140px">
       <button class="primary" type="submit">Give</button>
     </form>
     <p class="msg" id="rewardMsg">The game picks it up the next time the player opens it.</p>
@@ -118,9 +119,10 @@ export const ADMIN_PAGE = `<!doctype html>
       load();
     } catch (err) { alert(err.message); }
   });
+  $('item').addEventListener('change', () => { const money = $('item').value === 'money'; $('amount').hidden = !money; $('amount').required = money; });
   $('reward').addEventListener('submit', async (e) => {
     e.preventDefault();
-    try { await api('POST', '/rewards', { friendCode: $('code').value, item: $('item').value, reason: 'thank you' }); $('rewardMsg').textContent = 'Given. The game picks it up the next time the player opens it.'; $('code').value = ''; }
+    try { await api('POST', '/rewards', { friendCode: $('code').value, item: $('item').value, amount: Number($('amount').value), reason: 'thank you' }); $('rewardMsg').textContent = 'Given. The game picks it up the next time the player opens it.'; $('code').value = ''; }
     catch (err) { $('rewardMsg').textContent = err.message; }
   });
   load();

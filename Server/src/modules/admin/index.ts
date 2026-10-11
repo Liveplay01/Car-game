@@ -22,7 +22,7 @@ import { ADMIN_PAGE } from './page.ts';
  *   GET    /v1/admin/feedback?kind=bug&status=new   bug reports and ideas, newest first
  *   PATCH  /v1/admin/feedback/:id  {status}          new · seen · done · wontfix
  *   DELETE /v1/admin/feedback/:id                    remove one
- *   POST   /v1/admin/rewards  {friendCode, item}     give a player a reward (the game picks it up)
+ *   POST   /v1/admin/rewards  {friendCode, item}     give a player a reward (the game picks it up); item "money" takes an `amount`
  *
  * `/admin` is a small page for all of the feedback part; the token is typed there, never stored on the server.
  */
@@ -102,13 +102,14 @@ export function adminModule(): ServerModule {
 
       admin.post('/rewards', async (c) => {
         const body = await readJson(c);
-        if (!isRewardItem(body.item)) throw new ApiError(422, 'invalid_item', `Item is one of ${REWARD_ITEMS.join(', ')}.`);
+        const item = body.item === 'money' ? `money:${body.amount}` : body.item;
+        if (!isRewardItem(item)) throw new ApiError(422, 'invalid_item', `Item is one of ${REWARD_ITEMS.join(', ')}, or money with an amount from 1 to 999999999.`);
         const code = normalizeCode(String(body.friendCode ?? ''), 8);
         const row = code ? (ctx.db.prepare('SELECT player_id FROM friend_codes WHERE code = ?').get(code) as { player_id: string } | undefined) : undefined;
         const playerId = row?.player_id ?? (typeof body.playerId === 'string' ? body.playerId : '');
         if (!players.byId(playerId)) throw new ApiError(404, 'not_found', 'No player with that friend code.');
-        feedback.grant(playerId, body.item, typeof body.reason === 'string' ? body.reason.slice(0, 80) : 'thank you', ctx.now(), false);
-        return c.json({ given: body.item }, 201);
+        feedback.grant(playerId, item, typeof body.reason === 'string' ? body.reason.slice(0, 80) : 'thank you', ctx.now(), false);
+        return c.json({ given: item }, 201);
       });
 
       app.route('/admin', admin);
