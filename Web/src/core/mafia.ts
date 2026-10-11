@@ -73,8 +73,8 @@ const triangle = (x: number): number => {
 };
 
 export const Mafia = {
-  /** The Family talks to whoever has put its first boss away. */
-  isOpen: (c: Career): boolean => c.bossesBeaten.length > 0,
+  /** The Family talks to whoever has put its first boss away, or has played past the level that boss comes at (a shift can pass without one). */
+  isOpen: (c: Career): boolean => c.bossesBeaten.length > 0 || c.prestige > 0 || c.level > baseConfig.convoyEvery,
 
   late: (c: Career): boolean => c.loan?.late === true,
 

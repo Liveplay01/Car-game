@@ -62,6 +62,7 @@ export const PATCH_NOTES: PatchNote[] = [
       'On two lanes the criminal and the street racers no longer wait outside for good.',
     ],
     items: [
+      'Fixed: the Mafia stayed locked for players who had already passed Level 15 without a boss trophy. It now opens for anyone past Level 15 or with a Prestige rank.',
       { text: 'Fixed: on a big roundabout or in a jam the criminal could get away before your police car even reached it. It now stays at least a full lap, with room for traffic.', from: null },
       'Contracts pay less and ask more: Clean sheet ×1.1 (was ×1.15), Sharp ×2.2 (was ×3) from 30 % Perfect merges (was 25 %), Flawless ×3.2 (was ×4.5) with a chain of 60 % of the cars (was 55 %).',
       'The Mafia gives you a day of grace if the loan fell due while you were away, writes a debt off after two weeks late (and shuts its doors for two weeks), and has a Steady hand switch: a slower pointer, but no Perfect deal.',

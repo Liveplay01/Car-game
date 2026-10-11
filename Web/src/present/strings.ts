@@ -860,7 +860,7 @@ export const S = {
   social: {
     section: (i: number): string => ['Friends', 'Ranks', 'Club', 'Mafia'][i],
     clubClosed: 'The Club opens at Level 50: an Auction House, the City Fund and Contracts for big balances.',
-    mafiaClosed: "The Family has no time for a rookie. Put the Syndicate's first boss away (Level 15) and they will call.",
+    mafiaClosed: "The Family has no time for a rookie. Put the Syndicate's first boss away (Level 15) or get past it, and they will call.",
     offline: 'Friends and Ranks need the online service, which this copy of the game is not connected to.',
     noFriends: 'Friends are not available here. Ranks and the Club are.',
   },
