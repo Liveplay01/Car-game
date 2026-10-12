@@ -56,11 +56,13 @@ export const PATCH_NOTES: PatchNote[] = [
     title: 'Cars in a jam pay points again, no roadworks cards, Settings is easier to hit',
     impact: 'major',
     summary: [
+      'Unlimited no longer ends in a permanent traffic jam: the ring never fills past what flows.',
       'Cars squeezing in behind slow traffic pay points again, so a jam no longer stalls your score.',
       'No more cards for roadworks, weather or night as a shift starts: the icons over the ring say it.',
       'Settings and the buttons above it are easier to hit: a near miss no longer starts the shift.',
     ],
     items: [
+      'Fixed: Unlimited turned into one long traffic jam. Its density bonus put more cars on the ring than the drivers can keep moving at that tempo, so after the first slowdown nobody could speed up again. The traffic now fills the ring only up to what flows at the current tempo (more on a two-lane ring).',
       'Starting a shift is smoother: the waiting screen, the Settings button and the buttons above it fade out together and a little slower, instead of one after the other.',
       { text: 'Fixed: in Unlimited, sending cars into a ring full of slow traffic earned no points at all. A car that braked its way in behind slow traffic now pays a plain merge at your current combo. It still builds no combo or chain and still leaves at the next exit, so spamming cannot pile up the ring.', from: null },
       'The top card no longer announces the conditions of a shift (roadworks, rain, night and the like) as it starts. The icons over the ring on the waiting screen already show them, and a tap opens their Museum entry. Special vehicles and bosses still get their card the first time they come.',

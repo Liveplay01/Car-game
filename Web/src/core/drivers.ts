@@ -218,11 +218,26 @@ function drive(w: World, current: Drive, leads: Lead[], id: number, dt: number, 
   return d;
 }
 
+/** The headway (seconds) a driver wants before it speeds up again. */
+const HEADWAY = 0.3;
+/** The share of the flow capacity bots may fill: your own cars and the long specials need room too. */
+const CAPACITY_SHARE = 0.8;
+
 function canSpeedUp(w: World, speed: number, lead: Lead | undefined): boolean {
   if (!lead) return true;
   const comfortable = 0.3 * gravity(w.config);
   const needed = Math.max(0, speed * speed - lead.speed * lead.speed) / (2 * comfortable);
-  return lead.gap - w.config.stopGap > needed + 0.3 * speed + 1;
+  return lead.gap - w.config.stopGap > needed + HEADWAY * speed + 1;
+}
+
+/**
+ * How many bots the ring carries at its current tempo before no driver may speed up again: past it
+ * a single slowdown never clears and the ring crawls for good (Unlimited's density bonus did that).
+ */
+export function flowCapacity(w: World): number {
+  const c = w.config;
+  const pitch = c.carLength + c.stopGap + 1 + HEADWAY * w.ringSpeed;
+  return Math.max(c.minRingBots, Math.floor((CAPACITY_SHARE * w.layout.lanes * w.layout.ring.length) / pitch));
 }
 
 /** Each driver reacts a little differently, always the same for the same car. */

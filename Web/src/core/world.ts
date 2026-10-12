@@ -22,7 +22,7 @@ import {
 import type { EliminationReason, GameEvent, MergeRating, ShiftOutcome, ShiftResult, VersusPhase } from './events';
 import { ScoreBoard, Scoring } from './scoring';
 import { updateTraffic, prefillRing, spawnRival } from './traffic';
-import { updateDrivers } from './drivers';
+import { updateDrivers, flowCapacity } from './drivers';
 import {
   type CriminalPhase,
   type TransporterPhase,
@@ -1702,6 +1702,7 @@ export class World {
     } else {
       this.ringSpeed = target;
     }
+    if (c.endless && this.isScoring) this.targetDensity = Math.min(this.targetDensity, flowCapacity(this));
   }
 
   /**
