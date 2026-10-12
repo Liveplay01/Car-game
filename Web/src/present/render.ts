@@ -4,7 +4,8 @@ import type { ColorToken } from './theme';
 /** Coordinate space of a render item: world units (y up) or screen points (y down). */
 export type Space = 'world' | 'screen';
 export type Align = 'leading' | 'center' | 'trailing';
-export type Weight = 'regular' | 'bold';
+/** `display`: bold in the heading face at any size (the header's numbers). */
+export type Weight = 'regular' | 'bold' | 'display';
 
 /** Simple building blocks every platform can draw with little code (FOUNDATION.md 4.1). */
 export type Primitive =

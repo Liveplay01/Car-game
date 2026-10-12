@@ -11,12 +11,15 @@ export const FONT_DISPLAY = '"Overpass Variable", ui-rounded, "SF Pro Rounded", 
  */
 const fonts = new Map<number, string>();
 
-/** The CSS font for a run: bold text from 20 points up is display text. */
-export function fontFor(size: number, bold: boolean): string {
-  const key = bold ? -size - 1 : size;
+/** Keys of display runs sit this far below the others. */
+const DISPLAY_KEY = 1e7;
+
+/** The CSS font for a run: bold text from 20 points up is display text, and `display` makes it so at any size (a number that shrinks to fit keeps its face). */
+export function fontFor(size: number, bold: boolean, display = false): string {
+  const key = display ? -size - DISPLAY_KEY : bold ? -size - 1 : size;
   let font = fonts.get(key);
   if (font === undefined) {
-    font = bold && size >= 20 ? `italic 900 ${size}px ${FONT_DISPLAY}` : `${bold ? 700 : 500} ${size}px ${FONT}`;
+    font = bold && (display || size >= 20) ? `italic 900 ${size}px ${FONT_DISPLAY}` : `${bold ? 700 : 500} ${size}px ${FONT}`;
     // A text that grows or shrinks asks for a new size every frame: keep the map small.
     if (fonts.size > 2000) fonts.clear();
     fonts.set(key, font);
@@ -37,14 +40,14 @@ export function forgetMeasures(): void {
 }
 
 /** Exact width of a run of text at `size` points (the renderers measure exactly). */
-export function measure(textRun: string, size: number, bold: boolean): number {
+export function measure(textRun: string, size: number, bold: boolean, display = false): number {
   const tenths = Math.round(size * 10);
-  const key = bold ? -tenths - 1 : tenths;
+  const key = display ? -tenths - DISPLAY_KEY : bold ? -tenths - 1 : tenths;
   let row = widthCache.get(key);
   let w = row?.get(textRun);
   if (w === undefined) {
     measureCanvas ??= document.createElement('canvas').getContext('2d')!;
-    measureCanvas.font = fontFor(size, bold);
+    measureCanvas.font = fontFor(size, bold, display);
     w = measureCanvas.measureText(textRun).width;
     if (widths > 4000) {
       widthCache.clear();

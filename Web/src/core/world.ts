@@ -37,6 +37,7 @@ import {
   isChased,
   isTransported,
   criminalRanInto,
+  criminalVehicle,
   updateEscorts,
 } from './specials';
 import { type MilitaryPhase, updateMilitary, explode, isEscorted, predictedZoneS, gapToZone } from './explosions';
@@ -1469,6 +1470,7 @@ export class World {
     const id = q.vehicles[0];
     const veh = this.vehicle(id);
     if (!veh) return false;
+    this.chaseCriminalLane(veh);
     q.vehicles.shift();
     q.state = { kind: 'clearing', vehicle: id };
     q.pass = null;
@@ -1499,9 +1501,19 @@ export class World {
     for (const q of this.seats) this.updateOneQueue(q, dt);
   }
 
+  /** Two lanes: a police car joins the lane the criminal is in, so the lane arrow shows it before the tap. */
+  private chaseCriminalLane(veh: Vehicle): void {
+    if (veh.type !== 'police') return;
+    const id = criminalVehicle(this);
+    const criminal = id === null ? undefined : this.vehicle(id);
+    if (criminal) veh.lane = criminal.lane;
+  }
+
   private updateOneQueue(q: PlayerQueue, dt: number): void {
     const state = q.state;
     const c = this.config;
+    const front = q.vehicles.length > 0 ? this.vehicle(q.vehicles[0]) : undefined;
+    if (front) this.chaseCriminalLane(front);
     if (state.kind === 'clearing') {
       const driven = this.launchedDistance(state.vehicle);
       const pass = q.pass;
@@ -1613,7 +1625,7 @@ export class World {
       }
       const veh = new Vehicle(this.makeId(), type, 'player', { kind: 'queued' }, pose);
       veh.seat = q.seat;
-      // Two lanes: some of your cars are bound for the inner lane (police stay outside, for the chase).
+      // Two lanes: some of your cars are bound for the inner lane (police follow the criminal's lane, `chaseCriminalLane`).
       if (this.layout.lanes > 1 && type !== 'police' && this.laneRng.unit() < c.playerInnerShare) veh.lane = 1;
       this.vehicles.push(veh);
       q.vehicles.push(veh.id);

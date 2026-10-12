@@ -175,7 +175,7 @@ export const TopBar = {
     const x = TopBar.anchor(col, a);
     const opacity = o.opacity ?? 1;
     list.s(text(caption, v(x, col.minY + TopBar.captionRow), 10, a, 'bold'), o.captionColor ?? 'muted', opacity);
-    list.s(text(value, v(x, col.minY + TopBar.valueRow), o.valueSize ?? 20, a, 'bold'), o.valueColor ?? 'primary', opacity);
+    list.s(text(value, v(x, col.minY + TopBar.valueRow), o.valueSize ?? 20, a, 'display'), o.valueColor ?? 'primary', opacity);
   },
 
   addMoneyColumn(list: RenderList, col: Rect, a: Align, amount: string, o: { valueSize?: number; opacity?: number } = {}): void {
@@ -184,9 +184,9 @@ export const TopBar = {
     const valueSize = o.valueSize ?? 20;
     list.s(text(S.hud.moneyLabel, v(x, col.minY + TopBar.captionRow), 10, a, 'bold'), 'muted', opacity);
     const room = R.width(col) - 24;
-    const natural = textWidth(moneyText(amount), valueSize);
+    const natural = textWidth(moneyText(amount), valueSize, true, true);
     const size = natural <= room ? valueSize : Math.max(11, (valueSize * room) / natural);
-    moneyTag(list, amount, v(x, col.minY + TopBar.valueRow), size, a, 'primary', 'accent', opacity);
+    moneyTag(list, amount, v(x, col.minY + TopBar.valueRow), size, a, 'primary', 'accent', opacity, 'display');
   },
 };
 
@@ -328,7 +328,7 @@ export const HUD = {
       list.s(rect(R.center(inset), v(R.width(inset), R.height(inset)), TopBar.corner - 4), 'fireOuter', 0.28);
     }
     list.s(text(chain > 1 ? S.mayhem.chain(chain) : S.mayhem.flames, v(R.center(c).x, c.minY + TopBar.captionRow), 10, 'center', 'bold'), chain > 1 ? 'fireCore' : 'muted');
-    flameTag(list, Fmt.number(h.flames), v(R.center(c).x, c.minY + TopBar.valueRow), Metrics.timerSize * land(h.flamePop, 0.3), 'center', 'primary');
+    flameTag(list, Fmt.number(h.flames), v(R.center(c).x, c.minY + TopBar.valueRow), Metrics.timerSize * land(h.flamePop, 0.3), 'center', 'primary', 1, 'display');
     TopBar.addColumn(list, cols.right, 'trailing', S.hud.bestLabel, h.best ?? '–', { valueColor: h.best === null ? 'muted' : 'primary' });
     list.tag = undefined;
     if (chain > 1) {
@@ -356,7 +356,7 @@ export const HUD = {
       const inset = R.inset(c, 4);
       list.s(rect(R.center(inset), v(R.width(inset) * (0.7 + 0.3 * open), R.height(inset) * (0.7 + 0.3 * open)), TopBar.corner - 4), 'rushHour', Ease.outCubic(h.pops.rushHour / 0.4));
     }
-    list.s(text(Fmt.number(h.score), v(R.center(c).x, c.minY + TopBar.valueRow), Metrics.timerSize * tick, 'center', 'bold'), rush ? 'accentInk' : 'primary');
+    list.s(text(Fmt.number(h.score), v(R.center(c).x, c.minY + TopBar.valueRow), Metrics.timerSize * tick, 'center', 'display'), rush ? 'accentInk' : 'primary');
 
     // What still forgives a crash, as the heal's plus signs (Leo, 08.10.2026): green the Shield's, blue the police's.
     const pluses: { used: boolean; color: ColorToken }[] = [];

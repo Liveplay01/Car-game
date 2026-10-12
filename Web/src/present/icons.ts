@@ -30,8 +30,8 @@ export const inlineMoneyWidth = (size: number): number => size * 0.72 + size * 0
 export const coinSize = (size: number): number => size * 0.78;
 
 /** How wide a piece of text is, notes included (bold unless told otherwise). */
-export function textWidth(s: string, size: number, bold = true): number {
-  return textPieces(s).reduce((w, piece) => w + (piece === null ? inlineMoneyWidth(size) : measure(piece, size, bold)), 0);
+export function textWidth(s: string, size: number, bold = true, display = false): number {
+  return textPieces(s).reduce((w, piece) => w + (piece === null ? inlineMoneyWidth(size) : measure(piece, size, bold, display)), 0);
 }
 
 /**
@@ -89,14 +89,15 @@ export function moneyTag(
   color: ColorToken,
   noteColor: ColorToken = 'accent',
   opacity = 1,
+  weight: Weight = 'bold',
 ): void {
   const noteHeight = coinSize(size);
   const noteWidth = noteHeight;
   const gap = size * 0.34;
-  const total = noteWidth + gap + textWidth(label, size);
+  const total = noteWidth + gap + textWidth(label, size, true, weight === 'display');
   const left = align === 'leading' ? position.x : align === 'center' ? position.x - total / 2 : position.x - total;
   money(list, v(left + noteWidth / 2, position.y), noteHeight, noteColor, opacity);
-  list.s(text(label, v(left + noteWidth + gap, position.y), size, 'leading', 'bold'), color, opacity);
+  list.s(text(label, v(left + noteWidth + gap, position.y), size, 'leading', weight), color, opacity);
 }
 
 /** A flame, Mayhem's unit: an outer tongue of fire and a hot core. */
@@ -121,11 +122,11 @@ export function flame(list: RenderList, center: Vec2, height: number, opacity = 
   list.s(polygon(tongue(0.58)), 'fireCore', opacity);
 }
 
-export function flameTag(list: RenderList, label: string, position: Vec2, size: number, align: Align, color: ColorToken, opacity = 1): void {
+export function flameTag(list: RenderList, label: string, position: Vec2, size: number, align: Align, color: ColorToken, opacity = 1, weight: Weight = 'bold'): void {
   const flameHeight = size * 1.05;
   const gap = size * 0.3;
-  const total = flameHeight * 0.62 + gap + textWidth(label, size);
+  const total = flameHeight * 0.62 + gap + textWidth(label, size, true, weight === 'display');
   const left = align === 'leading' ? position.x : align === 'center' ? position.x - total / 2 : position.x - total;
   flame(list, v(left + flameHeight * 0.31, position.y), flameHeight, opacity);
-  list.s(text(label, v(left + flameHeight * 0.62 + gap, position.y), size, 'leading', 'bold'), color, opacity);
+  list.s(text(label, v(left + flameHeight * 0.62 + gap, position.y), size, 'leading', weight), color, opacity);
 }

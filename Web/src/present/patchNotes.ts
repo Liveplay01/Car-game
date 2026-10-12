@@ -62,6 +62,8 @@ export const PATCH_NOTES: PatchNote[] = [
       'Settings and the buttons above it are easier to hit: a near miss no longer starts the shift.',
     ],
     items: [
+      { text: 'Fixed: on a two-lane ring your police cars always drove into the outer lane, so a criminal in the inner lane could only be caught by converting an inner-lane car. A police car now takes the lane the criminal is in, and the lane arrow shows it before you tap.', from: null },
+      'Fixed: the numbers in the top bar (money, score, cars) could switch between two typefaces as they changed size. They now always use the heading face.',
       'Fixed: Unlimited turned into one long traffic jam. Its density bonus put more cars on the ring than the drivers can keep moving at that tempo, so after the first slowdown nobody could speed up again. The traffic now fills the ring only up to what flows at the current tempo (more on a two-lane ring).',
       'Starting a shift is smoother: the waiting screen, the Settings button and the buttons above it fade out together and a little slower, instead of one after the other.',
       { text: 'Fixed: in Unlimited, sending cars into a ring full of slow traffic earned no points at all. A car that braked its way in behind slow traffic now pays a plain merge at your current combo. It still builds no combo or chain and still leaves at the next exit, so spamming cannot pile up the ring.', from: null },
