@@ -24,7 +24,7 @@ export const HOSTING = {
   location: 'Germany',
 };
 
-export const LEGAL_UPDATED = '11 October 2026';
+export const LEGAL_UPDATED = '12 October 2026';
 
 export const GAME_NAME = 'Roundabout Timing';
 
@@ -136,10 +136,11 @@ export const LEGAL_DOCS: LegalDoc[] = [
         ],
       },
       {
-        heading: 'City Fund',
+        heading: 'Game fund',
         paragraphs: [
-          'If you have a name on the leaderboard and give money to the City Fund (Social → Club), the server stores the amount, the project it went to and the time next to your player account. The fund shows the totals of every project and a list of the most generous names, which are the names you chose for the leaderboard. The money is play money inside the game; nothing real is paid.',
-          'Legal basis: Art. 6(1)(b) GDPR (the fund you chose to give to). Removing your name from the leaderboard or deleting your account takes your name off the list; your gifts then stay in the totals without a name, so a project that was built stays built.',
+          'If you have a name on the leaderboard and give money to an idea in the Game fund (Social → Club), the server stores the amount, the idea it went to and the time next to your player account. Everyone sees how much each idea has received, and the name of the player who suggested it. The money is play money inside the game; nothing real is paid.',
+          'If you suggest an idea (in the Club, or on timing.love/build), the server stores your text, the time and, from the Club, your player account. We read it and may reword it before it is shown to other players; ideas from timing.love/build stay anonymous unless you tell us who you are.',
+          'Legal basis: Art. 6(1)(b) GDPR (the fund and the suggestions you chose to use). Removing your name from the leaderboard or deleting your account takes your name off your ideas; your gifts then stay in the totals without a name.',
         ],
       },
       {

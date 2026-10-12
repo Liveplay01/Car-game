@@ -13,6 +13,7 @@ const TINT: Record<Intro, ColorToken> = {
   pass: 'coin',
   casino: 'juiceGreen',
   club: 'coin',
+  gamefund: 'juiceGreen',
   mafia: 'destructive',
 };
 
@@ -60,6 +61,13 @@ export const IntroArt = {
       case 'club':
         list.s(polygon([at(-32, 20), at(-36, -18), at(-16, 0), at(0, -28), at(16, 0), at(36, -18), at(32, 20)]), c);
         list.s(rect(at(0, 28), v(64 * u, 8 * u), 2 * u), c);
+        break;
+      case 'gamefund':
+        list.s(circle(at(0, -10), 20 * u), c, 0.9);
+        list.s(rect(at(0, 18), v(14 * u, 16 * u), 3 * u), c);
+        list.s(rect(at(0, 30), v(30 * u, 6 * u), 2 * u), c);
+        list.s(circle(at(0, -10), 11 * u), 'background');
+        list.s(circle(at(0, -10), 5 * u), c);
         break;
       case 'mafia':
         list.s(rect(at(0, -6), v(36 * u, 34 * u), 6 * u), c, 0.9);

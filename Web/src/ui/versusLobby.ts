@@ -5,21 +5,10 @@ import { inviteLink } from './crazygames';
 import { Room, NAME_MAX, cleanName, type RoomError, type HostMessage, type Member, type Reaction } from '../net/room';
 import { VersusMatch, type MatchFeel } from '../present/versus';
 import type { SessionOutput } from '../present/session';
-import { VERSUS_MAX_PLAYERS, VERSUS_MIN_PLAYERS, BEST_OF, isJoinCode, isSeriesOver, newSeries, type BestOf, type Series } from '../core/versus';
+import { VERSUS_MAX_PLAYERS, VERSUS_MIN_PLAYERS, BEST_OF, isJoinCode, isSeriesOver, newSeries, type Series } from '../core/versus';
 import { loadPlayerName, savePlayerName, seatToken } from '../storage/profile';
 import { describeError, loadAccount, renameAccount } from '../net/leaderboard';
 import { S } from '../present/strings';
-
-const ERROR_TEXT: Record<RoomError, string> = {
-  noGame: 'No game with this code. Check the digits with your friend.',
-  full: 'This game is full or already running.',
-  network: 'Could not connect. Check your internet and try again. On mobile data, Wi-Fi often helps.',
-  hostLeft: 'The host closed the game.',
-  codeBusy: 'Could not get a free code. Try again.',
-  outdated: 'The game was just updated. Reload the page to play together.',
-};
-
-const BEST_OF_LABEL: Record<BestOf, string> = { 1: 'Single', 3: 'Best of 3', 5: 'Best of 5' };
 
 export interface LobbyEvents {
   /** A match began: the shell hands the canvas to it. */
@@ -83,7 +72,7 @@ export class VersusLobby {
     this.name = loadPlayerName() || (loadAccount()?.name ?? '');
     this.body = h('div', { class: 'versus-sheet' });
     this.parts = null;
-    this.closeSheet = openSheet(this.layer, 'Multiplayer', this.body, () => {
+    this.closeSheet = openSheet(this.layer, S.lobby.title, this.body, () => {
       this.closeSheet = null;
       this.body = null;
       this.parts = null;
@@ -124,9 +113,9 @@ export class VersusLobby {
       this.room = null;
       this.match = null;
       this.parts = null;
-      if (running) this.on.ended(ERROR_TEXT[error]);
+      if (running) this.on.ended(S.lobby.errors[error]);
       else {
-        this.error = ERROR_TEXT[error];
+        this.error = S.lobby.errors[error];
         this.render();
       }
     },
@@ -148,7 +137,7 @@ export class VersusLobby {
 
   private join(): void {
     if (!isJoinCode(this.draft)) {
-      this.error = 'A code has four digits.';
+      this.error = S.lobby.codeFour;
       this.render();
       return;
     }
@@ -211,7 +200,7 @@ export class VersusLobby {
   /** The next round of a series, or a new match. */
   get nextLabel(): string {
     const after = this.match?.seriesAfter;
-    return after && !isSeriesOver(after) ? 'Next round' : 'Play again';
+    return after && !isSeriesOver(after) ? S.lobby.nextRound : S.lobby.playAgain;
   }
 
   toggleReady(): void {
@@ -294,8 +283,8 @@ export class VersusLobby {
       autocapitalize: 'words',
       spellcheck: 'false',
       enterkeyhint: 'done',
-      placeholder: 'Player',
-      'aria-label': 'Your name',
+      placeholder: S.lobby.player,
+      'aria-label': S.lobby.yourName,
       value: this.name,
     });
     input.addEventListener('input', () => {
@@ -312,7 +301,7 @@ export class VersusLobby {
     });
     // Done typing: the leaderboard takes the same name.
     input.addEventListener('change', () => void this.renameOnLeaderboard(input));
-    return h('label', { class: 'row name-row' }, h('span', { class: 'row-title' }, 'Your name'), input);
+    return h('label', { class: 'row name-row' }, h('span', { class: 'row-title' }, S.lobby.yourName), input);
   }
 
   /** Where the name field says what the leaderboard made of it; one per view, empty until then. */
@@ -343,7 +332,7 @@ export class VersusLobby {
     };
     if (this.name.trim().length < 3) {
       keep();
-      if (note) note.textContent = `Your leaderboard name needs 3 or more characters, so you stay ${account.name}.`;
+      if (note) note.textContent = S.lobby.nameShort(account.name);
       note?.classList.add('error');
       return;
     }
@@ -359,7 +348,7 @@ export class VersusLobby {
       if (!loadAccount()) return;
       keep();
       if (note) {
-        note.textContent = `${describeError(error)} You stay ${account.name}.`;
+        note.textContent = S.lobby.nameKept(describeError(error), account.name);
         note.classList.add('error');
       }
     }
@@ -376,10 +365,10 @@ export class VersusLobby {
       autocomplete: 'off',
       enterkeyhint: 'go',
       placeholder: '0000',
-      'aria-label': 'Four-digit code',
+      'aria-label': S.lobby.fourDigit,
       value: this.draft,
     });
-    const joinBtn = h('button', { class: 'btn', type: 'button', disabled: !isJoinCode(this.draft), onclick: () => this.join() }, 'Join');
+    const joinBtn = h('button', { class: 'btn', type: 'button', disabled: !isJoinCode(this.draft), onclick: () => this.join() }, S.lobby.join);
     input.addEventListener('input', () => {
       input.value = input.value.replace(/\D/g, '').slice(0, 4);
       this.draft = input.value;
@@ -394,22 +383,22 @@ export class VersusLobby {
       }
     });
     const items: (HTMLElement | null)[] = [
-      h('p', { class: 'section-note versus-intro' }, `Up to ${VERSUS_MAX_PLAYERS} players, one roundabout, one lane each. Cause a crash while merging, or wait too long, and you are out. Last one standing wins.`),
+      h('p', { class: 'section-note versus-intro' }, S.lobby.intro(VERSUS_MAX_PLAYERS)),
       h('div', { class: 'list' }, this.nameField()),
       this.nameNoteSlot(),
-      h('div', { class: 'sheet-actions' }, h('button', { class: 'btn primary block', type: 'button', onclick: () => this.host() }, icon(ICONS.people), 'Host a game')),
-      h('div', { class: 'versus-divider', 'aria-hidden': 'true' }, 'or join a friend'),
+      h('div', { class: 'sheet-actions' }, h('button', { class: 'btn primary block', type: 'button', onclick: () => this.host() }, icon(ICONS.people), S.lobby.host)),
+      h('div', { class: 'versus-divider', 'aria-hidden': 'true' }, S.lobby.orJoin),
       h('div', { class: 'join-row' }, input, joinBtn),
       this.error ? h('p', { class: 'versus-error', role: 'alert' }, this.error) : null,
-      h('button', { class: 'btn block quiet-btn', type: 'button', onclick: () => this.practice() }, icon(ICONS.bot), 'Practise against bots'),
+      h('button', { class: 'btn block quiet-btn', type: 'button', onclick: () => this.practice() }, icon(ICONS.bot), S.lobby.practise),
     ];
     return items.filter((x): x is HTMLElement => x !== null);
   }
 
   private connectingView(room: Room): HTMLElement[] {
     return [
-      h('p', { class: 'versus-status', role: 'status' }, room.isHost ? 'Opening a game…' : `Joining ${room.code}…`),
-      h('div', { class: 'sheet-actions' }, h('button', { class: 'btn block', type: 'button', onclick: () => this.leave() }, 'Cancel')),
+      h('p', { class: 'versus-status', role: 'status' }, room.isHost ? S.lobby.opening : S.lobby.joining(room.code)),
+      h('div', { class: 'sheet-actions' }, h('button', { class: 'btn block', type: 'button', onclick: () => this.leave() }, S.lobby.cancel)),
     ];
   }
 
@@ -417,7 +406,7 @@ export class VersusLobby {
     const parts: LobbyParts = {
       room,
       code: h('div', { class: 'join-code-card' }),
-      rows: h('div', { class: 'list', role: 'list', 'aria-label': 'Players' }),
+      rows: h('div', { class: 'list', role: 'list', 'aria-label': S.lobby.players }),
       format: h('div', { class: 'format-row' }),
       actions: h('div', { class: 'sheet-actions' }),
       status: h('p', { class: 'versus-status small', role: 'status', 'aria-live': 'polite' }),
@@ -445,27 +434,27 @@ export class VersusLobby {
     p.rows.replaceChildren(...Array.from({ length: VERSUS_MAX_PLAYERS }, (_, slot) => this.playerRow(room, slot)));
     p.format.replaceChildren(...this.formatControl(room));
     const enough = room.members.length >= VERSUS_MIN_PLAYERS;
-    const leaveLabel = room.offline ? 'Close' : room.isHost ? 'Close game' : 'Leave';
+    const leaveLabel = room.offline ? S.lobby.close : room.isHost ? S.lobby.closeGame : S.lobby.leave;
     const actions = room.isHost
       ? [
-          h('button', { class: 'btn primary block', type: 'button', disabled: !enough, onclick: () => this.start() }, enough ? `Start with ${room.members.length}` : 'Waiting for players'),
+          h('button', { class: 'btn primary block', type: 'button', disabled: !enough, onclick: () => this.start() }, enough ? S.lobby.startWith(room.members.length) : S.lobby.waitingPlayers),
           h('button', { class: 'btn block', type: 'button', onclick: () => this.leave() }, leaveLabel),
         ]
-      : [h('p', { class: 'versus-status', role: 'status' }, 'Waiting for the host to start'), h('button', { class: 'btn block', type: 'button', onclick: () => this.leave() }, leaveLabel)];
+      : [h('p', { class: 'versus-status', role: 'status' }, S.lobby.waitingHost), h('button', { class: 'btn block', type: 'button', onclick: () => this.leave() }, leaveLabel)];
     p.actions.replaceChildren(...actions);
   }
 
   private codeCard(room: Room): HTMLElement[] {
     if (room.offline) {
-      return [h('div', { class: 'join-code-label' }, 'Practice on this device'), h('div', { class: 'practice-title' }, 'You against bots')];
+      return [h('div', { class: 'join-code-label' }, S.lobby.practiceLabel), h('div', { class: 'practice-title' }, S.lobby.practiceTitle)];
     }
     const code = room.code ?? '····';
     const items: HTMLElement[] = [
-      h('div', { class: 'join-code-label' }, room.isHost ? 'Your code: send it or the link' : 'Game'),
-      h('div', { class: 'join-code', 'aria-label': `Code ${code.split('').join(' ')}` }, ...code.split('').map((d) => h('span', {}, d))),
+      h('div', { class: 'join-code-label' }, room.isHost ? S.lobby.yourCode : S.lobby.game),
+      h('div', { class: 'join-code', 'aria-label': S.lobby.codeLabel(code.split('').join(' ')) }, ...code.split('').map((d) => h('span', {}, d))),
     ];
     if (room.isHost && room.code) {
-      items.push(h('button', { class: 'btn invite-btn', type: 'button', onclick: () => void this.invite(room.code!) }, icon(ICONS.share), 'Invite'));
+      items.push(h('button', { class: 'btn invite-btn', type: 'button', onclick: () => void this.invite(room.code!) }, icon(ICONS.share), S.lobby.invite));
       items.push(this.qrCard(room.code));
     }
     return items;
@@ -481,7 +470,7 @@ export class VersusLobby {
     const url = this.inviteUrl(code);
     void import('./qr')
       .then(({ qrSvg }) => {
-        slot.replaceChildren(qrSvg(url, `QR code to join the game with code ${code}`), h('span', { class: 'join-qr-label' }, 'Scan to join'));
+        slot.replaceChildren(qrSvg(url, S.lobby.qrLabel(code)), h('span', { class: 'join-qr-label' }, S.lobby.scan));
         slot.hidden = false;
       })
       .catch(() => {
@@ -505,29 +494,29 @@ export class VersusLobby {
         'div',
         { class: 'row lane-row empty', role: 'listitem' },
         dot,
-        h('div', { class: 'row-main' }, h('div', { class: 'row-title' }, 'Open lane'), h('div', { class: 'row-sub' }, room.offline ? 'Add a bot to play here' : 'Waiting for a friend')),
-        canAdd ? h('button', { class: 'btn small', type: 'button', 'aria-label': `Add a bot to lane ${slot + 1}`, onclick: () => room.addBot() }, icon(ICONS.plus), 'Bot') : null,
+        h('div', { class: 'row-main' }, h('div', { class: 'row-title' }, S.lobby.openLane), h('div', { class: 'row-sub' }, room.offline ? S.lobby.addBotHere : S.lobby.waitingFriend)),
+        canAdd ? h('button', { class: 'btn small', type: 'button', 'aria-label': S.lobby.addBotLane(slot + 1), onclick: () => room.addBot() }, icon(ICONS.plus), S.lobby.bot) : null,
       );
     }
     const you = slot === room.you;
     const sub = h('span', {}, this.memberSub(room, m), h('span', { 'data-ping': String(slot) }, this.pingText(m)));
     const remove =
       m.bot && room.isHost && !room.locked
-        ? h('button', { class: 'icon-btn small', type: 'button', 'aria-label': `Remove ${m.name}`, onclick: () => room.removeBot(slot) }, icon(ICONS.minus))
+        ? h('button', { class: 'icon-btn small', type: 'button', 'aria-label': S.lobby.removeBot(m.name), onclick: () => room.removeBot(slot) }, icon(ICONS.minus))
         : null;
     return h(
       'div',
       { class: 'row lane-row', role: 'listitem' },
       dot,
       h('div', { class: 'row-main' }, h('div', { class: 'row-title' }, m.bot ? h('span', { class: 'bot-name' }, icon(ICONS.bot), m.name) : m.name), h('div', { class: 'row-sub' }, sub)),
-      you ? h('span', { class: 'you-tag' }, 'You') : null,
+      you ? h('span', { class: 'you-tag' }, S.lobby.you) : null,
       remove,
     );
   }
 
   private memberSub(room: Room, m: Member): string {
-    if (m.bot) return 'Bot';
-    return room.offline ? 'This device' : m.slot === 0 ? 'Host' : 'Joined';
+    if (m.bot) return S.lobby.bot;
+    return room.offline ? S.lobby.thisDevice : m.slot === 0 ? S.lobby.hostTag : S.lobby.joined;
   }
 
   private pingText(m: Member): string {
@@ -536,15 +525,15 @@ export class VersusLobby {
 
   /** Single match, best of 3 or 5: the host picks, the others see it. */
   private formatControl(room: Room): HTMLElement[] {
-    const label = h('span', { class: 'row-title' }, 'Format');
-    if (!room.isHost) return [label, h('span', { class: 'row-value' }, BEST_OF_LABEL[room.bestOf])];
-    const seg = h('div', { class: 'segmented', role: 'group', 'aria-label': 'Format' });
+    const label = h('span', { class: 'row-title' }, S.lobby.format);
+    if (!room.isHost) return [label, h('span', { class: 'row-value' }, S.lobby.bestOf[room.bestOf])];
+    const seg = h('div', { class: 'segmented', role: 'group', 'aria-label': S.lobby.format });
     const thumb = h('span', { class: 'thumb', 'aria-hidden': 'true' });
     thumb.style.width = `calc((100% - 4px) / ${BEST_OF.length})`;
     thumb.style.transform = `translateX(${BEST_OF.indexOf(room.bestOf) * 100}%)`;
     seg.append(thumb);
     for (const value of BEST_OF) {
-      const b = h('button', { type: 'button', 'aria-pressed': String(value === room.bestOf), onclick: () => room.setBestOf(value) }, BEST_OF_LABEL[value]);
+      const b = h('button', { type: 'button', 'aria-pressed': String(value === room.bestOf), onclick: () => room.setBestOf(value) }, S.lobby.bestOf[value]);
       seg.append(b);
     }
     return [label, seg];
@@ -556,7 +545,7 @@ export class VersusLobby {
     const touch = window.matchMedia('(pointer: coarse)').matches;
     if (touch && typeof navigator.share === 'function') {
       try {
-        await navigator.share({ title: S.gameTitle, text: `Join my roundabout: code ${code}`, url });
+        await navigator.share({ title: S.gameTitle, text: S.lobby.shareText(code), url });
       } catch {
         /* cancelled */
       }
@@ -564,9 +553,9 @@ export class VersusLobby {
     }
     try {
       await navigator.clipboard.writeText(url);
-      this.showNotice('Invite link copied');
+      this.showNotice(S.lobby.linkCopied);
     } catch {
-      window.prompt('Copy this link', url);
+      window.prompt(S.lobby.copyLink, url);
     }
   }
 

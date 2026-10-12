@@ -25,3 +25,15 @@ export function integerField(body: Record<string, unknown>, field: string, min: 
   }
   return value;
 }
+
+/** Text as typed, tidied: no control characters, at most two blank lines in a row. */
+export function cleanText(value: unknown): string {
+  if (typeof value !== 'string') return '';
+  return value
+    .normalize('NFKC')
+    .replace(/\r\n?/g, '\n')
+    .replace(/[^\S\n]+/g, ' ')
+    .replace(/[\u0000-\u0009\u000B-\u001F\u007F]/g, '')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+}

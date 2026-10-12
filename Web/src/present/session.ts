@@ -1939,6 +1939,16 @@ export class GameSession {
     this.introShown = here;
   }
 
+  /** The Game fund tab of the Club is open: its introduction comes up once (the Club's own tabs are DOM, so the panel asks). */
+  introduce(i: Intro): void {
+    if (this.screen.k !== 'page' || this.detailOpen || !Intros.isPending(this.save, i, this.config)) return;
+    Intros.mark(this.save, i);
+    this.persist();
+    this.tick();
+    this.detailOpen = true;
+    this.introShown = i;
+  }
+
   /** A dot on the segment of a place that has an introduction waiting (Progress puts its own, `progressDots`). */
   private addIntroDots(list: RenderList, viewport: Vec2, inset: number): void {
     const pending = this.introsPending;
@@ -1952,7 +1962,7 @@ export class GameSession {
       const cells = SocialPage.segments(viewport, SocialPage.sections(career));
       for (const [intro, section] of [['club', SOCIAL.club], ['mafia', SOCIAL.mafia]] as const) {
         const cell = cells.find(([s]) => s === section);
-        if (cell && pending.includes(intro)) dot(cell[1], S.social.section(section));
+        if (cell && (pending.includes(intro) || (intro === 'club' && pending.includes('gamefund')))) dot(cell[1], S.social.section(section));
       }
     } else if ((this.isPage('upgrades') || this.isPage('streetBuilder')) && pending.includes('builder')) {
       const r = BuildLayout.segmentsRect(viewport);

@@ -978,12 +978,6 @@ export const baseConfig = {
   /** A steady hand: the pointer is this much slower, and the deal cannot be a Perfect. */
   mafiaAssistSpeed: 0.5,
 
-  // City Fund (Leo, 10.10.2026; Server/src/modules/fund): one gift goes in, the whole city builds.
-  fundMinGift: 10_000,
-  fundMaxGift: 5_000_000,
-  /** Gifts to a project add up to this much for the Benefactor skin it unlocks. */
-  fundBenefactor: 100_000,
-
   /**
    * How loud a win is, by how many times the stake it pays, the same in every game
    * (`present/casino.ts`): from the first more coins, then confetti, then rays and a jolt,

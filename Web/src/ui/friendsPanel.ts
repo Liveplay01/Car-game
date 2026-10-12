@@ -25,9 +25,6 @@ export interface FriendsActions {
   challenge: (() => Promise<string | null>) | null;
 }
 
-/** 1 → 1st, 3 → 3rd, 10 → 10th. */
-const ordinal = (n: number): string => `${n}${n % 100 >= 11 && n % 100 <= 13 ? 'th' : ({ 1: 'st', 2: 'nd', 3: 'rd' } as Record<number, string>)[n % 10] ?? 'th'}`;
-
 /** A friend code as it is typed or pasted: `K7M2-9QXA`. */
 const tidyFriendCode = (text: string): string =>
   text
@@ -40,10 +37,10 @@ const tidyFriendCode = (text: string): string =>
 async function copyText(button: HTMLElement, text: string, label: string): Promise<void> {
   try {
     await navigator.clipboard.writeText(text);
-    button.textContent = 'Copied';
+    button.textContent = S.friends.copied;
     window.setTimeout(() => (button.textContent = label), 1600);
   } catch {
-    window.prompt('Copy this', text);
+    window.prompt(S.friends.copyPrompt, text);
   }
 }
 
@@ -59,14 +56,14 @@ async function shareInvite(invite: InviteView, button: HTMLElement): Promise<voi
       if (error instanceof DOMException && error.name === 'AbortError') return;
     }
   }
-  await copyText(button, url, 'Share invite link');
+  await copyText(button, url, S.friends.shareLink);
 }
 
 const label = (text: string): HTMLElement => h('p', { class: 'section-note board-label' }, text);
 const note = (text: string, error = false): HTMLElement => h('p', { class: `field-help${error ? ' error' : ''}`, ...(error ? { role: 'alert' } : {}) }, text);
 
 export function friendsPanel(actions: FriendsActions): HTMLElement {
-  const body = h('div', { class: 'friends' }, h('p', { class: 'section-note' }, 'Loading your friends…'));
+  const body = h('div', { class: 'friends' }, h('p', { class: 'section-note' }, S.friends.loading));
   const content = h('div', { class: 'friends-content' });
   let view: FriendsView | null = null;
   let invite: InviteView | null = null;
@@ -90,11 +87,9 @@ export function friendsPanel(actions: FriendsActions): HTMLElement {
       h(
         'p',
         { class: 'section-note' },
-        pendingInvite()
-          ? `A friend invited you. Pick a name, reach level ${INVITE_LEVEL} and you both get a chest. You get a friend code of your own too.`
-          : 'Friends know you by your name on the leaderboard. Pick one, and you get a friend code to hand out, a ranking among friends and an invite link that earns you chests.',
+        pendingInvite() ? S.friends.introInvited(INVITE_LEVEL) : S.friends.intro,
       ),
-      nameForm(loadPlayerName(), 'Save', join, null),
+      nameForm(loadPlayerName(), S.friends.save, join, null),
     );
   }
 
@@ -106,7 +101,7 @@ export function friendsPanel(actions: FriendsActions): HTMLElement {
     try {
       view = await fetchFriends();
     } catch (error) {
-      if (ticket === asked) body.replaceChildren(note(describeError(error), true), h('button', { class: 'btn block', type: 'button', onclick: () => void render() }, 'Try again'));
+      if (ticket === asked) body.replaceChildren(note(describeError(error), true), h('button', { class: 'btn block', type: 'button', onclick: () => void render() }, S.friends.tryAgain));
       return;
     }
     invite = await inviteAsked;
@@ -117,7 +112,7 @@ export function friendsPanel(actions: FriendsActions): HTMLElement {
 
   function show(): void {
     if (!view) return;
-    const rows = [...friendRows(view), label('Play together'), ...playRows(), label('Invite friends'), ...inviteRows()];
+    const rows = [...friendRows(view), label(S.friends.playTogether), ...playRows(), label(S.friends.inviteFriends), ...inviteRows()];
     message = undefined;
     content.replaceChildren(...rows);
     fadeIn(content);
@@ -127,11 +122,11 @@ export function friendsPanel(actions: FriendsActions): HTMLElement {
 
   /** Your code, big, with Copy; then adding a friend and your list. */
   function friendRows(now: FriendsView): HTMLElement[] {
-    const copy = h('button', { class: 'btn', type: 'button' }, 'Copy');
-    copy.addEventListener('click', () => void copyText(copy, now.code, 'Copy'));
+    const copy = h('button', { class: 'btn', type: 'button' }, S.friends.copy);
+    copy.addEventListener('click', () => void copyText(copy, now.code, S.friends.copy));
     return [
-      label('Your friend code'),
-      h('div', { class: 'list' }, h('div', { class: 'row' }, h('div', { class: 'row-main' }, h('div', { class: 'sync-code', 'aria-label': `Your friend code: ${now.code}` }, now.code)), copy)),
+      label(S.friends.yourCode),
+      h('div', { class: 'list' }, h('div', { class: 'row' }, h('div', { class: 'row-main' }, h('div', { class: 'sync-code', 'aria-label': S.friends.yourCodeLabel(now.code) }, now.code)), copy)),
       ...addRows(),
       ...listRows(now),
     ];
@@ -149,26 +144,26 @@ export function friendsPanel(actions: FriendsActions): HTMLElement {
       enterkeyhint: 'go',
       maxlength: '9',
       placeholder: 'K7M2-9QXA',
-      'aria-label': "A friend's code",
+      'aria-label': S.friends.codeLabel,
     });
-    const help = h('p', { class: 'field-help', 'aria-live': 'polite' }, message ?? 'Type the code your friend sees here. They do not have to add you back.');
-    const add = h('button', { class: 'btn', type: 'submit' }, 'Add');
+    const help = h('p', { class: 'field-help', 'aria-live': 'polite' }, message ?? S.friends.typeHere);
+    const add = h('button', { class: 'btn', type: 'submit' }, S.friends.add);
     /** The last code sent, so a code that was refused is not sent again until it is changed. */
     let tried = '';
     const submit = (): void => {
       if (add.disabled) return;
       if (input.value.replace(/-/g, '').length !== 8) {
-        help.textContent = 'A friend code has 8 letters and numbers, like K7M2-9QXA.';
+        help.textContent = S.friends.codeShort;
         help.classList.add('error');
         return;
       }
       tried = input.value;
       add.disabled = true;
-      help.textContent = 'Adding…';
+      help.textContent = S.friends.adding;
       addFriend(input.value).then(
         (friend) => {
           forgetFriendsBoards();
-          message = `${friend.name} is on your list.`;
+          message = S.friends.onList(friend.name);
           void render();
         },
         (error: unknown) => {
@@ -198,11 +193,11 @@ export function friendsPanel(actions: FriendsActions): HTMLElement {
       h('div', { class: 'join-row' }, input, add),
       help,
     );
-    return [label('Add a friend'), form];
+    return [label(S.friends.addFriend), form];
   }
 
   function listRows(now: FriendsView): HTMLElement[] {
-    if (now.friends.length === 0) return [label('Your friends'), h('div', { class: 'list' }, h('div', { class: 'row board-empty' }, h('div', { class: 'row-main' }, h('div', { class: 'row-title' }, 'Nobody yet'), h('div', { class: 'row-sub' }, 'Add a friend with their code, or send an invite.'))))];
+    if (now.friends.length === 0) return [label(S.friends.yourFriendsNone), h('div', { class: 'list' }, h('div', { class: 'row board-empty' }, h('div', { class: 'row-main' }, h('div', { class: 'row-title' }, S.friends.nobody), h('div', { class: 'row-sub' }, S.friends.nobodySub))))];
     const people = now.friends.map((f) =>
       h(
         'div',
@@ -213,7 +208,7 @@ export function friendsPanel(actions: FriendsActions): HTMLElement {
           {
             class: 'btn',
             type: 'button',
-            'aria-label': `Remove ${f.name} from your friends`,
+            'aria-label': S.friends.removeLabel(f.name),
             // Failed (offline): the list comes back with the reason under the code field.
             onclick: () =>
               void removeFriend(f.id).then(
@@ -221,11 +216,11 @@ export function friendsPanel(actions: FriendsActions): HTMLElement {
                 (error: unknown) => ((message = describeError(error)), render()),
               ),
           },
-          'Remove',
+          S.friends.remove,
         ),
       ),
     );
-    return [label(`Your friends (${people.length})`), h('div', { class: 'list' }, ...people)];
+    return [label(S.friends.yourFriends(people.length)), h('div', { class: 'list' }, ...people)];
   }
 
   // MARK: Play
@@ -233,8 +228,8 @@ export function friendsPanel(actions: FriendsActions): HTMLElement {
   /** Challenge a friend and the multiplayer lobby: the two ways to play with them. */
   function playRows(): HTMLElement[] {
     const send = actions.challenge;
-    const sub = h('div', { class: 'row-sub', 'aria-live': 'polite' }, send ? 'Send your last shift and the score to beat.' : 'Finish a shift, then send it to a friend to beat.');
-    const challenge = h('button', { class: 'btn', type: 'button', disabled: !send }, 'Send');
+    const sub = h('div', { class: 'row-sub', 'aria-live': 'polite' }, send ? S.friends.challengeSub : S.friends.challengeNone);
+    const challenge = h('button', { class: 'btn', type: 'button', disabled: !send }, S.friends.send);
     challenge.addEventListener('click', () => {
       if (!send) return;
       challenge.disabled = true;
@@ -247,12 +242,12 @@ export function friendsPanel(actions: FriendsActions): HTMLElement {
       h(
         'div',
         { class: 'list' },
-        h('div', { class: 'row' }, h('div', { class: 'row-main' }, h('div', { class: 'row-title' }, 'Challenge a friend'), sub), challenge),
+        h('div', { class: 'row' }, h('div', { class: 'row-main' }, h('div', { class: 'row-title' }, S.friends.challenge), sub), challenge),
         h(
           'div',
           { class: 'row' },
-          h('div', { class: 'row-main' }, h('div', { class: 'row-title' }, 'Multiplayer'), h('div', { class: 'row-sub' }, 'Host a room and send the code, or join your friend’s.')),
-          h('button', { class: 'btn', type: 'button', onclick: () => actions.playTogether() }, 'Open lobby'),
+          h('div', { class: 'row-main' }, h('div', { class: 'row-title' }, S.friends.multiplayer), h('div', { class: 'row-sub' }, S.friends.multiplayerSub)),
+          h('button', { class: 'btn', type: 'button', onclick: () => actions.playTogether() }, S.friends.openLobby),
         ),
       ),
     ];
@@ -262,27 +257,27 @@ export function friendsPanel(actions: FriendsActions): HTMLElement {
 
   /** The invite link to send, and who joined through you and how far they are; and who brought you. */
   function inviteRows(): HTMLElement[] {
-    if (!invite) return [note('Invites are not available right now. Try again later.')];
+    if (!invite) return [note(S.friends.noInvites)];
     const now = invite;
-    const share = h('button', { class: 'btn primary block', type: 'button' }, 'Share invite link');
+    const share = h('button', { class: 'btn primary block', type: 'button' }, S.friends.shareLink);
     share.addEventListener('click', () => void shareInvite(now, share));
-    const bonus = now.milestones.map((m) => ordinal(m.invites));
+    const bonus = now.milestones.map((m) => S.friends.ordinal(m.invites));
     const lines = now.invited.map((i) =>
-      h('div', { class: 'row' }, h('div', { class: 'row-main' }, h('div', { class: 'row-title' }, i.name), h('div', { class: 'row-sub' }, i.done ? `Reached level ${now.level} · chest sent` : `Playing · not at level ${now.level} yet`))),
+      h('div', { class: 'row' }, h('div', { class: 'row-main' }, h('div', { class: 'row-title' }, i.name), h('div', { class: 'row-sub' }, i.done ? S.friends.reached(now.level) : S.friends.playing(now.level)))),
     );
     if (now.invitedBy) {
       const by = now.invitedBy;
       lines.unshift(
-        h('div', { class: 'row' }, h('div', { class: 'row-main' }, h('div', { class: 'row-title' }, `Invited by ${by.name}`), h('div', { class: 'row-sub' }, by.done ? 'You both got your chest' : `Reach level ${now.level} and you both get a chest`))),
+        h('div', { class: 'row' }, h('div', { class: 'row-main' }, h('div', { class: 'row-title' }, S.friends.invitedBy(by.name)), h('div', { class: 'row-sub' }, by.done ? S.friends.bothGot : S.friends.bothGet(now.level)))),
       );
     }
     return [
       share,
-      h('p', { class: 'section-note' }, `You both get a chest when a friend reaches level ${now.level}.${bonus.length > 0 ? ` Your ${bonus.join(' and ')} friend each bring a bonus Premium Chest.` : ''}`),
-      label(`Invites (${now.done} of ${now.invited.length} at level ${now.level})`),
+      h('p', { class: 'section-note' }, S.friends.bothNote(now.level, bonus)),
+      label(S.friends.invites(now.done, now.invited.length, now.level)),
       lines.length > 0
         ? h('div', { class: 'list' }, ...lines)
-        : h('div', { class: 'list' }, h('div', { class: 'row board-empty' }, h('div', { class: 'row-main' }, h('div', { class: 'row-title' }, 'Nobody yet'), h('div', { class: 'row-sub' }, 'Send your link to a friend. It shows up here when they join.')))),
+        : h('div', { class: 'list' }, h('div', { class: 'row board-empty' }, h('div', { class: 'row-main' }, h('div', { class: 'row-title' }, S.friends.nobody), h('div', { class: 'row-sub' }, S.friends.sendLink)))),
     ];
   }
 

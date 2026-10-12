@@ -3,6 +3,7 @@ import { inPortal } from '../storage/device';
 import { parseImport, SEAL_FIELD, sealSave } from '../storage/save';
 import { savePlayerName } from '../storage/profile';
 import { storage } from '../storage/store';
+import { S } from '../present/strings';
 import { type Account, apiRequest, leaderboardEnabled, LeaderboardError, loadAccount, onAccountChange, saveAccount } from './leaderboard';
 
 /**
@@ -65,8 +66,8 @@ export interface CloudView {
 export interface CloudDeps {
   /** The save as the game has it right now. */
   save(): SaveGame;
-  /** A sentence for the player, shown like the game's other hints. */
-  notify(text: string): void;
+  /** Cloud sync needs the player (two devices moved on): the Settings pill asks. */
+  ask(): void;
   /** Whether newer cloud progress may replace the save now (not in the middle of a shift). */
   canTake(): boolean;
   /** Puts newer cloud progress on this device. */
@@ -244,7 +245,7 @@ function conflict(found: Incoming): void {
   incoming = found;
   waiting = null;
   set('choose');
-  if (first && found.updatedAt !== declined) deps?.notify('Your cloud save has other progress. Open Settings → Account → Cloud sync to choose.');
+  if (first && found.updatedAt !== declined) deps?.ask();
 }
 
 /**
@@ -381,7 +382,7 @@ export function startCloud(next: CloudDeps): void {
 
 /** Sends the save now and returns the new code. Throws a LeaderboardError with a sentence to show. */
 export async function createCloud(): Promise<string> {
-  if (!deps) throw new LeaderboardError('disabled', 'Cloud sync is not available.');
+  if (!deps) throw new LeaderboardError('disabled', S.net.cloudOff);
   const save = deps.save();
   const made = await apiRequest<{ code: string; updatedAt: number }>('POST', '/v1/sync', { body: { save: payload(save) } });
   writeLink({ code: made.code, version: made.updatedAt, hash: stamp(save) });
@@ -400,7 +401,7 @@ export async function connectCloud(typed: string): Promise<void> {
   const code = typed.trim().toUpperCase();
   const got = await apiRequest<{ save: unknown; updatedAt: number }>('GET', '/v1/sync', { token: code });
   const save = parseImport(JSON.stringify(got.save));
-  if (!save) throw new LeaderboardError('invalid_save', 'That cloud save could not be read. Update the game and try again.');
+  if (!save) throw new LeaderboardError('invalid_save', S.net.cloudUnreadable);
   if (deps && readStopped()[code] === got.updatedAt) {
     // Nobody else changed the copy since this device left: it is only an old snapshot of this device. Keep this device's progress.
     writeLink({ code, version: got.updatedAt, hash: '' });
@@ -436,7 +437,7 @@ export async function syncNow(): Promise<void> {
   window.clearTimeout(timer);
   await check();
   await push();
-  if (status === 'offline') throw new LeaderboardError('network', 'The cloud cannot be reached right now.');
+  if (status === 'offline') throw new LeaderboardError('network', S.net.cloudUnreachable);
 }
 
 /** The player looked at both sides and chose neither (for now). */

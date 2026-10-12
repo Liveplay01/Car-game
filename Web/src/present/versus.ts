@@ -14,6 +14,7 @@ import { MapTheme } from './mapThemes';
 import { Feedback, Music, type MusicMix, type SoundID, type HapticID } from './feedback';
 import { measure } from './measure';
 import type { ColorToken } from './theme';
+import { S } from './strings';
 import type { SessionOutput } from './session';
 import type { Room, Input, InputKind, HostMessage, GuestMessage, MatchStart, Reaction } from '../net/room';
 
@@ -33,16 +34,11 @@ const COUNT_IN = 3;
 
 /** One colour per lobby slot (`theme.ts`); the name is said once, in the count-in. */
 export const PLAYER_COLORS: ColorToken[] = ['player1', 'player2', 'player3', 'player4'];
-export const PLAYER_COLOR_NAMES = ['mint', 'coral', 'violet', 'gold'];
 export const REACTION_EMOJI: Record<Reaction, string> = { fire: '🔥', skull: '💀', clap: '👏', wow: '😮' };
 
-const REASON: Record<EliminationReason, string> = { crash: 'Crashed', stalled: 'Stalled', left: 'Left' };
 const KIND_REASON: Record<Exclude<InputKind, 't' | 'h'>, EliminationReason> = { c: 'crash', s: 'stalled', l: 'left' };
 const MERGE_SOUND: Record<MergeRating, SoundID> = { clean: 'merge', tightFit: 'tightFit', nearMiss: 'nearMiss', perfect: 'perfect', cutOff: 'cutOff' };
-const PHASE_TEXT: Record<Exclude<VersusPhase, 0>, [string, string]> = {
-  1: ['Rush hour', 'The ring speeds up'],
-  2: ['Sudden death', 'Send a car every 4 s'],
-};
+const phaseText = (phase: Exclude<VersusPhase, 0>): [string, string] => (phase === 1 ? [S.versus.rushHour, S.versus.rushHourSub] : [S.versus.suddenDeath, S.versus.suddenDeathSub]);
 
 /** A short line under the badges: a shield, a lorry, a final. */
 interface Note {
@@ -418,8 +414,8 @@ export class VersusMatch {
           if (e.seat === this.you) this.haptic('secured');
           break;
         case 'rivalSent':
-          if (e.seat === this.you) this.note(e.revenge ? 'You strike back with a lorry' : 'Your lorry is on its way', e.seat);
-          else this.note(e.revenge ? `${this.nameOf(e.seat)} strikes back with a lorry` : `${this.nameOf(e.seat)} sends a lorry`, e.seat);
+          if (e.seat === this.you) this.note(e.revenge ? S.versus.youStrike : S.versus.youSend, e.seat);
+          else this.note(e.revenge ? S.versus.strikes(this.nameOf(e.seat)) : S.versus.sends(this.nameOf(e.seat)), e.seat);
           this.sound('dispatch', e.seat === this.you ? 1 : 0.85);
           break;
         case 'versusPhase':
@@ -438,8 +434,8 @@ export class VersusMatch {
           if (w.seatsLeft.length === 2 && w.seats.length > 2 && this.duelSince === null) {
             this.duelSince = this.sceneTime;
             const [a, b] = w.seatsLeft;
-            const who = (seat: number): string => (seat === this.you ? 'You' : this.nameOf(seat));
-            this.note(`Final: ${who(a.seat)} vs ${who(b.seat)}`, null);
+            const who = (seat: number): string => (seat === this.you ? S.versus.you : this.nameOf(seat));
+            this.note(S.versus.final(who(a.seat), who(b.seat)), null);
           }
           break;
         case 'matchOver':
@@ -624,12 +620,12 @@ export class VersusMatch {
     for (const q of w.seats) {
       const at = this.laneAnchor(list, q.seat);
       const me = q.seat === this.you;
-      const name = me ? 'YOU' : this.clip(this.nameOf(q.seat), 12, 68);
+      const name = me ? S.versus.youCaps : this.clip(this.nameOf(q.seat), 12, 68);
       const color = this.colorOf(q.seat);
       if (q.out) {
         const fade = Ease.clamp01((this.sinceOut.get(q.seat) ?? 1) / 0.3);
         list.s(text(name, v(at.x, at.y - 7), 12, 'center', 'bold'), 'muted', 0.7 * fade);
-        list.s(text(REASON[this.reasons.get(q.seat) ?? 'crash'].toUpperCase(), v(at.x, at.y + 9), 11, 'center', 'bold'), 'destructive', fade);
+        list.s(text(S.versus.reason[this.reasons.get(q.seat) ?? 'crash'].toUpperCase(), v(at.x, at.y + 9), 11, 'center', 'bold'), 'destructive', fade);
         continue;
       }
       const width = me ? 52 : Math.max(52, measure(name, 12, true) + 20);
@@ -673,7 +669,7 @@ export class VersusMatch {
     const w = this.world;
     const time = this.countIn > 0 ? 0 : w.shiftTime(w.time);
     const clock = `${Math.floor(time / 60)}:${String(Math.floor(time % 60)).padStart(2, '0')}`;
-    const phase = w.versusPhase === 2 ? 'Sudden death' : w.versusPhase === 1 ? 'Rush hour' : this.series.bestOf > 1 ? `Round ${this.series.round} of ${this.series.bestOf}` : 'Last one standing';
+    const phase = w.versusPhase === 2 ? S.versus.suddenDeath : w.versusPhase === 1 ? S.versus.rushHour : this.series.bestOf > 1 ? S.versus.round(this.series.round, this.series.bestOf) : S.versus.lastStanding;
     const label = `${clock}  ·  ${phase}`;
     const chipW = measure(label, 13, true) + 28;
     list.s(rect(v(viewport.x / 2, 22), v(chipW, 28), 14), 'scrim', 0.85);
@@ -710,17 +706,17 @@ export class VersusMatch {
     list.s(circle(dot, 8), color, dim);
     list.s(text(String(slot + 1), dot, 10, 'center', 'bold'), 'accentInk', dim);
     const nameMax = width - 38;
-    list.s(text(this.clip(me ? 'You' : this.nameOf(seat), 12, nameMax), v(at.x - width / 2 + 29, dot.y), 12, 'leading', 'bold'), q.out ? 'muted' : 'primary', dim);
+    list.s(text(this.clip(me ? S.versus.you : this.nameOf(seat), 12, nameMax), v(at.x - width / 2 + 29, dot.y), 12, 'leading', 'bold'), q.out ? 'muted' : 'primary', dim);
     let sub: string;
     let subColor: ColorToken = 'muted';
     if (member?.away && !q.out) {
-      sub = 'Reconnecting';
+      sub = S.versus.reconnecting;
       subColor = 'destructive';
-    } else if (q.out) sub = REASON[this.reasons.get(seat) ?? 'crash'];
+    } else if (q.out) sub = S.versus.reason[this.reasons.get(seat) ?? 'crash'];
     else if (danger) {
       sub = `${Math.max(0, secondsLeft).toFixed(1)} s`;
       subColor = 'destructive';
-    } else sub = `${q.sent} ${q.sent === 1 ? 'car' : 'cars'}`;
+    } else sub = S.versus.cars(q.sent);
     list.s(text(sub, v(at.x - width / 2 + 10, at.y + 11), 11, 'leading', danger || subColor === 'destructive' ? 'bold' : 'regular'), subColor, dim);
     // Ping of a friend's line to the host: green, yellow, red.
     const ping = member && !member.bot && slot !== 0 ? member.ping : undefined;
@@ -748,7 +744,7 @@ export class VersusMatch {
     // The phase change: a banner that stays a little longer than a note.
     const phase = this.world.versusPhase;
     if (phase > 0 && this.phaseAge < 2.8 && !this.isOver) {
-      const [title, sub] = PHASE_TEXT[phase as 1 | 2];
+      const [title, sub] = phaseText(phase as 1 | 2);
       const fade = this.fade(this.phaseAge, 2.8);
       const lift = this.reduceMotion ? 0 : (1 - Ease.outCubic(this.phaseAge / 0.25)) * 8;
       const color: ColorToken = phase === 2 ? 'destructive' : 'primary';
@@ -776,13 +772,13 @@ export class VersusMatch {
     const mid = v(viewport.x / 2, viewport.y / 2);
     if (!this.isHost && this.room.reconnecting) {
       list.s(rect(v(mid.x, mid.y), v(220, 44), 14), 'scrim', 0.92);
-      list.s(text('Reconnecting…', mid, 15, 'center', 'bold'), 'primary');
+      list.s(text(S.versus.reconnectingDots, mid, 15, 'center', 'bold'), 'primary');
       return;
     }
     if (this.countIn > 0) {
       const slot = this.slots[this.you] ?? this.you;
       list.s(text(String(Math.ceil(this.countIn)), v(mid.x, mid.y - 2), 64, 'center', 'bold'), this.colorOf(this.you));
-      const line = `Your lane: ${PLAYER_COLOR_NAMES[slot] ?? ''}. Last one standing wins.`;
+      const line = S.versus.lane(S.versus.colors[slot] ?? '');
       // Under the badges, where the notes go later: over the ring it would cover a lane's pill.
       const lineY = 118;
       list.s(rect(v(mid.x, lineY), v(Math.min(measure(line, 14, false) + 28, viewport.x - 24), 30), 15), 'scrim', 0.9);
@@ -796,11 +792,11 @@ export class VersusMatch {
     const bottom = viewport.y - 24;
     const mine = this.world.seats[this.you];
     if (!mine || mine.out) {
-      const watching = this.watch !== null ? `Watching ${this.nameOf(this.watch)} · tap to switch` : 'You are out · tap to follow a lane';
+      const watching = this.watch !== null ? S.versus.watching(this.nameOf(this.watch)) : S.versus.out;
       list.s(text(watching, v(mid.x, bottom - 116), 14, 'center', 'bold'), 'muted');
     } else if (mine.idle / this.world.stallLimit > 0.5) {
       const seconds = Math.max(0, this.world.stallLimit - mine.idle);
-      const warning = `Send a car · ${seconds.toFixed(1)} s`;
+      const warning = S.versus.sendCar(seconds.toFixed(1));
       list.s(rect(v(mid.x, bottom - 61), v(measure(warning, 15, true) + 32, 34), 17), 'scrim', 0.92);
       list.s(text(warning, v(mid.x, bottom - 61), 15, 'center', 'bold'), 'destructive');
     }
@@ -821,20 +817,20 @@ export class VersusMatch {
     const cx = viewport.x / 2;
     list.s(rect(v(cx, top + height / 2), v(width, height), 20), 'card', 0.97 * fade);
 
-    const title = this.winner === null ? 'Draw' : this.winner === this.you ? 'You win' : `${this.nameOf(this.winner!)} wins`;
+    const title = this.winner === null ? S.versus.draw : this.winner === this.you ? S.versus.youWin : S.versus.wins(this.nameOf(this.winner!));
     const titleColor: ColorToken = this.winner === null || this.winner === undefined ? 'primary' : this.colorOf(this.winner);
     list.s(text(this.clip(title, 28, width - 32, true), v(cx, top + 40), 28, 'center', 'bold'), titleColor, fade);
-    let subtitle = 'Last one standing';
+    let subtitle = S.versus.lastStanding;
     if (series) {
       const done = isSeriesOver(after);
       const leaders = seriesLeaders(after, this.slots);
       const leaderName = (slot: number): string => {
         const seat = this.slots.indexOf(slot);
-        return seat === this.you ? 'You' : this.nameOf(seat);
+        return seat === this.you ? S.versus.you : this.nameOf(seat);
       };
-      if (!done) subtitle = `Round ${after.round} of ${after.bestOf}`;
-      else if (leaders.length === 1) subtitle = `${leaderName(leaders[0])} ${this.slots.indexOf(leaders[0]) === this.you ? 'win' : 'wins'} the series`;
-      else subtitle = 'The series ends in a tie';
+      if (!done) subtitle = S.versus.round(after.round, after.bestOf);
+      else if (leaders.length === 1) subtitle = S.versus.seriesWin(leaderName(leaders[0]), this.slots.indexOf(leaders[0]) === this.you);
+      else subtitle = S.versus.seriesTie;
     }
     list.s(text(subtitle, v(cx, top + 67), 13, 'center'), 'muted', fade);
 
@@ -843,9 +839,9 @@ export class VersusMatch {
     const right = cx + width / 2 - 16;
     const cols = { ready: right, pts: right - 26, risky: right - 72, cars: right - 114 };
     const headY = top + 88;
-    list.s(text('Cars', v(cols.cars, headY), 11, 'trailing'), 'muted', fade);
-    list.s(text('Risky', v(cols.risky, headY), 11, 'trailing'), 'muted', fade);
-    list.s(text(series ? 'Total' : 'Pts', v(cols.pts, headY), 11, 'trailing'), 'muted', fade);
+    list.s(text(S.versus.colCars, v(cols.cars, headY), 11, 'trailing'), 'muted', fade);
+    list.s(text(S.versus.colRisky, v(cols.risky, headY), 11, 'trailing'), 'muted', fade);
+    list.s(text(series ? S.versus.colTotal : S.versus.colPoints, v(cols.pts, headY), 11, 'trailing'), 'muted', fade);
     table.forEach((row, i) => {
       const y = top + 104 + i * rowH + rowH / 2;
       const q = this.world.seats[row.seat];
@@ -856,7 +852,7 @@ export class VersusMatch {
       list.s(text(String(row.place), v(left + 4, y), 13, 'center', 'bold'), row.place === 1 ? 'coin' : 'muted', fade);
       list.s(circle(v(left + 22, y), 6), this.colorOf(row.seat), fade);
       const nameMax = cols.cars - 40 - (left + 34);
-      list.s(text(this.clip(me ? 'You' : this.nameOf(row.seat), 14, nameMax, true), v(left + 34, y), 14, 'leading', 'bold'), 'primary', fade);
+      list.s(text(this.clip(me ? S.versus.you : this.nameOf(row.seat), 14, nameMax, true), v(left + 34, y), 14, 'leading', 'bold'), 'primary', fade);
       list.s(text(String(q.sent), v(cols.cars, y), 13, 'trailing'), 'primary', fade);
       list.s(text(String(q.risky), v(cols.risky, y), 13, 'trailing'), 'primary', fade);
       const total = series ? (after.points[slot] ?? 0) : row.points;
@@ -878,9 +874,9 @@ export class VersusMatch {
   private bonusLine(table: Standing[]): string {
     const parts: string[] = [];
     for (const row of table) {
-      const who = row.seat === this.you ? 'You' : this.nameOf(row.seat);
-      if (row.bonus.includes('mostCars')) parts.push(`${who}: most cars +1`);
-      if (row.bonus.includes('riskiest')) parts.push(`${who}: tightest merge +1`);
+      const who = row.seat === this.you ? S.versus.you : this.nameOf(row.seat);
+      if (row.bonus.includes('mostCars')) parts.push(S.versus.mostCars(who));
+      if (row.bonus.includes('riskiest')) parts.push(S.versus.tightest(who));
     }
     return parts.join('  ·  ');
   }

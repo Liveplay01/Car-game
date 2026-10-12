@@ -3091,24 +3091,9 @@ test('a contract settles on the result of a career shift, and never on the Daily
   assert.ok(booked.news.some((line) => line.startsWith('CONTRACT LOST')), booked.news.join(' | '));
 });
 
-test('the City Fund: skins are owed for built projects given enough to, a gift leaves the save only as far as it was accepted', () => {
+test('the Game fund: a gift leaves the save only as far as it was accepted', () => {
   const c = newCareer();
-  const view = {
-    projects: [
-      { id: 'fountain', goal: 10, raised: 10, done: true, active: false, mine: baseConfig.fundBenefactor },
-      { id: 'lighthouse', goal: 50, raised: 20, done: false, active: true, mine: 5_000_000 },
-      { id: 'skybridge', goal: 250, raised: 0, done: false, active: false, mine: 0 },
-    ],
-    top: [],
-    minGift: baseConfig.fundMinGift,
-    maxGift: baseConfig.fundMaxGift,
-  };
-  assert.deepEqual(Fund.owed(c, view).map((x) => x.id), ['fountain'], 'only a built project pays its skin');
-  assert.deepEqual(Fund.claim(c, view), ['fountain']);
-  assert.ok(Careers.owns(c, 'fountain'));
-  assert.deepEqual(Fund.claim(c, view), [], 'once');
-  view.projects[0].mine = baseConfig.fundBenefactor - 1;
-  assert.deepEqual(Fund.owed(newCareer(), view).map((x) => x.id), [], 'a smaller gift earns no skin');
+  const view = { minGift: 10_000, maxGift: 5_000_000 };
   c.money = 1_000_000;
   assert.deepEqual(Fund.offers(c, view), [10_000, 50_000, 250_000, 1_000_000]);
   Fund.gave(c, 250_000);

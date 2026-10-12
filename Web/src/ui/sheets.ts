@@ -9,6 +9,7 @@ import { inItch, inPlayStore, inPortal, isInstalled, isIos } from '../storage/de
 import { cloudEnabled } from '../net/cloud';
 import { PUSH_CHOICES, type PushChoice, type PushState } from '../net/push';
 import { S } from '../present/strings';
+import { LANGUAGES, currentLanguage, chooseLanguage } from '../present/i18n';
 
 interface OpenSheet {
   root: HTMLElement;
@@ -148,7 +149,7 @@ export function openSheet(layer: HTMLElement, title: string, body: HTMLElement, 
   const below = stack[stack.length - 1] ?? null;
   const previouslyFocused = document.activeElement as HTMLElement | null;
   const titleId = `sheet-${Math.random().toString(36).slice(2, 8)}`;
-  const closeBtn = h('button', { class: 'icon-btn', 'aria-label': 'Close', onclick: () => close() }, icon(ICONS.close));
+  const closeBtn = h('button', { class: 'icon-btn', 'aria-label': S.settings.close, onclick: () => close() }, icon(ICONS.close));
   const grabber = h('div', { class: 'grabber', 'aria-hidden': 'true' });
   const head = h('div', { class: 'sheet-head' }, h('h2', { class: 'sheet-title', id: titleId }, title), closeBtn);
   const sheet = h('div', { class: 'sheet', role: 'dialog', 'aria-modal': 'true', 'aria-labelledby': titleId }, grabber, head, body);
@@ -260,7 +261,7 @@ export function installDialog(layer: HTMLElement, ipad: boolean, onDone: () => v
   const previouslyFocused = document.activeElement as HTMLElement | null;
   const step = (n: number, text: string, glyph: string): HTMLElement =>
     h('li', { class: 'install-step' }, h('span', { class: 'install-num', 'aria-hidden': 'true' }, String(n)), h('span', { class: 'install-text' }, text), h('span', { class: 'install-glyph', 'aria-hidden': 'true' }, icon(glyph)));
-  const ok = h('button', { class: 'btn primary block', type: 'button' }, 'Got it');
+  const ok = h('button', { class: 'btn primary block', type: 'button' }, S.intro.gotIt);
   const root = h(
     'div',
     { class: 'install-root', role: 'alertdialog', 'aria-modal': 'true', 'aria-labelledby': 'install-title', 'aria-describedby': 'install-why' },
@@ -268,14 +269,14 @@ export function installDialog(layer: HTMLElement, ipad: boolean, onDone: () => v
       'div',
       { class: 'install-card' },
       h('div', { class: 'install-badge', 'aria-hidden': 'true' }, icon(ICONS.game)),
-      h('h2', { class: 'install-title', id: 'install-title' }, 'Add it to your Home Screen'),
-      h('p', { class: 'install-why', id: 'install-why' }, 'Roundabout Timing plays best like an app: one tap to start, full screen, and Safari keeps your progress.'),
+      h('h2', { class: 'install-title', id: 'install-title' }, S.settings.homeScreen.title),
+      h('p', { class: 'install-why', id: 'install-why' }, S.settings.homeScreen.why),
       h(
         'ol',
         { class: 'install-steps' },
-        step(1, ipad ? 'Tap Share at the top of Safari' : 'Tap Share at the bottom of Safari', ICONS.share),
-        step(2, 'Scroll down and tap “Add to Home Screen”', ICONS.plus),
-        step(3, 'Tap “Add”, then start the game from its icon', ICONS.check),
+        step(1, ipad ? S.settings.homeScreen.shareTop : S.settings.homeScreen.shareBottom, ICONS.share),
+        step(2, S.settings.homeScreen.scroll, ICONS.plus),
+        step(3, S.settings.homeScreen.add, ICONS.check),
       ),
       ok,
     ),
@@ -314,7 +315,7 @@ export function closeTopSheet(): boolean {
 
 /** Settings → What's new: the patch notes, newest first. */
 /** How much an update changes, as its badge says it (colour and word, never colour alone). */
-const IMPACT: Record<PatchImpact, string> = { major: 'Big update', minor: 'Update', fix: 'Fixes' };
+const IMPACT: Record<PatchImpact, () => string> = { major: () => S.settings.impact.major, minor: () => S.settings.impact.minor, fix: () => S.settings.impact.fix };
 
 const noteLine = (item: PatchItem): HTMLElement => {
   const credit = itemCredit(item);
@@ -336,20 +337,20 @@ export function patchNotesSheet(layer: HTMLElement, notes: PatchNote[], onClose:
         h(
           'div',
           { class: 'note-head' },
-          h('div', { class: 'note-meta' }, h('span', { class: 'note-date' }, note.date), h('span', { class: `impact impact-${note.impact}` }, IMPACT[note.impact])),
+          h('div', { class: 'note-meta' }, h('span', { class: 'note-date' }, note.date), h('span', { class: `impact impact-${note.impact}` }, IMPACT[note.impact]())),
           h('h3', { class: 'note-title' }, note.title),
         ),
         h('ul', { class: 'note-summary' }, ...note.summary.map(noteLine)),
         h(
           'details',
           { class: 'note-more' },
-          h('summary', { class: 'note-more-head' }, `All changes · ${note.items.length}`, icon(ICONS.chevronDown, {})),
+          h('summary', { class: 'note-more-head' }, S.settings.allChanges(note.items.length), icon(ICONS.chevronDown, {})),
           h('ul', { class: 'note-items' }, ...note.items.map(noteLine)),
         ),
       ),
     ),
   );
-  return openSheet(layer, "What's new", body, onClose);
+  return openSheet(layer, S.settings.whatsNew, body, onClose);
 }
 
 /** Privacy Policy or Imprint, as plain reading text. Links leave the game in a new tab. */
@@ -373,10 +374,10 @@ export function licensesSheet(layer: HTMLElement, licenses: License[], onClose: 
   const body = h(
     'div',
     { class: 'legal' },
-    h('p', {}, 'Roundabout Timing uses this open-source software. Thank you to its authors.'),
+    h('p', {}, S.settings.licensesIntro),
     ...licenses.flatMap((l) => [h('h3', {}, `${l.name} · ${l.license}`), h('pre', {}, l.text)]),
   );
-  return openSheet(layer, 'Licenses', body, onClose);
+  return openSheet(layer, S.settings.licenses, body, onClose);
 }
 
 /**
@@ -388,20 +389,20 @@ export function cloudIntroDialog(layer: HTMLElement, actions: { open(): void; cl
   const previouslyFocused = document.activeElement as HTMLElement | null;
   const step = (n: number, text: string, glyph: string): HTMLElement =>
     h('li', { class: 'install-step' }, h('span', { class: 'install-num', 'aria-hidden': 'true' }, String(n)), h('span', { class: 'install-text' }, text), h('span', { class: 'install-glyph', 'aria-hidden': 'true' }, icon(glyph)));
-  const open = h('button', { class: 'btn primary block', type: 'button' }, 'Open Cloud sync');
-  const later = h('button', { class: 'btn block quiet-btn', type: 'button' }, 'Maybe later');
+  const open = h('button', { class: 'btn primary block', type: 'button' }, S.settings.cloudIntro.open);
+  const later = h('button', { class: 'btn block quiet-btn', type: 'button' }, S.settings.cloudIntro.later);
   const card = h(
     'div',
     { class: 'intro-card', role: 'alertdialog', 'aria-modal': 'true', 'aria-labelledby': 'intro-title', 'aria-describedby': 'intro-why' },
     h('div', { class: 'install-badge', 'aria-hidden': 'true' }, icon(ICONS.gear)),
-    h('h2', { class: 'install-title intro-title', id: 'intro-title' }, 'Cloud sync'),
-    h('p', { class: 'install-why', id: 'intro-why' }, 'Back up your progress and carry on with any device using a short code. No account and no password.'),
+    h('h2', { class: 'install-title intro-title', id: 'intro-title' }, S.settings.cloudSync),
+    h('p', { class: 'install-why', id: 'intro-why' }, S.settings.cloudIntro.why),
     h(
       'ol',
       { class: 'install-steps' },
-      step(1, 'Tap the gear for Settings', ICONS.gear),
-      step(2, 'Open “Cloud sync”', ICONS.chevronRight),
-      step(3, 'Back up, or type a code from another device', ICONS.check),
+      step(1, S.settings.cloudIntro.gear, ICONS.gear),
+      step(2, S.settings.cloudIntro.page, ICONS.chevronRight),
+      step(3, S.settings.cloudIntro.code, ICONS.check),
     ),
     open,
     later,
@@ -473,12 +474,12 @@ function externalRow(href: string, logo: string, title: string, sub: string): HT
 }
 
 const crazyGamesRow = (): HTMLElement =>
-  externalRow(CRAZYGAMES_PAGE, CRAZYGAMES_LOGO, 'Roundabout Timing on CrazyGames', 'Our official page. Rate the game and share it.');
+  externalRow(CRAZYGAMES_PAGE, CRAZYGAMES_LOGO, S.settings.crazyGames.title, S.settings.crazyGames.sub);
 
 const websiteRow = (): HTMLElement =>
-  externalRow(WEBSITE_PAGE, '<img src="/icons/icon-192.png" alt="" width="30" height="30" decoding="async" />', 'Roundabout Timing Website', 'timing.love: the game, a trailer and the FAQ.');
+  externalRow(WEBSITE_PAGE, '<img src="/icons/icon-192.png" alt="" width="30" height="30" decoding="async" />', S.settings.website.title, S.settings.website.sub);
 
-const wikiRow = (): HTMLElement => externalRow(WIKI_PAGE, FANDOM_LOGO, 'Roundabout Timing Wiki', 'Guides, vehicles and tips from the community.');
+const wikiRow = (): HTMLElement => externalRow(WIKI_PAGE, FANDOM_LOGO, S.settings.wiki.title, S.settings.wiki.sub);
 
 export interface SettingsActions {
   changed(settings: Settings): void;
@@ -615,6 +616,61 @@ function group(title: string, ...rows: (HTMLElement | null)[]): HTMLElement | nu
   return h('section', { class: 'settings-group', 'aria-labelledby': id }, h('h3', { class: 'settings-header', id }, title), h('div', { class: 'list' }, ...kept));
 }
 
+/**
+ * Language picker sheet (Leo, 12.10.2026): opens an in-game sheet matching the UI style,
+ * with checkmark on the selected language and instant game reload on change.
+ */
+export function openLanguageSheet(layer: HTMLElement): () => void {
+  const now = currentLanguage();
+  const list = h('div', { class: 'list lang-picker-list' });
+  let close: (() => void) | null = null;
+  for (const { code, name } of LANGUAGES) {
+    const isCurrent = code === now;
+    const check = isCurrent ? h('span', { class: 'lang-check', 'aria-hidden': 'true' }, icon(ICONS.check)) : null;
+    const row = h(
+      'button',
+      {
+        class: `row row-link lang-choice-row${isCurrent ? ' selected' : ''}`,
+        type: 'button',
+        role: 'radio',
+        'aria-checked': isCurrent ? 'true' : 'false',
+        onclick: () => {
+          if (code !== now) {
+            chooseLanguage(code);
+          } else {
+            close?.();
+          }
+        },
+      },
+      h('div', { class: 'row-main' }, h('div', { class: 'row-title' }, name)),
+      check,
+    );
+    list.append(row);
+  }
+  const body = h('div', { class: 'lang-picker', role: 'radiogroup', 'aria-label': S.settings.language }, list);
+  close = openSheet(layer, S.settings.language, body);
+  return close;
+}
+
+/** The language row in settings: opens the in-game UI language selection sheet. */
+function languageRow(layer: HTMLElement): HTMLElement {
+  const now = currentLanguage();
+  const name = LANGUAGES.find((l) => l.code === now)?.name ?? '';
+  return h(
+    'button',
+    {
+      class: 'row row-link row-lang',
+      type: 'button',
+      onclick: () => openLanguageSheet(layer),
+      'aria-label': `${S.settings.language}: ${name}`,
+    },
+    tile(ICONS.globe, 'blue'),
+    h('div', { class: 'row-main' }, h('div', { class: 'row-title' }, S.settings.language)),
+    h('span', { class: 'row-value' }, name),
+    icon(ICONS.chevronRight),
+  );
+}
+
 /** A coloured icon tile in front of a row, as in iOS Settings. */
 const tile = (glyph: string, tone: string): HTMLElement => h('span', { class: `row-tile tile-${tone}`, 'aria-hidden': 'true' }, icon(glyph));
 
@@ -639,9 +695,9 @@ function richLinkRow(title: string, sub: string, onOpen: () => void, front: HTML
 
 type SettingsTab = 'play' | 'account' | 'about';
 const SETTINGS_TABS: { id: SettingsTab; label: string }[] = [
-  { id: 'play', label: 'Play' },
-  { id: 'account', label: 'Account' },
-  { id: 'about', label: 'About' },
+  { id: 'play', label: S.settings.tabs.play },
+  { id: 'account', label: S.settings.tabs.account },
+  { id: 'about', label: S.settings.tabs.about },
 ];
 /** Kept between visits: coming back from a page opened here (What's new, a legal text) lands where it left. */
 let lastSettingsTab: SettingsTab = 'play';
@@ -653,11 +709,11 @@ let lastSettingsTab: SettingsTab = 'play';
 export function settingsSheet(layer: HTMLElement, s: Settings, actions: SettingsActions): () => void {
   const hasVibration = typeof navigator.vibrate === 'function';
   const motionOptions: [Settings['reduceMotion'], string][] = [
-    ['system', 'System'],
-    ['on', 'On'],
-    ['off', 'Off'],
+    ['system', S.settings.motion.system],
+    ['on', S.settings.motion.on],
+    ['off', S.settings.motion.off],
   ];
-  const motionSeg = h('div', { class: 'segmented motion-seg', role: 'group', 'aria-label': 'Reduce motion' });
+  const motionSeg = h('div', { class: 'segmented motion-seg', role: 'group', 'aria-label': S.settings.reduceMotion });
   const thumb = h('span', { class: 'thumb', 'aria-hidden': 'true' });
   thumb.style.width = 'calc((100% - 4px) / 3)';
   motionSeg.append(thumb);
@@ -693,8 +749,8 @@ export function settingsSheet(layer: HTMLElement, s: Settings, actions: Settings
       installRow = h(
         'div',
         { class: 'row' },
-        h('div', { class: 'row-main' }, h('div', { class: 'row-title' }, 'Install the game'), h('div', { class: 'row-sub' }, 'Full screen, offline, one tap from your home screen.')),
-        h('button', { class: 'btn primary', onclick: () => actions.install?.() }, 'Install'),
+        h('div', { class: 'row-main' }, h('div', { class: 'row-title' }, S.settings.install), h('div', { class: 'row-sub' }, S.settings.installSub)),
+        h('button', { class: 'btn primary', onclick: () => actions.install?.() }, S.settings.installButton),
       );
     } else if (isIos()) {
       installRow = h(
@@ -703,8 +759,8 @@ export function settingsSheet(layer: HTMLElement, s: Settings, actions: Settings
         h(
           'div',
           { class: 'row-main' },
-          h('div', { class: 'row-title' }, 'Add to Home Screen'),
-          h('div', { class: 'row-sub' }, 'In Safari, tap Share, then “Add to Home Screen” to play full screen and offline.'),
+          h('div', { class: 'row-title' }, S.settings.addToHome),
+          h('div', { class: 'row-sub' }, S.settings.addToHomeSub),
         ),
         icon(ICONS.share),
       );
@@ -716,8 +772,8 @@ export function settingsSheet(layer: HTMLElement, s: Settings, actions: Settings
   // which keeps players on its own site (like the website link).
   let buildGroup: HTMLElement | null = null;
   if (!inPortal) {
-    const bugRow = tileExternalRow(ICONS.bug, 'red', 'Report a bug', 'Add your friend code and get a bug hunter skin. Up to six.', buildLink('bug', null));
-    buildGroup = group('Build with us', bugRow, tileExternalRow(ICONS.bulb, 'amber', 'Suggest a feature', 'Tell us what you would add. We read every idea.', buildLink('idea', null)));
+    const bugRow = tileExternalRow(ICONS.bug, 'red', S.settings.reportBug, S.settings.reportBugSub, buildLink('bug', null));
+    buildGroup = group(S.settings.buildWithUs, bugRow, tileExternalRow(ICONS.bulb, 'amber', S.settings.suggest, S.settings.suggestSub, buildLink('idea', null)));
     actions
       .friendCode?.()
       .then((code) => {
@@ -728,8 +784,8 @@ export function settingsSheet(layer: HTMLElement, s: Settings, actions: Settings
 
   const cloudRow = cloudEnabled
     ? richLinkRow(
-        'Cloud sync',
-        actions.cloudOn ? 'On · your progress is backed up.' : 'Back up your progress and play on any device.',
+        S.settings.cloudSync,
+        actions.cloudOn ? S.settings.cloudOn : S.settings.cloudOff,
         () => actions.openCloud(),
         tile(ICONS.cloud, 'blue'),
         null,
@@ -740,58 +796,55 @@ export function settingsSheet(layer: HTMLElement, s: Settings, actions: Settings
   const panes: Record<SettingsTab, (HTMLElement | null)[]> = {
     play: [
       group(
-        'Game feel',
-        switchRow('Larger text', 'Notices and cards over the game a step larger.', s.largeText, toggle('largeText')),
+        S.settings.gameFeel,
+        languageRow(layer),
+        switchRow(S.settings.largerText, S.settings.largerTextSub, s.largeText, toggle('largeText')),
         h(
           'div',
           { class: 'row row-stack' },
-          h('div', { class: 'row-main' }, h('div', { class: 'row-title' }, 'Reduce motion'), h('div', { class: 'row-sub' }, 'No shake, slow-mo or flying parts.')),
+          h('div', { class: 'row-main' }, h('div', { class: 'row-title' }, S.settings.reduceMotion), h('div', { class: 'row-sub' }, S.settings.reduceMotionSub)),
           motionSeg,
         ),
-        switchRow('Left-handed', 'Puts the buttons over the game on the left.', s.leftHanded, toggle('leftHanded')),
-        switchRow('Vehicle labels', 'Names the special vehicles on the road.', s.vehicleLabels, toggle('vehicleLabels')),
-        switchRow('Haptics', hasVibration ? null : 'Not available in this browser', s.haptics, toggle('haptics')),
-        switchRow('Battery saver', 'Draws 30 frames a second and a softer picture. Easier on the battery.', s.batterySaver, toggle('batterySaver')),
+        switchRow(S.settings.leftHanded, S.settings.leftHandedSub, s.leftHanded, toggle('leftHanded')),
+        switchRow(S.settings.vehicleLabels, S.settings.vehicleLabelsSub, s.vehicleLabels, toggle('vehicleLabels')),
+        switchRow(S.settings.haptics, hasVibration ? null : S.settings.hapticsNone, s.haptics, toggle('haptics')),
+        switchRow(S.settings.batterySaver, S.settings.batterySaverSub, s.batterySaver, toggle('batterySaver')),
       ),
       group(
-        'Sound',
-        switchRow('Sound effects', null, s.sound, toggle('sound')),
-        switchRow('Music', null, s.music, toggle('music')),
-        switchRow('Map sounds', 'Rain and thunder on the road.', s.mapSounds, toggle('mapSounds')),
+        S.settings.sound,
+        switchRow(S.settings.soundEffects, null, s.sound, toggle('sound')),
+        switchRow(S.settings.music, null, s.music, toggle('music')),
+        switchRow(S.settings.mapSounds, S.settings.mapSoundsSub, s.mapSounds, toggle('mapSounds')),
       ),
     ],
     account: [
-      group('Backup & device', cloudRow, installRow),
-      group('Reminders', ...pushRows(actions.push)),
+      group(S.settings.backup, cloudRow, installRow),
+      group(S.settings.reminders, ...pushRows(actions.push)),
       h(
         'p',
         { class: 'section-note settings-foot' },
-        inPortal
-          ? 'Log in to CrazyGames to keep your progress on every device.'
-          : cloudEnabled
-            ? 'Your progress is saved on this device. Cloud sync keeps a copy and brings it to your other devices.'
-            : 'Your progress is saved on this device.',
+        inPortal ? S.settings.noteCrazyGames : cloudEnabled ? S.settings.noteCloud : S.settings.noteLocal,
       ),
-      h('button', { class: 'btn block destructive', type: 'button', onclick: () => actions.openDeleteAccount() }, 'Delete account'),
+      h('button', { class: 'btn block destructive', type: 'button', onclick: () => actions.openDeleteAccount() }, S.settings.deleteAccount),
     ],
     about: [
       group(
-        'The game',
-        richLinkRow("What's new", 'Patch notes and updates.', () => actions.openNotes(), null, actions.notesUnread ? h('span', { class: 'new-pill' }, 'New') : null),
+        S.settings.theGame,
+        richLinkRow(S.settings.whatsNew, S.settings.whatsNewSub, () => actions.openNotes(), null, actions.notesUnread ? h('span', { class: 'new-pill' }, S.settings.newBadge) : null),
         inPortal ? null : websiteRow(),
         wikiRow(),
         inPortal || inItch || inPlayStore ? null : crazyGamesRow(),
       ),
       buildGroup,
       group(
-        'Legal',
+        S.settings.legal,
         ...LEGAL_DOCS.map((doc) => linkRow(doc.title, doc.sub, () => actions.openLegal(doc.id))),
-        linkRow('Licenses', 'Open-source software in the game.', () => actions.openLegal('licenses')),
+        linkRow(S.settings.licenses, S.settings.licensesSub, () => actions.openLegal('licenses')),
       ),
     ],
   };
   const content = h('div', { class: 'settings-content' });
-  const tabs = tabsControl('Settings', SETTINGS_TABS, (next) => show(next, true));
+  const tabs = tabsControl(S.settings.title, SETTINGS_TABS, (next) => show(next, true));
   tabs.el.classList.add('sheet-tabs');
   function show(next: SettingsTab, animate: boolean): void {
     lastSettingsTab = next;
@@ -801,7 +854,7 @@ export function settingsSheet(layer: HTMLElement, s: Settings, actions: Settings
   }
   show(lastSettingsTab, false);
   const body = h('div', { class: 'settings' }, tabs.el, content);
-  const close = openSheet(layer, 'Settings', body, () => actions.closed());
+  const close = openSheet(layer, S.settings.title, body, () => actions.closed());
   glideHeight(body, content);
   return close;
 }
@@ -819,21 +872,22 @@ export interface DeleteAccountActions {
  * on this device and on our server, and a second, explicit button that does it.
  */
 export function deleteAccountSheet(layer: HTMLElement, actions: DeleteAccountActions): () => void {
+  const del = S.settings.del;
   const item = (title: string, sub: string): HTMLElement => h('li', {}, h('strong', {}, title), h('span', {}, sub));
   const problem = h('p', { class: 'field-help error', role: 'alert' });
   problem.hidden = true;
-  const confirm = h('button', { class: 'btn block destructive', type: 'button' }, 'Delete my account');
-  const cancel = h('button', { class: 'btn block quiet-btn', type: 'button' }, 'Cancel');
+  const confirm = h('button', { class: 'btn block destructive', type: 'button' }, del.confirm);
+  const cancel = h('button', { class: 'btn block quiet-btn', type: 'button' }, del.cancel);
   const body = h(
     'div',
     { class: 'delete-account' },
-    h('p', { class: 'delete-lede' }, 'The game starts over from Level 1. This cannot be undone.'),
+    h('p', { class: 'delete-lede' }, del.lede),
     h(
       'ul',
       { class: 'delete-list' },
-      item('On this device', 'Level, Prestige, money, chests, collection, upgrades, records and settings.'),
-      actions.online ? item('On our server', 'Your leaderboard name and scores, friend code and friends list, your cloud copy and any rewards still waiting.') : null,
-      actions.online ? item('Bug reports and ideas you sent', 'They stay with us, but no longer point to you.') : null,
+      item(del.device, del.deviceSub),
+      actions.online ? item(del.server, del.serverSub) : null,
+      actions.online ? item(del.sent, del.sentSub) : null,
     ),
     problem,
     h('div', { class: 'sheet-actions' }, confirm, cancel),
@@ -842,7 +896,7 @@ export function deleteAccountSheet(layer: HTMLElement, actions: DeleteAccountAct
   confirm.addEventListener('click', () => {
     confirm.disabled = true;
     cancel.disabled = true;
-    confirm.textContent = 'Deleting…';
+    confirm.textContent = del.deleting;
     problem.hidden = true;
     actions
       .run()
@@ -850,13 +904,13 @@ export function deleteAccountSheet(layer: HTMLElement, actions: DeleteAccountAct
       .catch((error: unknown) => {
         confirm.disabled = false;
         cancel.disabled = false;
-        confirm.textContent = 'Delete my account';
-        problem.textContent = error instanceof Error ? error.message : 'Something went wrong. Try again.';
+        confirm.textContent = del.confirm;
+        problem.textContent = error instanceof Error ? error.message : del.failed;
         problem.hidden = false;
       });
   });
   cancel.addEventListener('click', () => close());
-  close = openSheet(layer, 'Delete account?', body, () => actions.closed());
+  close = openSheet(layer, del.title, body, () => actions.closed());
   // The safe choice has the focus.
   cancel.focus({ preventScroll: true });
   return close;

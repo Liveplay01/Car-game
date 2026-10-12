@@ -1,5 +1,6 @@
 import { INVITE_LEVEL } from '../core/config';
 import { storage } from '../storage/store';
+import { S } from '../present/strings';
 import { apiRequest, LeaderboardError, leaderboardEnabled, loadAccount } from './leaderboard';
 
 /**
@@ -71,7 +72,7 @@ export interface InviteView {
 
 export async function fetchInvite(): Promise<InviteView> {
   const account = loadAccount();
-  if (!account) throw new LeaderboardError('unauthorized', 'Enter a name first.', 401);
+  if (!account) throw new LeaderboardError('unauthorized', S.net.needName, 401);
   return apiRequest<InviteView>('GET', '/v1/me/referral', { token: account.token });
 }
 

@@ -10,7 +10,7 @@ import { inPortal } from '../storage/device';
  * A place or feature that explains itself once (Leo, 12.10.2026): when it is reached it gets a dot, and the first time it is
  * opened a drawer says what it is for. Seen ones are `intro.*` hints in the save.
  */
-export const INTROS = ['museum', 'builder', 'daily', 'trials', 'pass', 'casino', 'club', 'mafia'] as const;
+export const INTROS = ['museum', 'builder', 'daily', 'trials', 'pass', 'casino', 'club', 'gamefund', 'mafia'] as const;
 export type Intro = (typeof INTROS)[number];
 
 const hintOf = (i: Intro): Hint => `intro.${i}`;
@@ -29,6 +29,7 @@ export const Intros = {
       case 'pass':
         return SeasonPass.isOpen(c, config);
       case 'club':
+      case 'gamefund':
         return Auction.isOpen(c);
       case 'mafia':
         return Mafia.isOpen(c) && !inPortal;

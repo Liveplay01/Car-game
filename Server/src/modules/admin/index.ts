@@ -9,6 +9,8 @@ import { boardById } from '../leaderboard/boards.ts';
 import { ScoreStore } from '../leaderboard/store.ts';
 import { normalizeCode } from '../../codes.ts';
 import { FEEDBACK_KINDS, FEEDBACK_STATUSES, FeedbackStore, isRewardItem, REWARD_ITEMS, type FeedbackKind, type FeedbackStatus } from '../feedback/store.ts';
+import { IDEA_STATUSES, IdeaStore, PUBLIC_TEXT_MAX, TITLE_MAX, type IdeaStatus } from '../ideas/store.ts';
+import { cleanText } from '../../http.ts';
 import { ADMIN_PAGE } from './page.ts';
 
 /**
@@ -22,6 +24,10 @@ import { ADMIN_PAGE } from './page.ts';
  *   GET    /v1/admin/feedback?kind=bug&status=new   bug reports and ideas, newest first
  *   PATCH  /v1/admin/feedback/:id  {status}          new · seen · done · wontfix
  *   DELETE /v1/admin/feedback/:id                    remove one
+ *   GET    /v1/admin/ideas?status=pending          the Club's ideas (players' and "Build with us" ideas), newest first, with the counts
+ *   POST   /v1/admin/ideas  {title, text}             write an idea ourselves: open for gifts at once
+ *   PATCH  /v1/admin/ideas/:id  {title, text, status}   reword and publish (open), mark made (built) or turn down (rejected)
+ *   DELETE /v1/admin/ideas/:id                      remove one with its gifts
  *   POST   /v1/admin/rewards  {friendCode, item}     give a player a reward (the game picks it up); item "money" takes an `amount`
  *
  * `/admin` is a small page for all of the feedback part; the token is typed there, never stored on the server.
@@ -37,6 +43,7 @@ export function adminModule(): ServerModule {
       const players = new PlayerStore(ctx.db);
       const scores = new ScoreStore(ctx.db);
       const feedback = new FeedbackStore(ctx.db);
+      const ideas = new IdeaStore(ctx.db);
 
       const admin = new Hono<AppEnv>();
       admin.use('*', async (c, next) => {
@@ -97,6 +104,43 @@ export function adminModule(): ServerModule {
 
       admin.delete('/feedback/:id', (c) => {
         if (!feedback.delete(c.req.param('id'))) throw new ApiError(404, 'not_found', 'No such entry.');
+        return c.body(null, 204);
+      });
+
+      admin.get('/ideas', (c) => {
+        const status = c.req.query('status') as IdeaStatus | undefined;
+        const limit = Math.min(Math.max(Number(c.req.query('limit')) || 200, 1), 1000);
+        return c.json({ counts: ideas.counts(), items: ideas.all(status && IDEA_STATUSES.includes(status) ? status : undefined, limit) });
+      });
+
+      admin.post('/ideas', async (c) => {
+        const body = await readJson(c);
+        const title = cleanText(body.title).replace(/\s+/g, ' ');
+        const text = cleanText(body.text);
+        if (title === '' || title.length > TITLE_MAX) throw new ApiError(422, 'title_invalid', `The title is 1 to ${TITLE_MAX} characters.`);
+        if (text === '' || text.length > PUBLIC_TEXT_MAX) throw new ApiError(422, 'text_invalid', `The text is 1 to ${PUBLIC_TEXT_MAX} characters.`);
+        const now = ctx.now();
+        const id = ideas.add('team', text, null, now);
+        // Written by us, so it needs no review: it is open for gifts at once.
+        ideas.update(id, { title, text, status: 'open' }, now);
+        return c.json({ id }, 201);
+      });
+
+      admin.patch('/ideas/:id', async (c) => {
+        const body = await readJson(c);
+        const status = body.status as IdeaStatus;
+        if (!IDEA_STATUSES.includes(status)) throw new ApiError(422, 'invalid_status', `Status is one of ${IDEA_STATUSES.join(', ')}.`);
+        const title = cleanText(body.title).replace(/\s+/g, ' ');
+        const text = cleanText(body.text);
+        if (title.length > TITLE_MAX) throw new ApiError(422, 'title_too_long', `The title is at most ${TITLE_MAX} characters.`);
+        if (text.length > PUBLIC_TEXT_MAX) throw new ApiError(422, 'text_too_long', `The text is at most ${PUBLIC_TEXT_MAX} characters.`);
+        if ((status === 'open' || status === 'built') && (title === '' || text === '')) throw new ApiError(422, 'needs_words', 'An idea in the game needs a title and a text.');
+        if (!ideas.update(c.req.param('id'), { title, text, status }, ctx.now())) throw new ApiError(404, 'not_found', 'No such idea.');
+        return c.json({ status });
+      });
+
+      admin.delete('/ideas/:id', (c) => {
+        if (!ideas.delete(c.req.param('id'))) throw new ApiError(404, 'not_found', 'No such idea.');
         return c.body(null, 204);
       });
 

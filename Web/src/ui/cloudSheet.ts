@@ -15,7 +15,7 @@ import {
 } from '../net/cloud';
 import { describeError } from '../net/leaderboard';
 import type { SaveGame } from '../core/career';
-import { Fmt } from '../present/strings';
+import { Fmt, S } from '../present/strings';
 
 declare global {
   interface Window {
@@ -40,16 +40,16 @@ export interface CloudActions {
 
 const summary = (s: SaveGame): string => {
   const { level, prestige, money } = s.career;
-  return `Level ${Fmt.number(level)}${prestige > 0 ? ` · ★${prestige}` : ''} · ${Fmt.number(money)} coins`;
+  return S.cloud.summary(Fmt.number(level), prestige, Fmt.number(money));
 };
 
 /** "Saved just now", "Saved 5 min ago". */
 function ago(at: number | null): string {
-  if (at === null) return 'Saved';
+  if (at === null) return S.cloud.saved;
   const minutes = Math.floor((Date.now() - at) / 60_000);
-  if (minutes < 1) return 'Saved just now';
-  if (minutes < 60) return `Saved ${minutes} min ago`;
-  return `Saved ${Math.floor(minutes / 60)} h ago`;
+  if (minutes < 1) return S.cloud.savedNow;
+  if (minutes < 60) return S.cloud.savedMinutes(minutes);
+  return S.cloud.savedHours(Math.floor(minutes / 60));
 }
 
 /** What the player typed or pasted, tidied into `K7M2-9QXA-4TFB`. */
@@ -80,7 +80,7 @@ async function offerToPasswordManager(code: string): Promise<void> {
       /* refused or unsupported here: the form below is the second try */
     }
   }
-  const frame = h('iframe', { name: 'keep-code-frame', title: 'Password manager', hidden: true, 'aria-hidden': 'true', tabindex: '-1' });
+  const frame = h('iframe', { name: 'keep-code-frame', title: S.cloud.passwordManager, hidden: true, 'aria-hidden': 'true', tabindex: '-1' });
   const form = h(
     'form',
     // Off screen, not `hidden`: browsers skip fields that are not rendered.
@@ -160,13 +160,13 @@ export function cloudSheet(layer: HTMLElement, actions: CloudActions): () => voi
       enterkeyhint: 'go',
       maxlength: '14',
       placeholder: 'K7M2-9QXA-4TFB',
-      'aria-label': 'Sync code',
+      'aria-label': S.cloud.codeLabel,
     });
     /** The last code sent, so a code that was refused is not sent again until it is changed. */
     let tried = '';
     const submit = (): void => {
       if (load.disabled) return;
-      if (input.value.replace(/-/g, '').length !== 12) return say('A sync code has 12 letters and numbers, like K7M2-9QXA-4TFB.');
+      if (input.value.replace(/-/g, '').length !== 12) return say(S.cloud.codeShort);
       tried = input.value;
       run(load, () => connectCloud(input.value));
     };
@@ -176,8 +176,8 @@ export function cloudSheet(layer: HTMLElement, actions: CloudActions): () => voi
       // A whole code is all it takes: no need to tap Load (Leo, 05.10.2026).
       if (input.value.replace(/-/g, '').length === 12 && input.value !== tried) submit();
     });
-    const load = h('button', { class: 'btn', type: 'submit' }, 'Load');
-    const backup = h('button', { class: 'btn primary block', type: 'button' }, 'Back up to the cloud');
+    const load = h('button', { class: 'btn', type: 'submit' }, S.cloud.load);
+    const backup = h('button', { class: 'btn primary block', type: 'button' }, S.cloud.backUp);
     // Right after the code exists the browser is asked to keep it: one tap on its question is all it takes.
     backup.addEventListener('click', () =>
       run(backup, async () => {
@@ -186,9 +186,9 @@ export function cloudSheet(layer: HTMLElement, actions: CloudActions): () => voi
       }),
     );
     return [
-      h('p', { class: 'section-note' }, 'Keep your progress safe and move it between devices. No account and no password: you get a code, and the code is the key.'),
+      h('p', { class: 'section-note' }, S.cloud.offIntro),
       backup,
-      h('p', { class: 'section-note cloud-or' }, 'Already backed up on another device?'),
+      h('p', { class: 'section-note cloud-or' }, S.cloud.already),
       h(
         'form',
         {
@@ -210,49 +210,49 @@ export function cloudSheet(layer: HTMLElement, actions: CloudActions): () => voi
             onclick: (e: Event) => {
               const show = input.type === 'password';
               input.type = show ? 'text' : 'password';
-              (e.currentTarget as HTMLElement).textContent = show ? 'Hide the code' : 'Show the code';
+              (e.currentTarget as HTMLElement).textContent = show ? S.cloud.hideCode : S.cloud.showCode;
             },
           },
-          'Show the code',
+          S.cloud.showCode,
         ),
       ),
     ];
   }
 
   function linked(view: CloudView): HTMLElement[] {
-    const copy = h('button', { class: 'btn', type: 'button' }, 'Copy');
+    const copy = h('button', { class: 'btn', type: 'button' }, S.cloud.copy);
     copy.addEventListener('click', () => {
       navigator.clipboard?.writeText(view.code ?? '').then(
         () => {
-          copy.textContent = 'Copied';
-          window.setTimeout(() => (copy.textContent = 'Copy'), 1500);
+          copy.textContent = S.cloud.copied;
+          window.setTimeout(() => (copy.textContent = S.cloud.copy), 1500);
         },
         () => undefined,
       );
     });
-    const state = view.status === 'saving' ? 'Saving…' : view.status === 'offline' ? 'Offline. The newest progress goes up when the connection is back.' : ago(view.savedAt);
-    const keep = h('button', { class: 'btn', type: 'button' }, 'Save');
+    const state = view.status === 'saving' ? S.cloud.saving : view.status === 'offline' ? S.cloud.offline : ago(view.savedAt);
+    const keep = h('button', { class: 'btn', type: 'button' }, S.cloud.keep);
     keep.addEventListener('click', () => {
       void offerToPasswordManager(view.code ?? '');
-      keep.textContent = 'Asked';
-      window.setTimeout(() => (keep.textContent = 'Save'), 2000);
+      keep.textContent = S.cloud.asked;
+      window.setTimeout(() => (keep.textContent = S.cloud.keep), 2000);
     });
-    const now = h('button', { class: 'btn', type: 'button' }, 'Sync now');
+    const now = h('button', { class: 'btn', type: 'button' }, S.cloud.syncNow);
     now.addEventListener('click', () => run(now, () => syncNow()));
     return [
-      h('p', { class: 'section-note' }, 'Your progress is copied to the cloud while you play. On another device open Settings → Account → Cloud sync and type this code.'),
-      h('div', { class: 'list' }, h('div', { class: 'row' }, h('div', { class: 'row-main' }, h('div', { class: 'row-sub' }, 'Your sync code'), h('div', { class: 'sync-code', 'aria-label': `Your sync code: ${view.code}` }, view.code ?? '')), copy)),
-      h('div', { class: 'list' }, row('Cloud copy', state, now), row('Password manager', 'Let your browser remember the code, then it fills it in on a new device.', keep)),
-      h('p', { class: 'section-note' }, 'Anyone with this code can load or replace your progress. Keep it private.'),
-      h('button', { class: 'btn block quiet-btn', type: 'button', onclick: () => stopCloud() }, 'Stop syncing on this device'),
-      confirmButton('Delete the cloud copy', 'Tap again to delete it for every device', () => deleteCloud(), say),
+      h('p', { class: 'section-note' }, S.cloud.linkedIntro),
+      h('div', { class: 'list' }, h('div', { class: 'row' }, h('div', { class: 'row-main' }, h('div', { class: 'row-sub' }, S.cloud.yourCode), h('div', { class: 'sync-code', 'aria-label': S.cloud.yourCodeLabel(view.code ?? '') }, view.code ?? '')), copy)),
+      h('div', { class: 'list' }, row(S.cloud.cloudCopy, state, now), row(S.cloud.passwordManager, S.cloud.passwordManagerSub, keep)),
+      h('p', { class: 'section-note' }, S.cloud.secret),
+      h('button', { class: 'btn block quiet-btn', type: 'button', onclick: () => stopCloud() }, S.cloud.stop),
+      confirmButton(S.cloud.delete, S.cloud.deleteAgain, () => deleteCloud(), say),
     ];
   }
 
   function choose(view: CloudView): HTMLElement[] {
     const cloud = view.incoming;
-    const keep = h('button', { class: 'btn block', type: 'button' }, 'Keep this device and replace the cloud');
-    const take = h('button', { class: 'btn primary block', type: 'button' }, 'Use the cloud progress');
+    const keep = h('button', { class: 'btn block', type: 'button' }, S.cloud.keepDevice);
+    const take = h('button', { class: 'btn primary block', type: 'button' }, S.cloud.useCloud);
     take.addEventListener('click', () => {
       const save = useCloudSave();
       if (!save) return;
@@ -269,11 +269,11 @@ export function cloudSheet(layer: HTMLElement, actions: CloudActions): () => voi
       }),
     );
     return [
-      h('p', { class: 'section-note' }, 'The cloud holds different progress than this device. Pick the one to keep; the other one is replaced.'),
-      h('div', { class: 'list' }, row('This device', summary(actions.current())), row('Cloud', cloud ? summary(cloud) : '')),
+      h('p', { class: 'section-note' }, S.cloud.differs),
+      h('div', { class: 'list' }, row(S.cloud.thisDevice, summary(actions.current())), row(S.cloud.cloud, cloud ? summary(cloud) : '')),
       take,
       keep,
-      h('button', { class: 'btn block quiet-btn', type: 'button', onclick: () => dismissIncoming() }, 'Decide later'),
+      h('button', { class: 'btn block quiet-btn', type: 'button', onclick: () => dismissIncoming() }, S.cloud.later),
     ];
   }
 
@@ -291,7 +291,7 @@ export function cloudSheet(layer: HTMLElement, actions: CloudActions): () => voi
 
   const stop = onCloudChange(render);
   render();
-  close = openSheet(layer, 'Cloud sync', body, () => {
+  close = openSheet(layer, S.cloud.title, body, () => {
     stop();
     actions.closed();
   });

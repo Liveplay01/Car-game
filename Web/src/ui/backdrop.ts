@@ -98,7 +98,7 @@ export class BackdropLayer {
       case 'youtube':
         return h('iframe', {
           src: youtubeEmbed(media.id),
-          title: 'Big Screen video',
+          title: S.shell.bigScreenVideo,
           allow: 'autoplay; encrypted-media; picture-in-picture',
           referrerpolicy: 'strict-origin-when-cross-origin',
           tabindex: '-1',

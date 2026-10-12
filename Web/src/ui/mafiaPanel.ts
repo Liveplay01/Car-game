@@ -5,6 +5,7 @@ import type { Career } from '../core/career';
 import { DAY_MS, Mafia, type Grade, type Loan, type LoanEvent, type Table } from '../core/mafia';
 import { Fmt, S } from '../present/strings';
 import type { HapticID, SoundID } from '../present/feedback';
+import { currentLanguage } from '../present/i18n';
 
 /**
  * The Mafia (Social → Mafia, Leo, 11.10.2026): the Family lends money against a deal struck on a bar. A pointer sweeps across it, faster
@@ -34,15 +35,13 @@ export interface MafiaPanel {
 /** The fedora on the Don's card. */
 const FEDORA = '<path d="M2.5 16.5h19"/><path d="M5.5 16.5c0-3.4 1-7 3-9 1.7-1.7 5.3-1.7 7 0 2 2 3 5.6 3 9"/><path d="M6.2 12.8h11.6"/>';
 
-const SPEEDS = ['Slow', 'Quick', 'Frantic'];
-
 /** The steady hand stays chosen while the page is left and came back to. */
 let assist = false;
 const TRAIL = 5;
 
 type Mood = 'calm' | 'warm' | 'hot' | 'late';
 
-const dateOf = (ms: number): string => new Date(ms).toLocaleString('en', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+const dateOf = (ms: number): string => new Date(ms).toLocaleString(currentLanguage(), { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
 
 /** How loud the ledger is: calm until half the time is gone, warm after, hot in the last day, late once the day has passed. */
 function moodOf(loan: Loan, now: number): Mood {
@@ -69,7 +68,7 @@ function cash(n: number): Cash {
     text.nodeValue = Fmt.number(Math.round(x));
   };
   return {
-    el: h('span', { class: 'cash' }, text, h('span', { class: 'coin', 'aria-label': 'money' })),
+    el: h('span', { class: 'cash' }, text, h('span', { class: 'coin', 'aria-label': S.clubPanel.money })),
     set(x) {
       cancelAnimationFrame(raf);
       put(x);
@@ -297,10 +296,10 @@ export function mafiaPanel(host: MafiaHost): MafiaPanel {
     if (career.mafiaBan > Date.now()) return [h('div', { class: 'mafia-card' }, layer(), h('p', { class: 'mafia-pitch' }, S.mafia.banned(dateOf(career.mafiaBan))))];
     const t = Mafia.table(career, amount, baseConfig, assist);
     const terms = Mafia.baseTerms(career);
-    const level = Math.round((amounts.indexOf(amount) / Math.max(1, amounts.length - 1)) * (SPEEDS.length - 1));
+    const level = Math.round((amounts.indexOf(amount) / Math.max(1, amounts.length - 1)) * (S.mafia.speeds.length - 1));
     const sit = h('button', { class: 'btn primary mafia-go pulse', type: 'button' }, S.mafia.set);
     sit.addEventListener('click', setTable);
-    const speed = h('span', { class: 'mafia-speed', 'data-level': String(level) }, `Pointer · ${SPEEDS[level]} `, h('i', {}, '›'), h('i', {}, '›'), h('i', {}, '›'));
+    const speed = h('span', { class: 'mafia-speed', 'data-level': String(level) }, `${S.mafia.pointer(S.mafia.speeds[level])} `, h('i', {}, '›'), h('i', {}, '›'), h('i', {}, '›'));
     const meta = h('div', { class: 'mafia-meta' }, h('span', {}, S.mafia.zone(Mafia.zoneWidth(career), career.cleanLoans)), speed);
     return [h('div', { class: 'mafia-card' }, layer(), h('p', { class: 'mafia-pitch' }, S.mafia.pitch), chips(), bar(t, 0, false, null), meta, nextHint(), assistToggle(), h('div', { class: 'mafia-offer' }, h('span', {}, S.mafia.offer(terms.interest, terms.days)), sit))];
   }
@@ -369,7 +368,7 @@ export function mafiaPanel(host: MafiaHost): MafiaPanel {
   function struckRows(position: number): HTMLElement[] {
     if (!struck || !table) return [];
     const { grade, loan } = struck;
-    const done = h('button', { class: 'btn primary mafia-go', type: 'button' }, 'Take the cash');
+    const done = h('button', { class: 'btn primary mafia-go', type: 'button' }, S.mafia.takeCash);
     done.addEventListener('click', () => {
       phase = 'idle';
       struck = null;

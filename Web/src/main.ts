@@ -2,6 +2,8 @@ import { Shell } from './ui/shell';
 import { inItch, inPortal } from './storage/device';
 import { gameLoaded, startCrazyGames } from './ui/crazygames';
 import { startCloud } from './net/cloud';
+import { S } from './present/strings';
+import { currentLanguage } from './present/i18n';
 import { startAds } from './ui/ads';
 import { startAnalytics } from './ui/analytics';
 import { Casino } from './core/casino';
@@ -19,6 +21,8 @@ declare global {
 
 // The casino draws on real randomness besides the save's seed, so no result can be worked out beforehand.
 Casino.useEntropy(() => crypto.getRandomValues(new Uint32Array(1))[0]);
+
+document.documentElement.lang = currentLanguage();
 
 const app = document.getElementById('app')!;
 const canvas = document.getElementById('scene') as HTMLCanvasElement;
@@ -45,7 +49,7 @@ const holdPlay = (options: LockOptions): Promise<boolean> =>
 const fail = boot?.querySelector('.boot-fail');
 if (boot && fail && 'locks' in navigator && !(await holdPlay({ ifAvailable: true }))) {
   const message = fail.innerHTML;
-  fail.innerHTML = '<h1>The roundabout is open elsewhere.</h1><p>Roundabout Timing is already running in another tab or window. Two at once would overwrite each other’s progress. Close the other one and this one starts by itself.</p>';
+  fail.innerHTML = `<h1>${S.shell.openElsewhere}</h1><p>${S.shell.openElsewhereBody}</p>`;
   boot.classList.add('failed');
   await holdPlay({});
   fail.innerHTML = message;
@@ -106,7 +110,7 @@ startAnalytics();
 // Cloud sync, when the player turned it on: newer progress from another device comes over by itself.
 startCloud({
   save: () => shell.game.save,
-  notify: (text) => shell.game.announce(text),
+  ask: () => shell.flashSettings(S.settings.syncAsk, true),
   canTake: () => shell.canTakeCloud,
   take: (save) => shell.game.takeCloudSave(save),
   ready: () => shell.game.collectLoginIncome(),

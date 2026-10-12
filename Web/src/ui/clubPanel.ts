@@ -7,9 +7,9 @@ import { baseConfig } from '../core/config';
 import type { Career } from '../core/career';
 import { Auction, type AuctionEvent, type AuctionRun, type Lot } from '../core/auction';
 import { CONTRACT_GOALS, Contracts, type ContractGoal } from '../core/contracts';
-import { Fund, GIFTS, type FundProject, type FundView } from '../core/fund';
+import { Fund, GIFTS } from '../core/fund';
 import { cosmetic } from '../core/loot';
-import { fetchFund, fundEnabled, giveToFund } from '../net/fund';
+import { fetchIdeas, giveToIdea, ideasEnabled, suggestIdea, type Idea, type IdeasView } from '../net/ideas';
 import { describeError, loadAccount, syncScores, type Records } from '../net/leaderboard';
 import { loadPlayerName } from '../storage/profile';
 import { Fmt, S } from '../present/strings';
@@ -23,13 +23,13 @@ import { CanvasDrawer } from '../present/draw';
 import { v } from '../core/vec2';
 
 /**
- * The Club (Leo, 10.10.2026): three sinks for big balances, the third segment of the Social tab (from Level 50; it began as a card in
- * the Shop). The Auction House (`core/auction.ts`), the City Fund (`core/fund.ts`, the service) and Contracts
- * (`core/contracts.ts`). Money only buys looks, thanks and a chance at a payout for skill: never an edge on the road.
+ * The Club (Leo, 10.10.2026): sinks for big balances, the third segment of the Social tab (from Level 50; it began as a card in
+ * the Shop). The Auction House (`core/auction.ts`), the Game fund (Leo, 12.10.2026, it replaced the City Fund: players suggest ideas, we publish
+ * them, everyone gives until an idea is funded; `net/ideas.ts`) and Contracts (`core/contracts.ts`). Money only buys looks, thanks and a chance at a payout for skill: never an edge on the road.
  */
 
 export interface ClubHost {
-  /** Where drawers open (the City Fund's project details and thanks). */
+  /** Where drawers open (an idea's details, the thanks). */
   layer: HTMLElement;
   career(): Career;
   today(): number;
@@ -39,6 +39,8 @@ export interface ClubHost {
   records(): Records;
   /** The career changed (a lot begun or won, a gift, a contract): write the save. */
   changed(): void;
+  /** The Game fund tab is open: its drawer explains it, once. */
+  intro(): void;
   celebrate(): void;
   sound?(id: SoundID, pitch?: number): void;
 }
@@ -49,11 +51,11 @@ export interface ClubPanel {
   dispose(): void;
 }
 
-type ClubTab = 'auction' | 'fund' | 'contracts';
+type ClubTab = 'auction' | 'ideas' | 'contracts';
 const TABS: { id: ClubTab; label: string }[] = [
-  { id: 'auction', label: 'Auction' },
-  { id: 'fund', label: 'City Fund' },
-  { id: 'contracts', label: 'Contracts' },
+  { id: 'auction', label: S.clubPanel.tabs.auction },
+  { id: 'ideas', label: S.clubPanel.tabs.ideas },
+  { id: 'contracts', label: S.clubPanel.tabs.contracts },
 ];
 let lastTab: ClubTab = 'auction';
 
@@ -102,7 +104,7 @@ function withCoins(root: Node): void {
     const parts = (text.nodeValue ?? '').split(MONEY_MARK);
     const nodes: (string | HTMLElement)[] = [];
     parts.forEach((part, i) => {
-      if (i > 0) nodes.push(h('span', { class: 'coin', 'aria-label': 'money' }));
+      if (i > 0) nodes.push(h('span', { class: 'coin', 'aria-label': S.clubPanel.money }));
       if (part) nodes.push(part);
     });
     text.replaceWith(...nodes);
@@ -111,10 +113,10 @@ function withCoins(root: Node): void {
 
 const lotName = (lot: Lot): string => (lot.k === 'chest' ? S.shop.chest(lot.chest) : S.shop.item(lot.id));
 function lotKind(lot: Lot): string {
-  if (lot.k === 'chest') return 'A sealed chest';
+  if (lot.k === 'chest') return S.clubPanel.sealedChest;
   const item = cosmetic(lot.id);
   if (!item) return '';
-  return item.source.kind === 'auction' ? 'Auction House exclusive' : S.shop.kind(item);
+  return item.source.kind === 'auction' ? S.clubPanel.exclusive : S.shop.kind(item);
 }
 
 export function clubPanel(host: ClubHost): ClubPanel {
@@ -127,9 +129,11 @@ export function clubPanel(host: ClubHost): ClubPanel {
   let run: AuctionRun | null = null;
   /** What the auction shows while the collectors answer one by one: the bidding as it unfolds. */
   let shown: { price: number; leader: AuctionRun['leader']; log: string[]; busy: boolean } = { price: 0, leader: null, log: [], busy: false };
-  let fund: FundView | null = null;
-  let fundError: string | null = null;
-  let fundBusy = false;
+  let ideas: IdeasView | null = null;
+  let ideasError: string | null = null;
+  let ideasBusy = false;
+  /** An idea was sent in this visit: the list says what happens to it. */
+  let ideaSent = false;
   /** The gift picked (a quick amount or typed) and the text of the field; nothing is given before "Give". */
   let gift = 0;
   let giftText = '';
@@ -154,12 +158,12 @@ export function clubPanel(host: ClubHost): ClubPanel {
   function updateTimerUi(): void {
     const pct = Math.max(0, Math.min(100, (remainingSeconds / AUCTION_TIMER_SECONDS) * 100));
     if (timerBarEl) timerBarEl.style.width = `${pct}%`;
-    if (timerDigitsEl) timerDigitsEl.textContent = `${remainingSeconds.toFixed(1)}s`;
+    if (timerDigitsEl) timerDigitsEl.textContent = S.clubPanel.timer.seconds(remainingSeconds.toFixed(1));
     if (timerStageEl) {
-      if (remainingSeconds > 4.5) timerStageEl.textContent = 'Bidding open · Make your offer';
-      else if (remainingSeconds > 2.0) timerStageEl.textContent = 'Going once... 🔨';
-      else if (remainingSeconds > 0) timerStageEl.textContent = 'Going twice! Final warning! 🔨🔨';
-      else timerStageEl.textContent = 'HAMMER FALLS! 🔨🔨🔨';
+      if (remainingSeconds > 4.5) timerStageEl.textContent = S.clubPanel.timer.open;
+      else if (remainingSeconds > 2.0) timerStageEl.textContent = S.clubPanel.timer.once;
+      else if (remainingSeconds > 0) timerStageEl.textContent = S.clubPanel.timer.twice;
+      else timerStageEl.textContent = S.clubPanel.timer.fall;
     }
     if (timerContainerEl) {
       if (remainingSeconds <= 3.5) timerContainerEl.classList.add('urgent');
@@ -191,17 +195,17 @@ export function clubPanel(host: ClubHost): ClubPanel {
     Auction.walk(run);
     if (typeof shown.leader === 'number') {
       const winningBot = run.bots[shown.leader];
-      shown.log.push(`🔨 Time expired! The hammer falls: Sold to ${winningBot.name} for ${cash(run.price)}.`);
+      shown.log.push(S.clubPanel.expiredSold(winningBot.name, cash(run.price)));
       host.sound?.('shiftFailed');
     } else {
-      shown.log.push('🔨 Time expired! No opening bids were placed. The lot has been withdrawn.');
+      shown.log.push(S.clubPanel.expiredNone);
       host.sound?.('denied');
     }
     host.changed();
     show();
   }
 
-  const tabs = tabsControl('Club', TABS, (next) => {
+  const tabs = tabsControl(S.club.title, TABS, (next) => {
     tab = next;
     lastTab = next;
     if (tab !== 'auction') {
@@ -216,7 +220,7 @@ export function clubPanel(host: ClubHost): ClubPanel {
 
   function show(): void {
     tabs.set(tab);
-    const rows = { auction: auctionRows, fund: fundRows, contracts: contractRows }[tab]();
+    const rows = { auction: auctionRows, ideas: ideaRows, contracts: contractRows }[tab]();
     content.replaceChildren(...rows);
     withCoins(content);
     // A new view (another tab, the room opening, the hammer falling, back to the lots) starts at the top; a new bid stays where it is.
@@ -224,7 +228,8 @@ export function clubPanel(host: ClubHost): ClubPanel {
     if (next !== view) scrollSheetToTop(content);
     view = next;
     fadeIn(content);
-    if (tab === 'fund' && !fund && !fundBusy && !fundError && fundEnabled) void loadFund();
+    if (tab === 'ideas') host.intro();
+    if (tab === 'ideas' && !ideas && !ideasBusy && !ideasError && ideasEnabled) void loadIdeas();
   }
 
   // MARK: Auction
@@ -240,22 +245,18 @@ export function clubPanel(host: ClubHost): ClubPanel {
     if (fresh) host.changed();
     const rows = lots.map((lot, slot) => {
       const can = Auction.canStart(career, slot, day);
-      const button = h('button', { class: `btn${can ? ' primary' : ''}`, type: 'button', disabled: !can, 'aria-label': `Bid on ${lotName(lot)}` }, can ? 'Enter Auction' : career.auctionTaken.includes(slot) ? 'Tried' : 'Owned');
+      const button = h('button', { class: `btn${can ? ' primary' : ''}`, type: 'button', disabled: !can, 'aria-label': S.clubPanel.bidOn(lotName(lot)) }, can ? S.clubPanel.enter : career.auctionTaken.includes(slot) ? S.clubPanel.tried : S.clubPanel.owned);
       button.addEventListener('click', () => begin(slot));
-      return h('div', { class: 'row' }, swatch(lot), h('div', { class: 'row-main' }, h('div', { class: 'row-title' }, lotName(lot)), h('div', { class: 'row-sub' }, `${lotKind(lot)} · estimate ${cash(Auction.estimate(lot))}`)), button);
+      return h('div', { class: 'row' }, swatch(lot), h('div', { class: 'row-main' }, h('div', { class: 'row-title' }, lotName(lot)), h('div', { class: 'row-sub' }, S.clubPanel.estimate(lotKind(lot), cash(Auction.estimate(lot))))), button);
     });
     const [sharkLo, sharkHi] = baseConfig.auctionShark;
     const [pennyLo, pennyHi] = baseConfig.auctionPenny;
     const out: HTMLElement[] = [
-      label("Today's lots"),
+      label(S.clubPanel.lots),
       h('div', { class: 'list' }, ...rows),
-      note(
-        `The collectors in the room are computer-controlled. ${Math.round(baseConfig.auctionSharkShare * 10)} in 10 are sharks who keep bidding up to ${sharkLo} to ${sharkHi} times the estimate; the rest stop at ${pennyLo} to ${pennyHi} times. ` +
-          `The bidding opens at ${percent(baseConfig.auctionStartShare)} of the estimate. Each round has a countdown timer — counter-bid before the hammer falls! When the hammer falls on your bid you pay it plus a ${percent(baseConfig.auctionPremium)} buyer's premium. ` +
-          'Walking away costs nothing, but the lot is gone for today. A new set tomorrow.',
-      ),
+      note(S.clubPanel.rules(Math.round(baseConfig.auctionSharkShare * 10), sharkLo, sharkHi, pennyLo, pennyHi, percent(baseConfig.auctionStartShare), percent(baseConfig.auctionPremium))),
     ];
-    if (career.auctionWins > 0) out.push(note(`Lots won · ${career.auctionWins}   Spent · ${cash(career.auctionSpent)}`));
+    if (career.auctionWins > 0) out.push(note(S.clubPanel.record(career.auctionWins, cash(career.auctionSpent))));
     return out;
   }
 
@@ -264,65 +265,65 @@ export function clubPanel(host: ClubHost): ClubPanel {
     host.changed();
     if (!started) return show();
     run = started;
-    shown = { price: 0, leader: null, log: [`${started.bots.length} collectors take their seats for ${lotName(started.lot)}.`], busy: false };
+    shown = { price: 0, leader: null, log: [S.clubPanel.seats(started.bots.length, lotName(started.lot))], busy: false };
     show();
     startTimer(AUCTION_TIMER_SECONDS);
   }
 
   function auctionRoom(now: AuctionRun): HTMLElement[] {
-    const leader = shown.leader === 'you' ? 'You' : typeof shown.leader === 'number' ? now.bots[shown.leader].name : null;
+    const leader = shown.leader === 'you' ? S.clubPanel.you : typeof shown.leader === 'number' ? now.bots[shown.leader].name : null;
 
     // Status Banner: Crystal clear explanation of current state for new players
     const banner = h('div', { class: 'auction-status-banner' });
     if (now.phase === 'won') {
       banner.classList.add('won');
       banner.append(
-        h('span', { class: 'auction-status-badge' }, '🏆 AUCTION WON'),
-        h('div', { class: 'auction-status-title' }, `Sold to you: ${lotName(now.lot)}`),
-        h('div', { class: 'auction-status-desc' }, `Hammer fell at ${cash(now.price)}. Total paid with premium: ${cash(now.paid)}. Item is in your garage!`),
+        h('span', { class: 'auction-status-badge' }, S.clubPanel.wonBadge),
+        h('div', { class: 'auction-status-title' }, S.clubPanel.wonTitle(lotName(now.lot))),
+        h('div', { class: 'auction-status-desc' }, S.clubPanel.wonDesc(cash(now.price), cash(now.paid))),
       );
     } else if (now.phase === 'lost') {
       banner.classList.add('outbid');
       const soldTo = typeof now.leader === 'number' ? now.bots[now.leader].name : null;
       banner.append(
-        h('span', { class: 'auction-status-badge' }, 'AUCTION CLOSED'),
-        h('div', { class: 'auction-status-title' }, soldTo ? `Sold to ${soldTo}` : 'Lot Withdrawn'),
-        h('div', { class: 'auction-status-desc' }, soldTo ? `Winning bid: ${cash(now.price)}. You can try again tomorrow with fresh lots.` : 'No bids placed within the time limit. Lot withdrawn for today.'),
+        h('span', { class: 'auction-status-badge' }, S.clubPanel.closedBadge),
+        h('div', { class: 'auction-status-title' }, soldTo ? S.clubPanel.soldTo(soldTo) : S.clubPanel.withdrawn),
+        h('div', { class: 'auction-status-desc' }, soldTo ? S.clubPanel.closedSold(cash(now.price)) : S.clubPanel.closedNone),
       );
     } else if (shown.leader === 'you') {
       banner.classList.add('lead');
       banner.append(
-        h('span', { class: 'auction-status-badge' }, '⭐ YOU HOLD THE LEAD'),
-        h('div', { class: 'auction-status-title' }, `Current highest bid: ${cash(shown.price)}`),
-        h('div', { class: 'auction-status-desc' }, 'You hold the floor! If no collector counters before the hammer strikes three times, you win this lot.'),
+        h('span', { class: 'auction-status-badge' }, S.clubPanel.leadBadge),
+        h('div', { class: 'auction-status-title' }, S.clubPanel.leadTitle(cash(shown.price))),
+        h('div', { class: 'auction-status-desc' }, S.clubPanel.leadDesc),
       );
     } else if (typeof shown.leader === 'number') {
       banner.classList.add('outbid');
       banner.append(
-        h('span', { class: 'auction-status-badge' }, '⚠️ YOU ARE OUTBID'),
-        h('div', { class: 'auction-status-title' }, `${now.bots[shown.leader].name} leads with ${cash(shown.price)}`),
-        h('div', { class: 'auction-status-desc' }, 'Place a higher bid before the countdown timer expires to stay in the auction!'),
+        h('span', { class: 'auction-status-badge' }, S.clubPanel.outbidBadge),
+        h('div', { class: 'auction-status-title' }, S.clubPanel.outbidTitle(now.bots[shown.leader].name, cash(shown.price))),
+        h('div', { class: 'auction-status-desc' }, S.clubPanel.outbidDesc),
       );
     } else {
       banner.classList.add('open');
       banner.append(
-        h('span', { class: 'auction-status-badge' }, '📢 OPENING BID REQUIRED'),
-        h('div', { class: 'auction-status-title' }, `Floor opens at ${cash(now.start)}`),
-        h('div', { class: 'auction-status-desc' }, 'Select a bid below before time runs out to open the auction and claim the first lead.'),
+        h('span', { class: 'auction-status-badge' }, S.clubPanel.openBadge),
+        h('div', { class: 'auction-status-title' }, S.clubPanel.openTitle(cash(now.start))),
+        h('div', { class: 'auction-status-desc' }, S.clubPanel.openDesc),
       );
     }
 
     // Lot card and Current Price
-    const lot = h('div', { class: 'row' }, swatch(now.lot), h('div', { class: 'row-main' }, h('div', { class: 'row-title' }, lotName(now.lot)), h('div', { class: 'row-sub' }, `${lotKind(now.lot)} · estimate ${cash(now.estimate)}`)));
+    const lot = h('div', { class: 'row' }, swatch(now.lot), h('div', { class: 'row-main' }, h('div', { class: 'row-title' }, lotName(now.lot)), h('div', { class: 'row-sub' }, S.clubPanel.estimate(lotKind(now.lot), cash(now.estimate)))));
     const bid = h(
       'div',
       { class: 'row' },
       h(
         'div',
         { class: 'row-main' },
-        h('div', { class: 'row-sub' }, shown.price === 0 ? 'Opening minimum' : 'Highest bid so far'),
+        h('div', { class: 'row-sub' }, shown.price === 0 ? S.clubPanel.openingMinimum : S.clubPanel.highestBid),
         h('div', { class: 'club-price' }, cash(shown.price === 0 ? now.start : shown.price)),
-        h('div', { class: 'row-sub' }, leader ? `${leader} leads` : 'No bid yet'),
+        h('div', { class: 'row-sub' }, leader ? S.clubPanel.leads(leader) : S.clubPanel.noBid),
       ),
     );
 
@@ -330,8 +331,8 @@ export function clubPanel(host: ClubHost): ClubPanel {
     let timerEl: HTMLElement | null = null;
     if (now.phase === 'bidding') {
       timerContainerEl = h('div', { class: 'auction-timer' });
-      timerStageEl = h('span', { class: 'auction-timer-stage' }, 'Bidding open · Make your offer');
-      timerDigitsEl = h('span', { class: 'auction-timer-digits' }, `${remainingSeconds.toFixed(1)}s`);
+      timerStageEl = h('span', { class: 'auction-timer-stage' }, S.clubPanel.timer.open);
+      timerDigitsEl = h('span', { class: 'auction-timer-digits' }, S.clubPanel.timer.seconds(remainingSeconds.toFixed(1)));
       const timerHeader = h('div', { class: 'auction-timer-header' }, timerStageEl, timerDigitsEl);
 
       timerBarEl = h('div', { class: 'auction-timer-bar' });
@@ -348,15 +349,15 @@ export function clubPanel(host: ClubHost): ClubPanel {
 
     // Collector pills with Leader highlight
     const activeBots = now.bots.filter((b) => !b.out).length;
-    const botsLabel = h('div', { class: 'section-note', style: 'margin: var(--s2) 0 var(--s1);' }, `Collectors in room (${activeBots} active):`);
+    const botsLabel = h('div', { class: 'section-note', style: 'margin: var(--s2) 0 var(--s1);' }, S.clubPanel.collectors(activeBots));
     const bots = h(
       'div',
-      { class: 'club-bots', role: 'list', 'aria-label': 'Collectors' },
+      { class: 'club-bots', role: 'list', 'aria-label': S.clubPanel.collectorsLabel },
       ...now.bots.map((bot, i) => {
         const isLeader = shown.leader === i;
         const isOut = bot.out;
         const cls = `club-bot${isOut ? ' out' : isLeader ? ' leader' : ''}`;
-        const text = isOut ? `${bot.name} · Out` : isLeader ? `👑 ${bot.name} · Leading` : `${bot.name} · In`;
+        const text = isOut ? S.clubPanel.botOut(bot.name) : isLeader ? S.clubPanel.botLeading(bot.name) : S.clubPanel.botIn(bot.name);
         return h('span', { class: cls, role: 'listitem' }, text);
       }),
     );
@@ -370,10 +371,10 @@ export function clubPanel(host: ClubHost): ClubPanel {
     // Phase: Won or Lost
     if (now.phase !== 'bidding') {
       const won = now.phase === 'won';
-      const sold = typeof now.leader === 'number' ? `Sold to ${now.bots[now.leader].name} for ${cash(now.price)}.` : 'Lot withdrawn without bids.';
+      const sold = typeof now.leader === 'number' ? S.clubPanel.soldLine(now.bots[now.leader].name, cash(now.price)) : S.clubPanel.withdrawnLine;
       out.push(
-        h('div', { class: 'list' }, row(won ? `Sold to you · ${lotName(now.lot)}` : 'Auction concluded', won ? `Hammer ${cash(now.price)} + premium ${cash(now.paid - now.price)} = ${cash(now.paid)}` : sold)),
-        h('button', { class: 'btn primary block', type: 'button', onclick: () => { run = null; show(); } }, 'Back to the lots'),
+        h('div', { class: 'list' }, row(won ? S.clubPanel.soldToYou(lotName(now.lot)) : S.clubPanel.concluded, won ? S.clubPanel.hammerSum(cash(now.price), cash(now.paid - now.price), cash(now.paid)) : sold)),
+        h('button', { class: 'btn primary block', type: 'button', onclick: () => { run = null; show(); } }, S.clubPanel.back),
       );
       return out;
     }
@@ -382,18 +383,18 @@ export function clubPanel(host: ClubHost): ClubPanel {
     const min = Auction.minBid(now);
     const step = now.step;
     const tiers = [
-      { n: 0, tag: 'Min Bid · +1 Step', cls: 'min' },
-      { n: 2, tag: 'Raise · +3 Steps', cls: 'raise' },
-      { n: 5, tag: 'Power Bid · +6 Steps', cls: 'jump' },
+      { n: 0, tag: S.clubPanel.tiers.min, cls: 'min' },
+      { n: 2, tag: S.clubPanel.tiers.raise, cls: 'raise' },
+      { n: 5, tag: S.clubPanel.tiers.power, cls: 'jump' },
     ];
 
     if (shown.leader === 'you') {
       // Player is currently winning
       out.push(
         h('div', { class: 'list' },
-          row('You hold the winning bid', 'Wait for collectors to counter-bid or the hammer to fall.')
+          row(S.clubPanel.holdTitle, S.clubPanel.holdSub)
         ),
-        h('button', { class: 'btn block', type: 'button', disabled: shown.busy, onclick: () => leave(now) }, 'Walk away (Concede lot)')
+        h('button', { class: 'btn block', type: 'button', disabled: shown.busy, onclick: () => leave(now) }, S.clubPanel.concede)
       );
     } else {
       // Opponent or no one leads: show strategic bidding options
@@ -407,9 +408,9 @@ export function clubPanel(host: ClubHost): ClubPanel {
             class: `btn${canAfford ? ' primary' : ''}`,
             type: 'button',
             disabled: shown.busy || !canAfford,
-            'aria-label': `Bid ${Fmt.number(amount)}`,
+            'aria-label': S.clubPanel.bidLabel(Fmt.number(amount)),
           },
-          canAfford ? `Bid ${cash(amount)}` : 'Too costly',
+          canAfford ? S.clubPanel.bid(cash(amount)) : S.clubPanel.tooCostly,
         );
         button.addEventListener('click', () => bidOn(now, amount));
 
@@ -417,7 +418,7 @@ export function clubPanel(host: ClubHost): ClubPanel {
           h('span', { class: `auction-offer-tag ${cls}` }, tag),
           cash(amount),
         );
-        const subText = `${cash(cost)} with 10% premium${canAfford ? '' : ' · (Not enough money)'}`;
+        const subText = S.clubPanel.withPremium(cash(cost), canAfford);
         return h('div', { class: 'row' },
           h('div', { class: 'row-main' }, titleEl, h('div', { class: 'row-sub' }, subText)),
           button,
@@ -425,12 +426,12 @@ export function clubPanel(host: ClubHost): ClubPanel {
       });
 
       if (career.money < Auction.cost(min)) {
-        offerRows.push(row('Not enough money', `The minimum bid costs ${cash(Auction.cost(min))} with the 10% buyer's premium.`));
+        offerRows.push(row(S.clubPanel.notEnough, S.clubPanel.minCost(cash(Auction.cost(min)))));
       }
 
       out.push(
         h('div', { class: 'list' }, ...offerRows),
-        h('button', { class: 'btn block', type: 'button', disabled: shown.busy, onclick: () => leave(now) }, 'Walk away'),
+        h('button', { class: 'btn block', type: 'button', disabled: shown.busy, onclick: () => leave(now) }, S.clubPanel.walk),
       );
     }
 
@@ -439,8 +440,8 @@ export function clubPanel(host: ClubHost): ClubPanel {
       h(
         'div',
         { class: 'auction-guide-box' },
-        h('strong', {}, '💡 How Bidding Works: '),
-        'Place a bid before the 10s timer expires. Collectors will either raise or drop out. Hold the lead through three hammer strikes to win! The 10% buyer fee is only paid if you win.',
+        h('strong', {}, S.clubPanel.guideHead),
+        S.clubPanel.guide,
       ),
     );
 
@@ -450,7 +451,7 @@ export function clubPanel(host: ClubHost): ClubPanel {
   function leave(now: AuctionRun): void {
     stopTimer();
     Auction.walk(now);
-    shown.log.push(typeof now.leader === 'number' ? `You walked away. ${now.bots[now.leader].name} takes it at ${cash(now.price)}.` : 'You walked away.');
+    shown.log.push(typeof now.leader === 'number' ? S.clubPanel.walkedAwaySold(now.bots[now.leader].name, cash(now.price)) : S.clubPanel.walkedAway);
     host.sound?.('denied');
     host.changed();
     show();
@@ -464,7 +465,7 @@ export function clubPanel(host: ClubHost): ClubPanel {
     host.sound?.('purchase', 1.05);
     shown.price = amount;
     shown.leader = 'you';
-    shown.log.push(`You bid ${cash(amount)}!`);
+    shown.log.push(S.clubPanel.youBid(cash(amount)));
     shown.busy = true;
     show();
     const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -486,35 +487,35 @@ export function clubPanel(host: ClubHost): ClubPanel {
         return;
       }
       if (event.k === 'out') {
-        shown.log.push(`${now.bots[event.bot].name} drops out.`);
+        shown.log.push(S.clubPanel.dropsOut(now.bots[event.bot].name));
         host.sound?.('uiTick', 0.9);
         show();
         window.setTimeout(() => step(later), reduce ? 0 : 550);
       } else if (event.k === 'counter') {
         shown.price = event.price;
         shown.leader = event.bot;
-        shown.log.push(`${now.bots[event.bot].name} counter-bids ${cash(event.price)}!`);
+        shown.log.push(S.clubPanel.counterBids(now.bots[event.bot].name, cash(event.price)));
         host.sound?.('toll', 1.0);
         show();
         window.setTimeout(() => step(later), reduce ? 0 : 750);
       } else {
         // Hammer sequence: dramatic 3-strike countdown
         const winPrice = event.price;
-        shown.log.push('No collectors counter your bid...');
+        shown.log.push(S.clubPanel.noCounter);
         show();
         window.setTimeout(() => {
           if (closed) return;
-          shown.log.push(`Going once at ${cash(winPrice)}... 🔨`);
+          shown.log.push(S.clubPanel.goingOnce(cash(winPrice)));
           host.sound?.('uiTick', 1.1);
           show();
           window.setTimeout(() => {
             if (closed) return;
-            shown.log.push('Going twice! Fair warning... 🔨🔨');
+            shown.log.push(S.clubPanel.goingTwice);
             host.sound?.('uiTick', 1.3);
             show();
             window.setTimeout(() => {
               if (closed) return;
-              shown.log.push(`SOLD! The hammer falls at ${cash(winPrice)} to you! 🔨🔨🔨`);
+              shown.log.push(S.clubPanel.sold(cash(winPrice)));
               host.sound?.('shiftComplete', 1.0);
               host.celebrate();
               shown.busy = false;
@@ -528,61 +529,145 @@ export function clubPanel(host: ClubHost): ClubPanel {
     window.setTimeout(() => step(events), reduce ? 0 : 500);
   }
 
-  // MARK: City Fund
+  // MARK: Ideas
 
-  async function loadFund(): Promise<void> {
-    fundBusy = true;
+  async function loadIdeas(): Promise<void> {
+    ideasBusy = true;
     try {
-      fund = await fetchFund();
-      claim(fund);
+      ideas = await fetchIdeas();
     } catch (error) {
-      fundError = describeError(error);
+      ideasError = describeError(error);
     }
-    fundBusy = false;
-    if (!closed && tab === 'fund') show();
+    ideasBusy = false;
+    if (!closed && tab === 'ideas') show();
   }
 
-  /** The skins of projects that are built, for whoever gave enough to them. */
-  function claim(view: FundView): void {
-    const ids = Fund.claim(career, view);
-    if (ids.length === 0) return;
-    host.changed();
-    host.celebrate();
-  }
+  const ideaState = (i: Idea): string => (i.status === 'built' ? S.clubPanel.state.built : i.status === 'funded' ? S.clubPanel.state.funded : S.clubPanel.state.funding);
 
-  function fundRows(): HTMLElement[] {
-    if (!fundEnabled) return [note('The City Fund needs the online service, which this copy of the game is not connected to.')];
-    if (fundError) {
+  /** The players' ideas: what is being funded, what is funded and waits to be made, and what is built. */
+  function ideaRows(): HTMLElement[] {
+    if (!ideasEnabled) return [note(S.clubPanel.ideasOffline)];
+    if (ideasError) {
       return [
-        note(fundError, true),
-        h('button', { class: 'btn block', type: 'button', onclick: () => { fundError = null; show(); } }, 'Try again'),
+        note(ideasError, true),
+        h('button', { class: 'btn block', type: 'button', onclick: () => { ideasError = null; show(); } }, S.clubPanel.tryAgain),
       ];
     }
-    if (!fund) return [note('Loading the city…')];
-    const view = fund;
-    const projects = view.projects.map((p) => {
-      const waiting = !p.done && !p.active;
-      const progress = bar(p.raised / p.goal);
-      const open = h(
-        'button',
-        { class: `row row-link club-project${waiting ? ' waiting' : ''}`, type: 'button', 'aria-label': `${S.club.projectName(p.id)}, details` },
-        h(
-          'div',
-          { class: 'row-main' },
-          h('div', { class: 'row-title' }, `${S.club.projectName(p.id)} · ${projectState(p)}`),
-          progress.el,
-          h('div', { class: 'row-sub' }, waiting ? `Goal ${cash(p.goal)}` : `${cash(p.raised)} of ${cash(p.goal)}${p.mine > 0 ? ` · you gave ${cash(p.mine)}` : ''}`),
-        ),
-        icon(ICONS.chevronRight),
-      );
-      open.addEventListener('click', () => projectSheet(view, p));
-      return open;
-    });
+    if (!ideas) return [note(S.clubPanel.loading)];
+    const view = ideas;
+    const group = (title: string, items: Idea[]): HTMLElement[] =>
+      items.length === 0
+        ? []
+        : [
+            label(title),
+            h(
+              'div',
+              { class: 'list' },
+              ...items.map((i) => {
+                const open = h(
+                  'button',
+                  { class: 'row row-link club-project', type: 'button', 'aria-label': S.clubPanel.detailsLabel(i.title) },
+                  h(
+                    'div',
+                    { class: 'row-main' },
+                    h('div', { class: 'row-title' }, i.title),
+                    bar(i.raised / i.goal).el,
+                    h('div', { class: 'row-sub' }, i.status === 'built' ? S.clubPanel.builtThanks : S.clubPanel.raised(cash(i.raised), cash(i.goal), i.mine > 0 ? cash(i.mine) : null)),
+                  ),
+                  icon(ICONS.chevronRight),
+                );
+                open.addEventListener('click', () => ideaSheet(view, i));
+                return open;
+              }),
+            ),
+          ];
+    const suggest = h('button', { class: 'btn primary block', type: 'button' }, S.clubPanel.suggest);
+    suggest.addEventListener('click', () => suggestSheet());
     const out: HTMLElement[] = [
-      note('Everyone builds one city. Gifts go to the project being built, from all players together; money given does not come back.'),
-      label('Projects'),
-      h('div', { class: 'list' }, ...projects),
+      note(S.clubPanel.ideasIntro(cash(view.goal))),
+      suggest,
+      ...(ideaSent ? [note(S.clubPanel.ideaSent)] : []),
+      ...group(S.clubPanel.groupFunding, view.ideas.filter((i) => i.status === 'open')),
+      ...group(S.clubPanel.groupFunded, view.ideas.filter((i) => i.status === 'funded')),
+      ...group(S.clubPanel.groupBuilt, view.ideas.filter((i) => i.status === 'built')),
     ];
+    if (view.ideas.length === 0) out.push(note(S.clubPanel.noIdeas));
+    return out;
+  }
+
+  /** An idea: what it is, how far it is, and the gift to it. */
+  function ideaSheet(view: IdeasView, idea: Idea): void {
+    const rows = [stat(S.clubPanel.status, ideaState(idea)), stat(S.clubPanel.raisedLabel, cash(idea.raised)), stat(S.clubPanel.goalLabel, cash(idea.goal)), stat(S.clubPanel.youGave, cash(idea.mine))];
+    const failure = h('div');
+    const body = h('div', { class: 'fund-sheet' }, h('p', { class: 'detail-text' }, idea.text), idea.by ? note(S.clubPanel.suggestedBy(idea.by)) : '', bar(idea.raised / idea.goal).el, h('div', { class: 'list' }, ...rows), failure);
+    gift = 0;
+    giftText = '';
+    let close = (): void => undefined;
+    if (idea.status === 'open') {
+      if (!loadAccount()) {
+        const join = async (name: string): Promise<string | null> => {
+          try {
+            await openAccount(name);
+          } catch (error) {
+            return describeError(error);
+          }
+          void syncScores(host.records());
+          close();
+          show();
+          return null;
+        };
+        body.append(label(S.clubPanel.give), note(S.clubPanel.giftName), nameForm(loadPlayerName(), S.clubPanel.save, join, null));
+      } else {
+        body.append(label(S.clubPanel.give), ...giftControls(view, false, (amount) => void giveIdea(idea, amount, () => close(), (text) => failure.replaceChildren(note(text, true)))));
+      }
+    } else if (idea.status === 'funded') body.append(note(S.clubPanel.ideaFunded));
+    withCoins(body);
+    close = openSheet(host.layer, idea.title, body);
+  }
+
+  async function giveIdea(idea: Idea, amount: number, close: () => void, fail: (text: string) => void): Promise<void> {
+    if (ideasBusy) return;
+    ideasBusy = true;
+    try {
+      const answer = await giveToIdea(idea.id, amount);
+      Fund.gave(career, answer.accepted);
+      ideas = answer;
+      gift = 0;
+      giftText = '';
+      host.changed();
+      close();
+      if (!closed) ideaThanks(answer.ideas.find((i) => i.id === idea.id) ?? idea, idea.raised, answer.accepted);
+    } catch (error) {
+      fail(describeError(error));
+    }
+    ideasBusy = false;
+    if (!closed) show();
+  }
+
+  /** After a gift: the amount and the bar gliding to where the idea stands now. */
+  function ideaThanks(now: Idea, was: number, accepted: number): void {
+    const raised = bar(now.raised / now.goal, was / now.goal);
+    const done = h('button', { class: 'btn primary block', type: 'button' }, S.clubPanel.done);
+    const body = h(
+      'div',
+      { class: 'fund-thanks' },
+      h('div', { class: 'fund-thanks-badge', 'aria-hidden': 'true' }, icon(ICONS.check)),
+      h('p', { class: 'fund-thanks-label' }, S.clubPanel.thanksFor),
+      h('div', { class: 'fund-thanks-amount' }, cash(accepted)),
+      h('div', { class: 'fund-thanks-project' }, h('div', { class: 'row-title' }, `${now.title}${now.status === 'funded' ? S.clubPanel.fundedBang : ''}`), raised.el, h('div', { class: 'row-sub' }, S.clubPanel.raised(cash(now.raised), cash(now.goal), null))),
+      done,
+    );
+    withCoins(body);
+    const close = openSheet(host.layer, S.clubPanel.thanks, body);
+    done.addEventListener('click', () => close());
+    host.celebrate();
+    raised.go();
+  }
+
+  /** The form for a new idea; it waits for a moderator before anyone sees it. */
+  function suggestSheet(): void {
+    let close = (): void => undefined;
+    const body = h('div', { class: 'fund-sheet' });
     if (!loadAccount()) {
       const join = async (name: string): Promise<string | null> => {
         try {
@@ -591,146 +676,70 @@ export function clubPanel(host: ClubHost): ClubPanel {
           return describeError(error);
         }
         void syncScores(host.records());
-        fund = null;
-        show();
+        close();
+        suggestSheet();
         return null;
       };
-      out.push(label('Give'), note('Gifts carry your name on the leaderboard. Pick one to give.'), nameForm(loadPlayerName(), 'Save', join, null));
-    } else if (view.projects.every((p) => p.done)) {
-      out.push(note('Everything is built. Thank you.'));
+      body.append(note(S.clubPanel.ideaName), nameForm(loadPlayerName(), S.clubPanel.save, join, null));
     } else {
-      const offers = Fund.offers(career, view);
-      const most = Math.min(view.maxGift, career.money);
-      const input = h('input', { class: 'text-input', type: 'number', inputmode: 'numeric', min: String(view.minGift), max: String(most), step: '1', placeholder: 'Your own amount', 'aria-label': 'Your own amount' });
-      input.value = giftText;
-      const send = h('button', { class: 'btn primary block', type: 'button' }, 'Give');
-      const quick = GIFTS.filter((g) => g >= view.minGift && g <= view.maxGift).map((amount) => {
-        const button = h('button', { class: 'btn', type: 'button', disabled: !offers.includes(amount) || fundBusy }, S.casino.stakeShort(amount));
-        button.addEventListener('click', () => {
-          gift = amount;
-          giftText = input.value = '';
-          pick();
-        });
-        return { amount, button };
-      });
-      const pick = (): void => {
-        for (const { amount, button } of quick) {
-          const on = giftText === '' && gift === amount;
-          button.classList.toggle('primary', on);
-          button.setAttribute('aria-pressed', String(on));
+      const text = h('textarea', { class: 'text-input text-area', rows: '5', maxlength: '500', placeholder: S.clubPanel.ideaPlaceholder, 'aria-label': S.clubPanel.ideaLabel });
+      const failure = h('div');
+      const send = h('button', { class: 'btn primary block', type: 'button', disabled: true }, S.clubPanel.send);
+      text.addEventListener('input', () => (send.disabled = text.value.trim().length < 10));
+      send.addEventListener('click', async () => {
+        send.disabled = true;
+        try {
+          await suggestIdea(text.value);
+          ideaSent = true;
+          close();
+          show();
+        } catch (error) {
+          failure.replaceChildren(note(describeError(error), true));
+          send.disabled = false;
         }
-        const ready = Number.isInteger(gift) && gift >= view.minGift && gift <= most;
-        send.disabled = fundBusy || !ready;
-        send.textContent = ready ? `Give ${cash(gift)}` : 'Give';
-        withCoins(send);
-      };
-      input.addEventListener('input', () => {
-        giftText = input.value;
-        gift = giftText === '' ? 0 : Number(giftText);
-        pick();
       });
-      send.addEventListener('click', () => void give(gift));
-      pick();
-      out.push(label('Give'), h('div', { class: 'club-gifts' }, ...quick.map((q) => q.button)), input, send);
+      body.append(note(S.clubPanel.ideaHow), text, failure, send);
     }
-    if (view.top.length > 0) out.push(label('Most generous'), h('div', { class: 'list' }, ...view.top.map((t, i) => row(`${i + 1}. ${t.name}`, cash(t.amount)))));
-    return out;
+    close = openSheet(host.layer, S.clubPanel.suggest, body);
   }
 
-  async function give(amount: number): Promise<void> {
-    if (fundBusy) return;
-    fundBusy = true;
-    show();
-    const before = fund;
-    try {
-      const answer = await giveToFund(amount);
-      Fund.gave(career, answer.accepted);
-      fund = answer;
-      gift = 0;
-      giftText = '';
-      host.changed();
-      claim(answer);
-      if (before && !closed) thanks(before, answer);
-    } catch (error) {
-      fundError = describeError(error);
-    }
-    fundBusy = false;
-    if (!closed) show();
-  }
-
-  const projectState = (p: FundProject): string => (p.done ? 'Built' : p.active ? 'Being built' : 'Waiting');
   const stat = (name: string, value: string): HTMLElement => h('div', { class: 'row' }, h('div', { class: 'row-main' }, h('div', { class: 'row-title' }, name)), h('div', { class: 'row-value' }, value));
 
-  /** What a project is: its picture (the skin it pays), what it will be, how far it is and what a gift earns. */
-  function projectSheet(view: FundView, p: FundProject): void {
-    const skin = Fund.skinOf(p.id);
-    const before = view.projects[view.projects.indexOf(p) - 1];
-    const progress = bar(p.raised / p.goal);
-    const rows = [stat('Status', projectState(p)), stat('Raised', cash(p.raised)), stat('Goal', cash(p.goal)), stat('You gave', cash(p.mine))];
-    const body = h(
-      'div',
-      { class: 'fund-sheet' },
-      p.id === 'fountain' ? h('div', { class: 'fund-hero' }, picture({ k: 'fountain' }, 112)) : skin ? h('div', { class: 'fund-hero' }, picture({ k: 'item', id: skin.id, owned: true }, 112)) : '',
-      h('p', { class: 'detail-text' }, S.club.projectText(p.id)),
-      progress.el,
-      h('div', { class: 'list' }, ...rows),
-      skin
-        ? note(
-            career.collection.includes(skin.id)
-              ? `You have the ${S.shop.item(skin.id)} skin.`
-              : `Give ${cash(baseConfig.fundBenefactor)} or more to this project and the ${S.shop.item(skin.id)} skin is yours when it is built.`,
-          )
-        : '',
-      !p.done && !p.active && before ? note(`It is started when the ${S.club.projectName(before.id)} is built.`) : '',
-    );
-    withCoins(body);
-    openSheet(host.layer, S.club.projectName(p.id), body);
-  }
-
-  /** After a gift: the amount, a bar for every project it went into and how close the skin is. */
-  function thanks(before: FundView, after: FundView & { accepted: number }): void {
-    const benefactor = baseConfig.fundBenefactor;
-    const glides: { go(): void }[] = [];
-    const projects = after.projects.flatMap((p) => {
-      const was = before.projects.find((x) => x.id === p.id);
-      if (!was || p.raised <= was.raised) return [];
-      const skin = Fund.skinOf(p.id);
-      const raised = bar(p.raised / p.goal, was.raised / p.goal);
-      const mine = skin ? bar(Math.min(1, p.mine / benefactor), Math.min(1, was.mine / benefactor)) : null;
-      glides.push(raised, ...(mine ? [mine] : []));
-      const skinLine = !skin
-        ? ''
-        : career.collection.includes(skin.id)
-          ? `The ${S.shop.item(skin.id)} skin is yours.`
-          : p.mine >= benefactor
-            ? `The ${S.shop.item(skin.id)} skin is yours when it is built.`
-            : `Your gifts: ${cash(p.mine)} of ${cash(benefactor)} for the ${S.shop.item(skin.id)} skin`;
-      return [
-        h(
-          'div',
-          { class: 'fund-thanks-project' },
-          h('div', { class: 'row-title' }, `${S.club.projectName(p.id)}${p.done ? ' · Built!' : ''}`),
-          raised.el,
-          h('div', { class: 'row-sub' }, `${cash(p.raised)} of ${cash(p.goal)}`),
-          ...(mine ? [mine.el, h('div', { class: 'row-sub' }, skinLine)] : []),
-        ),
-      ];
+  /** The quick amounts, a field of one's own and "Give": how a gift to the fund or to an idea is picked. Nothing is given before "Give". */
+  function giftControls(view: { minGift: number; maxGift: number }, busy: boolean, onGive: (amount: number) => void): HTMLElement[] {
+    const offers = Fund.offers(career, view);
+    const most = Math.min(view.maxGift, career.money);
+    const input = h('input', { class: 'text-input', type: 'number', inputmode: 'numeric', min: String(view.minGift), max: String(most), step: '1', placeholder: S.clubPanel.ownAmount, 'aria-label': S.clubPanel.ownAmount });
+    input.value = giftText;
+    const send = h('button', { class: 'btn primary block', type: 'button' }, S.clubPanel.give);
+    const quick = GIFTS.filter((g) => g >= view.minGift && g <= view.maxGift).map((amount) => {
+      const button = h('button', { class: 'btn', type: 'button', disabled: !offers.includes(amount) || busy }, S.casino.stakeShort(amount));
+      button.addEventListener('click', () => {
+        gift = amount;
+        giftText = input.value = '';
+        pick();
+      });
+      return { amount, button };
     });
-    const done = h('button', { class: 'btn primary block', type: 'button' }, 'Done');
-    const body = h(
-      'div',
-      { class: 'fund-thanks' },
-      h('div', { class: 'fund-thanks-badge', 'aria-hidden': 'true' }, icon(ICONS.check)),
-      h('p', { class: 'fund-thanks-label' }, 'Thank you for giving'),
-      h('div', { class: 'fund-thanks-amount' }, cash(after.accepted)),
-      ...projects,
-      done,
-    );
-    withCoins(body);
-    const close = openSheet(host.layer, 'City Fund', body);
-    done.addEventListener('click', () => close());
-    host.celebrate();
-    for (const g of glides) g.go();
+    const pick = (): void => {
+      for (const { amount, button } of quick) {
+        const on = giftText === '' && gift === amount;
+        button.classList.toggle('primary', on);
+        button.setAttribute('aria-pressed', String(on));
+      }
+      const ready = Number.isInteger(gift) && gift >= view.minGift && gift <= most;
+      send.disabled = busy || !ready;
+      send.textContent = ready ? S.clubPanel.giveAmount(cash(gift)) : S.clubPanel.give;
+      withCoins(send);
+    };
+    input.addEventListener('input', () => {
+      giftText = input.value;
+      gift = giftText === '' ? 0 : Number(giftText);
+      pick();
+    });
+    send.addEventListener('click', () => onGive(gift));
+    pick();
+    return [h('div', { class: 'club-gifts' }, ...quick.map((q) => q.button)), input, send];
   }
 
   // MARK: Contracts
@@ -739,25 +748,25 @@ export function clubPanel(host: ClubHost): ClubPanel {
     const cars = host.shiftCars();
     const current = career.contract;
     if (current) {
-      const cancel = h('button', { class: 'btn', type: 'button' }, 'Tear it up');
+      const cancel = h('button', { class: 'btn', type: 'button' }, S.clubPanel.tearUp);
       cancel.addEventListener('click', () => {
         Contracts.cancel(career);
         host.changed();
         show();
       });
       return [
-        label('Your contract'),
-        h('div', { class: 'list' }, row(`${S.club.goalName(current.goal)} · ${cash(current.stake)}`, `${S.club.goalText(current.goal, cars)} Pays ${cash(Math.round(current.stake * Contracts.pay(current.goal)))} if it is met.`, cancel)),
-        note('It is settled by your next career shift (not the Daily, Unlimited or a trial) and shows on its result. Tearing it up before then gives the whole stake back. A shift eased for your career voids it, stake back.'),
+        label(S.clubPanel.yourContract),
+        h('div', { class: 'list' }, row(`${S.club.goalName(current.goal)} · ${cash(current.stake)}`, S.clubPanel.contractPays(S.club.goalText(current.goal, cars), cash(Math.round(current.stake * Contracts.pay(current.goal)))), cancel)),
+        note(S.clubPanel.settle),
       ];
     }
     const goals = CONTRACT_GOALS.map((goal) => {
-      const button = h('button', { class: `btn${goal === contractGoal ? ' primary' : ''}`, type: 'button', 'aria-pressed': String(goal === contractGoal) }, goal === contractGoal ? 'Chosen' : 'Choose');
+      const button = h('button', { class: `btn${goal === contractGoal ? ' primary' : ''}`, type: 'button', 'aria-pressed': String(goal === contractGoal) }, goal === contractGoal ? S.clubPanel.chosen : S.clubPanel.choose);
       button.addEventListener('click', () => {
         contractGoal = goal;
         show();
       });
-      return row(`${S.club.goalName(goal)} · pays ×${Contracts.pay(goal)}`, S.club.goalText(goal, cars), button);
+      return row(S.clubPanel.goalPays(S.club.goalName(goal), Contracts.pay(goal)), S.club.goalText(goal, cars), button);
     });
     const stakes = baseConfig.contractStakes.map((stake) => {
       const button = h('button', { class: `btn${stake === contractStake ? ' primary' : ''}`, type: 'button', disabled: stake > career.money, 'aria-pressed': String(stake === contractStake) }, S.casino.stakeShort(stake));
@@ -767,17 +776,17 @@ export function clubPanel(host: ClubHost): ClubPanel {
       });
       return button;
     });
-    const sign = h('button', { class: 'btn primary block', type: 'button', disabled: !Contracts.canSign(career, contractStake) }, `Sign · ${cash(contractStake)} on ${S.club.goalName(contractGoal)}`);
+    const sign = h('button', { class: 'btn primary block', type: 'button', disabled: !Contracts.canSign(career, contractStake) }, S.clubPanel.sign(cash(contractStake), S.club.goalName(contractGoal)));
     sign.addEventListener('click', () => {
       if (!Contracts.sign(career, contractGoal, contractStake)) return;
       host.changed();
       show();
     });
     return [
-      note('Put money on yourself. The stake is paid now; if your next career shift meets the goal it pays back a multiple of it, otherwise it is gone. The goals are the same for everyone: choose what you can do.'),
-      label('Goal'),
+      note(S.clubPanel.contractsIntro),
+      label(S.clubPanel.goal),
       h('div', { class: 'list' }, ...goals),
-      label('Stake'),
+      label(S.clubPanel.stake),
       h('div', { class: 'club-gifts' }, ...stakes),
       sign,
     ];

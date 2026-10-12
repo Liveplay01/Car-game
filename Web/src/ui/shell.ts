@@ -31,8 +31,6 @@ import type { ClubHost } from './clubPanel';
 import type { MafiaHost } from './mafiaPanel';
 import { installMafiaDebug } from './mafiaDebug';
 import { SocialPage } from '../present/social';
-import { Fund } from '../core/fund';
-import { fetchFund, fundEnabled } from '../net/fund';
 import { cloudSheet } from './cloudSheet';
 import { REACTION_EMOJI } from '../present/versus';
 import { REACTIONS } from '../net/room';
@@ -56,7 +54,7 @@ const PHOTO_SCENE = v(492, 492);
 
 /** A key hint on a floating button; CSS shows it only where there is a keyboard and a mouse. */
 const keycap = (label: string): HTMLElement => h('kbd', { class: 'keycap', 'aria-hidden': 'true' }, label);
-const TAB_LABEL: Record<Tab, string> = { progress: 'Progress', social: 'Social', game: 'Game', shop: 'Shop', upgrades: 'Build', streetBuilder: 'Build' };
+const TAB_LABEL: Record<Tab, string> = { progress: S.tabs.progress, social: S.tabs.social, game: S.tabs.game, shop: S.tabs.shop, upgrades: S.tabs.build, streetBuilder: S.tabs.build };
 const TAB_ICON: Record<Tab, string> = { progress: ICONS.progress, social: ICONS.people, game: ICONS.game, shop: ICONS.shop, upgrades: ICONS.build, streetBuilder: ICONS.build };
 /** Keys that scroll a list, in points; ±1 means a page (most of the window's height). */
 const SCROLL_KEYS: Partial<Record<string, number>> = { ArrowDown: 60, ArrowUp: -60, PageDown: 1, PageUp: -1, Home: -1e6, End: 1e6 };
@@ -103,7 +101,8 @@ export class Shell {
   private readonly settingsBtn: HTMLButtonElement;
   /** Lies over the Settings pill for a moment: what happened to the progress ("Synced"), in place of a line of news. */
   private readonly settingsFlash = h('span', { class: 'settings-flash', role: 'status' });
-  private syncedPending = false;
+  /** What the pill says next, once it is on screen: "Synced" (progress came over) or a question for the player (`ask`, blue). */
+  private flashPending: { text: string; ask: boolean } | null = null;
   private flashTimer = 0;
   private readonly dispatchBtn: HTMLButtonElement;
   private readonly dispatchCount: HTMLSpanElement;
@@ -192,9 +191,9 @@ export class Shell {
     this.buildTabbar(document.getElementById('tabbar')!);
     this.settingsBtn = h(
       'button',
-      { class: 'icon-btn glass float-btn settings-btn', 'aria-label': 'Settings', 'aria-keyshortcuts': 'Escape', onclick: () => this.openSettings() },
+      { class: 'icon-btn glass float-btn settings-btn', 'aria-label': S.settings.title, 'aria-keyshortcuts': 'Escape', onclick: () => this.openSettings() },
       icon(ICONS.gear),
-      h('span', { class: 'settings-label' }, 'Settings'),
+      h('span', { class: 'settings-label' }, S.settings.title),
       keycap('esc'),
       this.settingsFlash,
     );
@@ -203,7 +202,7 @@ export class Shell {
       'button',
       {
         class: 'icon-btn glass float-btn dispatch-btn',
-        'aria-label': 'Emergency dispatch: the next car becomes a police car',
+        'aria-label': S.shell.dispatch,
         'aria-keyshortcuts': 'D',
         onclick: () => this.push({ k: 'dispatch' }),
       },
@@ -263,7 +262,7 @@ export class Shell {
         return fetchInvite().then(inviteUrl, () => game);
       },
     });
-    this.leaveLabel = h('span', {}, 'Leave');
+    this.leaveLabel = h('span', {}, S.shell.leave);
     this.leaveBtn = h('button', { class: 'btn glass run-btn', type: 'button', 'aria-keyshortcuts': 'Escape', onclick: () => this.session.leaveSpecial() }, icon(ICONS.close), this.leaveLabel);
     // Multiplayer: a friend's code or your own; the match takes over the canvas.
     const feel = { sound: () => this.session.save.settings.sound, haptics: () => this.session.save.settings.haptics };
@@ -324,27 +323,27 @@ export class Shell {
     const runBar = h('div', { class: 'run-bar' }, this.chestBtn, this.heatBtn, this.leaveBtn, this.photoBtn);
     // After a match: Ready (everyone taps it, then the next round starts), and for the host a
     // way back to the lobby to change the format or the bots.
-    this.againLabel = h('span', {}, 'Play again');
+    this.againLabel = h('span', {}, S.lobby.playAgain);
     this.againBtn = h(
       'button',
       { class: 'btn glass run-btn primary-run', type: 'button', 'aria-keyshortcuts': 'Enter', 'aria-pressed': 'false', onclick: () => this.versus.toggleReady() },
       icon(ICONS.check),
       this.againLabel,
     );
-    this.lobbyBtn = h('button', { class: 'btn glass run-btn', type: 'button', onclick: () => this.versus.backToLobby() }, icon(ICONS.people), h('span', {}, 'Lobby'));
-    const quitBtn = h('button', { class: 'btn glass run-btn show', type: 'button', onclick: () => this.versus.leave() }, icon(ICONS.close), h('span', {}, 'Leave'));
+    this.lobbyBtn = h('button', { class: 'btn glass run-btn', type: 'button', onclick: () => this.versus.backToLobby() }, icon(ICONS.people), h('span', {}, S.shell.lobby));
+    const quitBtn = h('button', { class: 'btn glass run-btn show', type: 'button', onclick: () => this.versus.leave() }, icon(ICONS.close), h('span', {}, S.shell.leave));
     this.versusBar = h('div', { class: 'versus-bar' }, quitBtn, this.lobbyBtn, this.againBtn);
     // Out of the match: reactions for everyone, and one lorry from the stands.
     this.revengeBtn = h(
       'button',
-      { class: 'btn glass run-btn revenge-btn', type: 'button', 'aria-label': 'Send a lorry into the ring', 'aria-keyshortcuts': 'T', onclick: () => this.versus.match?.revenge() },
+      { class: 'btn glass run-btn revenge-btn', type: 'button', 'aria-label': S.shell.revengeLabel, 'aria-keyshortcuts': 'T', onclick: () => this.versus.match?.revenge() },
       icon(ICONS.truck),
-      h('span', {}, 'Send a lorry'),
+      h('span', {}, S.shell.revenge),
     );
     const reactButtons = REACTIONS.map((r, i) =>
-      h('button', { class: 'react-btn', type: 'button', 'aria-label': `React ${r}`, 'aria-keyshortcuts': String(i + 1), onclick: () => this.versus.react(r) }, REACTION_EMOJI[r]),
+      h('button', { class: 'react-btn', type: 'button', 'aria-label': S.shell.reaction(r), 'aria-keyshortcuts': String(i + 1), onclick: () => this.versus.react(r) }, REACTION_EMOJI[r]),
     );
-    this.reactBar = h('div', { class: 'react-bar', role: 'group', 'aria-label': 'Reactions' }, ...reactButtons, this.revengeBtn);
+    this.reactBar = h('div', { class: 'react-bar', role: 'group', 'aria-label': S.shell.reactions }, ...reactButtons, this.revengeBtn);
     for (const b of [this.settingsBtn, this.dispatchBtn, this.doneBtn, this.heatBtn, this.photoBtn, this.chestBtn, this.leaveBtn, this.againBtn, this.lobbyBtn, quitBtn, this.reactBar]) b.addEventListener('pointerdown', (e) => e.stopPropagation());
     app.append(this.settingsBtn, this.dispatchBtn, this.doneBtn, runBar, this.reactBar, this.versusBar);
     this.detail = new DetailSheet(
@@ -363,8 +362,7 @@ export class Shell {
     };
     this.session.onHint = (hint) => void this.giveHint(hint);
     this.session.onSynced = () => {
-      this.syncedPending = true;
-      this.syncChrome(true);
+      this.flashSettings(S.settings.synced, false);
     };
     this.session.onStep = (step, data) => {
       track(step, data);
@@ -401,7 +399,6 @@ export class Shell {
     this.scheduleCloudIntro();
     // Gifts from the team and from invites: at the start, after a name (an invite is handed in then) and after a record reached the service (level 5 pays).
     window.setTimeout(() => this.claimInvite(), 3000);
-    window.setTimeout(() => this.claimFund(), 5000);
     syncPush(this.pushTimers);
     onAccountChange(() => {
       this.claimInvite();
@@ -528,7 +525,7 @@ export class Shell {
     this.againBtn.disabled = lobby.canReady && !lobby.enoughForNext;
     this.againBtn.setAttribute('aria-pressed', String(ready));
     this.againBtn.classList.toggle('waiting', ready);
-    this.againLabel.textContent = !lobby.enoughForNext ? 'Not enough players' : ready ? 'Ready · waiting' : lobby.nextLabel;
+    this.againLabel.textContent = !lobby.enoughForNext ? S.shell.notEnough : ready ? S.shell.readyWaiting : lobby.nextLabel;
     this.lobbyBtn.classList.toggle('show', lobby.canReady && lobby.isHost);
     const watching = !!match && match.isOut && !match.isOver;
     this.reactBar.classList.toggle('show', watching);
@@ -548,7 +545,7 @@ export class Shell {
     // Settings come back as soon as a shift is over, on the result as on the waiting screen (from the first result on).
     const onGame = s.showsChrome && (screen.k === 'ready' || screen.k === 'result');
     this.settingsBtn.classList.toggle('show', onGame);
-    if (this.syncedPending && onGame) this.flashSynced();
+    if (this.flashPending && onGame) this.flashNow(this.flashPending);
     const chill = s.playingMode === 'chill';
     this.dispatchBtn.classList.toggle('show', screen.k === 'playing' && !chill && s.world.config.dispatchLimit > 0);
     const dispatches = s.world.dispatchesLeft;
@@ -573,7 +570,7 @@ export class Shell {
       this.chestBtn.style.setProperty('--chest-band', css(paint.band));
     }
     this.leaveBtn.classList.toggle('show', onGame && s.special !== null);
-    this.leaveLabel.textContent = s.special?.k === 'trial' ? (s.special.trial.tour ? 'Leave tour' : 'Leave trial') : 'Leave challenge';
+    this.leaveLabel.textContent = s.special?.k === 'trial' ? (s.special.trial.tour ? S.shell.leaveTour : S.shell.leaveTrial) : S.shell.leaveChallenge;
     if (screen.k === 'settings' && !isSheetOpen()) this.showSettingsSheet();
     if (screen.k !== 'settings' && this.closeSettings) {
       const close = this.closeSettings;
@@ -619,7 +616,7 @@ export class Shell {
       await navigator.clipboard.writeText(daily ? `${daily}\n${url}` : url);
       return daily ? S.run.dailyCopied : S.run.copied;
     } catch {
-      window.prompt('Copy this link', daily ? `${daily}\n${url}` : url);
+      window.prompt(S.lobby.copyLink, daily ? `${daily}\n${url}` : url);
       return null;
     }
   }
@@ -801,22 +798,27 @@ export class Shell {
       }, 2000);
     } else if (hint === 'backup') {
       if (!cloudEnabled || cloudView().code !== null) return;
-      if (!this.session.takeTip()) return this.session.deferHint(hint);
-      this.session.tip(S.hints.backup);
+      this.flashSettings(S.settings.syncAsk, true);
     }
   }
 
-  /** The Settings pill says "Synced" for a moment, once it is on screen (a sync that came in mid-shift waits for it). */
-  private flashSynced(): void {
-    this.syncedPending = false;
+  /** The Settings pill says something about Cloud sync for a moment, once it is on screen (a note that came in mid-shift waits for it). */
+  flashSettings(text: string, ask: boolean): void {
+    this.flashPending = { text, ask };
+    this.syncChrome(true);
+  }
+
+  private flashNow({ text, ask }: { text: string; ask: boolean }): void {
+    this.flashPending = null;
     const flash = this.settingsFlash;
     window.clearTimeout(this.flashTimer);
-    flash.replaceChildren(icon(ICONS.sync), h('span', {}, S.settings.synced));
+    flash.classList.toggle('ask', ask);
+    flash.replaceChildren(icon(ICONS.sync), h('span', {}, text));
     flash.classList.add('on');
     this.flashTimer = window.setTimeout(() => {
       flash.classList.remove('on');
       this.flashTimer = window.setTimeout(() => flash.replaceChildren(), 300);
-    }, 1400);
+    }, ask ? 2600 : 1400);
   }
 
   /** A page over the settings closed: the settings come back (`syncChrome` reopens them). */
@@ -825,7 +827,7 @@ export class Shell {
     this.syncChrome(true);
   }
 
-  /** What the Club (Social → Club) needs from the game: the Auction House, the City Fund and Contracts. */
+  /** What the Club (Social → Club) needs from the game: the Auction House, the Game fund and Contracts. */
   private clubHost(): ClubHost {
     const s = this.session;
     return {
@@ -835,6 +837,7 @@ export class Shell {
       shiftCars: () => s.world.config.shiftCars,
       records: () => s.leaderboardRecords,
       changed: () => s.clubChanged(),
+      intro: () => s.introduce('gamefund'),
       celebrate: () => {
         celebrate();
         if (s.save.settings.sound) this.audio.play('shiftComplete', 1);
@@ -867,20 +870,6 @@ export class Shell {
         if (s.save.settings.haptics) this.haptics.play(id, 0);
       },
     };
-  }
-
-  /** Thanks for a finished project, from a visit when it was built: the skin is paid out at the start (a gift needs a name). */
-  private claimFund(): void {
-    const s = this.session;
-    if (!fundEnabled || !loadAccount() || s.save.career.fundGiven <= 0) return;
-    void fetchFund()
-      .then((view) => {
-        const ids = Fund.claim(s.save.career, view);
-        if (ids.length === 0) return;
-        s.clubChanged();
-        s.announce(...ids.map((id) => `THANK YOU · the ${S.club.projectName(id)} is built · ${S.shop.item(id)} is yours`));
-      })
-      .catch(() => undefined);
   }
 
   /** From the Friends page to the multiplayer lobby: behind it the Game tab swipes on to the Multiplayer page. */
@@ -1253,9 +1242,9 @@ export class Shell {
     const boot = document.getElementById('boot');
     if (!boot) return;
     const [title, body, link] = [boot.querySelector('h1'), boot.querySelector('p'), boot.querySelector('a')];
-    if (title) title.textContent = 'The roundabout stopped.';
-    if (body) body.textContent = 'Something went wrong in the game. Reload to carry on; your progress is safe on this device.';
-    if (link) link.textContent = 'Reload';
+    if (title) title.textContent = S.shell.stalledTitle;
+    if (body) body.textContent = S.shell.stalledBody;
+    if (link) link.textContent = S.shell.reload;
     boot.hidden = false;
     boot.classList.remove('gone');
     boot.classList.add('failed');

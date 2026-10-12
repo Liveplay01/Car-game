@@ -1,6 +1,7 @@
 import { ACCOUNT_KEY } from '../storage/profile';
 import { storage } from '../storage/store';
 import { dayNumber } from '../core/daily';
+import { S } from '../present/strings';
 
 /**
  * The client of the leaderboard service (`Server/`, see its README). It is an extra: the game
@@ -74,14 +75,14 @@ export class LeaderboardError extends Error {
 
 /** A sentence for the player about a failed call. */
 export function describeError(error: unknown): string {
-  if (!(error instanceof LeaderboardError)) return 'Something went wrong. Try again.';
+  if (!(error instanceof LeaderboardError)) return S.net.generic;
   switch (error.code) {
     case 'network':
     case 'disabled':
-      return 'The leaderboard cannot be reached right now. Check your connection and try again.';
+      return S.net.unreachable;
     case 'unauthorized':
     case 'banned':
-      return 'This device is no longer on the leaderboard. Enter a name to be on it again.';
+      return S.net.signedOut;
     // Everything else: the service's own sentence, written for players (`Server/`).
     default:
       return error.message;

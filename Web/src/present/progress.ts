@@ -196,7 +196,7 @@ export const ProgressPage = {
       { label: P.unlimitedTier, value: S.modes.tierLine(tierOf(save.unlimitedBestCars), nextTier(save.unlimitedBestCars)) },
       { label: P.mayhemBest, value: count(save.mayhemBest) },
       { label: P.mayhemChain, value: save.mayhemBestChain > 0 ? `×${save.mayhemBestChain}` : P.none },
-      { label: P.chillBest, value: save.chillBest > 0 ? S.chill.best(save.chillBest).replace('Your longest drive: ', '') : P.none },
+      { label: P.chillBest, value: save.chillBest > 0 ? S.hud.cars(save.chillBest) : P.none },
       { label: P.chillCars, value: count(save.chillCars) },
       { label: P.chillTime, value: save.chillTime > 0 ? P.minutes(save.chillTime) : P.none },
       { label: P.tours, value: count(c.toursDone.length) },

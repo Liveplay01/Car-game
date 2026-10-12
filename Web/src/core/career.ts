@@ -292,7 +292,7 @@ export interface Career {
   auctionRuns: number;
   auctionWins: number;
   auctionSpent: number;
-  /** Everything given to the City Fund (core/fund.ts). */
+  /** Everything given to the Game fund (core/fund.ts). */
   fundGiven: number;
   /** The contract waiting for the next career shift (core/contracts.ts); its stake is paid already. */
   contract: Contract | null;
@@ -309,7 +309,7 @@ export interface Career {
  * and a backup of the progress (each once, from its level on; `config.*HintAfterLevel`), and
  * what a Perfect Run is, the first time one happens.
  */
-export const HINTS = ['modes', 'install', 'backup', 'perfectRun', 'reduceMotion', 'buildWithUs', 'invite', 'inviteReminder', 'scout', 'tightFit', 'unlimitedTip', 'portalLogin', 'notifications', 'notificationsStreak', 'introsStarted', 'intro.museum', 'intro.builder', 'intro.daily', 'intro.trials', 'intro.pass', 'intro.casino', 'intro.club', 'intro.mafia'] as const;
+export const HINTS = ['modes', 'install', 'backup', 'perfectRun', 'reduceMotion', 'buildWithUs', 'invite', 'inviteReminder', 'scout', 'tightFit', 'unlimitedTip', 'portalLogin', 'notifications', 'notificationsStreak', 'introsStarted', 'intro.museum', 'intro.builder', 'intro.daily', 'intro.trials', 'intro.pass', 'intro.casino', 'intro.club', 'intro.gamefund', 'intro.mafia'] as const;
 export type Hint = (typeof HINTS)[number];
 
 /** Everything that is saved (`storage/save.ts` reads and writes it). */

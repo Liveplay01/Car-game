@@ -96,11 +96,16 @@ export class FundStore {
       .all(TOP_GIVERS) as unknown as { name: string; amount: number }[];
   }
 
+  /** How much of `amount` this player may still give today. */
+  private allowed(playerId: string, amount: number, now: number): number {
+    const { given } = this.db.prepare('SELECT COALESCE(SUM(amount), 0) AS given FROM fund_gifts WHERE player_id = ? AND given_at > ?').get(playerId, now - DAY_MS) as { given: number };
+    return Math.min(amount, Math.max(0, DAILY_LIMIT - given));
+  }
+
   /** Puts a gift into the projects being built; returns how much went in (less than asked once everything is built or the day's limit is reached). */
   give(playerId: string, amount: number, now: number): number {
     return transaction(this.db, () => {
-      const { given } = this.db.prepare('SELECT COALESCE(SUM(amount), 0) AS given FROM fund_gifts WHERE player_id = ? AND given_at > ?').get(playerId, now - DAY_MS) as { given: number };
-      const allowed = Math.min(amount, Math.max(0, DAILY_LIMIT - given));
+      const allowed = this.allowed(playerId, amount, now);
       let left = allowed;
       for (const project of this.projects(null)) {
         if (left <= 0) break;
@@ -110,6 +115,16 @@ export class FundStore {
         left -= put;
       }
       return allowed - left;
+    });
+  }
+
+  /** Puts a gift into one of the Club's ideas (`idea:<id>`, up to its `goal`); returns how much went in. */
+  giveTo(playerId: string, project: string, goal: number, amount: number, now: number): number {
+    return transaction(this.db, () => {
+      const { raised } = this.db.prepare('SELECT COALESCE(SUM(amount), 0) AS raised FROM fund_gifts WHERE project = ?').get(project) as { raised: number };
+      const put = Math.min(this.allowed(playerId, amount, now), Math.max(0, goal - raised));
+      if (put > 0) this.db.prepare('INSERT INTO fund_gifts (player_id, project, amount, given_at) VALUES (?, ?, ?, ?)').run(playerId, project, put, now);
+      return put;
     });
   }
 }

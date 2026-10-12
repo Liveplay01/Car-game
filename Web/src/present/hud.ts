@@ -21,6 +21,7 @@ import { S, Fmt, money as moneyText, comboMultiplier } from './strings';
 import { interpolatedPose } from './scene';
 import { wrapText } from './upgrades';
 import type { Brief, BriefView } from './briefing';
+import { currentLanguage } from './i18n';
 
 // MARK: Top bar
 
@@ -1193,12 +1194,17 @@ interface IntroLayout {
   rows: { title: string; lines: string[] }[];
 }
 
-/** A line in the middle of the island, shrunk or cut to the grass at its height so it never runs onto the road (`radius` in world units, `dy` in points below the centre). */
+/** A line in the middle of the island: wrapped at spaces (up to three lines, centred on `dy`) when it is wider than the grass at its height, so it never runs onto the road (`radius` in world units, `dy` in points below the centre). */
 function islandLine(list: RenderList, s: string, radius: number, dy: number, size: number, color: ColorToken, opacity: number, weight: Weight = 'regular'): void {
   const r = radius * list.camera.scale - 8;
-  const reach = Math.abs(dy) + size / 2;
-  const width = Math.max(60, 2 * Math.sqrt(Math.max(0, r * r - reach * reach)));
-  drawFitted(list, s, add(toScreen(list.camera, v(0, 0)), v(0, dy)), size, width, color, { weight, opacity, align: 'center' });
+  const widthAt = (y: number): number => Math.max(60, 2 * Math.sqrt(Math.max(0, r * r - (Math.abs(y) + size / 2) ** 2)));
+  const bold = weight === 'bold';
+  const lines = textWidth(s, size, bold) > widthAt(dy) ? wrapText(s, widthAt(dy), size, bold).slice(0, 3) : [s];
+  const step = size * 1.25;
+  lines.forEach((line, i) => {
+    const y = dy + (i - (lines.length - 1) / 2) * step;
+    drawFitted(list, line, add(toScreen(list.camera, v(0, 0)), v(0, y)), size, widthAt(y), color, { weight, opacity, align: 'center' });
+  });
 }
 
 export const ReadyBanner = {
@@ -1391,7 +1397,7 @@ export const ReadyBanner = {
     const middle = mul(vp, 0.5);
     list.s(rect(middle, vp), 'background', 0.9 * alpha);
     MenuKit.glow(list, add(middle, v(0, -30)), Math.min(vp.x, 460) * 0.7, 'hazard', 0.1 * alpha);
-    const date = new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' });
+    const date = new Date().toLocaleDateString(currentLanguage() === 'en' ? 'en-GB' : currentLanguage(), { weekday: 'long', day: 'numeric', month: 'long' });
     const twist = daily.mutator;
     const rows: { height: number; draw: (at: Vec2, a: number, e: number) => void }[] = [];
     const words = (s: string, size: number, weight: 'regular' | 'bold', color: ColorToken): void => {

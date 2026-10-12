@@ -221,7 +221,7 @@ export const SPECIAL_TEXT: Record<SpecialKind, MuseumText & { name: string }> = 
 };
 
 /** The grip the tyres keep in a weather, as `forWeather` sets it. */
-const gripIn = (w: Weather, c: Config): string =>
+export const gripIn = (w: Weather, c: Config): string =>
   percent(
     w === 'snow' ? c.snowGrip : w === 'hail' ? c.hailGrip : w === 'sandstorm' ? c.sandstormGrip : w === 'fog' ? 1 : Math.max(0.35, 1 - weatherSeverity(w) * c.weatherGripLoss),
   );
@@ -398,3 +398,6 @@ const ROAD_TEXT: MuseumText = {
     'A car bound for the inner lane needs a gap in the outer lane to cross and a gap in the inner lane to join. Cars leaving the inner lane cross the outer one too.',
   ],
 };
+
+/** Every record above, for a translation to lay its words over (`strings.ts`). */
+export const MUSEUM_TEXT = { boss: BOSS_TEXT, special: SPECIAL_TEXT, weather: WEATHER_TEXT, dark: DARK_TEXT, event: EVENT_TEXT, road: ROAD_TEXT };

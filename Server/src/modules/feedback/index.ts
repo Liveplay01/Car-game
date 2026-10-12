@@ -1,10 +1,11 @@
 import { Hono } from 'hono';
 import { normalizeCode } from '../../codes.ts';
 import { ApiError } from '../../errors.ts';
-import { readJson } from '../../http.ts';
+import { cleanText, readJson } from '../../http.ts';
 import type { AppEnv, ServerContext, ServerModule } from '../../module.ts';
 import { rateLimit } from '../../rateLimit.ts';
 import { PlayerStore, requirePlayer, type PlayerEnv } from '../players/index.ts';
+import { IdeaStore } from '../ideas/store.ts';
 import { DAY_MS, FEEDBACK_KINDS, FEEDBACK_MIGRATIONS, FeedbackStore, hashIp, type FeedbackKind } from './store.ts';
 
 /**
@@ -24,18 +25,6 @@ import { DAY_MS, FEEDBACK_KINDS, FEEDBACK_MIGRATIONS, FeedbackStore, hashIp, typ
 export const MIN_TEXT = 10;
 export const MAX_TEXT = 2000;
 const FRIEND_CODE_LENGTH = 8;
-
-/** Text as typed, tidied: no control characters, at most two blank lines in a row. */
-function cleanText(value: unknown): string {
-  if (typeof value !== 'string') return '';
-  return value
-    .normalize('NFKC')
-    .replace(/\r\n?/g, '\n')
-    .replace(/[^\S\n]+/g, ' ')
-    .replace(/[\u0000-\u0009\u000B-\u001F\u007F]/g, '')
-    .replace(/\n{3,}/g, '\n\n')
-    .trim();
-}
 
 function notify(url: string | null, kind: FeedbackKind, text: string, player: string | null): void {
   if (!url) return;
@@ -85,6 +74,8 @@ export function feedbackModule(): ServerModule {
         }
 
         const id = store.add(kind, text, player?.id ?? null, ipHash, now);
+        // An idea also waits in the Club's queue until it is reworded and published (`/admin` → Club ideas).
+        if (kind === 'idea') new IdeaStore(ctx.db).add('feedback', text, null, now, id);
         const skin = player ? store.nextBugHunterSkin(player.id) : null;
         const reward = player && skin && store.grant(player.id, skin, 'bug report', now, true) ? skin : null;
         notify(ctx.config.feedbackWebhookUrl, kind, text, player?.name ?? null);

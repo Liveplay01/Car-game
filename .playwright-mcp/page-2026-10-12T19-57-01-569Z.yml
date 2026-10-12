@@ -1,0 +1,16 @@
+- generic [ref=f3e2]:
+  - img "Roundabout. Tap anywhere to send the front car." [ref=f3e3]
+  - navigation "Main" [ref=f3e4]:
+    - button "Fortschritt" [ref=f3e13] [cursor=pointer]
+    - button "Social" [ref=f3e19] [cursor=pointer]
+    - button "Spiel" [ref=f3e25] [cursor=pointer]
+    - button "Shop" [ref=f3e31] [cursor=pointer]:
+      - generic [ref=f3e36]: "2"
+    - button "Bauen" [ref=f3e37] [cursor=pointer]
+  - button "Einstellungen" [ref=f3e41] [cursor=pointer]:
+    - generic [aria-hidden] [ref=f3e46]: esc
+    - status
+  - 'button "Deine Truhen: 2 zum Öffnen bereit" [ref=f3e47] [cursor=pointer]':
+    - generic [ref=f3e55]: 2 Truhen bereit
+  - status [ref=f3e56]
+  - status [ref=f3e57]: Erfolg · Aufsteiger II · +600

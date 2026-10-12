@@ -53,15 +53,20 @@ export const PATCH_NOTES: PatchNote[] = [
   {
     id: '2026-10-12',
     date: '12 October 2026',
-    title: 'A gentler start, far fewer pop-up lines, a breather after FAIL, only what you have reached on show',
+    title: 'The Game fund for player ideas, a gentler start, far fewer pop-up lines, a breather after FAIL',
     impact: 'major',
     summary: [
+      'The game now speaks German too: Settings → Game → Language.',
+      'The City Fund is now the Game fund: suggest ideas for the game and give money until an idea is made.',
       'A gentler start: Level 1 is plain merging, then police and dispatch, criminals, and the money truck.',
       'Far fewer pop-up lines. Cloud sync now flashes "Synced" on the Settings button instead.',
-      'A lost shift takes a breather in every mode: FAIL, a skull and why you lost.',
-      'Places you have not reached stay hidden. Each new one gets a dot and explains itself once.',
     ],
     items: [
+      'Language: Settings → Game → Language switches the whole game between English and German (menus, Museum, Club, Mafia, messages). The game starts again when you pick one. Patch notes, the legal pages and skin names stay English.',
+      'The Game fund explains itself the first time you open it, like the other new places.',
+      'Club → Game fund replaces the City Fund: suggest what the game should get (one idea a day). We word the good ones for the game and publish them, and every player can give money to them. An idea that reaches 30,000,000 is made. Ideas from Build with us land in the same list.',
+      'Fixed: Cloud sync no longer puts a line on the screen. The Settings button asks "Sync?" in blue when two devices have to be chosen between, and the Cloud sync tip uses the same button.',
+      'Fixed: a long line in the middle of the roundabout now breaks onto a second line instead of being squeezed until it is tiny.',
       { text: 'Fixed: stopping Cloud sync on a device, losing money (an all-in at the casino, say) and then typing the code again brought the old money back. Typing a code you stopped on this device now keeps the progress on this device, as long as no other device changed the cloud copy in between.', from: null },
       'The breather after a lost shift (FAIL, the skull, the red ring and why you lost) now comes in Unlimited, in challenges and in trials too, not only in the career. Chill and Mayhem have no way to lose, so they stay as they are.',
       'Multiplayer: a lane that holds a shield shows the same green plus sign as in single player, above its name, instead of a small shield.',

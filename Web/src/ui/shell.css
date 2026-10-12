@@ -863,6 +863,10 @@ a.row-link {
   transition: opacity 300ms var(--ease-out);
 }
 
+.settings-flash.ask {
+  background: var(--accent);
+}
+
 .settings-flash.on {
   opacity: 1;
   transition-duration: 160ms;
@@ -2527,6 +2531,19 @@ a.row-link {
   border-color: var(--destructive);
 }
 
+.text-input.text-area {
+  display: block;
+  min-height: 132px;
+  padding: var(--s3) var(--s4);
+  font-weight: 500;
+  line-height: 1.4;
+  resize: none;
+}
+
+.text-area + .btn.block {
+  margin-top: var(--s3);
+}
+
 .field-help {
   margin: var(--s2) var(--s1) 0;
   font-size: 13px;
@@ -2908,6 +2925,56 @@ a.row-link {
 
 .tile-blue {
   color: var(--accent);
+}
+
+/* Language (Leo, 12.10.2026): row opens the in-game language sheet with checkmarks. */
+.row-lang {
+  cursor: pointer;
+}
+
+.row-lang .row-value {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--muted);
+  font-weight: 500;
+  margin-left: auto;
+}
+
+.row-lang > svg {
+  width: 18px;
+  height: 18px;
+  flex: none;
+  color: var(--faint);
+}
+
+.lang-picker {
+  display: grid;
+  gap: var(--s3);
+}
+
+.lang-choice-row {
+  width: 100%;
+}
+
+.lang-choice-row.selected {
+  font-weight: 700;
+}
+
+.lang-choice-row.selected .row-title {
+  color: var(--accent);
+}
+
+.lang-choice-row .lang-check {
+  display: grid;
+  place-items: center;
+  color: var(--accent);
+  margin-left: auto;
+}
+
+.lang-choice-row .lang-check svg {
+  width: 20px;
+  height: 20px;
 }
 
 /* Reduce motion: the title on the left, the three choices on the right; stacked when narrow. */

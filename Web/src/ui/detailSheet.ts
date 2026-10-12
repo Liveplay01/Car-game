@@ -22,7 +22,7 @@ function rich(text: string): DocumentFragment {
     if (ch === MONEY_MARK) {
       if (run) out.append(run);
       run = '';
-      out.append(h('span', { class: 'coin', 'aria-label': 'money' }));
+      out.append(h('span', { class: 'coin', 'aria-label': S.clubPanel.money }));
     } else run += ch;
   }
   if (run) out.append(run);
@@ -96,7 +96,7 @@ export class DetailSheet {
     this.title = h('h2', { class: 'detail-title', id: 'detail-title' });
     this.price = h('div', { class: 'detail-price' });
     this.steps = h('div', { class: 'detail-steps', 'aria-hidden': 'true' });
-    const close = h('button', { class: 'icon-btn detail-close', 'aria-label': 'Close', onclick: () => this.onClose() }, icon(ICONS.close));
+    const close = h('button', { class: 'icon-btn detail-close', 'aria-label': S.settings.close, onclick: () => this.onClose() }, icon(ICONS.close));
     const handle = h('div', { class: 'detail-handle' }, h('div', { class: 'grabber', 'aria-hidden': 'true' }));
     const head = h('div', { class: 'detail-head' }, this.art, h('div', { class: 'detail-headings' }, this.eyebrow, this.title, this.price, this.steps), close);
     this.body = h('div', { class: 'detail-body' });

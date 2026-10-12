@@ -37,12 +37,7 @@ export interface RanksActions {
   records(): Records;
 }
 
-const BOARDS: { id: BoardId; label: string; empty: string }[] = [
-  { id: 'shift-level', label: 'Shift level', empty: 'Clear a shift to be the first one here.' },
-  { id: 'unlimited', label: 'Unlimited', empty: 'Set an Unlimited record to be the first one here.' },
-  { id: 'daily', label: 'Daily', empty: 'Clear today’s Daily Shift to be the first one here.' },
-  { id: 'rush', label: 'Boss Rush', empty: 'Clear a Boss Rush to set the first time.' },
-];
+const BOARDS: { id: BoardId; label: string; empty: string }[] = (['shift-level', 'unlimited', 'daily', 'rush'] as const).map((id) => ({ id, ...S.ranks.boards[id] }));
 
 /** The last list of each board: shown at once when the sheet opens again, then refreshed. */
 const cache = new Map<string, BoardView>();
@@ -57,7 +52,7 @@ const starTier = (rank: number): number => (rank >= 20 ? 6 : rank >= 10 ? 5 : ra
 function valueOf(board: BoardId, e: { score: number; meta: Record<string, number> }, onStar: () => void): (string | HTMLElement)[] {
   if (board === 'unlimited' || board === 'daily') return [Fmt.number(e.score)];
   if (board === 'rush') return [S.rush.time((e.meta.cs ?? 0) / 100)];
-  const level = `Level ${Fmt.number(e.meta.level ?? e.score % 1000)}`;
+  const level = S.ranks.level(Fmt.number(e.meta.level ?? e.score % 1000));
   const prestige = e.meta.prestige ?? Math.floor(e.score / 1000);
   return prestige > 0 ? [prestigeStar(prestige, onStar), level] : [level];
 }
@@ -69,7 +64,7 @@ function valueOf(board: BoardId, e: { score: number; meta: Record<string, number
 export function prestigeStar(rank: number, onTap: () => void): HTMLElement {
   return h(
     'button',
-    { class: `prestige-star tier-${starTier(rank)}`, type: 'button', 'aria-label': `Prestige rank ${rank}. How Prestige works`, onclick: onTap },
+    { class: `prestige-star tier-${starTier(rank)}`, type: 'button', 'aria-label': S.ranks.starLabel(rank), onclick: onTap },
     h('span', { class: 'prestige-star-rank', 'aria-hidden': 'true' }, String(rank)),
   );
 }
@@ -81,16 +76,16 @@ function prestigeInfo(back: () => void): HTMLElement {
   return h(
     'div',
     { class: 'board prestige-info' },
-    h('button', { class: 'btn quiet-btn', type: 'button', onclick: back }, '‹ Back to the leaderboard'),
-    h('p', { class: 'section-note' }, 'The star before a level is the Prestige rank: how many times that player started over after Level ' + prestigeLevel + '.'),
+    h('button', { class: 'btn quiet-btn', type: 'button', onclick: back }, S.ranks.back),
+    h('p', { class: 'section-note' }, S.ranks.starIntro(prestigeLevel)),
     h(
       'div',
       { class: 'list' },
-      row(`Level ${prestigeLevel} opens it`, 'Progress → Records → Elite. The button asks twice.'),
-      row('Back to Level 1', 'Money, upgrades, roads, your collection and the Elite track stay. Best times start over.'),
-      row(`Harder traffic: +${prestigeHeadStart} levels per rank`, `From ★1 the road plays ${prestigeHeadStart} levels harder, at most +${maxPrestigeHeadStart} levels (from ★${Math.ceil(maxPrestigeHeadStart / prestigeHeadStart)}).`),
-      row('Only for show', 'Silver, Gold and Iris Star skins at ★1 to ★3, the Star Driver title at ★3 and a plaque in the Hall of Fame. Never a bonus on the road.'),
-      row('On this leaderboard', 'Shift level ranks the Prestige rank first, then the level. Unlimited ignores it.'),
+      row(S.ranks.opensAt(prestigeLevel), S.ranks.opensSub),
+      row(S.ranks.backTo1, S.ranks.backTo1Sub),
+      row(S.ranks.harder(prestigeHeadStart), S.ranks.harderSub(prestigeHeadStart, maxPrestigeHeadStart, Math.ceil(maxPrestigeHeadStart / prestigeHeadStart))),
+      row(S.ranks.show, S.ranks.showSub),
+      row(S.ranks.onBoard, S.ranks.onBoardSub),
     ),
   );
 }
@@ -105,11 +100,11 @@ function entryRow(board: BoardId, e: BoardEntry | (Omit<BoardEntry, 'name'> & { 
   return h(
     'div',
     { class: `row board-row${e.me ? ' me' : ''}${e.rank <= 3 ? ' podium' : ''}`, role: 'listitem' },
-    h('span', { class: 'board-rank', 'aria-label': `Rank ${e.rank}` }, Fmt.number(e.rank)),
+    h('span', { class: 'board-rank', 'aria-label': S.ranks.rankLabel(e.rank) }, Fmt.number(e.rank)),
     h(
       'div',
       { class: 'row-main' },
-      h('div', { class: 'row-title board-name' }, h('span', {}, e.name), e.me ? h('span', { class: 'you-tag' }, 'You') : null),
+      h('div', { class: 'row-title board-name' }, h('span', {}, e.name), e.me ? h('span', { class: 'you-tag' }, S.ranks.you) : null),
       boardSub(board, e) ? h('div', { class: 'row-sub board-title' }, boardSub(board, e)) : null,
     ),
     h('span', { class: 'row-value board-value' }, ...valueOf(board, e, onStar)),
@@ -144,13 +139,13 @@ export function nameForm(value: string, action: string, submit: (name: string) =
     autocapitalize: 'words',
     spellcheck: 'false',
     enterkeyhint: 'go',
-    placeholder: 'Your name',
-    'aria-label': 'Your name',
+    placeholder: S.ranks.namePlaceholder,
+    'aria-label': S.ranks.namePlaceholder,
     'aria-describedby': 'board-name-help',
     value,
   });
   const button = h('button', { class: 'btn primary', type: 'submit' }, action);
-  const help = h('p', { class: 'field-help', id: 'board-name-help', 'aria-live': 'polite' }, `3–${NAME_MAX} letters or numbers. Everyone can see it.`);
+  const help = h('p', { class: 'field-help', id: 'board-name-help', 'aria-live': 'polite' }, S.ranks.nameHelp(NAME_MAX));
   const setBusy = (busy: boolean): void => {
     button.disabled = busy;
     input.readOnly = busy;
@@ -165,7 +160,7 @@ export function nameForm(value: string, action: string, submit: (name: string) =
         e.preventDefault();
         const name = input.value.trim().replace(/\s+/g, ' ');
         if (name.length < 3) {
-          help.textContent = 'Use at least 3 characters.';
+          help.textContent = S.ranks.nameShort;
           help.classList.add('error');
           input.setAttribute('aria-invalid', 'true');
           input.focus();
@@ -191,9 +186,9 @@ export function nameForm(value: string, action: string, submit: (name: string) =
     if (!help.classList.contains('error')) return;
     help.classList.remove('error');
     input.removeAttribute('aria-invalid');
-    help.textContent = `3–${NAME_MAX} letters or numbers. Everyone can see it.`;
+    help.textContent = S.ranks.nameHelp(NAME_MAX);
   });
-  if (cancel) form.append(h('button', { class: 'btn block quiet-btn', type: 'button', onclick: cancel }, 'Cancel'));
+  if (cancel) form.append(h('button', { class: 'btn block quiet-btn', type: 'button', onclick: cancel }, S.ranks.cancel));
   return form;
 }
 
@@ -232,8 +227,8 @@ export function boardPanel(scope: Scope, host: BoardHost): BoardPanel {
   let board: BoardId = lastBoard;
   /** Which request's answer may still be shown: a newer one (another board) wins. */
   let asked = 0;
-  const list = h('div', { class: 'list board-list', role: 'list', 'aria-label': scope === 'friends' ? 'Ranking among friends' : 'Leaderboard', 'aria-busy': 'false' });
-  const tabs = tabsControl('Boards', BOARDS, choose);
+  const list = h('div', { class: 'list board-list', role: 'list', 'aria-label': scope === 'friends' ? S.ranks.listFriends : S.ranks.list, 'aria-busy': 'false' });
+  const tabs = tabsControl(S.ranks.boardsLabel, BOARDS, choose);
   const el = h('div', { class: 'board' }, tabs.el, list);
 
   function choose(next: BoardId): void {
@@ -253,8 +248,8 @@ export function boardPanel(scope: Scope, host: BoardHost): BoardPanel {
       rows.push(entryRow(board, { rank: view.me.rank, name: account.name, title: host.records().title, score: view.me.score, meta: view.me.meta, me: true }, openInfo));
     }
     if (rows.length === 0) {
-      const empty = scope === 'friends' ? 'Add a friend with their code to compare your records.' : (BOARDS.find((b) => b.id === board)?.empty ?? '');
-      rows.push(h('div', { class: 'row board-empty' }, h('div', { class: 'row-main' }, h('div', { class: 'row-title' }, 'Nobody here yet'), h('div', { class: 'row-sub' }, empty))));
+      const empty = scope === 'friends' ? S.ranks.addFriend : (BOARDS.find((b) => b.id === board)?.empty ?? '');
+      rows.push(h('div', { class: 'row board-empty' }, h('div', { class: 'row-main' }, h('div', { class: 'row-title' }, S.ranks.nobody), h('div', { class: 'row-sub' }, empty))));
     }
     const arriving = list.getAttribute('aria-busy') === 'true';
     list.replaceChildren(...rows);
@@ -285,8 +280,8 @@ export function boardPanel(scope: Scope, host: BoardHost): BoardPanel {
         h(
           'div',
           { class: 'row board-empty' },
-          h('div', { class: 'row-main' }, h('div', { class: 'row-title' }, 'Leaderboard unavailable'), h('div', { class: 'row-sub' }, describeError(error))),
-          h('button', { class: 'btn', type: 'button', onclick: () => void load() }, 'Try again'),
+          h('div', { class: 'row-main' }, h('div', { class: 'row-title' }, S.ranks.unavailable), h('div', { class: 'row-sub' }, describeError(error))),
+          h('button', { class: 'btn', type: 'button', onclick: () => void load() }, S.ranks.tryAgain),
         ),
       );
     }
@@ -307,8 +302,8 @@ export function boardPanel(scope: Scope, host: BoardHost): BoardPanel {
 }
 
 const SCOPES: { id: Scope; label: string }[] = [
-  { id: 'all', label: 'Everyone' },
-  { id: 'friends', label: 'Friends' },
+  { id: 'all', label: S.ranks.scopes.all },
+  { id: 'friends', label: S.ranks.scopes.friends },
 ];
 let lastScope: Scope = 'all';
 
@@ -329,7 +324,7 @@ export function ranksPanel(actions: RanksActions): HTMLElement {
   };
   const boards = { all: boardPanel('all', host), friends: boardPanel('friends', host) };
   const shown = (): BoardPanel => boards[scope];
-  const scopes = tabsControl('Show', SCOPES, (next) => {
+  const scopes = tabsControl(S.ranks.scopeLabel, SCOPES, (next) => {
     scope = next;
     lastScope = next;
     scopes.set(next);
@@ -351,11 +346,9 @@ export function ranksPanel(actions: RanksActions): HTMLElement {
       h(
         'p',
         { class: 'section-note board-intro' },
-        pendingInvite()
-          ? `A friend invited you. Enter a name, reach level ${INVITE_LEVEL} and you both get a chest. Your level and your Unlimited record come from the progress on this device.`
-          : 'Enter a name to see where you rank. Your level and your Unlimited record come from the progress on this device and stay up to date by themselves.',
+        pendingInvite() ? S.ranks.introInvited(INVITE_LEVEL) : S.ranks.intro,
       ),
-      nameForm(loadPlayerName(), 'Save', join, null),
+      nameForm(loadPlayerName(), S.ranks.save, join, null),
     );
     renderFooter();
   }
@@ -363,16 +356,16 @@ export function ranksPanel(actions: RanksActions): HTMLElement {
   /** Below the list: your name (the multiplayer name too) and the way off the leaderboard. */
   function renderFooter(): void {
     if (!account) {
-      footer.replaceChildren(h('p', { class: 'section-note' }, 'No sign-up: only this name and your records are sent.'));
+      footer.replaceChildren(h('p', { class: 'section-note' }, S.ranks.noSignUp));
       return;
     }
     const me = account;
     if (renaming) {
       footer.replaceChildren(
-        h('p', { class: 'section-note board-label' }, 'Your name'),
+        h('p', { class: 'section-note board-label' }, S.ranks.yourName),
         nameForm(
           me.name,
-          'Save',
+          S.ranks.save,
           async (name) => {
             if (name === me.name) return stopRenaming();
             try {
@@ -394,16 +387,16 @@ export function ranksPanel(actions: RanksActions): HTMLElement {
       footer.querySelector('input')?.focus();
       return;
     }
-    const remove = h('button', { class: 'btn block destructive', type: 'button' }, 'Remove me from the leaderboard');
+    const remove = h('button', { class: 'btn block destructive', type: 'button' }, S.ranks.remove);
     let armed = false;
     remove.addEventListener('click', () => {
       if (!armed) {
         armed = true;
-        remove.textContent = 'Tap again to remove your name and scores';
+        remove.textContent = S.ranks.removeAgain;
         window.setTimeout(() => {
           if (!remove.isConnected) return;
           armed = false;
-          remove.textContent = 'Remove me from the leaderboard';
+          remove.textContent = S.ranks.remove;
         }, 3000);
         return;
       }
@@ -418,7 +411,7 @@ export function ranksPanel(actions: RanksActions): HTMLElement {
         .catch((error: unknown) => {
           remove.disabled = false;
           armed = false;
-          remove.textContent = 'Remove me from the leaderboard';
+          remove.textContent = S.ranks.remove;
           footer.querySelector('.field-help')?.remove();
           footer.append(h('p', { class: 'field-help error', role: 'alert' }, describeError(error)));
         });
@@ -430,8 +423,8 @@ export function ranksPanel(actions: RanksActions): HTMLElement {
         h(
           'div',
           { class: 'row' },
-          h('div', { class: 'row-main' }, h('div', { class: 'row-title' }, me.name), h('div', { class: 'row-sub' }, 'Your name on the leaderboard and in multiplayer.')),
-          h('button', { class: 'btn', type: 'button', onclick: () => startRenaming() }, 'Change'),
+          h('div', { class: 'row-main' }, h('div', { class: 'row-title' }, me.name), h('div', { class: 'row-sub' }, S.ranks.nameSub)),
+          h('button', { class: 'btn', type: 'button', onclick: () => startRenaming() }, S.ranks.change),
         ),
       ),
       remove,
