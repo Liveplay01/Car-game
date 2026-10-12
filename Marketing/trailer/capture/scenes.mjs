@@ -1,5 +1,5 @@
 // Scripted UI scenes (chests, casino, collection, builder...): node capture/scenes.mjs <scene> [...]
-import { open, boot, perform, freeze, Recorder, CLIPS, PORTRAIT } from './lib.mjs';
+import { open, boot, perform, freeze, Recorder, CLIPS, PORTRAIT, URL } from './lib.mjs';
 import { stage } from './play.mjs';
 import { writeFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -33,9 +33,10 @@ const run = async (name, args, body, { level = 47 } = {}) => {
   const rec = await new Recorder(s, name).start();
   const adv = (sec) => rec.advance(sec);
   const flow = () => s.page.evaluate(() => window.__game.game.casinoFlow);
-  await body({ s, rec, adv });
+  // a scene may return its moments (seconds into the clip) for the cut
+  const marks = await body({ s, rec, adv });
   const info = await rec.stop();
-  writeFileSync(join(CLIPS, `${name}.json`), JSON.stringify(info, null, 1));
+  writeFileSync(join(CLIPS, `${name}.json`), JSON.stringify({ ...info, marks }, null, 1));
   await s.browser.close();
   console.log(name, info.seconds.toFixed(1) + 's');
 };
@@ -43,7 +44,8 @@ const run = async (name, args, body, { level = 47 } = {}) => {
 const casino = (fn) => (s) => s.page.evaluate(fn);
 
 const SCENES = {
-  // The premium chest: a legendary first, an epic after it. The page searches the save's play count for such a pair.
+  // The premium chest, tapped open at full power (8 fast taps): a legendary first, an epic after it.
+  // The page searches the save's play count for such a pair.
   async chest() {
     const keepOut = [...LEGENDARY_CARS, 'chrome', 'starlight', 'blackGold', 'carbon', 'tiger', 'aurora', 'ember', 'cosmos', 'abyss'];
     await run('s-chest', { keepOut, chests: ['premium', 'premium', 'event'] }, async ({ s, rec, adv }) => {
@@ -53,9 +55,9 @@ const SCENES = {
         for (let n = 1; n < 60000; n++) {
           const c = structuredClone(g.save.career);
           const seed = n * 7919 + g.popupSerial;
-          const a = Careers.openChest(c, 0, seed, g.today);
+          const a = Careers.openChest(c, 0, seed, g.today, 1);
           if (!a || a.isDuplicate || a.item.rarity !== 'legendary' || a.item.kind !== 'carSkin') continue;
-          const b = Careers.openChest(c, 0, seed, g.today);
+          const b = Careers.openChest(c, 0, seed, g.today, 1);
           if (!b || b.isDuplicate || !['epic', 'legendary'].includes(b.item.rarity)) continue;
           g.save.shiftsPlayed = n;
           return { n, a: a.item.id, b: b.item.id };
@@ -65,9 +67,17 @@ const SCENES = {
       console.log('chest seed', n);
       await perform(s, { k: 'showShop', section: 0 });
       await adv(1.2);
+      const marks = { open: rec.frames / 60 };
       await perform(s, { k: 'openChest', index: 0 });
-      await adv(11);
-      await s.page.evaluate(() => window.__game.game.shopPage.opening && (window.__game.game.shopPage.opening.age += 0));
+      await adv(0.9);
+      marks.taps = [];
+      for (let i = 0; i < 8; i++) {
+        marks.taps.push(rec.frames / 60);
+        await perform(s, { k: 'hitChest' });
+        await adv(0.18);
+      }
+      await adv(10);
+      return marks;
     });
   },
 
@@ -91,6 +101,57 @@ const SCENES = {
       }
       await tap({ k: 'cashOut' });
       await adv(6);
+    });
+  },
+
+  // Reel "Cash out… NOW": a clutch cash-out, a won coin flip, then one round too greedy. The page searches a casino seed for that story.
+  async greed() {
+    const seed = await (async () => {
+      const s = await open(PORTRAIT);
+      await s.page.goto(URL, { waitUntil: 'load' });
+      const found = await s.page.evaluate(async () => {
+        const { Casino } = await import('/src/core/casino.ts');
+        Casino.useEntropy(null); // the recording holds the entropy at 0, which mixes in nothing
+        const point =(casinoSeed, casinoRounds) => Casino.crashPoint(Casino.rng({ casinoSeed, casinoRounds }, 'crash').int(0, 0xfffffffe));
+        for (let n = 1; n < 2_000_000; n++) {
+          const a = point(n, 0);
+          if (a < 4.5 || a > 6) continue;
+          if (Casino.rng({ casinoSeed: n, casinoRounds: 1 }, 'flip').unit() >= 0.5) continue;
+          const b = point(n, 2);
+          if (b >= 9 && b <= 11) return { n, a, b };
+        }
+        return null;
+      });
+      await s.browser.close();
+      return found;
+    })();
+    console.log('greed seed', seed);
+    await run('s-greed', { casinoSeed: seed.n, casinoRounds: 0 }, async ({ s, rec, adv }) => {
+      await perform(s, { k: 'showShop', section: 2 });
+      await adv(1.0);
+      const tap = (t) => s.page.evaluate((t) => window.__game.game.casinoFlow.tap(t), t);
+      const age = () => s.page.evaluate(() => window.__game.game.casinoFlow.host.casino.run?.age ?? 0);
+      const timeOf = (m) => Math.log(m) / 0.18; // config.crashRate
+      const now = () => rec.frames / 60;
+      const marks = { a: seed.a, b: seed.b };
+      await tap({ k: 'stake', index: 1 });
+      await adv(0.6);
+      marks.play1 = now();
+      await tap({ k: 'play' });
+      while ((await age()) < timeOf(seed.a) - 0.12) await adv(1 / 60);
+      marks.cashOut = now();
+      await tap({ k: 'cashOut' });
+      await adv(2.5);
+      marks.flip = now();
+      await tap({ k: 'double' });
+      await adv(4.5);
+      marks.collect = now();
+      await tap({ k: 'collect' });
+      await adv(1.2);
+      marks.play2 = now();
+      await tap({ k: 'play' });
+      await adv(timeOf(seed.b) + 4);
+      return marks;
     });
   },
 

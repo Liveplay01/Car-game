@@ -26,9 +26,22 @@ export const stage = (save, mods, a) => {
   save.highscore = 48250;
 };
 
-export async function play({ name, level = 20, map = null, mode = 'shift', bot = "careful", seconds = 20, format = PORTRAIT, gap, rate, warm = 0.5 }) {
+// Pins the sky of every shift ('snow', 'storm/night', '-/blackout'): the seed would rarely bring it.
+const pinSky = (s, sky) => s.page.evaluate(async ([weather, darkness]) => {
+  const { Careers } = await import('/src/core/career.ts');
+  const { forNight } = await import('/src/core/levels.ts');
+  const config = Careers.config;
+  Careers.config = (c, base, seed, w, ...rest) => {
+    const out = config(c, base, seed, weather && weather !== '-' ? weather : w, ...rest);
+    return darkness ? forNight(out, darkness) : out;
+  };
+  window.__game.game.prepareShift(false);
+}, sky.split('/'));
+
+export async function play({ name, level = 20, map = null, mode = 'shift', bot = "careful", seconds = 20, format = PORTRAIT, gap, rate, sky, warm = 0.5 }) {
   const s = await open(format);
   await boot(s, stage, { level, map }, { mode });
+  if (sky) await pinSky(s, sky);
   await installBot(s);
   await freeze(s);
   const rec = await new Recorder(s, name).start();
@@ -45,6 +58,6 @@ export async function play({ name, level = 20, map = null, mode = 'shift', bot =
 }
 
 if (process.argv[1].endsWith('play.mjs')) {
-  const [, , name, level, map, mode, bot, seconds, layout] = process.argv;
-  await play({ format: layout === 'landscape' ? LANDSCAPE : PORTRAIT, name, level: Number(level ?? 20), map: map && map !== '-' ? map : null, mode: mode ?? 'shift', bot: bot ?? 'careful', seconds: Number(seconds ?? 20) });
+  const [, , name, level, map, mode, bot, seconds, layout, sky] = process.argv;
+  await play({ format: layout === 'landscape' ? LANDSCAPE : PORTRAIT, name, level: Number(level ?? 20), map: map && map !== '-' ? map : null, mode: mode ?? 'shift', bot: bot ?? 'careful', seconds: Number(seconds ?? 20), sky });
 }
