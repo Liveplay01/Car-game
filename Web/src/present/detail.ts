@@ -23,6 +23,8 @@ import { type SignalDetail, signalDetail } from './museumSignal';
 import { museumEntry, firstLevel } from '../core/museum';
 import { rematch } from '../core/trials';
 import { Feats } from '../core/feats';
+import { type Intro } from './intros';
+import { IntroArt } from './introArt';
 
 /**
  * What the detail sheet shows (`ui/detailSheet.ts`): the explanation of the card that was
@@ -38,7 +40,8 @@ export type DetailArt =
   /** A built part: the whole roundabout in small, that part lit (red once Delete is armed). */
   | { k: 'built'; part: Built; arms: number[]; modules: Record<number, RoadModule>; armed: boolean }
   | { k: 'museum'; id: string; shown: boolean; time: number }
-  | { k: 'elite'; level: number };
+  | { k: 'elite'; level: number }
+  | { k: 'intro'; id: Intro };
 
 export interface DetailRow {
   label: string;
@@ -337,6 +340,23 @@ export const Details = {
       rows,
       notes,
       actions,
+    };
+  },
+
+  /** What a place or feature is for, the first time it is opened. */
+  intro(id: Intro): Detail {
+    const t = S.intro[id];
+    return {
+      key: `intro.${id}`,
+      art: { k: 'intro', id },
+      eyebrow: { text: t.line, color: 'accent' },
+      title: t.title,
+      price: null,
+      steps: null,
+      body: t.body,
+      rows: [],
+      notes: [],
+      actions: [{ label: S.intro.gotIt, action: { k: 'closeDetail' }, prominent: true, enabled: true }],
     };
   },
 
@@ -641,6 +661,9 @@ export const Details = {
       }
       case 'elite':
         Details.eliteBadge(list, art.level, center, scale, 1);
+        break;
+      case 'intro':
+        IntroArt.add(list, art.id, center, size);
         break;
     }
   },

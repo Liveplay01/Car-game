@@ -13,7 +13,8 @@ export type Primitive =
   | { k: 'circle'; center: Vec2; radius: number }
   | { k: 'arc'; center: Vec2; radius: number; thickness: number; start: number; end: number; round?: boolean }
   | { k: 'line'; from: Vec2; to: Vec2; thickness: number }
-  | { k: 'polygon'; points: Vec2[] }
+  /** `holes` are cut out of it, see-through (even-odd fill). */
+  | { k: 'polygon'; points: Vec2[]; holes?: Vec2[][] }
   /** Many thin lines in one colour, drawn as one path: `points` in pairs, from and to (rain). */
   | { k: 'segments'; points: Vec2[]; thickness: number }
   /** Many small discs in one colour, filled as one path (snow). */
@@ -51,7 +52,7 @@ export const circle = (center: Vec2, radius: number): Primitive => ({ k: 'circle
 export const arc = (center: Vec2, radius: number, thickness: number, start: number, end: number, round = false): Primitive =>
   round ? { k: 'arc', center, radius, thickness, start, end, round } : { k: 'arc', center, radius, thickness, start, end };
 export const line = (from: Vec2, to: Vec2, thickness: number): Primitive => ({ k: 'line', from, to, thickness });
-export const polygon = (points: Vec2[]): Primitive => ({ k: 'polygon', points });
+export const polygon = (points: Vec2[], holes?: Vec2[][]): Primitive => (holes ? { k: 'polygon', points, holes } : { k: 'polygon', points });
 export const segments = (points: Vec2[], thickness: number): Primitive => ({ k: 'segments', points, thickness });
 export const dots = (points: Vec2[], radii: number[]): Primitive => ({ k: 'dots', points, radii });
 export const text = (s: string, position: Vec2, size: number, align: Align = 'center', weight: Weight = 'regular'): Primitive => ({
@@ -227,6 +228,8 @@ export function moved(item: RenderItem, offset: Vec2, factor: number): RenderIte
       out.p = { ...p, from: add(p.from, offset), to: add(p.to, offset) };
       break;
     case 'polygon':
+      out.p = { ...p, points: p.points.map((q) => add(q, offset)), ...(p.holes && { holes: p.holes.map((h) => h.map((q) => add(q, offset))) }) };
+      break;
     case 'segments':
     case 'dots':
       out.p = { ...p, points: p.points.map((q) => add(q, offset)) };
@@ -258,7 +261,7 @@ export function zoomed(item: RenderItem, focus: Vec2, k: number): RenderItem {
       out.p = { ...p, from: at(p.from), to: at(p.to), thickness: p.thickness * k };
       break;
     case 'polygon':
-      out.p = { ...p, points: p.points.map(at) };
+      out.p = { ...p, points: p.points.map(at), ...(p.holes && { holes: p.holes.map((h) => h.map(at)) }) };
       break;
     case 'segments':
       out.p = { ...p, points: p.points.map(at), thickness: p.thickness * k };
@@ -294,7 +297,7 @@ export function pinned(item: RenderItem, cam: Camera, factor = 1): RenderItem {
       out.p = { ...p, from: pt(p.from), to: pt(p.to), thickness: l(p.thickness) };
       break;
     case 'polygon':
-      out.p = { ...p, points: p.points.map(pt) };
+      out.p = { ...p, points: p.points.map(pt), ...(p.holes && { holes: p.holes.map((h) => h.map(pt)) }) };
       break;
     case 'segments':
       out.p = { ...p, points: p.points.map(pt), thickness: l(p.thickness) };

@@ -29,6 +29,7 @@
   /* Street-lamp amber (Leo, 04.10.2026; was mint #9ee6cf). Dark ink on it: 11:1. Mirrors `COLORS.accent`. */
   --accent: #ffb703;
   --accent-ink: #0e1013;
+  --positive: #34c759;
   /* Hover, one per kind of button (Leo, 08.10.2026): amber lightens, red lightens, everything else lifts to --hover-fill. */
   --accent-hover: #ffc94d;
   --destructive-hover: #ff7277;
@@ -780,7 +781,7 @@ a.row-link {
 }
 
 .switch[aria-checked='true'] {
-  background: #34c759;
+  background: var(--positive);
 }
 
 .switch[aria-checked='true']::after {
@@ -844,6 +845,37 @@ a.row-link {
   font-weight: 600;
   left: calc(var(--safe-left) + var(--s4));
   bottom: calc(var(--tabbar-h) + var(--safe-bottom) + var(--s4));
+}
+
+/* Progress came over from the cloud: the pill itself says "Synced" for a moment, green, in place of "Settings". Quick in, softer out. */
+.settings-flash {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  gap: inherit;
+  padding: inherit;
+  border-radius: inherit;
+  background: var(--positive);
+  color: var(--accent-ink);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 300ms var(--ease-out);
+}
+
+.settings-flash.on {
+  opacity: 1;
+  transition-duration: 160ms;
+}
+
+.settings-flash.on svg {
+  animation: sync-turn 700ms var(--ease-out);
+}
+
+@keyframes sync-turn {
+  from {
+    transform: rotate(-180deg);
+  }
 }
 
 /* The chest pill · Leave · Picture · Friends: stacked above Settings, on the same side, all one width (Leo, 05.10.2026).

@@ -116,6 +116,23 @@ export function forLevel(base: Config, level: number, seed: number, bossLevel = 
   return c;
 }
 
+/** Below its level the police, the criminals or the transporter stay off the road: a new player meets them one at a time. */
+export function forIntro(base: Config, level: number): Config {
+  if (level >= Math.max(base.policeLevel, base.criminalLevel, base.transporterLevel)) return base;
+  const never = { lo: 1e9, hi: 1e9 };
+  const c = cloneConfig(base);
+  if (level < base.policeLevel) {
+    c.policeShare = 0;
+    c.dispatchLimit = 0;
+  }
+  if (level < base.criminalLevel) c.criminalChance = 0;
+  if (level < base.transporterLevel) {
+    c.transporterFirst = never;
+    c.transporterInterval = never;
+  }
+  return c;
+}
+
 // MARK: Syndicate bosses
 
 /** The boss of `level`, or null: every `convoyEvery` levels the next kind, round after round. */

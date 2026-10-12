@@ -36,18 +36,92 @@ export const S = {
     findGap: 'Wait for a gap, then tap',
     combo: 'Clean merges build your combo',
     /** With the Shield upgrade a car may crash more than once (`cars` > 1). */
-    strikes: (cars: number, police: number): string => (cars > 1 ? `Your car may crash once. Police get ${police} chances.` : `Cars crash instantly. Police get ${police} chances.`),
+    strikes: (cars: number, police: number): string => {
+      const lead = cars > 1 ? 'Your car may crash once.' : 'Cars crash instantly.';
+      return police > 0 ? `${lead} Police get ${police} chances.` : lead;
+    },
+  },
+
+  /** The drawer that explains a place or feature the first time it is opened (`present/intros.ts`). */
+  intro: {
+    gotIt: 'Got it',
+    museum: {
+      title: 'Museum',
+      line: 'Everything you meet on the road',
+      body: [
+        'Every vehicle, boss, weather and city event goes on show here the first time you meet it.',
+        'Tap an entry to see how it behaves and what to do about it. A dot marks what is new.',
+        'What you have not met yet stays hidden, with the level it arrives on.',
+      ],
+    },
+    builder: {
+      title: 'Street Builder',
+      line: 'Build your own roundabout',
+      body: [
+        'Add arms and modules to the ring. More arms bring more traffic, money trucks sooner and better pay.',
+        'Pick a part, drag it onto a free slot on the ring, then double-tap it to build. One tap takes a built part away.',
+      ],
+    },
+    daily: {
+      title: 'Daily Shift',
+      line: 'One try a day, the same for everyone',
+      body: [
+        'A new shift every day, the same for every player. You get one try.',
+        'Play it every day to keep a streak: streak days pay more and bring rewards along the way.',
+      ],
+    },
+    trials: {
+      title: 'Trials',
+      line: 'Special shifts with a reward',
+      body: [
+        'Each trial sets its own goal, like a flawless run or a number of Perfect Inputs.',
+        'Pass one to earn its reward. Pick them in Progress, on the Trials page.',
+      ],
+    },
+    pass: {
+      title: 'Season Pass',
+      line: 'A track of rewards for the season',
+      body: [
+        'Every season has a track of twelve tiers with chests, money and skins that only exist that season.',
+        'Unlock it once with play money, then every shift you play earns XP towards the next tier.',
+        'Only looks, never a bonus on the road. The four seasons come back every year.',
+      ],
+    },
+    casino: {
+      title: 'Casino',
+      line: 'Optional · play money only',
+      body: [
+        'Crash, Slots, Skin Upgrade and Double or Nothing, played with the money you earn on the road. Nothing here costs real money.',
+        'The odds of every game are shown in its sheet. Money you win is the money you buy upgrades with; money you lose is gone.',
+        'You can skip it for good: nothing on the road needs it.',
+      ],
+    },
+    club: {
+      title: 'The Club',
+      line: 'For big balances',
+      body: [
+        'The Auction House sells three lots a day. Computer collectors bid against you and often drive the price far above the estimate.',
+        'The City Fund collects gifts from every player for shared projects, and Contracts put money on a Perfect Run.',
+        'Only looks and money: nothing here makes you faster on the road.',
+      ],
+    },
+    mafia: {
+      title: 'The Family',
+      line: 'Lends money, wants it back',
+      body: [
+        'After your first boss the Family lends you money. Strike the deal on the pointer bar: tap to stop it in the green zone, the middle is Perfect.',
+        'Pay back in time and the next loan gets kinder. Pay late and the Family takes a share of every shift, and the Casino shuts until it is paid.',
+      ],
+    },
   },
 
   settings: {
-    imported: (level: number): string => `Progress imported · Level ${level}`,
-    synced: (level: number): string => `Synced from the cloud · Level ${level}`,
+    /** The word on the Settings pill for a moment after progress came over from the cloud. */
+    synced: 'Synced',
   },
 
   /** Systems that open with the level (`core/unlocks.ts`). */
   unlocks: {
-    daily: 'New · the Daily Shift: one try a day, the same shift for everyone',
-    trials: 'New · Trials in Progress → Trials: special shifts with a reward',
     opensAt: (name: string, level: number): string => `${name} ${name.endsWith('s') ? 'open' : 'opens'} at Level ${level}`,
     lockedTag: (level: number): string => `LEVEL ${level}`,
   },
@@ -66,10 +140,9 @@ export const S = {
     saveRestored: 'Your save was changed outside the game · The last saved progress is back',
     /** ...and there was nothing to go back to: what was played stays, money and chests do not. */
     saveDistrusted: 'Your save was changed outside the game · Money and chests were reset',
-    updated: 'Updated · See what’s new in Settings',
     /** A friend's invite was kept (`?ref=`): with a name already, or still needing one. */
-    invited: [`Invited by a friend · Reach level ${INVITE_LEVEL} and you both get a chest`],
-    invitedNeedsName: [`Invited by a friend · Reach level ${INVITE_LEVEL} and you both get a chest`, 'Pick a name under Social so your chest finds you'],
+    invited: `Invited by a friend · Reach level ${INVITE_LEVEL} and you both get a chest`,
+    invitedNeedsName: `Invited by a friend · Pick a name under Social, reach level ${INVITE_LEVEL} and you both get a chest`,
     /** Once for everyone (`announceInvite`), and again at level 10 (`inviteReminder`): the friend code is the invite, and the Social tab is where it is. The website (`buildWithUs`) is told once, too. */
     invite: { caption: 'INVITE A FRIEND', text: `You both get a chest at level ${INVITE_LEVEL}. The Social tab has your code and link` },
     inviteReminder: { caption: 'INVITE A FRIEND', text: `Level ${INVITE_REMINDER_LEVEL}! Bring a friend: you both get a chest at level ${INVITE_LEVEL}. Code under Social` },
@@ -495,7 +568,6 @@ export const S = {
     },
     reached: (step: PassStep): string =>
       `SEASON PASS · TIER ${step.tier} · ${step.duplicate > 0 ? `${S.pass.reward(step.reward)} again · +${money(Fmt.number(step.duplicate))}` : S.pass.reward(step.reward)}`,
-    bought: (s: Season): string => `${S.pass.caption(s).toUpperCase()} · every shift now climbs the track`,
     buy: (price: string): string => `Buy · ${price}`,
     body: (xpPerTier: number): string[] => [
       `A track of twelve tiers for this season, bought with play money. Every shift earns XP towards it: 10 for a completed shift, 1 for every Perfect Input and Tight Fit, 10 more for a boss or a Legendary Shift. The first tier needs ${xpPerTier} XP, every tier after it a little more.`,
@@ -808,12 +880,12 @@ export const S = {
     confirmTitle: 'Notifications are on',
     rowBlocked: 'Blocked for this site. Allow notifications in your browser settings to turn them on.',
     offerFirstTitle: 'Free chest tomorrow',
-    offerFirstWhy: "Get a nudge when tomorrow's free chest is ready, and again before a streak ends. At most one a day, never at night.",
+    offerFirstWhy: "Get a nudge when tomorrow's free chest is ready, and again before a streak ends. At most one a day, never at night. Turn them off anytime in Settings.",
     offerTitle: 'Keep your streak',
-    offerWhy: 'Get a nudge before your streak ends, when a free chest is ready or a new season starts. At most one a day, never at night.',
+    offerWhy: 'Get a nudge before your streak ends, when a free chest is ready or a new season starts. At most one a day, never at night. Turn them off anytime in Settings.',
     offerOn: 'Turn on notifications',
     offerLater: 'Not now',
-    on: 'Notifications on. At most one a day, never at night.',
+    on: 'Notifications on. Turn them off anytime in Settings.',
     failed: 'Notifications could not be turned on. Try again later.',
     denied: 'Notifications are blocked for this site in your browser settings.',
   },
@@ -917,7 +989,6 @@ export const S = {
         ? `Shows up from Level ${level}. Once you have met it on the road, it goes on show here with everything you need to know.`
         : 'Keep playing shifts. Once you have met it on the road, it goes on show here with everything you need to know.',
     lockedBossHint: (level: number): string => `The syndicate sends it on Level ${level}. Once you have faced it, it goes on show here with how to take it down.`,
-    discovered: (names: string[]): string => `New in the Museum: ${names.join(', ')}`,
     kind: (e: MuseumEntry): string => ({ boss: 'Syndicate boss', special: 'Special vehicle', weather: 'Weather', dark: 'Darkness', event: 'City event', road: 'Road' })[e.k],
     met: 'Met, still at large',
     onRing: 'On the ring',
@@ -1027,7 +1098,6 @@ export const S = {
     chainTimes: (n: number): string => `×${n}`,
     refunded: (m: string): string => `A drive was cut short · ${m} back`,
     cashedOnLeave: (m: string): string => `Cashed out as you left · +${m}`,
-    skinsLost: (n: number): string => (n === 1 ? 'Staked skin lost' : `${n} staked skins lost`),
     detail: {
       crash: [
         'A car speeds up and the multiplier climbs. Cash out any time: you get the stake times the multiplier. If it crashes first, the stake is gone.',
@@ -1089,8 +1159,6 @@ export const S = {
     deleteConfirm: 'Tap again to delete',
     noRefund: 'Moving is free. Deleting pays nothing back.',
     moveHint: 'Drag it to a free slot, or tap one · tap anywhere else to keep it where it is.',
-    moved: (name: string): string => `${name} moved`,
-    moveCancelled: 'Stays where it is',
     level: (level: number, max: number): string => `Level ${level} of ${max}`,
     upgrade: (price: string): string => `Upgrade · ${price}`,
     maxLevel: 'Fully upgraded',
@@ -1210,7 +1278,6 @@ export const S = {
     perDay: (days: number): string => `${days} ${days === 1 ? 'day' : 'days'}`,
     offer: (interest: number, days: number): string => `${Math.round(interest * 100)}% interest · ${days} ${days === 1 ? 'day' : 'days'}`,
     zone: (width: number, clean: number): string => `Green zone ${Math.round(width * 100)}% of the bar${clean > 0 ? ` · ${clean} ${clean === 1 ? 'loan' : 'loans'} repaid in time` : ''}`,
-    struck: (grade: 'perfect' | 'good' | 'miss', amount: string, owed: string): string => `DEAL · ${S.mafia.grade(grade)} · ${money(amount)} in your hands, ${money(owed)} to pay back`,
     ledger: 'Ledger',
     lent: 'Lent',
     owed: 'You owe',
@@ -1255,11 +1322,8 @@ export const S = {
       })[kind],
     notices: {
       late: 'THE FAMILY IS WAITING · your loan is late · the Casino is shut',
-      letter: 'A LETTER FROM THE DON · Social → Mafia',
       grace: 'THE FAMILY GIVES YOU ONE MORE DAY · the loan fell due while you were away',
       writtenOff: 'THE FAMILY WRITES YOU OFF · the debt is gone, their doors stay shut for 14 days',
-      repaidInTime: 'DEBT PAID IN TIME · the Family is pleased · the next loan is kinder',
-      repaidLate: 'DEBT PAID · the badge is gone, the Casino is open',
     },
     garnished: (cut: string, cleared: boolean): string => (cleared ? `THE FAMILY TOOK ${money(cut)} · debt paid, you are free` : `THE FAMILY TOOK ${money(cut)} of the pay`),
     casinoShut: 'The Casino is closed while the Family waits for its money.',
@@ -1558,7 +1622,6 @@ export const S = {
     unreadable: 'That picture could not be read. Try another one.',
     notKept: 'Too big to keep on this device: it shows until you close the game.',
     note: 'A link loads straight from its own site (YouTube, or wherever the picture lives), on this device only. Nothing is sent to us.',
-    on: 'Big Screen is on',
     lost: 'Big Screen: your link did not load. The city is back for now.',
   },
 
@@ -1571,11 +1634,9 @@ export const S = {
     welcomeBack: (m: string): string => `Welcome back · your toll booths earned +${money(m)}`,
     /** The first visit after a streak ran out (Leo, 09.10.2026): said plainly, with the way to the next one. */
     streakEnded: (days: number): string => `Your ${days}-day streak ended · a new one starts with today's Daily Shift`,
-    backForDaily: "Welcome back · today's Daily Shift is ready",
     done: 'Done',
     readyHint: 'Your first shift of the day. One try, the same shift for everyone.',
     doneHint: (streak: number): string => (streak > 1 ? `Done · ${streak} days in a row · back tomorrow` : 'Done · back tomorrow'),
-    dailyDone: (m: string, streak: number): string => `DAILY SHIFT DONE · +${money(m)}${streak > 1 ? ` · ${streak} days in a row` : ''}`,
     splashLine: (e: CityEvent): string => `Today's city: ${S.cityEvent(e)} · one try`,
     streakLine: (streak: number): string => (streak > 0 ? `${streak} ${streak === 1 ? 'day' : 'days'} in a row · keep it going` : 'Play it every day for a streak'),
     nextMilestone: (left: number, item: string): string => `${left} more ${left === 1 ? 'day' : 'days'} for ${S.shop.item(item)}`,
@@ -1590,10 +1651,12 @@ export const S = {
     },
     freezeLine: (days: number): string => `${days} more ${days === 1 ? 'day' : 'days'} for a Streak Freeze`,
     freezes: (n: number): string => `${n} Streak ${n === 1 ? 'Freeze' : 'Freezes'}`,
-    cardEarned: (days: number): string => `${days} DAYS IN A ROW · a free Scratch Card`,
     freezeUsed: (n: number): string => `STREAK FROZEN · ${n === 1 ? 'a missed day was' : `${n} missed days were`} covered`,
-    freezeEarned: 'STREAK FREEZE EARNED · it covers a missed day',
-    milestone: (days: number, item: string): string => `${days} DAYS IN A ROW · ${S.shop.item(item)} unlocked`,
+    /** What a day of the streak brought, in one line: a skin, a Streak Freeze, a Scratch Card. */
+    streakReward: (days: number, got: string[]): string => `${days} DAYS IN A ROW · ${got.join(' · ')}`,
+    gotItem: (item: string): string => `${S.shop.item(item)} unlocked`,
+    gotFreeze: 'a Streak Freeze',
+    gotCard: 'a free Scratch Card',
     /** Tomorrow's gift (`Careers.promiseGift`): counted down on the Game tab. */
     giftIn: (hours: number): string => (hours >= 1 ? `Free chest tomorrow · in ${Math.ceil(hours)} h` : `Free chest tomorrow · in ${Math.max(1, Math.ceil(hours * 60))} min`),
     perfectRunFirst: (pay: number): string => `PERFECT RUN · no crash · +${pay} % pay`,
@@ -1861,7 +1924,6 @@ export const S = {
   goals: {
     /** So close: the next career shift pays more (once a day). */
     tierMiss: (m: { short: number; tier: TierId }): string => `${m.short} ${m.short === 1 ? 'car' : 'cars'} short of ${S.modes.tier(m.tier)}`,
-    tailwind: (pay: number): string => `TAILWIND · so close · your next shift pays +${Math.round(pay * 100)} %`,
     next(g: NextGoal): string {
       if (g.k === 'challenge') return `Today · ${S.daily.challenge(g.challenge)} · +${money(String(g.reward))}`;
       return `${S.mastery.name(g.goal)} · ${g.have}/${g.need}`;
@@ -1910,6 +1972,19 @@ export const S = {
 
   result: {
     gameOver: 'GAME OVER',
+    /** The top card's big word while a lost shift takes its breather, and why it was lost (under the skull). */
+    fail: 'FAIL',
+    why: {
+      crash: 'You crashed. Wait for a gap.',
+      crashes: 'Too many crashes. Wait for a gap.',
+      police: 'Too many police cars crashed.',
+      behind: 'A car was right behind you.',
+      ahead: 'You hit the car in front.',
+      escaped: 'The criminal got away.',
+      boss: 'The boss got away.',
+      zeroTolerance: 'Zero Tolerance: a crash or cut-off ends it.',
+      rule: 'A rule of the shift was broken.',
+    },
     detonated: 'KABOOM',
     escaped: 'ESCAPED',
     levelComplete: (l: number): string => `LEVEL ${l} COMPLETE`,
@@ -2000,11 +2075,6 @@ export const S = {
     /** The rest of a result's news, counted (`GameSession.budget`). */
     more: (n: number): string => `+${n} more · see Progress`,
     notEnoughMoney: (price: string): string => `Not enough ${MONEY_MARK} · ${money(price)} needed`,
-    built: (name: string, arms: number): string => `${name} built · ${arms} arms`,
-    placed: (name: string): string => `${name} built · tap it to upgrade`,
     detourIdle: 'Built, but it does nothing here: no exit between it and your arm',
-    removed: (name: string): string => `${name} torn down`,
-    upgraded: (name: string, level: number): string => `${name} is level ${level} now`,
-    bought: (name: string, steps: number, max: number): string => `${name} ${steps}/${max}`,
   },
 };

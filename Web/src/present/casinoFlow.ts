@@ -356,7 +356,6 @@ export class CasinoFlow {
             this.host.announceAlbums();
           } else {
             this.host.play(['shatter', 'shiftFailed'], ['crash']);
-            this.host.showNotice(S.casino.skinsLost(run.roll.staked.length));
           }
         } else if (run.k === 'flip') {
           // A doubled win flies in: what the coin added, as loud as the chain has grown.

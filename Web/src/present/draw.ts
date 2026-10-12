@@ -801,14 +801,15 @@ export class CanvasDrawer {
         if (p.points.length < 3) return;
         this.setFill(color);
         ctx.beginPath();
-        const first = pt(p.points[0]);
-        ctx.moveTo(first.x, first.y);
-        for (let i = 1; i < p.points.length; i++) {
-          const q = pt(p.points[i]);
-          ctx.lineTo(q.x, q.y);
+        for (const ring of [p.points, ...(p.holes ?? [])]) {
+          ring.forEach((point, i) => {
+            const q = pt(point);
+            if (i === 0) ctx.moveTo(q.x, q.y);
+            else ctx.lineTo(q.x, q.y);
+          });
+          ctx.closePath();
         }
-        ctx.closePath();
-        ctx.fill();
+        ctx.fill('evenodd');
         return;
       }
       case 'text': {

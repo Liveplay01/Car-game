@@ -2,8 +2,6 @@ import { type SaveGame, Careers } from '../core/career';
 import { museumEntry, museumId, sightings, type MuseumEntry } from '../core/museum';
 import type { World } from '../core/world';
 import { type Briefings, briefOf } from './briefing';
-import { MuseumPage } from './museum';
-import { S } from './strings';
 import type { Tutorial } from './tutorial';
 
 /** What the Museum's sightings and briefings need from the session: the save, the shift on the road, the top card. */
@@ -23,8 +21,6 @@ export interface MuseumHost {
  * the icons over the island on the ready screen and say nothing on the card.
  */
 export class MuseumFlow {
-  /** Entries first met during this shift, for the line on its result. */
-  private found: string[] = [];
   /** Entries whose task cost a shift (a criminal got away): explained once more next time. */
   private readonly again = new Set<string>();
   /** Entries met for the first time whose briefing never got its turn (the shift ended first). */
@@ -53,7 +49,6 @@ export class MuseumFlow {
     if (this.owed.size > 0) for (const id of seen) if (this.owed.has(id)) this.brief(museumEntry(id));
     const found = Careers.discover(host.save.career, seen);
     if (found.length === 0) return;
-    this.found.push(...found);
     host.persist();
     for (const e of found.map(museumEntry)) if (e && (e.k === 'special' || e.k === 'boss')) this.brief(e, true);
   }
@@ -76,12 +71,5 @@ export class MuseumFlow {
     this.again.delete(id);
     this.owed.delete(id);
     this.host.briefings.add(briefOf(e, again && !found && !owed));
-  }
-
-  /** The Museum's new entries of the shift, as a line for the result; empties the list. */
-  takeNotice(): string | null {
-    const names = this.found.map((id) => museumEntry(id)).flatMap((e) => (e ? [MuseumPage.name(e)] : []));
-    this.found = [];
-    return names.length > 0 ? S.museum.discovered(names) : null;
   }
 }

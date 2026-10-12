@@ -260,7 +260,7 @@ export interface HudInput {
 
 /** The in-game HUD: the top card, the combo on the island, the specials. */
 /** A plus sign, one shape (no overlap that a faint one would show), `size` across. */
-function plusSign(at: Vec2, size: number): Primitive {
+export function plusSign(at: Vec2, size: number): Primitive {
   const a = size / 2;
   const b = size * 0.18;
   const corners: [number, number][] = [[-b, -a], [b, -a], [b, -b], [a, -b], [a, b], [b, b], [b, a], [-b, a], [-b, b], [-a, b], [-a, -b], [-b, -b]];
@@ -363,7 +363,8 @@ export const HUD = {
     const shields = Number.isFinite(world.config.maxStrikes) ? world.config.maxStrikes - 1 : 0;
     for (let i = 0; i < shields; i++) pluses.push({ used: i < world.score.strikes, color: 'juiceGreen' });
     const firstPolice = pluses.length;
-    for (let i = 0; i < world.config.maxPoliceCrashes; i++) pluses.push({ used: i < world.score.policeCrashes, color: 'lightBlue' });
+    const policeCrashes = world.config.policeShare > 0 || world.config.dispatchLimit > 0 ? world.config.maxPoliceCrashes : 0;
+    for (let i = 0; i < policeCrashes; i++) pluses.push({ used: i < world.score.policeCrashes, color: 'lightBlue' });
     const groupGap = firstPolice > 0 && pluses.length > firstPolice ? 0.5 : 0;
     const span = pluses.length - 1 + groupGap;
     const size = Metrics.strikeRadius * 2.75;
@@ -999,6 +1000,16 @@ export class RingSignals {
     }
   }
 
+  /** A lost shift's ring at dusk: a slow, dim red glow on the island's edge for as long as the result shows. */
+  static dusk(list: RenderList, rim: number, age: number, reduceMotion: boolean, opacity: number): void {
+    const appear = Ease.outCubic(age / 0.4) * opacity;
+    if (appear <= 0.001) return;
+    const swell = reduceMotion ? 0.5 : 0.5 + 0.5 * Math.sin(age * 2.2);
+    list.w(arc(v(0, 0), rim, 16, 0, TAU), 'destructive', (0.07 + 0.04 * swell) * appear);
+    list.w(arc(v(0, 0), rim, 6, 0, TAU), 'destructive', (0.16 + 0.08 * swell) * appear);
+    list.w(arc(v(0, 0), rim, 2.5, 0, TAU), 'destructive', (0.5 + 0.15 * swell) * appear);
+  }
+
   static readonly eliteFill = 1.1;
 
   /**
@@ -1432,6 +1443,8 @@ export interface ShiftSummary {
   mode: GameMode;
   /** A challenge or trial: its own verdict replaces the title, the right column and the line. */
   run?: { caption: string; color: ColorToken; line: string; lineColor: ColorToken; right: [string, string] };
+  /** Why a lost shift was lost, as the breather's line under the skull. */
+  why?: string | null;
   /** Under the stats: how close a lost shift came, or what the money is close to. */
   closeCall?: { text: string; color: ColorToken } | null;
   /** The Elite track after this shift: the ring runs it, the middle says what is missing (`RingSignals.elite`). */
@@ -1453,6 +1466,13 @@ export interface RunCard {
 /** The end of a shift without leaving the world: the same card says how it went. */
 export const ResultBanner = {
   inputLock: 0.4,
+  /** A lost shift takes a breather (Leo, 12.10.2026): FAIL on the card, a skull on the island, the ring at dusk, and no tap starts the next one yet. Wherever a shift can be lost: career, Unlimited, challenges and trials. */
+  breath: 1.2,
+  breathes: (s: ShiftSummary): boolean => (s.mode === 'shift' || s.mode === 'unlimited') && s.result.outcome !== 'completed' && !s.result.detonated,
+  /** How long the result ignores taps. */
+  lock: (s: ShiftSummary): number => (ResultBanner.breathes(s) ? ResultBanner.breath : ResultBanner.inputLock),
+  /** 1 while the breather holds, then 0 over its last moment: FAIL and the reason make way for the usual result. */
+  mourning: (age: number): number => 1 - Ease.smoothstep((age - (ResultBanner.breath - 0.3)) / 0.3),
   enter: 0.25,
   countDelay: 0.35,
   countDuration: 1.2,
@@ -1462,6 +1482,25 @@ export const ResultBanner = {
   /** The result leaves in the first half of the fade, the next shift arrives in the second: never both at once. */
   leaving: (age: number): number => Ease.smoothstep(ResultBanner.settled(age) * 2),
   arriving: (age: number): number => Ease.smoothstep(ResultBanner.settled(age) * 2 - 1),
+
+  /**
+   * A small red skull in the island's middle, faint like a watermark: `size` is its half width. Head and jaw are one
+   * outline, so the faint fill has the same colour all over; the eyes, nose and teeth are holes you see through.
+   */
+  addSkull(list: RenderList, center: Vec2, size: number, age: number, reduceMotion: boolean, opacity: number): void {
+    const s = size * (reduceMotion ? 1 : land(age / 0.45, 0.15));
+    const at = (x: number, y: number): Vec2 => add(center, v(x * s, y * s));
+    // The head is a circle (middle (0, -0.2), radius 0.78) that meets the jaw's sides (x = ±0.475) at y = 0.42.
+    const meet = Math.atan2(0.62, 0.475);
+    const head = Array.from({ length: 25 }, (_, i) => {
+      const a = meet - ((Math.PI + 2 * meet) * i) / 24;
+      return at(0.78 * Math.cos(a), -0.2 + 0.78 * Math.sin(a));
+    });
+    const eye = (side: number): Vec2[] => Array.from({ length: 16 }, (_, i) => at(side * 0.33 + 0.21 * Math.cos((i / 16) * TAU), -0.18 + 0.21 * Math.sin((i / 16) * TAU)));
+    const tooth = (x: number): Vec2[] => [at(x - 0.03, 0.52), at(x + 0.03, 0.52), at(x + 0.03, 0.84), at(x - 0.03, 0.84)];
+    const nose = [at(0, 0.06), at(-0.11, 0.32), at(0.11, 0.32)];
+    list.s(polygon([...head, at(-0.475, 0.78), at(-0.4, 0.85), at(0.4, 0.85), at(0.475, 0.78)], [eye(-1), eye(1), nose, tooth(-0.24), tooth(0), tooth(0.24)]), 'destructive', 0.18 * opacity);
+  },
 
   /** How the shift ended, in words and colour: the card's caption and the photo's headline. */
   title(summary: ShiftSummary): [string, ColorToken] {
@@ -1509,6 +1548,7 @@ export const ResultBanner = {
     const shown = Ease.outCubic(age / ResultBanner.enter) * (1 - ResultBanner.leaving(age));
     const [title, titleColor] = ResultBanner.title(summary);
     const run = summary.run;
+    const mourning = ResultBanner.breathes(summary) ? ResultBanner.mourning(age) : 0;
 
     list.tag = 'topbarLabels';
     if (shown > 0.001) {
@@ -1523,6 +1563,9 @@ export const ResultBanner = {
         flameTag(list, Fmt.number(r.flames), v(R.center(cols.center).x, cols.center.minY + TopBar.valueRow), Metrics.timerSize * pop, 'center', 'primary', shown);
       } else if (summary.mode === 'chill') {
         TopBar.addColumn(list, cols.center, 'center', title, Fmt.number(r.carsSent), { captionColor: titleColor, valueSize: Metrics.timerSize * pop, opacity: shown });
+      } else if (mourning > 0) {
+        TopBar.addColumn(list, cols.center, 'center', title, S.result.fail, { captionColor: titleColor, valueColor: 'destructive', valueSize: Metrics.timerSize * pop, opacity: shown * mourning });
+        if (mourning < 1) TopBar.addColumn(list, cols.center, 'center', title, Fmt.number(r.score), { captionColor: titleColor, valueSize: Metrics.timerSize, opacity: shown * (1 - mourning) });
       } else {
         TopBar.addColumn(list, cols.center, 'center', title, Fmt.number(r.score), { captionColor: titleColor, valueSize: Metrics.timerSize * pop, opacity: shown });
       }
@@ -1540,13 +1583,21 @@ export const ResultBanner = {
     }
     list.tag = undefined;
     const island = toScreen(list.camera, v(0, 0));
+    // A lost shift's skull stays as long as the red ring does; the texts stand in front of it.
+    const skull = ResultBanner.breathes(summary) ? Math.min(islandRadius * 0.6, 44) : 0;
+    if (skull > 0) ResultBanner.addSkull(list, island, skull, age, reduceMotion, shown);
     if (r.money > 0 && shown > 0.001) {
       const x = reduceMotion ? 1 : Ease.clamp01((age - ResultBanner.countDelay) / ResultBanner.countDuration);
       const counted = Math.round(r.money * Ease.outCubic(x));
       const landed = (age - ResultBanner.countDelay - ResultBanner.countDuration) / 0.35;
       moneyTag(list, '+' + Fmt.number(counted), sub(island, v(0, 64)), reduceMotion || landed < 0 ? 26 : 26 * land(landed, 0.2), 'center', 'primary', 'accent', shown);
     }
-    const prompt = Ease.outCubic((age - ResultBanner.inputLock) / ResultBanner.enter);
+    if (mourning > 0 && summary.why) {
+      const enter = reduceMotion ? 1 : Ease.outCubic((age - 0.25) / 0.3);
+      if (enter > 0) islandLine(list, summary.why, islandRadius, skull + 28, 14, 'primary', shown * mourning * enter, 'bold');
+    }
+    const lock = ResultBanner.lock(summary);
+    const prompt = Ease.outCubic((age - lock) / ResultBanner.enter);
     if (prompt <= 0) return;
     const next = run
       ? S.run.again
@@ -1577,7 +1628,7 @@ export const ResultBanner = {
     const close = summary.closeCall;
     if (close) {
       // It lands a moment after the prompt: the thing to read after "tap to try again".
-      const enter = reduceMotion ? 1 : Ease.outCubic((age - ResultBanner.inputLock - 0.15) / 0.3);
+      const enter = reduceMotion ? 1 : Ease.outCubic((age - lock - 0.15) / 0.3);
       const rise = reduceMotion ? 0 : 6 * (1 - Ease.clamp01(enter));
       if (enter > 0) islandLine(list, close.text, islandRadius, 54 + rise, 14, close.color, details * Ease.clamp01(enter), 'bold');
     }

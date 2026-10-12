@@ -485,12 +485,13 @@ test('whoever used a system before keeps it', () => {
   assert.deepEqual(Unlocks.open(c), ['daily', 'trials', 'casino']);
 });
 
-test('opening the Daily says so; the Casino opens quietly', () => {
+test('opening the Daily or the Trials is no line of news: the place gets a dot and introduces itself; the Casino opens quietly', () => {
   const save = newSave();
   save.hints = ['modes', 'install', 'backup'];
   save.career.level = baseConfig.dailyUnlockLevel - 1;
   let level = save.career.level;
-  assert.ok(bookShift(save, completed(level), context(level)).news.includes(S.unlocks.daily));
+  assert.ok(!bookShift(save, completed(level), context(level)).news.some((line) => /daily|trial/i.test(line)));
+  assert.equal(Unlocks.isOpen(save.career, 'daily'), true);
   save.career.level = baseConfig.casinoUnlockLevel - 1;
   level = save.career.level;
   const news = bookShift(save, completed(level), context(level)).news;
@@ -614,6 +615,48 @@ test('a condition icon opens its full sheet, even before the player has met it',
   }
 });
 
+test('Unlimited always accelerates like Quick Recovery at its top step, whatever was bought', () => {
+  const top = baseConfig.driverAcceleration * (1 + upgradeMaxSteps.quickRecovery * baseConfig.recoveryPerStep);
+  for (const steps of [0, 3]) {
+    const career = { ...newCareer(), level: 10, upgrades: { quickRecovery: steps } };
+    assert.equal(Careers.shiftConfig(career, 'unlimited', baseConfig, 5).driverAcceleration, top);
+  }
+  assert.ok(Careers.shiftConfig(newCareer(), 'shift', baseConfig, 5).driverAcceleration < top, 'a career shift is untouched');
+});
+
+test('the first levels bring one new thing each: nothing, police and dispatch, criminals, the transporter', () => {
+  const at = (level, mode = 'shift', prestige = 0) => Careers.shiftConfig({ ...newCareer(), level, prestige }, mode, baseConfig, 11);
+  const on = (c) => [c.policeShare > 0 && c.dispatchLimit > 0, c.criminalChance > 0, c.transporterFirst.lo < 1000];
+  assert.deepEqual(on(at(1)), [false, false, false]);
+  assert.deepEqual(on(at(2)), [true, false, false]);
+  assert.deepEqual(on(at(3)), [true, true, false]);
+  assert.deepEqual(on(at(4)), [true, true, true]);
+  assert.equal(at(4).tankerShare, 0);
+  assert.ok(at(5).tankerShare > 0);
+  // Whoever has been through Prestige, and the other modes, have met it all.
+  assert.deepEqual(on(at(1, 'shift', 1)), [true, true, true]);
+  assert.deepEqual(on(Careers.shiftConfig({ ...newCareer(), level: 1 }, 'unlimited', baseConfig, 11)), [true, true, true]);
+});
+
+test('a place explains itself once: new players get the Museum and Builder after the tutorial, the rest when it opens; old saves are not told again', async () => {
+  const { Intros } = await load('/src/present/intros.ts');
+  const fresh = newSave();
+  Intros.start(fresh, baseConfig);
+  assert.deepEqual(Intros.pending(fresh, baseConfig), [], 'nothing while the tutorial runs');
+  fresh.tutorialDone = true;
+  assert.deepEqual(Intros.pending(fresh, baseConfig), ['museum', 'builder']);
+  Intros.mark(fresh, 'museum');
+  fresh.career.level = 12;
+  assert.deepEqual(Intros.pending(fresh, baseConfig), ['builder', 'daily', 'trials', 'casino']);
+  const old = newSave();
+  old.tutorialDone = true;
+  old.career.level = 30;
+  Intros.start(old, baseConfig);
+  assert.deepEqual(Intros.pending(old, baseConfig), [], 'a save that has played before has met what it can reach');
+  old.career.level = 50;
+  assert.ok(Intros.pending(old, baseConfig).includes('club'), 'what opens later still explains itself');
+});
+
 test('condition icons: one per condition of the shift, tap targets of 64 points that never overlap', () => {
   const config = cloneConfig(baseConfig);
   Object.assign(config, { weather: 'heavyRain', cityEvent: 'roadClosure', night: true, blackout: false, lanes: 2 });
@@ -702,7 +745,7 @@ test('briefings without a task stay a few seconds each, a task goes first', () =
   assert.equal(briefs.view, null);
 });
 
-test('cars spammed into the slow traffic after a crash score nothing and leave at the next exit (Unlimited)', async () => {
+test('cars spammed into the slow traffic after a crash pay a plain merge, build no combo and leave at the next exit (Unlimited)', async () => {
   const { upgradeMaxSteps } = await load('/src/core/levels.ts');
   const career = { ...newCareer(), level: 40, upgrades: { ...upgradeMaxSteps } };
   const cfg = Careers.shiftConfig(career, 'unlimited', baseConfig, 37);
@@ -728,9 +771,31 @@ test('cars spammed into the slow traffic after a crash score nothing and leave a
     }
   }
   assert.ok(world.score.crept >= 5, `crept ${world.score.crept}`);
-  assert.ok(world.score.combo <= 2 && world.score.points <= 300, `combo ${world.score.combo}, points ${world.score.points}`);
+  assert.ok(world.score.combo === 0 && world.score.points <= world.score.crept * cfg.pointsClean, `a plain merge each, no combo: combo ${world.score.combo}, points ${world.score.points}`);
   assert.equal(world.shift.carsSent, launched, 'a car that crept in still counts');
   assert.deepEqual([...exits], [world.layout.advance(world.layout.player, 1).index], 'it leaves at the next exit');
+});
+
+test('a strike by a merging car says which side the other car was on', () => {
+  const faults = new Set();
+  for (const seed of [3, 11, 29, 41]) {
+    const world = new World(Careers.shiftConfig({ ...newCareer(), level: 10 }, 'shift', baseConfig, seed), seed, { startsOnFirstTap: true });
+    let next = 0;
+    while (world.time < 40 && world.shift.phase !== 'ended') {
+      if (world.time >= next) {
+        world.tap(world.time);
+        next = world.time + 0.2;
+      }
+      world.step();
+      for (const e of world.takeEvents()) {
+        if (e.type !== 'crash') continue;
+        assert.ok(e.fault === null || e.fault === 'behind' || e.fault === 'ahead');
+        if (!e.isStrike) assert.equal(e.fault, null, 'only a strike has a fault');
+        if (e.fault) faults.add(e.fault);
+      }
+    }
+  }
+  assert.ok(faults.size > 0, 'a reckless driver crashes into somebody');
 });
 
 test('nothing counts as met while the shift waits for its first tap', () => {
@@ -1963,17 +2028,21 @@ test('Tailwind: a shift lost within reach pays the next one more, once a day and
   const career = save.career;
   const level = 3;
   const book = (result, over = {}) => bookShift(save, result, context(level, over));
-  assert.ok(!book(lostAt(level, 5)).news.includes(S.goals.tailwind(baseConfig.tailwindPay)), 'too far from the goal');
-  assert.ok(!book(lostAt(level, 2, { carsSent: 1 })).news.some((n) => n.startsWith('TAILWIND')), 'a crash at the very start earns nothing');
-  assert.ok(!book(lostAt(level, 2), { daily: true }).news.some((n) => n.startsWith('TAILWIND')), 'never over the Daily Shift');
-  assert.equal(career.tailwind, false);
-  assert.ok(book(lostAt(level, 2)).news.includes(S.goals.tailwind(baseConfig.tailwindPay)));
-  assert.equal(career.tailwind, true);
+  book(lostAt(level, 5));
+  assert.equal(career.tailwind, false, 'too far from the goal');
+  book(lostAt(level, 2, { carsSent: 1 }));
+  assert.equal(career.tailwind, false, 'a crash at the very start earns nothing');
+  book(lostAt(level, 2), { daily: true });
+  assert.equal(career.tailwind, false, 'never over the Daily Shift');
+  book(lostAt(level, 2));
+  assert.equal(career.tailwind, true, 'the pill on the waiting screen says it, not a line of news');
   assert.ok(Goals.tailwindOn(career, 'shift', false) && !Goals.tailwindOn(career, 'shift', true) && !Goals.tailwindOn(career, 'unlimited', false));
-  assert.ok(!book(lostAt(level, 1)).news.some((n) => n.startsWith('TAILWIND')), 'the shift that used it earns none');
-  assert.equal(career.tailwind, false, 'used up');
-  assert.ok(!book(lostAt(level, 1)).news.some((n) => n.startsWith('TAILWIND')), 'once a day');
-  assert.ok(book(lostAt(level, 1), { today: 20001 }).news.some((n) => n.startsWith('TAILWIND')), 'the next day again');
+  book(lostAt(level, 1));
+  assert.equal(career.tailwind, false, 'the shift that used it earns none, and it is used up');
+  book(lostAt(level, 1));
+  assert.equal(career.tailwind, false, 'once a day');
+  book(lostAt(level, 1), { today: 20001 });
+  assert.equal(career.tailwind, true, 'the next day again');
 });
 
 test('Tailwind and the streak add up on the pay of a shift', () => {
@@ -3049,21 +3118,42 @@ test('the City Fund: skins are owed for built projects given enough to, a gift l
   assert.equal(c.money, 0, 'never below nothing');
 });
 
-test('the tab bar runs Progress, Social, Game, Shop, Build, and Social has its three segments under the title', async () => {
+test('the tab bar runs Progress, Social, Game, Shop, Build, and Social shows only the segments the career has reached', async () => {
   const { TAB_BAR, SOCIAL } = await load('/src/present/flow.ts');
   const { SocialPage } = await load('/src/present/social.ts');
   assert.deepEqual(TAB_BAR, ['progress', 'social', 'game', 'shop', 'upgrades']);
   const viewport = { x: 430, y: 900 };
-  const cells = SocialPage.segments(viewport);
-  assert.deepEqual(cells.map(([section]) => section), [SOCIAL.friends, SOCIAL.ranks, SOCIAL.club, SOCIAL.mafia]);
-  for (const [section, r] of cells) assert.equal(SocialPage.sectionAt({ x: (r.minX + r.maxX) / 2, y: (r.minY + r.maxY) / 2 }, viewport), section);
-  assert.ok(SocialPage.column(viewport).top > cells[0][1].maxY, 'the content starts under the segments');
-  assert.equal(SocialPage.sectionAt({ x: 10, y: 5 }, viewport), null);
   const c = newCareer();
   assert.equal(SocialPage.clubOpen(c), false, 'the Club waits for Level 50');
   assert.equal(SocialPage.mafiaOpen(c), false, 'the Mafia waits for the first boss');
+  assert.deepEqual(SocialPage.sections(c), [SOCIAL.friends, SOCIAL.ranks]);
   c.bossesBeaten.push('convoy');
   assert.equal(SocialPage.mafiaOpen(c), true);
+  assert.deepEqual(SocialPage.sections(c), [SOCIAL.friends, SOCIAL.ranks, SOCIAL.mafia]);
+  const cells = SocialPage.segments(viewport, SocialPage.sections(c));
+  for (const [section, r] of cells) assert.equal(SocialPage.sectionAt({ x: (r.minX + r.maxX) / 2, y: (r.minY + r.maxY) / 2 }, viewport, c), section);
+  assert.ok(SocialPage.column(viewport).top > cells[0][1].maxY, 'the content starts under the segments');
+  assert.equal(SocialPage.sectionAt({ x: 10, y: 5 }, viewport, c), null);
+});
+
+test('what the career has not reached is not on show: the Casino in the Shop, the Trials in Progress; a late loan only dims the Casino', async () => {
+  const { ShopPage } = await load('/src/present/shop.ts');
+  const { ProgressPage } = await load('/src/present/progress.ts');
+  const { Mafia } = await load('/src/core/mafia.ts');
+  const { PROGRESS } = await load('/src/present/flow.ts');
+  const c = newCareer();
+  assert.deepEqual(ShopPage.sections(c), [0, 1]);
+  assert.ok(!ProgressPage.sections(c).includes(PROGRESS.trials));
+  c.level = 12;
+  assert.deepEqual(ShopPage.sections(c), [0, 1, 2]);
+  c.level = 9;
+  assert.ok(ProgressPage.sections(c).includes(PROGRESS.trials));
+  // Someone who played the Casino before the levels existed keeps it, and a loan that runs late shuts it without hiding it.
+  const old = { ...newCareer(), casinoRounds: 3 };
+  assert.deepEqual(ShopPage.sections(old), [0, 1, 2]);
+  const late = { ...c, level: 20, loan: { amount: 1000, owed: 1200, paid: 0, due: 1, late: true, graced: false, told: 0, seen: 1, taken: 1 } };
+  assert.ok(Mafia.late(late));
+  assert.deepEqual(ShopPage.sections(late), [0, 1, 2]);
 });
 
 test('Mafia: a loan is paid out, repaid in time it makes the next one kinder, late it shuts the Casino and takes the loot', async () => {
@@ -3073,7 +3163,10 @@ test('Mafia: a loan is paid out, repaid in time it makes the next one kinder, la
   c.level = 20;
   const [small, , big] = Mafia.amounts(c);
   assert.ok(small < big, 'three loans, smallest first');
-  assert.equal(Mafia.borrow(c, small, 'miss', now), null, 'no boss put away yet: no loan');
+  const early = newCareer();
+  early.level = baseConfig.convoyEvery;
+  assert.equal(Mafia.borrow(early, Mafia.amounts(early)[0], 'miss', now), null, 'no boss put away and the boss level not passed: no loan');
+  assert.ok(Mafia.borrow({ ...c, bossesBeaten: [], loan: null }, small, 'miss', now), 'past the boss level the Family talks even without a boss');
   c.bossesBeaten.push('convoy');
 
   const table = Mafia.table(c, big);

@@ -12,6 +12,7 @@ import {
   UPGRADES,
   type Upgrade,
   forArms,
+  forIntro,
   forWeather,
   forNight,
   drawNight,
@@ -308,7 +309,7 @@ export interface Career {
  * and a backup of the progress (each once, from its level on; `config.*HintAfterLevel`), and
  * what a Perfect Run is, the first time one happens.
  */
-export const HINTS = ['modes', 'install', 'backup', 'perfectRun', 'reduceMotion', 'buildWithUs', 'invite', 'inviteReminder', 'scout', 'tightFit', 'unlimitedTip', 'portalLogin', 'notifications', 'notificationsStreak'] as const;
+export const HINTS = ['modes', 'install', 'backup', 'perfectRun', 'reduceMotion', 'buildWithUs', 'invite', 'inviteReminder', 'scout', 'tightFit', 'unlimitedTip', 'portalLogin', 'notifications', 'notificationsStreak', 'introsStarted', 'intro.museum', 'intro.builder', 'intro.daily', 'intro.trials', 'intro.pass', 'intro.casino', 'intro.club', 'intro.mafia'] as const;
 export type Hint = (typeof HINTS)[number];
 
 /** Everything that is saved (`storage/save.ts` reads and writes it). */
@@ -1069,10 +1070,12 @@ export const Careers = {
       cfg.tightFitTip = 0;
       cfg.nearMissTip = 0;
       cfg.chainSaves = 0;
+      // Every run recovers as if Quick Recovery were maxed, whatever was bought: the cars get back up to speed fast and the board stays even.
+      cfg.driverAcceleration = base.driverAcceleration * (1 + upgradeMaxSteps.quickRecovery * base.recoveryPerStep);
       return cfg;
     }
     if (mode === 'mayhem') return forMayhem(Careers.config({ ...c, level: base.mayhemLevel, prestige: 0 }, base, seed, null, event, null));
-    const cfg = Careers.config(c, base, seed, null, event, legendary, mutator);
+    const cfg = forIntro(Careers.config(c, base, seed, null, event, legendary, mutator), c.level + Careers.headStart(c, base));
     // The scout goes by the level alone: a challenge from such a shift brings it as well.
     cfg.scout = c.level === base.scoutLevel && !cfg.convoy;
     return cfg;

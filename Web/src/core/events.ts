@@ -64,6 +64,9 @@ export interface ComboChange {
   isTierUp: boolean;
 }
 
+/** Where the other car was when a merging car of the player crashed: right behind it, or right ahead. */
+export type CrashFault = 'behind' | 'ahead';
+
 export interface CrashReport {
   first: number;
   second: number;
@@ -72,6 +75,8 @@ export interface CrashReport {
   involvesPlayer: boolean;
   impact: number;
   isStrike: boolean;
+  /** Set on a strike by a merging car that met a car on the ring; else null. */
+  fault: CrashFault | null;
   isPoliceCrash: boolean;
   isTakedown: boolean;
   penalty: number;

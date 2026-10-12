@@ -39,7 +39,6 @@ export interface ClubHost {
   records(): Records;
   /** The career changed (a lot begun or won, a gift, a contract): write the save. */
   changed(): void;
-  notice(text: string): void;
   celebrate(): void;
   sound?(id: SoundID, pitch?: number): void;
 }
@@ -548,7 +547,6 @@ export function clubPanel(host: ClubHost): ClubPanel {
     const ids = Fund.claim(career, view);
     if (ids.length === 0) return;
     host.changed();
-    for (const id of ids) host.notice(`THANK YOU · the ${S.club.projectName(id)} is built · ${S.shop.item(id)} is yours`);
     host.celebrate();
   }
 
@@ -773,7 +771,6 @@ export function clubPanel(host: ClubHost): ClubPanel {
     sign.addEventListener('click', () => {
       if (!Contracts.sign(career, contractGoal, contractStake)) return;
       host.changed();
-      host.notice(`CONTRACT SIGNED · ${S.club.goalName(contractGoal)} · ${cash(contractStake)}`);
       show();
     });
     return [

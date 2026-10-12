@@ -19,7 +19,7 @@ import {
   isHeavy,
   isExplosive,
 } from './vehicle';
-import type { EliminationReason, GameEvent, MergeRating, ShiftOutcome, ShiftResult, VersusPhase } from './events';
+import type { CrashFault, EliminationReason, GameEvent, MergeRating, ShiftOutcome, ShiftResult, VersusPhase } from './events';
 import { ScoreBoard, Scoring } from './scoring';
 import { updateTraffic, prefillRing, spawnRival } from './traffic';
 import { updateDrivers, flowCapacity } from './drivers';
@@ -917,6 +917,7 @@ export class World {
     const byPolice = strike && culprits.every((x) => x.type === 'police');
     const firstWasWreck = first.isCrashed;
     const secondWasWreck = second.isCrashed;
+    const fault = strike && !byPolice ? this.crashFault(first, second) : null;
     const heavy = [first, second].some((x) => !x.isCrashed && isHeavy(x.type));
     const normal = this.contactNormal(c, first, second);
     const a = this.bodyOf(first);
@@ -951,6 +952,7 @@ export class World {
       involvesPlayer,
       impact,
       isStrike: strike,
+      fault,
       isPoliceCrash: byPolice,
       isTakedown: takedown,
       penalty,
@@ -988,6 +990,17 @@ export class World {
     for (const id of explosives) explode(this, id, now);
   }
 
+  /** Which side of a merging car of the player the other car was on, read before the crash turns both into wrecks. */
+  private crashFault(first: Vehicle, second: Vehicle): CrashFault | null {
+    const merging = [first, second].find((x) => x.owner === 'player' && x.activeMerge);
+    if (!merging) return null;
+    const other = merging === first ? second : first;
+    const mine = this.virtualRingPosition(merging, 0);
+    const theirs = this.virtualRingPosition(other, 0);
+    if (mine === null || theirs === null) return null;
+    return this.layout.ringDistance(theirs, mine) < this.layout.ring.length / 2 ? 'behind' : 'ahead';
+  }
+
   /**
    * An armoured boss takes the ram (the armoured boss, M-Syndicate): the impact is real, but the
    * boss is so heavy it keeps its line. The police car bounces off as a wreck, the armour cracks,
@@ -1017,6 +1030,7 @@ export class World {
       involvesPlayer: true,
       impact,
       isStrike: false,
+      fault: null,
       isPoliceCrash: false,
       isTakedown: false,
       penalty: 0,
@@ -1518,12 +1532,20 @@ export class World {
       const driven = this.launchedDistance(state.vehicle);
       const pass = q.pass;
       if (pass) {
+        const before = pass.position;
         rollPass(pass, (dt * this.ringSpeed) / c.queueSpacing, (driven ?? 2 * c.queueSpacing) / c.queueSpacing);
         const leaderVeh = this.vehicle(state.vehicle);
         const leader = leaderVeh ? this.lengthOf(leaderVeh.type) : c.carLength;
         const followerVeh = q.vehicles.length > 0 ? this.vehicle(q.vehicles[0]) : undefined;
         const follower = followerVeh ? this.lengthOf(followerVeh.type) : c.carLength;
         const room = (leader + follower) / 2 + PASS_CLEARANCE;
+        // The next car rolls up no closer than `room` to the one ahead, which crawls when the ring is jammed.
+        const reach = driven === null ? 1 : 1 - Math.max(0, room - driven) / c.queueSpacing;
+        if (pass.position > reach) {
+          pass.position = Math.max(before, reach);
+          pass.speed = 0;
+          pass.beyond = 0;
+        }
         if (pass.position >= 1) {
           if (q.heldTap === null) {
             q.state = { kind: 'ready' };

@@ -116,3 +116,22 @@ bringen dürfte, grob nach Aufwand und Wirkung:
 
 Die Zahlen kommen aus Umami (Ereignisse `tutorial-done` und `shift` mit Modus, Level und Ausgang): wo Neue
 aussteigen, entscheidet, welcher Punkt hier als Nächstes dran ist.
+
+---
+
+## Offener Bug: Geld zurückspulen über die Cloud-Kopie (Leo, 12.10.2026)
+
+**Problem:** Der Spielstand ist die Quelle des Geldes, jede ältere Kopie (Cloud, Export/Import, zweites Gerät) ist ein Rückspulpunkt. Wer sich im Casino freiwillig verliert und dann einen alten Stand lädt, behält das Geld und kann das beliebig wiederholen (gemeldet von einem Spieler: Cloud-Sync entkoppeln, All-in verlieren, Code wieder eintippen).
+
+**Schon gefixt (12.10.2026, `net/cloud.ts`):** Ein Code, den dieses Gerät beendet hat, spult nicht mehr zurück, solange die Cloud-Kopie unverändert ist (`rememberStopped`, `connectCloud`).
+
+**Noch offen:** Export/Import, ein zweites Gerät, das die Cloud-Version zwischendurch ändert, und der Weg über DevTools.
+
+**Lösung (nicht gebaut): Casino-Konto auf dem Server.**
+1. Vor jeder Runde meldet das Spiel den Einsatz an den Server (`POST /v1/casino/bet`), der ihn sofort als Minus bucht; nach der Runde meldet es die Auszahlung (Plus). Eine nie gemeldete Wette zählt als verloren.
+2. Der Server führt pro Spieler einen Saldo (Summe aller Gewinne und Verluste), nie zurückgesetzt.
+3. Der Spielstand trägt den Saldo-Stand vom letzten Speichern. Beim Laden eines älteren Stands (Cloud, Import, anderes Gerät): `Geld += Serversaldo − gespeicherter Saldo`, mindestens 0.
+4. Das Casino lässt Einsätze nur mit Server-Konto und Netz zu (sonst ließe sich offline verlieren, ohne es zu melden).
+- Neues Server-Modul `Server/src/modules/casino` (Tabelle, Plausibilitätsgrenzen, Tests), Feld im Spielstand, Netzaufruf in `present/casinoFlow.ts`, Datenschutz in `legal.ts` (`LEGAL_UPDATED`), README.
+- **Entscheidung nötig:** bricht die Regel „Geld wird lokal berechnet“ für das Casino, und das Casino ist dann nicht mehr offline spielbar.
+- **Bleibt offen auch danach:** ein neues anonymes Konto mit altem Export (ohne echte Konten nicht zu verhindern; Mindest-Kontoalter fürs Casino würde es mühsamer machen) und Fälschen mit dem Schlüssel aus dem Bundle.

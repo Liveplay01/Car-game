@@ -5,7 +5,7 @@ import { Elite } from '../core/elite';
 import { SeasonPass } from '../core/seasonPass';
 import { Unlocks } from '../core/unlocks';
 import { Mafia } from '../core/mafia';
-import type { GameEvent, ShiftResult } from '../core/events';
+import type { CrashFault, GameEvent, ShiftResult } from '../core/events';
 import type { Upgrade } from '../core/levels';
 import { ALBUM_REWARD, BIG_SCREEN, CHEST_KINDS, chestPrice, cosmetic, rarityRank, tapPower, strongTaps, type ChestKind } from '../core/loot';
 import { dailySeed, dailyEvent, dayNumber } from '../core/daily';
@@ -65,6 +65,8 @@ import { UpgradePage, UpgradeState } from './upgrades';
 import { StreetBuilderPage, BuilderState } from './builder';
 import { Feedback, Music, Sky, type MusicMix, type WeatherSound, type SoundID, type HapticID } from './feedback';
 import { Details, type Detail } from './detail';
+import { Intros, type Intro } from './intros';
+import { textWidth } from './icons';
 import { TyreMarks } from './marks';
 import { type ChallengeSpec, challengeOf, challengeConfig, encodeChallenge } from '../core/challenge';
 import { forSeason } from '../core/seasons';
@@ -128,6 +130,8 @@ export class GameSession {
   static readonly comboPop = 0.35;
   static readonly countInSeconds = 2;
   static readonly restartLock = 0.5;
+  /** A place's introduction opens this long after the player arrives. */
+  static readonly introDelay = 0.6;
   static readonly lossPullBack = 0.05;
   static readonly flowFade = 0.6;
 
@@ -175,6 +179,7 @@ export class GameSession {
   private cameraFx = new CameraFx();
   /** Where the player's last crash happened: the camera leans towards it if it ends the shift. */
   private lastCrashAt = v(0, 0);
+  private lastFault: CrashFault | null = null;
   private lamps = new VehicleLamps();
   private sinceFatalCrash = Infinity;
   private sinceLoss = Infinity;
@@ -278,7 +283,18 @@ export class GameSession {
   /** How tense the casino is right now, 0…1: the shell turns it into a riser and a heartbeat. */
   tension = 0;
   /** The detail sheet over a page: open after a card was tapped (`ui/detailSheet.ts`). */
-  detailOpen = false;
+  private openDetail = false;
+  get detailOpen(): boolean {
+    return this.openDetail;
+  }
+  set detailOpen(open: boolean) {
+    this.openDetail = open;
+    // Whatever else opens or changes the sheet takes the place of an introduction.
+    if (open) this.introShown = null;
+  }
+  /** The place whose introduction the sheet shows (`Intros`), and which one the player is looking at and for how long. */
+  private introShown: Intro | null = null;
+  private introWatch: { intro: Intro | null; age: number } = { intro: null, age: 0 };
   /** How much of the screen the open sheet covers (points); the shell reports it. */
   sheetInset = 0;
   private pressAt: Vec2 | null = null;
@@ -286,6 +302,8 @@ export class GameSession {
   private revealProgress: ProgressTarget | null = null;
   /** Tells the page when the tab bar or badges changed. */
   onChrome: (() => void) | null = null;
+  /** Progress came over from another device: the shell lets the Settings pill say so for a moment. */
+  onSynced: (() => void) | null = null;
   /** A one-time hint came due (installing, a backup): the shell knows whether it applies. */
   onHint: ((hint: Hint) => void) | null = null;
   /** A funnel step for the shell's analytics: the tutorial done, a shift played. */
@@ -299,6 +317,7 @@ export class GameSession {
 
   constructor(private output: SessionOutput | null = null) {
     this.save = loadSave();
+    Intros.start(this.save, this.config);
     const seed = this.nextSeed();
     this.playingLevel = this.save.career.level;
     this.world = new World(Careers.config(this.save.career, this.config, seed), seed, { startsOnFirstTap: true });
@@ -423,7 +442,6 @@ export class GameSession {
     if (graced) this.announce(S.mafia.notices.grace);
     if (income !== null) this.announce(S.daily.welcomeBack(Fmt.number(income)));
     else if (this.save.tutorialDone && endedStreak > 0) this.announce(S.daily.streakEnded(endedStreak));
-    else if (this.save.tutorialDone && away >= 3 && career.level >= this.config.dailyUnlockLevel && Careers.isDailyOpen(career, this.today)) this.announce(S.daily.backForDaily);
     this.announceInvite();
     this.announceBuildWithUs();
   }
@@ -547,6 +565,9 @@ export class GameSession {
     const save = this.save;
     const career = save.career;
     switch (action.k) {
+      case 'closeDetail':
+        this.closeDetail();
+        break;
       case 'startShift':
         if (this.screen.k === 'ready' && this.versusSelected) this.onVersus?.();
         else if (this.screen.k === 'ready' && !this.world.isArriving()) this.startPlaying();
@@ -641,8 +662,9 @@ export class GameSession {
       case 'showProgress':
         this.perform({ k: 'showTab', tab: 'progress' });
         if (!this.isPage('progress')) return;
-        if (this.progressPage.section !== action.section) this.leaveMuseum();
-        this.progressPage.section = action.section;
+        const section = ProgressPage.sections(career).includes(action.section) ? action.section : PROGRESS.today;
+        if (this.progressPage.section !== section) this.leaveMuseum();
+        this.progressPage.section = section;
         this.progressPage.sectionSlide = null;
         this.progressPage.reset();
         break;
@@ -755,7 +777,6 @@ export class GameSession {
       case 'buyPass':
         if (SeasonPass.buy(career, this.today, this.config)) {
           this.persist();
-          this.showNotice(S.pass.bought(SeasonPass.season(this.today)));
           this.play(['paid'], ['comboUp']);
         }
         break;
@@ -862,7 +883,7 @@ export class GameSession {
   get chestOffer(): number {
     const k = this.screen.k;
     if (!this.showsChrome || (k !== 'ready' && k !== 'result') || this.special || this.versusSelected || this.adFlow.placeholder) return 0;
-    if (k === 'result' && this.resultAge < ResultBanner.inputLock) return 0;
+    if (k === 'result' && this.resultAge < this.resultLock) return 0;
     return this.save.career.chests.length;
   }
 
@@ -875,6 +896,15 @@ export class GameSession {
   get noticeText(): string | null {
     const brief = this.screen.k === 'playing' ? this.briefings.view : null;
     return this.notices.shown?.text ?? (brief ? `${brief.brief.caption}. ${brief.brief.text}` : null);
+  }
+
+  /** A friend's invite was kept: told here, so the general invite tip does not say it again. */
+  noteInvited(needsName: boolean): void {
+    this.announce(needsName ? S.hints.invitedNeedsName : S.hints.invited);
+    this.tips.drop(S.hints.invite);
+    if (this.save.hints.includes('invite')) return;
+    this.save.hints.push('invite');
+    this.store();
   }
 
   /** News for the player: each line gets its own turn. */
@@ -1071,7 +1101,7 @@ export class GameSession {
     this.persist();
     this.resultBank = { before: bankBefore, after: career.money };
     const shown: ShiftResult = { ...result, money: career.money - bankBefore, costs: 0, covered: 0 };
-    this.pendingSummary = { result: shown, level: this.playingLevel, isNewHighscore: false, previousHighscore: 0, mode: this.playingMode, run: summary };
+    this.pendingSummary = { result: shown, level: this.playingLevel, isNewHighscore: false, previousHighscore: 0, mode: this.playingMode, run: summary, why: this.lossReason(result) };
     this.resultCountdown = this.resultDelayFor(result);
   }
 
@@ -1373,6 +1403,7 @@ export class GameSession {
     else this.shownMoney += (money - this.shownMoney) * Math.min(1, realDelta / GameSession.scoreCatchUp);
     this.sinceReady = this.screen.k === 'ready' ? this.sinceReady + realDelta : 0;
     this.watchCity(realDelta);
+    this.watchIntro(realDelta);
     const cardFree = this.screen.k === 'ready' && this.takesModeSwipe && !this.versusSelected;
     this.tips.advance(realDelta, cardFree, cardFree && this.notices.isEmpty && this.modeHint < 0.05 && this.modeMessage.view(0) === null, this.reduceMotion);
     const hintTarget = this.showsModeHint ? 1 : 0;
@@ -1474,9 +1505,12 @@ export class GameSession {
   private addRim(list: RenderList, world: World, reduceMotion: boolean): void {
     this.rim.add(list, world, reduceMotion);
     const screen = this.screen;
-    if (screen.k !== 'result' || !screen.summary.elite) return;
-    const frame = { rim: RingSignals.rim(world), start: world.layout.player.angle, outer: world.layout.ringRadius + world.layout.laneWidth / 2 };
+    if (screen.k !== 'result') return;
     const opacity = 1 - Ease.clamp01(ResultBanner.settled(this.resultAge) * 2);
+    const frame = { rim: RingSignals.rim(world), start: world.layout.player.angle, outer: world.layout.ringRadius + world.layout.laneWidth / 2 };
+    // The dusk sits on the island's edge, at the kerb, so the Elite bar on the rim never mixes with it.
+    if (ResultBanner.breathes(screen.summary)) RingSignals.dusk(list, world.layout.islandRadius, this.resultAge, reduceMotion, opacity);
+    if (!screen.summary.elite) return;
     RingSignals.elite(list, frame, screen.summary.elite, this.resultAge - RingSignals.hold, reduceMotion, opacity);
   }
 
@@ -1493,7 +1527,7 @@ export class GameSession {
         switch (this.screen.k) {
           case 'playing': {
             const summary = this.pendingSummary;
-            if (summary && summary.result.outcome !== 'completed' && this.sinceLoss >= GameSession.restartLock) {
+            if (summary && summary.result.outcome !== 'completed' && !ResultBanner.breathes(summary) && this.sinceLoss >= GameSession.restartLock) {
               this.sinceFatalCrash = Infinity;
               // A challenge or trial starts over fresh: that world is new, so it is shown first.
               if (this.special) {
@@ -1518,7 +1552,7 @@ export class GameSession {
             this.startOrCatchUp(a.ago, simDelta);
             break;
           case 'result':
-            if (this.resultAge >= ResultBanner.inputLock && !this.pan.travel && Math.abs(this.pan.pan) < ModePan.swipeThreshold) {
+            if (this.resultAge >= this.resultLock && !this.pan.travel && Math.abs(this.pan.pan) < ModePan.swipeThreshold) {
               if (this.versusSelected) {
                 this.onVersus?.();
                 return;
@@ -1868,6 +1902,70 @@ export class GameSession {
     this.detailOpen = true;
   }
 
+  /** The introduction of the place the player is on, if it has one. */
+  private get introHere(): Intro | null {
+    if (this.screen.k !== 'page') return null;
+    switch (this.screen.tab) {
+      case 'streetBuilder':
+        return 'builder';
+      case 'shop':
+        return this.shopPage.section === 2 ? 'casino' : null;
+      case 'social':
+        return this.socialPage.section === SOCIAL.club ? 'club' : this.socialPage.section === SOCIAL.mafia ? 'mafia' : null;
+      case 'progress': {
+        const section = this.progressPage.section;
+        return section === PROGRESS.today ? 'daily' : section === PROGRESS.trials ? 'trials' : section === PROGRESS.goals ? 'pass' : section === PROGRESS.museum ? 'museum' : null;
+      }
+      default:
+        return null;
+    }
+  }
+
+  /** The first time a place with an introduction is open, once the page has settled, its drawer comes up by itself. */
+  private watchIntro(dt: number): void {
+    const here = this.introHere;
+    const watch = this.introWatch;
+    if (watch.intro !== here) {
+      watch.intro = here;
+      watch.age = 0;
+    }
+    watch.age += dt;
+    if (!here || watch.age < GameSession.introDelay || this.detailOpen || this.shopPage.busy || this.adFlow.placeholder) return;
+    if (!Intros.isPending(this.save, here, this.config)) return;
+    Intros.mark(this.save, here);
+    this.persist();
+    this.tick();
+    this.detailOpen = true;
+    this.introShown = here;
+  }
+
+  /** A dot on the segment of a place that has an introduction waiting (Progress puts its own, `progressDots`). */
+  private addIntroDots(list: RenderList, viewport: Vec2, inset: number): void {
+    const pending = this.introsPending;
+    if (pending.length === 0) return;
+    const dot = (cell: Rect, label: string): void => ShopPage.badgeDot(list, v(R.center(cell).x + textWidth(label, 13) / 2 + 8, R.center(cell).y - 6), 1);
+    const career = this.save.career;
+    if (this.isPage('shop') && pending.includes('casino')) {
+      const cell = ShopPage.layout(viewport, inset, ShopPage.sections(career)).segments.find(([section]) => section === 2);
+      if (cell) dot(cell[1], S.shop.section(2));
+    } else if (this.isPage('social')) {
+      const cells = SocialPage.segments(viewport, SocialPage.sections(career));
+      for (const [intro, section] of [['club', SOCIAL.club], ['mafia', SOCIAL.mafia]] as const) {
+        const cell = cells.find(([s]) => s === section);
+        if (cell && pending.includes(intro)) dot(cell[1], S.social.section(section));
+      }
+    } else if ((this.isPage('upgrades') || this.isPage('streetBuilder')) && pending.includes('builder')) {
+      const r = BuildLayout.segmentsRect(viewport);
+      const half = R.width(r) / BUILD_PAGES.length;
+      dot(R.make(r.minX + half, r.minY, r.maxX, r.maxY), S.builder.title);
+    }
+  }
+
+  /** The places with an introduction waiting, for their dots. */
+  get introsPending(): Intro[] {
+    return Intros.pending(this.save, this.config);
+  }
+
   /** A tap on the page beside a card closes the detail sheet, as a tap beside any other sheet does. */
   private tapAway(): void {
     if (!this.detailOpen || this.shopPage.busy) return;
@@ -1879,6 +1977,7 @@ export class GameSession {
   closeDetail(): void {
     if (!this.detailOpen) return;
     this.detailOpen = false;
+    this.introShown = null;
     this.hallOpen = false;
     this.conditionShown = null;
     this.progressPage.museum.selected = null;
@@ -1901,6 +2000,7 @@ export class GameSession {
 
   /** What the detail sheet shows right now; null while it is closed or something covers the page. */
   get detail(): Detail | null {
+    if (this.introShown && this.detailOpen && this.screen.k === 'page') return Details.intro(this.introShown);
     if (this.conditionShown && this.detailOpen && (this.screen.k === 'ready' || this.screen.k === 'result')) return Details.museum(this.conditionShown, this.save.career, this.config, true);
     if (!this.detailOpen || this.screen.k !== 'page' || this.adFlow.placeholder) return null;
     const career = this.save.career;
@@ -2019,9 +2119,14 @@ export class GameSession {
     return { left: at > 0, right: at < SWIPE_MODES.length - 1 };
   }
 
+  /** How long the result on screen ignores taps: a lost shift takes a breather first. */
+  private get resultLock(): number {
+    return this.screen.k === 'result' ? ResultBanner.lock(this.screen.summary) : ResultBanner.inputLock;
+  }
+
   private get takesModeSwipe(): boolean {
     if (this.world.shift.phase !== 'waiting' || !(this.tutorial?.isOver ?? true) || this.special) return false;
-    if (this.isShowingResult) return this.resultAge >= ResultBanner.inputLock;
+    if (this.isShowingResult) return this.resultAge >= this.resultLock;
     return this.screen.k === 'ready';
   }
 
@@ -2033,7 +2138,7 @@ export class GameSession {
       return tab ? { k: 'perform', action: { k: 'showTab', tab } } : null;
     }
     if (this.screen.k === 'ready' || this.screen.k === 'result') {
-      if (this.screen.k === 'result' && this.resultAge < ResultBanner.inputLock) return null;
+      if (this.screen.k === 'result' && this.resultAge < this.resultLock) return null;
       const chip = this.conditionTargets.find((t) => R.contains(t.rect, point));
       if (chip) {
         this.showCondition(chip.id);
@@ -2054,19 +2159,15 @@ export class GameSession {
       return { k: 'perform', action: { k: 'showProgress', section: PROGRESS.records } };
     }
     if (this.isPage('social')) {
-      const section = SocialPage.sectionAt(point, this.lastViewport);
+      const section = SocialPage.sectionAt(point, this.lastViewport, this.save.career);
       if (section !== null && section !== this.socialPage.section) {
-        if (section === SOCIAL.club && !SocialPage.clubOpen(this.save.career)) this.showNotice(S.social.clubClosed);
-        else if (section === SOCIAL.mafia && !SocialPage.mafiaOpen(this.save.career)) this.showNotice(S.social.mafiaClosed);
-        else {
-          this.tick();
-          this.socialPage.select(section);
-        }
+        this.tick();
+        this.socialPage.select(section);
       }
       return true;
     }
     if (this.isPage('progress')) {
-      const section: ProgressSection | null = ProgressPage.sectionAt(point, this.lastViewport, this.tabInset);
+      const section: ProgressSection | null = ProgressPage.sectionAt(point, this.lastViewport, this.tabInset, this.save.career);
       if (section !== null) {
         if (this.progressPage.section !== section) {
           this.tick();
@@ -2111,6 +2212,7 @@ export class GameSession {
         case 'crash':
           this.effects.spawn(e, world, this.reduceMotion, e.chain);
           if (e.involvesPlayer || e.isStrike) this.lastCrashAt = e.point;
+          if (e.isStrike) this.lastFault = e.fault;
           if (e.flames > 0) {
             this.addPopup({ k: 'flames', n: e.flames, chain: e.chain }, e.point);
             this.sinceFlames = 0;
@@ -2320,13 +2422,13 @@ export class GameSession {
     const news = Careers.startDaily(career, this.today, this.config);
     const toasts: string[] = [];
     if (news?.frozen) toasts.push(S.daily.freezeUsed(news.frozen));
-    if (news?.earned) toasts.push(S.daily.freezeEarned);
+    const got: string[] = [];
+    if (news?.item) got.push(S.daily.gotItem(news.item));
+    if (news?.earned) got.push(S.daily.gotFreeze);
     // The casino opens quietly: until it has, the cards wait in hand without a word.
-    if (news?.cards && Unlocks.isOpen(career, 'casino', this.config)) toasts.push(S.daily.cardEarned(career.dailyStreak));
-    if (news?.item) {
-      toasts.push(S.daily.milestone(career.dailyStreak, news.item));
-      toasts.push(...this.completeAlbums());
-    }
+    if (news?.cards && Unlocks.isOpen(career, 'casino', this.config)) got.push(S.daily.gotCard);
+    if (got.length > 0) toasts.push(S.daily.streakReward(career.dailyStreak, got));
+    if (news?.item) toasts.push(...this.completeAlbums());
     this.persist();
     this.announce(...toasts);
   }
@@ -2345,7 +2447,7 @@ export class GameSession {
     if (!event && !letter) return;
     this.persist();
     this.play([event === 'late' ? 'alarm' : event === 'writeoff' ? 'seized' : 'wanted'], [event ? 'seized' : 'wanted']);
-    this.announce(event === 'late' ? S.mafia.notices.late : event === 'writeoff' ? S.mafia.notices.writtenOff : S.mafia.notices.letter);
+    if (event && !(this.isPage('social') && this.socialPage.section === SOCIAL.mafia)) this.announce(event === 'late' ? S.mafia.notices.late : S.mafia.notices.writtenOff);
     // Late, the Casino shuts: whoever sits in it is shown out.
     if (event === 'late' && this.isPage('shop') && this.shopPage.section === 2) this.perform({ k: 'showShop', section: 0 });
   }
@@ -2466,8 +2568,7 @@ export class GameSession {
         : null;
     this.dailySelected = false;
     this.resultBank = booked.bank;
-    const found = this.museum.takeNotice();
-    this.notices.announce(...GameSession.budget([...booked.news, ...(found ? [found] : [])]));
+    this.notices.announce(...GameSession.budget(booked.news));
     this.tips.add(...booked.tips);
     for (const hint of booked.due) this.onHint?.(hint);
     if (save.shiftsPlayed >= GameSession.tightFitTipShifts) this.teachTightFit();
@@ -2479,8 +2580,26 @@ export class GameSession {
       this.resultCountdown = this.resultDelayFor(result);
       return;
     }
-    this.pendingSummary = { result, level: this.playingLevel, isNewHighscore: isNew, previousHighscore: previous, mode: this.playingMode, closeCall: this.playingMode === 'chill' ? null : this.closeCall(result, previous), elite: booked.elite };
+    this.pendingSummary = { result, level: this.playingLevel, isNewHighscore: isNew, previousHighscore: previous, mode: this.playingMode, why: this.lossReason(result), closeCall: this.playingMode === 'chill' ? null : this.closeCall(result, previous), elite: booked.elite };
     this.resultCountdown = this.resultDelayFor(result);
+  }
+
+  /** Why a shift was lost, in a few words; null after a win. */
+  private lossReason(result: ShiftResult): string | null {
+    const why = S.result.why;
+    const { score, config } = this.world;
+    switch (result.outcome) {
+      case 'completed':
+        return null;
+      case 'escaped':
+        return result.convoy && !result.bossBusted ? why.boss : why.escaped;
+      case 'failed':
+        return result.legendary === 'zeroTolerance' ? why.zeroTolerance : why.rule;
+      case 'struckOut':
+        if (score.policeCrashes > config.maxPoliceCrashes) return why.police;
+        if (this.lastFault) return why[this.lastFault];
+        return config.maxStrikes > 1 ? why.crashes : why.crash;
+    }
   }
 
   /**
@@ -2740,6 +2859,7 @@ export class GameSession {
     else if (this.isPage('progress')) ProgressPage.add(list, this.save, this.today, this.progressPage, rm, inset, this.progressScrollRange, this.progressDots);
     else if (this.isPage('social')) SocialPage.add(list, career, this.socialPage, rm);
     else if (s.k === 'settings') list.s(rect({ x: viewport.x / 2, y: viewport.y / 2 }, viewport), 'background', 0.55);
+    this.addIntroDots(list, viewport, inset);
     const standIn = this.adFlow.placeholder;
     if (standIn) ShopPage.addAd(list, standIn.reward, standIn.age, AdFlow.placeholderSeconds);
     this.transitions.apply(list, s, overlayStart, rm);
@@ -2805,6 +2925,9 @@ export class GameSession {
     if (this.save.tutorialDone && c.level >= this.config.dailyUnlockLevel && Careers.isDailyOpen(c, this.today)) dots.push(PROGRESS.today);
     if (!this.eliteSeen && Careers.canPrestige(c, this.config)) dots.push(PROGRESS.records);
     if (c.museumNew.length > 0) dots.push(PROGRESS.museum);
+    for (const [intro, section] of [['daily', PROGRESS.today], ['trials', PROGRESS.trials], ['pass', PROGRESS.goals], ['museum', PROGRESS.museum]] as const) {
+      if (this.introsPending.includes(intro) && !dots.includes(section)) dots.push(section);
+    }
     return dots;
   }
 
@@ -2814,9 +2937,11 @@ export class GameSession {
     // Progress: the page puts the same dot on the segment that waits (`progressDots`); the Daily Shift's dot stays until it is played (09.10.2026).
     if (barTab(tab) === 'progress') return this.progressDots.length > 0 ? 'dot' : null;
     // A loan that is late or due within a day waits in the Mafia. The Club never calls (Leo, 11.10.2026).
-    if (barTab(tab) === 'social') return SocialPage.mafiaWaits(c, Date.now()) ? 'dot' : null;
+    if (barTab(tab) === 'social') return SocialPage.mafiaWaits(c, Date.now()) || this.introsPending.some((i) => i === 'club' || i === 'mafia') ? 'dot' : null;
+    if (barTab(tab) === 'upgrades') return this.introsPending.includes('builder') ? 'dot' : null;
     if (barTab(tab) !== 'shop') return null;
     if (c.chests.length > 0) return { count: c.chests.length };
+    if (this.introsPending.includes('casino')) return 'dot';
     // A skin a casino round has won stays quiet until the round shows it.
     return this.shopPage.wallet.unseen(c.unseen).length > 0 ? 'dot' : null;
   }
@@ -2964,24 +3089,26 @@ export class GameSession {
   /** A fresh save (Settings → Delete account, after the server forgot the player). */
   resetProgress(): void {
     this.save = newSave();
+    Intros.start(this.save, this.config);
     this.store();
     this.tutorial = new Tutorial();
     this.prepareShift(false);
   }
 
   /** Progress brought from another device (Cloud sync) replaces this one. */
-  importProgress(save: SaveGame, text = S.settings.imported(save.career.level)): void {
+  importProgress(save: SaveGame): void {
     this.save = save;
+    Intros.start(save, this.config);
     this.store();
     this.tutorial = save.tutorialDone ? null : new Tutorial();
     if (this.tutorial) this.save.mode = 'shift';
     this.prepareShift(false);
-    this.announce(text);
+    this.onSynced?.();
   }
 
   /** Newer progress from another device (cloud sync), taken over between shifts. */
   takeCloudSave(save: SaveGame): void {
-    this.importProgress(save, S.settings.synced(save.career.level));
+    this.importProgress(save);
     // A copy from a device not opened today still pays today's toll income here.
     this.collectLoginIncome();
   }

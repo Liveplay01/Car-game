@@ -86,7 +86,7 @@ export const SPECIAL_TEXT: Record<SpecialKind, MuseumText & { name: string }> = 
   police: {
     name: 'Police Car',
     line: 'The only car that stops a criminal',
-    brief: 'Only police cars stop a criminal. Keep one ready for the next warning.',
+    brief: 'Tougher than your cars. The dispatch button puts one first in line.',
     explain: (c) => [
       'Police cars come from your own queue, like any of your cars. They are the only cars that can stop a criminal.',
       `Send one into the ring while a criminal is on it and drive into it: that is a takedown, worth ${Fmt.number(c.takedownPoints)} points and a link in your chain. Hold a police car back when a warning lights up an arm.`,

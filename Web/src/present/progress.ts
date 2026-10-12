@@ -90,7 +90,6 @@ type Block =
   | { k: 'heat' }
   | { k: 'pass' }
   | { k: 'quest'; challenge: Challenge }
-  | { k: 'trialsLocked'; level: number }
   | { k: 'trial'; trial: Trial }
   | { k: 'rush' }
   | { k: 'rushLocked' }
@@ -114,6 +113,9 @@ interface Layout {
 }
 
 const PROGRESS_SECTIONS: ProgressSection[] = [0, 1, 2, 3, 4];
+
+/** The segments on show (Leo, 12.10.2026): the Trials appear once the career has reached them. */
+const sectionsOf = (career: Career): ProgressSection[] => PROGRESS_SECTIONS.filter((s) => s !== PROGRESS.trials || Unlocks.isOpen(career, 'trials'));
 
 const STAT_ROW = 40;
 const HEADING = 26;
@@ -205,13 +207,15 @@ export const ProgressPage = {
     ];
   },
 
-  layout(viewport: Vec2, bottomInset: number): Layout {
+  sections: sectionsOf,
+
+  layout(viewport: Vec2, bottomInset: number, sections: ProgressSection[] = PROGRESS_SECTIONS): Layout {
     const width = Math.min(viewport.x - 2 * ProgressPage.gap, 460);
     const left = (viewport.x - width) / 2;
     const top = Metrics.sceneInsets.top + 22;
-    const sw = width / PROGRESS_SECTIONS.length;
+    const sw = width / sections.length;
     return {
-      segments: PROGRESS_SECTIONS.map((s, i): [ProgressSection, Rect] => [s, R.make(left + i * sw, top, left + (i + 1) * sw, top + ShopPage.segmentHeight)]),
+      segments: sections.map((s, i): [ProgressSection, Rect] => [s, R.make(left + i * sw, top, left + (i + 1) * sw, top + ShopPage.segmentHeight)]),
       content: R.make(left, top + ShopPage.segmentHeight + ProgressPage.gap, left + width, viewport.y - bottomInset - ProgressPage.gap),
     };
   },
@@ -235,8 +239,10 @@ export const ProgressPage = {
         if (state.statsOpen) s.row({ k: 'stats', stats: rest }, rest.length * STAT_ROW);
       }
     } else if (section === PROGRESS.today) {
-      s.row({ k: 'daily' }, 64);
-      if (Unlocks.isOpen(career, 'daily')) s.row({ k: 'streak' }, ProgressPage.streakHeight);
+      if (Unlocks.isOpen(career, 'daily')) {
+        s.row({ k: 'daily' }, 64);
+        s.row({ k: 'streak' }, ProgressPage.streakHeight);
+      }
       s.row({ k: 'weekly' }, 64);
       ProgressPage.tourRows(s, career, today);
       const quests = challengesOf(today);
@@ -248,8 +254,7 @@ export const ProgressPage = {
       if (Careers.maxHeat(career) > 0 || career.heat > 0) s.row({ k: 'heat' }, 64);
       const trialsDone = TRIALS.filter((x) => career.trialsDone.includes(x.id)).length;
       s.heading(S.progress.trials, `${trialsDone}/${TRIALS.length}`, trialsDone === TRIALS.length);
-      if (!Unlocks.isOpen(career, 'trials')) s.row({ k: 'trialsLocked', level: Unlocks.level('trials') }, 56);
-      else for (const trial of TRIALS) s.row({ k: 'trial', trial }, 64);
+      for (const trial of TRIALS) s.row({ k: 'trial', trial }, 64);
       // Level trials: one more with every level from 30 on; the first few that wait.
       const waiting = levelTrialsWaiting(career);
       const passed = LEVEL_TRIALS.filter((x) => career.trialsDone.includes(x.id)).length;
@@ -278,7 +283,7 @@ export const ProgressPage = {
         s.row({ k: rushOpen(career) ? 'rush' : 'rushLocked' }, 64);
       }
     } else if (section === PROGRESS.goals) {
-      s.row({ k: 'pass' }, SeasonPass.isOpen(career) ? ProgressPage.passHeight : 64);
+      if (SeasonPass.isOpen(career)) s.row({ k: 'pass' }, ProgressPage.passHeight);
       s.row({ k: 'season' }, 64);
       const mastered = MASTERY_GOALS.filter((g) => (career.masteryTiers[g] ?? 0) >= MASTERY_THRESHOLDS[g].length).length;
       s.heading(S.progress.mastery, `${mastered}/${MASTERY_GOALS.length}`, mastered === MASTERY_GOALS.length);
@@ -383,23 +388,28 @@ export const ProgressPage = {
     return R.contains(ProgressPage.layout(viewport, bottomInset).content, point);
   },
 
-  sectionAt(point: Vec2, viewport: Vec2, bottomInset: number): ProgressSection | null {
-    return ProgressPage.layout(viewport, bottomInset).segments.find(([, r]) => R.contains(r, point))?.[0] ?? null;
+  sectionAt(point: Vec2, viewport: Vec2, bottomInset: number, career: Career): ProgressSection | null {
+    return ProgressPage.layout(viewport, bottomInset, sectionsOf(career)).segments.find(([, r]) => R.contains(r, point))?.[0] ?? null;
   },
 
   add(list: RenderList, save: SaveGame, today: number, state: ProgressState, reduceMotion: boolean, bottomInset: number, maxScroll: number, dots: readonly ProgressSection[]): void {
     const vp = list.camera.viewport;
     MenuKit.backdrop(list);
     MenuKit.header(list, S.tabs.progress, Fmt.number(save.career.money), vp);
-    const l = ProgressPage.layout(vp, bottomInset);
-    const chosen = state.section;
-    let thumb: number = chosen;
+    const shown = sectionsOf(save.career);
+    const l = ProgressPage.layout(vp, bottomInset, shown);
+    const chosen = Math.max(0, shown.indexOf(state.section));
+    let thumb = chosen;
     const slide = state.sectionSlide;
-    if (slide) thumb = slide.from + (chosen - slide.from) * (reduceMotion ? 1 : Ease.settle(slide.age / ShopPage.slideDuration));
+    if (slide) {
+      const from = Math.max(0, shown.indexOf(slide.from));
+      thumb = from + (chosen - from) * (reduceMotion ? 1 : Ease.settle(slide.age / ShopPage.slideDuration));
+    }
     const last = l.segments[l.segments.length - 1][1];
-    MenuKit.segmented(list, PROGRESS_SECTIONS.map((i) => S.progress.section(i)), chosen, thumb, R.make(l.segments[0][1].minX, l.segments[0][1].minY, last.maxX, last.maxY));
+    MenuKit.segmented(list, shown.map((i) => S.progress.section(i)), chosen, thumb, R.make(l.segments[0][1].minX, l.segments[0][1].minY, last.maxX, last.maxY));
     for (const section of dots) {
-      const r = l.segments[PROGRESS_SECTIONS.indexOf(section)][1];
+      if (!shown.includes(section)) continue;
+      const r = l.segments[shown.indexOf(section)][1];
       ShopPage.badgeDot(list, v(R.center(r).x + textWidth(S.progress.section(section), 13) / 2 + 7, R.center(r).y - 6), 1);
     }
 
@@ -463,8 +473,6 @@ export const ProgressPage = {
         return ProgressPage.addPass(list, r, career, today, state.time, reduceMotion, o);
       case 'quest':
         return ProgressPage.addQuest(list, r, career, b.challenge, today, o);
-      case 'trialsLocked':
-        return ProgressPage.addTrialsLocked(list, r, b.level, o);
       case 'trial':
         return ProgressPage.addTrial(list, r, career, b.trial, o);
       case 'rush':
@@ -593,12 +601,6 @@ export const ProgressPage = {
 
   addDaily(list: RenderList, r: Rect, career: Career, today: number, o: number): void {
     ProgressPage.panel(list, r, o);
-    if (!Unlocks.isOpen(career, 'daily')) {
-      // Not yet: the row says when, nothing more.
-      const at = Unlocks.level('daily');
-      ProgressPage.addCardRow(list, r, r.minX + 16, o, { title: S.daily.name, line: S.unlocks.opensAt(S.daily.name, at), status: S.unlocks.lockedTag(at), dim: true });
-      return;
-    }
     const open = Careers.isDailyOpen(career, today);
     const next = Careers.nextStreakMilestone(career);
     ProgressPage.addCardRow(list, r, r.minX + 16, o, { title: S.daily.name, line: S.daily.rowLine(career.dailyStreak, open, next, career.streakFreezes, Goals.daysToFreeze(career, baseConfig)), status: open ? S.daily.ready : `${S.daily.done} ✓` });
@@ -635,11 +637,6 @@ export const ProgressPage = {
     const season = SeasonPass.season(today);
     const title = S.pass.caption(season);
     const days = `${S.pass.daysLeft(SeasonPass.daysLeft(today))} ›`;
-    if (!SeasonPass.isOpen(career)) {
-      ProgressPage.panel(list, r, o);
-      ProgressPage.addCardRow(list, r, r.minX + 16, o, { title, line: S.pass.locked(baseConfig.seasonPassLevel), status: S.unlocks.lockedTag(baseConfig.seasonPassLevel), dim: true });
-      return;
-    }
     const tint = SEASON_TINT[season];
     const t = reduceMotion ? 0 : clock;
     const pulse = reduceMotion ? 0.5 : 0.5 + 0.5 * Math.sin(t * 2.2);
@@ -699,15 +696,6 @@ export const ProgressPage = {
     drawText(list, label, v(r.minX + 44, c.y), ShopPage.fitted(label, 13, R.width(r) - 44 - 80), done ? 'muted' : 'primary', { opacity: o, weight: 'bold' });
     if (done) drawText(list, `${S.daily.done} ✓`, v(r.maxX - 16, c.y), 13, 'accent', { opacity: o, weight: 'bold', align: 'trailing' });
     else moneyTag(list, Fmt.number(challengeReward(challenge)), v(r.maxX - 16, c.y), 13, 'trailing', 'primary', 'accent', o);
-  },
-
-  addTrialsLocked(list: RenderList, r: Rect, level: number, o: number): void {
-    const dim = o * 0.55;
-    ProgressPage.panel(list, r, dim);
-    const c = R.center(r);
-    ProgressPage.check(list, v(r.minX + 24, c.y), false, dim);
-    const label = S.progress.trialsLocked(level);
-    drawText(list, label, v(r.minX + 44, c.y), ShopPage.fitted(label, 13, R.width(r) - 60), 'muted', { opacity: dim, weight: 'bold' });
   },
 
   /** Landmarks show from the Prestige rank that opens them, or once one was passed. */

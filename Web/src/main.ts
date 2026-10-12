@@ -1,5 +1,4 @@
 import { Shell } from './ui/shell';
-import { S } from './present/strings';
 import { inItch, inPortal } from './storage/device';
 import { gameLoaded, startCrazyGames } from './ui/crazygames';
 import { startCloud } from './net/cloud';
@@ -24,8 +23,6 @@ Casino.useEntropy(() => crypto.getRandomValues(new Uint32Array(1))[0]);
 const app = document.getElementById('app')!;
 const canvas = document.getElementById('scene') as HTMLCanvasElement;
 const layers = document.getElementById('layers')!;
-/** Set right before a reload into a new version (sessionStorage: this tab only). */
-const UPDATED_KEY = 'carGame.updated';
 
 // The boot screen (index.html) turns into its "did not start" message at once if the start throws.
 const boot = document.getElementById('boot');
@@ -141,16 +138,11 @@ if ('serviceWorker' in navigator && import.meta.env.PROD && !inPortal && !inItch
 
   // A new version took over while this page runs the old one. The page reloads while nobody
   // looks at it (the tab or app in the background) and only when nothing would be lost; the
-  // player comes back to the new version, told once if it brought patch notes.
+  // player comes back to the new version; the dot on Settings says if it brought patch notes.
   if (!firstVisit) {
     let updated = false;
     const reloadIfQuiet = (): void => {
       if (!updated || !document.hidden || !shell.canReload) return;
-      try {
-        sessionStorage.setItem(UPDATED_KEY, '1');
-      } catch {
-        /* the notice is only a courtesy */
-      }
       location.reload();
     };
     navigator.serviceWorker.addEventListener('controllerchange', () => {
@@ -159,14 +151,4 @@ if ('serviceWorker' in navigator && import.meta.env.PROD && !inPortal && !inItch
     });
     document.addEventListener('visibilitychange', reloadIfQuiet);
   }
-}
-
-// Just reloaded into a new version: point at the patch notes when there are new ones.
-try {
-  if (sessionStorage.getItem(UPDATED_KEY)) {
-    sessionStorage.removeItem(UPDATED_KEY);
-    if (shell.game.notesUnread) shell.game.announce(S.hints.updated);
-  }
-} catch {
-  /* no session storage */
 }

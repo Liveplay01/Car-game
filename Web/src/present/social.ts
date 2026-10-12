@@ -37,23 +37,27 @@ export class SocialState {
 export const SocialPage = {
   gap: 12,
 
-  /** The segments' frame, and the three cells in it. */
-  segments(viewport: Vec2): [SocialSection, Rect][] {
+  /** The segments on show (Leo, 12.10.2026): the Club and the Mafia appear once they are open. */
+  sections: (career: Career): SocialSection[] =>
+    SOCIAL_SECTIONS.filter((s) => (s !== SOCIAL.club || SocialPage.clubOpen(career)) && (s !== SOCIAL.mafia || SocialPage.mafiaOpen(career))),
+
+  /** The segments' frame, and the cells in it. */
+  segments(viewport: Vec2, sections: SocialSection[] = SOCIAL_SECTIONS): [SocialSection, Rect][] {
     const width = Math.min(viewport.x - 2 * SocialPage.gap, 460);
     const left = (viewport.x - width) / 2;
     const top = Metrics.sceneInsets.top + 22;
-    const sw = width / SOCIAL_SECTIONS.length;
-    return SOCIAL_SECTIONS.map((s, i): [SocialSection, Rect] => [s, R.make(left + i * sw, top, left + (i + 1) * sw, top + ShopPage.segmentHeight)]);
+    const sw = width / sections.length;
+    return sections.map((s, i): [SocialSection, Rect] => [s, R.make(left + i * sw, top, left + (i + 1) * sw, top + ShopPage.segmentHeight)]);
   },
 
   /** Where the DOM content starts and how wide it is (the page's column, like the other tabs). */
   column(viewport: Vec2): { top: number; left: number; width: number } {
     const width = Math.min(viewport.x - 2 * SocialPage.gap, 460);
-    return { top: SocialPage.segments(viewport)[0][1].maxY + SocialPage.gap, left: (viewport.x - width) / 2, width };
+    return { top: SocialPage.segments(viewport, [SOCIAL.friends])[0][1].maxY + SocialPage.gap, left: (viewport.x - width) / 2, width };
   },
 
-  sectionAt(point: Vec2, viewport: Vec2): SocialSection | null {
-    return SocialPage.segments(viewport).find(([, r]) => R.contains(r, point))?.[0] ?? null;
+  sectionAt(point: Vec2, viewport: Vec2, career: Career): SocialSection | null {
+    return SocialPage.segments(viewport, SocialPage.sections(career)).find(([, r]) => R.contains(r, point))?.[0] ?? null;
   },
 
   /** The Club opens with the Auction House (Level 50). */
@@ -69,24 +73,20 @@ export const SocialPage = {
     const vp = list.camera.viewport;
     MenuKit.backdrop(list);
     MenuKit.header(list, S.tabs.social, Fmt.number(career.money), vp);
-    const cells = SocialPage.segments(vp);
+    const shown = SocialPage.sections(career);
+    const cells = SocialPage.segments(vp, shown);
     const all = R.make(cells[0][1].minX, cells[0][1].minY, cells[cells.length - 1][1].maxX, cells[0][1].maxY);
-    const chosen = state.section;
-    let thumb: number = chosen;
+    const chosen = Math.max(0, shown.indexOf(state.section));
+    let thumb = chosen;
     if (state.sectionSlide) {
+      const from = Math.max(0, shown.indexOf(state.sectionSlide.from));
       const spring = reduceMotion ? 1 : Ease.settle(state.sectionSlide.age / ShopPage.slideDuration);
-      thumb = clamp(state.sectionSlide.from + (chosen - state.sectionSlide.from) * spring, 0, SOCIAL_SECTIONS.length - 1);
+      thumb = clamp(from + (chosen - from) * spring, 0, shown.length - 1);
     }
-    MenuKit.segmented(
-      list,
-      SOCIAL_SECTIONS.map((i) => S.social.section(i)),
-      chosen,
-      thumb,
-      all,
-      SOCIAL_SECTIONS.map((i) => (i === SOCIAL.club && !SocialPage.clubOpen(career)) || (i === SOCIAL.mafia && !SocialPage.mafiaOpen(career))),
-    );
-    if (SocialPage.mafiaWaits(career, Date.now())) {
-      const r = cells[SOCIAL.mafia][1];
+    MenuKit.segmented(list, shown.map((i) => S.social.section(i)), chosen, thumb, all);
+    const mafia = cells.find(([section]) => section === SOCIAL.mafia);
+    if (mafia && SocialPage.mafiaWaits(career, Date.now())) {
+      const r = mafia[1];
       ShopPage.badgeDot(list, v(R.center(r).x + textWidth(S.social.section(SOCIAL.mafia), 13) / 2 + 8, R.center(r).y - 6), 1);
     }
   },

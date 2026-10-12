@@ -42,6 +42,11 @@ export class TipQueue {
     for (const tip of tips) if (this.current?.text !== tip.text && !this.waiting.some((w) => w.text === tip.text)) this.waiting.push(tip);
   }
 
+  /** A tip that has not come up yet is not needed any more (what it says was told another way). */
+  drop(tip: Tip): void {
+    this.waiting = this.waiting.filter((w) => w.text !== tip.text);
+  }
+
   /** A tip is on its way in, on screen or on its way out: the swipe hint keeps away. */
   get isActive(): boolean {
     return this.current !== null;

@@ -253,13 +253,16 @@ export const ShopPage = {
     return R.inset(r, inset.x, inset.y);
   },
 
-  layout(viewport: Vec2, bottomInset: number): Layout {
+  /** The segments on show: the Casino only once the career has reached it (a late loan only dims it). */
+  sections: (career: Career): ShopSection[] => (Unlocks.isKnown(career, 'casino') ? [0, 1, 2] : [0, 1]),
+
+  layout(viewport: Vec2, bottomInset: number, sections: ShopSection[] = [0, 1, 2]): Layout {
     const P = ShopPage;
     const width = Math.min(viewport.x - 2 * P.gap, 460);
     const left = (viewport.x - width) / 2;
     const top = Metrics.sceneInsets.top + 22;
-    const sw = width / 3;
-    const segments = ([0, 1, 2] as ShopSection[]).map((s, i): [ShopSection, Rect] => [s, R.make(left + i * sw, top, left + (i + 1) * sw, top + P.segmentHeight)]);
+    const sw = width / sections.length;
+    const segments = sections.map((s, i): [ShopSection, Rect] => [s, R.make(left + i * sw, top, left + (i + 1) * sw, top + P.segmentHeight)]);
     const detailTop = viewport.y - bottomInset - P.detailHeight;
     return {
       segments,
@@ -360,7 +363,7 @@ export const ShopPage = {
 
   targets(viewport: Vec2, bottomInset: number, career: Career, state: ShopState): [ShopTarget, Rect][] {
     if (state.busy) return [[{ k: 'dismiss' }, R.make(0, 0, viewport.x, viewport.y)]];
-    const l = ShopPage.layout(viewport, bottomInset);
+    const l = ShopPage.layout(viewport, bottomInset, ShopPage.sections(career));
     const out: [ShopTarget, Rect][] = l.segments.map(([section, r]) => [{ k: 'section', section }, r]);
     if (state.section === 0) {
       out.push(...ShopPage.chestCards(l).cards.map(([kind, r]): [ShopTarget, Rect] => [{ k: 'chest', kind }, r]));
@@ -387,7 +390,7 @@ export const ShopPage = {
     // The casino holds back what a round has not shown yet, and counts a win up as it lands.
     const wallet = state.wallet;
     MenuKit.header(list, S.tabs.shop, Fmt.number(wallet.money(career.money)), vp, reduceMotion ? 1 : land(wallet.sinceLanded / (0.35 + 0.1 * wallet.landedTier), 0.14 + 0.06 * wallet.landedTier));
-    const l = ShopPage.layout(vp, bottomInset);
+    const l = ShopPage.layout(vp, bottomInset, ShopPage.sections(career));
     ShopPage.addSegments(list, l, state, career);
     const start = list.items.length;
     ShopPage.addSection(list, l, career, config, today, state, state.section, reduceMotion);
@@ -434,7 +437,7 @@ export const ShopPage = {
   },
 
   addSegments(list: RenderList, l: Layout, state: ShopState, career: Career): void {
-    const all = R.make(l.segments[0][1].minX, l.segments[0][1].minY, l.segments[2][1].maxX, l.segments[0][1].maxY);
+    const all = R.make(l.segments[0][1].minX, l.segments[0][1].minY, l.segments[l.segments.length - 1][1].maxX, l.segments[0][1].maxY);
     const labels = l.segments.map(([s]) => (s === 0 && career.chests.length > 0 ? `${S.shop.section(s)} · ${career.chests.length}` : S.shop.section(s)));
     const chosen = state.section;
     let thumb: number = chosen;

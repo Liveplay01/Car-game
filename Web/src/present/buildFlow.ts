@@ -79,7 +79,8 @@ export class BuildFlow {
     this.host.refreshWaitingShift();
     this.host.play(['build'], ['comboUp']);
     const idle = module === 'detour' && detourArmSlot({ ...this.host.config, armSlots: career.armSlots }, pending.slot) === null;
-    this.host.showNotice(idle ? S.notice.detourIdle : module ? S.notice.placed(S.builder.name(pending.part)) : S.notice.built(S.builder.name(pending.part), career.armSlots.length));
+    // The part appearing is the answer; only a part that will do nothing says so.
+    if (idle) this.host.showNotice(S.notice.detourIdle);
   }
 
   /** A press on the Street Builder: a lifted part, a palette card, the pending part, or a built one. */
@@ -177,7 +178,6 @@ export class BuildFlow {
     this.host.persist();
     this.host.refreshWaitingShift();
     this.host.play(['build'], ['comboUp']);
-    this.host.showNotice(S.notice.upgraded(S.builder.name(module), career.moduleLevels[built.slot] ?? 1));
   }
 
   /** The lifted part lands on `slot`, free of charge. */
@@ -201,7 +201,6 @@ export class BuildFlow {
     this.host.persist();
     this.host.refreshWaitingShift();
     this.host.play(['build'], ['comboUp']);
-    this.host.showNotice(S.builder.moved(S.builder.builtName(moving.part)));
   }
 
   /** The lifted part stays where it was. */
@@ -212,7 +211,6 @@ export class BuildFlow {
     b.dragging = null;
     b.target = null;
     this.host.tick();
-    this.host.showNotice(S.builder.moveCancelled);
   }
 
   /** The sheet's Delete: the first tap marks the part red, the second tears it down. */
@@ -249,22 +247,18 @@ export class BuildFlow {
     const b = this.host.builderPage;
     const career = this.host.save.career;
     b.marked = null;
-    let name: string;
     if (part.k === 'arm') {
       if (!Careers.removeArm(career, part.slot)) return;
       b.tornDown = { part, module: null, age: 0 };
-      name = S.builder.builtName('arm');
     } else {
       const module: RoadModule | undefined = career.modules[part.slot];
       if (!module) return;
       Careers.removeModule(career, part.slot);
       b.tornDown = { part, module, age: 0 };
-      name = S.builder.name(module);
     }
     this.host.persist();
     this.host.refreshWaitingShift();
     this.host.play(['swoosh'], ['comboUp']);
-    this.host.showNotice(S.notice.removed(name));
   }
 
   tapUpgrade(upgrade: Upgrade): void {

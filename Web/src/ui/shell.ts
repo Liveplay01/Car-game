@@ -101,6 +101,10 @@ export class Shell {
   /** Focus moved with Tab since the last pointer press: a focused button then keeps Space and Enter. */
   private focusByKeyboard = false;
   private readonly settingsBtn: HTMLButtonElement;
+  /** Lies over the Settings pill for a moment: what happened to the progress ("Synced"), in place of a line of news. */
+  private readonly settingsFlash = h('span', { class: 'settings-flash', role: 'status' });
+  private syncedPending = false;
+  private flashTimer = 0;
   private readonly dispatchBtn: HTMLButtonElement;
   private readonly dispatchCount: HTMLSpanElement;
   /** Chill has no end of its own: this ends the drive. */
@@ -192,6 +196,7 @@ export class Shell {
       icon(ICONS.gear),
       h('span', { class: 'settings-label' }, 'Settings'),
       keycap('esc'),
+      this.settingsFlash,
     );
     this.dispatchCount = h('span', { class: 'dispatch-count', 'aria-hidden': 'true' });
     this.dispatchBtn = h(
@@ -302,7 +307,7 @@ export class Shell {
         backdropSheet(this.layers, this.backdrop, {
           applied: (kept) => {
             this.session.wearBigScreen();
-            this.session.showNotice(kept ? S.backdrop.on : S.backdrop.notKept);
+            if (!kept) this.session.showNotice(S.backdrop.notKept);
           },
           removed: () => undefined,
           closed: () => this.syncChrome(true),
@@ -357,6 +362,10 @@ export class Shell {
       this.scheduleCloudIntro();
     };
     this.session.onHint = (hint) => void this.giveHint(hint);
+    this.session.onSynced = () => {
+      this.syncedPending = true;
+      this.syncChrome(true);
+    };
     this.session.onStep = (step, data) => {
       track(step, data);
       this.reportProgress();
@@ -409,8 +418,7 @@ export class Shell {
   /** Turns notifications on from a tap and says how it went. */
   private enablePush(): Promise<PushState> {
     return enablePush(this.pushTimers).then((state) => {
-      if (state === 'on') this.session.announce(S.push.on);
-      else if (state === 'blocked') this.session.announce(S.push.denied);
+      if (state === 'blocked') this.session.announce(S.push.denied);
       return state;
     });
   }
@@ -434,7 +442,7 @@ export class Shell {
   private readInvite(): void {
     if (!readInviteLink(this.session.save.career.level)) return;
     track('invite-open');
-    this.session.announce(...(loadAccount() ? S.hints.invited : S.hints.invitedNeedsName));
+    this.session.noteInvited(!loadAccount());
   }
 
   /** Rewards from the team (a bug report's skin, chests): picked up between shifts. */
@@ -540,8 +548,9 @@ export class Shell {
     // Settings come back as soon as a shift is over, on the result as on the waiting screen (from the first result on).
     const onGame = s.showsChrome && (screen.k === 'ready' || screen.k === 'result');
     this.settingsBtn.classList.toggle('show', onGame);
+    if (this.syncedPending && onGame) this.flashSynced();
     const chill = s.playingMode === 'chill';
-    this.dispatchBtn.classList.toggle('show', screen.k === 'playing' && !chill);
+    this.dispatchBtn.classList.toggle('show', screen.k === 'playing' && !chill && s.world.config.dispatchLimit > 0);
     const dispatches = s.world.dispatchesLeft;
     this.dispatchCount.textContent = String(dispatches);
     this.dispatchBtn.classList.toggle('spent', dispatches === 0);
@@ -797,6 +806,19 @@ export class Shell {
     }
   }
 
+  /** The Settings pill says "Synced" for a moment, once it is on screen (a sync that came in mid-shift waits for it). */
+  private flashSynced(): void {
+    this.syncedPending = false;
+    const flash = this.settingsFlash;
+    window.clearTimeout(this.flashTimer);
+    flash.replaceChildren(icon(ICONS.sync), h('span', {}, S.settings.synced));
+    flash.classList.add('on');
+    this.flashTimer = window.setTimeout(() => {
+      flash.classList.remove('on');
+      this.flashTimer = window.setTimeout(() => flash.replaceChildren(), 300);
+    }, 1400);
+  }
+
   /** A page over the settings closed: the settings come back (`syncChrome` reopens them). */
   private pageClosed(): void {
     this.pageOpen = false;
@@ -813,7 +835,6 @@ export class Shell {
       shiftCars: () => s.world.config.shiftCars,
       records: () => s.leaderboardRecords,
       changed: () => s.clubChanged(),
-      notice: (text) => s.announce(text),
       celebrate: () => {
         celebrate();
         if (s.save.settings.sound) this.audio.play('shiftComplete', 1);

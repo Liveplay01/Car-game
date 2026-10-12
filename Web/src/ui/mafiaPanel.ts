@@ -147,13 +147,11 @@ export function mafiaPanel(host: MafiaHost): MafiaPanel {
     host.changed();
     host.feel?.('seized');
     if (event === 'late') {
-      host.notice(S.mafia.notices.late);
       host.sound?.('alarm', 1);
       show();
       root.classList.add('shock');
       later(() => root.classList.remove('shock'), 900);
     } else {
-      host.notice(S.mafia.notices.writtenOff);
       host.sound?.('seized', 1);
       show();
     }
@@ -355,7 +353,6 @@ export function mafiaPanel(host: MafiaHost): MafiaPanel {
     justStruck = true;
     seenLetters = null;
     host.changed();
-    host.notice(S.mafia.struck(grade, Fmt.number(loan.amount), Fmt.number(loan.owed)));
     if (grade === 'perfect') {
       host.celebrate();
       host.sound?.('jackpot', 1);
@@ -468,7 +465,6 @@ export function mafiaPanel(host: MafiaHost): MafiaPanel {
   function settle(card: HTMLElement, inTime: boolean): void {
     settling = true;
     update = null;
-    host.notice(inTime ? S.mafia.notices.repaidInTime : S.mafia.notices.repaidLate);
     host.celebrate();
     const stamp = h('div', { class: `mafia-paid ${inTime ? 'clean' : 'late'}` }, h('span', {}, S.mafia.paidStamp));
     card.append(stamp);
@@ -533,10 +529,7 @@ export function mafiaPanel(host: MafiaHost): MafiaPanel {
   }
 
   const first = Mafia.sync(career, Date.now());
-  if (first) {
-    host.changed();
-    host.notice(first === 'late' ? S.mafia.notices.late : S.mafia.notices.writtenOff);
-  }
+  if (first) host.changed();
   show();
 
   return {

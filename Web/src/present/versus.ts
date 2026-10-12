@@ -7,7 +7,7 @@ import { type Vec2, v, add, sub, mul, dot, normalize, clamp } from '../core/vec2
 import { armOutward } from '../core/roundabout';
 import { RenderList, rect, circle, line, polygon, text, fitCamera, toScreen, Ease, type Camera } from './render';
 import { CrashEffects } from './effects';
-import { RingSignals } from './hud';
+import { RingSignals, plusSign } from './hud';
 import { SceneBuilder, VehicleLamps, type VehicleMark } from './scene';
 import { CityLayer } from './city';
 import { MapTheme } from './mapThemes';
@@ -636,7 +636,7 @@ export class VersusMatch {
       if (this.watch === q.seat) list.s(rect(at, v(width + 6, 30), 15), color, 0.35);
       list.s(rect(at, v(width, 24), 12), color);
       list.s(text(name, v(at.x, at.y), me ? 13 : 12, 'center', 'bold'), 'accentInk');
-      if (q.shield) this.addShield(list, v(at.x - width / 2 - 12, at.y), color);
+      if (q.shield) this.addShield(list, v(at.x, at.y - 21));
       if (this.isOver || this.countIn > 0) continue;
       // The stall clock once it is running out; your own pressure bar otherwise.
       const left = 1 - q.idle / w.stallLimit;
@@ -653,12 +653,10 @@ export class VersusMatch {
     }
   }
 
-  /** A small shield beside a lane's pill. */
-  private addShield(list: RenderList, at: Vec2, color: ColorToken): void {
-    const s = 7;
-    const shape = [v(0, -s), v(s * 0.85, -s * 0.6), v(s * 0.75, s * 0.25), v(0, s), v(-s * 0.75, s * 0.25), v(-s * 0.85, -s * 0.6)];
-    list.s(polygon(shape.map((p) => add(at, mul(p, 1.3)))), 'scrim', 0.9);
-    list.s(polygon(shape.map((p) => add(at, p))), color);
+  /** The shield above a lane's pill: the green plus sign the single-player top card shows for it, on a dark disc so it reads on any map. */
+  private addShield(list: RenderList, at: Vec2): void {
+    list.s(circle(at, 9), 'scrim', 0.9);
+    list.s(plusSign(at, 11), 'juiceGreen');
   }
 
   private addFloats(list: RenderList): void {

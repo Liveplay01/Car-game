@@ -90,6 +90,33 @@ let declined: number | null = null;
 const listeners = new Set<() => void>();
 
 const INTRO_KEY = 'carGame.cloudIntro.v1';
+const STOPPED_KEY = 'carGame.sync.stopped.v1';
+const STOPPED_MAX = 10;
+
+/**
+ * Codes this device stopped syncing, with the cloud version they had then. Typing such a code
+ * while the cloud copy is still that version would only rewind this device to where it left
+ * (a lost all-in undone), so this device's progress wins instead (`connectCloud`).
+ */
+function readStopped(): Record<string, number> {
+  try {
+    return JSON.parse(storage().getItem(STOPPED_KEY) ?? '{}') as Record<string, number>;
+  } catch {
+    return {};
+  }
+}
+
+function rememberStopped(code: string, version: number): void {
+  const all = readStopped();
+  delete all[code];
+  all[code] = version;
+  const kept = Object.fromEntries(Object.entries(all).slice(-STOPPED_MAX));
+  try {
+    storage().setItem(STOPPED_KEY, JSON.stringify(kept));
+  } catch {
+    /* private mode: the guard lasts only while the storage works */
+  }
+}
 
 /**
  * The one-time pop-up that tells every player about Cloud sync is due: the service exists, this
@@ -374,6 +401,14 @@ export async function connectCloud(typed: string): Promise<void> {
   const got = await apiRequest<{ save: unknown; updatedAt: number }>('GET', '/v1/sync', { token: code });
   const save = parseImport(JSON.stringify(got.save));
   if (!save) throw new LeaderboardError('invalid_save', 'That cloud save could not be read. Update the game and try again.');
+  if (deps && readStopped()[code] === got.updatedAt) {
+    // Nobody else changed the copy since this device left: it is only an old snapshot of this device. Keep this device's progress.
+    writeLink({ code, version: got.updatedAt, hash: '' });
+    savedAt = Date.now();
+    set('synced');
+    cloudChanged();
+    return;
+  }
   incoming = { code, save, updatedAt: got.updatedAt, account: accountOf(got.save) };
   set('choose');
 }
@@ -414,6 +449,7 @@ export function dismissIncoming(): void {
 /** Stops syncing on this device; the cloud copy stays for the other devices. */
 export function stopCloud(): void {
   window.clearTimeout(timer);
+  if (link) rememberStopped(link.code, link.version);
   writeLink(null);
   incoming = null;
   waiting = null;

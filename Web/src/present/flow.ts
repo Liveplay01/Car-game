@@ -70,6 +70,7 @@ export type Built = { k: 'arm'; slot: number } | { k: 'module'; slot: number };
 
 /** Everything a menu, a tab or a gesture can do. */
 export type ScreenAction =
+  | { k: 'closeDetail' }
   | { k: 'startShift' }
   | { k: 'restart' }
   | { k: 'openSettings' }

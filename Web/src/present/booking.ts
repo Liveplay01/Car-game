@@ -4,7 +4,6 @@ import { Elite, type EliteBar } from '../core/elite';
 import { SeasonPass } from '../core/seasonPass';
 import type { ShiftResult } from '../core/events';
 import { challengeReward } from '../core/daily';
-import { Unlocks } from '../core/unlocks';
 import { tierOf, UNLIMITED_MARKS } from '../core/tiers';
 import { heatXp } from '../core/heat';
 import { Contracts } from '../core/contracts';
@@ -84,7 +83,6 @@ export function bookShift(save: SaveGame, result: ShiftResult, ctx: ShiftContext
   save.shiftsPlayed += 1;
   const bankBefore = career.money;
   const eliteBefore = Elite.isOpen(career, ctx.config);
-  const openBefore = Unlocks.open(career, ctx.config);
   const levelBefore = career.level;
   Careers.record(career, result, ctx.level);
   if (ctx.mode === 'shift') Careers.noteShift(career, result.outcome === 'completed');
@@ -107,7 +105,6 @@ export function bookShift(save: SaveGame, result: ShiftResult, ctx: ShiftContext
     else if (close && career.tailwindDay !== ctx.today) {
       career.tailwind = true;
       career.tailwindDay = ctx.today;
-      news.push(S.goals.tailwind(ctx.config.tailwindPay));
     }
   }
   const tier = tierOf(save.unlimitedBestCars);
@@ -122,8 +119,7 @@ export function bookShift(save: SaveGame, result: ShiftResult, ctx: ShiftContext
   // Level 5 cleared: the other modes are a swipe away (the waiting screen keeps a hint until the first swipe).
   const cap = ctx.config.modeHintAfterLevel;
   if (ctx.mode === 'shift' && !save.hints.includes('modes') && ctx.level <= cap && career.level > cap) tips.push(S.modes.unlocked);
-  // What this shift opened; the Casino opens quietly (PRODUCT.md: nothing points the player there).
-  for (const f of Unlocks.open(career, ctx.config)) if (!openBefore.includes(f) && f !== 'casino') news.push(S.unlocks[f]);
+  // What this shift opened says nothing here: the place gets a dot and introduces itself (`Intros`).
   const after = { install: ctx.config.installHintAfterLevel, backup: ctx.config.backupHintAfterLevel, portalLogin: ctx.config.portalLoginAfterLevel };
   const due: Hint[] = (['install', 'backup', 'portalLogin'] as const).filter((h) => !save.hints.includes(h) && career.level > after[h]);
   // Level 10 reached (Leo, 04.10.2026): a small reminder that a friend brings both a chest. By level, not by crossing it:
@@ -149,9 +145,9 @@ export function bookShift(save: SaveGame, result: ShiftResult, ctx: ShiftContext
     save.dailyDay = ctx.today;
     save.dailyScore = result.score;
   }
-  if (pay !== null) news.push(S.daily.dailyDone(Fmt.number(pay), career.dailyStreak));
-  // A chest found says nothing: the Game tab's pill and the Shop's badge already show it.
-  else if (ctx.daily || !Careers.rollEventChest(career, result, ctx.shiftConfig, result.seed)) Careers.rollLuckyDrop(career, result, ctx.shiftConfig, result.seed);
+  // The Daily's pay shows in the result's money and its streak on the next Daily; a chest found says nothing either:
+  // the Game tab's pill and the Shop's badge already show it.
+  if (pay === null && (ctx.daily || !Careers.rollEventChest(career, result, ctx.shiftConfig, result.seed))) Careers.rollLuckyDrop(career, result, ctx.shiftConfig, result.seed);
   // An eased shift (fewer cars) would set a best time the level never had.
   if (result.outcome === 'completed' && !ctx.shiftConfig.assisted) {
     const times = [...ctx.splits];

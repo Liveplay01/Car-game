@@ -195,6 +195,11 @@ export const baseConfig = {
   comboThresholds: [5, 10, 20, 30, 45, 60],
   comboMultipliers: [1.5, 2, 3, 4, 5, 6],
 
+  // The first levels bring one new thing each (Leo, 12.10.2026): none on Level 1, then the police with the dispatch, the criminals, the transporter (`forIntro`).
+  policeLevel: 2,
+  criminalLevel: 3,
+  transporterLevel: 4,
+
   // Police and criminals
   policeShare: 0.2,
   criminalChance: 1,
@@ -278,7 +283,7 @@ export const baseConfig = {
 
   // Explosives
   tankerShare: 0,
-  tankerLevel: 4,
+  tankerLevel: 5,
   tankerLevelShare: 0.18,
   tankerMass: 2.4,
   tankerBlastRadius: 66,
@@ -733,7 +738,7 @@ export const baseConfig = {
 
   // City events
   cityEvent: null as CityEvent | null,
-  cityEventLevel: 4,
+  cityEventLevel: 6,
   cityEventChance: 0.25,
   /** Which of the gaps between the junctions the roadworks take (share 0…1), drawn per shift. */
   roadworksAt: 0,

@@ -761,7 +761,8 @@ export function settingsSheet(layer: HTMLElement, s: Settings, actions: Settings
       ),
     ],
     account: [
-      group('Backup & device', cloudRow, ...pushRows(actions.push), installRow),
+      group('Backup & device', cloudRow, installRow),
+      group('Reminders', ...pushRows(actions.push)),
       h(
         'p',
         { class: 'section-note settings-foot' },
