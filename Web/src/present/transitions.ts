@@ -41,6 +41,8 @@ export class ScreenTransition {
   static readonly duration = 0.42;
   static readonly fadeIn = 0.2;
   static readonly fadeOut = 0.16;
+  /** Starting a shift: the waiting screen leaves slower and evenly, with the buttons beside it (Leo, 12.10.2026). */
+  static readonly startFadeOut = 0.32;
   static readonly tabSlide = 28;
   static readonly tabSlideOut = 16;
   static readonly rise = 16;
@@ -50,11 +52,14 @@ export class ScreenTransition {
   direction: number;
   /** Between the Build tab's two pages the segment thumb glides by itself. */
   keepsChrome: boolean;
+  /** A shift begins: the waiting screen is the one that leaves. */
+  private starts: boolean;
   private outgoingTags: Set<string>;
   private outgoingBackdrop: RenderItem | undefined;
 
   constructor(from: ScreenKey, to: ScreenKey, outgoing: RenderItem[]) {
     this.keepsChrome = keyIsBuild(from) && keyIsBuild(to);
+    this.starts = to === 'playing';
     this.outgoing = outgoing;
     this.outgoingTags = new Set(outgoing.map((i) => i.tag).filter((t): t is string => t !== undefined));
     this.outgoingBackdrop = outgoing.find((i) => i.tag === 'backdrop');
@@ -107,7 +112,7 @@ export class ScreenTransition {
       list.items[i] = moved(item, shift, fade);
     }
 
-    const gone = Ease.outCubic(this.age / T.fadeOut);
+    const gone = this.starts ? Ease.smoothstep(this.age / T.startFadeOut) : Ease.outCubic(this.age / T.fadeOut);
     if (gone >= 1 && fade >= 1) return;
     const away = reduceMotion || this.direction === 0 ? v(0, 0) : v(-T.tabSlideOut * this.direction * gone, 0);
     const old: RenderItem[] = [];

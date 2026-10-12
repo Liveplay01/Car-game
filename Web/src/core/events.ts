@@ -100,7 +100,7 @@ export interface MergeReport {
   critical: boolean;
   /** Points for slipping past a motorbike (already in `points`); 0 when there was none. */
   shave: number;
-  /** It crept in behind slow traffic (`creepPace`): rated nothing, scored nothing. */
+  /** It crept in behind slow traffic (`creepPace`): no timing, so a plain merge's points and no combo. */
   crept?: boolean;
   /** Money a Tight Fit or a Near Miss paid on the spot (Tight Fit Tip, Dashcam). */
   tip?: number;

@@ -7,7 +7,7 @@ import { MuseumPage } from './museum';
 
 /**
  * Something new on the road, and what to do about it (Leo, 01.10.2026): the first time a special
- * vehicle, a boss or a condition meets the player, the top card's numbers make way for one
+ * vehicle or a boss meets the player (conditions have their icons over the ring, 12.10.2026), the top card's numbers make way for one
  * sentence of instructions. A task with an end (catch the criminal, keep the ambulance's road
  * clear) stays until it is over, but not for long; anything else stays a few seconds. Then the numbers come back.
  *

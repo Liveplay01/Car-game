@@ -815,7 +815,7 @@ a.row-link {
   transform: scale(0.92);
   pointer-events: none;
   visibility: hidden;
-  transition: opacity 180ms var(--ease-out), transform 180ms var(--ease-out), visibility 0s linear 180ms;
+  transition: opacity 280ms var(--ease-out), transform 280ms var(--ease-out), visibility 0s linear 280ms;
 }
 
 .float-btn.show {
@@ -866,6 +866,28 @@ a.row-link {
   transform: translateY(calc(-1 * (var(--pill-h) + var(--pill-gap))));
 }
 
+/* Starting a shift (Leo, 12.10.2026): the stack leaves as one, softly, together with the waiting screen. It stays where it
+   is while it fades, and only folds up once it cannot be seen any more. */
+.run-bar {
+  transition:
+    transform 200ms var(--ease-out),
+    opacity 300ms var(--ease-out);
+}
+
+.app[data-screen='playing'] .run-bar {
+  opacity: 0;
+  transform: translateY(calc(-1 * (var(--pill-h) + var(--pill-gap))));
+}
+
+.app[data-screen='playing'] .run-bar .run-btn {
+  transition:
+    opacity 300ms var(--ease-out),
+    transform 300ms var(--ease-out),
+    height 1ms linear 320ms,
+    margin-bottom 1ms linear 320ms,
+    display 320ms allow-discrete;
+}
+
 .run-btn {
   min-height: 44px;
   padding: 0 var(--s4) 0 var(--s3);
@@ -905,6 +927,24 @@ a.row-link {
   overflow: visible;
 }
 
+/* The touch area is bigger than the pill (Leo, 12.10.2026): it fills the gaps between the pills and reaches toward the road,
+   so a tap beside a pill never starts the shift by accident. Toward the screen edge it stops, or the page would scroll. */
+.run-bar .run-btn {
+  position: relative;
+}
+
+.settings-btn::before,
+.run-bar .run-btn::before {
+  content: '';
+  position: absolute;
+  inset: calc(var(--pill-gap) / -2 - 3px) -16px calc(var(--pill-gap) / -2 - 3px) 0;
+}
+
+[data-hand='left'] .settings-btn::before,
+[data-hand='left'] .run-bar .run-btn::before {
+  inset: calc(var(--pill-gap) / -2 - 3px) 0 calc(var(--pill-gap) / -2 - 3px) -16px;
+}
+
 .run-btn svg,
 .settings-btn svg {
   width: 18px;
@@ -932,10 +972,6 @@ a.row-link {
     padding: 0 var(--s3);
   }
 
-  .run-bar .run-btn {
-    position: relative;
-  }
-
   .run-bar .run-btn svg,
   .settings-btn svg {
     width: 16px;
@@ -945,13 +981,6 @@ a.row-link {
   .run-bar .run-btn svg.chest-flat {
     width: 20px;
     height: 18px;
-  }
-
-  .settings-btn::before,
-  .run-bar .run-btn::before {
-    content: '';
-    position: absolute;
-    inset: -2px 0;
   }
 
   .settings-btn.has-news::after {

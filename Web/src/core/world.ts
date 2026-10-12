@@ -1105,12 +1105,15 @@ export class World {
 
   /**
    * A car of yours that braked its way into the ring behind slow traffic (`creepPace`): it took
-   * no timing, so it earns nothing and leaves the combo and the chain as they are. It still counts
-   * as a car, but it takes the next exit (Leo, 11.10.2026): spammed cars never pile up on the ring,
+   * no timing, so it leaves the combo and the chain as they are, but it pays a plain merge at the
+   * combo you have (Leo, 12.10.2026: a jammed ring cost whole shifts of points). It counts
+   * as a car and takes the next exit (Leo, 11.10.2026): spammed cars never pile up on the ring,
    * and the bots get their chance to break an endless chain. An ambulance or a learner it crowds still notices it.
    */
   private noteCreep(veh: Vehicle, merge: Merging, s: number, behind: number, ahead: number, now: number): void {
     this.score.crept++;
+    const points = Scoring.points('clean', this.score.combo, this.isRushHourScoring, this.config);
+    this.score.points += points;
     this.leaveAtNextExit(veh, merge);
     const at = this.events.length;
     noteMergeNearAmbulance(this, veh, s, now);
@@ -1126,7 +1129,7 @@ export class World {
       position: veh.position,
       time: now,
       rating: 'clean',
-      points: 0,
+      points,
       combo: this.score.combo,
       shielded: false,
       gapAhead: ahead,

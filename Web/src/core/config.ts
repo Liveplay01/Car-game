@@ -161,10 +161,11 @@ export const baseConfig = {
   sloppyWindow: 0,
   /**
    * A merge that still drives slower than this share of its planned speed as it joins the ring
-   * braked in behind slow traffic: nothing was timed, so it scores nothing (Leo, 01.10.2026:
+   * braked in behind slow traffic: nothing was timed, so it builds no combo (Leo, 01.10.2026:
    * after a crash, cars spammed one behind the other crept in safely, each one +1 combo, and in
    * Unlimited the ring filled with your own cars for a record without playing). Since 11.10.2026
-   * such a car counts as a car again but takes the next exit, so the ring never fills with them.
+   * such a car counts as a car again but takes the next exit, so the ring never fills with them;
+   * since 12.10.2026 it also pays a plain merge at the combo you have.
    */
   creepPace: 0.9,
   nearMissSeconds: 0.2,

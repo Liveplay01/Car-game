@@ -51,6 +51,23 @@ export const itemCredit = (item: PatchItem): string | null => {
 
 export const PATCH_NOTES: PatchNote[] = [
   {
+    id: '2026-10-12',
+    date: '12 October 2026',
+    title: 'Cars in a jam pay points again, no roadworks cards, Settings is easier to hit',
+    impact: 'major',
+    summary: [
+      'Cars squeezing in behind slow traffic pay points again, so a jam no longer stalls your score.',
+      'No more cards for roadworks, weather or night as a shift starts: the icons over the ring say it.',
+      'Settings and the buttons above it are easier to hit: a near miss no longer starts the shift.',
+    ],
+    items: [
+      'Starting a shift is smoother: the waiting screen, the Settings button and the buttons above it fade out together and a little slower, instead of one after the other.',
+      { text: 'Fixed: in Unlimited, sending cars into a ring full of slow traffic earned no points at all. A car that braked its way in behind slow traffic now pays a plain merge at your current combo. It still builds no combo or chain and still leaves at the next exit, so spamming cannot pile up the ring.', from: null },
+      'The top card no longer announces the conditions of a shift (roadworks, rain, night and the like) as it starts. The icons over the ring on the waiting screen already show them, and a tap opens their Museum entry. Special vehicles and bosses still get their card the first time they come.',
+      'The touch area of Settings and of the buttons stacked above it (chest, Picture, Leave) is bigger: it fills the gaps between them and reaches a little way toward the road, so a tap beside a button presses it instead of starting the shift.',
+    ],
+  },
+  {
     id: '2026-10-11',
     date: '11 October 2026',
     title: 'The Mafia lends money, combos up to ×6, a harder Heat, special cars that find their gap',

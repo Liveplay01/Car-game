@@ -2314,7 +2314,6 @@ export class GameSession {
     this.sinceMoney = Infinity;
     this.dailySplash = null;
     this.play(['go'], []);
-    this.museum.briefConditions();
     this.onChrome?.();
     if (!this.playingDaily) return;
     const career = this.save.career;

@@ -1,5 +1,5 @@
 import { type SaveGame, Careers } from '../core/career';
-import { conditionsOf, museumEntry, museumId, sightings, type MuseumEntry } from '../core/museum';
+import { museumEntry, museumId, sightings, type MuseumEntry } from '../core/museum';
 import type { World } from '../core/world';
 import { type Briefings, briefOf } from './briefing';
 import { MuseumPage } from './museum';
@@ -19,8 +19,8 @@ export interface MuseumHost {
 
 /**
  * Special vehicles and bosses on the road for the first time go on show in the Museum, and the
- * top card says what they are and what to do (`brief`). Conditions have the ready screen and
- * their briefing as the shift starts (`briefConditions`).
+ * top card says what they are and what to do (`brief`). Conditions (sky, dark, city events) have
+ * the icons over the island on the ready screen and say nothing on the card.
  */
 export class MuseumFlow {
   /** Entries first met during this shift, for the line on its result. */
@@ -76,11 +76,6 @@ export class MuseumFlow {
     this.again.delete(id);
     this.owed.delete(id);
     this.host.briefings.add(briefOf(e, again && !found && !owed));
-  }
-
-  /** The shift's conditions new to this player: each on the top card for a few seconds as it starts. */
-  briefConditions(): void {
-    for (const e of conditionsOf(this.host.world.config)) this.brief(e);
   }
 
   /** The Museum's new entries of the shift, as a line for the result; empties the list. */
