@@ -152,7 +152,7 @@ export function openSheet(layer: HTMLElement, title: string, body: HTMLElement, 
   const closeBtn = h('button', { class: 'icon-btn', 'aria-label': S.settings.close, onclick: () => close() }, icon(ICONS.close));
   const grabber = h('div', { class: 'grabber', 'aria-hidden': 'true' });
   const head = h('div', { class: 'sheet-head' }, h('h2', { class: 'sheet-title', id: titleId }, title), closeBtn);
-  const sheet = h('div', { class: 'sheet', role: 'dialog', 'aria-modal': 'true', 'aria-labelledby': titleId }, grabber, head, body);
+  const sheet = h('div', { class: 'sheet', role: 'dialog', 'aria-modal': 'true', 'aria-labelledby': titleId, tabindex: '-1' }, grabber, head, body);
   const scrim = h('div', { class: 'sheet-scrim', onclick: () => close() });
   dragToClose(sheet, scrim, [grabber, head], () => close());
   const root = h('div', { class: below ? 'sheet-root stacked' : 'sheet-root' }, scrim, sheet);
@@ -168,7 +168,7 @@ export function openSheet(layer: HTMLElement, title: string, body: HTMLElement, 
       if (focusable.length === 0) return;
       const first = focusable[0];
       const last = focusable[focusable.length - 1];
-      if (e.shiftKey && document.activeElement === first) {
+      if (e.shiftKey && (document.activeElement === first || document.activeElement === sheet)) {
         e.preventDefault();
         last.focus();
       } else if (!e.shiftKey && document.activeElement === last) {
@@ -197,8 +197,8 @@ export function openSheet(layer: HTMLElement, title: string, body: HTMLElement, 
   document.addEventListener('keydown', onKey, true);
   layer.append(root);
   stack.push({ root, title, close });
-  const firstAction = sheet.querySelector<HTMLElement>('.sheet-actions button, .list button');
-  (firstAction ?? closeBtn).focus({ preventScroll: true });
+  // A list row would show the keyboard ring on open; the sheet takes the focus and Tab goes on to the first row.
+  (sheet.querySelector<HTMLElement>('.sheet-actions button') ?? sheet).focus({ preventScroll: true });
   return close;
 }
 
@@ -608,6 +608,14 @@ function switchRow(title: string, sub: string | null, on: boolean, onChange: (on
   return row;
 }
 
+/** A three-step slider (1 to 3), the value read live while dragging. */
+function sliderRow(title: string, sub: string, value: 1 | 2 | 3, onChange: (value: 1 | 2 | 3) => void): HTMLElement {
+  const slider = h('input', { class: 'step-slider', type: 'range', min: '1', max: '3', step: '1', value: String(value), 'aria-label': title });
+  slider.addEventListener('input', () => onChange(Number(slider.value) as 1 | 2 | 3));
+  const track = h('div', { class: 'step-track' }, h('i'), h('i'), h('i'), slider);
+  return h('div', { class: 'row row-stack' }, h('div', { class: 'row-main' }, h('div', { class: 'row-title' }, title), h('div', { class: 'row-sub' }, sub)), track);
+}
+
 /** A group of rows with a plain header above it, as in iOS Settings. */
 function group(title: string, ...rows: (HTMLElement | null)[]): HTMLElement | null {
   const kept = rows.filter((r): r is HTMLElement => r !== null);
@@ -806,6 +814,10 @@ export function settingsSheet(layer: HTMLElement, s: Settings, actions: Settings
           motionSeg,
         ),
         switchRow(S.settings.leftHanded, S.settings.leftHandedSub, s.leftHanded, toggle('leftHanded')),
+        sliderRow(S.settings.dispatchSize, S.settings.dispatchSizeSub, s.dispatchSize, (size) => {
+          s.dispatchSize = size;
+          actions.changed(s);
+        }),
         switchRow(S.settings.vehicleLabels, S.settings.vehicleLabelsSub, s.vehicleLabels, toggle('vehicleLabels')),
         switchRow(S.settings.haptics, hasVibration ? null : S.settings.hapticsNone, s.haptics, toggle('haptics')),
         switchRow(S.settings.batterySaver, S.settings.batterySaverSub, s.batterySaver, toggle('batterySaver')),

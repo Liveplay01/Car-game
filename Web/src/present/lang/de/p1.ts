@@ -100,6 +100,8 @@ export default (_s: Strings): Words<Strings> => ({
     motion: { system: 'System', on: 'An', off: 'Aus' },
     leftHanded: 'Linkshänder',
     leftHandedSub: 'Setzt die Tasten über dem Spiel nach links.',
+    dispatchSize: 'Größe des Einsatz-Knopfs',
+    dispatchSizeSub: 'Macht den Polizei-Knopf kleiner oder größer.',
     vehicleLabels: 'Fahrzeugnamen',
     vehicleLabelsSub: 'Benennt die Spezialfahrzeuge auf der Straße.',
     haptics: 'Haptik',

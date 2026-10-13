@@ -253,6 +253,7 @@ function readSave(raw: unknown): SaveGame {
     if (typeof s.haptics === 'boolean') settings.haptics = s.haptics;
     if (typeof s.vehicleLabels === 'boolean') settings.vehicleLabels = s.vehicleLabels;
     if (typeof s.leftHanded === 'boolean') settings.leftHanded = s.leftHanded;
+    if (s.dispatchSize === 1 || s.dispatchSize === 2 || s.dispatchSize === 3) settings.dispatchSize = s.dispatchSize;
     if (typeof s.largeText === 'boolean') settings.largeText = s.largeText;
     if (typeof s.batterySaver === 'boolean') settings.batterySaver = s.batterySaver;
     if (typeof s.motionChosen === 'boolean') settings.motionChosen = s.motionChosen;

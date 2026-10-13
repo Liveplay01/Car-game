@@ -1291,6 +1291,27 @@ a.row-link {
   height: 26px;
 }
 
+/* Settings → Play → Dispatch button size: 1 small, 2 as before, 3 large. */
+[data-dispatch='1'] .dispatch-btn {
+  width: 48px;
+  height: 48px;
+}
+
+[data-dispatch='1'] .dispatch-btn svg {
+  width: 21px;
+  height: 21px;
+}
+
+[data-dispatch='3'] .dispatch-btn {
+  width: 80px;
+  height: 80px;
+}
+
+[data-dispatch='3'] .dispatch-btn svg {
+  width: 36px;
+  height: 36px;
+}
+
 .dispatch-count {
   position: absolute;
   top: -4px;
@@ -2993,6 +3014,105 @@ a.row-link {
 
 @media (max-width: 400px) {
   .row-stack .motion-seg {
+    width: 100%;
+  }
+}
+
+.sheet:focus-visible {
+  outline: none;
+}
+
+/* Three steps: a line with a dot per step under a transparent range input, so the dots show through. */
+.step-track {
+  position: relative;
+  width: 140px;
+  height: 28px;
+}
+
+.step-track::before {
+  content: '';
+  position: absolute;
+  inset: 12px 14px;
+  border-radius: 2px;
+  background: color-mix(in srgb, var(--faint) 45%, transparent);
+}
+
+.step-track i {
+  position: absolute;
+  top: 10px;
+  width: 8px;
+  height: 8px;
+  margin-left: -4px;
+  border-radius: 50%;
+  background: var(--faint);
+}
+
+.step-track i:nth-child(1) {
+  left: 14px;
+}
+
+.step-track i:nth-child(2) {
+  left: 50%;
+}
+
+.step-track i:nth-child(3) {
+  left: calc(100% - 14px);
+}
+
+.step-slider {
+  position: relative;
+  width: 100%;
+  height: 28px;
+  margin: 0;
+  background: transparent;
+  appearance: none;
+  -webkit-appearance: none;
+  cursor: pointer;
+}
+
+.step-slider:focus-visible {
+  outline: none;
+}
+
+.step-slider::-webkit-slider-runnable-track {
+  height: 28px;
+  background: transparent;
+}
+
+.step-slider::-moz-range-track {
+  height: 28px;
+  background: transparent;
+}
+
+.step-slider::-webkit-slider-thumb {
+  width: 28px;
+  height: 28px;
+  border: 0;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.45);
+  -webkit-appearance: none;
+}
+
+.step-slider::-moz-range-thumb {
+  width: 28px;
+  height: 28px;
+  border: 0;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.45);
+}
+
+.step-slider:focus-visible::-webkit-slider-thumb {
+  box-shadow: 0 0 0 3px var(--accent);
+}
+
+.step-slider:focus-visible::-moz-range-thumb {
+  box-shadow: 0 0 0 3px var(--accent);
+}
+
+@media (max-width: 400px) {
+  .row-stack .step-track {
     width: 100%;
   }
 }

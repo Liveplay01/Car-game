@@ -61,6 +61,7 @@ export const PATCH_NOTES: PatchNote[] = [
       'You are told when a new idea is published in the Game fund.',
     ],
     items: [
+      'Settings → Play → Dispatch button size: a slider with three steps makes the police button smaller or larger.',
       'Heat is no longer opened by clearing shifts. Every 7 days of living Daily streak open one Heat step (up to 8). A broken streak takes the Heat with it. Heat is now part of the streak: the streak card under Progress → Today shows it and explains it when you tap it, and the Heat row under Trials is gone. The pill on the Game tab still switches it.',
       'The Heat titles Scorcher, Inferno and Meltdown stay with you, even when the streak is lost.',
       'New titles for the Game fund: Patron, Benefactor, Philanthropist and Visionary, by the total you have given.',

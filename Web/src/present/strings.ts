@@ -141,6 +141,8 @@ export const S = {
     motion: { system: 'System', on: 'On', off: 'Off' },
     leftHanded: 'Left-handed',
     leftHandedSub: 'Puts the buttons over the game on the left.',
+    dispatchSize: 'Dispatch button size',
+    dispatchSizeSub: 'Makes the police button smaller or larger.',
     vehicleLabels: 'Vehicle labels',
     vehicleLabelsSub: 'Names the special vehicles on the road.',
     haptics: 'Haptics',

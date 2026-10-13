@@ -512,13 +512,14 @@ export class Shell {
     let badgeKey = '';
     for (const b of badges) badgeKey += b === null ? '-' : b === 'dot' ? '.' : `${b.count};`;
     const onSocial = screen.k === 'page' && screen.tab === 'social' && s.showsChrome && !match;
-    const key = `${screen.k}|${selected}|${onSocial ? s.socialPage.section : -1}|${this.size.x}|${badgeKey}|${s.world.shift.phase}|${s.playingMode}|${s.special?.k ?? ''}|${s.shareable ? 1 : 0}|${match ? 1 : 0}|${versusKey}|${s.save.settings.leftHanded}|${s.notesUnread}|${s.showsChrome}|${s.chestOffer}|${s.save.career.chests[0] ?? ''}|${s.world.dispatchesLeft}|${s.heatPill ?? ''}`;
+    const key = `${screen.k}|${selected}|${onSocial ? s.socialPage.section : -1}|${this.size.x}|${badgeKey}|${s.world.shift.phase}|${s.playingMode}|${s.special?.k ?? ''}|${s.shareable ? 1 : 0}|${match ? 1 : 0}|${versusKey}|${s.save.settings.leftHanded}|${s.save.settings.dispatchSize}|${s.notesUnread}|${s.showsChrome}|${s.chestOffer}|${s.save.career.chests[0] ?? ''}|${s.world.dispatchesLeft}|${s.heatPill ?? ''}`;
     if (!force && key === this.chromeKey) return;
     this.chromeKey = key;
     this.social.sync(onSocial, s.socialPage.section, SocialPage.column(this.size));
     reportGameplay(screen.k === 'playing' && (inPortal || !document.hidden));
     this.app.dataset.versus = match ? 'on' : 'off';
     this.app.dataset.hand = s.save.settings.leftHanded ? 'left' : 'right';
+    this.app.dataset.dispatch = String(s.save.settings.dispatchSize);
     this.settingsBtn.classList.toggle('has-news', s.notesUnread);
     const ready = lobby.isReady;
     this.againBtn.classList.toggle('show', lobby.canReady);

@@ -82,6 +82,8 @@ export interface Settings {
   vehicleLabels: boolean;
   /** The floating buttons on the other side, for the left thumb. */
   leftHanded: boolean;
+  /** Size of the dispatch button, 1 (small) to 3 (large). */
+  dispatchSize: 1 | 2 | 3;
   /** Notices and the cards over the scene a step larger. */
   largeText: boolean;
   /** Half the frames and a softer picture, for a phone that gets hot or empties too fast (Leo, 10.10.2026). */
@@ -442,7 +444,7 @@ export const newSave = (): SaveGame => ({
   highscore: 0,
   highscoreSeed: null,
   shiftsPlayed: 0,
-  settings: { sound: true, music: true, mapSounds: true, haptics: true, reduceMotion: 'off', vehicleLabels: false, leftHanded: false, largeText: false, batterySaver: false, motionChosen: false },
+  settings: { sound: true, music: true, mapSounds: true, haptics: true, reduceMotion: 'off', vehicleLabels: false, leftHanded: false, dispatchSize: 2, largeText: false, batterySaver: false, motionChosen: false },
   career: newCareer(),
   tutorialDone: false,
   hints: [],
