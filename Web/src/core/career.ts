@@ -294,6 +294,8 @@ export interface Career {
   auctionSpent: number;
   /** Everything given to the Game fund (core/fund.ts). */
   fundGiven: number;
+  /** The newest published idea the player has been told about or seen (ms; 0 = never looked). */
+  ideasSeenAt: number;
   /** The contract waiting for the next career shift (core/contracts.ts); its stake is paid already. */
   contract: Contract | null;
   /** The Mafia's loan (core/mafia.ts), the loans repaid in time in a row (they make the next one kinder) and the loans taken in all. */
@@ -427,6 +429,7 @@ export const newCareer = (): Career => ({
   auctionWins: 0,
   auctionSpent: 0,
   fundGiven: 0,
+  ideasSeenAt: 0,
   contract: null,
   loan: null,
   cleanLoans: 0,
@@ -551,20 +554,23 @@ export const Careers = {
 
   // MARK: Heat
 
-  /** The highest Heat that can be chosen: closed before the Elite track, then one above the best cleared. */
-  maxHeat: (c: Career, config: Config = baseConfig): number => (Elite.isOpen(c, config) ? Math.min(config.maxHeat, c.heatCleared + 1) : 0),
+  /** The Daily streak as it stands on `day`: gone once more days were missed than Streak Freezes cover. */
+  streak: (c: Career, day: number): number => (day - c.dailyPlayed - 1 <= c.streakFreezes ? c.dailyStreak : 0),
 
-  /** The Heat career shifts run at: the chosen one, as far as it is open. */
-  activeHeat: (c: Career, config: Config = baseConfig): number => Math.min(c.heat, Careers.maxHeat(c, config)),
+  /** The highest Heat that can be chosen (Leo, 13.10.2026): one step per `heatStreakDays` days of the living Daily streak. */
+  maxHeat: (c: Career, day: number, config: Config = baseConfig): number => Math.min(config.maxHeat, Math.floor(Careers.streak(c, day) / config.heatStreakDays)),
+
+  /** The Heat career shifts run at: the chosen one, as far as the streak reaches. */
+  activeHeat: (c: Career, day: number, config: Config = baseConfig): number => Math.min(c.heat, Careers.maxHeat(c, day, config)),
 
   /** The next Heat, and round to off after the highest. */
-  cycleHeat(c: Career, config: Config = baseConfig): number {
-    const next = Careers.activeHeat(c, config) + 1;
-    c.heat = next > Careers.maxHeat(c, config) ? 0 : next;
+  cycleHeat(c: Career, day: number, config: Config = baseConfig): number {
+    const next = Careers.activeHeat(c, day, config) + 1;
+    c.heat = next > Careers.maxHeat(c, day, config) ? 0 : next;
     return c.heat;
   },
 
-  /** A shift cleared at `heat` opens the next one; true when that is new. */
+  /** A shift cleared at `heat` is the best so far; true when that is new. It keeps the Heat titles, whatever happens to the streak. */
   recordHeat(c: Career, heat: number, config: Config = baseConfig): boolean {
     if (heat <= c.heatCleared || heat > config.maxHeat) return false;
     c.heatCleared = heat;
@@ -900,6 +906,7 @@ export const Careers = {
     const frozen = c.dailyStreak > 0 && missed > 0 && missed <= c.streakFreezes ? missed : 0;
     c.streakFreezes -= frozen;
     c.dailyStreak = missed === 0 || frozen > 0 ? c.dailyStreak + 1 : 1;
+    if (c.dailyStreak === 1) c.heat = 0;
     c.dailyPlayed = day;
     const earned = (c.dailyStreak === config.streakFreezeFirst || c.dailyStreak % config.streakFreezeEvery === 0) && c.streakFreezes < config.streakFreezeMax;
     if (earned) c.streakFreezes++;

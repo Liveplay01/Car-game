@@ -95,7 +95,7 @@ export function bookShift(save: SaveGame, result: ShiftResult, ctx: ShiftContext
   const contract = ctx.mode === 'shift' && !ctx.daily ? Contracts.settle(career, result, ctx.shiftConfig.shiftCars, ctx.shiftConfig.assisted, ctx.config) : null;
   if (contract) news.push(S.club.contractSettled(contract));
   const heat = ctx.mode === 'shift' && !ctx.daily ? ctx.shiftConfig.heat : 0;
-  if (heat > 0 && result.outcome === 'completed' && Careers.recordHeat(career, heat, ctx.config)) news.push(S.heat.cleared(heat, Careers.maxHeat(career, ctx.config)));
+  if (heat > 0 && result.outcome === 'completed' && Careers.recordHeat(career, heat, ctx.config)) news.push(S.heat.cleared(heat));
   // Tailwind: the pay it promised was in this shift; a shift lost within reach of its goal earns the next one (once a day, never chained).
   if (ctx.mode === 'shift' && !ctx.daily) {
     const cars = ctx.shiftConfig.shiftCars;

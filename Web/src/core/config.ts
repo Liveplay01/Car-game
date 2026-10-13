@@ -831,6 +831,8 @@ export const baseConfig = {
   /** Heat (core/heat.ts): the shift's Heat (set per shift, 0 = off), the highest one, and what each step adds. */
   heat: 0,
   maxHeat: 8,
+  /** Days of Daily streak for each Heat step (the streak is the only way to open Heat; a lost streak closes it). */
+  heatStreakDays: 7,
   heatTempo: 0.06,
   heatDensityEvery: 1,
   heatCriminal: 0.07,

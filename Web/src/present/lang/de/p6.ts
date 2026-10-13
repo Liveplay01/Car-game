@@ -236,6 +236,18 @@ export default (S: Strings): Words<Strings> => ({
     },
     freezeLine: (days) => `Noch ${days} ${days === 1 ? 'Tag' : 'Tage'} bis zum Serienschutz`,
     freezes: (n) => `${n}× Serienschutz`,
+    sheet: {
+      title: 'Tagesserie',
+      body: (bonusDays, bonusPay, heatDays) => [
+        'Spiele jeden Tag die Tagesschicht, um die Serie zu halten. Ein verpasster Tag beendet sie, es sei denn, ein Serienschutz deckt ihn ab.',
+        `Ab ${bonusDays} Tagen zahlt jede Karriereschicht +${Math.round(bonusPay * 100)} % mehr, solange die Serie lebt.`,
+        `Hitze: Alle ${heatDays} Tage Serie öffnen eine Hitzestufe, härterer Verkehr für mehr Bezahlung und Elite-XP. Verlierst du die Serie, ist auch die Hitze weg. Verdiente Hitze-Titel bleiben.`,
+      ],
+      heatOpen: 'Offene Hitze',
+      heatValue: (open, max) => `${open} von ${max}`,
+      nextHeat: 'Nächste Hitze in',
+      allHeat: 'Alle offen',
+    },
     freezeUsed: (n) => `SERIE GESCHÜTZT · ${n === 1 ? 'ein verpasster Tag wurde' : `${n} verpasste Tage wurden`} abgedeckt`,
     streakReward: (days, got) => `${days} TAGE IN FOLGE · ${got.join(' · ')}`,
     gotItem: (item) => `${S.shop.item(item)} freigeschaltet`,
@@ -487,9 +499,9 @@ export default (S: Strings): Words<Strings> => ({
         ? `Härterer Verkehr · +${Math.round(heat * baseConfig.heatPay * 100)} % Bezahlung · +${heat * baseConfig.eliteXpHeat} Elite-XP pro Schicht`
         : max > 0
           ? 'Aus · härterer Verkehr für mehr Bezahlung und Elite-XP'
-          : 'Schaffe eine Schicht, um die nächste Hitze zu öffnen',
+          : `Halte eine ${baseConfig.heatStreakDays}-Tage-Serie, um Hitze zu öffnen`,
     link: (heat, max) => `${max > 1 ? `${heat}/${max}` : heat > 0 ? 'An' : 'Aus'} · ändern ›`,
-    cleared: (heat, max) => (heat < max ? `HITZE ${heat} GESCHAFFT · Hitze ${heat + 1} ist offen` : `HITZE ${heat} GESCHAFFT`),
+    cleared: (heat) => `HITZE ${heat} GESCHAFFT`,
     pill: (heat, tailwind) =>
       [tailwind ? `RÜCKENWIND +${Math.round(tailwind * 100)} %` : null, heat > 0 ? `HITZE ${heat} · +${Math.round(heat * baseConfig.heatPay * 100)} % Bezahlung` : null].filter(Boolean).join(' · ') || null,
     rule: (level) => `Schaffe eine Schicht bei Hitze ${level}`,

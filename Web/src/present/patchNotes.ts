@@ -51,6 +51,24 @@ export const itemCredit = (item: PatchItem): string | null => {
 
 export const PATCH_NOTES: PatchNote[] = [
   {
+    id: '2026-10-13',
+    date: '13 October 2026',
+    title: 'Heat comes from your Daily streak, titles for Game fund donors',
+    impact: 'major',
+    summary: [
+      'Heat now comes from your Daily streak: +1 Heat for every 7 days. Lose the streak and the Heat goes.',
+      'Giving to the Game fund earns titles: the more you give in total, the higher.',
+      'You are told when a new idea is published in the Game fund.',
+    ],
+    items: [
+      'Heat is no longer opened by clearing shifts. Every 7 days of living Daily streak open one Heat step (up to 8). A broken streak takes the Heat with it. Heat is now part of the streak: the streak card under Progress → Today shows it and explains it when you tap it, and the Heat row under Trials is gone. The pill on the Game tab still switches it.',
+      'The Heat titles Scorcher, Inferno and Meltdown stay with you, even when the streak is lost.',
+      'New titles for the Game fund: Patron, Benefactor, Philanthropist and Visionary, by the total you have given.',
+      'A new idea in the Game fund is announced once when you open the game.',
+      'Fixed: the Heat pill is now also there on the result screen, above the photo pill.',
+    ],
+  },
+  {
     id: '2026-10-12',
     date: '12 October 2026',
     title: 'The Game fund for player ideas, a gentler start, far fewer pop-up lines, a breather after FAIL',

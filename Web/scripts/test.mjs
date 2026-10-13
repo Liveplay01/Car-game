@@ -2123,22 +2123,43 @@ test('Heat makes the road harder step by step and leaves Heat 0 alone', () => {
   assert.equal(heatXp(3, baseConfig), 3 * baseConfig.eliteXpHeat);
 });
 
-test('Heat opens with the Elite track, one step above the best cleared, and cycles back to off', () => {
+test('Heat is one step per 7 days of living Daily streak, cycles back to off, and a lost streak takes it away', () => {
+  const day = 20000;
   const c = newCareer();
-  assert.equal(Careers.maxHeat(c, baseConfig), 0, 'closed before Level 50');
-  c.level = baseConfig.prestigeLevel;
-  assert.equal(Careers.maxHeat(c, baseConfig), 1);
-  assert.equal(Careers.cycleHeat(c, baseConfig), 1);
-  assert.equal(Careers.cycleHeat(c, baseConfig), 0, 'round to off');
+  assert.equal(Careers.maxHeat(c, day, baseConfig), 0, 'no streak, no Heat');
+  c.dailyPlayed = day;
+  c.dailyStreak = 6;
+  assert.equal(Careers.maxHeat(c, day, baseConfig), 0);
+  c.dailyStreak = 7;
+  assert.equal(Careers.maxHeat(c, day, baseConfig), 1);
+  assert.equal(Careers.cycleHeat(c, day, baseConfig), 1);
+  assert.equal(Careers.cycleHeat(c, day, baseConfig), 0, 'round to off');
+  c.dailyStreak = 99;
+  assert.equal(Careers.maxHeat(c, day, baseConfig), baseConfig.maxHeat, 'capped');
+  c.dailyStreak = 21;
+  c.heat = 6;
+  assert.equal(Careers.activeHeat(c, day, baseConfig), 3, 'never above what the streak opens');
+  assert.equal(Careers.activeHeat(c, day + 1, baseConfig), 3, 'the Daily of today is still open: the streak lives');
+  assert.equal(Careers.activeHeat(c, day + 2, baseConfig), 0, 'a missed day without a Freeze: the Heat is gone');
+  Careers.advanceStreak(c, day + 2, baseConfig);
+  assert.equal(c.heat, 0, 'a new streak starts without Heat');
+  c.dailyStreak = 7;
+  c.dailyPlayed = day + 2;
+  assert.equal(Careers.activeHeat(c, day + 2, baseConfig), 0, 'and it has to be chosen again');
   assert.ok(Careers.recordHeat(c, 1, baseConfig));
   assert.ok(!Careers.recordHeat(c, 1, baseConfig), 'new only once');
-  assert.equal(Careers.maxHeat(c, baseConfig), 2);
-  c.heat = 2;
-  assert.equal(Careers.activeHeat(c, baseConfig), 2);
-  c.heat = 6;
-  assert.equal(Careers.activeHeat(c, baseConfig), 2, 'never above what is open');
-  c.heatCleared = 99;
-  assert.equal(Careers.maxHeat(c, baseConfig), baseConfig.maxHeat);
+});
+
+test('giving to the Game fund earns titles by the total given', async () => {
+  const { Elite } = await load('/src/core/elite.ts');
+  const c = newCareer();
+  const got = () => Elite.titles(c, baseConfig).filter((t) => ['patron', 'benefactor', 'philanthropist', 'visionary'].includes(t));
+  assert.deepEqual(got(), []);
+  c.fundGiven = 100_000;
+  assert.deepEqual(got(), ['patron']);
+  c.fundGiven = 12_000_000;
+  assert.deepEqual(got(), ['patron', 'benefactor', 'philanthropist']);
+  assert.equal(S.titles.name('patron'), 'Patron');
 });
 
 test('a shift cleared on Heat opens the next one and pays Elite XP; the Daily and a loss do not', () => {
@@ -2149,7 +2170,7 @@ test('a shift cleared on Heat opens the next one and pays Elite XP; the Daily an
   assert.ok(bookShift(save, { ...won, outcome: 'struckOut' }, heated(1)).news.every((n) => !n.startsWith('HEAT')), 'a loss clears nothing');
   assert.equal(save.career.heatCleared, 0);
   const before = save.career.eliteXp;
-  assert.ok(bookShift(save, won, heated(1)).news.includes(S.heat.cleared(1, 2)));
+  assert.ok(bookShift(save, won, heated(1)).news.includes(S.heat.cleared(1)));
   assert.equal(save.career.heatCleared, 1);
   assert.equal(save.career.eliteXp - before, baseConfig.eliteXpCompleted + heatXp(1, baseConfig), 'the shift and the Heat');
   bookShift(save, won, heated(2, { daily: true }));

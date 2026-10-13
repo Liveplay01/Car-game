@@ -4,10 +4,11 @@ import { nameForm, openAccount } from './ranksPanel';
 import { tabsControl } from './tabs';
 import { fadeIn, openSheet, scrollSheetToTop } from './sheets';
 import { baseConfig } from '../core/config';
-import type { Career } from '../core/career';
+import { type Career, Careers } from '../core/career';
 import { Auction, type AuctionEvent, type AuctionRun, type Lot } from '../core/auction';
 import { CONTRACT_GOALS, Contracts, type ContractGoal } from '../core/contracts';
 import { Fund, GIFTS } from '../core/fund';
+import type { TitleId } from '../core/elite';
 import { cosmetic } from '../core/loot';
 import { fetchIdeas, giveToIdea, ideasEnabled, suggestIdea, type Idea, type IdeasView } from '../net/ideas';
 import { describeError, loadAccount, syncScores, type Records } from '../net/leaderboard';
@@ -535,6 +536,11 @@ export function clubPanel(host: ClubHost): ClubPanel {
     ideasBusy = true;
     try {
       ideas = await fetchIdeas();
+      const newest = Math.max(0, ...ideas.ideas.map((i) => i.at));
+      if (newest > career.ideasSeenAt) {
+        career.ideasSeenAt = newest;
+        host.changed();
+      }
     } catch (error) {
       ideasError = describeError(error);
     }
@@ -631,12 +637,13 @@ export function clubPanel(host: ClubHost): ClubPanel {
     try {
       const answer = await giveToIdea(idea.id, amount);
       Fund.gave(career, answer.accepted);
+      const titles = Careers.recordTitles(career);
       ideas = answer;
       gift = 0;
       giftText = '';
       host.changed();
       close();
-      if (!closed) ideaThanks(answer.ideas.find((i) => i.id === idea.id) ?? idea, idea.raised, answer.accepted);
+      if (!closed) ideaThanks(answer.ideas.find((i) => i.id === idea.id) ?? idea, idea.raised, answer.accepted, titles);
     } catch (error) {
       fail(describeError(error));
     }
@@ -645,7 +652,7 @@ export function clubPanel(host: ClubHost): ClubPanel {
   }
 
   /** After a gift: the amount and the bar gliding to where the idea stands now. */
-  function ideaThanks(now: Idea, was: number, accepted: number): void {
+  function ideaThanks(now: Idea, was: number, accepted: number, titles: TitleId[]): void {
     const raised = bar(now.raised / now.goal, was / now.goal);
     const done = h('button', { class: 'btn primary block', type: 'button' }, S.clubPanel.done);
     const body = h(
@@ -655,6 +662,7 @@ export function clubPanel(host: ClubHost): ClubPanel {
       h('p', { class: 'fund-thanks-label' }, S.clubPanel.thanksFor),
       h('div', { class: 'fund-thanks-amount' }, cash(accepted)),
       h('div', { class: 'fund-thanks-project' }, h('div', { class: 'row-title' }, `${now.title}${now.status === 'funded' ? S.clubPanel.fundedBang : ''}`), raised.el, h('div', { class: 'row-sub' }, S.clubPanel.raised(cash(now.raised), cash(now.goal), null))),
+      ...(titles.length > 0 ? [h('p', { class: 'fund-thanks-label' }, S.titles.earned(titles))] : []),
       done,
     );
     withCoins(body);

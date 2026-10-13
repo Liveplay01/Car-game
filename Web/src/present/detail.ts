@@ -360,6 +360,28 @@ export const Details = {
     };
   },
 
+  /** The Daily streak (tap its card under Progress → Today): what it brings, and that Heat lives and dies with it. */
+  streak(career: Career, config: Config, day: number): Detail {
+    const t = S.daily.sheet;
+    const days = Careers.streak(career, day);
+    const open = Careers.maxHeat(career, day, config);
+    return {
+      key: 'streak',
+      art: { k: 'intro', id: 'daily' },
+      eyebrow: { text: S.progress.days(days), color: 'accent' },
+      title: t.title,
+      price: null,
+      steps: null,
+      body: t.body(config.streakBonusDays, config.streakBonusPay, config.heatStreakDays),
+      rows: [
+        { label: t.heatOpen, value: t.heatValue(open, config.maxHeat) },
+        { label: t.nextHeat, value: open >= config.maxHeat ? t.allHeat : S.progress.days(config.heatStreakDays - (days % config.heatStreakDays)) },
+      ],
+      notes: [],
+      actions: [{ label: S.intro.gotIt, action: { k: 'closeDetail' }, prominent: true, enabled: true }],
+    };
+  },
+
   /** The Season Pass: this season's track, its skins, and the button to buy it. */
   pass(career: Career, config: Config, day: number): Detail {
     const season = SeasonPass.season(day);

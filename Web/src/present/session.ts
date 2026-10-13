@@ -20,6 +20,8 @@ import { loadPlayerName } from '../storage/profile';
 import { leaderboardEnabled, syncScores, type Records } from '../net/leaderboard';
 import type { Reward } from '../net/rewards';
 import { cloudChanged, cloudEnabled, cloudLinked } from '../net/cloud';
+import { fetchIdeas, ideasEnabled } from '../net/ideas';
+import { Auction } from '../core/auction';
 import { RenderList, R, Ease, toScreen, rect, type Camera, type Rect } from './render';
 import type { ColorToken } from './theme';
 import { S, Fmt, money as moneyText } from './strings';
@@ -444,6 +446,23 @@ export class GameSession {
     else if (this.save.tutorialDone && endedStreak > 0) this.announce(S.daily.streakEnded(endedStreak));
     this.announceInvite();
     this.announceBuildWithUs();
+    void this.announceNewIdea();
+  }
+
+  /**
+   * A new idea in the Game fund since the player last looked (Leo, 13.10.2026): said once, when the game opens, for players
+   * who have the Club. The first look only remembers what is there. Offline or without the service there is nothing to say.
+   */
+  private async announceNewIdea(): Promise<void> {
+    const career = this.save.career;
+    if (!ideasEnabled || !this.save.tutorialDone || !Auction.isOpen(career)) return;
+    const view = await fetchIdeas().catch(() => null);
+    const fresh = view?.ideas.filter((i) => i.status !== 'built').sort((a, b) => b.at - a.at)[0];
+    if (!fresh || fresh.at <= career.ideasSeenAt) return;
+    const first = career.ideasSeenAt === 0;
+    career.ideasSeenAt = fresh.at;
+    this.persist();
+    if (!first) this.announce(S.clubPanel.newIdea(fresh.title));
   }
 
   private tipTaken = false;
@@ -650,7 +669,7 @@ export class GameSession {
         break;
       case 'cycleHeat':
         this.tick();
-        Careers.cycleHeat(career, this.config);
+        Careers.cycleHeat(career, this.today, this.config);
         this.persist();
         this.refreshWaitingShift();
         break;
@@ -965,7 +984,7 @@ export class GameSession {
         : Careers.shiftConfig(this.save.career, this.save.mode, seasonal, seed, daily ? dailyEvent(this.today) : undefined, daily ? null : undefined, daily ? Careers.dailyMutator(this.save.career, this.today) : null);
     // A living Daily streak, a waiting Tailwind and a chosen Heat pay more on a career shift (Mayhem pays in flames).
     if (this.save.mode === 'mayhem' || this.save.mode === 'chill') return base;
-    const heat = !daily && this.save.mode === 'shift' ? Careers.activeHeat(this.save.career, this.config) : 0;
+    const heat = !daily && this.save.mode === 'shift' ? Careers.activeHeat(this.save.career, this.today, this.config) : 0;
     const cfg = forHeat(base, heat);
     const bonus = (Goals.streakBonus(this.save.career, this.today, this.config) ? this.config.streakBonusPay : 0) + (Goals.tailwindOn(this.save.career, this.save.mode, daily) ? this.config.tailwindPay : 0) + heatPay(heat, this.config);
     return bonus > 0 ? Goals.forPay(cfg, bonus) : cfg;
@@ -1805,8 +1824,11 @@ export class GameSession {
       case 'weekly':
         this.startSpecial({ k: 'trial', trial: weeklyTrial(weekNumber(this.today)) });
         break;
-      case 'heat':
-        this.perform({ k: 'cycleHeat' });
+      case 'streak':
+        if (!p.streak) this.tick();
+        p.streak = true;
+        this.detailOpen = true;
+        this.revealProgress = target;
         break;
       case 'trial':
         // It waits, ready to play, on the Game tab.
@@ -1992,6 +2014,7 @@ export class GameSession {
     this.conditionShown = null;
     this.progressPage.museum.selected = null;
     this.progressPage.feat = null;
+    this.progressPage.streak = false;
     this.upgradePage.selected = null;
     this.shopPage.selectedItem = null;
     this.builderPage.selected = null;
@@ -2036,6 +2059,7 @@ export class GameSession {
         // Records has one sheet: the Elite track, opened from its card.
         if (this.progressPage.section === PROGRESS.records && this.hallOpen) return Details.hall(career, this.config);
         if (this.progressPage.section === PROGRESS.records) return Details.elite(career, this.config, this.sceneTime - this.prestigeArmed <= GameSession.prestigeWindow);
+        if (this.progressPage.section === PROGRESS.today) return this.progressPage.streak ? Details.streak(career, this.config, this.today) : null;
         const feat = this.progressPage.feat;
         if (this.progressPage.section === PROGRESS.goals) return feat ? Details.feat(feat, career, this.config) : Details.pass(career, this.config, this.today);
         const selected = this.progressPage.museum.selected;
@@ -2887,17 +2911,17 @@ export class GameSession {
     return { bottom: this.lastViewport.y - inset - 21 };
   }
 
-  /** The Game tab's Heat pill: its text while a career shift waits and a Heat is open, else null. */
+  /** The Game tab's Heat pill: its text while a career shift waits (behind the result too) and a Heat is open, else null. */
   get heatPill(): string | null {
     const career = this.save.career;
-    if (this.screen.k !== 'ready' || this.special || this.versusSelected || this.playingDaily || this.playingMode !== 'shift' || !(this.tutorial?.isOver ?? true)) return null;
-    const max = Careers.maxHeat(career, this.config);
-    return max > 0 || career.heat > 0 ? S.heat.button(Careers.activeHeat(career, this.config), max) : null;
+    if ((this.screen.k !== 'ready' && this.screen.k !== 'result') || this.special || this.versusSelected || this.playingDaily || this.playingMode !== 'shift' || !(this.tutorial?.isOver ?? true)) return null;
+    const max = Careers.maxHeat(career, this.today, this.config);
+    return max > 0 ? S.heat.button(Careers.activeHeat(career, this.today, this.config), max) : null;
   }
 
   /** A Heat is switched on for the waiting career shift (the pill lights up). */
   get heatOn(): boolean {
-    return Careers.activeHeat(this.save.career, this.config) > 0;
+    return Careers.activeHeat(this.save.career, this.today, this.config) > 0;
   }
 
   /** On the Social tab the notice is the DOM page's pill (`ui/socialPage.ts`): the drawn one would sit under the page. */
@@ -2991,7 +3015,7 @@ export class GameSession {
       playerName: this.versusSelected ? loadPlayerName() : undefined,
       daily,
       tailwind: !this.special && !this.versusSelected && Goals.tailwindOn(career, this.playingMode, this.playingDaily) ? this.config.tailwindPay : null,
-      heat: !this.special && !this.versusSelected && !this.playingDaily && this.playingMode === 'shift' ? Careers.activeHeat(career, this.config) : 0,
+      heat: !this.special && !this.versusSelected && !this.playingDaily && this.playingMode === 'shift' ? Careers.activeHeat(career, this.today, this.config) : 0,
       mode: this.playingMode,
       versus: this.versusSelected,
       prompt: opening ? null : prompt,

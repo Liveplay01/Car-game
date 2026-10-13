@@ -102,7 +102,7 @@ export const Goals = {
   // MARK: Daily streak
 
   /** The streak as it stands today: gone once more days were missed than Streak Freezes cover. */
-  streak: (c: Career, day: number): number => (day - c.dailyPlayed - 1 <= c.streakFreezes ? c.dailyStreak : 0),
+  streak: (c: Career, day: number): number => Careers.streak(c, day),
 
   /** A long enough streak pays more on every shift, as long as it lives. */
   streakBonus: (c: Career, day: number, config: Config = baseConfig): boolean => Goals.streak(c, day) >= Math.max(1, config.streakBonusDays),

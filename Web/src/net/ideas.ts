@@ -18,6 +18,8 @@ export interface Idea {
   mine: number;
   /** The player who suggested it in the Club. */
   by: string | null;
+  /** When it was published (ms). */
+  at: number;
 }
 
 export interface IdeasView {

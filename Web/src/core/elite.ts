@@ -47,6 +47,10 @@ export type TitleId =
   | 'scorcher'
   | 'inferno'
   | 'meltdown'
+  | 'patron'
+  | 'benefactor'
+  | 'philanthropist'
+  | 'visionary'
   | 'sovereign'
   | 'timeless'
   | 'apex'
@@ -96,6 +100,11 @@ export const TITLES: TitleId[] = [
   'scorcher',
   'inferno',
   'meltdown',
+  // Everything given to the Game fund (Leo, 13.10.2026): the more, the higher.
+  'patron',
+  'benefactor',
+  'philanthropist',
+  'visionary',
   // Past Elite 100 (Leo, 10.10.2026): the track goes on to 200, so nobody ends up with nothing to reach.
   'sovereign',
   'timeless',
@@ -115,6 +124,8 @@ export type TitleRule =
   | { k: 'item'; id: string }
   /** A shift cleared at this Heat. */
   | { k: 'heat'; level: number }
+  /** Everything given to the Game fund adds up to this much. */
+  | { k: 'fund'; amount: number }
   /** Every mastery goal at its last tier. */
   | { k: 'masteries' };
 
@@ -155,6 +166,10 @@ export const TITLE_RULES: Record<TitleId, TitleRule> = {
   scorcher: { k: 'heat', level: 3 },
   inferno: { k: 'heat', level: 5 },
   meltdown: { k: 'heat', level: 8 },
+  patron: { k: 'fund', amount: 100_000 },
+  benefactor: { k: 'fund', amount: 1_000_000 },
+  philanthropist: { k: 'fund', amount: 10_000_000 },
+  visionary: { k: 'fund', amount: 50_000_000 },
   sovereign: { k: 'elite', level: 125 },
   timeless: { k: 'elite', level: 150 },
   apex: { k: 'elite', level: 175 },
@@ -306,6 +321,8 @@ export const Elite = {
         return c.prestige >= rule.rank;
       case 'heat':
         return c.heatCleared >= rule.level;
+      case 'fund':
+        return c.fundGiven >= rule.amount;
       case 'item':
         return c.collection.includes(rule.id);
       case 'masteries':

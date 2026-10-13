@@ -40,6 +40,8 @@ export class ProgressState extends Scroller {
   museum = new MuseumState();
   /** The Feat in the detail sheet (Goals). */
   feat: string | null = null;
+  /** The streak's sheet is open (Today). */
+  streak = false;
   /** Records: the long list of every stat, folded away until asked for. */
   statsOpen = false;
 
@@ -66,7 +68,7 @@ export type ProgressTarget =
   | { k: 'elite' }
   | { k: 'stats' }
   | { k: 'weekly' }
-  | { k: 'heat' }
+  | { k: 'streak' }
   | { k: 'pass' }
   | { k: 'trial'; id: TrialId }
   | { k: 'rush' }
@@ -87,7 +89,6 @@ type Block =
   | { k: 'note'; text: string }
   | { k: 'daily' }
   | { k: 'weekly' }
-  | { k: 'heat' }
   | { k: 'pass' }
   | { k: 'quest'; challenge: Challenge }
   | { k: 'trial'; trial: Trial }
@@ -251,7 +252,6 @@ export const ProgressPage = {
       for (const challenge of quests) s.row({ k: 'quest', challenge }, 56);
       s.row({ k: 'note', text: S.progress.questsHint }, 16);
     } else if (section === PROGRESS.trials) {
-      if (Careers.maxHeat(career) > 0 || career.heat > 0) s.row({ k: 'heat' }, 64);
       const trialsDone = TRIALS.filter((x) => career.trialsDone.includes(x.id)).length;
       s.heading(S.progress.trials, `${trialsDone}/${TRIALS.length}`, trialsDone === TRIALS.length);
       for (const trial of TRIALS) s.row({ k: 'trial', trial }, 64);
@@ -358,8 +358,8 @@ export const ProgressPage = {
         return { k: 'stats' };
       case 'weekly':
         return { k: 'weekly' };
-      case 'heat':
-        return { k: 'heat' };
+      case 'streak':
+        return { k: 'streak' };
       case 'pass':
         return { k: 'pass' };
       case 'trial':
@@ -467,8 +467,6 @@ export const ProgressPage = {
         return ProgressPage.addDaily(list, r, career, today, o);
       case 'weekly':
         return ProgressPage.addWeekly(list, r, career, today, o);
-      case 'heat':
-        return ProgressPage.addHeat(list, r, career, o);
       case 'pass':
         return ProgressPage.addPass(list, r, career, today, state.time, reduceMotion, o);
       case 'quest':
@@ -583,6 +581,7 @@ export const ProgressPage = {
     ProgressPage.panel(list, r, o);
     if (tier >= 3) list.s(rect(R.center(r), v(R.width(r), R.height(r)), ShopPage.corner), 'fireDeep', 0.05 * tier * o);
     StreakFlame.add(list, r, days, clock, reduceMotion, o);
+    drawText(list, '›', v(r.maxX - 14, r.minY + 14), 18, 'muted', { opacity: o, align: 'center' });
     const x = r.minX + R.width(r) * 0.8;
     const hot: ColorToken = tier >= 4 ? 'fireCore' : tier >= 1 ? 'fireOuter' : 'muted';
     drawText(list, P.flameTier(tier), v(x, r.minY + 24), 11, hot, { opacity: o, weight: 'bold', align: 'center' });
@@ -595,7 +594,8 @@ export const ProgressPage = {
     drawText(list, status, v(r.minX + 16, r.maxY - 42), ShopPage.fitted(status, 12, wide), open || days === 0 ? 'accent' : 'muted', { opacity: o, weight: 'bold' });
     const every = baseConfig.scratchStreakEvery;
     const toCard = every - (days % every);
-    const extra = [P.streakCard(toCard), career.streakFreezes > 0 ? S.daily.freezes(career.streakFreezes) : null].filter((x): x is string => x !== null).join(' · ');
+    const maxHeat = Careers.maxHeat(career, today);
+    const extra = [P.streakCard(toCard), career.streakFreezes > 0 ? S.daily.freezes(career.streakFreezes) : null, maxHeat > 0 ? S.heat.button(Careers.activeHeat(career, today), maxHeat) : null].filter((x): x is string => x !== null).join(' · ');
     drawText(list, extra, v(r.minX + 16, r.maxY - 22), ShopPage.fitted(extra, 11, wide), 'muted', { opacity: o });
   },
 
@@ -618,14 +618,6 @@ export const ProgressPage = {
       ...(passed ? { status: `${S.daily.done} ✓` } : { reward: shift.reward }),
       link: `${S.weekly.daysLeft(weekDaysLeft(today))} · ${S.trials.play} ›`,
     });
-  },
-
-  /** Heat: tap to step up through the open levels, and back to off. */
-  addHeat(list: RenderList, r: Rect, career: Career, o: number): void {
-    ProgressPage.panel(list, r, o);
-    const heat = Careers.activeHeat(career);
-    const max = Careers.maxHeat(career);
-    ProgressPage.addCardRow(list, r, r.minX + 16, o, { title: S.heat.row(heat), line: S.heat.line(heat, max), link: S.heat.link(heat, max) });
   },
 
   /**

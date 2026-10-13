@@ -236,6 +236,18 @@ export default (S: Strings): Words<Strings> => ({
     },
     freezeLine: (days) => `Mancano ${days} ${days === 1 ? 'giorno' : 'giorni'} alla protezione serie`,
     freezes: (n) => `${n}× protezione serie`,
+    sheet: {
+      title: 'Serie giornaliera',
+      body: (bonusDays, bonusPay, heatDays) => [
+        'Gioca il turno giornaliero ogni giorno per mantenere la serie. Un giorno saltato la interrompe, a meno che una protezione serie lo copra.',
+        `Da ${bonusDays} giorni, ogni turno di carriera paga +${Math.round(bonusPay * 100)} % finché la serie è viva.`,
+        `Intensità: ogni ${heatDays} giorni di serie apre un livello di intensità, traffico più tosto per più compenso e XP Élite. Se perdi la serie, l’intensità sparisce con lei. I titoli di intensità guadagnati restano.`,
+      ],
+      heatOpen: 'Intensità aperta',
+      heatValue: (open, max) => `${open} su ${max}`,
+      nextHeat: 'Prossima intensità tra',
+      allHeat: 'Tutto aperto',
+    },
     freezeUsed: (n) => `SERIE PROTETTA · ${n === 1 ? 'un giorno mancato è stato' : `${n} giorni mancati sono stati`} coperti`,
     streakReward: (days, got) => `${days} GIORNI CONSECUTIVI · ${got.join(' · ')}`,
     gotItem: (item) => `${S.shop.item(item)} sbloccato`,
@@ -487,9 +499,9 @@ export default (S: Strings): Words<Strings> => ({
         ? `Traffico più tosto · +${Math.round(heat * baseConfig.heatPay * 100)} % compenso · +${heat * baseConfig.eliteXpHeat} XP Élite per turno`
         : max > 0
           ? 'Disattivo · traffico intensificato per maggiori ricompense ed XP Élite'
-          : 'Supera un turno per aprire il livello di intensità successivo',
+          : `Mantieni una serie giornaliera di ${baseConfig.heatStreakDays} giorni per aprire l’intensità`,
     link: (heat, max) => `${max > 1 ? `${heat}/${max}` : heat > 0 ? 'Attivo' : 'Disattivo'} · modifica ›`,
-    cleared: (heat, max) => (heat < max ? `INTENSITÀ ${heat} COMPLETATA · Intensità ${heat + 1} aperta` : `INTENSITÀ ${heat} COMPLETATA`),
+    cleared: (heat) => `INTENSITÀ ${heat} COMPLETATA`,
     pill: (heat, tailwind) =>
       [tailwind ? `VENTO A FAVORE +${Math.round(tailwind * 100)} %` : null, heat > 0 ? `INTENSITÀ ${heat} · +${Math.round(heat * baseConfig.heatPay * 100)} % compenso` : null].filter(Boolean).join(' · ') || null,
     rule: (level) => `Supera un turno a Intensità ${level}`,

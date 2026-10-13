@@ -236,6 +236,18 @@ export default (S: Strings): Words<Strings> => ({
     },
     freezeLine: (days) => `Quedan ${days} ${days === 1 ? 'día' : 'días'} para la protección de racha`,
     freezes: (n) => `${n}× protección de racha`,
+    sheet: {
+      title: 'Racha diaria',
+      body: (bonusDays, bonusPay, heatDays) => [
+        'Juega el turno diario cada día para mantener la racha. Un día perdido la rompe, salvo que una protección de racha lo cubra.',
+        `Desde ${bonusDays} días, cada turno de carrera paga +${Math.round(bonusPay * 100)} % mientras la racha siga viva.`,
+        `Calor: cada ${heatDays} días de racha abren un nivel de calor, tráfico más duro con más pago y XP Élite. Si pierdes la racha, el calor desaparece con ella. Los títulos de calor ganados se quedan.`,
+      ],
+      heatOpen: 'Calor abierto',
+      heatValue: (open, max) => `${open} de ${max}`,
+      nextHeat: 'Próximo calor en',
+      allHeat: 'Todo abierto',
+    },
     freezeUsed: (n) => `RACHA PROTEGIDA · se ${n === 1 ? 'ha cubierto un día perdido' : `han cubierto ${n} días perdidos`}`,
     streakReward: (days, got) => `${days} DÍAS SEGUIDOS · ${got.join(' · ')}`,
     gotItem: (item) => `${S.shop.item(item)} desbloqueado`,
@@ -487,9 +499,9 @@ export default (S: Strings): Words<Strings> => ({
         ? `Tráfico más duro · +${Math.round(heat * baseConfig.heatPay * 100)} % pago · +${heat * baseConfig.eliteXpHeat} XP Élite por turno`
         : max > 0
           ? 'Desactivado · tráfico más duro para mayor pago y XP Élite'
-          : 'Supera un turno para desbloquear el siguiente nivel de calor',
+          : `Mantén una racha diaria de ${baseConfig.heatStreakDays} días para abrir el calor`,
     link: (heat, max) => `${max > 1 ? `${heat}/${max}` : heat > 0 ? 'Activo' : 'Inactivo'} · cambiar ›`,
-    cleared: (heat, max) => (heat < max ? `¡CALOR ${heat} SUPERADO! · Calor ${heat + 1} desbloqueado` : `¡CALOR ${heat} SUPERADO!`),
+    cleared: (heat) => `¡CALOR ${heat} SUPERADO!`,
     pill: (heat, tailwind) =>
       [tailwind ? `VIENTO A FAVOR +${Math.round(tailwind * 100)} %` : null, heat > 0 ? `CALOR ${heat} · +${Math.round(heat * baseConfig.heatPay * 100)} % pago` : null].filter(Boolean).join(' · ') || null,
     rule: (level) => `Supera un turno con Calor ${level}`,

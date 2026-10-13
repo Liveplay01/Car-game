@@ -310,6 +310,7 @@ export default (S: Strings): Words<Strings> => ({
     groupFunded: 'Financé · en création',
     groupBuilt: 'Réalisé',
     noIdeas: 'Aucune idée ouverte pour l’instant. Soyez le premier à proposer.',
+    newIdea: (title) => `NOUVELLE IDÉE DANS LE FONDS DU JEU · ${title}`,
     status: 'Statut',
     raisedLabel: 'Collecté',
     goalLabel: 'Objectif',

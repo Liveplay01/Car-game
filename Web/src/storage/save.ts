@@ -187,6 +187,7 @@ function readCareer(raw: unknown): Career {
     auctionWins: int(raw.auctionWins, 0, 0),
     auctionSpent: int(raw.auctionSpent, 0, 0),
     fundGiven: int(raw.fundGiven, 0, 0),
+    ideasSeenAt: int(raw.ideasSeenAt, 0, 0),
     contract: readContract(raw.contract),
     loan: readLoan(raw.loan),
     cleanLoans: int(raw.cleanLoans, 0, 0),

@@ -27,6 +27,10 @@ export default (S: Strings): Words<Strings> => ({
         scorcher: 'Fogoso',
         inferno: 'Infierno',
         meltdown: 'Fusión',
+        patron: 'Mecenas',
+        benefactor: 'Benefactor',
+        philanthropist: 'Filántropo',
+        visionary: 'Visionario',
         sovereign: 'Soberano',
         timeless: 'Eterno',
         apex: 'Ápex',
@@ -64,6 +68,8 @@ export default (S: Strings): Words<Strings> => ({
           return `Alcanza Prestigio ★${r.rank}`;
         case 'heat':
           return S.heat.rule(r.level);
+        case 'fund':
+          return `Dona ${money(Fmt.number(r.amount))} al Fondo del juego`;
         case 'item':
           return `Desbloquea ${S.shop.item(r.id)} en Sin límites`;
         case 'masteries':

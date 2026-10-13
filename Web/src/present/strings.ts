@@ -641,6 +641,10 @@ export const S = {
         scorcher: 'Scorcher',
         inferno: 'Inferno',
         meltdown: 'Meltdown',
+        patron: 'Patron',
+        benefactor: 'Benefactor',
+        philanthropist: 'Philanthropist',
+        visionary: 'Visionary',
         sovereign: 'Sovereign',
         timeless: 'Timeless',
         apex: 'Apex',
@@ -678,6 +682,8 @@ export const S = {
           return `Reach Prestige ★${r.rank}`;
         case 'heat':
           return S.heat.rule(r.level);
+        case 'fund':
+          return `Give ${money(Fmt.number(r.amount))} to the Game fund`;
         case 'item':
           return `Unlock ${S.shop.item(r.id)} in Unlimited`;
         case 'masteries':
@@ -1484,6 +1490,8 @@ export const S = {
     groupFunded: 'Funded · being made',
     groupBuilt: 'Built',
     noIdeas: 'No idea is open yet. Be the first to suggest one.',
+    /** The notice when a new idea was published since the player last looked. */
+    newIdea: (title: string): string => `NEW IDEA IN THE GAME FUND · ${title}`,
     status: 'Status',
     raisedLabel: 'Raised',
     goalLabel: 'Goal',
@@ -2138,6 +2146,19 @@ export const S = {
     },
     freezeLine: (days: number): string => `${days} more ${days === 1 ? 'day' : 'days'} for a Streak Freeze`,
     freezes: (n: number): string => `${n} Streak ${n === 1 ? 'Freeze' : 'Freezes'}`,
+    /** The streak's sheet (tap its card under Progress → Today): what the streak brings, and that Heat lives and dies with it. */
+    sheet: {
+      title: 'Daily streak',
+      body: (bonusDays: number, bonusPay: number, heatDays: number): string[] => [
+        'Play the Daily Shift every day to keep the streak going. A missed day breaks it, unless a Streak Freeze covers it.',
+        `From ${bonusDays} days on, every career shift pays +${Math.round(bonusPay * 100)} % while the streak lives.`,
+        `Heat: every ${heatDays} days of streak open one Heat step, harder traffic for more pay and Elite XP. Lose the streak and the Heat is gone with it. Heat titles you earned stay.`,
+      ],
+      heatOpen: 'Heat open',
+      heatValue: (open: number, max: number): string => `${open} of ${max}`,
+      nextHeat: 'Next Heat in',
+      allHeat: 'All open',
+    },
     freezeUsed: (n: number): string => `STREAK FROZEN · ${n === 1 ? 'a missed day was' : `${n} missed days were`} covered`,
     /** What a day of the streak brought, in one line: a skin, a Streak Freeze, a Scratch Card. */
     streakReward: (days: number, got: string[]): string => `${days} DAYS IN A ROW · ${got.join(' · ')}`,
@@ -2399,9 +2420,9 @@ export const S = {
     row: (heat: number): string => (heat > 0 ? `Heat ${heat}` : 'Heat'),
     /** The Game tab's pill: tap for the next step. */
     button: (heat: number, max: number): string => (heat === 0 ? 'Heat off' : max > 1 ? `Heat ${heat}` : 'Heat on'),
-    line: (heat: number, max: number): string => (heat > 0 ? `Harder traffic · +${Math.round(heat * baseConfig.heatPay * 100)} % pay · +${heat * baseConfig.eliteXpHeat} Elite XP a shift` : max > 0 ? 'Off · harder traffic for more pay and Elite XP' : 'Clear a shift to open the next Heat'),
+    line: (heat: number, max: number): string => (heat > 0 ? `Harder traffic · +${Math.round(heat * baseConfig.heatPay * 100)} % pay · +${heat * baseConfig.eliteXpHeat} Elite XP a shift` : max > 0 ? 'Off · harder traffic for more pay and Elite XP' : `Keep a ${baseConfig.heatStreakDays}-day Daily streak to open Heat`),
     link: (heat: number, max: number): string => `${max > 1 ? `${heat}/${max}` : heat > 0 ? 'On' : 'Off'} · change ›`,
-    cleared: (heat: number, max: number): string => (heat < max ? `HEAT ${heat} CLEARED · Heat ${heat + 1} is open` : `HEAT ${heat} CLEARED`),
+    cleared: (heat: number): string => `HEAT ${heat} CLEARED`,
     /** The waiting screen's pill: Heat and Tailwind together; null when neither is on. */
     pill: (heat: number, tailwind: number | null): string | null =>
       [tailwind ? `TAILWIND +${Math.round(tailwind * 100)} %` : null, heat > 0 ? `HEAT ${heat} · +${Math.round(heat * baseConfig.heatPay * 100)} % pay` : null].filter(Boolean).join(' · ') || null,

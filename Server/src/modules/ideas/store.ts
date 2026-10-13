@@ -46,6 +46,8 @@ export interface IdeaView {
   mine: number;
   /** Who suggested it in the Club, if they have a name. */
   by: string | null;
+  /** When a moderator published it. */
+  at: number;
 }
 
 export interface IdeaRow {
@@ -85,12 +87,12 @@ export class IdeaStore {
   published(playerId: string | null): IdeaView[] {
     const rows = this.db
       .prepare(
-        `SELECT i.id, i.title, i.text, i.status, p.name AS by, ${RAISED} AS raised,
+        `SELECT i.id, i.title, i.text, i.status, i.published_at AS at, p.name AS by, ${RAISED} AS raised,
            COALESCE((SELECT SUM(amount) FROM fund_gifts WHERE project = 'idea:' || i.id AND player_id = ?), 0) AS mine
          FROM ideas i LEFT JOIN players p ON p.id = i.player_id AND p.banned = 0 AND i.source = 'club'
          WHERE i.status IN ('open', 'built') ORDER BY i.published_at DESC`,
       )
-      .all(playerId ?? '') as unknown as { id: string; title: string; text: string; status: 'open' | 'built'; by: string | null; raised: number; mine: number }[];
+      .all(playerId ?? '') as unknown as { id: string; title: string; text: string; status: 'open' | 'built'; at: number; by: string | null; raised: number; mine: number }[];
     return rows.map((r) => ({
       id: r.id,
       title: r.title,
@@ -100,6 +102,7 @@ export class IdeaStore {
       raised: Math.min(r.raised, IDEA_GOAL),
       mine: r.mine,
       by: r.by,
+      at: r.at,
     }));
   }
 

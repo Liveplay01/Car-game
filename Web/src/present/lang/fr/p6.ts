@@ -236,6 +236,18 @@ export default (S: Strings): Words<Strings> => ({
     },
     freezeLine: (days) => `Plus que ${days} ${days === 1 ? 'jour' : 'jours'} avant la protection de série`,
     freezes: (n) => `${n}× gel de série`,
+    sheet: {
+      title: 'Série quotidienne',
+      body: (bonusDays, bonusPay, heatDays) => [
+        'Jouez le service du jour chaque jour pour garder la série. Un jour manqué la brise, sauf si un gel de série le couvre.',
+        `Dès ${bonusDays} jours, chaque service de carrière paie +${Math.round(bonusPay * 100)} % tant que la série vit.`,
+        `Intensité : tous les ${heatDays} jours de série ouvrent un niveau d’intensité, un trafic plus rude pour plus de paie et d’XP Élite. Perdez la série et l’intensité disparaît avec elle. Les titres d’intensité gagnés restent.`,
+      ],
+      heatOpen: 'Intensité ouverte',
+      heatValue: (open, max) => `${open} sur ${max}`,
+      nextHeat: 'Prochaine intensité dans',
+      allHeat: 'Tout est ouvert',
+    },
     freezeUsed: (n) => `SÉRIE SAUVEGARDÉE · ${n === 1 ? 'un jour manqué a été' : `${n} jours manqués ont été`} préservés`,
     streakReward: (days, got) => `${days} JOURS CONSÉCUTIFS · ${got.join(' · ')}`,
     gotItem: (item) => `${S.shop.item(item)} débloqué`,
@@ -487,9 +499,9 @@ export default (S: Strings): Words<Strings> => ({
         ? `Trafic plus rude · +${Math.round(heat * baseConfig.heatPay * 100)} % de paie · +${heat * baseConfig.eliteXpHeat} XP Élite par service`
         : max > 0
           ? 'Désactivé · trafic renforcé pour plus de gains et d’XP Élite'
-          : 'Terminez un service pour débloquer l’intensité suivante',
+          : `Gardez une série de ${baseConfig.heatStreakDays} jours pour ouvrir l’intensité`,
     link: (heat, max) => `${max > 1 ? `${heat}/${max}` : heat > 0 ? 'Actif' : 'Inactif'} · modifier ›`,
-    cleared: (heat, max) => (heat < max ? `INTENSITÉ ${heat} RÉUSSIE · Intensité ${heat + 1} ouverte` : `INTENSITÉ ${heat} RÉUSSIE`),
+    cleared: (heat) => `INTENSITÉ ${heat} RÉUSSIE`,
     pill: (heat, tailwind) =>
       [tailwind ? `VENT PORTANT +${Math.round(tailwind * 100)} %` : null, heat > 0 ? `INTENSITÉ ${heat} · +${Math.round(heat * baseConfig.heatPay * 100)} % de paie` : null].filter(Boolean).join(' · ') || null,
     rule: (level) => `Réussissez un service à l’Intensité ${level}`,
