@@ -462,6 +462,10 @@ const WEBSITE_PAGE = 'https://timing.love/';
 /** The community wiki on Fandom (Leo, 01.10.2026). */
 const WIKI_PAGE = 'https://roundabout.fandom.com/';
 
+const TIKTOK_URL = 'https://www.tiktok.com/@timing.love';
+const YOUTUBE_URL = 'https://www.youtube.com/channel/UCDrH7V5QDLR0tooaC-GzGxQ';
+const INSTAGRAM_URL = 'https://instagram.com/roundabouttiming';
+
 /** A row that opens a page elsewhere, with the brand's mark in front. */
 function externalRow(href: string, logo: string, title: string, sub: string): HTMLElement {
   return h(
@@ -480,6 +484,25 @@ const websiteRow = (): HTMLElement =>
   externalRow(WEBSITE_PAGE, '<img src="/icons/icon-192.png" alt="" width="30" height="30" decoding="async" />', S.settings.website.title, S.settings.website.sub);
 
 const wikiRow = (): HTMLElement => externalRow(WIKI_PAGE, FANDOM_LOGO, S.settings.wiki.title, S.settings.wiki.sub);
+
+function socialRow(iconPath: string, tone: string, title: string, sub: string, href: string): HTMLAnchorElement {
+  return h(
+    'a',
+    { class: 'row row-link', href, target: '_blank', rel: 'noopener' },
+    tile(iconPath, tone),
+    h('div', { class: 'row-main' }, h('div', { class: 'row-title' }, title), h('div', { class: 'row-sub' }, sub)),
+    icon(ICONS.external),
+  ) as HTMLAnchorElement;
+}
+
+const tiktokRow = (): HTMLElement =>
+  socialRow(ICONS.tiktok, 'pink', S.settings.social.tiktok.title, S.settings.social.tiktok.sub, TIKTOK_URL);
+
+const youtubeRow = (): HTMLElement =>
+  socialRow(ICONS.youtube, 'red', S.settings.social.youtube.title, S.settings.social.youtube.sub, YOUTUBE_URL);
+
+const instagramRow = (): HTMLElement =>
+  socialRow(ICONS.instagram, 'amber', S.settings.social.instagram.title, S.settings.social.instagram.sub, INSTAGRAM_URL);
 
 export interface SettingsActions {
   changed(settings: Settings): void;
@@ -846,6 +869,12 @@ export function settingsSheet(layer: HTMLElement, s: Settings, actions: Settings
         inPortal ? null : websiteRow(),
         wikiRow(),
         inPortal || inItch || inPlayStore ? null : crazyGamesRow(),
+      ),
+      group(
+        S.settings.followUs,
+        tiktokRow(),
+        youtubeRow(),
+        instagramRow(),
       ),
       buildGroup,
       group(

@@ -128,6 +128,7 @@ export default (_s: Strings): Words<Strings> => ({
     noteLocal: 'I tuoi progressi sono salvati su questo dispositivo.',
     deleteAccount: 'Elimina account',
     theGame: 'Il gioco',
+    followUs: 'Seguici',
     whatsNew: 'Novità',
     whatsNewSub: 'Note di rilascio e aggiornamenti.',
     newBadge: 'Nuovo',
