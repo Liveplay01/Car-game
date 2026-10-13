@@ -66,8 +66,6 @@ export interface CloudView {
 export interface CloudDeps {
   /** The save as the game has it right now. */
   save(): SaveGame;
-  /** Cloud sync needs the player (two devices moved on): the Settings pill asks. */
-  ask(): void;
   /** Whether newer cloud progress may replace the save now (not in the middle of a shift). */
   canTake(): boolean;
   /** Puts newer cloud progress on this device. */
@@ -86,8 +84,6 @@ let savedAt: number | null = null;
 let timer = 0;
 let busy = false;
 let checking = false;
-/** The cloud version the player put off deciding about: it is not announced again. */
-let declined: number | null = null;
 const listeners = new Set<() => void>();
 
 const INTRO_KEY = 'carGame.cloudIntro.v1';
@@ -239,13 +235,49 @@ function adopt(found: Incoming): SaveGame {
   return save;
 }
 
-/** Both devices moved on: the player picks (Settings → Cloud sync). */
-function conflict(found: Incoming): void {
-  const first = incoming === null;
-  incoming = found;
-  waiting = null;
-  set('choose');
-  if (first && found.updatedAt !== declined) deps?.ask();
+/** A stable ordering of durable game progress, from the largest milestones down. */
+function progressRank(save: SaveGame): number[] {
+  const c = save.career;
+  const mastery = Object.values(c.mastery).reduce((sum, value) => sum + (Number.isFinite(value) ? value : 0), 0);
+  return [c.prestige, c.eliteClaimed, c.eliteXp, c.level, c.mastery.shiftsCompleted,
+    save.shiftsPlayed, mastery, c.trialsDone.length, c.achievements.length,
+    c.collection.length, c.bossTrophies, save.highscore];
+}
+
+function localIsFurther(local: SaveGame, remote: SaveGame): boolean {
+  const a = progressRank(local);
+  const b = progressRank(remote);
+  for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) return a[i] > b[i];
+  return false;
+}
+
+/** When both copies advanced, retain the one with more durable career progress automatically. */
+async function keepFurther(found: Incoming): Promise<void> {
+  if (!deps || !localIsFurther(deps.save(), found.save)) {
+    if (deps) deps.take(adopt(found));
+    return;
+  }
+  const save = deps.save();
+  try {
+    const done = await apiRequest<{ updatedAt: number }>('PUT', '/v1/sync', {
+      token: found.code,
+      body: { save: payload(save), baseUpdatedAt: found.updatedAt },
+    });
+    writeLink({ code: found.code, version: done.updatedAt, hash: stamp(save) });
+    incoming = null;
+    waiting = null;
+    savedAt = Date.now();
+    set('synced');
+  } catch (error) {
+    // If the remote copy moved again while choosing, fetch and compare that newest version.
+    if (error instanceof LeaderboardError && error.status === 409) {
+      writeLink({ code: found.code, version: found.updatedAt, hash: stamp(save) });
+      await check();
+      return;
+    }
+    if (error instanceof LeaderboardError && error.status === 404) forgetIfGone(error);
+    else set('offline');
+  }
 }
 
 /**
@@ -254,7 +286,10 @@ function conflict(found: Incoming): void {
  */
 function arrive(found: Incoming): void {
   if (!deps) return;
-  if (unsent()) return conflict(found);
+  if (unsent()) {
+    void keepFurther(found);
+    return;
+  }
   if (!deps.canTake()) {
     waiting = found;
     return;
@@ -394,8 +429,7 @@ export async function createCloud(): Promise<string> {
 }
 
 /**
- * Looks up a typed code. The cloud copy is shown next to this device and the player picks
- * (`useCloudSave` or `keepThisDevice`); nothing changes before that. Throws with a sentence to show.
+ * Looks up a typed code and keeps whichever copy has further durable game progress.
  */
 export async function connectCloud(typed: string): Promise<void> {
   const code = typed.trim().toUpperCase();
@@ -410,7 +444,12 @@ export async function connectCloud(typed: string): Promise<void> {
     cloudChanged();
     return;
   }
-  incoming = { code, save, updatedAt: got.updatedAt, account: accountOf(got.save) };
+  const found = { code, save, updatedAt: got.updatedAt, account: accountOf(got.save) };
+  if (deps) {
+    await keepFurther(found);
+    return;
+  }
+  incoming = found;
   set('choose');
 }
 
@@ -442,7 +481,6 @@ export async function syncNow(): Promise<void> {
 
 /** The player looked at both sides and chose neither (for now). */
 export function dismissIncoming(): void {
-  declined = incoming?.updatedAt ?? null;
   incoming = null;
   set(link ? 'synced' : 'off');
 }

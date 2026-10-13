@@ -110,7 +110,6 @@ startAnalytics();
 // Cloud sync, when the player turned it on: newer progress from another device comes over by itself.
 startCloud({
   save: () => shell.game.save,
-  ask: () => shell.flashSettings(S.settings.syncAsk, true),
   canTake: () => shell.canTakeCloud,
   take: (save) => shell.game.takeCloudSave(save),
   ready: () => shell.game.collectLoginIncome(),
