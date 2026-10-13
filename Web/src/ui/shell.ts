@@ -16,7 +16,7 @@ import { collectRewards } from '../net/rewards';
 import { legalDoc } from '../present/legal';
 import { PATCH_NOTES } from '../present/patchNotes';
 import { PhotoView } from './photo';
-import { celebrate, invitedRoom, offerLogin, onAdAudio, reportGameplay, reportProgress, rewardedAd } from './crazygames';
+import { celebrate, invitedRoom, offerLogin, onAdAudio, reportGameplay, reportProgress, rewardedAd, rewardedAdsReady } from './crazygames';
 import { adReady, onRewardedAudio, rewardedAdsense } from './ads';
 import { track } from './analytics';
 import { inItch, inPlayStore, inPortal, isInstalled, isIos, isIpad, keepStorage, renewStorage } from '../storage/device';
@@ -169,9 +169,9 @@ export class Shell {
       sound: (id, pitch, pan) => this.audio.play(id, pitch, pan),
       haptic: (id, softness) => this.haptics.play(id, softness),
       celebrate: () => celebrate(),
-      // On CrazyGames their ad; on the normal site and in the Play app Google's; otherwise the game's own placeholder.
+      // On CrazyGames their ad; on the normal site and in the Play app Google's; otherwise none, and no reward.
       rewardedAd: (done) => rewardedAd(done) || rewardedAdsense(done),
-      adReady: () => adReady(),
+      adReady: () => rewardedAdsReady() || adReady(),
       // A free upgrade step and the Skin Upgrade's boost are for the normal site and the Play app, not CrazyGames or itch.io.
       adOffers: !inPortal && !inItch,
       feelsHaptics: this.haptics.supported,

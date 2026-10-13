@@ -11,8 +11,8 @@
  * for a video; the reward comes only with `adViewed`, never from a dismissed ad or from no ad. The
  * game asks for an ad ahead of time, so the offers show only once one is ready (`beforeReward`).
  * The game's sound is off while the video plays. Switched on by `VITE_REWARDED_ADS=1` in the build
- * (Dockerfile): the account has to be approved for H5 Games Ads first. Without it the game's own
- * placeholder plays, as before. `?adtest` loads Google's test ads (`data-adbreak-test`).
+ * (Dockerfile): the account has to be approved for H5 Games Ads first. Without it there is no ad
+ * and no reward (the offers stay off). `?adtest` loads Google's test ads (`data-adbreak-test`).
  */
 import { inItch, inPortal } from '../storage/device';
 import type { RewardedOutcome } from '../present/session';
@@ -20,7 +20,7 @@ import type { RewardedOutcome } from '../present/session';
 const CLIENT = 'ca-pub-8814590710596560';
 const SCRIPT_URL = `https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${CLIENT}`;
 
-/** Rewarded ads are Google's (not the portal's, not the placeholder): the normal site and the Play app, built with the switch on. */
+/** Rewarded ads are Google's (not the portal's):the normal site and the Play app, built with the switch on. */
 export const rewardedAdsLive = !inPortal && !inItch && import.meta.env.PROD && import.meta.env.VITE_REWARDED_ADS === '1';
 
 interface AdPlacementInfo {
@@ -122,7 +122,7 @@ function prepare(): void {
  * Cheap enough to ask every frame; it also nudges the next ask along.
  */
 export function adReady(): boolean {
-  if (!rewardedAdsLive) return true;
+  if (!rewardedAdsLive) return false;
   if (showAd === null) prepare();
   return showAd !== null;
 }

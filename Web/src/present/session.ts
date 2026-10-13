@@ -99,10 +99,9 @@ export type InputAction =
 
 /** Where sound and haptics go; the session decides what and when. */
 /**
- * How a rewarded ad went: only `watched` pays (`dismissed`: closed before the end). `disabled`: the
- * portal shows no ads yet, so the game's own placeholder plays instead.
+ * How a rewarded ad went: only `watched` pays (`dismissed`: closed before the end).
  */
-export type RewardedOutcome = 'watched' | 'dismissed' | 'cooldown' | 'blocked' | 'unavailable' | 'disabled';
+export type RewardedOutcome = 'watched' | 'dismissed' | 'cooldown' | 'blocked' | 'unavailable';
 
 export interface SessionOutput {
   /** `pan`: -1 (left) … 1 (right), where on screen the sound happens. */
@@ -110,9 +109,9 @@ export interface SessionOutput {
   haptic(id: HapticID, softness: number): void;
   /** A big moment (a boss busted, a Legendary Shift, a new Unlimited or Mayhem record, a Prestige). */
   celebrate?(): void;
-  /** Plays a rewarded ad (the portal's, or Google's); false where there is none (the game's own placeholder plays). */
+  /** Plays a rewarded ad (the portal's, or Google's); false where there is none (no reward). */
   rewardedAd?(done: (outcome: RewardedOutcome) => void): boolean;
-  /** An ad is ready to play, so its offers may show. Without it (the placeholder) they always do. */
+  /** An ad is ready to play, so its offers may show. Without it they never do. */
   adReady?(): boolean;
   /** The ad offers beyond the free chest (a free upgrade step, the Skin Upgrade's boost): not on a portal. Default: on. */
   adOffers?: boolean;
@@ -901,7 +900,7 @@ export class GameSession {
   /** Chests waiting, for the Game tab's pill to the Chests page; 0 where it does not show (a shift, a challenge, a match, a page). */
   get chestOffer(): number {
     const k = this.screen.k;
-    if (!this.showsChrome || (k !== 'ready' && k !== 'result') || this.special || this.versusSelected || this.adFlow.placeholder) return 0;
+    if (!this.showsChrome || (k !== 'ready' && k !== 'result') || this.special || this.versusSelected) return 0;
     if (k === 'result' && this.resultAge < this.resultLock) return 0;
     return this.save.career.chests.length;
   }
@@ -1430,7 +1429,6 @@ export class GameSession {
     this.tutorial?.advance(realDelta);
     if (this.tutorial?.isDone) this.tutorial = null;
     this.transitions.advance(realDelta);
-    this.adFlow.advance(realDelta);
 
     if (this.isPage('upgrades')) {
       this.upgradePage.advance(realDelta);
@@ -1753,8 +1751,6 @@ export class GameSession {
 
   /** A press anywhere on the canvas: chrome first, then the page under it, else the game. */
   private pointerDown(point: Vec2, ago: number | undefined, simDelta: number): void {
-    // The stand-in ad covers the page: it waits.
-    if (this.adFlow.placeholder) return;
     const page = this.pageAction(point);
     if (page === true) return;
     if (page) {
@@ -1952,7 +1948,7 @@ export class GameSession {
       watch.age = 0;
     }
     watch.age += dt;
-    if (!here || watch.age < GameSession.introDelay || this.detailOpen || this.shopPage.busy || this.adFlow.placeholder) return;
+    if (!here || watch.age < GameSession.introDelay || this.detailOpen || this.shopPage.busy) return;
     if (!Intros.isPending(this.save, here, this.config)) return;
     Intros.mark(this.save, here);
     this.persist();
@@ -2028,14 +2024,14 @@ export class GameSession {
 
   /** What the ads on offer look like right now: the extra ones are on, and an ad is ready to play. */
   get adOffer(): AdOffer {
-    return { offers: this.output?.adOffers ?? true, ready: this.output?.adReady?.() ?? true };
+    return { offers: this.output?.adOffers ?? true, ready: this.output?.adReady?.() ?? false };
   }
 
   /** What the detail sheet shows right now; null while it is closed or something covers the page. */
   get detail(): Detail | null {
     if (this.introShown && this.detailOpen && this.screen.k === 'page') return Details.intro(this.introShown);
     if (this.conditionShown && this.detailOpen && (this.screen.k === 'ready' || this.screen.k === 'result')) return Details.museum(this.conditionShown, this.save.career, this.config, true);
-    if (!this.detailOpen || this.screen.k !== 'page' || this.adFlow.placeholder) return null;
+    if (!this.detailOpen || this.screen.k !== 'page') return null;
     const career = this.save.career;
     const ads = this.adOffer;
     switch (this.screen.tab) {
@@ -2894,8 +2890,6 @@ export class GameSession {
     else if (this.isPage('social')) SocialPage.add(list, career, this.socialPage, rm);
     else if (s.k === 'settings') list.s(rect({ x: viewport.x / 2, y: viewport.y / 2 }, viewport), 'background', 0.55);
     this.addIntroDots(list, viewport, inset);
-    const standIn = this.adFlow.placeholder;
-    if (standIn) ShopPage.addAd(list, standIn.reward, standIn.age, AdFlow.placeholderSeconds);
     this.transitions.apply(list, s, overlayStart, rm);
     const notice = this.notices.shown;
     if (notice && !this.isPage('social')) addNotice(list, notice, { at: this.noticePlace(s, underCard, inset), textScale: this.textScale, reduceMotion: rm });

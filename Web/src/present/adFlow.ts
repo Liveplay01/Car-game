@@ -2,6 +2,7 @@ import { Careers } from '../core/career';
 import { upgradeMaxSteps } from '../core/levels';
 import { S, percent } from './strings';
 import type { PageHost } from './pageHost';
+import type { RewardedOutcome } from './session';
 
 /** What a watched ad pays: the free Standard chest, a free step of today's upgrade, the Skin Upgrade's boost. */
 export type AdReward = 'chest' | 'upgrade' | 'boost';
@@ -12,25 +13,15 @@ export interface AdOffer {
   ready: boolean;
 }
 
-/** The game's own stand-in ad (no real ad service is on): what it will pay, and how long it has run. */
-export interface AdPlaceholder {
-  reward: AdReward;
-  age: number;
-}
-
 /**
  * Every rewarded ad of the game (Leo, 05.10.2026), always the player's tap and never a duty: the
  * free chest, a free step of one upgrade a day, and +10 % on the Skin Upgrade. The reward is paid
  * only when the ad was watched; a closed ad, no ad and an ad blocker pay nothing. The ad itself
  * comes from the host (`rewardedAd`: the portal's, or Google's on the normal site and the Play
- * app); where none is on, a three-second placeholder plays. Only the chest is also offered on a
- * portal (`host.adOffers` is off there for the other two).
+ * app); where none is on, nothing is paid. Only the chest is also offered on a portal
+ * (`host.adOffers` is off there for the other two).
  */
 export class AdFlow {
-  static readonly placeholderSeconds = 3;
-
-  /** The placeholder on screen; it covers the page, which waits. */
-  placeholder: AdPlaceholder | null = null;
   /** An ad was asked for and has not answered yet: a second tap waits. */
   private requested = false;
 
@@ -38,17 +29,7 @@ export class AdFlow {
 
   /** An ad is on its way or on screen: the pages take no taps. */
   get busy(): boolean {
-    return this.requested || this.placeholder !== null;
-  }
-
-  advance(delta: number): void {
-    const p = this.placeholder;
-    if (!p) return;
-    p.age += delta;
-    if (p.age >= AdFlow.placeholderSeconds) {
-      this.placeholder = null;
-      this.grant(p.reward);
-    }
+    return this.requested;
   }
 
   /** Why `reward` cannot be had now (said to the player), or null. */
@@ -77,20 +58,17 @@ export class AdFlow {
       return;
     }
     this.requested = true;
+    const fail = (outcome: Exclude<RewardedOutcome, 'watched'>): void => {
+      this.requested = false;
+      this.host.play(['denied'], []);
+      this.host.showNotice(S.ads.failed(outcome));
+    };
     const asked = this.host.rewardedAd((outcome) => {
+      if (outcome !== 'watched') return fail(outcome);
       this.requested = false;
-      if (outcome === 'watched') this.grant(reward);
-      // The portal shows no ads yet: the placeholder plays instead.
-      else if (outcome === 'disabled') this.placeholder = { reward, age: 0 };
-      else {
-        this.host.play(['denied'], []);
-        this.host.showNotice(S.ads.failed(outcome));
-      }
+      this.grant(reward);
     });
-    if (!asked) {
-      this.requested = false;
-      this.placeholder = { reward, age: 0 };
-    }
+    if (!asked) fail('unavailable');
   }
 
   /** The ad was watched to the end: the reward, saved before anything shows. */

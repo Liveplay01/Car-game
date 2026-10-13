@@ -442,7 +442,7 @@ Details und alle Item-Listen: [LOOT.md](LOOT.md) (Liste im Code: `Web/src/core/l
 - **Odds immer sichtbar**, **Pity:** spätestens die 10. Truhe in Folge ohne Epic ist mindestens Epic.
 - **Der Fund (Leo, 01.10.2026):** Jede Standard Chest enthält mit **1 zu 500** den **Classic**, solange man ihn nicht hat. Die Chance steht bei den Odds.
 - **Der Event Chest** enthält in der Hälfte der Fälle das Saison-Item (Frost, Blossom, Sunburst, Pumpkin), das es nur in seiner Saison gibt.
-- **Kein Echtgeld.** Eine Standard-Truhe gibt es auch für eine Werbung, bis zu 3 pro Tag: auf CrazyGames deren **Rewarded Ad** (die Truhe erst, wenn sie zu Ende lief), sonst eine **Platzhalter-Werbung** (kein Werbepartner angebunden, kein Geld dafür).
+- **Kein Echtgeld.** Eine Standard-Truhe gibt es auch für eine Werbung, bis zu 3 pro Tag: auf CrazyGames deren **Rewarded Ad** (die Truhe erst, wenn sie zu Ende lief), sonst Googles Werbung, sobald freigeschaltet; ohne echte Werbung gibt es keine Belohnung.
 - **Öffnung „splashy, fruity“:** Squash & Stretch, Splash-Blobs, Konfetti, Strahlen, Jelly-Pop; Legendary mit Goldregen. Das Rollen der Karten zeigt in 70 % der Fälle eine Legendary-Karte knapp neben dem Gewinn (nur Anzeige, die Chancen bleiben). Reduce Motion nur Blende.
 
 ### Mastery

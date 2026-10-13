@@ -1349,7 +1349,7 @@ export const S = {
   ads: {
     watch: 'Watch ad',
     /** A rewarded ad that did not play to the end: no reward, and why. */
-    failed: (outcome: Exclude<RewardedOutcome, 'watched' | 'disabled'>): string =>
+    failed: (outcome: Exclude<RewardedOutcome, 'watched'>): string =>
       outcome === 'cooldown'
         ? 'An ad just played. Try again in a few minutes.'
         : outcome === 'blocked'

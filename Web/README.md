@@ -77,7 +77,7 @@ transporters, lorries, tankers and military trucks with explosions, the three mo
 Street Builder with arms and ring modules, 13 upgrades, chests with the juicy reveal,
 the collection with map skins and albums, the Daily Shift with streaks and challenges,
 mastery, records, the tutorial and the adaptive music. The store is gone (28.09.2026):
-nothing can be bought with real money; only the placeholder ad chest is left.
+nothing can be bought with real money; only the free ad chest is left (paid only for a watched ad).
 
 Only in the browser version:
 
@@ -392,8 +392,8 @@ the game saves in `localStorage` as usual. Every other visit is the plain browse
 Since 02.10.2026 the game also uses (`src/ui/crazygames.ts`, names checked against the SDK v3 docs):
 - **Rewarded ad** (`ad.requestAd('rewarded')`) for the Shop's free Standard Chest, still three a
   day: the chest only on `adFinished`, the sound suspended from `adStarted` until it ends; a cooldown,
-  an ad blocker or no ad says so and pays nothing; in CrazyGames' Basic Launch (no ads yet) the
-  placeholder plays as before. Everywhere else the placeholder ad stays. No
+  an ad blocker or no ad says so and pays nothing, also in CrazyGames' Basic Launch (no ads yet).
+  Everywhere else without a real ad there is no offer and no reward. No
   midgame ads: the shifts flow into each other without a break (IDEA.md principle 11).
 - **`happytime()`** for a boss busted, a completed Legendary Shift, a new Unlimited or Mayhem
   record and a Prestige, at most once every 90 s ("use sparingly").
@@ -473,8 +473,8 @@ the dial; it is used up by one round, won or lost, and the dial shows the chance
   Ads, `adBreak({ type: 'reward' })` in `ui/ads.ts`). The game asks for an ad ahead of time and shows the
   offers only once one is ready; sound is off while it plays. Switched on by the build argument
   `VITE_REWARDED_ADS=1` (Coolify: Build Arg of the game's resource). It needs an AdSense account that is
-  **approved for H5 Games Ads** (separate sign-up). Without the switch the game's own three-second
-  placeholder plays, and pays, as before. Try it with Google's test ads on a production build:
+  **approved for H5 Games Ads** (separate sign-up). Without the switch no ad plays and the
+  offers pay nothing. Try it with Google's test ads on a production build:
   `VITE_REWARDED_ADS=1 npm run build && npm run preview`, then open `/?adtest`.
 - Where the chance of an ad is limited (`frequencyCapped`), the game says "try again in a few minutes".
 

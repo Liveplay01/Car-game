@@ -59,8 +59,10 @@ export const PATCH_NOTES: PatchNote[] = [
       'Heat now comes from your Daily streak: +1 Heat for every 7 days. Lose the streak and the Heat goes.',
       'Giving to the Game fund earns titles: the more you give in total, the higher.',
       'You are told when a new idea is published in the Game fund.',
+      'No ad, no reward: the free ad offers wait until a real ad can play.',
     ],
     items: [
+      'Watch-ad offers (free chest, free upgrade step, Skin Upgrade boost) no longer play a three-second stand-in. Without a real ad nothing is paid, and the button says no ad is available.',
       'Settings → Play → Dispatch button size: a slider with three steps makes the police button smaller or larger.',
       'Heat is no longer opened by clearing shifts. Every 7 days of living Daily streak open one Heat step (up to 8). A broken streak takes the Heat with it. Heat is now part of the streak: the streak card under Progress → Today shows it and explains it when you tap it, and the Heat row under Trials is gone. The pill on the Game tab still switches it.',
       'The Heat titles Scorcher, Inferno and Meltdown stay with you, even when the streak is lost.',

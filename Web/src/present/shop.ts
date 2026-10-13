@@ -1,5 +1,4 @@
 import type { Career } from '../core/career';
-import type { AdReward } from './adFlow';
 import { Careers } from '../core/career';
 import { Unlocks } from '../core/unlocks';
 import type { Config } from '../core/config';
@@ -748,19 +747,6 @@ export const ShopPage = {
       default:
         return { label: '', enabled: false, prominent: false };
     }
-  },
-
-  // MARK: Ad placeholder
-
-  addAd(list: RenderList, reward: AdReward, age: number, duration: number): void {
-    const vp = list.camera.viewport;
-    const c = mul(vp, 0.5);
-    list.s(rect(c, vp), 'background', 0.96);
-    const left = Math.max(0, Math.ceil(duration - age));
-    drawText(list, S.shop.adPlaceholder, sub(c, v(0, 16)), 18, 'primary', { weight: 'bold', align: 'center' });
-    drawText(list, S.shop.adCountdown(reward, left), add(c, v(0, 14)), 13, 'muted', { align: 'center' });
-    const progress = Math.min(1, age / duration);
-    list.s(rect(add(c, v(-90 + 90 * progress, 44)), v(180 * progress, 4), 2), 'accent');
   },
 
   // MARK: Reveal

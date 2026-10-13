@@ -148,6 +148,10 @@ export function celebrate(): void {
  * Plays CrazyGames' rewarded ad and says how it went. False when there is no SDK: the game then
  * plays its own placeholder. The reward comes only with `adFinished`; the sound is off meanwhile.
  */
+export function rewardedAdsReady(): boolean {
+  return sdk !== null;
+}
+
 export function rewardedAd(done: (outcome: RewardedOutcome) => void): boolean {
   if (!sdk) return false;
   let settled = false;
@@ -167,10 +171,7 @@ export function rewardedAd(done: (outcome: RewardedOutcome) => void): boolean {
             ? 'cooldown'
             : error?.code === 'adblock'
               ? 'blocked'
-              : // No ads in CrazyGames' Basic Launch: the game's own placeholder plays, as before.
-                error?.code === 'adsDisabledBasicLaunch'
-                ? 'disabled'
-                : 'unavailable',
+              : 'unavailable',
         ),
     });
   } catch {
