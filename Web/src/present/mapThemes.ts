@@ -40,7 +40,8 @@ export type MapTheme =
   | 'moonmirror'
   | 'savanna'
   | 'rainforest'
-  | 'alps';
+  | 'alps'
+  | 'pixel';
 export const MAP_THEMES: MapTheme[] = [
   'dusk',
   'sand',
@@ -70,6 +71,7 @@ export const MAP_THEMES: MapTheme[] = [
   'savanna',
   'rainforest',
   'alps',
+  'pixel',
 ];
 
 /** The maps that play in the sun: a bright ground, roofs in daylight colours. */
@@ -151,6 +153,7 @@ export const MapTheme = {
       savanna: 'groundSavanna',
       rainforest: 'groundRainforest',
       alps: 'groundAlps',
+      pixel: 'groundPixel',
     } as const)[theme];
   },
 
@@ -227,6 +230,7 @@ export const MapTheme = {
     // once by the drawer (with the background and the texture); what moves comes after it.
     const still = (): void => list.markStatic(`${theme}|${layout.ringRadius}|${layout.laneWidth}|${layout.arms.map((a) => a.slot).join(',')}`);
     if (!theme) return still();
+    if (theme === 'pixel') list.pixelated = true;
     const ring = world.layout.ringRadius;
     const cam = list.camera;
     const add1 = (p: ReturnType<typeof circle>, c: ColorToken, o: number): void => list.w(p, c, o);
@@ -294,6 +298,15 @@ export const MapTheme = {
         break;
       case 'dusk':
         break;
+      case 'pixel': {
+        // Chunky arcade grass and scattered 8-bit tiles.
+        for (let i = 0; i < 72; i++) {
+          const at = spot(i, 171, 10, 390);
+          const size = 8 + Math.floor(hash(i, 172) * 12);
+          if (onScreen(at, size, cam)) list.w(rect(at, v(size, size), 0), i % 3 === 0 ? 'pixelMint' : i % 3 === 1 ? 'pixelDark' : 'pixelGold', 0.78);
+        }
+        break;
+      }
       case 'meadow': {
         // A spring meadow: lush and sunny patches of grass, wildflowers everywhere.
         for (let i = 0; i < 14; i++) soft(spot(i, 401), 26 + 34 * hash(i, 403), 'grassDeep', 0.16);

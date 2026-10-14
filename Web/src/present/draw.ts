@@ -187,6 +187,7 @@ export class CanvasDrawer {
       this.paintVignette(list.vignette * (isBright(list.background) ? CanvasDrawer.vignetteBright : CanvasDrawer.vignetteDark));
       this.paintItems(list, at, list.items.length, list.camera, still);
     } else this.paintItems(list, start, list.items.length, list.camera, still);
+    if (list.pixelated) this.pixelate();
   }
 
   /** The strongest vignette's corners, on a daylight ground and on a dark one (where black shows less). */
@@ -194,6 +195,28 @@ export class CanvasDrawer {
   static readonly vignetteDark = 0.5;
   /** Made once, small: a soft gradient loses nothing when stretched, and copying it is one cheap draw. */
   private vignetteArt: HTMLCanvasElement | null = null;
+  private pixelArt: HTMLCanvasElement | null = null;
+
+  /** Downsample the complete frame, then enlarge with nearest-neighbour pixels. */
+  private pixelate(): void {
+    const w = Math.max(1, Math.ceil(this.canvas.width / 5));
+    const h = Math.max(1, Math.ceil(this.canvas.height / 5));
+    if (!this.pixelArt) this.pixelArt = document.createElement('canvas');
+    if (this.pixelArt.width !== w || this.pixelArt.height !== h) { this.pixelArt.width = w; this.pixelArt.height = h; }
+    const small = this.pixelArt.getContext('2d');
+    if (!small) return;
+    small.imageSmoothingEnabled = true;
+    small.clearRect(0, 0, w, h);
+    small.drawImage(this.canvas, 0, 0, w, h);
+    const ctx = this.ctx;
+    ctx.save();
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.imageSmoothingEnabled = false;
+    ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+    ctx.drawImage(this.pixelArt, 0, 0, this.canvas.width, this.canvas.height);
+    ctx.restore();
+    this.prepare();
+  }
 
   /** Dark edges over the whole canvas (an ellipse that follows its shape), clear across the middle. */
   private paintVignette(opacity: number): void {

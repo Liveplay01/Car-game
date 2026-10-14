@@ -113,6 +113,8 @@ export function fitCamera(bounds: Rect, viewport: Vec2, insets: Insets, vertical
 
 /** Everything one frame shows, in drawing order. */
 export class RenderList {
+  /** Render the finished scene through a low-resolution canvas for retro maps. */
+  pixelated = false;
   items: RenderItem[] = [];
   /** Set while drawing a group that a transition must recognise. */
   tag: string | undefined = undefined;

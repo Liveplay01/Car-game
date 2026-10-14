@@ -9,6 +9,9 @@ export const Skins = {
   color(id: string | null | undefined): ColorToken | null {
     const map: Record<string, ColorToken> = {
       racingRed: 'skinRacingRed',
+      pixelBug: 'skinGold',
+      arcadeGhost: 'skinPearl',
+      rubberDuck: 'skinLemon',
       redStripe: 'skinRacingRed',
       midnight: 'skinMidnight',
       mint: 'skinMint',
@@ -89,6 +92,7 @@ export const Skins = {
       savanna: 'mapSavanna',
       rainforest: 'mapRainforest',
       alps: 'mapAlps',
+      pixel: 'mapPixel',
       bigScreen: 'skinHolo',
       gilded: 'mapGilded',
       eventHorizon: 'mapHorizon',
