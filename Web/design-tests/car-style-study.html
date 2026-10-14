@@ -1,0 +1,179 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Roundabout Timing — Fahrzeugstil-Studie</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #0b0d10;
+      --surface: #171b20;
+      --raised: #22272e;
+      --edge: rgba(255,255,255,.075);
+      --text: #f4f6f9;
+      --muted: #99a2af;
+      --amber: #ffb703;
+      --road: #23282f;
+      --island: #121519;
+      --green: #62d59a;
+      font-family: "Overpass", "Segoe UI", system-ui, sans-serif;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      padding: clamp(20px, 5vw, 56px);
+      color: var(--text);
+      background:
+        radial-gradient(ellipse at 50% -20%, rgba(255,183,3,.055), transparent 50%),
+        var(--bg);
+    }
+    main { width: min(1080px, 100%); margin: 0 auto; }
+    .eyebrow { color: var(--amber); font-size: 11px; font-weight: 800; letter-spacing: .16em; text-transform: uppercase; }
+    h1 { margin: 10px 0 8px; font-size: clamp(28px, 4vw, 42px); letter-spacing: -.04em; line-height: 1.05; }
+    .intro { max-width: 650px; margin: 0; color: var(--muted); font-size: 15px; line-height: 1.6; }
+    .legend { display: flex; flex-wrap: wrap; gap: 8px 18px; margin: 24px 0 28px; color: var(--muted); font-size: 12px; }
+    .legend span { display: inline-flex; align-items: center; gap: 7px; }
+    .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--amber); }
+    .dot.road { background: #4b535e; }
+    .dot.body { background: #dfe3e8; }
+    .grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+    article { overflow: hidden; border: 1px solid var(--edge); border-radius: 17px; background: var(--surface); }
+    article.recommended { border-color: rgba(255,183,3,.45); box-shadow: inset 0 1px 0 rgba(255,183,3,.12); }
+    .card-head { min-height: 91px; padding: 17px 18px 13px; }
+    .kicker { color: var(--muted); font-size: 10px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; }
+    h2 { display: flex; align-items: center; gap: 8px; margin: 6px 0 4px; font-size: 17px; letter-spacing: -.02em; }
+    h2 small { color: var(--amber); font-size: 9px; letter-spacing: .08em; text-transform: uppercase; }
+    .card-head p { margin: 0; color: var(--muted); font-size: 12px; line-height: 1.45; }
+    .playfield {
+      position: relative;
+      display: grid;
+      min-height: 286px;
+      place-items: center;
+      overflow: hidden;
+      background: #0e1115;
+      border-top: 1px solid var(--edge);
+      border-bottom: 1px solid var(--edge);
+    }
+    .playfield::before {
+      content: "";
+      position: absolute;
+      width: 194px;
+      height: 194px;
+      border: 36px solid var(--road);
+      border-radius: 50%;
+      box-shadow: 0 0 0 1px rgba(255,255,255,.035), inset 0 0 0 1px rgba(255,255,255,.035);
+    }
+    .playfield::after {
+      content: "";
+      position: absolute;
+      width: 116px;
+      height: 116px;
+      border: 1px solid rgba(255,255,255,.05);
+      border-radius: 50%;
+      background: var(--island);
+      box-shadow: 0 4px 18px rgba(0,0,0,.32);
+    }
+    .lane-mark { position: absolute; z-index: 1; width: 1px; height: 194px; background: repeating-linear-gradient(to bottom,rgba(221,226,233,.16) 0 4px,transparent 4px 9px); }
+    .island-light { position: absolute; z-index: 2; width: 5px; height: 5px; border-radius: 50%; background: var(--amber); opacity: .8; box-shadow: 0 0 8px rgba(255,183,3,.24); }
+    .veh { position: absolute; z-index: 3; width: 39px; height: 72px; filter: drop-shadow(0 4px 3px rgba(0,0,0,.42)); }
+    .veh.one { top: 31px; left: calc(50% - 20px); }
+    .veh.two { right: calc(50% - 87px); bottom: 53px; transform: rotate(120deg); }
+    .veh.three { left: calc(50% - 87px); bottom: 53px; transform: rotate(-120deg); }
+    .hud-top { position: absolute; z-index: 4; top: 12px; left: 13px; display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: 9px; font-weight: 800; letter-spacing: .11em; }
+    .live { width: 5px; height: 5px; border-radius: 50%; background: var(--amber); }
+    .hud-score { position: absolute; z-index: 4; top: 11px; right: 13px; color: var(--text); font-size: 11px; font-weight: 800; }
+    .dispatch { position: absolute; z-index: 4; right: 13px; bottom: 14px; display: grid; width: 34px; height: 34px; place-items: center; border: 1px solid rgba(255,255,255,.1); border-radius: 50%; background: rgba(25,29,34,.9); color: #dfe4e9; font-size: 14px; }
+    .tabbar { position: absolute; z-index: 4; bottom: 0; left: 0; right: 0; display: flex; height: 35px; align-items: center; justify-content: space-around; border-top: 1px solid rgba(255,255,255,.055); background: rgba(15,18,22,.88); color: #7c8591; font-size: 8px; font-weight: 700; }
+    .tabbar b { color: var(--amber); font-weight: 800; }
+    .compare { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0; padding: 14px 15px 15px; }
+    .sample { display: grid; justify-items: center; gap: 3px; color: var(--muted); font-size: 9px; text-align: center; }
+    .sample svg { width: 22px; height: 40px; }
+    .sample strong { color: #d8dde4; font-size: 10px; font-weight: 700; }
+    .notes { display: grid; grid-template-columns: 1.1fr 1fr; gap: 18px; margin-top: 20px; }
+    .note { padding: 16px 18px; border: 1px solid var(--edge); border-radius: 14px; background: rgba(23,27,32,.72); }
+    .note h3 { margin: 0 0 6px; font-size: 12px; }
+    .note p { margin: 0; color: var(--muted); font-size: 12px; line-height: 1.55; }
+    @media (max-width: 780px) { .grid { grid-template-columns: 1fr; } .playfield { min-height: 300px; } .notes { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <main>
+    <div class="eyebrow">Art direction study · 01</div>
+    <h1>Fahrzeuge mit mehr Charakter</h1>
+    <p class="intro">Drei handgezeichnete Richtungen in der bestehenden Roundabout-Palette. Die Autos bleiben klein, gut lesbar und Teil derselben ruhigen Nachtwelt. Das ist ein Stiltest, kein neues UI-Konzept.</p>
+    <div class="legend" aria-label="Farbrollen">
+      <span><i class="dot road"></i> Straße und UI bleiben graphitfarben</span>
+      <span><i class="dot body"></i> Fahrzeugfarben tragen Spielinformation</span>
+      <span><i class="dot"></i> Amber bleibt ein sparsamer UI-Akzent</span>
+    </div>
+    <section class="grid" aria-label="Stilvergleich">
+      <article>
+        <header class="card-head">
+          <div class="kicker">A · heute</div>
+          <h2>Klare Vektoren</h2>
+          <p>Flach, direkt und nah an den aktuellen Modellen.</p>
+        </header>
+        <div class="playfield">
+          <div class="hud-top"><i class="live"></i> SHIFT · LEVEL 03</div><div class="hud-score">1,280</div>
+          <i class="lane-mark"></i><i class="island-light"></i>
+          <svg class="veh one" viewBox="0 0 60 112"><use href="cars.svg#flat-sedan"/></svg>
+          <svg class="veh two" viewBox="0 0 60 112"><use href="cars.svg#flat-beetle"/></svg>
+          <svg class="veh three" viewBox="0 0 60 112"><use href="cars.svg#flat-police"/></svg>
+          <div class="dispatch">↗</div><nav class="tabbar"><span>PROGRESS</span><span>SOCIAL</span><b>GAME</b><span>SHOP</span><span>BUILD</span></nav>
+        </div>
+        <div class="compare">
+          <div class="sample"><svg viewBox="0 0 60 112"><use href="cars.svg#flat-sedan"/></svg><strong>Sedan</strong><span>Neutral</span></div>
+          <div class="sample"><svg viewBox="0 0 60 112"><use href="cars.svg#flat-beetle"/></svg><strong>Beetle</strong><span>Compact</span></div>
+          <div class="sample"><svg viewBox="0 0 60 112"><use href="cars.svg#flat-police"/></svg><strong>Police</strong><span>Role-color</span></div>
+        </div>
+      </article>
+      <article class="recommended">
+        <header class="card-head">
+          <div class="kicker">B · empfohlen</div>
+          <h2>Handgemachte Miniaturen <small>Richtung</small></h2>
+          <p>Mehr Materialgefühl durch Form, Lichtkante und Reifen — ohne Fotorealismus.</p>
+        </header>
+        <div class="playfield">
+          <div class="hud-top"><i class="live"></i> SHIFT · LEVEL 03</div><div class="hud-score">1,280</div>
+          <i class="lane-mark"></i><i class="island-light"></i>
+          <svg class="veh one" viewBox="0 0 60 112"><use href="cars.svg#mini-sedan"/></svg>
+          <svg class="veh two" viewBox="0 0 60 112"><use href="cars.svg#mini-beetle"/></svg>
+          <svg class="veh three" viewBox="0 0 60 112"><use href="cars.svg#mini-police"/></svg>
+          <div class="dispatch">↗</div><nav class="tabbar"><span>PROGRESS</span><span>SOCIAL</span><b>GAME</b><span>SHOP</span><span>BUILD</span></nav>
+        </div>
+        <div class="compare">
+          <div class="sample"><svg viewBox="0 0 60 112"><use href="cars.svg#mini-sedan"/></svg><strong>Sedan</strong><span>Soft shoulder</span></div>
+          <div class="sample"><svg viewBox="0 0 60 112"><use href="cars.svg#mini-beetle"/></svg><strong>Beetle</strong><span>Round silhouette</span></div>
+          <div class="sample"><svg viewBox="0 0 60 112"><use href="cars.svg#mini-police"/></svg><strong>Police</strong><span>Readable roof</span></div>
+        </div>
+      </article>
+      <article>
+        <header class="card-head">
+          <div class="kicker">C · Alternative</div>
+          <h2>Ink &amp; enamel</h2>
+          <p>Grafischer, mit bewusster Kontur und begrenzten Farbflächen.</p>
+        </header>
+        <div class="playfield">
+          <div class="hud-top"><i class="live"></i> SHIFT · LEVEL 03</div><div class="hud-score">1,280</div>
+          <i class="lane-mark"></i><i class="island-light"></i>
+          <svg class="veh one" viewBox="0 0 60 112"><use href="cars.svg#ink-sedan"/></svg>
+          <svg class="veh two" viewBox="0 0 60 112"><use href="cars.svg#ink-beetle"/></svg>
+          <svg class="veh three" viewBox="0 0 60 112"><use href="cars.svg#ink-police"/></svg>
+          <div class="dispatch">↗</div><nav class="tabbar"><span>PROGRESS</span><span>SOCIAL</span><b>GAME</b><span>SHOP</span><span>BUILD</span></nav>
+        </div>
+        <div class="compare">
+          <div class="sample"><svg viewBox="0 0 60 112"><use href="cars.svg#ink-sedan"/></svg><strong>Sedan</strong><span>Fine contour</span></div>
+          <div class="sample"><svg viewBox="0 0 60 112"><use href="cars.svg#ink-beetle"/></svg><strong>Beetle</strong><span>Graphic shape</span></div>
+          <div class="sample"><svg viewBox="0 0 60 112"><use href="cars.svg#ink-police"/></svg><strong>Police</strong><span>Strong contrast</span></div>
+        </div>
+      </article>
+    </section>
+    <section class="notes">
+      <div class="note"><h3>Was hier getestet wird</h3><p>Lesbarkeit bei echter Spielgröße, unterscheidbare Silhouetten, einheitliche Fenster und Räder sowie passende Helligkeit auf Asphalt. Die Mini-Szene übernimmt bewusst UI-Farben und Tab-Bar-Logik des Spiels.</p></div>
+      <div class="note"><h3>Nächster sinnvoller Schritt</h3><p>Die empfohlene Miniatur-Richtung zuerst an einem vorhandenen Sedan direkt in der Spielszene umsetzen. Wenn sie auf einem kleinen Handy klarer und wertiger wirkt, folgen Beetle, Polizei und Nutzfahrzeuge.</p></div>
+    </section>
+  </main>
+</body>
+</html>

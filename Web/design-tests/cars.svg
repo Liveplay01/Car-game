@@ -1,0 +1,94 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 60 112">
+  <defs>
+    <linearGradient id="silver" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0" stop-color="#f4f6f9"/><stop offset=".48" stop-color="#dfe3e8"/><stop offset="1" stop-color="#aeb6c1"/>
+    </linearGradient>
+    <linearGradient id="blue" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0" stop-color="#4e83f2"/><stop offset="1" stop-color="#2460d3"/>
+    </linearGradient>
+    <linearGradient id="glass" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0" stop-color="#394451"/><stop offset=".5" stop-color="#202832"/><stop offset="1" stop-color="#151b22"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Flat vector baseline -->
+  <symbol id="flat-sedan" viewBox="0 0 60 112">
+    <g fill="#161a1f"><rect x="3" y="22" width="8" height="21" rx="3"/><rect x="49" y="22" width="8" height="21" rx="3"/><rect x="3" y="72" width="8" height="21" rx="3"/><rect x="49" y="72" width="8" height="21" rx="3"/></g>
+    <path fill="#dfe3e8" d="M30 4c-9 0-13 5-15 15l-4 15v42l4 22c1 6 6 10 15 10s14-4 15-10l4-22V34l-4-15C43 9 39 4 30 4Z"/>
+    <path fill="#2b333d" d="M19 22c2-7 5-10 11-10s9 3 11 10l2 13H17l2-13Zm-2 19h26v25H17z"/>
+    <path fill="#f6f0df" d="M13 17h5v5h-5zm29 0h5v5h-5z"/><path fill="#ff5a5f" d="M12 91h5v4h-5zm31 0h5v4h-5z"/>
+  </symbol>
+  <symbol id="flat-beetle" viewBox="0 0 60 112">
+    <g fill="#161a1f"><rect x="3" y="22" width="8" height="20" rx="4"/><rect x="49" y="22" width="8" height="20" rx="4"/><rect x="3" y="72" width="8" height="20" rx="4"/><rect x="49" y="72" width="8" height="20" rx="4"/></g>
+    <path fill="#c9bca8" d="M30 4c-13 0-19 8-20 23l-2 24c-1 21 3 44 22 51 19-7 23-30 22-51l-2-24C49 12 43 4 30 4Z"/>
+    <path fill="#313741" d="M18 24c2-7 6-10 12-10s10 3 12 10l2 11H16l2-11Zm-2 18h28v21H16z"/>
+    <path fill="#f6f0df" d="M12 19h5v5h-5zm31 0h5v5h-5z"/><path fill="#ff5a5f" d="M12 89h5v4h-5zm31 0h5v4h-5z"/>
+  </symbol>
+  <symbol id="flat-police" viewBox="0 0 60 112">
+    <g fill="#161a1f"><rect x="3" y="22" width="8" height="21" rx="3"/><rect x="49" y="22" width="8" height="21" rx="3"/><rect x="3" y="72" width="8" height="21" rx="3"/><rect x="49" y="72" width="8" height="21" rx="3"/></g>
+    <path fill="#2463dc" d="M30 4c-9 0-13 5-15 15l-4 15v42l4 22c1 6 6 10 15 10s14-4 15-10l4-22V34l-4-15C43 9 39 4 30 4Z"/>
+    <path fill="#f4f6f9" d="M17 41h26v25H17zM15 76h30v8H15z"/><path fill="#313b48" d="M19 22c2-7 5-10 11-10s9 3 11 10l2 13H17l2-13Z"/>
+    <rect x="21" y="34" width="18" height="4" rx="2" fill="#f4f6f9"/><path fill="#f6f0df" d="M13 17h5v5h-5zm29 0h5v5h-5z"/><path fill="#ff5a5f" d="M12 91h5v4h-5zm31 0h5v4h-5z"/>
+  </symbol>
+
+  <!-- Crafted miniature: restrained upper planes, wheel faces, glass glint, and cast shadow. -->
+  <symbol id="mini-sedan" viewBox="0 0 60 112">
+    <ellipse cx="30" cy="57" rx="25" ry="53" fill="#05070a" opacity=".58"/>
+    <g fill="#15191e"><rect x="3" y="22" width="9" height="22" rx="3.5"/><rect x="48" y="22" width="9" height="22" rx="3.5"/><rect x="3" y="72" width="9" height="22" rx="3.5"/><rect x="48" y="72" width="9" height="22" rx="3.5"/></g>
+    <g fill="#68717c"><rect x="9" y="27" width="2" height="10" rx="1"/><rect x="49" y="27" width="2" height="10" rx="1"/><rect x="9" y="78" width="2" height="10" rx="1"/><rect x="49" y="78" width="2" height="10" rx="1"/></g>
+    <path fill="url(#silver)" stroke="#f4f6f9" stroke-opacity=".35" stroke-width="1" d="M30 4c-9 0-13 5-15 15l-4 15v42l4 22c1 6 6 10 15 10s14-4 15-10l4-22V34l-4-15C43 9 39 4 30 4Z"/>
+    <path fill="#aeb6c1" d="M12 37h36v5H12zm0 27h36v4H12z" opacity=".34"/>
+    <path fill="url(#glass)" stroke="#687581" stroke-opacity=".7" stroke-width="1" d="M19 22c2-7 5-10 11-10s9 3 11 10l2 13H17l2-13Zm-2 19h26v25H17z"/>
+    <path d="m21 19 4-4h9l4 4" fill="none" stroke="#8d9aa7" stroke-opacity=".52" stroke-width="1.3" stroke-linecap="round"/>
+    <path fill="#f6f0df" d="M13 17h5v5h-5zm29 0h5v5h-5z"/><path fill="#ff5a5f" d="M12 91h5v4h-5zm31 0h5v4h-5z"/>
+    <path d="M15 99q15 6 30 0" fill="none" stroke="#7e8792" stroke-opacity=".6" stroke-width="1"/>
+  </symbol>
+  <symbol id="mini-beetle" viewBox="0 0 60 112">
+    <ellipse cx="30" cy="58" rx="25" ry="53" fill="#05070a" opacity=".58"/>
+    <g fill="#15191e"><rect x="3" y="22" width="9" height="21" rx="4.5"/><rect x="48" y="22" width="9" height="21" rx="4.5"/><rect x="3" y="73" width="9" height="21" rx="4.5"/><rect x="48" y="73" width="9" height="21" rx="4.5"/></g>
+    <g fill="#68717c"><circle cx="9.5" cy="32" r="1.4"/><circle cx="50.5" cy="32" r="1.4"/><circle cx="9.5" cy="83" r="1.4"/><circle cx="50.5" cy="83" r="1.4"/></g>
+    <path fill="#c9bca8" stroke="#e8ddcb" stroke-opacity=".55" stroke-width="1" d="M30 4c-13 0-19 8-20 23l-2 24c-1 21 3 44 22 51 19-7 23-30 22-51l-2-24C49 12 43 4 30 4Z"/>
+    <path fill="#dfd1bd" d="M11 50q19-7 38 0v11q-19-6-38 0z" opacity=".28"/>
+    <path fill="url(#glass)" stroke="#687581" stroke-opacity=".72" stroke-width="1" d="M18 24c2-7 6-10 12-10s10 3 12 10l2 11H16l2-11Zm-2 18h28v21H16z"/>
+    <path d="M30 14v-3m0 57v25" stroke="#817563" stroke-opacity=".56" stroke-width="1"/>
+    <path fill="#f6f0df" d="M12 19h5v5h-5zm31 0h5v5h-5z"/><path fill="#ff5a5f" d="M12 89h5v4h-5zm31 0h5v4h-5z"/>
+    <path d="M15 100q15 7 30 0" fill="none" stroke="#897d6c" stroke-opacity=".72" stroke-width="1"/>
+  </symbol>
+  <symbol id="mini-police" viewBox="0 0 60 112">
+    <ellipse cx="30" cy="57" rx="25" ry="53" fill="#05070a" opacity=".58"/>
+    <g fill="#15191e"><rect x="3" y="22" width="9" height="22" rx="3.5"/><rect x="48" y="22" width="9" height="22" rx="3.5"/><rect x="3" y="72" width="9" height="22" rx="3.5"/><rect x="48" y="72" width="9" height="22" rx="3.5"/></g>
+    <g fill="#68717c"><rect x="9" y="28" width="2" height="9" rx="1"/><rect x="49" y="28" width="2" height="9" rx="1"/><rect x="9" y="78" width="2" height="9" rx="1"/><rect x="49" y="78" width="2" height="9" rx="1"/></g>
+    <path fill="url(#blue)" stroke="#77a1fb" stroke-opacity=".62" stroke-width="1" d="M30 4c-9 0-13 5-15 15l-4 15v42l4 22c1 6 6 10 15 10s14-4 15-10l4-22V34l-4-15C43 9 39 4 30 4Z"/>
+    <path fill="#e6ebf1" d="M16 42h28v22H16zm-1 35h30v7H15z"/>
+    <path fill="url(#glass)" stroke="#93a5ba" stroke-opacity=".72" stroke-width="1" d="M19 22c2-7 5-10 11-10s9 3 11 10l2 13H17l2-13Z"/>
+    <rect x="21" y="35" width="18" height="4" rx="2" fill="#e6ebf1"/>
+    <rect x="21" y="67" width="18" height="7" rx="2" fill="#dfe3e8"/>
+    <rect x="21" y="29" width="8" height="3" rx="1.5" fill="#4f94ff"/><rect x="31" y="29" width="8" height="3" rx="1.5" fill="#ff5a5f"/>
+    <path fill="#f6f0df" d="M13 17h5v5h-5zm29 0h5v5h-5z"/><path fill="#ff5a5f" d="M12 91h5v4h-5zm31 0h5v4h-5z"/>
+  </symbol>
+
+  <!-- Ink and enamel: a deliberate contour, flat enamel, and restrained pin highlights. -->
+  <symbol id="ink-sedan" viewBox="0 0 60 112">
+    <g fill="#101317" stroke="#77818d" stroke-width="1"><rect x="3" y="22" width="9" height="22" rx="3.5"/><rect x="48" y="22" width="9" height="22" rx="3.5"/><rect x="3" y="72" width="9" height="22" rx="3.5"/><rect x="48" y="72" width="9" height="22" rx="3.5"/></g>
+    <path fill="#dfe3e8" stroke="#101317" stroke-width="2" d="M30 4c-9 0-13 5-15 15l-4 15v42l4 22c1 6 6 10 15 10s14-4 15-10l4-22V34l-4-15C43 9 39 4 30 4Z"/>
+    <path fill="#222a34" stroke="#101317" stroke-width="1.5" d="M19 22c2-7 5-10 11-10s9 3 11 10l2 13H17l2-13Zm-2 19h26v25H17z"/>
+    <path d="M20 19q10-5 20 0M18 68h24M14 77h4m24 0h4" fill="none" stroke="#f4f6f9" stroke-opacity=".74" stroke-width="1.5" stroke-linecap="round"/>
+    <path fill="#f6f0df" stroke="#101317" stroke-width="1" d="M13 17h5v5h-5zm29 0h5v5h-5z"/><path fill="#ff5a5f" stroke="#101317" stroke-width="1" d="M12 91h5v4h-5zm31 0h5v4h-5z"/>
+  </symbol>
+  <symbol id="ink-beetle" viewBox="0 0 60 112">
+    <g fill="#101317" stroke="#77818d" stroke-width="1"><rect x="3" y="22" width="9" height="21" rx="4.5"/><rect x="48" y="22" width="9" height="21" rx="4.5"/><rect x="3" y="73" width="9" height="21" rx="4.5"/><rect x="48" y="73" width="9" height="21" rx="4.5"/></g>
+    <path fill="#c9bca8" stroke="#101317" stroke-width="2" d="M30 4c-13 0-19 8-20 23l-2 24c-1 21 3 44 22 51 19-7 23-30 22-51l-2-24C49 12 43 4 30 4Z"/>
+    <path fill="#222a34" stroke="#101317" stroke-width="1.5" d="M18 24c2-7 6-10 12-10s10 3 12 10l2 11H16l2-11Zm-2 18h28v21H16z"/>
+    <path d="M30 14v-3m0 59v25M14 54q16-6 32 0" fill="none" stroke="#f4f6f9" stroke-opacity=".8" stroke-width="1.4" stroke-linecap="round"/>
+    <path fill="#f6f0df" stroke="#101317" stroke-width="1" d="M12 19h5v5h-5zm31 0h5v5h-5z"/><path fill="#ff5a5f" stroke="#101317" stroke-width="1" d="M12 89h5v4h-5zm31 0h5v4h-5z"/>
+  </symbol>
+  <symbol id="ink-police" viewBox="0 0 60 112">
+    <g fill="#101317" stroke="#77818d" stroke-width="1"><rect x="3" y="22" width="9" height="22" rx="3.5"/><rect x="48" y="22" width="9" height="22" rx="3.5"/><rect x="3" y="72" width="9" height="22" rx="3.5"/><rect x="48" y="72" width="9" height="22" rx="3.5"/></g>
+    <path fill="#2864df" stroke="#101317" stroke-width="2" d="M30 4c-9 0-13 5-15 15l-4 15v42l4 22c1 6 6 10 15 10s14-4 15-10l4-22V34l-4-15C43 9 39 4 30 4Z"/>
+    <path fill="#e6ebf1" stroke="#101317" stroke-width="1.3" d="M16 42h28v22H16zm-1 35h30v7H15z"/>
+    <path fill="#222a34" stroke="#101317" stroke-width="1.5" d="M19 22c2-7 5-10 11-10s9 3 11 10l2 13H17l2-13Z"/>
+    <rect x="21" y="35" width="18" height="4" rx="2" fill="#e6ebf1"/><rect x="21" y="29" width="8" height="3" rx="1.5" fill="#4f94ff"/><rect x="31" y="29" width="8" height="3" rx="1.5" fill="#ff5a5f"/>
+    <path d="M18 68h24" stroke="#fff" stroke-opacity=".7" stroke-width="1.2"/>
+    <path fill="#f6f0df" stroke="#101317" stroke-width="1" d="M13 17h5v5h-5zm29 0h5v5h-5z"/><path fill="#ff5a5f" stroke="#101317" stroke-width="1" d="M12 91h5v4h-5zm31 0h5v4h-5z"/>
+  </symbol>
+</svg>

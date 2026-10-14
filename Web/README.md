@@ -448,6 +448,29 @@ The query gets the default Content-Security-Policy.
   native Android code in the wrapper and could not read the game's save (it lives in Chrome's
   storage): not planned.
 
+## iOS and App Store decision
+
+The supported iPhone/iPad route for now is the PWA: Safari → Share → Add to Home Screen. On iOS/iPadOS
+16.4 and later, an installed Home Screen web app can use the same Web Push implementation; a normal
+Safari tab cannot receive Web Push. The service worker updates the game from the web deployment.
+
+Do not treat a thin WKWebView/Capacitor wrapper that loads the live game as an approved App Store
+plan. Apple App Review guideline 4.2 expects an app to offer more than a repackaged website, and
+2.5.2 restricts downloading and executing code that changes app features. A remote web game can
+raise review questions even when the game itself is substantial. Revisit an App Store build only
+when there is a concrete native experience to add and its update model has been reviewed against
+the current Apple rules. A native wrapper does not by itself make unrestricted remote game-code
+updates safe or guaranteed to pass review. Keep the PWA as the iOS release path in the meantime.
+
+## Updates and notifications
+
+Web deployments update the web game; the service worker checks for a new build when the app returns
+to the foreground and reloads only when the game can safely do so. Offline players keep the cached
+build until they reconnect. Web Push is only for player-facing notifications and does not deliver
+app updates. On Android, TWA wrapper changes (permissions, native integrations, name/icon, or
+manifest shortcuts copied at build time) still require a new Play Store build. See
+[NEW-PLAYSTORE-BUILD.md](../NEW-PLAYSTORE-BUILD.md) for the build checklist.
+
 ## Google AdSense
 
 `src/ui/ads.ts` adds the AdSense tag once the game is on screen: production build only, and
