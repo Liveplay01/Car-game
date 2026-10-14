@@ -26,7 +26,7 @@ import { ADMIN_PAGE } from './page.ts';
  *   DELETE /v1/admin/feedback/:id                    remove one
  *   GET    /v1/admin/ideas?status=pending          the Club's ideas (players' and "Build with us" ideas), newest first, with the counts
  *   POST   /v1/admin/ideas  {title, text}             write an idea ourselves: open for gifts at once
- *   PATCH  /v1/admin/ideas/:id  {title, text, status}   reword and publish (open), mark made (built) or turn down (rejected)
+ *   PATCH  /v1/admin/ideas/:id  {title, text, status}   reword and publish, mark underway (building) or made (built), or turn down (rejected)
  *   DELETE /v1/admin/ideas/:id                      remove one with its gifts
  *   POST   /v1/admin/rewards  {friendCode, item}     give a player a reward (the game picks it up); item "money" takes an `amount`
  *
@@ -130,11 +130,12 @@ export function adminModule(): ServerModule {
         const body = await readJson(c);
         const status = body.status as IdeaStatus;
         if (!IDEA_STATUSES.includes(status)) throw new ApiError(422, 'invalid_status', `Status is one of ${IDEA_STATUSES.join(', ')}.`);
+        if (status === 'building' && !ideas.isFundedOpen(c.req.param('id'))) throw new ApiError(422, 'not_funded', 'Only a fully funded published idea can be marked in progress.');
         const title = cleanText(body.title).replace(/\s+/g, ' ');
         const text = cleanText(body.text);
         if (title.length > TITLE_MAX) throw new ApiError(422, 'title_too_long', `The title is at most ${TITLE_MAX} characters.`);
         if (text.length > PUBLIC_TEXT_MAX) throw new ApiError(422, 'text_too_long', `The text is at most ${PUBLIC_TEXT_MAX} characters.`);
-        if ((status === 'open' || status === 'built') && (title === '' || text === '')) throw new ApiError(422, 'needs_words', 'An idea in the game needs a title and a text.');
+        if ((status === 'open' || status === 'building' || status === 'built') && (title === '' || text === '')) throw new ApiError(422, 'needs_words', 'An idea in the game needs a title and a text.');
         if (!ideas.update(c.req.param('id'), { title, text, status }, ctx.now())) throw new ApiError(404, 'not_found', 'No such idea.');
         return c.json({ status });
       });

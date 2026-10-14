@@ -11,7 +11,7 @@ export interface Idea {
   title: string;
   text: string;
   /** Funded: the goal is reached and the idea waits to be made. */
-  status: 'open' | 'funded' | 'built';
+  status: 'open' | 'funded' | 'building' | 'built';
   goal: number;
   raised: number;
   /** What this player gave to it. */

@@ -9,7 +9,7 @@ export const TITLE_MAX = 60;
 export const PUBLIC_TEXT_MAX = 600;
 
 /** pending: waits for a moderator · open: players give · built: made, thank you · rejected: not shown. Funded is an open idea at its goal. */
-export const IDEA_STATUSES = ['pending', 'open', 'built', 'rejected'] as const;
+export const IDEA_STATUSES = ['pending', 'open', 'building', 'built', 'rejected'] as const;
 export type IdeaStatus = (typeof IDEA_STATUSES)[number];
 export type IdeaSource = 'club' | 'feedback' | 'team';
 
@@ -39,7 +39,7 @@ export interface IdeaView {
   title: string;
   text: string;
   /** Funded is an open idea that reached its goal: it waits to be made. */
-  status: 'open' | 'funded' | 'built';
+  status: 'open' | 'funded' | 'building' | 'built';
   goal: number;
   raised: number;
   /** What the asking player gave. */
@@ -90,14 +90,14 @@ export class IdeaStore {
         `SELECT i.id, i.title, i.text, i.status, i.published_at AS at, p.name AS by, ${RAISED} AS raised,
            COALESCE((SELECT SUM(amount) FROM fund_gifts WHERE project = 'idea:' || i.id AND player_id = ?), 0) AS mine
          FROM ideas i LEFT JOIN players p ON p.id = i.player_id AND p.banned = 0 AND i.source = 'club'
-         WHERE i.status IN ('open', 'built') ORDER BY i.published_at DESC`,
+         WHERE i.status IN ('open', 'building', 'built') ORDER BY i.published_at DESC`,
       )
-      .all(playerId ?? '') as unknown as { id: string; title: string; text: string; status: 'open' | 'built'; at: number; by: string | null; raised: number; mine: number }[];
+      .all(playerId ?? '') as unknown as { id: string; title: string; text: string; status: 'open' | 'building' | 'built'; at: number; by: string | null; raised: number; mine: number }[];
     return rows.map((r) => ({
       id: r.id,
       title: r.title,
       text: r.text,
-      status: r.status === 'built' ? 'built' : r.raised >= IDEA_GOAL ? 'funded' : 'open',
+      status: r.status === 'built' ? 'built' : r.status === 'building' ? 'building' : r.raised >= IDEA_GOAL ? 'funded' : 'open',
       goal: IDEA_GOAL,
       raised: Math.min(r.raised, IDEA_GOAL),
       mine: r.mine,
@@ -140,7 +140,7 @@ export class IdeaStore {
   }
 
   counts(): Record<IdeaStatus, number> {
-    const out: Record<IdeaStatus, number> = { pending: 0, open: 0, built: 0, rejected: 0 };
+    const out: Record<IdeaStatus, number> = { pending: 0, open: 0, building: 0, built: 0, rejected: 0 };
     const rows = this.db.prepare('SELECT status, COUNT(*) AS n FROM ideas GROUP BY status').all() as unknown as { status: IdeaStatus; n: number }[];
     for (const r of rows) if (r.status in out) out[r.status] = r.n;
     return out;
@@ -151,9 +151,16 @@ export class IdeaStore {
     return row?.status ?? null;
   }
 
-  /** Rewords and sets the status; the first time it is open or built it gets its publishing time. */
+  isFundedOpen(id: string): boolean {
+    const row = this.db
+      .prepare(`SELECT i.status, ${RAISED} AS raised FROM ideas i WHERE i.id = ?`)
+      .get(id) as { status: IdeaStatus; raised: number } | undefined;
+    return row?.status === 'open' && row.raised >= IDEA_GOAL;
+  }
+
+  /** Rewords and sets the status; the first time it is published it gets its publishing time. */
   update(id: string, fields: { title: string; text: string; status: IdeaStatus }, now: number): boolean {
-    const shown = fields.status === 'open' || fields.status === 'built';
+    const shown = fields.status === 'open' || fields.status === 'building' || fields.status === 'built';
     return (
       Number(
         this.db

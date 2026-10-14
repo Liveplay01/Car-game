@@ -548,9 +548,9 @@ export function clubPanel(host: ClubHost): ClubPanel {
     if (!closed && tab === 'ideas') show();
   }
 
-  const ideaState = (i: Idea): string => (i.status === 'built' ? S.clubPanel.state.built : i.status === 'funded' ? S.clubPanel.state.funded : S.clubPanel.state.funding);
+  const ideaState = (i: Idea): string => (i.status === 'built' ? S.clubPanel.state.built : i.status === 'building' ? S.clubPanel.state.building : i.status === 'funded' ? S.clubPanel.state.funded : S.clubPanel.state.funding);
 
-  /** The players' ideas: what is being funded, what is funded and waits to be made, and what is built. */
+  /** The players' ideas: what is being funded, what is funded or underway, and what is built. */
   function ideaRows(): HTMLElement[] {
     if (!ideasEnabled) return [note(S.clubPanel.ideasOffline)];
     if (ideasError) {
@@ -578,7 +578,7 @@ export function clubPanel(host: ClubHost): ClubPanel {
                     { class: 'row-main' },
                     h('div', { class: 'row-title' }, i.title),
                     bar(i.raised / i.goal).el,
-                    h('div', { class: 'row-sub' }, i.status === 'built' ? S.clubPanel.builtThanks : S.clubPanel.raised(cash(i.raised), cash(i.goal), i.mine > 0 ? cash(i.mine) : null)),
+                    h('div', { class: 'row-sub' }, i.status === 'built' ? S.clubPanel.builtThanks : i.status === 'building' ? S.clubPanel.state.building : S.clubPanel.raised(cash(i.raised), cash(i.goal), i.mine > 0 ? cash(i.mine) : null)),
                   ),
                   icon(ICONS.chevronRight),
                 );
@@ -595,6 +595,7 @@ export function clubPanel(host: ClubHost): ClubPanel {
       ...(ideaSent ? [note(S.clubPanel.ideaSent)] : []),
       ...group(S.clubPanel.groupFunding, view.ideas.filter((i) => i.status === 'open')),
       ...group(S.clubPanel.groupFunded, view.ideas.filter((i) => i.status === 'funded')),
+      ...group(S.clubPanel.groupBuilding, view.ideas.filter((i) => i.status === 'building')),
       ...group(S.clubPanel.groupBuilt, view.ideas.filter((i) => i.status === 'built')),
     ];
     if (view.ideas.length === 0) out.push(note(S.clubPanel.noIdeas));
@@ -627,6 +628,7 @@ export function clubPanel(host: ClubHost): ClubPanel {
         body.append(label(S.clubPanel.give), ...giftControls(view, false, (amount) => void giveIdea(idea, amount, () => close(), (text) => failure.replaceChildren(note(text, true)))));
       }
     } else if (idea.status === 'funded') body.append(note(S.clubPanel.ideaFunded));
+    else if (idea.status === 'building') body.append(note(S.clubPanel.state.building));
     withCoins(body);
     close = openSheet(host.layer, idea.title, body);
   }

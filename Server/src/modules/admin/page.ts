@@ -65,6 +65,7 @@ export const ADMIN_PAGE = `<!doctype html>
       <div class="seg" id="ideaStatus" role="group" aria-label="Idea status">
         <button type="button" data-v="pending" aria-pressed="true">Pending</button>
         <button type="button" data-v="open" aria-pressed="false">Open</button>
+        <button type="button" data-v="building" aria-pressed="false">In progress</button>
         <button type="button" data-v="built" aria-pressed="false">Built</button>
         <button type="button" data-v="rejected" aria-pressed="false">Rejected</button>
       </div>
@@ -139,23 +140,24 @@ export const ADMIN_PAGE = `<!doctype html>
       const data = await api('GET', '/ideas?status=' + ideaStatus);
       const c = data.counts;
       $('clubBadge').textContent = c.pending;
-      $('ideaCounts').textContent = 'Pending ' + c.pending + ' · Open ' + c.open + ' · Built ' + c.built + ' · Rejected ' + c.rejected;
+      $('ideaCounts').textContent = 'Pending ' + c.pending + ' · Open ' + c.open + ' · In progress ' + c.building + ' · Built ' + c.built + ' · Rejected ' + c.rejected;
       $('ideaList').innerHTML = data.items.length ? data.items.map((i) => {
         const btn = (to, label, cls) => '<button type="button" ' + (cls ? 'class="' + cls + '" ' : '') + 'data-to="' + to + '">' + label + '</button>';
         const actions = {
           pending: btn('open', 'Publish', 'primary') + btn('rejected', 'Reject'),
-          open: btn('open', 'Save', 'primary') + btn('built', 'Mark built') + btn('pending', 'Back to pending') + btn('rejected', 'Reject'),
+          open: btn('open', 'Save', 'primary') + (i.raised >= 30000000 ? btn('building', 'Mark in progress') : '') + btn('pending', 'Back to pending') + btn('rejected', 'Reject'),
+          building: btn('building', 'Save', 'primary') + btn('built', 'Mark built') + btn('open', 'Reopen'),
           built: btn('built', 'Save', 'primary') + btn('open', 'Reopen'),
           rejected: btn('pending', 'Back to pending'),
         }[i.status];
         return '<article class="card" data-id="' + i.id + '">' +
           '<div class="meta"><span class="tag club">' + (i.source === 'club' ? 'Club' : i.source === 'team' ? 'Team' : 'Build with us') + '</span><span>' + when(i.createdAt) + '</span>' +
           (i.player ? '<span>' + esc(i.player.name) + (i.player.code ? ' · <code>' + esc(i.player.code.replace(/(.{4})(?=.)/g, '$1-')) + '</code>' : '') + '</span>' : '') +
-          (i.status === 'open' || i.status === 'built' ? '<span>' + millions(i.raised) + ' of 30M</span>' : '') + '</div>' +
+          (i.status === 'open' || i.status === 'building' || i.status === 'built' ? '<span>' + millions(i.raised) + ' of 30M</span>' : '') + '</div>' +
           '<p class="orig">' + esc(i.original) + '</p>' +
           '<input class="field" data-title maxlength="60" placeholder="Title for the game (max 60)" value="' + esc(i.title || titleOf(i.original)) + '">' +
           '<textarea class="field" data-text maxlength="600" placeholder="Text for the game (max 600)">' + esc(i.text || i.original) + '</textarea>' +
-          '<div class="actions">' + actions + '<button type="button" data-delete>Delete</button></div></article>';
+          '<div class="actions">' + actions + '<button type="button" data-delete aria-label="Delete ' + esc(i.title || titleOf(i.original)) + '">Delete idea</button></div></article>';
       }).join('') : '<p class="empty">Nothing here.</p>';
     } catch (e) { $('ideaList').innerHTML = '<p class="empty">' + esc(e.message) + '</p>'; }
   }
@@ -170,7 +172,7 @@ export const ADMIN_PAGE = `<!doctype html>
     const b = e.target.closest('button'); if (!b) return;
     const card = b.closest('[data-id]'); const id = card.dataset.id;
     try {
-      if ('delete' in b.dataset) { if (!confirm('Delete this idea and the money given to it?')) return; await api('DELETE', '/ideas/' + id); }
+      if ('delete' in b.dataset) { if (!confirm('Delete this idea from the Game fund and permanently remove its gifts?')) return; await api('DELETE', '/ideas/' + id); }
       else await api('PATCH', '/ideas/' + id, { status: b.dataset.to, title: card.querySelector('[data-title]').value, text: card.querySelector('[data-text]').value });
       loadIdeas();
     } catch (err) { alert(err.message); }
