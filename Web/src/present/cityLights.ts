@@ -13,16 +13,15 @@ import type { MapTheme } from './mapThemes';
  */
 export const CityLights = {
   lampSpacing: 110,
-  /** Many faint layers read as one soft pool instead of rings. */
-  lampPool: [34, 29, 24, 19, 14, 9],
-  lampStrength: 0.009,
+  /** Per layer: nine overlapping discs make a wider, graduated pool instead of visible rings. */
+  lampStrength: 0.0075,
   /** Headlight cone: a few faint layers, reaching this many car lengths ahead. */
   coneLayers: 3,
   coneReach: 1.6,
-  coneStrength: 0.012,
+  coneStrength: 0.015,
 
-  add(list: RenderList, world: World, alpha: number, theme: MapTheme | null, lamps: VehicleLamps | null, time: number | null): void {
-    if (world.config.night) return;
+  add(list: RenderList, world: World, alpha: number, theme: MapTheme | null, lamps: VehicleLamps | null, time: number | null, nightPreview = false): void {
+    if (world.config.night || nightPreview) return;
     if (!theme) CityLights.addLamps(list, world);
     CityLights.addHeadlights(list, world, alpha, lamps, time);
   },
@@ -36,9 +35,8 @@ export const CityLights = {
       let side = arm.slot % 2 === 0 ? 1 : -1;
       for (let d = layout.ringRadius + lane + 30; d < layout.ringRadius + 360; d += CityLights.lampSpacing) {
         const at = add(mul(out, d), mul(left(out), side * (lane + 10)));
-        for (const radius of CityLights.lampPool) list.w(circle(at, radius), 'headlight', CityLights.lampStrength);
         list.w(circle(add(at, v(0.8, -0.8)), 2), 'shadow', 0.8);
-        list.w(circle(at, 1.5), 'headlight', 0.85);
+        Headlights.addStreetLamp(list, at, CityLights.lampStrength);
         side = -side;
       }
     }

@@ -839,6 +839,15 @@ interface Signal {
   age: number;
 }
 
+/** A moving highlight cuts a brief gap into lower ring strokes at the crossing point. */
+interface RingCutout {
+  angle: number;
+  radius: number;
+  thickness: number;
+  halfAngle: number;
+  signal: number;
+}
+
 /** Where the signals run: the rim on the island, its start (the player's arm) and the road's outer edge. */
 export interface RingFrame {
   rim: number;
@@ -855,6 +864,28 @@ export class RingSignals {
     const half = 0.35;
     list.w(arc(v(0, 0), rim, 3 + 7 * phase, angle - half, angle + half, true), color, 1 - phase);
     list.w(arc(v(0, 0), rim, 2.5, angle - half, angle + half, true), color);
+  }
+
+  /** Draw an arc in pieces around moving highlights, so the foreground light has a clean edge. */
+  private static ringArc(list: RenderList, radius: number, thickness: number, start: number, end: number, color: ColorToken, opacity: number, cuts: readonly RingCutout[]): void {
+    if (opacity <= 0.001 || end - start <= 0.001) return;
+    const windows: { from: number; to: number }[] = [];
+    for (const cut of cuts) {
+      if (Math.abs(radius - cut.radius) > (thickness + cut.thickness) / 2 + 0.5) continue;
+      for (let turn = -2; turn <= 2; turn++) {
+        const center = cut.angle + turn * TAU;
+        const from = Math.max(start, center - cut.halfAngle);
+        const to = Math.min(end, center + cut.halfAngle);
+        if (to - from > 0.001) windows.push({ from, to });
+      }
+    }
+    windows.sort((a, b) => a.from - b.from);
+    let cursor = start;
+    for (const window of windows) {
+      if (window.from > cursor + 0.012) list.w(arc(v(0, 0), radius, thickness, cursor, window.from, true), color, opacity);
+      cursor = Math.max(cursor, window.to);
+    }
+    if (end > cursor + 0.012) list.w(arc(v(0, 0), radius, thickness, cursor, end, true), color, opacity);
   }
 
   static readonly hold = 0.9;
@@ -901,50 +932,66 @@ export class RingSignals {
   }
 
   addAt(list: RenderList, { rim, start, outer }: RingFrame, reduceMotion: boolean): void {
+    const heads: RingCutout[] = reduceMotion ? [] : this.signals.flatMap((s, signal) => {
+      if (s.kind === 'sweep') {
+        const x = Ease.clamp01(s.age / SIGNAL_DURATION.sweep);
+        const run = Ease.inOutSine(Ease.clamp01(x / 0.8));
+        return x < 1 && run > 0.001 ? [{ angle: start + TAU * run, radius: rim, thickness: 4.5, halfAngle: 0.055, signal }] : [];
+      }
+      if (s.kind === 'victory' && s.age < RingSignals.victoryLap + 0.3) {
+        const run = Ease.inOutSine(Ease.clamp01(s.age / RingSignals.victoryLap));
+        return run > 0.001 ? [{ angle: start + TAU * run, radius: rim, thickness: 5, halfAngle: 0.055, signal }] : [];
+      }
+      return [];
+    });
     if (this.leaving) {
       const fade = 1 - Ease.outCubic(this.leaving.age / 0.35);
-      this.ticks(list, this.leaving.total, this.leaving.sent, this.leaving.lit, start, rim, fade, Infinity, Infinity, reduceMotion);
+      this.ticks(list, this.leaving.total, this.leaving.sent, this.leaving.lit, start, rim, fade, Infinity, Infinity, reduceMotion, heads);
     }
-    this.ticks(list, this.total, this.sent, this.lit, start, rim, 1, this.arrival, this.sinceSent, reduceMotion);
-    for (const s of this.signals) {
+    this.ticks(list, this.total, this.sent, this.lit, start, rim, 1, this.arrival, this.sinceSent, reduceMotion, heads);
+    const lower = this.signals.map((s, signal) => ({ s, signal })).filter(({ s }) => s.kind !== 'sweep' && s.kind !== 'victory');
+    const moving = this.signals.map((s, signal) => ({ s, signal })).filter(({ s }) => s.kind === 'sweep' || s.kind === 'victory');
+    for (const { s } of [...lower, ...moving]) {
       const x = Ease.clamp01(s.age / SIGNAL_DURATION[s.kind]);
       if (s.kind === 'heal') {
-        RingSignals.heal(list, s, rim, reduceMotion);
+        RingSignals.heal(list, s, rim, reduceMotion, heads);
         continue;
       }
       const kind = reduceMotion ? 'flush' : s.kind;
+      const head = heads.find((cut) => cut.signal === this.signals.indexOf(s));
+      const higher = head ? heads.filter((cut) => cut.signal > head.signal) : [];
       if (kind === 'flush') {
         const fade = 1 - Ease.outCubic(x);
-        list.w(arc(v(0, 0), rim, 8, 0, TAU), s.color, 0.22 * fade);
-        list.w(arc(v(0, 0), rim, 2.5, 0, TAU), s.color, 0.8 * fade);
+        RingSignals.ringArc(list, rim, 8, 0, TAU, s.color, 0.22 * fade, heads);
+        RingSignals.ringArc(list, rim, 2.5, 0, TAU, s.color, 0.8 * fade, heads);
       } else if (kind === 'wave') {
         const radius = rim + (outer - rim) * Ease.outCubic(x);
-        list.w(arc(v(0, 0), radius, 1 + 2.5 * (1 - x), 0, TAU), s.color, 0.55 * (1 - x));
+        RingSignals.ringArc(list, radius, 1 + 2.5 * (1 - x), 0, TAU, s.color, 0.55 * (1 - x), heads);
       } else if (kind === 'splash') {
-        RingSignals.splash(list, s, rim, outer);
+        RingSignals.splash(list, s, rim, outer, heads);
       } else if (kind === 'victory') {
-        RingSignals.victory(list, s, { rim, start, outer });
+        RingSignals.victory(list, s, { rim, start, outer }, heads, higher);
       } else if (kind === 'miss') {
         const radius = outer - (outer - rim) * Ease.outCubic(x);
-        list.w(arc(v(0, 0), radius, 1 + 2.5 * (1 - x), 0, TAU), s.color, 0.55 * (1 - x));
+        RingSignals.ringArc(list, radius, 1 + 2.5 * (1 - x), 0, TAU, s.color, 0.55 * (1 - x), heads);
       } else {
         const run = Ease.inOutSine(x / 0.8);
         const head = start + TAU * run;
         const fade = 1 - Ease.clamp01((x - 0.8) / 0.2);
         if (run > 0.001) {
-          list.w(arc(v(0, 0), rim, 6, start, head, true), s.color, 0.18 * fade);
-          list.w(arc(v(0, 0), rim, 3.5, Math.max(start, head - 0.7), head, true), s.color, 0.9 * fade);
+          RingSignals.ringArc(list, rim, 6, start, head, s.color, 0.18 * fade, heads);
+          RingSignals.ringArc(list, rim, 3.5, Math.max(start, head - 0.7), head, s.color, 0.9 * fade, higher);
         }
       }
     }
   }
 
   /** The combo climbed a tier: the rim flares and juice sprays out of it, more drops the higher the tier. */
-  static splash(list: RenderList, s: Signal, rim: number, outer: number): void {
+  static splash(list: RenderList, s: Signal, rim: number, outer: number, cuts: readonly RingCutout[] = []): void {
     const x = Ease.clamp01(s.age / SIGNAL_DURATION.splash);
     const flare = 1 - Ease.outCubic(x);
-    list.w(arc(v(0, 0), rim, 12, 0, TAU), s.color, 0.2 * flare);
-    list.w(arc(v(0, 0), rim + (outer - rim) * 0.7 * Ease.outCubic(x), 0.5 + 3 * (1 - x), 0, TAU), s.color, 0.6 * (1 - x));
+    RingSignals.ringArc(list, rim, 12, 0, TAU, s.color, 0.2 * flare, cuts);
+    RingSignals.ringArc(list, rim + (outer - rim) * 0.7 * Ease.outCubic(x), 0.5 + 3 * (1 - x), 0, TAU, s.color, 0.6 * (1 - x), cuts);
     const drops = 12 + Math.round(18 * s.power);
     for (let i = 0; i < drops; i++) {
       // Each drop leaves a hair later and flies its own distance; the golden angle spreads them evenly.
@@ -967,27 +1014,27 @@ export class RingSignals {
    * The shift is done (Leo, 09.10.2026: more reward): a light runs once round the rim, and where it closes the ring the
    * rim flares, shock rings roll out, juice sprays and sparkles twinkle. `power` is the strength: a Perfect Run is 1.
    */
-  static victory(list: RenderList, s: Signal, { rim, start, outer }: RingFrame): void {
+  static victory(list: RenderList, s: Signal, { rim, start, outer }: RingFrame, cuts: readonly RingCutout[] = [], headCuts: readonly RingCutout[] = cuts): void {
     const lap = RingSignals.victoryLap;
     const run = Ease.inOutSine(Ease.clamp01(s.age / lap));
     const head = start + TAU * run;
     const trail = 1 - Ease.clamp01((s.age - lap) / 0.3);
     if (run > 0.001 && trail > 0) {
-      list.w(arc(v(0, 0), rim, 10, start, head, true), s.color, 0.2 * trail);
-      list.w(arc(v(0, 0), rim, 4.5, Math.max(start, head - 1.1), head, true), s.color, 0.95 * trail);
+      RingSignals.ringArc(list, rim, 10, start, head, s.color, 0.2 * trail, cuts);
+      RingSignals.ringArc(list, rim, 4.5, Math.max(start, head - 1.1), head, s.color, 0.95 * trail, headCuts);
     }
     const u = s.age - lap;
     if (u <= 0) return;
     const flare = 1 - Ease.outCubic(Ease.clamp01(u / 0.75));
-    list.w(arc(v(0, 0), rim, 20, 0, TAU), s.color, 0.22 * flare);
-    list.w(arc(v(0, 0), rim, 3.5, 0, TAU), s.color, 0.9 * flare);
+    RingSignals.ringArc(list, rim, 20, 0, TAU, s.color, 0.22 * flare, cuts);
+    RingSignals.ringArc(list, rim, 3.5, 0, TAU, s.color, 0.9 * flare, cuts);
     for (let k = 0; k < 3; k++) {
       const t = Ease.clamp01((u - k * 0.13) / 0.8);
       if (t <= 0 || t >= 1) continue;
       const radius = rim + (outer + 26 - rim) * Ease.outCubic(t);
-      list.w(arc(v(0, 0), radius, 1 + 3.5 * (1 - t), 0, TAU), k % 2 === 0 ? s.color : s.second, 0.65 * (1 - t));
+      RingSignals.ringArc(list, radius, 1 + 3.5 * (1 - t), 0, TAU, k % 2 === 0 ? s.color : s.second, 0.65 * (1 - t), cuts);
     }
-    RingSignals.splash(list, { ...s, kind: 'splash', age: u }, rim, outer);
+    RingSignals.splash(list, { ...s, kind: 'splash', age: u }, rim, outer, cuts);
     const sparkles = 7 + Math.round(7 * s.power);
     for (let i = 0; i < sparkles; i++) {
       const t = Ease.clamp01((u - 0.1 - (i % 5) * 0.07) / 0.55);
@@ -1045,13 +1092,13 @@ export class RingSignals {
    * A crash forgiven (the shield, a police car within its limit): the rim lights up and small plus signs rise out of
    * it, here and there round the ring, so the broken combo in the middle does not read as the end.
    */
-  static heal(list: RenderList, s: Signal, rim: number, reduceMotion: boolean): void {
+  static heal(list: RenderList, s: Signal, rim: number, reduceMotion: boolean, cuts: readonly RingCutout[] = []): void {
     const x = Ease.clamp01(s.age / SIGNAL_DURATION.heal);
     const glow = (reduceMotion ? 1 : Ease.outCubic(x / 0.14)) * (1 - Ease.inOutSine(Ease.clamp01((x - 0.25) / 0.75)));
     const radius = rim + (reduceMotion ? 0 : 3 * Ease.outCubic(x));
-    list.w(arc(v(0, 0), radius, 16, 0, TAU), s.color, 0.14 * glow);
-    list.w(arc(v(0, 0), radius, 7, 0, TAU), s.color, 0.26 * glow);
-    list.w(arc(v(0, 0), radius, 2.5, 0, TAU), s.color, 0.95 * glow);
+    RingSignals.ringArc(list, radius, 16, 0, TAU, s.color, 0.14 * glow, cuts);
+    RingSignals.ringArc(list, radius, 7, 0, TAU, s.color, 0.26 * glow, cuts);
+    RingSignals.ringArc(list, radius, 2.5, 0, TAU, s.color, 0.95 * glow, cuts);
     const count = RingSignals.healPluses;
     for (let i = 0; i < count; i++) {
       // Not one after the other round the ring: they bubble up in a scattered order.
@@ -1071,7 +1118,7 @@ export class RingSignals {
 
   static readonly healPluses = 12;
 
-  private ticks(list: RenderList, total: number, sent: number, lit: ColorToken, start: number, rim: number, opacity: number, arrival: number, sinceSent: number, reduceMotion: boolean): void {
+  private ticks(list: RenderList, total: number, sent: number, lit: ColorToken, start: number, rim: number, opacity: number, arrival: number, sinceSent: number, reduceMotion: boolean, cuts: readonly RingCutout[] = []): void {
     if (total <= 0 || opacity <= 0.001) return;
     const step = TAU / total;
     const half = Math.min(step * 0.3, 0.1);
@@ -1083,7 +1130,7 @@ export class RingSignals {
       let thickness = isLit ? 3 : 2;
       if (isLit && i === sent - 1 && !reduceMotion) thickness *= land(sinceSent / 0.35, 0.8);
       const grow = reduceMotion ? 1 : 0.4 + 0.6 * appear;
-      list.w(arc(v(0, 0), rim, thickness, center - half * grow, center + half * grow, true), isLit ? lit : 'marking', (isLit ? 0.85 : 0.6) * opacity * appear);
+      RingSignals.ringArc(list, rim, thickness, center - half * grow, center + half * grow, isLit ? lit : 'marking', (isLit ? 0.85 : 0.6) * opacity * appear, cuts);
     }
   }
 }

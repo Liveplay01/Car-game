@@ -15,9 +15,9 @@ export interface BeamLook {
 }
 
 /**
- * A car's headlights (Leo, 09.10.2026: they felt stiff): one soft cone per lamp instead of one rigid wedge.
- * The cones reach further the faster the car goes, swing into a turn, breathe a little and fade in and out
- * with the car (`Beam`, `VehicleLamps.update`) instead of switching.
+ * A car's headlights: overlapping, curved light bands keep the beam soft instead of reading as a pair of
+ * rigid triangles. The cones reach further the faster the car goes, swing into a turn, breathe a little
+ * and fade in and out with the car (`Beam`, `VehicleLamps.update`) instead of switching.
  */
 export const Headlights = {
   /** The beam of a car whose lamps nobody follows: lit when it drives, dark in the queue. */
@@ -28,29 +28,51 @@ export const Headlights = {
     if (intensity < 0.01) return;
     const breath = time === null ? 1 : 1 + 0.04 * Math.sin(time * 4.1 + id * 1.9) + 0.025 * Math.sin(time * 9.7 + id * 3.1);
     const reach = look.reach * beam.reach;
-    const alpha = look.strength * 0.62 * intensity * breath;
+    const alpha = look.strength * 0.56 * intensity * breath;
     for (const side of [1, -1]) {
       const origin = v(length / 2, width * 0.3 * side);
       const turn = beam.swing + side * 0.04;
       const cos = Math.cos(turn);
       const sin = Math.sin(turn);
       const place = (x: number, y: number): Vec2 => worldOf(v(origin.x + x * cos - y * sin, origin.y + x * sin + y * cos), pose);
-      for (let layer = 0; layer < look.layers; layer++) {
-        const k = (layer + 1) / look.layers;
-        const far = reach * k;
-        const spread = width * (0.16 + (look.spread * 0.75 - 0.16) * k);
-        list.w(polygon([place(0, width * 0.16), place(far, spread), place(far, -spread), place(0, -width * 0.16)]), 'headlight', alpha);
+      const sections = Math.max(5, look.layers);
+      // Build a feathered beam from adjoining curved cross-sections. A slight shoulder in the
+      // spread mimics a real dipped beam without leaving a sharp triangular edge on the road.
+      for (let i = 0; i < sections; i++) {
+        const a = i / sections;
+        const b = (i + 1) / sections;
+        const spreadAt = (t: number): number => width * (0.12 + look.spread * (0.78 * t - 0.12 * t * t));
+        const near = Math.max(0.5, reach * a);
+        const far = reach * b;
+        const fade = (1 - 0.48 * a) * (0.82 + 0.18 * Math.sin(Math.PI * b));
+        const shoulder = width * 0.1 * Math.sin(Math.PI * a);
+        const inner = spreadAt(a) - shoulder;
+        const outer = spreadAt(b) - shoulder;
+        const sectionAlpha = alpha * fade / sections * 3.2;
+        list.w(polygon([place(near, inner), place(far, outer), place(far, -outer), place(near, -inner)]), 'headlight', sectionAlpha);
       }
     }
   },
 
-  /** The lamps themselves: a bright point in a faint halo. */
+  /** The lamps themselves: a warm lens, soft spill and a small cool specular reflection. */
   addBulbs(list: RenderList, pose: Pose, length: number, width: number, intensity: number): void {
+    const power = Math.min(1, intensity);
     for (const y of [width * 0.3, -width * 0.3]) {
       const at = worldOf(v(length / 2 - 0.4, y), pose);
-      list.w(circle(at, 5), 'headlight', 0.16 * Math.min(1, intensity));
-      list.w(circle(at, 2.8), 'headlight', 0.3 * Math.min(1, intensity));
-      list.w(circle(at, 1), 'headlight', 0.95);
+      list.w(circle(at, width * 0.34), 'headlight', 0.035 * power);
+      list.w(circle(at, width * 0.22), 'headlight', 0.08 * power);
+      list.w(circle(at, width * 0.12), 'headlight', 0.42 * power);
+      list.w(circle(worldOf(v(length / 2, y), pose), width * 0.055), 'primary', 0.72 * power);
     }
+  },
+
+  /** A road lamp: a wide, graduated warm pool and a small bright bulb at its centre. */
+  addStreetLamp(list: RenderList, at: Vec2, strength: number): void {
+    for (const radius of [54, 46, 39, 32, 26, 20, 15, 10, 6]) {
+      list.w(circle(at, radius), 'headlight', strength);
+    }
+    list.w(circle(at, 4), 'accent', 0.12);
+    list.w(circle(at, 2.2), 'headlight', 0.72);
+    list.w(circle(at, 0.9), 'primary', 0.8);
   },
 };

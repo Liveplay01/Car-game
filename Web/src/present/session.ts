@@ -141,6 +141,8 @@ export class GameSession {
   screen: Screen = { k: 'ready' };
   save: SaveGame;
   systemReduceMotion = false;
+  /** A local visual-only flag for inspecting night lighting without changing the saved shift. */
+  nightPreview = false;
   /**
    * Set by the shell when the device cannot keep 30 fps even at a pixel ratio of 1: the scene
    * leaves out its decoration (ground texture, what flies through the air, cloud shadows).
@@ -2754,7 +2756,8 @@ export class GameSession {
     if (!this.special) CityLayer.addElite(list, Elite.level(career, this.config), world);
     if (!this.special) CityLayer.addHall(list, career.hallBuilt, career.prestige, world);
     CityLayer.addFrame(list, Careers.frame(career), world);
-    if (!world.config.night) this.addRim(list, world, rm);
+    const night = world.config.night || this.nightPreview;
+    if (!night) this.addRim(list, world, rm);
     WeatherLayer.addCityEvent(list, world);
     const weather = this.weatherFade.mix(world.config.weather, this.sceneTime);
     WeatherLayer.addGround(list, world, weather);
@@ -2764,16 +2767,19 @@ export class GameSession {
     this.explosions.addGround(list);
     this.effects.carSkins = career.carSkins;
     this.effects.addGround(list, world, alpha, !rm);
-    CityLights.add(list, world, alpha, theme, this.lamps, rm ? null : world.time);
-    SceneBuilder.addShadows(list, world, alpha);
-    SceneBuilder.addVehicles(list, world, alpha, career.carSkins, rm ? null : world.time, rm ? null : world.time, this.lamps);
-    SceneBuilder.addTowTrucks(list, world);
-    if (world.config.night) {
-      NightLayer.add(list, world, alpha, this.lamps, rm ? null : world.time);
-      // The ring's light goes on above the dark, not under it, and glows (`HUD.bloom`).
+    CityLights.add(list, world, alpha, theme, this.lamps, rm ? null : world.time, this.nightPreview);
+    if (night) NightLayer.addRoadLights(list, world, alpha, this.lamps, rm ? null : world.time);
+    if (night) {
+      // Keep the ring's glow in the world layer so vehicles and wreckage can occlude it.
       const lit = list.items.length;
       this.addRim(list, world, rm);
       if (!this.lowDetail) HUD.bloom(list, lit);
+    }
+    SceneBuilder.addShadows(list, world, alpha);
+    SceneBuilder.addVehicles(list, world, alpha, career.carSkins, rm ? null : world.time, rm ? null : world.time, this.lamps);
+    SceneBuilder.addTowTrucks(list, world);
+    if (night) {
+      NightLayer.addVehicleLights(list, world, alpha, this.lamps, rm ? null : world.time);
     }
     if (this.save.settings.vehicleLabels) SceneBuilder.addLabels(list, world, alpha);
     this.effects.addAir(list);
@@ -2837,7 +2843,7 @@ export class GameSession {
       HUD.addOversize(list, world, alpha);
       HUD.addWedding(list, world);
       HUD.addRace(list, world, alpha);
-      if (world.config.night && !this.lowDetail) HUD.bloom(list, lit);
+      if ((world.config.night || this.nightPreview) && !this.lowDetail) HUD.bloom(list, lit);
       const since = world.shift.rushHourSince;
       HUD.add(list, {
         world,

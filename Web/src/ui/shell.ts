@@ -180,6 +180,7 @@ export class Shell {
     onAdAudio(quietForAd);
     onRewardedAudio(quietForAd);
     this.session = new GameSession(output);
+    this.session.nightPreview = import.meta.env.DEV && new URLSearchParams(location.search).has('night-preview');
     this.session.systemReduceMotion = this.motionQuery.matches;
     this.motionQuery.addEventListener('change', () => (this.session.systemReduceMotion = this.motionQuery.matches));
 
