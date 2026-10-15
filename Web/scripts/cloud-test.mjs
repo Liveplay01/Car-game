@@ -58,13 +58,13 @@ test('cloud: progress another device sent is taken over when this one has nothin
 
 const casinoRecords = (casinoProfit) => ({ level: 7, prestige: 0, unlimitedBest: 0, unlimitedCars: 0, dailyDay: -1, dailyScore: 0, rushBest: 0, casinoProfit, title: null });
 
-test('ranks: the casino profit reaches the Casino board, and only a better one counts', async () => {
+test('ranks: the casino profit reaches the Casino board and follows it down', async () => {
   await createAccount('Lucky Ace');
   await syncScores(casinoRecords(12_000));
   const board = await fetchBoard('casino');
   assert.deepEqual(board.entries.map((e) => [e.name, e.score, e.me]), [['Lucky Ace', 12_000, true]]);
   await syncScores(casinoRecords(5_000));
-  assert.equal((await fetchBoard('casino')).me.score, 12_000, 'a loss later does not lower the board');
+  assert.equal((await fetchBoard('casino')).me.score, 5_000, 'the board holds the profit as it is now (15.10.2026), not the best one');
   await deleteAccount(loadAccount());
 });
 

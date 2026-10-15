@@ -844,7 +844,7 @@ Geprüft wird mit `npm test` (Web: 62 Tests, node:test; Server: 42 Tests), `npm 
 
 ## 17. Ideen danach
 
-(07.10.2026 gebaut: Touren mit Halloween und Winter, Mutatoren, Saison-Regeln, Chill, Achievements. Offen aus der Liste: Wochenligen, Community-Raid, Fahrprüfung, Co-op, Challenge-Builder, neue Verkehrselemente, siehe IDEA.md.)
+(07.10.2026 gebaut: Touren mit Halloween und Winter, Mutatoren, Saison-Regeln, Chill, Achievements. Offen aus der Liste: Co-op, Challenge-Builder, neue Verkehrselemente, siehe IDEA.md.)
 
 
 Offene Ideen stehen in [IDEA.md](IDEA.md). Stand 02.10.2026 ist dort nur noch **Analytics und Fehlerberichte** (Umami oder Plausible, GlitchTip als Coolify-Dienste, ohne eigenen Code; braucht einen Absatz in `legal.ts` und passt zum Data-Safety-Formular in der Play Console). Die übrigen Ideen (Konto mit Passwort, Daily-Bestenliste mit Replay-Prüfung, Ghost Racing) sind gestrichen.

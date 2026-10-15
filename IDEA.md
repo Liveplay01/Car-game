@@ -46,9 +46,6 @@ Rückenwind, **Heat** (freiwillige Schwierigkeit ab Level 50), Bestenlisten **Da
   Ein neuer Baustein im Dienst (`teams`).
 - **Neue Elemente für späte Level:** z. B. Falschfahrer, Traktor oder eine zusätzliche Boss-Runde ab ★5. Regeln,
   Grafik und Museum. Der Hochzeitskorso (Level 100) ist gebaut. Der Hochzeitskorso (Level 100) ist gebaut.
-- **Mastery pro Fahrzeug** mit kosmetischen Effekten oder Hupen-Sounds (auch in LOOT.md, „Ideen für später“).
-- **Heat verfeinern:** Heat-Stufe als Zusatz auf der Shift-Level-Liste (der Dienst bräuchte ein `heat` im Meta);
-  eigene Heat-Auflagen statt nur Stufen (z. B. nur Nebel oder nur dichter Verkehr), wenn Spieler es wünschen.
 - **Endowed Progress:** bewusst nicht als Fake-Vorsprung gebaut; echte Vorsprünge gibt es schon.
 
 **Bewusst nicht gebaut (nicht neu vorschlagen):**
@@ -65,11 +62,6 @@ Rückenwind, **Heat** (freiwillige Schwierigkeit ab Level 50), Bestenlisten **Da
 Gebaut am 07.10.: Touren (Haunted Ring, Winter Lights), Mutator des Tages, Saison-Regeln, Chill, Achievements.
 Offen, grob nach Wirkung:
 
-- **Wochenligen:** Bestenlisten ohne Reset sind für Neue aussichtslos. Eine Liga mit Wochen-Reset (Bronze bis Diamant,
-  Auf- und Abstieg) gibt jeder Woche ein Ziel; Belohnung nur Rahmen und Titel. Braucht ein Modul `leagues` im Dienst.
-- **Community-Raid:** alle Takedowns der Spieler füllen eine Woche lang die Leiste eines Riesen-Bosses; ist sie leer,
-  bekommen alle eine Truhe. Passt zu den Teams (oben), ein Zähler im Dienst.
-- **Fahrprüfung:** 30 bis 50 handgebaute Mini-Szenarien mit 1 bis 3 Sternen für das Mittelspiel (Level 10 bis 40).
 - **Co-op-Multiplayer:** zwei bis vier Spieler auf einem Ring in Unlimited, ein Crash trifft alle.
 - **Challenge-Builder:** Wetter, Boss, Autozahl und Level selbst einstellen und als Link teilen (kein Freitext, keine Moderation).
 - **Neue Verkehrselemente:** Falschfahrer, Traktor, Hochzeitskorso, Radrennen; Parade und Straßenbahn stehen schon offen.
@@ -91,26 +83,17 @@ neues `LEGAL_UPDATED` und muss zum Data-Safety-Formular in der Play Console pass
 Gebaut ist die Einladung per Link (beide bekommen bei Level 5 eine Chest). Was darüber hinaus am meisten
 bringen dürfte, grob nach Aufwand und Wirkung:
 
-1. **Clip-Knopf für die Crashes.** Die Physik (Blechschaden, Stoß, Verkehr reagiert) ist das Material, das
-   auf TikTok, Shorts und Reels läuft. `canvas.captureStream` + `MediaRecorder` hält die letzten 8 Sekunden
-   fest, ein Tipp teilt sie (mit Wasserzeichen und Link). Wirkt erst, wenn Spieler es auch posten wollen:
-   zuerst ein paar eigene Clips auf den Kanälen testen.
-2. **Mehr Portale.** CrazyGames läuft; Poki, GameDistribution, Y8, itch.io, Newgrounds und Kongregate nehmen
-   Browserspiele auch. Ein Eintrag je Portal, derselbe Build mit eigenem `?portal=`-Schalter nach dem Muster von
-   `?crazygames`. Portale bringen Besucher, ohne dass wir sie holen müssen.
-3. **Ein Konto bei Reddit, Hacker News und Discord, mit echter Geschichte.** „Show HN: Ein-Tap-Kreisverkehr im
-   Browser, ohne Engine und ohne Framework“ und r/WebGames sind die zwei Orte, an denen ein kleines, sauber gebautes
-   Browserspiel von selbst Anklang findet. Der Discord-Webhook für „Build with us“ existiert; ein Discord, in dem
+1. **Ein Discord für das Spiel.** Der Discord-Webhook für „Build with us“ existiert; ein Discord, in dem
    Patch Notes erscheinen (aus `/changelog.json`), macht daraus einen Ort.
-4. **Google-Play-Eintrag als Suchmaschine.** Titel, Kurztext und die ersten zwei Screenshots entscheiden,
+2. **Google-Play-Eintrag als Suchmaschine.** Titel, Kurztext und die ersten zwei Screenshots entscheiden,
    nicht das Spiel. Screenshots mit Beschriftung („Tap. Merge. Don't crash.“), ein 15-Sekunden-Video aus dem
    Crash-Material, Stichwörter „roundabout“, „traffic“, „one tap“.
-5. **Landeseiten für Suchbegriffe** auf timing.love: „Car Circle Alternative“, „Kreisverkehr Spiel“, „One-Tap-Spiel
+3. **Landeseiten für Suchbegriffe** auf timing.love: „Car Circle Alternative“, „Kreisverkehr Spiel“, „One-Tap-Spiel
    im Browser“. Das Museum liefert schon Text zu Bossen und Wetter; kurze Anleitungsseiten dazu ziehen Suchende an.
-6. **Teams statt Einzelner.** Ein Teamcode (wie der Freundescode) für Klassen, Büros, Discords: eine Rangliste
+4. **Teams statt Einzelner.** Ein Teamcode (wie der Freundescode) für Klassen, Büros, Discords: eine Rangliste
    nur dafür. Schulklassen und Streamer-Communities teilen Links in Gruppen, nicht einzeln. Braucht ein Modul im
    Server (`teams`), kein neues System.
-7. **Web Push für die Daily** („Neue Daily: Marathon“). Wirkt auf Wiederkehr, nicht auf Neue; braucht einen
+5. **Web Push für die Daily** („Neue Daily: Marathon“). Wirkt auf Wiederkehr, nicht auf Neue; braucht einen
    Push-Dienst im Server und einen Absatz in `legal.ts`. Erst wenn die Zahlen aus Umami zeigen, dass
    Spieler nach Tag 2 gehen.
 
@@ -135,3 +118,9 @@ aussteigen, entscheidet, welcher Punkt hier als Nächstes dran ist.
 - Neues Server-Modul `Server/src/modules/casino` (Tabelle, Plausibilitätsgrenzen, Tests), Feld im Spielstand, Netzaufruf in `present/casinoFlow.ts`, Datenschutz in `legal.ts` (`LEGAL_UPDATED`), README.
 - **Entscheidung nötig:** bricht die Regel „Geld wird lokal berechnet“ für das Casino, und das Casino ist dann nicht mehr offline spielbar.
 - **Bleibt offen auch danach:** ein neues anonymes Konto mit altem Export (ohne echte Konten nicht zu verhindern; Mindest-Kontoalter fürs Casino würde es mühsamer machen) und Fälschen mit dem Schlüssel aus dem Bundle.
+
+## Später: Neu-Punkte außerhalb der Segmente (Leo, 15.10.2026)
+
+Das Neu-System (`present/news.ts`, Punkt am Tab und Segment, Marker am Element) kennt nur Progress, Shop und Social.
+Neues auf dem Game-Tab (Heat-Pille, neuer Modus), in den Settings oder im Build-Tab hat keinen Platz für den Punkt.
+Erst bauen, wenn eine konkrete Neuerung es braucht: dann steht fest, wo der Punkt hin soll.

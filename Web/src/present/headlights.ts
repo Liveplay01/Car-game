@@ -29,19 +29,26 @@ export const Headlights = {
     const breath = time === null ? 1 : 1 + 0.04 * Math.sin(time * 4.1 + id * 1.9) + 0.025 * Math.sin(time * 9.7 + id * 3.1);
     const reach = look.reach * beam.reach;
     const alpha = look.strength * 0.56 * intensity * breath;
-    for (const side of [1, -1]) {
-      const origin = v(length / 2, width * 0.3 * side);
+    const heading = { cos: Math.cos(pose.heading), sin: Math.sin(pose.heading) };
+    const sections = Math.max(5, look.layers);
+    const spreadAt = (t: number): number => width * (0.12 + look.spread * (0.78 * t - 0.12 * t * t));
+    for (let side = 1; side >= -1; side -= 2) {
+      const ox = length / 2;
+      const oy = width * 0.3 * side;
       const turn = beam.swing + side * 0.04;
       const cos = Math.cos(turn);
       const sin = Math.sin(turn);
-      const place = (x: number, y: number): Vec2 => worldOf(v(origin.x + x * cos - y * sin, origin.y + x * sin + y * cos), pose);
-      const sections = Math.max(5, look.layers);
+      // A point of the beam (along, across) in the world: the lamp's turn, then the car's pose, in one step.
+      const place = (x: number, y: number): Vec2 => {
+        const lx = ox + x * cos - y * sin;
+        const ly = oy + x * sin + y * cos;
+        return v(pose.position.x + (lx * heading.cos - ly * heading.sin), pose.position.y + (lx * heading.sin + ly * heading.cos));
+      };
       // Build a feathered beam from adjoining curved cross-sections. A slight shoulder in the
       // spread mimics a real dipped beam without leaving a sharp triangular edge on the road.
       for (let i = 0; i < sections; i++) {
         const a = i / sections;
         const b = (i + 1) / sections;
-        const spreadAt = (t: number): number => width * (0.12 + look.spread * (0.78 * t - 0.12 * t * t));
         const near = Math.max(0.5, reach * a);
         const far = reach * b;
         const fade = (1 - 0.48 * a) * (0.82 + 0.18 * Math.sin(Math.PI * b));

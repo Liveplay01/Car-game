@@ -1250,13 +1250,15 @@ export class Shell {
    * only when every frame fails for a while does the player get the way out.
    */
   private loop(now: number): void {
-    // The battery: the simulation runs on its own clock, so the picture may skip frames. A 120 Hz screen draws 60 a
-    // second (never twice what the eye can use), the battery saver 30; a 60 Hz screen loses nothing.
-    if (now - this.lastPaint < (this.session.save.settings.batterySaver ? Shell.saverFrame : Shell.frameGap)) {
+    // The battery: the simulation runs on its own clock, so the picture may skip frames. Which ones is decided by
+    // counting screen refreshes, not by a time gap (a gap skips every other frame of a 90 Hz screen, 45 a second):
+    // a 60 or 90 Hz screen loses nothing, a 120 Hz one draws 60, the battery saver 30.
+    this.measureRefresh(now);
+    if (++this.skipped < this.every) {
       requestAnimationFrame((t) => this.loop(t));
       return;
     }
-    this.lastPaint = now;
+    this.skipped = 0;
     try {
       this.frame(now);
       this.faults = 0;
@@ -1270,11 +1272,32 @@ export class Shell {
     requestAnimationFrame((t) => this.loop(t));
   }
 
-  private lastPaint = 0;
-  /** Shortest time (ms) between two frames: under a 60 Hz frame, so a 60 Hz screen never skips one; the saver's, between a 30 Hz frame and a 60 Hz one. */
-  private static readonly frameGap = 12;
-  private static readonly saverFrame = 28;
+  /** Refreshes since the last drawn frame, and how many make one: 1 on a screen of up to ~100 Hz. */
+  private skipped = 0;
+  private every = 1;
+  private refreshAt = 0;
+  private readonly refreshGaps: number[] = [];
+  /** The most frames a second the picture is drawn at; the battery saver's. */
+  private static readonly drawRate = 70;
+  private static readonly saverRate = 30;
   private static readonly saverDpr = 1.5;
+
+  /**
+   * The screen's refresh rate from the gaps between frames: the fast tenth of the last 90, so slow frames of our own
+   * (which stretch a gap) do not read as a slower screen. Asked again every 90 frames, since a phone may change its rate.
+   */
+  private measureRefresh(now: number): void {
+    const gaps = this.refreshGaps;
+    const gap = now - this.refreshAt;
+    this.refreshAt = now;
+    if (gap <= 1 || gap > 100) return;
+    gaps.push(gap);
+    if (gaps.length !== 20 && gaps.length < 90) return;
+    const hz = 1000 / [...gaps].sort((a, b) => a - b)[Math.floor(gaps.length / 10)];
+    const rate = this.session.save.settings.batterySaver ? Shell.saverRate : Shell.drawRate;
+    this.every = Math.max(1, Math.round(hz / rate));
+    if (gaps.length >= 90) gaps.length = 0;
+  }
 
   /** Frames in a row that may fail before the game gives up (about two seconds). */
   private static readonly faultLimit = 120;

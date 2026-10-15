@@ -296,13 +296,12 @@ const cache = new Map<ColorToken, (string | undefined)[]>();
 
 /** The CSS colour of a token at an opacity (the token's own alpha included). */
 export function css(token: ColorToken, opacity = 1): string {
-  const [r, g, b, a] = COLORS[token];
-  const alpha = Math.max(0, Math.min(1, a * opacity));
-  const q = Math.round(alpha * 255);
+  const color = COLORS[token];
+  const q = Math.round(Math.max(0, Math.min(1, color[3] * opacity)) * 255);
   let row = cache.get(token);
   if (!row) {
     row = new Array<string | undefined>(256);
     cache.set(token, row);
   }
-  return (row[q] ??= `rgba(${r},${g},${b},${(q / 255).toFixed(3)})`);
+  return (row[q] ??= `rgba(${color[0]},${color[1]},${color[2]},${(q / 255).toFixed(3)})`);
 }

@@ -68,6 +68,7 @@ import { StreetBuilderPage, BuilderState } from './builder';
 import { Feedback, Music, Sky, type MusicMix, type WeatherSound, type SoundID, type HapticID } from './feedback';
 import { Details, type Detail } from './detail';
 import { Intros, type Intro } from './intros';
+import { News, NEWS_DWELL, type NewsItem } from './news';
 import { textWidth } from './icons';
 import { TyreMarks } from './marks';
 import { type ChallengeSpec, challengeOf, challengeConfig, encodeChallenge } from '../core/challenge';
@@ -320,6 +321,7 @@ export class GameSession {
   constructor(private output: SessionOutput | null = null) {
     this.save = loadSave();
     Intros.start(this.save, this.config);
+    News.start(this.save);
     const seed = this.nextSeed();
     this.playingLevel = this.save.career.level;
     this.world = new World(Careers.config(this.save.career, this.config, seed), seed, { startsOnFirstTap: true });
@@ -1425,6 +1427,7 @@ export class GameSession {
     this.sinceReady = this.screen.k === 'ready' ? this.sinceReady + realDelta : 0;
     this.watchCity(realDelta);
     this.watchIntro(realDelta);
+    this.watchNews(realDelta);
     const cardFree = this.screen.k === 'ready' && this.takesModeSwipe && !this.versusSelected;
     this.tips.advance(realDelta, cardFree, cardFree && this.notices.isEmpty && this.modeHint < 0.05 && this.modeMessage.view(0) === null, this.reduceMotion);
     const hintTarget = this.showsModeHint ? 1 : 0;
@@ -1971,6 +1974,35 @@ export class GameSession {
     this.introShown = here;
   }
 
+  /** The page and segment the player is on, for what is new there. */
+  private get placeHere(): Pick<NewsItem, 'tab' | 'section'> | null {
+    if (this.screen.k !== 'page') return null;
+    switch (this.screen.tab) {
+      case 'progress':
+        return { tab: 'progress', section: this.progressPage.section };
+      case 'shop':
+        return { tab: 'shop', section: this.shopPage.section };
+      case 'social':
+        return { tab: 'social', section: this.socialPage.section };
+      default:
+        return null;
+    }
+  }
+
+  private newsWatch: { place: Pick<NewsItem, 'tab' | 'section'> | null; age: number } = { place: null, age: 0 };
+
+  /** What is new in a place counts as seen once the player has been there a moment and moves on. */
+  private watchNews(dt: number): void {
+    const here = this.placeHere;
+    const watch = this.newsWatch;
+    if (watch.place?.tab !== here?.tab || watch.place?.section !== here?.section) {
+      if (watch.place && watch.age >= NEWS_DWELL && News.read(this.save, watch.place.tab, watch.place.section)) this.persist();
+      watch.place = here;
+      watch.age = 0;
+    }
+    watch.age += dt;
+  }
+
   /** The Game fund tab of the Club is open: its introduction comes up once (the Club's own tabs are DOM, so the panel asks). */
   introduce(i: Intro): void {
     if (this.screen.k !== 'page' || this.detailOpen || !Intros.isPending(this.save, i, this.config)) return;
@@ -1981,12 +2013,22 @@ export class GameSession {
     this.introShown = i;
   }
 
-  /** A dot on the segment of a place that has an introduction waiting (Progress puts its own, `progressDots`). */
+  /** A dot on the segment of a place that has an introduction or news waiting (Progress puts its own, `progressDots`). */
   private addIntroDots(list: RenderList, viewport: Vec2, inset: number): void {
     const pending = this.introsPending;
-    if (pending.length === 0) return;
+    const news = this.isPage('shop') ? News.sections(this.save, 'shop') : this.isPage('social') ? News.sections(this.save, 'social') : [];
+    if (pending.length === 0 && news.length === 0) return;
     const dot = (cell: Rect, label: string): void => ShopPage.badgeDot(list, v(R.center(cell).x + textWidth(label, 13) / 2 + 8, R.center(cell).y - 6), 1);
     const career = this.save.career;
+    for (const section of news) {
+      if (this.isPage('shop')) {
+        const cell = ShopPage.layout(viewport, inset, ShopPage.sections(career)).segments.find(([s]) => s === section);
+        if (cell) dot(cell[1], S.shop.section(cell[0]));
+      } else {
+        const cell = SocialPage.segments(viewport, SocialPage.sections(career)).find(([s]) => s === section);
+        if (cell) dot(cell[1], S.social.section(cell[0]));
+      }
+    }
     if (this.isPage('shop') && pending.includes('casino')) {
       const cell = ShopPage.layout(viewport, inset, ShopPage.sections(career)).segments.find(([section]) => section === 2);
       if (cell) dot(cell[1], S.shop.section(2));
@@ -2956,6 +2998,7 @@ export class GameSession {
     if (this.save.tutorialDone && c.level >= this.config.dailyUnlockLevel && Careers.isDailyOpen(c, this.today)) dots.push(PROGRESS.today);
     if (!this.eliteSeen && Careers.canPrestige(c, this.config)) dots.push(PROGRESS.records);
     if (c.museumNew.length > 0) dots.push(PROGRESS.museum);
+    for (const section of News.sections(this.save, 'progress')) if (!dots.includes(section)) dots.push(section);
     for (const [intro, section] of [['daily', PROGRESS.today], ['trials', PROGRESS.trials], ['pass', PROGRESS.goals], ['museum', PROGRESS.museum]] as const) {
       if (this.introsPending.includes(intro) && !dots.includes(section)) dots.push(section);
     }
@@ -2968,11 +3011,11 @@ export class GameSession {
     // Progress: the page puts the same dot on the segment that waits (`progressDots`); the Daily Shift's dot stays until it is played (09.10.2026).
     if (barTab(tab) === 'progress') return this.progressDots.length > 0 ? 'dot' : null;
     // A loan that is late or due within a day waits in the Mafia. The Club never calls (Leo, 11.10.2026).
-    if (barTab(tab) === 'social') return SocialPage.mafiaWaits(c, Date.now()) || this.introsPending.some((i) => i === 'club' || i === 'mafia') ? 'dot' : null;
+    if (barTab(tab) === 'social') return SocialPage.mafiaWaits(c, Date.now()) || this.introsPending.some((i) => i === 'club' || i === 'mafia') || News.sections(this.save, 'social').length > 0 ? 'dot' : null;
     if (barTab(tab) === 'upgrades') return this.introsPending.includes('builder') ? 'dot' : null;
     if (barTab(tab) !== 'shop') return null;
     if (c.chests.length > 0) return { count: c.chests.length };
-    if (this.introsPending.includes('casino')) return 'dot';
+    if (this.introsPending.includes('casino') || News.sections(this.save, 'shop').length > 0) return 'dot';
     // A skin a casino round has won stays quiet until the round shows it.
     return this.shopPage.wallet.unseen(c.unseen).length > 0 ? 'dot' : null;
   }
@@ -3148,6 +3191,7 @@ export class GameSession {
   resetProgress(): void {
     this.save = newSave();
     Intros.start(this.save, this.config);
+    News.start(this.save);
     this.store();
     this.tutorial = new Tutorial();
     this.prepareShift(false);
@@ -3157,6 +3201,7 @@ export class GameSession {
   importProgress(save: SaveGame): void {
     this.save = save;
     Intros.start(save, this.config);
+    News.start(save);
     this.store();
     this.tutorial = save.tutorialDone ? null : new Tutorial();
     if (this.tutorial) this.save.mode = 'shift';

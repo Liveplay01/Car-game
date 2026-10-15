@@ -236,7 +236,7 @@ function readRound(raw: unknown): CasinoRound[] {
 
 /** Known hints only; someone with an Unlimited or Mayhem best has found the mode swipe already. */
 function readHints(raw: Record<string, unknown>): Hint[] {
-  const hints = new Set(strings(raw.hints).filter((h): h is Hint => (HINTS as readonly string[]).includes(h)));
+  const hints = new Set(strings(raw.hints).filter((h): h is Hint => (HINTS as readonly string[]).includes(h) || h.startsWith('news.')));
   if (int(raw.unlimitedBest, 0, 0) > 0 || int(raw.mayhemBest, 0, 0) > 0) hints.add('modes');
   return [...hints];
 }

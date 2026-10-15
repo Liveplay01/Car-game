@@ -1558,7 +1558,7 @@ export interface RunCard {
 /** The end of a shift without leaving the world: the same card says how it went. */
 export const ResultBanner = {
   inputLock: 0.4,
-  /** A lost shift takes a breather (Leo, 12.10.2026): FAIL on the card, a skull on the island, the ring at dusk, and no tap starts the next one yet. Wherever a shift can be lost: career, Unlimited, challenges and trials. */
+  /** A lost shift takes a breather (Leo, 12.10.2026): FAIL on the card, the ring at dusk, and no tap starts the next one yet. Wherever a shift can be lost: career, Unlimited, challenges and trials. */
   breath: 1.2,
   breathes: (s: ShiftSummary): boolean => (s.mode === 'shift' || s.mode === 'unlimited') && s.result.outcome !== 'completed' && !s.result.detonated,
   /** How long the result ignores taps. */
@@ -1574,25 +1574,6 @@ export const ResultBanner = {
   /** The result leaves in the first half of the fade, the next shift arrives in the second: never both at once. */
   leaving: (age: number): number => Ease.smoothstep(ResultBanner.settled(age) * 2),
   arriving: (age: number): number => Ease.smoothstep(ResultBanner.settled(age) * 2 - 1),
-
-  /**
-   * A small red skull in the island's middle, faint like a watermark: `size` is its half width. Head and jaw are one
-   * outline, so the faint fill has the same colour all over; the eyes, nose and teeth are holes you see through.
-   */
-  addSkull(list: RenderList, center: Vec2, size: number, age: number, reduceMotion: boolean, opacity: number): void {
-    const s = size * (reduceMotion ? 1 : land(age / 0.45, 0.15));
-    const at = (x: number, y: number): Vec2 => add(center, v(x * s, y * s));
-    // The head is a circle (middle (0, -0.2), radius 0.78) that meets the jaw's sides (x = ±0.475) at y = 0.42.
-    const meet = Math.atan2(0.62, 0.475);
-    const head = Array.from({ length: 25 }, (_, i) => {
-      const a = meet - ((Math.PI + 2 * meet) * i) / 24;
-      return at(0.78 * Math.cos(a), -0.2 + 0.78 * Math.sin(a));
-    });
-    const eye = (side: number): Vec2[] => Array.from({ length: 16 }, (_, i) => at(side * 0.33 + 0.21 * Math.cos((i / 16) * TAU), -0.18 + 0.21 * Math.sin((i / 16) * TAU)));
-    const tooth = (x: number): Vec2[] => [at(x - 0.03, 0.52), at(x + 0.03, 0.52), at(x + 0.03, 0.84), at(x - 0.03, 0.84)];
-    const nose = [at(0, 0.06), at(-0.11, 0.32), at(0.11, 0.32)];
-    list.s(polygon([...head, at(-0.475, 0.78), at(-0.4, 0.85), at(0.4, 0.85), at(0.475, 0.78)], [eye(-1), eye(1), nose, tooth(-0.24), tooth(0), tooth(0.24)]), 'destructive', 0.18 * opacity);
-  },
 
   /** How the shift ended, in words and colour: the card's caption and the photo's headline. */
   title(summary: ShiftSummary): [string, ColorToken] {
@@ -1675,9 +1656,6 @@ export const ResultBanner = {
     }
     list.tag = undefined;
     const island = toScreen(list.camera, v(0, 0));
-    // A lost shift's skull stays as long as the red ring does; the texts stand in front of it.
-    const skull = ResultBanner.breathes(summary) ? Math.min(islandRadius * 0.6, 44) : 0;
-    if (skull > 0) ResultBanner.addSkull(list, island, skull, age, reduceMotion, shown);
     if (r.money > 0 && shown > 0.001) {
       const x = reduceMotion ? 1 : Ease.clamp01((age - ResultBanner.countDelay) / ResultBanner.countDuration);
       const counted = Math.round(r.money * Ease.outCubic(x));
@@ -1713,9 +1691,6 @@ export const ResultBanner = {
     else if (summary.mode === 'unlimited') above(S.modes.carsSent(r.carsSent), 'accent');
     else if (summary.mode === 'mayhem') above(S.mayhem.summary(r.wrecks, r.biggestChain), 'fireOuter');
     else if (summary.mode === 'chill') above(S.chill.summary(r.carsSent, Fmt.seconds(r.time)), 'lightBlue');
-    if (summary.mode !== 'mayhem' && summary.mode !== 'chill') {
-      islandLine(list, S.result.stats(r.bestCombo, r.tightFits, r.takedowns, r.transporters, Fmt.seconds(r.time)), islandRadius, 28, 13, 'muted', details);
-    }
     const close = summary.closeCall;
     if (close) {
       // It lands a moment after the prompt: the thing to read after "tap to try again".

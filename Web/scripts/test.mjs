@@ -682,6 +682,23 @@ test('a place explains itself once: new players get the Museum and Builder after
   assert.ok(Intros.pending(old, baseConfig).includes('club'), 'what opens later still explains itself');
 });
 
+test('news: a new player has nothing to catch up on, a returning one sees it until the place has been visited', async () => {
+  const { News, NEWS } = await load('/src/present/news.ts');
+  const fresh = newSave();
+  News.start(fresh);
+  fresh.tutorialDone = true;
+  assert.deepEqual(News.pending(fresh), [], 'the tutorial counts everything listed as met');
+  const old = newSave();
+  old.tutorialDone = true;
+  News.start(old);
+  assert.equal(News.pending(old).length, NEWS.length, 'a save that has played sees what is new');
+  const [first] = NEWS;
+  assert.deepEqual(News.sections(old, first.tab), [first.section]);
+  assert.equal(News.read(old, first.tab, first.section), true);
+  assert.equal(News.read(old, first.tab, first.section), false, 'seen once');
+  assert.equal(News.pending(old).length, NEWS.length - 1);
+});
+
 test('condition icons: one per condition of the shift, tap targets of 64 points that never overlap', () => {
   const config = cloneConfig(baseConfig);
   Object.assign(config, { weather: 'heavyRain', cityEvent: 'roadClosure', night: true, blackout: false, lanes: 2 });
@@ -2226,7 +2243,7 @@ test('a cleared Daily Shift is kept for the Daily board, and both new boards are
   assert.equal(list.find(([board]) => board === 'rush')[2], 10_000_000 - 12345, 'a faster time is a bigger number');
   assert.ok(!dueBoards({ ...records, dailyDay: -1, dailyScore: 0, rushBest: 0 }).some(([board]) => board === 'daily' || board === 'rush'), 'nothing to send without a clear');
   assert.deepEqual(dueBoards({ ...records, casinoProfit: 5000 }).find(([board]) => board === 'casino').slice(0, 2), ['casino', { profit: 5000 }]);
-  assert.ok(!dueBoards({ ...records, casinoProfit: -200 }).some(([board]) => board === 'casino'), 'a loss is not sent');
+  assert.deepEqual(dueBoards({ ...records, casinoProfit: -200 }).find(([board]) => board === 'casino').slice(0, 2), ['casino', { profit: -200 }], 'a loss is sent too (15.10.2026)');
   assert.ok(!dueBoards({ ...records, casinoProfit: null }).some(([board]) => board === 'casino'), 'nothing before the Casino is reached');
 });
 

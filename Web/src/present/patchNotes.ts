@@ -62,6 +62,9 @@ export const PATCH_NOTES: PatchNote[] = [
       'Friends, Ranks and the Club need a player. After Level 5 the game asks for your name.',
     ],
     items: [
+      'Smoother on 90 Hz phones: the picture is now drawn on every refresh instead of every other one. Drawing also makes less garbage for the browser to collect, so a mid-range phone stutters less.',
+      'New things now wait where they live: a dot on the tab and the segment, and a dot on the shelf itself, until you have been there. The Failures shelf in the Museum is the first.',
+      'Less text in the middle of the ring: a result no longer lists time, combo, tight fits and busted cars under the prompt, and a lost shift has no skull on the island.',
       'Heat is no longer a choice: career shifts always run at the highest Heat your Daily streak opens. The Heat pill on the Game tab only shows it, with the extra pay (for example Heat +30 %), and is gone without Heat. The waiting card no longer repeats it.',
       'Your name changes in one place now: Settings → Account → Your player. Ranks and the multiplayer lobby show it and say where to change it.',
       'Ranks: your newest scores go up before the list loads, so your own line is never a shift behind.',

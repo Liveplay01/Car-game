@@ -13,7 +13,11 @@ import { type CarModel, CarModels, partShape as S } from './carModels';
 export const rotated = (p: Vec2, a: number): Vec2 => v(p.x * Math.cos(a) - p.y * Math.sin(a), p.x * Math.sin(a) + p.y * Math.cos(a));
 
 /** A local point of the car in world space. */
-export const worldOf = (local: Vec2, pose: Pose): Vec2 => add(pose.position, rotated(local, pose.heading));
+export const worldOf = (local: Vec2, pose: Pose): Vec2 => {
+  const cos = Math.cos(pose.heading);
+  const sin = Math.sin(pose.heading);
+  return v(pose.position.x + (local.x * cos - local.y * sin), pose.position.y + (local.x * sin + local.y * cos));
+};
 
 export type Part =
   | 'frontBumper'

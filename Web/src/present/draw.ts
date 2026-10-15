@@ -627,6 +627,10 @@ export class CanvasDrawer {
    */
   private offscreen(p: RenderItem['p'], cam: Camera): boolean {
     const s = cam.scale;
+    const fx = cam.focus.x;
+    const fy = cam.focus.y;
+    const cx0 = cam.center.x;
+    const cy0 = cam.center.y;
     // A baked picture's margin counts as on screen: a shake moves it into view.
     const m = this.pad / this.dpr;
     let x: number;
@@ -634,23 +638,28 @@ export class CanvasDrawer {
     let reach: number;
     switch (p.k) {
       case 'circle':
-        ({ x, y } = toScreen(cam, p.center));
+        x = fx + (p.center.x - cx0) * s;
+        y = fy - (p.center.y - cy0) * s;
         reach = p.radius * s;
         break;
       case 'rect':
-        ({ x, y } = toScreen(cam, p.center));
+        x = fx + (p.center.x - cx0) * s;
+        y = fy - (p.center.y - cy0) * s;
         reach = (Math.hypot(p.size.x, p.size.y) / 2) * s;
         break;
       case 'arc':
-        ({ x, y } = toScreen(cam, p.center));
+        x = fx + (p.center.x - cx0) * s;
+        y = fy - (p.center.y - cy0) * s;
         reach = (p.radius + p.thickness / 2) * s;
         break;
       case 'line': {
-        const a = toScreen(cam, p.from);
-        const b = toScreen(cam, p.to);
-        x = (a.x + b.x) / 2;
-        y = (a.y + b.y) / 2;
-        reach = Math.hypot(a.x - b.x, a.y - b.y) / 2 + p.thickness * s;
+        const ax = fx + (p.from.x - cx0) * s;
+        const ay = fy - (p.from.y - cy0) * s;
+        const bx = fx + (p.to.x - cx0) * s;
+        const by = fy - (p.to.y - cy0) * s;
+        x = (ax + bx) / 2;
+        y = (ay + by) / 2;
+        reach = Math.hypot(ax - bx, ay - by) / 2 + p.thickness * s;
         break;
       }
       case 'polygon': {
@@ -658,12 +667,13 @@ export class CanvasDrawer {
         let minY = Infinity;
         let maxX = -Infinity;
         let maxY = -Infinity;
-        for (const q of p.points) {
-          const o = toScreen(cam, q);
-          if (o.x < minX) minX = o.x;
-          if (o.x > maxX) maxX = o.x;
-          if (o.y < minY) minY = o.y;
-          if (o.y > maxY) maxY = o.y;
+        for (let i = 0; i < p.points.length; i++) {
+          const ox = fx + (p.points[i].x - cx0) * s;
+          const oy = fy - (p.points[i].y - cy0) * s;
+          if (ox < minX) minX = ox;
+          if (ox > maxX) maxX = ox;
+          if (oy < minY) minY = oy;
+          if (oy > maxY) maxY = oy;
         }
         return maxX < -this.offset.x - m - 1 || maxY < -this.offset.y - m - 1 || minX > this.width - this.offset.x + m + 1 || minY > this.height - this.offset.y + m + 1;
       }
@@ -674,20 +684,44 @@ export class CanvasDrawer {
     return x + reach < -this.offset.x || y + reach < -this.offset.y || x - reach > this.width - this.offset.x || y - reach > this.height - this.offset.y;
   }
 
+  /** The screen point of `q` (world or screen space), left in `px` and `py`: no object per point in the hot loop. */
+  private px = 0;
+  private py = 0;
+  private place(world: boolean, cam: Camera, q: Vec2): void {
+    if (world) {
+      this.px = cam.focus.x + (q.x - cam.center.x) * cam.scale;
+      this.py = cam.focus.y - (q.y - cam.center.y) * cam.scale;
+    } else {
+      this.px = q.x;
+      this.py = q.y;
+    }
+  }
+
+  /** One closed ring of a polygon into the current path. */
+  private ring(points: readonly Vec2[], world: boolean, cam: Camera): void {
+    const ctx = this.ctx;
+    for (let i = 0; i < points.length; i++) {
+      this.place(world, cam, points[i]);
+      if (i === 0) ctx.moveTo(this.px, this.py);
+      else ctx.lineTo(this.px, this.py);
+    }
+    ctx.closePath();
+  }
+
   private item(item: RenderItem, cam: Camera): void {
     const ctx = this.ctx;
     const world = item.space === 'world';
     const p = item.p;
     const color = css(item.color, item.opacity);
-    const pt = (q: Vec2): Vec2 => (world ? toScreen(cam, q) : q);
-    const len = (l: number): number => (world ? l * cam.scale : l);
+    // Screen lengths are the world's times the zoom; on a screen item they stay as they are (× 1 is exact).
+    const k = world ? cam.scale : 1;
     switch (p.k) {
       case 'rect': {
-        const c = pt(p.center);
-        let w = len(p.size.x);
-        let h = len(p.size.y);
-        let cx = c.x;
-        let cy = c.y;
+        this.place(world, cam, p.center);
+        let w = p.size.x * k;
+        let h = p.size.y * k;
+        let cx = this.px;
+        let cy = this.py;
         // A fill over the whole viewport covers the whole canvas, safe-area margins included.
         if (!world && p.rotation === 0 && w >= cam.viewport.x - 0.5 && h >= cam.viewport.y - 0.5) {
           w = this.width + 80;
@@ -697,7 +731,7 @@ export class CanvasDrawer {
         }
         if (w <= 0 || h <= 0) return;
         const rot = world ? -p.rotation : p.rotation;
-        const r = Math.max(0, Math.min(len(p.radius), w / 2, h / 2));
+        const r = Math.max(0, Math.min(p.radius * k, w / 2, h / 2));
         if (item.glass !== undefined && !world && rot === 0) {
           this.glassShadow(cx - w / 2, cy - h / 2, w, h, r, item.opacity);
           if (this.glassBlur) this.frost(cx - w / 2, cy - h / 2, w, h, r, item.glass);
@@ -744,31 +778,33 @@ export class CanvasDrawer {
         return;
       }
       case 'circle': {
-        const c = pt(p.center);
-        const r = len(p.radius);
+        this.place(world, cam, p.center);
+        const r = p.radius * k;
         if (r <= 0.05) return;
         this.setFill(color);
         ctx.beginPath();
-        ctx.arc(c.x, c.y, r, 0, Math.PI * 2);
+        ctx.arc(this.px, this.py, r, 0, Math.PI * 2);
         ctx.fill();
         return;
       }
       case 'arc': {
-        const c = pt(p.center);
-        const r = len(p.radius);
-        const t = len(p.thickness);
+        this.place(world, cam, p.center);
+        const x = this.px;
+        const y = this.py;
+        const r = p.radius * k;
+        const t = p.thickness * k;
         if (t <= 0.02 || r <= 0) return;
         this.setStroke(color);
         ctx.lineWidth = t;
         ctx.beginPath();
         const open = Math.abs(p.end - p.start) < Math.PI * 2 - 1e-9;
         if (!open) {
-          ctx.arc(c.x, c.y, r, 0, Math.PI * 2);
+          ctx.arc(x, y, r, 0, Math.PI * 2);
         } else if (world) {
           // World angles turn counter-clockwise, screen angles clockwise.
-          ctx.arc(c.x, c.y, r, -p.end, -p.start);
+          ctx.arc(x, y, r, -p.end, -p.start);
         } else {
-          ctx.arc(c.x, c.y, r, Math.min(p.start, p.end), Math.max(p.start, p.end));
+          ctx.arc(x, y, r, Math.min(p.start, p.end), Math.max(p.start, p.end));
         }
         if (p.round && open) {
           ctx.lineCap = 'round';
@@ -778,30 +814,34 @@ export class CanvasDrawer {
         return;
       }
       case 'line': {
-        const a = pt(p.from);
-        const b = pt(p.to);
-        const t = len(p.thickness);
+        const t = p.thickness * k;
         if (t <= 0.02) return;
+        this.place(world, cam, p.from);
+        const ax = this.px;
+        const ay = this.py;
+        this.place(world, cam, p.to);
         this.setStroke(color);
         ctx.lineWidth = t;
         ctx.beginPath();
-        ctx.moveTo(a.x, a.y);
-        ctx.lineTo(b.x, b.y);
+        ctx.moveTo(ax, ay);
+        ctx.lineTo(this.px, this.py);
         ctx.stroke();
         return;
       }
       case 'segments': {
         // One stroke for all of them: a shower of streaks costs one draw call, not hundreds.
-        const t = len(p.thickness);
+        const t = p.thickness * k;
         if (t <= 0.02 || p.points.length < 2) return;
         this.setStroke(color);
         ctx.lineWidth = t;
         ctx.beginPath();
         for (let i = 0; i + 1 < p.points.length; i += 2) {
-          const a = pt(p.points[i]);
-          const b = pt(p.points[i + 1]);
-          ctx.moveTo(a.x, a.y);
-          ctx.lineTo(b.x, b.y);
+          this.place(world, cam, p.points[i]);
+          const ax = this.px;
+          const ay = this.py;
+          this.place(world, cam, p.points[i + 1]);
+          ctx.moveTo(ax, ay);
+          ctx.lineTo(this.px, this.py);
         }
         ctx.stroke();
         return;
@@ -811,11 +851,11 @@ export class CanvasDrawer {
         this.setFill(color);
         ctx.beginPath();
         for (let i = 0; i < p.points.length; i++) {
-          const c = pt(p.points[i]);
-          const r = len(p.radii[i]);
+          const r = p.radii[i] * k;
           if (r <= 0.05) continue;
-          ctx.moveTo(c.x + r, c.y);
-          ctx.arc(c.x, c.y, r, 0, Math.PI * 2);
+          this.place(world, cam, p.points[i]);
+          ctx.moveTo(this.px + r, this.py);
+          ctx.arc(this.px, this.py, r, 0, Math.PI * 2);
         }
         ctx.fill();
         return;
@@ -824,20 +864,15 @@ export class CanvasDrawer {
         if (p.points.length < 3) return;
         this.setFill(color);
         ctx.beginPath();
-        for (const ring of [p.points, ...(p.holes ?? [])]) {
-          ring.forEach((point, i) => {
-            const q = pt(point);
-            if (i === 0) ctx.moveTo(q.x, q.y);
-            else ctx.lineTo(q.x, q.y);
-          });
-          ctx.closePath();
-        }
+        this.ring(p.points, world, cam);
+        if (p.holes) for (const hole of p.holes) this.ring(hole, world, cam);
         ctx.fill('evenodd');
         return;
       }
       case 'text': {
         if (p.size < 1) return;
-        const anchor = pt(p.position);
+        this.place(world, cam, p.position);
+        const anchor = { x: this.px, y: this.py };
         const bold = p.weight !== 'regular';
         const display = p.weight === 'display';
         this.setFont(p.size, bold, display);

@@ -28,6 +28,7 @@ import { Scroller, clipTo } from './scroll';
 import { type TourId, type TourDef, TOURS, tourOn, nextTour, tourOpen, tourStopsDone, stopDoneKey, TOUR_LEVEL } from '../core/tours';
 import { FAMILIES, Achievements, achievementTotal, type Family } from '../core/achievements';
 import { seasonOf } from '../core/loot';
+import { News } from './news';
 
 /** What the Progress tab shows and animates (`ProgressPage.State`); each section is a list that scrolls. */
 export class ProgressState extends Scroller {
@@ -298,7 +299,7 @@ export const ProgressPage = {
       for (const shelf of MUSEUM_SHELVES) {
         const { shown, all } = MuseumPage.count(career, shelf);
         const entries = shelfEntries(shelf);
-        const fresh = entries.some((e) => career.museumNew.includes(museumId(e)));
+        const fresh = entries.some((e) => career.museumNew.includes(museumId(e))) || (shelf === 3 && News.has(save, 'failures'));
         s.heading(S.museum.shelf(shelf), `${shown}/${all}`, shown === all, fresh);
         s.grid(
           entries.map((entry): Block => ({ k: 'museum', entry })),
