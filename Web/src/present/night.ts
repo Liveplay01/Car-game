@@ -34,7 +34,7 @@ export const NightLayer = {
   lampStrength: 0.016,
 
   /** The ground and projected beams are painted before cars, so bodies naturally occlude them. */
-  addRoadLights(list: RenderList, world: World, alpha: number, lamps: VehicleLamps | null, time: number | null): void {
+  addRoadLights(list: RenderList, world: World, alpha: number, lamps: VehicleLamps | null, time: number | null, layers?: number): void {
     const vp = list.camera.viewport;
     const blackout = world.config.blackout;
     list.s(rect(mul(vp, 0.5), vp), 'night', blackout ? NightLayer.blackoutDarkness : NightLayer.darkness);
@@ -54,7 +54,7 @@ export const NightLayer = {
       const intensity = (NightLayer.queueDim + (1 - NightLayer.queueDim) * beam.glow) * (1 + 1.5 * flash);
 
       // Two soft cones that follow the car, brightest near it; the queue behind the front car dims.
-      const look = { layers: NightLayer.coneLayers, reach: CarArt.length('car', c) * NightLayer.coneReach, spread: NightLayer.coneSpread, strength: NightLayer.coneStrength };
+      const look = { layers: layers ?? NightLayer.coneLayers, reach: CarArt.length('car', c) * NightLayer.coneReach, spread: NightLayer.coneSpread, strength: NightLayer.coneStrength };
       Headlights.add(list, pose, L, W, look, beam, intensity, time, veh.id);
       // Brake-light spill belongs on the road; the small red lenses are drawn over the car later.
       const brake = lamps ? lamps.brake(veh.id) : 0;

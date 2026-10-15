@@ -30,7 +30,17 @@ const layers = document.getElementById('layers')!;
 
 // The boot screen (index.html) turns into its "did not start" message at once if the start throws.
 const boot = document.getElementById('boot');
-const bootFailed = (): void => boot?.classList.add('failed');
+const bootFailed = (): void => {
+  const car = boot?.querySelector<SVGGElement>('.boot-car');
+  if (!boot || !car || boot.classList.contains('failed')) return;
+  // Drive on from where the car is, a lap further if it is already past the blockade.
+  const { b, a } = new DOMMatrix(getComputedStyle(car).transform);
+  const done = (-Math.atan2(b, a) * 180) / Math.PI;
+  const from = done < 0 ? done + 360 : done;
+  car.style.setProperty('--from', `${-from}deg`);
+  car.style.setProperty('--to', from < 120 ? '-135deg' : '-495deg');
+  boot.classList.add('failed');
+};
 window.addEventListener('error', bootFailed);
 window.addEventListener('unhandledrejection', bootFailed);
 

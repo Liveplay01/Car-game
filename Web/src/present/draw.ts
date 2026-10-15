@@ -560,11 +560,31 @@ export class CanvasDrawer {
     ctx.roundRect(x, y, w, h, r);
     ctx.clip();
     ctx.setTransform(1, 0, 0, 1, 0, 0);
-    if (this.nativeFilter) {
-      ctx.filter = `blur(${blur * d}px) saturate(1.4)`;
-      ctx.drawImage(ctx.canvas, sx, sy, ex - sx, ey - sy, sx, sy, ex - sx, ey - sy);
-    } else this.softBlur(sx, sy, ex - sx, ey - sy, blur * d);
+    if (this.nativeFilter) this.halfBlur(sx, sy, ex - sx, ey - sy, blur * d);
+    else this.softBlur(sx, sy, ex - sx, ey - sy, blur * d);
     ctx.restore();
+  }
+
+  private frostArt: HTMLCanvasElement | null = null;
+
+  /**
+   * The native blur at half size: the region is taken down to half, blurred there (a quarter of the pixels,
+   * half the radius) and laid back. A blur this wide shows no difference, and it is the frame's dearest filter.
+   */
+  private halfBlur(sx: number, sy: number, w: number, h: number, sigma: number): void {
+    const art = (this.frostArt ??= document.createElement('canvas'));
+    const hw = Math.max(1, Math.ceil(w / 2));
+    const hh = Math.max(1, Math.ceil(h / 2));
+    if (art.width < hw || art.height < hh) {
+      art.width = Math.max(art.width, hw);
+      art.height = Math.max(art.height, hh);
+    }
+    const g = art.getContext('2d');
+    if (!g) return;
+    g.clearRect(0, 0, hw, hh);
+    g.filter = `blur(${sigma / 2}px) saturate(1.4)`;
+    g.drawImage(this.ctx.canvas, sx, sy, w, h, 0, 0, hw, hh);
+    this.ctx.drawImage(art, 0, 0, hw, hh, sx, sy, w, h);
   }
 
   /**

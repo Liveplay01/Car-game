@@ -3,6 +3,7 @@ import { createHash } from 'node:crypto';
 import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { changelogFile } from './src/present/patchNotes.ts';
+import { siteFiles } from './src/present/siteData.ts';
 import { LEGAL_DOCS, type LegalDoc, GAME_NAME, missingLegal } from './src/present/legal.ts';
 
 /** The sound effects and music stems, so the game sounds right offline too. */
@@ -39,8 +40,8 @@ function serviceWorker(): Plugin {
     name: 'car-game-service-worker',
     apply: 'build',
     generateBundle(_options, bundle) {
-      // The changelog is for the website and always fetched fresh; the game never needs it.
-      const files = Object.keys(bundle).filter((f) => !f.endsWith('.map') && f !== 'sw.js' && f !== 'changelog.json');
+      // The changelog and the site data are for the website and always fetched fresh; the game never needs them.
+      const files = Object.keys(bundle).filter((f) => !f.endsWith('.map') && f !== 'sw.js' && f !== 'changelog.json' && !f.startsWith('data/'));
       const assets = [
         '/',
         '/index.html',
@@ -242,9 +243,33 @@ function changelogApi(): Plugin {
   };
 }
 
+/**
+ * `/data/*.json`: the game's facts for the website (timing.love): museum, collection, trials and
+ * titles, with the game's own art as SVG, and `index.json` with a fingerprint of each
+ * (`src/present/siteData.ts`). Like the changelog: written at every build, open to other sites.
+ */
+function siteDataApi(): Plugin {
+  const files = (): Record<string, string> => Object.fromEntries(Object.entries(siteFiles()).map(([name, data]) => [`data/${name}.json`, JSON.stringify(data)]));
+  return {
+    name: 'car-game-site-data',
+    generateBundle() {
+      for (const [fileName, source] of Object.entries(files())) this.emitFile({ type: 'asset', fileName, source });
+    },
+    configureServer(server) {
+      server.middlewares.use('/data/', (req, res, next) => {
+        const body = files()[`data${(req.url ?? '').split('?')[0]}`];
+        if (body === undefined) return next();
+        res.setHeader('Content-Type', 'application/json; charset=utf-8');
+        res.setHeader('Access-Control-Allow-Origin', '*');
+        res.end(body);
+      });
+    },
+  };
+}
+
 export default defineConfig({
   // The legal pages first: the service worker precaches everything the bundle holds by then.
-  plugins: [legalPages(), changelogApi(), serviceWorker()],
+  plugins: [legalPages(), changelogApi(), siteDataApi(), serviceWorker()],
   build: {
     target: 'es2022',
     assetsInlineLimit: 0,

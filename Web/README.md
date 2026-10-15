@@ -240,6 +240,20 @@ there with the next deploy of the game, without `npm run content` or a commit in
 `summary` is the short version (up to four lines) to show at once, `items` the long list to fold open. Add fields,
 never rename them.
 
+## Site data API
+
+`/data/*.json` is what the website (timing.love) shows of the game besides What's new: `museum.json` (every boss,
+special vehicle, condition and failure with the game's own text), `collection.json` (every skin, map and vehicle,
+where it comes from, the chests with their odds), `progress.json` (trials and titles), `game.json` (counts, languages,
+the Daily Shift's events, the glyphs of the places) and `index.json` with a fingerprint per file. The pictures are
+the game's own art as SVG strings (`present/svg.ts` turns the same render list the canvas draws into SVG; the shop,
+museum and intro art are reused, nothing is redrawn). Written at every build from `present/siteData.ts` (plugin
+`siteDataApi` in `vite.config.ts`); `nginx.conf` serves them like the changelog, with CORS and five minutes of cache,
+and the service worker leaves them out of the precache. The website compares the live `index.json` with the one it was
+built with and fetches only the files that changed, so a new boss, skin or trial shows there with the next deploy of
+the game. `npm test` checks every file (`siteFiles()`). Add fields, never rename them; raise `version` only when an old
+reader would break.
+
 ## Saving
 
 Everything is stored in `localStorage` under `carGame.save.v2`, on this device only (an

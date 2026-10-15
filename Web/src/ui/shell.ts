@@ -405,6 +405,10 @@ export class Shell {
     this.syncChrome(true);
     requestAnimationFrame((t) => this.loop(t));
     this.scheduleAccountPrompt();
+    window.setTimeout(() => {
+      const { sound, music } = this.session.save.settings;
+      if (sound || music) this.audio.warm();
+    }, 2000);
     // Gifts from the team and from invites: at the start, after a name (an invite is handed in then) and after a record reached the service (level 5 pays).
     window.setTimeout(() => this.claimInvite(), 3000);
     syncPush(this.pushTimers);

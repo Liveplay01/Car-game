@@ -58,6 +58,10 @@ const { ResultBanner, RingSignals } = await load('/src/present/hud.ts');
 // Every module loaded at the top level comes before the first test: a load later down the file
 // can still be pending when the tests above it have finished and `after` has closed the server.
 const { parseBackdropLink, youtubeEmbed } = await load('/src/present/backdrop.ts');
+const { siteFiles, fingerprint: siteFingerprint } = await load('/src/present/siteData.ts');
+const { GUIDE } = await load('/src/present/siteGuide.ts');
+const { signalOf } = await load('/src/present/museumSignal.ts');
+const { readFileSync } = await import('node:fs');
 const { prestigeReward, BIG_SCREEN } = await load('/src/core/loot.ts');
 const { MUTATORS, mutatorOf, mutatorSky } = await load('/src/core/mutators.ts');
 const { forSeason } = await load('/src/core/seasons.ts');
@@ -3350,4 +3354,61 @@ test('a light passing over a ring tick switches the whole tick off, not just the
   assert.equal(RingSignals.touched(100, 2, 1, 0.1, [head(1.16)]), 0, 'clear of it');
   assert.equal(RingSignals.touched(100, 2, 0.02, 0.1, [head(Math.PI * 2 - 0.05, 0.4)]), 0.4, 'across the start of the ring, as strong as the light');
   assert.equal(RingSignals.touched(130, 2, 1, 0.1, [head(1)]), 0, 'a light on another radius');
+});
+
+test('site data for the website: every file in the index, unique ids, the game art as SVG', () => {
+  const files = siteFiles();
+  const { index, ...data } = files;
+  assert.deepEqual(Object.keys(index.files).sort(), Object.keys(data).sort());
+  for (const [name, file] of Object.entries(data)) {
+    assert.equal(file.version, index.version, name);
+    assert.equal(index.files[name], siteFingerprint(file), name);
+  }
+  const svg = (art) => typeof art === 'string' && art.startsWith('<svg') && art.endsWith('</svg>') && art.length > 200 && !art.includes('NaN');
+  const entries = data.museum.shelves.flatMap((s) => s.entries);
+  assert.equal(new Set(entries.map((e) => e.id)).size, entries.length);
+  for (const e of entries) assert.ok(svg(e.art) && e.name && e.line && e.paragraphs.length > 0 && !JSON.stringify(e).includes(String.fromCharCode(0xe000)), e.id);
+  assert.equal(new Set(data.collection.items.map((x) => x.id)).size, data.collection.items.length);
+  for (const x of data.collection.items) assert.ok(svg(x.art) && x.name && x.how, x.id);
+  assert.ok(!/\d[.,] coins/.test(JSON.stringify(data)), 'a coin amount keeps the full stop after it: "50 coins.", not "50. coins"');
+  for (const c of data.collection.chests) assert.ok(Math.abs(c.odds.reduce((a, b) => a + b, 0) - 1) < 1e-9, c.id);
+  const runs = data.progress.trials.flatMap((g) => g.runs);
+  assert.equal(new Set(runs.map((r) => r.id)).size, runs.length);
+  assert.ok(data.progress.titles.every((t) => t.name && t.rule));
+  assert.ok(data.game.places.every((p) => svg(p.art)));
+  assert.equal(data.game.counts.languages, data.game.languages.length);
+  assert.ok(data.game.languages.length >= 5 && data.game.languages.every((l) => /^[a-z]{2}$/.test(l.code) && l.name));
+});
+
+test('ring signal guide for the website: every signal the game plays is explained', () => {
+  // A signal can carry a second colour (the splash's juice, the victory's burst).
+  const guide = new Set(GUIDE.flatMap((g) => [`${g.kind}:${g.color}`, g.second && `${g.kind}:${g.second}`]).filter(Boolean));
+  // The vehicles' own signals come from the Museum's data (`signalOf`), the rest from the guide.
+  for (const e of [...shelfEntries(0), ...shelfEntries(1)]) {
+    const s = signalOf(e);
+    if (!s) continue;
+    if (s.sweep) guide.add(`sweep:${s.sweep.color}`);
+    if (s.paid) guide.add(`wave:${s.paid.color}`);
+    if (s.missed) guide.add(`miss:${s.missed.color}`);
+  }
+  const played = [];
+  for (const file of ['session.ts', 'versus.ts']) {
+    const source = readFileSync(new URL(`../src/present/${file}`, import.meta.url), 'utf8');
+    // `rim.signal('kind', 'colour' …)`: every literal colour in the call, a conditional's both.
+    for (const m of source.matchAll(/rim\.signal\('(\w+)',([^;]*?)\);/g)) {
+      for (const c of m[2].matchAll(/'(\w+)'/g)) played.push(`${m[1]}:${c[1]}`);
+    }
+    for (const m of source.matchAll(/healRing\('(\w+)', '(\w+)'\)/g)) played.push(`heal:${m[1]}`);
+  }
+  assert.ok(played.length > 30, 'the scan reads the calls of the game');
+  const missing = [...new Set(played)].filter((p) => !guide.has(p));
+  assert.deepEqual(missing, [], 'a ring signal the game plays has no entry in present/siteGuide.ts');
+  assert.equal(new Set(GUIDE.map((g) => g.id)).size, GUIDE.length);
+  const { signals, features } = siteFiles();
+  assert.ok(signals.kinds.length === 7 && signals.vehicles.length >= 10 && signals.vehicles.every((v) => v.steps.length > 0 && v.art.startsWith('<svg')));
+  assert.ok(signals.groups.every((g) => g.signals.length > 0 && g.signals.every((x) => x.color.startsWith('rgb(') && x.when)));
+  const items = features.groups.flatMap((g) => g.items);
+  assert.equal(new Set(items.map((x) => x.id)).size, items.length);
+  assert.ok(items.every((x) => x.title && x.line && x.body.length > 0 && !JSON.stringify(x).includes(String.fromCharCode(0xe000))));
+  assert.equal(features.groups[0].items.length, 5, 'every mode');
 });

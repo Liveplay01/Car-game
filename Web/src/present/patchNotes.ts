@@ -62,6 +62,7 @@ export const PATCH_NOTES: PatchNote[] = [
       'Friends, Ranks and the Club need a player. After Level 5 the game asks for your name.',
     ],
     items: [
+      'Fixed: the first tap no longer hitches. The sounds and music now load in the background right after the game starts, and the glass blur is drawn at half size, which looks the same and costs less on weaker phones.',
       'Smoother on 90 Hz phones: the picture is now drawn on every refresh instead of every other one. Drawing also makes less garbage for the browser to collect, so a mid-range phone stutters less.',
       'New things now wait where they live: a dot on the tab and the segment, and a dot on the shelf itself, until you have been there. The Failures shelf in the Museum is the first.',
       'Less text in the middle of the ring: a result no longer lists time, combo, tight fits and busted cars under the prompt, and a lost shift has no skull on the island.',

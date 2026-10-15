@@ -34,6 +34,7 @@ export class AudioPlayer {
   static readonly fade = 0.8;
 
   private static readonly maxVoices = 14;
+  private static readonly loadBatch = 8;
 
   /** Who stays when the voices run out (default 1): the big hits and the end of a shift, then warnings, then the small ticks. */
   private static readonly priority: Partial<Record<SoundID, number>> = {
@@ -75,11 +76,17 @@ export class AudioPlayer {
 
   /** Call from a user gesture; later calls only resume a suspended context. */
   unlock(): void {
-    if (this.ctx) {
-      // Refused outside a gesture the browser accepts: the next tap asks again.
-      if (this.ctx.state === 'suspended') this.ctx.resume().catch(() => undefined);
-      return;
-    }
+    this.warm();
+    // Refused outside a gesture the browser accepts: the next tap asks again.
+    if (this.ctx?.state === 'suspended') this.ctx.resume().catch(() => undefined);
+  }
+
+  /**
+   * Builds the context and starts loading the samples before the first tap, so that tap pays for neither. The
+   * context stays suspended until `unlock` runs in a gesture.
+   */
+  warm(): void {
+    if (this.ctx) return;
     const AC = window.AudioContext ?? window.webkitAudioContext;
     if (!AC) return;
     let ctx: AudioContext;
@@ -134,12 +141,15 @@ export class AudioPlayer {
         return null;
       }
     };
-    await Promise.all(
-      SOUND_IDS.map(async (id) => {
-        const b = await fetchBuffer(`audio/sounds/${id}.m4a`);
-        if (b) this.buffers.set(id, b);
-      }),
-    );
+    // In small groups: fifty fetches and decodes at once would stall the page.
+    for (let i = 0; i < SOUND_IDS.length; i += AudioPlayer.loadBatch) {
+      await Promise.all(
+        SOUND_IDS.slice(i, i + AudioPlayer.loadBatch).map(async (id) => {
+          const b = await fetchBuffer(`audio/sounds/${id}.m4a`);
+          if (b) this.buffers.set(id, b);
+        }),
+      );
+    }
     await Promise.all(
       MUSIC_LAYERS.map(async (layer) => {
         const b = await fetchBuffer(`audio/music/${layer}.m4a`);

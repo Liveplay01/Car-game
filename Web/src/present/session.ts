@@ -2811,7 +2811,7 @@ export class GameSession {
     this.effects.carSkins = career.carSkins;
     this.effects.addGround(list);
     CityLights.add(list, world, alpha, theme, this.lamps, rm ? null : world.time, this.nightPreview);
-    if (night) NightLayer.addRoadLights(list, world, alpha, this.lamps, rm ? null : world.time);
+    if (night) NightLayer.addRoadLights(list, world, alpha, this.lamps, rm ? null : world.time, this.lowDetail ? 5 : undefined);
     if (night) {
       // Keep the ring's glow in the world layer so vehicles and wreckage can occlude it.
       const lit = list.items.length;
