@@ -342,8 +342,10 @@ export function due(r: Records): [BoardId, Record<string, number>, number][] {
   if (r.dailyDay >= 0 && r.dailyScore > 0 && (confirmed.daily ?? -1) < daily) list.push(['daily', { score: r.dailyScore, day: r.dailyDay }, daily]);
   const cs = Math.round(r.rushBest * 100);
   if (r.rushBest > 0 && (confirmed.rush ?? -1) < RUSH_BASE - cs) list.push(['rush', { cs }, RUSH_BASE - cs]);
-  const profit = r.casinoProfit ?? 0;
-  if (profit > 0 && (confirmed.casino ?? -1) < profit) list.push(['casino', { profit }, profit]);
+  const profit = r.casinoProfit;
+  if (profit !== null && (profit !== 0 || confirmed.casino !== undefined) && (confirmed.casino === undefined || confirmed.casino !== profit)) {
+    list.push(['casino', { profit }, profit]);
+  }
   return list;
 }
 
@@ -365,7 +367,7 @@ export function syncScores(r: Records): Promise<void> {
         try {
           const result = await submitScore(board, body);
           if (!result) return;
-          confirmed[board] = Math.max(value, result.best.score);
+          confirmed[board] = board === 'casino' ? value : Math.max(value, result.best.score);
           ranks[board] = result.best.rank;
         } catch (error) {
           // Refused as impossible, or a board the service does not have yet: sending the same again would not help.

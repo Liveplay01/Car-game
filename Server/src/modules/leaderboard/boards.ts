@@ -30,6 +30,8 @@ export interface BoardDef {
    * answer `day:<number>` so every day starts a fresh list. Only today and a day either side can be read (`dayOf`); older lists are deleted (`ScoreStore.purgeDaily`).
    */
   period(now: number, day?: number): string;
+  /** The newest score replaces the old one even when it is lower (a balance, not a record). */
+  latest?: true;
   /** Checks a submitted body (422 when it is impossible) and turns it into a score. */
   parse(body: Record<string, unknown>, now: number): ParsedScore;
 }
@@ -102,8 +104,9 @@ export const BOARDS: readonly BoardDef[] = [
     id: 'casino',
     title: 'Casino profit',
     period: () => 'all',
+    latest: true,
     parse(body) {
-      const profit = integerField(body, 'profit', 1, LIMITS.maxCasinoProfit);
+      const profit = integerField(body, 'profit', -LIMITS.maxCasinoProfit, LIMITS.maxCasinoProfit);
       return { score: profit, meta: {} };
     },
   },

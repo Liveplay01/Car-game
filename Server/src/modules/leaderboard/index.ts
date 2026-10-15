@@ -78,7 +78,7 @@ export function leaderboardModule(): ServerModule {
           const { score, meta, day } = board.parse(await readJson(c), ctx.now());
           const player = c.get('player');
           const period = board.period(ctx.now(), day);
-          const accepted = scores.submit(board.id, period, player.id, score, meta, ctx.now());
+          const accepted = scores.submit(board.id, period, player.id, score, meta, ctx.now(), board.latest === true);
           const best = scores.of(board.id, period, player.id);
           if (!best) throw new ApiError(500, 'internal', 'The score was not saved.');
           // Also an unchanged best counts: whoever hears it (an invite waiting for level 5) looks at the standing, not at news.

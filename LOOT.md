@@ -139,8 +139,8 @@ Aussehen, Regal „Honours“, zählt fürs Honours-Album (jeder kann verlieren)
 | Crash Test | `crashTest` | Epic | alle neun Arten zu verlieren gefunden | Gelb mit Carbon-Streifen, Glut |
 
 **Casino-Rangliste (Leo, 15.10.2026):** `career.casinoProfit` zählt jede Buchung der Geldspiele (Gewinne minus
-Einsätze, über alle Tage, ab diesem Update). Das Board `casino` im Ranglisten-Dienst hält den besten Stand; ein
-Minus wird nicht gesendet. Der Tab erscheint in Social → Ranks erst, wenn das Casino erreicht ist.
+Einsätze, über alle Tage, ab diesem Update). Das Board `casino` im Ranglisten-Dienst zeigt den neuesten Stand,
+auch bei Verlusten; negative Salden erscheinen rot. Der Tab erscheint in Social → Ranks erst, wenn das Casino erreicht ist.
 
 ## Sammlung im Shop
 

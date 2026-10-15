@@ -2664,6 +2664,11 @@ a.row-link {
   font-size: 15px;
 }
 
+.sheet .board-value.loss,
+.social-page .board-value.loss {
+  color: var(--destructive);
+}
+
 /* Your own line: tinted, the same mint as everything the player earns. */
 .board-row.me {
   background: var(--accent-soft);

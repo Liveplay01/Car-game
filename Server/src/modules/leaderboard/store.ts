@@ -62,16 +62,16 @@ export class ScoreStore {
     this.db = db;
   }
 
-  /** Keeps the better of the old and the new score. True when the new one was taken. */
-  submit(board: string, period: string, playerId: string, score: number, meta: Record<string, number>, now: number): boolean {
+  /** Keeps the better score, or replaces it with the newest balance for boards that track a balance. */
+  submit(board: string, period: string, playerId: string, score: number, meta: Record<string, number>, now: number, latest = false): boolean {
     const result = this.db
       .prepare(
         `INSERT INTO scores (board, period, player_id, score, meta, achieved_at) VALUES (?, ?, ?, ?, ?, ?)
          ON CONFLICT (board, period, player_id) DO UPDATE
            SET score = excluded.score, meta = excluded.meta, achieved_at = excluded.achieved_at
-           WHERE excluded.score > scores.score`,
+           WHERE ? OR excluded.score > scores.score`,
       )
-      .run(board, period, playerId, score, JSON.stringify(meta), now);
+      .run(board, period, playerId, score, JSON.stringify(meta), now, latest ? 1 : 0);
     return Number(result.changes) > 0;
   }
 

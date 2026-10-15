@@ -20,7 +20,7 @@ import {
 import { pendingInvite } from '../net/invite';
 import { NAME_MAX } from '../net/room';
 import { loadPlayerName, savePlayerName } from '../storage/profile';
-import { Fmt, money, S } from '../present/strings';
+import { Fmt, S } from '../present/strings';
 import { baseConfig, INVITE_LEVEL } from '../core/config';
 import { dayNumber } from '../core/daily';
 import { TITLES, type TitleId } from '../core/elite';
@@ -54,7 +54,11 @@ const starTier = (rank: number): number => (rank >= 20 ? 6 : rank >= 10 ? 5 : ra
 
 function valueOf(board: BoardId, e: { score: number; meta: Record<string, number> }, onStar: () => void): (string | HTMLElement)[] {
   if (board === 'unlimited' || board === 'daily') return [Fmt.number(e.score)];
-  if (board === 'casino') return [money(Fmt.number(e.score))];
+  if (board === 'casino') return [
+    ...(e.score < 0 ? ['−'] : []),
+    h('span', { class: 'coin', 'aria-label': S.clubPanel.money }),
+    Fmt.number(Math.abs(e.score)),
+  ];
   if (board === 'rush') return [S.rush.time((e.meta.cs ?? 0) / 100)];
   const level = S.ranks.level(Fmt.number(e.meta.level ?? e.score % 1000));
   const prestige = e.meta.prestige ?? Math.floor(e.score / 1000);
@@ -111,7 +115,7 @@ function entryRow(board: BoardId, e: BoardEntry | (Omit<BoardEntry, 'name'> & { 
       h('div', { class: 'row-title board-name' }, h('span', {}, e.name), e.me ? h('span', { class: 'you-tag' }, S.ranks.you) : null),
       boardSub(board, e) ? h('div', { class: 'row-sub board-title' }, boardSub(board, e)) : null,
     ),
-    h('span', { class: 'row-value board-value' }, ...valueOf(board, e, onStar)),
+    h('span', { class: `row-value board-value${board === 'casino' && e.score < 0 ? ' loss' : ''}` }, ...valueOf(board, e, onStar)),
   );
 }
 
