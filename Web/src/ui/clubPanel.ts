@@ -2,7 +2,7 @@ import { h, icon } from './dom';
 import { ICONS } from './icons';
 import { nameForm, openAccount } from './ranksPanel';
 import { tabsControl } from './tabs';
-import { fadeIn, openSheet, scrollSheetToTop } from './sheets';
+import { fadeIn, openSheet, scrollSheetToTop, swapView } from './sheets';
 import { baseConfig } from '../core/config';
 import { type Career, Careers } from '../core/career';
 import { Auction, type AuctionEvent, type AuctionRun, type Lot } from '../core/auction';
@@ -222,13 +222,20 @@ export function clubPanel(host: ClubHost): ClubPanel {
   function show(): void {
     tabs.set(tab);
     const rows = { auction: auctionRows, ideas: ideaRows, contracts: contractRows }[tab]();
-    content.replaceChildren(...rows);
-    withCoins(content);
+    const replace = (): void => {
+      content.replaceChildren(...rows);
+      withCoins(content);
+    };
     // A new view (another tab, the room opening, the hammer falling, back to the lots) starts at the top; a new bid stays where it is.
     const next = tab === 'auction' ? `auction:${run?.phase ?? 'lots'}` : tab;
-    if (next !== view) scrollSheetToTop(content);
+    if (next !== view) {
+      scrollSheetToTop(content);
+      swapView(content, replace);
+    } else {
+      replace();
+      fadeIn(content);
+    }
     view = next;
-    fadeIn(content);
     if (tab === 'ideas') host.intro();
     if (tab === 'ideas' && !ideas && !ideasBusy && !ideasError && ideasEnabled) void loadIdeas();
   }
@@ -757,6 +764,7 @@ export function clubPanel(host: ClubHost): ClubPanel {
   function contractRows(): HTMLElement[] {
     const cars = host.shiftCars();
     const current = career.contract;
+    const runNote = note(S.clubPanel.contractRun(career.contractRun, `+${Math.round(Contracts.runBonus(career.contractRun + 1) * 100)}%`));
     if (current) {
       const cancel = h('button', { class: 'btn', type: 'button' }, S.clubPanel.tearUp);
       cancel.addEventListener('click', () => {
@@ -767,6 +775,7 @@ export function clubPanel(host: ClubHost): ClubPanel {
       return [
         label(S.clubPanel.yourContract),
         h('div', { class: 'list' }, row(`${S.club.goalName(current.goal)} · ${cash(current.stake)}`, S.clubPanel.contractPays(S.club.goalText(current.goal, cars), cash(Math.round(current.stake * Contracts.pay(current.goal)))), cancel)),
+        runNote,
         note(S.clubPanel.settle),
       ];
     }
@@ -794,6 +803,7 @@ export function clubPanel(host: ClubHost): ClubPanel {
     });
     return [
       note(S.clubPanel.contractsIntro),
+      runNote,
       label(S.clubPanel.goal),
       h('div', { class: 'list' }, ...goals),
       label(S.clubPanel.stake),

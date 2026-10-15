@@ -155,12 +155,23 @@ export const Skins = {
       fountain: 'skinLagoon',
       lighthouse: 'skinPearl',
       skybridge: 'skinSky',
+      luckyStrike: 'skinRacingRed',
+      megaWin: 'skinGold',
+      doubleDown: 'skinObsidian',
+      tycoon: 'skinCarbon',
     };
     return id ? (map[id] ?? null) : null;
   },
 
   stripe(id: string | null): ColorToken | null {
     switch (id) {
+      case 'luckyStrike':
+      case 'tycoon':
+        return 'skinGold';
+      case 'megaWin':
+        return 'skinCarbon';
+      case 'doubleDown':
+        return 'skinPearl';
       case 'sterling':
       case 'magnate':
       case 'baron':
@@ -330,6 +341,10 @@ export const Skins = {
       fountain: 'bloom',
       lighthouse: 'halo',
       skybridge: 'rainbow',
+      luckyStrike: 'embers',
+      megaWin: 'nova',
+      doubleDown: 'halo',
+      tycoon: 'laurel',
     };
     return id ? (map[id] ?? null) : null;
   },
@@ -382,6 +397,10 @@ export const Skins = {
       sovereign: 'roadster',
       baron: 'hotrod',
       provenance: 'jeep',
+      luckyStrike: 'roadster',
+      megaWin: 'hotrod',
+      doubleDown: 'coupe',
+      tycoon: 'coupe',
     };
     return id ? (map[id] ?? null) : null;
   },
@@ -476,7 +495,12 @@ export const Skins = {
       case 'sovereign':
       case 'provenance':
       case 'lighthouse':
+      case 'megaWin':
+      case 'doubleDown':
+      case 'tycoon':
         return 'shinyGlitter';
+      case 'luckyStrike':
+        return 'shiny';
       case 'fountain':
       case 'skybridge':
         return 'shiny';

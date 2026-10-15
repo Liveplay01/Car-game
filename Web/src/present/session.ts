@@ -365,7 +365,7 @@ export class GameSession {
   /** The records the leaderboards rank (`net/leaderboard.ts`). */
   get leaderboardRecords(): Records {
     const { save } = this;
-    return { level: save.career.level, prestige: save.career.prestige, unlimitedBest: save.unlimitedBest, unlimitedCars: save.unlimitedBestCars, dailyDay: save.dailyDay, dailyScore: save.dailyScore, rushBest: save.career.rushBest, title: Mafia.late(save.career) ? 'mafia' : save.career.title };
+    return { level: save.career.level, prestige: save.career.prestige, unlimitedBest: save.unlimitedBest, unlimitedCars: save.unlimitedBestCars, dailyDay: save.dailyDay, dailyScore: save.dailyScore, rushBest: save.career.rushBest, casinoProfit: Unlocks.isKnown(save.career, 'casino', this.config) ? save.career.casinoProfit : null, title: Mafia.late(save.career) ? 'mafia' : save.career.title };
   }
 
   get visibleUpgrades(): readonly Upgrade[] {
@@ -477,6 +477,13 @@ export class GameSession {
     if (this.tipTaken) return false;
     this.tipTaken = true;
     return true;
+  }
+
+  /** A one-time question the shell asks was answered (the player name declined): it is not asked again by itself. */
+  markHint(hint: Hint): void {
+    if (this.save.hints.includes(hint)) return;
+    this.save.hints.push(hint);
+    this.persist();
   }
 
   /** A hint that came due but had to wait (`takeTip`): it is due again the next time. */

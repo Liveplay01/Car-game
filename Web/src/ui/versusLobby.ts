@@ -1,6 +1,6 @@
 import { h, icon } from './dom';
 import { ICONS } from './icons';
-import { openSheet, fadeIn } from './sheets';
+import { openSheet, swapView } from './sheets';
 import { inviteLink } from './crazygames';
 import { Room, NAME_MAX, cleanName, type RoomError, type HostMessage, type Member, type Reaction } from '../net/room';
 import { VersusMatch, type MatchFeel } from '../present/versus';
@@ -253,19 +253,16 @@ export class VersusLobby {
     const room = this.room;
     if (!room) {
       this.parts = null;
-      body.replaceChildren(...this.chooseView());
-      fadeIn(body);
+      swapView(body, () => body.replaceChildren(...this.chooseView()));
       return;
     }
     if (this.connecting(room)) {
       this.parts = null;
-      body.replaceChildren(...this.connectingView(room));
-      fadeIn(body);
+      swapView(body, () => body.replaceChildren(...this.connectingView(room)));
       return;
     }
     if (!this.parts || this.parts.room !== room) {
-      body.replaceChildren(...this.lobbyView(room));
-      fadeIn(body);
+      swapView(body, () => body.replaceChildren(...this.lobbyView(room)));
     }
     this.fillLobby();
   }

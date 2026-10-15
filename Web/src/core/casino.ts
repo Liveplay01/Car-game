@@ -416,6 +416,7 @@ export const Casino = {
       Careers.collect(c, item);
       p.items.push(item);
       if (last) last.win += Casino.value(cosmetic(item)!.rarity, config);
+      Casino.honours(c, 0, p.flips, config);
       return { won, money: 0, item, lost: [] };
     }
     if (!won) {
@@ -430,6 +431,7 @@ export const Casino = {
     p.money *= 2;
     if (last) last.win = p.money;
     c.casinoBestWin = Math.max(c.casinoBestWin, p.money);
+    Casino.honours(c, Casino.tier(2 ** p.flips, p.money, config), p.flips, config);
     return { won, money: p.money, item: null, lost: [] };
   },
 
@@ -460,10 +462,27 @@ export const Casino = {
       c.casinoNet = 0;
     }
     c.casinoNet += delta;
+    c.casinoProfit += delta;
   },
 
   log(c: Career, round: CasinoRound, config: Config = baseConfig): void {
     c.casinoLog = [...c.casinoLog, round].slice(-config.casinoLogLength);
-    if (round.game !== 'upgrade') c.casinoBestWin = Math.max(c.casinoBestWin, round.win);
+    if (round.game === 'upgrade') return;
+    c.casinoBestWin = Math.max(c.casinoBestWin, round.win);
+    if (round.win > 0) Casino.honours(c, Casino.tier(round.x, round.win, config), 0, config);
+  },
+
+  /** How loud a win of `times` the stake is, 0–4: the louder of its multiple and its profit (`casinoWinTiers`, `casinoWinAmounts`). */
+  tier(times: number, win: number, config: Config = baseConfig): number {
+    const profit = times > 1 ? win - win / times : 0;
+    return Math.max(config.casinoWinTiers.filter((x) => times >= x).length, config.casinoWinAmounts.filter((x) => profit >= x).length);
+  },
+
+  /** The casino's own skins (`casinoFlipChain`, `casinoTycoon`): the first BIG WIN and MEGA WIN, a coin streak, a fortune won. */
+  honours(c: Career, tier: number, chain: number, config: Config = baseConfig): void {
+    if (tier >= 2) Careers.collect(c, 'luckyStrike');
+    if (tier >= 4) Careers.collect(c, 'megaWin');
+    if (chain >= config.casinoFlipChain) Careers.collect(c, 'doubleDown');
+    if (c.casinoProfit >= config.casinoTycoon) Careers.collect(c, 'tycoon');
   },
 };

@@ -109,6 +109,7 @@ per address, new codes against 10 an hour. Every write names the version it buil
 | `unlimited` | `{score, cars}` | `score` |
 | `daily` | `{score, day}` | `score`, **one list per day** (`day:<n>`): `day` is the player's own day number (the Daily Shift follows local time) and must be within one day of ours; `GET …/boards/daily?day=<n>` (also `/v1/friends/boards/daily`) reads that day, an impossible day falls back to ours |
 | `rush` | `{cs}` | Boss Rush time in hundredths of a second, 3 000 – 720 000; ranked by `10 000 000 − cs`, so the fastest comes first; `meta.cs` is the time |
+| `casino` | `{profit}` | The casino's profit over all money games (won minus staked, `career.casinoProfit`), 1 – 10¹²; the best it ever reached counts, a loss is not sent |
 
 Ties go to whoever got there first. Blocked players are hidden and take no rank.
 

@@ -1,5 +1,5 @@
 import { h } from './dom';
-import { openSheet, fadeIn } from './sheets';
+import { openSheet, swapView } from './sheets';
 import {
   type CloudView,
   cloudView,
@@ -13,7 +13,7 @@ import {
   syncNow,
   useCloudSave,
 } from '../net/cloud';
-import { describeError } from '../net/leaderboard';
+import { describeError, loadAccount } from '../net/leaderboard';
 import type { SaveGame } from '../core/career';
 import { Fmt, S } from '../present/strings';
 
@@ -60,21 +60,22 @@ const tidy = (text: string): string =>
     .slice(0, 12)
     .replace(/(.{4})(?=.)/g, '$1-');
 
-/** What the password manager shows next to the code: the site, not a person. */
+/** What the password manager shows next to the code without a player name: the site. */
 const KEEPER_NAME = 'Roundabout Timing';
 
 /**
- * Offers the browser's password manager to keep the sync code, so a new device only needs the
- * browser's own "fill in" and the player never has to write it down. Chrome and Edge take it
- * directly (Credential Management). Elsewhere a hidden form "signs in" inside a hidden frame,
- * which Firefox and most Safari versions answer with their own "save password?" question.
+ * Offers the browser's password manager to keep the sync code, under the player's name as the user name
+ * (Leo, 15.10.2026), so a new device only needs the browser's own "fill in" and the player never has to
+ * write it down. Chrome and Edge take it directly (Credential Management). Elsewhere a hidden form "signs in"
+ * inside a hidden frame, which Firefox and most Safari versions answer with their own "save password?" question.
  * Support differs and a browser may stay silent; the code is on screen either way.
  */
-async function offerToPasswordManager(code: string): Promise<void> {
+export async function offerToPasswordManager(code: string): Promise<void> {
+  const user = loadAccount()?.name ?? KEEPER_NAME;
   const Credential = window.PasswordCredential;
   if (Credential && navigator.credentials?.store) {
     try {
-      await navigator.credentials.store(new Credential({ id: KEEPER_NAME, password: code, name: KEEPER_NAME }));
+      await navigator.credentials.store(new Credential({ id: user, password: code, name: KEEPER_NAME }));
       return;
     } catch {
       /* refused or unsupported here: the form below is the second try */
@@ -85,7 +86,7 @@ async function offerToPasswordManager(code: string): Promise<void> {
     'form',
     // Off screen, not `hidden`: browsers skip fields that are not rendered.
     { method: 'post', action: '/keep-code', target: 'keep-code-frame', 'aria-hidden': 'true', autocomplete: 'on', style: 'position:fixed;left:-9999px;top:0;opacity:0;pointer-events:none' },
-    h('input', { type: 'text', name: 'username', autocomplete: 'username', value: KEEPER_NAME, tabindex: '-1' }),
+    h('input', { type: 'text', name: 'username', autocomplete: 'username', value: loadAccount()?.name ?? KEEPER_NAME, tabindex: '-1' }),
     h('input', { type: 'password', name: 'password', autocomplete: 'new-password', value: code, tabindex: '-1' }),
   );
   document.body.append(frame, form);
@@ -200,7 +201,7 @@ export function cloudSheet(layer: HTMLElement, actions: CloudActions): () => voi
           },
         },
         // The browser pairs a saved password with this name.
-        h('input', { type: 'text', name: 'username', autocomplete: 'username', value: KEEPER_NAME, tabindex: '-1', 'aria-hidden': 'true', style: 'position:absolute;left:-9999px;opacity:0;pointer-events:none' }),
+        h('input', { type: 'text', name: 'username', autocomplete: 'username', value: loadAccount()?.name ?? KEEPER_NAME, tabindex: '-1', 'aria-hidden': 'true', style: 'position:absolute;left:-9999px;opacity:0;pointer-events:none' }),
         h('div', { class: 'join-row' }, input, load),
         h(
           'button',
@@ -283,9 +284,10 @@ export function cloudSheet(layer: HTMLElement, actions: CloudActions): () => voi
     const view = cloudView();
     say('');
     const parts = view.status === 'choose' ? choose(view) : view.code ? linked(view) : off();
-    body.replaceChildren(...parts, problem);
     const shown = view.status === 'choose' ? 'choose' : view.code ? 'linked' : 'off';
-    if (state !== null && shown !== state) fadeIn(body);
+    const replace = (): void => body.replaceChildren(...parts, problem);
+    if (state !== null && shown !== state) swapView(body, replace);
+    else replace();
     state = shown;
   }
 

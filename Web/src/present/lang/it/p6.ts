@@ -114,6 +114,7 @@ export default (S: Strings): Words<Strings> => ({
       if (item.source.kind === 'unlimited') return `Invia ${Fmt.number(item.source.cars)} auto in Senza limiti.`;
       if (item.source.kind === 'tour') return `Una tappa del tour «${S.tours.name(item.source.tour as 'halloween' | 'winter')}». Ritorna ogni anno.`;
       if (item.source.kind === 'auction') return 'Esclusiva della casa d’aste (Social → Club).';
+      if (item.source.kind === 'casino') return `${S.casino.feat(item.source.feat)}: solo il casinò la assegna (Negozio → Casino). Solo estetica.`;
       if (item.source.kind === 'fund') return 'Ringraziamento del vecchio fondo cittadino. Non più assegnato.';
       if (item.source.kind === 'bugReport')
         return item.source.reports === 1

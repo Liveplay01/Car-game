@@ -86,7 +86,6 @@ let busy = false;
 let checking = false;
 const listeners = new Set<() => void>();
 
-const INTRO_KEY = 'carGame.cloudIntro.v1';
 const STOPPED_KEY = 'carGame.sync.stopped.v1';
 const STOPPED_MAX = 10;
 
@@ -103,6 +102,9 @@ function readStopped(): Record<string, number> {
   }
 }
 
+/** The player stopped syncing on this device before: nothing turns it on again by itself. */
+export const cloudStoppedHere = (): boolean => Object.keys(readStopped()).length > 0;
+
 function rememberStopped(code: string, version: number): void {
   const all = readStopped();
   delete all[code];
@@ -112,27 +114,6 @@ function rememberStopped(code: string, version: number): void {
     storage().setItem(STOPPED_KEY, JSON.stringify(kept));
   } catch {
     /* private mode: the guard lasts only while the storage works */
-  }
-}
-
-/**
- * The one-time pop-up that tells every player about Cloud sync is due: the service exists, this
- * device has no cloud copy yet, and the pop-up was not shown before.
- */
-export function cloudIntroDue(): boolean {
-  if (!cloudEnabled) return false;
-  try {
-    return storage().getItem(INTRO_KEY) === null && readLink() === null;
-  } catch {
-    return false;
-  }
-}
-
-export function markCloudIntroSeen(): void {
-  try {
-    storage().setItem(INTRO_KEY, '1');
-  } catch {
-    /* private mode: it may show again next visit */
   }
 }
 

@@ -1,7 +1,7 @@
 import type { Strings } from '../../strings';
 import type { Words } from '../../i18n';
 import { Fmt, money, percent } from '../../format';
-import { detourShareAt, towSpeedupAt } from '../../../core/config';
+import { baseConfig, detourShareAt, towSpeedupAt } from '../../../core/config';
 import { Contracts } from '../../../core/contracts';
 
 /** Español, Parte 5: Casino, Constructor de calles, Publicidad, Club, Rangos, Amigos, Sala, Versus, Shell. */
@@ -71,6 +71,9 @@ export default (S: Strings): Words<Strings> => ({
     flipsLeft: (n) => (n <= 0 ? 'Esa fue la última duplicación' : `Quedan ${n} ${n === 1 ? 'duplicación' : 'duplicaciones'} posibles · o consérvalo`),
     refunded: (m) => `Una carrera fue cancelada · ${m} devueltos`,
     cashedOnLeave: (m) => `Cobrado al salir · +${m}`,
+    feat: (f) =>
+      ({ bigWin: 'Tu primer BIG WIN', megaWin: 'Tu primer MEGA WIN', flipChain: `${baseConfig.casinoFlipChain} monedas ganadas seguidas`, tycoon: `${money(Fmt.number(baseConfig.casinoTycoon))} ganados en el casino` })[f],
+    honour: (feat, item) => `${feat} · skin ${item} desbloqueado`,
     detail: {
       crash: [
         'Un coche acelera y el multiplicador sube. Cobra en cualquier momento: recibes la apuesta multiplicada. Si choca antes, se pierde la apuesta.',
@@ -209,7 +212,7 @@ export default (S: Strings): Words<Strings> => ({
     },
     contractSettled(outcome) {
       const name = S.club.goalName(outcome.contract.goal).toUpperCase();
-      if (outcome.result === 'won') return `CONTRATO GANADO · ${name} · +${money(Fmt.number(outcome.pay))}`;
+      if (outcome.result === 'won') return `CONTRATO GANADO · ${name} · +${money(Fmt.number(outcome.pay))}${outcome.run > 1 ? ` · RACHA ×${outcome.run}` : ''}`;
       if (outcome.result === 'void') return `CONTRATO ANULADO · este turno fue facilitado · ${money(Fmt.number(outcome.pay))} devueltos`;
       return `CONTRATO PERDIDO · ${name} · ${money(Fmt.number(outcome.contract.stake))} perdidos`;
     },
@@ -307,7 +310,7 @@ export default (S: Strings): Words<Strings> => ({
     ideasIntro: (goal) => `¿Qué te gustaría ver en el juego? Los jugadores aportan fondos juntos; una idea que alcance ${goal} se implementará. El dinero aportado no se devuelve.`,
     ideaSent: '¡Gracias! Leemos todas las ideas. Las mejores aparecerán aquí tras redactarlas adecuadamente para el juego.',
     groupFunding: 'En recaudación',
-    groupFunded: 'Financiado · en desarrollo',
+    groupFunded: 'Financiado',
     groupBuilding: 'En desarrollo',
     groupBuilt: 'Implementado',
     noIdeas: 'Aún no hay ideas abiertas. Sé el primero en sugerir una.',
@@ -335,6 +338,8 @@ export default (S: Strings): Words<Strings> => ({
     yourContract: 'Tu contrato',
     tearUp: 'Romper contrato',
     contractPays: (goal, pay) => `${goal} Paga ${pay} si se cumple.`,
+    contractRun: (run, next) =>
+      run > 0 ? `Racha de contratos: ${run} ganados seguidos. Tu próxima victoria paga ${next} de la apuesta extra. Un contrato perdido la reinicia.` : 'Racha de contratos: gana contratos seguidos. Desde la segunda victoria cada uno paga un extra, hasta +5 % de la apuesta. Un contrato perdido la reinicia.',
     settle: 'Se liquida con tu próximo turno de carrera (no diario, Sin límites ni prueba) y se refleja en los resultados. Si lo rompes antes, recuperas toda la apuesta. Si el turno se facilita por tu nivel, se anula y se devuelve la apuesta.',
     chosen: 'Elegido',
     choose: 'Elegir',
@@ -351,6 +356,7 @@ export default (S: Strings): Words<Strings> => ({
       unlimited: { label: 'Sin límites', empty: 'Establece un récord en Sin límites para aparecer aquí.' },
       daily: { label: 'Diario', empty: 'Supera el turno diario de hoy para liderar la lista.' },
       rush: { label: 'Asalto de jefes', empty: 'Supera el asalto de jefes para marcar el primer tiempo.' },
+      casino: { label: 'Casino', empty: 'Gana en el casino más de lo que apuestas para ser el primero aquí.' },
     },
     level: (n) => `Nivel ${n}`,
     starLabel: (rank) => `Rango de prestigio ${rank}. Cómo funciona el prestigio`,

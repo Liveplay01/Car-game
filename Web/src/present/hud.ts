@@ -846,6 +846,8 @@ interface RingCutout {
   thickness: number;
   halfAngle: number;
   signal: number;
+  /** 1 while the highlight is at full light, down to 0 as it fades: the gap closes with it instead of popping shut. */
+  strength: number;
 }
 
 /** Where the signals run: the rim on the island, its start (the player's arm) and the road's outer edge. */
@@ -869,20 +871,22 @@ export class RingSignals {
   /** Draw an arc in pieces around moving highlights, so the foreground light has a clean edge. */
   private static ringArc(list: RenderList, radius: number, thickness: number, start: number, end: number, color: ColorToken, opacity: number, cuts: readonly RingCutout[]): void {
     if (opacity <= 0.001 || end - start <= 0.001) return;
-    const windows: { from: number; to: number }[] = [];
+    const windows: { from: number; to: number; strength: number }[] = [];
     for (const cut of cuts) {
       if (Math.abs(radius - cut.radius) > (thickness + cut.thickness) / 2 + 0.5) continue;
       for (let turn = -2; turn <= 2; turn++) {
         const center = cut.angle + turn * TAU;
         const from = Math.max(start, center - cut.halfAngle);
         const to = Math.min(end, center + cut.halfAngle);
-        if (to - from > 0.001) windows.push({ from, to });
+        if (to - from > 0.001) windows.push({ from, to, strength: cut.strength });
       }
     }
     windows.sort((a, b) => a.from - b.from);
     let cursor = start;
     for (const window of windows) {
       if (window.from > cursor + 0.012) list.w(arc(v(0, 0), radius, thickness, cursor, window.from, true), color, opacity);
+      const from = Math.max(window.from, cursor);
+      if (window.strength < 0.999 && window.to > from + 0.012) list.w(arc(v(0, 0), radius, thickness, from, window.to, true), color, opacity * (1 - window.strength));
       cursor = Math.max(cursor, window.to);
     }
     if (end > cursor + 0.012) list.w(arc(v(0, 0), radius, thickness, cursor, end, true), color, opacity);
@@ -936,19 +940,25 @@ export class RingSignals {
       if (s.kind === 'sweep') {
         const x = Ease.clamp01(s.age / SIGNAL_DURATION.sweep);
         const run = Ease.inOutSine(Ease.clamp01(x / 0.8));
-        return x < 1 && run > 0.001 ? [{ angle: start + TAU * run, radius: rim, thickness: 4.5, halfAngle: 0.055, signal }] : [];
+        const strength = 1 - Ease.clamp01((x - 0.8) / 0.2);
+        return x < 1 && run > 0.001 ? [{ angle: start + TAU * run, radius: rim, thickness: 4.5, halfAngle: 0.055, signal, strength }] : [];
       }
       if (s.kind === 'victory' && s.age < RingSignals.victoryLap + 0.3) {
         const run = Ease.inOutSine(Ease.clamp01(s.age / RingSignals.victoryLap));
-        return run > 0.001 ? [{ angle: start + TAU * run, radius: rim, thickness: 5, halfAngle: 0.055, signal }] : [];
+        const strength = 1 - Ease.clamp01((s.age - RingSignals.victoryLap) / 0.3);
+        return run > 0.001 ? [{ angle: start + TAU * run, radius: rim, thickness: 5, halfAngle: 0.055, signal, strength }] : [];
       }
       return [];
     });
+    // Light on the whole rim switches the ticks under it off, and they come back as it fades; no light over light.
+    const covered = Math.max(0, ...this.signals.map((s) => RingSignals.cover(s, reduceMotion, rim, outer)));
+    const free = 1 - covered;
     if (this.leaving) {
       const fade = 1 - Ease.outCubic(this.leaving.age / 0.35);
-      this.ticks(list, this.leaving.total, this.leaving.sent, this.leaving.lit, start, rim, fade, Infinity, Infinity, reduceMotion, heads);
+      this.ticks(list, this.leaving.total, this.leaving.sent, this.leaving.lit, start, rim, fade * free, Infinity, Infinity, reduceMotion, heads);
     }
-    this.ticks(list, this.total, this.sent, this.lit, start, rim, 1, this.arrival, this.sinceSent, reduceMotion, heads);
+    const leaving = this.leaving ? 1 - Ease.outCubic(this.leaving.age / 0.35) : 0;
+    this.ticks(list, this.total, this.sent, this.lit, start, rim, (1 - leaving) * free, this.arrival, this.sinceSent, reduceMotion, heads);
     const lower = this.signals.map((s, signal) => ({ s, signal })).filter(({ s }) => s.kind !== 'sweep' && s.kind !== 'victory');
     const moving = this.signals.map((s, signal) => ({ s, signal })).filter(({ s }) => s.kind === 'sweep' || s.kind === 'victory');
     for (const { s } of [...lower, ...moving]) {
@@ -1094,7 +1104,7 @@ export class RingSignals {
    */
   static heal(list: RenderList, s: Signal, rim: number, reduceMotion: boolean, cuts: readonly RingCutout[] = []): void {
     const x = Ease.clamp01(s.age / SIGNAL_DURATION.heal);
-    const glow = (reduceMotion ? 1 : Ease.outCubic(x / 0.14)) * (1 - Ease.inOutSine(Ease.clamp01((x - 0.25) / 0.75)));
+    const glow = RingSignals.healGlow(s, reduceMotion);
     const radius = rim + (reduceMotion ? 0 : 3 * Ease.outCubic(x));
     RingSignals.ringArc(list, radius, 16, 0, TAU, s.color, 0.14 * glow, cuts);
     RingSignals.ringArc(list, radius, 7, 0, TAU, s.color, 0.26 * glow, cuts);
@@ -1117,6 +1127,27 @@ export class RingSignals {
   }
 
   static readonly healPluses = 12;
+
+  private static healGlow(s: Signal, reduceMotion: boolean): number {
+    const x = Ease.clamp01(s.age / SIGNAL_DURATION.heal);
+    return (reduceMotion ? 1 : Ease.outCubic(x / 0.14)) * (1 - Ease.inOutSine(Ease.clamp01((x - 0.25) / 0.75)));
+  }
+
+  /** How much of the rim a signal lights as a whole, 0 → 1: the ticks under it stay off by that much. */
+  private static cover(s: Signal, reduceMotion: boolean, rim: number, outer: number): number {
+    if (s.kind === 'heal') return RingSignals.healGlow(s, reduceMotion);
+    const kind = reduceMotion ? 'flush' : s.kind;
+    const x = Ease.clamp01(s.age / SIGNAL_DURATION[s.kind]);
+    if (kind === 'flush' || kind === 'splash') return 1 - Ease.outCubic(x);
+    if (kind === 'victory') return s.age > RingSignals.victoryLap ? 1 - Ease.outCubic(Ease.clamp01((s.age - RingSignals.victoryLap) / 0.75)) : 0;
+    if (kind === 'wave' || kind === 'miss') {
+      // The ring only lies on the ticks while it passes the rim: it dims them as it comes close and lets go as it leaves.
+      const radius = kind === 'wave' ? rim + (outer - rim) * Ease.outCubic(x) : outer - (outer - rim) * Ease.outCubic(x);
+      const near = 1 - Ease.inOutSine(Ease.clamp01(Math.abs(radius - rim) / 6));
+      return near * (1 - x) * (kind === 'wave' ? Ease.clamp01(s.age / 0.06) : 1);
+    }
+    return 0;
+  }
 
   private ticks(list: RenderList, total: number, sent: number, lit: ColorToken, start: number, rim: number, opacity: number, arrival: number, sinceSent: number, reduceMotion: boolean, cuts: readonly RingCutout[] = []): void {
     if (total <= 0 || opacity <= 0.001) return;

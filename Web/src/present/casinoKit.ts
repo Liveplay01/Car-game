@@ -1,5 +1,5 @@
 import { baseConfig } from '../core/config';
-import type { SlotSymbol, UpgradeRoll } from '../core/casino';
+import { Casino, type SlotSymbol, type UpgradeRoll } from '../core/casino';
 import type { VehicleType } from '../core/vehicle';
 import { Ease, unitHash } from './render';
 import type { ColorToken } from './theme';
@@ -85,10 +85,7 @@ export const unit = (index: number, salt: number): number => unitHash(index, sal
 /** How loud a win is (`casinoWinTiers`): 0 below the first step, up to 4. */
 export const winTier = (times: number): number => baseConfig.casinoWinTiers.filter((x) => times >= x).length;
 /** The tier of a round's payout `win` at `times` the stake: the louder of its multiple and its profit. */
-export const payTier = (times: number, win: number): number => {
-  const profit = times > 1 ? win - win / times : 0;
-  return Math.max(winTier(times), baseConfig.casinoWinAmounts.filter((x) => profit >= x).length);
-};
+export const payTier = (times: number, win: number): number => Casino.tier(times, win);
 /** How long a win of `tier` counts up: the bigger, the longer the number keeps the player waiting. */
 export const countTime = (tier: number): number => [0.6, 0.8, 1.2, 1.8, 2.6][tier] ?? 2.6;
 /** The coins of a big win rain this long. */

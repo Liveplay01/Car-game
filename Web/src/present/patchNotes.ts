@@ -51,6 +51,35 @@ export const itemCredit = (item: PatchItem): string | null => {
 
 export const PATCH_NOTES: PatchNote[] = [
   {
+    id: '2026-10-15',
+    date: '15 October 2026',
+    title: 'Your player, a Casino leaderboard and casino skins',
+    impact: 'major',
+    summary: [
+      'Casino: a leaderboard for the most won in total, and four skins only the tables give.',
+      'One name is now your player: Ranks, Friends, multiplayer and Cloud sync in one step.',
+      'Friends, Ranks and the Club need a player. After Level 5 the game asks for your name.',
+      'Contracts: win them back to back for a Contract Run, up to +5% of the stake extra.',
+    ],
+    items: [
+      'Contract Run, the first Game fund idea made: win Contracts back to back to build a run. From your second win on, a win pays +1% of the stake extra per win in the run, up to +5%. Lose a Contract and the run resets; a voided one leaves it alone. The run shows in Social → Club → Contracts and on the result.',
+      'Smoother switches: when a tab, segment or step changes (Social, Ranks, Club, Settings, lobby, account), the old view fades out while the new one fades in, instead of cutting.',
+      'Fixed: lights on the ring no longer stack. While a flash, heal, combo splash or victory glow lights the whole rim, the ticks under it go dark and fade back as it fades; the gap a moving light cuts closes softly instead of popping shut.',
+      'Game fund: an idea that is being made stays in the list, in its own "Being made" group, and says so in its details.',
+      'Casino skins: Lucky Strike for your first BIG WIN, Mega Win for your first MEGA WIN, Double Down for five coins won in a row, and Tycoon once the casino has paid you 1,000,000 more than you staked. Looks only, on the Honours shelf.',
+      'Social → Ranks → Casino: a new leaderboard for the most money won at the casino in total (wins minus stakes, over all money games). It counts from this update on; the Skin Upgrade trades skins, not money, and does not count.',
+      'Fixed: after midnight the Daily board could still show yesterday’s list, with players who had not played today.',
+      'Sound: the music and the weather duck for a moment under crashes and explosions, so the big hits land clean. Menus, chests and the casino have their own volume lane and are never ducked.',
+      'Sound: the ambulance, the wedding convoy, the truck and the learner driver each announce themselves with their own sound (siren, horns, truck horn, careful beeps). Armour hits ring like metal, and a blocked ambulance gets its own refusal buzz.',
+      'Sound: no two hits sound exactly alike any more (tiny changes in pitch and volume), and when many sounds pile up, the big hits and warnings win over small ticks.',
+      'Settings → Account → Your player: pick a name, and it opens your place on the leaderboards, your friend code, your multiplayer name and Cloud sync together. Your browser is asked to keep the name and the sync code like a login.',
+      'Friends, Ranks and the Club now need a player. Opening them without one brings up Your player. The Mafia stays open, so a loan can always be paid back.',
+      'After Level 5 (or after a Prestige) the game asks once for your player. "No thanks" asks a second time, then it stops asking.',
+      'Players who already had a name get Cloud sync on their own, with a message that shows the sync code, a Copy button and the offer to save it in the password manager. Not on a device where you stopped syncing on purpose.',
+      'The Cloud sync pop-up from Level 3 is gone: Your player replaces it.',
+    ],
+  },
+  {
     id: '2026-10-13',
     date: '13 October 2026',
     title: 'Heat comes from your Daily streak, titles for Game fund donors',

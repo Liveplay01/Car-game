@@ -10,6 +10,8 @@ import { isObject } from './guards';
  * of itself if the shift is completed and the goal met, and is gone otherwise. A shift eased for this
  * career (`assisted`) voids the contract: the stake comes back. Never over the Daily Shift, Unlimited,
  * a trial or a challenge.
+ * Contract Run (Game fund idea): contracts won back to back build a run; from the second win on a win pays
+ * a little extra, up to `contractRunCap` of the stake. A lost contract resets the run, a void one leaves it.
  */
 export type ContractGoal = 'clean' | 'sharp' | 'flawless';
 export const CONTRACT_GOALS: ContractGoal[] = ['clean', 'sharp', 'flawless'];
@@ -30,14 +32,21 @@ export interface ContractOutcome {
   contract: Contract;
   /** Won, lost, or void (the shift was eased: the stake is back). */
   result: 'won' | 'lost' | 'void';
-  /** Money paid out: the stake times its multiple on a win, the stake itself when void. */
+  /** Money paid out: the stake times its multiple (plus the run bonus) on a win, the stake itself when void. */
   pay: number;
+  /** The run bonus inside `pay`, and the length of the run after this contract. */
+  bonus: number;
+  run: number;
 }
 
 export const Contracts = {
   isOpen: (c: Career, config: Config = baseConfig): boolean => Elite.isOpen(c, config),
 
   pay: (goal: ContractGoal, config: Config = baseConfig): number => config.contractPay[goal],
+
+  /** The extra share of the stake a win pays when it is the `run`-th in a row: nothing for the first. */
+  runBonus: (run: number, config: Config = baseConfig): number =>
+    run < 2 ? 0 : Math.min(config.contractRunCap, (run - 1) * config.contractRunStep),
 
   /** What the goal asks, in the words of the shift's numbers: `cars` is the shift's length. */
   need(goal: ContractGoal, cars: number, config: Config = baseConfig): { perfects: number; chain: number } {
@@ -78,11 +87,16 @@ export const Contracts = {
     c.contract = null;
     if (assisted) {
       c.money += contract.stake;
-      return { contract, result: 'void', pay: contract.stake };
+      return { contract, result: 'void', pay: contract.stake, bonus: 0, run: c.contractRun };
     }
-    if (!Contracts.met(contract.goal, result, cars, config)) return { contract, result: 'lost', pay: 0 };
-    const pay = Math.round(contract.stake * Contracts.pay(contract.goal, config));
+    if (!Contracts.met(contract.goal, result, cars, config)) {
+      c.contractRun = 0;
+      return { contract, result: 'lost', pay: 0, bonus: 0, run: 0 };
+    }
+    const run = ++c.contractRun;
+    const bonus = Math.round(contract.stake * Contracts.runBonus(run, config));
+    const pay = Math.round(contract.stake * Contracts.pay(contract.goal, config)) + bonus;
     c.money += pay;
-    return { contract, result: 'won', pay };
+    return { contract, result: 'won', pay, bonus, run };
   },
 };

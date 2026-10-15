@@ -32,6 +32,9 @@ export interface CasinoHost {
  * looks `present/casino.ts`; the save is always written before anything shows.
  */
 export class CasinoFlow {
+  /** The new items before the round: a casino skin among the ones after it was earned by the round. */
+  private unseen: string[] = [];
+
   constructor(private readonly host: CasinoHost) {}
 
   tap(t: CasinoTarget): void {
@@ -143,6 +146,7 @@ export class CasinoFlow {
   /** The books as they stand before a round changes them: what the page shows until the reveal. */
   private books(): Books {
     const career = this.host.save.career;
+    this.unseen = [...career.unseen];
     return { money: career.money, net: Casino.today(career, this.host.today), log: career.casinoLog.map((r) => ({ ...r })), unseen: [...career.unseen] };
   }
 
@@ -266,6 +270,7 @@ export class CasinoFlow {
       run.out = { m, win, age: 0, clutch };
       this.host.play(['paid', ...CasinoFlow.fanfare(tier)], ['paid']);
       if (clutch !== null) this.host.play(['perfect'], ['perfect']);
+      this.announceHonours();
     } else {
       run.crash = 0;
       this.host.play(['explosion', 'crashHeavy'], ['explosion']);
@@ -368,9 +373,20 @@ export class CasinoFlow {
             if (run.items) this.host.announceAlbums();
           } else this.host.play(['shiftFailed'], ['crash']);
         }
+        this.announceHonours();
         break;
       }
     }
+  }
+
+  /** A casino skin the round earned, with its reason: shown when the win is, not before. */
+  private announceHonours(): void {
+    const career = this.host.save.career;
+    for (const id of career.unseen) {
+      const source = cosmetic(id)?.source;
+      if (source?.kind === 'casino' && !this.unseen.includes(id)) this.host.showNotice(S.casino.honour(S.casino.feat(source.feat), S.shop.item(id)));
+    }
+    this.unseen = [...career.unseen];
   }
 
   /** The win is kept; the offer to double goes. */

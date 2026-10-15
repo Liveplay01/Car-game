@@ -32,6 +32,7 @@ export const MAX_CAR_SKINS = 8;
 
 export type CosmeticKind = 'carSkin' | 'mapSkin' | 'vehicleType';
 export type Season = 'winter' | 'spring' | 'summer' | 'autumn';
+export type CasinoFeat = 'bigWin' | 'megaWin' | 'flipChain' | 'tycoon';
 export type CosmeticSource =
   | { kind: 'chest' }
   | { kind: 'streak'; days: number }
@@ -56,6 +57,8 @@ export type CosmeticSource =
   | { kind: 'auction' }
   /** A thank-you for a gift to a City Fund project (core/fund.ts), once it is built. */
   | { kind: 'fund'; project: string }
+  /** Earned at the casino's tables (Leo, 15.10.2026; `Casino.honours`): a first BIG WIN, a MEGA WIN, a coin streak, a fortune won. */
+  | { kind: 'casino'; feat: CasinoFeat }
   /**
    * The one honour that is luck (Leo, 01.10.2026): found in this chest with this chance per
    * opening, until it is found. On the Honours shelf, never in a chest's normal pool.
@@ -235,6 +238,11 @@ export const COSMETICS: Cosmetic[] = [
   c('fountain', 'carSkin', 'epic', { kind: 'fund', project: 'fountain' }),
   c('lighthouse', 'carSkin', 'legendary', { kind: 'fund', project: 'lighthouse' }),
   c('skybridge', 'carSkin', 'legendary', { kind: 'fund', project: 'skybridge' }),
+  // The casino's own skins (Leo, 15.10.2026): moments at the tables, not luck in a chest. Looks only.
+  c('luckyStrike', 'carSkin', 'epic', { kind: 'casino', feat: 'bigWin' }),
+  c('megaWin', 'carSkin', 'legendary', { kind: 'casino', feat: 'megaWin' }),
+  c('doubleDown', 'carSkin', 'legendary', { kind: 'casino', feat: 'flipChain' }),
+  c('tycoon', 'carSkin', 'legendary', { kind: 'casino', feat: 'tycoon' }),
   // The Classic: one Standard Chest in 500 (Leo, 01.10.2026).
   c('classic', 'vehicleType', 'legendary', { kind: 'find', chest: 'standard', chance: 0.002 }),
 ];
@@ -269,6 +277,7 @@ export const isHonour = (item: Cosmetic): boolean =>
   item.source.kind === 'tour' ||
   item.source.kind === 'auction' ||
   item.source.kind === 'fund' ||
+  item.source.kind === 'casino' ||
   item.source.kind === 'find';
 
 export const cosmetic = (id: string): Cosmetic | undefined => COSMETICS.find((x) => x.id === id);
@@ -319,8 +328,8 @@ export function albumItems(album: Album): Cosmetic[] {
       return COSMETICS.filter((x) => x.source.kind === 'streak');
     case 'honours':
       // Deeds in the game only: a find is luck, and the bug hunter skins need the website (not offered
-      // inside CrazyGames), so an album must not wait on either.
-      return COSMETICS.filter((x) => isHonour(x) && !['find', 'bugReport', 'tour', 'auction', 'fund'].includes(x.source.kind));
+      // inside CrazyGames), so an album must not wait on either. Nor on the casino: no one has to gamble.
+      return COSMETICS.filter((x) => isHonour(x) && !['find', 'bugReport', 'tour', 'auction', 'fund', 'casino'].includes(x.source.kind));
     case 'pass':
       return COSMETICS.filter((x) => x.source.kind === 'pass');
     case 'tours':

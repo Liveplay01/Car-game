@@ -54,6 +54,13 @@ export type SoundID =
   | 'reelLandBig'
   /** A crash forgiven: the shield, or a police car within its limit. */
   | 'heal'
+  /** The special vehicles' own warnings, a refused rescue and a hit on armour (made in `audio/player.ts` too). */
+  | 'ambulance'
+  | 'wedding'
+  | 'oversize'
+  | 'learner'
+  | 'clang'
+  | 'blocked'
   /** The casino's own: samples rendered by `Web/audio-src/make_casino_sounds.py`. */
   | 'casinoStop'
   | 'coinClink'
@@ -153,23 +160,26 @@ export const Feedback = {
       case 'explosion':
         return e.kind === 'bomb' ? 'detonation' : 'explosion';
       case 'ambulanceWarning':
+        return 'ambulance';
       case 'learnerWarning':
+        return 'learner';
       case 'oversizeWarning':
+        return 'oversize';
       case 'weddingWarning':
-        return 'dispatch';
+        return 'wedding';
       case 'raceWarning':
         return 'screech';
       case 'racerStopped':
         return 'takedown';
       case 'ambulanceBlocked':
-        return 'cutOff';
+        return 'blocked';
       case 'ambulanceCleared':
       case 'learnerPassed':
       case 'oversizePassed':
       case 'weddingPassed':
         return 'paid';
       case 'armourHit':
-        return 'screech';
+        return 'clang';
       default:
         return null;
     }

@@ -6,12 +6,12 @@ import { SWIPE_MODES, TAB_BAR, barTab, screenTab, type Tab } from '../present/fl
 import { AudioPlayer, Haptics } from '../audio/player';
 import { h, icon } from './dom';
 import { ICONS, CHEST_FLAT } from './icons';
-import { settingsSheet, deleteAccountSheet, patchNotesSheet, legalSheet, licensesSheet, installDialog, cloudIntroDialog, pushOfferDialog, isSheetOpen, closeAnySheet, closeTopSheet } from './sheets';
+import { settingsSheet, deleteAccountSheet, patchNotesSheet, legalSheet, licensesSheet, installDialog, pushOfferDialog, isSheetOpen, closeAnySheet, closeTopSheet } from './sheets';
 import { installBackGesture, inSystemGestureZone } from './backGesture';
 import { disablePush, enablePush, pushChoiceOn, pushDelivers, pushState, pushTimers, setPushChoice, syncPush, type PushState, type PushTimer } from '../net/push';
-import { cloudEnabled, cloudIntroDue, cloudLinked, cloudView, deleteCloud, markCloudIntroSeen } from '../net/cloud';
+import { cloudEnabled, cloudLinked, cloudStoppedHere, cloudView, createCloud, deleteCloud, onCloudChange } from '../net/cloud';
 import { fetchInvite, inviteUrl, readInviteLink, redeemInvite } from '../net/invite';
-import { deleteAccount, describeError, fetchFriends, leaderboardEnabled, loadAccount, onAccountChange, onScoresSynced } from '../net/leaderboard';
+import { deleteAccount, describeError, fetchFriends, leaderboardEnabled, loadAccount, onAccountChange, onScoresSynced, syncScores } from '../net/leaderboard';
 import { collectRewards } from '../net/rewards';
 import { legalDoc } from '../present/legal';
 import { PATCH_NOTES } from '../present/patchNotes';
@@ -32,6 +32,7 @@ import type { MafiaHost } from './mafiaPanel';
 import { installMafiaDebug } from './mafiaDebug';
 import { SocialPage } from '../present/social';
 import { cloudSheet } from './cloudSheet';
+import { accountReady, accountsEnabled, accountSheet } from './accountSheet';
 import { REACTION_EMOJI } from '../present/versus';
 import { REACTIONS } from '../net/room';
 import { LiveRegion } from './liveRegion';
@@ -291,7 +292,12 @@ export class Shell {
       mafiaOpen: () => SocialPage.mafiaOpen(s.save.career),
       online: leaderboardEnabled,
       friendsAllowed: leaderboardEnabled && !inPortal,
+      accountReady,
+      needAccount: () => this.openAccountSheet(),
     });
+    // A code typed in Cloud sync, a name removed, a cloud copy stopped: Friends, Ranks and the Club open or close with the player.
+    onCloudChange(() => this.playerChanged());
+    onAccountChange(() => this.playerChanged());
     // Big Screen: what the player chose last time comes back (only once they own it: nothing
     // loads from another site before), and its sheet opens from the Collection.
     this.backdrop = new BackdropLayer(app, canvas);
@@ -359,7 +365,7 @@ export class Shell {
     this.live = new LiveRegion(app);
     this.session.onChrome = () => {
       this.syncChrome(true);
-      this.scheduleCloudIntro();
+      this.scheduleAccountPrompt();
     };
     this.session.onHint = (hint) => void this.giveHint(hint);
     this.session.onSynced = () => {
@@ -397,7 +403,7 @@ export class Shell {
     });
     this.syncChrome(true);
     requestAnimationFrame((t) => this.loop(t));
-    this.scheduleCloudIntro();
+    this.scheduleAccountPrompt();
     // Gifts from the team and from invites: at the start, after a name (an invite is handed in then) and after a record reached the service (level 5 pays).
     window.setTimeout(() => this.claimInvite(), 3000);
     syncPush(this.pushTimers);
@@ -891,44 +897,83 @@ export class Shell {
     cloudSheet(this.layers, { current: () => s.save, importSave: (save) => s.importProgress(save), closed: () => this.pageClosed() });
   }
 
-  /** The pop-up's button: Settings open (as from the gear), and the cloud page lands on top of them. */
-  private openCloudFromIntro(): void {
-    this.wantCloud = true;
-    this.openSettings();
+  private accountOpen = false;
+
+  /** "Your player" (`ui/accountSheet.ts`); `welcome`: the cloud copy was just made for a name from before, with its code to keep. */
+  private openAccountSheet(welcome = false): void {
+    if (this.accountOpen || !accountsEnabled) return;
+    const s = this.session;
+    this.accountOpen = true;
+    this.pageOpen = true;
+    accountSheet(
+      this.layers,
+      {
+        records: () => s.leaderboardRecords,
+        openCloud: () => this.openCloudPage(),
+        declined: () => s.markHint('account'),
+        closed: () => {
+          this.accountOpen = false;
+          this.pageClosed();
+        },
+      },
+      welcome,
+    );
   }
 
-  /** Set until the settings sheet is up: it then opens the cloud page right away. */
-  private wantCloud = false;
+  private wasReady = accountReady();
 
-  /** Set once the pop-up is on its way (or not due on this device): it is looked at only once. */
-  private cloudIntroScheduled = false;
-
-  /**
-   * The Cloud sync pop-up comes once the player has something to keep (Leo, 01.10.2026: from
-   * `config.cloudIntroFromLevel`): at the start of a visit, or after the shift that reaches it,
-   * a moment later so it does not cover the first frame or the result.
-   */
-  private scheduleCloudIntro(): void {
-    if (this.cloudIntroScheduled || this.session.save.career.level < this.session.config.cloudIntroFromLevel) return;
-    this.cloudIntroScheduled = true;
-    window.setTimeout(() => this.maybeShowCloudIntro(), 1500);
+  /** Friends, Ranks and the Club follow whether there is a player; nothing to do while that stays the same. */
+  private playerChanged(): void {
+    const ready = accountReady();
+    if (ready === this.wasReady) return;
+    this.wasReady = ready;
+    this.social.refresh();
   }
 
+  /** Set while the question is on its way; a failed try waits a minute before the next one. */
+  private accountScheduled = false;
+  private accountRetryAt = 0;
+
   /**
-   * Once per device: a pop-up that tells the player about Cloud sync and where it is
-   * (`cloudIntroDialog`). It waits while something else is on screen.
+   * The player is asked for once (Leo, 15.10.2026, it replaced the Cloud sync pop-up): after Level 5 (`accountPromptAfterLevel`),
+   * also when an old save is long past it or has gone through Prestige, until the player has one or declined twice. A name from
+   * before without a cloud copy gets the copy by itself, and the sheet comes as the message that keeps its code (not where the
+   * player stopped syncing on purpose). A moment later, so it covers neither the first frame nor a result.
    */
-  private maybeShowCloudIntro(tries = 0): void {
-    if (!cloudIntroDue()) return;
+  private scheduleAccountPrompt(): void {
+    if (this.accountScheduled || !accountsEnabled || Date.now() < this.accountRetryAt || accountReady()) return;
+    const s = this.session;
+    const career = s.save.career;
+    const named = loadAccount() !== null && cloudEnabled && !cloudStoppedHere();
+    const due = (career.level > s.config.accountPromptAfterLevel || career.prestige > 0) && !s.save.hints.includes('account');
+    if (!named && !due) return;
+    this.accountScheduled = true;
+    window.setTimeout(() => this.maybeAskForAccount(), 1500);
+  }
+
+  private maybeAskForAccount(tries = 0): void {
+    if (accountReady()) return;
     const busy = isSheetOpen() || ['playing', 'result', 'settings'].includes(this.session.screen.k) || document.querySelector('.install-root, .intro-root');
     if (busy) {
-      if (tries < 12) window.setTimeout(() => this.maybeShowCloudIntro(tries + 1), 5000);
+      if (tries < 12) window.setTimeout(() => this.maybeAskForAccount(tries + 1), 5000);
+      else this.accountScheduled = false;
       return;
     }
-    // One tip per visit: with another already shown this one waits for the next visit (it stays unseen).
-    if (!this.session.takeTip()) return;
-    markCloudIntroSeen();
-    cloudIntroDialog(this.layers, { open: () => this.openCloudFromIntro(), closed: () => undefined });
+    if (!loadAccount()) {
+      this.openAccountSheet();
+      return;
+    }
+    if (!cloudEnabled || cloudStoppedHere()) return;
+    createCloud().then(
+      () => {
+        void syncScores(this.session.leaderboardRecords);
+        this.openAccountSheet(true);
+      },
+      () => {
+        this.accountScheduled = false;
+        this.accountRetryAt = Date.now() + 60_000;
+      },
+    );
   }
 
   private showSettingsSheet(): void {
@@ -996,6 +1041,7 @@ export class Shell {
       friendCode: loadAccount() ? () => fetchFriends().then((f) => f.code) : null,
       // The cloud sync page, over the settings; the settings come back when it closes.
       openCloud: () => this.openCloudPage(),
+      player: accountsEnabled ? { name: loadAccount()?.name ?? null, ready: accountReady(), open: () => this.openAccountSheet() } : null,
       install: this.installPrompt
         ? () => {
             void this.installPrompt?.prompt();
@@ -1007,11 +1053,6 @@ export class Shell {
         if (!this.pageOpen) s.perform({ k: 'closeSettings' });
       },
     });
-    // Came from the pop-up: straight on to the cloud page.
-    if (this.wantCloud) {
-      this.wantCloud = false;
-      this.openCloudPage();
-    }
   }
 
   // MARK: Input

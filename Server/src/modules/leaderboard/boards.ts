@@ -47,6 +47,8 @@ export const LIMITS = {
   /** Boss Rush in hundredths of a second: nobody clears eight bosses in under 30 seconds, or takes two hours. */
   rushMinCs: 3_000,
   rushMaxCs: 720_000,
+  /** Casino profit: High Roller stakes go to 5,000,000 a round; a trillion is out of reach. */
+  maxCasinoProfit: 1_000_000_000_000,
 } as const;
 
 /** A lower time must rank higher: the board ranks by the biggest number. */
@@ -93,6 +95,16 @@ export const BOARDS: readonly BoardDef[] = [
     parse(body) {
       const cs = integerField(body, 'cs', LIMITS.rushMinCs, LIMITS.rushMaxCs);
       return { score: RUSH_BASE - cs, meta: { cs } };
+    },
+  },
+  {
+    // Leo, 15.10.2026: who has won the most at the casino, all games together, minus what they lost.
+    id: 'casino',
+    title: 'Casino profit',
+    period: () => 'all',
+    parse(body) {
+      const profit = integerField(body, 'profit', 1, LIMITS.maxCasinoProfit);
+      return { score: profit, meta: {} };
     },
   },
 ];

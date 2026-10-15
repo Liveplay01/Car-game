@@ -1,7 +1,7 @@
 import type { Strings } from '../../strings';
 import type { Words } from '../../i18n';
 import { Fmt, money, percent } from '../../format';
-import { detourShareAt, towSpeedupAt } from '../../../core/config';
+import { baseConfig, detourShareAt, towSpeedupAt } from '../../../core/config';
 import { Contracts } from '../../../core/contracts';
 
 /** Italiano, Parte 5: Casinò, Costruttore stradale, Annunci, Club, Classifiche, Amici, Stanza, Versus, Shell. */
@@ -71,6 +71,9 @@ export default (S: Strings): Words<Strings> => ({
     flipsLeft: (n) => (n <= 0 ? 'Ultimo raddoppio effettuato' : `Ancora ${n} ${n === 1 ? 'raddoppio' : 'raddoppi'} possibili · o incassa`),
     refunded: (m) => `Corsa interrotta · ${m} rimborsati`,
     cashedOnLeave: (m) => `Incassato all’uscita · +${m}`,
+    feat: (f) =>
+      ({ bigWin: 'Il tuo primo BIG WIN', megaWin: 'Il tuo primo MEGA WIN', flipChain: `${baseConfig.casinoFlipChain} monete vinte di fila`, tycoon: `${money(Fmt.number(baseConfig.casinoTycoon))} vinti al casinò` })[f],
+    honour: (feat, item) => `${feat} · skin ${item} sbloccata`,
     detail: {
       crash: [
         'Un’auto accelera e il moltiplicatore sale. Incassa in ogni momento: ricevi la puntata moltiplicata. Se si schianta prima, perdi la posta.',
@@ -209,7 +212,7 @@ export default (S: Strings): Words<Strings> => ({
     },
     contractSettled(outcome) {
       const name = S.club.goalName(outcome.contract.goal).toUpperCase();
-      if (outcome.result === 'won') return `CONTRATTO VINTO · ${name} · +${money(Fmt.number(outcome.pay))}`;
+      if (outcome.result === 'won') return `CONTRATTO VINTO · ${name} · +${money(Fmt.number(outcome.pay))}${outcome.run > 1 ? ` · SERIE ×${outcome.run}` : ''}`;
       if (outcome.result === 'void') return `CONTRATTO ANNULLATO · turno facilitato · ${money(Fmt.number(outcome.pay))} rimborsati`;
       return `CONTRATTO PERSO · ${name} · ${money(Fmt.number(outcome.contract.stake))} persi`;
     },
@@ -307,7 +310,7 @@ export default (S: Strings): Words<Strings> => ({
     ideasIntro: (goal) => `Cosa vorresti vedere nel gioco? I giocatori raccolgono fondi insieme; un’idea che raggiunge ${goal} verrà realizzata. Le donazioni sono definitive.`,
     ideaSent: 'Grazie! Leggiamo ogni proposta. Le migliori appariranno qui dopo essere state formattate per il gioco.',
     groupFunding: 'Raccolta in corso',
-    groupFunded: 'Finanziato · in arrivo',
+    groupFunded: 'Finanziato',
     groupBuilding: 'In lavorazione',
     groupBuilt: 'Realizzato',
     noIdeas: 'Nessuna idea aperta al momento. Sii il primo a proporne una.',
@@ -335,6 +338,8 @@ export default (S: Strings): Words<Strings> => ({
     yourContract: 'Il tuo contratto',
     tearUp: 'Strappa contratto',
     contractPays: (goal, pay) => `${goal} Rende ${pay} se soddisfatto.`,
+    contractRun: (run, next) =>
+      run > 0 ? `Serie di contratti: ${run} vinti di fila. La prossima vittoria rende ${next} della puntata in più. Un contratto perso azzera la serie.` : 'Serie di contratti: vinci contratti di fila. Dalla seconda vittoria ognuno rende un extra, fino a +5 % della puntata. Un contratto perso azzera la serie.',
     settle: 'Viene valutato al tuo prossimo turno di carriera (non giornaliero, Senza limiti o prova). Annullarlo prima rimborsa l’intera puntata.',
     chosen: 'Scelto',
     choose: 'Scegli',
@@ -351,6 +356,7 @@ export default (S: Strings): Words<Strings> => ({
       unlimited: { label: 'Senza limiti', empty: 'Fissa un record in Senza limiti per comparire qui.' },
       daily: { label: 'Giornaliero', empty: 'Supera il turno di oggi per salire in vetta.' },
       rush: { label: 'Assalto ai boss', empty: 'Supera l’assalto ai boss per segnare il primo tempo.' },
+      casino: { label: 'Casinò', empty: 'Vinci al casinò più di quanto punti per comparire qui.' },
     },
     level: (n) => `Livello ${n}`,
     starLabel: (rank) => `Grado di prestigio ${rank}. Come funziona il prestigio`,

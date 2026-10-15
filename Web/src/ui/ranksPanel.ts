@@ -1,5 +1,5 @@
 import { h } from './dom';
-import { fadeIn } from './sheets';
+import { fadeIn, swapView } from './sheets';
 import { tabsControl } from './tabs';
 import {
   type Account,
@@ -20,8 +20,9 @@ import {
 import { pendingInvite } from '../net/invite';
 import { NAME_MAX } from '../net/room';
 import { loadPlayerName, savePlayerName } from '../storage/profile';
-import { Fmt, S } from '../present/strings';
+import { Fmt, money, S } from '../present/strings';
 import { baseConfig, INVITE_LEVEL } from '../core/config';
+import { dayNumber } from '../core/daily';
 import { TITLES, type TitleId } from '../core/elite';
 import { tierOf } from '../core/tiers';
 
@@ -37,10 +38,12 @@ export interface RanksActions {
   records(): Records;
 }
 
-const BOARDS: { id: BoardId; label: string; empty: string }[] = (['shift-level', 'unlimited', 'daily', 'rush'] as const).map((id) => ({ id, ...S.ranks.boards[id] }));
+const BOARDS: { id: BoardId; label: string; empty: string }[] = (['shift-level', 'unlimited', 'daily', 'rush', 'casino'] as const).map((id) => ({ id, ...S.ranks.boards[id] }));
 
 /** The last list of each board: shown at once when the sheet opens again, then refreshed. */
 const cache = new Map<string, BoardView>();
+/** The Daily keeps one list per day: yesterday's must not stand in for today's after midnight (an open tab, a phone asleep). */
+const cacheKey = (scope: Scope, board: BoardId): string => `${scope}:${board}${board === 'daily' ? `:${dayNumber()}` : ''}`;
 let lastBoard: BoardId = 'shift-level';
 /** Everyone, or only you and the friends whose codes you added. */
 type Scope = 'all' | 'friends';
@@ -51,6 +54,7 @@ const starTier = (rank: number): number => (rank >= 20 ? 6 : rank >= 10 ? 5 : ra
 
 function valueOf(board: BoardId, e: { score: number; meta: Record<string, number> }, onStar: () => void): (string | HTMLElement)[] {
   if (board === 'unlimited' || board === 'daily') return [Fmt.number(e.score)];
+  if (board === 'casino') return [money(Fmt.number(e.score))];
   if (board === 'rush') return [S.rush.time((e.meta.cs ?? 0) / 100)];
   const level = S.ranks.level(Fmt.number(e.meta.level ?? e.score % 1000));
   const prestige = e.meta.prestige ?? Math.floor(e.score / 1000);
@@ -194,7 +198,7 @@ export function nameForm(value: string, action: string, submit: (name: string) =
 
 /** The friends boards are stale after the list changed (the Friends page adds and removes people). */
 export function forgetFriendsBoards(): void {
-  for (const b of BOARDS) cache.delete(`friends:${b.id}`);
+  for (const b of BOARDS) cache.delete(cacheKey('friends', b.id));
 }
 
 /** Opens the account under `name` (also the multiplayer name). Throws like `createAccount`; the lists are stale after. */
@@ -224,11 +228,13 @@ export interface BoardHost {
  * friends only. The leaderboard sheet shows the first, the Friends page the second.
  */
 export function boardPanel(scope: Scope, host: BoardHost): BoardPanel {
-  let board: BoardId = lastBoard;
+  // The Casino board shows once the Casino is reached (`Records.casinoProfit`), like the Casino itself.
+  const boards = BOARDS.filter((b) => b.id !== 'casino' || host.records().casinoProfit !== null);
+  let board: BoardId = boards.some((b) => b.id === lastBoard) ? lastBoard : 'shift-level';
   /** Which request's answer may still be shown: a newer one (another board) wins. */
   let asked = 0;
   const list = h('div', { class: 'list board-list', role: 'list', 'aria-label': scope === 'friends' ? S.ranks.listFriends : S.ranks.list, 'aria-busy': 'false' });
-  const tabs = tabsControl(S.ranks.boardsLabel, BOARDS, choose);
+  const tabs = tabsControl(S.ranks.boardsLabel, boards, choose);
   const el = h('div', { class: 'board' }, tabs.el, list);
 
   function choose(next: BoardId): void {
@@ -259,7 +265,7 @@ export function boardPanel(scope: Scope, host: BoardHost): BoardPanel {
 
   async function load(): Promise<void> {
     const ticket = ++asked;
-    const key = `${scope}:${board}`;
+    const key = cacheKey(scope, board);
     const cached = cache.get(key);
     fadeIn(list);
     if (cached) showList(cached);
@@ -328,8 +334,7 @@ export function ranksPanel(actions: RanksActions): HTMLElement {
     scope = next;
     lastScope = next;
     scopes.set(next);
-    view.replaceChildren(shown().el);
-    fadeIn(view);
+    swapView(view, () => view.replaceChildren(shown().el));
     shown().open();
   });
   scopes.set(scope);

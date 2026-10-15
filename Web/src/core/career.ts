@@ -269,6 +269,8 @@ export interface Career {
   /** Today's balance of the money games: the day it belongs to and the sum. */
   casinoDay: number;
   casinoNet: number;
+  /** Everything the money games won or lost since this field came (15.10.2026): the Casino board ranks its best. */
+  casinoProfit: number;
   /** How early (−) or late (+) the last merges were tapped, in ms (`core/timing.ts`). */
   tapOffsets: number[];
   /** The Season Pass bought (its season key, core/seasonPass.ts), its XP and the tiers paid. */
@@ -300,6 +302,8 @@ export interface Career {
   ideasSeenAt: number;
   /** The contract waiting for the next career shift (core/contracts.ts); its stake is paid already. */
   contract: Contract | null;
+  /** Contracts won back to back (core/contracts.ts, Contract Run); a lost one resets it. */
+  contractRun: number;
   /** The Mafia's loan (core/mafia.ts), the loans repaid in time in a row (they make the next one kinder) and the loans taken in all. */
   loan: Loan | null;
   cleanLoans: number;
@@ -313,7 +317,7 @@ export interface Career {
  * and a backup of the progress (each once, from its level on; `config.*HintAfterLevel`), and
  * what a Perfect Run is, the first time one happens.
  */
-export const HINTS = ['modes', 'install', 'backup', 'perfectRun', 'reduceMotion', 'buildWithUs', 'invite', 'inviteReminder', 'scout', 'tightFit', 'unlimitedTip', 'portalLogin', 'notifications', 'notificationsStreak', 'introsStarted', 'intro.museum', 'intro.builder', 'intro.daily', 'intro.trials', 'intro.pass', 'intro.casino', 'intro.club', 'intro.gamefund', 'intro.mafia'] as const;
+export const HINTS = ['modes', 'install', 'backup', 'perfectRun', 'reduceMotion', 'buildWithUs', 'invite', 'inviteReminder', 'scout', 'tightFit', 'unlimitedTip', 'portalLogin', 'notifications', 'notificationsStreak', 'account', 'introsStarted', 'intro.museum', 'intro.builder', 'intro.daily', 'intro.trials', 'intro.pass', 'intro.casino', 'intro.club', 'intro.gamefund', 'intro.mafia'] as const;
 export type Hint = (typeof HINTS)[number];
 
 /** Everything that is saved (`storage/save.ts` reads and writes it). */
@@ -415,6 +419,7 @@ export const newCareer = (): Career => ({
   casinoBestCrash: 0,
   casinoDay: -1,
   casinoNet: 0,
+  casinoProfit: 0,
   tapOffsets: [],
   passKey: null,
   passXp: 0,
@@ -433,6 +438,7 @@ export const newCareer = (): Career => ({
   fundGiven: 0,
   ideasSeenAt: 0,
   contract: null,
+  contractRun: 0,
   loan: null,
   cleanLoans: 0,
   loansTaken: 0,

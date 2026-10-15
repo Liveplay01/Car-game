@@ -3,7 +3,7 @@ import { friendsPanel, type FriendsActions } from './friendsPanel';
 import { ranksPanel, type RanksActions } from './ranksPanel';
 import { clubPanel, type ClubHost, type ClubPanel } from './clubPanel';
 import { mafiaPanel, type MafiaHost, type MafiaPanel } from './mafiaPanel';
-import { fadeIn } from './sheets';
+import { swapView } from './sheets';
 import { SOCIAL, type SocialSection } from '../present/flow';
 import { S } from '../present/strings';
 
@@ -18,7 +18,14 @@ export interface SocialHost {
   online: boolean;
   /** Friend codes and invite links are not shown inside CrazyGames. */
   friendsAllowed: boolean;
+  /** The player has a name and its cloud copy (`ui/accountSheet.ts`): Friends, Ranks and the Club need it. */
+  accountReady(): boolean;
+  /** A section that needs the player was opened without one: the host brings up "Your player". */
+  needAccount(): void;
 }
+
+/** What needs the player (Leo, 15.10.2026). The Mafia does not: a loan must always be repayable. */
+const NEEDS_ACCOUNT: readonly SocialSection[] = [SOCIAL.friends, SOCIAL.ranks, SOCIAL.club];
 
 /** Where the page's column sits under the canvas' title and segments (`SocialPage.column`), in points. */
 export interface SocialColumn {
@@ -67,9 +74,12 @@ export class SocialView {
     if (section === this.section) return;
     const first = this.section === null;
     this.section = section;
-    this.inner.replaceChildren(this.build(section));
-    this.el.scrollTop = 0;
-    if (!first) fadeIn(this.inner);
+    const replace = (): void => {
+      this.inner.replaceChildren(this.build(section));
+      this.el.scrollTop = 0;
+    };
+    if (first) replace();
+    else swapView(this.inner, replace);
   }
 
   /** What the game says, in a pill above the tab bar: its text and how far it is in (0–1). */
@@ -94,11 +104,27 @@ export class SocialView {
     }, 220);
   }
 
-  private build(section: SocialSection): HTMLElement {
+  /** The player was created (or not) in the sheet over the page: the section shows what it can now, without asking again. */
+  refresh(): void {
+    if (this.section === null) return;
+    const section = this.section;
+    swapView(this.inner, () => this.inner.replaceChildren(this.build(section, false)));
+  }
+
+  private build(section: SocialSection, ask = true): HTMLElement {
     this.club?.dispose();
     this.club = null;
     this.mafia?.dispose();
     this.mafia = null;
+    if (this.host.online && NEEDS_ACCOUNT.includes(section) && !this.host.accountReady()) {
+      if (ask) this.host.needAccount();
+      return h(
+        'div',
+        { class: 'account-gate' },
+        h('p', { class: 'section-note' }, S.account.gate),
+        h('button', { class: 'btn primary block', type: 'button', onclick: () => this.host.needAccount() }, S.account.gateButton),
+      );
+    }
     if (section === SOCIAL.friends) return this.host.friendsAllowed ? friendsPanel(this.host.friends()) : h('p', { class: 'section-note' }, this.host.online ? S.social.noFriends : S.social.offline);
     if (section === SOCIAL.ranks) return this.host.online ? ranksPanel(this.host.ranks()) : h('p', { class: 'section-note' }, S.social.offline);
     if (section === SOCIAL.mafia) {

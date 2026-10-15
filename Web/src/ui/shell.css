@@ -737,6 +737,24 @@ a.row-link {
   }
 }
 
+/* The view it replaced (ui/sheets.ts, `swapView`): a copy on top that fades away while the new one arrives. */
+.has-ghost {
+  position: relative;
+}
+
+.view-ghost {
+  position: absolute;
+  inset: 0 0 auto;
+  pointer-events: none;
+  animation: view-out 140ms var(--ease-out) forwards;
+}
+
+@keyframes view-out {
+  to {
+    opacity: 0;
+  }
+}
+
 @keyframes pop-in {
   from {
     opacity: 0;
@@ -2829,6 +2847,13 @@ a.row-link {
 
 .cloud-or {
   margin-top: var(--s2);
+}
+
+/* Social without a player (Leo, 15.10.2026): what the section needs, and the way to it. */
+.account-gate {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s3);
 }
 
 .sync-code {

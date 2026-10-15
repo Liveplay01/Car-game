@@ -69,7 +69,7 @@ Schätzungen: Common 15.000 · Rare 45.000 · Epic 150.000 · Legendary 500.000 
 
 **Stadtfonds** (`core/fund.ts`, `Server/src/modules/fund`, `net/fund.ts`): Alle Spieler mit Namen schenken Geld in dieselben Projekte, eines nach dem anderen: **Fountain** (10 Mio), **Lighthouse** (50 Mio), **Sky Bridge** (250 Mio). Ein Geschenk: 10.000 bis 5.000.000, nur der angenommene Teil verlässt den Spielstand. Wer einem Projekt **100.000 oder mehr** (`fundBenefactor`) gegeben hat, bekommt dessen Skin, sobald es gebaut ist: Fountain (Epic, Lagune, Blüte) · Lighthouse (Legendary, Perlweiß mit rotem Streifen, Heiligenschein) · Sky Bridge (Legendary, Himmelblau, Regenbogen). Das Spiel holt die Skins beim Start und beim Öffnen des Fonds ab. Geld ist lokal, der Dienst zählt nur (Plausibilitätsgrenzen).
 
-**Verträge** (`core/contracts.ts`): Vor einer Karriere-Schicht setzt der Spieler 10.000 / 50.000 / 100.000 / 250.000 auf ein Ziel. Der Einsatz ist sofort bezahlt; wird das Ziel erreicht, kommt das Vielfache zurück, sonst ist er weg. Ziele (alle verlangen eine **Perfect Run**: kein Crash, kein Polizei-Crash, kein Schnitt): **Clean sheet** ×1,15 · **Sharp** ×3 (zusätzlich ein Viertel der Autos als Perfect Merges) · **Flawless** ×4,5 (zusätzlich eine Kette über 55 % der Autos). Der vorsichtige Bot schafft Clean sheet in etwa neun von zehn Schichten, die anderen beiden selten. Nie über Daily, Unlimited, Trial oder Challenge; eine erleichterte Schicht (`assisted`) macht den Vertrag ungültig, der Einsatz kommt zurück. Vor der Schicht lässt er sich zerreißen (alles zurück).
+**Verträge** (`core/contracts.ts`): Vor einer Karriere-Schicht setzt der Spieler 10.000 / 50.000 / 100.000 / 250.000 auf ein Ziel. Der Einsatz ist sofort bezahlt; wird das Ziel erreicht, kommt das Vielfache zurück, sonst ist er weg. Ziele (alle verlangen eine **Perfect Run**: kein Crash, kein Polizei-Crash, kein Schnitt): **Clean sheet** ×1,15 · **Sharp** ×3 (zusätzlich ein Viertel der Autos als Perfect Merges) · **Flawless** ×4,5 (zusätzlich eine Kette über 55 % der Autos). Der vorsichtige Bot schafft Clean sheet in etwa neun von zehn Schichten, die anderen beiden selten. Nie über Daily, Unlimited, Trial oder Challenge; eine erleichterte Schicht (`assisted`) macht den Vertrag ungültig, der Einsatz kommt zurück. Vor der Schicht lässt er sich zerreißen (alles zurück). **Contract Run** (Game-Fund-Idee, 15.10.2026): Verträge in Folge gewonnen bauen eine Serie (`Career.contractRun`); ab dem zweiten Sieg zahlt jeder Sieg 1 % des Einsatzes extra pro Sieg der Serie, höchstens +5 % (`contractRunStep`, `contractRunCap`). Ein verlorener Vertrag setzt die Serie zurück, ein ungültiger (erleichterte Schicht) lässt sie stehen.
 
 **High Roller** (Casino): ab **200.000** Geld rücken die Einsätze auf 10K · 50K · 250K · 1M · 5M (`casinoHighStakes`); gleiche Spiele, gleiche Chancen, ein Schild „HIGH ROLLER“ neben dem Tagessaldo.
 
@@ -116,6 +116,21 @@ Setzbar sind nur Car und Map Skins aus Truhen, keine Fahrzeugtypen (sie ändern 
 keine Serien-, Saison- oder Ehren-Items. Eingesetzte Skins sind in jedem Fall weg: getauscht
 gegen das Ziel oder verloren. Sie verschwinden aus Sammlung und Fahrbahn. Abgeschlossene
 Alben bleiben abgeschlossen, ihre Prämie gibt es nicht zweimal.
+
+**Casino-Skins (Leo, 15.10.2026, `Casino.honours`, Quelle `casino`):** nur am Tisch zu verdienen, nur Aussehen,
+Regal „Honours“, zählen nicht fürs Honours-Album (niemand muss spielen). Gilt für die Geldspiele, nicht fürs
+Skin-Upgrade. Die Meldung nennt den Grund, wenn der Gewinn erscheint.
+
+| Skin | ID | Seltenheit | Wofür | Aussehen |
+| --- | --- | --- | --- | --- |
+| Lucky Strike | `luckyStrike` | Epic | erster BIG WIN (Stufe 2: ab 10× Einsatz oder 10.000 Gewinn) | Rot mit Goldstreifen, Glut, Roadster |
+| Mega Win | `megaWin` | Legendary | erster MEGA WIN (Stufe 4: ab 150× oder 1.000.000 Gewinn) | Gold mit Carbon, Nova, Hot Rod |
+| Double Down | `doubleDown` | Legendary | `casinoFlipChain` (5) Münzen in Folge auf einem Gewinn (1 zu 32) | Obsidian mit Perlweiß, Heiligenschein, GT Coupé |
+| Tycoon | `tycoon` | Legendary | `casinoProfit` erreicht `casinoTycoon` (1.000.000) | Carbon mit Gold, Lorbeer, GT Coupé |
+
+**Casino-Rangliste (Leo, 15.10.2026):** `career.casinoProfit` zählt jede Buchung der Geldspiele (Gewinne minus
+Einsätze, über alle Tage, ab diesem Update). Das Board `casino` im Ranglisten-Dienst hält den besten Stand; ein
+Minus wird nicht gesendet. Der Tab erscheint in Social → Ranks erst, wenn das Casino erreicht ist.
 
 ## Sammlung im Shop
 

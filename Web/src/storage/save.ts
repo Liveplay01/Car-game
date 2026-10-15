@@ -164,6 +164,7 @@ function readCareer(raw: unknown): Career {
     casinoBestCrash: num(raw.casinoBestCrash, 0, 0),
     casinoDay: int(raw.casinoDay, -1),
     casinoNet: int(raw.casinoNet, 0),
+    casinoProfit: int(raw.casinoProfit, 0),
     tapOffsets: (Array.isArray(raw.tapOffsets) ? raw.tapOffsets : [])
       .filter((x): x is number => typeof x === 'number' && Number.isFinite(x))
       .map((x) => Math.max(-5000, Math.min(5000, Math.round(x))))
@@ -189,6 +190,7 @@ function readCareer(raw: unknown): Career {
     fundGiven: int(raw.fundGiven, 0, 0),
     ideasSeenAt: int(raw.ideasSeenAt, 0, 0),
     contract: readContract(raw.contract),
+    contractRun: int(raw.contractRun, 0, 0),
     loan: readLoan(raw.loan),
     cleanLoans: int(raw.cleanLoans, 0, 0),
     loansTaken: int(raw.loansTaken, 0, 0),

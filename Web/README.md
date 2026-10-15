@@ -103,7 +103,7 @@ Only in the browser version:
   that push the price over the estimate; the hammer price plus a 10 % premium is paid, walking away is free. The **City
   Fund** (`core/fund.ts`, `net/fund.ts`, the service's `fund` module): everyone gives to the same projects; a gift of
   100,000 or more earns the skin of a built project, which the game picks up at the start and when the Club opens.
-  **Contracts** (`core/contracts.ts`, settled in `present/booking.ts`): money on a Perfect Run of the next career shift.
+  **Contracts** (`core/contracts.ts`, settled in `present/booking.ts`): money on a Perfect Run of the next career shift. Contracts won back to back build a Contract Run: from the second win on +1% of the stake per win, up to +5%; a loss resets it.
   Also the Diamond Chest and the casino's High Roller stakes (`Casino.highRoller`). The odds, prices and limits are in
   LOOT.md, "Der Club"; the fund is gone without the service (`VITE_API_URL`), the rest plays offline.
 - **Cloud sync** in Settings moves the progress to another device by code (01.10.2026: export
@@ -280,7 +280,11 @@ Level 4 the game asks the browser to keep its storage (`navigator.storage.persis
 on the first visit, since Firefox may ask the player) and recommends the Home Screen (on an
 iPhone: a full-screen tip, Share → Add to Home Screen; elsewhere a line, when the browser can
 install). After Level 12 it recommends Cloud sync while this device has no cloud copy. Cloud
-sync also has a pop-up of its own, once per device, from Level 3 (`cloudIntroFromLevel`). From then on every visit asks again where
+sync comes with the player name (Leo, 15.10.2026, `ui/accountSheet.ts`): after Level 5 (`accountPromptAfterLevel`, or after a
+Prestige) the game asks once for "Your player", one name that opens Ranks, Friends, multiplayer and Cloud sync together and asks the
+browser to keep name and sync code like a login. "No thanks" asks twice (hint `account`). Friends, Ranks and the Club need the
+player and open the sheet without one; the Mafia does not. A name from before without a cloud copy gets one by itself, shown with
+its code (not where syncing was stopped on purpose, `cloudStoppedHere`). From then on every visit asks again where
 asking is silent (Chrome, Safari; not Firefox), and installing the game asks at once. If a
 write fails (private window, full storage), the game says so once per session and points to
 Cloud sync.

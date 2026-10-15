@@ -3,7 +3,7 @@ import type { Upgrade } from '../core/levels';
 import type { MasteryGoal, MasteryCompletion } from '../core/career';
 import { MASTERY_THRESHOLDS, masteryNumeral } from '../core/career';
 import type { SwipeMode } from './flow';
-import type { Rarity, ChestKind, Cosmetic, ChestOpening, Album } from '../core/loot';
+import type { Rarity, ChestKind, Cosmetic, ChestOpening, Album, CasinoFeat } from '../core/loot';
 import type { Challenge } from '../core/daily';
 import type { NextGoal, NearMiss } from '../core/goals';
 import type { CasinoGame, SlotSymbol } from '../core/casino';
@@ -201,14 +201,6 @@ export const S = {
       scroll: 'Scroll down and tap “Add to Home Screen”',
       add: 'Tap “Add”, then start the game from its icon',
     },
-    cloudIntro: {
-      open: 'Open Cloud sync',
-      later: 'Maybe later',
-      why: 'Back up your progress and carry on with any device using a short code. No account and no password.',
-      gear: 'Tap the gear for Settings',
-      page: 'Open “Cloud sync”',
-      code: 'Back up, or type a code from another device',
-    },
     del: {
       title: 'Delete account?',
       lede: 'The game starts over from Level 1. This cannot be undone.',
@@ -264,6 +256,41 @@ export const S = {
     keepDevice: 'Keep this device and replace the cloud',
     useCloud: 'Use the cloud progress',
     later: 'Decide later',
+  },
+
+  /** Your player (`ui/accountSheet.ts`, Leo, 15.10.2026): one name for Ranks, Friends, multiplayer and Cloud sync. */
+  account: {
+    title: 'Your player',
+    intro: 'Pick a name. It is your player for everything online, and your progress is backed up with it. Nothing else to sign up for.',
+    perks: {
+      ranks: { title: 'Ranks', sub: 'Your level and records on the leaderboards.' },
+      friends: { title: 'Friends', sub: 'A friend code, a board with your friends and invites.' },
+      versus: { title: 'Multiplayer', sub: 'The name the others see in a match.' },
+      cloud: { title: 'Cloud sync', sub: 'Your progress safe, and on every device.' },
+    },
+    create: 'Create',
+    haveCode: 'I have a sync code',
+    noThanks: 'No thanks',
+    syncMissing: (name: string): string => `You play as ${name}. Turn on Cloud sync to finish your player: it keeps your progress safe and brings it to your other devices.`,
+    turnOn: 'Turn on Cloud sync',
+    declineWhy: 'Without a player there are no Ranks, no Friends and no Club, and your progress lives only on this device: clearing the browser loses it. You can still create one in Settings → Account.',
+    declineBack: 'Create my player',
+    declineSure: 'Play without a player',
+    welcome: (name: string): string => `${name}, your player now has Cloud sync: your progress is backed up. Keep this code safe, it brings your progress and your name to any device.`,
+    done: (name: string): string => `You are ${name}. Ranks, Friends, multiplayer and Cloud sync are ready.`,
+    doneLocal: (name: string): string => `You are ${name}. Ranks and multiplayer are ready.`,
+    nameLabel: 'Player name',
+    keepSub: 'Your browser keeps your name and code like a login and fills them in on a new device.',
+    codeNote: 'On another device open Settings → Account → Cloud sync and type this code. Anyone with it can load your progress: keep it private.',
+    finish: 'Done',
+    manage: 'Cloud sync settings',
+    gate: 'Friends, Ranks and the Club need your player: one name, and your progress backed up with it.',
+    gateButton: 'Create my player',
+    settingsNone: 'Create your player',
+    settingsSub: 'One name for Ranks, Friends, multiplayer and Cloud sync.',
+    settingsSync: 'Turn on Cloud sync to finish your player.',
+    settingsReady: 'Ranks, Friends, multiplayer and Cloud sync.',
+    settingsBadge: 'New',
   },
 
   /** Systems that open with the level (`core/unlocks.ts`). */
@@ -1249,6 +1276,10 @@ export const S = {
     chainTimes: (n: number): string => `×${n}`,
     refunded: (m: string): string => `A drive was cut short · ${m} back`,
     cashedOnLeave: (m: string): string => `Cashed out as you left · +${m}`,
+    /** What earned a casino skin (`Casino.honours`): the notice says why, then which. */
+    feat: (f: CasinoFeat): string =>
+      ({ bigWin: 'Your first BIG WIN', megaWin: 'Your first MEGA WIN', flipChain: `${baseConfig.casinoFlipChain} coins won in a row`, tycoon: `${money(Fmt.number(baseConfig.casinoTycoon))} won at the casino` })[f],
+    honour: (feat: string, item: string): string => `${feat} · ${item} skin unlocked`,
     detail: {
       crash: [
         'A car speeds up and the multiplier climbs. Cash out any time: you get the stake times the multiplier. If it crashes first, the stake is gone.',
@@ -1396,7 +1427,7 @@ export const S = {
     /** What a settled contract says on the result. */
     contractSettled(outcome: ContractOutcome): string {
       const name = S.club.goalName(outcome.contract.goal).toUpperCase();
-      if (outcome.result === 'won') return `CONTRACT WON · ${name} · +${money(Fmt.number(outcome.pay))}`;
+      if (outcome.result === 'won') return `CONTRACT WON · ${name} · +${money(Fmt.number(outcome.pay))}${outcome.run > 1 ? ` · RUN ×${outcome.run}` : ''}`;
       if (outcome.result === 'void') return `CONTRACT VOID · this shift was eased · ${money(Fmt.number(outcome.pay))} back`;
       return `CONTRACT LOST · ${name} · ${money(Fmt.number(outcome.contract.stake))} gone`;
     },
@@ -1484,7 +1515,7 @@ export const S = {
     goingOnce: (price: string): string => `Going once at ${price}... 🔨`,
     goingTwice: 'Going twice! Fair warning... 🔨🔨',
     sold: (price: string): string => `SOLD! The hammer falls at ${price} to you! 🔨🔨🔨`,
-    state: { built: 'Built', funded: 'Funded', funding: 'Funding' },
+    state: { built: 'Built', building: 'Being made', funded: 'Funded', funding: 'Funding' },
     ideasOffline: 'Ideas need the online service, which this copy of the game is not connected to.',
     tryAgain: 'Try again',
     loading: 'Loading the ideas…',
@@ -1495,7 +1526,8 @@ export const S = {
     ideasIntro: (goal: string): string => `What should the game get next? Players give money together; an idea that reaches ${goal} is made. Money given does not come back.`,
     ideaSent: 'Thank you! We read every idea. The good ones show up here once we have worded them for the game.',
     groupFunding: 'Funding',
-    groupFunded: 'Funded · being made',
+    groupFunded: 'Funded',
+    groupBuilding: 'Being made',
     groupBuilt: 'Built',
     noIdeas: 'No idea is open yet. Be the first to suggest one.',
     /** The notice when a new idea was published since the player last looked. */
@@ -1523,6 +1555,8 @@ export const S = {
     yourContract: 'Your contract',
     tearUp: 'Tear it up',
     contractPays: (goal: string, pay: string): string => `${goal} Pays ${pay} if it is met.`,
+    contractRun: (run: number, next: string): string =>
+      run > 0 ? `Contract Run: ${run} won in a row. Your next win pays ${next} of the stake extra. A lost contract resets it.` : 'Contract Run: win contracts back to back. From the second win each pays a little extra, up to +5% of the stake. A lost contract resets it.',
     settle: 'It is settled by your next career shift (not the Daily, Unlimited or a trial) and shows on its result. Tearing it up before then gives the whole stake back. A shift eased for your career voids it, stake back.',
     chosen: 'Chosen',
     choose: 'Choose',
@@ -1540,7 +1574,8 @@ export const S = {
       unlimited: { label: 'Unlimited', empty: 'Set an Unlimited record to be the first one here.' },
       daily: { label: 'Daily', empty: 'Clear today’s Daily Shift to be the first one here.' },
       rush: { label: 'Boss Rush', empty: 'Clear a Boss Rush to set the first time.' },
-    } as Record<'shift-level' | 'unlimited' | 'daily' | 'rush', { label: string; empty: string }>,
+      casino: { label: 'Casino', empty: 'Win more at the casino than you stake to be the first one here.' },
+    } as Record<'shift-level' | 'unlimited' | 'daily' | 'rush' | 'casino', { label: string; empty: string }>,
     level: (n: string): string => `Level ${n}`,
     starLabel: (rank: number): string => `Prestige rank ${rank}. How Prestige works`,
     back: '‹ Back to the leaderboard',
@@ -1868,6 +1903,7 @@ export const S = {
       if (item.source.kind === 'unlimited') return `Send ${Fmt.number(item.source.cars)} cars in one Unlimited run.`;
       if (item.source.kind === 'tour') return `A stop of the ${S.tours.name(item.source.tour as TourId)} tour. It comes back every year.`;
       if (item.source.kind === 'auction') return 'Only ever a lot at the Auction House (Social → Club). A new lot every few days.';
+      if (item.source.kind === 'casino') return `${S.casino.feat(item.source.feat)}: only the casino gives it (Shop → Casino). Looks only.`;
       if (item.source.kind === 'fund') return 'A thank-you from the City Fund, which the Game fund has replaced. It is not given out any more.';
       if (item.source.kind === 'bugReport')
         return item.source.reports === 1
@@ -1986,6 +2022,10 @@ export const S = {
         fountain: 'Fountain',
         lighthouse: 'Lighthouse',
         skybridge: 'Sky Bridge',
+        luckyStrike: 'Lucky Strike',
+        megaWin: 'Mega Win',
+        doubleDown: 'Double Down',
+        tycoon: 'Tycoon',
         lemon: 'Lemon',
         plum: 'Plum',
         fern: 'Fern',

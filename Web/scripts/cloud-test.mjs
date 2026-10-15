@@ -25,6 +25,7 @@ after(() => server.close());
 const { newSave } = await server.ssrLoadModule('/src/core/career.ts');
 const { sealSave, SEAL_FIELD } = await server.ssrLoadModule('/src/storage/save.ts');
 const { startCloud, createCloud, syncNow, cloudView } = await server.ssrLoadModule('/src/net/cloud.ts');
+const { createAccount, deleteAccount, loadAccount, syncScores, fetchBoard, due } = await server.ssrLoadModule('/src/net/leaderboard.ts');
 
 const save = newSave();
 const taken = [];
@@ -53,4 +54,37 @@ test('cloud: progress another device sent is taken over when this one has nothin
   assert.equal(taken.length, 1);
   assert.equal(taken[0].career.money, other.career.money);
   assert.equal(cloudView().status, 'synced');
+});
+
+const casinoRecords = (casinoProfit) => ({ level: 7, prestige: 0, unlimitedBest: 0, unlimitedCars: 0, dailyDay: -1, dailyScore: 0, rushBest: 0, casinoProfit, title: null });
+
+test('ranks: the casino profit reaches the Casino board, and only a better one counts', async () => {
+  await createAccount('Lucky Ace');
+  await syncScores(casinoRecords(12_000));
+  const board = await fetchBoard('casino');
+  assert.deepEqual(board.entries.map((e) => [e.name, e.score, e.me]), [['Lucky Ace', 12_000, true]]);
+  await syncScores(casinoRecords(5_000));
+  assert.equal((await fetchBoard('casino')).me.score, 12_000, 'a loss later does not lower the board');
+  await deleteAccount(loadAccount());
+});
+
+test('ranks: a service without the Casino board yet holds back neither the other records nor the title', async () => {
+  await createAccount('Old Table');
+  const real = globalThis.fetch;
+  const asked = [];
+  globalThis.fetch = (url, init) => {
+    asked.push(String(url));
+    if (!String(url).includes('/boards/casino')) return real(url, init);
+    return Promise.resolve(new Response(JSON.stringify({ error: { code: 'unknown_board', message: 'There is no such leaderboard.' } }), { status: 404, headers: { 'content-type': 'application/json' } }));
+  };
+  try {
+    await syncScores({ ...casinoRecords(9_000), title: 'veteran' });
+  } finally {
+    globalThis.fetch = real;
+  }
+  assert.ok(asked.some((u) => u.includes('/boards/casino/score')), 'the casino profit was offered');
+  assert.ok(asked.some((u) => u.endsWith('/v1/me/title')), 'the title went up after it');
+  assert.equal((await fetchBoard('shift-level')).me.score, 7, 'the level is on its board');
+  assert.ok(!due(casinoRecords(9_000)).some(([board]) => board === 'casino'), 'the missing board is not asked again on every save');
+  await deleteAccount(loadAccount());
 });

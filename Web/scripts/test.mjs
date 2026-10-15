@@ -2208,6 +2208,34 @@ test('a cleared Daily Shift is kept for the Daily board, and both new boards are
   assert.deepEqual(list.find(([board]) => board === 'rush').slice(0, 2), ['rush', { cs: 12345 }]);
   assert.equal(list.find(([board]) => board === 'rush')[2], 10_000_000 - 12345, 'a faster time is a bigger number');
   assert.ok(!dueBoards({ ...records, dailyDay: -1, dailyScore: 0, rushBest: 0 }).some(([board]) => board === 'daily' || board === 'rush'), 'nothing to send without a clear');
+  assert.deepEqual(dueBoards({ ...records, casinoProfit: 5000 }).find(([board]) => board === 'casino').slice(0, 2), ['casino', { profit: 5000 }]);
+  assert.ok(!dueBoards({ ...records, casinoProfit: -200 }).some(([board]) => board === 'casino'), 'a loss is not sent');
+  assert.ok(!dueBoards({ ...records, casinoProfit: null }).some(([board]) => board === 'casino'), 'nothing before the Casino is reached');
+});
+
+test('the casino counts its profit and pays its own skins for its big moments', () => {
+  const c = newCareer();
+  Casino.book(c, 1, -100);
+  assert.equal(c.casinoProfit, -100);
+  Casino.book(c, 2, 400);
+  assert.equal(c.casinoProfit, 300, 'the profit runs across days, unlike the day balance');
+  Casino.log(c, { game: 'slots', stake: 100, win: 300, x: 3, day: 1 });
+  assert.ok(!Careers.owns(c, 'luckyStrike'), 'a small win is not a BIG WIN');
+  Casino.log(c, { game: 'slots', stake: 100, win: 1000, x: 10, day: 1 });
+  assert.ok(Careers.owns(c, 'luckyStrike') && !Careers.owns(c, 'megaWin'), 'the first BIG WIN');
+  Casino.log(c, { game: 'upgrade', stake: 100, win: 100_000, x: 0.5, day: 1, item: 'gold' });
+  assert.ok(!Careers.owns(c, 'megaWin'), 'the Skin Upgrade pays no casino skin');
+  Casino.log(c, { game: 'crash', stake: 10_000, win: 1_500_000, x: 150, day: 1 });
+  assert.ok(Careers.owns(c, 'megaWin'), 'the first MEGA WIN');
+  assert.ok(!Careers.owns(c, 'tycoon'));
+  Casino.book(c, 1, baseConfig.casinoTycoon);
+  Casino.log(c, { game: 'scratch', stake: 100, win: 200, x: 2, day: 1 });
+  assert.ok(Careers.owns(c, 'tycoon'), 'a fortune won');
+  Casino.honours(c, 0, baseConfig.casinoFlipChain - 1);
+  assert.ok(!Careers.owns(c, 'doubleDown'));
+  Casino.honours(c, 0, baseConfig.casinoFlipChain);
+  assert.ok(Careers.owns(c, 'doubleDown'), 'five coins in a row');
+  assert.ok(baseConfig.casinoFlipChain <= baseConfig.doubleMaxChain, 'the coin streak can be reached');
 });
 
 
@@ -2949,7 +2977,7 @@ test('the High Roller table moves the stakes up with the balance, and All in sta
 });
 
 test('the new skins have looks, names and a way to get them', () => {
-  const sources = { auction: 6, fund: 3 };
+  const sources = { auction: 6, fund: 3, casino: 4 };
   for (const [kind, count] of Object.entries(sources)) {
     const items = COSMETICS.filter((x) => x.source.kind === kind);
     assert.equal(items.length, count, `${count} ${kind} skins`);
@@ -2961,6 +2989,7 @@ test('the new skins have looks, names and a way to get them', () => {
     }
   }
   assert.ok(!albumItems('honours').some((x) => x.source.kind === 'auction' || x.source.kind === 'fund'), 'the Honours album never waits on the Club');
+  assert.ok(!albumItems('honours').some((x) => x.source.kind === 'casino'), 'nor on the casino');
 });
 
 /** The career as a save brings it back. */

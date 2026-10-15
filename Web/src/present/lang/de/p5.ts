@@ -1,7 +1,7 @@
 import type { Strings } from '../../strings';
 import type { Words } from '../../i18n';
 import { Fmt, money, percent } from '../../format';
-import { detourShareAt, towSpeedupAt } from '../../../core/config';
+import { baseConfig, detourShareAt, towSpeedupAt } from '../../../core/config';
 import { Contracts } from '../../../core/contracts';
 
 /** Deutsch, Teil 5: Casino, Straßenbauer, Werbung, Club, Ränge, Freunde, Lobby, Versus, Shell. */
@@ -71,6 +71,9 @@ export default (S: Strings): Words<Strings> => ({
     flipsLeft: (n) => (n <= 0 ? 'Das war die letzte Verdopplung' : `Noch ${n} ${n === 1 ? 'Verdopplung' : 'Verdopplungen'} möglich · oder behalten`),
     refunded: (m) => `Eine Fahrt wurde abgebrochen · ${m} zurück`,
     cashedOnLeave: (m) => `Beim Verlassen ausgezahlt · +${m}`,
+    feat: (f) =>
+      ({ bigWin: 'Dein erster BIG WIN', megaWin: 'Dein erster MEGA WIN', flipChain: `${baseConfig.casinoFlipChain} Münzwürfe in Folge gewonnen`, tycoon: `${money(Fmt.number(baseConfig.casinoTycoon))} im Casino gewonnen` })[f],
+    honour: (feat, item) => `${feat} · Skin ${item} freigeschaltet`,
     detail: {
       crash: [
         'Ein Auto wird schneller, und der Multiplikator steigt. Zahle jederzeit aus: Du bekommst den Einsatz mal den Multiplikator. Crasht es vorher, ist der Einsatz weg.',
@@ -209,7 +212,7 @@ export default (S: Strings): Words<Strings> => ({
     },
     contractSettled(outcome) {
       const name = S.club.goalName(outcome.contract.goal).toUpperCase();
-      if (outcome.result === 'won') return `VERTRAG GEWONNEN · ${name} · +${money(Fmt.number(outcome.pay))}`;
+      if (outcome.result === 'won') return `VERTRAG GEWONNEN · ${name} · +${money(Fmt.number(outcome.pay))}${outcome.run > 1 ? ` · SERIE ×${outcome.run}` : ''}`;
       if (outcome.result === 'void') return `VERTRAG UNGÜLTIG · diese Schicht wurde erleichtert · ${money(Fmt.number(outcome.pay))} zurück`;
       return `VERTRAG VERLOREN · ${name} · ${money(Fmt.number(outcome.contract.stake))} weg`;
     },
@@ -307,7 +310,7 @@ export default (S: Strings): Words<Strings> => ({
     ideasIntro: (goal) => `Was soll das Spiel als Nächstes bekommen? Spieler geben gemeinsam Geld; eine Idee, die ${goal} erreicht, wird umgesetzt. Gegebenes Geld kommt nicht zurück.`,
     ideaSent: 'Danke! Wir lesen jede Idee. Die guten erscheinen hier, sobald wir sie für das Spiel formuliert haben.',
     groupFunding: 'Sammlung läuft',
-    groupFunded: 'Finanziert · wird umgesetzt',
+    groupFunded: 'Finanziert',
     groupBuilding: 'Wird gemacht',
     groupBuilt: 'Umgesetzt',
     noIdeas: 'Noch keine Idee offen. Sei der Erste mit einem Vorschlag.',
@@ -335,6 +338,8 @@ export default (S: Strings): Words<Strings> => ({
     yourContract: 'Dein Vertrag',
     tearUp: 'Zerreißen',
     contractPays: (goal, pay) => `${goal} Zahlt ${pay}, wenn es erfüllt wird.`,
+    contractRun: (run, next) =>
+      run > 0 ? `Contract-Serie: ${run} Verträge in Folge gewonnen. Dein nächster Sieg zahlt ${next} des Einsatzes extra. Ein verlorener Vertrag setzt sie zurück.` : 'Contract-Serie: Gewinne Verträge hintereinander. Ab dem zweiten Sieg zahlt jeder etwas extra, bis zu +5 % des Einsatzes. Ein verlorener Vertrag setzt sie zurück.',
     settle: 'Er wird mit deiner nächsten Karriere-Schicht abgerechnet (nicht Tagesschicht, Unlimited oder Prüfung) und erscheint im Ergebnis. Zerreißt du ihn vorher, bekommst du den ganzen Einsatz zurück. Eine für deine Karriere erleichterte Schicht macht ihn ungültig, Einsatz zurück.',
     chosen: 'Gewählt',
     choose: 'Wählen',
@@ -351,6 +356,7 @@ export default (S: Strings): Words<Strings> => ({
       unlimited: { label: 'Unlimited', empty: 'Stelle einen Unlimited-Rekord auf, um der Erste hier zu sein.' },
       daily: { label: 'Täglich', empty: 'Schaffe die heutige Tagesschicht, um der Erste hier zu sein.' },
       rush: { label: 'Boss-Rush', empty: 'Schaffe einen Boss-Rush, um die erste Zeit zu setzen.' },
+      casino: { label: 'Casino', empty: 'Gewinne im Casino mehr, als du einsetzt, um der Erste hier zu sein.' },
     },
     level: (n) => `Level ${n}`,
     starLabel: (rank) => `Prestige-Rang ${rank}. So funktioniert Prestige`,

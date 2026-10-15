@@ -209,6 +209,37 @@ export function fadeIn(view: HTMLElement): void {
   view.classList.add('view-in');
 }
 
+/** `update` replaces what a view shows: the old rows stay on top as a ghost and fade out while the new ones fade in. */
+export function swapView(view: HTMLElement, update: () => void): void {
+  view.querySelector(':scope > .view-ghost')?.remove();
+  const scroller = view.closest<HTMLElement>('.sheet, .social-page');
+  const scrolled = scroller?.scrollTop ?? 0;
+  const ghost = h('div', { class: `view-ghost ${view.className.replace(/\b(view-in|has-ghost)\b/g, '')}`, 'aria-hidden': 'true', inert: true });
+  const canvases = [...view.querySelectorAll('canvas')];
+  ghost.append(...[...view.childNodes].map((node) => node.cloneNode(true)));
+  // A copy keeps no pictures, no ids or names (a form or label must never find the copy) and no frames.
+  ghost.querySelectorAll('canvas').forEach((copy, i) => copy.getContext('2d')?.drawImage(canvases[i], 0, 0));
+  ghost.querySelectorAll('iframe').forEach((frame) => frame.remove());
+  ghost.querySelectorAll('[id], [name]').forEach((el) => {
+    el.removeAttribute('id');
+    el.removeAttribute('name');
+  });
+  update();
+  fadeIn(view);
+  if (!ghost.hasChildNodes()) return;
+  // The page may have jumped (back to the top): the copy stays where the player saw the old view.
+  const jump = scrolled - (scroller?.scrollTop ?? 0);
+  if (jump > 0) ghost.style.transform = `translateY(${-jump}px)`;
+  view.classList.add('has-ghost');
+  view.append(ghost);
+  const done = (): void => {
+    ghost.remove();
+    if (!view.querySelector(':scope > .view-ghost')) view.classList.remove('has-ghost');
+  };
+  ghost.addEventListener('animationend', done, { once: true });
+  window.setTimeout(done, 400);
+}
+
 /** What a drawer or the Social page shows is now another view (an auction that ended, another tab): it glides back to its start. */
 export function scrollSheetToTop(from: HTMLElement): void {
   const sheet = from.closest<HTMLElement>('.sheet, .social-page');
@@ -255,7 +286,7 @@ export function glideHeight(body: HTMLElement, content: HTMLElement): void {
 /**
  * iPhone and iPad (Leo, 30.09.2026): the Home Screen tip takes the whole screen and stays until
  * it is confirmed. Only the button closes it. Since Cloud sync (Leo, 01.10.2026) it simply
- * recommends the Home Screen; Cloud sync has a pop-up of its own (`cloudIntroDialog`).
+ * recommends the Home Screen; Cloud sync comes with the player name (`ui/accountSheet.ts`).
  */
 export function installDialog(layer: HTMLElement, ipad: boolean, onDone: () => void): void {
   const previouslyFocused = document.activeElement as HTMLElement | null;
@@ -380,69 +411,6 @@ export function licensesSheet(layer: HTMLElement, licenses: License[], onClose: 
   return openSheet(layer, S.settings.licenses, body, onClose);
 }
 
-/**
- * A small one-time pop-up from Level 3 (`config.cloudIntroFromLevel`): Cloud sync exists, and where to find it. "Open Cloud
- * sync" goes straight there; "Maybe later" closes it (Escape and a tap outside too). It is shown
- * once per device (`cloudIntroDue`), and the page itself stays in Settings.
- */
-export function cloudIntroDialog(layer: HTMLElement, actions: { open(): void; closed(): void }): void {
-  const previouslyFocused = document.activeElement as HTMLElement | null;
-  const step = (n: number, text: string, glyph: string): HTMLElement =>
-    h('li', { class: 'install-step' }, h('span', { class: 'install-num', 'aria-hidden': 'true' }, String(n)), h('span', { class: 'install-text' }, text), h('span', { class: 'install-glyph', 'aria-hidden': 'true' }, icon(glyph)));
-  const open = h('button', { class: 'btn primary block', type: 'button' }, S.settings.cloudIntro.open);
-  const later = h('button', { class: 'btn block quiet-btn', type: 'button' }, S.settings.cloudIntro.later);
-  const card = h(
-    'div',
-    { class: 'intro-card', role: 'alertdialog', 'aria-modal': 'true', 'aria-labelledby': 'intro-title', 'aria-describedby': 'intro-why' },
-    h('div', { class: 'install-badge', 'aria-hidden': 'true' }, icon(ICONS.gear)),
-    h('h2', { class: 'install-title intro-title', id: 'intro-title' }, S.settings.cloudSync),
-    h('p', { class: 'install-why', id: 'intro-why' }, S.settings.cloudIntro.why),
-    h(
-      'ol',
-      { class: 'install-steps' },
-      step(1, S.settings.cloudIntro.gear, ICONS.gear),
-      step(2, S.settings.cloudIntro.page, ICONS.chevronRight),
-      step(3, S.settings.cloudIntro.code, ICONS.check),
-    ),
-    open,
-    later,
-  );
-  const root = h('div', { class: 'intro-root' }, card);
-  const finish = (): void => {
-    document.removeEventListener('keydown', onKey, true);
-    root.classList.add('closing');
-    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    window.setTimeout(() => root.remove(), reduce ? 0 : 200);
-    previouslyFocused?.focus?.();
-  };
-  const onKey = (e: KeyboardEvent): void => {
-    e.stopPropagation();
-    if (e.key === 'Escape') {
-      e.preventDefault();
-      finish();
-      actions.closed();
-    } else if (e.key === 'Tab') {
-      // Focus stays on the two buttons.
-      e.preventDefault();
-      (document.activeElement === open ? later : open).focus();
-    }
-  };
-  open.addEventListener('click', () => {
-    finish();
-    actions.open();
-  });
-  later.addEventListener('click', () => {
-    finish();
-    actions.closed();
-  });
-  root.addEventListener('click', (e) => {
-    if (e.target === root) later.click();
-  });
-  document.addEventListener('keydown', onKey, true);
-  layer.append(root);
-  open.focus({ preventScroll: true });
-}
-
 /** A row that opens a page, the whole row tappable. */
 function linkRow(title: string, sub: string, onOpen: () => void): HTMLElement {
   return h(
@@ -517,6 +485,8 @@ export interface SettingsActions {
   openCloud(): void;
   /** Cloud sync is on for this device (the row says so). */
   cloudOn: boolean;
+  /** "Your player" (`ui/accountSheet.ts`): the name, whether its cloud copy exists too; null without the service. */
+  player: { name: string | null; ready: boolean; open(): void } | null;
   /** The player's friend code, if they have a name: it fills in the bug form on the website. */
   friendCode: (() => Promise<string | null>) | null;
   install: (() => void) | null;
@@ -853,6 +823,18 @@ export function settingsSheet(layer: HTMLElement, s: Settings, actions: Settings
       ),
     ],
     account: [
+      actions.player
+        ? group(
+            S.account.title,
+            richLinkRow(
+              actions.player.name ?? S.account.settingsNone,
+              actions.player.ready ? S.account.settingsReady : actions.player.name ? S.account.settingsSync : S.account.settingsSub,
+              () => actions.player?.open(),
+              tile(ICONS.people, 'blue'),
+              actions.player.ready ? null : h('span', { class: 'new-pill' }, S.account.settingsBadge),
+            ),
+          )
+        : null,
       group(S.settings.backup, cloudRow, installRow),
       group(S.settings.reminders, ...pushRows(actions.push)),
       h(
@@ -890,8 +872,9 @@ export function settingsSheet(layer: HTMLElement, s: Settings, actions: Settings
   function show(next: SettingsTab, animate: boolean): void {
     lastSettingsTab = next;
     tabs.set(next);
-    content.replaceChildren(...panes[next].filter((pane): pane is HTMLElement => pane !== null));
-    if (animate) fadeIn(content);
+    const swap = (): void => content.replaceChildren(...panes[next].filter((pane): pane is HTMLElement => pane !== null));
+    if (animate) swapView(content, swap);
+    else swap();
   }
   show(lastSettingsTab, false);
   const body = h('div', { class: 'settings' }, tabs.el, content);

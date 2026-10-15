@@ -9,6 +9,13 @@ declare global {
 
 const base = import.meta.env.BASE_URL;
 
+interface Voice {
+  priority: number;
+  at: number;
+  src: AudioBufferSourceNode;
+  gain: GainNode;
+}
+
 interface RainVoice {
   gain: GainNode;
   hiss: BiquadFilterNode;
@@ -26,8 +33,39 @@ export class AudioPlayer {
   static readonly musicMaster = 0.35;
   static readonly fade = 0.8;
 
+  private static readonly maxVoices = 14;
+
+  /** Who stays when the voices run out (default 1): the big hits and the end of a shift, then warnings, then the small ticks. */
+  private static readonly priority: Partial<Record<SoundID, number>> = {
+    crash: 3, crashHeavy: 3, explosion: 3, detonation: 3, shiftComplete: 3, shiftFailed: 3,
+    crashLight: 2, wanted: 2, alarm: 2, dispatch: 2, takedown: 2, secured: 2, seized: 2, rushHour: 2, paid: 2, escaped: 2,
+    chestBurst: 2, chestBurstRare: 2,
+    toll: 0, uiTick: 0, meterTick: 0, needleTick: 0,
+  };
+
+  /** How far the pitch of a sound that comes again and again wanders (fraction of the pitch), so no two hits are identical. */
+  private static readonly spread: Partial<Record<SoundID, number>> = {
+    merge: 0.004, tightFit: 0.012, perfect: 0.012, cutOff: 0.015, takedown: 0.012, paid: 0.01, screech: 0.015,
+  };
+
+  /** The big hits push the music and the weather down for a moment (how far, how long) so they land clean. */
+  private static readonly ducks: Partial<Record<SoundID, [depth: number, hold: number]>> = {
+    crash: [0.7, 0.12], crashHeavy: [0.5, 0.3], explosion: [0.45, 0.5], detonation: [0.35, 0.9],
+  };
+
+  /** Menus, chests and the casino: their own bus, never ducked, never in the way of the street. */
+  private static readonly uiSounds = new Set<SoundID>([
+    'uiTick', 'swoosh', 'purchase', 'build', 'denied', 'chestCharge', 'chestBurst', 'chestBurstRare', 'chestHit', 'casinoStop',
+    'coinClink', 'needleTick', 'meterTick', 'coinToss', 'coinLand', 'chipsIn', 'shatter', 'shutter', 'reelSpin', 'reelTick',
+    'shimmer', 'reelLand', 'reelLandBig',
+  ]);
+
   private ctx: AudioContext | null = null;
   private sfx: GainNode | null = null;
+  private ui: GainNode | null = null;
+  private ambient: GainNode | null = null;
+  private bed: GainNode | null = null;
+  private voices: Voice[] = [];
   private buffers = new Map<SoundID, AudioBuffer>();
   private lastStart = new Map<SoundID, number>();
   private music: { filter: BiquadFilterNode; gains: Map<MusicLayer, GainNode>; started: boolean } | null = null;
@@ -54,15 +92,25 @@ export class AudioPlayer {
     const limiter = ctx.createDynamicsCompressor();
     limiter.threshold.value = -6;
     limiter.ratio.value = 8;
+    limiter.release.value = 0.12;
     limiter.connect(ctx.destination);
-    const sfx = ctx.createGain();
-    sfx.gain.value = AudioPlayer.sfxVolume;
-    sfx.connect(limiter);
+    const bus = (volume: number, to: AudioNode): GainNode => {
+      const g = ctx.createGain();
+      g.gain.value = volume;
+      g.connect(to);
+      return g;
+    };
+    // Music and weather share the bed, which the big hits duck.
+    const bed = bus(1, limiter);
+    const sfx = bus(AudioPlayer.sfxVolume, limiter);
+    this.ui = bus(AudioPlayer.sfxVolume, limiter);
+    this.ambient = bus(AudioPlayer.sfxVolume, bed);
+    this.bed = bed;
     const filter = ctx.createBiquadFilter();
     filter.type = 'lowpass';
     filter.frequency.value = Music.cutoff(0);
     filter.Q.value = 0.7;
-    filter.connect(limiter);
+    filter.connect(bed);
     const gains = new Map<MusicLayer, GainNode>();
     for (const layer of MUSIC_LAYERS) {
       const g = ctx.createGain();
@@ -119,26 +167,62 @@ export class AudioPlayer {
 
   play(id: SoundID, pitch: number, pan = 0): void {
     const ctx = this.ctx;
-    if (ctx && this.sfx && ctx.state === 'running' && this.synth(id, ctx, this.sfx, pan, pitch)) return;
+    const out = AudioPlayer.uiSounds.has(id) ? this.ui : this.sfx;
+    if (!ctx || !out || ctx.state !== 'running') return;
+    if (this.synth(id, ctx, out, pan, pitch)) return;
     const buffer = this.buffers.get(id);
-    if (!ctx || !this.sfx || !buffer || ctx.state !== 'running') return;
+    if (!buffer) return;
     // The same sound twice within a few ms is one sound (a pile-up in one frame).
     const now = ctx.currentTime;
     if (now - (this.lastStart.get(id) ?? -1) < 0.025) return;
+    const priority = AudioPlayer.priority[id] ?? 1;
+    if (!this.claimVoice(priority, now)) return;
     this.lastStart.set(id, now);
     const src = ctx.createBufferSource();
     src.buffer = buffer;
-    src.playbackRate.value = pitch;
+    src.playbackRate.value = pitch * (1 + (AudioPlayer.spread[id] ?? 0) * (Math.random() * 2 - 1));
+    // About one dB either way, so a run of the same sound never repeats exactly.
+    const gain = ctx.createGain();
+    gain.gain.value = 1 + 0.12 * (Math.random() * 2 - 1);
+    src.connect(gain);
     // Where it happens on screen: a crash on the left is heard on the left (headphones).
     if (Math.abs(pan) > 0.02 && typeof ctx.createStereoPanner === 'function') {
       const panner = ctx.createStereoPanner();
       panner.pan.value = pan;
-      src.connect(panner);
-      panner.connect(this.sfx);
+      gain.connect(panner);
+      panner.connect(out);
     } else {
-      src.connect(this.sfx);
+      gain.connect(out);
     }
+    const voice: Voice = { priority, at: now, src, gain };
+    src.onended = () => {
+      this.voices = this.voices.filter((v) => v !== voice);
+    };
+    this.voices.push(voice);
     src.start();
+    const duck = AudioPlayer.ducks[id];
+    if (duck) this.duck(duck[0], duck[1]);
+  }
+
+  /** Room for one more sample: when all voices are busy the weakest, oldest one goes (a quick fade), unless the new one is weaker still. */
+  private claimVoice(priority: number, now: number): boolean {
+    if (this.voices.length < AudioPlayer.maxVoices) return true;
+    const weakest = this.voices.reduce((a, b) => (b.priority < a.priority || (b.priority === a.priority && b.at < a.at) ? b : a));
+    if (weakest.priority > priority) return false;
+    weakest.gain.gain.setTargetAtTime(0, now, 0.01);
+    weakest.src.stop(now + 0.06);
+    this.voices = this.voices.filter((v) => v !== weakest);
+    return true;
+  }
+
+  private duck(depth: number, hold: number): void {
+    const ctx = this.ctx;
+    const gain = this.bed?.gain;
+    if (!ctx || !gain) return;
+    const now = ctx.currentTime;
+    gain.cancelScheduledValues(now);
+    gain.setTargetAtTime(Math.min(gain.value, depth), now, 0.012);
+    gain.setTargetAtTime(1, now + hold, 0.3);
   }
 
   /**
@@ -249,11 +333,45 @@ export class AudioPlayer {
         tone('sine', 90, 32, 0, 0.7, 1);
         [1319, 1661, 1976, 2637].forEach((f, i) => tone('triangle', f, f, 0.12 + i * 0.03, 0.8, 0.09));
         break;
+      case 'ambulance':
+        // Two-tone siren, high-low, twice: the rescue is coming through.
+        [0, 0.2, 0.4, 0.6].forEach((at, i) => tone('triangle', i % 2 === 0 ? 960 : 770, i % 2 === 0 ? 960 : 770, at, 0.19, 0.2));
+        break;
+      case 'wedding':
+        // Two car horns, honk-honk (a major third apart).
+        [0, 0.2].forEach((at) => {
+          tone('triangle', 440, 440, at, 0.14, 0.22);
+          tone('triangle', 554, 554, at, 0.14, 0.18);
+        });
+        break;
+      case 'oversize':
+        // A truck horn: low, long, two notes close together, with a sub under them.
+        tone('triangle', 113, 113, 0, 0.7, 0.34);
+        tone('triangle', 150, 150, 0, 0.7, 0.3);
+        tone('sine', 56, 56, 0, 0.6, 0.5);
+        break;
+      case 'learner':
+        // Two careful, hesitant beeps.
+        tone('sine', 660, 660, 0, 0.1, 0.16);
+        tone('sine', 660, 660, 0.22, 0.1, 0.16);
+        break;
+      case 'clang':
+        // Metal on armour: inharmonic partials (1 : 2.67 : 4.24) ringing out, with a bright tick on top.
+        [523, 1397, 2217].forEach((f, i) => tone('sine', f, f, 0, 0.55 - 0.12 * i, 0.22 - 0.05 * i));
+        noise(0, 0.05, 4200, 2200, 0.25);
+        break;
+      case 'blocked':
+        // A refusal: two flat buzzes.
+        [0, 0.15].forEach((at) => tone('square', 150, 110, at, 0.12, 0.12));
+        break;
     }
     return true;
   }
 
-  private static readonly synthIds: SoundID[] = ['critical', 'jackpot', 'chestHit', 'reelSpin', 'reelTick', 'shimmer', 'reelLand', 'reelLandBig', 'heal'];
+  private static readonly synthIds: SoundID[] = [
+    'critical', 'jackpot', 'chestHit', 'reelSpin', 'reelTick', 'shimmer', 'reelLand', 'reelLandBig', 'heal',
+    'ambulance', 'wedding', 'oversize', 'learner', 'clang', 'blocked',
+  ];
 
   /** Once per frame: each stem glides towards its volume, the filter follows the breath. */
   /** The casino's tension (`GameSession.tension`): a riser and a heartbeat, built lazily. */
@@ -266,7 +384,7 @@ export class AudioPlayer {
    */
   updateTension(level: number, enabled: boolean, delta: number): void {
     const ctx = this.ctx;
-    if (!ctx || !this.sfx || ctx.state !== 'running') return;
+    if (!ctx || !this.ambient || ctx.state !== 'running') return;
     const on = enabled && level > 0.001 ? Math.min(1, level) : 0;
     if (on === 0 && !this.tensionVoice) return;
     if (!this.tensionVoice) {
@@ -276,7 +394,7 @@ export class AudioPlayer {
       filter.type = 'lowpass';
       filter.Q.value = 6;
       filter.connect(gain);
-      gain.connect(this.sfx);
+      gain.connect(this.ambient);
       const engine = [0, 7].map((detune) => {
         const osc = ctx.createOscillator();
         osc.type = 'sawtooth';
@@ -287,7 +405,7 @@ export class AudioPlayer {
       });
       const whineGain = ctx.createGain();
       whineGain.gain.value = 0;
-      whineGain.connect(this.sfx);
+      whineGain.connect(this.ambient);
       const whine = ctx.createOscillator();
       whine.type = 'sine';
       whine.connect(whineGain);
@@ -319,7 +437,7 @@ export class AudioPlayer {
       g.gain.exponentialRampToValueAtTime(level, now + at + 0.012);
       g.gain.exponentialRampToValueAtTime(0.0001, now + at + 0.18);
       osc.connect(g);
-      g.connect(this.sfx!);
+      g.connect(this.ambient!);
       osc.start(now + at);
       osc.stop(now + at + 0.2);
     };
@@ -348,14 +466,14 @@ export class AudioPlayer {
    */
   updateWeather(sky: WeatherSound, enabled: boolean): void {
     const ctx = this.ctx;
-    if (!ctx || !this.sfx || ctx.state !== 'running') return;
+    if (!ctx || !this.ambient || ctx.state !== 'running') return;
     const rain = enabled ? sky.rain : 0;
     if (!this.rainVoice) {
       if (rain === 0) {
         this.strikes = sky.strikes;
         return;
       }
-      this.rainVoice = this.startRain(ctx, this.sfx);
+      this.rainVoice = this.startRain(ctx, this.ambient);
     }
     const now = ctx.currentTime;
     const voice = this.rainVoice;
@@ -363,7 +481,7 @@ export class AudioPlayer {
     voice.hiss.frequency.setTargetAtTime(3200 + 3200 * rain, now, 0.7);
     voice.body.gain.setTargetAtTime(rain * rain * 0.9, now, 0.7);
     if (sky.strikes !== this.strikes) {
-      if (sky.strikes > this.strikes && rain > 0) this.thunder(ctx, this.sfx);
+      if (sky.strikes > this.strikes && rain > 0) this.thunder(ctx, this.ambient);
       this.strikes = sky.strikes;
     }
   }

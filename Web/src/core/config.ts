@@ -597,8 +597,11 @@ export const baseConfig = {
   installHintAfterLevel: 4,
   /** Level cleared after which a device without a cloud copy recommends Cloud sync (once; Leo, 01.10.2026: it replaced the export). */
   backupHintAfterLevel: 12,
-  /** Level from which the one-time Cloud sync pop-up comes (Leo, 01.10.2026: not before there is progress to keep). */
-  cloudIntroFromLevel: 3,
+  /**
+   * Level cleared after which the game asks for a player name (Leo, 15.10.2026, it replaced the Cloud sync pop-up from Level 3):
+   * one name opens Ranks, Friends, multiplayer and Cloud sync together (`ui/accountSheet.ts`). Declining asks twice and stops it.
+   */
+  accountPromptAfterLevel: 5,
   /** Level cleared after which a CrazyGames guest is offered their login, once (research of 08.10.2026: after a success). */
   portalLoginAfterLevel: 5,
   // Unlocks (Leo, 29.09.2026, `core/unlocks.ts`): a new player meets the systems one at a time.
@@ -942,6 +945,9 @@ export const baseConfig = {
   /** Sharp and Flawless ask for this share of the shift's cars to be Perfects / one unbroken chain. */
   contractSharpShare: 0.3,
   contractFlawlessShare: 0.6,
+  /** Contract Run: from the second win in a row a win pays this much more of the stake per win in the run, up to the cap. */
+  contractRunStep: 0.01,
+  contractRunCap: 0.05,
 
   // The Mafia (Leo, 11.10.2026; core/mafia.ts): after the first boss it lends money against a deal struck on a pointer bar.
   // The biggest loan grows with the level; the interest and the green zone get kinder with every loan repaid in time.
@@ -991,6 +997,13 @@ export const baseConfig = {
    * whatever multiple it was. A round is as loud as the louder of the two.
    */
   casinoWinAmounts: [1_000, 10_000, 100_000, 1_000_000] as readonly number[],
+  /**
+   * The casino's own skins (Leo, 15.10.2026; LOOT.md, Casino skins): Lucky Strike for the first BIG WIN
+   * (tier 2), Mega Win for the first MEGA WIN (tier 4), Double Down for this many coins won in a row on
+   * one win, Tycoon once the money games have paid this much more than they took.
+   */
+  casinoFlipChain: 5,
+  casinoTycoon: 1_000_000,
 
   // Late levels
   lateLevel: 6,

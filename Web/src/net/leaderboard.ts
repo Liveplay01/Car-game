@@ -23,7 +23,7 @@ const TIMEOUT_MS = 8000;
 const RETRY_MS = 60_000;
 
 /** The boards the service offers (`Server/src/modules/leaderboard/boards.ts`). */
-export type BoardId = 'shift-level' | 'unlimited' | 'daily' | 'rush';
+export type BoardId = 'shift-level' | 'unlimited' | 'daily' | 'rush' | 'casino';
 
 export interface Account {
   id: string;
@@ -292,6 +292,8 @@ export interface Records {
   dailyScore: number;
   /** Boss Rush: the fastest clear in seconds, 0 until one. */
   rushBest: number;
+  /** What the money games won in all (`career.casinoProfit`); null before the Casino is reached, and then its board is not on show. */
+  casinoProfit: number | null;
   /** The title worn (`career.title`): shown next to the name on the boards. */
   title: string | null;
 }
@@ -340,6 +342,8 @@ export function due(r: Records): [BoardId, Record<string, number>, number][] {
   if (r.dailyDay >= 0 && r.dailyScore > 0 && (confirmed.daily ?? -1) < daily) list.push(['daily', { score: r.dailyScore, day: r.dailyDay }, daily]);
   const cs = Math.round(r.rushBest * 100);
   if (r.rushBest > 0 && (confirmed.rush ?? -1) < RUSH_BASE - cs) list.push(['rush', { cs }, RUSH_BASE - cs]);
+  const profit = r.casinoProfit ?? 0;
+  if (profit > 0 && (confirmed.casino ?? -1) < profit) list.push(['casino', { profit }, profit]);
   return list;
 }
 
@@ -364,8 +368,8 @@ export function syncScores(r: Records): Promise<void> {
           confirmed[board] = Math.max(value, result.best.score);
           ranks[board] = result.best.rank;
         } catch (error) {
-          // Refused as impossible: sending the same again would not help.
-          if (error instanceof LeaderboardError && error.status === 422) confirmed[board] = value;
+          // Refused as impossible, or a board the service does not have yet: sending the same again would not help.
+          if (error instanceof LeaderboardError && (error.status === 422 || error.status === 404)) confirmed[board] = value;
           else throw error;
         }
       }
