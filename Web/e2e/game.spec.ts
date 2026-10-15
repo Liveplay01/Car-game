@@ -101,12 +101,14 @@ test('Ranks: no Casino board before the Casino is reached', async ({ page }) => 
 
 test('Ranks: the casino profit goes to the Casino board on the next save', async ({ page }) => {
   const { sent } = await start(page, 'level=12');
-  await page.evaluate(() => {
-    const game = (window as unknown as { __game: Game }).__game.game;
-    game.save.career.casinoProfit = 12_345;
-    (game as unknown as { persist(): void }).persist();
-  });
-  await expect.poll(() => sent.filter((s) => s.startsWith('casino '))).toEqual(['casino {"profit":12345}']);
+  // A save while the start's own send is still on its way waits for the next save: saves come often, so save again.
+  const save = (): Promise<void> =>
+    page.evaluate(() => {
+      const game = (window as unknown as { __game: Game }).__game.game;
+      game.save.career.casinoProfit = 12_345;
+      (game as unknown as { persist(): void }).persist();
+    });
+  await expect.poll(async () => (await save(), sent.filter((s) => s.startsWith('casino ')))).toEqual(['casino {"profit":12345}']);
 });
 
 test('Ranks: after midnight the Daily board never shows yesterday’s list', async ({ page }) => {

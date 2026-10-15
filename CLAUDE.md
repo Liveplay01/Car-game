@@ -99,6 +99,7 @@ cd Web; npm run dev                     # Entwickeln: http://localhost:5050 (auc
 cd Web; npm run build                   # Typecheck + Build nach Web/dist
 cd Web; npm run preview                 # Build lokal ausliefern, Port 5050
 cd Web; npm test                        # Tests: Replays, Spielstände, Meldungen (node:test)
+cd Web; npm run e2e                     # Browser-Minitests (Playwright, installiertes Chrome, Handy 360 px, Port 5055, API gemockt)
 cd Web; npm run sim -- 60 5             # Balancing-Bots: Schichten, Level
 cd Web; npm run sim:casino              # Casino: Rückzahlquoten, faire Münze, Determinismus
 cd Web; npm run sim:auction             # Auktionshaus: wie oft welches Limit gewinnt, was ein Zuschlag kostet
