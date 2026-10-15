@@ -2,7 +2,8 @@ import type { World } from '../core/world';
 import { builtArmSlots, type Config } from '../core/config';
 import type { Album } from '../core/loot';
 import { type Vec2, v, add, mul, right, fromAngle, wrap, TAU } from '../core/vec2';
-import { type RenderList, rect, circle, arc, unitHash, Ease } from './render';
+import { type RenderList, rect, circle, arc, polygon, unitHash, Ease } from './render';
+import { starPoints } from './icons';
 import type { ColorToken } from './theme';
 import { MapTheme } from './mapThemes';
 import type { MapScars } from './explosionsFx';
@@ -124,7 +125,7 @@ export const CityLayer = {
   addHall(list: RenderList, built: boolean, ranks: number, world: World): void {
     if (!built) return;
     const radius = world.layout.islandRadius - 20;
-    const half = 0.5;
+    const half = 0.6;
     const top = Math.PI / 2;
     list.w(arc(v(0, 0), radius, 9, top - half, top + half), 'coinInk', 0.85);
     list.w(arc(v(0, 0), radius, 6, top - half, top + half), 'coin', 0.9);
@@ -132,8 +133,8 @@ export const CityLayer = {
     for (let i = 0; i < stars; i++) {
       const angle = top + (i - (stars - 1) / 2) * ((2 * half) / 11);
       const at = mul(fromAngle(angle), radius);
-      list.w(circle(at, 2.3), 'primary', 0.95);
-      list.w(circle(at, 1.1), 'coin', 1);
+      list.w(polygon(starPoints(at, 4.6)), 'coinInk', 0.95);
+      list.w(polygon(starPoints(at, 3.6)), 'coin', 1);
     }
     const laurel = mul(fromAngle(top), radius - 14);
     for (const side of [-1, 1]) list.w(arc(laurel, 6, 1.6, top + side * 0.4 - Math.PI / 2, top + side * 1.6 - Math.PI / 2), 'skinLaurel', 0.9);

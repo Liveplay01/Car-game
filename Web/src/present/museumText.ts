@@ -1,5 +1,6 @@
 import { type Config, type Weather, type CityEvent, type BossKind, weatherSeverity } from '../core/config';
 import type { SpecialKind, WeatherKind, DarkKind, MuseumEntry } from '../core/museum';
+import type { FailCause } from '../core/events';
 import { Fmt, money, percent } from './format';
 
 /** A Museum entry's words: one short line for its card, the explanation for its sheet. */
@@ -220,6 +221,96 @@ export const SPECIAL_TEXT: Record<SpecialKind, MuseumText & { name: string }> = 
   },
 };
 
+/**
+ * The ways to lose a shift (Leo, 15.10.2026): the icon on a lost result opens the same sheet. What happened, then what to
+ * do about it. The sheets of this shelf wear a red rim, like the ring does on a lost shift.
+ */
+export const FAIL_TEXT: Record<FailCause, MuseumText & { name: string }> = {
+  mergeCrash: {
+    name: 'Merge Crash',
+    line: 'You hit the car in front',
+    brief: 'Your car hit the car in front of it while merging.',
+    explain: (c) => [
+      'Your car joined the ring too close behind another car and ran into it. A crash of a car you are merging is the one that counts against you.',
+      `A shift survives ${c.maxStrikes === 1 ? 'no crash' : `${c.maxStrikes - 1} ${c.maxStrikes === 2 ? 'crash' : 'crashes'}`}: the next one ends it.`,
+      'Look at the car in front of your merge, not only at the one behind. If the gap ahead is short, let the car go by and take the next gap.',
+    ],
+  },
+  cutOffCrash: {
+    name: 'Cut-Off Crash',
+    line: 'A car was right behind you',
+    brief: 'A car behind you could not stop in time and hit your merging car.',
+    explain: () => [
+      'You joined the ring right in front of a car that could not stop in time, and it ran into your merging car. That is a crash, and it counts against you.',
+      'Look at the cars coming up behind your merge too. They need more room on wet roads, in snow and in hail, and a lorry needs the most.',
+      'A Tight Fit is fine, a car that has to brake hard is not: wait for the gap behind you to open.',
+    ],
+  },
+  ringCrash: {
+    name: 'Ring Crash',
+    line: 'A car you sent crashed on the ring',
+    brief: 'A car you sent crashed on the ring.',
+    explain: () => [
+      'A car stays yours until it has passed the first exit. A crash on the ring before that, in a pile-up or against a wreck, still counts against you.',
+      'Do not send a car into a ring with wrecks, a jam or a car that is about to brake. Wait for the road to clear first.',
+    ],
+  },
+  policeCrash: {
+    name: 'Police Crash',
+    line: 'Too many police cars crashed',
+    brief: 'Too many of your police cars crashed.',
+    explain: (c) => [
+      `Police cars are tougher than your other cars: a shift survives ${c.maxPoliceCrashes === 1 ? 'one police crash' : `${c.maxPoliceCrashes} police crashes`}. The next one ends it.`,
+      'Send a police car only at a criminal, and keep it away from the money transporter and from the other traffic. A police car at the front of your queue is a risk until a criminal is on the ring.',
+    ],
+  },
+  bomb: {
+    name: 'Bomb',
+    line: 'A car set the bomb off',
+    brief: "A car entered the military truck's zone and set the bomb off.",
+    explain: () => [
+      "One of your cars entered the military truck's no-go zone and set its bomb off. The blast reaches across the whole roundabout and ends the shift at once.",
+      'Hold your cars back while the truck passes. The zone is marked on the ring, and a warning shows the arm it comes from.',
+    ],
+  },
+  escape: {
+    name: 'Criminal Escaped',
+    line: 'The criminal got away',
+    brief: 'A criminal got away: no police car rammed it in time.',
+    explain: (c) => [
+      `A criminal on the ring stays about ${Math.round(c.criminalTime)} seconds. No police car of yours rammed it in that time, so it got away with the money and the shift was over.`,
+      'When a warning lights up an arm, keep a police car at the front of your queue (the dispatch button puts one first). Your ordinary cars cannot stop it.',
+    ],
+  },
+  bossEscape: {
+    name: 'Boss Escaped',
+    line: 'The boss got away',
+    brief: "The syndicate's boss got away.",
+    explain: () => [
+      'The head of the syndicate got away. A boss has more time than an ordinary criminal, but it also has escorts, armour or a trick of its own, and the shift is lost the moment it is gone.',
+      'Every boss is on show on the Bosses shelf, with how to take it down. Keep police cars in your queue for it.',
+    ],
+  },
+  ruleCrash: {
+    name: 'Rule Broken: Crash',
+    line: 'A crash broke the rule',
+    brief: 'A crash broke the rule of this shift.',
+    explain: () => [
+      'Trials and Legendary Shifts like Zero Tolerance come with a rule of their own, and a crash breaks it at once: there is no strike to spare.',
+      'The rule stands on the ready screen. Wait for gaps that are clearly big enough.',
+    ],
+  },
+  ruleCutOff: {
+    name: 'Rule Broken: Cut-Off',
+    line: 'Cutting a car off broke the rule',
+    brief: 'You cut a car off, and that broke the rule of this shift.',
+    explain: () => [
+      'A rule of this shift forbids cutting cars off. A merge right in front of a car that has to brake hard counts as a cut-off, and it ends the shift.',
+      'Take the gaps that leave the car behind room to roll. A Tight Fit is allowed, a cut-off is not.',
+    ],
+  },
+};
+
 /** The grip the tyres keep in a weather, as `forWeather` sets it. */
 export const gripIn = (w: Weather, c: Config): string =>
   percent(
@@ -385,6 +476,8 @@ export function museumText(e: MuseumEntry): MuseumText {
       return EVENT_TEXT[e.kind];
     case 'road':
       return ROAD_TEXT;
+    case 'fail':
+      return FAIL_TEXT[e.kind];
   }
 }
 
@@ -400,4 +493,4 @@ const ROAD_TEXT: MuseumText = {
 };
 
 /** Every record above, for a translation to lay its words over (`strings.ts`). */
-export const MUSEUM_TEXT = { boss: BOSS_TEXT, special: SPECIAL_TEXT, weather: WEATHER_TEXT, dark: DARK_TEXT, event: EVENT_TEXT, road: ROAD_TEXT };
+export const MUSEUM_TEXT = { boss: BOSS_TEXT, special: SPECIAL_TEXT, weather: WEATHER_TEXT, dark: DARK_TEXT, event: EVENT_TEXT, road: ROAD_TEXT, fail: FAIL_TEXT };

@@ -1,7 +1,7 @@
 import type { Strings } from '../../strings';
 import type { Words } from '../../i18n';
 import { Fmt, money } from '../../format';
-import { SPECIAL_TEXT } from '../../museumText';
+import { SPECIAL_TEXT, FAIL_TEXT } from '../../museumText';
 
 const COLORS: Record<string, string> = { purple: 'Violet', gold: 'Or', blue: 'Bleu', red: 'Rouge', teal: 'Turquoise', orange: 'Orange', pink: 'Rose', rose: 'Rose pâle' };
 const color = (name: string): string => COLORS[name] ?? name;
@@ -210,7 +210,9 @@ export default (S: Strings): Words<Strings> => ({
   },
 
   museum: {
-    shelf: (i) => ['Boss', 'Spéciaux', 'Conditions'][i],
+    shelf: (i) => ['Boss', 'Spéciaux', 'Conditions', 'Échecs'][i],
+    lockedFailHint: 'Cela ne vous est pas encore arrivé. Perdez un service ainsi et il apparaît ici, avec ce qui a mal tourné et comment l’éviter.',
+    failuresDone: (skin) => `Toutes les façons de perdre trouvées : le skin ${skin} est à vous`,
     notSeen: 'Pas encore croisé',
     newBadge: 'NOUVEAU',
     firstTime: 'Découverte',
@@ -221,7 +223,7 @@ export default (S: Strings): Words<Strings> => ({
         ? `Apparaît à partir du niveau ${level}. Dès sa première rencontre sur la route, sa fiche complète s’affichera ici.`
         : 'Continuez vos services. Dès sa rencontre sur la route, sa fiche s’affichera ici.',
     lockedBossHint: (level) => `Le syndicat le dépêche au niveau ${level}. Dès votre premier affrontement, il sera répertorié ici avec la marche à suivre.`,
-    kind: (e) => ({ boss: 'Boss du syndicat', special: 'Véhicule spécial', weather: 'Météo', dark: 'Obscurité', event: 'Événement urbain', road: 'Chaussée' })[e.k],
+    kind: (e) => ({ boss: 'Boss du syndicat', special: 'Véhicule spécial', weather: 'Météo', dark: 'Obscurité', event: 'Événement urbain', road: 'Chaussée', fail: 'Échec' })[e.k],
     met: 'Rencontré, toujours en fuite',
     onRing: 'Sur l’anneau',
     signalArrive: (arm, sweep) =>
@@ -251,6 +253,8 @@ export default (S: Strings): Words<Strings> => ({
           return S.cityEvent(e.kind);
         case 'road':
           return 'Deux voies';
+        case 'fail':
+          return FAIL_TEXT[e.kind].name;
       }
     },
   },

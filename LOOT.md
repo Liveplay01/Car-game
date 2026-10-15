@@ -128,6 +128,16 @@ Skin-Upgrade. Die Meldung nennt den Grund, wenn der Gewinn erscheint.
 | Double Down | `doubleDown` | Legendary | `casinoFlipChain` (5) Münzen in Folge auf einem Gewinn (1 zu 32) | Obsidian mit Perlweiß, Heiligenschein, GT Coupé |
 | Tycoon | `tycoon` | Legendary | `casinoProfit` erreicht `casinoTycoon` (1.000.000) | Carbon mit Gold, Lorbeer, GT Coupé |
 
+**Scheitern-Skin (Leo, 15.10.2026, `Careers.noteFailure`, Quelle `failures`):** Jede Art, eine Schicht zu verlieren
+(`FAIL_CAUSES` in `core/events.ts`: Einfädel-Crash, Schneid-Crash, Ring-Crash, Polizei-Crash, Bombe, Verbrecher und Boss
+entkommen, Regel gebrochen durch Crash oder Schneiden), hat ein Icon auf der Ergebnis-Karte und einen Eintrag im Museum
+(Regal „Failures“). Er geht auf Schau, sobald es dir passiert ist; sind alle neun gefunden, gehört dir der Skin. Nur
+Aussehen, Regal „Honours“, zählt fürs Honours-Album (jeder kann verlieren).
+
+| Skin | ID | Seltenheit | Wofür | Aussehen |
+| --- | --- | --- | --- | --- |
+| Crash Test | `crashTest` | Epic | alle neun Arten zu verlieren gefunden | Gelb mit Carbon-Streifen, Glut |
+
 **Casino-Rangliste (Leo, 15.10.2026):** `career.casinoProfit` zählt jede Buchung der Geldspiele (Gewinne minus
 Einsätze, über alle Tage, ab diesem Update). Das Board `casino` im Ranglisten-Dienst hält den besten Stand; ein
 Minus wird nicht gesendet. Der Tab erscheint in Social → Ranks erst, wenn das Casino erreicht ist.

@@ -81,6 +81,8 @@ export interface Detail {
   stacked?: boolean;
   /** A Museum entry that announces itself on the ring: a small roundabout plays how, above the text. */
   signal?: SignalDetail | null;
+  /** `fail`: a way to lose a shift. The sheet wears the red rim the ring shows on a lost shift. */
+  tone?: 'fail';
 }
 
 export const Details = {
@@ -589,10 +591,11 @@ export const Details = {
         title: S.museum.unknown,
         price: { text: S.museum.undiscovered, color: 'muted' },
         steps: null,
-        body: [entry.k === 'boss' ? S.museum.lockedBossHint(level) : S.museum.lockedHint(level)],
+        body: [entry.k === 'boss' ? S.museum.lockedBossHint(level) : entry.k === 'fail' ? S.museum.lockedFailHint : S.museum.lockedHint(level)],
         rows: [],
         notes: [],
         actions: [],
+        tone: entry.k === 'fail' ? 'fail' : undefined,
       };
     }
     if (entry.k !== 'boss') {
@@ -608,6 +611,7 @@ export const Details = {
         notes: [],
         actions: [],
         signal: signalDetail(entry),
+        tone: entry.k === 'fail' ? 'fail' : undefined,
       };
     }
     const kind = entry.kind;

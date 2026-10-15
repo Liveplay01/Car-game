@@ -114,6 +114,7 @@ export default (S: Strings): Words<Strings> => ({
       if (item.source.kind === 'unlimited') return `Envía ${Fmt.number(item.source.cars)} coches en Sin límites.`;
       if (item.source.kind === 'tour') return `Parada del tour «${S.tours.name(item.source.tour as 'halloween' | 'winter')}». Vuelve cada año.`;
       if (item.source.kind === 'auction') return 'Solo como lote en la casa de subastas (Social → Club). Nuevos lotes periódicos.';
+      if (item.source.kind === 'failures') return 'Encuentra todas las formas de perder un turno (Progreso → Museo → Fracasos). Solo estética.';
       if (item.source.kind === 'casino') return `${S.casino.feat(item.source.feat)}: solo lo da el casino (Tienda → Casino). Solo estética.`;
       if (item.source.kind === 'fund') return 'Agradecimiento del antiguo fondo municipal. Ya no se otorga.';
       if (item.source.kind === 'bugReport')
@@ -555,17 +556,6 @@ export default (S: Strings): Words<Strings> => ({
   },
 
   result: {
-    why: {
-      crash: 'Has chocado. Espera a que haya un hueco.',
-      crashes: 'Demasiados choques. Espera un hueco.',
-      police: 'Demasiados coches patrulla han chocado.',
-      behind: 'Había un coche pegado detrás de ti.',
-      ahead: 'Has golpeado al coche que iba delante.',
-      escaped: 'El criminal ha escapado.',
-      boss: 'El jefe ha escapado.',
-      zeroTolerance: 'Tolerancia cero: un choque o roce lo termina todo.',
-      rule: 'Se incumplió una regla del turno.',
-    },
     detonated: '¡BUM!',
     escaped: 'ESCAPÓ',
     levelComplete: (l) => `NIVEL ${l} SUPERADO`,

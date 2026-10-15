@@ -361,6 +361,92 @@ const museum: Translation['museum'] = {
       'Ein Auto auf dem Weg zur Innenspur braucht eine Lücke auf der Außenspur zum Queren und eine Lücke auf der Innenspur zum Einfädeln. Autos, die die Innenspur verlassen, queren die Außenspur ebenfalls.',
     ],
   },
+
+  fail: {
+    mergeCrash: {
+      name: 'Einfädel-Crash',
+      line: 'Du hast das Auto vor dir getroffen',
+      brief: 'Dein Auto hat beim Einfädeln das Auto vor sich getroffen.',
+      explain: (c) => [
+        'Dein Auto ist zu dicht hinter einem anderen auf den Ring gefahren und hineingekracht. Zählen tut nur der Crash eines Autos, das du gerade einfädelst.',
+        `Eine Schicht übersteht ${c.maxStrikes === 1 ? 'keinen Crash' : `${c.maxStrikes - 1} ${c.maxStrikes === 2 ? 'Crash' : 'Crashs'}`}: der nächste beendet sie.`,
+        'Schau auf das Auto vor deiner Einfädelstelle, nicht nur auf das dahinter. Ist die Lücke vorn kurz, lass das Auto vorbei und nimm die nächste.',
+      ],
+    },
+    cutOffCrash: {
+      name: 'Schneid-Crash',
+      line: 'Ein Auto war direkt hinter dir',
+      brief: 'Ein Auto hinter dir konnte nicht mehr bremsen und hat dein einfädelndes Auto getroffen.',
+      explain: () => [
+        'Du bist direkt vor einem Auto auf den Ring gefahren, das nicht mehr rechtzeitig bremsen konnte, und es ist in dein einfädelndes Auto gekracht. Das ist ein Crash und zählt gegen dich.',
+        'Schau auch auf die Autos, die hinter deiner Einfädelstelle herankommen. Auf nasser Straße, bei Schnee und Hagel brauchen sie mehr Platz, ein Laster am meisten.',
+        'Ein Tight Fit ist in Ordnung, ein Auto, das hart bremsen muss, nicht: Warte, bis die Lücke hinter dir aufgeht.',
+      ],
+    },
+    ringCrash: {
+      name: 'Ring-Crash',
+      line: 'Ein Auto von dir ist auf dem Ring gecrasht',
+      brief: 'Ein Auto, das du geschickt hast, ist auf dem Ring gecrasht.',
+      explain: () => [
+        'Ein Auto bleibt deins, bis es die erste Ausfahrt passiert hat. Ein Crash auf dem Ring davor, in einer Karambolage oder an einem Wrack, zählt trotzdem gegen dich.',
+        'Schicke kein Auto in einen Ring mit Wracks, Stau oder einem Auto, das gleich bremst. Warte, bis die Straße frei ist.',
+      ],
+    },
+    policeCrash: {
+      name: 'Polizei-Crash',
+      line: 'Zu viele Streifenwagen sind gecrasht',
+      brief: 'Zu viele deiner Streifenwagen sind gecrasht.',
+      explain: (c) => [
+        `Streifenwagen sind robuster als deine anderen Autos: Eine Schicht übersteht ${c.maxPoliceCrashes === 1 ? 'einen Polizei-Crash' : `${c.maxPoliceCrashes} Polizei-Crashs`}. Der nächste beendet sie.`,
+        'Schicke einen Streifenwagen nur hinter einem Verbrecher her und halte ihn vom Geldtransporter und vom übrigen Verkehr fern. Ein Streifenwagen vorn in deiner Schlange ist ein Risiko, bis ein Verbrecher auf dem Ring ist.',
+      ],
+    },
+    bomb: {
+      name: 'Bombe',
+      line: 'Ein Auto hat die Bombe gezündet',
+      brief: 'Ein Auto ist in die Zone des Militärlasters gefahren und hat die Bombe gezündet.',
+      explain: () => [
+        'Eines deiner Autos ist in die Sperrzone des Militärlasters gefahren und hat seine Bombe gezündet. Die Explosion reicht über den ganzen Kreisverkehr und beendet die Schicht sofort.',
+        'Halte deine Autos zurück, solange der Laster vorbeifährt. Die Zone ist auf dem Ring markiert, und eine Warnung zeigt den Arm, aus dem er kommt.',
+      ],
+    },
+    escape: {
+      name: 'Verbrecher entkommen',
+      line: 'Der Verbrecher ist entkommen',
+      brief: 'Ein Verbrecher ist entkommen: Kein Streifenwagen hat ihn rechtzeitig gerammt.',
+      explain: (c) => [
+        `Ein Verbrecher bleibt etwa ${Math.round(c.criminalTime)} Sekunden auf dem Ring. Kein Streifenwagen von dir hat ihn in dieser Zeit gerammt, also ist er mit dem Geld entkommen und die Schicht war vorbei.`,
+        'Leuchtet ein Arm als Warnung auf, halte einen Streifenwagen vorn in deiner Schlange (der Dispatch-Knopf stellt einen nach vorn). Deine normalen Autos können ihn nicht stoppen.',
+      ],
+    },
+    bossEscape: {
+      name: 'Boss entkommen',
+      line: 'Der Boss ist entkommen',
+      brief: 'Der Boss des Syndikats ist entkommen.',
+      explain: () => [
+        'Der Kopf des Syndikats ist entkommen. Ein Boss hat mehr Zeit als ein gewöhnlicher Verbrecher, aber auch Eskorten, Panzerung oder einen eigenen Trick, und die Schicht ist verloren, sobald er weg ist.',
+        'Jeder Boss ist im Regal „Bosse“ ausgestellt, mit dem Weg, ihn zu fassen. Halte Streifenwagen in deiner Schlange bereit.',
+      ],
+    },
+    ruleCrash: {
+      name: 'Regel gebrochen: Crash',
+      line: 'Ein Crash hat die Regel gebrochen',
+      brief: 'Ein Crash hat die Regel dieser Schicht gebrochen.',
+      explain: () => [
+        'Prüfungen und Legendäre Schichten wie Nulltoleranz haben eine eigene Regel, und ein Crash bricht sie sofort: Es ist kein Fehler übrig.',
+        'Die Regel steht auf dem Startbildschirm. Warte auf Lücken, die klar groß genug sind.',
+      ],
+    },
+    ruleCutOff: {
+      name: 'Regel gebrochen: Schneiden',
+      line: 'Schneiden hat die Regel gebrochen',
+      brief: 'Du hast ein Auto geschnitten, und das hat die Regel dieser Schicht gebrochen.',
+      explain: () => [
+        'Eine Regel dieser Schicht verbietet das Schneiden. Ein Einfädeln direkt vor einem Auto, das hart bremsen muss, zählt als Schneiden und beendet die Schicht.',
+        'Nimm Lücken, in denen das Auto hinter dir ausrollen kann. Ein Tight Fit ist erlaubt, Schneiden nicht.',
+      ],
+    },
+  },
 };
 
 export default museum;

@@ -207,6 +207,7 @@ export class DetailSheet {
     Details.drawArt(list, d.art, v(ART / 2, ART / 2), ART, baseConfig);
     this.drawer.draw(list);
 
+    this.root.classList.toggle('fail', d.tone === 'fail');
     this.eyebrow.textContent = d.eyebrow?.text ?? '';
     this.eyebrow.style.color = d.eyebrow ? css(d.eyebrow.color) : '';
     this.eyebrow.hidden = !d.eyebrow;

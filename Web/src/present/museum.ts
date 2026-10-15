@@ -1,5 +1,6 @@
 import type { Career } from '../core/career';
 import { type Config, type BossKind, type CityEvent, baseConfig } from '../core/config';
+import type { FailCause } from '../core/events';
 import { type MuseumShelf, type MuseumEntry, type SpecialKind, type WeatherKind, type DarkKind, shelfEntries, museumId, firstLevel } from '../core/museum';
 import { rematch } from '../core/trials';
 import { type VehicleType, isHeavy } from '../core/vehicle';
@@ -194,6 +195,118 @@ const EVENT_ICON: Record<CityEvent, Icon> = {
   },
 };
 
+/** A car seen from above, nose to the right, turned by `angle`: a body and a windscreen, in box units. */
+function slab(l: RenderList, at: (x: number, y: number) => Vec2, x: number, y: number, w: number, h: number, angle: number, color: ColorToken): void {
+  const [cos, sin] = [Math.cos(angle), Math.sin(angle)];
+  const spot = (dx: number, dy: number): Vec2 => at(x + dx * cos - dy * sin, y + dx * sin + dy * cos);
+  l.s(polygon([spot(-w / 2, -h / 2), spot(w / 2 - h * 0.3, -h / 2), spot(w / 2, -h * 0.2), spot(w / 2, h * 0.2), spot(w / 2 - h * 0.3, h / 2), spot(-w / 2, h / 2)]), color);
+  l.s(polygon([spot(w * 0.12, -h * 0.36), spot(w * 0.3, -h * 0.28), spot(w * 0.3, h * 0.28), spot(w * 0.12, h * 0.36)]), 'card', 0.85);
+}
+
+/** Two lanes of road, running left to right, with their dashed line. */
+function road(l: RenderList, at: (x: number, y: number) => Vec2, u: number): void {
+  l.s(rect(at(0, 0), v(62 * u, 36 * u), 4 * u), 'surface');
+  for (const x of [-22, -8, 6, 20]) l.s(rect(at(x, 0), v(8 * u, 1.6 * u), 0), 'muted');
+}
+
+/** The man on the run, with a bag of money (the criminal's mark): `tint` is his colour. */
+function runner(l: RenderList, at: (x: number, y: number) => Vec2, u: number, tint: ColorToken): void {
+  l.s(circle(at(4, -17), 5 * u), tint);
+  l.s(line(at(2, -11), at(-2, 3), 4.5 * u), tint);
+  l.s(line(at(1, -8), at(10, -3), 3.2 * u), tint);
+  l.s(line(at(0, -8), at(-9, -12), 3.2 * u), tint);
+  l.s(line(at(-2, 3), at(8, 10), 3.6 * u), tint);
+  l.s(line(at(-2, 3), at(-11, 16), 3.6 * u), tint);
+  l.s(circle(at(14, 4), 5.5 * u), 'coin');
+  l.s(rect(at(14, -1), v(3.2 * u, 3 * u), 0), 'coin');
+  for (const [y, w] of [[-4, 12], [4, 16], [12, 10]]) l.s(line(at(-26, y), at(-26 + w, y), 2 * u), 'muted');
+}
+
+/** A prohibition sign: the red ring, and (after the picture inside it) the slash. */
+function forbidden(l: RenderList, at: (x: number, y: number) => Vec2, u: number): void {
+  l.s(circle(at(0, 0), 22 * u), 'destructive');
+  l.s(circle(at(0, 0), 17.5 * u), 'card');
+}
+function slash(l: RenderList, at: (x: number, y: number) => Vec2, u: number): void {
+  l.s(line(at(-12.5, -12.5), at(12.5, 12.5), 4 * u), 'destructive');
+}
+
+/** The spark of an impact. */
+const burst = (l: RenderList, at: (x: number, y: number) => Vec2, x: number, y: number, r: number): void => {
+  star(l, at, x, y, r, r * 0.45, 'juiceOrange');
+  star(l, at, x, y, r * 0.55, r * 0.25, 'coin');
+};
+
+/**
+ * The pictures follow the usual signs: two cars and a spark for a collision, a bomb in a warning triangle (ISO 7010
+ * "explosive"), a man running off with his bag, a red ring with a slash for a rule. Your own car is white.
+ */
+const FAIL_ICON: Record<FailCause, Icon> = {
+  mergeCrash: (l, at, u) => {
+    // Your car turns into the lane and runs into the tail of the one ahead.
+    road(l, at, u);
+    slab(l, at, 13, -7, 24, 11, 0, 'rarityRare');
+    slab(l, at, -8, 6, 24, 11, -0.42, 'primary');
+    burst(l, at, 1, -1, 9);
+  },
+  cutOffCrash: (l, at, u) => {
+    // Your car turns in right in front of the one behind: its nose runs into your tail.
+    road(l, at, u);
+    slab(l, at, 12, -2, 24, 11, -0.4, 'primary');
+    slab(l, at, -13, 7, 26, 12, 0, 'juiceRed');
+    burst(l, at, 0, 5, 9);
+  },
+  ringCrash: (l, at, u) => {
+    // Two cars on the ring, meeting on its curve.
+    l.s(arc(at(0, 0), 19 * u, 16 * u, 0, TAU), 'surface');
+    for (let k = 0; k < 10; k++) l.s(arc(at(0, 0), 19 * u, 1.4 * u, (k * TAU) / 10, (k * TAU) / 10 + 0.3), 'muted');
+    l.s(circle(at(0, 0), 10 * u), 'accent', 0.5);
+    const onRing = (deg: number, color: ColorToken): void => {
+      const a = (deg * Math.PI) / 180;
+      slab(l, at, 19 * Math.cos(a), 19 * Math.sin(a), 15, 8, a + Math.PI / 2, color);
+    };
+    onRing(-95, 'primary');
+    onRing(-25, 'rarityRare');
+    burst(l, at, 19 * Math.cos(-1.05), 19 * Math.sin(-1.05), 9);
+  },
+  policeCrash: (l, at, u) => {
+    // A police car (light bar, red and blue) that has run into another car.
+    road(l, at, u);
+    slab(l, at, 16, 0, 22, 11, 0, 'rarityCommon');
+    slab(l, at, -7, 0, 26, 12, 0, 'lightBlue');
+    l.s(circle(at(-9, -3), 2.3 * u), 'juiceRed');
+    l.s(circle(at(-9, 3), 2.3 * u), 'rarityRare');
+    burst(l, at, 6, 0, 9);
+  },
+  bomb: (l, at, u) => {
+    // The explosive warning: a lit bomb in a triangle.
+    l.s(polygon([at(0, -23), at(26, 20), at(-26, 20)]), 'hazard');
+    l.s(circle(at(-1, 8), 9.5 * u), 'background');
+    l.s(circle(at(-4, 5), 2.4 * u), 'smokeLight');
+    l.s(rect(at(4, -1.5), v(5 * u, 4 * u), 1 * u), 'background');
+    l.s(line(at(6, -3), at(9, -8), 2 * u), 'background');
+    star(l, at, 10, -10, 5.5, 2.4, 'juiceRed');
+  },
+  escape: (l, at, u) => runner(l, at, u, 'vehicleCriminal'),
+  bossEscape: (l, at, u) => {
+    // The same man, lower in the box, with the crown the bosses wear.
+    const lower = (x: number, y: number): Vec2 => at(x, y + 6);
+    runner(l, lower, u, 'vehicleCriminal');
+    l.s(polygon([lower(-1, -21), lower(-2, -28), lower(1.5, -24.5), lower(4, -29.5), lower(6.5, -24.5), lower(10, -28), lower(9, -21)]), 'coin');
+  },
+  ruleCrash: (l, at, u) => {
+    forbidden(l, at, u);
+    burst(l, at, 0, 0, 11);
+    slash(l, at, u);
+  },
+  ruleCutOff: (l, at, u) => {
+    forbidden(l, at, u);
+    slab(l, at, 3, -4, 17, 8, -0.4, 'primary');
+    slab(l, at, -4, 5, 18, 8, 0, 'muted');
+    slash(l, at, u);
+  },
+};
+
 /** The glow behind an entry on show. A new kind has to pick one (the compiler checks). */
 const SPECIAL_COLOR: Record<SpecialKind, ColorToken> = {
   police: 'lightBlue',
@@ -259,6 +372,8 @@ export const MuseumPage = {
         return EVENT_COLOR[e.kind];
       case 'road':
         return 'accent';
+      case 'fail':
+        return 'destructive';
     }
   },
 
@@ -386,12 +501,14 @@ export const MuseumPage = {
   },
 
   icon(list: RenderList, entry: MuseumEntry, center: Vec2, scale: number, room: number): RenderItem[] {
-    const u = Math.min(1.05 * scale, room / 66);
+    // A failure's picture has a road or a sign round it: it gets a step more room than a plain symbol.
+    const u = Math.min(1.05 * scale, room / 66) * (entry.k === 'fail' ? 1.2 : 1);
     const at = (x: number, y: number): Vec2 => add(center, v(x * u, y * u));
     const icon = new List(list.camera, list.background);
     if (entry.k === 'weather') WEATHER_ICON[entry.kind](icon, at, u);
     else if (entry.k === 'dark') DARK_ICON[entry.kind](icon, at, u);
     else if (entry.k === 'event') EVENT_ICON[entry.kind](icon, at, u);
+    else if (entry.k === 'fail') FAIL_ICON[entry.kind](icon, at, u);
     else if (entry.k === 'road') {
       // Two lanes round an island, the dashed line between them.
       icon.s(arc(at(0, 0), 17 * u, 16 * u, 0, TAU), 'surface');

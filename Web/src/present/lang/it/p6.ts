@@ -114,6 +114,7 @@ export default (S: Strings): Words<Strings> => ({
       if (item.source.kind === 'unlimited') return `Invia ${Fmt.number(item.source.cars)} auto in Senza limiti.`;
       if (item.source.kind === 'tour') return `Una tappa del tour «${S.tours.name(item.source.tour as 'halloween' | 'winter')}». Ritorna ogni anno.`;
       if (item.source.kind === 'auction') return 'Esclusiva della casa d’aste (Social → Club).';
+      if (item.source.kind === 'failures') return 'Trova ogni modo di perdere un turno (Progressi → Museo → Fallimenti). Solo estetica.';
       if (item.source.kind === 'casino') return `${S.casino.feat(item.source.feat)}: solo il casinò la assegna (Negozio → Casino). Solo estetica.`;
       if (item.source.kind === 'fund') return 'Ringraziamento del vecchio fondo cittadino. Non più assegnato.';
       if (item.source.kind === 'bugReport')
@@ -555,17 +556,6 @@ export default (S: Strings): Words<Strings> => ({
   },
 
   result: {
-    why: {
-      crash: 'Ti sei schiantato. Aspetta un varco.',
-      crashes: 'Troppi schianti. Aspetta un varco.',
-      police: 'Troppe pattuglie distrutte.',
-      behind: 'C’era un’auto attaccata dietro di te.',
-      ahead: 'Hai urtato l’auto davanti a te.',
-      escaped: 'Il criminale è fuggito.',
-      boss: 'Il boss è sfuggito.',
-      zeroTolerance: 'Tolleranza zero: un solo contatto chiude la manche.',
-      rule: 'Una regola del turno è stata violata.',
-    },
     detonated: 'BOOM',
     escaped: 'FUGGITO',
     levelComplete: (l) => `LIVELLO ${l} COMPLETATO`,

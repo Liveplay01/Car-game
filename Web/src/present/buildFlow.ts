@@ -132,7 +132,7 @@ export class BuildFlow {
     }
     const built = StreetBuilderPage.builtPartAt(point, career, this.host.config, map);
     if (!built) {
-      if (b.inspected) this.host.closeDetail();
+      if (this.host.detailOpen && !pending) this.host.closeDetail();
       return;
     }
     // A built part: its sheet, with what it does, Move and Delete.

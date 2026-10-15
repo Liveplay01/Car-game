@@ -39,6 +39,7 @@ const { bookShift } = await load('/src/present/booking.ts');
 const { S, Fmt } = await load('/src/present/strings.ts');
 const { Unlocks } = await load('/src/core/unlocks.ts');
 const { sightings, shelfEntries, museumId } = await load('/src/core/museum.ts');
+const { FAIL_CAUSES } = await load('/src/core/events.ts');
 const { tapOffset, noteTap, averageOffset } = await load('/src/core/timing.ts');
 const { forLegendary } = await load('/src/core/levels.ts');
 const { LEGENDARY_RULES, cloneConfig } = await load('/src/core/config.ts');
@@ -612,6 +613,30 @@ test('a condition icon opens its full sheet, even before the player has met it',
     assert.equal(d.price?.text, S.museum.firstTime, id);
     assert.ok(d.body.length > 0 && !/undefined|NaN/.test(d.title + d.body.join(' ')), id);
     assert.equal(Details.museum(id, career, baseConfig).title, S.museum.unknown, `${id} stays a secret in the Museum`);
+  }
+});
+
+test('every way to lose goes on show once it happened, and the last one pays the Crash Test skin', () => {
+  const career = newCareer();
+  FAIL_CAUSES.forEach((cause, i) => {
+    const id = museumId({ k: 'fail', kind: cause });
+    assert.ok(!career.museumSeen.includes(id), id);
+    assert.equal(Details.museum(id, career, baseConfig).title, S.museum.unknown, `${id} is a secret until it happens`);
+    assert.equal(Careers.noteFailure(career, cause), i === FAIL_CAUSES.length - 1, `${cause}: the skin comes with the last one`);
+    const d = Details.museum(id, career, baseConfig);
+    assert.equal(d.tone, 'fail', id);
+    assert.ok(d.body.length > 0 && !/undefined|NaN/.test(d.title + d.body.join(' ')), id);
+  });
+  assert.ok(Careers.owns(career, 'crashTest'));
+  assert.ok(!Careers.noteFailure(career, 'bomb'), 'the skin is paid once');
+});
+
+test('a lost shift says how it was lost, a won one does not', () => {
+  for (const seed of [1, 2, 3]) {
+    const r = play(seed, 5, (world) => world.queue.isReady).result;
+    assert.ok(r, 'the shift ends');
+    if (r.outcome === 'completed') assert.equal(r.failCause, null);
+    else assert.ok(FAIL_CAUSES.includes(r.failCause), `seed ${seed}: ${r.outcome} has a cause`);
   }
 });
 

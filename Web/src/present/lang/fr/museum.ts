@@ -361,6 +361,92 @@ const museum: Translation['museum'] = {
       'Un véhicule visant l’anneau intérieur doit franchir l’anneau extérieur puis trouver son créneau à l’intérieur. Les sorties coupent également les voies.',
     ],
   },
+
+  fail: {
+    mergeCrash: {
+      name: 'Collision à l’insertion',
+      line: 'Vous avez heurté la voiture devant',
+      brief: 'Votre voiture a heurté celle de devant en s’insérant.',
+      explain: (c) => [
+        'Votre voiture s’est insérée trop près d’une autre et l’a percutée. Seule la collision d’une voiture en cours d’insertion compte contre vous.',
+        `Un service survit à ${c.maxStrikes === 1 ? 'aucune collision' : `${c.maxStrikes - 1} ${c.maxStrikes === 2 ? 'collision' : 'collisions'}`} : la suivante y met fin.`,
+        'Regardez la voiture devant votre insertion, pas seulement celle de derrière. Si l’écart devant est court, laissez-la passer et prenez le suivant.',
+      ],
+    },
+    cutOffCrash: {
+      name: 'Collision après coupure',
+      line: 'Une voiture arrivait juste derrière vous',
+      brief: 'Une voiture derrière vous n’a pas pu freiner et a heurté la vôtre.',
+      explain: () => [
+        'Vous vous êtes inséré juste devant une voiture qui n’a pas pu freiner à temps ; elle a percuté votre voiture en insertion. C’est une collision, et elle compte contre vous.',
+        'Surveillez aussi les voitures qui arrivent derrière. Il leur faut plus de place sous la pluie, la neige et la grêle, et à un camion encore plus.',
+        'Un Tight Fit passe, une voiture qui doit freiner fort non : attendez que l’écart derrière vous s’ouvre.',
+      ],
+    },
+    ringCrash: {
+      name: 'Collision sur l’anneau',
+      line: 'Une de vos voitures a percuté sur l’anneau',
+      brief: 'Une voiture que vous avez envoyée a percuté sur l’anneau.',
+      explain: () => [
+        'Une voiture reste la vôtre jusqu’à la première sortie. Une collision sur l’anneau avant cela, dans un carambolage ou contre une épave, compte quand même.',
+        'N’envoyez pas de voiture dans un anneau avec des épaves, des bouchons ou une voiture sur le point de freiner. Attendez que la route se dégage.',
+      ],
+    },
+    policeCrash: {
+      name: 'Collision de police',
+      line: 'Trop de patrouilles ont été détruites',
+      brief: 'Trop de vos voitures de police ont percuté.',
+      explain: (c) => [
+        `Les voitures de police sont plus robustes : un service survit à ${c.maxPoliceCrashes === 1 ? 'une collision de police' : `${c.maxPoliceCrashes} collisions de police`}. La suivante y met fin.`,
+        'N’envoyez une voiture de police que contre un criminel et gardez-la loin du fourgon blindé et du reste du trafic.',
+      ],
+    },
+    bomb: {
+      name: 'Bombe',
+      line: 'Une voiture a déclenché la bombe',
+      brief: 'Une voiture est entrée dans la zone du camion militaire et a déclenché la bombe.',
+      explain: () => [
+        'Une de vos voitures est entrée dans la zone interdite du camion militaire et a déclenché sa bombe. Le souffle couvre tout le rond-point et met fin au service aussitôt.',
+        'Retenez vos voitures pendant que le camion passe. La zone est marquée sur l’anneau, et un avertissement montre la branche d’où il vient.',
+      ],
+    },
+    escape: {
+      name: 'Criminel échappé',
+      line: 'Le criminel a pris la fuite',
+      brief: 'Un criminel s’est échappé : aucune voiture de police ne l’a percuté à temps.',
+      explain: (c) => [
+        `Un criminel reste environ ${Math.round(c.criminalTime)} secondes sur l’anneau. Aucune de vos voitures de police ne l’a percuté dans ce temps : il s’est enfui avec l’argent et le service s’est arrêté.`,
+        'Quand un avertissement éclaire une branche, gardez une voiture de police en tête de file (le bouton d’envoi en place une en premier). Vos voitures ordinaires ne peuvent pas l’arrêter.',
+      ],
+    },
+    bossEscape: {
+      name: 'Boss échappé',
+      line: 'Le boss s’est échappé',
+      brief: 'Le boss du syndicat s’est échappé.',
+      explain: () => [
+        'Le chef du syndicat s’est échappé. Un boss a plus de temps qu’un criminel ordinaire, mais aussi des escortes, un blindage ou une ruse à lui, et le service est perdu dès qu’il disparaît.',
+        'Chaque boss est exposé à l’étagère « Boss », avec la façon de l’arrêter. Gardez des voitures de police dans votre file.',
+      ],
+    },
+    ruleCrash: {
+      name: 'Règle brisée : collision',
+      line: 'Une collision a brisé la règle',
+      brief: 'Une collision a brisé la règle de ce service.',
+      explain: () => [
+        'Les épreuves et les services légendaires comme Tolérance zéro ont leur propre règle, et une collision la brise aussitôt : aucune erreur n’est permise.',
+        'La règle est affichée sur l’écran de départ. Attendez des écarts nettement assez grands.',
+      ],
+    },
+    ruleCutOff: {
+      name: 'Règle brisée : coupure',
+      line: 'Une coupure a brisé la règle',
+      brief: 'Vous avez coupé la route à une voiture et cela a brisé la règle de ce service.',
+      explain: () => [
+        'Une règle de ce service interdit de couper la route. S’insérer juste devant une voiture qui doit freiner fort compte comme une coupure et met fin au service.',
+        'Prenez des écarts qui laissent à la voiture de derrière la place de rouler. Un Tight Fit est permis, une coupure non.',
+      ],
+    },
+  },
 };
 
 export default museum;

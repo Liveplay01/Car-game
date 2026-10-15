@@ -1,7 +1,7 @@
 import type { Strings } from '../../strings';
 import type { Words } from '../../i18n';
 import { Fmt, money } from '../../format';
-import { SPECIAL_TEXT } from '../../museumText';
+import { SPECIAL_TEXT, FAIL_TEXT } from '../../museumText';
 
 const COLORS: Record<string, string> = { purple: 'Viola', gold: 'Oro', blue: 'Blu', red: 'Rosso', teal: 'Turchese', orange: 'Arancione', pink: 'Rosa', rose: 'Rosa tenue' };
 const color = (name: string): string => COLORS[name] ?? name;
@@ -210,7 +210,9 @@ export default (S: Strings): Words<Strings> => ({
   },
 
   museum: {
-    shelf: (i) => ['Boss', 'Speciali', 'Condizioni'][i],
+    shelf: (i) => ['Boss', 'Speciali', 'Condizioni', 'Fallimenti'][i],
+    lockedFailHint: 'Non ti è ancora successo. Perdi un turno così e comparirà qui, con ciò che è andato storto e come evitarlo.',
+    failuresDone: (skin) => `Tutti i modi di perdere trovati: la skin ${skin} è tua`,
     notSeen: 'Non ancora visto',
     newBadge: 'NUOVO',
     firstTime: 'Nuovo per te',
@@ -221,7 +223,7 @@ export default (S: Strings): Words<Strings> => ({
         ? `Appare dal livello ${level}. Non appena lo incontrerai sulla strada, verrà esposto qui con tutte le informazioni.`
         : 'Continua a giocare i turni. Una volta incontrato sulla strada, verrà illustrato qui nei dettagli.',
     lockedBossHint: (level) => `Il sindicato lo invia al livello ${level}. Una volta affrontato, comparirà qui con le strategie per catturarlo.`,
-    kind: (e) => ({ boss: 'Boss del sindacato', special: 'Veicolo speciale', weather: 'Meteo', dark: 'Oscurità', event: 'Evento cittadino', road: 'Strada' })[e.k],
+    kind: (e) => ({ boss: 'Boss del sindacato', special: 'Veicolo speciale', weather: 'Meteo', dark: 'Oscurità', event: 'Evento cittadino', road: 'Strada', fail: 'Fallimento' })[e.k],
     met: 'Incontrato, ancora a piede libero',
     onRing: 'Sull’anello',
     signalArrive: (arm, sweep) =>
@@ -251,6 +253,8 @@ export default (S: Strings): Words<Strings> => ({
           return S.cityEvent(e.kind);
         case 'road':
           return 'Due corsie';
+        case 'fail':
+          return FAIL_TEXT[e.kind].name;
       }
     },
   },

@@ -1,7 +1,7 @@
 import type { Strings } from '../../strings';
 import type { Words } from '../../i18n';
 import { Fmt, money } from '../../format';
-import { SPECIAL_TEXT } from '../../museumText';
+import { SPECIAL_TEXT, FAIL_TEXT } from '../../museumText';
 
 const COLORS: Record<string, string> = { purple: 'Lila', gold: 'Gold', blue: 'Blau', red: 'Rot', teal: 'Türkis', orange: 'Orange', pink: 'Pink', rose: 'Rosa' };
 const color = (name: string): string => COLORS[name] ?? name;
@@ -210,7 +210,9 @@ export default (S: Strings): Words<Strings> => ({
   },
 
   museum: {
-    shelf: (i) => ['Bosse', 'Spezial', 'Bedingungen'][i],
+    shelf: (i) => ['Bosse', 'Spezial', 'Bedingungen', 'Scheitern'][i],
+    lockedFailHint: 'Noch nicht passiert. Verlierst du eine Schicht auf diese Weise, wird sie hier ausgestellt, mit dem, was schiefging, und wie du es vermeidest.',
+    failuresDone: (skin) => `Jede Art zu verlieren gefunden: Der Skin ${skin} gehört dir`,
     notSeen: 'Noch nicht gesehen',
     newBadge: 'NEU',
     firstTime: 'Neu für dich',
@@ -221,7 +223,7 @@ export default (S: Strings): Words<Strings> => ({
         ? `Taucht ab Level ${level} auf. Sobald du es auf der Straße getroffen hast, wird es hier mit allem Wissenswerten ausgestellt.`
         : 'Spiele weiter Schichten. Sobald du es auf der Straße getroffen hast, wird es hier mit allem Wissenswerten ausgestellt.',
     lockedBossHint: (level) => `Das Syndikat schickt ihn auf Level ${level}. Sobald du ihm begegnet bist, wird er hier ausgestellt, mit dem Weg, ihn zu fassen.`,
-    kind: (e) => ({ boss: 'Syndikatsboss', special: 'Spezialfahrzeug', weather: 'Wetter', dark: 'Dunkelheit', event: 'Stadtereignis', road: 'Straße' })[e.k],
+    kind: (e) => ({ boss: 'Syndikatsboss', special: 'Spezialfahrzeug', weather: 'Wetter', dark: 'Dunkelheit', event: 'Stadtereignis', road: 'Straße', fail: 'Scheitern' })[e.k],
     met: 'Getroffen, noch auf freiem Fuß',
     onRing: 'Auf dem Ring',
     signalArrive: (arm, sweep) =>
@@ -251,6 +253,8 @@ export default (S: Strings): Words<Strings> => ({
           return S.cityEvent(e.kind);
         case 'road':
           return 'Zwei Spuren';
+        case 'fail':
+          return FAIL_TEXT[e.kind].name;
       }
     },
   },

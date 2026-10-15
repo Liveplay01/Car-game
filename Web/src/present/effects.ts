@@ -192,14 +192,20 @@ export class CrashEffects {
     this.blasts = this.blasts.filter((b) => b.age < CrashEffects.blastLifetime);
   }
 
-  addGround(list: RenderList, world: World, alpha: number, softBody: boolean): void {
+  addGround(list: RenderList): void {
     for (const p of this.particles) {
+      if (p.kind.k !== 'smoke') continue;
       const x = p.age / p.lifetime;
-      if (p.kind.k === 'smoke') list.w(circle(p.position, p.size.x * (1 + 2.2 * Ease.outCubic(x))), 'smoke', 0.3 * (1 - x));
-      else if (p.kind.k === 'part') {
-        const opacity = 1 - Ease.clamp01((p.age - (p.lifetime - 0.5)) / 0.5);
-        list.w(rect(p.position, p.size, Math.min(p.size.x, p.size.y) / 3, p.rotation), p.kind.color, opacity);
-      }
+      list.w(circle(p.position, p.size.x * (1 + 2.2 * Ease.outCubic(x))), 'smoke', 0.3 * (1 - x));
+    }
+  }
+
+  /** Wrecks and their torn-off parts: drawn above the ring's light, which they cover. */
+  addWrecks(list: RenderList, world: World, alpha: number, softBody: boolean): void {
+    for (const p of this.particles) {
+      if (p.kind.k !== 'part') continue;
+      const opacity = 1 - Ease.clamp01((p.age - (p.lifetime - 0.5)) / 0.5);
+      list.w(rect(p.position, p.size, Math.min(p.size.x, p.size.y) / 3, p.rotation), p.kind.color, opacity);
     }
     for (const veh of world.vehicles) {
       if (veh.phase.kind !== 'crashed') continue;

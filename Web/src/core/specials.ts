@@ -108,7 +108,7 @@ export function updateCriminals(w: World, now: number): void {
       w.criminal = { kind: 'leaving', vehicle: cr.vehicle };
       w.events.push({ type: 'criminalEscaped', vehicle: cr.vehicle, time: now });
       w.chargeEscape();
-      w.endShift('escaped', now);
+      w.endShift('escaped', now, w.config.convoy && !w.score.bossBusted ? 'bossEscape' : 'escape');
       return;
     }
     case 'leaving':

@@ -159,6 +159,7 @@ export const Skins = {
       megaWin: 'skinGold',
       doubleDown: 'skinObsidian',
       tycoon: 'skinCarbon',
+      crashTest: 'skinLemon',
     };
     return id ? (map[id] ?? null) : null;
   },
@@ -169,6 +170,7 @@ export const Skins = {
       case 'tycoon':
         return 'skinGold';
       case 'megaWin':
+      case 'crashTest':
         return 'skinCarbon';
       case 'doubleDown':
         return 'skinPearl';
@@ -345,6 +347,7 @@ export const Skins = {
       megaWin: 'nova',
       doubleDown: 'halo',
       tycoon: 'laurel',
+      crashTest: 'embers',
     };
     return id ? (map[id] ?? null) : null;
   },

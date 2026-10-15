@@ -364,6 +364,92 @@ const museum: Translation['museum'] = {
       'Un\'auto diretta alla corsia interna ha bisogno di un varco all\'esterno per passare e di uno all\'interno per immettersi. Le auto che lasciano la corsia interna attraversano a loro volta quella esterna.',
     ],
   },
+
+  fail: {
+    mergeCrash: {
+      name: 'Scontro in immissione',
+      line: 'Hai urtato l’auto davanti a te',
+      brief: 'La tua auto ha urtato quella davanti mentre si immetteva.',
+      explain: (c) => [
+        'La tua auto si è immessa troppo vicino a un’altra e l’ha tamponata. Conta contro di te solo lo scontro di un’auto che si sta immettendo.',
+        `Un turno regge ${c.maxStrikes === 1 ? 'nessuno scontro' : `${c.maxStrikes - 1} ${c.maxStrikes === 2 ? 'scontro' : 'scontri'}`}: il successivo lo chiude.`,
+        'Guarda l’auto davanti al tuo punto di immissione, non solo quella dietro. Se il varco davanti è corto, lasciala passare e prendi il prossimo.',
+      ],
+    },
+    cutOffCrash: {
+      name: 'Scontro per taglio',
+      line: 'C’era un’auto attaccata dietro di te',
+      brief: 'Un’auto dietro di te non è riuscita a frenare e ha urtato la tua in immissione.',
+      explain: () => [
+        'Ti sei immesso proprio davanti a un’auto che non è riuscita a frenare in tempo, e ha tamponato la tua auto in immissione. È uno scontro e conta contro di te.',
+        'Guarda anche le auto che arrivano da dietro. Con pioggia, neve e grandine serve loro più spazio, e a un camion ancora di più.',
+        'Un Tight Fit va bene, un’auto che deve frenare forte no: aspetta che il varco dietro di te si apra.',
+      ],
+    },
+    ringCrash: {
+      name: 'Scontro sull’anello',
+      line: 'Un’auto tua si è schiantata sull’anello',
+      brief: 'Un’auto che hai mandato si è schiantata sull’anello.',
+      explain: () => [
+        'Un’auto resta tua finché non ha passato la prima uscita. Uno scontro sull’anello prima di allora, in un tamponamento a catena o contro un relitto, conta comunque.',
+        'Non mandare un’auto in un anello con relitti, coda o un’auto che sta per frenare. Aspetta che la strada si liberi.',
+      ],
+    },
+    policeCrash: {
+      name: 'Scontro della polizia',
+      line: 'Troppe pattuglie distrutte',
+      brief: 'Troppe delle tue auto della polizia si sono schiantate.',
+      explain: (c) => [
+        `Le auto della polizia sono più robuste: un turno regge ${c.maxPoliceCrashes === 1 ? 'uno scontro della polizia' : `${c.maxPoliceCrashes} scontri della polizia`}. Il successivo lo chiude.`,
+        'Manda un’auto della polizia solo contro un criminale e tienila lontana dal portavalori e dal resto del traffico.',
+      ],
+    },
+    bomb: {
+      name: 'Bomba',
+      line: 'Un’auto ha fatto esplodere la bomba',
+      brief: 'Un’auto è entrata nella zona del camion militare e ha fatto esplodere la bomba.',
+      explain: () => [
+        'Una tua auto è entrata nella zona vietata del camion militare e ha fatto esplodere la sua bomba. L’esplosione raggiunge tutta la rotonda e chiude subito il turno.',
+        'Trattieni le tue auto mentre il camion passa. La zona è segnata sull’anello e un avviso mostra il braccio da cui arriva.',
+      ],
+    },
+    escape: {
+      name: 'Criminale fuggito',
+      line: 'Il criminale è fuggito',
+      brief: 'Un criminale è fuggito: nessuna auto della polizia l’ha speronato in tempo.',
+      explain: (c) => [
+        `Un criminale resta circa ${Math.round(c.criminalTime)} secondi sull’anello. Nessuna tua auto della polizia l’ha speronato in quel tempo, quindi è fuggito con i soldi e il turno è finito.`,
+        'Quando un avviso illumina un braccio, tieni un’auto della polizia in testa alla coda (il pulsante di invio ne mette una per prima). Le auto normali non possono fermarlo.',
+      ],
+    },
+    bossEscape: {
+      name: 'Boss sfuggito',
+      line: 'Il boss è sfuggito',
+      brief: 'Il boss del sindacato è sfuggito.',
+      explain: () => [
+        'Il capo del sindacato è sfuggito. Un boss ha più tempo di un criminale comune, ma anche scorte, blindatura o un trucco suo, e il turno è perso appena se ne va.',
+        'Ogni boss è esposto nello scaffale «Boss», con il modo di fermarlo. Tieni auto della polizia nella tua coda.',
+      ],
+    },
+    ruleCrash: {
+      name: 'Regola infranta: scontro',
+      line: 'Uno scontro ha infranto la regola',
+      brief: 'Uno scontro ha infranto la regola di questo turno.',
+      explain: () => [
+        'Le prove e i turni leggendari come Tolleranza zero hanno una regola propria, e uno scontro la infrange subito: non resta nessun errore.',
+        'La regola è sulla schermata iniziale. Aspetta varchi chiaramente abbastanza grandi.',
+      ],
+    },
+    ruleCutOff: {
+      name: 'Regola infranta: taglio',
+      line: 'Un taglio ha infranto la regola',
+      brief: 'Hai tagliato la strada a un’auto e questo ha infranto la regola del turno.',
+      explain: () => [
+        'Una regola di questo turno vieta di tagliare la strada. Immettersi proprio davanti a un’auto che deve frenare forte conta come taglio e chiude il turno.',
+        'Prendi varchi che lascino all’auto dietro lo spazio per scorrere. Un Tight Fit è permesso, un taglio no.',
+      ],
+    },
+  },
 };
 
 export default museum;

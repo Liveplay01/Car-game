@@ -53,15 +53,20 @@ export const PATCH_NOTES: PatchNote[] = [
   {
     id: '2026-10-15',
     date: '15 October 2026',
-    title: 'Your player, a Casino leaderboard and casino skins',
+    title: 'Failure icons, your player and casino skins',
     impact: 'major',
     summary: [
+      'Lose a shift and an icon shows how. Tap it to learn what went wrong; find them all for a skin.',
       'Casino: a leaderboard for the most won in total, and four skins only the tables give.',
       'One name is now your player: Ranks, Friends, multiplayer and Cloud sync in one step.',
       'Friends, Ranks and the Club need a player. After Level 5 the game asks for your name.',
-      'Contracts: win them back to back for a Contract Run, up to +5% of the stake extra.',
     ],
     items: [
+      'Fixed: at night the ring\'s glow no longer shines over wrecks and torn-off parts; they cover it like any other car.',
+      'Ways to lose: every way a shift can end badly now has its own icon (a crash while merging, a car cut off, a crash on the ring, too many police crashes, the bomb, a criminal or the boss that got away, a trial rule broken). A lost result shows it where the sentence stood, and a tap opens its sheet with what went wrong and how to avoid it. Sheets of failures wear a red rim, like the ring on a lost shift.',
+      'Museum → Failures: each way you lose goes on show once it has happened to you. Find all nine and the Crash Test skin is yours (Honours shelf, looks only).',
+      'Less text on the result of a lost shift: the line on why you lost is now an icon, and the money moves beside it.',
+      'The Prestige stars on the Hall of Fame wall are real stars now, not dots.',
       'Contract Run, the first Game fund idea made: win Contracts back to back to build a run. From your second win on, a win pays +1% of the stake extra per win in the run, up to +5%. Lose a Contract and the run resets; a voided one leaves it alone. The run shows in Social → Club → Contracts and on the result.',
       'Smoother switches: when a tab, segment or step changes (Social, Ranks, Club, Settings, lobby, account), the old view fades out while the new one fades in, instead of cutting.',
       'Fixed: lights on the ring no longer stack. While a flash, heal, combo splash or victory glow lights the whole rim, the ticks under it go dark and fade back as it fades; the gap a moving light cuts closes softly instead of popping shut.',

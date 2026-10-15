@@ -5,7 +5,7 @@ import { Elite } from '../core/elite';
 import { SeasonPass } from '../core/seasonPass';
 import { Unlocks } from '../core/unlocks';
 import { Mafia } from '../core/mafia';
-import type { CrashFault, GameEvent, ShiftResult } from '../core/events';
+import type { GameEvent, ShiftResult } from '../core/events';
 import type { Upgrade } from '../core/levels';
 import { ALBUM_REWARD, BIG_SCREEN, CHEST_KINDS, chestPrice, cosmetic, rarityRank, tapPower, strongTaps, type ChestKind } from '../core/loot';
 import { dailySeed, dailyEvent, dayNumber } from '../core/daily';
@@ -56,13 +56,13 @@ import type { PageHost } from './pageHost';
 import { type SpecialRun, settleSpecial, runCard, advanceRush, newRush } from './specialRuns';
 import { markPassed, markReward } from '../core/tiers';
 import { forHeat, heatPay } from '../core/heat';
-import { conditionChips, ConditionChips, streakEndsIn, addNotice, noticeHeight, noticePresence, type NoticePlace } from './readyScreen';
+import { conditionChips, ConditionChips, FailChip, streakEndsIn, addNotice, noticeHeight, noticePresence, type NoticePlace } from './readyScreen';
 import { Briefings, type Brief } from './briefing';
 
 export type { SpecialRun } from './specialRuns';
 import { ProgressPage, ProgressState, type ProgressTarget } from './progress';
 import { MuseumFlow, type MuseumHost } from './museumFlow';
-import { museumEntry, museumId } from '../core/museum';
+import { type MuseumEntry, museumEntry, museumId, FAIL_SKIN } from '../core/museum';
 import { UpgradePage, UpgradeState } from './upgrades';
 import { StreetBuilderPage, BuilderState } from './builder';
 import { Feedback, Music, Sky, type MusicMix, type WeatherSound, type SoundID, type HapticID } from './feedback';
@@ -182,7 +182,6 @@ export class GameSession {
   private cameraFx = new CameraFx();
   /** Where the player's last crash happened: the camera leans towards it if it ends the shift. */
   private lastCrashAt = v(0, 0);
-  private lastFault: CrashFault | null = null;
   private lamps = new VehicleLamps();
   private sinceFatalCrash = Infinity;
   private sinceLoss = Infinity;
@@ -1125,10 +1124,11 @@ export class GameSession {
       this.onStep?.('tutorial-done');
     }
     this.onStep?.('special', { kind: run.k, outcome: result.outcome });
+    this.bookFailure(result);
     this.persist();
     this.resultBank = { before: bankBefore, after: career.money };
     const shown: ShiftResult = { ...result, money: career.money - bankBefore, costs: 0, covered: 0 };
-    this.pendingSummary = { result: shown, level: this.playingLevel, isNewHighscore: false, previousHighscore: 0, mode: this.playingMode, run: summary, why: this.lossReason(result) };
+    this.pendingSummary = { result: shown, level: this.playingLevel, isNewHighscore: false, previousHighscore: 0, mode: this.playingMode, run: summary };
     this.resultCountdown = this.resultDelayFor(result);
   }
 
@@ -1332,7 +1332,7 @@ export class GameSession {
     for (const a of actions) this.handle(a, simDelta);
     // A condition's sheet belongs to the waiting shift it was opened on.
     const shown = this.conditionShown;
-    if (shown && (!(this.screen.k === 'ready' || this.screen.k === 'result') || !conditionChips(this.world.config, this.save.career).some((c) => c.id === shown))) this.closeDetail();
+    if (shown && !this.conditionHeld(shown)) this.closeDetail();
 
     const events: GameEvent[] = [];
     if (runs) {
@@ -1548,6 +1548,12 @@ export class GameSession {
   }
 
   private handle(a: InputAction, simDelta: number): void {
+    // With a condition's or failure's sheet open, the next tap or key only closes it: it never starts the shift.
+    if ((a.k === 'tap' || a.k === 'confirm') && this.conditionShown && this.detailOpen && (this.screen.k === 'ready' || this.screen.k === 'result')) {
+      this.closeDetail();
+      this.tick();
+      return;
+    }
     switch (a.k) {
       case 'tap':
         switch (this.screen.k) {
@@ -1770,6 +1776,7 @@ export class GameSession {
     if (this.isPage('upgrades')) {
       // A press on the list is a tap or the start of a scroll; the lift decides.
       if (R.contains(UpgradePage.listArea(this.lastViewport, inset), point)) this.upgradePage.press(point.y);
+      else this.tapAway();
       return;
     }
     if (this.isPage('shop')) {
@@ -1921,6 +1928,10 @@ export class GameSession {
   /** A tap on a condition's icon: its Museum sheet over the Game tab; a second tap closes it. */
   private showCondition(id: string): void {
     this.tick();
+    if (this.save.career.museumNew.includes(id)) {
+      Careers.markMuseumSeen(this.save.career, [id]);
+      this.persist();
+    }
     if (this.conditionShown === id) {
       this.closeDetail();
       return;
@@ -2202,7 +2213,7 @@ export class GameSession {
       if (section !== null && section !== this.socialPage.section) {
         this.tick();
         this.socialPage.select(section);
-      }
+      } else if (section === null) this.tapAway();
       return true;
     }
     if (this.isPage('progress')) {
@@ -2218,6 +2229,7 @@ export class GameSession {
       }
       // The list: a press is a tap or the start of a scroll; the lift decides (`tapProgress`).
       if (ProgressPage.inList(point, this.lastViewport, this.tabInset)) this.progressPage.press(point.y);
+      else this.tapAway();
       return true;
     }
     return null;
@@ -2251,7 +2263,6 @@ export class GameSession {
         case 'crash':
           this.effects.spawn(e, world, this.reduceMotion, e.chain);
           if (e.involvesPlayer || e.isStrike) this.lastCrashAt = e.point;
-          if (e.isStrike) this.lastFault = e.fault;
           if (e.flames > 0) {
             this.addPopup({ k: 'flames', n: e.flames, chain: e.chain }, e.point);
             this.sinceFlames = 0;
@@ -2600,6 +2611,7 @@ export class GameSession {
       shiftConfig: this.world.config,
       splits: this.splits,
     });
+    this.bookFailure(result);
     this.persist();
     this.dailyShare =
       this.playingDaily && result.outcome === 'completed'
@@ -2619,26 +2631,14 @@ export class GameSession {
       this.resultCountdown = this.resultDelayFor(result);
       return;
     }
-    this.pendingSummary = { result, level: this.playingLevel, isNewHighscore: isNew, previousHighscore: previous, mode: this.playingMode, why: this.lossReason(result), closeCall: this.playingMode === 'chill' ? null : this.closeCall(result, previous), elite: booked.elite };
+    this.pendingSummary = { result, level: this.playingLevel, isNewHighscore: isNew, previousHighscore: previous, mode: this.playingMode, closeCall: this.playingMode === 'chill' ? null : this.closeCall(result, previous), elite: booked.elite };
     this.resultCountdown = this.resultDelayFor(result);
   }
 
-  /** Why a shift was lost, in a few words; null after a win. */
-  private lossReason(result: ShiftResult): string | null {
-    const why = S.result.why;
-    const { score, config } = this.world;
-    switch (result.outcome) {
-      case 'completed':
-        return null;
-      case 'escaped':
-        return result.convoy && !result.bossBusted ? why.boss : why.escaped;
-      case 'failed':
-        return result.legendary === 'zeroTolerance' ? why.zeroTolerance : why.rule;
-      case 'struckOut':
-        if (score.policeCrashes > config.maxPoliceCrashes) return why.police;
-        if (this.lastFault) return why[this.lastFault];
-        return config.maxStrikes > 1 ? why.crashes : why.crash;
-    }
+  /** A lost shift puts the way it was lost on show in the Museum; the last one missing pays the Failures skin. */
+  private bookFailure(result: ShiftResult): void {
+    if (!result.failCause || !Careers.noteFailure(this.save.career, result.failCause)) return;
+    this.announce(S.museum.failuresDone(S.shop.item(FAIL_SKIN)));
   }
 
   /**
@@ -2773,7 +2773,7 @@ export class GameSession {
     SceneBuilder.addLaneArrow(list, world);
     this.explosions.addGround(list);
     this.effects.carSkins = career.carSkins;
-    this.effects.addGround(list, world, alpha, !rm);
+    this.effects.addGround(list);
     CityLights.add(list, world, alpha, theme, this.lamps, rm ? null : world.time, this.nightPreview);
     if (night) NightLayer.addRoadLights(list, world, alpha, this.lamps, rm ? null : world.time);
     if (night) {
@@ -2782,6 +2782,7 @@ export class GameSession {
       this.addRim(list, world, rm);
       if (!this.lowDetail) HUD.bloom(list, lit);
     }
+    this.effects.addWrecks(list, world, alpha, !rm);
     SceneBuilder.addShadows(list, world, alpha);
     SceneBuilder.addVehicles(list, world, alpha, career.carSkins, rm ? null : world.time, rm ? null : world.time, this.lamps);
     SceneBuilder.addTowTrucks(list, world);
@@ -2887,6 +2888,7 @@ export class GameSession {
       if (this.countIn > 0 || this.isInterrupted) HUD.addCountIn(list, this.isInterrupted ? GameSession.countInSeconds : this.countIn);
     } else if (s.k === 'result') {
       ResultBanner.add(list, s.summary, this.playingLevel, this.resultBank, this.resultAge, rm, this.giftLine, world.layout.islandRadius);
+      this.addFailChip(list, s.summary);
       this.tutorial?.add(list, world, alpha, this.sceneTime, rm);
       const arriving = ResultBanner.arriving(this.resultAge);
       if (arriving > 0) underCard = this.addReadyBanner(list, null, false, arriving);
@@ -3045,6 +3047,34 @@ export class GameSession {
     // The Daily's splash covers the whole screen for a moment: above the condition icons, never under them.
     if (daily && daily.splash !== null) ReadyBanner.addSplash(list, daily, daily.splash, this.reduceMotion);
     return under;
+  }
+
+  /** How a lost shift was lost, as an icon over the island: a tap opens its Museum sheet (`showCondition`), the sheet rimmed in red. */
+  private addFailChip(list: RenderList, summary: ShiftSummary): void {
+    const cause = summary.result.failCause;
+    const age = this.resultAge;
+    const shown = Ease.outCubic(age / ResultBanner.enter) * (1 - ResultBanner.leaving(age));
+    if (!cause || shown <= 0.001) return;
+    const entry: MuseumEntry = { k: 'fail', kind: cause };
+    const id = museumId(entry);
+    const center = FailChip.center(toScreen(list.camera, v(0, 0)), summary.result.money > 0);
+    FailChip.add(list, entry, center, {
+      age,
+      reduceMotion: this.reduceMotion,
+      opacity: shown,
+      caption: ResultBanner.breathes(summary) ? ResultBanner.mourning(age) : 0,
+      selected: this.conditionShown === id,
+      isNew: this.save.career.museumNew.includes(id),
+    });
+    if (shown > 0.5 && this.showsChrome) this.conditionTargets = [{ id, rect: FailChip.target(center) }];
+  }
+
+  /** The open condition sheet still belongs to what is on screen: a condition of the waiting shift, or the failure on a result. */
+  private conditionHeld(id: string): boolean {
+    const s = this.screen;
+    if (s.k !== 'ready' && s.k !== 'result') return false;
+    // A failure's sheet stays until it is closed, also once the result is over and the next shift waits.
+    return id.startsWith('fail.') || conditionChips(this.world.config, this.save.career).some((c) => c.id === id);
   }
 
   /** Tomorrow's gift on the Game tab, counted down (a plain career shift only, like the next goal). */

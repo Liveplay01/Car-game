@@ -1527,8 +1527,6 @@ export interface ShiftSummary {
   mode: GameMode;
   /** A challenge or trial: its own verdict replaces the title, the right column and the line. */
   run?: { caption: string; color: ColorToken; line: string; lineColor: ColorToken; right: [string, string] };
-  /** Why a lost shift was lost, as the breather's line under the skull. */
-  why?: string | null;
   /** Under the stats: how close a lost shift came, or what the money is close to. */
   closeCall?: { text: string; color: ColorToken } | null;
   /** The Elite track after this shift: the ring runs it, the middle says what is missing (`RingSignals.elite`). */
@@ -1674,11 +1672,10 @@ export const ResultBanner = {
       const x = reduceMotion ? 1 : Ease.clamp01((age - ResultBanner.countDelay) / ResultBanner.countDuration);
       const counted = Math.round(r.money * Ease.outCubic(x));
       const landed = (age - ResultBanner.countDelay - ResultBanner.countDuration) / 0.35;
-      moneyTag(list, '+' + Fmt.number(counted), sub(island, v(0, 64)), reduceMotion || landed < 0 ? 26 : 26 * land(landed, 0.2), 'center', 'primary', 'accent', shown);
-    }
-    if (mourning > 0 && summary.why) {
-      const enter = reduceMotion ? 1 : Ease.outCubic((age - 0.25) / 0.3);
-      if (enter > 0) islandLine(list, summary.why, islandRadius, skull + 28, 14, 'primary', shown * mourning * enter, 'bold');
+      // A lost shift's icon takes the left of this row (`FailChip`): the money moves right and gets a little smaller.
+      const beside = r.failCause !== null;
+      const base = beside ? 20 : 26;
+      moneyTag(list, '+' + Fmt.number(counted), add(sub(island, v(0, 64)), v(beside ? 34 : 0, 0)), reduceMotion || landed < 0 ? base : base * land(landed, 0.2), 'center', 'primary', 'accent', shown);
     }
     const lock = ResultBanner.lock(summary);
     const prompt = Ease.outCubic((age - lock) / ResultBanner.enter);

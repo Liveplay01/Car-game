@@ -19,7 +19,7 @@ import {
   isHeavy,
   isExplosive,
 } from './vehicle';
-import type { CrashFault, EliminationReason, GameEvent, MergeRating, ShiftOutcome, ShiftResult, VersusPhase } from './events';
+import type { CrashFault, EliminationReason, FailCause, GameEvent, MergeRating, ShiftOutcome, ShiftResult, VersusPhase } from './events';
 import { ScoreBoard, Scoring } from './scoring';
 import { updateTraffic, prefillRing, spawnRival } from './traffic';
 import { updateDrivers, flowCapacity } from './drivers';
@@ -145,6 +145,7 @@ export type ShiftPhase = 'waiting' | 'running' | 'rushHour' | 'closing' | 'ended
 export class ShiftState {
   phase: ShiftPhase = 'running';
   outcome: ShiftOutcome | null = null;
+  failCause: FailCause | null = null;
   /** Cars not yet launched; null in Unlimited. */
   carsLeft: number | null = null;
   carsSent = 0;
@@ -985,8 +986,8 @@ export class World {
           this.events.push({ type: 'shielded', seat: x.seat, point, time: now });
         } else this.events.push({ type: 'faulted', seat: x.seat, point, time: now });
       }
-    } else if (strike && this.isScoring && !this.config.mayhem && this.isStruckOut) this.endShift('struckOut', now);
-    else if (strike && this.isScoring && this.config.trialRule === 'flawless') this.endShift('failed', now);
+    } else if (strike && this.isScoring && !this.config.mayhem && this.isStruckOut) this.endShift('struckOut', now, byPolice ? 'policeCrash' : fault === 'ahead' ? 'mergeCrash' : fault === 'behind' ? 'cutOffCrash' : 'ringCrash');
+    else if (strike && this.isScoring && this.config.trialRule === 'flawless') this.endShift('failed', now, 'ruleCrash');
     for (const id of explosives) explode(this, id, now);
   }
 
@@ -1099,7 +1100,7 @@ export class World {
         tip,
         chainSaved,
       });
-      if (this.breaksTrial(rating)) this.endShift('failed', now);
+      if (this.breaksTrial(rating)) this.endShift('failed', now, 'ruleCutOff');
     }
   }
 
@@ -1863,10 +1864,11 @@ export class World {
     return this.score.strikes === 0 && this.score.policeCrashes === 0 && this.score.cutOffs === 0;
   }
 
-  endShift(outcome: ShiftOutcome, time: number): void {
+  endShift(outcome: ShiftOutcome, time: number, cause: FailCause | null = null): void {
     if (this.config.endless) this.score.money += this.config.endlessPayPerCar * this.shift.carsSent;
     this.shift.phase = 'ended';
     this.shift.outcome = outcome;
+    this.shift.failCause = outcome === 'completed' ? null : cause;
     for (const q of this.seats) {
       q.pendingTaps = [];
       q.heldTap = null;
@@ -1878,6 +1880,7 @@ export class World {
     const s = this.score;
     return {
       outcome,
+      failCause: this.shift.failCause,
       score: s.points,
       completionBonus: outcome === 'completed' ? this.config.completionBonus : 0,
       bestCombo: s.bestCombo,

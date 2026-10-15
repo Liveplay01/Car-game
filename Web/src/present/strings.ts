@@ -20,7 +20,7 @@ import type { TourId, TourReward } from '../core/tours';
 import type { TierId } from '../core/tiers';
 import { MONEY_MARK } from './icons';
 import { Fmt, money, percent, multiplier, comboMultiplier } from './format';
-import { museumText, SPECIAL_TEXT, MUSEUM_TEXT } from './museumText';
+import { museumText, SPECIAL_TEXT, FAIL_TEXT, MUSEUM_TEXT } from './museumText';
 import { currentLanguage, overlay, type LanguageCode, type Words } from './i18n';
 import type { RewardedOutcome } from './session';
 import type { AchievementCard } from './notices';
@@ -1154,7 +1154,7 @@ export const S = {
   },
 
   museum: {
-    shelf: (i: number): string => ['Bosses', 'Specials', 'Conditions'][i],
+    shelf: (i: number): string => ['Bosses', 'Specials', 'Conditions', 'Failures'][i],
     unknown: '???',
     notSeen: 'Not seen yet',
     newBadge: 'NEW',
@@ -1167,7 +1167,10 @@ export const S = {
         ? `Shows up from Level ${level}. Once you have met it on the road, it goes on show here with everything you need to know.`
         : 'Keep playing shifts. Once you have met it on the road, it goes on show here with everything you need to know.',
     lockedBossHint: (level: number): string => `The syndicate sends it on Level ${level}. Once you have faced it, it goes on show here with how to take it down.`,
-    kind: (e: MuseumEntry): string => ({ boss: 'Syndicate boss', special: 'Special vehicle', weather: 'Weather', dark: 'Darkness', event: 'City event', road: 'Road' })[e.k],
+    lockedFailHint: 'Not happened to you yet. Lose a shift this way and it goes on show here, with what went wrong and how to avoid it.',
+    kind: (e: MuseumEntry): string => ({ boss: 'Syndicate boss', special: 'Special vehicle', weather: 'Weather', dark: 'Darkness', event: 'City event', road: 'Road', fail: 'Way to lose' })[e.k],
+    /** Every way to lose a shift found: the Failures shelf pays its skin (`GameSession.bookFailure`). */
+    failuresDone: (skin: string): string => `Every way to lose, found: the ${skin} skin is yours`,
     met: 'Met, still at large',
     onRing: 'On the ring',
     signalArrive: (arm: string | null, sweep: string | null): string =>
@@ -1193,6 +1196,8 @@ export const S = {
           return S.cityEvent(e.kind);
         case 'road':
           return 'Two Lanes';
+        case 'fail':
+          return FAIL_TEXT[e.kind].name;
       }
     },
     /** One short line on the card: what it asks of you. */
@@ -1904,6 +1909,7 @@ export const S = {
       if (item.source.kind === 'tour') return `A stop of the ${S.tours.name(item.source.tour as TourId)} tour. It comes back every year.`;
       if (item.source.kind === 'auction') return 'Only ever a lot at the Auction House (Social → Club). A new lot every few days.';
       if (item.source.kind === 'casino') return `${S.casino.feat(item.source.feat)}: only the casino gives it (Shop → Casino). Looks only.`;
+      if (item.source.kind === 'failures') return 'Find every way to lose a shift (Progress → Museum → Failures). Looks only.';
       if (item.source.kind === 'fund') return 'A thank-you from the City Fund, which the Game fund has replaced. It is not given out any more.';
       if (item.source.kind === 'bugReport')
         return item.source.reports === 1
@@ -2026,6 +2032,7 @@ export const S = {
         megaWin: 'Mega Win',
         doubleDown: 'Double Down',
         tycoon: 'Tycoon',
+        crashTest: 'Crash Test',
         lemon: 'Lemon',
         plum: 'Plum',
         fern: 'Fern',
@@ -2532,19 +2539,8 @@ export const S = {
 
   result: {
     gameOver: 'GAME OVER',
-    /** The top card's big word while a lost shift takes its breather, and why it was lost (under the skull). */
+    /** The top card's big word while a lost shift takes its breather; how it was lost is an icon (the Museum's Failures). */
     fail: 'FAIL',
-    why: {
-      crash: 'You crashed. Wait for a gap.',
-      crashes: 'Too many crashes. Wait for a gap.',
-      police: 'Too many police cars crashed.',
-      behind: 'A car was right behind you.',
-      ahead: 'You hit the car in front.',
-      escaped: 'The criminal got away.',
-      boss: 'The boss got away.',
-      zeroTolerance: 'Zero Tolerance: a crash or cut-off ends it.',
-      rule: 'A rule of the shift was broken.',
-    },
     detonated: 'KABOOM',
     escaped: 'ESCAPED',
     levelComplete: (l: number): string => `LEVEL ${l} COMPLETE`,

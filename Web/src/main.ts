@@ -75,7 +75,9 @@ if (import.meta.env.DEV && new URLSearchParams(location.search).has('demo')) {
     demo.career.eliteClaimed = Elite.level(demo.career);
   }
   const weather = query.get('demo') === 'night' ? shelfEntries(2).filter((e) => e.k === 'weather') : [];
-  demo.career.museumSeen = [...shelfEntries(0), ...shelfEntries(1), ...weather].map(museumId);
+  // `&failures` has lost every way there is (the Museum's Failures shelf is full).
+  const failures = query.has('failures') ? shelfEntries(3) : [];
+  demo.career.museumSeen = [...shelfEntries(0), ...shelfEntries(1), ...weather, ...failures].map(museumId);
   writeSave(demo);
   history.replaceState(null, '', location.pathname);
 }

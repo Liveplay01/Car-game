@@ -361,6 +361,92 @@ const museum: Translation['museum'] = {
       'Un coche que se dirige al carril interior necesita un hueco en el exterior para cruzar y otro en el interior para incorporarse. Los coches que dejan el carril interior cruzan también el exterior.',
     ],
   },
+
+  fail: {
+    mergeCrash: {
+      name: 'Choque al incorporarse',
+      line: 'Has golpeado al coche que iba delante',
+      brief: 'Tu coche golpeó al de delante al incorporarse.',
+      explain: (c) => [
+        'Tu coche entró en la rotonda demasiado pegado a otro y chocó con él. Solo cuenta el choque de un coche que estás incorporando.',
+        `Un turno aguanta ${c.maxStrikes === 1 ? 'ningún choque' : `${c.maxStrikes - 1} ${c.maxStrikes === 2 ? 'choque' : 'choques'}`}: el siguiente lo termina.`,
+        'Mira el coche que va delante de tu incorporación, no solo el de detrás. Si el hueco de delante es corto, deja pasar y toma el siguiente.',
+      ],
+    },
+    cutOffCrash: {
+      name: 'Choque por cierre',
+      line: 'Había un coche pegado detrás de ti',
+      brief: 'Un coche de detrás no pudo frenar y golpeó al tuyo al incorporarse.',
+      explain: () => [
+        'Entraste justo delante de un coche que no pudo frenar a tiempo, y chocó con tu coche al incorporarse. Es un choque y cuenta en tu contra.',
+        'Mira también los coches que se acercan por detrás. Necesitan más espacio con lluvia, nieve y granizo, y un camión el que más.',
+        'Un Tight Fit está bien; un coche que tiene que frenar a fondo, no: espera a que se abra el hueco de detrás.',
+      ],
+    },
+    ringCrash: {
+      name: 'Choque en la rotonda',
+      line: 'Un coche tuyo chocó en la rotonda',
+      brief: 'Un coche que enviaste chocó en la rotonda.',
+      explain: () => [
+        'Un coche sigue siendo tuyo hasta que pasa la primera salida. Un choque en la rotonda antes de eso, en un accidente en cadena o contra un siniestro, también cuenta.',
+        'No envíes un coche a una rotonda con siniestros, atasco o un coche a punto de frenar. Espera a que la calzada se despeje.',
+      ],
+    },
+    policeCrash: {
+      name: 'Choque de policía',
+      line: 'Demasiados coches patrulla han chocado',
+      brief: 'Demasiados de tus coches patrulla han chocado.',
+      explain: (c) => [
+        `Los coches patrulla aguantan más que los demás: un turno resiste ${c.maxPoliceCrashes === 1 ? 'un choque de policía' : `${c.maxPoliceCrashes} choques de policía`}. El siguiente lo termina.`,
+        'Envía un coche patrulla solo contra un criminal y mantenlo lejos del transporte de dinero y del resto del tráfico.',
+      ],
+    },
+    bomb: {
+      name: 'Bomba',
+      line: 'Un coche detonó la bomba',
+      brief: 'Un coche entró en la zona del camión militar y detonó la bomba.',
+      explain: () => [
+        'Uno de tus coches entró en la zona prohibida del camión militar y detonó su bomba. La explosión alcanza toda la rotonda y termina el turno al instante.',
+        'Frena tus coches mientras pasa el camión. La zona está marcada en el anillo y un aviso muestra el brazo por el que llega.',
+      ],
+    },
+    escape: {
+      name: 'Criminal escapado',
+      line: 'El criminal ha escapado',
+      brief: 'Un criminal escapó: ningún coche patrulla lo embistió a tiempo.',
+      explain: (c) => [
+        `Un criminal permanece unos ${Math.round(c.criminalTime)} segundos en el anillo. Ningún coche patrulla suyo lo embistió en ese tiempo, así que escapó con el dinero y el turno terminó.`,
+        'Cuando un aviso ilumine un brazo, ten un coche patrulla al frente de tu cola (el botón de envío pone uno primero). Tus coches normales no pueden detenerlo.',
+      ],
+    },
+    bossEscape: {
+      name: 'Jefe escapado',
+      line: 'El jefe ha escapado',
+      brief: 'El jefe del sindicato escapó.',
+      explain: () => [
+        'El jefe del sindicato escapó. Tiene más tiempo que un criminal normal, pero también escoltas, blindaje o un truco propio, y el turno se pierde en cuanto se va.',
+        'Todos los jefes están en el estante «Jefes», con cómo detenerlos. Ten coches patrulla en tu cola.',
+      ],
+    },
+    ruleCrash: {
+      name: 'Regla rota: choque',
+      line: 'Un choque rompió la regla',
+      brief: 'Un choque rompió la regla de este turno.',
+      explain: () => [
+        'Las pruebas y los turnos legendarios como Tolerancia cero tienen una regla propia, y un choque la rompe al instante: no sobra ningún error.',
+        'La regla aparece en la pantalla de inicio. Espera huecos claramente suficientes.',
+      ],
+    },
+    ruleCutOff: {
+      name: 'Regla rota: cierre',
+      line: 'Cerrar el paso rompió la regla',
+      brief: 'Cerraste el paso a un coche y eso rompió la regla de este turno.',
+      explain: () => [
+        'Una regla de este turno prohíbe cerrar el paso. Incorporarse justo delante de un coche que debe frenar a fondo cuenta como cierre y termina el turno.',
+        'Toma huecos que dejen al coche de detrás espacio para rodar. Un Tight Fit está permitido; cerrar el paso, no.',
+      ],
+    },
+  },
 };
 
 export default museum;

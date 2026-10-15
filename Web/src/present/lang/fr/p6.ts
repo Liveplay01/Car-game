@@ -114,6 +114,7 @@ export default (S: Strings): Words<Strings> => ({
       if (item.source.kind === 'unlimited') return `Lancez ${Fmt.number(item.source.cars)} voitures en mode Sans limites.`;
       if (item.source.kind === 'tour') return `Une étape du tour « ${S.tours.name(item.source.tour as 'halloween' | 'winter')} ». Revient chaque année.`;
       if (item.source.kind === 'auction') return 'En vente exclusive aux enchères (Social → Club).';
+      if (item.source.kind === 'failures') return 'Trouvez toutes les façons de perdre un service (Progression → Musée → Échecs). Purement esthétique.';
       if (item.source.kind === 'casino') return `${S.casino.feat(item.source.feat)} : seul le casino le donne (Boutique → Casino). Purement esthétique.`;
       if (item.source.kind === 'fund') return 'Ancien remerciement du fonds municipal. Plus attribué.';
       if (item.source.kind === 'bugReport')
@@ -555,17 +556,6 @@ export default (S: Strings): Words<Strings> => ({
   },
 
   result: {
-    why: {
-      crash: 'Vous avez percuté un véhicule. Attendez une ouverture.',
-      crashes: 'Trop de crashs. Attendez une ouverture.',
-      police: 'Trop de patrouilles ont été détruites.',
-      behind: 'Une voiture arrivait juste derrière vous.',
-      ahead: 'Vous avez heurté la voiture qui vous précédait.',
-      escaped: 'Le criminel a pris la fuite.',
-      boss: 'Le boss s’est échappé.',
-      zeroTolerance: 'Tolérance zéro : le moindre choc met fin au service.',
-      rule: 'Une consigne du service a été enfreinte.',
-    },
     detonated: 'BOUM',
     escaped: 'ÉCHAPPÉ',
     levelComplete: (l) => `NIVEAU ${l} RÉUSSI`,

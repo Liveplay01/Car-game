@@ -1,7 +1,7 @@
 import type { Career } from '../core/career';
 import type { Config } from '../core/config';
 import { Goals } from '../core/goals';
-import { type ConditionEntry, museumId, conditionsOf } from '../core/museum';
+import { type ConditionEntry, type MuseumEntry, museumId, conditionsOf } from '../core/museum';
 import { type Vec2, v, add } from '../core/vec2';
 import { type RenderList, type Rect, R, Ease, text, drawText, circle, Metrics } from './render';
 import { MenuKit } from './menukit';
@@ -63,6 +63,41 @@ export const ConditionChips = {
         list.s(circle(dot, 4.5), 'accent', alpha);
       }
     });
+  },
+};
+
+/**
+ * How a lost shift was lost, as an icon on the result (Leo, 15.10.2026: icons, not a sentence). It sits in the island's
+ * top row, left of the money when there is some, and opens the Museum's sheet for that failure.
+ */
+export const FailChip = {
+  size: 46,
+  hit: 64,
+  /** How far left of the middle the icon stands when the money shares its row. */
+  shift: 56,
+  /** The row's height above the island's middle: where the money tag sits. */
+  rise: 64,
+
+  center: (island: Vec2, withMoney: boolean): Vec2 => v(island.x - (withMoney ? FailChip.shift : 0), island.y - FailChip.rise),
+
+  target: (center: Vec2): Rect => R.make(center.x - FailChip.hit / 2, center.y - FailChip.hit / 2, center.x + FailChip.hit / 2, center.y + FailChip.hit / 2),
+
+  /** `caption` (0–1) fades the failure's name in under the icon while the breather lasts. */
+  add(list: RenderList, entry: MuseumEntry, center: Vec2, o: { age: number; reduceMotion: boolean; opacity: number; caption: number; selected: boolean; isNew: boolean }): void {
+    const enter = o.reduceMotion ? Ease.clamp01(o.age / 0.2) : MenuKit.staggerSpring(o.age - 0.1, 0);
+    const alpha = Ease.clamp01(enter) * o.opacity;
+    if (alpha <= 0.001) return;
+    const radius = FailChip.size / 2;
+    const at = add(center, v(0, o.reduceMotion ? 0 : MenuKit.cardEnter(enter).rise * 0.5));
+    list.s(circle(at, radius + (o.selected ? 3 : 1.5)), 'destructive', (o.selected ? 0.9 : 0.55) * alpha);
+    MenuKit.chromePill(list, at, v(FailChip.size, FailChip.size), alpha);
+    for (const it of MuseumPage.icon(list, entry, at, 1, FailChip.size - 8)) list.items.push({ ...it, opacity: it.opacity * alpha });
+    if (o.isNew) {
+      const dot = add(at, v(radius * 0.72, -radius * 0.72));
+      list.s(circle(dot, 6.5), 'chrome', alpha);
+      list.s(circle(dot, 4.5), 'accent', alpha);
+    }
+    if (o.caption > 0.001) drawText(list, S.museum.name(entry), add(at, v(0, radius + 16)), 13, 'destructive', { opacity: o.caption * alpha, weight: 'bold', align: 'center' });
   },
 };
 

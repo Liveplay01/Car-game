@@ -59,6 +59,8 @@ export type CosmeticSource =
   | { kind: 'fund'; project: string }
   /** Earned at the casino's tables (Leo, 15.10.2026; `Casino.honours`): a first BIG WIN, a MEGA WIN, a coin streak, a fortune won. */
   | { kind: 'casino'; feat: CasinoFeat }
+  /** Earned by finding every way to lose a shift (Leo, 15.10.2026; the Museum's Failures shelf, `core/museum.ts`). */
+  | { kind: 'failures' }
   /**
    * The one honour that is luck (Leo, 01.10.2026): found in this chest with this chance per
    * opening, until it is found. On the Honours shelf, never in a chest's normal pool.
@@ -243,6 +245,8 @@ export const COSMETICS: Cosmetic[] = [
   c('megaWin', 'carSkin', 'legendary', { kind: 'casino', feat: 'megaWin' }),
   c('doubleDown', 'carSkin', 'legendary', { kind: 'casino', feat: 'flipChain' }),
   c('tycoon', 'carSkin', 'legendary', { kind: 'casino', feat: 'tycoon' }),
+  // The Museum's Failures shelf (Leo, 15.10.2026): every way to lose a shift, found. Looks only.
+  c('crashTest', 'carSkin', 'epic', { kind: 'failures' }),
   // The Classic: one Standard Chest in 500 (Leo, 01.10.2026).
   c('classic', 'vehicleType', 'legendary', { kind: 'find', chest: 'standard', chance: 0.002 }),
 ];
@@ -278,6 +282,7 @@ export const isHonour = (item: Cosmetic): boolean =>
   item.source.kind === 'auction' ||
   item.source.kind === 'fund' ||
   item.source.kind === 'casino' ||
+  item.source.kind === 'failures' ||
   item.source.kind === 'find';
 
 export const cosmetic = (id: string): Cosmetic | undefined => COSMETICS.find((x) => x.id === id);

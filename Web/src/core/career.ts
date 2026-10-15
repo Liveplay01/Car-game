@@ -1,4 +1,4 @@
-import { MUSEUM_SHELVES } from './museum';
+import { MUSEUM_SHELVES, FAIL_SKIN, museumId, failuresComplete } from './museum';
 import { baseConfig, cloneConfig, type Config, type RoadModule, type Weather, type CityEvent, type BossKind, type LegendaryRule, MODULE_MAX_LEVEL, modulePrice, moduleUpgradePrice } from './config';
 import {
   forLevel,
@@ -26,7 +26,7 @@ import {
   bossInBlackout,
   shiftCarsRange,
 } from './levels';
-import type { ShiftResult } from './events';
+import type { FailCause, ShiftResult } from './events';
 import {
   type ChestKind,
   type ChestOpening,
@@ -744,6 +744,14 @@ export const Careers = {
     c.museumSeen.push(...fresh);
     c.museumNew.push(...fresh);
     return fresh;
+  },
+
+  /** A shift was lost this way: it goes on show in the Museum. True when that filled the Failures shelf and paid its skin. */
+  noteFailure(c: Career, cause: FailCause): boolean {
+    Careers.discover(c, [museumId({ k: 'fail', kind: cause })]);
+    if (!failuresComplete(c.museumSeen) || c.collection.includes(FAIL_SKIN)) return false;
+    Careers.collect(c, FAIL_SKIN);
+    return true;
   },
 
   /** Museum entries looked at: no longer new. */

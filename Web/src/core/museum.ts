@@ -2,6 +2,7 @@ import { type Config, type BossKind, type Weather, type CityEvent, BOSS_KINDS, W
 import { type Darkness, firstBossLevel, firstLevelOf, eventLevel } from './levels';
 import type { VehicleType } from './vehicle';
 import type { World } from './world';
+import { type FailCause, FAIL_CAUSES } from './events';
 
 /**
  * The Museum (Leo, 28.09.2026): the syndicate's bosses, the special vehicles and the city's
@@ -13,8 +14,8 @@ import type { World } from './world';
  * the texts and pictures in `present/` are records over those types, so the build fails until
  * a new kind has its level, its text and its picture.
  */
-export type MuseumShelf = 0 | 1 | 2; // bosses · specials · conditions
-export const MUSEUM_SHELVES: MuseumShelf[] = [0, 1, 2];
+export type MuseumShelf = 0 | 1 | 2 | 3; // bosses · specials · conditions · failures
+export const MUSEUM_SHELVES: MuseumShelf[] = [0, 1, 2, 3];
 
 /** Traffic that is only traffic. Every other vehicle type is a special and goes in the Museum. */
 const ORDINARY = ['car', 'sportsCar', 'compact', 'van', 'classic'] as const;
@@ -56,7 +57,25 @@ export type MuseumEntry =
   | { k: 'weather'; kind: WeatherKind }
   | { k: 'dark'; kind: DarkKind }
   | { k: 'event'; kind: CityEvent }
-  | { k: 'road'; kind: RoadKind };
+  | { k: 'road'; kind: RoadKind }
+  /** A way to lose a shift (Leo, 15.10.2026): on show once it has happened to you. */
+  | { k: 'fail'; kind: FailCause };
+
+/** The level a failure can first happen on; a rule broken has no level of its own. */
+const FAIL_LEVEL: Record<FailCause, (c: Config) => number> = {
+  mergeCrash: () => 1,
+  cutOffCrash: () => 1,
+  ringCrash: () => 1,
+  policeCrash: (c) => c.policeLevel,
+  bomb: (c) => c.militaryLevel,
+  escape: (c) => c.criminalLevel,
+  bossEscape: (c) => firstBossLevel('convoy', c),
+  ruleCrash: () => 1,
+  ruleCutOff: () => 1,
+};
+
+/** The skin for a full shelf of failures. */
+export const FAIL_SKIN = 'crashTest';
 
 export const museumId = (e: MuseumEntry): string => `${e.k}.${e.kind}`;
 
@@ -73,6 +92,8 @@ export function shelfEntries(shelf: MuseumShelf): MuseumEntry[] {
         ...DARK_KINDS.map((kind): MuseumEntry => ({ k: 'dark', kind })),
         ...CITY_EVENTS.map((kind): MuseumEntry => ({ k: 'event', kind })),
       ];
+    case 3:
+      return FAIL_CAUSES.map((kind): MuseumEntry => ({ k: 'fail', kind }));
   }
 }
 
@@ -96,8 +117,13 @@ export function firstLevel(e: MuseumEntry, c: Config): number {
       return eventLevel(c, e.kind);
     case 'road':
       return c.twoLaneLevel;
+    case 'fail':
+      return FAIL_LEVEL[e.kind](c);
   }
 }
+
+/** Every way to lose a shift has happened to this career: the Failures shelf is full. */
+export const failuresComplete = (seen: readonly string[]): boolean => FAIL_CAUSES.every((kind) => seen.includes(museumId({ k: 'fail', kind })));
 
 /** A condition of a shift: the sky, the dark or a city event (the Museum's third shelf). */
 export type ConditionEntry = Extract<MuseumEntry, { k: 'weather' | 'dark' | 'event' | 'road' }>;
@@ -146,6 +172,8 @@ export function inferredSightings(
   return shelves
     .flatMap(shelfEntries)
     .filter((e) => {
+      // A failure is only ever met by failing: an old save has not earned them.
+      if (e.k === 'fail') return false;
       if (prestige > 0) return true;
       if (e.k === 'boss') return bossesBeaten.includes(e.kind) || level > firstLevel(e, c);
       if (e.k === 'special' && (e.kind === 'pickup' || e.kind === 'police')) return stats.takedowns > 0 || level > 2;

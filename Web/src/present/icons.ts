@@ -100,6 +100,15 @@ export function moneyTag(
   list.s(text(label, v(left + noteWidth + gap, position.y), size, 'leading', weight), color, opacity);
 }
 
+/** A five-point star standing upright, `radius` to its tips. */
+export function starPoints(center: Vec2, radius: number): Vec2[] {
+  return Array.from({ length: 10 }, (_, i) => {
+    const angle = -Math.PI / 2 + (i * Math.PI) / 5;
+    const r = i % 2 === 0 ? radius : radius * 0.45;
+    return v(center.x + Math.cos(angle) * r, center.y + Math.sin(angle) * r);
+  });
+}
+
 /** A flame, Mayhem's unit: an outer tongue of fire and a hot core. */
 export function flame(list: RenderList, center: Vec2, height: number, opacity = 1): void {
   const tongue = (scale: number): Vec2[] => {

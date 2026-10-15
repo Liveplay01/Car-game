@@ -94,7 +94,7 @@ function bombWentOff(w: World, now: number): void {
   w.military = { kind: 'detonated' };
   w.shift.detonated = true;
   if (!w.isScoring) return;
-  w.endShift(w.config.mayhem ? 'completed' : 'struckOut', now);
+  w.endShift(w.config.mayhem ? 'completed' : 'struckOut', now, 'bomb');
 }
 
 export const reservedMilitaryArm = (w: World): Arm | null => (w.military.kind === 'warning' ? w.military.arm : null);

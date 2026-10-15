@@ -7,11 +7,23 @@ export type MergeRating = 'clean' | 'tightFit' | 'nearMiss' | 'perfect' | 'cutOf
 /** `failed`: a trial's own rule was broken (see `Config.trialRule`). */
 export type ShiftOutcome = 'completed' | 'struckOut' | 'escaped' | 'failed';
 
+/**
+ * How a lost shift was lost (Leo, 15.10.2026): each way has its own icon on the result and its own Museum entry
+ * (the Failures shelf). `mergeCrash` your merging car hit one ahead, `cutOffCrash` one behind hit your merging car,
+ * `ringCrash` a car you sent crashed on the ring, `policeCrash` too many police crashes, `bomb` the military bomb went
+ * off, `escape` a criminal got away, `bossEscape` the syndicate's boss got away, `ruleCrash` and `ruleCutOff` a
+ * trial's or a Legendary Shift's rule was broken by a crash or by cutting a car off.
+ */
+export type FailCause = 'mergeCrash' | 'cutOffCrash' | 'ringCrash' | 'policeCrash' | 'bomb' | 'escape' | 'bossEscape' | 'ruleCrash' | 'ruleCutOff';
+export const FAIL_CAUSES: readonly FailCause[] = ['mergeCrash', 'cutOffCrash', 'ringCrash', 'policeCrash', 'bomb', 'escape', 'bossEscape', 'ruleCrash', 'ruleCutOff'];
+
 export type ExplosionKind = 'tanker' | 'bomb';
 
 /** Everything the result shows. */
 export interface ShiftResult {
   outcome: ShiftOutcome;
+  /** How a lost shift was lost; null after a win. */
+  failCause: FailCause | null;
   score: number;
   completionBonus: number;
   bestCombo: number;

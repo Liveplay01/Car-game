@@ -546,7 +546,8 @@ export class VersusMatch {
     }
     MapTheme.addIsland(list, null, w);
     this.rim.add(list, w, rm);
-    this.effects.addGround(list, w, alpha, !rm);
+    this.effects.addGround(list);
+    this.effects.addWrecks(list, w, alpha, !rm);
     SceneBuilder.addShadows(list, w, alpha);
     const lamps = {
       brake: (id: number) => this.lamps.brake(id),

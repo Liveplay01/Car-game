@@ -1,7 +1,7 @@
 import type { Strings } from '../../strings';
 import type { Words } from '../../i18n';
 import { Fmt, money } from '../../format';
-import { SPECIAL_TEXT } from '../../museumText';
+import { SPECIAL_TEXT, FAIL_TEXT } from '../../museumText';
 
 const COLORS: Record<string, string> = { purple: 'Púrpura', gold: 'Oro', blue: 'Azul', red: 'Rojo', teal: 'Turquesa', orange: 'Naranja', pink: 'Rosa', rose: 'Rosa claro' };
 const color = (name: string): string => COLORS[name] ?? name;
@@ -210,7 +210,9 @@ export default (S: Strings): Words<Strings> => ({
   },
 
   museum: {
-    shelf: (i) => ['Jefes', 'Especiales', 'Condiciones'][i],
+    shelf: (i) => ['Jefes', 'Especiales', 'Condiciones', 'Fracasos'][i],
+    lockedFailHint: 'Aún no te ha pasado. Si pierdes un turno así, aparece aquí con lo que salió mal y cómo evitarlo.',
+    failuresDone: (skin) => `Todas las formas de perder encontradas: la skin ${skin} es tuya`,
     notSeen: 'Aún no visto',
     newBadge: 'NUEVO',
     firstTime: 'Nuevo para ti',
@@ -221,7 +223,7 @@ export default (S: Strings): Words<Strings> => ({
         ? `Aparece a partir del nivel ${level}. En cuanto lo encuentres en la carretera, se mostrará aquí con toda su información.`
         : 'Sigue jugando turnos. En cuanto lo encuentres en la carretera, se mostrará aquí con toda su información.',
     lockedBossHint: (level) => `El sindicato lo envía en el nivel ${level}. Tras encontrarte con él, aparecerá aquí con la forma de atraparlo.`,
-    kind: (e) => ({ boss: 'Jefe del sindicato', special: 'Vehículo especial', weather: 'Clima', dark: 'Oscuridad', event: 'Evento urbano', road: 'Carretera' })[e.k],
+    kind: (e) => ({ boss: 'Jefe del sindicato', special: 'Vehículo especial', weather: 'Clima', dark: 'Oscuridad', event: 'Evento urbano', road: 'Carretera', fail: 'Fracaso' })[e.k],
     met: 'Encontrado, aún en libertad',
     onRing: 'En la rotonda',
     signalArrive: (arm, sweep) =>
@@ -251,6 +253,8 @@ export default (S: Strings): Words<Strings> => ({
           return S.cityEvent(e.kind);
         case 'road':
           return 'Dos carriles';
+        case 'fail':
+          return FAIL_TEXT[e.kind].name;
       }
     },
   },
