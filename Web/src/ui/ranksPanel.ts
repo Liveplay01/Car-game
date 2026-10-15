@@ -14,7 +14,6 @@ import {
   fetchBoard,
   fetchFriendsBoard,
   loadAccount,
-  renameAccount,
   syncScores,
 } from '../net/leaderboard';
 import { pendingInvite } from '../net/invite';
@@ -278,6 +277,8 @@ export function boardPanel(scope: Scope, host: BoardHost): BoardPanel {
       list.setAttribute('aria-busy', 'true');
     }
     try {
+      // Fresh on every open: a score still on its way goes up first, so your own line is never a shift behind.
+      await syncScores(host.records());
       const view = scope === 'friends' ? await fetchFriendsBoard(board) : await fetchBoard(board);
       cache.set(key, view);
       if (ticket === asked) showList(view);
@@ -319,7 +320,6 @@ let lastScope: Scope = 'all';
 
 export function ranksPanel(actions: RanksActions): HTMLElement {
   let account: Account | null = loadAccount();
-  let renaming = false;
   let scope: Scope = lastScope;
 
   const top = h('div', { class: 'board-top' });
@@ -369,33 +369,6 @@ export function ranksPanel(actions: RanksActions): HTMLElement {
       return;
     }
     const me = account;
-    if (renaming) {
-      footer.replaceChildren(
-        h('p', { class: 'section-note board-label' }, S.ranks.yourName),
-        nameForm(
-          me.name,
-          S.ranks.save,
-          async (name) => {
-            if (name === me.name) return stopRenaming();
-            try {
-              account = await renameAccount(me, name);
-              savePlayerName(account.name);
-              cache.clear();
-              stopRenaming();
-              shown().open();
-              return null;
-            } catch (error) {
-              account = loadAccount();
-              if (!account) renderTop();
-              return describeError(error);
-            }
-          },
-          () => stopRenaming(),
-        ),
-      );
-      footer.querySelector('input')?.focus();
-      return;
-    }
     const remove = h('button', { class: 'btn block destructive', type: 'button' }, S.ranks.remove);
     let armed = false;
     remove.addEventListener('click', () => {
@@ -432,23 +405,11 @@ export function ranksPanel(actions: RanksActions): HTMLElement {
         h(
           'div',
           { class: 'row' },
-          h('div', { class: 'row-main' }, h('div', { class: 'row-title' }, me.name), h('div', { class: 'row-sub' }, S.ranks.nameSub)),
-          h('button', { class: 'btn', type: 'button', onclick: () => startRenaming() }, S.ranks.change),
+          h('div', { class: 'row-main' }, h('div', { class: 'row-title' }, me.name), h('div', { class: 'row-sub' }, `${S.ranks.nameSub} ${S.account.nameWhere(`${S.settings.title} → ${S.settings.tabs.account}`)}`)),
         ),
       ),
       remove,
     );
-  }
-
-  function startRenaming(): void {
-    renaming = true;
-    renderFooter();
-  }
-
-  function stopRenaming(): null {
-    renaming = false;
-    renderFooter();
-    return null;
   }
 
   async function join(name: string): Promise<string | null> {

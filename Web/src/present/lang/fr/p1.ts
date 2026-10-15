@@ -248,6 +248,7 @@ export default (_s: Strings): Words<Strings> => ({
     settingsSync: 'Active la synchro cloud pour terminer ton joueur.',
     settingsReady: 'Classements, amis, multijoueur et synchro cloud.',
     settingsBadge: 'Nouveau',
+    nameWhere: (path) => `Modifie-le dans ${path}.`,
   },
 
   unlocks: {

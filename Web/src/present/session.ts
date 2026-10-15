@@ -674,12 +674,6 @@ export class GameSession {
         // The chest waiting first is the one picked out on the shelf.
         if (this.shopPage.section === 0 && this.save.career.chests.length > 0) this.shopPage.selectedChest = this.save.career.chests[0];
         break;
-      case 'cycleHeat':
-        this.tick();
-        Careers.cycleHeat(career, this.today, this.config);
-        this.persist();
-        this.refreshWaitingShift();
-        break;
       case 'showSocial':
         this.perform({ k: 'showTab', tab: 'social' });
         if (!this.isPage('social')) return;
@@ -989,9 +983,9 @@ export class GameSession {
       this.save.mode === 'shift' && !daily
         ? Careers.careerShift(this.save.career, seasonal, seed)
         : Careers.shiftConfig(this.save.career, this.save.mode, seasonal, seed, daily ? dailyEvent(this.today) : undefined, daily ? null : undefined, daily ? Careers.dailyMutator(this.save.career, this.today) : null);
-    // A living Daily streak, a waiting Tailwind and a chosen Heat pay more on a career shift (Mayhem pays in flames).
+    // A living Daily streak, a waiting Tailwind and the Heat pay more on a career shift (Mayhem pays in flames).
     if (this.save.mode === 'mayhem' || this.save.mode === 'chill') return base;
-    const heat = !daily && this.save.mode === 'shift' ? Careers.activeHeat(this.save.career, this.today, this.config) : 0;
+    const heat = !daily && this.save.mode === 'shift' ? Careers.maxHeat(this.save.career, this.today, this.config) : 0;
     const cfg = forHeat(base, heat);
     const bonus = (Goals.streakBonus(this.save.career, this.today, this.config) ? this.config.streakBonusPay : 0) + (Goals.tailwindOn(this.save.career, this.save.mode, daily) ? this.config.tailwindPay : 0) + heatPay(heat, this.config);
     return bonus > 0 ? Goals.forPay(cfg, bonus) : cfg;
@@ -2920,17 +2914,11 @@ export class GameSession {
     return { bottom: this.lastViewport.y - inset - 21 };
   }
 
-  /** The Game tab's Heat pill: its text while a career shift waits (behind the result too) and a Heat is open, else null. */
+  /** The Game tab's Heat pill, only a sign (Leo, 15.10.2026): its text while a career shift waits (behind the result too) at a Heat, else null. */
   get heatPill(): string | null {
-    const career = this.save.career;
     if ((this.screen.k !== 'ready' && this.screen.k !== 'result') || this.special || this.versusSelected || this.playingDaily || this.playingMode !== 'shift' || !(this.tutorial?.isOver ?? true)) return null;
-    const max = Careers.maxHeat(career, this.today, this.config);
-    return max > 0 ? S.heat.button(Careers.activeHeat(career, this.today, this.config), max) : null;
-  }
-
-  /** A Heat is switched on for the waiting career shift (the pill lights up). */
-  get heatOn(): boolean {
-    return Careers.activeHeat(this.save.career, this.today, this.config) > 0;
+    const heat = Careers.maxHeat(this.save.career, this.today, this.config);
+    return heat > 0 ? S.heat.button(heat) : null;
   }
 
   /** On the Social tab the notice is the DOM page's pill (`ui/socialPage.ts`): the drawn one would sit under the page. */
@@ -3024,7 +3012,6 @@ export class GameSession {
       playerName: this.versusSelected ? loadPlayerName() : undefined,
       daily,
       tailwind: !this.special && !this.versusSelected && Goals.tailwindOn(career, this.playingMode, this.playingDaily) ? this.config.tailwindPay : null,
-      heat: !this.special && !this.versusSelected && !this.playingDaily && this.playingMode === 'shift' ? Careers.activeHeat(career, this.today, this.config) : 0,
       mode: this.playingMode,
       versus: this.versusSelected,
       prompt: opening ? null : prompt,

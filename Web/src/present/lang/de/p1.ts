@@ -248,6 +248,7 @@ export default (_s: Strings): Words<Strings> => ({
     settingsSync: 'Schalte Cloud-Sync ein, um deinen Spieler fertigzustellen.',
     settingsReady: 'Ranglisten, Freunde, Multiplayer und Cloud-Sync.',
     settingsBadge: 'Neu',
+    nameWhere: (path) => `Ändern unter ${path}.`,
   },
 
   unlocks: {

@@ -248,6 +248,7 @@ export default (_s: Strings): Words<Strings> => ({
     settingsSync: 'Activa la sincronización para completar tu jugador.',
     settingsReady: 'Clasificaciones, amigos, multijugador y sincronización.',
     settingsBadge: 'Nuevo',
+    nameWhere: (path) => `Cámbialo en ${path}.`,
   },
 
   unlocks: {

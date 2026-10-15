@@ -461,8 +461,6 @@ export default (S: Strings): Words<Strings> => ({
     playAgain: 'Nochmal spielen',
     player: 'Spieler',
     yourName: 'Dein Name',
-    nameShort: (current) => `Dein Bestenlisten-Name braucht mindestens 3 Zeichen, du bleibst also ${current}.`,
-    nameKept: (reason, current) => `${reason} Du bleibst ${current}.`,
     fourDigit: 'Vierstelliger Code',
     join: 'Beitreten',
     intro: (max) => `Bis zu ${max} Spieler, ein Kreisverkehr, jeder eine Spur. Verursache beim Einfädeln einen Crash oder warte zu lange, und du bist raus. Der Letzte im Rennen gewinnt.`,

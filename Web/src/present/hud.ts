@@ -1161,8 +1161,20 @@ export class RingSignals {
       let thickness = isLit ? 3 : 2;
       if (isLit && i === sent - 1 && !reduceMotion) thickness *= land(sinceSent / 0.35, 0.8);
       const grow = reduceMotion ? 1 : 0.4 + 0.6 * appear;
-      RingSignals.ringArc(list, rim, thickness, center - half * grow, center + half * grow, isLit ? lit : 'marking', (isLit ? 0.85 : 0.6) * opacity * appear, cuts);
+      const hidden = RingSignals.touched(rim, thickness, center, half * grow, cuts);
+      RingSignals.ringArc(list, rim, thickness, center - half * grow, center + half * grow, isLit ? lit : 'marking', (isLit ? 0.85 : 0.6) * opacity * appear * (1 - hidden), []);
     }
+  }
+
+  /** How strongly a passing light touches the tick at `center` anywhere: the whole tick goes off by that much, never half of it (Leo, 15.10.2026). */
+  static touched(radius: number, thickness: number, center: number, halfAngle: number, cuts: readonly RingCutout[]): number {
+    let most = 0;
+    for (const cut of cuts) {
+      if (Math.abs(radius - cut.radius) > (thickness + cut.thickness) / 2 + 0.5) continue;
+      const apart = Math.abs((((cut.angle - center) % TAU) + TAU + Math.PI) % TAU - Math.PI);
+      if (apart < cut.halfAngle + halfAngle) most = Math.max(most, cut.strength);
+    }
+    return most;
   }
 }
 
@@ -1299,8 +1311,6 @@ export const ReadyBanner = {
       daily: DailyCard | null;
       /** Tailwind waits: the next shift pays this much more (0.25), shown as a pill. */
       tailwind?: number | null;
-      /** The Heat this career shift runs at (0 = off), in the same pill. */
-      heat?: number;
       mode: GameMode;
       /** The multiplayer page of the swipe: no level, no daily, a code instead. */
       versus?: boolean;
@@ -1390,7 +1400,7 @@ export const ReadyBanner = {
       TopBar.addMessage(list, frame, { ...hintView, card: hintView.card * opacity }, { time: hint.time, left: hint.left, right: hint.right, previous: hint.previous, reduceMotion: o.reduceMotion, textScale: o.textScale ?? 1 });
     }
     list.tag = undefined;
-    const pillText = run ? run.badge : o.daily ? S.daily.streakPill(o.daily.streak, o.daily.bonus, o.daily.endsIn, o.daily.freezes) : S.heat.pill(o.heat ?? 0, o.tailwind ?? null);
+    const pillText = run ? run.badge : o.daily ? S.daily.streakPill(o.daily.streak, o.daily.bonus, o.daily.endsIn, o.daily.freezes) : S.heat.pill(o.tailwind ?? null);
     if (pillText) {
       const under = v(width / 2, frame.maxY + 18);
       const lineText = pillText;

@@ -2179,10 +2179,11 @@ a.row-link {
   opacity: 0.5;
 }
 
-/* Heat on: the pill takes the flame's colour; switching it on flares the flame and sends one ring out. */
+/* Heat: a sign, not a button, in the flame's colour; as it shows the flame flares and one ring goes out. */
 .run-bar .run-btn.heat-on {
   background: #ff6a1f;
   color: var(--accent-ink);
+  cursor: default;
   animation: heat-ring 620ms var(--ease-out);
 }
 
@@ -2839,15 +2840,6 @@ a.row-link {
   .skeleton .bone {
     animation: none;
   }
-}
-
-/* Multiplayer: the note under the name field (the leaderboard kept the old name). */
-.name-note {
-  margin-top: calc(-1 * var(--s2));
-}
-
-.name-note:empty {
-  display: none;
 }
 
 /* Cloud sync and friends: a code shown large, easy to read out and to copy. */

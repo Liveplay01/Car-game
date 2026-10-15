@@ -84,8 +84,6 @@ export type ScreenAction =
   | { k: 'showShop'; section: ShopSection }
   | { k: 'showProgress'; section: ProgressSection }
   | { k: 'showSocial'; section: SocialSection }
-  /** The next Heat step of the waiting career shift, round to off (the Game tab's pill and Progress → Trials). */
-  | { k: 'cycleHeat' }
   | { k: 'selectUpgrade'; upgrade: Upgrade }
   | { k: 'buy'; upgrade: Upgrade }
   | { k: 'pickUpPart'; part: Part }

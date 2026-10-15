@@ -111,7 +111,7 @@ export class Shell {
   private readonly doneBtn: HTMLButtonElement;
   private readonly photoBtn: HTMLButtonElement;
   /** On the Game tab while a Heat is open: the next step of the waiting shift. */
-  private readonly heatBtn: HTMLButtonElement;
+  private readonly heatBtn: HTMLElement;
   private readonly heatLabel: HTMLElement;
   /** The Social tab's content: Friends, Ranks and the Club under the canvas' segments. */
   private readonly social: SocialView;
@@ -221,9 +221,10 @@ export class Shell {
     for (const b of [this.settingsBtn, this.dispatchBtn, this.doneBtn]) b.addEventListener('pointerdown', (e) => e.stopPropagation());
     // Picture is a labelled pill like Settings and the chest pill, all one size (Leo, 08.10.2026). Friends moved to the Social tab (Leo, 10.10.2026).
     this.heatLabel = h('span', {}, '');
+    // Heat is never chosen (Leo, 15.10.2026): the pill only shows it is on, and how much more the shift pays.
     this.heatBtn = h(
-      'button',
-      { class: 'btn glass run-btn', type: 'button', onclick: () => this.push({ k: 'perform', action: { k: 'cycleHeat' } }) },
+      'div',
+      { class: 'btn glass run-btn heat-on' },
       icon(ICONS.flame),
       this.heatLabel,
     );
@@ -564,7 +565,6 @@ export class Shell {
     const heat = s.heatPill;
     this.heatBtn.classList.toggle('show', onGame && heat !== null && !match);
     if (heat !== null) this.heatLabel.textContent = heat;
-    this.heatBtn.classList.toggle('heat-on', s.heatOn);
     this.photoBtn.classList.toggle('show', screen.k === 'result' && !match && s.showsChrome);
     const chests = match ? 0 : s.chestOffer;
     this.chestBtn.classList.toggle('show', chests > 0);

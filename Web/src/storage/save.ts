@@ -132,7 +132,6 @@ function readCareer(raw: unknown): Career {
     scratchCards: Math.min(int(raw.scratchCards, 0, 0), baseConfig.scratchMax),
     tailwind: raw.tailwind === true,
     tailwindDay: int(raw.tailwindDay, -1),
-    heat: int(raw.heat, 0, 0),
     heatCleared: int(raw.heatCleared, 0, 0),
     challengeDay: int(raw.challengeDay, -1),
     challengesDone: strings(raw.challengesDone),

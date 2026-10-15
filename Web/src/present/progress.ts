@@ -595,7 +595,7 @@ export const ProgressPage = {
     const every = baseConfig.scratchStreakEvery;
     const toCard = every - (days % every);
     const maxHeat = Careers.maxHeat(career, today);
-    const extra = [P.streakCard(toCard), career.streakFreezes > 0 ? S.daily.freezes(career.streakFreezes) : null, maxHeat > 0 ? S.heat.button(Careers.activeHeat(career, today), maxHeat) : null].filter((x): x is string => x !== null).join(' · ');
+    const extra = [P.streakCard(toCard), career.streakFreezes > 0 ? S.daily.freezes(career.streakFreezes) : null, maxHeat > 0 ? S.heat.button(maxHeat) : null].filter((x): x is string => x !== null).join(' · ');
     drawText(list, extra, v(r.minX + 16, r.maxY - 22), ShopPage.fitted(extra, 11, wide), 'muted', { opacity: o });
   },
 

@@ -7,7 +7,7 @@ import { VersusMatch, type MatchFeel } from '../present/versus';
 import type { SessionOutput } from '../present/session';
 import { VERSUS_MAX_PLAYERS, VERSUS_MIN_PLAYERS, BEST_OF, isJoinCode, isSeriesOver, newSeries, type Series } from '../core/versus';
 import { loadPlayerName, savePlayerName, seatToken } from '../storage/profile';
-import { describeError, loadAccount, renameAccount } from '../net/leaderboard';
+import { loadAccount } from '../net/leaderboard';
 import { S } from '../present/strings';
 
 export interface LobbyEvents {
@@ -47,8 +47,6 @@ export class VersusLobby {
   private draft = '';
   private name = loadPlayerName();
   private renameTimer = 0;
-  /** Under the name field: why the leaderboard kept the old name. */
-  private nameNote: HTMLElement | null = null;
 
   constructor(
     private readonly layer: HTMLElement,
@@ -68,8 +66,8 @@ export class VersusLobby {
   open(): void {
     if (this.body) return;
     this.error = null;
-    // The leaderboard may have set the name since the last visit; it is one name for both.
-    this.name = loadPlayerName() || (loadAccount()?.name ?? '');
+    // The player's name wins: it is one name for both, changed under Settings → Account.
+    this.name = loadAccount()?.name ?? loadPlayerName();
     this.body = h('div', { class: 'versus-sheet' });
     this.parts = null;
     this.closeSheet = openSheet(this.layer, S.lobby.title, this.body, () => {
@@ -271,7 +269,16 @@ export class VersusLobby {
     return room.isHost ? !room.offline && room.code === null : room.members.length === 0;
   }
 
+  /** With a player the name is theirs and changes only under Settings → Account (Leo, 15.10.2026); without one it is typed here. */
   private nameField(): HTMLElement {
+    const account = loadAccount();
+    if (account) {
+      return h(
+        'div',
+        { class: 'row' },
+        h('div', { class: 'row-main' }, h('div', { class: 'row-title' }, account.name), h('div', { class: 'row-sub' }, S.account.nameWhere(`${S.settings.title} → ${S.settings.tabs.account}`))),
+      );
+    }
     const input = h('input', {
       class: 'name-input',
       type: 'text',
@@ -296,59 +303,7 @@ export class VersusLobby {
         input.blur();
       }
     });
-    // Done typing: the leaderboard takes the same name.
-    input.addEventListener('change', () => void this.renameOnLeaderboard(input));
     return h('label', { class: 'row name-row' }, h('span', { class: 'row-title' }, S.lobby.yourName), input);
-  }
-
-  /** Where the name field says what the leaderboard made of it; one per view, empty until then. */
-  private nameNoteSlot(): HTMLElement {
-    this.nameNote = h('p', { class: 'field-help name-note', 'aria-live': 'polite' });
-    return this.nameNote;
-  }
-
-  /**
-   * One name for multiplayer and the leaderboard (Leo, 30.09.2026). With a leaderboard account a
-   * new name here renames it too; if the leaderboard refuses it (taken, not allowed, offline),
-   * both keep the old name and the note says why.
-   */
-  private async renameOnLeaderboard(input: HTMLInputElement): Promise<void> {
-    const account = loadAccount();
-    const note = this.nameNote;
-    if (note) {
-      note.textContent = '';
-      note.classList.remove('error');
-    }
-    if (!account || this.name === account.name) return;
-    const keep = (): void => {
-      window.clearTimeout(this.renameTimer);
-      input.value = account.name;
-      this.name = account.name;
-      savePlayerName(account.name);
-      this.room?.rename(account.name);
-    };
-    if (this.name.trim().length < 3) {
-      keep();
-      if (note) note.textContent = S.lobby.nameShort(account.name);
-      note?.classList.add('error');
-      return;
-    }
-    try {
-      const renamed = await renameAccount(account, this.name);
-      if (renamed.name !== this.name) {
-        input.value = renamed.name;
-        this.name = renamed.name;
-        savePlayerName(renamed.name);
-      }
-    } catch (error) {
-      // Signed out on the service meanwhile: the name is free to be anything again.
-      if (!loadAccount()) return;
-      keep();
-      if (note) {
-        note.textContent = S.lobby.nameKept(describeError(error), account.name);
-        note.classList.add('error');
-      }
-    }
   }
 
   private chooseView(): HTMLElement[] {
@@ -382,7 +337,6 @@ export class VersusLobby {
     const items: (HTMLElement | null)[] = [
       h('p', { class: 'section-note versus-intro' }, S.lobby.intro(VERSUS_MAX_PLAYERS)),
       h('div', { class: 'list' }, this.nameField()),
-      this.nameNoteSlot(),
       h('div', { class: 'sheet-actions' }, h('button', { class: 'btn primary block', type: 'button', onclick: () => this.host() }, icon(ICONS.people), S.lobby.host)),
       h('div', { class: 'versus-divider', 'aria-hidden': 'true' }, S.lobby.orJoin),
       h('div', { class: 'join-row' }, input, joinBtn),
@@ -409,7 +363,7 @@ export class VersusLobby {
       status: h('p', { class: 'versus-status small', role: 'status', 'aria-live': 'polite' }),
     };
     this.parts = parts;
-    return [parts.code, h('div', { class: 'list' }, this.nameField()), this.nameNoteSlot(), parts.rows, parts.format, parts.status, parts.actions];
+    return [parts.code, h('div', { class: 'list' }, this.nameField()), parts.rows, parts.format, parts.status, parts.actions];
   }
 
   /** Refreshes what changes: the code, the players, the format and the buttons. */

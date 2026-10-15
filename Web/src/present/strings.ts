@@ -291,6 +291,8 @@ export const S = {
     settingsSync: 'Turn on Cloud sync to finish your player.',
     settingsReady: 'Ranks, Friends, multiplayer and Cloud sync.',
     settingsBadge: 'New',
+    /** Where the name changes (Leo, 15.10.2026: only there); `path` is Settings → Account in the game's words. */
+    nameWhere: (path: string): string => `Change it under ${path}.`,
   },
 
   /** Systems that open with the level (`core/unlocks.ts`). */
@@ -1686,8 +1688,6 @@ export const S = {
     playAgain: 'Play again',
     player: 'Player',
     yourName: 'Your name',
-    nameShort: (current: string): string => `Your leaderboard name needs 3 or more characters, so you stay ${current}.`,
-    nameKept: (reason: string, current: string): string => `${reason} You stay ${current}.`,
     fourDigit: 'Four-digit code',
     join: 'Join',
     intro: (max: number): string => `Up to ${max} players, one roundabout, one lane each. Cause a crash while merging, or wait too long, and you are out. Last one standing wins.`,
@@ -2476,15 +2476,11 @@ export const S = {
   },
 
   heat: {
-    row: (heat: number): string => (heat > 0 ? `Heat ${heat}` : 'Heat'),
-    /** The Game tab's pill: tap for the next step. */
-    button: (heat: number, max: number): string => (heat === 0 ? 'Heat off' : max > 1 ? `Heat ${heat}` : 'Heat on'),
-    line: (heat: number, max: number): string => (heat > 0 ? `Harder traffic · +${Math.round(heat * baseConfig.heatPay * 100)} % pay · +${heat * baseConfig.eliteXpHeat} Elite XP a shift` : max > 0 ? 'Off · harder traffic for more pay and Elite XP' : `Keep a ${baseConfig.heatStreakDays}-day Daily streak to open Heat`),
-    link: (heat: number, max: number): string => `${max > 1 ? `${heat}/${max}` : heat > 0 ? 'On' : 'Off'} · change ›`,
+    /** The Game tab's pill: Heat is on, and how much more the shift pays. */
+    button: (heat: number): string => `Heat +${Math.round(heat * baseConfig.heatPay * 100)} %`,
     cleared: (heat: number): string => `HEAT ${heat} CLEARED`,
-    /** The waiting screen's pill: Heat and Tailwind together; null when neither is on. */
-    pill: (heat: number, tailwind: number | null): string | null =>
-      [tailwind ? `TAILWIND +${Math.round(tailwind * 100)} %` : null, heat > 0 ? `HEAT ${heat} · +${Math.round(heat * baseConfig.heatPay * 100)} % pay` : null].filter(Boolean).join(' · ') || null,
+    /** The waiting screen's pill: Tailwind; null when it is off (Heat has its own pill). */
+    pill: (tailwind: number | null): string | null => (tailwind ? `TAILWIND +${Math.round(tailwind * 100)} %` : null),
     rule: (level: number): string => `Clear a shift on Heat ${level}`,
   },
 

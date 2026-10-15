@@ -461,8 +461,6 @@ export default (S: Strings): Words<Strings> => ({
     playAgain: 'Jugar de nuevo',
     player: 'Jugador',
     yourName: 'Tu nombre',
-    nameShort: (current) => `Tu nombre necesita al menos 3 caracteres; seguirás llamándote ${current}.`,
-    nameKept: (reason, current) => `${reason} Seguirás siendo ${current}.`,
     fourDigit: 'Código de cuatro dígitos',
     join: 'Unirse',
     intro: (max) => `Hasta ${max} jugadores en una rotonda, cada uno en un carril. Choca al entrar o tarda demasiado y quedarás eliminado. El último en pie gana.`,

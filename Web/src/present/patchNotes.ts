@@ -56,12 +56,16 @@ export const PATCH_NOTES: PatchNote[] = [
     title: 'Failure icons, your player and casino skins',
     impact: 'major',
     summary: [
+      'Heat is always on at the highest step your Daily streak opens; a pill shows the extra pay.',
       'Lose a shift and an icon shows how. Tap it to learn what went wrong; find them all for a skin.',
-      'Casino: a leaderboard for the most won in total, and four skins only the tables give.',
       'One name is now your player: Ranks, Friends, multiplayer and Cloud sync in one step.',
       'Friends, Ranks and the Club need a player. After Level 5 the game asks for your name.',
     ],
     items: [
+      'Heat is no longer a choice: career shifts always run at the highest Heat your Daily streak opens. The Heat pill on the Game tab only shows it, with the extra pay (for example Heat +30 %), and is gone without Heat. The waiting card no longer repeats it.',
+      'Your name changes in one place now: Settings → Account → Your player. Ranks and the multiplayer lobby show it and say where to change it.',
+      'Ranks: your newest scores go up before the list loads, so your own line is never a shift behind.',
+      'Fixed: when a light runs round the ring, a car tick it touches now goes dark as a whole instead of being cut in two.',
       'Fixed: at night the ring\'s glow no longer shines over wrecks and torn-off parts; they cover it like any other car.',
       'Ways to lose: every way a shift can end badly now has its own icon (a crash while merging, a car cut off, a crash on the ring, too many police crashes, the bomb, a criminal or the boss that got away, a trial rule broken). A lost result shows it where the sentence stood, and a tap opens its sheet with what went wrong and how to avoid it. Sheets of failures wear a red rim, like the ring on a lost shift.',
       'Museum → Failures: each way you lose goes on show once it has happened to you. Find all nine and the Crash Test skin is yours (Honours shelf, looks only).',

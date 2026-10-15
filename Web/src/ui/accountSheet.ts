@@ -3,9 +3,9 @@ import { swapView, openSheet } from './sheets';
 import { nameForm, openAccount } from './ranksPanel';
 import { offerToPasswordManager } from './cloudSheet';
 import { cloudEnabled, cloudLinked, cloudView, createCloud, onCloudChange } from '../net/cloud';
-import { type Records, describeError, leaderboardEnabled, loadAccount, syncScores } from '../net/leaderboard';
+import { type Records, describeError, leaderboardEnabled, loadAccount, renameAccount, syncScores } from '../net/leaderboard';
 import { inPortal } from '../storage/device';
-import { loadPlayerName } from '../storage/profile';
+import { loadPlayerName, savePlayerName } from '../storage/profile';
 import { S } from '../present/strings';
 
 /**
@@ -48,6 +48,7 @@ export function accountSheet(layer: HTMLElement, actions: AccountActions, welcom
     problem.hidden = message === '';
   };
   let view: View = accountReady() ? 'done' : 'ask';
+  let renaming = false;
   let close: () => void = () => undefined;
 
   function show(next: View): void {
@@ -128,8 +129,38 @@ export function accountSheet(layer: HTMLElement, actions: AccountActions, welcom
     ];
   }
 
+  /** Settings → Account is the only place the name changes (Leo, 15.10.2026): the boards, friends and multiplayer follow. */
+  async function rename(name: string): Promise<string | null> {
+    const account = loadAccount();
+    if (account && name !== account.name) {
+      try {
+        savePlayerName((await renameAccount(account, name)).name);
+      } catch (error) {
+        if (loadAccount()) return describeError(error);
+      }
+    }
+    renaming = false;
+    show(accountReady() ? 'done' : 'ask');
+    return null;
+  }
+
   function done(): (HTMLElement | null)[] {
     const name = loadAccount()?.name ?? '';
+    if (renaming) {
+      return [
+        h('p', { class: 'section-note' }, S.ranks.nameSub),
+        nameForm(name, S.ranks.save, rename, () => {
+          renaming = false;
+          show('done');
+        }),
+      ];
+    }
+    const change = h('button', { class: 'btn', type: 'button' }, S.ranks.change);
+    change.addEventListener('click', () => {
+      renaming = true;
+      show('done');
+      body.querySelector('input')?.focus();
+    });
     const code = cloudView().code;
     const copy = h('button', { class: 'btn', type: 'button' }, S.cloud.copy);
     copy.addEventListener('click', () => {
@@ -150,7 +181,7 @@ export function accountSheet(layer: HTMLElement, actions: AccountActions, welcom
     });
     return [
       h('p', { class: 'section-note' }, welcome ? S.account.welcome(name) : code ? S.account.done(name) : S.account.doneLocal(name)),
-      h('div', { class: 'list' }, row(S.account.nameLabel, name)),
+      h('div', { class: 'list' }, row(S.account.nameLabel, name, change)),
       code
         ? h(
             'div',

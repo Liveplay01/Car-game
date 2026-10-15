@@ -54,7 +54,7 @@ const { pushTimers } = await load('/src/net/push.ts');
 const { dayNumber } = await load('/src/core/daily.ts');
 const { INVITE_LEVEL, INVITE_REMINDER_LEVEL } = await load('/src/core/config.ts');
 const { default: qrcode } = await import('qrcode-generator');
-const { ResultBanner } = await load('/src/present/hud.ts');
+const { ResultBanner, RingSignals } = await load('/src/present/hud.ts');
 // Every module loaded at the top level comes before the first test: a load later down the file
 // can still be pending when the tests above it have finished and `after` has closed the server.
 const { parseBackdropLink, youtubeEmbed } = await load('/src/present/backdrop.ts');
@@ -2113,7 +2113,7 @@ test('an Unlimited run just short of the next tier says how far, and only when i
   assert.equal(Goals.tierMiss(499, 600), null, 'nothing above Master');
   assert.equal(S.goals.tierMiss({ short: 1, tier: 'gold' }), '1 car short of Gold');
   assert.equal(S.goals.tierMiss({ short: 5, tier: 'bronze' }), '5 cars short of Bronze');
-  assert.equal(S.heat.pill(0, 0.25), 'TAILWIND +25 %');
+  assert.equal(S.heat.pill(0.25), 'TAILWIND +25 %');
 });
 
 test('the Unlimited skins earn a title, which shows with its rule', async () => {
@@ -2148,7 +2148,7 @@ test('Heat makes the road harder step by step and leaves Heat 0 alone', () => {
   assert.equal(heatXp(3, baseConfig), 3 * baseConfig.eliteXpHeat);
 });
 
-test('Heat is one step per 7 days of living Daily streak, cycles back to off, and a lost streak takes it away', () => {
+test('Heat is always the highest step the living Daily streak opens, one per 7 days, and a lost streak takes it away', () => {
   const day = 20000;
   const c = newCareer();
   assert.equal(Careers.maxHeat(c, day, baseConfig), 0, 'no streak, no Heat');
@@ -2157,20 +2157,13 @@ test('Heat is one step per 7 days of living Daily streak, cycles back to off, an
   assert.equal(Careers.maxHeat(c, day, baseConfig), 0);
   c.dailyStreak = 7;
   assert.equal(Careers.maxHeat(c, day, baseConfig), 1);
-  assert.equal(Careers.cycleHeat(c, day, baseConfig), 1);
-  assert.equal(Careers.cycleHeat(c, day, baseConfig), 0, 'round to off');
   c.dailyStreak = 99;
   assert.equal(Careers.maxHeat(c, day, baseConfig), baseConfig.maxHeat, 'capped');
   c.dailyStreak = 21;
-  c.heat = 6;
-  assert.equal(Careers.activeHeat(c, day, baseConfig), 3, 'never above what the streak opens');
-  assert.equal(Careers.activeHeat(c, day + 1, baseConfig), 3, 'the Daily of today is still open: the streak lives');
-  assert.equal(Careers.activeHeat(c, day + 2, baseConfig), 0, 'a missed day without a Freeze: the Heat is gone');
-  Careers.advanceStreak(c, day + 2, baseConfig);
-  assert.equal(c.heat, 0, 'a new streak starts without Heat');
-  c.dailyStreak = 7;
-  c.dailyPlayed = day + 2;
-  assert.equal(Careers.activeHeat(c, day + 2, baseConfig), 0, 'and it has to be chosen again');
+  assert.equal(Careers.maxHeat(c, day, baseConfig), 3);
+  assert.equal(Careers.maxHeat(c, day + 1, baseConfig), 3, 'the Daily of today is still open: the streak lives');
+  assert.equal(Careers.maxHeat(c, day + 2, baseConfig), 0, 'a missed day without a Freeze: the Heat is gone');
+  assert.equal(S.heat.button(3), 'Heat +30 %', 'the pill shows the pay it adds');
   assert.ok(Careers.recordHeat(c, 1, baseConfig));
   assert.ok(!Careers.recordHeat(c, 1, baseConfig), 'new only once');
 });
@@ -2210,16 +2203,15 @@ test('Heat 3, 5 and 8 earn their titles, and Heat and the Daily score survive a 
   assert.deepEqual(got, ['scorcher', 'inferno']);
   assert.equal(S.titles.rule({ k: 'heat', level: 3 }), 'Clear a shift on Heat 3');
   const save = newSave();
-  save.career.heat = 3;
   save.career.heatCleared = 4;
   save.dailyDay = 20000;
   save.dailyScore = 4321;
   fakeStorage({ 'carGame.save.v2': JSON.stringify(save) });
   const back = loadSave();
-  assert.deepEqual([back.career.heat, back.career.heatCleared, back.dailyDay, back.dailyScore], [3, 4, 20000, 4321]);
+  assert.deepEqual([back.career.heatCleared, back.dailyDay, back.dailyScore], [4, 20000, 4321]);
   fakeStorage({ 'carGame.save.v2': JSON.stringify({ career: { level: 3 } }) });
   const old = loadSave();
-  assert.deepEqual([old.career.heat, old.career.heatCleared, old.dailyDay, old.dailyScore], [0, 0, -1, 0]);
+  assert.deepEqual([old.career.heatCleared, old.dailyDay, old.dailyScore], [0, -1, 0]);
 });
 
 test('a cleared Daily Shift is kept for the Daily board, and both new boards are sent when they improve', () => {
@@ -3333,4 +3325,12 @@ test('Progress has five sections that each carry a label, and every upgrade stan
   assert.deepEqual(headings.map((h) => h.label), ['POLICE', 'MONEY', 'DRIVING']);
   const some = UPGRADES.slice(0, 3);
   assert.equal(UpgradePage.arrange({ x: 430, y: 900 }, 56, some).headings.length, 1, 'a heading with nothing under it is left out');
+});
+
+test('a light passing over a ring tick switches the whole tick off, not just the part under it', () => {
+  const head = (angle, strength = 1) => ({ angle, radius: 100, thickness: 4.5, halfAngle: 0.055, signal: 0, strength });
+  assert.equal(RingSignals.touched(100, 2, 1, 0.1, [head(1.15)]), 1, 'touching the edge is enough');
+  assert.equal(RingSignals.touched(100, 2, 1, 0.1, [head(1.16)]), 0, 'clear of it');
+  assert.equal(RingSignals.touched(100, 2, 0.02, 0.1, [head(Math.PI * 2 - 0.05, 0.4)]), 0.4, 'across the start of the ring, as strong as the light');
+  assert.equal(RingSignals.touched(130, 2, 1, 0.1, [head(1)]), 0, 'a light on another radius');
 });

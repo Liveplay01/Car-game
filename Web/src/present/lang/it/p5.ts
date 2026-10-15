@@ -461,8 +461,6 @@ export default (S: Strings): Words<Strings> => ({
     playAgain: 'Gioca ancora',
     player: 'Giocatore',
     yourName: 'Il tuo nome',
-    nameShort: (current) => `Il tuo nome deve contenere almeno 3 caratteri; rimani ${current}.`,
-    nameKept: (reason, current) => `${reason} Rimani ${current}.`,
     fourDigit: 'Codice a 4 cifre',
     join: 'Partecipa',
     intro: (max) => `Fino a ${max} giocatori su una rotatoria, ciascuno sulla propria corsia. Se provochi uno schianto o esiti troppo sei eliminato. L’ultimo a resistere vince.`,

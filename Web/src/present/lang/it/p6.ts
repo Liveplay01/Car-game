@@ -494,18 +494,9 @@ export default (S: Strings): Words<Strings> => ({
   },
 
   heat: {
-    row: (heat) => (heat > 0 ? `Intensità ${heat}` : 'Intensità'),
-    button: (heat, max) => (heat === 0 ? 'Intensità disattiva' : max > 1 ? `Intensità ${heat}` : 'Intensità attiva'),
-    line: (heat, max) =>
-      heat > 0
-        ? `Traffico più tosto · +${Math.round(heat * baseConfig.heatPay * 100)} % compenso · +${heat * baseConfig.eliteXpHeat} XP Élite per turno`
-        : max > 0
-          ? 'Disattivo · traffico intensificato per maggiori ricompense ed XP Élite'
-          : `Mantieni una serie giornaliera di ${baseConfig.heatStreakDays} giorni per aprire l’intensità`,
-    link: (heat, max) => `${max > 1 ? `${heat}/${max}` : heat > 0 ? 'Attivo' : 'Disattivo'} · modifica ›`,
+    button: (heat) => `Intensità +${Math.round(heat * baseConfig.heatPay * 100)} %`,
     cleared: (heat) => `INTENSITÀ ${heat} COMPLETATA`,
-    pill: (heat, tailwind) =>
-      [tailwind ? `VENTO A FAVORE +${Math.round(tailwind * 100)} %` : null, heat > 0 ? `INTENSITÀ ${heat} · +${Math.round(heat * baseConfig.heatPay * 100)} % compenso` : null].filter(Boolean).join(' · ') || null,
+    pill: (tailwind) => (tailwind ? `VENTO A FAVORE +${Math.round(tailwind * 100)} %` : null),
     rule: (level) => `Supera un turno a Intensità ${level}`,
   },
 

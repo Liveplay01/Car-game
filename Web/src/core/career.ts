@@ -224,8 +224,7 @@ export interface Career {
   /** Tailwind waits for the next career shift, and the day one was last given. */
   tailwind: boolean;
   tailwindDay: number;
-  /** The Heat chosen for career shifts, and the highest Heat a shift was cleared at. */
-  heat: number;
+  /** The highest Heat a shift was cleared at. */
   heatCleared: number;
   challengeDay: number;
   challengesDone: string[];
@@ -388,7 +387,6 @@ export const newCareer = (): Career => ({
   scratchCards: 0,
   tailwind: false,
   tailwindDay: -1,
-  heat: 0,
   heatCleared: 0,
   challengeDay: -1,
   challengesDone: [],
@@ -565,18 +563,11 @@ export const Careers = {
   /** The Daily streak as it stands on `day`: gone once more days were missed than Streak Freezes cover. */
   streak: (c: Career, day: number): number => (day - c.dailyPlayed - 1 <= c.streakFreezes ? c.dailyStreak : 0),
 
-  /** The highest Heat that can be chosen (Leo, 13.10.2026): one step per `heatStreakDays` days of the living Daily streak. */
+  /**
+   * The Heat career shifts run at (Leo, 13.10.2026): one step per `heatStreakDays` days of the living Daily streak.
+   * Always the highest one, never switched off (Leo, 15.10.2026).
+   */
   maxHeat: (c: Career, day: number, config: Config = baseConfig): number => Math.min(config.maxHeat, Math.floor(Careers.streak(c, day) / config.heatStreakDays)),
-
-  /** The Heat career shifts run at: the chosen one, as far as the streak reaches. */
-  activeHeat: (c: Career, day: number, config: Config = baseConfig): number => Math.min(c.heat, Careers.maxHeat(c, day, config)),
-
-  /** The next Heat, and round to off after the highest. */
-  cycleHeat(c: Career, day: number, config: Config = baseConfig): number {
-    const next = Careers.activeHeat(c, day, config) + 1;
-    c.heat = next > Careers.maxHeat(c, day, config) ? 0 : next;
-    return c.heat;
-  },
 
   /** A shift cleared at `heat` is the best so far; true when that is new. It keeps the Heat titles, whatever happens to the streak. */
   recordHeat(c: Career, heat: number, config: Config = baseConfig): boolean {
@@ -922,7 +913,6 @@ export const Careers = {
     const frozen = c.dailyStreak > 0 && missed > 0 && missed <= c.streakFreezes ? missed : 0;
     c.streakFreezes -= frozen;
     c.dailyStreak = missed === 0 || frozen > 0 ? c.dailyStreak + 1 : 1;
-    if (c.dailyStreak === 1) c.heat = 0;
     c.dailyPlayed = day;
     const earned = (c.dailyStreak === config.streakFreezeFirst || c.dailyStreak % config.streakFreezeEvery === 0) && c.streakFreezes < config.streakFreezeMax;
     if (earned) c.streakFreezes++;

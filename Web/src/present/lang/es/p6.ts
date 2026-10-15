@@ -494,18 +494,9 @@ export default (S: Strings): Words<Strings> => ({
   },
 
   heat: {
-    row: (heat) => (heat > 0 ? `Calor ${heat}` : 'Calor'),
-    button: (heat, max) => (heat === 0 ? 'Calor desactivado' : max > 1 ? `Calor ${heat}` : 'Calor activado'),
-    line: (heat, max) =>
-      heat > 0
-        ? `Tráfico más duro · +${Math.round(heat * baseConfig.heatPay * 100)} % pago · +${heat * baseConfig.eliteXpHeat} XP Élite por turno`
-        : max > 0
-          ? 'Desactivado · tráfico más duro para mayor pago y XP Élite'
-          : `Mantén una racha diaria de ${baseConfig.heatStreakDays} días para abrir el calor`,
-    link: (heat, max) => `${max > 1 ? `${heat}/${max}` : heat > 0 ? 'Activo' : 'Inactivo'} · cambiar ›`,
+    button: (heat) => `Calor +${Math.round(heat * baseConfig.heatPay * 100)} %`,
     cleared: (heat) => `¡CALOR ${heat} SUPERADO!`,
-    pill: (heat, tailwind) =>
-      [tailwind ? `VIENTO A FAVOR +${Math.round(tailwind * 100)} %` : null, heat > 0 ? `CALOR ${heat} · +${Math.round(heat * baseConfig.heatPay * 100)} % pago` : null].filter(Boolean).join(' · ') || null,
+    pill: (tailwind) => (tailwind ? `VIENTO A FAVOR +${Math.round(tailwind * 100)} %` : null),
     rule: (level) => `Supera un turno con Calor ${level}`,
   },
 

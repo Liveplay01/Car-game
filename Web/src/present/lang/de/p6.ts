@@ -494,18 +494,9 @@ export default (S: Strings): Words<Strings> => ({
   },
 
   heat: {
-    row: (heat) => (heat > 0 ? `Hitze ${heat}` : 'Hitze'),
-    button: (heat, max) => (heat === 0 ? 'Hitze aus' : max > 1 ? `Hitze ${heat}` : 'Hitze an'),
-    line: (heat, max) =>
-      heat > 0
-        ? `Härterer Verkehr · +${Math.round(heat * baseConfig.heatPay * 100)} % Bezahlung · +${heat * baseConfig.eliteXpHeat} Elite-XP pro Schicht`
-        : max > 0
-          ? 'Aus · härterer Verkehr für mehr Bezahlung und Elite-XP'
-          : `Halte eine ${baseConfig.heatStreakDays}-Tage-Serie, um Hitze zu öffnen`,
-    link: (heat, max) => `${max > 1 ? `${heat}/${max}` : heat > 0 ? 'An' : 'Aus'} · ändern ›`,
+    button: (heat) => `Hitze +${Math.round(heat * baseConfig.heatPay * 100)} %`,
     cleared: (heat) => `HITZE ${heat} GESCHAFFT`,
-    pill: (heat, tailwind) =>
-      [tailwind ? `RÜCKENWIND +${Math.round(tailwind * 100)} %` : null, heat > 0 ? `HITZE ${heat} · +${Math.round(heat * baseConfig.heatPay * 100)} % Bezahlung` : null].filter(Boolean).join(' · ') || null,
+    pill: (tailwind) => (tailwind ? `RÜCKENWIND +${Math.round(tailwind * 100)} %` : null),
     rule: (level) => `Schaffe eine Schicht bei Hitze ${level}`,
   },
 

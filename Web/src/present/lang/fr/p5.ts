@@ -461,8 +461,6 @@ export default (S: Strings): Words<Strings> => ({
     playAgain: 'Rejouer',
     player: 'Joueur',
     yourName: 'Votre nom',
-    nameShort: (current) => `Votre nom doit compter au moins 3 caractères ; vous restez ${current}.`,
-    nameKept: (reason, current) => `${reason} Vous restez ${current}.`,
     fourDigit: 'Code à 4 chiffres',
     join: 'Rejoindre',
     intro: (max) => `Jusqu’à ${max} joueurs sur un anneau, chacun sur sa voie. Provoquez un crash ou hésitez trop longtemps et vous êtes éliminé. Le dernier en piste l’emporte.`,
