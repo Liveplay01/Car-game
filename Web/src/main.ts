@@ -12,10 +12,12 @@ import { newSave } from './core/career';
 import { Elite } from './core/elite';
 import { writeSave } from './storage/save';
 import { shelfEntries, museumId } from './core/museum';
+import type { Probe } from './ui/devProbe';
 
 declare global {
   interface Window {
     __game?: Shell;
+    __probe?: Probe;
   }
 }
 
@@ -103,7 +105,10 @@ document.fonts?.addEventListener('loadingdone', forgetMeasures);
 await Promise.race([document.fonts?.load('italic 900 30px "Overpass Variable"'), new Promise((resolve) => window.setTimeout(resolve, 1500))]).catch(() => undefined);
 
 const shell = new Shell(app, canvas, layers);
-if (import.meta.env.DEV) window.__game = shell;
+if (import.meta.env.DEV) {
+  window.__game = shell;
+  (await import('./ui/devProbe')).installProbe(shell);
+}
 gameLoaded();
 // The game is on screen: the boot screen fades away, and later errors are the game's own business.
 window.removeEventListener('error', bootFailed);

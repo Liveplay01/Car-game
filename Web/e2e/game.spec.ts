@@ -1,4 +1,5 @@
 import { test, expect, type Locator, type Page } from '@playwright/test';
+import type { Probe } from '../src/ui/devProbe';
 
 /**
  * Mini checks in a real browser on a phone-sized screen (Leo, 15.10.2026): the game starts, the casino
@@ -69,6 +70,15 @@ test('the game starts on a phone without errors', async ({ page }) => {
   const { errors } = await start(page, 'level=12');
   await expect(page.locator('#scene')).toBeVisible();
   await page.waitForTimeout(2000);
+  expect(errors).toEqual([]);
+});
+
+test('the probe plays a whole shift to its result without errors', async ({ page }) => {
+  const { errors } = await start(page, 'level=3');
+  const end = await page.evaluate(() => (window as unknown as { __probe: Probe }).__probe.play('careful'));
+  expect(end.played).toBe(true);
+  expect(end.screen).toBe('result');
+  expect(end.result?.outcome).toBe('completed');
   expect(errors).toEqual([]);
 });
 

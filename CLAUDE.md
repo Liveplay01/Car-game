@@ -116,6 +116,7 @@ docker build -t car-game . ; docker run -p 5050:5050 car-game   # Container wie 
 
 ## Arbeitsweise
 
+- **Browser-Tests über die Probe (Leo, 16.10.2026):** Das Spiel wird im Dev-Server mit `window.__probe` getestet (`Web/src/ui/devProbe.ts`, Web/README.md „Checking the game without screenshots“), über Playwright `browser_evaluate` auf `http://localhost:5050/?demo&level=N` oder als `npm run e2e`-Test: `play('careful')` spielt eine Schicht in rund 0,5 s, `state()` liefert Bildschirm, Ergebnis und DOM-Text als wenige Zeilen JSON. **Screenshots und DOM-Snapshots nur für echte Optik-Fragen** (Layout, Politur, ein sichtbarer Fehler), nie, um Ablauf, Zustand oder Ergebnis zu prüfen. Fehlt der Probe etwas, das man sonst per Screenshot nachsehen müsste, die Probe erweitern statt Bilder zu machen. Balancing bleibt `npm run sim`. CLI-Anything ist für dieses Canvas-Spiel nicht geeignet.
 - Neues Spielsystem: zuerst in `Web/src/core/`, mit dem Balancing-Bot prüfen
   (`npm run sim`: der vorsichtige Bot darf nie crashen), dann darstellen
   (`present/`, `ui/`), dann im Browser spielen – auch auf einem echten Handy.

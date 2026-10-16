@@ -26,6 +26,16 @@ npm test           # node:test: replays, the careful bot, saves (old, broken, im
 `npm run sim` must show **0 crashes for the careful bot** at every level. A random
 tapper should crash in almost every shift.
 
+### Checking the game without screenshots
+
+`npm run dev` only: `window.__probe` (`src/ui/devProbe.ts`) gives the game as a few lines of text, so a browser
+check (Playwright, `npm run e2e`) does not need a picture. `state()` says where the game is (screen, level, money,
+the shift, the result, the visible text of the DOM layers), `play('careful' | 'random' | 'none', seconds)` plays
+one whole shift faster than real time (about half a second) and returns the result, `wait(seconds)` lets time pass,
+`perform(action)` does a screen action (`{ k: 'showSocial', section: 1 }`). Start with `/?demo&level=12` for a
+save to look around in. The careful bot here taps once per display frame, so it now and then crashes where
+`npm run sim` (120 Hz) does not: use `sim` for balance, the probe for "does the screen flow work".
+
 ## Controls
 
 | Input | Action |
