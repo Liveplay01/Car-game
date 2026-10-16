@@ -5,9 +5,9 @@ import { INVITE_LEVEL, INVITE_REMINDER_LEVEL } from '../../../core/config';
 /** Deutsch, Teil 1: Tutorial, Einführungen, Einstellungen, Cloud, Hinweise, Läufe. */
 export default (_s: Strings): Words<Strings> => ({
   tutorial: {
-    sendCar: 'Tippe, um dein erstes Auto loszuschicken',
-    findGap: 'Warte auf eine Lücke, dann tippe',
+    sendCar: 'Warte auf eine Lücke, dann tippe, um dein Auto loszuschicken',
     combo: 'Saubere Einfädler bauen deine Combo auf',
+    tightFit: 'Je knapper die Lücke, desto mehr Punkte',
     strikes: (cars, police) => {
       const lead = cars > 1 ? 'Dein Auto darf einmal crashen.' : 'Autos crashen sofort.';
       return police > 0 ? `${lead} Streifenwagen bekommen ${police} Chancen.` : lead;
@@ -241,7 +241,7 @@ export default (_s: Strings): Words<Strings> => ({
     codeNote: 'Öffne auf einem anderen Gerät Einstellungen → Konto → Cloud-Sync und gib diesen Code ein. Wer ihn hat, kann deinen Fortschritt laden: Behalte ihn für dich.',
     finish: 'Fertig',
     manage: 'Cloud-Sync-Einstellungen',
-    gate: 'Freunde, Ranglisten und der Club brauchen deinen Spieler: ein Name, und dein Fortschritt wird damit gesichert.',
+    gate: 'Freunde und der Club brauchen deinen Spieler: ein Name, und dein Fortschritt wird damit gesichert.',
     gateButton: 'Meinen Spieler erstellen',
     settingsNone: 'Erstelle deinen Spieler',
     settingsSub: 'Ein Name für Ranglisten, Freunde, Multiplayer und Cloud-Sync.',
@@ -257,8 +257,8 @@ export default (_s: Strings): Words<Strings> => ({
   },
 
   hints: {
-    install: { caption: 'TIPP', text: 'Installiere das Spiel in den Einstellungen: eigenes Fenster, ein Klick entfernt' },
-    homeScreen: { caption: 'TIPP', text: 'Lege das Spiel in den Einstellungen auf deinen Home-Bildschirm: ein Tipp, Vollbild' },
+    install: { caption: 'TIPP', text: 'Installiere das Spiel in den Einstellungen: dein Fortschritt bleibt sicher, ein Klick entfernt' },
+    homeScreen: { caption: 'TIPP', text: 'Lege das Spiel in den Einstellungen auf deinen Home-Bildschirm: dein Fortschritt bleibt sicher, ein Tipp entfernt' },
     reduceMotion: { caption: 'TIPP', text: 'Es ruckelt? „Bewegung reduzieren“ in den Einstellungen kann helfen' },
     notSaved: 'Dieser Browser speichert deinen Fortschritt nicht · Cloud-Sync in den Einstellungen kann eine Kopie halten',
     notSavedHere: 'Dieser Browser speichert deinen Fortschritt nicht · Er hält, bis du das Spiel schließt',

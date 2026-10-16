@@ -43,6 +43,13 @@ export type SoundID =
   | 'explosion'
   | 'detonation'
   | 'alarm'
+  /** The special vehicles' own warnings, a refused rescue and a hit on armour (samples rendered by `Web/audio-src/make_street_sounds.py`). */
+  | 'ambulance'
+  | 'wedding'
+  | 'oversize'
+  | 'learner'
+  | 'clang'
+  | 'blocked'
   /** Made in `audio/player.ts` (no sample): a Critical Merge, a Jackpot paid, and the chest reel. */
   | 'critical'
   | 'jackpot'
@@ -54,13 +61,6 @@ export type SoundID =
   | 'reelLandBig'
   /** A crash forgiven: the shield, or a police car within its limit. */
   | 'heal'
-  /** The special vehicles' own warnings, a refused rescue and a hit on armour (made in `audio/player.ts` too). */
-  | 'ambulance'
-  | 'wedding'
-  | 'oversize'
-  | 'learner'
-  | 'clang'
-  | 'blocked'
   /** The casino's own: samples rendered by `Web/audio-src/make_casino_sounds.py`. */
   | 'casinoStop'
   | 'coinClink'
@@ -77,7 +77,7 @@ export const SOUND_IDS: SoundID[] = [
   'merge', 'toll', 'tightFit', 'nearMiss', 'perfect', 'cutOff', 'comboUp', 'crashLight', 'crash', 'crashHeavy', 'rushHour',
   'shiftComplete', 'shiftFailed', 'wanted', 'takedown', 'dispatch', 'escaped', 'paid', 'secured', 'seized', 'screech', 'tow',
   'flowIn', 'go', 'swoosh', 'uiTick', 'purchase', 'build', 'denied', 'chestCharge', 'chestBurst', 'chestBurstRare',
-  'explosion', 'detonation', 'alarm',
+  'explosion', 'detonation', 'alarm', 'ambulance', 'wedding', 'oversize', 'learner', 'clang', 'blocked',
   'casinoStop', 'coinClink', 'needleTick', 'meterTick', 'coinToss', 'coinLand', 'chipsIn', 'shatter', 'shutter',
 ];
 

@@ -19,7 +19,8 @@ Off the road every state speaks one grammar (`--state-*` in `ui/shell.css`, the 
 
 - **Amber** (`accent`): what runs, grows or wants a tap. A bar filling, a lot you lead, a button, a link.
 - **Gold** (`coin`, `--money`): what is earned. Money, a goal reached, a tier passed, a lot won, a "Done ✓".
-- **Red** (`destructive`): lost, or nearly out of time.
+- **Red** (`destructive`): immediate danger, a loss, or an irreversible action. Never ambient pressure,
+  engagement urgency or a countdown that the player cannot meaningfully answer.
 - **Muted**: what waits or is open.
 
 On the road the Ring Signals keep their own colours (`FOUNDATION.md`, "Der Ring als Signalspur"); green belongs
@@ -76,8 +77,19 @@ soon feels self-evident: intuitive, fluid, no unnecessary thinking.
 ## Accessibility & Inclusion
 
 WCAG AA contrast for text, 44 px touch targets, keyboard play (Space, Enter, D, Esc),
-visible focus, a live region for results, Reduce Motion (off by default, "System" to follow the device; a slow device gets it recommended once)
-removes shake, slow-mo and flying parts.
+visible focus, a live region for results, and feedback that never depends on colour, sound or vibration alone.
+Every gameplay signal therefore has at least one other cue: shape, symbol, placement, text, animation or
+sound. This includes Ring Signals, danger states, goals and multiplayer seats.
+
+**Canvas readability:** HUD, notices and vehicle labels meet AA contrast on every map, weather state and
+camera vignette. They keep a readable scrim or outline where the scene is variable, preserve their contrast
+when Large Text is on, and never sit below a visual effect that matters to the next tap.
+
+**Motion, input and performance:** Reduce Motion defaults to **System** (and follows
+`prefers-reduced-motion`); players can explicitly choose On or Off. It removes shake, zoom, slow-mo and
+flying parts. A slow device is offered Reduce Motion once; Battery Saver may lower frame rate and visual
+detail, but never input accuracy, game speed or the information needed for the next decision. Left-handed
+controls, vehicle labels and Large Text are first-class settings, not alternate designs.
 
 ---
 
@@ -91,7 +103,9 @@ removes shake, slow-mo and flying parts.
 - **Fahrzeugtypen sind immer über Farbe, Form und Symbol erkennbar.** Damit ist
   Farbenblind-Tauglichkeit Standard und kein Extra.
 - **Schrift:** die Systemschrift (auf Apple-Geräten SF Pro). Zahlen mit gleich breiten
-  Ziffern, damit Punkte und Zähler nicht zittern.
+  Ziffern, damit Punkte und Zähler nicht zittern. **Overpass** ist ausschließlich die Display-Schrift:
+  für Titel, große Zahlen und kurze, verdiente Spielmomente. Lesetext, Einstellungen, Listen und längere
+  Erklärungen bleiben in der Systemschrift.
 - **Glas-Effekt sparsam**, nur für schwebende Bedienelemente über der Szene, nie über
   der Fahrbahn.
 - **Touch:** Die ganze Spielfläche ist Tap-Zone. Buttons haben mindestens 44 px.
@@ -125,3 +139,73 @@ gilt dasselbe. Die Bild-Spalte steckt in `Web/src/present/`, die Haptik-Spalte i
 (`prefers-reduced-motion`). Sie entfernt Shake, Zoom, Slow-Mo und fliegende Teile. Ein-
 und Ausblenden sowie Farbwechsel bleiben, weil sie Information tragen; auch die Vignette der
 Spannung bleibt (sie ist eine Blende), sie trägt dann die Spannung allein.
+
+### Kamera als Lesbarkeit, nicht als Dekoration
+
+Die Kamera verstärkt ausschließlich einen bereits klaren Spielmoment. Sie bewegt nie die Haltelinie,
+die nächste Lücke oder einen tappbaren Bereich aus dem Blick; ihr Drehpunkt bleibt daher die Haltelinie.
+Ein Impuls beginnt erst mit seinem Ereignis, ist vor dem nächsten entscheidenden Tap wieder ruhig und
+verändert weder Eingabezeit noch Simulation. In jedem Kameramoment bleiben Verkehr, HUD und die
+nächste Entscheidung lesbar. Ohne Motion werden dieselben Zustände über Ring, Vignette, Sound und
+Text vermittelt, nie nur über Zoom oder Shake.
+
+### Intensität nach Modus
+
+Alle Modi teilen dieselbe ruhige Nachtstadt, die Farbrollen und die präzise Eingabe. Sie unterscheiden
+sich nur darin, wie viel Energie ein Moment verdient:
+
+- **Shift:** die Referenz. Ruhig lesen, präzise einfädeln; Tight Fits, Combo-Stufen, Takedowns und
+  Crashes sind kurze, klar abgegrenzte Höhepunkte.
+- **Unlimited:** Spannung wächst langsam mit Dauer und Dichte, nie durch hektische UI. Marken und
+  Rekorde fühlen sich verdient an, danach kehrt das Bild sofort zur lesbaren Straße zurück.
+- **Chill:** keine Dringlichkeit. Keine Spannungs-Kamera, keine Bestrafungsfarben und kein aufdringliches
+  Erfolgsfeuerwerk; die Straße bleibt ein ruhiger Ort zum Üben.
+- **Mayhem:** Explosionen und Ketten sind hier das Ziel, dürfen aber weder die nächste Einfahrt noch den
+  Zustand der Kette verdecken. Die Action ist lokal, lesbar und nach der Kette wieder still.
+- **Multiplayer:** Spielerfarben bedeuten ausschließlich Sitz und Zugehörigkeit. Status bleibt die
+  gemeinsame Amber-/Gold-/Rot-Grammatik; Ergebnisse zeigen immer Name, Rang und Symbol zusätzlich zur
+  Farbe.
+- **Build, Progress und Shop:** ruhige Arbeitsflächen über derselben Stadt. Truhen und Casino dürfen
+  beim tatsächlichen Reveal laut sein, bleiben aber lokal, ehrlich und frei von Druck oder Animationen,
+  die zu einem weiteren Einsatz drängen.
+
+Nach jedem Höhepunkt gibt es vor der nächsten Entscheidung einen ruhigen, lesbaren Zustand.
+
+---
+
+## Systemische Konsistenz & Komponenten-Disziplin
+
+Jede DOM-Fläche baut auf denselben Bausteinen der Shell auf (`ui/shell.css`), damit Höhen, Radien und Abstände
+im ganzen Spiel gleich bleiben:
+
+- **Maße:** Touch-Ziele mindestens 44 px (`--touch-min`). Abstände nur `--s1` bis `--s7` (4, 8, 12, 16, 24, 32, 48 px),
+  Radien `--r-row` (14 px) und `--r-sheet` (24 px), dazu die Safe-Area-Tokens und die festen Pill-Maße. Ein neuer Wert
+  braucht einen gemeinsamen, wiederverwendbaren Zweck; keine Inline-Styles, keine Sondergrößen pro Screen.
+- **Tab-Bar als Dock (Leo, 16.10.2026):** eine schwebende Kapsel über der Szene, höchstens 440 px breit und mittig,
+  mit `--dock-gap` über der Safe Area. Sie streckt sich nie über einen Desktop oder ein iPad. `--tabbar-h` ist der Platz,
+  den sie beansprucht (Dock und Abstand), alles darüber richtet sich danach.
+- **Aktionen:** *Primary* in voller Akzentfarbe für die eine Hauptaktion einer Ansicht; *Secondary/Ghost* auf `surface`
+  oder `muted` für Begleitendes; *Destructive* in Rot nur für Unwiderrufliches, mit Bestätigung auf demselben Knopf
+  (siehe „Actions“).
+- **Punkte und Badges:** Ein Punkt am Tab, Segment oder Knopf heißt „hier wartet etwas auf einen Tap“ und ist Amber,
+  nie Rot (Farbrollen).
+
+---
+
+## Audio, Kamera-Motion & Technische Präzision
+
+- **Haptik-Ersatz auf iOS:** Der Browser auf iPhones kann nicht vibrieren. Dort tragen Klang und Kamera das Gefühl:
+  kurze Transienten beim Einfädeln, das Anlehnen beim Tight Fit (ohne Vibration ×1,6) und beim Critical Merge. Es gilt
+  dieselbe Regel wie oben: je häufiger das Ereignis, desto leiser die Antwort.
+- **Performance vor Dekor:** Die Spielschleife und die Eingabe stehen über jedem Effekt. DOM-Übergänge bewegen nur
+  `transform` und `opacity`. Auf schwachen Geräten bietet das Spiel einmal Reduce Motion an; der Akkusparmodus senkt
+  Bildrate und Details, nie Eingabegenauigkeit oder Spieltempo.
+- **Schichtwechsel ohne Ergebnis-Screen:** Das Ergebnis steht in der oberen Karte und in der Insel, der Ring schickt
+  einen Lichtlauf herum, der Verkehr fährt weiter. Es gibt keinen „Weiter“-Knopf: ein Tap irgendwo startet die nächste
+  Schicht (nach einer verlorenen erst nach der Fail-Pause, `ResultBanner.breath`). Was danach kommt, gleitet von selbst
+  in den Wartebildschirm (Spiel.md, „Fließender Schichtwechsel“).
+- **Die Insel bleibt frei:** Vor dem Start steht dort nur, was die nächste Schicht betrifft (Aufforderung, Bedingungen,
+  eine Neuigkeit zum Verkehr). Aufträge, Ziele und Fortschritt gehören in den Fortschritt-Tab, nicht in die Mitte.
+- **Kontrast auf jeder Karte:** HUD, Hinweise und Fahrzeugnamen behalten auf jeder Karte, bei jedem Wetter und unter der
+  Spannungs-Vignette AA-Kontrast, über eine Scrim-Fläche oder Kontur, wo die Szene wechselt (siehe „Canvas readability“).
+  `npm run e2e` prüft das über die Karten und Wetterlagen.

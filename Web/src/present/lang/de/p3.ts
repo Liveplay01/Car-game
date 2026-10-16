@@ -150,6 +150,9 @@ export default (S: Strings): Words<Strings> => ({
     tightFit: { caption: 'TIPP', text: 'Näher zahlt mehr: Fädle dicht hinter einem Auto ein für eine Knappe Lücke, doppelte Punkte' },
     swipeCaption: 'SPIELMODI',
     swipeHint: 'Wische für mehr Modi',
+    unlockedKeys: { caption: 'NEUE MODI', text: 'Drücke ← oder → für Unlimited, Mayhem, Chill und Multiplayer' },
+    tryUnlimitedKeys: { caption: 'SPIELMODI', text: 'Drücke → für Unlimited: keine Level, fahre einfach bis zum Crash' },
+    swipeHintKeys: '← → für mehr Modi',
     stage: (stage, overtime) =>
       overtime > 0
         ? `ÜBERSTUNDEN ${overtime} · mehr Verkehr, etwas schneller`

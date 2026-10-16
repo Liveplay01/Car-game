@@ -150,6 +150,9 @@ export default (S: Strings): Words<Strings> => ({
     tightFit: { caption: 'CONSEJO', text: 'Más cerca paga más: entra justo detrás de otro coche para un Hueco ajustado, puntos dobles' },
     swipeCaption: 'MODOS DE JUEGO',
     swipeHint: 'Desliza para ver más modos',
+    unlockedKeys: { caption: 'NUEVOS MODOS', text: 'Pulsa ← o → para Sin límites, Caos, Relax y Multijugador' },
+    tryUnlimitedKeys: { caption: 'MODOS DE JUEGO', text: 'Pulsa → para Sin límites: sin niveles, conduce hasta que choques' },
+    swipeHintKeys: '← → para ver más modos',
     stage: (stage, overtime) =>
       overtime > 0
         ? `HORAS EXTRA ${overtime} · más tráfico, algo más rápido`

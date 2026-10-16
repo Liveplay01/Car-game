@@ -5,9 +5,9 @@ import { INVITE_LEVEL, INVITE_REMINDER_LEVEL } from '../../../core/config';
 /** Español, Parte 1: Tutorial, Presentaciones, Ajustes, Nube, Pistas, Carreras. */
 export default (_s: Strings): Words<Strings> => ({
   tutorial: {
-    sendCar: 'Toca para enviar tu primer coche',
-    findGap: 'Espera un hueco y luego toca',
+    sendCar: 'Espera un hueco y toca para enviar tu coche',
     combo: 'Las incorporaciones limpias aumentan tu combo',
+    tightFit: 'Cuanto más justo el hueco, más puntos',
     strikes: (cars, police) => {
       const lead = cars > 1 ? 'Tu coche puede chocar una vez.' : 'Los coches chocan al instante.';
       return police > 0 ? `${lead} La policía tiene ${police} oportunidades.` : lead;
@@ -241,7 +241,7 @@ export default (_s: Strings): Words<Strings> => ({
     codeNote: 'En otro dispositivo abre Ajustes → Cuenta → Sincronización en la nube y escribe este código. Quien lo tenga puede cargar tu progreso: no lo compartas.',
     finish: 'Listo',
     manage: 'Ajustes de sincronización',
-    gate: 'Amigos, Clasificaciones y el Club necesitan tu jugador: un nombre, y tu progreso guardado con él.',
+    gate: 'Amigos y el Club necesitan tu jugador: un nombre, y tu progreso guardado con él.',
     gateButton: 'Crear mi jugador',
     settingsNone: 'Crea tu jugador',
     settingsSub: 'Un nombre para clasificaciones, amigos, multijugador y sincronización.',
@@ -257,8 +257,8 @@ export default (_s: Strings): Words<Strings> => ({
   },
 
   hints: {
-    install: { caption: 'CONSEJO', text: 'Instala el juego desde Ajustes: ventana propia, a un clic de distancia' },
-    homeScreen: { caption: 'CONSEJO', text: 'Añade el juego a tu pantalla de inicio desde Ajustes: un toque, pantalla completa' },
+    install: { caption: 'CONSEJO', text: 'Instala el juego desde Ajustes: tu progreso queda a salvo, a un clic' },
+    homeScreen: { caption: 'CONSEJO', text: 'Añade el juego a tu pantalla de inicio desde Ajustes: tu progreso queda a salvo, a un toque' },
     reduceMotion: { caption: 'CONSEJO', text: '¿Va a tirones? «Reducir movimiento» en Ajustes puede ayudar' },
     notSaved: 'Este navegador no guarda tu progreso · La sincronización en la nube en Ajustes puede mantener una copia',
     notSavedHere: 'Este navegador no guarda tu progreso · Se mantendrá hasta que cierres el juego',

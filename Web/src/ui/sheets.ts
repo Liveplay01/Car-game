@@ -477,6 +477,8 @@ export interface SettingsActions {
   /** The patch notes; `notesUnread` lights the row until they are opened. */
   openNotes(): void;
   notesUnread: boolean;
+  /** Police are on this career's road: the dispatch button's size has something to size. */
+  dispatch: boolean;
   /** Privacy Policy, Imprint or the open-source licenses, over the settings. */
   openLegal(page: LegalId | 'licenses'): void;
   /** Delete account: a drawer over the settings explains what goes and asks once more. */
@@ -807,10 +809,12 @@ export function settingsSheet(layer: HTMLElement, s: Settings, actions: Settings
           motionSeg,
         ),
         switchRow(S.settings.leftHanded, S.settings.leftHandedSub, s.leftHanded, toggle('leftHanded')),
-        sliderRow(S.settings.dispatchSize, S.settings.dispatchSizeSub, s.dispatchSize, (size) => {
-          s.dispatchSize = size;
-          actions.changed(s);
-        }),
+        actions.dispatch
+          ? sliderRow(S.settings.dispatchSize, S.settings.dispatchSizeSub, s.dispatchSize, (size) => {
+              s.dispatchSize = size;
+              actions.changed(s);
+            })
+          : null,
         switchRow(S.settings.vehicleLabels, S.settings.vehicleLabelsSub, s.vehicleLabels, toggle('vehicleLabels')),
         switchRow(S.settings.haptics, hasVibration ? null : S.settings.hapticsNone, s.haptics, toggle('haptics')),
         switchRow(S.settings.batterySaver, S.settings.batterySaverSub, s.batterySaver, toggle('batterySaver')),

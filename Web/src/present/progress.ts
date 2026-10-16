@@ -25,7 +25,7 @@ import { TourArt, TOUR_TINT } from './tourArt';
 import { PROGRESS, type ProgressSection } from './flow';
 import { MuseumPage, MuseumState } from './museum';
 import { Scroller, clipTo } from './scroll';
-import { type TourId, type TourDef, TOURS, tourOn, nextTour, tourOpen, tourStopsDone, stopDoneKey, TOUR_LEVEL } from '../core/tours';
+import { type TourId, type TourDef, TOURS, tourOn, nextTour, tourOpen, tourStopsDone, stopDoneKey } from '../core/tours';
 import { FAMILIES, Achievements, achievementTotal, type Family } from '../core/achievements';
 import { seasonOf } from '../core/loot';
 import { News } from './news';
@@ -97,7 +97,7 @@ type Block =
   | { k: 'rush' }
   | { k: 'rushLocked' }
   | { k: 'tour' }
-  | { k: 'tourInfo'; tour: TourId; title: string; line: string; locked: boolean }
+  | { k: 'tourInfo'; tour: TourId; title: string; line: string }
   | { k: 'season' }
   | { k: 'ach'; family: Family }
   | { k: 'mastery'; goal: MasteryGoal }
@@ -167,7 +167,7 @@ export const ProgressPage = {
   passHeight: 128,
   /** The running tour's card: a picture tile of its sky and top skin, the stops and the way in. */
   tourHeight: 120,
-  /** A tour that has not started, or is still locked: the same picture, smaller, and one line. */
+  /** A tour that has not started: the same picture, smaller, and one line. */
   tourInfoHeight: 88,
   /** Records: this many stats as big tiles, the rest in a list that folds away. */
   highlights: 6,
@@ -246,9 +246,10 @@ export const ProgressPage = {
         s.row({ k: 'daily' }, 64);
         s.row({ k: 'streak' }, ProgressPage.streakHeight);
       }
-      s.row({ k: 'weekly' }, 64);
-      ProgressPage.tourRows(s, career, today);
-      const quests = challengesOf(today);
+      // The weekly shift is a level-20 trial and the tours open at their level: a new player does not see them yet.
+      if (Unlocks.isKnown(career, 'trials') || career.weeklyDone >= 0) s.row({ k: 'weekly' }, 64);
+      if (tourOpen(career)) ProgressPage.tourRows(s, today);
+      const quests = challengesOf(today, Careers.reach(career));
       const done = quests.filter((q) => Careers.isChallengeDone(career, q, today)).length;
       s.heading(S.progress.quests, `${done}/${quests.length}`, done === quests.length);
       for (const challenge of quests) s.row({ k: 'quest', challenge }, 56);
@@ -312,14 +313,13 @@ export const ProgressPage = {
     return s;
   },
 
-  /** The tour of the day, or when the next one comes; locked until the Trials open. */
-  tourRows(s: Stack, career: Career, today: number): void {
+  /** The tour of the day, or when the next one comes (only once the tours are open). */
+  tourRows(s: Stack, today: number): void {
     const run = tourOn(today);
-    if (run && !tourOpen(career)) s.row({ k: 'tourInfo', tour: run.tour.id, title: S.tours.name(run.tour.id), line: S.tours.locked(TOUR_LEVEL), locked: true }, ProgressPage.tourInfoHeight);
-    else if (run) s.row({ k: 'tour' }, ProgressPage.tourHeight);
+    if (run) s.row({ k: 'tour' }, ProgressPage.tourHeight);
     else {
       const next = nextTour(today);
-      if (next && next.inDays <= 60) s.row({ k: 'tourInfo', tour: next.tour.id, title: S.tours.name(next.tour.id), line: S.tours.startsIn(next.inDays), locked: false }, ProgressPage.tourInfoHeight);
+      if (next && next.inDays <= 60) s.row({ k: 'tourInfo', tour: next.tour.id, title: S.tours.name(next.tour.id), line: S.tours.startsIn(next.inDays) }, ProgressPage.tourInfoHeight);
     }
   },
 
@@ -753,13 +753,13 @@ export const ProgressPage = {
   /** The tour's top skin: what its last stop pays. */
   tourSkin: (tour: TourDef) => cosmetic(tour.stops[tour.stops.length - 1].reward.item ?? ''),
 
-  /** A tour that has not started (or is locked for this level yet): its picture with the name and when it comes. */
+  /** A tour that has not started: its picture with the name and when it comes. */
   addTourInfo(list: RenderList, r: Rect, b: Extract<Block, { k: 'tourInfo' }>, clock: number, reduceMotion: boolean, o: number): void {
     ProgressPage.panel(list, r, o);
     const side = R.height(r) - 24;
     const tile = R.make(r.minX + 12, r.minY + 12, r.minX + 12 + side, r.maxY - 12);
     const def = TOURS.find((x) => x.id === b.tour);
-    TourArt.add(list, tile, b.tour, def && ProgressPage.tourSkin(def), clock, reduceMotion, o * (b.locked ? 0.55 : 1));
+    TourArt.add(list, tile, b.tour, def && ProgressPage.tourSkin(def), clock, reduceMotion, o);
     ProgressPage.addCardRow(list, r, tile.maxX + 14, o, { title: b.title, line: b.line, dim: true });
   },
 

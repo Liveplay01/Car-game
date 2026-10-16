@@ -40,6 +40,9 @@ export const inPlayStore = ((): boolean => {
 })();
 
 /** iPhone or iPad (iPadOS says it is a Mac, but has touch). */
+/** A screen played by touch (a phone, a tablet): it swipes; one with a mouse and keys uses the arrow keys. */
+export const touchFirst = typeof matchMedia !== 'function' || matchMedia('(pointer: coarse)').matches;
+
 export const isIos = (): boolean =>
   /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 

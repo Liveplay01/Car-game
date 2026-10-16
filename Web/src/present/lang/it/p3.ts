@@ -150,6 +150,9 @@ export default (S: Strings): Words<Strings> => ({
     tightFit: { caption: 'SUGGERIMENTO', text: 'Più vicino paga di più: infilati subito dietro a un’auto per uno Spazio stretto a punti raddoppiati' },
     swipeCaption: 'MODALITÀ DI GIOCO',
     swipeHint: 'Scorri per vedere altre modalità',
+    unlockedKeys: { caption: 'NUOVE MODALITÀ', text: 'Premi ← o → per Senza limiti, Caos, Relax e Multigiocatore' },
+    tryUnlimitedKeys: { caption: 'MODALITÀ DI GIOCO', text: 'Premi → per Senza limiti: niente livelli, guida fino allo schianto' },
+    swipeHintKeys: '← → per vedere altre modalità',
     stage: (stage, overtime) =>
       overtime > 0
         ? `STRAORDINARI ${overtime} · più traffico, ritmo accelerato`

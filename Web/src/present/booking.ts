@@ -11,6 +11,7 @@ import { Mafia } from '../core/mafia';
 import { Achievements } from '../core/achievements';
 import { S, Fmt } from './strings';
 import type { Tip } from './notices';
+import { touchFirst } from '../storage/device';
 
 /** What a finished career shift needs to know besides its result. */
 export interface ShiftContext {
@@ -114,11 +115,11 @@ export function bookShift(save: SaveGame, result: ShiftResult, ctx: ShiftContext
   // The first lost shift after the first one: Unlimited is a swipe away, without levels (the swipe hint shows from now on).
   if (ctx.mode === 'shift' && !ctx.daily && result.outcome !== 'completed' && save.shiftsPlayed >= 2 && !save.hints.includes('modes') && !save.hints.includes('unlimitedTip')) {
     save.hints.push('unlimitedTip');
-    tips.push(S.modes.tryUnlimited);
+    tips.push(touchFirst ? S.modes.tryUnlimited : S.modes.tryUnlimitedKeys);
   }
   // Level 5 cleared: the other modes are a swipe away (the waiting screen keeps a hint until the first swipe).
   const cap = ctx.config.modeHintAfterLevel;
-  if (ctx.mode === 'shift' && !save.hints.includes('modes') && ctx.level <= cap && career.level > cap) tips.push(S.modes.unlocked);
+  if (ctx.mode === 'shift' && !save.hints.includes('modes') && ctx.level <= cap && career.level > cap) tips.push(touchFirst ? S.modes.unlocked : S.modes.unlockedKeys);
   // What this shift opened says nothing here: the place gets a dot and introduces itself (`Intros`).
   const after = { install: ctx.config.installHintAfterLevel, backup: ctx.config.backupHintAfterLevel, portalLogin: ctx.config.portalLoginAfterLevel };
   const due: Hint[] = (['install', 'backup', 'portalLogin'] as const).filter((h) => !save.hints.includes(h) && career.level > after[h]);

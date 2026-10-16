@@ -501,10 +501,6 @@ export default (S: Strings): Words<Strings> => ({
 
   goals: {
     tierMiss: (m) => `${m.short} ${m.short === 1 ? 'Auto' : 'Autos'} bis ${S.modes.tier(m.tier)}`,
-    next(g) {
-      if (g.k === 'challenge') return `Heute · ${S.daily.challenge(g.challenge)} · +${money(String(g.reward))}`;
-      return `${S.mastery.name(g.goal)} · ${g.have}/${g.need}`;
-    },
     money: (short, upgrade) => `${money(short)} bis ${S.upgrades.name(upgrade)}`,
     nearMiss(n) {
       switch (n.k) {
@@ -550,6 +546,7 @@ export default (S: Strings): Words<Strings> => ({
     escaped: 'ENTKOMMEN',
     levelComplete: (l) => `LEVEL ${l} GESCHAFFT`,
     newBest: 'NEUER REKORD',
+    points: (n) => `${n} Punkte`,
     fullCoverage: 'VOLL VERSICHERT',
     loss: (amount, escaped) => (escaped ? 'VERLUST ' : 'CRASHKOSTEN ') + '−' + money(amount),
     covered: (amount) => `VOLL VERSICHERT · ${money(amount)} von der Versicherung gezahlt`,
@@ -570,6 +567,7 @@ export default (S: Strings): Words<Strings> => ({
 
   hud: {
     moneyLabel: 'GELD',
+    scoreLabel: 'PUNKTE',
     rushHour: 'STOSSZEIT',
     tight: 'KNAPP!',
     cutOff: 'GESCHNITTEN',

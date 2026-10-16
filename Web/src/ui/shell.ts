@@ -1,5 +1,5 @@
 import './shell.css';
-import { v } from '../core/vec2';
+import { v, clamp } from '../core/vec2';
 import { GameSession, type InputAction, type SessionOutput } from '../present/session';
 import { CanvasDrawer } from '../present/draw';
 import { SWIPE_MODES, TAB_BAR, barTab, screenTab, type Tab } from '../present/flow';
@@ -19,7 +19,7 @@ import { PhotoView } from './photo';
 import { celebrate, invitedRoom, offerLogin, onAdAudio, reportGameplay, reportProgress, rewardedAd, rewardedAdsReady } from './crazygames';
 import { adReady, onRewardedAudio, rewardedAdsense } from './ads';
 import { track } from './analytics';
-import { inItch, inPlayStore, inPortal, isInstalled, isIos, isIpad, keepStorage, renewStorage } from '../storage/device';
+import { inItch, inPlayStore, inPortal, isInstalled, isIos, isIpad, keepStorage, renewStorage, touchFirst } from '../storage/device';
 import type { Hint } from '../core/career';
 import { decodeChallenge, type ChallengeSpec } from '../core/challenge';
 import { knownShortLink, shortLink } from '../net/challengeLink';
@@ -43,13 +43,15 @@ import { BackdropLayer, backdropSheet } from './backdrop';
 import { loadBackdrop, saveBackdrop } from '../storage/backdrop';
 import { BIG_SCREEN } from '../core/loot';
 import { Careers } from '../core/career';
+import { baseConfig } from '../core/config';
 
 interface InstallPromptEvent extends Event {
   prompt(): Promise<void>;
   userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>;
 }
 
-const TAB_HEIGHT = 56;
+/** The room the floating dock claims above the safe area (`--tabbar-h`). */
+const TAB_HEIGHT = 64;
 /** The photo's scene in points (drawn at twice the pixels): the square on the print. */
 const PHOTO_SCENE = v(492, 492);
 
@@ -97,6 +99,13 @@ export class Shell {
   private tabIndicator: HTMLElement | null = null;
   /** The last tab change came from the keyboard: the indicator jumps, it does not glide. */
   private keyboardNav = false;
+  /** A press held on the dock moves the selection pill (`holdDock`): the session's tab does not place it meanwhile. */
+  private scrubbing = false;
+  private suppressClick = false;
+  /** The tab the pill belongs under, as the session last said. */
+  private shownTabIndex = -1;
+  /** The canvas' motion blur now (`GameSession.motionBlur`). */
+  private blur = 0;
   /** Focus moved with Tab since the last pointer press: a focused button then keeps Space and Enter. */
   private focusByKeyboard = false;
   private readonly settingsBtn: HTMLButtonElement;
@@ -107,6 +116,9 @@ export class Shell {
   private flashTimer = 0;
   private readonly dispatchBtn: HTMLButtonElement;
   private readonly dispatchCount: HTMLSpanElement;
+  /** The first shifts on a touch screen: tap anywhere, beside the arm; and over the dispatch button, that it can change sides. */
+  private readonly tapHint = h('div', { class: 'tap-hint', 'aria-hidden': 'true' }, h('span', { class: 'tap-hint-icon' }, h('span', { class: 'tap-hint-ring' }), icon(ICONS.tap)), h('span', { class: 'tap-hint-text' }, h('b', {}, S.shell.tapAnywhere), h('span', {}, S.shell.tapAnywhereSub)));
+  private readonly dispatchHint = h('div', { class: 'dispatch-hint', 'aria-hidden': 'true' }, S.shell.dispatchSide);
   /** Chill has no end of its own: this ends the drive. */
   private readonly doneBtn: HTMLButtonElement;
   private readonly photoBtn: HTMLButtonElement;
@@ -162,7 +174,7 @@ export class Shell {
 
   constructor(
     private readonly app: HTMLElement,
-    canvas: HTMLCanvasElement,
+    private readonly canvas: HTMLCanvasElement,
     private readonly layers: HTMLElement,
   ) {
     this.drawer = new CanvasDrawer(canvas);
@@ -286,7 +298,7 @@ export class Shell {
     if (import.meta.env.DEV) installMafiaDebug(s);
     this.social = new SocialView(app, {
       friends: () => ({ records: () => s.leaderboardRecords, playTogether: () => this.openLobby(), challenge: s.shareable !== null ? () => this.share() : null }),
-      ranks: () => ({ records: () => s.leaderboardRecords }),
+      ranks: () => ({ records: () => s.leaderboardRecords, createPlayer: () => this.openAccountSheet() }),
       club: () => this.clubHost(),
       clubOpen: () => SocialPage.clubOpen(s.save.career),
       mafia: () => this.mafiaHost(),
@@ -353,7 +365,7 @@ export class Shell {
     );
     this.reactBar = h('div', { class: 'react-bar', role: 'group', 'aria-label': S.shell.reactions }, ...reactButtons, this.revengeBtn);
     for (const b of [this.settingsBtn, this.dispatchBtn, this.doneBtn, this.heatBtn, this.photoBtn, this.chestBtn, this.leaveBtn, this.againBtn, this.lobbyBtn, quitBtn, this.reactBar]) b.addEventListener('pointerdown', (e) => e.stopPropagation());
-    app.append(this.settingsBtn, this.dispatchBtn, this.doneBtn, runBar, this.reactBar, this.versusBar);
+    app.append(this.settingsBtn, this.dispatchBtn, this.doneBtn, runBar, this.reactBar, this.versusBar, this.tapHint, this.dispatchHint);
     this.detail = new DetailSheet(
       app,
       (action) => {
@@ -487,10 +499,154 @@ export class Shell {
 
   // MARK: Chrome
 
+  /**
+   * The dock is drawn to the pointer like a magnet (Leo, 16.10.2026): a mouse pulls it from a little way off and more as it
+   * comes closer, a finger held on it pulls it the same way. A damped spring follows, so it leans and stretches a little
+   * like pulled gum and settles back when the pointer goes. Only while the spring moves does a frame run.
+   */
+  private magnetDock(nav: HTMLElement): { pull(x: number, y: number): void; release(): void } {
+    const reach = 90;
+    const stiffness = 120;
+    const damping = 18;
+    const at = { x: 0, y: 0 };
+    const speed = { x: 0, y: 0 };
+    let goal = { x: 0, y: 0 };
+    let frame = 0;
+    let last = 0;
+    const step = (now: number): void => {
+      const dt = Math.min(0.032, (now - last) / 1000 || 0.016);
+      last = now;
+      for (const k of ['x', 'y'] as const) {
+        speed[k] += ((goal[k] - at[k]) * stiffness - speed[k] * damping) * dt;
+        at[k] += speed[k] * dt;
+      }
+      nav.style.setProperty('--pull-x', `${at.x.toFixed(2)}px`);
+      nav.style.setProperty('--pull-y', `${at.y.toFixed(2)}px`);
+      nav.style.setProperty('--pull-s', (1 + Math.abs(at.x) * 0.0025).toFixed(4));
+      const resting = Math.abs(goal.x - at.x) + Math.abs(goal.y - at.y) < 0.05 && Math.abs(speed.x) + Math.abs(speed.y) < 0.05;
+      frame = resting ? 0 : requestAnimationFrame(step);
+    };
+    const run = (): void => {
+      if (frame) return;
+      last = performance.now();
+      frame = requestAnimationFrame(step);
+    };
+    const pull = (x: number, y: number): void => {
+      if (this.app.classList.contains('reduce-motion') || this.app.dataset.tabbar === 'hidden') goal = { x: 0, y: 0 };
+      else {
+        const r = nav.getBoundingClientRect();
+        const cx = r.left + r.width / 2 - at.x;
+        const cy = r.top + r.height / 2 - at.y;
+        // How far outside the dock the pointer is: 0 on it, `reach` and more is out of its field.
+        const out = Math.hypot(Math.max(0, Math.abs(x - cx) - r.width / 2), Math.max(0, Math.abs(y - cy) - r.height / 2));
+        const t = Math.max(0, 1 - out / reach);
+        const strength = t * t * (3 - 2 * t);
+        goal = { x: clamp(((x - cx) / (r.width / 2)) * 10, -10, 10) * strength, y: clamp(((y - cy) / (r.height / 2)) * 4, -5, 4) * strength };
+      }
+      run();
+    };
+    const release = (): void => {
+      goal = { x: 0, y: 0 };
+      run();
+    };
+    if (window.matchMedia('(hover: hover) and (pointer: fine)').matches) {
+      window.addEventListener('pointermove', (e) => {
+        if (e.pointerType === 'mouse') pull(e.clientX, e.clientY);
+      });
+      document.documentElement.addEventListener('pointerleave', release);
+    }
+    return { pull, release };
+  }
+
+  /**
+   * Press and hold on the dock (Leo, 16.10.2026), like the iOS tab bar: the selection pill lifts and follows the finger or
+   * the cursor from tab to tab, and letting go opens the tab it rests on. A finger held on the dock pulls it like the
+   * hovering mouse does. A quick tap stays a plain tap.
+   */
+  private holdDock(nav: HTMLElement, magnet: { pull(x: number, y: number): void; release(): void }): void {
+    const holdDelay = 220;
+    let held: { id: number; timer: number; startX: number; scrub: boolean; x: number } | null = null;
+    const pill = (): HTMLElement | null => this.tabIndicator;
+    const columnOf = (x: number): { index: number; offset: number } => {
+      const r = nav.getBoundingClientRect();
+      const inset = 4;
+      const width = (r.width - 2 * inset) / TAB_BAR.length;
+      const offset = clamp(x - r.left - inset - width / 2, 0, width * (TAB_BAR.length - 1));
+      return { index: clamp(Math.round(offset / width), 0, TAB_BAR.length - 1), offset };
+    };
+    const scrubTo = (x: number): void => {
+      const el = pill();
+      if (!el) return;
+      el.style.transform = `translateX(${columnOf(x).offset.toFixed(1)}px)`;
+    };
+    const begin = (): void => {
+      if (!held || held.scrub) return;
+      held.scrub = true;
+      this.scrubbing = true;
+      // Captured only now: a quick tap must still end on its own tab button.
+      if (nav.hasPointerCapture?.(held.id) === false) {
+        try {
+          nav.setPointerCapture(held.id);
+        } catch {
+          // The pointer is already gone: the release that follows ends the hold.
+        }
+      }
+      pill()?.classList.add('scrub');
+      pill()?.removeAttribute('hidden');
+      scrubTo(held.x);
+    };
+    const end = (open: boolean): void => {
+      if (!held) return;
+      window.clearTimeout(held.timer);
+      const { scrub, x } = held;
+      held = null;
+      magnet.release();
+      if (!scrub) return;
+      this.scrubbing = false;
+      pill()?.classList.remove('scrub');
+      // The pill glides onto the column it was let go over, and that tab opens; the click that follows is the hold's own.
+      const index = columnOf(x).index;
+      this.suppressClick = true;
+      window.setTimeout(() => (this.suppressClick = false), 0);
+      if (open) this.push({ k: 'selectTab', tab: TAB_BAR[index] });
+      this.moveTabIndicator(open ? index : this.shownTabIndex);
+    };
+    nav.addEventListener('pointerdown', (e) => {
+      if (held) return;
+      held = { id: e.pointerId, timer: window.setTimeout(begin, holdDelay), startX: e.clientX, scrub: false, x: e.clientX };
+      if (e.pointerType !== 'mouse') magnet.pull(e.clientX, e.clientY);
+    });
+    nav.addEventListener('pointermove', (e) => {
+      if (!held || e.pointerId !== held.id) return;
+      held.x = e.clientX;
+      if (e.pointerType !== 'mouse') magnet.pull(e.clientX, e.clientY);
+      // Sliding along the dock is a hold at once: the pill follows from the first move.
+      if (!held.scrub && Math.abs(e.clientX - held.startX) > 10) begin();
+      if (held.scrub) scrubTo(e.clientX);
+    });
+    nav.addEventListener('pointerup', (e) => {
+      if (held && e.pointerId === held.id) end(true);
+    });
+    nav.addEventListener('pointercancel', () => end(false));
+    nav.addEventListener('lostpointercapture', () => end(true));
+    // The click a scrub ends with is not a tap on the tab under it.
+    nav.addEventListener(
+      'click',
+      (e) => {
+        if (!this.suppressClick) return;
+        e.stopPropagation();
+        e.preventDefault();
+      },
+      true,
+    );
+  }
+
   private buildTabbar(nav: HTMLElement): void {
+    const magnet = this.magnetDock(nav);
     // One pill that glides under the selected tab (iOS 26 tab bar), drawn behind the buttons.
     this.tabIndicator = h('span', { class: 'tab-indicator', 'aria-hidden': 'true' });
     nav.append(this.tabIndicator);
+    this.holdDock(nav, magnet);
     for (const tab of TAB_BAR) {
       const badge = h('span', { class: 'badge-dot', hidden: true });
       const button = h(
@@ -545,7 +701,8 @@ export class Shell {
     this.revengeBtn.classList.toggle('show', watching && match.canRevenge);
     this.app.dataset.tabbar = s.showsChrome && !match ? 'shown' : 'hidden';
     this.app.dataset.screen = screen.k;
-    this.moveTabIndicator(TAB_BAR.indexOf(selected));
+    this.shownTabIndex = TAB_BAR.indexOf(selected);
+    if (!this.scrubbing) this.moveTabIndicator(this.shownTabIndex);
     for (const [tab, { button, badge: el }] of this.tabs) {
       if (tab === selected) button.setAttribute('aria-current', 'page');
       else button.removeAttribute('aria-current');
@@ -564,12 +721,16 @@ export class Shell {
     const dispatches = s.world.dispatchesLeft;
     this.dispatchCount.textContent = String(dispatches);
     this.dispatchBtn.classList.toggle('spent', dispatches === 0);
-    this.dispatchBtn.setAttribute('aria-label', `Emergency dispatch: the next car becomes a police car, ${dispatches} left this shift`);
+    this.dispatchBtn.setAttribute('aria-label', S.shell.dispatchLeft(dispatches));
+    // Only while the game is new to the player, and only where a thumb plays.
+    const fresh = touchFirst && !match && s.special === null && s.save.shiftsPlayed < GameSession.tapHintShifts;
+    this.tapHint.classList.toggle('show', fresh && screen.k === 'playing');
+    this.dispatchHint.classList.toggle('show', touchFirst && !match && screen.k === 'playing' && !chill && s.world.config.dispatchLimit > 0 && s.save.career.level <= baseConfig.policeLevel + 1);
     this.doneBtn.classList.toggle('show', screen.k === 'playing' && chill);
     const heat = s.heatPill;
     this.heatBtn.classList.toggle('show', onGame && heat !== null && !match);
     if (heat !== null) this.heatLabel.textContent = heat;
-    this.photoBtn.classList.toggle('show', screen.k === 'result' && !match && s.showsChrome);
+    this.photoBtn.classList.toggle('show', screen.k === 'result' && !match && s.showsChrome && s.resultWorthPicture);
     const chests = match ? 0 : s.chestOffer;
     this.chestBtn.classList.toggle('show', chests > 0);
     this.chestLabel.textContent = S.run.openChest(chests);
@@ -989,6 +1150,7 @@ export class Shell {
         this.resize();
       },
       notesUnread: s.notesUnread,
+      dispatch: Careers.reach(s.save.career) >= baseConfig.policeLevel,
       // The notes open over the settings; closing them brings the settings back.
       openNotes: () => {
         this.pageOpen = true;
@@ -1330,6 +1492,12 @@ export class Shell {
     s.backdrop = this.backdrop.ready;
     // A multiplayer match owns the canvas; the career world waits where it was.
     const list = match ? match.frame(delta, this.size, s.reduceMotion) : s.frame(delta, actions, this.size, TAB_HEIGHT);
+    // Rounded to a tenth and written only on a change: the filter is a compositor step, not a style recalculation per frame.
+    const blur = match ? 0 : Math.round(s.motionBlur * 10) / 10;
+    if (blur !== this.blur) {
+      this.blur = blur;
+      this.canvas.style.filter = blur > 0 ? `blur(${blur}px)` : '';
+    }
     this.drawer.draw(list);
     this.backdrop.visible = list.backdrop !== null;
     this.adaptQuality(delta);

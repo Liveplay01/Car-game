@@ -5,7 +5,7 @@ import { MASTERY_THRESHOLDS, masteryNumeral } from '../core/career';
 import type { SwipeMode } from './flow';
 import type { Rarity, ChestKind, Cosmetic, ChestOpening, Album, CasinoFeat } from '../core/loot';
 import type { Challenge } from '../core/daily';
-import type { NextGoal, NearMiss } from '../core/goals';
+import type { NearMiss } from '../core/goals';
 import type { CasinoGame, SlotSymbol } from '../core/casino';
 import { Contracts, type ContractGoal, type ContractOutcome } from '../core/contracts';
 import type { VehicleType, VehicleRole } from '../core/vehicle';
@@ -33,9 +33,10 @@ export const S = {
   gameTitle: 'Roundabout Timing',
 
   tutorial: {
-    sendCar: 'Tap to send your first car',
-    findGap: 'Wait for a gap, then tap',
+    sendCar: 'Wait for a gap, then tap to send your car',
     combo: 'Clean merges build your combo',
+    /** After a few safe merges: surviving is not all there is. */
+    tightFit: 'The tighter the gap, the more points',
     /** With the Shield upgrade a car may crash more than once (`cars` > 1). */
     strikes: (cars: number, police: number): string => {
       const lead = cars > 1 ? 'Your car may crash once.' : 'Cars crash instantly.';
@@ -284,7 +285,7 @@ export const S = {
     codeNote: 'On another device open Settings → Account → Cloud sync and type this code. Anyone with it can load your progress: keep it private.',
     finish: 'Done',
     manage: 'Cloud sync settings',
-    gate: 'Friends, Ranks and the Club need your player: one name, and your progress backed up with it.',
+    gate: 'Friends and the Club need your player: one name, and your progress backed up with it.',
     gateButton: 'Create my player',
     settingsNone: 'Create your player',
     settingsSub: 'One name for Ranks, Friends, multiplayer and Cloud sync.',
@@ -304,8 +305,8 @@ export const S = {
   /** One-time tips that keep the progress safe (`Hint`). */
   hints: {
     /** The tips are `Tip`s: they take the top card on the waiting screen (`TipQueue`). */
-    install: { caption: 'TIP', text: 'Install the game in Settings: its own window, one click away' },
-    homeScreen: { caption: 'TIP', text: 'Add the game to your home screen in Settings: one tap, full screen' },
+    install: { caption: 'TIP', text: 'Install the game in Settings: your progress stays safe, one click away' },
+    homeScreen: { caption: 'TIP', text: 'Add the game to your home screen in Settings: your progress stays safe, one tap away' },
     reduceMotion: { caption: 'TIP', text: 'Running slow? Reduce motion in Settings can help' },
     notSaved: 'This browser is not saving your progress · Cloud sync in Settings can keep a copy',
     /** The same where there is no Cloud sync (CrazyGames, no service). */
@@ -806,6 +807,10 @@ export const S = {
     tightFit: { caption: 'TIP', text: 'Closer pays more: join right behind a car for a Tight Fit, twice the points' },
     swipeCaption: 'GAME MODES',
     swipeHint: 'Swipe for more modes',
+    /** The same on a screen without touch: the arrow keys switch the mode. */
+    unlockedKeys: { caption: 'NEW MODES', text: 'Press ← or → for Unlimited, Mayhem, Chill and Multiplayer' },
+    tryUnlimitedKeys: { caption: 'GAME MODES', text: 'Press → for Unlimited: no levels, just go until you crash' },
+    swipeHintKeys: '← → for more modes',
     /** Unlimited's late stages (`endlessStages`), as they come. */
     stage: (stage: number, overtime: number): string =>
       overtime > 0
@@ -1613,7 +1618,7 @@ export const S = {
     scopes: { all: 'Everyone', friends: 'Friends' },
     scopeLabel: 'Show',
     introInvited: (level: number): string => `A friend invited you. Enter a name, reach level ${level} and you both get a chest. Your level and your Unlimited record come from the progress on this device.`,
-    intro: 'Enter a name to see where you rank. Your level and your Unlimited record come from the progress on this device and stay up to date by themselves.',
+    intro: 'Create your player to rank here. Your level and your Unlimited record come from the progress on this device and stay up to date by themselves.',
     save: 'Save',
     noSignUp: 'No sign-up: only this name and your records are sent.',
     yourName: 'Your name',
@@ -1768,6 +1773,11 @@ export const S = {
   /** The buttons and labels the DOM shell puts over the game (`ui/shell.ts`). */
   shell: {
     dispatch: 'Emergency dispatch: the next car becomes a police car',
+    /** The first shifts on a touch screen (`.tap-hint`): the whole screen is the button, not the cars. */
+    tapAnywhere: 'Tap anywhere',
+    tapAnywhereSub: 'not on the cars',
+    dispatchSide: 'Other side? Settings → Left-handed',
+    dispatchLeft: (n: number): string => `the next car becomes a police car, ${n} left this shift`,
     leave: 'Leave',
     leaveTour: 'Leave tour',
     leaveTrial: 'Leave trial',
@@ -2486,10 +2496,6 @@ export const S = {
   goals: {
     /** So close: the next career shift pays more (once a day). */
     tierMiss: (m: { short: number; tier: TierId }): string => `${m.short} ${m.short === 1 ? 'car' : 'cars'} short of ${S.modes.tier(m.tier)}`,
-    next(g: NextGoal): string {
-      if (g.k === 'challenge') return `Today · ${S.daily.challenge(g.challenge)} · +${money(String(g.reward))}`;
-      return `${S.mastery.name(g.goal)} · ${g.have}/${g.need}`;
-    },
     money: (short: string, upgrade: Upgrade): string => `${money(short)} to ${S.upgrades.name(upgrade)}`,
     nearMiss(n: NearMiss): string {
       switch (n.k) {
@@ -2540,6 +2546,8 @@ export const S = {
     escaped: 'ESCAPED',
     levelComplete: (l: number): string => `LEVEL ${l} COMPLETE`,
     newBest: 'NEW BEST',
+    /** The spoken result (the live region): the score in words. */
+    points: (n: string): string => `${n} points`,
     fullCoverage: 'FULL COVERAGE',
     loss: (amount: string, escaped: boolean): string => (escaped ? 'LOSS ' : 'CRASH COST ') + '−' + money(amount),
     covered: (amount: string): string => `FULL COVERAGE · ${money(amount)} paid by insurance`,
@@ -2561,6 +2569,7 @@ export const S = {
 
   hud: {
     moneyLabel: 'MONEY',
+    scoreLabel: 'SCORE',
     bestLabel: 'BEST',
     rushHour: 'RUSH HOUR',
     tight: 'TIGHT!',

@@ -39,14 +39,14 @@ export class AudioPlayer {
   /** Who stays when the voices run out (default 1): the big hits and the end of a shift, then warnings, then the small ticks. */
   private static readonly priority: Partial<Record<SoundID, number>> = {
     crash: 3, crashHeavy: 3, explosion: 3, detonation: 3, shiftComplete: 3, shiftFailed: 3,
-    crashLight: 2, wanted: 2, alarm: 2, dispatch: 2, takedown: 2, secured: 2, seized: 2, rushHour: 2, paid: 2, escaped: 2,
+    crashLight: 2, wanted: 2, alarm: 2, ambulance: 2, oversize: 2, wedding: 2, dispatch: 2, takedown: 2, secured: 2, seized: 2, rushHour: 2, paid: 2, escaped: 2,
     chestBurst: 2, chestBurstRare: 2,
     toll: 0, uiTick: 0, meterTick: 0, needleTick: 0,
   };
 
   /** How far the pitch of a sound that comes again and again wanders (fraction of the pitch), so no two hits are identical. */
   private static readonly spread: Partial<Record<SoundID, number>> = {
-    merge: 0.004, tightFit: 0.012, perfect: 0.012, cutOff: 0.015, takedown: 0.012, paid: 0.01, screech: 0.015,
+    merge: 0.004, tightFit: 0.012, perfect: 0.012, cutOff: 0.015, takedown: 0.012, paid: 0.01, screech: 0.015, clang: 0.012,
   };
 
   /** The big hits push the music and the weather down for a moment (how far, how long) so they land clean. */
@@ -343,44 +343,12 @@ export class AudioPlayer {
         tone('sine', 90, 32, 0, 0.7, 1);
         [1319, 1661, 1976, 2637].forEach((f, i) => tone('triangle', f, f, 0.12 + i * 0.03, 0.8, 0.09));
         break;
-      case 'ambulance':
-        // Two-tone siren, high-low, twice: the rescue is coming through.
-        [0, 0.2, 0.4, 0.6].forEach((at, i) => tone('triangle', i % 2 === 0 ? 960 : 770, i % 2 === 0 ? 960 : 770, at, 0.19, 0.2));
-        break;
-      case 'wedding':
-        // Two car horns, honk-honk (a major third apart).
-        [0, 0.2].forEach((at) => {
-          tone('triangle', 440, 440, at, 0.14, 0.22);
-          tone('triangle', 554, 554, at, 0.14, 0.18);
-        });
-        break;
-      case 'oversize':
-        // A truck horn: low, long, two notes close together, with a sub under them.
-        tone('triangle', 113, 113, 0, 0.7, 0.34);
-        tone('triangle', 150, 150, 0, 0.7, 0.3);
-        tone('sine', 56, 56, 0, 0.6, 0.5);
-        break;
-      case 'learner':
-        // Two careful, hesitant beeps.
-        tone('sine', 660, 660, 0, 0.1, 0.16);
-        tone('sine', 660, 660, 0.22, 0.1, 0.16);
-        break;
-      case 'clang':
-        // Metal on armour: inharmonic partials (1 : 2.67 : 4.24) ringing out, with a bright tick on top.
-        [523, 1397, 2217].forEach((f, i) => tone('sine', f, f, 0, 0.55 - 0.12 * i, 0.22 - 0.05 * i));
-        noise(0, 0.05, 4200, 2200, 0.25);
-        break;
-      case 'blocked':
-        // A refusal: two flat buzzes.
-        [0, 0.15].forEach((at) => tone('square', 150, 110, at, 0.12, 0.12));
-        break;
     }
     return true;
   }
 
   private static readonly synthIds: SoundID[] = [
     'critical', 'jackpot', 'chestHit', 'reelSpin', 'reelTick', 'shimmer', 'reelLand', 'reelLandBig', 'heal',
-    'ambulance', 'wedding', 'oversize', 'learner', 'clang', 'blocked',
   ];
 
   /** Once per frame: each stem glides towards its volume, the filter follows the breath. */

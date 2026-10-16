@@ -62,7 +62,7 @@ src/
               messages and their checks (`messages.ts`: every field read, floods dropped);
               PeerJS loads only when a room opens
   ui/         the DOM shell: canvas, native-like tab bar, settings sheet, multiplayer lobby
-public/audio/ sounds (44) and music stems (7) as AAC
+public/audio/ sounds (50) and music stems (7) as AAC
 icon/        the icon master (make_icon.py → AppIcon.png)
 scripts/sim.mjs   headless balancing bots
 ```

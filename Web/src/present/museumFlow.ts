@@ -1,7 +1,7 @@
 import { type SaveGame, Careers } from '../core/career';
 import { museumEntry, museumId, sightings, type MuseumEntry } from '../core/museum';
 import type { World } from '../core/world';
-import { type Briefings, briefOf } from './briefing';
+import { type Brief, type Briefings, briefOf } from './briefing';
 import type { Tutorial } from './tutorial';
 
 /** What the Museum's sightings and briefings need from the session: the save, the shift on the road, the top card. */
@@ -25,6 +25,8 @@ export class MuseumFlow {
   private readonly again = new Set<string>();
   /** Entries met for the first time whose briefing never got its turn (the shift ended first). */
   private readonly owed = new Set<string>();
+  /** News without a task (a lorry, a motorbike): never over the scoreboard mid-shift, on the next ready screen instead. */
+  readonly ready: Brief[] = [];
 
   constructor(private readonly host: MuseumHost) {}
 
@@ -70,6 +72,9 @@ export class MuseumFlow {
     if (!found && !again && !owed && this.host.save.career.museumSeen.includes(id)) return;
     this.again.delete(id);
     this.owed.delete(id);
-    this.host.briefings.add(briefOf(e, again && !found && !owed));
+    const brief = briefOf(e, again && !found && !owed);
+    if (brief.pending === null) {
+      if (!this.ready.some((b) => b.id === id)) this.ready.push(brief);
+    } else this.host.briefings.add(brief);
   }
 }

@@ -18,7 +18,7 @@ import {
 } from '../net/leaderboard';
 import { pendingInvite } from '../net/invite';
 import { NAME_MAX } from '../net/room';
-import { loadPlayerName, savePlayerName } from '../storage/profile';
+import { savePlayerName } from '../storage/profile';
 import { Fmt, S } from '../present/strings';
 import { baseConfig, INVITE_LEVEL } from '../core/config';
 import { dayNumber } from '../core/daily';
@@ -35,6 +35,8 @@ import { tierOf } from '../core/tiers';
 export interface RanksActions {
   /** The records as the save has them now, sent right after joining. */
   records(): Records;
+  /** "Your player" (`ui/accountSheet.ts`): the boards are open to read, joining them is the player's own step. */
+  createPlayer(): void;
 }
 
 const BOARDS: { id: BoardId; label: string; empty: string }[] = (['shift-level', 'unlimited', 'daily', 'rush', 'casino'] as const).map((id) => ({ id, ...S.ranks.boards[id] }));
@@ -357,7 +359,7 @@ export function ranksPanel(actions: RanksActions): HTMLElement {
         { class: 'section-note board-intro' },
         pendingInvite() ? S.ranks.introInvited(INVITE_LEVEL) : S.ranks.intro,
       ),
-      nameForm(loadPlayerName(), S.ranks.save, join, null),
+      h('button', { class: 'btn primary block', type: 'button', onclick: () => actions.createPlayer() }, S.account.gateButton),
     );
     renderFooter();
   }
@@ -412,19 +414,6 @@ export function ranksPanel(actions: RanksActions): HTMLElement {
     );
   }
 
-  async function join(name: string): Promise<string | null> {
-    try {
-      account = await openAccount(name);
-      renderTop();
-      // Your records go up at once, then the list shows you in it.
-      await syncScores(actions.records());
-      cache.clear();
-      shown().open();
-      return null;
-    } catch (error) {
-      return describeError(error);
-    }
-  }
 
   renderTop();
   shown().open();

@@ -5,9 +5,9 @@ import { INVITE_LEVEL, INVITE_REMINDER_LEVEL } from '../../../core/config';
 /** Français, Partie 1 : Tutoriel, Intros, Paramètres, Cloud, Astuces, Départs. */
 export default (_s: Strings): Words<Strings> => ({
   tutorial: {
-    sendCar: 'Touchez pour lancer votre première voiture',
-    findGap: 'Attendez une ouverture, puis touchez',
+    sendCar: 'Attendez une ouverture, puis touchez pour lancer votre voiture',
     combo: 'Des insertions propres augmentent votre combo',
+    tightFit: 'Plus l’ouverture est serrée, plus vous marquez',
     strikes: (cars, police) => {
       const lead = cars > 1 ? 'Votre voiture a droit à un crash.' : 'Les voitures s’écrasent immédiatement.';
       return police > 0 ? `${lead} La police dispose de ${police} chances.` : lead;
@@ -241,7 +241,7 @@ export default (_s: Strings): Words<Strings> => ({
     codeNote: 'Sur un autre appareil, ouvre Réglages → Compte → Synchro cloud et saisis ce code. Quiconque l’a peut charger ta progression : garde-le pour toi.',
     finish: 'Terminé',
     manage: 'Réglages de la synchro',
-    gate: 'Les amis, les classements et le Club ont besoin de ton joueur : un nom, et ta progression sauvegardée avec lui.',
+    gate: 'Les amis et le Club ont besoin de ton joueur : un nom, et ta progression sauvegardée avec lui.',
     gateButton: 'Créer mon joueur',
     settingsNone: 'Crée ton joueur',
     settingsSub: 'Un nom pour les classements, les amis, le multijoueur et la synchro cloud.',
@@ -257,8 +257,8 @@ export default (_s: Strings): Words<Strings> => ({
   },
 
   hints: {
-    install: { caption: 'ASTUCE', text: 'Installez le jeu depuis les Paramètres : fenêtre dédiée, accessible en un clic' },
-    homeScreen: { caption: 'ASTUCE', text: 'Ajoutez le jeu à votre écran d’accueil : un geste, plein écran' },
+    install: { caption: 'ASTUCE', text: 'Installez le jeu depuis les Paramètres : votre progression reste en sécurité, à un clic' },
+    homeScreen: { caption: 'ASTUCE', text: 'Ajoutez le jeu à votre écran d’accueil depuis les Paramètres : votre progression reste en sécurité, à un geste' },
     reduceMotion: { caption: 'ASTUCE', text: 'Des saccades ? L’option « Réduire les mouvements » peut soulager l’affichage' },
     notSaved: 'Ce navigateur ne conserve pas votre progression · La synchronisation Cloud peut en garder une copie',
     notSavedHere: 'Ce navigateur ne conserve pas votre progression · Elle disparaîtra à la fermeture du jeu',

@@ -1,0 +1,2040 @@
+[    3746ms] [WARNING] The AudioContext was not allowed to start. It must be resumed (or created) after a user gesture on the page. https://developer.chrome.com/blog/autoplay/#web_audio @ http://localhost:5050/src/audio/player.ts:193
+[    3747ms] [WARNING] The AudioContext was not allowed to start. It must be resumed (or created) after a user gesture on the page. https://developer.chrome.com/blog/autoplay/#web_audio @ http://localhost:5050/src/audio/player.ts:193
+[    3747ms] [WARNING] The AudioContext was not allowed to start. It must be resumed (or created) after a user gesture on the page. https://developer.chrome.com/blog/autoplay/#web_audio @ http://localhost:5050/src/audio/player.ts:193
+[    3747ms] [WARNING] The AudioContext was not allowed to start. It must be resumed (or created) after a user gesture on the page. https://developer.chrome.com/blog/autoplay/#web_audio @ http://localhost:5050/src/audio/player.ts:193
+[    3747ms] [WARNING] The AudioContext was not allowed to start. It must be resumed (or created) after a user gesture on the page. https://developer.chrome.com/blog/autoplay/#web_audio @ http://localhost:5050/src/audio/player.ts:193
+[    3747ms] [WARNING] The AudioContext was not allowed to start. It must be resumed (or created) after a user gesture on the page. https://developer.chrome.com/blog/autoplay/#web_audio @ http://localhost:5050/src/audio/player.ts:193
+[    3747ms] [WARNING] The AudioContext was not allowed to start. It must be resumed (or created) after a user gesture on the page. https://developer.chrome.com/blog/autoplay/#web_audio @ http://localhost:5050/src/audio/player.ts:193
+[  690968ms] [LOG] [vite] server connection lost. Polling for restart... @ http://localhost:5050/@vite/client:1030
+[  720730ms] ReferenceError: touchFirst is not defined
+    at Shell.syncChrome (http://localhost:5050/src/ui/shell.ts?t=1792146901282:642:17)
+    at new Shell (http://localhost:5050/src/ui/shell.ts?t=1792146901282:482:8)
+    at http://localhost:5050/src/main.ts?t=1792146901282:96:15
+[  961220ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  961231ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  961239ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  961250ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  961264ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  961274ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  961287ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  961301ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  961314ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  961328ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  961338ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  961348ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  961357ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  961365ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  961376ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  961383ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  961394ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  961399ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  961405ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  961411ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  961418ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  961423ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  961430ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  961436ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  961441ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  961449ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  961454ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  961461ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  961468ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  961472ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  961480ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  961484ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  961491ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  961496ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  961505ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  961509ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  961516ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  961521ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  961527ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  961534ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  961539ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  961545ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  961551ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  961557ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  961564ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  961570ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  961578ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  961581ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  961592ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  961593ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  961600ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  961605ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  961611ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  961621ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  961641ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  961652ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  961654ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  961661ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  961666ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  961675ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  961679ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  961684ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  961692ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  961697ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  961702ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  961709ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  961714ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  961721ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  961727ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  961734ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  961744ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  961752ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  961757ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  961764ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  961770ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  961776ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  961782ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  961790ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  961795ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  961801ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  961806ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  961816ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  961818ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  961826ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  961830ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  961840ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  961841ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  961851ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  961854ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  961863ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  961873ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  961885ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  961890ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  961895ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  961902ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  961909ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  961916ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  961929ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  961934ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  961938ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  961945ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  961950ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  961957ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  961963ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  961969ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  961975ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  961982ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  961987ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  961993ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  962000ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  962005ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  962011ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  962018ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  962023ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  962030ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  962036ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  962043ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  962050ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  962054ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  962061ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  962066ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  962073ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  962078ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  962084ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  962185ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  962297ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  962310ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  962316ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  962333ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  962340ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  962353ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  962358ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  962371ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  962376ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  962386ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  962392ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  962400ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  962405ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  962412ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  962417ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  962424ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  962431ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  962436ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  962441ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  962448ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  962453ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  962460ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  962465ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  962472ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  962479ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  962642ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  962648ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  962655ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  962667ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  962673ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  962680ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  962687ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  962690ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  962702ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  962708ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  962714ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  962720ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  962726ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  962732ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  962738ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  962744ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  962751ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  962757ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  962763ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  962769ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  962776ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  962782ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  962792ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  962794ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  962807ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  962812ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  962820ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  962826ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  962834ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  962837ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  962846ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  962858ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  963006ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  963023ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  963031ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  963038ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  963042ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  963053ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  963060ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  963068ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  963073ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  963081ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  963085ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  963097ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  963102ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  963110ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  963116ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  963124ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  963127ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  963142ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  963145ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  963157ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  963163ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  963192ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  963208ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  963213ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  963225ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  963302ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  963308ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  963313ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  963319ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  963326ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  963333ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  963338ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  963346ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  963351ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  963358ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  963364ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  963369ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  963377ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  963381ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  963389ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  963393ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  963404ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  963410ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  963416ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  963423ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  963430ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  963435ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  963441ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  963447ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  963455ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  963460ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  963465ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  963471ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  963478ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  963483ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  963490ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  963496ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  963564ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  963671ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  963686ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  963697ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  963709ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  963714ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  963722ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  963728ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  963738ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  963744ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  963752ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  963758ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  963770ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  963776ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  963781ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  963788ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  963796ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  963800ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  963806ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  963815ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  963820ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  963825ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  963831ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  963836ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  963846ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  963856ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  963860ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  963869ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  963872ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  963881ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  963884ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  963897ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  963906ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  963918ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  963932ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  963944ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  964011ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  964022ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  964029ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  964034ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  964041ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  964047ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  964053ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  964059ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  964065ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  964071ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  964078ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  964084ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  964089ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  964211ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  964218ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  964223ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  964232ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  964236ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  964248ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  964254ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  964267ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  964273ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  964284ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  964291ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  964302ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  964308ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  964317ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  964321ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  964336ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  964354ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  964368ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  964375ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  964387ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  964401ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  964418ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  964430ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  964441ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  964447ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  964459ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  964465ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  964477ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  964490ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  964507ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  964556ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  964563ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  964568ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  964575ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  964581ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  964587ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  964592ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  964599ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  964604ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  964611ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  964617ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  964624ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  964631ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  964638ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  964642ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  964649ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  964654ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  964660ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  964665ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  964672ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  964678ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  964684ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  964690ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  964696ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  964702ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  964709ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  964714ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  964721ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  964726ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  964733ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  964738ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  964744ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  964756ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  964897ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  964905ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  964919ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  964923ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  964938ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  964944ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  964950ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  964957ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  964968ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  964975ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  964982ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  964987ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  964994ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  964999ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  965012ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  965017ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  965032ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  965036ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  965050ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  965057ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  965068ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  965072ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  965081ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  965085ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  965098ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  965103ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  965113ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  965125ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  965141ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  965171ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  965251ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  965261ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  965265ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  965272ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  965277ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  965284ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  965290ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  965297ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  965301ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  965312ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  965317ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  965325ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  965328ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  965337ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  965340ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  965347ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  965351ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  965361ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  965364ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  965374ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  965380ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  965388ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  965393ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  965399ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  965405ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  965410ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  965430ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  965510ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  965526ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  965533ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  965539ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  965576ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  965581ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  965592ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  965595ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  965608ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  965611ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  965624ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  965630ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  965638ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  965642ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  965655ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  965665ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  965672ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  965679ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  965685ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  965691ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  965698ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  965703ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  965710ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  965719ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  965724ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  965727ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  965734ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  965740ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  965746ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  965751ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  965760ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  965765ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  965772ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  965776ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  965784ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  965787ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  965796ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  965800ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  965808ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  965812ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  965821ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  965823ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  965836ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  965842ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  965848ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  965855ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  965861ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  965866ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  965873ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  965879ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  965884ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  965891ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  965899ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  965903ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  965909ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  965915ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  965921ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  965928ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  965933ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  965941ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  965946ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  965951ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  965957ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  965993ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  965999ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  966005ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  966011ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  966017ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  966023ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  966030ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  966036ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  966041ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  966047ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  966054ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  966059ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  966066ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  966072ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  966078ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  966083ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  966090ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  966095ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  966102ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  966107ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  966114ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  966120ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  966126ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  966132ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  966139ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  966144ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  966151ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  966157ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  966163ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  966169ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  966177ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  966181ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  966188ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  966193ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  966199ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  966205ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  966211ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  966217ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  966223ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  966230ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  966236ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  966245ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  966252ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  966260ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  966265ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  966344ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  966351ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  966357ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  966363ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  966369ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  966381ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  966393ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  966454ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  966466ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  966472ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  966478ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  966484ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  966496ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  966502ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  966508ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  966514ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  966521ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  966527ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  966532ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  966542ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  966546ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  966551ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  966558ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  966569ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  966584ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  966623ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  966662ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  966719ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  966721ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  966732ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  966738ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  966746ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  966750ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  966765ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  966769ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  966784ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  966787ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  966796ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  966799ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  966808ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  966811ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  966818ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  966825ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  966830ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  966835ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  966845ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  966854ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  966859ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  966866ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  966874ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  966878ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  966887ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  966890ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  966898ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  966908ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  966914ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  966920ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  966926ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  966933ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  966940ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  966945ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  966958ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  966964ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  966977ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  966981ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  966995ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  967000ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  967013ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  967018ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  967031ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  967036ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  967048ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  967054ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  967070ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  967073ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  967084ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  967090ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  967105ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  967108ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  967964ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  967968ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  967974ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  967983ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  967986ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  967993ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  967999ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  968009ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  968018ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  968030ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  968045ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  968048ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  968061ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  968069ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  968074ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  968078ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  968084ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  968097ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  968102ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  968108ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  968115ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  968132ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  968145ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  968154ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  968158ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  968172ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  968179ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  968193ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  968204ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  968218ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  968226ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  968238ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  968246ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  968258ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  968269ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  968281ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  968290ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  968303ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  968311ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  968326ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  968335ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  968352ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  968357ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  968367ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  968376ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  968388ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  968395ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  968404ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  968410ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  968420ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  968430ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  968435ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  968441ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  968447ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  968454ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  968468ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  968472ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  968478ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  968492ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  968500ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  968509ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  968514ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  968526ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  968540ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  968550ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  968560ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  968571ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  968575ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  968582ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  968588ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  968592ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  968599ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  968612ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  968618ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  968634ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  968640ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  968650ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  968660ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  968672ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  968681ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  968702ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  968709ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  968721ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  968729ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  968740ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  968751ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  968763ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  968780ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  968790ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  968805ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  968934ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  968938ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  968954ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  968969ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  968984ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  968999ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  969005ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  969018ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  969022ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  969036ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  969042ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  969063ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  969067ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  969093ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  969097ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  969121ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  969126ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  969145ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  969150ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  969169ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  969176ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  969207ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  969224ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  969229ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  969245ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  969251ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  969262ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  969309ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  969317ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  969376ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  969384ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  969399ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  969418ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  969425ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  969438ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  969500ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  969514ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  969530ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  969545ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  969560ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  969576ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  969588ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  969601ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  969617ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  969632ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  969644ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  969657ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  969668ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  969679ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  969686ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  969699ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  969765ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  969776ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  969787ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  969794ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  969813ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  969827ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  969874ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  969889ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  969902ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  969907ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  969921ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  969960ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  969974ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  970010ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  970074ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  970085ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  970102ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  970114ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  970145ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  970150ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  970162ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  970175ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  970189ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  970269ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  970274ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  970322ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  970334ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  970351ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  970502ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  970510ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  970520ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  970529ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  970542ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  970554ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  970566ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  970581ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  970595ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  970605ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  970617ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  970625ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  970637ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  970649ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  970661ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  970671ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  970681ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  970690ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  970699ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  970708ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  970728ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  970750ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  970768ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  970783ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  970796ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  970812ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  970962ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  970970ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  970978ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  970987ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  970993ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  971010ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  971018ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  971030ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  971036ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  971054ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  971060ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  971072ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  971077ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  971090ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  971096ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  971108ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  971114ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  971123ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  971130ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  971144ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  971151ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  971164ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  971168ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  971180ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  971183ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  971193ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  971224ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  971236ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  971283ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  971301ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  971319ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  971344ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  971356ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  971399ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  971444ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  971466ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  971487ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  971509ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  971635ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  971645ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  971660ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  971701ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  971722ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  971741ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  971748ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  971763ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  971780ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  971786ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  971802ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  971811ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  971823ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  971829ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  971841ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  971846ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  971853ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  971868ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  971871ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  971880ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  971897ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  971901ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  971907ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  971917ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  971921ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  971934ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  971940ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  971950ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  971965ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  971974ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  971981ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  971989ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  971996ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  971999ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  972012ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  972023ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  972039ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  972049ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  972060ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  972066ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  972086ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  972090ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  972108ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  972115ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  972126ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  972132ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  972144ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  972177ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  972197ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  972216ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  972223ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  972229ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  972236ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  972241ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  972254ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  972261ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  972277ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  972283ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  972296ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  972315ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  972333ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  972360ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  972427ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  972454ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  972515ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  972520ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  972538ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  972544ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  972563ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  972568ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  972578ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  972587ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  972598ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  972598ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  972623ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  972641ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  972649ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  972663ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  972678ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  972684ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  972710ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  972957ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  973020ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  973035ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  973051ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  973061ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  973071ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  973078ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  973086ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  973102ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  973107ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  973124ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  973128ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  973147ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  973150ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  973169ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  973174ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  973180ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  973192ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  973198ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  973204ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  973213ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  973220ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  973229ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  973243ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  973252ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  973270ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  973280ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  973293ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  973309ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  973321ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  973330ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  973345ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  973356ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  973368ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  973378ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  973390ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  973481ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  973491ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  973496ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  973514ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  973519ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  973529ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  973536ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  973545ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  973550ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  973564ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  973577ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  973598ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  973615ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  973622ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  973643ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  973872ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  973887ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  973909ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  973916ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  973925ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  973931ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  973937ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  973943ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  973959ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  973967ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  973975ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  973980ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  973993ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  974000ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  974008ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  974017ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  974022ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  974035ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  974043ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  974061ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  974066ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  974079ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  974086ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  974096ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  974108ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  974126ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  974140ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  974151ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  974158ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  974176ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  974181ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  974197ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  974210ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  974223ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  974237ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  974250ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  974265ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  974278ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  974285ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  974304ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  974316ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  974322ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  974333ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  974339ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  974364ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  974369ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  974383ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  974389ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  974398ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  974404ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  974413ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  974424ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  974429ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[  974441ms] ReferenceError: clamp is not defined
+    at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63

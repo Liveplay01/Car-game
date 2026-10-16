@@ -150,6 +150,9 @@ export default (S: Strings): Words<Strings> => ({
     tightFit: { caption: 'ASTUCE', text: 'Plus près rapporte plus : serrez la voiture précédente pour une Insertion serrée aux points doublés' },
     swipeCaption: 'MODES DE JEU',
     swipeHint: 'Balayez pour afficher plus de modes',
+    unlockedKeys: { caption: 'NOUVEAUX MODES', text: 'Appuyez sur ← ou → pour Sans limites, Paguaille, Détente et Multijoueur' },
+    tryUnlimitedKeys: { caption: 'MODES DE JEU', text: 'Appuyez sur → pour Sans limites : pas de niveaux, roulez jusqu’au crash' },
+    swipeHintKeys: '← → pour afficher plus de modes',
     stage: (stage, overtime) =>
       overtime > 0
         ? `HEURES SUPPLÉMENTAIRES ${overtime} · trafic accru, rythme plus rapide`

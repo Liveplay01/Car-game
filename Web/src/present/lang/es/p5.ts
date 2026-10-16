@@ -388,7 +388,7 @@ export default (S: Strings): Words<Strings> => ({
     scopes: { all: 'Todos', friends: 'Amigos' },
     scopeLabel: 'Mostrar',
     introInvited: (level) => `Un amigo te invitó. Introduce un nombre, llega al nivel ${level} y ambos recibiréis un cofre. Tu nivel y récord Sin límites provienen de este dispositivo.`,
-    intro: 'Introduce un nombre para ver tu posición. Tu nivel y récord Sin límites se toman de este dispositivo y se actualizan solos.',
+    intro: 'Crea tu jugador para aparecer aquí. Tu nivel y récord Sin límites se toman de este dispositivo y se actualizan solos.',
     save: 'Guardar',
     noSignUp: 'Sin registro: solo se envían este nombre y tus récords.',
     yourName: 'Tu nombre',
@@ -539,6 +539,10 @@ export default (S: Strings): Words<Strings> => ({
 
   shell: {
     dispatch: 'Aviso: el próximo coche será de policía',
+    tapAnywhere: 'Toca en cualquier sitio',
+    tapAnywhereSub: 'no en los coches',
+    dispatchSide: '¿Otro lado? Ajustes → Zurdo',
+    dispatchLeft: (n) => `el próximo coche será de policía, quedan ${n} en este turno`,
     leave: 'Salir',
     leaveTour: 'Salir del tour',
     leaveTrial: 'Salir de la prueba',

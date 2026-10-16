@@ -308,12 +308,33 @@ export function upgradeUnlockLevel(u: Upgrade, c: Config): number {
   return 1;
 }
 
+/** The intro level whose vehicle an upgrade works on (`forIntro`): before it, the upgrade has nothing to do and is not on offer. */
+export function upgradeIntroLevel(u: Upgrade, c: Config): number {
+  switch (u) {
+    case 'morePatrols':
+    case 'dispatchRadio':
+    case 'backup':
+      return c.policeLevel;
+    case 'longerPursuit':
+    case 'quietStreets':
+    case 'interceptor':
+      return c.criminalLevel;
+    case 'cashRoute':
+    case 'doubleRun':
+      return c.transporterLevel;
+    default:
+      return 1;
+  }
+}
+
 /** Price of step `step` (1 = the first), rounded to 50. */
 export function upgradePrice(u: Upgrade, step: number, c: Config): number {
   if (u === 'shield' || u === 'backup') {
     const prices = u === 'shield' ? c.shieldPrices : c.backupPrices;
     return prices[clamp(step, 1, prices.length) - 1];
   }
+  const starter = c.starterPrices[u];
+  if (step <= 1 && starter !== undefined) return starter;
   const raw = c.upgradeBaseCost * priceFactor[u] * Math.pow(c.upgradeCostGrowth, Math.max(1, step) - 1);
   return Math.round(raw / 50) * 50;
 }

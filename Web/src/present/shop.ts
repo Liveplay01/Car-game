@@ -1,6 +1,7 @@
 import type { Career } from '../core/career';
 import { Careers } from '../core/career';
 import { Unlocks } from '../core/unlocks';
+import { Elite } from '../core/elite';
 import type { Config } from '../core/config';
 import {
   type ChestKind,
@@ -22,7 +23,7 @@ import { type RenderList, type Rect, RenderList as List, R, rect, circle, arc, l
 import type { ColorToken } from './theme';
 import { MenuKit } from './menukit';
 import { land } from './hud';
-import { textWidth } from './icons';
+import { textWidth, moneyTag } from './icons';
 import { S, Fmt } from './strings';
 import { CarArt } from './carArt';
 import { Skins, lookFor } from './skins';
@@ -282,17 +283,33 @@ export const ShopPage = {
     });
   },
 
+  /**
+   * Whether the chest is on show: one the career holds always is; else the Diamond Chest with the Elite track,
+   * the earned ones once what earns them is on the road (Leo, 12.10.2026: only what is reached).
+   */
+  chestShown(career: Career, k: ChestKind): boolean {
+    if (Careers.count(career, k) > 0) return true;
+    if (k === 'diamond') return Elite.isOpen(career);
+    if (k === 'event') return Unlocks.isKnown(career, 'daily');
+    if (k === 'criminalHunt') return Careers.reach(career) >= baseConfig.criminalLevel;
+    return true;
+  },
+
   /** The chests for sale in a grid, and under their own heading the ones that are only earned (smaller: nothing to buy there). */
-  chestCards: (l: Layout): { cards: [ChestKind, Rect][]; headingY: number } => {
+  chestCards: (l: Layout, career: Career): { cards: [ChestKind, Rect][]; headingY: number | null } => {
     const P = ShopPage;
-    const sale = CHEST_KINDS.filter(isForSale);
-    const earned = CHEST_KINDS.filter((k) => !isForSale(k));
+    const shown = CHEST_KINDS.filter((k) => P.chestShown(career, k));
+    const sale = shown.filter(isForSale);
+    const earned = shown.filter((k) => !isForSale(k));
     const area = l.content;
     const saleCells = P.grid(sale.length, 2, R.make(area.minX, area.minY, area.maxX, area.maxY - P.earnedHeight - P.earnedHeading - P.gap), 188);
+    // An odd one out takes the whole row: no hole beside it.
+    if (sale.length % 2 === 1) saleCells[sale.length - 1] = R.make(area.minX, saleCells[sale.length - 1].minY, area.maxX, saleCells[sale.length - 1].maxY);
     const bottom = Math.max(...saleCells.map((r) => r.maxY));
     const top = bottom + P.gap + P.earnedHeading;
     const earnedCells = P.grid(earned.length, 2, R.make(area.minX, top, area.maxX, top + P.earnedHeight), P.earnedHeight);
-    return { cards: [...sale.map((k, i): [ChestKind, Rect] => [k, saleCells[i]]), ...earned.map((k, i): [ChestKind, Rect] => [k, earnedCells[i]])], headingY: bottom + P.gap + P.earnedHeading / 2 };
+    if (earned.length % 2 === 1) earnedCells[earned.length - 1] = R.make(area.minX, earnedCells[earned.length - 1].minY, area.maxX, earnedCells[earned.length - 1].maxY);
+    return { cards: [...sale.map((k, i): [ChestKind, Rect] => [k, saleCells[i]]), ...earned.map((k, i): [ChestKind, Rect] => [k, earnedCells[i]])], headingY: earned.length > 0 ? bottom + P.gap + P.earnedHeading / 2 : null };
   },
 
   shelfChips(l: Layout): [Shelf, Rect][] {
@@ -365,7 +382,7 @@ export const ShopPage = {
     const l = ShopPage.layout(viewport, bottomInset, ShopPage.sections(career));
     const out: [ShopTarget, Rect][] = l.segments.map(([section, r]) => [{ k: 'section', section }, r]);
     if (state.section === 0) {
-      out.push(...ShopPage.chestCards(l).cards.map(([kind, r]): [ShopTarget, Rect] => [{ k: 'chest', kind }, r]));
+      out.push(...ShopPage.chestCards(l, career).cards.map(([kind, r]): [ShopTarget, Rect] => [{ k: 'chest', kind }, r]));
     } else if (state.section === 1) {
       // The cards answer on the lift (`itemAt`): a press may be the start of a scroll.
       out.push(...ShopPage.shelfChips(l).map(([shelf, r]): [ShopTarget, Rect] => [{ k: 'shelf', shelf }, r]));
@@ -465,8 +482,8 @@ export const ShopPage = {
   // MARK: Chests
 
   addChests(list: RenderList, l: Layout, career: Career, state: ShopState, reduceMotion: boolean, forcedEnter: number | null): void {
-    const { cards, headingY } = ShopPage.chestCards(l);
-    drawText(list, S.shop.earnedHeading, v(l.content.minX + 4, headingY), 12, 'muted', { weight: 'bold', opacity: ShopPage.cardRect(cards[cards.length - 1][1], forcedEnter === null ? state.age : 10, cards.length - 1, reduceMotion).enter });
+    const { cards, headingY } = ShopPage.chestCards(l, career);
+    if (headingY !== null) drawText(list, S.shop.earnedHeading, v(l.content.minX + 4, headingY), 12, 'muted', { weight: 'bold', opacity: ShopPage.cardRect(cards[cards.length - 1][1], forcedEnter === null ? state.age : 10, cards.length - 1, reduceMotion).enter });
     cards.forEach(([kind, card], index) => {
       const placed = ShopPage.cardRect(card, forcedEnter === null ? state.age : 10, index, reduceMotion);
       const enter = placed.enter;
@@ -481,8 +498,15 @@ export const ShopPage = {
       ShopPage.addChestIcon(list, kind, iconAt, Math.min(1.2, R.height(r) / 130), enter * (available ? 1 : 0.45));
       const name = S.shop.chest(kind);
       drawText(list, name, v(c.x, r.maxY - 36), ShopPage.fitted(name, 14, R.width(r) - 28), 'primary', { weight: 'bold', align: 'center', opacity: enter });
-      const status = count > 0 ? S.shop.waiting(count) : S.shop.source(kind);
-      drawText(list, status, v(c.x, r.maxY - 17), ShopPage.fitted(status, 11, R.width(r) - 28), count > 0 ? 'accent' : 'muted', { align: 'center', opacity: enter });
+      // What it costs, in gold where the money reaches it; one that is only earned says how.
+      const price = chestPrice(kind, baseConfig);
+      if (count === 0 && price !== null) {
+        const affordable = career.money >= price;
+        moneyTag(list, Fmt.number(price), v(c.x, r.maxY - 17), 12, 'center', affordable ? 'primary' : 'muted', affordable ? 'coin' : 'muted', enter);
+      } else {
+        const status = count > 0 ? S.shop.waiting(count) : S.shop.source(kind);
+        drawText(list, status, v(c.x, r.maxY - 17), ShopPage.fitted(status, 11, R.width(r) - 28), count > 0 ? 'accent' : 'muted', { align: 'center', opacity: enter });
+      }
       if (count > 0) {
         const badge = v(r.maxX - 18, r.minY + 18);
         list.s(circle(badge, 10), 'accent', enter);

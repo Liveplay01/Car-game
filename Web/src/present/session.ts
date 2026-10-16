@@ -151,6 +151,13 @@ export class GameSession {
    */
   lowDetail = false;
 
+  /** A light motion blur for the camera's glides between views, in pixels (Leo, 16.10.2026); never with Reduce Motion or on a slow device. */
+  get motionBlur(): number {
+    return this.reduceMotion || this.lowDetail ? 0 : GameSession.glideBlur * this.cameraRig.motion;
+  }
+
+  static readonly glideBlur = 0.9;
+
   /** Recommends Reduce Motion, once ever, when the game runs slow; never switches it on. */
   recommendReduceMotion(): void {
     if (this.reduceMotion || this.save.hints.includes('reduceMotion')) return;
@@ -582,6 +589,18 @@ export class GameSession {
 
   private get isShowingResult(): boolean {
     return this.screen.k === 'result';
+  }
+
+  /**
+   * A result worth a picture (Leo, 16.10.2026): a challenge or trial, a record off the career, a Perfect Run, a boss
+   * busted or a Legendary Shift cleared. An ordinary loss offers none (the career's best grows almost every shift).
+   */
+  get resultWorthPicture(): boolean {
+    if (this.screen.k !== 'result') return false;
+    const { result, mode, run, isNewHighscore } = this.screen.summary;
+    if (run) return true;
+    if (mode !== 'shift') return isNewHighscore;
+    return result.outcome === 'completed' && (result.isPerfectRun || result.bossBusted || result.legendary !== null);
   }
 
   private isPage(tab: Tab): boolean {
@@ -2503,10 +2522,14 @@ export class GameSession {
 
   /** Shifts after which `teachTightFit` comes in the same visit, and how many Tight Fits mean it is known. */
   static readonly tightFitTipShifts = 6;
+  /** Shifts played after which the touch hint (`.tap-hint`) is no longer shown. */
+  static readonly tapHintShifts = 3;
   static readonly tightFitsKnown = 10;
 
   private startPlaying(): void {
     this.screen = { k: 'playing' };
+    // The ready screen has told its news: the next one waits for the next ready screen.
+    this.museum.ready.shift();
     this.shiftStartMoney = this.save.career.money;
     this.shownMoney = this.shiftStartMoney;
     this.sinceMoney = Infinity;
@@ -3045,8 +3068,6 @@ export class GameSession {
           mutator: this.world.config.mutator,
         }
       : null;
-    // The next goal in reach: only on a plain career shift, never over a challenge, trial or match.
-    const goal = !this.special && !this.versusSelected && this.playingMode === 'shift' && (this.tutorial?.isOver ?? true) ? Goals.next(career, this.today) : null;
     const run = runCard(this.special, this.world.config, this.playingMode, this.versusSelected, career, this.today);
     // A trial's goal already names its conditions; the tutorial and a match have none to show.
     // While the Daily's opening is on, nothing else of the waiting screen shows through it.
@@ -3072,7 +3093,7 @@ export class GameSession {
       reduceMotion: this.reduceMotion,
       drawsCard,
       opacity,
-      goal: this.giftLine ?? (goal ? S.goals.next(goal) : null),
+      goal: this.giftLine,
       intro: this.versusSelected || (this.tutorial && !this.tutorial.isOver) ? null : this.readyIntro,
       textScale: this.textScale,
       noticeRoom: this.noticeRoom,
@@ -3102,7 +3123,7 @@ export class GameSession {
       age,
       reduceMotion: this.reduceMotion,
       opacity: shown,
-      caption: ResultBanner.breathes(summary) ? ResultBanner.mourning(age) : 0,
+      caption: this.save.career.museumNew.includes(id) ? 1 : ResultBanner.breathes(summary) ? ResultBanner.mourning(age) : 0,
       selected: this.conditionShown === id,
       isNew: this.save.career.museumNew.includes(id),
     });
@@ -3128,7 +3149,13 @@ export class GameSession {
   /** The ready screen's card: what a trial's goal asks for (the conditions are icons, `ConditionChips`). */
   private get readyIntro(): ConditionIntro[] {
     const howTo = this.special?.k === 'trial' && this.playingMode !== 'chill' ? S.trials.howTo(this.special.trial) : null;
-    return howTo ? [howTo] : [];
+    if (howTo) return [howTo];
+    const news = this.museum.ready[0];
+    if (news) return [{ title: news.caption, text: news.text, short: news.caption }];
+    // A sky, the dark or a city event met for the first time (roadworks slowing the ring): its icon alone says nothing to a new player.
+    if (this.special || this.versusSelected || (this.tutorial && !this.tutorial.isOver)) return [];
+    const met = conditionChips(this.world.config, this.save.career).find((c) => c.isNew);
+    return met ? [{ title: S.brief.caption(met.entry, false), text: S.brief.text(met.entry), short: S.museum.name(met.entry) }] : [];
   }
 
   /** Screen point of the island centre (for DOM overlays that follow the camera). */

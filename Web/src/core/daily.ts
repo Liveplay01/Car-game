@@ -1,6 +1,6 @@
 import type { ShiftResult } from './events';
 import { Rng } from './rng';
-import { DAILY_EVENTS, type CityEvent } from './config';
+import { baseConfig, DAILY_EVENTS, type CityEvent } from './config';
 
 /** Challenges (v1.2): three a day, each pays once. */
 export type Challenge =
@@ -91,12 +91,23 @@ export function challengeReward(c: Challenge): number {
   }
 }
 
-/** Today's three challenges: the same for everyone on the same day. */
-export function challengesOf(day: number): Challenge[] {
+/** Challenges that need a vehicle a new player has not met yet (`forIntro`). */
+const NEEDS: Partial<Record<Challenge, 'criminalLevel' | 'transporterLevel'>> = {
+  twoTakedowns: 'criminalLevel',
+  oneTakedown: 'criminalLevel',
+  twoTransporters: 'transporterLevel',
+};
+
+/** Today's three challenges: the same for everyone on the same day; below the intro levels the ones that cannot happen yet are skipped. */
+export function challengesOf(day: number, level = Infinity): Challenge[] {
   const rng = new Rng((Math.imul(day, 0x9e3779b9) ^ 0xc4a11e26) >>> 0);
   const pool = [...CHALLENGES];
   const picked: Challenge[] = [];
-  while (picked.length < 3 && pool.length > 0) picked.push(pool.splice(rng.int(0, pool.length - 1), 1)[0]);
+  while (picked.length < 3 && pool.length > 0) {
+    const ch = pool.splice(rng.int(0, pool.length - 1), 1)[0];
+    const need = NEEDS[ch];
+    if (need === undefined || level >= baseConfig[need]) picked.push(ch);
+  }
   return picked;
 }
 

@@ -25,8 +25,11 @@ export interface SocialHost {
   needAccount(): void;
 }
 
-/** What needs the player (Leo, 15.10.2026). The Mafia does not: a loan must always be repayable. */
-const NEEDS_ACCOUNT: readonly SocialSection[] = [SOCIAL.friends, SOCIAL.ranks, SOCIAL.club];
+/**
+ * What needs the player (Leo, 15.10.2026). The Mafia does not: a loan must always be repayable. The Ranks can be read
+ * without one (Leo, 16.10.2026): a new player sees who plays before being asked for a name, and nothing opens by itself.
+ */
+const NEEDS_ACCOUNT: readonly SocialSection[] = [SOCIAL.friends, SOCIAL.club];
 
 /** Where the page's column sits under the canvas' title and segments (`SocialPage.column`), in points. */
 export interface SocialColumn {
@@ -110,16 +113,15 @@ export class SocialView {
   refresh(): void {
     if (this.section === null) return;
     const section = this.section;
-    swapView(this.inner, () => this.inner.replaceChildren(this.build(section, false)));
+    swapView(this.inner, () => this.inner.replaceChildren(this.build(section)));
   }
 
-  private build(section: SocialSection, ask = true): HTMLElement {
+  private build(section: SocialSection): HTMLElement {
     this.club?.dispose();
     this.club = null;
     this.mafia?.dispose();
     this.mafia = null;
     if (this.host.online && NEEDS_ACCOUNT.includes(section) && !this.host.accountReady()) {
-      if (ask) this.host.needAccount();
       return h(
         'div',
         { class: 'account-gate' },

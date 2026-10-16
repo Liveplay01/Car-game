@@ -16,6 +16,7 @@ import { type Vec2, v, add, sub, mul, fromAngle, TAU, clamp } from '../core/vec2
 import { type RenderList, type Rect, type Primitive, R, rect, circle, arc, line, polygon, text, Ease, Metrics, toScreen, moved, type Align, type Weight } from './render';
 import type { ColorToken } from './theme';
 import { MenuKit } from './menukit';
+import { touchFirst } from '../storage/device';
 import { moneyTag, flameTag, textWidth, drawFitted } from './icons';
 import { S, Fmt, money as moneyText, comboMultiplier } from './strings';
 import { interpolatedPose } from './scene';
@@ -119,7 +120,7 @@ export const TopBar = {
   },
 
   /** The mode swipe's hint is a briefing of its own (`ReadyBanner`): the card's edge and caption in this colour. */
-  swipeBrief: (): Brief => ({ id: 'swipe', caption: S.modes.swipeCaption, text: S.modes.swipeHint, color: 'lightBlue', pending: null }),
+  swipeBrief: (): Brief => ({ id: 'swipe', caption: S.modes.swipeCaption, text: touchFirst ? S.modes.swipeHint : S.modes.swipeHintKeys, color: 'lightBlue', pending: null }),
 
   /**
    * A message on the waiting screen's card, like a briefing but centred: its words between two arrows, one in each corner,
@@ -369,9 +370,15 @@ export const HUD = {
     const groupGap = firstPolice > 0 && pluses.length > firstPolice ? 0.5 : 0;
     const span = pluses.length - 1 + groupGap;
     const size = Metrics.strikeRadius * 2.75;
+    // The caption names the number; the pluses follow it on the same row, the pair centred.
+    const captionW = textWidth(S.hud.scoreLabel, 10);
+    const plusesW = pluses.length > 0 ? 8 + span * Metrics.strikeSpacing + size : 0;
+    const rowLeft = R.center(c).x - (captionW + plusesW) / 2;
+    list.s(text(S.hud.scoreLabel, v(rowLeft, c.minY + TopBar.captionRow), 10, 'leading', 'bold'), rush ? 'accentInk' : 'muted');
+    const firstPlus = rowLeft + captionW + 8 + size / 2;
     pluses.forEach((p, index) => {
       const slot = index + (index >= firstPolice ? groupGap : 0);
-      const at = v(R.center(c).x + (slot - span / 2) * Metrics.strikeSpacing, Metrics.strikeRow);
+      const at = v(firstPlus + slot * Metrics.strikeSpacing, Metrics.strikeRow);
       const isNewest = index < firstPolice ? index === world.score.strikes - 1 : index - firstPolice === world.score.policeCrashes - 1;
       const pop = isNewest && p.used ? (index < firstPolice ? h.pops.strike : h.pops.policeCrash) : 1;
       if (p.used) {
@@ -1649,7 +1656,7 @@ export const ResultBanner = {
           : S.result.stats(r.bestCombo, r.tightFits, r.takedowns, r.transporters, Fmt.seconds(r.time));
     const best = summary.isNewHighscore ? `. ${S.result.newBest}` : '';
     const elite = summary.elite ? `. ${S.elite.toGo(summary.elite)}` : '';
-    return summary.mode === 'chill' ? `${title}. ${detail}${best}` : `${title}. ${Fmt.number(r.score)} points${best}. ${detail}${elite}`;
+    return summary.mode === 'chill' ? `${title}. ${detail}${best}` : `${title}. ${S.result.points(Fmt.number(r.score))}${best}. ${detail}${elite}`;
   },
 
   add(list: RenderList, summary: ShiftSummary, nextLevel: number, bank: { before: number; after: number }, age: number, reduceMotion: boolean, gift: string | null, islandRadius: number): void {

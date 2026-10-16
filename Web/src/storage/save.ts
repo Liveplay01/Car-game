@@ -258,7 +258,7 @@ function readSave(raw: unknown): SaveGame {
     if (typeof s.largeText === 'boolean') settings.largeText = s.largeText;
     if (typeof s.batterySaver === 'boolean') settings.batterySaver = s.batterySaver;
     if (typeof s.motionChosen === 'boolean') settings.motionChosen = s.motionChosen;
-    // "System" was the default until 29.09.2026: kept only when the player picked it since.
+    // "System" is the default; older saves keep their explicit setting.
     if (s.reduceMotion === 'on' || s.reduceMotion === 'off') settings.reduceMotion = s.reduceMotion;
     else if (s.reduceMotion === 'system' && settings.motionChosen) settings.reduceMotion = 'system';
   }

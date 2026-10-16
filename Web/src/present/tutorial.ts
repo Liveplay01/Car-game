@@ -9,21 +9,27 @@ import { S } from './strings';
 import { interpolatedPose } from './scene';
 import { TopBar } from './hud';
 
-export type TutorialStep = 'sendCar' | 'findGap' | 'combo' | 'quiet';
+export type TutorialStep = 'sendCar' | 'findGap' | 'combo' | 'tight' | 'quiet';
 
 /**
  * The first shift teaches the one thing to know. Nothing pauses:
- * the front car pulses, the island says to wait for a gap, then that clean merges build the
- * combo; the first crash says why it matters. Ends with the first shift and never comes back.
+ * before the first tap the island says to wait for a gap while the front car pulses, then that clean
+ * merges build the combo, then that tight gaps score more; the first crash says why it matters.
+ * Ends with the first shift and never comes back. The hints stay inside the island, off the ring.
  */
 export class Tutorial {
   static readonly mergesToLearn = 2;
+  /** Safe merges after which the island says that tight gaps pay more. */
+  static readonly mergesToMaster = 4;
   static readonly hintDuration = 3.5;
-  static readonly readyPrompt = S.tutorial.sendCar;
+  static get readyPrompt(): string {
+    return S.tutorial.sendCar;
+  }
 
   step: TutorialStep = 'sendCar';
   age = 0;
   cleanMerges = 0;
+  taughtTight = false;
   strikeAge: number | null = null;
   isOver = false;
 
@@ -39,7 +45,7 @@ export class Tutorial {
   advance(delta: number): void {
     this.age += delta;
     if (this.strikeAge !== null) this.strikeAge += delta;
-    if (this.step === 'combo' && this.age >= Tutorial.hintDuration) this.move('quiet');
+    if ((this.step === 'combo' || this.step === 'tight') && this.age >= Tutorial.hintDuration) this.move('quiet');
   }
 
   move(next: TutorialStep): void {
@@ -58,6 +64,10 @@ export class Tutorial {
         if (event.rating === 'cutOff') return;
         this.cleanMerges++;
         if (this.step === 'findGap' && this.cleanMerges >= Tutorial.mergesToLearn) this.move('combo');
+        else if (this.step === 'quiet' && !this.taughtTight && this.cleanMerges >= Tutorial.mergesToMaster) {
+          this.taughtTight = true;
+          this.move('tight');
+        }
         break;
       case 'crash':
         if (this.strikeAge === null && (event.isStrike || event.isPoliceCrash)) this.strikeAge = 0;
@@ -77,8 +87,11 @@ export class Tutorial {
       list.s(circle(at, 22 + 5 * beat), 'accent', 0.08 * fade);
     }
     const island = toScreen(cam, v(0, 0));
-    if (this.step === 'findGap') Tutorial.pill(list, S.tutorial.findGap, add(island, v(0, 74)), this.age, null, reduceMotion);
-    else if (this.step === 'combo') Tutorial.pill(list, S.tutorial.combo, add(island, v(0, 74)), this.age, this.age - (Tutorial.hintDuration - 0.3), reduceMotion);
+    const hint = this.step === 'combo' ? S.tutorial.combo : this.step === 'tight' ? S.tutorial.tightFit : null;
+    if (hint) {
+      const radius = toScreen(cam, v(world.layout.islandRadius, 0)).x - island.x;
+      Tutorial.islandPill(list, hint, island, radius, this.age, this.age - (Tutorial.hintDuration - 0.3), reduceMotion);
+    }
     const sa = this.strikeAge;
     if (sa !== null && sa < Tutorial.hintDuration) {
       const at = v(cam.viewport.x / 2, TopBar.top + TopBar.height + 28);
@@ -97,6 +110,34 @@ export class Tutorial {
     const at = add(center, v(0, rise));
     MenuKit.chromePill(list, at, v(textWidth(label, size) + 32, 32), opacity, tint);
     list.s(text(label, at, size, 'center', 'bold'), 'primary', opacity);
+  }
+
+  /** A hint in the island's lower half, under the combo: one line where it fits, else two, never out onto the ring. */
+  private static islandPill(list: RenderList, label: string, island: Vec2, radius: number, age: number, leaving: number, reduceMotion: boolean): void {
+    const enter = Ease.outCubic(age / 0.25);
+    const opacity = enter * (1 - Ease.clamp01(leaving / 0.3));
+    if (opacity <= 0.001) return;
+    const natural = 14;
+    const words = label.split(' ');
+    let lines = [label];
+    if (words.length > 1 && textWidth(label, natural) + 32 > radius * 1.5) {
+      let best = 1;
+      for (let i = 1; i < words.length; i++) {
+        const gap = Math.abs(textWidth(words.slice(0, i).join(' '), natural) - textWidth(words.slice(i).join(' '), natural));
+        if (gap < Math.abs(textWidth(words.slice(0, best).join(' '), natural) - textWidth(words.slice(best).join(' '), natural))) best = i;
+      }
+      lines = [words.slice(0, best).join(' '), words.slice(best).join(' ')];
+    }
+    const height = 14 + 18 * lines.length;
+    const center = add(island, v(0, Math.min(radius - height / 2 - 6, 52 + height / 2)));
+    // The chord of the island at the pill's lower edge is the room it has.
+    const edge = center.y - island.y + height / 2;
+    const room = 2 * Math.sqrt(Math.max(0, radius * radius - edge * edge)) - 32;
+    const widest = Math.max(...lines.map((l) => textWidth(l, natural)));
+    const size = widest <= room ? natural : Math.max(11, (natural * room) / widest);
+    const at = add(center, v(0, reduceMotion ? 0 : (1 - Ease.settle(age / 0.4)) * 10));
+    MenuKit.chromePill(list, at, v(Math.max(...lines.map((l) => textWidth(l, size))) + 32, height), opacity, 'accent');
+    lines.forEach((l, i) => list.s(text(l, add(at, v(0, (i - (lines.length - 1) / 2) * 18)), size, 'center', 'bold'), 'primary', opacity));
   }
 
   static fittingSize(label: string, viewportWidth: number): number {

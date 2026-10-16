@@ -427,6 +427,8 @@ export const baseConfig = {
   transporterPerArm: 0.15,
   upgradeBaseCost: 2600,
   upgradeCostGrowth: 1.5,
+  /** A first step a new player reaches in a few shifts (Leo, 16.10.2026); every later step keeps its price. */
+  starterPrices: { overtime: 800, tightFitTip: 900, quickRecovery: 1000 } as Readonly<Record<string, number>>,
   patrolsPerStep: 0.03,
   pursuitPerStep: 1,
   quietStreetsPerStep: 0.1,

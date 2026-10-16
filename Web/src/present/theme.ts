@@ -248,7 +248,7 @@ export const COLORS = {
   juiceBlue: [10, 132, 255, 1],
   juicePurple: [191, 90, 242, 1],
   /** The glass material of all floating chrome; `--glass` in `ui/shell.css` is the same, so canvas and DOM controls match. */
-  chrome: [20, 23, 28, 0.76],
+  chrome: [20, 23, 28, 0.86],
   /** The same glass on a device that cannot afford the blur (`lowDetail`): near solid, like `.app[data-detail='low']`. */
   chromeSolid: [20, 23, 28, 0.92],
   chromeEdge: [255, 255, 255, 0.1333],

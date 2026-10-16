@@ -30,9 +30,15 @@ export const perspectiveOf = (s: Screen): Perspective => {
 
 export const PerspectiveTuning = {
   glide: 0.65,
+  /** Back to the game (Leo, 16.10.2026): a slower glide in, as if the eye settles on the ring. */
+  focusGlide: 0.9,
+  /** After loading the game starts this far out and settles in on the ring over `focusArrive`. */
+  focusFrom: 0.88,
+  focusArrive: 1.2,
   shopDirection: 2.3,
   shopDistance: 150,
-  shopZoom: 0.74,
+  /** The other tabs step further back, so coming to the game feels like moving closer. */
+  shopZoom: 0.64,
   progressDirection: -0.9,
   socialDirection: -2.3,
   upgradesZoom: 1.06,
@@ -90,24 +96,41 @@ export class CameraRig {
   ringRadius = 0;
   from: Camera | null = null;
   age = 0;
+  /** How long the glide under way takes. */
+  glide = PerspectiveTuning.glide;
   shown: Camera | null = null;
 
   camera(p: Perspective, layout: RoundaboutLayout, viewport: Vec2, bottomInset: number, delta: number, reduceMotion: boolean): Camera {
+    const T = PerspectiveTuning;
     const target = perspectiveCamera(p, layout, viewport, bottomInset);
     const moved = p !== this.perspective || layout.ringRadius !== this.ringRadius;
-    if (moved && this.shown && !reduceMotion && this.perspective !== null) {
+    if (this.perspective === null && p === 'street' && !reduceMotion) {
+      // The first frame after loading: the eye comes to rest on the ring.
+      this.from = { ...target, scale: target.scale * T.focusFrom };
+      this.glide = T.focusArrive;
+      this.age = 0;
+    } else if (moved && this.shown && !reduceMotion && this.perspective !== null) {
       this.from = this.shown;
+      this.glide = p === 'street' && p !== this.perspective ? T.focusGlide : T.glide;
       this.age = 0;
     } else this.age += delta;
     this.perspective = p;
     this.ringRadius = layout.ringRadius;
     let cam = target;
     const from = this.from;
-    if (from && this.age < PerspectiveTuning.glide && from.viewport.x === viewport.x && from.viewport.y === viewport.y) {
-      cam = blendCameras(from, target, Ease.settle(this.age / PerspectiveTuning.glide));
+    if (from && this.age < this.glide && from.viewport.x === viewport.x && from.viewport.y === viewport.y) {
+      cam = blendCameras(from, target, Ease.settle(this.age / this.glide));
     } else this.from = null;
     this.shown = cam;
     return cam;
+  }
+
+  /** How fast the glide under way moves now, 0 at rest to 1 at its fastest (the slope of `Ease.settle`). */
+  get motion(): number {
+    if (!this.from || this.age >= this.glide) return 0;
+    const k = 8.5;
+    const x = this.age / this.glide;
+    return (k * k * x * Math.exp(-k * x)) / (k / Math.E);
   }
 }
 

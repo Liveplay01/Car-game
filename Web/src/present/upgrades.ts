@@ -6,6 +6,7 @@ import { type RenderList, type Rect, type Primitive, R, rect, circle, arc, line,
 import type { ColorToken } from './theme';
 import { MenuKit } from './menukit';
 import { moneyTag, moneyTagWidth, drawFitted, textWidth } from './icons';
+import { Meter } from './meter';
 import { S, Fmt } from './strings';
 import { measure } from './measure';
 import { BuildLayout, BUILD_PAGES, type Tab } from './flow';
@@ -124,37 +125,6 @@ export const UpgradePage = {
     return UpgradePage.cards(viewport, bottomInset, upgrades, scroll).find((c) => R.contains(c.rect, point))?.upgrade ?? null;
   },
 
-  tint(u: Upgrade): ColorToken {
-    switch (u) {
-      case 'morePatrols':
-      case 'interceptor':
-      case 'dispatchRadio':
-      case 'backup':
-        return 'juiceBlue';
-      case 'longerPursuit':
-        return 'juicePurple';
-      case 'quietStreets':
-      case 'quickRecovery':
-      case 'shield':
-      case 'chainSaver':
-        return 'juiceGreen';
-      case 'cashRoute':
-      case 'overtime':
-      case 'doubleRun':
-      case 'tightFitTip':
-        return 'juiceYellow';
-      case 'freight':
-      case 'fogLamps':
-        return 'juiceOrange';
-      case 'dashcam':
-        return 'juicePurple';
-      case 'winterTyres':
-        return 'juiceBlue';
-      case 'insurance':
-      case 'robberyInsurance':
-        return 'juiceRed';
-    }
-  },
 
   countedMoney(career: Career, state: UpgradeState): number {
     if (state.moneyBefore === null || !state.purchase) return career.money;
@@ -222,7 +192,9 @@ export const UpgradePage = {
     const picture = R.make(center.x - size.x / 2 + 10, center.y - size.y / 2 + 10, center.x + size.x / 2 - 10, center.y - size.y / 2 + 10 + pictureHeight);
     // The picture stands on the card itself, in its glow: no second surface inside the card.
     const tile = R.center(picture);
-    MenuKit.glow(list, tile, pictureHeight * 0.62, U.tint(upgrade), 0.45 * o);
+    // One glow for all (colour roles): amber where the money reaches the next step, else a quiet one.
+    const affordable = price !== null && career.money >= price;
+    MenuKit.glow(list, tile, pictureHeight * 0.62, affordable ? 'accent' : 'muted', (affordable ? 0.45 : 0.2) * o);
     UpgradeArt.add(list, upgrade, picture, o);
     // Today's pick: one step for a watched ad (Leo, 05.10.2026). Opens in the sheet like any card.
     if (freeStep) {
@@ -244,25 +216,13 @@ export const UpgradePage = {
     const priceY = center.y + size.y / 2 - 14;
     const priceLabel = price === null ? S.upgrades.maxed : Fmt.number(price);
     const priceWidth = price === null ? textWidth(priceLabel, 14) : moneyTagWidth(priceLabel, 14);
-    // The pips take the room the price leaves; where there is not enough for one each, a single bar shows the progress.
-    const pipGap = 2.5;
-    const pipRoom = textRight - textLeft - priceWidth - 10;
-    const pipWidth = Math.min(9, (pipRoom - pipGap * (maxSteps - 1)) / maxSteps);
-    if (pipWidth >= 3) {
-      for (let step = 0; step < maxSteps; step++) {
-        const filled = step < steps;
-        let pipSize = v(pipWidth, 5);
-        if (purchase && step === purchase.steps && !reduceMotion) pipSize = mul(pipSize, 1 + 0.6 * Math.sin(Math.PI * Ease.outCubic(purchase.age / 0.3)));
-        list.s(rect(v(textLeft + pipWidth / 2 + step * (pipWidth + pipGap), priceY), pipSize, 2.5), filled ? 'accent' : 'marking', (filled ? 1 : 0.6) * o);
-      }
-    } else if (pipRoom >= 16) {
-      list.s(rect(v(textLeft + pipRoom / 2, priceY), v(pipRoom, 5), 2.5), 'marking', 0.6 * o);
-      if (steps > 0) list.s(rect(v(textLeft + (pipRoom * steps) / maxSteps / 2, priceY), v((pipRoom * steps) / maxSteps, 5), 2.5), 'accent', o);
-    }
-    let priceColor: ColorToken = price === null ? 'accent' : career.money >= price ? 'primary' : 'muted';
+    // The steps as the one progress bar of the game (`Meter`): it glides to a bought step, gold once maxed.
+    const barRoom = textRight - textLeft - priceWidth - 10;
+    if (barRoom >= 16) Meter.add(list, `upgrade.${upgrade}`, R.make(textLeft, priceY - Meter.height / 2, textLeft + barRoom, priceY + Meter.height / 2), steps / maxSteps, 0, o, reduceMotion);
+    let priceColor: ColorToken = price === null ? 'coin' : affordable ? 'primary' : 'muted';
     if (denied) priceColor = 'destructive';
     const priceAt = v(textRight, priceY);
-    if (price !== null) moneyTag(list, priceLabel, priceAt, 14, 'trailing', priceColor, priceColor, o);
+    if (price !== null) moneyTag(list, priceLabel, priceAt, 14, 'trailing', priceColor, denied ? 'destructive' : affordable ? 'coin' : 'muted', o);
     else list.s(text(priceLabel, priceAt, 14, 'trailing', 'bold'), priceColor, o);
   },
 
@@ -355,7 +315,7 @@ export const UpgradeArt = {
         car(at(-2, 4), 0.9, 'vehicleCar', null, false);
         for (let i = 0; i < 3; i++) {
           const x = center.x + (i - 1) * 7 * unit - 2 * unit;
-          put(line(v(x, center.y + 20 * unit), v(x, center.y + 28 * unit), 2.5 * unit), 'juiceGreen', 0.85 - i * 0.15);
+          put(line(v(x, center.y + 20 * unit), v(x, center.y + 28 * unit), 2.5 * unit), 'accent', 0.85 - i * 0.15);
         }
         put(line(at(17, 12), at(17, -12), 3 * unit), 'accent');
         put(line(at(17, -12), at(11, -5), 3 * unit), 'accent');
@@ -395,7 +355,7 @@ export const UpgradeArt = {
         break;
       case 'chainSaver':
         put(arc(at(-8, 0), 10 * unit, 3.5 * unit, 0, TAU), 'accent');
-        put(arc(at(8, 0), 10 * unit, 3.5 * unit, 0, TAU), 'juiceGreen');
+        put(arc(at(8, 0), 10 * unit, 3.5 * unit, 0, TAU), 'accent');
         break;
       case 'winterTyres':
         put(circle(center, 18 * unit), 'primary', 0.85);

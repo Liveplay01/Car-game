@@ -64,6 +64,9 @@ const { GUIDE } = await load('/src/present/siteGuide.ts');
 const { signalOf } = await load('/src/present/museumSignal.ts');
 const { readFileSync } = await import('node:fs');
 const { prestigeReward, BIG_SCREEN } = await load('/src/core/loot.ts');
+const { COLORS } = await load('/src/present/theme.ts');
+const { MapTheme, MAP_THEMES } = await load('/src/present/mapThemes.ts');
+const { upgradePrice, upgradeIntroLevel } = await load('/src/core/levels.ts');
 const { MUTATORS, mutatorOf, mutatorSky } = await load('/src/core/mutators.ts');
 const { forSeason } = await load('/src/core/seasons.ts');
 const { drawWeather } = await load('/src/core/levels.ts');
@@ -3435,4 +3438,47 @@ test('a fast flick runs a little past the end of a list, springs back without ri
   slow.scroll = 990;
   slow.velocity = 300;
   for (let i = 0; i < 120; i++) assert.ok(!slow.follow(1 / 60, 1000), 'a slow glide into the end is not felt');
+});
+
+test('HUD text keeps AA contrast on the glass over every map, daylight included', () => {
+  const lin = (c) => ((c /= 255) <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4);
+  const lum = ([r, g, b]) => 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b);
+  const over = ([r, g, b, a], [R, G, B]) => [r * a + R * (1 - a), g * a + G * (1 - a), b * a + B * (1 - a)];
+  const ratio = (x, y) => {
+    const [hi, lo] = [lum(x), lum(y)].sort((p, q) => q - p);
+    return (hi + 0.05) / (lo + 0.05);
+  };
+  for (const theme of [null, ...MAP_THEMES]) {
+    const glass = over(COLORS.chrome, COLORS[MapTheme.ground(theme)]);
+    for (const text of ['primary', 'muted', 'accent']) {
+      assert.ok(ratio(COLORS[text], glass) >= 4.5, `${text} on the glass over ${theme ?? 'the default map'}: ${ratio(COLORS[text], glass).toFixed(2)}`);
+    }
+  }
+  for (const text of ['primary', 'muted', 'accent', 'destructive', 'coin']) assert.ok(ratio(COLORS[text], COLORS.island) >= 4.5, `${text} on the island`);
+});
+
+test('daily challenges ask only for what a new player meets on the road', () => {
+  for (let day = 20000; day < 20200; day++) {
+    for (const level of [1, 2]) {
+      const picked = challengesOf(day, level);
+      assert.equal(picked.length, 3);
+      assert.ok(!picked.some((c) => c === 'oneTakedown' || c === 'twoTakedowns' || c === 'twoTransporters'), `day ${day}, level ${level}: ${picked}`);
+    }
+    assert.ok(!challengesOf(day, 3).includes('twoTransporters'));
+    assert.deepEqual(challengesOf(day), challengesOf(day, 99));
+  }
+});
+
+test('upgrades come with the vehicle they work on, and a few first steps are cheap', () => {
+  const career = newCareer();
+  const offered = (level) => Careers.availableUpgrades({ ...career, level }, baseConfig);
+  assert.ok(!offered(1).includes('morePatrols') && offered(2).includes('morePatrols'));
+  assert.ok(!offered(2).includes('interceptor') && offered(3).includes('interceptor'));
+  assert.ok(!offered(3).includes('cashRoute') && offered(4).includes('cashRoute'));
+  assert.equal(Careers.priceOf({ ...career, level: 1 }, 'morePatrols', baseConfig), null);
+  assert.equal(upgradeIntroLevel('overtime', baseConfig), 1);
+  for (const [u, price] of Object.entries(baseConfig.starterPrices)) {
+    assert.equal(upgradePrice(u, 1, baseConfig), price);
+    assert.ok(upgradePrice(u, 2, baseConfig) > price, `${u}: the second step keeps its price`);
+  }
 });

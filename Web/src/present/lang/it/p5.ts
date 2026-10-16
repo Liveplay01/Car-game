@@ -388,7 +388,7 @@ export default (S: Strings): Words<Strings> => ({
     scopes: { all: 'Tutti', friends: 'Amici' },
     scopeLabel: 'Mostra',
     introInvited: (level) => `Un amico ti ha invitato. Scegli un nome, raggiungi il livello ${level} ed entrambi riceverete un baule. Le statistiche provengono da questo dispositivo.`,
-    intro: 'Inserisci un nome per verificare la tua posizione. Le tue statistiche derivano da questo dispositivo e si aggiornano da sole.',
+    intro: 'Crea il tuo giocatore per comparire qui. Le tue statistiche derivano da questo dispositivo e si aggiornano da sole.',
     save: 'Salva',
     noSignUp: 'Nessuna registrazione: solo questo nome e i tuoi record vengono inviati.',
     yourName: 'Il tuo nome',
@@ -539,6 +539,10 @@ export default (S: Strings): Words<Strings> => ({
 
   shell: {
     dispatch: 'Chiamata d’emergenza: la prossima auto sarà della polizia',
+    tapAnywhere: 'Tocca ovunque',
+    tapAnywhereSub: 'non sulle auto',
+    dispatchSide: 'Altro lato? Impostazioni → Mancino',
+    dispatchLeft: (n) => `la prossima auto sarà della polizia, ancora ${n} in questo turno`,
     leave: 'Esci',
     leaveTour: 'Abbandona tour',
     leaveTrial: 'Abbandona prova',

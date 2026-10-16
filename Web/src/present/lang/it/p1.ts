@@ -5,9 +5,9 @@ import { INVITE_LEVEL, INVITE_REMINDER_LEVEL } from '../../../core/config';
 /** Italiano, Parte 1: Tutorial, Introduzioni, Impostazioni, Cloud, Suggerimenti, Corse. */
 export default (_s: Strings): Words<Strings> => ({
   tutorial: {
-    sendCar: 'Tocca per inviare la tua prima auto',
-    findGap: 'Attendi uno spazio, poi tocca',
+    sendCar: 'Attendi uno spazio, poi tocca per inviare la tua auto',
     combo: 'Gli inserimenti puliti aumentano la tua combo',
+    tightFit: 'Più stretto lo spazio, più punti',
     strikes: (cars, police) => {
       const lead = cars > 1 ? 'La tua auto può schiantarsi una volta.' : 'Le auto si schiantano all’istante.';
       return police > 0 ? `${lead} La polizia ha ${police} possibilità.` : lead;
@@ -236,7 +236,7 @@ export default (_s: Strings): Words<Strings> => ({
     codeNote: 'Su un altro dispositivo apri Impostazioni → Account → Sincronizzazione cloud e inserisci questo codice. Chi lo ha può caricare i tuoi progressi: tienilo per te.',
     finish: 'Fatto',
     manage: 'Impostazioni di sincronizzazione',
-    gate: 'Amici, Classifiche e il Club hanno bisogno del tuo giocatore: un nome, e i tuoi progressi salvati con lui.',
+    gate: 'Amici e il Club hanno bisogno del tuo giocatore: un nome, e i tuoi progressi salvati con lui.',
     gateButton: 'Crea il mio giocatore',
     settingsNone: 'Crea il tuo giocatore',
     settingsSub: 'Un nome per classifiche, amici, multigiocatore e sincronizzazione.',
@@ -252,8 +252,8 @@ export default (_s: Strings): Words<Strings> => ({
   },
 
   hints: {
-    install: { caption: 'SUGGERIMENTO', text: 'Installa il gioco dalle Impostazioni: finestra dedicata, a un clic di distanza' },
-    homeScreen: { caption: 'SUGGERIMENTO', text: 'Aggiungi il gioco alla schermata Home dalle Impostazioni: un tocco, schermo intero' },
+    install: { caption: 'SUGGERIMENTO', text: 'Installa il gioco dalle Impostazioni: i tuoi progressi restano al sicuro, a un clic' },
+    homeScreen: { caption: 'SUGGERIMENTO', text: 'Aggiungi il gioco alla schermata Home dalle Impostazioni: i tuoi progressi restano al sicuro, a un tocco' },
     reduceMotion: { caption: 'SUGGERIMENTO', text: 'Scatti o rallentamenti? L’opzione «Riduci movimento» nelle Impostazioni può aiutare' },
     notSaved: 'Questo browser non salva i tuoi progressi · La sincronizzazione Cloud nelle Impostazioni può conservarne una copia',
     notSavedHere: 'Questo browser non salva i tuoi progressi · Resteranno attivi fino alla chiusura del gioco',

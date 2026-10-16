@@ -9,6 +9,7 @@ import {
   upgradePrice,
   upgradeMaxSteps,
   upgradeUnlockLevel,
+  upgradeIntroLevel,
   UPGRADES,
   type Upgrade,
   forArms,
@@ -448,7 +449,7 @@ export const newSave = (): SaveGame => ({
   highscore: 0,
   highscoreSeed: null,
   shiftsPlayed: 0,
-  settings: { sound: true, music: true, mapSounds: true, haptics: true, reduceMotion: 'off', vehicleLabels: false, leftHanded: false, dispatchSize: 2, largeText: false, batterySaver: false, motionChosen: false },
+  settings: { sound: true, music: true, mapSounds: true, haptics: true, reduceMotion: 'system', vehicleLabels: false, leftHanded: false, dispatchSize: 2, largeText: false, batterySaver: false, motionChosen: false },
   career: newCareer(),
   tutorialDone: false,
   hints: [],
@@ -479,7 +480,7 @@ export const Careers = {
 
   /** Price of the next step; null once maxed or not offered yet at this level. */
   priceOf(c: Career, u: Upgrade, config: Config = baseConfig): number | null {
-    if (c.level < upgradeUnlockLevel(u, config)) return null;
+    if (c.level < upgradeUnlockLevel(u, config) || Careers.reach(c) < upgradeIntroLevel(u, config)) return null;
     const next = Careers.steps(c, u) + 1;
     return next <= upgradeMaxSteps[u] ? upgradePrice(u, next, config) : null;
   },
@@ -492,7 +493,8 @@ export const Careers = {
     return true;
   },
 
-  availableUpgrades: (c: Career, config: Config = baseConfig): Upgrade[] => UPGRADES.filter((u) => upgradeUnlockLevel(u, config) <= c.level),
+  availableUpgrades: (c: Career, config: Config = baseConfig): Upgrade[] =>
+    UPGRADES.filter((u) => upgradeUnlockLevel(u, config) <= c.level && upgradeIntroLevel(u, config) <= Careers.reach(c)),
 
   /**
    * The config of the next shift: the roundabout as it is built, then its level, the upgrades,
@@ -536,6 +538,9 @@ export const Careers = {
   // MARK: Prestige
 
   /** How many levels harder the traffic runs after Prestige: the rank's head start. */
+  /** The level whose traffic the career meets: what `forIntro` and the daily challenges go by. */
+  reach: (c: Career): number => c.level + Careers.headStart(c),
+
   headStart: (c: Career, config: Config = baseConfig): number => Math.min(c.prestige * config.prestigeHeadStart, config.maxPrestigeHeadStart),
 
   canPrestige: (c: Career, config: Config = baseConfig): boolean => c.level >= config.prestigeLevel,
@@ -816,7 +821,8 @@ export const Careers = {
    */
   adUpgradeOffer(c: Career, day: number, config: Config = baseConfig): Upgrade | null {
     if (c.adUpgradeDay === day && c.adUpgrades >= config.adUpgradesPerDay) return null;
-    const open = (u: Upgrade): boolean => upgradeUnlockLevel(u, config) <= c.level && Careers.steps(c, u) < upgradeMaxSteps[u];
+    // On offer at this level (and with its vehicle on the road) and not maxed: what `priceOf` prices.
+    const open = (u: Upgrade): boolean => Careers.priceOf(c, u, config) !== null;
     // The shield's dear steps are bought, never watched for.
     const offered = UPGRADES.filter((u) => u !== 'shield');
     const start = Math.floor(new Rng((c.casinoSeed ^ Math.imul(day + 1, 0x9e3779b1) ^ 0xad0f5e1) >>> 0).unit() * offered.length);
@@ -942,7 +948,7 @@ export const Careers = {
       c.challengesDone = [];
     }
     const completed: Challenge[] = [];
-    for (const ch of challengesOf(day)) {
+    for (const ch of challengesOf(day, Careers.reach(c))) {
       if (c.challengesDone.includes(ch) || !challengeMet(ch, r)) continue;
       c.challengesDone.push(ch);
       c.money += challengeReward(ch);
