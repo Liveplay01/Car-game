@@ -5,7 +5,7 @@ import { MenuKit } from './menukit';
 import { ShopPage, JUICE } from './shop';
 import { Fmt } from './strings';
 
-export type BurstKind = 'rescue' | 'freeze' | 'double' | 'chest' | 'firstWin' | 'levelFive' | 'streak';
+export type BurstKind = 'rescue' | 'freeze' | 'double' | 'retry' | 'chest' | 'firstWin' | 'levelFive' | 'streak';
 
 /** One celebration: what it says, in which colour, how strong, and a number that counts up under the title. */
 export interface Burst {
@@ -117,6 +117,16 @@ export const RewardBurst = {
         }
       }
       list.s(circle(c, 6 * s), 'primary', a);
+      return;
+    }
+    if (b.kind === 'retry') {
+      // A circle of arrow, turning once as the medallion springs in.
+      const turn = Math.min(1, t / 0.9);
+      const from = -Math.PI / 2 + TAU * 0.08 + TAU * Ease.outCubic(turn);
+      list.s(arc(c, 30 * s, 8 * s, from, from + TAU * 0.78), b.color, a);
+      const tip = add(c, mul(fromAngle(from + TAU * 0.78), 30 * s));
+      const dir = from + TAU * 0.78 + Math.PI / 2;
+      list.s(polygon([add(tip, mul(fromAngle(dir), 13 * s)), add(tip, mul(fromAngle(dir + 2.3), 13 * s)), add(tip, mul(fromAngle(dir - 2.3), 13 * s))]), b.color, a);
       return;
     }
     if (b.kind === 'double') {

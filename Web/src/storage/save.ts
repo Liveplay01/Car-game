@@ -122,6 +122,8 @@ function readCareer(raw: unknown): Career {
     adRescueDay: int(raw.adRescueDay, -1),
     adFreezeDay: int(raw.adFreezeDay, -1),
     adDoubleDay: int(raw.adDoubleDay, -1),
+    adRetryDay: int(raw.adRetryDay, -1),
+    dailyRetry: raw.dailyRetry === true,
     upgradeBoost: raw.upgradeBoost === true,
     chestsOpened: int(raw.chestsOpened, 0, 0),
     chestsSinceEpic: int(raw.chestsSinceEpic, 0, 0),
@@ -285,6 +287,7 @@ function readSave(raw: unknown): SaveGame {
     dailyDay: int(raw.dailyDay, -1),
     dailyScore: int(raw.dailyScore, 0, 0),
     firstDay: int(raw.firstDay, -1),
+    dailyTries: int(raw.dailyTries, 1, 1) > 1 ? 2 : 1,
     notesSeen: typeof raw.notesSeen === 'string' ? raw.notesSeen : null,
   };
   // Unlimited milestones that came after the save's best run (Leo, 02.10.2026) arrive now, marked new.

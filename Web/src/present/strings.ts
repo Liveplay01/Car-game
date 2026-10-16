@@ -1438,6 +1438,10 @@ export const S = {
     doubled: 'Pay doubled',
     chestEarned: 'Free chest',
     chestEarnedLine: 'Standard chest added',
+    retryPill: 'Second try · watch an ad',
+    noRetry: 'One second try a day, and it is used.',
+    retried: 'Second try',
+    retriedLine: "Today's Daily is open again",
   },
   /** The moments the game is about (Leo, 16.10.2026): each gets one loud celebration (`GameSession.momentOf`). */
   moments: {
@@ -1605,6 +1609,8 @@ export const S = {
   ranks: {
     boards: {
       'shift-level': { label: 'Shift level', empty: 'Clear a shift to be the first one here.' },
+    /** Under a name on the Daily board: an ad gave that player a second try. */
+    secondTry: '2 tries',
       unlimited: { label: 'Unlimited', empty: 'Set an Unlimited record to be the first one here.' },
       daily: { label: 'Daily', empty: 'Clear today’s Daily Shift to be the first one here.' },
       rush: { label: 'Boss Rush', empty: 'Clear a Boss Rush to set the first time.' },

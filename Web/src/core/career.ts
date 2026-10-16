@@ -210,6 +210,9 @@ export interface Career {
   adDoubleDay: number;
   upgradeBoost: boolean;
   chestsOpened: number;
+  /** The day an ad gave the lost Daily a second try, and whether that try waits to be played. */
+  adRetryDay: number;
+  dailyRetry: boolean;
   chestsSinceEpic: number;
   chestsSinceLegendary: number;
   dailyDone: number;
@@ -349,6 +352,8 @@ export interface SaveGame {
   dailyScore: number;
   /** The day this save was first played (a new save only; -1: older than the field), for the visit count that tells how long players stay. */
   firstDay: number;
+  /** How many tries that Daily took: 2 when an ad gave a second one (the Daily board says so). */
+  dailyTries: number;
   /** The newest patch notes the player has opened (`present/patchNotes.ts`); null: none yet. */
   notesSeen: string | null;
 }
@@ -384,6 +389,8 @@ export const newCareer = (): Career => ({
   adDoubleDay: -1,
   upgradeBoost: false,
   chestsOpened: 0,
+  adRetryDay: -1,
+  dailyRetry: false,
   chestsSinceEpic: 0,
   chestsSinceLegendary: 0,
   dailyDone: -1,
@@ -472,6 +479,7 @@ export const newSave = (): SaveGame => ({
   dailyScore: 0,
   firstDay: -1,
   notesSeen: null,
+  dailyTries: 1,
 });
 
 export const MINIMUM_ARMS = 4;
@@ -942,7 +950,18 @@ export const Careers = {
     c.levelLosses = won ? 0 : c.levelLosses + 1;
   },
 
-  isDailyOpen: (c: Career, day: number): boolean => c.dailyPlayed !== day && c.dailyDone !== day,
+  isDailyOpen: (c: Career, day: number): boolean => (c.dailyPlayed !== day || c.dailyRetry) && c.dailyDone !== day,
+
+  /** Today's Daily was played and lost, no ad has given it a second try today (Leo, 16.10.2026: once a day). */
+  adRetryOpen: (c: Career, day: number): boolean => c.dailyPlayed === day && c.dailyDone !== day && !c.dailyRetry && c.adRetryDay !== day,
+
+  /** A watched ad: the lost Daily can be played once more. False when none is open. */
+  rewardAdRetry(c: Career, day: number): boolean {
+    if (!Careers.adRetryOpen(c, day)) return false;
+    c.dailyRetry = true;
+    c.adRetryDay = day;
+    return true;
+  },
 
   /** The day's twist for the Daily Shift; a career's very first Daily goes without it, so a new player's second shift is no blackout. */
   dailyMutator: (c: Career, day: number): MutatorId | null => (c.dailyPlayed < 0 ? null : mutatorOf(day)),
@@ -951,6 +970,11 @@ export const Careers = {
     if (!Careers.isDailyOpen(c, day)) return null;
     const news = Careers.advanceStreak(c, day, config);
     const milestone = STREAK_MILESTONES.find((m) => m.days === c.dailyStreak);
+    // The second try is the same day: the streak counted at the first.
+    if (c.dailyRetry) {
+      c.dailyRetry = false;
+      return { item: null, frozen: 0, earned: false, cards: 0 };
+    }
     if (milestone && !c.collection.includes(milestone.item)) {
       Careers.collect(c, milestone.item);
       news.item = milestone.item;

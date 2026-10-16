@@ -533,6 +533,9 @@ the dial; it is used up by one round, won or lost, and the dial shows the chance
   more, once in 7 days), a Streak Freeze in the last `streakWarningHours` before it breaks (once a day), and the Daily
   Shift's pay doubled on its result (once a day). The rules are `Careers.adRescue/adFreezeOpen/adDoubleOpen` and
   `rewardAd*`, the values `streakRescue*` in `core/config.ts`. Every ad step goes to Umami as `ad` (`reward`, `step`).
+- **The Daily's second try** (16.10.2026): a Daily Shift that was lost can be played once more, once a day, for an ad
+  (`Careers.adRetryOpen/rewardAdRetry`, the pill on the result). Same seed; the streak counts once. The score sent to
+  the Daily board carries `tries: 2` (`save.dailyTries`), the board shows "2 tries" (`ui/ranksPanel.ts`).
 - **Trying the offers without AdSense:** `npm run dev`, then add `?adfake` to the address: a pretend ad of two seconds.
   It exists only in the dev build.
 

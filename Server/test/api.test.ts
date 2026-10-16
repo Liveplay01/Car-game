@@ -334,6 +334,12 @@ test('the Daily board is one list per day, the Boss Rush board ranks the fastest
   const list = await call('GET', `/v1/boards/daily?day=${today}`);
   assert.deepEqual(list.json.entries.map((e: { name: string; score: number }) => [e.name, e.score]), [['Ben', 6000], ['Anna', 4000]], 'the better one stays');
 
+  // A second try is said on the board; one try, or an old client, says nothing; a third is refused.
+  assert.equal((await call('PUT', '/v1/boards/daily/score', { token: a.token, body: { score: 5000, day: today, tries: 2 } })).status, 200);
+  assert.equal((await call('GET', `/v1/boards/daily?day=${today}`)).json.entries.find((e: { name: string }) => e.name === 'Anna').meta.tries, 2);
+  assert.deepEqual((await call('GET', `/v1/boards/daily?day=${today}`)).json.entries.find((e: { name: string }) => e.name === 'Ben').meta, {});
+  assert.equal((await call('PUT', '/v1/boards/daily/score', { token: a.token, body: { score: 5000, day: today, tries: 3 } })).status, 422);
+
   // Another day starts a fresh list; today's stays readable.
   await call('PUT', '/v1/boards/daily/score', { token: a.token, body: { score: 100, day: today + 1 } });
   assert.deepEqual((await call('GET', `/v1/boards/daily?day=${today + 1}`)).json.entries.map((e: { name: string }) => e.name), ['Anna']);

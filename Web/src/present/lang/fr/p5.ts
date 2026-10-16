@@ -210,6 +210,10 @@ export default (S: Strings): Words<Strings> => ({
     froze: 'Gel de série ajouté',
     frozeLine: 'Un jour manqué ne brisera pas votre série',
     doubled: 'Paie doublée',
+    retryPill: 'Deuxième essai · regardez une pub',
+    noRetry: 'Un deuxième essai par jour, et il est utilisé.',
+    retried: 'Deuxième essai',
+    retriedLine: 'Le Daily du jour est de nouveau ouvert',
     chestEarned: 'Coffre gratuit',
     chestEarnedLine: 'Coffre standard ajouté',
   },
@@ -372,6 +376,7 @@ export default (S: Strings): Words<Strings> => ({
   },
 
   ranks: {
+    secondTry: '2 essais',
     boards: {
       'shift-level': { label: 'Niveau de service', empty: 'Terminez un service pour ouvrir le classement.' },
       unlimited: { label: 'Sans limites', empty: 'Établissez un record Sans limites pour apparaître ici.' },

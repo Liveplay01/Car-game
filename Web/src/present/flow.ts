@@ -106,7 +106,7 @@ export type ScreenAction =
   | { k: 'watchAdUpgrade' }
   | { k: 'watchAdBoost' }
   /** The Game tab's ad pill: the streak back, a Streak Freeze, the Daily's pay doubled. */
-  | { k: 'watchAdGame'; reward: 'rescue' | 'freeze' | 'double' }
+  | { k: 'watchAdGame'; reward: 'rescue' | 'freeze' | 'double' | 'retry' }
   | { k: 'showCasino'; game: CasinoGame }
   | { k: 'wear'; id: string }
   /** Big Screen: choose the picture or video behind the roundabout (the shell's sheet). */

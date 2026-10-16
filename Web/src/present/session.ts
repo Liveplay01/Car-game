@@ -212,6 +212,9 @@ export class GameSession {
   private resultBank = { before: 0, after: 0 };
   /** The celebration on screen (`rewardBurst.ts`), and a moment the next result celebrates when it shows. */
   private burst: { burst: Burst; age: number } | null = null;
+  /** The result on screen is a Daily Shift that was lost: an ad can give it a second try (`Careers.adRetryOpen`). */
+  private dailyLost = false;
+  private onToday = false;
   private resultBurst: Burst | null = null;
   /** A doubled pay joins the result's money as the celebration counts it up. */
   private pendingBank: number | null = null;
@@ -394,7 +397,7 @@ export class GameSession {
   /** The records the leaderboards rank (`net/leaderboard.ts`). */
   get leaderboardRecords(): Records {
     const { save } = this;
-    return { level: save.career.level, prestige: save.career.prestige, unlimitedBest: save.unlimitedBest, unlimitedCars: save.unlimitedBestCars, dailyDay: save.dailyDay, dailyScore: save.dailyScore, rushBest: save.career.rushBest, casinoProfit: Unlocks.isKnown(save.career, 'casino', this.config) ? save.career.casinoProfit : null, title: Mafia.late(save.career) ? 'mafia' : save.career.title };
+    return { level: save.career.level, prestige: save.career.prestige, unlimitedBest: save.unlimitedBest, unlimitedCars: save.unlimitedBestCars, dailyDay: save.dailyDay, dailyScore: save.dailyScore, dailyTries: save.dailyTries, rushBest: save.career.rushBest, casinoProfit: Unlocks.isKnown(save.career, 'casino', this.config) ? save.career.casinoProfit : null, title: Mafia.late(save.career) ? 'mafia' : save.career.title };
   }
 
   get visibleUpgrades(): readonly Upgrade[] {
@@ -1409,6 +1412,10 @@ export class GameSession {
     this.adPillAge += realDelta;
     if (this.burst) {
       this.burst.age += realDelta;
+    // Whether anyone finds the Today page, and whether the Daily still waits when they do (Leo, 16.10.2026).
+    const onToday = this.isPage('progress') && this.progressPage.section === PROGRESS.today;
+    if (onToday && !this.onToday) this.onStep?.('today-open', { daily: Careers.isDailyOpen(this.save.career, this.today) ? 1 : 0 });
+    this.onToday = onToday;
       if (this.pendingBank !== null && this.burst.age >= 1.5) {
         this.resultBank = { before: this.resultBank.before, after: this.pendingBank };
         this.pendingBank = null;
@@ -2576,6 +2583,7 @@ export class GameSession {
     this.resultBurst = null;
     this.play(['go'], []);
     this.onChrome?.();
+    this.dailyLost = false;
     if (!this.playingDaily) return;
     const career = this.save.career;
     const news = Careers.startDaily(career, this.today, this.config);
@@ -2733,6 +2741,7 @@ export class GameSession {
     this.dailySelected = false;
     this.resultBank = booked.bank;
     this.notices.announce(...GameSession.budget(booked.news));
+    this.dailyLost = this.playingDaily && result.outcome !== 'completed';
     this.tips.add(...booked.tips);
     for (const hint of booked.due) this.onHint?.(hint);
     if (save.shiftsPlayed >= GameSession.tightFitTipShifts) this.teachTightFit();
@@ -3202,8 +3211,10 @@ export class GameSession {
     const s = this.screen;
     if (s.k === 'result') {
       const pay = this.dailyPay;
-      return this.resultAge >= this.resultLock && Careers.adDoubleOpen(career, this.today, pay) ? { reward: 'double', label: S.ads.doublePill(Fmt.number(pay)) } : null;
+      return Careers.adDoubleOpen(career, this.today, pay) ? { reward: 'double', label: S.ads.doublePill(Fmt.number(pay)) } : null;
     }
+      if (this.resultAge < this.resultLock) return null;
+      if (this.dailyLost) return Careers.adRetryOpen(career, this.today) ? { reward: 'retry', label: S.ads.retryPill } : null;
     if (s.k !== 'ready' || !this.dailySelected || this.versusSelected || this.special) return null;
     const days = Careers.adRescue(career, this.today, this.config);
     if (days !== null) return { reward: 'rescue', label: S.ads.rescuePill(days) };
@@ -3233,7 +3244,7 @@ export class GameSession {
     }
     const at = v(list.camera.viewport.x / 2, y);
     AdPill.add(list, ad.label, at, this.adPillAge, opacity, this.reduceMotion, this.adFlow.busy);
-    if (opacity > 0.5 && this.showsChrome) this.adTarget = { reward: ad.reward, rect: AdPill.target(ad.label, at) };
+    if (opacity > 0.2 && this.showsChrome) this.adTarget = { reward: ad.reward, rect: AdPill.target(ad.label, at) };
     return true;
   }
 

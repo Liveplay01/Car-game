@@ -210,6 +210,10 @@ export default (S: Strings): Words<Strings> => ({
     froze: 'Protezione aggiunta',
     frozeLine: 'Un giorno saltato non spezzerà la serie',
     doubled: 'Paga raddoppiata',
+    retryPill: 'Secondo tentativo · guarda un annuncio',
+    noRetry: 'Un secondo tentativo al giorno, ed è già usato.',
+    retried: 'Secondo tentativo',
+    retriedLine: 'La Daily di oggi è di nuovo aperta',
     chestEarned: 'Baule gratis',
     chestEarnedLine: 'Baule standard aggiunto',
   },
@@ -372,6 +376,7 @@ export default (S: Strings): Words<Strings> => ({
   },
 
   ranks: {
+    secondTry: '2 tentativi',
     boards: {
       'shift-level': { label: 'Livello di turno', empty: 'Supera un turno per aprire la classifica.' },
       unlimited: { label: 'Senza limiti', empty: 'Fissa un record in Senza limiti per comparire qui.' },

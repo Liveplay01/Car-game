@@ -87,7 +87,10 @@ export const BOARDS: readonly BoardDef[] = [
     parse(body, now) {
       const day = integerField(body, 'day', utcDay(now) - 1, utcDay(now) + 1);
       const score = integerField(body, 'score', 1, LIMITS.maxPointsPerCar * LIMITS.maxDailyCars);
-      return { score, meta: {}, day };
+      // A second try (Leo, 16.10.2026: one ad a day) says so next to the score; older clients send none.
+      const tries = body.tries === undefined ? 1 : integerField(body, 'tries', 1, 2);
+      const meta: Record<string, number> = tries > 1 ? { tries } : {};
+      return { score, meta, day };
     },
   },
   {

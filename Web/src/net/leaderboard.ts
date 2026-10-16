@@ -290,6 +290,8 @@ export interface Records {
   /** The Daily Shift cleared last: its day and points (day -1: none). */
   dailyDay: number;
   dailyScore: number;
+  /** 2 when that Daily took a second try (an ad), else 1. */
+  dailyTries: number;
   /** Boss Rush: the fastest clear in seconds, 0 until one. */
   rushBest: number;
   /** What the money games won in all (`career.casinoProfit`); null before the Casino is reached, and then its board is not on show. */
@@ -339,7 +341,7 @@ export function due(r: Records): [BoardId, Record<string, number>, number][] {
   if (r.unlimitedBest > 0 && (confirmed.unlimited ?? -1) < r.unlimitedBest) list.push(['unlimited', { score: r.unlimitedBest, cars: Math.max(1, r.unlimitedCars) }, r.unlimitedBest]);
   // A day counts as one growing number with its score, so a new day always counts as better than the day before.
   const daily = r.dailyDay * 1_000_000 + r.dailyScore;
-  if (r.dailyDay >= 0 && r.dailyScore > 0 && (confirmed.daily ?? -1) < daily) list.push(['daily', { score: r.dailyScore, day: r.dailyDay }, daily]);
+  if (r.dailyDay >= 0 && r.dailyScore > 0 && (confirmed.daily ?? -1) < daily) list.push(['daily', { score: r.dailyScore, day: r.dailyDay, ...(r.dailyTries > 1 ? { tries: r.dailyTries } : {}) }, daily]);
   const cs = Math.round(r.rushBest * 100);
   if (r.rushBest > 0 && (confirmed.rush ?? -1) < RUSH_BASE - cs) list.push(['rush', { cs }, RUSH_BASE - cs]);
   const profit = r.casinoProfit;

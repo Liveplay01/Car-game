@@ -56,7 +56,7 @@ test('cloud: progress another device sent is taken over when this one has nothin
   assert.equal(cloudView().status, 'synced');
 });
 
-const casinoRecords = (casinoProfit) => ({ level: 7, prestige: 0, unlimitedBest: 0, unlimitedCars: 0, dailyDay: -1, dailyScore: 0, rushBest: 0, casinoProfit, title: null });
+const casinoRecords = (casinoProfit) => ({ level: 7, prestige: 0, unlimitedBest: 0, unlimitedCars: 0, dailyDay: -1, dailyScore: 0, dailyTries: 1, rushBest: 0, casinoProfit, title: null });
 
 test('ranks: the casino profit reaches the Casino board and follows it down', async () => {
   await createAccount('Lucky Ace');

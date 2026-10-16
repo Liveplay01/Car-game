@@ -2018,6 +2018,33 @@ test('an ad pays the Daily once more, once a day, and never for no pay', () => {
   assert.ok(Careers.rewardAdDouble(c, 51, 400), 'the next day');
 });
 
+test('a lost Daily gets one second try a day for an ad, without counting the streak twice', () => {
+  const c = newCareer();
+  Careers.startDaily(c, 100, baseConfig);
+  Careers.startDaily(c, 101, baseConfig);
+  assert.equal(c.dailyStreak, 2);
+  assert.ok(!Careers.isDailyOpen(c, 101), 'played: closed');
+  assert.ok(Careers.adRetryOpen(c, 101), 'played and not cleared: an ad can open it again');
+  assert.ok(Careers.rewardAdRetry(c, 101));
+  assert.ok(Careers.isDailyOpen(c, 101), 'the second try is open');
+  assert.ok(!Careers.adRetryOpen(c, 101), 'but only once a day');
+  Careers.startDaily(c, 101, baseConfig);
+  assert.equal(c.dailyStreak, 2, 'the streak counted at the first try');
+  assert.ok(!Careers.isDailyOpen(c, 101), 'closed again once it is played');
+  assert.ok(!Careers.rewardAdRetry(c, 101), 'no third try');
+  assert.ok(Careers.completeDaily(c, 101, baseConfig) > 0, 'the second try pays when cleared');
+  assert.ok(!Careers.adRetryOpen(c, 101), 'a cleared Daily needs no retry');
+  Careers.startDaily(c, 102, baseConfig);
+  assert.ok(Careers.adRetryOpen(c, 102), 'the next day has its own');
+});
+
+test('a second try goes to the Daily board with its score, one try says nothing', () => {
+  const r = { level: 5, prestige: 0, unlimitedBest: 0, unlimitedCars: 0, dailyDay: 20000, dailyScore: 3000, dailyTries: 2, rushBest: 0, casinoProfit: null, title: null };
+  const daily = dueBoards(r).find(([board]) => board === 'daily');
+  assert.deepEqual(daily[1], { score: 3000, day: 20000, tries: 2 });
+  assert.deepEqual(dueBoards({ ...r, dailyTries: 1 }).find(([board]) => board === 'daily')[1], { score: 3000, day: 20000 });
+});
+
 test('a save keeps the days the streak ads were used, old saves start with none', () => {
   const c = newCareer();
   c.adRescueDay = 12;

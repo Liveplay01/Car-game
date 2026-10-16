@@ -58,12 +58,13 @@ export const PATCH_NOTES: PatchNote[] = [
     summary: [
       'Your choice: watch an ad to bring a broken streak back, get a Freeze or double the Daily pay.',
       'Big moments are celebrated on the whole screen, and chest openings are wilder.',
+      'A lost Daily gets one second try a day for an ad; the Daily board shows "2 tries".',
       'A gentler start: daily quests fit your level and three upgrades have a cheap first step.',
-      'The tab bar floats as a rounded dock, and the middle of the ring stays clear before a shift.',
     ],
     items: [
       'Ads for your streak, always your tap and paid only when watched to the end: bring a broken streak of 3 days or more back (once a week), get a Streak Freeze in the last hours before it breaks, or double the Daily Shift’s pay on its result. They show up once an ad is ready.',
       'Bigger moments: your first shift won, Level 5 cleared and a streak milestone get a full-screen celebration, and so do a Freeze, a doubled pay and a free ad chest. A chest opening now shakes the screen, and the rarer the prize the more rings, light, stars and coins.',
+      'A Daily Shift you lost can be played once more, once a day, for an ad you choose to watch. It is the same city and it pays if you clear it. The streak counts once, and the Daily board shows "2 tries" next to the score of anyone who needed the second.',
       'Fixed: after a lost shift the texts in the middle of the ring no longer pile on top of each other, especially on phones. Each line gets its own room, and the money and XP lines, which the counter and the ring already show, are gone.',
       'Daily quests only ask for what you have met on the road: no criminals before level 3, no money transporters before level 4.',
       'Overtime, the Tight Fit tip and Quick Recovery have a cheaper first step (800, 900 and 1,000), so your first upgrade comes after a few shifts. Every later step costs what it did.',

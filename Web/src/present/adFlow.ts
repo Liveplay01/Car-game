@@ -5,10 +5,10 @@ import type { PageHost } from './pageHost';
 import type { RewardedOutcome } from './session';
 
 /** What a watched ad pays: the free Standard chest, a free step of today's upgrade, the Skin Upgrade's boost, a broken streak back, a Streak Freeze, the Daily's pay once more. */
-export type AdReward = 'chest' | 'upgrade' | 'boost' | 'rescue' | 'freeze' | 'double';
+export type AdReward = 'chest' | 'upgrade' | 'boost' | 'rescue' | 'freeze' | 'double' | 'retry';
 
 /** The ads of the Game tab's pill (`AdPill`). */
-export type GameAd = Extract<AdReward, 'rescue' | 'freeze' | 'double'>;
+export type GameAd = Extract<AdReward, 'rescue' | 'freeze' | 'double' | 'retry'>;
 
 /** What the ads on offer look like right now: the extra ones (free step, boost) are on, and an ad is ready to play. */
 export interface AdOffer {
@@ -54,6 +54,8 @@ export class AdFlow {
         return Careers.adFreezeOpen(career, today) ? null : S.ads.noFreeze;
       case 'double':
         return Careers.adDoubleOpen(career, today, this.host.dailyPay) ? null : S.ads.noDouble;
+      case 'retry':
+        return Careers.adRetryOpen(career, today) ? null : S.ads.noRetry;
     }
   }
 
@@ -127,6 +129,11 @@ export class AdFlow {
         if (!Careers.rewardAdFreeze(career, today)) return;
         this.host.persist();
         this.host.celebrate({ kind: 'freeze', title: S.ads.froze, line: S.ads.frozeLine, color: 'lightBlue', power: 1 });
+        return;
+      case 'retry':
+        if (!Careers.rewardAdRetry(career, today)) return;
+        this.host.persist();
+        this.host.celebrate({ kind: 'retry', title: S.ads.retried, line: S.ads.retriedLine, color: 'hazard', power: 1.2 });
         return;
       case 'double': {
         const pay = this.host.dailyPay;

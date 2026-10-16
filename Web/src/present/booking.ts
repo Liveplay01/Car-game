@@ -145,6 +145,7 @@ export function bookShift(save: SaveGame, result: ShiftResult, ctx: ShiftContext
     Achievements.countDaily(career);
     save.dailyDay = ctx.today;
     save.dailyScore = result.score;
+    save.dailyTries = career.adRetryDay === ctx.today ? 2 : 1;
   }
   // The Daily's pay shows in the result's money and its streak on the next Daily; a chest found says nothing either:
   // the Game tab's pill and the Shop's badge already show it.

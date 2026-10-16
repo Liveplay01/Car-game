@@ -99,10 +99,10 @@ function prestigeInfo(back: () => void): HTMLElement {
   );
 }
 
-/** The line under a name: the title, and on the Unlimited board the tier the run reached. */
+/** The line under a name: the title, on the Unlimited board the tier the run reached, on the Daily board a second try. */
 function boardSub(board: BoardId, e: { title: string | null; meta: Record<string, number> }): string {
   const tier = board === 'unlimited' ? tierOf(e.meta.cars ?? 0) : null;
-  return [titleName(e.title), tier ? S.modes.tier(tier) : null].filter(Boolean).join(' · ');
+  return [titleName(e.title), tier ? S.modes.tier(tier) : null, board === 'daily' && e.meta.tries === 2 ? S.ranks.secondTry : null].filter(Boolean).join(' · ');
 }
 
 function entryRow(board: BoardId, e: BoardEntry | (Omit<BoardEntry, 'name'> & { name: string }), onStar: () => void): HTMLElement {

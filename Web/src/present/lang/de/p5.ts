@@ -210,6 +210,10 @@ export default (S: Strings): Words<Strings> => ({
     froze: 'Serienschutz erhalten',
     frozeLine: 'Ein verpasster Tag bricht deine Serie nicht',
     doubled: 'Lohn verdoppelt',
+    retryPill: 'Zweiter Versuch · Werbung ansehen',
+    noRetry: 'Ein zweiter Versuch pro Tag, und der ist verbraucht.',
+    retried: 'Zweiter Versuch',
+    retriedLine: 'Die heutige Daily ist wieder offen',
     chestEarned: 'Gratis-Truhe',
     chestEarnedLine: 'Standard-Truhe hinzugefügt',
   },
@@ -372,6 +376,7 @@ export default (S: Strings): Words<Strings> => ({
   },
 
   ranks: {
+    secondTry: '2 Versuche',
     boards: {
       'shift-level': { label: 'Schicht-Level', empty: 'Schaffe eine Schicht, um der Erste hier zu sein.' },
       unlimited: { label: 'Unlimited', empty: 'Stelle einen Unlimited-Rekord auf, um der Erste hier zu sein.' },
