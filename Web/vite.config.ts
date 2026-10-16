@@ -133,12 +133,14 @@ self.addEventListener('push', (event) => {
     return;
   }
   if (!message.title) return;
-  event.waitUntil(self.registration.showNotification(message.title, {
+  // The installed app's icon keeps a dot until the game is opened again (main.ts clears it).
+  const badge = self.navigator.setAppBadge ? self.navigator.setAppBadge().catch(() => undefined) : undefined;
+  event.waitUntil(Promise.all([badge, self.registration.showNotification(message.title, {
     body: message.body || '',
     tag: message.tag || 'rat',
     icon: '/icons/icon-192.png',
     data: { url: message.url || '/' },
-  }));
+  })]));
 });
 
 self.addEventListener('notificationclick', (event) => {

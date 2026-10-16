@@ -20,6 +20,10 @@ export function h<K extends keyof HTMLElementTagNameMap>(tag: K, attrs: Attrs = 
   return el;
 }
 
+/** Something is on its way: a car goes round a tiny roundabout before the text (Leo, 16.10.2026). */
+export const loadingNote = (text: string, cls = 'section-note'): HTMLElement =>
+  h('p', { class: `${cls} loading-note`, role: 'status' }, h('span', { class: 'loader', 'aria-hidden': 'true' }), text);
+
 export function append(el: Element, children: Child[]): void {
   for (const c of children) {
     if (c === null || c === undefined || c === false) continue;

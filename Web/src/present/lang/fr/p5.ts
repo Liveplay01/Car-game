@@ -122,7 +122,7 @@ export default (S: Strings): Words<Strings> => ({
     drag: 'Faire glisser sur l’anneau',
     pickOne: 'Touchez une pièce pour les détails · touchez une pièce installée pour l’améliorer, la déplacer ou la retirer.',
     dragHint: 'Glissez-la sur un emplacement libre de l’anneau.',
-    buildHint: 'Touchez deux fois la pièce pour construire · un toucher la retire.',
+    buildHint: 'Bâtissez-la depuis la fiche · Retirer l’enlève.',
     keepsArms: (n) => `Un rond-point conserve au minimum ${n} bretelles`,
     name: (part) =>
       part === 'arm' ? 'Nouvelle bretelle' : part === 'tollBooth' ? 'Péage' : part === 'speedCamera' ? 'Radar' : part === 'billboard' ? 'Panneau pub' : part === 'detour' ? 'Déviation' : 'Dépanneuse',

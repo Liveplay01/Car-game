@@ -4,6 +4,7 @@ import { ranksPanel, type RanksActions } from './ranksPanel';
 import { clubPanel, type ClubHost, type ClubPanel } from './clubPanel';
 import { mafiaPanel, type MafiaHost, type MafiaPanel } from './mafiaPanel';
 import { swapView } from './sheets';
+import { pullToRefresh } from './pullRefresh';
 import { SOCIAL, type SocialSection } from '../present/flow';
 import { S } from '../present/strings';
 
@@ -54,6 +55,7 @@ export class SocialView {
   ) {
     this.el.append(this.inner);
     parent.append(this.el, this.toastEl);
+    pullToRefresh(this.el, () => this.section === SOCIAL.friends || this.section === SOCIAL.ranks, () => this.refresh());
   }
 
   get isOpen(): boolean {

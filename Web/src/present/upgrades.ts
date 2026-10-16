@@ -56,7 +56,7 @@ const groupsOf = (upgrades: readonly Upgrade[]): { label: string; items: Upgrade
 
 /**
  * The Upgrades page: a card per upgrade with a picture of what it does,
- * the steps bought and the next price. One tap opens the details, a double tap buys. Only
+ * the steps bought and the next price. One tap opens the details, their button buys. Only
  * the purchase celebrates.
  */
 export const UpgradePage = {

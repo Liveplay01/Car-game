@@ -10,7 +10,10 @@ export const COLORS = {
   marking: [69, 76, 86, 1],
   primary: [244, 246, 249, 1],
   muted: [153, 162, 175, 1],
-  /** Street-lamp amber (Leo, 04.10.2026; was mint [158, 230, 207]). `--accent` in `ui/shell.css` is the same. */
+  /**
+   * Street-lamp amber (Leo, 04.10.2026; was mint [158, 230, 207]). `--accent` in `ui/shell.css` is the same. Off the road
+   * it means what runs, grows or wants a tap; what is earned is `coin` (Leo, 16.10.2026; PRODUCT.md, "Colour roles").
+   */
   accent: [255, 183, 3, 1],
   accentInk: [14, 16, 19, 1],
   /** Rush Hour: electric lime, apart from the lamp amber of the interface and the green that belongs to the player's combo. */
@@ -256,7 +259,8 @@ export const COLORS = {
   debugTight: [255, 159, 67, 1],
   debugClean: [91, 227, 140, 1],
   debugPanel: [0, 0, 0, 0.6667],
-  // Web shell (the earlier web UI's palette): the gold coin, calm page cards, raised controls.
+  // Web shell (the earlier web UI's palette): the gold coin, calm page cards, raised controls. Gold is what is earned:
+  // money, a goal reached, a tier passed, a lot won (`--state-earned`).
   coin: [227, 193, 90, 1],
   coinInk: [120, 92, 20, 1],
   card: [20, 24, 29, 1],

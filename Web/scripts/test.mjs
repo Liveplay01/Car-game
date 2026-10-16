@@ -58,6 +58,7 @@ const { ResultBanner, RingSignals } = await load('/src/present/hud.ts');
 // Every module loaded at the top level comes before the first test: a load later down the file
 // can still be pending when the tests above it have finished and `after` has closed the server.
 const { parseBackdropLink, youtubeEmbed } = await load('/src/present/backdrop.ts');
+const { Scroller } = await load('/src/present/scroll.ts');
 const { siteFiles, fingerprint: siteFingerprint } = await load('/src/present/siteData.ts');
 const { GUIDE } = await load('/src/present/siteGuide.ts');
 const { signalOf } = await load('/src/present/museumSignal.ts');
@@ -3411,4 +3412,27 @@ test('ring signal guide for the website: every signal the game plays is explaine
   assert.equal(new Set(items.map((x) => x.id)).size, items.length);
   assert.ok(items.every((x) => x.title && x.line && x.body.length > 0 && !JSON.stringify(x).includes(String.fromCharCode(0xe000))));
   assert.equal(features.groups[0].items.length, 5, 'every mode');
+});
+
+test('a fast flick runs a little past the end of a list, springs back without ringing, and is felt once', () => {
+  const s = new Scroller();
+  s.scroll = 900;
+  s.velocity = 3000;
+  let bumps = 0;
+  let furthest = 0;
+  let back = false;
+  for (let i = 0; i < 240; i++) {
+    if (s.follow(1 / 60, 1000)) bumps++;
+    furthest = Math.max(furthest, s.scroll);
+    if (furthest > 1000 && s.scroll < 1000) back = true;
+  }
+  assert.equal(s.scroll, 1000, 'at rest on the end');
+  assert.equal(s.velocity, 0);
+  assert.ok(furthest > 1030 && furthest < 1150, `over by ${Math.round(furthest - 1000)} pt`);
+  assert.ok(!back, 'critically damped: never swings back past the end');
+  assert.equal(bumps, 1, 'the hand feels the end once');
+  const slow = new Scroller();
+  slow.scroll = 990;
+  slow.velocity = 300;
+  for (let i = 0; i < 120; i++) assert.ok(!slow.follow(1 / 60, 1000), 'a slow glide into the end is not felt');
 });

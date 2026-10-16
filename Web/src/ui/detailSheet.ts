@@ -32,7 +32,7 @@ function rich(text: string): DocumentFragment {
 /**
  * The details of a tapped card as a bottom sheet (Leo, 27.09.2026: "als Drawer, halber
  * Bildschirm, scrollbar"). Non-modal like a sheet in Apple Maps: the cards above stay
- * tappable and change what it shows, a double tap still buys. It opens at half height,
+ * tappable and change what it shows; its button buys. It opens at half height,
  * the grabber pulls it up to nearly full height, a swipe down closes it; the text scrolls.
  */
 export class DetailSheet {

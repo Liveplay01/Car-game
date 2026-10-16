@@ -30,7 +30,7 @@ export default (_s: Strings): Words<Strings> => ({
       line: 'Construisez votre propre rond-point',
       body: [
         'Ajoutez des bretelles et modules à l’anneau. Plus de bretelles apportent plus de trafic, des fourgons blindés plus tôt et de meilleurs gains.',
-        'Choisissez une pièce, glissez-la sur un emplacement libre de l’anneau et touchez deux fois pour construire. Un toucher retire une pièce déjà construite.',
+        'Choisissez une pièce et glissez-la sur un emplacement libre de l’anneau ; sa fiche la construit. Touchez une pièce installée pour l’améliorer, la déplacer ou la retirer.',
       ],
     },
     daily: {

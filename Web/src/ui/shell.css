@@ -36,6 +36,19 @@
   --accent-soft: rgba(255, 183, 3, 0.14);
   --destructive: #ff5a5f;
   --money: #e3c15a;
+  /*
+   * One grammar for every state off the road (Leo, 16.10.2026; PRODUCT.md, "Colour roles"): amber for what
+   * runs, grows or wants a tap, gold for what is earned (money, a goal reached, a lot won), red for lost or
+   * nearly out of time, muted for what waits. Nothing else colours a state.
+   */
+  --state-live: var(--accent);
+  --state-earned: var(--money);
+  --state-lost: var(--destructive);
+  --state-idle: var(--muted);
+  /* Every progress bar, DOM and canvas (`present/meter.ts`): one height, round ends, one glide. */
+  --meter-h: 6px;
+  --meter-track: rgba(118, 118, 128, 0.24);
+  --meter-glide: 700ms;
   --rarity-common: #9aa3ae;
   --rarity-rare: #4fa3ff;
   --rarity-epic: #b45cf0;
@@ -3222,6 +3235,87 @@ a.row-link {
 
 .social-inner {
   margin: 0 auto;
+  translate: 0 calc(var(--pull, 0) * 1px);
+}
+
+/* Pull to refresh (`ui/pullRefresh.ts`): a small traffic light slides in from the top, the page follows the finger. */
+.pull-light {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  display: flex;
+  gap: 6px;
+  padding: 6px 8px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  border: 1px solid var(--separator);
+  translate: -50% calc(var(--pull, 0) * 1px - 100% - 6px);
+  opacity: min(1, calc(var(--pull, 0) / 28));
+  pointer-events: none;
+}
+
+.pull-light span {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--separator);
+  transition: background-color 120ms var(--ease-out), box-shadow 120ms var(--ease-out);
+}
+
+.pull-light[data-stage='stop'] span:nth-child(1),
+.pull-light[data-stage='ready'] span:nth-child(1) {
+  background: var(--destructive);
+  box-shadow: 0 0 8px var(--destructive);
+}
+
+.pull-light[data-stage='ready'] span:nth-child(2) {
+  background: var(--accent);
+  box-shadow: 0 0 8px var(--accent);
+}
+
+.pull-light[data-stage='go'] span:nth-child(3) {
+  background: var(--positive);
+  box-shadow: 0 0 8px var(--positive);
+}
+
+.social-page:not(.pulling) .social-inner,
+.social-page:not(.pulling) .pull-light {
+  transition: translate 320ms var(--ease-drawer), opacity 240ms var(--ease-out);
+}
+
+/* Loading: a car goes round a tiny roundabout (`loadingNote` in `ui/dom.ts`). */
+.loading-note {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+}
+
+.loader {
+  position: relative;
+  flex: none;
+  width: 16px;
+  height: 16px;
+  border: 2px solid color-mix(in srgb, var(--muted) 35%, transparent);
+  border-radius: 50%;
+  animation: loader-round 1.4s linear infinite;
+}
+
+.loader::after {
+  content: '';
+  position: absolute;
+  top: -4px;
+  left: 50%;
+  width: 7px;
+  height: 4px;
+  margin-left: -3.5px;
+  border-radius: 2px;
+  background: var(--accent);
+}
+
+@keyframes loader-round {
+  to {
+    rotate: 360deg;
+  }
 }
 
 .club > .board-tabs {
@@ -3310,39 +3404,35 @@ a.row-link {
   color: var(--primary);
 }
 
-/* Auction House Polish */
+/* Auction House: its states speak the shared grammar (--state-*): leading runs, outbid is lost, won is earned, open waits. */
 .auction-status-banner {
+  --state: var(--state-idle);
   padding: var(--s3) var(--s4);
   border-radius: var(--r-row);
-  background: var(--surface-2);
-  border: 1px solid var(--separator);
+  background: linear-gradient(135deg, color-mix(in srgb, var(--state) 13%, transparent), var(--surface-2));
+  border: 1px solid color-mix(in srgb, var(--state) 50%, transparent);
   margin-bottom: var(--s3);
   display: flex;
   flex-direction: column;
   gap: 4px;
+  transition: border-color 250ms var(--ease-out), background 250ms var(--ease-out);
 }
 
 .auction-status-banner.lead {
-  border-color: rgba(227, 193, 90, 0.5);
-  background: linear-gradient(135deg, rgba(227, 193, 90, 0.12), var(--surface-2));
+  --state: var(--state-live);
 }
 
 .auction-status-banner.outbid {
-  border-color: rgba(255, 90, 95, 0.5);
-  background: linear-gradient(135deg, rgba(255, 90, 95, 0.14), var(--surface-2));
-}
-
-.auction-status-banner.open {
-  border-color: rgba(79, 163, 255, 0.5);
-  background: linear-gradient(135deg, rgba(79, 163, 255, 0.12), var(--surface-2));
+  --state: var(--state-lost);
 }
 
 .auction-status-banner.won {
-  border-color: rgba(0, 245, 212, 0.5);
-  background: linear-gradient(135deg, rgba(0, 245, 212, 0.14), var(--surface-2));
+  --state: var(--state-earned);
 }
 
 .auction-status-badge {
+  background: color-mix(in srgb, var(--state) 20%, transparent);
+  color: var(--state);
   display: inline-flex;
   align-items: center;
   align-self: flex-start;
@@ -3353,26 +3443,6 @@ a.row-link {
   font-weight: 800;
   letter-spacing: 0.05em;
   text-transform: uppercase;
-}
-
-.auction-status-banner.lead .auction-status-badge {
-  background: rgba(227, 193, 90, 0.2);
-  color: var(--money);
-}
-
-.auction-status-banner.outbid .auction-status-badge {
-  background: rgba(255, 90, 95, 0.2);
-  color: var(--destructive);
-}
-
-.auction-status-banner.open .auction-status-badge {
-  background: rgba(79, 163, 255, 0.2);
-  color: var(--rarity-rare);
-}
-
-.auction-status-banner.won .auction-status-badge {
-  background: rgba(0, 245, 212, 0.2);
-  color: var(--player-1);
 }
 
 .auction-status-title {
@@ -3401,8 +3471,8 @@ a.row-link {
 }
 
 .auction-timer.urgent {
-  border-color: rgba(255, 90, 95, 0.6);
-  box-shadow: 0 0 12px rgba(255, 90, 95, 0.2);
+  border-color: color-mix(in srgb, var(--state-lost) 60%, transparent);
+  box-shadow: 0 0 12px color-mix(in srgb, var(--state-lost) 20%, transparent);
 }
 
 .auction-timer-header {
@@ -3421,7 +3491,7 @@ a.row-link {
 }
 
 .auction-timer.urgent .auction-timer-stage {
-  color: var(--destructive);
+  color: var(--state-lost);
   animation: auction-pulse 0.8s infinite alternate ease-in-out;
 }
 
@@ -3429,18 +3499,18 @@ a.row-link {
   font-weight: 800;
   font-variant-numeric: tabular-nums;
   font-size: 15px;
-  color: var(--accent);
+  color: var(--state-live);
 }
 
 .auction-timer.urgent .auction-timer-digits {
-  color: var(--destructive);
+  color: var(--state-lost);
 }
 
 .auction-timer-track {
   width: 100%;
-  height: 6px;
+  height: var(--meter-h);
   border-radius: 999px;
-  background: var(--surface-3);
+  background: var(--meter-track);
   overflow: hidden;
   position: relative;
 }
@@ -3449,12 +3519,12 @@ a.row-link {
   height: 100%;
   width: 100%;
   border-radius: 999px;
-  background: var(--accent);
-  transition: width 0.1s linear, background-color 0.2s ease;
+  background: var(--state-live);
+  transition: transform 0.1s linear, background-color 0.2s ease;
 }
 
 .auction-timer.urgent .auction-timer-bar {
-  background: var(--destructive);
+  background: var(--state-lost);
 }
 
 @keyframes auction-pulse {
@@ -3468,14 +3538,18 @@ a.row-link {
   }
 }
 
+/* The collector ahead: lifted, not coloured; colour belongs to the player's own state in the banner. */
 .club-bot.leader {
-  background: rgba(227, 193, 90, 0.2);
-  color: var(--money);
-  border: 1px solid rgba(227, 193, 90, 0.5);
+  background: var(--surface-3);
+  color: var(--primary);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--primary) 35%, transparent);
   font-weight: 700;
 }
 
 .auction-offer-tag {
+  --state: var(--state-idle);
+  background: color-mix(in srgb, var(--state) 20%, transparent);
+  color: var(--state);
   display: inline-block;
   font-size: 10px;
   font-weight: 800;
@@ -3487,19 +3561,14 @@ a.row-link {
   vertical-align: middle;
 }
 
-.auction-offer-tag.min {
-  background: rgba(79, 163, 255, 0.2);
-  color: var(--rarity-rare);
-}
-
 .auction-offer-tag.raise {
-  background: rgba(255, 183, 3, 0.2);
-  color: var(--accent);
+  --state: var(--state-live);
 }
 
+/* The big jump: the same amber, filled, so the bigger step reads as more of the same, not a new colour. */
 .auction-offer-tag.jump {
-  background: rgba(180, 92, 240, 0.2);
-  color: var(--rarity-epic);
+  background: var(--state-live);
+  color: var(--accent-ink);
 }
 
 .auction-guide-box {
@@ -3517,20 +3586,35 @@ a.row-link {
   color: var(--primary);
 }
 
+/* The DOM twin of `present/meter.ts`: amber while it grows, gold once reached, one wave when it gets there. */
 .club-bar {
   display: block;
-  height: 8px;
+  height: var(--meter-h);
   margin: var(--s2) 0;
-  border-radius: 3px;
-  background: var(--surface-3);
+  border-radius: 999px;
+  background: var(--meter-track);
   overflow: hidden;
 }
 
 .club-bar-fill {
   display: block;
   height: 100%;
-  border-radius: 3px;
-  background: var(--money);
+  border-radius: 999px;
+  background: var(--state-live);
+  transition: background-color 250ms var(--ease-out);
+}
+
+.club-bar.done .club-bar-fill {
+  background: var(--state-earned);
+}
+
+.club-bar.arrived {
+  animation: meter-wave 900ms var(--ease-out);
+}
+
+@keyframes meter-wave {
+  from { box-shadow: 0 0 0 0 color-mix(in srgb, var(--state-earned) 60%, transparent); }
+  to { box-shadow: 0 0 0 12px color-mix(in srgb, var(--state-earned) 0%, transparent); }
 }
 
 .club-gifts {
@@ -3546,7 +3630,7 @@ a.row-link {
 
 @media (prefers-reduced-motion: no-preference) {
   .club-bar-fill {
-    transition: width 400ms var(--ease-drawer, ease);
+    transition: transform var(--meter-glide) var(--ease-out), background-color 250ms var(--ease-out);
   }
 }
 
@@ -3578,7 +3662,6 @@ a.row-link {
 }
 
 .fund-sheet .club-bar {
-  height: 10px;
   margin: 0 0 var(--s4);
 }
 
@@ -3632,12 +3715,7 @@ a.row-link {
   text-align: left;
 }
 
-.fund-thanks-project .club-bar {
-  height: 10px;
-}
-
 .fund-thanks-project .club-bar + .row-sub + .club-bar {
-  height: 6px;
   margin-top: var(--s3);
 }
 

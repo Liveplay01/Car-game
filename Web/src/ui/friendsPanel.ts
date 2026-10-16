@@ -1,4 +1,4 @@
-import { h } from './dom';
+import { h, loadingNote } from './dom';
 import { forgetFriendsBoards, nameForm, openAccount } from './ranksPanel';
 import { fadeIn } from './sheets';
 import { INVITE_LEVEL } from '../core/config';
@@ -63,7 +63,7 @@ const label = (text: string): HTMLElement => h('p', { class: 'section-note board
 const note = (text: string, error = false): HTMLElement => h('p', { class: `field-help${error ? ' error' : ''}`, ...(error ? { role: 'alert' } : {}) }, text);
 
 export function friendsPanel(actions: FriendsActions): HTMLElement {
-  const body = h('div', { class: 'friends' }, h('p', { class: 'section-note' }, S.friends.loading));
+  const body = h('div', { class: 'friends' }, loadingNote(S.friends.loading));
   const content = h('div', { class: 'friends-content' });
   let view: FriendsView | null = null;
   let invite: InviteView | null = null;

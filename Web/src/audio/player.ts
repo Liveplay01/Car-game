@@ -636,6 +636,11 @@ export class Haptics {
     bossTakedown: [55, 45, 70],
     reelTick: [8],
     reelStop: [30, 50, 60],
+    edge: [3],
+    snap: [6],
+    denied: [14, 60, 14],
+    confirm: [10, 40, 18],
+    earned: [12, 60, 20, 60, 28],
   };
   readonly supported = typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function';
 

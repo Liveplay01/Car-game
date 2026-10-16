@@ -66,13 +66,17 @@ export class Scroller {
     this.scrollTo(clamp((this.target ?? this.scroll) + dy, 0, maxScroll));
   }
 
-  /** The fling decays; past an end it springs back. */
-  follow(delta: number, maxScroll: number): void {
-    if (delta <= 0) return;
+  /**
+   * The fling decays; past an end a critically damped spring, fed by the fling's own speed, carries
+   * it a little over and pulls it back, like iOS. True on the frame a fast fling hits an end (a
+   * faint tick for the hand; the session plays it).
+   */
+  follow(delta: number, maxScroll: number): boolean {
+    if (delta <= 0) return false;
     if (this.drag) {
       if (this.drag.moved) this.velocity = 0.6 * this.velocity + (0.4 * (this.scroll - this.lastScroll)) / delta;
       this.lastScroll = this.scroll;
-      return;
+      return false;
     }
     if (this.target !== null) {
       this.scroll += (this.target - this.scroll) * Math.min(1, delta / 0.12);
@@ -81,19 +85,36 @@ export class Scroller {
         this.target = null;
       }
       this.lastScroll = this.scroll;
-      return;
+      return false;
     }
-    this.scroll += this.velocity * delta;
-    this.velocity *= Math.exp(-delta / 0.325);
-    const target = clamp(this.scroll, 0, maxScroll);
-    if (target !== this.scroll) {
-      this.velocity *= Math.exp(-delta / 0.05);
-      this.scroll += (target - this.scroll) * Math.min(1, delta / 0.09);
-      if (Math.abs(target - this.scroll) < 0.3) this.scroll = target;
+    let bumped = false;
+    for (let left = Math.min(delta, 0.1); left > 0; left -= Scroller.step) {
+      const dt = Math.min(left, Scroller.step);
+      const edge = clamp(this.scroll, 0, maxScroll);
+      if (edge !== this.scroll) {
+        const w = Scroller.bounce;
+        this.velocity += (-w * w * (this.scroll - edge) - 2 * w * this.velocity) * dt;
+        this.scroll += this.velocity * dt;
+        if (Math.abs(this.scroll - edge) < 0.3 && Math.abs(this.velocity) < 8) {
+          this.scroll = edge;
+          this.velocity = 0;
+        }
+        continue;
+      }
+      this.scroll += this.velocity * dt;
+      this.velocity *= Math.exp(-dt / 0.325);
+      if (Math.abs(this.velocity) < 4) this.velocity = 0;
+      if (maxScroll > 0 && (this.scroll < 0 || this.scroll > maxScroll) && Math.abs(this.velocity) > Scroller.bumpSpeed) bumped = true;
     }
-    if (Math.abs(this.velocity) < 4) this.velocity = 0;
     this.lastScroll = this.scroll;
+    return bumped;
   }
+
+  /** The spring past an end (1/s): a fling of 3000 pt/s runs about 90 pt over. */
+  static readonly bounce = 12;
+  static readonly step = 1 / 120;
+  /** Slower than this, reaching an end is felt by the eye alone. */
+  static readonly bumpSpeed = 900;
 
   /** Glides so that `r` (as drawn now) lies inside `window`, never past `maxScroll`. */
   reveal(r: Rect, window: Rect, maxScroll: number): void {

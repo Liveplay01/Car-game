@@ -30,7 +30,7 @@ export default (_s: Strings): Words<Strings> => ({
       line: 'Baue deinen eigenen Kreisverkehr',
       body: [
         'Füge dem Ring Arme und Module hinzu. Mehr Arme bringen mehr Verkehr, früher Geldtransporter und bessere Bezahlung.',
-        'Wähle ein Teil, ziehe es auf einen freien Platz am Ring und tippe es doppelt an, um es zu bauen. Ein Tipp nimmt ein gebautes Teil wieder weg.',
+        'Wähle ein Teil und ziehe es auf einen freien Platz am Ring; gebaut wird es im Sheet. Tippe ein gebautes Teil an, um es aufzuwerten, zu verschieben oder zu entfernen.',
       ],
     },
     daily: {

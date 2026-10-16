@@ -132,6 +132,11 @@ startCloud({
 // a service worker in a nested frame is blocked or partitioned, and the wrapper always loads the live game.
 if ('serviceWorker' in navigator && import.meta.env.PROD && !inPortal && !inItch) {
   const firstVisit = !navigator.serviceWorker.controller;
+  // A notification put a dot on the installed app's icon (sw.js); the game is open, so it has been seen.
+  const clearBadge = (): void => {
+    if ('clearAppBadge' in navigator) navigator.clearAppBadge().catch(() => undefined);
+  };
+  clearBadge();
   const register = (): void => {
     navigator.serviceWorker
       .register('/sw.js')
@@ -139,7 +144,9 @@ if ('serviceWorker' in navigator && import.meta.env.PROD && !inPortal && !inItch
         // A game left open for days (an installed one in the background) looks for a new
         // version whenever it comes back.
         document.addEventListener('visibilitychange', () => {
-          if (!document.hidden) registration.update().catch(() => undefined);
+          if (document.hidden) return;
+          registration.update().catch(() => undefined);
+          clearBadge();
         });
       })
       .catch(() => {

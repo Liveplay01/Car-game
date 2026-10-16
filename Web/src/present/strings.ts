@@ -60,7 +60,7 @@ export const S = {
       line: 'Build your own roundabout',
       body: [
         'Add arms and modules to the ring. More arms bring more traffic, money trucks sooner and better pay.',
-        'Pick a part, drag it onto a free slot on the ring, then double-tap it to build. One tap takes a built part away.',
+        'Pick a part and drag it onto a free slot on the ring; its sheet builds it. Tap a built part to upgrade, move or remove it.',
       ],
     },
     daily: {
@@ -1335,7 +1335,7 @@ export const S = {
     drag: 'Drag onto the ring',
     pickOne: 'Tap a part for details · tap a built one to upgrade, move or remove it.',
     dragHint: 'Drag it onto a free slot on the ring.',
-    buildHint: 'Double-tap the part to build it · one tap takes it away.',
+    buildHint: 'Build it from the sheet · Remove takes it back.',
     keepsArms: (n: number): string => `A roundabout keeps at least ${n} arms`,
     name: (part: string): string =>
       part === 'arm' ? 'New arm' : part === 'tollBooth' ? 'Toll Booth' : part === 'speedCamera' ? 'Speed Camera' : part === 'billboard' ? 'Billboard' : part === 'detour' ? 'Detour Sign' : 'Tow Depot',
@@ -2377,7 +2377,6 @@ export const S = {
     maxed: 'Max',
     steps: (s: number, max: number): string => `${s}/${max}`,
     pickOne: 'Tap an upgrade to see what it does.',
-    buyHint: 'Double-tap to buy.',
     everyStepBought: 'Every step bought.',
     missing: (m: string): string => `${m} short`,
     name(u: Upgrade): string {

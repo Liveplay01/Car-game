@@ -29,6 +29,7 @@ import { type TourId, type TourDef, TOURS, tourOn, nextTour, tourOpen, tourStops
 import { FAMILIES, Achievements, achievementTotal, type Family } from '../core/achievements';
 import { seasonOf } from '../core/loot';
 import { News } from './news';
+import { Meter } from './meter';
 
 /** What the Progress tab shows and animates (`ProgressPage.State`); each section is a list that scrolls. */
 export class ProgressState extends Scroller {
@@ -451,7 +452,7 @@ export const ProgressPage = {
     const career = save.career;
     switch (b.k) {
       case 'elite':
-        return ProgressPage.addEliteCard(list, r, career, o);
+        return ProgressPage.addEliteCard(list, r, career, o, reduceMotion);
       case 'streak':
         return ProgressPage.addStreak(list, r, career, today, state.time, reduceMotion, o);
       case 'stat':
@@ -485,11 +486,11 @@ export const ProgressPage = {
       case 'season':
         return ProgressPage.addSeason(list, r, today, o);
       case 'ach':
-        return ProgressPage.addAchievement(list, r, save, b.family, o);
+        return ProgressPage.addAchievement(list, r, save, b.family, o, reduceMotion);
       case 'mastery':
-        return ProgressPage.addMastery(list, r, career, b.goal, o);
+        return ProgressPage.addMastery(list, r, career, b.goal, o, reduceMotion);
       case 'feat':
-        return ProgressPage.addFeat(list, r, career, b.feat, state, o);
+        return ProgressPage.addFeat(list, r, career, b.feat, state, o, reduceMotion);
       case 'museum':
         // What was on screen counts as seen once the Museum is left.
         state.museum.viewed.add(museumId(b.entry));
@@ -515,7 +516,7 @@ export const ProgressPage = {
 
   /** A ticked circle (done) or an empty one, at the left of a row. */
   check(list: RenderList, at: Vec2, done: boolean, o: number): void {
-    list.s(circle(at, 9), done ? 'accent' : 'controlFill', o);
+    list.s(circle(at, 9), done ? 'coin' : 'controlFill', o);
     if (!done) return;
     list.s(line(add(at, v(-4, 0)), add(at, v(-1, 3.5)), 2), 'accentInk', o);
     list.s(line(add(at, v(-1, 3.5)), add(at, v(4.5, -3.5)), 2), 'accentInk', o);
@@ -523,9 +524,10 @@ export const ProgressPage = {
 
   /**
    * One row of Today or a trial, all alike: a bold title and a muted line on the left; on the
-   * right the reward (or a status) above and the way in below, in the accent colour.
+   * right the reward (or a status) above and the way in below, in the accent colour; a status that
+   * says done is gold, like everything earned.
    */
-  addCardRow(list: RenderList, r: Rect, x: number, o: number, row: { title: string; line: string; reward?: number; status?: string; link?: string; dim?: boolean }): void {
+  addCardRow(list: RenderList, r: Rect, x: number, o: number, row: { title: string; line: string; reward?: number; status?: string; done?: boolean; link?: string; dim?: boolean }): void {
     const c = R.center(r);
     const right = r.maxX - 16;
     const linkWidth = row.link ? textWidth(row.link, 11) + 12 : 0;
@@ -533,7 +535,7 @@ export const ProgressPage = {
     drawFitted(list, row.title, v(x, c.y - 9), 14, right - x - topWidth, row.dim ? 'muted' : 'primary', { opacity: o, weight: 'bold' });
     drawFitted(list, row.line, v(x, c.y + 11), 11, right - x - linkWidth, 'muted', { opacity: o });
     if (row.reward !== undefined) moneyTag(list, Fmt.number(row.reward), v(right, c.y - 9), 13, 'trailing', 'primary', 'accent', o);
-    else if (row.status) drawText(list, row.status, v(right, c.y - 9), 13, row.dim ? 'muted' : 'accent', { opacity: o, weight: 'bold', align: 'trailing' });
+    else if (row.status) drawText(list, row.status, v(right, c.y - 9), 13, row.dim ? 'muted' : row.done ? 'coin' : 'accent', { opacity: o, weight: 'bold', align: 'trailing' });
     if (row.link) drawText(list, row.link, v(right, c.y + 11), 11, row.dim ? 'muted' : 'accent', { opacity: o, weight: 'bold', align: 'trailing' });
   },
 
@@ -604,7 +606,7 @@ export const ProgressPage = {
     ProgressPage.panel(list, r, o);
     const open = Careers.isDailyOpen(career, today);
     const next = Careers.nextStreakMilestone(career);
-    ProgressPage.addCardRow(list, r, r.minX + 16, o, { title: S.daily.name, line: S.daily.rowLine(career.dailyStreak, open, next, career.streakFreezes, Goals.daysToFreeze(career, baseConfig)), status: open ? S.daily.ready : `${S.daily.done} ✓` });
+    ProgressPage.addCardRow(list, r, r.minX + 16, o, { title: S.daily.name, line: S.daily.rowLine(career.dailyStreak, open, next, career.streakFreezes, Goals.daysToFreeze(career, baseConfig)), status: open ? S.daily.ready : `${S.daily.done} ✓`, done: !open });
   },
 
   /** The Weekly Shift: one shift for the whole week, tap to play it. */
@@ -616,7 +618,7 @@ export const ProgressPage = {
     ProgressPage.addCardRow(list, r, r.minX + 16, o, {
       title: `${S.weekly.title} · ${S.weekly.elite(shift.elite ?? 'flawless')}`,
       line: passed ? S.weekly.passedThisWeek : S.weekly.goal(shift),
-      ...(passed ? { status: `${S.daily.done} ✓` } : { reward: shift.reward }),
+      ...(passed ? { status: `${S.daily.done} ✓`, done: true } : { reward: shift.reward }),
       link: `${S.weekly.daysLeft(weekDaysLeft(today))} · ${S.trials.play} ›`,
     });
   },
@@ -668,16 +670,12 @@ export const ProgressPage = {
       const skinTier = SeasonPass.reward(k, season).k === 'skin';
       const reached = k <= tier;
       if (skinTier) list.s(circle(at, 5), reached ? tint : 'controlFill', o * (reached ? 1 : 0.9));
-      list.s(circle(at, skinTier ? 2.6 : 2.4), reached ? (skinTier ? 'primary' : 'accent') : skinTier ? tint : 'controlFill', o * (reached || skinTier ? 1 : 0.8));
+      list.s(circle(at, skinTier ? 2.6 : 2.4), reached ? (skinTier ? 'primary' : 'coin') : skinTier ? tint : 'controlFill', o * (reached || skinTier ? 1 : 0.8));
     }
     // And the next tier's progress under it.
-    const bar = R.make(x, r.maxY - 26, right, r.maxY - 20);
-    list.s(rect(R.center(bar), v(R.width(bar), R.height(bar)), 3), 'controlFill', o);
-    if (owned) {
-      const { into, need } = SeasonPass.progress(career);
-      const share = tier >= PASS_TIERS ? 1 : into / need;
-      if (share > 0) list.s(rect(v(bar.minX + (R.width(bar) * share) / 2, R.center(bar).y), v(R.width(bar) * share, R.height(bar)), 3), 'accent', o);
-    }
+    const { into, need } = SeasonPass.progress(career);
+    const share = !owned ? 0 : tier >= PASS_TIERS ? 1 : into / need;
+    Meter.add(list, 'pass', R.make(x, r.maxY - 26, right, r.maxY - 26 + Meter.height), share, tier, o, reduceMotion);
   },
 
   addQuest(list: RenderList, r: Rect, career: Career, challenge: Challenge, today: number, o: number): void {
@@ -687,7 +685,7 @@ export const ProgressPage = {
     ProgressPage.check(list, v(r.minX + 24, c.y), done, o);
     const label = S.daily.challenge(challenge);
     drawText(list, label, v(r.minX + 44, c.y), ShopPage.fitted(label, 13, R.width(r) - 44 - 80), done ? 'muted' : 'primary', { opacity: o, weight: 'bold' });
-    if (done) drawText(list, `${S.daily.done} ✓`, v(r.maxX - 16, c.y), 13, 'accent', { opacity: o, weight: 'bold', align: 'trailing' });
+    if (done) drawText(list, `${S.daily.done} ✓`, v(r.maxX - 16, c.y), 13, 'coin', { opacity: o, weight: 'bold', align: 'trailing' });
     else moneyTag(list, Fmt.number(challengeReward(challenge)), v(r.maxX - 16, c.y), 13, 'trailing', 'primary', 'accent', o);
   },
 
@@ -704,7 +702,7 @@ export const ProgressPage = {
     ProgressPage.addCardRow(list, r, r.minX + 44, full, {
       title: S.rush.rowTitle,
       line: extra ? `${S.rush.line} · ${extra}` : S.rush.line,
-      ...(done ? { status: `${S.daily.done} ✓` } : { reward: RUSH_REWARD }),
+      ...(done ? { status: `${S.daily.done} ✓`, done: true } : { reward: RUSH_REWARD }),
       link: `${S.trials.play} ›`,
     });
   },
@@ -734,7 +732,7 @@ export const ProgressPage = {
     ProgressPage.addCardRow(list, r, r.minX + 44, full, {
       title: S.trials.name(trial.id),
       line: `${S.trials.level(trial.level)} · ${S.trials.goal(trial)}`,
-      ...(done ? { status: `${S.daily.done} ✓` } : { reward: trial.reward }),
+      ...(done ? { status: `${S.daily.done} ✓`, done: true } : { reward: trial.reward }),
       link: `${S.trials.play} ›`,
     });
   },
@@ -800,19 +798,20 @@ export const ProgressPage = {
       const finished = career.toursDone.includes(stopDoneKey(run.key, i + 1));
       const last = i === total - 1;
       if (i + 1 === next && done < total) list.s(circle(at, (last ? 11 : 9.5) + 1.5), 'accent', 0.55 * o);
-      list.s(circle(at, last ? 9 : 7.5), finished ? 'accent' : 'controlFill', o);
+      list.s(circle(at, last ? 9 : 7.5), finished ? 'coin' : 'controlFill', o);
       if (finished) {
         list.s(line(add(at, v(-3.5, 0)), add(at, v(-1, 2.8)), 1.8), 'accentInk', o);
         list.s(line(add(at, v(-1, 2.8)), add(at, v(4, -3)), 1.8), 'accentInk', o);
       }
     }
     const status = done === total ? `${S.daily.done} ✓` : S.tours.progress(done, total);
-    drawText(list, status, v(x, r.maxY - 18), 11, done === total ? 'accent' : 'muted', { opacity: o });
+    drawText(list, status, v(x, r.maxY - 18), 11, done === total ? 'coin' : 'muted', { opacity: o });
     drawText(list, S.tours.play, v(right, r.maxY - 18), 12, 'accent', { opacity: o, weight: 'bold', align: 'trailing' });
   },
 
   /** One achievement family: its name, the next tier's ask, pips for the tiers and a bar towards the next. */
-  addAchievement(list: RenderList, r: Rect, save: SaveGame, f: Family, o: number): void {
+  addAchievement(list: RenderList, r: Rect, save: SaveGame, f: Family, o: number, reduceMotion: boolean): void {
+    Meter.addWave(list, `ach:${f.id}`, r, ShopPage.corner, o, reduceMotion);
     ProgressPage.panel(list, r, o);
     const c = R.center(r);
     const reached = Achievements.reached(save.career, f);
@@ -823,7 +822,7 @@ export const ProgressPage = {
     const top = c.y - R.height(r) * 0.2;
     const pipsWidth = tiers * 14;
     drawText(list, S.ach.name(f.id), v(r.minX + 16, top), 13, complete ? 'coin' : 'primary', { opacity: o, weight: 'bold' });
-    for (let tier = 0; tier < tiers; tier++) list.s(circle(v(r.maxX - 16 - pipsWidth + tier * 14 + 7, top), 5), tier < reached ? 'accent' : 'controlFill', o);
+    for (let tier = 0; tier < tiers; tier++) list.s(circle(v(r.maxX - 16 - pipsWidth + tier * 14 + 7, top), 5), tier < reached ? 'coin' : 'controlFill', o);
     const goal = S.ach.goal(f.id, need);
     const count = complete ? '' : `${Fmt.number(Math.min(have, need))}/${Fmt.number(need)}`;
     const lineY = c.y + R.height(r) * 0.04;
@@ -832,19 +831,15 @@ export const ProgressPage = {
     const from = reached === 0 ? 0 : f.tiers[reached - 1];
     const fraction = complete ? 1 : Ease.clamp01((have - from) / Math.max(1, need - from));
     const barY = c.y + R.height(r) * 0.3;
-    const barWidth = R.width(r) - 32;
-    list.s(rect(v(c.x, barY), v(barWidth, 4), 2), 'controlFill', o);
-    if (fraction > 0) {
-      const filled = Math.max(4, barWidth * fraction);
-      list.s(rect(v(r.minX + 16 + filled / 2, barY), v(filled, 4), 2), complete ? 'coin' : 'accent', o);
-    }
+    Meter.add(list, `ach:${f.id}`, R.make(r.minX + 16, barY - Meter.height / 2, r.maxX - 16, barY + Meter.height / 2), fraction, reached, o, reduceMotion);
   },
 
   /** Elite level, title, the bar to the next level and what the next milestone brings. */
-  addEliteCard(list: RenderList, card: Rect, c: Career, o: number): void {
+  addEliteCard(list: RenderList, card: Rect, c: Career, o: number, reduceMotion: boolean): void {
     const open = Elite.isOpen(c);
     // Prestige in reach: a gold ring round the card and a gold pill say so, where the badges usually sit.
     const ready = open && Careers.canPrestige(c);
+    Meter.addWave(list, 'elite', card, ShopPage.corner, o, reduceMotion);
     if (ready) list.s(rect(R.center(card), v(R.width(card) + 4, R.height(card) + 4), ShopPage.corner + 2), 'coin', 0.9 * o);
     ProgressPage.panel(list, card, o);
     const top = card.minY + 22;
@@ -860,13 +855,8 @@ export const ProgressPage = {
     }
     const barY = card.minY + 42;
     const barWidth = R.width(card) - 32;
-    list.s(rect(v(R.center(card).x, barY), v(barWidth, 5), 2.5), 'controlFill', o);
     const { into, need } = Elite.progress(c);
-    const fraction = open ? Ease.clamp01(into / need) : 0;
-    if (fraction > 0) {
-      const filled = Math.max(5, barWidth * fraction);
-      list.s(rect(v(card.minX + 16 + filled / 2, barY), v(filled, 5), 2.5), 'coin', o);
-    }
+    Meter.add(list, 'elite', R.make(card.minX + 16, barY - Meter.height / 2, card.maxX - 16, barY + Meter.height / 2), open ? into / need : 0, open ? Elite.level(c) : 0, o, reduceMotion);
     const bottom = card.minY + 60;
     if (!open) {
       const hint = S.elite.locked(baseConfig.prestigeLevel);
@@ -887,12 +877,13 @@ export const ProgressPage = {
    * A Feat: one of the hardest deeds, with its reward shown (what you play for is no secret),
    * the goal, how far you are, and the title it adds. A tap opens its sheet.
    */
-  addFeat(list: RenderList, r: Rect, career: Career, feat: Feat, state: ProgressState, o: number): void {
+  addFeat(list: RenderList, r: Rect, career: Career, feat: Feat, state: ProgressState, o: number, reduceMotion: boolean): void {
     const c = R.center(r);
     const item = cosmetic(feat.id);
     if (!item) return;
     const { have, need } = Feats.progress(feat, career);
     const complete = have >= need;
+    Meter.addWave(list, `feat:${feat.id}`, r, ShopPage.corner, o, reduceMotion);
     if (state.feat === feat.id) list.s(rect(c, v(R.width(r) + 4, R.height(r) + 4), ShopPage.corner + 2), 'accent', 0.9 * o);
     ProgressPage.panel(list, r, o);
     // The reward itself, dimmed until it is earned; its glow and sparks stay inside the card.
@@ -905,20 +896,15 @@ export const ProgressPage = {
     const rightWidth = textWidth(right, 12) + 4;
     const name = S.shop.item(feat.id);
     drawText(list, name, v(x, top), ShopPage.fitted(name, 14, r.maxX - 16 - rightWidth - x - 8), complete ? 'coin' : 'primary', { opacity: o, weight: 'bold' });
-    drawText(list, right, v(r.maxX - 16, top), 12, complete ? 'accent' : 'muted', { opacity: o, weight: 'bold', align: 'trailing' });
+    drawText(list, right, v(r.maxX - 16, top), 12, complete ? 'coin' : 'muted', { opacity: o, weight: 'bold', align: 'trailing' });
     const goal = feat.title ? `${S.feats.goal(feat.goal)} · ${S.feats.withTitle(S.titles.name(feat.title))}` : S.feats.goal(feat.goal);
     drawText(list, goal, v(x, c.y + R.height(r) * 0.02), ShopPage.fitted(goal, 11, r.maxX - 16 - x), 'muted', { opacity: o });
     const barY = c.y + R.height(r) * 0.27;
-    const barWidth = r.maxX - 16 - x;
-    list.s(rect(v(x + barWidth / 2, barY), v(barWidth, 4), 2), 'controlFill', o);
-    const fraction = Ease.clamp01(have / need);
-    if (fraction > 0) {
-      const filled = Math.max(4, barWidth * fraction);
-      list.s(rect(v(x + filled / 2, barY), v(filled, 4), 2), complete ? 'coin' : 'accent', o);
-    }
+    Meter.add(list, `feat:${feat.id}`, R.make(x, barY - Meter.height / 2, r.maxX - 16, barY + Meter.height / 2), have / need, 0, o, reduceMotion);
   },
 
-  addMastery(list: RenderList, r: Rect, career: Career, goal: MasteryGoal, o: number): void {
+  addMastery(list: RenderList, r: Rect, career: Career, goal: MasteryGoal, o: number, reduceMotion: boolean): void {
+    Meter.addWave(list, `mastery:${goal}`, r, ShopPage.corner, o, reduceMotion);
     ProgressPage.panel(list, r, o);
     const c = R.center(r);
     const thresholds = MASTERY_THRESHOLDS[goal];
@@ -928,16 +914,11 @@ export const ProgressPage = {
     const top = c.y - R.height(r) * 0.2;
     const pipsWidth = tiers * 14;
     drawText(list, S.mastery.name(goal), v(r.minX + 16, top), 13, 'primary', { opacity: o, weight: 'bold' });
-    drawText(list, S.mastery.detail(goal, reached), v(r.maxX - 16 - pipsWidth - 6, top), 11, complete ? 'accent' : 'muted', { opacity: o, align: 'trailing' });
-    for (let tier = 0; tier < tiers; tier++) list.s(circle(v(r.maxX - 16 - pipsWidth + tier * 14 + 7, top), 5), tier < reached ? 'accent' : 'controlFill', o);
+    drawText(list, S.mastery.detail(goal, reached), v(r.maxX - 16 - pipsWidth - 6, top), 11, complete ? 'coin' : 'muted', { opacity: o, align: 'trailing' });
+    for (let tier = 0; tier < tiers; tier++) list.s(circle(v(r.maxX - 16 - pipsWidth + tier * 14 + 7, top), 5), tier < reached ? 'coin' : 'controlFill', o);
     const from = reached === 0 ? 0 : thresholds[reached - 1];
     const fraction = complete ? 1 : Ease.clamp01((masteryValue(goal, career.mastery) - from) / Math.max(1, thresholds[reached] - from));
     const barY = c.y + R.height(r) * 0.22;
-    const barWidth = R.width(r) - 32;
-    list.s(rect(v(c.x, barY), v(barWidth, 5), 2.5), 'controlFill', o);
-    if (fraction > 0) {
-      const filled = Math.max(5, barWidth * fraction);
-      list.s(rect(v(r.minX + 16 + filled / 2, barY), v(filled, 5), 2.5), 'accent', o);
-    }
+    Meter.add(list, `mastery:${goal}`, R.make(r.minX + 16, barY - Meter.height / 2, r.maxX - 16, barY + Meter.height / 2), fraction, reached, o, reduceMotion);
   },
 };

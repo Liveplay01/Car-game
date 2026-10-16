@@ -9,28 +9,14 @@ import { S, Fmt } from './strings';
 import type { PageHost } from './pageHost';
 
 /**
- * The Build tab's actions: buying an upgrade (a second tap on the same card buys it), and on
- * the Street Builder picking up, placing and building parts, and for a built one its sheet:
- * moving it (lift, then drag or tap onto a free slot) and tearing it down (a second tap
- * confirms). The rules are `core/career.ts`, the looks `upgrades.ts` and `builder.ts`.
+ * The Build tab's actions: buying an upgrade, and on the Street Builder picking up, placing and
+ * building parts, and for a built one its sheet: moving it (lift, then drag or tap onto a free
+ * slot) and tearing it down. One grammar (Leo, 16.10.2026): a tap selects or opens the sheet, the
+ * sheet's labelled button buys, builds or removes, and only tearing down asks twice. The rules are
+ * `core/career.ts`, the looks `upgrades.ts` and `builder.ts`.
  */
 export class BuildFlow {
-  /** A second tap within this long is a double tap (buy, build). */
-  static readonly doubleTapWindow = 0.4;
-
-  private lastPartTap = Infinity;
-  private lastCardTap: { upgrade: Upgrade; age: number } | null = null;
-
   constructor(private readonly host: PageHost) {}
-
-  /** Once a frame: the double-tap windows run out; leaving the Street Builder forgets its tap. */
-  advance(delta: number, onBuilder: boolean): void {
-    this.lastPartTap = onBuilder ? this.lastPartTap + delta : Infinity;
-    if (this.lastCardTap) {
-      this.lastCardTap.age += delta;
-      if (this.lastCardTap.age > BuildFlow.doubleTapWindow) this.lastCardTap = null;
-    }
-  }
 
   buy(upgrade: Upgrade): void {
     const career = this.host.save.career;
@@ -40,7 +26,7 @@ export class BuildFlow {
     const money = career.money;
     if (!Careers.buy(career, upgrade, this.host.config)) {
       this.host.upgradePage.denied = { upgrade, age: 0 };
-      this.host.play(['denied'], []);
+      this.host.play(['denied'], ['denied']);
       this.host.showNotice(S.notice.notEnoughMoney(Fmt.number(price)));
       return;
     }
@@ -49,7 +35,7 @@ export class BuildFlow {
     this.host.upgradePage.moneyBefore = money;
     this.host.persist();
     this.host.refreshWaitingShift();
-    this.host.play(['purchase'], ['comboUp']);
+    this.host.play(['purchase'], ['confirm']);
   }
 
   buildPart(): void {
@@ -64,7 +50,7 @@ export class BuildFlow {
     const ok = module ? Careers.buildModule(career, module, pending.slot, this.host.config) : Careers.buildArm(career, pending.slot, this.host.config);
     if (!ok) {
       b.denied = 0.001;
-      this.host.play(['denied'], []);
+      this.host.play(['denied'], ['denied']);
       this.host.showNotice(S.notice.notEnoughMoney(Fmt.number(price)));
       return;
     }
@@ -77,7 +63,7 @@ export class BuildFlow {
     b.moneyBefore = money;
     this.host.persist();
     this.host.refreshWaitingShift();
-    this.host.play(['build'], ['comboUp']);
+    this.host.play(['build'], ['confirm']);
     const idle = module === 'detour' && detourArmSlot({ ...this.host.config, armSlots: career.armSlots }, pending.slot) === null;
     // The part appearing is the answer; only a part that will do nothing says so.
     if (idle) this.host.showNotice(S.notice.detourIdle);
@@ -114,19 +100,15 @@ export class BuildFlow {
       this.host.pressed(point);
       return;
     }
-    const pending = b.pending;
+    const pending = b.removing > 0 ? null : b.pending;
     if (pending) {
       const hit = partModule(pending.part)
         ? StreetBuilderPage.moduleSlotAt(point, this.host.config.moduleSlotCount, map)
         : StreetBuilderPage.slotAt(point, this.host.config.armSlotCount, map);
+      // The placed part: its sheet again, where Build and Remove are.
       if (hit === pending.slot) {
-        if (this.lastPartTap <= BuildFlow.doubleTapWindow) {
-          this.lastPartTap = Infinity;
-          this.host.perform({ k: 'buildPart' });
-        } else {
-          this.lastPartTap = 0;
-          b.removing = 0.001;
-        }
+        if (!this.host.detailOpen) this.host.play(['uiTick'], []);
+        this.host.detailOpen = true;
         return;
       }
     }
@@ -154,7 +136,7 @@ export class BuildFlow {
     b.marked = null;
     this.host.detailOpen = false;
     b.moving = { from: built, part, age: 0 };
-    this.host.play(['uiTick'], ['comboUp']);
+    this.host.play(['uiTick'], ['snap']);
   }
 
   /** The sheet's Upgrade: the module on that slot goes one level up, for money. */
@@ -169,7 +151,7 @@ export class BuildFlow {
     const money = career.money;
     if (!Careers.upgradeModule(career, built.slot, this.host.config)) {
       b.denied = 0.001;
-      this.host.play(['denied'], []);
+      this.host.play(['denied'], ['denied']);
       this.host.showNotice(S.notice.notEnoughMoney(Fmt.number(price)));
       return;
     }
@@ -177,7 +159,7 @@ export class BuildFlow {
     b.moneyBefore = money;
     this.host.persist();
     this.host.refreshWaitingShift();
-    this.host.play(['build'], ['comboUp']);
+    this.host.play(['build'], ['confirm']);
   }
 
   /** The lifted part lands on `slot`, free of charge. */
@@ -192,7 +174,7 @@ export class BuildFlow {
     b.target = null;
     if (!ok) {
       b.denied = 0.001;
-      this.host.play(['denied'], []);
+      this.host.play(['denied'], ['denied']);
       return;
     }
     b.moving = null;
@@ -200,7 +182,7 @@ export class BuildFlow {
     else b.built = { slot, age: 0 };
     this.host.persist();
     this.host.refreshWaitingShift();
-    this.host.play(['build'], ['comboUp']);
+    this.host.play(['build'], ['snap']);
   }
 
   /** The lifted part stays where it was. */
@@ -221,7 +203,7 @@ export class BuildFlow {
     const career = this.host.save.career;
     if (built.k === 'arm' && !Careers.canRemoveArm(career, built.slot)) {
       b.denied = 0.001;
-      this.host.play(['denied'], []);
+      this.host.play(['denied'], ['denied']);
       this.host.showNotice(S.builder.keepsArms(4));
       return;
     }
@@ -258,17 +240,6 @@ export class BuildFlow {
     }
     this.host.persist();
     this.host.refreshWaitingShift();
-    this.host.play(['swoosh'], ['comboUp']);
-  }
-
-  tapUpgrade(upgrade: Upgrade): void {
-    const last = this.lastCardTap;
-    if (last && last.upgrade === upgrade && last.age <= BuildFlow.doubleTapWindow) {
-      this.lastCardTap = null;
-      this.host.perform({ k: 'buy', upgrade });
-    } else {
-      this.lastCardTap = { upgrade, age: 0 };
-      this.host.perform({ k: 'selectUpgrade', upgrade });
-    }
+    this.host.play(['swoosh'], ['snap']);
   }
 }

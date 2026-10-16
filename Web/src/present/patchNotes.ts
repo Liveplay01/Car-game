@@ -51,6 +51,28 @@ export const itemCredit = (item: PatchItem): string | null => {
 
 export const PATCH_NOTES: PatchNote[] = [
   {
+    id: '2026-10-16',
+    date: '16 October 2026',
+    title: 'Buttons that buy, bars that grow, the Family on the ring',
+    impact: 'minor',
+    summary: [
+      'No more double taps in Build: a tap opens the card, its button buys or builds.',
+      'A loan from the Family now shows on the ring: a thin line runs round as its days pass.',
+      'Pull Friends or Ranks down to refresh: a traffic light turns green when you can let go.',
+    ],
+    items: [
+      'Build has no hidden double taps any more: a tap on an upgrade or a placed part opens its card, and the card’s button buys, builds or removes it. Removing a placed part now fades it away instead of making it vanish.',
+      'Every progress bar is the same now: amber while it grows, gold once it is done. Coming back to Progress, the bars glide to where your last shifts took them, one almost full has a light running along it, and a goal you reached sends a gold wave out from its card.',
+      'Colours mean one thing everywhere: amber for what is running or wants a tap, gold for what you earned, red for what was lost. The auction house uses them too (leading, outbid, won), and finished goals, trials and tours show their tick in gold.',
+      'Lists in Progress, Upgrades and the Collection bounce at their ends like on a phone: a fast flick runs a little over and springs back.',
+      'On Android you now feel a part snapping onto its slot, a purchase going through, a refusal, a fast list hitting its end and a goal reached.',
+      'A loan from the Family now shows on the ring: a thin line just outside the road runs round from your arm as its days pass and turns red near the end. A late loan makes the whole ring glow a slow, dim red.',
+      'Pull Friends or Ranks down from the top to load them again. A small traffic light shows red, red and amber, then green; let go on green.',
+      'Loading now shows a little car going round a roundabout.',
+      'On computers with the game installed, a notification leaves a dot on the app icon until you open the game.',
+    ],
+  },
+  {
     id: '2026-10-15',
     date: '15 October 2026',
     title: 'Failure icons, your player and casino skins',

@@ -231,7 +231,7 @@ aber keinen Strike.
   Verbrecher entkommen lila, Krankenwagen blockiert rot), **Plus-Zeichen** = Crash verziehen,
   **Spritzer** (`splash`) = Combo-Stufe geschafft (mehr Tropfen je Stufe, oben mit Gold).
   **Farben haben je eine Bedeutung:** Grün gehört dem Spieler (Combo, Schild, Schichtende),
-  Limette (`rushHour`) ist Rush Hour (Lichtlauf, Kante, Leiste und Schriftzug), Amber bleibt die Farbe der Oberfläche, Weiß die Stufe im Unlimited, Gold das Große
+  Limette (`rushHour`) ist Rush Hour (Lichtlauf, Kante, Leiste und Schriftzug), Amber bleibt die Farbe der Oberfläche (außerhalb der Fahrt: was läuft oder wächst), Weiß die Stufe im Unlimited, Gold das Große und alles Verdiente (Web/PRODUCT.md, „Colour roles“)
   (Boss, Jackpot, Marken, Perfect Run), Blau Polizei und Rettung, Violett der Verbrecher; jedes
   Spezialfahrzeug hat seinen eigenen Ton (Learner: Türkis, `learnerSign`).
   Als Text bleiben nur Zahlen, die etwas kosten, und der Kern eines Modus (Critical, Jackpot,
@@ -371,8 +371,8 @@ einer Schicht ist sie ausgeblendet.
 | **Ergebnis** | kein Menü: oben in der Szene "GAME OVER" bzw. "LEVEL 3 COMPLETE", Punkte groß, "New Highscore" oder Bestwert; auf der Mittelinsel "Tap for level 4" bzw. "Tap to try level 3 again", Zeit, beste Combo, Tight Fits, Geld | **Tap** (irgendwo) |
 | **Einstellungen** | Sound effects, Music, Haptics, Vehicle labels, Reduce Motion (Standard: aus, „System“ wählbar), Installieren, Cloud sync, Import einer alten Spielstand-Datei; das Zahnrad auf dem Game-Tab öffnet ein Sheet | – |
 | **Build-Tab** | Segmented Control **Upgrades · Street Builder** (seit 26.09.2026 ein Tab, wie die Bereiche im Shop); öffnet dort, wo man ihn verlassen hat | – |
-| Build · Upgrades | Kontostand und eine Karte je Upgrade: Bild, Name, gekaufte Stufen, Preis der nächsten. Ein Tap öffnet unten die Details, ein Doppel-Tap kauft | Stufe kaufen |
-| Build · Street Builder | der Kreisverkehr von oben, die freien Steckplätze und eine Palette mit Teilen. Ein Teil wird auf einen Platz gezogen, ein Doppel-Tap baut es, ein einzelner nimmt es wieder weg | Zufahrt bauen |
+| Build · Upgrades | Kontostand und eine Karte je Upgrade: Bild, Name, gekaufte Stufen, Preis der nächsten. Ein Tap öffnet unten die Details, ihr Knopf kauft (kein Doppel-Tap, Leo 16.10.2026) | Stufe kaufen |
+| Build · Street Builder | der Kreisverkehr von oben, die freien Steckplätze und eine Palette mit Teilen. Ein Teil wird auf einen Platz gezogen; sein Sheet baut es (Bauen) oder nimmt es zurück (Entfernen), ein Tap aufs Teil öffnet das Sheet wieder | Zufahrt bauen |
 | **Shop-Tab** | Chests · Collection · Casino ([LOOT.md](LOOT.md)); keine kaufbare Währung | Truhe öffnen |
 | **Progress-Tab** | Records · Quests · Trials · Museum · Mastery | – |
 

@@ -122,7 +122,7 @@ export default (S: Strings): Words<Strings> => ({
     drag: 'Arrastrar a la rotonda',
     pickOne: 'Toca una pieza para ver detalles · toca una construida para mejorarla, moverla o quitarla.',
     dragHint: 'Arrástrala a un espacio libre de la rotonda.',
-    buildHint: 'Toca dos veces la pieza para construir · un toque la quita.',
+    buildHint: 'Constrúyela desde la ficha · Eliminar la retira.',
     keepsArms: (n) => `Una rotonda conserva al menos ${n} ramales`,
     name: (part) =>
       part === 'arm' ? 'Nuevo ramal' : part === 'tollBooth' ? 'Peaje' : part === 'speedCamera' ? 'Radar' : part === 'billboard' ? 'Valla publicitaria' : part === 'detour' ? 'Señal de desvío' : 'Servicio de grúa',

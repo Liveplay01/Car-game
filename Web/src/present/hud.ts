@@ -900,8 +900,18 @@ export class RingSignals {
   sinceSent = Infinity;
   leaving: { total: number; sent: number; lit: ColorToken; age: number } | null = null;
   signals: Signal[] = [];
+  /** A loan from the Family: how much of its time has run, 0 → 1 (null without one), and whether it is late. */
+  debt: number | null = null;
+  debtLate = false;
+  private clock = 0;
+  /** How long the loan has shown, and how long it has been late: the line fades in and crosses into the late glow. */
+  private debtFor = 0;
+  private lateFor = 0;
 
   age(delta: number): void {
+    this.clock += delta;
+    this.debtFor = this.debt === null ? 0 : this.debtFor + delta;
+    this.lateFor = this.debtLate ? this.lateFor + delta : 0;
     this.arrival += delta;
     this.sinceSent += delta;
     if (this.leaving) {
@@ -932,7 +942,37 @@ export class RingSignals {
   }
 
   add(list: RenderList, world: World, reduceMotion: boolean): void {
-    this.addAt(list, { rim: RingSignals.rim(world), start: world.layout.player.angle, outer: world.layout.ringRadius + world.layout.laneWidth / 2 }, reduceMotion);
+    const frame = { rim: RingSignals.rim(world), start: world.layout.player.angle, outer: world.layout.ringRadius + world.layout.laneWidth / 2 };
+    if (this.debt !== null) {
+      const appear = reduceMotion ? 1 : Ease.outCubic(Ease.clamp01(this.debtFor / 0.5));
+      const late = !this.debtLate ? 0 : reduceMotion ? 1 : Ease.inOutSine(Ease.clamp01(this.lateFor / 0.8));
+      RingSignals.loan(list, frame, this.debt, late, this.clock, reduceMotion, appear);
+    }
+    this.addAt(list, frame, reduceMotion);
+  }
+
+  /**
+   * A loan from the Family (Leo, 16.10.2026): a hairline just outside the road runs round from the player's arm as
+   * its days pass and reddens near the end; late, the whole ring glows a slow, dim red. No notice says it.
+   */
+  static loan(list: RenderList, { start, outer }: RingFrame, run: number, late: number, clock: number, reduceMotion: boolean, opacity: number): void {
+    const radius = outer + 4;
+    if (late > 0.001) {
+      const swell = reduceMotion ? 0.5 : 0.5 + 0.5 * Math.sin(clock * 1.6);
+      list.w(arc(v(0, 0), radius, 6, 0, TAU), 'destructive', (0.05 + 0.05 * swell) * late * opacity);
+      list.w(arc(v(0, 0), radius, 1.5, 0, TAU), 'destructive', (0.35 + 0.15 * swell) * late * opacity);
+    }
+    const running = (1 - late) * opacity;
+    if (running <= 0.001) return;
+    list.w(arc(v(0, 0), radius, 1.5, 0, TAU), 'marking', 0.3 * running);
+    if (run <= 0.002) return;
+    const head = start + TAU * run;
+    const red = Ease.clamp01((run - 0.75) / 0.2);
+    for (const [color, weight] of [['muted', 1 - red], ['destructive', red]] as const) {
+      if (weight <= 0.001) continue;
+      list.w(arc(v(0, 0), radius, 2, start, head, true), color, 0.6 * weight * running);
+      list.w(circle(mul(fromAngle(head), radius), 2.6), color, 0.9 * weight * running);
+    }
   }
 
   addAt(list: RenderList, { rim, start, outer }: RingFrame, reduceMotion: boolean): void {

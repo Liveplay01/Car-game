@@ -397,7 +397,6 @@ export default (S: Strings): Words<Strings> => ({
     group: (g) => ['POLICÍA', 'DINERO', 'CONDUCCIÓN'][g],
     maxed: 'Máx.',
     pickOne: 'Toca una mejora para ver sus efectos.',
-    buyHint: 'Toca dos veces para comprar.',
     everyStepBought: 'Todas las mejoras compradas.',
     missing: (m) => `Faltan ${m}`,
     name: (u) =>

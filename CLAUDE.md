@@ -167,7 +167,8 @@ docker build -t car-game . ; docker run -p 5050:5050 car-game   # Container wie 
 
 ## Code Quality & Style Guidelines
 
-- No AI Chatter or Over-Engineering: Write lean, direct code. Avoid unnecessary abstraction layers, wrapper functions, or redundant boilerplate.
+- **Engineering for feel is wanted (Leo, 16.10.2026):** Over-engineering in the way Apple and iOS do it is welcome wherever the player feels it: physics-based scrolling, rubber-banding, spring motion, haptics, matched timing, details nobody names but everybody notices. Spend effort there. The limit is the player, not the code: never overwhelm them with options, messages, motion or information (see "Wenige Meldungen", PRODUCT.md "Design Idea"). The rule below targets code that serves nobody: needless layers, wrappers, config and boilerplate.
+- No AI Chatter or Needless Abstraction: Write lean, direct code. Avoid unnecessary abstraction layers, wrapper functions, or redundant boilerplate.
 - Prefer Native Standards: Do not add dependencies for simple operations. Use native language features instead of external utility libraries.
 - Minimal, Meaningful Comments: Write self-documenting code. Do not write line-by-line explanatory comments or state the obvious.
 - Clean Naming & Strict Types: Use concise, idiomatic variable names. Avoid overly verbose LLM naming styles. Enforce strict typing (no `any` or loose fallbacks).

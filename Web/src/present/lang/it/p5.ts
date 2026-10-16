@@ -122,7 +122,7 @@ export default (S: Strings): Words<Strings> => ({
     drag: 'Trascina sull’anello',
     pickOne: 'Tocca un pezzo per i dettagli · tocca un elemento costruito per potenziarlo, spostarlo o rimuoverlo.',
     dragHint: 'Trascinalo su uno slot libero dell’anello.',
-    buildHint: 'Tocca due volte per costruire · un tocco rimuove.',
+    buildHint: 'Costruiscilo dalla scheda · Rimuovi lo toglie.',
     keepsArms: (n) => `Una rotatoria conserva almeno ${n} raccordi`,
     name: (part) =>
       part === 'arm' ? 'Nuovo raccordo' : part === 'tollBooth' ? 'Casello' : part === 'speedCamera' ? 'Autovelox' : part === 'billboard' ? 'Cartellone' : part === 'detour' ? 'Segnale di deviazione' : 'Carroattrezzi',

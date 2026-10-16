@@ -20,8 +20,30 @@ game runs at 60 fps on an older phone, and progress is never lost on the device.
 ## Brand Personality
 
 Calm, precise, satisfying. A dark night-time city (sunny map skins bring daylight around it),
-a clean dark road, one amber accent (street-lamp #ffb703) for what
-the player earns. The juice is in the moment (Tight Fit, takedown, crash), not in the chrome.
+a clean dark road, one amber accent (street-lamp #ffb703) for the interface and coin gold for
+what the player earns. The juice is in the moment (Tight Fit, takedown, crash), not in the chrome.
+
+### Colour roles (Leo, 16.10.2026)
+
+Off the road every state speaks one grammar (`--state-*` in `ui/shell.css`, the same tokens on the canvas):
+
+- **Amber** (`accent`): what runs, grows or wants a tap. A bar filling, a lot you lead, a button, a link.
+- **Gold** (`coin`, `--money`): what is earned. Money, a goal reached, a tier passed, a lot won, a "Done ✓".
+- **Red** (`destructive`): lost, or nearly out of time.
+- **Muted**: what waits or is open.
+
+On the road the Ring Signals keep their own colours (FOUNDATION.md, "Der Ring als Signalspur"); green belongs
+to the player there. No feature brings its own status colours (blue, teal, violet): rarity and player colours
+mean rarity and players, nothing else.
+
+Every progress bar is one part (`present/meter.ts`, `.club-bar`): 6 px, round ends, a track of `controlFill`.
+It glides to where it grew since it was last seen, a light runs along it when it is nearly full, and a goal
+reached sends one gold wave out from its card, like a payout on the ring.
+
+### Actions
+
+A tap selects or opens; a labelled button in the sheet buys, builds or removes. Only what cannot be undone
+(tearing down, prestige, deleting) asks twice, on the same button with a new label. No hidden double taps.
 
 ## Anti-references
 
@@ -33,6 +55,24 @@ chest opening: its wins may be loud, but only inside it. It stays honest: odds a
 one tap away, a real history, near misses only when the draw gives them, every win at least
 double the stake, reveals that skip on a tap, no timers, no "win it back", nothing pointing
 the player into it from elsewhere, and play money only (no currency can be bought).
+
+## Design Idea
+
+The game should feel like a precise, perfectly tuned machine, and keep its charm as a car and
+roundabout game. The modern, Apple-like look is the base: clear, calm, high-quality, smooth.
+On top of it sit deliberate playful details like the Ring Signals, which turn game events into
+feedback that is beautiful and understood at once.
+
+Every movement, display and interaction flows into the next. Feedback arrives at exactly the
+right moment, transitions feel inevitable, and effects feel earned. Precision comes not from
+more decoration but from everything interlocking.
+
+The rule: modern and restrained in tone, playful and alive in feedback, always fluid in
+motion, clear in function. Every new UI idea must make the game clearer or more satisfying
+*and* fit the overall look and the car game.
+
+Controls use familiar gestures and clear cause and effect, so every action is learned fast and
+soon feels self-evident: intuitive, fluid, no unnecessary thinking.
 
 ## Design Principles
 

@@ -30,7 +30,7 @@ export default (_s: Strings): Words<Strings> => ({
       line: 'Construye tu propia rotonda',
       body: [
         'Añade ramales y módulos a la rotonda. Más ramales traen más tráfico, furgones blindados antes y mejores ganancias.',
-        'Elige una pieza, arrástrala a un espacio libre de la rotonda y tócala dos veces para construir. Un toque elimina una pieza construida.',
+        'Elige una pieza y arrástrala a un espacio libre de la rotonda; se construye desde su ficha. Toca una pieza construida para mejorarla, moverla o quitarla.',
       ],
     },
     daily: {

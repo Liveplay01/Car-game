@@ -61,6 +61,7 @@ import { Briefings, type Brief } from './briefing';
 
 export type { SpecialRun } from './specialRuns';
 import { ProgressPage, ProgressState, type ProgressTarget } from './progress';
+import { Meter } from './meter';
 import { MuseumFlow, type MuseumHost } from './museumFlow';
 import { type MuseumEntry, museumEntry, museumId, FAIL_SKIN } from '../core/museum';
 import { UpgradePage, UpgradeState } from './upgrades';
@@ -706,15 +707,17 @@ export class GameSession {
         this.builderPage.target = null;
         this.builderPage.selected = part;
         this.detailOpen = true;
+        this.play(['uiTick'], ['snap']);
         break;
       }
       case 'buildPart':
         this.buildFlow.buildPart();
         break;
       case 'removePart':
-        if (this.builderPage.pending) this.detailOpen = false;
-        this.builderPage.pending = null;
-        this.builderPage.removing = 0;
+        // The placed part fades off its slot (`builder.ts`, removeDuration); the tick then clears it.
+        if (!this.builderPage.pending) break;
+        this.detailOpen = false;
+        if (this.builderPage.removing === 0) this.builderPage.removing = 0.001;
         break;
       case 'moveBuilt':
         this.buildFlow.liftInspected();
@@ -1439,7 +1442,7 @@ export class GameSession {
     if (this.isPage('upgrades')) {
       this.upgradePage.advance(realDelta);
       this.revealAboveSheet();
-      this.upgradePage.follow(realDelta, this.upgradeScrollRange);
+      if (this.upgradePage.follow(realDelta, this.upgradeScrollRange)) this.play([], ['edge']);
     }
     else this.upgradePage = new UpgradeState();
     if (this.isPage('shop')) {
@@ -1447,7 +1450,7 @@ export class GameSession {
       this.shopPage.advance(realDelta);
       // The Collection's grid glides on after a flick and springs back past its ends.
       this.revealItemAboveSheet();
-      this.shopPage.items.follow(realDelta, this.collectionScrollRange);
+      if (this.shopPage.items.follow(realDelta, this.collectionScrollRange)) this.play([], ['edge']);
       const after = this.shopPage.opening?.age ?? null;
       const opening = this.shopPage.opening;
       if (opening && before !== null && after !== null) this.reelCues(opening, before, after);
@@ -1466,7 +1469,9 @@ export class GameSession {
     if (this.isPage('progress')) {
       this.progressPage.advance(realDelta);
       this.revealProgressAboveSheet();
-      this.progressPage.follow(realDelta, this.progressScrollRange);
+      if (this.progressPage.follow(realDelta, this.progressScrollRange)) this.play([], ['edge']);
+      // A goal reached sends its wave on the page (`Meter`); the hand feels it with it, like a payout.
+      if (Meter.landed()) this.play(['paid'], ['earned']);
     } else if (this.progressPage.age !== 0 || this.progressPage.section !== PROGRESS.today) {
       this.leaveMuseum();
       this.progressPage = new ProgressState();
@@ -1482,11 +1487,13 @@ export class GameSession {
     this.sinceModeSwipe += realDelta;
     if (this.isPage('streetBuilder')) {
       this.builderPage.advance(realDelta);
-      if (this.builderPage.removing > StreetBuilderPage.removeDuration) this.perform({ k: 'removePart' });
+      if (this.builderPage.removing > StreetBuilderPage.removeDuration) {
+        this.builderPage.pending = null;
+        this.builderPage.removing = 0;
+      }
     } else {
       this.builderPage = new BuilderState();
     }
-    this.buildFlow.advance(realDelta, this.isPage('streetBuilder'));
     this.notices.held = this.screen.k === 'playing';
     this.notices.advance(realDelta);
     this.musicMix = this.screen.k === 'playing' && runs ? Music.playing(this.world, this.flowLevel) : Music.silent;
@@ -1507,6 +1514,9 @@ export class GameSession {
   }
 
   private followRim(): void {
+    const loan = this.save.career.loan;
+    this.rim.debt = loan && Ease.clamp01((Date.now() - loan.taken) / Math.max(1, loan.due - loan.taken));
+    this.rim.debtLate = loan?.late === true;
     if (this.screen.k === 'result') {
       if (this.resultAge < RingSignals.hold) return;
       // The Elite bar has the rim until the next shift's ticks arrive with its banner.
@@ -1657,7 +1667,7 @@ export class GameSession {
         if (this.isPage('upgrades') && this.upgradePage.drag) {
           if (this.upgradePage.release()) {
             const upgrade = UpgradePage.cardAt(a.p, this.lastViewport, this.tabInset, this.visibleUpgrades, this.upgradePage.scroll);
-            if (upgrade) this.buildFlow.tapUpgrade(upgrade);
+            if (upgrade) this.perform({ k: 'selectUpgrade', upgrade });
             else this.tapAway();
           }
           return;

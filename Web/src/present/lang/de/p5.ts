@@ -122,7 +122,7 @@ export default (S: Strings): Words<Strings> => ({
     drag: 'Auf den Ring ziehen',
     pickOne: 'Tippe ein Teil für Details · tippe ein gebautes an, um es aufzuwerten, zu verschieben oder zu entfernen.',
     dragHint: 'Ziehe es auf einen freien Platz am Ring.',
-    buildHint: 'Tippe das Teil doppelt an, um es zu bauen · ein Tipp nimmt es weg.',
+    buildHint: 'Bauen im Sheet · Entfernen nimmt es zurück.',
     keepsArms: (n) => `Ein Kreisverkehr behält mindestens ${n} Arme`,
     name: (part) =>
       part === 'arm' ? 'Neuer Arm' : part === 'tollBooth' ? 'Mautstelle' : part === 'speedCamera' ? 'Blitzer' : part === 'billboard' ? 'Werbetafel' : part === 'detour' ? 'Umleitungsschild' : 'Abschleppdienst',

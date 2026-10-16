@@ -73,7 +73,7 @@ const slotAngle = (slot: number, slots: number): number => -Math.PI / 2 + (slot 
 
 /**
  * The Street Builder: the roundabout from above, the parts to buy
- * and what they do. Drag a part onto a free slot, double-tap to build, one tap takes it away.
+ * and what they do. Drag a part onto a free slot; its sheet builds or removes it.
  * A built part tapped opens its sheet (Leo, 02.10.2026): what it does, Move (lift it and drag it,
  * or tap, onto a free slot, free of charge) and Delete (asks once more; nothing is paid back).
  */

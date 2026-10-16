@@ -30,7 +30,7 @@ export default (_s: Strings): Words<Strings> => ({
       line: 'Costruisci la tua rotatoria',
       body: [
         'Aggiungi raccordi e moduli all’anello. Più raccordi portano più traffico, furgoni blindati prima e guadagni migliori.',
-        'Scegli un pezzo, trascinalo su uno slot libero dell’anello e tocca due volte per costruire. Un tocco rimuove un pezzo costruito.',
+        'Scegli un pezzo e trascinalo su uno slot libero dell’anello; si costruisce dalla sua scheda. Tocca un pezzo costruito per potenziarlo, spostarlo o rimuoverlo.',
       ],
     },
     daily: {

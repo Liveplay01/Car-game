@@ -1,4 +1,4 @@
-import { h, icon } from './dom';
+import { h, icon, loadingNote } from './dom';
 import { ICONS } from './icons';
 import { nameForm, openAccount } from './ranksPanel';
 import { tabsControl } from './tabs';
@@ -88,11 +88,21 @@ const swatch = (lot: Lot): HTMLElement => picture(lot.k === 'chest' ? { k: 'ches
 /** A progress bar; `from` is where the fill starts when it should glide to `share` (the thanks). */
 function bar(share: number, from = share): { el: HTMLElement; go(): void } {
   const fill = h('span', { class: 'club-bar-fill' });
-  const width = (x: number): string => `${Math.min(100, Math.max(x > 0 ? 1 : 0, Math.round(x * 100)))}%`;
-  fill.style.width = width(from);
+  const shift = (x: number): string => `translateX(${Math.min(100, Math.max(x > 0 ? 1 : 0, Math.round(x * 100))) - 100}%)`;
+  fill.style.transform = shift(from);
+  const el = h('span', { class: from >= 1 ? 'club-bar done' : 'club-bar', 'aria-hidden': 'true' }, fill);
   return {
-    el: h('span', { class: 'club-bar', 'aria-hidden': 'true' }, fill),
-    go: () => requestAnimationFrame(() => requestAnimationFrame(() => (fill.style.width = width(share)))),
+    el,
+    go: () =>
+      requestAnimationFrame(() =>
+        requestAnimationFrame(() => {
+          fill.style.transform = shift(share);
+          if (share < 1 || from >= 1) return;
+          // Reaching the goal turns it gold and sends the one wave once the glide lands (`present/meter.ts`).
+          if (matchMedia('(prefers-reduced-motion: reduce)').matches) el.classList.add('done');
+          else fill.addEventListener('transitionend', () => el.classList.add('done', 'arrived'), { once: true });
+        }),
+      ),
   };
 }
 
@@ -158,7 +168,7 @@ export function clubPanel(host: ClubHost): ClubPanel {
 
   function updateTimerUi(): void {
     const pct = Math.max(0, Math.min(100, (remainingSeconds / AUCTION_TIMER_SECONDS) * 100));
-    if (timerBarEl) timerBarEl.style.width = `${pct}%`;
+    if (timerBarEl) timerBarEl.style.transform = `translateX(${pct - 100}%)`;
     if (timerDigitsEl) timerDigitsEl.textContent = S.clubPanel.timer.seconds(remainingSeconds.toFixed(1));
     if (timerStageEl) {
       if (remainingSeconds > 4.5) timerStageEl.textContent = S.clubPanel.timer.open;
@@ -566,7 +576,7 @@ export function clubPanel(host: ClubHost): ClubPanel {
         h('button', { class: 'btn block', type: 'button', onclick: () => { ideasError = null; show(); } }, S.clubPanel.tryAgain),
       ];
     }
-    if (!ideas) return [note(S.clubPanel.loading)];
+    if (!ideas) return [loadingNote(S.clubPanel.loading, 'field-help')];
     const view = ideas;
     const group = (title: string, items: Idea[]): HTMLElement[] =>
       items.length === 0

@@ -105,7 +105,16 @@ export type HapticID =
   | 'bossTakedown'
   /** A card under the chest reel's marker, and the reel landing on the prize. */
   | 'reelTick'
-  | 'reelStop';
+  | 'reelStop'
+  /**
+   * Off the road (Leo, 16.10.2026), quiet to strong: a fast list bumping its end, a part landing on its slot,
+   * a refusal, a purchase or build that went through, and a goal reached on the Progress page.
+   */
+  | 'edge'
+  | 'snap'
+  | 'denied'
+  | 'confirm'
+  | 'earned';
 
 /**
  * Turns game events into sound and haptics: the more often something
