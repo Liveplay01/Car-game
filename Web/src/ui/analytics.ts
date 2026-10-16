@@ -6,7 +6,7 @@
  * it (offline, blocked). The Privacy Policy (`present/legal.ts`) and the Content-Security-Policy
  * (`nginx.conf`) name the same service.
  */
-import { inItch, inPortal } from '../storage/device';
+import { inItch, inPlayStore, inPortal, isInstalled } from '../storage/device';
 
 const HOST = 'https://analytics.kestrel.nrw';
 const WEBSITE = 'ed1329fe-e263-49b7-bcfa-e27519a8fab1';
@@ -43,9 +43,13 @@ export function startAnalytics(): void {
   document.head.append(script);
 }
 
-/** A funnel step; kept until the script is there, dropped when it never comes. */
+/**
+ * A funnel step; kept until the script is there, dropped when it never comes. Every step says its channel (Leo, 16.10.2026):
+ * the Play app's closed-test testers play nothing like players, and a step without it could not be told apart.
+ */
 export function track(event: string, data?: EventData): void {
   if (!on) return;
-  if (window.umami) window.umami.track(event, data);
-  else if (waiting.length < 50) waiting.push([event, data]);
+  const step = { channel: inPlayStore ? 'play' : isInstalled() ? 'app' : 'tab', ...data };
+  if (window.umami) window.umami.track(event, step);
+  else if (waiting.length < 50) waiting.push([event, step]);
 }

@@ -5,7 +5,6 @@ import { Elite } from '../core/elite';
 import { SeasonPass } from '../core/seasonPass';
 import { Unlocks } from '../core/unlocks';
 import { Mafia } from '../core/mafia';
-import { Contracts } from '../core/contracts';
 import type { GameEvent, ShiftResult } from '../core/events';
 import type { Upgrade } from '../core/levels';
 import { ALBUM_REWARD, BIG_SCREEN, CHEST_KINDS, chestPrice, cosmetic, rarityRank, tapPower, strongTaps, type ChestKind } from '../core/loot';
@@ -126,7 +125,7 @@ export interface SessionOutput {
 
 /** One thing that changes the next shift's pay (`GameSession.modifiers`). */
 export interface Modifier {
-  id: 'heat' | 'tailwind' | 'streak' | 'family' | 'contract';
+  id: 'heat' | 'tailwind' | 'streak' | 'family';
   label: string;
   tone: 'heat' | 'bonus' | 'loss';
 }
@@ -408,7 +407,7 @@ export class GameSession {
     return Careers.availableUpgrades(this.save.career, this.config);
   }
 
-  /** The Club's sheet changed the career (a lot begun or won, a gift, a contract): written now. */
+  /** The Club's sheet changed the career (a lot begun or won, a gift): written now. */
   clubChanged(): void {
     this.persist();
   }
@@ -1499,6 +1498,7 @@ export class GameSession {
     this.watchCity(realDelta);
     this.watchIntro(realDelta);
     this.watchNews(realDelta);
+    this.watchPlace(realDelta);
     const cardFree = this.screen.k === 'ready' && this.takesModeSwipe && !this.versusSelected;
     this.tips.advance(realDelta, cardFree, cardFree && this.notices.isEmpty && this.modeHint < 0.05 && this.modeMessage.view(0) === null, this.reduceMotion);
     const hintTarget = this.showsModeHint ? 1 : 0;
@@ -2053,6 +2053,63 @@ export class GameSession {
     this.tick();
     this.detailOpen = true;
     this.introShown = here;
+    this.lastAsk = `intro.${here}`;
+  }
+
+  /** Where the player is, as analytics names it: the tab and its segment, or the Game tab. */
+  private get placeName(): string {
+    const s = this.screen;
+    if (s.k === 'settings') return 'settings';
+    if (s.k !== 'page') return 'game';
+    const name = (sections: Record<string, number>, section: number): string => Object.keys(sections).find((k) => sections[k] === section) ?? String(section);
+    switch (s.tab) {
+      case 'progress':
+        return `progress/${name(PROGRESS, this.progressPage.section)}`;
+      case 'social':
+        return `social/${name(SOCIAL, this.socialPage.section)}`;
+      case 'shop':
+        return `shop/${name({ chests: 0, collection: 1, casino: 2 }, this.shopPage.section)}`;
+      default:
+        return s.tab;
+    }
+  }
+
+  private placeWatch = { name: 'game', age: 0, told: 'game' };
+
+  /**
+   * Which tabs and segments are opened (Leo, 16.10.2026: what players never touch can go). A place counts once the player
+   * has stayed half a second, so swiping through to another does not count the ones passed on the way.
+   */
+  private watchPlace(dt: number): void {
+    const name = this.placeName;
+    const watch = this.placeWatch;
+    if (watch.name !== name) {
+      watch.name = name;
+      watch.age = 0;
+    }
+    watch.age += dt;
+    if (watch.age < 0.5 || watch.told === name) return;
+    watch.told = name;
+    this.onStep?.('tab', { name });
+  }
+
+  /** The last question or drawer that came up by itself this visit (a sheet the player opened is not one). */
+  lastAsk: string | null = null;
+
+  noteAsk(ask: string): void {
+    this.lastAsk = ask;
+  }
+
+  private leftOnce = false;
+
+  /**
+   * The first day's visits (Leo, 16.10.2026): half the new players leave within two minutes, and this says where they
+   * were and what had just come up. Once per visit, on the first day only; no name, no code, nothing of the save but the level.
+   */
+  leaving(): Record<string, string | number> | null {
+    if (this.leftOnce || this.save.firstDay !== this.today) return null;
+    this.leftOnce = true;
+    return { place: this.placeName, screen: this.screen.k, shifts: this.save.shiftsPlayed, level: this.save.career.level, ask: this.lastAsk ?? 'none' };
   }
 
   /** The page and segment the player is on, for what is new there. */
@@ -2612,7 +2669,7 @@ export class GameSession {
     if (news?.item) {
       toasts.push(...this.completeAlbums());
       this.resultBurst = { kind: 'streak', title: S.moments.streak(career.dailyStreak), line: S.daily.gotItem(news.item), color: 'hazard', power: 1.5 };
-    }
+    } else if (news?.chest) this.resultBurst = { kind: 'streak', title: S.moments.streak(career.dailyStreak), line: S.daily.gotChest(news.chest), color: 'hazard', power: 1.5 };
     this.persist();
     this.announce(...toasts);
   }
@@ -3080,7 +3137,7 @@ export class GameSession {
   /** The Game tab's Heat pill, only a sign (Leo, 15.10.2026): its text while a career shift waits (behind the result too) at a Heat, else null. */
   /**
    * What changes the next shift's pay, said before it starts (Leo, 16.10.2026): Heat, a waiting Tailwind, a living streak,
-   * the Family's share of a late loan, a signed contract. One shows as a labelled pill, several as icons (`ui/shell.ts`).
+   * the Family's share of a late loan. One shows as a labelled pill, several as icons (`ui/shell.ts`).
    * The Daily says its streak on its own pill, a trial or challenge its rule on the top card.
    */
   get modifiers(): Modifier[] {
@@ -3096,7 +3153,6 @@ export class GameSession {
     if (Goals.tailwindOn(career, mode, daily)) out.push({ id: 'tailwind', label: S.mods.tailwind(this.config.tailwindPay), tone: 'bonus' });
     if (!daily && Goals.streakBonus(career, this.today, this.config)) out.push({ id: 'streak', label: S.mods.streak(this.config.streakBonusPay), tone: 'bonus' });
     if (Mafia.late(career)) out.push({ id: 'family', label: S.mods.family(this.config.mafiaGarnish), tone: 'loss' });
-    if (onCareer && career.contract) out.push({ id: 'contract', label: S.mods.contract(S.club.goalName(career.contract.goal), Contracts.pay(career.contract.goal, this.config)), tone: 'bonus' });
     return out;
   }
 

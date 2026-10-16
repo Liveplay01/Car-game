@@ -228,11 +228,11 @@ export default (S: Strings): Words<Strings> => ({
     doneHint: (streak) => (streak > 1 ? `Completato · ${streak} giorni consecutivi · torna domani` : 'Completato · torna domani'),
     splashLine: (e) => `La città oggi: ${S.cityEvent(e)} · un tentativo`,
     streakLine: (streak) => (streak > 0 ? `${streak} ${streak === 1 ? 'giorno' : 'giorni'} consecutivi · continua così` : 'Gioca ogni giorno per creare una serie'),
-    nextMilestone: (left, item) => `Mancano ${left} ${left === 1 ? 'giorno' : 'giorni'} a ${S.shop.item(item)}`,
+    nextMilestone: (left, prize) => `Mancano ${left} ${left === 1 ? 'giorno' : 'giorni'} a ${prize}`,
     rowLine(streak, open, next, freezes = 0, toFreeze = null) {
       if (streak <= 0) return open ? S.daily.readyHint : 'Torna domani · gioca ogni giorno per una serie';
       const days = `${streak} ${streak === 1 ? 'giorno' : 'giorni'} consecutivi`;
-      const ahead = next && (toFreeze === null || next.left <= toFreeze) ? S.daily.nextMilestone(next.left, next.item) : toFreeze !== null ? S.daily.freezeLine(toFreeze) : null;
+      const ahead = next && (toFreeze === null || next.left <= toFreeze) ? S.daily.nextMilestone(next.left, S.daily.prize(next.prize)) : toFreeze !== null ? S.daily.freezeLine(toFreeze) : null;
       const parts = [days, freezes > 0 ? S.daily.freezes(freezes) : null, ahead, open ? null : 'a domani'];
       return parts.filter((p): p is string => p !== null).join(' · ');
     },
@@ -253,6 +253,7 @@ export default (S: Strings): Words<Strings> => ({
     freezeUsed: (n) => `SERIE PROTETTA · ${n === 1 ? 'un giorno mancato è stato' : `${n} giorni mancati sono stati`} coperti`,
     streakReward: (days, got) => `${days} GIORNI CONSECUTIVI · ${got.join(' · ')}`,
     gotItem: (item) => `${S.shop.item(item)} sbloccato`,
+    gotChest: (kind) => `${S.shop.chest(kind)} per la tua serie`,
     gotFreeze: 'una protezione serie',
     gotCard: 'un gratta e vinci gratis',
     giftIn: (hours) => (hours >= 1 ? `Baule gratis domani · tra ${Math.ceil(hours)} h` : `Baule gratis domani · tra ${Math.max(1, Math.ceil(hours * 60))} min`),
@@ -503,7 +504,6 @@ export default (S: Strings): Words<Strings> => ({
     tailwind: (pay) => `Vento a favore +${Math.round(pay * 100)} %`,
     streak: (pay) => `Serie +${Math.round(pay * 100)} %`,
     family: (share) => `Famiglia −${Math.round(share * 100)} %`,
-    contract: (goal, times) => `${goal} ×${times}`,
   },
 
   goals: {

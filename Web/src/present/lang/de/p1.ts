@@ -72,7 +72,7 @@ export default (_s: Strings): Words<Strings> => ({
       line: 'Für große Kontostände',
       body: [
         'Das Auktionshaus verkauft drei Lose am Tag. Computer-Sammler bieten gegen dich und treiben den Preis oft weit über die Schätzung.',
-        'Der Spielfonds ist für Ideen von Spielern: Schlage eine vor und gib Geld für die, die dir gefallen. Bei 30.000.000 wird eine Idee umgesetzt. Verträge setzen Geld auf einen Perfekten Lauf.',
+        'Der Spielfonds ist für Ideen von Spielern: Schlage eine vor und gib Geld für die, die dir gefallen. Bei 30.000.000 wird eine Idee umgesetzt.',
         'Nur Optik und Geld: Nichts hier macht dich auf der Straße schneller.',
       ],
     },
@@ -261,8 +261,6 @@ export default (_s: Strings): Words<Strings> => ({
   },
 
   hints: {
-    install: { caption: 'TIPP', text: 'Installiere das Spiel in den Einstellungen: dein Fortschritt bleibt sicher, ein Klick entfernt' },
-    homeScreen: { caption: 'TIPP', text: 'Lege das Spiel in den Einstellungen auf deinen Home-Bildschirm: dein Fortschritt bleibt sicher, ein Tipp entfernt' },
     reduceMotion: { caption: 'TIPP', text: 'Es ruckelt? „Bewegung reduzieren“ in den Einstellungen kann helfen' },
     notSaved: 'Dieser Browser speichert deinen Fortschritt nicht · Cloud-Sync in den Einstellungen kann eine Kopie halten',
     notSavedHere: 'Dieser Browser speichert deinen Fortschritt nicht · Er hält, bis du das Spiel schließt',

@@ -6,7 +6,7 @@ import { SWIPE_MODES, TAB_BAR, barTab, screenTab, type Tab } from '../present/fl
 import { AudioPlayer, Haptics } from '../audio/player';
 import { h, icon } from './dom';
 import { ICONS, CHEST_FLAT } from './icons';
-import { settingsSheet, deleteAccountSheet, patchNotesSheet, guidesSheet, legalSheet, licensesSheet, installDialog, pushOfferDialog, isSheetOpen, closeAnySheet, closeTopSheet } from './sheets';
+import { settingsSheet, deleteAccountSheet, patchNotesSheet, guidesSheet, legalSheet, licensesSheet, installDialog, offerDialog, isSheetOpen, closeAnySheet, closeTopSheet } from './sheets';
 import { installBackGesture, inSystemGestureZone } from './backGesture';
 import { disablePush, enablePush, pushChoiceOn, pushDelivers, pushState, pushTimers, setPushChoice, syncPush, type PushState, type PushTimer } from '../net/push';
 import { cloudEnabled, cloudLinked, cloudStoppedHere, cloudView, createCloud, deleteCloud, onCloudChange } from '../net/cloud';
@@ -73,7 +73,7 @@ function signatureOf(list: RenderList): number {
 }
 
 /** The icon of each modifier before a shift (`Shell.showMods`). */
-const MOD_ICON: Record<Modifier['id'], string> = { heat: ICONS.flame, tailwind: ICONS.wind, streak: ICONS.streak, family: ICONS.hat, contract: ICONS.flag };
+const MOD_ICON: Record<Modifier['id'], string> = { heat: ICONS.flame, tailwind: ICONS.wind, streak: ICONS.streak, family: ICONS.hat };
 
 /** The room the floating dock claims above the safe area (`--tabbar-h`). */
 const TAB_HEIGHT = 64;
@@ -434,7 +434,7 @@ export class Shell {
       track('install');
       void keepStorage();
     });
-    if (this.session.save.hints.includes('install')) void renewStorage();
+    if (this.session.save.hints.includes('install') || this.session.save.hints.includes('tomorrow')) void renewStorage();
     this.readStartLink();
     this.readInvite();
     this.readChallengeLink();
@@ -1008,21 +1008,13 @@ export class Shell {
   }
 
   /**
-   * A one-time hint came due. Level 5: ask the browser to keep the save and recommend the Home
-   * Screen (not when installed already). Level 12: recommend Cloud sync while this device has no
-   * cloud copy (Leo, 01.10.2026: it replaced the export). No install tip on a portal (nothing to
-   * install, the portal's login keeps the save) or in the Google Play app (installed already).
+   * A one-time hint came due. The way back for tomorrow (`tomorrow`): installing or notifications, see `askWayBack`.
+   * Level 12: recommend Cloud sync while this device has no cloud copy (Leo, 01.10.2026: it replaced the export).
    */
-  private async giveHint(hint: Hint): Promise<void> {
-    if (hint === 'install') {
-      await keepStorage();
-      if (isInstalled() || inPortal || inItch || inPlayStore) return;
-      // A browser with nothing to offer (no install prompt, not an iPhone) has no tip to give, so it takes no turn.
-      if (!isIos() && !this.installPrompt) return;
-      if (!this.session.takeTip()) return this.session.deferHint(hint);
-      // iPhone and iPad: the tip takes the screen until it is confirmed.
-      if (isIos()) installDialog(this.layers, isIpad(), () => undefined);
-      else if (this.installPrompt) this.session.tip(window.matchMedia('(pointer: coarse)').matches ? S.hints.homeScreen : S.hints.install);
+  private giveHint(hint: Hint): void {
+    if (hint === 'tomorrow') {
+      void keepStorage();
+      this.askWayBack();
     } else if (hint === 'inviteReminder') {
       if (!leaderboardEnabled || inPortal) return;
       if (!this.session.takeTip()) return this.session.deferHint(hint);
@@ -1041,28 +1033,80 @@ export class Shell {
       if (state === 'install') return this.session.deferHint(hint);
       if (state !== 'off' || !pushDelivers()) return;
       if (!this.session.takeTip()) return this.session.deferHint(hint);
-      // After the result has come up, never over a shift.
-      window.setTimeout(() => {
-        if (this.session.screen.k === 'playing' || isSheetOpen()) return this.session.deferHint(hint);
-        track('push', { step: 'offer', kind: hint === 'notifications' ? 'first' : 'streak' });
-        pushOfferDialog(
-          this.layers,
-          {
-            enable: () => {
-              track('push', { step: 'accept' });
-              void this.enablePush()
-                .then((result) => track('push', { step: result }))
-                .catch(() => this.session.announce(S.push.failed));
-            },
-            closed: () => undefined,
-          },
-          hint === 'notifications',
-        );
-      }, 2000);
+      this.afterResult(hint, () => this.offerPush(hint === 'notifications' ? 'later' : 'streak', false));
     } else if (hint === 'backup') {
       if (!cloudEnabled || cloudView().code !== null) return;
       this.flashSettings(S.settings.syncAsk, true);
     }
+  }
+
+  /** Shows a question once the result is up, never over a shift or an open sheet: else its hint waits for the next time. */
+  private afterResult(hint: Hint, show: () => void): void {
+    window.setTimeout(() => {
+      if (this.session.screen.k === 'playing' || isSheetOpen()) return this.session.deferHint(hint);
+      show();
+    }, 2000);
+  }
+
+  /**
+   * The way back for tomorrow (Leo, 16.10.2026, `tomorrow` hint): the visit's one question, asked at "back tomorrow".
+   * Installing where the device can (an icon to come back to, and on iPhone the only way to notifications), else
+   * notifications; a device with neither takes no turn. The reason is tomorrow's free chest while it waits, else the streak.
+   * Before, the notifications offer after the first shift won took the first visit's one tip, which nobody in a browser
+   * tab accepted, and the install tip after Level 4 waited for a second visit that rarely came.
+   */
+  private askWayBack(): void {
+    const hints = this.session.save.hints;
+    const installable = !isInstalled() && !inPortal && !inItch && !inPlayStore && (isIos() || this.installPrompt !== null) && !hints.includes('install');
+    const pushable = !hints.includes('notifications') && pushState() === 'off' && pushDelivers();
+    if (!installable && !pushable) return;
+    if (!this.session.takeTip()) return this.session.deferHint('tomorrow');
+    const chest = Careers.giftAhead(this.session.save.career, this.session.today);
+    this.afterResult('tomorrow', () => (installable ? this.offerInstall(chest) : this.offerPush('first', chest)));
+  }
+
+  private offerInstall(chest: boolean): void {
+    this.session.markHint('install');
+    this.session.noteAsk('install');
+    const reason = chest ? { title: S.wayBack.chestTitle, why: S.wayBack.chestWhy } : { title: S.wayBack.streakTitle, why: S.wayBack.streakWhy };
+    const how = isIos() ? 'ios' : 'prompt';
+    track('install-offer', { step: 'offer', how });
+    // iPhone and iPad have no prompt: the dialog shows the three taps and stays until it is confirmed.
+    if (isIos()) return installDialog(this.layers, isIpad(), () => undefined, reason);
+    let taken = false;
+    offerDialog(this.layers, { glyph: ICONS.game, ...reason, yes: S.wayBack.install }, {
+      accept: () => {
+        taken = true;
+        const prompt = this.installPrompt;
+        this.installPrompt = null;
+        if (!prompt) return;
+        void prompt.prompt();
+        void prompt.userChoice.then((choice) => track('install-offer', { step: choice.outcome, how }));
+      },
+      closed: () => {
+        if (!taken) track('install-offer', { step: 'later', how });
+      },
+    });
+  }
+
+  /** The notifications offer: `first` is the way back (with tomorrow's chest as its reason while it waits), the others come later. */
+  private offerPush(kind: 'first' | 'later' | 'streak', chest: boolean): void {
+    this.session.markHint('notifications');
+    this.session.noteAsk('push');
+    track('push', { step: 'offer', kind });
+    offerDialog(
+      this.layers,
+      { glyph: ICONS.bell, title: chest ? S.push.offerFirstTitle : S.push.offerTitle, why: chest ? S.push.offerFirstWhy : S.push.offerWhy, yes: S.push.offerOn },
+      {
+        accept: () => {
+          track('push', { step: 'accept' });
+          void this.enablePush()
+            .then((result) => track('push', { step: result }))
+            .catch(() => this.session.announce(S.push.failed));
+        },
+        closed: () => undefined,
+      },
+    );
   }
 
   /** The Settings pill says something about Cloud sync for a moment, once it is on screen (a note that came in mid-shift waits for it). */
@@ -1090,14 +1134,13 @@ export class Shell {
     this.syncChrome(true);
   }
 
-  /** What the Club (Social → Club) needs from the game: the Auction House, the Game fund and Contracts. */
+  /** What the Club (Social → Club) needs from the game: the Auction House and the Game fund. */
   private clubHost(): ClubHost {
     const s = this.session;
     return {
       layer: this.layers,
       career: () => s.save.career,
       today: () => s.today,
-      shiftCars: () => s.world.config.shiftCars,
       records: () => s.leaderboardRecords,
       changed: () => s.clubChanged(),
       intro: () => s.introduce('gamefund'),
@@ -1215,6 +1258,7 @@ export class Shell {
       return;
     }
     if (!loadAccount()) {
+      this.session.noteAsk('account');
       this.openAccountSheet();
       return;
     }
@@ -1469,8 +1513,11 @@ export class Shell {
     document.addEventListener('visibilitychange', () => {
       // The reminders follow the save: handed over as the game goes away, and "seen" again as it comes back.
       syncPush(this.pushTimers, document.hidden);
-      if (document.hidden) away();
-      else {
+      if (document.hidden) {
+        const leaving = this.session.leaving();
+        if (leaving) track('first-leave', leaving);
+        away();
+      } else {
         back();
         this.collectRewards();
       }
@@ -1494,6 +1541,13 @@ export class Shell {
     };
     const w = window.innerWidth;
     const hgt = window.innerHeight;
+    // iOS 26.1+ home-screen apps (WebKit bug 301994): the system keeps status bar and home indicator as black bars outside
+    // the page, yet still reports the bottom inset, so the dock floated a second inset too high. A gap taller than any
+    // status bar (62 pt at most) means the bottom is cut off as well.
+    // shortcut: a cut bottom alone (no cut top) stays undetected; drop this once Apple fixes the bug.
+    const cutBottom = navigator.standalone === true && hgt > w && screen.height - hgt > 64;
+    if (cutBottom) this.safe.bottom = 0;
+    document.documentElement.style.setProperty('--safe-bottom', cutBottom ? '0px' : null);
     // Above 2× the eye sees no difference, but a 3× phone would fill 2.25 times the pixels;
     // a device that struggles gets less (`adaptQuality`).
     const cap = this.session.save.settings.batterySaver ? Math.min(this.dprCap, Shell.saverDpr) : this.dprCap;

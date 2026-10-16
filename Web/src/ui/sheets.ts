@@ -287,9 +287,10 @@ export function glideHeight(body: HTMLElement, content: HTMLElement): void {
 /**
  * iPhone and iPad (Leo, 30.09.2026): the Home Screen tip takes the whole screen and stays until
  * it is confirmed. Only the button closes it. Since Cloud sync (Leo, 01.10.2026) it simply
- * recommends the Home Screen; Cloud sync comes with the player name (`ui/accountSheet.ts`).
+ * recommends the Home Screen; Cloud sync comes with the player name (`ui/accountSheet.ts`). Asked by the game itself
+ * (`tomorrow` hint) it leads with the reason to come back tomorrow instead.
  */
-export function installDialog(layer: HTMLElement, ipad: boolean, onDone: () => void): void {
+export function installDialog(layer: HTMLElement, ipad: boolean, onDone: () => void, reason?: { title: string; why: string }): void {
   const previouslyFocused = document.activeElement as HTMLElement | null;
   const step = (n: number, text: string, glyph: string): HTMLElement =>
     h('li', { class: 'install-step' }, h('span', { class: 'install-num', 'aria-hidden': 'true' }, String(n)), h('span', { class: 'install-text' }, text), h('span', { class: 'install-glyph', 'aria-hidden': 'true' }, icon(glyph)));
@@ -301,8 +302,8 @@ export function installDialog(layer: HTMLElement, ipad: boolean, onDone: () => v
       'div',
       { class: 'install-card' },
       h('div', { class: 'install-badge', 'aria-hidden': 'true' }, icon(ICONS.game)),
-      h('h2', { class: 'install-title', id: 'install-title' }, S.settings.homeScreen.title),
-      h('p', { class: 'install-why', id: 'install-why' }, S.settings.homeScreen.why),
+      h('h2', { class: 'install-title', id: 'install-title' }, reason?.title ?? S.settings.homeScreen.title),
+      h('p', { class: 'install-why', id: 'install-why' }, reason?.why ?? S.settings.homeScreen.why),
       h(
         'ol',
         { class: 'install-steps' },
@@ -556,21 +557,28 @@ function pushRows(push: SettingsActions['push']): HTMLElement[] {
   return [row, ...choices];
 }
 
+export interface Offer {
+  glyph: string;
+  title: string;
+  why: string;
+  yes: string;
+}
+
 /**
- * Offered after the first shift won (`notifications` hint: tomorrow's free chest is the reason) and again when a Daily
- * streak reaches two days (`notificationsStreak`: a reminder before it breaks). "Not now" costs nothing, since only
- * "Turn on" asks the browser, which can be asked once. "Turn on" asks right away.
+ * A question the game asks once with its reason, "Not now" always free: notifications (when the way back is asked for, `tomorrow`
+ * hint, and again when a Daily streak reaches two days, `notificationsStreak`) and installing where the browser can. Only the yes
+ * asks the browser, which can be asked once, and it asks from inside the tap.
  */
-export function pushOfferDialog(layer: HTMLElement, actions: { enable(): void; closed(): void }, first = false): void {
+export function offerDialog(layer: HTMLElement, offer: Offer, actions: { accept(): void; closed(): void }): void {
   const previouslyFocused = document.activeElement as HTMLElement | null;
-  const on = h('button', { class: 'btn primary block', type: 'button' }, S.push.offerOn);
+  const on = h('button', { class: 'btn primary block', type: 'button' }, offer.yes);
   const later = h('button', { class: 'btn block quiet-btn', type: 'button' }, S.push.offerLater);
   const card = h(
     'div',
-    { class: 'intro-card', role: 'alertdialog', 'aria-modal': 'true', 'aria-labelledby': 'push-title', 'aria-describedby': 'push-why' },
-    h('div', { class: 'install-badge', 'aria-hidden': 'true' }, icon(ICONS.bell)),
-    h('h2', { class: 'install-title intro-title', id: 'push-title' }, first ? S.push.offerFirstTitle : S.push.offerTitle),
-    h('p', { class: 'install-why', id: 'push-why' }, first ? S.push.offerFirstWhy : S.push.offerWhy),
+    { class: 'intro-card', role: 'alertdialog', 'aria-modal': 'true', 'aria-labelledby': 'offer-title', 'aria-describedby': 'offer-why' },
+    h('div', { class: 'install-badge', 'aria-hidden': 'true' }, icon(offer.glyph)),
+    h('h2', { class: 'install-title intro-title', id: 'offer-title' }, offer.title),
+    h('p', { class: 'install-why', id: 'offer-why' }, offer.why),
     on,
     later,
   );
@@ -595,7 +603,7 @@ export function pushOfferDialog(layer: HTMLElement, actions: { enable(): void; c
   };
   // The browser asks only from inside the tap itself.
   on.addEventListener('click', () => {
-    actions.enable();
+    actions.accept();
     finish();
   });
   later.addEventListener('click', finish);

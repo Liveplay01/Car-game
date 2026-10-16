@@ -59,7 +59,7 @@ Innerhalb einer Seltenheit ist jedes Item gleich wahrscheinlich.
 
 **Die Diamond Chest hat kein Common.** Beim Aufklopfen wachsen die Chancen über der untersten (hier Rare) wie bei jeder Truhe, die unterste zahlt (`tappedOdds`); Pity und Duplikate-Geld gelten wie immer. Legendary bleibt unter 15 %, auch bei voller Klopfkraft (13 % × 1,1 = 14,3 %).
 
-## Der Club (Leo, 10.10.2026): Auktion, Stadtfonds, Verträge
+## Der Club (Leo, 10.10.2026): Auktion, Spielfonds
 
 Drei Geldsenken für große Kontostände, aus einer Schublade im Shop (Karte nach den Truhen, ab der Elite-Leiste, Level 50). Alles nur Aussehen und Dank, nie ein Vorteil auf der Straße.
 
@@ -69,7 +69,7 @@ Schätzungen: Common 15.000 · Rare 45.000 · Epic 150.000 · Legendary 500.000 
 
 **Stadtfonds** (`core/fund.ts`, `Server/src/modules/fund`, `net/fund.ts`): Alle Spieler mit Namen schenken Geld in dieselben Projekte, eines nach dem anderen: **Fountain** (10 Mio), **Lighthouse** (50 Mio), **Sky Bridge** (250 Mio). Ein Geschenk: 10.000 bis 5.000.000, nur der angenommene Teil verlässt den Spielstand. Wer einem Projekt **100.000 oder mehr** (`fundBenefactor`) gegeben hat, bekommt dessen Skin, sobald es gebaut ist: Fountain (Epic, Lagune, Blüte) · Lighthouse (Legendary, Perlweiß mit rotem Streifen, Heiligenschein) · Sky Bridge (Legendary, Himmelblau, Regenbogen). Das Spiel holt die Skins beim Start und beim Öffnen des Fonds ab. Geld ist lokal, der Dienst zählt nur (Plausibilitätsgrenzen).
 
-**Verträge** (`core/contracts.ts`): Vor einer Karriere-Schicht setzt der Spieler 10.000 / 50.000 / 100.000 / 250.000 auf ein Ziel. Der Einsatz ist sofort bezahlt; wird das Ziel erreicht, kommt das Vielfache zurück, sonst ist er weg. Ziele (alle verlangen eine **Perfect Run**: kein Crash, kein Polizei-Crash, kein Schnitt): **Clean sheet** ×1,15 · **Sharp** ×3 (zusätzlich ein Viertel der Autos als Perfect Merges) · **Flawless** ×4,5 (zusätzlich eine Kette über 55 % der Autos). Der vorsichtige Bot schafft Clean sheet in etwa neun von zehn Schichten, die anderen beiden selten. Nie über Daily, Unlimited, Trial oder Challenge; eine erleichterte Schicht (`assisted`) macht den Vertrag ungültig, der Einsatz kommt zurück. Vor der Schicht lässt er sich zerreißen (alles zurück). **Contract Run** (Game-Fund-Idee, 15.10.2026): Verträge in Folge gewonnen bauen eine Serie (`Career.contractRun`); ab dem zweiten Sieg zahlt jeder Sieg 1 % des Einsatzes extra pro Sieg der Serie, höchstens +5 % (`contractRunStep`, `contractRunCap`). Ein verlorener Vertrag setzt die Serie zurück, ein ungültiger (erleichterte Schicht) lässt sie stehen.
+**Verträge** (Geld auf eine Perfect Run) sind seit 16.10.2026 gestrichen: zu viel Oberfläche für eine Geldsenke, die der Club mit Auktion und Diamond Chest schon hat. Ein offener Einsatz in einem alten Spielstand kommt beim Laden zurück (`storage/save.ts`).
 
 **High Roller** (Casino): ab **200.000** Geld rücken die Einsätze auf 10K · 50K · 250K · 1M · 5M (`casinoHighStakes`); gleiche Spiele, gleiche Chancen, ein Schild „HIGH ROLLER“ neben dem Tagessaldo.
 

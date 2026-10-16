@@ -8,7 +8,6 @@ import { Elite, TITLES, type TitleId } from '../core/elite';
 import { type CasinoGame, type CasinoPending, type CasinoRound, CASINO_GAMES } from '../core/casino';
 import { isObject } from '../core/guards';
 import { readLot } from '../core/auction';
-import { readContract } from '../core/contracts';
 import { readLoan } from '../core/mafia';
 import { storage } from './store';
 import { sealOf } from './seal';
@@ -99,7 +98,8 @@ function readCareer(raw: unknown): Career {
   const mapSkin = typeof raw.mapSkin === 'string' && collection.includes(raw.mapSkin) && cosmetic(raw.mapSkin)?.kind === 'mapSkin' ? raw.mapSkin : null;
   return {
     level: int(raw.level, 1, 1),
-    money: int(raw.money, 0, 0),
+    // A contract signed before the Club dropped them: its stake comes back.
+    money: int(raw.money, 0, 0) + (isObject(raw.contract) ? int(raw.contract.stake, 0, 0) : 0),
     upgrades,
     armSlots: armSlots.length >= 4 ? armSlots : fresh.armSlots,
     modules,
@@ -134,6 +134,8 @@ function readCareer(raw: unknown): Career {
     levelLosses: int(raw.levelLosses, 0, 0),
     dailyStreak: int(raw.dailyStreak, 0, 0),
     streakFreezes: int(raw.streakFreezes, 0, 0),
+    // A save from before the starter streak that is past it already has had its reason for day two.
+    starterChest: typeof raw.starterChest === 'boolean' ? raw.starterChest : int(raw.dailyStreak, 0, 0) >= baseConfig.starterStreakDays || strings(raw.collection).includes('streakBronze'),
     scratchCards: Math.min(int(raw.scratchCards, 0, 0), baseConfig.scratchMax),
     tailwind: raw.tailwind === true,
     tailwindDay: int(raw.tailwindDay, -1),
@@ -193,8 +195,6 @@ function readCareer(raw: unknown): Career {
     auctionSpent: int(raw.auctionSpent, 0, 0),
     fundGiven: int(raw.fundGiven, 0, 0),
     ideasSeenAt: int(raw.ideasSeenAt, 0, 0),
-    contract: readContract(raw.contract),
-    contractRun: int(raw.contractRun, 0, 0),
     loan: readLoan(raw.loan),
     cleanLoans: int(raw.cleanLoans, 0, 0),
     loansTaken: int(raw.loansTaken, 0, 0),

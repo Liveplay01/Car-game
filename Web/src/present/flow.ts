@@ -48,7 +48,7 @@ export const PROGRESS = { today: 0, trials: 1, goals: 2, records: 3, museum: 4 }
 export type SocialSection = 0 | 1 | 2 | 3;
 /**
  * The Social tab (Leo, 10.10.2026): the people and the shared things. Friends (code, list, play together, invite) · Ranks (the boards, everyone
- * or friends only) · Club (from Level 50: Auction House, Game fund, Contracts) · Mafia (from the first boss: loans struck on a pointer bar).
+ * or friends only) · Club (from Level 50: Auction House, Game fund) · Mafia (from the first boss: loans struck on a pointer bar).
  * Its content is the shell's DOM (`ui/socialPage.ts`); the canvas draws the title and the segments.
  */
 export const SOCIAL = { friends: 0, ranks: 1, club: 2, mafia: 3 } as const satisfies Record<string, SocialSection>;

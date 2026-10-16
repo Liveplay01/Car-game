@@ -6,7 +6,6 @@ import type { ShiftResult } from '../core/events';
 import { challengeReward } from '../core/daily';
 import { tierOf, UNLIMITED_MARKS } from '../core/tiers';
 import { heatXp } from '../core/heat';
-import { Contracts } from '../core/contracts';
 import { Mafia } from '../core/mafia';
 import { Achievements } from '../core/achievements';
 import { S, Fmt } from './strings';
@@ -92,9 +91,6 @@ export function bookShift(save: SaveGame, result: ShiftResult, ctx: ShiftContext
   // A late loan takes its share of the pay before anything else is booked against it.
   const garnished = Mafia.garnish(career, career.money - bankBefore, Date.now(), ctx.config);
   if (garnished > 0) news.push(S.mafia.garnished(Fmt.number(garnished), career.loan === null));
-  // A contract signed for this shift is settled now: paid back with its multiple, lost, or voided by an eased shift.
-  const contract = ctx.mode === 'shift' && !ctx.daily ? Contracts.settle(career, result, ctx.shiftConfig.shiftCars, ctx.shiftConfig.assisted, ctx.config) : null;
-  if (contract) news.push(S.club.contractSettled(contract));
   const heat = ctx.mode === 'shift' && !ctx.daily ? ctx.shiftConfig.heat : 0;
   if (heat > 0 && result.outcome === 'completed' && Careers.recordHeat(career, heat, ctx.config)) news.push(S.heat.cleared(heat));
   // Tailwind: the pay it promised was in this shift; a shift lost within reach of its goal earns the next one (once a day, never chained).
@@ -121,17 +117,15 @@ export function bookShift(save: SaveGame, result: ShiftResult, ctx: ShiftContext
   const cap = ctx.config.modeHintAfterLevel;
   if (ctx.mode === 'shift' && !save.hints.includes('modes') && ctx.level <= cap && career.level > cap) tips.push(touchFirst ? S.modes.unlocked : S.modes.unlockedKeys);
   // What this shift opened says nothing here: the place gets a dot and introduces itself (`Intros`).
-  const after = { install: ctx.config.installHintAfterLevel, backup: ctx.config.backupHintAfterLevel, portalLogin: ctx.config.portalLoginAfterLevel };
-  const due: Hint[] = (['install', 'backup', 'portalLogin'] as const).filter((h) => !save.hints.includes(h) && career.level > after[h]);
+  const after = { backup: ctx.config.backupHintAfterLevel, portalLogin: ctx.config.portalLoginAfterLevel };
+  const due: Hint[] = (['backup', 'portalLogin'] as const).filter((h) => !save.hints.includes(h) && career.level > after[h]);
   // Level 10 reached (Leo, 04.10.2026): a small reminder that a friend brings both a chest. By level, not by crossing it:
   // a reminder that had to wait (`takeTip`) comes at the next shift.
   if (ctx.mode === 'shift' && !save.hints.includes('inviteReminder') && career.level >= INVITE_REMINDER_LEVEL) due.push('inviteReminder');
-  // The first shift won (Leo, 09.10.2026, before: a streak of two days): tomorrow's free chest is the reason to ask, and
-  // the player who leaves after one visit is the one a reminder could bring back. Asked again at a streak of two days
-  // (08.10.2026), when a reminder before it breaks is worth something; "Not now" costs nothing, only the browser asks once.
-  if (ctx.mode === 'shift' && career.level >= 2 && !save.hints.includes('notifications')) due.push('notifications');
+  // Notifications after the way back was asked for (`tomorrow`) as installing: on a later visit, the one tip each has.
+  // Asked again at a streak of two days (08.10.2026), when a reminder before it breaks is worth something.
+  if (save.hints.includes('tomorrow') && !save.hints.includes('notifications')) due.push('notifications');
   if (ctx.daily && career.dailyStreak >= 2 && save.hints.includes('notifications') && !save.hints.includes('notificationsStreak')) due.push('notificationsStreak');
-  save.hints.push(...due);
   // The first Perfect Run says what it is and what it pays (early on only: a veteran knows). After that the ring's gold
   // sweep says it (`GameSession.react`): early on nearly every shift is one, and a line every time stops meaning anything.
   if (result.isPerfectRun && !save.hints.includes('perfectRun')) {
@@ -147,6 +141,10 @@ export function bookShift(save: SaveGame, result: ShiftResult, ctx: ShiftContext
     save.dailyScore = result.score;
     save.dailyTries = career.adRetryDay === ctx.today ? 2 : 1;
   }
+  // The way back (Leo, 16.10.2026): the first Daily done says "back tomorrow", so that is when the visit's one ask goes to it
+  // (the shell picks installing or notifications); a player who skips the Daily is asked after `tomorrowAskAfterLevel`.
+  if (!save.hints.includes('tomorrow') && (career.dailyDone >= 0 || career.level > ctx.config.tomorrowAskAfterLevel)) due.unshift('tomorrow');
+  save.hints.push(...due);
   // The Daily's pay shows in the result's money and its streak on the next Daily; a chest found says nothing either:
   // the Game tab's pill and the Shop's badge already show it.
   if (pay === null && (ctx.daily || !Careers.rollEventChest(career, result, ctx.shiftConfig, result.seed))) Careers.rollLuckyDrop(career, result, ctx.shiftConfig, result.seed);

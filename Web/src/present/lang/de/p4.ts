@@ -133,6 +133,14 @@ export default (S: Strings): Words<Strings> => ({
     denied: 'Benachrichtigungen sind für diese Seite in deinen Browser-Einstellungen blockiert.',
   },
 
+  wayBack: {
+    chestTitle: 'Gratis-Truhe morgen',
+    streakTitle: 'Bis morgen',
+    chestWhy: 'Leg das Spiel auf deinen Startbildschirm: Die Gratis-Truhe von morgen ist nur einen Tipp entfernt, und dein Fortschritt bleibt sicher.',
+    streakWhy: 'Leg das Spiel auf deinen Startbildschirm: Deine Serie ist morgen nur einen Tipp entfernt, und dein Fortschritt bleibt sicher.',
+    install: 'Spiel installieren',
+  },
+
   ready: {
     tapToStart: 'Tippe zum Starten',
     tapForFriends: 'Tippe, um mit Freunden zu spielen',
@@ -203,7 +211,7 @@ export default (S: Strings): Words<Strings> => ({
 
   social: {
     section: (i) => ['Freunde', 'Ränge', 'Club', 'Mafia'][i],
-    clubClosed: 'Der Club öffnet ab Level 50: ein Auktionshaus, der Spielfonds und Verträge für große Kontostände.',
+    clubClosed: 'Der Club öffnet ab Level 50: ein Auktionshaus und der Spielfonds für große Kontostände.',
     mafiaClosed: 'Die Familie hat keine Zeit für Anfänger. Erledige den ersten Boss des Syndikats (Level 15) oder komm an ihm vorbei, und sie melden sich.',
     offline: 'Freunde und Ränge brauchen den Online-Dienst, mit dem diese Kopie des Spiels nicht verbunden ist.',
     noFriends: 'Freunde sind hier nicht verfügbar. Ränge und der Club schon.',

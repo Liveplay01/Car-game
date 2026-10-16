@@ -113,7 +113,6 @@ Only in the browser version:
   that push the price over the estimate; the hammer price plus a 10 % premium is paid, walking away is free. The **City
   Fund** (`core/fund.ts`, `net/fund.ts`, the service's `fund` module): everyone gives to the same projects; a gift of
   100,000 or more earns the skin of a built project, which the game picks up at the start and when the Club opens.
-  **Contracts** (`core/contracts.ts`, settled in `present/booking.ts`): money on a Perfect Run of the next career shift. Contracts won back to back build a Contract Run: from the second win on +1% of the stake per win, up to +5%; a loss resets it.
   Also the Diamond Chest and the casino's High Roller stakes (`Casino.highRoller`). The odds, prices and limits are in
   LOOT.md, "Der Club"; the fund is gone without the service (`VITE_API_URL`), the rest plays offline.
 - **Cloud sync** in Settings moves the progress to another device by code (01.10.2026: export
@@ -232,9 +231,13 @@ and go to the service with every sync as `muted`: the game leaves those timers o
 
 The row is always in Settings; turning it on asks the browser and shows one notification at once (`confirm`). Without the service or a service worker (`npm run dev`, a build without `VITE_API_URL`; `pushDelivers`) it still works for that, but sends no reminders and says so. Inside a portal it is greyed out.
 
-Turned on in **Settings → Account → Notifications**, or from the offer that comes after the first
-shift won (`hints: notifications`, `bookShift`: tomorrow's free chest is the reason) and once more when a Daily streak
-reaches two days (`notificationsStreak`). "Not now" costs nothing: only "Turn on" asks the browser, which asks once. On an
+Turned on in **Settings → Account → Notifications**, or from an offer. **The way back** (16.10.2026, `hints: tomorrow`,
+`bookShift`, `Shell.askWayBack`): when the first Daily is done ("back tomorrow"), or after Level 4 for a player who skips
+it, the visit's one question (`takeTip`) asks for a way back to tomorrow: **installing** where the device can (iPhone and
+iPad: the three-step Home Screen dialog; Chrome and Edge: a dialog whose button opens the browser's own install prompt),
+else notifications. The reason is tomorrow's free chest while it waits, else the streak. Notifications after an install
+question come on a later visit (`hints: notifications`), and once more when a Daily streak reaches two days
+(`notificationsStreak`). "Not now" costs nothing: only "Turn on" asks the browser, which asks once. On an
 iPhone the offer waits until the game is on the Home Screen. Chrome, Edge, Firefox and the Play Store app everywhere; Safari only from the Home Screen (iOS 16.4+).
 Not on CrazyGames or itch.io, not without `VITE_API_URL`, and not in `npm run dev` (no service worker): try it
 with `npm run build` + `npm run preview` and a service with `VAPID_*` set. Delete account turns it off too.
@@ -315,7 +318,7 @@ Cloud sync.
 
 ## Unlocks and notices
 
-- `core/unlocks.ts`: the Daily Shift opens at Level 2 (since 08.10.2026, before 4), the Trials at 9 (each trial at its own level), the Casino at 12
+- `core/unlocks.ts`: the Daily Shift opens at Level 3 (since 16.10.2026; Level 2 from 08.10.2026, before that 4), the Trials at 9 (each trial at its own level), the Casino at 12
   (`*UnlockLevel` in `config.ts`); whoever used one before keeps it. Locked segments stay in
   place, faded, and say when they open. The Casino opens quietly (nothing points there).
 - After Level 5 a pill on the Game tab says "Swipe for more modes" until the first switch.

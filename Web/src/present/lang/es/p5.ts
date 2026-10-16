@@ -2,7 +2,6 @@ import type { Strings } from '../../strings';
 import type { Words } from '../../i18n';
 import { Fmt, money, percent } from '../../format';
 import { baseConfig, detourShareAt, towSpeedupAt } from '../../../core/config';
-import { Contracts } from '../../../core/contracts';
 
 /** Español, Parte 5: Casino, Constructor de calles, Publicidad, Club, Rangos, Amigos, Sala, Versus, Shell. */
 export default (S: Strings): Words<Strings> => ({
@@ -226,25 +225,8 @@ export default (S: Strings): Words<Strings> => ({
     streak: (d) => `${d} días seguidos`,
   },
 
-  club: {
-    goalName: (goal) => ({ clean: 'Limpio', sharp: 'Preciso', flawless: 'Impecable' })[goal],
-    goalText(goal, cars) {
-      const need = Contracts.need(goal, cars);
-      const base = 'Completa el próximo turno de carrera con una Carrera perfecta: sin choques propios ni de policía';
-      if (goal === 'sharp') return `${base} y ${need.perfects} Entradas perfectas.`;
-      if (goal === 'flawless') return `${base} y una cadena de ${need.chain} entradas.`;
-      return `${base}.`;
-    },
-    contractSettled(outcome) {
-      const name = S.club.goalName(outcome.contract.goal).toUpperCase();
-      if (outcome.result === 'won') return `CONTRATO GANADO · ${name} · +${money(Fmt.number(outcome.pay))}${outcome.run > 1 ? ` · RACHA ×${outcome.run}` : ''}`;
-      if (outcome.result === 'void') return `CONTRATO ANULADO · este turno fue facilitado · ${money(Fmt.number(outcome.pay))} devueltos`;
-      return `CONTRATO PERDIDO · ${name} · ${money(Fmt.number(outcome.contract.stake))} perdidos`;
-    },
-  },
-
   clubPanel: {
-    tabs: { auction: 'Subasta', ideas: 'Fondo del juego', contracts: 'Contratos' },
+    tabs: { auction: 'Subasta', ideas: 'Fondo del juego' },
     money: 'Dinero',
     sealedChest: 'Un cofre sellado',
     exclusive: 'Exclusivo de la casa de subastas',
@@ -360,19 +342,6 @@ export default (S: Strings): Words<Strings> => ({
     ideaHow: 'Dinos qué te gustaría ver en el juego. Lo leeremos, lo adaptaremos y lo publicaremos aquí. Una idea al día.',
     ownAmount: 'Importe personalizado',
     giveAmount: (price) => `Aportar ${price}`,
-    yourContract: 'Tu contrato',
-    tearUp: 'Romper contrato',
-    contractPays: (goal, pay) => `${goal} Paga ${pay} si se cumple.`,
-    contractRun: (run, next) =>
-      run > 0 ? `Racha de contratos: ${run} ganados seguidos. Tu próxima victoria paga ${next} de la apuesta extra. Un contrato perdido la reinicia.` : 'Racha de contratos: gana contratos seguidos. Desde la segunda victoria cada uno paga un extra, hasta +5 % de la apuesta. Un contrato perdido la reinicia.',
-    settle: 'Se liquida con tu próximo turno de carrera (no diario, Sin límites ni prueba) y se refleja en los resultados. Si lo rompes antes, recuperas toda la apuesta. Si el turno se facilita por tu nivel, se anula y se devuelve la apuesta.',
-    chosen: 'Elegido',
-    choose: 'Elegir',
-    goalPays: (name, x) => `${name} · paga ×${x}`,
-    sign: (stake, goal) => `Firmar · ${stake} en ${goal}`,
-    contractsIntro: 'Apuesta por ti mismo. La apuesta se paga ahora; si tu próximo turno de carrera cumple el objetivo, multiplicará tu dinero; si no, lo perderás. Los objetivos son iguales para todos: elige lo que puedas lograr.',
-    goal: 'Objetivo',
-    stake: 'Apuesta',
   },
 
   ranks: {

@@ -133,6 +133,14 @@ export default (S: Strings): Words<Strings> => ({
     denied: 'Le notifiche sono bloccate nelle impostazioni del tuo browser.',
   },
 
+  wayBack: {
+    chestTitle: 'Baule gratis domani',
+    streakTitle: 'A domani',
+    chestWhy: 'Metti il gioco nella schermata Home: il baule gratuito di domani sarà a un tocco, e i tuoi progressi restano al sicuro.',
+    streakWhy: 'Metti il gioco nella schermata Home: domani la tua serie sarà a un tocco, e i tuoi progressi restano al sicuro.',
+    install: 'Installa il gioco',
+  },
+
   ready: {
     tapToStart: 'Tocca per iniziare',
     tapForFriends: 'Tocca per giocare con gli amici',
@@ -203,7 +211,7 @@ export default (S: Strings): Words<Strings> => ({
 
   social: {
     section: (i) => ['Amici', 'Classifica', 'Club', 'Mafia'][i],
-    clubClosed: 'Il Club si apre al livello 50: casa d’aste, fondo di gioco e contratti per grandi capitali.',
+    clubClosed: 'Il Club si apre al livello 50: casa d’aste e fondo di gioco per grandi capitali.',
     mafiaClosed: 'La Famiglia non perde tempo con i principianti. Neutralizza il primo boss del sindacato (livello 15) e si faranno vivi.',
     offline: 'Amici e Classifiche richiedono il servizio online non collegato a questa copia.',
     noFriends: 'Amici non disponibile qui. Classifiche e Club restano accessibili.',

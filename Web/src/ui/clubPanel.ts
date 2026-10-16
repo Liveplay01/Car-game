@@ -6,7 +6,6 @@ import { fadeIn, openSheet, scrollSheetToTop, swapView } from './sheets';
 import { baseConfig } from '../core/config';
 import { type Career, Careers } from '../core/career';
 import { Auction, type AuctionEvent, type AuctionRun, type Lot } from '../core/auction';
-import { CONTRACT_GOALS, Contracts, type ContractGoal } from '../core/contracts';
 import { Fund, GIFTS } from '../core/fund';
 import type { TitleId } from '../core/elite';
 import { cosmetic } from '../core/loot';
@@ -26,7 +25,7 @@ import { v } from '../core/vec2';
 /**
  * The Club (Leo, 10.10.2026): sinks for big balances, the third segment of the Social tab (from Level 50; it began as a card in
  * the Shop). The Auction House (`core/auction.ts`), the Game fund (Leo, 12.10.2026, it replaced the City Fund: players suggest ideas, we publish
- * them, everyone gives until an idea is funded; `net/ideas.ts`) and Contracts (`core/contracts.ts`). Money only buys looks, thanks and a chance at a payout for skill: never an edge on the road.
+ * them, everyone gives until an idea is funded; `net/ideas.ts`). Money only buys looks, thanks and a chance at a payout for skill: never an edge on the road.
  */
 
 export interface ClubHost {
@@ -34,11 +33,9 @@ export interface ClubHost {
   layer: HTMLElement;
   career(): Career;
   today(): number;
-  /** How many cars the next career shift has: a contract's goals are counted from it. */
-  shiftCars(): number;
   /** The records as the save has them now, sent right after a name is chosen. */
   records(): Records;
-  /** The career changed (a lot begun or won, a gift, a contract): write the save. */
+  /** The career changed (a lot begun or won, a gift): write the save. */
   changed(): void;
   /** The Game fund tab is open: its drawer explains it, once. */
   intro(): void;
@@ -52,11 +49,10 @@ export interface ClubPanel {
   dispose(): void;
 }
 
-type ClubTab = 'auction' | 'ideas' | 'contracts';
+type ClubTab = 'auction' | 'ideas';
 const TABS: { id: ClubTab; label: string }[] = [
   { id: 'auction', label: S.clubPanel.tabs.auction },
   { id: 'ideas', label: S.clubPanel.tabs.ideas },
-  { id: 'contracts', label: S.clubPanel.tabs.contracts },
 ];
 let lastTab: ClubTab = 'auction';
 
@@ -148,8 +144,6 @@ export function clubPanel(host: ClubHost): ClubPanel {
   /** The gift picked (a quick amount or typed) and the text of the field; nothing is given before "Give". */
   let gift = 0;
   let giftText = '';
-  let contractGoal: ContractGoal = 'clean';
-  let contractStake = baseConfig.contractStakes[1];
 
   const AUCTION_TIMER_SECONDS = 10;
   let timerId: number | null = null;
@@ -231,7 +225,7 @@ export function clubPanel(host: ClubHost): ClubPanel {
 
   function show(): void {
     tabs.set(tab);
-    const rows = { auction: auctionRows, ideas: ideaRows, contracts: contractRows }[tab]();
+    const rows = { auction: auctionRows, ideas: ideaRows }[tab]();
     const replace = (): void => {
       content.replaceChildren(...rows);
       withCoins(content);
@@ -767,59 +761,6 @@ export function clubPanel(host: ClubHost): ClubPanel {
     send.addEventListener('click', () => onGive(gift));
     pick();
     return [h('div', { class: 'club-gifts' }, ...quick.map((q) => q.button)), input, send];
-  }
-
-  // MARK: Contracts
-
-  function contractRows(): HTMLElement[] {
-    const cars = host.shiftCars();
-    const current = career.contract;
-    const runNote = note(S.clubPanel.contractRun(career.contractRun, `+${Math.round(Contracts.runBonus(career.contractRun + 1) * 100)}%`));
-    if (current) {
-      const cancel = h('button', { class: 'btn', type: 'button' }, S.clubPanel.tearUp);
-      cancel.addEventListener('click', () => {
-        Contracts.cancel(career);
-        host.changed();
-        show();
-      });
-      return [
-        label(S.clubPanel.yourContract),
-        h('div', { class: 'list' }, row(`${S.club.goalName(current.goal)} · ${cash(current.stake)}`, S.clubPanel.contractPays(S.club.goalText(current.goal, cars), cash(Math.round(current.stake * Contracts.pay(current.goal)))), cancel)),
-        runNote,
-        note(S.clubPanel.settle),
-      ];
-    }
-    const goals = CONTRACT_GOALS.map((goal) => {
-      const button = h('button', { class: `btn${goal === contractGoal ? ' primary' : ''}`, type: 'button', 'aria-pressed': String(goal === contractGoal) }, goal === contractGoal ? S.clubPanel.chosen : S.clubPanel.choose);
-      button.addEventListener('click', () => {
-        contractGoal = goal;
-        show();
-      });
-      return row(S.clubPanel.goalPays(S.club.goalName(goal), Contracts.pay(goal)), S.club.goalText(goal, cars), button);
-    });
-    const stakes = baseConfig.contractStakes.map((stake) => {
-      const button = h('button', { class: `btn${stake === contractStake ? ' primary' : ''}`, type: 'button', disabled: stake > career.money, 'aria-pressed': String(stake === contractStake) }, S.casino.stakeShort(stake));
-      button.addEventListener('click', () => {
-        contractStake = stake;
-        show();
-      });
-      return button;
-    });
-    const sign = h('button', { class: 'btn primary block', type: 'button', disabled: !Contracts.canSign(career, contractStake) }, S.clubPanel.sign(cash(contractStake), S.club.goalName(contractGoal)));
-    sign.addEventListener('click', () => {
-      if (!Contracts.sign(career, contractGoal, contractStake)) return;
-      host.changed();
-      show();
-    });
-    return [
-      note(S.clubPanel.contractsIntro),
-      runNote,
-      label(S.clubPanel.goal),
-      h('div', { class: 'list' }, ...goals),
-      label(S.clubPanel.stake),
-      h('div', { class: 'club-gifts' }, ...stakes),
-      sign,
-    ];
   }
 
   body.replaceChildren(tabs.el, content);

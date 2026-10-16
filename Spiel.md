@@ -17,7 +17,7 @@ Stand: 02.10.2026 · Überblick über das ganze Spiel. Das Spiel heißt **Rounda
 - **Krankenwagen und Feuerwehr** (die Straße vor ihnen frei halten), **Motorräder**, **Fahrschulauto**, **Schulbusse**
 - dazu **Wetter**, **Nacht** und **City Events**, die den Verkehr oder die Sicht verändern, ab Level 80 ein **zweispuriger Ring**
 
-**Meta:** Geld → Upgrades kaufen, Kreisverkehr im Street Builder ausbauen (Zufahrten, Module), Truhen mit Skins öffnen, Quests, Trials und Feats abhaken, Casino, ab der Elite-Leiste der Club für große Kontostände (Auktion, Stadtfonds, Verträge, Diamond Chest; LOOT.md, „Der Club“). Die Stadt wächst sichtbar mit. Langzeitziele: Legendary Shifts, Prestige, Elite-Leiste, Saison-Pass, Ruhmeshalle.
+**Meta:** Geld → Upgrades kaufen, Kreisverkehr im Street Builder ausbauen (Zufahrten, Module), Truhen mit Skins öffnen, Quests, Trials und Feats abhaken, Casino, ab der Elite-Leiste der Club für große Kontostände (Auktion, Spielfonds, Diamond Chest; LOOT.md, „Der Club“). Die Stadt wächst sichtbar mit. Langzeitziele: Legendary Shifts, Prestige, Elite-Leiste, Saison-Pass, Ruhmeshalle.
 
 **Plattform:** Browser auf Handy (Hochformat, einhändig) und Desktop, installierbar als PWA, offline spielbar nach dem ersten Besuch. Läuft außerdem auf **CrazyGames** und (in Vorbereitung) im **Google Play Store** als Trusted Web Activity (siehe 14). Spielsprache nur Englisch, Projektdokumente auf Deutsch.
 
@@ -283,7 +283,7 @@ Events ändern Tempo, Dichte oder Lücken – nie die Regeln. Nach einer geschaf
 | Krankenwagen / Feuerwehr / Fahrschulauto | 300 / 500 / 250 |
 | Perfect Run | +25 % Lohn |
 | Boss busted | 3.000 + 200 × Level; Rematch 6.000–12.000 |
-| Daily Shift | 300 × Serie (bis 7 Tage → 2.100) + Event Chest |
+| Daily Shift | 300 × Serie (bis 7 Tage → 2.100) + Event Chest; einmal in der Karriere am 3. Tag in Folge eine Premium Chest (Startbogen, `starterStreakDays`, 16.10.2026) |
 | Weekly Shift | 6.000 + Premium-Truhe, einmal pro Woche |
 | Quests (3 pro Tag) | 250 / 350 / 500 je Quest |
 | Trials | 1.500 – 5.000, je einmal (siehe 11) |
@@ -377,7 +377,7 @@ Ein neuer Spieler trifft die Systeme nacheinander (`core/unlocks.ts`, Werte in `
 
 | Was | Ab | Wie es sich zeigt |
 |---|---|---|
-| Daily Shift (und Serie) | Level 2 (seit 08.10.2026, vorher 4: ein Grund für morgen schon in der ersten Sitzung) | Hinweis „New · the Daily Shift …“; vorher sagt die Quest-Zeile, ab wann |
+| Daily Shift (und Serie) | Level 3 (seit 16.10.2026: die Frage nach dem Weg zurück kommt mit der ersten Daily, nicht schon nach der zweiten Schicht; 08.10.–16.10. Level 2, davor 4) | Hinweis „New · the Daily Shift …“; vorher sagt die Quest-Zeile, ab wann |
 | Modus-Wischen | nie gesperrt; Hinweis, sobald Level 6 geschafft ist (`modeHintAfterLevel`) | Meldung „New modes · swipe sideways …“, danach bis zum ersten Wechsel die Zeile „Swipe for more modes“ am Game-Tab |
 | Trials (Progress) | Level 9 | Hinweis „New · Trials in Progress …“; vorher ist das Segment blass und sagt beim Tippen, ab wann. Jede Trial öffnet erst bei ihrem eigenen Level („Opens at level X“) |
 | Casino (Shop) | Level 12 | ohne Hinweis; vorher ist das Segment blass |
@@ -479,7 +479,7 @@ Ein voller Satz zahlt einmal Geld und legt einen **Rahmen** in seiner Farbe um d
 
 ## 11. Täglich, wöchentlich & Mitspielen
 
-### Daily Shift (ab Level 2)
+### Daily Shift (ab Level 3)
 
 - Automatisch die **erste Schicht des Tages**, ein Versuch, Titel „DAILY SHIFT“. Ein Tages-Seed für alle, immer mit einem City Event (jeden Tag ein anderes, im Kreis über die sechs). Nie eine Legendary-Regel. Geschafft → 300 × Serie Geld (bis 7 Tage) + Event Chest. Die allererste Schicht ist nie die Daily.
 - **Mutator des Tages (Leo, 07.10.2026, `core/mutators.ts`):** Jeden Tag eine Wendung für alle: **Open Road** (−2 Dichte), **Speedway** (+12 % Tempo, −1 Dichte), **Fog Bank**, **Night Shift**, **Lights Out** (Blackout), **Storm Front**, **Rush All Day** (Gridlock-Regel), **Dragnet**, **Heavy Load**, **Cash Convoy** (Transporter doppelt so oft). Jeder kommt einmal pro Zyklus von zehn Tagen, nie zweimal in Folge. Anders, nicht schwerer; die geliehenen Regeln zählen nicht als Legendary Shift (keine Premium-Truhe). Zeigt sich im Start-Splash und statt der Bestleistung oben rechts auf der Wartekarte; der Challenge-Link trägt Mutator und Saison mit (hinten angehängt, alte Links lesen weiter).

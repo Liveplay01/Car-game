@@ -2,7 +2,7 @@ import type { World } from '../core/world';
 import type { MutatorId } from '../core/mutators';
 import type { Arm } from '../core/roundabout';
 import type { ShiftResult } from '../core/events';
-import type { GameMode } from '../core/career';
+import type { GameMode, StreakMilestone } from '../core/career';
 import type { EliteBar } from '../core/elite';
 import type { SwipeMode } from './flow';
 import type { CityEvent } from '../core/config';
@@ -1311,7 +1311,7 @@ export interface DailyCard {
   endsIn: number | null;
   /** Streak Freezes in stock. */
   freezes: number;
-  next: { days: number; item: string; left: number } | null;
+  next: StreakMilestone | null;
   splash: number | null;
   /** Today's twist (core/mutators.ts). */
   mutator: MutatorId | null;
@@ -1597,7 +1597,7 @@ export const ReadyBanner = {
       },
     });
     words(S.daily.streakLine(daily.streak), 13, 'regular', 'muted');
-    if (daily.next) words(S.daily.nextMilestone(daily.next.left, daily.next.item), 12, 'bold', 'accent');
+    if (daily.next) words(S.daily.nextMilestone(daily.next.left, S.daily.prize(daily.next.prize)), 12, 'bold', 'accent');
     const total = rows.reduce((h, r) => h + r.height, 0);
     let y = middle.y - 30 - total / 2;
     rows.forEach((r, i) => {

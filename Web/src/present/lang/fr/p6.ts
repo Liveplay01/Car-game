@@ -228,11 +228,11 @@ export default (S: Strings): Words<Strings> => ({
     doneHint: (streak) => (streak > 1 ? `Terminé · ${streak} jours consécutifs · à demain` : 'Terminé · à demain'),
     splashLine: (e) => `La ville aujourd’hui : ${S.cityEvent(e)} · un essai`,
     streakLine: (streak) => (streak > 0 ? `${streak} ${streak === 1 ? 'jour' : 'jours'} d’affilée · continuez ainsi` : 'Jouez chaque jour pour créer une série'),
-    nextMilestone: (left, item) => `Plus que ${left} ${left === 1 ? 'jour' : 'jours'} avant ${S.shop.item(item)}`,
+    nextMilestone: (left, prize) => `Plus que ${left} ${left === 1 ? 'jour' : 'jours'} avant ${prize}`,
     rowLine(streak, open, next, freezes = 0, toFreeze = null) {
       if (streak <= 0) return open ? S.daily.readyHint : 'Revenez demain · jouez chaque jour pour une série';
       const days = `${streak} ${streak === 1 ? 'jour' : 'jours'} d’affilée`;
-      const ahead = next && (toFreeze === null || next.left <= toFreeze) ? S.daily.nextMilestone(next.left, next.item) : toFreeze !== null ? S.daily.freezeLine(toFreeze) : null;
+      const ahead = next && (toFreeze === null || next.left <= toFreeze) ? S.daily.nextMilestone(next.left, S.daily.prize(next.prize)) : toFreeze !== null ? S.daily.freezeLine(toFreeze) : null;
       const parts = [days, freezes > 0 ? S.daily.freezes(freezes) : null, ahead, open ? null : 'à demain'];
       return parts.filter((p): p is string => p !== null).join(' · ');
     },
@@ -253,6 +253,7 @@ export default (S: Strings): Words<Strings> => ({
     freezeUsed: (n) => `SÉRIE SAUVEGARDÉE · ${n === 1 ? 'un jour manqué a été' : `${n} jours manqués ont été`} préservés`,
     streakReward: (days, got) => `${days} JOURS CONSÉCUTIFS · ${got.join(' · ')}`,
     gotItem: (item) => `${S.shop.item(item)} débloqué`,
+    gotChest: (kind) => `${S.shop.chest(kind)} pour votre série`,
     gotFreeze: 'un gel de série',
     gotCard: 'un ticket de grattage gratuit',
     giftIn: (hours) => (hours >= 1 ? `Coffre gratuit demain · dans ${Math.ceil(hours)} h` : `Coffre gratuit demain · dans ${Math.max(1, Math.ceil(hours * 60))} min`),
@@ -503,7 +504,6 @@ export default (S: Strings): Words<Strings> => ({
     tailwind: (pay) => `Vent portant +${Math.round(pay * 100)} %`,
     streak: (pay) => `Série +${Math.round(pay * 100)} %`,
     family: (share) => `Famille −${Math.round(share * 100)} %`,
-    contract: (goal, times) => `${goal} ×${times}`,
   },
 
   goals: {

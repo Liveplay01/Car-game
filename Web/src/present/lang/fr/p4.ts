@@ -133,6 +133,14 @@ export default (S: Strings): Words<Strings> => ({
     denied: 'Les notifications sont bloquées dans les réglages de votre navigateur.',
   },
 
+  wayBack: {
+    chestTitle: 'Coffre gratuit demain',
+    streakTitle: 'À demain',
+    chestWhy: 'Ajoutez le jeu à votre écran d’accueil : le coffre gratuit de demain sera à portée de doigt, et votre progression reste en sécurité.',
+    streakWhy: 'Ajoutez le jeu à votre écran d’accueil : demain, votre série sera à portée de doigt, et votre progression reste en sécurité.',
+    install: 'Installer le jeu',
+  },
+
   ready: {
     tapToStart: 'Touchez pour démarrer',
     tapForFriends: 'Touchez pour jouer entre amis',
@@ -203,7 +211,7 @@ export default (S: Strings): Words<Strings> => ({
 
   social: {
     section: (i) => ['Amis', 'Classement', 'Club', 'Mafia'][i],
-    clubClosed: 'Le Club s’ouvre au niveau 50 : enchères, fonds du jeu et contrats pour gros comptes.',
+    clubClosed: 'Le Club s’ouvre au niveau 50 : enchères et fonds du jeu pour gros comptes.',
     mafiaClosed: 'La Famille ne s’occupe pas des novices. Neutralisez le premier boss (niveau 15) et elle se manifestera.',
     offline: 'Amis et Classement requièrent le service en ligne absent de cette copie.',
     noFriends: 'Amis indisponible ici. Classements et Club restent accessibles.',

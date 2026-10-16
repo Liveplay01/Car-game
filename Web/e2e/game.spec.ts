@@ -52,7 +52,8 @@ async function start(page: Page, query: string, boards: Boards = () => []): Prom
     return route.abort();
   });
   await page.goto(`/?demo&${query}`);
-  await page.waitForFunction(() => (window as unknown as { __game?: object }).__game !== undefined);
+  // The probe comes right after the game, behind one more import: wait for both.
+  await page.waitForFunction(() => (window as unknown as { __probe?: object }).__probe !== undefined);
   return { sent, errors };
 }
 

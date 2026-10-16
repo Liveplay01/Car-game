@@ -81,9 +81,6 @@ export const WeatherLayer = {
     const severity = weatherSeverity(weather);
     if (severity <= 0) return;
     list.s(rect(mul(vp, 0.5), vp), 'scrim', WeatherLayer.darkness[severity] * amount);
-    if (severity < 2) return;
-    const band = vp.y * 0.12;
-    for (const y of [band / 2, vp.y - band / 2]) list.s(rect(v(vp.x / 2, y), v(vp.x, band)), 'scrim', 0.1 * (severity - 1) * amount);
   },
 
   addAir(list: RenderList, world: World, time: number, reduceMotion: boolean, mix: WeatherMix = [[world.config.weather, 1]], thrifty = false): void {

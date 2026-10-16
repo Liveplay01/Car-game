@@ -72,7 +72,7 @@ export default (_s: Strings): Words<Strings> => ({
       line: 'Per grandi patrimoni',
       body: [
         'La casa d’aste offre tre lotti al giorno. I collezionisti controllati dal computer rilanciano contro di te facendo salire il prezzo.',
-        'Il fondo di gioco raccoglie le idee dei giocatori: proponine una e finanzia quelle che preferisci. A 30.000.000, l’idea viene realizzata. I contratti scommettono su una Corsa perfetta.',
+        'Il fondo di gioco raccoglie le idee dei giocatori: proponine una e finanzia quelle che preferisci. A 30.000.000, l’idea viene realizzata.',
         'Solo prestigio e denaro: nulla qui ti rende più veloce sulla strada.',
       ],
     },
@@ -256,8 +256,6 @@ export default (_s: Strings): Words<Strings> => ({
   },
 
   hints: {
-    install: { caption: 'SUGGERIMENTO', text: 'Installa il gioco dalle Impostazioni: i tuoi progressi restano al sicuro, a un clic' },
-    homeScreen: { caption: 'SUGGERIMENTO', text: 'Aggiungi il gioco alla schermata Home dalle Impostazioni: i tuoi progressi restano al sicuro, a un tocco' },
     reduceMotion: { caption: 'SUGGERIMENTO', text: 'Scatti o rallentamenti? L’opzione «Riduci movimento» nelle Impostazioni può aiutare' },
     notSaved: 'Questo browser non salva i tuoi progressi · La sincronizzazione Cloud nelle Impostazioni può conservarne una copia',
     notSavedHere: 'Questo browser non salva i tuoi progressi · Resteranno attivi fino alla chiusura del gioco',

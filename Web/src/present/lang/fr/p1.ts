@@ -72,7 +72,7 @@ export default (_s: Strings): Words<Strings> => ({
       line: 'Pour les gros comptes',
       body: [
         'L’hôtel des ventes propose trois lots par jour. Des collectionneurs IA surenchérissent contre vous et font souvent flamber les prix.',
-        'Le fonds du jeu rassemble les idées des joueurs : proposez la vôtre et soutenez celles que vous aimez. À 30 000 000, l’idée est intégrée. Les contrats parient sur un tour parfait.',
+        'Le fonds du jeu rassemble les idées des joueurs : proposez la vôtre et soutenez celles que vous aimez. À 30 000 000, l’idée est intégrée.',
         'Uniquement du prestige et de l’argent : rien ici ne vous rend plus rapide sur la route.',
       ],
     },
@@ -261,8 +261,6 @@ export default (_s: Strings): Words<Strings> => ({
   },
 
   hints: {
-    install: { caption: 'ASTUCE', text: 'Installez le jeu depuis les Paramètres : votre progression reste en sécurité, à un clic' },
-    homeScreen: { caption: 'ASTUCE', text: 'Ajoutez le jeu à votre écran d’accueil depuis les Paramètres : votre progression reste en sécurité, à un geste' },
     reduceMotion: { caption: 'ASTUCE', text: 'Des saccades ? L’option « Réduire les mouvements » peut soulager l’affichage' },
     notSaved: 'Ce navigateur ne conserve pas votre progression · La synchronisation Cloud peut en garder une copie',
     notSavedHere: 'Ce navigateur ne conserve pas votre progression · Elle disparaîtra à la fermeture du jeu',

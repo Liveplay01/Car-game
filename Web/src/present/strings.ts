@@ -1,13 +1,12 @@
 import { baseConfig, INVITE_LEVEL, INVITE_REMINDER_LEVEL, detourShareAt, towSpeedupAt, type Config, type Weather, type CityEvent, type BossKind, type LegendaryRule } from '../core/config';
 import type { Upgrade } from '../core/levels';
-import type { MasteryGoal, MasteryCompletion } from '../core/career';
+import type { MasteryGoal, MasteryCompletion, StreakMilestone } from '../core/career';
 import { MASTERY_THRESHOLDS, masteryNumeral } from '../core/career';
 import type { SwipeMode } from './flow';
 import type { Rarity, ChestKind, Cosmetic, ChestOpening, Album, CasinoFeat } from '../core/loot';
 import type { Challenge } from '../core/daily';
 import type { NearMiss } from '../core/goals';
 import type { CasinoGame, SlotSymbol } from '../core/casino';
-import { Contracts, type ContractGoal, type ContractOutcome } from '../core/contracts';
 import type { VehicleType, VehicleRole } from '../core/vehicle';
 import { type Trial, type TrialId, type RunId, type EliteKind, type LevelKind, rematchKind, ascensionRank, levelTrialLevel, levelKind, LANDMARK_PRESTIGE } from '../core/trials';
 import type { MuseumEntry } from '../core/museum';
@@ -103,7 +102,7 @@ export const S = {
       line: 'For big balances',
       body: [
         'The Auction House sells three lots a day. Computer collectors bid against you and often drive the price far above the estimate.',
-        'The Game fund is for ideas from players: suggest one, and give money to the ones you like. At 30,000,000 an idea is made. Contracts put money on a Perfect Run.',
+        'The Game fund is for ideas from players: suggest one, and give money to the ones you like. At 30,000,000 an idea is made.',
         'Only looks and money: nothing here makes you faster on the road.',
       ],
     },
@@ -309,8 +308,6 @@ export const S = {
   /** One-time tips that keep the progress safe (`Hint`). */
   hints: {
     /** The tips are `Tip`s: they take the top card on the waiting screen (`TipQueue`). */
-    install: { caption: 'TIP', text: 'Install the game in Settings: your progress stays safe, one click away' },
-    homeScreen: { caption: 'TIP', text: 'Add the game to your home screen in Settings: your progress stays safe, one tap away' },
     reduceMotion: { caption: 'TIP', text: 'Running slow? Reduce motion in Settings can help' },
     notSaved: 'This browser is not saving your progress · Cloud sync in Settings can keep a copy',
     /** The same where there is no Cloud sync (CrazyGames, no service). */
@@ -1079,6 +1076,15 @@ export const S = {
     denied: 'Notifications are blocked for this site in your browser settings.',
   },
 
+  /** The way back for tomorrow (`tomorrow` hint, Leo, 16.10.2026): installing, with the reason to come back. */
+  wayBack: {
+    chestTitle: 'Free chest tomorrow',
+    streakTitle: 'See you tomorrow',
+    chestWhy: "Put the game on your home screen: tomorrow's free chest is one tap away, and your progress stays safe.",
+    streakWhy: 'Put the game on your home screen: your streak is one tap away tomorrow, and your progress stays safe.',
+    install: 'Install the game',
+  },
+
   ready: {
     tapToStart: 'Tap to start',
     tapForFriends: 'Tap to play with friends',
@@ -1158,7 +1164,7 @@ export const S = {
   /** The Social tab (Leo, 10.10.2026): its segments, and what the Club says while it is still shut. */
   social: {
     section: (i: number): string => ['Friends', 'Ranks', 'Club', 'Mafia'][i],
-    clubClosed: 'The Club opens at Level 50: an Auction House, the Game fund and Contracts for big balances.',
+    clubClosed: 'The Club opens at Level 50: an Auction House and the Game fund for big balances.',
     mafiaClosed: "The Family has no time for a rookie. Put the Syndicate's first boss away (Level 15) or get past it, and they will call.",
     offline: 'Friends and Ranks need the online service, which this copy of the game is not connected to.',
     noFriends: 'Friends are not available here. Ranks and the Club are.',
@@ -1455,29 +1461,14 @@ export const S = {
     levelFiveLine: 'You are no rookie any more',
     streak: (days: number): string => `${days} days in a row`,
   },
-  /** The Club (Leo, 10.10.2026): the Auction House, the Game fund and Contracts, the third segment of the Social tab (`ui/clubPanel.ts`). */
+  /** The Club (Leo, 10.10.2026): the Auction House and the Game fund, the third segment of the Social tab (`ui/clubPanel.ts`). */
   club: {
     title: 'Club',
-    goalName: (goal: ContractGoal): string => ({ clean: 'Clean sheet', sharp: 'Sharp', flawless: 'Flawless' })[goal],
-    goalText(goal: ContractGoal, cars: number): string {
-      const need = Contracts.need(goal, cars);
-      const base = 'Complete the next career shift with a Perfect Run: no crash, no police crash';
-      if (goal === 'sharp') return `${base}, and ${need.perfects} Perfect merges.`;
-      if (goal === 'flawless') return `${base}, and a chain of ${need.chain} merges.`;
-      return `${base}.`;
-    },
-    /** What a settled contract says on the result. */
-    contractSettled(outcome: ContractOutcome): string {
-      const name = S.club.goalName(outcome.contract.goal).toUpperCase();
-      if (outcome.result === 'won') return `CONTRACT WON · ${name} · +${money(Fmt.number(outcome.pay))}${outcome.run > 1 ? ` · RUN ×${outcome.run}` : ''}`;
-      if (outcome.result === 'void') return `CONTRACT VOID · this shift was eased · ${money(Fmt.number(outcome.pay))} back`;
-      return `CONTRACT LOST · ${name} · ${money(Fmt.number(outcome.contract.stake))} gone`;
-    },
   },
 
-  /** The Club's page (`ui/clubPanel.ts`): the Auction House, the Game fund and Contracts. */
+  /** The Club's page (`ui/clubPanel.ts`): the Auction House and the Game fund. */
   clubPanel: {
-    tabs: { auction: 'Auction', ideas: 'Game fund', contracts: 'Contracts' },
+    tabs: { auction: 'Auction', ideas: 'Game fund' },
     money: 'money',
     sealedChest: 'A sealed chest',
     exclusive: 'Auction House exclusive',
@@ -1594,19 +1585,6 @@ export const S = {
     ideaHow: 'Tell us what you would like in the game. We read it, word it so it fits, and publish it here. One idea a day.',
     ownAmount: 'Your own amount',
     giveAmount: (price: string): string => `Give ${price}`,
-    yourContract: 'Your contract',
-    tearUp: 'Tear it up',
-    contractPays: (goal: string, pay: string): string => `${goal} Pays ${pay} if it is met.`,
-    contractRun: (run: number, next: string): string =>
-      run > 0 ? `Contract Run: ${run} won in a row. Your next win pays ${next} of the stake extra. A lost contract resets it.` : 'Contract Run: win contracts back to back. From the second win each pays a little extra, up to +5% of the stake. A lost contract resets it.',
-    settle: 'It is settled by your next career shift (not the Daily, Unlimited or a trial) and shows on its result. Tearing it up before then gives the whole stake back. A shift eased for your career voids it, stake back.',
-    chosen: 'Chosen',
-    choose: 'Choose',
-    goalPays: (name: string, x: number): string => `${name} · pays ×${x}`,
-    sign: (stake: string, goal: string): string => `Sign · ${stake} on ${goal}`,
-    contractsIntro: 'Put money on yourself. The stake is paid now; if your next career shift meets the goal it pays back a multiple of it, otherwise it is gone. The goals are the same for everyone: choose what you can do.',
-    goal: 'Goal',
-    stake: 'Stake',
   },
 
   /** Social → Ranks (`ui/ranksPanel.ts`). */
@@ -2235,13 +2213,15 @@ export const S = {
     doneHint: (streak: number): string => (streak > 1 ? `Done · ${streak} days in a row · back tomorrow` : 'Done · back tomorrow'),
     splashLine: (e: CityEvent): string => `Today's city: ${S.cityEvent(e)} · one try`,
     streakLine: (streak: number): string => (streak > 0 ? `${streak} ${streak === 1 ? 'day' : 'days'} in a row · keep it going` : 'Play it every day for a streak'),
-    nextMilestone: (left: number, item: string): string => `${left} more ${left === 1 ? 'day' : 'days'} for ${S.shop.item(item)}`,
+    nextMilestone: (left: number, prize: string): string => `${left} more ${left === 1 ? 'day' : 'days'} for ${prize}`,
+    /** What a streak milestone pays, by name: the starter chest or a skin. */
+    prize: (p: StreakMilestone['prize']): string => (p.k === 'chest' ? S.shop.chest(p.chest) : S.shop.item(p.id)),
     /** The second line of its row under Progress → Today: what it is, or the streak and what it brings next. */
-    rowLine(streak: number, open: boolean, next: { left: number; item: string } | null, freezes = 0, toFreeze: number | null = null): string {
+    rowLine(streak: number, open: boolean, next: StreakMilestone | null, freezes = 0, toFreeze: number | null = null): string {
       if (streak <= 0) return open ? S.daily.readyHint : 'Back tomorrow · play it every day for a streak';
       const days = `${streak} ${streak === 1 ? 'day' : 'days'} in a row`;
-      // Whichever reward is nearer: the next skin or the next Freeze.
-      const ahead = next && (toFreeze === null || next.left <= toFreeze) ? S.daily.nextMilestone(next.left, next.item) : toFreeze !== null ? S.daily.freezeLine(toFreeze) : null;
+      // Whichever reward is nearer: the next prize or the next Freeze.
+      const ahead = next && (toFreeze === null || next.left <= toFreeze) ? S.daily.nextMilestone(next.left, S.daily.prize(next.prize)) : toFreeze !== null ? S.daily.freezeLine(toFreeze) : null;
       const parts = [days, freezes > 0 ? S.daily.freezes(freezes) : null, ahead, open ? null : 'back tomorrow'];
       return parts.filter((p): p is string => p !== null).join(' · ');
     },
@@ -2264,6 +2244,8 @@ export const S = {
     /** What a day of the streak brought, in one line: a skin, a Streak Freeze, a Scratch Card. */
     streakReward: (days: number, got: string[]): string => `${days} DAYS IN A ROW · ${got.join(' · ')}`,
     gotItem: (item: string): string => `${S.shop.item(item)} unlocked`,
+    /** The starter streak's chest, under its celebration. */
+    gotChest: (kind: ChestKind): string => `${S.shop.chest(kind)} for your streak`,
     gotFreeze: 'a Streak Freeze',
     gotCard: 'a free Scratch Card',
     /** Tomorrow's gift (`Careers.promiseGift`): counted down on the Game tab. */
@@ -2529,7 +2511,6 @@ export const S = {
     tailwind: (pay: number): string => `Tailwind +${Math.round(pay * 100)} %`,
     streak: (pay: number): string => `Streak +${Math.round(pay * 100)} %`,
     family: (share: number): string => `Family −${Math.round(share * 100)} %`,
-    contract: (goal: string, times: number): string => `${goal} ×${times}`,
   },
 
   goals: {

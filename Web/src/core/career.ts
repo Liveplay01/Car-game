@@ -48,7 +48,6 @@ import {
 } from './loot';
 import { type Challenge, challengesOf, challengeMet, challengeReward, STREAK_MILESTONES } from './daily';
 import type { CasinoPending, CasinoRound } from './casino';
-import type { Contract } from './contracts';
 import { Mafia, type Loan } from './mafia';
 import { randomSeed, Rng } from './rng';
 import { Elite, type EliteGain, type EliteStep, type TitleId, TITLES } from './elite';
@@ -59,10 +58,19 @@ import { type MutatorId, mutatorOf, mutatorSky, withMutator } from './mutators';
 /** What counting a day into the Daily streak brought: a milestone item, Freezes used on missed days, a new Freeze. */
 export interface StreakNews {
   item: string | null;
+  /** The starter streak's chest (`starterStreakDays`), the one day it comes. */
+  chest: ChestKind | null;
   frozen: number;
   earned: boolean;
   /** Scratch Cards the day brought. */
   cards: number;
+}
+
+/** What the streak pays next and in how many days. */
+export interface StreakMilestone {
+  days: number;
+  prize: { k: 'item'; id: string } | { k: 'chest'; chest: ChestKind };
+  left: number;
 }
 
 // New modes go at the end: a challenge link stores their positions.
@@ -229,6 +237,8 @@ export interface Career {
   dailyStreak: number;
   /** Streak Freezes in stock: each one covers a missed day instead of breaking the streak. */
   streakFreezes: number;
+  /** The starter streak's chest was paid (`starterStreakDays`, once in a career). */
+  starterChest: boolean;
   /** Scratch Cards in hand (casino, `Casino.scratch`): the streak gives them, the casino sells them. */
   scratchCards: number;
   /** Tailwind waits for the next career shift, and the day one was last given. */
@@ -309,10 +319,6 @@ export interface Career {
   fundGiven: number;
   /** The newest published idea the player has been told about or seen (ms; 0 = never looked). */
   ideasSeenAt: number;
-  /** The contract waiting for the next career shift (core/contracts.ts); its stake is paid already. */
-  contract: Contract | null;
-  /** Contracts won back to back (core/contracts.ts, Contract Run); a lost one resets it. */
-  contractRun: number;
   /** The Mafia's loan (core/mafia.ts), the loans repaid in time in a row (they make the next one kinder) and the loans taken in all. */
   loan: Loan | null;
   cleanLoans: number;
@@ -326,7 +332,7 @@ export interface Career {
  * and a backup of the progress (each once, from its level on; `config.*HintAfterLevel`), and
  * what a Perfect Run is, the first time one happens.
  */
-export const HINTS = ['modes', 'install', 'backup', 'perfectRun', 'reduceMotion', 'buildWithUs', 'invite', 'inviteReminder', 'scout', 'tightFit', 'unlimitedTip', 'portalLogin', 'notifications', 'notificationsStreak', 'account', 'introsStarted', 'newsStarted', 'intro.museum', 'intro.builder', 'intro.daily', 'intro.trials', 'intro.pass', 'intro.casino', 'intro.club', 'intro.gamefund', 'intro.mafia'] as const;
+export const HINTS = ['modes', 'install', 'backup', 'perfectRun', 'reduceMotion', 'buildWithUs', 'invite', 'inviteReminder', 'scout', 'tightFit', 'unlimitedTip', 'portalLogin', 'notifications', 'notificationsStreak', 'tomorrow', 'account', 'introsStarted', 'newsStarted', 'intro.museum', 'intro.builder', 'intro.daily', 'intro.trials', 'intro.pass', 'intro.casino', 'intro.club', 'intro.gamefund', 'intro.mafia'] as const;
 export type Hint = (typeof HINTS)[number] | `news.${string}`;
 
 /** Everything that is saved (`storage/save.ts` reads and writes it). */
@@ -401,6 +407,7 @@ export const newCareer = (): Career => ({
   levelLosses: 0,
   dailyStreak: 0,
   streakFreezes: 0,
+  starterChest: false,
   scratchCards: 0,
   tailwind: false,
   tailwindDay: -1,
@@ -452,8 +459,6 @@ export const newCareer = (): Career => ({
   auctionSpent: 0,
   fundGiven: 0,
   ideasSeenAt: 0,
-  contract: null,
-  contractRun: 0,
   loan: null,
   cleanLoans: 0,
   loansTaken: 0,
@@ -973,13 +978,18 @@ export const Careers = {
     // The second try is the same day: the streak counted at the first.
     if (c.dailyRetry) {
       c.dailyRetry = false;
-      return { item: null, frozen: 0, earned: false, cards: 0 };
+      return { item: null, chest: null, frozen: 0, earned: false, cards: 0 };
     }
     const news = Careers.advanceStreak(c, day, config);
     const milestone = STREAK_MILESTONES.find((m) => m.days === c.dailyStreak);
     if (milestone && !c.collection.includes(milestone.item)) {
       Careers.collect(c, milestone.item);
       news.item = milestone.item;
+    }
+    if (!c.starterChest && c.dailyStreak >= config.starterStreakDays) {
+      c.starterChest = true;
+      c.chests.push(config.starterStreakChest);
+      news.chest = config.starterStreakChest;
     }
     return news;
   },
@@ -995,12 +1005,14 @@ export const Careers = {
     if (earned) c.streakFreezes++;
     const cards = c.dailyStreak % config.scratchStreakEvery === 0 && c.scratchCards < config.scratchMax ? 1 : 0;
     c.scratchCards += cards;
-    return { item: null, frozen, earned, cards };
+    return { item: null, chest: null, frozen, earned, cards };
   },
 
-  nextStreakMilestone(c: Career): { days: number; item: string; left: number } | null {
+  /** The next thing the streak pays: the starter chest while it waits, else the next milestone skin. */
+  nextStreakMilestone(c: Career, config: Config = baseConfig): StreakMilestone | null {
+    if (!c.starterChest) return { days: config.starterStreakDays, prize: { k: 'chest', chest: config.starterStreakChest }, left: Math.max(1, config.starterStreakDays - c.dailyStreak) };
     const m = STREAK_MILESTONES.find((x) => !c.collection.includes(x.item));
-    return m ? { days: m.days, item: m.item, left: Math.max(1, m.days - c.dailyStreak) } : null;
+    return m ? { days: m.days, prize: { k: 'item', id: m.item }, left: Math.max(1, m.days - c.dailyStreak) } : null;
   },
 
   completeDaily(c: Career, day: number, config: Config = baseConfig): number | null {

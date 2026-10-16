@@ -72,7 +72,7 @@ export default (_s: Strings): Words<Strings> => ({
       line: 'Para grandes fortunas',
       body: [
         'La casa de subastas ofrece tres lotes al día. Coleccionistas controlados por ordenador pujan contra ti y a menudo suben el precio.',
-        'El fondo del juego reúne ideas de la comunidad: sugiere una y aporta fondos a las que te gusten. Al llegar a 30.000.000, se hace realidad. Los contratos apuestan por una Carrera perfecta.',
+        'El fondo del juego reúne ideas de la comunidad: sugiere una y aporta fondos a las que te gusten. Al llegar a 30.000.000, se hace realidad.',
         'Solo estética y dinero: nada aquí te hace más rápido en la carretera.',
       ],
     },
@@ -261,8 +261,6 @@ export default (_s: Strings): Words<Strings> => ({
   },
 
   hints: {
-    install: { caption: 'CONSEJO', text: 'Instala el juego desde Ajustes: tu progreso queda a salvo, a un clic' },
-    homeScreen: { caption: 'CONSEJO', text: 'Añade el juego a tu pantalla de inicio desde Ajustes: tu progreso queda a salvo, a un toque' },
     reduceMotion: { caption: 'CONSEJO', text: '¿Va a tirones? «Reducir movimiento» en Ajustes puede ayudar' },
     notSaved: 'Este navegador no guarda tu progreso · La sincronización en la nube en Ajustes puede mantener una copia',
     notSavedHere: 'Este navegador no guarda tu progreso · Se mantendrá hasta que cierres el juego',

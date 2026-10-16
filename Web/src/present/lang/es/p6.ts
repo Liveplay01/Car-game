@@ -228,11 +228,11 @@ export default (S: Strings): Words<Strings> => ({
     doneHint: (streak) => (streak > 1 ? `Completado · ${streak} días seguidos · vuelve mañana` : 'Completado · vuelve mañana'),
     splashLine: (e) => `La ciudad hoy: ${S.cityEvent(e)} · un intento`,
     streakLine: (streak) => (streak > 0 ? `${streak} ${streak === 1 ? 'día' : 'días'} seguidos · ¡sigue así!` : 'Juega cada día para crear una racha'),
-    nextMilestone: (left, item) => `Quedan ${left} ${left === 1 ? 'día' : 'días'} para ${S.shop.item(item)}`,
+    nextMilestone: (left, prize) => `Quedan ${left} ${left === 1 ? 'día' : 'días'} para ${prize}`,
     rowLine(streak, open, next, freezes = 0, toFreeze = null) {
       if (streak <= 0) return open ? S.daily.readyHint : 'Vuelve mañana · juega a diario para una racha';
       const days = `${streak} ${streak === 1 ? 'día' : 'días'} seguidos`;
-      const ahead = next && (toFreeze === null || next.left <= toFreeze) ? S.daily.nextMilestone(next.left, next.item) : toFreeze !== null ? S.daily.freezeLine(toFreeze) : null;
+      const ahead = next && (toFreeze === null || next.left <= toFreeze) ? S.daily.nextMilestone(next.left, S.daily.prize(next.prize)) : toFreeze !== null ? S.daily.freezeLine(toFreeze) : null;
       const parts = [days, freezes > 0 ? S.daily.freezes(freezes) : null, ahead, open ? null : 'vuelve mañana'];
       return parts.filter((p): p is string => p !== null).join(' · ');
     },
@@ -253,6 +253,7 @@ export default (S: Strings): Words<Strings> => ({
     freezeUsed: (n) => `RACHA PROTEGIDA · se ${n === 1 ? 'ha cubierto un día perdido' : `han cubierto ${n} días perdidos`}`,
     streakReward: (days, got) => `${days} DÍAS SEGUIDOS · ${got.join(' · ')}`,
     gotItem: (item) => `${S.shop.item(item)} desbloqueado`,
+    gotChest: (kind) => `${S.shop.chest(kind)} por tu racha`,
     gotFreeze: 'una protección de racha',
     gotCard: 'un rasca gratis',
     giftIn: (hours) => (hours >= 1 ? `Cofre gratis mañana · en ${Math.ceil(hours)} h` : `Cofre gratis mañana · en ${Math.max(1, Math.ceil(hours * 60))} min`),
@@ -503,7 +504,6 @@ export default (S: Strings): Words<Strings> => ({
     tailwind: (pay) => `Viento a favor +${Math.round(pay * 100)} %`,
     streak: (pay) => `Racha +${Math.round(pay * 100)} %`,
     family: (share) => `Familia −${Math.round(share * 100)} %`,
-    contract: (goal, times) => `${goal} ×${times}`,
   },
 
   goals: {

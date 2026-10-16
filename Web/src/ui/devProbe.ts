@@ -29,6 +29,9 @@ export function installProbe(shell: Shell): void {
       result: result && { outcome: result.outcome, score: result.score, crashes: result.crashes, money: result.money },
       notice: game.noticeText,
       ui: document.getElementById('layers')?.innerText.replace(/\s+/g, ' ').trim().slice(0, 400) ?? '',
+      hints: [...save.hints],
+      daily: { selected: game.dailySelected, streak: save.career.dailyStreak, chests: [...save.career.chests] },
+      ask: game.lastAsk,
     };
   };
 
@@ -81,6 +84,10 @@ export interface Snapshot {
   result: { outcome: string; score: number; crashes: number; money: number } | null;
   notice: string | null;
   ui: string;
+  /** The one-time hints the save has had, the Daily (open, streak) and the last question that came up by itself. */
+  hints: string[];
+  daily: { selected: boolean; streak: number; chests: string[] };
+  ask: string | null;
 }
 
 export interface Probe {

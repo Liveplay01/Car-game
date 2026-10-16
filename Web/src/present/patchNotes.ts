@@ -56,12 +56,16 @@ export const PATCH_NOTES: PatchNote[] = [
     title: 'Streak ads, bigger celebrations, a gentler start, the Family on the ring',
     impact: 'major',
     summary: [
+      'New: play the Daily Shift three days in a row for a free Premium Chest.',
       'Your choice: watch an ad to bring a broken streak back, get a Freeze or double the Daily pay.',
-      'Big moments are celebrated on the whole screen, and chest openings are wilder.',
       'A lost Daily gets one second try a day for an ad; the Daily board shows "2 tries".',
       'A gentler start: daily quests fit your level and three upgrades have a cheap first step.',
     ],
     items: [
+      'Fixed: on an iPhone home screen the tab bar sat far too high, and storms laid dark bars over the top and bottom of the screen.',
+      'New: the third Daily Shift in a row brings a free Premium Chest, once, with the big streak celebration. The Daily shows how many days are left until then.',
+      'Fewer questions at the start: winning your first shift no longer asks about notifications, and the Daily Shift opens at Level 3 instead of 2. When your first Daily Shift is done, the game asks once how you want to find it again tomorrow: on your home screen where your device can, or with a notification.',
+      'Contracts are gone from the Club, which now has the Auction House and the Game fund. A contract you had already signed gives its stake back.',
       'Once you know the game modes, small dots under the top card show which page of the swipe you are on; the lit one glides along as you swipe.',
       'New Settings → About → Guides: read again how the Museum, the Street Builder, the Daily and every other place works, any time.',
       'Chest openings feel bigger: the reel blurs at speed, the marker kicks at every card and glows in its colour as it crawls, every landing hits with a ring and sparks (an Epic flashes too), and the prize card catches a sheen, counts its duplicate coins up and keeps sparkling.',

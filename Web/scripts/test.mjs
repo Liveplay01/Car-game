@@ -78,7 +78,6 @@ const { CarArt } = await load('/src/present/carArt.ts');
 const { albumItems } = await load('/src/core/loot.ts');
 const { CHEST_ODDS: ODDS, CHEST_KINDS, tappedOdds: tapped, chestPrice, isForSale, cosmetic } = await load('/src/core/loot.ts');
 const { Auction, readLot, lotKey } = await load('/src/core/auction.ts');
-const { Contracts, readContract } = await load('/src/core/contracts.ts');
 const { Fund } = await load('/src/core/fund.ts');
 
 // MARK: Rules
@@ -398,12 +397,12 @@ test('the first Perfect Run says what it is, later ones leave it to the ring', (
   assert.ok(!later.news.some((n) => n.startsWith('PERFECT RUN')));
 });
 
-test('the install and backup hints come due once, at their levels', () => {
+test('the way back and the backup hint come due once, at their levels', () => {
   const save = newSave();
   save.hints.push('notifications'); // its own test below
-  save.career.level = baseConfig.installHintAfterLevel;
+  save.career.level = baseConfig.tomorrowAskAfterLevel;
   const level = save.career.level;
-  assert.deepEqual(bookShift(save, completed(level), context(level)).due, ['install']);
+  assert.deepEqual(bookShift(save, completed(level), context(level)).due, ['tomorrow'], 'a player who skips the Daily is asked after its level');
   save.career.level = level;
   assert.deepEqual(bookShift(save, completed(level), context(level)).due, []);
   save.hints.push('inviteReminder', 'portalLogin'); // their own tests below
@@ -415,7 +414,7 @@ test('the install and backup hints come due once, at their levels', () => {
 test('reaching level 10 brings the invite reminder once, and only to a shift that gets there', () => {
   const save = newSave();
   save.career.level = INVITE_REMINDER_LEVEL - 1;
-  save.hints = ['modes', 'install', 'backup', 'portalLogin', 'notifications'];
+  save.hints = ['modes', 'install', 'backup', 'portalLogin', 'notifications', 'tomorrow'];
   const before = INVITE_REMINDER_LEVEL - 1;
   // A shift that stays below it says nothing.
   const low = { ...completed(before - 1) };
@@ -427,20 +426,44 @@ test('reaching level 10 brings the invite reminder once, and only to a shift tha
   save.career.level = INVITE_REMINDER_LEVEL;
   assert.deepEqual(bookShift(save, completed(INVITE_REMINDER_LEVEL), context(INVITE_REMINDER_LEVEL)).due, []);
   const veteran = newSave();
-  veteran.hints = ['modes', 'install', 'backup', 'invite', 'inviteReminder', 'portalLogin', 'notifications'];
+  veteran.hints = ['modes', 'install', 'backup', 'invite', 'inviteReminder', 'portalLogin', 'notifications', 'tomorrow'];
   veteran.career.level = INVITE_REMINDER_LEVEL - 1;
   assert.deepEqual(bookShift(veteran, completed(before), context(before)).due, []);
 });
 
-test('the notifications offer comes after the first shift won, and again at a streak of two days', () => {
+test('the way back is asked for when the first Daily is done, notifications follow it, and again at a streak of two days', () => {
   const save = newSave();
-  assert.deepEqual(bookShift(save, { ...completed(1) }, context(1)).due, ['notifications'], 'a free chest tomorrow is the reason to ask');
+  assert.deepEqual(bookShift(save, completed(1), context(1)).due, [], 'the first shift won asks nothing');
+  save.career.level = 2;
+  const daily = bookShift(save, completed(2), context(2, { daily: true, today: 20_000 }));
+  assert.equal(save.career.dailyDone, 20_000);
+  assert.deepEqual(daily.due, ['tomorrow'], '"back tomorrow" is the moment');
+  // Installing took the turn: notifications are due from the next shift (the shell lets them wait for the next visit).
+  save.hints.push('install');
+  assert.deepEqual(bookShift(save, completed(2), context(2)).due, ['notifications']);
   assert.deepEqual(bookShift(save, completed(2), context(2)).due, [], 'asked once');
-  save.career.dailyStreak = 1;
-  assert.deepEqual(bookShift(save, completed(3), context(3, { daily: true })).due, [], 'one day is no streak yet');
   save.career.dailyStreak = 2;
-  assert.deepEqual(bookShift(save, completed(3), context(3, { daily: true })).due, ['notificationsStreak']);
-  assert.deepEqual(bookShift(save, completed(3), context(3, { daily: true })).due, [], 'asked again once');
+  save.career.dailyDone = -1;
+  assert.deepEqual(bookShift(save, completed(3), context(3, { daily: true, today: 20_001 })).due, ['notificationsStreak']);
+  save.career.dailyDone = -1;
+  assert.deepEqual(bookShift(save, completed(3), context(3, { daily: true, today: 20_002 })).due, [], 'asked again once');
+});
+
+test('the starter streak pays its chest on the third day, once, and is the next prize until then', () => {
+  const c = newCareer();
+  assert.deepEqual(Careers.nextStreakMilestone(c), { days: 3, prize: { k: 'chest', chest: 'premium' }, left: 3 });
+  assert.equal(Careers.startDaily(c, 100, baseConfig).chest, null);
+  assert.equal(Careers.startDaily(c, 101, baseConfig).chest, null);
+  const chests = c.chests.length;
+  assert.equal(Careers.startDaily(c, 102, baseConfig).chest, 'premium');
+  assert.equal(c.chests.length, chests + 1);
+  assert.equal(Careers.nextStreakMilestone(c).prize.id, 'streakBronze', 'then the week');
+  c.dailyStreak = 0;
+  for (let day = 200; day < 203; day++) assert.equal(Careers.startDaily(c, day, baseConfig).chest, null, 'once in a career');
+  assert.ok(S.daily.rowLine(1, false, { days: 3, left: 2, prize: { k: 'chest', chest: 'premium' } }).includes(S.shop.chest('premium')));
+  // A save from before it that is past three days has had its reason for day two.
+  assert.equal(careerAfterSave({ ...newCareer(), dailyStreak: 5, starterChest: undefined }).starterChest, true);
+  assert.equal(careerAfterSave({ ...newCareer(), dailyStreak: 1, starterChest: undefined }).starterChest, false);
 });
 
 test('a save remembers the day it was first played, old saves have none', () => {
@@ -454,7 +477,7 @@ test('a save remembers the day it was first played, old saves have none', () => 
 
 test('a CrazyGames guest is offered the login once, after clearing its level', () => {
   const save = newSave();
-  save.hints = ['install', 'notifications'];
+  save.hints = ['install', 'notifications', 'tomorrow'];
   const at = baseConfig.portalLoginAfterLevel;
   save.career.level = at - 1;
   assert.deepEqual(bookShift(save, completed(at - 1), context(at - 1)).due, []);
@@ -496,7 +519,7 @@ test('whoever used a system before keeps it', () => {
 
 test('opening the Daily or the Trials is no line of news: the place gets a dot and introduces itself; the Casino opens quietly', () => {
   const save = newSave();
-  save.hints = ['modes', 'install', 'backup'];
+  save.hints = ['modes', 'install', 'backup', 'tomorrow', 'notifications'];
   save.career.level = baseConfig.dailyUnlockLevel - 1;
   let level = save.career.level;
   assert.ok(!bookShift(save, completed(level), context(level)).news.some((line) => /daily|trial/i.test(line)));
@@ -2205,8 +2228,8 @@ test('Tailwind and the streak add up on the pay of a shift', () => {
   assert.equal(Goals.daysToFreeze(c, baseConfig), 3);
   c.streakFreezes = baseConfig.streakFreezeMax;
   assert.equal(Goals.daysToFreeze(c, baseConfig), null);
-  assert.ok(S.daily.rowLine(4, false, { left: 3, item: 'streakBronze' }, 0, 3).includes(S.shop.item('streakBronze')), 'the skin is as near as the Freeze: the skin shows');
-  assert.ok(S.daily.rowLine(4, false, { left: 10, item: 'streakBronze' }, 0, 3).includes(S.daily.freezeLine(3)), 'the Freeze is nearer');
+  assert.ok(S.daily.rowLine(4, false, { days: 7, left: 3, prize: { k: 'item', id: 'streakBronze' } }, 0, 3).includes(S.shop.item('streakBronze')), 'the skin is as near as the Freeze: the skin shows');
+  assert.ok(S.daily.rowLine(4, false, { days: 7, left: 10, prize: { k: 'item', id: 'streakBronze' } }, 0, 3).includes(S.daily.freezeLine(3)), 'the Freeze is nearer');
   assert.ok(S.daily.streakPill(8, 0.15, null, 1).includes('1 Streak Freeze'));
   assert.ok(!S.daily.streakPill(8, 0.15, null, 0).includes('Freeze'));
 });
@@ -2867,10 +2890,12 @@ test('tomorrow’s gift is promised once and waits for its day', () => {
   assert.equal(save.career.giftDay, 501);
   assert.ok(writeSave(save));
   assert.equal(loadSave().career.giftDay, 501);
-  // The Daily Shift opens at level 2 now: in the first session.
-  const two = newCareer();
-  two.level = 2;
-  assert.equal(Unlocks.isOpen(two, 'daily'), true);
+  // The Daily Shift opens at level 3: still in the first session, after the first steps.
+  const early = newCareer();
+  early.level = 2;
+  assert.equal(Unlocks.isOpen(early, 'daily'), false);
+  early.level = 3;
+  assert.equal(Unlocks.isOpen(early, 'daily'), true);
 });
 
 test('the tension camera keeps the stop line in place, settles still, and stays out of Chill and Reduce Motion', async () => {
@@ -3222,63 +3247,9 @@ test('an auction cannot be bid on past the money, and a stored lot is checked', 
   assert.deepEqual(careerAfterSave(edited).auctionLots, ['skin:gold', 'chest:diamond']);
 });
 
-test('Contracts: the stake is paid at once, a goal met pays the multiple, a miss loses it, an eased shift gives it back', () => {
-  const c = newCareer();
-  c.level = 60;
-  c.money = 1_000_000;
-  const clean = { outcome: 'completed', isPerfectRun: true, perfects: 3, bestChain: 5 };
-  assert.equal(Contracts.sign(c, 'clean', 12_345), false, 'only the stakes on offer');
-  assert.equal(Contracts.sign(c, 'clean', 50_000), true);
-  assert.equal(c.money, 950_000);
-  assert.equal(Contracts.sign(c, 'sharp', 10_000), false, 'one at a time');
-  assert.deepEqual(readContract(JSON.parse(JSON.stringify(c.contract))), { goal: 'clean', stake: 50_000 });
-  const won = Contracts.settle(c, clean, 29, false);
-  assert.equal(won.result, 'won');
-  assert.equal(c.money, 950_000 + Math.round(50_000 * baseConfig.contractPay.clean));
-  assert.equal(c.contract, null);
-  assert.equal(Contracts.settle(c, clean, 29, false), null, 'nothing waits any more');
-  // A miss.
-  Contracts.sign(c, 'sharp', 10_000);
-  const before = c.money;
-  assert.equal(Contracts.met('sharp', clean, 29), false, 'three Perfects are not a Sharp shift');
-  assert.equal(Contracts.settle(c, clean, 29, false).result, 'lost');
-  assert.equal(c.money, before);
-  // A crash or no completion: lost whatever the goal.
-  for (const result of [{ ...clean, isPerfectRun: false }, { ...clean, outcome: 'struckOut' }]) assert.equal(Contracts.met('clean', result, 29), false);
-  // Flawless asks for the chain.
-  const need = Contracts.need('flawless', 29);
-  assert.equal(Contracts.met('flawless', { ...clean, bestChain: need.chain }, 29), true);
-  assert.equal(Contracts.met('flawless', { ...clean, bestChain: need.chain - 1 }, 29), false);
-  // An eased shift voids it.
-  Contracts.sign(c, 'clean', 10_000);
-  const kept = c.money;
-  assert.equal(Contracts.settle(c, clean, 29, true).result, 'void');
-  assert.equal(c.money, kept + 10_000);
-  // Tearing it up gives everything back; the Club is shut below the Elite track.
-  Contracts.sign(c, 'clean', 10_000);
-  assert.equal(Contracts.cancel(c), true);
-  assert.equal(c.money, kept + 10_000);
-  const low = newCareer();
-  low.money = 1_000_000;
-  assert.equal(Contracts.canSign(low, 10_000), false);
-  assert.equal(readContract({ goal: 'nope', stake: 5 }), null);
-  assert.equal(readContract({ goal: 'clean', stake: -5 }), null);
-  assert.deepEqual(careerAfterSave({ ...newCareer(), contract: { goal: 'sharp', stake: 100_000 } }).contract, { goal: 'sharp', stake: 100_000 });
-});
-
-test('a contract settles on the result of a career shift, and never on the Daily Shift', () => {
-  const save = newSave();
-  save.career.level = 60;
-  save.career.money = 1_000_000;
-  Contracts.sign(save.career, 'clean', 50_000);
-  const result = { outcome: 'struckOut', score: 100, completionBonus: 0, bestCombo: 0, cleanMerges: 0, tightFits: 0, cutOffs: 0, nearMisses: 0, perfects: 0, crashes: 1, policeCrashes: 0, takedowns: 0, transporters: 0, money: 0, costs: 0, covered: 0, seed: 1, time: 5, bestChain: 0, isPerfectRun: false, carsSent: 3, flames: 0, wrecks: 0, biggestChain: 0, detonated: false, convoy: false, bossBusted: false, bossKind: null, legendary: null, ambulances: 0, shaves: 0, criticals: 0, jackpots: 0, blasts: 0 };
-  const shiftConfig = { ...baseConfig, shiftCars: 29, assisted: false, heat: 0 };
-  const ctx = { mode: 'shift', level: 60, daily: true, today: 20_000, config: baseConfig, shiftConfig, splits: [] };
-  bookShift(save, result, ctx);
-  assert.deepEqual(save.career.contract, { goal: 'clean', stake: 50_000 }, 'the Daily leaves it waiting');
-  const booked = bookShift(save, result, { ...ctx, daily: false });
-  assert.equal(save.career.contract, null);
-  assert.ok(booked.news.some((line) => line.startsWith('CONTRACT LOST')), booked.news.join(' | '));
+test('a contract signed in an older save is paid back as money', () => {
+  const c = { ...newCareer(), money: 5_000, contract: { goal: 'sharp', stake: 100_000 } };
+  assert.equal(careerAfterSave(c).money, 105_000);
 });
 
 test('the Game fund: a gift leaves the save only as far as it was accepted', () => {

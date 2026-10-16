@@ -592,11 +592,12 @@ export const baseConfig = {
   /** From this level cleared on, the Game tab says the other modes are a swipe away (until the first swipe). */
   modeHintAfterLevel: 6,
   /**
-   * Level cleared after which the game asks the browser to keep its storage and suggests
-   * recommends the Home Screen, once (Leo, 30.09.2026: from Level 5; on iPhone and iPad as a
-   * full-screen tip).
+   * The way back for tomorrow (Leo, 16.10.2026, `tomorrow` hint): asked once, when the first Daily is done ("back
+   * tomorrow"), or after this level cleared for a player who skips the Daily. Installing where the device can, else
+   * notifications; it also asks the browser to keep its storage. It replaced the install tip after Level 4 and the
+   * notifications offer after the first shift won, which shared the visit's one tip and lost it to each other.
    */
-  installHintAfterLevel: 4,
+  tomorrowAskAfterLevel: 4,
   /** Level cleared after which a device without a cloud copy recommends Cloud sync (once; Leo, 01.10.2026: it replaced the export). */
   backupHintAfterLevel: 12,
   /**
@@ -611,10 +612,12 @@ export const baseConfig = {
   // first three minutes; now about one every one to four (Daily ~1 min, modes ~2, Trials ~4,
   // Casino ~8), after the core is learned. Whoever used one already keeps it.
   /**
-   * The Daily Shift (and its streak) from this level on. Level 2 since 08.10.2026 (research: a reason to come back
+   * The Daily Shift (and its streak) from this level on. Level 2 from 08.10.2026 (research: a reason to come back
    * tomorrow has to be there in the first session; before, it came at level 4, after most first sessions had ended).
+   * Level 3 since 16.10.2026 (Leo): its first run brings the way-back question (`tomorrow`), which at Level 2 came after
+   * the second shift; 86 % of new browser players still reach Level 3 in their first visit (Umami, 7.–16.10.).
    */
-  dailyUnlockLevel: 2,
+  dailyUnlockLevel: 3,
   /** The Trials section in Progress from this level on; each trial opens at its own level. */
   trialsUnlockLevel: 9,
   /** The Casino in the Shop from this level on; it opens quietly, nothing points there. */
@@ -839,6 +842,12 @@ export const baseConfig = {
   /** The first Freeze comes earlier (Leo, 09.10.2026): a first missed day in week one need not end the streak; then one every `streakFreezeEvery` days. */
   streakFreezeFirst: 3,
   streakFreezeMax: 2,
+  /**
+   * The starter streak (Leo, 16.10.2026): the first time a Daily streak reaches this many days it pays this chest, once
+   * in a career, with the streak's celebration. The first skin milestone is a week away; a new player needs a nearer reason for day two.
+   */
+  starterStreakDays: 3,
+  starterStreakChest: 'premium' as const,
   /** Tailwind: a shift lost within `tailwindMaxLeft` cars of its goal, after `tailwindMinShare` of it, makes the next career shift pay this much more. Once a day, never over a Daily Shift. */
   tailwindPay: 0.25,
   tailwindMaxLeft: 3,
@@ -950,16 +959,6 @@ export const baseConfig = {
   auctionNerve: 0.85,
   /** A counter-bid is one to this many steps at once. */
   auctionJump: 3,
-
-  // Contracts (Leo, 10.10.2026; core/contracts.ts): money on a clean shift. The stake is paid when signed; a goal met pays it back times `contractPay`.
-  contractStakes: [10_000, 50_000, 100_000, 250_000] as readonly number[],
-  contractPay: { clean: 1.1, sharp: 2.2, flawless: 3.2 },
-  /** Sharp and Flawless ask for this share of the shift's cars to be Perfects / one unbroken chain. */
-  contractSharpShare: 0.3,
-  contractFlawlessShare: 0.6,
-  /** Contract Run: from the second win in a row a win pays this much more of the stake per win in the run, up to the cap. */
-  contractRunStep: 0.01,
-  contractRunCap: 0.05,
 
   // The Mafia (Leo, 11.10.2026; core/mafia.ts): after the first boss it lends money against a deal struck on a pointer bar.
   // The biggest loan grows with the level; the interest and the green zone get kinder with every loan repaid in time.

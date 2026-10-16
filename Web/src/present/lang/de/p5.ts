@@ -2,7 +2,6 @@ import type { Strings } from '../../strings';
 import type { Words } from '../../i18n';
 import { Fmt, money, percent } from '../../format';
 import { baseConfig, detourShareAt, towSpeedupAt } from '../../../core/config';
-import { Contracts } from '../../../core/contracts';
 
 /** Deutsch, Teil 5: Casino, Straßenbauer, Werbung, Club, Ränge, Freunde, Lobby, Versus, Shell. */
 export default (S: Strings): Words<Strings> => ({
@@ -226,25 +225,8 @@ export default (S: Strings): Words<Strings> => ({
     streak: (d) => `${d} Tage in Folge`,
   },
 
-  club: {
-    goalName: (goal) => ({ clean: 'Weiße Weste', sharp: 'Scharf', flawless: 'Makellos' })[goal],
-    goalText(goal, cars) {
-      const need = Contracts.need(goal, cars);
-      const base = 'Schließe die nächste Karriere-Schicht mit einem Perfekten Lauf ab: kein Crash, kein Polizei-Crash';
-      if (goal === 'sharp') return `${base} und ${need.perfects} Perfekte Einfädler.`;
-      if (goal === 'flawless') return `${base} und eine Kette von ${need.chain} Einfädlern.`;
-      return `${base}.`;
-    },
-    contractSettled(outcome) {
-      const name = S.club.goalName(outcome.contract.goal).toUpperCase();
-      if (outcome.result === 'won') return `VERTRAG GEWONNEN · ${name} · +${money(Fmt.number(outcome.pay))}${outcome.run > 1 ? ` · SERIE ×${outcome.run}` : ''}`;
-      if (outcome.result === 'void') return `VERTRAG UNGÜLTIG · diese Schicht wurde erleichtert · ${money(Fmt.number(outcome.pay))} zurück`;
-      return `VERTRAG VERLOREN · ${name} · ${money(Fmt.number(outcome.contract.stake))} weg`;
-    },
-  },
-
   clubPanel: {
-    tabs: { auction: 'Auktion', ideas: 'Spielfonds', contracts: 'Verträge' },
+    tabs: { auction: 'Auktion', ideas: 'Spielfonds' },
     money: 'Geld',
     sealedChest: 'Eine versiegelte Truhe',
     exclusive: 'Exklusiv im Auktionshaus',
@@ -360,19 +342,6 @@ export default (S: Strings): Words<Strings> => ({
     ideaHow: 'Sag uns, was du im Spiel haben möchtest. Wir lesen es, formulieren es passend und veröffentlichen es hier. Eine Idee pro Tag.',
     ownAmount: 'Eigener Betrag',
     giveAmount: (price) => `${price} geben`,
-    yourContract: 'Dein Vertrag',
-    tearUp: 'Zerreißen',
-    contractPays: (goal, pay) => `${goal} Zahlt ${pay}, wenn es erfüllt wird.`,
-    contractRun: (run, next) =>
-      run > 0 ? `Contract-Serie: ${run} Verträge in Folge gewonnen. Dein nächster Sieg zahlt ${next} des Einsatzes extra. Ein verlorener Vertrag setzt sie zurück.` : 'Contract-Serie: Gewinne Verträge hintereinander. Ab dem zweiten Sieg zahlt jeder etwas extra, bis zu +5 % des Einsatzes. Ein verlorener Vertrag setzt sie zurück.',
-    settle: 'Er wird mit deiner nächsten Karriere-Schicht abgerechnet (nicht Tagesschicht, Unlimited oder Prüfung) und erscheint im Ergebnis. Zerreißt du ihn vorher, bekommst du den ganzen Einsatz zurück. Eine für deine Karriere erleichterte Schicht macht ihn ungültig, Einsatz zurück.',
-    chosen: 'Gewählt',
-    choose: 'Wählen',
-    goalPays: (name, x) => `${name} · zahlt ×${x}`,
-    sign: (stake, goal) => `Unterschreiben · ${stake} auf ${goal}`,
-    contractsIntro: 'Setze Geld auf dich selbst. Der Einsatz wird jetzt bezahlt; erfüllt deine nächste Karriere-Schicht das Ziel, zahlt sie ein Vielfaches davon zurück, sonst ist er weg. Die Ziele sind für alle gleich: Wähle, was du schaffst.',
-    goal: 'Ziel',
-    stake: 'Einsatz',
   },
 
   ranks: {

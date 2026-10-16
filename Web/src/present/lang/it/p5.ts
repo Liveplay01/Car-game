@@ -2,7 +2,6 @@ import type { Strings } from '../../strings';
 import type { Words } from '../../i18n';
 import { Fmt, money, percent } from '../../format';
 import { baseConfig, detourShareAt, towSpeedupAt } from '../../../core/config';
-import { Contracts } from '../../../core/contracts';
 
 /** Italiano, Parte 5: Casinò, Costruttore stradale, Annunci, Club, Classifiche, Amici, Stanza, Versus, Shell. */
 export default (S: Strings): Words<Strings> => ({
@@ -226,25 +225,8 @@ export default (S: Strings): Words<Strings> => ({
     streak: (d) => `${d} giorni di fila`,
   },
 
-  club: {
-    goalName: (goal) => ({ clean: 'Limpido', sharp: 'Affilato', flawless: 'Impeccabile' })[goal],
-    goalText(goal, cars) {
-      const need = Contracts.need(goal, cars);
-      const base = 'Concludi il prossimo turno di carriera senza incidenti: nessun crash proprio o di polizia';
-      if (goal === 'sharp') return `${base} e ${need.perfects} Inserimenti perfetti.`;
-      if (goal === 'flawless') return `${base} e una catena di ${need.chain} inserimenti.`;
-      return `${base}.`;
-    },
-    contractSettled(outcome) {
-      const name = S.club.goalName(outcome.contract.goal).toUpperCase();
-      if (outcome.result === 'won') return `CONTRATTO VINTO · ${name} · +${money(Fmt.number(outcome.pay))}${outcome.run > 1 ? ` · SERIE ×${outcome.run}` : ''}`;
-      if (outcome.result === 'void') return `CONTRATTO ANNULLATO · turno facilitato · ${money(Fmt.number(outcome.pay))} rimborsati`;
-      return `CONTRATTO PERSO · ${name} · ${money(Fmt.number(outcome.contract.stake))} persi`;
-    },
-  },
-
   clubPanel: {
-    tabs: { auction: 'Asta', ideas: 'Fondo di gioco', contracts: 'Contratti' },
+    tabs: { auction: 'Asta', ideas: 'Fondo di gioco' },
     money: 'Denaro',
     sealedChest: 'Un baule sigillato',
     exclusive: 'Esclusiva della casa d’aste',
@@ -360,19 +342,6 @@ export default (S: Strings): Words<Strings> => ({
     ideaHow: 'Spiegaci cosa vorresti nel gioco. Leggiamo tutto, riformuliamo e pubblichiamo qui. Un’idea al giorno.',
     ownAmount: 'Importo libero',
     giveAmount: (price) => `Dona ${price}`,
-    yourContract: 'Il tuo contratto',
-    tearUp: 'Strappa contratto',
-    contractPays: (goal, pay) => `${goal} Rende ${pay} se soddisfatto.`,
-    contractRun: (run, next) =>
-      run > 0 ? `Serie di contratti: ${run} vinti di fila. La prossima vittoria rende ${next} della puntata in più. Un contratto perso azzera la serie.` : 'Serie di contratti: vinci contratti di fila. Dalla seconda vittoria ognuno rende un extra, fino a +5 % della puntata. Un contratto perso azzera la serie.',
-    settle: 'Viene valutato al tuo prossimo turno di carriera (non giornaliero, Senza limiti o prova). Annullarlo prima rimborsa l’intera puntata.',
-    chosen: 'Scelto',
-    choose: 'Scegli',
-    goalPays: (name, x) => `${name} · rende ×${x}`,
-    sign: (stake, goal) => `Firma · ${stake} su ${goal}`,
-    contractsIntro: 'Scommetti su te stesso. La puntata viene scalata subito; se il tuo prossimo turno di carriera soddisfa l’obiettivo, ne moltiplicherai l’importo.',
-    goal: 'Obiettivo',
-    stake: 'Puntata',
   },
 
   ranks: {

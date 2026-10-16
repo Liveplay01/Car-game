@@ -133,6 +133,14 @@ export default (S: Strings): Words<Strings> => ({
     denied: 'Las notificaciones están bloqueadas en los ajustes de tu navegador.',
   },
 
+  wayBack: {
+    chestTitle: 'Cofre gratis mañana',
+    streakTitle: 'Hasta mañana',
+    chestWhy: 'Pon el juego en tu pantalla de inicio: el cofre gratis de mañana estará a un toque, y tu progreso queda a salvo.',
+    streakWhy: 'Pon el juego en tu pantalla de inicio: mañana tu racha estará a un toque, y tu progreso queda a salvo.',
+    install: 'Instalar el juego',
+  },
+
   ready: {
     tapToStart: 'Toca para empezar',
     tapForFriends: 'Toca para jugar con amigos',
@@ -203,7 +211,7 @@ export default (S: Strings): Words<Strings> => ({
 
   social: {
     section: (i) => ['Amigos', 'Clasificación', 'Club', 'Mafia'][i],
-    clubClosed: 'El Club se abre en el nivel 50: casa de subastas, fondo del juego y contratos para grandes cuentas.',
+    clubClosed: 'El Club se abre en el nivel 50: casa de subastas y fondo del juego para grandes cuentas.',
     mafiaClosed: 'La Familia no tiene tiempo para novatos. Derrota al primer jefe del sindicato (nivel 15) o supéralo, y te contactarán.',
     offline: 'Amigos y Clasificación necesitan el servicio online al que esta copia no está conectada.',
     noFriends: 'Amigos no disponible aquí. Clasificación y Club sí.',
