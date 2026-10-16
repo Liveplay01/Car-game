@@ -5,6 +5,7 @@ import { type ConditionEntry, type MuseumEntry, museumId, conditionsOf } from '.
 import { type Vec2, v, add } from '../core/vec2';
 import { type RenderList, type Rect, R, Ease, text, drawText, circle, Metrics } from './render';
 import { MenuKit } from './menukit';
+import { FAIL_CHIP_SIZE } from './hud';
 import { MuseumPage } from './museum';
 import { textWidth, drawFitted } from './icons';
 import { S } from './strings';
@@ -71,7 +72,7 @@ export const ConditionChips = {
  * top row (`ResultBanner.add` places it) and opens the Museum's sheet for that failure.
  */
 export const FailChip = {
-  size: 46,
+  size: FAIL_CHIP_SIZE,
   hit: 64,
   target: (center: Vec2): Rect => R.make(center.x - FailChip.hit / 2, center.y - FailChip.hit / 2, center.x + FailChip.hit / 2, center.y + FailChip.hit / 2),
 

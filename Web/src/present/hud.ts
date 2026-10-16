@@ -21,7 +21,6 @@ import { moneyTag, flameTag, textWidth, drawFitted } from './icons';
 import { S, Fmt, money as moneyText, comboMultiplier } from './strings';
 import { interpolatedPose } from './scene';
 import { wrapText } from './upgrades';
-import { FailChip } from './readyScreen';
 import type { Brief, BriefView } from './briefing';
 import { currentLanguage } from './i18n';
 
@@ -218,6 +217,8 @@ export interface Popup {
 }
 
 export const POPUP_LIFETIME = 0.9;
+/** The fail icon's size on the result (`FAIL_CHIP_SIZE`); here so the HUD need not import `readyScreen`, which would close an import cycle. */
+export const FAIL_CHIP_SIZE = 46;
 
 /** How far each small HUD change has come, 0 → 1 (Leo: "so smooth wie möglich"). */
 export interface Pops {
@@ -1763,7 +1764,7 @@ export const ResultBanner = {
     let useLow = lowHeight > 0;
     let useElite = eliteRow.height > 0;
     const slotHeight = (): number => Math.max(useDetail ? detailRow.height : 0, caption);
-    const above = (): number => (chip ? FailChip.size + (slotHeight() > 0 ? 7 + slotHeight() : 0) : slotHeight());
+    const above = (): number => (chip ? FAIL_CHIP_SIZE + (slotHeight() > 0 ? 7 + slotHeight() : 0) : slotHeight());
     const total = (): number => above() + (above() > 0 ? 8 : 0) + promptRow.height + (useLow ? 8 + lowHeight : 0) + (useElite ? 6 + eliteRow.height : 0);
     const budget = 2 * (islandRadius * list.camera.scale - 14);
     if (total() > budget) useElite = false;
@@ -1772,8 +1773,8 @@ export const ResultBanner = {
 
     const island = toScreen(list.camera, v(0, 0));
     let y = -total() / 2;
-    const chipAt = chip ? add(island, v(0, y + FailChip.size / 2)) : null;
-    if (chip) y += FailChip.size + (slotHeight() > 0 ? 7 : 0);
+    const chipAt = chip ? add(island, v(0, y + FAIL_CHIP_SIZE / 2)) : null;
+    if (chip) y += FAIL_CHIP_SIZE + (slotHeight() > 0 ? 7 : 0);
     const detailY = y + slotHeight() / 2;
     y += slotHeight() + (above() > 0 ? 8 : 0);
     const promptY = y + promptRow.height / 2;

@@ -2138,7 +2138,7 @@ test('an Unlimited run just short of the next tier says how far, and only when i
   assert.equal(Goals.tierMiss(499, 600), null, 'nothing above Master');
   assert.equal(S.goals.tierMiss({ short: 1, tier: 'gold' }), '1 car short of Gold');
   assert.equal(S.goals.tierMiss({ short: 5, tier: 'bronze' }), '5 cars short of Bronze');
-  assert.equal(S.heat.pill(0.25), 'TAILWIND +25 %');
+  assert.equal(S.mods.tailwind(0.25), 'Tailwind +25 %');
 });
 
 test('the Unlimited skins earn a title, which shows with its rule', async () => {
