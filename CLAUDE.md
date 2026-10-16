@@ -12,7 +12,8 @@ App-Store-Arbeit mehr vorschlagen.
 | --- | --- |
 | [Web/README.md](Web/README.md) | **Das Spiel:** Befehle, Aufbau, Speichern, PWA, Deployment |
 | [Server/README.md](Server/README.md) | **Ranglisten-Dienst:** API, Module, Deployment in Coolify, Moderation |
-| [Web/PRODUCT.md](Web/PRODUCT.md) | Zielgruppe, Designprinzipien, Barrierefreiheit |
+| [Web/PRODUCT.md](Web/PRODUCT.md) | Zielgruppe, Produktzweck |
+| [DESIGN-LANGUAGE.md](DESIGN-LANGUAGE.md) | Design-Sprache: Brand Personality, Farbrollen, Design-Prinzipien, Motion- und Haptik-Regeln, Barrierefreiheit |
 | [Spiel.md](Spiel.md) | Überblick über das ganze Spiel und Stand der Umsetzung |
 | [FOUNDATION.md](FOUNDATION.md) | Regeln mit Startwerten, Motion-Regeln, Architektur |
 | [LOOT.md](LOOT.md) | Was in den Truhen steckt: Skins, Fahrzeugtypen, Odds |
