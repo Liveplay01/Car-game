@@ -50,6 +50,10 @@ export const WeatherLayer = {
   /** How much of the fog and the dust the Fog Lamps clear at full aid. */
   lampClearing: 0.6,
   fogLayers: 4,
+  /** A device that cannot keep its frames: half the banks, a little wider, in two layers instead of four. */
+  thriftyBanks: 8,
+  thriftyLayers: 2,
+  thriftyGrowth: 1.3,
 
   /** `mix`: the weathers and how strongly they show (`WeatherFade`); by default the world's own, at full. */
   addGround(list: RenderList, world: World, mix: WeatherMix = [[world.config.weather, 1]]): void {
@@ -82,18 +86,18 @@ export const WeatherLayer = {
     for (const y of [band / 2, vp.y - band / 2]) list.s(rect(v(vp.x / 2, y), v(vp.x, band)), 'scrim', 0.1 * (severity - 1) * amount);
   },
 
-  addAir(list: RenderList, world: World, time: number, reduceMotion: boolean, mix: WeatherMix = [[world.config.weather, 1]]): void {
-    for (const [weather, amount] of mix) WeatherLayer.addAirOf(list, world, weather, amount, time, reduceMotion);
+  addAir(list: RenderList, world: World, time: number, reduceMotion: boolean, mix: WeatherMix = [[world.config.weather, 1]], thrifty = false): void {
+    for (const [weather, amount] of mix) WeatherLayer.addAirOf(list, world, weather, amount, time, reduceMotion, thrifty);
   },
 
-  addAirOf(list: RenderList, world: World, weather: Weather, amount: number, time: number, reduceMotion: boolean): void {
+  addAirOf(list: RenderList, world: World, weather: Weather, amount: number, time: number, reduceMotion: boolean, thrifty = false): void {
     if (amount <= 0) return;
     // Fog Lamps thin the picture too: the dust and the mist lie lighter.
     const seen = amount * (1 - WeatherLayer.lampClearing * world.config.lampAid);
-    if (weather === 'fog') return WeatherLayer.addFog(list, world, reduceMotion ? 0 : time, seen);
+    if (weather === 'fog') return WeatherLayer.addFog(list, world, reduceMotion ? 0 : time, seen, thrifty);
     if (weather === 'snow') return WeatherLayer.addSnow(list, reduceMotion ? 0 : time, amount);
     if (weather === 'hail') return WeatherLayer.addHail(list, reduceMotion ? 0 : time, amount);
-    if (weather === 'sandstorm') return WeatherLayer.addSandstorm(list, world, reduceMotion ? 0 : time, seen);
+    if (weather === 'sandstorm') return WeatherLayer.addSandstorm(list, world, reduceMotion ? 0 : time, seen, thrifty);
     const severity = weatherSeverity(weather);
     if (severity <= 0) return;
     const vp = list.camera.viewport;
@@ -122,30 +126,38 @@ export const WeatherLayer = {
     if (into < 0.14) list.s(rect(mul(vp, 0.5), vp), 'primary', 0.16 * (1 - into / 0.14) * amount);
   },
 
-  addFog(list: RenderList, world: World, time: number, amount = 1): void {
+  addFog(list: RenderList, world: World, time: number, amount = 1, thrifty = false): void {
     const layout = world.layout;
     const vp = list.camera.viewport;
     list.s(rect(mul(vp, 0.5), vp), 'smokeLight', 0.12 * amount);
     const own = layout.player.angle;
-    for (let i = 0; i < WeatherLayer.fogBanks; i++) {
+    const banks = thrifty ? WeatherLayer.thriftyBanks : WeatherLayer.fogBanks;
+    for (let i = 0; i < banks; i++) {
       // Each bank drifts slowly along the ring at its own pace and distance.
       const angle = unitHash(i, 41) * Math.PI * 2 + time * (0.03 + 0.04 * unitHash(i, 42));
       const away = Math.abs(Math.atan2(Math.sin(angle - own), Math.cos(angle - own)));
       const thin = Math.min(1, Math.max(0.15, (away - 0.35) / 1.2));
       const center = mul(fromAngle(angle), layout.ringRadius + (unitHash(i, 43) - 0.4) * 90);
-      const radius = 70 + 70 * unitHash(i, 44);
+      const radius = (70 + 70 * unitHash(i, 44)) * (thrifty ? WeatherLayer.thriftyGrowth : 1);
       // A bank is layers of thin mist, each smaller than the last. Stacked, the middle was
-      // painted four times; instead each zone is painted once, as dense as its layers make it
-      // together (k + 1 layers of `a`: 1 - (1 - a)^(k + 1), smokeLight being opaque). The
-      // same picture with less than half the painting, which a phone's GPU feels.
-      const a = 0.07 * thin * amount;
-      for (let k = 0; k < WeatherLayer.fogLayers; k++) {
-        const outer = radius * (1 - k * 0.2);
-        const inner = k + 1 < WeatherLayer.fogLayers ? radius * (1 - (k + 1) * 0.2) : 0;
-        const dense = 1 - (1 - a) ** (k + 1);
-        if (inner > 0) list.w(arc(center, (outer + inner) / 2, outer - inner, 0, Math.PI * 2), 'smokeLight', dense);
-        else list.w(circle(center, outer), 'smokeLight', dense);
-      }
+      // painted four times; instead each zone is painted once (see `addBank`), which a phone's GPU feels.
+      WeatherLayer.addBank(list, center, radius, 0.07 * thin * amount, 'smokeLight', thrifty);
+    }
+  },
+
+  /**
+   * One bank of mist: each zone painted once, as dense as its layers make it together (k + 1 layers
+   * of `a`: 1 - (1 - a)^(k + 1), the colour being opaque), the layers shrinking evenly to 20 % of the radius.
+   */
+  addBank(list: RenderList, center: Vec2, radius: number, a: number, color: 'smokeLight' | 'mapSand', thrifty: boolean): void {
+    const layers = thrifty ? WeatherLayer.thriftyLayers : WeatherLayer.fogLayers;
+    const step = 0.8 / layers;
+    for (let k = 0; k < layers; k++) {
+      const outer = radius * (1 - k * step);
+      const inner = k + 1 < layers ? radius * (1 - (k + 1) * step) : 0;
+      const dense = 1 - (1 - a) ** (k + 1);
+      if (inner > 0) list.w(arc(center, (outer + inner) / 2, outer - inner, 0, Math.PI * 2), color, dense);
+      else list.w(circle(center, outer), color, dense);
     }
   },
 
@@ -211,25 +223,19 @@ export const WeatherLayer = {
    */
   dustStreaks: 46,
 
-  addSandstorm(list: RenderList, world: World, time: number, amount = 1): void {
+  addSandstorm(list: RenderList, world: World, time: number, amount = 1, thrifty = false): void {
     const layout = world.layout;
     const vp = list.camera.viewport;
     list.s(rect(mul(vp, 0.5), vp), 'mapSand', 0.08 * amount);
     const own = layout.player.angle;
-    for (let i = 0; i < WeatherLayer.fogBanks; i++) {
+    const banks = thrifty ? WeatherLayer.thriftyBanks : WeatherLayer.fogBanks;
+    for (let i = 0; i < banks; i++) {
       const angle = unitHash(i, 71) * Math.PI * 2 + time * (0.06 + 0.05 * unitHash(i, 72));
       const away = Math.abs(Math.atan2(Math.sin(angle - own), Math.cos(angle - own)));
       const thin = Math.min(1, Math.max(0.15, (away - 0.35) / 1.2));
       const center = mul(fromAngle(angle), layout.ringRadius + (unitHash(i, 73) - 0.4) * 90);
-      const radius = 70 + 60 * unitHash(i, 74);
-      const a = 0.08 * thin * amount;
-      for (let k = 0; k < WeatherLayer.fogLayers; k++) {
-        const outer = radius * (1 - k * 0.2);
-        const inner = k + 1 < WeatherLayer.fogLayers ? radius * (1 - (k + 1) * 0.2) : 0;
-        const dense = 1 - (1 - a) ** (k + 1);
-        if (inner > 0) list.w(arc(center, (outer + inner) / 2, outer - inner, 0, Math.PI * 2), 'mapSand', dense);
-        else list.w(circle(center, outer), 'mapSand', dense);
-      }
+      const radius = (70 + 60 * unitHash(i, 74)) * (thrifty ? WeatherLayer.thriftyGrowth : 1);
+      WeatherLayer.addBank(list, center, radius, 0.08 * thin * amount, 'mapSand', thrifty);
     }
     const streaks = Math.round(WeatherLayer.dustStreaks * amount);
     const ends: Vec2[] = [];

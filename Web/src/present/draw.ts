@@ -252,6 +252,18 @@ export class CanvasDrawer {
     this.prepare();
   }
 
+  private scrim: { key: string; gradient: CanvasGradient } | null = null;
+
+  /** The scrim's gradient, kept while its colour, strength and place stay the same: it is the same every frame. */
+  private fadeGradient(color: ColorToken, opacity: number, top: number, height: number): CanvasGradient {
+    const key = `${css(color, 1)}|${opacity}|${top}|${height}`;
+    if (this.scrim?.key === key) return this.scrim.gradient;
+    const gradient = this.ctx.createLinearGradient(0, top, 0, top + height);
+    for (let i = 0; i <= 12; i++) gradient.addColorStop(i / 12, css(color, opacity * (1 - Ease.smoothstep(i / 12))));
+    this.scrim = { key, gradient };
+    return gradient;
+  }
+
   /** Dark edges over the whole canvas (an ellipse that follows its shape), clear across the middle. */
   private paintVignette(opacity: number): void {
     if (!this.vignetteArt) {
@@ -799,9 +811,7 @@ export class CanvasDrawer {
         }
         if (item.fade && rot === 0) {
           // Eased stops, so neither the start nor the end of the fade shows as an edge.
-          const gradient = ctx.createLinearGradient(0, cy - h / 2, 0, cy + h / 2);
-          for (let i = 0; i <= 12; i++) gradient.addColorStop(i / 12, css(item.color, item.opacity * (1 - Ease.smoothstep(i / 12))));
-          ctx.fillStyle = gradient;
+          ctx.fillStyle = this.fadeGradient(item.color, item.opacity, cy - h / 2, h);
           this.fill = null;
           ctx.fillRect(cx - w / 2, cy - h / 2, w, h);
           return;

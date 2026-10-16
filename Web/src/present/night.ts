@@ -54,7 +54,8 @@ export const NightLayer = {
       const intensity = (NightLayer.queueDim + (1 - NightLayer.queueDim) * beam.glow) * (1 + 1.5 * flash);
 
       // Two soft cones that follow the car, brightest near it; the queue behind the front car dims.
-      const look = { layers: layers ?? NightLayer.coneLayers, reach: CarArt.length('car', c) * NightLayer.coneReach, spread: NightLayer.coneSpread, strength: NightLayer.coneStrength };
+      // A waiting car's dimmed beam needs no fine steps.
+      const look = { layers: waiting ? Math.min(3, layers ?? NightLayer.coneLayers) : layers ?? NightLayer.coneLayers, reach: CarArt.length('car', c) * NightLayer.coneReach, spread: NightLayer.coneSpread, strength: NightLayer.coneStrength };
       Headlights.add(list, pose, L, W, look, beam, intensity, time, veh.id);
       // Brake-light spill belongs on the road; the small red lenses are drawn over the car later.
       const brake = lamps ? lamps.brake(veh.id) : 0;
@@ -124,10 +125,12 @@ export const NightLayer = {
   addStreetLamps(list: RenderList, world: World): void {
     const layout = world.layout;
     const lane = layout.laneWidth;
+    const from = list.items.length;
     for (const arm of layout.arms) {
       const out = fromAngle(arm.angle);
       const at = add(mul(out, layout.ringRadius + lane + 18), mul(left(out), lane + 10));
       Headlights.addStreetLamp(list, at, NightLayer.lampStrength);
     }
+    list.bake(from, 'nightLamps', `${layout.ringRadius}|${lane}|${layout.arms.map((a) => a.slot).join(',')}`);
   },
 };

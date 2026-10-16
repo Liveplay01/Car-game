@@ -20,16 +20,18 @@ export const CityLights = {
   coneReach: 1.6,
   coneStrength: 0.015,
 
-  add(list: RenderList, world: World, alpha: number, theme: MapTheme | null, lamps: VehicleLamps | null, time: number | null, nightPreview = false): void {
+  /** `lowDetail`: the cars' day cones are left out; they are barely visible and cost the most. */
+  add(list: RenderList, world: World, alpha: number, theme: MapTheme | null, lamps: VehicleLamps | null, time: number | null, nightPreview = false, lowDetail = false): void {
     if (world.config.night || nightPreview) return;
     if (!theme) CityLights.addLamps(list, world);
-    CityLights.addHeadlights(list, world, alpha, lamps, time);
+    if (!lowDetail) CityLights.addHeadlights(list, world, alpha, lamps, time);
   },
 
-  /** Lamps along both kerbs of every arm, alternating sides, each with its pool of light. */
+  /** Lamps along both kerbs of every arm, alternating sides, each with its pool of light; still, so the drawer keeps their picture. */
   addLamps(list: RenderList, world: World): void {
     const layout = world.layout;
     const lane = layout.laneWidth;
+    const from = list.items.length;
     for (const arm of layout.arms) {
       const out = fromAngle(arm.angle);
       let side = arm.slot % 2 === 0 ? 1 : -1;
@@ -40,6 +42,7 @@ export const CityLights = {
         side = -side;
       }
     }
+    list.bake(from, 'lamps', `${layout.ringRadius}|${lane}|${layout.arms.map((a) => a.slot).join(',')}`);
   },
 
   /** A faint pair of cones ahead of every car on the road; the queue behind the front car fades out. */

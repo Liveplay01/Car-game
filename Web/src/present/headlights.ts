@@ -30,7 +30,7 @@ export const Headlights = {
     const reach = look.reach * beam.reach;
     const alpha = look.strength * 0.56 * intensity * breath;
     const heading = { cos: Math.cos(pose.heading), sin: Math.sin(pose.heading) };
-    const sections = Math.max(5, look.layers);
+    const sections = look.layers;
     const spreadAt = (t: number): number => width * (0.12 + look.spread * (0.78 * t - 0.12 * t * t));
     for (let side = 1; side >= -1; side -= 2) {
       const ox = length / 2;
