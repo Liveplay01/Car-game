@@ -21,6 +21,7 @@ import { moneyTag, flameTag, textWidth, drawFitted } from './icons';
 import { S, Fmt, money as moneyText, comboMultiplier } from './strings';
 import { interpolatedPose } from './scene';
 import { wrapText } from './upgrades';
+import { FailChip } from './readyScreen';
 import type { Brief, BriefView } from './briefing';
 import { currentLanguage } from './i18n';
 
@@ -32,7 +33,7 @@ export const TopBar = {
   top: 10,
   height: 58,
   corner: 20,
-  scrim: 120,
+  scrim: 96,
   captionRow: 18,
   valueRow: 38,
 
@@ -59,21 +60,14 @@ export const TopBar = {
     return R.contains(cols.right, point) ? 'right' : 'center';
   },
 
+  /** One smooth fade from the page colour at the very top edge to clear: no steps, nothing below the card's reach. */
   addScrim(list: RenderList): void {
-    const tag = list.tag;
+    const { tag, fade } = list;
     list.tag = 'topbarScrim';
-    TopBar.addScrimBands(list);
+    list.fade = true;
+    list.s(rect(v(list.camera.viewport.x / 2, TopBar.scrim / 2), v(list.camera.viewport.x + 80, TopBar.scrim)), list.background, 0.85);
     list.tag = tag;
-  },
-
-  addScrimBands(list: RenderList): void {
-    const width = list.camera.viewport.x;
-    const steps = 30;
-    for (let step = 0; step < steps; step++) {
-      const slice = TopBar.scrim / steps;
-      const opacity = 0.94 * (1 - Ease.smoothstep((step + 0.5) / steps));
-      list.s(rect(v(width / 2, slice * (step + 0.5)), v(width + 80, slice + 0.5)), list.background, opacity);
-    }
+    list.fade = fade;
   },
 
   /** `brief`: a briefing shows on the card; its colour edges the card and the column lines give way. */
@@ -1333,15 +1327,39 @@ interface IntroLayout {
 
 /** A line in the middle of the island: wrapped at spaces (up to three lines, centred on `dy`) when it is wider than the grass at its height, so it never runs onto the road (`radius` in world units, `dy` in points below the centre). */
 function islandLine(list: RenderList, s: string, radius: number, dy: number, size: number, color: ColorToken, opacity: number, weight: Weight = 'regular'): void {
-  const r = radius * list.camera.scale - 8;
-  const widthAt = (y: number): number => Math.max(60, 2 * Math.sqrt(Math.max(0, r * r - (Math.abs(y) + size / 2) ** 2)));
+  islandBlock(list, islandWrap(list, s, radius, dy, size, weight), radius, dy, size, color, opacity, weight);
+}
+
+/** How the grass lets `s` wrap around `dy`. */
+function islandWrap(list: RenderList, s: string, radius: number, dy: number, size: number, weight: Weight): string[] {
+  const widthAt = islandWidth(list, radius, size);
   const bold = weight === 'bold';
-  const lines = textWidth(s, size, bold) > widthAt(dy) ? wrapText(s, widthAt(dy), size, bold).slice(0, 3) : [s];
-  const step = size * 1.25;
+  return textWidth(s, size, bold) > widthAt(dy) ? wrapText(s, widthAt(dy), size, bold).slice(0, 3) : [s];
+}
+
+function islandWidth(list: RenderList, radius: number, size: number): (y: number) => number {
+  const r = radius * list.camera.scale - 8;
+  return (y) => Math.max(60, 2 * Math.sqrt(Math.max(0, r * r - (Math.abs(y) + size / 2) ** 2)));
+}
+
+function islandBlock(list: RenderList, lines: string[], radius: number, dy: number, size: number, color: ColorToken, opacity: number, weight: Weight = 'regular'): void {
+  const widthAt = islandWidth(list, radius, size);
   lines.forEach((line, i) => {
-    const y = dy + (i - (lines.length - 1) / 2) * step;
+    const y = dy + (i - (lines.length - 1) / 2) * size * 1.25;
     drawFitted(list, line, add(toScreen(list.camera, v(0, 0)), v(0, y)), size, widthAt(y), color, { weight, opacity, align: 'center' });
   });
+}
+
+/** One row of the result in the island: its text wrapped for the grass, and how tall that is. */
+interface IslandRow {
+  lines: string[];
+  size: number;
+  height: number;
+}
+
+function islandRow(list: RenderList, s: string | null, radius: number, size: number, weight: Weight): IslandRow {
+  const lines = s ? islandWrap(list, s, radius, radius * list.camera.scale * 0.55, size, weight) : [];
+  return { lines, size, height: lines.length * size * 1.25 };
 }
 
 export const ReadyBanner = {
@@ -1356,8 +1374,6 @@ export const ReadyBanner = {
       /** Where the row of condition icons starts (`ConditionChips`): the intro card stays above it. Null: no icons. */
       iconsTop?: number | null;
       daily: DailyCard | null;
-      /** Tailwind waits: the next shift pays this much more (0.25), shown as a pill. */
-      tailwind?: number | null;
       mode: GameMode;
       /** The multiplayer page of the swipe: no level, no daily, a code instead. */
       versus?: boolean;
@@ -1447,7 +1463,7 @@ export const ReadyBanner = {
       TopBar.addMessage(list, frame, { ...hintView, card: hintView.card * opacity }, { time: hint.time, left: hint.left, right: hint.right, previous: hint.previous, reduceMotion: o.reduceMotion, textScale: o.textScale ?? 1 });
     }
     list.tag = undefined;
-    const pillText = run ? run.badge : o.daily ? S.daily.streakPill(o.daily.streak, o.daily.bonus, o.daily.endsIn, o.daily.freezes) : S.heat.pill(o.tailwind ?? null);
+    const pillText = run ? run.badge : o.daily ? S.daily.streakPill(o.daily.streak, o.daily.bonus, o.daily.endsIn, o.daily.freezes) : null;
     if (pillText) {
       const under = v(width / 2, frame.maxY + 18);
       const lineText = pillText;
@@ -1659,7 +1675,7 @@ export const ResultBanner = {
     return summary.mode === 'chill' ? `${title}. ${detail}${best}` : `${title}. ${S.result.points(Fmt.number(r.score))}${best}. ${detail}${elite}`;
   },
 
-  add(list: RenderList, summary: ShiftSummary, nextLevel: number, bank: { before: number; after: number }, age: number, reduceMotion: boolean, gift: string | null, islandRadius: number): void {
+  add(list: RenderList, summary: ShiftSummary, nextLevel: number, bank: { before: number; after: number }, age: number, reduceMotion: boolean, gift: string | null, islandRadius: number): Vec2 | null {
     const r = summary.result;
     const frame = TopBar.frame(list.camera.viewport.x);
     const cols = TopBar.columns(frame);
@@ -1702,19 +1718,8 @@ export const ResultBanner = {
       }
     }
     list.tag = undefined;
-    const island = toScreen(list.camera, v(0, 0));
-    if (r.money > 0 && shown > 0.001) {
-      const x = reduceMotion ? 1 : Ease.clamp01((age - ResultBanner.countDelay) / ResultBanner.countDuration);
-      const counted = Math.round(r.money * Ease.outCubic(x));
-      const landed = (age - ResultBanner.countDelay - ResultBanner.countDuration) / 0.35;
-      // A lost shift's icon takes the left of this row (`FailChip`): the money moves right and gets a little smaller.
-      const beside = r.failCause !== null;
-      const base = beside ? 20 : 26;
-      moneyTag(list, '+' + Fmt.number(counted), add(sub(island, v(0, 64)), v(beside ? 34 : 0, 0)), reduceMotion || landed < 0 ? base : base * land(landed, 0.2), 'center', 'primary', 'accent', shown);
-    }
     const lock = ResultBanner.lock(summary);
     const prompt = Ease.outCubic((age - lock) / ResultBanner.enter);
-    if (prompt <= 0) return;
     const next = run
       ? S.run.again
       : summary.mode === 'unlimited'
@@ -1726,34 +1731,77 @@ export const ResultBanner = {
             : r.outcome === 'completed'
             ? S.result.nextLevel(nextLevel)
             : S.result.retryLevel(nextLevel);
-    islandLine(list, next, islandRadius, 0, 17, 'primary', prompt, 'bold');
-    // Once the result's details are gone the prompt stays alone: the promise for tomorrow takes their place, as on the ready screen.
-    if (gift) islandLine(list, gift, islandRadius, 28, 13, 'muted', prompt * ResultBanner.arriving(age));
-    const details = prompt * (1 - ResultBanner.leaving(age));
-    if (details <= 0.001) return;
-    const above = (s: string, color: ColorToken): void => islandLine(list, s, islandRadius, -28, 14, color, details, 'bold');
-    if (run) above(run.line, run.lineColor);
-    else if (r.costs > 0) above(S.result.loss(Fmt.number(r.costs), r.outcome === 'escaped'), 'destructive');
-    else if (r.covered > 0) above(S.result.covered(Fmt.number(r.covered)), 'muted');
-    else if (summary.mode === 'unlimited') above(S.modes.carsSent(r.carsSent), 'accent');
-    else if (summary.mode === 'mayhem') above(S.mayhem.summary(r.wrecks, r.biggestChain), 'fireOuter');
-    else if (summary.mode === 'chill') above(S.chill.summary(r.carsSent, Fmt.seconds(r.time)), 'lightBlue');
+    const detail: [string, ColorToken] | null = run
+      ? [run.line, run.lineColor]
+      : r.costs > 0
+        ? [S.result.loss(Fmt.number(r.costs), r.outcome === 'escaped'), 'destructive']
+        : r.covered > 0
+          ? [S.result.covered(Fmt.number(r.covered)), 'muted']
+          : summary.mode === 'unlimited'
+            ? [S.modes.carsSent(r.carsSent), 'accent']
+            : summary.mode === 'mayhem'
+              ? [S.mayhem.summary(r.wrecks, r.biggestChain), 'fireOuter']
+              : summary.mode === 'chill'
+                ? [S.chill.summary(r.carsSent, Fmt.seconds(r.time)), 'lightBlue']
+                : null;
     const close = summary.closeCall;
-    if (close) {
+    // The ring's gold bar already shows the XP; only a level climbed gets words.
+    const climbed = summary.elite && summary.elite.climbed > 0 ? summary.elite : null;
+
+    // The island holds one column, top to bottom: the failure icon, its caption or the details, the prompt, then the close call (or tomorrow's gift) and a climbed level. Rows are measured, so none can run into another; when the grass is too small the least important go first.
+    const rowOf = (s: string | null, size: number, weight: Weight): IslandRow => islandRow(list, s, islandRadius, size, weight);
+    const promptRow = rowOf(next, 17, 'bold');
+    const detailRow = rowOf(detail?.[0] ?? null, 14, 'bold');
+    const closeRow = rowOf(close?.text ?? null, 14, 'bold');
+    const giftRow = rowOf(gift, 13, 'regular');
+    const eliteRow = rowOf(climbed ? S.elite.toGo(climbed) : null, 16, 'bold');
+    const chip = r.failCause !== null;
+    // Through the breather the caption under the icon takes the details' place.
+    const caption = chip && ResultBanner.breathes(summary) ? 16 : 0;
+    const lowHeight = Math.max(closeRow.height, giftRow.height);
+    let useDetail = detailRow.height > 0;
+    let useLow = lowHeight > 0;
+    let useElite = eliteRow.height > 0;
+    const slotHeight = (): number => Math.max(useDetail ? detailRow.height : 0, caption);
+    const above = (): number => (chip ? FailChip.size + (slotHeight() > 0 ? 7 + slotHeight() : 0) : slotHeight());
+    const total = (): number => above() + (above() > 0 ? 8 : 0) + promptRow.height + (useLow ? 8 + lowHeight : 0) + (useElite ? 6 + eliteRow.height : 0);
+    const budget = 2 * (islandRadius * list.camera.scale - 14);
+    if (total() > budget) useElite = false;
+    if (total() > budget) useLow = false;
+    if (total() > budget) useDetail = false;
+
+    const island = toScreen(list.camera, v(0, 0));
+    let y = -total() / 2;
+    const chipAt = chip ? add(island, v(0, y + FailChip.size / 2)) : null;
+    if (chip) y += FailChip.size + (slotHeight() > 0 ? 7 : 0);
+    const detailY = y + slotHeight() / 2;
+    y += slotHeight() + (above() > 0 ? 8 : 0);
+    const promptY = y + promptRow.height / 2;
+    y += promptRow.height + 8;
+    const lowY = y + lowHeight / 2;
+    y += useLow ? lowHeight + 6 : 0;
+    const eliteY = y + eliteRow.height / 2;
+
+    if (prompt <= 0) return chipAt;
+    islandBlock(list, promptRow.lines, islandRadius, promptY, 17, 'primary', prompt, 'bold');
+    // Once the result's details are gone the prompt stays alone: the promise for tomorrow takes their place, as on the ready screen.
+    if (useLow) islandBlock(list, giftRow.lines, islandRadius, lowY, 13, 'muted', prompt * ResultBanner.arriving(age));
+    const details = prompt * (1 - ResultBanner.leaving(age));
+    if (details <= 0.001) return chipAt;
+    if (useDetail && detail) islandBlock(list, detailRow.lines, islandRadius, detailY, 14, detail[1], details, 'bold');
+    if (useLow && close) {
       // It lands a moment after the prompt: the thing to read after "tap to try again".
       const enter = reduceMotion ? 1 : Ease.outCubic((age - lock - 0.15) / 0.3);
       const rise = reduceMotion ? 0 : 6 * (1 - Ease.clamp01(enter));
-      if (enter > 0) islandLine(list, close.text, islandRadius, 54 + rise, 14, close.color, details * Ease.clamp01(enter), 'bold');
+      if (enter > 0) islandBlock(list, closeRow.lines, islandRadius, lowY + rise, 14, close.color, details * Ease.clamp01(enter), 'bold');
     }
-    const elite = summary.elite;
-    if (elite) {
-      // The ring starts its bar when the shift's ticks are gone; the words follow it. A level climbed waits until
-      // the bar closes, then the words land bigger.
-      const climbed = elite.climbed > 0;
-      const since = age - RingSignals.hold - (climbed ? RingSignals.eliteClosesAt : 0.3);
+    if (useElite && climbed) {
+      // The words follow the bar: they wait until it closes, then land bigger.
+      const since = age - RingSignals.hold - RingSignals.eliteClosesAt;
       const enter = reduceMotion ? 1 : Ease.outCubic(since / 0.3);
-      const size = climbed ? 16 * (reduceMotion ? 1 : land(since / 0.45, 0.25)) : 13;
-      if (enter > 0) islandLine(list, S.elite.toGo(elite), islandRadius, close ? 80 : 56, size, 'coin', details * enter, 'bold');
+      if (enter > 0) islandBlock(list, eliteRow.lines, islandRadius, eliteY, 16 * (reduceMotion ? 1 : land(since / 0.45, 0.25)), 'coin', details * enter, 'bold');
     }
+    return chipAt;
   },
+
 };

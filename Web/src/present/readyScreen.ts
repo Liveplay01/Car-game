@@ -68,21 +68,14 @@ export const ConditionChips = {
 
 /**
  * How a lost shift was lost, as an icon on the result (Leo, 15.10.2026: icons, not a sentence). It sits in the island's
- * top row, left of the money when there is some, and opens the Museum's sheet for that failure.
+ * top row (`ResultBanner.add` places it) and opens the Museum's sheet for that failure.
  */
 export const FailChip = {
   size: 46,
   hit: 64,
-  /** How far left of the middle the icon stands when the money shares its row. */
-  shift: 56,
-  /** The row's height above the island's middle: where the money tag sits. */
-  rise: 64,
-
-  center: (island: Vec2, withMoney: boolean): Vec2 => v(island.x - (withMoney ? FailChip.shift : 0), island.y - FailChip.rise),
-
   target: (center: Vec2): Rect => R.make(center.x - FailChip.hit / 2, center.y - FailChip.hit / 2, center.x + FailChip.hit / 2, center.y + FailChip.hit / 2),
 
-  /** `caption` (0–1) fades in under the icon what happened, in one calm line: through the breather, or the whole result the first time. */
+  /** `caption` (0–1) fades in under the icon what happened, in one calm line, through the breather. */
   add(list: RenderList, entry: MuseumEntry, center: Vec2, o: { age: number; reduceMotion: boolean; opacity: number; caption: number; selected: boolean; isNew: boolean }): void {
     const enter = o.reduceMotion ? Ease.clamp01(o.age / 0.2) : MenuKit.staggerSpring(o.age - 0.1, 0);
     const alpha = Ease.clamp01(enter) * o.opacity;

@@ -1,6 +1,6 @@
 import './shell.css';
 import { v, clamp } from '../core/vec2';
-import { GameSession, type InputAction, type SessionOutput } from '../present/session';
+import { GameSession, type InputAction, type Modifier, type SessionOutput } from '../present/session';
 import { CanvasDrawer } from '../present/draw';
 import { SWIPE_MODES, TAB_BAR, barTab, screenTab, type Tab } from '../present/flow';
 import { AudioPlayer, Haptics } from '../audio/player';
@@ -49,6 +49,9 @@ interface InstallPromptEvent extends Event {
   prompt(): Promise<void>;
   userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>;
 }
+
+/** The icon of each modifier before a shift (`Shell.showMods`). */
+const MOD_ICON: Record<Modifier['id'], string> = { heat: ICONS.flame, tailwind: ICONS.wind, streak: ICONS.streak, family: ICONS.hat, contract: ICONS.flag };
 
 /** The room the floating dock claims above the safe area (`--tabbar-h`). */
 const TAB_HEIGHT = 64;
@@ -104,8 +107,6 @@ export class Shell {
   private suppressClick = false;
   /** The tab the pill belongs under, as the session last said. */
   private shownTabIndex = -1;
-  /** The canvas' motion blur now (`GameSession.motionBlur`). */
-  private blur = 0;
   /** Focus moved with Tab since the last pointer press: a focused button then keeps Space and Enter. */
   private focusByKeyboard = false;
   private readonly settingsBtn: HTMLButtonElement;
@@ -123,8 +124,11 @@ export class Shell {
   private readonly doneBtn: HTMLButtonElement;
   private readonly photoBtn: HTMLButtonElement;
   /** On the Game tab while a Heat is open: the next step of the waiting shift. */
-  private readonly heatBtn: HTMLElement;
-  private readonly heatLabel: HTMLElement;
+  /** What changes the next shift's pay (`GameSession.modifiers`): one as a labelled pill, several as round icons. */
+  private readonly mods = h('div', { class: 'run-mods', role: 'group', 'aria-label': S.mods.label });
+  private modsKey = '';
+  /** The icon tapped open among several; null while they all stand as icons. */
+  private modOpen: Modifier['id'] | null = null;
   /** The Social tab's content: Friends, Ranks and the Club under the canvas' segments. */
   private readonly social: SocialView;
   /** On the Game tab while chests wait: the way to the Chests page, in the paint of the first one. */
@@ -174,7 +178,7 @@ export class Shell {
 
   constructor(
     private readonly app: HTMLElement,
-    private readonly canvas: HTMLCanvasElement,
+    canvas: HTMLCanvasElement,
     private readonly layers: HTMLElement,
   ) {
     this.drawer = new CanvasDrawer(canvas);
@@ -232,14 +236,8 @@ export class Shell {
     );
     for (const b of [this.settingsBtn, this.dispatchBtn, this.doneBtn]) b.addEventListener('pointerdown', (e) => e.stopPropagation());
     // Picture is a labelled pill like Settings and the chest pill, all one size (Leo, 08.10.2026). Friends moved to the Social tab (Leo, 10.10.2026).
-    this.heatLabel = h('span', {}, '');
-    // Heat is never chosen (Leo, 15.10.2026): the pill only shows it is on, and how much more the shift pays.
-    this.heatBtn = h(
-      'div',
-      { class: 'btn glass run-btn heat-on' },
-      icon(ICONS.flame),
-      this.heatLabel,
-    );
+    // Heat is never chosen (Leo, 15.10.2026), nor is any other modifier: the pills only show what is on and what it does.
+    this.mods.addEventListener('pointerdown', (e) => e.stopPropagation());
     // Under any result: the picture on the screen, to send or keep.
     this.photoBtn = h(
       'button',
@@ -340,7 +338,7 @@ export class Shell {
           open();
         });
     };
-    const runBar = h('div', { class: 'run-bar' }, this.chestBtn, this.heatBtn, this.leaveBtn, this.photoBtn);
+    const runBar = h('div', { class: 'run-bar' }, this.chestBtn, this.mods, this.leaveBtn, this.photoBtn);
     // After a match: Ready (everyone taps it, then the next round starts), and for the host a
     // way back to the lobby to change the format or the bots.
     this.againLabel = h('span', {}, S.lobby.playAgain);
@@ -364,7 +362,7 @@ export class Shell {
       h('button', { class: 'react-btn', type: 'button', 'aria-label': S.shell.reaction(r), 'aria-keyshortcuts': String(i + 1), onclick: () => this.versus.react(r) }, REACTION_EMOJI[r]),
     );
     this.reactBar = h('div', { class: 'react-bar', role: 'group', 'aria-label': S.shell.reactions }, ...reactButtons, this.revengeBtn);
-    for (const b of [this.settingsBtn, this.dispatchBtn, this.doneBtn, this.heatBtn, this.photoBtn, this.chestBtn, this.leaveBtn, this.againBtn, this.lobbyBtn, quitBtn, this.reactBar]) b.addEventListener('pointerdown', (e) => e.stopPropagation());
+    for (const b of [this.settingsBtn, this.dispatchBtn, this.doneBtn, this.photoBtn, this.chestBtn, this.leaveBtn, this.againBtn, this.lobbyBtn, quitBtn, this.reactBar]) b.addEventListener('pointerdown', (e) => e.stopPropagation());
     app.append(this.settingsBtn, this.dispatchBtn, this.doneBtn, runBar, this.reactBar, this.versusBar, this.tapHint, this.dispatchHint);
     this.detail = new DetailSheet(
       app,
@@ -665,6 +663,52 @@ export class Shell {
     }
   }
 
+  /**
+   * The modifiers before a shift (Leo, 16.10.2026). One is a pill with its words, like Heat always was. Several stand as
+   * round icons side by side; a tap on one pushes the others aside and opens it to its words (`+25 %`), a second tap or
+   * a tap on another closes it again.
+   */
+  private showMods(mods: Modifier[]): void {
+    const key = mods.map((m) => `${m.id}:${m.label}`).join('|');
+    if (!mods.some((m) => m.id === this.modOpen)) this.modOpen = null;
+    if (key !== this.modsKey) {
+      this.modsKey = key;
+      const single = mods.length === 1;
+      this.mods.replaceChildren(
+        ...mods.map((m) =>
+          single
+            ? h('div', { class: `mod ${m.tone}`, 'data-id': m.id }, icon(MOD_ICON[m.id]), h('span', { class: 'mod-label' }, m.label))
+            : h(
+                'button',
+                {
+                  class: `mod ${m.tone}`,
+                  type: 'button',
+                  'data-id': m.id,
+                  'aria-label': m.label,
+                  onclick: () => {
+                    this.modOpen = this.modOpen === m.id ? null : m.id;
+                    this.openMod();
+                  },
+                },
+                icon(MOD_ICON[m.id]),
+                h('span', { class: 'mod-label', 'aria-hidden': 'true' }, m.label),
+              ),
+        ),
+      );
+      this.mods.classList.toggle('single', single);
+    }
+    this.openMod();
+  }
+
+  private openMod(): void {
+    this.mods.classList.toggle('opened', this.modOpen !== null);
+    for (const el of Array.from(this.mods.children) as HTMLElement[]) {
+      const open = el.dataset.id === this.modOpen;
+      el.classList.toggle('open', open);
+      if (el instanceof HTMLButtonElement) el.setAttribute('aria-expanded', String(open));
+    }
+  }
+
   /** Mirrors the session's screen onto the DOM: tab bar, selected tab, badges, buttons. */
   private syncChrome(force = false): void {
     const s = this.session;
@@ -680,7 +724,7 @@ export class Shell {
     let badgeKey = '';
     for (const b of badges) badgeKey += b === null ? '-' : b === 'dot' ? '.' : `${b.count};`;
     const onSocial = screen.k === 'page' && screen.tab === 'social' && s.showsChrome && !match;
-    const key = `${screen.k}|${selected}|${onSocial ? s.socialPage.section : -1}|${this.size.x}|${badgeKey}|${s.world.shift.phase}|${s.playingMode}|${s.special?.k ?? ''}|${s.shareable ? 1 : 0}|${match ? 1 : 0}|${versusKey}|${s.save.settings.leftHanded}|${s.save.settings.dispatchSize}|${s.notesUnread}|${s.showsChrome}|${s.chestOffer}|${s.save.career.chests[0] ?? ''}|${s.world.dispatchesLeft}|${s.heatPill ?? ''}`;
+    const key = `${screen.k}|${selected}|${onSocial ? s.socialPage.section : -1}|${this.size.x}|${badgeKey}|${s.world.shift.phase}|${s.playingMode}|${s.special?.k ?? ''}|${s.shareable ? 1 : 0}|${match ? 1 : 0}|${versusKey}|${s.save.settings.leftHanded}|${s.save.settings.dispatchSize}|${s.notesUnread}|${s.showsChrome}|${s.chestOffer}|${s.save.career.chests[0] ?? ''}|${s.world.dispatchesLeft}|${s.modifiers.map((m) => m.label).join(',')}`;
     if (!force && key === this.chromeKey) return;
     this.chromeKey = key;
     this.social.sync(onSocial, s.socialPage.section, SocialPage.column(this.size));
@@ -727,9 +771,9 @@ export class Shell {
     this.tapHint.classList.toggle('show', fresh && screen.k === 'playing');
     this.dispatchHint.classList.toggle('show', touchFirst && !match && screen.k === 'playing' && !chill && s.world.config.dispatchLimit > 0 && s.save.career.level <= baseConfig.policeLevel + 1);
     this.doneBtn.classList.toggle('show', screen.k === 'playing' && chill);
-    const heat = s.heatPill;
-    this.heatBtn.classList.toggle('show', onGame && heat !== null && !match);
-    if (heat !== null) this.heatLabel.textContent = heat;
+    const mods = match ? [] : s.modifiers;
+    this.showMods(mods);
+    this.mods.classList.toggle('show', onGame && mods.length > 0);
     this.photoBtn.classList.toggle('show', screen.k === 'result' && !match && s.showsChrome && s.resultWorthPicture);
     const chests = match ? 0 : s.chestOffer;
     this.chestBtn.classList.toggle('show', chests > 0);
@@ -1492,12 +1536,6 @@ export class Shell {
     s.backdrop = this.backdrop.ready;
     // A multiplayer match owns the canvas; the career world waits where it was.
     const list = match ? match.frame(delta, this.size, s.reduceMotion) : s.frame(delta, actions, this.size, TAB_HEIGHT);
-    // Rounded to a tenth and written only on a change: the filter is a compositor step, not a style recalculation per frame.
-    const blur = match ? 0 : Math.round(s.motionBlur * 10) / 10;
-    if (blur !== this.blur) {
-      this.blur = blur;
-      this.canvas.style.filter = blur > 0 ? `blur(${blur}px)` : '';
-    }
     this.drawer.draw(list);
     this.backdrop.visible = list.backdrop !== null;
     this.adaptQuality(delta);

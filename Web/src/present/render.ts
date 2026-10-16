@@ -37,6 +37,8 @@ export interface RenderItem {
   clip?: Rect;
   /** A rect that frosts what lies under it: the blur radius in points (`CanvasDrawer.glassBlur` allowing). */
   glass?: number;
+  /** A screen rect that eases from its colour at the top to nothing at the foot (a scrim). */
+  fade?: true;
 }
 
 /** A still stretch of the list (`RenderList.bake`): null key, its shapes are compared instead. */
@@ -122,6 +124,8 @@ export class RenderList {
   clip: Rect | undefined = undefined;
   /** Set while drawing the material of a floating panel: its blur radius. */
   glass: number | undefined = undefined;
+  /** Set while drawing a scrim: its rects fade out downwards. */
+  fade = false;
   /** Set while drawing a group that gets a texture over it (the roads). */
   grain: Grain | undefined = undefined;
   /** The ground between everything gets a faint texture, anchored to the world. */
@@ -153,6 +157,8 @@ export class RenderList {
   /** Dark edges over the scene, 0…1 of the drawer's strongest (`CameraFx`), laid in before item `vignetteAt`: under the HUD. */
   vignette = 0;
   vignetteAt = 0;
+  /** Motion blur of the scene under way, in screen points: only what is laid in before `vignetteAt` (never the HUD or the menus). */
+  blur = 0;
   constructor(
     public camera: Camera,
     public background: ColorToken,
@@ -164,6 +170,7 @@ export class RenderList {
     if (this.tag !== undefined) item.tag = this.tag;
     if (this.clip !== undefined) item.clip = this.clip;
     if (this.glass !== undefined && space === 'screen') item.glass = this.glass;
+    if (this.fade && space === 'screen') item.fade = true;
     if (this.grain !== undefined && space === 'world') item.grain = this.grain;
     this.items.push(item);
   }

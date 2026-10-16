@@ -5,6 +5,7 @@ import { Elite } from '../core/elite';
 import { SeasonPass } from '../core/seasonPass';
 import { Unlocks } from '../core/unlocks';
 import { Mafia } from '../core/mafia';
+import { Contracts } from '../core/contracts';
 import type { GameEvent, ShiftResult } from '../core/events';
 import type { Upgrade } from '../core/levels';
 import { ALBUM_REWARD, BIG_SCREEN, CHEST_KINDS, chestPrice, cosmetic, rarityRank, tapPower, strongTaps, type ChestKind } from '../core/loot';
@@ -121,6 +122,13 @@ export interface SessionOutput {
   feelsHaptics?: boolean;
 }
 
+/** One thing that changes the next shift's pay (`GameSession.modifiers`). */
+export interface Modifier {
+  id: 'heat' | 'tailwind' | 'streak' | 'family' | 'contract';
+  label: string;
+  tone: 'heat' | 'bonus' | 'loss';
+}
+
 /**
  * Runs the game for the browser: screens, fixed-step loop, input
  * timestamps, feedback, save game and the render list. The roundabout never stops: every tab
@@ -151,12 +159,12 @@ export class GameSession {
    */
   lowDetail = false;
 
-  /** A light motion blur for the camera's glides between views, in pixels (Leo, 16.10.2026); never with Reduce Motion or on a slow device. */
+  /** A faint motion blur on the scene while the camera glides between views (Leo, 16.10.2026), in points; never with Reduce Motion or on a slow device. */
   get motionBlur(): number {
     return this.reduceMotion || this.lowDetail ? 0 : GameSession.glideBlur * this.cameraRig.motion;
   }
 
-  static readonly glideBlur = 0.9;
+  static readonly glideBlur = 0.35;
 
   /** Recommends Reduce Motion, once ever, when the game runs slow; never switches it on. */
   recommendReduceMotion(): void {
@@ -2903,6 +2911,7 @@ export class GameSession {
     this.explosions.addFlash(list, viewport);
     list.vignette = this.cameraFx.vignette;
     list.vignetteAt = list.items.length;
+    list.blur = this.motionBlur;
 
     const overlayStart = list.items.length;
     const s = this.screen;
@@ -2956,8 +2965,8 @@ export class GameSession {
       HUD.addPopups(list, this.popups, rm);
       if (this.countIn > 0 || this.isInterrupted) HUD.addCountIn(list, this.isInterrupted ? GameSession.countInSeconds : this.countIn);
     } else if (s.k === 'result') {
-      ResultBanner.add(list, s.summary, this.playingLevel, this.resultBank, this.resultAge, rm, this.giftLine, world.layout.islandRadius);
-      this.addFailChip(list, s.summary);
+      const chipAt = ResultBanner.add(list, s.summary, this.playingLevel, this.resultBank, this.resultAge, rm, this.giftLine, world.layout.islandRadius);
+      if (chipAt) this.addFailChip(list, s.summary, chipAt);
       this.tutorial?.add(list, world, alpha, this.sceneTime, rm);
       const arriving = ResultBanner.arriving(this.resultAge);
       if (arriving > 0) underCard = this.addReadyBanner(list, null, false, arriving);
@@ -2990,10 +2999,26 @@ export class GameSession {
   }
 
   /** The Game tab's Heat pill, only a sign (Leo, 15.10.2026): its text while a career shift waits (behind the result too) at a Heat, else null. */
-  get heatPill(): string | null {
-    if ((this.screen.k !== 'ready' && this.screen.k !== 'result') || this.special || this.versusSelected || this.playingDaily || this.playingMode !== 'shift' || !(this.tutorial?.isOver ?? true)) return null;
-    const heat = Careers.maxHeat(this.save.career, this.today, this.config);
-    return heat > 0 ? S.heat.button(heat) : null;
+  /**
+   * What changes the next shift's pay, said before it starts (Leo, 16.10.2026): Heat, a waiting Tailwind, a living streak,
+   * the Family's share of a late loan, a signed contract. One shows as a labelled pill, several as icons (`ui/shell.ts`).
+   * The Daily says its streak on its own pill, a trial or challenge its rule on the top card.
+   */
+  get modifiers(): Modifier[] {
+    if ((this.screen.k !== 'ready' && this.screen.k !== 'result') || this.special || this.versusSelected || !(this.tutorial?.isOver ?? true)) return [];
+    const mode = this.playingMode;
+    if (mode === 'mayhem' || mode === 'chill') return [];
+    const career = this.save.career;
+    const daily = this.playingDaily;
+    const onCareer = mode === 'shift' && !daily;
+    const out: Modifier[] = [];
+    const heat = onCareer ? Careers.maxHeat(career, this.today, this.config) : 0;
+    if (heat > 0) out.push({ id: 'heat', label: S.heat.button(heat), tone: 'heat' });
+    if (Goals.tailwindOn(career, mode, daily)) out.push({ id: 'tailwind', label: S.mods.tailwind(this.config.tailwindPay), tone: 'bonus' });
+    if (!daily && Goals.streakBonus(career, this.today, this.config)) out.push({ id: 'streak', label: S.mods.streak(this.config.streakBonusPay), tone: 'bonus' });
+    if (Mafia.late(career)) out.push({ id: 'family', label: S.mods.family(this.config.mafiaGarnish), tone: 'loss' });
+    if (onCareer && career.contract) out.push({ id: 'contract', label: S.mods.contract(S.club.goalName(career.contract.goal), Contracts.pay(career.contract.goal, this.config)), tone: 'bonus' });
+    return out;
   }
 
   /** On the Social tab the notice is the DOM page's pill (`ui/socialPage.ts`): the drawn one would sit under the page. */
@@ -3085,7 +3110,6 @@ export class GameSession {
       elite: !this.special && Elite.isOpen(career, this.config),
       playerName: this.versusSelected ? loadPlayerName() : undefined,
       daily,
-      tailwind: !this.special && !this.versusSelected && Goals.tailwindOn(career, this.playingMode, this.playingDaily) ? this.config.tailwindPay : null,
       mode: this.playingMode,
       versus: this.versusSelected,
       prompt: opening ? null : prompt,
@@ -3111,19 +3135,18 @@ export class GameSession {
   }
 
   /** How a lost shift was lost, as an icon over the island: a tap opens its Museum sheet (`showCondition`), the sheet rimmed in red. */
-  private addFailChip(list: RenderList, summary: ShiftSummary): void {
+  private addFailChip(list: RenderList, summary: ShiftSummary, center: Vec2): void {
     const cause = summary.result.failCause;
     const age = this.resultAge;
     const shown = Ease.outCubic(age / ResultBanner.enter) * (1 - ResultBanner.leaving(age));
     if (!cause || shown <= 0.001) return;
     const entry: MuseumEntry = { k: 'fail', kind: cause };
     const id = museumId(entry);
-    const center = FailChip.center(toScreen(list.camera, v(0, 0)), summary.result.money > 0);
     FailChip.add(list, entry, center, {
       age,
       reduceMotion: this.reduceMotion,
       opacity: shown,
-      caption: this.save.career.museumNew.includes(id) ? 1 : ResultBanner.breathes(summary) ? ResultBanner.mourning(age) : 0,
+      caption: ResultBanner.breathes(summary) ? ResultBanner.mourning(age) : 0,
       selected: this.conditionShown === id,
       isNew: this.save.career.museumNew.includes(id),
     });

@@ -8,6 +8,10 @@ export const ICONS = {
   gear: '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1Z"/>',
   /** A finger pressing down: the tap hint of the first shifts. */
   tap: '<path d="M9.5 11V4.8a1.8 1.8 0 0 1 3.6 0V10l3.6.9a2.4 2.4 0 0 1 1.8 2.6l-.6 4.5a3 3 0 0 1-3 2.6h-3.3a3 3 0 0 1-2.4-1.2L6 15.2a1.6 1.6 0 0 1 2.4-2.1l1.1 1.1V11Z"/>',
+  /** The modifiers before a shift (`.run-mods`): Tailwind, a living streak, the Family's share. */
+  wind: '<path d="M3 8h10a3 3 0 1 0-3-3M3 12h15a3 3 0 1 1-3 3M3 16h7"/>',
+  streak: '<rect x="4" y="5" width="16" height="15" rx="2"/><path d="M8 3v4M16 3v4M4 10h16M9 15l2 2 4-4"/>',
+  hat: '<path d="M3 16c2.5 1.5 5.5 2 9 2s6.5-.5 9-2"/><path d="M6 15.5 7.5 7a2 2 0 0 1 2.4-1.6L12 6l2.1-.6A2 2 0 0 1 16.5 7L18 15.5"/><path d="M6.6 12.5c3.5 1 7.3 1 10.8 0"/>',
   siren: '<path d="M7 18v-5a5 5 0 0 1 10 0v5"/><path d="M5 18h14v3H5zM12 3v2M4.2 6.2l1.4 1.4M19.8 6.2l-1.4 1.4M2 12h2M20 12h2"/>',
   coin: '<circle cx="12" cy="12" r="10" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="6.5" fill="none" stroke="#0B0D10" stroke-opacity=".35" stroke-width="1.6"/>',
   lock: '<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/>',

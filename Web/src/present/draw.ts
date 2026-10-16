@@ -1,5 +1,5 @@
 import type { RenderList, RenderItem, Camera, Grain, Bake } from './render';
-import { toScreen, unitHash } from './render';
+import { Ease, toScreen, unitHash } from './render';
 import { COLORS, css, type ColorToken } from './theme';
 import { type Vec2, v } from '../core/vec2';
 import { MONEY_MARK, textPieces, inlineMoneyWidth, moneyShapes } from './icons';
@@ -181,13 +181,47 @@ export class CanvasDrawer {
     }
     if (start === 0) this.paintGround(list, 0, list.camera);
     this.prepare();
-    if (list.vignette > 0.002) {
+    const blurs = list.blur > CanvasDrawer.blurLeast;
+    if (list.vignette > 0.002 || blurs) {
       const at = Math.max(start, Math.min(list.vignetteAt, list.items.length));
       this.paintItems(list, start, at, list.camera, still);
-      this.paintVignette(list.vignette * (isBright(list.background) ? CanvasDrawer.vignetteBright : CanvasDrawer.vignetteDark));
+      if (blurs) this.blurScene(list.blur);
+      if (list.vignette > 0.002) this.paintVignette(list.vignette * (isBright(list.background) ? CanvasDrawer.vignetteBright : CanvasDrawer.vignetteDark));
       this.paintItems(list, at, list.items.length, list.camera, still);
     } else this.paintItems(list, start, list.items.length, list.camera, still);
     if (list.pixelated) this.pixelate();
+  }
+
+  /** Below this blur (points) the kernel is the identity: no pass at all, so it fades in and out without a step. */
+  static readonly blurLeast = 0.04;
+  private blurArt: HTMLCanvasElement | null = null;
+
+  /**
+   * What the scene has painted so far, blurred a little: it is copied aside and drawn back through the context's own
+   * blur, so the HUD and the menus that follow stay sharp. A browser without `ctx.filter` simply goes without.
+   */
+  private blurScene(points: number): void {
+    const ctx = this.ctx;
+    if (!('filter' in ctx)) return;
+    const w = this.canvas.width;
+    const h = this.canvas.height;
+    if (!this.blurArt) this.blurArt = document.createElement('canvas');
+    if (this.blurArt.width !== w || this.blurArt.height !== h) {
+      this.blurArt.width = w;
+      this.blurArt.height = h;
+    }
+    const aside = this.blurArt.getContext('2d');
+    if (!aside) return;
+    aside.setTransform(1, 0, 0, 1, 0, 0);
+    aside.clearRect(0, 0, w, h);
+    aside.drawImage(this.canvas, 0, 0);
+    ctx.save();
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.clearRect(0, 0, w, h);
+    ctx.filter = `blur(${(points * this.dpr).toFixed(2)}px)`;
+    ctx.drawImage(this.blurArt, 0, 0);
+    ctx.restore();
+    this.prepare();
   }
 
   /** The strongest vignette's corners, on a daylight ground and on a dark one (where black shows less). */
@@ -762,6 +796,15 @@ export class CanvasDrawer {
             ctx.fill();
             return;
           }
+        }
+        if (item.fade && rot === 0) {
+          // Eased stops, so neither the start nor the end of the fade shows as an edge.
+          const gradient = ctx.createLinearGradient(0, cy - h / 2, 0, cy + h / 2);
+          for (let i = 0; i <= 12; i++) gradient.addColorStop(i / 12, css(item.color, item.opacity * (1 - Ease.smoothstep(i / 12))));
+          ctx.fillStyle = gradient;
+          this.fill = null;
+          ctx.fillRect(cx - w / 2, cy - h / 2, w, h);
+          return;
         }
         this.setFill(color);
         if (rot !== 0 && r <= 0.3) {

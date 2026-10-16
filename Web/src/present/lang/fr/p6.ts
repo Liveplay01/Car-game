@@ -495,8 +495,15 @@ export default (S: Strings): Words<Strings> => ({
   heat: {
     button: (heat) => `Intensité +${Math.round(heat * baseConfig.heatPay * 100)} %`,
     cleared: (heat) => `INTENSITÉ ${heat} RÉUSSIE`,
-    pill: (tailwind) => (tailwind ? `VENT PORTANT +${Math.round(tailwind * 100)} %` : null),
     rule: (level) => `Réussissez un service à l’Intensité ${level}`,
+  },
+
+  mods: {
+    label: 'Modificateurs du prochain service',
+    tailwind: (pay) => `Vent portant +${Math.round(pay * 100)} %`,
+    streak: (pay) => `Série +${Math.round(pay * 100)} %`,
+    family: (share) => `Famille −${Math.round(share * 100)} %`,
+    contract: (goal, times) => `${goal} ×${times}`,
   },
 
   goals: {

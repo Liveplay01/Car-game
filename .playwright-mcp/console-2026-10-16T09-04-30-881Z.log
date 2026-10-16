@@ -3,3 +3,9 @@
     at Shell.syncChrome (http://localhost:5056/src/ui/shell.ts?t=1792146901283:642:17)
     at new Shell (http://localhost:5056/src/ui/shell.ts?t=1792146901283:482:8)
     at http://localhost:5056/src/main.ts?t=1792146901283:96:15
+[ 6691802ms] [LOG] [vite] server connection lost. Polling for restart... @ http://localhost:5056/@vite/client:1030
+[ 6692227ms] [WARNING] Error while trying to use the following icon from the Manifest: http://localhost:5056/icons/icon-192.png (Download error or resource isn't a valid image) @ http://localhost:5056/:0
+[ 6849351ms] [WARNING] Error while trying to use the following icon from the Manifest: http://localhost:5056/icons/icon-192.png (Download error or resource isn't a valid image) @ http://localhost:5056/:0
+[ 6917863ms] [LOG] [vite] server connection lost. Polling for restart... @ http://localhost:5056/@vite/client:1030
+[ 6922143ms] [ERROR] Failed to load resource: net::ERR_SOCKET_NOT_CONNECTED @ http://localhost:5056/src/core/achievements.ts:0
+[ 6922143ms] [ERROR] Failed to load resource: net::ERR_SOCKET_NOT_CONNECTED @ http://localhost:5056/node_modules/vite/dist/client/env.mjs:0

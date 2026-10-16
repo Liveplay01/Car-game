@@ -2038,3 +2038,12 @@
     at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
 [  974441ms] ReferenceError: clamp is not defined
     at http://localhost:5050/src/ui/shell.ts?t=1792147141662:606:63
+[ 1981659ms] [LOG] [vite] server connection lost. Polling for restart... @ http://localhost:5050/@vite/client:1030
+[ 2207732ms] [LOG] [vite] server connection lost. Polling for restart... @ http://localhost:5050/@vite/client:1030
+[ 2211993ms] [LOG] [vite] server connection lost. Polling for restart... @ http://localhost:5050/@vite/client:1030
+[ 2217071ms] [LOG] [vite] server connection lost. Polling for restart... @ http://localhost:5050/@vite/client:1030
+[ 2242588ms] [LOG] [vite] server connection lost. Polling for restart... @ http://localhost:5050/@vite/client:1030
+[ 2248102ms] [LOG] [vite] server connection lost. Polling for restart... @ http://localhost:5050/@vite/client:1030
+[ 2328146ms] [LOG] [vite] server connection lost. Polling for restart... @ http://localhost:5050/@vite/client:1030
+[ 2755034ms] [LOG] [vite] server connection lost. Polling for restart... @ http://localhost:5050/@vite/client:1030
+[ 2841615ms] [LOG] [vite] server connection lost. Polling for restart... @ http://localhost:5050/@vite/client:1030

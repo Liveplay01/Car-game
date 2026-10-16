@@ -495,8 +495,15 @@ export default (S: Strings): Words<Strings> => ({
   heat: {
     button: (heat) => `Calor +${Math.round(heat * baseConfig.heatPay * 100)} %`,
     cleared: (heat) => `¡CALOR ${heat} SUPERADO!`,
-    pill: (tailwind) => (tailwind ? `VIENTO A FAVOR +${Math.round(tailwind * 100)} %` : null),
     rule: (level) => `Supera un turno con Calor ${level}`,
+  },
+
+  mods: {
+    label: 'Modificadores del próximo turno',
+    tailwind: (pay) => `Viento a favor +${Math.round(pay * 100)} %`,
+    streak: (pay) => `Racha +${Math.round(pay * 100)} %`,
+    family: (share) => `Familia −${Math.round(share * 100)} %`,
+    contract: (goal, times) => `${goal} ×${times}`,
   },
 
   goals: {

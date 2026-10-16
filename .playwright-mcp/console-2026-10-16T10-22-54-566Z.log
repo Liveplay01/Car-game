@@ -39,3 +39,19 @@
 [  880889ms] [WARNING] The AudioContext was not allowed to start. It must be resumed (or created) after a user gesture on the page. https://developer.chrome.com/blog/autoplay/#web_audio @ http://localhost:5050/src/audio/player.ts:193
 [  880889ms] [WARNING] The AudioContext was not allowed to start. It must be resumed (or created) after a user gesture on the page. https://developer.chrome.com/blog/autoplay/#web_audio @ http://localhost:5050/src/audio/player.ts:193
 [  880889ms] [WARNING] The AudioContext was not allowed to start. It must be resumed (or created) after a user gesture on the page. https://developer.chrome.com/blog/autoplay/#web_audio @ http://localhost:5050/src/audio/player.ts:193
+[ 1988127ms] [LOG] [vite] server connection lost. Polling for restart... @ http://localhost:5050/@vite/client:1030
+[ 1989374ms] [WARNING] Error while trying to use the following icon from the Manifest: http://localhost:5050/icons/icon-192.png (Download error or resource isn't a valid image) @ http://localhost:5050/:0
+[ 2146114ms] The requested module '/src/ui/shell.ts?t=1792148319416' does not provide an export named 'Shell'
+[ 2214198ms] [LOG] [vite] server connection lost. Polling for restart... @ http://localhost:5050/@vite/client:1030
+[ 2218454ms] [LOG] [vite] server connection lost. Polling for restart... @ http://localhost:5050/@vite/client:1030
+[ 2219254ms] [WARNING] Error while trying to use the following icon from the Manifest: http://localhost:5050/icons/icon-192.png (Download error or resource isn't a valid image) @ http://localhost:5050/:0
+[ 2223538ms] [LOG] [vite] server connection lost. Polling for restart... @ http://localhost:5050/@vite/client:1030
+[ 2223551ms] [ERROR] Failed to load resource: net::ERR_SOCKET_NOT_CONNECTED @ http://localhost:5050/src/present/notices.ts:0
+[ 2224326ms] [WARNING] Error while trying to use the following icon from the Manifest: http://localhost:5050/icons/icon-192.png (Download error or resource isn't a valid image) @ http://localhost:5050/:0
+[ 2249056ms] [LOG] [vite] server connection lost. Polling for restart... @ http://localhost:5050/@vite/client:1030
+[ 2254569ms] [LOG] [vite] server connection lost. Polling for restart... @ http://localhost:5050/@vite/client:1030
+[ 2334616ms] [LOG] [vite] server connection lost. Polling for restart... @ http://localhost:5050/@vite/client:1030
+[ 2334700ms] [ERROR] Failed to load resource: net::ERR_SOCKET_NOT_CONNECTED @ http://localhost:5050/src/present/museumSignal.ts:0
+[ 2335129ms] [WARNING] Error while trying to use the following icon from the Manifest: http://localhost:5050/icons/icon-192.png (Download error or resource isn't a valid image) @ http://localhost:5050/:0
+[ 2761501ms] [LOG] [vite] server connection lost. Polling for restart... @ http://localhost:5050/@vite/client:1030
+[ 2848085ms] [LOG] [vite] server connection lost. Polling for restart... @ http://localhost:5050/@vite/client:1030

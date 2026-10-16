@@ -62,6 +62,7 @@ export const PATCH_NOTES: PatchNote[] = [
       'A loan from the Family now shows on the ring: a thin line runs round as its days pass.',
     ],
     items: [
+      'Fixed: after a lost shift the texts in the middle of the ring no longer pile on top of each other, especially on phones. Each line gets its own room, and the money and XP lines, which the counter and the ring already show, are gone.',
       'Daily quests only ask for what you have met on the road: no criminals before level 3, no money transporters before level 4.',
       'Overtime, the Tight Fit tip and Quick Recovery have a cheaper first step (800, 900 and 1,000), so your first upgrade comes after a few shifts. Every later step costs what it did.',
       'Upgrades for the police, the criminals and the money transporters appear once those are on your road, and the dispatch button size setting once the police are.',

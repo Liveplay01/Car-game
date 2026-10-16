@@ -2488,9 +2488,16 @@ export const S = {
     /** The Game tab's pill: Heat is on, and how much more the shift pays. */
     button: (heat: number): string => `Heat +${Math.round(heat * baseConfig.heatPay * 100)} %`,
     cleared: (heat: number): string => `HEAT ${heat} CLEARED`,
-    /** The waiting screen's pill: Tailwind; null when it is off (Heat has its own pill). */
-    pill: (tailwind: number | null): string | null => (tailwind ? `TAILWIND +${Math.round(tailwind * 100)} %` : null),
     rule: (level: number): string => `Clear a shift on Heat ${level}`,
+  },
+
+  /** What changes the next shift's pay, before it starts (`ui/shell.ts`, `.run-mods`); Heat says its own (`heat.button`). */
+  mods: {
+    label: 'Modifiers on the next shift',
+    tailwind: (pay: number): string => `Tailwind +${Math.round(pay * 100)} %`,
+    streak: (pay: number): string => `Streak +${Math.round(pay * 100)} %`,
+    family: (share: number): string => `Family −${Math.round(share * 100)} %`,
+    contract: (goal: string, times: number): string => `${goal} ×${times}`,
   },
 
   goals: {
