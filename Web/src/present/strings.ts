@@ -150,6 +150,8 @@ export const S = {
     hapticsNone: 'Not available in this browser',
     batterySaver: 'Battery saver',
     batterySaverSub: 'Draws 30 frames a second and a softer picture. Easier on the battery.',
+    lowDetail: 'Low detail',
+    lowDetailSub: 'Fewer effects and no frosted glass, for an older device. The game turns this on by itself if it keeps stuttering.',
     sound: 'Sound',
     soundEffects: 'Sound effects',
     music: 'Music',
@@ -171,6 +173,8 @@ export const S = {
     deleteAccount: 'Delete account',
     theGame: 'The game',
     followUs: 'Follow us',
+    guides: 'Guides',
+    guidesSub: 'How each place works, any time.',
     whatsNew: "What's new",
     whatsNewSub: 'Patch notes and updates.',
     newBadge: 'New',
@@ -1436,12 +1440,12 @@ export const S = {
     froze: 'Freeze added',
     frozeLine: 'One missed day will not break your streak',
     doubled: 'Pay doubled',
-    chestEarned: 'Free chest',
-    chestEarnedLine: 'Standard chest added',
     retryPill: 'Second try · watch an ad',
     noRetry: 'One second try a day, and it is used.',
     retried: 'Second try',
     retriedLine: "Today's Daily is open again",
+    chestEarned: 'Free chest',
+    chestEarnedLine: 'Standard chest added',
   },
   /** The moments the game is about (Leo, 16.10.2026): each gets one loud celebration (`GameSession.momentOf`). */
   moments: {
@@ -1607,10 +1611,10 @@ export const S = {
 
   /** Social → Ranks (`ui/ranksPanel.ts`). */
   ranks: {
-    boards: {
-      'shift-level': { label: 'Shift level', empty: 'Clear a shift to be the first one here.' },
     /** Under a name on the Daily board: an ad gave that player a second try. */
     secondTry: '2 tries',
+    boards: {
+      'shift-level': { label: 'Shift level', empty: 'Clear a shift to be the first one here.' },
       unlimited: { label: 'Unlimited', empty: 'Set an Unlimited record to be the first one here.' },
       daily: { label: 'Daily', empty: 'Clear today’s Daily Shift to be the first one here.' },
       rush: { label: 'Boss Rush', empty: 'Clear a Boss Rush to set the first time.' },

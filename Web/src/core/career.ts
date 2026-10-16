@@ -89,6 +89,8 @@ export interface Settings {
   largeText: boolean;
   /** Half the frames and a softer picture, for a phone that gets hot or empties too fast (Leo, 10.10.2026). */
   batterySaver: boolean;
+  /** Fewer effects and no glass blur, for an old device: chosen, or switched on by the game once it kept stuttering. */
+  lowDetail: boolean;
   /**
    * The player chose "System" themselves (Leo, 29.09.2026: Reduce Motion is off unless chosen).
    * A "system" saved before without this was the old default and reads as off.
@@ -208,11 +210,11 @@ export interface Career {
   adRescueDay: number;
   adFreezeDay: number;
   adDoubleDay: number;
-  upgradeBoost: boolean;
-  chestsOpened: number;
   /** The day an ad gave the lost Daily a second try, and whether that try waits to be played. */
   adRetryDay: number;
   dailyRetry: boolean;
+  upgradeBoost: boolean;
+  chestsOpened: number;
   chestsSinceEpic: number;
   chestsSinceLegendary: number;
   dailyDone: number;
@@ -350,10 +352,10 @@ export interface SaveGame {
   /** The Daily Shift cleared most recently: its day and score, for the Daily board. */
   dailyDay: number;
   dailyScore: number;
-  /** The day this save was first played (a new save only; -1: older than the field), for the visit count that tells how long players stay. */
-  firstDay: number;
   /** How many tries that Daily took: 2 when an ad gave a second one (the Daily board says so). */
   dailyTries: number;
+  /** The day this save was first played (a new save only; -1: older than the field), for the visit count that tells how long players stay. */
+  firstDay: number;
   /** The newest patch notes the player has opened (`present/patchNotes.ts`); null: none yet. */
   notesSeen: string | null;
 }
@@ -387,10 +389,10 @@ export const newCareer = (): Career => ({
   adRescueDay: -1,
   adFreezeDay: -1,
   adDoubleDay: -1,
-  upgradeBoost: false,
-  chestsOpened: 0,
   adRetryDay: -1,
   dailyRetry: false,
+  upgradeBoost: false,
+  chestsOpened: 0,
   chestsSinceEpic: 0,
   chestsSinceLegendary: 0,
   dailyDone: -1,
@@ -463,7 +465,7 @@ export const newSave = (): SaveGame => ({
   highscore: 0,
   highscoreSeed: null,
   shiftsPlayed: 0,
-  settings: { sound: true, music: true, mapSounds: true, haptics: true, reduceMotion: 'system', vehicleLabels: false, leftHanded: false, dispatchSize: 2, largeText: false, batterySaver: false, motionChosen: false },
+  settings: { sound: true, music: true, mapSounds: true, haptics: true, reduceMotion: 'system', vehicleLabels: false, leftHanded: false, dispatchSize: 2, largeText: false, batterySaver: false, lowDetail: false, motionChosen: false },
   career: newCareer(),
   tutorialDone: false,
   hints: [],
@@ -477,9 +479,9 @@ export const newSave = (): SaveGame => ({
   chillTime: 0,
   dailyDay: -1,
   dailyScore: 0,
+  dailyTries: 1,
   firstDay: -1,
   notesSeen: null,
-  dailyTries: 1,
 });
 
 export const MINIMUM_ARMS = 4;
@@ -968,13 +970,13 @@ export const Careers = {
 
   startDaily(c: Career, day: number, config: Config = baseConfig): StreakNews | null {
     if (!Careers.isDailyOpen(c, day)) return null;
-    const news = Careers.advanceStreak(c, day, config);
-    const milestone = STREAK_MILESTONES.find((m) => m.days === c.dailyStreak);
     // The second try is the same day: the streak counted at the first.
     if (c.dailyRetry) {
       c.dailyRetry = false;
       return { item: null, frozen: 0, earned: false, cards: 0 };
     }
+    const news = Careers.advanceStreak(c, day, config);
+    const milestone = STREAK_MILESTONES.find((m) => m.days === c.dailyStreak);
     if (milestone && !c.collection.includes(milestone.item)) {
       Careers.collect(c, milestone.item);
       news.item = milestone.item;

@@ -35,7 +35,7 @@ import { Skins } from './skins';
 import { WeatherFade, WeatherLayer } from './weather';
 import { NightLayer } from './night';
 import { CityLights } from './cityLights';
-import { HUD, TopBar, RingSignals, ModeMessage, ReadyBanner, type TopMessage, ResultBanner, type Popup, type PopupKind, type ShiftSummary, type ConditionIntro, POPUP_LIFETIME, settledPops } from './hud';
+import { HUD, TopBar, RingSignals, ModeMessage, ModeBanner, ReadyBanner, type TopMessage, ResultBanner, type Popup, type PopupKind, type ShiftSummary, type ConditionIntro, POPUP_LIFETIME, settledPops } from './hud';
 import { inPortal, inPlayStore, isInstalled } from '../storage/device';
 import { Tutorial } from './tutorial';
 import { NoticeQueue, TipQueue, type Tip } from './notices';
@@ -160,6 +160,8 @@ export class GameSession {
    * leaves out its decoration (ground texture, what flies through the air, cloud shadows).
    */
   lowDetail = false;
+  /** A page that has stood still under its 92 % dim: the city under it leaves out what could not be seen (`Shell.frame`). */
+  sceneThin = false;
 
   /** A faint motion blur on the scene while the camera glides between views (Leo, 16.10.2026), in points; never with Reduce Motion or on a slow device. */
   get motionBlur(): number {
@@ -210,11 +212,11 @@ export class GameSession {
   private shownMoney = 0;
   private sinceMoney = Infinity;
   private resultBank = { before: 0, after: 0 };
-  /** The celebration on screen (`rewardBurst.ts`), and a moment the next result celebrates when it shows. */
-  private burst: { burst: Burst; age: number } | null = null;
   /** The result on screen is a Daily Shift that was lost: an ad can give it a second try (`Careers.adRetryOpen`). */
   private dailyLost = false;
   private onToday = false;
+  /** The celebration on screen (`rewardBurst.ts`), and a moment the next result celebrates when it shows. */
+  private burst: { burst: Burst; age: number } | null = null;
   private resultBurst: Burst | null = null;
   /** A doubled pay joins the result's money as the celebration counts it up. */
   private pendingBank: number | null = null;
@@ -270,6 +272,8 @@ export class GameSession {
   private sinceModeKick = Infinity;
   /** Seconds since the last swipe to another mode: the swipe hint waits for a quiet screen after one. */
   private sinceModeSwipe = Infinity;
+  /** The lit mode dot's place on the card: glides to the page index, snaps while the dots are hidden. */
+  private modeDotAt = 0;
   private modeKickDir = 1;
   /** Houses the career's city had at the last look, and what rises since (`CityLayer.add`). */
   private cityCount: number | null = null;
@@ -1410,12 +1414,12 @@ export class GameSession {
     this.sinceHitStop += realDelta;
     this.sincePunch += realDelta;
     this.adPillAge += realDelta;
-    if (this.burst) {
-      this.burst.age += realDelta;
     // Whether anyone finds the Today page, and whether the Daily still waits when they do (Leo, 16.10.2026).
     const onToday = this.isPage('progress') && this.progressPage.section === PROGRESS.today;
     if (onToday && !this.onToday) this.onStep?.('today-open', { daily: Careers.isDailyOpen(this.save.career, this.today) ? 1 : 0 });
     this.onToday = onToday;
+    if (this.burst) {
+      this.burst.age += realDelta;
       if (this.pendingBank !== null && this.burst.age >= 1.5) {
         this.resultBank = { before: this.resultBank.before, after: this.pendingBank };
         this.pendingBank = null;
@@ -1499,6 +1503,8 @@ export class GameSession {
     this.tips.advance(realDelta, cardFree, cardFree && this.notices.isEmpty && this.modeHint < 0.05 && this.modeMessage.view(0) === null, this.reduceMotion);
     const hintTarget = this.showsModeHint ? 1 : 0;
     this.modeHint = this.reduceMotion ? hintTarget : Math.max(0, Math.min(1, this.modeHint + (hintTarget ? 1 : -1) * (realDelta / 0.35)));
+    const dotGoal = SWIPE_MODES.indexOf(this.swipeMode);
+    this.modeDotAt = this.reduceMotion || !this.showsModeDots ? dotGoal : this.modeDotAt + (dotGoal - this.modeDotAt) * (1 - Math.exp(-realDelta * 14));
     this.tutorial?.advance(realDelta);
     if (this.tutorial?.isDone) this.tutorial = null;
     this.transitions.advance(realDelta);
@@ -2235,9 +2241,7 @@ export class GameSession {
    * gets it too, but later (Leo, 08.10.2026).
    */
   private get showsModeHint(): boolean {
-    const career = this.save.career;
-    const due = career.level > this.config.modeHintAfterLevel || this.save.hints.includes('unlimitedTip');
-    if (!due || !this.notices.isEmpty || this.tips.isActive) return false;
+    if (!this.modesRevealed || !this.notices.isEmpty || this.tips.isActive) return false;
     if (this.screen.k !== 'ready' || !this.takesModeSwipe) return false;
     // After a swipe the hint is gone for a whole quiet stretch, then it counts as before.
     const swiped = this.sinceModeSwipe < this.sinceReady;
@@ -2246,7 +2250,17 @@ export class GameSession {
     return idle >= 0 && idle % GameSession.hintEvery < GameSession.hintShown;
   }
 
-  private static tipBrief = (tip: Tip): Brief => ({ id: 'tip', caption: tip.caption, text: tip.text, color: 'accent', pending: null });
+  /** The modes are no secret any more: the hint may come, the page dots stay. */
+  private get modesRevealed(): boolean {
+    return this.save.career.level > this.config.modeHintAfterLevel || this.save.hints.includes('unlimitedTip');
+  }
+
+  /** The swipe pages as dots on the waiting screen's card, once modes are known (Leo, 16.10.2026: a mode switch you can see). */
+  private get showsModeDots(): boolean {
+    return (this.modesRevealed || this.save.hints.includes('modes')) && this.screen.k === 'ready' && this.takesModeSwipe;
+  }
+
+  private static tipBrief =(tip: Tip): Brief => ({ id: 'tip', caption: tip.caption, text: tip.text, color: 'accent', pending: null });
 
   /** What the waiting screen's top card says instead of its numbers: the mode just swiped to, a tip, or the swipe hint. */
   private get topMessage(): TopMessage | null {
@@ -2582,9 +2596,9 @@ export class GameSession {
     this.sinceMoney = Infinity;
     this.dailySplash = null;
     this.resultBurst = null;
+    this.dailyLost = false;
     this.play(['go'], []);
     this.onChrome?.();
-    this.dailyLost = false;
     if (!this.playingDaily) return;
     const career = this.save.career;
     const news = Careers.startDaily(career, this.today, this.config);
@@ -2740,9 +2754,9 @@ export class GameSession {
         ? S.run.dailyShare(Fmt.number(result.score), result.perfects, result.tightFits, career.dailyStreak)
         : null;
     this.dailySelected = false;
+    this.dailyLost = this.playingDaily && result.outcome !== 'completed';
     this.resultBank = booked.bank;
     this.notices.announce(...GameSession.budget(booked.news));
-    this.dailyLost = this.playingDaily && result.outcome !== 'completed';
     this.tips.add(...booked.tips);
     for (const hint of booked.due) this.onHint?.(hint);
     if (save.shiftsPlayed >= GameSession.tightFitTipShifts) this.teachTightFit();
@@ -2912,13 +2926,14 @@ export class GameSession {
     this.explosions.addGround(list);
     this.effects.carSkins = career.carSkins;
     this.effects.addGround(list);
-    CityLights.add(list, world, alpha, theme, this.lamps, rm ? null : world.time, this.nightPreview, this.lowDetail);
-    if (night) NightLayer.addRoadLights(list, world, alpha, this.lamps, rm ? null : world.time, this.lowDetail ? 3 : undefined);
+    const thin = this.lowDetail || this.sceneThin;
+    CityLights.add(list, world, alpha, theme, this.lamps, rm ? null : world.time, this.nightPreview, thin);
+    if (night) NightLayer.addRoadLights(list, world, alpha, this.lamps, rm ? null : world.time, thin ? 3 : undefined);
     if (night) {
       // Keep the ring's glow in the world layer so vehicles and wreckage can occlude it.
       const lit = list.items.length;
       this.addRim(list, world, rm);
-      if (!this.lowDetail) HUD.bloom(list, lit);
+      if (!thin) HUD.bloom(list, lit);
     }
     this.effects.addWrecks(list, world, alpha, !rm);
     SceneBuilder.addShadows(list, world, alpha);
@@ -2930,9 +2945,9 @@ export class GameSession {
     if (this.save.settings.vehicleLabels) SceneBuilder.addLabels(list, world, alpha);
     this.effects.addAir(list);
     this.explosions.addAir(list);
-    WeatherLayer.addAir(list, world, this.sceneTime, rm, weather, this.lowDetail);
+    if (!this.sceneThin) WeatherLayer.addAir(list, world, this.sceneTime, rm, weather, this.lowDetail);
     const island = { center: toScreen(camera, v(0, 0)), radius: (world.layout.islandRadius) * camera.scale };
-    if (!this.lowDetail) MapTheme.addAir(list, theme, this.sceneTime, rm, island);
+    if (!thin) MapTheme.addAir(list, theme, this.sceneTime, rm, island);
     return list;
   }
 
@@ -3187,6 +3202,7 @@ export class GameSession {
       textScale: this.textScale,
       noticeRoom: this.noticeRoom,
       message: this.topMessage,
+      modes: this.showsModeDots && !opening ? { count: SWIPE_MODES.length, at: this.modeDotAt, color: ModeBanner.tint(this.swipeMode) } : null,
       ringTop: toScreen(list.camera, v(0, this.world.layout.ringRadius + this.world.layout.laneWidth)).y,
       island: this.world.layout.islandRadius,
       adRow,
@@ -3211,11 +3227,11 @@ export class GameSession {
     const career = this.save.career;
     const s = this.screen;
     if (s.k === 'result') {
+      if (this.resultAge < this.resultLock) return null;
+      if (this.dailyLost) return Careers.adRetryOpen(career, this.today) ? { reward: 'retry', label: S.ads.retryPill } : null;
       const pay = this.dailyPay;
       return Careers.adDoubleOpen(career, this.today, pay) ? { reward: 'double', label: S.ads.doublePill(Fmt.number(pay)) } : null;
     }
-      if (this.resultAge < this.resultLock) return null;
-      if (this.dailyLost) return Careers.adRetryOpen(career, this.today) ? { reward: 'retry', label: S.ads.retryPill } : null;
     if (s.k !== 'ready' || !this.dailySelected || this.versusSelected || this.special) return null;
     const days = Careers.adRescue(career, this.today, this.config);
     if (days !== null) return { reward: 'rescue', label: S.ads.rescuePill(days) };

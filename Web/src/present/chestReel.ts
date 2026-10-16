@@ -1,7 +1,7 @@
 import type { Cosmetic, ChestKind } from '../core/loot';
 import { chestReel, rarityRank } from '../core/loot';
-import { type Vec2, v, add, mul, TAU } from '../core/vec2';
-import { type RenderList, rect, polygon, line, arc, Ease } from './render';
+import { type Vec2, v, add, mul, fromAngle, TAU } from '../core/vec2';
+import { type RenderList, rect, polygon, line, arc, circle, Ease, unitHash } from './render';
 import type { ColorToken } from './theme';
 import { MenuKit } from './menukit';
 
@@ -97,9 +97,19 @@ export const ChestReel = {
     const p = R.position(reel, t);
     const bandHeight = R.card.y + 28;
     const prizeColor = colorOf(reel.cards[R.stop]);
+    const rank = rarityRank(reel.cards[R.stop].rarity);
+    const speed = R.speed(reel, t);
+    // 0 while crawling … 1 while spinning; the slower, the more each card counts.
+    const pace = Ease.clamp01(speed / 25);
+    const under = colorOf(reel.cards[Math.min(reel.cards.length - 1, Math.round(p))]);
+    // 0 the moment a card crosses the marker, rising to 1 by the next.
+    const phase = p + 0.5 - Math.floor(p + 0.5);
+    const flick = (1 - pace) * Math.exp(-phase * 9) * (1 - landed);
 
     list.s(rect(center, v(vp.x + 40, bandHeight * (0.9 + 0.1 * enter)), 0), 'surface', 0.9 * enter);
     for (const y of [-1, 1]) list.s(line(v(0, center.y + (y * bandHeight) / 2), v(vp.x, center.y + (y * bandHeight) / 2), 1), 'chromeEdge', enter);
+    // While it crawls, the marker's light beats in the colour of the card under it: will it stop here?
+    MenuKit.glow(list, center, 70 + 20 * flick, under, (0.12 + 0.25 * flick) * (1 - pace) * enter * (1 - landed) * (0.75 + 0.25 * Math.sin(t * 14)));
 
     const first = Math.max(0, Math.floor(p - vp.x / 2 / pitch) - 1);
     const last = Math.min(reel.cards.length - 1, Math.ceil(p + vp.x / 2 / pitch) + 1);
@@ -112,10 +122,13 @@ export const ChestReel = {
       const dim = isPrize ? 1 : 1 - 0.65 * landed;
       const opacity = enter * edge * dim;
       if (opacity <= 0.01) continue;
-      const pop = isPrize && since > 0 ? 1 + 0.08 * Math.sin(Math.PI * Ease.clamp01(since / 0.35)) : 1;
+      const pop = isPrize && since > 0 ? 1 + (0.1 + 0.05 * rank) * Math.sin(Math.PI * Ease.clamp01(since / 0.35)) : 1;
       const at = add(center, v(dx, 0));
       const size = mul(R.card, pop);
       const color = colorOf(item);
+      // At speed every card smears out behind itself.
+      const blur = Ease.clamp01((speed - 6) / 20);
+      if (blur > 0.02) list.s(rect(add(at, v(pitch * 0.7 * blur, 0)), v(R.card.x + pitch * 1.4 * blur, R.card.y * 0.72), 12), color, 0.22 * blur * opacity);
       // Epic and Legendary cards shine a little while they run past: you see what could have been.
       if (rarityRank(item.rarity) >= 2 && !isPrize) MenuKit.glow(list, at, 58, color, 0.18 * opacity * (1 - landed));
       if (isPrize && landed > 0) MenuKit.glow(list, at, 80 * landed, color, 0.35 * landed);
@@ -129,9 +142,28 @@ export const ChestReel = {
     // The marker: where the reel will stop.
     const top = center.y - bandHeight / 2;
     const bottom = center.y + bandHeight / 2;
-    list.s(line(v(center.x, top + 4), v(center.x, bottom - 4), 2), 'primary', 0.35 * enter * (1 - landed));
-    list.s(polygon([v(center.x - 9, top - 2), v(center.x + 9, top - 2), v(center.x, top + 10)]), 'primary', enter);
-    list.s(polygon([v(center.x - 9, bottom + 2), v(center.x + 9, bottom + 2), v(center.x, bottom - 10)]), 'primary', enter);
+    // Every card that passes knocks the marker's tips in; slow, they take on the card's colour.
+    const dip = 7 * flick;
+    list.s(line(v(center.x, top + 4), v(center.x, bottom - 4), 2 + 2 * flick), 'primary', (0.35 + 0.5 * flick) * enter * (1 - landed));
+    for (const [color, opacity] of [['primary', enter], [under, enter * (1 - pace) * (1 - landed)]] as const) {
+      list.s(polygon([v(center.x - 9 - dip / 3, top - 2), v(center.x + 9 + dip / 3, top - 2), v(center.x, top + 10 + dip)]), color, opacity);
+      list.s(polygon([v(center.x - 9 - dip / 3, bottom + 2), v(center.x + 9 + dip / 3, bottom + 2), v(center.x, bottom - 10 - dip)]), color, opacity);
+    }
+
+    // Every landing hits: a ring out of the prize's card and a spray of sparks, more the rarer it is.
+    if (since > 0 && since < 0.7) {
+      const x = since / 0.45;
+      if (x < 1) list.s(arc(center, 50 + (90 + 50 * rank) * Ease.outCubic(x), 7 * (1 - x) + 1, 0, TAU), prizeColor, 0.85 * (1 - x));
+      const life = since / 0.7;
+      const sparks = 10 + 8 * rank;
+      for (let i = 0; i < sparks; i++) {
+        const a = (i / sparks) * TAU + unitHash(i, 901) * 0.6;
+        const reach = (70 + (60 + 30 * rank) * unitHash(i, 902)) * Ease.outCubic(life);
+        list.s(circle(add(center, add(mul(fromAngle(a), reach), v(0, 90 * life * life))), (2 + rank) * (1 - life) + 0.5), i % 3 ? prizeColor : 'primary', 1 - life);
+      }
+      // An Epic flashes its colour; a Legendary has its own freeze below.
+      if (rank === 2 && since < 0.2) list.s(rect(mul(vp, 0.5), vp), prizeColor, 0.3 * (1 - since / 0.2));
+    }
 
     // Landing on a Legendary: the picture holds in a white flash turning gold, then a shockwave.
     if (reel.legendary && t >= R.spin) {

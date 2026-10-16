@@ -44,6 +44,35 @@ export const PerspectiveTuning = {
   upgradesZoom: 1.06,
 };
 
+/** Where every arm's road ends: cars appear and vanish there (`stop + 260`, `core/roundabout.ts`), and a car is 24 long. */
+const ROAD_END = 260;
+const CAR_LENGTH = 24;
+
+/**
+ * Cars always cross the screen edge (Leo, 16.10.2026): on a big or wide screen the camera zooms in until no
+ * arm's road end is on screen. The ring stays whole: past what fits its height, the edge gives way.
+ */
+function hideRoadEnds(cam: Camera, layout: RoundaboutLayout): Camera {
+  const { x: w, y: h } = cam.viewport;
+  const m = CAR_LENGTH;
+  let need = cam.scale;
+  for (const arm of layout.arms) {
+    const d = mul(fromAngle(arm.angle), layout.stopDistance + ROAD_END);
+    const dx = d.x - cam.center.x;
+    const dy = cam.center.y - d.y;
+    // The scale at which the road end passes each screen side; the first one it reaches hides it.
+    const sides = [
+      dx - m > 0 ? (w - cam.focus.x) / (dx - m) : Infinity,
+      dx + m < 0 ? cam.focus.x / -(dx + m) : Infinity,
+      dy - m > 0 ? (h - cam.focus.y) / (dy - m) : Infinity,
+      dy + m < 0 ? cam.focus.y / -(dy + m) : Infinity,
+    ];
+    need = Math.max(need, Math.min(...sides));
+  }
+  const ringFits = h / (2 * layout.viewBounds.maxX);
+  return { ...cam, scale: Math.max(cam.scale, Math.min(need, ringFits)) };
+}
+
 /**
  * The game's own view. On a phone the ring sits high so the queue has room; on a wide screen
  * (desktop) that leaves the ring stuck to the top, so it moves most of the way to the middle
@@ -53,12 +82,12 @@ export const PerspectiveTuning = {
 export function streetCamera(layout: RoundaboutLayout, viewport: Vec2, bottomInset = 0): Camera {
   const fit = fitCamera(layout.viewBounds, viewport, Metrics.sceneInsets, Metrics.sceneVerticalBias);
   const landscape = Ease.clamp01((viewport.x / viewport.y - 0.9) / 0.5);
-  if (landscape <= 0) return fit;
+  if (landscape <= 0) return hideRoadEnds(fit, layout);
   const ringY = fit.focus.y + fit.center.y * fit.scale;
   const middle = (Metrics.sceneInsets.top + viewport.y) / 2 - 10;
   const front = toScreen(fit, layout.stopPose(layout.player).position).y + layout.laneWidth * fit.scale;
   const room = Math.max(0, viewport.y - bottomInset - 12 - front);
-  return { ...fit, focus: v(fit.focus.x, fit.focus.y + Math.min((middle - ringY) * 0.8 * landscape, room)) };
+  return hideRoadEnds({ ...fit, focus: v(fit.focus.x, fit.focus.y + Math.min((middle - ringY) * 0.8 * landscape, room)) }, layout);
 }
 
 export function perspectiveCamera(p: Perspective, layout: RoundaboutLayout, viewport: Vec2, bottomInset: number): Camera {

@@ -262,6 +262,7 @@ function readSave(raw: unknown): SaveGame {
     if (s.dispatchSize === 1 || s.dispatchSize === 2 || s.dispatchSize === 3) settings.dispatchSize = s.dispatchSize;
     if (typeof s.largeText === 'boolean') settings.largeText = s.largeText;
     if (typeof s.batterySaver === 'boolean') settings.batterySaver = s.batterySaver;
+    if (typeof s.lowDetail === 'boolean') settings.lowDetail = s.lowDetail;
     if (typeof s.motionChosen === 'boolean') settings.motionChosen = s.motionChosen;
     // "System" is the default; older saves keep their explicit setting.
     if (s.reduceMotion === 'on' || s.reduceMotion === 'off') settings.reduceMotion = s.reduceMotion;
@@ -286,8 +287,8 @@ function readSave(raw: unknown): SaveGame {
     chillTime: int(raw.chillTime, 0, 0),
     dailyDay: int(raw.dailyDay, -1),
     dailyScore: int(raw.dailyScore, 0, 0),
-    firstDay: int(raw.firstDay, -1),
     dailyTries: int(raw.dailyTries, 1, 1) > 1 ? 2 : 1,
+    firstDay: int(raw.firstDay, -1),
     notesSeen: typeof raw.notesSeen === 'string' ? raw.notesSeen : null,
   };
   // Unlimited milestones that came after the save's best run (Leo, 02.10.2026) arrive now, marked new.

@@ -185,7 +185,7 @@ export const SceneBuilder = {
     // Two lanes: the road grows inwards, the island shrinks.
     const width = lane * layout.lanes;
     const middle = layout.ringRadius - (lane * (layout.lanes - 1)) / 2;
-    const roads = layout.arms.map((a) => ({ angle: a.angle, reach, marked: reach / 2 }));
+    const roads = layout.arms.map((a) => ({ angle: a.angle, reach, marked: reach }));
     if (link > 0) {
       const { viewport, scale } = list.camera;
       const linkReach = middle + ((viewport.x * 1.6) / scale) * link;

@@ -194,32 +194,17 @@ export class CanvasDrawer {
 
   /** Below this blur (points) the kernel is the identity: no pass at all, so it fades in and out without a step. */
   static readonly blurLeast = 0.04;
-  private blurArt: HTMLCanvasElement | null = null;
-
   /**
-   * What the scene has painted so far, blurred a little: it is copied aside and drawn back through the context's own
-   * blur, so the HUD and the menus that follow stay sharp. A browser without `ctx.filter` simply goes without.
+   * What the scene has painted so far, blurred a little, so the HUD and the menus that follow stay sharp. The blur is
+   * done at half size like the glass's (`halfBlur`): a quarter of the pixels, and no difference to see at a few points.
+   * A browser without `ctx.filter` simply goes without.
    */
   private blurScene(points: number): void {
+    if (!this.nativeFilter) return;
     const ctx = this.ctx;
-    if (!('filter' in ctx)) return;
-    const w = this.canvas.width;
-    const h = this.canvas.height;
-    if (!this.blurArt) this.blurArt = document.createElement('canvas');
-    if (this.blurArt.width !== w || this.blurArt.height !== h) {
-      this.blurArt.width = w;
-      this.blurArt.height = h;
-    }
-    const aside = this.blurArt.getContext('2d');
-    if (!aside) return;
-    aside.setTransform(1, 0, 0, 1, 0, 0);
-    aside.clearRect(0, 0, w, h);
-    aside.drawImage(this.canvas, 0, 0);
     ctx.save();
     ctx.setTransform(1, 0, 0, 1, 0, 0);
-    ctx.clearRect(0, 0, w, h);
-    ctx.filter = `blur(${(points * this.dpr).toFixed(2)}px)`;
-    ctx.drawImage(this.blurArt, 0, 0);
+    this.halfBlur(0, 0, this.canvas.width, this.canvas.height, points * this.dpr, true);
     ctx.restore();
     this.prepare();
   }
@@ -615,9 +600,9 @@ export class CanvasDrawer {
 
   /**
    * The native blur at half size: the region is taken down to half, blurred there (a quarter of the pixels,
-   * half the radius) and laid back. A blur this wide shows no difference, and it is the frame's dearest filter.
+   * half the radius) and laid back (`scene`: in place of the region, without the glass's extra saturation). A blur this wide shows no difference, and it is the frame's dearest filter.
    */
-  private halfBlur(sx: number, sy: number, w: number, h: number, sigma: number): void {
+  private halfBlur(sx: number, sy: number, w: number, h: number, sigma: number, scene = false): void {
     const art = (this.frostArt ??= document.createElement('canvas'));
     const hw = Math.max(1, Math.ceil(w / 2));
     const hh = Math.max(1, Math.ceil(h / 2));
@@ -628,8 +613,9 @@ export class CanvasDrawer {
     const g = art.getContext('2d');
     if (!g) return;
     g.clearRect(0, 0, hw, hh);
-    g.filter = `blur(${sigma / 2}px) saturate(1.4)`;
+    g.filter = scene ? `blur(${sigma / 2}px)` : `blur(${sigma / 2}px) saturate(1.4)`;
     g.drawImage(this.ctx.canvas, sx, sy, w, h, 0, 0, hw, hh);
+    if (scene) this.ctx.clearRect(sx, sy, w, h);
     this.ctx.drawImage(art, 0, 0, hw, hh, sx, sy, w, h);
   }
 

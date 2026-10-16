@@ -6,7 +6,7 @@ import { SWIPE_MODES, TAB_BAR, barTab, screenTab, type Tab } from '../present/fl
 import { AudioPlayer, Haptics } from '../audio/player';
 import { h, icon } from './dom';
 import { ICONS, CHEST_FLAT } from './icons';
-import { settingsSheet, deleteAccountSheet, patchNotesSheet, legalSheet, licensesSheet, installDialog, pushOfferDialog, isSheetOpen, closeAnySheet, closeTopSheet } from './sheets';
+import { settingsSheet, deleteAccountSheet, patchNotesSheet, guidesSheet, legalSheet, licensesSheet, installDialog, pushOfferDialog, isSheetOpen, closeAnySheet, closeTopSheet } from './sheets';
 import { installBackGesture, inSystemGestureZone } from './backGesture';
 import { disablePush, enablePush, pushChoiceOn, pushDelivers, pushState, pushTimers, setPushChoice, syncPush, type PushState, type PushTimer } from '../net/push';
 import { cloudEnabled, cloudLinked, cloudStoppedHere, cloudView, createCloud, deleteCloud, onCloudChange } from '../net/cloud';
@@ -37,6 +37,7 @@ import { REACTION_EMOJI } from '../present/versus';
 import { REACTIONS } from '../net/room';
 import { LiveRegion } from './liveRegion';
 import { ResultBanner } from '../present/hud';
+import type { RenderList } from '../present/render';
 import { ShopPage } from '../present/shop';
 import { css } from '../present/theme';
 import { BackdropLayer, backdropSheet } from './backdrop';
@@ -44,10 +45,31 @@ import { loadBackdrop, saveBackdrop } from '../storage/backdrop';
 import { BIG_SCREEN } from '../core/loot';
 import { Careers } from '../core/career';
 import { baseConfig } from '../core/config';
+import { INTROS, Intros } from '../present/intros';
 
 interface InstallPromptEvent extends Event {
   prompt(): Promise<void>;
   userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>;
+}
+
+/** A number that changes whenever anything of the drawn UI (what lies after the scene) moves, grows, fades or says something else. */
+function signatureOf(list: RenderList): number {
+  const start = list.vignetteAt;
+  let sum = list.items.length - start;
+  for (let i = start; i < list.items.length; i++) {
+    const { p, opacity } = list.items[i];
+    let at = 0;
+    switch (p.k) {
+      case 'rect': at = p.center.x + p.center.y + p.size.x + p.size.y; break;
+      case 'circle': at = p.center.x + p.center.y + p.radius; break;
+      case 'arc': at = p.center.x + p.center.y + p.radius + p.thickness + p.start + p.end; break;
+      case 'line': at = p.from.x + p.from.y + p.to.x + p.to.y + p.thickness; break;
+      case 'text': at = p.position.x + p.position.y + p.size + p.text.length + (p.text.charCodeAt(0) || 0) + 3 * (p.text.charCodeAt(p.text.length - 1) || 0); break;
+      default: at = (p.points[0]?.x ?? 0) + (p.points[0]?.y ?? 0) + p.points.length;
+    }
+    sum += (at + opacity * 97) * (1 + ((i - start) & 15));
+  }
+  return sum;
 }
 
 /** The icon of each modifier before a shift (`Shell.showMods`). */
@@ -146,6 +168,15 @@ export class Shell {
   private frameJitter = 0;
   private slowFor = 0;
   private fastFor = 0;
+  /** How often the game dropped to low detail by itself; the second time it stays (`adaptQuality`). */
+  private lowTrips = 0;
+  /** The Low detail setting as the last frame saw it, so a change takes hold at once. */
+  private lowChosen = false;
+  /** What the page's drawn UI looked like in the last drawn frame, and for how many frames in a row it looked the same. */
+  private pageSignature = 0;
+  private pageStill = 0;
+  /** A page this still (about a third of a second) is drawn at half the rate, the city under it thinned (`frame`). */
+  private static readonly stillFrames = 20;
   private readonly leaveBtn: HTMLButtonElement;
   private readonly leaveLabel: HTMLElement;
   /** A challenge link that arrived mid-shift: it opens once the shift is over. */
@@ -845,10 +876,11 @@ export class Shell {
 
   /**
    * Adaptive quality (Leo, 29.09.2026: never below 30 fps, lower the detail instead). Frames
-   * that keep coming slow and uneven, or steadily under 29 fps, step down: the pixel ratio
-   * 2 → 1.5 → 1, then the decoration (ground texture, what flies through the air, cloud
-   * shadows). If even that is not enough, Reduce Motion is recommended once, never switched on.
-   * A long smooth stretch steps back up. A steady 30 fps (a phone saving power) is left alone.
+   * that keep coming slow and uneven, or steadily under 29 fps, step down: first the decoration
+   * and the frosted glass (`lowDetail`: nobody sees it go), then the pixel ratio 2 → 1.5 → 1 (the
+   * picture gets softer). If even that is not enough, Reduce Motion is recommended once, never
+   * switched on. A long smooth stretch steps back up, the ratio first; a second drop to low detail
+   * is kept (Settings → Low detail). A steady 30 fps (a phone saving power) is left alone.
    */
   private adaptQuality(delta: number): void {
     if (delta <= 0 || delta > 0.25 || document.hidden) return;
@@ -868,28 +900,42 @@ export class Shell {
     const device = window.devicePixelRatio || 1;
     const inUse = Math.min(device, this.dprCap);
     const s = this.session;
-    if (this.slowFor > 2 && inUse > 1) {
+    const settings = s.save.settings;
+    const lowDetail = (on: boolean): void => {
+      s.lowDetail = on;
+      // The glass over the scene goes solid too: its blur is redone every frame (shell.css, `CanvasDrawer.frost`).
+      if (on) this.app.dataset.detail = 'low';
+      else delete this.app.dataset.detail;
+      this.drawer.glassBlur = !on;
+    };
+    if (settings.lowDetail !== this.lowChosen) {
+      this.lowChosen = settings.lowDetail;
+      this.lowTrips = 0;
+      lowDetail(settings.lowDetail);
+    }
+    if (this.slowFor > 2 && !s.lowDetail) {
+      lowDetail(true);
+      this.slowFor = 0;
+      // The second time it stays, and the next visit starts there (the setting says so): a device that sits on the edge would else flap between the two.
+      if (++this.lowTrips >= 2) {
+        settings.lowDetail = true;
+        this.lowChosen = true;
+        s.saveSettings();
+      }
+    } else if (this.slowFor > 2 && inUse > 1) {
       this.dprCap = Math.max(1, inUse - 0.5);
       this.slowFor = 0;
       this.resize();
-    } else if (this.slowFor > 2 && !s.lowDetail) {
-      s.lowDetail = true;
-      // The glass over the scene goes solid too: its blur is redone every frame (shell.css, `CanvasDrawer.frost`).
-      this.app.dataset.detail = 'low';
-      this.drawer.glassBlur = false;
-      this.slowFor = 0;
     } else if (this.slowFor > 4) {
       this.slowFor = 0;
       s.recommendReduceMotion();
-    } else if (this.fastFor > 12 && s.lowDetail) {
-      s.lowDetail = false;
-      this.drawer.glassBlur = true;
-      delete this.app.dataset.detail;
-      this.fastFor = 0;
     } else if (this.fastFor > 12 && this.dprCap < Math.min(2, device)) {
       this.dprCap = Math.min(2, this.dprCap + 0.5);
       this.fastFor = 0;
       this.resize();
+    } else if (this.fastFor > 12 && s.lowDetail && !settings.lowDetail) {
+      lowDetail(false);
+      this.fastFor = 0;
     }
   }
 
@@ -1201,6 +1247,10 @@ export class Shell {
         s.markNotesRead();
         patchNotesSheet(this.layers, PATCH_NOTES, () => this.pageClosed());
       },
+      openGuides: () => {
+        this.pageOpen = true;
+        guidesSheet(this.layers, INTROS.filter((i) => Intros.known(s.save.career, i, baseConfig)), () => this.pageClosed());
+      },
       // The same for the legal pages; the licenses load only when asked for.
       openLegal: (page) => {
         this.pageOpen = true;
@@ -1464,7 +1514,7 @@ export class Shell {
     // counting screen refreshes, not by a time gap (a gap skips every other frame of a 90 Hz screen, 45 a second):
     // a 60 or 90 Hz screen loses nothing, a 120 Hz one draws 60, the battery saver 30.
     this.measureRefresh(now);
-    if (++this.skipped < this.every) {
+    if (++this.skipped < this.every * (this.pageStill >= Shell.stillFrames ? 2 : 1)) {
       requestAnimationFrame((t) => this.loop(t));
       return;
     }
@@ -1534,11 +1584,19 @@ export class Shell {
     const s = this.session;
     const match = this.versus.match;
     s.backdrop = this.backdrop.ready;
+    const resting = this.pageStill >= Shell.stillFrames;
+    s.sceneThin = resting;
     // A multiplayer match owns the canvas; the career world waits where it was.
     const list = match ? match.frame(delta, this.size, s.reduceMotion) : s.frame(delta, actions, this.size, TAB_HEIGHT);
     this.drawer.draw(list);
     this.backdrop.visible = list.backdrop !== null;
-    this.adaptQuality(delta);
+    if (!match && s.screen.k === 'page') {
+      const signature = signatureOf(list);
+      this.pageStill = signature === this.pageSignature ? this.pageStill + 1 : 0;
+      this.pageSignature = signature;
+    } else this.pageStill = 0;
+    // A frame of the resting page is a long one by design: it says nothing about the device.
+    if (!resting) this.adaptQuality(delta);
     this.detail.update(s.detail);
     const summary = !match && s.screen.k === 'result' ? s.screen.summary : null;
     this.live.update(summary, () => (summary ? ResultBanner.spoken(summary) : ''), match ? null : s.noticeText);

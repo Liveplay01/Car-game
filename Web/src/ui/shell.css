@@ -1322,6 +1322,43 @@ a.row-link {
   }
 }
 
+/* Guides: the intro drawers to read again, one fold per place. */
+.guide {
+  margin-top: 0;
+  border-bottom: 0.5px solid var(--separator);
+}
+
+.guide .note-more-head {
+  min-height: 56px;
+  color: inherit;
+}
+
+.guide-name {
+  flex: 1;
+  display: grid;
+  gap: 2px;
+}
+
+.guide .row-sub {
+  font-weight: 400;
+}
+
+.guide-body {
+  padding-bottom: var(--s3);
+  font-size: 15px;
+  line-height: 1.55;
+  color: var(--muted);
+  text-wrap: pretty;
+}
+
+.guide-body p {
+  margin: 0 0 var(--s2);
+}
+
+.guide[open] .guide-body {
+  animation: note-open 240ms var(--ease-out);
+}
+
 .note-summary li::marker,
 .note-items li::marker {
   color: var(--accent);

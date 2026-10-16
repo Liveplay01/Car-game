@@ -154,6 +154,16 @@ export const TopBar = {
     if (o.right) arrow(1);
   },
 
+  /** One dot per swipe page along the card's foot; the lit one glides to `at` (a page index, fractional while it moves). */
+  addModeDots(list: RenderList, frame: Rect, modes: { count: number; at: number; color: ColorToken }, alpha: number): void {
+    if (alpha <= 0.001) return;
+    const gap = 10;
+    const y = frame.maxY - 5;
+    const x = (i: number): number => R.center(frame).x + (i - (modes.count - 1) / 2) * gap;
+    for (let i = 0; i < modes.count; i++) list.s(circle(v(x(i), y), 1.8), 'muted', 0.5 * alpha);
+    list.s(circle(v(x(0) + modes.at * gap, y), 2.4), modes.color, alpha);
+  },
+
   /** The briefing's size: one line up to 15 points; else two lines, 13 points or smaller. */
   fitBrief(s: string, width: number, textScale = 1): { size: number; lines: string[] } {
     const single = Math.min(16, 15 * textScale);
@@ -1401,6 +1411,8 @@ export const ReadyBanner = {
       noticeRoom?: number;
       /** The mode swipe's hint on the top card: how far it is in (0–1), the clock, and which ways there is a mode. */
       message?: TopMessage | null;
+      /** The swipe pages as dots on the card's foot, once modes are known; `at` is the shown page. */
+      modes?: { count: number; at: number; color: ColorToken } | null;
       /** Where the ring's outer edge is on screen: the intro card stays above it (the scene is never covered). */
       ringTop?: number;
       /** The island's radius in world units: the lines in the middle stay inside it. */
@@ -1467,6 +1479,7 @@ export const ReadyBanner = {
       TopBar.addMessage(list, frame, { ...hintView, card: hintView.card * opacity }, { time: hint.time, left: hint.left, right: hint.right, previous: hint.previous, reduceMotion: o.reduceMotion, textScale: o.textScale ?? 1 });
     }
     list.tag = undefined;
+    if (o.modes && (o.drawsCard ?? true)) TopBar.addModeDots(list, frame, o.modes, opacity * (1 - (hintView?.card ?? 0)));
     const pillText = run ? run.badge : o.daily ? S.daily.streakPill(o.daily.streak, o.daily.bonus, o.daily.endsIn, o.daily.freezes) : null;
     if (pillText) {
       const under = v(width / 2, frame.maxY + 18);

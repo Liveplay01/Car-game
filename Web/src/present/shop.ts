@@ -1062,6 +1062,17 @@ export const ShopPage = {
     list.s(rect(center, size, 24), 'card', fade);
     list.s(rect(center, size, 24), color, 0.14 * fade);
     if (!(sx > 0.6 || reduceMotion)) return;
+    if (!reduceMotion && tt > 0.3) {
+      // A sheen sweeps over the card as it settles, and again every few seconds, like foil caught in the light.
+      const x = ((tt - 0.3) % 2.6) / 0.55;
+      if (x < 1) {
+        const inside = (px: number): number => Math.min(center.x + size.x / 2 - 10, Math.max(center.x - size.x / 2 + 10, px));
+        const top = center.y - size.y / 2 + 10;
+        const bottom = center.y + size.y / 2 - 10;
+        const cx = center.x - size.x / 2 - 70 + (size.x + 140) * Ease.inOutSine(x);
+        list.s(polygon([v(inside(cx + 50), top), v(inside(cx + 86), top), v(inside(cx - 14), bottom), v(inside(cx - 50), bottom)]), 'primary', 0.2 * Math.sin(Math.PI * x) ** 2);
+      }
+    }
     const appear = (delay: number): number => (reduceMotion ? 1 : Ease.outCubic((tt - delay) / 0.25));
     const place = (o: Vec2): Vec2 => add(center, v(o.x * sx, o.y * sy));
 
@@ -1080,13 +1091,22 @@ export const ShopPage = {
     drawText(list, S.shop.kind(opening.item), add(place(v(0, 78)), v(0, 10 * (1 - kind))), 13, 'muted', { align: 'center', opacity: kind });
     if (opening.isDuplicate) {
       const m = appear(0.3);
-      drawText(list, S.shop.duplicate(Fmt.number(opening.money)), add(place(v(0, 102)), v(0, 10 * (1 - m))), 13, 'accent', { weight: 'bold', align: 'center', opacity: m });
+      const counted = reduceMotion ? opening.money : Math.round(opening.money * Ease.outCubic((tt - 0.3) / 0.9));
+      drawText(list, S.shop.duplicate(Fmt.number(counted)), add(place(v(0, 102)), v(0, 10 * (1 - m))), 13, 'accent', { weight: 'bold', align: 'center', opacity: m });
     }
     // The hint comes when a tap can close the card, not before.
     drawText(list, S.shop.tapToClose, place(v(0, 132)), 11, 'muted', { align: 'center', opacity: 0.8 * appear(ShopPage.closeAfter) });
 
     if (reduceMotion || tt <= 0.3) return;
-    const stars = rarityRank(opening.item.rarity) >= 2 ? 10 : 6;
+    // Motes of the prize's colour rise beside the card for as long as it shows: it never goes still.
+    const rank = rarityRank(opening.item.rarity);
+    for (let i = 0; i < 8 + 6 * rank; i++) {
+      const life = (tt * (0.3 + 0.25 * unit(i, 90)) + unit(i, 91)) % 1;
+      const side = i % 2 === 0 ? -1 : 1;
+      const at = add(center, v(side * (base.x / 2 - 20 + 70 * unit(i, 92)) + Math.sin(tt * 2 + i) * 6, base.y * 0.55 - life * base.y * 1.25));
+      list.s(circle(at, 1.5 + 2.5 * unit(i, 93)), i % 3 ? color : 'primary', 0.8 * Math.sin(Math.PI * life) * Math.min(1, (tt - 0.3) / 0.5));
+    }
+    const stars = rank >= 2 ? 10 : 6;
     for (let i = 0; i < stars; i++) {
       const twinkle = Math.max(0, Math.sin(tt * (1.3 + unit(i, 17)) + unit(i, 18) * 6));
       if (twinkle <= 0.05) continue;

@@ -5,6 +5,7 @@ import type { Settings } from '../core/career';
 import { type PatchNote, type PatchImpact, type PatchItem, itemText, itemCredit } from '../present/patchNotes';
 import { LEGAL_DOCS, type LegalDoc, type LegalId } from '../present/legal';
 import type { License } from '../present/licenses';
+import type { Intro } from '../present/intros';
 import { inItch, inPlayStore, inPortal, isInstalled, isIos } from '../storage/device';
 import { cloudEnabled } from '../net/cloud';
 import { PUSH_CHOICES, type PushChoice, type PushState } from '../net/push';
@@ -384,6 +385,24 @@ export function patchNotesSheet(layer: HTMLElement, notes: PatchNote[], onClose:
   return openSheet(layer, S.settings.whatsNew, body, onClose);
 }
 
+/** Every place that explains itself once (`Intros`), to read again any time: one fold per place the player has reached. */
+export function guidesSheet(layer: HTMLElement, places: Intro[], onClose: () => void): () => void {
+  const body = h(
+    'div',
+    { class: 'guides' },
+    ...places.map((id) => {
+      const t = S.intro[id];
+      return h(
+        'details',
+        { class: 'note-more guide' },
+        h('summary', { class: 'note-more-head' }, h('span', { class: 'guide-name' }, h('span', { class: 'row-title' }, t.title), h('span', { class: 'row-sub' }, t.line)), icon(ICONS.chevronDown, {})),
+        h('div', { class: 'guide-body' }, ...t.body.map((p) => h('p', {}, p))),
+      );
+    }),
+  );
+  return openSheet(layer, S.settings.guides, body, onClose);
+}
+
 /** Privacy Policy or Imprint, as plain reading text. Links leave the game in a new tab. */
 export function legalSheet(layer: HTMLElement, doc: LegalDoc, onClose: () => void): () => void {
   const body = h(
@@ -477,6 +496,8 @@ export interface SettingsActions {
   /** The patch notes; `notesUnread` lights the row until they are opened. */
   openNotes(): void;
   notesUnread: boolean;
+  /** How each place works, over the settings (`guidesSheet`). */
+  openGuides(): void;
   /** Police are on this career's road: the dispatch button's size has something to size. */
   dispatch: boolean;
   /** Privacy Policy, Imprint or the open-source licenses, over the settings. */
@@ -740,7 +761,7 @@ export function settingsSheet(layer: HTMLElement, s: Settings, actions: Settings
   setMotion(s.reduceMotion);
 
   const toggle =
-    (key: 'sound' | 'music' | 'mapSounds' | 'haptics' | 'vehicleLabels' | 'leftHanded' | 'largeText' | 'batterySaver') =>
+    (key: 'sound' | 'music' | 'mapSounds' | 'haptics' | 'vehicleLabels' | 'leftHanded' | 'largeText' | 'batterySaver' | 'lowDetail') =>
     (on: boolean): void => {
       s[key] = on;
       actions.changed(s);
@@ -818,6 +839,7 @@ export function settingsSheet(layer: HTMLElement, s: Settings, actions: Settings
         switchRow(S.settings.vehicleLabels, S.settings.vehicleLabelsSub, s.vehicleLabels, toggle('vehicleLabels')),
         switchRow(S.settings.haptics, hasVibration ? null : S.settings.hapticsNone, s.haptics, toggle('haptics')),
         switchRow(S.settings.batterySaver, S.settings.batterySaverSub, s.batterySaver, toggle('batterySaver')),
+        switchRow(S.settings.lowDetail, S.settings.lowDetailSub, s.lowDetail, toggle('lowDetail')),
       ),
       group(
         S.settings.sound,
@@ -851,6 +873,7 @@ export function settingsSheet(layer: HTMLElement, s: Settings, actions: Settings
     about: [
       group(
         S.settings.theGame,
+        linkRow(S.settings.guides, S.settings.guidesSub, () => actions.openGuides()),
         richLinkRow(S.settings.whatsNew, S.settings.whatsNewSub, () => actions.openNotes(), null, actions.notesUnread ? h('span', { class: 'new-pill' }, S.settings.newBadge) : null),
         inPortal ? null : websiteRow(),
         wikiRow(),
