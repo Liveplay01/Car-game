@@ -64,6 +64,7 @@ export const PATCH_NOTES: PatchNote[] = [
     items: [
       'Ads for your streak, always your tap and paid only when watched to the end: bring a broken streak of 3 days or more back (once a week), get a Streak Freeze in the last hours before it breaks, or double the Daily Shift’s pay on its result. They show up once an ad is ready.',
       'Bigger moments: your first shift won, Level 5 cleared and a streak milestone get a full-screen celebration, and so do a Freeze, a doubled pay and a free ad chest. A chest opening now shakes the screen, and the rarer the prize the more rings, light, stars and coins.',
+      'Ad offers only show while an ad can really play: offline, with an ad blocker or in flight mode they are gone instead of greyed out.',
       'A Daily Shift you lost can be played once more, once a day, for an ad you choose to watch. It is the same city and it pays if you clear it. The streak counts once, and the Daily board shows "2 tries" next to the score of anyone who needed the second.',
       'Fixed: after a lost shift the texts in the middle of the ring no longer pile on top of each other, especially on phones. Each line gets its own room, and the money and XP lines, which the counter and the ring already show, are gone.',
       'Daily quests only ask for what you have met on the road: no criminals before level 3, no money transporters before level 4.',

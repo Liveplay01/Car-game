@@ -101,11 +101,11 @@ export const Details = {
         ? []
         : [{ label: affordable ? S.detail.buy(money(Fmt.number(price))) : S.upgrades.missing(money(Fmt.number(price - career.money))), action: { k: 'buy', upgrade: u }, prominent: true, enabled: affordable }];
     // Today's pick (Leo, 05.10.2026): one free step for a watched ad. The player's choice, the buy button stays.
-    const free = ads.offers && Careers.adUpgradeOffer(career, today, config) === u;
+    // Only while an ad can play: no network, an ad blocker or no AdSense yet leave nothing to offer.
+    const free = ads.offers && ads.ready && Careers.adUpgradeOffer(career, today, config) === u;
     if (free) {
       notes.push({ text: S.ads.freeStepHint, color: 'accent' });
-      if (!ads.ready) notes.push({ text: S.ads.unavailable, color: 'muted' });
-      actions.push({ label: S.ads.freeStepAction, action: { k: 'watchAdUpgrade' }, prominent: false, enabled: ads.ready });
+      actions.push({ label: S.ads.freeStepAction, action: { k: 'watchAdUpgrade' }, prominent: false, enabled: true });
     }
     return {
       key: `upgrade:${u}`,
@@ -145,11 +145,7 @@ export const Details = {
     actions.push({ label: count > 1 ? `${S.shop.open} · ${count}` : S.shop.open, action: { k: 'openChest', index: Math.max(0, index) }, prominent: true, enabled: count > 0 });
     const price = chestPrice(kind, config);
     if (isForSale(kind) && price !== null) actions.push({ label: S.shop.buy(money(Fmt.number(price))), action: { k: 'buyChest', kind }, prominent: false, enabled: career.money >= price });
-    if (kind === 'standard') {
-      const left = Careers.adChestsLeft(career, today, config);
-      if (left > 0 && !ads.ready) notes.push({ text: S.ads.unavailable, color: 'muted' });
-      actions.push({ label: S.shop.watchAdShort, action: { k: 'watchAd' }, prominent: false, enabled: left > 0 && ads.ready });
-    }
+    if (kind === 'standard' && ads.ready) actions.push({ label: S.shop.watchAdShort, action: { k: 'watchAd' }, prominent: false, enabled: Careers.adChestsLeft(career, today, config) > 0 });
     return {
       key: `chest:${kind}`,
       art: { k: 'chest', kind },
@@ -465,7 +461,7 @@ export const Details = {
         body = D.upgrade;
         for (const r of RARITIES) rows.push({ label: D.value(S.shop.rarity(r)), value: money(Fmt.number(config.skinValue[r])), labelColor: ShopPage.rarityColor(r) });
         notes.push({ text: D.returns(pct(1 - config.upgradeEdge)), color: 'accent' }, { text: D.maxChance(pct(config.upgradeMaxChance)), color: 'muted' });
-        if (ads.offers) notes.push({ text: S.ads.boostNote(pct(config.upgradeAdBoost), config.adBoostsPerDay), color: 'muted' });
+        if (ads.offers && ads.ready) notes.push({ text: S.ads.boostNote(pct(config.upgradeAdBoost), config.adBoostsPerDay), color: 'muted' });
         break;
       case 'roulette':
         body = D.roulette;

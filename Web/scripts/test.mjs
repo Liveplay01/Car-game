@@ -2045,6 +2045,21 @@ test('a second try goes to the Daily board with its score, one try says nothing'
   assert.deepEqual(dueBoards({ ...r, dailyTries: 1 }).find(([board]) => board === 'daily')[1], { score: 3000, day: 20000 });
 });
 
+test('with no ad ready (no network, a blocker, no AdSense yet) the ad offers are not shown at all', () => {
+  const c = newCareer();
+  c.level = 12;
+  const none = { offers: true, ready: false };
+  const some = { offers: true, ready: true };
+  const watching = (d) => d.actions.some((a) => a.action.k === 'watchAd' || a.action.k === 'watchAdUpgrade');
+  assert.ok(!watching(Details.chest('standard', c, baseConfig, 50, none)), 'no free chest button');
+  assert.ok(watching(Details.chest('standard', c, baseConfig, 50, some)), 'with an ad ready it is there');
+  assert.ok(!Details.chest('standard', c, baseConfig, 50, none).notes.some((n) => n.text === S.ads.unavailable), 'and no "no ad" note either');
+  const pick = Careers.adUpgradeOffer(c, 50, baseConfig);
+  assert.ok(pick, 'a free step is on offer today');
+  assert.ok(!watching(Details.upgrade(pick, c, baseConfig, 50, none)), 'no free step button');
+  assert.ok(watching(Details.upgrade(pick, c, baseConfig, 50, some)));
+});
+
 test('a save keeps the days the streak ads were used, old saves start with none', () => {
   const c = newCareer();
   c.adRescueDay = 12;

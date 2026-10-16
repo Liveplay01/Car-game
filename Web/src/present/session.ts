@@ -1521,7 +1521,8 @@ export class GameSession {
       // Once the casino is open it loads in the background, so its section is there at once.
       if (Unlocks.isOpen(this.save.career, 'casino', this.config)) loadCasino().catch(() => undefined);
       const casino = this.shopPage.casino;
-      if (casino) casino.ad = this.adOffer;
+      // The boost row is there while an ad can play, and while a boost already waits for its round.
+      if (casino) casino.ad = { ...this.adOffer, offers: this.adOffer.offers && (this.adOffer.ready || this.save.career.upgradeBoost) };
       const flow = this.casinoFlow;
       if (casino && flow) for (const cue of casino.advance(realDelta)) flow.cue(cue);
       this.tension = this.shopPage.section === 2 && casino ? casino.tension : 0;
@@ -3039,7 +3040,7 @@ export class GameSession {
     const inset = this.tabInset;
     // Where a notice would sit: above the settings button; it fades out as the shift starts.
     if (this.isPage('streetBuilder')) StreetBuilderPage.add(list, career, this.config, this.builderPage, rm, inset, this.buildThumb);
-    else if (this.isPage('upgrades')) UpgradePage.add(list, career, this.config, this.visibleUpgrades, this.upgradePage, rm, inset, this.buildThumb, this.adOffer.offers ? Careers.adUpgradeOffer(career, this.today, this.config) : null);
+    else if (this.isPage('upgrades')) UpgradePage.add(list, career, this.config, this.visibleUpgrades, this.upgradePage, rm, inset, this.buildThumb, this.adOffer.offers && this.adOffer.ready ? Careers.adUpgradeOffer(career, this.today, this.config) : null);
     else if (this.isPage('shop')) ShopPage.add(list, career, this.config, this.today, this.shopPage, rm, inset);
     else if (this.isPage('progress')) ProgressPage.add(list, this.save, this.today, this.progressPage, rm, inset, this.progressScrollRange, this.progressDots);
     else if (this.isPage('social')) SocialPage.add(list, career, this.socialPage, rm);
