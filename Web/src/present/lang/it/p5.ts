@@ -199,6 +199,27 @@ export default (S: Strings): Words<Strings> => ({
     noBoosts: 'Nessun boost rimasto per oggi. Torna domani.',
     boostNote: (p, perDay) =>
       `A tua scelta: guarda un annuncio prima di un round per aumentare la probabilità di ${p}, anche oltre il limite. Valido per una manche, vinta o persa. Fino a ${perDay} al giorno.`,
+    rescuePill: (d) => `Recupera la tua serie di ${d} giorni`,
+    freezePill: 'Proteggi la serie con una protezione',
+    doublePill: (p) => `Raddoppia la paga · +${p}`,
+    noRescue: 'Questa serie non si può recuperare (una volta a settimana).',
+    noFreeze: 'Al momento non serve una protezione serie.',
+    noDouble: 'La paga si raddoppia una volta al giorno.',
+    rescued: 'Serie recuperata',
+    rescuedLine: (d) => `${d} giorni di fila, e si continua`,
+    froze: 'Protezione aggiunta',
+    frozeLine: 'Un giorno saltato non spezzerà la serie',
+    doubled: 'Paga raddoppiata',
+    chestEarned: 'Baule gratis',
+    chestEarnedLine: 'Baule standard aggiunto',
+  },
+
+  moments: {
+    firstWin: 'Primo turno vinto',
+    firstWinLine: 'Il tuo primo baule ti aspetta',
+    levelFive: (l) => `Livello ${l} superato`,
+    levelFiveLine: 'Non sei più una recluta',
+    streak: (d) => `${d} giorni di fila`,
   },
 
   club: {

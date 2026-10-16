@@ -782,10 +782,13 @@ export const ShopPage = {
    */
   addReveal(list: RenderList, opening: ChestOpening, reel: Reel, age: number, taps: number, reduceMotion: boolean): void {
     const vp = list.camera.viewport;
-    const center = sub(mul(vp, 0.5), v(0, 20));
     const rarity = opening.item.rarity;
     const color = ShopPage.rarityColor(rarity);
     const power = { common: 0.6, rare: 0.8, epic: 1.1, legendary: 1.5 }[rarity];
+    // The burst shakes the whole picture, harder the rarer the prize (Leo, 16.10.2026: over the top).
+    const since = age - ShopPage.stages(reel).reveal;
+    const kick = reduceMotion || since < 0 || since > 0.7 ? v(0, 0) : mul(v(Math.sin(since * 80), Math.cos(since * 63) * 0.6), 11 * power * Math.exp(-since * 6));
+    const center = add(sub(mul(vp, 0.5), v(0, 20)), kick);
     list.s(rect(mul(vp, 0.5), vp), 'background', 0.92 * Math.min(1, age / 0.25));
     if (reduceMotion) {
       ShopPage.addRevealCard(list, opening, center, 10, color, true);
@@ -848,6 +851,7 @@ export const ShopPage = {
     }
 
     ShopPage.addConfetti(list, center, tt, power, color, rarity === 'legendary');
+    ShopPage.addExtras(list, center, tt, rarity, color, opening.isDuplicate);
 
     ShopPage.addRevealCard(list, opening, center, tt, color, false);
 
@@ -1089,6 +1093,56 @@ export const ShopPage = {
       const side = i % 2 === 0 ? -1 : 1;
       const at = add(center, v(side * (base.x / 2 + 16 + 30 * unit(i, 19)), (unit(i, 20) - 0.5) * base.y * 1.1));
       ShopPage.addStar(list, at, (6 + 6 * unit(i, 21)) * twinkle, JUICE[i % JUICE.length], Math.min(1, (tt - 0.3) / 0.3));
+    }
+  },
+
+  /**
+   * More for the rarer (Leo, 16.10.2026): one more shock ring per rarity step, a pillar of light and a flash along the
+   * screen's edges for an Epic or better, stars orbiting the card, and a shower of coins when the prize was a duplicate.
+   */
+  addExtras(list: RenderList, center: Vec2, tt: number, rarity: Rarity, color: ColorToken, duplicate: boolean): void {
+    const vp = list.camera.viewport;
+    const rank = rarityRank(rarity);
+    for (let k = 0; k <= rank + 1; k++) {
+      const x = (tt - 0.12 - k * 0.16) / 0.8;
+      if (x <= 0 || x >= 1) continue;
+      list.s(arc(center, 40 + vp.x * 0.7 * Ease.outCubic(x), 7 * (1 - x) + 1, 0, TAU), k % 2 ? color : JUICE[k % JUICE.length], 0.7 * (1 - x));
+    }
+    if (rank >= 2) {
+      // A pillar of light up out of the card, breathing, and the screen's edges glowing for a moment.
+      const rise = Ease.outCubic(tt / 0.35);
+      const fade = 1 - Ease.clamp01((tt - 1.6) / 0.9);
+      for (const [width, opacity] of [[(46 + 18 * rank) * (1 + 0.1 * Math.sin(tt * 9)), 0.16], [18 + 6 * rank, 0.3]] as const) {
+        list.s(rect(v(center.x, center.y / 2), v(width * rise, center.y), width / 2), color, opacity * fade);
+      }
+      const edge = Math.max(0, 1 - tt / 0.7);
+      if (edge > 0) {
+        for (const [at, size] of [[v(vp.x / 2, 0), v(vp.x, 90)], [v(vp.x / 2, vp.y), v(vp.x, 90)], [v(0, vp.y / 2), v(90, vp.y)], [v(vp.x, vp.y / 2), v(90, vp.y)]] as const) list.s(rect(at, size), color, 0.4 * edge * edge);
+      }
+    }
+    if (rank >= 1 && tt > 0.3) {
+      const stars = 6 + 2 * rank;
+      for (let i = 0; i < stars; i++) {
+        const twinkle = 0.5 + 0.5 * Math.sin(tt * 5 + i * 1.9);
+        const at = add(center, mul(fromAngle((i / stars) * TAU + tt * 0.7), 190 + 14 * Math.sin(tt * 2 + i)));
+        ShopPage.addStar(list, at, (7 + 6 * unit(i, 23)) * (0.4 + twinkle), JUICE[i % JUICE.length], Math.min(1, (tt - 0.3) / 0.3) * (0.35 + 0.65 * twinkle));
+      }
+    }
+    if (duplicate) ShopPage.addCoinRain(list, vp, tt, 30);
+  },
+
+  /** Coins falling from the top of the screen, spinning edge-on and flat. */
+  addCoinRain(list: RenderList, vp: Vec2, age: number, count: number): void {
+    for (let i = 0; i < count; i++) {
+      const fall = age - 0.2 - unit(i, 41) * 1.3;
+      if (fall <= 0 || fall >= 1.7) continue;
+      const x = unit(i, 42) * vp.x + Math.sin(fall * 4 + i) * 10;
+      const y = -20 + fall * (vp.y * 0.62 + 120 * unit(i, 43));
+      const r = 7 + 6 * unit(i, 44);
+      const turn = Math.abs(Math.cos(fall * (6 + 6 * unit(i, 45)) + i));
+      const fade = 1 - Ease.clamp01((fall - 1.2) / 0.5);
+      list.s(rect(v(x, y), v(2 * r * (0.25 + 0.75 * turn), 2 * r), r * 0.5), 'coin', fade);
+      list.s(rect(v(x - r * 0.2, y - r * 0.3), v(r * 0.5 * turn, r * 0.7), 2), 'spark', 0.7 * fade);
     }
   },
 

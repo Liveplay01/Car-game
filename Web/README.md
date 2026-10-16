@@ -518,6 +518,13 @@ the dial; it is used up by one round, won or lost, and the dial shows the chance
   offers pay nothing. Try it with Google's test ads on a production build:
   `VITE_REWARDED_ADS=1 npm run build && npm run preview`, then open `/?adtest`.
 - Where the chance of an ad is limited (`frequencyCapped`), the game says "try again in a few minutes".
+- **Streak ads and the Doubled pay** (16.10.2026): three more offers, one pill under the top card of the Game tab
+  (`present/adPill.ts`, `GameSession.gameAd`), shown only once an ad is ready: the broken Daily streak back (3 days or
+  more, once in 7 days), a Streak Freeze in the last `streakWarningHours` before it breaks (once a day), and the Daily
+  Shift's pay doubled on its result (once a day). The rules are `Careers.adRescue/adFreezeOpen/adDoubleOpen` and
+  `rewardAd*`, the values `streakRescue*` in `core/config.ts`. Every ad step goes to Umami as `ad` (`reward`, `step`).
+- **Trying the offers without AdSense:** `npm run dev`, then add `?adfake` to the address: a pretend ad of two seconds.
+  It exists only in the dev build.
 
 ## Legal pages
 

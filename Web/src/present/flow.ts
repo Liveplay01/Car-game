@@ -105,6 +105,8 @@ export type ScreenAction =
   /** A free step of today's upgrade, and the Skin Upgrade's boost, each for an ad (`adFlow.ts`). */
   | { k: 'watchAdUpgrade' }
   | { k: 'watchAdBoost' }
+  /** The Game tab's ad pill: the streak back, a Streak Freeze, the Daily's pay doubled. */
+  | { k: 'watchAdGame'; reward: 'rescue' | 'freeze' | 'double' }
   | { k: 'showCasino'; game: CasinoGame }
   | { k: 'wear'; id: string }
   /** Big Screen: choose the picture or video behind the roundabout (the shell's sheet). */

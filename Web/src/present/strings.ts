@@ -1424,6 +1424,28 @@ export const S = {
     noBoosts: 'No more boosts today. Back tomorrow.',
     boostNote: (p: string, perDay: number): string =>
       `Your choice: watch an ad before a round and its chance gets ${p} on top, even above the cap. One round uses it up, won or lost. Up to ${perDay} a day. The dial shows the chance it really rolls.`,
+    /** The Daily streak's ads (Leo, 16.10.2026): a broken streak back, a Freeze before it breaks, the Daily's pay doubled. */
+    rescuePill: (days: number): string => `Bring back your ${days}-day streak`,
+    freezePill: 'Protect your streak with a Freeze',
+    doublePill: (pay: string): string => `Double the pay · +${pay}`,
+    noRescue: 'That streak cannot be brought back (once a week).',
+    noFreeze: 'A Freeze is not needed right now.',
+    noDouble: 'The pay is doubled once a day.',
+    rescued: 'Streak is back',
+    rescuedLine: (days: number): string => `${days} days in a row, and counting`,
+    froze: 'Freeze added',
+    frozeLine: 'One missed day will not break your streak',
+    doubled: 'Pay doubled',
+    chestEarned: 'Free chest',
+    chestEarnedLine: 'Standard chest added',
+  },
+  /** The moments the game is about (Leo, 16.10.2026): each gets one loud celebration (`GameSession.momentOf`). */
+  moments: {
+    firstWin: 'First shift won',
+    firstWinLine: 'Your first chest is waiting',
+    levelFive: (level: number): string => `Level ${level} cleared`,
+    levelFiveLine: 'You are no rookie any more',
+    streak: (days: number): string => `${days} days in a row`,
   },
   /** The Club (Leo, 10.10.2026): the Auction House, the Game fund and Contracts, the third segment of the Social tab (`ui/clubPanel.ts`). */
   club: {

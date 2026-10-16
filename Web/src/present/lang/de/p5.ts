@@ -199,6 +199,27 @@ export default (S: Strings): Words<Strings> => ({
     noBoosts: 'Heute keine Boosts mehr. Morgen wieder.',
     boostNote: (p, perDay) =>
       `Deine Entscheidung: Sieh dir vor einer Runde eine Werbung an, und ihre Chance steigt um ${p}, auch über die Obergrenze. Eine Runde verbraucht ihn, gewonnen oder verloren. Bis zu ${perDay} am Tag. Die Anzeige zeigt die Chance, mit der wirklich gewürfelt wird.`,
+    rescuePill: (d) => `Hol deine ${d}-Tage-Serie zurück`,
+    freezePill: 'Schütze deine Serie mit einem Serienschutz',
+    doublePill: (p) => `Lohn verdoppeln · +${p}`,
+    noRescue: 'Diese Serie lässt sich nicht zurückholen (einmal pro Woche).',
+    noFreeze: 'Ein Serienschutz wird gerade nicht gebraucht.',
+    noDouble: 'Der Lohn wird einmal am Tag verdoppelt.',
+    rescued: 'Serie ist zurück',
+    rescuedLine: (d) => `${d} Tage in Folge, und es geht weiter`,
+    froze: 'Serienschutz erhalten',
+    frozeLine: 'Ein verpasster Tag bricht deine Serie nicht',
+    doubled: 'Lohn verdoppelt',
+    chestEarned: 'Gratis-Truhe',
+    chestEarnedLine: 'Standard-Truhe hinzugefügt',
+  },
+
+  moments: {
+    firstWin: 'Erste Schicht gewonnen',
+    firstWinLine: 'Deine erste Truhe wartet',
+    levelFive: (l) => `Level ${l} geschafft`,
+    levelFiveLine: 'Du bist kein Neuling mehr',
+    streak: (d) => `${d} Tage in Folge`,
   },
 
   club: {

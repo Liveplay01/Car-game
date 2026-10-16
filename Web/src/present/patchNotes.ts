@@ -53,15 +53,17 @@ export const PATCH_NOTES: PatchNote[] = [
   {
     id: '2026-10-16',
     date: '16 October 2026',
-    title: 'A gentler start, a floating tab bar, the Family on the ring',
+    title: 'Streak ads, bigger celebrations, a gentler start, the Family on the ring',
     impact: 'major',
     summary: [
+      'Your choice: watch an ad to bring a broken streak back, get a Freeze or double the Daily pay.',
+      'Big moments are celebrated on the whole screen, and chest openings are wilder.',
       'A gentler start: daily quests fit your level and three upgrades have a cheap first step.',
       'The tab bar floats as a rounded dock, and the middle of the ring stays clear before a shift.',
-      'No more double taps in Build: a tap opens the card, its button buys or builds.',
-      'A loan from the Family now shows on the ring: a thin line runs round as its days pass.',
     ],
     items: [
+      'Ads for your streak, always your tap and paid only when watched to the end: bring a broken streak of 3 days or more back (once a week), get a Streak Freeze in the last hours before it breaks, or double the Daily Shift’s pay on its result. They show up once an ad is ready.',
+      'Bigger moments: your first shift won, Level 5 cleared and a streak milestone get a full-screen celebration, and so do a Freeze, a doubled pay and a free ad chest. A chest opening now shakes the screen, and the rarer the prize the more rings, light, stars and coins.',
       'Fixed: after a lost shift the texts in the middle of the ring no longer pile on top of each other, especially on phones. Each line gets its own room, and the money and XP lines, which the counter and the ring already show, are gone.',
       'Daily quests only ask for what you have met on the road: no criminals before level 3, no money transporters before level 4.',
       'Overtime, the Tight Fit tip and Quick Recovery have a cheaper first step (800, 900 and 1,000), so your first upgrade comes after a few shifts. Every later step costs what it did.',

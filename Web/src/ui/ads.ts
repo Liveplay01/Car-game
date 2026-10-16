@@ -46,6 +46,10 @@ declare global {
   }
 }
 
+/** Development only (`?adfake`): a pretend ad of two seconds, so the offers can be tried before AdSense approves H5 Games Ads. Not in the production build. */
+const fakeAds = import.meta.env.DEV && new URLSearchParams(location.search).has('adfake');
+const FAKE_AD_MS = 2000;
+
 /** How long a failed ask rests before the game asks again (an ad may be there next time). */
 const RETRY_MS = 30_000;
 
@@ -122,6 +126,7 @@ function prepare(): void {
  * Cheap enough to ask every frame; it also nudges the next ask along.
  */
 export function adReady(): boolean {
+  if (fakeAds) return true;
   if (!rewardedAdsLive) return false;
   if (showAd === null) prepare();
   return showAd !== null;
@@ -133,6 +138,14 @@ export function adReady(): boolean {
  * this call.
  */
 export function rewardedAdsense(done: (outcome: RewardedOutcome) => void): boolean {
+  if (fakeAds) {
+    quiet(true);
+    window.setTimeout(() => {
+      quiet(false);
+      done('watched');
+    }, FAKE_AD_MS);
+    return true;
+  }
   if (!rewardedAdsLive) return false;
   const play = showAd;
   if (!play || listener) {

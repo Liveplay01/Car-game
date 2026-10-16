@@ -4,8 +4,11 @@ import { S, percent } from './strings';
 import type { PageHost } from './pageHost';
 import type { RewardedOutcome } from './session';
 
-/** What a watched ad pays: the free Standard chest, a free step of today's upgrade, the Skin Upgrade's boost. */
-export type AdReward = 'chest' | 'upgrade' | 'boost';
+/** What a watched ad pays: the free Standard chest, a free step of today's upgrade, the Skin Upgrade's boost, a broken streak back, a Streak Freeze, the Daily's pay once more. */
+export type AdReward = 'chest' | 'upgrade' | 'boost' | 'rescue' | 'freeze' | 'double';
+
+/** The ads of the Game tab's pill (`AdPill`). */
+export type GameAd = Extract<AdReward, 'rescue' | 'freeze' | 'double'>;
 
 /** What the ads on offer look like right now: the extra ones (free step, boost) are on, and an ad is ready to play. */
 export interface AdOffer {
@@ -15,7 +18,8 @@ export interface AdOffer {
 
 /**
  * Every rewarded ad of the game (Leo, 05.10.2026), always the player's tap and never a duty: the
- * free chest, a free step of one upgrade a day, and +10 % on the Skin Upgrade. The reward is paid
+ * free chest, a free step of one upgrade a day, and +10 % on the Skin Upgrade; since 16.10.2026 also
+ * a broken Daily streak back, a Streak Freeze before it breaks, and the Daily's pay doubled. The reward is paid
  * only when the ad was watched; a closed ad, no ad and an ad blocker pay nothing. The ad itself
  * comes from the host (`rewardedAd`: the portal's, or Google's on the normal site and the Play
  * app); where none is on, nothing is paid. Only the chest is also offered on a portal
@@ -44,6 +48,12 @@ export class AdFlow {
       case 'boost':
         if (career.upgradeBoost) return S.ads.boostWaiting;
         return Careers.adBoostsLeft(career, today, config) <= 0 ? S.ads.noBoosts : null;
+      case 'rescue':
+        return Careers.adRescue(career, today, config) === null ? S.ads.noRescue : null;
+      case 'freeze':
+        return Careers.adFreezeOpen(career, today) ? null : S.ads.noFreeze;
+      case 'double':
+        return Careers.adDoubleOpen(career, today, this.host.dailyPay) ? null : S.ads.noDouble;
     }
   }
 
@@ -58,14 +68,17 @@ export class AdFlow {
       return;
     }
     this.requested = true;
+    this.host.report('ask', reward);
     const fail = (outcome: Exclude<RewardedOutcome, 'watched'>): void => {
       this.requested = false;
+      this.host.report(outcome, reward);
       this.host.play(['denied'], []);
       this.host.showNotice(S.ads.failed(outcome));
     };
     const asked = this.host.rewardedAd((outcome) => {
       if (outcome !== 'watched') return fail(outcome);
       this.requested = false;
+      this.host.report('watched', reward);
       this.grant(reward);
     });
     if (!asked) fail('unavailable');
@@ -81,7 +94,7 @@ export class AdFlow {
         this.host.persist();
         this.host.play(['purchase'], ['paid']);
         this.host.shopPage.selectedChest = 'standard';
-        this.host.showNotice(S.shop.adReward);
+        this.host.celebrate({ kind: 'chest', title: S.ads.chestEarned, line: S.ads.chestEarnedLine, color: 'accent', power: 1 });
         return;
       case 'upgrade': {
         const u = Careers.rewardAdUpgrade(career, today, config);
@@ -103,6 +116,25 @@ export class AdFlow {
         this.host.play(['purchase'], ['paid']);
         this.host.showNotice(S.ads.boostReward(percent(config.upgradeAdBoost)));
         return;
+      case 'rescue': {
+        const days = Careers.rewardAdRescue(career, today, config);
+        if (days === null) return;
+        this.host.persist();
+        this.host.celebrate({ kind: 'rescue', title: S.ads.rescued, line: S.ads.rescuedLine(days), color: 'hazard', power: 1.2 });
+        return;
+      }
+      case 'freeze':
+        if (!Careers.rewardAdFreeze(career, today)) return;
+        this.host.persist();
+        this.host.celebrate({ kind: 'freeze', title: S.ads.froze, line: S.ads.frozeLine, color: 'lightBlue', power: 1 });
+        return;
+      case 'double': {
+        const pay = this.host.dailyPay;
+        if (!Careers.rewardAdDouble(career, today, pay)) return;
+        this.host.persist();
+        this.host.celebrate({ kind: 'double', title: S.ads.doubled, line: '', color: 'coin', power: 1.5, count: pay });
+        return;
+      }
     }
   }
 }

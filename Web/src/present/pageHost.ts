@@ -7,6 +7,7 @@ import type { UpgradeState } from './upgrades';
 import type { BuilderState } from './builder';
 import type { ShopState } from './shop';
 import type { RewardedOutcome } from './session';
+import type { Burst } from './rewardBurst';
 
 /**
  * What the pages' flows (`buildFlow.ts`, `shopFlow.ts`) need from the session: the save, the
@@ -41,4 +42,10 @@ export interface PageHost {
   rewardedAd(done: (outcome: RewardedOutcome) => void): boolean;
   /** The ad offers beyond the free chest are on (not on a portal). */
   readonly adOffers: boolean;
+  /** What a watched ad doubles right now: the money the Daily Shift on the result paid (0: nothing to double). */
+  readonly dailyPay: number;
+  /** One step of a rewarded ad for the visit statistics: `reward` and how it went (`ask`, `watched`, or why not). */
+  report(step: string, reward: string): void;
+  /** A big moment: the celebration over the screen. */
+  celebrate(burst: Burst): void;
 }

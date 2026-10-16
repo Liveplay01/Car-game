@@ -1974,6 +1974,62 @@ test('without enough Freezes a gap breaks the streak, and the stock is capped', 
   assert.equal(Careers.completeDaily(newCareer(), 5, baseConfig), baseConfig.dailyPay, 'the Daily Shift pays through the same path');
 });
 
+test('an ad brings a broken streak back once a week, and only a streak that was worth keeping', () => {
+  const c = newCareer();
+  for (let day = 100; day < 104; day++) Careers.startDaily(c, day, baseConfig);
+  c.streakFreezes = 0;
+  assert.equal(Careers.adRescue(c, 104, baseConfig), null, 'nothing is broken yet: yesterday counted');
+  assert.equal(Careers.adRescue(c, 106, baseConfig), 4, 'two days missed, no Freeze: broken, and it can come back');
+  assert.equal(Goals.streak(c, 106), 0);
+  assert.equal(Careers.rewardAdRescue(c, 106, baseConfig), 4);
+  assert.equal(Goals.streak(c, 106), 4, 'the streak lives again');
+  Careers.startDaily(c, 106, baseConfig);
+  assert.equal(c.dailyStreak, 5, 'and today counts on top of it');
+  assert.equal(Careers.rewardAdRescue(c, 106, baseConfig), null, 'the Daily is played: nothing left to rescue');
+  c.dailyPlayed = 110;
+  assert.equal(Careers.adRescue(c, 112, baseConfig), null, 'not twice within a week');
+  assert.equal(Careers.adRescue(c, 113, baseConfig), 5, 'a week later it can come back again');
+  assert.equal(Careers.adRescue(c, 110 + baseConfig.streakRescueMaxMissed + 2, baseConfig), null, 'too many days missed');
+  const short = newCareer();
+  Careers.startDaily(short, 100, baseConfig);
+  assert.equal(Careers.adRescue(short, 103, baseConfig), null, 'a streak of one day is not worth an ad');
+});
+
+test('an ad gives a Streak Freeze to a streak that is about to break, once a day', () => {
+  const c = newCareer();
+  Careers.startDaily(c, 100, baseConfig);
+  Careers.startDaily(c, 101, baseConfig);
+  assert.ok(Careers.adFreezeOpen(c, 102), 'yesterday counted, no Freeze, today open');
+  assert.ok(Careers.rewardAdFreeze(c, 102));
+  assert.equal(c.streakFreezes, 1);
+  assert.ok(!Careers.rewardAdFreeze(c, 102), 'with the Freeze in stock there is nothing to give');
+  assert.equal(Goals.streak(c, 103), 2, 'a missed day is covered now');
+  c.streakFreezes = 0;
+  assert.ok(!Careers.adFreezeOpen(c, 102), 'once a day');
+});
+
+test('an ad pays the Daily once more, once a day, and never for no pay', () => {
+  const c = newCareer();
+  c.money = 100;
+  assert.ok(!Careers.rewardAdDouble(c, 50, 0));
+  assert.ok(Careers.rewardAdDouble(c, 50, 400));
+  assert.equal(c.money, 500);
+  assert.ok(!Careers.rewardAdDouble(c, 50, 400), 'the same day');
+  assert.ok(Careers.rewardAdDouble(c, 51, 400), 'the next day');
+});
+
+test('a save keeps the days the streak ads were used, old saves start with none', () => {
+  const c = newCareer();
+  c.adRescueDay = 12;
+  c.adFreezeDay = 13;
+  c.adDoubleDay = 14;
+  fakeStorage({ 'carGame.save.v2': JSON.stringify({ career: c }) });
+  const back = loadSave().career;
+  assert.deepEqual([back.adRescueDay, back.adFreezeDay, back.adDoubleDay], [12, 13, 14]);
+  fakeStorage({ 'carGame.save.v2': JSON.stringify({ career: { level: 3 } }) });
+  assert.deepEqual([loadSave().career.adRescueDay, loadSave().career.adDoubleDay], [-1, -1]);
+});
+
 test('a save keeps its Streak Freezes and the pity counter, old saves start with none', () => {
   const c = newCareer();
   c.streakFreezes = 2;

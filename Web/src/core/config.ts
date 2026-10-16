@@ -806,6 +806,16 @@ export const baseConfig = {
   adUpgradesPerDay: 1,
   adBoostsPerDay: 3,
   upgradeAdBoost: 0.1,
+  /**
+   * Ads for the Daily streak (Leo, 16.10.2026), the player's tap like the others: a streak of at least
+   * `streakRescueMin` days that broke over at most `streakRescueMaxMissed` missed days comes back for one
+   * ad, once in `streakRescueEvery` days (a cheap repair every day would make it worth nothing). In the
+   * last hours before it breaks, a streak without a Freeze can have one for an ad, once a day. And the
+   * Daily Shift's pay can be doubled for an ad, once a day.
+   */
+  streakRescueMin: 3,
+  streakRescueMaxMissed: 7,
+  streakRescueEvery: 7,
 
   // Engagement (Leo, 28.09.2026): surprises on top of skill, never instead of it
   /** A Perfect or a Near Miss is now and then a Critical Merge: its points count this many times. */

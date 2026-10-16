@@ -199,6 +199,27 @@ export default (S: Strings): Words<Strings> => ({
     noBoosts: 'No quedan impulsos hoy. Vuelve mañana.',
     boostNote: (p, perDay) =>
       `A tu elección: mira un anuncio antes de una ronda y su probabilidad aumentará en ${p}, incluso superando el límite. Una ronda lo consume, ganes o pierdas. Hasta ${perDay} al día. La pantalla muestra la probabilidad real aplicada.`,
+    rescuePill: (d) => `Recupera tu racha de ${d} días`,
+    freezePill: 'Protege tu racha con una protección',
+    doublePill: (p) => `Duplica la paga · +${p}`,
+    noRescue: 'Esa racha no se puede recuperar (una vez por semana).',
+    noFreeze: 'Ahora no hace falta una protección de racha.',
+    noDouble: 'La paga se duplica una vez al día.',
+    rescued: 'Racha recuperada',
+    rescuedLine: (d) => `${d} días seguidos, y sigue`,
+    froze: 'Protección añadida',
+    frozeLine: 'Un día perdido no romperá tu racha',
+    doubled: 'Paga duplicada',
+    chestEarned: 'Cofre gratis',
+    chestEarnedLine: 'Cofre estándar añadido',
+  },
+
+  moments: {
+    firstWin: 'Primer turno ganado',
+    firstWinLine: 'Tu primer cofre te espera',
+    levelFive: (l) => `Nivel ${l} superado`,
+    levelFiveLine: 'Ya no eres novato',
+    streak: (d) => `${d} días seguidos`,
   },
 
   club: {

@@ -204,6 +204,10 @@ export interface Career {
   adUpgrades: number;
   adBoostDay: number;
   adBoosts: number;
+  /** The days an ad last brought a broken streak back, gave a Freeze and doubled the Daily's pay. */
+  adRescueDay: number;
+  adFreezeDay: number;
+  adDoubleDay: number;
   upgradeBoost: boolean;
   chestsOpened: number;
   chestsSinceEpic: number;
@@ -375,6 +379,9 @@ export const newCareer = (): Career => ({
   adUpgrades: 0,
   adBoostDay: -1,
   adBoosts: 0,
+  adRescueDay: -1,
+  adFreezeDay: -1,
+  adDoubleDay: -1,
   upgradeBoost: false,
   chestsOpened: 0,
   chestsSinceEpic: 0,
@@ -857,6 +864,44 @@ export const Careers = {
     }
     c.adBoosts++;
     c.upgradeBoost = true;
+    return true;
+  },
+
+  /** The days of a broken streak an ad can bring back (`streakRescueMin` and up, broken over few days, not yet this week), or null. */
+  adRescue(c: Career, day: number, config: Config = baseConfig): number | null {
+    const missed = day - c.dailyPlayed - 1;
+    const broken = c.dailyStreak >= config.streakRescueMin && missed > c.streakFreezes && missed <= config.streakRescueMaxMissed;
+    return broken && Careers.isDailyOpen(c, day) && day - c.adRescueDay >= config.streakRescueEvery ? c.dailyStreak : null;
+  },
+
+  /** A watched ad: the missed days count as played, so today's Daily goes on with the streak. Null when there is nothing to bring back. */
+  rewardAdRescue(c: Career, day: number, config: Config = baseConfig): number | null {
+    const days = Careers.adRescue(c, day, config);
+    if (days === null) return null;
+    c.dailyPlayed = day - 1;
+    c.adRescueDay = day;
+    return days;
+  },
+
+  /** Yesterday counted, no Freeze in stock and none given today: an ad can hand out one. */
+  adFreezeOpen: (c: Career, day: number): boolean => c.dailyStreak > 0 && c.dailyPlayed === day - 1 && c.streakFreezes === 0 && c.adFreezeDay !== day,
+
+  /** A watched ad: one Streak Freeze. False when none is open. */
+  rewardAdFreeze(c: Career, day: number): boolean {
+    if (!Careers.adFreezeOpen(c, day)) return false;
+    c.streakFreezes++;
+    c.adFreezeDay = day;
+    return true;
+  },
+
+  /** What a watched ad adds to today's Daily pay once more: the pay itself, once a day. */
+  adDoubleOpen: (c: Career, day: number, pay: number): boolean => pay > 0 && c.adDoubleDay !== day,
+
+  /** A watched ad: the Daily's pay again. False when today's is taken or there was none. */
+  rewardAdDouble(c: Career, day: number, pay: number): boolean {
+    if (!Careers.adDoubleOpen(c, day, pay)) return false;
+    c.money += pay;
+    c.adDoubleDay = day;
     return true;
   },
 

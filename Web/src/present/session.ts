@@ -52,7 +52,9 @@ import { casinoKit, loadCasino } from './casinoLoader';
 import { Casino } from '../core/casino';
 import { BuildFlow } from './buildFlow';
 import { ShopFlow } from './shopFlow';
-import { AdFlow, type AdOffer } from './adFlow';
+import { AdFlow, type AdOffer, type GameAd } from './adFlow';
+import { AdPill } from './adPill';
+import { RewardBurst, type Burst } from './rewardBurst';
 import type { PageHost } from './pageHost';
 import { type SpecialRun, settleSpecial, runCard, advanceRush, newRush } from './specialRuns';
 import { markPassed, markReward } from '../core/tiers';
@@ -208,6 +210,16 @@ export class GameSession {
   private shownMoney = 0;
   private sinceMoney = Infinity;
   private resultBank = { before: 0, after: 0 };
+  /** The celebration on screen (`rewardBurst.ts`), and a moment the next result celebrates when it shows. */
+  private burst: { burst: Burst; age: number } | null = null;
+  private resultBurst: Burst | null = null;
+  /** A doubled pay joins the result's money as the celebration counts it up. */
+  private pendingBank: number | null = null;
+  /** The ad the Game tab offers (`gameAd`): where its pill stands, which one it is, how long it has stood there, and which offers the statistics were told of. */
+  private adTarget: { reward: GameAd; rect: Rect } | null = null;
+  private adPillReward: GameAd | null = null;
+  private adPillAge = 0;
+  private readonly adTold = new Set<GameAd>();
   private sinceComboTier = Infinity;
   private sinceCarSent = Infinity;
   private sinceMark = Infinity;
@@ -797,6 +809,9 @@ export class GameSession {
       case 'watchAdBoost':
         this.adFlow.watch('boost');
         break;
+      case 'watchAdGame':
+        this.adFlow.watch(action.reward);
+        break;
       case 'showCasino':
         this.perform({ k: 'showShop', section: 2 });
         // The casino may still be loading: the game is picked once it is here.
@@ -1314,6 +1329,11 @@ export class GameSession {
       get adOffers() {
         return session.adOffer.offers;
       },
+      get dailyPay() {
+        return session.dailyPay;
+      },
+      report: (step, reward) => this.onStep?.('ad', { reward, step }),
+      celebrate: (burst) => this.celebrate(burst),
     };
   }
 
@@ -1386,6 +1406,16 @@ export class GameSession {
     this.sinceTakedown += realDelta;
     this.sinceHitStop += realDelta;
     this.sincePunch += realDelta;
+    this.adPillAge += realDelta;
+    if (this.burst) {
+      this.burst.age += realDelta;
+      if (this.pendingBank !== null && this.burst.age >= 1.5) {
+        this.resultBank = { before: this.resultBank.before, after: this.pendingBank };
+        this.pendingBank = null;
+        this.play(['purchase'], ['paid']);
+      }
+      if (this.burst.age >= RewardBurst.duration) this.burst = null;
+    }
     const tense = this.screen.k === 'playing' && !this.tutorial;
     this.cameraFx.update(tense ? tensionOf(this.world, this.playingMode) : 0, realDelta);
     this.cameraFx.watchFinal(this.world, tense);
@@ -2262,6 +2292,7 @@ export class GameSession {
     }
     if (this.screen.k === 'ready' || this.screen.k === 'result') {
       if (this.screen.k === 'result' && this.resultAge < this.resultLock) return null;
+      if (this.adTarget && R.contains(this.adTarget.rect, point)) return { k: 'perform', action: { k: 'watchAdGame', reward: this.adTarget.reward } };
       const chip = this.conditionTargets.find((t) => R.contains(t.rect, point));
       if (chip) {
         this.showCondition(chip.id);
@@ -2542,6 +2573,7 @@ export class GameSession {
     this.shownMoney = this.shiftStartMoney;
     this.sinceMoney = Infinity;
     this.dailySplash = null;
+    this.resultBurst = null;
     this.play(['go'], []);
     this.onChrome?.();
     if (!this.playingDaily) return;
@@ -2550,12 +2582,14 @@ export class GameSession {
     const toasts: string[] = [];
     if (news?.frozen) toasts.push(S.daily.freezeUsed(news.frozen));
     const got: string[] = [];
-    if (news?.item) got.push(S.daily.gotItem(news.item));
     if (news?.earned) got.push(S.daily.gotFreeze);
     // The casino opens quietly: until it has, the cards wait in hand without a word.
     if (news?.cards && Unlocks.isOpen(career, 'casino', this.config)) got.push(S.daily.gotCard);
     if (got.length > 0) toasts.push(S.daily.streakReward(career.dailyStreak, got));
-    if (news?.item) toasts.push(...this.completeAlbums());
+    if (news?.item) {
+      toasts.push(...this.completeAlbums());
+      this.resultBurst = { kind: 'streak', title: S.moments.streak(career.dailyStreak), line: S.daily.gotItem(news.item), color: 'hazard', power: 1.5 };
+    }
     this.persist();
     this.announce(...toasts);
   }
@@ -2679,6 +2713,7 @@ export class GameSession {
       this.onStep?.('tutorial-done');
     }
     this.onStep?.('shift', { mode: this.playingMode, level: this.playingLevel, outcome: result.outcome, daily: this.playingDaily ? 1 : 0, nth: Math.min(save.shiftsPlayed + 1, 10) });
+    const levelBefore = career.level;
     const booked = bookShift(save, result, {
       mode: this.playingMode,
       level: this.playingLevel,
@@ -2690,6 +2725,7 @@ export class GameSession {
     });
     this.bookFailure(result);
     this.persist();
+    this.resultBurst = this.momentOf(result, levelBefore) ?? this.resultBurst;
     this.dailyShare =
       this.playingDaily && result.outcome === 'completed'
         ? S.run.dailyShare(Fmt.number(result.score), result.perfects, result.tightFits, career.dailyStreak)
@@ -2710,6 +2746,19 @@ export class GameSession {
     }
     this.pendingSummary = { result, level: this.playingLevel, isNewHighscore: isNew, previousHighscore: previous, mode: this.playingMode, closeCall: this.playingMode === 'chill' ? null : this.closeCall(result, previous), elite: booked.elite };
     this.resultCountdown = this.resultDelayFor(result);
+  }
+
+  /**
+   * The few moments the game is about (Leo, 16.10.2026) get the loudest celebration: the first shift won, Level 5 cleared
+   * and a streak milestone (set when the Daily starts, `startPlaying`). Nothing else gets one, or none would stand out.
+   */
+  private momentOf(result: ShiftResult, levelBefore: number): Burst | null {
+    if (this.playingMode !== 'shift' || this.playingDaily || result.outcome !== 'completed') return null;
+    const level = this.save.career.level;
+    if (levelBefore < this.config.welcomeChestLevel && level >= this.config.welcomeChestLevel) return { kind: 'firstWin', title: S.moments.firstWin, line: S.moments.firstWinLine, color: 'accent', power: 1.4 };
+    const cap = this.config.modeHintAfterLevel;
+    if (levelBefore <= cap && level > cap) return { kind: 'levelFive', title: S.moments.levelFive(cap), line: S.moments.levelFiveLine, color: 'coin', power: 1.5 };
+    return null;
   }
 
   /** A lost shift puts the way it was lost on show in the Museum; the last one missing pays the Failures skin. */
@@ -2803,6 +2852,8 @@ export class GameSession {
       if (this.resultCountdown <= 0) {
         this.resultAge = 0;
         this.moneyLanded = false;
+        if (this.resultBurst) this.celebrate(this.resultBurst);
+        this.resultBurst = null;
         // A Boss Rush shows the next boss behind its result (or the first, after a loss or a clear).
         this.special = advanceRush(this.special);
         this.prepareShift(!summary.result.detonated, null, { k: 'result', summary });
@@ -2851,8 +2902,8 @@ export class GameSession {
     this.explosions.addGround(list);
     this.effects.carSkins = career.carSkins;
     this.effects.addGround(list);
-    CityLights.add(list, world, alpha, theme, this.lamps, rm ? null : world.time, this.nightPreview);
-    if (night) NightLayer.addRoadLights(list, world, alpha, this.lamps, rm ? null : world.time, this.lowDetail ? 5 : undefined);
+    CityLights.add(list, world, alpha, theme, this.lamps, rm ? null : world.time, this.nightPreview, this.lowDetail);
+    if (night) NightLayer.addRoadLights(list, world, alpha, this.lamps, rm ? null : world.time, this.lowDetail ? 3 : undefined);
     if (night) {
       // Keep the ring's glow in the world layer so vehicles and wreckage can occlude it.
       const lit = list.items.length;
@@ -2869,7 +2920,7 @@ export class GameSession {
     if (this.save.settings.vehicleLabels) SceneBuilder.addLabels(list, world, alpha);
     this.effects.addAir(list);
     this.explosions.addAir(list);
-    WeatherLayer.addAir(list, world, this.sceneTime, rm, weather);
+    WeatherLayer.addAir(list, world, this.sceneTime, rm, weather, this.lowDetail);
     const island = { center: toScreen(camera, v(0, 0)), radius: (world.layout.islandRadius) * camera.scale };
     if (!this.lowDetail) MapTheme.addAir(list, theme, this.sceneTime, rm, island);
     return list;
@@ -2918,6 +2969,7 @@ export class GameSession {
     // Where the chrome under the top card ends: a notice hangs below it.
     let underCard = TopBar.frame(viewport.x).maxY;
     this.conditionTargets = [];
+    this.adTarget = null;
     if (s.k === 'playing') {
       const lit = list.items.length;
       HUD.addFlowGlow(list, world, this.flowLevel, rm ? 0 : 1 - Ease.clamp01(this.sinceCarSent / 0.3));
@@ -2970,6 +3022,7 @@ export class GameSession {
       this.tutorial?.add(list, world, alpha, this.sceneTime, rm);
       const arriving = ResultBanner.arriving(this.resultAge);
       if (arriving > 0) underCard = this.addReadyBanner(list, null, false, arriving);
+      else if (this.addGameAd(list, TopBar.frame(viewport.x).maxY + 18, 1)) underCard = TopBar.frame(viewport.x).maxY + 1 + AdPill.row;
     } else if (s.k === 'ready') {
       underCard = this.addReadyBanner(list, this.tutorial && !this.tutorial.isOver ? Tutorial.readyPrompt : this.versusSelected ? S.ready.tapForFriends : S.ready.tapToStart);
       this.tutorial?.add(list, world, alpha, this.sceneTime, rm);
@@ -2984,6 +3037,7 @@ export class GameSession {
     else if (s.k === 'settings') list.s(rect({ x: viewport.x / 2, y: viewport.y / 2 }, viewport), 'background', 0.55);
     this.addIntroDots(list, viewport, inset);
     this.transitions.apply(list, s, overlayStart, rm);
+    if (this.burst) RewardBurst.add(list, this.burst.burst, this.burst.age, rm);
     const notice = this.notices.shown;
     if (notice && !this.isPage('social')) addNotice(list, notice, { at: this.noticePlace(s, underCard, inset), textScale: this.textScale, reduceMotion: rm });
     return list;
@@ -3098,6 +3152,7 @@ export class GameSession {
     // While the Daily's opening is on, nothing else of the waiting screen shows through it.
     const opening = daily !== null && daily.splash !== null;
     const chips = opening || this.special?.k === 'trial' || this.versusSelected || (this.tutorial && !this.tutorial.isOver) ? [] : conditionChips(this.world.config, career);
+    const adRow = !opening && (daily !== null || this.screen.k === 'result') && this.gameAd !== null;
     const chipsAt = ConditionChips.center(toScreen(list.camera, v(0, 0)), !!run?.line);
     const under = ReadyBanner.add(list, {
       level: this.playingLevel,
@@ -3124,7 +3179,9 @@ export class GameSession {
       message: this.topMessage,
       ringTop: toScreen(list.camera, v(0, this.world.layout.ringRadius + this.world.layout.laneWidth)).y,
       island: this.world.layout.islandRadius,
+      adRow,
     });
+    if (adRow) this.addGameAd(list, TopBar.frame(list.camera.viewport.x).maxY + 18 + (daily ? 31 : 0), opacity);
     if (chips.length > 0) {
       ConditionChips.add(list, chips, chipsAt, { time: this.sinceReady - ReadyBanner.introDelay, reduceMotion: this.reduceMotion, opacity, selected: this.conditionShown });
       if (opacity > 0.5 && this.showsChrome) this.conditionTargets = ConditionChips.targets(chips.length, chipsAt).map((rect, i) => ({ id: chips[i].id, rect }));
@@ -3132,6 +3189,60 @@ export class GameSession {
     // The Daily's splash covers the whole screen for a moment: above the condition icons, never under them.
     if (daily && daily.splash !== null) ReadyBanner.addSplash(list, daily, daily.splash, this.reduceMotion);
     return under;
+  }
+
+  /**
+   * The ad the Game tab offers (Leo, 16.10.2026), only once one is ready to play: before the Daily, a streak that
+   * broke (brought back) or that breaks within hours (a Freeze); on the Daily's result, its pay doubled.
+   */
+  private get gameAd(): { reward: GameAd; label: string } | null {
+    const ads = this.adOffer;
+    if (!ads.offers || !ads.ready) return null;
+    const career = this.save.career;
+    const s = this.screen;
+    if (s.k === 'result') {
+      const pay = this.dailyPay;
+      return this.resultAge >= this.resultLock && Careers.adDoubleOpen(career, this.today, pay) ? { reward: 'double', label: S.ads.doublePill(Fmt.number(pay)) } : null;
+    }
+    if (s.k !== 'ready' || !this.dailySelected || this.versusSelected || this.special) return null;
+    const days = Careers.adRescue(career, this.today, this.config);
+    if (days !== null) return { reward: 'rescue', label: S.ads.rescuePill(days) };
+    if (Careers.adFreezeOpen(career, this.today) && streakEndsIn(career, this.today, this.config) !== null) return { reward: 'freeze', label: S.ads.freezePill };
+    return null;
+  }
+
+  /** What the Daily Shift on the result paid: a watched ad pays it again. */
+  get dailyPay(): number {
+    return this.screen.k === 'result' && this.dailyShare !== null ? Math.max(0, this.resultBank.after - this.resultBank.before) : 0;
+  }
+
+  /** Draws the ad pill at `y` and makes it tappable; false when no ad is on offer. */
+  private addGameAd(list: RenderList, y: number, opacity: number): boolean {
+    const ad = this.gameAd;
+    if (!ad) {
+      this.adPillReward = null;
+      return false;
+    }
+    if (this.adPillReward !== ad.reward) {
+      this.adPillReward = ad.reward;
+      this.adPillAge = 0;
+    }
+    if (!this.adTold.has(ad.reward)) {
+      this.adTold.add(ad.reward);
+      this.onStep?.('ad', { reward: ad.reward, step: 'offer' });
+    }
+    const at = v(list.camera.viewport.x / 2, y);
+    AdPill.add(list, ad.label, at, this.adPillAge, opacity, this.reduceMotion, this.adFlow.busy);
+    if (opacity > 0.5 && this.showsChrome) this.adTarget = { reward: ad.reward, rect: AdPill.target(ad.label, at) };
+    return true;
+  }
+
+  /** The celebration over the screen (`rewardBurst.ts`), loud on purpose: sound, a double knock and a punch of the camera. */
+  private celebrate(burst: Burst): void {
+    this.burst = { burst, age: 0 };
+    if (burst.kind === 'double' && burst.count) this.pendingBank = this.resultBank.after + burst.count;
+    this.play([burst.power >= 1.2 ? 'chestBurstRare' : 'chestBurst', 'comboUp'], ['chest']);
+    this.landMerge(0.08, 0.05, v(0, 0));
   }
 
   /** How a lost shift was lost, as an icon over the island: a tap opens its Museum sheet (`showCondition`), the sheet rimmed in red. */

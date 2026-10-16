@@ -199,6 +199,27 @@ export default (S: Strings): Words<Strings> => ({
     noBoosts: 'Plus de boost aujourd’hui. Revenez demain.',
     boostNote: (p, perDay) =>
       `À votre discrétion : visionnez une pub avant une manche pour bonifier sa chance de ${p}, même au-delà du plafond. Consommé en une manche, victoire ou défaite. Jusqu’à ${perDay} par jour.`,
+    rescuePill: (d) => `Récupérez votre série de ${d} jours`,
+    freezePill: 'Protégez votre série avec un gel de série',
+    doublePill: (p) => `Doublez la paie · +${p}`,
+    noRescue: 'Cette série ne peut pas être récupérée (une fois par semaine).',
+    noFreeze: 'Un gel de série n’est pas nécessaire pour l’instant.',
+    noDouble: 'La paie est doublée une fois par jour.',
+    rescued: 'Série récupérée',
+    rescuedLine: (d) => `${d} jours d’affilée, et ça continue`,
+    froze: 'Gel de série ajouté',
+    frozeLine: 'Un jour manqué ne brisera pas votre série',
+    doubled: 'Paie doublée',
+    chestEarned: 'Coffre gratuit',
+    chestEarnedLine: 'Coffre standard ajouté',
+  },
+
+  moments: {
+    firstWin: 'Premier service gagné',
+    firstWinLine: 'Votre premier coffre vous attend',
+    levelFive: (l) => `Niveau ${l} terminé`,
+    levelFiveLine: 'Vous n’êtes plus un débutant',
+    streak: (d) => `${d} jours d’affilée`,
   },
 
   club: {

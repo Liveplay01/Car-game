@@ -16,6 +16,7 @@ import { type Vec2, v, add, sub, mul, fromAngle, TAU, clamp } from '../core/vec2
 import { type RenderList, type Rect, type Primitive, R, rect, circle, arc, line, polygon, text, Ease, Metrics, toScreen, moved, type Align, type Weight } from './render';
 import type { ColorToken } from './theme';
 import { MenuKit } from './menukit';
+import { AdPill } from './adPill';
 import { touchFirst } from '../storage/device';
 import { moneyTag, flameTag, textWidth, drawFitted } from './icons';
 import { S, Fmt, money as moneyText, comboMultiplier } from './strings';
@@ -1404,6 +1405,8 @@ export const ReadyBanner = {
       ringTop?: number;
       /** The island's radius in world units: the lines in the middle stay inside it. */
       island: number;
+      /** A row for an ad pill (`AdPill`) under the streak pill: the intro makes way for it. */
+      adRow?: boolean;
     },
   ): number {
     const width = list.camera.viewport.x;
@@ -1474,7 +1477,7 @@ export const ReadyBanner = {
     }
     const island = toScreen(list.camera, v(0, 0));
     const introBottom = Math.min((o.iconsTop ?? island.y - (run?.line ? 49 : 26)) - 10, (o.ringTop ?? Infinity) - 10);
-    const under = frame.maxY + (pillText ? 31 : 0);
+    const under = frame.maxY + (pillText ? 31 : 0) + (o.adRow ? AdPill.row : 0);
     const intro = o.intro && o.intro.length > 0 ? ReadyBanner.introLayout(o.intro, frame, under + 12 + (o.noticeRoom ?? 0), introBottom, o.textScale ?? 1) : null;
     if (o.prompt) {
       const breath = o.reduceMotion ? 1 : 0.7 + 0.3 * (0.5 + 0.5 * Math.cos(o.time * 2.4));
