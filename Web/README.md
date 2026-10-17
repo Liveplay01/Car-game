@@ -179,7 +179,7 @@ wins. Every value below is in `core/config.ts` (`versus…`).
 ## Leaderboard
 
 Social → **Ranks** (the Rank chip beside the balance on Progress leads there too; it shows the Shift level rank once known) is
-`ui/ranksPanel.ts`: everyone or friends only, four boards (Shift level, Unlimited, Daily, Boss Rush), the top 50 and your own place.
+`ui/ranksPanel.ts`: everyone or friends only, four boards (Shift level, Unlimited, Daily, Casino), the top 50 and your own place.
 There is no sign-up: the player enters a name, and the records come from this device's save. The
 service (`../Server/`) answers with a secret token kept in `carGame.account.v1`; the name is the
 multiplayer name too (`carGame.player.v1`), and renaming in either place renames both (the
@@ -223,7 +223,7 @@ at most one a day besides the streak, never at night on the player's clock. The 
 from the save (`pushTimers`: the Daily streak of two days or more this evening, or tomorrow evening once today's
 is played; tomorrow's free chest at 10:00; the next Season Pass on its first morning) and hands them to the
 service when it starts, when it goes to the background (`keepalive`) and when a name is entered. The service adds
-a rank lost in the top 20, an invite's chest and a nudge after 3, 7, 14 and 30 days away. The service worker shows
+a rank lost in the top 20, an invite's chest and a nudge after 3, 7, 14 and 30 days away (from 7 days on it names the Premium Chest that waits: `Careers.giveComebackChest`, `comebackDays`, given on every return after 7 days or more). The service worker shows
 them (`push`) and opens or focuses the game on a tap (`notificationclick`, at `/?googleplaystore` in the app).
 
 With the main switch on, Settings lists one switch per kind (`PUSH_CHOICES`: streak, free chests = the Daily chest and invite gifts, new season, overtaken, come back). The choices stay on this device (`carGame.push.muted.v1`)
@@ -536,6 +536,10 @@ the dial; it is used up by one round, won or lost, and the dial shows the chance
   more, once in 7 days), a Streak Freeze in the last `streakWarningHours` before it breaks (once a day), and the Daily
   Shift's pay doubled on its result (once a day). The rules are `Careers.adRescue/adFreezeOpen/adDoubleOpen` and
   `rewardAd*`, the values `streakRescue*` in `core/config.ts`. Every ad step goes to Umami as `ad` (`reward`, `step`).
+- **A career shift's pay doubled** (18.10.2026): on the result of a won career shift (not the Daily, Unlimited, a
+  challenge, trial or match, not on the first day) the same pill pays the shift's own pay (`config.shiftPay`, no tips,
+  transporters or boni) once more, `adShiftDoublesPerDay` (3) times a day (`Careers.adShiftDoublesLeft/rewardAdShiftDouble`,
+  `GameSession.shiftPay`). No celebration: the result's money counts up. Umami `reward = pay`.
 - **The Daily's second try** (16.10.2026): a Daily Shift that was lost can be played once more, once a day, for an ad
   (`Careers.adRetryOpen/rewardAdRetry`, the pill on the result). Same seed; the streak counts once. The score sent to
   the Daily board carries `tries: 2` (`save.dailyTries`), the board shows "2 tries" (`ui/ranksPanel.ts`).

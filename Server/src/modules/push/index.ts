@@ -50,9 +50,10 @@ const SENDS_AT_ONCE = 20;
 
 const COMEBACK_TEXT: readonly { title: string; body: string }[] = [
   { title: 'The roundabout is busy', body: 'Cars are queuing at your stop line. One quick shift?' },
-  { title: 'Your city misses you', body: 'Traffic kept rolling while you were away. Jump back in for a shift.' },
+  // From a week away on, a Premium Chest waits in the game (`comebackDays`): the nudges may say so.
+  { title: 'A Premium Chest is waiting', body: 'A week away earns you a free Premium Chest. Come back and open it.' },
   { title: 'Still got the timing?', body: 'A new shift is waiting. Find out in 20 seconds.' },
-  { title: 'Come back for a shift', body: 'Your roundabout is right where you left it.' },
+  { title: 'Your city misses you', body: 'Your roundabout is right where you left it, and a Premium Chest is waiting.' },
 ];
 
 const HOME = /^\/(\?[a-z]{1,32})?$/;

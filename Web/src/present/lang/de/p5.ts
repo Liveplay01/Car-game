@@ -204,6 +204,7 @@ export default (S: Strings): Words<Strings> => ({
     noRescue: 'Diese Serie lässt sich nicht zurückholen (einmal pro Woche).',
     noFreeze: 'Ein Serienschutz wird gerade nicht gebraucht.',
     noDouble: 'Der Lohn wird einmal am Tag verdoppelt.',
+    noShiftDouble: (n) => `Der Lohn einer Schicht wird ${n}-mal am Tag verdoppelt.`,
     rescued: 'Serie ist zurück',
     rescuedLine: (d) => `${d} Tage in Folge, und es geht weiter`,
     froze: 'Serienschutz erhalten',

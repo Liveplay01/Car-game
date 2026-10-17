@@ -9,7 +9,6 @@ import {
   type Records,
   BOARD_TOP,
   createAccount,
-  deleteAccount,
   describeError,
   fetchBoard,
   fetchFriendsBoard,
@@ -28,7 +27,7 @@ import { tierOf } from '../core/tiers';
 /**
  * Social → Ranks: the leaderboards (the Progress tab's rank chip leads here). No sign-up (Leo, 30.09.2026): the player only
  * enters a name (the same one as in multiplayer), and the records come from this device's
- * progress. Everyone or friends only (Leo, 10.10.2026: the Friends page's own ranking is this one), Shift level, Unlimited, Daily and Boss Rush, the top 50
+ * progress. Everyone or friends only (Leo, 10.10.2026: the Friends page's own ranking is this one), Shift level, Unlimited, Daily and Casino, the top 50
  * and your own place. Scores are sent by the game on its own (`syncScores` on every save); this page only shows them.
  */
 
@@ -39,7 +38,7 @@ export interface RanksActions {
   createPlayer(): void;
 }
 
-const BOARDS: { id: BoardId; label: string; empty: string }[] = (['shift-level', 'unlimited', 'daily', 'rush', 'casino'] as const).map((id) => ({ id, ...S.ranks.boards[id] }));
+const BOARDS: { id: BoardId; label: string; empty: string }[] = (['shift-level', 'unlimited', 'daily', 'casino'] as const).map((id) => ({ id, ...S.ranks.boards[id] }));
 
 /** The last list of each board: shown at once when the sheet opens again, then refreshed. */
 const cache = new Map<string, BoardView>();
@@ -206,6 +205,9 @@ export function forgetFriendsBoards(): void {
   for (const b of BOARDS) cache.delete(cacheKey('friends', b.id));
 }
 
+/** The account is gone (removed in Settings): no list may show its line. */
+export const forgetBoards = (): void => cache.clear();
+
 /** Opens the account under `name` (also the multiplayer name). Throws like `createAccount`; the lists are stale after. */
 export async function openAccount(name: string): Promise<Account> {
   const account = await createAccount(name);
@@ -229,7 +231,7 @@ export interface BoardHost {
 }
 
 /**
- * The board tabs (Shift level, Unlimited, Daily, Boss Rush) with their list, for everyone or for the
+ * The board tabs (Shift level, Unlimited, Daily, Casino) with their list, for everyone or for the
  * friends only. The leaderboard sheet shows the first, the Friends page the second.
  */
 export function boardPanel(scope: Scope, host: BoardHost): BoardPanel {
@@ -370,36 +372,6 @@ export function ranksPanel(actions: RanksActions): HTMLElement {
       footer.replaceChildren(h('p', { class: 'section-note' }, S.ranks.noSignUp));
       return;
     }
-    const me = account;
-    const remove = h('button', { class: 'btn block destructive', type: 'button' }, S.ranks.remove);
-    let armed = false;
-    remove.addEventListener('click', () => {
-      if (!armed) {
-        armed = true;
-        remove.textContent = S.ranks.removeAgain;
-        window.setTimeout(() => {
-          if (!remove.isConnected) return;
-          armed = false;
-          remove.textContent = S.ranks.remove;
-        }, 3000);
-        return;
-      }
-      remove.disabled = true;
-      deleteAccount(me)
-        .then(() => {
-          account = null;
-          cache.clear();
-          renderTop();
-          shown().open();
-        })
-        .catch((error: unknown) => {
-          remove.disabled = false;
-          armed = false;
-          remove.textContent = S.ranks.remove;
-          footer.querySelector('.field-help')?.remove();
-          footer.append(h('p', { class: 'field-help error', role: 'alert' }, describeError(error)));
-        });
-    });
     footer.replaceChildren(
       h(
         'div',
@@ -407,13 +379,11 @@ export function ranksPanel(actions: RanksActions): HTMLElement {
         h(
           'div',
           { class: 'row' },
-          h('div', { class: 'row-main' }, h('div', { class: 'row-title' }, me.name), h('div', { class: 'row-sub' }, `${S.ranks.nameSub} ${S.account.nameWhere(`${S.settings.title} → ${S.settings.tabs.account}`)}`)),
+          h('div', { class: 'row-main' }, h('div', { class: 'row-title' }, account.name), h('div', { class: 'row-sub' }, `${S.ranks.nameSub} ${S.account.nameWhere(`${S.settings.title} → ${S.settings.tabs.account}`)}`)),
         ),
       ),
-      remove,
     );
   }
-
 
   renderTop();
   shown().open();

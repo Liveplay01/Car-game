@@ -51,6 +51,26 @@ export const itemCredit = (item: PatchItem): string | null => {
 
 export const PATCH_NOTES: PatchNote[] = [
   {
+    id: '2026-10-18',
+    date: '18 October 2026',
+    title: 'A chest when you come back, double a shift’s pay, the Legendary count on every chest',
+    impact: 'major',
+    summary: [
+      'Back after a week or more? A free Premium Chest waits for you.',
+      'Your choice: watch an ad to double a won shift’s pay, up to three times a day.',
+      'Every chest card shows how close your guaranteed Legendary is.',
+    ],
+    items: [
+      'The Boss Rush board is gone from Ranks: it had too few entries to be worth a tab. Your best time stays in Progress.',
+      '“Remove me from the leaderboard” moved from every list to Settings → Account → Your player.',
+      'The Daily’s streak line no longer announces its pay bonus before the first shift of a visit.',
+      'Fixed: in Settings, the tabs (Play, Account, About) were see-through, so the list scrolling under them showed through the labels. They are solid now.',
+      'Coming back after a week or more brings a free Premium Chest, with its usual odds, every time.',
+      'A won career shift can pay its shift pay once more for an ad you choose to watch, up to three times a day. Not on your first day, and it shows only once an ad is ready.',
+      'Every chest card now has a thin gold bar that fills towards your guaranteed Legendary, and names the count once it is ten chests or fewer away. The prize card says it too.',
+    ],
+  },
+  {
     id: '2026-10-16',
     date: '16 October 2026',
     title: 'Streak ads, bigger celebrations, a gentler start, the Family on the ring',

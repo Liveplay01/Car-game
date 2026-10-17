@@ -204,6 +204,7 @@ export default (S: Strings): Words<Strings> => ({
     noRescue: 'Cette série ne peut pas être récupérée (une fois par semaine).',
     noFreeze: 'Un gel de série n’est pas nécessaire pour l’instant.',
     noDouble: 'La paie est doublée une fois par jour.',
+    noShiftDouble: (n) => `La paie d'un service est doublée ${n} fois par jour.`,
     rescued: 'Série récupérée',
     rescuedLine: (d) => `${d} jours d’affilée, et ça continue`,
     froze: 'Gel de série ajouté',

@@ -208,6 +208,8 @@ export class GameSession {
   private lossPull = 0;
   private shownScore = 0;
   private shiftStartMoney = 0;
+  /** A shift has run since the game opened: before that the Daily's pill names the streak, not its pay bonus. */
+  private shiftRan = false;
   private shownMoney = 0;
   private sinceMoney = Infinity;
   private resultBank = { before: 0, after: 0 };
@@ -219,6 +221,8 @@ export class GameSession {
   private resultBurst: Burst | null = null;
   /** A doubled pay joins the result's money as the celebration counts it up. */
   private pendingBank: number | null = null;
+  /** The won career shift's own pay on the result, booked with it: an ad can pay it once more (0: none, or already paid). */
+  private resultShiftPay = 0;
   /** The ad the Game tab offers (`gameAd`): where its pill stands, which one it is, how long it has stood there, and which offers the statistics were told of. */
   private adTarget: { reward: GameAd; rect: Rect } | null = null;
   private adPillReward: GameAd | null = null;
@@ -472,12 +476,14 @@ export class GameSession {
     // Worked out before the login is booked: the last day is overwritten there.
     const away = career.lastLoginDay >= 0 ? this.today - career.lastLoginDay : 0;
     const endedStreak = away > 0 && career.dailyStreak >= 2 && Goals.streak(career, this.today) === 0 ? career.dailyStreak : 0;
+    const comeback = this.save.tutorialDone && Careers.giveComebackChest(career, this.today, this.config);
     const income = Careers.collectLoginIncome(career, this.today, this.config);
     Careers.collectGift(career, this.today);
     // A loan that fell due while the game was shut: one day of grace, so staying away never costs a loan.
     const graced = Mafia.returned(career, Date.now());
     this.persist();
     if (graced) this.announce(S.mafia.notices.grace);
+    if (comeback) this.announce(S.daily.comebackChest(S.shop.chest('premium')));
     if (income !== null) this.announce(S.daily.welcomeBack(Fmt.number(income)));
     else if (this.save.tutorialDone && endedStreak > 0) this.announce(S.daily.streakEnded(endedStreak));
     this.announceInvite();
@@ -1337,6 +1343,14 @@ export class GameSession {
       },
       get dailyPay() {
         return session.dailyPay;
+      },
+      get shiftPay() {
+        return session.shiftPay;
+      },
+      bankResult: (amount) => {
+        this.resultBank = { before: this.resultBank.before, after: this.resultBank.after + amount };
+        this.resultShiftPay = 0;
+        this.play(['purchase'], ['paid']);
       },
       report: (step, reward) => this.onStep?.('ad', { reward, step }),
       celebrate: (burst) => this.celebrate(burst),
@@ -2646,6 +2660,7 @@ export class GameSession {
 
   private startPlaying(): void {
     this.screen = { k: 'playing' };
+    this.shiftRan = true;
     // The ready screen has told its news: the next one waits for the next ready screen.
     this.museum.ready.shift();
     this.shiftStartMoney = this.save.career.money;
@@ -2813,6 +2828,8 @@ export class GameSession {
     this.dailySelected = false;
     this.dailyLost = this.playingDaily && result.outcome !== 'completed';
     this.resultBank = booked.bank;
+    const careerWin = result.outcome === 'completed' && this.playingMode === 'shift' && !this.playingDaily && !this.special && !this.versusSelected && !this.tutorial;
+    this.resultShiftPay = careerWin && save.firstDay !== this.today ? this.world.config.shiftPay : 0;
     this.notices.announce(...GameSession.budget(booked.news));
     this.tips.add(...booked.tips);
     for (const hint of booked.due) this.onHint?.(hint);
@@ -3222,7 +3239,7 @@ export class GameSession {
           streak: Goals.streak(career, this.today),
           next: Careers.nextStreakMilestone(career),
           splash: this.dailySplash,
-          bonus: Goals.streakBonus(career, this.today, this.config) ? this.config.streakBonusPay : null,
+          bonus: this.shiftRan && Goals.streakBonus(career, this.today, this.config) ? this.config.streakBonusPay : null,
           endsIn: streakEndsIn(career, this.today, this.config),
           freezes: career.streakFreezes,
           mutator: this.world.config.mutator,
@@ -3277,7 +3294,7 @@ export class GameSession {
    * The ad the Game tab offers (Leo, 16.10.2026), only once one is ready to play: before the Daily, a streak that
    * broke (brought back) or that breaks within hours (a Freeze); on the Daily's result, its pay doubled.
    */
-  private get gameAd(): { reward: GameAd; label: string } | null {
+  get gameAd(): { reward: GameAd; label: string } | null {
     const ads = this.adOffer;
     if (!ads.offers || !ads.ready) return null;
     const career = this.save.career;
@@ -3285,8 +3302,12 @@ export class GameSession {
     if (s.k === 'result') {
       if (this.resultAge < this.resultLock) return null;
       if (this.dailyLost) return Careers.adRetryOpen(career, this.today) ? { reward: 'retry', label: S.ads.retryPill } : null;
-      const pay = this.dailyPay;
-      return Careers.adDoubleOpen(career, this.today, pay) ? { reward: 'double', label: S.ads.doublePill(Fmt.number(pay)) } : null;
+      if (this.dailyShare !== null) {
+        const pay = this.dailyPay;
+        return Careers.adDoubleOpen(career, this.today, pay) ? { reward: 'double', label: S.ads.doublePill(Fmt.number(pay)) } : null;
+      }
+      const pay = this.shiftPay;
+      return pay > 0 && Careers.adShiftDoublesLeft(career, this.today, this.config) > 0 ? { reward: 'pay', label: S.ads.doublePill(Fmt.number(pay)) } : null;
     }
     if (s.k !== 'ready' || !this.dailySelected || this.versusSelected || this.special) return null;
     const days = Careers.adRescue(career, this.today, this.config);
@@ -3298,6 +3319,11 @@ export class GameSession {
   /** What the Daily Shift on the result paid: a watched ad pays it again. */
   get dailyPay(): number {
     return this.screen.k === 'result' && this.dailyShare !== null ? Math.max(0, this.resultBank.after - this.resultBank.before) : 0;
+  }
+
+  /** A won career shift's own pay on the result, for an ad to pay once more; 0 on the first day and for anything else (Leo, 18.10.2026). */
+  get shiftPay(): number {
+    return this.screen.k === 'result' ? this.resultShiftPay : 0;
   }
 
   /** Draws the ad pill at `y` and makes it tappable; false when no ad is on offer. */

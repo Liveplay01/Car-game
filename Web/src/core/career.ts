@@ -218,6 +218,9 @@ export interface Career {
   adRescueDay: number;
   adFreezeDay: number;
   adDoubleDay: number;
+  /** The day and how many won career shifts an ad paid once more (`adShiftDoublesPerDay`). */
+  adShiftDoubleDay: number;
+  adShiftDoubles: number;
   /** The day an ad gave the lost Daily a second try, and whether that try waits to be played. */
   adRetryDay: number;
   dailyRetry: boolean;
@@ -395,6 +398,8 @@ export const newCareer = (): Career => ({
   adRescueDay: -1,
   adFreezeDay: -1,
   adDoubleDay: -1,
+  adShiftDoubleDay: -1,
+  adShiftDoubles: 0,
   adRetryDay: -1,
   dailyRetry: false,
   upgradeBoost: false,
@@ -920,7 +925,29 @@ export const Careers = {
     return true;
   },
 
+  adShiftDoublesLeft: (c: Career, day: number, config: Config = baseConfig): number =>
+    Math.max(0, config.adShiftDoublesPerDay - (c.adShiftDoubleDay === day ? c.adShiftDoubles : 0)),
+
+  /** A watched ad: a won career shift's pay again. False when today's are taken or there was none. */
+  rewardAdShiftDouble(c: Career, day: number, pay: number, config: Config = baseConfig): boolean {
+    if (pay <= 0 || Careers.adShiftDoublesLeft(c, day, config) <= 0) return false;
+    if (c.adShiftDoubleDay !== day) {
+      c.adShiftDoubleDay = day;
+      c.adShiftDoubles = 0;
+    }
+    c.adShiftDoubles++;
+    c.money += pay;
+    return true;
+  },
+
   // MARK: Daily, challenges, albums, best times
+
+  /** Back after `comebackDays` or more: a Premium Chest, with its usual odds. Before the login is booked (it reads the last day). */
+  giveComebackChest(c: Career, day: number, config: Config = baseConfig): boolean {
+    if (c.lastLoginDay < 0 || day - c.lastLoginDay < config.comebackDays) return false;
+    c.chests.push('premium');
+    return true;
+  },
 
   collectLoginIncome(c: Career, day: number, config: Config = baseConfig): number | null {
     const last = c.lastLoginDay;

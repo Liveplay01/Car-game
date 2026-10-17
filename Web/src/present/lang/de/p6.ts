@@ -147,6 +147,7 @@ export default (S: Strings): Words<Strings> => ({
     buy: (price) => `Kaufen · ${price}`,
     pity: (n) => `Episch oder besser innerhalb von ${n} Truhen. Duplikate zahlen ${MONEY_MARK} aus.`,
     pityLegendary: (n) => `Ein Legendärer innerhalb von ${n} Truhen.`,
+    pitySoon: (n) => `Legendär in ${n}`,
     duplicate: (m) => `Duplikat · +${money(m)}`,
     ownedHint(item) {
       if (item.kind === 'carSkin') return 'Lackiert die Autos auf der Straße. Mische bis zu acht. Nur Optik, nie ein Vorteil.';
@@ -222,6 +223,7 @@ export default (S: Strings): Words<Strings> => ({
     ready: 'Bereit',
     perfectRun: 'PERFEKTER LAUF',
     welcomeBack: (m) => `Willkommen zurück · deine Mautstellen haben +${money(m)} eingebracht`,
+    comebackChest: (chest) => `Schön, dass du wieder da bist · eine ${chest} wartet im Shop`,
     streakEnded: (days) => `Deine ${days}-Tage-Serie ist zu Ende · eine neue beginnt mit der heutigen Tagesschicht`,
     done: 'Erledigt',
     readyHint: 'Deine erste Schicht des Tages. Ein Versuch, für alle dieselbe Schicht.',

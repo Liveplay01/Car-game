@@ -32,6 +32,7 @@ export function installProbe(shell: Shell): void {
       hints: [...save.hints],
       daily: { selected: game.dailySelected, streak: save.career.dailyStreak, chests: [...save.career.chests] },
       ask: game.lastAsk,
+      ad: game.gameAd?.reward ?? null,
     };
   };
 
@@ -88,6 +89,8 @@ export interface Snapshot {
   hints: string[];
   daily: { selected: boolean; streak: number; chests: string[] };
   ask: string | null;
+  /** The ad the Game tab's pill offers right now (`GameSession.gameAd`), or null. */
+  ad: string | null;
 }
 
 export interface Probe {

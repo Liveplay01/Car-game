@@ -16,6 +16,7 @@ import {
   isHonour,
   strongTaps,
   BIG_SCREEN,
+  PITY_LEGENDARY_CHESTS,
 } from '../core/loot';
 import type { VehicleType } from '../core/vehicle';
 import { type Vec2, v, add, sub, mul, fromAngle, TAU, clamp, lerpV } from '../core/vec2';
@@ -243,6 +244,8 @@ export const ShopPage = {
   },
   /** The prize stays at least this long before a tap can close it. */
   closeAfter: 0.5,
+  /** From how many chests left the card names the Legendary pity. */
+  pitySoon: 10,
   confettiCount: 32,
 
   pressedRect(r: Rect, target: ShopTarget, state: ShopState): Rect {
@@ -428,7 +431,7 @@ export const ShopPage = {
         list.items.splice(start, 0, ...old.items.map((i) => moved(i, away, 1 - gone)));
       }
     }
-    if (state.opening) ShopPage.addReveal(list, state.opening.opening, state.opening.reel, state.opening.age, config.chestTaps, reduceMotion);
+    if (state.opening) ShopPage.addReveal(list, state.opening.opening, state.opening.reel, state.opening.age, config.chestTaps, reduceMotion, PITY_LEGENDARY_CHESTS - career.chestsSinceLegendary);
     else if (state.charging) ShopPage.addCharge(list, state.charging, config.chestTaps, config.chestTapWindow, reduceMotion);
   },
 
@@ -511,6 +514,15 @@ export const ShopPage = {
         const badge = v(r.maxX - 18, r.minY + 18);
         list.s(circle(badge, 10), 'accent', enter);
         drawText(list, String(count), badge, 11, 'accentInk', { weight: 'bold', align: 'center', opacity: enter });
+      }
+      // The Legendary pity, shared by every chest: a gold sliver that fills, and a count once it is close.
+      if (available && career.chestsSinceLegendary > 0) {
+        const w = R.width(r) - 40;
+        const fill = w * Math.min(1, career.chestsSinceLegendary / PITY_LEGENDARY_CHESTS);
+        list.s(rect(v(c.x, r.maxY - 6), v(w, 3), 1.5), 'muted', 0.25 * enter);
+        list.s(rect(v(r.minX + 20 + fill / 2, r.maxY - 6), v(fill, 3), 1.5), 'coin', enter);
+        const left = PITY_LEGENDARY_CHESTS - career.chestsSinceLegendary;
+        if (left <= ShopPage.pitySoon && isForSale(kind)) drawText(list, S.shop.pitySoon(left), v(r.minX + 14, r.minY + 18), 11, 'coin', { weight: 'bold', opacity: enter });
       }
     });
   },
@@ -780,7 +792,7 @@ export const ShopPage = {
    * ducks before it bursts; then flash, lid off, shockwaves, fruit splashes, juice drops,
    * confetti, rays and a jelly card. A pure function of the age, so it never stutters.
    */
-  addReveal(list: RenderList, opening: ChestOpening, reel: Reel, age: number, taps: number, reduceMotion: boolean): void {
+  addReveal(list: RenderList, opening: ChestOpening, reel: Reel, age: number, taps: number, reduceMotion: boolean, pityLeft: number): void {
     const vp = list.camera.viewport;
     const rarity = opening.item.rarity;
     const color = ShopPage.rarityColor(rarity);
@@ -791,7 +803,7 @@ export const ShopPage = {
     const center = add(sub(mul(vp, 0.5), v(0, 20)), kick);
     list.s(rect(mul(vp, 0.5), vp), 'background', 0.92 * Math.min(1, age / 0.25));
     if (reduceMotion) {
-      ShopPage.addRevealCard(list, opening, center, 10, color, true);
+      ShopPage.addRevealCard(list, opening, center, 10, color, true, pityLeft);
       const fade = 1 - Math.min(1, age / 0.3);
       if (fade > 0) list.s(rect(mul(vp, 0.5), vp), 'background', fade);
       return;
@@ -853,7 +865,7 @@ export const ShopPage = {
     ShopPage.addConfetti(list, center, tt, power, color, rarity === 'legendary');
     ShopPage.addExtras(list, center, tt, rarity, color, opening.isDuplicate);
 
-    ShopPage.addRevealCard(list, opening, center, tt, color, false);
+    ShopPage.addRevealCard(list, opening, center, tt, color, false, pityLeft);
 
     if (tt < 0.3) {
       const white = Math.max(0, 1 - tt / 0.12);
@@ -1044,7 +1056,7 @@ export const ShopPage = {
     if (strong && wave < 1) list.s(arc(at, 26 + 90 * Ease.outCubic(wave), 4 * (1 - wave) + 1, 0, TAU), 'primary', 0.55 * (1 - wave));
   },
 
-  addRevealCard(list: RenderList, opening: ChestOpening, center: Vec2, tt: number, color: ColorToken, reduceMotion: boolean): void {
+  addRevealCard(list: RenderList, opening: ChestOpening, center: Vec2, tt: number, color: ColorToken, reduceMotion: boolean, pityLeft: number): void {
     const base = v(256, 300);
     const sx = reduceMotion ? 1 : 0.35 + 0.65 * Ease.spring(tt / 0.42);
     const sy = reduceMotion ? 1 : 0.35 + 0.65 * Ease.spring((tt - 0.05) / 0.42);
@@ -1094,6 +1106,7 @@ export const ShopPage = {
       const counted = reduceMotion ? opening.money : Math.round(opening.money * Ease.outCubic((tt - 0.3) / 0.9));
       drawText(list, S.shop.duplicate(Fmt.number(counted)), add(place(v(0, 102)), v(0, 10 * (1 - m))), 13, 'accent', { weight: 'bold', align: 'center', opacity: m });
     }
+    if (opening.item.rarity !== 'legendary') drawText(list, S.shop.pityLegendary(pityLeft), place(v(0, opening.isDuplicate ? 117 : 102)), 11, 'muted', { align: 'center', opacity: appear(0.36) });
     // The hint comes when a tap can close the card, not before.
     drawText(list, S.shop.tapToClose, place(v(0, 132)), 11, 'muted', { align: 'center', opacity: 0.8 * appear(ShopPage.closeAfter) });
 

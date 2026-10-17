@@ -124,7 +124,7 @@ export const LEGAL_DOCS: LegalDoc[] = [
           'Only if you enter a name for the leaderboard (Social → Ranks), the game sends it to our leaderboard server, which runs on the same machine as the game. From then on it sends your level (with your Prestige rank) and your Unlimited record whenever they improve.',
           'The server stores the name, a random ID, a secret key that proves the name is yours (only its hash is kept), your best scores and when you reached them. The name and the scores are public: everyone can see them on the leaderboard. Your IP address reaches the server with every request, as with any website; it is used only in memory to stop abuse and is not stored. Offensive names are removed.',
           'If you borrow from the Mafia (Social → Mafia) and the loan is late, the game tells the server so that your name carries a "Mafia" badge next to it on the boards. Only the badge is sent, not the amount or the dates. It goes away when you pay, when the Family writes the debt off, and when your name is removed.',
-          'Legal basis: Art. 6(1)(b) GDPR (the leaderboard you chose to join). To remove your name and all your scores at once: Social → Ranks → Remove me from the leaderboard.',
+          'Legal basis: Art. 6(1)(b) GDPR (the leaderboard you chose to join). To remove your name and all your scores at once: Settings → Account → Your player → Remove me from the leaderboard.',
         ],
       },
       {
@@ -205,7 +205,7 @@ export const LEGAL_DOCS: LegalDoc[] = [
         heading: 'Deleting your data',
         paragraphs: [
           "You have no account with us: your progress lives on your device. Deleting the game's data in your browser, or uninstalling the app and clearing Chrome's data for game.gustaff.dev, removes it from your device.",
-          'What our server keeps exists only if you chose it, and you can delete it yourself in the game at any time: everything at once with Settings → Account → Delete account; your notifications with Settings → Notifications; or your name, scores, friend code and friends list with Social → Ranks → Remove me from the leaderboard; your cloud copy with Settings → Account → Cloud sync → Delete the cloud copy. Both are gone for good at once. If you can no longer open the game, write to the email address above with your name on the leaderboard or your sync code, and we delete it within 30 days.',
+          'What our server keeps exists only if you chose it, and you can delete it yourself in the game at any time: everything at once with Settings → Account → Delete account; your notifications with Settings → Notifications; or your name, scores, friend code and friends list with Settings → Account → Your player → Remove me from the leaderboard; your cloud copy with Settings → Account → Cloud sync → Delete the cloud copy. Both are gone for good at once. If you can no longer open the game, write to the email address above with your name on the leaderboard or your sync code, and we delete it within 30 days.',
         ],
       },
       {

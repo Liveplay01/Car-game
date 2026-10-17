@@ -204,6 +204,7 @@ export default (S: Strings): Words<Strings> => ({
     noRescue: 'Esa racha no se puede recuperar (una vez por semana).',
     noFreeze: 'Ahora no hace falta una protección de racha.',
     noDouble: 'La paga se duplica una vez al día.',
+    noShiftDouble: (n) => `La paga de un turno se duplica ${n} veces al día.`,
     rescued: 'Racha recuperada',
     rescuedLine: (d) => `${d} días seguidos, y sigue`,
     froze: 'Protección añadida',

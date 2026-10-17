@@ -12,6 +12,7 @@ import { type Vec2, v, clamp } from '../core/vec2';
 import { type Rect, R, Metrics } from './render';
 import type { ShiftSummary } from './hud';
 import type { ColorToken } from './theme';
+import type { GameAd } from './adFlow';
 
 /**
  * The pages. The tab bar shows five (`TAB_BAR`, Leo, 10.10.2026: Progress · Social · Game · Shop · Build); the Street Builder shares
@@ -106,7 +107,7 @@ export type ScreenAction =
   | { k: 'watchAdUpgrade' }
   | { k: 'watchAdBoost' }
   /** The Game tab's ad pill: the streak back, a Streak Freeze, the Daily's pay doubled. */
-  | { k: 'watchAdGame'; reward: 'rescue' | 'freeze' | 'double' | 'retry' }
+  | { k: 'watchAdGame'; reward: GameAd }
   | { k: 'showCasino'; game: CasinoGame }
   | { k: 'wear'; id: string }
   /** Big Screen: choose the picture or video behind the roundabout (the shell's sheet). */

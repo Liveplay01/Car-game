@@ -44,6 +44,10 @@ export interface PageHost {
   readonly adOffers: boolean;
   /** What a watched ad doubles right now: the money the Daily Shift on the result paid (0: nothing to double). */
   readonly dailyPay: number;
+  /** What a watched ad pays once more on a won career shift's result: its shift pay (0: none on offer). */
+  readonly shiftPay: number;
+  /** Money a watched ad added on the result: the result's money counts up to it. */
+  bankResult(amount: number): void;
   /** One step of a rewarded ad for the visit statistics: `reward` and how it went (`ask`, `watched`, or why not). */
   report(step: string, reward: string): void;
   /** A big moment: the celebration over the screen. */

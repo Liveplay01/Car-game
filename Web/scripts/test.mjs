@@ -449,6 +449,25 @@ test('the way back is asked for when the first Daily is done, notifications foll
   assert.deepEqual(bookShift(save, completed(3), context(3, { daily: true, today: 20_002 })).due, [], 'asked again once');
 });
 
+test('back after a week or more, a Premium Chest waits; a shorter break or a first start gives none', () => {
+  const c = newCareer();
+  assert.ok(!Careers.giveComebackChest(c, 100, baseConfig), 'a first start');
+  c.lastLoginDay = 100;
+  assert.ok(!Careers.giveComebackChest(c, 100 + baseConfig.comebackDays - 1, baseConfig));
+  assert.ok(Careers.giveComebackChest(c, 100 + baseConfig.comebackDays, baseConfig));
+  assert.equal(c.chests.at(-1), 'premium');
+});
+
+test('an ad pays a won career shift once more, a few times a day, and the count starts over the next day', () => {
+  const c = newCareer();
+  const money = c.money;
+  for (let i = 0; i < baseConfig.adShiftDoublesPerDay; i++) assert.ok(Careers.rewardAdShiftDouble(c, 50, 300, baseConfig));
+  assert.ok(!Careers.rewardAdShiftDouble(c, 50, 300, baseConfig), 'used up today');
+  assert.ok(!Careers.rewardAdShiftDouble(c, 51, 0, baseConfig), 'nothing to double');
+  assert.equal(c.money, money + 300 * baseConfig.adShiftDoublesPerDay);
+  assert.equal(Careers.adShiftDoublesLeft(careerAfterSave(c), 51, baseConfig), baseConfig.adShiftDoublesPerDay, 'a new day, and it survives the save');
+});
+
 test('the starter streak pays its chest on the third day, once, and is the next prize until then', () => {
   const c = newCareer();
   assert.deepEqual(Careers.nextStreakMilestone(c), { days: 3, prize: { k: 'chest', chest: 'premium' }, left: 3 });

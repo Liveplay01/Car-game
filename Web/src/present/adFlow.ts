@@ -5,10 +5,10 @@ import type { PageHost } from './pageHost';
 import type { RewardedOutcome } from './session';
 
 /** What a watched ad pays: the free Standard chest, a free step of today's upgrade, the Skin Upgrade's boost, a broken streak back, a Streak Freeze, the Daily's pay once more. */
-export type AdReward = 'chest' | 'upgrade' | 'boost' | 'rescue' | 'freeze' | 'double' | 'retry';
+export type AdReward = 'chest' | 'upgrade' | 'boost' | 'rescue' | 'freeze' | 'double' | 'retry' | 'pay';
 
 /** The ads of the Game tab's pill (`AdPill`). */
-export type GameAd = Extract<AdReward, 'rescue' | 'freeze' | 'double' | 'retry'>;
+export type GameAd = Extract<AdReward, 'rescue' | 'freeze' | 'double' | 'retry' | 'pay'>;
 
 /** What the ads on offer look like right now: the extra ones (free step, boost) are on, and an ad is ready to play. */
 export interface AdOffer {
@@ -56,6 +56,8 @@ export class AdFlow {
         return Careers.adDoubleOpen(career, today, this.host.dailyPay) ? null : S.ads.noDouble;
       case 'retry':
         return Careers.adRetryOpen(career, today) ? null : S.ads.noRetry;
+      case 'pay':
+        return this.host.shiftPay > 0 && Careers.adShiftDoublesLeft(career, today, config) > 0 ? null : S.ads.noShiftDouble(config.adShiftDoublesPerDay);
     }
   }
 
@@ -140,6 +142,14 @@ export class AdFlow {
         if (!Careers.rewardAdDouble(career, today, pay)) return;
         this.host.persist();
         this.host.celebrate({ kind: 'double', title: S.ads.doubled, line: '', color: 'coin', power: 1.5, count: pay });
+        return;
+      }
+      case 'pay': {
+        // No celebration (the three big moments stay three): the result's money counts up.
+        const pay = this.host.shiftPay;
+        if (!Careers.rewardAdShiftDouble(career, today, pay, config)) return;
+        this.host.persist();
+        this.host.bankResult(pay);
         return;
       }
     }

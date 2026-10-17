@@ -122,6 +122,8 @@ function readCareer(raw: unknown): Career {
     adRescueDay: int(raw.adRescueDay, -1),
     adFreezeDay: int(raw.adFreezeDay, -1),
     adDoubleDay: int(raw.adDoubleDay, -1),
+    adShiftDoubleDay: int(raw.adShiftDoubleDay, -1),
+    adShiftDoubles: int(raw.adShiftDoubles, 0, 0),
     adRetryDay: int(raw.adRetryDay, -1),
     dailyRetry: raw.dailyRetry === true,
     upgradeBoost: raw.upgradeBoost === true,

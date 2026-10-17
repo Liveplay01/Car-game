@@ -746,6 +746,8 @@ a.row-link {
   top: calc(-1 * var(--s2));
   z-index: 2;
   margin-bottom: var(--s4);
+  /* The segmented control's own fill is translucent: over the sheet's colour it must be solid, or the list shows through. */
+  background: linear-gradient(rgba(118, 118, 128, 0.24), rgba(118, 118, 128, 0.24)), var(--surface-1);
   box-shadow: 0 0 0 var(--s2) var(--surface-1);
 }
 

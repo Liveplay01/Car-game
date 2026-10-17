@@ -796,6 +796,8 @@ export const baseConfig = {
   eventChestChance: 0.15,
   tollIncomePerDay: 30,
   loginMaxDays: 3,
+  /** Back after this many days away or more: a Premium Chest waits (Leo, 18.10.2026), every time, so the comeback notification is always true. */
+  comebackDays: 7,
   standardChestPrice: 26000,
   premiumChestPrice: 52000,
   /** The Diamond Chest (Leo, 10.10.2026): a sink for big balances, never a Common inside. */
@@ -817,6 +819,8 @@ export const baseConfig = {
    * Daily Shift's pay can be doubled for an ad, once a day.
    */
   streakRescueMin: 3,
+  /** A won career shift's pay (the shift's own, not tips, transporters or boni) once more for an ad, this many times a day (Leo, 18.10.2026). */
+  adShiftDoublesPerDay: 3,
   streakRescueMaxMissed: 7,
   streakRescueEvery: 7,
 

@@ -1441,6 +1441,7 @@ export const S = {
     noRescue: 'That streak cannot be brought back (once a week).',
     noFreeze: 'A Freeze is not needed right now.',
     noDouble: 'The pay is doubled once a day.',
+    noShiftDouble: (n: number): string => `A shift's pay is doubled ${n} times a day.`,
     rescued: 'Streak is back',
     rescuedLine: (days: number): string => `${days} days in a row, and counting`,
     froze: 'Freeze added',
@@ -1963,6 +1964,7 @@ export const S = {
     buy: (price: string): string => `Buy · ${price}`,
     pity: (n: number): string => `Epic or better within ${n} chests. Duplicates pay out ${MONEY_MARK}.`,
     pityLegendary: (n: number): string => `A Legendary within ${n} chests.`,
+    pitySoon: (n: number): string => `Legendary in ${n}`,
     duplicate: (m: string): string => `Duplicate · +${money(m)}`,
     ownedHint(item: Cosmetic): string {
       if (item.kind === 'carSkin') return 'Paints the cars on the road. Mix up to eight. Only looks, never a bonus.';
@@ -2206,6 +2208,7 @@ export const S = {
     ready: 'Ready',
     perfectRun: 'PERFECT RUN',
     welcomeBack: (m: string): string => `Welcome back · your toll booths earned +${money(m)}`,
+    comebackChest: (chest: string): string => `Good to see you again · a ${chest} is waiting in the Shop`,
     /** The first visit after a streak ran out (Leo, 09.10.2026): said plainly, with the way to the next one. */
     streakEnded: (days: number): string => `Your ${days}-day streak ended · a new one starts with today's Daily Shift`,
     done: 'Done',

@@ -101,7 +101,7 @@ const row = (title: string, sub: string, ...extra: HTMLElement[]): HTMLElement =
   h('div', { class: 'row' }, h('div', { class: 'row-main' }, h('div', { class: 'row-title' }, title), h('div', { class: 'row-sub' }, sub)), ...extra);
 
 /** A button that asks twice (like Remove me from the leaderboard): the second tap does it. */
-function confirmButton(label: string, again: string, run: () => Promise<void>, fail: (message: string) => void): HTMLElement {
+export function confirmButton(label: string, again: string, run: () => Promise<void>, fail: (message: string) => void): HTMLElement {
   const button = h('button', { class: 'btn block destructive', type: 'button' }, label);
   let armed = false;
   button.addEventListener('click', () => {

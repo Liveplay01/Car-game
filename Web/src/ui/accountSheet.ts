@@ -1,9 +1,9 @@
 import { h } from './dom';
 import { swapView, openSheet } from './sheets';
-import { nameForm, openAccount } from './ranksPanel';
-import { offerToPasswordManager } from './cloudSheet';
+import { forgetBoards, nameForm, openAccount } from './ranksPanel';
+import { confirmButton, offerToPasswordManager } from './cloudSheet';
 import { cloudEnabled, cloudLinked, cloudView, createCloud, onCloudChange } from '../net/cloud';
-import { type Records, describeError, leaderboardEnabled, loadAccount, renameAccount, syncScores } from '../net/leaderboard';
+import { type Records, deleteAccount, describeError, leaderboardEnabled, loadAccount, renameAccount, syncScores } from '../net/leaderboard';
 import { inPortal } from '../storage/device';
 import { loadPlayerName, savePlayerName } from '../storage/profile';
 import { S } from '../present/strings';
@@ -193,6 +193,17 @@ export function accountSheet(layer: HTMLElement, actions: AccountActions, welcom
       code ? h('p', { class: 'section-note' }, S.account.codeNote) : null,
       h('button', { class: 'btn primary block', type: 'button', onclick: () => close() }, S.account.finish),
       code ? h('button', { class: 'btn block quiet-btn', type: 'button', onclick: () => actions.openCloud() }, S.account.manage) : null,
+      confirmButton(
+        S.ranks.remove,
+        S.ranks.removeAgain,
+        async () => {
+          const account = loadAccount();
+          if (account) await deleteAccount(account);
+          forgetBoards();
+          show('ask');
+        },
+        say,
+      ),
     ];
   }
 
