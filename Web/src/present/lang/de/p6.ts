@@ -524,6 +524,9 @@ export default (S: Strings): Words<Strings> => ({
           return `${n.short === 1 ? 'Ein Einfädler' : `${n.short} Einfädler`} bis ×${+n.multiplier.toFixed(2)}`;
       }
     },
+    dailyWaiting: 'Tägliche Schicht wartet',
+    dailyStreakWaiting: (s) => `Tägliche Schicht wartet · Serie ${s}`,
+    pityWaiting: (n) => (n === 1 ? 'Legendary in 1 Truhe' : `Legendary in ${n} Truhen`),
   },
 
   photo: {
@@ -541,6 +544,8 @@ export default (S: Strings): Words<Strings> => ({
     score: 'PUNKTE',
     flames: 'FLAMMEN',
     newBest: 'NEUER REKORD',
+    telemetry: 'PERFORMANCE-TELEMETRIE',
+    perfectBadge: 'ALLES PERFEKT',
     hook: (score) => `Kannst du ${score} schlagen?`,
     hookFlames: (flames) => `Kannst du ${flames} Flammen übertreffen?`,
     combo: (n) => `Combo ×${n}`,

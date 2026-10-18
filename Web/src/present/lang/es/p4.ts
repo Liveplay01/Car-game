@@ -153,7 +153,7 @@ export default (S: Strings): Words<Strings> => ({
   },
 
   progress: {
-    section: (i) => ['Crew', 'Clasificación', 'Club', 'Mafia'][i],
+    section: (i) => ['Hoy', 'Metas', 'Estadísticas'][i],
     allStats: 'Todas las estadísticas',
     statsMore: (n) => `${n} más ›`,
     statsHide: 'Ocultar',
@@ -205,7 +205,7 @@ export default (S: Strings): Words<Strings> => ({
   },
 
   social: {
-    section: (i) => ['Amigos', 'Clasificación', 'Club', 'Mafia'][i],
+    section: (i) => ['Crew', 'Clasificación', 'Club', 'Mafia'][i],
     clubClosed: 'El Club se abre en el nivel 50: casa de subastas y fondo del juego para grandes cuentas.',
     mafiaClosed: 'La Familia no tiene tiempo para novatos. Derrota al primer jefe del sindicato (nivel 15) o supéralo, y te contactarán.',
     offline: 'Crews y Clasificación necesitan el servicio online al que esta copia no está conectada.',

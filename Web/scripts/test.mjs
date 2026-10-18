@@ -3207,18 +3207,19 @@ test('the tab bar runs Progress, Social, Game, Shop, Build, and Social shows onl
   assert.equal(SocialPage.sectionAt({ x: 10, y: 5 }, viewport, c), null);
 });
 
-test('what the career has not reached is not on show: the Casino in the Shop, the Trials in Progress; a late loan only dims the Casino', async () => {
+test('what the career has not reached is not on show: the Casino in the Shop, the Trials in the Goals list; a late loan only dims the Casino', async () => {
   const { ShopPage } = await load('/src/present/shop.ts');
-  const { ProgressPage } = await load('/src/present/progress.ts');
+  const { ProgressPage, ProgressState } = await load('/src/present/progress.ts');
   const { Mafia } = await load('/src/core/mafia.ts');
   const { PROGRESS } = await load('/src/present/flow.ts');
   const c = newCareer();
   assert.deepEqual(ShopPage.sections(c), [0, 1]);
-  assert.ok(!ProgressPage.sections(c).includes(PROGRESS.trials));
+  const hasTrials = (career) => ProgressPage.blocks(PROGRESS.goals, { ...newSave(), career }, 0, new ProgressState(), 400).out.some((p) => p.b.k === 'trial');
+  assert.ok(!hasTrials(c));
   c.level = 12;
   assert.deepEqual(ShopPage.sections(c), [0, 1, 2]);
   c.level = 9;
-  assert.ok(ProgressPage.sections(c).includes(PROGRESS.trials));
+  assert.ok(hasTrials(c));
   // Someone who played the Casino before the levels existed keeps it, and a loan that runs late shuts it without hiding it.
   const old = { ...newCareer(), casinoRounds: 3 };
   assert.deepEqual(ShopPage.sections(old), [0, 1, 2]);
@@ -3365,11 +3366,11 @@ test('Mafia: a day of grace for whoever was away, a write-off after two weeks la
   assert.equal(Mafia.grade(steady, centre), 'good', 'a steady hand cannot earn a Perfect');
 });
 
-test('Progress has five sections that each carry a label, and every upgrade stands once under a heading', async () => {
+test('Progress has three sections that each carry a label, and every upgrade stands once under a heading', async () => {
   const { PROGRESS } = await load('/src/present/flow.ts');
   const { UpgradePage } = await load('/src/present/upgrades.ts');
   const { UPGRADES } = await load('/src/core/levels.ts');
-  assert.deepEqual(Object.values(PROGRESS), [0, 1, 2, 3, 4]);
+  assert.deepEqual(Object.values(PROGRESS), [0, 1, 2]);
   for (const i of Object.values(PROGRESS)) assert.ok(S.progress.section(i).length > 0);
   const { cards, headings } = UpgradePage.arrange({ x: 430, y: 900 }, 56, UPGRADES);
   assert.deepEqual([...cards.map((c) => c.upgrade)].sort(), [...UPGRADES].sort(), 'each upgrade once');

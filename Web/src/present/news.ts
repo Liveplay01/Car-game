@@ -1,5 +1,5 @@
 import { type SaveGame, type Hint } from '../core/career';
-import { PROGRESS, type ProgressSection } from './flow';
+import { PROGRESS } from './flow';
 
 /**
  * What is new in a place players already know (Leo, 15.10.2026): the tab and the segment show a dot, the element itself
@@ -10,10 +10,10 @@ export interface NewsItem {
   id: string;
   tab: 'progress' | 'shop' | 'social';
   /** The segment: Progress, Shop and Social number theirs from 0. */
-  section: ProgressSection;
+  section: number;
 }
 
-export const NEWS: readonly NewsItem[] = [{ id: 'failures', tab: 'progress', section: PROGRESS.museum }];
+export const NEWS: readonly NewsItem[] = [{ id: 'failures', tab: 'progress', section: PROGRESS.stats }];
 
 /** How long a place has to be open to count as seen. */
 export const NEWS_DWELL = 1.2;
@@ -27,10 +27,10 @@ export const News = {
   has: (save: SaveGame, id: string): boolean => News.pending(save).some((n) => n.id === id),
 
   /** The sections of a tab with news waiting. */
-  sections: (save: SaveGame, tab: NewsItem['tab']): ProgressSection[] => News.pending(save).filter((n) => n.tab === tab).map((n) => n.section),
+  sections: (save: SaveGame, tab: NewsItem['tab']): number[] => News.pending(save).filter((n) => n.tab === tab).map((n) => n.section),
 
   /** The place was visited: what waited there is seen. Whether something changed. */
-  read(save: SaveGame, tab: NewsItem['tab'], section: ProgressSection): boolean {
+  read(save: SaveGame, tab: NewsItem['tab'], section: number): boolean {
     const seen = News.pending(save).filter((n) => n.tab === tab && n.section === section);
     for (const n of seen) save.hints.push(hintOf(n));
     return seen.length > 0;

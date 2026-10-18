@@ -101,7 +101,7 @@ Only in the browser version:
   link (`#challenge=…`) with the seed and everything that shapes that shift. A challenge
   always starts from a fresh world, so everyone who opens the link meets the same traffic;
   it earns nothing, the score to beat is the goal.
-- **Mastery trials** (`core/trials.ts`, Progress → Trials): seven fixed shifts with a goal,
+- **Mastery trials** (`core/trials.ts`, Progress → Goals): seven fixed shifts with a goal,
   some with an extra rule that ends the shift as `failed` when broken; each pays once.
 - **Casino** (`core/casino.ts`, `present/casino.ts`, `present/casinoFlow.ts`, Shop → Casino): Crash, Slots and a Skin
   Upgrade, and double or nothing on a fair coin after any win. Play money and skins only;

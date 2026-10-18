@@ -2,7 +2,7 @@ import { h, icon } from './dom';
 import { ICONS } from './icons';
 import { CanvasDrawer } from '../present/draw';
 import type { RenderList } from '../present/render';
-import type { PhotoCard } from '../present/photo';
+import type { PhotoCard, PatternToken, PerformancePattern } from '../present/photo';
 import { css } from '../present/theme';
 import { unitHash } from '../present/render';
 import { S } from '../present/strings';
@@ -416,6 +416,11 @@ function strip(g: CanvasRenderingContext2D, card: PhotoCard, code: boolean[][] |
     g.textBaseline = 'alphabetic';
   }
 
+  const scoreW = g.measureText(card.score).width;
+  const patternX = Math.max(M + scoreW + 36, textRight - 380);
+  const patternY = top + (card.newBest ? 144 : 96);
+  drawPerformancePattern(g, card.pattern, patternX, patternY, textRight - patternX);
+
   g.font = mono(24);
   g.fillStyle = css('primary', 0.8);
   g.fillText(card.facts.join('  ·  '), M, top + 232, textRight - M);
@@ -428,3 +433,183 @@ function strip(g: CanvasRenderingContext2D, card: PhotoCard, code: boolean[][] |
 
   if (code) qrCode(g, code, W - M - qr, H - 32 - qr, qr);
 }
+
+function drawPerformancePattern(g: CanvasRenderingContext2D, pattern: PerformancePattern, x: number, y: number, maxW: number): void {
+  const tokens = pattern?.tokens;
+  if (!tokens || tokens.length === 0) return;
+
+  g.save();
+  g.textBaseline = 'alphabetic';
+  g.textAlign = 'left';
+  g.font = mono(13, true);
+  spaced(g, 2);
+  g.fillStyle = css('muted');
+  g.fillText(S.photo.telemetry, x, y);
+  spaced(g, 0);
+
+  if (pattern.badge) {
+    const labelW = g.measureText(S.photo.telemetry).width;
+    const badgeX = x + labelW + 12;
+    const badgeW = g.measureText(pattern.badge).width + 16;
+    g.fillStyle = pattern.isPerfectRun ? 'rgba(16, 185, 129, 0.25)' : 'rgba(245, 158, 11, 0.25)';
+    g.strokeStyle = pattern.isPerfectRun ? '#10b981' : '#f59e0b';
+    g.lineWidth = 1;
+    g.beginPath();
+    if (typeof g.roundRect === 'function') {
+      g.roundRect(badgeX, y - 13, badgeW, 18, 4);
+    } else {
+      g.rect(badgeX, y - 13, badgeW, 18);
+    }
+    g.fill();
+    g.stroke();
+
+    g.fillStyle = pattern.isPerfectRun ? '#34d399' : '#fbbf24';
+    g.font = mono(11, true);
+    g.textAlign = 'center';
+    g.fillText(pattern.badge, badgeX + badgeW / 2, y);
+    g.textAlign = 'left';
+  }
+
+  const count = tokens.length;
+  const cols = Math.min(8, count);
+  const gap = 5;
+  const tokenW = Math.max(16, Math.floor((maxW - (cols - 1) * gap) / cols));
+  const tokenH = 20;
+  const startY = y + 8;
+
+  tokens.forEach((t, i) => {
+    const col = i % cols;
+    const row = Math.floor(i / cols);
+    if (row > 1) return;
+    const tx = x + col * (tokenW + gap);
+    const ty = startY + row * (tokenH + gap);
+    drawVectorToken(g, t, tx, ty, tokenW, tokenH);
+  });
+
+  g.restore();
+}
+
+function drawVectorToken(g: CanvasRenderingContext2D, token: PatternToken, x: number, y: number, w: number, h: number): void {
+  g.save();
+  g.beginPath();
+  if (typeof g.roundRect === 'function') {
+    g.roundRect(x, y, w, h, 4);
+  } else {
+    g.rect(x, y, w, h);
+  }
+
+  const cx = x + w / 2;
+  const cy = y + h / 2;
+
+  switch (token) {
+    case 'perfect': {
+      g.fillStyle = 'rgba(16, 185, 129, 0.2)';
+      g.fill();
+      g.strokeStyle = '#10b981';
+      g.lineWidth = 1.2;
+      g.stroke();
+
+      g.fillStyle = '#34d399';
+      g.beginPath();
+      g.moveTo(cx, cy - 5);
+      g.lineTo(cx + 5, cy);
+      g.lineTo(cx, cy + 5);
+      g.lineTo(cx - 5, cy);
+      g.closePath();
+      g.fill();
+
+      g.fillStyle = '#ffffff';
+      g.fillRect(cx - 1, cy - 1, 2, 2);
+      break;
+    }
+    case 'tight': {
+      g.fillStyle = 'rgba(245, 158, 11, 0.2)';
+      g.fill();
+      g.strokeStyle = '#f59e0b';
+      g.lineWidth = 1.2;
+      g.stroke();
+
+      g.strokeStyle = '#fbbf24';
+      g.lineWidth = 1.6;
+      g.lineCap = 'round';
+      g.lineJoin = 'round';
+      for (const ox of [-3, 2]) {
+        g.beginPath();
+        g.moveTo(cx + ox - 2, cy - 4);
+        g.lineTo(cx + ox + 2, cy);
+        g.lineTo(cx + ox - 2, cy + 4);
+        g.stroke();
+      }
+      break;
+    }
+    case 'clean': {
+      g.fillStyle = 'rgba(56, 189, 248, 0.16)';
+      g.fill();
+      g.strokeStyle = '#38bdf8';
+      g.lineWidth = 1.2;
+      g.stroke();
+
+      g.fillStyle = '#38bdf8';
+      g.beginPath();
+      g.moveTo(cx - 6, cy - 2);
+      g.lineTo(cx + 3, cy - 2);
+      g.lineTo(cx + 6, cy);
+      g.lineTo(cx + 3, cy + 2);
+      g.lineTo(cx - 6, cy + 2);
+      g.closePath();
+      g.fill();
+      break;
+    }
+    case 'hazard': {
+      g.fillStyle = 'rgba(244, 63, 94, 0.2)';
+      g.fill();
+      g.strokeStyle = '#f43f5e';
+      g.lineWidth = 1.2;
+      g.stroke();
+
+      g.fillStyle = '#fb7185';
+      g.fillRect(cx - 1, cy - 5, 2, 6);
+      g.fillRect(cx - 1, cy + 3, 2, 2);
+      break;
+    }
+    case 'strike': {
+      g.fillStyle = 'rgba(239, 68, 68, 0.22)';
+      g.fill();
+      g.strokeStyle = '#ef4444';
+      g.lineWidth = 1.2;
+      g.stroke();
+
+      g.strokeStyle = '#f87171';
+      g.lineWidth = 2;
+      g.lineCap = 'round';
+      g.beginPath();
+      g.moveTo(cx - 4, cy - 4);
+      g.lineTo(cx + 4, cy + 4);
+      g.moveTo(cx + 4, cy - 4);
+      g.lineTo(cx - 4, cy + 4);
+      g.stroke();
+      break;
+    }
+    case 'revive': {
+      g.fillStyle = 'rgba(168, 85, 247, 0.22)';
+      g.fill();
+      g.strokeStyle = '#a855f7';
+      g.lineWidth = 1.2;
+      g.stroke();
+
+      g.fillStyle = '#c084fc';
+      g.beginPath();
+      g.moveTo(cx, cy - 5);
+      g.lineTo(cx + 4, cy - 2);
+      g.lineTo(cx + 3, cy + 3);
+      g.lineTo(cx, cy + 6);
+      g.lineTo(cx - 3, cy + 3);
+      g.lineTo(cx - 4, cy - 2);
+      g.closePath();
+      g.fill();
+      break;
+    }
+  }
+  g.restore();
+}
+

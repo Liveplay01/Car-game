@@ -40,7 +40,7 @@ import { inPortal, inPlayStore, isInstalled } from '../storage/device';
 import { Tutorial } from './tutorial';
 import { NoticeQueue, TipQueue, type Tip } from './notices';
 import { bookShift } from './booking';
-import { type Screen, type Tab, type SwipeMode, SWIPE_MODES, type ScreenAction, type ProgressSection, PROGRESS, SOCIAL, TAB_BAR, BUILD_PAGES, barTab, screenTab, showsTabBar, BuildLayout } from './flow';
+import { type Screen, type Tab, type SwipeMode, SWIPE_MODES, type ScreenAction, type ProgressSection, type ShopSection, type SocialSection, PROGRESS, SOCIAL, TAB_BAR, BUILD_PAGES, barTab, screenTab, showsTabBar, BuildLayout } from './flow';
 import { SocialPage, SocialState } from './social';
 import { CameraRig, perspectiveOf, addRecede } from './perspective';
 import { CameraFx, CameraFxTuning, tensionOf, zoomAbout } from './cameraFx';
@@ -143,7 +143,10 @@ export class GameSession {
   static readonly restartLock = 0.5;
   /** A place's introduction opens this long after the player arrives. */
   static readonly introDelay = 0.6;
-  static readonly lossPullBack = 0.05;
+  /** The camera's pull-back after a lost shift (a share of the scale) and the seconds it takes out and back in. */
+  static readonly lossPullBack = 0.12;
+  static readonly lossPullOut = 0.8;
+  static readonly lossPullIn = 0.7;
   static readonly flowFade = 0.6;
 
   readonly config: Config = baseConfig;
@@ -205,7 +208,7 @@ export class GameSession {
   private sinceFatalCrash = Infinity;
   private sinceLoss = Infinity;
   private lossPull = 0;
-  private shownScore = 0;
+  private lossPullSpeed = 0;
   private shiftStartMoney = 0;
   /** A shift has run since the game opened: before that the Daily's pill names the streak, not its pay bonus. */
   private shiftRan = false;
@@ -647,7 +650,11 @@ export class GameSession {
     const { result, mode, run, isNewHighscore } = this.screen.summary;
     if (run) return true;
     if (mode !== 'shift') return isNewHighscore;
-    return result.outcome === 'completed' && (result.isPerfectRun || result.bossBusted || result.legendary !== null);
+    if (this.dailySelected && result.outcome === 'completed') return true;
+    return (
+      result.outcome === 'completed' &&
+      (result.isPerfectRun || result.bossBusted || result.legendary !== null || result.tightFits >= 3 || result.perfects >= 5)
+    );
   }
 
   private isPage(tab: Tab): boolean {
@@ -732,6 +739,7 @@ export class GameSession {
           this.buildPage = tab;
         }
         this.screen = next;
+        if (!same) this.landOnDot(tab);
         this.onChrome?.();
         break;
       }
@@ -751,9 +759,8 @@ export class GameSession {
       case 'showProgress':
         this.perform({ k: 'showTab', tab: 'progress' });
         if (!this.isPage('progress')) return;
-        const section = ProgressPage.sections(career).includes(action.section) ? action.section : PROGRESS.today;
-        if (this.progressPage.section !== section) this.leaveMuseum();
-        this.progressPage.section = section;
+        if (this.progressPage.section !== action.section) this.leaveMuseum();
+        this.progressPage.section = action.section;
         this.progressPage.sectionSlide = null;
         this.progressPage.reset();
         break;
@@ -1036,7 +1043,6 @@ export class GameSession {
       this.resetScene();
     }
     this.pendingSummary = null;
-    this.shownScore = 0;
     this.sinceComboTier = Infinity;
     this.sinceMark = Infinity;
     this.topMark = 0;
@@ -1470,9 +1476,21 @@ export class GameSession {
     this.sinceLoss += realDelta;
     let lossShown = false;
     if (this.screen.k === 'playing') lossShown = this.pendingSummary !== null && this.pendingSummary.result.outcome !== 'completed';
-    else if (this.screen.k === 'result') lossShown = this.screen.summary.result.outcome !== 'completed' && ResultBanner.settled(this.resultAge) < 0.5;
+    else if (this.screen.k === 'result') {
+      const s = this.screen.summary;
+      // A lost shift's breather: the camera stays out while it holds and leans back in the moment a tap starts the next shift.
+      lossShown = s.result.outcome !== 'completed' && (ResultBanner.breathes(s) ? this.resultAge < ResultBanner.breath : ResultBanner.settled(this.resultAge) < 0.5);
+    }
     const pullTarget = lossShown && !this.reduceMotion ? 1 : 0;
-    this.lossPull += (pullTarget - this.lossPull) * Math.min(1, realDelta / 0.3);
+    // A critically damped spring (smooth damp): drifts out slowly, and eases into the lean-in instead of snapping.
+    const w = 2 / (pullTarget ? GameSession.lossPullOut : GameSession.lossPullIn);
+    const dt = Math.min(realDelta, 0.1);
+    const x = w * dt;
+    const damp = 1 / (1 + x + 0.48 * x * x + 0.235 * x * x * x);
+    const change = this.lossPull - pullTarget;
+    const carry = (this.lossPullSpeed + w * change) * dt;
+    this.lossPullSpeed = (this.lossPullSpeed - w * carry) * damp;
+    this.lossPull = pullTarget + (change + carry) * damp;
     this.sinceFlames += realDelta;
     const flames = this.world.score.flames;
     this.shownFlames = this.reduceMotion || Math.abs(flames - this.shownFlames) < 1 ? flames : this.shownFlames + (flames - this.shownFlames) * Math.min(1, realDelta / GameSession.scoreCatchUp);
@@ -1522,9 +1540,6 @@ export class GameSession {
     this.cityPulse.advance(runs ? simDelta : 0, CityPulse.energyOf(this.world, this.flowLevel));
     const recedeTarget = this.isPage('upgrades') ? 1 : 0;
     this.recede += (recedeTarget - this.recede) * Math.min(1, realDelta / 0.25);
-    const points = this.world.score.points;
-    if (Math.abs(points - this.shownScore) < 1 || this.reduceMotion) this.shownScore = points;
-    else this.shownScore += (points - this.shownScore) * Math.min(1, realDelta / GameSession.scoreCatchUp);
     const money = Math.max(0, this.shiftStartMoney + this.world.score.money);
     if (money > this.shownMoney + 0.5) this.sinceMoney = Math.min(this.sinceMoney, 0);
     this.sinceMoney += realDelta;
@@ -1942,6 +1957,7 @@ export class GameSession {
     const p = this.progressPage;
     switch (target.k) {
       case 'elite':
+        p.museum.selected = null;
         this.perform({ k: 'showElite' });
         break;
       case 'pass':
@@ -2004,7 +2020,7 @@ export class GameSession {
 
   /** The Museum is being left: what was new among the entries that were on screen has been seen. */
   private leaveMuseum(): void {
-    if (this.progressPage.section !== PROGRESS.museum) return;
+    if (this.progressPage.section !== PROGRESS.stats) return;
     const career = this.save.career;
     const shown = [...this.progressPage.museum.viewed].filter((id) => career.museumNew.includes(id));
     this.progressPage.museum.viewed.clear();
@@ -2071,7 +2087,8 @@ export class GameSession {
         return this.socialPage.section === SOCIAL.club ? 'club' : this.socialPage.section === SOCIAL.mafia ? 'mafia' : this.socialPage.section === SOCIAL.crew ? 'crew' : null;
       case 'progress': {
         const section = this.progressPage.section;
-        return section === PROGRESS.today ? 'daily' : section === PROGRESS.trials ? 'trials' : section === PROGRESS.goals ? 'pass' : section === PROGRESS.museum ? 'museum' : null;
+        const here: Intro[] = section === PROGRESS.today ? ['daily'] : section === PROGRESS.goals ? ['pass', 'trials'] : ['museum'];
+        return here.find((i) => Intros.isPending(this.save, i, this.config)) ?? here[0];
       }
       default:
         return null;
@@ -2192,6 +2209,35 @@ export class GameSession {
     this.introShown = i;
   }
 
+  /** A tab opened from another one starts on the segment that carries its dot, so the dot on the tab leads somewhere (Leo, 18.10.2026). */
+  private landOnDot(tab: Tab): void {
+    const c = this.save.career;
+    const pending = this.introsPending;
+    const first = <T extends number>(waiting: T[], shown: readonly T[]): T | undefined => {
+      const here = waiting.filter((s) => shown.includes(s));
+      return here.length > 0 ? (Math.min(...here) as T) : undefined;
+    };
+    if (tab === 'progress') {
+      const section = first(this.progressDots, [0, 1, 2]);
+      if (section !== undefined) this.progressPage.section = section;
+    } else if (tab === 'shop' && c.chests.length === 0) {
+      const section = first([...News.sections(this.save, 'shop'), ...(pending.includes('casino') ? [2] : [])], ShopPage.sections(c));
+      if (section !== undefined) {
+        this.shopPage.section = section as ShopSection;
+        this.shopPage.sectionSlide = null;
+      }
+    } else if (tab === 'social') {
+      const waiting: number[] = [...News.sections(this.save, 'social')];
+      if (pending.includes('club') || pending.includes('gamefund')) waiting.push(SOCIAL.club);
+      if (pending.includes('mafia') || SocialPage.mafiaWaits(c, Date.now())) waiting.push(SOCIAL.mafia);
+      const section = first(waiting, SocialPage.sections(c));
+      if (section !== undefined) {
+        this.socialPage.section = section as SocialSection;
+        this.socialPage.sectionSlide = null;
+      }
+    }
+  }
+
   /** A dot on the segment of a place that has an introduction or news waiting (Progress puts its own, `progressDots`). */
   private addIntroDots(list: RenderList, viewport: Vec2, inset: number): void {
     const pending = this.introsPending;
@@ -2286,13 +2332,12 @@ export class GameSession {
         return part ? Details.part(part, b.pending !== null, career, this.config) : null;
       }
       case 'progress': {
-        // Records has one sheet: the Elite track, opened from its card.
-                if (this.progressPage.section === PROGRESS.records) return Details.elite(career, this.config, this.sceneTime - this.prestigeArmed <= GameSession.prestigeWindow);
         if (this.progressPage.section === PROGRESS.today) return this.progressPage.streak ? Details.streak(career, this.config, this.today) : null;
         const feat = this.progressPage.feat;
         if (this.progressPage.section === PROGRESS.goals) return feat ? Details.feat(feat, career, this.config) : Details.pass(career, this.config, this.today);
+        // Stats: a Museum entry's sheet, else the Elite track opened from its card.
         const selected = this.progressPage.museum.selected;
-        return this.progressPage.section === PROGRESS.museum && selected ? Details.museum(selected, career, this.config) : null;
+        return selected ? Details.museum(selected, career, this.config) : Details.elite(career, this.config, this.sceneTime - this.prestigeArmed <= GameSession.prestigeWindow);
       }
       default:
         return null;
@@ -2427,8 +2472,8 @@ export class GameSession {
       const showsCars = this.screen.k === 'ready' || ResultBanner.settled(this.resultAge) >= 0.5;
       // The money leads to the chests it buys, never straight into the casino.
       if (column === 'left') return { k: 'perform', action: { k: 'showShop', section: 0 } };
-      if (column === 'center') return { k: 'perform', action: showsCars ? { k: 'showShop', section: 1 } : { k: 'showProgress', section: PROGRESS.records } };
-      return { k: 'perform', action: { k: 'showProgress', section: PROGRESS.records } };
+      if (column === 'center') return { k: 'perform', action: showsCars ? { k: 'showShop', section: 1 } : { k: 'showProgress', section: PROGRESS.stats } };
+      return { k: 'perform', action: { k: 'showProgress', section: PROGRESS.stats } };
     }
     if (this.isPage('social')) {
       const section = SocialPage.sectionAt(point, this.lastViewport, this.save.career);
@@ -2439,7 +2484,7 @@ export class GameSession {
       return true;
     }
     if (this.isPage('progress')) {
-      const section: ProgressSection | null = ProgressPage.sectionAt(point, this.lastViewport, this.tabInset, this.save.career);
+      const section: ProgressSection | null = ProgressPage.sectionAt(point, this.lastViewport, this.tabInset);
       if (section !== null) {
         if (this.progressPage.section !== section) {
           this.tick();
@@ -3155,7 +3200,8 @@ export class GameSession {
       HUD.add(list, {
         world,
         level: this.playingLevel,
-        score: Math.round(this.shownScore),
+        // No count-up: the score's digits roll into place on their own (`addOdometer`).
+        score: Math.round(world.score.points),
         money: Math.round(this.shownMoney),
         best: this.currentBest,
         comboPop: rm ? 0 : Ease.clamp01(this.sinceComboTier / GameSession.comboPop),
@@ -3289,15 +3335,14 @@ export class GameSession {
     return best > 0 ? Fmt.number(best) : null;
   }
 
-  /** The Progress segments with something waiting: the Daily Shift (Today), a prestige in reach (Records), new Museum entries. */
+  /** The Progress segments with something waiting: the Daily Shift (Today), a prestige in reach or new Museum entries (Stats). */
   get progressDots(): ProgressSection[] {
     const c = this.save.career;
     const dots: ProgressSection[] = [];
     if (this.save.tutorialDone && c.level >= this.config.dailyUnlockLevel && Careers.isDailyOpen(c, this.today)) dots.push(PROGRESS.today);
-    if (!this.eliteSeen && Careers.canPrestige(c, this.config)) dots.push(PROGRESS.records);
-    if (c.museumNew.length > 0) dots.push(PROGRESS.museum);
-    for (const section of News.sections(this.save, 'progress')) if (!dots.includes(section)) dots.push(section);
-    for (const [intro, section] of [['daily', PROGRESS.today], ['trials', PROGRESS.trials], ['pass', PROGRESS.goals], ['museum', PROGRESS.museum]] as const) {
+    if ((!this.eliteSeen && Careers.canPrestige(c, this.config)) || c.museumNew.length > 0) dots.push(PROGRESS.stats);
+    for (const section of News.sections(this.save, 'progress') as ProgressSection[]) if (!dots.includes(section)) dots.push(section);
+    for (const [intro, section] of [['daily', PROGRESS.today], ['trials', PROGRESS.goals], ['pass', PROGRESS.goals], ['museum', PROGRESS.stats]] as const) {
       if (this.introsPending.includes(intro) && !dots.includes(section)) dots.push(section);
     }
     return dots;
@@ -3469,12 +3514,24 @@ export class GameSession {
     return id.startsWith('fail.') || conditionChips(this.world.config, this.save.career).some((c) => c.id === id);
   }
 
-  /** Tomorrow's gift on the Game tab, counted down (a plain career shift only, like the next goal). */
+  /** Tomorrow's gift on the Game tab, counted down, or a goal within reach (a plain career shift only). */
   private get giftLine(): string | null {
-    if (this.special || this.versusSelected || this.playingMode !== 'shift' || !Careers.giftAhead(this.save.career, this.today)) return null;
-    const now = new Date();
-    const midnight = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
-    return S.daily.giftIn((midnight.getTime() - now.getTime()) / 3600000);
+    if (this.special || this.versusSelected || this.playingMode !== 'shift') return null;
+    if (Careers.giftAhead(this.save.career, this.today)) {
+      const now = new Date();
+      const midnight = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+      return S.daily.giftIn((midnight.getTime() - now.getTime()) / 3600000);
+    }
+    const teaser = Goals.teaser(this.save.career, this.today, this.config);
+    if (!teaser) return null;
+    switch (teaser.k) {
+      case 'upgrade':
+        return S.goals.money(Fmt.number(teaser.short), teaser.upgrade);
+      case 'daily':
+        return teaser.streak > 1 ? S.goals.dailyStreakWaiting(teaser.streak) : S.goals.dailyWaiting;
+      case 'pity':
+        return S.goals.pityWaiting(teaser.chestsLeft);
+    }
   }
 
   /** The ready screen's card: what a trial's goal asks for (the conditions are icons, `ConditionChips`). */

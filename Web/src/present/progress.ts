@@ -13,7 +13,7 @@ import { SeasonPass, PASS_TIERS } from '../core/seasonPass';
 import { type MuseumEntry, MUSEUM_SHELVES, shelfEntries, museumId } from '../core/museum';
 import { averageOffset } from '../core/timing';
 import { type Vec2, v, add } from '../core/vec2';
-import { type RenderList, type Rect, RenderList as List, R, rect, circle, line, Ease, Metrics, moved, drawText } from './render';
+import { type RenderList, type Rect, RenderList as List, R, rect, circle, line, softPolygon, Ease, Metrics, moved, drawText } from './render';
 import { MenuKit } from './menukit';
 import type { ColorToken } from './theme';
 import { StreakFlame, flameTier } from './streakFlame';
@@ -88,6 +88,7 @@ type Block =
   | { k: 'more'; count: number; open: boolean }
   | { k: 'stats'; stats: Stat[] }
   | { k: 'heading'; label: string; count: string | null; full: boolean; dot: boolean }
+  | { k: 'title'; label: string }
   | { k: 'note'; text: string }
   | { k: 'daily' }
   | { k: 'weekly' }
@@ -115,13 +116,14 @@ interface Layout {
   content: Rect;
 }
 
-const PROGRESS_SECTIONS: ProgressSection[] = [0, 1, 2, 3, 4];
-
-/** The segments on show (Leo, 12.10.2026): the Trials appear once the career has reached them. */
-const sectionsOf = (career: Career): ProgressSection[] => PROGRESS_SECTIONS.filter((s) => s !== PROGRESS.trials || Unlocks.isOpen(career, 'trials'));
+const PROGRESS_SECTIONS: ProgressSection[] = [0, 1, 2];
 
 const STAT_ROW = 40;
+/** Where a goal card's sign sits and where its text starts then. */
+const SIGN_AT = 34;
+const SIGN_TEXT = 62;
 const HEADING = 26;
+const TITLE = 30;
 
 /** Lays blocks out one under the other (or side by side in a grid), `gap` apart, from y = 0. */
 class Stack {
@@ -150,6 +152,13 @@ class Stack {
     if (this.y > 0) this.y += 8;
     this.out.push({ b: { k: 'heading', label, count, full, dot }, r: R.make(0, this.y, this.width, this.y + HEADING) });
     this.y += HEADING + 4;
+  }
+
+  /** A part of its own within a section (the Museum under the stats): larger than a group's heading. */
+  title(label: string): void {
+    if (this.y > 0) this.y += 16;
+    this.out.push({ b: { k: 'title', label }, r: R.make(0, this.y, this.width, this.y + TITLE) });
+    this.y += TITLE + 4;
   }
 
   /** The list's height: the last block's bottom. */
@@ -207,8 +216,6 @@ export const ProgressPage = {
     ];
   },
 
-  sections: sectionsOf,
-
   layout(viewport: Vec2, bottomInset: number, sections: ProgressSection[] = PROGRESS_SECTIONS): Layout {
     const width = Math.min(viewport.x - 2 * ProgressPage.gap, 460);
     const left = (viewport.x - width) / 2;
@@ -224,7 +231,33 @@ export const ProgressPage = {
   blocks(section: ProgressSection, save: SaveGame, today: number, state: ProgressState, width: number): Stack {
     const s = new Stack(width);
     const career = save.career;
-    if (section === PROGRESS.records) {
+    if (section === PROGRESS.today) {
+      if (Unlocks.isOpen(career, 'daily')) {
+        s.row({ k: 'daily' }, 64);
+        s.row({ k: 'streak' }, ProgressPage.streakHeight);
+      }
+      // The weekly shift is a level-20 trial and the tours open at their level: a new player does not see them yet.
+      if (Unlocks.isKnown(career, 'trials') || career.weeklyDone >= 0) s.row({ k: 'weekly' }, 64);
+      if (tourOpen(career)) ProgressPage.tourRows(s, today);
+      const quests = challengesOf(today, Careers.reach(career));
+      const done = quests.filter((q) => Careers.isChallengeDone(career, q, today)).length;
+      s.heading(S.progress.quests, `${done}/${quests.length}`, done === quests.length);
+      for (const challenge of quests) s.row({ k: 'quest', challenge }, 56);
+      s.row({ k: 'note', text: S.progress.questsHint }, 16);
+    } else if (section === PROGRESS.goals) {
+      if (SeasonPass.isOpen(career)) s.row({ k: 'pass' }, ProgressPage.passHeight);
+      s.row({ k: 'season' }, 64);
+      if (Unlocks.isOpen(career, 'trials')) ProgressPage.trialRows(s, career);
+      const mastered = MASTERY_GOALS.filter((g) => (career.masteryTiers[g] ?? 0) >= MASTERY_THRESHOLDS[g].length).length;
+      s.heading(S.progress.mastery, `${mastered}/${MASTERY_GOALS.length}`, mastered === MASTERY_GOALS.length);
+      for (const goal of MASTERY_GOALS) s.row({ k: 'mastery', goal }, 58);
+      const feats = Feats.count(career);
+      s.heading(S.progress.feats, `${feats}/${FEATS.length}`, feats === FEATS.length);
+      for (const feat of FEATS) s.row({ k: 'feat', feat }, 66);
+      const achieved = Achievements.done(career);
+      s.heading(S.ach.heading, S.ach.count(achieved, achievementTotal()), achieved === achievementTotal());
+      for (const family of FAMILIES) s.row({ k: 'ach', family }, 58);
+    } else {
       if (ProgressPage.showsElite(career)) s.row({ k: 'elite' }, 76);
       const stats = ProgressPage.stats(save);
       s.grid(
@@ -238,63 +271,7 @@ export const ProgressPage = {
         s.row({ k: 'more', count: rest.length, open: state.statsOpen }, 48);
         if (state.statsOpen) s.row({ k: 'stats', stats: rest }, rest.length * STAT_ROW);
       }
-    } else if (section === PROGRESS.today) {
-      if (Unlocks.isOpen(career, 'daily')) {
-        s.row({ k: 'daily' }, 64);
-        s.row({ k: 'streak' }, ProgressPage.streakHeight);
-      }
-      // The weekly shift is a level-20 trial and the tours open at their level: a new player does not see them yet.
-      if (Unlocks.isKnown(career, 'trials') || career.weeklyDone >= 0) s.row({ k: 'weekly' }, 64);
-      if (tourOpen(career)) ProgressPage.tourRows(s, today);
-      const quests = challengesOf(today, Careers.reach(career));
-      const done = quests.filter((q) => Careers.isChallengeDone(career, q, today)).length;
-      s.heading(S.progress.quests, `${done}/${quests.length}`, done === quests.length);
-      for (const challenge of quests) s.row({ k: 'quest', challenge }, 56);
-      s.row({ k: 'note', text: S.progress.questsHint }, 16);
-    } else if (section === PROGRESS.trials) {
-      const trialsDone = TRIALS.filter((x) => career.trialsDone.includes(x.id)).length;
-      s.heading(S.progress.trials, `${trialsDone}/${TRIALS.length}`, trialsDone === TRIALS.length);
-      for (const trial of TRIALS) s.row({ k: 'trial', trial }, 64);
-      // Level trials: one more with every level from 30 on; the first few that wait.
-      const waiting = levelTrialsWaiting(career);
-      const passed = LEVEL_TRIALS.filter((x) => career.trialsDone.includes(x.id)).length;
-      if (waiting.length > 0 || passed > 0) {
-        s.heading(S.progress.levelTrials, `${passed}/${LEVEL_TRIALS.length}`, passed === LEVEL_TRIALS.length);
-        for (const trial of waiting.slice(0, LEVEL_TRIALS_SHOWN)) s.row({ k: 'trial', trial }, 64);
-        s.row({ k: 'note', text: S.progress.levelTrialsHint(waiting.length, Math.min(waiting.length, LEVEL_TRIALS_SHOWN)) }, 16);
-      }
-      // Ascension: once the career has been through Prestige, one trial per rank.
-      if (career.prestige > 0) {
-        const ascended = ASCENSIONS.filter((x) => career.trialsDone.includes(x.id)).length;
-        s.heading(S.progress.ascension, `${ascended}/${ASCENSIONS.length}`, ascended === ASCENSIONS.length);
-        for (const trial of ASCENSIONS) s.row({ k: 'trial', trial }, 64);
-        s.row({ k: 'note', text: S.progress.ascensionHint }, 16);
-      }
-      // Landmarks: famous roundabouts, for those who have been through Prestige five times.
-      if (ProgressPage.showsLandmarks(career)) {
-        const seen = LANDMARKS.filter((x) => career.trialsDone.includes(x.id)).length;
-        s.heading(S.progress.landmarks, `${seen}/${LANDMARKS.length}`, seen === LANDMARKS.length);
-        for (const trial of LANDMARKS) s.row({ k: 'trial', trial }, 64);
-        s.row({ k: 'note', text: S.progress.landmarksHint }, 16);
-      }
-      // Boss Rush: once a boss has been caught, it is there to look forward to.
-      if (career.bossesBeaten.length > 0) {
-        s.heading(S.rush.name, career.trialsDone.includes(RUSH_ID) ? '1/1' : '0/1', career.trialsDone.includes(RUSH_ID));
-        s.row({ k: rushOpen(career) ? 'rush' : 'rushLocked' }, 64);
-      }
-    } else if (section === PROGRESS.goals) {
-      if (SeasonPass.isOpen(career)) s.row({ k: 'pass' }, ProgressPage.passHeight);
-      s.row({ k: 'season' }, 64);
-      const mastered = MASTERY_GOALS.filter((g) => (career.masteryTiers[g] ?? 0) >= MASTERY_THRESHOLDS[g].length).length;
-      s.heading(S.progress.mastery, `${mastered}/${MASTERY_GOALS.length}`, mastered === MASTERY_GOALS.length);
-      for (const goal of MASTERY_GOALS) s.row({ k: 'mastery', goal }, 58);
-      const feats = Feats.count(career);
-      s.heading(S.progress.feats, `${feats}/${FEATS.length}`, feats === FEATS.length);
-      for (const feat of FEATS) s.row({ k: 'feat', feat }, 66);
-      const achieved = Achievements.done(career);
-      s.heading(S.ach.heading, S.ach.count(achieved, achievementTotal()), achieved === achievementTotal());
-      for (const family of FAMILIES) s.row({ k: 'ach', family }, 58);
-    } else {
+      s.title(S.intro.museum.title);
       for (const shelf of MUSEUM_SHELVES) {
         const { shown, all } = MuseumPage.count(career, shelf);
         const entries = shelfEntries(shelf);
@@ -308,6 +285,40 @@ export const ProgressPage = {
       }
     }
     return s;
+  },
+
+  /** The Trials: Heat trials, level trials, ascension, landmarks, Boss Rush. Part of Goals once the career has reached them. */
+  trialRows(s: Stack, career: Career): void {
+    const trialsDone = TRIALS.filter((x) => career.trialsDone.includes(x.id)).length;
+    s.heading(S.progress.trials, `${trialsDone}/${TRIALS.length}`, trialsDone === TRIALS.length);
+    for (const trial of TRIALS) s.row({ k: 'trial', trial }, 64);
+    // Level trials: one more with every level from 30 on; the first few that wait.
+    const waiting = levelTrialsWaiting(career);
+    const passed = LEVEL_TRIALS.filter((x) => career.trialsDone.includes(x.id)).length;
+    if (waiting.length > 0 || passed > 0) {
+      s.heading(S.progress.levelTrials, `${passed}/${LEVEL_TRIALS.length}`, passed === LEVEL_TRIALS.length);
+      for (const trial of waiting.slice(0, LEVEL_TRIALS_SHOWN)) s.row({ k: 'trial', trial }, 64);
+      s.row({ k: 'note', text: S.progress.levelTrialsHint(waiting.length, Math.min(waiting.length, LEVEL_TRIALS_SHOWN)) }, 16);
+    }
+    // Ascension: once the career has been through Prestige, one trial per rank.
+    if (career.prestige > 0) {
+      const ascended = ASCENSIONS.filter((x) => career.trialsDone.includes(x.id)).length;
+      s.heading(S.progress.ascension, `${ascended}/${ASCENSIONS.length}`, ascended === ASCENSIONS.length);
+      for (const trial of ASCENSIONS) s.row({ k: 'trial', trial }, 64);
+      s.row({ k: 'note', text: S.progress.ascensionHint }, 16);
+    }
+    // Landmarks: famous roundabouts, for those who have been through Prestige five times.
+    if (ProgressPage.showsLandmarks(career)) {
+      const seen = LANDMARKS.filter((x) => career.trialsDone.includes(x.id)).length;
+      s.heading(S.progress.landmarks, `${seen}/${LANDMARKS.length}`, seen === LANDMARKS.length);
+      for (const trial of LANDMARKS) s.row({ k: 'trial', trial }, 64);
+      s.row({ k: 'note', text: S.progress.landmarksHint }, 16);
+    }
+    // Boss Rush: once a boss has been caught, it is there to look forward to.
+    if (career.bossesBeaten.length > 0) {
+      s.heading(S.rush.name, career.trialsDone.includes(RUSH_ID) ? '1/1' : '0/1', career.trialsDone.includes(RUSH_ID));
+      s.row({ k: rushOpen(career) ? 'rush' : 'rushLocked' }, 64);
+    }
   },
 
   /** The tour of the day, or when the next one comes (only once the tours are open). */
@@ -387,15 +398,15 @@ export const ProgressPage = {
     return R.contains(ProgressPage.layout(viewport, bottomInset).content, point);
   },
 
-  sectionAt(point: Vec2, viewport: Vec2, bottomInset: number, career: Career): ProgressSection | null {
-    return ProgressPage.layout(viewport, bottomInset, sectionsOf(career)).segments.find(([, r]) => R.contains(r, point))?.[0] ?? null;
+  sectionAt(point: Vec2, viewport: Vec2, bottomInset: number): ProgressSection | null {
+    return ProgressPage.layout(viewport, bottomInset).segments.find(([, r]) => R.contains(r, point))?.[0] ?? null;
   },
 
   add(list: RenderList, save: SaveGame, today: number, state: ProgressState, reduceMotion: boolean, bottomInset: number, maxScroll: number, dots: readonly ProgressSection[]): void {
     const vp = list.camera.viewport;
     MenuKit.backdrop(list);
     MenuKit.header(list, S.tabs.progress, Fmt.number(save.career.money), vp);
-    const shown = sectionsOf(save.career);
+    const shown = PROGRESS_SECTIONS;
     const l = ProgressPage.layout(vp, bottomInset, shown);
     const chosen = Math.max(0, shown.indexOf(state.section));
     let thumb = chosen;
@@ -460,6 +471,8 @@ export const ProgressPage = {
         return ProgressPage.addStatList(list, r, b.stats, o);
       case 'heading':
         return ProgressPage.addHeading(list, r, b, o);
+      case 'title':
+        return drawText(list, b.label, v(r.minX + 4, R.center(r).y + 2), 20, 'primary', { opacity: o, weight: 'bold' });
       case 'note':
         return drawText(list, b.text, v(r.minX + 4, R.center(r).y), ShopPage.fitted(b.text, 11, R.width(r) - 8), 'muted', { opacity: o });
       case 'daily':
@@ -662,20 +675,54 @@ export const ProgressPage = {
       const { into, need } = SeasonPass.progress(career, today);
       ProgressPage.addCardRow(list, top, x, o, { title, line: open > 0 ? S.pass.openAtEnd(open) : `${S.pass.tier(tier, PASS_TIERS)} · ${S.pass.xp(into, need)}`, link: days });
     } else ProgressPage.addCardRow(list, top, x, o, { title, line: waiting > 0 ? S.pass.waiting(waiting) : S.pass.buyHint, reward: baseConfig.seasonPassPrice, link: days });
-    // The whole track: one dot a tier, the three skin tiers bigger and in the season's colour.
+    // The whole track as a road (Leo, 18.10.2026): one post a tier, the three skin tiers bigger and in the season's
+    // colour, the stretch behind the player paved gold, and a little car where the player stands, gliding on when it grew.
     const right = r.maxX - 16;
     const step = (right - x) / (PASS_TIERS - 1);
-    for (let k = 1; k <= PASS_TIERS; k++) {
-      const at = v(x + (k - 1) * step, r.minY + 82);
-      const skinTier = SeasonPass.reward(k, season).k === 'skin';
-      const reached = k <= tier;
-      if (skinTier) list.s(circle(at, 5), reached ? tint : 'controlFill', o * (reached ? 1 : 0.9));
-      list.s(circle(at, skinTier ? 2.6 : 2.4), reached ? (skinTier ? 'primary' : 'coin') : skinTier ? tint : 'controlFill', o * (reached || skinTier ? 1 : 0.8));
-    }
-    // And the next tier's progress under it.
+    const roadY = r.minY + 82;
     const { into, need } = SeasonPass.progress(career, today);
     const share = !counts ? 0 : tier >= PASS_TIERS ? 1 : into / need;
+    const along = Meter.glided('passRoad', (tier - 1 + share) / (PASS_TIERS - 1), reduceMotion);
+    const carX = x + (right - x) * along;
+    list.s(rect(v((x + right) / 2, roadY), v(right - x + 12, 10), 5), 'controlFill', o);
+    if (carX > x) list.s(rect(v((x - 6 + carX) / 2, roadY), v(carX - x + 6, 10), 5), 'coin', 0.28 * o);
+    for (let k = 1; k <= PASS_TIERS; k++) {
+      const at = v(x + (k - 1) * step, roadY);
+      const skinTier = SeasonPass.reward(k, season).k === 'skin';
+      const reached = k <= tier;
+      if (skinTier) list.s(circle(at, 5.5), reached ? tint : 'card', o);
+      list.s(circle(at, skinTier ? 2.6 : 1.8), reached ? (skinTier ? 'primary' : 'coin') : skinTier ? tint : 'muted', o * (reached || skinTier ? 1 : 0.6));
+    }
+    ProgressPage.passCar(list, v(carX, roadY), o);
+    // And the next tier's progress under it.
     Meter.add(list, 'pass', R.make(x, r.maxY - 26, right, r.maxY - 26 + Meter.height), share, tier, o, reduceMotion);
+  },
+
+  /**
+   * The badge at the head of a goal card, shaped like a road sign by kind (Leo, 18.10.2026): round for an achievement,
+   * like a limit sign with the tier reached in it, a diamond for mastery, like the priority road. Soft, not a real sign:
+   * the rim turns gold with the first tier, the number with the last.
+   */
+  sign(list: RenderList, at: Vec2, shape: 'round' | 'diamond', reached: number, complete: boolean, o: number): void {
+    const rim: ColorToken = reached > 0 ? 'coin' : 'controlFill';
+    if (shape === 'round') {
+      list.s(circle(at, 16), rim, o);
+      list.s(circle(at, 12.5), 'card', o);
+    } else {
+      list.s(rect(at, v(24, 24), 7, Math.PI / 4), rim, o);
+      list.s(rect(at, v(19, 19), 5, Math.PI / 4), 'card', o);
+    }
+    drawText(list, String(reached), v(at.x, at.y + 0.5), 13, complete ? 'coin' : reached > 0 ? 'primary' : 'muted', { opacity: o, weight: 'display', align: 'center' });
+  },
+
+  /** The player on the Season Pass' road: a soft little car seen from above, nose to the right, its lights on. White like an ordinary car: amber would read as the bus. */
+  passCar(list: RenderList, at: Vec2, o: number): void {
+    list.s(rect(at, v(30, 20), 10), 'card', o);
+    list.s(rect(at, v(22, 13), 6), 'primary', o);
+    list.s(rect(add(at, v(2, 0)), v(6, 9), 2.5), 'card', 0.8 * o);
+    list.s(rect(add(at, v(-6, 0)), v(3, 8), 1.5), 'card', 0.45 * o);
+    list.s(circle(add(at, v(9, -3.6)), 1.5), 'accent', o);
+    list.s(circle(add(at, v(9, 3.6)), 1.5), 'accent', o);
   },
 
   addQuest(list: RenderList, r: Rect, career: Career, challenge: Challenge, today: number, o: number): void {
@@ -821,17 +868,19 @@ export const ProgressPage = {
     const need = f.tiers[Math.min(reached, tiers - 1)];
     const top = c.y - R.height(r) * 0.2;
     const pipsWidth = tiers * 14;
-    drawText(list, S.ach.name(f.id), v(r.minX + 16, top), 13, complete ? 'coin' : 'primary', { opacity: o, weight: 'bold' });
+    const x = r.minX + SIGN_TEXT;
+    ProgressPage.sign(list, v(r.minX + SIGN_AT, c.y), 'round', reached, complete, o);
+    drawText(list, S.ach.name(f.id), v(x, top), 13, complete ? 'coin' : 'primary', { opacity: o, weight: 'bold' });
     for (let tier = 0; tier < tiers; tier++) list.s(circle(v(r.maxX - 16 - pipsWidth + tier * 14 + 7, top), 5), tier < reached ? 'coin' : 'controlFill', o);
     const goal = S.ach.goal(f.id, need);
     const count = complete ? '' : `${Fmt.number(Math.min(have, need))}/${Fmt.number(need)}`;
     const lineY = c.y + R.height(r) * 0.04;
     drawText(list, count, v(r.maxX - 16, lineY), 11, 'muted', { opacity: o, align: 'trailing' });
-    drawFitted(list, goal, v(r.minX + 16, lineY), 11, R.width(r) - 32 - textWidth(count, 11) - 10, 'muted', { opacity: o });
+    drawFitted(list, goal, v(x, lineY), 11, r.maxX - 16 - x - textWidth(count, 11) - 10, 'muted', { opacity: o });
     const from = reached === 0 ? 0 : f.tiers[reached - 1];
     const fraction = complete ? 1 : Ease.clamp01((have - from) / Math.max(1, need - from));
     const barY = c.y + R.height(r) * 0.3;
-    Meter.add(list, `ach:${f.id}`, R.make(r.minX + 16, barY - Meter.height / 2, r.maxX - 16, barY + Meter.height / 2), fraction, reached, o, reduceMotion);
+    Meter.add(list, `ach:${f.id}`, R.make(x, barY - Meter.height / 2, r.maxX - 16, barY + Meter.height / 2), fraction, reached, o, reduceMotion);
   },
 
   /** Elite level, title, the bar to the next level and what the next milestone brings. */
@@ -886,7 +935,10 @@ export const ProgressPage = {
     Meter.addWave(list, `feat:${feat.id}`, r, ShopPage.corner, o, reduceMotion);
     if (state.feat === feat.id) list.s(rect(c, v(R.width(r) + 4, R.height(r) + 4), ShopPage.corner + 2), 'accent', 0.9 * o);
     ProgressPage.panel(list, r, o);
-    // The reward itself, dimmed until it is earned; its glow and sparks stay inside the card.
+    // A soft warning sign behind the reward (the hardest deeds); the reward itself, dimmed until it is earned; its glow
+    // and sparks stay inside the card.
+    const plate = v(r.minX + 34, c.y + 1);
+    list.s(softPolygon([add(plate, v(0, -23)), add(plate, v(25, 19)), add(plate, v(-25, 19))], 9), complete ? 'coin' : 'controlFill', (complete ? 0.24 : 0.7) * o);
     const from = list.items.length;
     ShopPage.addPreview(list, item, v(r.minX + 34, c.y), 0.6, o * (complete ? 1 : 0.55));
     for (let k = from; k < list.items.length; k++) list.items[k] = { ...list.items[k], clip: r };
@@ -913,12 +965,19 @@ export const ProgressPage = {
     const complete = reached >= tiers;
     const top = c.y - R.height(r) * 0.2;
     const pipsWidth = tiers * 14;
-    drawText(list, S.mastery.name(goal), v(r.minX + 16, top), 13, 'primary', { opacity: o, weight: 'bold' });
-    drawText(list, S.mastery.detail(goal, reached), v(r.maxX - 16 - pipsWidth - 6, top), 11, complete ? 'coin' : 'muted', { opacity: o, align: 'trailing' });
+    const x = r.minX + SIGN_TEXT;
+    ProgressPage.sign(list, v(r.minX + SIGN_AT, c.y), 'diamond', reached, complete, o);
+    // Name and detail share the row beside the sign: the name keeps its length up to a little over half, the detail fits into the rest.
+    const name = S.mastery.name(goal);
+    const detail = S.mastery.detail(goal, reached);
+    const room = r.maxX - 16 - pipsWidth - 6 - x - 8;
+    const nameWidth = Math.min(textWidth(name, 13), Math.max(room * 0.55, room - textWidth(detail, 11, false)));
+    drawFitted(list, name, v(x, top), 13, nameWidth, 'primary', { opacity: o, weight: 'bold' });
+    drawFitted(list, detail, v(r.maxX - 16 - pipsWidth - 6, top), 11, room - nameWidth, complete ? 'coin' : 'muted', { opacity: o, align: 'trailing' });
     for (let tier = 0; tier < tiers; tier++) list.s(circle(v(r.maxX - 16 - pipsWidth + tier * 14 + 7, top), 5), tier < reached ? 'coin' : 'controlFill', o);
     const from = reached === 0 ? 0 : thresholds[reached - 1];
     const fraction = complete ? 1 : Ease.clamp01((masteryValue(goal, career.mastery) - from) / Math.max(1, thresholds[reached] - from));
     const barY = c.y + R.height(r) * 0.22;
-    Meter.add(list, `mastery:${goal}`, R.make(r.minX + 16, barY - Meter.height / 2, r.maxX - 16, barY + Meter.height / 2), fraction, reached, o, reduceMotion);
+    Meter.add(list, `mastery:${goal}`, R.make(x, barY - Meter.height / 2, r.maxX - 16, barY + Meter.height / 2), fraction, reached, o, reduceMotion);
   },
 };

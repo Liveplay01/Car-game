@@ -139,17 +139,20 @@ self.addEventListener('push', (event) => {
     body: message.body || '',
     tag: message.tag || 'rat',
     icon: '/icons/icon-192.png',
-    data: { url: message.url || '/' },
+    data: { url: message.url || '/', start: message.tag === 'rank' ? 'ranks' : null },
   })]));
 });
 
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
-  const url = new URL((event.notification.data && event.notification.data.url) || '/', self.location.origin).href;
+  const data = event.notification.data || {};
+  const url = new URL(data.url || '/', self.location.origin);
+  if (data.start) url.searchParams.set('start', data.start);
   event.waitUntil(
     self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((windows) => {
       const open = windows.find((w) => new URL(w.url).origin === self.location.origin);
-      return open ? open.focus() : self.clients.openWindow(url);
+      if (!open) return self.clients.openWindow(url.href);
+      return open.focus().then((w) => data.start && w.postMessage({ start: data.start }));
     }),
   );
 });

@@ -38,13 +38,13 @@ export const screenTab = (s: Screen): Tab => (s.k === 'page' ? s.tab : 'game');
 export const showsTabBar = (s: Screen): boolean => s.k !== 'settings' && s.k !== 'playing';
 
 export type ShopSection = 0 | 1 | 2; // chests · collection · casino
-export type ProgressSection = 0 | 1 | 2 | 3 | 4;
+export type ProgressSection = 0 | 1 | 2;
 /**
- * The Progress tab's sections, left to right (Leo, 04.10.2026: what to do comes first; five since 10.10.2026, sorted by what they ask of the player):
- * today (daily and its streak, weekly, tour, quests) · trials (Heat, trials, ascension, landmarks, Boss Rush: shifts to play) · goals (season pass, mastery, feats, achievements: boxes to tick) ·
- * records (Elite and Prestige, the stats) · museum. The tab opens on `today`.
+ * The Progress tab's sections, left to right (Leo, 18.10.2026: three instead of five, named by the question the player has):
+ * today (what to do now: daily and its streak, weekly, tour, quests) · goals (what to work towards: season pass, then the trials, mastery, feats, achievements) ·
+ * stats (where I stand: Elite and Prestige, the stats, the Museum). The tab opens on `today`.
  */
-export const PROGRESS = { today: 0, trials: 1, goals: 2, records: 3, museum: 4 } as const satisfies Record<string, ProgressSection>;
+export const PROGRESS = { today: 0, goals: 1, stats: 2 } as const satisfies Record<string, ProgressSection>;
 
 export type SocialSection = 0 | 1 | 2 | 3;
 /**

@@ -2,7 +2,7 @@ import './shell.css';
 import { v, clamp } from '../core/vec2';
 import { GameSession, type InputAction, type Modifier, type SessionOutput } from '../present/session';
 import { CanvasDrawer } from '../present/draw';
-import { SWIPE_MODES, TAB_BAR, barTab, screenTab, type Tab } from '../present/flow';
+import { SOCIAL, SWIPE_MODES, TAB_BAR, barTab, screenTab, type Tab } from '../present/flow';
 import { AudioPlayer, Haptics } from '../audio/player';
 import { h, icon } from './dom';
 import { ICONS, CHEST_FLAT } from './icons';
@@ -46,7 +46,7 @@ import { loadBackdrop, saveBackdrop } from '../storage/backdrop';
 import { BIG_SCREEN } from '../core/loot';
 import { Careers } from '../core/career';
 import { baseConfig } from '../core/config';
-import { INTROS, Intros } from '../present/intros';
+import { INTROS, INTRO_PLACE, Intros } from '../present/intros';
 
 interface InstallPromptEvent extends Event {
   prompt(): Promise<void>;
@@ -328,7 +328,7 @@ export class Shell {
         playTogether: () => this.openLobby(),
         challenge: s.shareable !== null ? () => this.share() : null,
       }),
-      ranks: () => ({ records: () => s.leaderboardRecords, createPlayer: () => this.openAccountSheet() }),
+      ranks: () => ({ records: () => s.leaderboardRecords, createPlayer: () => this.openAccountSheet(), openCrew: () => s.perform({ k: 'showSocial', section: SOCIAL.crew }) }),
       club: () => this.clubHost(),
       clubOpen: () => SocialPage.clubOpen(s.save.career),
       mafia: () => this.mafiaHost(),
@@ -337,6 +337,9 @@ export class Shell {
       crewAllowed: leaderboardEnabled && !inPortal,
       accountReady,
       needAccount: () => this.openAccountSheet(),
+      feel: (id) => {
+        if (s.save.settings.haptics) this.haptics.play(id, 0);
+      },
     });
     // A code typed in Cloud sync, a name removed, a cloud copy stopped: Friends, Ranks and the Club open or close with the player.
     onCloudChange(() => this.playerChanged());
@@ -443,6 +446,11 @@ export class Shell {
     });
     if (this.session.save.hints.includes('install') || this.session.save.hints.includes('tomorrow')) void renewStorage();
     this.readStartLink();
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.addEventListener('message', (e: MessageEvent<{ start?: string }>) => {
+        if (e.data.start) this.openStart(e.data.start);
+      });
+    }
     this.readInvite();
     this.readChallengeLink();
     this.readJoinLink();
@@ -952,7 +960,9 @@ export class Shell {
   /**
    * `?start=shift|unlimited|multiplayer`: an app shortcut (a long press on the app icon, the
    * manifest's `shortcuts`). It picks that page of the mode swipe, so a Shift brings the Daily
-   * Shift when it is open; Multiplayer opens the lobby. Read once, then taken out of the address.
+   * Shift when it is open; Multiplayer opens the lobby. `?start=ranks` is where a tap on the
+   * "you were overtaken" notification lands (sw.js; an open game gets it as a message instead).
+   * Read once, then taken out of the address.
    * Not before the tutorial is done: a new player starts at the beginning.
    */
   private readStartLink(): void {
@@ -962,8 +972,17 @@ export class Shell {
     params.delete('start');
     const query = params.toString();
     history.replaceState(null, '', location.pathname + (query ? `?${query}` : '') + location.hash);
+    this.openStart(start);
+  }
+
+  private openStart(start: string): void {
+    if (!this.session.save.tutorialDone) return;
+    if (start === 'ranks') {
+      this.session.perform({ k: 'showSocial', section: SOCIAL.ranks });
+      return;
+    }
     const mode = SWIPE_MODES.find((m) => m === start);
-    if (!mode || !this.session.save.tutorialDone) return;
+    if (!mode) return;
     this.session.perform({ k: 'setGameMode', mode });
     if (mode === 'multiplayer') this.versus.open();
   }
@@ -1295,7 +1314,15 @@ export class Shell {
       },
       openGuides: () => {
         this.pageOpen = true;
-        guidesSheet(this.layers, INTROS.filter((i) => Intros.known(s.save.career, i, baseConfig)), () => this.pageClosed());
+        guidesSheet(
+          this.layers,
+          INTROS.filter((i) => Intros.known(s.save.career, i, baseConfig)),
+          () => this.pageClosed(),
+          (place) => {
+            closeAnySheet(true);
+            s.perform(INTRO_PLACE[place]);
+          },
+        );
       },
       // The same for the legal pages; the licenses load only when asked for.
       openLegal: (page) => {

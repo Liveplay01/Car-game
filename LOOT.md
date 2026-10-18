@@ -331,7 +331,7 @@ Prestige behält sie. Nur Aussehen, Titel und Truhen, nie ein Vorteil auf der St
   Bosse), *Night Owl* / *Storm Chaser* (Trials Blackout / Storm Watch), *Legend Hunter*
   (15 Legendary Shifts), *Star Driver* (Prestige ★3). Der erste verdiente Titel wird
   getragen, jeder andere lässt sich im Elite-Sheet antippen.
-- **Ort:** Progress → Records, Elite-Karte oben. Ihr Sheet zeigt Leiste, Titel und
+- **Ort:** Progress → Stats, Elite-Karte oben. Ihr Sheet zeigt Leiste, Titel und
   Prestige (der Prestige-Knopf fragt zweimal).
 
 ## Endgame-Items (02.10.2026)

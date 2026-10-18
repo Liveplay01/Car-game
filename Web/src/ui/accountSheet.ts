@@ -164,8 +164,7 @@ export function accountSheet(layer: HTMLElement, actions: AccountActions, welcom
     const code = cloudView().code;
     return [
       h('p', { class: 'section-note' }, welcome ? S.account.welcome(name) : code ? S.account.done(name) : S.account.doneLocal(name)),
-      h('div', { class: 'list' }, row(S.account.nameLabel, name, change)),
-      code ? h('div', { class: 'list' }, secretCodeRow(code)) : null,
+      h('div', { class: 'list' }, row(S.account.nameLabel, name, change), code ? secretCodeRow(code) : null),
       code ? h('p', { class: 'section-note' }, S.account.codeNote) : null,
       h('button', { class: 'btn primary block', type: 'button', onclick: () => close() }, S.account.finish),
       code ? h('button', { class: 'btn block quiet-btn', type: 'button', onclick: () => actions.openCloud() }, S.account.manage) : null,

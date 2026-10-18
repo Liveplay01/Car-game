@@ -6,6 +6,9 @@ export const ICONS = {
   build: '<path d="M14.7 6.3a4 4 0 0 0-5.4 5.2L3.6 17.2a1.9 1.9 0 0 0 2.7 2.7l5.7-5.7a4 4 0 0 0 5.2-5.4l-2.5 2.5-2.3-.6-.6-2.3 2.9-2.1Z"/>',
   pause: '<rect x="6.5" y="5" width="3.6" height="14" rx="1.2"/><rect x="13.9" y="5" width="3.6" height="14" rx="1.2"/>',
   gear: '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1Z"/>',
+  /** Empty states as soft road signs (`.empty-sign`): a dead end where nobody is yet, a warning where the service did not answer. */
+  deadEnd: '<rect x="4" y="4" width="16" height="16" rx="5"/><path d="M12 17.5v-7M8.5 8.5h7"/>',
+  warning: '<path d="M10.3 5a2 2 0 0 1 3.4 0l6.3 11a2 2 0 0 1-1.7 3H5.7A2 2 0 0 1 4 16l6.3-11Z"/><path d="M12 10v3M12 16.2h.01"/>',
   /** A finger pressing down: the tap hint of the first shifts. */
   tap: '<path d="M9.5 11V4.8a1.8 1.8 0 0 1 3.6 0V10l3.6.9a2.4 2.4 0 0 1 1.8 2.6l-.6 4.5a3 3 0 0 1-3 2.6h-3.3a3 3 0 0 1-2.4-1.2L6 15.2a1.6 1.6 0 0 1 2.4-2.1l1.1 1.1V11Z"/>',
   /** The modifiers before a shift (`.run-mods`): Tailwind, a living streak, the Family's share. */
@@ -25,6 +28,7 @@ export const ICONS = {
   share: '<path d="M12 15V3M8 7l4-4 4 4"/><path d="M6 11H5a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-8a1 1 0 0 0-1-1h-1"/>',
   chevronDown: '<path d="m6 9 6 6 6-6"/>',
   chevronRight: '<path d="m9 6 6 6-6 6"/>',
+  chevronLeft: '<path d="m15 6-6 6 6 6"/>',
   download:'<path d="M12 3v12M8 11l4 4 4-4"/><path d="M5 17v2a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2"/>',
   chest: '<rect x="3.5" y="9" width="17" height="11" rx="2"/><path d="M3.5 13h17M5 9V7a3 3 0 0 1 3-3h8a3 3 0 0 1 3 3v2M11 11.5h2v3h-2z"/>',
   flame: '<path d="M12 3c.8 3.4 4.6 5 4.6 9.6a4.6 4.6 0 0 1-9.2 0c0-2 .9-3.3 2-4.4.2 1.3.8 2 1.6 2.3C11 8.4 11.3 5.6 12 3z"/>',

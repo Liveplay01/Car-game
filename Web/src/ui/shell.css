@@ -389,8 +389,26 @@ button {
   color: var(--accent);
 }
 
+/* A new dot pops in and blinks twice like an indicator light, then stays calm. */
 .tab .badge-dot:not([hidden]) {
-  animation: pop-in 320ms var(--ease-drawer) backwards;
+  animation:
+    pop-in 320ms var(--ease-drawer) backwards,
+    indicator 660ms ease-in-out 360ms 2;
+}
+
+@keyframes indicator {
+  0%,
+  100% {
+    opacity: 1;
+    box-shadow: 0 0 0 0 transparent;
+  }
+  25% {
+    box-shadow: 0 0 10px 2px color-mix(in srgb, var(--accent) 55%, transparent);
+  }
+  60% {
+    opacity: 0.4;
+    box-shadow: 0 0 0 0 transparent;
+  }
 }
 
 .tab .badge-dot {
@@ -720,6 +738,28 @@ a.row-link {
   margin-bottom: var(--s4);
 }
 
+.sheet-back {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s1);
+  min-height: var(--touch-min);
+  margin: calc(var(--s1) * -1) 0 0 calc(var(--s2) * -1);
+  padding: 0 var(--s2);
+  color: var(--accent);
+  font-size: 16px;
+  font-weight: 600;
+  transition: transform 160ms var(--ease-out);
+}
+
+.sheet-back:active {
+  transform: scale(0.97);
+}
+
+.sheet-back svg {
+  width: 20px;
+  height: 20px;
+}
+
 .sheet-title {
   margin: 0;
   font-family: var(--font-round);
@@ -743,12 +783,14 @@ a.row-link {
 /* A drawer's tabs stay at the top while the list under them scrolls (the Social page has the page's own scroll). */
 .sheet-tabs {
   position: sticky;
-  top: calc(-1 * var(--s2));
+  /* Sticky counts from inside the sheet's padding (--s2): this leaves --s3 between the tabs and the drawer's edge. */
+  top: calc(var(--s3) - var(--s2));
   z-index: 2;
   margin-bottom: var(--s4);
   /* The segmented control's own fill is translucent: over the sheet's colour it must be solid, or the list shows through. */
   background: linear-gradient(rgba(118, 118, 128, 0.24), rgba(118, 118, 128, 0.24)), var(--surface-1);
-  box-shadow: 0 0 0 var(--s2) var(--surface-1);
+  /* The second shadow fills the gap above the tabs up to the drawer's edge, so no row shows through it. */
+  box-shadow: 0 0 0 var(--s2) var(--surface-1), 0 calc(-1 * var(--s1)) 0 var(--s2) var(--surface-1);
 }
 
 .friends-content {
@@ -1325,6 +1367,14 @@ a.row-link {
 }
 
 /* Guides: the intro drawers to read again, one fold per place. */
+.guide-search {
+  margin-bottom: var(--s2);
+}
+
+.guide-body .btn {
+  margin-top: var(--s1);
+}
+
 .guide {
   margin-top: 0;
   border-bottom: 0.5px solid var(--separator);
@@ -2833,6 +2883,28 @@ button.mod:active {
   text-overflow: ellipsis;
 }
 
+/* A filter switch (Ranks: my crew only): pressed fills with the accent. */
+.chip {
+  justify-self: start;
+  min-height: 36px;
+  padding: 0 var(--s3);
+  border-radius: 18px;
+  background: var(--surface-3);
+  color: var(--muted);
+  font-size: 14px;
+  font-weight: 600;
+  transition: transform 160ms var(--ease-out), background-color 160ms ease, color 160ms ease;
+}
+
+.chip:active {
+  transform: scale(0.97);
+}
+
+.chip[aria-pressed='true'] {
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+
 @media (max-width: 480px) {
   .board-tabs button {
     font-size: 12.5px;
@@ -3083,6 +3155,33 @@ button.mod:active {
   min-height: 72px;
 }
 
+/* Your line while it overtakes (`overtake` in `ui/ranksPanel.ts`): lifted above the lines it passes. */
+.board-row.overtaking {
+  position: relative;
+  z-index: 1;
+  border-radius: var(--r-row);
+  /* Solid while it moves: the lines it passes must not show through its tint. */
+  background: linear-gradient(var(--accent-soft), var(--accent-soft)), var(--surface-2);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 0.35);
+}
+
+/* An empty state's soft road sign (`ICONS.deadEnd`, `ICONS.warning`): a plate in the row's own grey, no hard rim. */
+.empty-sign {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 40px;
+  height: 40px;
+  border-radius: var(--r-row);
+  background: color-mix(in srgb, var(--muted) 14%, transparent);
+  color: var(--muted);
+}
+
+.empty-sign svg {
+  width: 24px;
+  height: 24px;
+}
+
 .board-label {
   margin: 0 var(--s1) var(--s2);
 }
@@ -3253,6 +3352,35 @@ button.mod:active {
   font-weight: 600;
   line-height: 1.3;
   color: var(--muted);
+}
+
+/* A folded group (Settings → Performance): the header is the handle, its chevron turns when open. */
+.settings-fold > summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: var(--touch-min);
+  margin-bottom: 0;
+  cursor: pointer;
+  list-style: none;
+}
+
+.settings-fold > summary::-webkit-details-marker {
+  display: none;
+}
+
+.settings-fold > summary::after {
+  content: '';
+  width: 8px;
+  height: 8px;
+  border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  transform: translateY(-2px) rotate(45deg);
+  transition: transform 200ms var(--ease-out);
+}
+
+.settings-fold[open] > summary::after {
+  transform: translateY(2px) rotate(-135deg);
 }
 
 /* An icon tile in front of a row; its glyph takes the colour of its role, never a vehicle colour. */
@@ -3543,7 +3671,7 @@ button.mod:active {
   background: var(--surface-2);
   border: 1px solid var(--separator);
   translate: -50% calc(var(--pull, 0) * 1px - 100% - 6px);
-  opacity: min(1, calc(var(--pull, 0) / 28));
+  opacity: min(1, calc(var(--pull, 0) / 18));
   pointer-events: none;
 }
 

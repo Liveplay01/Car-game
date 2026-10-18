@@ -1,4 +1,5 @@
-import { h } from './dom';
+import { h, icon } from './dom';
+import { ICONS } from './icons';
 import { fadeIn, swapView } from './sheets';
 import { tabsControl } from './tabs';
 import {
@@ -36,6 +37,8 @@ export interface RanksActions {
   records(): Records;
   /** "Your player" (`ui/accountSheet.ts`): the boards are open to read, joining them is the player's own step. */
   createPlayer(): void;
+  /** Social → Crew: where a crew is joined, for the empty crew board. */
+  openCrew(): void;
 }
 
 const BOARDS: { id: BoardId; label: string; empty: string }[] = (['shift-level', 'unlimited', 'daily', 'casino'] as const).map((id) => ({ id, ...S.ranks.boards[id] }));
@@ -45,6 +48,42 @@ const cache = new Map<string, BoardView>();
 /** The Daily keeps one list per day: yesterday's must not stand in for today's after midnight (an open tab, a phone asleep). */
 const cacheKey = (scope: Scope, board: BoardId): string => `${scope}:${board}${board === 'daily' ? `:${dayNumber()}` : ''}`;
 let lastBoard: BoardId = 'shift-level';
+
+/**
+ * Your place on each board when you last saw it, across visits (a look, not progress). A better place on the next look
+ * is shown as overtaking: your line slides up past the ones you passed, and they drop back one place each.
+ */
+const SEEN_KEY = 'carGame.ranksSeen.v1';
+const OVERTAKE_ROWS = 6;
+
+function seenRanks(): Record<string, number> {
+  try {
+    const raw: unknown = JSON.parse(localStorage.getItem(SEEN_KEY) ?? '{}');
+    return raw && typeof raw === 'object' ? (raw as Record<string, number>) : {};
+  } catch {
+    return {};
+  }
+}
+
+const myRank = (view: BoardView): number | null => view.entries.find((e) => e.me)?.rank ?? view.me?.rank ?? null;
+
+/** Slides your line up from where it stood, the passed ones down into place. Only inside the top list, at most a few lines. */
+function overtake(list: HTMLElement, from: number, to: number): void {
+  const still = document.querySelector('.app.reduce-motion') !== null || window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const me = list.querySelector<HTMLElement>('.board-row.me');
+  if (still || !me || me.previousElementSibling?.classList.contains('board-gap')) return;
+  const passed: HTMLElement[] = [];
+  for (let next = me.nextElementSibling; next instanceof HTMLElement && next.classList.contains('board-row') && passed.length < Math.min(from - to, OVERTAKE_ROWS); next = next.nextElementSibling) passed.push(next);
+  if (passed.length === 0) return;
+  const step = me.offsetHeight;
+  const timing = { duration: 720, delay: 240, easing: 'cubic-bezier(0.32, 0.72, 0, 1)', fill: 'backwards' } as const;
+  me.classList.add('overtaking');
+  me.animate([{ transform: `translateY(${passed.length * step}px)` }, { transform: 'none' }], timing).finished.then(
+    () => me.classList.remove('overtaking'),
+    () => me.classList.remove('overtaking'),
+  );
+  for (const row of passed) row.animate([{ transform: `translateY(${-step}px)` }, { transform: 'none' }], timing);
+}
 /** Everyone, or only you and the friends whose codes you added. */
 type Scope = 'all' | 'crew';
 
@@ -223,6 +262,7 @@ export interface BoardHost {
   records(): Records;
   /** The service no longer knew the token: the host asks for a name again. */
   signedOut?(): void;
+  openCrew(): void;
 }
 
 /**
@@ -230,8 +270,7 @@ export interface BoardHost {
  * friends only. The leaderboard sheet shows the first, the Friends page the second.
  */
 export function boardPanel(scope: Scope, host: BoardHost): BoardPanel {
-  // The Casino board shows once the Casino is reached (`Records.casinoProfit`), like the Casino itself.
-  const boards = BOARDS.filter((b) => b.id !== 'casino' || host.records().casinoProfit !== null);
+  const boards = BOARDS;
   let board: BoardId = boards.some((b) => b.id === lastBoard) ? lastBoard : 'shift-level';
   /** Which request's answer may still be shown: a newer one (another board) wins. */
   let asked = 0;
@@ -246,7 +285,7 @@ export function boardPanel(scope: Scope, host: BoardHost): BoardPanel {
     void load();
   }
 
-  function showList(view: BoardView): void {
+  function showList(view: BoardView, before: number | null = null): void {
     const account = host.account();
     // The top 50 and nothing more (the friends board has no limit of its own); your place follows when it is further down.
     const top = view.entries.slice(0, BOARD_TOP);
@@ -257,12 +296,24 @@ export function boardPanel(scope: Scope, host: BoardHost): BoardPanel {
     }
     if (rows.length === 0) {
       const empty = scope === 'crew' ? S.ranks.noCrew : (BOARDS.find((b) => b.id === board)?.empty ?? '');
-      rows.push(h('div', { class: 'row board-empty' }, h('div', { class: 'row-main' }, h('div', { class: 'row-title' }, S.ranks.nobody), h('div', { class: 'row-sub' }, empty))));
+      // An empty crew board leads to where a crew is joined, instead of only naming it.
+      const go = scope === 'crew' ? h('button', { class: 'btn', type: 'button', onclick: () => host.openCrew() }, S.ranks.openCrew) : null;
+      rows.push(h('div', { class: 'row board-empty' }, h('span', { class: 'empty-sign' }, icon(ICONS.deadEnd)), h('div', { class: 'row-main' }, h('div', { class: 'row-title' }, S.ranks.nobody), h('div', { class: 'row-sub' }, empty)), go));
     }
     const arriving = list.getAttribute('aria-busy') === 'true';
     list.replaceChildren(...rows);
     list.setAttribute('aria-busy', 'false');
     if (arriving) fadeIn(list);
+    const now = myRank(view);
+    if (now === null) return;
+    if (before !== null && now < before) overtake(list, before, now);
+    const seen = seenRanks();
+    seen[cacheKey(scope, board)] = now;
+    try {
+      localStorage.setItem(SEEN_KEY, JSON.stringify(seen));
+    } catch {
+      /* blocked storage: no overtaking next time */
+    }
   }
 
   async function load(): Promise<void> {
@@ -280,7 +331,7 @@ export function boardPanel(scope: Scope, host: BoardHost): BoardPanel {
       await syncScores(host.records());
       const view = scope === 'crew' ? await fetchCrewBoard(board) : await fetchBoard(board);
       cache.set(key, view);
-      if (ticket === asked) showList(view);
+      if (ticket === asked) showList(view, seenRanks()[key] ?? null);
     } catch (error) {
       if (ticket !== asked) return;
       // A list already on screen stays; only without one the sheet says what happened.
@@ -290,6 +341,7 @@ export function boardPanel(scope: Scope, host: BoardHost): BoardPanel {
         h(
           'div',
           { class: 'row board-empty' },
+          h('span', { class: 'empty-sign' }, icon(ICONS.warning)),
           h('div', { class: 'row-main' }, h('div', { class: 'row-title' }, S.ranks.unavailable), h('div', { class: 'row-sub' }, describeError(error))),
           h('button', { class: 'btn', type: 'button', onclick: () => void load() }, S.ranks.tryAgain),
         ),
@@ -311,10 +363,6 @@ export function boardPanel(scope: Scope, host: BoardHost): BoardPanel {
   return { el, open: () => choose(board) };
 }
 
-const SCOPES: { id: Scope; label: string }[] = [
-  { id: 'all', label: S.ranks.scopes.all },
-  { id: 'crew', label: S.ranks.scopes.crew },
-];
 let lastScope: Scope = 'all';
 
 export function ranksPanel(actions: RanksActions): HTMLElement {
@@ -326,6 +374,7 @@ export function ranksPanel(actions: RanksActions): HTMLElement {
   const host: BoardHost = {
     account: () => account,
     records: actions.records,
+    openCrew: actions.openCrew,
     signedOut: () => {
       account = null;
       renderTop();
@@ -333,15 +382,21 @@ export function ranksPanel(actions: RanksActions): HTMLElement {
   };
   const boards = { all: boardPanel('all', host), crew: boardPanel('crew', host) };
   const shown = (): BoardPanel => boards[scope];
-  const scopes = tabsControl(S.ranks.scopeLabel, SCOPES, (next) => {
-    scope = next;
-    lastScope = next;
-    scopes.set(next);
-    swapView(view, () => view.replaceChildren(shown().el));
+  // A filter, not a second set of tabs: it sits under the board tabs of whichever list shows.
+  const crewOnly = h('button', { class: 'chip', type: 'button', 'aria-pressed': String(scope === 'crew') }, S.ranks.crewOnly);
+  const place = (): void => shown().el.firstElementChild?.after(crewOnly);
+  crewOnly.addEventListener('click', () => {
+    scope = scope === 'crew' ? 'all' : 'crew';
+    lastScope = scope;
+    crewOnly.setAttribute('aria-pressed', String(scope === 'crew'));
+    swapView(view, () => {
+      view.replaceChildren(shown().el);
+      place();
+    });
     shown().open();
   });
-  scopes.set(scope);
   const view = h('div', { class: 'board-view' }, shown().el);
+  place();
 
   /** Above the tabs: the name form while the player is not on the leaderboard yet. */
   function renderTop(): void {
@@ -371,10 +426,12 @@ export function ranksPanel(actions: RanksActions): HTMLElement {
       h(
         'div',
         { class: 'list' },
+        // One place for the player: the row opens it, instead of pointing to Settings → Account.
         h(
-          'div',
-          { class: 'row' },
-          h('div', { class: 'row-main' }, h('div', { class: 'row-title' }, account.name), h('div', { class: 'row-sub' }, `${S.ranks.nameSub} ${S.account.nameWhere(`${S.settings.title} → ${S.settings.tabs.account}`)}`)),
+          'button',
+          { class: 'row row-link', type: 'button', onclick: () => actions.createPlayer() },
+          h('div', { class: 'row-main' }, h('div', { class: 'row-title' }, account.name), h('div', { class: 'row-sub' }, S.ranks.nameSub)),
+          icon(ICONS.chevronRight),
         ),
       ),
     );
@@ -382,5 +439,5 @@ export function ranksPanel(actions: RanksActions): HTMLElement {
 
   renderTop();
   shown().open();
-  return h('div', { class: 'board' }, top, scopes.el, view, footer);
+  return h('div', { class: 'board' }, top, view, footer);
 }

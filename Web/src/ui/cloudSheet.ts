@@ -261,11 +261,12 @@ export function cloudSheet(layer: HTMLElement, actions: CloudActions): () => voi
     });
     const now = h('button', { class: 'btn', type: 'button' }, S.cloud.syncNow);
     now.addEventListener('click', () => run(now, () => syncNow()));
+    // With a player the code already stands in its sheet, right under this one: here only how the copy stands and the way out.
+    const own = loadAccount() === null;
     return [
-      h('p', { class: 'section-note' }, S.cloud.linkedIntro),
-      h('div', { class: 'list' }, secretCodeRow(view.code ?? '')),
+      ...(own ? [h('p', { class: 'section-note' }, S.cloud.linkedIntro), h('div', { class: 'list' }, secretCodeRow(view.code ?? ''))] : []),
       h('div', { class: 'list' }, row(S.cloud.cloudCopy, state, now), row(S.cloud.passwordManager, S.cloud.passwordManagerSub, keep)),
-      h('p', { class: 'section-note' }, S.cloud.secret),
+      ...(own ? [h('p', { class: 'section-note' }, S.cloud.secret)] : []),
       h('button', { class: 'btn block quiet-btn', type: 'button', onclick: () => stopCloud() }, S.cloud.stop),
       confirmButton(S.cloud.delete, S.cloud.deleteAgain, () => deleteCloud(), say),
     ];

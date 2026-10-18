@@ -153,7 +153,9 @@ export function openSheet(layer: HTMLElement, title: string, body: HTMLElement, 
   const closeBtn = h('button', { class: 'icon-btn', 'aria-label': S.settings.close, onclick: () => close() }, icon(ICONS.close));
   const grabber = h('div', { class: 'grabber', 'aria-hidden': 'true' });
   const head = h('div', { class: 'sheet-head' }, h('h2', { class: 'sheet-title', id: titleId }, title), closeBtn);
-  const sheet = h('div', { class: 'sheet', role: 'dialog', 'aria-modal': 'true', 'aria-labelledby': titleId, tabindex: '-1' }, grabber, head, body);
+  // A sheet opened from another one says where Back goes.
+  const back = below ? h('button', { class: 'sheet-back', type: 'button', onclick: () => close() }, icon(ICONS.chevronLeft), below.title) : null;
+  const sheet = h('div', { class: 'sheet', role: 'dialog', 'aria-modal': 'true', 'aria-labelledby': titleId, tabindex: '-1' }, grabber, back, head, body);
   const scrim = h('div', { class: 'sheet-scrim', onclick: () => close() });
   dragToClose(sheet, scrim, [grabber, head], () => close());
   const root = h('div', { class: below ? 'sheet-root stacked' : 'sheet-root' }, scrim, sheet);
@@ -387,20 +389,29 @@ export function patchNotesSheet(layer: HTMLElement, notes: PatchNote[], onClose:
 }
 
 /** Every place that explains itself once (`Intros`), to read again any time: one fold per place the player has reached. */
-export function guidesSheet(layer: HTMLElement, places: Intro[], onClose: () => void): () => void {
-  const body = h(
-    'div',
-    { class: 'guides' },
-    ...places.map((id) => {
-      const t = S.intro[id];
-      return h(
-        'details',
-        { class: 'note-more guide' },
-        h('summary', { class: 'note-more-head' }, h('span', { class: 'guide-name' }, h('span', { class: 'row-title' }, t.title), h('span', { class: 'row-sub' }, t.line)), icon(ICONS.chevronDown, {})),
-        h('div', { class: 'guide-body' }, ...t.body.map((p) => h('p', {}, p))),
-      );
-    }),
-  );
+export function guidesSheet(layer: HTMLElement, places: Intro[], onClose: () => void, go: (place: Intro) => void): () => void {
+  const guides = places.map((id) => {
+    const t = S.intro[id];
+    const el = h(
+      'details',
+      { class: 'note-more guide' },
+      h('summary', { class: 'note-more-head' }, h('span', { class: 'guide-name' }, h('span', { class: 'row-title' }, t.title), h('span', { class: 'row-sub' }, t.line)), icon(ICONS.chevronDown, {})),
+      h('div', { class: 'guide-body' }, ...t.body.map((p) => h('p', {}, p)), h('button', { class: 'btn small', type: 'button', onclick: () => go(id) }, S.settings.guidesGo, icon(ICONS.chevronRight))),
+    );
+    return { el, text: [t.title, t.line, ...t.body].join(' ').toLocaleLowerCase() };
+  });
+  // "Where is ...?": a word filters the guides down to the ones that mention it, opened.
+  const none = h('p', { class: 'section-note', hidden: true }, S.settings.guidesNone);
+  const search = h('input', { class: 'text-input guide-search', type: 'search', placeholder: S.settings.guidesSearch, 'aria-label': S.settings.guidesSearch, autocomplete: 'off', enterkeyhint: 'search' });
+  search.addEventListener('input', () => {
+    const q = search.value.trim().toLocaleLowerCase();
+    for (const g of guides) {
+      g.el.hidden = q !== '' && !g.text.includes(q);
+      if (q !== '') g.el.open = !g.el.hidden;
+    }
+    none.hidden = guides.some((g) => !g.el.hidden);
+  });
+  const body = h('div', { class: 'guides' }, search, none, ...guides.map((g) => g.el));
   return openSheet(layer, S.settings.guides, body, onClose);
 }
 
@@ -648,6 +659,13 @@ function group(title: string, ...rows: (HTMLElement | null)[]): HTMLElement | nu
   return h('section', { class: 'settings-group', 'aria-labelledby': id }, h('h3', { class: 'settings-header', id }, title), h('div', { class: 'list' }, ...kept));
 }
 
+/** A group that stays folded until asked for, open from the start when one of its switches is on. */
+function foldGroup(title: string, open: boolean, ...rows: (HTMLElement | null)[]): HTMLElement {
+  const fold = h('details', { class: 'settings-group settings-fold' }, h('summary', { class: 'settings-header' }, title), h('div', { class: 'list' }, ...rows));
+  fold.open = open;
+  return fold;
+}
+
 /**
  * Language picker sheet (Leo, 12.10.2026): opens an in-game sheet matching the UI style,
  * with checkmark on the selected language and instant game reload on change.
@@ -814,15 +832,19 @@ export function settingsSheet(layer: HTMLElement, s: Settings, actions: Settings
       .catch(() => undefined);
   }
 
-  const cloudRow = cloudEnabled
-    ? richLinkRow(
-        S.settings.cloudSync,
-        actions.cloudOn ? S.settings.cloudOn : S.settings.cloudOff,
-        () => actions.openCloud(),
-        tile(ICONS.cloud, 'blue'),
-        null,
-      )
-    : null;
+  // One entry for everything online (Leo, 18.10.2026): the player carries Cloud sync. Sync keeps a row of its own only where no
+  // player carries it: a new device restoring from its code, or a copy without the player service.
+  const restoring = actions.player !== null && actions.player.name === null && !actions.cloudOn;
+  const cloudRow =
+    cloudEnabled && !actions.player?.name
+      ? richLinkRow(
+          restoring ? S.account.haveCode : S.settings.cloudSync,
+          restoring ? S.settings.haveCodeSub : actions.cloudOn ? S.settings.cloudOn : S.settings.cloudOff,
+          () => actions.openCloud(),
+          tile(ICONS.cloud, 'blue'),
+          null,
+        )
+      : null;
 
   // Three tabs (Leo, 10.10.2026): how it plays, what belongs to the player, and everything about the game. Built once, so a switch keeps its state.
   const panes: Record<SettingsTab, (HTMLElement | null)[]> = {
@@ -845,32 +867,36 @@ export function settingsSheet(layer: HTMLElement, s: Settings, actions: Settings
             })
           : null,
         switchRow(S.settings.vehicleLabels, S.settings.vehicleLabelsSub, s.vehicleLabels, toggle('vehicleLabels')),
-        switchRow(S.settings.haptics, hasVibration ? null : S.settings.hapticsNone, s.haptics, toggle('haptics')),
-        switchRow(S.settings.batterySaver, S.settings.batterySaverSub, s.batterySaver, toggle('batterySaver')),
-        switchRow(S.settings.lowDetail, S.settings.lowDetailSub, s.lowDetail, toggle('lowDetail')),
       ),
       group(
         S.settings.sound,
         switchRow(S.settings.soundEffects, null, s.sound, toggle('sound')),
         switchRow(S.settings.music, null, s.music, toggle('music')),
         switchRow(S.settings.mapSounds, S.settings.mapSoundsSub, s.mapSounds, toggle('mapSounds')),
+        switchRow(S.settings.haptics, hasVibration ? null : S.settings.hapticsNone, s.haptics, toggle('haptics')),
+      ),
+      foldGroup(
+        S.settings.performance,
+        s.batterySaver || s.lowDetail,
+        switchRow(S.settings.batterySaver, S.settings.batterySaverSub, s.batterySaver, toggle('batterySaver')),
+        switchRow(S.settings.lowDetail, S.settings.lowDetailSub, s.lowDetail, toggle('lowDetail')),
       ),
     ],
     account: [
-      actions.player
-        ? group(
-            S.account.title,
-            richLinkRow(
+      group(
+        actions.player ? S.account.title : S.settings.backup,
+        actions.player
+          ? richLinkRow(
               actions.player.name ?? S.account.settingsNone,
               actions.player.ready ? S.account.settingsReady : actions.player.name ? S.account.settingsSync : S.account.settingsSub,
               () => actions.player?.open(),
               tile(ICONS.people, 'blue'),
               actions.player.ready ? null : h('span', { class: 'new-pill' }, S.account.settingsBadge),
-            ),
-          )
-        : null,
-      group(S.settings.backup, cloudRow, installRow),
-      group(S.settings.reminders, ...pushRows(actions.push)),
+            )
+          : null,
+        cloudRow,
+      ),
+      group(S.settings.reminders, ...pushRows(actions.push), installRow),
       h(
         'p',
         { class: 'section-note settings-foot' },
@@ -902,7 +928,10 @@ export function settingsSheet(layer: HTMLElement, s: Settings, actions: Settings
     ],
   };
   const content = h('div', { class: 'settings-content' });
-  const tabs = tabsControl(S.settings.title, SETTINGS_TABS, (next) => show(next, true));
+  const tabs = tabsControl(S.settings.title, SETTINGS_TABS, (next) => {
+    scrollSheetToTop(content);
+    show(next, true);
+  });
   tabs.el.classList.add('sheet-tabs');
   function show(next: SettingsTab, animate: boolean): void {
     lastSettingsTab = next;

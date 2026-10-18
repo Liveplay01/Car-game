@@ -5,6 +5,7 @@ import { SeasonPass } from '../core/seasonPass';
 import { Auction } from '../core/auction';
 import { Mafia } from '../core/mafia';
 import { inPortal } from '../storage/device';
+import { PROGRESS, SOCIAL, type ScreenAction } from './flow';
 
 /**
  * A place or feature that explains itself once (Leo, 12.10.2026): when it is reached it gets a dot, and the first time it is
@@ -14,6 +15,20 @@ export const INTROS = ['museum', 'builder', 'daily', 'trials', 'pass', 'casino',
 export type Intro = (typeof INTROS)[number];
 
 const hintOf = (i: Intro): Hint => `intro.${i}`;
+
+/** Where each place is: the Guides' "Show me" takes the player there (Leo, 18.10.2026). */
+export const INTRO_PLACE: Record<Intro, ScreenAction> = {
+  museum: { k: 'showProgress', section: PROGRESS.stats },
+  builder: { k: 'showTab', tab: 'streetBuilder' },
+  daily: { k: 'showProgress', section: PROGRESS.today },
+  trials: { k: 'showProgress', section: PROGRESS.goals },
+  pass: { k: 'showProgress', section: PROGRESS.goals },
+  casino: { k: 'showShop', section: 2 },
+  club: { k: 'showSocial', section: SOCIAL.club },
+  gamefund: { k: 'showSocial', section: SOCIAL.club },
+  mafia: { k: 'showSocial', section: SOCIAL.mafia },
+  crew: { k: 'showSocial', section: SOCIAL.crew },
+};
 
 export const Intros = {
   /** Whether the career has reached it: the Museum and the Street Builder from the start, the rest with their unlock. */

@@ -109,10 +109,23 @@ test('Ranks: the Casino board shows once the Casino is reached, with its money',
   expect(errors).toEqual([]);
 });
 
-test('Ranks: no Casino board before the Casino is reached', async ({ page }) => {
+test('Ranks: My crew only is a switch under the boards, and an empty crew board leads to Social → Crew', async ({ page }) => {
+  const empty = { board: { id: 'shift-level', title: 'shift-level', period: 'all' }, entries: [], me: null, crew: 0 };
+  const { errors } = await start(page, 'level=5', () => [], (_method, path) => (path.startsWith('/v1/crews/boards/') ? empty : null));
+  await openRanks(page);
+  const chip = page.getByRole('button', { name: 'My crew only' });
+  await expect(chip).toHaveAttribute('aria-pressed', 'false');
+  await tap(chip);
+  await expect(chip).toHaveAttribute('aria-pressed', 'true');
+  await tap(page.getByRole('button', { name: 'Open Crew' }));
+  expect(await page.evaluate(() => (window as unknown as { __game: Game }).__game.game.socialPage.section)).toBe(0);
+  expect(errors).toEqual([]);
+});
+
+test('Ranks: the Casino board can be read before the Casino is reached', async ({ page }) => {
   await start(page, 'level=5');
   const tabs = await openRanks(page);
-  await expect(tabs.getByRole('button')).toHaveText(['Shift level', 'Unlimited', 'Daily']);
+  await expect(tabs.getByRole('button')).toHaveText(['Shift level', 'Unlimited', 'Daily', 'Casino']);
 });
 
 test('Ranks: the casino profit goes to the Casino board on the next save', async ({ page }) => {
@@ -240,5 +253,15 @@ test('Keep driving: a crash that ends an Unlimited run is offered back for an ad
   expect(back.revived).toBe(1);
   expect(back.shift.outcome).toBeNull();
   expect(back.revive).toBeNull();
+  expect(errors).toEqual([]);
+});
+
+test('Settings → Account: the player is the one entry, Cloud sync rides in it', async ({ page }) => {
+  const { errors } = await start(page, 'level=12');
+  await page.evaluate(() => (window as unknown as { __game: Game }).__game.game.perform({ k: 'openSettings' }));
+  await tap(page.getByRole('button', { name: 'Account' }));
+  const content = page.locator('.settings-content:not(.view-ghost)');
+  await expect(content.locator('.settings-group').first().locator('.row-title')).toHaveText(['Tester']);
+  await expect(content.locator('.row-title', { hasText: /^Cloud sync$/ })).toHaveCount(0);
   expect(errors).toEqual([]);
 });

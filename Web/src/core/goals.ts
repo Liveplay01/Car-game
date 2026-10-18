@@ -5,6 +5,7 @@ import type { ShiftResult } from './events';
 import type { Upgrade } from './levels';
 import { Scoring } from './scoring';
 import { type TierId, nextTier } from './tiers';
+import { PITY_LEGENDARY_CHESTS } from './loot';
 
 /**
  * Open loops (Leo, 28.09.2026): there is always a next thing within reach, and after a lost
@@ -17,6 +18,12 @@ export interface MoneyGoal {
   upgrade: Upgrade;
   short: number;
 }
+
+/** A goal within arm's reach to tease on the waiting screen (Goal-Gradient Effect). */
+export type GoalTeaser =
+  | { k: 'upgrade'; short: number; upgrade: Upgrade }
+  | { k: 'daily'; streak: number }
+  | { k: 'pity'; chestsLeft: number };
 
 /** How close a lost shift came, the most striking fact first. */
 export type NearMiss =
@@ -97,5 +104,21 @@ export const Goals = {
     c.shieldBonus = Math.round(base.shieldBonus * f);
     c.ambulancePay = Math.round(base.ambulancePay * f);
     return c;
+  },
+
+  /** A goal within arm's reach to tease on the waiting screen (Goal-Gradient Effect). */
+  teaser(c: Career, day: number, config: Config = baseConfig): GoalTeaser | null {
+    if (c.dailyPlayed < day) {
+      return { k: 'daily', streak: c.dailyStreak };
+    }
+    const goal = Goals.money(c, config);
+    if (goal && goal.short <= 5000) {
+      return { k: 'upgrade', short: goal.short, upgrade: goal.upgrade };
+    }
+    const chestsLeft = PITY_LEGENDARY_CHESTS - c.chestsSinceLegendary;
+    if (chestsLeft > 0 && chestsLeft <= 5) {
+      return { k: 'pity', chestsLeft };
+    }
+    return null;
   },
 };

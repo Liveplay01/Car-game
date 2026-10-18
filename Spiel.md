@@ -525,7 +525,7 @@ Eine Schicht pro Woche (neu jeden Montag), für alle gleich (Seed aus der Woche,
 - **Offene Schleifen** (Leo, 28.09.2026): Es gibt immer ein Nächstes in Reichweite. Die Wartekarte nennt die nächste offene Quest oder die Mastery-Stufe, die am nächsten ist, und das Upgrade, auf das das Geld am schnellsten reicht. Nach einer verlorenen Schicht sagt das Spiel ehrlich, wie knapp es war: „1 car short of level 12“, „1.250 points short of your best“, „One merge short of ×2“ (nur wenn es wirklich knapp war).
 - **Tutorial:** in der ersten Schicht, ohne Menü und ohne Pause – pulsierender Ring am vordersten Auto, „Wait for a gap, then tap“, Combo-Hinweis, beim ersten Crash „Cars crash instantly. Police get 3 chances.“
 
-### Trials (Progress → Trials, ab Level 9)
+### Trials (Progress → Goals, ab Level 9)
 
 Zehn feste Schichten mit festem Seed (alle treffen denselben Verkehr), frischem Kreisverkehr mit 4 Armen, ohne eigene Upgrades. Eine Zusatzregel beendet die Schicht als *failed*, wenn sie gebrochen wird. Jede Trial zahlt einmal. **Die leichteste steht oben, und jede öffnet erst bei ihrem Level.** Trials, die Perfects oder Tight Fits zählen, zeigen den Fortschritt live unter der oberen Karte und erklären auf ihrem Startbildschirm, was ein Perfect Input (die Mitte einer mittleren Lücke, nicht der größten) und ein Tight Fit verlangt. Die vier Boss-Rematches gehören ebenfalls dazu (siehe 5).
 
@@ -542,7 +542,7 @@ Zehn feste Schichten mit festem Seed (alle treffen denselben Verkehr), frischem 
 | Hands Only | 24 | 20 | **Build-Trial:** deine Upgrades ohne die Driving-Gruppe (kein Shield) | 5.000 |
 | Bare Bones | 28 | 22 | **Build-Trial:** deine Upgrades ohne Police und Driving | 7.000 |
 
-**Level-Trials (Leo, 11.10.2026, `levelTrial` in `core/trials.ts`):** Ab Level 30 bis 120 bringt jedes Level einen Trial mehr (`level.37`, 91 Stück), erzeugt aus dem Level: neun Formen der Reihe nach (Precision, Sharp Eyes, Clean Run, Rough Weather, Night Shift, Manhunt, Ruthless, Handicap, Long Haul), Wetter, Boss oder Regel aus dem Seed des Levels, Ziel und Belohnung (5.000 + 300 je Level) wachsen mit. Kein Upgrade zählt, nur Handicap ist ein Build-Trial. Offen ab dem Level (oder mit Prestige); Progress → Trials zeigt die ersten vier offenen, noch nicht geschafften (`LEVEL_TRIALS_SHOWN`) und „n/91“. Der Spielstand erkennt die IDs am Muster (`isRunId`). Der vorsichtige Bot schafft sie bis auf entkommene Verbrecher, die er nicht jagt.
+**Level-Trials (Leo, 11.10.2026, `levelTrial` in `core/trials.ts`):** Ab Level 30 bis 120 bringt jedes Level einen Trial mehr (`level.37`, 91 Stück), erzeugt aus dem Level: neun Formen der Reihe nach (Precision, Sharp Eyes, Clean Run, Rough Weather, Night Shift, Manhunt, Ruthless, Handicap, Long Haul), Wetter, Boss oder Regel aus dem Seed des Levels, Ziel und Belohnung (5.000 + 300 je Level) wachsen mit. Kein Upgrade zählt, nur Handicap ist ein Build-Trial. Offen ab dem Level (oder mit Prestige); Progress → Goals zeigt die ersten vier offenen, noch nicht geschafften (`LEVEL_TRIALS_SHOWN`) und „n/91“. Der Spielstand erkennt die IDs am Muster (`isRunId`). Der vorsichtige Bot schafft sie bis auf entkommene Verbrecher, die er nicht jagt.
 
 **Build-Trials (Leo, 11.10.2026):** Die einzigen Trials mit den eigenen Upgrades (`Trial.strip`, `keptUpgrades` in `core/trials.ts`): die Gruppe der Upgrades-Seite (`UPGRADE_GROUP`) fällt weg, der Rest bleibt, Zufahrten und Module nicht. Money wird nie gesperrt (es macht nur den Lohn kleiner, nicht die Schicht schwerer).
 
@@ -552,8 +552,8 @@ Nach einer Schicht macht „Challenge a friend“ einen Link (`#challenge=…`) 
 
 ### Boss Rush, Landmarks, Einladungs-QR (03.10.2026)
 
-- **Boss Rush** (Progress → Trials, öffnet, sobald alle acht Bosse einmal festgenommen sind): alle acht Syndikats-Bosse hintereinander, jeweils als Rematch (`rushTrial`, 20 Autos), **eine Uhr** (Summe der geschafften Schichten). Ein verlorener Boss beendet den Rush: der nächste Versuch beginnt wieder beim ersten (`advanceRush`, `present/specialRuns.ts`). Erster Durchlauf zahlt einmal **60.000** (`trialsDone` enthält `bossRush`), die **Bestzeit** (`rushBest`) und der weiteste Boss (`rushFurthest`) bleiben im Spielstand. Die Rematches zahlen im Rush nichts extra.
-- **Landmarks** (Progress → Trials, ab Prestige ★5, `LANDMARK_PRESTIGE`): berühmte Kreisverkehre als je eine feste, harte Schicht. Bisher **The Étoile**: zwölf Zufahrten in einem Ring (`armSlotCount` 12, jeder Platz gebaut), Level 60, 24 Autos, Tag, der Verkehr der zwölf Arme (`forArms`) auf 65 % gedämpft (`traffic`), weil der vorsichtige Bot bei vollem Verkehr in einer von acht Schichten crashte. Zahlt einmal 40.000. `node scripts/ascension-sim.mjs` prüft sie mit. **Noch offen:** Magic Roundabout (Swindon, fünf Mini-Ringe) braucht eigene Geometrie im Kern.
+- **Boss Rush** (Progress → Goals, öffnet, sobald alle acht Bosse einmal festgenommen sind): alle acht Syndikats-Bosse hintereinander, jeweils als Rematch (`rushTrial`, 20 Autos), **eine Uhr** (Summe der geschafften Schichten). Ein verlorener Boss beendet den Rush: der nächste Versuch beginnt wieder beim ersten (`advanceRush`, `present/specialRuns.ts`). Erster Durchlauf zahlt einmal **60.000** (`trialsDone` enthält `bossRush`), die **Bestzeit** (`rushBest`) und der weiteste Boss (`rushFurthest`) bleiben im Spielstand. Die Rematches zahlen im Rush nichts extra.
+- **Landmarks** (Progress → Goals, ab Prestige ★5, `LANDMARK_PRESTIGE`): berühmte Kreisverkehre als je eine feste, harte Schicht. Bisher **The Étoile**: zwölf Zufahrten in einem Ring (`armSlotCount` 12, jeder Platz gebaut), Level 60, 24 Autos, Tag, der Verkehr der zwölf Arme (`forArms`) auf 65 % gedämpft (`traffic`), weil der vorsichtige Bot bei vollem Verkehr in einer von acht Schichten crashte. Zahlt einmal 40.000. `node scripts/ascension-sim.mjs` prüft sie mit. **Noch offen:** Magic Roundabout (Swindon, fünf Mini-Ringe) braucht eigene Geometrie im Kern.
 - **Einladungs-QR:** Die Multiplayer-Lobby zeigt neben dem Code einen QR-Code für den Einladungslink (`ui/qr.ts`, `qrcode-generator` als zweite Laufzeit-Abhängigkeit, lädt erst mit der Lobby; Lizenz in Settings → Licenses).
 - **Patch Notes mit Spieler-Hinweis:** siehe CLAUDE.md.
 
@@ -591,7 +591,7 @@ Geschafft: **Premium-Truhe**, +10 Elite XP. Skins nach der 1. (Laurel), 5. (Crow
 
 ### Prestige (28.09.2026)
 
-Ab Level 50 (Progress → Records → Elite-Karte → Prestige, mit Rückfrage): zurück auf **Level 1**. Geld, Upgrades, Straßen, Sammlung, Elite-Leiste und Titel bleiben; die Bestzeiten der alten Straße gehen. Der Verkehr läuft pro Rang **10 Level härter** (höchstens +40, also ab ★4); die Boss-Level bleiben bei dem Level, das angezeigt wird (15, 30, 45), aber jeder Rang bringt die nächsten Bosse (siehe 5). Der Stern steht vor dem Level (★ + Level) und in der Bestenliste (Silber bei ★1, Gold bei ★2, Iris ab ★3, mit einem langsamen Glanz; Antippen erklärt Prestige). Systeme bleiben freigeschaltet.
+Ab Level 50 (Progress → Stats → Elite-Karte → Prestige, mit Rückfrage): zurück auf **Level 1**. Geld, Upgrades, Straßen, Sammlung, Elite-Leiste und Titel bleiben; die Bestzeiten der alten Straße gehen. Der Verkehr läuft pro Rang **10 Level härter** (höchstens +40, also ab ★4); die Boss-Level bleiben bei dem Level, das angezeigt wird (15, 30, 45), aber jeder Rang bringt die nächsten Bosse (siehe 5). Der Stern steht vor dem Level (★ + Level) und in der Bestenliste (Silber bei ★1, Gold bei ★2, Iris ab ★3, mit einem langsamen Glanz; Antippen erklärt Prestige). Systeme bleiben freigeschaltet.
 
 | Rang | Belohnung |
 |---|---|
@@ -644,7 +644,7 @@ Die schwersten Taten im Spiel, nie Glück, nie kaufbar. Jede zeigt Belohnung, Bi
 
 Jedes Prestige fügt dem Elite-Fenster (Records → Elite) eine Plakette hinzu: Rang, Datum, Elite-Level, Bosse, Legendary Shifts („Prestige log“). Die **Ruhmeshalle** (250.000, goldene Wand auf der Insel, Skin **Hall of Famer**) ist nicht mehr zu kaufen; wer sie gebaut hat, behält Wand und Skin (`hallBuilt`, `CityLayer.addHall`).
 
-### Museum (Progress → Museum)
+### Museum (Progress → Stats, Museum)
 
 Katalog von **30 Einträgen**: 4 Bosse, 11 Spezialfahrzeuge (Police Car, Criminal, Money Transporter, Lorry, Ambulance, Gas Tanker, Military Truck, Fire Engine, Motorbike, Learner Driver, School Bus) und 15 Bedingungen (Two Lanes, 6 Wetter, Night, Blackout, 6 City Events). Ein Eintrag steht gesperrt als graue Silhouette („From Level X“), bis er in einer laufenden Schicht vor dir auf der Straße war; dann zeigt er sich mit allem, was man wissen muss (und seinem Briefing-Satz). Bosse zeigen den Rematch.
 
@@ -663,7 +663,7 @@ Für Spieler mit Prestige (Prestige macht den Verkehr ab ★4 nicht mehr schwere
   - **The Kingpin** (★2, Level 30): im Blackout, gepanzert, drei getarnte Eskorten.
 
   Die Eskorten bleiben im Spielkern Lieferwagen (fair, an der Form erkennbar). Jeder Boss hat ein Rematch (14.000 / 16.000 / 18.000 / 25.000). Rematches behalten ihr Level (Boss-Level + 60), der Boss ist festgelegt. Titel *Syndicate Breaker* gilt weiter für die ersten vier, neu *Syndicate's End* für alle acht.
-- **Aufstiegs-Trials** (Progress → Trials, ab ★1): je eine pro Prestige-Rang ★1–★10, Level 66 bis 120, harte Bedingungen (Sturm bei Nacht, Blackout, Schnee, Nebel mit Gridlock, Boss, flawless, Extreme, Dragnet, Heavy Load, Dark Storm). Sie zahlen einmal 15.000 bis 60.000; ★10 gibt den Titel *Summit*. Geprüft mit `node scripts/ascension-sim.mjs`.
+- **Aufstiegs-Trials** (Progress → Goals, ab ★1): je eine pro Prestige-Rang ★1–★10, Level 66 bis 120, harte Bedingungen (Sturm bei Nacht, Blackout, Schnee, Nebel mit Gridlock, Boss, flawless, Extreme, Dragnet, Heavy Load, Dark Storm). Sie zahlen einmal 15.000 bis 60.000; ★10 gibt den Titel *Summit*. Geprüft mit `node scripts/ascension-sim.mjs`.
 - **Unlimited-Stufen:** nach 4:00 Tanklaster, 5:30 Nacht, 7:00 Sturm, 8:30 Militär-Trucks (alle 40–60 s), danach alle 90 s *Overtime* (+1 Dichte, +3 % Tempo, höchstens 6-mal, Tempo bis 175 %). Jede Stufe wird oben angekündigt. Geprüft mit `node scripts/unlimited-sim.mjs`.
 - **Unlimited-Meilensteine:** Skins für 250 / 500 / 1.000 Autos in einem Lauf (Endurance, Overdrive, Infinity). Alte Spielstände bekommen sie beim Laden.
 - **Prestige ohne Lücken:** ab ★4 bringt jeder Rang bis ★20 einen Skin oder einen Titel, dazu Titel bei ★25 und ★30. Der Stern in der Bestenliste wechselt die Farbe bei ★4 (Glut), ★10 (Prisma) und ★20 (Ewig).
