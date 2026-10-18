@@ -31,6 +31,7 @@ export { INPUT_DELAY };
 /** A guest this many steps behind the host runs faster until it has caught up. */
 const CATCH_UP_AFTER = 24;
 const COUNT_IN = 3;
+const GO_FADE = 0.7;
 
 /** One colour per lobby slot (`theme.ts`); the name is said once, in the count-in. */
 export const PLAYER_COLORS: ColorToken[] = ['player1', 'player2', 'player3', 'player4'];
@@ -70,6 +71,8 @@ export interface MatchFeel {
 export class VersusMatch {
   readonly world: World;
   countIn = COUNT_IN;
+  /** Seconds since the light went green: it stays a moment, then fades over the running match. */
+  private sinceGo = Infinity;
   /** undefined while the match runs; then the winning seat, or null for a draw. */
   winner: number | null | undefined = undefined;
   readonly reasons = new Map<number, EliminationReason>();
@@ -305,6 +308,7 @@ export class VersusMatch {
       this.lamps.update(this.world, dt);
     }
     if (this.isOver) this.sinceOver += dt;
+    this.sinceGo += dt;
     this.phaseAge += dt;
     for (const [seat, age] of this.sinceOut) this.sinceOut.set(seat, age + dt);
     this.age(dt);
@@ -318,6 +322,7 @@ export class VersusMatch {
       this.lastCount = shown;
       if (shown > 0) this.sound('uiTick', 0.6);
       else {
+        this.sinceGo = 0;
         this.sound('go');
         this.haptic('rushHour');
       }
@@ -769,6 +774,23 @@ export class VersusMatch {
     return Math.min(Ease.clamp01(age / 0.18), 1 - Ease.clamp01((age - (life - 0.4)) / 0.4));
   }
 
+  /**
+   * The count-in as a traffic light (Leo, 18.10.2026), the same one as pulling to refresh: red at 3, red and amber at 2,
+   * amber at 1, green on go. A soft capsule, round lamps with a halo; a lamp that comes on swells into place.
+   */
+  static addLight(list: RenderList, at: Vec2, lit: [boolean, boolean, boolean], age: number, o: number, rm: boolean): void {
+    const lamps: ColorToken[] = ['destructive', 'accent', 'juiceGreen'];
+    const gap = 34;
+    list.s(rect(at, v(gap * 3 + 8, 44), 22), 'scrim', 0.92 * o);
+    const swell = rm ? 1 : 0.86 + 0.14 * Ease.settle(age / 0.3);
+    lamps.forEach((color, i) => {
+      const c = v(at.x + (i - 1) * gap, at.y);
+      if (!lit[i]) return list.s(circle(c, 11), 'controlFill', o);
+      list.s(circle(c, 20 * swell), color, 0.16 * o);
+      list.s(circle(c, 11 * swell), color, o);
+    });
+  }
+
   private addCenter(list: RenderList, viewport: Vec2, rm: boolean): void {
     const mid = v(viewport.x / 2, viewport.y / 2);
     if (!this.isHost && this.room.reconnecting) {
@@ -778,7 +800,9 @@ export class VersusMatch {
     }
     if (this.countIn > 0) {
       const slot = this.slots[this.you] ?? this.you;
-      list.s(text(String(Math.ceil(this.countIn)), v(mid.x, mid.y - 2), 64, 'center', 'bold'), this.colorOf(this.you));
+      const count = Math.ceil(this.countIn);
+      VersusMatch.addLight(list, v(mid.x, mid.y - 26), [count >= 2, count <= 2, false], count - this.countIn, 1, rm);
+      list.s(text(String(count), v(mid.x, mid.y + 30), 36, 'center', 'display'), this.colorOf(this.you));
       const line = S.versus.lane(S.versus.colors[slot] ?? '');
       // Under the badges, where the notes go later: over the ring it would cover a lane's pill.
       const lineY = 118;
@@ -790,6 +814,7 @@ export class VersusMatch {
       this.addResult(list, viewport, rm);
       return;
     }
+    if (this.sinceGo < GO_FADE) VersusMatch.addLight(list, v(mid.x, mid.y - 26), [false, false, true], this.sinceGo, 1 - Ease.outCubic(this.sinceGo / GO_FADE), rm);
     const bottom = viewport.y - 24;
     const mine = this.world.seats[this.you];
     if (!mine || mine.out) {

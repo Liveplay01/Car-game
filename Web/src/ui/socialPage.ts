@@ -7,6 +7,7 @@ import { swapView } from './sheets';
 import { pullToRefresh } from './pullRefresh';
 import { SOCIAL, type SocialSection } from '../present/flow';
 import { S } from '../present/strings';
+import type { HapticID } from '../present/feedback';
 
 export interface SocialHost {
   crew(): CrewHost;
@@ -23,6 +24,8 @@ export interface SocialHost {
   accountReady(): boolean;
   /** A section that needs the player was opened without one: the host brings up "Your player". */
   needAccount(): void;
+  /** A tick in the hand, when the player wants haptics. */
+  feel(id: HapticID): void;
 }
 
 /**
@@ -58,7 +61,7 @@ export class SocialView {
   ) {
     this.el.append(this.inner);
     parent.append(this.el, this.toastEl);
-    pullToRefresh(this.el, () => this.section === SOCIAL.crew || this.section === SOCIAL.ranks, () => this.refresh());
+    pullToRefresh(this.el, () => this.section === SOCIAL.crew || this.section === SOCIAL.ranks, () => this.refresh(), (id) => this.host.feel(id));
   }
 
   get isOpen(): boolean {

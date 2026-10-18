@@ -244,6 +244,42 @@ export const settledPops = (): Pops => ({ cars: 1, rushHour: 1, strike: 1, money
 /** Scale of something that lands: larger at 0, a little under at the swing, 1 at the end. */
 export const land = (x: number, amount: number): number => (x >= 1 ? 1 : 1 + amount * (1 - Ease.spring(x)));
 
+/**
+ * The score as an odometer (Leo, 18.10.2026): a digit that changed rolls up into place while the old one rises away,
+ * the lowest digit first, like a counter carrying. No window cuts the digits: they fade at the top and bottom, so the
+ * card keeps its soft edges. A score that went down (a new shift) is just set.
+ */
+const odometer = { value: 0, was: 0, since: -Infinity };
+const ODOMETER_ROLL = 0.42;
+const ODOMETER_CARRY = 0.06;
+
+export function addOdometer(list: RenderList, value: number, at: Vec2, size: number, color: ColorToken, reduceMotion: boolean): void {
+  const now = performance.now() / 1000;
+  if (value !== odometer.value) {
+    odometer.was = value < odometer.value ? value : odometer.value;
+    odometer.value = value;
+    odometer.since = now;
+  }
+  const to = Fmt.number(value);
+  const from = Fmt.number(odometer.was).padStart(to.length, ' ');
+  const digit = textWidth('0', size, true, true);
+  const widths = [...to].map((ch) => (ch >= '0' && ch <= '9' ? digit : textWidth(ch, size, true, true)));
+  let x = at.x - widths.reduce((a, b) => a + b, 0) / 2;
+  const rise = size * 0.5;
+  [...to].forEach((ch, i) => {
+    const center = v(x + widths[i] / 2, at.y);
+    x += widths[i];
+    const old = from[from.length - to.length + i] ?? ' ';
+    const k = Ease.settle((now - odometer.since - (to.length - 1 - i) * ODOMETER_CARRY) / ODOMETER_ROLL);
+    if (reduceMotion || old === ch || k >= 1) {
+      list.s(text(ch, center, size, 'center', 'display'), color);
+      return;
+    }
+    if (old !== ' ') list.s(text(old, add(center, v(0, -rise * k)), size, 'center', 'display'), color, Math.max(0, 1 - k * 1.6));
+    list.s(text(ch, add(center, v(0, rise * (1 - k))), size, 'center', 'display'), color, Math.min(1, k * 1.4));
+  });
+}
+
 // MARK: HUD
 
 export interface HudInput {
@@ -346,7 +382,7 @@ export const HUD = {
       const inset = R.inset(c, 4);
       list.s(rect(R.center(inset), v(R.width(inset) * (0.7 + 0.3 * open), R.height(inset) * (0.7 + 0.3 * open)), TopBar.corner - 4), 'rushHour', Ease.outCubic(h.pops.rushHour / 0.4));
     }
-    list.s(text(Fmt.number(h.score), v(R.center(c).x, c.minY + TopBar.valueRow), Metrics.timerSize * tick, 'center', 'display'), rush ? 'accentInk' : 'primary');
+    addOdometer(list, h.score, v(R.center(c).x, c.minY + TopBar.valueRow), Metrics.timerSize * tick, rush ? 'accentInk' : 'primary', h.reduceMotion ?? false);
 
     // What still forgives a crash, as the heal's plus signs (Leo, 08.10.2026): green the Shield's, blue the police's.
     const pluses: { used: boolean; color: ColorToken }[] = [];

@@ -28,8 +28,14 @@ to the player there. No feature brings its own status colours (blue, teal, viole
 mean rarity and players, nothing else.
 
 Every progress bar is one part (`present/meter.ts`, `.club-bar`): 6 px, round ends, a track of `controlFill`.
-It glides to where it grew since it was last seen, a light runs along it when it is nearly full, and a goal
-reached sends one gold wave out from its card, like a payout on the ring.
+It glides to where it grew since it was last seen (also across visits), a light runs along it when it is nearly full,
+and a goal reached sends one gold wave out from its card, like a payout on the ring.
+
+**The road as UI language (Leo, 18.10.2026):** off the road, the menus borrow the street's own signs, never as
+realistic replicas: a traffic light for pull to refresh and the Versus count-in, the score as an odometer, soft road
+signs on goal cards (round = achievement, diamond = mastery, triangle = feat) and empty states (dead end, warning), the
+Season Pass as a road with posts and a little car. Everything soft: rounded corners (`softPolygon`), fades instead of
+hard clipping, the existing colour roles, no vehicle colours.
 
 ### Actions
 

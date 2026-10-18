@@ -37,6 +37,13 @@ export const Meter = {
     list.s(rect(R.center(card), v(R.width(card) + grow * 2, R.height(card) + grow * 2), corner + grow), 'coin', 0.45 * (1 - k) * o);
   },
 
+  /** Where a value that glides like a bar stands right now (the Season Pass' car on its road). */
+  glided(key: string, value: number, reduceMotion: boolean): number {
+    const now = clock();
+    const s = follow(key, Ease.clamp01(value), 0, now);
+    return reduceMotion ? s.to : at(s, now);
+  },
+
   /**
    * The bar itself on `track`. `step` counts the tiers reached: a new one fills the bar up, sends
    * the wave and starts the next tier from empty.
@@ -74,19 +81,62 @@ interface Shown {
   felt: boolean;
 }
 
-// shortcut: remembered for this visit only, so the first look after a reload does not glide; keep it in the save if that matters.
 const shown = new Map<string, Shown>();
+/**
+ * Where each bar stood when it was last on screen, kept across visits (a look, not progress: outside the save). A bar that
+ * grew while the page was closed glides there on the next look, and a tier reached meanwhile still sends its wave.
+ */
+const SEEN_KEY = 'carGame.meters.v1';
+let seen: Record<string, [number, number]> | null = null;
+let writing: ReturnType<typeof setTimeout> | null = null;
+
+function seenOf(key: string): [number, number] | undefined {
+  if (!seen) {
+    try {
+      const raw: unknown = JSON.parse(localStorage.getItem(SEEN_KEY) ?? '{}');
+      seen = raw && typeof raw === 'object' ? (raw as Record<string, [number, number]>) : {};
+    } catch {
+      seen = {};
+    }
+  }
+  const s = seen[key];
+  return Array.isArray(s) && typeof s[0] === 'number' && typeof s[1] === 'number' ? s : undefined;
+}
+
+function remember(key: string, s: Shown): void {
+  if (!seen) return;
+  seen[key] = [s.next ?? s.to, s.step];
+  if (writing) return;
+  writing = setTimeout(() => {
+    writing = null;
+    try {
+      localStorage.setItem(SEEN_KEY, JSON.stringify(seen));
+    } catch {
+      /* blocked storage: the bars just do not glide after a reload */
+    }
+  }, 1000);
+}
 let waves = 0;
 const clock = (): number => performance.now() / 1000;
 const at = (s: Shown, now: number): number => s.from + (s.to - s.from) * Ease.settle((now - s.since) / Meter.glide);
 
 function follow(key: string, value: number, step: number, now: number): Shown {
   let s = shown.get(key);
+  if (!s) {
+    const last = seenOf(key);
+    if (last && last[1] <= step && (last[0] !== value || last[1] !== step)) {
+      s = { from: last[0], to: last[0], since: -Infinity, step: last[1], next: null, wave: -Infinity, felt: true };
+      shown.set(key, s);
+    }
+  }
   if (!s || step < s.step) {
     s = { from: value, to: value, since: -Infinity, step, next: null, wave: -Infinity, felt: true };
     shown.set(key, s);
+    remember(key, s);
     return s;
   }
+  const was = s.to;
+  const wasStep = s.step;
   if (s.next !== null && now >= s.since + Meter.glide + Meter.hold) {
     s.from = 0;
     s.to = s.next;
@@ -111,5 +161,6 @@ function follow(key: string, value: number, step: number, now: number): Shown {
     s.to = value;
     s.since = now;
   }
+  if (s.to !== was || s.step !== wasStep || s.next !== null) remember(key, s);
   return s;
 }

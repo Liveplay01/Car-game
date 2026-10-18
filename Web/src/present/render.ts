@@ -55,6 +55,27 @@ export const arc = (center: Vec2, radius: number, thickness: number, start: numb
   round ? { k: 'arc', center, radius, thickness, start, end, round } : { k: 'arc', center, radius, thickness, start, end };
 export const line = (from: Vec2, to: Vec2, thickness: number): Primitive => ({ k: 'line', from, to, thickness });
 export const polygon = (points: Vec2[], holes?: Vec2[][]): Primitive => (holes ? { k: 'polygon', points, holes } : { k: 'polygon', points });
+/** A polygon with soft corners: each corner becomes a curve that starts `radius` before it (signs, not machine parts). */
+export function softPolygon(points: Vec2[], radius: number, steps = 5): Primitive {
+  const out: Vec2[] = [];
+  points.forEach((p, i) => {
+    const a = points[(i + points.length - 1) % points.length];
+    const b = points[(i + 1) % points.length];
+    const toward = (q: Vec2): Vec2 => {
+      const d = Math.hypot(q.x - p.x, q.y - p.y);
+      const k = Math.min(radius, d / 2) / d;
+      return add(p, mul(sub(q, p), k));
+    };
+    const from = toward(a);
+    const to = toward(b);
+    for (let s = 0; s <= steps; s++) {
+      const t = s / steps;
+      const u = 1 - t;
+      out.push(add(add(mul(from, u * u), mul(p, 2 * u * t)), mul(to, t * t)));
+    }
+  });
+  return polygon(out);
+}
 export const segments = (points: Vec2[], thickness: number): Primitive => ({ k: 'segments', points, thickness });
 export const dots = (points: Vec2[], radii: number[]): Primitive => ({ k: 'dots', points, radii });
 export const text = (s: string, position: Vec2, size: number, align: Align = 'center', weight: Weight = 'regular'): Primitive => ({
