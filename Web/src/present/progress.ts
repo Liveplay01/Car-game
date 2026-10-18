@@ -5,7 +5,7 @@ import { tierOf, nextTier } from '../core/tiers';
 import { COSMETICS, cosmetic } from '../core/loot';
 import { FEATS, Feats, type Feat } from '../core/feats';
 import { type Challenge, challengesOf, challengeReward, dailyEvent } from '../core/daily';
-import { type Trial, type TrialId, TRIALS, ASCENSIONS, LANDMARKS, LANDMARK_PRESTIGE, LEVEL_TRIALS, LEVEL_TRIALS_SHOWN, levelTrialsWaiting, RUSH_ID, RUSH_REWARD, rushOpen, trialOpen } from '../core/trials';
+import { type Trial, type TrialId, TRIALS, ASCENSIONS, LANDMARKS, LANDMARK_PRESTIGE, LEVEL_TRIALS, LEVEL_TRIALS_SHOWN, levelTrialsWaiting, RUSH_ID, RUSH_REWARD, rushOpen, trialOpen, ascensionRank, landmarkOf, levelTrialLevel } from '../core/trials';
 import { weekNumber, weekDaysLeft, weeklyTrial } from '../core/weekly';
 import { baseConfig, BOSS_KINDS } from '../core/config';
 import { Elite } from '../core/elite';
@@ -715,9 +715,11 @@ export const ProgressPage = {
     ProgressPage.panel(list, r, o);
     ProgressPage.check(list, v(r.minX + 24, c.y), done, o);
     const label = S.daily.challenge(challenge);
-    drawText(list, label, v(r.minX + 44, c.y), ShopPage.fitted(label, 13, R.width(r) - 44 - 80), done ? 'muted' : 'primary', { opacity: o, weight: 'bold' });
-    if (done) drawText(list, `${S.daily.done} ✓`, v(r.maxX - 16, c.y), 13, 'coin', { opacity: o, weight: 'bold', align: 'trailing' });
-    else moneyTag(list, Fmt.number(challengeReward(challenge)), v(r.maxX - 16, c.y), 13, 'trailing', 'primary', 'accent', o);
+    const status = done ? `${S.daily.done} ✓` : Fmt.number(challengeReward(challenge));
+    const tag = textWidth(status, 13) + (done ? 0 : 18);
+    drawFitted(list, label, v(r.minX + 44, c.y), 13, R.width(r) - 44 - 16 - tag - 12, done ? 'muted' : 'primary', { opacity: o, weight: 'bold' });
+    if (done) drawText(list, status, v(r.maxX - 16, c.y), 13, 'coin', { opacity: o, weight: 'bold', align: 'trailing' });
+    else moneyTag(list, status, v(r.maxX - 16, c.y), 13, 'trailing', 'primary', 'accent', o);
   },
 
   /** Landmarks show from the Prestige rank that opens them, or once one was passed. */
@@ -728,9 +730,9 @@ export const ProgressPage = {
     const c = R.center(r);
     ProgressPage.panel(list, r, full);
     const done = career.trialsDone.includes(RUSH_ID);
-    ProgressPage.check(list, v(r.minX + 24, c.y), done, full);
+    Signs.rush(list, v(r.minX + SIGN_AT, c.y), BOSS_KINDS.length, done, full);
     const extra = career.rushBest > 0 ? `best ${S.rush.time(career.rushBest)}` : career.rushFurthest > 0 ? S.rush.furthest(career.rushFurthest, BOSS_KINDS.length) : null;
-    ProgressPage.addCardRow(list, r, r.minX + 44, full, {
+    ProgressPage.addCardRow(list, r, r.minX + SIGN_TEXT, full, {
       title: S.rush.rowTitle,
       line: extra ? `${S.rush.line} · ${extra}` : S.rush.line,
       ...(done ? { status: `${S.daily.done} ✓`, done: true } : { reward: RUSH_REWARD }),
@@ -743,8 +745,18 @@ export const ProgressPage = {
     const o = full * 0.55;
     const c = R.center(r);
     ProgressPage.panel(list, r, o);
-    ProgressPage.check(list, v(r.minX + 24, c.y), false, o);
-    ProgressPage.addCardRow(list, r, r.minX + 44, o, { title: S.rush.rowTitle, line: S.rush.locked(career.bossesBeaten.length, BOSS_KINDS.length), dim: true });
+    Signs.rush(list, v(r.minX + SIGN_AT, c.y), BOSS_KINDS.length, false, o);
+    ProgressPage.addCardRow(list, r, r.minX + SIGN_TEXT, o, { title: S.rush.rowTitle, line: S.rush.locked(career.bossesBeaten.length, BOSS_KINDS.length), dim: true });
+  },
+
+  /** Each kind of trial has a sign of its own: the Level trials' number, an Ascension's rank, a Landmark's tourist sign, else the chequered flag. */
+  trialSign(list: RenderList, at: Vec2, trial: Trial, done: boolean, o: number): void {
+    const level = levelTrialLevel(trial.id);
+    const rank = ascensionRank(trial.id);
+    if (level !== null) Signs.levelTrial(list, at, level, done, o);
+    else if (rank !== null) Signs.ascension(list, at, rank, done, o);
+    else if (landmarkOf(trial.id)) Signs.landmark(list, at, done, o);
+    else Signs.trial(list, at, done, o);
   },
 
   /** A trial: tap to play it; each pays once. One above the career's level waits, quieter, and says when it opens. */
@@ -753,14 +765,14 @@ export const ProgressPage = {
     if (!trialOpen(trial, career)) {
       const o = full * 0.55;
       ProgressPage.panel(list, r, o);
-      ProgressPage.check(list, v(r.minX + 24, c.y), false, o);
-      ProgressPage.addCardRow(list, r, r.minX + 44, o, { title: S.trials.name(trial.id), line: S.trials.opens(trial), dim: true });
+      ProgressPage.trialSign(list, v(r.minX + SIGN_AT, c.y), trial, false, o);
+      ProgressPage.addCardRow(list, r, r.minX + SIGN_TEXT, o, { title: S.trials.name(trial.id), line: S.trials.opens(trial), dim: true });
       return;
     }
     ProgressPage.panel(list, r, full);
     const done = career.trialsDone.includes(trial.id);
-    ProgressPage.check(list, v(r.minX + 24, c.y), done, full);
-    ProgressPage.addCardRow(list, r, r.minX + 44, full, {
+    ProgressPage.trialSign(list, v(r.minX + SIGN_AT, c.y), trial, done, full);
+    ProgressPage.addCardRow(list, r, r.minX + SIGN_TEXT, full, {
       title: S.trials.name(trial.id),
       line: `${S.trials.level(trial.level)} · ${S.trials.goal(trial)}`,
       ...(done ? { status: `${S.daily.done} ✓`, done: true } : { reward: trial.reward }),
@@ -919,12 +931,18 @@ export const ProgressPage = {
     Meter.addWave(list, `feat:${feat.id}`, r, ShopPage.corner, o, reduceMotion);
     if (state.feat === feat.id) list.s(rect(c, v(R.width(r) + 4, R.height(r) + 4), ShopPage.corner + 2), 'accent', 0.9 * o);
     ProgressPage.panel(list, r, o);
-    // A warning sign behind the reward (the hardest deeds); the reward itself, dimmed until it is earned; its glow
-    // and sparks stay inside the card.
-    Signs.triangle(list, v(r.minX + 34, c.y + 1), complete, o);
+    // The reward on a quiet tile, rimmed in its rarity (gold once earned), dimmed until it is earned; a small warning
+    // badge in the tile's corner says these are the hardest deeds. Its glow and sparks stay inside the card.
+    const at = v(r.minX + 34, c.y);
+    const rim = complete ? 'coin' : ShopPage.rarityColor(item.rarity);
+    list.s(rect(at, v(46, 46), 13), rim, (complete ? 0.9 : 0.5) * o);
+    list.s(rect(at, v(43, 43), 11.5), 'card', o);
+    list.s(rect(at, v(43, 43), 11.5), 'controlFill', o);
     const from = list.items.length;
-    ShopPage.addPreview(list, item, v(r.minX + 34, c.y), 0.6, o * (complete ? 1 : 0.55));
+    MenuKit.glow(list, at, 20, rim, (complete ? 0.3 : 0.14) * o);
+    ShopPage.addPreview(list, item, at, 0.6, o * (complete ? 1 : 0.55));
     for (let k = from; k < list.items.length; k++) list.items[k] = { ...list.items[k], clip: r };
+    Signs.triangle(list, v(at.x - 19, at.y - 19), complete, o);
     const x = r.minX + 64;
     const top = c.y - R.height(r) * 0.22;
     const right = complete ? S.feats.done : S.feats.have(have, need);

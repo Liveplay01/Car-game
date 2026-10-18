@@ -294,7 +294,7 @@ export function crewPanel(host: CrewHost): HTMLElement {
         'div',
         { class: `row board-row${s.me ? ' me' : ''}${i < week.promote ? ' crew-up' : i >= week.table.length - week.demote ? ' crew-down' : ''}`, role: 'listitem' },
         h('span', { class: 'board-rank' }, String(i + 1)),
-        h('div', { class: 'row-main' }, h('div', { class: 'row-title board-name' }, h('span', { class: 'plate crew' }, s.name), s.me ? h('span', { class: 'you-tag' }, S.ranks.you) : null), s.computer ? h('div', { class: 'row-sub board-title' }, S.crew.computer) : null),
+        h('div', { class: 'row-main' }, h('div', { class: 'row-title board-name' }, h('span', { class: 'plate crew' }, s.name), s.me ? h('span', { class: 'you-tag' }, S.ranks.you) : null)),
         h('span', { class: 'row-value board-value' }, S.crew.xp(Fmt.number(s.xp))),
       ),
     );

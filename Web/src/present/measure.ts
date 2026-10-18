@@ -20,11 +20,11 @@ const CJK = ['ja', 'ko', 'zh'].includes(currentLanguage());
 const DISPLAY_KEY = 1e7;
 
 /** The CSS font for a run: bold text from 20 points up is display text, and `display` makes it so at any size (a number that shrinks to fit keeps its face). */
-export function fontFor(size: number, bold: boolean, display = false): string {
-  const key = display ? -size - DISPLAY_KEY : bold ? -size - 1 : size;
+export function fontFor(size: number, bold: boolean, display = false, wght = 900): string {
+  const key = display ? -size - DISPLAY_KEY * (1 + (900 - wght) / 100) : bold ? -size - 1 : size;
   let font = fonts.get(key);
   if (font === undefined) {
-    font = bold && (display || size >= 20) ? `${CJK ? '' : 'italic '}900 ${size}px ${FONT_DISPLAY}` : `${bold ? 700 : 500} ${size}px ${FONT}`;
+    font = bold && (display || size >= 20) ? `${CJK ? '' : 'italic '}${wght} ${size}px ${FONT_DISPLAY}` : `${bold ? 700 : 500} ${size}px ${FONT}`;
     // A text that grows or shrinks asks for a new size every frame: keep the map small.
     if (fonts.size > 2000) fonts.clear();
     fonts.set(key, font);
@@ -45,14 +45,14 @@ export function forgetMeasures(): void {
 }
 
 /** Exact width of a run of text at `size` points (the renderers measure exactly). */
-export function measure(textRun: string, size: number, bold: boolean, display = false): number {
+export function measure(textRun: string, size: number, bold: boolean, display = false, wght = 900): number {
   const tenths = Math.round(size * 10);
-  const key = display ? -tenths - DISPLAY_KEY : bold ? -tenths - 1 : tenths;
+  const key = display ? -tenths - DISPLAY_KEY * (1 + (900 - wght) / 100) : bold ? -tenths - 1 : tenths;
   let row = widthCache.get(key);
   let w = row?.get(textRun);
   if (w === undefined) {
     measureCanvas ??= document.createElement('canvas').getContext('2d')!;
-    measureCanvas.font = fontFor(size, bold, display);
+    measureCanvas.font = fontFor(size, bold, display, wght);
     w = measureCanvas.measureText(textRun).width;
     if (widths > 4000) {
       widthCache.clear();

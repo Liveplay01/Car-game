@@ -19,7 +19,8 @@ export type Primitive =
   | { k: 'segments'; points: Vec2[]; thickness: number }
   /** Many small discs in one colour, filled as one path (snow). */
   | { k: 'dots'; points: Vec2[]; radii: number[] }
-  | { k: 'text'; text: string; position: Vec2; size: number; align: Align; weight: Weight };
+  /** `wght`: the heading face's weight axis (100–900) for a `display` run; unset is the heaviest. */
+  | { k: 'text'; text: string; position: Vec2; size: number; align: Align; weight: Weight; wght?: number };
 
 /** A fine texture laid over a group of world items, anchored to the world (`draw.ts`). */
 export type Grain = 'asphalt';
@@ -78,14 +79,10 @@ export function softPolygon(points: Vec2[], radius: number, steps = 5): Primitiv
 }
 export const segments = (points: Vec2[], thickness: number): Primitive => ({ k: 'segments', points, thickness });
 export const dots = (points: Vec2[], radii: number[]): Primitive => ({ k: 'dots', points, radii });
-export const text = (s: string, position: Vec2, size: number, align: Align = 'center', weight: Weight = 'regular'): Primitive => ({
-  k: 'text',
-  text: s,
-  position,
-  size,
-  align,
-  weight,
-});
+export const text = (s: string, position: Vec2, size: number, align: Align = 'center', weight: Weight = 'regular', wght?: number): Primitive => {
+  const run: Primitive = { k: 'text', text: s, position, size, align, weight };
+  return wght === undefined ? run : { ...run, wght };
+};
 
 export interface Rect {
   minX: number;

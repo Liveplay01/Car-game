@@ -51,7 +51,7 @@ export function installProbe(shell: Shell): void {
   };
 
   /** From the waiting screen (or a result) plays one shift with the bot; stops when it ends or `seconds` of play ran out. */
-  const play = (bot: Bot = 'careful', seconds = 120) => {
+  const play = (bot: Bot = 'careful', seconds = 120, settle = SETTLE_FRAMES) => {
     if (game.screen.k === 'result') game.perform({ k: 'restart' });
     let seen = false;
     for (let i = 0; i < seconds / FRAME; i++) {
@@ -60,7 +60,7 @@ export function installProbe(shell: Shell): void {
       if (game.screen.k === 'playing' && game.world.shift.phase === 'ended') break;
       step(game.screen.k === 'playing' && wants(bot) ? [{ k: 'tap' }] : []);
     }
-    for (let i = 0; i < SETTLE_FRAMES; i++) step();
+    for (let i = 0; i < settle; i++) step();
     return { played: seen, ...state() };
   };
 
@@ -102,7 +102,7 @@ export interface Snapshot {
 
 export interface Probe {
   state(): Snapshot;
-  play(bot?: Bot, seconds?: number): Snapshot & { played: boolean };
+  play(bot?: Bot, seconds?: number, settle?: number): Snapshot & { played: boolean };
   wait(seconds: number): Snapshot;
   perform(action: Parameters<Shell['game']['perform']>[0]): Snapshot;
 }

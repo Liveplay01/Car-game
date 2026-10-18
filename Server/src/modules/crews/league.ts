@@ -1,7 +1,7 @@
 /**
  * The weekly league of the crews (Leo, 18.10.2026): every crew plays a week in a group of its league, ranked by the
  * Season XP its members earned that week. The best `PROMOTE` go up a league, the last `DEMOTE` go down; going down costs
- * nothing but the league. While there are few crews, computer crews fill the groups: named as computers on screen, their
+ * nothing but the league. While there are few crews, computer crews fill the groups (not marked as computers on screen, Leo 18.10.2026), their
  * week drawn from the week, the group and the slot, so every member sees the same table.
  */
 
@@ -69,7 +69,7 @@ export function botsOf(week: number, league: number, group: number, count: numbe
   const progress = Math.min(1, Math.max(0, (now - weekStart(week)) / WEEK_MS));
   const names = [...BOT_NAMES];
   return Array.from({ length: count }, (_, slot) => {
-    const name = names.splice(Math.floor(unit(week, league, group, slot) * names.length), 1)[0] ?? 'Computer crew';
+    const name = names.splice(Math.floor(unit(week, league, group, slot) * names.length), 1)[0] ?? `Crew ${slot + 1}`;
     const target = (BOT_WEEK_XP[league] ?? 0) * (0.35 + 1.3 * unit(week, league, group, slot + 100));
     const pace = 0.8 + 0.4 * unit(week, league, group, slot + 200);
     return { id: null, name, xp: Math.floor(target * progress ** pace), computer: true };

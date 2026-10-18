@@ -119,6 +119,38 @@ export const pendingCrew = (): string | null => {
 
 export const dropPendingCrew = (): void => write(PENDING_KEY, null);
 
+declare global {
+  interface Window {
+    /** An installed web app gets the link that opened it here (`launch_handler` in the manifest); undefined elsewhere. */
+    launchQueue?: { setConsumer(consumer: (launch: { targetURL?: string }) => void): void };
+  }
+}
+
+let opened = '';
+
+/**
+ * A crew's link on the game's own address (`/k/CODE?by=FRIENDCODE`) becomes the `?crew=…&ref=…` the rest of the game
+ * reads, and the address goes back to `/`. Returns whether the link was a new crew link. On the game's address the Play app
+ * and an installed web app take the link instead of the browser.
+ */
+export function openCrewLink(link: URL = new URL(location.href)): boolean {
+  const code = /^\/k\/([^/]+)\/?$/.exec(link.pathname)?.[1];
+  if (code === undefined || link.href === opened) return false;
+  opened = link.href;
+  const query = new URLSearchParams({ crew: code });
+  const by = link.searchParams.get('by');
+  if (by) query.set('ref', by);
+  history.replaceState(null, '', `/?${query}${link.hash}`);
+  return true;
+}
+
+/** An installed web app that is already open gets a crew link without a reload: `then` reads it. */
+export function watchCrewLaunches(then: () => void): void {
+  window.launchQueue?.setConsumer(({ targetURL }) => {
+    if (targetURL && openCrewLink(new URL(targetURL))) then();
+  });
+}
+
 /** `?crew=CODE` in the address: kept, then taken out of it. Returns whether there was one. */
 export function readCrewLink(): boolean {
   const params = new URLSearchParams(location.search);

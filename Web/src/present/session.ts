@@ -140,6 +140,8 @@ export class GameSession {
   static readonly resultDelay = 1.2;
   static readonly scoreCatchUp = 0.28;
   static readonly comboPop = 0.35;
+  /** A growing bar sounds higher the fuller it is: semitones of a pentatonic scale over two octaves, so no two bars clash. */
+  private static readonly barSteps = [0, 2, 4, 7, 9, 12, 14, 16, 19, 21];
   static readonly countInSeconds = 2;
   static readonly restartLock = 0.5;
   /** A place's introduction opens this long after the player arrives. */
@@ -1600,6 +1602,8 @@ export class GameSession {
       if (this.progressPage.follow(realDelta, this.progressScrollRange)) this.play([], ['edge']);
       // A goal reached sends its wave on the page (`Meter`); the hand feels it with it, like a payout.
       if (Meter.landed()) this.play(['paid'], ['earned']);
+      const grew = Meter.grew();
+      if (grew !== null && this.save.settings.sound) this.output?.sound('barFill', Math.pow(2, GameSession.barSteps[Math.min(GameSession.barSteps.length - 1, Math.floor(grew * GameSession.barSteps.length))] / 12), 0);
     } else if (this.progressPage.age !== 0 || this.progressPage.section !== PROGRESS.today) {
       this.leaveMuseum();
       this.progressPage = new ProgressState();
@@ -3254,6 +3258,8 @@ export class GameSession {
     // The bar's height even where it is hidden (a shift, the first one): the street view does not jump when it comes and goes.
     const cam = this.cameraRig.camera(perspectiveOf(this.screen), world.layout, viewport, this.lastInset, delta, rm);
     const shake = add(this.effects.shakeOffset, this.explosions.shakeOffset);
+    // The words in the island sit on this camera: no shake, punch or pull-back moves them, and their wrapping never changes.
+    const steady: Camera = { ...cam, scale: cam.scale * (1 - GameSession.lossPullBack) };
     const pulled = { ...cam, scale: cam.scale * (1 - GameSession.lossPullBack * this.lossPull) * (1 + this.explosions.punch) };
     const leaned = zoomAbout(this.cameraFx.apply(pulled, world.layout.stopPose(world.layout.player).position, rm), this.punchAt, 1 + this.punch);
     const kick = this.modeKick;
@@ -3309,6 +3315,7 @@ export class GameSession {
             },
         flames: Math.round(this.shownFlames),
         flamePop: rm ? 1 : Ease.clamp01(this.sinceFlames / 0.35),
+        tension: this.cameraFx.vignette,
         brief: this.briefings.view,
         reduceMotion: rm,
         textScale: this.textScale,
@@ -3340,14 +3347,18 @@ export class GameSession {
         underCard = at.y + AdPill.hit / 2 + 20;
       }
     } else if (s.k === 'result') {
+      list.camera = steady;
       const chipAt = ResultBanner.add(list, s.summary, this.playingLevel, this.resultBank, this.resultAge, rm, this.giftLine, world.layout.islandRadius);
       if (chipAt) this.addFailChip(list, s.summary, chipAt);
-      this.tutorial?.add(list, world, alpha, this.sceneTime, rm);
       const arriving = ResultBanner.arriving(this.resultAge);
       if (arriving > 0) underCard = this.addReadyBanner(list, null, false, arriving);
-      else if (this.addGameAd(list, TopBar.frame(viewport.x).maxY + 18, 1)) underCard = TopBar.frame(viewport.x).maxY + 1 + AdPill.row;
+      list.camera = camera;
+      this.tutorial?.add(list, world, alpha, this.sceneTime, rm);
+      if (arriving <= 0 && this.addGameAd(list, TopBar.frame(viewport.x).maxY + 18, 1)) underCard = TopBar.frame(viewport.x).maxY + 1 + AdPill.row;
     } else if (s.k === 'ready') {
+      list.camera = steady;
       underCard = this.addReadyBanner(list, this.tutorial && !this.tutorial.isOver ? Tutorial.readyPrompt : this.versusSelected ? S.ready.tapForFriends : S.ready.tapToStart);
+      list.camera = camera;
       this.tutorial?.add(list, world, alpha, this.sceneTime, rm);
     }
     const inset = this.tabInset;

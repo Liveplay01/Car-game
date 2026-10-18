@@ -427,7 +427,6 @@ export default (S: Strings): Words<Strings> => ({
     week: '今週',
     endsIn: (time) => `あと${time}で終了`,
     tableLabel: '今週のリーグ表',
-    computer: 'コンピュータークルー',
     xp: (n) => `${n} XP`,
     zones: (up, down) => `各シフトのシーズンXPが加算されます。月曜に上位${up}クルーが昇格し、貢献したメンバー全員にプレミアム宝箱が届きます。下位${down}クルーは降格しますが、ほかにペナルティはありません。`,
     goal: '週間目標',

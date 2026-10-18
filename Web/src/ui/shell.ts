@@ -6,14 +6,14 @@ import { SOCIAL, SWIPE_MODES, TAB_BAR, barTab, screenTab, type Tab } from '../pr
 import { AudioPlayer, Haptics } from '../audio/player';
 import { h, icon } from './dom';
 import { ICONS, CHEST_FLAT } from './icons';
-import { settingsSheet, deleteAccountSheet, patchNotesSheet, guidesSheet, legalSheet, licensesSheet, installDialog, offerDialog, isSheetOpen, closeAnySheet, closeTopSheet } from './sheets';
+import { settingsSheet, deleteAccountSheet, patchNotesSheet, guidesSheet, legalSheet, licensesSheet, installDialog, offerDialog, isSheetOpen, closeAnySheet, closeTopSheet, onSheetSound } from './sheets';
 import { installBackGesture, inSystemGestureZone } from './backGesture';
 import { disablePush, enablePush, pushChoiceOn, pushDelivers, pushState, pushTimers, setPushChoice, syncPush, type PushState, type PushTimer } from '../net/push';
 import { cloudEnabled, cloudLinked, cloudStoppedHere, createCloud, deleteCloud, onCloudChange } from '../net/cloud';
 import { fetchInvite, inviteUrl, readInviteLink, redeemInvite } from '../net/invite';
 import { deleteAccount, describeError, leaderboardEnabled, loadAccount, onAccountChange, onScoresSynced, syncScores } from '../net/leaderboard';
 import { collectRewards } from '../net/rewards';
-import { readCrewLink } from '../net/crews';
+import { openCrewLink, readCrewLink, watchCrewLaunches } from '../net/crews';
 import { legalDoc } from '../present/legal';
 import { PATCH_NOTES } from '../present/patchNotes';
 import { PhotoView } from './photo';
@@ -212,6 +212,9 @@ export class Shell {
     private readonly layers: HTMLElement,
   ) {
     this.drawer = new CanvasDrawer(canvas);
+    onSheetSound((opening) => {
+      if (this.session.save.settings.sound) this.audio.play(opening ? 'sheetOpen' : 'sheetClose', 1);
+    });
     const output: SessionOutput = {
       sound: (id, pitch, pan) => this.audio.play(id, pitch, pan),
       haptic: (id, softness) => this.haptics.play(id, softness),
@@ -459,6 +462,7 @@ export class Shell {
       });
     }
     this.readInvite();
+    watchCrewLaunches(() => this.readInvite());
     this.readChallengeLink();
     this.readJoinLink();
     window.addEventListener('hashchange', () => {
@@ -512,7 +516,8 @@ export class Shell {
    * player; both get a chest when this one reaches level 5. The player is told once, and that a name is needed.
    */
   private readInvite(): void {
-    // A crew's link (`?crew=`): kept until the player joins under Social → Crew, said once.
+    // A crew's link (`/k/CODE`, then `?crew=`): kept until the player joins under Social → Crew, said once.
+    openCrewLink();
     if (readCrewLink() && !inPortal) {
       track('crew-open');
       this.session.noteCrewInvite();

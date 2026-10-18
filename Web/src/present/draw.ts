@@ -538,8 +538,8 @@ export class CanvasDrawer {
     this.forgetStyle();
   }
 
-  private setFont(size: number, bold: boolean, display = false): void {
-    const font = fontFor(size, bold, display);
+  private setFont(size: number, bold: boolean, display = false, wght = 900): void {
+    const font = fontFor(size, bold, display, wght);
     if (font === this.font) return;
     this.ctx.font = font;
     this.font = font;
@@ -934,9 +934,10 @@ export class CanvasDrawer {
         const anchor = { x: this.px, y: this.py };
         const bold = p.weight !== 'regular';
         const display = p.weight === 'display';
-        this.setFont(p.size, bold, display);
+        const wght = p.wght ?? 900;
+        this.setFont(p.size, bold, display, wght);
         if (!p.text.includes(MONEY_MARK)) {
-          const width = measure(p.text, p.size, bold, display);
+          const width = measure(p.text, p.size, bold, display, wght);
           const x = p.align === 'leading' ? anchor.x : p.align === 'center' ? anchor.x - width / 2 : anchor.x - width;
           this.setFill(color);
           ctx.fillText(p.text, x, anchor.y + p.size * 0.04);
@@ -945,7 +946,7 @@ export class CanvasDrawer {
         // Money inside a text: the note is drawn where the mark stands.
         const pieces = textPieces(p.text);
         const note = inlineMoneyWidth(p.size);
-        const widths = pieces.map((piece) => (piece === null ? note : measure(piece, p.size, bold, display)));
+        const widths = pieces.map((piece) => (piece === null ? note : measure(piece, p.size, bold, display, wght)));
         const total = widths.reduce((a, b) => a + b, 0);
         let x = p.align === 'leading' ? anchor.x : p.align === 'center' ? anchor.x - total / 2 : anchor.x - total;
         pieces.forEach((piece, i) => {
@@ -954,7 +955,7 @@ export class CanvasDrawer {
               this.item({ p: shape.p, color: shape.color, opacity: item.opacity * shape.alpha, space: 'screen' }, cam);
             }
           } else {
-            this.setFont(p.size, bold, display);
+            this.setFont(p.size, bold, display, wght);
             this.setFill(color);
             ctx.fillText(piece, x, anchor.y + p.size * 0.04);
           }

@@ -56,6 +56,10 @@ export const COLORS = {
   learnerSign: [32, 201, 190, 1],
   /** The blue disc of a mandatory road sign (Britain, Singapore, Japan, Korea, China), on the Goals cards. */
   signBlue: [36, 112, 214, 1],
+  /** The brown tourist sign (sights, in the EU, Britain and Japan): the Landmarks on the Goals cards. */
+  signBrown: [128, 78, 40, 1],
+  /** The green route sign: a Level trial's number on the Goals cards. */
+  signGreen: [16, 116, 72, 1],
   /** The oversize load: site amber, so it reads as a heavy transport and nothing else. */
   vehicleOversize: [238, 166, 44, 1],
   /** The street racers: hot pink, apart from the criminal's violet and the police's blue. */

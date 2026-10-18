@@ -618,11 +618,38 @@ export const ShopPage = {
   // MARK: Collection
 
   addCollection(list: RenderList, l: Layout, career: Career, state: ShopState, enter: number, reduceMotion: boolean): void {
-    const chips = ShopPage.shelfChips(l);
     const slide = state.shelfSlide;
     const glide = slide ? (reduceMotion ? 1 : Ease.settle(slide.age / ShopPage.slideDuration)) : 1;
+    const start = list.items.length;
+    ShopPage.addShelfItems(list, state.shelf, l, career, state, enter, state.items.scroll);
+    if (slide) {
+      const side = state.shelf > slide.from ? 1 : -1;
+      const shift = v(reduceMotion ? 0 : side * R.width(l.content) * 0.35 * (1 - glide), 0);
+      const fade = Ease.outCubic(slide.age / 0.18);
+      for (let i = start; i < list.items.length; i++) list.items[i] = moved(list.items[i], shift, fade);
+      const gone = Ease.outCubic(slide.age / ShopPage.slideOut);
+      if (gone < 1) {
+        const old = new List(list.camera, list.background);
+        ShopPage.addShelfItems(old, slide.from, l, career, state, enter, slide.scroll);
+        const away = v(reduceMotion ? 0 : -side * R.width(l.content) * 0.25 * gone, 0);
+        list.items.splice(start, 0, ...old.items.map((i) => moved(i, away, 1 - gone)));
+      }
+    }
+    // The grid scrolls under the chips and stops above the tab bar; sideways a shelf may slide out freely.
+    const area = ShopPage.itemsArea(l);
+    clipTo(list, start, R.make(0, area.minY - 4, list.camera.viewport.x, area.maxY));
+    const range = Math.max(0, ShopPage.shelfLayout(R.width(area), state.shelf).height - R.height(area) + 8);
+    state.items.addIndicator(list, area, range, Math.min(list.camera.viewport.x - 4, area.maxX + 5));
+    ShopPage.addShelfChips(list, l, career, state, enter, glide);
+  },
+
+  /** The shelf chips, drawn over the grid on a solid card: what scrolls under them never shows through. */
+  addShelfChips(list: RenderList, l: Layout, career: Career, state: ShopState, enter: number, glide: number): void {
+    const chips = ShopPage.shelfChips(l);
+    const slide = state.shelfSlide;
     for (const [shelf, chip] of chips) {
       const r = ShopPage.pressedRect(chip, { k: 'shelf', shelf }, state);
+      list.s(rect(R.center(r), v(R.width(r), R.height(r)), 10), 'card', enter);
       list.s(rect(R.center(r), v(R.width(r), R.height(r)), 10), 'controlFill', enter);
     }
     const to = chips.find(([s]) => s === state.shelf)?.[1];
@@ -651,26 +678,6 @@ export const ShopPage = {
         drawText(list, `${owned}/${items.length}`, v(c.x, c.y + 8), 10, 'background', { align: 'center', opacity: 0.6 * enter * on });
       }
     }
-    const start = list.items.length;
-    ShopPage.addShelfItems(list, state.shelf, l, career, state, enter, state.items.scroll);
-    if (slide) {
-      const side = state.shelf > slide.from ? 1 : -1;
-      const shift = v(reduceMotion ? 0 : side * R.width(l.content) * 0.35 * (1 - glide), 0);
-      const fade = Ease.outCubic(slide.age / 0.18);
-      for (let i = start; i < list.items.length; i++) list.items[i] = moved(list.items[i], shift, fade);
-      const gone = Ease.outCubic(slide.age / ShopPage.slideOut);
-      if (gone < 1) {
-        const old = new List(list.camera, list.background);
-        ShopPage.addShelfItems(old, slide.from, l, career, state, enter, slide.scroll);
-        const away = v(reduceMotion ? 0 : -side * R.width(l.content) * 0.25 * gone, 0);
-        list.items.splice(start, 0, ...old.items.map((i) => moved(i, away, 1 - gone)));
-      }
-    }
-    // The grid scrolls under the chips and stops above the tab bar; sideways a shelf may slide out freely.
-    const area = ShopPage.itemsArea(l);
-    clipTo(list, start, R.make(0, area.minY - 4, list.camera.viewport.x, area.maxY));
-    const range = Math.max(0, ShopPage.shelfLayout(R.width(area), state.shelf).height - R.height(area) + 8);
-    state.items.addIndicator(list, area, range, Math.min(list.camera.viewport.x - 4, area.maxX + 5));
   },
 
   addShelfItems(list: RenderList, shelf: Shelf, l: Layout, career: Career, state: ShopState, enter: number, scroll: number): void {

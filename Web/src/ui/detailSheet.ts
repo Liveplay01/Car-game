@@ -72,6 +72,8 @@ export class DetailSheet {
   /** `pos` is the height the finger stands for: below `half` it is pulled down to close, above `full` it stretches. */
   private drag: { id: number; y0: number; pos0: number; half: number; full: number; last: { pos: number; t: number }[] } | null = null;
   private hideTimer = 0;
+  /** Where the last press was: the drawer grows out of that column. */
+  private tapX = Number.NaN;
 
   constructor(
     parent: HTMLElement,
@@ -104,6 +106,7 @@ export class DetailSheet {
     this.actions = h('div', { class: 'detail-actions' });
     this.root = h('section', { class: 'detail-sheet', role: 'dialog', 'aria-modal': 'false', 'aria-labelledby': 'detail-title', hidden: true }, handle, this.scroller, this.actions);
     parent.append(this.root);
+    window.addEventListener('pointerdown', (e) => (this.tapX = e.clientX), true);
     new ResizeObserver(([entry]) => (this.height = entry.borderBoxSize[0].blockSize)).observe(this.root);
     window.addEventListener('resize', () => {
       if (this.open && !this.drag) this.fit(true);
@@ -156,6 +159,9 @@ export class DetailSheet {
     this.open = true;
     this.mode = full ? 'full' : 'half';
     this.root.hidden = false;
+    const box = this.root.getBoundingClientRect();
+    if (Number.isNaN(this.tapX)) this.root.style.removeProperty('--from-x');
+    else this.root.style.setProperty('--from-x', `${Math.min(Math.max(this.tapX - box.left, 0), box.width)}px`);
     this.root.classList.remove('closing', 'expanded', 'controlled');
     this.root.style.transform = '';
     this.root.style.height = '';

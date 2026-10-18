@@ -218,7 +218,8 @@ test('Crew: the league table, a gift to take, and a gift given out of your own m
   await page.evaluate(() => (window as unknown as { __game: Game }).__game.game.perform({ k: 'showSocial', section: 0 }));
   const table = page.getByRole('list', { name: 'This week’s league table' });
   await expect(table).toBeVisible();
-  await expect(table.getByText('Computer crew').first()).toBeVisible();
+  await expect(table.getByText('Night Owls')).toBeVisible();
+  await expect(table.getByText(/computer/i)).toHaveCount(0);
   await expect(page.getByText('Last week: 2nd · up to the Silver league')).toBeVisible();
   await expect(page.getByRole('button', { name: 'Take' })).toBeVisible();
   const before = await game();

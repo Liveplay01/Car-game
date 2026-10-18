@@ -23,6 +23,13 @@ export const Meter = {
     return any;
   },
 
+  /** How full the fullest bar is that began to grow since it was last asked (0–1), else null: the session plays one soft sound for them all. */
+  grew(): number | null {
+    const was = growth;
+    growth = null;
+    return was;
+  },
+
   /** The halo behind a card whose goal was just reached; call it before the card's panel. */
   addWave(list: RenderList, key: string, card: Rect, corner: number, o: number, reduceMotion: boolean): void {
     const s = shown.get(key);
@@ -117,6 +124,7 @@ function remember(key: string, s: Shown): void {
   }, 1000);
 }
 let waves = 0;
+let growth: number | null = null;
 const clock = (): number => performance.now() / 1000;
 const at = (s: Shown, now: number): number => s.from + (s.to - s.from) * Ease.settle((now - s.since) / Meter.glide);
 
@@ -157,6 +165,7 @@ function follow(key: string, value: number, step: number, now: number): Shown {
       s.wave = now + Meter.glide;
       s.felt = false;
     }
+    if (value > s.to) growth = Math.max(growth ?? 0, value);
     s.from = at(s, now);
     s.to = value;
     s.since = now;

@@ -68,7 +68,7 @@ export function crewsModule(): ServerModule {
       };
 
       /** Everything the Crew page shows, in one answer. */
-      const view = (playerId: string, self: string) => {
+      const view = (playerId: string) => {
         const found = crews.of(playerId);
         if (!found) return { crew: null };
         const now = ctx.now();
@@ -82,7 +82,8 @@ export function crewsModule(): ServerModule {
           crew: {
             name: crew.name,
             code: displayCode(crew.code),
-            link: ctx.config.gameUrl ? `${self}/k/${crew.code}?by=${friends.codeOf(playerId)}` : null,
+            // On the game's own address, so the Play app and an installed web app open it (the page below stays for old links).
+            link: ctx.config.gameUrl ? `${ctx.config.gameUrl}/k/${crew.code}?by=${friends.codeOf(playerId)}` : null,
             owner: crew.ownerId === playerId,
             // The founder's first rename is free: the clock starts with it.
             renameAt: crew.renamedAt > 0 && renameAt > now ? renameAt : null,
@@ -101,7 +102,7 @@ export function crewsModule(): ServerModule {
 
       group.get('/', (c) => {
         c.header('Cache-Control', 'private, no-store');
-        return c.json(view(c.get('player').id, origin(c, ctx)));
+        return c.json(view(c.get('player').id));
       });
 
       group.post('/', byPlayer({ max: 5, windowMs: 3_600_000 }), async (c) => {
@@ -109,7 +110,7 @@ export function crewsModule(): ServerModule {
         const name = crewName((await readJson(c)).name);
         if (crews.of(me.id)) throw new ApiError(409, 'in_crew', 'You are in a crew already. Leave it first.');
         crews.create(me.id, name, ctx.now());
-        return c.json(view(me.id, origin(c, ctx)), 201);
+        return c.json(view(me.id), 201);
       });
 
       group.patch('/', byPlayer({ max: 10, windowMs: 3_600_000 }), async (c) => {
@@ -122,7 +123,7 @@ export function crewsModule(): ServerModule {
           throw new ApiError(429, 'rename_wait', `A crew can be renamed once in ${RENAME_DAYS} days.`);
         }
         crews.rename(crew.id, name, now);
-        return c.json(view(me.id, origin(c, ctx)));
+        return c.json(view(me.id));
       });
 
       // Guessing codes is the only way to find a crew, so joining is slow on purpose.
@@ -132,11 +133,11 @@ export function crewsModule(): ServerModule {
         const crew = code ? crews.byCode(code) : null;
         if (!crew) throw new ApiError(404, 'unknown_crew', 'That crew does not exist any more.');
         const current = crews.of(me.id);
-        if (current?.id === crew.id) return c.json(view(me.id, origin(c, ctx)));
+        if (current?.id === crew.id) return c.json(view(me.id));
         if (current) throw new ApiError(409, 'in_crew', 'You are in a crew already. Leave it first.');
         if (crews.count(crew.id) >= CREW_MAX) throw new ApiError(422, 'crew_full', `That crew is full (${CREW_MAX} players).`);
         crews.join(me.id, crew.id, ctx.now());
-        return c.json(view(me.id, origin(c, ctx)), 201);
+        return c.json(view(me.id), 201);
       });
 
       group.post('/leave', (c) => {
@@ -151,7 +152,7 @@ export function crewsModule(): ServerModule {
         if (crew.ownerId !== me.id) throw new ApiError(403, 'not_owner', 'Only the founder can take someone out of the crew.');
         if (id === me.id) throw new ApiError(422, 'own_id', 'Leave the crew instead.');
         if (crews.of(id)?.id === crew.id) crews.leave(id, ctx.now());
-        return c.json(view(me.id, origin(c, ctx)));
+        return c.json(view(me.id));
       });
 
       group.get('/members/:id', (c) => {
@@ -187,7 +188,7 @@ export function crewsModule(): ServerModule {
         const now = ctx.now();
         if (crews.sentToday(me.id, now) >= GIFTS_PER_DAY) throw new ApiError(429, 'too_many_gifts', `You can give ${GIFTS_PER_DAY} gifts a day.`);
         crews.give(crew.id, me.id, to, item, now);
-        return c.json(view(me.id, origin(c, ctx)), 201);
+        return c.json(view(me.id), 201);
       });
 
       group.post('/gifts/:id/claim', byPlayer({ max: 30, windowMs: 60_000 }), (c) => {
@@ -195,7 +196,7 @@ export function crewsModule(): ServerModule {
         const crew = mine(me.id);
         const item = crews.claim(crew.id, me.id, c.req.param('id'), ctx.now());
         if (!item) throw new ApiError(409, 'gift_gone', 'Someone was quicker: that gift is gone.');
-        return c.json({ item, ...view(me.id, origin(c, ctx)) });
+        return c.json({ item, ...view(me.id) });
       });
 
       group.get('/boards/:board', (c) => {

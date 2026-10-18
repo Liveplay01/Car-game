@@ -43,7 +43,7 @@ test('crews: found, invite by link, join, rename once in 30 days, leave', async 
   const crew = made.json.crew;
   assert.equal(crew.name, 'Night Shift');
   assert.equal(crew.owner, true);
-  assert.match(crew.link, /\/k\/[A-Z0-9]{8}\?by=[A-Z0-9]{8}$/);
+  assert.match(crew.link, /^https:\/\/game\.example\.org\/k\/[A-Z0-9]{8}\?by=[A-Z0-9]{8}$/);
 
   clock.now += 1000;
   const preview = await call('GET', `/v1/crews/preview/${crew.code}`);

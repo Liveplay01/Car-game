@@ -427,7 +427,6 @@ export default (S: Strings): Words<Strings> => ({
     week: 'Questa settimana',
     endsIn: (time) => `finisce tra ${time}`,
     tableLabel: 'Classifica della lega di questa settimana',
-    computer: 'Crew del computer',
     xp: (n) => `${n} XP`,
     zones: (up, down) => `Conta la XP stagionale di ogni turno. Il lunedì le prime ${up} salgono di lega e ogni membro che ha aiutato riceve un baule premium; le ultime ${down} scendono, senza altri costi.`,
     goal: 'Obiettivo della settimana',

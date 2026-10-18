@@ -58,7 +58,7 @@ export class AudioPlayer {
   private static readonly uiSounds = new Set<SoundID>([
     'uiTick', 'swoosh', 'purchase', 'build', 'denied', 'chestCharge', 'chestBurst', 'chestBurstRare', 'chestHit', 'casinoStop',
     'coinClink', 'needleTick', 'meterTick', 'coinToss', 'coinLand', 'chipsIn', 'shatter', 'shutter', 'reelSpin', 'reelTick',
-    'shimmer', 'reelLand', 'reelLandBig',
+    'shimmer', 'reelLand', 'reelLandBig', 'sheetOpen', 'sheetClose', 'barFill',
   ]);
 
   private ctx: AudioContext | null = null;
@@ -334,6 +334,20 @@ export class AudioPlayer {
         [1047, 1319, 1568].forEach((f, i) => tone('sine', f * pitch, f * pitch, i * 0.07, 0.4, 0.09));
         tone('triangle', 2093 * pitch, 2093 * pitch, 0.2, 0.35, 0.04);
         break;
+      case 'sheetOpen':
+        // A sheet rising: two soft sine notes, the second a fifth above, hardly more than a breath.
+        tone('sine', 523, 523, 0, 0.16, 0.045);
+        tone('sine', 784, 784, 0.045, 0.2, 0.028);
+        break;
+      case 'sheetClose':
+        // The same two notes falling, a little quieter: it settles back.
+        tone('sine', 784, 784, 0, 0.12, 0.026);
+        tone('sine', 523, 523, 0.04, 0.16, 0.036);
+        break;
+      case 'barFill':
+        // A bar that began to grow: one soft rising glide, higher the fuller the bar (`pitch`, a pentatonic step).
+        tone('sine', 330 * pitch, 440 * pitch, 0, 0.45, 0.03);
+        break;
       case 'reelLand':
         tone('sine', 120, 55, 0, 0.22, 0.8);
         tone('square', 900, 600, 0, 0.05, 0.12);
@@ -348,7 +362,7 @@ export class AudioPlayer {
   }
 
   private static readonly synthIds: SoundID[] = [
-    'critical', 'jackpot', 'chestHit', 'reelSpin', 'reelTick', 'shimmer', 'reelLand', 'reelLandBig', 'heal',
+    'critical', 'jackpot', 'chestHit', 'reelSpin', 'reelTick', 'shimmer', 'reelLand', 'reelLandBig', 'heal', 'sheetOpen', 'sheetClose', 'barFill',
   ];
 
   /** Once per frame: each stem glides towards its volume, the filter follows the breath. */

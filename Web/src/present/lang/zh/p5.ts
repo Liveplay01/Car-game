@@ -427,7 +427,6 @@ export default (S: Strings): Words<Strings> => ({
     week: '本周',
     endsIn: (time) => `${time}后结束`,
     tableLabel: '本周联赛积分表',
-    computer: '电脑车队',
     xp: (n) => `${n} 经验`,
     zones: (up, down) => `每个班次的赛季经验都会计入。周一，前 ${up} 名晋级，出过力的每位成员都会得到一个高级宝箱；最后 ${down} 名降级，没有其他损失。`,
     goal: '每周目标',

@@ -96,6 +96,10 @@ html:is([lang='ja'], [lang='ko'], [lang='zh']) * {
 
   --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
   --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
+  /* A press letting go: past the rest position once, then home. */
+  --ease-back: cubic-bezier(0.34, 1.56, 0.64, 1);
+  /* The milled edge of a raised surface: a light lip on top, a dark seam below. */
+  --edge: inset 0 0.5px 0 rgba(255, 255, 255, 0.16), inset 0 -0.5px 0 rgba(0, 0, 0, 0.32);
   /* Leaving: speeds up to the end, so a drawer is gone at full speed and does not linger at the lowest point. */
   --ease-exit: cubic-bezier(0.4, 0, 1, 1);
   /* The canvas' `Ease.settle`, a critically damped spring: 1 - (1 + 8.5x)·e^(-8.5x). Segments slide on it on every page. */
@@ -309,6 +313,7 @@ button {
   backdrop-filter: blur(var(--glass-blur)) saturate(1.4);
   border: 0.5px solid var(--separator);
   border-radius: 999px;
+  box-shadow: var(--edge);
   /* A press held on it slides the selection (`Shell.holdDock`): no page scroll, no text callout in the way. */
   touch-action: none;
   -webkit-user-select: none;
@@ -599,12 +604,22 @@ a.row-link {
   white-space: nowrap;
   background: var(--surface-3);
   color: var(--primary);
-  transition: transform 160ms var(--ease-out), background-color 160ms ease, opacity 160ms ease;
+  box-shadow: var(--edge);
+  transition: transform 340ms var(--ease-back), background-color 160ms ease, opacity 160ms ease;
   font-variant-numeric: tabular-nums;
 }
 
 .btn:active:not(:disabled) {
-  transform: scale(0.97);
+  transform: translateY(1px) scale(0.965);
+  transition-duration: 70ms, 160ms, 160ms;
+  transition-timing-function: var(--ease-out), ease, ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .btn {
+    transition-duration: 160ms, 160ms, 160ms;
+    transition-timing-function: var(--ease-out), ease, ease;
+  }
 }
 
 .btn.primary {
@@ -642,7 +657,7 @@ a.row-link {
 }
 
 .btn.buy:not(:disabled) {
-  box-shadow: inset 0 0 0 1.5px var(--accent);
+  box-shadow: inset 0 0 0 1.5px var(--accent), var(--edge);
 }
 
 .btn.buy:disabled {
@@ -704,7 +719,7 @@ a.row-link {
   background: var(--surface-1);
   border-radius: var(--r-sheet) var(--r-sheet) 0 0;
   padding: var(--s2) var(--s4) calc(var(--safe-bottom) + var(--s5));
-  box-shadow: 0 -12px 40px rgba(0, 0, 0, 0.35);
+  box-shadow: 0 -12px 40px rgba(0, 0, 0, 0.35), inset 0 0.5px 0 rgba(255, 255, 255, 0.14);
   animation: sheet-in 320ms var(--ease-drawer) both;
 }
 
@@ -1744,12 +1759,14 @@ a.row-link {
   z-index: var(--z-pages);
   left: 0;
   right: 0;
-  bottom: calc(var(--tabbar-h) + var(--safe-bottom));
+  /* To the screen's edge, the floating dock over it (Leo, 18.10.2026): the room it takes is padding, so the scene never shows below the drawer. */
+  bottom: 0;
+  padding-bottom: calc(var(--tabbar-h) + var(--safe-bottom));
   width: min(560px, 100%);
   margin: 0 auto;
   display: flex;
   flex-direction: column;
-  max-height: 56%;
+  max-height: calc(56% + var(--tabbar-h) + var(--safe-bottom));
   background: var(--sheet-bg);
   border-radius: var(--r-sheet) var(--r-sheet) 0 0;
   box-shadow: 0 -1px 0 rgba(255, 255, 255, 0.06), 0 -16px 40px rgba(0, 0, 0, 0.45);
@@ -1764,7 +1781,7 @@ a.row-link {
 
 /* Full height: the tallest the sheet gets, measured by detailSheet.ts (`fits`). */
 .detail-sheet.expanded {
-  max-height: calc(100% - var(--tabbar-h) - var(--safe-bottom) - var(--safe-top) - 16px);
+  max-height: calc(100% - var(--safe-top) - 16px);
 }
 
 /* Height and position are then driven by a spring in detailSheet.ts, which may pull past the full height a little. */
@@ -1782,16 +1799,20 @@ a.row-link {
   pointer-events: none;
 }
 
+/* The drawer grows out of the column that was tapped (`DetailSheet.show` sets `--from-x`): it rises and widens from there. */
+.detail-sheet.entering {
+  transform-origin: var(--from-x, 50%) 100%;
+}
+
 @keyframes detail-in {
   from {
-    transform: translateY(100%);
+    transform: translateY(100%) scale(0.9);
   }
 }
 
-/* Down past the tab bar too, which is see-through: the sheet must be fully gone from behind it. */
 @keyframes detail-out {
   to {
-    transform: translateY(calc(100% + var(--tabbar-h) + var(--safe-bottom) + 48px));
+    transform: translateY(calc(100% + 48px));
   }
 }
 

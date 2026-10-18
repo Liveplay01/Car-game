@@ -8,6 +8,7 @@
   "display": "fullscreen",
   "display_override": ["fullscreen", "standalone"],
   "launch_handler": { "client_mode": "focus-existing" },
+  "handle_links": "preferred",
   "orientation": "portrait",
   "background_color": "#0B0D10",
   "theme_color": "#0B0D10",

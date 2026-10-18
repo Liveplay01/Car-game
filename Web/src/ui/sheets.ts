@@ -139,6 +139,13 @@ function dragToClose(sheet: HTMLElement, scrim: HTMLElement, handles: HTMLElemen
   sheet.addEventListener('touchcancel', touchEnd);
 }
 
+let sheetSound: ((opening: boolean) => void) | null = null;
+
+/** The shell hands over how a sheet sounds when it rises and when it settles back. */
+export function onSheetSound(play: (opening: boolean) => void): void {
+  sheetSound = play;
+}
+
 /**
  * A bottom sheet (like an iOS sheet): scrim, grabber, focus kept inside,
  * Escape, a tap on the scrim and a pull down on the grabber close it.
@@ -184,6 +191,7 @@ export function openSheet(layer: HTMLElement, title: string, body: HTMLElement, 
   function close(instant = false): void {
     if (closed) return;
     closed = true;
+    if (!instant) sheetSound?.(false);
     document.removeEventListener('keydown', onKey, true);
     root.classList.add('closing');
     const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -200,6 +208,7 @@ export function openSheet(layer: HTMLElement, title: string, body: HTMLElement, 
   document.addEventListener('keydown', onKey, true);
   layer.append(root);
   stack.push({ root, title, close });
+  if (!same) sheetSound?.(true);
   // A list row would show the keyboard ring on open; the sheet takes the focus and Tab goes on to the first row.
   (sheet.querySelector<HTMLElement>('.sheet-actions button') ?? sheet).focus({ preventScroll: true });
   return close;

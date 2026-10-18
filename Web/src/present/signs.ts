@@ -1,5 +1,5 @@
 import { type Vec2, v, add } from '../core/vec2';
-import { type RenderList, rect, circle, softPolygon, drawText } from './render';
+import { type RenderList, rect, circle, arc, softPolygon, drawText } from './render';
 import type { ColorToken } from './theme';
 import { currentLanguage } from './i18n';
 
@@ -73,26 +73,75 @@ export const Signs = {
   },
 
   /**
-   * A Feat: a sign's edge round its reward, the face left dark so every skin keeps its own colours: the red-edged warning
-   * triangle (EU, Korea, Britain), the yield triangle (USA), the yellow triangle (China), the yellow diamond (Japan).
+   * A Feat's small warning badge, in the corner of the tile that holds its reward (the hardest deeds): the red-edged warning
+   * triangle (EU, Korea, Britain), the yield triangle (USA), the yellow triangle (China), the yellow diamond (Japan), each with a "!".
    */
   triangle(list: RenderList, at: Vec2, complete: boolean, o: number): void {
     const edge: ColorToken = style === 'cn' || style === 'jp' ? 'accent' : 'destructive';
-    const strength = (complete ? 1 : 0.6) * o;
+    const strength = (complete ? 1 : 0.7) * o;
     if (style === 'jp') {
-      if (complete) list.s(rect(at, v(37, 37), 9, TURN), 'coin', 0.9 * o);
-      list.s(rect(at, v(33, 33), 8, TURN), edge, strength);
-      list.s(rect(at, v(26, 26), 5.5, TURN), 'card', o);
-      list.s(rect(at, v(26, 26), 5.5, TURN), 'primary', 0.08 * o);
+      if (complete) list.s(rect(at, v(18, 18), 4.5, TURN), 'coin', 0.9 * o);
+      list.s(rect(at, v(15, 15), 3.5, TURN), edge, strength);
+      list.s(rect(at, v(11.5, 11.5), 2.5, TURN), 'card', o);
+      drawText(list, '!', v(at.x, at.y + 0.5), 9, edge, { opacity: strength, weight: 'display', align: 'center' });
       return;
     }
     const down = style === 'us';
-    const outer = down ? [v(-25, -19), v(25, -19), v(0, 23)] : [v(0, -23), v(25, 19), v(-25, 19)];
-    const middle = down ? -5 : 5;
+    const outer = down ? [v(-11.5, -9), v(11.5, -9), v(0, 10.5)] : [v(0, -10.5), v(11.5, 9), v(-11.5, 9)];
+    const middle = down ? -2 : 2;
     const scaled = (k: number): Vec2[] => outer.map((p) => add(at, v(p.x * k, middle + (p.y - middle) * k)));
-    if (complete) list.s(softPolygon(scaled(1.12), 10), 'coin', 0.9 * o);
-    list.s(softPolygon(scaled(1), 9), edge, strength);
-    list.s(softPolygon(scaled(0.8), 6), 'card', o);
-    list.s(softPolygon(scaled(0.8), 6), 'primary', 0.08 * o);
+    if (complete) list.s(softPolygon(scaled(1.2), 4), 'coin', 0.9 * o);
+    list.s(softPolygon(scaled(1), 3.5), edge, strength);
+    list.s(softPolygon(scaled(0.74), 2.5), 'card', o);
+    drawText(list, '!', v(at.x, at.y + (down ? -2 : 3.5)), 9, edge, { opacity: strength, weight: 'display', align: 'center' });
+  },
+
+  /** A sign's plate: white rim, the sign's colour inside. */
+  plate(list: RenderList, at: Vec2, fill: ColorToken, complete: boolean, o: number): void {
+    if (complete) list.s(rect(at, v(39, 31), 8), 'coin', 0.9 * o);
+    list.s(rect(at, v(34, 26), 6), 'primary', o);
+    list.s(rect(at, v(29, 21), 4), fill, o);
+  },
+
+  /** A trial: the blue information sign with a chequered flag. */
+  trial(list: RenderList, at: Vec2, complete: boolean, o: number): void {
+    Signs.plate(list, at, 'signBlue', complete, o);
+    for (let row = 0; row < 3; row++) {
+      for (let col = 0; col < 4; col++) if ((row + col) % 2 === 0) list.s(rect(v(at.x - 6 + col * 4, at.y - 4 + row * 4), v(4, 4)), 'primary', o);
+    }
+  },
+
+  /** A Level trial: the green route sign with the level as its number. */
+  levelTrial(list: RenderList, at: Vec2, level: number, complete: boolean, o: number): void {
+    Signs.plate(list, at, 'signGreen', complete, o);
+    drawText(list, String(level), v(at.x, at.y + 0.5), level > 99 ? 11 : 13, 'primary', { opacity: o, weight: 'display', align: 'center' });
+  },
+
+  /** An Ascension, one per Prestige rank: a gold-edged octagon, the rank's star and number inside. */
+  ascension(list: RenderList, at: Vec2, rank: number, complete: boolean, o: number): void {
+    if (complete) list.s(softPolygon(octagon(at, 21), 5), 'coin', 0.9 * o);
+    list.s(softPolygon(octagon(at, 18), 4), 'coin', o);
+    list.s(softPolygon(octagon(at, 15.5), 3), 'card', o);
+    drawText(list, '★', v(at.x, at.y - 5.5), 10, 'coin', { opacity: o, weight: 'display', align: 'center' });
+    drawText(list, String(rank), v(at.x, at.y + 6), 12, 'primary', { opacity: o, weight: 'display', align: 'center' });
+  },
+
+  /** A Landmark: the brown tourist sign, with the three arrows of a roundabout. */
+  landmark(list: RenderList, at: Vec2, complete: boolean, o: number): void {
+    Signs.plate(list, at, 'signBrown', complete, o);
+    for (let k = 0; k < 3; k++) list.s(arc(at, 6.5, 2.2, (k * TAU) / 3 + 0.3, ((k + 1) * TAU) / 3 - 0.3), 'primary', o);
+  },
+
+  /** Boss Rush: a stop sign, red with a white rim, and the number of bosses in a row. */
+  rush(list: RenderList, at: Vec2, bosses: number, complete: boolean, o: number): void {
+    if (complete) list.s(softPolygon(octagon(at, 21), 5), 'coin', 0.9 * o);
+    list.s(softPolygon(octagon(at, 18), 4), 'primary', o);
+    list.s(softPolygon(octagon(at, 15.5), 3), 'destructive', o);
+    drawText(list, String(bosses), v(at.x, at.y + 0.5), 15, 'primary', { opacity: o, weight: 'display', align: 'center' });
   },
 };
+
+const TAU = Math.PI * 2;
+
+/** A regular octagon with a flat top, as a stop sign has. */
+const octagon = (at: Vec2, radius: number): Vec2[] => Array.from({ length: 8 }, (_, i) => add(at, v(radius * Math.cos(Math.PI / 8 + (i * Math.PI) / 4), radius * Math.sin(Math.PI / 8 + (i * Math.PI) / 4))));

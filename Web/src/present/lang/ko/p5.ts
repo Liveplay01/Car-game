@@ -427,7 +427,6 @@ export default (S: Strings): Words<Strings> => ({
     week: '이번 주',
     endsIn: (time) => `${time} 뒤 종료`,
     tableLabel: '이번 주 리그 순위표',
-    computer: '컴퓨터 크루',
     xp: (n) => `${n} XP`,
     zones: (up, down) => `시프트마다 얻는 시즌 XP가 반영돼요. 월요일에 상위 ${up}개 크루가 승급하고, 도운 멤버 모두에게 프리미엄 상자가 돌아가요. 하위 ${down}개 크루는 강등되지만 다른 불이익은 없어요.`,
     goal: '주간 목표',

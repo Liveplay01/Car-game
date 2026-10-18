@@ -17,7 +17,8 @@ import type { ColorToken } from './theme';
 import { MenuKit } from './menukit';
 import { AdPill } from './adPill';
 import { touchFirst } from '../storage/device';
-import { moneyTag, flameTag, textWidth, drawFitted } from './icons';
+import { moneyTag, money, coinSize, flameTag, textWidth, drawFitted } from './icons';
+import { measure } from './measure';
 import { S, Fmt, money as moneyText, comboMultiplier } from './strings';
 import { interpolatedPose } from './scene';
 import { wrapText } from './upgrades';
@@ -83,13 +84,17 @@ export const TopBar = {
   /** How far the numbers and a briefing glide while they cross over (points). */
   briefTravel: 6,
 
+  /** Numbers and words never share the card: the numbers leave in the first half of the swap (`card` 0–1), the words arrive in the second. */
+  numbersOut: (card: number): number => Ease.clamp01(card * 2),
+  wordsIn: (card: number): number => Ease.clamp01(card * 2 - 1),
+
   /**
    * A briefing on the card (`Briefings`): what it is, small and in its colour, then what to do,
    * on one line if it fits, else on two in a smaller size. A briefing with a time limit wears a
    * thin line along the card's foot that runs down with it.
    */
   addBrief(list: RenderList, frame: Rect, view: BriefView, reduceMotion: boolean, textScale = 1): void {
-    const alpha = view.card * view.words;
+    const alpha = TopBar.wordsIn(view.card) * view.words;
     if (alpha <= 0.001) return;
     const drop = reduceMotion ? 0 : (1 - view.card) * TopBar.briefTravel;
     const pad = 16;
@@ -121,7 +126,7 @@ export const TopBar = {
    * side (`left`, `right`: there is a mode that way). With Reduce Motion the arrows stand still.
    */
   addMessage(list: RenderList, frame: Rect, view: BriefView, o: { time: number; left: boolean; right: boolean; previous: TopMessage['previous']; reduceMotion: boolean; textScale: number }): void {
-    const alpha = view.card;
+    const alpha = TopBar.wordsIn(view.card);
     if (alpha <= 0.001) return;
     const center = R.center(frame);
     const drop = o.reduceMotion ? 0 : (1 - view.card) * TopBar.briefTravel;
@@ -135,10 +140,14 @@ export const TopBar = {
       list.s(text(brief.caption, v(center.x, top + captionSize / 2), captionSize, 'center', 'bold'), brief.color, a);
       fit.lines.forEach((ln, i) => list.s(text(ln, v(center.x, top + captionSize + gap + height * (i + 0.5)), fit.size, 'center', 'bold'), 'primary', a));
     };
-    // The words overlap while one message hands over to the next: the old ones lift away, the new ones rise in.
+    // One message hands over to the next in turn, never on top of each other: the old words lift away, then the new ones rise in.
     const travel = o.reduceMotion ? 0 : 4;
-    if (o.previous) words(o.previous.brief, alpha * o.previous.alpha, -travel * (1 - o.previous.alpha));
-    words(view.brief, alpha * (o.previous ? 1 - o.previous.alpha : 1), o.previous ? travel * o.previous.alpha : 0);
+    if (o.previous) {
+      const gone = Ease.clamp01(o.previous.alpha * 2 - 1);
+      const coming = Ease.clamp01(1 - o.previous.alpha * 2);
+      words(o.previous.brief, alpha * gone, -travel * (1 - gone));
+      words(view.brief, alpha * coming, travel * (1 - coming));
+    } else words(view.brief, alpha, 0);
     const arrow = (side: -1 | 1): void => {
       const cycle = (o.time * 0.8) % 1;
       const glide = o.reduceMotion ? 0.5 : Ease.outCubic(cycle);
@@ -176,14 +185,16 @@ export const TopBar = {
 
   anchor: (col: Rect, a: Align): number => (a === 'leading' ? col.minX + 16 : a === 'center' ? R.center(col).x : col.maxX - 16),
 
-  addColumn(list: RenderList, col: Rect, a: Align, caption: string, value: string, o: { captionColor?: ColorToken; valueSize?: number; valueColor?: ColorToken; opacity?: number } = {}): void {
+  /** `opacity` is the caption's; the value follows it unless `valueOpacity` says otherwise (a value handing over to another under one caption). */
+  addColumn(list: RenderList, col: Rect, a: Align, caption: string, value: string, o: { captionColor?: ColorToken; valueSize?: number; valueColor?: ColorToken; opacity?: number; valueOpacity?: number } = {}): void {
     const x = TopBar.anchor(col, a);
     const opacity = o.opacity ?? 1;
     list.s(text(caption, v(x, col.minY + TopBar.captionRow), 10, a, 'bold'), o.captionColor ?? 'muted', opacity);
-    list.s(text(value, v(x, col.minY + TopBar.valueRow), o.valueSize ?? 20, a, 'display'), o.valueColor ?? 'primary', opacity);
+    list.s(text(value, v(x, col.minY + TopBar.valueRow), o.valueSize ?? 20, a, 'display'), o.valueColor ?? 'primary', o.valueOpacity ?? opacity);
   },
 
-  addMoneyColumn(list: RenderList, col: Rect, a: Align, amount: string, o: { valueSize?: number; opacity?: number } = {}): void {
+  /** `roll`: the amount as an odometer (the live top card); without it the text is set (the result's count-up already moves). */
+  addMoneyColumn(list: RenderList, col: Rect, a: Align, amount: string, o: { valueSize?: number; opacity?: number; roll?: { value: number; reduceMotion: boolean } } = {}): void {
     const x = TopBar.anchor(col, a);
     const opacity = o.opacity ?? 1;
     const valueSize = o.valueSize ?? 20;
@@ -191,7 +202,11 @@ export const TopBar = {
     const room = R.width(col) - 24;
     const natural = textWidth(moneyText(amount), valueSize, true, true);
     const size = natural <= room ? valueSize : Math.max(11, (valueSize * room) / natural);
-    moneyTag(list, amount, v(x, col.minY + TopBar.valueRow), size, a, 'primary', 'accent', opacity, 'display');
+    const at = v(x, col.minY + TopBar.valueRow);
+    if (!o.roll || a !== 'leading') return moneyTag(list, amount, at, size, a, 'primary', 'accent', opacity, 'display');
+    const note = coinSize(size);
+    money(list, v(at.x + note / 2, at.y), note, 'accent', opacity);
+    addOdometer(list, moneyOdometer, o.roll.value, v(at.x + note + size * 0.34, at.y), size, 'primary', o.roll.reduceMotion, 'leading');
   },
 };
 
@@ -249,22 +264,40 @@ export const land = (x: number, amount: number): number => (x >= 1 ? 1 : 1 + amo
  * the lowest digit first, like a counter carrying. No window cuts the digits: they fade at the top and bottom, so the
  * card keeps its soft edges. A score that went down (a new shift) is just set.
  */
-const odometer = { value: 0, was: 0, since: -Infinity };
+interface Odometer {
+  value: number | null;
+  was: number;
+  since: number;
+  seen: number;
+}
+
+const newOdometer = (): Odometer => ({ value: null, was: 0, since: -Infinity, seen: -Infinity });
+const scoreOdometer = newOdometer();
+const moneyOdometer = newOdometer();
 const ODOMETER_ROLL = 0.42;
 const ODOMETER_CARRY = 0.06;
+/** A number that was not on screen for this long is just set, not rolled (the next shift opens on the money it ended with). */
+const ODOMETER_AWAY = 0.25;
 
-export function addOdometer(list: RenderList, value: number, at: Vec2, size: number, color: ColorToken, reduceMotion: boolean): void {
+/** The score's weight under tension (Leo, 18.10.2026): calm digits are a touch lighter, so the heaviest weight is kept for the moments that earn it. Steps of 20 keep the font count small. */
+export const heft = (tension: number): number => Math.round((740 + 160 * Ease.clamp01(tension)) / 20) * 20;
+
+function addOdometer(list: RenderList, odometer: Odometer, value: number, at: Vec2, size: number, color: ColorToken, reduceMotion: boolean, align: 'center' | 'leading' = 'center', wght = 900): void {
   const now = performance.now() / 1000;
-  if (value !== odometer.value) {
+  if (odometer.value === null || now - odometer.seen > ODOMETER_AWAY) {
+    odometer.value = value;
+    odometer.was = value;
+  } else if (value !== odometer.value) {
     odometer.was = value < odometer.value ? value : odometer.value;
     odometer.value = value;
     odometer.since = now;
   }
+  odometer.seen = now;
   const to = Fmt.number(value);
   const from = Fmt.number(odometer.was).padStart(to.length, ' ');
-  const digit = textWidth('0', size, true, true);
-  const widths = [...to].map((ch) => (ch >= '0' && ch <= '9' ? digit : textWidth(ch, size, true, true)));
-  let x = at.x - widths.reduce((a, b) => a + b, 0) / 2;
+  const digit = measure('0', size, true, true, wght);
+  const widths = [...to].map((ch) => (ch >= '0' && ch <= '9' ? digit : measure(ch, size, true, true, wght)));
+  let x = align === 'center' ? at.x - widths.reduce((a, b) => a + b, 0) / 2 : at.x;
   const rise = size * 0.5;
   [...to].forEach((ch, i) => {
     const center = v(x + widths[i] / 2, at.y);
@@ -272,11 +305,11 @@ export function addOdometer(list: RenderList, value: number, at: Vec2, size: num
     const old = from[from.length - to.length + i] ?? ' ';
     const k = Ease.settle((now - odometer.since - (to.length - 1 - i) * ODOMETER_CARRY) / ODOMETER_ROLL);
     if (reduceMotion || old === ch || k >= 1) {
-      list.s(text(ch, center, size, 'center', 'display'), color);
+      list.s(text(ch, center, size, 'center', 'display', wght), color);
       return;
     }
-    if (old !== ' ') list.s(text(old, add(center, v(0, -rise * k)), size, 'center', 'display'), color, Math.max(0, 1 - k * 1.6));
-    list.s(text(ch, add(center, v(0, rise * (1 - k))), size, 'center', 'display'), color, Math.min(1, k * 1.4));
+    if (old !== ' ') list.s(text(old, add(center, v(0, -rise * k)), size, 'center', 'display', wght), color, Math.max(0, 1 - k * 1.6));
+    list.s(text(ch, add(center, v(0, rise * (1 - k))), size, 'center', 'display', wght), color, Math.min(1, k * 1.4));
   });
 }
 
@@ -295,6 +328,8 @@ export interface HudInput {
   pops: Pops;
   flames: number;
   flamePop: number;
+  /** The camera's tension (0–1): the score's digits grow heavier with it (`heft`). */
+  tension?: number;
   /** Something new and what to do about it: it takes the top card's place for a while. */
   brief?: BriefView | null;
   reduceMotion?: boolean;
@@ -373,7 +408,7 @@ export const HUD = {
     TopBar.addCard(list, frame, 1, brief);
     list.tag = 'topbarLabels';
     const numbers = list.items.length;
-    TopBar.addMoneyColumn(list, cols.left, 'leading', Fmt.number(h.money), { valueSize: 20 * land(h.pops.money, 0.15) });
+    TopBar.addMoneyColumn(list, cols.left, 'leading', Fmt.number(h.money), { valueSize: 20 * land(h.pops.money, 0.15), roll: { value: h.money, reduceMotion: h.reduceMotion ?? false } });
     const c = cols.center;
     const tick = land(h.pops.cars, 0.12);
     const rush = world.shift.rushHourSince !== null;
@@ -382,7 +417,7 @@ export const HUD = {
       const inset = R.inset(c, 4);
       list.s(rect(R.center(inset), v(R.width(inset) * (0.7 + 0.3 * open), R.height(inset) * (0.7 + 0.3 * open)), TopBar.corner - 4), 'rushHour', Ease.outCubic(h.pops.rushHour / 0.4));
     }
-    addOdometer(list, h.score, v(R.center(c).x, c.minY + TopBar.valueRow), Metrics.timerSize * tick, rush ? 'accentInk' : 'primary', h.reduceMotion ?? false);
+    addOdometer(list, scoreOdometer, h.score, v(R.center(c).x, c.minY + TopBar.valueRow), Metrics.timerSize * tick, rush ? 'accentInk' : 'primary', h.reduceMotion ?? false, 'center', heft(h.tension ?? 0));
 
     // What still forgives a crash, as the heal's plus signs (Leo, 08.10.2026): green the Shield's, blue the police's.
     const pluses: { used: boolean; color: ColorToken }[] = [];
@@ -429,7 +464,7 @@ export const HUD = {
       if (shown >= 0.999) list.items.length = numbers;
       else {
         const lift = v(0, h.reduceMotion ? 0 : -TopBar.briefTravel * shown);
-        for (let i = numbers; i < list.items.length; i++) list.items[i] = moved(list.items[i], lift, 1 - shown);
+        for (let i = numbers; i < list.items.length; i++) list.items[i] = moved(list.items[i], lift, 1 - TopBar.numbersOut(shown));
       }
       TopBar.addBrief(list, frame, brief, h.reduceMotion ?? false, h.textScale ?? 1);
     }
@@ -1353,9 +1388,24 @@ interface IntroLayout {
   rows: { title: string; lines: string[] }[];
 }
 
-/** A line in the middle of the island: wrapped at spaces (up to three lines, centred on `dy`) when it is wider than the grass at its height, so it never runs onto the road (`radius` in world units, `dy` in points below the centre). */
-function islandLine(list: RenderList, s: string, radius: number, dy: number, size: number, color: ColorToken, opacity: number, weight: Weight = 'regular'): void {
-  islandBlock(list, islandWrap(list, s, radius, dy, size, weight), radius, dy, size, color, opacity, weight);
+interface IslandRowSpec {
+  s: string;
+  size: number;
+  color: ColorToken;
+  opacity: number;
+  weight: Weight;
+}
+
+/** The island's slots, top to bottom: a label, the main line, a status. Each wraps for the grass, the stack is centred as a whole, so no line can run into the next. */
+function islandStack(list: RenderList, radius: number, rows: (IslandRowSpec | null)[]): void {
+  const gap = 8;
+  const wrapped = rows.filter((r): r is IslandRowSpec => r !== null).map((r) => ({ r, lines: islandWrap(list, r.s, radius, 0, r.size, r.weight) }));
+  const heights = wrapped.map(({ r, lines }) => lines.length * r.size * 1.25);
+  let top = -(heights.reduce((a, b) => a + b, 0) + gap * (heights.length - 1)) / 2;
+  wrapped.forEach(({ r, lines }, i) => {
+    islandBlock(list, lines, radius, top + heights[i] / 2, r.size, r.color, r.opacity, r.weight);
+    top += heights[i] + gap;
+  });
 }
 
 /** How the grass lets `s` wrap around `dy`. */
@@ -1483,7 +1533,7 @@ export const ReadyBanner = {
       if (shown >= 0.999) list.items.length = numbers;
       else {
         const lift = v(0, o.reduceMotion ? 0 : -TopBar.briefTravel * shown);
-        for (let i = numbers; i < list.items.length; i++) list.items[i] = moved(list.items[i], lift, 1 - shown);
+        for (let i = numbers; i < list.items.length; i++) list.items[i] = moved(list.items[i], lift, 1 - TopBar.numbersOut(shown));
       }
       TopBar.addMessage(list, frame, { ...hintView, card: hintView.card * opacity }, { time: hint.time, left: hint.left, right: hint.right, previous: hint.previous, reduceMotion: o.reduceMotion, textScale: o.textScale ?? 1 });
     }
@@ -1501,12 +1551,12 @@ export const ReadyBanner = {
     const introBottom = Math.min((o.iconsTop ?? island.y - (run?.line ? 49 : 26)) - 10, (o.ringTop ?? Infinity) - 10);
     const under = frame.maxY + (pillText ? 31 : 0) + (o.adRow ? AdPill.row : 0);
     const intro = o.intro && o.intro.length > 0 ? ReadyBanner.introLayout(o.intro, frame, under + 12 + (o.noticeRoom ?? 0), introBottom, o.textScale ?? 1) : null;
-    if (o.prompt) {
-      const breath = o.reduceMotion ? 1 : 0.7 + 0.3 * (0.5 + 0.5 * Math.cos(o.time * 2.4));
-      islandLine(list, o.prompt, o.island, 0, 17, 'primary', breath * opacity, 'bold');
-    }
-    if (run?.line) islandLine(list, run.line, o.island, -28, 14, run.color, opacity, 'bold');
-    if (o.goal && o.prompt) islandLine(list, o.goal, o.island, 28, 13, 'muted', opacity * (o.reduceMotion ? 1 : Ease.outCubic(o.time / 0.4)));
+    const breath = o.reduceMotion ? 1 : 0.7 + 0.3 * (0.5 + 0.5 * Math.cos(o.time * 2.4));
+    islandStack(list, o.island, [
+      run?.line ? { s: run.line, size: 14, color: run.color, opacity, weight: 'bold' } : null,
+      o.prompt ? { s: o.prompt, size: 17, color: 'primary', opacity: breath * opacity, weight: 'bold' } : null,
+      o.goal && o.prompt ? { s: o.goal, size: 13, color: 'muted', opacity: opacity * (o.reduceMotion ? 1 : Ease.outCubic(o.time / 0.4)), weight: 'regular' } : null,
+    ]);
     if (intro) ReadyBanner.addIntro(list, intro, o.time, o.reduceMotion, opacity);
     return under;
   },
@@ -1727,13 +1777,14 @@ export const ResultBanner = {
       const landed = (age - ResultBanner.countDelay - ResultBanner.countDuration) / 0.35;
       const size = reduceMotion || landed < 0 || bank.after === bank.before ? 20 : 20 * land(landed, 0.15);
       TopBar.addMoneyColumn(list, cols.left, 'leading', Fmt.number(counted), { valueSize: size, opacity: shown });
-      const pop = reduceMotion ? 1 : land(age / 0.4, 0.12);
+      // A lost shift's words stand still: no spring on the numbers, and FAIL makes way for the score before it comes in.
+      const pop = reduceMotion || ResultBanner.breathes(summary) ? 1 : land(age / 0.4, 0.12);
       if (summary.mode === 'mayhem' && !run) {
         list.s(text(title, v(R.center(cols.center).x, cols.center.minY + TopBar.captionRow), 10, 'center', 'bold'), titleColor, shown);
         flameTag(list, Fmt.number(r.flames), v(R.center(cols.center).x, cols.center.minY + TopBar.valueRow), Metrics.timerSize * pop, 'center', 'primary', shown);
       } else if (mourning > 0) {
-        TopBar.addColumn(list, cols.center, 'center', title, S.result.fail, { captionColor: titleColor, valueColor: 'destructive', valueSize: Metrics.timerSize * pop, opacity: shown * mourning });
-        if (mourning < 1) TopBar.addColumn(list, cols.center, 'center', title, Fmt.number(r.score), { captionColor: titleColor, valueSize: Metrics.timerSize, opacity: shown * (1 - mourning) });
+        TopBar.addColumn(list, cols.center, 'center', title, S.result.fail, { captionColor: titleColor, valueColor: 'destructive', valueSize: Metrics.timerSize, opacity: shown, valueOpacity: shown * Ease.clamp01(mourning * 2 - 1) });
+        if (mourning < 1) TopBar.addColumn(list, cols.center, 'center', title, Fmt.number(r.score), { captionColor: titleColor, valueSize: Metrics.timerSize, opacity: 0, valueOpacity: shown * Ease.clamp01(1 - mourning * 2) });
       } else {
         TopBar.addColumn(list, cols.center, 'center', title, Fmt.number(r.score), { captionColor: titleColor, valueSize: Metrics.timerSize * pop, opacity: shown });
       }

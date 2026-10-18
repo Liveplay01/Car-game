@@ -61,6 +61,10 @@ export type SoundID =
   | 'reelLandBig'
   /** A crash forgiven: the shield, or a police car within its limit. */
   | 'heal'
+  /** The menus' own, made in `audio/player.ts` and kept barely audible: a sheet rising and settling, a bar that began to grow. */
+  | 'sheetOpen'
+  | 'sheetClose'
+  | 'barFill'
   /** The casino's own: samples rendered by `Web/audio-src/make_casino_sounds.py`. */
   | 'casinoStop'
   | 'coinClink'

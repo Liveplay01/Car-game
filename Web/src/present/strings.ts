@@ -1668,7 +1668,6 @@ export const S = {
     week: 'This week',
     endsIn: (time: string): string => `ends in ${time}`,
     tableLabel: 'This week’s league table',
-    computer: 'Computer crew',
     xp: (n: string): string => `${n} XP`,
     zones: (up: number, down: number): string => `Season XP from every shift counts. On Monday the top ${up} go up a league and every member who helped gets a Premium Chest; the last ${down} go down, which costs nothing else.`,
     goal: 'Weekly goal',

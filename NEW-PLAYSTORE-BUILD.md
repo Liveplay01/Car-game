@@ -30,6 +30,15 @@ sie nur an, wenn der Wrapper sie an Android weiterreicht.
 - [ ] Testen auf dem Handy: Settings → Account → Notifications einschalten → Android fragt (ab Android 13) nach der
       Erlaubnis → Schalter bleibt an. Ein Tipp auf eine Benachrichtigung öffnet die App, nicht Chrome.
 
+### 2. Crew-Links öffnen die App (seit 18.10.2026)
+
+Der Einladungslink einer Crew liegt auf der Adresse des Spiels (`https://game.gustaff.dev/k/CODE?by=…`), damit
+Android ihn der App gibt statt dem Browser. Der Wrapper verknüpft den ganzen Host (`assetlinks.json`); trotzdem prüfen:
+
+- [ ] Im Wrapper (Manifest der Android-App): der Intent-Filter mit `autoVerify` deckt den Pfad `/k/` ab (`pathPrefix="/"`,
+      kein engerer Pfad), sonst fehlt die Zeile für `/k/`.
+- [ ] Testen: Crew-Link in einem Chat auf dem Handy antippen → die App öffnet sich, Social → Crew zeigt die Einladung.
+
 ## So geht der Build
 
 ### Vorbereitung
