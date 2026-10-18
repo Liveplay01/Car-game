@@ -1,4 +1,4 @@
-import { INVITE_REMINDER_LEVEL, type Config } from '../core/config';
+import type { Config } from '../core/config';
 import { type SaveGame, type GameMode, type Hint, Careers } from '../core/career';
 import { Elite, type EliteBar } from '../core/elite';
 import { SeasonPass } from '../core/seasonPass';
@@ -55,19 +55,13 @@ export function bookShift(save: SaveGame, result: ShiftResult, ctx: ShiftContext
     save.mayhemBestChain = Math.max(save.mayhemBestChain, result.biggestChain);
     return { isNew, previous, bank: { before: career.money, after: career.money }, news: [], tips: [], elite: null, due: [] };
   }
-  if (ctx.mode === 'chill') {
-    // Nothing is won or lost here: the drive only counts for the records of the mode.
-    const previous = save.chillBest;
-    const isNew = result.carsSent > previous;
-    if (isNew) save.chillBest = result.carsSent;
-    save.chillCars += result.carsSent;
-    save.chillTime += Math.round(result.time);
-    return { isNew, previous, bank: { before: career.money, after: career.money }, news: [], tips: [], elite: null, due: [] };
-  }
   const unlimited = ctx.mode === 'unlimited';
   const previous = unlimited ? save.unlimitedBest : save.highscore;
   const isNew = (unlimited || result.outcome === 'completed') && result.score > previous;
-  if (isNew && unlimited) save.unlimitedBest = result.score;
+  if (isNew && unlimited) {
+    save.unlimitedBest = result.score;
+    save.unlimitedBestRevived = result.revived;
+  }
   else if (isNew) {
     save.highscore = result.score;
     save.highscoreSeed = result.seed;
@@ -97,7 +91,7 @@ export function bookShift(save: SaveGame, result: ShiftResult, ctx: ShiftContext
   if (ctx.mode === 'shift' && !ctx.daily) {
     const cars = ctx.shiftConfig.shiftCars;
     const left = cars - result.carsSent;
-    const close = result.outcome !== 'completed' && left >= 1 && left <= ctx.config.tailwindMaxLeft && result.carsSent >= cars * ctx.config.tailwindMinShare;
+    const close = result.outcome !== 'completed' && !result.revived && left >= 1 && left <= ctx.config.tailwindMaxLeft && result.carsSent >= cars * ctx.config.tailwindMinShare;
     if (career.tailwind) career.tailwind = false;
     else if (close && career.tailwindDay !== ctx.today) {
       career.tailwind = true;
@@ -113,15 +107,8 @@ export function bookShift(save: SaveGame, result: ShiftResult, ctx: ShiftContext
     save.hints.push('unlimitedTip');
     tips.push(touchFirst ? S.modes.tryUnlimited : S.modes.tryUnlimitedKeys);
   }
-  // Level 5 cleared: the other modes are a swipe away (the waiting screen keeps a hint until the first swipe).
-  const cap = ctx.config.modeHintAfterLevel;
-  if (ctx.mode === 'shift' && !save.hints.includes('modes') && ctx.level <= cap && career.level > cap) tips.push(touchFirst ? S.modes.unlocked : S.modes.unlockedKeys);
   // What this shift opened says nothing here: the place gets a dot and introduces itself (`Intros`).
-  const after = { backup: ctx.config.backupHintAfterLevel, portalLogin: ctx.config.portalLoginAfterLevel };
-  const due: Hint[] = (['backup', 'portalLogin'] as const).filter((h) => !save.hints.includes(h) && career.level > after[h]);
-  // Level 10 reached (Leo, 04.10.2026): a small reminder that a friend brings both a chest. By level, not by crossing it:
-  // a reminder that had to wait (`takeTip`) comes at the next shift.
-  if (ctx.mode === 'shift' && !save.hints.includes('inviteReminder') && career.level >= INVITE_REMINDER_LEVEL) due.push('inviteReminder');
+  const due: Hint[] = !save.hints.includes('portalLogin') && career.level > ctx.config.portalLoginAfterLevel ? ['portalLogin'] : [];
   // Notifications after the way back was asked for (`tomorrow`) as installing: on a later visit, the one tip each has.
   // Asked again at a streak of two days (08.10.2026), when a reminder before it breaks is worth something.
   if (save.hints.includes('tomorrow') && !save.hints.includes('notifications')) due.push('notifications');

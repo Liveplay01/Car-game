@@ -1583,32 +1583,6 @@ a.row-link {
   background: var(--muted);
 }
 
-.done-btn {
-  right: calc(var(--safe-right) + var(--s4));
-  bottom: calc(var(--safe-bottom) + var(--s5));
-  display: inline-flex;
-  align-items: center;
-  gap: var(--s2);
-  width: auto;
-  height: 60px;
-  padding: 0 var(--s5);
-  border: 1.5px solid var(--accent);
-  border-radius: 30px;
-  font-size: 16px;
-  font-weight: 700;
-}
-
-.done-btn svg {
-  width: 22px;
-  height: 22px;
-  stroke: var(--accent);
-}
-
-[data-hand='left'] .done-btn {
-  right: auto;
-  left: calc(var(--safe-left) + var(--s4));
-}
-
 /* Key hints: only with a keyboard and a mouse, never on touch. */
 .keycap {
   display: none;
@@ -2065,7 +2039,6 @@ a.row-link {
 
 .app[data-versus='on'] .settings-btn,
 .app[data-versus='on'] .dispatch-btn,
-.app[data-versus='on'] .done-btn,
 .app[data-versus='on'] .run-bar {
   opacity: 0;
   visibility: hidden;
@@ -2603,13 +2576,15 @@ button.mod:active {
   margin-top: 0;
 }
 
-/* MARK: Photo – the print of a finished shift (ui/photo.ts) */
+/* MARK: Photo – the speed-camera picture of a finished shift (ui/photo.ts) */
 
 .photo-view {
   position: fixed;
   inset: 0;
   z-index: var(--z-sheet);
   display: grid;
+  /* One track as wide as the screen: an auto track grew to the print and pushed the buttons off a phone. */
+  grid-template-columns: minmax(0, 1fr);
   place-items: center;
   padding: calc(var(--safe-top) + var(--s7)) calc(var(--safe-right) + var(--s4)) calc(var(--safe-bottom) + var(--s5)) calc(var(--safe-left) + var(--s4));
 }
@@ -2648,11 +2623,11 @@ button.mod:active {
   position: relative;
   margin: 0;
   /* 4:5, as large as fits above the buttons. */
-  width: min(100%, 440px, calc((100dvh - var(--safe-top) - var(--safe-bottom) - 180px) * 0.8));
+  width: min(100%, 440px, calc((100dvh - var(--safe-top) - var(--safe-bottom) - 244px) * 0.8));
   aspect-ratio: 4 / 5;
-  transform: rotate(-2.5deg);
-  border-radius: 3px;
-  box-shadow: 0 30px 60px rgba(0, 0, 0, 0.5), 0 8px 18px rgba(0, 0, 0, 0.35), 0 1px 2px rgba(0, 0, 0, 0.3);
+  border-radius: 4px;
+  overflow: hidden;
+  box-shadow: 0 24px 48px rgba(0, 0, 0, 0.5), 0 2px 6px rgba(0, 0, 0, 0.4);
   user-select: none;
   -webkit-user-select: none;
   -webkit-touch-callout: none;
@@ -2665,17 +2640,17 @@ button.mod:active {
   border-radius: inherit;
 }
 
-/* An instant print coming up: white first, the picture through it. */
-.photo-develop {
-  position: absolute;
-  background: #f1efe9;
-  pointer-events: none;
-}
-
 .photo-actions {
   display: flex;
   gap: var(--s3);
   width: min(100%, 440px);
+}
+
+/* Two long labels do not fit side by side on a phone: one under the other. */
+@media (max-width: 480px) {
+  .photo-actions {
+    flex-direction: column;
+  }
 }
 
 .photo-btn {
@@ -3182,6 +3157,22 @@ button.mod:active {
   letter-spacing: 0.08em;
   color: var(--primary);
   user-select: all;
+}
+
+.sync-code.secret {
+  color: var(--muted);
+  user-select: none;
+}
+
+.sync-code.secret.shown {
+  color: var(--primary);
+  user-select: all;
+}
+
+.row-actions {
+  display: flex;
+  flex: none;
+  gap: var(--s2);
 }
 
 .sync-input {
@@ -4036,4 +4027,46 @@ button.mod:active {
   .fund-thanks-amount {
     animation: none;
   }
+}
+
+/* An auction lot with Buy now under Enter: two buttons stacked, as wide as the wider one. */
+.lot-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+/* Social → Crew (Leo, 18.10.2026): the crew's name a step above a row title. */
+.crew-name {
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+/* The weekly goal: a progress bar like every other (`--meter-*`), amber while it runs. */
+.crew-meter {
+  height: var(--meter-h);
+  margin-top: var(--s2);
+  border-radius: calc(var(--meter-h) / 2);
+  background: var(--meter-track);
+  overflow: hidden;
+}
+
+.crew-meter > span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--state-live);
+  transition: width 400ms var(--ease-out);
+}
+
+/* The league table: a thin edge marks the places that go up (gold, earned) and down (red, lost) on Monday. */
+.board-row.crew-up {
+  box-shadow: inset 3px 0 0 var(--state-earned);
+}
+
+.board-row.crew-down {
+  box-shadow: inset 3px 0 0 var(--state-lost);
 }

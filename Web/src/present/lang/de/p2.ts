@@ -224,6 +224,22 @@ export default (S: Strings): Words<Strings> => ({
   },
 
   rewards: {
+    crew: (reason, what) => {
+      const [kind, what2, ...rest] = reason.split(':');
+      if (kind !== 'crew') return null;
+      switch (what2) {
+        case 'gift':
+          return `CREW-GESCHENK · ${what} · von ${rest.slice(1).join(':') || 'deiner Crew'}`;
+        case 'up':
+          return `AUFGESTIEGEN · ${what} · ${S.crew.league(rest[0] ?? '')}`;
+        case 'goal':
+          return `WOCHENZIEL ERREICHT · ${what} · dank deiner Crew`;
+        case 'back':
+          return `GESCHENK ZURÜCK · ${what} · niemand hat es genommen`;
+        default:
+          return null;
+      }
+    },
     bugHunter: (id) => `${S.shop.item(id).toUpperCase()} FREIGESCHALTET · danke fürs Fehlerjagen`,
     chest: (kind) => `EIN GESCHENK VOM TEAM · ${S.shop.chest(kind)} · danke`,
     money: (amount) => `EIN GESCHENK VOM TEAM · ${Fmt.number(amount)} Geld · danke`,

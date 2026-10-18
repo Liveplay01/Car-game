@@ -1,4 +1,4 @@
-import { baseConfig, INVITE_LEVEL, INVITE_REMINDER_LEVEL, detourShareAt, towSpeedupAt, type Config, type Weather, type CityEvent, type BossKind, type LegendaryRule } from '../core/config';
+import { baseConfig, INVITE_LEVEL, detourShareAt, towSpeedupAt, type Config, type Weather, type CityEvent, type BossKind, type LegendaryRule } from '../core/config';
 import type { Upgrade } from '../core/levels';
 import type { MasteryGoal, MasteryCompletion, StreakMilestone } from '../core/career';
 import { MASTERY_THRESHOLDS, masteryNumeral } from '../core/career';
@@ -14,7 +14,6 @@ import type { EliteStep, EliteBar, TitleId, TitleRule } from '../core/elite';
 import type { PassReward, PassStep, HallEntry } from '../core/seasonPass';
 import type { FeatGoal } from '../core/feats';
 import type { Season } from '../core/loot';
-import type { MutatorId } from '../core/mutators';
 import type { TourId, TourReward } from '../core/tours';
 import type { TierId } from '../core/tiers';
 import { MONEY_MARK } from './icons';
@@ -123,13 +122,20 @@ export const S = {
         'Pay back in time and the next loan gets kinder. Pay late and the Family takes a share of every shift, and the Casino shuts until it is paid.',
       ],
     },
+    crew: {
+      title: 'Crew',
+      line: 'A weekly league, played together',
+      body: [
+        'A crew is up to 20 players. The Season XP of every shift you play counts for its week; on Monday the best crews of a group go up a league, with a Premium Chest for everyone who helped.',
+        'Give your crew gifts from your own money and chests: the first to take one keeps it. Tap a member to see their records and give them a gift of their own.',
+        'Joining needs an invite link from a member. Found a crew yourself and send your link around.',
+      ],
+    },
   },
 
   settings: {
     /** The word on the Settings pill for a moment after progress came over from the cloud. */
     synced: 'Synced',
-    /** The same pill, in blue, when Cloud sync needs the player: no cloud copy yet, or two devices to choose between. */
-    syncAsk: 'Sync?',
     title: 'Settings',
     tabs: { play: 'Play', account: 'Account', about: 'About' },
     language: 'Language',
@@ -175,6 +181,7 @@ export const S = {
     guides: 'Guides',
     guidesSub: 'How each place works, any time.',
     whatsNew: "What's new",
+    awayNews: 'New since you were away',
     whatsNewSub: 'Patch notes and updates.',
     newBadge: 'New',
     buildWithUs: 'Build with us',
@@ -245,8 +252,11 @@ export const S = {
     asked: 'Asked',
     syncNow: 'Sync now',
     linkedIntro: 'Your progress is copied to the cloud while you play. On another device open Settings → Account → Cloud sync and type this code.',
-    yourCode: 'Your sync code',
+    yourCode: 'Your sync code · secret',
     yourCodeLabel: (code: string): string => `Your sync code: ${code}`,
+    hiddenLabel: 'Your sync code, hidden',
+    reveal: 'Show',
+    conceal: 'Hide',
     cloudCopy: 'Cloud copy',
     passwordManager: 'Password manager',
     passwordManagerSub: 'Let your browser remember the code, then it fills it in on a new device.',
@@ -268,7 +278,7 @@ export const S = {
     intro: 'Pick a name. It is your player for everything online, and your progress is backed up with it. Nothing else to sign up for.',
     perks: {
       ranks: { title: 'Ranks', sub: 'Your level and records on the leaderboards.' },
-      friends: { title: 'Friends', sub: 'A friend code, a board with your friends and invites.' },
+      crew: { title: 'Crew', sub: 'A crew with a weekly league, gifts and invites.' },
       versus: { title: 'Multiplayer', sub: 'The name the others see in a match.' },
       cloud: { title: 'Cloud sync', sub: 'Your progress safe, and on every device.' },
     },
@@ -284,7 +294,6 @@ export const S = {
     done: (name: string): string => `You are ${name}. Ranks, Friends, multiplayer and Cloud sync are ready.`,
     doneLocal: (name: string): string => `You are ${name}. Ranks and multiplayer are ready.`,
     nameLabel: 'Player name',
-    keepSub: 'Your browser keeps your name and code like a login and fills them in on a new device.',
     codeNote: 'On another device open Settings → Account → Cloud sync and type this code. Anyone with it can load your progress: keep it private.',
     finish: 'Done',
     manage: 'Cloud sync settings',
@@ -319,10 +328,8 @@ export const S = {
     /** A friend's invite was kept (`?ref=`): with a name already, or still needing one. */
     invited: `Invited by a friend · Reach level ${INVITE_LEVEL} and you both get a chest`,
     invitedNeedsName: `Invited by a friend · Pick a name under Social, reach level ${INVITE_LEVEL} and you both get a chest`,
-    /** Once for everyone (`announceInvite`), and again at level 10 (`inviteReminder`): the friend code is the invite, and the Social tab is where it is. The website (`buildWithUs`) is told once, too. */
+    /** Once for everyone (`announceInvite`): the friend code is the invite, and the Social tab is where it is. */
     invite: { caption: 'INVITE A FRIEND', text: `You both get a chest at level ${INVITE_LEVEL}. The Social tab has your code and link` },
-    inviteReminder: { caption: 'INVITE A FRIEND', text: `Level ${INVITE_REMINDER_LEVEL}! Bring a friend: you both get a chest at level ${INVITE_LEVEL}. Code under Social` },
-    buildWithUs: { caption: 'NEW WEBSITE', text: 'timing.love: report bugs and ideas there. Bug hunters may get a gift' },
   },
 
   /** Challenge links and mastery trials: shifts that are played for themselves. */
@@ -596,6 +603,23 @@ export const S = {
     chest: (kind: ChestKind): string => `A GIFT FROM THE TEAM · ${S.shop.chest(kind)} · thank you`,
     money: (amount: number): string => `A GIFT FROM THE TEAM · ${amount.toLocaleString('en-US')} money · thank you`,
     item: (id: string): string => `A GIFT FROM THE TEAM · ${S.shop.item(id)} unlocked`,
+    /** Something from the crew (`crew:gift:crew:Name`, `crew:gift:you:Name`, `crew:up:silver`, `crew:goal`, `crew:back`); null for any other reason. */
+    crew: (reason: string, what: string): string | null => {
+      const [kind, what2, ...rest] = reason.split(':');
+      if (kind !== 'crew') return null;
+      switch (what2) {
+        case 'gift':
+          return `CREW GIFT · ${what} · from ${rest.slice(1).join(':') || 'your crew'}`;
+        case 'up':
+          return `UP A LEAGUE · ${what} · ${S.crew.league(rest[0] ?? '')}`;
+        case 'goal':
+          return `WEEKLY GOAL REACHED · ${what} · thanks to your crew`;
+        case 'back':
+          return `GIFT RETURNED · ${what} · nobody took it`;
+        default:
+          return null;
+      }
+    },
     /** A chest from an invite (`reason` as the service writes it: `invite:welcome:Name`, `invite:friend:Name`, `invite:milestone:3`); null for any other reason. */
     invite: (reason: string, kind: ChestKind): string | null => {
       const [, what, ...rest] = reason.startsWith('invite:') ? reason.split(':') : [];
@@ -741,8 +765,11 @@ export const S = {
     xp: (into: number, need: number): string => `${into} / ${need} XP`,
     locked: (level: number): string => `Opens at Level ${level}`,
     buyHint: 'Chests, money and three skins',
+    free: 'free',
+    waiting: (n: number): string => (n === 1 ? '1 tier waits for the pass' : `${n} tiers wait for the pass`),
     daysLeft: (n: number): string => (n === 1 ? 'last day' : `${n} days left`),
     complete: 'Track complete · see you next season',
+    openAtEnd: (n: number): string => (n === 1 ? 'Season ends soon · 1 tier still open' : `Season ends soon · ${n} tiers still open`),
     reward(r: PassReward): string {
       if (r.k === 'chest') return S.shop.chest(r.chest);
       if (r.k === 'money') return money(Fmt.number(r.amount));
@@ -756,43 +783,27 @@ export const S = {
       'Three of the tiers hold this season’s own skins, with effects no chest has. The four seasons come back every year, and so do their skins.',
       'Only looks, never a bonus on the road. Nothing here costs real money.',
     ],
+    freeBody: (xpPerTier: number): string[] => [
+      `A track of twelve tiers for this season. Every shift earns XP towards it, pass or not: 10 for a completed shift, 1 for every Perfect Input and Tight Fit, 10 more for a boss or a Legendary Shift. The first tier needs ${xpPerTier} XP, every tier after it a little more.`,
+      'Three tiers are free for everyone. Buy the pass with play money and every other tier pays, the ones you already reached at once.',
+      'Three of the tiers hold this season’s own skins, with effects no chest has. The four seasons come back every year, and so do their skins. Only looks, never a bonus on the road.',
+    ],
     trackHeader: 'The track',
   },
 
+  /** The Prestige log in the Elite sheet (the old Hall of Fame, which is not for sale any more, kept its plaques). */
   hall: {
-    title: 'Hall of Fame',
-    header: 'Hall of Fame',
-    build: (price: string): string => `Build the Hall of Fame · ${price}`,
-    built: 'HALL OF FAME BUILT · a wall of honour on the island · Hall of Famer unlocked',
-    notBuilt: 'A gold wall on the island with a star for every Prestige rank, and a skin of its own. Tap to see what it gives.',
-    tapMore: 'Tap to see what it gives.',
-    open: (level: number): string => `Opens once you reach Level ${level}`,
+    header: 'Prestige log',
     plaque: (e: HallEntry): string => `★${e.rank}`,
     plaqueLine: (e: HallEntry, date: string | null): string =>
       [date, e.elite > 0 ? `Elite ${e.elite}` : null, `${e.bosses} ${e.bosses === 1 ? 'boss' : 'bosses'}`, e.legendary > 0 ? `${e.legendary} legendary` : null].filter((x) => x).join(' · '),
     empty: 'Your first Prestige gets the first plaque.',
-    standing: 'Standing on the island',
-    /** The Hall's own sheet: what building it gives you. */
-    about: [
-      'A monument that stays on your island for good: a gold wall of honour along the top, with a star for every Prestige rank you have earned.',
-      'It keeps your story. Every Prestige adds a plaque to the list in the Elite sheet: the day, your Elite level, the bosses you took down and the legendary shifts you cleared by then.',
-      'And it unlocks the Hall of Famer skin, gold with a laurel that glows, for your cars.',
-    ],
-    looks: 'Only looks and honour: no bonus on the road, nothing to lose when you Prestige.',
-    gives: 'What you get',
-    wall: 'Gold wall on the island',
-    wallValue: (ranks: number): string => (ranks > 0 ? `${ranks} ${ranks === 1 ? 'star' : 'stars'} now` : 'No stars yet'),
-    plaques: 'A plaque per Prestige',
-    plaquesValue: (n: number): string => (n > 0 ? `${n} so far` : 'None yet'),
-    skin: 'Hall of Famer skin',
-    skinValue: 'Gold, with a laurel',
-    back: 'Back to Elite',
   },
 
   modes: {
-    name: (m: SwipeMode): string => (m === 'shift' ? 'SHIFT' : m === 'unlimited' ? 'UNLIMITED' : m === 'mayhem' ? 'MAYHEM' : m === 'chill' ? 'CHILL' : 'MULTIPLAYER'),
+    name: (m: SwipeMode): string => (m === 'shift' ? 'SHIFT' : m === 'unlimited' ? 'UNLIMITED' : m === 'mayhem' ? 'MAYHEM' : 'MULTIPLAYER'),
     line: (m: SwipeMode): string =>
-      m === 'shift' ? 'Clear the level, move up' : m === 'unlimited' ? 'Endless · until you crash' : m === 'mayhem' ? '12 cars · aim for the tankers' : m === 'chill' ? 'No pressure · crashes never end it' : 'Up to 4 friends · last one standing',
+      m === 'shift' ? 'Clear the level, move up' : m === 'unlimited' ? 'Endless · until you crash' : m === 'mayhem' ? '12 cars · aim for the tankers' : 'Up to 4 friends · last one standing',
     unlimitedCaption: 'UNLIMITED',
     endless: '∞',
     versusPlayers: '2–4',
@@ -801,7 +812,6 @@ export const S = {
     runOver: 'RUN OVER',
     again: 'Tap for another run',
     carsSent: (n: number): string => (n === 1 ? '1 car' : `${n} cars`),
-    unlocked: { caption: 'NEW MODES', text: 'Swipe sideways for Unlimited, Mayhem, Chill and Multiplayer' },
     /** After the first lost shift: the mode without levels. */
     tryUnlimited: { caption: 'GAME MODES', text: 'Swipe sideways for Unlimited: no levels, just go until you crash' },
     /** Taught once, on a later visit or after a few shifts: the scoring pays for close merges. */
@@ -809,7 +819,6 @@ export const S = {
     swipeCaption: 'GAME MODES',
     swipeHint: 'Swipe for more modes',
     /** The same on a screen without touch: the arrow keys switch the mode. */
-    unlockedKeys: { caption: 'NEW MODES', text: 'Press ← or → for Unlimited, Mayhem, Chill and Multiplayer' },
     tryUnlimitedKeys: { caption: 'GAME MODES', text: 'Press → for Unlimited: no levels, just go until you crash' },
     swipeHintKeys: '← → for more modes',
     /** Unlimited's late stages (`endlessStages`), as they come. */
@@ -837,51 +846,6 @@ export const S = {
     again: 'Tap for more mayhem',
     summary: (wrecks: number, chain: number): string => `${wrecks} ${wrecks === 1 ? 'wreck' : 'wrecks'} · biggest chain ×${chain}`,
     popup: (flames: number): string => `+${flames}`,
-  },
-
-  /** Chill (Leo, 07.10.2026): the calm mode. */
-  chill: {
-    caption: 'CHILL',
-    time: 'TIME',
-    done: 'Done',
-    doneLabel: 'Done: end this drive',
-    over: 'GOOD DRIVE',
-    again: 'Tap to drive again',
-    summary: (cars: number, time: string): string => `${cars === 1 ? '1 car' : `${cars} cars`} · ${time}`,
-    best: (cars: number): string => `Your longest drive: ${cars === 1 ? '1 car' : `${cars} cars`}`,
-  },
-
-  /** Daily mutators (core/mutators.ts). */
-  mutator: {
-    caption: 'TODAY',
-    name: (id: MutatorId): string =>
-      ({
-        openRoad: 'Open Road',
-        speedway: 'Speedway',
-        fogBank: 'Fog Bank',
-        nightShift: 'Night Shift',
-        lightsOut: 'Lights Out',
-        stormFront: 'Storm Front',
-        rushAllDay: 'Rush All Day',
-        dragnet: 'Dragnet',
-        heavyLoad: 'Heavy Load',
-        cashConvoy: 'Cash Convoy',
-      })[id],
-    line: (id: MutatorId): string =>
-      ({
-        openRoad: 'Fewer cars on the ring',
-        speedway: 'Faster, with a little less traffic',
-        fogBank: 'Fog all shift',
-        nightShift: 'After dark',
-        lightsOut: 'Night, and the street lamps are out',
-        stormFront: 'A storm all shift',
-        rushAllDay: 'Rush hour from the first car',
-        dragnet: 'Criminals twice as often',
-        heavyLoad: 'Lorries and tankers everywhere',
-        cashConvoy: 'Money transporters twice as often',
-      })[id],
-    /** The pill on the Daily Shift's waiting card. */
-    pill: (id: MutatorId): string => `TODAY · ${S.mutator.name(id).toUpperCase()}`,
   },
 
   /** Season rules (core/seasons.ts). */
@@ -975,7 +939,6 @@ export const S = {
         reborn: 'Reborn',
         heatSeeker: 'Heat Seeker',
         gambler: 'High Roller',
-        zen: 'Zen Driver',
         tourist: 'Tourist',
       })[id] ?? id,
     /** What a tier asks for. */
@@ -1012,7 +975,6 @@ export const S = {
           reborn: `Prestige ${N} ${n === 1 ? 'time' : 'times'}`,
           heatSeeker: `Clear a shift at Heat ${N}`,
           gambler: `Play ${N} casino rounds`,
-          zen: `Send ${N} cars in Chill`,
           tourist: `Pass ${N} tour ${n === 1 ? 'stop' : 'stops'}`,
         } as Record<string, string>
       )[id] ?? '';
@@ -1143,9 +1105,6 @@ export const S = {
     unlimitedTier: 'Unlimited tier',
     mayhemBest: 'Mayhem flames',
     mayhemChain: 'Mayhem chain',
-    chillBest: 'Longest Chill drive',
-    chillCars: 'Cars sent in Chill',
-    chillTime: 'Time in Chill',
     minutes: (s: number): string => (s < 3600 ? `${Math.max(1, Math.round(s / 60))} min` : `${Math.floor(s / 3600)} h ${Math.round((s % 3600) / 60)} min`),
     tours: 'Tour stops',
     perfects: 'Perfect Inputs',
@@ -1163,11 +1122,11 @@ export const S = {
 
   /** The Social tab (Leo, 10.10.2026): its segments, and what the Club says while it is still shut. */
   social: {
-    section: (i: number): string => ['Friends', 'Ranks', 'Club', 'Mafia'][i],
+    section: (i: number): string => ['Crew', 'Ranks', 'Club', 'Mafia'][i],
     clubClosed: 'The Club opens at Level 50: an Auction House and the Game fund for big balances.',
     mafiaClosed: "The Family has no time for a rookie. Put the Syndicate's first boss away (Level 15) or get past it, and they will call.",
-    offline: 'Friends and Ranks need the online service, which this copy of the game is not connected to.',
-    noFriends: 'Friends are not available here. Ranks and the Club are.',
+    offline: 'Crews and Ranks need the online service, which this copy of the game is not connected to.',
+    noCrew: 'Crews are not available here. Ranks and the Club are.',
   },
 
   museum: {
@@ -1177,13 +1136,15 @@ export const S = {
     newBadge: 'NEW',
     /** A condition's sheet from its icon on the Game tab, before the player has met it. */
     firstTime: 'New for you',
-    firstAt: (level: number): string => `From Level ${level}`,
+    /** Where something first comes: a level, or a Prestige rank with the level on it (a career plays Levels 1 to 50, then Prestiges). */
+    place: (level: number, rank: number): string => (rank > 0 ? `★${rank}${level > 1 ? ` · ${S.trials.level(level)}` : ''}` : S.trials.level(level)),
+    firstAt: (level: number, rank = 0): string => (rank > 0 ? `From ${S.museum.place(level, rank)}` : `From Level ${level}`),
     undiscovered: 'Not discovered yet',
-    lockedHint: (level: number): string =>
-      level > 1
-        ? `Shows up from Level ${level}. Once you have met it on the road, it goes on show here with everything you need to know.`
+    lockedHint: (level: number, rank = 0): string =>
+      rank > 0 || level > 1
+        ? `Shows up from ${rank > 0 ? S.museum.place(level, rank) : `Level ${level}`}. Once you have met it on the road, it goes on show here with everything you need to know.`
         : 'Keep playing shifts. Once you have met it on the road, it goes on show here with everything you need to know.',
-    lockedBossHint: (level: number): string => `The syndicate sends it on Level ${level}. Once you have faced it, it goes on show here with how to take it down.`,
+    lockedBossHint: (level: number, rank = 0): string => `The syndicate sends it on ${rank > 0 ? S.museum.place(level, rank) : `Level ${level}`}. Once you have faced it, it goes on show here with how to take it down.`,
     lockedFailHint: 'Not happened to you yet. Lose a shift this way and it goes on show here, with what went wrong and how to avoid it.',
     kind: (e: MuseumEntry): string => ({ boss: 'Syndicate boss', special: 'Special vehicle', weather: 'Weather', dark: 'Darkness', event: 'City event', road: 'Road', fail: 'Way to lose' })[e.k],
     /** Every way to lose a shift found: the Failures shelf pays its skin (`GameSession.bookFailure`). */
@@ -1448,6 +1409,9 @@ export const S = {
     frozeLine: 'One missed day will not break your streak',
     doubled: 'Pay doubled',
     retryPill: 'Second try · watch an ad',
+    revivePill: (seconds: number): string => `Keep driving · watch an ad · ${seconds}`,
+    reviveSkip: 'Tap anywhere to end the run',
+    noRevive: (n: number): string => `A run goes on after a crash ${n} times a day.`,
     noRetry: 'One second try a day, and it is used.',
     retried: 'Second try',
     retriedLine: "Today's Daily is open again",
@@ -1484,6 +1448,9 @@ export const S = {
     expiredNone: '🔨 Time expired! No opening bids were placed. The lot has been withdrawn.',
     bidOn: (lot: string): string => `Bid on ${lot}`,
     enter: 'Enter Auction',
+    buyNow: (price: string): string => `Buy · ${price}`,
+    buyNowLabel: (lot: string, price: string): string => `Buy ${lot} now for ${price}`,
+    buyNowRule: (times: number): string => `Not in the mood to bid? Every skin lot can be bought straight away for ${times} times its estimate, no premium. The lot is then taken for today, like an auction you entered.`,
     tried: 'Tried',
     owned: 'Owned',
     lots: "Today's lots",
@@ -1592,6 +1559,7 @@ export const S = {
   ranks: {
     /** Under a name on the Daily board: an ad gave that player a second try. */
     secondTry: '2 tries',
+    revived: 'kept driving',
     boards: {
       'shift-level': { label: 'Shift level', empty: 'Clear a shift to be the first one here.' },
       unlimited: { label: 'Unlimited', empty: 'Set an Unlimited record to be the first one here.' },
@@ -1610,7 +1578,7 @@ export const S = {
     harder: (start: number): string => `Harder traffic: +${start} levels per rank`,
     harderSub: (start: number, max: number, from: number): string => `From ★1 the road plays ${start} levels harder, at most +${max} levels (from ★${from}).`,
     show: 'Only for show',
-    showSub: 'Silver, Gold and Iris Star skins at ★1 to ★3, the Star Driver title at ★3 and a plaque in the Hall of Fame. Never a bonus on the road.',
+    showSub: 'Silver, Gold and Iris Star skins at ★1 to ★3, the Star Driver title at ★3 and a plaque in your Prestige log. Never a bonus on the road.',
     onBoard: 'On this leaderboard',
     onBoardSub: 'Shift level ranks the Prestige rank first, then the level. Unlimited ignores it.',
     rankLabel: (n: number): string => `Rank ${n}`,
@@ -1619,14 +1587,14 @@ export const S = {
     nameHelp: (max: number): string => `3–${max} letters or numbers. Everyone can see it.`,
     nameShort: 'Use at least 3 characters.',
     cancel: 'Cancel',
-    listFriends: 'Ranking among friends',
+    listCrew: 'Ranking in your crew',
     list: 'Leaderboard',
     boardsLabel: 'Boards',
-    addFriend: 'Add a friend with their code to compare your records.',
+    noCrew: 'Join a crew under Social → Crew to compare your records with it.',
     nobody: 'Nobody here yet',
     unavailable: 'Leaderboard unavailable',
     tryAgain: 'Try again',
-    scopes: { all: 'Everyone', friends: 'Friends' },
+    scopes: { all: 'Everyone', crew: 'Crew' },
     scopeLabel: 'Show',
     introInvited: (level: number): string => `A friend invited you. Enter a name, reach level ${level} and you both get a chest. Your level and your Unlimited record come from the progress on this device.`,
     intro: 'Create your player to rank here. Your level and your Unlimited record come from the progress on this device and stay up to date by themselves.',
@@ -1646,28 +1614,10 @@ export const S = {
     copy: 'Copy',
     copyPrompt: 'Copy this',
     shareLink: 'Share invite link',
-    loading: 'Loading your friends…',
-    introInvited: (level: number): string => `A friend invited you. Pick a name, reach level ${level} and you both get a chest. You get a friend code of your own too.`,
-    intro: 'Friends know you by your name on the leaderboard. Pick one, and you get a friend code to hand out, a ranking among friends and an invite link that earns you chests.',
-    save: 'Save',
     tryAgain: 'Try again',
     playTogether: 'Play together',
-    inviteFriends: 'Invite friends',
-    yourCode: 'Your friend code',
+    yourCode: 'Your friend code · safe to share',
     yourCodeLabel: (code: string): string => `Your friend code: ${code}`,
-    codeLabel: "A friend's code",
-    typeHere: 'Type the code your friend sees here. They do not have to add you back.',
-    add: 'Add',
-    codeShort: 'A friend code has 8 letters and numbers, like K7M2-9QXA.',
-    adding: 'Adding…',
-    onList: (name: string): string => `${name} is on your list.`,
-    addFriend: 'Add a friend',
-    yourFriends: (n: number): string => `Your friends (${n})`,
-    yourFriendsNone: 'Your friends',
-    nobody: 'Nobody yet',
-    nobodySub: 'Add a friend with their code, or send an invite.',
-    removeLabel: (name: string): string => `Remove ${name} from your friends`,
-    remove: 'Remove',
     challengeSub: 'Send your last shift and the score to beat.',
     challengeNone: 'Finish a shift, then send it to a friend to beat.',
     send: 'Send',
@@ -1684,7 +1634,75 @@ export const S = {
     bothNote: (level: number, ordinals: string[]): string =>
       `You both get a chest when a friend reaches level ${level}.${ordinals.length > 0 ? ` Your ${ordinals.join(' and ')} friend each bring a bonus Premium Chest.` : ''}`,
     invites: (done: number, total: number, level: number): string => `Invites (${done} of ${total} at level ${level})`,
-    sendLink: 'Send your link to a friend. It shows up here when they join.',
+  },
+
+  /** Social → Crew (`ui/crewPanel.ts`, Leo 18.10.2026). */
+  crew: {
+    loading: 'Loading your crew…',
+    intro: 'A crew plays the weekly league together, chases a weekly goal and sends each other gifts. Join one with an invite link from a member, or found your own.',
+    found: 'Found a crew',
+    nameLabel: 'Crew name',
+    namePlaceholder: 'Night Shift',
+    nameHelp: (max: number): string => `3–${max} letters or numbers. Everyone can see it.`,
+    create: 'Found',
+    invited: 'You are invited',
+    invitedSub: (members: number, max: number, league: string): string => `${members} of ${max} players · ${league}`,
+    inviteWaits: 'CREW INVITE · join it under Social → Crew',
+    join: 'Join',
+    notNow: 'Not now',
+    full: 'This crew is full.',
+    isFull: 'Your crew is full.',
+    gone: 'That crew does not exist any more.',
+    members: (n: number, max: number): string => `${n} of ${max} players`,
+    league: (league: string): string => `${({ bronze: 'Bronze', silver: 'Silver', gold: 'Gold', platinum: 'Platinum', diamond: 'Diamond' } as Record<string, string>)[league] ?? league} league`,
+    rename: 'Rename',
+    renameIn: (days: number): string => `Rename in ${days} d`,
+    renameTitle: 'Rename the crew',
+    renameNote: 'After this, the name can change again in 30 days.',
+    save: 'Save',
+    week: 'This week',
+    endsIn: (time: string): string => `ends in ${time}`,
+    tableLabel: 'This week’s league table',
+    computer: 'Computer crew',
+    xp: (n: string): string => `${n} XP`,
+    zones: (up: number, down: number): string => `Season XP from every shift counts. On Monday the top ${up} go up a league and every member who helped gets a Premium Chest; the last ${down} go down, which costs nothing else.`,
+    goal: 'Weekly goal',
+    goalLine: (xp: string, goal: string): string => `${xp} of ${goal} XP · a Standard Chest on Monday for everyone who helped`,
+    goalDone: 'Reached · a Standard Chest on Monday for everyone who helped',
+    lastWeek: (place: number, move: number, league: string): string =>
+      `Last week: ${S.friends.ordinal(place)} · ${move > 0 ? `up to the ${league}` : move < 0 ? `down to the ${league}` : `stayed in the ${league}`}`,
+    giftsWaiting: 'Gifts for you',
+    giftFrom: (name: string, forCrew: boolean): string => (forCrew ? `From ${name} · for the crew, first come first served` : `From ${name} · for you`),
+    someone: 'a former member',
+    take: 'Take',
+    taken: (what: string): string => `${what} is yours.`,
+    give: 'Give the crew a gift',
+    giveNote: (left: number): string => `It comes out of your own money and chests, and whoever takes it first keeps it. ${left} gifts left today; a gift nobody takes comes back after a week.`,
+    giveTo: (name: string): string => `A gift for ${name}`,
+    giveToNote: (name: string, left: number): string => `Only ${name} can take it. ${left} gifts left today.`,
+    giveButton: 'Give',
+    confirm: 'Give it?',
+    youHave: (n: number): string => (n === 0 ? 'none waiting' : `${n} waiting`),
+    sent: (what: string): string => `${what} is under the crew’s tree.`,
+    sentTo: (what: string, name: string): string => `${what} is on its way to ${name}.`,
+    membersTitle: (n: number): string => `Members (${n})`,
+    member: 'Member',
+    founder: 'Founder',
+    profileOf: (name: string): string => `${name}: profile`,
+    joined: (date: string): string => `in the crew since ${date}`,
+    weekXp: 'Season XP for the crew this week',
+    boards: 'On the boards',
+    noBoards: 'Not on a board yet.',
+    remove: 'Take out of the crew',
+    removeConfirm: 'Take out?',
+    inviteTitle: 'Invite to the crew',
+    invite: 'Share invite link',
+    inviteNote: (max: number): string => `Whoever opens the link can join, up to ${max} players. Someone new to the game who joins through you also counts as your invite: you both get a chest at level 5.`,
+    shareText: (name: string): string => `Join my crew ${name} in Roundabout Timing!`,
+    codeSub: 'For bug reports on timing.love/build: a report with your code earns a skin.',
+    leave: 'Leave the crew',
+    leaveConfirm: 'Leave?',
+    leaveOwner: 'You founded it: if you leave, the member who joined first takes over.',
   },
 
   /** The multiplayer sheet (`ui/versusLobby.ts`). */
@@ -1925,7 +1943,7 @@ export const S = {
       if (item.source.kind === 'prestige') return `Reach Prestige ★${item.source.rank}.`;
       if (item.source.kind === 'elite') return `Reach Elite ${item.source.level}.`;
       if (item.source.kind === 'pass') return `Tier ${item.source.tier} of the ${S.pass.seasonName(item.source.season)} Season Pass. It comes back every year.`;
-      if (item.source.kind === 'hall') return 'Build the Hall of Fame (Records → Elite).';
+      if (item.source.kind === 'hall') return 'Built with the old Hall of Fame, which is not for sale any more.';
       if (item.source.kind === 'unlimited') return `Send ${Fmt.number(item.source.cars)} cars in one Unlimited run.`;
       if (item.source.kind === 'tour') return `A stop of the ${S.tours.name(item.source.tour as TourId)} tour. It comes back every year.`;
       if (item.source.kind === 'auction') return 'Only ever a lot at the Auction House (Social → Club). A new lot every few days.';
@@ -1965,6 +1983,8 @@ export const S = {
     pity: (n: number): string => `Epic or better within ${n} chests. Duplicates pay out ${MONEY_MARK}.`,
     pityLegendary: (n: number): string => `A Legendary within ${n} chests.`,
     pitySoon: (n: number): string => `Legendary in ${n}`,
+    buyBundle: (n: number, price: string): string => `${n} for ${price}`,
+    legendaryTimes: (n: number): string => `${n}× the Legendary chance of a Standard Chest.`,
     duplicate: (m: string): string => `Duplicate · +${money(m)}`,
     ownedHint(item: Cosmetic): string {
       if (item.kind === 'carSkin') return 'Paints the cars on the road. Mix up to eight. Only looks, never a bonus.';
@@ -2220,12 +2240,13 @@ export const S = {
     /** What a streak milestone pays, by name: the starter chest or a skin. */
     prize: (p: StreakMilestone['prize']): string => (p.k === 'chest' ? S.shop.chest(p.chest) : S.shop.item(p.id)),
     /** The second line of its row under Progress → Today: what it is, or the streak and what it brings next. */
-    rowLine(streak: number, open: boolean, next: StreakMilestone | null, freezes = 0, toFreeze: number | null = null): string {
+    rowLine(streak: number, open: boolean, next: StreakMilestone | null, freezes = 0, toFreeze: number | null = null, tomorrow: CityEvent | null = null): string {
       if (streak <= 0) return open ? S.daily.readyHint : 'Back tomorrow · play it every day for a streak';
       const days = `${streak} ${streak === 1 ? 'day' : 'days'} in a row`;
       // Whichever reward is nearer: the next prize or the next Freeze.
       const ahead = next && (toFreeze === null || next.left <= toFreeze) ? S.daily.nextMilestone(next.left, S.daily.prize(next.prize)) : toFreeze !== null ? S.daily.freezeLine(toFreeze) : null;
-      const parts = [days, freezes > 0 ? S.daily.freezes(freezes) : null, ahead, open ? null : 'back tomorrow'];
+      // Done for today: tomorrow's city is the reason to come back (it rotates daily, `dailyEvent`).
+      const parts = [days, freezes > 0 ? S.daily.freezes(freezes) : null, ahead, open ? null : tomorrow ? `tomorrow: ${S.cityEvent(tomorrow)}` : 'back tomorrow'];
       return parts.filter((p): p is string => p !== null).join(' · ');
     },
     freezeLine: (days: number): string => `${days} more ${days === 1 ? 'day' : 'days'} for a Streak Freeze`,
@@ -2512,6 +2533,7 @@ export const S = {
   mods: {
     label: 'Modifiers on the next shift',
     tailwind: (pay: number): string => `Tailwind +${Math.round(pay * 100)} %`,
+    afterWork: (pay: number): string => `After Work +${Math.round(pay * 100)} %`,
     streak: (pay: number): string => `Streak +${Math.round(pay * 100)} %`,
     family: (share: number): string => `Family −${Math.round(share * 100)} %`,
   },
@@ -2548,11 +2570,9 @@ export const S = {
     close: 'Close',
     score: 'SCORE',
     flames: 'FLAMES',
-    cars: 'CARS',
     newBest: 'NEW BEST',
     hook: (score: string): string => `Can you beat ${score}?`,
     hookFlames: (flames: string): string => `Can you top ${flames} flames?`,
-    hookChill: 'Come for a drive.',
     combo: (n: number): string => `×${n} combo`,
     tightFits: (n: number): string => (n === 1 ? '1 tight fit' : `${n} tight fits`),
     busted: (n: number): string => `${n} busted`,

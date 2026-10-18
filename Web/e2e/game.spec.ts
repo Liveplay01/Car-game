@@ -16,18 +16,21 @@ interface Entry {
 /** What the ranking service answers for a board (and its day, on the Daily). */
 type Boards = (board: string, day: number | null) => Entry[] | Promise<Entry[]>;
 
+/** More of the service, answered by a test: a JSON body for a path, or null for the defaults. */
+type Api = (method: string, path: string, body: unknown) => unknown;
+
 /** The bits of `window.__game` (dev server only) the tests reach into. */
 interface Game {
   game: {
     perform(action: { k: string; section?: number }): void;
-    save: { career: { collection: string[]; carSkins: string[]; casinoProfit: number } };
+    save: { career: { collection: string[]; carSkins: string[]; casinoProfit: number; money: number } };
   };
 }
 
 const SOCIAL_RANKS = 1;
 
 /** A player with a name and a cloud copy, in English: Ranks opens without asking. Returns the scores sent and the errors seen. */
-async function start(page: Page, query: string, boards: Boards = () => []): Promise<{ sent: string[]; errors: string[] }> {
+async function start(page: Page, query: string, boards: Boards = () => [], api: Api = () => null): Promise<{ sent: string[]; errors: string[] }> {
   const sent: string[] = [];
   const errors: string[] = [];
   page.on('pageerror', (e) => errors.push(e.message));
@@ -38,6 +41,8 @@ async function start(page: Page, query: string, boards: Boards = () => []): Prom
   });
   await page.route('http://api.test/**', async (route) => {
     const url = new URL(route.request().url());
+    const answer = api(route.request().method(), url.pathname, route.request().postDataJSON());
+    if (answer !== null) return route.fulfill({ json: answer });
     const board = url.pathname.match(/^\/v1\/boards\/([\w-]+)(\/score)?$/);
     if (board?.[2]) {
       sent.push(`${board[1]} ${route.request().postData()}`);
@@ -107,7 +112,7 @@ test('Ranks: the Casino board shows once the Casino is reached, with its money',
 test('Ranks: no Casino board before the Casino is reached', async ({ page }) => {
   await start(page, 'level=5');
   const tabs = await openRanks(page);
-  await expect(tabs.getByRole('button')).toHaveText(['Shift level', 'Unlimited', 'Daily', 'Boss Rush']);
+  await expect(tabs.getByRole('button')).toHaveText(['Shift level', 'Unlimited', 'Daily']);
 });
 
 test('Ranks: the casino profit goes to the Casino board on the next save', async ({ page }) => {
@@ -153,4 +158,87 @@ test('Ranks: the board tabs fit a 360 px screen in English', async ({ page }) =>
   const tabs = await openRanks(page);
   const cut = await tabs.getByRole('button').evaluateAll((buttons) => buttons.filter((b) => b.scrollWidth > b.clientWidth + 0.5).map((b) => b.textContent));
   expect(cut).toEqual([]);
+});
+
+/** A crew of two in the Silver league, a gift waiting, computer crews in the table. */
+const crewView = (gifts: number) => ({
+  crew: {
+    name: 'Night Shift',
+    code: 'K7M2-9QXA',
+    link: 'http://api.test/k/K7M29QXA?by=ABCD2345',
+    owner: true,
+    renameAt: null,
+    max: 20,
+    members: [
+      { id: 'p1', name: 'Tester', title: null, joinedAt: 0, owner: true, me: true, xp: 320 },
+      { id: 'p2', name: 'Anna', title: null, joinedAt: 1, owner: false, me: false, xp: 140 },
+    ],
+    week: {
+      week: 2911,
+      league: 'silver',
+      goal: 300,
+      xp: 460,
+      endsAt: Date.now() + 2 * 86_400_000,
+      promote: 3,
+      demote: 3,
+      table: [
+        { id: null, name: 'Night Owls', xp: 900, computer: true, me: false },
+        { id: 'c1', name: 'Night Shift', xp: 460, computer: false, me: true },
+        ...['Ring Riders', 'Exit Strategy', 'Lane Changers', 'Merge Masters', 'Yield Squad', 'Green Wave', 'Slow Lane', 'Gap Hunters'].map((name, i) => ({ id: null, name, xp: 400 - i * 40, computer: true, me: false })),
+      ],
+    },
+    last: { place: 2, move: 1, league: 'silver' },
+    gifts: Array.from({ length: gifts }, (_, i) => ({ id: `g${i}`, from: { id: 'p2', name: 'Anna' }, to: null, item: 'chest:premium', at: 0 })),
+  },
+  gifting: { items: ['money:5000', 'money:25000', 'money:100000', 'chest:standard', 'chest:premium', 'chest:diamond', 'chest:event'], left: 10 },
+});
+
+test('Crew: the league table, a gift to take, and a gift given out of your own money', async ({ page }) => {
+  const posted: unknown[] = [];
+  const { errors } = await start(page, 'level=30', () => [], (method, path, body) => {
+    if (path === '/v1/crews' && method === 'GET') return crewView(1);
+    if (path === '/v1/crews/gifts' && method === 'POST') return (posted.push(body), crewView(1));
+    if (path === '/v1/me/referral') return { code: 'ABCD-2345', link: null, level: 5, reward: 'chest:standard', milestones: [], invitedBy: null, invited: [], done: 0, max: 25 };
+    return null;
+  });
+  const game = (): Promise<number> => page.evaluate(() => (window as unknown as { __game: Game }).__game.game.save.career.money);
+  await page.evaluate(() => (window as unknown as { __game: Game }).__game.game.perform({ k: 'showSocial', section: 0 }));
+  const table = page.getByRole('list', { name: 'This week’s league table' });
+  await expect(table).toBeVisible();
+  await expect(table.getByText('Computer crew').first()).toBeVisible();
+  await expect(page.getByText('Last week: 2nd · up to the Silver league')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Take' })).toBeVisible();
+  const before = await game();
+  const give = page.locator('.row', { hasText: '5,000' }).first().getByRole('button', { name: 'Give' });
+  await tap(give);
+  await tap(page.locator('.row', { hasText: '5,000' }).first().getByRole('button', { name: 'Give it?' }));
+  await expect.poll(() => posted.length).toBe(1);
+  expect(posted[0]).toEqual({ item: 'money:5000', to: null });
+  expect(await game()).toBe(before - 5000);
+  expect(errors).toEqual([]);
+});
+
+test('Keep driving: a crash that ends an Unlimited run is offered back for an ad, and the run goes on', async ({ page }) => {
+  const { errors } = await start(page, 'level=30&adfake');
+  // Not the first day, in Unlimited.
+  await page.evaluate(() => {
+    const g = (window as unknown as { __game: { game: { save: { firstDay: number; mode: string }; perform(a: { k: string }): void } } }).__game.game;
+    g.save.firstDay = 0;
+    g.save.mode = 'unlimited';
+    g.perform({ k: 'restart' });
+  });
+  await page.waitForFunction(() => (window as unknown as { __game: { game: { adOffer: { ready: boolean } } } }).__game.game.adOffer.ready);
+  const crashed = await page.evaluate(() => (window as unknown as { __probe: Probe }).__probe.play('reckless'));
+  expect(crashed.shift.outcome).toBe('struckOut');
+  expect(crashed.screen).toBe('playing');
+  const offered = await page.evaluate(() => (window as unknown as { __probe: Probe }).__probe.wait(1.5));
+  expect(offered.revive).not.toBeNull();
+  await page.evaluate(() => (window as unknown as { __probe: Probe }).__probe.perform({ k: 'watchAdGame', reward: 'revive' }));
+  // The pretend ad takes two seconds of real time.
+  await page.waitForTimeout(2600);
+  const back = await page.evaluate(() => (window as unknown as { __probe: Probe }).__probe.wait(0.2));
+  expect(back.revived).toBe(1);
+  expect(back.shift.outcome).toBeNull();
+  expect(back.revive).toBeNull();
+  expect(errors).toEqual([]);
 });

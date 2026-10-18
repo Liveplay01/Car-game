@@ -152,6 +152,8 @@ export class ShiftState {
   startedAt: number | null = null;
   rushHourSince: number | null = null;
   detonated = false;
+  /** The phase the shift ended in, for a run that goes on (`World.revive`). */
+  endedIn: ShiftPhase = 'running';
 
   get acceptsTaps(): boolean {
     return this.phase === 'waiting' || this.phase === 'running' || this.phase === 'rushHour';
@@ -279,7 +281,7 @@ export class World {
     this.criminal = { kind: 'idle', next: this.criminalRng.unit() < config.criminalChance ? first : Infinity };
     this.transporter = {
       kind: 'idle',
-      next: config.mayhem || config.chill || config.players > 1 ? Infinity : this.transporterRng.range(config.transporterFirst.lo, config.transporterFirst.hi),
+      next: config.mayhem || config.players > 1 ? Infinity : this.transporterRng.range(config.transporterFirst.lo, config.transporterFirst.hi),
     };
     const comes = this.militaryRng.unit() < config.militaryChance;
     this.military = { kind: 'idle', next: comes ? this.militaryRng.range(config.militaryFirst.lo, config.militaryFirst.hi) : Infinity };
@@ -986,7 +988,7 @@ export class World {
           this.events.push({ type: 'shielded', seat: x.seat, point, time: now });
         } else this.events.push({ type: 'faulted', seat: x.seat, point, time: now });
       }
-    } else if (strike && this.isScoring && !this.config.mayhem && this.isStruckOut) this.endShift('struckOut', now, byPolice ? 'policeCrash' : fault === 'ahead' ? 'mergeCrash' : fault === 'behind' ? 'cutOffCrash' : 'ringCrash');
+    } else if (strike && this.isScoring && !this.config.mayhem && this.isStruckOut && now >= this.graceUntil) this.endShift('struckOut', now, byPolice ? 'policeCrash' : fault === 'ahead' ? 'mergeCrash' : fault === 'behind' ? 'cutOffCrash' : 'ringCrash');
     else if (strike && this.isScoring && this.config.trialRule === 'flawless') this.endShift('failed', now, 'ruleCrash');
     for (const id of explosives) explode(this, id, now);
   }
@@ -1408,6 +1410,37 @@ export class World {
     return points;
   }
 
+  /** Runs that went on after a crash ended them (`revive`), the strikes and police crashes forgiven then, and until when no crash ends it again. */
+  revives = 0;
+  private forgiven = { strikes: 0, police: 0 };
+  private graceUntil = -Infinity;
+
+  /**
+   * A run a crash ended goes on (Leo, 18.10.2026, for an ad the player chose): the wrecks are towed, the run is one strike
+   * from its end again, and for `reviveGrace` seconds no crash ends it. Only after a crash; no randomness, so the same seed,
+   * taps and revives give the same result.
+   */
+  revive(now: number): boolean {
+    if (this.shift.phase !== 'ended' || this.shift.outcome !== 'struckOut') return false;
+    // Unlimited pays its cars when the run ends: that end is taken back, so is its pay.
+    if (this.config.endless) this.score.money -= this.config.endlessPayPerCar * this.shift.carsSent;
+    for (const veh of this.vehicles) if (veh.phase.kind === 'crashed') veh.retired = true;
+    this.vehicles = this.vehicles.filter((veh) => !veh.retired);
+    const s = this.score;
+    const strikes = Math.min(s.strikes, Math.max(0, this.config.maxStrikes - 1));
+    const police = Math.min(s.policeCrashes, this.config.maxPoliceCrashes);
+    this.forgiven.strikes += s.strikes - strikes;
+    this.forgiven.police += s.policeCrashes - police;
+    s.strikes = strikes;
+    s.policeCrashes = police;
+    this.shift.phase = this.shift.endedIn;
+    this.shift.outcome = null;
+    this.shift.failCause = null;
+    this.graceUntil = now + this.config.reviveGrace;
+    this.revives++;
+    return true;
+  }
+
   get isStruckOut(): boolean {
     return this.score.strikes >= this.config.maxStrikes || this.score.policeCrashes > this.config.maxPoliceCrashes;
   }
@@ -1703,7 +1736,7 @@ export class World {
 
   /** The next car becomes a police car, for part of the combo (`dispatchComboFactor`). */
   dispatchPolice(): boolean {
-    if (this.config.chill || !this.shift.acceptsTaps || this.dispatchesLeft <= 0 || this.queue.vehicles.length === 0) return false;
+    if (!this.shift.acceptsTaps || this.dispatchesLeft <= 0 || this.queue.vehicles.length === 0) return false;
     const veh = this.vehicle(this.queue.vehicles[0]);
     if (!veh || veh.type === 'police') return false;
     veh.type = 'police';
@@ -1855,17 +1888,13 @@ export class World {
     this.endShift('completed', now);
   }
 
-  /** Chill has no end of its own: the player ends it. */
-  finish(): void {
-    if (this.shift.phase !== 'ended') this.endShift('completed', this.time);
-  }
-
   get isPerfectSoFar(): boolean {
     return this.score.strikes === 0 && this.score.policeCrashes === 0 && this.score.cutOffs === 0;
   }
 
   endShift(outcome: ShiftOutcome, time: number, cause: FailCause | null = null): void {
     if (this.config.endless) this.score.money += this.config.endlessPayPerCar * this.shift.carsSent;
+    this.shift.endedIn = this.shift.phase;
     this.shift.phase = 'ended';
     this.shift.outcome = outcome;
     this.shift.failCause = outcome === 'completed' ? null : cause;
@@ -1889,8 +1918,8 @@ export class World {
       cutOffs: s.cutOffs,
       nearMisses: s.nearMisses,
       perfects: s.perfects,
-      crashes: s.strikes,
-      policeCrashes: s.policeCrashes,
+      crashes: s.strikes + this.forgiven.strikes,
+      policeCrashes: s.policeCrashes + this.forgiven.police,
       takedowns: s.takedowns,
       transporters: s.transporters,
       // The recovered heist is only paid out with a completed shift: a boss level cannot be farmed by losing it.
@@ -1900,7 +1929,8 @@ export class World {
       seed: this.seed,
       time: this.shiftTime(time),
       bestChain: s.bestChain,
-      isPerfectRun: outcome === 'completed' && this.isPerfectSoFar && !this.config.mayhem,
+      isPerfectRun: outcome === 'completed' && this.isPerfectSoFar && this.revives === 0 && !this.config.mayhem,
+      revived: this.revives > 0,
       carsSent: this.shift.carsSent,
       flames: s.flames,
       wrecks: s.wrecks,

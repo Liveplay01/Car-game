@@ -103,7 +103,7 @@ function bar(share: number, from = share): { el: HTMLElement; go(): void } {
 }
 
 /** The money mark in a text becomes the gold coin, as in the other sheets (`DetailSheet`), built from nodes. */
-function withCoins(root: Node): void {
+export function withCoins(root: Node): void {
   const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
   const found: Text[] = [];
   for (let node = walker.nextNode(); node; node = walker.nextNode()) if (node.nodeValue?.includes(MONEY_MARK)) found.push(node as Text);
@@ -257,9 +257,17 @@ export function clubPanel(host: ClubHost): ClubPanel {
     if (fresh) host.changed();
     const rows = lots.map((lot, slot) => {
       const can = Auction.canStart(career, slot, day);
-      const button = h('button', { class: `btn${can ? ' primary' : ''}`, type: 'button', disabled: !can, 'aria-label': S.clubPanel.bidOn(lotName(lot)) }, can ? S.clubPanel.enter : career.auctionTaken.includes(slot) ? S.clubPanel.tried : S.clubPanel.owned);
+      const owned = lot.k === 'skin' && career.collection.includes(lot.id);
+      const button = h('button', { class: `btn${can ? ' primary' : ''}`, type: 'button', disabled: !can, 'aria-label': S.clubPanel.bidOn(lotName(lot)) }, can ? S.clubPanel.enter : owned ? S.clubPanel.owned : S.clubPanel.tried);
       button.addEventListener('click', () => begin(slot));
-      return h('div', { class: 'row' }, swatch(lot), h('div', { class: 'row-main' }, h('div', { class: 'row-title' }, lotName(lot)), h('div', { class: 'row-sub' }, S.clubPanel.estimate(lotKind(lot), cash(Auction.estimate(lot))))), button);
+      // Buy now: the fixed price instead of the room, for a skin (the shop window, Leo 18.10.2026).
+      const price = Auction.buyNowPrice(lot);
+      const buy =
+        can && price !== null
+          ? h('button', { class: 'btn', type: 'button', disabled: career.money < price, 'aria-label': S.clubPanel.buyNowLabel(lotName(lot), cash(price)) }, S.clubPanel.buyNow(cash(price)))
+          : null;
+      buy?.addEventListener('click', () => buyNow(slot));
+      return h('div', { class: 'row' }, swatch(lot), h('div', { class: 'row-main' }, h('div', { class: 'row-title' }, lotName(lot)), h('div', { class: 'row-sub' }, S.clubPanel.estimate(lotKind(lot), cash(Auction.estimate(lot))))), buy ? h('div', { class: 'lot-actions' }, button, buy) : button);
     });
     const [sharkLo, sharkHi] = baseConfig.auctionShark;
     const [pennyLo, pennyHi] = baseConfig.auctionPenny;
@@ -267,9 +275,18 @@ export function clubPanel(host: ClubHost): ClubPanel {
       label(S.clubPanel.lots),
       h('div', { class: 'list' }, ...rows),
       note(S.clubPanel.rules(Math.round(baseConfig.auctionSharkShare * 10), sharkLo, sharkHi, pennyLo, pennyHi, percent(baseConfig.auctionStartShare), percent(baseConfig.auctionPremium))),
+      note(S.clubPanel.buyNowRule(baseConfig.auctionBuyNow)),
     ];
     if (career.auctionWins > 0) out.push(note(S.clubPanel.record(career.auctionWins, cash(career.auctionSpent))));
     return out;
+  }
+
+  function buyNow(slot: number): void {
+    if (Auction.buyNow(career, slot, host.today()) === null) return;
+    host.changed();
+    host.celebrate();
+    host.sound?.('paid');
+    show();
   }
 
   function begin(slot: number): void {

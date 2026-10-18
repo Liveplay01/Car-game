@@ -1,6 +1,6 @@
 import type { Strings } from '../../strings';
 import type { Words } from '../../i18n';
-import { INVITE_LEVEL, INVITE_REMINDER_LEVEL } from '../../../core/config';
+import { INVITE_LEVEL } from '../../../core/config';
 
 /** Deutsch, Teil 1: Tutorial, Einführungen, Einstellungen, Cloud, Hinweise, Läufe. */
 export default (_s: Strings): Words<Strings> => ({
@@ -84,11 +84,19 @@ export default (_s: Strings): Words<Strings> => ({
         'Zahle rechtzeitig zurück, und der nächste Kredit wird freundlicher. Zahlst du zu spät, nimmt die Familie einen Anteil jeder Schicht, und das Casino bleibt zu, bis alles bezahlt ist.',
       ],
     },
+    crew: {
+      title: 'Crew',
+      line: 'Eine Wochen-Liga, gemeinsam gespielt',
+      body: [
+        'Eine Crew hat bis zu 20 Spieler. Die Season-XP jeder Schicht zählen für ihre Woche; am Montag steigen die besten Crews einer Gruppe auf, mit einer Premium-Truhe für alle, die geholfen haben.',
+        'Schenk deiner Crew etwas aus deinem eigenen Geld und deinen Truhen: Wer es zuerst nimmt, behält es. Tippe auf ein Mitglied, um seine Rekorde zu sehen und ihm ein eigenes Geschenk zu machen.',
+        'Beitreten geht nur mit einem Einladungslink eines Mitglieds. Gründe selbst eine Crew und verschick deinen Link.',
+      ],
+    },
   },
 
   settings: {
     synced: 'Synchron',
-    syncAsk: 'Sync?',
     title: 'Einstellungen',
     tabs: { play: 'Spiel', account: 'Konto', about: 'Info' },
     language: 'Sprache',
@@ -134,6 +142,7 @@ export default (_s: Strings): Words<Strings> => ({
     guides: 'Anleitungen',
     guidesSub: 'Wie jeder Ort funktioniert, jederzeit.',
     whatsNew: 'Neuigkeiten',
+    awayNews: 'Neu, seit du weg warst',
     whatsNewSub: 'Patchnotes und Updates.',
     newBadge: 'Neu',
     buildWithUs: 'Gestalte mit',
@@ -203,8 +212,11 @@ export default (_s: Strings): Words<Strings> => ({
     asked: 'Gefragt',
     syncNow: 'Jetzt syncen',
     linkedIntro: 'Dein Fortschritt wird beim Spielen in die Cloud kopiert. Öffne auf einem anderen Gerät Einstellungen → Konto → Cloud-Sync und gib diesen Code ein.',
-    yourCode: 'Dein Sync-Code',
+    yourCode: 'Dein Sync-Code · geheim',
     yourCodeLabel: (code) => `Dein Sync-Code: ${code}`,
+    hiddenLabel: 'Dein Sync-Code, verborgen',
+    reveal: 'Zeigen',
+    conceal: 'Verbergen',
     cloudCopy: 'Cloud-Kopie',
     passwordManager: 'Passwortmanager',
     passwordManagerSub: 'Lass deinen Browser den Code merken, dann füllt er ihn auf einem neuen Gerät aus.',
@@ -225,7 +237,7 @@ export default (_s: Strings): Words<Strings> => ({
     intro: 'Wähle einen Namen. Er ist dein Spieler für alles Online, und dein Fortschritt wird damit gesichert. Sonst musst du dich nirgends anmelden.',
     perks: {
       ranks: { title: 'Ranglisten', sub: 'Dein Level und deine Rekorde in den Ranglisten.' },
-      friends: { title: 'Freunde', sub: 'Ein Freundescode, eine Rangliste mit deinen Freunden und Einladungen.' },
+      crew: { title: 'Crew', sub: 'Eine Crew mit Wochen-Liga, Geschenken und Einladungen.' },
       versus: { title: 'Multiplayer', sub: 'Der Name, den die anderen im Match sehen.' },
       cloud: { title: 'Cloud-Sync', sub: 'Dein Fortschritt sicher und auf jedem Gerät.' },
     },
@@ -241,7 +253,6 @@ export default (_s: Strings): Words<Strings> => ({
     done: (name) => `Du bist ${name}. Ranglisten, Freunde, Multiplayer und Cloud-Sync sind bereit.`,
     doneLocal: (name) => `Du bist ${name}. Ranglisten und Multiplayer sind bereit.`,
     nameLabel: 'Spielername',
-    keepSub: 'Dein Browser merkt sich Name und Code wie eine Anmeldung und füllt sie auf einem neuen Gerät aus.',
     codeNote: 'Öffne auf einem anderen Gerät Einstellungen → Konto → Cloud-Sync und gib diesen Code ein. Wer ihn hat, kann deinen Fortschritt laden: Behalte ihn für dich.',
     finish: 'Fertig',
     manage: 'Cloud-Sync-Einstellungen',
@@ -269,8 +280,6 @@ export default (_s: Strings): Words<Strings> => ({
     invited: `Von einem Freund eingeladen · Erreiche Level ${INVITE_LEVEL}, und ihr bekommt beide eine Truhe`,
     invitedNeedsName: `Von einem Freund eingeladen · Wähle unter Social einen Namen, erreiche Level ${INVITE_LEVEL}, und ihr bekommt beide eine Truhe`,
     invite: { caption: 'FREUND EINLADEN', text: `Ihr bekommt beide bei Level ${INVITE_LEVEL} eine Truhe. Unter Social findest du Code und Link` },
-    inviteReminder: { caption: 'FREUND EINLADEN', text: `Level ${INVITE_REMINDER_LEVEL}! Bring einen Freund mit: Ihr bekommt beide bei Level ${INVITE_LEVEL} eine Truhe. Code unter Social` },
-    buildWithUs: { caption: 'NEUE WEBSEITE', text: 'timing.love: melde dort Fehler und Ideen. Bug-Hunter bekommen vielleicht ein Geschenk' },
   },
 
   run: {

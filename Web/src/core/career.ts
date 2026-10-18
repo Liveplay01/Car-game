@@ -14,12 +14,12 @@ import {
   type Upgrade,
   forArms,
   forIntro,
+  forEase,
   forWeather,
   forNight,
   drawNight,
   forCityEvent,
   forMayhem,
-  forChill,
   drawWeather,
   drawCityEvent,
   armPrice as configArmPrice,
@@ -39,6 +39,7 @@ import {
   rollChest,
   tappedOdds,
   chestPrice,
+  chestBundle,
   DUPLICATE_MONEY,
   MAX_CAR_SKINS,
   COSMETICS,
@@ -53,7 +54,6 @@ import { randomSeed, Rng } from './rng';
 import { Elite, type EliteGain, type EliteStep, type TitleId, TITLES } from './elite';
 import type { HallEntry } from './seasonPass';
 import { clamp } from './vec2';
-import { type MutatorId, mutatorOf, mutatorSky, withMutator } from './mutators';
 
 /** What counting a day into the Daily streak brought: a milestone item, Freezes used on missed days, a new Freeze. */
 export interface StreakNews {
@@ -74,8 +74,8 @@ export interface StreakMilestone {
 }
 
 // New modes go at the end: a challenge link stores their positions.
-export type GameMode = 'shift' | 'unlimited' | 'mayhem' | 'chill';
-export const GAME_MODES: GameMode[] = ['shift', 'unlimited', 'mayhem', 'chill'];
+export type GameMode = 'shift' | 'unlimited' | 'mayhem';
+export const GAME_MODES: GameMode[] = ['shift', 'unlimited', 'mayhem'];
 
 export type ReduceMotion = 'system' | 'on' | 'off';
 
@@ -221,6 +221,9 @@ export interface Career {
   /** The day and how many won career shifts an ad paid once more (`adShiftDoublesPerDay`). */
   adShiftDoubleDay: number;
   adShiftDoubles: number;
+  /** The day and how many runs an ad let go on after a crash (`reviveAdsPerDay`). */
+  adReviveDay: number;
+  adRevives: number;
   /** The day an ad gave the lost Daily a second try, and whether that try waits to be played. */
   adRetryDay: number;
   dailyRetry: boolean;
@@ -295,11 +298,13 @@ export interface Career {
   casinoProfit: number;
   /** How early (−) or late (+) the last merges were tapped, in ms (`core/timing.ts`). */
   tapOffsets: number[];
-  /** The Season Pass bought (its season key, core/seasonPass.ts), its XP and the tiers paid. */
+  /** The Season Pass bought (its season key, core/seasonPass.ts); the season the XP belongs to, the XP, and the tiers paid with the pass and on the free track. */
   passKey: string | null;
+  passSeason: string | null;
   passXp: number;
   passClaimed: number;
-  /** The Hall of Fame: built or not, and a plaque for every Prestige rank. */
+  passFreeClaimed: number;
+  /** The Prestige log: a plaque for every rank. `hallBuilt` is the old Hall of Fame (not for sale since 18.10.2026): whoever built it keeps its wall. */
   hallBuilt: boolean;
   hallOfFame: HallEntry[];
   /** Tour stops passed, each once per run of its tour (`core/tours.ts`: `halloween-2026.3`). */
@@ -335,7 +340,7 @@ export interface Career {
  * and a backup of the progress (each once, from its level on; `config.*HintAfterLevel`), and
  * what a Perfect Run is, the first time one happens.
  */
-export const HINTS = ['modes', 'install', 'backup', 'perfectRun', 'reduceMotion', 'buildWithUs', 'invite', 'inviteReminder', 'scout', 'tightFit', 'unlimitedTip', 'portalLogin', 'notifications', 'notificationsStreak', 'tomorrow', 'account', 'introsStarted', 'newsStarted', 'intro.museum', 'intro.builder', 'intro.daily', 'intro.trials', 'intro.pass', 'intro.casino', 'intro.club', 'intro.gamefund', 'intro.mafia'] as const;
+export const HINTS = ['modes', 'install', 'perfectRun', 'reduceMotion', 'invite', 'scout', 'tightFit', 'unlimitedTip', 'portalLogin', 'notifications', 'notificationsStreak', 'tomorrow', 'account', 'introsStarted', 'newsStarted', 'intro.museum', 'intro.builder', 'intro.daily', 'intro.trials', 'intro.pass', 'intro.casino', 'intro.club', 'intro.gamefund', 'intro.mafia', 'intro.crew'] as const;
 export type Hint = (typeof HINTS)[number] | `news.${string}`;
 
 /** Everything that is saved (`storage/save.ts` reads and writes it). */
@@ -351,13 +356,11 @@ export interface SaveGame {
   hints: Hint[];
   mode: GameMode;
   unlimitedBest: number;
+  /** The Unlimited record went on after a crash, for an ad: the board says so. */
+  unlimitedBestRevived: boolean;
   unlimitedBestCars: number;
   mayhemBest: number;
   mayhemBestChain: number;
-  /** Chill: the most cars in one run, all cars sent, and the seconds spent. */
-  chillBest: number;
-  chillCars: number;
-  chillTime: number;
   /** The Daily Shift cleared most recently: its day and score, for the Daily board. */
   dailyDay: number;
   dailyScore: number;
@@ -400,6 +403,8 @@ export const newCareer = (): Career => ({
   adDoubleDay: -1,
   adShiftDoubleDay: -1,
   adShiftDoubles: 0,
+  adReviveDay: -1,
+  adRevives: 0,
   adRetryDay: -1,
   dailyRetry: false,
   upgradeBoost: false,
@@ -449,8 +454,10 @@ export const newCareer = (): Career => ({
   casinoProfit: 0,
   tapOffsets: [],
   passKey: null,
+  passSeason: null,
   passXp: 0,
   passClaimed: 0,
+  passFreeClaimed: 0,
   hallBuilt: false,
   hallOfFame: [],
   toursDone: [],
@@ -481,12 +488,10 @@ export const newSave = (): SaveGame => ({
   hints: [],
   mode: 'shift',
   unlimitedBest: 0,
+  unlimitedBestRevived: false,
   unlimitedBestCars: 0,
   mayhemBest: 0,
   mayhemBestChain: 0,
-  chillBest: 0,
-  chillCars: 0,
-  chillTime: 0,
   dailyDay: -1,
   dailyScore: 0,
   dailyTries: 1,
@@ -495,9 +500,6 @@ export const newSave = (): SaveGame => ({
 });
 
 export const MINIMUM_ARMS = 4;
-
-/** The skies Chill draws from: mostly clear. */
-const CHILL_WEATHER: Weather[] = ['clear', 'clear', 'lightRain', 'fog', 'snow'];
 
 /** All career rules as functions on the plain save data. */
 export const Careers = {
@@ -526,7 +528,7 @@ export const Careers = {
   /**
    * The config of the next shift: the roundabout as it is built, then its level, the upgrades,
    * and last the sky, the city and a legendary rule. After a Prestige the
-   * traffic is that of a higher level (`headStart`); the bosses keep to the level shown.
+   * traffic is that of a higher level (`headStart`); the bosses keep to the level shown, and each rank brings the next of them (`bossShift`).
    * `legendary` pins the rule (null: none); undefined draws it from the seed.
    */
   config(
@@ -536,9 +538,9 @@ export const Careers = {
     weather: Weather | null = null,
     event: CityEvent | null | undefined = undefined,
     legendary: LegendaryRule | null | undefined = undefined,
-    mutator: MutatorId | null = null,
   ): Config {
     const cfg = cloneConfig(base);
+    cfg.prestige = c.prestige;
     cfg.armSlots = [...c.armSlots];
     cfg.modules = { ...c.modules };
     cfg.moduleLevels = { ...c.moduleLevels };
@@ -547,13 +549,11 @@ export const Careers = {
     cfg.vanShare = Careers.owns(c, 'van') ? base.vanShareOwned : 0;
     cfg.classicShare = Careers.owns(c, 'classic') ? base.classicShareOwned : 0;
     const level = c.level + Careers.headStart(c, base);
-    const shift = upgraded(forArms(forLevel(cfg, level, seed, c.level)), (u) => Careers.steps(c, u));
-    const pinned = mutator ? mutatorSky(mutator) : {};
-    const rule = pinned.rule ?? (legendary === undefined ? drawLegendary(shift, level, seed) : legendary);
+    const shift = upgraded(forArms(forLevel(cfg, level, seed, c.level + Careers.bossShift(c, base))), (u) => Careers.steps(c, u));
+    const rule = legendary === undefined ? drawLegendary(shift, level, seed) : legendary;
     const stormy = rule === 'darkStorm' ? 'storm' : null;
-    const sky = forNight(forWeather(shift, weather ?? pinned.weather ?? stormy ?? drawWeather(shift, level, seed)), pinned.darkness ?? Careers.darkness(shift, rule, level, seed));
-    const out = forLegendary(forCityEvent(sky, event === undefined ? drawCityEvent(sky, level, seed) : event, seed), rule);
-    return mutator ? withMutator(out, mutator) : out;
+    const sky = forNight(forWeather(shift, weather ?? stormy ?? drawWeather(shift, level, seed)), Careers.darkness(shift, rule, level, seed));
+    return forLegendary(forCityEvent(sky, event === undefined ? drawCityEvent(sky, level, seed) : event, seed), rule);
   },
 
   /** The phantom and the kingpin come in a blackout, and so does a Dark Storm; otherwise the seed decides. */
@@ -567,6 +567,9 @@ export const Careers = {
   /** How many levels harder the traffic runs after Prestige: the rank's head start. */
   /** The level whose traffic the career meets: what `forIntro` and the daily challenges go by. */
   reach: (c: Career): number => c.level + Careers.headStart(c),
+
+  /** The levels the boss schedule has moved on: a rank meets the next `bossesPerRank` bosses at the same levels 15, 30 and 45. */
+  bossShift: (c: Career, config: Config = baseConfig): number => c.prestige * config.bossesPerRank * config.convoyEvery,
 
   headStart: (c: Career, config: Config = baseConfig): number => Math.min(c.prestige * config.prestigeHeadStart, config.maxPrestigeHeadStart),
 
@@ -605,20 +608,6 @@ export const Careers = {
   recordHeat(c: Career, heat: number, config: Config = baseConfig): boolean {
     if (heat <= c.heatCleared || heat > config.maxHeat) return false;
     c.heatCleared = heat;
-    return true;
-  },
-
-  // MARK: Hall of Fame
-
-  /** The Hall of Fame can be built once the Elite track is open (Level 50 reached once). */
-  canBuildHall: (c: Career, config: Config = baseConfig): boolean => !c.hallBuilt && Elite.isOpen(c, config) && c.money >= config.hallOfFamePrice,
-
-  /** Builds the Hall of Fame: the monument goes up in the city and its skin is yours. */
-  buildHall(c: Career, config: Config = baseConfig): boolean {
-    if (!Careers.canBuildHall(c, config)) return false;
-    c.money -= config.hallOfFamePrice;
-    c.hallBuilt = true;
-    Careers.collect(c, 'hallOfFame');
     return true;
   },
 
@@ -747,11 +736,12 @@ export const Careers = {
 
   count: (c: Career, kind: ChestKind): number => c.chests.filter((k) => k === kind).length,
 
-  buyChest(c: Career, kind: ChestKind, config: Config = baseConfig): boolean {
-    const price = chestPrice(kind, config);
+  buyChest(c: Career, kind: ChestKind, config: Config = baseConfig, bundle = false): boolean {
+    const pack = bundle ? chestBundle(kind, config) : null;
+    const price = bundle ? (pack?.price ?? null) : chestPrice(kind, config);
     if (price === null || c.money < price) return false;
     c.money -= price;
-    c.chests.push(kind);
+    for (let i = 0; i < (pack?.count ?? 1); i++) c.chests.push(kind);
     return true;
   },
 
@@ -940,6 +930,19 @@ export const Careers = {
     return true;
   },
 
+  adRevivesLeft: (c: Career, day: number, config: Config = baseConfig): number => Math.max(0, config.reviveAdsPerDay - (c.adReviveDay === day ? c.adRevives : 0)),
+
+  /** A watched ad: one of today's revives is used. False when they are taken. */
+  rewardAdRevive(c: Career, day: number, config: Config = baseConfig): boolean {
+    if (Careers.adRevivesLeft(c, day, config) <= 0) return false;
+    if (c.adReviveDay !== day) {
+      c.adReviveDay = day;
+      c.adRevives = 0;
+    }
+    c.adRevives++;
+    return true;
+  },
+
   // MARK: Daily, challenges, albums, best times
 
   /** Back after `comebackDays` or more: a Premium Chest, with its usual odds. Before the login is booked (it reads the last day). */
@@ -996,9 +999,6 @@ export const Careers = {
     c.adRetryDay = day;
     return true;
   },
-
-  /** The day's twist for the Daily Shift; a career's very first Daily goes without it, so a new player's second shift is no blackout. */
-  dailyMutator: (c: Career, day: number): MutatorId | null => (c.dailyPlayed < 0 ? null : mutatorOf(day)),
 
   startDaily(c: Career, day: number, config: Config = baseConfig): StreakNews | null {
     if (!Careers.isDailyOpen(c, day)) return null;
@@ -1180,15 +1180,7 @@ export const Careers = {
     seed: number,
     event: CityEvent | null | undefined = undefined,
     legendary: LegendaryRule | null | undefined = undefined,
-    mutator: MutatorId | null = null,
   ): Config {
-    if (mode === 'chill') {
-      // A calm sky and, now and then, an evening: drawn from the seed, never harsh.
-      const rng = new Rng((seed ^ 0xc41117) >>> 0);
-      const weather = rng.pick(CHILL_WEATHER);
-      const sky = Careers.config({ ...c, level: base.chillLevel, prestige: 0 }, base, seed, weather, null, null);
-      return forChill(forNight(sky, rng.unit() < 0.35 ? 'night' : 'day'));
-    }
     // Unlimited and Mayhem have their own fixed level: no Prestige head start, no legendary rule.
     if (mode === 'unlimited') {
       const cfg = Careers.config({ ...c, level: base.endlessLevel, prestige: 0 }, base, seed, null, event, null);
@@ -1204,7 +1196,7 @@ export const Careers = {
       return cfg;
     }
     if (mode === 'mayhem') return forMayhem(Careers.config({ ...c, level: base.mayhemLevel, prestige: 0 }, base, seed, null, event, null));
-    const cfg = forIntro(Careers.config(c, base, seed, null, event, legendary, mutator), c.level + Careers.headStart(c, base));
+    const cfg = forIntro(Careers.config(c, base, seed, null, event, legendary), c.level + Careers.headStart(c, base));
     // The scout goes by the level alone: a challenge from such a shift brings it as well.
     cfg.scout = c.level === base.scoutLevel && !cfg.convoy;
     return cfg;
@@ -1212,15 +1204,20 @@ export const Careers = {
 
   /**
    * A plain career shift (not the Daily, a challenge or a trial), eased by what this career has been through: after
-   * `easeAfterLosses` lost shifts on the level the fewest cars it has, and the first bad weather and the first night
-   * for sure once their level is passed. Either marks the shift `assisted`.
+   * `easeAfterLosses` lost shifts on the level the fewest cars it has and quieter traffic with every further loss
+   * (`forEase`), a forgiven first crash until the first won shift, and the first bad weather and the first night for
+   * sure once their level is passed. Each marks the shift `assisted`.
    */
   careerShift(c: Career, base: Config, seed: number): Config {
     let cfg = Careers.shiftConfig(c, 'shift', base, seed);
     const eased = (next: Config): Config => ({ ...next, assisted: true });
-    if (c.levelLosses >= base.easeAfterLosses && !cfg.convoy) {
+    const fresh = c.prestige === 0 && c.mastery.shiftsCompleted === 0;
+    if (fresh) cfg = eased({ ...cfg, maxStrikes: cfg.maxStrikes + 1 });
+    const after = fresh ? base.easeAfterLossesNew : base.easeAfterLosses;
+    if (c.levelLosses >= after) {
       const fewest = shiftCarsRange(cfg.level, base)[0];
-      if (cfg.shiftCars > fewest) cfg = eased({ ...cfg, shiftCars: fewest });
+      if (cfg.shiftCars > fewest && !cfg.convoy) cfg = eased({ ...cfg, shiftCars: fewest });
+      cfg = forEase(cfg, c.levelLosses - after + 1);
     }
     // A Legendary Shift has its own sky; a career after a Prestige has met it all.
     if (cfg.legendary === null && c.prestige === 0) {

@@ -198,7 +198,7 @@ const ranks: Partial<Record<BoardId, number>> = {};
 export const knownRank = (board: BoardId): number | null => (loadAccount() ? (ranks[board] ?? null) : null);
 
 /** The Daily board is one list per day: ask for the player's own day, as the Daily Shift follows it. */
-const dayQuery = (board: BoardId): string => (board === 'daily' ? `&day=${dayNumber()}` : '');
+export const dayQuery = (board: BoardId): string => (board === 'daily' ? `&day=${dayNumber()}` : '');
 
 /** Every board shows this many lines, then your own place if it is further down (Leo, 05.10.2026). */
 export const BOARD_TOP = 50;
@@ -224,62 +224,6 @@ export async function submitScore(board: BoardId, body: Record<string, number>):
   }
 }
 
-// MARK: Friends
-
-export interface Friend {
-  id: string;
-  name: string;
-}
-
-export interface FriendsView {
-  /** Your own friend code, like `K7M2-9QXA`: what you send to a friend. */
-  code: string;
-  friends: Friend[];
-}
-
-/** Your friend code and your list. Needs an account (a name). */
-export async function fetchFriends(): Promise<FriendsView> {
-  const account = loadAccount();
-  if (!account) throw new LeaderboardError('unauthorized', 'Enter a name first.', 401);
-  try {
-    return await request<FriendsView>('GET', '/v1/friends', { token: account.token });
-  } catch (error) {
-    return forgetIfRefused(error);
-  }
-}
-
-/** Adds a friend by their code. Throws `unknown_code`, `own_code`, `invalid_code` or `too_many_friends` with a sentence to show. */
-export async function addFriend(code: string): Promise<Friend> {
-  const account = loadAccount();
-  if (!account) throw new LeaderboardError('unauthorized', 'Enter a name first.', 401);
-  try {
-    return (await request<{ friend: Friend }>('POST', '/v1/friends', { token: account.token, body: { code } })).friend;
-  } catch (error) {
-    return forgetIfRefused(error);
-  }
-}
-
-export async function removeFriend(id: string): Promise<void> {
-  const account = loadAccount();
-  if (!account) return;
-  try {
-    await request<void>('DELETE', `/v1/friends/${encodeURIComponent(id)}`, { token: account.token });
-  } catch (error) {
-    forgetIfRefused(error);
-  }
-}
-
-/** A board among you and your friends: the same lines as the public one, ranked only against them. */
-export async function fetchFriendsBoard(board: BoardId): Promise<BoardView & { friends: number }> {
-  const account = loadAccount();
-  if (!account) throw new LeaderboardError('unauthorized', 'Enter a name first.', 401);
-  try {
-    return await request<BoardView & { friends: number }>('GET', `/v1/friends/boards/${board}${dayQuery(board).replace('&', '?')}`, { token: account.token });
-  } catch (error) {
-    return forgetIfRefused(error);
-  }
-}
-
 /** What the game knows of the player's records, in the shape the boards take them. */
 export interface Records {
   level: number;
@@ -287,6 +231,8 @@ export interface Records {
   unlimitedBest: number;
   /** The most cars sent in an Unlimited run (the plausibility check wants cars for a score). */
   unlimitedCars: number;
+  /** The record went on after a crash, for an ad. */
+  unlimitedRevived: boolean;
   /** The Daily Shift cleared last: its day and points (day -1: none). */
   dailyDay: number;
   dailyScore: number;
@@ -338,7 +284,7 @@ const levelScore = (r: Records): number => r.prestige * 1000 + r.level;
 export function due(r: Records): [BoardId, Record<string, number>, number][] {
   const list: [BoardId, Record<string, number>, number][] = [];
   if ((confirmed['shift-level'] ?? -1) < levelScore(r)) list.push(['shift-level', { level: r.level, prestige: r.prestige }, levelScore(r)]);
-  if (r.unlimitedBest > 0 && (confirmed.unlimited ?? -1) < r.unlimitedBest) list.push(['unlimited', { score: r.unlimitedBest, cars: Math.max(1, r.unlimitedCars) }, r.unlimitedBest]);
+  if (r.unlimitedBest > 0 && (confirmed.unlimited ?? -1) < r.unlimitedBest) list.push(['unlimited', { score: r.unlimitedBest, cars: Math.max(1, r.unlimitedCars), ...(r.unlimitedRevived ? { revived: 1 } : {}) }, r.unlimitedBest]);
   // A day counts as one growing number with its score, so a new day always counts as better than the day before.
   const daily = r.dailyDay * 1_000_000 + r.dailyScore;
   if (r.dailyDay >= 0 && r.dailyScore > 0 && (confirmed.daily ?? -1) < daily) list.push(['daily', { score: r.dailyScore, day: r.dailyDay, ...(r.dailyTries > 1 ? { tries: r.dailyTries } : {}) }, daily]);

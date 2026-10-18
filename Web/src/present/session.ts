@@ -1,18 +1,19 @@
 import { World, STEP } from '../core/world';
-import { baseConfig, gravity, builtArmSlots, weatherSeverity, INVITE_REMINDER_LEVEL, BUILD_WITH_US_LEVEL, type Config } from '../core/config';
+import { baseConfig, gravity, builtArmSlots, weatherSeverity, type Config } from '../core/config';
 import { type SaveGame, type GameMode, type Hint, Careers, newSave } from '../core/career';
 import { Elite } from '../core/elite';
+import { addCrewXp } from '../net/crews';
 import { SeasonPass } from '../core/seasonPass';
 import { Unlocks } from '../core/unlocks';
 import { Mafia } from '../core/mafia';
 import type { GameEvent, ShiftResult } from '../core/events';
 import type { Upgrade } from '../core/levels';
-import { ALBUM_REWARD, BIG_SCREEN, CHEST_KINDS, chestPrice, cosmetic, rarityRank, tapPower, strongTaps, type ChestKind } from '../core/loot';
+import { ALBUM_REWARD, BIG_SCREEN, CHEST_KINDS, chestPrice, chestBundle, cosmetic, rarityRank, tapPower, strongTaps, type ChestKind } from '../core/loot';
 import { dailySeed, dailyEvent, dayNumber } from '../core/daily';
 import { weekNumber, weeklyTrial } from '../core/weekly';
 import { Goals } from '../core/goals';
 import { noteTap } from '../core/timing';
-import { latestNote } from './patchNotes';
+import { type PatchNote, PATCH_NOTES, latestNote } from './patchNotes';
 import { ChestReel } from './chestReel';
 import { type Vec2, v, add, clamp } from '../core/vec2';
 import { loadSave, saveTrust, writeSave } from '../storage/save';
@@ -22,7 +23,7 @@ import type { Reward } from '../net/rewards';
 import { cloudChanged, cloudEnabled, cloudLinked } from '../net/cloud';
 import { fetchIdeas, ideasEnabled } from '../net/ideas';
 import { Auction } from '../core/auction';
-import { RenderList, R, Ease, toScreen, rect, type Camera, type Rect } from './render';
+import { RenderList, R, Ease, toScreen, rect, drawText, type Camera, type Rect } from './render';
 import type { ColorToken } from './theme';
 import { S, Fmt, money as moneyText } from './strings';
 import { CrashEffects } from './effects';
@@ -88,8 +89,6 @@ export type InputAction =
   | { k: 'back' }
   | { k: 'restart' }
   | { k: 'dispatch' }
-  /** Chill has no end of its own: the player ends the drive. */
-  | { k: 'finishChill' }
   | { k: 'focusLost' }
   | { k: 'focusGained' }
   | { k: 'pointerDown'; p: Vec2; ago?: number }
@@ -125,7 +124,7 @@ export interface SessionOutput {
 
 /** One thing that changes the next shift's pay (`GameSession.modifiers`). */
 export interface Modifier {
-  id: 'heat' | 'tailwind' | 'streak' | 'family';
+  id: 'heat' | 'tailwind' | 'afterWork' | 'streak' | 'family';
   label: string;
   tone: 'heat' | 'bonus' | 'loss';
 }
@@ -225,6 +224,8 @@ export class GameSession {
   private resultShiftPay = 0;
   /** The ad the Game tab offers (`gameAd`): where its pill stands, which one it is, how long it has stood there, and which offers the statistics were told of. */
   private adTarget: { reward: GameAd; rect: Rect } | null = null;
+  /** A crash ended the run and it may go on for an ad (Leo, 18.10.2026): its result waits, and how long since the crash. */
+  private revive: { result: ShiftResult; age: number } | null = null;
   private adPillReward: GameAd | null = null;
   private adPillAge = 0;
   private readonly adTold = new Set<GameAd>();
@@ -313,6 +314,8 @@ export class GameSession {
   playingLevel = 1;
   dailySelected = false;
   playingDaily = false;
+  /** The waiting shift was set up in the After Work hours and pays for them. */
+  private afterWork = false;
   private dailySplash: number | null = null;
   private splits: number[] = [];
   private raceDelta: number | null = null;
@@ -404,7 +407,7 @@ export class GameSession {
   /** The records the leaderboards rank (`net/leaderboard.ts`). */
   get leaderboardRecords(): Records {
     const { save } = this;
-    return { level: save.career.level, prestige: save.career.prestige, unlimitedBest: save.unlimitedBest, unlimitedCars: save.unlimitedBestCars, dailyDay: save.dailyDay, dailyScore: save.dailyScore, dailyTries: save.dailyTries, rushBest: save.career.rushBest, casinoProfit: Unlocks.isKnown(save.career, 'casino', this.config) ? save.career.casinoProfit : null, title: Mafia.late(save.career) ? 'mafia' : save.career.title };
+    return { level: save.career.level, prestige: save.career.prestige, unlimitedBest: save.unlimitedBest, unlimitedCars: save.unlimitedBestCars, unlimitedRevived: save.unlimitedBestRevived, dailyDay: save.dailyDay, dailyScore: save.dailyScore, dailyTries: save.dailyTries, rushBest: save.career.rushBest, casinoProfit: Unlocks.isKnown(save.career, 'casino', this.config) ? save.career.casinoProfit : null, title: Mafia.late(save.career) ? 'mafia' : save.career.title };
   }
 
   get visibleUpgrades(): readonly Upgrade[] {
@@ -463,6 +466,29 @@ export class GameSession {
     this.flushVisit();
   }
 
+  private awayNews: PatchNote[] = [];
+  /** Opens the shell's sheet of what is new since a long absence. */
+  onAwayNews: ((notes: PatchNote[]) => void) | null = null;
+
+  /** Back after a long absence: the summaries of the patch notes since the last visit, three lines at most. */
+  private noteAwayNews(since: number): void {
+    const last = new Date(since * 86400000).toISOString().slice(0, 10);
+    let lines = 3;
+    this.awayNews = PATCH_NOTES.filter((n) => n.id.slice(0, 10) > last).flatMap((n) => {
+      const summary = n.summary.slice(0, lines);
+      lines -= summary.length;
+      return summary.length > 0 ? [{ ...n, summary }] : [];
+    });
+    this.flushAwayNews();
+  }
+
+  /** Hands the news on once someone listens (`onAwayNews` is set after the session is built). */
+  flushAwayNews(): void {
+    if (this.awayNews.length === 0 || !this.onAwayNews) return;
+    this.onAwayNews(this.awayNews);
+    this.awayNews = [];
+  }
+
   /** Hands the visit on once someone listens (`onStep` is set after the session is built). */
   flushVisit(): void {
     if (!this.visit || !this.onStep) return;
@@ -476,6 +502,7 @@ export class GameSession {
     // Worked out before the login is booked: the last day is overwritten there.
     const away = career.lastLoginDay >= 0 ? this.today - career.lastLoginDay : 0;
     const endedStreak = away > 0 && career.dailyStreak >= 2 && Goals.streak(career, this.today) === 0 ? career.dailyStreak : 0;
+    const since = career.lastLoginDay;
     const comeback = this.save.tutorialDone && Careers.giveComebackChest(career, this.today, this.config);
     const income = Careers.collectLoginIncome(career, this.today, this.config);
     Careers.collectGift(career, this.today);
@@ -483,11 +510,13 @@ export class GameSession {
     const graced = Mafia.returned(career, Date.now());
     this.persist();
     if (graced) this.announce(S.mafia.notices.grace);
-    if (comeback) this.announce(S.daily.comebackChest(S.shop.chest('premium')));
+    if (comeback) {
+      this.announce(S.daily.comebackChest(S.shop.chest('premium')));
+      this.noteAwayNews(since);
+    }
     if (income !== null) this.announce(S.daily.welcomeBack(Fmt.number(income)));
     else if (this.save.tutorialDone && endedStreak > 0) this.announce(S.daily.streakEnded(endedStreak));
     this.announceInvite();
-    this.announceBuildWithUs();
     void this.announceNewIdea();
   }
 
@@ -510,7 +539,7 @@ export class GameSession {
   private tipTaken = false;
 
   /**
-   * One tip per visit (Leo, 04.10.2026): Cloud sync, installing, the website, the invite and its reminder all
+   * One tip per visit (Leo, 04.10.2026): installing, notifications and the invite all
    * wait for their turn, so the game never opens on a stack of them. True for the first one asked in a visit; a
    * tip refused here is not marked as given and comes back at the next visit (or shift).
    */
@@ -534,27 +563,13 @@ export class GameSession {
   }
 
   /**
-   * Once for every player who knows the game (Leo, 03.10.2026): the website, where bugs and ideas
-   * can be sent and a bug hunter may get a gift. Not inside CrazyGames, which shows no links out. Not before level 5
-   * (09.10.2026): the second visit is the one that must lead to a third, so it does not spend its one tip on a link out.
-   */
-  private announceBuildWithUs(): void {
-    if (inPortal || !this.save.tutorialDone || this.save.career.level < BUILD_WITH_US_LEVEL || this.save.hints.includes('buildWithUs') || !this.takeTip()) return;
-    this.save.hints.push('buildWithUs');
-    this.store();
-    this.tip(S.hints.buildWithUs);
-  }
-
-  /**
    * Once for everyone who knows the game (Leo, 04.10.2026): the friend code is an invite, and both get a chest
    * when the friend reaches level 5. Only where the service can pay (`leaderboardEnabled`) and links work (not
-   * inside CrazyGames); one tip per visit (`takeTip`). A player already past level 10 has had
-   * the message now, so the level 10 reminder (`bookShift`) is not told again.
+   * inside CrazyGames); one tip per visit (`takeTip`).
    */
   private announceInvite(): void {
     if (inPortal || !leaderboardEnabled || !this.save.tutorialDone || this.save.hints.includes('invite') || !this.takeTip()) return;
     this.save.hints.push('invite');
-    if (this.save.career.level >= INVITE_REMINDER_LEVEL) this.save.hints.push('inviteReminder');
     this.store();
     this.tip(S.hints.invite);
   }
@@ -731,7 +746,7 @@ export class GameSession {
       case 'showSocial':
         this.perform({ k: 'showTab', tab: 'social' });
         if (!this.isPage('social')) return;
-        this.socialPage.select((action.section === SOCIAL.club && !SocialPage.clubOpen(career)) || (action.section === SOCIAL.mafia && !SocialPage.mafiaOpen(career)) ? SOCIAL.friends : action.section);
+        this.socialPage.select((action.section === SOCIAL.club && !SocialPage.clubOpen(career)) || (action.section === SOCIAL.mafia && !SocialPage.mafiaOpen(career)) ? SOCIAL.crew : action.section);
         break;
       case 'showProgress':
         this.perform({ k: 'showTab', tab: 'progress' });
@@ -803,10 +818,10 @@ export class GameSession {
         this.hitChest();
         break;
       case 'buyChest':
-        if (!Careers.buyChest(career, action.kind, this.config)) {
+        if (!Careers.buyChest(career, action.kind, this.config, action.bundle)) {
           this.shopPage.denied = 0.001;
           this.play(['denied'], []);
-          this.showNotice(S.notice.notEnoughMoney(Fmt.number(chestPrice(action.kind, this.config) ?? 0)));
+          this.showNotice(S.notice.notEnoughMoney(Fmt.number((action.bundle ? chestBundle(action.kind, this.config)?.price : chestPrice(action.kind, this.config)) ?? 0)));
           return;
         }
         this.persist();
@@ -846,24 +861,18 @@ export class GameSession {
         this.tryPrestige();
         break;
       case 'showElite':
-      case 'showHall':
       case 'showPass':
         if (action.k === 'showElite') this.eliteSeen = true;
-        this.hallOpen = action.k === 'showHall';
         if (!this.detailOpen) this.tick();
         this.detailOpen = true;
         break;
       case 'buyPass':
-        if (SeasonPass.buy(career, this.today, this.config)) {
+        const paid = SeasonPass.buy(career, this.today, this.config);
+        if (paid) {
           this.persist();
           this.play(['paid'], ['comboUp']);
-        }
-        break;
-      case 'buildHall':
-        if (Careers.buildHall(career, this.config)) {
-          this.persist();
-          this.showNotice(S.hall.built);
-          this.play(['paid'], ['comboUp']);
+          // The tiers reached before it was bought pay now; chests show in the Shop by themselves.
+          for (const step of paid) if (step.reward.k !== 'chest') this.announce(S.pass.reached(step));
         }
         break;
       case 'wear': {
@@ -977,6 +986,11 @@ export class GameSession {
     return this.notices.shown?.text ?? (brief ? `${brief.brief.caption}. ${brief.brief.text}` : null);
   }
 
+  /** A crew's invite link was opened: where to join it, once. */
+  noteCrewInvite(): void {
+    this.announce(S.crew.inviteWaits);
+  }
+
   /** A friend's invite was kept: told here, so the general invite tip does not say it again. */
   noteInvited(needsName: boolean): void {
     this.announce(needsName ? S.hints.invitedNeedsName : S.hints.invited);
@@ -1034,19 +1048,20 @@ export class GameSession {
   private shiftConfig(seed: number): Config {
     // The Daily Shift pins its city event and is never a Legendary Shift.
     const daily = this.dailySelected;
-    // The season tilts the sky of career shifts; the Daily Shift also carries the day's twist.
+    // The season tilts the sky of career shifts.
     const season = this.save.mode === 'shift' ? seasonOf(this.today) : null;
     const seasonal = forSeason(this.config, season);
     // A plain career shift is eased by what this career has been through (`Careers.careerShift`); the Daily never is.
     const base =
       this.save.mode === 'shift' && !daily
         ? Careers.careerShift(this.save.career, seasonal, seed)
-        : Careers.shiftConfig(this.save.career, this.save.mode, seasonal, seed, daily ? dailyEvent(this.today) : undefined, daily ? null : undefined, daily ? Careers.dailyMutator(this.save.career, this.today) : null);
-    // A living Daily streak, a waiting Tailwind and the Heat pay more on a career shift (Mayhem pays in flames).
-    if (this.save.mode === 'mayhem' || this.save.mode === 'chill') return base;
+        : Careers.shiftConfig(this.save.career, this.save.mode, seasonal, seed, daily ? dailyEvent(this.today) : undefined, daily ? null : undefined);
+    // A living Daily streak, a waiting Tailwind, After Work and the Heat pay more on a career shift (Mayhem pays in flames).
+    this.afterWork = Goals.afterWork(this.save.mode, daily, new Date().getHours(), this.config);
+    if (this.save.mode === 'mayhem') return base;
     const heat = !daily && this.save.mode === 'shift' ? Careers.maxHeat(this.save.career, this.today, this.config) : 0;
     const cfg = forHeat(base, heat);
-    const bonus = (Goals.streakBonus(this.save.career, this.today, this.config) ? this.config.streakBonusPay : 0) + (Goals.tailwindOn(this.save.career, this.save.mode, daily) ? this.config.tailwindPay : 0) + heatPay(heat, this.config);
+    const bonus = (Goals.streakBonus(this.save.career, this.today, this.config) ? this.config.streakBonusPay : 0) + (Goals.tailwindOn(this.save.career, this.save.mode, daily) ? this.config.tailwindPay : 0) + (this.afterWork ? this.config.afterWorkPay : 0) + heatPay(heat, this.config);
     return bonus > 0 ? Goals.forPay(cfg, bonus) : cfg;
   }
 
@@ -1105,8 +1120,6 @@ export class GameSession {
   private prestigeArmed = -Infinity;
   /** The Elite sheet was opened this session: Prestige in reach stops lighting the Progress tab. */
   private eliteSeen = false;
-  /** The Elite sheet shows the Hall of Fame's own page. */
-  private hallOpen = false;
   /** The condition whose sheet is open over the Game tab (a tap on its icon). */
   private conditionShown: string | null = null;
   /** The condition icons' tap targets as last drawn; empty while there are none to tap. */
@@ -1347,6 +1360,10 @@ export class GameSession {
       get shiftPay() {
         return session.shiftPay;
       },
+      get canRevive() {
+        return session.revive !== null;
+      },
+      reviveRun: () => this.reviveRun(),
       bankResult: (amount) => {
         this.resultBank = { before: this.resultBank.before, after: this.resultBank.after + amount };
         this.resultShiftPay = 0;
@@ -1388,7 +1405,13 @@ export class GameSession {
     this.lastViewport = viewport;
     this.lastInset = bottomInset;
     if (this.countIn > 0) this.countIn = Math.max(0, this.countIn - realDelta);
-    const runs = !this.isInterrupted && this.countIn === 0;
+    // The offer to keep driving holds the road still once the crash has had its moment; it runs out unless an ad is on its way.
+    const revive = this.revive;
+    if (revive && !this.adFlow.busy) {
+      revive.age += realDelta;
+      if (revive.age >= this.config.reviveBreath + this.config.reviveWindow) this.declineRevive();
+    }
+    const runs = !this.isInterrupted && this.countIn === 0 && !(this.revive && this.revive.age >= this.config.reviveBreath);
     if (runs) {
       this.accumulator += simDelta;
       this.sceneTime += simDelta;
@@ -1480,7 +1503,6 @@ export class GameSession {
       this.dailySplash = this.dailySplash + realDelta < ReadyBanner.splashDuration ? this.dailySplash + realDelta : null;
     }
     // A crash the shift survives (the shield, a police car within its limit) heals the ring; the last one flushes it.
-    // Chill has no limit: nothing to forgive there.
     const limits = this.world.config;
     if (counts.strikes > this.seen.strikes) {
       this.sinceStrike = 0;
@@ -1640,6 +1662,14 @@ export class GameSession {
   }
 
   private handle(a: InputAction, simDelta: number): void {
+    // While the offer to keep driving stands: its pill (or Enter) watches the ad, any other tap ends the run.
+    if (this.revive && this.screen.k === 'playing' && (a.k === 'tap' || a.k === 'confirm' || a.k === 'pointerDown')) {
+      if (this.reviveLeft === null || this.adFlow.busy) return;
+      const onPill = a.k === 'confirm' || (a.k === 'pointerDown' && this.adTarget?.reward === 'revive' && R.contains(this.adTarget.rect, a.p));
+      if (onPill) this.adFlow.watch('revive');
+      else this.declineRevive();
+      return;
+    }
     // With a condition's or failure's sheet open, the next tap or key only closes it: it never starts the shift.
     if ((a.k === 'tap' || a.k === 'confirm') && this.conditionShown && this.detailOpen && (this.screen.k === 'ready' || this.screen.k === 'result')) {
       this.closeDetail();
@@ -1827,9 +1857,6 @@ export class GameSession {
       case 'dispatch':
         if (this.screen.k === 'playing') this.world.dispatchPolice();
         break;
-      case 'finishChill':
-        if (this.screen.k === 'playing' && this.playingMode === 'chill') this.world.finish();
-        break;
       case 'focusLost':
         if (this.screen.k === 'playing') this.isInterrupted = true;
         break;
@@ -2014,7 +2041,7 @@ export class GameSession {
 
   /** Whether briefings belong on the top card now: a shift of your own, past the tutorial. */
   private get briefs(): boolean {
-    return this.screen.k === 'playing' && !this.versusSelected && this.playingMode !== 'mayhem' && this.playingMode !== 'chill' && (this.tutorial?.isOver ?? true);
+    return this.screen.k === 'playing' && !this.versusSelected && this.playingMode !== 'mayhem' && (this.tutorial?.isOver ?? true);
   }
 
   /** A tap on a condition's icon: its Museum sheet over the Game tab; a second tap closes it. */
@@ -2041,7 +2068,7 @@ export class GameSession {
       case 'shop':
         return this.shopPage.section === 2 ? 'casino' : null;
       case 'social':
-        return this.socialPage.section === SOCIAL.club ? 'club' : this.socialPage.section === SOCIAL.mafia ? 'mafia' : null;
+        return this.socialPage.section === SOCIAL.club ? 'club' : this.socialPage.section === SOCIAL.mafia ? 'mafia' : this.socialPage.section === SOCIAL.crew ? 'crew' : null;
       case 'progress': {
         const section = this.progressPage.section;
         return section === PROGRESS.today ? 'daily' : section === PROGRESS.trials ? 'trials' : section === PROGRESS.goals ? 'pass' : section === PROGRESS.museum ? 'museum' : null;
@@ -2214,7 +2241,6 @@ export class GameSession {
     if (!this.detailOpen) return;
     this.detailOpen = false;
     this.introShown = null;
-    this.hallOpen = false;
     this.conditionShown = null;
     this.progressPage.museum.selected = null;
     this.progressPage.feat = null;
@@ -2261,8 +2287,7 @@ export class GameSession {
       }
       case 'progress': {
         // Records has one sheet: the Elite track, opened from its card.
-        if (this.progressPage.section === PROGRESS.records && this.hallOpen) return Details.hall(career, this.config);
-        if (this.progressPage.section === PROGRESS.records) return Details.elite(career, this.config, this.sceneTime - this.prestigeArmed <= GameSession.prestigeWindow);
+                if (this.progressPage.section === PROGRESS.records) return Details.elite(career, this.config, this.sceneTime - this.prestigeArmed <= GameSession.prestigeWindow);
         if (this.progressPage.section === PROGRESS.today) return this.progressPage.streak ? Details.streak(career, this.config, this.today) : null;
         const feat = this.progressPage.feat;
         if (this.progressPage.section === PROGRESS.goals) return feat ? Details.feat(feat, career, this.config) : Details.pass(career, this.config, this.today);
@@ -2495,7 +2520,8 @@ export class GameSession {
             this.rim.signal('flush', 'vehicleCriminal');
             this.sinceLoss = 0;
           }
-          this.finish(e.result);
+          if (this.offersRevive(e.result)) this.revive = { result: e.result, age: 0 };
+          else this.finish(e.result);
           break;
         case 'takedown':
           this.sinceTakedown = 0;
@@ -2715,6 +2741,8 @@ export class GameSession {
     if (day !== this.today && Careers.collectGift(this.save.career, day)) this.persist();
     this.today = day;
     if (this.wantsDaily !== this.dailySelected) this.prepareShift(true, null, this.screen);
+    // The waiting shift's pay follows the clock into and out of the After Work hours.
+    else if (this.afterWork !== Goals.afterWork(this.save.mode, this.dailySelected, new Date().getHours(), this.config)) this.refreshWaitingShift();
   }
 
   private completeAlbums(): string[] {
@@ -2779,6 +2807,47 @@ export class GameSession {
   }
 
   /** Saves right away; the result shows after `resultDelay`. */
+  /**
+   * Keep driving (Leo, 18.10.2026): a crash that ends an Unlimited run, or a career shift after most of its cars, is offered back
+   * for an ad. Once a run, a few times a day, only with an ad ready, never on the first day, the Daily, a trial, a challenge or a match.
+   */
+  private offersRevive(result: ShiftResult): boolean {
+    const career = this.save.career;
+    const ads = this.adOffer;
+    if (result.outcome !== 'struckOut' || this.world.revives > 0 || this.special || this.versusSelected || this.tutorial || this.playingDaily) return false;
+    if (!ads.offers || !ads.ready || this.save.firstDay === this.today || Careers.adRevivesLeft(career, this.today, this.config) <= 0) return false;
+    return this.playingMode === 'unlimited' || (this.playingMode === 'shift' && result.carsSent >= this.world.config.shiftCars * this.config.reviveMinShare);
+  }
+
+  /** For the dev probe: the offer to keep driving, as `reviveLeft`. */
+  get reviveOffer(): number | null {
+    return this.reviveLeft;
+  }
+
+  /** Seconds the offer still stands, or null while there is none (or the crash is still having its moment). */
+  private get reviveLeft(): number | null {
+    const r = this.revive;
+    if (!r || r.age < this.config.reviveBreath) return null;
+    return Math.max(0, this.config.reviveBreath + this.config.reviveWindow - r.age);
+  }
+
+  private reviveRun(): void {
+    if (!this.revive || !this.world.revive(this.world.time)) return;
+    this.revive = null;
+    this.sinceFatalCrash = Infinity;
+    this.cameraFx.relieve();
+    this.countIn = this.reduceMotion ? 0 : GameSession.countInSeconds;
+    this.play(['swoosh'], ['comboUp']);
+  }
+
+  /** No ad: the run ends as it would have. */
+  private declineRevive(): void {
+    const r = this.revive;
+    if (!r) return;
+    this.revive = null;
+    this.finish(r.result);
+  }
+
   private finish(result: ShiftResult): void {
     const save = this.save;
     const career = save.career;
@@ -2788,7 +2857,7 @@ export class GameSession {
       return;
     }
     // Any finished shift can go to a friend as a challenge (not while learning the game, not one eased for this career).
-    this.shareable = save.tutorialDone && this.playingMode !== 'chill' && !this.world.config.assisted
+    this.shareable = save.tutorialDone && !this.world.config.assisted && !result.revived
       ? challengeOf(
           career,
           this.playingMode,
@@ -2797,7 +2866,6 @@ export class GameSession {
           this.world.config.cityEvent,
           this.playingMode === 'mayhem' ? result.flames : result.score,
           this.world.config.legendary,
-          this.world.config.mutator,
           this.world.config.season,
         )
       : null;
@@ -2807,7 +2875,7 @@ export class GameSession {
       save.tutorialDone = true;
       this.onStep?.('tutorial-done');
     }
-    this.onStep?.('shift', { mode: this.playingMode, level: this.playingLevel, outcome: result.outcome, daily: this.playingDaily ? 1 : 0, nth: Math.min(save.shiftsPlayed + 1, 10) });
+    this.onStep?.('shift', { mode: this.playingMode, level: this.playingLevel, outcome: result.outcome, daily: this.playingDaily ? 1 : 0, nth: Math.min(save.shiftsPlayed + 1, 10), eased: this.world.config.assisted ? 1 : 0 });
     const levelBefore = career.level;
     const booked = bookShift(save, result, {
       mode: this.playingMode,
@@ -2820,6 +2888,8 @@ export class GameSession {
     });
     this.bookFailure(result);
     this.persist();
+    // The crew's week counts the same XP as the Season Pass (`net/crews.ts` keeps it until the service has it).
+    if (save.tutorialDone) addCrewXp(Elite.xpOf(result, this.config));
     this.resultBurst = this.momentOf(result, levelBefore) ?? this.resultBurst;
     this.dailyShare =
       this.playingDaily && result.outcome === 'completed'
@@ -2842,7 +2912,7 @@ export class GameSession {
       this.resultCountdown = this.resultDelayFor(result);
       return;
     }
-    this.pendingSummary = { result, level: this.playingLevel, isNewHighscore: isNew, previousHighscore: previous, mode: this.playingMode, closeCall: this.playingMode === 'chill' ? null : this.closeCall(result, previous), elite: booked.elite };
+    this.pendingSummary = { result, level: this.playingLevel, isNewHighscore: isNew, previousHighscore: previous, mode: this.playingMode, closeCall: this.closeCall(result, previous), elite: booked.elite };
     this.resultCountdown = this.resultDelayFor(result);
   }
 
@@ -3115,6 +3185,23 @@ export class GameSession {
       }
       HUD.addPopups(list, this.popups, rm);
       if (this.countIn > 0 || this.isInterrupted) HUD.addCountIn(list, this.isInterrupted ? GameSession.countInSeconds : this.countIn);
+      const left = this.reviveLeft;
+      if (left !== null) {
+        const at = v(viewport.x / 2, TopBar.frame(viewport.x).maxY + 18);
+        const label = S.ads.revivePill(Math.ceil(left));
+        if (this.adPillReward !== 'revive') {
+          this.adPillReward = 'revive';
+          this.adPillAge = 0;
+        }
+        if (!this.adTold.has('revive')) {
+          this.adTold.add('revive');
+          this.onStep?.('ad', { reward: 'revive', step: 'offer' });
+        }
+        AdPill.add(list, label, at, this.adPillAge, 1, rm, this.adFlow.busy);
+        this.adTarget = { reward: 'revive', rect: AdPill.target(label, at) };
+        drawText(list, S.ads.reviveSkip, v(viewport.x / 2, at.y + AdPill.hit / 2 + 10), 12, 'muted', { align: 'center' });
+        underCard = at.y + AdPill.hit / 2 + 20;
+      }
     } else if (s.k === 'result') {
       const chipAt = ResultBanner.add(list, s.summary, this.playingLevel, this.resultBank, this.resultAge, rm, this.giftLine, world.layout.islandRadius);
       if (chipAt) this.addFailChip(list, s.summary, chipAt);
@@ -3160,7 +3247,7 @@ export class GameSession {
   get modifiers(): Modifier[] {
     if ((this.screen.k !== 'ready' && this.screen.k !== 'result') || this.special || this.versusSelected || !(this.tutorial?.isOver ?? true)) return [];
     const mode = this.playingMode;
-    if (mode === 'mayhem' || mode === 'chill') return [];
+    if (mode === 'mayhem') return [];
     const career = this.save.career;
     const daily = this.playingDaily;
     const onCareer = mode === 'shift' && !daily;
@@ -3168,6 +3255,7 @@ export class GameSession {
     const heat = onCareer ? Careers.maxHeat(career, this.today, this.config) : 0;
     if (heat > 0) out.push({ id: 'heat', label: S.heat.button(heat), tone: 'heat' });
     if (Goals.tailwindOn(career, mode, daily)) out.push({ id: 'tailwind', label: S.mods.tailwind(this.config.tailwindPay), tone: 'bonus' });
+    if (onCareer && this.afterWork) out.push({ id: 'afterWork', label: S.mods.afterWork(this.config.afterWorkPay), tone: 'bonus' });
     if (!daily && Goals.streakBonus(career, this.today, this.config)) out.push({ id: 'streak', label: S.mods.streak(this.config.streakBonusPay), tone: 'bonus' });
     if (Mafia.late(career)) out.push({ id: 'family', label: S.mods.family(this.config.mafiaGarnish), tone: 'loss' });
     return out;
@@ -3197,7 +3285,7 @@ export class GameSession {
 
   get currentBest(): string | null {
     const best =
-      this.playingMode === 'shift' ? this.save.highscore : this.playingMode === 'unlimited' ? this.save.unlimitedBest : this.playingMode === 'chill' ? this.save.chillBest : this.save.mayhemBest;
+      this.playingMode === 'shift' ? this.save.highscore : this.playingMode === 'unlimited' ? this.save.unlimitedBest : this.save.mayhemBest;
     return best > 0 ? Fmt.number(best) : null;
   }
 
@@ -3242,7 +3330,6 @@ export class GameSession {
           bonus: this.shiftRan && Goals.streakBonus(career, this.today, this.config) ? this.config.streakBonusPay : null,
           endsIn: streakEndsIn(career, this.today, this.config),
           freezes: career.streakFreezes,
-          mutator: this.world.config.mutator,
         }
       : null;
     const run = runCard(this.special, this.world.config, this.playingMode, this.versusSelected, career, this.today);
@@ -3392,7 +3479,7 @@ export class GameSession {
 
   /** The ready screen's card: what a trial's goal asks for (the conditions are icons, `ConditionChips`). */
   private get readyIntro(): ConditionIntro[] {
-    const howTo = this.special?.k === 'trial' && this.playingMode !== 'chill' ? S.trials.howTo(this.special.trial) : null;
+    const howTo = this.special?.k === 'trial' ? S.trials.howTo(this.special.trial) : null;
     if (howTo) return [howTo];
     const news = this.museum.ready[0];
     if (news) return [{ title: news.caption, text: news.text, short: news.caption }];
@@ -3449,12 +3536,12 @@ export class GameSession {
         const kind = item.slice(6) as ChestKind;
         if (!CHEST_KINDS.includes(kind)) continue;
         career.chests.push(kind);
-        news.push(S.rewards.invite(reason, kind) ?? S.rewards.chest(kind));
+        news.push(S.rewards.crew(reason, S.shop.chest(kind)) ?? S.rewards.invite(reason, kind) ?? S.rewards.chest(kind));
       } else if (item.startsWith('money:')) {
         const amount = Number(item.slice(6));
         if (!Number.isSafeInteger(amount) || amount < 1) continue;
         career.money += amount;
-        news.push(S.rewards.money(amount));
+        news.push(S.rewards.crew(reason, moneyText(Fmt.number(amount))) ?? S.rewards.money(amount));
       } else if (cosmetic(item)) {
         if (Careers.owns(career, item)) continue;
         Careers.collect(career, item);

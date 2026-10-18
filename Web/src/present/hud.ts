@@ -1,5 +1,4 @@
 import type { World } from '../core/world';
-import type { MutatorId } from '../core/mutators';
 import type { Arm } from '../core/roundabout';
 import type { ShiftResult } from '../core/events';
 import type { GameMode, StreakMilestone } from '../core/career';
@@ -281,10 +280,6 @@ export const HUD = {
       HUD.addMayhem(list, h);
       return;
     }
-    if (h.world.config.chill) {
-      HUD.addChill(list, h);
-      return;
-    }
     HUD.addTopCard(list, h);
     if (h.world.config.endless) {
       const frame = TopBar.frame(list.camera.viewport.x);
@@ -307,19 +302,6 @@ export const HUD = {
     const last = world.score.lastCrashAt;
     if (last === null || world.time - last > world.config.mayhemChainWindow) return 0;
     return world.score.crashChain;
-  },
-
-  /** Chill: how long the drive has gone on, the cars sent, and the longest drive so far. Nothing to lose. */
-  addChill(list: RenderList, h: HudInput): void {
-    TopBar.addScrim(list);
-    const frame = TopBar.frame(list.camera.viewport.x);
-    const cols = TopBar.columns(frame);
-    TopBar.addCard(list, frame);
-    list.tag = 'topbarLabels';
-    TopBar.addColumn(list, cols.left, 'leading', S.chill.time, Fmt.seconds(h.world.shiftTime(h.world.time)));
-    TopBar.addColumn(list, cols.center, 'center', S.chill.caption, Fmt.number(h.world.shift.carsSent), { captionColor: 'lightBlue', valueSize: Metrics.timerSize * land(h.pops.cars, 0.12) });
-    TopBar.addColumn(list, cols.right, 'trailing', S.hud.bestLabel, h.best ?? '–', { valueColor: h.best === null ? 'muted' : 'primary' });
-    list.tag = undefined;
   },
 
   addMayhem(list: RenderList, h: HudInput): void {
@@ -1251,7 +1233,7 @@ export interface TopMessage {
 
 /** The mode's name when the player swipes to it: on the top card, in the mode's colour. */
 export const ModeBanner = {
-  tint: (m: SwipeMode): ColorToken => (m === 'shift' || m === 'multiplayer' ? 'primary' : m === 'unlimited' ? 'accent' : m === 'chill' ? 'lightBlue' : 'fireOuter'),
+  tint: (m: SwipeMode): ColorToken => (m === 'shift' || m === 'multiplayer' ? 'primary' : m === 'unlimited' ? 'accent' : 'fireOuter'),
   brief: (mode: SwipeMode): Brief => ({ id: `mode.${mode}`, caption: S.modes.name(mode).toUpperCase(), text: S.modes.line(mode), color: ModeBanner.tint(mode), pending: null }),
 };
 
@@ -1313,8 +1295,6 @@ export interface DailyCard {
   freezes: number;
   next: StreakMilestone | null;
   splash: number | null;
-  /** Today's twist (core/mutators.ts). */
-  mutator: MutatorId | null;
 }
 
 /** What a trial asks for, as the ready screen explains it. */
@@ -1450,18 +1430,11 @@ export const ReadyBanner = {
           : [S.daily.title, 'hazard']
         : o.mode === 'unlimited'
           ? [S.modes.unlimitedCaption, 'accent']
-          : o.mode === 'chill'
-            ? [S.chill.caption, 'lightBlue']
-            : [S.mayhem.caption, 'fireOuter'];
-    const value = o.versus ? S.modes.versusPlayers : o.mode === 'unlimited' || o.mode === 'chill' ? S.modes.endless : S.hud.cars(o.cars);
+          : [S.mayhem.caption, 'fireOuter'];
+    const value = o.versus ? S.modes.versusPlayers : o.mode === 'unlimited' ? S.modes.endless : S.hud.cars(o.cars);
     TopBar.addColumn(list, cols.center, 'center', caption, value, { captionColor, valueSize: Metrics.timerSize, opacity });
     if (run) TopBar.addColumn(list, cols.right, 'trailing', run.right[0], run.right[1], { opacity });
-    else if (o.daily?.mutator) {
-      // Today's twist takes the place of the best score: the Daily is one try a day.
-      const twist = S.mutator.name(o.daily.mutator);
-      const room = R.width(cols.right) - 32;
-      TopBar.addColumn(list, cols.right, 'trailing', S.mutator.caption, twist, { opacity, valueSize: Math.max(11, Math.min(20, (20 * room) / Math.max(1, textWidth(twist, 20)))) });
-    } else if (o.versus) {
+    else if (o.versus) {
       // A long name shrinks to fit its column.
       const name = o.playerName || S.modes.defaultName;
       const room = R.width(cols.right) - 32;
@@ -1554,8 +1527,8 @@ export const ReadyBanner = {
 
   /**
    * The Daily Shift's opening (Leo, 08.10.2026: not a warning box): the scene dims, and the day arrives in a few lines
-   * without a card round them, one after the other: the date, the name, a rule that draws itself out, today's city and
-   * twist, and the streak as a week of dots with today lit. The words keep their size and only rise and fade.
+   * without a card round them, one after the other: the date, the name, a rule that draws itself out, today's city, and
+   * the streak as a week of dots with today lit. The words keep their size and only rise and fade.
    */
   addSplash(list: RenderList, daily: DailyCard, age: number, reduceMotion: boolean): void {
     const vp = list.camera.viewport;
@@ -1566,7 +1539,6 @@ export const ReadyBanner = {
     list.s(rect(middle, vp), 'background', 0.9 * alpha);
     MenuKit.glow(list, add(middle, v(0, -30)), Math.min(vp.x, 460) * 0.7, 'hazard', 0.1 * alpha);
     const date = new Date().toLocaleDateString(currentLanguage() === 'en' ? 'en-GB' : currentLanguage(), { weekday: 'long', day: 'numeric', month: 'long' });
-    const twist = daily.mutator;
     const rows: { height: number; draw: (at: Vec2, a: number, e: number) => void }[] = [];
     const words = (s: string, size: number, weight: 'regular' | 'bold', color: ColorToken): void => {
       rows.push({ height: size * 1.35, draw: (at, a) => list.s(text(s, at, size, 'center', weight), color, a) });
@@ -1581,10 +1553,6 @@ export const ReadyBanner = {
       },
     });
     if (daily.event) words(S.daily.splashLine(daily.event), 15, 'regular', 'primary');
-    if (twist) {
-      words(S.mutator.name(twist), 17, 'bold', 'accent');
-      words(S.mutator.line(twist), 12, 'regular', 'muted');
-    }
     const lit = daily.streak > 0 ? ((daily.streak - 1) % 7) + 1 : 0;
     rows.push({
       height: 30,
@@ -1668,7 +1636,6 @@ export const ResultBanner = {
           : [S.result.escaped, 'vehicleCriminal'];
     if (summary.mode === 'unlimited' && r.outcome === 'struckOut') title = S.modes.runOver;
     if (summary.mode === 'mayhem') [title, titleColor] = [S.mayhem.over, 'fireOuter'];
-    if (summary.mode === 'chill') [title, titleColor] = [S.chill.over, 'lightBlue'];
     // On a boss level the criminal that got away was the syndicate's head.
     if (r.outcome === 'escaped' && r.convoy && !r.bossBusted) title = S.boss.escaped;
     // A Legendary Shift's rule was broken (Zero Tolerance).
@@ -1684,12 +1651,10 @@ export const ResultBanner = {
     const detail =
       summary.mode === 'mayhem'
         ? S.mayhem.summary(r.wrecks, r.biggestChain)
-        : summary.mode === 'chill'
-          ? S.chill.summary(r.carsSent, Fmt.seconds(r.time))
-          : S.result.stats(r.bestCombo, r.tightFits, r.takedowns, r.transporters, Fmt.seconds(r.time));
+        : S.result.stats(r.bestCombo, r.tightFits, r.takedowns, r.transporters, Fmt.seconds(r.time));
     const best = summary.isNewHighscore ? `. ${S.result.newBest}` : '';
     const elite = summary.elite ? `. ${S.elite.toGo(summary.elite)}` : '';
-    return summary.mode === 'chill' ? `${title}. ${detail}${best}` : `${title}. ${S.result.points(Fmt.number(r.score))}${best}. ${detail}${elite}`;
+    return `${title}. ${S.result.points(Fmt.number(r.score))}${best}. ${detail}${elite}`;
   },
 
   add(list: RenderList, summary: ShiftSummary, nextLevel: number, bank: { before: number; after: number }, age: number, reduceMotion: boolean, gift: string | null, islandRadius: number): Vec2 | null {
@@ -1714,8 +1679,6 @@ export const ResultBanner = {
       if (summary.mode === 'mayhem' && !run) {
         list.s(text(title, v(R.center(cols.center).x, cols.center.minY + TopBar.captionRow), 10, 'center', 'bold'), titleColor, shown);
         flameTag(list, Fmt.number(r.flames), v(R.center(cols.center).x, cols.center.minY + TopBar.valueRow), Metrics.timerSize * pop, 'center', 'primary', shown);
-      } else if (summary.mode === 'chill') {
-        TopBar.addColumn(list, cols.center, 'center', title, Fmt.number(r.carsSent), { captionColor: titleColor, valueSize: Metrics.timerSize * pop, opacity: shown });
       } else if (mourning > 0) {
         TopBar.addColumn(list, cols.center, 'center', title, S.result.fail, { captionColor: titleColor, valueColor: 'destructive', valueSize: Metrics.timerSize * pop, opacity: shown * mourning });
         if (mourning < 1) TopBar.addColumn(list, cols.center, 'center', title, Fmt.number(r.score), { captionColor: titleColor, valueSize: Metrics.timerSize, opacity: shown * (1 - mourning) });
@@ -1726,7 +1689,7 @@ export const ResultBanner = {
         const [caption, value] = run.right;
         TopBar.addColumn(list, cols.right, 'trailing', caption, value, { valueSize: 16, opacity: shown });
       } else if (summary.isNewHighscore) {
-        TopBar.addColumn(list, cols.right, 'trailing', S.result.newBest, Fmt.number(summary.mode === 'mayhem' ? r.flames : summary.mode === 'chill' ? r.carsSent : r.score), { captionColor: 'accent', valueColor: 'accent', opacity: shown });
+        TopBar.addColumn(list, cols.right, 'trailing', S.result.newBest, Fmt.number(summary.mode === 'mayhem' ? r.flames : r.score), { captionColor: 'accent', valueColor: 'accent', opacity: shown });
       } else {
         TopBar.addColumn(list, cols.right, 'trailing', S.hud.bestLabel, summary.previousHighscore > 0 ? Fmt.number(summary.previousHighscore) : '–', {
           valueColor: summary.previousHighscore > 0 ? 'primary' : 'muted',
@@ -1743,9 +1706,7 @@ export const ResultBanner = {
         ? S.modes.again
         : summary.mode === 'mayhem'
           ? S.mayhem.again
-          : summary.mode === 'chill'
-            ? S.chill.again
-            : r.outcome === 'completed'
+          : r.outcome === 'completed'
             ? S.result.nextLevel(nextLevel)
             : S.result.retryLevel(nextLevel);
     const detail: [string, ColorToken] | null = run
@@ -1758,9 +1719,7 @@ export const ResultBanner = {
             ? [S.modes.carsSent(r.carsSent), 'accent']
             : summary.mode === 'mayhem'
               ? [S.mayhem.summary(r.wrecks, r.biggestChain), 'fireOuter']
-              : summary.mode === 'chill'
-                ? [S.chill.summary(r.carsSent, Fmt.seconds(r.time)), 'lightBlue']
-                : null;
+              : null;
     const close = summary.closeCall;
     // The ring's gold bar already shows the XP; only a level climbed gets words.
     const climbed = summary.elite && summary.elite.climbed > 0 ? summary.elite : null;

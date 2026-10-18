@@ -97,6 +97,37 @@ export async function offerToPasswordManager(code: string): Promise<void> {
   }, 3000);
 }
 
+/** What stands in for the sync code until the player asks to see it. */
+const MASK = '••••-••••-••••';
+
+/**
+ * The sync code row, for this sheet and the player sheet. The code is a secret (whoever has it can load the progress), so it
+ * stays masked until Show is tapped and never looks like the public friend code; Copy works without showing it.
+ */
+export function secretCodeRow(code: string): HTMLElement {
+  const value = h('div', { class: 'sync-code secret', 'aria-label': S.cloud.hiddenLabel }, MASK);
+  const reveal = h('button', { class: 'btn', type: 'button', 'aria-pressed': 'false' }, S.cloud.reveal);
+  reveal.addEventListener('click', () => {
+    const shown = reveal.getAttribute('aria-pressed') !== 'true';
+    reveal.setAttribute('aria-pressed', String(shown));
+    reveal.textContent = shown ? S.cloud.conceal : S.cloud.reveal;
+    value.textContent = shown ? code : MASK;
+    value.classList.toggle('shown', shown);
+    value.setAttribute('aria-label', shown ? S.cloud.yourCodeLabel(code) : S.cloud.hiddenLabel);
+  });
+  const copy = h('button', { class: 'btn', type: 'button' }, S.cloud.copy);
+  copy.addEventListener('click', () => {
+    navigator.clipboard?.writeText(code).then(
+      () => {
+        copy.textContent = S.cloud.copied;
+        window.setTimeout(() => (copy.textContent = S.cloud.copy), 1500);
+      },
+      () => window.prompt(S.friends.copyPrompt, code),
+    );
+  });
+  return h('div', { class: 'row row-stack' }, h('div', { class: 'row-main' }, h('div', { class: 'row-sub' }, S.cloud.yourCode), value), h('div', { class: 'row-actions' }, reveal, copy));
+}
+
 const row = (title: string, sub: string, ...extra: HTMLElement[]): HTMLElement =>
   h('div', { class: 'row' }, h('div', { class: 'row-main' }, h('div', { class: 'row-title' }, title), h('div', { class: 'row-sub' }, sub)), ...extra);
 
@@ -221,16 +252,6 @@ export function cloudSheet(layer: HTMLElement, actions: CloudActions): () => voi
   }
 
   function linked(view: CloudView): HTMLElement[] {
-    const copy = h('button', { class: 'btn', type: 'button' }, S.cloud.copy);
-    copy.addEventListener('click', () => {
-      navigator.clipboard?.writeText(view.code ?? '').then(
-        () => {
-          copy.textContent = S.cloud.copied;
-          window.setTimeout(() => (copy.textContent = S.cloud.copy), 1500);
-        },
-        () => undefined,
-      );
-    });
     const state = view.status === 'saving' ? S.cloud.saving : view.status === 'offline' ? S.cloud.offline : ago(view.savedAt);
     const keep = h('button', { class: 'btn', type: 'button' }, S.cloud.keep);
     keep.addEventListener('click', () => {
@@ -242,7 +263,7 @@ export function cloudSheet(layer: HTMLElement, actions: CloudActions): () => voi
     now.addEventListener('click', () => run(now, () => syncNow()));
     return [
       h('p', { class: 'section-note' }, S.cloud.linkedIntro),
-      h('div', { class: 'list' }, h('div', { class: 'row' }, h('div', { class: 'row-main' }, h('div', { class: 'row-sub' }, S.cloud.yourCode), h('div', { class: 'sync-code', 'aria-label': S.cloud.yourCodeLabel(view.code ?? '') }, view.code ?? '')), copy)),
+      h('div', { class: 'list' }, secretCodeRow(view.code ?? '')),
       h('div', { class: 'list' }, row(S.cloud.cloudCopy, state, now), row(S.cloud.passwordManager, S.cloud.passwordManagerSub, keep)),
       h('p', { class: 'section-note' }, S.cloud.secret),
       h('button', { class: 'btn block quiet-btn', type: 'button', onclick: () => stopCloud() }, S.cloud.stop),

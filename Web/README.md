@@ -201,7 +201,7 @@ for a player below level 5 and takes it out of the address; once there is a lead
 (at start and on every account change). When the friend reaches `INVITE_LEVEL` (`core/config.ts`, the same number as
 the service's) both get a Standard Chest, which the game picks up like any gift from the team (`net/rewards.ts`:
 `collectRewards` runs at start, when the tab comes back, and after a record reached the service). A one-time message tells every player
-who knows the game (`hints: invite`), and another comes on reaching level 10 (`inviteReminder`, `bookShift`); a new
+who knows the game (`hints: invite`); a new
 player is told they need a name. Without `VITE_API_URL` none of it exists.
 
 ## The Mafia
@@ -543,6 +543,14 @@ the dial; it is used up by one round, won or lost, and the dial shows the chance
 - **The Daily's second try** (16.10.2026): a Daily Shift that was lost can be played once more, once a day, for an ad
   (`Careers.adRetryOpen/rewardAdRetry`, the pill on the result). Same seed; the streak counts once. The score sent to
   the Daily board carries `tries: 2` (`save.dailyTries`), the board shows "2 tries" (`ui/ranksPanel.ts`).
+- **Keep driving** (18.10.2026): when a crash ends an Unlimited run, or a career shift after `reviveMinShare` (60 %) of
+  its cars, and an ad is ready (not on the first day, the Daily, a trial, challenge or match), the road holds still after
+  `reviveBreath` (1.2 s) and a pill offers the ad for `reviveWindow` (5 s); any other tap ends the run as before.
+  Watched, `World.revive` tows the wrecks, forgives the last strike and gives `reviveGrace` (2 s) in which no crash ends
+  the run, then a count-in. Once a run, `reviveAdsPerDay` (3) a day (`Careers.adRevivesLeft/rewardAdRevive`). The result
+  carries `revived`: no Perfect Run, no Tailwind, no challenge link, and an Unlimited record from it goes to the board with
+  `revived: 1` ("kept driving"). Same seed, taps and revive give the same run (`npm test`). Umami `reward = revive`.
+  In the dev server: `?adfake`, then the probe's `play('reckless')` crashes (`npm run e2e`).
 - **Trying the offers without AdSense:** `npm run dev`, then add `?adfake` to the address: a pretend ad of two seconds.
   It exists only in the dev build.
 

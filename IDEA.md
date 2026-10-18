@@ -59,14 +59,13 @@ Rückenwind, **Heat** (freiwillige Schwierigkeit ab Level 50), Bestenlisten **Da
 
 ## Aus der Langzeit-Liste (Leo, 07.10.2026)
 
-Gebaut am 07.10.: Touren (Haunted Ring, Winter Lights), Mutator des Tages, Saison-Regeln, Chill, Achievements.
+Gebaut am 07.10.: Touren (Haunted Ring, Winter Lights), Saison-Regeln, Achievements (Mutator des Tages und Chill sind am 18.10. wieder entfernt).
 Offen, grob nach Wirkung:
 
 - **Co-op-Multiplayer:** zwei bis vier Spieler auf einem Ring in Unlimited, ein Crash trifft alle.
 - **Challenge-Builder:** Wetter, Boss, Autozahl und Level selbst einstellen und als Link teilen (kein Freitext, keine Moderation).
 - **Neue Verkehrselemente:** Falschfahrer, Traktor, Hochzeitskorso, Radrennen; Parade und Straßenbahn stehen schon offen.
 - **Mehr Touren:** weitere Einträge in `TOURS`, z. B. im Frühling und Sommer, jeder mit drei Skins.
-- **Mutator auf der Daily-Bestenliste** (eigener Rang je Mutator): braucht eine Änderung im Dienst.
 
 ---
 

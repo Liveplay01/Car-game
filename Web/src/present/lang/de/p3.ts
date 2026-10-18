@@ -87,8 +87,11 @@ export default (S: Strings): Words<Strings> => ({
     tier: (n, total) => `Stufe ${n} von ${total}`,
     locked: (level) => `Öffnet ab Level ${level}`,
     buyHint: 'Truhen, Geld und drei Skins',
+    free: 'gratis',
+    waiting: (n) => (n === 1 ? '1 Stufe wartet auf den Pass' : `${n} Stufen warten auf den Pass`),
     daysLeft: (n) => (n === 1 ? 'letzter Tag' : `noch ${n} Tage`),
     complete: 'Strecke geschafft · bis zur nächsten Saison',
+    openAtEnd: (n) => (n === 1 ? 'Saison endet bald · 1 Stufe noch offen' : `Saison endet bald · ${n} Stufen noch offen`),
     reached: (step) =>
       `SAISONPASS · STUFE ${step.tier} · ${step.duplicate > 0 ? `${S.pass.reward(step.reward)} erneut · +${money(Fmt.number(step.duplicate))}` : S.pass.reward(step.reward)}`,
     buy: (price) => `Kaufen · ${price}`,
@@ -97,39 +100,23 @@ export default (S: Strings): Words<Strings> => ({
       'Drei der Stufen enthalten die Skins dieser Saison, mit Effekten, die keine Truhe hat. Die vier Jahreszeiten kehren jedes Jahr wieder, und mit ihnen ihre Skins.',
       'Nur Optik, nie ein Vorteil auf der Straße. Hier kostet nichts echtes Geld.',
     ],
+    freeBody: (xpPerTier) => [
+      `Eine Strecke aus zwölf Stufen für diese Saison. Jede Schicht bringt XP dafür, mit oder ohne Pass: 10 für eine abgeschlossene Schicht, 1 für jeden Perfekten Einsatz und jede Knappe Lücke, 10 mehr für einen Boss oder eine Legendäre Schicht. Die erste Stufe braucht ${xpPerTier} XP, jede weitere etwas mehr.`,
+      'Drei Stufen sind für alle gratis. Kaufst du den Pass mit Spielgeld, zahlt jede andere Stufe, die schon erreichten sofort.',
+      'Drei der Stufen enthalten die Skins dieser Saison, mit Effekten, die keine Truhe hat. Die vier Jahreszeiten kehren jedes Jahr wieder, und mit ihnen ihre Skins. Nur Optik, nie ein Vorteil auf der Straße.',
+    ],
     trackHeader: 'Die Strecke',
   },
 
   hall: {
-    title: 'Ruhmeshalle',
-    header: 'Ruhmeshalle',
-    build: (price) => `Ruhmeshalle bauen · ${price}`,
-    built: 'RUHMESHALLE GEBAUT · eine Ehrenwand auf der Insel · Hall of Famer freigeschaltet',
-    notBuilt: 'Eine goldene Wand auf der Insel mit einem Stern für jeden Prestige-Rang und einem eigenen Skin. Tippe, um zu sehen, was sie bringt.',
-    tapMore: 'Tippe, um zu sehen, was sie bringt.',
-    open: (level) => `Öffnet, sobald du Level ${level} erreichst`,
+    header: 'Prestige-Chronik',
     plaqueLine: (e, date) =>
       [date, e.elite > 0 ? `Elite ${e.elite}` : null, `${e.bosses} ${e.bosses === 1 ? 'Boss' : 'Bosse'}`, e.legendary > 0 ? `${e.legendary} legendär` : null].filter((x) => x).join(' · '),
     empty: 'Dein erstes Prestige bekommt die erste Plakette.',
-    standing: 'Steht auf der Insel',
-    about: [
-      'Ein Denkmal, das für immer auf deiner Insel bleibt: eine goldene Ehrenwand am oberen Rand, mit einem Stern für jeden Prestige-Rang, den du verdient hast.',
-      'Sie bewahrt deine Geschichte. Jedes Prestige fügt der Liste im Elite-Fenster eine Plakette hinzu: den Tag, dein Elite-Level, die bis dahin gefassten Bosse und die geschafften Legendären Schichten.',
-      'Und sie schaltet den Skin Hall of Famer frei, Gold mit leuchtendem Lorbeer, für deine Autos.',
-    ],
-    looks: 'Nur Optik und Ehre: kein Vorteil auf der Straße, nichts zu verlieren, wenn du Prestige machst.',
-    gives: 'Was du bekommst',
-    wall: 'Goldene Wand auf der Insel',
-    wallValue: (ranks) => (ranks > 0 ? `${ranks} ${ranks === 1 ? 'Stern' : 'Sterne'} jetzt` : 'Noch keine Sterne'),
-    plaques: 'Eine Plakette pro Prestige',
-    plaquesValue: (n) => (n > 0 ? `${n} bisher` : 'Noch keine'),
-    skin: 'Skin Hall of Famer',
-    skinValue: 'Gold, mit Lorbeer',
-    back: 'Zurück zu Elite',
   },
 
   modes: {
-    name: (m) => (m === 'shift' ? 'SCHICHT' : m === 'unlimited' ? 'UNLIMITED' : m === 'mayhem' ? 'MAYHEM' : m === 'chill' ? 'CHILL' : 'MULTIPLAYER'),
+    name: (m) => (m === 'shift' ? 'SCHICHT' : m === 'unlimited' ? 'UNLIMITED' : m === 'mayhem' ? 'MAYHEM' : 'MULTIPLAYER'),
     line: (m) =>
       m === 'shift'
         ? 'Level schaffen, aufsteigen'
@@ -137,20 +124,16 @@ export default (S: Strings): Words<Strings> => ({
           ? 'Endlos · bis zum Crash'
           : m === 'mayhem'
             ? '12 Autos · ziele auf die Tanker'
-            : m === 'chill'
-              ? 'Kein Druck · Crashes beenden nie'
               : 'Bis zu 4 Freunde · der Letzte gewinnt',
     youLabel: 'DU',
     defaultName: 'Spieler',
     runOver: 'LAUF VORBEI',
     again: 'Tippe für einen neuen Lauf',
     carsSent: (n) => (n === 1 ? '1 Auto' : `${n} Autos`),
-    unlocked: { caption: 'NEUE MODI', text: 'Wische seitwärts für Unlimited, Mayhem, Chill und Multiplayer' },
     tryUnlimited: { caption: 'SPIELMODI', text: 'Wische seitwärts für Unlimited: keine Level, fahre einfach bis zum Crash' },
     tightFit: { caption: 'TIPP', text: 'Näher zahlt mehr: Fädle dicht hinter einem Auto ein für eine Knappe Lücke, doppelte Punkte' },
     swipeCaption: 'SPIELMODI',
     swipeHint: 'Wische für mehr Modi',
-    unlockedKeys: { caption: 'NEUE MODI', text: 'Drücke ← oder → für Unlimited, Mayhem, Chill und Multiplayer' },
     tryUnlimitedKeys: { caption: 'SPIELMODI', text: 'Drücke → für Unlimited: keine Level, fahre einfach bis zum Crash' },
     swipeHintKeys: '← → für mehr Modi',
     stage: (stage, overtime) =>
@@ -173,48 +156,6 @@ export default (S: Strings): Words<Strings> => ({
     over: 'MAYHEM VORBEI',
     again: 'Tippe für mehr Mayhem',
     summary: (wrecks, chain) => `${wrecks} ${wrecks === 1 ? 'Wrack' : 'Wracks'} · größte Kette ×${chain}`,
-  },
-
-  chill: {
-    caption: 'CHILL',
-    time: 'ZEIT',
-    done: 'Fertig',
-    doneLabel: 'Fertig: diese Fahrt beenden',
-    over: 'GUTE FAHRT',
-    again: 'Tippe für eine neue Fahrt',
-    summary: (cars, time) => `${cars === 1 ? '1 Auto' : `${cars} Autos`} · ${time}`,
-    best: (cars) => `Deine längste Fahrt: ${cars === 1 ? '1 Auto' : `${cars} Autos`}`,
-  },
-
-  mutator: {
-    caption: 'HEUTE',
-    name: (id) =>
-      ({
-        openRoad: 'Freie Fahrt',
-        speedway: 'Rennstrecke',
-        fogBank: 'Nebelbank',
-        nightShift: 'Nachtschicht',
-        lightsOut: 'Lichter aus',
-        stormFront: 'Sturmfront',
-        rushAllDay: 'Dauerstau',
-        dragnet: 'Großfahndung',
-        heavyLoad: 'Schwerlast',
-        cashConvoy: 'Geldkonvoi',
-      })[id],
-    line: (id) =>
-      ({
-        openRoad: 'Weniger Autos auf dem Ring',
-        speedway: 'Schneller, mit etwas weniger Verkehr',
-        fogBank: 'Nebel die ganze Schicht',
-        nightShift: 'Nach Einbruch der Dunkelheit',
-        lightsOut: 'Nacht, und die Straßenlaternen sind aus',
-        stormFront: 'Ein Sturm die ganze Schicht',
-        rushAllDay: 'Stoßzeit ab dem ersten Auto',
-        dragnet: 'Doppelt so oft Verbrecher',
-        heavyLoad: 'Überall Lkw und Tanker',
-        cashConvoy: 'Doppelt so oft Geldtransporter',
-      })[id],
-    pill: (id) => `HEUTE · ${S.mutator.name(id).toUpperCase()}`,
   },
 
   seasonRule: {

@@ -52,7 +52,7 @@ const { PATCH_NOTES, latestNote, itemText, itemCredit, changelogFile, SUMMARY_LI
 const { parseInviteCode } = await load('/src/net/invite.ts');
 const { pushTimers } = await load('/src/net/push.ts');
 const { dayNumber } = await load('/src/core/daily.ts');
-const { INVITE_LEVEL, INVITE_REMINDER_LEVEL } = await load('/src/core/config.ts');
+const { INVITE_LEVEL } = await load('/src/core/config.ts');
 const { default: qrcode } = await import('qrcode-generator');
 const { ResultBanner, RingSignals } = await load('/src/present/hud.ts');
 // Every module loaded at the top level comes before the first test: a load later down the file
@@ -67,7 +67,6 @@ const { prestigeReward, BIG_SCREEN } = await load('/src/core/loot.ts');
 const { COLORS } = await load('/src/present/theme.ts');
 const { MapTheme, MAP_THEMES } = await load('/src/present/mapThemes.ts');
 const { upgradePrice, upgradeIntroLevel } = await load('/src/core/levels.ts');
-const { MUTATORS, mutatorOf, mutatorSky } = await load('/src/core/mutators.ts');
 const { forSeason } = await load('/src/core/seasons.ts');
 const { drawWeather } = await load('/src/core/levels.ts');
 const { TOURS, tourOn, nextTour, tourTrial, tourStopOf, completeStop, tourStopsDone, stopDoneKey } = await load('/src/core/tours.ts');
@@ -343,18 +342,6 @@ const completed = (level, over = {}) => {
 };
 const context = (level, over = {}) => ({ mode: 'shift', level, daily: false, today: 20000, config: baseConfig, shiftConfig: forLevel(baseConfig, level, 1), splits: [], ...over });
 
-test('clearing the mode-hint level tells about the other modes, once', () => {
-  const at = baseConfig.modeHintAfterLevel;
-  const save = newSave();
-  save.career.level = at;
-  const booked = bookShift(save, completed(at), context(at));
-  assert.equal(save.career.level, at + 1);
-  assert.equal(booked.tips[0], S.modes.unlocked);
-  save.hints.push('modes');
-  save.career.level = at;
-  assert.ok(!bookShift(save, completed(at), context(at)).tips.includes(S.modes.unlocked));
-});
-
 test('Tight Squeeze counts Tight Fits or better; trials open one by one', async () => {
   const { TRIALS, trial, trialPassed, trialOpen } = await load('/src/core/trials.ts');
   const squeeze = trial('tightSqueeze');
@@ -397,7 +384,7 @@ test('the first Perfect Run says what it is, later ones leave it to the ring', (
   assert.ok(!later.news.some((n) => n.startsWith('PERFECT RUN')));
 });
 
-test('the way back and the backup hint come due once, at their levels', () => {
+test('the way back comes due once, at its level', () => {
   const save = newSave();
   save.hints.push('notifications'); // its own test below
   save.career.level = baseConfig.tomorrowAskAfterLevel;
@@ -405,30 +392,6 @@ test('the way back and the backup hint come due once, at their levels', () => {
   assert.deepEqual(bookShift(save, completed(level), context(level)).due, ['tomorrow'], 'a player who skips the Daily is asked after its level');
   save.career.level = level;
   assert.deepEqual(bookShift(save, completed(level), context(level)).due, []);
-  save.hints.push('inviteReminder', 'portalLogin'); // their own tests below
-  save.career.level = baseConfig.backupHintAfterLevel;
-  const later = save.career.level;
-  assert.deepEqual(bookShift(save, completed(later), context(later)).due, ['backup']);
-});
-
-test('reaching level 10 brings the invite reminder once, and only to a shift that gets there', () => {
-  const save = newSave();
-  save.career.level = INVITE_REMINDER_LEVEL - 1;
-  save.hints = ['modes', 'install', 'backup', 'portalLogin', 'notifications', 'tomorrow'];
-  const before = INVITE_REMINDER_LEVEL - 1;
-  // A shift that stays below it says nothing.
-  const low = { ...completed(before - 1) };
-  assert.deepEqual(bookShift(save, low, context(before - 1)).due, []);
-  save.career.level = INVITE_REMINDER_LEVEL - 1;
-  assert.deepEqual(bookShift(save, completed(before), context(before)).due, ['inviteReminder']);
-  assert.ok(save.hints.includes('inviteReminder'));
-  // Played again at 10 and beyond: not told twice. A veteran who has had the news (the start-up message marks both) is not told at all.
-  save.career.level = INVITE_REMINDER_LEVEL;
-  assert.deepEqual(bookShift(save, completed(INVITE_REMINDER_LEVEL), context(INVITE_REMINDER_LEVEL)).due, []);
-  const veteran = newSave();
-  veteran.hints = ['modes', 'install', 'backup', 'invite', 'inviteReminder', 'portalLogin', 'notifications', 'tomorrow'];
-  veteran.career.level = INVITE_REMINDER_LEVEL - 1;
-  assert.deepEqual(bookShift(veteran, completed(before), context(before)).due, []);
 });
 
 test('the way back is asked for when the first Daily is done, notifications follow it, and again at a streak of two days', () => {
@@ -538,7 +501,7 @@ test('whoever used a system before keeps it', () => {
 
 test('opening the Daily or the Trials is no line of news: the place gets a dot and introduces itself; the Casino opens quietly', () => {
   const save = newSave();
-  save.hints = ['modes', 'install', 'backup', 'tomorrow', 'notifications'];
+  save.hints = ['modes', 'install', 'tomorrow', 'notifications'];
   save.career.level = baseConfig.dailyUnlockLevel - 1;
   let level = save.career.level;
   assert.ok(!bookShift(save, completed(level), context(level)).news.some((line) => /daily|trial/i.test(line)));
@@ -722,7 +685,7 @@ test('a place explains itself once: new players get the Museum and Builder after
   assert.deepEqual(Intros.pending(fresh, baseConfig), ['museum', 'builder']);
   Intros.mark(fresh, 'museum');
   fresh.career.level = 12;
-  assert.deepEqual(Intros.pending(fresh, baseConfig), ['builder', 'daily', 'trials', 'casino']);
+  assert.deepEqual(Intros.pending(fresh, baseConfig), ['builder', 'daily', 'trials', 'casino', 'crew']);
   const old = newSave();
   old.tutorialDone = true;
   old.career.level = 30;
@@ -1259,14 +1222,30 @@ test('the Season Pass pays its tiers once; the Hall of Fame keeps a plaque per r
   assert.equal(first.steps.length, PASS_TIERS);
   assert.ok(SeasonPass.skins('winter').every((x) => c.collection.includes(x.id)));
   assert.equal(SeasonPass.record(c, shift, day).steps.length, 0, 'every tier pays once');
-  assert.equal(SeasonPass.record(c, shift, day + 120), null, 'last season’s pass has closed');
+  assert.deepEqual(SeasonPass.record(c, shift, day + 120).steps.map((s) => s.tier), [1, 4, 7], 'last season’s pass has closed: only the free tiers pay');
+
+  // The free track, from the winter season on: XP for everyone, three tiers free, buying pays the rest reached.
+  const autumn = Math.floor(Date.UTC(2026, 9, 18) / 86400000);
+  const f = newCareer();
+  f.level = 20;
+  assert.equal(SeasonPass.record(f, shift, autumn), null, 'no free track before the winter');
+  const free = SeasonPass.record(f, shift, day);
+  assert.deepEqual(free.steps.map((s) => s.tier), [1, 4, 7]);
+  assert.deepEqual(f.chests, ['standard', 'standard', 'event']);
+  assert.equal(SeasonPass.waiting(f, day), PASS_TIERS - 3);
+  f.money = baseConfig.seasonPassPrice;
+  const paid = SeasonPass.buy(f, day);
+  assert.equal(paid.length, PASS_TIERS - 3, 'buying pays every Premium tier reached');
+  assert.ok(paid.every((s) => !SeasonPass.isFree(s.tier, day)));
+  assert.equal(SeasonPass.waiting(f, day), 0);
+  assert.equal(SeasonPass.record(f, shift, day).steps.length, 0, 'every tier pays once');
+  const spring = day + 100;
+  assert.equal(SeasonPass.tier(f, spring), 0, 'a new season starts the track again');
+  assert.deepEqual(SeasonPass.record(f, shift, spring).steps.map((s) => s.tier), [1, 4, 7]);
   const p = newCareer();
   p.level = baseConfig.prestigeLevel;
   Careers.prestige(p, baseConfig, day);
   assert.deepEqual(p.hallOfFame.map((e) => e.rank), [1]);
-  p.money = baseConfig.hallOfFamePrice;
-  assert.ok(Careers.buildHall(p));
-  assert.ok(p.hallBuilt && p.collection.includes('hallOfFame'));
 });
 
 // MARK: Big Screen
@@ -1663,19 +1642,15 @@ test('Freight and Quick Recovery pay a little for the busier road, and nothing e
   assert.ok(both.shiftPay > freight.shiftPay);
 });
 
-test('the Hall of Fame has its own sheet that says what building it gives', async () => {
+test('the Elite sheet keeps a plaque per Prestige rank and no longer sells a Hall of Fame', async () => {
   const { Details } = await load('/src/present/detail.ts');
   const c = newCareer();
-  c.prestige = 2;
-  const sheet = Details.hall(c, baseConfig);
-  assert.equal(sheet.title, 'Hall of Fame');
-  assert.ok(sheet.body.length >= 3 && sheet.body.every((p) => p.length > 30));
-  assert.ok(sheet.rows.some((r) => r.value.includes('2 stars')));
-  assert.ok(sheet.actions.some((a) => a.action.k === 'buildHall') && sheet.actions.some((a) => a.action.k === 'showElite'));
+  c.level = baseConfig.prestigeLevel;
+  Careers.prestige(c, baseConfig, 20000);
   const elite = Details.elite(c, baseConfig, false);
-  assert.ok(elite.sections.flatMap((x) => x.rows).some((r) => r.action?.k === 'showHall'), 'the Elite sheet opens it from the Hall row');
-  c.hallBuilt = true;
-  assert.ok(!Details.hall(c, baseConfig).actions.some((a) => a.action.k === 'buildHall'), 'built: nothing left to build');
+  const log = elite.sections.find((x) => x.header === 'Prestige log');
+  assert.ok(log && log.rows.some((r) => r.label === '★1'), 'the plaque of the first rank is listed');
+  assert.ok(!elite.actions.some((a) => a.action.k === 'buildHall'), 'nothing to build any more');
 });
 
 // MARK: What's new
@@ -2421,47 +2396,9 @@ test('the casino counts its profit and pays its own skins for its big moments', 
 });
 
 
-// MARK: Mutators, seasons, tours, achievements, Chill (07.10.2026)
+// MARK: Seasons, tours, achievements (07.10.2026)
 
 const dayOf = (y, m, d) => Math.floor(Date.UTC(y, m - 1, d) / 86400000);
-
-test('every mutator comes once per cycle of days, and never twice running', () => {
-  const n = MUTATORS.length;
-  for (let cycle = 0; cycle < 30; cycle++) {
-    const seen = new Set();
-    for (let i = 0; i < n; i++) seen.add(mutatorOf(cycle * n + i));
-    assert.equal(seen.size, n, `cycle ${cycle} repeats one`);
-  }
-  for (let day = 20000; day < 20400; day++) assert.notEqual(mutatorOf(day), mutatorOf(day + 1), `day ${day}`);
-  assert.equal(mutatorOf(20123), mutatorOf(20123), 'the same for everyone');
-});
-
-test('a career’s very first Daily goes without the day’s twist, every later one carries it', () => {
-  const c = newCareer();
-  const day = 20123;
-  assert.equal(Careers.dailyMutator(c, day), null, 'nothing played yet');
-  Careers.startDaily(c, day, baseConfig);
-  assert.equal(Careers.dailyMutator(c, day + 1), mutatorOf(day + 1), 'the next day brings the twist');
-});
-
-test('a mutator pins its sky and its rule, and the Daily never counts as a Legendary Shift', () => {
-  const career = newCareer();
-  career.level = 30;
-  for (const id of MUTATORS) {
-    const cfg = Careers.shiftConfig(career, 'shift', baseConfig, 77, 'roadworks', null, id);
-    const pin = mutatorSky(id);
-    assert.equal(cfg.mutator, id);
-    assert.equal(cfg.legendary, null, `${id} must not pay a Legendary chest`);
-    if (pin.weather) assert.equal(cfg.weather, pin.weather);
-    if (pin.darkness) assert.equal(cfg.night, pin.darkness !== 'day');
-    if (pin.darkness === 'blackout') assert.equal(cfg.blackout, true);
-  }
-  const dragnet = Careers.shiftConfig(career, 'shift', baseConfig, 77, 'roadworks', null, 'dragnet');
-  assert.equal(dragnet.criminalChance, 1);
-  const open = Careers.shiftConfig(career, 'shift', baseConfig, 77, 'roadworks', null, 'openRoad');
-  const plain = Careers.shiftConfig(career, 'shift', baseConfig, 77, 'roadworks', null, null);
-  assert.equal(open.densityStart, Math.max(3, plain.densityStart - 2));
-});
 
 test('a season tilts the weather mix and leaves how bad it can get alone', () => {
   const count = (cfg, kind) => {
@@ -2483,19 +2420,18 @@ test('a season tilts the weather mix and leaves how bad it can get alone', () =>
   assert.equal(baseConfig.season, null, 'the base config is never changed');
 });
 
-test('a challenge link carries the twist and the season, and an older link still reads', () => {
+test('a challenge link carries the season, and an older link still reads', () => {
   const career = newCareer();
   career.level = 12;
-  const spec = challengeOf(career, 'shift', 12, 4242, 'concert', 5000, null, 'fogBank', 'autumn');
+  const spec = challengeOf(career, 'shift', 12, 4242, 'concert', 5000, null, 'autumn');
   const code = encodeChallenge(spec);
   const back = decodeChallenge(code);
-  assert.equal(back.mutator, 'fogBank');
   assert.equal(back.season, 'autumn');
   const packed = JSON.parse(Buffer.from(code.replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString('utf8')).slice(0, 13);
   const legacy = Buffer.from(JSON.stringify(packed)).toString('base64').replace(/[+]/g, '-').replace(/[/]/g, '_').replace(/=+$/, '');
   const old = decodeChallenge(legacy);
   assert.ok(old, 'a link from before still decodes');
-  assert.deepEqual([old.mutator, old.season], [null, null]);
+  assert.equal(old.season, null);
 });
 
 test('a tour runs on its days, names its year, and crosses New Year', () => {
@@ -2603,70 +2539,19 @@ test('achievements pay each tier once, count what the shift did, and survive the
   keep.career.stats = { wrecks: 12, bogus: 9 };
   keep.career.achievements = ['scrapyard.1', 'nonsense.1'];
   keep.career.toursDone = ['halloween-2026.3', 'garbage'];
-  keep.chillBest = 30;
-  keep.chillCars = 90;
-  keep.chillTime = 600;
   fakeStorage();
   writeSave(keep);
   const back = loadSave();
   assert.deepEqual(back.career.stats, { wrecks: 12 });
   assert.deepEqual(back.career.achievements, ['scrapyard.1']);
   assert.deepEqual(back.career.toursDone, ['halloween-2026.3']);
-  assert.deepEqual([back.chillBest, back.chillCars, back.chillTime], [30, 90, 600]);
   assert.ok(STAT_KEYS.includes('wrecks'));
 });
 
-test('Chill never ends by itself, has nothing to lose, and ends when the player says so', () => {
-  const career = newCareer();
-  career.level = 40;
-  const cfg = Careers.shiftConfig(career, 'chill', baseConfig, 321);
-  assert.equal(cfg.chill, true);
-  assert.equal(cfg.endless, true);
-  assert.equal(cfg.criminalChance, 0);
-  assert.equal(cfg.militaryChance, 0);
-  assert.equal(cfg.tankerShare, 0);
-  assert.equal(cfg.shiftPay, 0);
-  const world = new World(cfg, 321, { startsOnFirstTap: false });
-  let ended = null;
-  let crashes = 0;
-  // Tap every half second, careful or not: crashes must not end the drive.
-  for (let i = 0; i < 120 * 120 && !ended; i++) {
-    if (i % 60 === 0 && world.queue.isReady) world.tap(world.time);
-    world.step();
-    for (const e of world.takeEvents()) {
-      if (e.type === 'crash' && e.isStrike) crashes++;
-      if (e.type === 'shiftEnded') ended = e.result;
-    }
-  }
-  assert.ok(crashes > 0, 'the reckless tapping did crash');
-  assert.equal(ended, null, 'no crash ended the drive');
-  assert.ok(world.shift.carsSent > 10);
-  world.finish();
-  const done = world.takeEvents().find((e) => e.type === 'shiftEnded');
-  assert.ok(done, 'finish ends the drive');
-  assert.equal(done.result.outcome, 'completed');
-  // Booking it touches nothing of the career.
-  const save = newSave();
-  save.career.money = 500;
-  save.career.level = 9;
-  const booked = bookShift(save, { ...done.result, carsSent: 42, time: 90 }, context(3, { mode: 'chill', shiftConfig: cfg }));
-  assert.equal(save.career.money, 500);
-  assert.equal(save.career.level, 9);
-  assert.deepEqual([save.chillBest, save.chillCars, save.chillTime], [42, 42, 90]);
-  assert.equal(booked.isNew, true);
-  bookShift(save, { ...done.result, carsSent: 10, time: 30 }, context(3, { mode: 'chill', shiftConfig: cfg }));
-  assert.deepEqual([save.chillBest, save.chillCars], [42, 52]);
-  fakeStorage();
-  save.mode = 'chill';
-  writeSave(save);
-  assert.equal(loadSave().mode, 'chill');
-  assert.equal(S.modes.name('chill'), 'CHILL');
-});
-
-test('the Daily Shift with its twist replays the same', () => {
+test('the Daily Shift replays the same', () => {
   const career = newCareer();
   career.level = 25;
-  const make = () => Careers.shiftConfig(career, 'shift', forSeason(baseConfig, 'winter'), 555, 'vipConvoy', null, 'stormFront');
+  const make = () => Careers.shiftConfig(career, 'shift', forSeason(baseConfig, 'winter'), 555, 'vipConvoy', null);
   const once = () => {
     const world = new World(make(), 555, { startsOnFirstTap: false });
     for (let i = 0; i < 120 * 60; i++) {
@@ -2681,7 +2566,6 @@ test('the Daily Shift with its twist replays the same', () => {
   assert.ok(a);
   assert.equal(a.score, b.score);
   assert.equal(a.carsSent, b.carsSent);
-  assert.equal(make().weather, 'storm');
 });
 
 test('the wedding convoy comes from level 100, drives in the flow, and never with another slow special', () => {
@@ -2840,9 +2724,10 @@ test('the precision upgrades: close merges pay a tip, a chain in the flow is lef
   assert.equal(world.savesChain('clean'), false, 'two saves a shift');
 });
 
-test('three losses on a level ease the next shift to its fewest cars, until the level is cleared', async () => {
+test('two losses on a level ease the next shift to its fewest cars, until the level is cleared', async () => {
   const { shiftCarsRange } = await load('/src/core/levels.ts');
   const c = newCareer();
+  c.mastery.shiftsCompleted = 1;
   c.level = 9;
   c.museumSeen = ['weather.lightRain', 'dark.night'];
   const [fewest] = shiftCarsRange(9, baseConfig);
@@ -2857,8 +2742,28 @@ test('three losses on a level ease the next shift to its fewest cars, until the 
   assert.ok([1, 2, 3, 4, 5].every((seed) => !Careers.careerShift(c, baseConfig, seed).assisted));
 });
 
+test('quiet help: a career without a won shift gets a spare crash and eases after one loss, then step by step', async () => {
+  const { forEase } = await load('/src/core/levels.ts');
+  const c = newCareer();
+  const first = Careers.careerShift(c, baseConfig, 3);
+  assert.equal(first.maxStrikes, baseConfig.maxStrikes + 1);
+  assert.equal(first.assisted, true);
+  Careers.noteShift(c, false);
+  const one = Careers.careerShift(c, baseConfig, 3);
+  Careers.noteShift(c, false);
+  const two = Careers.careerShift(c, baseConfig, 3);
+  assert.ok(two.tempoEnd < one.tempoEnd && two.aiSpawnDelay.lo > one.aiSpawnDelay.lo && two.densityEnd <= one.densityEnd, 'every further loss takes more traffic out');
+  assert.equal(forEase(baseConfig, 99).tempoEnd, forEase(baseConfig, baseConfig.easeMaxSteps).tempoEnd, 'capped');
+  assert.equal(forEase(baseConfig, 0), baseConfig);
+  c.mastery.shiftsCompleted = 1;
+  Careers.noteShift(c, true);
+  assert.equal(Careers.careerShift(c, baseConfig, 3).maxStrikes, baseConfig.maxStrikes, 'a won shift ends the spare crash');
+  assert.equal(Careers.shiftConfig(newCareer(), 'shift', baseConfig, 3).maxStrikes, baseConfig.maxStrikes, 'the Daily and challenges never get it');
+});
+
 test('the first bad weather and the first night come for sure, and such a shift is marked as eased', () => {
   const c = newCareer();
+  c.mastery.shiftsCompleted = 1;
   c.level = baseConfig.firstWeatherLevel;
   const rainy = Careers.careerShift(c, baseConfig, 5);
   assert.equal(rainy.weather, 'lightRain');
@@ -2917,7 +2822,7 @@ test('tomorrow’s gift is promised once and waits for its day', () => {
   assert.equal(Unlocks.isOpen(early, 'daily'), true);
 });
 
-test('the tension camera keeps the stop line in place, settles still, and stays out of Chill and Reduce Motion', async () => {
+test('the tension camera keeps the stop line in place, and settles still, and stays out of Reduce Motion', async () => {
   const { CameraFx, CameraFxTuning, tensionOf } = await load('/src/present/cameraFx.ts');
   const { toScreen } = await load('/src/present/render.ts');
   const cam = { viewport: { x: 390, y: 844 }, center: { x: 0, y: -20 }, focus: { x: 195, y: 400 }, scale: 1.5 };
@@ -2934,7 +2839,8 @@ test('the tension camera keeps the stop line in place, settles still, and stays 
   assert.equal(fx.apply(cam, stop, true), cam, 'Reduce Motion: no zoom');
   assert.equal(fx.vignette, 0.8, 'the vignette stays under Reduce Motion');
   const world = new World(forLevel(baseConfig, 3, 11), 11, { startsOnFirstTap: false });
-  assert.equal(tensionOf(world, 'chill'), 0);
+  world.shift.outcome = 'completed';
+  assert.equal(tensionOf(world, 'shift'), 0, 'nothing is at stake once the shift is over');
 });
 
 test('notifications: the game asks only for what matters, at sensible hours on its own clock', () => {
@@ -3291,10 +3197,10 @@ test('the tab bar runs Progress, Social, Game, Shop, Build, and Social shows onl
   const c = newCareer();
   assert.equal(SocialPage.clubOpen(c), false, 'the Club waits for Level 50');
   assert.equal(SocialPage.mafiaOpen(c), false, 'the Mafia waits for the first boss');
-  assert.deepEqual(SocialPage.sections(c), [SOCIAL.friends, SOCIAL.ranks]);
+  assert.deepEqual(SocialPage.sections(c), [SOCIAL.crew, SOCIAL.ranks]);
   c.bossesBeaten.push('convoy');
   assert.equal(SocialPage.mafiaOpen(c), true);
-  assert.deepEqual(SocialPage.sections(c), [SOCIAL.friends, SOCIAL.ranks, SOCIAL.mafia]);
+  assert.deepEqual(SocialPage.sections(c), [SOCIAL.crew, SOCIAL.ranks, SOCIAL.mafia]);
   const cells = SocialPage.segments(viewport, SocialPage.sections(c));
   for (const [section, r] of cells) assert.equal(SocialPage.sectionAt({ x: (r.minX + r.maxX) / 2, y: (r.minY + r.maxY) / 2 }, viewport, c), section);
   assert.ok(SocialPage.column(viewport).top > cells[0][1].maxY, 'the content starts under the segments');
@@ -3319,6 +3225,38 @@ test('what the career has not reached is not on show: the Casino in the Shop, th
   const late = { ...c, level: 20, loan: { amount: 1000, owed: 1200, paid: 0, due: 1, late: true, graced: false, told: 0, seen: 1, taken: 1 } };
   assert.ok(Mafia.late(late));
   assert.deepEqual(ShopPage.sections(late), [0, 1, 2]);
+});
+
+test('a career that Prestiges at Level 50 meets all eight bosses and the late specials, spread over the ranks', () => {
+  const at = (rank, level) => {
+    const c = newCareer();
+    c.prestige = rank;
+    c.level = level;
+    return Careers.config(c, baseConfig, 4242, 'clear', null, null);
+  };
+  assert.deepEqual([15, 30, 45].map((l) => at(0, l).bossKind), ['convoy', 'getaway', 'armoured'], 'rank 0 meets the first three');
+  assert.deepEqual([15, 30, 45].map((l) => at(1, l).bossKind), ['phantom', 'twins', 'decoy']);
+  assert.deepEqual([15, 30].map((l) => at(2, l).bossKind), ['smuggler', 'kingpin']);
+  assert.equal(at(1, 20).convoy, false, 'only every 15th level');
+  assert.equal(at(3, 15).convoy && at(3, 45).convoy, true);
+  assert.equal(Careers.bossShift({ ...newCareer(), prestige: 2 }), 90);
+  const comes = (rank, level) => {
+    const cfg = at(rank, level);
+    cfg.oversizeChance = cfg.racerChance = cfg.weddingChance = 1;
+    const world = new World(cfg, 77, { startsOnFirstTap: false });
+    return [world.oversize.kind !== 'done', world.race.kind !== 'done', world.wedding.kind !== 'done'];
+  };
+  assert.deepEqual(comes(0, 20), [false, false, false]);
+  assert.deepEqual(comes(1, 20), [false, false, false]);
+  assert.deepEqual(comes(2, 1), [true, false, false], 'rank 2 brings the oversize load');
+  assert.deepEqual(comes(3, 1), [true, true, false], 'rank 3 the street racers');
+  assert.deepEqual(comes(4, 1), [true, true, true], 'rank 4 the wedding convoy');
+});
+
+test('a Daily done for today names tomorrow’s city as the reason to come back', () => {
+  assert.match(S.daily.rowLine(3, false, null, 0, null, 'roadworks'), /tomorrow: .+/);
+  assert.match(S.daily.rowLine(3, false, null), /back tomorrow/);
+  assert.ok(!/tomorrow/.test(S.daily.rowLine(3, true, null, 0, null, 'roadworks')));
 });
 
 test('Mafia: a loan is paid out, repaid in time it makes the next one kinder, late it shuts the Casino and takes the loot', async () => {
@@ -3502,7 +3440,7 @@ test('ring signal guide for the website: every signal the game plays is explaine
   const items = features.groups.flatMap((g) => g.items);
   assert.equal(new Set(items.map((x) => x.id)).size, items.length);
   assert.ok(items.every((x) => x.title && x.line && x.body.length > 0 && !JSON.stringify(x).includes(String.fromCharCode(0xe000))));
-  assert.equal(features.groups[0].items.length, 5, 'every mode');
+  assert.equal(features.groups[0].items.length, 4, 'every mode');
 });
 
 test('a fast flick runs a little past the end of a list, springs back without ringing, and is felt once', () => {
@@ -3569,4 +3507,65 @@ test('upgrades come with the vehicle they work on, and a few first steps are che
     assert.equal(upgradePrice(u, 1, baseConfig), price);
     assert.ok(upgradePrice(u, 2, baseConfig) > price, `${u}: the second step keeps its price`);
   }
+});
+
+test('three Premium Chests at once cost less; After Work pays career shifts in its hours', () => {
+  const c = newCareer();
+  c.money = baseConfig.premiumBundlePrice - 1;
+  assert.ok(!Careers.buyChest(c, 'premium', baseConfig, true));
+  c.money += 1;
+  assert.ok(Careers.buyChest(c, 'premium', baseConfig, true));
+  assert.deepEqual([c.money, Careers.count(c, 'premium')], [0, baseConfig.premiumBundle]);
+  assert.ok(baseConfig.premiumBundlePrice < baseConfig.premiumBundle * baseConfig.premiumChestPrice);
+  assert.ok(!Careers.buyChest(c, 'standard', baseConfig, true), 'only the Premium Chest comes as a pack');
+  assert.ok(Goals.afterWork('shift', false, baseConfig.afterWorkFrom));
+  assert.ok(!Goals.afterWork('shift', false, baseConfig.afterWorkTo));
+  assert.ok(!Goals.afterWork('shift', true, baseConfig.afterWorkFrom), 'never over the Daily');
+  assert.ok(!Goals.afterWork('unlimited', false, baseConfig.afterWorkFrom));
+});
+
+test('a run a crash ended goes on once for an ad, and replays the same', () => {
+  const reckless = (world) => world.queue.isReady && world.time % 1.3 < 1 / 120;
+  const run = () => {
+    const world = new World(forLevel(baseConfig, 8, 99), 99, { startsOnFirstTap: false });
+    const ends = [];
+    for (let i = 0; i < 120 * 240 && ends.length < 2; i++) {
+      if (reckless(world)) world.tap(world.time);
+      world.step();
+      for (const e of world.takeEvents()) {
+        if (e.type !== 'shiftEnded') continue;
+        ends.push(e.result);
+        if (e.result.outcome === 'struckOut' && world.revives === 0) assert.ok(world.revive(world.time));
+      }
+    }
+    return ends;
+  };
+  const first = run();
+  assert.equal(first[0].outcome, 'struckOut', 'the reckless bot crashes out');
+  const last = first[first.length - 1];
+  assert.ok(last.revived, 'the result says it went on');
+  assert.ok(last.crashes > first[0].crashes, 'the crash before the revive still counts');
+  assert.ok(!last.isPerfectRun);
+  assert.deepEqual(run(), first, 'same seed, taps and revive, same run');
+  const w = new World(forLevel(baseConfig, 8, 99), 99, { startsOnFirstTap: false });
+  assert.ok(!w.revive(0), 'only a run a crash ended');
+});
+
+test('the Auction House sells a skin lot at its fixed price instead of the room, once', () => {
+  const c = newCareer();
+  c.level = baseConfig.prestigeLevel;
+  c.prestige = 1;
+  const day = 20800;
+  const lots = Auction.today(c, day);
+  const slot = lots.findIndex((l) => l.k === 'skin');
+  const price = Auction.buyNowPrice(lots[slot]);
+  assert.equal(price, Math.round((Auction.estimate(lots[slot]) * baseConfig.auctionBuyNow) / 500) * 500);
+  c.money = price - 1;
+  assert.equal(Auction.buyNow(c, slot, day), null, 'not without the money');
+  c.money = price;
+  assert.equal(Auction.buyNow(c, slot, day), price);
+  assert.equal(c.money, 0);
+  assert.ok(Careers.owns(c, lots[slot].id));
+  assert.ok(!Auction.canStart(c, slot, day), 'the lot is taken for the day');
+  assert.equal(Auction.buyNowPrice({ k: 'chest', chest: 'diamond' }), null, 'chests are in the Shop');
 });

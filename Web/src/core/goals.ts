@@ -77,6 +77,10 @@ export const Goals = {
   /** The next shift pays more: Tailwind waits, and this one is a plain career shift. */
   tailwindOn: (c: Career, mode: GameMode, daily: boolean): boolean => c.tailwind && mode === 'shift' && !daily,
 
+  /** A plain career shift started in the After Work hours pays more. */
+  afterWork: (mode: GameMode, daily: boolean, hour: number, config: Config = baseConfig): boolean =>
+    mode === 'shift' && !daily && hour >= config.afterWorkFrom && hour < config.afterWorkTo,
+
   /** Days of streak until the next Streak Freeze, null while the stock is full. */
   daysToFreeze: (c: Career, config: Config = baseConfig): number | null =>
     c.streakFreezes >= config.streakFreezeMax ? null : c.dailyStreak < config.streakFreezeFirst ? config.streakFreezeFirst - c.dailyStreak : config.streakFreezeEvery - (c.dailyStreak % config.streakFreezeEvery),

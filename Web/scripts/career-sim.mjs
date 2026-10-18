@@ -35,6 +35,7 @@ try {
   const { bookShift } = await server.ssrLoadModule('/src/present/booking.ts');
   const { joinsClearRoad } = await server.ssrLoadModule('/src/core/ambulance.ts');
   const { Elite } = await server.ssrLoadModule('/src/core/elite.ts');
+  const { SeasonPass, PASS_TIERS } = await server.ssrLoadModule('/src/core/seasonPass.ts');
   const { conditionsOf, museumId } = await server.ssrLoadModule('/src/core/museum.ts');
 
   // A seeded source of chance, so a run is the same every time.
@@ -147,6 +148,8 @@ try {
     let shiftMoney = 0;
     /** The Elite track from the moment it opens (Level 50): shifts, minutes and XP since then. */
     const elite = { openedAt: null, shifts: 0, minutes: 0, xp: 0 };
+    /** The Season Pass's free track from `seasonPassLevel`: its XP, and the money earned since, against the pass's price. */
+    const pass = { minutes: 0, xp: 0, earned: 0, halfAt: null, priceAt: null };
     paid.transporters = 0;
     paid.jackpots = 0;
     paid.jackpotCount = 0;
@@ -179,6 +182,13 @@ try {
       minutes += spent;
       band.minutes += spent;
       shiftMoney += Math.max(0, res.money);
+      if (SeasonPass.isOpen(c, baseConfig)) {
+        pass.minutes += spent;
+        pass.xp += Elite.xpOf(res, baseConfig);
+        pass.earned += gained;
+        if (pass.halfAt === null && pass.xp >= SeasonPass.xpTo(PASS_TIERS / 2, baseConfig)) pass.halfAt = pass.minutes;
+        if (pass.priceAt === null && pass.earned >= baseConfig.seasonPassPrice) pass.priceAt = pass.minutes;
+      }
       if (eliteOpen) {
         elite.shifts++;
         elite.minutes += spent;
@@ -232,6 +242,14 @@ try {
         `  elite: open at level ${elite.openedAt.level} (${(elite.openedAt.minutes / 60).toFixed(1)} h); since then ${elite.shifts} shifts, ${(elite.minutes / 60).toFixed(1)} h, ${(elite.xp / elite.shifts).toFixed(1)} XP a shift, ${Math.round(perHour)} XP an hour → Elite ${Elite.level(c, baseConfig)}; at this pace Elite 10 in ${hoursTo(10).toFixed(0)} h, 50 in ${hoursTo(50).toFixed(0)} h, 100 in ${hoursTo(100).toFixed(0)} h of play`,
       );
     } else if (target > baseConfig.prestigeLevel) console.log('  elite: not open yet');
+    // The Season Pass (free track): how fast the track fills, and whether half of it shows before the price is earned.
+    if (pass.minutes > 0) {
+      const perHour = pass.xp / (pass.minutes / 60);
+      const h = (m) => (m === null ? 'not yet' : `${(m / 60).toFixed(1)} h`);
+      console.log(
+        `  season pass: ${Math.round(perHour)} XP an hour from level ${baseConfig.seasonPassLevel}; all ${PASS_TIERS} tiers in ${(SeasonPass.xpTo(PASS_TIERS, baseConfig) / perHour).toFixed(1)} h of play; half the track after ${h(pass.halfAt)}, ${baseConfig.seasonPassPrice.toLocaleString('en')} earned after ${h(pass.priceAt)}`,
+      );
+    }
     console.log(`  opened:${FEATURES.map((f) => (opened[f] ? `${f} at level ${opened[f].level} (${opened[f].minutes.toFixed(0)} min)` : `${f} never`)).join(', ')}`);
     console.log('  level  shifts   hours  lost %  money/shift       bank  upgrades  arms  next upgrade  shifts for it');
     for (const x of rows) {

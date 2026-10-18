@@ -24,7 +24,7 @@ export const HOSTING = {
   location: 'Germany',
 };
 
-export const LEGAL_UPDATED = '16 October 2026';
+export const LEGAL_UPDATED = '18 October 2026';
 
 export const GAME_NAME = 'Roundabout Timing';
 
@@ -128,11 +128,12 @@ export const LEGAL_DOCS: LegalDoc[] = [
         ],
       },
       {
-        heading: 'Friends',
+        heading: 'Crews and invites',
         paragraphs: [
-          'If you open Friends under Social, the server makes a friend code for you (like K7M2-9QXA). Whoever types your code adds you to their friends list and then sees your name and your best scores on their friends board, which they could already see on the public leaderboard. You can see and remove the people on your own list; the list is stored with your leaderboard entry.',
+          'If you have a name on the leaderboard, the server makes a friend code for you (like K7M2-9QXA). It is part of your invite links and of bug reports you choose to send with it.',
+          'If you found or join a crew under Social → Crew, the server stores the crew (its name, a code for its invite link, who founded it and when it was renamed), that you are a member and since when, the Season XP your game reports after each shift for the crew’s week (only the number), the crew’s league and its place in past weeks, and the gifts members give: what it is, who gave it, to whom and who took it. The members of your crew see your name, your title, your XP of the week and your places on the public leaderboards; the other crews in your league group see only the crew’s name and its XP. Computer crews in the league are made up by the game and named as such. Whoever opens your crew’s link sees its name and how many players it has. Leaving the crew, or being taken out by its founder, ends the membership at once; the crew keeps the XP you earned for it, without your name, and a gift nobody took goes back to its giver after a week.',
           'Your friend code is also your invite. A friend who opens your invite link (like …/i/K7M29QXA, or a challenge link you shared while you have a name on the leaderboard) arrives with your code. Once they have a name on the leaderboard, their game tells our server that they came through you, and the server keeps one line: who invited whom, and whether they reached level 5. When they do, you both get a chest in the game, which the game picks up the next time you open it. You see the names of the friends you invited and how far they are; they see who invited them. Opening the link without a name sends nothing to us.',
-          'Legal basis: Art. 6(1)(b) GDPR (the friends board and invites you chose to use). Removing your name from the leaderboard deletes your friend code, your list and your invites as well.',
+          'Legal basis: Art. 6(1)(b) GDPR (the crew and invites you chose to use). Removing your name from the leaderboard deletes your friend code, your crew membership and your invites as well.',
         ],
       },
       {
@@ -147,7 +148,7 @@ export const LEGAL_DOCS: LegalDoc[] = [
         heading: 'Cloud sync',
         paragraphs: [
           'Only if you turn on Cloud sync (Settings → Account → Cloud sync), the game sends a copy of your progress (the same data as the progress file you can export: level, money, upgrades, collection, records, settings) to our server. If you also have a leaderboard name, the copy carries that account (its ID, name and secret key, as they are, not hashed) so the name and your scores come along when you enter the code on another device. No name, e-mail address or password is needed for the copy itself: the server makes a random sync code, and the code is the only key to the copy. Only its hash is stored, together with the copy and the times it was made, last changed and last opened. The copy is not public. A copy that has not been opened or changed for 200 days is deleted automatically. Your IP address reaches the server with every request, as with any website; it is used only in memory to stop abuse and is not stored.',
-          'Anyone who knows your sync code can load or replace your copy, so keep it private. A picture you chose for Big Screen is not part of it. If you have a name on the leaderboard, the copy also holds that name and the secret key that proves it is yours, so that on a new device you are the same player again, with the same name, scores and friends. Anyone with the sync code could therefore also act as that player.',
+          'Anyone who knows your sync code can load or replace your copy, so keep it private. A picture you chose for Big Screen is not part of it. If you have a name on the leaderboard, the copy also holds that name and the secret key that proves it is yours, so that on a new device you are the same player again, with the same name, scores and crew. Anyone with the sync code could therefore also act as that player.',
           'Legal basis: Art. 6(1)(b) GDPR (the backup you chose to make). To delete the copy for good: Settings → Account → Cloud sync → Delete the cloud copy. Stopping on one device leaves the copy for your other devices.',
         ],
       },
@@ -205,7 +206,7 @@ export const LEGAL_DOCS: LegalDoc[] = [
         heading: 'Deleting your data',
         paragraphs: [
           "You have no account with us: your progress lives on your device. Deleting the game's data in your browser, or uninstalling the app and clearing Chrome's data for game.gustaff.dev, removes it from your device.",
-          'What our server keeps exists only if you chose it, and you can delete it yourself in the game at any time: everything at once with Settings → Account → Delete account; your notifications with Settings → Notifications; or your name, scores, friend code and friends list with Settings → Account → Your player → Remove me from the leaderboard; your cloud copy with Settings → Account → Cloud sync → Delete the cloud copy. Both are gone for good at once. If you can no longer open the game, write to the email address above with your name on the leaderboard or your sync code, and we delete it within 30 days.',
+          'What our server keeps exists only if you chose it, and you can delete it yourself in the game at any time: everything at once with Settings → Account → Delete account; your notifications with Settings → Notifications; or your name, scores, friend code and crew membership with Settings → Account → Your player → Remove me from the leaderboard; your cloud copy with Settings → Account → Cloud sync → Delete the cloud copy. Both are gone for good at once. If you can no longer open the game, write to the email address above with your name on the leaderboard or your sync code, and we delete it within 30 days.',
         ],
       },
       {

@@ -9,10 +9,11 @@ import { ICONS, CHEST_FLAT } from './icons';
 import { settingsSheet, deleteAccountSheet, patchNotesSheet, guidesSheet, legalSheet, licensesSheet, installDialog, offerDialog, isSheetOpen, closeAnySheet, closeTopSheet } from './sheets';
 import { installBackGesture, inSystemGestureZone } from './backGesture';
 import { disablePush, enablePush, pushChoiceOn, pushDelivers, pushState, pushTimers, setPushChoice, syncPush, type PushState, type PushTimer } from '../net/push';
-import { cloudEnabled, cloudLinked, cloudStoppedHere, cloudView, createCloud, deleteCloud, onCloudChange } from '../net/cloud';
+import { cloudEnabled, cloudLinked, cloudStoppedHere, createCloud, deleteCloud, onCloudChange } from '../net/cloud';
 import { fetchInvite, inviteUrl, readInviteLink, redeemInvite } from '../net/invite';
-import { deleteAccount, describeError, fetchFriends, leaderboardEnabled, loadAccount, onAccountChange, onScoresSynced, syncScores } from '../net/leaderboard';
+import { deleteAccount, describeError, leaderboardEnabled, loadAccount, onAccountChange, onScoresSynced, syncScores } from '../net/leaderboard';
 import { collectRewards } from '../net/rewards';
+import { readCrewLink } from '../net/crews';
 import { legalDoc } from '../present/legal';
 import { PATCH_NOTES } from '../present/patchNotes';
 import { PhotoView } from './photo';
@@ -73,7 +74,7 @@ function signatureOf(list: RenderList): number {
 }
 
 /** The icon of each modifier before a shift (`Shell.showMods`). */
-const MOD_ICON: Record<Modifier['id'], string> = { heat: ICONS.flame, tailwind: ICONS.wind, streak: ICONS.streak, family: ICONS.hat };
+const MOD_ICON: Record<Modifier['id'], string> = { heat: ICONS.flame, tailwind: ICONS.wind, afterWork: ICONS.sunset, streak: ICONS.streak, family: ICONS.hat };
 
 /** The room the floating dock claims above the safe area (`--tabbar-h`). */
 const TAB_HEIGHT = 64;
@@ -142,8 +143,6 @@ export class Shell {
   /** The first shifts on a touch screen: tap anywhere, beside the arm; and over the dispatch button, that it can change sides. */
   private readonly tapHint = h('div', { class: 'tap-hint', 'aria-hidden': 'true' }, h('span', { class: 'tap-hint-icon' }, h('span', { class: 'tap-hint-ring' }), icon(ICONS.tap)), h('span', { class: 'tap-hint-text' }, h('b', {}, S.shell.tapAnywhere), h('span', {}, S.shell.tapAnywhereSub)));
   private readonly dispatchHint = h('div', { class: 'dispatch-hint', 'aria-hidden': 'true' }, S.shell.dispatchSide);
-  /** Chill has no end of its own: this ends the drive. */
-  private readonly doneBtn: HTMLButtonElement;
   private readonly photoBtn: HTMLButtonElement;
   /** On the Game tab while a Heat is open: the next step of the waiting shift. */
   /** What changes the next shift's pay (`GameSession.modifiers`): one as a labelled pill, several as round icons. */
@@ -259,13 +258,7 @@ export class Shell {
       keycap('D'),
       this.dispatchCount,
     );
-    this.doneBtn = h(
-      'button',
-      { class: 'icon-btn glass float-btn done-btn', type: 'button', 'aria-label': S.chill.doneLabel, onclick: () => this.push({ k: 'finishChill' }) },
-      icon(ICONS.check),
-      h('span', {}, S.chill.done),
-    );
-    for (const b of [this.settingsBtn, this.dispatchBtn, this.doneBtn]) b.addEventListener('pointerdown', (e) => e.stopPropagation());
+    for (const b of [this.settingsBtn, this.dispatchBtn]) b.addEventListener('pointerdown', (e) => e.stopPropagation());
     // Picture is a labelled pill like Settings and the chest pill, all one size (Leo, 08.10.2026). Friends moved to the Social tab (Leo, 10.10.2026).
     // Heat is never chosen (Leo, 15.10.2026), nor is any other modifier: the pills only show what is on and what it does.
     this.mods.addEventListener('pointerdown', (e) => e.stopPropagation());
@@ -326,14 +319,22 @@ export class Shell {
     const s = this.session;
     if (import.meta.env.DEV) installMafiaDebug(s);
     this.social = new SocialView(app, {
-      friends: () => ({ records: () => s.leaderboardRecords, playTogether: () => this.openLobby(), challenge: s.shareable !== null ? () => this.share() : null }),
+      crew: () => ({
+        layer: this.layers,
+        career: () => s.save.career,
+        changed: () => s.clubChanged(),
+        records: () => s.leaderboardRecords,
+        collect: () => this.collectRewards(),
+        playTogether: () => this.openLobby(),
+        challenge: s.shareable !== null ? () => this.share() : null,
+      }),
       ranks: () => ({ records: () => s.leaderboardRecords, createPlayer: () => this.openAccountSheet() }),
       club: () => this.clubHost(),
       clubOpen: () => SocialPage.clubOpen(s.save.career),
       mafia: () => this.mafiaHost(),
       mafiaOpen: () => SocialPage.mafiaOpen(s.save.career),
       online: leaderboardEnabled,
-      friendsAllowed: leaderboardEnabled && !inPortal,
+      crewAllowed: leaderboardEnabled && !inPortal,
       accountReady,
       needAccount: () => this.openAccountSheet(),
     });
@@ -393,8 +394,8 @@ export class Shell {
       h('button', { class: 'react-btn', type: 'button', 'aria-label': S.shell.reaction(r), 'aria-keyshortcuts': String(i + 1), onclick: () => this.versus.react(r) }, REACTION_EMOJI[r]),
     );
     this.reactBar = h('div', { class: 'react-bar', role: 'group', 'aria-label': S.shell.reactions }, ...reactButtons, this.revengeBtn);
-    for (const b of [this.settingsBtn, this.dispatchBtn, this.doneBtn, this.photoBtn, this.chestBtn, this.leaveBtn, this.againBtn, this.lobbyBtn, quitBtn, this.reactBar]) b.addEventListener('pointerdown', (e) => e.stopPropagation());
-    app.append(this.settingsBtn, this.dispatchBtn, this.doneBtn, runBar, this.reactBar, this.versusBar, this.tapHint, this.dispatchHint);
+    for (const b of [this.settingsBtn, this.dispatchBtn, this.photoBtn, this.chestBtn, this.leaveBtn, this.againBtn, this.lobbyBtn, quitBtn, this.reactBar]) b.addEventListener('pointerdown', (e) => e.stopPropagation());
+    app.append(this.settingsBtn, this.dispatchBtn, runBar, this.reactBar, this.versusBar, this.tapHint, this.dispatchHint);
     this.detail = new DetailSheet(
       app,
       (action) => {
@@ -418,6 +419,12 @@ export class Shell {
       this.reportProgress();
     };
     this.session.flushVisit();
+    this.session.onAwayNews = (notes) => {
+      this.pageOpen = true;
+      this.session.markNotesRead();
+      patchNotesSheet(this.layers, notes, () => this.pageClosed(), S.settings.awayNews);
+    };
+    this.session.flushAwayNews();
     this.reportProgress();
     this.bindInput(canvas);
     if (!inPortal) installBackGesture(() => this.stepBack());
@@ -490,6 +497,11 @@ export class Shell {
    * player; both get a chest when this one reaches level 5. The player is told once, and that a name is needed.
    */
   private readInvite(): void {
+    // A crew's link (`?crew=`): kept until the player joins under Social → Crew, said once.
+    if (readCrewLink() && !inPortal) {
+      track('crew-open');
+      this.session.noteCrewInvite();
+    }
     if (!readInviteLink(this.session.save.career.level)) return;
     track('invite-open');
     this.session.noteInvited(!loadAccount());
@@ -791,8 +803,7 @@ export class Shell {
     const onGame = s.showsChrome && (screen.k === 'ready' || screen.k === 'result');
     this.settingsBtn.classList.toggle('show', onGame);
     if (this.flashPending && onGame) this.flashNow(this.flashPending);
-    const chill = s.playingMode === 'chill';
-    this.dispatchBtn.classList.toggle('show', screen.k === 'playing' && !chill && s.world.config.dispatchLimit > 0);
+    this.dispatchBtn.classList.toggle('show', screen.k === 'playing' && s.world.config.dispatchLimit > 0);
     const dispatches = s.world.dispatchesLeft;
     this.dispatchCount.textContent = String(dispatches);
     this.dispatchBtn.classList.toggle('spent', dispatches === 0);
@@ -800,8 +811,7 @@ export class Shell {
     // Only while the game is new to the player, and only where a thumb plays.
     const fresh = touchFirst && !match && s.special === null && s.save.shiftsPlayed < GameSession.tapHintShifts;
     this.tapHint.classList.toggle('show', fresh && screen.k === 'playing');
-    this.dispatchHint.classList.toggle('show', touchFirst && !match && screen.k === 'playing' && !chill && s.world.config.dispatchLimit > 0 && s.save.career.level <= baseConfig.policeLevel + 1);
-    this.doneBtn.classList.toggle('show', screen.k === 'playing' && chill);
+    this.dispatchHint.classList.toggle('show', touchFirst && !match && screen.k === 'playing' && s.world.config.dispatchLimit > 0 && s.save.career.level <= baseConfig.policeLevel + 1);
     const mods = match ? [] : s.modifiers;
     this.showMods(mods);
     this.mods.classList.toggle('show', onGame && mods.length > 0);
@@ -1009,16 +1019,11 @@ export class Shell {
 
   /**
    * A one-time hint came due. The way back for tomorrow (`tomorrow`): installing or notifications, see `askWayBack`.
-   * Level 12: recommend Cloud sync while this device has no cloud copy (Leo, 01.10.2026: it replaced the export).
    */
   private giveHint(hint: Hint): void {
     if (hint === 'tomorrow') {
       void keepStorage();
       this.askWayBack();
-    } else if (hint === 'inviteReminder') {
-      if (!leaderboardEnabled || inPortal) return;
-      if (!this.session.takeTip()) return this.session.deferHint(hint);
-      this.session.tip(S.hints.inviteReminder);
     } else if (hint === 'portalLogin') {
       if (!inPortal) return;
       if (!this.session.takeTip()) return this.session.deferHint(hint);
@@ -1034,9 +1039,6 @@ export class Shell {
       if (state !== 'off' || !pushDelivers()) return;
       if (!this.session.takeTip()) return this.session.deferHint(hint);
       this.afterResult(hint, () => this.offerPush(hint === 'notifications' ? 'later' : 'streak', false));
-    } else if (hint === 'backup') {
-      if (!cloudEnabled || cloudView().code !== null) return;
-      this.flashSettings(S.settings.syncAsk, true);
     }
   }
 
@@ -1342,7 +1344,7 @@ export class Shell {
           syncPush(this.pushTimers);
         },
       },
-      friendCode: loadAccount() ? () => fetchFriends().then((f) => f.code) : null,
+      friendCode: loadAccount() ? () => fetchInvite().then((v) => v.code) : null,
       // The cloud sync page, over the settings; the settings come back when it closes.
       openCloud: () => this.openCloudPage(),
       player: accountsEnabled ? { name: loadAccount()?.name ?? null, ready: accountReady(), open: () => this.openAccountSheet() } : null,

@@ -1,7 +1,7 @@
 import type { Career } from '../core/career';
 import { type Config, type BossKind, type CityEvent, baseConfig } from '../core/config';
 import type { FailCause } from '../core/events';
-import { type MuseumShelf, type MuseumEntry, type SpecialKind, type WeatherKind, type DarkKind, shelfEntries, museumId, firstLevel } from '../core/museum';
+import { type MuseumShelf, type MuseumEntry, type SpecialKind, type WeatherKind, type DarkKind, shelfEntries, museumId, firstPlace } from '../core/museum';
 import { rematch } from '../core/trials';
 import { type VehicleType, isHeavy } from '../core/vehicle';
 import { type Vec2, v, add, mul, fromAngle, TAU } from '../core/vec2';
@@ -411,7 +411,8 @@ export const MuseumPage = {
     const right = beaten ? 86 : 16;
     const title = shown ? S.museum.name(entry) : S.museum.unknown;
     drawText(list, title, v(x, c.y - 16), ShopPage.fitted(title, 14, r.maxX - right - x), beaten ? 'coin' : shown ? 'primary' : 'muted', { opacity: o, weight: 'bold' });
-    const lineText = shown ? S.museum.line(entry) : S.museum.firstAt(firstLevel(entry, baseConfig));
+    const at = firstPlace(entry, baseConfig);
+    const lineText = shown ? S.museum.line(entry) : S.museum.firstAt(at.level, at.rank);
     drawText(list, lineText, v(x, c.y + 3), ShopPage.fitted(lineText, 11, r.maxX - 16 - x), 'muted', { opacity: o });
     const status = beaten ? S.boss.beaten : shown ? S.museum.met : S.museum.notSeen;
     drawText(list, status, v(x, c.y + 21), 11, beaten ? 'accent' : 'muted', { opacity: o, weight: 'bold' });
@@ -429,8 +430,8 @@ export const MuseumPage = {
     MuseumPage.art(list, entry, v(c.x, r.minY + R.height(r) * 0.38), scale, shown, time, o, R.width(r) - 24);
     const name = shown ? S.museum.name(entry) : S.museum.unknown;
     drawText(list, name, v(c.x, r.maxY - 30), ShopPage.fitted(name, 13, R.width(r) - 12), shown ? 'primary' : 'muted', { opacity: o, weight: 'bold', align: 'center' });
-    const level = firstLevel(entry, baseConfig);
-    const lineText = shown ? S.museum.line(entry) : level > 1 ? S.museum.firstAt(level) : S.museum.notSeen;
+    const at = firstPlace(entry, baseConfig);
+    const lineText = shown ? S.museum.line(entry) : at.rank > 0 || at.level > 1 ? S.museum.firstAt(at.level, at.rank) : S.museum.notSeen;
     drawText(list, lineText, v(c.x, r.maxY - 13), ShopPage.fitted(lineText, 10, R.width(r) - 10), 'muted', { opacity: o, align: 'center' });
   },
 

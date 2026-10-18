@@ -52,7 +52,7 @@ export type SocialSection = 0 | 1 | 2 | 3;
  * or friends only) · Club (from Level 50: Auction House, Game fund) · Mafia (from the first boss: loans struck on a pointer bar).
  * Its content is the shell's DOM (`ui/socialPage.ts`); the canvas draws the title and the segments.
  */
-export const SOCIAL = { friends: 0, ranks: 1, club: 2, mafia: 3 } as const satisfies Record<string, SocialSection>;
+export const SOCIAL = { crew: 0, ranks: 1, club: 2, mafia: 3 } as const satisfies Record<string, SocialSection>;
 
 export type Part = 'arm' | RoadModule;
 export const PARTS: Part[] = ['arm', 'tollBooth', 'speedCamera', 'towDepot', 'billboard', 'detour'];
@@ -101,7 +101,7 @@ export type ScreenAction =
   | { k: 'openChest'; index: number }
   /** A tap on the chest being tapped open. */
   | { k: 'hitChest' }
-  | { k: 'buyChest'; kind: ChestKind }
+  | { k: 'buyChest'; kind: ChestKind; bundle?: boolean }
   | { k: 'watchAd' }
   /** A free step of today's upgrade, and the Skin Upgrade's boost, each for an ad (`adFlow.ts`). */
   | { k: 'watchAdUpgrade' }
@@ -115,12 +115,9 @@ export type ScreenAction =
   | { k: 'startTrial'; id: string }
   | { k: 'wearTitle'; id: TitleId }
   | { k: 'showElite' }
-  /** The Hall of Fame's own sheet, opened from its row in the Elite sheet. */
-  | { k: 'showHall' }
   | { k: 'prestige' }
   | { k: 'showPass' }
-  | { k: 'buyPass' }
-  | { k: 'buildHall' };
+  | { k: 'buyPass' };
 
 /** Layout shared by the Build tab's two pages and the camera that lies under them. */
 export const BuildLayout = {

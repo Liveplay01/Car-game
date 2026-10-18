@@ -36,9 +36,9 @@ export const CameraFxTuning = {
   finalMax: 0.9,
 };
 
-/** How much is at stake right now, 0…1 (before smoothing). Nothing outside a shift, nothing in Chill. */
+/** How much is at stake right now, 0…1 (before smoothing). Nothing outside a shift. */
 export function tensionOf(world: World, mode: GameMode): number {
-  if (mode === 'chill' || world.shift.outcome !== null) return 0;
+  if (world.shift.outcome !== null) return 0;
   const c = world.config;
   let t = 0;
   const left = world.shift.carsLeft;

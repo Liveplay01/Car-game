@@ -41,7 +41,6 @@ export default (S: Strings): Words<Strings> => ({
         reborn: 'Renaissance',
         heatSeeker: 'Traqueur de chaleur',
         gambler: 'Flambeur',
-        zen: 'Pilote zen',
         tourist: 'Touriste',
       })[id] ?? id,
     goal: (id, n) => {
@@ -77,7 +76,6 @@ export default (S: Strings): Words<Strings> => ({
           reborn: `Passez ${N} fois au Prestige`,
           heatSeeker: `Réussissez un service avec Intensité ${N}`,
           gambler: `Jouez ${N} parties au casino`,
-          zen: `Lancez ${N} voitures en Détente`,
           tourist: `Validez ${N} ${n === 1 ? 'étape de tour' : 'étapes de tour'}`,
         } as Record<string, string>
       )[id] ?? ''
@@ -155,7 +153,7 @@ export default (S: Strings): Words<Strings> => ({
   },
 
   progress: {
-    section: (i) => ['Aujourd’hui', 'Épreuves', 'Objectifs', 'Records', 'Musée'][i],
+    section: (i) => ['Crew', 'Classement', 'Club', 'Mafia'][i],
     allStats: 'Toutes les stats',
     statsMore: (n) => `${n} de plus ›`,
     statsHide: 'Masquer',
@@ -195,9 +193,6 @@ export default (S: Strings): Words<Strings> => ({
     unlimitedTier: 'Rang Sans limites',
     mayhemBest: 'Flammes en Paguaille',
     mayhemChain: 'Chaîne en Paguaille',
-    chillBest: 'Trajet record en Détente',
-    chillCars: 'Voitures en Détente',
-    chillTime: 'Temps en Détente',
     minutes: (s) => (s < 3600 ? `${Math.max(1, Math.round(s / 60))} min` : `${Math.floor(s / 3600)} h ${Math.round((s % 3600) / 60)} min`),
     tours: 'Étapes de tour',
     perfects: 'Insertions parfaites',
@@ -213,8 +208,8 @@ export default (S: Strings): Words<Strings> => ({
     section: (i) => ['Amis', 'Classement', 'Club', 'Mafia'][i],
     clubClosed: 'Le Club s’ouvre au niveau 50 : enchères et fonds du jeu pour gros comptes.',
     mafiaClosed: 'La Famille ne s’occupe pas des novices. Neutralisez le premier boss (niveau 15) et elle se manifestera.',
-    offline: 'Amis et Classement requièrent le service en ligne absent de cette copie.',
-    noFriends: 'Amis indisponible ici. Classements et Club restent accessibles.',
+    offline: 'Crews et Classement requièrent le service en ligne absent de cette copie.',
+    noCrew: 'Les crews ne sont pas disponibles ici. Classements et Club restent accessibles.',
   },
 
   museum: {
@@ -224,13 +219,15 @@ export default (S: Strings): Words<Strings> => ({
     notSeen: 'Pas encore croisé',
     newBadge: 'NOUVEAU',
     firstTime: 'Découverte',
-    firstAt: (level) => `À partir du niveau ${level}`,
+    firstAt: (level, rank = 0) => (rank > 0 ? `À partir de ${S.museum.place(level, rank)}` : `À partir du niveau ${level}`),
     undiscovered: 'Non découvert',
-    lockedHint: (level) =>
-      level > 1
-        ? `Apparaît à partir du niveau ${level}. Dès sa première rencontre sur la route, sa fiche complète s’affichera ici.`
+    lockedHint: (level, rank = 0) =>
+      rank > 0 || level > 1
+        ? rank > 0
+          ? `Apparaît à partir de ${S.museum.place(level, rank)}. Dès sa première rencontre sur la route, sa fiche complète s’affichera ici.`
+          : `Apparaît à partir du niveau ${level}. Dès sa première rencontre sur la route, sa fiche complète s’affichera ici.`
         : 'Continuez vos services. Dès sa rencontre sur la route, sa fiche s’affichera ici.',
-    lockedBossHint: (level) => `Le syndicat le dépêche au niveau ${level}. Dès votre premier affrontement, il sera répertorié ici avec la marche à suivre.`,
+    lockedBossHint: (level, rank = 0) => (rank > 0 ? `Le syndicat le dépêche à ${S.museum.place(level, rank)}. Dès votre premier affrontement, il sera répertorié ici avec la marche à suivre.` : `Le syndicat le dépêche au niveau ${level}. Dès votre premier affrontement, il sera répertorié ici avec la marche à suivre.`),
     kind: (e) => ({ boss: 'Boss du syndicat', special: 'Véhicule spécial', weather: 'Météo', dark: 'Obscurité', event: 'Événement urbain', road: 'Chaussée', fail: 'Échec' })[e.k],
     met: 'Rencontré, toujours en fuite',
     onRing: 'Sur l’anneau',

@@ -1,6 +1,7 @@
 import type { Arm } from './roundabout';
 import { Vehicle, type Waiting } from './vehicle';
 import type { World } from './world';
+import { reaches } from './config';
 import { isUnreserved } from './traffic';
 
 /**
@@ -28,7 +29,7 @@ const ringBusy = (w: World): boolean => isOn(w.oversize.kind) || isOn(w.learner.
 
 export function firstWedding(w: World): WeddingPhase {
   const c = w.config;
-  if (c.mayhem || w.isVersus || c.level < c.weddingLevel || c.weddingChance <= 0) return { kind: 'done' };
+  if (c.mayhem || w.isVersus || !reaches(c, c.weddingLevel, c.weddingPrestige) || c.weddingChance <= 0) return { kind: 'done' };
   const comes = w.weddingRng.unit() < c.weddingChance;
   return comes ? { kind: 'idle', next: w.weddingRng.range(c.weddingFirst.lo, c.weddingFirst.hi) } : { kind: 'done' };
 }

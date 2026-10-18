@@ -9,6 +9,7 @@ export const ICONS = {
   /** A finger pressing down: the tap hint of the first shifts. */
   tap: '<path d="M9.5 11V4.8a1.8 1.8 0 0 1 3.6 0V10l3.6.9a2.4 2.4 0 0 1 1.8 2.6l-.6 4.5a3 3 0 0 1-3 2.6h-3.3a3 3 0 0 1-2.4-1.2L6 15.2a1.6 1.6 0 0 1 2.4-2.1l1.1 1.1V11Z"/>',
   /** The modifiers before a shift (`.run-mods`): Tailwind, a living streak, the Family's share. */
+  sunset: '<path d="M7 16a5 5 0 0 1 10 0M3 16h18M7 20h10M12 5v3M5.6 8.6 7 10M18.4 8.6 17 10M2.5 13h2M19.5 13h2"/>',
   wind: '<path d="M3 8h10a3 3 0 1 0-3-3M3 12h15a3 3 0 1 1-3 3M3 16h7"/>',
   streak: '<rect x="4" y="5" width="16" height="15" rx="2"/><path d="M8 3v4M16 3v4M4 10h16M9 15l2 2 4-4"/>',
   hat: '<path d="M3 16c2.5 1.5 5.5 2 9 2s6.5-.5 9-2"/><path d="M6 15.5 7.5 7a2 2 0 0 1 2.4-1.6L12 6l2.1-.6A2 2 0 0 1 16.5 7L18 15.5"/><path d="M6.6 12.5c3.5 1 7.3 1 10.8 0"/>',

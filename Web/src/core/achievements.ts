@@ -51,7 +51,6 @@ export const FAMILIES: Family[] = [
   { id: 'reborn', tiers: [1, 3, 5, 10], value: (s) => s.career.prestige },
   { id: 'heatSeeker', tiers: [1, 3, 5, 8], value: (s) => s.career.heatCleared },
   { id: 'gambler', tiers: [10, 50, 200, 1000], value: (s) => s.career.casinoRounds },
-  { id: 'zen', tiers: [100, 500, 2500, 10000], value: (s) => s.chillCars },
   { id: 'tourist', tiers: [1, 5, 15, 40], value: (s) => s.career.toursDone.length },
 ];
 

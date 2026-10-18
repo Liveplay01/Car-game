@@ -5,7 +5,6 @@
  * device, only the camera zooms, so timing is identical everywhere.
  */
 import type { Season } from './loot';
-import type { MutatorId } from './mutators';
 
 export interface Range {
   readonly lo: number;
@@ -35,10 +34,6 @@ export const DAILY_EVENTS: CityEvent[] = ['roadworks', 'roadClosure', 'concert',
  * service decides and pays (`Server/src/modules/referrals`, same number); the game only names it.
  */
 export const INVITE_LEVEL = 5;
-/** The game mentions it once to everyone, and again when a player reaches this level (Leo, 04.10.2026): one who has the hang of it is who shares it. */
-export const INVITE_REMINDER_LEVEL = 10;
-/** The website (bugs and ideas) is mentioned from this level on (Leo, 09.10.2026): before it, a visit's one tip belongs to what brings the player back. */
-export const BUILD_WITH_US_LEVEL = 5;
 
 // New modules go at the end: a challenge link stores their positions.
 export type RoadModule = 'tollBooth' | 'speedCamera' | 'towDepot' | 'billboard' | 'detour';
@@ -320,7 +315,18 @@ export const baseConfig = {
    * After this many lost shifts in a row on one level the next attempt draws the fewest cars the level has
    * (`shiftCarsSpread` below the middle), until the level is cleared. A plain career shift only, never the Daily.
    */
-  easeAfterLosses: 3,
+  easeAfterLosses: 2,
+  /**
+   * Quiet help (Leo, 18.10.2026): new players left after losing their first shift within seconds (Umami, Oct 2026). A
+   * career that has never won a shift eases after `easeAfterLossesNew` losses, and its first crash is forgiven (one more
+   * strike). From the eased shift on, every further loss takes a step of traffic out, up to `easeMaxSteps`: per step one
+   * car less on the ring, `easeTempoStep` less tempo, `easeSpawnStep` more time between new AI cars. Not shown; a plain
+   * career shift only (never the Daily, Unlimited, a challenge or trial), so no board ever compares an eased shift.
+   */
+  easeAfterLossesNew: 1,
+  easeMaxSteps: 3,
+  easeTempoStep: 0.05,
+  easeSpawnStep: 0.2,
   /**
    * The first bad weather and the first night come for sure, not only by chance: a plain career shift from this level
    * on brings light rain, or night, if this career has never met one.
@@ -382,11 +388,6 @@ export const baseConfig = {
   mayhemChainWindow: 1.5,
   mayhemMaxChainFlames: 10,
 
-  // Chill (Leo, 07.10.2026): the calm mode. No strikes, no money, no specials; it ends when the player says so.
-  chill: false,
-  chillLevel: 3,
-  chillDensity: 5,
-  chillTempo: 0.95,
   rampSeconds: 20,
   densityStart: 6,
   densityEnd: 10,
@@ -465,6 +466,8 @@ export const baseConfig = {
 
   // Risk and insurance
   level: 1,
+  /** The career's Prestige rank when the shift is built (`Careers.config`); the late specials and bosses follow it. */
+  prestige: 0,
   crashCostLevel: 20,
   crashCosts: [60, 120, 200],
   crashCostImpacts: [80, 140],
@@ -531,6 +534,11 @@ export const baseConfig = {
   // Syndicate convoy: every `convoyEvery` levels the criminal is the boss, with armoured escorts
   convoy: false,
   convoyEvery: 15,
+  /**
+   * A career plays Levels 1 to 50 and then Prestiges, so the whole syndicate is spread over the ranks (Leo, 18.10.2026): rank 0
+   * meets bosses 1 to 3 at Levels 15, 30 and 45, rank 1 the next three at the same levels, and so on round the list.
+   */
+  bossesPerRank: 3,
   convoyEscorts: 2,
   /** The boss is on the ring this much longer than a plain criminal before it gets away. */
   convoyTimeFactor: 1.5,
@@ -579,8 +587,6 @@ export const baseConfig = {
   weatherBias: {} as Partial<Record<Weather, number>>,
   nightBias: 1,
   weatherChanceBias: 1,
-  /** The Daily Shift's mutator for the day (core/mutators.ts). */
-  mutator: null as MutatorId | null,
   legendaryLevel: 25,
   legendaryChance: 0.06,
   gridlockDensityBonus: 2,
@@ -598,8 +604,6 @@ export const baseConfig = {
    * notifications offer after the first shift won, which shared the visit's one tip and lost it to each other.
    */
   tomorrowAskAfterLevel: 4,
-  /** Level cleared after which a device without a cloud copy recommends Cloud sync (once; Leo, 01.10.2026: it replaced the export). */
-  backupHintAfterLevel: 12,
   /**
    * Level cleared after which the game asks for a player name (Leo, 15.10.2026, it replaced the Cloud sync pop-up from Level 3):
    * one name opens Ranks, Friends, multiplayer and Cloud sync together (`ui/accountSheet.ts`). Declining asks twice and stops it.
@@ -629,8 +633,8 @@ export const baseConfig = {
   /** Tier 1 needs this much XP, every tier after it `seasonPassXpGrowth` more (54 … 186, 1440 in all). */
   seasonPassXpPerTier: 54,
   seasonPassXpGrowth: 12,
-  /** Hall of Fame: a monument in the city with a plaque per Prestige rank, and its own skin. */
-  hallOfFamePrice: 250000,
+  /** From this many days before the season ends, Today says how many tiers are still open. */
+  seasonPassEndWarnDays: 7,
 
   // Prestige (Leo, 28.09.2026): back to Level 1 with the traffic of a higher level; looks only
   prestigeLevel: 50,
@@ -703,6 +707,8 @@ export const baseConfig = {
 
   // Oversize load (Leo, 02.10.2026, core/oversize.ts): long, heavy and slow, once round the ring
   oversizeLevel: 85,
+  /** From this Prestige rank on, whatever the level (the late specials follow the ranks, `reaches`). */
+  oversizePrestige: 2,
   /** Chance per shift; 0 turns it off (Mayhem, multiplayer). */
   oversizeChance: 0.3,
   /** Early in the shift: short shifts must still see it through. */
@@ -718,6 +724,7 @@ export const baseConfig = {
 
   // Street racers (Leo, 02.10.2026, core/racers.ts): two of them barge in; a police car stops each
   racerLevel: 90,
+  racerPrestige: 3,
   /** Chance per shift; 0 turns it off (Mayhem, multiplayer). */
   racerChance: 0.25,
   racerFirst: r(3, 8),
@@ -729,7 +736,8 @@ export const baseConfig = {
 
   // Wedding convoy (Leo, 08.10.2026, core/wedding.ts): three cars at ring speed, nothing slows down
   weddingLevel: 100,
-  /** Chance per shift; 0 turns it off (Mayhem, multiplayer, Chill). */
+  weddingPrestige: 4,
+  /** Chance per shift; 0 turns it off (Mayhem, multiplayer). */
   weddingChance: 0.3,
   weddingFirst: r(2, 5),
   weddingWarning: 2,
@@ -800,6 +808,9 @@ export const baseConfig = {
   comebackDays: 7,
   standardChestPrice: 26000,
   premiumChestPrice: 52000,
+  /** Three Premium Chests at once cost less than three alone (Leo, 18.10.2026). */
+  premiumBundle: 3,
+  premiumBundlePrice: 140000,
   /** The Diamond Chest (Leo, 10.10.2026): a sink for big balances, never a Common inside. */
   diamondChestPrice: 250000,
   adChestsPerDay: 3,
@@ -821,6 +832,16 @@ export const baseConfig = {
   streakRescueMin: 3,
   /** A won career shift's pay (the shift's own, not tips, transporters or boni) once more for an ad, this many times a day (Leo, 18.10.2026). */
   adShiftDoublesPerDay: 3,
+  /**
+   * Keep driving (Leo, 18.10.2026): a crash that ends an Unlimited run, or a career shift after `reviveMinShare` of its cars,
+   * can be undone for an ad, once a run and `reviveAdsPerDay` times a day. The offer comes after `reviveBreath` seconds and
+   * stands `reviveWindow` seconds; then `reviveGrace` seconds in which no crash ends the run.
+   */
+  reviveAdsPerDay: 3,
+  reviveMinShare: 0.6,
+  reviveBreath: 1.2,
+  reviveWindow: 5,
+  reviveGrace: 2,
   streakRescueMaxMissed: 7,
   streakRescueEvery: 7,
 
@@ -856,6 +877,10 @@ export const baseConfig = {
   tailwindPay: 0.25,
   tailwindMaxLeft: 3,
   tailwindMinShare: 0.6,
+  /** After Work (Leo, 18.10.2026): career shifts started between these local hours pay `afterWorkPay` more, a second reason a day besides the Daily. */
+  afterWorkFrom: 18,
+  afterWorkTo: 20,
+  afterWorkPay: 0.2,
   /** Heat (core/heat.ts): the shift's Heat (set per shift, 0 = off), the highest one, and what each step adds. */
   heat: 0,
   maxHeat: 8,
@@ -950,6 +975,8 @@ export const baseConfig = {
   auctionExclusiveEstimate: 1_000_000,
   /** The buyer's premium on top of the price the hammer falls at. */
   auctionPremium: 0.1,
+  /** Buy now (Leo, 18.10.2026, the shop window folded into the Auction House): a skin lot can be had for this many times its estimate instead of bidding, premium included. */
+  auctionBuyNow: 2.5,
   /** The bidding opens at this share of the estimate and rises in steps of `auctionStep` of it. */
   auctionStartShare: 0.35,
   auctionStep: 0.05,
@@ -1088,6 +1115,9 @@ export const cloneConfig = (c: Config): Config => ({
 });
 
 /** 9.81 m/s² in world units per second². */
+/** Whether a shift sees what opens at a level, or from a Prestige rank on: the late specials come with the ranks, not with levels a career never plays. */
+export const reaches = (c: Config, level: number, rank: number): boolean => c.level >= level || c.prestige >= rank;
+
 export const gravity = (c: Config): number => (9.81 * c.carLength) / c.carLengthMeters;
 
 /** Every entry path has this length: at 100 % tempo a merge drives at constant speed. */

@@ -41,7 +41,6 @@ export default (S: Strings): Words<Strings> => ({
         reborn: 'Wiedergeboren',
         heatSeeker: 'Hitzesucher',
         gambler: 'High Roller',
-        zen: 'Zen-Fahrer',
         tourist: 'Tourist',
       })[id] ?? id,
     goal: (id, n) => {
@@ -77,7 +76,6 @@ export default (S: Strings): Words<Strings> => ({
           reborn: `Mache ${N}× Prestige`,
           heatSeeker: `Schaffe eine Schicht bei Hitze ${N}`,
           gambler: `Spiele ${N} Casino-Runden`,
-          zen: `Schicke ${N} Autos im Chill los`,
           tourist: `Bestehe ${N} Tour-${n === 1 ? 'Stopp' : 'Stopps'}`,
         } as Record<string, string>
       )[id] ?? ''
@@ -155,7 +153,7 @@ export default (S: Strings): Words<Strings> => ({
   },
 
   progress: {
-    section: (i) => ['Heute', 'Prüfungen', 'Ziele', 'Rekorde', 'Museum'][i],
+    section: (i) => ['Crew', 'Ränge', 'Club', 'Mafia'][i],
     allStats: 'Alle Werte',
     statsMore: (n) => `${n} weitere ›`,
     statsHide: 'Ausblenden',
@@ -195,9 +193,6 @@ export default (S: Strings): Words<Strings> => ({
     unlimitedTier: 'Unlimited-Stufe',
     mayhemBest: 'Mayhem-Flammen',
     mayhemChain: 'Mayhem-Kette',
-    chillBest: 'Längste Chill-Fahrt',
-    chillCars: 'Autos in Chill',
-    chillTime: 'Zeit in Chill',
     minutes: (s) => (s < 3600 ? `${Math.max(1, Math.round(s / 60))} Min.` : `${Math.floor(s / 3600)} Std. ${Math.round((s % 3600) / 60)} Min.`),
     tours: 'Tour-Stopps',
     perfects: 'Perfekte Einsätze',
@@ -213,8 +208,8 @@ export default (S: Strings): Words<Strings> => ({
     section: (i) => ['Freunde', 'Ränge', 'Club', 'Mafia'][i],
     clubClosed: 'Der Club öffnet ab Level 50: ein Auktionshaus und der Spielfonds für große Kontostände.',
     mafiaClosed: 'Die Familie hat keine Zeit für Anfänger. Erledige den ersten Boss des Syndikats (Level 15) oder komm an ihm vorbei, und sie melden sich.',
-    offline: 'Freunde und Ränge brauchen den Online-Dienst, mit dem diese Kopie des Spiels nicht verbunden ist.',
-    noFriends: 'Freunde sind hier nicht verfügbar. Ränge und der Club schon.',
+    offline: 'Crews und Ränge brauchen den Online-Dienst, mit dem diese Kopie des Spiels nicht verbunden ist.',
+    noCrew: 'Crews sind hier nicht verfügbar. Ränge und der Club schon.',
   },
 
   museum: {
@@ -224,13 +219,15 @@ export default (S: Strings): Words<Strings> => ({
     notSeen: 'Noch nicht gesehen',
     newBadge: 'NEU',
     firstTime: 'Neu für dich',
-    firstAt: (level) => `Ab Level ${level}`,
+    firstAt: (level, rank = 0) => (rank > 0 ? `Ab ${S.museum.place(level, rank)}` : `Ab Level ${level}`),
     undiscovered: 'Noch nicht entdeckt',
-    lockedHint: (level) =>
-      level > 1
-        ? `Taucht ab Level ${level} auf. Sobald du es auf der Straße getroffen hast, wird es hier mit allem Wissenswerten ausgestellt.`
+    lockedHint: (level, rank = 0) =>
+      rank > 0 || level > 1
+        ? rank > 0
+          ? `Taucht ab ${S.museum.place(level, rank)} auf. Sobald du es auf der Straße getroffen hast, wird es hier mit allem Wissenswerten ausgestellt.`
+          : `Taucht ab Level ${level} auf. Sobald du es auf der Straße getroffen hast, wird es hier mit allem Wissenswerten ausgestellt.`
         : 'Spiele weiter Schichten. Sobald du es auf der Straße getroffen hast, wird es hier mit allem Wissenswerten ausgestellt.',
-    lockedBossHint: (level) => `Das Syndikat schickt ihn auf Level ${level}. Sobald du ihm begegnet bist, wird er hier ausgestellt, mit dem Weg, ihn zu fassen.`,
+    lockedBossHint: (level, rank = 0) => (rank > 0 ? `Das Syndikat schickt ihn auf ${S.museum.place(level, rank)}. Sobald du ihm begegnet bist, wird er hier ausgestellt, mit dem Weg, ihn zu fassen.` : `Das Syndikat schickt ihn auf Level ${level}. Sobald du ihm begegnet bist, wird er hier ausgestellt, mit dem Weg, ihn zu fassen.`),
     kind: (e) => ({ boss: 'Syndikatsboss', special: 'Spezialfahrzeug', weather: 'Wetter', dark: 'Dunkelheit', event: 'Stadtereignis', road: 'Straße', fail: 'Scheitern' })[e.k],
     met: 'Getroffen, noch auf freiem Fuß',
     onRing: 'Auf dem Ring',

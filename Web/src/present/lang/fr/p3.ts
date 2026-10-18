@@ -87,8 +87,11 @@ export default (S: Strings): Words<Strings> => ({
     tier: (n, total) => `Palier ${n} sur ${total}`,
     locked: (level) => `Se débloque au niveau ${level}`,
     buyHint: 'Coffres, pièces et trois skins',
+    free: 'gratuit',
+    waiting: (n) => (n === 1 ? '1 palier attend le pass' : `${n} paliers attendent le pass`),
     daysLeft: (n) => (n === 1 ? 'dernier jour' : `encore ${n} jours`),
     complete: 'Piste achevée · rendez-vous à la saison suivante',
+    openAtEnd: (n) => (n === 1 ? 'Fin de saison proche · encore 1 palier' : `Fin de saison proche · encore ${n} paliers`),
     reached: (step) =>
       `PASSE DE SAISON · PALIER ${step.tier} · ${step.duplicate > 0 ? `${S.pass.reward(step.reward)} à nouveau · +${money(Fmt.number(step.duplicate))}` : S.pass.reward(step.reward)}`,
     buy: (price) => `Acheter · ${price}`,
@@ -97,39 +100,23 @@ export default (S: Strings): Words<Strings> => ({
       'Trois des paliers contiennent les skins uniques de la saison, avec des effets introuvables en coffre. Les quatre saisons reviennent chaque année avec leurs récompenses.',
       'Purement cosmétique, aucun avantage sur la route. Rien ne coûte d’argent réel.',
     ],
+    freeBody: (xpPerTier) => [
+      `Une piste de douze paliers pour cette saison. Chaque service rapporte de l’XP, avec ou sans pass : 10 pour un service terminé, 1 par Insertion parfaite ou serrée, 10 de plus pour un boss ou un Service légendaire. Le premier palier demande ${xpPerTier} XP, chaque palier suivant un peu plus.`,
+      'Trois paliers sont gratuits pour tous. Achète le pass avec l’argent du jeu et chaque autre palier paie, ceux déjà atteints tout de suite.',
+      'Trois des paliers contiennent les skins de cette saison, avec des effets qu’aucun coffre n’a. Les quatre saisons reviennent chaque année, et leurs skins aussi. Juste du style, jamais un avantage sur la route.',
+    ],
     trackHeader: 'La piste',
   },
 
   hall: {
-    title: 'Panthéon',
-    header: 'Panthéon',
-    build: (price) => `Bâtir le Panthéon · ${price}`,
-    built: 'PANTHÉON CONSTRUIT · mur d’honneur sur l’île · skin Immortel débloqué',
-    notBuilt: 'Un mur d’or sur l’île avec une étoile par rang de prestige et un skin unique. Touchez pour découvrir ses bienfaits.',
-    tapMore: 'Touchez pour voir ses bienfaits.',
-    open: (level) => `Disponible dès le niveau ${level}`,
+    header: 'Journal de prestige',
     plaqueLine: (e, date) =>
       [date, e.elite > 0 ? `Élite ${e.elite}` : null, `${e.bosses} ${e.bosses === 1 ? 'boss' : 'boss'}`, e.legendary > 0 ? `${e.legendary} légendaires` : null].filter((x) => x).join(' · '),
     empty: 'Votre premier prestige inaugurera la première plaque.',
-    standing: 'Érigé sur l’île',
-    about: [
-      'Un monument dressé pour toujours sur votre île : une stèle dorée au sommet arborant une étoile pour chaque prestige remporté.',
-      'Il retrace votre parcours. Chaque prestige y ajoute une plaque : la date, votre niveau d’Élite, les boss capturés et les services légendaires achevés.',
-      'Il débloque également le skin Immortel, paré d’or et de lauriers scintillants.',
-    ],
-    looks: 'Prestige et fierté uniquement : aucun bonus sur la route, rien à perdre lors d’un passage au Prestige.',
-    gives: 'Ce qu’il apporte',
-    wall: 'Mur d’or sur l’île',
-    wallValue: (ranks) => (ranks > 0 ? `${ranks} ${ranks === 1 ? 'étoile' : 'étoiles'} actuellement` : 'Pas encore d’étoile'),
-    plaques: 'Une plaque par prestige',
-    plaquesValue: (n) => (n > 0 ? `${n} jusqu’ici` : 'Aucune'),
-    skin: 'Skin Immortel',
-    skinValue: 'Or et lauriers',
-    back: 'Retour à Élite',
   },
 
   modes: {
-    name: (m) => (m === 'shift' ? 'SERVICE' : m === 'unlimited' ? 'SANS LIMITES' : m === 'mayhem' ? 'PAGUAILLE' : m === 'chill' ? 'DÉTENTE' : 'MULTIJOUEUR'),
+    name: (m) => (m === 'shift' ? 'SERVICE' : m === 'unlimited' ? 'SANS LIMITES' : m === 'mayhem' ? 'PAGUAILLE' : 'MULTIJOUEUR'),
     line: (m) =>
       m === 'shift'
         ? 'Passez les niveaux et grimpez'
@@ -137,20 +124,16 @@ export default (S: Strings): Words<Strings> => ({
           ? 'Sans fin · jusqu’au crash'
           : m === 'mayhem'
             ? '12 voitures · visez les citernes'
-            : m === 'chill'
-              ? 'Sans pression · les crashs ne stoppent rien'
               : 'Jusqu’à 4 amis · le dernier gagne',
     youLabel: 'VOUS',
     defaultName: 'Joueur',
     runOver: 'COURSE TERMINÉE',
     again: 'Touchez pour recommencer',
     carsSent: (n) => (n === 1 ? '1 voiture' : `${n} voitures`),
-    unlocked: { caption: 'NOUVEAUX MODES', text: 'Balayez latéralement pour Sans limites, Paguaille, Détente et Multijoueur' },
     tryUnlimited: { caption: 'MODES DE JEU', text: 'Balayez pour Sans limites : pas de niveaux, roulez jusqu’au crash' },
     tightFit: { caption: 'ASTUCE', text: 'Plus près rapporte plus : serrez la voiture précédente pour une Insertion serrée aux points doublés' },
     swipeCaption: 'MODES DE JEU',
     swipeHint: 'Balayez pour afficher plus de modes',
-    unlockedKeys: { caption: 'NOUVEAUX MODES', text: 'Appuyez sur ← ou → pour Sans limites, Paguaille, Détente et Multijoueur' },
     tryUnlimitedKeys: { caption: 'MODES DE JEU', text: 'Appuyez sur → pour Sans limites : pas de niveaux, roulez jusqu’au crash' },
     swipeHintKeys: '← → pour afficher plus de modes',
     stage: (stage, overtime) =>
@@ -173,48 +156,6 @@ export default (S: Strings): Words<Strings> => ({
     over: 'FIN DU CARNAGE',
     again: 'Touchez pour plus de dégâts',
     summary: (wrecks, chain) => `${wrecks} ${wrecks === 1 ? 'épave' : 'épaves'} · plus longue chaîne ×${chain}`,
-  },
-
-  chill: {
-    caption: 'DÉTENTE',
-    time: 'TEMPS',
-    done: 'Terminé',
-    doneLabel: 'Terminer cette balade',
-    over: 'BONNE ROUTE',
-    again: 'Touchez pour repartir',
-    summary: (cars, time) => `${cars === 1 ? '1 voiture' : `${cars} voitures`} · ${time}`,
-    best: (cars) => `Votre trajet record : ${cars === 1 ? '1 voiture' : `${cars} voitures`}`,
-  },
-
-  mutator: {
-    caption: 'AUJOURD’HUI',
-    name: (id) =>
-      ({
-        openRoad: 'Voie libre',
-        speedway: 'Circuit rapide',
-        fogBank: 'Banc de brume',
-        nightShift: 'Garde de nuit',
-        lightsOut: 'Extinction',
-        stormFront: 'Front d’orage',
-        rushAllDay: 'Bouchon permanent',
-        dragnet: 'Rafle',
-        heavyLoad: 'Convoi lourd',
-        cashConvoy: 'Convoi d’argent',
-      })[id],
-    line: (id) =>
-      ({
-        openRoad: 'Moins de voitures sur l’anneau',
-        speedway: 'Plus rapide, trafic un peu allégé',
-        fogBank: 'Brume pendant tout le service',
-        nightShift: 'Après la tombée du jour',
-        lightsOut: 'Nuit noire, éclairage public éteint',
-        stormFront: 'Orage tout au long du service',
-        rushAllDay: 'Heure de pointe dès la première voiture',
-        dragnet: 'Deux fois plus de criminels',
-        heavyLoad: 'Camions et citernes omniprésents',
-        cashConvoy: 'Deux fois plus de fourgons blindés',
-      })[id],
-    pill: (id) => `AUJOURD’HUI · ${S.mutator.name(id).toUpperCase()}`,
   },
 
   seasonRule: {

@@ -133,6 +133,23 @@ export function forIntro(base: Config, level: number): Config {
   return c;
 }
 
+/** `steps` of quiet help after lost shifts (`easeMaxSteps`): fewer cars on the ring, a slower ring, more time between AI cars. */
+export function forEase(base: Config, steps: number): Config {
+  const s = Math.min(Math.max(0, steps), base.easeMaxSteps);
+  if (s === 0) return base;
+  const c = cloneConfig(base);
+  const slower = 1 - s * base.easeTempoStep;
+  const later = 1 + s * base.easeSpawnStep;
+  c.densityStart = Math.max(1, c.densityStart - s);
+  c.densityEnd = Math.max(c.densityStart, c.densityEnd - s);
+  c.tempoStart *= slower;
+  c.tempoEnd *= slower;
+  c.rushHourTempo *= slower;
+  c.aiSpawnDelay = { lo: c.aiSpawnDelay.lo * later, hi: c.aiSpawnDelay.hi * later };
+  c.assisted = true;
+  return c;
+}
+
 // MARK: Syndicate bosses
 
 /** The boss of `level`, or null: every `convoyEvery` levels the next kind, round after round. */
@@ -142,8 +159,14 @@ export function bossAt(level: number, c: Config): { kind: BossKind; round: numbe
   return { kind: BOSS_KINDS[index % BOSS_KINDS.length], round: Math.floor(index / BOSS_KINDS.length) };
 }
 
-/** The first level that brings `kind`. */
+/** The first level that brings `kind`, counted along the whole schedule (the Prestige ranks added on). */
 export const firstBossLevel = (kind: BossKind, c: Config): number => c.convoyEvery * (BOSS_KINDS.indexOf(kind) + 1);
+
+/** Where `kind` first meets a career that Prestiges at Level 50: its rank and the level on that rank. */
+export const bossPlace = (kind: BossKind, c: Config): { rank: number; level: number } => {
+  const index = BOSS_KINDS.indexOf(kind);
+  return { rank: Math.floor(index / c.bossesPerRank), level: c.convoyEvery * ((index % c.bossesPerRank) + 1) };
+};
 
 /** The bosses that come in a blackout: the phantom, and the kingpin's finale. */
 export const bossInBlackout = (kind: BossKind): boolean => kind === 'phantom' || kind === 'kingpin';
@@ -632,42 +655,6 @@ export function forLegendary(base: Config, rule: LegendaryRule | null): Config {
       c.trialRule = 'flawless';
       break;
   }
-  return c;
-}
-
-/**
- * Chill (Leo, 07.10.2026): the calm mode. Unlimited's endless queue at a gentle, even pace, with
- * nothing that can end it: no strikes, no police, no specials, no money. Crashes still happen and
- * the traffic still reacts; the run ends when the player says so (`World.finish`).
- */
-export function forChill(base: Config): Config {
-  const c = cloneConfig(base);
-  c.endless = true;
-  c.chill = true;
-  c.maxStrikes = Infinity;
-  c.maxPoliceCrashes = Infinity;
-  c.endlessStages = [];
-  c.endlessMaxDensityBonus = 0;
-  c.endlessTempoPerMinute = 0;
-  c.endlessPayPerCar = 0;
-  c.densityStart = base.chillDensity;
-  c.densityEnd = base.chillDensity;
-  c.tempoStart = base.chillTempo;
-  c.tempoEnd = base.chillTempo;
-  c.endlessMaxTempo = base.chillTempo;
-  c.criminalChance = 0;
-  c.policeShare = 0;
-  c.ambulanceChance = 0;
-  c.learnerChance = 0;
-  c.oversizeChance = 0;
-  c.racerChance = 0;
-  c.weddingChance = 0;
-  c.militaryChance = 0;
-  c.tankerShare = 0;
-  c.shiftPay = 0;
-  c.completionBonus = 0;
-  c.perfectRunPoints = 0;
-  c.criticalChance = 0;
   return c;
 }
 

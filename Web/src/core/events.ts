@@ -43,6 +43,8 @@ export interface ShiftResult {
   time: number;
   bestChain: number;
   isPerfectRun: boolean;
+  /** The run went on after a crash ended it, for an ad (`World.revive`). */
+  revived: boolean;
   carsSent: number;
   flames: number;
   wrecks: number;

@@ -110,7 +110,7 @@ export default (S: Strings): Words<Strings> => ({
       if (item.source.kind === 'prestige') return `Raggiungi Prestigio ★${item.source.rank}.`;
       if (item.source.kind === 'elite') return `Raggiungi Élite ${item.source.level}.`;
       if (item.source.kind === 'pass') return `Livello ${item.source.tier} del Pass ${S.pass.seasonName(item.source.season)}. Ritorna ogni anno.`;
-      if (item.source.kind === 'hall') return 'Costruisci il Tempio della gloria (Record → Élite).';
+      if (item.source.kind === 'hall') return 'Si otteneva con il vecchio Tempio della gloria, non più in vendita.';
       if (item.source.kind === 'unlimited') return `Invia ${Fmt.number(item.source.cars)} auto in Senza limiti.`;
       if (item.source.kind === 'tour') return `Una tappa del tour «${S.tours.name(item.source.tour as 'halloween' | 'winter')}». Ritorna ogni anno.`;
       if (item.source.kind === 'auction') return 'Esclusiva della casa d’aste (Social → Club).';
@@ -147,6 +147,8 @@ export default (S: Strings): Words<Strings> => ({
     buy: (price) => `Acquista · ${price}`,
     pity: (n) => `Epico o superiore garantito entro ${n} bauli. I duplicati pagano in ${MONEY_MARK}.`,
     pityLegendary: (n) => `Un Leggendario garantito entro ${n} bauli.`,
+    buyBundle: (n, price) => `${n} per ${price}`,
+    legendaryTimes: (n) => `${n}× la probabilità di Leggendario di un baule standard.`,
     pitySoon: (n) => `Leggendario tra ${n}`,
     duplicate: (m) => `Duplicato · +${money(m)}`,
     ownedHint(item) {
@@ -231,11 +233,11 @@ export default (S: Strings): Words<Strings> => ({
     splashLine: (e) => `La città oggi: ${S.cityEvent(e)} · un tentativo`,
     streakLine: (streak) => (streak > 0 ? `${streak} ${streak === 1 ? 'giorno' : 'giorni'} consecutivi · continua così` : 'Gioca ogni giorno per creare una serie'),
     nextMilestone: (left, prize) => `Mancano ${left} ${left === 1 ? 'giorno' : 'giorni'} a ${prize}`,
-    rowLine(streak, open, next, freezes = 0, toFreeze = null) {
+    rowLine(streak, open, next, freezes = 0, toFreeze = null, tomorrow = null) {
       if (streak <= 0) return open ? S.daily.readyHint : 'Torna domani · gioca ogni giorno per una serie';
       const days = `${streak} ${streak === 1 ? 'giorno' : 'giorni'} consecutivi`;
       const ahead = next && (toFreeze === null || next.left <= toFreeze) ? S.daily.nextMilestone(next.left, S.daily.prize(next.prize)) : toFreeze !== null ? S.daily.freezeLine(toFreeze) : null;
-      const parts = [days, freezes > 0 ? S.daily.freezes(freezes) : null, ahead, open ? null : 'a domani'];
+      const parts = [days, freezes > 0 ? S.daily.freezes(freezes) : null, ahead, open ? null : tomorrow ? `domani: ${S.cityEvent(tomorrow)}` : 'a domani'];
       return parts.filter((p): p is string => p !== null).join(' · ');
     },
     freezeLine: (days) => `Mancano ${days} ${days === 1 ? 'giorno' : 'giorni'} alla protezione serie`,
@@ -504,6 +506,7 @@ export default (S: Strings): Words<Strings> => ({
   mods: {
     label: 'Modificatori del prossimo turno',
     tailwind: (pay) => `Vento a favore +${Math.round(pay * 100)} %`,
+    afterWork: (pay) => `Dopo lavoro +${Math.round(pay * 100)} %`,
     streak: (pay) => `Serie +${Math.round(pay * 100)} %`,
     family: (share) => `Famiglia −${Math.round(share * 100)} %`,
   },
@@ -537,11 +540,9 @@ export default (S: Strings): Words<Strings> => ({
     close: 'Chiudi',
     score: 'PUNTI',
     flames: 'FIAMME',
-    cars: 'AUTO',
     newBest: 'NUOVO RECORD',
     hook: (score) => `Riesci a superare ${score}?`,
     hookFlames: (flames) => `Riesci a superare ${flames} fiamme?`,
-    hookChill: 'Fai un giro rilassante.',
     combo: (n) => `Combo ×${n}`,
     tightFits: (n) => (n === 1 ? '1 spazio stretto' : `${n} spazi stretti`),
     busted: (n) => `${n} arrestati`,

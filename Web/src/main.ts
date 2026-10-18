@@ -13,6 +13,8 @@ import { Elite } from './core/elite';
 import { writeSave } from './storage/save';
 import { shelfEntries, museumId } from './core/museum';
 import type { Probe } from './ui/devProbe';
+import { streakEndsIn } from './present/readyScreen';
+import { dayNumber } from './core/daily';
 
 declare global {
   interface Window {
@@ -142,6 +144,11 @@ if ('serviceWorker' in navigator && import.meta.env.PROD && !inPortal && !inItch
     if ('clearAppBadge' in navigator) navigator.clearAppBadge().catch(() => undefined);
   };
   clearBadge();
+  // Leaving in the last hours of a streak with today's Daily still open: a dot on the installed app's icon says so.
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden || !('setAppBadge' in navigator)) return;
+    if (streakEndsIn(shell.game.save.career, dayNumber(), shell.game.config) !== null) navigator.setAppBadge().catch(() => undefined);
+  });
   const register = (): void => {
     navigator.serviceWorker
       .register('/sw.js')

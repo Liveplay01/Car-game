@@ -1,6 +1,7 @@
 import type { Arm } from './roundabout';
 import { Vehicle, type Waiting } from './vehicle';
 import type { World } from './world';
+import { reaches } from './config';
 import { warningArms } from './traffic';
 import { weddingOn } from './wedding';
 
@@ -21,7 +22,7 @@ export type OversizePhase =
 /** Whether a shift of this config sees an oversize load at all, and when it is first due. */
 export function firstOversize(w: World): OversizePhase {
   const c = w.config;
-  if (c.mayhem || w.isVersus || c.level < c.oversizeLevel || c.oversizeChance <= 0) return { kind: 'done' };
+  if (c.mayhem || w.isVersus || !reaches(c, c.oversizeLevel, c.oversizePrestige) || c.oversizeChance <= 0) return { kind: 'done' };
   const comes = w.oversizeRng.unit() < c.oversizeChance;
   return comes ? { kind: 'idle', next: w.oversizeRng.range(c.oversizeFirst.lo, c.oversizeFirst.hi) } : { kind: 'done' };
 }

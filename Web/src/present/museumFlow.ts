@@ -44,8 +44,6 @@ export class MuseumFlow {
     const { host } = this;
     // The tutorial teaches the first shift itself; what it meets there is met again right after.
     if (host.tutorial && !host.tutorial.isOver) return;
-    // Chill is not part of the career: what rolls past there is not met yet.
-    if (host.world.config.chill) return;
     const seen = sightings(host.world);
     // A briefing owed from a shift that ended too soon comes when its vehicle is back.
     if (this.owed.size > 0) for (const id of seen) if (this.owed.has(id)) this.brief(museumEntry(id));

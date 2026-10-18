@@ -11,11 +11,11 @@ import {
   createAccount,
   describeError,
   fetchBoard,
-  fetchFriendsBoard,
   loadAccount,
   syncScores,
 } from '../net/leaderboard';
 import { pendingInvite } from '../net/invite';
+import { fetchCrewBoard } from '../net/crews';
 import { NAME_MAX } from '../net/room';
 import { savePlayerName } from '../storage/profile';
 import { Fmt, S } from '../present/strings';
@@ -46,7 +46,7 @@ const cache = new Map<string, BoardView>();
 const cacheKey = (scope: Scope, board: BoardId): string => `${scope}:${board}${board === 'daily' ? `:${dayNumber()}` : ''}`;
 let lastBoard: BoardId = 'shift-level';
 /** Everyone, or only you and the friends whose codes you added. */
-type Scope = 'all' | 'friends';
+type Scope = 'all' | 'crew';
 
 /** The number a line stands for: the level (with its Prestige rank) or the Unlimited score. */
 /** The star's look by rank: silver, gold, iris, then ember (★4), prism (★10) and eternal (★20). */
@@ -101,7 +101,7 @@ function prestigeInfo(back: () => void): HTMLElement {
 /** The line under a name: the title, on the Unlimited board the tier the run reached, on the Daily board a second try. */
 function boardSub(board: BoardId, e: { title: string | null; meta: Record<string, number> }): string {
   const tier = board === 'unlimited' ? tierOf(e.meta.cars ?? 0) : null;
-  return [titleName(e.title), tier ? S.modes.tier(tier) : null, board === 'daily' && e.meta.tries === 2 ? S.ranks.secondTry : null].filter(Boolean).join(' · ');
+  return [titleName(e.title), tier ? S.modes.tier(tier) : null, board === 'daily' && e.meta.tries === 2 ? S.ranks.secondTry : null, board === 'unlimited' && e.meta.revived === 1 ? S.ranks.revived : null].filter(Boolean).join(' · ');
 }
 
 function entryRow(board: BoardId, e: BoardEntry | (Omit<BoardEntry, 'name'> & { name: string }), onStar: () => void): HTMLElement {
@@ -120,7 +120,7 @@ function entryRow(board: BoardId, e: BoardEntry | (Omit<BoardEntry, 'name'> & { 
 }
 
 /** The name of a title the service sent, or null for none (or one this version of the game does not know). */
-function titleName(id: string | null | undefined): string | null {
+export function titleName(id: string | null | undefined): string | null {
   if (id === 'mafia') return S.mafia.badge;
   return id && TITLES.includes(id as TitleId) ? S.titles.name(id as TitleId) : null;
 }
@@ -200,11 +200,6 @@ export function nameForm(value: string, action: string, submit: (name: string) =
   return form;
 }
 
-/** The friends boards are stale after the list changed (the Friends page adds and removes people). */
-export function forgetFriendsBoards(): void {
-  for (const b of BOARDS) cache.delete(cacheKey('friends', b.id));
-}
-
 /** The account is gone (removed in Settings): no list may show its line. */
 export const forgetBoards = (): void => cache.clear();
 
@@ -240,7 +235,7 @@ export function boardPanel(scope: Scope, host: BoardHost): BoardPanel {
   let board: BoardId = boards.some((b) => b.id === lastBoard) ? lastBoard : 'shift-level';
   /** Which request's answer may still be shown: a newer one (another board) wins. */
   let asked = 0;
-  const list = h('div', { class: 'list board-list', role: 'list', 'aria-label': scope === 'friends' ? S.ranks.listFriends : S.ranks.list, 'aria-busy': 'false' });
+  const list = h('div', { class: 'list board-list', role: 'list', 'aria-label': scope === 'crew' ? S.ranks.listCrew : S.ranks.list, 'aria-busy': 'false' });
   const tabs = tabsControl(S.ranks.boardsLabel, boards, choose);
   const el = h('div', { class: 'board' }, tabs.el, list);
 
@@ -261,7 +256,7 @@ export function boardPanel(scope: Scope, host: BoardHost): BoardPanel {
       rows.push(entryRow(board, { rank: view.me.rank, name: account.name, title: host.records().title, score: view.me.score, meta: view.me.meta, me: true }, openInfo));
     }
     if (rows.length === 0) {
-      const empty = scope === 'friends' ? S.ranks.addFriend : (BOARDS.find((b) => b.id === board)?.empty ?? '');
+      const empty = scope === 'crew' ? S.ranks.noCrew : (BOARDS.find((b) => b.id === board)?.empty ?? '');
       rows.push(h('div', { class: 'row board-empty' }, h('div', { class: 'row-main' }, h('div', { class: 'row-title' }, S.ranks.nobody), h('div', { class: 'row-sub' }, empty))));
     }
     const arriving = list.getAttribute('aria-busy') === 'true';
@@ -283,7 +278,7 @@ export function boardPanel(scope: Scope, host: BoardHost): BoardPanel {
     try {
       // Fresh on every open: a score still on its way goes up first, so your own line is never a shift behind.
       await syncScores(host.records());
-      const view = scope === 'friends' ? await fetchFriendsBoard(board) : await fetchBoard(board);
+      const view = scope === 'crew' ? await fetchCrewBoard(board) : await fetchBoard(board);
       cache.set(key, view);
       if (ticket === asked) showList(view);
     } catch (error) {
@@ -318,7 +313,7 @@ export function boardPanel(scope: Scope, host: BoardHost): BoardPanel {
 
 const SCOPES: { id: Scope; label: string }[] = [
   { id: 'all', label: S.ranks.scopes.all },
-  { id: 'friends', label: S.ranks.scopes.friends },
+  { id: 'crew', label: S.ranks.scopes.crew },
 ];
 let lastScope: Scope = 'all';
 
@@ -336,7 +331,7 @@ export function ranksPanel(actions: RanksActions): HTMLElement {
       renderTop();
     },
   };
-  const boards = { all: boardPanel('all', host), friends: boardPanel('friends', host) };
+  const boards = { all: boardPanel('all', host), crew: boardPanel('crew', host) };
   const shown = (): BoardPanel => boards[scope];
   const scopes = tabsControl(S.ranks.scopeLabel, SCOPES, (next) => {
     scope = next;

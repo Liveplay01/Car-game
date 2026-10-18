@@ -7,7 +7,7 @@ import type { InputAction } from '../present/session';
  * `npm run dev` only: `window.__probe`, a text view of the game for tests and for Claude, so a check costs a few lines
  * instead of a screenshot. `state()` says where the game is, `play()` runs whole shifts faster than real time.
  */
-export type Bot = 'careful' | 'random' | 'none';
+export type Bot = 'careful' | 'random' | 'reckless' | 'none';
 
 const FRAME = 1 / 60;
 const SETTLE_FRAMES = 150;
@@ -33,6 +33,8 @@ export function installProbe(shell: Shell): void {
       daily: { selected: game.dailySelected, streak: save.career.dailyStreak, chests: [...save.career.chests] },
       ask: game.lastAsk,
       ad: game.gameAd?.reward ?? null,
+      revive: game.reviveOffer,
+      revived: game.world.revives,
     };
   };
 
@@ -42,6 +44,8 @@ export function installProbe(shell: Shell): void {
     const { world } = game;
     if (!world.queue.isReady) return false;
     if (bot === 'random') return Math.random() < 0.02;
+    // Taps whenever a car waits: crashes soon, for what follows a crash (Keep driving).
+    if (bot === 'reckless') return true;
     const car = world.vehicle(world.queue.vehicles[0]);
     return bot === 'careful' && !!car && world.predictedMergeGap(world.layout.player, 0, 40, -Infinity, car.lane) > 0.04 && !joinsClearRoad(world, car, world.layout.player);
   };
@@ -91,6 +95,9 @@ export interface Snapshot {
   ask: string | null;
   /** The ad the Game tab's pill offers right now (`GameSession.gameAd`), or null. */
   ad: string | null;
+  /** Seconds the offer to keep driving still stands (null: none on screen), and how often this run went on. */
+  revive: number | null;
+  revived: number;
 }
 
 export interface Probe {

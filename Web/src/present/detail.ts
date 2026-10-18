@@ -2,7 +2,7 @@ import { type Career, Careers, MINIMUM_ARMS } from '../core/career';
 import { detourArmSlot } from '../core/modules';
 import { type Config, type RoadModule, MODULE_MAX_LEVEL } from '../core/config';
 import { type Upgrade, upgradeMaxSteps } from '../core/levels';
-import { type ChestKind, RARITIES, CHEST_ODDS, chestFinds, chestPrice, tappedOdds, PITY_CHESTS, PITY_LEGENDARY_CHESTS, MAX_CAR_SKINS, BIG_SCREEN, cosmetic, isForSale } from '../core/loot';
+import { type ChestKind, RARITIES, CHEST_ODDS, chestFinds, chestPrice, chestBundle, tappedOdds, PITY_CHESTS, PITY_LEGENDARY_CHESTS, MAX_CAR_SKINS, BIG_SCREEN, cosmetic, isForSale } from '../core/loot';
 import { type CasinoGame, type SlotSymbol, SLOT_SYMBOLS, Casino } from '../core/casino';
 import { type Vec2, v } from '../core/vec2';
 import type { RenderList } from './render';
@@ -20,7 +20,7 @@ import { SeasonPass, PASS_TIERS } from '../core/seasonPass';
 import { MenuKit } from './menukit';
 import { MuseumPage } from './museum';
 import { type SignalDetail, signalDetail } from './museumSignal';
-import { museumEntry, firstLevel } from '../core/museum';
+import { museumEntry, firstLevel, firstPlace } from '../core/museum';
 import { rematch } from '../core/trials';
 import { Feats } from '../core/feats';
 import { type Intro } from './intros';
@@ -145,6 +145,11 @@ export const Details = {
     actions.push({ label: count > 1 ? `${S.shop.open} · ${count}` : S.shop.open, action: { k: 'openChest', index: Math.max(0, index) }, prominent: true, enabled: count > 0 });
     const price = chestPrice(kind, config);
     if (isForSale(kind) && price !== null) actions.push({ label: S.shop.buy(money(Fmt.number(price))), action: { k: 'buyChest', kind }, prominent: false, enabled: career.money >= price });
+    const pack = chestBundle(kind, config);
+    if (pack) actions.push({ label: S.shop.buyBundle(pack.count, money(Fmt.number(pack.price))), action: { k: 'buyChest', kind, bundle: true }, prominent: false, enabled: career.money >= pack.price });
+    // The honest comparison with the Standard Chest, from the odds themselves.
+    const legendary = odds[3] / CHEST_ODDS.standard[3];
+    if (kind !== 'standard' && isForSale(kind) && legendary > 1) notes.unshift({ text: S.shop.legendaryTimes(Math.round(legendary)), color: 'accent' });
     if (kind === 'standard' && ads.ready) actions.push({ label: S.shop.watchAdShort, action: { k: 'watchAd' }, prominent: false, enabled: Careers.adChestsLeft(career, today, config) > 0 });
     return {
       key: `chest:${kind}`,
@@ -250,7 +255,7 @@ export const Details = {
       { label: S.elite.rank, value: career.prestige > 0 ? S.prestige.caption(career.prestige) : S.progress.none, valueColor: career.prestige > 0 ? 'coin' : 'muted' },
       { label: S.elite.traffic, value: career.prestige > 0 ? S.elite.harder(Careers.headStart(career, config)) : S.progress.none, valueColor: 'muted' },
     ];
-    // The Hall of Fame: a plaque per rank; built, it stands on the island.
+    // The Prestige log: a plaque per rank.
     const plaques: DetailRow[] = career.hallOfFame.map((e) => ({
       label: S.hall.plaque(e),
       value: '',
@@ -258,14 +263,6 @@ export const Details = {
       labelColor: 'coin',
     }));
     if (plaques.length === 0) plaques.push({ label: S.hall.empty, value: '', labelColor: 'muted' });
-    plaques.push({
-      label: S.hall.title,
-      action: { k: 'showHall' },
-      value: career.hallBuilt ? S.hall.standing : money(Fmt.number(config.hallOfFamePrice)),
-      sub: career.hallBuilt ? S.hall.tapMore : open ? S.hall.notBuilt : S.hall.open(config.prestigeLevel),
-      labelColor: career.hallBuilt ? 'coin' : 'primary',
-      valueColor: career.hallBuilt ? 'accent' : career.money >= config.hallOfFamePrice ? 'primary' : 'muted',
-    });
     const ready = Careers.canPrestige(career, config);
     const notes: Detail['notes'] = [];
     if (next) notes.push({ text: S.elite.next(next), color: 'accent' });
@@ -298,46 +295,7 @@ export const Details = {
           destructive: armed,
           enabled: ready,
         },
-        ...(career.hallBuilt || !open
-          ? []
-          : [{ label: S.hall.build(money(Fmt.number(config.hallOfFamePrice))), action: { k: 'buildHall' } as const, prominent: false, enabled: Careers.canBuildHall(career, config) }]),
       ],
-    };
-  },
-
-  /** The Hall of Fame explained (Leo, 06.10.2026): what it is, what building it gives, and the way to build it. */
-  hall(career: Career, config: Config): Detail {
-    const open = Elite.isOpen(career, config);
-    const price = config.hallOfFamePrice;
-    const affordable = Careers.canBuildHall(career, config);
-    const rows: DetailRow[] = [
-      { label: S.hall.wall, value: S.hall.wallValue(career.prestige), valueColor: career.hallBuilt ? 'accent' : 'muted' },
-      { label: S.hall.plaques, value: S.hall.plaquesValue(career.hallOfFame.length), valueColor: 'muted' },
-      { label: S.hall.skin, value: S.hall.skinValue, valueColor: 'coin' },
-    ];
-    const notes: Detail['notes'] = [{ text: S.hall.looks, color: 'muted' }];
-    if (!career.hallBuilt && !open) notes.unshift({ text: S.hall.open(config.prestigeLevel), color: 'muted' });
-    const actions: DetailAction[] = [];
-    if (!career.hallBuilt) {
-      actions.push({
-        label: affordable || !open ? S.hall.build(money(Fmt.number(price))) : S.upgrades.missing(money(Fmt.number(price - career.money))),
-        action: { k: 'buildHall' },
-        prominent: true,
-        enabled: affordable,
-      });
-    }
-    actions.push({ label: S.hall.back, action: { k: 'showElite' }, prominent: career.hallBuilt, enabled: true });
-    return {
-      key: 'hall',
-      art: { k: 'elite', level: Elite.level(career, config) },
-      eyebrow: { text: career.hallBuilt ? S.hall.standing : S.hall.gives, color: career.hallBuilt ? 'accent' : 'muted' },
-      title: S.hall.title,
-      price: career.hallBuilt ? null : { text: money(Fmt.number(price)), color: affordable ? 'primary' : 'muted' },
-      steps: null,
-      body: S.hall.about,
-      rows,
-      notes,
-      actions,
     };
   },
 
@@ -384,14 +342,17 @@ export const Details = {
   pass(career: Career, config: Config, day: number): Detail {
     const season = SeasonPass.season(day);
     const owned = SeasonPass.owns(career, day);
-    const tier = owned ? SeasonPass.tier(career, config) : 0;
-    const { into, need } = SeasonPass.progress(career, config);
+    const counts = SeasonPass.counts(career, day, config);
+    const tier = counts ? SeasonPass.tier(career, day, config) : 0;
+    const { into, need } = SeasonPass.progress(career, day, config);
     const open = SeasonPass.isOpen(career, config);
+    const waiting = SeasonPass.waiting(career, day, config);
     const track: DetailRow[] = Array.from({ length: PASS_TIERS }, (_, i) => {
       const reward = SeasonPass.reward(i + 1, season);
-      const reached = owned && tier > i;
+      const free = SeasonPass.isFree(i + 1, day);
+      const reached = tier > i && (owned || free);
       return {
-        label: S.pass.tier(i + 1, PASS_TIERS),
+        label: free ? `${S.pass.tier(i + 1, PASS_TIERS)} · ${S.pass.free}` : S.pass.tier(i + 1, PASS_TIERS),
         value: S.pass.reward(reward),
         labelColor: reached ? 'coin' : 'muted',
         valueColor: reached ? 'accent' : reward.k === 'skin' ? ShopPage.rarityColor(reward.item.rarity) : 'muted',
@@ -400,16 +361,19 @@ export const Details = {
     const crown = SeasonPass.skins(season)[2];
     const notes: Detail['notes'] = [{ text: S.pass.daysLeft(SeasonPass.daysLeft(day)), color: 'muted' }];
     if (owned && tier >= PASS_TIERS) notes.unshift({ text: S.pass.complete, color: 'accent' });
+    const openAtEnd = SeasonPass.openAtEnd(career, day, config);
+    if (openAtEnd > 0) notes.unshift({ text: S.pass.openAtEnd(openAtEnd), color: 'accent' });
+    if (waiting > 0) notes.unshift({ text: S.pass.waiting(waiting), color: 'accent' });
     if (!open) notes.unshift({ text: S.pass.locked(config.seasonPassLevel), color: 'muted' });
     const price = config.seasonPassPrice;
     return {
       key: 'pass',
       art: { k: 'item', id: crown.id, owned: true },
-      eyebrow: { text: owned ? S.pass.xp(into, need) : S.pass.buyHint, color: 'muted' },
+      eyebrow: { text: counts ? S.pass.xp(into, need) : S.pass.buyHint, color: 'muted' },
       title: S.pass.caption(season),
       price: owned ? { text: S.pass.tier(tier, PASS_TIERS), color: 'coin' } : { text: money(Fmt.number(price)), color: 'primary' },
-      steps: owned ? { done: tier, total: PASS_TIERS } : null,
-      body: S.pass.body(config.seasonPassXpPerTier),
+      steps: counts ? { done: tier, total: PASS_TIERS } : null,
+      body: SeasonPass.freeTrack(day) ? S.pass.freeBody(config.seasonPassXpPerTier) : S.pass.body(config.seasonPassXpPerTier),
       rows: [],
       sections: [{ header: S.pass.trackHeader, rows: track }],
       notes,
@@ -578,6 +542,7 @@ export const Details = {
     const met = career.museumSeen.includes(id);
     const shown = met || ahead;
     const level = firstLevel(entry, config);
+    const at = firstPlace(entry, config);
     const art: DetailArt = { k: 'museum', id, shown, time: 0 };
     if (!shown) {
       return {
@@ -587,7 +552,7 @@ export const Details = {
         title: S.museum.unknown,
         price: { text: S.museum.undiscovered, color: 'muted' },
         steps: null,
-        body: [entry.k === 'boss' ? S.museum.lockedBossHint(level) : entry.k === 'fail' ? S.museum.lockedFailHint : S.museum.lockedHint(level)],
+        body: [entry.k === 'boss' ? S.museum.lockedBossHint(at.level, at.rank) : entry.k === 'fail' ? S.museum.lockedFailHint : S.museum.lockedHint(at.level, at.rank)],
         rows: [],
         notes: [],
         actions: [],
@@ -615,7 +580,7 @@ export const Details = {
     const match = rematch(kind);
     const won = career.trialsDone.includes(match.id);
     const rows: DetailRow[] = [
-      { label: S.museum.firstMet, value: S.trials.level(level) },
+      { label: S.museum.firstMet, value: at.rank > 0 ? S.museum.place(at.level, at.rank) : S.trials.level(level) },
       { label: S.museum.heist, value: money(Fmt.number(config.heistRecoveryBase + config.heistRecoveryPerLevel * level)) },
     ];
     if (beaten) rows.push({ label: S.boss.rematch(kind), value: won ? S.trials.passed : money(Fmt.number(match.reward)), valueColor: won ? 'accent' : 'primary' });

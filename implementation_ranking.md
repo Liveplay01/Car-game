@@ -310,6 +310,15 @@ Diese Punkte sind in Research.md beschrieben und hier vollständig bewertet. Sie
 - **Rang 3, Schichtlohn verdoppeln:** gewonnene Karriere-Schicht, 3× am Tag (`adShiftDoublesPerDay`), nicht am ersten Tag, ohne `rewardBurst`; Umami `reward = pay`.
 - **Rang 5, Comeback-Truhe:** Premium Chest bei **jeder** Rückkehr nach 7+ Tagen (`comebackDays`), nicht nur einmal in 30 Tagen, damit der Push-Text (7/14/30 Tage, nennt die Truhe) immer stimmt. Offen: die Zusammenfassung „Neu, seit du weg warst“.
 - **Rang 7, Pity sichtbar:** goldene Leiste auf jeder Truhen-Karte, ab 10 Truhen „Legendary in N“ auf den Kauf-Karten, Zählerstand auf der Ergebnis-Karte.
+- **Rang 4, Season Pass mit Gratis-Strecke:** wirksam ab der Wintersaison (01.12.2026). XP für alle ab Level 15, Stufe 1/4/7 gratis, Kauf zahlt erreichte Premium-Stufen rückwirkend, Today-Karte „N tiers wait for the pass“. Offen: XP-Schub per Werbung (`adPassXpPerDay`), Saisonende-Zeile, Gegenrechnung mit `npm run sim:career`.
+- **Rang 5, Rest:** Sheet „New since you were away“ mit den Patch-Notes-Zusammenfassungen seit dem letzten Besuch (höchstens 3 Zeilen), nur zusammen mit der Comeback-Truhe.
+- **Rang 8, nur App-Badge (Leo, 18.10.2026: Freeze bleibt unkäuflich):** beim Verlassen der installierten App ein Punkt am Icon, wenn die Serie heute Nacht reißt und die Daily offen ist.
+- **Rang 10, After Work:** 18–20 Uhr Ortszeit +20 % auf Karriere-Schichten, Pille mit Sonnenuntergang, nie über die Daily.
+- **Rang 11, Anker und Paket:** 3 Premium-Truhen für 140.000; Premium- und Diamond-Sheet nennen das Vielfache der Legendary-Chance.
+- **Rang 4, Rest:** Saisonende-Zeile (letzte 7 Tage, `seasonPassEndWarnDays`, Today-Karte und Pass-Sheet). Gegenrechnung im Karriere-Bot (`npm run sim:career`, Zeile „season pass“): Gelegenheitsspieler ~1.370 XP pro Stunde ab Level 15, halbe Strecke nach 0,4 h, 150.000 verdient nach 1,1 h, ganze Strecke nach 1,1 h Spielzeit. Ziel erfüllt; die Strecke ist für eine Saison von drei Monaten aber sehr kurz (offen: XP pro Stufe anheben).
+- **Rang 2, Weiterfahren per Werbung:** `World.revive` (Wracks weg, letzter Strike vergeben, 2 s Schonfrist), Angebot nach 1,2 s für 5 s, Unlimited und Karriere ab 60 %, 1× pro Lauf, 3× am Tag; Rekord trägt `revived` (Rangliste „kept driving“), kein Perfect Run, kein Tailwind, keine Challenge. Noch offen: XP-Schub per Werbung für den Pass.
+- **Rang 6, mit dem Auktionshaus verbunden (Leo, 18.10.2026):** jedes Skin-Los hat einen Sofortkauf-Preis (2,5× Schätzung, ohne Aufgeld, `auctionBuyNow`); kein eigenes Schaufenster.
+- **Rang 9, 13, 14 als Crews (Leo, 18.10.2026):** Crews ersetzen Friends (Social → Crew): Beitritt per Einladungslink, bis 20 Spieler, Umbenennen alle 30 Tage, Wochen-Liga mit Season-XP und Computer-Crews, Wochenziel, Geschenke an die Crew (wer zuerst nimmt) und an Mitglieder (Profil), Ranks → Crew. Server-Modul `Server/src/modules/crews`, Spiel `net/crews.ts`, `ui/crewPanel.ts`.
 
 ### Quick Wins (die nächsten 1–2 Wochen)
 

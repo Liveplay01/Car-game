@@ -25,7 +25,9 @@ Namen in `Web/src/present/strings.ts` (`S.shop`). Wird ein Item ergänzt, gehör
 - **Kein Echtgeld.** Der Store ist entfernt (Leo, 28.09.2026). Geld und Truhen gibt es nur im
   Spiel, solange das Casino existiert, ist keine Währung kaufbar (CLAUDE.md, „Casino statt Store“).
   Standard-Truhe **26.000**, Premium-Truhe **52.000** Ingame-Geld (seit 25.09.2026 alles Kaufbare +30 %)
-  (`standardChestPrice`, `premiumChestPrice`).
+  (`standardChestPrice`, `premiumChestPrice`). **Paket (Leo, 18.10.2026):** 3 Premium-Truhen für **140.000**
+  statt 156.000 (`premiumBundle`, `premiumBundlePrice`), danach einzeln aufklopfen. Premium- und Diamond-Sheet nennen
+  ehrlich das Vielfache der Legendary-Chance gegenüber der Standard-Truhe (aus den Odds gerechnet: 8× und 13×).
 - **Werbung:** Eine Standard-Truhe gibt es auch für eine angesehene Werbung, bis zu
   **3 pro Tag** (`adChestsPerDay`). Immer freiwillig, bezahlt wird nur eine zu Ende gesehene Werbung.
   Auf CrazyGames deren Rewarded Ad; auf der normalen Seite und in der Google-Play-App Googles Rewarded Ads
@@ -147,7 +149,7 @@ auch bei Verlusten; negative Salden erscheinen rot. Der Tab erscheint in Social 
 Die Collection hat seit 01.10.2026 **vier Regale** (Chips unter dem Segmented Control, vorher
 acht): **Cars** (Car Skins aus Truhen, nach Seltenheit unter Überschriften Common · Rare · Epic ·
 Legendary, dann Vehicles und Seasons), **Maps**, **Honours** (Legendary Shifts, Prestige, Elite,
-Feats, Hall of Fame und die Daily-Serie) und **Pass**. Das Raster scrollt (4 Spalten), die Chips
+Feats, die frühere Ruhmeshalle und die Daily-Serie) und **Pass**. Das Raster scrollt (4 Spalten), die Chips
 und Überschriften zeigen den Fortschritt (z. B. `3/10`). Code: `shelfItems` in `Web/src/present/shop.ts`.
 
 ## Car Skins (39)
@@ -288,7 +290,7 @@ Spielstände, die einen dieser Meilensteine schon hinter sich haben, bekommen da
 Kein Elite-Item ist ganz gold lackiert: Gold am ganzen Auto bleibt dem Jackpot-Transporter
 vorbehalten (Fahrzeugfarben sind Spielinformation).
 
-## Saison-Pass und Ruhmeshalle (Leo, 30.09.2026, `core/seasonPass.ts`)
+## Saison-Pass und Prestige-Chronik (Leo, 30.09.2026, `core/seasonPass.ts`)
 
 - **Saison-Pass** (Progress → Goals, ab Level 15): 150.000 Spielgeld pro Saison, nie Echtgeld.
   Jede Schicht bringt dieselben XP wie die Elite-Leiste; 120 XP pro Stufe, 12 Stufen:
@@ -304,9 +306,10 @@ vorbehalten (Fahrzeugfarben sind Spielinformation).
 | Sommer | Solar Flare (Flammenspur) | Neon Wave (Neon-Unterboden) | Lava Core (glühende Risse) |
 | Herbst | Ghost Rider (flackernd, Nachbilder) | Harvest Moon (Glut und Laub) | Thunderbolt (Blitze) |
 
-- **Ruhmeshalle** (Records → Elite, sobald die Elite-Leiste offen ist): 250.000. Eine goldene
-  Wand auf der Insel mit einem Stern pro Prestige-Rang, eine Plakette pro Rang (Datum, Elite,
-  Bosse, Legendary Shifts) und der Skin **Hall of Famer** (Lorbeer-Aura, Regal „Honours“).
+- **Prestige-Chronik** (Records → Elite): eine Plakette pro Prestige-Rang (Datum, Elite, Bosse,
+  Legendary Shifts). Die **Ruhmeshalle** (250.000, goldene Wand, Skin **Hall of Famer** mit
+  Lorbeer-Aura, Regal „Honours“) ist seit 18.10.2026 nicht mehr zu kaufen; wer sie gebaut hat,
+  behält Wand und Skin.
   Effekte laufen nur auf intakten Autos; Reduce Motion zeigt ein stehendes Bild.
 
 ## Elite-Leiste und Titel
@@ -374,7 +377,7 @@ Kreisverkehr (der wertvollste abgeschlossene zählt). Fortschritt im Shop unter 
 | Commons / Rares / Epics / Legends | alle Car Skins dieser Seltenheit aus Truhen | 5.000 / 10.000 / 20.000 / 40.000 |
 | Seasons | alle 4 Saison-Items | 30.000 |
 | Loyalty | alle 3 Serien-Items | 20.000 |
-| Honours | alle 29 Ehren-Items: Legendary Shifts, Prestige, Elite, Feats, Ruhmeshalle, Unlimited-Meilensteine (ohne den Classic) | 50.000 |
+| Honours | alle 29 Ehren-Items: Legendary Shifts, Prestige, Elite, Feats, frühere Ruhmeshalle, Unlimited-Meilensteine (ohne den Classic) | 50.000 |
 
 ## Feats (Leo, 01.10.2026, `core/feats.ts`)
 

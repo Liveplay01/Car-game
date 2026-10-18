@@ -10,11 +10,11 @@ import { S, Fmt } from './strings';
 import { ShopPage } from './shop';
 import { SOCIAL, type SocialSection } from './flow';
 
-const SOCIAL_SECTIONS: SocialSection[] = [SOCIAL.friends, SOCIAL.ranks, SOCIAL.club, SOCIAL.mafia];
+const SOCIAL_SECTIONS: SocialSection[] = [SOCIAL.crew, SOCIAL.ranks, SOCIAL.club, SOCIAL.mafia];
 
 /** What the Social tab animates: the chosen segment and the thumb gliding to it. */
 export class SocialState {
-  section: SocialSection = SOCIAL.friends;
+  section: SocialSection = SOCIAL.crew;
   sectionSlide: { from: SocialSection; age: number } | null = null;
 
   select(next: SocialSection): void {
@@ -31,7 +31,7 @@ export class SocialState {
 }
 
 /**
- * The Social tab (Leo, 10.10.2026): Friends · Ranks · Club. The canvas draws the ground, the title, the balance and the segments like every
+ * The Social tab (Leo, 10.10.2026): Crew (since 18.10.2026, in place of Friends) · Ranks · Club · Mafia. The canvas draws the ground, the title, the balance and the segments like every
  * page; what sits under the segments (the lists, the forms, the auction) is the shell's DOM (`ui/socialPage.ts`), placed at `column`.
  */
 export const SocialPage = {
@@ -53,7 +53,7 @@ export const SocialPage = {
   /** Where the DOM content starts and how wide it is (the page's column, like the other tabs). */
   column(viewport: Vec2): { top: number; left: number; width: number } {
     const width = Math.min(viewport.x - 2 * SocialPage.gap, 460);
-    return { top: SocialPage.segments(viewport, [SOCIAL.friends])[0][1].maxY + SocialPage.gap, left: (viewport.x - width) / 2, width };
+    return { top: SocialPage.segments(viewport, [SOCIAL.crew])[0][1].maxY + SocialPage.gap, left: (viewport.x - width) / 2, width };
   },
 
   sectionAt(point: Vec2, viewport: Vec2, career: Career): SocialSection | null {

@@ -110,7 +110,7 @@ export default (S: Strings): Words<Strings> => ({
       if (item.source.kind === 'prestige') return `Atteignez le Prestige ★${item.source.rank}.`;
       if (item.source.kind === 'elite') return `Atteignez Élite ${item.source.level}.`;
       if (item.source.kind === 'pass') return `Palier ${item.source.tier} du Passe ${S.pass.seasonName(item.source.season)}. Revient chaque année.`;
-      if (item.source.kind === 'hall') return 'Construisez le Panthéon (Records → Élite).';
+      if (item.source.kind === 'hall') return 'Offert avec l’ancien Panthéon, qui n’est plus en vente.';
       if (item.source.kind === 'unlimited') return `Lancez ${Fmt.number(item.source.cars)} voitures en mode Sans limites.`;
       if (item.source.kind === 'tour') return `Une étape du tour « ${S.tours.name(item.source.tour as 'halloween' | 'winter')} ». Revient chaque année.`;
       if (item.source.kind === 'auction') return 'En vente exclusive aux enchères (Social → Club).';
@@ -147,6 +147,8 @@ export default (S: Strings): Words<Strings> => ({
     buy: (price) => `Acheter · ${price}`,
     pity: (n) => `Épique ou supérieur garanti sous ${n} coffres. Les doublons rapportent ${MONEY_MARK}.`,
     pityLegendary: (n) => `Un Légendaire garanti sous ${n} coffres.`,
+    buyBundle: (n, price) => `${n} pour ${price}`,
+    legendaryTimes: (n) => `${n}× la chance de Légendaire d'un coffre standard.`,
     pitySoon: (n) => `Légendaire dans ${n}`,
     duplicate: (m) => `Doublon · +${money(m)}`,
     ownedHint(item) {
@@ -231,11 +233,11 @@ export default (S: Strings): Words<Strings> => ({
     splashLine: (e) => `La ville aujourd’hui : ${S.cityEvent(e)} · un essai`,
     streakLine: (streak) => (streak > 0 ? `${streak} ${streak === 1 ? 'jour' : 'jours'} d’affilée · continuez ainsi` : 'Jouez chaque jour pour créer une série'),
     nextMilestone: (left, prize) => `Plus que ${left} ${left === 1 ? 'jour' : 'jours'} avant ${prize}`,
-    rowLine(streak, open, next, freezes = 0, toFreeze = null) {
+    rowLine(streak, open, next, freezes = 0, toFreeze = null, tomorrow = null) {
       if (streak <= 0) return open ? S.daily.readyHint : 'Revenez demain · jouez chaque jour pour une série';
       const days = `${streak} ${streak === 1 ? 'jour' : 'jours'} d’affilée`;
       const ahead = next && (toFreeze === null || next.left <= toFreeze) ? S.daily.nextMilestone(next.left, S.daily.prize(next.prize)) : toFreeze !== null ? S.daily.freezeLine(toFreeze) : null;
-      const parts = [days, freezes > 0 ? S.daily.freezes(freezes) : null, ahead, open ? null : 'à demain'];
+      const parts = [days, freezes > 0 ? S.daily.freezes(freezes) : null, ahead, open ? null : tomorrow ? `demain : ${S.cityEvent(tomorrow)}` : 'à demain'];
       return parts.filter((p): p is string => p !== null).join(' · ');
     },
     freezeLine: (days) => `Plus que ${days} ${days === 1 ? 'jour' : 'jours'} avant la protection de série`,
@@ -504,6 +506,7 @@ export default (S: Strings): Words<Strings> => ({
   mods: {
     label: 'Modificateurs du prochain service',
     tailwind: (pay) => `Vent portant +${Math.round(pay * 100)} %`,
+    afterWork: (pay) => `Après le boulot +${Math.round(pay * 100)} %`,
     streak: (pay) => `Série +${Math.round(pay * 100)} %`,
     family: (share) => `Famille −${Math.round(share * 100)} %`,
   },
@@ -537,11 +540,9 @@ export default (S: Strings): Words<Strings> => ({
     close: 'Fermer',
     score: 'POINTS',
     flames: 'FLAMMES',
-    cars: 'VOITURES',
     newBest: 'NOUVEAU RECORD',
     hook: (score) => `Pouvez-vous battre ${score} ?`,
     hookFlames: (flames) => `Pouvez-vous dépasser ${flames} flammes ?`,
-    hookChill: 'Venez rouler un peu.',
     combo: (n) => `Combo ×${n}`,
     tightFits: (n) => (n === 1 ? '1 créneau serré' : `${n} créneaux serrés`),
     busted: (n) => `${n} interpellés`,

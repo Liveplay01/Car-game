@@ -185,10 +185,6 @@ const MODE_BODY: Record<SwipeMode, string[]> = {
     'In Mayhem you want the crashes. Twelve cars, no police and no criminals: set off chain reactions with gas tankers and military trucks, and chase the longest chain.',
     'Every new wreck adds flames, and a crash within a moment of the last one extends the chain.',
   ],
-  chill: [
-    'Unlimited without the pressure. A calm pace, a mild sky, and no police, criminals or special vehicles. A crash dents the cars and the traffic reacts, but nothing ends.',
-    'Finish with Done. A chill ride does not count for the career, the ranks or the records.',
-  ],
   multiplayer: [
     'Everyone gets their own road into the same roundabout. Share a four-digit code or an invite link, no account needed. Up to four players, and bots fill the empty roads.',
     'Merge tight to send a truck onto a friend\'s road. The last one without a crash wins. Practise against bots, even offline.',
@@ -208,12 +204,12 @@ const place = (id: (typeof INTROS)[number]): Feature => {
 
 const together = (): Feature[] => [
   {
-    id: 'friends',
-    title: 'Friends',
-    line: 'A friend code, a board, an invite',
+    id: 'invites',
+    title: 'Invites',
+    line: 'A friend code, an invite link',
     body: [
-      S.friends.intro,
-      `A friend code has eight letters and numbers, like K7M2-9QXA. Add a friend's code and they join your board; it works one way, so nobody has to accept. Invite a friend with your code or link: when they reach Level ${INVITE_LEVEL}, you both get a Standard Chest.`,
+      `Every player has a friend code of eight letters and numbers, like K7M2-9QXA. It is in every invite link: a crew's link and your own. When a friend who is new to the game joins through it and reaches Level ${INVITE_LEVEL}, you both get a Standard Chest.`,
+      'A bug report on timing.love/build with your friend code earns a skin.',
     ],
     art: null,
   },

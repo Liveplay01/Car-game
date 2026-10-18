@@ -5,10 +5,10 @@ import type { PageHost } from './pageHost';
 import type { RewardedOutcome } from './session';
 
 /** What a watched ad pays: the free Standard chest, a free step of today's upgrade, the Skin Upgrade's boost, a broken streak back, a Streak Freeze, the Daily's pay once more. */
-export type AdReward = 'chest' | 'upgrade' | 'boost' | 'rescue' | 'freeze' | 'double' | 'retry' | 'pay';
+export type AdReward = 'chest' | 'upgrade' | 'boost' | 'rescue' | 'freeze' | 'double' | 'retry' | 'pay' | 'revive';
 
 /** The ads of the Game tab's pill (`AdPill`). */
-export type GameAd = Extract<AdReward, 'rescue' | 'freeze' | 'double' | 'retry' | 'pay'>;
+export type GameAd = Extract<AdReward, 'rescue' | 'freeze' | 'double' | 'retry' | 'pay' | 'revive'>;
 
 /** What the ads on offer look like right now: the extra ones (free step, boost) are on, and an ad is ready to play. */
 export interface AdOffer {
@@ -58,6 +58,8 @@ export class AdFlow {
         return Careers.adRetryOpen(career, today) ? null : S.ads.noRetry;
       case 'pay':
         return this.host.shiftPay > 0 && Careers.adShiftDoublesLeft(career, today, config) > 0 ? null : S.ads.noShiftDouble(config.adShiftDoublesPerDay);
+      case 'revive':
+        return this.host.canRevive && Careers.adRevivesLeft(career, today, config) > 0 ? null : S.ads.noRevive(config.reviveAdsPerDay);
     }
   }
 
@@ -152,6 +154,12 @@ export class AdFlow {
         this.host.bankResult(pay);
         return;
       }
+      case 'revive':
+        // The run itself goes on: the count-in is the celebration.
+        if (!this.host.canRevive || !Careers.rewardAdRevive(career, today, config)) return;
+        this.host.persist();
+        this.host.reviveRun();
+        return;
     }
   }
 }

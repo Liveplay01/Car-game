@@ -119,6 +119,24 @@ export const Auction = {
     return lots;
   },
 
+  /** The fixed price of a skin lot, instead of bidding (chests are in the Shop); null for a chest. */
+  buyNowPrice: (lot: Lot, config: Config = baseConfig): number | null =>
+    lot.k === 'skin' ? Math.round((Auction.estimate(lot, config) * config.auctionBuyNow) / 500) * 500 : null,
+
+  /** Buys a lot at its fixed price: the slot is spent like a begun auction. Returns what it cost, or null. */
+  buyNow(c: Career, slot: number, day: number, config: Config = baseConfig): number | null {
+    if (!Auction.canStart(c, slot, day, config)) return null;
+    const lot = readLot(c.auctionLots[slot])!;
+    const price = Auction.buyNowPrice(lot, config);
+    if (price === null || lot.k !== 'skin' || c.money < price) return null;
+    c.money -= price;
+    c.auctionTaken = [...c.auctionTaken, slot];
+    Careers.collect(c, lot.id);
+    c.auctionWins++;
+    c.auctionSpent += price;
+    return price;
+  },
+
   /** A lot can be tried once a day, and a skin only while it is not owned. */
   canStart(c: Career, slot: number, day: number, config: Config = baseConfig): boolean {
     if (!Auction.isOpen(c, config) || c.auctionDay !== day || c.auctionTaken.includes(slot)) return false;

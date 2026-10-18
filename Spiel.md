@@ -17,7 +17,7 @@ Stand: 02.10.2026 · Überblick über das ganze Spiel. Das Spiel heißt **Rounda
 - **Krankenwagen und Feuerwehr** (die Straße vor ihnen frei halten), **Motorräder**, **Fahrschulauto**, **Schulbusse**
 - dazu **Wetter**, **Nacht** und **City Events**, die den Verkehr oder die Sicht verändern, ab Level 80 ein **zweispuriger Ring**
 
-**Meta:** Geld → Upgrades kaufen, Kreisverkehr im Street Builder ausbauen (Zufahrten, Module), Truhen mit Skins öffnen, Quests, Trials und Feats abhaken, Casino, ab der Elite-Leiste der Club für große Kontostände (Auktion, Spielfonds, Diamond Chest; LOOT.md, „Der Club“). Die Stadt wächst sichtbar mit. Langzeitziele: Legendary Shifts, Prestige, Elite-Leiste, Saison-Pass, Ruhmeshalle.
+**Meta:** Geld → Upgrades kaufen, Kreisverkehr im Street Builder ausbauen (Zufahrten, Module), Truhen mit Skins öffnen, Quests, Trials und Feats abhaken, Casino, ab der Elite-Leiste der Club für große Kontostände (Auktion, Spielfonds, Diamond Chest; LOOT.md, „Der Club“). Die Stadt wächst sichtbar mit. Langzeitziele: Legendary Shifts, Prestige, Elite-Leiste, Saison-Pass.
 
 **Plattform:** Browser auf Handy (Hochformat, einhändig) und Desktop, installierbar als PWA, offline spielbar nach dem ersten Besuch. Läuft außerdem auf **CrazyGames** und (in Vorbereitung) im **Google Play Store** als Trusted Web Activity (siehe 14). Spielsprache nur Englisch, Projektdokumente auf Deutsch.
 
@@ -32,7 +32,6 @@ Stand: 02.10.2026 · Überblick über das ganze Spiel. Das Spiel heißt **Rounda
 | **Shift** | „Clear the level, move up“ | die Karriere: feste Autozahl pro Schicht, Level, Geld (siehe unten) |
 | **Unlimited** | „Endless · until you crash“ | spielt auf Level 3 (ohne Prestige-Vorsprung, ohne Legendary-Regel), ohne Autozahl, bis zum ersten Verlust. Nach der 20-s-Rampe alle 25 s +1 Auto Dichte (bis +8), Tempo +8 % pro Minute (bis 160 %). Lohn 20 pro geschicktem Auto, keine Crash-Kosten. Ein „Jammed“-Auto (siehe 4) zählt nicht als Auto. Rekorde: Punkte und Autos; die Punkte gehen auf die Bestenliste. **Stufen (05.10.2026, `core/tiers.ts`):** Bronze 25 · Silber 50 · Gold 100 · Platin 200 · Diamant 350 · Master 500 Autos (beste Fahrt, unter Records); dieselben Marken (plus die Skin-Marken 250/1000) lassen im Lauf den Ring aufleuchten und zeigen kurz Marke und Stufe statt der Autozahl. Jede Marke zahlt beim **ersten** Überschreiten in der Karriere **5 Elite-XP** (`eliteXpMark`, auch auf den Saison-Pass); die Bestenliste (auch Freunde) zeigt die Stufe unter dem Namen. Knapp verfehlt (ab 75 % der nächsten Stufe) sagt das Schichtende „N cars short of Gold“ (`Goals.tierMiss`). Die Skins bei 250/500/1000 Autos geben die Titel Marathoner, Overdriver, Endless (Regel `item` in `core/elite.ts`) |
 | **Mayhem** | „12 cars · aim for the tankers“ | Crashes sind das Ziel: 12 Autos auf Level 6 (ohne Prestige-Vorsprung), +3 Dichte, 1,1 s Nachladen zwischen den Autos, keine Polizei, keine Verbrecher, kein Krankenwagen, kein Lohn, keine Critical Merges. 34 % Lkw, davon 60 % Tanklaster, bis zu 4 Militär-Trucks (erster nach 9–15 s, dann alle 6–10 s); Verkehr erholt sich doppelt so schnell. Jedes neue Wrack gibt **Flammen**; ein Folge-Crash innerhalb von 1,5 s verlängert die Kette (Flammen = Kettenlänge, höchstens 10, Lkw ×2). Wracks treffen nur, solange sie noch fliegen. Die Schicht endet, wenn die letzte Kettenreaktion ausgebrannt ist. Rekorde: Flammen und längste Kette |
-| **Chill** | „No pressure · crashes never end it“ | Leo, 07.10.2026 (`forChill`, `World.finish`): Unlimited ohne Druck. Ruhiges Tempo und gleichmäßige Dichte (`chill*` in `config.ts`), nur ein milder Himmel (meist klar, manchmal Nieselregen, Nebel, Schnee, abends), keine Polizei, Verbrecher, Sonderfahrzeuge, Tanklaster, kein Geld, keine Critical Merges. Ein Crash gibt Blechschaden und der Verkehr reagiert, beendet aber nichts. Die Fahrt endet mit **Done** (Knopf unten, an der Stelle des Dispatch-Knopfs). Zählt nicht für Karriere, Mastery, Elite oder Bestenlisten; eigene Rekorde: längste Fahrt in Autos, alle Autos, Zeit (unter Records). Nicht teilbar als Challenge. |
 | **Multiplayer** | „Up to 4 friends · last one standing“ | siehe 11 |
 
 Das Wischen geht von Anfang an; ein Hinweis weist erst nach Level 6 darauf hin (siehe „Freischaltungen“ in 9). Die Gefahrenstufe *Normal Duty / High Alert* wurde am 26.09.2026 **entfernt** und durch die Modi ersetzt.
@@ -128,7 +127,7 @@ Jede Einfädelung wird nach dem engsten Abstand (surface to surface) bewertet:
 ### Syndikats-Bosse (28.09.2026, Werte in `config.ts`)
 
 - **Scout auf Level 6 (08.10.2026, `scoutLevel`):** Der erste Verbrecher der Schicht bringt einen gepanzerten Begleiter mit (`scoutEscorts` 1), angekündigt mit „SYNDICATE SCOUT“ und 3 s Warnung, und bleibt ×1,4 so lange (`scoutTimeFactor`). Ein Vorgeschmack auf die Bosse, aber kein Boss: keine Trophäe, kein Museum-Eintrag, kein Heist-Geld. Beim ersten Mal sagt eine Zeile, wie man ihn erwischt.
-- **Jedes 15. Level** (15, 30, 45 …) ist der erste Verbrecher der Schicht der **Boss** des Syndikats. Er kommt früh (nach 1,5–3 s), mit 3 s Warnung („SYNDICATE CONVOY“ usw.), und bleibt länger im Ring als ein normaler Verbrecher. Die vier Bosse wechseln der Reihe nach, jede Runde beginnt von vorn:
+- **Jedes 15. Level** (15, 30, 45 …) ist der erste Verbrecher der Schicht der **Boss** des Syndikats. **Auf die Prestige-Ränge verteilt (Leo, 18.10.2026):** Wer bei Level 50 prestigiert, spielt nur die Level 15, 30 und 45; deshalb bringt jeder Rang die nächsten drei Bosse der Liste auf diesen Levels (★0 Convoy, Getaway, Armoured; ★1 Phantom, Twins, Decoy; ★2 Smuggler, Kingpin und die zweite Runde des Convoy …; `bossesPerRank`, `Careers.bossShift`). Ohne Prestige gilt die Tabelle weiter nach Level. Er kommt früh (nach 1,5–3 s), mit 3 s Warnung („SYNDICATE CONVOY“ usw.), und bleibt länger im Ring als ein normaler Verbrecher. Die vier Bosse wechseln der Reihe nach, jede Runde beginnt von vorn:
 
 | Boss | Level | Eskorte | Zeit (× Verbrecher-Countdown) | Besonderheit |
 |---|---|---|---|---|
@@ -246,7 +245,7 @@ Fair bleibt es: Das Tap-Timing ändert sich nie; Sonderfahrzeuge, Warnungen und 
 
 **Wetter zieht auf (01.10.2026):** Beim Schichtwechsel springt das Bild nicht um. Das alte Wetter dünnt in 2,5 s aus, das neue setzt ein: Regen Tropfen für Tropfen, Nebel, Schnee und die Abdunklung im Sturm blenden über (`WeatherFade` in `present/weather.ts`). Nur das Bild; die Regeln haben das neue Wetter sofort, die Ready-Karte nennt es. Regen und Schnee sind außerdem deutlich leichter für schwache Handys gezeichnet.
 
-**Saison-Regel (Leo, 07.10.2026, `core/seasons.ts`):** Die Jahreszeit kippt den Himmel der Karriere-Schichten (nicht Unlimited, Trials, Chill): wie oft schlechtes Wetter kommt, welche Art und wie früh die Nacht fällt. Wie schlecht es werden kann, bleibt. Winter *Deep Winter* (Nebel ×2, Schnee ×3, Nächte ×1,5), Frühling *April Showers* (Regen ×2/×1,5, öfter Wetter), Sommer *Summer Storms* (selten, dann Sturm, Extrem, Hagel, Sandsturm), Herbst *Fog & Dusk* (Nebel ×3, Nächte ×1,4). Progress → Today nennt Saison und Regel.
+**Saison-Regel (Leo, 07.10.2026, `core/seasons.ts`):** Die Jahreszeit kippt den Himmel der Karriere-Schichten (nicht Unlimited, Trials): wie oft schlechtes Wetter kommt, welche Art und wie früh die Nacht fällt. Wie schlecht es werden kann, bleibt. Winter *Deep Winter* (Nebel ×2, Schnee ×3, Nächte ×1,5), Frühling *April Showers* (Regen ×2/×1,5, öfter Wetter), Sommer *Summer Storms* (selten, dann Sturm, Extrem, Hagel, Sandsturm), Herbst *Fog & Dusk* (Nebel ×3, Nächte ×1,4). Progress → Today nennt Saison und Regel.
 
 ### Nacht und Blackout (nur Web)
 
@@ -305,7 +304,6 @@ Geld bleibt auch aus verlorenen Schichten. Der Kontostand steht immer links in d
 | **Module** (Street Builder) | Toll Booth, Speed Camera, Tow Depot, Billboard, Detour Sign auf 6 festen Modulplätzen | 10.400 / 15.600 / 13.000 / 9.100 / 7.800 |
 | **Truhen** (Shop) | Standard, Premium | 26.000 / 52.000 |
 | **Saison-Pass** (Progress → Goals, ab Level 15) | 12 Stufen pro Saison | 150.000 |
-| **Ruhmeshalle** (Records → Elite) | Monument mit Plakette pro Prestige-Rang, eigener Skin | 250.000 |
 
 Abreißen (Zufahrten und Module) ist möglich, **nichts wird erstattet.** Verschieben kostet nichts. Die eigene Zufahrt bleibt fest, und es bleiben immer mindestens 4 Zufahrten.
 
@@ -378,7 +376,7 @@ Ein neuer Spieler trifft die Systeme nacheinander (`core/unlocks.ts`, Werte in `
 | Was | Ab | Wie es sich zeigt |
 |---|---|---|
 | Daily Shift (und Serie) | Level 3 (seit 16.10.2026: die Frage nach dem Weg zurück kommt mit der ersten Daily, nicht schon nach der zweiten Schicht; 08.10.–16.10. Level 2, davor 4) | Hinweis „New · the Daily Shift …“; vorher sagt die Quest-Zeile, ab wann |
-| Modus-Wischen | nie gesperrt; Hinweis, sobald Level 6 geschafft ist (`modeHintAfterLevel`) | Meldung „New modes · swipe sideways …“, danach bis zum ersten Wechsel die Zeile „Swipe for more modes“ am Game-Tab |
+| Modus-Wischen | nie gesperrt; ab Level 7 (`modeHintAfterLevel`) | die Zeile „Swipe for more modes“ am Game-Tab bis zum ersten Wechsel (seit 18.10.2026 ohne eigene Meldung beim Level-Abschluss) |
 | Trials (Progress) | Level 9 | Hinweis „New · Trials in Progress …“; vorher ist das Segment blass und sagt beim Tippen, ab wann. Jede Trial öffnet erst bei ihrem eigenen Level („Opens at level X“) |
 | Casino (Shop) | Level 12 | ohne Hinweis; vorher ist das Segment blass |
 | Saison-Pass | Level 15 | im Today-Segment |
@@ -394,7 +392,7 @@ Ein neuer Spieler trifft die Systeme nacheinander (`core/unlocks.ts`, Werte in `
 - **Knöpfe über der Szene (08.10.2026):** links eine beschriftete Hauptaktion (Open chest, Leave), darunter Picture als runder Glasknopf, ganz unten Settings; alles links der Straße. Mit Maus steht der Name beim Darüberfahren daneben. **Das Foto ist die Challenge** (Leo, 08.10.2026): Beim Öffnen entsteht der Kurzlink, „Send as challenge“ teilt das Foto mit Satz und Link (auf dem Desktop beides in die Zwischenablage). Einen eigenen Challenge-Knopf über der Szene gibt es nicht; „Challenge a friend“ bleibt in der Friends-Schublade. Nicht auf CrazyGames.
 - **Neue Bedingungen auf der Wartekarte** bleiben über dem Ring (`ringTop`); passt die Karte nicht, nennt die Zeile auf der Insel sie, das Briefing erklärt sie beim Start.
 - Nach Level 4 (also ab Level 5) bittet das Spiel den Browser, den Speicher dauerhaft zu behalten (`storage.persist()`), und schlägt die Installation vor: auf iPhone und iPad als bildschirmfüllender Hinweis mit den drei Schritten zum Home-Bildschirm (`installDialog` in `ui/sheets.ts`), sonst als Zeile. Nicht im Play-Store-Rahmen und nicht auf CrazyGames.
-- Nach Level 5 (oder nach einem Prestige) fragt das Spiel einmal nach „Dein Spieler“ (`accountPromptAfterLevel`, `ui/accountSheet.ts`): ein Name für Ranglisten, Freunde, Multiplayer und Cloud-Sync; „Nein danke“ mit zweiter Bestätigung. Freunde, Ranglisten und Club brauchen den Spieler. Wer schon einen Namen hatte, bekommt Cloud-Sync automatisch samt Meldung mit dem Code; nach Level 12 empfiehlt das Spiel Cloud sync, solange das Gerät keine Cloud-Kopie hat.
+- Nach Level 5 (oder nach einem Prestige) fragt das Spiel einmal nach „Dein Spieler“ (`accountPromptAfterLevel`, `ui/accountSheet.ts`): ein Name für Ranglisten, Freunde, Multiplayer und Cloud-Sync; „Nein danke“ mit zweiter Bestätigung. Freunde, Ranglisten und Club brauchen den Spieler. Wer schon einen Namen hatte, bekommt Cloud-Sync automatisch samt Meldung mit dem Code.
 - Der erste Perfect Run sagt, was er bringt; danach nur noch ein goldener Lauf um den Inselrand, keine Zeile (08.10.2026).
 - Die erste verlorene Schicht nach der ersten: „Swipe sideways for Unlimited …“, danach die Wisch-Zeile bis zum ersten Moduswechsel.
 - Beim nächsten Besuch (ab 3 Schichten) oder spätestens nach 6 Schichten: „Closer pays more … Tight Fit“, außer man fädelt schon knapp ein (10 Tight Fits).
@@ -424,7 +422,7 @@ Ein neuer Spieler trifft die Systeme nacheinander (`core/unlocks.ts`, Werte in `
 Details und alle Item-Listen: [LOOT.md](LOOT.md) (Liste im Code: `Web/src/core/loot.ts`).
 
 - **Nur Aussehen.** Kein Skin gibt einen Spielvorteil. Sonderfahrzeuge bleiben an der **Form** erkennbar, nicht an der Farbe.
-- **121 Items:** 88 Car Skins (39 aus Truhen, 3 Daily-Serie, 4 Saison, 12 Saison-Pass, Ehren-Skins aus Legendary Shifts, Prestige, Elite, Unlimited und Ruhmeshalle), 29 Map Skins (24 aus Truhen, 5 Ehren-Maps) und 4 Fahrzeugtypen (der Classic ist ein Honour). Im Shop vier Regale (seit 01.10.2026): **Cars** (Truhen-Skins nach Seltenheit mit Überschriften, dazu Fahrzeuge und Saison-Skins), **Maps**, **Honours** (Legendary Shifts, Prestige, Elite, Feats, Ruhmeshalle, Daily-Serie, der Classic), **Pass**. Das Raster scrollt (4 Spalten); Chips und Überschriften zeigen den Fortschritt.
+- **121 Items:** 88 Car Skins (39 aus Truhen, 3 Daily-Serie, 4 Saison, 12 Saison-Pass, Ehren-Skins aus Legendary Shifts, Prestige, Elite, Unlimited und die frühere Ruhmeshalle), 29 Map Skins (24 aus Truhen, 5 Ehren-Maps) und 4 Fahrzeugtypen (der Classic ist ein Honour). Im Shop vier Regale (seit 01.10.2026): **Cars** (Truhen-Skins nach Seltenheit mit Überschriften, dazu Fahrzeuge und Saison-Skins), **Maps**, **Honours** (Legendary Shifts, Prestige, Elite, Feats, frühere Ruhmeshalle, Daily-Serie, der Classic), **Pass**. Das Raster scrollt (4 Spalten); Chips und Überschriften zeigen den Fortschritt.
 - **Skins mischen:** bis zu **5 Car Skins** gleichzeitig; **jedes Fahrzeug** im Level trägt einen davon, fest pro Fahrzeug. Ein Map Skin.
 - **Map Skins** färben den Boden der Stadt (Tag-Maps hell und satt, Nacht-Maps dunkel), tönen die Mittelinsel, säumen die Straßen mit eigenen Pflanzen und bringen ein **Herzstück** mit Animation. Jede Map hat ein kleines Diorama in der Collection.
 - **Car Skins:** Farben, Rennstreifen, zweifarbige Dächer, **Shiny** (Lichtstreif) und **Glitter** (Funkeln); Pass- und Feat-Skins mit eigenen Effekten (Schneespur, Regenbogen, Lavarisse, Blitze, kreisende Lichtkrone …).
@@ -472,7 +470,7 @@ Ein voller Satz zahlt einmal Geld und legt einen **Rahmen** in seiner Farbe um d
 | Maps | alle 21 Map Skins aus Truhen | 10.000 |
 | Seasons | 4 Saison-Items | 30.000 |
 | Loyalty | 3 Serien-Items | 20.000 |
-| Honours | alle 34 Ehren-Items (Legendary Shifts, Prestige, Elite, Unlimited, Feats, Ruhmeshalle; ohne den Classic, der Glück ist) | 50.000 |
+| Honours | alle 34 Ehren-Items (Legendary Shifts, Prestige, Elite, Unlimited, Feats, frühere Ruhmeshalle; ohne den Classic, der Glück ist) | 50.000 |
 | Season Pass | alle 12 Pass-Skins | 60.000 |
 
 ---
@@ -482,12 +480,13 @@ Ein voller Satz zahlt einmal Geld und legt einen **Rahmen** in seiner Farbe um d
 ### Daily Shift (ab Level 3)
 
 - Automatisch die **erste Schicht des Tages**, ein Versuch, Titel „DAILY SHIFT“. Ein Tages-Seed für alle, immer mit einem City Event (jeden Tag ein anderes, im Kreis über die sechs). Nie eine Legendary-Regel. Geschafft → 300 × Serie Geld (bis 7 Tage) + Event Chest. Die allererste Schicht ist nie die Daily.
-- **Mutator des Tages (Leo, 07.10.2026, `core/mutators.ts`):** Jeden Tag eine Wendung für alle: **Open Road** (−2 Dichte), **Speedway** (+12 % Tempo, −1 Dichte), **Fog Bank**, **Night Shift**, **Lights Out** (Blackout), **Storm Front**, **Rush All Day** (Gridlock-Regel), **Dragnet**, **Heavy Load**, **Cash Convoy** (Transporter doppelt so oft). Jeder kommt einmal pro Zyklus von zehn Tagen, nie zweimal in Folge. Anders, nicht schwerer; die geliehenen Regeln zählen nicht als Legendary Shift (keine Premium-Truhe). Zeigt sich im Start-Splash und statt der Bestleistung oben rechts auf der Wartekarte; der Challenge-Link trägt Mutator und Saison mit (hinten angehängt, alte Links lesen weiter).
+- **Kein Mutator des Tages mehr (Leo, 18.10.2026):** Die Daily trägt nur noch ihr City Event (jeden Tag ein anderes, im Kreis über die sechs). Der Challenge-Link behält den Platz für den Mutator (`-1`), damit alte Links weiter lesen.
 - **Serie:** zählt gespielte Tage. 7 / 14 / 30 Tage geben exklusive Skins (Bronze Badge, Silver Badge, Gold Laurel). Ab **3 Tagen in Folge zahlt jede Schicht 15 % mehr** (Schichtlohn, Transporter, Abschirm-Bonus, Krankenwagen), solange die Serie lebt. Sechs Stunden vor Mitternacht warnt die Wartekarte, dass sie bald reißt.
 - **Streak Freeze (05.10.2026):** Alle 7 Tage der Serie gibt es einen Freeze (höchstens 2 im Vorrat, `streakFreezeEvery`, `streakFreezeMax`). Ein verpasster Tag verbraucht einen statt die Serie zu brechen (n verpasste Tage = n Freezes, sonst reißt sie). Nur verdient, nie gekauft; die Warnung vor Mitternacht entfällt, solange ein Freeze wartet. Anzeige: Daily-Zeile unter Progress → Today (mit den Tagen bis zum nächsten Freeze oder Skin, was näher ist) und die Serien-Pille über der Daily. Code: `Careers.advanceStreak`, `Goals.streak`.
 - **Heat (05.10.2026, `core/heat.ts`):** Schwierigkeit für Karriere-Schichten: je 7 Tage lebende Daily-Serie eine Stufe (13.10.2026). **Immer an, immer die höchste offene Stufe, nicht abschaltbar (Leo, 15.10.2026):** `Careers.maxHeat` ist die Stufe der Schicht. Die Pille „Heat +30 %“ auf dem Game-Tab ist nur ein Zeichen (kein Knopf) und fehlt ohne Heat; nicht auf der Daily Shift. Jede Stufe (10.10.2026 verschärft, war zu leicht): Tempo +6 %, +1 Dichte, kürzere Verbrecherzeit (−7 %, mindestens 5 s), schnelleres Nachströmen (−7 %, mindestens ×0,2); dafür **+10 % Lohn** und **+2 Elite-XP** (auch Saison-Pass) je Stufe bei geschaffter Schicht. Eine bei Heat n geschaffte Schicht öffnet n + 1 (bis 8). Titel: Scorcher (3), Inferno (5), Meltdown (8). Nie über die Daily Shift, Unlimited, Mayhem und Trials. Werte: `heat*` in `config.ts`; `npm run sim -- 40 58 --heat=8` zeigt, wie der vorsichtige Bot damit zurechtkommt (er schafft weniger Schichten, der Heat-0-Wert bleibt unberührt).
 - **Bestenlisten Daily und Boss Rush (05.10.2026):** Die Daily-Liste gilt für den Tag (alle spielen denselben Seed, also fair) und zeigt auch Freunde; die Boss-Rush-Liste ordnet die schnellste Zeit nach vorn. Das Spiel sendet sie wie die anderen Rekorde bei jedem Speichern.
 - **Tailwind (Rückenwind, 05.10.2026):** Eine Karriere-Schicht, die man nach mindestens 60 % ihrer Autos höchstens 3 Autos vor dem Ziel verliert, lässt die **nächste Karriere-Schicht 25 % mehr zahlen** (`tailwindPay`; addiert sich mit der Serie, `Goals.forPay`). Einmal am Tag, nie über die Daily Shift, Unlimited und Mayhem, und die Schicht, die ihn nutzt, löst keinen neuen aus (nicht absichtlich zu verlieren: ein früher Crash bringt nichts). Hinweis im Schichtende, und auf der Wartekarte der nächsten Schicht eine Pille „TAILWIND · this shift pays +25 %“.
+- **After Work (Feierabend, Leo, 18.10.2026):** Eine Karriere-Schicht, die zwischen 18 und 20 Uhr Ortszeit vorbereitet wird, zahlt **20 % mehr** (`afterWorkFrom`, `afterWorkTo`, `afterWorkPay`, `Goals.afterWork`; addiert sich wie Tailwind über `Goals.forPay`). Der Lohn steht mit der Schicht fest, die Simulation bleibt deterministisch; die wartende Schicht wird beim Wechsel ins oder aus dem Fenster neu aufgesetzt. Pille „After Work +20 %“ (Sonnenuntergang), nie über die Daily, kein eigener Push.
 - **Saisons:** siehe Event Chest in 10 und Saison-Pass in 12.
 
 ### Quests
@@ -572,7 +571,7 @@ Nach einer Schicht macht „Challenge a friend“ einen Link (`#challenge=…`) 
 
 ---
 
-## 12. Langzeit: Legendary, Prestige, Elite, Pass, Ruhmeshalle, Feats
+## 12. Langzeit: Legendary, Prestige, Elite, Pass, Feats
 
 Alles hier ist **nur Aussehen, Titel, Truhen und Geld, nie ein Vorteil auf der Straße.**
 
@@ -592,7 +591,7 @@ Geschafft: **Premium-Truhe**, +10 Elite XP. Skins nach der 1. (Laurel), 5. (Crow
 
 ### Prestige (28.09.2026)
 
-Ab Level 50 (Progress → Records → Elite-Karte → Prestige, mit Rückfrage): zurück auf **Level 1**. Geld, Upgrades, Straßen, Sammlung, Elite-Leiste und Titel bleiben; die Bestzeiten der alten Straße gehen. Der Verkehr läuft pro Rang **10 Level härter** (höchstens +40, also ab ★4); die Boss-Level bleiben bei dem Level, das angezeigt wird. Der Stern steht vor dem Level (★ + Level) und in der Bestenliste (Silber bei ★1, Gold bei ★2, Iris ab ★3, mit einem langsamen Glanz; Antippen erklärt Prestige). Systeme bleiben freigeschaltet.
+Ab Level 50 (Progress → Records → Elite-Karte → Prestige, mit Rückfrage): zurück auf **Level 1**. Geld, Upgrades, Straßen, Sammlung, Elite-Leiste und Titel bleiben; die Bestzeiten der alten Straße gehen. Der Verkehr läuft pro Rang **10 Level härter** (höchstens +40, also ab ★4); die Boss-Level bleiben bei dem Level, das angezeigt wird (15, 30, 45), aber jeder Rang bringt die nächsten Bosse (siehe 5). Der Stern steht vor dem Level (★ + Level) und in der Bestenliste (Silber bei ★1, Gold bei ★2, Iris ab ★3, mit einem langsamen Glanz; Antippen erklärt Prestige). Systeme bleiben freigeschaltet.
 
 | Rang | Belohnung |
 |---|---|
@@ -626,11 +625,13 @@ Die schwersten Taten im Spiel, nie Glück, nie kaufbar. Jede zeigt Belohnung, Bi
 
 ### Achievements (Leo, 07.10.2026, `core/achievements.ts`)
 
-**123 Stufen in 31 Familien** (Progress → Goals, unter den Feats): Wracks, Explosionen, Perfect Runs, Jackpots, Critical Merges, gesendete Autos, verdientes Geld, Schichten bei schlechtem Wetter / Sturm / Nebel und Schnee / Nacht / Blackout / mit City Event, längster Unlimited-Lauf, Dailies, Serie, Weeklies, Trials, Bosse, gebaute Straßen und Module, Upgrade-Stufen, Truhen, Sammlung, Level, Elite, Prestige, Heat, Casino-Runden, Chill, Tour-Stopps. Jede Stufe zahlt einmal 250 / 600 / 1.500 / 4.000 und meldet sich als Toast. Gezählt wird, was kein anderer Rekord führt (`Career.stats`); Wetter, Nacht und Events zählen nur in einer geschafften Karriere-Schicht, Mayhem und Chill gar nicht. Ausgezahlt wird beim Speichern (`persist`), also auch für Dinge wie das Bauen.
+**123 Stufen in 31 Familien** (Progress → Goals, unter den Feats): Wracks, Explosionen, Perfect Runs, Jackpots, Critical Merges, gesendete Autos, verdientes Geld, Schichten bei schlechtem Wetter / Sturm / Nebel und Schnee / Nacht / Blackout / mit City Event, längster Unlimited-Lauf, Dailies, Serie, Weeklies, Trials, Bosse, gebaute Straßen und Module, Upgrade-Stufen, Truhen, Sammlung, Level, Elite, Prestige, Heat, Casino-Runden, Tour-Stopps. Jede Stufe zahlt einmal 250 / 600 / 1.500 / 4.000 und meldet sich als Toast. Gezählt wird, was kein anderer Rekord führt (`Career.stats`); Wetter, Nacht und Events zählen nur in einer geschafften Karriere-Schicht, Mayhem gar nicht. Ausgezahlt wird beim Speichern (`persist`), also auch für Dinge wie das Bauen.
 
 ### Saison-Pass (30.09.2026, Progress → Goals, ab Level 15)
 
 150.000 Spielgeld pro Saison, nie Echtgeld. Jede Schicht bringt dieselben XP wie die Elite-Leiste; progressiv (03.10.2026): Stufe 1 braucht 54 XP, jede weitere 12 XP mehr (bis 186), zusammen 1.440 XP, 12 Stufen. Der Pass gilt für die Saison, in der er gekauft wurde (Dezember zählt zum nächsten Winter); danach ist die Strecke zu. Die Strecke ist jede Saison gleich: Standard · 5.000 · **Skin 1** · Standard · 10.000 · Premium · Event · **Skin 2** · 20.000 · Premium · 30.000 · **Skin 3**. Die vier Saisons kommen jedes Jahr wieder, also auch ihre Skins; ein schon besessener Skin zahlt sein Duplikat-Geld. Pass-Skins gibt es in keiner Truhe und im Casino nicht.
+
+**Gratis-Strecke (Leo, 18.10.2026, ab der Wintersaison 01.12.2026, `FREE_TRACK_FROM`):** Ab Level 15 sammelt jede Schicht Season-XP, mit oder ohne Pass (`SeasonPass.counts`). Stufe 1, 4 und 7 (Standard, Standard, Event) zahlen allen; wer den Pass kauft, bekommt alle schon erreichten übrigen Stufen sofort (`SeasonPass.settle`, Meldung je Geld- oder Skin-Stufe). Die Today-Karte zeigt ohne Pass „N tiers wait for the pass“ mit dem Preis. Spielstand: `passSeason` (Saison der XP), `passFreeClaimed` neben `passClaimed`; alte Spielstände übernehmen `passKey` als `passSeason`. Vor dem Winter gilt das alte Modell unverändert.
 
 | Saison | Stufe 3 (Epic) | Stufe 8 (Legendary) | Stufe 12 (Legendary) |
 |---|---|---|---|
@@ -639,9 +640,9 @@ Die schwersten Taten im Spiel, nie Glück, nie kaufbar. Jede zeigt Belohnung, Bi
 | Sommer | Solar Flare | Neon Wave | Lava Core |
 | Herbst | Ghost Rider | Harvest Moon | Thunderbolt |
 
-### Ruhmeshalle (30.09.2026)
+### Prestige-Chronik (früher Ruhmeshalle, Leo, 18.10.2026)
 
-250.000, sobald die Elite-Leiste offen ist (Records → Elite). Eine goldene Wand auf der Insel mit einem Stern pro Prestige-Rang, eine Plakette pro Rang (Datum, Elite-Level, Bosse, Legendary Shifts) und der Skin **Hall of Famer** (Lorbeer-Aura).
+Jedes Prestige fügt dem Elite-Fenster (Records → Elite) eine Plakette hinzu: Rang, Datum, Elite-Level, Bosse, Legendary Shifts („Prestige log“). Die **Ruhmeshalle** (250.000, goldene Wand auf der Insel, Skin **Hall of Famer**) ist nicht mehr zu kaufen; wer sie gebaut hat, behält Wand und Skin (`hallBuilt`, `CityLayer.addHall`).
 
 ### Museum (Progress → Museum)
 
@@ -653,13 +654,13 @@ Katalog von **30 Einträgen**: 4 Bosse, 11 Spezialfahrzeuge (Police Car, Crimina
 
 ### Endgame-Erweiterung (02.10.2026)
 
-Für Spieler ab ★4 (Prestige macht den Verkehr ab dort nicht mehr schwerer). Werte in `config.ts`.
+Für Spieler mit Prestige (Prestige macht den Verkehr ab ★4 nicht mehr schwerer). Seit 18.10.2026 hängt es an den **Prestige-Rängen**, nicht an den Leveln 75 bis 120, die ein Spieler nie erreicht: die späten Bosse (siehe 5) und die Spezialfahrzeuge unten kommen mit ihrem Rang (`reaches`, `Config.prestige`). Werte in `config.ts`.
 
 - **Vier neue Syndikats-Bosse** (die Runde hat jetzt acht, danach beginnt sie von vorn):
-  - **The Twins** (Level 75): ohne Eskorte; kaum ist der erste gefasst, kommt der zweite aus einer anderen Zufahrt (0,8–1,6 s). Erst beide zusammen zählen als Boss.
-  - **The Decoy** (90): zwei Eskorten im Boss-Lack; der echte Boss ist der Pickup mit dem Ring.
-  - **The Smuggler** (105): doppelt gepanzert, also drei Polizeiautos, keine Eskorte, Zeit ×2,2.
-  - **The Kingpin** (120): im Blackout, gepanzert, drei getarnte Eskorten.
+  - **The Twins** (★1, Level 30): ohne Eskorte; kaum ist der erste gefasst, kommt der zweite aus einer anderen Zufahrt (0,8–1,6 s). Erst beide zusammen zählen als Boss.
+  - **The Decoy** (★1, Level 45): zwei Eskorten im Boss-Lack; der echte Boss ist der Pickup mit dem Ring.
+  - **The Smuggler** (★2, Level 15): doppelt gepanzert, also drei Polizeiautos, keine Eskorte, Zeit ×2,2.
+  - **The Kingpin** (★2, Level 30): im Blackout, gepanzert, drei getarnte Eskorten.
 
   Die Eskorten bleiben im Spielkern Lieferwagen (fair, an der Form erkennbar). Jeder Boss hat ein Rematch (14.000 / 16.000 / 18.000 / 25.000). Rematches behalten ihr Level (Boss-Level + 60), der Boss ist festgelegt. Titel *Syndicate Breaker* gilt weiter für die ersten vier, neu *Syndicate's End* für alle acht.
 - **Aufstiegs-Trials** (Progress → Trials, ab ★1): je eine pro Prestige-Rang ★1–★10, Level 66 bis 120, harte Bedingungen (Sturm bei Nacht, Blackout, Schnee, Nebel mit Gridlock, Boss, flawless, Extreme, Dragnet, Heavy Load, Dark Storm). Sie zahlen einmal 15.000 bis 60.000; ★10 gibt den Titel *Summit*. Geprüft mit `node scripts/ascension-sim.mjs`.
@@ -668,9 +669,9 @@ Für Spieler ab ★4 (Prestige macht den Verkehr ab dort nicht mehr schwerer). W
 - **Prestige ohne Lücken:** ab ★4 bringt jeder Rang bis ★20 einen Skin oder einen Titel, dazu Titel bei ★25 und ★30. Der Stern in der Bestenliste wechselt die Farbe bei ★4 (Glut), ★10 (Prisma) und ★20 (Ewig).
 - **Mastery IV und V** (alle Ziele) und zwei neue Ziele: *Lifesaver* (Notfallfahrten durchgelassen) und *Close Shaves* (Close Shaves an Motorrädern). Die Mastery-Titel hängen weiter an Stufe III; *Mastermind* gibt es für alle Ziele auf V.
 - **Neue Spezialfahrzeuge** (`core/oversize.ts`, `core/racers.ts`):
-  - **Oversize Load** ab Level 85: 30 % der Schichten, 52 lang, fährt mit 80 % Tempo eine Runde. Ein bernsteinfarbenes Band vorne und hinten (70) frei halten, dann zahlt er 400 und Chain +1.
-  - **Street Racers** ab Level 90: 25 % der Schichten, zwei drängen sich nacheinander ein. Jeder, den ein Polizeiauto rammt, zahlt 500 und Chain +1. Entkommen kostet nichts.
-  - **Hochzeitskorso** (Leo, 08.10.2026, `core/wedding.ts`) ab Level 100: 30 % der Schichten, drei geschmückte Autos (Blush-Weiß, Goldband) reihen sich an einer Zufahrt ein und fahren eine Runde im Tempo des Verkehrs, **ohne irgendetwas zu bremsen**. Ein rosa Band zeigt ihren Ringabschnitt samt Lücken und etwas Raum an beiden Enden; wer seine Autos draußen hält, bekommt 350 und Chain +1, wer hineinfährt, verliert nur den Bonus. Kommt nie zusammen mit Oversize, Learner oder Street Racers (die warten auf ihn). Geprüft mit `npm run sim:wedding` (gleiche Schichten mit und ohne Korso: Abstürze, Dauer, Autos außerhalb des Flusses, Bots auf dem Ring).
+  - **Oversize Load** ab ★2 (oder Level 85): 30 % der Schichten, 52 lang, fährt mit 80 % Tempo eine Runde. Ein bernsteinfarbenes Band vorne und hinten (70) frei halten, dann zahlt er 400 und Chain +1.
+  - **Street Racers** ab ★3 (oder Level 90): 25 % der Schichten, zwei drängen sich nacheinander ein. Jeder, den ein Polizeiauto rammt, zahlt 500 und Chain +1. Entkommen kostet nichts.
+  - **Hochzeitskorso** (Leo, 08.10.2026, `core/wedding.ts`) ab ★4 (oder Level 100): 30 % der Schichten, drei geschmückte Autos (Blush-Weiß, Goldband) reihen sich an einer Zufahrt ein und fahren eine Runde im Tempo des Verkehrs, **ohne irgendetwas zu bremsen**. Ein rosa Band zeigt ihren Ringabschnitt samt Lücken und etwas Raum an beiden Enden; wer seine Autos draußen hält, bekommt 350 und Chain +1, wer hineinfährt, verliert nur den Bonus. Kommt nie zusammen mit Oversize, Learner oder Street Racers (die warten auf ihn). Geprüft mit `npm run sim:wedding` (gleiche Schichten mit und ohne Korso: Abstürze, Dauer, Autos außerhalb des Flusses, Bots auf dem Ring).
 - **Neues Wetter:**
   - **Hail** ab Level 55: Grip 80 %, Bremse 70 %, +0,2 s Reaktion, +1 Dichte, Lohn ×1,15.
   - **Sandstorm** ab Level 65: Sicht wie Nebel in Sandfarbe, Grip 85 %, +0,35 s Reaktion, Lohn ×1,2.
@@ -696,7 +697,7 @@ Für Spieler ab ★4 (Prestige macht den Verkehr ab dort nicht mehr schwerer). W
 | **Progress-Tab** (aufgeräumt 01.10.2026) | fünf Segmente ohne Unter-Tabs, seit 10.10.2026 nach dem sortiert, was sie vom Spieler verlangen: **Today** (öffnet zuerst: Daily Shift mit der Streak-Karte, Weekly Shift, Tour, drei Quests) · **Trials** (Heat, Trials, Aufstiegs-Trials, Landmarks, Boss Rush: besondere Schichten zum Spielen) · **Goals** (Season Pass mit seiner Saison-Zeile, Mastery, Feats, Achievements: Häkchen und Belohnungsleisten) · **Records** (Elite-Karte ab Level 40, sechs große Werte, der Rest unter „All stats“) · **Museum** (die Zahlen `PROGRESS` in `present/flow.ts`); der Chip oben heißt „Rank #4“ und führt zu Social → Ranks. Freunde, Einladungen, „Challenge a friend“, die Bestenlisten und der Club liegen auf dem **Social-Tab** (Friends · Ranks · Club, seit 10.10.2026). **Hinweise (Cloud sync, Installieren, Website, Einladung) kommen höchstens einer pro Besuch** (`takeTip`, `present/session.ts`); ein zurückgestellter kommt beim nächsten Besuch wieder. Die Schaltfläche unten links heißt „Settings“ (Zahnrad mit Wort). (Bosse, Specials, Conditions untereinander). Jede Liste scrollt (`present/scroll.ts`) mit Schwung und Überrollen wie in iOS; Mausrad und Trackpad gleiten; Tastatur: Pfeile, Bild↑/↓, Pos1/Ende; getippt wird beim Loslassen |
 | **Menüs** | native Anmutung: gruppierte Listen, Sheets, Schalter, Segmented Controls; Glas nur für schwebende Bedienelemente über der Szene. Kritisch gedämpfte Federn, kein harter Schnitt |
 | **Einstellungen** | Sheet: Sound effects und Music (getrennt), Haptics, Vehicle Labels, **Left-handed** (schwebende Knöpfe auf die andere Seite, Dispatch links), **Larger text** (Hinweise und Karten über der Szene ×1,2), Reduce Motion (System / On / Off), Install (wo möglich), **What's new** (Patch Notes aus `present/patchNotes.ts`; ungelesen: Punkt am Einstellungsknopf), Links zu CrazyGames (nicht in der Play-App und nicht auf CrazyGames selbst), zur **Homepage timing.love** (nicht auf CrazyGames) und zum **Roundabout Timing Wiki auf Fandom**, **Cloud sync**, Reset Progress, **Legal** (Privacy Policy, Imprint, Licenses) |
-| **Ergebnis teilen** | Unter jedem Ergebnis „Picture“: Blitz mit Auslöser-Geräusch, dann fällt ein **Sofortbild** gekippt ein und entwickelt sich aus Weiß. Der Abzug (1080×1350, 4:5) zeigt den Kreisverkehr von oben ohne HUD, mit Film-Look, Klebestreifen in der Map-Farbe, Sticker mit dem Ergebnis, **NEW BEST**-Stempel, orangem Datum, darunter Score, die besten Fakten, Map-Name, „Can you beat …?“ und Spielname mit Icon. Nur zwei Knöpfe: **Share** (Teilen-Menü mit Challenge-Link; ohne Datei-Teilen: Bild kopieren) und **Download**. Reduce Motion: nur Überblenden (`ui/photo.ts`, Text in `present/photo.ts`) |
+| **Ergebnis teilen** | Unter jedem Ergebnis „Picture“: Blitz mit Auslöser-Geräusch, dann steht das Bild da (Überblenden mit kurzer Überbelichtung, Reduce Motion: nur Überblenden). Der Abzug (1080×1350, 4:5) sieht aus wie ein **Blitzer-Foto** (Leo, 18.10.2026): der Kreisverkehr von oben ohne HUD, grau mit kaltem Stich und hartem Kontrast, Blitz-Aufhellung in der Mitte, Rauschen, zwei Messlinien und vier Ecken des Suchers; oben eingebrannt Datum, Uhrzeit und Map-Name. Darunter ein schwarzer Datenstreifen mit Score, Schichtausgang, **NEW BEST**-Feld, den besten Fakten, „Can you beat …?“ und dem Einladungs-**QR-Code**. Nur zwei Knöpfe: **Share** (Teilen-Menü mit Challenge-Link; ohne Datei-Teilen: Bild kopieren) und **Download** (`ui/photo.ts`, Text in `present/photo.ts`) |
 | **Akku** (Leo, 10.10.2026) | Das Spiel zeichnet höchstens 60 Bilder pro Sekunde (`Shell.frameGap`): auf einem 120-Hz-Bildschirm (iPhone Pro) jedes zweite, die Simulation läuft unabhängig mit 120 Hz weiter. Einstellung **Battery saver**: 30 Bilder und Pixeldichte höchstens 1,5. |
 | **Adaptive Auflösung** | Kommen die Frames dauerhaft langsam und unregelmäßig, sinkt die Pixeldichte 2 → 1,5 → 1, dann die Deko (Bodentextur, Luft, Wolkenschatten); nach 12 s flüssigem Lauf steigt sie wieder. Gleichmäßige 30 fps (Stromsparmodus) bleiben unangetastet. Verborgene Knöpfe und Tab-Bar kosten während der Schicht nichts; Crash-Wackeln zeichnet die Stadt nicht neu |
 | **Sound** | Web Audio: 44 Effekte und 7 Musik-Stems (base, bass, rhythm, lead, flow, rush, siren) als AAC in `Web/public/audio/`, mit Tonhöhen-Variation und Stereo-Position. Adaptive Musik: Combo baut Instrumente auf, Verbrecher → Sirene, Rush Hour → Beat zieht an, Flow verdichtet; bei Verbrecher-Warnung und Rush-Hour-Beginn atmet die Musik durch einen Tiefpass ein. Im Multiplayer baut sie mit den Phasen auf |
@@ -807,7 +808,7 @@ Die Web-Version ist das ganze Spiel. Zuletzt dazugekommen (aus den Patch Notes):
 | Modi | Shift, Unlimited, Mayhem, Multiplayer (Wischen, Runden, Relay) | ✅ |
 | Schwierigkeit | Level-Kurve, Wetter (7), Nacht/Blackout, City Events (6), zwei Spuren, Risiko & Versicherung | ✅ |
 | Meta | Geld, 19 Upgrades, Street Builder mit Modulen, Truhen, Sammlung (121 Items), Alben, Mastery, Daily, Serie, Quests, Trials, Records, Casino, Freischaltungen | ✅ |
-| Langzeit | Legendary Shifts, Prestige, Elite-Leiste, Titel, Feats, Saison-Pass, Ruhmeshalle, Weekly Shift, Museum, Big Screen | ✅ |
+| Langzeit | Legendary Shifts, Prestige, Elite-Leiste, Titel, Feats, Saison-Pass, Prestige-Chronik, Weekly Shift, Museum, Big Screen | ✅ |
 | Hülle | Tab-Bar, Einstellungen, PWA, Offline, Speicherschutz, Docker/Coolify, Patch Notes, Rechtliches | ✅ |
 | Online | Bestenlisten, Freunde-Board, Cloud sync, TURN-Relay, Kurzlinks mit Vorschaubild (`Server/`) | ✅ gebaut (Relay braucht die Cloudflare-Zugangsdaten in Coolify) |
 | Verbreitung | Website, CrazyGames, Google Play | Website ✅ · CrazyGames ✅ · Play: Test (12 Tester, 14 Tage) steht aus |
@@ -844,7 +845,7 @@ Geprüft wird mit `npm test` (Web: 62 Tests, node:test; Server: 42 Tests), `npm 
 
 ## 17. Ideen danach
 
-(07.10.2026 gebaut: Touren mit Halloween und Winter, Mutatoren, Saison-Regeln, Chill, Achievements. Offen aus der Liste: Co-op, Challenge-Builder, neue Verkehrselemente, siehe IDEA.md.)
+(07.10.2026 gebaut: Touren mit Halloween und Winter, Saison-Regeln, Achievements (Mutatoren und Chill sind am 18.10.2026 wieder entfernt). Offen aus der Liste: Co-op, Challenge-Builder, neue Verkehrselemente, siehe IDEA.md.)
 
 
 Offene Ideen stehen in [IDEA.md](IDEA.md). Stand 02.10.2026 ist dort nur noch **Analytics und Fehlerberichte** (Umami oder Plausible, GlitchTip als Coolify-Dienste, ohne eigenen Code; braucht einen Absatz in `legal.ts` und passt zum Data-Safety-Formular in der Play Console). Die übrigen Ideen (Konto mit Passwort, Daily-Bestenliste mit Replay-Prüfung, Ghost Racing) sind gestrichen.

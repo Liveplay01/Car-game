@@ -2,6 +2,7 @@ import type { Arm } from './roundabout';
 import { Vehicle, type Waiting } from './vehicle';
 import type { Vec2 } from './vec2';
 import type { World } from './world';
+import { reaches } from './config';
 import { warningArms } from './traffic';
 import { weddingOn } from './wedding';
 
@@ -21,7 +22,7 @@ export type RacePhase =
 
 export function firstRace(w: World): RacePhase {
   const c = w.config;
-  if (c.mayhem || w.isVersus || c.level < c.racerLevel || c.racerChance <= 0) return { kind: 'done' };
+  if (c.mayhem || w.isVersus || !reaches(c, c.racerLevel, c.racerPrestige) || c.racerChance <= 0) return { kind: 'done' };
   const comes = w.racerRng.unit() < c.racerChance;
   return comes ? { kind: 'idle', next: w.racerRng.range(c.racerFirst.lo, c.racerFirst.hi) } : { kind: 'done' };
 }

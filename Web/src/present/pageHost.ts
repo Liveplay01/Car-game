@@ -46,6 +46,10 @@ export interface PageHost {
   readonly dailyPay: number;
   /** What a watched ad pays once more on a won career shift's result: its shift pay (0: none on offer). */
   readonly shiftPay: number;
+  /** A crash just ended the run and it may go on (`World.revive`). */
+  readonly canRevive: boolean;
+  /** The watched ad lets the run go on. */
+  reviveRun(): void;
   /** Money a watched ad added on the result: the result's money counts up to it. */
   bankResult(amount: number): void;
   /** One step of a rewarded ad for the visit statistics: `reward` and how it went (`ask`, `watched`, or why not). */

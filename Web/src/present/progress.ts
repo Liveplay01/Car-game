@@ -4,7 +4,7 @@ import { Goals } from '../core/goals';
 import { tierOf, nextTier } from '../core/tiers';
 import { COSMETICS, cosmetic } from '../core/loot';
 import { FEATS, Feats, type Feat } from '../core/feats';
-import { type Challenge, challengesOf, challengeReward } from '../core/daily';
+import { type Challenge, challengesOf, challengeReward, dailyEvent } from '../core/daily';
 import { type Trial, type TrialId, TRIALS, ASCENSIONS, LANDMARKS, LANDMARK_PRESTIGE, LEVEL_TRIALS, LEVEL_TRIALS_SHOWN, levelTrialsWaiting, RUSH_ID, RUSH_REWARD, rushOpen, trialOpen } from '../core/trials';
 import { weekNumber, weekDaysLeft, weeklyTrial } from '../core/weekly';
 import { baseConfig, BOSS_KINDS } from '../core/config';
@@ -199,9 +199,6 @@ export const ProgressPage = {
       { label: P.unlimitedTier, value: S.modes.tierLine(tierOf(save.unlimitedBestCars), nextTier(save.unlimitedBestCars)) },
       { label: P.mayhemBest, value: count(save.mayhemBest) },
       { label: P.mayhemChain, value: save.mayhemBestChain > 0 ? `×${save.mayhemBestChain}` : P.none },
-      { label: P.chillBest, value: save.chillBest > 0 ? S.hud.cars(save.chillBest) : P.none },
-      { label: P.chillCars, value: count(save.chillCars) },
-      { label: P.chillTime, value: save.chillTime > 0 ? P.minutes(save.chillTime) : P.none },
       { label: P.tours, value: count(c.toursDone.length) },
       { label: P.weeklies, value: count(c.weekliesDone) },
       { label: P.legendary, value: count(c.legendaryDone) },
@@ -606,7 +603,7 @@ export const ProgressPage = {
     ProgressPage.panel(list, r, o);
     const open = Careers.isDailyOpen(career, today);
     const next = Careers.nextStreakMilestone(career);
-    ProgressPage.addCardRow(list, r, r.minX + 16, o, { title: S.daily.name, line: S.daily.rowLine(career.dailyStreak, open, next, career.streakFreezes, Goals.daysToFreeze(career, baseConfig)), status: open ? S.daily.ready : `${S.daily.done} ✓`, done: !open });
+    ProgressPage.addCardRow(list, r, r.minX + 16, o, { title: S.daily.name, line: S.daily.rowLine(career.dailyStreak, open, next, career.streakFreezes, Goals.daysToFreeze(career, baseConfig), dailyEvent(today + 1)), status: open ? S.daily.ready : `${S.daily.done} ✓`, done: !open });
   },
 
   /** The Weekly Shift: one shift for the whole week, tap to play it. */
@@ -657,11 +654,14 @@ export const ProgressPage = {
     const x = tile.maxX + 14;
     const top = R.make(r.minX, r.minY, r.maxX, r.minY + 64);
     const owned = SeasonPass.owns(career, today);
-    const tier = owned ? SeasonPass.tier(career) : 0;
-    if (owned) {
-      const { into, need } = SeasonPass.progress(career);
-      ProgressPage.addCardRow(list, top, x, o, { title, line: `${S.pass.tier(tier, PASS_TIERS)} · ${S.pass.xp(into, need)}`, link: days });
-    } else ProgressPage.addCardRow(list, top, x, o, { title, line: S.pass.buyHint, reward: baseConfig.seasonPassPrice, link: days });
+    const counts = SeasonPass.counts(career, today);
+    const tier = counts ? SeasonPass.tier(career, today) : 0;
+    const waiting = SeasonPass.waiting(career, today);
+    const open = SeasonPass.openAtEnd(career, today);
+    if (owned || (counts && waiting === 0)) {
+      const { into, need } = SeasonPass.progress(career, today);
+      ProgressPage.addCardRow(list, top, x, o, { title, line: open > 0 ? S.pass.openAtEnd(open) : `${S.pass.tier(tier, PASS_TIERS)} · ${S.pass.xp(into, need)}`, link: days });
+    } else ProgressPage.addCardRow(list, top, x, o, { title, line: waiting > 0 ? S.pass.waiting(waiting) : S.pass.buyHint, reward: baseConfig.seasonPassPrice, link: days });
     // The whole track: one dot a tier, the three skin tiers bigger and in the season's colour.
     const right = r.maxX - 16;
     const step = (right - x) / (PASS_TIERS - 1);
@@ -673,8 +673,8 @@ export const ProgressPage = {
       list.s(circle(at, skinTier ? 2.6 : 2.4), reached ? (skinTier ? 'primary' : 'coin') : skinTier ? tint : 'controlFill', o * (reached || skinTier ? 1 : 0.8));
     }
     // And the next tier's progress under it.
-    const { into, need } = SeasonPass.progress(career);
-    const share = !owned ? 0 : tier >= PASS_TIERS ? 1 : into / need;
+    const { into, need } = SeasonPass.progress(career, today);
+    const share = !counts ? 0 : tier >= PASS_TIERS ? 1 : into / need;
     Meter.add(list, 'pass', R.make(x, r.maxY - 26, right, r.maxY - 26 + Meter.height), share, tier, o, reduceMotion);
   },
 

@@ -1,5 +1,5 @@
 import { h } from './dom';
-import { friendsPanel, type FriendsActions } from './friendsPanel';
+import { crewPanel, type CrewHost } from './crewPanel';
 import { ranksPanel, type RanksActions } from './ranksPanel';
 import { clubPanel, type ClubHost, type ClubPanel } from './clubPanel';
 import { mafiaPanel, type MafiaHost, type MafiaPanel } from './mafiaPanel';
@@ -9,7 +9,7 @@ import { SOCIAL, type SocialSection } from '../present/flow';
 import { S } from '../present/strings';
 
 export interface SocialHost {
-  friends(): FriendsActions;
+  crew(): CrewHost;
   ranks(): RanksActions;
   club(): ClubHost;
   clubOpen(): boolean;
@@ -17,8 +17,8 @@ export interface SocialHost {
   mafiaOpen(): boolean;
   /** The ranking service is there (`VITE_API_URL`): without it Friends and Ranks have nothing to show. */
   online: boolean;
-  /** Friend codes and invite links are not shown inside CrazyGames. */
-  friendsAllowed: boolean;
+  /** Crews, friend codes and invite links are not shown inside CrazyGames. */
+  crewAllowed: boolean;
   /** The player has a name and its cloud copy (`ui/accountSheet.ts`): Friends, Ranks and the Club need it. */
   accountReady(): boolean;
   /** A section that needs the player was opened without one: the host brings up "Your player". */
@@ -29,7 +29,7 @@ export interface SocialHost {
  * What needs the player (Leo, 15.10.2026). The Mafia does not: a loan must always be repayable. The Ranks can be read
  * without one (Leo, 16.10.2026): a new player sees who plays before being asked for a name, and nothing opens by itself.
  */
-const NEEDS_ACCOUNT: readonly SocialSection[] = [SOCIAL.friends, SOCIAL.club];
+const NEEDS_ACCOUNT: readonly SocialSection[] = [SOCIAL.crew, SOCIAL.club];
 
 /** Where the page's column sits under the canvas' title and segments (`SocialPage.column`), in points. */
 export interface SocialColumn {
@@ -38,7 +38,7 @@ export interface SocialColumn {
 }
 
 /**
- * The Social tab's content (Leo, 10.10.2026): Friends, Ranks and the Club as one page of the tab bar, not as drawers. The canvas draws the ground, the title
+ * The Social tab's content (Leo, 10.10.2026): the Crew, Ranks, the Club and the Mafia as one page of the tab bar, not as drawers. The canvas draws the ground, the title
  * and the segments (`present/social.ts`); this is the DOM under them, which scrolls on its own. The section that shows is built when it is chosen and
  * let go when it is left, so the auction's clock and the answers on their way stop with it. A notice the game says here stands in a pill of its own:
  * the canvas under the page would hide it.
@@ -58,7 +58,7 @@ export class SocialView {
   ) {
     this.el.append(this.inner);
     parent.append(this.el, this.toastEl);
-    pullToRefresh(this.el, () => this.section === SOCIAL.friends || this.section === SOCIAL.ranks, () => this.refresh());
+    pullToRefresh(this.el, () => this.section === SOCIAL.crew || this.section === SOCIAL.ranks, () => this.refresh());
   }
 
   get isOpen(): boolean {
@@ -129,7 +129,7 @@ export class SocialView {
         h('button', { class: 'btn primary block', type: 'button', onclick: () => this.host.needAccount() }, S.account.gateButton),
       );
     }
-    if (section === SOCIAL.friends) return this.host.friendsAllowed ? friendsPanel(this.host.friends()) : h('p', { class: 'section-note' }, this.host.online ? S.social.noFriends : S.social.offline);
+    if (section === SOCIAL.crew) return this.host.crewAllowed ? crewPanel(this.host.crew()) : h('p', { class: 'section-note' }, this.host.online ? S.social.noCrew : S.social.offline);
     if (section === SOCIAL.ranks) return this.host.online ? ranksPanel(this.host.ranks()) : h('p', { class: 'section-note' }, S.social.offline);
     if (section === SOCIAL.mafia) {
       if (!this.host.mafiaOpen()) return h('p', { class: 'section-note' }, S.social.mafiaClosed);

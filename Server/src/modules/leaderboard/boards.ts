@@ -77,7 +77,10 @@ export const BOARDS: readonly BoardDef[] = [
     parse(body) {
       const cars = integerField(body, 'cars', 1, LIMITS.maxCars);
       const score = integerField(body, 'score', 1, LIMITS.maxPointsPerCar * cars);
-      return { score, meta: { cars } };
+      // A run that went on after a crash, for an ad (Leo, 18.10.2026), says so next to the score; older clients send none.
+      const revived = body.revived === undefined ? 0 : integerField(body, 'revived', 0, 1);
+      const meta: Record<string, number> = revived ? { cars, revived } : { cars };
+      return { score, meta };
     },
   },
   {

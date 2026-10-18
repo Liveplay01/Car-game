@@ -158,8 +158,6 @@ sich nur darin, wie viel Energie ein Moment verdient:
   Crashes sind kurze, klar abgegrenzte Höhepunkte.
 - **Unlimited:** Spannung wächst langsam mit Dauer und Dichte, nie durch hektische UI. Marken und
   Rekorde fühlen sich verdient an, danach kehrt das Bild sofort zur lesbaren Straße zurück.
-- **Chill:** keine Dringlichkeit. Keine Spannungs-Kamera, keine Bestrafungsfarben und kein aufdringliches
-  Erfolgsfeuerwerk; die Straße bleibt ein ruhiger Ort zum Üben.
 - **Mayhem:** Explosionen und Ketten sind hier das Ziel, dürfen aber weder die nächste Einfahrt noch den
   Zustand der Kette verdecken. Die Action ist lokal, lesbar und nach der Kette wieder still.
 - **Multiplayer:** Spielerfarben bedeuten ausschließlich Sitz und Zugehörigkeit. Status bleibt die

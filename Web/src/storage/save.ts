@@ -33,6 +33,7 @@ const UNSEALED_UNTIL = Date.UTC(2026, 10, 1);
 
 const num = (x: unknown, fallback: number, min = -Infinity): number => (typeof x === 'number' && Number.isFinite(x) ? Math.max(min, x) : fallback);
 const int = (x: unknown, fallback: number, min = -Infinity): number => Math.floor(num(x, fallback, min));
+const seasonKey = (x: unknown): string | null => (typeof x === 'string' && /^(winter|spring|summer|autumn)-\d{4}$/.test(x) ? x : null);
 const strings = (x: unknown): string[] => (Array.isArray(x) ? x.filter((s): s is string => typeof s === 'string') : []);
 
 function readCareer(raw: unknown): Career {
@@ -124,6 +125,8 @@ function readCareer(raw: unknown): Career {
     adDoubleDay: int(raw.adDoubleDay, -1),
     adShiftDoubleDay: int(raw.adShiftDoubleDay, -1),
     adShiftDoubles: int(raw.adShiftDoubles, 0, 0),
+    adReviveDay: int(raw.adReviveDay, -1),
+    adRevives: int(raw.adRevives, 0, 0),
     adRetryDay: int(raw.adRetryDay, -1),
     dailyRetry: raw.dailyRetry === true,
     upgradeBoost: raw.upgradeBoost === true,
@@ -177,9 +180,12 @@ function readCareer(raw: unknown): Career {
       .filter((x): x is number => typeof x === 'number' && Number.isFinite(x))
       .map((x) => Math.max(-5000, Math.min(5000, Math.round(x))))
       .slice(-baseConfig.timingSamples),
-    passKey: typeof raw.passKey === 'string' && /^(winter|spring|summer|autumn)-\d{4}$/.test(raw.passKey) ? raw.passKey : null,
+    passKey: seasonKey(raw.passKey),
+    // Before the free track the XP always belonged to the pass bought.
+    passSeason: seasonKey(raw.passSeason) ?? seasonKey(raw.passKey),
     passXp: int(raw.passXp, 0, 0),
     passClaimed: Math.min(int(raw.passClaimed, 0, 0), PASS_TIERS),
+    passFreeClaimed: Math.min(int(raw.passFreeClaimed, 0, 0), PASS_TIERS),
     hallBuilt: raw.hallBuilt === true,
     hallOfFame: (Array.isArray(raw.hallOfFame) ? raw.hallOfFame : []).flatMap((x): HallEntry[] => {
       if (!x || typeof x !== 'object') return [];
@@ -281,12 +287,10 @@ function readSave(raw: unknown): SaveGame {
     hints: readHints(raw),
     mode: GAME_MODES.includes(raw.mode as GameMode) ? (raw.mode as GameMode) : 'shift',
     unlimitedBest: int(raw.unlimitedBest, 0, 0),
+    unlimitedBestRevived: raw.unlimitedBestRevived === true,
     unlimitedBestCars: int(raw.unlimitedBestCars, 0, 0),
     mayhemBest: int(raw.mayhemBest, 0, 0),
     mayhemBestChain: int(raw.mayhemBestChain, 0, 0),
-    chillBest: int(raw.chillBest, 0, 0),
-    chillCars: int(raw.chillCars, 0, 0),
-    chillTime: int(raw.chillTime, 0, 0),
     dailyDay: int(raw.dailyDay, -1),
     dailyScore: int(raw.dailyScore, 0, 0),
     dailyTries: int(raw.dailyTries, 1, 1) > 1 ? 2 : 1,

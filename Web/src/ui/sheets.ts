@@ -359,7 +359,7 @@ const noteLine = (item: PatchItem): HTMLElement => {
  * What's new: every day shows its short summary at once, with a badge for how much it changes; the long
  * list folds open under it (a native disclosure, so keys and screen readers know it).
  */
-export function patchNotesSheet(layer: HTMLElement, notes: PatchNote[], onClose: () => void): () => void {
+export function patchNotesSheet(layer: HTMLElement, notes: PatchNote[], onClose: () => void, title = S.settings.whatsNew): () => void {
   const body = h(
     'div',
     { class: 'notes' },
@@ -383,7 +383,7 @@ export function patchNotesSheet(layer: HTMLElement, notes: PatchNote[], onClose:
       ),
     ),
   );
-  return openSheet(layer, S.settings.whatsNew, body, onClose);
+  return openSheet(layer, title, body, onClose);
 }
 
 /** Every place that explains itself once (`Intros`), to read again any time: one fold per place the player has reached. */

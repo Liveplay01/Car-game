@@ -20,6 +20,10 @@ export const CHEST_ODDS: Record<ChestKind, number[]> = {
 export const isForSale = (k: ChestKind): boolean => k === 'standard' || k === 'premium' || k === 'diamond';
 
 /** What a chest costs in the shop; null for the ones that are only earned. */
+/** A pack of one kind for less than its chests alone, or null. */
+export const chestBundle = (k: ChestKind, config: Config): { count: number; price: number } | null =>
+  k === 'premium' ? { count: config.premiumBundle, price: config.premiumBundlePrice } : null;
+
 export const chestPrice = (k: ChestKind, config: Config): number | null =>
   k === 'standard' ? config.standardChestPrice : k === 'premium' ? config.premiumChestPrice : k === 'diamond' ? config.diamondChestPrice : null;
 
@@ -45,7 +49,7 @@ export type CosmeticSource =
   | { kind: 'elite'; level: number }
   /** A tier of the Season Pass (core/seasonPass.ts) in its season. */
   | { kind: 'pass'; season: Season; tier: number }
-  /** Built the Hall of Fame. */
+  /** Built the old Hall of Fame (not for sale any more; those who built it keep the skin). */
   | { kind: 'hall' }
   /** Sent this many cars in one Unlimited run (Leo, 02.10.2026). */
   | { kind: 'unlimited'; cars: number }

@@ -87,8 +87,11 @@ export default (S: Strings): Words<Strings> => ({
     tier: (n, total) => `Nivel ${n} de ${total}`,
     locked: (level) => `Se abre en el nivel ${level}`,
     buyHint: 'Cofres, dinero y tres aspectos',
+    free: 'gratis',
+    waiting: (n) => (n === 1 ? '1 nivel espera al pase' : `${n} niveles esperan al pase`),
     daysLeft: (n) => (n === 1 ? 'último día' : `${n} días restantes`),
     complete: 'Camino completado · hasta la próxima temporada',
+    openAtEnd: (n) => (n === 1 ? 'La temporada acaba pronto · queda 1 nivel' : `La temporada acaba pronto · quedan ${n} niveles`),
     reached: (step) =>
       `PASE DE TEMPORADA · NIVEL ${step.tier} · ${step.duplicate > 0 ? `${S.pass.reward(step.reward)} de nuevo · +${money(Fmt.number(step.duplicate))}` : S.pass.reward(step.reward)}`,
     buy: (price) => `Comprar · ${price}`,
@@ -97,39 +100,23 @@ export default (S: Strings): Words<Strings> => ({
       'Tres niveles contienen los aspectos de esta temporada, con efectos que ningún cofre incluye. Las cuatro estaciones vuelven cada año junto a sus aspectos.',
       'Solo estética, ninguna ventaja en la carretera. Nada aquí cuesta dinero real.',
     ],
+    freeBody: (xpPerTier) => [
+      `Un camino de doce niveles para esta temporada. Cada turno da XP para él, con pase o sin él: 10 por un turno completado, 1 por Entrada perfecta y Hueco ajustado, 10 más por capturar un jefe o superar un Turno legendario. El primer nivel necesita ${xpPerTier} XP, cada nivel siguiente un poco más.`,
+      'Tres niveles son gratis para todos. Compra el pase con dinero del juego y paga cada otro nivel; los que ya alcanzaste, al momento.',
+      'Tres de los niveles guardan los aspectos de esta temporada, con efectos que ningún cofre tiene. Las cuatro estaciones vuelven cada año, y con ellas sus aspectos. Solo estética, nunca una ventaja en la carretera.',
+    ],
     trackHeader: 'El camino',
   },
 
   hall: {
-    title: 'Salón de la fama',
-    header: 'Salón de la fama',
-    build: (price) => `Construir Salón de la fama · ${price}`,
-    built: 'SALÓN DE LA FAMA CONSTRUIDO · muro de honor en la isla · aspecto Miembro del Salón desbloqueado',
-    notBuilt: 'Un muro dorado en la isla con una estrella por cada rango de prestigio y un aspecto exclusivo. Toca para ver qué ofrece.',
-    tapMore: 'Toca para ver qué ofrece.',
-    open: (level) => `Se abre al alcanzar el nivel ${level}`,
+    header: 'Registro de prestigio',
     plaqueLine: (e, date) =>
       [date, e.elite > 0 ? `Élite ${e.elite}` : null, `${e.bosses} ${e.bosses === 1 ? 'jefe' : 'jefes'}`, e.legendary > 0 ? `${e.legendary} legendarios` : null].filter((x) => x).join(' · '),
     empty: 'Tu primer prestigio colocará la primera placa.',
-    standing: 'Ubicado en la isla',
-    about: [
-      'Un monumento permanente en tu isla: un muro de honor dorado en la parte superior con una estrella por cada rango de prestigio obtenido.',
-      'Guarda tu historia. Cada prestigio añade una placa a la lista en la ventana Élite: la fecha, tu nivel de Élite, los jefes capturados y los turnos legendarios completados.',
-      'Y desbloquea el aspecto Miembro del Salón, dorado con laureles brillantes, para tus coches.',
-    ],
-    looks: 'Solo estética y honor: ninguna ventaja en la carretera, nada que perder al reiniciar con prestigio.',
-    gives: 'Lo que obtienes',
-    wall: 'Muro dorado en la isla',
-    wallValue: (ranks) => (ranks > 0 ? `${ranks} ${ranks === 1 ? 'estrella' : 'estrellas'} ahora` : 'Aún sin estrellas'),
-    plaques: 'Una placa por prestigio',
-    plaquesValue: (n) => (n > 0 ? `${n} hasta ahora` : 'Ninguna'),
-    skin: 'Aspecto Miembro del Salón',
-    skinValue: 'Oro, con laurel',
-    back: 'Volver a Élite',
   },
 
   modes: {
-    name: (m) => (m === 'shift' ? 'TURNO' : m === 'unlimited' ? 'SIN LÍMITES' : m === 'mayhem' ? 'CAOS' : m === 'chill' ? 'RELAX' : 'MULTIJUGADOR'),
+    name: (m) => (m === 'shift' ? 'TURNO' : m === 'unlimited' ? 'SIN LÍMITES' : m === 'mayhem' ? 'CAOS' : 'MULTIJUGADOR'),
     line: (m) =>
       m === 'shift'
         ? 'Supera niveles y avanza'
@@ -137,20 +124,16 @@ export default (S: Strings): Words<Strings> => ({
           ? 'Infinito · hasta el primer choque'
           : m === 'mayhem'
             ? '12 coches · apunta a las cisternas'
-            : m === 'chill'
-              ? 'Sin presión · los choques no detienen el juego'
               : 'Hasta 4 amigos · el último en pie gana',
     youLabel: 'TÚ',
     defaultName: 'Jugador',
     runOver: 'CARRERA TERMINADA',
     again: 'Toca para otra carrera',
     carsSent: (n) => (n === 1 ? '1 coche' : `${n} coches`),
-    unlocked: { caption: 'NUEVOS MODOS', text: 'Desliza hacia los lados para Sin límites, Caos, Relax y Multijugador' },
     tryUnlimited: { caption: 'MODOS DE JUEGO', text: 'Desliza para Sin límites: sin niveles, conduce hasta que choques' },
     tightFit: { caption: 'CONSEJO', text: 'Más cerca paga más: entra justo detrás de otro coche para un Hueco ajustado, puntos dobles' },
     swipeCaption: 'MODOS DE JUEGO',
     swipeHint: 'Desliza para ver más modos',
-    unlockedKeys: { caption: 'NUEVOS MODOS', text: 'Pulsa ← o → para Sin límites, Caos, Relax y Multijugador' },
     tryUnlimitedKeys: { caption: 'MODOS DE JUEGO', text: 'Pulsa → para Sin límites: sin niveles, conduce hasta que choques' },
     swipeHintKeys: '← → para ver más modos',
     stage: (stage, overtime) =>
@@ -173,48 +156,6 @@ export default (S: Strings): Words<Strings> => ({
     over: 'CAOS TERMINADO',
     again: 'Toca para más caos',
     summary: (wrecks, chain) => `${wrecks} ${wrecks === 1 ? 'accidente' : 'accidentes'} · cadena mayor ×${chain}`,
-  },
-
-  chill: {
-    caption: 'RELAX',
-    time: 'TIEMPO',
-    done: 'Listo',
-    doneLabel: 'Listo: terminar este paseo',
-    over: 'BUEN VIAJE',
-    again: 'Toca para otro paseo',
-    summary: (cars, time) => `${cars === 1 ? '1 coche' : `${cars} coches`} · ${time}`,
-    best: (cars) => `Tu trayecto más largo: ${cars === 1 ? '1 coche' : `${cars} coches`}`,
-  },
-
-  mutator: {
-    caption: 'HOY',
-    name: (id) =>
-      ({
-        openRoad: 'Carretera libre',
-        speedway: 'Autopista veloz',
-        fogBank: 'Banco de niebla',
-        nightShift: 'Turno de noche',
-        lightsOut: 'Luces fuera',
-        stormFront: 'Frente tormentoso',
-        rushAllDay: 'Hora punta total',
-        dragnet: 'Redada',
-        heavyLoad: 'Carga pesada',
-        cashConvoy: 'Convoy de fondos',
-      })[id],
-    line: (id) =>
-      ({
-        openRoad: 'Menos coches en la rotonda',
-        speedway: 'Más rápido, con algo menos de tráfico',
-        fogBank: 'Niebla durante todo el turno',
-        nightShift: 'Al caer la noche',
-        lightsOut: 'Noche, y las farolas están apagadas',
-        stormFront: 'Tormenta durante todo el turno',
-        rushAllDay: 'Hora punta desde el primer coche',
-        dragnet: 'El doble de criminales',
-        heavyLoad: 'Camiones y cisternas por doquier',
-        cashConvoy: 'El doble de furgones blindados',
-      })[id],
-    pill: (id) => `HOY · ${S.mutator.name(id).toUpperCase()}`,
   },
 
   seasonRule: {

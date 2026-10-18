@@ -1,5 +1,5 @@
 import { baseConfig, BOSS_KINDS, DAILY_EVENTS } from '../core/config';
-import { MUSEUM_SHELVES, shelfEntries, museumId, firstLevel } from '../core/museum';
+import { MUSEUM_SHELVES, shelfEntries, museumId, firstLevel, firstPlace } from '../core/museum';
 import { COSMETICS, CHEST_KINDS, CHEST_ODDS, RARITIES, ALBUMS, albumItems, chestPrice, type Cosmetic } from '../core/loot';
 import { TRIALS, LANDMARKS, LEVEL_TRIALS, rematch, type Trial } from '../core/trials';
 import { TITLES, TITLE_RULES } from '../core/elite';
@@ -53,6 +53,7 @@ function museum() {
         kind: S.museum.kind(e),
         name: plain(S.museum.name(e)),
         level: firstLevel(e, baseConfig),
+        rank: firstPlace(e, baseConfig).rank,
         line: plain(S.museum.line(e)),
         brief: plain(S.brief.text(e)),
         paragraphs: S.museum.explanation(e, baseConfig).map(plain),

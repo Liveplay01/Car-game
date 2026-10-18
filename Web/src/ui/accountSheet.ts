@@ -1,7 +1,7 @@
 import { h } from './dom';
 import { swapView, openSheet } from './sheets';
 import { forgetBoards, nameForm, openAccount } from './ranksPanel';
-import { confirmButton, offerToPasswordManager } from './cloudSheet';
+import { confirmButton, offerToPasswordManager, secretCodeRow } from './cloudSheet';
 import { cloudEnabled, cloudLinked, cloudView, createCloud, onCloudChange } from '../net/cloud';
 import { type Records, deleteAccount, describeError, leaderboardEnabled, loadAccount, renameAccount, syncScores } from '../net/leaderboard';
 import { inPortal } from '../storage/device';
@@ -37,7 +37,7 @@ type View = 'ask' | 'decline' | 'done';
 const row = (title: string, sub: string, ...extra: HTMLElement[]): HTMLElement =>
   h('div', { class: 'row' }, h('div', { class: 'row-main' }, h('div', { class: 'row-title' }, title), h('div', { class: 'row-sub' }, sub)), ...extra);
 
-const PERKS = (['ranks', 'friends', 'versus', 'cloud'] as const).filter((id) => (id === 'friends' ? !inPortal : id === 'cloud' ? cloudEnabled : true));
+const PERKS = (['ranks', 'crew', 'versus', 'cloud'] as const).filter((id) => (id === 'crew' ? !inPortal : id === 'cloud' ? cloudEnabled : true));
 
 export function accountSheet(layer: HTMLElement, actions: AccountActions, welcome = false): () => void {
   const body = h('div', { class: 'cloud account' });
@@ -162,34 +162,10 @@ export function accountSheet(layer: HTMLElement, actions: AccountActions, welcom
       body.querySelector('input')?.focus();
     });
     const code = cloudView().code;
-    const copy = h('button', { class: 'btn', type: 'button' }, S.cloud.copy);
-    copy.addEventListener('click', () => {
-      if (!code) return;
-      navigator.clipboard?.writeText(code).then(
-        () => {
-          copy.textContent = S.cloud.copied;
-          window.setTimeout(() => (copy.textContent = S.cloud.copy), 1500);
-        },
-        () => window.prompt(S.friends.copyPrompt, code),
-      );
-    });
-    const keep = h('button', { class: 'btn', type: 'button' }, S.cloud.keep);
-    keep.addEventListener('click', () => {
-      if (code) void offerToPasswordManager(code);
-      keep.textContent = S.cloud.asked;
-      window.setTimeout(() => (keep.textContent = S.cloud.keep), 2000);
-    });
     return [
       h('p', { class: 'section-note' }, welcome ? S.account.welcome(name) : code ? S.account.done(name) : S.account.doneLocal(name)),
       h('div', { class: 'list' }, row(S.account.nameLabel, name, change)),
-      code
-        ? h(
-            'div',
-            { class: 'list' },
-            h('div', { class: 'row' }, h('div', { class: 'row-main' }, h('div', { class: 'row-sub' }, S.cloud.yourCode), h('div', { class: 'sync-code', 'aria-label': S.cloud.yourCodeLabel(code) }, code)), copy),
-            row(S.cloud.passwordManager, S.account.keepSub, keep),
-          )
-        : null,
+      code ? h('div', { class: 'list' }, secretCodeRow(code)) : null,
       code ? h('p', { class: 'section-note' }, S.account.codeNote) : null,
       h('button', { class: 'btn primary block', type: 'button', onclick: () => close() }, S.account.finish),
       code ? h('button', { class: 'btn block quiet-btn', type: 'button', onclick: () => actions.openCloud() }, S.account.manage) : null,

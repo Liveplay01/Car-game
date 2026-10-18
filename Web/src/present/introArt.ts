@@ -15,6 +15,7 @@ const TINT: Record<Intro, ColorToken> = {
   club: 'coin',
   gamefund: 'juiceGreen',
   mafia: 'destructive',
+  crew: 'accent',
 };
 
 /** A plain glyph for each place in its colour, on a soft glow: the drawer's picture. */
@@ -73,6 +74,13 @@ export const IntroArt = {
         list.s(rect(at(0, -6), v(36 * u, 34 * u), 6 * u), c, 0.9);
         list.s(rect(at(0, 14), v(76 * u, 9 * u), 4 * u), c);
         list.s(line(at(-18, -2), at(18, -2), 5 * u), 'background');
+        break;
+      case 'crew':
+        // Three heads and shoulders, the middle one in front.
+        for (const [x, y, o] of [[-24, 2, 0.7], [24, 2, 0.7], [0, -4, 1]] as const) {
+          list.s(circle(at(x, y - 16), 10 * u), c, o);
+          list.s(rect(at(x, y + 14), v(28 * u, 22 * u), 11 * u), c, o);
+        }
         break;
     }
   },

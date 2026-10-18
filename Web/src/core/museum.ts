@@ -1,5 +1,5 @@
 import { type Config, type BossKind, type Weather, type CityEvent, BOSS_KINDS, WEATHERS, CITY_EVENTS } from './config';
-import { type Darkness, firstBossLevel, firstLevelOf, eventLevel } from './levels';
+import { type Darkness, firstBossLevel, bossPlace, firstLevelOf, eventLevel } from './levels';
 import type { VehicleType } from './vehicle';
 import type { World } from './world';
 import { type FailCause, FAIL_CAUSES } from './events';
@@ -77,6 +77,13 @@ const FAIL_LEVEL: Record<FailCause, (c: Config) => number> = {
 /** The skin for a full shelf of failures. */
 export const FAIL_SKIN = 'crashTest';
 
+/** The specials that come with a Prestige rank rather than a level (`reaches`): oversize loads, racers, the wedding. */
+const SPECIAL_RANK: Partial<Record<SpecialKind, (c: Config) => number>> = {
+  oversize: (c) => c.oversizePrestige,
+  racer: (c) => c.racerPrestige,
+  wedding: (c) => c.weddingPrestige,
+};
+
 export const museumId = (e: MuseumEntry): string => `${e.k}.${e.kind}`;
 
 export function shelfEntries(shelf: MuseumShelf): MuseumEntry[] {
@@ -120,6 +127,13 @@ export function firstLevel(e: MuseumEntry, c: Config): number {
     case 'fail':
       return FAIL_LEVEL[e.kind](c);
   }
+}
+
+/** Where an entry first comes for a career that Prestiges at Level 50: a Prestige rank (0: from the start) and the level on it. */
+export function firstPlace(e: MuseumEntry, c: Config): { rank: number; level: number } {
+  if (e.k === 'boss') return bossPlace(e.kind, c);
+  const rank = e.k === 'special' ? SPECIAL_RANK[e.kind]?.(c) ?? 0 : 0;
+  return rank > 0 ? { rank, level: 1 } : { rank: 0, level: firstLevel(e, c) };
 }
 
 /** Every way to lose a shift has happened to this career: the Failures shelf is full. */
