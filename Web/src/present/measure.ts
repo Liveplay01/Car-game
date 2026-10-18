@@ -1,3 +1,5 @@
+import { currentLanguage } from './i18n';
+
 /** Text measuring for layout: the renderers measure exactly. */
 export const FONT = '"SF Pro Text", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, Roboto, "Helvetica Neue", sans-serif';
 
@@ -11,6 +13,9 @@ export const FONT_DISPLAY = '"Overpass Variable", ui-rounded, "SF Pro Rounded", 
  */
 const fonts = new Map<number, string>();
 
+/** Japanese, Korean and Chinese have no italics: a slanted heavy face would only be a synthesised skew. */
+const CJK = ['ja', 'ko', 'zh'].includes(currentLanguage());
+
 /** Keys of display runs sit this far below the others. */
 const DISPLAY_KEY = 1e7;
 
@@ -19,7 +24,7 @@ export function fontFor(size: number, bold: boolean, display = false): string {
   const key = display ? -size - DISPLAY_KEY : bold ? -size - 1 : size;
   let font = fonts.get(key);
   if (font === undefined) {
-    font = bold && (display || size >= 20) ? `italic 900 ${size}px ${FONT_DISPLAY}` : `${bold ? 700 : 500} ${size}px ${FONT}`;
+    font = bold && (display || size >= 20) ? `${CJK ? '' : 'italic '}900 ${size}px ${FONT_DISPLAY}` : `${bold ? 700 : 500} ${size}px ${FONT}`;
     // A text that grows or shrinks asks for a new size every frame: keep the map small.
     if (fonts.size > 2000) fonts.clear();
     fonts.set(key, font);

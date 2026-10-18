@@ -337,6 +337,7 @@ export class Shell {
       crewAllowed: leaderboardEnabled && !inPortal,
       accountReady,
       needAccount: () => this.openAccountSheet(),
+      swipe: (way) => s.stepSection(way),
       feel: (id) => {
         if (s.save.settings.haptics) this.haptics.play(id, 0);
       },
@@ -416,6 +417,12 @@ export class Shell {
     this.session.onHint = (hint) => void this.giveHint(hint);
     this.session.onSynced = () => {
       this.flashSettings(S.settings.synced, false);
+    };
+    this.session.onRumble = (way) => {
+      if (this.session.reduceMotion) return;
+      const tracks = h('div', { class: `rumble ${way > 0 ? 'right' : 'left'}`, 'aria-hidden': 'true' });
+      tracks.addEventListener('animationend', () => tracks.remove(), { once: true });
+      app.append(tracks);
     };
     this.session.onStep = (step, data) => {
       track(step, data);
@@ -1514,7 +1521,7 @@ export class Shell {
         this.push({ k: 'wheel', p: v(0, 0), dy: Math.abs(step) === 1 ? step * this.size.y * 0.8 : step });
       } else if (key === 'Escape') {
         this.push({ k: 'back' });
-      } else if (key === 'ArrowLeft' || key === 'ArrowRight') {
+      } else if ((key === 'ArrowLeft' || key === 'ArrowRight') && !target.closest('input, textarea, select, [contenteditable="true"]')) {
         this.push({ k: 'swipeMode', step: key === 'ArrowLeft' ? -1 : 1 });
       } else if (key === 'e' || key === 'E' || key === 'd' || key === 'D') {
         this.push({ k: 'dispatch' });

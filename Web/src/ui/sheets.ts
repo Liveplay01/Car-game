@@ -206,18 +206,26 @@ export function openSheet(layer: HTMLElement, title: string, body: HTMLElement, 
 }
 
 /** What a sheet shows has just been replaced (another tab, a list that arrived): the new view fades and rises in. */
-export function fadeIn(view: HTMLElement): void {
-  view.classList.remove('view-in');
+export function fadeIn(view: HTMLElement, side = 0): void {
+  view.classList.remove('view-in', 'view-slide');
   void view.offsetWidth;
-  view.classList.add('view-in');
+  view.style.setProperty('--side', String(side));
+  view.classList.add(side === 0 ? 'view-in' : 'view-slide');
 }
 
-/** `update` replaces what a view shows: the old rows stay on top as a ghost and fade out while the new ones fade in. */
-export function swapView(view: HTMLElement, update: () => void): void {
+/**
+ * `update` replaces what a view shows: the old rows stay on top as a ghost and fade out while the new ones fade in. With a
+ * `side` (+1: the new view lies to the right, -1: to the left) they slide like a canvas page's segments (`ProgressPage.add`).
+ */
+export function swapView(view: HTMLElement, update: () => void, side = 0): void {
   view.querySelector(':scope > .view-ghost')?.remove();
   const scroller = view.closest<HTMLElement>('.sheet, .social-page');
   const scrolled = scroller?.scrollTop ?? 0;
-  const ghost = h('div', { class: `view-ghost ${view.className.replace(/\b(view-in|has-ghost)\b/g, '')}`, 'aria-hidden': 'true', inert: true });
+  const ghost = h('div', { class: `view-ghost ${view.className.replace(/\b(view-in|view-slide|has-ghost)\b/g, '')}`, 'aria-hidden': 'true', inert: true });
+  if (side !== 0) {
+    ghost.classList.add('slide');
+    ghost.style.setProperty('--side', String(side));
+  }
   const canvases = [...view.querySelectorAll('canvas')];
   ghost.append(...[...view.childNodes].map((node) => node.cloneNode(true)));
   // A copy keeps no pictures, no ids or names (a form or label must never find the copy) and no frames.
@@ -228,7 +236,7 @@ export function swapView(view: HTMLElement, update: () => void): void {
     el.removeAttribute('name');
   });
   update();
-  fadeIn(view);
+  fadeIn(view, side);
   if (!ghost.hasChildNodes()) return;
   // The page may have jumped (back to the top): the copy stays where the player saw the old view.
   const jump = scrolled - (scroller?.scrollTop ?? 0);

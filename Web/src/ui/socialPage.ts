@@ -5,6 +5,7 @@ import { clubPanel, type ClubHost, type ClubPanel } from './clubPanel';
 import { mafiaPanel, type MafiaHost, type MafiaPanel } from './mafiaPanel';
 import { swapView } from './sheets';
 import { pullToRefresh } from './pullRefresh';
+import { SideSwipe } from '../present/swipe';
 import { SOCIAL, type SocialSection } from '../present/flow';
 import { S } from '../present/strings';
 import type { HapticID } from '../present/feedback';
@@ -24,8 +25,18 @@ export interface SocialHost {
   accountReady(): boolean;
   /** A section that needs the player was opened without one: the host brings up "Your player". */
   needAccount(): void;
+  /** A swipe to the next (+1) or previous (-1) section. */
+  swipe(way: -1 | 1): void;
   /** A tick in the hand, when the player wants haptics. */
   feel(id: HapticID): void;
+}
+
+/** A row that scrolls sideways keeps its own swipes. */
+function scrollsSideways(from: Element, root: Element): boolean {
+  for (let el: Element | null = from; el && el !== root; el = el.parentElement) {
+    if (el.scrollWidth > el.clientWidth && /auto|scroll/.test(getComputedStyle(el).overflowX)) return true;
+  }
+  return false;
 }
 
 /**
@@ -54,6 +65,8 @@ export class SocialView {
   private club: ClubPanel | null = null;
   private mafia: MafiaPanel | null = null;
   private clearing = 0;
+  private readonly swipe = new SideSwipe();
+  private swallowClick = false;
 
   constructor(
     parent: HTMLElement,
@@ -62,6 +75,40 @@ export class SocialView {
     this.el.append(this.inner);
     parent.append(this.el, this.toastEl);
     pullToRefresh(this.el, () => this.section === SOCIAL.crew || this.section === SOCIAL.ranks, () => this.refresh(), (id) => this.host.feel(id));
+    this.listenForSwipes();
+  }
+
+  /** A finger swiping sideways goes to the next or previous section, like on the canvas pages; forms, sliders and sideways rows keep their own. */
+  private listenForSwipes(): void {
+    const el = this.el;
+    el.addEventListener('pointerdown', (e) => {
+      this.swallowClick = false;
+      this.swipe.release();
+      const target = e.target;
+      if (e.pointerType === 'mouse' || !(target instanceof Element) || target.closest('input, textarea, select, [data-noswipe]') || scrollsSideways(target, el)) return;
+      this.swipe.press({ x: e.clientX, y: e.clientY });
+    });
+    el.addEventListener('pointermove', (e) => {
+      const way = this.swipe.move({ x: e.clientX, y: e.clientY });
+      if (way !== 0) this.host.swipe(way);
+    });
+    const end = (): void => {
+      this.swallowClick = this.swipe.sideways;
+      this.swipe.release();
+    };
+    el.addEventListener('pointerup', end);
+    el.addEventListener('pointercancel', end);
+    // The click a swipe ends with is not a tap on the button under the finger.
+    el.addEventListener(
+      'click',
+      (e) => {
+        if (!this.swallowClick) return;
+        this.swallowClick = false;
+        e.stopPropagation();
+        e.preventDefault();
+      },
+      true,
+    );
   }
 
   get isOpen(): boolean {
@@ -80,14 +127,14 @@ export class SocialView {
     }
     this.el.classList.add('show');
     if (section === this.section) return;
-    const first = this.section === null;
+    const from = this.section;
     this.section = section;
     const replace = (): void => {
       this.inner.replaceChildren(this.build(section));
       this.el.scrollTop = 0;
     };
-    if (first) replace();
-    else swapView(this.inner, replace);
+    if (from === null) replace();
+    else swapView(this.inner, replace, section > from ? 1 : -1);
   }
 
   /** What the game says, in a pill above the tab bar: its text and how far it is in (0–1). */

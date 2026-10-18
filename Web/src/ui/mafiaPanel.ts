@@ -323,7 +323,7 @@ export function mafiaPanel(host: MafiaHost): MafiaPanel {
     const stop = h('button', { class: 'btn primary mafia-stop arming', type: 'button' }, S.mafia.stop);
     stop.style.setProperty('--arm', `${baseConfig.mafiaArmMs}ms`);
     later(() => stop.classList.remove('arming'), baseConfig.mafiaArmMs);
-    const stage = h('div', { class: 'mafia-card stage tense', role: 'group', 'aria-label': S.mafia.tapToStop }, layer(), h('div', { class: 'mafia-waiting' }, S.mafia.waiting, h('i', {}, '.'), h('i', {}, '.'), h('i', {}, '.')), h('div', { class: 'mafia-amount' }, cash(t.amount).el), bar(t, 0, true, null), h('p', { class: 'mafia-hint' }, S.mafia.tapToStop), stop);
+    const stage = h('div', { class: 'mafia-card stage tense', role: 'group', 'aria-label': S.mafia.tapToStop, 'data-noswipe': 'true' }, layer(), h('div', { class: 'mafia-waiting' }, S.mafia.waiting, h('i', {}, '.'), h('i', {}, '.'), h('i', {}, '.')), h('div', { class: 'mafia-amount' }, cash(t.amount).el), bar(t, 0, true, null), h('p', { class: 'mafia-hint' }, S.mafia.tapToStop), stop);
     stage.style.setProperty('--heat', share.toFixed(2));
     stage.style.setProperty('--beat', `${(1.2 - share * 0.6).toFixed(2)}s`);
     stage.addEventListener('pointerdown', (e) => {

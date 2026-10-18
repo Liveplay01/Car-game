@@ -54,6 +54,8 @@ export const COLORS = {
   vehicleLearner: [236, 238, 242, 1],
   /** The learner's signal and band: teal, so the green stays the player's own (combo, Shield). */
   learnerSign: [32, 201, 190, 1],
+  /** The blue disc of a mandatory road sign (Britain, Singapore, Japan, Korea, China), on the Goals cards. */
+  signBlue: [36, 112, 214, 1],
   /** The oversize load: site amber, so it reads as a heavy transport and nothing else. */
   vehicleOversize: [238, 166, 44, 1],
   /** The street racers: hot pink, apart from the criminal's violet and the police's blue. */

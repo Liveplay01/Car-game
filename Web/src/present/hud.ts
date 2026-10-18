@@ -1693,6 +1693,21 @@ export const ResultBanner = {
     return `${title}. ${S.result.points(Fmt.number(r.score))}${best}. ${detail}${elite}`;
   },
 
+  /** A Perfect Run ends under a chequered flag: a grey two-row band along the card's top edge that rolls in from the left. */
+  addFinish(list: RenderList, frame: Rect, age: number, opacity: number, reduceMotion: boolean): void {
+    const cell = 4;
+    const left = frame.minX + TopBar.corner;
+    const columns = Math.floor((R.width(frame) - 2 * TopBar.corner) / cell);
+    const reach = reduceMotion ? 1 : Ease.outCubic((age - ResultBanner.countDelay) / 0.7);
+    list.tag = 'topbarLabels';
+    for (let i = 0; i < columns && i / columns < reach; i++) {
+      for (let row = 0; row < 2; row++) {
+        if ((i + row) % 2 === 0) list.s(rect(v(left + (i + 0.5) * cell, frame.minY + 5 + (row + 0.5) * cell), v(cell, cell)), 'muted', 0.4 * opacity);
+      }
+    }
+    list.tag = undefined;
+  },
+
   add(list: RenderList, summary: ShiftSummary, nextLevel: number, bank: { before: number; after: number }, age: number, reduceMotion: boolean, gift: string | null, islandRadius: number): Vec2 | null {
     const r = summary.result;
     const frame = TopBar.frame(list.camera.viewport.x);
@@ -1700,6 +1715,7 @@ export const ResultBanner = {
     TopBar.addScrim(list);
     TopBar.addCard(list, frame);
     const shown = Ease.outCubic(age / ResultBanner.enter) * (1 - ResultBanner.leaving(age));
+    if (r.isPerfectRun && shown > 0.001) ResultBanner.addFinish(list, frame, age, shown, reduceMotion);
     const [title, titleColor] = ResultBanner.title(summary);
     const run = summary.run;
     const mourning = ResultBanner.breathes(summary) ? ResultBanner.mourning(age) : 0;

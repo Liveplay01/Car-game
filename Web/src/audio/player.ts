@@ -605,6 +605,7 @@ export class Haptics {
     reelTick: [8],
     reelStop: [30, 50, 60],
     edge: [3],
+    rumble: [4, 34, 4],
     snap: [6],
     denied: [14, 60, 14],
     confirm: [10, 40, 18],

@@ -265,3 +265,81 @@ test('Settings → Account: the player is the one entry, Cloud sync rides in it'
   await expect(content.locator('.row-title', { hasText: /^Cloud sync$/ })).toHaveCount(0);
   expect(errors).toEqual([]);
 });
+
+/** The segment each page is on, and the tab (the pages of `GameSession`, dev server only). */
+interface Places {
+  tab: string | null;
+  progress: number;
+  shop: number;
+  social: number;
+  detail: boolean;
+}
+
+const places = (page: Page): Promise<Places> =>
+  page.evaluate(() => {
+    interface Pages {
+      screen: { k: string; tab?: string };
+      progressPage: { section: number };
+      shopPage: { section: number };
+      socialPage: { section: number };
+      detailOpen: boolean;
+    }
+    const g = (window as unknown as { __game: { game: Pages } }).__game.game;
+    return { tab: g.screen.k === 'page' ? (g.screen.tab ?? null) : null, progress: g.progressPage.section, shop: g.shopPage.section, social: g.socialPage.section, detail: g.detailOpen };
+  });
+
+/** A finger on the canvas: down at the middle, a drag of (dx, dy) in small steps, up. */
+async function drag(page: Page, dx: number, dy = 0): Promise<void> {
+  const x = 180;
+  const y = 450;
+  await page.mouse.move(x, y);
+  await page.mouse.down();
+  for (let i = 1; i <= 8; i++) await page.mouse.move(x + (dx * i) / 8, y + (dy * i) / 8);
+  await page.mouse.up();
+  await page.waitForTimeout(80);
+}
+
+test('A sideways swipe changes the segment of Progress, Shop, Social and Build; along the list it scrolls', async ({ page }) => {
+  const { errors } = await start(page, 'level=30');
+  const perform = (action: { k: string; section?: number; tab?: string }): Promise<void> => page.evaluate((a) => (window as unknown as { __game: Game }).__game.game.perform(a), action);
+
+  await perform({ k: 'showProgress', section: 0 });
+  await drag(page, -160);
+  expect((await places(page)).progress).toBe(1);
+  await drag(page, 0, -150);
+  expect((await places(page)).progress).toBe(1);
+  await drag(page, -160);
+  await drag(page, -160);
+  expect((await places(page)).progress).toBe(2);
+  await drag(page, 160);
+  expect((await places(page)).progress).toBe(1);
+
+  // A swipe that begins on a chest is a swipe: the chest is not tapped.
+  await perform({ k: 'showShop', section: 0 });
+  await drag(page, -160);
+  const shop = await places(page);
+  expect(shop.shop).toBe(1);
+  expect(shop.detail).toBe(false);
+
+  await perform({ k: 'showSocial', section: 0 });
+  await page.waitForSelector('.social-inner');
+  const swiped = await page.evaluate(() => {
+    const target = document.querySelector('.social-inner')?.firstElementChild ?? document.querySelector('.social-inner');
+    const fire = (type: string, x: number): void => {
+      target?.dispatchEvent(new PointerEvent(type, { bubbles: true, pointerType: 'touch', pointerId: 7, clientX: x, clientY: 300 }));
+    };
+    fire('pointerdown', 260);
+    for (let x = 240; x >= 100; x -= 20) fire('pointermove', x);
+    fire('pointerup', 100);
+    return true;
+  });
+  expect(swiped).toBe(true);
+  expect((await places(page)).social).toBe(1);
+
+  await perform({ k: 'showTab', tab: 'upgrades' });
+  await drag(page, -160);
+  expect((await places(page)).tab).toBe('streetBuilder');
+  await page.keyboard.press('ArrowLeft');
+  expect((await places(page)).tab).toBe('upgrades');
+  expect(errors).toEqual([]);
+});

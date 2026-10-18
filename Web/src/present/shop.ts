@@ -147,6 +147,7 @@ export class ShopState {
     if (next === this.section) return;
     this.sectionSlide = { from: this.section, age: 0 };
     this.section = next;
+    this.age = 0;
   }
 
   selectShelf(next: Shelf): void {

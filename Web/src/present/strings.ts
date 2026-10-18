@@ -2705,6 +2705,9 @@ const TRANSLATIONS: Record<Exclude<LanguageCode, 'en'>, () => Promise<{ default:
   es: () => import('./lang/es'),
   fr: () => import('./lang/fr'),
   it: () => import('./lang/it'),
+  ja: () => import('./lang/ja'),
+  ko: () => import('./lang/ko'),
+  zh: () => import('./lang/zh'),
 };
 
 // Top-level await: no module that reads `S` runs before the chosen language is laid over it.

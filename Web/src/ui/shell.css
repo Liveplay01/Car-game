@@ -16,6 +16,15 @@
   src: url('../../node_modules/@fontsource-variable/overpass/files/overpass-latin-wght-italic.woff2') format('woff2-variations');
 }
 
+/* Japanese, Korean and Chinese: no heavy italic (the system face carries the glyphs, a skew would only be synthesised). */
+html:is([lang='ja'], [lang='ko'], [lang='zh']) {
+  --font-round: var(--font);
+}
+
+html:is([lang='ja'], [lang='ko'], [lang='zh']) * {
+  font-style: normal !important;
+}
+
 :root {
   --bg: #0b0d10;
   --surface-1: #121519;
@@ -89,6 +98,8 @@
   --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
   /* Leaving: speeds up to the end, so a drawer is gone at full speed and does not linger at the lowest point. */
   --ease-exit: cubic-bezier(0.4, 0, 1, 1);
+  /* The canvas' `Ease.settle`, a critically damped spring: 1 - (1 + 8.5x)·e^(-8.5x). Segments slide on it on every page. */
+  --ease-settle: linear(0, 0.046 4%, 0.149 8%, 0.272 12%, 0.394 16%, 0.507 20%, 0.627 25%, 0.723 30%, 0.853 40%, 0.925 50%, 0.963 60%, 0.982 70%, 0.991 80%, 1);
 
   --safe-top: env(safe-area-inset-top, 0px);
   --safe-bottom: env(safe-area-inset-bottom, 0px);
@@ -842,6 +853,40 @@ a.row-link {
 @keyframes view-out {
   to {
     opacity: 0;
+  }
+}
+
+/* Between a page's segments (the Social tab) the views slide the way the canvas pages do: the new one comes in a little under half a column on a settling spring, the old one leaves a third. */
+.view-slide {
+  animation:
+    view-slide 450ms var(--ease-settle) backwards,
+    fade-in 180ms var(--ease-out) backwards;
+}
+
+@keyframes view-slide {
+  from {
+    transform: translateX(calc(var(--side) * 45%));
+  }
+}
+
+.view-ghost.slide {
+  animation: ghost-slide 200ms var(--ease-out) forwards;
+}
+
+@keyframes ghost-slide {
+  to {
+    translate: calc(var(--side) * -30%) 0;
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .view-slide {
+    animation: fade-in 120ms linear backwards;
+  }
+
+  .view-ghost.slide {
+    animation: view-out 120ms linear forwards;
   }
 }
 
@@ -3015,6 +3060,77 @@ button.mod:active {
   flex: none;
 }
 
+/* A name on a number plate (Leo, 18.10.2026): a muted country strip, heavy embossed letters, an amber rim for you. A crew's strip is amber. */
+.plate {
+  --plate-strip: #3a5a8c;
+  position: relative;
+  padding: 1px 8px 1px 22px;
+  border: 1.5px solid var(--faint);
+  border-radius: 6px;
+  background: var(--surface-3);
+  font-family: var(--font-round);
+  font-size: 14px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  line-height: 1.35;
+}
+
+.plate::before {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 14px;
+  background: var(--plate-strip);
+  opacity: 0.8;
+}
+
+.plate.crew {
+  --plate-strip: var(--accent);
+}
+
+.row.me .plate {
+  border-color: var(--accent);
+}
+
+/* The end of a page's segments (`GameSession.rumble`): two tyre tracks at that edge roll in and fade, like the haptic's two ticks. */
+.rumble {
+  position: fixed;
+  top: calc(var(--safe-top) + var(--s7));
+  bottom: calc(var(--tabbar-h) + var(--safe-bottom) + var(--s4));
+  width: 14px;
+  z-index: 25;
+  pointer-events: none;
+  opacity: 0;
+  background:
+    repeating-linear-gradient(to bottom, var(--muted) 0 14px, transparent 14px 28px) 0 0 / 2px 100% no-repeat,
+    repeating-linear-gradient(to bottom, var(--muted) 0 14px, transparent 14px 28px) 12px 0 / 2px 100% no-repeat;
+  mask-image: linear-gradient(to bottom, transparent, #000 18%, #000 82%, transparent);
+  animation: rumble 520ms var(--ease-out);
+}
+
+.rumble.left {
+  left: calc(var(--safe-left) + 6px);
+}
+
+.rumble.right {
+  right: calc(var(--safe-right) + 6px);
+}
+
+@keyframes rumble {
+  from {
+    opacity: 0;
+    transform: translateY(-28px);
+  }
+  20% {
+    opacity: 0.7;
+  }
+  to {
+    opacity: 0;
+    transform: none;
+  }
+}
+
 .board-title {
   overflow: hidden;
   text-overflow: ellipsis;
@@ -3638,6 +3754,7 @@ button.mod:active {
   left: 0;
   right: 0;
   bottom: calc(var(--tabbar-h) + var(--safe-bottom));
+  overflow-x: hidden;
   overflow-y: auto;
   overscroll-behavior: contain;
   touch-action: pan-y;

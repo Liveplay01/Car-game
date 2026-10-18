@@ -46,7 +46,8 @@ import { CameraRig, perspectiveOf, addRecede } from './perspective';
 import { CameraFx, CameraFxTuning, tensionOf, zoomAbout } from './cameraFx';
 import { PhotoCard } from './photo';
 import { TransitionTracker, ModePan } from './transitions';
-import { ShopPage, ShopState, shelfOf } from './shop';
+import { ShopPage, ShopState, shelfOf, type ShopTarget } from './shop';
+import { SideSwipe } from './swipe';
 import type { CasinoFlow, CasinoHost } from './casinoFlow';
 import { casinoKit, loadCasino } from './casinoLoader';
 import { Casino } from '../core/casino';
@@ -272,6 +273,9 @@ export class GameSession {
   buildPage: Tab = 'upgrades';
   private buildSlide: { from: Tab; age: number } | null = null;
   private pan = new ModePan();
+  /** A sideways swipe on a page changes its segment; a Shop tap waits for the lift so a swipe that starts on a chest does not tap it. */
+  private readonly swipe = new SideSwipe();
+  private shopPress: ShopTarget | null = null;
   private readonly modeMessage = new ModeMessage();
   /** The waiting shift each mode was left on: swiping back finds the same sky and city, until that shift is played. */
   private readonly parked = new Map<GameMode, number>();
@@ -351,6 +355,8 @@ export class GameSession {
   onChrome: (() => void) | null = null;
   /** Progress came over from another device: the shell lets the Settings pill say so for a moment. */
   onSynced: (() => void) | null = null;
+  /** A swipe hit the end of a page's segments: +1 is the right edge, -1 the left. */
+  onRumble: ((way: -1 | 1) => void) | null = null;
   /** A one-time hint came due (installing, a backup): the shell knows whether it applies. */
   onHint: ((hint: Hint) => void) | null = null;
   /** A funnel step for the shell's analytics: the tutorial done, a shift played. */
@@ -1762,9 +1768,15 @@ export class GameSession {
       case 'pointerDown':
         this.pointerDown(a.p, a.ago, simDelta);
         break;
-      case 'pointerMove':
+      case 'pointerMove': {
         if (this.pan.drag) {
           this.pan.move(a.p);
+          return;
+        }
+        const way = this.swipe.move(a.p);
+        if (way !== 0) this.stepSection(way);
+        if (this.swipe.sideways) {
+          this.cancelPress();
           return;
         }
         if (this.isPage('upgrades') && this.upgradePage.drag) {
@@ -1787,7 +1799,20 @@ export class GameSession {
         this.builderPage.dragging.at = a.p;
         this.builderPage.target = StreetBuilderPage.dropTarget(this.builderPage, a.p, this.save.career, this.config, StreetBuilderPage.map(this.lastViewport, this.tabInset));
         break;
+      }
       case 'pointerUp': {
+        const swiped = this.swipe.sideways;
+        this.swipe.release();
+        if (swiped) {
+          this.cancelPress();
+          return;
+        }
+        if (this.shopPress) {
+          const target = this.shopPress;
+          this.shopPress = null;
+          this.shopFlow.tapShop(target);
+          return;
+        }
         if (this.pan.drag) {
           const r = this.pan.release(a.p, this.lastViewport.x);
           if (r === 'tap') this.handle({ k: 'tap' }, simDelta);
@@ -1847,6 +1872,10 @@ export class GameSession {
         else if (this.isPage('shop') && this.shopPage.section === 1) this.shopPage.items.wheel(a.dy, this.collectionScrollRange);
         break;
       case 'swipeMode': {
+        if (this.screen.k === 'page') {
+          this.stepSection(a.step < 0 ? -1 : 1);
+          return;
+        }
         const index = SWIPE_MODES.indexOf(this.swipeMode) + a.step;
         if (!(this.tutorial?.isOver ?? true) || this.pan.travel || this.world.shift.phase !== 'waiting') return;
         if (!(this.screen.k === 'ready' || this.isShowingResult) || index < 0 || index >= SWIPE_MODES.length) return;
@@ -1900,6 +1929,8 @@ export class GameSession {
 
   /** A press anywhere on the canvas: chrome first, then the page under it, else the game. */
   private pointerDown(point: Vec2, ago: number | undefined, simDelta: number): void {
+    this.swipe.release();
+    this.shopPress = null;
     const page = this.pageAction(point);
     if (page === true) return;
     if (page) {
@@ -1909,22 +1940,36 @@ export class GameSession {
     const inset = this.tabInset;
     if (this.isPage('upgrades')) {
       // A press on the list is a tap or the start of a scroll; the lift decides.
-      if (R.contains(UpgradePage.listArea(this.lastViewport, inset), point)) this.upgradePage.press(point.y);
-      else this.tapAway();
+      if (R.contains(UpgradePage.listArea(this.lastViewport, inset), point)) {
+        this.upgradePage.press(point.y);
+        this.swipe.press(point);
+      } else this.tapAway();
       return;
     }
     if (this.isPage('shop')) {
+      const shop = this.shopPage;
       // The Collection's grid scrolls: a press there is a tap or the start of a scroll.
-      if (ShopPage.inItems(point, this.lastViewport, inset, this.shopPage)) {
-        this.shopPage.items.press(point.y);
+      if (ShopPage.inItems(point, this.lastViewport, inset, shop)) {
+        shop.items.press(point.y);
+        this.swipe.press(point);
         return;
       }
-      const target = ShopPage.targetAt(point, this.lastViewport, inset, this.save.career, this.shopPage);
-      if (target) this.shopFlow.tapShop(target);
-      else this.tapAway();
+      const target = ShopPage.targetAt(point, this.lastViewport, inset, this.save.career, shop);
+      if (!target) {
+        if (!shop.busy) this.swipe.press(point);
+        this.tapAway();
+        return;
+      }
+      // The segments and the casino answer at once; the rest waits for the lift, so a swipe that begins on a chest is a swipe.
+      if (target.k === 'section' || target.k === 'casino' || shop.busy) this.shopFlow.tapShop(target);
+      else {
+        this.swipe.press(point);
+        this.shopPress = target;
+      }
       return;
     }
     if (this.isPage('streetBuilder')) {
+      if (this.builderIdleAt(point)) this.swipe.press(point);
       this.buildFlow.press(point);
       return;
     }
@@ -2282,6 +2327,50 @@ export class GameSession {
     this.tick();
   }
 
+  /** A press on the Street Builder that would do nothing: no palette card, no part, nothing lifted or waiting. */
+  private builderIdleAt(point: Vec2): boolean {
+    const b = this.builderPage;
+    if (b.moving || b.pending || b.dragging) return false;
+    return !StreetBuilderPage.cardAt(point, this.lastViewport, this.tabInset) && !StreetBuilderPage.builtPartAt(point, this.save.career, this.config, StreetBuilderPage.map(this.lastViewport, this.tabInset));
+  }
+
+  /** The finger is swiping: the list it pressed neither scrolls nor taps on the lift. */
+  private cancelPress(): void {
+    this.progressPage.drag = null;
+    this.upgradePage.drag = null;
+    this.shopPage.items.drag = null;
+    this.shopPress = null;
+  }
+
+  /**
+   * A swipe (or an arrow key) goes to the next (+1) or previous (-1) segment of the page, like a tap on its segment: Progress
+   * (Today · Goals · Stats), the Shop, the Social tab, and the Build tab's two pages (Leo, 18.10.2026).
+   */
+  stepSection(way: -1 | 1): void {
+    if (this.screen.k !== 'page' || this.shopPage.busy) return;
+    if (this.isPage('progress')) {
+      const next = this.progressPage.section + way;
+      if (next < PROGRESS.today || next > PROGRESS.stats) return;
+      this.tick();
+      this.leaveMuseum();
+      this.closeDetail();
+      this.progressPage.select(next as ProgressSection);
+    } else if (this.isPage('shop')) {
+      const sections = ShopPage.sections(this.save.career);
+      const next = sections[sections.indexOf(this.shopPage.section) + way];
+      if (next !== undefined) this.shopFlow.tapShop({ k: 'section', section: next });
+    } else if (this.isPage('social')) {
+      const sections = SocialPage.sections(this.save.career);
+      const next = sections[sections.indexOf(this.socialPage.section) + way];
+      if (next === undefined) return;
+      this.tick();
+      this.socialPage.select(next);
+    } else if (BUILD_PAGES.includes(screenTab(this.screen))) {
+      const next = BUILD_PAGES[BUILD_PAGES.indexOf(screenTab(this.screen)) + way];
+      if (next) this.perform({ k: 'showTab', tab: next });
+    }
+  }
+
   /** Closes the detail sheet; what it was about is no longer chosen. */
   closeDetail(): void {
     if (!this.detailOpen) return;
@@ -2495,8 +2584,10 @@ export class GameSession {
         return true;
       }
       // The list: a press is a tap or the start of a scroll; the lift decides (`tapProgress`).
-      if (ProgressPage.inList(point, this.lastViewport, this.tabInset)) this.progressPage.press(point.y);
-      else this.tapAway();
+      if (ProgressPage.inList(point, this.lastViewport, this.tabInset)) {
+        this.progressPage.press(point.y);
+        this.swipe.press(point);
+      } else this.tapAway();
       return true;
     }
     return null;

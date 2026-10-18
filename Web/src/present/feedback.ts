@@ -111,6 +111,8 @@ export type HapticID =
    * a refusal, a purchase or build that went through, and a goal reached on the Progress page.
    */
   | 'edge'
+  /** A swipe past the last segment: two ticks, like a rumble strip. */
+  | 'rumble'
   | 'snap'
   | 'denied'
   | 'confirm'

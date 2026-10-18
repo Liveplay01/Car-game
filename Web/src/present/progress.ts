@@ -13,7 +13,7 @@ import { SeasonPass, PASS_TIERS } from '../core/seasonPass';
 import { type MuseumEntry, MUSEUM_SHELVES, shelfEntries, museumId } from '../core/museum';
 import { averageOffset } from '../core/timing';
 import { type Vec2, v, add } from '../core/vec2';
-import { type RenderList, type Rect, RenderList as List, R, rect, circle, line, softPolygon, Ease, Metrics, moved, drawText } from './render';
+import { type RenderList, type Rect, RenderList as List, R, rect, circle, line, Ease, Metrics, moved, drawText } from './render';
 import { MenuKit } from './menukit';
 import type { ColorToken } from './theme';
 import { StreakFlame, flameTier } from './streakFlame';
@@ -30,6 +30,7 @@ import { FAMILIES, Achievements, achievementTotal, type Family } from '../core/a
 import { seasonOf } from '../core/loot';
 import { News } from './news';
 import { Meter } from './meter';
+import { Signs } from './signs';
 
 /** What the Progress tab shows and animates (`ProgressPage.State`); each section is a list that scrolls. */
 export class ProgressState extends Scroller {
@@ -698,23 +699,6 @@ export const ProgressPage = {
     Meter.add(list, 'pass', R.make(x, r.maxY - 26, right, r.maxY - 26 + Meter.height), share, tier, o, reduceMotion);
   },
 
-  /**
-   * The badge at the head of a goal card, shaped like a road sign by kind (Leo, 18.10.2026): round for an achievement,
-   * like a limit sign with the tier reached in it, a diamond for mastery, like the priority road. Soft, not a real sign:
-   * the rim turns gold with the first tier, the number with the last.
-   */
-  sign(list: RenderList, at: Vec2, shape: 'round' | 'diamond', reached: number, complete: boolean, o: number): void {
-    const rim: ColorToken = reached > 0 ? 'coin' : 'controlFill';
-    if (shape === 'round') {
-      list.s(circle(at, 16), rim, o);
-      list.s(circle(at, 12.5), 'card', o);
-    } else {
-      list.s(rect(at, v(24, 24), 7, Math.PI / 4), rim, o);
-      list.s(rect(at, v(19, 19), 5, Math.PI / 4), 'card', o);
-    }
-    drawText(list, String(reached), v(at.x, at.y + 0.5), 13, complete ? 'coin' : reached > 0 ? 'primary' : 'muted', { opacity: o, weight: 'display', align: 'center' });
-  },
-
   /** The player on the Season Pass' road: a soft little car seen from above, nose to the right, its lights on. White like an ordinary car: amber would read as the bus. */
   passCar(list: RenderList, at: Vec2, o: number): void {
     list.s(rect(at, v(30, 20), 10), 'card', o);
@@ -869,7 +853,7 @@ export const ProgressPage = {
     const top = c.y - R.height(r) * 0.2;
     const pipsWidth = tiers * 14;
     const x = r.minX + SIGN_TEXT;
-    ProgressPage.sign(list, v(r.minX + SIGN_AT, c.y), 'round', reached, complete, o);
+    Signs.limit(list, v(r.minX + SIGN_AT, c.y), reached, complete, o);
     drawText(list, S.ach.name(f.id), v(x, top), 13, complete ? 'coin' : 'primary', { opacity: o, weight: 'bold' });
     for (let tier = 0; tier < tiers; tier++) list.s(circle(v(r.maxX - 16 - pipsWidth + tier * 14 + 7, top), 5), tier < reached ? 'coin' : 'controlFill', o);
     const goal = S.ach.goal(f.id, need);
@@ -935,10 +919,9 @@ export const ProgressPage = {
     Meter.addWave(list, `feat:${feat.id}`, r, ShopPage.corner, o, reduceMotion);
     if (state.feat === feat.id) list.s(rect(c, v(R.width(r) + 4, R.height(r) + 4), ShopPage.corner + 2), 'accent', 0.9 * o);
     ProgressPage.panel(list, r, o);
-    // A soft warning sign behind the reward (the hardest deeds); the reward itself, dimmed until it is earned; its glow
+    // A warning sign behind the reward (the hardest deeds); the reward itself, dimmed until it is earned; its glow
     // and sparks stay inside the card.
-    const plate = v(r.minX + 34, c.y + 1);
-    list.s(softPolygon([add(plate, v(0, -23)), add(plate, v(25, 19)), add(plate, v(-25, 19))], 9), complete ? 'coin' : 'controlFill', (complete ? 0.24 : 0.7) * o);
+    Signs.triangle(list, v(r.minX + 34, c.y + 1), complete, o);
     const from = list.items.length;
     ShopPage.addPreview(list, item, v(r.minX + 34, c.y), 0.6, o * (complete ? 1 : 0.55));
     for (let k = from; k < list.items.length; k++) list.items[k] = { ...list.items[k], clip: r };
@@ -966,7 +949,7 @@ export const ProgressPage = {
     const top = c.y - R.height(r) * 0.2;
     const pipsWidth = tiers * 14;
     const x = r.minX + SIGN_TEXT;
-    ProgressPage.sign(list, v(r.minX + SIGN_AT, c.y), 'diamond', reached, complete, o);
+    Signs.diamond(list, v(r.minX + SIGN_AT, c.y), reached, complete, o);
     // Name and detail share the row beside the sign: the name keeps its length up to a little over half, the detail fits into the rest.
     const name = S.mastery.name(goal);
     const detail = S.mastery.detail(goal, reached);

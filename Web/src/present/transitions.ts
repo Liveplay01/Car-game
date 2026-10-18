@@ -56,9 +56,23 @@ export class ScreenTransition {
   private starts: boolean;
   private outgoingTags: Set<string>;
   private outgoingBackdrop: RenderItem | undefined;
+  /** How far the new screen comes in from, how far the old one leaves, and how long each takes. */
+  private readonly slideIn: number;
+  private readonly slideOut: number;
+  private readonly duration: number;
+  private readonly outTime: number;
 
-  constructor(from: ScreenKey, to: ScreenKey, outgoing: RenderItem[]) {
+  /**
+   * `column` is the page's width. The Build tab's two pages are segments of one tab: they slide like every page's segments
+   * (`ProgressPage.add`: 45 % of the column in on a spring, 30 % out), not like a change of tab.
+   */
+  constructor(from: ScreenKey, to: ScreenKey, outgoing: RenderItem[], column: number) {
     this.keepsChrome = keyIsBuild(from) && keyIsBuild(to);
+    const T = ScreenTransition;
+    this.slideIn = this.keepsChrome ? column * 0.45 : T.tabSlide;
+    this.slideOut = this.keepsChrome ? column * 0.3 : T.tabSlideOut;
+    this.duration = this.keepsChrome ? 0.45 : T.duration;
+    this.outTime = this.keepsChrome ? 0.2 : T.fadeOut;
     this.starts = to === 'playing';
     this.outgoing = outgoing;
     this.outgoingTags = new Set(outgoing.map((i) => i.tag).filter((t): t is string => t !== undefined));
@@ -69,7 +83,7 @@ export class ScreenTransition {
   }
 
   get isDone(): boolean {
-    return this.age >= ScreenTransition.duration;
+    return this.age >= this.duration;
   }
 
   private isStatic(tag: string): boolean {
@@ -80,8 +94,8 @@ export class ScreenTransition {
   apply(list: RenderList, start: number, reduceMotion: boolean): void {
     const T = ScreenTransition;
     const fade = Ease.outCubic(this.age / T.fadeIn);
-    const spring = Ease.settle(this.age / T.duration);
-    const way = this.direction === 0 ? v(0, T.rise) : v(T.tabSlide * this.direction, 0);
+    const spring = Ease.settle(this.age / this.duration);
+    const way = this.direction === 0 ? v(0, T.rise) : v(this.slideIn * this.direction, 0);
     const shift = reduceMotion ? v(0, 0) : v(way.x * (1 - spring), way.y * (1 - spring));
 
     const incoming = list.items.slice(start);
@@ -112,9 +126,9 @@ export class ScreenTransition {
       list.items[i] = moved(item, shift, fade);
     }
 
-    const gone = this.starts ? Ease.smoothstep(this.age / T.startFadeOut) : Ease.outCubic(this.age / T.fadeOut);
+    const gone = this.starts ? Ease.smoothstep(this.age / T.startFadeOut) : Ease.outCubic(this.age / this.outTime);
     if (gone >= 1 && fade >= 1) return;
-    const away = reduceMotion || this.direction === 0 ? v(0, 0) : v(-T.tabSlideOut * this.direction * gone, 0);
+    const away = reduceMotion || this.direction === 0 ? v(0, 0) : v(-this.slideOut * this.direction * gone, 0);
     const old: RenderItem[] = [];
     for (const item of this.outgoing) {
       const tag = item.tag;
@@ -145,7 +159,7 @@ export class TransitionTracker {
   apply(list: RenderList, screen: Screen, start: number, reduceMotion: boolean): void {
     const key = screenKey(screen);
     const drawn = list.items.slice(start);
-    if (this.shownKey !== null && this.shownKey !== key) this.transition = new ScreenTransition(this.shownKey, key, this.shownOverlay);
+    if (this.shownKey !== null && this.shownKey !== key) this.transition = new ScreenTransition(this.shownKey, key, this.shownOverlay, Math.min(list.camera.viewport.x - 24, 460));
     this.shownKey = key;
     this.shownOverlay = drawn;
     this.transition?.apply(list, start, reduceMotion);
