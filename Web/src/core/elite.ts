@@ -258,7 +258,7 @@ export const Elite = {
     };
   },
 
-  /** The XP a finished shift earns: skill counts even when the shift was lost. */
+  /** The XP a finished shift earns: skill counts even when the shift was lost. A Legendary Shift won pays its bonus once per rule. */
   xpOf(r: ShiftResult, config: Config = baseConfig): number {
     const completed = r.outcome === 'completed';
     return (
@@ -266,8 +266,15 @@ export const Elite = {
       r.tightFits +
       (completed ? config.eliteXpCompleted : 0) +
       (r.bossBusted ? config.eliteXpBoss : 0) +
-      (completed && r.legendary ? config.eliteXpLegendary : 0)
+      (completed && r.legendary ? config.eliteXpLegendary * (1 + r.legendaryExtra.length) : 0)
     );
+  },
+
+  /** What the Elite track multiplies a shift's XP by: the level's growth past `eliteXpFlatFrom`, and the Prestige ranks. */
+  boost(c: Career, config: Config = baseConfig): number {
+    const level = Math.max(1, Elite.level(c, config));
+    const late = Elite.need(level, config) / Elite.need(Math.min(level, config.eliteXpFlatFrom), config);
+    return late * (1 + Math.min(config.eliteXpPrestigeMax, c.prestige * config.eliteXpPerPrestige));
   },
 
   /** What reaching `level` pays, whether or not it is reached yet. */

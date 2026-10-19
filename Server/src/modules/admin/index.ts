@@ -11,6 +11,7 @@ import { normalizeCode } from '../../codes.ts';
 import { FEEDBACK_KINDS, FEEDBACK_STATUSES, FeedbackStore, isRewardItem, REWARD_ITEMS, type FeedbackKind, type FeedbackStatus } from '../feedback/store.ts';
 import { IDEA_STATUSES, IdeaStore, PUBLIC_TEXT_MAX, TITLE_MAX, type IdeaStatus } from '../ideas/store.ts';
 import { cleanText } from '../../http.ts';
+import { TuningStore } from '../tuning/index.ts';
 import { ADMIN_PAGE } from './page.ts';
 
 /**
@@ -29,6 +30,8 @@ import { ADMIN_PAGE } from './page.ts';
  *   PATCH  /v1/admin/ideas/:id  {title, text, status}   reword and publish, mark underway (building) or made (built), or turn down (rejected)
  *   DELETE /v1/admin/ideas/:id                      remove one with its gifts
  *   POST   /v1/admin/rewards  {friendCode, item}     give a player a reward (the game picks it up); item "money" takes an `amount`
+ *   GET    /v1/admin/tuning                          the remote tuning values (`modules/tuning`)
+ *   PUT    /v1/admin/tuning  {values}                replace them all; the game takes them from its next start
  *
  * `/admin` is a small page for all of the feedback part; the token is typed there, never stored on the server.
  */
@@ -44,6 +47,7 @@ export function adminModule(): ServerModule {
       const scores = new ScoreStore(ctx.db);
       const feedback = new FeedbackStore(ctx.db);
       const ideas = new IdeaStore(ctx.db);
+      const tuning = new TuningStore(ctx.db);
 
       const admin = new Hono<AppEnv>();
       admin.use('*', async (c, next) => {
@@ -156,6 +160,9 @@ export function adminModule(): ServerModule {
         feedback.grant(playerId, item, typeof body.reason === 'string' ? body.reason.slice(0, 80) : 'thank you', ctx.now(), false);
         return c.json({ given: item }, 201);
       });
+
+      admin.get('/tuning', (c) => c.json({ values: tuning.values() }));
+      admin.put('/tuning', async (c) => c.json({ values: tuning.replace((await readJson(c)).values) }));
 
       app.route('/admin', admin);
     },

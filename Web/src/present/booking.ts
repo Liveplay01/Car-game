@@ -142,7 +142,7 @@ export function bookShift(save: SaveGame, result: ShiftResult, ctx: ShiftContext
     const hadBest = Careers.bestTimes(career, ctx.level) !== null;
     if (Careers.recordTimes(career, times, ctx.level) && hadBest) news.push(S.race.newBest);
   }
-  news.push(...Careers.recordChallenges(career, result, ctx.today).map((ch) => S.daily.challengeDone(ch, Fmt.number(challengeReward(ch)))));
+  news.push(...Careers.recordChallenges(career, result, ctx.today).map((ch) => S.daily.challengeDone(ch, Fmt.number(challengeReward(ch, Careers.reach(career))))));
   const completed = Careers.recordMastery(career, result);
   // Each Unlimited mark counts once in a career, like the tier it belongs to.
   const markXp = unlimited ? UNLIMITED_MARKS.filter((m) => m > carsBefore && m <= result.carsSent).length * ctx.config.eliteXpMark : 0;

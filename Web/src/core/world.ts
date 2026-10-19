@@ -1940,6 +1940,7 @@ export class World {
       bossBusted: s.bossBusted,
       bossKind: this.config.convoy ? this.config.bossKind : null,
       legendary: this.config.legendary,
+      legendaryExtra: this.config.legendaryExtra,
       ambulances: s.ambulances,
       shaves: s.shaves,
       criticals: s.criticals,

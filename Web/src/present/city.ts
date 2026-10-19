@@ -2,8 +2,7 @@ import type { World } from '../core/world';
 import { builtArmSlots, type Config } from '../core/config';
 import type { Album } from '../core/loot';
 import { type Vec2, v, add, mul, right, fromAngle, wrap, TAU } from '../core/vec2';
-import { type RenderList, rect, circle, arc, polygon, unitHash, Ease } from './render';
-import { starPoints } from './icons';
+import { type RenderList, rect, circle, arc, unitHash, Ease } from './render';
 import type { ColorToken } from './theme';
 import { MapTheme } from './mapThemes';
 import type { MapScars } from './explosionsFx';
@@ -116,29 +115,6 @@ export const CityLayer = {
       const angle = -Math.PI / 2 + (i - (studs - 1) / 2) * 0.13;
       list.w(circle(mul(fromAngle(angle), radius), 3.5), 'coin', 0.9);
     }
-  },
-
-  /**
-   * The Hall of Fame, once built: a gold wall along the top of the island with a star for
-   * every Prestige rank (up to ten) and a laurel in its middle.
-   */
-  addHall(list: RenderList, built: boolean, ranks: number, world: World): void {
-    if (!built) return;
-    const radius = world.layout.islandRadius - 20;
-    const half = 0.6;
-    const top = Math.PI / 2;
-    list.w(arc(v(0, 0), radius, 9, top - half, top + half), 'coinInk', 0.85);
-    list.w(arc(v(0, 0), radius, 6, top - half, top + half), 'coin', 0.9);
-    const stars = Math.min(10, ranks);
-    for (let i = 0; i < stars; i++) {
-      const angle = top + (i - (stars - 1) / 2) * ((2 * half) / 11);
-      const at = mul(fromAngle(angle), radius);
-      list.w(polygon(starPoints(at, 4.6)), 'coinInk', 0.95);
-      list.w(polygon(starPoints(at, 3.6)), 'coin', 1);
-    }
-    const laurel = mul(fromAngle(top), radius - 14);
-    for (const side of [-1, 1]) list.w(arc(laurel, 6, 1.6, top + side * 0.4 - Math.PI / 2, top + side * 1.6 - Math.PI / 2), 'skinLaurel', 0.9);
-    list.w(circle(laurel, 2.4), 'coin', 0.95);
   },
 
   growth: (c: Config): number => c.level + 4 * Math.max(0, builtArmSlots(c).length - 4) + 3 * Object.keys(c.modules).length,

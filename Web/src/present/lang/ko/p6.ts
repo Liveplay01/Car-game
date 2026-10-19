@@ -583,6 +583,8 @@ export default (S: Strings): Words<Strings> => ({
   hud: {
     moneyLabel: '돈',
     scoreLabel: '점수',
+    toBest: '기록까지',
+    newBest: '신기록',
     rushHour: '러시아워',
     tight: '아슬아슬!',
     cutOff: '끼어들기 당함',

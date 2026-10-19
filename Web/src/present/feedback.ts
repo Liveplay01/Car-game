@@ -398,15 +398,17 @@ export const Music = {
     return { volumes, lowPass };
   },
 
-  playing(world: World, flow: number): MusicMix {
+  /** `record`: the best in sight (`Goals.record`), its closeness builds bass and lead, and beating it (`beatAt`, world time) breathes in. */
+  playing(world: World, flow: number, record: { near: number; beatAt: number | null } | null = null): MusicMix {
     const c = world.config;
     const tier = Scoring.tier(world.score.combo, c);
     const k = world.criminal.kind;
+    const near = record?.near ?? 0;
     const volumes: Partial<Record<MusicLayer, number>> = {
       base: 1,
-      rhythm: tier >= 1 ? 1 : 0,
-      bass: tier >= 2 ? 0.8 : 0,
-      lead: tier >= 3 ? 0.9 : 0,
+      rhythm: tier >= 1 || near > 0 ? 1 : 0,
+      bass: Math.max(tier >= 2 ? 0.8 : 0, 0.8 * near),
+      lead: Math.max(tier >= 3 ? 0.9 : 0, 0.9 * near * near),
       siren: k === 'warning' || k === 'arriving' || k === 'active' ? 0.7 : 0,
       rush: world.shift.isRushHour ? 1 : 0,
       flow: clamp(flow, 0, 1) * 0.8,
@@ -415,6 +417,7 @@ export const Music = {
     if (world.criminal.kind === 'warning') breath = Music.breath(world.time - (world.criminal.until - c.criminalWarning));
     const rush = world.shift.rushHourSince;
     if (rush !== null) breath = Math.max(breath, Music.breath(world.time - rush));
+    if (record?.beatAt != null) breath = Math.max(breath, Music.breath(world.time - record.beatAt));
     return { volumes, lowPass: breath * Music.breathDepth };
   },
 };

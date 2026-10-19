@@ -29,6 +29,8 @@ export interface ChallengeSpec {
   prestige: number;
   /** The legendary rule of the shift, if it was a Legendary Shift. */
   legendary: LegendaryRule | null;
+  /** The rules it brought beside its own (from Prestige ★2). */
+  legendaryExtra: LegendaryRule[];
   /** The season whose rule shaped the sky. */
   season: Season | null;
 }
@@ -46,10 +48,12 @@ export function challengeOf(
   target: number,
   legendary: LegendaryRule | null = null,
   season: Season | null = null,
+  legendaryExtra: LegendaryRule[] = [],
 ): ChallengeSpec {
   return {
     prestige: mode === 'shift' ? c.prestige : 0,
     legendary,
+    legendaryExtra: [...legendaryExtra],
     seed: seed >>> 0,
     mode,
     level,
@@ -79,7 +83,7 @@ export function challengeCareer(s: ChallengeSpec): Career {
 }
 
 export function challengeConfig(s: ChallengeSpec, base: Config): Config {
-  return Careers.shiftConfig(challengeCareer(s), s.mode, forSeason(base, s.season), s.seed, s.event, s.legendary);
+  return Careers.shiftConfig(challengeCareer(s), s.mode, forSeason(base, s.season), s.seed, s.event, s.legendary, s.legendaryExtra);
 }
 
 // MARK: Link text
@@ -119,6 +123,7 @@ export function encodeChallenge(s: ChallengeSpec): string {
     s.legendary ? LEGENDARY_RULES.indexOf(s.legendary) : -1,
     -1, // the daily twist of the old links: the slot stays so the positions keep
     s.season ? SEASONS.indexOf(s.season) : -1,
+    s.legendaryExtra.map((r) => LEGENDARY_RULES.indexOf(r)),
   ];
   return toBase64Url(JSON.stringify(packed));
 }
@@ -132,7 +137,7 @@ export function decodeChallenge(code: string): ChallengeSpec | null {
     return null;
   }
   if (!Array.isArray(packed) || packed[0] !== 1 || packed.length < 11) return null;
-  const [, seed, mode, level, ups, arms, mods, cars, , event, target, prestige, legendary, , season] = packed as unknown[];
+  const [, seed, mode, level, ups, arms, mods, cars, , event, target, prestige, legendary, , season, extra] = packed as unknown[];
   if (!isInt(seed, 0, 0xffffffff) || !isInt(mode, 0, GAME_MODES.length - 1) || !isInt(level, 1, 999) || !isInt(target, 0, 1e9)) return null;
   if (!Array.isArray(ups) || !Array.isArray(arms) || !Array.isArray(mods) || !Array.isArray(cars)) return null;
   const upgrades: Partial<Record<Upgrade, number>> = {};
@@ -162,6 +167,7 @@ export function decodeChallenge(code: string): ChallengeSpec | null {
     target,
     prestige: isInt(prestige, 0, 99) ? prestige : 0,
     legendary: isInt(legendary, 0, LEGENDARY_RULES.length - 1) ? LEGENDARY_RULES[legendary] : null,
+    legendaryExtra: Array.isArray(extra) ? extra.filter((x): x is number => isInt(x, 0, LEGENDARY_RULES.length - 1)).map((i) => LEGENDARY_RULES[i]) : [],
     season: isInt(season, 0, SEASONS.length - 1) ? SEASONS[season] : null,
   };
 }

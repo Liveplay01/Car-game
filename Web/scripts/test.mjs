@@ -31,6 +31,7 @@ const { sealOf } = await load('/src/storage/seal.ts');
 const { Casino } = await load('/src/core/casino.ts');
 const { fingerprint } = await load('/src/net/cloud.ts');
 const { iceServers } = await load('/src/net/rtc.ts');
+const { tuned } = await load('/src/net/tuning.ts');
 const { NoticeQueue, TipQueue } = await load('/src/present/notices.ts');
 const { Briefings, briefOf } = await load('/src/present/briefing.ts');
 const { Details } = await load('/src/present/detail.ts');
@@ -978,6 +979,42 @@ test('every Legendary rule plays a shift that ends and replays exactly', () => {
   }
 });
 
+test('from Prestige ★2 a Legendary Shift can bring more rules, all five at ★10, and a challenge keeps them', async () => {
+  const { drawLegendaryExtra } = await load('/src/core/levels.ts');
+  let most = 0;
+  for (let seed = 1; seed < 400; seed++) {
+    assert.deepEqual(drawLegendaryExtra(baseConfig, 'gridlock', 1, seed), [], 'nothing more below ★2');
+    assert.deepEqual(drawLegendaryExtra(baseConfig, null, 10, seed), [], 'nothing without a Legendary Shift');
+    const extra = drawLegendaryExtra(baseConfig, 'gridlock', 10, seed);
+    assert.ok(!extra.includes('gridlock') && new Set(extra).size === extra.length, 'never a rule twice');
+    assert.ok(drawLegendaryExtra(baseConfig, 'gridlock', 2, seed).length <= 1);
+    most = Math.max(most, extra.length);
+  }
+  assert.equal(most, LEGENDARY_RULES.length - 1, 'all five come together now and then');
+  const seed = 9100;
+  const all = () => forLegendary(forLevel(baseConfig, 30, seed), 'gridlock', LEGENDARY_RULES.slice(1));
+  assert.equal(all().trialRule, 'flawless');
+  const taps = [];
+  const first = playConfig(all(), seed, (world) => careful(world) && (taps.push(world.time), true));
+  assert.ok(first.result, 'the shift with every rule ends');
+  assert.deepEqual(first.result.legendaryExtra, LEGENDARY_RULES.slice(1));
+  const spec = challengeOf(newCareer(), 'shift', 30, seed, null, 100, 'dragnet', null, ['heavyLoad', 'zeroTolerance']);
+  assert.deepEqual(decodeChallenge(encodeChallenge(spec)).legendaryExtra, ['heavyLoad', 'zeroTolerance']);
+});
+
+test('late Elite levels take about as many shifts as Elite 50, and every Prestige rank adds 10 % XP', () => {
+  const c = newCareer();
+  c.prestige = 1;
+  c.eliteXp = Elite.xpTo(10);
+  assert.ok(Math.abs(Elite.boost(c) - 1.1) < 1e-9);
+  c.prestige = 30;
+  assert.ok(Math.abs(Elite.boost(c) - 2) < 1e-9, 'at most double from Prestige');
+  c.prestige = 0;
+  c.level = 50;
+  c.eliteXp = Elite.xpTo(121);
+  assert.ok(Math.abs(Elite.boost(c) * Elite.need(50) - Elite.need(121)) < 1e-9);
+});
+
 // MARK: Multiplayer
 
 /** A four-lane match of bots; the same seed plays the same match on every device. */
@@ -1624,7 +1661,8 @@ test('there are plenty of daily quests: three different ones a day, each with a 
   const none = { perfects: 0, tightFits: 0, takedowns: 0, transporters: 0, bestChain: 0, bestCombo: 0, isPerfectRun: false, cleanMerges: 0, nearMisses: 0 };
   for (const q of CHALLENGES) {
     assert.notEqual(S.daily.challenge(q), undefined, `${q} has a text`);
-    assert.ok(challengeReward(q) >= 250, `${q} pays`);
+    assert.ok(challengeReward(q, 1) >= 250, `${q} pays`);
+    assert.ok(challengeReward(q, 60) >= 5 * challengeReward(q, 1), `${q} grows with the level`);
     assert.equal(challengeMet(q, none), false, `${q} is not met by an empty shift`);
   }
   assert.ok(challengeMet('oneTakedown', { ...none, takedowns: 1 }));
@@ -3569,4 +3607,19 @@ test('the Auction House sells a skin lot at its fixed price instead of the room,
   assert.ok(Careers.owns(c, lots[slot].id));
   assert.ok(!Auction.canStart(c, slot, day), 'the lot is taken for the day');
   assert.equal(Auction.buyNowPrice({ k: 'chest', chest: 'diamond' }), null, 'chests are in the Shop');
+});
+
+test('remote tuning takes only known names, held to their range', () => {
+  assert.deepEqual(tuned(null), {});
+  assert.deepEqual(tuned({ easeAfterLosses: 1, maxStrikes: 9, shiftCars: 3, dailyPay: '500' }), { easeAfterLosses: 1 });
+  assert.deepEqual(tuned({ easeAfterLosses: 0, easeMaxSteps: 2.6, easeTempoStep: 0.5, adChestsPerDay: Infinity }), { easeAfterLosses: 1, easeMaxSteps: 3, easeTempoStep: 0.1 });
+});
+
+test('record in sight: from the share of the best on, how close and how many points are missing', () => {
+  const c = { ...baseConfig, nearRecordShare: 0.8 };
+  assert.equal(Goals.record(500, 0, c), null);
+  assert.equal(Goals.record(799, 1000, c), null);
+  assert.deepEqual(Goals.record(800, 1000, c), { near: 0, gap: 200 });
+  assert.deepEqual(Goals.record(900, 1000, c), { near: 0.5, gap: 100 });
+  assert.deepEqual(Goals.record(1200, 1000, c), { near: 1, gap: -200 });
 });

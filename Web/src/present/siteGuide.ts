@@ -81,6 +81,7 @@ export const GUIDE: GuideEvent[] = [
   { id: 'jackpot', group: 'score', kind: 'sweep', color: 'coin', title: 'Jackpot transporter', when: 'A golden Jackpot transporter is announced, and again when it pays.' },
   { id: 'rush-hour', group: 'run', kind: 'sweep', color: 'rushHour', title: 'Rush Hour', when: 'The last cars of a shift come faster and score double.' },
   { id: 'unlimited-mark', group: 'run', kind: 'sweep', color: 'coin', title: 'Unlimited milestone', when: 'In Unlimited you reach a milestone of cars sent.' },
+  { id: 'new-best', group: 'run', kind: 'sweep', color: 'accent', title: 'New best', when: 'A shift or an Unlimited run passes your best score.' },
   { id: 'unlimited-stage', group: 'run', kind: 'sweep', color: 'primary', title: 'New stage', when: 'Unlimited moves on: tankers, night, a storm, military trucks, then overtime.' },
   { id: 'shield-gained', group: 'run', kind: 'wave', color: 'player1', title: 'Shield gained', when: 'In multiplayer, a player earns a shield. The ring takes that player\'s colour.' },
   { id: 'shield-used', group: 'run', kind: 'heal', color: 'player1', title: 'Shield used', when: 'In multiplayer, a shield takes a crash for a player.' },

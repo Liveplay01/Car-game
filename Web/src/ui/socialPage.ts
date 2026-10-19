@@ -90,7 +90,7 @@ export class SocialView {
     });
     el.addEventListener('pointermove', (e) => {
       const way = this.swipe.move({ x: e.clientX, y: e.clientY });
-      if (way !== 0) this.host.swipe(way);
+      if (way !== 0 && !this.stepTabs(way)) this.host.swipe(way);
     });
     const end = (): void => {
       this.swallowClick = this.swipe.sideways;
@@ -109,6 +109,17 @@ export class SocialView {
       },
       true,
     );
+  }
+
+  /** A section's own tabs (the Club's, the boards in Ranks) are swiped through first; false once they run out that way. */
+  private stepTabs(way: -1 | 1): boolean {
+    const tabs = this.inner.querySelector('.board-tabs');
+    if (!tabs) return false;
+    const buttons = [...tabs.querySelectorAll('button')];
+    const at = buttons.findIndex((b) => b.getAttribute('aria-pressed') === 'true');
+    const next = at < 0 ? undefined : buttons[at + way];
+    next?.click();
+    return next !== undefined;
   }
 
   get isOpen(): boolean {

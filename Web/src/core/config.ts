@@ -348,6 +348,12 @@ export const baseConfig = {
    */
   assisted: false,
 
+  /**
+   * Record in sight (Leo, 19.10.2026): from this share of the best on, a career shift or an Unlimited run counts down the
+   * points to it on the top card, the music builds and beating it rings once. Shown only: nothing on the road changes.
+   */
+  nearRecordShare: 0.85,
+
   // Shift
   shiftCars: 15,
   rushHourCars: 4,
@@ -589,6 +595,14 @@ export const baseConfig = {
   weatherChanceBias: 1,
   legendaryLevel: 25,
   legendaryChance: 0.06,
+  /** The rules a Legendary Shift brings beside its own (`drawLegendaryExtra`): empty below Prestige ★2. */
+  legendaryExtra: [] as LegendaryRule[],
+  /**
+   * Late game (players, 19.10.2026): every rank listed here reached gives a Legendary Shift the chance of one more rule,
+   * so ★10 can bring all five at once. A won one pays its Elite bonus once per rule.
+   */
+  legendaryExtraRanks: [2, 5, 8, 10] as number[],
+  legendaryExtraChance: 0.5,
   gridlockDensityBonus: 2,
   dragnetSpeedup: 0.5,
   dragnetTimeFactor: 0.85,
@@ -647,6 +661,13 @@ export const baseConfig = {
   /** Elite 1 → 2 needs this much XP, every level after it `eliteXpGrowth` more (Leo, 03.10.2026: progressive). */
   eliteXpPerLevel: 60,
   eliteXpGrowth: 4,
+  /**
+   * Less grind late on (players, 19.10.2026): past this Elite level a shift's XP grows as fast as the levels do, so each
+   * takes about as many shifts as this one; every Prestige rank adds `eliteXpPerPrestige`, at most `eliteXpPrestigeMax`.
+   */
+  eliteXpFlatFrom: 50,
+  eliteXpPerPrestige: 0.1,
+  eliteXpPrestigeMax: 1,
   /** Per completed shift; every Perfect Input and Tight Fit adds 1. */
   eliteXpCompleted: 10,
   eliteXpBoss: 10,

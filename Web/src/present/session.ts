@@ -46,7 +46,7 @@ import { CameraRig, perspectiveOf, addRecede } from './perspective';
 import { CameraFx, CameraFxTuning, tensionOf, zoomAbout } from './cameraFx';
 import { PhotoCard } from './photo';
 import { TransitionTracker, ModePan } from './transitions';
-import { ShopPage, ShopState, shelfOf, type ShopTarget } from './shop';
+import { ShopPage, ShopState, SHELVES, shelfOf, type ShopTarget } from './shop';
 import { SideSwipe } from './swipe';
 import type { CasinoFlow, CasinoHost } from './casinoFlow';
 import { casinoKit, loadCasino } from './casinoLoader';
@@ -328,6 +328,12 @@ export class GameSession {
   private dailySplash: number | null = null;
   private splits: number[] = [];
   private raceDelta: number | null = null;
+  /** The best this run plays against (`Goals.record`; 0 for none), how far it has come to it, and since when. */
+  private recordBest = 0;
+  private recordStage: 'far' | 'near' | 'beaten' = 'far';
+  private recordNear = 0;
+  private recordBeatAt: number | null = null;
+  private sinceRecord = Infinity;
   /** The mix the music should play; `main.ts` fades its stems to it. */
   musicMix: MusicMix = Music.silent;
   /** The sky as heard: rain while the scene is on screen, and a strike for each flash of lightning. */
@@ -1043,6 +1049,11 @@ export class GameSession {
     this.dailySplash = daily ? 0 : null;
     this.splits = [];
     this.raceDelta = null;
+    this.recordBest = special ? 0 : this.playingMode === 'shift' ? this.save.highscore : this.playingMode === 'unlimited' ? this.save.unlimitedBest : 0;
+    this.recordStage = 'far';
+    this.recordNear = 0;
+    this.recordBeatAt = null;
+    this.sinceRecord = Infinity;
     const cfg = special ? this.specialConfig(special) : this.shiftConfig(s);
     // A challenge or trial never carries traffic over: it starts fresh, the same for everyone.
     if (continuing && !special) this.world = this.world.nextShift(cfg, s);
@@ -1505,6 +1516,7 @@ export class GameSession {
     this.sinceComboTier += realDelta;
     this.sinceCarSent += realDelta;
     this.sinceMark += realDelta;
+    this.sinceRecord += realDelta;
     this.sinceStrike += realDelta;
     this.sincePoliceCrash += realDelta;
     const counts = { carsSent: this.world.shift.carsSent, strikes: this.world.score.strikes, policeCrashes: this.world.score.policeCrashes };
@@ -1525,6 +1537,7 @@ export class GameSession {
         if (best && best.length >= this.splits.length) this.raceDelta = this.splits[this.splits.length - 1] - best[this.splits.length - 1];
       }
     }
+    if (this.screen.k === 'playing') this.watchRecord();
     if (this.dailySplash !== null && this.screen.k === 'ready') {
       this.dailySplash = this.dailySplash + realDelta < ReadyBanner.splashDuration ? this.dailySplash + realDelta : null;
     }
@@ -1628,7 +1641,7 @@ export class GameSession {
     }
     this.notices.held = this.screen.k === 'playing';
     this.notices.advance(realDelta);
-    this.musicMix = this.screen.k === 'playing' && runs ? Music.playing(this.world, this.flowLevel) : Music.silent;
+    this.musicMix = this.screen.k === 'playing' && runs ? Music.playing(this.world, this.flowLevel, this.recordStage === 'far' ? null : { near: this.recordNear, beatAt: this.recordBeatAt }) : Music.silent;
     this.hearSky();
     return this.renderList(viewport, realDelta);
   }
@@ -2360,9 +2373,18 @@ export class GameSession {
       this.closeDetail();
       this.progressPage.select(next as ProgressSection);
     } else if (this.isPage('shop')) {
+      // The Collection's shelves come first, as if they and the sections were one row (Leo, 19.10.2026).
+      const s = this.shopPage;
+      const shelf = SHELVES[SHELVES.indexOf(s.shelf) + way];
+      if (s.section === 1 && shelf !== undefined) return this.shopFlow.tapShop({ k: 'shelf', shelf });
       const sections = ShopPage.sections(this.save.career);
-      const next = sections[sections.indexOf(this.shopPage.section) + way];
-      if (next !== undefined) this.shopFlow.tapShop({ k: 'section', section: next });
+      const next = sections[sections.indexOf(s.section) + way];
+      if (next === undefined) return;
+      if (next === 1) {
+        s.shelf = way > 0 ? SHELVES[0] : SHELVES[SHELVES.length - 1];
+        s.items.reset();
+      }
+      this.shopFlow.tapShop({ k: 'section', section: next });
     } else if (this.isPage('social')) {
       const sections = SocialPage.sections(this.save.career);
       const next = sections[sections.indexOf(this.socialPage.section) + way];
@@ -3007,6 +3029,7 @@ export class GameSession {
           this.playingMode === 'mayhem' ? result.flames : result.score,
           this.world.config.legendary,
           this.world.config.season,
+          this.world.config.legendaryExtra,
         )
       : null;
     if (this.tutorial && this.playingMode !== 'mayhem') {
@@ -3015,7 +3038,7 @@ export class GameSession {
       save.tutorialDone = true;
       this.onStep?.('tutorial-done');
     }
-    this.onStep?.('shift', { mode: this.playingMode, level: this.playingLevel, outcome: result.outcome, daily: this.playingDaily ? 1 : 0, nth: Math.min(save.shiftsPlayed + 1, 10), eased: this.world.config.assisted ? 1 : 0 });
+    this.onStep?.('shift', { mode: this.playingMode, level: this.playingLevel, outcome: result.outcome, daily: this.playingDaily ? 1 : 0, nth: Math.min(save.shiftsPlayed + 1, 10), eased: this.world.config.assisted ? 1 : 0, record: this.recordOf(result.score) });
     const levelBefore = career.level;
     const booked = bookShift(save, result, {
       mode: this.playingMode,
@@ -3073,6 +3096,32 @@ export class GameSession {
   private bookFailure(result: ShiftResult): void {
     if (!result.failCause || !Careers.noteFailure(this.save.career, result.failCause)) return;
     this.announce(S.museum.failuresDone(S.shop.item(FAIL_SKIN)));
+  }
+
+  /** Record in sight: the top card counts down to the best, and it rings once when beaten (`nearRecordShare`). Only shown, never on the road. */
+  private watchRecord(): void {
+    const record = Goals.record(Math.round(this.world.score.points), this.recordBest, this.config);
+    if (!record || this.recordStage === 'beaten') return;
+    this.recordNear = Math.max(this.recordNear, record.near);
+    const stage = record.gap < 0 ? 'beaten' : 'near';
+    if (stage === this.recordStage) return;
+    this.recordStage = stage;
+    this.sinceRecord = 0;
+    if (stage === 'near') {
+      this.play([], ['flow']);
+      return;
+    }
+    this.recordNear = 1;
+    this.recordBeatAt = this.world.time;
+    this.rim.signal('sweep', 'accent');
+    this.play(['perfect'], ['perfect']);
+  }
+
+  /** How close the final score came to the best, for `shift` (the end-of-shift pay lands after the last live frame). */
+  private recordOf(score: number): 'none' | 'far' | 'near' | 'beaten' {
+    if (this.recordBest <= 0) return 'none';
+    const record = Goals.record(score, this.recordBest, this.config);
+    return !record ? 'far' : record.gap < 0 ? 'beaten' : 'near';
   }
 
   /**
@@ -3197,7 +3246,6 @@ export class GameSession {
     CityLayer.addMapSkin(list, Skins.color(mapSkin), world);
     MapTheme.addIsland(list, theme, world);
     if (!this.special) CityLayer.addElite(list, Elite.level(career, this.config), world);
-    if (!this.special) CityLayer.addHall(list, career.hallBuilt, career.prestige, world);
     CityLayer.addFrame(list, Careers.frame(career), world);
     const night = world.config.night || this.nightPreview;
     if (!night) this.addRim(list, world, rm);
@@ -3304,6 +3352,7 @@ export class GameSession {
         comboPop: rm ? 0 : Ease.clamp01(this.sinceComboTier / GameSession.comboPop),
         mark: this.sinceMark < 2.5 ? S.modes.mark(this.markCars, markReward(this.markCars)) : null,
         race: this.raceDelta === null ? null : { delta: this.raceDelta, pop: rm ? 1 : Ease.clamp01(this.sinceCarSent / 0.35) },
+        record: this.recordStage === 'far' ? null : { gap: this.recordBest - Math.round(world.score.points), pop: rm ? 1 : Ease.clamp01(this.sinceRecord / 0.35) },
         pops: rm
           ? settledPops()
           : {

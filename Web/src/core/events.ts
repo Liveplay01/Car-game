@@ -58,6 +58,8 @@ export interface ShiftResult {
   bossKind: BossKind | null;
   /** A Legendary Shift's rule, else null. */
   legendary: LegendaryRule | null;
+  /** The rules it brought beside its own (from Prestige ★2). */
+  legendaryExtra: LegendaryRule[];
   /** Ambulances that got through with a clear road. */
   ambulances: number;
   /** Close shaves past a motorbike (a Tight Fit or Near Miss right next to one). */

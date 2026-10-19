@@ -157,7 +157,8 @@ function settleRush(run: Extract<SpecialRun, { k: 'trial' }>, rush: RushRun, res
 export function runCard(special: SpecialRun | null, config: Config, mode: GameMode, versusSelected: boolean, career: Career, today: number): RunCard | null {
   const rule = config.legendary;
   if (!special && rule && mode === 'shift' && !versusSelected) {
-    return { caption: S.legendary.caption, color: 'coin', badge: S.legendary.name(rule), line: S.legendary.line(rule), right: [S.legendary.reward, S.legendary.chest] };
+    const rules = [rule, ...config.legendaryExtra];
+    return { caption: S.legendary.caption, color: 'coin', badge: rules.map((r) => S.legendary.name(r)).join(' + '), line: rules.map((r) => S.legendary.line(r)).join(' · '), right: [S.legendary.reward, S.legendary.chest] };
   }
   if (!special) return null;
   if (special.k === 'challenge') return { caption: S.run.challenge, color: 'accent', badge: S.run.fromFriend, line: null, right: [S.run.toBeat, Fmt.number(special.spec.target)] };

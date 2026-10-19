@@ -1,6 +1,6 @@
 import type { ShiftResult } from './events';
 import { Rng } from './rng';
-import { baseConfig, DAILY_EVENTS, type CityEvent } from './config';
+import { baseConfig, DAILY_EVENTS, type CityEvent, type Config } from './config';
 
 /** Challenges (v1.2): three a day, each pays once. */
 export type Challenge =
@@ -68,7 +68,16 @@ export function challengeMet(c: Challenge, r: ShiftResult): boolean {
   }
 }
 
-export function challengeReward(c: Challenge): number {
+/**
+ * What a challenge pays at `reach` (`Careers.reach`): it grows with the shift pay of that level (players, 19.10.2026:
+ * a fixed 500 meant nothing late on), rounded to 50.
+ */
+export function challengeReward(c: Challenge, reach: number, config: Config = baseConfig): number {
+  const pay = (level: number): number => config.shiftPayBase + config.shiftPayPerLevel * level;
+  return Math.round((challengeBase(c) * pay(Math.max(1, reach))) / pay(1) / 50) * 50;
+}
+
+function challengeBase(c: Challenge): number {
   switch (c) {
     case 'perfectInputs':
     case 'tightFits':

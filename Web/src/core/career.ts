@@ -3,6 +3,7 @@ import { baseConfig, cloneConfig, type Config, type RoadModule, type Weather, ty
 import {
   forLevel,
   drawLegendary,
+  drawLegendaryExtra,
   forLegendary,
   type Darkness,
   upgraded,
@@ -304,7 +305,7 @@ export interface Career {
   passXp: number;
   passClaimed: number;
   passFreeClaimed: number;
-  /** The Prestige log: a plaque for every rank. `hallBuilt` is the old Hall of Fame (not for sale since 18.10.2026): whoever built it keeps its wall. */
+  /** The Prestige log: a plaque for every rank. `hallBuilt` is the old Hall of Fame (not for sale since 18.10.2026, its wall gone from the island since 19.10.2026), kept so old saves load. */
   hallBuilt: boolean;
   hallOfFame: HallEntry[];
   /** Tour stops passed, each once per run of its tour (`core/tours.ts`: `halloween-2026.3`). */
@@ -538,6 +539,7 @@ export const Careers = {
     weather: Weather | null = null,
     event: CityEvent | null | undefined = undefined,
     legendary: LegendaryRule | null | undefined = undefined,
+    extra: LegendaryRule[] | undefined = undefined,
   ): Config {
     const cfg = cloneConfig(base);
     cfg.prestige = c.prestige;
@@ -551,9 +553,11 @@ export const Careers = {
     const level = c.level + Careers.headStart(c, base);
     const shift = upgraded(forArms(forLevel(cfg, level, seed, c.level + Careers.bossShift(c, base))), (u) => Careers.steps(c, u));
     const rule = legendary === undefined ? drawLegendary(shift, level, seed) : legendary;
-    const stormy = rule === 'darkStorm' ? 'storm' : null;
-    const sky = forNight(forWeather(shift, weather ?? stormy ?? drawWeather(shift, level, seed)), Careers.darkness(shift, rule, level, seed));
-    return forLegendary(forCityEvent(sky, event === undefined ? drawCityEvent(sky, level, seed) : event, seed), rule);
+    // A rule given from outside (a trial, a tour, the Weekly) comes alone; a challenge brings the extra ones it was played with.
+    const rules = extra ?? (legendary === undefined ? drawLegendaryExtra(shift, rule, c.prestige, seed) : []);
+    const storm = rule === 'darkStorm' || rules.includes('darkStorm');
+    const sky = forNight(forWeather(shift, weather ?? (storm ? 'storm' : null) ?? drawWeather(shift, level, seed)), Careers.darkness(shift, storm ? 'darkStorm' : rule, level, seed));
+    return forLegendary(forCityEvent(sky, event === undefined ? drawCityEvent(sky, level, seed) : event, seed), rule, rules);
   },
 
   /** The phantom and the kingpin come in a blackout, and so does a Dark Storm; otherwise the seed decides. */
@@ -619,7 +623,7 @@ export const Careers = {
    */
   recordElite(c: Career, r: ShiftResult, config: Config = baseConfig, extraXp = 0): EliteGain | null {
     if (!Elite.isOpen(c, config)) return null;
-    const xp = Elite.xpOf(r, config) + extraXp;
+    const xp = Math.round((Elite.xpOf(r, config) + extraXp) * Elite.boost(c, config));
     c.eliteXp += xp;
     const steps: EliteStep[] = [];
     const reached = Elite.level(c, config);
@@ -1061,7 +1065,7 @@ export const Careers = {
     for (const ch of challengesOf(day, Careers.reach(c))) {
       if (c.challengesDone.includes(ch) || !challengeMet(ch, r)) continue;
       c.challengesDone.push(ch);
-      c.money += challengeReward(ch);
+      c.money += challengeReward(ch, Careers.reach(c));
       completed.push(ch);
     }
     return completed;
@@ -1180,6 +1184,7 @@ export const Careers = {
     seed: number,
     event: CityEvent | null | undefined = undefined,
     legendary: LegendaryRule | null | undefined = undefined,
+    extra: LegendaryRule[] | undefined = undefined,
   ): Config {
     // Unlimited and Mayhem have their own fixed level: no Prestige head start, no legendary rule.
     if (mode === 'unlimited') {
@@ -1196,7 +1201,7 @@ export const Careers = {
       return cfg;
     }
     if (mode === 'mayhem') return forMayhem(Careers.config({ ...c, level: base.mayhemLevel, prestige: 0 }, base, seed, null, event, null));
-    const cfg = forIntro(Careers.config(c, base, seed, null, event, legendary), c.level + Careers.headStart(c, base));
+    const cfg = forIntro(Careers.config(c, base, seed, null, event, legendary, extra), c.level + Careers.headStart(c, base));
     // The scout goes by the level alone: a challenge from such a shift brings it as well.
     cfg.scout = c.level === base.scoutLevel && !cfg.convoy;
     return cfg;

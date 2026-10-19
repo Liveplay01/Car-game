@@ -51,6 +51,28 @@ export const itemCredit = (item: PatchItem): string | null => {
 
 export const PATCH_NOTES: PatchNote[] = [
   {
+    id: '2026-10-19',
+    date: '19 October 2026',
+    title: 'Less late-game grind: faster Elite, bigger daily challenges, combined Legendary rules',
+    impact: 'major',
+    summary: [
+      'Late Elite levels take about as many shifts as Elite 50, and every Prestige rank adds 10 % Elite XP.',
+      'Daily challenges pay more the higher your level, and from Prestige ★2 Legendary rules can stack.',
+      'Close to your best? The top card counts down the points, and beating it rings out.',
+      'Swiping goes through inner tabs first (Collection, Club, Ranks), then on to the next tab.',
+    ],
+    items: [
+      { text: 'Elite past level 50 no longer drags on: a shift earns more Elite XP the higher the level, so each new Elite level takes about as many shifts as Elite 50 did. Every Prestige rank adds another 10 % Elite XP, up to double at ★10.', from: null },
+      { text: 'Daily challenges grow with your level: they pay in step with your shift pay, so a challenge is worth having late in the game too (a 500 at Level 1 is about 4,600 at Level 50).', from: null },
+      { text: 'From Prestige ★2 a Legendary Shift can bring a second rule, from ★5 a third, and at ★10 all five at once. A won Legendary Shift pays its Elite bonus once for every rule it had.', from: null },
+      'Record in sight: when a shift or an Unlimited run gets close to your best score, the top card counts down the points still missing and the music builds. Beat it and the ring lights up with “NEW BEST”. Nothing on the road changes, it only shows how close you are.',
+      'Swiping sideways goes through the inner tabs first: Cars, Maps, Earned and Pass in the Collection, the Club’s tabs, the boards in Ranks. Only past the last one does it move on to the next tab.',
+      'The dots for the game modes stay on the top card while a mode’s name shows, so you always see where you are.',
+      'The old Hall of Fame wall with its Prestige stars is gone from the island: the Hall can no longer be built, and the island stays calm. Your Prestige rank still shows next to your level and in the Prestige log.',
+      'Fixed: the shield and police plus signs next to the score were too large and could run out of their space with a long label like “PUNKTE”.',
+    ],
+  },
+  {
     id: '2026-10-18',
     date: '18 October 2026',
     title: 'Crews with a weekly league, bosses by Prestige rank, simpler menus, Keep driving',

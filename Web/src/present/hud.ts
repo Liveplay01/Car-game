@@ -323,6 +323,8 @@ export interface HudInput {
   best: string | null;
   comboPop: number;
   race: { delta: number; pop: number } | null;
+  /** The best in sight (`Goals.record`): the points still missing, below 0 once beaten. It takes the best's column, ahead of `race`. */
+  record?: { gap: number; pop: number } | null;
   /** Unlimited: the mark just passed ("100 cars · GOLD"), shown in place of the car count for a moment. */
   mark: string | null;
   pops: Pops;
@@ -428,16 +430,19 @@ export const HUD = {
     for (let i = 0; i < policeCrashes; i++) pluses.push({ used: i < world.score.policeCrashes, color: 'lightBlue' });
     const groupGap = firstPolice > 0 && pluses.length > firstPolice ? 0.5 : 0;
     const span = pluses.length - 1 + groupGap;
-    const size = Metrics.strikeRadius * 2.75;
-    // The caption names the number; the pluses follow it on the same row, the pair centred.
+    // The caption names the number; the pluses follow it on the same row, the pair centred. Sized to the caption, they
+    // close up when a long caption ("PUNKTE") and many of them would run out of the column.
     const captionW = textWidth(S.hud.scoreLabel, 10);
-    const plusesW = pluses.length > 0 ? 8 + span * Metrics.strikeSpacing + size : 0;
+    const fit = Math.min(1, (R.width(c) - 24 - captionW - 6) / (span * Metrics.strikeSpacing + Metrics.strikeSize));
+    const size = Metrics.strikeSize * fit;
+    const spacing = Metrics.strikeSpacing * fit;
+    const plusesW = pluses.length > 0 ? 6 + span * spacing + size : 0;
     const rowLeft = R.center(c).x - (captionW + plusesW) / 2;
     list.s(text(S.hud.scoreLabel, v(rowLeft, c.minY + TopBar.captionRow), 10, 'leading', 'bold'), rush ? 'accentInk' : 'muted');
-    const firstPlus = rowLeft + captionW + 8 + size / 2;
+    const firstPlus = rowLeft + captionW + 6 + size / 2;
     pluses.forEach((p, index) => {
       const slot = index + (index >= firstPolice ? groupGap : 0);
-      const at = v(firstPlus + slot * Metrics.strikeSpacing, Metrics.strikeRow);
+      const at = v(firstPlus + slot * spacing, Metrics.strikeRow);
       const isNewest = index < firstPolice ? index === world.score.strikes - 1 : index - firstPolice === world.score.policeCrashes - 1;
       const pop = isNewest && p.used ? (index < firstPolice ? h.pops.strike : h.pops.policeCrash) : 1;
       if (p.used) {
@@ -452,7 +457,14 @@ export const HUD = {
       list.s(plusSign(at, size), p.color);
     });
 
-    if (h.race) {
+    if (h.record) {
+      const beaten = h.record.gap < 0;
+      TopBar.addColumn(list, cols.right, 'trailing', beaten ? S.hud.newBest : S.hud.toBest, beaten ? `+${Fmt.number(-h.record.gap)}` : Fmt.number(h.record.gap), {
+        valueSize: 20 * land(h.record.pop, 0.2),
+        captionColor: beaten ? 'accent' : 'hazard',
+        valueColor: beaten ? 'accent' : 'hazard',
+      });
+    } else if (h.race) {
       TopBar.addColumn(list, cols.right, 'trailing', S.race.best, S.race.delta(h.race.delta), {
         valueSize: 18 * land(h.race.pop, 0.15),
         valueColor: h.race.delta <= 0 ? 'accent' : 'destructive',
@@ -1538,7 +1550,8 @@ export const ReadyBanner = {
       TopBar.addMessage(list, frame, { ...hintView, card: hintView.card * opacity }, { time: hint.time, left: hint.left, right: hint.right, previous: hint.previous, reduceMotion: o.reduceMotion, textScale: o.textScale ?? 1 });
     }
     list.tag = undefined;
-    if (o.modes && (o.drawsCard ?? true)) TopBar.addModeDots(list, frame, o.modes, opacity * (1 - (hintView?.card ?? 0)));
+    // The dots stay with a mode's name on the card: where the player is among the modes is what the name is about.
+    if (o.modes && (o.drawsCard ?? true)) TopBar.addModeDots(list, frame, o.modes, opacity);
     const pillText = run ? run.badge : o.daily ? S.daily.streakPill(o.daily.streak, o.daily.bonus, o.daily.endsIn, o.daily.freezes) : null;
     if (pillText) {
       const under = v(width / 2, frame.maxY + 18);

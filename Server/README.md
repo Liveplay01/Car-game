@@ -213,6 +213,22 @@ curl -X POST   -H "$H" -d '{"friendCode":"K7M2-9QXA","item":"money","amount":500
 Easier: open `https://api.your-domain.tld/admin`, type the admin token (kept in that tab only), and the
 inbox shows every bug report and idea with the sender's name and friend code.
 
+## Remote tuning
+
+A few values of the game's `config.ts` change without a new build (`modules/tuning`): the quiet help
+(`ease*`), the ad caps per day, the Daily's pay and the chest prices. The game takes only the names
+listed in `Web/src/net/tuning.ts` (`TUNABLE`), each held to its range, and uses them from its
+**next start**. Nothing a board or a replay compares can be tuned. A PUT replaces all values; `{}`
+goes back to the build's.
+
+```bash
+curl -H "$H" "$API/v1/admin/tuning"
+curl -X PUT -H "$H" -d '{"values":{"easeAfterLosses":1,"easeTempoStep":0.07}}' "$API/v1/admin/tuning"
+curl -X PUT -H "$H" -d '{"values":{}}' "$API/v1/admin/tuning"               # back to the build
+```
+
+Changed chest prices are not on the website (`/data/*.json` is written at build time).
+
 ## Privacy
 
 Stored per player: the chosen name, a random id, a hash of the secret token, the scores (with the

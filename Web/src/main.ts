@@ -2,6 +2,7 @@ import { Shell } from './ui/shell';
 import { inItch, inPortal } from './storage/device';
 import { gameLoaded, startCrazyGames } from './ui/crazygames';
 import { startCloud } from './net/cloud';
+import { startTuning } from './net/tuning';
 import { S } from './present/strings';
 import { currentLanguage } from './present/i18n';
 import { startAds } from './ui/ads';
@@ -106,6 +107,7 @@ if (inPortal) await startCrazyGames();
 document.fonts?.addEventListener('loadingdone', forgetMeasures);
 await Promise.race([document.fonts?.load('italic 900 30px "Overpass Variable"'), new Promise((resolve) => window.setTimeout(resolve, 1500))]).catch(() => undefined);
 
+startTuning();
 const shell = new Shell(app, canvas, layers);
 if (import.meta.env.DEV) {
   window.__game = shell;

@@ -2623,6 +2623,8 @@ export const S = {
     moneyLabel: 'MONEY',
     scoreLabel: 'SCORE',
     bestLabel: 'BEST',
+    toBest: 'TO BEST',
+    newBest: 'NEW BEST',
     rushHour: 'RUSH HOUR',
     tight: 'TIGHT!',
     cutOff: 'CUT OFF',

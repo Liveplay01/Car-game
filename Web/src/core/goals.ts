@@ -45,6 +45,13 @@ export const Goals = {
     return best;
   },
 
+  /** A run within reach of the best: how close from `nearRecordShare` of it on (0…1, 1 at the best) and the points still missing (below 0 once beaten). */
+  record(score: number, best: number, config: Config = baseConfig): { near: number; gap: number } | null {
+    const from = best * config.nearRecordShare;
+    if (best <= 0 || score < from) return null;
+    return { near: Math.min(1, (score - from) / Math.max(1, best - from)), gap: best - score };
+  },
+
   /** After an Unlimited run: how few cars it was short of the tier above the best, when it came within a quarter of it. */
   tierMiss(carsSent: number, bestCars: number): { short: number; tier: TierId } | null {
     const next = nextTier(bestCars);

@@ -715,7 +715,7 @@ export const ProgressPage = {
     ProgressPage.panel(list, r, o);
     ProgressPage.check(list, v(r.minX + 24, c.y), done, o);
     const label = S.daily.challenge(challenge);
-    const status = done ? `${S.daily.done} ✓` : Fmt.number(challengeReward(challenge));
+    const status = done ? `${S.daily.done} ✓` : Fmt.number(challengeReward(challenge, Careers.reach(career)));
     const tag = textWidth(status, 13) + (done ? 0 : 18);
     drawFitted(list, label, v(r.minX + 44, c.y), 13, R.width(r) - 44 - 16 - tag - 12, done ? 'muted' : 'primary', { opacity: o, weight: 'bold' });
     if (done) drawText(list, status, v(r.maxX - 16, c.y), 13, 'coin', { opacity: o, weight: 'bold', align: 'trailing' });

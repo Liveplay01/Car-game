@@ -618,6 +618,18 @@ export function drawLegendary(c: Config, level: number, seed: number): Legendary
   return rng.pick(LEGENDARY_RULES);
 }
 
+/** The rules a Legendary Shift brings beside `rule`, drawn from the seed: a chance of one more for every rank in `legendaryExtraRanks` reached. */
+export function drawLegendaryExtra(c: Config, rule: LegendaryRule | null, prestige: number, seed: number): LegendaryRule[] {
+  if (rule === null) return [];
+  const rng = new Rng((seed ^ 0x5e7c0b1d) >>> 0);
+  const pool = LEGENDARY_RULES.filter((r) => r !== rule);
+  const extra: LegendaryRule[] = [];
+  for (const rank of c.legendaryExtraRanks) {
+    if (prestige >= rank && rng.unit() < c.legendaryExtraChance) extra.push(pool.splice(rng.int(0, pool.length - 1), 1)[0]);
+  }
+  return extra;
+}
+
 /**
  * The shift under a legendary rule. The rule changes the traffic, never the timing of a tap:
  * - gridlock: rush hour from the first car to the last, and more of it.
@@ -625,13 +637,13 @@ export function drawLegendary(c: Config, level: number, seed: number): Legendary
  * - heavyLoad: lorries everywhere, half of them tankers.
  * - darkStorm: a storm in a blackout (the sky is set in `Careers.config`).
  * - zeroTolerance: any crash or cut-off ends the shift.
+ * `extra` rules (from Prestige ★2) come on top of it.
  */
-export function forLegendary(base: Config, rule: LegendaryRule | null): Config {
+export function forLegendary(base: Config, rule: LegendaryRule | null, extra: LegendaryRule[] = []): Config {
   const c = cloneConfig(base);
   c.legendary = rule;
-  switch (rule) {
-    case null:
-      break;
+  c.legendaryExtra = rule === null ? [] : [...extra];
+  for (const r of rule === null ? [] : [rule, ...extra]) switch (r) {
     case 'gridlock':
       c.rushHourCars = Math.max(base.rushHourCars, base.shiftCars);
       c.densityStart += base.gridlockDensityBonus;
