@@ -24,6 +24,33 @@ export function h<K extends keyof HTMLElementTagNameMap>(tag: K, attrs: Attrs = 
 export const loadingNote = (text: string, cls = 'section-note'): HTMLElement =>
   h('p', { class: `${cls} loading-note`, role: 'status' }, h('span', { class: 'loader', 'aria-hidden': 'true' }), text);
 
+const CONFIRM_MS = 3000;
+
+/**
+ * A button that asks for a second tap before it acts (giving money away, leaving, deleting). The second label is read out;
+ * while the work runs the button is busy, and it is back to its first label when the work ends or the tap does not come.
+ */
+export function confirmButton(text: string, again: string, cls: string, act: () => Promise<unknown> | void): HTMLButtonElement {
+  const button = h('button', { class: cls, type: 'button', 'aria-live': 'polite' }, text);
+  let armed = 0;
+  const disarm = (): void => {
+    window.clearTimeout(armed);
+    armed = 0;
+    button.textContent = text;
+  };
+  button.addEventListener('click', () => {
+    if (!armed) {
+      button.textContent = again;
+      armed = window.setTimeout(disarm, CONFIRM_MS);
+      return;
+    }
+    disarm();
+    button.disabled = true;
+    void Promise.resolve(act()).finally(() => (button.disabled = false));
+  });
+  return button;
+}
+
 export function append(el: Element, children: Child[]): void {
   for (const c of children) {
     if (c === null || c === undefined || c === false) continue;

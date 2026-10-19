@@ -20,7 +20,35 @@ export type Primitive =
   /** Many small discs in one colour, filled as one path (snow). */
   | { k: 'dots'; points: Vec2[]; radii: number[] }
   /** `wght`: the heading face's weight axis (100–900) for a `display` run; unset is the heaviest. */
-  | { k: 'text'; text: string; position: Vec2; size: number; align: Align; weight: Weight; wght?: number };
+  | { k: 'text'; text: string; position: Vec2; size: number; align: Align; weight: Weight; wght?: number }
+  /** A world picture painted once from `art` and copied after, turned by `rotation` and stretched by `scale` (soft light, many layers in one draw). */
+  | { k: 'sprite'; art: SpriteArt; center: Vec2; rotation: number; scale: Vec2 };
+
+/**
+ * A stack of translucent shapes that never changes shape, such as a headlight cone. `paint` draws it in its own world units
+ * (+x ahead, +y to the left of the origin); the drawer renders it once per zoom step and copies it. The opacity of the
+ * item scales the whole picture.
+ */
+export interface SpriteArt {
+  key: string;
+  minX: number;
+  maxX: number;
+  minY: number;
+  maxY: number;
+  /** Farthest corner from the origin: how far from its centre the picture can reach. */
+  radius: number;
+  /** Pixels painted per pixel shown: 2 keeps the edges of a turned picture sharp. */
+  detail: number;
+  paint(list: RenderList): void;
+}
+
+export const spriteArt = (key: string, box: { minX: number; maxX: number; minY: number; maxY: number }, paint: SpriteArt['paint'], detail = 1): SpriteArt => ({
+  key,
+  ...box,
+  radius: Math.hypot(Math.max(Math.abs(box.minX), Math.abs(box.maxX)), Math.max(Math.abs(box.minY), Math.abs(box.maxY))),
+  detail,
+  paint,
+});
 
 /** A fine texture laid over a group of world items, anchored to the world (`draw.ts`). */
 export type Grain = 'asphalt';
@@ -77,6 +105,7 @@ export function softPolygon(points: Vec2[], radius: number, steps = 5): Primitiv
   });
   return polygon(out);
 }
+export const sprite = (art: SpriteArt, center: Vec2, rotation: number, scale: Vec2): Primitive => ({ k: 'sprite', art, center, rotation, scale });
 export const segments = (points: Vec2[], thickness: number): Primitive => ({ k: 'segments', points, thickness });
 export const dots = (points: Vec2[], radii: number[]): Primitive => ({ k: 'dots', points, radii });
 export const text = (s: string, position: Vec2, size: number, align: Align = 'center', weight: Weight = 'regular', wght?: number): Primitive => {
@@ -148,6 +177,8 @@ export class RenderList {
   grain: Grain | undefined = undefined;
   /** The ground between everything gets a faint texture, anchored to the world. */
   groundGrain = false;
+  /** Frames a glass panel keeps its frost before the blur is made again: the scene behind it moves, but slowly (a shift's top bar). */
+  frostEvery = 1;
   /**
    * Big Screen: the ground is see-through, so the player's own picture or video behind the
    * canvas shows (`ui/backdrop.ts`), dimmed by the background colour at this opacity so the

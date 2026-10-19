@@ -44,6 +44,7 @@ function shape(p: Primitive, color: string): string {
     case 'dots':
       return p.points.map((q, i) => `<circle cx="${n(q.x)}" cy="${n(q.y)}" r="${n(p.radii[i])}" fill="${color}"/>`).join('');
     case 'text':
+    case 'sprite':
       return '';
   }
 }

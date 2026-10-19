@@ -1,8 +1,9 @@
-import { h, loadingNote } from './dom';
+import { confirmButton, h, loadingNote } from './dom';
 import { fadeIn, openSheet } from './sheets';
+import { copy, flash, share } from './share';
 import type { Career } from '../core/career';
 import type { ChestKind } from '../core/loot';
-import { type BoardId, type Records, describeError, loadAccount, syncScores } from '../net/leaderboard';
+import { type BoardId, type Records, LeaderboardError, describeError, loadAccount, syncScores } from '../net/leaderboard';
 import { titleName } from './ranksPanel';
 import { withCoins } from './clubPanel';
 import { type InviteView, fetchInvite, inviteUrl } from '../net/invite';
@@ -49,7 +50,6 @@ export interface CrewHost {
 }
 
 const CREW_NAME_MAX = 20;
-const CONFIRM_MS = 3000;
 
 const label = (text: string): HTMLElement => h('p', { class: 'section-note board-label' }, text);
 const note = (text: string, error = false): HTMLElement => h('p', { class: `field-help${error ? ' error' : ''}`, ...(error ? { role: 'alert' } : {}) }, text);
@@ -59,49 +59,9 @@ const row = (title: string | Node, sub: string | null, ...end: (Node | null)[]):
 /** What a gift is, in words: money with the coin, a chest by its name. */
 export const giftName = (item: GiftItem): string => (item.startsWith('money:') ? money(Fmt.number(Number(item.slice(6)))) : S.shop.chest(item.slice(6) as ChestKind));
 
-/** A button that asks for a second tap before it acts (giving money away, leaving, taking someone out). */
-function confirmButton(text: string, confirm: string, cls: string, act: () => void): HTMLButtonElement {
-  const button = h('button', { class: cls, type: 'button' }, text);
-  let armed = 0;
-  button.addEventListener('click', () => {
-    if (armed) {
-      window.clearTimeout(armed);
-      armed = 0;
-      button.textContent = text;
-      act();
-      return;
-    }
-    button.textContent = confirm;
-    armed = window.setTimeout(() => {
-      armed = 0;
-      button.textContent = text;
-    }, CONFIRM_MS);
-  });
-  return button;
-}
-
-/** Copies `text`; the button says so for a moment. Without clipboard access the text is shown to copy by hand. */
-async function copyText(button: HTMLElement, text: string, back: string): Promise<void> {
-  try {
-    await navigator.clipboard.writeText(text);
-    button.textContent = S.friends.copied;
-    window.setTimeout(() => (button.textContent = back), 1600);
-  } catch {
-    window.prompt(S.friends.copyPrompt, text);
-  }
-}
-
-/** The share sheet on a phone, the clipboard elsewhere. */
-async function share(button: HTMLElement, url: string, text: string, back: string): Promise<void> {
-  if (window.matchMedia('(pointer: coarse)').matches && typeof navigator.share === 'function') {
-    try {
-      await navigator.share({ title: S.gameTitle, text, url });
-      return;
-    } catch (error) {
-      if (error instanceof DOMException && error.name === 'AbortError') return;
-    }
-  }
-  await copyText(button, url, back);
+/** Shares the link (or copies it); a copy shows on the button. */
+async function shareLink(button: HTMLElement, url: string, text: string): Promise<void> {
+  if ((await share({ text, url })) === 'copied') flash(button, S.friends.copied);
 }
 
 /** Time until `at`, roughly: days and hours, or hours and minutes. */
@@ -142,13 +102,20 @@ export function crewPanel(host: CrewHost): HTMLElement {
 
   /** Shows the crew: `given` when a call just answered with it, else asked for. */
   async function render(given?: CrewView): Promise<void> {
-    if (!loadAccount()) return;
+    // Signed out meanwhile (the service no longer knows the name): say so instead of loading for ever.
+    if (!loadAccount()) {
+      body.replaceChildren(note(S.net.signedOut, true));
+      return;
+    }
     const ticket = ++asked;
     const inviteAsked = invite ? Promise.resolve(invite) : fetchInvite().catch(() => null);
     try {
       view = given ?? (await fetchCrew());
     } catch (error) {
-      if (ticket === asked) body.replaceChildren(note(describeError(error), true), h('button', { class: 'btn block', type: 'button', onclick: () => void render() }, S.friends.tryAgain));
+      if (ticket !== asked) return;
+      body.replaceChildren(note(describeError(error), true), h('button', { class: 'btn block', type: 'button', onclick: () => void render() }, S.friends.tryAgain));
+      // Back online: it tries again by itself.
+      window.addEventListener('online', () => body.isConnected && ticket === asked && void render(), { once: true });
       return;
     }
     invite = await inviteAsked;
@@ -202,7 +169,10 @@ export function crewPanel(host: CrewHost): HTMLElement {
         label(S.crew.invited),
         h('div', { class: 'list' }, row(crew.name, crew.full ? S.crew.full : S.crew.invitedSub(crew.members, crew.max, S.crew.league(crew.league)), h('div', { class: 'lot-actions' }, join, later))),
       ];
-    } catch {
+    } catch (error) {
+      // Only a crew that is gone forgets the link; offline or a hiccup keeps it for the next try.
+      const gone = error instanceof LeaderboardError && error.status >= 400 && error.status < 500 && error.status !== 429;
+      if (!gone) return [note(describeError(error), true), h('button', { class: 'btn block', type: 'button', onclick: () => void render() }, S.friends.tryAgain)];
       dropPendingCrew();
       return [note(S.crew.gone, true)];
     }
@@ -214,6 +184,8 @@ export function crewPanel(host: CrewHost): HTMLElement {
       type: 'text',
       name: 'crew-name',
       autocomplete: 'off',
+      autocapitalize: 'words',
+      enterkeyhint: 'done',
       maxlength: String(CREW_NAME_MAX),
       placeholder: S.crew.namePlaceholder,
       'aria-label': S.crew.nameLabel,
@@ -248,7 +220,7 @@ export function crewPanel(host: CrewHost): HTMLElement {
     const m = said();
     if (m) rows.push(m);
     rows.push(...weekRows(now), ...giftRows(now), ...memberRows(now), ...playRows(), ...inviteRows(now), ...codeRows());
-    rows.push(confirmButton(S.crew.leave, S.crew.leaveConfirm, 'btn destructive block', () => void act(() => leaveCrew())));
+    rows.push(confirmButton(S.crew.leave, S.crew.leaveConfirm, 'btn destructive block', () => act(() => leaveCrew())));
     if (crew.owner) rows.push(note(S.crew.leaveOwner));
     return rows;
   }
@@ -350,7 +322,7 @@ export function crewPanel(host: CrewHost): HTMLElement {
       const isMoney = item.startsWith('money:');
       const have = isMoney ? career.money >= Number(item.slice(6)) : true;
       const count = isMoney ? null : career.chests.filter((k) => k === item.slice(6)).length;
-      const give = confirmButton(S.crew.giveButton, S.crew.confirm, 'btn', () => void send(item, to, done));
+      const give = confirmButton(S.crew.giveButton, S.crew.confirm, 'btn', () => send(item, to, done));
       give.disabled = !have || left <= 0;
       return row(giftName(item), count === null ? null : S.crew.youHave(count), give);
     });
@@ -407,7 +379,7 @@ export function crewPanel(host: CrewHost): HTMLElement {
         ];
         if (!p.me) {
           parts.push(label(S.crew.giveTo(p.name)), h('div', { class: 'list' }, ...giveRows(now, member, () => close())), note(S.crew.giveToNote(p.name, now.gifting?.left ?? 0)));
-          if (now.crew?.owner) parts.push(confirmButton(S.crew.remove, S.crew.removeConfirm, 'btn destructive block', () => void act(() => removeMember(p.id)).then(() => close())));
+          if (now.crew?.owner) parts.push(confirmButton(S.crew.remove, S.crew.removeConfirm, 'btn destructive block', () => act(() => removeMember(p.id)).then(() => close())));
         }
         sheet.replaceChildren(...parts);
         withCoins(sheet);
@@ -455,7 +427,7 @@ export function crewPanel(host: CrewHost): HTMLElement {
     const url = crew.link;
     if (url && crew.members.length < crew.max) {
       const button = h('button', { class: 'btn primary block', type: 'button' }, S.crew.invite);
-      button.addEventListener('click', () => void share(button, url, S.crew.shareText(crew.name), S.crew.invite));
+      button.addEventListener('click', () => void shareLink(button, url, S.crew.shareText(crew.name)));
       rows.push(button, note(S.crew.inviteNote(crew.max)));
     } else rows.push(note(crew.members.length >= crew.max ? S.crew.isFull : S.friends.noInvites));
     if (invite && (invite.invited.length > 0 || invite.invitedBy)) {
@@ -470,14 +442,14 @@ export function crewPanel(host: CrewHost): HTMLElement {
   function codeRows(): HTMLElement[] {
     if (!invite) return [];
     const code = invite.code;
-    const copy = h('button', { class: 'btn', type: 'button' }, S.friends.copy);
-    copy.addEventListener('click', () => void copyText(copy, code, S.friends.copy));
-    const rows = [label(S.friends.yourCode), h('div', { class: 'list' }, h('div', { class: 'row' }, h('div', { class: 'row-main' }, h('div', { class: 'sync-code', 'aria-label': S.friends.yourCodeLabel(code) }, code), h('div', { class: 'row-sub' }, S.crew.codeSub)), copy))];
+    const copyBtn = h('button', { class: 'btn', type: 'button' }, S.friends.copy);
+    copyBtn.addEventListener('click', () => void copy(code).then((r) => r === 'copied' && flash(copyBtn, S.friends.copied)));
+    const rows = [label(S.friends.yourCode), h('div', { class: 'list' }, h('div', { class: 'row' }, h('div', { class: 'row-main' }, h('div', { class: 'sync-code', 'aria-label': S.friends.yourCodeLabel(code) }, code), h('div', { class: 'row-sub' }, S.crew.codeSub)), copyBtn))];
     // Without a crew the referral link is the way to bring a friend into the game.
     if (!view?.crew) {
       const now = invite;
       const button = h('button', { class: 'btn block', type: 'button' }, S.friends.shareLink);
-      button.addEventListener('click', () => void share(button, inviteUrl(now), S.invite.shareText(now.level), S.friends.shareLink));
+      button.addEventListener('click', () => void shareLink(button, inviteUrl(now), S.invite.shareText(now.level)));
       rows.push(button, note(S.friends.bothNote(now.level, now.milestones.map((m) => S.friends.ordinal(m.invites)))));
     }
     return rows;

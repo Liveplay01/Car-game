@@ -21,6 +21,7 @@ export interface CasinoHost {
   playPitched(sound: SoundID, pitch: number): void;
   persist(): void;
   showNotice(text: string): void;
+  denyMoney(price: number): void;
   announceAlbums(): void;
   /** The Skin Upgrade's boost for a watched ad (`adFlow.ts`). */
   watchAdBoost(): void;
@@ -232,7 +233,7 @@ export class CasinoFlow {
     const before = this.books();
     if (!Casino.buyCard(career, this.host.today, this.host.config)) {
       this.host.play(['denied'], []);
-      if (career.scratchCards < this.host.config.scratchMax) this.host.showNotice(S.notice.notEnoughMoney(Fmt.number(this.host.config.scratchPrice)));
+      this.host.denyMoney(this.host.config.scratchPrice);
       return;
     }
     this.host.persist();
@@ -243,7 +244,7 @@ export class CasinoFlow {
 
   private denied(stake: number): void {
     this.host.play(['denied'], []);
-    this.host.showNotice(S.notice.notEnoughMoney(Fmt.number(stake)));
+    this.host.denyMoney(stake);
   }
 
   /** Cashes out at the multiplier of the moment the tap came (`ago` seconds back). */

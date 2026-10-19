@@ -645,7 +645,7 @@ export default (S: Strings): Words<Strings> => ({
 
   notice: {
     more: (n) => `+${n}개 더 · 진행에서 확인`,
-    notEnoughMoney: (price) => `${MONEY_MARK} 부족 · ${money(price)} 필요`,
+    notEnoughMoney: (missing) => `${MONEY_MARK} 부족 · ${money(missing)} 더 필요`,
     detourIdle: '건설했지만 여기서는 아무 일도 하지 않아요: 이 자리와 내 갈래 사이에 출구가 없어요',
   },
 });

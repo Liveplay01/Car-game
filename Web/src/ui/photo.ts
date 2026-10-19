@@ -184,10 +184,11 @@ ${dare.url}` : `${card.hook} ${S.run.pictureText}`;
     if (withFile) {
       try {
         await navigator.share({ files: [file], title: S.gameTitle, text });
-      } catch {
-        /* cancelled */
+        return;
+      } catch (error) {
+        // Cancelled stays cancelled; a sheet that failed falls back to the clipboard or the download below.
+        if (error instanceof DOMException && error.name === 'AbortError') return;
       }
-      return;
     }
     const image = { 'image/png': file };
     if (dare) {

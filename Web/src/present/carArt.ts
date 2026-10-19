@@ -3,7 +3,7 @@ import type { Dent, VehicleType } from '../core/vehicle';
 import { isCarType, isExplosive, isEmergency } from '../core/vehicle';
 import type { Pose } from '../core/paths';
 import { type Vec2, v, add, sub, mul, dist, length, fromAngle, lerpV, clamp } from '../core/vec2';
-import { type RenderList, rect, circle, line, polygon, Ease, Metrics, unitHash } from './render';
+import { type RenderList, type SpriteArt, rect, circle, line, polygon, sprite, spriteArt, Ease, Metrics, unitHash } from './render';
 import type { ColorToken } from './theme';
 import { type Finish, isShiny, glitters } from './skins';
 import { type Effect, SkinEffects } from './skinEffects';
@@ -180,7 +180,12 @@ export interface CarDraw {
   effect?: Effect | null;
   /** A skin's own body; only plain cars wear one. */
   model?: CarModel | null;
+  /** The live scene only: an unhurt car with nothing animated is painted once and copied (`CarArt.addCached`). */
+  cache?: boolean;
 }
+
+/** Plain cars as sprites, by what they look like; see `CarArt.art`. */
+const carArts = new Map<string, SpriteArt>();
 
 /** How a vehicle looks and how it breaks. */
 export const CarArt = {
@@ -456,6 +461,11 @@ export const CarArt = {
     const lights = d.lights ?? null;
     const model = type === 'car' ? (d.model ?? null) : null;
 
+    if (d.cache && opacity === 1 && dents.length === 0 && !effect && lights === null && !d.finish && type !== 'military') {
+      CarArt.addCached(list, d, c, L, W, model);
+      return;
+    }
+
     if (lights !== null && (type === 'police' || isEmergency(type))) {
       const spill = PoliceLights.spill(lights);
       const bar = CarArt.shape('lightBar', type, c).center;
@@ -689,6 +699,45 @@ export const CarArt = {
       list.w(rect(worldOf(v(0, side * W * 0.2), pose), v(L * 0.78, W * 0.3), W * 0.15, pose.heading), 'primary', opacity * 0.07);
     }
     if (effect) SkinEffects.over(list, effect, pose, L, W, d.finishTime ?? null, d.id, opacity);
+  },
+
+  /**
+   * An unhurt, plain car: its paint, glass, parts and sheen are one picture, made once per look and copied; only what changes
+   * with the driving (the brake light's glow on the road, the lamps) is laid on live. The sheen lies on the side facing the
+   * light, so there is a picture for each side (the second one is painted turned half a circle and copied back).
+   */
+  addCached(list: RenderList, d: CarDraw, c: Config, L: number, W: number, model: CarModel | null): void {
+    const pose = d.pose;
+    const brake = d.brake ?? null;
+    const head = d.headlights ?? 0;
+    if (brake !== null && brake > 0.01 && (d.brakeGlow ?? true)) {
+      list.w(rect(worldOf(v(-L / 2 - 2.5, 0), pose), v(9, W * 1.3), 4.5, pose.heading), 'lightRed', 0.16 * brake);
+    }
+    if (head > 0.01) list.w(rect(worldOf(v(L / 2 + 8, 0), pose), v(16, W * 1.4), 6, pose.heading), 'primary', 0.28 * head);
+    const side = rotated(v(-1, 1), -pose.heading).y >= 0 ? 1 : -1;
+    const type = d.type;
+    const key = `${type}|${CarArt.bodyColor(type, d.id, d.skin ?? null)}|${CarArt.bodyColor(type, 0, d.skin ?? null)}|${d.skin ?? ''}|${d.stripe ?? ''}|${d.roof ?? ''}|${model ?? ''}|${L}|${W}|${side}`;
+    let art = carArts.get(key);
+    if (!art) {
+      const heading = side > 0 ? 0 : Math.PI;
+      const [halfL, halfW] = [L / 2 + 3, Math.max(W * 0.75, W / 2 + 3)];
+      art = spriteArt(
+        key,
+        { minX: -halfL, maxX: halfL, minY: -halfW, maxY: halfW },
+        (l) => CarArt.add(l, { id: d.id, type, pose: { position: v(0, 0), heading }, dents: [], skin: d.skin, stripe: d.stripe, roof: d.roof, model: d.model }, c),
+        2,
+      );
+      if (carArts.size >= 160) carArts.clear();
+      carArts.set(key, art);
+    }
+    list.w(sprite(art, pose.position, side > 0 ? pose.heading : pose.heading - Math.PI, v(1, 1)), 'primary');
+    const lamps = CarModels.lamps(model, L, W);
+    if (brake !== null && brake > 0.02) {
+      for (const s of [1, -1]) CarModels.lamp(list, pose, lamps.tail, s, 'lightRed', Math.min(brake, 1));
+    }
+    if (head > 0.01) {
+      for (const s of [1, -1]) CarModels.lamp(list, pose, lamps.head, s, 'primary', head);
+    }
   },
 
   lightBar(list: RenderList, shape: Shape, center: Vec2, rotation: number, pose: Pose, lights: number | null, opacity: number, c: Config): void {

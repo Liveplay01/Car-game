@@ -6,6 +6,10 @@ import { apiRequest, leaderboardEnabled, loadAccount } from './leaderboard';
  */
 export const ideasEnabled = leaderboardEnabled;
 
+/** How long a suggestion may be, as the service checks it (`IDEA_MIN_TEXT`, `IDEA_MAX_TEXT`). */
+export const IDEA_MIN = 10;
+export const IDEA_MAX = 500;
+
 export interface Idea {
   id: string;
   title: string;

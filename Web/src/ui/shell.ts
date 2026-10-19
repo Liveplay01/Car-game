@@ -5,6 +5,7 @@ import { CanvasDrawer } from '../present/draw';
 import { SOCIAL, SWIPE_MODES, TAB_BAR, barTab, screenTab, type Tab } from '../present/flow';
 import { AudioPlayer, Haptics } from '../audio/player';
 import { h, icon } from './dom';
+import { share } from './share';
 import { ICONS, CHEST_FLAT } from './icons';
 import { settingsSheet, deleteAccountSheet, patchNotesSheet, guidesSheet, legalSheet, licensesSheet, installDialog, offerDialog, isSheetOpen, closeAnySheet, closeTopSheet, onSheetSound } from './sheets';
 import { installBackGesture, inSystemGestureZone } from './backGesture';
@@ -66,6 +67,7 @@ function signatureOf(list: RenderList): number {
       case 'arc': at = p.center.x + p.center.y + p.radius + p.thickness + p.start + p.end; break;
       case 'line': at = p.from.x + p.from.y + p.to.x + p.to.y + p.thickness; break;
       case 'text': at = p.position.x + p.position.y + p.size + p.text.length + (p.text.charCodeAt(0) || 0) + 3 * (p.text.charCodeAt(p.text.length - 1) || 0); break;
+      case 'sprite': at = p.center.x + p.center.y + p.rotation; break;
       default: at = (p.points[0]?.x ?? 0) + (p.points[0]?.y ?? 0) + p.points.length;
     }
     sum += (at + opacity * 97) * (1 + ((i - start) & 15));
@@ -331,7 +333,12 @@ export class Shell {
         playTogether: () => this.openLobby(),
         challenge: s.shareable !== null ? () => this.share() : null,
       }),
-      ranks: () => ({ records: () => s.leaderboardRecords, createPlayer: () => this.openAccountSheet(), openCrew: () => s.perform({ k: 'showSocial', section: SOCIAL.crew }) }),
+      ranks: () => ({ records: () => s.leaderboardRecords, createPlayer: () => this.openAccountSheet(), openCrew: () => s.perform({ k: 'showSocial', section: SOCIAL.crew }),
+        play: (mode) => {
+          s.perform({ k: 'showTab', tab: 'game' });
+          s.perform({ k: 'setGameMode', mode });
+        },
+      }),
       club: () => this.clubHost(),
       clubOpen: () => SocialPage.clubOpen(s.save.career),
       mafia: () => this.mafiaHost(),
@@ -880,23 +887,11 @@ export class Shell {
     if (s.shareable !== spec) return null;
     const daily = s.dailyShare;
     const text = daily ?? S.run.shareText(Fmt.number(spec.target));
-    const touch = window.matchMedia('(pointer: coarse)').matches;
-    if (touch && typeof navigator.share === 'function') {
-      try {
-        await navigator.share({ title: S.gameTitle, text, url });
-      } catch (error) {
-        // Some browsers allow the share sheet only right after the tap. The link is ready now: one more tap shares it at once.
-        if (error instanceof DOMException && error.name === 'NotAllowedError') return S.run.linkReady;
-      }
-      return null;
-    }
-    try {
-      await navigator.clipboard.writeText(daily ? `${daily}\n${url}` : url);
-      return daily ? S.run.dailyCopied : S.run.copied;
-    } catch {
-      window.prompt(S.lobby.copyLink, daily ? `${daily}\n${url}` : url);
-      return null;
-    }
+    // Some browsers allow the share sheet only right after the tap. The link is ready now: one more tap shares it at once.
+    const handed = await share({ text, url }, daily ? `${daily}\n${url}` : url, true);
+    if (handed === 'refused') return S.run.linkReady;
+    if (handed === 'copied') return daily ? S.run.dailyCopied : S.run.copied;
+    return null;
   }
 
   /** The result as a photo: a flash, then the print to look at, share or download (`PhotoView`). */
@@ -1359,7 +1354,7 @@ export class Shell {
               if (account) await deleteAccount(account);
               if (cloudEnabled) await deleteCloud();
             } catch (error) {
-              throw new Error(`${describeError(error)} Nothing was deleted on this device. Try again when you are online.`);
+              throw new Error(S.settings.del.offline(describeError(error)));
             }
             s.resetProgress();
             void this.backdrop.show(null);

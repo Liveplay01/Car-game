@@ -39,6 +39,7 @@ export interface RanksActions {
   createPlayer(): void;
   /** Social → Crew: where a crew is joined, for the empty crew board. */
   openCrew(): void;
+  play(mode: 'shift' | 'unlimited'): void;
 }
 
 const BOARDS: { id: BoardId; label: string; empty: string }[] = (['shift-level', 'unlimited', 'daily', 'casino'] as const).map((id) => ({ id, ...S.ranks.boards[id] }));
@@ -263,7 +264,12 @@ export interface BoardHost {
   /** The service no longer knew the token: the host asks for a name again. */
   signedOut?(): void;
   openCrew(): void;
+  /** The Game tab on that mode: an empty board leads to where its first score is made. */
+  play(mode: 'shift' | 'unlimited'): void;
 }
+
+/** Where a board's first score is made; the Casino has its own way there (Shop). */
+const PLAY_FOR: Partial<Record<BoardId, 'shift' | 'unlimited'>> = { 'shift-level': 'shift', daily: 'shift', unlimited: 'unlimited' };
 
 /**
  * The board tabs (Shift level, Unlimited, Daily, Casino) with their list, for everyone or for the
@@ -296,8 +302,14 @@ export function boardPanel(scope: Scope, host: BoardHost): BoardPanel {
     }
     if (rows.length === 0) {
       const empty = scope === 'crew' ? S.ranks.noCrew : (BOARDS.find((b) => b.id === board)?.empty ?? '');
-      // An empty crew board leads to where a crew is joined, instead of only naming it.
-      const go = scope === 'crew' ? h('button', { class: 'btn', type: 'button', onclick: () => host.openCrew() }, S.ranks.openCrew) : null;
+      // An empty board leads to where it fills (a crew, the mode), instead of only naming it.
+      const mode = PLAY_FOR[board];
+      const go =
+        scope === 'crew'
+          ? h('button', { class: 'btn', type: 'button', onclick: () => host.openCrew() }, S.ranks.openCrew)
+          : mode
+            ? h('button', { class: 'btn', type: 'button', onclick: () => host.play(mode) }, S.ranks.playNow)
+            : null;
       rows.push(h('div', { class: 'row board-empty' }, h('span', { class: 'empty-sign' }, icon(ICONS.deadEnd)), h('div', { class: 'row-main' }, h('div', { class: 'row-title' }, S.ranks.nobody), h('div', { class: 'row-sub' }, empty)), go));
     }
     const arriving = list.getAttribute('aria-busy') === 'true';
@@ -334,18 +346,19 @@ export function boardPanel(scope: Scope, host: BoardHost): BoardPanel {
       if (ticket === asked) showList(view, seenRanks()[key] ?? null);
     } catch (error) {
       if (ticket !== asked) return;
-      // A list already on screen stays; only without one the sheet says what happened.
-      if (cached) return;
-      list.setAttribute('aria-busy', 'false');
-      list.replaceChildren(
-        h(
-          'div',
-          { class: 'row board-empty' },
-          h('span', { class: 'empty-sign' }, icon(ICONS.warning)),
-          h('div', { class: 'row-main' }, h('div', { class: 'row-title' }, S.ranks.unavailable), h('div', { class: 'row-sub' }, describeError(error))),
-          h('button', { class: 'btn', type: 'button', onclick: () => void load() }, S.ranks.tryAgain),
-        ),
+      // A list already on screen stays, marked as not up to date; without one the sheet says what happened.
+      const problem = h(
+        'div',
+        { class: 'row board-empty', role: 'status' },
+        h('span', { class: 'empty-sign' }, icon(ICONS.warning)),
+        h('div', { class: 'row-main' }, h('div', { class: 'row-title' }, cached ? S.ranks.stale : S.ranks.unavailable), h('div', { class: 'row-sub' }, describeError(error))),
+        h('button', { class: 'btn', type: 'button', onclick: () => void load() }, S.ranks.tryAgain),
       );
+      list.setAttribute('aria-busy', 'false');
+      if (cached) list.prepend(problem);
+      else list.replaceChildren(problem);
+      // Back online: it tries again by itself.
+      window.addEventListener('online', () => list.isConnected && ticket === asked && void load(), { once: true });
     }
     if (host.account() && !loadAccount()) host.signedOut?.();
   }
@@ -375,6 +388,7 @@ export function ranksPanel(actions: RanksActions): HTMLElement {
     account: () => account,
     records: actions.records,
     openCrew: actions.openCrew,
+    play: actions.play,
     signedOut: () => {
       account = null;
       renderTop();

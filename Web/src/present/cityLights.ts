@@ -1,6 +1,6 @@
 import type { World } from '../core/world';
 import { v, add, mul, left, fromAngle } from '../core/vec2';
-import { type RenderList, circle } from './render';
+import { type RenderList, type RenderItem, circle } from './render';
 import { CarArt } from './carArt';
 import { Headlights } from './headlights';
 import { interpolatedPose, type VehicleLamps } from './scene';
@@ -32,6 +32,13 @@ export const CityLights = {
     const layout = world.layout;
     const lane = layout.laneWidth;
     const from = list.items.length;
+    const key = `${layout.ringRadius}|${lane}|${layout.arms.map((a) => a.slot).join(',')}`;
+    // Still: the shapes of last frame are laid in again instead of made again (the drawer copies its picture anyway).
+    if (CityLights.lamps?.key === key) {
+      for (const item of CityLights.lamps.items) list.items.push(item);
+      list.bake(from, 'lamps', key);
+      return;
+    }
     for (const arm of layout.arms) {
       const out = fromAngle(arm.angle);
       let side = arm.slot % 2 === 0 ? 1 : -1;
@@ -42,8 +49,11 @@ export const CityLights = {
         side = -side;
       }
     }
-    list.bake(from, 'lamps', `${layout.ringRadius}|${lane}|${layout.arms.map((a) => a.slot).join(',')}`);
+    CityLights.lamps = { key, items: list.items.slice(from) };
+    list.bake(from, 'lamps', key);
   },
+
+  lamps: null as { key: string; items: RenderItem[] } | null,
 
   /** A faint pair of cones ahead of every car on the road; the queue behind the front car fades out. */
   addHeadlights(list: RenderList, world: World, alpha: number, lamps: VehicleLamps | null, time: number | null): void {

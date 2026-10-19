@@ -186,8 +186,14 @@ export class NoticeQueue {
   private durationOf(cur: Item): number {
     const queued = this.waiting.length > 0;
     if (cur.achievement) return queued ? NoticeQueue.achievementQueuedDuration : NoticeQueue.achievementDuration;
-    return queued ? NoticeQueue.queuedDuration : NoticeQueue.duration;
+    // A long line (a reason, a folded tail) gets the time to be read; a short one keeps the usual beat.
+    const reading = Math.min(NoticeQueue.longestExtra, Math.max(0, cur.text.length - NoticeQueue.shortLine) * NoticeQueue.perCharacter);
+    return (queued ? NoticeQueue.queuedDuration : NoticeQueue.duration) + reading;
   }
+
+  private static readonly shortLine = 48;
+  private static readonly perCharacter = 0.035;
+  private static readonly longestExtra = 2.5;
 
   private next(): void {
     if (this.holding) {

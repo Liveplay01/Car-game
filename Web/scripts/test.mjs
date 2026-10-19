@@ -537,6 +537,16 @@ test('a reply shows at once; a barely seen announcement comes back', () => {
   assert.equal(q.shown.text, 'Level news');
 });
 
+test('a long line stays long enough to be read, a short one keeps the usual time', () => {
+  const short = new NoticeQueue();
+  short.say('Not enough money');
+  assert.equal(short.shown.duration, NoticeQueue.duration);
+  const long = new NoticeQueue();
+  long.say('The offer ended while the ad played. Nothing was used up, so try again.');
+  assert.ok(long.shown.duration > NoticeQueue.duration);
+  assert.ok(long.shown.duration <= NoticeQueue.duration + 2.5);
+});
+
 test('a shift that starts keeps the announcement on screen, and holds the rest back', () => {
   const q = new NoticeQueue();
   q.announce('Casino opens', 'Daily opens');

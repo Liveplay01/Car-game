@@ -645,7 +645,7 @@ export default (S: Strings): Words<Strings> => ({
 
   notice: {
     more: (n) => `+${n}件 · 進捗で確認`,
-    notEnoughMoney: (price) => `${MONEY_MARK}が足りません · ${money(price)}必要`,
+    notEnoughMoney: (missing) => `${MONEY_MARK}が足りません · あと${money(missing)}`,
     detourIdle: '建設済みですが、ここでは何も起きません: この位置とあなたの分岐のあいだに出口がありません',
   },
 });

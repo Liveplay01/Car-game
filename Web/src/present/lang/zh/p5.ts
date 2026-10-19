@@ -183,6 +183,7 @@ export default (S: Strings): Words<Strings> => ({
             ? '广告被提前关闭，所以没有奖励。'
             : '现在没有可播放的广告。请稍后再试。',
     notHere: '这里不提供。',
+    expired: '广告播放期间优惠已结束。没有消耗任何次数。',
     unavailable: '现在没有可播放的广告。请稍后再试。',
     freeStep: '免费一步',
     freeStepAction: '看广告 · 免费一步',
@@ -347,6 +348,7 @@ export default (S: Strings): Words<Strings> => ({
     ideaLabel: '你的创意',
     send: '发送创意',
     ideaHow: '告诉我们你想在游戏里看到什么。我们会读，改写好，发布在这里。每天一个创意。',
+    ideaCount: (n, max, min) => (n < min ? `至少 ${min} 个字 · ${n}/${max}` : `${n}/${max}`),
     ownAmount: '自定金额',
     giveAmount: (price) => `捐出 ${price}`,
   },
@@ -387,6 +389,8 @@ export default (S: Strings): Words<Strings> => ({
     noCrew: '在 社交 → 车队 加入一个车队，就能和他们比较纪录。',
     openCrew: '去车队',
     nobody: '这里还没有人',
+    stale: '不是最新的',
+    playNow: '立即开始',
     unavailable: '榜单不可用',
     tryAgain: '再试一次',
     crewOnly: '只看我的车队',
@@ -547,7 +551,6 @@ export default (S: Strings): Words<Strings> => ({
     format: '赛制',
     shareText: (code) => `来我的环岛：房间码 ${code}`,
     linkCopied: '邀请链接已复制',
-    copyLink: '复制这个链接',
   },
 
   versus: {
@@ -604,6 +607,9 @@ export default (S: Strings): Words<Strings> => ({
     notEnough: '玩家不足',
     readyWaiting: '已准备 · 等待中',
     stalledTitle: '环岛停住了。',
+    bootTitle: '环岛没有启动。',
+    bootBody: '有什么阻止了游戏加载。请检查网络后再试一次；你的进度在这台设备上是安全的。',
+    bootRetry: '再试一次',
     stalledBody: '游戏出了点问题。刷新后继续；你的进度在这台设备上是安全的。',
     reload: '刷新',
     openElsewhere: '环岛在别处打开了。',

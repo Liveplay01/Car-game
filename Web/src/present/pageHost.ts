@@ -36,6 +36,8 @@ export interface PageHost {
   refreshWaitingShift(): void;
   play(sounds: SoundID[], haptics: HapticID[]): void;
   showNotice(text: string): void;
+  /** A purchase was refused: says how much is missing (nothing when money was not the reason). */
+  denyMoney(price: number): void;
   /** A press began that may turn into a drag (a part picked up from the palette). */
   pressed(point: Vec2): void;
   /** The rewarded ad (the portal's, or Google's); false where there is none and the placeholder plays. */

@@ -46,8 +46,19 @@ const bootFailed = (): void => {
   car.style.setProperty('--to', from < 120 ? '-135deg' : '-495deg');
   boot.classList.add('failed');
 };
+// A browser refusing something on the way (autoplay, a permission, an aborted fetch) is no failed start.
+const bootRejected = (e: PromiseRejectionEvent): void => {
+  if (!(e.reason instanceof DOMException)) bootFailed();
+};
 window.addEventListener('error', bootFailed);
-window.addEventListener('unhandledrejection', bootFailed);
+window.addEventListener('unhandledrejection', bootRejected);
+// index.html can only say it in English; from here on the message is in the player's language.
+const [failTitle, failBody, failLink] = (['h1', 'p', 'a'] as const).map((tag) => boot?.querySelector(`.boot-fail ${tag}`));
+if (failTitle && failBody && failLink) {
+  failTitle.textContent = S.shell.bootTitle;
+  failBody.textContent = S.shell.bootBody;
+  failLink.textContent = S.shell.bootRetry;
+}
 
 /** Holds the lock for as long as this page lives; false when another page has it (with `ifAvailable`). A browser that refuses locks here (a sandboxed frame) plays on. */
 const holdPlay = (options: LockOptions): Promise<boolean> =>
@@ -116,7 +127,7 @@ if (import.meta.env.DEV) {
 gameLoaded();
 // The game is on screen: the boot screen fades away, and later errors are the game's own business.
 window.removeEventListener('error', bootFailed);
-window.removeEventListener('unhandledrejection', bootFailed);
+window.removeEventListener('unhandledrejection', bootRejected);
 // `npm run dev` only, to look at the boot screen: `?boot=wait` keeps it (its message comes after
 // 20 s, as on a start that hangs), `?boot=fail` shows the message at once.
 const bootDemo = import.meta.env.DEV ? new URLSearchParams(location.search).get('boot') : null;

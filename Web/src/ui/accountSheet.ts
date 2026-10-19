@@ -1,7 +1,7 @@
-import { h } from './dom';
+import { confirmButton, h } from './dom';
 import { swapView, openSheet } from './sheets';
 import { forgetBoards, nameForm, openAccount } from './ranksPanel';
-import { confirmButton, offerToPasswordManager, secretCodeRow } from './cloudSheet';
+import { offerToPasswordManager, secretCodeRow } from './cloudSheet';
 import { cloudEnabled, cloudLinked, cloudView, createCloud, onCloudChange } from '../net/cloud';
 import { type Records, deleteAccount, describeError, leaderboardEnabled, loadAccount, renameAccount, syncScores } from '../net/leaderboard';
 import { inPortal } from '../storage/device';
@@ -168,17 +168,16 @@ export function accountSheet(layer: HTMLElement, actions: AccountActions, welcom
       code ? h('p', { class: 'section-note' }, S.account.codeNote) : null,
       h('button', { class: 'btn primary block', type: 'button', onclick: () => close() }, S.account.finish),
       code ? h('button', { class: 'btn block quiet-btn', type: 'button', onclick: () => actions.openCloud() }, S.account.manage) : null,
-      confirmButton(
-        S.ranks.remove,
-        S.ranks.removeAgain,
-        async () => {
+      confirmButton(S.ranks.remove, S.ranks.removeAgain, 'btn block destructive', async () => {
+        try {
           const account = loadAccount();
           if (account) await deleteAccount(account);
           forgetBoards();
           show('ask');
-        },
-        say,
-      ),
+        } catch (error) {
+          say(describeError(error));
+        }
+      }),
     ];
   }
 

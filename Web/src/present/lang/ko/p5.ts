@@ -183,6 +183,7 @@ export default (S: Strings): Words<Strings> => ({
             ? '광고가 중간에 닫혀서 보상이 없어요.'
             : '지금은 볼 수 있는 광고가 없어요. 잠시 후 다시 시도해 주세요.',
     notHere: '여기서는 제공되지 않아요.',
+    expired: '광고가 재생되는 동안 혜택이 끝났어요. 아무것도 소모되지 않았어요.',
     unavailable: '지금은 볼 수 있는 광고가 없어요. 잠시 후 다시 시도해 주세요.',
     freeStep: '무료 1단계',
     freeStepAction: '광고 보기 · 무료 1단계',
@@ -347,6 +348,7 @@ export default (S: Strings): Words<Strings> => ({
     ideaLabel: '내 아이디어',
     send: '아이디어 보내기',
     ideaHow: '게임에 넣고 싶은 것을 알려 주세요. 읽어 보고 알맞게 다듬어서 여기에 올려요. 아이디어는 하루에 하나.',
+    ideaCount: (n, max, min) => (n < min ? `${min}자 이상 · ${n}/${max}` : `${n}/${max}`),
     ownAmount: '직접 입력',
     giveAmount: (price) => `${price} 내기`,
   },
@@ -387,6 +389,8 @@ export default (S: Strings): Words<Strings> => ({
     noCrew: '소셜 → 크루에서 크루에 가입하면 내 기록을 비교할 수 있어요.',
     openCrew: '크루로 가기',
     nobody: '아직 아무도 없어요',
+    stale: '최신 정보가 아니에요',
+    playNow: '지금 플레이',
     unavailable: '랭킹을 사용할 수 없어요',
     tryAgain: '다시 시도',
     crewOnly: '내 크루만',
@@ -547,7 +551,6 @@ export default (S: Strings): Words<Strings> => ({
     format: '방식',
     shareText: (code) => `내 로터리로 와: 코드 ${code}`,
     linkCopied: '초대 링크를 복사했어요',
-    copyLink: '이 링크 복사',
   },
 
   versus: {
@@ -604,6 +607,9 @@ export default (S: Strings): Words<Strings> => ({
     notEnough: '플레이어가 부족해요',
     readyWaiting: '준비 완료 · 대기 중',
     stalledTitle: '로터리가 멈췄어요.',
+    bootTitle: '로터리가 시작되지 않았어요.',
+    bootBody: '게임을 불러오지 못했어요. 연결을 확인하고 다시 시도하세요. 진행 상황은 이 기기에서 안전해요.',
+    bootRetry: '다시 시도',
     stalledBody: '게임에서 문제가 생겼어요. 계속하려면 새로고침하세요. 진행 상황은 이 기기에서 안전해요.',
     reload: '새로고침',
     openElsewhere: '로터리가 다른 곳에서 열려 있어요.',

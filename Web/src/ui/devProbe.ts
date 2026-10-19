@@ -77,7 +77,35 @@ export function installProbe(shell: Shell): void {
       step();
       return state();
     },
+    /** Milliseconds per frame, building the scene and drawing it, on whatever is showing (a shift is started if the game waits). */
+    perf: (frames = 300) => {
+      if (game.screen.k === 'ready') game.perform({ k: 'startShift' });
+      const drawer = shell['drawer'];
+      const built: number[] = [];
+      const drawn: number[] = [];
+      let items = 0;
+      for (let i = 0; i < 60 + frames; i++) {
+        const t0 = performance.now();
+        const list = game.frame(FRAME, [], view, 0);
+        const t1 = performance.now();
+        drawer.draw(list);
+        if (i < 60) continue;
+        built.push(t1 - t0);
+        drawn.push(performance.now() - t1);
+        items += list.items.length;
+      }
+      const spread = (ms: number[]): Spread => {
+        const sorted = [...ms].sort((a, b) => a - b);
+        return { avg: +(ms.reduce((a, b) => a + b, 0) / ms.length).toFixed(2), p95: +sorted[Math.floor(sorted.length * 0.95)].toFixed(2) };
+      };
+      return { screen: game.screen.k, items: Math.round(items / frames), build: spread(built), draw: spread(drawn) };
+    },
   };
+}
+
+export interface Spread {
+  avg: number;
+  p95: number;
 }
 
 export interface Snapshot {
@@ -105,4 +133,5 @@ export interface Probe {
   play(bot?: Bot, seconds?: number, settle?: number): Snapshot & { played: boolean };
   wait(seconds: number): Snapshot;
   perform(action: Parameters<Shell['game']['perform']>[0]): Snapshot;
+  perf(frames?: number): { screen: string; items: number; build: Spread; draw: Spread };
 }

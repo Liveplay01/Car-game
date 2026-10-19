@@ -191,6 +191,7 @@ export default (_s: Strings): Words<Strings> => ({
       cancel: 'Abbrechen',
       deleting: 'Wird gelöscht…',
       failed: 'Etwas ist schiefgelaufen. Versuche es erneut.',
+      offline: (reason) => `${reason} Dein Fortschritt auf diesem Gerät ist unverändert. Versuche es erneut, wenn du online bist.`,
     },
   },
 

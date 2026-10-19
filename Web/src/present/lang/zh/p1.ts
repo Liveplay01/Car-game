@@ -191,6 +191,7 @@ export default (_s: Strings): Words<Strings> => ({
       cancel: '取消',
       deleting: '正在删除…',
       failed: '出了点问题，请再试一次。',
+      offline: (reason) => `${reason} 这台设备上的进度没有变化。联网后再试一次。`,
     },
   },
 

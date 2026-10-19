@@ -191,6 +191,7 @@ export default (_s: Strings): Words<Strings> => ({
       cancel: '취소',
       deleting: '삭제하는 중…',
       failed: '문제가 생겼어요. 다시 시도해 주세요.',
+      offline: (reason) => `${reason} 이 기기의 진행 상황은 그대로예요. 온라인일 때 다시 시도해 주세요.`,
     },
   },
 

@@ -145,7 +145,8 @@ export function syncModule(): ServerModule {
         if (!found) throw unknownCode();
         store.seen(raw, ctx.now());
         if (c.req.query('have') === String(found.updatedAt)) return c.json({ updatedAt: found.updatedAt });
-        return c.json({ save: JSON.parse(found.save) as unknown, updatedAt: found.updatedAt });
+        // The stored text is our own JSON.stringify of an object: sent as it is, not parsed and written again.
+        return c.body(`{"save":${found.save},"updatedAt":${found.updatedAt}}`, 200, { 'Content-Type': 'application/json; charset=UTF-8' });
       });
 
       app.put('/sync', perAddress, big, async (c) => {

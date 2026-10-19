@@ -32,9 +32,21 @@ tapper should crash in almost every shift.
 check (Playwright, `npm run e2e`) does not need a picture. `state()` says where the game is (screen, level, money,
 the shift, the result, the visible text of the DOM layers), `play('careful' | 'random' | 'none', seconds)` plays
 one whole shift faster than real time (about half a second) and returns the result, `wait(seconds)` lets time pass,
-`perform(action)` does a screen action (`{ k: 'showSocial', section: 1 }`). Start with `/?demo&level=12` for a
+`perform(action)` does a screen action (`{ k: 'showSocial', section: 1 }`). `perf(frames)` times the frames of what is showing (building the scene and drawing it, in ms, with the item count); use it with CPU throttling (Chrome DevTools, 4×) for a phone-like number, before and after a rendering change. Start with `/?demo&level=12` for a
 save to look around in. The careful bot here taps once per display frame, so it now and then crashes where
 `npm run sim` (120 Hz) does not: use `sim` for balance, the probe for "does the screen flow work".
+
+### Drawing performance
+
+The canvas drawer keeps a frame cheap by painting what does not change once and copying it (`present/draw.ts`):
+the ground and the road are baked (`RenderList.bake`), light and plain cars are **sprites** (`RenderItem` kind `sprite`,
+`SpriteArt` in `present/render.ts`: painted once per zoom step, at twice the pixels for cars so turned edges stay sharp,
+then one `drawImage` each: headlight cones and bulbs in `present/headlights.ts`, unhurt cars in `CarArt.addCached`), the
+glass panel's shadow is a copied picture, and the frost under a shift's top bar is remade every third frame
+(`RenderList.frostEvery`). What animates, dents, fades or flashes (a wreck, a skin effect, a siren, a fading car) is still
+drawn shape by shape. A new kind of shape in the list needs a case in `CanvasDrawer.item`, `offscreen`, `sameItem`,
+`signatureOf` (`ui/shell.ts`) and `svg.ts`. Measure a change with `__probe.perf()` under 4× CPU throttling; the first
+numbers (night level 20, 4×): 7.2 ms a frame before, 4.4 ms after.
 
 ## Controls
 

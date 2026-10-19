@@ -206,6 +206,8 @@ export class AudioPlayer {
     }
     const voice: Voice = { priority, at: now, src, gain };
     src.onended = () => {
+      src.disconnect();
+      gain.disconnect();
       this.voices = this.voices.filter((v) => v !== voice);
     };
     this.voices.push(voice);

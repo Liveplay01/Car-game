@@ -9,7 +9,7 @@ import { Auction, type AuctionEvent, type AuctionRun, type Lot } from '../core/a
 import { Fund, GIFTS } from '../core/fund';
 import type { TitleId } from '../core/elite';
 import { cosmetic } from '../core/loot';
-import { fetchIdeas, giveToIdea, ideasEnabled, suggestIdea, type Idea, type IdeasView } from '../net/ideas';
+import { IDEA_MAX, IDEA_MIN, fetchIdeas, giveToIdea, ideasEnabled, suggestIdea, type Idea, type IdeasView } from '../net/ideas';
 import { describeError, loadAccount, syncScores, type Records } from '../net/leaderboard';
 import { loadPlayerName } from '../storage/profile';
 import { Fmt, S } from '../present/strings';
@@ -720,10 +720,16 @@ export function clubPanel(host: ClubHost): ClubPanel {
       };
       body.append(note(S.clubPanel.ideaName), nameForm(loadPlayerName(), S.clubPanel.save, join, null));
     } else {
-      const text = h('textarea', { class: 'text-input text-area', rows: '5', maxlength: '500', placeholder: S.clubPanel.ideaPlaceholder, 'aria-label': S.clubPanel.ideaLabel });
+      const text = h('textarea', { class: 'text-input text-area', rows: '5', maxlength: String(IDEA_MAX), placeholder: S.clubPanel.ideaPlaceholder, 'aria-label': S.clubPanel.ideaLabel });
       const failure = h('div');
       const send = h('button', { class: 'btn primary block', type: 'button', disabled: true }, S.clubPanel.send);
-      text.addEventListener('input', () => (send.disabled = text.value.trim().length < 10));
+      // Why Send waits, and how much room is left, under the field as the player types.
+      const count = h('p', { class: 'field-help', 'aria-live': 'polite' });
+      text.addEventListener('input', () => {
+        const length = text.value.trim().length;
+        send.disabled = length < IDEA_MIN;
+        count.textContent = S.clubPanel.ideaCount(length, IDEA_MAX, IDEA_MIN);
+      });
       send.addEventListener('click', async () => {
         send.disabled = true;
         try {
@@ -736,7 +742,7 @@ export function clubPanel(host: ClubHost): ClubPanel {
           send.disabled = false;
         }
       });
-      body.append(note(S.clubPanel.ideaHow), text, failure, send);
+      body.append(note(S.clubPanel.ideaHow), text, count, failure, send);
     }
     close = openSheet(host.layer, S.clubPanel.suggest, body);
   }

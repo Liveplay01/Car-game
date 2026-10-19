@@ -645,7 +645,7 @@ export default (S: Strings): Words<Strings> => ({
 
   notice: {
     more: (n) => `+${n} de plus · voir Progression`,
-    notEnoughMoney: (price) => `Manque de ${MONEY_MARK} · ${money(price)} requis`,
+    notEnoughMoney: (missing) => `Manque de ${MONEY_MARK} · il manque ${money(missing)}`,
     detourIdle: 'Construit, mais inactif ici : aucune sortie entre le panneau et votre voie',
   },
 });

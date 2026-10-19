@@ -75,7 +75,10 @@ export class AdFlow {
     }
     this.requested = true;
     this.host.report('ask', reward);
+    // An ad that never answers (a stuck SDK) must not keep the offers locked: a late answer still pays.
+    const watchdog = window.setTimeout(() => (this.requested = false), AdFlow.timeoutMs);
     const fail = (outcome: Exclude<RewardedOutcome, 'watched'>): void => {
+      window.clearTimeout(watchdog);
       this.requested = false;
       this.host.report(outcome, reward);
       this.host.play(['denied'], []);
@@ -83,28 +86,34 @@ export class AdFlow {
     };
     const asked = this.host.rewardedAd((outcome) => {
       if (outcome !== 'watched') return fail(outcome);
+      window.clearTimeout(watchdog);
       this.requested = false;
       this.host.report('watched', reward);
-      this.grant(reward);
+      if (this.grant(reward)) return;
+      // The chance passed while the ad played (the run ended, today's limit was reached elsewhere): nothing was used up.
+      this.host.play(['denied'], []);
+      this.host.showNotice(S.ads.expired);
     });
     if (!asked) fail('unavailable');
   }
 
+  private static readonly timeoutMs = 120_000;
+
   /** The ad was watched to the end: the reward, saved before anything shows. */
-  private grant(reward: AdReward): void {
+  private grant(reward: AdReward): boolean {
     const { save, today, config } = this.host;
     const career = save.career;
     switch (reward) {
       case 'chest':
-        if (!Careers.rewardAd(career, today, config)) return;
+        if (!Careers.rewardAd(career, today, config)) return false;
         this.host.persist();
         this.host.play(['purchase'], ['paid']);
         this.host.shopPage.selectedChest = 'standard';
         this.host.celebrate({ kind: 'chest', title: S.ads.chestEarned, line: S.ads.chestEarnedLine, color: 'accent', power: 1 });
-        return;
+        return true;
       case 'upgrade': {
         const u = Careers.rewardAdUpgrade(career, today, config);
-        if (u === null) return;
+        if (u === null) return false;
         const steps = Careers.steps(career, u);
         const page = this.host.upgradePage;
         page.selected = u;
@@ -114,52 +123,52 @@ export class AdFlow {
         this.host.refreshWaitingShift();
         this.host.play(['purchase'], ['comboUp']);
         this.host.showNotice(S.ads.upgradeReward(S.upgrades.name(u), steps, upgradeMaxSteps[u]));
-        return;
+        return true;
       }
       case 'boost':
-        if (!Careers.rewardAdBoost(career, today, config)) return;
+        if (!Careers.rewardAdBoost(career, today, config)) return false;
         this.host.persist();
         this.host.play(['purchase'], ['paid']);
         this.host.showNotice(S.ads.boostReward(percent(config.upgradeAdBoost)));
-        return;
+        return true;
       case 'rescue': {
         const days = Careers.rewardAdRescue(career, today, config);
-        if (days === null) return;
+        if (days === null) return false;
         this.host.persist();
         this.host.celebrate({ kind: 'rescue', title: S.ads.rescued, line: S.ads.rescuedLine(days), color: 'hazard', power: 1.2 });
-        return;
+        return true;
       }
       case 'freeze':
-        if (!Careers.rewardAdFreeze(career, today)) return;
+        if (!Careers.rewardAdFreeze(career, today)) return false;
         this.host.persist();
         this.host.celebrate({ kind: 'freeze', title: S.ads.froze, line: S.ads.frozeLine, color: 'lightBlue', power: 1 });
-        return;
+        return true;
       case 'retry':
-        if (!Careers.rewardAdRetry(career, today)) return;
+        if (!Careers.rewardAdRetry(career, today)) return false;
         this.host.persist();
         this.host.celebrate({ kind: 'retry', title: S.ads.retried, line: S.ads.retriedLine, color: 'hazard', power: 1.2 });
-        return;
+        return true;
       case 'double': {
         const pay = this.host.dailyPay;
-        if (!Careers.rewardAdDouble(career, today, pay)) return;
+        if (!Careers.rewardAdDouble(career, today, pay)) return false;
         this.host.persist();
         this.host.celebrate({ kind: 'double', title: S.ads.doubled, line: '', color: 'coin', power: 1.5, count: pay });
-        return;
+        return true;
       }
       case 'pay': {
         // No celebration (the three big moments stay three): the result's money counts up.
         const pay = this.host.shiftPay;
-        if (!Careers.rewardAdShiftDouble(career, today, pay, config)) return;
+        if (!Careers.rewardAdShiftDouble(career, today, pay, config)) return false;
         this.host.persist();
         this.host.bankResult(pay);
-        return;
+        return true;
       }
       case 'revive':
         // The run itself goes on: the count-in is the celebration.
-        if (!this.host.canRevive || !Careers.rewardAdRevive(career, today, config)) return;
+        if (!this.host.canRevive || !Careers.rewardAdRevive(career, today, config)) return false;
         this.host.persist();
         this.host.reviveRun();
-        return;
+        return true;
     }
   }
 }

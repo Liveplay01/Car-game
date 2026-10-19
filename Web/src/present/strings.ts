@@ -230,6 +230,7 @@ export const S = {
       cancel: 'Cancel',
       deleting: 'Deleting…',
       failed: 'Something went wrong. Try again.',
+      offline: (reason: string): string => `${reason} Your progress on this device is untouched. Try again when you are online.`,
     },
   },
 
@@ -1116,7 +1117,7 @@ export const S = {
     chestsOpened: 'Chests opened',
     none: '–',
     days: (d: number): string => (d === 1 ? '1 day' : `${d} days`),
-    owned: (o: number, t: number): string => `${o} / ${t}`,
+    owned: (o: number, t: number): string => `${o}/${t}`,
     collectionShare: (o: number, t: number): string => `Collection · ${Math.floor((o / t) * 100)} %`,
     questsHint: 'Quests pay once each and change at midnight.',
     timingLabel: (n: number): string => `Your timing · last ${n} merges`,
@@ -1383,6 +1384,8 @@ export const S = {
             ? 'The ad was closed early, so there is no reward.'
             : 'No ad available right now. Try again in a moment.',
     notHere: 'This is not offered here.',
+    /** A watched ad whose chance passed meanwhile (the run ended, today's limit was reached). */
+    expired: 'The offer ended while the ad played. Nothing was used up.',
     unavailable: 'No ad available right now. Try again in a moment.',
     /** The upgrade sheet of today's pick. */
     freeStep: 'Free step',
@@ -1556,6 +1559,7 @@ export const S = {
     ideaLabel: 'Your idea',
     send: 'Send idea',
     ideaHow: 'Tell us what you would like in the game. We read it, word it so it fits, and publish it here. One idea a day.',
+    ideaCount: (n: number, max: number, min: number): string => (n < min ? `At least ${min} characters · ${n}/${max}` : `${n}/${max}`),
     ownAmount: 'Your own amount',
     giveAmount: (price: string): string => `Give ${price}`,
   },
@@ -1598,6 +1602,9 @@ export const S = {
     noCrew: 'Join a crew under Social → Crew to compare your records with it.',
     openCrew: 'Open Crew',
     nobody: 'Nobody here yet',
+    /** A list from before that could not be refreshed. */
+    stale: 'Not up to date',
+    playNow: 'Play now',
     unavailable: 'Leaderboard unavailable',
     tryAgain: 'Try again',
     crewOnly: 'My crew only',
@@ -1617,7 +1624,8 @@ export const S = {
     ordinal: (n: number): string => `${n}${n % 100 >= 11 && n % 100 <= 13 ? 'th' : ({ 1: 'st', 2: 'nd', 3: 'rd' } as Record<number, string>)[n % 10] ?? 'th'}`,
     copied: 'Copied',
     copy: 'Copy',
-    copyPrompt: 'Copy this',
+    /** The sheet that shows a text to copy by hand when the browser refuses the clipboard (`ui/share.ts`). */
+    copyPrompt: 'Copy from here',
     shareLink: 'Share invite link',
     tryAgain: 'Try again',
     playTogether: 'Play together',
@@ -1763,7 +1771,6 @@ export const S = {
     format: 'Format',
     shareText: (code: string): string => `Join my roundabout: code ${code}`,
     linkCopied: 'Invite link copied',
-    copyLink: 'Copy this link',
   },
 
   /** The multiplayer match on the canvas (`present/versus.ts`). */
@@ -1823,6 +1830,10 @@ export const S = {
     notEnough: 'Not enough players',
     readyWaiting: 'Ready · waiting',
     stalledTitle: 'The roundabout stopped.',
+    /** The boot screen's message when the start fails (index.html says it in English until the game loads). */
+    bootTitle: 'The roundabout did not start.',
+    bootBody: 'Something kept the game from loading. Check your connection and try again; your progress is safe on this device.',
+    bootRetry: 'Try again',
     stalledBody: 'Something went wrong in the game. Reload to carry on; your progress is safe on this device.',
     reload: 'Reload',
     openElsewhere: 'The roundabout is open elsewhere.',
@@ -2348,7 +2359,7 @@ export const S = {
           return `Complete ${g.shifts} Legendary Shifts`;
       }
     },
-    have: (have: number, need: number): string => `${Math.min(have, need)} / ${need}`,
+    have: (have: number, need: number): string => `${Math.min(have, need)}/${need}`,
     done: 'Done',
     withTitle: (title: string): string => `+ title “${title}”`,
     eyebrow: 'Feat',
@@ -2688,7 +2699,8 @@ export const S = {
   notice: {
     /** The rest of a result's news, counted (`GameSession.budget`). */
     more: (n: number): string => `+${n} more · see Progress`,
-    notEnoughMoney: (price: string): string => `Not enough ${MONEY_MARK} · ${money(price)} needed`,
+    /** What is missing, not the whole price: the player sees how far off they are. */
+    notEnoughMoney: (missing: string): string => `Not enough ${MONEY_MARK} · ${money(missing)} more needed`,
     detourIdle: 'Built, but it does nothing here: no exit between it and your arm',
   },
 };

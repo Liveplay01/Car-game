@@ -557,7 +557,8 @@ export class World {
   moveVehicles(dt: number, now: number): void {
     const layout = this.layout;
     const circumference = layout.ring.length;
-    let stayingBots = this.vehicles.filter((veh) => this.isRingBot(veh) && veh.phase.kind === 'ring' && !veh.phase.isLeaving).length;
+    let stayingBots = 0;
+    for (const veh of this.vehicles) if (this.isRingBot(veh) && veh.phase.kind === 'ring' && !veh.phase.isLeaving) stayingBots++;
     const wrecksOnRoad = this.vehicles.some((veh) => veh.isCrashed);
     for (let i = 0; i < this.vehicles.length; i++) {
       const veh = this.vehicles[i];

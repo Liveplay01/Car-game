@@ -164,6 +164,8 @@ export class GameSession {
    * leaves out its decoration (ground texture, what flies through the air, cloud shadows).
    */
   lowDetail = false;
+  /** The frost under a shift's top bar is made again every this many frames. */
+  private static readonly frostEvery = 3;
   /** A page that has stood still under its 92 % dim: the city under it leaves out what could not be seen (`Shell.frame`). */
   sceneThin = false;
 
@@ -842,7 +844,7 @@ export class GameSession {
         if (!Careers.buyChest(career, action.kind, this.config, action.bundle)) {
           this.shopPage.denied = 0.001;
           this.play(['denied'], []);
-          this.showNotice(S.notice.notEnoughMoney(Fmt.number((action.bundle ? chestBundle(action.kind, this.config)?.price : chestPrice(action.kind, this.config)) ?? 0)));
+          this.denyMoney((action.bundle ? chestBundle(action.kind, this.config)?.price : chestPrice(action.kind, this.config)) ?? 0);
           return;
         }
         this.persist();
@@ -999,6 +1001,11 @@ export class GameSession {
   /** A reply to what the player just did: shown at once. */
   showNotice(textValue: string): void {
     this.notices.say(textValue);
+  }
+
+  denyMoney(price: number): void {
+    const missing = price - this.save.career.money;
+    if (missing > 0) this.showNotice(S.notice.notEnoughMoney(Fmt.number(missing)));
   }
 
   /** The notice showing right now, for the screen reader's live region. */
@@ -1301,6 +1308,7 @@ export class GameSession {
       playPitched: (sound, pitch) => this.playPitched(sound, pitch),
       persist: () => this.persist(),
       showNotice: (text) => this.showNotice(text),
+      denyMoney: (price) => this.denyMoney(price),
       announceAlbums: () => this.announceAlbums(),
       watchAdBoost: () => this.perform({ k: 'watchAdBoost' }),
     };
@@ -1374,6 +1382,7 @@ export class GameSession {
       refreshWaitingShift: () => this.refreshWaitingShift(),
       play: (sounds, haptics) => this.play(sounds, haptics),
       showNotice: (text) => this.showNotice(text),
+      denyMoney: (price) => this.denyMoney(price),
       pressed: (point) => (this.pressAt = point),
       rewardedAd: (done) => this.output?.rewardedAd?.(done) ?? false,
       get adOffers() {
@@ -3330,6 +3339,7 @@ export class GameSession {
     this.conditionTargets = [];
     this.adTarget = null;
     if (s.k === 'playing') {
+      list.frostEvery = GameSession.frostEvery;
       const lit = list.items.length;
       HUD.addFlowGlow(list, world, this.flowLevel, rm ? 0 : 1 - Ease.clamp01(this.sinceCarSent / 0.3));
       HUD.addChase(list, world, alpha);

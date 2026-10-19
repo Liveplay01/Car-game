@@ -186,6 +186,7 @@ export default (_s: Strings): Words<Strings> => ({
       cancel: 'Annulla',
       deleting: 'Eliminazione in corso…',
       failed: 'Si è verificato un errore. Riprova.',
+      offline: (reason) => `${reason} I tuoi progressi su questo dispositivo sono intatti. Riprova quando sei online.`,
     },
   },
 

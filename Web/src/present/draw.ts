@@ -1,5 +1,4 @@
-import type { RenderList, RenderItem, Camera, Grain, Bake } from './render';
-import { Ease, toScreen, unitHash } from './render';
+import { RenderList, type RenderItem, type Camera, type Grain, type Bake, type SpriteArt, Ease, toScreen, unitHash } from './render';
 import { COLORS, css, type ColorToken } from './theme';
 import { type Vec2, v } from '../core/vec2';
 import { MONEY_MARK, textPieces, inlineMoneyWidth, moneyShapes } from './icons';
@@ -22,27 +21,56 @@ function isBright(token: ColorToken): boolean {
   return 0.2126 * r + 0.7152 * g + 0.0722 * b > 110;
 }
 
-/** Deep equality of plain shapes (numbers, strings, arrays, objects), without making anything. */
-function same(a: unknown, b: unknown): boolean {
-  if (a === b) return true;
-  if (typeof a !== 'object' || typeof b !== 'object' || a === null || b === null) return false;
-  if (Array.isArray(a)) {
-    if (!Array.isArray(b) || a.length !== b.length) return false;
-    for (let i = 0; i < a.length; i++) if (!same(a[i], b[i])) return false;
-    return true;
-  }
-  if (Array.isArray(b)) return false;
-  const x = a as Record<string, unknown>;
-  const y = b as Record<string, unknown>;
-  for (const k in x) if (!same(x[k], y[k])) return false;
-  for (const k in y) if (!(k in x) && y[k] !== undefined) return false;
+const samePoint = (a: Vec2, b: Vec2): boolean => a.x === b.x && a.y === b.y;
+
+function samePoints(a: readonly Vec2[], b: readonly Vec2[]): boolean {
+  if (a.length !== b.length) return false;
+  for (let i = 0; i < a.length; i++) if (!samePoint(a[i], b[i])) return false;
   return true;
+}
+
+/** Whether two items show the same shape: compared field by field, so nothing is made and no key list is walked. */
+function sameItem(a: RenderItem, b: RenderItem): boolean {
+  if (a === b) return true;
+  if (a.color !== b.color || a.opacity !== b.opacity || a.space !== b.space || a.grain !== b.grain || a.tag !== b.tag || a.glass !== b.glass || a.fade !== b.fade) return false;
+  if (a.clip !== b.clip && !(a.clip && b.clip && a.clip.minX === b.clip.minX && a.clip.minY === b.clip.minY && a.clip.maxX === b.clip.maxX && a.clip.maxY === b.clip.maxY)) return false;
+  const p = a.p;
+  const q = b.p;
+  if (p === q) return true;
+  switch (p.k) {
+    case 'rect':
+      return q.k === 'rect' && samePoint(p.center, q.center) && samePoint(p.size, q.size) && p.radius === q.radius && p.rotation === q.rotation;
+    case 'circle':
+      return q.k === 'circle' && samePoint(p.center, q.center) && p.radius === q.radius;
+    case 'arc':
+      return q.k === 'arc' && samePoint(p.center, q.center) && p.radius === q.radius && p.thickness === q.thickness && p.start === q.start && p.end === q.end && !p.round === !q.round;
+    case 'line':
+      return q.k === 'line' && samePoint(p.from, q.from) && samePoint(p.to, q.to) && p.thickness === q.thickness;
+    case 'polygon': {
+      if (q.k !== 'polygon' || !samePoints(p.points, q.points)) return false;
+      const [ph, qh] = [p.holes ?? [], q.holes ?? []];
+      if (ph.length !== qh.length) return false;
+      for (let i = 0; i < ph.length; i++) if (!samePoints(ph[i], qh[i])) return false;
+      return true;
+    }
+    case 'segments':
+      return q.k === 'segments' && p.thickness === q.thickness && samePoints(p.points, q.points);
+    case 'dots': {
+      if (q.k !== 'dots' || !samePoints(p.points, q.points) || p.radii.length !== q.radii.length) return false;
+      for (let i = 0; i < p.radii.length; i++) if (p.radii[i] !== q.radii[i]) return false;
+      return true;
+    }
+    case 'text':
+      return q.k === 'text' && p.text === q.text && samePoint(p.position, q.position) && p.size === q.size && p.align === q.align && p.weight === q.weight && p.wght === q.wght;
+    case 'sprite':
+      return q.k === 'sprite' && p.art === q.art && samePoint(p.center, q.center) && p.rotation === q.rotation && samePoint(p.scale, q.scale);
+  }
 }
 
 /** Whether `items[start..end]` show exactly the shapes `before` did. */
 function sameItems(items: RenderItem[], start: number, end: number, before: RenderItem[]): boolean {
   if (before.length !== end - start) return false;
-  for (let i = start; i < end; i++) if (!same(items[i], before[i - start])) return false;
+  for (let i = start; i < end; i++) if (!sameItem(items[i], before[i - start])) return false;
   return true;
 }
 
@@ -75,6 +103,7 @@ export class CanvasDrawer {
   }
 
   resize(width: number, height: number, dpr: number): void {
+    if (dpr !== this.dpr) this.sprites.clear();
     this.dpr = dpr;
     this.width = width;
     this.height = height;
@@ -149,7 +178,14 @@ export class CanvasDrawer {
     }
   }
 
+  /** Frames drawn, and the frost of the last glass panel: its place, the frame it was made in and how long it may be kept. */
+  private tick = 0;
+  private frostMade = { key: '', at: 0 };
+  private frostEvery = 1;
+
   draw(list: RenderList): void {
+    this.tick++;
+    this.frostEvery = list.frostEvery;
     const ctx = this.ctx;
     const still = this.still(list);
     let start = 0;
@@ -551,22 +587,56 @@ export class CanvasDrawer {
 
   /** The soft shadow of a glass panel, only where the panel is not: through the glass it would show as a dark patch. */
   private glassShadow(x: number, y: number, w: number, h: number, r: number, opacity: number): void {
-    const ctx = this.ctx;
     const d = this.dpr;
-    ctx.save();
-    ctx.beginPath();
-    ctx.rect(-this.offset.x - 40, -this.offset.y - 40, this.width + 80, this.height + 80);
-    ctx.roundRect(x, y, w, h, r);
-    ctx.clip('evenodd');
-    ctx.shadowColor = css('shadow', opacity * 0.9);
-    ctx.shadowBlur = 14 * d;
-    ctx.shadowOffsetY = 4 * d;
-    ctx.fillStyle = '#000';
-    ctx.beginPath();
-    ctx.roundRect(x, y, w, h, r);
-    ctx.fill();
-    ctx.restore();
+    // A blur is dear every frame: a panel that keeps its size and strength gets its shadow made once and copied (its own space is cut out).
+    const room = CanvasDrawer.shadowRoom;
+    const q = Math.round(opacity * 16) / 16;
+    const key = `${w.toFixed(1)}|${h.toFixed(1)}|${r.toFixed(1)}|${q}|${d}`;
+    const shadow = this.shadows.get(key);
+    if (shadow) {
+      this.ctx.drawImage(shadow, x - room, y - room, shadow.width / d, shadow.height / d);
+      return;
+    }
+    // Seen twice in a row: worth keeping. A panel that is growing or fading goes on being drawn directly.
+    if (key === this.shadowSeen) {
+      const g = document.createElement('canvas');
+      g.width = Math.ceil((w + 2 * room) * d);
+      g.height = Math.ceil((h + 2 * room) * d);
+      const c = g.getContext('2d');
+      if (c) {
+        c.scale(d, d);
+        this.shadowPaint(c, room, room, w, h, r, q, g.width / d, g.height / d, 0, 0);
+        if (this.shadows.size >= 24) this.shadows.clear();
+        this.shadows.set(key, g);
+        this.ctx.drawImage(g, x - room, y - room, g.width / d, g.height / d);
+        return;
+      }
+    }
+    this.shadowSeen = key;
+    this.ctx.save();
+    this.shadowPaint(this.ctx, x, y, w, h, r, opacity, this.width + 80, this.height + 80, -this.offset.x - 40, -this.offset.y - 40);
+    this.ctx.restore();
   }
+
+  /** The shadow of a panel at (x, y), only outside it, on `c` inside the area that starts at (areaX, areaY). */
+  private shadowPaint(c: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number, opacity: number, areaW: number, areaH: number, areaX: number, areaY: number): void {
+    c.beginPath();
+    c.rect(areaX, areaY, areaW, areaH);
+    c.roundRect(x, y, w, h, r);
+    c.clip('evenodd');
+    c.shadowColor = css('shadow', opacity * 0.9);
+    c.shadowBlur = 14 * this.dpr;
+    c.shadowOffsetY = 4 * this.dpr;
+    c.fillStyle = '#000';
+    c.beginPath();
+    c.roundRect(x, y, w, h, r);
+    c.fill();
+  }
+
+  /** Points around a glass panel that its shadow reaches. */
+  private static readonly shadowRoom = 32;
+  private readonly shadows = new Map<string, HTMLCanvasElement>();
+  private shadowSeen = '';
 
   /** Whether the context can blur by itself (`ctx.filter`); Safari cannot, there `softBlur` does the same by shrinking. */
   nativeFilter = typeof CanvasRenderingContext2D !== 'undefined' && 'filter' in CanvasRenderingContext2D.prototype;
@@ -610,11 +680,17 @@ export class CanvasDrawer {
       art.width = Math.max(art.width, hw);
       art.height = Math.max(art.height, hh);
     }
-    const g = art.getContext('2d');
-    if (!g) return;
-    g.clearRect(0, 0, hw, hh);
-    g.filter = scene ? `blur(${sigma / 2}px)` : `blur(${sigma / 2}px) saturate(1.4)`;
-    g.drawImage(this.ctx.canvas, sx, sy, w, h, 0, 0, hw, hh);
+    const key = scene ? '' : `${sx},${sy},${w},${h},${sigma}`;
+    // The same panel a frame or two ago: its frost is still in `art`, and the scene behind it has hardly moved.
+    const kept = key !== '' && key === this.frostMade.key && this.tick - this.frostMade.at < this.frostEvery;
+    if (!kept) {
+      const g = art.getContext('2d');
+      if (!g) return;
+      g.clearRect(0, 0, hw, hh);
+      g.filter = scene ? `blur(${sigma / 2}px)` : `blur(${sigma / 2}px) saturate(1.4)`;
+      g.drawImage(this.ctx.canvas, sx, sy, w, h, 0, 0, hw, hh);
+      this.frostMade = { key, at: this.tick };
+    }
     if (scene) this.ctx.clearRect(sx, sy, w, h);
     this.ctx.drawImage(art, 0, 0, hw, hh, sx, sy, w, h);
   }
@@ -653,6 +729,42 @@ export class CanvasDrawer {
     const ctx = this.ctx;
     ctx.imageSmoothingQuality = 'high';
     ctx.drawImage(this.shrunk[0], 0, 0, this.shrunk[0].width, this.shrunk[0].height, sx, sy, w, h);
+  }
+
+  /** Sprites painted so far, by art, zoom step and pixel ratio. */
+  private readonly sprites = new Map<string, HTMLCanvasElement>();
+
+  /**
+   * The picture of `art` for a camera of `scale`, painted once per quarter-octave of zoom: the
+   * light is soft, so the small stretch to the exact zoom shows nothing.
+   */
+  private spriteOf(art: SpriteArt, scale: number): HTMLCanvasElement | null {
+    const step = Math.round(Math.log2(Math.max(scale * this.dpr, 0.05)) * 4);
+    const key = `${art.key}|${step}`;
+    const known = this.sprites.get(key);
+    if (known) return known;
+    const ppu = 2 ** (step / 4) * art.detail;
+    const w = Math.ceil((art.maxX - art.minX) * ppu);
+    const h = Math.ceil((art.maxY - art.minY) * ppu);
+    if (w < 1 || h < 1 || w > 2048 || h > 2048) return null;
+    const canvas = document.createElement('canvas');
+    canvas.width = w;
+    canvas.height = h;
+    const g = canvas.getContext('2d');
+    if (!g) return null;
+    const points = ppu / this.dpr;
+    const cam: Camera = { viewport: v(w / this.dpr, h / this.dpr), center: v(art.minX, art.maxY), focus: v(0, 0), scale: points };
+    const list = new RenderList(cam, 'background');
+    art.paint(list);
+    const [ctx, pad, offset, width, height] = [this.ctx, this.pad, this.offset, this.width, this.height];
+    [this.ctx, this.pad, this.offset, this.width, this.height] = [g, 0, v(0, 0), cam.viewport.x, cam.viewport.y];
+    this.prepare();
+    for (const item of list.items) if (!this.offscreen(item.p, cam)) this.item(item, cam);
+    [this.ctx, this.pad, this.offset, this.width, this.height] = [ctx, pad, offset, width, height];
+    this.forgetStyle();
+    if (this.sprites.size >= 96) this.sprites.clear();
+    this.sprites.set(key, canvas);
+    return canvas;
   }
 
   private setFill(color: string): void {
@@ -698,6 +810,11 @@ export class CanvasDrawer {
         x = fx + (p.center.x - cx0) * s;
         y = fy - (p.center.y - cy0) * s;
         reach = (Math.hypot(p.size.x, p.size.y) / 2) * s;
+        break;
+      case 'sprite':
+        x = fx + (p.center.x - cx0) * s;
+        y = fy - (p.center.y - cy0) * s;
+        reach = p.art.radius * Math.max(p.scale.x, p.scale.y) * s;
         break;
       case 'arc':
         x = fx + (p.center.x - cx0) * s;
@@ -834,6 +951,21 @@ export class CanvasDrawer {
           else ctx.rect(cx - w / 2, cy - h / 2, w, h);
           ctx.fill();
         }
+        return;
+      }
+      case 'sprite': {
+        const image = world ? this.spriteOf(p.art, cam.scale) : null;
+        if (!image) return;
+        this.place(world, cam, p.center);
+        const d = this.dpr;
+        const cos = Math.cos(-p.rotation) * d;
+        const sin = Math.sin(-p.rotation) * d;
+        const a = p.art;
+        ctx.setTransform(cos, sin, -sin, cos, this.px * d + this.offset.x * d + this.pad, this.py * d + this.offset.y * d + this.pad);
+        ctx.globalAlpha = Math.min(1, item.opacity);
+        ctx.drawImage(image, a.minX * p.scale.x * k, -a.maxY * p.scale.y * k, (a.maxX - a.minX) * p.scale.x * k, (a.maxY - a.minY) * p.scale.y * k);
+        ctx.globalAlpha = 1;
+        this.placeWorld();
         return;
       }
       case 'circle': {

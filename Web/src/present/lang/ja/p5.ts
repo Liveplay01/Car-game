@@ -183,6 +183,7 @@ export default (S: Strings): Words<Strings> => ({
             ? '広告が途中で閉じられたため、報酬はありません。'
             : '今は表示できる広告がありません。少し待ってもう一度お試しください。',
     notHere: 'ここでは提供されていません。',
+    expired: '広告の再生中にオファーが終了しました。何も消費されていません。',
     unavailable: '今は表示できる広告がありません。少し待ってもう一度お試しください。',
     freeStep: '無料の1段階',
     freeStepAction: '広告を見る · 無料の1段階',
@@ -347,6 +348,7 @@ export default (S: Strings): Words<Strings> => ({
     ideaLabel: 'あなたのアイデア',
     send: 'アイデアを送る',
     ideaHow: 'ゲームに入れたいものを教えてください。目を通して、ふさわしい形に書き直し、ここに掲載します。アイデアは1日1つ。',
+    ideaCount: (n, max, min) => (n < min ? `${min}文字以上 · ${n}/${max}` : `${n}/${max}`),
     ownAmount: '好きな額',
     giveAmount: (price) => `${price}を出す`,
   },
@@ -387,6 +389,8 @@ export default (S: Strings): Words<Strings> => ({
     noCrew: 'ソーシャル → クルーでクルーに入ると、記録を比べられます。',
     openCrew: 'クルーへ',
     nobody: 'まだだれもいません',
+    stale: '最新ではありません',
+    playNow: '今すぐプレイ',
     unavailable: 'ランキングは利用できません',
     tryAgain: 'もう一度試す',
     crewOnly: '自分のクルーだけ',
@@ -547,7 +551,6 @@ export default (S: Strings): Words<Strings> => ({
     format: '形式',
     shareText: (code) => `私のラウンドアバウトに来て: コード ${code}`,
     linkCopied: '招待リンクをコピーしました',
-    copyLink: 'このリンクをコピー',
   },
 
   versus: {
@@ -604,6 +607,9 @@ export default (S: Strings): Words<Strings> => ({
     notEnough: 'プレイヤーが足りません',
     readyWaiting: '準備完了 · 待機中',
     stalledTitle: 'ラウンドアバウトが止まりました。',
+    bootTitle: 'ラウンドアバウトが起動しませんでした。',
+    bootBody: 'ゲームを読み込めませんでした。接続を確認してもう一度お試しください。進行状況はこの端末で安全です。',
+    bootRetry: 'もう一度試す',
     stalledBody: 'ゲームで問題が起きました。続けるには再読み込みしてください。進行状況はこの端末で安全です。',
     reload: '再読み込み',
     openElsewhere: 'ラウンドアバウトは別の場所で開かれています。',

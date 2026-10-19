@@ -1,5 +1,6 @@
-import { h } from './dom';
+import { confirmButton, h } from './dom';
 import { openSheet, swapView } from './sheets';
+import { copy, flash } from './share';
 import {
   type CloudView,
   cloudView,
@@ -115,47 +116,13 @@ export function secretCodeRow(code: string): HTMLElement {
     value.classList.toggle('shown', shown);
     value.setAttribute('aria-label', shown ? S.cloud.yourCodeLabel(code) : S.cloud.hiddenLabel);
   });
-  const copy = h('button', { class: 'btn', type: 'button' }, S.cloud.copy);
-  copy.addEventListener('click', () => {
-    navigator.clipboard?.writeText(code).then(
-      () => {
-        copy.textContent = S.cloud.copied;
-        window.setTimeout(() => (copy.textContent = S.cloud.copy), 1500);
-      },
-      () => window.prompt(S.friends.copyPrompt, code),
-    );
-  });
-  return h('div', { class: 'row row-stack' }, h('div', { class: 'row-main' }, h('div', { class: 'row-sub' }, S.cloud.yourCode), value), h('div', { class: 'row-actions' }, reveal, copy));
+  const copyBtn = h('button', { class: 'btn', type: 'button' }, S.cloud.copy);
+  copyBtn.addEventListener('click', () => void copy(code).then((r) => r === 'copied' && flash(copyBtn, S.cloud.copied)));
+  return h('div', { class: 'row row-stack' }, h('div', { class: 'row-main' }, h('div', { class: 'row-sub' }, S.cloud.yourCode), value), h('div', { class: 'row-actions' }, reveal, copyBtn));
 }
 
 const row = (title: string, sub: string, ...extra: HTMLElement[]): HTMLElement =>
   h('div', { class: 'row' }, h('div', { class: 'row-main' }, h('div', { class: 'row-title' }, title), h('div', { class: 'row-sub' }, sub)), ...extra);
-
-/** A button that asks twice (like Remove me from the leaderboard): the second tap does it. */
-export function confirmButton(label: string, again: string, run: () => Promise<void>, fail: (message: string) => void): HTMLElement {
-  const button = h('button', { class: 'btn block destructive', type: 'button' }, label);
-  let armed = false;
-  button.addEventListener('click', () => {
-    if (!armed) {
-      armed = true;
-      button.textContent = again;
-      window.setTimeout(() => {
-        if (!button.isConnected) return;
-        armed = false;
-        button.textContent = label;
-      }, 3000);
-      return;
-    }
-    button.disabled = true;
-    run().catch((error: unknown) => {
-      button.disabled = false;
-      armed = false;
-      button.textContent = label;
-      fail(describeError(error));
-    });
-  });
-  return button;
-}
 
 export function cloudSheet(layer: HTMLElement, actions: CloudActions): () => void {
   const body = h('div', { class: 'cloud' });
@@ -268,7 +235,7 @@ export function cloudSheet(layer: HTMLElement, actions: CloudActions): () => voi
       h('div', { class: 'list' }, row(S.cloud.cloudCopy, state, now), row(S.cloud.passwordManager, S.cloud.passwordManagerSub, keep)),
       ...(own ? [h('p', { class: 'section-note' }, S.cloud.secret)] : []),
       h('button', { class: 'btn block quiet-btn', type: 'button', onclick: () => stopCloud() }, S.cloud.stop),
-      confirmButton(S.cloud.delete, S.cloud.deleteAgain, () => deleteCloud(), say),
+      confirmButton(S.cloud.delete, S.cloud.deleteAgain, 'btn block destructive', () => deleteCloud().catch((error: unknown) => say(describeError(error)))),
     ];
   }
 

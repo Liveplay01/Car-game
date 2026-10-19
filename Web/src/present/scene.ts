@@ -427,6 +427,7 @@ export const SceneBuilder = {
           model: look && 'model' in look ? (look.model ?? null) : null,
           finishTime,
           springTime,
+          cache: true,
         },
         world.config,
       );

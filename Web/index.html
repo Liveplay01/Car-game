@@ -63,8 +63,8 @@
         transform-origin: 100px 100px;
         animation: boot-orbit 2.5s linear 8, boot-stop 1.8s cubic-bezier(0.23, 1, 0.32, 1) 20s forwards;
       }
-      /* The ring's white signals light up as the car passes them (the delays are set per signal in the markup). */
-      .boot-sig { fill: #ffffff; opacity: 0.16; animation: boot-sig 2.5s linear 8; animation-delay: var(--d); }
+      /* The game's ring signal: ticks on the island's rim light up as the car passes the road beside them (the delays are set per tick in the markup). */
+      .boot-sig { fill: none; stroke: #ffffff; stroke-width: 2.5; opacity: 0.16; animation: boot-sig 2.5s linear 8; animation-delay: var(--d); }
       /* On failure the car drives on to a blockade and stops in front of it. */
       .boot-block { opacity: 0; animation: boot-fade 300ms ease-out 19.7s forwards; }
       /* Folded away while loading, so the ring sits centred (auto margins, which never cut off the top
@@ -123,18 +123,18 @@
         <circle cx="100" cy="100" r="62" fill="none" stroke="#171b21" stroke-width="34" />
         <circle cx="100" cy="100" r="62" fill="none" stroke="#ffffff" stroke-opacity="0.14" stroke-width="1.5" stroke-dasharray="6 8" />
         <circle cx="100" cy="100" r="44" fill="#10141a" stroke="#ffb703" stroke-opacity="0.28" stroke-width="2" />
-        <circle class="boot-sig" cx="100.0" cy="50.0" r="2.5" style="--d: 0.000s" />
-        <circle class="boot-sig" cx="125.0" cy="56.7" r="2.5" style="--d: 2.292s" />
-        <circle class="boot-sig" cx="143.3" cy="75.0" r="2.5" style="--d: 2.083s" />
-        <circle class="boot-sig" cx="150.0" cy="100.0" r="2.5" style="--d: 1.875s" />
-        <circle class="boot-sig" cx="143.3" cy="125.0" r="2.5" style="--d: 1.667s" />
-        <circle class="boot-sig" cx="125.0" cy="143.3" r="2.5" style="--d: 1.458s" />
-        <circle class="boot-sig" cx="100.0" cy="150.0" r="2.5" style="--d: 1.250s" />
-        <circle class="boot-sig" cx="75.0" cy="143.3" r="2.5" style="--d: 1.042s" />
-        <circle class="boot-sig" cx="56.7" cy="125.0" r="2.5" style="--d: 0.833s" />
-        <circle class="boot-sig" cx="50.0" cy="100.0" r="2.5" style="--d: 0.625s" />
-        <circle class="boot-sig" cx="56.7" cy="75.0" r="2.5" style="--d: 0.417s" />
-        <circle class="boot-sig" cx="75.0" cy="56.7" r="2.5" style="--d: 0.208s" />
+        <path class="boot-sig" d="M97.0 70.1 A30 30 0 0 1 103.0 70.1" style="--d: 0.000s" />
+        <path class="boot-sig" d="M112.3 72.7 A30 30 0 0 1 117.5 75.6" style="--d: 2.292s" />
+        <path class="boot-sig" d="M124.4 82.5 A30 30 0 0 1 127.3 87.7" style="--d: 2.083s" />
+        <path class="boot-sig" d="M129.9 97.0 A30 30 0 0 1 129.9 103.0" style="--d: 1.875s" />
+        <path class="boot-sig" d="M127.3 112.3 A30 30 0 0 1 124.4 117.5" style="--d: 1.667s" />
+        <path class="boot-sig" d="M117.5 124.4 A30 30 0 0 1 112.3 127.3" style="--d: 1.458s" />
+        <path class="boot-sig" d="M103.0 129.9 A30 30 0 0 1 97.0 129.9" style="--d: 1.250s" />
+        <path class="boot-sig" d="M87.7 127.3 A30 30 0 0 1 82.5 124.4" style="--d: 1.042s" />
+        <path class="boot-sig" d="M75.6 117.5 A30 30 0 0 1 72.7 112.3" style="--d: 0.833s" />
+        <path class="boot-sig" d="M70.1 103.0 A30 30 0 0 1 70.1 97.0" style="--d: 0.625s" />
+        <path class="boot-sig" d="M72.7 87.7 A30 30 0 0 1 75.6 82.5" style="--d: 0.417s" />
+        <path class="boot-sig" d="M82.5 75.6 A30 30 0 0 1 87.7 72.7" style="--d: 0.208s" />
         <g class="boot-block" transform="rotate(205 100 100)">
           <rect x="97" y="21" width="6" height="34" rx="1.5" fill="#e5484d" />
           <rect x="97" y="26" width="6" height="5" fill="#ffffff" />

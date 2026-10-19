@@ -5,7 +5,7 @@ import type { Upgrade } from '../core/levels';
 import type { Vec2 } from '../core/vec2';
 import { type Built, partModule } from './flow';
 import { StreetBuilderPage } from './builder';
-import { S, Fmt } from './strings';
+import { S } from './strings';
 import type { PageHost } from './pageHost';
 
 /**
@@ -27,7 +27,7 @@ export class BuildFlow {
     if (!Careers.buy(career, upgrade, this.host.config)) {
       this.host.upgradePage.denied = { upgrade, age: 0 };
       this.host.play(['denied'], ['denied']);
-      this.host.showNotice(S.notice.notEnoughMoney(Fmt.number(price)));
+      this.host.denyMoney(price);
       return;
     }
     const steps = Careers.steps(career, upgrade);
@@ -51,7 +51,7 @@ export class BuildFlow {
     if (!ok) {
       b.denied = 0.001;
       this.host.play(['denied'], ['denied']);
-      this.host.showNotice(S.notice.notEnoughMoney(Fmt.number(price)));
+      this.host.denyMoney(price);
       return;
     }
     b.pending = null;
@@ -152,7 +152,7 @@ export class BuildFlow {
     if (!Careers.upgradeModule(career, built.slot, this.host.config)) {
       b.denied = 0.001;
       this.host.play(['denied'], ['denied']);
-      this.host.showNotice(S.notice.notEnoughMoney(Fmt.number(price)));
+      this.host.denyMoney(price);
       return;
     }
     b.builtModule = { slot: built.slot, age: 0 };

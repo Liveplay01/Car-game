@@ -1,6 +1,7 @@
 import { h, icon } from './dom';
 import { ICONS } from './icons';
 import { openSheet, swapView } from './sheets';
+import { share } from './share';
 import { inviteLink } from './crazygames';
 import { Room, NAME_MAX, cleanName, type RoomError, type HostMessage, type Member, type Reaction } from '../net/room';
 import { VersusMatch, type MatchFeel } from '../present/versus';
@@ -371,7 +372,7 @@ export class VersusLobby {
     const p = this.parts;
     if (!p) return;
     const room = p.room;
-    p.status.textContent = this.notice ?? '';
+    p.status.textContent = this.notice ?? (room.reconnecting ? S.versus.reconnectingDots : '');
     // Pings arrive every two seconds: they update in place, so focus stays where it is.
     for (const m of room.members) {
       const el = p.rows.querySelector<HTMLElement>(`[data-ping="${m.slot}"]`);
@@ -492,22 +493,7 @@ export class VersusLobby {
 
   /** The link that opens the game and joins this room: the share sheet on a phone, else copied. */
   private async invite(code: string): Promise<void> {
-    const url = this.inviteUrl(code);
-    const touch = window.matchMedia('(pointer: coarse)').matches;
-    if (touch && typeof navigator.share === 'function') {
-      try {
-        await navigator.share({ title: S.gameTitle, text: S.lobby.shareText(code), url });
-      } catch {
-        /* cancelled */
-      }
-      return;
-    }
-    try {
-      await navigator.clipboard.writeText(url);
-      this.showNotice(S.lobby.linkCopied);
-    } catch {
-      window.prompt(S.lobby.copyLink, url);
-    }
+    if ((await share({ text: S.lobby.shareText(code), url: this.inviteUrl(code) })) === 'copied') this.showNotice(S.lobby.linkCopied);
   }
 
   private showNotice(message: string): void {
