@@ -95,6 +95,7 @@ export type InputAction =
   | { k: 'pointerDown'; p: Vec2; ago?: number }
   | { k: 'pointerMove'; p: Vec2 }
   | { k: 'pointerUp'; p: Vec2 }
+  | { k: 'hover'; p: Vec2 | null }
   | { k: 'wheel'; p: Vec2; dy: number }
   | { k: 'selectTab'; tab: Tab }
   | { k: 'nextTab' }
@@ -312,6 +313,10 @@ export class GameSession {
   private shownFlames = 0;
   private sinceFlames = Infinity;
   private lastViewport = v(430, 900);
+  /** A mouse over the canvas (no button down): the top card's columns lift under it, and the shell shows the hand (`overTopBar`). */
+  private hoverPoint: Vec2 | null = null;
+  private topLit = 1;
+  private frameDelta = 0;
   /** The camera of the last frame: places sounds left or right. */
   private lastCamera: Camera | null = null;
   private lastInset = 0;
@@ -1453,6 +1458,8 @@ export class GameSession {
     this.keepDailyInStep();
     this.keepMafiaInStep();
     for (const a of actions) this.handle(a, simDelta);
+    this.frameDelta = realDelta;
+    this.easeTopHover(realDelta);
     // A condition's sheet belongs to the waiting shift it was opened on.
     const shown = this.conditionShown;
     if (shown && !this.conditionHeld(shown)) this.closeDetail();
@@ -1793,6 +1800,9 @@ export class GameSession {
         break;
       case 'pointerDown':
         this.pointerDown(a.p, a.ago, simDelta);
+        break;
+      case 'hover':
+        this.hoverPoint = a.p;
         break;
       case 'pointerMove': {
         if (this.pan.drag) {
@@ -3237,6 +3247,26 @@ export class GameSession {
    * The world through `camera`: city, road, traffic, weather and the map's air; no HUD.
    * `seeThrough`: Big Screen with its picture ready shows it instead of the city.
    */
+  /** The top card's column under the mouse, where a tap opens something (the waiting screen and a settled result): 0, 1, 2 or -1. */
+  private topColumnUnderMouse(): number {
+    const k = this.screen.k;
+    const p = this.hoverPoint;
+    if (!p || this.conditionShown || (k !== 'ready' && !(k === 'result' && this.resultAge >= this.resultLock))) return -1;
+    const column = TopBar.column(p, this.lastViewport.x);
+    return column === null ? -1 : column === 'left' ? 0 : column === 'center' ? 1 : 2;
+  }
+
+  get overTopBar(): boolean {
+    return this.topColumnUnderMouse() >= 0;
+  }
+
+  /** The lit capsule, the middle one at rest, glides to the column under the mouse and back; with Reduce Motion it is there at once. */
+  private easeTopHover(dt: number): void {
+    const under = this.topColumnUnderMouse();
+    const follow = this.reduceMotion ? 1 : 1 - Math.exp(-dt * 14);
+    this.topLit += ((under < 0 ? 1 : under) - this.topLit) * follow;
+  }
+
   private sceneList(camera: Camera, alpha: number, rm: boolean, seeThrough = false): RenderList {
     const world = this.world;
     const career = this.save.career;
@@ -3245,6 +3275,9 @@ export class GameSession {
     const mapSkin = this.special?.k === 'trial' && this.special.trial.tour?.map ? this.special.trial.tour.map : career.mapSkin;
     const theme = MapTheme.from(mapSkin);
     const list = new RenderList(camera, MapTheme.ground(theme));
+    list.topLit = this.topLit;
+    list.pointer = this.hoverPoint;
+    list.frameDt = this.reduceMotion ? 1 : this.frameDelta;
     // A device that cannot keep 30 fps leaves out the decoration (`lowDetail`), never the game.
     list.groundGrain = !this.lowDetail;
     if (screen) list.backdrop = GameSession.backdropVeil;

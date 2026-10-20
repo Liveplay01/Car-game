@@ -93,6 +93,11 @@ html:is([lang='ja'], [lang='ko'], [lang='zh']) * {
 
   --r-row: 14px;
   --r-sheet: 24px;
+  /* One button scale: S (chips, small buttons; 36 drawn, 44 to touch), M (the default), L (the action of a drawer). All capsules, like the dock. */
+  --btn-s: 36px;
+  --btn-m: var(--touch-min);
+  --btn-l: 52px;
+  --r-btn: 999px;
 
   --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
   --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
@@ -103,6 +108,10 @@ html:is([lang='ja'], [lang='ko'], [lang='zh']) * {
   /* Leaving: speeds up to the end, so a drawer is gone at full speed and does not linger at the lowest point. */
   --ease-exit: cubic-bezier(0.4, 0, 1, 1);
   /* The canvas' `Ease.settle`, a critically damped spring: 1 - (1 + 8.5x)·e^(-8.5x). Segments slide on it on every page. */
+  /* One entrance and one exit for every drawer, one for every dialog card. */
+  --drawer-in: 320ms var(--ease-drawer);
+  --drawer-out: 200ms var(--ease-exit);
+  --dialog-in: 360ms var(--ease-drawer);
   --ease-settle: linear(0, 0.046 4%, 0.149 8%, 0.272 12%, 0.394 16%, 0.507 20%, 0.627 25%, 0.723 30%, 0.853 40%, 0.925 50%, 0.963 60%, 0.982 70%, 0.991 80%, 1);
 
   --safe-top: env(safe-area-inset-top, 0px);
@@ -252,7 +261,7 @@ button {
   grid-auto-flow: column;
   grid-auto-columns: 1fr;
   padding: 2px;
-  border-radius: 10px;
+  border-radius: 999px;
   background: rgba(118, 118, 128, 0.24);
   isolation: isolate;
 }
@@ -266,8 +275,8 @@ button {
   font-size: 14px;
   font-weight: 600;
   color: var(--muted);
-  border-radius: 8px;
-  transition: color 200ms ease;
+  border-radius: 999px;
+  transition: color 200ms ease, background-color 200ms ease;
 }
 
 /* 32 px drawn as on iOS, 44 px to touch. */
@@ -279,6 +288,12 @@ button {
 
 .segmented button[aria-pressed='true'] {
   color: var(--primary);
+  /* The chosen one speaks like the dock's open tab: display face, italic, capitals. */
+  font-family: var(--font-round);
+  font-style: italic;
+  font-weight: 900;
+  letter-spacing: 0.01em;
+  text-transform: uppercase;
 }
 
 .segmented .thumb {
@@ -287,7 +302,7 @@ button {
   top: 2px;
   bottom: 2px;
   left: 2px;
-  border-radius: 8px;
+  border-radius: 999px;
   background: #5b5f66;
   box-shadow: 0 3px 8px rgba(0, 0, 0, 0.18), 0 0 0 0.5px rgba(0, 0, 0, 0.04);
   transition: transform 250ms var(--ease-out);
@@ -296,113 +311,240 @@ button {
 
 /* MARK: Tab bar */
 
+/*
+ * The dock as a dashboard (Runde 2, 1c): a floating glass capsule; the selected tab widens into a full amber pill with
+ * its name in the display face, the others are icons only. Each icon plays a short move of its own when it is chosen.
+ * When a shift starts the dock drives off: the outer tabs fade first, it pulls in onto the Game pill, then drops away.
+ * Back, it springs up as a capsule and opens from the middle out.
+ */
 .tabbar {
-  /* A floating dock (Leo, 16.10.2026): a capsule over the scene, phone-wide at most, so it never
-     stretches across a desktop or an iPad. */
   position: absolute;
   z-index: var(--z-tabbar);
   left: 50%;
   bottom: calc(var(--safe-bottom) + var(--dock-gap));
   width: min(100% - 2 * var(--s3) - var(--safe-left) - var(--safe-right), 440px);
   height: calc(var(--tabbar-h) - var(--dock-gap));
-  padding: 0 var(--s1);
-  display: grid;
-  grid-template-columns: repeat(5, 1fr);
+  padding: 0 var(--s2);
+  display: flex;
+  align-items: center;
+  gap: var(--s1);
+  overflow: hidden;
   background: var(--glass);
   -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(1.4);
   backdrop-filter: blur(var(--glass-blur)) saturate(1.4);
   border: 0.5px solid var(--separator);
   border-radius: 999px;
-  box-shadow: var(--edge);
+  box-shadow: var(--edge), 0 10px 24px rgba(0, 0, 0, 0.35);
   /* A press held on it slides the selection (`Shell.holdDock`): no page scroll, no text callout in the way. */
   touch-action: none;
   -webkit-user-select: none;
   user-select: none;
   -webkit-touch-callout: none;
   transform: translateX(-50%);
-  /* The cursor's magnetic pull (`Shell.magnetDock`, a spring run per frame): its own properties, so it never fights the
-     transform that hides the dock. */
+  /* The cursor's magnetic pull (`Shell.magnetDock`): its own properties, so it never fights the transform that hides the dock. */
   translate: var(--pull-x, 0) var(--pull-y, 0);
   scale: var(--pull-s, 1) 1;
-  transition: transform 260ms var(--ease-drawer), visibility 0s;
-}
-
-.app[data-phase='playing'] .tabbar,
-.app[data-phase='ended'] .tabbar {
-  transform: translate(-50%, calc(100% + var(--dock-gap) + var(--safe-bottom)));
-}
-
-/* The selected tab's pill: one column wide, it glides from tab to tab. */
-.tab-indicator {
-  position: absolute;
-  top: 6px;
-  left: var(--s1);
-  width: calc((100% - 2 * var(--s1)) / 5);
-  height: 44px;
-  pointer-events: none;
-  transition: transform 260ms var(--ease-drawer);
-}
-
-.tab-indicator::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  left: 50%;
-  /* Hugs icon and label like on a phone, also when a desktop column is wide. */
-  width: min(100% - var(--s2), 112px);
-  transform: translateX(-50%);
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.07);
-  box-shadow: inset 0 0.5px 0 rgba(255, 255, 255, 0.08);
-}
-
-.tab-indicator.instant {
-  transition: none;
-}
-
-/* Held and slid: the pill lifts a little and follows the finger closely; let go, it glides onto its tab. */
-.tab-indicator.scrub {
-  transition: transform 90ms var(--ease-out);
-}
-
-.tab-indicator::before {
+  /* Coming back: up first on a spring, then it opens. */
   transition:
-    transform 220ms var(--ease-out),
-    background-color 220ms var(--ease-out);
+    transform 360ms var(--ease-back),
+    width 340ms var(--ease-drawer) 300ms,
+    gap 340ms var(--ease-drawer) 300ms,
+    visibility 0s;
 }
 
-.tab-indicator.scrub::before {
-  transform: translateX(-50%) scale(1.1);
-  background: rgba(255, 255, 255, 0.13);
+/* Driving off: pull in onto the selected pill (the outer tabs go first, `--dist`), then drop out of sight. */
+.app[data-phase='playing'] .tabbar,
+.app[data-phase='ended'] .tabbar,
+.app[data-tabbar='hidden'] .tabbar {
+  width: calc(var(--touch-min) + 2 * var(--s2));
+  gap: 0;
+  transform: translate(-50%, calc(100% + var(--dock-gap) + var(--safe-bottom)));
+  pointer-events: none;
+  transition:
+    width 280ms var(--ease-drawer) 90ms,
+    gap 280ms var(--ease-drawer) 90ms,
+    transform 260ms var(--ease-exit) 380ms,
+    visibility 0s linear 640ms;
+}
+
+/* The old gliding pill is the selected tab itself now; the element stays for `moveTabIndicator`. */
+.tab-indicator {
+  display: none;
 }
 
 .tab {
+  --delay: calc(80ms + var(--dist, 0) * 45ms);
+  position: relative;
+  flex: 1 1 0px;
+  min-width: var(--touch-min);
+  height: var(--touch-min);
   display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 2px;
-  font-size: 11px;
-  font-weight: 600;
-  /* Muted, not faint: over a bright daylight map the glass bar is lighter, and the labels must still read. */
+  border-radius: 999px;
+  overflow: hidden;
   color: var(--muted);
-  transition: color 160ms ease;
-  position: relative;
+  transition:
+    flex-grow 300ms var(--ease-drawer),
+    flex-basis 300ms var(--ease-drawer),
+    min-width 300ms var(--ease-drawer),
+    opacity 160ms ease var(--delay),
+    transform 200ms var(--ease-out) var(--delay),
+    background-color 200ms ease,
+    color 160ms ease,
+    box-shadow 200ms ease;
 }
 
 .tab svg {
-  width: 26px;
-  height: 26px;
-  transition: transform 160ms var(--ease-out);
+  flex: none;
+  width: 22px;
+  height: 22px;
 }
 
 .tab:active svg {
   transform: scale(0.9);
+  transition: transform 160ms var(--ease-out);
+}
+
+.tab > span:not(.badge-dot) {
+  max-width: 0;
+  margin-left: 0;
+  opacity: 0;
+  padding-top: 2px;
+  font-family: var(--font-round);
+  font-style: italic;
+  font-weight: 900;
+  font-size: 15px;
+  letter-spacing: 0.01em;
+  line-height: 1;
+  text-transform: uppercase;
+  white-space: nowrap;
+  transition:
+    max-width 300ms var(--ease-drawer),
+    margin-left 300ms var(--ease-drawer),
+    opacity 160ms ease;
+}
+
+@media (hover: hover) {
+  .tab:not([aria-current='page']):hover {
+    color: var(--primary);
+  }
 }
 
 .tab[aria-current='page'] {
-  color: var(--accent);
+  flex-grow: 2.6;
+  background: var(--accent);
+  color: var(--accent-ink);
+  box-shadow: inset 0 0.5px 0 rgba(255, 255, 255, 0.5), 0 0 16px color-mix(in srgb, var(--accent) 35%, transparent);
+}
+
+.tab[aria-current='page'] > span:not(.badge-dot) {
+  max-width: 140px;
+  margin-left: 7px;
+  opacity: 1;
+}
+
+/* Held and slid along the dock: the tab under the finger lifts; let go, it opens. */
+.tab.scrub-over:not([aria-current='page']) {
+  color: var(--primary);
+  background: rgba(255, 255, 255, 0.1);
+}
+
+/* A narrow phone: the open tab's name must still fit ("FORTSCHRITT" is the longest). First the name a size smaller, then the dock closes up. */
+@media (max-width: 380px) {
+  .tab > span:not(.badge-dot) {
+    font-size: 13px;
+  }
+}
+
+@media (max-width: 340px) {
+  .tabbar {
+    padding: 0 6px;
+    gap: 2px;
+  }
+
+  .tab {
+    min-width: 40px;
+  }
+
+  .tab svg {
+    width: 20px;
+    height: 20px;
+  }
+
+  .tab > span:not(.badge-dot) {
+    font-size: 11.5px;
+  }
+
+  .tab[aria-current='page'] > span:not(.badge-dot) {
+    margin-left: 5px;
+  }
+}
+
+.app[data-phase='playing'] .tab:not([aria-current='page']),
+.app[data-phase='ended'] .tab:not([aria-current='page']),
+.app[data-tabbar='hidden'] .tab:not([aria-current='page']) {
+  --delay: calc((4 - var(--dist, 0)) * 35ms);
+  flex: 0 0 0px;
+  min-width: 0;
+  opacity: 0;
+  transform: scale(0.5);
+}
+
+.app[data-phase='playing'] .tab > span:not(.badge-dot),
+.app[data-phase='ended'] .tab > span:not(.badge-dot),
+.app[data-tabbar='hidden'] .tab > span:not(.badge-dot) {
+  max-width: 0;
+  margin-left: 0;
+  opacity: 0;
+}
+
+/* Each icon's own move when it is chosen: once, about half a second (Reduce Motion cuts it to a frame). */
+.tab[aria-current='page'] svg {
+  animation: var(--tab-move, none) var(--tab-move-ms, 500ms) var(--ease-out) 60ms both;
+}
+.tab[data-tab='progress'] { --tab-move: tab-progress; --tab-move-ms: 520ms; }
+.tab[data-tab='progress'] svg { transform-origin: 50% 90%; }
+.tab[data-tab='social'] { --tab-move: tab-social; --tab-move-ms: 420ms; }
+.tab[data-tab='social'] svg { transform-origin: 50% 60%; }
+.tab[data-tab='game'] { --tab-move: tab-game; --tab-move-ms: 620ms; }
+.tab[data-tab='shop'] { --tab-move: tab-shop; --tab-move-ms: 560ms; }
+.tab[data-tab='shop'] svg { transform-origin: 50% 15%; }
+.tab[data-tab='upgrades'] { --tab-move: tab-build; --tab-move-ms: 520ms; }
+.tab[data-tab='upgrades'] svg { transform-origin: 25% 80%; }
+
+@keyframes tab-progress {
+  0% { transform: none; }
+  30% { transform: translateY(-4px) scale(1.12) rotate(-8deg); }
+  55% { transform: scale(0.96) rotate(6deg); }
+  75% { transform: rotate(-3deg); }
+  100% { transform: none; }
+}
+@keyframes tab-social {
+  0% { transform: scale(1); }
+  35% { transform: scale(1.18); }
+  60% { transform: scale(0.94); }
+  100% { transform: scale(1); }
+}
+@keyframes tab-game {
+  0% { transform: rotate(0); }
+  30% { transform: rotate(-55deg); }
+  65% { transform: rotate(25deg); }
+  85% { transform: rotate(-8deg); }
+  100% { transform: rotate(0); }
+}
+@keyframes tab-shop {
+  0% { transform: rotate(0); }
+  25% { transform: rotate(14deg); }
+  50% { transform: rotate(-10deg); }
+  75% { transform: rotate(5deg); }
+  100% { transform: rotate(0); }
+}
+@keyframes tab-build {
+  0% { transform: rotate(0); }
+  35% { transform: rotate(-40deg); }
+  60% { transform: rotate(12deg); }
+  100% { transform: rotate(0); }
 }
 
 /* A new dot pops in and blinks twice like an indicator light, then stays calm. */
@@ -429,8 +571,8 @@ button {
 
 .tab .badge-dot {
   position: absolute;
-  top: 8px;
-  left: calc(50% + 8px);
+  top: 6px;
+  left: calc(50% + 6px);
   min-width: 16px;
   height: 16px;
   padding: 0 4px;
@@ -442,8 +584,22 @@ button {
   font-weight: 700;
   line-height: 16px;
   text-align: center;
+  font-style: normal;
+  transition: opacity 120ms ease;
 }
 
+/* On the amber pill the badge turns round: ink with amber figures, so it still reads. */
+.tab[aria-current='page'] .badge-dot {
+  left: auto;
+  right: 8px;
+  background: var(--accent-ink);
+  color: var(--accent);
+}
+
+.app[data-phase='playing'] .tab .badge-dot,
+.app[data-tabbar='hidden'] .tab .badge-dot {
+  opacity: 0;
+}
 
 .list {
   background: var(--surface-1);
@@ -596,9 +752,9 @@ a.row-link {
   align-items: center;
   justify-content: center;
   gap: var(--s2);
-  min-height: var(--touch-min);
+  min-height: var(--btn-m);
   padding: 0 var(--s4);
-  border-radius: 12px;
+  border-radius: var(--r-btn);
   font-weight: 700;
   font-size: 15px;
   white-space: nowrap;
@@ -639,9 +795,8 @@ a.row-link {
 
 .btn.block {
   width: 100%;
-  min-height: 52px;
-  font-size: 17px;
-  border-radius: 14px;
+  min-height: var(--btn-l);
+  font-size: 16px;
 }
 
 .btn:disabled {
@@ -682,6 +837,22 @@ a.row-link {
   .btn.destructive.filled:hover:not(:disabled) {
     background: var(--destructive-hover);
   }
+  /* The same quiet lift the dock gives a tab under the cursor: a faint capsule, the label to full white. */
+  .segmented button[aria-pressed='false']:hover {
+    color: var(--primary);
+    background: rgba(255, 255, 255, 0.07);
+  }
+  .chip:hover {
+    background: var(--hover-fill);
+    color: var(--primary);
+  }
+  .row-link:hover {
+    background: var(--surface-2);
+  }
+  .sheet .row-link:hover,
+  .social-page .row-link:hover {
+    background: var(--surface-3);
+  }
 }
 
 /* Upgrades */
@@ -720,11 +891,11 @@ a.row-link {
   border-radius: var(--r-sheet) var(--r-sheet) 0 0;
   padding: var(--s2) var(--s4) calc(var(--safe-bottom) + var(--s5));
   box-shadow: 0 -12px 40px rgba(0, 0, 0, 0.35), inset 0 0.5px 0 rgba(255, 255, 255, 0.14);
-  animation: sheet-in 320ms var(--ease-drawer) both;
+  animation: sheet-in var(--drawer-in) both;
 }
 
 .sheet-root.closing .sheet {
-  animation: sheet-out 200ms var(--ease-exit) both;
+  animation: sheet-out var(--drawer-out) both;
 }
 
 .sheet-root.stacked .sheet-scrim {
@@ -971,10 +1142,7 @@ a.row-link {
 /* Gone out of sight, it is also left out once it has slid away: a hidden blur that the browser
    keeps redoing over the moving scene costs frames on a phone. */
 .app[data-tabbar='hidden'] .tabbar {
-  transform: translate(-50%, calc(100% + var(--dock-gap) + var(--safe-bottom)));
-  pointer-events: none;
   visibility: hidden;
-  transition: transform 260ms var(--ease-drawer), visibility 0s linear 260ms;
 }
 
 .float-btn {
@@ -1011,7 +1179,8 @@ a.row-link {
   border-radius: calc(var(--pill-h) / 2);
   font-size: 14px;
   font-weight: 600;
-  left: calc(var(--safe-left) + var(--s4));
+  /* The dock's and the top card's side margin: the pills stand on the same edge. */
+  left: calc(var(--safe-left) + var(--s3));
   bottom: calc(var(--tabbar-h) + var(--safe-bottom) + var(--s4));
 }
 
@@ -1055,7 +1224,7 @@ a.row-link {
 .run-bar {
   position: absolute;
   z-index: var(--z-hud);
-  left: calc(var(--safe-left) + var(--s4));
+  left: calc(var(--safe-left) + var(--s3));
   bottom: calc(var(--tabbar-h) + var(--safe-bottom) + var(--s4));
   display: flex;
   flex-direction: column;
@@ -1256,12 +1425,12 @@ a.row-link {
 
 [data-hand='left'] .settings-btn {
   left: auto;
-  right: calc(var(--safe-right) + var(--s4));
+  right: calc(var(--safe-right) + var(--s3));
 }
 
 [data-hand='left'] .run-bar {
   left: auto;
-  right: calc(var(--safe-right) + var(--s4));
+  right: calc(var(--safe-right) + var(--s3));
   align-items: flex-end;
 }
 
@@ -1489,6 +1658,51 @@ a.row-link {
   line-height: 18px;
   white-space: nowrap;
   vertical-align: 1px;
+}
+
+/* Each floating pill's icon plays a short move of its own under the cursor or the finger, the way the dock's icons do when chosen. */
+.float-btn[data-move] svg,
+.run-btn[data-move] svg {
+  transform-origin: 50% 60%;
+}
+
+.settings-btn[data-move='gear']:is(:hover, :active, :focus-visible) svg {
+  animation: move-gear 600ms var(--ease-out);
+}
+
+.run-btn[data-move='chest']:is(:hover, :active, :focus-visible) svg {
+  transform-origin: 50% 90%;
+  animation: move-chest 520ms var(--ease-out);
+}
+
+.run-btn[data-move='camera']:is(:hover, :active, :focus-visible) svg {
+  animation: move-camera 460ms var(--ease-out);
+}
+
+.run-btn[data-move='close']:is(:hover, :active, :focus-visible) svg {
+  animation: move-close 420ms var(--ease-out);
+}
+
+@keyframes move-gear {
+  from { transform: rotate(0); }
+  to { transform: rotate(180deg); }
+}
+@keyframes move-chest {
+  0% { transform: none; }
+  30% { transform: translateY(-3px) rotate(-6deg); }
+  55% { transform: translateY(0) rotate(4deg); }
+  100% { transform: none; }
+}
+@keyframes move-camera {
+  0% { transform: scale(1); }
+  30% { transform: scale(0.84); }
+  60% { transform: scale(1.12); }
+  100% { transform: scale(1); }
+}
+@keyframes move-close {
+  0% { transform: rotate(0); }
+  60% { transform: rotate(100deg); }
+  100% { transform: rotate(90deg); }
 }
 
 /* The first shifts on a touch screen (Leo, 16.10.2026): a thumb pressing beside the arm says the whole screen is the
@@ -1791,29 +2005,12 @@ a.row-link {
 }
 
 .detail-sheet.entering {
-  animation: detail-in 360ms var(--ease-drawer) backwards;
+  animation: sheet-in var(--drawer-in) backwards;
 }
 
 .detail-sheet.closing {
-  animation: detail-out var(--out-ms, 220ms) var(--ease-exit) forwards;
+  animation: sheet-out var(--out-ms, 200ms) var(--ease-exit) forwards;
   pointer-events: none;
-}
-
-/* The drawer grows out of the column that was tapped (`DetailSheet.show` sets `--from-x`): it rises and widens from there. */
-.detail-sheet.entering {
-  transform-origin: var(--from-x, 50%) 100%;
-}
-
-@keyframes detail-in {
-  from {
-    transform: translateY(100%) scale(0.9);
-  }
-}
-
-@keyframes detail-out {
-  to {
-    transform: translateY(calc(100% + 48px));
-  }
 }
 
 .detail-handle {
@@ -2083,9 +2280,8 @@ a.row-link {
 
 .detail-actions .btn {
   flex: 1 1 0;
-  min-height: 50px;
+  min-height: var(--btn-l);
   font-size: 16px;
-  border-radius: 14px;
 }
 
 /* Long labels (Prestige, the Hall of Fame's price): one full-width button per row, the text may wrap. */
@@ -2097,7 +2293,7 @@ a.row-link {
 .detail-actions.stacked .btn {
   flex: none;
   width: 100%;
-  min-height: 48px;
+  min-height: var(--btn-l);
   padding-block: var(--s2);
   white-space: normal;
   text-align: center;
@@ -2207,9 +2403,8 @@ a.row-link {
 
 .join-row .btn {
   flex: none;
-  min-height: 52px;
+  min-height: var(--btn-l);
   min-width: 96px;
-  border-radius: 14px;
 }
 
 .code-input {
@@ -2427,7 +2622,6 @@ a.row-link {
 .invite-btn {
   margin-top: var(--s2);
   min-width: 132px;
-  border-radius: 22px;
 }
 
 .invite-btn svg,
@@ -2444,11 +2638,10 @@ a.row-link {
 
 .btn.small {
   position: relative;
-  min-height: 36px;
+  min-height: var(--btn-s);
   padding: 0 var(--s3) 0 var(--s2);
   gap: var(--s1);
   font-size: 14px;
-  border-radius: 18px;
 }
 
 /* 36 px drawn, 44 px to touch. */
@@ -2771,9 +2964,8 @@ button.mod:active {
 
 .photo-btn {
   flex: 1;
-  min-height: 52px;
-  font-size: 17px;
-  border-radius: 14px;
+  min-height: var(--btn-l);
+  font-size: 16px;
 }
 
 .photo-btn svg {
@@ -2823,7 +3015,7 @@ button.mod:active {
   gap: var(--s4);
   justify-items: center;
   text-align: center;
-  animation: install-in 360ms var(--ease-drawer) both;
+  animation: install-in var(--dialog-in) both;
 }
 
 .install-badge {
@@ -2952,9 +3144,9 @@ button.mod:active {
 /* A filter switch (Ranks: my crew only): pressed fills with the accent. */
 .chip {
   justify-self: start;
-  min-height: 36px;
+  min-height: var(--btn-s);
   padding: 0 var(--s3);
-  border-radius: 18px;
+  border-radius: var(--r-btn);
   background: var(--surface-3);
   color: var(--muted);
   font-size: 14px;
@@ -2974,6 +3166,12 @@ button.mod:active {
 @media (max-width: 480px) {
   .board-tabs button {
     font-size: 12.5px;
+  }
+
+  /* The display face is wider than the system one: five boards on 360 px need it a size smaller. */
+  .board-tabs button[aria-pressed='true'] {
+    font-size: 11px;
+    letter-spacing: 0;
   }
 }
 
@@ -3459,7 +3657,7 @@ button.mod:active {
   border-radius: 22px;
   background: var(--surface-1);
   box-shadow: 0 0 0 1px var(--separator);
-  animation: install-in 360ms var(--ease-drawer) both;
+  animation: install-in var(--dialog-in) both;
 }
 
 .intro-card .btn {

@@ -1,5 +1,5 @@
 import { type Vec2, v, add } from '../core/vec2';
-import { type RenderList, type Primitive, type Align, type Weight, circle, arc, polygon, text, drawText } from './render';
+import { type RenderList, type Primitive, type Align, type Weight, circle, arc, line, polygon, rect, text, drawText } from './render';
 import type { ColorToken } from './theme';
 import { measure } from './measure';
 
@@ -107,6 +107,19 @@ export function starPoints(center: Vec2, radius: number): Vec2[] {
     const r = i % 2 === 0 ? radius : radius * 0.45;
     return v(center.x + Math.cos(angle) * r, center.y + Math.sin(angle) * r);
   });
+}
+
+/** A trophy: a cup with two handles on a stem and a foot, about as wide as it is tall. */
+export function trophy(list: RenderList, center: Vec2, height: number, color: ColorToken, opacity = 1): void {
+  const u = height / 12.4;
+  const at = (x: number, y: number): Vec2 => v(center.x + x * u, center.y + y * u);
+  list.s(polygon([at(-4.6, -6.2), at(4.6, -6.2), at(4.2, -2), at(2.3, 0.9), at(-2.3, 0.9), at(-4.2, -2)]), color, opacity);
+  for (const side of [-1, 1]) {
+    const handle = [at(side * 4.6, -5), at(side * 7, -5), at(side * 7, -2.4), at(side * 4.1, -1.6)];
+    for (let i = 0; i < handle.length - 1; i++) list.s(line(handle[i], handle[i + 1], 1.5 * u), color, opacity);
+  }
+  list.s(rect(at(0, 2.6), v(2 * u, 3 * u)), color, opacity);
+  list.s(rect(at(0, 5.3), v(7 * u, 2 * u), u), color, opacity);
 }
 
 /** A flame, Mayhem's unit: an outer tongue of fire and a hot core. */

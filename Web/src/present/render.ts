@@ -177,6 +177,12 @@ export class RenderList {
   grain: Grain | undefined = undefined;
   /** The ground between everything gets a faint texture, anchored to the world. */
   groundGrain = false;
+  /** The mouse over the canvas in viewport points (null: none, or a finger), the time of this frame (long with Reduce Motion), and whether it rests on something a click opens (drawn by whatever is clickable; the shell shows the hand). */
+  pointer: Vec2 | null = null;
+  frameDt = 0;
+  pointerOver = false;
+  /** Where the top card's lit capsule is: column 0 (money), 1 (the middle, at rest) or 2 (the best), fractional while it glides to the mouse (`GameSession.topLit`). */
+  topLit = 1;
   /** Frames a glass panel keeps its frost before the blur is made again: the scene behind it moves, but slowly (a shift's top bar). */
   frostEvery = 1;
   /**

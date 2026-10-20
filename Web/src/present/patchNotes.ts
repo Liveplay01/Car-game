@@ -51,6 +51,25 @@ export const itemCredit = (item: PatchItem): string | null => {
 
 export const PATCH_NOTES: PatchNote[] = [
   {
+    id: '2026-10-20',
+    date: '20 October 2026',
+    title: 'A new look for the bars: the dock, the top bar, buttons and drawers',
+    impact: 'minor',
+    summary: [
+      'The tab bar is a new dock: the open tab becomes a glowing pill with its name.',
+      'The top bar matches it, with one lit pill that follows your mouse; Rush Hour stays green.',
+      'Buttons share three sizes and every drawer opens the same way.',
+    ],
+    items: [
+      'The tab bar at the bottom is a floating dock: the open tab widens into an amber pill with its name, the others are quiet icons. Hold and slide along it to switch.',
+      'The top bar is a twin of the dock: the same capsule shape, height and width. Money and your best score stand quietly either side (a coin, a trophy), the score sits in a lit pill, and in Rush Hour that pill turns green.',
+      'With a mouse, the lit pill in the top bar glides to the money or the best score you point at, and the cursor becomes a hand where a click opens something.',
+      'Segmented controls are pills too. The chosen one is written in capitals, and a faint pill lifts under the one you point at.',
+      'Buttons come in three sizes only, all with round ends, and the floating buttons stand on the same edge as the dock.',
+      'Every drawer slides in and out the same way, and the dock fits a narrow phone with long names, in every language.',
+    ],
+  },
+  {
     id: '2026-10-19',
     date: '19 October 2026',
     title: 'Less late-game grind: faster Elite, bigger daily challenges, combined Legendary rules',

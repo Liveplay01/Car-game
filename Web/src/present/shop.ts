@@ -649,8 +649,8 @@ export const ShopPage = {
     const slide = state.shelfSlide;
     for (const [shelf, chip] of chips) {
       const r = ShopPage.pressedRect(chip, { k: 'shelf', shelf }, state);
-      list.s(rect(R.center(r), v(R.width(r), R.height(r)), 10), 'card', enter);
-      list.s(rect(R.center(r), v(R.width(r), R.height(r)), 10), 'controlFill', enter);
+      list.s(rect(R.center(r), v(R.width(r), R.height(r)), R.height(r) / 2), 'card', enter);
+      list.s(rect(R.center(r), v(R.width(r), R.height(r)), R.height(r) / 2), 'controlFill', enter);
     }
     const to = chips.find(([s]) => s === state.shelf)?.[1];
     if (to) {

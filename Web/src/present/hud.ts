@@ -17,7 +17,7 @@ import type { ColorToken } from './theme';
 import { MenuKit } from './menukit';
 import { AdPill } from './adPill';
 import { touchFirst } from '../storage/device';
-import { moneyTag, money, coinSize, flameTag, textWidth, drawFitted } from './icons';
+import { moneyTag, money, coinSize, flameTag, textWidth, drawFitted, trophy } from './icons';
 import { measure } from './measure';
 import { S, Fmt, money as moneyText, comboMultiplier } from './strings';
 import { interpolatedPose } from './scene';
@@ -27,18 +27,27 @@ import { currentLanguage } from './i18n';
 
 // MARK: Top bar
 
-/** The one floating card of chrome at the top: MONEY · CARS/SCORE · BEST. */
+/**
+ * The one floating card of chrome at the top: MONEY · CARS/SCORE · BEST. It is the dock's twin (`--tabbar-h` in `ui/shell.css`):
+ * the same capsule, height, side margin and widest width, so the two read as one pair; a lit column is a capsule inside it.
+ */
 export const TopBar = {
-  margin: 16,
-  top: 10,
-  height: 58,
-  corner: 20,
+  margin: 12,
+  top: 8,
+  height: 56,
+  corner: 28,
+  /** A card of several lines under the bar cannot be a capsule: its text would run into the curve. */
+  cardCorner: 20,
   scrim: 96,
-  captionRow: 18,
-  valueRow: 38,
+  captionRow: 17,
+  valueRow: 37,
+  /** A value with no caption over it (money, the best) sits on the card's middle line. */
+  midRow: 28,
+  /** The lit column's capsule: 6 points from the card's edge all round, as the selected tab sits in the dock. */
+  litInset: 6,
 
-  /** On a wide screen the card keeps a phone-like width, centred over the ring. */
-  maxWidth: 560,
+  /** On a wide screen the card keeps the dock's width, centred over the ring. */
+  maxWidth: 440,
   frame(width: number): Rect {
     const w = Math.min(width - 2 * TopBar.margin, TopBar.maxWidth);
     const left = (width - w) / 2;
@@ -75,9 +84,17 @@ export const TopBar = {
     const tag = list.tag;
     list.tag = 'topbarCard';
     MenuKit.chromePanel(list, frame, TopBar.corner, opacity, brief ? brief.brief.color : null, brief ? brief.card : 1);
+    // No dividers: one lit capsule (the dock's selected tab) rests on the middle column. Under the mouse it glides to the column
+    // there, widening or narrowing on the way, and back; money and the best stand quietly either side of it.
     const cols = TopBar.columns(frame);
-    const lines = opacity * (1 - (brief?.card ?? 0));
-    for (const x of [cols.left.maxX, cols.right.minX]) list.s(line(v(x, frame.minY + 14), v(x, frame.maxY - 14), 1), 'chromeEdge', lines);
+    const shown = opacity * (1 - (brief?.card ?? 0));
+    const stops = [cols.left, cols.center, cols.right];
+    const at = Math.min(2, Math.max(0, list.topLit));
+    const from = stops[Math.floor(at)];
+    const to = stops[Math.min(2, Math.floor(at) + 1)];
+    const k = at - Math.floor(at);
+    const lit = R.inset(R.make(from.minX + (to.minX - from.minX) * k, from.minY, from.maxX + (to.maxX - from.maxX) * k, from.maxY), TopBar.litInset);
+    list.s(rect(R.center(lit), v(R.width(lit), R.height(lit)), R.height(lit) / 2), 'controlFill', 0.6 * shown);
     list.tag = tag;
   },
 
@@ -193,16 +210,26 @@ export const TopBar = {
     list.s(text(value, v(x, col.minY + TopBar.valueRow), o.valueSize ?? 20, a, 'display'), o.valueColor ?? 'primary', o.valueOpacity ?? opacity);
   },
 
+  /** The best score: a trophy and the number on the middle line, in place of a caption (the trophy is the dock's kind of quiet label). */
+  addBest(list: RenderList, col: Rect, value: string, o: { valueColor?: ColorToken; opacity?: number } = {}): void {
+    const x = TopBar.anchor(col, 'trailing');
+    const opacity = o.opacity ?? 1;
+    const size = 20;
+    const at = v(x, col.minY + TopBar.midRow);
+    list.s(text(value, at, size, 'trailing', 'display'), o.valueColor ?? 'primary', opacity);
+    const room = textWidth(value, size, true, true);
+    trophy(list, v(x - room - 13, at.y), 14, 'muted', opacity);
+  },
+
   /** `roll`: the amount as an odometer (the live top card); without it the text is set (the result's count-up already moves). */
   addMoneyColumn(list: RenderList, col: Rect, a: Align, amount: string, o: { valueSize?: number; opacity?: number; roll?: { value: number; reduceMotion: boolean } } = {}): void {
     const x = TopBar.anchor(col, a);
     const opacity = o.opacity ?? 1;
     const valueSize = o.valueSize ?? 20;
-    list.s(text(S.hud.moneyLabel, v(x, col.minY + TopBar.captionRow), 10, a, 'bold'), 'muted', opacity);
     const room = R.width(col) - 24;
     const natural = textWidth(moneyText(amount), valueSize, true, true);
     const size = natural <= room ? valueSize : Math.max(11, (valueSize * room) / natural);
-    const at = v(x, col.minY + TopBar.valueRow);
+    const at = v(x, col.minY + TopBar.midRow);
     if (!o.roll || a !== 'leading') return moneyTag(list, amount, at, size, a, 'primary', 'accent', opacity, 'display');
     const note = coinSize(size);
     money(list, v(at.x + note / 2, at.y), note, 'accent', opacity);
@@ -387,12 +414,12 @@ export const HUD = {
     const chain = HUD.activeChain(h.world);
     const c = cols.center;
     if (chain > 1) {
-      const inset = R.inset(c, 4);
-      list.s(rect(R.center(inset), v(R.width(inset), R.height(inset)), TopBar.corner - 4), 'fireOuter', 0.28);
+      const inset = R.inset(c, TopBar.litInset);
+      list.s(rect(R.center(inset), v(R.width(inset), R.height(inset)), R.height(inset) / 2), 'fireOuter', 0.28);
     }
     list.s(text(chain > 1 ? S.mayhem.chain(chain) : S.mayhem.flames, v(R.center(c).x, c.minY + TopBar.captionRow), 10, 'center', 'bold'), chain > 1 ? 'fireCore' : 'muted');
     flameTag(list, Fmt.number(h.flames), v(R.center(c).x, c.minY + TopBar.valueRow), Metrics.timerSize * land(h.flamePop, 0.3), 'center', 'primary', 1, 'display');
-    TopBar.addColumn(list, cols.right, 'trailing', S.hud.bestLabel, h.best ?? '–', { valueColor: h.best === null ? 'muted' : 'primary' });
+    TopBar.addBest(list, cols.right, h.best ?? '–', { valueColor: h.best === null ? 'muted' : 'primary' });
     list.tag = undefined;
     if (chain > 1) {
       const island = toScreen(list.camera, v(0, 0));
@@ -416,8 +443,11 @@ export const HUD = {
     const rush = world.shift.rushHourSince !== null;
     if (rush) {
       const open = Ease.spring(h.pops.rushHour);
-      const inset = R.inset(c, 4);
-      list.s(rect(R.center(inset), v(R.width(inset) * (0.7 + 0.3 * open), R.height(inset) * (0.7 + 0.3 * open)), TopBar.corner - 4), 'rushHour', Ease.outCubic(h.pops.rushHour / 0.4));
+      const inset = R.inset(c, TopBar.litInset);
+      const grown = 0.7 + 0.3 * open;
+      const lit = v(R.width(inset) * grown, R.height(inset) * grown);
+      list.s(rect(R.center(inset), add(lit, v(10, 10)), lit.y / 2 + 5), 'rushHour', 0.16 * Ease.outCubic(h.pops.rushHour / 0.4));
+      list.s(rect(R.center(inset), lit, lit.y / 2), 'rushHour', Ease.outCubic(h.pops.rushHour / 0.4));
     }
     addOdometer(list, scoreOdometer, h.score, v(R.center(c).x, c.minY + TopBar.valueRow), Metrics.timerSize * tick, rush ? 'accentInk' : 'primary', h.reduceMotion ?? false, 'center', heft(h.tension ?? 0));
 
@@ -469,7 +499,7 @@ export const HUD = {
         valueSize: 18 * land(h.race.pop, 0.15),
         valueColor: h.race.delta <= 0 ? 'accent' : 'destructive',
       });
-    } else TopBar.addColumn(list, cols.right, 'trailing', S.hud.bestLabel, h.best ?? '–', { valueColor: h.best === null ? 'muted' : 'primary' });
+    } else TopBar.addBest(list, cols.right, h.best ?? '–', { valueColor: h.best === null ? 'muted' : 'primary' });
     if (brief) {
       // The numbers fade and lift away while the briefing settles in from below, and back.
       const shown = brief.card;
@@ -1538,7 +1568,7 @@ export const ReadyBanner = {
       const room = R.width(cols.right) - 32;
       TopBar.addColumn(list, cols.right, 'trailing', S.modes.youLabel, name, { opacity, valueSize: Math.max(11, Math.min(20, (20 * room) / Math.max(1, textWidth(name, 20)))) });
     }
-    else TopBar.addColumn(list, cols.right, 'trailing', S.hud.bestLabel, o.highscore ?? '–', { valueColor: o.highscore === null ? 'muted' : 'primary', opacity });
+    else TopBar.addBest(list, cols.right, o.highscore ?? '–', { valueColor: o.highscore === null ? 'muted' : 'primary', opacity });
     if (hint && hintView) {
       // The numbers fade and lift away while the hint settles in from below, and back: as a briefing does in a shift.
       const shown = hintView.card;
@@ -1611,7 +1641,7 @@ export const ReadyBanner = {
     const rise = reduceMotion ? 0 : MenuKit.cardEnter(enter).rise;
     const alpha = Ease.clamp01(enter) * opacity;
     const box = R.offset(l.box, v(0, rise));
-    MenuKit.chromePanel(list, box, TopBar.corner, alpha);
+    MenuKit.chromePanel(list, box, TopBar.cardCorner, alpha);
     let y = box.minY + l.pad;
     for (const row of l.rows) {
       list.s(text(row.title, v(box.minX + l.pad, y + l.titleSize / 2), l.titleSize, 'leading', 'bold'), 'hazard', alpha);
@@ -1807,7 +1837,7 @@ export const ResultBanner = {
       } else if (summary.isNewHighscore) {
         TopBar.addColumn(list, cols.right, 'trailing', S.result.newBest, Fmt.number(summary.mode === 'mayhem' ? r.flames : r.score), { captionColor: 'accent', valueColor: 'accent', opacity: shown });
       } else {
-        TopBar.addColumn(list, cols.right, 'trailing', S.hud.bestLabel, summary.previousHighscore > 0 ? Fmt.number(summary.previousHighscore) : '–', {
+        TopBar.addBest(list, cols.right, summary.previousHighscore > 0 ? Fmt.number(summary.previousHighscore) : '–', {
           valueColor: summary.previousHighscore > 0 ? 'primary' : 'muted',
           opacity: shown,
         });

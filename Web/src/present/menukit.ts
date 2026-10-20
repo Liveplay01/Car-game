@@ -7,7 +7,10 @@ const PAGE_BACKDROP = 0.92;
 
 /** The iOS look of the drawn pages. */
 export const MenuKit = {
-  margin: 20,
+  /** The side margin of everything on a page: the cards' `gap`, the dock's and the top card's edge. */
+  margin: 12,
+  /** How far the mouse rests on each segment of each segmented control, by where it is (`segmented`). */
+  hovers: new Map<string, number[]>(),
   /** The frost of floating chrome, in points: `--glass-blur` in `ui/shell.css` is the same. */
   glassBlur: 18,
   titleSize: 30,
@@ -58,25 +61,49 @@ export const MenuKit = {
     const height = R.height(r);
     const tag = list.tag;
     list.tag = 'segTrack';
-    list.s(rect(R.center(r), v(R.width(r), height), 9), 'controlFill');
-    list.tag = 'segThumb';
+    list.s(rect(R.center(r), v(R.width(r), height), height / 2), 'controlFill');
+    list.tag = 'segHover';
     const cell = R.width(r) / labels.length;
+    // A mouse over a segment that is not the chosen one: a faint capsule grows under it, as the dock's tab does.
+    const over = list.pointer && R.contains(r, list.pointer) ? Math.min(labels.length - 1, Math.floor((list.pointer.x - r.minX) / cell)) : -1;
+    const key = `${Math.round(r.minX)},${Math.round(r.minY)},${labels.length}`;
+    const glow = MenuKit.hovers.get(key) ?? labels.map(() => 0);
+    MenuKit.hovers.set(key, glow);
+    const follow = 1 - Math.exp(-list.frameDt * 16);
+    labels.forEach((_, i) => {
+      const live = i === over && i !== Math.round(thumb) && !locked[i];
+      if (live) list.pointerOver = true;
+      glow[i] += ((live ? 1 : 0) - glow[i]) * follow;
+      if (glow[i] < 0.01) return;
+      const size = v((cell - 4) * (0.86 + 0.14 * glow[i]), height - 4);
+      list.s(rect(v(r.minX + cell * (i + 0.5), R.center(r).y), size, size.y / 2), 'primary', 0.09 * glow[i]);
+    });
+    list.tag = 'segThumb';
     const thumbCenter = v(r.minX + cell * (thumb + 0.5), R.center(r).y);
     const thumbSize = v(cell - 4, height - 4);
-    list.s(rect(add(thumbCenter, v(0, 1)), thumbSize, 7), 'shadow');
-    list.s(rect(thumbCenter, thumbSize, 7), 'controlThumb');
+    list.s(rect(add(thumbCenter, v(0, 1)), thumbSize, thumbSize.y / 2), 'shadow');
+    list.s(rect(thumbCenter, thumbSize, thumbSize.y / 2), 'controlThumb');
     list.tag = 'segLabels';
     labels.forEach((label, i) => {
       // A section that opens later stays in its place, faded.
+      const at = v(r.minX + cell * (i + 0.5), R.center(r).y);
+      if (i === chosen) {
+        // The chosen one speaks in the display face, in capitals, like the dock's open tab.
+        const caps = label.toUpperCase();
+        const natural = textWidth(caps, 14, true, true);
+        const room = cell - 14;
+        list.s(text(caps, at, natural <= room ? 14 : Math.max(10, (14 * room) / natural), 'center', 'display'), 'primary', locked[i] ? 0.4 : 1);
+        return;
+      }
       const fit = fitText(label, 13, cell - 12, true);
-      list.s(text(fit.text, v(r.minX + cell * (i + 0.5), R.center(r).y), fit.size, 'center', i === chosen ? 'bold' : 'regular'), i === chosen ? 'primary' : 'muted', locked[i] ? 0.4 : 1);
+      list.s(text(fit.text, at, fit.size, 'center', 'regular'), 'muted', locked[i] ? 0.4 : 1);
     });
     list.tag = tag;
   },
 
   /** Filled in the accent for the main action, tinted for the others; disabled ones fade. */
   button(list: RenderList, label: string, center: Vec2, size: Vec2, prominent: boolean, enabled: boolean): void {
-    const radius = Math.min(12, size.y / 2);
+    const radius = size.y / 2;
     if (prominent) {
       list.s(rect(center, size, radius), 'accent', enabled ? 1 : 0.35);
       const fit = fitText(label, 14, size.x - 20);
@@ -120,5 +147,7 @@ export const MenuKit = {
     list.glass = undefined;
     const inset = Math.min(radius * 1.3, size.x / 2 - 1);
     list.s(line(add(center, v(-size.x / 2 + inset, -size.y / 2 + 1)), add(center, v(size.x / 2 - inset, -size.y / 2 + 1)), 1), 'chromeEdge', opacity);
+    // The milled edge of the dock (`--edge`): a light lip on top, a dark seam below.
+    list.s(line(add(center, v(-size.x / 2 + inset, size.y / 2 - 1)), add(center, v(size.x / 2 - inset, size.y / 2 - 1)), 1), 'shadow', 0.7 * opacity);
   },
 };

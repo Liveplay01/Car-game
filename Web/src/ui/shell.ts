@@ -210,7 +210,7 @@ export class Shell {
 
   constructor(
     private readonly app: HTMLElement,
-    canvas: HTMLCanvasElement,
+    private readonly canvas: HTMLCanvasElement,
     private readonly layers: HTMLElement,
   ) {
     this.drawer = new CanvasDrawer(canvas);
@@ -244,7 +244,7 @@ export class Shell {
     this.buildTabbar(document.getElementById('tabbar')!);
     this.settingsBtn = h(
       'button',
-      { class: 'icon-btn glass float-btn settings-btn', 'aria-label': S.settings.title, 'aria-keyshortcuts': 'Escape', onclick: () => this.openSettings() },
+      { class: 'icon-btn glass float-btn settings-btn', 'data-move': 'gear', 'aria-label': S.settings.title, 'aria-keyshortcuts': 'Escape', onclick: () => this.openSettings() },
       icon(ICONS.gear),
       h('span', { class: 'settings-label' }, S.settings.title),
       keycap('esc'),
@@ -270,7 +270,7 @@ export class Shell {
     // Under any result: the picture on the screen, to send or keep.
     this.photoBtn = h(
       'button',
-      { class: 'btn glass run-btn', type: 'button', 'aria-label': S.photo.buttonLabel, 'aria-haspopup': 'dialog', onclick: () => this.takePicture() },
+      { class: 'btn glass run-btn', type: 'button', 'data-move': 'camera', 'aria-label': S.photo.buttonLabel, 'aria-haspopup': 'dialog', onclick: () => this.takePicture() },
       icon(ICONS.camera),
       h('span', {}, S.photo.button),
     );
@@ -280,7 +280,7 @@ export class Shell {
     chest.setAttribute('class', 'chest-flat');
     chest.setAttribute('aria-hidden', 'true');
     chest.innerHTML = CHEST_FLAT;
-    this.chestBtn = h('button', { class: 'btn glass run-btn primary-run', type: 'button', onclick: () => this.push({ k: 'perform', action: { k: 'showShop', section: 0 } }) }, chest, this.chestLabel);
+    this.chestBtn = h('button', { class: 'btn glass run-btn primary-run', type: 'button', 'data-move': 'chest', onclick: () => this.push({ k: 'perform', action: { k: 'showShop', section: 0 } }) }, chest, this.chestLabel);
     this.photo = new PhotoView(app, {
       shutter: () => {
         this.audio.unlock();
@@ -305,7 +305,7 @@ export class Shell {
       },
     });
     this.leaveLabel = h('span', {}, S.shell.leave);
-    this.leaveBtn = h('button', { class: 'btn glass run-btn', type: 'button', 'aria-keyshortcuts': 'Escape', onclick: () => this.session.leaveSpecial() }, icon(ICONS.close), this.leaveLabel);
+    this.leaveBtn = h('button', { class: 'btn glass run-btn', type: 'button', 'data-move': 'close', 'aria-keyshortcuts': 'Escape', onclick: () => this.session.leaveSpecial() }, icon(ICONS.close), this.leaveLabel);
     // Multiplayer: a friend's code or your own; the match takes over the canvas.
     const feel = { sound: () => this.session.save.settings.sound, haptics: () => this.session.save.settings.haptics };
     this.versus = new VersusLobby(layers, output, feel, {
@@ -635,17 +635,24 @@ export class Shell {
     const holdDelay = 220;
     let held: { id: number; timer: number; startX: number; scrub: boolean; x: number } | null = null;
     const pill = (): HTMLElement | null => this.tabIndicator;
-    const columnOf = (x: number): { index: number; offset: number } => {
-      const r = nav.getBoundingClientRect();
-      const inset = 4;
-      const width = (r.width - 2 * inset) / TAB_BAR.length;
-      const offset = clamp(x - r.left - inset - width / 2, 0, width * (TAB_BAR.length - 1));
-      return { index: clamp(Math.round(offset / width), 0, TAB_BAR.length - 1), offset };
+    // The tabs are not equal columns any more (the selected one is wider): the nearest button's centre wins.
+    const buttons = (): HTMLButtonElement[] => TAB_BAR.map((t) => this.tabs.get(t)!.button);
+    const columnOf = (x: number): { index: number } => {
+      let index = 0;
+      let best = Infinity;
+      buttons().forEach((b, i) => {
+        const r = b.getBoundingClientRect();
+        const d = Math.abs(x - (r.left + r.width / 2));
+        if (d < best) {
+          best = d;
+          index = i;
+        }
+      });
+      return { index };
     };
     const scrubTo = (x: number): void => {
-      const el = pill();
-      if (!el) return;
-      el.style.transform = `translateX(${columnOf(x).offset.toFixed(1)}px)`;
+      const index = columnOf(x).index;
+      buttons().forEach((b, i) => b.classList.toggle('scrub-over', i === index));
     };
     const begin = (): void => {
       if (!held || held.scrub) return;
@@ -672,6 +679,7 @@ export class Shell {
       if (!scrub) return;
       this.scrubbing = false;
       pill()?.classList.remove('scrub');
+      for (const b of buttons()) b.classList.remove('scrub-over');
       // The pill glides onto the column it was let go over, and that tab opens; the click that follows is the hold's own.
       const index = columnOf(x).index;
       this.suppressClick = true;
@@ -719,7 +727,7 @@ export class Shell {
       const badge = h('span', { class: 'badge-dot', hidden: true });
       const button = h(
         'button',
-        { class: 'tab', type: 'button', 'aria-label': TAB_LABEL[tab], onclick: () => this.push({ k: 'selectTab', tab }) },
+        { class: 'tab', type: 'button', 'data-tab': tab, 'aria-label': TAB_LABEL[tab], onclick: () => this.push({ k: 'selectTab', tab }) },
         icon(TAB_ICON[tab]),
         h('span', {}, TAB_LABEL[tab]),
         badge,
@@ -818,6 +826,8 @@ export class Shell {
     this.shownTabIndex = TAB_BAR.indexOf(selected);
     if (!this.scrubbing) this.moveTabIndicator(this.shownTabIndex);
     for (const [tab, { button, badge: el }] of this.tabs) {
+      // How far from the selected tab: the dock folds in from the outside and opens from the middle (shell.css, .tab --delay).
+      button.style.setProperty('--dist', String(Math.abs(TAB_BAR.indexOf(tab) - this.shownTabIndex)));
       if (tab === selected) button.setAttribute('aria-current', 'page');
       else button.removeAttribute('aria-current');
       const b = badges[TAB_BAR.indexOf(tab)] ?? null;
@@ -1448,8 +1458,12 @@ export class Shell {
       this.push({ k: 'pointerDown', p: this.toViewport(e), ago: Math.max(0, (performance.now() - e.timeStamp) / 1000) });
     });
     canvas.addEventListener('pointermove', (e) => {
+      if (e.pointerType === 'mouse') this.push({ k: 'hover', p: this.toViewport(e) });
       if (e.pointerId !== this.pointerId) return;
       this.push({ k: 'pointerMove', p: this.toViewport(e) });
+    });
+    canvas.addEventListener('pointerleave', (e) => {
+      if (e.pointerType === 'mouse') this.push({ k: 'hover', p: null });
     });
     const up = (e: PointerEvent): void => {
       if (e.pointerId !== this.pointerId) return;
@@ -1695,6 +1709,7 @@ export class Shell {
     this.audio.updateTension(match ? 0 : s.tension, s.save.settings.sound, Math.min(delta, 0.1));
     this.audio.updateWeather(match ? { rain: 0, strikes: s.weatherSound.strikes } : s.weatherSound, s.save.settings.mapSounds);
     this.app.classList.toggle('reduce-motion', s.reduceMotion);
+    this.canvas.style.cursor = !match && (s.overTopBar || list.pointerOver) ? 'pointer' : '';
     this.social.toast(s.socialNotice);
     if (this.pendingChallenge) this.openPendingChallenge();
     if (this.pendingJoin) this.openPendingJoin();
