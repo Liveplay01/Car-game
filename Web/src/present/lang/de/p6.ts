@@ -582,7 +582,6 @@ export default (S: Strings): Words<Strings> => ({
 
   hud: {
     moneyLabel: 'GELD',
-    scoreLabel: 'PUNKTE',
     toBest: 'BIS REKORD',
     newBest: 'NEUER REKORD',
     rushHour: 'STOSSZEIT',

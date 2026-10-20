@@ -464,16 +464,12 @@ export const HUD = {
     for (let i = 0; i < policeCrashes; i++) pluses.push({ used: i < world.score.policeCrashes, color: 'lightBlue' });
     const groupGap = firstPolice > 0 && pluses.length > firstPolice ? 0.5 : 0;
     const span = pluses.length - 1 + groupGap;
-    // The caption names the number; the pluses follow it on the same row, the pair centred. Sized to the caption, they
-    // close up when a long caption ("PUNKTE") and many of them would run out of the column.
-    const captionW = textWidth(S.hud.scoreLabel, 10);
-    const fit = Math.min(1, (R.width(c) - 24 - captionW - 6) / (span * Metrics.strikeSpacing + Metrics.strikeSize));
+    // The pluses sit centred in the column on their own, sized down so any count stays inside it.
+    const fit = Math.min(1, (R.width(c) - 24) / (span * Metrics.strikeSpacing + Metrics.strikeSize));
     const size = Metrics.strikeSize * fit;
     const spacing = Metrics.strikeSpacing * fit;
-    const plusesW = pluses.length > 0 ? 6 + span * spacing + size : 0;
-    const rowLeft = R.center(c).x - (captionW + plusesW) / 2;
-    list.s(text(S.hud.scoreLabel, v(rowLeft, c.minY + TopBar.captionRow), 10, 'leading', 'bold'), rush ? 'accentInk' : 'muted');
-    const firstPlus = rowLeft + captionW + 6 + size / 2;
+    const plusesW = span * spacing + size;
+    const firstPlus = R.center(c).x - plusesW / 2 + size / 2;
     pluses.forEach((p, index) => {
       const slot = index + (index >= firstPolice ? groupGap : 0);
       const at = v(firstPlus + slot * spacing, Metrics.strikeRow);

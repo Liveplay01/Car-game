@@ -2632,7 +2632,6 @@ export const S = {
 
   hud: {
     moneyLabel: 'MONEY',
-    scoreLabel: 'SCORE',
     bestLabel: 'BEST',
     toBest: 'TO BEST',
     newBest: 'NEW BEST',
