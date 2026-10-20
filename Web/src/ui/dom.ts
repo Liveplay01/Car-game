@@ -1,3 +1,5 @@
+import { ANIMATED_ICONS, type AnimatedIconId } from './animatedIcons';
+
 /** Tiny DOM helpers: no framework, the UI is a few screens. */
 type Attrs = Record<string, string | number | boolean | undefined | null | EventListener>;
 type Child = Node | string | number | null | undefined | false;
@@ -58,7 +60,79 @@ export function append(el: Element, children: Child[]): void {
   }
 }
 
-/** An SVG icon from a path string (24×24 viewBox, stroke-based, SF Symbols-like). */
+const templates = new Map<AnimatedIconId, SVGSVGElement>();
+const reducedMotion = (): boolean => document.querySelector('.app.reduce-motion') !== null;
+let iconStyles: HTMLStyleElement | null = null;
+let clips = 0;
+
+/**
+ * An animated icon (`animatedIcons.ts`): still until `playIcon`, or looping for a state that lives. The icon's CSS goes into
+ * the page once, not into every copy; clip ids are renamed per copy so one hidden icon cannot take the clip from another.
+ */
+export function animatedIcon(id: AnimatedIconId, mode: 'play' | 'loop' = 'play'): SVGSVGElement {
+  let template = templates.get(id);
+  if (!template) {
+    const holder = document.createElement('template');
+    holder.innerHTML = ANIMATED_ICONS[id].replace(/<style>([^]*?)<\/style>/, (_, css: string) => {
+      iconStyles ??= document.head.appendChild(document.createElement('style'));
+      iconStyles.append(css);
+      return '';
+    });
+    template = holder.content.firstElementChild as SVGSVGElement;
+    templates.set(id, template);
+  }
+  const svg = template.cloneNode(true) as SVGSVGElement;
+  for (const el of svg.querySelectorAll('[id]')) {
+    const renamed = `${el.id}-${++clips}`;
+    svg.querySelector(`[clip-path="url(#${el.id})"]`)?.setAttribute('clip-path', `url(#${renamed})`);
+    el.id = renamed;
+  }
+  if (mode === 'loop') svg.classList.add('loop');
+  if (reducedMotion()) svg.pauseAnimations();
+  return svg;
+}
+
+/** The gold coin inside a line of text, sized by the text (`.coin`). */
+export function coinMark(label: string): SVGSVGElement {
+  const svg = animatedIcon('coin');
+  svg.classList.add('coin');
+  svg.setAttribute('role', 'img');
+  svg.setAttribute('aria-label', label);
+  svg.removeAttribute('aria-hidden');
+  return svg;
+}
+
+/** Runs an icon's move once from the start (a tab is chosen, a control is pressed). */
+export function playIcon(svg: SVGSVGElement | null): void {
+  if (!svg) return;
+  svg.classList.remove('play');
+  void svg.getBoundingClientRect();
+  svg.classList.add('play');
+}
+
+/** The icons of a control move under the cursor or the finger, unless the move is still running. Tabs play when chosen instead. */
+export function watchIconMoves(root: HTMLElement): void {
+  const move = (e: PointerEvent): void => {
+    const control = (e.target as Element).closest('button, a, summary, [role="button"]');
+    if (!control || control.closest('.tab')) return;
+    for (const svg of control.querySelectorAll<SVGSVGElement>('svg.ai:not(.loop)')) {
+      if (!svg.getAnimations({ subtree: true }).some((a) => a.playState === 'running')) playIcon(svg);
+    }
+  };
+  // Captured: the floating buttons stop their pointerdown from reaching the page.
+  root.addEventListener('pointerover', (e) => e.pointerType === 'mouse' && move(e), true);
+  root.addEventListener('pointerdown', move, true);
+}
+
+/** Flames flicker through SMIL, which the CSS switch for Reduce Motion cannot reach. */
+export function stillIcons(still: boolean): void {
+  for (const svg of document.querySelectorAll<SVGSVGElement>('svg.ai')) {
+    if (still) svg.pauseAnimations();
+    else svg.unpauseAnimations();
+  }
+}
+
+/** An SVG icon from a path string (24×24 viewBox, stroke-based, SF Symbols-like). Only for the logos that bring their own colours. */
 export function icon(paths: string, options: { fill?: boolean; label?: string } = {}): SVGSVGElement {
   const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
   svg.setAttribute('viewBox', '0 0 24 24');

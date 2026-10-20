@@ -4,9 +4,9 @@ import { GameSession, type InputAction, type Modifier, type SessionOutput } from
 import { CanvasDrawer } from '../present/draw';
 import { SOCIAL, SWIPE_MODES, TAB_BAR, barTab, screenTab, type Tab } from '../present/flow';
 import { AudioPlayer, Haptics } from '../audio/player';
-import { h, icon } from './dom';
+import { h, animatedIcon, playIcon, stillIcons, watchIconMoves } from './dom';
 import { share } from './share';
-import { ICONS, CHEST_FLAT } from './icons';
+import type { AnimatedIconId } from './animatedIcons';
 import { settingsSheet, deleteAccountSheet, patchNotesSheet, guidesSheet, legalSheet, licensesSheet, installDialog, offerDialog, isSheetOpen, closeAnySheet, closeTopSheet, onSheetSound } from './sheets';
 import { installBackGesture, inSystemGestureZone } from './backGesture';
 import { disablePush, enablePush, pushChoiceOn, pushDelivers, pushState, pushTimers, setPushChoice, syncPush, type PushState, type PushTimer } from '../net/push';
@@ -76,7 +76,7 @@ function signatureOf(list: RenderList): number {
 }
 
 /** The icon of each modifier before a shift (`Shell.showMods`). */
-const MOD_ICON: Record<Modifier['id'], string> = { heat: ICONS.flame, tailwind: ICONS.wind, afterWork: ICONS.sunset, streak: ICONS.streak, family: ICONS.hat };
+const MOD_ICON: Record<Modifier['id'], AnimatedIconId> = { heat: 'flame', tailwind: 'wind', afterWork: 'sunset', streak: 'streak', family: 'hat' };
 
 /** The room the floating dock claims above the safe area (`--tabbar-h`). */
 const TAB_HEIGHT = 64;
@@ -86,7 +86,7 @@ const PHOTO_SCENE = v(492, 492);
 /** A key hint on a floating button; CSS shows it only where there is a keyboard and a mouse. */
 const keycap = (label: string): HTMLElement => h('kbd', { class: 'keycap', 'aria-hidden': 'true' }, label);
 const TAB_LABEL: Record<Tab, string> = { progress: S.tabs.progress, social: S.tabs.social, game: S.tabs.game, shop: S.tabs.shop, upgrades: S.tabs.build, streetBuilder: S.tabs.build };
-const TAB_ICON: Record<Tab, string> = { progress: ICONS.progress, social: ICONS.people, game: ICONS.game, shop: ICONS.shop, upgrades: ICONS.build, streetBuilder: ICONS.build };
+const TAB_ICON: Record<Tab, AnimatedIconId> = { progress: 'progress', social: 'social', game: 'game', shop: 'shop', upgrades: 'build', streetBuilder: 'build' };
 /** Keys that scroll a list, in points; ±1 means a page (most of the window's height). */
 const SCROLL_KEYS: Partial<Record<string, number>> = { ArrowDown: 60, ArrowUp: -60, PageDown: 1, PageUp: -1, Home: -1e6, End: 1e6 };
 
@@ -132,6 +132,9 @@ export class Shell {
   private suppressClick = false;
   /** The tab the pill belongs under, as the session last said. */
   private shownTabIndex = -1;
+  /** The dock has been drawn once: from then on a chosen tab plays its icon. */
+  private tabsShown = false;
+  private iconsStill = false;
   /** Focus moved with Tab since the last pointer press: a focused button then keeps Space and Enter. */
   private focusByKeyboard = false;
   private readonly settingsBtn: HTMLButtonElement;
@@ -143,7 +146,7 @@ export class Shell {
   private readonly dispatchBtn: HTMLButtonElement;
   private readonly dispatchCount: HTMLSpanElement;
   /** The first shifts on a touch screen: tap anywhere, beside the arm; and over the dispatch button, that it can change sides. */
-  private readonly tapHint = h('div', { class: 'tap-hint', 'aria-hidden': 'true' }, h('span', { class: 'tap-hint-icon' }, h('span', { class: 'tap-hint-ring' }), icon(ICONS.tap)), h('span', { class: 'tap-hint-text' }, h('b', {}, S.shell.tapAnywhere), h('span', {}, S.shell.tapAnywhereSub)));
+  private readonly tapHint = h('div', { class: 'tap-hint', 'aria-hidden': 'true' }, h('span', { class: 'tap-hint-icon' }, h('span', { class: 'tap-hint-ring' }), animatedIcon('tap')), h('span', { class: 'tap-hint-text' }, h('b', {}, S.shell.tapAnywhere), h('span', {}, S.shell.tapAnywhereSub)));
   private readonly dispatchHint = h('div', { class: 'dispatch-hint', 'aria-hidden': 'true' }, S.shell.dispatchSide);
   private readonly photoBtn: HTMLButtonElement;
   /** On the Game tab while a Heat is open: the next step of the waiting shift. */
@@ -242,10 +245,11 @@ export class Shell {
     document.body.append(this.probe);
 
     this.buildTabbar(document.getElementById('tabbar')!);
+    watchIconMoves(app);
     this.settingsBtn = h(
       'button',
-      { class: 'icon-btn glass float-btn settings-btn', 'data-move': 'gear', 'aria-label': S.settings.title, 'aria-keyshortcuts': 'Escape', onclick: () => this.openSettings() },
-      icon(ICONS.gear),
+      { class: 'icon-btn glass float-btn settings-btn', 'aria-label': S.settings.title, 'aria-keyshortcuts': 'Escape', onclick: () => this.openSettings() },
+      animatedIcon('gear'),
       h('span', { class: 'settings-label' }, S.settings.title),
       keycap('esc'),
       this.settingsFlash,
@@ -259,7 +263,7 @@ export class Shell {
         'aria-keyshortcuts': 'D',
         onclick: () => this.push({ k: 'dispatch' }),
       },
-      icon(ICONS.siren),
+      animatedIcon('siren'),
       keycap('D'),
       this.dispatchCount,
     );
@@ -270,17 +274,14 @@ export class Shell {
     // Under any result: the picture on the screen, to send or keep.
     this.photoBtn = h(
       'button',
-      { class: 'btn glass run-btn', type: 'button', 'data-move': 'camera', 'aria-label': S.photo.buttonLabel, 'aria-haspopup': 'dialog', onclick: () => this.takePicture() },
-      icon(ICONS.camera),
+      { class: 'btn glass run-btn', type: 'button', 'aria-label': S.photo.buttonLabel, 'aria-haspopup': 'dialog', onclick: () => this.takePicture() },
+      animatedIcon('camera'),
       h('span', {}, S.photo.button),
     );
     this.chestLabel = h('span', {}, S.run.openChest(1));
-    const chest = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-    chest.setAttribute('viewBox', '0 0 52 48');
-    chest.setAttribute('class', 'chest-flat');
-    chest.setAttribute('aria-hidden', 'true');
-    chest.innerHTML = CHEST_FLAT;
-    this.chestBtn = h('button', { class: 'btn glass run-btn primary-run', type: 'button', 'data-move': 'chest', onclick: () => this.push({ k: 'perform', action: { k: 'showShop', section: 0 } }) }, chest, this.chestLabel);
+    const chest = animatedIcon('chest');
+    chest.classList.add('chest-flat');
+    this.chestBtn = h('button', { class: 'btn glass run-btn primary-run', type: 'button', onclick: () => this.push({ k: 'perform', action: { k: 'showShop', section: 0 } }) }, chest, this.chestLabel);
     this.photo = new PhotoView(app, {
       shutter: () => {
         this.audio.unlock();
@@ -305,7 +306,7 @@ export class Shell {
       },
     });
     this.leaveLabel = h('span', {}, S.shell.leave);
-    this.leaveBtn = h('button', { class: 'btn glass run-btn', type: 'button', 'data-move': 'close', 'aria-keyshortcuts': 'Escape', onclick: () => this.session.leaveSpecial() }, icon(ICONS.close), this.leaveLabel);
+    this.leaveBtn = h('button', { class: 'btn glass run-btn', type: 'button', 'aria-keyshortcuts': 'Escape', onclick: () => this.session.leaveSpecial() }, animatedIcon('close'), this.leaveLabel);
     // Multiplayer: a friend's code or your own; the match takes over the canvas.
     const feel = { sound: () => this.session.save.settings.sound, haptics: () => this.session.save.settings.haptics };
     this.versus = new VersusLobby(layers, output, feel, {
@@ -391,17 +392,17 @@ export class Shell {
     this.againBtn = h(
       'button',
       { class: 'btn glass run-btn primary-run', type: 'button', 'aria-keyshortcuts': 'Enter', 'aria-pressed': 'false', onclick: () => this.versus.toggleReady() },
-      icon(ICONS.check),
+      animatedIcon('check'),
       this.againLabel,
     );
-    this.lobbyBtn = h('button', { class: 'btn glass run-btn', type: 'button', onclick: () => this.versus.backToLobby() }, icon(ICONS.people), h('span', {}, S.shell.lobby));
-    const quitBtn = h('button', { class: 'btn glass run-btn show', type: 'button', onclick: () => this.versus.leave() }, icon(ICONS.close), h('span', {}, S.shell.leave));
+    this.lobbyBtn = h('button', { class: 'btn glass run-btn', type: 'button', onclick: () => this.versus.backToLobby() }, animatedIcon('social'), h('span', {}, S.shell.lobby));
+    const quitBtn = h('button', { class: 'btn glass run-btn show', type: 'button', onclick: () => this.versus.leave() }, animatedIcon('close'), h('span', {}, S.shell.leave));
     this.versusBar = h('div', { class: 'versus-bar' }, quitBtn, this.lobbyBtn, this.againBtn);
     // Out of the match: reactions for everyone, and one lorry from the stands.
     this.revengeBtn = h(
       'button',
       { class: 'btn glass run-btn revenge-btn', type: 'button', 'aria-label': S.shell.revengeLabel, 'aria-keyshortcuts': 'T', onclick: () => this.versus.match?.revenge() },
-      icon(ICONS.truck),
+      animatedIcon('truck'),
       h('span', {}, S.shell.revenge),
     );
     const reactButtons = REACTIONS.map((r, i) =>
@@ -728,7 +729,7 @@ export class Shell {
       const button = h(
         'button',
         { class: 'tab', type: 'button', 'data-tab': tab, 'aria-label': TAB_LABEL[tab], onclick: () => this.push({ k: 'selectTab', tab }) },
-        icon(TAB_ICON[tab]),
+        animatedIcon(TAB_ICON[tab]),
         h('span', {}, TAB_LABEL[tab]),
         badge,
       );
@@ -755,7 +756,7 @@ export class Shell {
       this.mods.replaceChildren(
         ...mods.map((m) =>
           single
-            ? h('div', { class: `mod ${m.tone}`, 'data-id': m.id }, icon(MOD_ICON[m.id]), h('span', { class: 'mod-label' }, m.label))
+            ? h('div', { class: `mod ${m.tone}`, 'data-id': m.id }, animatedIcon(MOD_ICON[m.id]), h('span', { class: 'mod-label' }, m.label))
             : h(
                 'button',
                 {
@@ -768,7 +769,7 @@ export class Shell {
                     this.openMod();
                   },
                 },
-                icon(MOD_ICON[m.id]),
+                animatedIcon(MOD_ICON[m.id]),
                 h('span', { class: 'mod-label', 'aria-hidden': 'true' }, m.label),
               ),
         ),
@@ -828,14 +829,19 @@ export class Shell {
     for (const [tab, { button, badge: el }] of this.tabs) {
       // How far from the selected tab: the dock folds in from the outside and opens from the middle (shell.css, .tab --delay).
       button.style.setProperty('--dist', String(Math.abs(TAB_BAR.indexOf(tab) - this.shownTabIndex)));
-      if (tab === selected) button.setAttribute('aria-current', 'page');
-      else button.removeAttribute('aria-current');
+      if (tab !== selected) button.removeAttribute('aria-current');
+      else if (button.getAttribute('aria-current') !== 'page') {
+        button.setAttribute('aria-current', 'page');
+        if (this.tabsShown) playIcon(button.querySelector('svg'));
+      }
       const b = badges[TAB_BAR.indexOf(tab)] ?? null;
-      el.hidden = b === null;
+      // A dot is news for a tab you are not on; the open tab has been seen (a count stays, it is a number, not news).
+      el.hidden = b === null || (b === 'dot' && tab === selected);
       el.textContent = b && b !== 'dot' ? (b.count > 99 ? '99+' : String(b.count)) : '';
       el.style.minWidth = b === 'dot' ? '10px' : '';
       el.style.height = b === 'dot' ? '10px' : '';
     }
+    this.tabsShown = true;
     // Settings come back as soon as a shift is over, on the result as on the waiting screen (from the first result on).
     const onGame = s.showsChrome && (screen.k === 'ready' || screen.k === 'result');
     this.settingsBtn.classList.toggle('show', onGame);
@@ -1112,7 +1118,7 @@ export class Shell {
     // iPhone and iPad have no prompt: the dialog shows the three taps and stays until it is confirmed.
     if (isIos()) return installDialog(this.layers, isIpad(), () => undefined, reason);
     let taken = false;
-    offerDialog(this.layers, { glyph: ICONS.game, ...reason, yes: S.wayBack.install }, {
+    offerDialog(this.layers, { glyph: 'game', ...reason, yes: S.wayBack.install }, {
       accept: () => {
         taken = true;
         const prompt = this.installPrompt;
@@ -1134,7 +1140,7 @@ export class Shell {
     track('push', { step: 'offer', kind });
     offerDialog(
       this.layers,
-      { glyph: ICONS.bell, title: chest ? S.push.offerFirstTitle : S.push.offerTitle, why: chest ? S.push.offerFirstWhy : S.push.offerWhy, yes: S.push.offerOn },
+      { glyph: 'bell', title: chest ? S.push.offerFirstTitle : S.push.offerTitle, why: chest ? S.push.offerFirstWhy : S.push.offerWhy, yes: S.push.offerOn },
       {
         accept: () => {
           track('push', { step: 'accept' });
@@ -1158,7 +1164,7 @@ export class Shell {
     const flash = this.settingsFlash;
     window.clearTimeout(this.flashTimer);
     flash.classList.toggle('ask', ask);
-    flash.replaceChildren(icon(ICONS.sync), h('span', {}, text));
+    flash.replaceChildren(animatedIcon('sync'), h('span', {}, text));
     flash.classList.add('on');
     this.flashTimer = window.setTimeout(() => {
       flash.classList.remove('on');
@@ -1709,6 +1715,7 @@ export class Shell {
     this.audio.updateTension(match ? 0 : s.tension, s.save.settings.sound, Math.min(delta, 0.1));
     this.audio.updateWeather(match ? { rain: 0, strikes: s.weatherSound.strikes } : s.weatherSound, s.save.settings.mapSounds);
     this.app.classList.toggle('reduce-motion', s.reduceMotion);
+    if (s.reduceMotion !== this.iconsStill) stillIcons((this.iconsStill = s.reduceMotion));
     this.canvas.style.cursor = !match && (s.overTopBar || list.pointerOver) ? 'pointer' : '';
     this.social.toast(s.socialNotice);
     if (this.pendingChallenge) this.openPendingChallenge();

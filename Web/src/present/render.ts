@@ -183,6 +183,10 @@ export class RenderList {
   pointerOver = false;
   /** Where the top card's lit capsule is: column 0 (money), 1 (the middle, at rest) or 2 (the best), fractional while it glides to the mouse (`GameSession.topLit`). */
   topLit = 1;
+  /** How far below its foot the top card reaches right now: it grows to carry a notice (`NoticeIsland`). */
+  topGrow = 0;
+  /** The part of `topGrow` the ready screen's intro takes (under a notice, if one is up). */
+  topIntro = 0;
   /** Frames a glass panel keeps its frost before the blur is made again: the scene behind it moves, but slowly (a shift's top bar). */
   frostEvery = 1;
   /**

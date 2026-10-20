@@ -499,54 +499,6 @@ button {
   opacity: 0;
 }
 
-/* Each icon's own move when it is chosen: once, about half a second (Reduce Motion cuts it to a frame). */
-.tab[aria-current='page'] svg {
-  animation: var(--tab-move, none) var(--tab-move-ms, 500ms) var(--ease-out) 60ms both;
-}
-.tab[data-tab='progress'] { --tab-move: tab-progress; --tab-move-ms: 520ms; }
-.tab[data-tab='progress'] svg { transform-origin: 50% 90%; }
-.tab[data-tab='social'] { --tab-move: tab-social; --tab-move-ms: 420ms; }
-.tab[data-tab='social'] svg { transform-origin: 50% 60%; }
-.tab[data-tab='game'] { --tab-move: tab-game; --tab-move-ms: 620ms; }
-.tab[data-tab='shop'] { --tab-move: tab-shop; --tab-move-ms: 560ms; }
-.tab[data-tab='shop'] svg { transform-origin: 50% 15%; }
-.tab[data-tab='upgrades'] { --tab-move: tab-build; --tab-move-ms: 520ms; }
-.tab[data-tab='upgrades'] svg { transform-origin: 25% 80%; }
-
-@keyframes tab-progress {
-  0% { transform: none; }
-  30% { transform: translateY(-4px) scale(1.12) rotate(-8deg); }
-  55% { transform: scale(0.96) rotate(6deg); }
-  75% { transform: rotate(-3deg); }
-  100% { transform: none; }
-}
-@keyframes tab-social {
-  0% { transform: scale(1); }
-  35% { transform: scale(1.18); }
-  60% { transform: scale(0.94); }
-  100% { transform: scale(1); }
-}
-@keyframes tab-game {
-  0% { transform: rotate(0); }
-  30% { transform: rotate(-55deg); }
-  65% { transform: rotate(25deg); }
-  85% { transform: rotate(-8deg); }
-  100% { transform: rotate(0); }
-}
-@keyframes tab-shop {
-  0% { transform: rotate(0); }
-  25% { transform: rotate(14deg); }
-  50% { transform: rotate(-10deg); }
-  75% { transform: rotate(5deg); }
-  100% { transform: rotate(0); }
-}
-@keyframes tab-build {
-  0% { transform: rotate(0); }
-  35% { transform: rotate(-40deg); }
-  60% { transform: rotate(12deg); }
-  100% { transform: rotate(0); }
-}
-
 /* A new dot pops in and blinks twice like an indicator light, then stays calm. */
 .tab .badge-dot:not([hidden]) {
   animation:
@@ -820,8 +772,8 @@ a.row-link {
 }
 
 .btn .coin {
-  width: 15px;
-  height: 15px;
+  width: 19px;
+  height: 19px;
 }
 
 @media (hover: hover) and (pointer: fine) {
@@ -1326,8 +1278,8 @@ a.row-link {
 
 /* The chest pill wears the waiting chest itself, flat and a little larger than a line icon. */
 .run-btn svg.chest-flat {
-  width: 24px;
-  height: 22px;
+  width: 26px;
+  height: 26px;
 }
 
 /* On a phone the pills are smaller (Leo, 08.10.2026): the stack took too much of the road. The look is 36 px tall,
@@ -1352,8 +1304,8 @@ a.row-link {
   }
 
   .run-bar .run-btn svg.chest-flat {
-    width: 20px;
-    height: 18px;
+    width: 22px;
+    height: 22px;
   }
 
   .settings-btn.has-news::after {
@@ -1660,51 +1612,6 @@ a.row-link {
   vertical-align: 1px;
 }
 
-/* Each floating pill's icon plays a short move of its own under the cursor or the finger, the way the dock's icons do when chosen. */
-.float-btn[data-move] svg,
-.run-btn[data-move] svg {
-  transform-origin: 50% 60%;
-}
-
-.settings-btn[data-move='gear']:is(:hover, :active, :focus-visible) svg {
-  animation: move-gear 600ms var(--ease-out);
-}
-
-.run-btn[data-move='chest']:is(:hover, :active, :focus-visible) svg {
-  transform-origin: 50% 90%;
-  animation: move-chest 520ms var(--ease-out);
-}
-
-.run-btn[data-move='camera']:is(:hover, :active, :focus-visible) svg {
-  animation: move-camera 460ms var(--ease-out);
-}
-
-.run-btn[data-move='close']:is(:hover, :active, :focus-visible) svg {
-  animation: move-close 420ms var(--ease-out);
-}
-
-@keyframes move-gear {
-  from { transform: rotate(0); }
-  to { transform: rotate(180deg); }
-}
-@keyframes move-chest {
-  0% { transform: none; }
-  30% { transform: translateY(-3px) rotate(-6deg); }
-  55% { transform: translateY(0) rotate(4deg); }
-  100% { transform: none; }
-}
-@keyframes move-camera {
-  0% { transform: scale(1); }
-  30% { transform: scale(0.84); }
-  60% { transform: scale(1.12); }
-  100% { transform: scale(1); }
-}
-@keyframes move-close {
-  0% { transform: rotate(0); }
-  60% { transform: rotate(100deg); }
-  100% { transform: rotate(90deg); }
-}
-
 /* The first shifts on a touch screen (Leo, 16.10.2026): a thumb pressing beside the arm says the whole screen is the
    button, not the cars; over the dispatch button a line says it can change sides. Taps go straight through both. */
 .tap-hint,
@@ -1963,6 +1870,11 @@ a.row-link {
 .app.reduce-motion *::after {
   animation-duration: 1ms !important;
   transition-duration: 1ms !important;
+}
+
+/* The icons hold still (flames: `stillIcons`); a looping icon at 1 ms would only strobe. */
+.app.reduce-motion .ai * {
+  animation: none !important;
 }
 
 /* MARK: Detail sheet – what a tapped card does, readable on a phone (ui/detailSheet.ts). */
@@ -2300,19 +2212,17 @@ a.row-link {
   line-height: 1.25;
 }
 
-/* The gold coin inside text, like the canvas one: a disc with a sunk ring. */
+/* The gold coin inside text (`coinMark`): the canvas coin's disc with a sunk ring, in a box a little larger than the disc. */
 .coin {
   display: inline-block;
-  width: 0.78em;
-  height: 0.78em;
-  margin: 0 0.22em 0 0.04em;
-  border-radius: 50%;
-  vertical-align: -0.08em;
-  background: radial-gradient(circle, #e3c15a 0 44%, rgba(120, 92, 20, 0.65) 46% 60%, #e3c15a 62%);
+  width: 0.98em;
+  height: 0.98em;
+  margin: 0 0.12em 0 -0.06em;
+  vertical-align: -0.18em;
 }
 
 .btn.primary .coin {
-  box-shadow: 0 0 0 1px rgba(14, 16, 19, 0.35);
+  filter: drop-shadow(0 0 0.5px rgba(14, 16, 19, 0.6));
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -2972,10 +2882,6 @@ button.mod:active {
   width: 20px;
   height: 20px;
   transition: transform 200ms var(--ease-out);
-}
-
-.photo-btn.done svg {
-  transform: scale(1.12);
 }
 
 .photo-close {

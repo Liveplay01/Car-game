@@ -1,6 +1,7 @@
-import { h, icon } from './dom';
+import { h, icon, animatedIcon } from './dom';
 import { tabsControl } from './tabs';
 import { ICONS, CRAZYGAMES_LOGO, FANDOM_LOGO } from './icons';
+import type { AnimatedIconId } from './animatedIcons';
 import type { Settings } from '../core/career';
 import { type PatchNote, type PatchImpact, type PatchItem, itemText, itemCredit } from '../present/patchNotes';
 import { LEGAL_DOCS, type LegalDoc, type LegalId } from '../present/legal';
@@ -157,11 +158,11 @@ export function openSheet(layer: HTMLElement, title: string, body: HTMLElement, 
   const below = stack[stack.length - 1] ?? null;
   const previouslyFocused = document.activeElement as HTMLElement | null;
   const titleId = `sheet-${Math.random().toString(36).slice(2, 8)}`;
-  const closeBtn = h('button', { class: 'icon-btn', 'aria-label': S.settings.close, onclick: () => close() }, icon(ICONS.close));
+  const closeBtn = h('button', { class: 'icon-btn', 'aria-label': S.settings.close, onclick: () => close() }, animatedIcon('close'));
   const grabber = h('div', { class: 'grabber', 'aria-hidden': 'true' });
   const head = h('div', { class: 'sheet-head' }, h('h2', { class: 'sheet-title', id: titleId }, title), closeBtn);
   // A sheet opened from another one says where Back goes.
-  const back = below ? h('button', { class: 'sheet-back', type: 'button', onclick: () => close() }, icon(ICONS.chevronLeft), below.title) : null;
+  const back = below ? h('button', { class: 'sheet-back', type: 'button', onclick: () => close() }, animatedIcon('chevronLeft'), below.title) : null;
   const sheet = h('div', { class: 'sheet', role: 'dialog', 'aria-modal': 'true', 'aria-labelledby': titleId, tabindex: '-1' }, grabber, back, head, body);
   const scrim = h('div', { class: 'sheet-scrim', onclick: () => close() });
   dragToClose(sheet, scrim, [grabber, head], () => close());
@@ -311,8 +312,8 @@ export function glideHeight(body: HTMLElement, content: HTMLElement): void {
  */
 export function installDialog(layer: HTMLElement, ipad: boolean, onDone: () => void, reason?: { title: string; why: string }): void {
   const previouslyFocused = document.activeElement as HTMLElement | null;
-  const step = (n: number, text: string, glyph: string): HTMLElement =>
-    h('li', { class: 'install-step' }, h('span', { class: 'install-num', 'aria-hidden': 'true' }, String(n)), h('span', { class: 'install-text' }, text), h('span', { class: 'install-glyph', 'aria-hidden': 'true' }, icon(glyph)));
+  const step = (n: number, text: string, glyph: AnimatedIconId): HTMLElement =>
+    h('li', { class: 'install-step' }, h('span', { class: 'install-num', 'aria-hidden': 'true' }, String(n)), h('span', { class: 'install-text' }, text), h('span', { class: 'install-glyph', 'aria-hidden': 'true' }, animatedIcon(glyph)));
   const ok = h('button', { class: 'btn primary block', type: 'button' }, S.intro.gotIt);
   const root = h(
     'div',
@@ -320,15 +321,15 @@ export function installDialog(layer: HTMLElement, ipad: boolean, onDone: () => v
     h(
       'div',
       { class: 'install-card' },
-      h('div', { class: 'install-badge', 'aria-hidden': 'true' }, icon(ICONS.game)),
+      h('div', { class: 'install-badge', 'aria-hidden': 'true' }, animatedIcon('game')),
       h('h2', { class: 'install-title', id: 'install-title' }, reason?.title ?? S.settings.homeScreen.title),
       h('p', { class: 'install-why', id: 'install-why' }, reason?.why ?? S.settings.homeScreen.why),
       h(
         'ol',
         { class: 'install-steps' },
-        step(1, ipad ? S.settings.homeScreen.shareTop : S.settings.homeScreen.shareBottom, ICONS.share),
-        step(2, S.settings.homeScreen.scroll, ICONS.plus),
-        step(3, S.settings.homeScreen.add, ICONS.check),
+        step(1, ipad ? S.settings.homeScreen.shareTop : S.settings.homeScreen.shareBottom, 'share'),
+        step(2, S.settings.homeScreen.scroll, 'plus'),
+        step(3, S.settings.homeScreen.add, 'check'),
       ),
       ok,
     ),
@@ -396,7 +397,7 @@ export function patchNotesSheet(layer: HTMLElement, notes: PatchNote[], onClose:
         h(
           'details',
           { class: 'note-more' },
-          h('summary', { class: 'note-more-head' }, S.settings.allChanges(note.items.length), icon(ICONS.chevronDown, {})),
+          h('summary', { class: 'note-more-head' }, S.settings.allChanges(note.items.length), animatedIcon('chevronDown')),
           h('ul', { class: 'note-items' }, ...note.items.map(noteLine)),
         ),
       ),
@@ -412,8 +413,8 @@ export function guidesSheet(layer: HTMLElement, places: Intro[], onClose: () => 
     const el = h(
       'details',
       { class: 'note-more guide' },
-      h('summary', { class: 'note-more-head' }, h('span', { class: 'guide-name' }, h('span', { class: 'row-title' }, t.title), h('span', { class: 'row-sub' }, t.line)), icon(ICONS.chevronDown, {})),
-      h('div', { class: 'guide-body' }, ...t.body.map((p) => h('p', {}, p)), h('button', { class: 'btn small', type: 'button', onclick: () => go(id) }, S.settings.guidesGo, icon(ICONS.chevronRight))),
+      h('summary', { class: 'note-more-head' }, h('span', { class: 'guide-name' }, h('span', { class: 'row-title' }, t.title), h('span', { class: 'row-sub' }, t.line)), animatedIcon('chevronDown')),
+      h('div', { class: 'guide-body' }, ...t.body.map((p) => h('p', {}, p)), h('button', { class: 'btn small', type: 'button', onclick: () => go(id) }, S.settings.guidesGo, animatedIcon('chevronRight'))),
     );
     return { el, text: [t.title, t.line, ...t.body].join(' ').toLocaleLowerCase() };
   });
@@ -465,7 +466,7 @@ function linkRow(title: string, sub: string, onOpen: () => void): HTMLElement {
     'button',
     { class: 'row row-link', type: 'button', onclick: onOpen },
     h('div', { class: 'row-main' }, h('div', { class: 'row-title' }, title), h('div', { class: 'row-sub' }, sub)),
-    icon(ICONS.chevronRight),
+    animatedIcon('chevronRight'),
   );
 }
 
@@ -489,7 +490,7 @@ function externalRow(href: string, logo: string, title: string, sub: string): HT
     { class: 'row row-link', href, target: '_blank', rel: 'noopener' },
     h('span', { class: 'row-logo', html: logo }),
     h('div', { class: 'row-main' }, h('div', { class: 'row-title' }, title), h('div', { class: 'row-sub' }, sub)),
-    icon(ICONS.external),
+    animatedIcon('external'),
   );
 }
 
@@ -505,9 +506,9 @@ function socialRow(iconPath: string, tone: string, title: string, sub: string, h
   return h(
     'a',
     { class: 'row row-link', href, target: '_blank', rel: 'noopener' },
-    tile(iconPath, tone),
+    tile(icon(iconPath), tone),
     h('div', { class: 'row-main' }, h('div', { class: 'row-title' }, title), h('div', { class: 'row-sub' }, sub)),
-    icon(ICONS.external),
+    animatedIcon('external'),
   ) as HTMLAnchorElement;
 }
 
@@ -586,7 +587,7 @@ function pushRows(push: SettingsActions['push']): HTMLElement[] {
 }
 
 export interface Offer {
-  glyph: string;
+  glyph: AnimatedIconId;
   title: string;
   why: string;
   yes: string;
@@ -604,7 +605,7 @@ export function offerDialog(layer: HTMLElement, offer: Offer, actions: { accept(
   const card = h(
     'div',
     { class: 'intro-card', role: 'alertdialog', 'aria-modal': 'true', 'aria-labelledby': 'offer-title', 'aria-describedby': 'offer-why' },
-    h('div', { class: 'install-badge', 'aria-hidden': 'true' }, icon(offer.glyph)),
+    h('div', { class: 'install-badge', 'aria-hidden': 'true' }, animatedIcon(offer.glyph)),
     h('h2', { class: 'install-title intro-title', id: 'offer-title' }, offer.title),
     h('p', { class: 'install-why', id: 'offer-why' }, offer.why),
     on,
@@ -693,7 +694,7 @@ export function openLanguageSheet(layer: HTMLElement): () => void {
   let close: (() => void) | null = null;
   for (const { code, name } of LANGUAGES) {
     const isCurrent = code === now;
-    const check = isCurrent ? h('span', { class: 'lang-check', 'aria-hidden': 'true' }, icon(ICONS.check)) : null;
+    const check = isCurrent ? h('span', { class: 'lang-check', 'aria-hidden': 'true' }, animatedIcon('check')) : null;
     const row = h(
       'button',
       {
@@ -731,24 +732,24 @@ function languageRow(layer: HTMLElement): HTMLElement {
       onclick: () => openLanguageSheet(layer),
       'aria-label': `${S.settings.language}: ${name}`,
     },
-    tile(ICONS.globe, 'blue'),
+    tile(animatedIcon('globe'), 'blue'),
     h('div', { class: 'row-main' }, h('div', { class: 'row-title' }, S.settings.language)),
     h('span', { class: 'row-value' }, name),
-    icon(ICONS.chevronRight),
+    animatedIcon('chevronRight'),
   );
 }
 
 /** A coloured icon tile in front of a row, as in iOS Settings. */
-const tile = (glyph: string, tone: string): HTMLElement => h('span', { class: `row-tile tile-${tone}`, 'aria-hidden': 'true' }, icon(glyph));
+const tile = (glyph: SVGSVGElement, tone: string): HTMLElement => h('span', { class: `row-tile tile-${tone}`, 'aria-hidden': 'true' }, glyph);
 
 /** A row that leaves for the website, with an icon tile in front. */
-function tileExternalRow(glyph: string, tone: string, title: string, sub: string, href: string): HTMLAnchorElement {
+function tileExternalRow(glyph: AnimatedIconId, tone: string, title: string, sub: string, href: string): HTMLAnchorElement {
   return h(
     'a',
     { class: 'row row-link', href, target: '_blank', rel: 'noopener' },
-    tile(glyph, tone),
+    tile(animatedIcon(glyph), tone),
     h('div', { class: 'row-main' }, h('div', { class: 'row-title' }, title), h('div', { class: 'row-sub' }, sub)),
-    icon(ICONS.external),
+    animatedIcon('external'),
   ) as HTMLAnchorElement;
 }
 
@@ -829,7 +830,7 @@ export function settingsSheet(layer: HTMLElement, s: Settings, actions: Settings
           h('div', { class: 'row-title' }, S.settings.addToHome),
           h('div', { class: 'row-sub' }, S.settings.addToHomeSub),
         ),
-        icon(ICONS.share),
+        animatedIcon('share'),
       );
       installRow.querySelector('svg')?.setAttribute('width', '22');
     }
@@ -839,8 +840,8 @@ export function settingsSheet(layer: HTMLElement, s: Settings, actions: Settings
   // which keeps players on its own site (like the website link).
   let buildGroup: HTMLElement | null = null;
   if (!inPortal) {
-    const bugRow = tileExternalRow(ICONS.bug, 'red', S.settings.reportBug, S.settings.reportBugSub, buildLink('bug', null));
-    buildGroup = group(S.settings.buildWithUs, bugRow, tileExternalRow(ICONS.bulb, 'amber', S.settings.suggest, S.settings.suggestSub, buildLink('idea', null)));
+    const bugRow = tileExternalRow('bug', 'red', S.settings.reportBug, S.settings.reportBugSub, buildLink('bug', null));
+    buildGroup = group(S.settings.buildWithUs, bugRow, tileExternalRow('bulb', 'amber', S.settings.suggest, S.settings.suggestSub, buildLink('idea', null)));
     actions
       .friendCode?.()
       .then((code) => {
@@ -858,7 +859,7 @@ export function settingsSheet(layer: HTMLElement, s: Settings, actions: Settings
           restoring ? S.account.haveCode : S.settings.cloudSync,
           restoring ? S.settings.haveCodeSub : actions.cloudOn ? S.settings.cloudOn : S.settings.cloudOff,
           () => actions.openCloud(),
-          tile(ICONS.cloud, 'blue'),
+          tile(animatedIcon('cloud'), 'blue'),
           null,
         )
       : null;
@@ -907,7 +908,7 @@ export function settingsSheet(layer: HTMLElement, s: Settings, actions: Settings
               actions.player.name ?? S.account.settingsNone,
               actions.player.ready ? S.account.settingsReady : actions.player.name ? S.account.settingsSync : S.account.settingsSub,
               () => actions.player?.open(),
-              tile(ICONS.people, 'blue'),
+              tile(animatedIcon('social'), 'blue'),
               actions.player.ready ? null : h('span', { class: 'new-pill' }, S.account.settingsBadge),
             )
           : null,

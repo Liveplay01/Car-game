@@ -1,5 +1,5 @@
 import './mafia.css';
-import { h, icon } from './dom';
+import { h, animatedIcon, coinMark } from './dom';
 import { baseConfig } from '../core/config';
 import type { Career } from '../core/career';
 import { DAY_MS, Mafia, type Grade, type Loan, type LoanEvent, type Table } from '../core/mafia';
@@ -31,9 +31,6 @@ export interface MafiaPanel {
   /** The page is left: the clock, the pointer and every pending effect stop. */
   dispose(): void;
 }
-
-/** The fedora on the Don's card. */
-const FEDORA = '<path d="M2.5 16.5h19"/><path d="M5.5 16.5c0-3.4 1-7 3-9 1.7-1.7 5.3-1.7 7 0 2 2 3 5.6 3 9"/><path d="M6.2 12.8h11.6"/>';
 
 /** The steady hand stays chosen while the page is left and came back to. */
 let assist = false;
@@ -68,7 +65,7 @@ function cash(n: number): Cash {
     text.nodeValue = Fmt.number(Math.round(x));
   };
   return {
-    el: h('span', { class: 'cash' }, text, h('span', { class: 'coin', 'aria-label': S.clubPanel.money })),
+    el: h('span', { class: 'cash' }, text, coinMark(S.clubPanel.money)),
     set(x) {
       cancelAnimationFrame(raf);
       put(x);
@@ -231,7 +228,7 @@ export function mafiaPanel(host: MafiaHost): MafiaPanel {
     return h(
       'div',
       { class: 'mafia-card don' },
-      h('span', { class: 'mafia-crest' }, icon(FEDORA)),
+      h('span', { class: 'mafia-crest' }, animatedIcon('fedora')),
       h('div', { class: 'mafia-head' }, h('h2', { class: 'mafia-title' }, S.mafia.title), h('p', { class: 'mafia-tagline' }, S.mafia.tagline)),
     );
   }
@@ -299,7 +296,7 @@ export function mafiaPanel(host: MafiaHost): MafiaPanel {
     const level = Math.round((amounts.indexOf(amount) / Math.max(1, amounts.length - 1)) * (S.mafia.speeds.length - 1));
     const sit = h('button', { class: 'btn primary mafia-go pulse', type: 'button' }, S.mafia.set);
     sit.addEventListener('click', setTable);
-    const speed = h('span', { class: 'mafia-speed', 'data-level': String(level) }, `${S.mafia.pointer(S.mafia.speeds[level])} `, h('i', {}, '›'), h('i', {}, '›'), h('i', {}, '›'));
+    const speed = h('span', { class: 'mafia-speed', 'data-level': String(level) }, `${S.mafia.pointer(S.mafia.speeds[level])} `, ...[0, 1, 2].map(() => h('i', {}, animatedIcon('chevronRight'))));
     const meta = h('div', { class: 'mafia-meta' }, h('span', {}, S.mafia.zone(Mafia.zoneWidth(career), career.cleanLoans)), speed);
     return [h('div', { class: 'mafia-card' }, layer(), h('p', { class: 'mafia-pitch' }, S.mafia.pitch), chips(), bar(t, 0, false, null), meta, nextHint(), assistToggle(), h('div', { class: 'mafia-offer' }, h('span', {}, S.mafia.offer(terms.interest, terms.days)), sit))];
   }
@@ -400,7 +397,7 @@ export function mafiaPanel(host: MafiaHost): MafiaPanel {
     const stakeLabel = h('span', { class: 'mafia-label' });
     const stake = h('ul', { class: 'mafia-stake' });
     S.mafia.consequences(baseConfig.mafiaGarnish).forEach((text, i) => {
-      const item = h('li', {}, h('i', {}, '✕'), text);
+      const item = h('li', {}, h('i', {}, animatedIcon('close')), text);
       item.style.setProperty('--i', String(i));
       stake.append(item);
     });

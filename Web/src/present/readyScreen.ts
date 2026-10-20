@@ -5,7 +5,7 @@ import { type ConditionEntry, type MuseumEntry, museumId, conditionsOf } from '.
 import { type Vec2, v, add } from '../core/vec2';
 import { type RenderList, type Rect, R, Ease, text, drawText, circle, Metrics } from './render';
 import { MenuKit } from './menukit';
-import { FAIL_CHIP_SIZE } from './hud';
+import { FAIL_CHIP_SIZE, TopBar } from './hud';
 import { MuseumPage } from './museum';
 import { textWidth, drawFitted } from './icons';
 import { S } from './strings';
@@ -104,8 +104,66 @@ export function streakEndsIn(career: Career, today: number, config: Config): num
   return hours <= config.streakWarningHours ? hours : null;
 }
 
-/** Where a notice sits: hanging under `top` (the Game tab), or standing on `bottom` (the pages). */
-export type NoticePlace = { top: number } | { bottom: number };
+/** Where a notice sits: under the numbers in the grown top card (the Game tab), or standing on `bottom` (the pages). */
+export type NoticePlace = 'card' | { bottom: number };
+
+/**
+ * On the Game tab the top card grows to carry the notice (Leo, 20.10.2026), like the Dynamic Island: the numbers stay where
+ * they are, the glass reaches down on a spring (`RenderList.topGrow`, `TopBar.addCard`), the words stand under the numbers,
+ * then it folds back. Only down, never sideways: the card keeps its margin to the screen's edge. What hangs under the card
+ * glides down with it (`TopBar.foot`).
+ */
+export const NoticeIsland = {
+  grow: 0.56,
+  shrink: 0.34,
+  wordsAt: 0.12,
+  wordsIn: 0.22,
+  wordsOut: 0.12,
+  pad: 24,
+  top: 4,
+  bottom: 14,
+
+  room: (bar: Rect): number => R.width(bar) - 2 * NoticeIsland.pad,
+
+  /** How far below its usual foot the card reaches when it is fully open. */
+  depth(notice: ShownNotice, bar: Rect, textScale: number): number {
+    if (notice.achievement) return NoticeIsland.top + noticeHeight(textScale, true) + NoticeIsland.bottom / 2;
+    const fit = TopBar.fitBrief(notice.text, NoticeIsland.room(bar), textScale);
+    return NoticeIsland.top + fit.lines.length * fit.size * 1.25 + NoticeIsland.bottom;
+  },
+
+  /** How far it is open: a spring out (a little past, once), the drawer's ease back. */
+  open(age: number, duration: number, reduceMotion: boolean): number {
+    if (reduceMotion) return 1;
+    const fold = Ease.clamp01((duration - age) / NoticeIsland.shrink);
+    return Ease.spring(age / NoticeIsland.grow) * (1 - Ease.outCubic(1 - fold));
+  },
+
+  reach: (notice: ShownNotice, bar: Rect, textScale: number, reduceMotion: boolean): number =>
+    NoticeIsland.depth(notice, bar, textScale) * NoticeIsland.open(notice.age, notice.duration, reduceMotion),
+};
+
+/** The words in the grown card: they rise in once it has room, and leave before it folds. */
+function addCardNotice(list: RenderList, notice: ShownNotice, o: { textScale: number; reduceMotion: boolean }): void {
+  const { age, duration, achievement } = notice;
+  const rm = o.reduceMotion;
+  const bar = TopBar.frame(list.camera.viewport.x);
+  const words =
+    (rm ? noticePresence(age, duration) : Ease.clamp01((age - NoticeIsland.wordsAt) / NoticeIsland.wordsIn)) *
+    Ease.clamp01((duration - age - NoticeIsland.shrink) / NoticeIsland.wordsOut);
+  if (words <= 0.001) return;
+  const rise = rm ? 0 : (1 - Ease.outCubic((age - NoticeIsland.wordsAt) / NoticeIsland.wordsIn)) * 4;
+  const top = bar.maxY + NoticeIsland.top + rise;
+  if (achievement) {
+    const area = R.make(bar.minX + 6, top, bar.maxX - 6, top + noticeHeight(o.textScale, true));
+    achievementContent(list, achievement, area, { age: age - NoticeIsland.wordsAt, opacity: words, scale: o.textScale, reduceMotion: rm });
+    return;
+  }
+  const fit = TopBar.fitBrief(notice.text, NoticeIsland.room(bar), o.textScale);
+  const lineHeight = fit.size * 1.25;
+  const x = R.center(bar).x;
+  fit.lines.forEach((ln, i) => list.s(text(ln, v(x, top + lineHeight * (i + 0.5)), fit.size, 'center', 'bold'), 'primary', words));
+}
 
 /** How tall a notice is, Larger text included; an achievement's card is nearly twice a line. */
 export const noticeHeight = (textScale: number, achievement = false): number => (achievement ? 54 : 30) * textScale;
@@ -114,18 +172,21 @@ export const noticeHeight = (textScale: number, achievement = false): number => 
 export const noticePresence = (age: number, duration: number): number => Ease.outCubic(age / 0.2) * (1 - Ease.clamp01((age - (duration - 0.5)) / 0.5));
 
 /**
- * The notice pill. On the Game tab it hangs under the top card, out of the thumb's way (Leo:
- * a tap covered it at the bottom), and drops in from under the card; on the pages it stands
- * above the tab bar. Larger text makes it a step bigger.
+ * A notice. On the Game tab it stands in the grown top card (`NoticeIsland`), out of the thumb's way;
+ * on the pages it is a pill above the tab bar. Larger text makes it a step bigger.
  */
 export function addNotice(list: RenderList, notice: ShownNotice, o: { at: NoticePlace; textScale: number; reduceMotion: boolean }): void {
+  if (o.at === 'card') {
+    addCardNotice(list, notice, o);
+    return;
+  }
   const { text: textValue, age, duration, achievement } = notice;
   const vp = list.camera.viewport;
   const opacity = noticePresence(age, duration);
   const scale = o.textScale;
   const height = noticeHeight(scale, achievement !== null);
   const travel = o.reduceMotion ? 0 : (1 - Ease.settle(age / 0.4)) * (achievement ? 18 : 10);
-  const center = 'top' in o.at ? v(vp.x / 2, o.at.top + height / 2 - travel) : v(vp.x / 2, o.at.bottom - height / 2 + travel);
+  const center = v(vp.x / 2, o.at.bottom - height / 2 + travel);
   if (achievement) {
     addAchievementCard(list, achievement, center, height, { age, opacity, scale, reduceMotion: o.reduceMotion });
     return;
@@ -145,6 +206,23 @@ export function addNotice(list: RenderList, notice: ShownNotice, o: { at: Notice
  * of light spreading from it once), the family's name and what it paid.
  */
 function addAchievementCard(list: RenderList, card: AchievementCard, center: Vec2, height: number, o: { age: number; opacity: number; scale: number; reduceMotion: boolean }): void {
+  const { opacity, scale } = o;
+  const pad = 14 * scale;
+  const medal = 18 * scale;
+  const gap = 12 * scale;
+  const reward = textWidth(card.reward, 14 * scale);
+  const maxWidth = list.camera.viewport.x - 24;
+  const chrome = pad * 2 + medal * 2 + gap * 2 + reward;
+  const textRoom = Math.min(maxWidth - chrome, Math.max(textWidth(card.title, 16 * scale), textWidth(S.ach.caption, 10 * scale)));
+  const width = chrome + textRoom;
+  const left = center.x - width / 2;
+  const frame = R.make(left, center.y - height / 2, left + width, center.y + height / 2);
+  MenuKit.chromePanel(list, frame, height / 2, opacity, 'coin');
+  achievementContent(list, card, frame, o);
+}
+
+/** The medal, the family's name and what it paid, laid out across `frame`. */
+function achievementContent(list: RenderList, card: AchievementCard, frame: Rect, o: { age: number; opacity: number; scale: number; reduceMotion: boolean }): void {
   const { age, opacity, scale } = o;
   const pad = 14 * scale;
   const medal = 18 * scale;
@@ -152,22 +230,17 @@ function addAchievementCard(list: RenderList, card: AchievementCard, center: Vec
   const captionSize = 10 * scale;
   const titleSize = 16 * scale;
   const rewardSize = 14 * scale;
-  const reward = textWidth(card.reward, rewardSize);
-  const caption = S.ach.caption;
-  const maxWidth = list.camera.viewport.x - 24;
-  const chrome = pad * 2 + medal * 2 + gap * 2 + reward;
-  const textRoom = Math.min(maxWidth - chrome, Math.max(textWidth(card.title, titleSize), textWidth(caption, captionSize)));
-  const width = chrome + textRoom;
-  const left = center.x - width / 2;
-  MenuKit.chromePanel(list, R.make(left, center.y - height / 2, left + width, center.y + height / 2), height / 2, opacity, 'coin');
-  const medalAt = v(left + pad + medal, center.y);
+  const center = R.center(frame);
+  const height = R.height(frame);
+  const medalAt = v(frame.minX + pad + medal, center.y);
   const pulse = o.reduceMotion ? 1 : Ease.clamp01((age - 0.15) / 0.9);
   if (pulse < 1) list.s(circle(medalAt, medal * (1 + 0.9 * Ease.outCubic(pulse))), 'coin', 0.4 * (1 - pulse) * opacity);
   list.s(circle(medalAt, medal), 'coin', opacity);
   list.s(circle(medalAt, medal - 3 * scale), 'coin', opacity * 0.35);
   drawText(list, card.tier, medalAt, 15 * scale, 'background', { opacity, weight: 'bold', align: 'center' });
-  const textLeft = left + pad + medal * 2 + gap;
-  drawText(list, caption, v(textLeft, center.y - height * 0.2), captionSize, 'coin', { opacity, weight: 'bold' });
+  const textLeft = frame.minX + pad + medal * 2 + gap;
+  const textRoom = frame.maxX - pad - textWidth(card.reward, rewardSize) - gap - textLeft;
+  drawText(list, S.ach.caption, v(textLeft, center.y - height * 0.2), captionSize, 'coin', { opacity, weight: 'bold' });
   drawFitted(list, card.title, v(textLeft, center.y + height * 0.14), titleSize, textRoom, 'primary', { opacity, weight: 'bold' });
-  drawText(list, card.reward, v(left + width - pad, center.y), rewardSize, 'coin', { opacity, weight: 'bold', align: 'trailing' });
+  drawText(list, card.reward, v(frame.maxX - pad, center.y), rewardSize, 'coin', { opacity, weight: 'bold', align: 'trailing' });
 }

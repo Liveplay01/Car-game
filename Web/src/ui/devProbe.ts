@@ -77,6 +77,12 @@ export function installProbe(shell: Shell): void {
       step();
       return state();
     },
+    /** Puts a notice up at once, as a reply would (the top card on the Game tab grows to carry it). */
+    say: (text) => {
+      game.showNotice(text);
+      step();
+      return state();
+    },
     /** Milliseconds per frame, building the scene and drawing it, on whatever is showing (a shift is started if the game waits). */
     perf: (frames = 300) => {
       if (game.screen.k === 'ready') game.perform({ k: 'startShift' });
@@ -133,5 +139,6 @@ export interface Probe {
   play(bot?: Bot, seconds?: number, settle?: number): Snapshot & { played: boolean };
   wait(seconds: number): Snapshot;
   perform(action: Parameters<Shell['game']['perform']>[0]): Snapshot;
+  say(text: string): Snapshot;
   perf(frames?: number): { screen: string; items: number; build: Spread; draw: Spread };
 }

@@ -486,17 +486,22 @@
 }
 
 .mafia-speed i {
-  font-style: normal;
+  display: inline-flex;
   font-size: 15px;
-  font-weight: 900;
   color: rgba(255, 255, 255, 0.2);
+}
+
+.mafia-speed i svg {
+  width: 1em;
+  height: 1em;
+  stroke-width: 3;
 }
 
 .mafia-speed[data-level='0'] i:nth-of-type(1),
 .mafia-speed[data-level='1'] i:nth-of-type(-n + 2),
 .mafia-speed[data-level='2'] i {
   color: var(--neon);
-  text-shadow: 0 0 8px var(--neon);
+  filter: drop-shadow(0 0 4px var(--neon));
 }
 
 .mafia-waiting {
@@ -822,11 +827,14 @@
   width: 20px;
   height: 20px;
   border-radius: 50%;
-  font-size: 11px;
-  font-style: normal;
-  font-weight: 900;
   color: #8a7a5a;
   background: rgba(0, 0, 0, 0.35);
+}
+
+.mafia-stake li i svg {
+  width: 12px;
+  height: 12px;
+  stroke-width: 2.4;
 }
 
 .mafia-stake.lit li {

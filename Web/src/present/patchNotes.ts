@@ -56,11 +56,14 @@ export const PATCH_NOTES: PatchNote[] = [
     title: 'A new look for the bars: the dock, the top bar, buttons and drawers',
     impact: 'minor',
     summary: [
+      'Icons move: each one plays its own little move when you choose or press it.',
       'The tab bar is a new dock: the open tab becomes a glowing pill with its name.',
-      'The top bar matches it, with one lit pill that follows your mouse; Rush Hour stays green.',
+      'The top bar matches it, and messages now unfold inside it, like on an iPhone.',
       'Buttons share three sizes and every drawer opens the same way.',
     ],
     items: [
+      'Messages on the Game tab no longer pop up as a separate pill under the top bar. The top bar itself grows downward on a soft spring, the message stands under your money and score (which stay put), and the bar folds back up. Whatever hangs under the bar slides down with it instead of being covered. The card that explains something new before a shift (new weather, a road closure, a trial\'s goal) now sits in the grown top bar too, and folds away when you start.',
+      'New animated icons all over the game. Each one is cut into parts that move like the real thing: the steering wheel turns, the trophy bounces, the chest lid pops open, the bell rings. They play when you choose a tab or press a button, and stand still otherwise (and always with Reduce motion).',
       'The tab bar at the bottom is a floating dock: the open tab widens into an amber pill with its name, the others are quiet icons. Hold and slide along it to switch.',
       'The top bar is a twin of the dock: the same capsule shape, height and width. Money and your best score stand quietly either side (a coin, a trophy), the score sits in a lit pill, and in Rush Hour that pill turns green.',
       'With a mouse, the lit pill in the top bar glides to the money or the best score you point at, and the cursor becomes a hand where a click opens something.',

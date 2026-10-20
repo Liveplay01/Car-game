@@ -60,7 +60,7 @@ import type { PageHost } from './pageHost';
 import { type SpecialRun, settleSpecial, runCard, advanceRush, newRush } from './specialRuns';
 import { markPassed, markReward } from '../core/tiers';
 import { forHeat, heatPay } from '../core/heat';
-import { conditionChips, ConditionChips, FailChip, streakEndsIn, addNotice, noticeHeight, noticePresence, type NoticePlace } from './readyScreen';
+import { conditionChips, ConditionChips, FailChip, streakEndsIn, addNotice, noticePresence, NoticeIsland } from './readyScreen';
 import { Briefings, type Brief } from './briefing';
 
 export type { SpecialRun } from './specialRuns';
@@ -1460,6 +1460,7 @@ export class GameSession {
     for (const a of actions) this.handle(a, simDelta);
     this.frameDelta = realDelta;
     this.easeTopHover(realDelta);
+    this.easeIntro(realDelta);
     // A condition's sheet belongs to the waiting shift it was opened on.
     const shown = this.conditionShown;
     if (shown && !this.conditionHeld(shown)) this.closeDetail();
@@ -3267,6 +3268,26 @@ export class GameSession {
     this.topLit += ((under < 0 ? 1 : under) - this.topLit) * follow;
   }
 
+  /** How deep the ready screen's intro wants the top card (`ReadyBanner.add`), and how deep it is: a spring, folding back when the shift starts. */
+  private introWant = 0;
+  private introGrow = 0;
+  private introSpeed = 0;
+
+  private easeIntro(dt: number): void {
+    if (this.reduceMotion) {
+      this.introGrow = this.introWant;
+      this.introSpeed = 0;
+      return;
+    }
+    const k = 260;
+    const damping = 2 * Math.sqrt(k) * 0.8;
+    for (let left = Math.min(dt, 0.1); left > 0; left -= 1 / 120) {
+      const h = Math.min(left, 1 / 120);
+      this.introSpeed += (k * (this.introWant - this.introGrow) - damping * this.introSpeed) * h;
+      this.introGrow = Math.max(0, this.introGrow + this.introSpeed * h);
+    }
+  }
+
   private sceneList(camera: Camera, alpha: number, rm: boolean, seeThrough = false): RenderList {
     const world = this.world;
     const career = this.save.career;
@@ -3276,6 +3297,11 @@ export class GameSession {
     const theme = MapTheme.from(mapSkin);
     const list = new RenderList(camera, MapTheme.ground(theme));
     list.topLit = this.topLit;
+    const notice = this.notices.shown;
+    list.topIntro = this.introGrow;
+    list.topGrow = this.introGrow + (notice && this.noticeInCard ? NoticeIsland.reach(notice, TopBar.frame(camera.viewport.x), this.textScale, this.reduceMotion) : 0);
+    // Only a ready banner drawn in this frame keeps the intro open.
+    this.introWant = 0;
     list.pointer = this.hoverPoint;
     list.frameDt = this.reduceMotion ? 1 : this.frameDelta;
     // A device that cannot keep 30 fps leaves out the decoration (`lowDetail`), never the game.
@@ -3367,8 +3393,6 @@ export class GameSession {
 
     const overlayStart = list.items.length;
     const s = this.screen;
-    // Where the chrome under the top card ends: a notice hangs below it.
-    let underCard = TopBar.frame(viewport.x).maxY;
     this.conditionTargets = [];
     this.adTarget = null;
     if (s.k === 'playing') {
@@ -3415,7 +3439,6 @@ export class GameSession {
       this.tutorial?.add(list, world, alpha, this.sceneTime, rm);
       // A trial that counts (Perfects, Tight Fits): how far it is, while it runs.
       const progress = this.special?.k === 'trial' ? trialProgress(this.special.trial, world.score) : null;
-      if (world.config.endless || progress) underCard = TopBar.frame(viewport.x).maxY + 31;
       if (progress && this.special?.k === 'trial') {
         HUD.addGoalPill(list, S.trials.progress(this.special.trial, progress.have, progress.need), progress.have >= progress.need, rm ? 1 : Ease.clamp01(this.sinceCarSent / 0.35));
       }
@@ -3423,7 +3446,7 @@ export class GameSession {
       if (this.countIn > 0 || this.isInterrupted) HUD.addCountIn(list, this.isInterrupted ? GameSession.countInSeconds : this.countIn);
       const left = this.reviveLeft;
       if (left !== null) {
-        const at = v(viewport.x / 2, TopBar.frame(viewport.x).maxY + 18);
+        const at = v(viewport.x / 2, TopBar.foot(list) + 18);
         const label = S.ads.revivePill(Math.ceil(left));
         if (this.adPillReward !== 'revive') {
           this.adPillReward = 'revive';
@@ -3436,20 +3459,19 @@ export class GameSession {
         AdPill.add(list, label, at, this.adPillAge, 1, rm, this.adFlow.busy);
         this.adTarget = { reward: 'revive', rect: AdPill.target(label, at) };
         drawText(list, S.ads.reviveSkip, v(viewport.x / 2, at.y + AdPill.hit / 2 + 10), 12, 'muted', { align: 'center' });
-        underCard = at.y + AdPill.hit / 2 + 20;
       }
     } else if (s.k === 'result') {
       list.camera = steady;
       const chipAt = ResultBanner.add(list, s.summary, this.playingLevel, this.resultBank, this.resultAge, rm, this.giftLine, world.layout.islandRadius);
       if (chipAt) this.addFailChip(list, s.summary, chipAt);
       const arriving = ResultBanner.arriving(this.resultAge);
-      if (arriving > 0) underCard = this.addReadyBanner(list, null, false, arriving);
+      if (arriving > 0) this.addReadyBanner(list, null, false, arriving);
       list.camera = camera;
       this.tutorial?.add(list, world, alpha, this.sceneTime, rm);
-      if (arriving <= 0 && this.addGameAd(list, TopBar.frame(viewport.x).maxY + 18, 1)) underCard = TopBar.frame(viewport.x).maxY + 1 + AdPill.row;
+      if (arriving <= 0) this.addGameAd(list, TopBar.foot(list) + 18, 1);
     } else if (s.k === 'ready') {
       list.camera = steady;
-      underCard = this.addReadyBanner(list, this.tutorial && !this.tutorial.isOver ? Tutorial.readyPrompt : this.versusSelected ? S.ready.tapForFriends : S.ready.tapToStart);
+      this.addReadyBanner(list, this.tutorial && !this.tutorial.isOver ? Tutorial.readyPrompt : this.versusSelected ? S.ready.tapForFriends : S.ready.tapToStart);
       list.camera = camera;
       this.tutorial?.add(list, world, alpha, this.sceneTime, rm);
     }
@@ -3465,18 +3487,16 @@ export class GameSession {
     this.transitions.apply(list, s, overlayStart, rm);
     if (this.burst) RewardBurst.add(list, this.burst.burst, this.burst.age, rm);
     const notice = this.notices.shown;
-    if (notice && !this.isPage('social')) addNotice(list, notice, { at: this.noticePlace(s, underCard, inset), textScale: this.textScale, reduceMotion: rm });
+    if (notice && !this.isPage('social')) addNotice(list, notice, { at: this.noticeInCard ? 'card' : { bottom: this.lastViewport.y - inset - 21 }, textScale: this.textScale, reduceMotion: rm });
     return list;
   }
 
-  /**
-   * Where the notice goes. On the Game tab it hangs under the top card (and the pill under it),
-   * where a thumb tapping the ring never covers it; on the pages it stays above the tab bar.
-   */
-  private noticePlace(s: Screen, underCard: number, inset: number): NoticePlace {
-    if (s.k === 'ready' || s.k === 'result' || s.k === 'playing') return { top: underCard + 10 };
-    return { bottom: this.lastViewport.y - inset - 21 };
+  /** On the Game tab the top card grows to carry the notice (`NoticeIsland`); on the pages it stands above the tab bar. */
+  private get noticeInCard(): boolean {
+    const k = this.screen.k;
+    return k === 'ready' || k === 'result' || k === 'playing';
   }
+
 
   /** The Game tab's Heat pill, only a sign (Leo, 15.10.2026): its text while a career shift waits (behind the result too) at a Heat, else null. */
   /**
@@ -3505,13 +3525,6 @@ export class GameSession {
   get socialNotice(): { text: string; presence: number } | null {
     const notice = this.notices.shown;
     return notice && this.isPage('social') ? { text: notice.text, presence: noticePresence(notice.age, notice.duration) } : null;
-  }
-
-  /** How much room a notice under the top card takes right now, for the ready screen's intro to make way. */
-  private get noticeRoom(): number {
-    const notice = this.notices.shown;
-    if (!notice) return 0;
-    return (noticeHeight(this.textScale, notice.achievement !== null) + 10) * Ease.smoothstep(noticePresence(notice.age, notice.duration));
   }
 
   /** The Build tab's segment thumb: 0 on Upgrades, 1 on the Street Builder, gliding between. */
@@ -3558,7 +3571,7 @@ export class GameSession {
   }
 
   /** Draws the ready screen; returns where its chrome under the top card ends (`ReadyBanner.add`). */
-  private addReadyBanner(list: RenderList, prompt: string | null, drawsCard = true, opacity = 1): number {
+  private addReadyBanner(list: RenderList, prompt: string | null, drawsCard = true, opacity = 1): void {
     const career = this.save.career;
     const daily = this.dailySelected && !this.versusSelected
       ? {
@@ -3578,7 +3591,7 @@ export class GameSession {
     const chips = opening || this.special?.k === 'trial' || this.versusSelected || (this.tutorial && !this.tutorial.isOver) ? [] : conditionChips(this.world.config, career);
     const adRow = !opening && (daily !== null || this.screen.k === 'result') && this.gameAd !== null;
     const chipsAt = ConditionChips.center(toScreen(list.camera, v(0, 0)), !!run?.line);
-    const under = ReadyBanner.add(list, {
+    this.introWant = ReadyBanner.add(list, {
       level: this.playingLevel,
       cars: this.world.carsLeft ?? 0,
       highscore: this.currentBest,
@@ -3599,21 +3612,19 @@ export class GameSession {
       goal: this.giftLine,
       intro: this.versusSelected || (this.tutorial && !this.tutorial.isOver) ? null : this.readyIntro,
       textScale: this.textScale,
-      noticeRoom: this.noticeRoom,
       message: this.topMessage,
       modes: this.showsModeDots && !opening ? { count: SWIPE_MODES.length, at: this.modeDotAt, color: ModeBanner.tint(this.swipeMode) } : null,
       ringTop: toScreen(list.camera, v(0, this.world.layout.ringRadius + this.world.layout.laneWidth)).y,
       island: this.world.layout.islandRadius,
       adRow,
     });
-    if (adRow) this.addGameAd(list, TopBar.frame(list.camera.viewport.x).maxY + 18 + (daily ? 31 : 0), opacity);
+    if (adRow) this.addGameAd(list, TopBar.foot(list) + 18 + (daily ? 31 : 0), opacity);
     if (chips.length > 0) {
       ConditionChips.add(list, chips, chipsAt, { time: this.sinceReady - ReadyBanner.introDelay, reduceMotion: this.reduceMotion, opacity, selected: this.conditionShown });
       if (opacity > 0.5 && this.showsChrome) this.conditionTargets = ConditionChips.targets(chips.length, chipsAt).map((rect, i) => ({ id: chips[i].id, rect }));
     }
     // The Daily's splash covers the whole screen for a moment: above the condition icons, never under them.
     if (daily && daily.splash !== null) ReadyBanner.addSplash(list, daily, daily.splash, this.reduceMotion);
-    return under;
   }
 
   /**

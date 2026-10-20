@@ -1,5 +1,4 @@
-import { h, icon, loadingNote } from './dom';
-import { ICONS } from './icons';
+import { h, animatedIcon, coinMark, loadingNote } from './dom';
 import { nameForm, openAccount } from './ranksPanel';
 import { tabsControl } from './tabs';
 import { fadeIn, openSheet, scrollSheetToTop, swapView } from './sheets';
@@ -109,9 +108,9 @@ export function withCoins(root: Node): void {
   for (let node = walker.nextNode(); node; node = walker.nextNode()) if (node.nodeValue?.includes(MONEY_MARK)) found.push(node as Text);
   for (const text of found) {
     const parts = (text.nodeValue ?? '').split(MONEY_MARK);
-    const nodes: (string | HTMLElement)[] = [];
+    const nodes: (string | Element)[] = [];
     parts.forEach((part, i) => {
-      if (i > 0) nodes.push(h('span', { class: 'coin', 'aria-label': S.clubPanel.money }));
+      if (i > 0) nodes.push(coinMark(S.clubPanel.money));
       if (part) nodes.push(part);
     });
     text.replaceWith(...nodes);
@@ -608,7 +607,7 @@ export function clubPanel(host: ClubHost): ClubPanel {
                     bar(i.raised / i.goal).el,
                     h('div', { class: 'row-sub' }, i.status === 'built' ? S.clubPanel.builtThanks : i.status === 'building' ? S.clubPanel.state.building : S.clubPanel.raised(cash(i.raised), cash(i.goal), i.mine > 0 ? cash(i.mine) : null)),
                   ),
-                  icon(ICONS.chevronRight),
+                  animatedIcon('chevronRight'),
                 );
                 open.addEventListener('click', () => ideaSheet(view, i));
                 return open;
@@ -688,7 +687,7 @@ export function clubPanel(host: ClubHost): ClubPanel {
     const body = h(
       'div',
       { class: 'fund-thanks' },
-      h('div', { class: 'fund-thanks-badge', 'aria-hidden': 'true' }, icon(ICONS.check)),
+      h('div', { class: 'fund-thanks-badge', 'aria-hidden': 'true' }, animatedIcon('check')),
       h('p', { class: 'fund-thanks-label' }, S.clubPanel.thanksFor),
       h('div', { class: 'fund-thanks-amount' }, cash(accepted)),
       h('div', { class: 'fund-thanks-project' }, h('div', { class: 'row-title' }, `${now.title}${now.status === 'funded' ? S.clubPanel.fundedBang : ''}`), raised.el, h('div', { class: 'row-sub' }, S.clubPanel.raised(cash(now.raised), cash(now.goal), null))),

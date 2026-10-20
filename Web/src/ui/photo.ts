@@ -1,5 +1,4 @@
-import { h, icon } from './dom';
-import { ICONS } from './icons';
+import { h, animatedIcon, playIcon } from './dom';
 import { CanvasDrawer } from '../present/draw';
 import type { RenderList } from '../present/render';
 import type { PhotoCard, PatternToken, PerformancePattern } from '../present/photo';
@@ -99,13 +98,13 @@ export class PhotoView {
     const canShareFile = typeof navigator.canShare === 'function' && navigator.canShare({ files: [file] });
     const canCopy = typeof ClipboardItem === 'function' && !!navigator.clipboard?.write;
     const shareLabel = h('span', {}, dare ? (canShareFile ? S.photo.sendChallenge : S.photo.copyChallenge) : canShareFile ? S.photo.share : S.photo.copy);
-    const shareBtn = h('button', { class: 'btn primary photo-btn', type: 'button' }, icon(ICONS.share), shareLabel);
+    const shareBtn = h('button', { class: 'btn primary photo-btn', type: 'button' }, animatedIcon('share'), shareLabel);
     shareBtn.addEventListener('click', () => void this.share(file, shot.card, canShareFile, shareBtn, shareLabel));
     const downloadLabel = h('span', {}, S.photo.download);
-    const downloadBtn = h('button', { class: 'btn glass photo-btn', type: 'button' }, icon(ICONS.download), downloadLabel);
+    const downloadBtn = h('button', { class: 'btn glass photo-btn', type: 'button' }, animatedIcon('download'), downloadLabel);
     downloadBtn.addEventListener('click', () => this.download(file, downloadBtn, downloadLabel));
     const actions = h('div', { class: 'photo-actions' }, canShareFile || canCopy ? shareBtn : null, downloadBtn);
-    const closeBtn = h('button', { class: 'icon-btn glass photo-close', type: 'button', 'aria-label': S.photo.close, 'aria-keyshortcuts': 'Escape' }, icon(ICONS.close));
+    const closeBtn = h('button', { class: 'icon-btn glass photo-close', type: 'button', 'aria-label': S.photo.close, 'aria-keyshortcuts': 'Escape' }, animatedIcon('close'));
     closeBtn.addEventListener('click', () => this.close());
     const stage = h('div', { class: 'photo-stage' }, figure, actions);
     root.append(stage, closeBtn);
@@ -219,22 +218,28 @@ ${dare.url}` : `${card.hook} ${S.run.pictureText}`;
   }
 }
 
+/** The icon each button wears while it says "done", to put back. */
+const resting = new WeakMap<HTMLButtonElement, SVGSVGElement>();
+
 /** The button says it worked, a check in place of its icon, then goes back. */
 function confirm(button: HTMLButtonElement, label: HTMLElement, text: string): void {
   const original = button.dataset.label ?? label.textContent ?? '';
   button.dataset.label = original;
-  const svg = button.querySelector('svg');
-  const iconPaths = button.dataset.icon ?? svg?.innerHTML ?? '';
-  button.dataset.icon = iconPaths;
+  const current = button.querySelector('svg');
+  if (current && !resting.has(button)) resting.set(button, current);
+  const check = animatedIcon('check');
+  current?.replaceWith(check);
+  playIcon(check);
   button.classList.add('done');
   label.textContent = text;
-  if (svg) svg.innerHTML = ICONS.check;
   window.clearTimeout(Number(button.dataset.timer ?? 0));
   button.dataset.timer = String(
     window.setTimeout(() => {
       button.classList.remove('done');
       label.textContent = original;
-      if (svg) svg.innerHTML = iconPaths;
+      const back = resting.get(button);
+      resting.delete(button);
+      if (back) button.querySelector('svg')?.replaceWith(back);
     }, 1600),
   );
 }

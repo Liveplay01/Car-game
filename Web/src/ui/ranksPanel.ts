@@ -1,5 +1,4 @@
-import { h, icon } from './dom';
-import { ICONS } from './icons';
+import { h, animatedIcon, coinMark } from './dom';
 import { fadeIn, swapView } from './sheets';
 import { tabsControl } from './tabs';
 import {
@@ -92,11 +91,11 @@ type Scope = 'all' | 'crew';
 /** The star's look by rank: silver, gold, iris, then ember (★4), prism (★10) and eternal (★20). */
 const starTier = (rank: number): number => (rank >= 20 ? 6 : rank >= 10 ? 5 : rank >= 4 ? 4 : Math.max(1, rank));
 
-function valueOf(board: BoardId, e: { score: number; meta: Record<string, number> }, onStar: () => void): (string | HTMLElement)[] {
+function valueOf(board: BoardId, e: { score: number; meta: Record<string, number> }, onStar: () => void): (string | Element)[] {
   if (board === 'unlimited' || board === 'daily') return [Fmt.number(e.score)];
   if (board === 'casino') return [
     ...(e.score < 0 ? ['−'] : []),
-    h('span', { class: 'coin', 'aria-label': S.clubPanel.money }),
+    coinMark(S.clubPanel.money),
     Fmt.number(Math.abs(e.score)),
   ];
   if (board === 'rush') return [S.rush.time((e.meta.cs ?? 0) / 100)];
@@ -310,7 +309,7 @@ export function boardPanel(scope: Scope, host: BoardHost): BoardPanel {
           : mode
             ? h('button', { class: 'btn', type: 'button', onclick: () => host.play(mode) }, S.ranks.playNow)
             : null;
-      rows.push(h('div', { class: 'row board-empty' }, h('span', { class: 'empty-sign' }, icon(ICONS.deadEnd)), h('div', { class: 'row-main' }, h('div', { class: 'row-title' }, S.ranks.nobody), h('div', { class: 'row-sub' }, empty)), go));
+      rows.push(h('div', { class: 'row board-empty' }, h('span', { class: 'empty-sign' }, animatedIcon('deadEnd')), h('div', { class: 'row-main' }, h('div', { class: 'row-title' }, S.ranks.nobody), h('div', { class: 'row-sub' }, empty)), go));
     }
     const arriving = list.getAttribute('aria-busy') === 'true';
     list.replaceChildren(...rows);
@@ -350,7 +349,7 @@ export function boardPanel(scope: Scope, host: BoardHost): BoardPanel {
       const problem = h(
         'div',
         { class: 'row board-empty', role: 'status' },
-        h('span', { class: 'empty-sign' }, icon(ICONS.warning)),
+        h('span', { class: 'empty-sign' }, animatedIcon('warning')),
         h('div', { class: 'row-main' }, h('div', { class: 'row-title' }, cached ? S.ranks.stale : S.ranks.unavailable), h('div', { class: 'row-sub' }, describeError(error))),
         h('button', { class: 'btn', type: 'button', onclick: () => void load() }, S.ranks.tryAgain),
       );
@@ -445,7 +444,7 @@ export function ranksPanel(actions: RanksActions): HTMLElement {
           'button',
           { class: 'row row-link', type: 'button', onclick: () => actions.createPlayer() },
           h('div', { class: 'row-main' }, h('div', { class: 'row-title' }, account.name), h('div', { class: 'row-sub' }, S.ranks.nameSub)),
-          icon(ICONS.chevronRight),
+          animatedIcon('chevronRight'),
         ),
       ),
     );

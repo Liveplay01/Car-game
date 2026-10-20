@@ -1,5 +1,4 @@
-import { h, icon } from './dom';
-import { ICONS } from './icons';
+import { h, animatedIcon } from './dom';
 import { openSheet, swapView } from './sheets';
 import { share } from './share';
 import { inviteLink } from './crazygames';
@@ -338,11 +337,11 @@ export class VersusLobby {
     const items: (HTMLElement | null)[] = [
       h('p', { class: 'section-note versus-intro' }, S.lobby.intro(VERSUS_MAX_PLAYERS)),
       h('div', { class: 'list' }, this.nameField()),
-      h('div', { class: 'sheet-actions' }, h('button', { class: 'btn primary block', type: 'button', onclick: () => this.host() }, icon(ICONS.people), S.lobby.host)),
+      h('div', { class: 'sheet-actions' }, h('button', { class: 'btn primary block', type: 'button', onclick: () => this.host() }, animatedIcon('social'), S.lobby.host)),
       h('div', { class: 'versus-divider', 'aria-hidden': 'true' }, S.lobby.orJoin),
       h('div', { class: 'join-row' }, input, joinBtn),
       this.error ? h('p', { class: 'versus-error', role: 'alert' }, this.error) : null,
-      h('button', { class: 'btn block quiet-btn', type: 'button', onclick: () => this.practice() }, icon(ICONS.bot), S.lobby.practise),
+      h('button', { class: 'btn block quiet-btn', type: 'button', onclick: () => this.practice() }, animatedIcon('bot'), S.lobby.practise),
     ];
     return items.filter((x): x is HTMLElement => x !== null);
   }
@@ -406,7 +405,7 @@ export class VersusLobby {
       h('div', { class: 'join-code', 'aria-label': S.lobby.codeLabel(code.split('').join(' ')) }, ...code.split('').map((d) => h('span', {}, d))),
     ];
     if (room.isHost && room.code) {
-      items.push(h('button', { class: 'btn invite-btn', type: 'button', onclick: () => void this.invite(room.code!) }, icon(ICONS.share), S.lobby.invite));
+      items.push(h('button', { class: 'btn invite-btn', type: 'button', onclick: () => void this.invite(room.code!) }, animatedIcon('share'), S.lobby.invite));
       items.push(this.qrCard(room.code));
     }
     return items;
@@ -447,20 +446,20 @@ export class VersusLobby {
         { class: 'row lane-row empty', role: 'listitem' },
         dot,
         h('div', { class: 'row-main' }, h('div', { class: 'row-title' }, S.lobby.openLane), h('div', { class: 'row-sub' }, room.offline ? S.lobby.addBotHere : S.lobby.waitingFriend)),
-        canAdd ? h('button', { class: 'btn small', type: 'button', 'aria-label': S.lobby.addBotLane(slot + 1), onclick: () => room.addBot() }, icon(ICONS.plus), S.lobby.bot) : null,
+        canAdd ? h('button', { class: 'btn small', type: 'button', 'aria-label': S.lobby.addBotLane(slot + 1), onclick: () => room.addBot() }, animatedIcon('plus'), S.lobby.bot) : null,
       );
     }
     const you = slot === room.you;
     const sub = h('span', {}, this.memberSub(room, m), h('span', { 'data-ping': String(slot) }, this.pingText(m)));
     const remove =
       m.bot && room.isHost && !room.locked
-        ? h('button', { class: 'icon-btn small', type: 'button', 'aria-label': S.lobby.removeBot(m.name), onclick: () => room.removeBot(slot) }, icon(ICONS.minus))
+        ? h('button', { class: 'icon-btn small', type: 'button', 'aria-label': S.lobby.removeBot(m.name), onclick: () => room.removeBot(slot) }, animatedIcon('minus'))
         : null;
     return h(
       'div',
       { class: 'row lane-row', role: 'listitem' },
       dot,
-      h('div', { class: 'row-main' }, h('div', { class: 'row-title' }, m.bot ? h('span', { class: 'bot-name' }, icon(ICONS.bot), m.name) : m.name), h('div', { class: 'row-sub' }, sub)),
+      h('div', { class: 'row-main' }, h('div', { class: 'row-title' }, m.bot ? h('span', { class: 'bot-name' }, animatedIcon('bot'), m.name) : m.name), h('div', { class: 'row-sub' }, sub)),
       you ? h('span', { class: 'you-tag' }, S.lobby.you) : null,
       remove,
     );

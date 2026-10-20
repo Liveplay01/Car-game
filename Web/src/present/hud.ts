@@ -61,6 +61,9 @@ export const TopBar = {
     return { left, center: R.make(left.maxX, frame.minY, right.minX, frame.maxY), right };
   },
 
+  /** Where chrome under the card starts: the card's foot, lower while it carries a notice. */
+  foot: (list: RenderList): number => TopBar.frame(list.camera.viewport.x).maxY + list.topGrow,
+
   column(point: Vec2, width: number): 'left' | 'center' | 'right' | null {
     const frame = TopBar.frame(width);
     if (!R.contains(frame, point)) return null;
@@ -83,7 +86,8 @@ export const TopBar = {
   addCard(list: RenderList, frame: Rect, opacity = 1, brief: BriefView | null = null): void {
     const tag = list.tag;
     list.tag = 'topbarCard';
-    MenuKit.chromePanel(list, frame, TopBar.corner, opacity, brief ? brief.brief.color : null, brief ? brief.card : 1);
+    const grown = R.make(frame.minX, frame.minY, frame.maxX, frame.maxY + list.topGrow);
+    MenuKit.chromePanel(list, grown, TopBar.corner, opacity, brief ? brief.brief.color : null, brief ? brief.card : 1);
     // No dividers: one lit capsule (the dock's selected tab) rests on the middle column. Under the mouse it glides to the column
     // there, widening or narrowing on the way, and back; money and the best stand quietly either side of it.
     const cols = TopBar.columns(frame);
@@ -183,7 +187,7 @@ export const TopBar = {
   addModeDots(list: RenderList, frame: Rect, modes: { count: number; at: number; color: ColorToken }, alpha: number): void {
     if (alpha <= 0.001) return;
     const gap = 10;
-    const y = frame.maxY - 5;
+    const y = frame.maxY + list.topGrow - 5;
     const x = (i: number): number => R.center(frame).x + (i - (modes.count - 1) / 2) * gap;
     for (let i = 0; i < modes.count; i++) list.s(circle(v(x(i), y), 1.8), 'muted', 0.5 * alpha);
     list.s(circle(v(x(0) + modes.at * gap, y), 2.4), modes.color, alpha);
@@ -384,7 +388,7 @@ export const HUD = {
     if (h.world.config.endless) {
       const frame = TopBar.frame(list.camera.viewport.x);
       const label = h.mark ?? S.modes.carsSent(h.world.shift.carsSent);
-      const at = v(R.center(frame).x, frame.maxY + 18);
+      const at = v(R.center(frame).x, TopBar.foot(list) + 18);
       MenuKit.chromePill(list, at, v(textWidth(label, 12) + 28, 26), 1);
       list.s(text(label, at, 12 * land(h.pops.cars, 0.2), 'center', 'bold'), 'primary');
     }
@@ -393,7 +397,7 @@ export const HUD = {
   /** A trial's counting goal under the top card, live ("Tight Fits or better 3/5"); accent once met. */
   addGoalPill(list: RenderList, label: string, met: boolean, pop: number): void {
     const frame = TopBar.frame(list.camera.viewport.x);
-    const at = v(R.center(frame).x, frame.maxY + 18);
+    const at = v(R.center(frame).x, TopBar.foot(list) + 18);
     MenuKit.chromePill(list, at, v(textWidth(label, 12) + 28, 26), 1, met ? 'accent' : undefined);
     list.s(text(label, at, 12 * land(pop, 0.2), 'center', 'bold'), met ? 'accent' : 'primary');
   },
@@ -1515,8 +1519,6 @@ export const ReadyBanner = {
       intro?: ConditionIntro[] | null;
       /** Larger text (Settings): the intro card's type a step up. */
       textScale?: number;
-      /** Room a notice takes under the top card right now: the intro card makes way for it. */
-      noticeRoom?: number;
       /** The mode swipe's hint on the top card: how far it is in (0–1), the clock, and which ways there is a mode. */
       message?: TopMessage | null;
       /** The swipe pages as dots on the card's foot, once modes are known; `at` is the shown page. */
@@ -1584,7 +1586,7 @@ export const ReadyBanner = {
     if (o.modes && (o.drawsCard ?? true)) TopBar.addModeDots(list, frame, o.modes, opacity);
     const pillText = run ? run.badge : o.daily ? S.daily.streakPill(o.daily.streak, o.daily.bonus, o.daily.endsIn, o.daily.freezes) : null;
     if (pillText) {
-      const under = v(width / 2, frame.maxY + 18);
+      const under = v(width / 2, TopBar.foot(list) + 18);
       const lineText = pillText;
       MenuKit.chromePill(list, under, v(textWidth(lineText, 12) + 28, 26), opacity);
       // A streak about to break says so in the warning colour.
@@ -1592,16 +1594,18 @@ export const ReadyBanner = {
     }
     const island = toScreen(list.camera, v(0, 0));
     const introBottom = Math.min((o.iconsTop ?? island.y - (run?.line ? 49 : 26)) - 10, (o.ringTop ?? Infinity) - 10);
-    const under = frame.maxY + (pillText ? 31 : 0) + (o.adRow ? AdPill.row : 0);
-    const intro = o.intro && o.intro.length > 0 ? ReadyBanner.introLayout(o.intro, frame, under + 12 + (o.noticeRoom ?? 0), introBottom, o.textScale ?? 1) : null;
+    // The intro rides in the grown top card, under a notice if one is up; the pills hang under the card.
+    const pills = (pillText ? 31 : 0) + (o.adRow ? AdPill.row : 0);
+    const introTop = frame.maxY + list.topGrow - list.topIntro;
+    const intro = o.intro && o.intro.length > 0 && o.time >= ReadyBanner.introDelay ? ReadyBanner.introLayout(o.intro, frame, introTop, introBottom - pills, o.textScale ?? 1) : null;
     const breath = o.reduceMotion ? 1 : 0.7 + 0.3 * (0.5 + 0.5 * Math.cos(o.time * 2.4));
     islandStack(list, o.island, [
       run?.line ? { s: run.line, size: 14, color: run.color, opacity, weight: 'bold' } : null,
       o.prompt ? { s: o.prompt, size: 17, color: 'primary', opacity: breath * opacity, weight: 'bold' } : null,
       o.goal && o.prompt ? { s: o.goal, size: 13, color: 'muted', opacity: opacity * (o.reduceMotion ? 1 : Ease.outCubic(o.time / 0.4)), weight: 'regular' } : null,
     ]);
-    if (intro) ReadyBanner.addIntro(list, intro, o.time, o.reduceMotion, opacity);
-    return under;
+    if (intro) ReadyBanner.addIntro(list, intro, list.topIntro, o.reduceMotion, opacity);
+    return intro ? R.height(intro.box) : 0;
   },
 
   /** The intro comes a beat after the ready screen, so it reads as news, not as part of the card. */
@@ -1631,17 +1635,15 @@ export const ReadyBanner = {
   },
 
   /**
-   * A trial's goal under the top card: its name and what it asks. It comes a beat after the
-   * ready screen and goes when the shift starts.
+   * A trial's goal, news or a condition met for the first time, in the grown top card (Leo, 20.10.2026): the card reaches
+   * down a beat after the ready screen (`GameSession.easeIntro`), the words come once it is nearly open, and it folds
+   * back when the shift starts.
    */
-  addIntro(list: RenderList, l: IntroLayout, time: number, reduceMotion: boolean, opacity: number): void {
-    const age = time - ReadyBanner.introDelay;
-    if (age <= 0) return;
-    const enter = reduceMotion ? Ease.clamp01(age / 0.2) : MenuKit.staggerSpring(age, 0);
-    const rise = reduceMotion ? 0 : MenuKit.cardEnter(enter).rise;
-    const alpha = Ease.clamp01(enter) * opacity;
-    const box = R.offset(l.box, v(0, rise));
-    MenuKit.chromePanel(list, box, TopBar.cardCorner, alpha);
+  addIntro(list: RenderList, l: IntroLayout, grown: number, reduceMotion: boolean, opacity: number): void {
+    const open = Ease.clamp01((grown / R.height(l.box) - 0.55) / 0.45);
+    if (open <= 0.001) return;
+    const alpha = open * opacity;
+    const box = R.offset(l.box, v(0, reduceMotion ? 0 : (1 - open) * 4));
     let y = box.minY + l.pad;
     for (const row of l.rows) {
       list.s(text(row.title, v(box.minX + l.pad, y + l.titleSize / 2), l.titleSize, 'leading', 'bold'), 'hazard', alpha);
