@@ -52,7 +52,7 @@ export type SocialSection = 0 | 1 | 2 | 3;
  * or friends only) · Club (from Level 50: Auction House, Game fund) · Mafia (from the first boss: loans struck on a pointer bar).
  * Its content is the shell's DOM (`ui/socialPage.ts`); the canvas draws the title and the segments.
  */
-export const SOCIAL = { crew: 0, ranks: 1, club: 2, mafia: 3 } as const satisfies Record<string, SocialSection>;
+export const SOCIAL = { ranks: 0, crew: 1, club: 2, mafia: 3 } as const satisfies Record<string, SocialSection>;
 
 export type Part = 'arm' | RoadModule;
 export const PARTS: Part[] = ['arm', 'tollBooth', 'speedCamera', 'towDepot', 'billboard', 'detour'];

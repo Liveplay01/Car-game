@@ -443,7 +443,7 @@ export default (S: Strings): Words<Strings> => ({
     take: '领取',
     taken: (what) => `${what}归你了。`,
     give: '送车队一份礼物',
-    giveNote: (left) => `它出自你自己的钱和宝箱，谁先领取就归谁。今天还能送 ${left} 份礼物；没人领的，一周后会退回。`,
+    giveNote: (left, moneyLeft, chestsLeft) => `礼物来自你自己的钱和宝箱，先领取的人获得。今天还能送 ${left} 份；本周还可捐赠 ${moneyLeft.toLocaleString('zh-CN')} 金钱和 ${chestsLeft} 个宝箱。无人领取的礼物会在一周后退回。`,
     giveTo: (name) => `送给${name}的礼物`,
     giveToNote: (name, left) => `只有${name}能领取。今天还能送 ${left} 份礼物。`,
     giveButton: '送出',

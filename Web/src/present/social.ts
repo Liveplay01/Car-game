@@ -10,11 +10,11 @@ import { S, Fmt } from './strings';
 import { ShopPage } from './shop';
 import { SOCIAL, type SocialSection } from './flow';
 
-const SOCIAL_SECTIONS: SocialSection[] = [SOCIAL.crew, SOCIAL.ranks, SOCIAL.club, SOCIAL.mafia];
+const SOCIAL_SECTIONS: SocialSection[] = [SOCIAL.ranks, SOCIAL.crew, SOCIAL.club, SOCIAL.mafia];
 
 /** What the Social tab animates: the chosen segment and the thumb gliding to it. */
 export class SocialState {
-  section: SocialSection = SOCIAL.crew;
+  section: SocialSection = SOCIAL.ranks;
   sectionSlide: { from: SocialSection; age: number } | null = null;
 
   select(next: SocialSection): void {

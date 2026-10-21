@@ -775,7 +775,7 @@ export class GameSession {
       case 'showSocial':
         this.perform({ k: 'showTab', tab: 'social' });
         if (!this.isPage('social')) return;
-        this.socialPage.select((action.section === SOCIAL.club && !SocialPage.clubOpen(career)) || (action.section === SOCIAL.mafia && !SocialPage.mafiaOpen(career)) ? SOCIAL.crew : action.section);
+        this.socialPage.select((action.section === SOCIAL.club && !SocialPage.clubOpen(career)) || (action.section === SOCIAL.mafia && !SocialPage.mafiaOpen(career)) ? SOCIAL.ranks : action.section);
         break;
       case 'showProgress':
         this.perform({ k: 'showTab', tab: 'progress' });
@@ -2279,6 +2279,11 @@ export class GameSession {
       watch.age = 0;
     }
     watch.age += dt;
+  }
+
+  /** Marks every waiting news item in a bottom navigation section as read. */
+  readAllNews(tab: 'progress' | 'shop' | 'social'): void {
+    if (News.readTab(this.save, tab)) this.persist();
   }
 
   /** The Game fund tab of the Club is open: its introduction comes up once (the Club's own tabs are DOM, so the panel asks). */

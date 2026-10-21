@@ -15,7 +15,7 @@ import {
   syncScores,
 } from '../net/leaderboard';
 import { pendingInvite } from '../net/invite';
-import { fetchCrewBoard } from '../net/crews';
+import { fetchCrewBoard, hasCrew } from '../net/crews';
 import { NAME_MAX } from '../net/room';
 import { savePlayerName } from '../storage/profile';
 import { Fmt, S } from '../present/strings';
@@ -379,7 +379,7 @@ let lastScope: Scope = 'all';
 
 export function ranksPanel(actions: RanksActions): HTMLElement {
   let account: Account | null = loadAccount();
-  let scope: Scope = lastScope;
+  let scope: Scope = hasCrew() ? lastScope : 'all';
 
   const top = h('div', { class: 'board-top' });
   const footer = h('div', { class: 'board-footer' });
@@ -396,9 +396,9 @@ export function ranksPanel(actions: RanksActions): HTMLElement {
   const boards = { all: boardPanel('all', host), crew: boardPanel('crew', host) };
   const shown = (): BoardPanel => boards[scope];
   // A filter, not a second set of tabs: it sits under the board tabs of whichever list shows.
-  const crewOnly = h('button', { class: 'chip', type: 'button', 'aria-pressed': String(scope === 'crew') }, S.ranks.crewOnly);
-  const place = (): void => shown().el.firstElementChild?.after(crewOnly);
-  crewOnly.addEventListener('click', () => {
+  const crewOnly = hasCrew() ? h('button', { class: 'chip', type: 'button', 'aria-pressed': String(scope === 'crew') }, S.ranks.crewOnly) : null;
+  const place = (): void => { if (crewOnly) shown().el.firstElementChild?.after(crewOnly); };
+  crewOnly?.addEventListener('click', () => {
     scope = scope === 'crew' ? 'all' : 'crew';
     lastScope = scope;
     crewOnly.setAttribute('aria-pressed', String(scope === 'crew'));

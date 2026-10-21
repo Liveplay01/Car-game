@@ -222,7 +222,7 @@ export const TopBar = {
     const at = v(x, col.minY + TopBar.midRow);
     list.s(text(value, at, size, 'trailing', 'display'), o.valueColor ?? 'primary', opacity);
     const room = textWidth(value, size, true, true);
-    trophy(list, v(x - room - 13, at.y), 14, 'muted', opacity);
+    trophy(list, v(x - room - 13, at.y), 14, 'coin', opacity);
   },
 
   /** `roll`: the amount as an odometer (the live top card); without it the text is set (the result's count-up already moves). */

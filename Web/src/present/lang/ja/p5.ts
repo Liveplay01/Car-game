@@ -443,7 +443,7 @@ export default (S: Strings): Words<Strings> => ({
     take: '受け取る',
     taken: (what) => `${what}はあなたのものです。`,
     give: 'クルーに贈る',
-    giveNote: (left) => `あなた自身のお金と宝箱から贈られ、先に受け取った人のものになります。今日はあと${left}回贈れます。だれも受け取らなかったものは、1週間後に戻ってきます。`,
+    giveNote: (left, moneyLeft, chestsLeft) => `あなた自身のお金と宝箱から贈られ、先に受け取った人のものになります。今日はあと${left}回、今週はあと${moneyLeft.toLocaleString('ja-JP')}のお金と宝箱${chestsLeft}個を贈れます。だれも受け取らなかったものは、1週間後に戻ってきます。`,
     giveTo: (name) => `${name}へのギフト`,
     giveToNote: (name, left) => `${name}だけが受け取れます。今日はあと${left}回贈れます。`,
     giveButton: '贈る',

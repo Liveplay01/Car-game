@@ -443,7 +443,7 @@ export default (S: Strings): Words<Strings> => ({
     take: '받기',
     taken: (what) => `${what}은(는) 내 거예요.`,
     give: '크루에 선물하기',
-    giveNote: (left) => `내 돈과 내 상자에서 나가고, 먼저 받는 사람이 가져가요. 오늘은 선물 ${left}번 남았어요. 아무도 받지 않은 것은 일주일 뒤에 돌아와요.`,
+    giveNote: (left, moneyLeft, chestsLeft) => `내 돈과 내 상자에서 나가고, 먼저 받는 사람이 가져가요. 오늘은 선물 ${left}번, 이번 주는 ${moneyLeft.toLocaleString('ko-KR')} 돈과 상자 ${chestsLeft}개를 더 보낼 수 있어요. 아무도 받지 않은 것은 일주일 뒤에 돌아와요.`,
     giveTo: (name) => `${name}님에게 선물`,
     giveToNote: (name, left) => `${name}님만 받을 수 있어요. 오늘은 선물 ${left}번 남았어요.`,
     giveButton: '선물하기',

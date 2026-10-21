@@ -1689,7 +1689,7 @@ export const S = {
     take: 'Take',
     taken: (what: string): string => `${what} is yours.`,
     give: 'Give the crew a gift',
-    giveNote: (left: number): string => `It comes out of your own money and chests, and whoever takes it first keeps it. ${left} gifts left today; a gift nobody takes comes back after a week.`,
+    giveNote: (left: number, moneyLeft: number, chestsLeft: number): string => `It comes out of your own money and chests, and whoever takes it first keeps it. ${left} gifts left today; ${moneyLeft.toLocaleString('en')} money and ${chestsLeft} chests left to donate this week. A gift nobody takes comes back after a week.`,
     giveTo: (name: string): string => `A gift for ${name}`,
     giveToNote: (name: string, left: number): string => `Only ${name} can take it. ${left} gifts left today.`,
     giveButton: 'Give',

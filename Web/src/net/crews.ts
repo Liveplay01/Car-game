@@ -57,7 +57,7 @@ export interface CrewView {
     last: { place: number; move: number; league: League } | null;
     gifts: CrewGift[];
   } | null;
-  gifting?: { items: GiftItem[]; left: number };
+  gifting?: { items: GiftItem[]; left: number; moneyLeft: number; chestsLeft: number };
 }
 
 export interface CrewProfile {
@@ -190,6 +190,9 @@ export const fetchCrewBoard = (board: BoardId): Promise<BoardView & { crew: numb
 
 /** Whether the last answer had a crew: only then does a shift's XP go out. */
 let inCrew = read(XP_KEY + '.in') === '1';
+
+/** Whether the last crew response put this player in a crew. */
+export const hasCrew = (): boolean => inCrew;
 
 function remember(view: CrewView): CrewView {
   inCrew = view.crew !== null;

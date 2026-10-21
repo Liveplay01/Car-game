@@ -443,7 +443,7 @@ export default (S: Strings): Words<Strings> => ({
     take: 'Prendre',
     taken: (what) => `${what} est à toi.`,
     give: 'Faire un cadeau à la crew',
-    giveNote: (left) => `Il vient de ton propre argent et de tes coffres, et le premier qui le prend le garde. Encore ${left} cadeaux aujourd’hui ; ce que personne ne prend revient après une semaine.`,
+    giveNote: (left, moneyLeft, chestsLeft) => `Il vient de ton propre argent et de tes coffres, et le premier qui le prend le garde. Encore ${left} cadeaux aujourd’hui ; cette semaine, tu peux encore donner ${moneyLeft.toLocaleString('fr-FR')} en argent et ${chestsLeft} coffres. Ce que personne ne prend revient après une semaine.`,
     giveTo: (name) => `Un cadeau pour ${name}`,
     giveToNote: (name, left) => `Seul ${name} peut le prendre. Encore ${left} cadeaux aujourd’hui.`,
     giveButton: 'Offrir',

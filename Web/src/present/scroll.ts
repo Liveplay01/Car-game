@@ -134,7 +134,7 @@ export class Scroller {
     const h = R.height(area);
     const bar = Math.max(36, (h * h) / (h + maxScroll));
     const y = area.minY + (h - bar) * Ease.clamp01(this.scroll / maxScroll) + bar / 2;
-    list.s(rect(v(x, y), v(3, bar), 1.5), 'muted', 0.7 * this.indicator);
+    list.s(rect(v(x, y), v(3, bar), 1.5), 'coin', 0.7 * this.indicator);
   }
 }
 

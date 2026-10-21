@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { randomCode } from '../../codes.ts';
 import { transaction, type Db } from '../../db.ts';
 import { DAY_MS, FeedbackStore, type RewardItem } from '../feedback/store.ts';
-import { GOAL_PER_MEMBER, GROUP_REAL, GROUP_SIZE, LEAGUES, botsOf, moveOf, rank, weekOf, type Standing } from './league.ts';
+import { GOAL_PER_MEMBER, GROUP_REAL, GROUP_SIZE, LEAGUES, botsOf, moveOf, rank, weekOf, weekStart, type Standing } from './league.ts';
 
 export const CREW_MIGRATIONS: readonly string[] = [
   // The owner has no foreign key: a deleted owner hands the crew to the member who joined first (`ownerOf`).
@@ -69,6 +69,9 @@ export const XP_PER_SHIFT = 600;
 export const XP_PER_DAY = 3000;
 /** Gifts a player can send in a day, and how long one waits before it goes back to the sender. */
 export const GIFTS_PER_DAY = 10;
+/** Per player, across every crew gift sent in the current league week. */
+export const GIFT_MONEY_PER_WEEK = 100_000;
+export const GIFT_CHESTS_PER_WEEK = 5;
 export const GIFT_DAYS = 7;
 /** What can be given: some money, or a chest (the sender's own; the game takes it before sending). */
 export const GIFT_ITEMS: readonly RewardItem[] = ['money:5000', 'money:25000', 'money:100000', 'chest:standard', 'chest:premium', 'chest:diamond', 'chest:event'];
@@ -305,6 +308,14 @@ export class CrewStore {
 
   sentToday(fromId: string, now: number): number {
     return (this.db.prepare('SELECT COUNT(*) AS n FROM crew_gifts WHERE from_id = ? AND created_at >= ?').get(fromId, now - DAY_MS) as { n: number }).n;
+  }
+
+  sentThisWeek(fromId: string, now: number): { money: number; chests: number } {
+    const row = this.db.prepare(`SELECT
+      COALESCE(SUM(CASE WHEN item LIKE 'money:%' THEN CAST(substr(item, 7) AS INTEGER) ELSE 0 END), 0) AS money,
+      COALESCE(SUM(CASE WHEN item LIKE 'chest:%' THEN 1 ELSE 0 END), 0) AS chests
+      FROM crew_gifts WHERE from_id = ? AND created_at >= ?`).get(fromId, weekStart(weekOf(now))) as { money: number; chests: number };
+    return row;
   }
 
   private openGifts(crewId: string): { id: string; from_id: string; to_id: string | null; item: RewardItem; created_at: number }[] {

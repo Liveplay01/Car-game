@@ -13,7 +13,7 @@ import { ScoreStore } from '../leaderboard/store.ts';
 import { checkName } from '../players/names.ts';
 import { PlayerStore, requirePlayer, type PlayerEnv } from '../players/index.ts';
 import { DEMOTE, LEAGUES, PROMOTE, weekEnd } from './league.ts';
-import { CREW_CODE_LENGTH, CREW_MAX, CREW_MIGRATIONS, CrewStore, GIFT_ITEMS, GIFTS_PER_DAY, RENAME_DAYS, XP_PER_SHIFT, type Crew } from './store.ts';
+import { CREW_CODE_LENGTH, CREW_MAX, CREW_MIGRATIONS, CrewStore, GIFT_CHESTS_PER_WEEK, GIFT_ITEMS, GIFTS_PER_DAY, GIFT_MONEY_PER_WEEK, RENAME_DAYS, XP_PER_SHIFT, type Crew } from './store.ts';
 
 /**
  * Crews (Leo, 18.10.2026, in place of the friends list): a named group of up to `CREW_MAX` players. Nobody joins by
@@ -76,6 +76,7 @@ export function crewsModule(): ServerModule {
         // Read again: the first look at a new week settles the last one (league, place).
         const crew = crews.byId(found.id) ?? found;
         const xp = crews.memberXp(crew.id, week.week);
+        const donations = crews.sentThisWeek(playerId, now);
         const members = crews.members(crew.id).map((m) => ({ ...m, owner: m.id === crew.ownerId, me: m.id === playerId, xp: xp.get(m.id) ?? 0 }));
         const renameAt = crew.renamedAt + RENAME_DAYS * DAY_MS;
         return {
@@ -93,7 +94,12 @@ export function crewsModule(): ServerModule {
             last: crew.last ? { place: crew.last.place, move: crew.last.move, league: LEAGUES[crew.league] } : null,
             gifts: transaction(ctx.db, () => crews.gifts(crew.id, playerId, now)),
           },
-          gifting: { items: GIFT_ITEMS, left: Math.max(0, GIFTS_PER_DAY - crews.sentToday(playerId, now)) },
+          gifting: {
+            items: GIFT_ITEMS,
+            left: Math.max(0, GIFTS_PER_DAY - crews.sentToday(playerId, now)),
+            moneyLeft: Math.max(0, GIFT_MONEY_PER_WEEK - donations.money),
+            chestsLeft: Math.max(0, GIFT_CHESTS_PER_WEEK - donations.chests),
+          },
         };
       };
 
@@ -186,8 +192,17 @@ export function crewsModule(): ServerModule {
         const to = body.to === null || body.to === undefined ? null : String(body.to);
         if (to !== null && (to === me.id || !crews.members(crew.id).some((m) => m.id === to))) throw new ApiError(422, 'not_member', 'That player is not in your crew.');
         const now = ctx.now();
-        if (crews.sentToday(me.id, now) >= GIFTS_PER_DAY) throw new ApiError(429, 'too_many_gifts', `You can give ${GIFTS_PER_DAY} gifts a day.`);
-        crews.give(crew.id, me.id, to, item, now);
+        transaction(ctx.db, () => {
+          if (crews.sentToday(me.id, now) >= GIFTS_PER_DAY) throw new ApiError(429, 'too_many_gifts', `You can give ${GIFTS_PER_DAY} gifts a day.`);
+          const sent = crews.sentThisWeek(me.id, now);
+          if (item.startsWith('money:') && sent.money + Number(item.slice(6)) > GIFT_MONEY_PER_WEEK) {
+            throw new ApiError(429, 'weekly_money_limit', `You can donate at most ${GIFT_MONEY_PER_WEEK.toLocaleString('en')} in money each week.`);
+          }
+          if (item.startsWith('chest:') && sent.chests >= GIFT_CHESTS_PER_WEEK) {
+            throw new ApiError(429, 'weekly_chest_limit', `You can donate at most ${GIFT_CHESTS_PER_WEEK} chests each week.`);
+          }
+          crews.give(crew.id, me.id, to, item, now);
+        });
         return c.json(view(me.id), 201);
       });
 

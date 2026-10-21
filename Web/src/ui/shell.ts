@@ -728,7 +728,7 @@ export class Shell {
       const badge = h('span', { class: 'badge-dot', hidden: true });
       const button = h(
         'button',
-        { class: 'tab', type: 'button', 'data-tab': tab, 'aria-label': TAB_LABEL[tab], onclick: () => this.push({ k: 'selectTab', tab }) },
+        { class: 'tab', type: 'button', 'data-tab': tab, 'aria-label': TAB_LABEL[tab], onclick: () => this.push({ k: 'selectTab', tab }), ondblclick: () => { if (tab === 'progress' || tab === 'shop' || tab === 'social') this.session.readAllNews(tab); } },
         animatedIcon(TAB_ICON[tab]),
         h('span', {}, TAB_LABEL[tab]),
         badge,

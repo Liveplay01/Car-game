@@ -659,7 +659,7 @@ export const ShopPage = {
       const center = lerpV(R.center(from), R.center(target), glide);
       const size = lerpV(v(R.width(from), R.height(from)), v(R.width(target), R.height(target)), glide);
       // The chosen shelf is a white chip, like the earlier web UI; it glides to the next one.
-      list.s(rect(center, size, 10), 'primary', enter);
+      list.s(rect(center, size, size.y / 2), 'primary', enter);
     }
     for (const [shelf, chip] of chips) {
       const r = ShopPage.pressedRect(chip, { k: 'shelf', shelf }, state);

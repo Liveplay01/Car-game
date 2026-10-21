@@ -36,6 +36,13 @@ export const News = {
     return seen.length > 0;
   },
 
+  /** A deliberate double tap on a dock tab catches up on every new item in that tab. */
+  readTab(save: SaveGame, tab: NewsItem['tab']): boolean {
+    const seen = News.pending(save).filter((n) => n.tab === tab);
+    for (const n of seen) save.hints.push(hintOf(n));
+    return seen.length > 0;
+  },
+
   /** A new player has nothing to catch up on; one who has played sees what is listed. Once per save. */
   start(save: SaveGame): void {
     if (save.hints.includes('newsStarted')) return;

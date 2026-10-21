@@ -300,7 +300,7 @@ export function crewPanel(host: CrewHost): HTMLElement {
     if (crew.gifts.length > 0) {
       rows.push(label(S.crew.giftsWaiting), h('div', { class: 'list' }, ...crew.gifts.map(giftRow)));
     }
-    rows.push(label(S.crew.give), h('div', { class: 'list' }, ...giveRows(now, null)), note(S.crew.giveNote(now.gifting?.left ?? 0)));
+    rows.push(label(S.crew.give), h('div', { class: 'list' }, ...giveRows(now, null)), note(S.crew.giveNote(now.gifting?.left ?? 0, now.gifting?.moneyLeft ?? 0, now.gifting?.chestsLeft ?? 0)));
     return rows;
   }
 
@@ -317,13 +317,15 @@ export function crewPanel(host: CrewHost): HTMLElement {
   function giveRows(now: CrewView, to: CrewMember | null, done?: () => void): HTMLElement[] {
     const career = host.career();
     const left = now.gifting?.left ?? 0;
+    const moneyLeft = now.gifting?.moneyLeft ?? 0;
+    const chestsLeft = now.gifting?.chestsLeft ?? 0;
     const items = (now.gifting?.items ?? []).filter((item) => item.startsWith('money:') || career.chests.includes(item.slice(6) as ChestKind));
     return items.map((item) => {
       const isMoney = item.startsWith('money:');
       const have = isMoney ? career.money >= Number(item.slice(6)) : true;
       const count = isMoney ? null : career.chests.filter((k) => k === item.slice(6)).length;
       const give = confirmButton(S.crew.giveButton, S.crew.confirm, 'btn', () => send(item, to, done));
-      give.disabled = !have || left <= 0;
+      give.disabled = !have || left <= 0 || (isMoney ? Number(item.slice(6)) > moneyLeft : chestsLeft <= 0);
       return row(giftName(item), count === null ? null : S.crew.youHave(count), give);
     });
   }
@@ -378,7 +380,7 @@ export function crewPanel(host: CrewHost): HTMLElement {
           boards.length > 0 ? h('div', { class: 'list' }, ...boards) : note(S.crew.noBoards),
         ];
         if (!p.me) {
-          parts.push(label(S.crew.giveTo(p.name)), h('div', { class: 'list' }, ...giveRows(now, member, () => close())), note(S.crew.giveToNote(p.name, now.gifting?.left ?? 0)));
+          parts.push(label(S.crew.giveTo(p.name)), h('div', { class: 'list' }, ...giveRows(now, member, () => close())), note(S.crew.giveNote(now.gifting?.left ?? 0, now.gifting?.moneyLeft ?? 0, now.gifting?.chestsLeft ?? 0)));
           if (now.crew?.owner) parts.push(confirmButton(S.crew.remove, S.crew.removeConfirm, 'btn destructive block', () => act(() => removeMember(p.id)).then(() => close())));
         }
         sheet.replaceChildren(...parts);
