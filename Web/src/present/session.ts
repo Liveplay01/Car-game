@@ -3709,7 +3709,6 @@ export class GameSession {
       age,
       reduceMotion: this.reduceMotion,
       opacity: shown,
-      caption: ResultBanner.breathes(summary) ? ResultBanner.mourning(age) : 0,
       selected: this.conditionShown === id,
       isNew: this.save.career.museumNew.includes(id),
     });

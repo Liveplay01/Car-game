@@ -2596,6 +2596,7 @@ a.row-link {
    colour; a pay bonus has an amber icon, the Family's share a red one. */
 .run-bar .run-mods {
   display: flex;
+  width: var(--pill-w);
   height: 0;
   margin-bottom: calc(-1 * var(--pill-gap) - 2px);
   overflow: clip;
@@ -2674,13 +2675,17 @@ button.mod:active {
 }
 
 .mod-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
   opacity: 0;
   transition: opacity 200ms var(--ease-out);
 }
 
 .run-mods.single .mod,
 .mod.open {
-  max-width: 240px;
+  width: var(--pill-w);
+  max-width: var(--pill-w);
   padding: 0 var(--s4) 0 var(--s3);
 }
 

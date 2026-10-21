@@ -17,7 +17,7 @@ import type { ColorToken } from './theme';
 import { MenuKit } from './menukit';
 import { AdPill } from './adPill';
 import { touchFirst } from '../storage/device';
-import { moneyTag, money, coinSize, flameTag, textWidth, drawFitted, trophy } from './icons';
+import { moneyTag, moneyTagWidth, money, coinSize, flameTag, textWidth, drawFitted, trophy } from './icons';
 import { measure } from './measure';
 import { S, Fmt, money as moneyText, comboMultiplier } from './strings';
 import { interpolatedPose } from './scene';
@@ -226,12 +226,15 @@ export const TopBar = {
   },
 
   /** `roll`: the amount as an odometer (the live top card); without it the text is set (the result's count-up already moves). */
-  addMoneyColumn(list: RenderList, col: Rect, a: Align, amount: string, o: { valueSize?: number; opacity?: number; roll?: { value: number; reduceMotion: boolean } } = {}): void {
+  addMoneyColumn(list: RenderList, col: Rect, a: Align, amount: string, o: { valueSize?: number; opacity?: number; roll?: { value: number; reduceMotion: boolean }; fitAmount?: string } = {}): void {
     const x = TopBar.anchor(col, a);
     const opacity = o.opacity ?? 1;
     const valueSize = o.valueSize ?? 20;
     const room = R.width(col) - 24;
-    const natural = textWidth(moneyText(amount), valueSize, true, true);
+    // The coin and its gap are part of the value too. Measuring only the digits let a growing
+    // balance trespass into the middle column. A result count-up also fits to its final value,
+    // so its type stays the same size from the first number to the last.
+    const natural = moneyTagWidth(o.fitAmount ?? amount, valueSize);
     const size = natural <= room ? valueSize : Math.max(11, (valueSize * room) / natural);
     const at = v(x, col.minY + TopBar.midRow);
     if (!o.roll || a !== 'leading') return moneyTag(list, amount, at, size, a, 'primary', 'accent', opacity, 'display');
@@ -1817,7 +1820,7 @@ export const ResultBanner = {
       const counted = bank.before + Math.round((bank.after - bank.before) * Ease.outCubic(x));
       const landed = (age - ResultBanner.countDelay - ResultBanner.countDuration) / 0.35;
       const size = reduceMotion || landed < 0 || bank.after === bank.before ? 20 : 20 * land(landed, 0.15);
-      TopBar.addMoneyColumn(list, cols.left, 'leading', Fmt.number(counted), { valueSize: size, opacity: shown });
+      TopBar.addMoneyColumn(list, cols.left, 'leading', Fmt.number(counted), { valueSize: size, opacity: shown, fitAmount: Fmt.number(bank.after) });
       // A lost shift's words stand still: no spring on the numbers, and FAIL makes way for the score before it comes in.
       const pop = reduceMotion || ResultBanner.breathes(summary) ? 1 : land(age / 0.4, 0.12);
       if (summary.mode === 'mayhem' && !run) {
@@ -1868,7 +1871,7 @@ export const ResultBanner = {
     // The ring's gold bar already shows the XP; only a level climbed gets words.
     const climbed = summary.elite && summary.elite.climbed > 0 ? summary.elite : null;
 
-    // The island holds one column, top to bottom: the failure icon, its caption or the details, the prompt, then the close call (or tomorrow's gift) and a climbed level. Rows are measured, so none can run into another; when the grass is too small the least important go first.
+    // The island holds one column, top to bottom: the failure icon, its details, the prompt, then the close call (or tomorrow's gift) and a climbed level. The cause itself lives behind the tappable Museum chip, so a long localized failure reason never crowds the roundabout.
     const rowOf = (s: string | null, size: number, weight: Weight): IslandRow => islandRow(list, s, islandRadius, size, weight);
     const promptRow = rowOf(next, 17, 'bold');
     const detailRow = rowOf(detail?.[0] ?? null, 14, 'bold');
@@ -1876,13 +1879,11 @@ export const ResultBanner = {
     const giftRow = rowOf(gift, 13, 'regular');
     const eliteRow = rowOf(climbed ? S.elite.toGo(climbed) : null, 16, 'bold');
     const chip = r.failCause !== null;
-    // Through the breather the caption under the icon takes the details' place.
-    const caption = chip && ResultBanner.breathes(summary) ? 16 : 0;
     const lowHeight = Math.max(closeRow.height, giftRow.height);
     let useDetail = detailRow.height > 0;
     let useLow = lowHeight > 0;
     let useElite = eliteRow.height > 0;
-    const slotHeight = (): number => Math.max(useDetail ? detailRow.height : 0, caption);
+    const slotHeight = (): number => (useDetail ? detailRow.height : 0);
     const above = (): number => (chip ? FAIL_CHIP_SIZE + (slotHeight() > 0 ? 7 + slotHeight() : 0) : slotHeight());
     const total = (): number => above() + (above() > 0 ? 8 : 0) + promptRow.height + (useLow ? 8 + lowHeight : 0) + (useElite ? 6 + eliteRow.height : 0);
     const budget = 2 * (islandRadius * list.camera.scale - 14);

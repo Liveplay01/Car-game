@@ -76,8 +76,8 @@ export const FailChip = {
   hit: 64,
   target: (center: Vec2): Rect => R.make(center.x - FailChip.hit / 2, center.y - FailChip.hit / 2, center.x + FailChip.hit / 2, center.y + FailChip.hit / 2),
 
-  /** `caption` (0–1) fades in under the icon what happened, in one calm line, through the breather. */
-  add(list: RenderList, entry: MuseumEntry, center: Vec2, o: { age: number; reduceMotion: boolean; opacity: number; caption: number; selected: boolean; isNew: boolean }): void {
+  /** The icon opens the complete failure entry in the Museum; keeping the prose there leaves the island readable. */
+  add(list: RenderList, entry: MuseumEntry, center: Vec2, o: { age: number; reduceMotion: boolean; opacity: number; selected: boolean; isNew: boolean }): void {
     const enter = o.reduceMotion ? Ease.clamp01(o.age / 0.2) : MenuKit.staggerSpring(o.age - 0.1, 0);
     const alpha = Ease.clamp01(enter) * o.opacity;
     if (alpha <= 0.001) return;
@@ -91,7 +91,6 @@ export const FailChip = {
       list.s(circle(dot, 6.5), 'chrome', alpha);
       list.s(circle(dot, 4.5), 'accent', alpha);
     }
-    if (o.caption > 0.001) drawText(list, S.museum.line(entry), add(at, v(0, radius + 16)), 13, 'destructive', { opacity: o.caption * alpha, weight: 'bold', align: 'center' });
   },
 };
 

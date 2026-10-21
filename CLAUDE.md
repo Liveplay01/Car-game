@@ -126,6 +126,7 @@ docker build -t car-game . ; docker run -p 5050:5050 car-game   # Container wie 
   (`npm run sim`: der vorsichtige Bot darf nie crashen), dann darstellen
   (`present/`, `ui/`), dann im Browser spielen – auch auf einem echten Handy.
 - Alle Tuning-Werte stehen in `Web/src/core/config.ts`.
+- **Frontend-Übergänge (Leo, 21.10.2026):** Bei jeder Arbeit an Übergängen, Animationen oder Motion im Frontend (Öffnen/Schließen, Seitenwechsel, Toasts, Tooltips, Ladezustände, Hover, Icon-Wechsel, Texte, Zahlen) zuerst den installierten Skill `transitions-dev` laden; für das Feintuning bestehender Bewegung `transitions-polish`, für „KI baut die Oberfläche“-Effekte `transitions-ui-generation`. Die Motion-Tokens und Regeln der Skills gelten neben [DESIGN-LANGUAGE.md](DESIGN-LANGUAGE.md) und den Motion-Regeln in FOUNDATION.md; bei Widerspruch gewinnt das Spiel (Haptik, Physik, Lesbarkeit). Die Skills liegen in `.agents/skills/` (Installation: `npx skills add Jakubantalik/transitions.dev`).
 - **Museum wächst mit (Leo, 28.09.2026):** Der Katalog in `core/museum.ts` folgt den Inhaltslisten
   (`BOSS_KINDS`, Fahrzeugtypen, `WEATHERS`, `CITY_EVENTS`, Dunkelheit). Neuer Boss, neues
   Spezialfahrzeug, neues Wetter oder Ereignis erscheint dort automatisch; der Build bricht ab,
