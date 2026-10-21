@@ -234,7 +234,7 @@ export const TopBar = {
     // The coin and its gap are part of the value too. Measuring only the digits let a growing
     // balance trespass into the middle column. A result count-up also fits to its final value,
     // so its type stays the same size from the first number to the last.
-    const natural = moneyTagWidth(o.fitAmount ?? amount, valueSize);
+    const natural = moneyTagWidth(o.fitAmount ?? amount, valueSize, true);
     const size = natural <= room ? valueSize : Math.max(11, (valueSize * room) / natural);
     const at = v(x, col.minY + TopBar.midRow);
     if (!o.roll || a !== 'leading') return moneyTag(list, amount, at, size, a, 'primary', 'accent', opacity, 'display');
@@ -1748,6 +1748,10 @@ export const ResultBanner = {
   countDuration: 1.2,
   epilogue: 3.6,
   fade: 0.6,
+  /** The top card's extra height for a lost shift's lines: padding above and below, one line each. */
+  cardPad: 8,
+  cardLine: 20,
+
   settled: (age: number): number => Ease.smoothstep((age - ResultBanner.epilogue) / ResultBanner.fade),
   /** The result leaves in the first half of the fade, the next shift arrives in the second: never both at once. */
   leaving: (age: number): number => Ease.smoothstep(ResultBanner.settled(age) * 2),
@@ -1802,7 +1806,7 @@ export const ResultBanner = {
     list.tag = undefined;
   },
 
-  add(list: RenderList, summary: ShiftSummary, nextLevel: number, bank: { before: number; after: number }, age: number, reduceMotion: boolean, gift: string | null, islandRadius: number): Vec2 | null {
+  add(list: RenderList, summary: ShiftSummary, nextLevel: number, bank: { before: number; after: number }, age: number, reduceMotion: boolean, gift: string | null, islandRadius: number): { chip: Vec2 | null; grow: number } {
     const r = summary.result;
     const frame = TopBar.frame(list.camera.viewport.x);
     const cols = TopBar.columns(frame);
@@ -1818,9 +1822,7 @@ export const ResultBanner = {
     if (shown > 0.001) {
       const x = reduceMotion ? 1 : Ease.clamp01((age - ResultBanner.countDelay) / ResultBanner.countDuration);
       const counted = bank.before + Math.round((bank.after - bank.before) * Ease.outCubic(x));
-      const landed = (age - ResultBanner.countDelay - ResultBanner.countDuration) / 0.35;
-      const size = reduceMotion || landed < 0 || bank.after === bank.before ? 20 : 20 * land(landed, 0.15);
-      TopBar.addMoneyColumn(list, cols.left, 'leading', Fmt.number(counted), { valueSize: size, opacity: shown, fitAmount: Fmt.number(bank.after) });
+      TopBar.addMoneyColumn(list, cols.left, 'leading', Fmt.number(counted), { valueSize: 20, opacity: shown, fitAmount: Fmt.number(bank.after) });
       // A lost shift's words stand still: no spring on the numbers, and FAIL makes way for the score before it comes in.
       const pop = reduceMotion || ResultBanner.breathes(summary) ? 1 : land(age / 0.4, 0.12);
       if (summary.mode === 'mayhem' && !run) {
@@ -1874,8 +1876,12 @@ export const ResultBanner = {
     // The island holds one column, top to bottom: the failure icon, its details, the prompt, then the close call (or tomorrow's gift) and a climbed level. The cause itself lives behind the tappable Museum chip, so a long localized failure reason never crowds the roundabout.
     const rowOf = (s: string | null, size: number, weight: Weight): IslandRow => islandRow(list, s, islandRadius, size, weight);
     const promptRow = rowOf(next, 17, 'bold');
-    const detailRow = rowOf(detail?.[0] ?? null, 14, 'bold');
-    const closeRow = rowOf(close?.text ?? null, 14, 'bold');
+    // A lost shift's details ride in the top card, which grows to hold them; the island keeps only the prompt.
+    const inCard = r.outcome !== 'completed';
+    const detailRow = rowOf(inCard ? null : detail?.[0] ?? null, 14, 'bold');
+    const closeRow = rowOf(inCard ? null : close?.text ?? null, 14, 'bold');
+    const cardRows = inCard ? [detail ? { s: detail[0], color: detail[1] } : null, close ? { s: close.text, color: close.color } : null].filter((x): x is { s: string; color: ColorToken } => x !== null) : [];
+    const grow = cardRows.length > 0 ? 2 * ResultBanner.cardPad + cardRows.length * ResultBanner.cardLine : 0;
     const giftRow = rowOf(gift, 13, 'regular');
     const eliteRow = rowOf(climbed ? S.elite.toGo(climbed) : null, 16, 'bold');
     const chip = r.failCause !== null;
@@ -1903,14 +1909,19 @@ export const ResultBanner = {
     y += useLow ? lowHeight + 6 : 0;
     const eliteY = y + eliteRow.height / 2;
 
-    if (prompt <= 0) return chipAt;
+    if (prompt <= 0) return { chip: chipAt, grow: 0 };
     islandBlock(list, promptRow.lines, islandRadius, promptY, 17, 'primary', prompt, 'bold');
     // Once the result's details are gone the prompt stays alone: the promise for tomorrow takes their place, as on the ready screen.
     if (useLow) islandBlock(list, giftRow.lines, islandRadius, lowY, 13, 'muted', prompt * ResultBanner.arriving(age));
     const details = prompt * (1 - ResultBanner.leaving(age));
-    if (details <= 0.001) return chipAt;
+    if (details <= 0.001) return { chip: chipAt, grow: 0 };
     if (useDetail && detail) islandBlock(list, detailRow.lines, islandRadius, detailY, 14, detail[1], details, 'bold');
-    if (useLow && close) {
+    if (grow > 0) {
+      const reveal = Ease.clamp01(list.topIntro / grow);
+      const top = frame.maxY + list.topGrow - list.topIntro + ResultBanner.cardPad;
+      cardRows.forEach((row, i) => drawFitted(list, row.s, v(R.center(frame).x, top + (i + 0.5) * ResultBanner.cardLine), 13, R.width(frame) - 32, row.color, { weight: 'bold', opacity: details * reveal, align: 'center' }));
+    }
+    if (useLow && close && !inCard) {
       // It lands a moment after the prompt: the thing to read after "tap to try again".
       const enter = reduceMotion ? 1 : Ease.outCubic((age - lock - 0.15) / 0.3);
       const rise = reduceMotion ? 0 : 6 * (1 - Ease.clamp01(enter));
@@ -1922,7 +1933,7 @@ export const ResultBanner = {
       const enter = reduceMotion ? 1 : Ease.outCubic(since / 0.3);
       if (enter > 0) islandBlock(list, eliteRow.lines, islandRadius, eliteY, 16 * (reduceMotion ? 1 : land(since / 0.45, 0.25)), 'coin', details * enter, 'bold');
     }
-    return chipAt;
+    return { chip: chipAt, grow };
   },
 
 };

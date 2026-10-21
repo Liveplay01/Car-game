@@ -56,7 +56,7 @@ export function drawFitted(list: RenderList, s: string, at: Vec2, size: number, 
 }
 
 /** How wide a `moneyTag` is. */
-export const moneyTagWidth = (label: string, size: number): number => coinSize(size) + size * 0.34 + textWidth(label, size);
+export const moneyTagWidth = (label: string, size: number, display = false): number => coinSize(size) + size * 0.34 + textWidth(label, size, true, display);
 
 export interface Shape {
   p: Primitive;

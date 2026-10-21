@@ -2616,7 +2616,8 @@ a.row-link {
 }
 
 .mod {
-  flex: none;
+  flex: 0 1 var(--pill-h);
+  min-width: 0;
   display: flex;
   align-items: center;
   gap: var(--s2);
@@ -2682,8 +2683,13 @@ button.mod:active {
   transition: opacity 200ms var(--ease-out);
 }
 
+.mod:last-child {
+  margin-right: 0;
+}
+
 .run-mods.single .mod,
 .mod.open {
+  flex: none;
   width: var(--pill-w);
   max-width: var(--pill-w);
   padding: 0 var(--s4) 0 var(--s3);

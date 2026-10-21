@@ -3467,7 +3467,8 @@ export class GameSession {
       }
     } else if (s.k === 'result') {
       list.camera = steady;
-      const chipAt = ResultBanner.add(list, s.summary, this.playingLevel, this.resultBank, this.resultAge, rm, this.giftLine, world.layout.islandRadius);
+      const { chip: chipAt, grow } = ResultBanner.add(list, s.summary, this.playingLevel, this.resultBank, this.resultAge, rm, this.giftLine, world.layout.islandRadius);
+      this.introWant = grow;
       if (chipAt) this.addFailChip(list, s.summary, chipAt);
       const arriving = ResultBanner.arriving(this.resultAge);
       if (arriving > 0) this.addReadyBanner(list, null, false, arriving);
