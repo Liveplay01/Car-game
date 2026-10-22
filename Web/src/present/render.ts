@@ -12,7 +12,8 @@ export type Primitive =
   | { k: 'rect'; center: Vec2; size: Vec2; radius: number; rotation: number }
   | { k: 'circle'; center: Vec2; radius: number }
   | { k: 'arc'; center: Vec2; radius: number; thickness: number; start: number; end: number; round?: boolean }
-  | { k: 'line'; from: Vec2; to: Vec2; thickness: number }
+  /** `round`: the ends are half discs (the icons' soft strokes). */
+  | { k: 'line'; from: Vec2; to: Vec2; thickness: number; round?: boolean }
   /** `holes` are cut out of it, see-through (even-odd fill). */
   | { k: 'polygon'; points: Vec2[]; holes?: Vec2[][] }
   /** Many thin lines in one colour, drawn as one path: `points` in pairs, from and to (rain). */
@@ -82,7 +83,8 @@ export const circle = (center: Vec2, radius: number): Primitive => ({ k: 'circle
 /** `round`: an open arc ends in half discs instead of square ends (the ring's signals). */
 export const arc = (center: Vec2, radius: number, thickness: number, start: number, end: number, round = false): Primitive =>
   round ? { k: 'arc', center, radius, thickness, start, end, round } : { k: 'arc', center, radius, thickness, start, end };
-export const line = (from: Vec2, to: Vec2, thickness: number): Primitive => ({ k: 'line', from, to, thickness });
+export const line = (from: Vec2, to: Vec2, thickness: number, round = false): Primitive =>
+  round ? { k: 'line', from, to, thickness, round } : { k: 'line', from, to, thickness };
 export const polygon = (points: Vec2[], holes?: Vec2[][]): Primitive => (holes ? { k: 'polygon', points, holes } : { k: 'polygon', points });
 /** A polygon with soft corners: each corner becomes a curve that starts `radius` before it (signs, not machine parts). */
 export function softPolygon(points: Vec2[], radius: number, steps = 5): Primitive {

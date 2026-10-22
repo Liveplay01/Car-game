@@ -57,7 +57,7 @@ export const ConditionChips = {
       // The one whose sheet is open wears a ring in its own colour.
       if (o.selected === chip.id) list.s(circle(at, radius + 2.5), color, 0.9 * alpha);
       MenuKit.chromePill(list, at, v(ConditionChips.size, ConditionChips.size), alpha);
-      for (const it of MuseumPage.icon(list, chip.entry, at, 1, ConditionChips.size - 8)) list.items.push({ ...it, opacity: it.opacity * alpha });
+      for (const it of MuseumPage.icon(list, chip.entry, at, 1, ConditionChips.size - 8, o.reduceMotion ? Infinity : o.time - 0.15 - i * 0.12)) list.items.push({ ...it, opacity: it.opacity * alpha });
       if (chip.isNew) {
         const dot = add(at, v(radius * 0.72, -radius * 0.72));
         list.s(circle(dot, 6.5), 'chrome', alpha);
@@ -85,7 +85,7 @@ export const FailChip = {
     const at = add(center, v(0, o.reduceMotion ? 0 : MenuKit.cardEnter(enter).rise * 0.5));
     list.s(circle(at, radius + (o.selected ? 3 : 1.5)), 'destructive', (o.selected ? 0.9 : 0.55) * alpha);
     MenuKit.chromePill(list, at, v(FailChip.size, FailChip.size), alpha);
-    for (const it of MuseumPage.icon(list, entry, at, 1, FailChip.size - 8)) list.items.push({ ...it, opacity: it.opacity * alpha });
+    for (const it of MuseumPage.icon(list, entry, at, 1, FailChip.size - 8, o.reduceMotion ? Infinity : o.age - 0.3)) list.items.push({ ...it, opacity: it.opacity * alpha });
     if (o.isNew) {
       const dot = add(at, v(radius * 0.72, -radius * 0.72));
       list.s(circle(dot, 6.5), 'chrome', alpha);

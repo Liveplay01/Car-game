@@ -127,6 +127,7 @@ docker build -t car-game . ; docker run -p 5050:5050 car-game   # Container wie 
   (`present/`, `ui/`), dann im Browser spielen – auch auf einem echten Handy.
 - Alle Tuning-Werte stehen in `Web/src/core/config.ts`.
 - **Frontend-Übergänge (Leo, 21.10.2026):** Bei jeder Arbeit an Übergängen, Animationen oder Motion im Frontend (Öffnen/Schließen, Seitenwechsel, Toasts, Tooltips, Ladezustände, Hover, Icon-Wechsel, Texte, Zahlen) zuerst den installierten Skill `transitions-dev` laden; für das Feintuning bestehender Bewegung `transitions-polish`, für „KI baut die Oberfläche“-Effekte `transitions-ui-generation`. Die Motion-Tokens und Regeln der Skills gelten neben [DESIGN-LANGUAGE.md](DESIGN-LANGUAGE.md) und den Motion-Regeln in FOUNDATION.md; bei Widerspruch gewinnt das Spiel (Haptik, Physik, Lesbarkeit). Die Skills liegen in `.agents/skills/` (Installation: `npx skills add Jakubantalik/transitions.dev`).
+- **Marketing-Skills (Leo, 22.10.2026):** Bei Marketing-Aufgaben ungefragt den passenden Skill aus `~/.claude/skills/` laden (aus coreyhaines31/marketingskills, nur die passenden): `product-marketing` (Positionierung, Zielgruppe, Stimme; legt `.agents/product-marketing.md` an, das die anderen lesen), `copywriting` / `copy-editing` (Website-, Store-, Social-Texte), `aso` (Google-Play-Eintrag), `launch` (Release, Ankündigung, Changelog), `social` / `video` (Reels, Trailer in `Marketing/`), `seo-audit` / `schema` / `ai-seo` / `site-architecture` (timing.love), `cro` / `ab-testing` / `marketing-psychology` (Seiten und Abläufe), `referrals` / `community-marketing` (Einladungen, Crews, Discord). Die festen Entscheidungen oben gewinnen bei Widerspruch: kein zweites Analytics-System (nur Umami), keine kaufbare Währung, nur freiwillige Rewarded Ads, Texte nie ohne Beleg übertreiben, sichtbare Spieltexte weiter nach `S`.
 - **Museum wächst mit (Leo, 28.09.2026):** Der Katalog in `core/museum.ts` folgt den Inhaltslisten
   (`BOSS_KINDS`, Fahrzeugtypen, `WEATHERS`, `CITY_EVENTS`, Dunkelheit). Neuer Boss, neues
   Spezialfahrzeug, neues Wetter oder Ereignis erscheint dort automatisch; der Build bricht ab,
@@ -183,3 +184,14 @@ docker build -t car-game . ; docker run -p 5050:5050 car-game   # Container wie 
 - Clean Naming & Strict Types: Use concise, idiomatic variable names. Avoid overly verbose LLM naming styles. Enforce strict typing (no `any` or loose fallbacks).
 - Idiomatic Architecture: Respect the modern conventions of the current framework/language. Keep files focused, modular, and single-purpose.
 - Robust Error Handling: Never catch errors just to `console.log` them. Handle edge cases explicitly or let errors bubble up correctly.
+
+## graphify
+
+This project has a knowledge graph at graphify-out/ with god nodes, community structure, and cross-file relationships.
+
+Rules:
+- When graphify-out/graph.json exists, run `graphify query "<question>"` before your first grep, search or source-file read for a codebase question, and put this rule in every subagent prompt that explores code. Read raw files only for lines the graph or an earlier read already located. Use `graphify path "<A>" "<B>"` for relationships and `graphify explain "<concept>"` for focused concepts. These return a scoped subgraph, usually much smaller than GRAPH_REPORT.md or raw grep output.
+- If graphify-out/wiki/index.md exists, use it for broad navigation instead of raw source browsing.
+- Read graphify-out/GRAPH_REPORT.md only for broad architecture review or when query/path/explain do not surface enough context.
+- After modifying code, run `graphify update .` to keep the graph current (AST-only, no API cost).
+- A committed graphify-out/graph.json is rewritten whole on every build, so a large diff to it in a pull request is expected. Do not flag it as churn or suggest skipping the graph rebuild or its hooks.

@@ -1,6 +1,6 @@
 import { v } from '../core/vec2';
 import { baseConfig } from '../core/config';
-import type { Detail, DetailAction, DetailRow } from '../present/detail';
+import type { Detail, DetailAction, DetailArt, DetailRow } from '../present/detail';
 import { Details } from '../present/detail';
 import { RenderList } from '../present/render';
 import { CanvasDrawer } from '../present/draw';
@@ -12,6 +12,8 @@ import type { ScreenAction } from '../present/flow';
 import { h, animatedIcon, coinMark } from './dom';
 
 const ART = 88;
+/** How long a picture's parts move after it opens or is tapped (ms). */
+const ART_PLAYS = 2600;
 
 /** Text with the money mark turned into a gold coin, built from DOM nodes (never HTML). */
 function rich(text: string): DocumentFragment {
@@ -37,6 +39,9 @@ function rich(text: string): DocumentFragment {
 export class DetailSheet {
   private readonly root: HTMLElement;
   private readonly art: HTMLCanvasElement;
+  /** The picture on show and when it began to play: its parts move for a moment after it opens or is tapped. */
+  private shownArt: DetailArt | null = null;
+  private artClock = 0;
   private readonly drawer: CanvasDrawer;
   private readonly eyebrow: HTMLElement;
   private readonly title: HTMLElement;
@@ -81,6 +86,7 @@ export class DetailSheet {
     this.art.style.width = `${ART}px`;
     this.art.style.height = `${ART}px`;
     this.drawer = new CanvasDrawer(this.art);
+    this.art.addEventListener('pointerdown', () => (this.artClock = performance.now()));
     this.drawer.resize(ART, ART, 2);
     this.signalCanvas = h('canvas', { class: 'detail-signal-art', width: SignalLoop.size * 2, height: SignalLoop.size * 2, 'aria-hidden': 'true' });
     this.signalCanvas.style.width = `${SignalLoop.size}px`;
@@ -125,6 +131,15 @@ export class DetailSheet {
     }
     this.sync(detail);
     this.paintSignal();
+    if (performance.now() - this.artClock < ART_PLAYS) this.paintArt();
+  }
+
+  private paintArt(): void {
+    if (!this.shownArt) return;
+    const t = this.reducedMotion() ? Infinity : (performance.now() - this.artClock) / 1000;
+    const list = new RenderList({ viewport: v(ART, ART), center: v(0, 0), focus: v(ART / 2, ART / 2), scale: 1 }, 'card');
+    Details.drawArt(list, this.shownArt, v(ART / 2, ART / 2), ART, baseConfig, t);
+    this.drawer.draw(list);
   }
 
   private sync(detail: Detail): void {
@@ -202,9 +217,9 @@ export class DetailSheet {
 
   private render(d: Detail, fresh: boolean): void {
     // The picture, drawn with the game's own shapes.
-    const list = new RenderList({ viewport: v(ART, ART), center: v(0, 0), focus: v(ART / 2, ART / 2), scale: 1 }, 'card');
-    Details.drawArt(list, d.art, v(ART / 2, ART / 2), ART, baseConfig);
-    this.drawer.draw(list);
+    this.shownArt = d.art;
+    if (fresh) this.artClock = performance.now();
+    this.paintArt();
 
     this.root.classList.toggle('fail', d.tone === 'fail');
     this.eyebrow.textContent = d.eyebrow?.text ?? '';

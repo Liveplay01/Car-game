@@ -587,6 +587,7 @@ export class AudioPlayer {
     else if (!suspended && ctx.state === 'suspended') ctx.resume().catch(() => undefined);
   }
 
+  /** Done once every sample and stem is loaded and decoded (or failed); resolved at once without audio. */
   get ready(): Promise<void> {
     return this.loading ?? Promise.resolve();
   }

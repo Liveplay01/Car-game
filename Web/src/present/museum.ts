@@ -5,10 +5,10 @@ import { type MuseumShelf, type MuseumEntry, type SpecialKind, type WeatherKind,
 import { rematch } from '../core/trials';
 import { type VehicleType, isHeavy } from '../core/vehicle';
 import { type Vec2, v, add, mul, fromAngle, TAU } from '../core/vec2';
-import { type RenderList, type RenderItem, type Rect, RenderList as List, R, rect, circle, arc, line, polygon, pinned, drawText } from './render';
+import { type RenderList, type RenderItem, type Rect, RenderList as List, R, rect, pinned, drawText, Ease } from './render';
 import type { ColorToken } from './theme';
 import { MenuKit } from './menukit';
-import { moneyTag } from './icons';
+import { type At, type Pen, moneyTag, pen, pose, Motion } from './icons';
 import { S, Fmt } from './strings';
 import { ShopPage } from './shop';
 import { CarArt } from './carArt';
@@ -42,268 +42,353 @@ type Look = typeof SYNDICATE_BOSS | typeof SYNDICATE_ESCORT;
 
 // MARK: Pictures of the conditions
 
-/** Draws an icon round the origin of a 64 × 48 box; `at` maps box points to the screen, `u` is one box unit. */
-type Icon = (l: RenderList, at: (x: number, y: number) => Vec2, u: number) => void;
+/**
+ * Draws an icon round the origin of a 64 × 48 box; `at` maps box points to the screen. Its parts move on the clock `t`
+ * (`Motion`, seconds since it began to play; `Infinity` is the still picture).
+ */
+type Icon = (p: Pen, at: At, t: number) => void;
 
-function cloud(l: RenderList, at: (x: number, y: number) => Vec2, u: number, color: ColorToken): void {
-  l.s(circle(at(-11, -2), 9 * u), color);
-  l.s(circle(at(2, -9), 12 * u), color);
-  l.s(circle(at(14, -2), 8 * u), color);
-  l.s(rect(at(1, 2), v(42 * u, 12 * u), 6 * u), color);
+function cloud(p: Pen, a: At, color: ColorToken): void {
+  p.disc(a, -11, -2, 9, color);
+  p.disc(a, 2, -9, 12, color);
+  p.disc(a, 14, -2, 8, color);
+  p.box(a, 1, 2, 42, 12, 6, color);
 }
 
-function drops(l: RenderList, at: (x: number, y: number) => Vec2, u: number, count: number): void {
+/** The cloud bobs once, or shakes with `shake` (a storm). */
+const cloudAt = (at: At, t: number, shake = 0): At => pose(at, 0, 0, { dy: Motion.swing(t, 0, 1.6, 1.4, 3), dx: Motion.swing(t, 0, shake, 7, 6) });
+
+/** Rain falling `cycles` times, each drop a moment after the one before; at rest they hang under the cloud. */
+function drops(p: Pen, at: At, t: number, count: number, cycles = 2): void {
   for (let i = 0; i < count; i++) {
     const x = count === 1 ? 0 : -15 + (i * 30) / (count - 1);
     const y = 13 + (i % 2) * 5;
-    l.s(line(at(x, y), at(x - 3, y + 7), 2.4 * u), 'lightBlue');
+    const f = Motion.cycle(t, i * 0.09, 1.5, cycles);
+    const share = f > 0.7 ? (1 - f) / 0.3 : 1;
+    p.line(at, x, y + f * 9, x - 3, y + 7 + f * 9, 2.4, 'lightBlue', share);
   }
 }
 
-function bolt(l: RenderList, at: (x: number, y: number) => Vec2, dx: number): void {
-  l.s(polygon([at(3 + dx, 4), at(-6 + dx, 17), at(0 + dx, 17), at(-4 + dx, 26), at(8 + dx, 12), at(2 + dx, 12), at(6 + dx, 4)]), 'coin');
+function bolt(p: Pen, a: At, dx: number, share = 1): void {
+  p.shape(a, [3 + dx, 4, -6 + dx, 17, 0 + dx, 17, -4 + dx, 26, 8 + dx, 12, 2 + dx, 12, 6 + dx, 4], 'coin', share, 0.8);
 }
 
-function star(l: RenderList, at: (x: number, y: number) => Vec2, x: number, y: number, outer: number, inner: number, color: ColorToken): void {
-  const points = Array.from({ length: 10 }, (_, i) => {
-    const r = i % 2 === 0 ? outer : inner;
-    const a = -Math.PI / 2 + (i * TAU) / 10;
-    return at(x + Math.cos(a) * r, y + Math.sin(a) * r);
-  });
-  l.s(polygon(points), color);
-}
+/** A lightning bolt flashes on and off before it stays. */
+const strike = (t: number, start: number): number => (t < start + 0.6 && Motion.blink(t, start, 3, 7) ? 0.15 : 1);
 
 /** A crescent moon: a disc with a disc of the card's colour cut out of it. */
-function moon(l: RenderList, at: (x: number, y: number) => Vec2, u: number, x: number, y: number, r: number): void {
-  l.s(circle(at(x, y), r * u), 'headlight');
-  l.s(circle(at(x + r * 0.45, y - r * 0.3), r * 0.85 * u), 'card');
+function moon(p: Pen, a: At, x: number, y: number, r: number): void {
+  p.disc(a, x, y, r, 'headlight');
+  p.disc(a, x + r * 0.45, y - r * 0.3, r * 0.85, 'card');
 }
 
 const WEATHER_ICON: Record<WeatherKind, Icon> = {
-  lightRain: (l, at, u) => {
-    cloud(l, at, u, 'muted');
-    drops(l, at, u, 3);
+  lightRain: (p, at, t) => {
+    cloud(p, cloudAt(at, t), 'muted');
+    drops(p, at, t, 3);
   },
-  heavyRain: (l, at, u) => {
-    cloud(l, at, u, 'muted');
-    drops(l, at, u, 6);
+  heavyRain: (p, at, t) => {
+    cloud(p, cloudAt(at, t), 'muted');
+    drops(p, at, t, 6, 3);
   },
-  storm: (l, at, u) => {
-    cloud(l, at, u, 'muted');
-    drops(l, at, u, 2);
-    bolt(l, at, 2);
+  storm: (p, at, t) => {
+    const a = cloudAt(at, t, 1.2);
+    cloud(p, a, 'muted');
+    drops(p, at, t, 2);
+    bolt(p, a, 2, strike(t, 0.1));
   },
-  extreme: (l, at, u) => {
-    cloud(l, at, u, 'muted');
-    drops(l, at, u, 4);
-    bolt(l, at, -8);
-    bolt(l, at, 12);
+  extreme: (p, at, t) => {
+    const a = cloudAt(at, t, 1.6);
+    cloud(p, a, 'muted');
+    drops(p, at, t, 4, 3);
+    bolt(p, a, -8, strike(t, 0.05));
+    bolt(p, a, 12, strike(t, 0.25));
   },
-  fog: (l, at, u) => {
-    cloud(l, at, u, 'muted');
-    for (const [y, w] of [[12, 40], [18, 30], [24, 36]]) l.s(line(at(-w / 2, y), at(w / 2, y), 3 * u), 'smokeLight');
+  fog: (p, at, t) => {
+    cloud(p, cloudAt(at, t), 'muted');
+    // The banks of fog drift to and fro, each its own way.
+    [[12, 40], [18, 30], [24, 36]].forEach(([y, w], i) => {
+      const dx = Motion.swing(t, i * 0.08, i % 2 ? -4 : 4, 0.9, 2.4);
+      p.line(at, -w / 2 + dx, y, w / 2 + dx, y, 3, 'smokeLight');
+    });
   },
-  hail: (l, at, u) => {
-    cloud(l, at, u, 'muted');
-    stones(l, at, u);
+  hail: (p, at, t) => {
+    cloud(p, cloudAt(at, t), 'muted');
+    stones(p, at, t);
   },
-  sandstorm: (l, at, u) => {
+  sandstorm: (p, at, t) => {
     // A low sun behind the dust, and the dust blowing across it.
-    l.s(circle(at(8, -6), 14 * u), 'juiceOrange');
-    for (const [y, w, x] of [[-10, 46, -4], [0, 38, 4], [10, 50, -2], [20, 34, 6]]) l.s(line(at(x - w / 2, y), at(x + w / 2, y), 3.4 * u), 'mapSand');
+    const s = Motion.squash(t, 0, 0.08);
+    p.disc(pose(at, 8, -6, { sx: s, sy: s }), 8, -6, 14, 'juiceOrange');
+    [[-10, 46, -4], [0, 38, 4], [10, 50, -2], [20, 34, 6]].forEach(([y, w, x], i) => {
+      const dx = Motion.swing(t, i * 0.06, 5, 1.1, 2.6);
+      p.line(at, x - w / 2 + dx, y, x + w / 2 + dx, y, 3.4, 'mapSand');
+    });
   },
-  snow: (l, at, u) => {
-    // A snowflake: three bars and their tips.
-    for (let k = 0; k < 3; k++) {
-      const a = (k * Math.PI) / 3;
-      const d = v(Math.cos(a) * 18, Math.sin(a) * 18);
-      l.s(line(at(-d.x, -d.y), at(d.x, d.y), 3 * u), 'skinIce');
-      for (const s of [-1, 1]) {
-        const tip = v(d.x * s * 0.62, d.y * s * 0.62);
-        const side = v(-Math.sin(a) * 5, Math.cos(a) * 5);
-        l.s(line(at(tip.x, tip.y), at(tip.x * 1.25 + side.x, tip.y * 1.25 + side.y), 2 * u), 'skinIce');
-        l.s(line(at(tip.x, tip.y), at(tip.x * 1.25 - side.x, tip.y * 1.25 - side.y), 2 * u), 'skinIce');
+  snow: (p, at, t) => {
+    // A snowflake: three bars and their tips. It turns a sixth and settles.
+    const k = Motion.ramp(t, 0, 1.1, Ease.spring);
+    const s = Motion.squash(t, 0, 0.12);
+    const a = pose(at, 0, 0, { turn: (1 - k) * (-Math.PI / 3), sx: s, sy: s });
+    for (let j = 0; j < 3; j++) {
+      const angle = (j * Math.PI) / 3;
+      const d = v(Math.cos(angle) * 18, Math.sin(angle) * 18);
+      p.line(a, -d.x, -d.y, d.x, d.y, 3, 'skinIce');
+      for (const side of [-1, 1]) {
+        const tip = v(d.x * side * 0.62, d.y * side * 0.62);
+        const n = v(-Math.sin(angle) * 5, Math.cos(angle) * 5);
+        p.line(a, tip.x, tip.y, tip.x * 1.25 + n.x, tip.y * 1.25 + n.y, 2, 'skinIce');
+        p.line(a, tip.x, tip.y, tip.x * 1.25 - n.x, tip.y * 1.25 - n.y, 2, 'skinIce');
       }
     }
   },
 };
 
-/** A few round hailstones under the cloud. */
-function stones(l: RenderList, at: (x: number, y: number) => Vec2, u: number): void {
-  for (const [x, y, r] of [[-14, 14, 3], [-3, 20, 3.6], [9, 13, 2.8], [17, 21, 3.2], [3, 27, 2.4]]) l.s(circle(at(x, y), r * u), 'primary');
+/** A few round hailstones under the cloud; they drop in and bounce. */
+function stones(p: Pen, at: At, t: number): void {
+  [[-14, 14, 3], [-3, 20, 3.6], [9, 13, 2.8], [17, 21, 3.2], [3, 27, 2.4]].forEach(([x, y, r], i) => {
+    const k = Motion.ramp(t, 0.05 + i * 0.08, 0.55, Ease.spring);
+    p.disc(at, x, y - (1 - k) * 12, r, 'primary', Ease.clamp01(k * 3));
+  });
 }
 
 const DARK_ICON: Record<DarkKind, Icon> = {
-  night: (l, at, u) => {
-    moon(l, at, u, -2, 0, 17);
-    for (const [x, y, r] of [[-22, -14, 1.8], [20, 12, 1.5], [22, -16, 2]]) l.s(circle(at(x, y), r * u), 'primary');
+  night: (p, at, t) => {
+    moon(p, pose(at, -2, 0, { turn: Motion.swing(t, 0, 0.22, 1.2, 3) }), -2, 0, 17);
+    // The stars twinkle one after the other.
+    [[-22, -14, 1.8], [20, 12, 1.5], [22, -16, 2]].forEach(([x, y, r], i) => {
+      const k = 1 + Motion.bump(t, 0.15 + i * 0.16, 0.4) * 1.2;
+      p.star(at, x, y, r * 2 * k, r * 0.8 * k, 'headlight', 1, 0.4, Motion.ramp(t, 0.15 + i * 0.16, 0.4) * 0.6);
+    });
   },
-  blackout: (l, at, u) => {
-    moon(l, at, u, -16, -10, 10);
-    // A street lamp with its light out.
-    l.s(line(at(10, 22), at(10, -12), 3 * u), 'muted');
-    l.s(line(at(10, -12), at(0, -16), 3 * u), 'muted');
-    l.s(rect(at(-2, -14), v(12 * u, 5 * u), 2 * u), 'muted');
-    l.s(line(at(-6, -6), at(2, 2), 2 * u), 'destructive');
-    l.s(line(at(2, -6), at(-6, 2), 2 * u), 'destructive');
+  blackout: (p, at, t) => {
+    moon(p, at, -16, -10, 10);
+    // A street lamp flickers and goes out; then the cross.
+    const lamp = pose(at, 10, -12, { turn: Motion.swing(t, 0, 0.06, 2.5) });
+    if (t < 0.5 && Motion.blink(t, 0, 3, 7)) p.shape(lamp, [-5, -11, 1, -11, 12, 14, -16, 14], 'headlight', 0.35, 3);
+    p.line(at, 10, 22, 10, -12, 3, 'muted');
+    p.line(lamp, 10, -12, 0, -16, 3, 'muted');
+    p.box(lamp, -2, -14, 12, 5, 2, 'muted');
+    const k1 = Motion.ramp(t, 0.5, 0.2);
+    const k2 = Motion.ramp(t, 0.62, 0.2);
+    p.line(at, -6, -6, -6 + 8 * k1, -6 + 8 * k1, 2.2, 'destructive', k1 > 0 ? 1 : 0);
+    p.line(at, 2, -6, 2 - 8 * k2, -6 + 8 * k2, 2.2, 'destructive', k2 > 0 ? 1 : 0);
   },
 };
 
+/** A figure mid-stride: arms and legs swing round shoulder and hip, the body bobs with each step. */
+function stride(p: Pen, at: At, t: number, tint: ColorToken, arms: number[], legs: number[]): At {
+  const s = Motion.swing(t, 0, 0.45, 1.8, 2.6);
+  const a = pose(at, 0, 0, { dy: -Math.abs(Motion.swing(t, 0, 2, 1.8, 2.6)) });
+  const shoulder = pose(a, 1, -8, { turn: s });
+  const backArm = pose(a, 1, -8, { turn: -s });
+  const hip = pose(a, -2, 4, { turn: -s });
+  const backLeg = pose(a, -2, 4, { turn: s });
+  p.line(backArm, 1, -8, arms[2], arms[3], 3.2, tint);
+  p.line(backLeg, -2, 4, legs[2], legs[3], 3.6, tint);
+  p.line(a, 3, -11, -2, 3, 4.4, tint);
+  p.disc(a, 4, -17, 5, tint);
+  p.line(shoulder, 1, -8, arms[0], arms[1], 3.2, tint);
+  p.line(hip, -2, 4, legs[0], legs[1], 3.6, tint);
+  return a;
+}
+
 const EVENT_ICON: Record<CityEvent, Icon> = {
-  marathon: (l, at, u) => {
-    // A runner mid-stride: head, body, arms and legs, and the finishing tape.
-    l.s(circle(at(4, -18), 5 * u), 'juiceOrange');
-    l.s(line(at(3, -12), at(-2, 4), 4 * u), 'juiceOrange');
-    l.s(line(at(1, -8), at(12, -2), 3 * u), 'juiceOrange');
-    l.s(line(at(1, -8), at(-10, -10), 3 * u), 'juiceOrange');
-    l.s(line(at(-2, 4), at(10, 12), 3.4 * u), 'juiceOrange');
-    l.s(line(at(-2, 4), at(-10, 18), 3.4 * u), 'juiceOrange');
-    l.s(line(at(-26, 22), at(26, 22), 2.4 * u), 'primary');
+  marathon: (p, at, t) => {
+    // A runner mid-stride, and the finishing tape that wobbles as he reaches it.
+    stride(p, at, t, 'juiceOrange', [12, -2, -10, -10], [10, 12, -10, 18]);
+    const sag = Motion.swing(t, 0.2, 2.5, 2.2, 4);
+    p.line(at, -26, 22, 0, 22 + sag, 2.4, 'primary');
+    p.line(at, 0, 22 + sag, 26, 22, 2.4, 'primary');
   },
-  roadworks: (l, at, u) => {
-    l.s(polygon([at(0, -20), at(-11, 14), at(11, 14)]), 'juiceOrange');
-    l.s(rect(at(0, -4), v(10 * u, 4 * u), 0), 'primary');
-    l.s(rect(at(0, 6), v(15 * u, 4 * u), 0), 'primary');
-    l.s(rect(at(0, 16), v(32 * u, 5 * u), 2 * u), 'juiceOrange');
+  roadworks: (p, at, t) => {
+    // The cone hops and lands with a squash.
+    const s = Motion.squash(t, 0.25, 0.16);
+    const a = pose(at, 0, 16, { sx: 2 - s, sy: s, dy: -Motion.bump(t, 0, 0.28) * 7 });
+    p.shape(a, [0, -20, -11, 14, 11, 14], 'juiceOrange', 1, 3);
+    p.box(a, 0, -4, 10, 4, 1, 'primary');
+    p.box(a, 0, 6, 15, 4, 1, 'primary');
+    p.box(at, 0, 16, 32, 5, 2.5, 'juiceOrange');
   },
-  roadClosure: (l, at, u) => {
-    l.s(line(at(-16, 2), at(-16, 20), 3 * u), 'muted');
-    l.s(line(at(16, 2), at(16, 20), 3 * u), 'muted');
-    l.s(rect(at(0, -4), v(50 * u, 15 * u), 2 * u), 'primary');
-    for (const x of [-17, -5, 7, 19]) l.s(polygon([at(x - 1, -11), at(x + 5, -11), at(x - 1, 3), at(x - 7, 3)]), 'juiceRed');
+  roadClosure: (p, at, t) => {
+    // The barrier drops onto its posts and bounces.
+    const k = Motion.ramp(t, 0, 0.55, Ease.spring);
+    const a = pose(at, 0, 0, { dy: (1 - k) * -12 });
+    p.line(at, -16, 2, -16, 20, 3, 'muted');
+    p.line(at, 16, 2, 16, 20, 3, 'muted');
+    p.box(a, 0, -4, 50, 15, 3, 'primary');
+    for (const x of [-17, -5, 7, 19]) p.shape(a, [x - 1, -11, x + 5, -11, x - 1, 3, x - 7, 3], 'juiceRed');
   },
-  concert: (l, at, u) => {
-    l.s(polygon([at(-6, -12), at(18, -18), at(18, -11), at(-6, -5)]), 'rarityEpic');
-    l.s(line(at(-6, -12), at(-6, 12), 2.5 * u), 'rarityEpic');
-    l.s(line(at(18, -18), at(18, 8), 2.5 * u), 'rarityEpic');
-    l.s(circle(at(-11, 12), 6 * u), 'rarityEpic');
-    l.s(circle(at(13, 8), 6 * u), 'rarityEpic');
+  concert: (p, at, t) => {
+    // Two notes bouncing to the beat.
+    const one = pose(at, -6, 12, { dy: -Motion.bump(t, 0, 0.3) * 5, turn: Motion.swing(t, 0, 0.12, 2) });
+    const two = pose(at, 18, 8, { dy: -Motion.bump(t, 0.18, 0.3) * 5, turn: Motion.swing(t, 0.18, -0.12, 2) });
+    p.shape(at, [-6, -12, 18, -18, 18, -11, -6, -5], 'rarityEpic', 1, 1);
+    p.line(one, -6, -12, -6, 12, 2.5, 'rarityEpic');
+    p.disc(one, -11, 12, 6, 'rarityEpic');
+    p.line(two, 18, -18, 18, 8, 2.5, 'rarityEpic');
+    p.disc(two, 13, 8, 6, 'rarityEpic');
   },
-  vipConvoy: (l, at) => star(l, at, 0, 1, 21, 9, 'coin'),
-  policeOperation: (l, at) => {
-    l.s(polygon([at(0, -21), at(17, -15), at(15, 5), at(0, 21), at(-15, 5), at(-17, -15)]), 'lightBlue');
-    star(l, at, 0, -1, 9, 4, 'primary');
+  vipConvoy: (p, at, t) => {
+    // The star spins a point round and pops.
+    const k = Motion.ramp(t, 0, 0.9, Ease.spring);
+    const s = Motion.squash(t, 0, 0.14);
+    p.star(pose(at, 0, 1, { sx: s, sy: s }), 0, 1, 21, 9, 'coin', 1, 2, (1 - k) * (-TAU / 5));
+    const glint = Motion.bump(t, 0.35, 0.4);
+    if (glint > 0) p.star(at, 14, -14, 4 * glint, 1.6 * glint, 'headlight', 1, 0.3);
   },
-  schoolRun: (l, at, u) => {
-    // A bus stop sign: the pole and its round plate with an H.
-    l.s(line(at(0, 22), at(0, -4), 3 * u), 'muted');
-    l.s(circle(at(0, -10), 14 * u), 'vehicleBus');
-    l.s(circle(at(0, -10), 11 * u), 'juiceGreen');
-    l.s(line(at(-4, -16), at(-4, -4), 2.5 * u), 'vehicleBus');
-    l.s(line(at(4, -16), at(4, -4), 2.5 * u), 'vehicleBus');
-    l.s(line(at(-4, -10), at(4, -10), 2.5 * u), 'vehicleBus');
+  policeOperation: (p, at, t) => {
+    // The badge swings from its top, its star turns.
+    const a = pose(at, 0, -21, { turn: Motion.swing(t, 0, 0.18) });
+    p.shape(a, [0, -21, 17, -15, 15, 5, 0, 21, -15, 5, -17, -15], 'lightBlue', 1, 4);
+    p.star(a, 0, -1, 9, 4, 'primary', 1, 1, (1 - Motion.ramp(t, 0.1, 0.8, Ease.spring)) * (TAU / 5));
+  },
+  schoolRun: (p, at, t) => {
+    // A bus stop sign: the pole and its round plate with an H. It wobbles on its pole.
+    const a = pose(at, 0, 22, { turn: Motion.swing(t, 0, 0.12, 1.6, 3) });
+    p.line(a, 0, 22, 0, -4, 3, 'muted');
+    p.disc(a, 0, -10, 14, 'vehicleBus');
+    p.disc(a, 0, -10, 11, 'juiceGreen');
+    p.line(a, -4, -16, -4, -4, 2.5, 'vehicleBus');
+    p.line(a, 4, -16, 4, -4, 2.5, 'vehicleBus');
+    p.line(a, -4, -10, 4, -10, 2.5, 'vehicleBus');
   },
 };
 
 /** A car seen from above, nose to the right, turned by `angle`: a body and a windscreen, in box units. */
-function slab(l: RenderList, at: (x: number, y: number) => Vec2, x: number, y: number, w: number, h: number, angle: number, color: ColorToken): void {
+function slab(p: Pen, a: At, x: number, y: number, w: number, h: number, angle: number, color: ColorToken): void {
   const [cos, sin] = [Math.cos(angle), Math.sin(angle)];
-  const spot = (dx: number, dy: number): Vec2 => at(x + dx * cos - dy * sin, y + dx * sin + dy * cos);
-  l.s(polygon([spot(-w / 2, -h / 2), spot(w / 2 - h * 0.3, -h / 2), spot(w / 2, -h * 0.2), spot(w / 2, h * 0.2), spot(w / 2 - h * 0.3, h / 2), spot(-w / 2, h / 2)]), color);
-  l.s(polygon([spot(w * 0.12, -h * 0.36), spot(w * 0.3, -h * 0.28), spot(w * 0.3, h * 0.28), spot(w * 0.12, h * 0.36)]), 'card', 0.85);
+  const spot = (dx: number, dy: number): number[] => [x + dx * cos - dy * sin, y + dx * sin + dy * cos];
+  p.shape(a, [...spot(-w / 2, -h / 2), ...spot(w / 2 - h * 0.3, -h / 2), ...spot(w / 2, -h * 0.2), ...spot(w / 2, h * 0.2), ...spot(w / 2 - h * 0.3, h / 2), ...spot(-w / 2, h / 2)], color, 1, h * 0.22);
+  p.shape(a, [...spot(w * 0.12, -h * 0.36), ...spot(w * 0.3, -h * 0.28), ...spot(w * 0.3, h * 0.28), ...spot(w * 0.12, h * 0.36)], 'card', 0.85, h * 0.08);
 }
+
+/** `at` moved back along `angle` until the moment of impact `hit`, jolted forward by a struck car after it. */
+const driving = (at: At, t: number, angle: number, back: number, hit: number, jolt = 0): At => {
+  const d = (1 - Motion.ramp(t, 0, hit, Ease.smoothstep)) * back - Motion.swing(t, hit, jolt, 3, 6);
+  return pose(at, 0, 0, { dx: -Math.cos(angle) * d, dy: -Math.sin(angle) * d });
+};
 
 /** Two lanes of road, running left to right, with their dashed line. */
-function road(l: RenderList, at: (x: number, y: number) => Vec2, u: number): void {
-  l.s(rect(at(0, 0), v(62 * u, 36 * u), 4 * u), 'surface');
-  for (const x of [-22, -8, 6, 20]) l.s(rect(at(x, 0), v(8 * u, 1.6 * u), 0), 'muted');
+function road(p: Pen, at: At): void {
+  p.box(at, 0, 0, 62, 36, 4, 'surface');
+  for (const x of [-22, -8, 6, 20]) p.line(at, x - 3.2, 0, x + 3.2, 0, 1.6, 'muted');
 }
 
-/** The man on the run, with a bag of money (the criminal's mark): `tint` is his colour. */
-function runner(l: RenderList, at: (x: number, y: number) => Vec2, u: number, tint: ColorToken): void {
-  l.s(circle(at(4, -17), 5 * u), tint);
-  l.s(line(at(2, -11), at(-2, 3), 4.5 * u), tint);
-  l.s(line(at(1, -8), at(10, -3), 3.2 * u), tint);
-  l.s(line(at(0, -8), at(-9, -12), 3.2 * u), tint);
-  l.s(line(at(-2, 3), at(8, 10), 3.6 * u), tint);
-  l.s(line(at(-2, 3), at(-11, 16), 3.6 * u), tint);
-  l.s(circle(at(14, 4), 5.5 * u), 'coin');
-  l.s(rect(at(14, -1), v(3.2 * u, 3 * u), 0), 'coin');
-  for (const [y, w] of [[-4, 12], [4, 16], [12, 10]]) l.s(line(at(-26, y), at(-26 + w, y), 2 * u), 'muted');
+/** The man on the run, with a bag of money (the criminal's mark): `tint` is his colour. Returns his posed box. */
+function runner(p: Pen, at: At, t: number, tint: ColorToken): At {
+  [[-4, 12], [4, 16], [12, 10]].forEach(([y, w], i) => {
+    const k = Motion.ramp(t, 0.1 + i * 0.06, 0.3);
+    p.line(at, -26 + w, y, -26 + w - w * k, y, 2, 'muted', k > 0 ? 1 : 0);
+  });
+  const a = stride(p, at, t, tint, [10, -3, -9, -12], [8, 10, -11, 16]);
+  const bag = pose(a, 10, -3, { turn: Motion.swing(t, 0.05, 0.35, 1.8, 3) });
+  p.disc(bag, 14, 4, 5.5, 'coin');
+  p.box(bag, 14, -1, 3.2, 3, 1, 'coin');
+  return a;
 }
 
-/** A prohibition sign: the red ring, and (after the picture inside it) the slash. */
-function forbidden(l: RenderList, at: (x: number, y: number) => Vec2, u: number): void {
-  l.s(circle(at(0, 0), 22 * u), 'destructive');
-  l.s(circle(at(0, 0), 17.5 * u), 'card');
+/** A prohibition sign: the red ring, and (after the picture inside it) the slash. It pops in. */
+function forbidden(p: Pen, at: At, t: number): At {
+  const s = Motion.squash(t, 0, 0.12);
+  const a = pose(at, 0, 0, { sx: s, sy: s });
+  p.disc(a, 0, 0, 22, 'destructive');
+  p.disc(a, 0, 0, 17.5, 'card');
+  return a;
 }
-function slash(l: RenderList, at: (x: number, y: number) => Vec2, u: number): void {
-  l.s(line(at(-12.5, -12.5), at(12.5, 12.5), 4 * u), 'destructive');
+function slash(p: Pen, a: At, t: number, start: number): void {
+  const k = Motion.ramp(t, start, 0.25);
+  p.line(a, -12.5, -12.5, -12.5 + 25 * k, -12.5 + 25 * k, 4, 'destructive', k > 0 ? 1 : 0);
 }
 
-/** The spark of an impact. */
-const burst = (l: RenderList, at: (x: number, y: number) => Vec2, x: number, y: number, r: number): void => {
-  star(l, at, x, y, r, r * 0.45, 'juiceOrange');
-  star(l, at, x, y, r * 0.55, r * 0.25, 'coin');
+/** The spark of an impact, flashing out at `start`. */
+const burst = (p: Pen, at: At, t: number, start: number, x: number, y: number, r: number): void => {
+  const k = Motion.ramp(t, start, 0.4, Ease.spring);
+  if (k <= 0) return;
+  const turn = (1 - k) * 0.8;
+  p.star(at, x, y, r * k, r * 0.45 * k, 'juiceOrange', 1, 0.6, turn);
+  p.star(at, x, y, r * 0.55 * k, r * 0.25 * k, 'coin', 1, 0.3, turn);
 };
 
 /**
  * The pictures follow the usual signs: two cars and a spark for a collision, a bomb in a warning triangle (ISO 7010
- * "explosive"), a man running off with his bag, a red ring with a slash for a rule. Your own car is white.
+ * "explosive"), a man running off with his bag, a red ring with a slash for a rule. Your own car is white. A crash plays
+ * itself: the cars meet at `HIT` and the spark flies.
  */
+const HIT = 0.42;
 const FAIL_ICON: Record<FailCause, Icon> = {
-  mergeCrash: (l, at, u) => {
+  mergeCrash: (p, at, t) => {
     // Your car turns into the lane and runs into the tail of the one ahead.
-    road(l, at, u);
-    slab(l, at, 13, -7, 24, 11, 0, 'rarityRare');
-    slab(l, at, -8, 6, 24, 11, -0.42, 'primary');
-    burst(l, at, 1, -1, 9);
+    road(p, at);
+    slab(p, driving(at, t, 0, 0, HIT, 2.5), 13, -7, 24, 11, 0, 'rarityRare');
+    slab(p, driving(at, t, -0.42, 12, HIT), -8, 6, 24, 11, -0.42, 'primary');
+    burst(p, at, t, HIT - 0.02, 1, -1, 9);
   },
-  cutOffCrash: (l, at, u) => {
+  cutOffCrash: (p, at, t) => {
     // Your car turns in right in front of the one behind: its nose runs into your tail.
-    road(l, at, u);
-    slab(l, at, 12, -2, 24, 11, -0.4, 'primary');
-    slab(l, at, -13, 7, 26, 12, 0, 'juiceRed');
-    burst(l, at, 0, 5, 9);
+    road(p, at);
+    slab(p, driving(at, t, -0.4, 4, HIT, 2.5), 12, -2, 24, 11, -0.4, 'primary');
+    slab(p, driving(at, t, 0, 12, HIT), -13, 7, 26, 12, 0, 'juiceRed');
+    burst(p, at, t, HIT - 0.02, 0, 5, 9);
   },
-  ringCrash: (l, at, u) => {
+  ringCrash: (p, at, t) => {
     // Two cars on the ring, meeting on its curve.
-    l.s(arc(at(0, 0), 19 * u, 16 * u, 0, TAU), 'surface');
-    for (let k = 0; k < 10; k++) l.s(arc(at(0, 0), 19 * u, 1.4 * u, (k * TAU) / 10, (k * TAU) / 10 + 0.3), 'muted');
-    l.s(circle(at(0, 0), 10 * u), 'accent', 0.5);
+    p.ring(at, 0, 0, 19, 16, 'surface');
+    for (let k = 0; k < 10; k++) p.ring(at, 0, 0, 19, 1.4, 'muted', 1, (k * TAU) / 10, (k * TAU) / 10 + 0.3);
+    p.disc(at, 0, 0, 10, 'accent', 0.5);
+    const close = 1 - Motion.ramp(t, 0, HIT, Ease.smoothstep);
     const onRing = (deg: number, color: ColorToken): void => {
       const a = (deg * Math.PI) / 180;
-      slab(l, at, 19 * Math.cos(a), 19 * Math.sin(a), 15, 8, a + Math.PI / 2, color);
+      slab(p, at, 19 * Math.cos(a), 19 * Math.sin(a), 15, 8, a + Math.PI / 2, color);
     };
-    onRing(-95, 'primary');
-    onRing(-25, 'rarityRare');
-    burst(l, at, 19 * Math.cos(-1.05), 19 * Math.sin(-1.05), 9);
+    onRing(-95 - 45 * close, 'primary');
+    onRing(-25 + 20 * close, 'rarityRare');
+    burst(p, at, t, HIT - 0.02, 19 * Math.cos(-1.05), 19 * Math.sin(-1.05), 9);
   },
-  policeCrash: (l, at, u) => {
+  policeCrash: (p, at, t) => {
     // A police car (light bar, red and blue) that has run into another car.
-    road(l, at, u);
-    slab(l, at, 16, 0, 22, 11, 0, 'rarityCommon');
-    slab(l, at, -7, 0, 26, 12, 0, 'lightBlue');
-    l.s(circle(at(-9, -3), 2.3 * u), 'juiceRed');
-    l.s(circle(at(-9, 3), 2.3 * u), 'rarityRare');
-    burst(l, at, 6, 0, 9);
+    road(p, at);
+    slab(p, driving(at, t, 0, 0, HIT, 3), 16, 0, 22, 11, 0, 'rarityCommon');
+    const police = driving(at, t, 0, 12, HIT);
+    slab(p, police, -7, 0, 26, 12, 0, 'lightBlue');
+    const swap = Motion.blink(t, 0, 6, 6);
+    p.disc(police, -9, -3, 2.3, swap ? 'rarityRare' : 'juiceRed');
+    p.disc(police, -9, 3, 2.3, swap ? 'juiceRed' : 'rarityRare');
+    burst(p, at, t, HIT - 0.02, 6, 0, 9);
   },
-  bomb: (l, at, u) => {
-    // The explosive warning: a lit bomb in a triangle.
-    l.s(polygon([at(0, -23), at(26, 20), at(-26, 20)]), 'hazard');
-    l.s(circle(at(-1, 8), 9.5 * u), 'background');
-    l.s(circle(at(-4, 5), 2.4 * u), 'smokeLight');
-    l.s(rect(at(4, -1.5), v(5 * u, 4 * u), 1 * u), 'background');
-    l.s(line(at(6, -3), at(9, -8), 2 * u), 'background');
-    star(l, at, 10, -10, 5.5, 2.4, 'juiceRed');
+  bomb: (p, at, t) => {
+    // The explosive warning: a lit bomb in a triangle. The fuse spits, the sign trembles.
+    const a = pose(at, 0, 20, { turn: Motion.swing(t, 0.1, 0.07, 6, 4) });
+    p.shape(a, [0, -23, 26, 20, -26, 20], 'hazard', 1, 4);
+    const s = Motion.squash(t, 0, 0.1);
+    const bomb = pose(a, -1, 17, { sx: 2 - s, sy: s });
+    p.disc(bomb, -1, 8, 9.5, 'background');
+    p.disc(bomb, -4, 5, 2.4, 'smokeLight');
+    p.box(bomb, 4, -1.5, 5, 4, 1, 'background');
+    p.line(bomb, 6, -3, 9, -8, 2, 'background');
+    const spark = t < 1.2 && Motion.blink(t, 0, 7, 9) ? 1.45 : 1;
+    p.star(bomb, 10, -10, 5.5 * spark, 2.4 * spark, 'juiceRed', 1, 0.4, t === Infinity ? 0 : t * 4);
   },
-  escape: (l, at, u) => runner(l, at, u, 'vehicleCriminal'),
-  bossEscape: (l, at, u) => {
-    // The same man, lower in the box, with the crown the bosses wear.
-    const lower = (x: number, y: number): Vec2 => at(x, y + 6);
-    runner(l, lower, u, 'vehicleCriminal');
-    l.s(polygon([lower(-1, -21), lower(-2, -28), lower(1.5, -24.5), lower(4, -29.5), lower(6.5, -24.5), lower(10, -28), lower(9, -21)]), 'coin');
+  escape: (p, at, t) => {
+    runner(p, at, t, 'vehicleCriminal');
   },
-  ruleCrash: (l, at, u) => {
-    forbidden(l, at, u);
-    burst(l, at, 0, 0, 11);
-    slash(l, at, u);
+  bossEscape: (p, at, t) => {
+    // The same man, lower in the box, with the crown the bosses wear; it bounces on his head.
+    const lower = pose(at, 0, 0, { dy: 6 });
+    const a = runner(p, lower, t, 'vehicleCriminal');
+    const crown = pose(a, 4, -21, { dy: -Motion.bump(t, 0.1, 0.3) * 3, turn: Motion.swing(t, 0.1, 0.2, 2) });
+    p.shape(crown, [-1, -21, -2, -28, 1.5, -24.5, 4, -29.5, 6.5, -24.5, 10, -28, 9, -21], 'coin', 1, 0.6);
   },
-  ruleCutOff: (l, at, u) => {
-    forbidden(l, at, u);
-    slab(l, at, 3, -4, 17, 8, -0.4, 'primary');
-    slab(l, at, -4, 5, 18, 8, 0, 'muted');
-    slash(l, at, u);
+  ruleCrash: (p, at, t) => {
+    const a = forbidden(p, at, t);
+    burst(p, a, t, 0.12, 0, 0, 11);
+    slash(p, a, t, 0.4);
+  },
+  ruleCutOff: (p, at, t) => {
+    const a = forbidden(p, at, t);
+    slab(p, driving(a, t, -0.4, 6, 0.35), 3, -4, 17, 8, -0.4, 'primary');
+    slab(p, a, -4, 5, 18, 8, 0, 'muted');
+    slash(p, a, t, 0.4);
   },
 };
 
@@ -440,8 +525,8 @@ export const MuseumPage = {
    * its escorts), or the icon of a condition. Not on show yet, it is a flat grey silhouette:
    * one opaque grey, so no part shows through.
    */
-  art(list: RenderList, entry: MuseumEntry, center: Vec2, scale: number, shown: boolean, time: number, opacity: number, room = 88): void {
-    const drawn = entry.k === 'boss' || entry.k === 'special' ? MuseumPage.vehicles(list, entry, center, scale, shown, time, room) : MuseumPage.icon(list, entry, center, scale, room);
+  art(list: RenderList, entry: MuseumEntry, center: Vec2, scale: number, shown: boolean, time: number, opacity: number, room = 88, t = Infinity): void {
+    const drawn = entry.k === 'boss' || entry.k === 'special' ? MuseumPage.vehicles(list, entry, center, scale, shown, time, room) : MuseumPage.icon(list, entry, center, scale, room, t);
     if (shown) MenuKit.glow(list, center, Math.min(room * 0.5, 44 * scale), MuseumPage.color(entry), 0.3 * opacity);
     for (const it of drawn) {
       if (shown) list.items.push({ ...it, opacity: it.opacity * opacity });
@@ -501,20 +586,23 @@ export const MuseumPage = {
     return preview.items.map((it) => pinned(it, preview.camera, 1));
   },
 
-  icon(list: RenderList, entry: MuseumEntry, center: Vec2, scale: number, room: number): RenderItem[] {
+  /** A condition's icon; its parts play on the clock `t` (`Motion`), `Infinity` draws it still. */
+  icon(list: RenderList, entry: MuseumEntry, center: Vec2, scale: number, room: number, t = Infinity): RenderItem[] {
     // A failure's picture has a road or a sign round it: it gets a step more room than a plain symbol.
     const u = Math.min(1.05 * scale, room / 66) * (entry.k === 'fail' ? 1.2 : 1);
-    const at = (x: number, y: number): Vec2 => add(center, v(x * u, y * u));
+    const at: At = (x, y) => add(center, v(x * u, y * u));
     const icon = new List(list.camera, list.background);
-    if (entry.k === 'weather') WEATHER_ICON[entry.kind](icon, at, u);
-    else if (entry.k === 'dark') DARK_ICON[entry.kind](icon, at, u);
-    else if (entry.k === 'event') EVENT_ICON[entry.kind](icon, at, u);
-    else if (entry.k === 'fail') FAIL_ICON[entry.kind](icon, at, u);
+    const p = pen(icon, u);
+    if (entry.k === 'weather') WEATHER_ICON[entry.kind](p, at, t);
+    else if (entry.k === 'dark') DARK_ICON[entry.kind](p, at, t);
+    else if (entry.k === 'event') EVENT_ICON[entry.kind](p, at, t);
+    else if (entry.k === 'fail') FAIL_ICON[entry.kind](p, at, t);
     else if (entry.k === 'road') {
-      // Two lanes round an island, the dashed line between them.
-      icon.s(arc(at(0, 0), 17 * u, 16 * u, 0, TAU), 'surface');
-      for (let k = 0; k < 10; k++) icon.s(arc(at(0, 0), 17 * u, 1.4 * u, (k * TAU) / 10, (k * TAU) / 10 + 0.35), 'primary');
-      icon.s(circle(at(0, 0), 8 * u), 'accent');
+      // Two lanes round an island, the dashed line between them; the dashes run once round.
+      const turn = Motion.ramp(t, 0, 1, Ease.spring) * (TAU / 10);
+      p.ring(at, 0, 0, 17, 16, 'surface');
+      for (let k = 0; k < 10; k++) p.ring(at, 0, 0, 17, 1.4, 'primary', 1, (k * TAU) / 10 + turn, (k * TAU) / 10 + 0.35 + turn);
+      p.disc(at, 0, 0, 8, 'accent');
     }
     return icon.items;
   },

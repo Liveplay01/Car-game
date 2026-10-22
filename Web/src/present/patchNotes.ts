@@ -51,6 +51,27 @@ export const itemCredit = (item: PatchItem): string | null => {
 
 export const PATCH_NOTES: PatchNote[] = [
   {
+    id: '2026-10-22',
+    date: '22 October 2026',
+    title: 'A smoother start, animated upgrade and condition icons, new Prestige stars',
+    impact: 'minor',
+    summary: [
+      'Upgrade, condition and failure icons come alive, and every Prestige rank has its own star colour.',
+      'A smoother start: sounds load first, and new players see a short lesson meanwhile.',
+      'A lost shift keeps its extra lines in the top card, so the middle of the roundabout stays clear.',
+      'The Heat pill wears the new animated flame.',
+    ],
+    items: [
+      'The Prestige star on the leaderboard is new: a soft star with your rank inside and its own gradient for every rank up to ★10, a new shade on every rank after that and a three-colour star from ★20. It pops and sparkles when you touch it.',
+      'The icons for the conditions of a shift (weather, darkness, city events) and for how a shift was lost now move: rain falls, lightning flashes, the barrier drops, the cars run into each other. They play when they appear and when you open them.',
+      'The upgrade pictures are softer and move: the second patrol pulls up, the stopwatch runs a lap, the coins drop onto the stack. They play as the cards come in and again on a tap or a purchase.',
+      'The loading screen now stays until the sounds and music are ready (never longer than a few seconds, and the ads load meanwhile too), so the roundabout opens without stutter. On your very first visit it shows the one move of the game in a short loop: wait for the gap, tap, merge. Tap to skip it.',
+      'The words of an Elite level you climbed on a lost shift now stand in the top card with the other details, not in the middle of the roundabout.',
+      'The Heat pill wears the animated flame in its own colours, on a dark pill with a hot edge.',
+      'The pills at the bottom corner and the dispatch button now come in on a spring and leave sliding down, the way the dock does.',
+      'Removed the gold dot on the ring that grew with your Elite level (one for every ten levels). The gold rim stays.',    ],
+  },
+  {
     id: '2026-10-20',
     date: '20 October 2026',
     title: 'A new look for the bars: the dock, the top bar, buttons and drawers',

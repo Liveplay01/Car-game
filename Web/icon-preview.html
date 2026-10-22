@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Icon-Vorschau</title>
+<style>
+  /* shell.css pins the body for the game; this page scrolls. */
+  html, body.app { height: auto; overflow: auto; overscroll-behavior: auto; }
+  body.app { position: static; inset: auto; user-select: auto; -webkit-user-select: auto; margin: 0; padding: 32px 16px 96px; background: #101014; color: #f2f2f5; font: 14px/1.5 system-ui, sans-serif; }
+  main { max-width: 960px; margin: 0 auto; }
+  h1 { font-size: 28px; margin: 0 0 8px; }
+  h2 { font-size: 18px; margin: 48px 0 12px; }
+  p { color: #9a9aa6; margin: 0 0 16px; max-width: 60ch; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(112px, 1fr)); gap: 12px; }
+  .cell { background: #1c1c22; border-radius: 14px; padding: 12px 8px 8px; text-align: center; cursor: pointer; }
+  .cell.card { background: #1c1c22; }
+  .cell canvas { width: 96px; height: 96px; display: block; margin: 0 auto 6px; }
+  .cell span { font-size: 12px; color: #9a9aa6; }
+  .stars { display: grid; grid-template-columns: repeat(auto-fill, minmax(72px, 1fr)); gap: 12px; }
+  .stars .cell { padding: 14px 4px 8px; }
+  .stars .prestige-star { margin: 0 auto 6px; width: 64px; height: 64px; }
+  .stars .prestige-star-art, .stars .prestige-star-art svg { width: 60px; height: 60px; }
+</style>
+</head>
+<body class="app">
+<main>
+  <h1>Neue Icons</h1>
+  <p>Jedes Icon spielt in einer Schleife. Tippen oder Mauszeiger startet es neu. Unten das Ruhebild (so sieht es unter Reduce Motion aus).</p>
+  <label><input type="checkbox" id="still"> Nur Ruhebild</label>
+  <h2>Upgrades</h2><div class="grid" id="upgrades"></div>
+  <h2>Bedingungen: Wetter, Dunkelheit, Ereignisse</h2><div class="grid" id="conditions"></div>
+  <h2>Gründe fürs Scheitern</h2><div class="grid" id="fails"></div>
+  <h2>Prestige-Sterne (Rang 1–25, mit Maus drüberfahren)</h2><div class="stars" id="stars"></div>
+</main>
+<script type="module">
+import './src/ui/shell.css';
+import { UpgradeArt } from './src/present/upgrades.ts';
+import { UPGRADES } from './src/core/levels.ts';
+import { MuseumPage } from './src/present/museum.ts';
+import { RenderList, R } from './src/present/render.ts';
+import { CanvasDrawer } from './src/present/draw.ts';
+import { v } from './src/core/vec2.ts';
+import { prestigeStar } from './src/ui/ranksPanel.ts';
+import { watchIconMoves } from './src/ui/dom.ts';
+
+const SIZE = 96;
+const LOOP = 3.4;
+const cells = [];
+const still = document.getElementById('still');
+
+function add(host, label, paint) {
+  const canvas = document.createElement('canvas');
+  canvas.width = canvas.height = SIZE * 2;
+  const cell = document.createElement('div');
+  cell.className = 'cell';
+  const name = document.createElement('span');
+  name.textContent = label;
+  cell.append(canvas, name);
+  host.append(cell);
+  const drawer = new CanvasDrawer(canvas);
+  drawer.resize(SIZE, SIZE, 2);
+  const entry = { drawer, paint, start: performance.now() + cells.length * 90 };
+  cell.addEventListener('pointerenter', () => (entry.start = performance.now()));
+  cell.addEventListener('pointerdown', () => (entry.start = performance.now()));
+  cells.push(entry);
+}
+
+const listOf = () => new RenderList({ viewport: v(SIZE, SIZE), center: v(0, 0), focus: v(SIZE / 2, SIZE / 2), scale: 1 }, 'card');
+
+for (const u of UPGRADES) {
+  add(document.getElementById('upgrades'), u, (list, t) => UpgradeArt.add(list, u, R.make(8, 18, SIZE - 8, SIZE - 18), 1, t));
+}
+const icon = (entry) => (list, t) => {
+  for (const it of MuseumPage.icon(list, entry, v(SIZE / 2, SIZE / 2), 1, SIZE - 8, t)) list.items.push(it);
+};
+for (const kind of ['lightRain', 'heavyRain', 'storm', 'extreme', 'fog', 'hail', 'sandstorm', 'snow']) add(document.getElementById('conditions'), kind, icon({ k: 'weather', kind }));
+for (const kind of ['night', 'blackout']) add(document.getElementById('conditions'), kind, icon({ k: 'dark', kind }));
+for (const kind of ['marathon', 'roadworks', 'roadClosure', 'concert', 'vipConvoy', 'policeOperation', 'schoolRun']) add(document.getElementById('conditions'), kind, icon({ k: 'event', kind }));
+add(document.getElementById('conditions'), 'road', icon({ k: 'road' }));
+for (const kind of ['mergeCrash', 'cutOffCrash', 'ringCrash', 'policeCrash', 'bomb', 'escape', 'bossEscape', 'ruleCrash', 'ruleCutOff']) add(document.getElementById('fails'), kind, icon({ k: 'fail', kind }));
+
+for (const rank of [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 25]) {
+  const cell = document.createElement('div');
+  cell.className = 'cell';
+  const name = document.createElement('span');
+  name.textContent = `★${rank}`;
+  cell.append(prestigeStar(rank, () => {}), name);
+  document.getElementById('stars').append(cell);
+}
+watchIconMoves(document.body);
+
+function frame(now) {
+  for (const c of cells) {
+    const t = still.checked ? Infinity : ((now - c.start) / 1000) % LOOP;
+    const list = listOf();
+    c.paint(list, t);
+    c.drawer.draw(list);
+  }
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>

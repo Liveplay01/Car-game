@@ -76,7 +76,7 @@ function signatureOf(list: RenderList): number {
 }
 
 /** The icon of each modifier before a shift (`Shell.showMods`). */
-const MOD_ICON: Record<Modifier['id'], AnimatedIconId> = { heat: 'flame', tailwind: 'wind', afterWork: 'sunset', streak: 'streak', family: 'hat' };
+const MOD_ICON: Record<Modifier['id'], AnimatedIconId> = { heat: 'heat', tailwind: 'wind', afterWork: 'sunset', streak: 'streak', family: 'hat' };
 
 /** The room the floating dock claims above the safe area (`--tabbar-h`). */
 const TAB_HEIGHT = 64;
@@ -480,10 +480,6 @@ export class Shell {
     this.syncChrome(true);
     requestAnimationFrame((t) => this.loop(t));
     this.scheduleAccountPrompt();
-    window.setTimeout(() => {
-      const { sound, music } = this.session.save.settings;
-      if (sound || music) this.audio.warm();
-    }, 2000);
     // Gifts from the team and from invites: at the start, after a name (an invite is handed in then) and after a record reached the service (level 5 pays).
     window.setTimeout(() => this.claimInvite(), 3000);
     syncPush(this.pushTimers);
@@ -493,6 +489,16 @@ export class Shell {
       syncPush(this.pushTimers);
     });
     onScoresSynced(() => this.collectRewards());
+  }
+
+  /**
+   * What the first seconds would otherwise fetch and decode mid-play, loaded while the boot screen still stands
+   * (`main.ts`): the sounds and the music, when they are on. The scene draws behind the boot screen meanwhile.
+   */
+  preload(): Promise<void> {
+    const { sound, music } = this.session.save.settings;
+    if (sound || music) this.audio.warm();
+    return this.audio.ready;
   }
 
   private get pushTimers(): PushTimer[] {

@@ -45,7 +45,7 @@ function sameItem(a: RenderItem, b: RenderItem): boolean {
     case 'arc':
       return q.k === 'arc' && samePoint(p.center, q.center) && p.radius === q.radius && p.thickness === q.thickness && p.start === q.start && p.end === q.end && !p.round === !q.round;
     case 'line':
-      return q.k === 'line' && samePoint(p.from, q.from) && samePoint(p.to, q.to) && p.thickness === q.thickness;
+      return q.k === 'line' && samePoint(p.from, q.from) && samePoint(p.to, q.to) && p.thickness === q.thickness && p.round === q.round;
     case 'polygon': {
       if (q.k !== 'polygon' || !samePoints(p.points, q.points)) return false;
       const [ph, qh] = [p.holes ?? [], q.holes ?? []];
@@ -1016,7 +1016,11 @@ export class CanvasDrawer {
         ctx.beginPath();
         ctx.moveTo(ax, ay);
         ctx.lineTo(this.px, this.py);
-        ctx.stroke();
+        if (p.round) {
+          ctx.lineCap = 'round';
+          ctx.stroke();
+          ctx.lineCap = 'butt';
+        } else ctx.stroke();
         return;
       }
       case 'segments': {

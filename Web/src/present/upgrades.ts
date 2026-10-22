@@ -1,11 +1,11 @@
 import { type Career, Careers } from '../core/career';
 import type { Config } from '../core/config';
 import { type Upgrade, UPGRADES, UPGRADE_GROUP, upgradeMaxSteps } from '../core/levels';
-import { type Vec2, v, add, sub, mul, TAU } from '../core/vec2';
-import { type RenderList, type Rect, type Primitive, R, rect, circle, arc, line, polygon, text, Ease } from './render';
+import { type Vec2, v, add, mul, TAU } from '../core/vec2';
+import { type RenderList, type Rect, R, rect, text, Ease } from './render';
 import type { ColorToken } from './theme';
 import { MenuKit } from './menukit';
-import { moneyTag, moneyTagWidth, drawFitted, textWidth } from './icons';
+import { type At, moneyTag, moneyTagWidth, drawFitted, textWidth, pen, pose, Motion } from './icons';
 import { Meter } from './meter';
 import { S, Fmt } from './strings';
 import { measure } from './measure';
@@ -20,8 +20,13 @@ export class UpgradeState extends Scroller {
   purchase: { upgrade: Upgrade; steps: number; age: number } | null = null;
   denied: { upgrade: Upgrade; age: number } | null = null;
   moneyBefore: number | null = null;
+  /** The card whose picture plays again (`UpgradeArt`): it was tapped or bought. */
+  played: { upgrade: Upgrade; age: number } | null = null;
 
   advance(delta: number): void {
+    const fresh = this.purchase?.age === 0 ? this.purchase.upgrade : this.pressed?.age === 0 ? this.pressed.upgrade : null;
+    if (fresh) this.played = { upgrade: fresh, age: 0 };
+    else if (this.played) this.played.age += delta;
     this.age += delta;
     if (this.pressed) {
       this.pressed.age += delta;
@@ -195,7 +200,8 @@ export const UpgradePage = {
     // One glow for all (colour roles): amber where the money reaches the next step, else a quiet one.
     const affordable = price !== null && career.money >= price;
     MenuKit.glow(list, tile, pictureHeight * 0.62, affordable ? 'accent' : 'muted', (affordable ? 0.45 : 0.2) * o);
-    UpgradeArt.add(list, upgrade, picture, o);
+    const clock = reduceMotion ? Infinity : state.played?.upgrade === upgrade ? state.played.age : state.age - index * U.stagger - 0.12;
+    UpgradeArt.add(list, upgrade, picture, o, clock);
     // Today's pick: one step for a watched ad (Leo, 05.10.2026). Opens in the sheet like any card.
     if (freeStep) {
       const label = S.ads.freeStep;
@@ -244,137 +250,223 @@ export function wrapText(s: string, width: number, size: number, bold = false): 
   return lines;
 }
 
-/** A small picture for every upgrade, from the same shapes as the game (`UpgradeArt`). */
+/**
+ * A small picture for every upgrade, from the same shapes as the game (`UpgradeArt`). Its parts move like the real thing
+ * on the clock `t` (`Motion`): once as the card arrives, again on a tap or a purchase; `Infinity` is the still picture.
+ */
 export const UpgradeArt = {
-  add(list: RenderList, upgrade: Upgrade, r: Rect, opacity: number): void {
+  add(list: RenderList, upgrade: Upgrade, r: Rect, opacity: number, t = Infinity): void {
     const center = R.center(r);
     const unit = Math.min(R.width(r), R.height(r)) / 56;
-    const at = (x: number, y: number): Vec2 => add(center, mul(v(x, y), unit));
-    const put = (p: Primitive, color: ColorToken, share = 1): void => list.s(p, color, share * opacity);
-    const car = (p: Vec2, scale: number, body: ColorToken, roof: ColorToken | null, lights: boolean): void => {
-      put(rect(p, mul(v(16, 27), scale * unit), 5 * scale * unit), body);
-      if (roof) put(rect(p, mul(v(11, 12), scale * unit), 3 * scale * unit), roof);
+    const base: At = (x, y) => add(center, mul(v(x, y), unit));
+    const p = pen(list, unit, opacity);
+    // A police car's bar flashes red and blue while it plays; at rest both halves are blue.
+    const flash = Motion.blink(t, 0.1, 5);
+    const car = (a: At, x: number, y: number, s: number, body: ColorToken, roof: ColorToken | null, lights: boolean): void => {
+      p.box(a, x, y, 16 * s, 27 * s, 5.5 * s, body);
+      if (roof) p.box(a, x, y + 1 * s, 11 * s, 12 * s, 3 * s, roof);
       if (lights) {
-        put(rect(sub(p, mul(v(2.6, 0), scale * unit)), mul(v(4, 3), scale * unit), 1), 'lightBlue');
-        put(rect(add(p, mul(v(2.6, 0), scale * unit)), mul(v(4, 3), scale * unit), 1), 'lightBlue');
+        p.box(a, x - 2.6 * s, y, 4 * s, 3 * s, 1.2 * s, flash ? 'lightRed' : 'lightBlue');
+        p.box(a, x + 2.6 * s, y, 4 * s, 3 * s, 1.2 * s, 'lightBlue');
       }
     };
-    const plus = (): void => {
-      put(rect(at(19, -6), mul(v(12, 3), unit), 1.5), 'accent');
-      put(rect(at(19, -6), mul(v(3, 12), unit), 1.5), 'accent');
+    const plus = (start: number): void => {
+      const k = Motion.ramp(t, start, 0.45, Ease.spring);
+      const a = pose(base, 19, -6, { sx: k, sy: k, turn: (1 - k) * 1.2 });
+      p.line(a, 14, -6, 24, -6, 3.2, 'accent');
+      p.line(a, 19, -11, 19, -1, 3.2, 'accent');
     };
-    const shield = (color: ColorToken, share = 1): void => put(polygon([at(0, -18), at(15, -10), at(15, 4), at(0, 18), at(-15, 4), at(-15, -10)]), color, share);
-    const arrowUp = (x: number, y0: number, y1: number, w: number): void => {
-      put(line(at(x, y0), at(x, y1), w * unit), 'accent', 0.9);
-      put(line(at(x, y1), at(x - 5, y1 + 5), w * unit), 'accent', 0.9);
-      put(line(at(x, y1), at(x + 5, y1 + 5), w * unit), 'accent', 0.9);
+    const shield = (a: At, color: ColorToken, share = 1): void => p.shape(a, [0, -18, 15, -11, 15, 3, 0, 18, -15, 3, -15, -11], color, share, 4);
+    const arrowUp = (a: At, x: number, y0: number, y1: number): void => {
+      p.line(a, x, y0, x, y1, 2.8, 'accent', 0.9);
+      p.line(a, x, y1, x - 5, y1 + 5, 2.8, 'accent', 0.9);
+      p.line(a, x, y1, x + 5, y1 + 5, 2.8, 'accent', 0.9);
+    };
+    const van = (a: At, x: number, y: number, w: number, h: number, share = 1): void => {
+      p.box(a, x, y, w, h, 4, 'vehicleCargo', share);
+      p.box(a, x, y - h * 0.2, w * 0.66, h * 0.34, 2, 'hazard', share);
     };
     switch (upgrade) {
-      case 'morePatrols':
-        car(at(-13, 0), 0.85, 'vehiclePolice', 'vehiclePoliceRoof', true);
-        car(at(4, 0), 0.85, 'vehiclePolice', 'vehiclePoliceRoof', true);
-        plus();
+      case 'morePatrols': {
+        // The second patrol pulls up beside the first, the plus pops after it.
+        const k = Motion.ramp(t, 0.05, 0.5, Ease.spring);
+        car(base, -13, 0, 0.85, 'vehiclePolice', 'vehiclePoliceRoof', true);
+        car(pose(base, 4, 0, { dx: (1 - k) * 16 }), 4, 0, 0.85, 'vehiclePolice', 'vehiclePoliceRoof', true);
+        plus(0.35);
         break;
-      case 'longerPursuit':
-        put(arc(center, 15 * unit, 3 * unit, 0, TAU), 'vehicleCriminal');
-        put(rect(at(0, -18), mul(v(8, 5), unit), 2), 'vehicleCriminal');
-        put(line(center, at(0, -10), 2.5 * unit), 'primary');
-        put(line(center, at(8, 3), 2.5 * unit), 'primary');
+      }
+      case 'longerPursuit': {
+        // A stopwatch: the crown is pressed, the hand runs a lap and overshoots.
+        const press = Motion.bump(t, 0, 0.22) * 2.5;
+        const lap = Motion.ramp(t, 0.12, 1.1, Ease.spring) * TAU;
+        const body = pose(base, 0, 0, { turn: Motion.swing(t, 0.05, 0.08, 3) });
+        p.ring(body, 0, 0, 15, 3.2, 'vehicleCriminal');
+        p.box(pose(body, 0, -18, { dy: press }), 0, -19, 8, 5, 2, 'vehicleCriminal');
+        p.line(body, 0, -15.5, 0, -17, 3, 'vehicleCriminal');
+        p.line(pose(body, 0, 0, { turn: lap }), 0, 0, 0, -10, 2.6, 'primary');
+        p.line(pose(body, 0, 0, { turn: lap / 12 }), 0, 0, 8, 3, 2.6, 'primary');
+        p.disc(body, 0, 0, 2.2, 'primary');
         break;
-      case 'quietStreets':
-        car(at(-6, 0), 0.9, 'vehicleCriminal', 'vehicleBed', false);
-        put(line(at(-18, 14), at(8, -14), 3 * unit), 'destructive', 0.9);
+      }
+      case 'quietStreets': {
+        // The getaway car shudders, the red line strikes it out.
+        const k = Motion.ramp(t, 0.22, 0.35);
+        car(pose(base, -6, 0, { dx: Motion.swing(t, 0, 2, 5, 5) }), -6, 0, 0.9, 'vehicleCriminal', 'vehicleBed', false);
+        p.line(base, -18, 14, -18 + 26 * k, 14 - 28 * k, 3.2, 'destructive', 0.9);
         break;
-      case 'interceptor':
-        car(at(4, 0), 0.95, 'vehiclePolice', 'vehiclePoliceRoof', true);
+      }
+      case 'interceptor': {
+        // Comes in fast and the streaks behind it stretch out.
+        const k = Motion.ramp(t, 0, 0.5, Ease.spring);
+        car(pose(base, 4, 0, { dx: (1 - k) * -12, sy: 1 + Motion.bump(t, 0.2, 0.3) * 0.06 }), 4, 0, 0.95, 'vehiclePolice', 'vehiclePoliceRoof', true);
         for (let i = 0; i < 3; i++) {
-          const y = center.y + (i - 1) * 7 * unit;
-          put(line(v(center.x - 22 * unit, y), v(center.x - 10 * unit, y), 2.5 * unit), 'lightBlue', 0.8 - i * 0.15);
+          const reach = Motion.ramp(t, 0.15 + i * 0.07, 0.35);
+          const y = (i - 1) * 7;
+          p.line(base, -10, y, -10 - 12 * reach, y, 2.6, 'lightBlue', 0.8 - i * 0.15);
         }
         break;
-      case 'dispatchRadio':
-        put(circle(at(-8, 6), 4 * unit), 'lightBlue');
-        for (let ring = 1; ring <= 3; ring++) put(arc(at(-8, 6), ring * 8 * unit, 2 * unit, -1.5, 0.3), 'lightBlue', 0.9 - ring * 0.2);
+      }
+      case 'dispatchRadio': {
+        // The call goes out: the dot pulses and the waves run out one after the other.
+        const s = Motion.squash(t, 0, 0.3);
+        p.disc(pose(base, -8, 6, { sx: s, sy: s }), -8, 6, 4, 'lightBlue');
+        for (let ring = 1; ring <= 3; ring++) {
+          const k = Motion.ramp(t, 0.08 + ring * 0.12, 0.35);
+          p.ring(base, -8, 6, ring * 8 * (0.6 + 0.4 * k), 2.2, 'lightBlue', (0.9 - ring * 0.2) * k, -1.5, 0.3);
+        }
         break;
-      case 'backup':
-        shield('vehiclePolice');
-        put(rect(at(-3.5, 0), mul(v(6, 4), unit), 1.5), 'lightRed');
-        put(rect(at(3.5, 0), mul(v(6, 4), unit), 1.5), 'lightBlue');
+      }
+      case 'backup': {
+        // The badge swings from its top, its lights take turns.
+        const a = pose(base, 0, -18, { turn: Motion.swing(t, 0, 0.2) });
+        shield(a, 'vehiclePolice');
+        p.box(a, -3.5, 0, 6, 4, 1.5, flash ? 'lightBlue' : 'lightRed');
+        p.box(a, 3.5, 0, 6, 4, 1.5, flash ? 'lightRed' : 'lightBlue');
         break;
-      case 'cashRoute':
-        put(rect(at(-6, 0), mul(v(18, 30), unit), 4 * unit), 'vehicleCargo');
-        put(rect(at(-6, -6), mul(v(12, 10), unit), 2 * unit), 'hazard');
-        arrowUp(12, 10, -8, 2.5);
+      }
+      case 'cashRoute': {
+        // The van hops on its springs, the arrow climbs after it.
+        const s = Motion.squash(t, 0, 0.12);
+        van(pose(base, -6, 15, { sx: 2 - s, sy: s }), -6, 0, 18, 30);
+        const k = Motion.ramp(t, 0.12, 0.5, Ease.spring);
+        arrowUp(pose(base, 12, 0, { dy: (1 - k) * 9 }), 12, 10, -8);
         break;
-      case 'freight':
-        put(rect(at(0, 5), mul(v(17, 26), unit), 3 * unit), 'vehicleTruckBox');
-        put(rect(at(0, -14), mul(v(15, 10), unit), 3 * unit), 'vehicleTruck');
-        plus();
+      }
+      case 'freight': {
+        // The lorry rolls up into place, the plus pops after it.
+        const k = Motion.ramp(t, 0, 0.5, Ease.spring);
+        const a = pose(base, 0, 0, { dy: (1 - k) * 10 });
+        p.box(a, 0, 5, 17, 26, 3, 'vehicleTruckBox');
+        p.box(a, 0, -14, 15, 10, 3, 'vehicleTruck');
+        p.box(a, 0, -16, 10, 3.2, 1.5, 'card', 0.5);
+        plus(0.35);
         break;
-      case 'quickRecovery':
-        car(at(-2, 4), 0.9, 'vehicleCar', null, false);
+      }
+      case 'quickRecovery': {
+        // The car bounces back up: a squash, a puff under it and the arrow shooting up.
+        const s = Motion.squash(t, 0, 0.18);
+        car(pose(base, -2, 17, { sx: 2 - s, sy: s }), -2, 4, 0.9, 'vehicleCar', null, false);
         for (let i = 0; i < 3; i++) {
-          const x = center.x + (i - 1) * 7 * unit - 2 * unit;
-          put(line(v(x, center.y + 20 * unit), v(x, center.y + 28 * unit), 2.5 * unit), 'accent', 0.85 - i * 0.15);
+          const x = (i - 1) * 7 - 2;
+          const puff = t === Infinity ? 0 : Motion.bump(t, 0.05 + i * 0.05, 0.5);
+          p.line(base, x, 20 + 2 * puff, x, 28 - 2 * puff, 2.6, 'accent', 0.85 - i * 0.15);
         }
-        put(line(at(17, 12), at(17, -12), 3 * unit), 'accent');
-        put(line(at(17, -12), at(11, -5), 3 * unit), 'accent');
-        put(line(at(17, -12), at(23, -5), 3 * unit), 'accent');
+        const k = Motion.ramp(t, 0.15, 0.45, Ease.spring);
+        arrowUp(pose(base, 17, 0, { dy: (1 - k) * 10 }), 17, 12, -12);
         break;
-      case 'doubleRun':
-        for (const [o, share] of [
-          [v(-9, 6), 0.6],
-          [v(7, -4), 1],
-        ] as [Vec2, number][]) {
-          put(rect(at(o.x, o.y), mul(v(14, 24), unit), 3 * unit), 'vehicleCargo', share);
-          put(rect(at(o.x, o.y - 5), mul(v(9, 8), unit), 2 * unit), 'hazard', share);
-        }
+      }
+      case 'doubleRun': {
+        // The second van draws up behind the first, the first one rocks.
+        const k = Motion.ramp(t, 0, 0.5, Ease.spring);
+        van(pose(base, -9, 6, { dx: (1 - k) * -10, dy: (1 - k) * 6 }), -9, 6, 14, 24, 0.6);
+        const s = Motion.squash(t, 0.25, 0.14);
+        van(pose(base, 7, 8, { sx: 2 - s, sy: s }), 7, -4, 14, 24);
         break;
+      }
       case 'insurance':
-      case 'robberyInsurance':
-        shield('accent', 0.85);
-        car(center, 0.55, upgrade === 'insurance' ? 'vehicleCar' : 'vehicleCriminal', upgrade === 'insurance' ? null : 'vehicleBed', false);
+      case 'robberyInsurance': {
+        // The shield swings in, the car inside it pops.
+        const a = pose(base, 0, -18, { turn: Motion.swing(t, 0, 0.16) });
+        shield(a, 'accent', 0.85);
+        const k = 0.6 + 0.4 * Motion.ramp(t, 0.15, 0.5, Ease.spring);
+        car(pose(a, 0, 0, { sx: k, sy: k }), 0, 0, 0.55, upgrade === 'insurance' ? 'vehicleCar' : 'vehicleCriminal', upgrade === 'insurance' ? null : 'vehicleBed', false);
         break;
-      case 'shield':
-        shield('juiceGreen');
-        put(rect(center, mul(v(16, 5), unit), 2 * unit), 'primary');
-        put(rect(center, mul(v(5, 16), unit), 2 * unit), 'primary');
+      }
+      case 'shield': {
+        // Squashes on the blow, the cross turns a quarter and settles.
+        const s = Motion.squash(t, 0, 0.14);
+        const a = pose(base, 0, 18, { sx: 2 - s, sy: s });
+        shield(a, 'juiceGreen');
+        const cross = pose(a, 0, 0, { turn: (1 - Motion.ramp(t, 0.05, 0.6, Ease.spring)) * (-Math.PI / 2) });
+        p.line(cross, -6, 0, 6, 0, 4.5, 'primary');
+        p.line(cross, 0, -6, 0, 6, 4.5, 'primary');
         break;
-      case 'tightFitTip':
-        car(at(-17, 2), 0.75, 'vehicleCar', null, false);
-        car(at(17, 2), 0.75, 'vehicleCar', null, false);
-        put(circle(at(0, 0), 9 * unit), 'vehicleCargo');
-        put(circle(at(0, 0), 6 * unit), 'hazard', 0.7);
+      }
+      case 'tightFitTip': {
+        // The two cars squeeze the gap, the tip flips through it.
+        const squeeze = Motion.bump(t, 0, 0.45) * 5;
+        car(pose(base, -17, 2, { dx: squeeze }), -17, 2, 0.75, 'vehicleCar', null, false);
+        car(pose(base, 17, 2, { dx: -squeeze }), 17, 2, 0.75, 'vehicleCar', null, false);
+        const flip = Math.cos(Motion.ramp(t, 0.15, 0.8) * TAU);
+        const coin = pose(base, 0, 0, { sx: flip, dy: -Motion.bump(t, 0.15, 0.8) * 6 });
+        p.disc(coin, 0, 0, 9, 'vehicleCargo');
+        p.disc(coin, 0, 0, 6, 'hazard', 0.7);
+        p.line(coin, -2.5, -4.5, -4.5, -1.5, 1.4, 'primary', 0.45);
         break;
-      case 'dashcam':
-        put(rect(center, mul(v(34, 20), unit), 5 * unit), 'primary', 0.9);
-        put(circle(center, 7 * unit), 'card');
-        put(circle(center, 4 * unit), 'lightBlue');
-        put(circle(at(-12, -6), 2 * unit), 'destructive');
-        put(line(at(0, -10), at(0, -17), 3 * unit), 'muted');
+      }
+      case 'dashcam': {
+        // Bumps on its mount, the lens focuses, the red light blinks.
+        const a = pose(base, 0, -17, { turn: Motion.swing(t, 0, 0.12) });
+        p.line(base, 0, -10, 0, -17, 3, 'muted');
+        p.box(a, 0, 0, 34, 20, 5, 'primary', 0.9);
+        const focus = Motion.squash(t, 0.1, 0.25);
+        p.disc(a, 0, 0, 7, 'card');
+        p.disc(pose(a, 0, 0, { sx: focus, sy: focus }), 0, 0, 4, 'lightBlue');
+        p.disc(a, -1.6, -1.6, 1.2, 'primary', 0.6);
+        p.disc(a, -12, -6, 2, 'destructive', t === Infinity || Motion.blink(t, 0.2, 4, 3) ? 1 : 0.2);
         break;
-      case 'chainSaver':
-        put(arc(at(-8, 0), 10 * unit, 3.5 * unit, 0, TAU), 'accent');
-        put(arc(at(8, 0), 10 * unit, 3.5 * unit, 0, TAU), 'accent');
+      }
+      case 'chainSaver': {
+        // The links pull apart and click back together.
+        const pull = Motion.bump(t, 0, 0.3) * 4 + Motion.swing(t, 0.3, 1.2, 4, 7);
+        p.ring(pose(base, -8, 0, { dx: -pull }), -8, 0, 10, 3.8, 'accent');
+        p.ring(pose(base, 8, 0, { dx: pull }), 8, 0, 10, 3.8, 'accent');
         break;
-      case 'winterTyres':
-        put(circle(center, 18 * unit), 'primary', 0.85);
-        put(circle(center, 7 * unit), 'card');
+      }
+      case 'winterTyres': {
+        // The tyre rolls half a turn and settles; the tread shows it turning.
+        const a = pose(base, 0, 0, { turn: Motion.ramp(t, 0, 1, Ease.spring) * Math.PI, dx: Motion.swing(t, 0, 2, 1.2, 4) });
+        p.disc(a, 0, 0, 18, 'primary', 0.85);
+        for (let k = 0; k < 10; k++) {
+          const angle = (k * TAU) / 10;
+          p.line(a, Math.cos(angle) * 15, Math.sin(angle) * 15, Math.cos(angle) * 17.5, Math.sin(angle) * 17.5, 1.6, 'card', 0.55);
+        }
+        p.disc(a, 0, 0, 7, 'card');
         for (let spoke = 0; spoke < 3; spoke++) {
-          const a = (spoke * TAU) / 6;
-          const d = v(Math.cos(a), Math.sin(a));
-          put(line(add(center, mul(d, 11 * unit)), add(center, mul(d, -11 * unit)), 2 * unit), 'lightBlue', 0.9);
+          const angle = (spoke * TAU) / 6;
+          p.line(a, Math.cos(angle) * 11, Math.sin(angle) * 11, -Math.cos(angle) * 11, -Math.sin(angle) * 11, 2.2, 'lightBlue', 0.9);
         }
         break;
-      case 'fogLamps':
-        put(polygon([at(-6, -6), at(-22, -26), at(22, -26), at(6, -6)]), 'hazard', 0.35);
-        car(at(0, 8), 0.8, 'vehicleCar', null, true);
+      }
+      case 'fogLamps': {
+        // The lamps flicker on and the beam reaches out ahead.
+        const reach = Motion.ramp(t, 0.12, 0.5, Ease.spring);
+        const flicker = t < 0.4 && Motion.blink(t, 0, 3, 8) ? 0.35 : 1;
+        p.shape(pose(base, 0, -6, { sy: reach, sx: 0.7 + 0.3 * reach }), [-6, -6, -22, -26, 22, -26, 6, -6], 'hazard', 0.35 * flicker, 3);
+        car(base, 0, 8, 0.8, 'vehicleCar', null, false);
+        p.box(base, -4, -2, 4, 2.4, 1.2, 'hazard', flicker);
+        p.box(base, 4, -2, 4, 2.4, 1.2, 'hazard', flicker);
         break;
+      }
       case 'overtime':
+        // The coins drop onto the stack one by one.
         for (let coin = 0; coin < 3; coin++) {
-          const y = center.y + 8 * unit - coin * 7 * unit;
-          put(circle(v(center.x, y), 13 * unit), 'vehicleCargo', 0.7 + coin * 0.15);
-          put(circle(v(center.x, y), 9 * unit), 'hazard', 0.5 + coin * 0.15);
+          const k = Motion.ramp(t, coin * 0.14, 0.45, Ease.spring);
+          const a = pose(base, 0, 0, { dy: (1 - k) * -18 });
+          const y = 8 - coin * 7;
+          const share = Ease.clamp01(k * 4);
+          p.disc(a, 0, y, 13, 'vehicleCargo', (0.7 + coin * 0.15) * share);
+          p.disc(a, 0, y, 9, 'hazard', (0.5 + coin * 0.15) * share);
         }
         break;
     }

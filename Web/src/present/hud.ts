@@ -1880,10 +1880,19 @@ export const ResultBanner = {
     const inCard = r.outcome !== 'completed';
     const detailRow = rowOf(inCard ? null : detail?.[0] ?? null, 14, 'bold');
     const closeRow = rowOf(inCard ? null : close?.text ?? null, 14, 'bold');
-    const cardRows = inCard ? [detail ? { s: detail[0], color: detail[1] } : null, close ? { s: close.text, color: close.color } : null].filter((x): x is { s: string; color: ColorToken } => x !== null) : [];
+    // The words of a climbed level follow the bar: they wait until it closes.
+    const eliteSince = age - RingSignals.hold - RingSignals.eliteClosesAt;
+    const eliteIn = reduceMotion ? 1 : Ease.outCubic(eliteSince / 0.3);
+    const cardRows = inCard
+      ? [
+          detail ? { s: detail[0], color: detail[1], enter: 1 } : null,
+          close ? { s: close.text, color: close.color, enter: 1 } : null,
+          climbed ? { s: S.elite.toGo(climbed), color: 'coin' as ColorToken, enter: eliteIn } : null,
+        ].filter((x): x is { s: string; color: ColorToken; enter: number } => x !== null)
+      : [];
     const grow = cardRows.length > 0 ? 2 * ResultBanner.cardPad + cardRows.length * ResultBanner.cardLine : 0;
     const giftRow = rowOf(gift, 13, 'regular');
-    const eliteRow = rowOf(climbed ? S.elite.toGo(climbed) : null, 16, 'bold');
+    const eliteRow = rowOf(climbed && !inCard ? S.elite.toGo(climbed) : null, 16, 'bold');
     const chip = r.failCause !== null;
     const lowHeight = Math.max(closeRow.height, giftRow.height);
     let useDetail = detailRow.height > 0;
@@ -1919,7 +1928,7 @@ export const ResultBanner = {
     if (grow > 0) {
       const reveal = Ease.clamp01(list.topIntro / grow);
       const top = frame.maxY + list.topGrow - list.topIntro + ResultBanner.cardPad;
-      cardRows.forEach((row, i) => drawFitted(list, row.s, v(R.center(frame).x, top + (i + 0.5) * ResultBanner.cardLine), 13, R.width(frame) - 32, row.color, { weight: 'bold', opacity: details * reveal, align: 'center' }));
+      cardRows.forEach((row, i) => drawFitted(list, row.s, v(R.center(frame).x, top + (i + 0.5) * ResultBanner.cardLine), 13, R.width(frame) - 32, row.color, { weight: 'bold', opacity: details * reveal * Ease.clamp01(row.enter), align: 'center' }));
     }
     if (useLow && close && !inCard) {
       // It lands a moment after the prompt: the thing to read after "tap to try again".
@@ -1929,9 +1938,7 @@ export const ResultBanner = {
     }
     if (useElite && climbed) {
       // The words follow the bar: they wait until it closes, then land bigger.
-      const since = age - RingSignals.hold - RingSignals.eliteClosesAt;
-      const enter = reduceMotion ? 1 : Ease.outCubic(since / 0.3);
-      if (enter > 0) islandBlock(list, eliteRow.lines, islandRadius, eliteY, 16 * (reduceMotion ? 1 : land(since / 0.45, 0.25)), 'coin', details * enter, 'bold');
+      if (eliteIn > 0) islandBlock(list, eliteRow.lines, islandRadius, eliteY, 16 * (reduceMotion ? 1 : land(eliteSince / 0.45, 0.25)), 'coin', details * eliteIn, 'bold');
     }
     return { chip: chipAt, grow };
   },

@@ -612,13 +612,14 @@ export const Details = {
     list.s(text(level > 0 ? String(level) : '–', v(center.x, center.y + 12 * scale), 24 * scale, 'center', 'bold'), color, opacity);
   },
 
-  drawArt(list: RenderList, art: DetailArt, center: Vec2, size: number, _config: Config): void {
+  /** `t`: the picture's clock where its parts move (`Motion`), `Infinity` for the still picture. */
+  drawArt(list: RenderList, art: DetailArt, center: Vec2, size: number, _config: Config, t = Infinity): void {
     const scale = size / 96;
     switch (art.k) {
       case 'upgrade': {
         MenuKit.glow(list, center, size * 0.5, 'accent', 0.12);
         const half = size * 0.42;
-        UpgradeArt.add(list, art.upgrade, R.make(center.x - half, center.y - half * 0.7, center.x + half, center.y + half * 0.7), 1);
+        UpgradeArt.add(list, art.upgrade, R.make(center.x - half, center.y - half * 0.7, center.x + half, center.y + half * 0.7), 1, t);
         break;
       }
       case 'chest':
@@ -643,7 +644,7 @@ export const Details = {
         break;
       case 'museum': {
         const entry = museumEntry(art.id);
-        if (entry) MuseumPage.art(list, entry, center, 1.3 * scale, art.shown, art.time, 1, size * 0.92);
+        if (entry) MuseumPage.art(list, entry, center, 1.3 * scale, art.shown, art.time, 1, size * 0.92, art.shown ? t : Infinity);
         break;
       }
       case 'elite':

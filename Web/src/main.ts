@@ -11,7 +11,8 @@ import { Casino } from './core/casino';
 import { forgetMeasures } from './present/measure';
 import { newSave } from './core/career';
 import { Elite } from './core/elite';
-import { writeSave } from './storage/save';
+import { SAVE_KEYS, writeSave } from './storage/save';
+import { storage } from './storage/store';
 import { shelfEntries, museumId } from './core/museum';
 import type { Probe } from './ui/devProbe';
 import { streakEndsIn } from './present/readyScreen';
@@ -23,6 +24,10 @@ declare global {
     __probe?: Probe;
   }
 }
+
+/** The first visit's lesson runs once through (one loop of `.boot-learn` in index.html); nothing waits longer than `BOOT_WAIT_MS`. */
+const LEARN_MS = 3600;
+const BOOT_WAIT_MS = 8000;
 
 // The casino draws on real randomness besides the save's seed, so no result can be worked out beforehand.
 Casino.useEntropy(() => crypto.getRandomValues(new Uint32Array(1))[0]);
@@ -50,7 +55,11 @@ const bootFailed = (): void => {
 const bootRejected = (e: PromiseRejectionEvent): void => {
   if (!(e.reason instanceof DOMException)) bootFailed();
 };
-window.addEventListener('error', bootFailed);
+// Only the game's own scripts: the ad and statistics scripts load during the boot screen and may throw on their own.
+const bootErrored = (e: ErrorEvent): void => {
+  if (!e.filename || e.filename.startsWith(location.origin)) bootFailed();
+};
+window.addEventListener('error', bootErrored);
 window.addEventListener('unhandledrejection', bootRejected);
 // index.html can only say it in English; from here on the message is in the player's language.
 const [failTitle, failBody, failLink] = (['h1', 'p', 'a'] as const).map((tag) => boot?.querySelector(`.boot-fail ${tag}`));
@@ -112,6 +121,27 @@ if (import.meta.env.DEV && new URLSearchParams(location.search).has('demo')) {
 // before the game reads it.
 if (inPortal) await startCrazyGames();
 
+// `npm run dev` only, to look at the boot screen: `?boot=wait` keeps it (its message comes after
+// 20 s, as on a start that hangs), `?boot=fail` shows the message at once, `?boot=learn` keeps the first visit's one.
+const bootDemo = import.meta.env.DEV ? new URLSearchParams(location.search).get('boot') : null;
+
+// The very first visit (no save at all) learns the one move while the game loads (Leo, 22.10.2026).
+const hasSave = (): boolean => {
+  try {
+    return SAVE_KEYS.some((key) => storage().getItem(key) !== null);
+  } catch {
+    // Blocked storage forgets every visit: no lesson each time.
+    return true;
+  }
+};
+const firstVisit = (!inPortal && !hasSave()) || bootDemo === 'learn';
+const learn = boot?.querySelector('.boot-learn');
+if (boot && learn && firstVisit) {
+  learn.querySelector('strong')!.textContent = S.tutorial.sendCar;
+  learn.querySelector('span')!.textContent = S.tutorial.combo;
+  boot.classList.add('learn');
+}
+
 // The heading face (Overpass, `ui/shell.css`) is measured and drawn by the canvas: give it a moment to arrive so the
 // first frame is laid out with it. Slow or offline-first-visit: the game starts with the stand-in and measures again
 // when the font is there (it is bundled, so it does arrive).
@@ -120,25 +150,30 @@ await Promise.race([document.fonts?.load('italic 900 30px "Overpass Variable"'),
 
 startTuning();
 const shell = new Shell(app, canvas, layers);
+// Ads and visit statistics load while the boot screen stands too, so nothing arrives once the game shows (Leo, 22.10.2026).
+startAds();
+startAnalytics();
+// The boot screen stands until the sounds are in, while the scene already draws behind it, so the first seconds of
+// play do not stutter (Leo, 22.10.2026). The first visit's lesson plays once through; a tap goes on at once, and a
+// slow network never holds the game back longer than `BOOT_WAIT_MS`.
+const pause = (ms: number): Promise<void> => new Promise((resolve) => window.setTimeout(resolve, ms));
+const tapped = new Promise<void>((resolve) => boot?.addEventListener('pointerdown', () => resolve(), { once: true }));
+await Promise.race([Promise.all([shell.preload(), firstVisit ? pause(LEARN_MS) : null]), tapped, pause(BOOT_WAIT_MS)]);
+gameLoaded();
+// The game is on screen: the boot screen fades away, and later errors are the game's own business.
+window.removeEventListener('error', bootErrored);
+window.removeEventListener('unhandledrejection', bootRejected);
+if (bootDemo === 'fail') bootFailed();
+// Hidden, not removed: should the game stop later, the shell shows it again with a reload (`Shell.stalled`).
+if (boot && (bootDemo === null || bootDemo === 'learn')) {
+  boot.classList.add('gone');
+  window.setTimeout(() => (boot.hidden = true), 450);
+}
+// The probe once the game shows: a test starts where a player would.
 if (import.meta.env.DEV) {
   window.__game = shell;
   (await import('./ui/devProbe')).installProbe(shell);
 }
-gameLoaded();
-// The game is on screen: the boot screen fades away, and later errors are the game's own business.
-window.removeEventListener('error', bootFailed);
-window.removeEventListener('unhandledrejection', bootRejected);
-// `npm run dev` only, to look at the boot screen: `?boot=wait` keeps it (its message comes after
-// 20 s, as on a start that hangs), `?boot=fail` shows the message at once.
-const bootDemo = import.meta.env.DEV ? new URLSearchParams(location.search).get('boot') : null;
-if (bootDemo === 'fail') bootFailed();
-// Hidden, not removed: should the game stop later, the shell shows it again with a reload (`Shell.stalled`).
-if (boot && bootDemo === null) {
-  boot.classList.add('gone');
-  window.setTimeout(() => (boot.hidden = true), 300);
-}
-startAds();
-startAnalytics();
 // Cloud sync, when the player turned it on: newer progress from another device comes over by itself.
 startCloud({
   save: () => shell.game.save,

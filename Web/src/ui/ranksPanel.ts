@@ -88,8 +88,38 @@ function overtake(list: HTMLElement, from: number, to: number): void {
 type Scope = 'all' | 'crew';
 
 /** The number a line stands for: the level (with its Prestige rank) or the Unlimited score. */
-/** The star's look by rank: silver, gold, iris, then ember (★4), prism (★10) and eternal (★20). */
-const starTier = (rank: number): number => (rank >= 20 ? 6 : rank >= 10 ? 5 : rank >= 4 ? 4 : Math.max(1, rank));
+/**
+ * The star's colours by rank (Leo, 22.10.2026: a colour for every rank): silver, gold, iris as before, then a new
+ * gradient up to ★10; ★11–19 walk round the colour wheel, from ★20 the eternal star runs through three colours.
+ */
+const STAR_COLORS: readonly (readonly string[])[] = [
+  ['#F7F9FC', '#A3ACBB'],
+  ['#FFE89A', '#E09A12'],
+  ['#FFD36E', '#C15CFF'],
+  ['#FFC78A', '#FF4F2E'],
+  ['#FFC6DD', '#EC3F7C'],
+  ['#B8FFF1', '#11A99A'],
+  ['#C2E6FF', '#2C74FF'],
+  ['#E6CCFF', '#7A36FF'],
+  ['#FFB8AC', '#C8143F'],
+  ['#FFE08A', '#FF62B8', '#6F9BFF'],
+];
+const starColors = (rank: number): readonly string[] => {
+  if (rank >= 20) return ['#FFF4D6', '#FF62B8', '#7C4DFF'];
+  if (rank > STAR_COLORS.length) {
+    const hue = ((rank - 10) * 37) % 360;
+    return [`hsl(${hue} 100% 82%)`, `hsl(${(hue + 48) % 360} 88% 52%)`];
+  }
+  return STAR_COLORS[Math.max(1, rank) - 1];
+};
+
+/** The five points with soft tips: the outline is stroked in its own gradient with round joins. */
+const STAR_POINTS = Array.from({ length: 10 }, (_, i) => {
+  const angle = -Math.PI / 2 + (i * Math.PI) / 5;
+  const r = i % 2 === 0 ? 13 : 6.4;
+  return `${(16 + Math.cos(angle) * r).toFixed(2)},${(17 + Math.sin(angle) * r).toFixed(2)}`;
+}).join(' ');
+let starCount = 0;
 
 function valueOf(board: BoardId, e: { score: number; meta: Record<string, number> }, onStar: () => void): (string | Element)[] {
   if (board === 'unlimited' || board === 'daily') return [Fmt.number(e.score)];
@@ -105,15 +135,30 @@ function valueOf(board: BoardId, e: { score: number; meta: Record<string, number
 }
 
 /**
- * The Prestige star: a star with the rank inside, a slow glint across it (not under Reduce
- * Motion). A tap on it explains the system (`onTap`).
+ * The Prestige star: a soft star in its rank's gradient with the rank inside, in the animated icons' way
+ * (`ui/animatedIcons.ts`): a slow glint runs over it, and under the cursor or a finger it pops, tilts and sparkles
+ * (`.ai-pstar`, `shell.css`). A tap on it explains the system (`onTap`).
  */
 export function prestigeStar(rank: number, onTap: () => void): HTMLElement {
-  return h(
-    'button',
-    { class: `prestige-star tier-${starTier(rank)}`, type: 'button', 'aria-label': S.ranks.starLabel(rank), onclick: onTap },
-    h('span', { class: 'prestige-star-rank', 'aria-hidden': 'true' }, String(rank)),
-  );
+  const id = `aiPstar${++starCount}`;
+  const colors = starColors(rank);
+  const stops = colors.map((c, i) => `<stop offset="${i / (colors.length - 1)}" stop-color="${c}"/>`).join('');
+  const label = String(rank);
+  const star = h('span', {
+    class: 'prestige-star-art',
+    'aria-hidden': 'true',
+    html:
+      `<svg class="ai ai-pstar" viewBox="0 0 32 32" width="32" height="32" overflow="visible">` +
+      `<defs><linearGradient id="${id}G" x1="0" y1="0" x2="1" y2="1">${stops}</linearGradient>` +
+      `<clipPath id="${id}C"><polygon points="${STAR_POINTS}" stroke-width="3"/></clipPath></defs>` +
+      `<g class="body"><polygon points="${STAR_POINTS}" fill="url(#${id}G)" stroke="url(#${id}G)" stroke-width="3" stroke-linejoin="round"/>` +
+      `<polygon points="${STAR_POINTS}" fill="none" stroke="#fff" stroke-opacity=".45" stroke-width="1" stroke-linejoin="round" transform="translate(16 17) scale(.82) translate(-16 -17)"/>` +
+      `<g clip-path="url(#${id}C)"><g transform="rotate(25 16 16)"><rect class="glint" x="-10" y="-6" width="5" height="44" fill="#fff"/></g></g>` +
+      `<text class="num" x="16" y="18.2" text-anchor="middle" dominant-baseline="middle" font-size="${label.length > 1 ? 9 : 11}">${label}</text></g>` +
+      `<path class="spark s1" fill="#FFF6D8" d="M27 2.6l.8 2 2 .8-2 .8-.8 2-.8-2-2-.8 2-.8z"/>` +
+      `<path class="spark s2" fill="#FFF6D8" d="M4.4 21.2l.6 1.5 1.5.6-1.5.6-.6 1.5-.6-1.5-1.5-.6 1.5-.6z"/></svg>`,
+  });
+  return h('button', { class: 'prestige-star', type: 'button', 'aria-label': S.ranks.starLabel(rank), onclick: onTap }, star);
 }
 
 /** What Prestige is, in the numbers the game really uses. */

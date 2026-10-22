@@ -104,17 +104,12 @@ export const CityLayer = {
 
   /**
    * An Elite driver's island (Leo, 29.09.2026: the world shows the milestone): a gold rim just
-   * inside the kerb, and a gold stud by your own lane for every ten Elite levels (at most five).
+   * inside the kerb. The studs by your own lane for every ten Elite levels are gone (Leo, 22.10.2026): nobody knew what they meant.
    */
   addElite(list: RenderList, eliteLevel: number, world: World): void {
     if (eliteLevel <= 0) return;
     const radius = world.layout.islandRadius - 7;
     list.w(arc(v(0, 0), radius, 2, 0, TAU), 'coin', 0.55);
-    const studs = Math.min(5, Math.floor(eliteLevel / 10));
-    for (let i = 0; i < studs; i++) {
-      const angle = -Math.PI / 2 + (i - (studs - 1) / 2) * 0.13;
-      list.w(circle(mul(fromAngle(angle), radius), 3.5), 'coin', 0.9);
-    }
   },
 
   growth: (c: Config): number => c.level + 4 * Math.max(0, builtArmSlots(c).length - 4) + 3 * Object.keys(c.modules).length,

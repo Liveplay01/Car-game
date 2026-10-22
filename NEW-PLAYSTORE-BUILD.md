@@ -39,6 +39,18 @@ Android ihn der App gibt statt dem Browser. Der Wrapper verknüpft den ganzen Ho
       kein engerer Pfad), sonst fehlt die Zeile für `/k/`.
 - [ ] Testen: Crew-Link in einem Chat auf dem Handy antippen → die App öffnet sich, Social → Crew zeigt die Einladung.
 
+### 3. Store-Eintrag: Screenshots und Barrierefreiheit (seit 22.10.2026, Feedback der Tester)
+
+Kein Wrapper-Build nötig, aber der Eintrag in der Play Console wird beim nächsten Release gleich mit erneuert.
+Die Tester fanden die Screenshots zu schlicht („basic mobile screenshots“).
+
+- [ ] Neuer Screenshot-Satz (1080×1920, 6–8 Bilder), je mit kurzer Textzeile oben: Timing am Kreisel,
+      Polizei-Verfolgung, Daily und Serie, Unlimited und Mayhem, Multiplayer, Bosse, Sammlung und Skins,
+      Street Builder. Action-Szenen statt Menüs (knappe Rettungen, Verfolgung). Aufnahmen über
+      `Marketing/trailer/capture`, Texte mit den Skills `aso` und `copywriting`. Alte Bilder in `Marketing/` ersetzen.
+- [ ] Barrierefreiheit in der Beschreibung nennen: Reduce Motion (folgt dem System), Large Text, Linkshänder-Modus,
+      Fahrzeug-Beschriftungen, Haptik abschaltbar, Tastatursteuerung, Farbe nie das einzige Signal.
+
 ## So geht der Build
 
 ### Vorbereitung

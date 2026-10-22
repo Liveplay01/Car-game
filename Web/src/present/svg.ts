@@ -32,7 +32,7 @@ function shape(p: Primitive, color: string): string {
       return `<path d="M${pt(at(a0))}A${n(p.radius)} ${n(p.radius)} 0 ${span > Math.PI ? 1 : 0} 1 ${pt(at(a0 + span))}" ${stroke}${p.round ? ' stroke-linecap="round"' : ''}/>`;
     }
     case 'line':
-      return p.thickness > 0.02 ? `<path d="M${pt(p.from)}L${pt(p.to)}" stroke="${color}" stroke-width="${n(p.thickness)}"/>` : '';
+      return p.thickness > 0.02 ? `<path d="M${pt(p.from)}L${pt(p.to)}" stroke="${color}" stroke-width="${n(p.thickness)}"${p.round ? ' stroke-linecap="round"' : ''}/>` : '';
     case 'polygon':
       if (p.points.length < 3) return '';
       return `<path d="${[p.points, ...(p.holes ?? [])].map(ring).join('')}"${p.holes ? ' fill-rule="evenodd"' : ''} fill="${color}"/>`;

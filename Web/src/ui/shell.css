@@ -1097,22 +1097,35 @@ a.row-link {
   visibility: hidden;
 }
 
+/* The pills come and go like the dock: up on a spring (`pill-in`), away down and out with the exit curve. `translate` and
+   `scale` carry it so `transform` stays free for the press and for the stack's own offset. */
 .float-btn {
   position: absolute;
   z-index: var(--z-hud);
   opacity: 0;
-  transform: scale(0.92);
+  translate: 0 14px;
+  scale: 0.94;
   pointer-events: none;
   visibility: hidden;
-  transition: opacity 280ms var(--ease-out), transform 280ms var(--ease-out), visibility 0s linear 280ms;
+  transition: opacity 180ms var(--ease-exit), translate 240ms var(--ease-exit), scale 240ms var(--ease-exit), transform 160ms var(--ease-out), visibility 0s linear 240ms;
 }
 
 .float-btn.show {
   opacity: 1;
-  transform: none;
+  translate: none;
+  scale: none;
   pointer-events: auto;
   visibility: visible;
-  transition: opacity 180ms var(--ease-out), transform 180ms var(--ease-out), visibility 0s;
+  transition: opacity 180ms var(--ease-out), transform 160ms var(--ease-out), visibility 0s;
+  animation: pill-in 360ms var(--ease-back) var(--pill-delay, 0ms) backwards;
+}
+
+@keyframes pill-in {
+  from {
+    opacity: 0;
+    translate: 0 18px;
+    scale: 0.92;
+  }
 }
 
 .float-btn:active {
@@ -1222,8 +1235,9 @@ a.row-link {
   background: var(--glass);
   display: none;
   opacity: 0;
-  transform: translateY(6px);
-  transition: opacity 200ms var(--ease-out), transform 200ms var(--ease-out), display 200ms allow-discrete;
+  translate: 0 10px;
+  scale: 0.94;
+  transition: opacity 200ms var(--ease-exit), translate 240ms var(--ease-exit), scale 240ms var(--ease-exit), transform 200ms var(--ease-out), display 240ms allow-discrete;
 }
 
 /* A pill in the stack grows in and folds away (height and the gap with it), so the ones beside it glide instead of jumping. */
@@ -1236,7 +1250,9 @@ a.row-link {
   border-radius: calc(var(--pill-h) / 2);
   justify-content: flex-start;
   transition:
-    opacity 200ms var(--ease-out),
+    opacity 200ms var(--ease-exit),
+    translate 240ms var(--ease-exit),
+    scale 240ms var(--ease-exit),
     transform 200ms var(--ease-out),
     height 240ms var(--ease-drawer),
     margin-bottom 240ms var(--ease-drawer),
@@ -1344,15 +1360,26 @@ a.row-link {
   display: inline-flex;
   opacity: 1;
   transform: none;
+  translate: none;
+  scale: none;
   pointer-events: auto;
+  animation: pill-in 360ms var(--ease-back) var(--pill-delay, 0ms) backwards;
+}
+
+/* From the bottom of the stack up: the pill next to Settings first. */
+.run-bar > :nth-child(1) {
+  --pill-delay: 90ms;
+}
+
+.run-bar > :nth-child(2) {
+  --pill-delay: 60ms;
+}
+
+.run-bar > :nth-child(3) {
+  --pill-delay: 30ms;
 }
 
 @starting-style {
-  .run-btn.show {
-    opacity: 0;
-    transform: translateY(6px);
-  }
-
   .run-bar .run-btn.show {
     height: 0;
     margin-bottom: calc(-1 * var(--pill-gap) - 2px);
@@ -2613,6 +2640,7 @@ a.row-link {
   margin-bottom: 0;
   overflow: visible;
   opacity: 1;
+  animation: pill-in 360ms var(--ease-back) var(--pill-delay, 0ms) backwards;
 }
 
 .mod {
@@ -2663,15 +2691,13 @@ button.mod:active {
   color: var(--destructive);
 }
 
+/* The flame is drawn in its own colours (`heat` icon), so the pill stays glass with a hot edge instead of a flat orange fill. */
 .mod.heat {
-  border-color: transparent;
-  background: #ff6a1f;
-  color: var(--accent-ink);
+  border-color: rgba(255, 106, 31, 0.7);
   animation: heat-ring 620ms var(--ease-out);
 }
 
 .mod.heat svg {
-  color: inherit;
   animation: heat-flare 520ms var(--ease-out);
 }
 
@@ -3298,36 +3324,34 @@ button.mod:active {
   border-top-color: transparent;
 }
 
-/* The Prestige star (ui/ranksPanel.ts): a five-point star with the rank inside and a
-   slow glint. Tiers follow the star skins: silver ★1, gold ★2, iris ★3, then ember ★4, prism ★10
-   and eternal ★20 (02.10.2026, the ranks beyond the first three). */
+/* The Prestige star (ui/ranksPanel.ts, Leo 22.10.2026): a soft SVG star in its rank's gradient with the rank inside.
+   A slow glint runs over it; under the cursor or a finger it pops, tilts and sparkles (`watchIconMoves` plays it). */
 .prestige-star {
-  --star-a: #f4f6fa;
-  --star-b: #9aa3b2;
   position: relative;
   display: inline-grid;
   place-items: center;
-  width: 30px;
-  height: 29px;
+  width: 32px;
+  height: 32px;
   margin-right: var(--s2);
   vertical-align: middle;
-  background: linear-gradient(145deg, var(--star-a), var(--star-b));
-  clip-path: polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%);
   padding: 0;
   border: 0;
+  background: none;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
-  transition: transform 120ms var(--ease-drawer), filter 120ms var(--ease-drawer);
 }
 
-.prestige-star:active {
-  transform: scale(0.9);
+.prestige-star-art,
+.prestige-star-art svg {
+  display: block;
+  width: 30px;
+  height: 30px;
 }
 
-/* The clip-path would cut an outline off: the focused star brightens instead. */
 .prestige-star:focus-visible {
-  outline: none;
-  filter: brightness(1.2) saturate(1.3);
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+  border-radius: 50%;
 }
 
 .prestige-info .quiet-btn {
@@ -3335,64 +3359,123 @@ button.mod:active {
   margin-bottom: var(--s3);
 }
 
-.prestige-star.tier-2 {
-  --star-a: #ffe28a;
-  --star-b: #e0a21c;
+.ai-pstar .body {
+  transform-box: fill-box;
+  transform-origin: 50% 55%;
 }
 
-.prestige-star.tier-3 {
-  --star-a: #ffd36e;
-  --star-b: #c15cff;
-}
-
-.prestige-star.tier-4 {
-  --star-a: #ffc78a;
-  --star-b: #ff5a3c;
-}
-
-.prestige-star.tier-5 {
-  --star-a: #c8fff0;
-  --star-b: #6f9bff;
-}
-
-.prestige-star.tier-6 {
-  --star-a: #fff4d6;
-  --star-b: #ff62b8;
-}
-
-.prestige-star::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(110deg, transparent 35%, rgba(255, 255, 255, 0.85) 50%, transparent 65%);
-  background-size: 250% 100%;
-  background-position: 160% 0;
-  animation: prestige-glint 3.6s ease-in-out infinite;
-}
-
-.prestige-star-rank {
-  position: relative;
-  z-index: 1;
-  margin-top: 3px;
-  font-size: 11px;
+.ai-pstar .num {
+  fill: #fff;
+  stroke: rgba(24, 14, 40, 0.42);
+  stroke-width: 2.2px;
+  paint-order: stroke;
+  font-family: inherit;
   font-weight: 800;
-  line-height: 1;
-  color: #2a1d05;
   font-variant-numeric: tabular-nums;
+  transform-box: fill-box;
+  transform-origin: center;
 }
 
-@keyframes prestige-glint {
+.ai-pstar .glint {
+  opacity: 0.55;
+  animation: aiPstarGlint 4.2s ease-in-out infinite;
+}
+
+.ai-pstar .spark {
+  transform-box: fill-box;
+  transform-origin: center;
+  transform: scale(0);
+}
+
+.ai-pstar.play .body,
+.ai-pstar.loop .body {
+  animation: aiPstarPop 0.9s cubic-bezier(0.23, 1, 0.32, 1) both;
+}
+
+.ai-pstar.play .num,
+.ai-pstar.loop .num {
+  animation: aiPstarNum 0.9s cubic-bezier(0.23, 1, 0.32, 1) 0.08s both;
+}
+
+.ai-pstar.play .s1,
+.ai-pstar.loop .s1 {
+  animation: aiPstarSpark 0.9s ease-out 0.12s both;
+}
+
+.ai-pstar.play .s2,
+.ai-pstar.loop .s2 {
+  animation: aiPstarSpark 0.9s ease-out 0.24s both;
+}
+
+.ai-pstar.loop * {
+  animation-iteration-count: infinite !important;
+}
+
+@keyframes aiPstarGlint {
   0%,
-  55% {
-    background-position: 160% 0;
+  58% {
+    transform: translateX(0);
   }
   100% {
-    background-position: -60% 0;
+    transform: translateX(46px);
   }
 }
 
-.app.reduce-motion .prestige-star::after {
-  animation: none;
+@keyframes aiPstarPop {
+  0% {
+    transform: scale(1) rotate(0);
+  }
+  22% {
+    transform: scale(1.2) rotate(-14deg);
+  }
+  44% {
+    transform: scale(0.94) rotate(6deg);
+  }
+  64% {
+    transform: scale(1.03) rotate(-2deg);
+  }
+  80%,
+  100% {
+    transform: scale(1) rotate(0);
+  }
+}
+
+@keyframes aiPstarNum {
+  0%,
+  10% {
+    transform: scale(1);
+  }
+  34% {
+    transform: scale(1.25);
+  }
+  60%,
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes aiPstarSpark {
+  0% {
+    transform: scale(0) rotate(0);
+  }
+  36% {
+    transform: scale(1.15) rotate(45deg);
+  }
+  70%,
+  100% {
+    transform: scale(0) rotate(90deg);
+  }
+}
+
+.app.reduce-motion .ai-pstar *,
+.app.reduce-motion .ai-pstar .glint {
+  animation: none !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ai-pstar * {
+    animation: none !important;
+  }
 }
 
 .board-gap {
