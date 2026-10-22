@@ -27,7 +27,7 @@ interface Game {
   };
 }
 
-const SOCIAL_RANKS = 1;
+const SOCIAL_RANKS = 0;
 
 /** A player with a name and a cloud copy, in English: Ranks opens without asking. Returns the scores sent and the errors seen. */
 async function start(page: Page, query: string, boards: Boards = () => [], api: Api = () => null): Promise<{ sent: string[]; errors: string[] }> {
@@ -111,6 +111,7 @@ test('Ranks: the Casino board shows once the Casino is reached, with its money',
 
 test('Ranks: My crew only is a switch under the boards, and an empty crew board leads to Social → Crew', async ({ page }) => {
   const empty = { board: { id: 'shift-level', title: 'shift-level', period: 'all' }, entries: [], me: null, crew: 0 };
+  await page.addInitScript(() => localStorage.setItem('carGame.crewXp.v1.in', '1'));
   const { errors } = await start(page, 'level=5', () => [], (_method, path) => (path.startsWith('/v1/crews/boards/') ? empty : null));
   await openRanks(page);
   const chip = page.getByRole('button', { name: 'My crew only' });
@@ -118,7 +119,7 @@ test('Ranks: My crew only is a switch under the boards, and an empty crew board 
   await tap(chip);
   await expect(chip).toHaveAttribute('aria-pressed', 'true');
   await tap(page.getByRole('button', { name: 'Open Crew' }));
-  expect(await page.evaluate(() => (window as unknown as { __game: Game }).__game.game.socialPage.section)).toBe(0);
+  expect(await page.evaluate(() => (window as unknown as { __game: Game }).__game.game.socialPage.section)).toBe(1);
   expect(errors).toEqual([]);
 });
 
@@ -215,7 +216,7 @@ test('Crew: the league table, a gift to take, and a gift given out of your own m
     return null;
   });
   const game = (): Promise<number> => page.evaluate(() => (window as unknown as { __game: Game }).__game.game.save.career.money);
-  await page.evaluate(() => (window as unknown as { __game: Game }).__game.game.perform({ k: 'showSocial', section: 0 }));
+  await page.evaluate(() => (window as unknown as { __game: Game }).__game.game.perform({ k: 'showSocial', section: 1 }));
   const table = page.getByRole('list', { name: 'This week’s league table' });
   await expect(table).toBeVisible();
   await expect(table.getByText('Night Owls')).toBeVisible();
@@ -264,6 +265,17 @@ test('Settings → Account: the player is the one entry, Cloud sync rides in it'
   const content = page.locator('.settings-content:not(.view-ghost)');
   await expect(content.locator('.settings-group').first().locator('.row-title')).toHaveText(['Tester']);
   await expect(content.locator('.row-title', { hasText: /^Cloud sync$/ })).toHaveCount(0);
+  expect(errors).toEqual([]);
+});
+
+test('Your player shows the friend code to share under the name', async ({ page }) => {
+  const { errors } = await start(page, 'level=12', () => [], (_method, path) =>
+    path === '/v1/me/referral' ? { code: 'ABCD-2345', link: null, level: 5, reward: 'chest:standard', milestones: [], invitedBy: null, invited: [], done: 0, max: 25 } : null,
+  );
+  await page.evaluate(() => (window as unknown as { __game: Game }).__game.game.perform({ k: 'openSettings' }));
+  await tap(page.getByRole('button', { name: 'Account' }));
+  await tap(page.locator('.settings-content:not(.view-ghost) .settings-group').first().locator('.row-title', { hasText: 'Tester' }));
+  await expect(page.getByLabel('Your friend code: ABCD-2345')).toHaveText('ABCD-2345');
   expect(errors).toEqual([]);
 });
 
@@ -323,24 +335,32 @@ test('A sideways swipe changes the segment of Progress, Shop, Social and Build; 
   expect(shop.detail).toBe(false);
 
   await perform({ k: 'showSocial', section: 0 });
-  await page.waitForSelector('.social-inner');
-  const swiped = await page.evaluate(() => {
-    const target = document.querySelector('.social-inner')?.firstElementChild ?? document.querySelector('.social-inner');
-    const fire = (type: string, x: number): void => {
-      target?.dispatchEvent(new PointerEvent(type, { bubbles: true, pointerType: 'touch', pointerId: 7, clientX: x, clientY: 300 }));
-    };
-    fire('pointerdown', 260);
-    for (let x = 240; x >= 100; x -= 20) fire('pointermove', x);
-    fire('pointerup', 100);
-    return true;
-  });
-  expect(swiped).toBe(true);
+  await page.waitForSelector('.social-inner .board-tabs');
+  const swipeSocial = (from: number, to: number): Promise<void> =>
+    page.evaluate(([a, b]) => {
+      const target = document.querySelector('.social-inner')?.firstElementChild ?? document.querySelector('.social-inner');
+      const fire = (type: string, x: number): void => {
+        target?.dispatchEvent(new PointerEvent(type, { bubbles: true, pointerType: 'touch', pointerId: 7, clientX: x, clientY: 300 }));
+      };
+      fire('pointerdown', a);
+      for (let x = a; Math.abs(x - b) > 10; x += Math.sign(b - a) * 20) fire('pointermove', x);
+      fire('pointermove', b);
+      fire('pointerup', b);
+    }, [from, to]);
+  // Ranks swipes through its own board tabs first, the segment stays.
+  await swipeSocial(260, 100);
+  await expect(page.locator('.board-tabs button[aria-pressed="true"]')).toHaveText('Unlimited');
+  expect((await places(page)).social).toBe(0);
+  // Back on the first board, the next swipe that way has nowhere to go in the tabs: on to Crew.
+  await swipeSocial(100, 260);
+  await expect(page.locator('.board-tabs button[aria-pressed="true"]')).toHaveText('Shift level');
+  for (let i = 0; i < 4 && (await places(page)).social === 0; i++) await swipeSocial(260, 100);
   expect((await places(page)).social).toBe(1);
 
   await perform({ k: 'showTab', tab: 'upgrades' });
   await drag(page, -160);
   expect((await places(page)).tab).toBe('streetBuilder');
   await page.keyboard.press('ArrowLeft');
-  expect((await places(page)).tab).toBe('upgrades');
+  await expect.poll(async () => (await places(page)).tab).toBe('upgrades');
   expect(errors).toEqual([]);
 });

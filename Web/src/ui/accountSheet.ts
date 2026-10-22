@@ -2,8 +2,10 @@ import { confirmButton, h } from './dom';
 import { swapView, openSheet } from './sheets';
 import { forgetBoards, nameForm, openAccount } from './ranksPanel';
 import { offerToPasswordManager, secretCodeRow } from './cloudSheet';
+import { copy, flash } from './share';
 import { cloudEnabled, cloudLinked, cloudView, createCloud, onCloudChange } from '../net/cloud';
 import { type Records, deleteAccount, describeError, leaderboardEnabled, loadAccount, renameAccount, syncScores } from '../net/leaderboard';
+import { fetchInvite } from '../net/invite';
 import { inPortal } from '../storage/device';
 import { loadPlayerName, savePlayerName } from '../storage/profile';
 import { S } from '../present/strings';
@@ -43,6 +45,27 @@ export function accountSheet(layer: HTMLElement, actions: AccountActions, welcom
   const body = h('div', { class: 'cloud account' });
   const problem = h('p', { class: 'field-help error', role: 'alert' });
   problem.hidden = true;
+  // The public friend code (Leo, 22.10.2026): asked for once, then it stands under the name.
+  let friendCode: string | null = null;
+  let askedCode = false;
+  const friendRow = (): HTMLElement | null => {
+    if (!friendCode) {
+      if (!askedCode) {
+        askedCode = true;
+        fetchInvite()
+          .then((v) => {
+            friendCode = v.code;
+            if (view === 'done') render();
+          })
+          .catch(() => undefined);
+      }
+      return null;
+    }
+    const code = friendCode;
+    const copyBtn = h('button', { class: 'btn', type: 'button' }, S.cloud.copy);
+    copyBtn.addEventListener('click', () => void copy(code).then((r) => r === 'copied' && flash(copyBtn, S.cloud.copied)));
+    return h('div', { class: 'row' }, h('div', { class: 'row-main' }, h('div', { class: 'row-sub' }, S.friends.yourCode), h('div', { class: 'sync-code', 'aria-label': S.friends.yourCodeLabel(code) }, code)), copyBtn);
+  };
   const say = (message: string): void => {
     problem.textContent = message;
     problem.hidden = message === '';
@@ -164,7 +187,7 @@ export function accountSheet(layer: HTMLElement, actions: AccountActions, welcom
     const code = cloudView().code;
     return [
       h('p', { class: 'section-note' }, welcome ? S.account.welcome(name) : code ? S.account.done(name) : S.account.doneLocal(name)),
-      h('div', { class: 'list' }, row(S.account.nameLabel, name, change), code ? secretCodeRow(code) : null),
+      h('div', { class: 'list' }, row(S.account.nameLabel, name, change), friendRow(), code ? secretCodeRow(code) : null),
       code ? h('p', { class: 'section-note' }, S.account.codeNote) : null,
       h('button', { class: 'btn primary block', type: 'button', onclick: () => close() }, S.account.finish),
       code ? h('button', { class: 'btn block quiet-btn', type: 'button', onclick: () => actions.openCloud() }, S.account.manage) : null,
@@ -173,6 +196,8 @@ export function accountSheet(layer: HTMLElement, actions: AccountActions, welcom
           const account = loadAccount();
           if (account) await deleteAccount(account);
           forgetBoards();
+          friendCode = null;
+          askedCode = false;
           show('ask');
         } catch (error) {
           say(describeError(error));

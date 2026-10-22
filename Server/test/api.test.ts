@@ -354,12 +354,12 @@ test('the Daily board is one list per day, the Boss Rush board ranks the fastest
   const rush = await call('GET', '/v1/boards/rush');
   assert.deepEqual(rush.json.entries.map((e: { name: string; meta: { cs: number } }) => [e.name, e.meta.cs]), [['Ben', 8000], ['Anna', 9000]]);
 
-  assert.equal((await call('PUT', '/v1/boards/casino/score', { token: a.token, body: { profit: 0 } })).status, 422, 'a loss is not on the board');
+  assert.equal((await call('PUT', '/v1/boards/casino/score', { token: a.token, body: { profit: -500 } })).status, 200, 'a loss is on the board too (15.10.2026)');
   await call('PUT', '/v1/boards/casino/score', { token: a.token, body: { profit: 250_000 } });
   await call('PUT', '/v1/boards/casino/score', { token: b.token, body: { profit: 40_000 } });
   const poorer = await call('PUT', '/v1/boards/casino/score', { token: a.token, body: { profit: 1_000 } });
-  assert.equal(poorer.json.accepted, false, 'the best profit stays');
-  assert.deepEqual((await call('GET', '/v1/boards/casino')).json.entries.map((e: { name: string; score: number }) => [e.name, e.score]), [['Anna', 250_000], ['Ben', 40_000]]);
+  assert.equal(poorer.json.accepted, true, 'the board shows the balance as it is now, not the best');
+  assert.deepEqual((await call('GET', '/v1/boards/casino')).json.entries.map((e: { name: string; score: number }) => [e.name, e.score]), [['Ben', 40_000], ['Anna', 1_000]]);
   db.close();
 });
 

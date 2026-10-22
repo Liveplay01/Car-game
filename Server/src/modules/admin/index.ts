@@ -134,7 +134,9 @@ export function adminModule(): ServerModule {
         const body = await readJson(c);
         const status = body.status as IdeaStatus;
         if (!IDEA_STATUSES.includes(status)) throw new ApiError(422, 'invalid_status', `Status is one of ${IDEA_STATUSES.join(', ')}.`);
-        if (status === 'building' && !ideas.isFundedOpen(c.req.param('id'))) throw new ApiError(422, 'not_funded', 'Only a fully funded published idea can be marked in progress.');
+        // Leo, 22.10.2026: an idea may be made before its goal is reached, but only once it is published.
+        const was = ideas.status(c.req.param('id'));
+        if ((status === 'building' || status === 'built') && was !== 'open' && was !== 'building' && was !== 'built') throw new ApiError(422, 'not_published', 'Publish the idea before marking it in progress or built.');
         const title = cleanText(body.title).replace(/\s+/g, ' ');
         const text = cleanText(body.text);
         if (title.length > TITLE_MAX) throw new ApiError(422, 'title_too_long', `The title is at most ${TITLE_MAX} characters.`);

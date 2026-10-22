@@ -205,7 +205,7 @@ export default (S: Strings): Words<Strings> => ({
   },
 
   social: {
-    section: (i) => ['Crew', 'Classifica', 'Club', 'Mafia'][i],
+    section: (i) => ['Classifica', 'Crew', 'Club', 'Mafia'][i],
     clubClosed: 'Il Club si apre al livello 50: casa d’aste e fondo di gioco per grandi capitali.',
     mafiaClosed: 'La Famiglia non perde tempo con i principianti. Neutralizza il primo boss del sindacato (livello 15) e si faranno vivi.',
     offline: 'Crew e Classifiche richiedono il servizio online non collegato a questa copia.',

@@ -9,9 +9,10 @@ Namen in `Web/src/present/strings.ts` (`S.shop`). Wird ein Item ergänzt, gehör
 
 - **Nur Aussehen.** Kein Skin gibt einen Spielvorteil. Ein Fahrzeugtyp hat eigene, faire
   Eigenschaften (anders, nicht besser).
-- **Skins mischen:** Bis zu **5 Car Skins** gleichzeitig. **Jedes Fahrzeug** im Level –
-  eigenes und KI-Verkehr, auch Polizei, Verbrecher-Pickup, Geldtransporter und Lkw – trägt
-  einen davon (fest pro Fahrzeug ausgewählt; Entscheidung Leo, 24.09.2026). Map Skin: einer.
+- **Skins mischen:** Bis zu **8 Car Skins** gleichzeitig, mit dem Upgrade **Garage** bis zu 12
+  (Leo, 22.10.2026; `skinSlots`, Build → Upgrades unter „Garage“, ab Level 6 `skinSlotsLevel`, 4 Stufen,
+  `Careers.skinSlots`). Jedes normale Auto und jeder Fahrzeugtyp trägt einen davon (fest pro Fahrzeug
+  ausgewählt). Map Skin: einer. Police Skin: einer (siehe „Police Skins“).
 - **Sonderfahrzeuge bleiben an der Form erkennbar**, nicht an der Farbe: Polizei am weißen
   Dach mit Lichtbalken und Blaulicht, der Verbrecher an der offenen Ladefläche und seinem
   lila Countdown-Ring, der Geldtransporter an Goldmünze, Goldstreifen und Rundumleuchte,
@@ -481,6 +482,22 @@ einer neuen Schicht nicht neu an.
 | Rainforest | `rainforest` | Epic | Urwaldgrün |
 | Alps | `alps` | Epic | Gletscherblau |
 
+## Police Skins (5, Leo, 22.10.2026)
+
+Ein Police Skin kleidet **jedes Polizeiauto** (auch ein per Dispatch umgewandeltes), immer nur einer
+zugleich (`career.policeSkin`, `Careers.wear`). Er färbt nur die Karosserie (und gibt evtl. Shiny);
+**weißes Dach, Lichtbalken und Blaulicht bleiben immer**, damit die Polizei sofort erkennbar und die
+Jagd fair bleibt. Aus den Truhen (normaler Pool), im Regal „Cars“ unter der Überschrift „Police“.
+Nicht im Casino setzbar, in keinem Album.
+
+| Item | ID | Seltenheit | Aussehen |
+| --- | --- | --- | --- |
+| Autobahn | `autobahn` | Common | Farngrün mit weißem Dach (alte Autobahnpolizei) |
+| Highway Patrol | `highwayPatrol` | Rare | Schwarz-Weiß (Carbon) |
+| Sheriff | `sheriff` | Rare | Mokkabraun |
+| Undercover | `undercover` | Epic | Graphit wie ein ziviler Wagen |
+| Interceptor | `interceptor` | Legendary | Nachtblau, **Shiny** |
+
 ## Fahrzeugtypen (3)
 
 Jeder freigeschaltete Typ taucht gelegentlich in der eigenen Schlange auf (ein Zufallswurf
@@ -505,6 +522,8 @@ Der Classic steht nicht im Regal „Cars“, sondern unter „Honours“ (Leo, 0
 | Epic | 10 | 5 | 2 | 17 |
 | Legendary | 8 | 5 | – | 13 |
 | **Summe** | **39** | **21** | **3** | **63** |
+
+Dazu die 5 Police Skins (1 Common, 2 Rare, 1 Epic, 1 Legendary) im Truhen-Pool.
 
 Dazu die 7 Items aus Daily-Serie und Saison: 70 insgesamt.
 

@@ -145,7 +145,7 @@ export const ADMIN_PAGE = `<!doctype html>
         const btn = (to, label, cls) => '<button type="button" ' + (cls ? 'class="' + cls + '" ' : '') + 'data-to="' + to + '">' + label + '</button>';
         const actions = {
           pending: btn('open', 'Publish', 'primary') + btn('rejected', 'Reject'),
-          open: btn('open', 'Save', 'primary') + (i.raised >= 30000000 ? btn('building', 'Mark in progress') : '') + btn('pending', 'Back to pending') + btn('rejected', 'Reject'),
+          open: btn('open', 'Save', 'primary') + btn('building', 'Mark in progress') + btn('built', 'Mark built') + btn('pending', 'Back to pending') + btn('rejected', 'Reject'),
           building: btn('building', 'Save', 'primary') + btn('built', 'Mark built') + btn('open', 'Reopen'),
           built: btn('built', 'Save', 'primary') + btn('open', 'Reopen'),
           rejected: btn('pending', 'Back to pending'),

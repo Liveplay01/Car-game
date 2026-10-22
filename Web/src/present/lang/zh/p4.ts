@@ -205,7 +205,7 @@ export default (S: Strings): Words<Strings> => ({
   },
 
   social: {
-    section: (i) => ['车队', '排行', '俱乐部', '黑手党'][i],
+    section: (i) => ['排行', '车队', '俱乐部', '黑手党'][i],
     clubClosed: '俱乐部 50 级开放：拍卖行，以及为庞大资产准备的游戏基金。',
     mafiaClosed: '家族没空理会新手。击败(或经过)辛迪加的第一个首领(15 级),他们就会联系你。',
     offline: '车队和排行需要在线服务，而这份游戏副本没有连接。',

@@ -151,13 +151,6 @@ export class IdeaStore {
     return row?.status ?? null;
   }
 
-  isFundedOpen(id: string): boolean {
-    const row = this.db
-      .prepare(`SELECT i.status, ${RAISED} AS raised FROM ideas i WHERE i.id = ?`)
-      .get(id) as { status: IdeaStatus; raised: number } | undefined;
-    return row?.status === 'open' && row.raised >= IDEA_GOAL;
-  }
-
   /** Rewords and sets the status; the first time it is published it gets its publishing time. */
   update(id: string, fields: { title: string; text: string; status: IdeaStatus }, now: number): boolean {
     const shown = fields.status === 'open' || fields.status === 'building' || fields.status === 'built';
