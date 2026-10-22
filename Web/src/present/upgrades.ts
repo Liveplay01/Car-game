@@ -247,6 +247,15 @@ export function wrapText(s: string, width: number, size: number, bold = false): 
     }
   }
   if (lineText) lines.push(lineText);
+  // A last line of one short word ("Std.") reads as a mistake: pull the word before it down too.
+  const last = lines.length - 1;
+  if (last > 0 && !lines[last].includes(' ') && lines[last].length <= 5) {
+    const words = lines[last - 1].split(' ');
+    if (words.length > 2 && measure(`${words[words.length - 1]} ${lines[last]}`, size, bold) <= width) {
+      lines[last] = `${words.pop()} ${lines[last]}`;
+      lines[last - 1] = words.join(' ');
+    }
+  }
   return lines;
 }
 
