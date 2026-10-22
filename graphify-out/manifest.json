@@ -1596,9 +1596,9 @@
     "semantic_hash": "6c84328411db776f61243619db14c6ad"
   },
   "Web/src/present/upgrades.ts": {
-    "mtime": 1792658061.6531441,
-    "seen": 1792659884.0938137,
-    "ast_hash": "eb37873b42fe8402c62852d66f25bd1b",
+    "mtime": 1792660931.838436,
+    "seen": 1792661894.566558,
+    "ast_hash": "f5ac43d42f32bcb3f07d20a0804c60f4",
     "semantic_hash": ""
   },
   "Web/src/present/versus.ts": {
@@ -3495,6 +3495,12 @@
     "mtime": 1792141970.1835532,
     "seen": 1792659884.0938137,
     "ast_hash": "7a63ce09999b5df717f79300a40e65a4",
+    "semantic_hash": ""
+  },
+  ".agents/product-marketing.md": {
+    "mtime": 1792661196.572703,
+    "seen": 1792661894.566558,
+    "ast_hash": "0d2a652c0a9778f136c58ca42275deba",
     "semantic_hash": ""
   }
 }
