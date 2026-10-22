@@ -1,0 +1,16 @@
+LOOT.md
+Server\src\modules\admin\index.ts
+Server\src\modules\admin\page.ts
+Server\src\modules\ideas\store.ts
+Server\test\api.test.ts
+Web\e2e\game.spec.ts
+Web\src\present\lang\de\p4.ts
+Web\src\present\lang\es\p4.ts
+Web\src\present\lang\fr\p4.ts
+Web\src\present\lang\it\p4.ts
+Web\src\present\lang\ja\p4.ts
+Web\src\present\lang\ko\p4.ts
+Web\src\present\lang\zh\p4.ts
+Web\src\ui\accountSheet.ts
+graphify-out\.rebuild.lock
+graphify-out\cache\ast\v0.9.93-s20-g7154a062ba57\01dc36511003c9c3dbe457a082918cb26e65098156373210fbaa1402848abbad.json
