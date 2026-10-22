@@ -140,7 +140,7 @@ export default (S: Strings): Words<Strings> => ({
     newBadge: '新',
     shelf: (i) => ['车', '地图', '挣得', '通行证'][i],
     group: (g, honours = false) => {
-      const name = { common: '普通', rare: '稀有', epic: '史诗', legendary: '传说', vehicles: '车辆', seasons: '季节', maps: '地图' }[g];
+      const name = { common: '普通', rare: '稀有', epic: '史诗', legendary: '传说', police: '警车', vehicles: '车辆', seasons: '季节', maps: '地图' }[g];
       return honours && g !== 'vehicles' && g !== 'seasons' && g !== 'maps' ? `车 · ${name}` : name;
     },
     waiting: (n) => `${n} 个待开`,
@@ -155,6 +155,7 @@ export default (S: Strings): Words<Strings> => ({
       if (item.kind === 'carSkin') return '给路上的车涂装。最多混搭八款。只改变外观，绝无优势。';
       if (item.id === 'bigScreen') return '把你自己的图片或视频放在环岛背后：上传一张图片，或粘贴 YouTube 视频、图片或视频文件的链接。只改变外观，绝无优势。';
       if (item.kind === 'mapSkin') return '让城市成为你自己的地方。只改变外观，绝无优势。';
+      if (item.kind === 'policeSkin') return '为所有警车换装，一次一款。白色车顶和警灯保持不变，追捕依然公平。只改变外观，绝无优势。';
       return `偶尔会出现在你的队列里：${S.shop.trait(item.id)}。`;
     },
     chest(k) {
@@ -186,7 +187,7 @@ export default (S: Strings): Words<Strings> => ({
     found: '已发现',
     findHint: (id) => `${S.shop.item(id)}是唯一纯靠运气的荣誉。在你拿到之前，它会顶替本来会开出的东西。`,
     kind(item) {
-      const kind = item.kind === 'carSkin' ? '车皮肤' : item.kind === 'mapSkin' ? '地图皮肤' : `车辆类型 · ${S.shop.trait(item.id)}`;
+      const kind = item.kind === 'carSkin' ? '车皮肤' : item.kind === 'mapSkin' ? '地图皮肤' : item.kind === 'policeSkin' ? '警车皮肤' : `车辆类型 · ${S.shop.trait(item.id)}`;
       return `${kind} · ${S.shop.rarity(item.rarity)}`;
     },
     opened(o) {
@@ -399,7 +400,7 @@ export default (S: Strings): Words<Strings> => ({
     })[e],
 
   upgrades: {
-    group: (g) => ['警察', '金钱', '驾驶'][g],
+    group: (g) => ['警察', '金钱', '驾驶', '车库'][g],
     maxed: '满级',
     pickOne: '点按一个升级，看看它有什么用。',
     everyStepBought: '每一级都买齐了。',
@@ -425,6 +426,7 @@ export default (S: Strings): Words<Strings> => ({
         chainSaver: '连锁守护',
         winterTyres: '雪地胎',
         fogLamps: '雾灯',
+        skinSlots: '车库',
       })[u],
     explanation: (u) =>
       ({
@@ -447,6 +449,7 @@ export default (S: Strings): Words<Strings> => ({
         chainSaver: '只要你保持流畅，每个班次有一次普通并入不会打断你的连锁。无限模式中无效。',
         winterTyres: '雨、雪和冰雹让路面抓地和刹车损失更少：撞车时滑得更短，车流也刹得更稳。',
         fogLamps: '司机因恶劣天气损失的时间更少，也更早发现危险，而且雾和尘土在屏幕上更淡。',
+        skinSlots: '可同时开启更多车皮肤：每级增加一个栏位，让更多收藏在路上行驶。只改变外观，绝无优势。',
       })[u],
     total(u, steps, c) {
       const t = steps;
@@ -488,6 +491,8 @@ export default (S: Strings): Words<Strings> => ({
           return `找回 ${percent(t * c.winterTyresPerStep)} 损失的抓地力`;
         case 'fogLamps':
           return `损失的反应时间减少 ${percent(t * c.fogLampsPerStep)}`;
+        case 'skinSlots':
+          return `车皮肤栏位 +${t}`;
       }
     },
     stepEffect(u, steps, max, c) {

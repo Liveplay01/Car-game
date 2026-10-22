@@ -38,7 +38,7 @@ export class AudioPlayer {
 
   /** Who stays when the voices run out (default 1): the big hits and the end of a shift, then warnings, then the small ticks. */
   private static readonly priority: Partial<Record<SoundID, number>> = {
-    crash: 3, crashHeavy: 3, explosion: 3, detonation: 3, shiftComplete: 3, shiftFailed: 3,
+    crash: 3, crashHeavy: 3, thump: 3, explosion: 3, detonation: 3, shiftComplete: 3, shiftFailed: 3,
     crashLight: 2, wanted: 2, alarm: 2, ambulance: 2, oversize: 2, wedding: 2, dispatch: 2, takedown: 2, secured: 2, seized: 2, rushHour: 2, paid: 2, escaped: 2,
     chestBurst: 2, chestBurstRare: 2,
     toll: 0, uiTick: 0, meterTick: 0, needleTick: 0,

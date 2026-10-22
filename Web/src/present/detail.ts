@@ -2,7 +2,7 @@ import { type Career, Careers, MINIMUM_ARMS } from '../core/career';
 import { detourArmSlot } from '../core/modules';
 import { type Config, type RoadModule, MODULE_MAX_LEVEL } from '../core/config';
 import { type Upgrade, upgradeMaxSteps } from '../core/levels';
-import { type ChestKind, RARITIES, CHEST_ODDS, chestFinds, chestPrice, chestBundle, tappedOdds, PITY_CHESTS, PITY_LEGENDARY_CHESTS, MAX_CAR_SKINS, BIG_SCREEN, cosmetic, isForSale } from '../core/loot';
+import { type ChestKind, RARITIES, CHEST_ODDS, chestFinds, chestPrice, chestBundle, tappedOdds, PITY_CHESTS, PITY_LEGENDARY_CHESTS, BIG_SCREEN, cosmetic, isForSale } from '../core/loot';
 import { type CasinoGame, type SlotSymbol, SLOT_SYMBOLS, Casino } from '../core/casino';
 import { type Vec2, v } from '../core/vec2';
 import type { RenderList } from './render';
@@ -170,7 +170,7 @@ export const Details = {
     if (!item) return null;
     const owned = Careers.owns(career, id);
     const notes: Detail['notes'] = [];
-    if (item.kind === 'carSkin') notes.push({ text: S.shop.skinsOn(career.carSkins.length, MAX_CAR_SKINS), color: 'accent' });
+    if (item.kind === 'carSkin') notes.push({ text: S.shop.skinsOn(career.carSkins.length, Careers.skinSlots(career)), color: 'accent' });
     // A vehicle type is never worn: it drives by itself. Say so, or the sheet looks like its button is missing.
     if (owned && item.kind === 'vehicleType') notes.push({ text: S.shop.vehicleAuto, color: 'muted' });
     const actions: DetailAction[] = [];

@@ -25,8 +25,8 @@ declare global {
   }
 }
 
-/** The first visit's lesson runs once through (one loop of `.boot-learn` in index.html); nothing waits longer than `BOOT_WAIT_MS`. */
-const LEARN_MS = 3600;
+/** The first visit's lesson runs once through (one loop of `.boot-learn` in index.html, if the game is still loading after that, a button to skip it appears); nothing else waits longer than `BOOT_WAIT_MS`. */
+const LEARN_MS = 10800;
 const BOOT_WAIT_MS = 8000;
 
 // The casino draws on real randomness besides the save's seed, so no result can be worked out beforehand.
@@ -137,8 +137,15 @@ const hasSave = (): boolean => {
 const firstVisit = (!inPortal && !hasSave()) || bootDemo === 'learn';
 const learn = boot?.querySelector('.boot-learn');
 if (boot && learn && firstVisit) {
-  learn.querySelector('strong')!.textContent = S.tutorial.sendCar;
-  learn.querySelector('span')!.textContent = S.tutorial.combo;
+  const L = S.shell.learn;
+  const copy = [L.waitTitle, L.waitBody, L.tapTitle, L.tapBody, L.comboTitle, L.comboBody];
+  learn.querySelectorAll('strong, span[style*="text-wrap"]').forEach((el, i) => (el.textContent = copy[i]));
+  const labels = learn.querySelectorAll('text');
+  labels[0].textContent = L.clean;
+  labels[1].textContent = L.comboLabel;
+  learn.querySelector('.learn-wait > span')!.textContent = L.loading;
+  learn.querySelector('.learn-late p')!.textContent = L.skipNote;
+  learn.querySelector('.learn-late button')!.textContent = L.skip;
   boot.classList.add('learn');
 }
 
@@ -154,11 +161,15 @@ const shell = new Shell(app, canvas, layers);
 startAds();
 startAnalytics();
 // The boot screen stands until the sounds are in, while the scene already draws behind it, so the first seconds of
-// play do not stutter (Leo, 22.10.2026). The first visit's lesson plays once through; a tap goes on at once, and a
-// slow network never holds the game back longer than `BOOT_WAIT_MS`.
+// play do not stutter (Leo, 22.10.2026). The first visit's lesson plays once through (then a skip button, until the game is ready); a tap
+// goes on at once on later visits, and a slow network never holds the game back longer than `BOOT_WAIT_MS`.
 const pause = (ms: number): Promise<void> => new Promise((resolve) => window.setTimeout(resolve, ms));
-const tapped = new Promise<void>((resolve) => boot?.addEventListener('pointerdown', () => resolve(), { once: true }));
-await Promise.race([Promise.all([shell.preload(), firstVisit ? pause(LEARN_MS) : null]), tapped, pause(BOOT_WAIT_MS)]);
+const tapped = new Promise<void>((resolve) => {
+  if (firstVisit) boot?.querySelector('.learn-late button')?.addEventListener('click', () => resolve(), { once: true });
+  else boot?.addEventListener('pointerdown', () => resolve(), { once: true });
+});
+if (firstVisit) void pause(LEARN_MS).then(() => boot?.classList.add('late'));
+await Promise.race([Promise.all([shell.preload(), firstVisit ? pause(LEARN_MS) : null]), tapped, pause(firstVisit ? LEARN_MS + BOOT_WAIT_MS : BOOT_WAIT_MS)]);
 gameLoaded();
 // The game is on screen: the boot screen fades away, and later errors are the game's own business.
 window.removeEventListener('error', bootErrored);

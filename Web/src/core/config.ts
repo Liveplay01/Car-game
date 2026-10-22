@@ -463,6 +463,8 @@ export const baseConfig = {
   chainSavesPerStep: 1,
   winterTyresPerStep: 0.15,
   fogLampsPerStep: 0.15,
+  /** The Garage upgrade (`skinSlots`, Leo 22.10.2026): each step one more car skin on at once; offered from this level. */
+  skinSlotsLevel: 6,
   /** What the bought steps come to in this shift. */
   tightFitTip: 0,
   nearMissTip: 0,

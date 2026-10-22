@@ -34,7 +34,7 @@ export const PITY_CHESTS = 10;
 export const PITY_LEGENDARY_CHESTS = 40;
 export const MAX_CAR_SKINS = 8;
 
-export type CosmeticKind = 'carSkin' | 'mapSkin' | 'vehicleType';
+export type CosmeticKind = 'carSkin' | 'mapSkin' | 'vehicleType' | 'policeSkin';
 export type Season = 'winter' | 'spring' | 'summer' | 'autumn';
 export type CasinoFeat = 'bigWin' | 'megaWin' | 'flipChain' | 'tycoon';
 export type CosmeticSource =
@@ -251,6 +251,12 @@ export const COSMETICS: Cosmetic[] = [
   c('tycoon', 'carSkin', 'legendary', { kind: 'casino', feat: 'tycoon' }),
   // The Museum's Failures shelf (Leo, 15.10.2026): every way to lose a shift, found. Looks only.
   c('crashTest', 'carSkin', 'epic', { kind: 'failures' }),
+  // Police skins (Leo, 22.10.2026): one dresses every police car; the white roof and the light bar always stay.
+  c('autobahn', 'policeSkin', 'common'),
+  c('highwayPatrol', 'policeSkin', 'rare'),
+  c('sheriff', 'policeSkin', 'rare'),
+  c('undercover', 'policeSkin', 'epic'),
+  c('interceptor', 'policeSkin', 'legendary'),
   // The Classic: one Standard Chest in 500 (Leo, 01.10.2026).
   c('classic', 'vehicleType', 'legendary', { kind: 'find', chest: 'standard', chance: 0.002 }),
 ];

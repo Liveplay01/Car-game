@@ -68,6 +68,11 @@ export const Skins = {
       ocean: 'skinOcean',
       obsidian: 'skinObsidian',
       ruby: 'skinRuby',
+      autobahn: 'skinFern',
+      highwayPatrol: 'skinCarbon',
+      sheriff: 'skinMocha',
+      undercover: 'vehicleCarGraphite',
+      interceptor: 'skinMidnight',
       dusk: 'mapDusk',
       sand: 'mapSand',
       neon: 'mapNeon',
@@ -438,6 +443,7 @@ export const Skins = {
       case 'eliteSteel':
       case 'eliteBlaze':
       case 'eliteJade':
+      case 'interceptor':
         return 'shiny';
       case 'crown':
       case 'phoenix':

@@ -140,7 +140,7 @@ export default (S: Strings): Words<Strings> => ({
     newBadge: 'NEU',
     shelf: (i) => ['Autos', 'Karten', 'Verdient', 'Pass'][i],
     group: (g, honours = false) => {
-      const name = { common: 'Gewöhnlich', rare: 'Selten', epic: 'Episch', legendary: 'Legendär', vehicles: 'Fahrzeuge', seasons: 'Jahreszeiten', maps: 'Karten' }[g];
+      const name = { common: 'Gewöhnlich', rare: 'Selten', epic: 'Episch', legendary: 'Legendär', police: 'Polizei', vehicles: 'Fahrzeuge', seasons: 'Jahreszeiten', maps: 'Karten' }[g];
       return honours && g !== 'vehicles' && g !== 'seasons' && g !== 'maps' ? `Autos · ${name}` : name;
     },
     waiting: (n) => (n === 1 ? '1 wartet' : `${n} warten`),
@@ -155,6 +155,7 @@ export default (S: Strings): Words<Strings> => ({
       if (item.kind === 'carSkin') return 'Lackiert die Autos auf der Straße. Mische bis zu acht. Nur Optik, nie ein Vorteil.';
       if (item.id === 'bigScreen') return 'Dein eigenes Bild oder Video hinter dem Kreisverkehr: Lade ein Bild hoch oder füge einen Link zu einem YouTube-Video, einem Bild oder einer Videodatei ein. Nur Optik, nie ein Vorteil.';
       if (item.kind === 'mapSkin') return 'Macht die Stadt zu einem eigenen Ort. Nur Optik, nie ein Vorteil.';
+      if (item.kind === 'policeSkin') return 'Kleidet jedes Polizeiauto ein, ein Skin zur Zeit. Weißes Dach und Lichtbalken bleiben, die Jagd bleibt fair. Nur Optik, nie ein Vorteil.';
       return `Taucht ab und zu in deiner Warteschlange auf: ${S.shop.trait(item.id)}.`;
     },
     chest(k) {
@@ -186,7 +187,7 @@ export default (S: Strings): Words<Strings> => ({
     found: 'Gefunden',
     findHint: (id) => `${S.shop.item(id)} ist die eine Auszeichnung, die Glück ist. Sie ersetzt, was du sonst gezogen hättest, bis du sie hast.`,
     kind(item) {
-      const kind = item.kind === 'carSkin' ? 'Auto-Skin' : item.kind === 'mapSkin' ? 'Karten-Skin' : `Fahrzeugtyp · ${S.shop.trait(item.id)}`;
+      const kind = item.kind === 'carSkin' ? 'Auto-Skin' : item.kind === 'mapSkin' ? 'Karten-Skin' : item.kind === 'policeSkin' ? 'Polizei-Skin' : `Fahrzeugtyp · ${S.shop.trait(item.id)}`;
       return `${kind} · ${S.shop.rarity(item.rarity)}`;
     },
     opened(o) {
@@ -399,7 +400,7 @@ export default (S: Strings): Words<Strings> => ({
     })[e],
 
   upgrades: {
-    group: (g) => ['POLIZEI', 'GELD', 'FAHREN'][g],
+    group: (g) => ['POLIZEI', 'GELD', 'FAHREN', 'GARAGE'][g],
     maxed: 'Max',
     pickOne: 'Tippe ein Upgrade an, um zu sehen, was es tut.',
     everyStepBought: 'Jede Stufe gekauft.',
@@ -425,6 +426,7 @@ export default (S: Strings): Words<Strings> => ({
         chainSaver: 'Kettenretter',
         winterTyres: 'Winterreifen',
         fogLamps: 'Nebelleuchten',
+        skinSlots: 'Garage',
       })[u],
     explanation: (u) =>
       ({
@@ -447,6 +449,7 @@ export default (S: Strings): Words<Strings> => ({
         chainSaver: 'Solange du im Fluss bist, lässt ein einfaches Einfädeln pro Schicht deine Kette in Ruhe, statt sie zu beenden. Nicht in Unlimited.',
         winterTyres: 'Regen, Schnee und Hagel nehmen der Straße weniger Grip und Bremswirkung: Crashs rutschen kürzer, und der Verkehr bremst besser.',
         fogLamps: 'Fahrer verlieren weniger Zeit durch schlechtes Wetter und sehen Gefahren früher, und Nebel und Staub liegen dünner auf dem Bildschirm.',
+        skinSlots: 'Mehr Auto-Skins gleichzeitig: Jede Stufe bringt einen Platz mehr, so fährt mehr von deiner Sammlung auf der Straße. Nur Optik, nie ein Vorteil.',
       })[u],
     total(u, steps, c) {
       const t = steps;
@@ -488,6 +491,8 @@ export default (S: Strings): Words<Strings> => ({
           return `${percent(t * c.winterTyresPerStep)} des verlorenen Grips zurück`;
         case 'fogLamps':
           return `${percent(t * c.fogLampsPerStep)} weniger verlorene Reaktionszeit`;
+        case 'skinSlots':
+          return t === 1 ? '+1 Platz für Auto-Skins' : `+${t} Plätze für Auto-Skins`;
       }
     },
     stepEffect(u, steps, max, c) {

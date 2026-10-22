@@ -505,7 +505,7 @@ export const ProgressPage = {
       case 'museum':
         // What was on screen counts as seen once the Museum is left.
         state.museum.viewed.add(museumId(b.entry));
-        return MuseumPage.addEntry(list, b.entry, r, career, state.museum, state.time, o);
+        return MuseumPage.addEntry(list, b.entry, r, career, state.museum, state.time, o, reduceMotion);
     }
   },
 

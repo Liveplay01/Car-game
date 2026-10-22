@@ -208,6 +208,7 @@ export interface Career {
   unseen: string[];
   carSkins: string[];
   mapSkin: string | null;
+  policeSkin: string | null;
   adChests: number;
   adDay: number;
   /** The free upgrade step an ad gave (the day and how many that day), and the Upgrade's ad boosts (same) and whether one waits for the next round. */
@@ -393,6 +394,7 @@ export const newCareer = (): Career => ({
   unseen: [],
   carSkins: [],
   mapSkin: null,
+  policeSkin: null,
   adChests: 0,
   adDay: -1,
   adUpgradeDay: -1,
@@ -780,7 +782,10 @@ export const Careers = {
     c.unseen = c.unseen.filter((x) => !ids.includes(x));
   },
 
-  isWorn: (c: Career, id: string): boolean => c.carSkins.includes(id) || c.mapSkin === id,
+  /** How many car skins can be on at once: the Garage upgrade adds one a step. */
+  skinSlots: (c: Career): number => MAX_CAR_SKINS + Careers.steps(c, 'skinSlots'),
+
+  isWorn: (c: Career, id: string): boolean => c.carSkins.includes(id) || c.mapSkin === id || c.policeSkin === id,
 
   /** Opens the chest at `index`; `power` 0…1 is how well the player's taps broke it open (`tappedOdds`). */
   openChest(c: Career, index: number, seed: number, day: number | null, power = 0, config: Config = baseConfig): ChestOpening | null {
@@ -800,20 +805,24 @@ export const Careers = {
     return { chest: kind, item: roll.item, isDuplicate: false, money: 0 };
   },
 
-  /** Wears or takes off: up to eight car skins, one map skin. */
+  /** Wears or takes off: car skins up to the slots (`skinSlots`), one map skin, one police skin. */
   wear(c: Career, id: string): boolean {
     const item = cosmetic(id);
     if (!item || !c.collection.includes(id)) return false;
     if (item.kind === 'carSkin') {
       if (c.carSkins.includes(id)) c.carSkins = c.carSkins.filter((x) => x !== id);
       else {
-        if (c.carSkins.length >= MAX_CAR_SKINS) return false;
+        if (c.carSkins.length >= Careers.skinSlots(c)) return false;
         c.carSkins = [...c.carSkins, id];
       }
       return true;
     }
     if (item.kind === 'mapSkin') {
       c.mapSkin = c.mapSkin === id ? null : id;
+      return true;
+    }
+    if (item.kind === 'policeSkin') {
+      c.policeSkin = c.policeSkin === id ? null : id;
       return true;
     }
     return false;

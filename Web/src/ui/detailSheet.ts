@@ -7,6 +7,7 @@ import { CanvasDrawer } from '../present/draw';
 import { css } from '../present/theme';
 import { type SignalDetail, SignalLoop } from '../present/museumSignal';
 import { MONEY_MARK } from '../present/icons';
+import { ICON_LOOP } from '../present/conditionIcons';
 import { S } from '../present/strings';
 import type { ScreenAction } from '../present/flow';
 import { h, animatedIcon, coinMark } from './dom';
@@ -87,6 +88,7 @@ export class DetailSheet {
     this.art.style.height = `${ART}px`;
     this.drawer = new CanvasDrawer(this.art);
     this.art.addEventListener('pointerdown', () => (this.artClock = performance.now()));
+    this.art.addEventListener('pointerenter', () => (this.artClock = performance.now()));
     this.drawer.resize(ART, ART, 2);
     this.signalCanvas = h('canvas', { class: 'detail-signal-art', width: SignalLoop.size * 2, height: SignalLoop.size * 2, 'aria-hidden': 'true' });
     this.signalCanvas.style.width = `${SignalLoop.size}px`;
@@ -131,12 +133,14 @@ export class DetailSheet {
     }
     this.sync(detail);
     this.paintSignal();
-    if (performance.now() - this.artClock < ART_PLAYS) this.paintArt();
+    // A Museum picture plays again every `ICON_LOOP` seconds while the sheet stands; any other plays for a moment.
+    if (this.shownArt?.k === 'museum' || performance.now() - this.artClock < ART_PLAYS) this.paintArt();
   }
 
   private paintArt(): void {
     if (!this.shownArt) return;
-    const t = this.reducedMotion() ? Infinity : (performance.now() - this.artClock) / 1000;
+    const played = (performance.now() - this.artClock) / 1000;
+    const t = this.reducedMotion() ? Infinity : this.shownArt.k === 'museum' ? played % ICON_LOOP : played;
     const list = new RenderList({ viewport: v(ART, ART), center: v(0, 0), focus: v(ART / 2, ART / 2), scale: 1 }, 'card');
     Details.drawArt(list, this.shownArt, v(ART / 2, ART / 2), ART, baseConfig, t);
     this.drawer.draw(list);

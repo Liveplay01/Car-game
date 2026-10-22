@@ -46,15 +46,16 @@ export type Shelf = 0 | 1 | 2 | 3; // cars maps honours pass
 export const SHELVES: Shelf[] = [0, 1, 2, 3];
 
 /** The groups of the Cars and Honours shelves, each under its heading. */
-export type CarGroup = Rarity | 'vehicles' | 'seasons';
+export type CarGroup = Rarity | 'police' | 'vehicles' | 'seasons';
 export type ShelfGroup = CarGroup | 'maps';
-const CAR_GROUPS: CarGroup[] = ['common', 'rare', 'epic', 'legendary', 'vehicles', 'seasons'];
+const CAR_GROUPS: CarGroup[] = ['common', 'rare', 'epic', 'legendary', 'police', 'vehicles', 'seasons'];
 /** The Honours shelf (Leo, 08.10.2026): the cars by rarity, then the vehicles, then the maps, also by rarity. */
 const HONOUR_GROUPS: ShelfGroup[] = ['common', 'rare', 'epic', 'legendary', 'vehicles', 'maps'];
 
 function carGroup(item: Cosmetic): CarGroup | null {
   // A vehicle that is an honour (the Classic) stands on the Honours shelf only.
   if (item.kind === 'vehicleType') return item.source.kind === 'chest' ? 'vehicles' : null;
+  if (item.kind === 'policeSkin') return 'police';
   if (item.kind !== 'carSkin') return null;
   if (item.source.kind === 'season') return 'seasons';
   return item.source.kind === 'chest' ? item.rarity : null;
@@ -750,8 +751,8 @@ export const ShopPage = {
     if (item.kind === 'mapSkin') return ShopPage.addMapPreview(list, item.id, center, scale, opacity);
     // The car itself, drawn with the game's own art and turned a little, like the earlier
     // web UI's thumbnails: the shop shows exactly what drives.
-    const type: VehicleType = item.kind === 'vehicleType' ? (item.id as VehicleType) : 'car';
-    const look = item.kind === 'carSkin' ? lookFor(7, [item.id]) : null;
+    const type: VehicleType = item.kind === 'vehicleType' ? (item.id as VehicleType) : item.kind === 'policeSkin' ? 'police' : 'car';
+    const look = item.kind === 'carSkin' || item.kind === 'policeSkin' ? lookFor(7, [item.id]) : null;
     const preview = new List({ viewport: list.camera.viewport, center: v(0, 0), focus: center, scale: (46 * scale) / baseConfig.carLength }, list.background);
     CarArt.add(
       preview,

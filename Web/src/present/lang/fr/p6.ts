@@ -140,7 +140,7 @@ export default (S: Strings): Words<Strings> => ({
     newBadge: 'NOUVEAU',
     shelf: (i) => ['Voitures', 'Cartes', 'Mérité', 'Passe'][i],
     group: (g, honours = false) => {
-      const name = { common: 'Commun', rare: 'Rare', epic: 'Épique', legendary: 'Légendaire', vehicles: 'Véhicules', seasons: 'Saisons', maps: 'Cartes' }[g];
+      const name = { common: 'Commun', rare: 'Rare', epic: 'Épique', legendary: 'Légendaire', police: 'Police', vehicles: 'Véhicules', seasons: 'Saisons', maps: 'Cartes' }[g];
       return honours && g !== 'vehicles' && g !== 'seasons' && g !== 'maps' ? `Voitures · ${name}` : name;
     },
     waiting: (n) => (n === 1 ? '1 en attente' : `${n} en attente`),
@@ -155,6 +155,7 @@ export default (S: Strings): Words<Strings> => ({
       if (item.kind === 'carSkin') return 'Habille les voitures sur la route. Combinez-en jusqu’à huit. Purement esthétique.';
       if (item.id === 'bigScreen') return 'Votre image ou vidéo en arrière-plan du rond-point : téléversez une photo ou collez un lien vidéo. Purement esthétique.';
       if (item.kind === 'mapSkin') return 'Donne un décor unique à la ville. Purement esthétique.';
+      if (item.kind === 'policeSkin') return 'Habille toutes les voitures de police, un skin à la fois. Le toit blanc et la rampe lumineuse restent : la poursuite reste équitable. Purement esthétique.';
       return `Apparaît ponctuellement dans votre file : ${S.shop.trait(item.id)}.`;
     },
     chest(k) {
@@ -186,7 +187,7 @@ export default (S: Strings): Words<Strings> => ({
     found: 'Trouvé',
     findHint: (id) => `${S.shop.item(id)} est la seule distinction régie par la chance. Elle remplace votre tirage habituel jusqu’à obtention.`,
     kind(item) {
-      const kind = item.kind === 'carSkin' ? 'Skin de voiture' : item.kind === 'mapSkin' ? 'Skin de carte' : `Type de véhicule · ${S.shop.trait(item.id)}`;
+      const kind = item.kind === 'carSkin' ? 'Skin de voiture' : item.kind === 'mapSkin' ? 'Skin de carte' : item.kind === 'policeSkin' ? 'Skin de police' : `Type de véhicule · ${S.shop.trait(item.id)}`;
       return `${kind} · ${S.shop.rarity(item.rarity)}`;
     },
     opened(o) {
@@ -399,7 +400,7 @@ export default (S: Strings): Words<Strings> => ({
     })[e],
 
   upgrades: {
-    group: (g) => ['POLICE', 'ARGENT', 'CONDUITE'][g],
+    group: (g) => ['POLICE', 'ARGENT', 'CONDUITE', 'GARAGE'][g],
     maxed: 'Max',
     pickOne: 'Touchez une amélioration pour en voir les effets.',
     everyStepBought: 'Toutes les améliorations achetées.',
@@ -425,6 +426,7 @@ export default (S: Strings): Words<Strings> => ({
         chainSaver: 'Sauveur de chaîne',
         winterTyres: 'Pneus hiver',
         fogLamps: 'Antibrouillards',
+        skinSlots: 'Garage',
       })[u],
     explanation: (u) =>
       ({
@@ -447,6 +449,7 @@ export default (S: Strings): Words<Strings> => ({
         chainSaver: 'Tant que vous êtes dans le rythme, une insertion normale ne brise pas votre chaîne une fois par service. Hors Sans limites.',
         winterTyres: 'La pluie, neige et grêle dégradent moins l’adhérence et le freinage.',
         fogLamps: 'Les conducteurs repèrent les obstacles plus tôt et la brume est moins opaque à l’écran.',
+        skinSlots: 'Plus de skins de voiture en même temps : chaque niveau ajoute un emplacement, et plus de votre collection roule sur la route. Purement esthétique.',
       })[u],
     total(u, steps, c) {
       const t = steps;
@@ -488,6 +491,8 @@ export default (S: Strings): Words<Strings> => ({
           return `${percent(t * c.winterTyresPerStep)} de l’adhérence préservée`;
         case 'fogLamps':
           return `${percent(t * c.fogLampsPerStep)} de temps de réaction préservé`;
+        case 'skinSlots':
+          return t === 1 ? '+1 emplacement de skin' : `+${t} emplacements de skin`;
       }
     },
     stepEffect(u, steps, max, c) {

@@ -250,13 +250,14 @@ export const UPGRADES = [
   'chainSaver',
   'winterTyres',
   'fogLamps',
+  'skinSlots',
 ] as const;
 
 export type Upgrade = (typeof UPGRADES)[number];
-export type UpgradeGroup = 0 | 1 | 2;
+export type UpgradeGroup = 0 | 1 | 2 | 3;
 
 /**
- * The Upgrades page's headings (Leo, 10.10.2026): what an upgrade is for (0 Police, 1 Money, 2 Driving). The page's order is sorted by it, and the Build trials take a group away: `UPGRADES` keeps its order,
+ * The Upgrades page's headings (Leo, 10.10.2026): what an upgrade is for (0 Police, 1 Money, 2 Driving, 3 Garage). The page's order is sorted by it, and the Build trials take a group away: `UPGRADES` keeps its order,
  * a challenge link carries the steps by position.
  */
 export const UPGRADE_GROUP: Record<Upgrade, UpgradeGroup> = {
@@ -279,6 +280,7 @@ export const UPGRADE_GROUP: Record<Upgrade, UpgradeGroup> = {
   dashcam: 2,
   winterTyres: 2,
   fogLamps: 2,
+  skinSlots: 3,
 };
 
 export const upgradeMaxSteps: Record<Upgrade, number> = {
@@ -301,6 +303,7 @@ export const upgradeMaxSteps: Record<Upgrade, number> = {
   chainSaver: 3,
   winterTyres: 5,
   fogLamps: 5,
+  skinSlots: 4,
 };
 
 /** The shield and backup have fixed prices (`shieldPrices`, `backupPrices`); the others grow by `upgradeCostGrowth`. */
@@ -322,12 +325,14 @@ const priceFactor: Record<Exclude<Upgrade, 'shield' | 'backup'>, number> = {
   chainSaver: 2,
   winterTyres: 1.5,
   fogLamps: 1.5,
+  skinSlots: 2,
 };
 
-/** The insurances only once there is something to insure, the weather upgrades once there is weather. */
+/** The insurances only once there is something to insure, the weather upgrades once there is weather, the Garage after the first five levels. */
 export function upgradeUnlockLevel(u: Upgrade, c: Config): number {
   if (u === 'insurance' || u === 'robberyInsurance') return c.crashCostLevel;
   if (u === 'winterTyres' || u === 'fogLamps') return c.lightRainLevel;
+  if (u === 'skinSlots') return c.skinSlotsLevel;
   return 1;
 }
 

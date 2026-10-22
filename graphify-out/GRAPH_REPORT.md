@@ -1,36 +1,36 @@
 # Graph Report - Car game  (2026-10-22)
 
 ## Corpus Check
-- 454 files · ~1,138,003 words
+- 458 files · ~1,145,101 words
 - Verdict: corpus is large enough that graph structure adds value.
 - Unclassified: 26 file(s) not represented in the graph (top: .css 9, (none) 9, .log 4)
 
 ## Summary
-- 4733 nodes · 15618 edges · 156 communities (141 shown, 15 thin omitted)
-- Extraction: 95% EXTRACTED · 5% INFERRED · 0% AMBIGUOUS · INFERRED: 753 edges (avg confidence: 0.84)
+- 5663 nodes · 16742 edges · 222 communities (210 shown, 12 thin omitted)
+- Extraction: 95% EXTRACTED · 5% INFERRED · 0% AMBIGUOUS · INFERRED: 879 edges (avg confidence: 0.86)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `972f8f79`
+- Built from commit: `2ebaf820`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
 ## Community Hubs (Navigation)
-- session.ts
+- flow.ts
 - strings.ts
-- de/p6.ts
+- format.ts
 - sheets.ts
 - levels.ts
 - Vehicle
 - shop.ts
-- make_casino_sounds.py
+- make_street_sounds.py
 - HostMessage
-- shell.ts
+- .constructor
 - h
 - siteData.ts
 - draw.ts
 - trials.ts
-- traffic.ts
+- world.ts
 - app.ts
 - mafiaPanel
 - carArt.ts
@@ -39,11 +39,11 @@
 - cloud.ts
 - World
 - GameSession
-- world.ts
+- .endShift
 - ranksPanel.ts
 - preview.ts
-- hud.ts
-- v
+- session.ts
+- RenderList
 - dom.ts
 - db.ts
 - push/index.ts
@@ -58,25 +58,25 @@
 - DESIGN-LANGUAGE.md
 - admin/index.ts
 - .play
-- Vec2
+- v
 - CanvasDrawer
-- specials.ts
-- roundabout.ts
+- traffic.ts
+- vec2.ts
 - Room
 - present/casino.ts
-- main.ts
+- crazygames.ts
 - VersusLobby
 - modules.ts
 - ui/backdrop.ts
 - money
 - detailSheet.ts
 - IDEA.md
-- core/versus.ts
+- versusLobby.ts
 - scripts/test.mjs
 - server.ts
 - referrals/index.ts
 - lib.mjs
-- present/museum.ts
+- museumSignal.ts
 - feedback.ts
 - SwipeMode
 - .react
@@ -86,43 +86,39 @@
 - Server/package.json
 - Fehler: Crashes (maxStrikes 1, maxPoliceCrashes 3)
 - PlayerStore
-- Career
+- shell.ts
 - core/config.ts
 - ui/photo.ts
 - vite
 - compilerOptions
-- reel-wait.mjs
+- reel-sky.mjs
 - Deterministic simulation (same seed + taps = same result)
 - reel-rate.mjs
 - Web/package.json
 - names.ts
 - messages.ts
-- transitions.ts
+- clubPanel.ts
 - reel-crash.mjs
 - core/museum.ts
 - compilerOptions
 - Browserspiel (Vite + TypeScript + Canvas)
 - reel-chest.mjs
-- reel-sky.mjs
-- .constructor
+- ads.ts
+- VersusMatch
 - reel-city.mjs
 - game.spec.ts
 - Roundabout Timing (RAT)
 - Bewertung einer Einfädelung (Crash, Tight Fit, Sauber)
 - Casino (Shop · Casino)
-- reel-ten.mjs
 - Trials (fixed-seed special shifts)
 - scripts
 - fr/p6.ts
 - career.ts
 - .open
 - translate.mjs
-- Car Game server (Hono + SQLite)
 - Car Game Web (Roundabout Timing browser game)
 - Chests (Standard, Premium, Criminal Hunt, Event)
-- devProbe.ts
 - Sanfter Einstieg (forIntro-Leiter)
-- render.mjs
 - Marketing/VIDEO.md
 - it/p6.ts
 - NoticeQueue
@@ -130,70 +126,138 @@
 - trailer.mjs
 - Ring as UI ('one city, one ring')
 - Animated icon system (animatedIcons.ts)
-- Scroller
+- Game design review: how Roundabout Timing itself can become more fun, sticky and replayable (as of 08.10.2026)
 - ad-rage.mjs
 - short-wide.mjs
 - Daily Shift and streak
 - seal.ts
 - CLAUDE.md
 - ad-calm.mjs
-- CrewStore
+- push.ts
 - Prestige
 - trailer/package.json
-- .react
+- .prepareShift
 - Product Marketing Context
 - Native App-Anmutung (schwebendes Dock, iOS-Stil)
 - batch.mjs
 - short.mjs
 - Stack
 - Changelog API (/changelog.json)
-- Your player (one name for ranks, friends, cloud)
-- PWA (manifest, service worker, shortcuts)
-- Build with us feedback (bugs and ideas)
 - room.ts
-- Google Play Trusted Web Activity
 - ja/p6.ts
 - ko/p6.ts
 - Deployment (Docker, nginx, Port 5050, Coolify)
 - Spielsprachen (EN, DE, ES, FR, IT, JA, KO, ZH)
 - Name Roundabout Timing (RAT)
 - Zielgeräte (Handy Hochformat einhändig, Desktop)
-- .connect
+- main.ts
 - challenge.ts
 - ShiftResult
-- patchNotes.ts
+- present/museum.ts
 - i18n.ts
 - devDependencies
 - sim.mjs
 - licenses.ts
-- .start
-- Recorder
+- 2. Gerankte Liste der Optimierungsmöglichkeiten
+- Growth, Retention and Returning Users Across All Channels (Roundabout Timing)
 - .paintSignal
 - Lamps
+- Retention mechanics for Day-1 and returning users in casual/hyper-casual browser games (applied to "Roundabout Timing")
+- Portals, community and off-game channels for bringing players back to a free browser game
+- Owned re-engagement channels for a browser game: web push, PWA install, alternatives
+- condition-icons.mjs
+- accountSheet.ts
+- Codebase and Umami audit: what in Roundabout Timing drives its CrazyGames metrics (as of 08.10.2026)
+- Visual-design evidence for high-CTR casual/hypercasual game thumbnails (applied to Roundabout Timing)
+- ui-generation.js
+- Gameplay Conversion, FTUE, Playtime and Crash Rate for Browser/Portal Games (Mobile Web Focus)
+- Game-design retention mechanics for casual one-tap skill games (applied to a small browser game)
+- CrazyGames thumbnails and CTR for a one-tap roundabout/traffic-timing game
+- CTR benchmarks and A/B-testing methods for game thumbnails and store assets (solo dev, small traffic)
+- socialPage.ts
+- Retention-Hooks und Lücken in Roundabout Timing: Codebase-Audit (Stand 09.10.2026, HEAD `be4c442`, Arbeitsbaum mit uncommitted Änderungen)
+- Vec2
+- .perform
+- itch.io: cover image size, ratio, GIF, cropping
+- CrazyGames platform: metrics, Basic Launch → Full Launch, SDK v3 levers
+- modules.ts
+- Transitions Polish
+- Transitions UI generation
+- numpy
+- de/p6.ts
+- zh/p6.ts
+- os
+- make_casino_sounds.py
+- .takeTip
+- Transitions.dev
+- CgIcon
+- HapticID
+- Retention benchmarks and diagnosis for casual / hyper-casual browser and mobile games (state: Oct 2026)
+- transitions-dev/SKILL.md
+- Card hover tilt
+- Skeleton
+- Avatar group hover
+- Error state shake
+- Accordion expand
+- make_icon.py
+- Ein Near-Miss-Thumbnail hebt die CTR
+- Success check
+- Input clear with dissolve
+- Card resize
+- Number pop-in
+- Notification badge
+- Text states swap
+- Menu dropdown
+- Modal open / close
+- Panel reveal
+- Page side-by-side
+- Icon swap
+- Shimmer text
+- Tabs sliding
+- Tooltip open/close
+- Texts reveal
+- Toast open / close
+- Like button
+- Learn more hover
+- Checkbox check
+- Spinning counter
+- Toggle
+- Thinking states
+- Reasoning stream
+- Streaming text
+- Matrix dot loader
+- Banner stacking
+- Text morph
+- Text swap soft
+- Donut chart
+- Skeleton + generation texts
+- 2. Portal vs direct traffic: why portal players don't return, and what portal levers exist
+- 4. How to measure retention without user IDs or cookies (Umami, GDPR/EU)
+- 5. Common failure modes for skill/timing one-tap games (and what a lightweight diagnosis would show)
 
 ## God Nodes (most connected - your core abstractions)
 1. `GameSession` - 224 edges
 2. `World` - 189 edges
 3. `v()` - 165 edges
-4. `Vec2` - 154 edges
+4. `Vec2` - 155 edges
 5. `h()` - 144 edges
 6. `RenderList` - 128 edges
 7. `mul()` - 94 edges
 8. `add()` - 90 edges
-9. `money()` - 86 edges
-10. `ColorToken` - 78 edges
+9. `money()` - 88 edges
+10. `ColorToken` - 80 edges
 
 ## Surprising Connections (you probably didn't know these)
-- `Ton: keine sich wiederholenden Sounds` --semantically_similar_to--> `Motion- und Haptik-Regeln (je häufiger, desto weniger Animation)`  [INFERRED] [semantically similar]
-  Marketing/VIDEO.md → DESIGN-LANGUAGE.md
-- `Plausibility-only anti-cheat` --semantically_similar_to--> `Sealed save (HMAC seal)`  [INFERRED] [semantically similar]
-  Server/README.md → Web/README.md
-- `Google Play Trusted Web Activity` --semantically_similar_to--> `CrazyGames-Einbettung (?crazygames)`  [INFERRED] [semantically similar]
-  Web/README.md → CLAUDE.md
-- `Casino-Szenen fixieren Zufall über den Seed, Quoten bleiben echt` --semantically_similar_to--> `Fair gebautes Casino`  [INFERRED] [semantically similar]
-  Marketing/VIDEO.md → LOOT.md
-- `Invites / referrals` --shares_data_with--> `Invite a friend flow`  [EXTRACTED]
-  Server/README.md → Web/README.md
+- `Inferences` --references--> `daily()`  [INFERRED]
+  research_notes/Retention im Browserspiel steigern/codebase_audit.md → Web/icon/make_shortcut_icons.py
+- `The three texts` --references--> `done()`  [INFERRED]
+  .claude/skills/transitions-ui-generation/02-skeleton-texts.md → Web/src/ui/accountSheet.ts
+- `Tuning` --references--> `done()`  [INFERRED]
+  .claude/skills/transitions-ui-generation/02-skeleton-texts.md → Web/src/ui/accountSheet.ts
+- `Gaps` --references--> `startAnalytics()`  [INFERRED]
+  research_notes/Retention im Browserspiel steigern/codebase_audit.md → Web/src/ui/analytics.ts
+- `Rang 5: Comeback-Truhe mit festen, sichtbaren Chancen` --references--> `summary()`  [INFERRED]
+  implementation_ranking.md → Web/src/ui/cloudSheet.ts
 
 ## Import Cycles
 - 2-file cycle: `Web/src/present/casino.ts -> Web/src/present/casinoKit.ts -> Web/src/present/casino.ts`
@@ -216,155 +280,155 @@
 - **Determinismus-Kette (fester Takt, Seed, Zeitstempel-Taps, Replays, Challenges)** — claude_fixed_timestep, foundation_game_loop, foundation_determinism, claude_challenge_links, foundation_docking_points [INFERRED 0.85]
 - **Wiederkehr-Mechaniken (Weg zurück, Push, Leise Hilfe, Streak-Anzeigen), gemessen mit Umami** — claude_way_back, claude_push_notifications, claude_quiet_help, claude_streak_ads_moments, claude_analytics_umami [INFERRED 0.85]
 
-## Communities (156 total, 15 thin omitted)
+## Communities (222 total, 12 thin omitted)
 
-### Community 0 - "session.ts"
-Cohesion: 0.03
-Nodes (108): Achievements, Careers, Config, RoadModule, dailyEvent(), Elite, Feat, Feats (+100 more)
+### Community 0 - "flow.ts"
+Cohesion: 0.07
+Nodes (38): BuilderState, MapGeo, StreetBuilderPage, barTab(), BUILD_PAGES, BuildLayout, Built, MODULE_COLORS (+30 more)
 
 ### Community 1 - "strings.ts"
 Cohesion: 0.06
-Nodes (49): StreakMilestone, BossKind, CityEvent, weatherSeverity(), FeatGoal, VehicleRole, comboMultiplier(), Fmt (+41 more)
+Nodes (45): TitleRule, FeatGoal, NearMiss, CasinoFeat, PassReward, PassStep, VehicleRole, Fmt (+37 more)
 
-### Community 2 - "de/p6.ts"
-Cohesion: 0.04
-Nodes (25): MASTERY_THRESHOLDS, masteryNumeral(), MONEY_MARK, chest(), lockedHint(), opened(), stepEffect(), toast() (+17 more)
+### Community 2 - "format.ts"
+Cohesion: 0.11
+Nodes (10): comboMultiplier(), grouping, multiplier(), trimmed(), MONEY_MARK, chest(), lockedHint(), opened() (+2 more)
 
 ### Community 3 - "sheets.ts"
 Cohesion: 0.06
-Nodes (63): Settings, hasCrew(), PushChoice, pushState, chooseLanguage(), currentLanguage(), known(), LegalId (+55 more)
+Nodes (49): Settings, PUSH_CHOICES, PushChoice, chooseLanguage(), currentLanguage(), known(), LANGUAGES, LegalId (+41 more)
 
 ### Community 4 - "levels.ts"
 Cohesion: 0.09
-Nodes (42): builtArmSlots(), cloneConfig(), slotDistance(), challengesOf(), applyBoss(), armPrice(), bossAt(), canBuildArm() (+34 more)
+Nodes (39): builtArmSlots(), cloneConfig(), slotDistance(), weatherSeverity(), challengesOf(), applyBoss(), armPrice(), bossAt() (+31 more)
 
 ### Community 5 - "Vehicle"
 Cohesion: 0.09
-Nodes (29): capsule, closestPoints(), contact, contactPoint(), gap(), collide(), RigidBody, unitInertia() (+21 more)
+Nodes (24): capsule, contact, contactPoint(), gap(), RigidBody, CrashFault, activeMilitaryTruck(), bombWentOff() (+16 more)
 
 ### Community 6 - "shop.ts"
-Cohesion: 0.09
-Nodes (59): add(), left(), TAU, Kind, fitText(), flame(), Pen, Shape (+51 more)
+Cohesion: 0.08
+Nodes (52): CasinoTarget, ChestReel, Reel, ShopSection, Pen, TINT, MenuKit, drift() (+44 more)
 
-### Community 7 - "make_casino_sounds.py"
+### Community 7 - "make_street_sounds.py"
+Cohesion: 0.22
+Nodes (24): burst(), casino_stop(), chips_in(), coin_clink(), coin_land(), highpass(), lowpass(), modes() (+16 more)
+
+### Community 9 - ".constructor"
 Cohesion: 0.07
-Nodes (49): boom(), engine(), envelope(), load(), main(), place(), resample(), riser() (+41 more)
-
-### Community 9 - "shell.ts"
-Cohesion: 0.03
-Nodes (82): Hint, knownShortLink(), made, shortLink(), cloudEnabled, openCrewLink(), setConsumer(), watchCrewLaunches() (+74 more)
+Nodes (17): Cited Findings, cloudStoppedHere(), onAccountChange(), onScoresSynced(), Modifier, accountReady(), celebrate(), invitedRoom() (+9 more)
 
 ### Community 10 - "h"
-Cohesion: 0.07
-Nodes (79): addCrewXp(), claimGift(), CrewGift, CrewMember, CrewPreview, CrewProfile, CrewStanding, CrewView (+71 more)
+Cohesion: 0.09
+Nodes (71): addCrewXp(), claimGift(), CrewGift, CrewMember, CrewPreview, CrewProfile, CrewStanding, CrewView (+63 more)
 
 ### Community 11 - "siteData.ts"
-Cohesion: 0.09
-Nodes (43): CHEST_ODDS, RARITIES, MUSEUM_SHELVES, shelfEntries(), SignalKind, LANGUAGES, collection(), fingerprint() (+35 more)
+Cohesion: 0.08
+Nodes (45): albumItems(), ALBUMS, chestPrice(), isHonour(), RARITIES, MUSEUM_SHELVES, shelfEntries(), LANDMARKS (+37 more)
 
 ### Community 12 - "draw.ts"
 Cohesion: 0.13
-Nodes (17): GroundGrain, sameItem(), sameItems(), samePoint(), samePoints(), Still, inlineMoneyWidth(), textPieces() (+9 more)
+Nodes (16): GroundGrain, sameItem(), sameItems(), samePoint(), samePoints(), Still, coneArt(), CJK (+8 more)
 
 ### Community 13 - "trials.ts"
 Cohesion: 0.05
-Nodes (70): BOSS_KINDS, TrialRule, Weather, bossInBlackout(), Darkness, firstBossLevel(), UPGRADE_GROUP, UpgradeGroup (+62 more)
+Nodes (70): BOSS_KINDS, BossKind, LegendaryRule, TrialRule, Weather, bossInBlackout(), Darkness, firstBossLevel() (+62 more)
 
-### Community 14 - "traffic.ts"
-Cohesion: 0.08
-Nodes (58): ambulanceThrough(), clearArc(), clearZone(), isFireRun(), isOnClearRoad(), joinsClearRoad(), longestExit(), noteMergeNearAmbulance() (+50 more)
+### Community 14 - "world.ts"
+Cohesion: 0.06
+Nodes (66): AmbulancePhase, ambulanceThrough(), firstAmbulance(), isFireRun(), updateAmbulance(), reaches(), unitInertia(), Lead (+58 more)
 
 ### Community 15 - "app.ts"
-Cohesion: 0.11
-Nodes (50): hono, AppOptions, modules(), displayCode(), normalizeCode(), Config, ApiError, cleanText() (+42 more)
+Cohesion: 0.09
+Nodes (54): hono, AppOptions, modules(), normalizeCode(), Config, ApiError, cleanText(), integerField() (+46 more)
 
 ### Community 16 - "mafiaPanel"
-Cohesion: 0.09
-Nodes (27): dateOf(), MafiaHost, mafiaPanel, assistToggle(), bar(), bits(), chips(), happened() (+19 more)
+Cohesion: 0.17
+Nodes (24): dateOf(), MafiaHost, mafiaPanel, assistToggle(), bar(), bits(), chips(), happened() (+16 more)
 
 ### Community 17 - "carArt.ts"
-Cohesion: 0.04
-Nodes (65): angleDelta(), dist(), Crashed, Dent, isCarType(), STEP, CarArt, carArts (+57 more)
+Cohesion: 0.06
+Nodes (46): Crashed, Dent, isCarType(), carArts, CarDraw, outlines, PAINTS, Part (+38 more)
 
 ### Community 18 - "crews/index.ts"
-Cohesion: 0.09
-Nodes (35): randomCode(), PROFILE_BOARDS, BOT_NAMES, BOT_WEEK_XP, botsOf(), DEMOTE, GOAL_PER_MEMBER, GROUP_REAL (+27 more)
+Cohesion: 0.06
+Nodes (41): Cited Findings, transaction(), PROFILE_BOARDS, BOT_NAMES, BOT_WEEK_XP, botsOf(), DEMOTE, GOAL_PER_MEMBER (+33 more)
 
 ### Community 19 - "clubPanel.ts"
-Cohesion: 0.10
-Nodes (50): Fund, FundView, GIFTS, fetchIdeas(), giveToIdea(), Idea, IDEA_MAX, IDEA_MIN (+42 more)
+Cohesion: 0.16
+Nodes (32): bar(), cash(), ClubHost, clubPanel, auctionLots(), auctionRoom(), auctionRows(), begin() (+24 more)
 
 ### Community 20 - "cloud.ts"
-Cohesion: 0.07
-Nodes (78): accountOf(), adopt(), arrive(), check(), choosing(), cloudChanged(), CloudDeps, cloudLinked() (+70 more)
+Cohesion: 0.09
+Nodes (54): SaveGame, accountOf(), adopt(), arrive(), check(), choosing(), cloudChanged(), CloudDeps (+46 more)
 
 ### Community 21 - "World"
 Cohesion: 0.05
-Nodes (9): MergeRating, VersusPhase, forWeather(), criminalVehicle(), approach(), approachSpeed(), hermite(), rollPass() (+1 more)
+Nodes (8): MergeRating, VersusPhase, criminalVehicle(), approach(), approachSpeed(), hermite(), rollPass(), World
 
 ### Community 22 - "GameSession"
 Cohesion: 0.03
-Nodes (8): strongTaps(), tapPower(), Reward, Intro, NewsItem, latestNote(), GameSession, installMafiaDebug()
+Nodes (6): Cited Findings, conditionsOf(), Intro, NewsItem, ConditionChips, GameSession
 
-### Community 23 - "world.ts"
-Cohesion: 0.08
-Nodes (27): AmbulancePhase, firstAmbulance(), reaches(), flowCapacity(), EliminationReason, FailCause, ShiftOutcome, MilitaryPhase (+19 more)
+### Community 23 - ".endShift"
+Cohesion: 0.28
+Nodes (4): EliminationReason, FailCause, ShiftOutcome, ShiftState
 
 ### Community 24 - "ranksPanel.ts"
-Cohesion: 0.05
-Nodes (57): dayNumber(), TitleId, Incoming, Account, accountListeners, BASE, BOARD_TOP, BoardEntry (+49 more)
+Cohesion: 0.07
+Nodes (48): dayNumber(), Incoming, fetchCrewBoard(), Account, accountListeners, BASE, BOARD_TOP, BoardEntry (+40 more)
 
 ### Community 25 - "preview.ts"
 Cohesion: 0.06
 Nodes (45): ACCENT, AMBER, ASPHALT, BACKGROUND_BOTTOM, BACKGROUND_TOP, BLACK, BOARD, BOARD_EDGE (+37 more)
 
-### Community 26 - "hud.ts"
-Cohesion: 0.06
-Nodes (44): ConditionEntry, AdPill, ConditionIntro, FAIL_CHIP_SIZE, HUD, IntroLayout, islandBlock(), IslandRow (+36 more)
+### Community 26 - "session.ts"
+Cohesion: 0.03
+Nodes (87): Cited Findings, ComboChange, CrashReport, GameEvent, Scoring, markReward(), trialProgress(), seriesLeaders() (+79 more)
 
-### Community 27 - "v"
-Cohesion: 0.06
-Nodes (45): CrashReport, markReward(), trialProgress(), fromAngle(), mul(), normalize(), v(), CameraFxTuning (+37 more)
+### Community 27 - "RenderList"
+Cohesion: 0.12
+Nodes (8): CrashEffects, ExplosionEffects, MapScars, bulbsArt(), RingSignals, arc(), circle(), RenderList
 
 ### Community 28 - "dom.ts"
-Cohesion: 0.07
-Nodes (25): ANIMATED_ICONS, AnimatedIconId, build, chest, coin, game, gear, heat (+17 more)
+Cohesion: 0.08
+Nodes (24): ANIMATED_ICONS, AnimatedIconId, build, chest, coin, game, gear, heat (+16 more)
 
 ### Community 29 - "db.ts"
-Cohesion: 0.06
-Nodes (58): RFC-8188, RFC-8291, RFC-8292, @hono/node-server, clientIp(), createApp(), address(), headerName() (+50 more)
+Cohesion: 0.10
+Nodes (35): clientIp(), createApp(), address(), headerName(), integer(), readConfig(), secret(), vapidOf() (+27 more)
 
 ### Community 30 - "push/index.ts"
 Cohesion: 0.04
-Nodes (29): BoardDef, BOARDS, dayOf(), LIMITS, ParsedScore, utcDay(), ALL_TIME, awake() (+21 more)
+Nodes (37): RFC-8188, RFC-8291, RFC-8292, ScoreEvent, ALL_TIME, awake(), CAP_MS, COMEBACK_DAYS (+29 more)
 
 ### Community 31 - "booking.ts"
-Cohesion: 0.06
-Nodes (35): AchievementStep, achievementTotal(), FAMILIES, STAT_KEYS, TIER_PAY, GameMode, DAILY_EVENTS, Challenge (+27 more)
+Cohesion: 0.04
+Nodes (62): Achievements, AchievementStep, achievementTotal(), FAMILIES, Family, STAT_KEYS, TIER_PAY, GameMode (+54 more)
 
 ### Community 32 - ".perform"
-Cohesion: 0.10
-Nodes (3): rematchId, screenTab(), SideSwipe
+Cohesion: 0.11
+Nodes (5): screenTab(), SocialSection, ShopFlow, SocialState, SideSwipe
 
 ### Community 33 - "Db"
 Cohesion: 0.05
-Nodes (8): Db, ChallengeStore, FeedbackStore, FriendStore, ReferralStore, hashCode(), SyncStore, TuningStore
+Nodes (10): randomCode(), Db, ChallengeStore, FeedbackStore, FriendStore, FundStore, ReferralStore, hashCode() (+2 more)
 
 ### Community 34 - "save.ts"
-Cohesion: 0.14
-Nodes (34): familyOf(), readLot(), HINTS, newCareer(), newSave(), roundTimes(), isObject(), CosmeticSource (+26 more)
+Cohesion: 0.08
+Nodes (49): familyOf(), AuctionBot, ceilings, NAMES, readLot(), streams, newCareer(), newSave() (+41 more)
 
 ### Community 35 - "LOOT.md"
 Cohesion: 0.07
 Nodes (43): Mehr Touren (Frühling, Sommer), Alben (Maps, Commons … Honours, Tours), Bug Hunters (Ladybug … Firefly, Beetle), Auto-Formen (Beetle, Pocket, GT Coupé, Roadster, Jeep, Hot Rod), Car Skins (39), Casino-Skins (Lucky Strike, Mega Win, Double Down, Tycoon), Truhe aufklopfen (8 Tipps, chestTaps), Truhen-Tabelle (+35 more)
 
 ### Community 36 - "drivers.ts"
-Cohesion: 0.13
-Nodes (25): gravity(), busStop(), canSpeedUp(), drive(), hasTransporterOnRing(), leadsOnRing(), Occupant, paceMerge() (+17 more)
+Cohesion: 0.10
+Nodes (34): gravity(), busStop(), canSpeedUp(), drive(), flowCapacity(), hasTransporterOnRing(), leadOnExit(), leadsOnRing() (+26 more)
 
 ### Community 37 - ".frame"
-Cohesion: 0.07
-Nodes (5): CityPulse, ProgressState, SessionOutput, advanceRush(), UpgradeState
+Cohesion: 0.06
+Nodes (7): CityPulse, ProgressSection, Layout, ProgressState, Scroller, ShopState, UpgradeState
 
 ### Community 38 - "Fit"
 Cohesion: 0.32
@@ -379,44 +443,44 @@ Cohesion: 0.07
 Nodes (26): ADMIN_PAGE, BUG_HUNTER_SKINS, Feedback, FEEDBACK_KINDS, FEEDBACK_MIGRATIONS, FEEDBACK_STATUSES, FeedbackKind, FeedbackRow (+18 more)
 
 ### Community 41 - ".play"
-Cohesion: 0.13
-Nodes (4): AdFlow, BuildFlow, PageHost, ShopFlow
+Cohesion: 0.14
+Nodes (4): AdFlow, BuildFlow, PageHost, RewardedOutcome
 
-### Community 42 - "Vec2"
-Cohesion: 0.06
-Nodes (33): ComboChange, ExplosionKind, ExplosionReport, GameEvent, MergeReport, armOutward(), Vec2, seriesLeaders() (+25 more)
+### Community 42 - "v"
+Cohesion: 0.11
+Nodes (35): ConditionEntry, v(), addOdometer(), coinSize(), drawFitted(), fitText(), flame(), flameTag() (+27 more)
 
 ### Community 43 - "CanvasDrawer"
-Cohesion: 0.15
-Nodes (4): CanvasDrawer, isBright(), Camera, Grain
+Cohesion: 0.14
+Nodes (5): CanvasDrawer, isBright(), Camera, Grain, picture()
 
-### Community 44 - "specials.ts"
-Cohesion: 0.18
-Nodes (15): Lead, joinsMilitaryZone(), bossDue(), criminalCaught(), CriminalPhase, criminalTimeLeft(), isInSecureZone(), joinsTooClose() (+7 more)
+### Community 44 - "traffic.ts"
+Cohesion: 0.13
+Nodes (36): clearArc(), clearZone(), isOnClearRoad(), joinsClearRoad(), longestExit(), noteMergeNearAmbulance(), reservedAmbulanceArm(), isMilitaryOverdue() (+28 more)
 
-### Community 45 - "roundabout.ts"
-Cohesion: 0.09
-Nodes (43): mergePathLength(), moduleLevel(), moduleZone(), skid(), leadOnExit(), ringLaneOccupants(), wreckPoints(), approachLimitAt() (+35 more)
+### Community 45 - "vec2.ts"
+Cohesion: 0.07
+Nodes (71): closestPoints(), mergePathLength(), collide(), skid(), velocityAt(), Bezier, bezierDerivative(), bezierPoint() (+63 more)
 
 ### Community 46 - "Room"
 Cohesion: 0.13
-Nodes (5): BestOf, GuestMessage, RateLimit, Room, LobbyParts
+Nodes (3): GuestMessage, RateLimit, LobbyEvents
 
 ### Community 47 - "present/casino.ts"
 Cohesion: 0.07
-Nodes (54): Casino, CASINO_GAMES, CasinoGame, CasinoRound, CoinFlip, RouletteSpin, SALT, ScratchCard (+46 more)
+Nodes (43): CasinoGame, SlotSpin, SlotSymbol, UpgradeRoll, rarityRank(), lerpV(), CashOut, CasinoCue (+35 more)
 
-### Community 48 - "main.ts"
+### Community 48 - "crazygames.ts"
 Cohesion: 0.06
-Nodes (43): boot, bootErrored(), bootFailed(), bootRejected(), canvas, fail, [failTitle, failBody, failLink], hasSave() (+35 more)
+Nodes (61): CTR hängt am Cover bei 180 Pixeln, nicht an Text, D1 und Returning Users brauchen einen Grund für morgen ab Minute eins, Die Crash-Rate von 3,53 % hat eine wahrscheinliche Ursache im Code, Die erste Minute entscheidet über Full Launch, Diese Woche (noch im Basic-Launch-Fenster), Fazit, Mobile Conversion verliert zwei Drittel der Spieler vor dem ersten echten Zug, Offene Fragen (+53 more)
 
 ### Community 49 - "VersusLobby"
-Cohesion: 0.13
-Nodes (4): isJoinCode(), newSeries(), Member, VersusLobby
+Cohesion: 0.10
+Nodes (6): BestOf, Member, Room, seatToken(), LobbyParts, VersusLobby
 
 ### Community 50 - "modules.ts"
-Cohesion: 0.10
-Nodes (14): CrashFault, isEscorted(), Path, Pose, Layout, isChased(), isTransported(), canBargeIn() (+6 more)
+Cohesion: 0.14
+Nodes (5): isEscorted(), Layout, isChased(), isTransported(), VehicleType
 
 ### Community 51 - "ui/backdrop.ts"
 Cohesion: 0.12
@@ -424,47 +488,47 @@ Nodes (16): BackdropMedia, parseBackdropLink(), YOUTUBE_HOSTS, youtubeEmbed(), y
 
 ### Community 52 - "money"
 Cohesion: 0.16
-Nodes (25): baseConfig, detourShareAt(), MODULE_UPGRADE_SHARE, moduleEntries(), modulePrice(), moduleUpgradePrice(), RAIN, Range (+17 more)
+Nodes (24): detourShareAt(), MODULE_UPGRADE_SHARE, moduleEntries(), modulePrice(), moduleUpgradePrice(), RAIN, Range, towSpeedupAt() (+16 more)
 
 ### Community 53 - "detailSheet.ts"
-Cohesion: 0.18
-Nodes (3): DetailSheet, rich(), rubber()
+Cohesion: 0.16
+Nodes (5): Detail, DetailArt, DetailSheet, rich(), rubber()
 
 ### Community 54 - "IDEA.md"
-Cohesion: 0.10
-Nodes (27): Gebaut 05.–07.10.: Streak Freeze, Heat, Touren, Achievements, Challenge-Builder (kein Freitext, keine Moderation), Co-op-Multiplayer (2–4 Spieler, ein Crash trifft alle), Discord mit Patch Notes aus /changelog.json, Gauntlet (Unlimited mit Lauf-Effekten), GlitchTip für Fehlerberichte, Wachstum: mehr Spieler erreichen, Landeseiten für Suchbegriffe (Car Circle Alternative) (+19 more)
+Cohesion: 0.13
+Nodes (21): Discord mit Patch Notes aus /changelog.json, GlitchTip für Fehlerberichte, Wachstum: mehr Spieler erreichen, Landeseiten für Suchbegriffe (Car Circle Alternative), Google-Play-Eintrag als Suchmaschine, Teams (Teamcode, Team-Ranking, Gemeinschaftsziel), Umami-Zahlen als Entscheidungsgrundlage, Web Push für die Daily (+13 more)
 
-### Community 55 - "core/versus.ts"
-Cohesion: 0.15
-Nodes (11): addRound(), BEST_OF, INPUT_DELAY, PLACE_POINTS, REACTION, standings(), VERSUS_MAX_PLAYERS, VERSUS_MIN_PLAYERS (+3 more)
+### Community 55 - "versusLobby.ts"
+Cohesion: 0.16
+Nodes (13): BEST_OF, INPUT_DELAY, isJoinCode(), isSeriesOver(), newSeries(), PLACE_POINTS, REACTION, Series (+5 more)
 
 ### Community 56 - "scripts/test.mjs"
-Cohesion: 0.12
-Nodes (9): careful(), completed(), fakeStorage(), lostAt(), play(), rushShift(), sealedWith(), lotKey() (+1 more)
+Cohesion: 0.10
+Nodes (11): Trailer-Pipeline – Roundabout Timing, Wie es funktioniert, careful(), completed(), fakeStorage(), lostAt(), play(), rushShift() (+3 more)
 
 ### Community 57 - "server.ts"
-Cohesion: 0.18
-Nodes (7): Entry, EntryRow, LEADERBOARD_MIGRATIONS, listed(), ListedEntry, parseMeta(), ScoreStore
+Cohesion: 0.10
+Nodes (16): Entry, EntryRow, LEADERBOARD_MIGRATIONS, listed(), ListedEntry, parseMeta(), ScoreStore, IDLE_SAVE_DAYS (+8 more)
 
 ### Community 58 - "referrals/index.ts"
 Cohesion: 0.15
-Nodes (22): ScoreEvent, Challenge, CHALLENGE_LIFETIME_MS, CHALLENGE_MIGRATIONS, gonePage(), Mode, MODES, sharePage() (+14 more)
+Nodes (23): displayCode(), Challenge, CHALLENGE_LIFETIME_MS, CHALLENGE_MIGRATIONS, gonePage(), Mode, MODES, sharePage() (+15 more)
 
 ### Community 59 - "lib.mjs"
-Cohesion: 0.18
-Nodes (20): boot(), botLog(), CLIPS, freeze(), installBot(), LANDSCAPE, markStart(), open() (+12 more)
+Cohesion: 0.15
+Nodes (21): boot(), botLog(), CLIPS, freeze(), installBot(), LANDSCAPE, markStart(), open() (+13 more)
 
-### Community 60 - "present/museum.ts"
-Cohesion: 0.04
-Nodes (44): SpecialKind, pose(), at(), follow(), remember(), seenOf(), Shown, BOSS_FOLLOWERS (+36 more)
+### Community 60 - "museumSignal.ts"
+Cohesion: 0.09
+Nodes (26): SpecialKind, ICON_LOOP, DetailAction, DetailRow, Details, ScreenAction, Beacon, BLUE (+18 more)
 
 ### Community 61 - "feedback.ts"
-Cohesion: 0.07
-Nodes (16): AudioPlayer, Haptics, RainVoice, Voice, Window, CasinoFlow, CasinoHost, HapticID (+8 more)
+Cohesion: 0.06
+Nodes (14): AudioPlayer, Haptics, RainVoice, Voice, Window, CasinoFlow, CasinoHost, MUSIC_LAYERS (+6 more)
 
 ### Community 62 - "SwipeMode"
-Cohesion: 0.15
-Nodes (4): Brief, SwipeMode, ModeMessage, ModePan
+Cohesion: 0.14
+Nodes (3): SwipeMode, ModeMessage, ModePan
 
 ### Community 64 - "Ranglisten-Dienst (Server/, Node 22 + Hono + SQLite)"
 Cohesion: 0.13
@@ -475,31 +539,31 @@ Cohesion: 0.09
 Nodes (18): a, b, booms, bustT, c, clutchT, crash1, crash2 (+10 more)
 
 ### Community 66 - "vite.config.ts"
-Cohesion: 0.13
-Nodes (13): address(), email(), GAME_NAME, HOSTING, LEGAL_DOCS, LEGAL_UPDATED, LegalSection, missingLegal() (+5 more)
+Cohesion: 0.08
+Nodes (28): address(), email(), GAME_NAME, HOSTING, LEGAL_DOCS, LEGAL_UPDATED, legalDoc, LegalSection (+20 more)
 
 ### Community 67 - "Server/package.json"
 Cohesion: 0.09
-Nodes (21): dependencies, hono, @hono/node-server, description, devDependencies, @types/node, typescript, engines (+13 more)
+Nodes (22): @hono/node-server, dependencies, hono, @hono/node-server, description, devDependencies, @types/node, typescript (+14 more)
 
 ### Community 68 - "Fehler: Crashes (maxStrikes 1, maxPoliceCrashes 3)"
-Cohesion: 0.10
-Nodes (21): Code-Quality-Regeln (lean, strikte Typen, keine Abstraktion), Crashes sind echte Physik (core/crash.ts, drivers.ts), Engineering for feel (Apple-Stil Over-Engineering erwünscht), Fail-Pause (ResultBanner.breath 1,2 s), Wenige Meldungen (NoticeQueue), Fahrzeugfarben sind Spielinformation (UI-tabu), Wer ist schuld (einfädelndes Auto zählt), core/drivers.ts (Fahrermodell) (+13 more)
+Cohesion: 0.11
+Nodes (18): Code-Quality-Regeln (lean, strikte Typen, keine Abstraktion), Engineering for feel (Apple-Stil Over-Engineering erwünscht), Fail-Pause (ResultBanner.breath 1,2 s), Wenige Meldungen (NoticeQueue), GameSession (present), Einleitungs-Drawer (INTROS), Nur zeigen, was erreicht ist (Unlocks.isKnown), Fahrzeugfarben sind Spielinformation (UI-tabu) (+10 more)
 
 ### Community 69 - "PlayerStore"
 Cohesion: 0.14
 Nodes (8): hashToken(), isUniqueViolation(), NameTaken, Player, PLAYER_MIGRATIONS, PlayerRow, PlayerStore, toPlayer()
 
-### Community 70 - "Career"
-Cohesion: 0.11
-Nodes (18): Auction, Career, CasinoPending, DAY_MS, Grade, Letter, LetterKind, Loan (+10 more)
+### Community 70 - "shell.ts"
+Cohesion: 0.07
+Nodes (26): decodeChallenge(), fromBase64Url(), knownShortLink(), made, shortLink(), cloudEnabled, openCrewLink(), setConsumer() (+18 more)
 
 ### Community 71 - "core/config.ts"
 Cohesion: 0.21
 Nodes (20): ascensionRank(), LANDMARK_PRESTIGE, levelKind, levelTrialLevel(), rematchKind(), TrialId, goal(), name() (+12 more)
 
 ### Community 72 - "ui/photo.ts"
-Cohesion: 0.19
+Cohesion: 0.21
 Nodes (18): qrcode-generator, PatternToken, PerformancePattern, css(), dataBar(), drawPerformancePattern(), drawVectorToken(), inviteCode() (+10 more)
 
 ### Community 73 - "vite"
@@ -510,9 +574,9 @@ Nodes (14): vite, tries, auctions, CHECKPOINTS, PROFILES, story, target, levels 
 Cohesion: 0.10
 Nodes (19): compilerOptions, allowImportingTsExtensions, erasableSyntaxOnly, lib, module, moduleResolution, noEmit, noFallthroughCasesInSwitch (+11 more)
 
-### Community 75 - "reel-wait.mjs"
-Cohesion: 0.14
-Nodes (17): b1, b2, b3, beat(), booms, end, flashes, run (+9 more)
+### Community 75 - "reel-sky.mjs"
+Cohesion: 0.06
+Nodes (44): booms, end, f, fHit, flashes, fTap, hit, landing() (+36 more)
 
 ### Community 76 - "Deterministic simulation (same seed + taps = same result)"
 Cohesion: 0.15
@@ -523,72 +587,68 @@ Cohesion: 0.12
 Nodes (17): booms, c1, crash(), end, f, fHit, flashes, fTap (+9 more)
 
 ### Community 78 - "Web/package.json"
-Cohesion: 0.13
-Nodes (13): @fontsource-variable/overpass, @playwright/test, dependencies, @fontsource-variable/overpass, peerjs, qrcode-generator, description, @types/node (+5 more)
+Cohesion: 0.15
+Nodes (12): @fontsource-variable/overpass, dependencies, @fontsource-variable/overpass, peerjs, qrcode-generator, description, @types/node, typescript (+4 more)
 
 ### Community 79 - "names.ts"
 Cohesion: 0.17
 Nodes (14): crewName(), checkName(), NAME_MAX, NAME_MIN, NameCheck, nameKey(), RESERVED, ANYWHERE (+6 more)
 
 ### Community 80 - "messages.ts"
-Cohesion: 0.27
-Nodes (17): isInt(), Raw, Series, cleanName(), INPUT_KINDS, isNumber(), isReaction(), isText() (+9 more)
+Cohesion: 0.32
+Nodes (15): isInt(), Raw, cleanName(), INPUT_KINDS, isNumber(), isReaction(), isText(), readBySlot() (+7 more)
 
-### Community 81 - "transitions.ts"
-Cohesion: 0.17
-Nodes (14): barTab(), Screen, Tab, TAB_BAR, RenderItem, keyIsBuild(), keyPosition(), keyTab() (+6 more)
+### Community 81 - "clubPanel.ts"
+Cohesion: 0.08
+Nodes (37): AuctionEvent, AuctionRun, Lot, Fund, FundView, GIFTS, fetchIdeas(), giveToIdea() (+29 more)
 
 ### Community 82 - "reel-crash.mjs"
 Cohesion: 0.12
 Nodes (16): booms, c1, crash(), end, f, fHit, flashes, fTap (+8 more)
 
 ### Community 83 - "core/museum.ts"
-Cohesion: 0.10
-Nodes (22): WEATHERS, FAIL_CAUSES, bossPlace(), eventLevel(), BY_ID, DARK_KINDS, DARK_LEVEL, DarkKind (+14 more)
+Cohesion: 0.09
+Nodes (30): WEATHERS, FAIL_CAUSES, bossPlace(), eventLevel(), firstLevelOf(), BY_ID, DARK_KINDS, DARK_LEVEL (+22 more)
 
 ### Community 84 - "compilerOptions"
 Cohesion: 0.12
 Nodes (16): compilerOptions, allowImportingTsExtensions, isolatedModules, lib, module, moduleResolution, noEmit, noFallthroughCasesInSwitch (+8 more)
 
 ### Community 85 - "Browserspiel (Vite + TypeScript + Canvas)"
-Cohesion: 0.13
-Nodes (16): Browserspiel (Vite + TypeScript + Canvas), Kurzlinks für Challenges (/c/CODE), Neue Regeln in core/, Werte in config.ts, Fester Takt 120 Hz mit Zeitstempel-Taps, GameSession (present), Einleitungs-Drawer (INTROS), Arbeitsweise neues Spielsystem (core, Bot, darstellen), Browser-Tests über window.__probe (+8 more)
+Cohesion: 0.17
+Nodes (13): Browserspiel (Vite + TypeScript + Canvas), Kurzlinks für Challenges (/c/CODE), Neue Regeln in core/, Werte in config.ts, Fester Takt 120 Hz mit Zeitstempel-Taps, Arbeitsweise neues Spielsystem (core, Bot, darstellen), Browser-Tests über window.__probe, Aufbau von Web/src (core, present, audio, storage, net, ui), Nur Web-Version (Apple-Schiene gelöscht) (+5 more)
 
 ### Community 86 - "reel-chest.mjs"
 Cohesion: 0.12
 Nodes (14): a, b, booms, c, CHEST, d, end, flashes (+6 more)
 
-### Community 87 - "reel-sky.mjs"
-Cohesion: 0.12
-Nodes (14): booms, end, f, fHit, flashes, fTap, hit, open (+6 more)
+### Community 87 - "ads.ts"
+Cohesion: 0.23
+Nodes (12): AdBreak, AdCommand, AdPlacementInfo, adReady(), onRewardedAudio(), prepare(), push(), quiet() (+4 more)
 
-### Community 88 - ".constructor"
-Cohesion: 0.15
-Nodes (3): Input, InputKind, MatchFeel
+### Community 88 - "VersusMatch"
+Cohesion: 0.11
+Nodes (8): addRound(), Standing, standings(), VersusBot, Input, InputKind, MatchStart, VersusMatch
 
 ### Community 89 - "reel-city.mjs"
 Cohesion: 0.15
 Nodes (14): booms, cities, end, flashes, h, name(), sfx, shots (+6 more)
 
 ### Community 90 - "game.spec.ts"
-Cohesion: 0.17
-Nodes (7): Api, Boards, Entry, Game, openRanks(), perform(), Places
+Cohesion: 0.14
+Nodes (8): @playwright/test, Api, Boards, Entry, Game, openRanks(), perform(), Places
 
 ### Community 91 - "Roundabout Timing (RAT)"
 Cohesion: 0.14
 Nodes (15): Car Circle (Shoom Games) inspiration, Real crash physics (crash.ts, drivers.ts), Gas tanker and Military truck, Hard vs. soft fail rules, Level trials and Build trials, Mayhem mode, Ring bots and AI traffic (minRingBots), Roundabout Timing (RAT) (+7 more)
 
 ### Community 92 - "Bewertung einer Einfädelung (Crash, Tight Fit, Sauber)"
-Cohesion: 0.16
-Nodes (14): Auto-Formen (present/carModels.ts), KI verhungert nicht an der Linie (aiPatience, aiPushInGap), KI-Verkehr (Bots, minRingBots, Seed-Zufall), Basis / Kernloop, Kollision per Kapseln, keine Physik-Engine, Combo-Multiplikator (x1 bis x6), Andockpunkte für spätere Systeme, Kein Tap-Cooldown, gehaltener Tap, Nachrücken ohne Ruck (+6 more)
+Cohesion: 0.11
+Nodes (20): Auto-Formen (present/carModels.ts), Crashes sind echte Physik (core/crash.ts, drivers.ts), KI verhungert nicht an der Linie (aiPatience, aiPushInGap), KI-Verkehr (Bots, minRingBots, Seed-Zufall), Basis / Kernloop, Kollision per Kapseln, keine Physik-Engine, Combo-Multiplikator (x1 bis x6), core/drivers.ts (Fahrermodell) (+12 more)
 
 ### Community 93 - "Casino (Shop · Casino)"
-Cohesion: 0.15
-Nodes (14): Offener Bug: Geld zurückspulen über Cloud-Kopie, Bewusst nicht gebaut (Luck-Bonus, Set-Boni …), Casino-Konto auf dem Server (nicht gebaut), Casino (Shop · Casino), Fair gebautes Casino, Casino-Rangliste (casinoProfit), Crash (96 % Rückzahlung), Doppelt oder nichts (faire Münze) (+6 more)
-
-### Community 94 - "reel-ten.mjs"
-Cohesion: 0.15
-Nodes (13): landing(), booms, end, flashes, hits, play(), sfx, shots (+5 more)
+Cohesion: 0.10
+Nodes (20): Gebaut 05.–07.10.: Streak Freeze, Heat, Touren, Achievements, Challenge-Builder (kein Freitext, keine Moderation), Offener Bug: Geld zurückspulen über Cloud-Kopie, Co-op-Multiplayer (2–4 Spieler, ein Crash trifft alle), Bewusst nicht gebaut (Luck-Bonus, Set-Boni …), Gauntlet (Unlimited mit Lauf-Effekten), Neue Elemente für späte Level (Falschfahrer, Traktor, Radrennen), Neu-Punkte außerhalb der Segmente (+12 more)
 
 ### Community 95 - "Trials (fixed-seed special shifts)"
 Cohesion: 0.16
@@ -603,40 +663,28 @@ Cohesion: 0.13
 Nodes (5): chest(), lockedHint(), opened(), stepEffect(), total()
 
 ### Community 98 - "career.ts"
-Cohesion: 0.06
-Nodes (54): AuctionBot, AuctionEvent, AuctionRun, ceilings, Lot, NAMES, streams, MASTERY_CLASSIC_TIERS (+46 more)
+Cohesion: 0.05
+Nodes (70): Auction, Career, Careers, HINTS, MASTERY_CLASSIC_TIERS, MASTERY_GOALS, MASTERY_THRESHOLDS, MasteryCompletion (+62 more)
 
 ### Community 99 - ".open"
 Cohesion: 0.25
 Nodes (3): confirm(), PhotoHooks, PhotoView
 
 ### Community 100 - "translate.mjs"
-Cohesion: 0.19
-Nodes (10): __dirname, getArgs(), I18N_FILE, LANG_DIR, main(), MODULES, ROOT, scaffoldLanguage() (+2 more)
+Cohesion: 0.09
+Nodes (19): CACHE, FOOTAGE, frameDir, OUT, page, pending, range, ROOT (+11 more)
 
-### Community 101 - "Car Game server (Hono + SQLite)"
-Cohesion: 0.19
-Nodes (12): Leaderboards (shift-level, unlimited, daily, rush, casino), Car Game server (Hono + SQLite), Challenge short links, Multiplayer relay (Cloudflare TURN), Invites / referrals, Player names and profanity filter, Server privacy and data retention, Remote tuning (+4 more)
-
-### Community 102 - "Car Game Web (Roundabout Timing browser game)"
-Cohesion: 0.23
-Nodes (13): City Fund (legacy), AdSense and rewarded ads, Casino (play money only), The Club (Auction House, City Fund), CrazyGames integration, Canvas drawing performance (baking, sprites), itch.io embed, Legal pages (privacy, imprint) (+5 more)
+### Community 101 - "Car Game Web (Roundabout Timing browser game)"
+Cohesion: 0.06
+Nodes (49): CrazyGames-Einbettung (?crazygames), Vollbild-Inszenierung rewardBurst (nur drei Momente), Freiwillige Werbung (nur Rewarded Ads), Streak-Anzeigen und Schlüsselmomente, Leaderboards (shift-level, unlimited, daily, rush, casino), Car Game server (Hono + SQLite), Challenge short links, City Fund (legacy) (+41 more)
 
 ### Community 103 - "Chests (Standard, Premium, Criminal Hunt, Event)"
 Cohesion: 0.18
 Nodes (13): Albums (set rewards and frames), Casino (Crash, Slots, Skin-Upgrade, Roulette, Scratch Card, Double or nothing), Casino presentation (reveal first, then money), Chests (Standard, Premium, Criminal Hunt, Event), City Evolution, Economy: earning and spending money, Mastery (8 goals, extended to IV and V), Street modules (Toll Booth, Speed Camera, Tow Depot, Billboard, Detour Sign) (+5 more)
 
-### Community 104 - "devProbe.ts"
-Cohesion: 0.18
-Nodes (6): Window, Bot, installProbe(), Probe, Snapshot, Spread
-
 ### Community 105 - "Sanfter Einstieg (forIntro-Leiter)"
 Cohesion: 0.20
 Nodes (12): Analytics mit Umami (ui/analytics.ts), core/levels.ts (forIntro, forEase, forLevel), Sanfter Einstieg (forIntro-Leiter), Späte Inhalte an Prestige-Ränge (bossesPerRank), Rechtliches (Datenschutz, Impressum, legal.ts), Benachrichtigungen (Web Push, net/push.ts), Leise Hilfe (Careers.careerShift, assisted), Rekord in Sicht (Goals.record) (+4 more)
-
-### Community 106 - "render.mjs"
-Cohesion: 0.17
-Nodes (9): CACHE, FOOTAGE, frameDir, OUT, page, pending, range, ROOT (+1 more)
 
 ### Community 107 - "Marketing/VIDEO.md"
 Cohesion: 0.30
@@ -647,7 +695,7 @@ Cohesion: 0.13
 Nodes (5): chest(), lockedHint(), opened(), stepEffect(), total()
 
 ### Community 109 - "NoticeQueue"
-Cohesion: 0.10
+Cohesion: 0.11
 Nodes (5): AchievementCard, Item, NoticeQueue, ShownNotice, TipQueue
 
 ### Community 110 - "ad-speed.mjs"
@@ -663,8 +711,12 @@ Cohesion: 0.22
 Nodes (11): Accessibility and Reduce Motion, Camera under pressure (cameraFx.ts), Critical Merge, Emergency vehicles (ambulance, fire engine), Perfect Chain and Flow State, Jammed merges (no points), Perfect Run, Battery saver and adaptive resolution (+3 more)
 
 ### Community 113 - "Animated icon system (animatedIcons.ts)"
-Cohesion: 0.20
-Nodes (9): Vehicle style study, Animated icon system (animatedIcons.ts), Icon style (24 grid, 1.8 stroke, theme colours), New icon template and checklist, Reduce Motion handling for icons, Icon animation technical rules, DESIGN-LANGUAGE.md (moved design language), Product definition (users and purpose) (+1 more)
+Cohesion: 0.40
+Nodes (5): Animated icon system (animatedIcons.ts), Icon style (24 grid, 1.8 stroke, theme colours), New icon template and checklist, Reduce Motion handling for icons, Icon animation technical rules
+
+### Community 114 - "Game design review: how Roundabout Timing itself can become more fun, sticky and replayable (as of 08.10.2026)"
+Cohesion: 0.05
+Nodes (41): 1. Core loop and game feel: is the one-tap timing satisfying, and what can RAT take from Car Circle, Crossy Road, Stack, Helix Jump, Smash Hit and Geometry Dash?, 2. First 5 minutes: what a new player sees, learns and unlocks; too much meta too early or too little reward? Is the difficulty curve fair?, 3. Session pacing: shift length, restart friction, "one more run" pull, what ends sessions, 4. Feature bloat vs focus: what to simplify, hide or move later; which underused gems to surface earlier, 5. Content variety: how often does something new appear in the first 30 minutes?, 6. Social and sharing: challenge links, ghost replays, leaderboards: how visible, how easy?, 7. Accessibility and UX issues visible in code and docs, 8. Which improvements most help retention and playtime? (Prioritized, including IDEA.md items) (+33 more)
 
 ### Community 115 - "ad-rage.mjs"
 Cohesion: 0.20
@@ -690,9 +742,9 @@ Nodes (9): Animierte Icons (ui/animatedIcons.ts), Frontend-Übergänge (transiti
 Cohesion: 0.22
 Nodes (7): calm, fades, quiet, RING, sfx, shots, titles
 
-### Community 121 - "CrewStore"
-Cohesion: 0.11
-Nodes (6): transaction(), CrewStore, Gift, toCrew(), RewardItem, FundStore
+### Community 121 - "push.ts"
+Cohesion: 0.08
+Nodes (40): Cited Findings, Hint, asked(), confirm(), disablePush(), enablePush(), local(), mutedChoices() (+32 more)
 
 ### Community 122 - "Prestige"
 Cohesion: 0.28
@@ -702,9 +754,9 @@ Nodes (9): Achievements (123 tiers, 31 families), Elite ladder (Elite XP), Feats
 Cohesion: 0.25
 Nodes (7): description, devDependencies, playwright, name, private, type, playwright
 
-### Community 124 - ".react"
-Cohesion: 0.07
-Nodes (17): Family, SaveGame, conditionsOf(), museumEntry, museumId(), sightings(), Briefings, briefOf() (+9 more)
+### Community 124 - ".prepareShift"
+Cohesion: 0.09
+Nodes (4): Briefings, MuseumHost, SpecialRun, Tutorial
 
 ### Community 125 - "Product Marketing Context"
 Cohesion: 0.12
@@ -722,33 +774,21 @@ Nodes (4): LAND, only, queue, SHOTS
 Cohesion: 0.29
 Nodes (6): flashes, RING, sfx, shots, titleHits, titles
 
+### Community 129 - "Stack"
+Cohesion: 0.12
+Nodes (9): CSS, HTML usage, JavaScript orchestration, Open and close use different eases, Pin the plus button to a corner, Plus to menu morph, Tunable variables, When to use (+1 more)
+
 ### Community 130 - "Changelog API (/changelog.json)"
 Cohesion: 0.40
 Nodes (6): Museum wächst mit (core/museum.ts), Patch Notes (present/patchNotes.ts), Website-Daten (/data/*.json, siteData.ts), Website-Inhalte aus dem Spiel (npm run content), Changelog API (/changelog.json), Site data API (/data/*.json)
 
-### Community 131 - "Your player (one name for ranks, friends, cloud)"
-Cohesion: 0.33
-Nodes (4): Cloud save by sync code, Your player (one name for ranks, friends, cloud), Cloud sync client (net/cloud.ts), Local saving (localStorage carGame.save.v2)
-
-### Community 132 - "PWA (manifest, service worker, shortcuts)"
-Cohesion: 0.33
-Nodes (5): Server deployment on Coolify, Web Push notifications module, Deploying (Docker, nginx, Coolify), Notifications client (net/push.ts), PWA (manifest, service worker, shortcuts)
-
-### Community 133 - "Build with us feedback (bugs and ideas)"
-Cohesion: 0.40
-Nodes (6): Crews (weekly league, gifts), Build with us feedback (bugs and ideas), Friends (one-way friend code, legacy), Game fund (ideas), Moderation and admin inbox, Rewards table
-
 ### Community 134 - "room.ts"
-Cohesion: 0.16
-Nodes (15): peerjs, randomJoinCode(), NAME_MAX, REACTIONS, BOT_NAMES, loadError(), loadPeer(), peerId() (+7 more)
-
-### Community 135 - "Google Play Trusted Web Activity"
-Cohesion: 0.40
-Nodes (5): CrazyGames-Einbettung (?crazygames), Vollbild-Inszenierung rewardBurst (nur drei Momente), Freiwillige Werbung (nur Rewarded Ads), Streak-Anzeigen und Schlüsselmomente, Google Play Trusted Web Activity
+Cohesion: 0.13
+Nodes (16): peerjs, randomJoinCode(), NAME_MAX, REACTIONS, BOT_NAMES, loadError(), loadPeer(), peerId() (+8 more)
 
 ### Community 136 - "ja/p6.ts"
-Cohesion: 0.13
-Nodes (5): chest(), lockedHint(), opened(), stepEffect(), total()
+Cohesion: 0.09
+Nodes (13): masteryNumeral(), toast(), toast(), toast(), toast(), chest(), lockedHint(), opened() (+5 more)
 
 ### Community 137 - "ko/p6.ts"
 Cohesion: 0.13
@@ -762,13 +802,21 @@ Nodes (4): Deployment (Docker, nginx, Port 5050, Coolify), GitHub-Workflow (Comm
 Cohesion: 0.50
 Nodes (4): Spielsprachen (EN, DE, ES, FR, IT, JA, KO, ZH), Schilder nach Sprache und Region (present/signs.ts), present/strings.ts (S), Zielgeräte und Performance-Maßstab
 
-### Community 145 - "challenge.ts"
-Cohesion: 0.13
-Nodes (19): GAME_MODES, CAR_TYPES, challengeCareer(), challengeConfig(), ChallengeSpec, decodeChallenge(), encodeChallenge(), fromBase64Url() (+11 more)
+### Community 144 - "main.ts"
+Cohesion: 0.08
+Nodes (19): boot, bootErrored(), bootFailed(), bootRejected(), canvas, fail, [failTitle, failBody, failLink], hasSave() (+11 more)
 
-### Community 147 - "patchNotes.ts"
-Cohesion: 0.21
-Nodes (11): ChangelogLine, itemCredit(), itemFrom(), itemText(), line(), PATCH_NOTES, PatchImpact, PatchItem (+3 more)
+### Community 145 - "challenge.ts"
+Cohesion: 0.12
+Nodes (21): GAME_MODES, CAR_TYPES, challengeCareer(), challengeConfig(), ChallengeSpec, encodeChallenge(), SEASONS, toBase64Url() (+13 more)
+
+### Community 146 - "ShiftResult"
+Cohesion: 0.14
+Nodes (8): Cited Findings, 5. Welche Analytics existieren, und was fehlt für D1/D7 ohne IDs?, Cited Findings, Gaps, Inferences, Takeaway, challengeOf(), ShiftResult
+
+### Community 147 - "present/museum.ts"
+Cohesion: 0.08
+Nodes (33): CONDITION_ICONS, ConditionIconId, ICON_KEYFRAMES, IconPart, IconShape, Paint, Track, Bezier (+25 more)
 
 ### Community 148 - "i18n.ts"
 Cohesion: 0.10
@@ -782,30 +830,322 @@ Nodes (5): devDependencies, @playwright/test, @types/node, typescript, vite
 Cohesion: 0.40
 Nodes (4): built, heat, level, shifts
 
+### Community 152 - "2. Gerankte Liste der Optimierungsmöglichkeiten"
+Cohesion: 0.07
+Nodes (30): 1. Zusammenfassung des Abgleichs, 2. Gerankte Liste der Optimierungsmöglichkeiten, 3. Empfohlene Execution-Roadmap, Bewertungslogik, Implementation Ranking: Research.md gegen den Spielstand, Langzeit (sobald der Zulauf steigt), Messen, Mittelfristig (2–6 Wochen) (+22 more)
+
+### Community 153 - "Growth, Retention and Returning Users Across All Channels (Roundabout Timing)"
+Cohesion: 0.06
+Nodes (31): 1. Other web portals and platforms: which fit a one-tap game, what they require, what traffic they deliver, 2. Google Play TWA: ASO, ratings prompts, notifications, Play Games Services, 3. Web push notifications for PWAs (incl. iOS 16.4+), 4. Virality: share results, challenge links, clips, referrals, 5. Content marketing: short video, Reddit, devlogs, Discord, press, jams, Show HN / Product Hunt, 6. SEO/landing page and returning-user mechanics (email, Discord, live ops, changelog), Cited Findings, Cited Findings (+23 more)
+
+### Community 156 - "Retention mechanics for Day-1 and returning users in casual/hyper-casual browser games (applied to "Roundabout Timing")"
+Cohesion: 0.06
+Nodes (31): Benchmarks: D1/D7 for hyper-casual vs casual vs web portals, Cited Findings, Cited Findings, Cited Findings, Cited Findings, Cited Findings, Cited Findings, Examples from successful hyper-casual timing games and portal hits (+23 more)
+
+### Community 157 - "Portals, community and off-game channels for bringing players back to a free browser game"
+Cohesion: 0.06
+Nodes (31): 1. Which portal features and metrics raise repeat play, and what do portals reward? (CrazyGames, Poki, itch.io, Newgrounds, GameDistribution), 2. Practical, policy-compliant ways to move portal players to own site, PWA or Discord, 3. Community and content cadence of successful tiny indie web games; measurable return effect, 4. Newsletter or Discord as a retention channel for anonymous players: opt-in rates and GDPR-friendly implementation, 5. Case studies of small browser games with returning-player numbers, 6. Seasonal and trend hooks and their effect on return traffic, Cited Findings, Cited Findings (+23 more)
+
+### Community 158 - "Owned re-engagement channels for a browser game: web push, PWA install, alternatives"
+Cohesion: 0.06
+Nodes (31): 1. Web push opt-in rates for games, soft asks, ask timing, Chrome's quieter UI / auto-revoke, iOS install requirement, 2. Notification types, timing, frequency; fatigue evidence, 3. Is streak 2 too late as the first opt-in trigger?, 4. PWA install: prompt conversion, `beforeinstallprompt` practice, retention effect, 5. Alternative owned channels for anonymous-player games, and EU privacy implications, 6. Limits: what does not work, Cited Findings, Cited Findings (+23 more)
+
+### Community 159 - "condition-icons.mjs"
+Cohesion: 0.09
+Nodes (29): apply(), bbox(), buildIcon(), clipTo(), DASHED, extent(), flatten(), icons (+21 more)
+
+### Community 160 - "accountSheet.ts"
+Cohesion: 0.18
+Nodes (24): cloudLinked(), deleteAccount(), describeError(), renameAccount(), loadPlayerName(), savePlayerName(), AccountActions, accountSheet() (+16 more)
+
+### Community 161 - "Codebase and Umami audit: what in Roundabout Timing drives its CrazyGames metrics (as of 08.10.2026)"
+Cohesion: 0.07
+Nodes (27): 2. First-time user experience (load to first real tap), and layout in landscape and small iframes, 3. Load performance, 4. Possible sources of the 3.53% gameplay crash rate, 5. Existing retention hooks, and which are missing on CrazyGames, 6. Session-length drivers, 7. Umami data (analytics.kestrel.nrw), Cited Findings, Cited Findings (+19 more)
+
+### Community 162 - "Visual-design evidence for high-CTR casual/hypercasual game thumbnails (applied to Roundabout Timing)"
+Cohesion: 0.07
+Nodes (27): Cited Findings, Cited Findings, Cited Findings, Cited Findings, Cited Findings, Gaps, Gaps, Gaps (+19 more)
+
+### Community 163 - "ui-generation.js"
+Cohesion: 0.18
+Nodes (25): auto(), buildOverlay(), buildTexts(), clamp(), DEFAULTS, deriveCode(), drawStroke(), f2() (+17 more)
+
+### Community 164 - "Gameplay Conversion, FTUE, Playtime and Crash Rate for Browser/Portal Games (Mobile Web Focus)"
+Cohesion: 0.07
+Nodes (26): Cited Findings, Cited Findings, Cited Findings, Cited Findings, Cited Findings, Gameplay Conversion, FTUE, Playtime and Crash Rate for Browser/Portal Games (Mobile Web Focus), Gaps, Gaps (+18 more)
+
+### Community 165 - "Game-design retention mechanics for casual one-tap skill games (applied to a small browser game)"
+Cohesion: 0.07
+Nodes (26): 1. Daily-return mechanics (streaks, login rewards, shared-seed daily, missions, events, seasons): what works, what churns, 2. "Appointment" and "unfinished business" hooks: timers, collections, near-miss goals, goal gradient, Zeigarnik; ethical limits, 3. First-session design that sets up the second session, 4. Social and viral hooks for retention in single-player-ish games, 5. Content cadence, live-ops for tiny teams, and cautions (casino flavour, reward inflation, streak anxiety, accessibility, notifications), Cited Findings, Cited Findings, Cited Findings (+18 more)
+
+### Community 166 - "CrazyGames thumbnails and CTR for a one-tap roundabout/traffic-timing game"
+Cohesion: 0.07
+Nodes (26): 1. Official CrazyGames cover requirements, 2. Official advice on CTR and what counts as good or poor, 3. What top driving, traffic and timing game covers look like, 4. Display size, cropping, hover and legibility, 5. Evidence of thumbnail changes that raised CTR (with numbers), Cited Findings, Cited Findings, Cited Findings (+18 more)
+
+### Community 167 - "CTR benchmarks and A/B-testing methods for game thumbnails and store assets (solo dev, small traffic)"
+Cohesion: 0.07
+Nodes (26): 1. Realistic CTR benchmarks: is 1.0% low for a game tile?, 2. Platform analytics and whether thumbnails can be swapped and compared, 3. Testing methods and minimum sample sizes, 4. Number of variants, duration, and a sensible iteration plan, 5. Case studies with measured uplift, Cited Findings, Cited Findings, Cited Findings (+18 more)
+
+### Community 168 - "socialPage.ts"
+Cohesion: 0.12
+Nodes (10): hasCrew(), pullToRefresh(), STAGES, RanksActions, ranksPanel(), renderFooter(), renderTop(), NEEDS_ACCOUNT (+2 more)
+
+### Community 169 - "Retention-Hooks und Lücken in Roundabout Timing: Codebase-Audit (Stand 09.10.2026, HEAD `be4c442`, Arbeitsbaum mit uncommitted Änderungen)"
+Cohesion: 0.08
+Nodes (23): 1. Welche Rückkehr-Hooks gibt es, mit welchen Triggern und Zahlen?, 2. Die erste Sitzung Schritt für Schritt, 4. Welche Hooks sind versteckt oder an späte Level/Ereignisse gebunden?, 6. Wo hält Code/Doku bereits bekannte Retention-Probleme und offene Ideen fest?, 7. Zehn konkrete Beobachtungen zu Lücken und Risiken, Cited Findings, Cited Findings, Gaps (+15 more)
+
+### Community 170 - "Vec2"
+Cohesion: 0.11
+Nodes (11): ExplosionKind, ExplosionReport, MergeReport, Vec2, Billow, Blast, Kind, Particle (+3 more)
+
+### Community 171 - ".perform"
+Cohesion: 0.13
+Nodes (4): tourOpen(), rematchId, rushOpen(), ProgressTarget
+
+### Community 172 - "itch.io: cover image size, ratio, GIF, cropping"
+Cohesion: 0.09
+Nodes (22): Cited Findings, Cited Findings, Cited Findings, Cited Findings (first-hand observation from live Play pages, 8 Oct 2026, unless linked otherwise), Gaps, Gaps, Gaps, Gaps (+14 more)
+
+### Community 173 - "CrazyGames platform: metrics, Basic Launch → Full Launch, SDK v3 levers"
+Cohesion: 0.08
+Nodes (25): 2. Basic Launch → Full Launch: scoring, window, review, second chance, 3. Mobile on CrazyGames (orientation, fullscreen, low conversion), 5. Thumbnail, cover, video, title, and category for CTR, 6. Official quality guidelines, tips, and case studies, 7. Benchmarks for successful arcade/casual games, Cited Findings, Cited Findings, Cited Findings (+17 more)
+
+### Community 174 - "modules.ts"
+Cohesion: 0.23
+Nodes (18): moduleLevel(), moduleZone(), approachLimitAt(), chargeModules(), detourArmSlot(), detourExit(), fee(), plannedSpeed() (+10 more)
+
+### Community 175 - "Transitions Polish"
+Cohesion: 0.12
+Nodes (17): Blur, Commands, Core doctrine: match on usage, never on the nearest number, Distances, Durations, Easings, Future expansion, Hover in vs hover out (+9 more)
+
+### Community 176 - "Transitions UI generation"
+Cohesion: 0.14
+Nodes (16): Accessibility, API, Commands, Common mistakes to avoid, Decision rules, Install, Options, Reference files (+8 more)
+
+### Community 177 - "numpy"
+Cohesion: 0.29
+Nodes (8): boom(), engine(), envelope(), load(), main(), place(), resample(), riser()
+
+### Community 178 - "de/p6.ts"
+Cohesion: 0.13
+Nodes (5): chest(), lockedHint(), opened(), stepEffect(), total()
+
+### Community 179 - "zh/p6.ts"
+Cohesion: 0.13
+Nodes (5): chest(), lockedHint(), opened(), stepEffect(), total()
+
+### Community 180 - "os"
+Cohesion: 0.19
+Nodes (5): canvas(), daily(), main(), multiplayer(), unlimited()
+
+### Community 181 - "make_casino_sounds.py"
+Cohesion: 0.18
+Nodes (9): band(), coin_partials(), coin_toss(), finish(), main(), meter_tick(), shutter(), click() (+1 more)
+
+### Community 182 - ".takeTip"
+Cohesion: 0.13
+Nodes (13): Aktionsliste: neun Maßnahmen nach Hebel und Beleglage, Die Messlatte: Portal-D1 von 10 bis 15 Prozent ist „stark", App-D1 liegt bei 22 Prozent, Erst messen, dann Tag zwei absichern, Fazit, Messen ohne Nutzer-IDs: Bandbreiten, keine Kohorten, Wo Tag 1 zu Tag 2 reißt: Der Push-Opt-in kommt erst nach dem Wiederkommen, 3. Was passiert bei Rückkehr nach 1 / 3 / 7 Tagen?, Cited Findings (+5 more)
+
+### Community 183 - "Transitions.dev"
+Cohesion: 0.15
+Nodes (13): Commands, Common mistakes to avoid, Decision rules, Motion tokens, Output format, Quick reference, Reference files, transitions apply — install the best-fit transition (+5 more)
+
+### Community 185 - "HapticID"
+Cohesion: 0.18
+Nodes (4): strongTaps(), tapPower(), HapticID, SessionOutput
+
+### Community 186 - "Retention benchmarks and diagnosis for casual / hyper-casual browser and mobile games (state: Oct 2026)"
+Cohesion: 0.17
+Nodes (11): 1. What do D1 / D7 / D30 look like for hyper-casual, casual and web/HTML5 games (2024-2026), and what is top quartile?, 3. Which early-session factors correlate most with D1 and D7?, Cited Findings, Cited Findings, Gaps, Gaps, Inferences, Inferences (+3 more)
+
+### Community 187 - "transitions-dev/SKILL.md"
+Cohesion: 0.20
+Nodes (6): CSS, HTML usage, JavaScript orchestration, Skeleton loader and reveal, Tunable variables, When to use
+
+### Community 188 - "Card hover tilt"
+Cohesion: 0.20
+Nodes (9): Card hover tilt, CSS, HTML usage, JavaScript orchestration, Peak tilt angle, Touch / mobile, Tunable variables, When to use (+1 more)
+
+### Community 189 - "Skeleton"
+Cohesion: 0.20
+Nodes (7): Reduced motion, Skeleton, Timeline, Tuning, Usage, What it reads from the element, When to use
+
+### Community 190 - "Avatar group hover"
+Cohesion: 0.22
+Nodes (8): Avatar group hover, CSS, HTML usage, JavaScript orchestration, React form, Tunable variables, When to use, Why the timing-function is set inline before the variable writes
+
+### Community 191 - "Error state shake"
+Cohesion: 0.22
+Nodes (8): CSS, Error state shake, HTML usage, JavaScript orchestration, Recomputing the keyframe stops, Tunable variables, When to use, Why three classes (`.is-error` on wrap + input, `.is-shaking` on input)
+
+### Community 192 - "Accordion expand"
+Cohesion: 0.22
+Nodes (8): Accordion expand, CSS, HTML usage, JavaScript orchestration, Tunable variables, Two-element panel + padding placement, When to use, Why the chevron flips instead of morphing its path
+
+### Community 193 - "make_icon.py"
+Cohesion: 0.33
+Nodes (4): car(), lerp(), main(), place()
+
+### Community 194 - "Ein Near-Miss-Thumbnail hebt die CTR"
+Cohesion: 0.22
+Nodes (8): Auf CrazyGames gewinnt ein Held-Fahrzeug, in unserem Genre fehlt ein Kreisverkehr-Look, Der Test muss groß, sequenziell und getrennt nach Plattform sein, Die Plattformen verlangen vier verschiedene Formate und widersprechen sich beim Text, Drei konkrete Konzepte für Roundabout Timing, Ein Near-Miss-Thumbnail hebt die CTR, Fazit, Gute Thumbnails sind einfach, kontrastreich und zeigen einen Moment, Offene Punkte und Gegenprobe
+
+### Community 195 - "Success check"
+Cohesion: 0.25
+Nodes (7): Calibrating `stroke-dasharray` for your path, CSS, HTML usage, JavaScript orchestration, Success check, Tunable variables, When to use
+
+### Community 196 - "Input clear with dissolve"
+Cohesion: 0.25
+Nodes (7): CSS, Dark mode, HTML usage, Input clear with dissolve, JavaScript orchestration, Tunable variables, When to use
+
+### Community 197 - "Card resize"
+Cohesion: 0.29
+Nodes (6): Card resize, CSS, HTML usage, JavaScript orchestration, Tunable variables, When to use
+
+### Community 198 - "Number pop-in"
+Cohesion: 0.29
+Nodes (6): CSS, HTML usage, JavaScript orchestration, Number pop-in, Tunable variables, When to use
+
+### Community 199 - "Notification badge"
+Cohesion: 0.29
+Nodes (6): CSS, HTML usage, JavaScript orchestration, Notification badge, Tunable variables, When to use
+
+### Community 200 - "Text states swap"
+Cohesion: 0.29
+Nodes (6): CSS, HTML usage, JavaScript orchestration, Text states swap, Tunable variables, When to use
+
+### Community 201 - "Menu dropdown"
+Cohesion: 0.29
+Nodes (6): CSS, HTML usage, JavaScript orchestration, Menu dropdown, Tunable variables, When to use
+
+### Community 202 - "Modal open / close"
+Cohesion: 0.29
+Nodes (6): CSS, HTML usage, JavaScript orchestration, Modal open / close, Tunable variables, When to use
+
+### Community 203 - "Panel reveal"
+Cohesion: 0.29
+Nodes (6): CSS, HTML usage, JavaScript orchestration, Panel reveal, Tunable variables, When to use
+
+### Community 204 - "Page side-by-side"
+Cohesion: 0.29
+Nodes (6): CSS, HTML usage, JavaScript orchestration, Page side-by-side, Tunable variables, When to use
+
+### Community 205 - "Icon swap"
+Cohesion: 0.29
+Nodes (6): CSS, HTML usage, Icon swap, JavaScript orchestration, Tunable variables, When to use
+
+### Community 206 - "Shimmer text"
+Cohesion: 0.29
+Nodes (6): CSS, HTML usage, JavaScript orchestration, Shimmer text, Tunable variables, When to use
+
+### Community 207 - "Tabs sliding"
+Cohesion: 0.29
+Nodes (6): CSS, HTML usage, JavaScript orchestration, Tabs sliding, Tunable variables, When to use
+
+### Community 208 - "Tooltip open/close"
+Cohesion: 0.29
+Nodes (6): CSS, HTML usage, JavaScript orchestration, Tooltip open/close, Tunable variables, When to use
+
+### Community 209 - "Texts reveal"
+Cohesion: 0.29
+Nodes (6): CSS, HTML usage, JavaScript orchestration, Texts reveal, Tunable variables, When to use
+
+### Community 210 - "Toast open / close"
+Cohesion: 0.29
+Nodes (6): CSS, HTML usage, JavaScript orchestration, Toast open / close, Tunable variables, When to use
+
+### Community 211 - "Like button"
+Cohesion: 0.29
+Nodes (6): CSS, HTML usage, JavaScript orchestration, Like button, Tunable variables, When to use
+
+### Community 212 - "Learn more hover"
+Cohesion: 0.29
+Nodes (6): CSS, HTML usage, JavaScript orchestration, Learn more hover, Tunable variables, When to use
+
+### Community 213 - "Checkbox check"
+Cohesion: 0.29
+Nodes (6): Checkbox check, CSS, HTML usage, JavaScript orchestration, Tunable variables, When to use
+
+### Community 214 - "Spinning counter"
+Cohesion: 0.29
+Nodes (6): CSS, HTML usage, JavaScript orchestration, Spinning counter, Tunable variables, When to use
+
+### Community 215 - "Toggle"
+Cohesion: 0.29
+Nodes (6): CSS, HTML usage, JavaScript orchestration, Toggle, Tunable variables, When to use
+
+### Community 216 - "Thinking states"
+Cohesion: 0.29
+Nodes (6): CSS, HTML usage, JavaScript orchestration, Thinking states, Tunable variables, When to use
+
+### Community 217 - "Reasoning stream"
+Cohesion: 0.29
+Nodes (6): CSS, HTML usage, JavaScript orchestration, Reasoning stream, Tunable variables, When to use
+
+### Community 218 - "Streaming text"
+Cohesion: 0.29
+Nodes (6): CSS, HTML usage, JavaScript orchestration, Streaming text, Tunable variables, When to use
+
+### Community 219 - "Matrix dot loader"
+Cohesion: 0.29
+Nodes (6): CSS, HTML usage, JavaScript orchestration, Matrix dot loader, Tunable variables, When to use
+
+### Community 220 - "Banner stacking"
+Cohesion: 0.29
+Nodes (6): Banner stacking, CSS, HTML usage, JavaScript orchestration, Tunable variables, When to use
+
+### Community 221 - "Text morph"
+Cohesion: 0.29
+Nodes (6): CSS, HTML usage, JavaScript orchestration, Text morph, Tunable variables, When to use
+
+### Community 222 - "Text swap soft"
+Cohesion: 0.29
+Nodes (6): CSS, HTML usage, JavaScript orchestration, Text swap soft, Tunable variables, When to use
+
+### Community 223 - "Donut chart"
+Cohesion: 0.29
+Nodes (6): CSS, Donut chart, HTML usage, JavaScript orchestration, Tunable variables, When to use
+
+### Community 224 - "Skeleton + generation texts"
+Cohesion: 0.29
+Nodes (7): Placement, Reduced motion, Skeleton + generation texts, The three texts, Tuning, Usage, When to use
+
+### Community 225 - "2. Portal vs direct traffic: why portal players don't return, and what portal levers exist"
+Cohesion: 0.40
+Nodes (5): 2. Portal vs direct traffic: why portal players don't return, and what portal levers exist, Cited Findings, Gaps, Inferences, Takeaway
+
+### Community 226 - "4. How to measure retention without user IDs or cookies (Umami, GDPR/EU)"
+Cohesion: 0.40
+Nodes (5): 4. How to measure retention without user IDs or cookies (Umami, GDPR/EU), Cited Findings, Gaps, Inferences (practical diagnostic design, not from sources; verify legally), Takeaway
+
+### Community 227 - "5. Common failure modes for skill/timing one-tap games (and what a lightweight diagnosis would show)"
+Cohesion: 0.40
+Nodes (5): 5. Common failure modes for skill/timing one-tap games (and what a lightweight diagnosis would show), Cited Findings, Gaps, Inferences (map to Roundabout Timing; hypotheses to test, not findings), Takeaway
+
 ## Ambiguous Edges - Review These
 - `Spielsprachen (EN, DE, ES, FR, IT, JA, KO, ZH)` → `Zielgeräte und Performance-Maßstab`  [AMBIGUOUS]
   FOUNDATION.md · relation: conceptually_related_to
 
 ## Knowledge Gaps
-- **118 isolated node(s):** `@types/node`, `typescript`, `@fontsource-variable/overpass`, `@types/node`, `typescript` (+113 more)
-  These have ≤1 connection - possible missing edges or undocumented components. (Counts symbols only; 1268 node(s) total have ≤1 connection when file, concept and rationale nodes are included.)
-- **15 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+- **118 isolated node(s):** `@types/node`, `typescript`, `RFC-8291`, `RFC-8188`, `RFC-8292` (+113 more)
+  These have ≤1 connection - possible missing edges or undocumented components. (Counts symbols only; 1874 node(s) total have ≤1 connection when file, concept and rationale nodes are included.)
+- **12 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `GameSession` connect `GameSession` to `session.ts`, `shop.ts`, `shell.ts`, `challenge.ts`, `ShiftResult`, `patchNotes.ts`, `World`, `hud.ts`, `v`, `booking.ts`, `.perform`, `.frame`, `Vec2`, `CanvasDrawer`, `feedback.ts`, `SwipeMode`, `.react`, `Career`, `transitions.ts`, `NoticeQueue`, `.react`?**
-  _High betweenness centrality (0.076) - this node is a cross-community bridge._
-- **What connects `@types/node`, `typescript`, `@fontsource-variable/overpass` to the rest of the system?**
+- **Why does `transitions review — audit the project for fit` connect `Transitions.dev` to `v`?**
+  _High betweenness centrality (0.102) - this node is a cross-community bridge._
+- **What connects `@types/node`, `typescript`, `RFC-8291` to the rest of the system?**
   _118 weakly-connected nodes found - possible documentation gaps or missing edges._
-- **Should `session.ts` be split into smaller, more focused modules?**
-  _Cohesion score 0.03448640643182058 - nodes in this community are weakly interconnected._
-- **Why does `World` connect `World` to `session.ts`, `levels.ts`, `Vehicle`, `shop.ts`, `traffic.ts`, `carArt.ts`, `GameSession`, `world.ts`, `hud.ts`, `v`, `.perform`, `drivers.ts`, `.frame`, `Vec2`, `specials.ts`, `roundabout.ts`, `modules.ts`, `core/versus.ts`, `feedback.ts`, `SwipeMode`, `.react`, `core/museum.ts`, `.constructor`, `.react`?**
-  _High betweenness centrality (0.047) - this node is a cross-community bridge._
+- **Should `flow.ts` be split into smaller, more focused modules?**
+  _Cohesion score 0.06848357791754019 - nodes in this community are weakly interconnected._
+- **Why does `Transitions.dev` connect `Transitions.dev` to `transitions-dev/SKILL.md`?**
+  _High betweenness centrality (0.101) - this node is a cross-community bridge._
 - **Should `strings.ts` be split into smaller, more focused modules?**
-  _Cohesion score 0.05847781369379959 - nodes in this community are weakly interconnected._
-- **Why does `h()` connect `sheets.ts` to `session.ts`, `.open`, `Career`, `ui/photo.ts`, `shell.ts`, `h`, `Room`, `mafiaPanel`, `main.ts`, `VersusLobby`, `clubPanel.ts`, `ui/backdrop.ts`, `cloud.ts`, `detailSheet.ts`, `ranksPanel.ts`, `dom.ts`?**
-  _High betweenness centrality (0.046) - this node is a cross-community bridge._
+  _Cohesion score 0.05627705627705628 - nodes in this community are weakly interconnected._
+- **Should `format.ts` be split into smaller, more focused modules?**
+  _Cohesion score 0.11067193675889328 - nodes in this community are weakly interconnected._
 
 ### Low-confidence Hints
 _AMBIGUOUS edges — the extractor was unsure. Verify before acting on these._

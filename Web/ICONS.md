@@ -73,3 +73,7 @@ bell: wrap('bell',
 4. Ohne Klasse, mit `play` und mit `loop` testen. Der Loop darf am Übergang nicht springen.
 5. Mit Reduce Motion testen: Das Icon muss statisch und vollständig sein.
 6. In `ANIMATED_ICONS` eintragen und im Spiel unter Maus und Finger prüfen.
+
+## Zustands-Icons (Wetter, Dunkelheit, Ereignisse, Fehlschläge, Straße)
+
+Diese 27 Icons zeichnet das Spiel auf der Canvas (Museum, Zustands-Chips, Ergebniskarte, Website-SVGs), nicht als DOM. Quelle ist `icon/condition-icons.js` (Entwurf mit SVG und CSS-Keyframes). `node scripts/condition-icons.mjs` macht daraus `src/present/conditionIconData.ts` (nicht von Hand ändern); `present/conditionIcons.ts` zeichnet es über den Pen. Neuer Entwurf = Datei in `icon/` ersetzen, Skript ausführen, `npm test`.

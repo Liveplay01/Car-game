@@ -114,6 +114,16 @@ def blocked():
     return room(out, 0.15, 0.06)
 
 
+def thump():
+    # Under a hard crash: the body of the hit a phone speaker barely carries but headphones feel, a pitch falling 95 -> 38 Hz and a dull knock.
+    out = silence(0.6)
+    t = t_axis(0.55)
+    sweep = np.sin(2 * np.pi * (38 * t + 57 * 0.07 * (1 - np.exp(-t / 0.07)))) * np.exp(-t / 0.16)
+    place(out, sweep * np.minimum(1, t / 0.002), 0, 1.0)
+    place(out, lowpass(burst(0.08, 60, 500, 0.02), 400), 0, 0.6)
+    return room(out, 0.15, 0.05, 1500)
+
+
 SOUNDS = {
     'ambulance': ambulance,
     'wedding': wedding,
@@ -121,10 +131,11 @@ SOUNDS = {
     'learner': learner,
     'clang': clang,
     'blocked': blocked,
+    'thump': thump,
 }
 
 # Below the -3 dBFS peak `finish` gives every file: a held horn is far louder than a clang at the same peak.
-LEVEL_DB = {'ambulance': -6.5, 'wedding': -2.5, 'oversize': -1.5, 'learner': -6, 'clang': -1.5, 'blocked': -5}
+LEVEL_DB = {'ambulance': -6.5, 'wedding': -2.5, 'oversize': -1.5, 'learner': -6, 'clang': -1.5, 'blocked': -5, 'thump': -2}
 
 
 def main():

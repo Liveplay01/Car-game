@@ -14,10 +14,13 @@ import { interpolatedPose } from './scene';
 
 type ParticleKind = { k: 'debris'; color: ColorToken } | { k: 'part'; color: ColorToken } | { k: 'spark' } | { k: 'smoke' };
 
+/** Moved in place every frame: a fresh vector per particle per frame was garbage the phone collected mid-crash. */
+type Mutable = { x: number; y: number };
+
 interface Particle {
   kind: ParticleKind;
-  position: Vec2;
-  velocity: Vec2;
+  position: Mutable;
+  velocity: Mutable;
   rotation: number;
   spin: number;
   size: Vec2;
@@ -42,8 +45,13 @@ export class CrashEffects {
   static readonly fireSeverity = 1.15;
   static readonly blastLifetime = 0.45;
   static readonly wreckFade = 0.6;
-  static readonly shakeDuration = 0.35;
-  static readonly shakeAmplitude = 6;
+  static readonly shakeDuration = 0.45;
+  static readonly shakeAmplitude = 9;
+  static readonly shakeDecay = 0.12;
+  /** Within `CanvasDrawer.shakeRoom` the baked ground only moves; a bigger shake repaints it every frame. */
+  static readonly shakeMax = 14;
+  /** The full-screen blink of a hard crash, as `ExplosionEffects.flash` (a tanker is 0.55). */
+  static readonly flash = 0.3;
   static readonly debrisFriction = 1.6;
   static readonly wind = v(10, 16);
 
@@ -67,7 +75,7 @@ export class CrashEffects {
   get shakeOffset(): Vec2 {
     if (this.shakeAge >= CrashEffects.shakeDuration) return v(0, 0);
     const t = this.shakeAge;
-    const strength = this.shakeStrength * Math.exp(-t / 0.09);
+    const strength = this.shakeStrength * Math.exp(-t / CrashEffects.shakeDecay);
     const along = Math.cos(t * 55) * strength;
     const across = Math.sin(t * 89) * strength * 0.35;
     const d = this.shakeDir;
@@ -78,7 +86,8 @@ export class CrashEffects {
     return clamp(r.impact / CrashEffects.typicalImpact, 0.4, 1.6);
   }
 
-  spawn(r: CrashReport, world: World, reduceMotion: boolean, boost = 0): void {
+  /** Returns the severity the crash was shown with (a chain's boost included). */
+  spawn(r: CrashReport, world: World, reduceMotion: boolean, boost = 0, lowDetail = false): number {
     const rng = this.rng;
     const severity = boost > 0 ? Math.max(CrashEffects.severity(r), 1.2) + 0.18 * Math.min(boost, 6) : CrashEffects.severity(r);
     let average = v(0, 0);
@@ -95,7 +104,7 @@ export class CrashEffects {
         const dir = fromAngle((TAU * (i + rng.unit() * 0.6)) / 18);
         this.particles.push({
           kind: { k: 'debris', color: colors[i % 3] },
-          position: r.point,
+          position: v(r.point.x, r.point.y),
           velocity: add(mul(average, 0.3), mul(dir, rng.range(90, 190))),
           rotation: angleOf(dir),
           spin: rng.range(-10, 10),
@@ -105,9 +114,11 @@ export class CrashEffects {
         });
       }
     }
-    if (reduceMotion) return;
+    if (reduceMotion) return severity;
+    // A second crash while the first still shakes adds to it, up to what the baked ground can take.
+    const shaking = this.shakeAge < CrashEffects.shakeDuration ? this.shakeStrength * Math.exp(-this.shakeAge / CrashEffects.shakeDecay) : 0;
     this.shakeAge = 0;
-    this.shakeStrength = CrashEffects.shakeAmplitude * severity;
+    this.shakeStrength = Math.min(CrashEffects.shakeMax, Math.max(shaking, CrashEffects.shakeAmplitude * severity));
     const speed = length(average);
     this.shakeDir = speed > 1 ? v(average.x / speed, -average.y / speed) : fromAngle(rng.unit() * TAU);
     const pieces = Math.floor(6 + 8 * severity);
@@ -125,19 +136,20 @@ export class CrashEffects {
         lifetime: rng.range(1.0, 1.5),
       });
     }
-    for (let i = 0; i < Math.floor(4 + 8 * severity); i++) {
+    for (let i = 0; i < Math.floor((4 + 8 * severity) * (lowDetail ? 1 : 1.5)); i++) {
       const dir = fromAngle(rng.unit() * TAU);
       this.particles.push({
         kind: { k: 'spark' },
-        position: r.point,
-        velocity: add(mul(average, 0.5), mul(dir, rng.range(160, 320))),
+        position: v(r.point.x, r.point.y),
+        velocity: add(mul(average, 0.5), mul(dir, rng.range(180, 380))),
         rotation: 0,
         spin: 0,
         size: v(1, 1),
         age: 0,
-        lifetime: rng.range(0.18, 0.35),
+        lifetime: rng.range(0.22, 0.45),
       });
     }
+    return severity;
   }
 
   ignite(ids: number[], strength: number): void {
@@ -148,18 +160,16 @@ export class CrashEffects {
     if (dt <= 0) return;
     this.shakeAge += dt;
     const c = world.config;
-    const wrecks = world.vehicles.filter((x) => x.isCrashed);
-    const wreckIds = new Set(wrecks.map((w) => w.id));
-    for (const id of [...this.fires.keys()]) if (!wreckIds.has(id)) this.fires.delete(id);
-    const alive = new Set(world.vehicles.map((x) => x.id));
-    for (const id of [...this.torn.keys()]) if (!alive.has(id)) this.torn.delete(id);
+    for (const id of this.fires.keys()) if (!world.vehicle(id)?.isCrashed) this.fires.delete(id);
+    for (const id of this.torn.keys()) if (!world.vehicle(id)) this.torn.delete(id);
     for (const veh of world.vehicles) if (veh.dents.length > 0) this.tearOffParts(veh, world, reduceMotion);
     this.smokeTimer += dt;
     const rng = this.rng;
     while (this.smokeTimer >= 0.06) {
       this.smokeTimer -= 0.06;
-      for (const wreck of wrecks) {
-        const state = wreck.phase as Crashed;
+      for (const wreck of world.vehicles) {
+        if (wreck.phase.kind !== 'crashed') continue;
+        const state = wreck.phase;
         if (state.elapsed >= c.crashDuration - CrashEffects.wreckFade) continue;
         const burning = this.fires.has(wreck.id);
         if (!burning && rng.unit() >= 0.35) continue;
@@ -176,18 +186,27 @@ export class CrashEffects {
       }
     }
     const scrape = CrashEffects.debrisFriction * gravity(c) * dt;
+    const sparkDrag = Math.exp(-6 * dt);
+    const smokeDrag = Math.exp(-0.8 * dt);
+    let kept = 0;
     for (const p of this.particles) {
       p.age += dt;
+      if (p.age >= p.lifetime) continue;
+      let k: number;
       if (p.kind.k === 'debris' || p.kind.k === 'part') {
         const speed = length(p.velocity);
-        p.velocity = speed > scrape ? mul(p.velocity, (speed - scrape) / speed) : v(0, 0);
+        k = speed > scrape ? (speed - scrape) / speed : 0;
         if (speed <= scrape) p.spin = 0;
-      } else if (p.kind.k === 'spark') p.velocity = mul(p.velocity, Math.exp(-6 * dt));
-      else p.velocity = mul(p.velocity, Math.exp(-0.8 * dt));
-      p.position = add(p.position, mul(p.velocity, dt));
+      } else k = p.kind.k === 'spark' ? sparkDrag : smokeDrag;
+      p.velocity.x *= k;
+      p.velocity.y *= k;
+      p.position.x += p.velocity.x * dt;
+      p.position.y += p.velocity.y * dt;
       p.rotation += p.spin * dt;
+      this.particles[kept++] = p;
     }
-    this.particles = this.particles.filter((p) => p.age < p.lifetime);
+    this.particles.length = kept;
+    if (this.blasts.length === 0) return;
     for (const b of this.blasts) b.age += dt;
     this.blasts = this.blasts.filter((b) => b.age < CrashEffects.blastLifetime);
   }
@@ -216,9 +235,14 @@ export class CrashEffects {
   addAir(list: RenderList): void {
     for (const b of this.blasts) {
       const t = b.age;
-      const ring = Ease.outCubic(t / 0.3);
-      if (t < 0.3) {
-        list.w(arc(b.position, 8 + 44 * Math.max(b.severity, b.isTakedown ? 1 : 0) * ring, 3 * (1 - ring) + 0.5, 0, TAU), b.isTakedown ? 'lightBlue' : 'spark', 1 - ring);
+      const reach = Math.max(b.severity, b.isTakedown ? 1 : 0);
+      // A real hit: a second, thinner ring follows the first, so the blow reads as a push outwards.
+      for (let i = 0; i < (reach >= 0.75 ? 2 : 1); i++) {
+        const at = t - 0.07 * i;
+        if (at < 0 || at >= 0.3) continue;
+        const ring = Ease.outCubic(at / 0.3);
+        const width = (i === 0 ? 5 : 2.5) * (1 - ring) + 0.6;
+        list.w(arc(b.position, (10 + 56 * reach * ring) * (i === 0 ? 1 : 0.75), width, 0, TAU), b.isTakedown ? 'lightBlue' : 'spark', (1 - ring) * (i === 0 ? 1 : 0.6));
       }
       if (b.severity < CrashEffects.fireSeverity || b.isTakedown) continue;
       const grow = Ease.outCubic(t / 0.12);
@@ -239,7 +263,7 @@ export class CrashEffects {
     for (const p of this.particles) {
       const x = p.age / p.lifetime;
       if (p.kind.k === 'debris') list.w(rect(p.position, p.size, 0.6, p.rotation), p.kind.color, 1 - Ease.clamp01((x - 0.6) / 0.4));
-      else if (p.kind.k === 'spark') list.w(line(sub(p.position, mul(p.velocity, 0.025)), p.position, 1.2), 'spark', 1 - x);
+      else if (p.kind.k === 'spark') list.w(line(sub(p.position, mul(p.velocity, 0.045)), p.position, 1.4), 'spark', 1 - x);
     }
   }
 
@@ -267,21 +291,20 @@ export class CrashEffects {
     });
   }
 
+  /** Runs every frame for every dented vehicle: it allocates nothing until a part actually breaks. */
   private tearOffParts(wreck: Vehicle, world: World, reduceMotion: boolean): void {
     const c = world.config;
     const rng = this.rng;
-    let velocity = mul(sub(wreck.position, wreck.prevPosition), 1 / STEP);
-    let spin = 0;
-    if (wreck.phase.kind === 'crashed') {
-      velocity = wreck.phase.velocity;
-      spin = wreck.phase.spin;
-    }
-    const done = this.torn.get(wreck.id) ?? new Set<Part>();
-    const pose = { position: wreck.position, heading: wreck.heading };
     const model = this.modelOf(wreck);
+    let done = this.torn.get(wreck.id);
     for (const part of CarArt.parts(wreck.type, model)) {
-      if (done.has(part) || !CarArt.isBroken(part, wreck.type, wreck.dents, c, model)) continue;
+      if (done?.has(part) || !CarArt.isBroken(part, wreck.type, wreck.dents, c, model)) continue;
+      if (!done) this.torn.set(wreck.id, (done = new Set<Part>()));
       done.add(part);
+      const crashed = wreck.phase.kind === 'crashed' ? wreck.phase : null;
+      const velocity = crashed ? crashed.velocity : mul(sub(wreck.position, wreck.prevPosition), 1 / STEP);
+      const spin = crashed ? crashed.spin : 0;
+      const pose = { position: wreck.position, heading: wreck.heading };
       const shape = CarArt.shape(part, wreck.type, c, model);
       const center = worldOf(shape.center, pose);
       const armVec = sub(center, wreck.position);
@@ -314,6 +337,5 @@ export class CrashEffects {
         lifetime: rng.range(1.8, 2.4),
       });
     }
-    this.torn.set(wreck.id, done);
   }
 }

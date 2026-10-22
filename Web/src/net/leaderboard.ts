@@ -188,8 +188,6 @@ export async function deleteAccount(account: Account): Promise<void> {
     if (!(error instanceof LeaderboardError && (error.status === 401 || error.status === 403))) throw error;
   }
   saveAccount(null);
-  for (const board of Object.keys(ranks) as BoardId[]) delete ranks[board];
-  for (const board of Object.keys(confirmed) as BoardId[]) delete confirmed[board];
 }
 
 /** The player's places this session has heard of (the Progress header shows the Shift level one). */
@@ -262,8 +260,15 @@ let syncing: Promise<void> | null = null;
 let retryAt = 0;
 /** The title the service has for this account; undefined while unknown (a start, a new account), so the next save sends it. */
 let titleSent: string | null | undefined;
+let accountId = loadAccount()?.id;
 onAccountChange(() => {
   titleSent = undefined;
+  const id = loadAccount()?.id;
+  if (id === accountId) return;
+  // Another account (removed, a new name, one brought by a sync code) has none of these scores yet.
+  accountId = id;
+  for (const board of Object.keys(ranks) as BoardId[]) delete ranks[board];
+  for (const board of Object.keys(confirmed) as BoardId[]) delete confirmed[board];
 });
 
 /** Tells the service which title the player wears (null: none). */
@@ -314,7 +319,8 @@ export function syncScores(r: Records): Promise<void> {
       for (const [board, body, value] of work) {
         try {
           const result = await submitScore(board, body);
-          if (!result) return;
+          // Removed while this was on its way: what it confirmed belongs to the old account.
+          if (!result || loadAccount()?.id !== account.id) return;
           confirmed[board] = board === 'casino' ? value : Math.max(value, result.best.score);
           ranks[board] = result.best.rank;
         } catch (error) {

@@ -56,7 +56,7 @@ export const BuildTab = {
 
 /** The upgrades under their headings, in the page's order; a heading with nothing under it is left out. */
 const groupsOf = (upgrades: readonly Upgrade[]): { label: string; items: Upgrade[] }[] =>
-  ([0, 1, 2] as const)
+  ([0, 1, 2, 3] as const)
     .map((g) => ({ label: S.upgrades.group(g), items: UPGRADES.filter((u) => UPGRADE_GROUP[u] === g && upgrades.includes(u)) }))
     .filter((g) => g.items.length > 0);
 
@@ -296,6 +296,15 @@ export const UpgradeArt = {
       p.box(a, x, y - h * 0.2, w * 0.66, h * 0.34, 2, 'hazard', share);
     };
     switch (upgrade) {
+      case 'skinSlots': {
+        // Two cars stand in their paint; a third rolls in beside them, the plus pops after it.
+        const k = Motion.ramp(t, 0.05, 0.5, Ease.spring);
+        car(base, -15, 2, 0.8, 'skinRacingRed', null, false);
+        car(base, 0, 2, 0.8, 'skinMint', 'skinPearl', false);
+        car(pose(base, 15, 2, { dy: (1 - k) * 18 }), 15, 2, 0.8, 'skinLemon', null, false);
+        plus(0.35);
+        break;
+      }
       case 'morePatrols': {
         // The second patrol pulls up beside the first, the plus pops after it.
         const k = Motion.ramp(t, 0.05, 0.5, Ease.spring);

@@ -67,7 +67,7 @@ export type { SpecialRun } from './specialRuns';
 import { ProgressPage, ProgressState, type ProgressTarget } from './progress';
 import { Meter } from './meter';
 import { MuseumFlow, type MuseumHost } from './museumFlow';
-import { type MuseumEntry, museumEntry, museumId, FAIL_SKIN } from '../core/museum';
+import { museumEntry, museumId, FAIL_SKIN } from '../core/museum';
 import { UpgradePage, UpgradeState } from './upgrades';
 import { StreetBuilderPage, BuilderState } from './builder';
 import { Feedback, Music, Sky, type MusicMix, type WeatherSound, type SoundID, type HapticID } from './feedback';
@@ -905,7 +905,7 @@ export class GameSession {
         break;
       case 'wear': {
         const item = cosmetic(action.id);
-        if (!Careers.wear(career, action.id) && item?.kind === 'carSkin' && Careers.owns(career, action.id)) this.showNotice(S.shop.skinsFull(5));
+        if (!Careers.wear(career, action.id) && item?.kind === 'carSkin' && Careers.owns(career, action.id)) this.showNotice(S.shop.skinsFull(Careers.skinSlots(career)));
         this.persist();
         // Big Screen put on with nothing to show yet: straight to choosing it.
         if (action.id === BIG_SCREEN && career.mapSkin === BIG_SCREEN && !this.backdrop) this.onBackdrop?.();
@@ -2670,7 +2670,11 @@ export class GameSession {
           if (!this.tutorial) noteTap(this.save.career, e.gapAhead, e.gapBehind, this.config);
           break;
         case 'crash':
-          this.effects.spawn(e, world, this.reduceMotion, e.chain);
+          // A hard crash blinks the screen and leaves a scorch: both cost nothing the ground has to repaint.
+          if (this.effects.spawn(e, world, this.reduceMotion, e.chain, this.lowDetail) >= CrashEffects.fireSeverity && !e.isTakedown) {
+            this.scars.add({ point: e.point, kind: 'crash' }, this.sceneTime);
+            if (!this.reduceMotion) this.explosions.flash = Math.max(this.explosions.flash, CrashEffects.flash);
+          }
           if (e.involvesPlayer || e.isStrike) this.lastCrashAt = e.point;
           if (e.flames > 0) {
             this.addPopup({ k: 'flames', n: e.flames, chain: e.chain }, e.point);
@@ -3342,7 +3346,7 @@ export class GameSession {
     }
     this.effects.addWrecks(list, world, alpha, !rm);
     SceneBuilder.addShadows(list, world, alpha);
-    SceneBuilder.addVehicles(list, world, alpha, career.carSkins, rm ? null : world.time, rm ? null : world.time, this.lamps);
+    SceneBuilder.addVehicles(list, world, alpha, career.carSkins, career.policeSkin, rm ? null : world.time, rm ? null : world.time, this.lamps);
     SceneBuilder.addTowTrucks(list, world);
     if (night) {
       NightLayer.addVehicleLights(list, world, alpha, this.lamps, rm ? null : world.time);
@@ -3704,7 +3708,7 @@ export class GameSession {
     const age = this.resultAge;
     const shown = Ease.outCubic(age / ResultBanner.enter) * (1 - ResultBanner.leaving(age));
     if (!cause || shown <= 0.001) return;
-    const entry: MuseumEntry = { k: 'fail', kind: cause };
+    const entry = { k: 'fail', kind: cause } as const;
     const id = museumId(entry);
     FailChip.add(list, entry, center, {
       age,

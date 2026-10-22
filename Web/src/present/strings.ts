@@ -1128,7 +1128,7 @@ export const S = {
 
   /** The Social tab (Leo, 10.10.2026): its segments, and what the Club says while it is still shut. */
   social: {
-    section: (i: number): string => ['Crew', 'Ranks', 'Club', 'Mafia'][i],
+    section: (i: number): string => ['Ranks', 'Crew', 'Club', 'Mafia'][i],
     clubClosed: 'The Club opens at Level 50: an Auction House and the Game fund for big balances.',
     mafiaClosed: "The Family has no time for a rookie. Put the Syndicate's first boss away (Level 15) or get past it, and they will call.",
     offline: 'Crews and Ranks need the online service, which this copy of the game is not connected to.',
@@ -1834,6 +1834,20 @@ export const S = {
     bootTitle: 'The roundabout did not start.',
     bootBody: 'Something kept the game from loading. Check your connection and try again; your progress is safe on this device.',
     bootRetry: 'Try again',
+    /** The first visit's boot screen (index.html): the game in three steps while it loads. */
+    learn: {
+      waitTitle: 'Wait for a gap',
+      waitBody: 'Your car waits at the entrance. Traffic on the roundabout drives counter-clockwise.',
+      tapTitle: 'Then tap to send your car',
+      tapBody: 'Tap anywhere on the screen. The moment you touch counts.',
+      comboTitle: 'Clean merges build your combo',
+      comboBody: 'The tighter the gap, the more points',
+      clean: 'Clean',
+      comboLabel: 'COMBO',
+      loading: 'The roundabout is loading',
+      skipNote: 'Still loading assets. This ends by itself as soon as they are ready.',
+      skip: 'Skip',
+    },
     stalledBody: 'Something went wrong in the game. Reload to carry on; your progress is safe on this device.',
     reload: 'Reload',
     openElsewhere: 'The roundabout is open elsewhere.',
@@ -1989,8 +2003,8 @@ export const S = {
     newBadge: 'NEW',
     shelf: (i: number): string => ['Cars', 'Maps', 'Earned', 'Pass'][i],
     /** The headings on the Cars shelf (the chest skins by rarity, the vehicles, the season skins) and on the Honours shelf (the cars by rarity, the vehicles, the maps). */
-    group: (g: Rarity | 'vehicles' | 'seasons' | 'maps', honours = false): string => {
-      const name = { common: 'Common', rare: 'Rare', epic: 'Epic', legendary: 'Legendary', vehicles: 'Vehicles', seasons: 'Seasons', maps: 'Maps' }[g];
+    group: (g: Rarity | 'police' | 'vehicles' | 'seasons' | 'maps', honours = false): string => {
+      const name = { common: 'Common', rare: 'Rare', epic: 'Epic', legendary: 'Legendary', police: 'Police', vehicles: 'Vehicles', seasons: 'Seasons', maps: 'Maps' }[g];
       return honours && g !== 'vehicles' && g !== 'seasons' && g !== 'maps' ? `${name} cars` : name;
     },
     waiting: (n: number): string => (n === 1 ? '1 waiting' : `${n} waiting`),
@@ -2005,6 +2019,7 @@ export const S = {
       if (item.kind === 'carSkin') return 'Paints the cars on the road. Mix up to eight. Only looks, never a bonus.';
       if (item.id === 'bigScreen') return 'Your own picture or video behind the roundabout: upload a picture, or paste a link to a YouTube video, an image or a video file. Only looks, never a bonus.';
       if (item.kind === 'mapSkin') return 'Turns the city into its own place. Only looks, never a bonus.';
+      if (item.kind === 'policeSkin') return 'Dresses every police car, one skin at a time. The white roof and the light bar stay, so a chase stays fair. Only looks, never a bonus.';
       return `Shows up in your queue now and then: ${S.shop.trait(item.id)}.`;
     },
     chest(k: ChestKind): string {
@@ -2027,6 +2042,11 @@ export const S = {
     item(id: string): string {
       const names: Record<string, string> = {
         racingRed: 'Racing Red',
+        autobahn: 'Autobahn',
+        highwayPatrol: 'Highway Patrol',
+        sheriff: 'Sheriff',
+        undercover: 'Undercover',
+        interceptor: 'Interceptor',
         midnight: 'Midnight',
         mint: 'Mint',
         pearl: 'Pearl',
@@ -2200,7 +2220,7 @@ export const S = {
     found: 'Found',
     findHint: (id: string): string => `The ${S.shop.item(id)} is the one honour that is luck. It takes the place of what you would have drawn, until you have it.`,
     kind(item: Cosmetic): string {
-      const kind = item.kind === 'carSkin' ? 'car skin' : item.kind === 'mapSkin' ? 'map skin' : 'vehicle type · ' + S.shop.trait(item.id);
+      const kind = item.kind === 'carSkin' ? 'car skin' : item.kind === 'mapSkin' ? 'map skin' : item.kind === 'policeSkin' ? 'police skin' : 'vehicle type · ' + S.shop.trait(item.id);
       return `${S.shop.rarity(item.rarity)} ${kind}`;
     },
     opened(o: ChestOpening): string {
@@ -2436,7 +2456,7 @@ export const S = {
   upgrades: {
     title: 'Upgrades',
     /** The headings of the Upgrades page (Leo, 10.10.2026): what an upgrade is for. */
-    group: (g: 0 | 1 | 2): string => ['POLICE', 'MONEY', 'DRIVING'][g],
+    group: (g: 0 | 1 | 2 | 3): string => ['POLICE', 'MONEY', 'DRIVING', 'GARAGE'][g],
     maxed: 'Max',
     steps: (s: number, max: number): string => `${s}/${max}`,
     pickOne: 'Tap an upgrade to see what it does.',
@@ -2463,6 +2483,7 @@ export const S = {
         chainSaver: 'Chain Saver',
         winterTyres: 'Winter Tyres',
         fogLamps: 'Fog Lamps',
+        skinSlots: 'Garage',
       }[u];
     },
     explanation(u: Upgrade): string {
@@ -2486,6 +2507,7 @@ export const S = {
         chainSaver: 'While you are in the flow, a plain merge a shift leaves your chain alone instead of ending it. Not in Unlimited.',
         winterTyres: 'Rain, snow and hail take less grip and braking from the road: crashes slide shorter and traffic stops better.',
         fogLamps: 'Drivers lose less time to bad weather and see hazards sooner, and fog and dust lie thinner on the screen.',
+        skinSlots: 'More car skins on at once: each step adds a slot, so more of your collection drives on the road. Only looks, never a bonus.',
       }[u];
     },
     total(u: Upgrade, steps: number, c: Config): string {
@@ -2528,6 +2550,8 @@ export const S = {
           return `${percent(t * c.winterTyresPerStep)} of the lost grip back`;
         case 'fogLamps':
           return `${percent(t * c.fogLampsPerStep)} less lost reaction time`;
+        case 'skinSlots':
+          return t === 1 ? '+1 car skin slot' : `+${t} car skin slots`;
       }
     },
     stepEffect(u: Upgrade, steps: number, max: number, c: Config): string {

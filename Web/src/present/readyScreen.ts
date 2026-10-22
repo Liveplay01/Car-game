@@ -7,6 +7,7 @@ import { type RenderList, type Rect, R, Ease, text, drawText, circle, Metrics } 
 import { MenuKit } from './menukit';
 import { FAIL_CHIP_SIZE, TopBar } from './hud';
 import { MuseumPage } from './museum';
+import { iconClock } from './conditionIcons';
 import { textWidth, drawFitted } from './icons';
 import { S } from './strings';
 import type { AchievementCard, ShownNotice } from './notices';
@@ -24,6 +25,9 @@ export function conditionChips(config: Config, career: Career): ConditionChip[] 
     .filter((e) => e.k !== 'road')
     .map((e) => ({ id: museumId(e), entry: e, isNew: !career.museumSeen.includes(museumId(e)) }));
 }
+
+/** The mouse is over the icon's button (`hit` points square). */
+const overIcon = (list: RenderList, at: Vec2, hit: number): boolean => list.pointer !== null && Math.abs(list.pointer.x - at.x) <= hit / 2 && Math.abs(list.pointer.y - at.y) <= hit / 2;
 
 /**
  * The waiting shift's conditions as icons above the prompt (Leo, 08.10.2026: icons, not words):
@@ -57,7 +61,7 @@ export const ConditionChips = {
       // The one whose sheet is open wears a ring in its own colour.
       if (o.selected === chip.id) list.s(circle(at, radius + 2.5), color, 0.9 * alpha);
       MenuKit.chromePill(list, at, v(ConditionChips.size, ConditionChips.size), alpha);
-      for (const it of MuseumPage.icon(list, chip.entry, at, 1, ConditionChips.size - 8, o.reduceMotion ? Infinity : o.time - 0.15 - i * 0.12)) list.items.push({ ...it, opacity: it.opacity * alpha });
+      for (const it of MuseumPage.icon(list, chip.entry, at, 1, ConditionChips.size - 8, o.reduceMotion ? Infinity : iconClock(`chip:${chip.id}`, o.time, 'loop', overIcon(list, at, ConditionChips.hit), 0.15 + i * 0.12))) list.items.push({ ...it, opacity: it.opacity * alpha });
       if (chip.isNew) {
         const dot = add(at, v(radius * 0.72, -radius * 0.72));
         list.s(circle(dot, 6.5), 'chrome', alpha);
@@ -77,7 +81,7 @@ export const FailChip = {
   target: (center: Vec2): Rect => R.make(center.x - FailChip.hit / 2, center.y - FailChip.hit / 2, center.x + FailChip.hit / 2, center.y + FailChip.hit / 2),
 
   /** The icon opens the complete failure entry in the Museum; keeping the prose there leaves the island readable. */
-  add(list: RenderList, entry: MuseumEntry, center: Vec2, o: { age: number; reduceMotion: boolean; opacity: number; selected: boolean; isNew: boolean }): void {
+  add(list: RenderList, entry: Extract<MuseumEntry, { k: 'fail' }>, center: Vec2, o: { age: number; reduceMotion: boolean; opacity: number; selected: boolean; isNew: boolean }): void {
     const enter = o.reduceMotion ? Ease.clamp01(o.age / 0.2) : MenuKit.staggerSpring(o.age - 0.1, 0);
     const alpha = Ease.clamp01(enter) * o.opacity;
     if (alpha <= 0.001) return;
@@ -85,7 +89,7 @@ export const FailChip = {
     const at = add(center, v(0, o.reduceMotion ? 0 : MenuKit.cardEnter(enter).rise * 0.5));
     list.s(circle(at, radius + (o.selected ? 3 : 1.5)), 'destructive', (o.selected ? 0.9 : 0.55) * alpha);
     MenuKit.chromePill(list, at, v(FailChip.size, FailChip.size), alpha);
-    for (const it of MuseumPage.icon(list, entry, at, 1, FailChip.size - 8, o.reduceMotion ? Infinity : o.age - 0.3)) list.items.push({ ...it, opacity: it.opacity * alpha });
+    for (const it of MuseumPage.icon(list, entry, at, 1, FailChip.size - 8, o.reduceMotion ? Infinity : iconClock('chip:fail', o.age, 'loop', overIcon(list, at, FailChip.hit), 0.3))) list.items.push({ ...it, opacity: it.opacity * alpha });
     if (o.isNew) {
       const dot = add(at, v(radius * 0.72, -radius * 0.72));
       list.s(circle(dot, 6.5), 'chrome', alpha);

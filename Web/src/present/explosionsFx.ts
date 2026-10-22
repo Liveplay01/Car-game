@@ -213,7 +213,8 @@ export class ExplosionEffects {
 
 interface Scar {
   position: Vec2;
-  kind: ExplosionKind;
+  /** `crash`: the small scorch a hard crash leaves, nothing around it burns. */
+  kind: ExplosionKind | 'crash';
   time: number;
   serial: number;
 }
@@ -229,10 +230,11 @@ export class MapScars {
     return this.scars.length === 0;
   }
 
-  add(r: ExplosionReport, now: number): void {
+  add(r: { point: Vec2; kind: Scar['kind'] }, now: number): void {
     this.serial++;
     this.scars.push({ position: r.point, kind: r.kind, time: now, serial: this.serial });
-    if (this.scars.length > 10) this.scars.splice(0, this.scars.length - 10);
+    // A chain of crashes must not push out the explosion whose fire is still spreading: crash scorches go first.
+    if (this.scars.length > 10) this.scars.splice(Math.max(0, this.scars.findIndex((s) => s.kind === 'crash')), 1);
   }
 
   forget(now: number): void {
@@ -243,6 +245,7 @@ export class MapScars {
     let fire = 0;
     let char = 0;
     for (const s of this.scars) {
+      if (s.kind === 'crash') continue;
       const reach = s.kind === 'bomb' ? 2000 : 170;
       const distance = dist(point, s.position);
       if (distance >= reach) continue;
@@ -264,7 +267,7 @@ export class MapScars {
       const age = now - s.time;
       const fade = 1 - Ease.clamp01((age - 3) / 4);
       if (fade <= 0.005) continue;
-      const scorch = s.kind === 'bomb' ? 160 : 38;
+      const scorch = s.kind === 'bomb' ? 160 : s.kind === 'crash' ? 14 : 38;
       const grow = Ease.outCubic(Ease.clamp01(age / 0.4));
       for (let i = 0; i < 7; i++) {
         const u = unitHash(s.serial * 13 + i, 41);
@@ -273,7 +276,7 @@ export class MapScars {
         list.w(circle(add(s.position, offset), scorch * (i === 0 ? 0.8 : 0.35 + 0.3 * w) * grow), 'scorch', 0.4 * fade);
       }
       const burning = 1 - Ease.clamp01((age - 3) / 3);
-      if (burning <= 0.02) continue;
+      if (burning <= 0.02 || s.kind === 'crash') continue;
       for (let i = 0; i < 5; i++) {
         const u = unitHash(s.serial * 7 + i, 43);
         const at = add(s.position, mul(fromAngle(u * TAU), scorch * 0.6));

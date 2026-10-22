@@ -558,7 +558,7 @@ export class VersusMatch {
       brake: (id: number) => this.lamps.brake(id),
       headlights: (id: number) => Math.max(this.lamps.headlights(id), this.flashOf(id)),
     };
-    SceneBuilder.addVehicles(list, w, alpha, [], null, null, lamps, (veh) => this.markOf(veh));
+    SceneBuilder.addVehicles(list, w, alpha, [], null, null, null, lamps, (veh) => this.markOf(veh));
     this.effects.addAir(list);
     this.addLanes(list);
     this.addFloats(list);

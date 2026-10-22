@@ -63,6 +63,9 @@ const { Scroller } = await load('/src/present/scroll.ts');
 const { siteFiles, fingerprint: siteFingerprint } = await load('/src/present/siteData.ts');
 const { GUIDE } = await load('/src/present/siteGuide.ts');
 const { signalOf } = await load('/src/present/museumSignal.ts');
+const { MuseumPage } = await load('/src/present/museum.ts');
+const { RenderList } = await load('/src/present/render.ts');
+const { iconClock, ICON_LOOP } = await load('/src/present/conditionIcons.ts');
 const { readFileSync } = await import('node:fs');
 const { prestigeReward, BIG_SCREEN } = await load('/src/core/loot.ts');
 const { COLORS } = await load('/src/present/theme.ts');
@@ -746,6 +749,40 @@ test('everything in the Museum has a briefing short enough for two lines of the 
     assert.ok(b.text.length > 0 && !/undefined|NaN/.test(b.caption + b.text), museumId(e));
     assert.ok(b.text.length <= 72, `${museumId(e)} is ${b.text.length} characters: ${b.text}`);
   }
+});
+
+test('every condition and failure in the Museum has a picture that draws at rest and while it plays', () => {
+  const camera = { viewport: { x: 200, y: 200 }, center: { x: 0, y: 0 }, focus: { x: 100, y: 100 }, scale: 1 };
+  const entries = [0, 1, 2, 3].flatMap((shelf) => shelfEntries(shelf)).filter((e) => e.k !== 'boss' && e.k !== 'special');
+  assert.ok(entries.length >= 27, 'weather, darkness, events, the road and the failures');
+  for (const e of entries) {
+    const still = MuseumPage.icon(new RenderList(camera, 'background'), e, { x: 100, y: 100 }, 1, 60);
+    assert.ok(still.length > 2, `${museumId(e)} draws something`);
+    for (const t of [0, 0.15, 0.4, 0.9, 2.5, 10]) {
+      const frame = MuseumPage.icon(new RenderList(camera, 'background'), e, { x: 100, y: 100 }, 1, 60, t);
+      assert.ok(!/null|NaN|Infinity/.test(JSON.stringify(frame)), `${museumId(e)} at ${t} s has no broken numbers`);
+    }
+    const done = MuseumPage.icon(new RenderList(camera, 'background'), e, { x: 100, y: 100 }, 1, 60, 10);
+    assert.equal(JSON.stringify(done), JSON.stringify(still), `${museumId(e)} comes to rest in the picture it started from`);
+  }
+});
+
+test('an icon in view plays every two seconds, one among many plays once, and the mouse plays it again from the start', () => {
+  const run = (key, from, to, mode, over = () => false) => {
+    const out = new Map();
+    for (let i = Math.round(from * 10); i <= Math.round(to * 10); i++) out.set(i / 10, Math.round(iconClock(key, i / 10, mode, over(i / 10)) * 10) / 10);
+    return out;
+  };
+  assert.equal(ICON_LOOP, 2);
+  const loop = run('loop', 0, 5, 'loop');
+  assert.deepEqual([0, 1, 1.9, 2, 3, 4, 5].map((n) => loop.get(n)), [0, 1, 1.9, 0, 1, 0, 1]);
+  const once = run('once', 0, 5, 'once');
+  assert.deepEqual([0, 1, 2, 5].map((n) => once.get(n)), [0, 1, 2, 5]);
+  const hovered = run('hover', 10, 14, 'once', (now) => now >= 12 && now < 13);
+  assert.deepEqual([11.9, 12, 12.5, 13.5, 14].map((n) => hovered.get(n)), [1.9, 0, 0.5, 1.5, 2]);
+  assert.equal(iconClock('later', 20, 'once', false), 0);
+  assert.equal(iconClock('later', 25, 'once', false), 0, 'an icon that was out of view starts again when it comes back');
+  assert.ok(iconClock('held', 30, 'loop', false, 1) < 0, 'a delayed first play waits');
 });
 
 test('a briefing with a task stays while the task is on, but never for long, then the numbers come back', () => {
@@ -3245,10 +3282,10 @@ test('the tab bar runs Progress, Social, Game, Shop, Build, and Social shows onl
   const c = newCareer();
   assert.equal(SocialPage.clubOpen(c), false, 'the Club waits for Level 50');
   assert.equal(SocialPage.mafiaOpen(c), false, 'the Mafia waits for the first boss');
-  assert.deepEqual(SocialPage.sections(c), [SOCIAL.crew, SOCIAL.ranks]);
+  assert.deepEqual(SocialPage.sections(c), [SOCIAL.ranks, SOCIAL.crew]);
   c.bossesBeaten.push('convoy');
   assert.equal(SocialPage.mafiaOpen(c), true);
-  assert.deepEqual(SocialPage.sections(c), [SOCIAL.crew, SOCIAL.ranks, SOCIAL.mafia]);
+  assert.deepEqual(SocialPage.sections(c), [SOCIAL.ranks, SOCIAL.crew, SOCIAL.mafia]);
   const cells = SocialPage.segments(viewport, SocialPage.sections(c));
   for (const [section, r] of cells) assert.equal(SocialPage.sectionAt({ x: (r.minX + r.maxX) / 2, y: (r.minY + r.maxY) / 2 }, viewport, c), section);
   assert.ok(SocialPage.column(viewport).top > cells[0][1].maxY, 'the content starts under the segments');
@@ -3422,7 +3459,7 @@ test('Progress has three sections that each carry a label, and every upgrade sta
   for (const i of Object.values(PROGRESS)) assert.ok(S.progress.section(i).length > 0);
   const { cards, headings } = UpgradePage.arrange({ x: 430, y: 900 }, 56, UPGRADES);
   assert.deepEqual([...cards.map((c) => c.upgrade)].sort(), [...UPGRADES].sort(), 'each upgrade once');
-  assert.deepEqual(headings.map((h) => h.label), ['POLICE', 'MONEY', 'DRIVING']);
+  assert.deepEqual(headings.map((h) => h.label), ['POLICE', 'MONEY', 'DRIVING', 'GARAGE']);
   const some = UPGRADES.slice(0, 3);
   assert.equal(UpgradePage.arrange({ x: 430, y: 900 }, 56, some).headings.length, 1, 'a heading with nothing under it is left out');
 });
@@ -3632,4 +3669,40 @@ test('record in sight: from the share of the best on, how close and how many poi
   assert.deepEqual(Goals.record(800, 1000, c), { near: 0, gap: 200 });
   assert.deepEqual(Goals.record(900, 1000, c), { near: 0.5, gap: 100 });
   assert.deepEqual(Goals.record(1200, 1000, c), { near: 1, gap: -200 });
+});
+
+test('a police skin dresses the police cars: one at a time, kept in the save, never a car skin', () => {
+  fakeStorage();
+  const police = COSMETICS.filter((x) => x.kind === 'policeSkin');
+  assert.ok(police.length >= 3 && police.every((x) => x.source.kind === 'chest'));
+  const save = newSave();
+  save.career.collection.push('sheriff', 'undercover');
+  assert.equal(Careers.wear(save.career, 'sheriff'), true);
+  assert.equal(Careers.wear(save.career, 'undercover'), true);
+  assert.equal(save.career.policeSkin, 'undercover', 'the second replaces the first');
+  assert.deepEqual(save.career.carSkins, []);
+  assert.equal(Careers.isWorn(save.career, 'undercover'), true);
+  assert.equal(writeSave(save), true);
+  assert.equal(loadSave().career.policeSkin, 'undercover');
+  assert.equal(Careers.wear(save.career, 'undercover'), true);
+  assert.equal(save.career.policeSkin, null, 'worn again: taken off');
+  assert.equal(Careers.wear(save.career, 'interceptor'), false, 'not owned');
+});
+
+test('the Garage upgrade gives one more car skin slot a step, and the save keeps what fits', () => {
+  fakeStorage();
+  const save = newSave();
+  const c = save.career;
+  const skins = COSMETICS.filter((x) => x.kind === 'carSkin' && x.source.kind === 'chest').slice(0, 10).map((x) => x.id);
+  c.collection.push(...skins);
+  for (const id of skins) Careers.wear(c, id);
+  assert.equal(c.carSkins.length, Careers.skinSlots(c));
+  assert.equal(Careers.priceOf(c, 'skinSlots'), null, 'not on offer on Level 1');
+  c.level = baseConfig.skinSlotsLevel;
+  c.money = 1e9;
+  assert.equal(Careers.buy(c, 'skinSlots'), true);
+  assert.equal(Careers.wear(c, skins[9]), true, 'the new slot takes one more');
+  assert.equal(c.carSkins.length, Careers.skinSlots(c));
+  assert.equal(writeSave(save), true);
+  assert.equal(loadSave().career.carSkins.length, Careers.skinSlots(c));
 });

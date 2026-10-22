@@ -373,6 +373,7 @@ export const SceneBuilder = {
     world: World,
     alpha: number,
     carSkins: string[],
+    policeSkin: string | null,
     finishTime: number | null,
     springTime: number | null,
     lamps: Lamps | null,
@@ -393,8 +394,8 @@ export const SceneBuilder = {
       }
       // The syndicate: a black boss car with a gold line, gunmetal escorts. Not a skin: they
       // must read as who they are.
-      // Skins only dress plain cars: police, criminals, transporters and lorries keep the colours
-      // that say what they are (a dispatched car turns fully into a police car).
+      // Car skins only dress plain cars: criminals, transporters and lorries keep the colours that say
+      // what they are. A police skin repaints the body only; the white roof and light bar still tell.
       const look =
         veh.role === 'boss'
           ? SYNDICATE_BOSS
@@ -407,7 +408,9 @@ export const SceneBuilder = {
               ? JACKPOT_TRANSPORTER
               : isCarType(veh.type)
                 ? lookFor(veh.id, carSkins)
-                : null;
+                : veh.type === 'police' && policeSkin
+                  ? lookFor(veh.id, [policeSkin])
+                  : null;
       CarArt.add(
         list,
         {

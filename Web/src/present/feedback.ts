@@ -50,6 +50,8 @@ export type SoundID =
   | 'learner'
   | 'clang'
   | 'blocked'
+  /** The low body under a hard crash (same script). */
+  | 'thump'
   /** Made in `audio/player.ts` (no sample): a Critical Merge, a Jackpot paid, and the chest reel. */
   | 'critical'
   | 'jackpot'
@@ -81,7 +83,7 @@ export const SOUND_IDS: SoundID[] = [
   'merge', 'toll', 'tightFit', 'nearMiss', 'perfect', 'cutOff', 'comboUp', 'crashLight', 'crash', 'crashHeavy', 'rushHour',
   'shiftComplete', 'shiftFailed', 'wanted', 'takedown', 'dispatch', 'escaped', 'paid', 'secured', 'seized', 'screech', 'tow',
   'flowIn', 'go', 'swoosh', 'uiTick', 'purchase', 'build', 'denied', 'chestCharge', 'chestBurst', 'chestBurstRare',
-  'explosion', 'detonation', 'alarm', 'ambulance', 'wedding', 'oversize', 'learner', 'clang', 'blocked',
+  'explosion', 'detonation', 'alarm', 'ambulance', 'wedding', 'oversize', 'learner', 'clang', 'blocked', 'thump',
   'casinoStop', 'coinClink', 'needleTick', 'meterTick', 'coinToss', 'coinLand', 'chipsIn', 'shatter', 'shutter',
 ];
 
@@ -320,6 +322,11 @@ export const Feedback = {
     const weights: SoundID[] = ['crashLight', 'crash', 'crashHeavy'];
     const heaviest = sounds.filter((s) => weights.includes(s)).sort((a, b) => weights.indexOf(b) - weights.indexOf(a))[0];
     if (heaviest) sounds = sounds.filter((s) => !weights.includes(s) || s === heaviest);
+    if (heaviest === 'crashHeavy') {
+      sounds.push('thump');
+      const at = origins.get('crashHeavy');
+      if (at) origins.set('thump', at);
+    }
     return { sounds, haptics, origins };
   },
 

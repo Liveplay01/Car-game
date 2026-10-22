@@ -112,8 +112,9 @@ function readCareer(raw: unknown): Career {
     unseen: [...new Set([...strings(raw.unseen).filter((id) => collection.includes(id)), ...late])],
     carSkins: strings(raw.carSkins)
       .filter((id) => collection.includes(id) && cosmetic(id)?.kind === 'carSkin')
-      .slice(0, MAX_CAR_SKINS),
+      .slice(0, MAX_CAR_SKINS + (upgrades.skinSlots ?? 0)),
     mapSkin,
+    policeSkin: typeof raw.policeSkin === 'string' && collection.includes(raw.policeSkin) && cosmetic(raw.policeSkin)?.kind === 'policeSkin' ? raw.policeSkin : null,
     adChests: int(raw.adChests, 0, 0),
     adDay: int(raw.adDay, -1),
     adUpgradeDay: int(raw.adUpgradeDay, -1),

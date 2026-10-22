@@ -140,7 +140,7 @@ export default (S: Strings): Words<Strings> => ({
     newBadge: 'NEW',
     shelf: (i) => ['차', '맵', '획득', '패스'][i],
     group: (g, honours = false) => {
-      const name = { common: '커먼', rare: '레어', epic: '에픽', legendary: '레전더리', vehicles: '차량', seasons: '계절', maps: '맵' }[g];
+      const name = { common: '커먼', rare: '레어', epic: '에픽', legendary: '레전더리', police: '경찰차', vehicles: '차량', seasons: '계절', maps: '맵' }[g];
       return honours && g !== 'vehicles' && g !== 'seasons' && g !== 'maps' ? `차 · ${name}` : name;
     },
     waiting: (n) => `${n}개 대기 중`,
@@ -155,6 +155,7 @@ export default (S: Strings): Words<Strings> => ({
       if (item.kind === 'carSkin') return '도로 위의 차를 칠해 줘요. 최대 여덟 개까지 섞을 수 있어요. 겉모습만 바뀌고, 유리해지지는 않아요.';
       if (item.id === 'bigScreen') return '로터리 뒤에 내 이미지나 영상을 깔아요. 이미지를 올리거나 YouTube 영상, 이미지, 영상 파일 링크를 붙여 넣으세요. 겉모습만 바뀌고, 유리해지지는 않아요.';
       if (item.kind === 'mapSkin') return '도시를 나만의 장소로 만들어요. 겉모습만 바뀌고, 유리해지지는 않아요.';
+      if (item.kind === 'policeSkin') return '모든 경찰차를 꾸며 줘요. 한 번에 하나씩. 흰 지붕과 경광등은 그대로라 추격은 공정해요. 겉모습만 바뀌고, 유리해지지는 않아요.';
       return `가끔 대기열에 나타나요: ${S.shop.trait(item.id)}.`;
     },
     chest(k) {
@@ -186,7 +187,7 @@ export default (S: Strings): Words<Strings> => ({
     found: '발견함',
     findHint: (id) => `${S.shop.item(id)}은(는) 운으로만 얻는 유일한 영예예요. 얻을 때까지는 원래 나왔을 것을 대신해서 나와요.`,
     kind(item) {
-      const kind = item.kind === 'carSkin' ? '차 스킨' : item.kind === 'mapSkin' ? '맵 스킨' : `차량 종류 · ${S.shop.trait(item.id)}`;
+      const kind = item.kind === 'carSkin' ? '차 스킨' : item.kind === 'mapSkin' ? '맵 스킨' : item.kind === 'policeSkin' ? '경찰차 스킨' : `차량 종류 · ${S.shop.trait(item.id)}`;
       return `${kind} · ${S.shop.rarity(item.rarity)}`;
     },
     opened(o) {
@@ -399,7 +400,7 @@ export default (S: Strings): Words<Strings> => ({
     })[e],
 
   upgrades: {
-    group: (g) => ['경찰', '돈', '주행'][g],
+    group: (g) => ['경찰', '돈', '주행', '차고'][g],
     maxed: '최대',
     pickOne: '업그레이드를 탭해서 효과를 확인하세요.',
     everyStepBought: '모든 단계를 구매했어요.',
@@ -425,6 +426,7 @@ export default (S: Strings): Words<Strings> => ({
         chainSaver: '연쇄 지킴이',
         winterTyres: '윈터 타이어',
         fogLamps: '안개등',
+        skinSlots: '차고',
       })[u],
     explanation: (u) =>
       ({
@@ -447,6 +449,7 @@ export default (S: Strings): Words<Strings> => ({
         chainSaver: '흐름을 타고 있는 동안, 시프트마다 한 번은 평범한 합류도 연쇄를 끊지 않아요. 언리미티드에서는 쓸 수 없어요.',
         winterTyres: '비, 눈, 우박이 와도 도로의 접지력과 제동력이 덜 떨어져요: 충돌 때 덜 미끄러지고, 교통도 더 잘 멈춰요.',
         fogLamps: '악천후로 운전자가 잃는 시간이 줄고 위험을 더 일찍 알아채요. 안개와 먼지도 화면에서 더 옅어져요.',
+        skinSlots: '동시에 켤 수 있는 차 스킨이 늘어나요. 단계마다 칸이 하나씩 늘어 컬렉션이 더 많이 도로를 달려요. 겉모습만 바뀌고, 유리해지지는 않아요.',
       })[u],
     total(u, steps, c) {
       const t = steps;
@@ -488,6 +491,8 @@ export default (S: Strings): Words<Strings> => ({
           return `잃은 접지력의 ${percent(t * c.winterTyresPerStep)} 회복`;
         case 'fogLamps':
           return `잃는 반응 시간 ${percent(t * c.fogLampsPerStep)} 감소`;
+        case 'skinSlots':
+          return `차 스킨 칸 +${t}`;
       }
     },
     stepEffect(u, steps, max, c) {

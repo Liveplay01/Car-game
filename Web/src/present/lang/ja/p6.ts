@@ -140,7 +140,7 @@ export default (S: Strings): Words<Strings> => ({
     newBadge: 'NEW',
     shelf: (i) => ['車', 'マップ', '獲得', 'パス'][i],
     group: (g, honours = false) => {
-      const name = { common: 'コモン', rare: 'レア', epic: 'エピック', legendary: 'レジェンダリー', vehicles: '乗り物', seasons: '季節', maps: 'マップ' }[g];
+      const name = { common: 'コモン', rare: 'レア', epic: 'エピック', legendary: 'レジェンダリー', police: 'パトカー', vehicles: '乗り物', seasons: '季節', maps: 'マップ' }[g];
       return honours && g !== 'vehicles' && g !== 'seasons' && g !== 'maps' ? `車 · ${name}` : name;
     },
     waiting: (n) => `${n}個待機中`,
@@ -155,6 +155,7 @@ export default (S: Strings): Words<Strings> => ({
       if (item.kind === 'carSkin') return '道を走る車を塗装します。最大8つまで混ぜられます。見た目だけで、有利にはなりません。';
       if (item.id === 'bigScreen') return 'ラウンドアバウトの背景に、自分の画像や動画を。画像をアップロードするか、YouTube動画、画像、動画ファイルのリンクを貼ります。見た目だけで、有利にはなりません。';
       if (item.kind === 'mapSkin') return '街を自分だけの場所にします。見た目だけで、有利にはなりません。';
+      if (item.kind === 'policeSkin') return 'すべてのパトカーを着せ替えます。一度に1つだけ。白い屋根と警光灯はそのままなので、追跡は公平なままです。見た目だけで、有利にはなりません。';
       return `ときどき待ち行列に現れます: ${S.shop.trait(item.id)}。`;
     },
     chest(k) {
@@ -186,7 +187,7 @@ export default (S: Strings): Words<Strings> => ({
     found: '発見済み',
     findHint: (id) => `${S.shop.item(id)}は、運だけで決まる唯一の栄誉です。手に入れるまでは、本来出るはずだったものの代わりに出ます。`,
     kind(item) {
-      const kind = item.kind === 'carSkin' ? '車のスキン' : item.kind === 'mapSkin' ? 'マップのスキン' : `乗り物の種類 · ${S.shop.trait(item.id)}`;
+      const kind = item.kind === 'carSkin' ? '車のスキン' : item.kind === 'mapSkin' ? 'マップのスキン' : item.kind === 'policeSkin' ? 'パトカーのスキン' : `乗り物の種類 · ${S.shop.trait(item.id)}`;
       return `${kind} · ${S.shop.rarity(item.rarity)}`;
     },
     opened(o) {
@@ -399,7 +400,7 @@ export default (S: Strings): Words<Strings> => ({
     })[e],
 
   upgrades: {
-    group: (g) => ['警察', 'お金', '運転'][g],
+    group: (g) => ['警察', 'お金', '運転', 'ガレージ'][g],
     maxed: '最大',
     pickOne: 'アップグレードをタップして、効果を確認しよう。',
     everyStepBought: 'すべての段階を購入済み。',
@@ -425,6 +426,7 @@ export default (S: Strings): Words<Strings> => ({
         chainSaver: 'チェーンセーバー',
         winterTyres: 'スタッドレスタイヤ',
         fogLamps: 'フォグランプ',
+        skinSlots: 'ガレージ',
       })[u],
     explanation: (u) =>
       ({
@@ -447,6 +449,7 @@ export default (S: Strings): Words<Strings> => ({
         chainSaver: '流れに乗っているあいだ、シフトごとに1回だけ、普通の合流でもチェーンが途切れません。アンリミテッドでは使えません。',
         winterTyres: '雨、雪、ひょうでも、道のグリップとブレーキ性能が落ちにくくなります: クラッシュの滑りが短くなり、交通のブレーキも効きます。',
         fogLamps: '悪天候でドライバーが失う時間が減り、危険に早く気づきます。霧とほこりも画面で薄くなります。',
+        skinSlots: '同時にオンにできる車のスキンが増えます。1段階ごとに枠が1つ増え、コレクションのもっと多くが道を走ります。見た目だけで、有利にはなりません。',
       })[u],
     total(u, steps, c) {
       const t = steps;
@@ -488,6 +491,8 @@ export default (S: Strings): Words<Strings> => ({
           return `失ったグリップの${percent(t * c.winterTyresPerStep)}を取り戻す`;
         case 'fogLamps':
           return `失う反応時間が${percent(t * c.fogLampsPerStep)}減少`;
+        case 'skinSlots':
+          return `車のスキン枠 +${t}`;
       }
     },
     stepEffect(u, steps, max, c) {
