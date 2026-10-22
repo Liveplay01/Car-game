@@ -124,6 +124,8 @@ export default (_s: Strings): Words<Strings> => ({
     music: '音楽',
     mapSounds: 'マップの環境音',
     mapSoundsSub: '道に降る雨と雷の音。',
+    trafficSounds: '交通の音',
+    trafficSoundsSub: 'エンジンとタイヤの音を、控えめにバックで。',
     backup: 'バックアップと端末',
     reminders: 'リマインダーとアプリ',
     cloudSync: 'クラウド同期',

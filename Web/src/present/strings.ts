@@ -163,6 +163,8 @@ export const S = {
     music: 'Music',
     mapSounds: 'Map sounds',
     mapSoundsSub: 'Rain and thunder on the road.',
+    trafficSounds: 'Traffic sounds',
+    trafficSoundsSub: 'Engines and tyres, quietly in the background.',
     backup: 'Backup & device',
     reminders: 'Reminders & app',
     cloudSync: 'Cloud sync',
@@ -2703,6 +2705,8 @@ export const S = {
           return 'RACER';
         case 'wedding':
           return 'WEDDING';
+        case 'drift':
+          return 'DRIFT';
         default:
           return null;
       }

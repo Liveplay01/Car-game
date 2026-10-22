@@ -124,6 +124,8 @@ export default (_s: Strings): Words<Strings> => ({
     music: 'Musica',
     mapSounds: 'Suoni ambientali',
     mapSoundsSub: 'Pioggia e tuoni sulla carreggiata.',
+    trafficSounds: 'Suoni del traffico',
+    trafficSoundsSub: 'Motori e pneumatici, piano in sottofondo.',
     backup: 'Backup e dispositivo',
     reminders: 'Promemoria e app',
     cloudSync: 'Sincronizzazione Cloud',

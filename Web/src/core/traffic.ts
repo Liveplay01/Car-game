@@ -11,6 +11,7 @@ import { reservedLearnerArm } from './learner';
 import { reservedOversizeArm } from './oversize';
 import { reservedRaceArm } from './racers';
 import { reservedWeddingArm } from './wedding';
+import { driftOn } from './drift';
 
 /**
  * AI traffic on the other arms (FOUNDATION.md 2.7). It only enters with a safe gap, counts
@@ -20,7 +21,7 @@ export function updateTraffic(w: World, dt: number): void {
   const c = w.config;
   w.spawnCooldown -= dt;
   const waitingNow = w.vehicles.filter((x) => x.phase.kind === 'waiting' && x.phase.approach === 0).length;
-  const regular = w.spawnCooldown <= 0 && densityCount(w) < w.targetDensity && waitingNow < c.maxWaitingAI;
+  const regular = !driftOn(w) && w.spawnCooldown <= 0 && densityCount(w) < w.targetDensity && waitingNow < c.maxWaitingAI;
   if (regular || needsReplacementBot(w)) {
     const queues = new Map<number, Waiting[]>();
     for (const x of w.vehicles) {
@@ -74,7 +75,7 @@ export function updateTraffic(w: World, dt: number): void {
           : canPushIn(w, p.arm, veh.lane, veh.type);
     // Runners crossing the arm (a marathon): everyone waits at the line, the criminal too.
     if (p.reaction <= 0 && clear && !w.runnersCrossing(p.arm) && !joinsTooClose(w, veh, p.arm) && !joinsClearRoad(w, veh, p.arm)) {
-      const ordinary = !(isEmergency(veh.type) || veh.type === 'learner' || veh.type === 'oversize' || veh.type === 'racer' || veh.type === 'wedding');
+      const ordinary = !(isEmergency(veh.type) || veh.type === 'learner' || veh.type === 'oversize' || veh.type === 'racer' || veh.type === 'wedding' || veh.type === 'drift');
       const merge: Merging = {
         kind: 'merging',
         arm: p.arm,
@@ -89,6 +90,7 @@ export function updateTraffic(w: World, dt: number): void {
         merge.extraLaps = 1 + (w.rng.unit() < 0.6 ? 1 : 0) + (w.rng.unit() < 0.3 ? 1 : 0);
       }
       if (ordinary) w.applyDetour(merge, veh.lane);
+      if (veh.type === 'drift') merge.extraLaps = c.driftLaps;
       // A lorry sent in a match passes every lane once before it leaves.
       if (veh.sentBy !== null) merge.extraLaps = Math.max(merge.extraLaps, 1);
       veh.phase = merge;

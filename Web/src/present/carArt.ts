@@ -182,6 +182,8 @@ export interface CarDraw {
   model?: CarModel | null;
   /** The live scene only: an unhurt car with nothing animated is painted once and copied (`CarArt.addCached`). */
   cache?: boolean;
+  /** The drift car: its front wheels against the body (rad), turned out past the wings. */
+  steer?: number | null;
 }
 
 /** Plain cars as sprites, by what they look like; see `CarArt.art`. */
@@ -232,6 +234,8 @@ export const CarArt = {
         return 'vehicleRacer';
       case 'wedding':
         return 'vehicleWedding';
+      case 'drift':
+        return 'vehicleDrift';
     }
   },
 
@@ -257,6 +261,7 @@ export const CarArt = {
       case 'bus':
       case 'racer':
       case 'wedding':
+      case 'drift':
         return [...common, 'rearWindow'];
       case 'oversize':
         return ['cargo', ...common];
@@ -305,6 +310,8 @@ export const CarArt = {
         return c.oversizeLength;
       case 'racer':
         return c.racerLength;
+      case 'drift':
+        return c.driftLength;
       default:
         return c.carLength;
     }
@@ -461,7 +468,8 @@ export const CarArt = {
     const lights = d.lights ?? null;
     const model = type === 'car' ? (d.model ?? null) : null;
 
-    if (d.cache && opacity === 1 && dents.length === 0 && !effect && lights === null && !d.finish && type !== 'military') {
+    const steer = d.steer ?? null;
+    if (d.cache && opacity === 1 && dents.length === 0 && !effect && lights === null && !d.finish && type !== 'military' && steer === null) {
       CarArt.addCached(list, d, c, L, W, model);
       return;
     }
@@ -496,6 +504,15 @@ export const CarArt = {
     if (head > 0.01) list.w(rect(worldOf(v(L / 2 + 8, 0), pose), v(16, W * 1.4), 6, pose.heading), 'primary', opacity * 0.28 * head);
 
     if (effect) SkinEffects.under(list, effect, pose, L, W, d.finishTime ?? null, d.id, opacity);
+    if (steer !== null) {
+      // Under the body, a touch wider than it: only what the lock turns out shows, the front wheels most.
+      for (const [x, turn] of [
+        [L * 0.3, steer],
+        [-L * 0.3, 0],
+      ] as [number, number][]) {
+        for (const y of [W / 2 - 0.6, -W / 2 + 0.6]) list.w(rect(worldOf(v(x, y), pose), v(5.6, 2.8), 1, pose.heading + turn), 'vehicleTire', opacity);
+      }
+    }
     if (dents.length === 0) {
       if (model) {
         const hull = CarArt.outline(type, c, model);
@@ -649,6 +666,13 @@ export const CarArt = {
     if (type === 'racer' && dents.length === 0) {
       // Two white racing stripes nose to tail.
       for (const y of [-W * 0.14, W * 0.14]) list.w(line(worldOf(v(L / 2 - 1, y), pose), worldOf(v(-L / 2 + 1, y), pose), 1.2), 'primary', opacity * 0.85);
+    }
+    if (type === 'drift' && dents.length === 0) {
+      // A panda: black bonnet and boot, a wing across the tail, a red stripe down one side.
+      list.w(rect(worldOf(v(L * 0.36, 0), pose), v(L * 0.24, W - 2.4), 2, pose.heading), 'vehicleTire', opacity);
+      list.w(rect(worldOf(v(-L * 0.42, 0), pose), v(L * 0.1, W - 2.4), 1.5, pose.heading), 'vehicleTire', opacity);
+      list.w(line(worldOf(v(-L / 2 + 0.6, -W / 2 + 0.2), pose), worldOf(v(-L / 2 + 0.6, W / 2 - 0.2), pose), 1.8), 'vehicleTrim', opacity);
+      list.w(line(worldOf(v(L / 2 - 1.5, -W * 0.3), pose), worldOf(v(-L / 2 + 2.5, -W * 0.3), pose), 0.9), 'lightRed', opacity * 0.9);
     }
     if (type === 'wedding' && dents.length === 0) {
       // A gold ribbon over the roof and a bow on the bonnet: a wedding car at a glance.

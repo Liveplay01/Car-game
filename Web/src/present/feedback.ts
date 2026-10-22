@@ -1,5 +1,6 @@
 import type { GameEvent, CrashReport, VersusPhase } from '../core/events';
 import type { World } from '../core/world';
+import type { VehicleType } from '../core/vehicle';
 import { Scoring } from '../core/scoring';
 import type { Vec2 } from '../core/vec2';
 import { Ease, unitHash } from './render';
@@ -353,6 +354,57 @@ export interface MusicMix {
 export interface WeatherSound {
   rain: number;
   strikes: number;
+}
+
+/** The engine a vehicle sounds like (`audio-src/make_traffic_sounds.py`); the drift car has its own, null. */
+export type TrafficEngine = 'car' | 'sport' | 'diesel' | 'truck' | 'bike';
+export const TRAFFIC_ENGINES: TrafficEngine[] = ['car', 'sport', 'diesel', 'truck', 'bike'];
+
+export function engineOf(t: VehicleType): TrafficEngine | null {
+  switch (t) {
+    case 'drift':
+      return null;
+    case 'sportsCar':
+    case 'racer':
+    case 'police':
+    case 'pickup':
+      return 'sport';
+    case 'van':
+    case 'ambulance':
+    case 'transporter':
+      return 'diesel';
+    case 'truck':
+    case 'tanker':
+    case 'military':
+    case 'bus':
+    case 'fireTruck':
+    case 'oversize':
+      return 'truck';
+    case 'motorbike':
+      return 'bike';
+    default:
+      return 'car';
+  }
+}
+
+/** One vehicle for the traffic bed: its speed as a share of the ring's, its load 0â€¦1 (pulling away to braking), where it is. */
+export interface TrafficSound {
+  id: number;
+  engine: TrafficEngine;
+  speed: number;
+  load: number;
+  x: number;
+  y: number;
+}
+
+/** The drift car on the ring (`DriftFx.sound`): on or off the throttle, how hard it slides and its wheels spin, every lift so far. */
+export interface DriftSound {
+  throttle: boolean;
+  slide: number;
+  spin: number;
+  lifts: number;
+  pan: number;
+  leaving: boolean;
 }
 
 export const Sky = {

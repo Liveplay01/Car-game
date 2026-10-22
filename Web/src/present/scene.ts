@@ -14,6 +14,7 @@ import { towDepotCovering } from '../core/modules';
 import { MODULE_COLORS } from './flow';
 import { criminalVehicle } from '../core/specials';
 import { isCarType, isEmergency } from '../core/vehicle';
+import { driftSteer } from '../core/drift';
 
 /** Pose between the last two simulation steps. */
 export function interpolatedPose(veh: Vehicle, alpha: number): Pose {
@@ -431,6 +432,7 @@ export const SceneBuilder = {
           finishTime,
           springTime,
           cache: true,
+          steer: veh.type === 'drift' ? driftSteer(world, veh.id) : null,
         },
         world.config,
       );

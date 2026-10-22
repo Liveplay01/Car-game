@@ -66,6 +66,8 @@ export const COLORS = {
   vehicleRacer: [255, 72, 164, 1],
   /** The wedding convoy: blush white with a gold ribbon, soft beside the loud pink of the racers. */
   vehicleWedding: [250, 222, 228, 1],
+  /** The drift car: a panda coupÃ©, white with a black bonnet and boot; the pattern tells, not the white. */
+  vehicleDrift: [238, 240, 243, 1],
   /** A red motorbike: a dark one vanished on the dark asphalt (Leo, 01.10.2026). */
   vehicleMotorbike: [226, 52, 62, 1],
   /** The rider's jacket, a shade under the red, and the light helmet over it. */

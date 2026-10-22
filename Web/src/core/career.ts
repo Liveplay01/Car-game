@@ -87,6 +87,8 @@ export interface Settings {
   music: boolean;
   /** The sound of the map's weather (rain, thunder), apart from the effects and the music. */
   mapSounds: boolean;
+  /** The engines and tyres of the traffic, quietly under everything (Leo, 22.10.2026). */
+  trafficSounds: boolean;
   haptics: boolean;
   reduceMotion: ReduceMotion;
   vehicleLabels: boolean;
@@ -485,7 +487,7 @@ export const newSave = (): SaveGame => ({
   highscore: 0,
   highscoreSeed: null,
   shiftsPlayed: 0,
-  settings: { sound: true, music: true, mapSounds: true, haptics: true, reduceMotion: 'system', vehicleLabels: false, leftHanded: false, dispatchSize: 2, largeText: false, batterySaver: false, lowDetail: false, motionChosen: false },
+  settings: { sound: true, music: true, mapSounds: true, trafficSounds: true, haptics: true, reduceMotion: 'system', vehicleLabels: false, leftHanded: false, dispatchSize: 2, largeText: false, batterySaver: false, lowDetail: false, motionChosen: false },
   career: newCareer(),
   tutorialDone: false,
   hints: [],

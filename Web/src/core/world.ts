@@ -48,6 +48,7 @@ import { type LearnerPhase, firstLearner, updateLearner, noteMergeNearLearner, l
 import { type OversizePhase, firstOversize, updateOversize, noteMergeNearOversize, oversizeThrough } from './oversize';
 import { type RacePhase, firstRace, updateRace, isLiveRacer, racerStopped } from './racers';
 import { type WeddingPhase, firstWedding, updateWedding, noteMergeNearWedding, weddingThrough } from './wedding';
+import { type DriftPhase, firstDrift, updateDrift } from './drift';
 
 export const STEP_RATE = 120;
 export const STEP = 1 / STEP_RATE;
@@ -205,6 +206,7 @@ export class World {
   oversize: OversizePhase = { kind: 'done' };
   race: RacePhase = { kind: 'done' };
   wedding: WeddingPhase = { kind: 'done' };
+  drift: DriftPhase = { kind: 'done' };
   /** The syndicate boss's escorts still to join, and where (boss levels, and the scout's one). */
   escortsDue: { arm: Arm; left: number } | null = null;
   /** The scout level: whether this shift's scout has been announced, and which criminal it is. */
@@ -226,6 +228,7 @@ export class World {
   oversizeRng: Rng;
   racerRng: Rng;
   weddingRng: Rng;
+  driftRng: Rng;
   trafficRng: Rng;
   laneRng: Rng;
   /** Critical Merges and Jackpot transporters: its own stream, so older seeds keep their traffic. */
@@ -265,6 +268,7 @@ export class World {
     this.oversizeRng = substream(seed, 0x0f512e5a);
     this.racerRng = substream(seed, 0x2ace2ace);
     this.weddingRng = substream(seed, 0x3edd1a95);
+    this.driftRng = substream(seed, 0xd21f7a86);
     this.trafficRng = substream(seed, 0x6b1ce5a1);
     this.laneRng = substream(seed, 0x2a4e5d11);
     this.luckRng = substream(seed, 0x1ac4c0de);
@@ -290,6 +294,7 @@ export class World {
     this.oversize = firstOversize(this);
     this.race = firstRace(this);
     this.wedding = firstWedding(this);
+    this.drift = firstDrift(this);
     for (const q of this.seats) this.refillQueue(q);
     if (prefill) prefillRing(this, Math.max(this.targetDensity, config.minRingBots));
   }
@@ -405,6 +410,7 @@ export class World {
     updateOversize(this, end);
     updateRace(this, end);
     updateWedding(this, end);
+    updateDrift(this, end, dt);
     updateEscorts(this);
     this.resolveContacts(end);
     this.resolveTrafficContacts(end);
@@ -443,6 +449,8 @@ export class World {
         return c.oversizeLength;
       case 'racer':
         return c.racerLength;
+      case 'drift':
+        return c.driftLength;
       default:
         return c.carLength;
     }
@@ -1841,6 +1849,7 @@ export class World {
     if (this.oversize.kind === 'idle') this.oversize = { kind: 'idle', next: this.oversize.next + time };
     if (this.race.kind === 'idle') this.race = { kind: 'idle', next: this.race.next + time };
     if (this.wedding.kind === 'idle') this.wedding = { kind: 'idle', next: this.wedding.next + time };
+    if (this.drift.kind === 'idle') this.drift = { kind: 'idle', next: this.drift.next + time };
     if (!this.config.endless && this.config.shiftCars <= this.config.rushHourCars) this.beginRushHour(time);
   }
 

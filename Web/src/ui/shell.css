@@ -1290,6 +1290,15 @@ a.row-link {
 .settings-btn svg {
   width: 18px;
   height: 18px;
+  flex: none;
+}
+
+/* The label shrinks to fit the fixed pill width instead of spilling past its rounded edge (long translations). */
+.run-btn span,
+.settings-btn span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* The chest pill wears the waiting chest itself, flat and a little larger than a line icon. */

@@ -631,6 +631,8 @@ export default (S: Strings): Words<Strings> => ({
           return '赛车';
         case 'wedding':
           return '婚礼';
+        case 'drift':
+          return '漂移';
         default:
           return null;
       }

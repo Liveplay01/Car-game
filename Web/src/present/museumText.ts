@@ -210,6 +210,15 @@ export const SPECIAL_TEXT: Record<SpecialKind, MuseumText & { name: string }> = 
       `A rose band shows their stretch of the ring, the gaps between them and a little room at both ends. Keep your cars out of it and the convoy pays ${money(Fmt.number(c.weddingPay))} and extends your chain when it leaves. Joining inside it only costs that bonus.`,
     ],
   },
+  drift: {
+    name: 'Drift Car',
+    line: 'Rare: slides round a quiet ring',
+    brief: 'A drift car slides round the ring sideways. Mind its swinging tail.',
+    explain: () => [
+      'Very rarely, when the ring has gone quiet, a tuned coupÃ© joins from one of the other arms and drifts round it sideways: tyres smoking, turbo hissing, rubber left on the road.',
+      'Its tail swings out across the lane, and that tail is solid. Give it room and enjoy the show: no bonus, no band.',
+    ],
+  },
   bus: {
     name: 'School Bus',
     line: 'Stops at the bus stop',

@@ -631,6 +631,8 @@ export default (S: Strings): Words<Strings> => ({
           return 'BOLIDE';
         case 'wedding':
           return 'MARIAGE';
+        case 'drift':
+          return 'DRIFT';
         default:
           return null;
       }

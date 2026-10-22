@@ -196,6 +196,15 @@ const museum: Translation['museum'] = {
         `Ein rosa Band zeigt ihren Abschnitt des Rings, die Lücken zwischen ihnen und etwas Platz an beiden Enden. Halte deine Autos heraus, und der Korso zahlt beim Wegfahren ${money(Fmt.number(c.weddingPay))} und verlängert deine Kette. Innerhalb einzufädeln kostet nur diesen Bonus.`,
       ],
     },
+    drift: {
+      name: 'Drift-Auto',
+      line: 'Selten: driftet über den leeren Ring',
+      brief: 'Ein Drift-Auto rutscht quer um den Ring. Achte auf sein ausschwenkendes Heck.',
+      explain: () => [
+        'Ganz selten, wenn der Ring ruhig geworden ist, fädelt ein getuntes Coupé von einem der anderen Arme ein und driftet quer um ihn herum: qualmende Reifen, zischender Turbo, Gummi auf der Straße.',
+        'Sein Heck schwenkt über die Spur aus, und dieses Heck ist fest. Lass ihm Platz und genieß die Show: kein Bonus, kein Band.',
+      ],
+    },
     bus: {
       name: 'Schulbus',
       line: 'Hält an der Haltestelle',

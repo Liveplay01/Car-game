@@ -196,6 +196,15 @@ const museum: Translation['museum'] = {
         `Un bandeau rose englobe l’ensemble du cortège. Laissez-le intact pour empocher ${money(Fmt.number(c.weddingPay))} et faire progresser votre chaîne.`,
       ],
     },
+    drift: {
+      name: 'Voiture de drift',
+      line: 'Rare : glisse sur un rond-point calme',
+      brief: 'Une voiture de drift glisse de travers sur l’anneau. Gare à l’arrière qui chasse.',
+      explain: () => [
+        'Très rarement, quand l’anneau s’est calmé, un coupé préparé arrive par une autre branche et en fait le tour en travers : pneus qui fument, turbo qui siffle, gomme sur la route.',
+        'Son arrière chasse en travers de la voie, et cet arrière est bien solide. Laisse-lui de la place et profite du spectacle : ni bonus, ni bande.',
+      ],
+    },
     bus: {
       name: 'Bus scolaire',
       line: 'S’arrête au point de ramassage',

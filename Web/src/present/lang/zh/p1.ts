@@ -124,6 +124,8 @@ export default (_s: Strings): Words<Strings> => ({
     music: '音乐',
     mapSounds: '地图环境音',
     mapSoundsSub: '路上的雨声和雷声。',
+    trafficSounds: '交通声音',
+    trafficSoundsSub: '发动机和轮胎声，轻轻地作为背景。',
     backup: '备份与设备',
     reminders: '提醒与应用',
     cloudSync: '云同步',

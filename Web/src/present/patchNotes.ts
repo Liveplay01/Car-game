@@ -53,15 +53,17 @@ export const PATCH_NOTES: PatchNote[] = [
   {
     id: '2026-10-22',
     date: '22 October 2026',
-    title: 'Police car skins, a Garage for more skins, crashes that hit harder',
+    title: 'A drift car, traffic you can hear, police car skins, a Garage for more skins, crashes that hit harder',
     impact: 'major',
     summary: [
+      'Very rare: a drift car slides sideways round a quiet ring, smoking, with a turbo you can hear.',
+      'Traffic sounds: engines and tyres quietly in the background, each vehicle its own.',
       'Police car skins: Autobahn, Highway Patrol, Sheriff, Undercover and Interceptor, found in chests.',
-      'New Garage upgrade (Build): up to four more car skins on at once.',
       'Crashes hit harder: a stronger shake, a flash, a double shock ring, more sparks and a deep thud.',
-      'Upgrade, condition and failure icons come alive, and every Prestige rank has its own star colour.',
     ],
     items: [
+      'Traffic sounds: every vehicle near the ring now has its engine, quietly in the background. Cars hum, sports cars and police cars burble like a V8, vans clatter like a diesel, lorries and buses rumble, motorbikes rasp; each one a little different, rising as it pulls onto the ring and idling where it waits, with the tyres rolling underneath. Settings â†’ Play â†’ Sound â†’ Traffic sounds turns it off.',
+      'New on the road, very rarely (from Level 12): a drift car. When the ring has gone quiet, a white coupÃ© with a black bonnet does a burnout at the line, launches with its wheels still spinning, flicks into the ring and swings its tail out wide, then drifts round sideways on opposite lock; on the way out the tail whips across once more. It leaves black rubber on the road and a cloud of tyre smoke, and you hear it: a straight six bouncing off the limiter, the turbo whistling, the blow-off valve going stu-tu-tu-tu on every lift, the tyres squealing and spinning. While it slides no extra traffic joins, and if the ring fills up anyway it calls the slide off and takes the next exit. Its tail is solid, so give it room. It is in the Museum once you have seen it.',
       'Fixed: in the Social tab the labels Ranks and Crew were swapped.',
       'Your player now shows your friend code under your name, with a button to copy it.',
       'Police car skins: five new skins in the chests (Autobahn, Highway Patrol, Sheriff, Undercover, Interceptor) dress every police car on the road. Wear one at a time from Shop → Collection → Cars → Police. The white roof and the light bar always stay, so you spot the police as quickly as before. Only looks, never a bonus.',

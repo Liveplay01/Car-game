@@ -196,6 +196,15 @@ const museum: Translation['museum'] = {
         `Una franja rosa protege al grupo completo. No interfieras y abonarán ${money(Fmt.number(c.weddingPay))} al salir sin romper tu cadena.`,
       ],
     },
+    drift: {
+      name: 'Coche de drift',
+      line: 'Raro: derrapa por una rotonda tranquila',
+      brief: 'Un coche de drift derrapa de lado por la rotonda. Cuidado con su cola.',
+      explain: () => [
+        'Muy de vez en cuando, cuando la rotonda se ha calmado, un cupé preparado entra por otro brazo y la recorre de lado: ruedas humeando, turbo silbando, goma en el asfalto.',
+        'Su cola sale por el carril, y esa cola es sólida. Déjale sitio y disfruta del espectáculo: sin bonus, sin banda.',
+      ],
+    },
     bus: {
       name: 'Autobús escolar',
       line: 'Para en la parada',

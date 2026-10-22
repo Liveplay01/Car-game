@@ -199,6 +199,15 @@ const museum: Translation['museum'] = {
         `Una striscia rosa protegge l'intero gruppo. Non interferire e doneranno ${money(Fmt.number(c.weddingPay))} all'uscita senza spezzare la serie.`,
       ],
     },
+    drift: {
+      name: 'Auto da drift',
+      line: 'Rara: scivola su una rotonda tranquilla',
+      brief: 'Un’auto da drift scivola di traverso sulla rotonda. Attento alla coda che sbanda.',
+      explain: () => [
+        'Molto di rado, quando la rotonda si è calmata, una coupé elaborata entra da un altro braccio e la percorre di traverso: gomme fumanti, turbo che fischia, gomma sull’asfalto.',
+        'La sua coda sbanda attraverso la corsia, ed è solida. Lasciale spazio e goditi lo spettacolo: niente bonus, niente fascia.',
+      ],
+    },
     bus: {
       name: 'Scuolabus',
       line: 'Si ferma alla fermata',

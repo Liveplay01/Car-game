@@ -17,6 +17,7 @@ import { shelfEntries, museumId } from './core/museum';
 import type { Probe } from './ui/devProbe';
 import { streakEndsIn } from './present/readyScreen';
 import { dayNumber } from './core/daily';
+import { baseConfig } from './core/config';
 
 declare global {
   interface Window {
@@ -97,6 +98,17 @@ if (boot && fail && 'locks' in navigator && !(await holdPlay({ ifAvailable: true
 // `&level=12&money=5000000` set the level and the money instead of 30 and 50,000.
 // `&elite=300` opens the Elite track (Level 50 unless `level` says otherwise) with that much Elite XP; `&elite=near`
 // stops a few XP short of Elite 2, so the next shift climbs a level.
+// `npm run dev` only: `?drift` (also with `?demo&level=N`) sends drift cars one after another and no other specials,
+// into any traffic and never called off; `?drift=abort` calls them off on a full ring, as in the game.
+if (import.meta.env.DEV && new URLSearchParams(location.search).has('drift')) {
+  const abort = new URLSearchParams(location.search).get('drift') === 'abort';
+  Object.assign(baseConfig, {
+    driftLevel: 1, driftChance: 1, driftFirst: { lo: 1, hi: 2 }, driftRepeat: 1.5, driftMaxTraffic: 99, driftAbortTraffic: abort ? baseConfig.driftAbortTraffic : 99,
+    criminalChance: 0, militaryChance: 0, militaryLevelChance: 0, ambulanceChance: 0, learnerChance: 0, oversizeChance: 0, racerChance: 0, weddingChance: 0,
+    transporterFirst: { lo: 1e9, hi: 1e9 }, cityEventChance: 0,
+  });
+}
+
 if (import.meta.env.DEV && new URLSearchParams(location.search).has('demo')) {
   const query = new URLSearchParams(location.search);
   const demo = newSave();

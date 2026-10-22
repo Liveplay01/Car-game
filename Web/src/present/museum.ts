@@ -56,6 +56,7 @@ const SPECIAL_COLOR: Record<SpecialKind, ColorToken> = {
   oversize: 'vehicleOversize',
   racer: 'vehicleRacer',
   wedding: 'vehicleWedding',
+  drift: 'lightRed',
 };
 const WEATHER_COLOR: Record<WeatherKind, ColorToken> = {
   lightRain: 'lightBlue',

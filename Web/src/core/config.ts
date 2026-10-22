@@ -771,6 +771,41 @@ export const baseConfig = {
   weddingZoneArc: 26,
   weddingPay: 350,
 
+  // Drift car (Leo, 22.10.2026, core/drift.ts): very rare, slides round a quiet ring, a show without a task
+  driftLevel: 12,
+  /** Chance per shift; 0 turns it off. */
+  driftChance: 0.05,
+  driftFirst: r(4, 16),
+  /** It only comes while at most this many vehicles drive on the ring, and none join beyond the bots the ring keeps while it slides. */
+  driftMaxTraffic: 4,
+  /** More than this many others on the ring (or a wreck) and it calls the slide off: straight, out at the next exit. */
+  driftAbortTraffic: 6,
+  /** Extra laps after its way round: it wants to be seen. */
+  driftLaps: 1,
+  driftLength: 23,
+  /** Slip angle (rad) on the throttle and in a lift; the flick the other way that starts it, and how long. */
+  driftAngle: 0.62,
+  driftLiftAngle: 0.36,
+  driftFlickAngle: 0.42,
+  driftFlick: 0.32,
+  /** Its tail whips across this far (rad) and this long (s) when it takes the exit. */
+  driftWhip: 0.45,
+  driftWhipTime: 0.36,
+  /** Seconds the slide stays loose after the flick (damping times `driftSwing`): the tail swings out wide before it settles. */
+  driftSettle: 1.3,
+  driftSwing: 0.4,
+  /** Seconds of burnout at the stop line, and how long the wheels spin on after the launch. */
+  driftBurnout: 1.6,
+  driftLaunch: 0.9,
+  /** Seconds on the throttle, and of each lift. */
+  driftPull: r(0.7, 1.7),
+  driftLift: r(0.14, 0.32),
+  /** The spring on the slip angle: stiffness (1/sÂ²) and damping (1/s), lightly damped so the tail wobbles. */
+  driftStiffness: 30,
+  driftDamping: 3.4,
+  /** Seconds until the next drift car once one has gone; 0: one a shift at most (`?drift` on the dev server sends them on and on). */
+  driftRepeat: 0,
+
   // Mastery trials (core/trials.ts): an extra rule for this shift, broken ends it as 'failed'
   /** flawless: no crash, no cut-off (a broken rule ends the trial as failed). */
   trialRule: null as TrialRule | null,

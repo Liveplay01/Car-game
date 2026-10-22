@@ -6,11 +6,11 @@ import { changelogFile } from './src/present/patchNotes.ts';
 import { siteFiles } from './src/present/siteData.ts';
 import { LEGAL_DOCS, type LegalDoc, GAME_NAME, missingLegal } from './src/present/legal.ts';
 
-/** The sound effects and music stems, so the game sounds right offline too. */
+/** The sound effects, the music stems, the drift car's and the traffic's loops, so the game sounds right offline too. */
 function audioFiles(): string[] {
   const root = join(process.cwd(), 'public', 'audio');
   const out: string[] = [];
-  for (const dir of ['sounds', 'music']) {
+  for (const dir of ['sounds', 'music', 'drift', 'traffic']) {
     try {
       for (const f of readdirSync(join(root, dir))) if (f.endsWith('.m4a')) out.push(`/audio/${dir}/${f}`);
     } catch {

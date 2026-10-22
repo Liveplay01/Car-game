@@ -70,6 +70,7 @@ const SPECIAL_SIGNAL: Record<SpecialKind, MuseumSignal | null> = {
   oversize: fullCycle(ORANGE),
   racer: noMiss(PINK),
   wedding: fullCycle(ROSE),
+  drift: null,
 };
 
 const BOSS_SIGNAL: MuseumSignal = { arm: PURPLE, sweep: GOLD, paid: GOLD, missed: null, note: 'escaped' };

@@ -16,6 +16,14 @@ export function installProbe(shell: Shell): void {
   const { game } = shell;
   const view = v(innerWidth, innerHeight);
 
+  /** The drift car: where it is and how it slides (slip in degrees), or the phase when none is out. */
+  const drift = (): Snapshot['drift'] => {
+    const d = game.world.drift;
+    if (d.kind !== 'on') return d.kind;
+    const veh = game.world.vehicle(d.vehicle);
+    return { phase: veh?.phase.kind ?? 'gone', slip: Math.round((d.slip * 180) / Math.PI), steer: Math.round((d.steer * 180) / Math.PI), throttle: d.throttle, lifts: d.lifts, calming: d.calming >= 0 };
+  };
+
   const state = (): Snapshot => {
     const { screen, world, save } = game;
     const shift = world.shift;
@@ -35,6 +43,7 @@ export function installProbe(shell: Shell): void {
       ad: game.gameAd?.reward ?? null,
       revive: game.reviveOffer,
       revived: game.world.revives,
+      drift: drift(),
     };
   };
 
@@ -127,6 +136,7 @@ export interface Snapshot {
   hints: string[];
   daily: { selected: boolean; streak: number; chests: string[] };
   ask: string | null;
+  drift: string | { phase: string; slip: number; steer: number; throttle: boolean; lifts: number; calming: boolean };
   /** The ad the Game tab's pill offers right now (`GameSession.gameAd`), or null. */
   ad: string | null;
   /** Seconds the offer to keep driving still stands (null: none on screen), and how often this run went on. */

@@ -39,7 +39,9 @@ export type VehicleType =
   /** A street racer: barges in; a police car that rams it stops it, for a bonus (core/racers.ts). */
   | 'racer'
   /** A wedding car: three of them drive as a convoy at ring speed; keep your cars out of it (core/wedding.ts). */
-  | 'wedding';
+  | 'wedding'
+  /** A drift car: very rare, slides sideways round a quiet ring, a show (core/drift.ts). */
+  | 'drift';
 
 export type Owner = 'player' | 'ai';
 
@@ -225,7 +227,7 @@ export class Vehicle {
   /** Plain AI traffic: the bots whose gaps the player's cars have to hit. */
   get isBot(): boolean {
     const t = this.type;
-    return this.owner === 'ai' && t !== 'pickup' && t !== 'transporter' && t !== 'military' && !isEmergency(t) && t !== 'learner' && t !== 'oversize' && t !== 'racer';
+    return this.owner === 'ai' && t !== 'pickup' && t !== 'transporter' && t !== 'military' && !isEmergency(t) && t !== 'learner' && t !== 'oversize' && t !== 'racer' && t !== 'drift';
   }
 
   get isPlayerPolice(): boolean {

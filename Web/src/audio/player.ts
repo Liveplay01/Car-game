@@ -1,4 +1,4 @@
-import { type SoundID, type HapticID, type MusicMix, type MusicLayer, type WeatherSound, SOUND_IDS, MUSIC_LAYERS, Music } from '../present/feedback';
+import { type SoundID, type HapticID, type MusicMix, type MusicLayer, type WeatherSound, type DriftSound, type TrafficSound, type TrafficEngine, TRAFFIC_ENGINES, SOUND_IDS, MUSIC_LAYERS, Music } from '../present/feedback';
 import { clamp } from '../core/vec2';
 
 declare global {
@@ -16,6 +16,39 @@ interface Voice {
   gain: GainNode;
 }
 
+/** The drift car's loops and its one-shot (`audio-src/make_drift_sounds.py`), loaded when the first one comes. */
+const DRIFT_SAMPLES = ['engineOn', 'engineOff', 'turbo', 'squeal', 'spin', 'blowOff', 'flutter'] as const;
+/** The flutter sample's chirps: seven, this far apart (`FLUTTER_PERIOD` in the script); a lift plays three to seven. */
+const FLUTTER_PERIOD = 0.034;
+type DriftSample = (typeof DRIFT_SAMPLES)[number];
+
+/** The traffic's engine loops and the road under them (`audio-src/make_traffic_sounds.py`), loaded with the first traffic. */
+const TRAFFIC_SAMPLES = [...TRAFFIC_ENGINES, 'road'] as const;
+type TrafficSample = TrafficEngine | 'road';
+
+interface TrafficVoice {
+  engine: TrafficEngine;
+  src: AudioBufferSourceNode;
+  gain: GainNode;
+  pan: StereoPannerNode;
+  /** Its own note, a few percent off the loop's. */
+  pitch: number;
+  /** Seconds since it fell out of the nearest few. */
+  fading: number;
+}
+
+interface DriftVoice {
+  out: GainNode;
+  pan: StereoPannerNode;
+  layers: Map<DriftSample, { src: AudioBufferSourceNode; gain: GainNode }>;
+  /** 0 off the throttle, 1 on it; the revs and the boost, 0…1. */
+  mix: number;
+  rpm: number;
+  boost: number;
+  lifts: number;
+  silent: number;
+}
+
 interface RainVoice {
   gain: GainNode;
   hiss: BiquadFilterNode;
@@ -31,6 +64,7 @@ interface RainVoice {
 export class AudioPlayer {
   static readonly sfxVolume = 0.8;
   static readonly musicMaster = 0.35;
+  static readonly trafficVolume = 0.3;
   static readonly fade = 0.8;
 
   private static readonly maxVoices = 14;
@@ -65,6 +99,8 @@ export class AudioPlayer {
   private sfx: GainNode | null = null;
   private ui: GainNode | null = null;
   private ambient: GainNode | null = null;
+  /** The traffic's bed: quiet, and ducked with the music by the big hits. */
+  private traffic: GainNode | null = null;
   private bed: GainNode | null = null;
   private voices: Voice[] = [];
   private buffers = new Map<SoundID, AudioBuffer>();
@@ -112,6 +148,7 @@ export class AudioPlayer {
     const sfx = bus(AudioPlayer.sfxVolume, limiter);
     this.ui = bus(AudioPlayer.sfxVolume, limiter);
     this.ambient = bus(AudioPlayer.sfxVolume, bed);
+    this.traffic = bus(AudioPlayer.trafficVolume, bed);
     this.bed = bed;
     const filter = ctx.createBiquadFilter();
     filter.type = 'lowpass';
@@ -438,6 +475,224 @@ export class AudioPlayer {
     const loud = 0.25 + 0.45 * on;
     thump(0, loud);
     thump(0.17, loud * 0.6);
+  }
+
+  private driftVoice: DriftVoice | null = null;
+  private driftBuffers: Map<DriftSample, AudioBuffer> | null = null;
+  private driftLoading = false;
+
+  /**
+   * The drift car, called every frame: loops rendered by `audio-src/make_drift_sounds.py`, mixed by what the car
+   * does. The engine cross-fades from the limiter on the throttle to the burble off it, the revs bend the pitch;
+   * the turbo spools up behind the throttle and the blow-off valve flutters on every lift; the tyres squeal with
+   * the slide and roar while they spin at the line.
+   */
+  updateDrift(car: DriftSound | null, enabled: boolean, delta: number): void {
+    const ctx = this.ctx;
+    if (!ctx || !this.sfx || ctx.state !== 'running') return;
+    const on = enabled && car !== null;
+    if (on && !this.driftBuffers) {
+      if (!this.driftLoading) this.loadDrift(ctx);
+      return;
+    }
+    if (!on && !this.driftVoice) return;
+    const buffers = this.driftBuffers;
+    if (!buffers) return;
+    const v = this.driftVoice ?? (this.driftVoice = this.startDrift(ctx, this.sfx, buffers, car?.lifts ?? 0));
+    const now = ctx.currentTime;
+    if (!on || !car) {
+      v.out.gain.setTargetAtTime(0, now, 0.25);
+      v.silent += delta;
+      if (v.silent > 2) {
+        for (const layer of v.layers.values()) layer.src.stop();
+        v.out.disconnect();
+        this.driftVoice = null;
+      }
+      return;
+    }
+    v.silent = 0;
+    const toward = (rate: number): number => Math.min(1, delta * rate);
+    v.mix += ((car.throttle ? 1 : 0) - v.mix) * toward(car.throttle ? 14 : 6);
+    v.rpm += ((car.throttle ? 1 : car.leaving ? 0.35 : 0.55) - v.rpm) * toward(car.throttle ? 5 : 2.5);
+    v.boost += ((car.throttle ? 1 : 0) - v.boost) * toward(car.throttle ? 1.6 : 10);
+    const set = (layer: DriftSample, gain: number, rate: number): void => {
+      const l = v.layers.get(layer);
+      if (!l) return;
+      l.gain.gain.setTargetAtTime(gain, now, 0.03);
+      l.src.playbackRate.setTargetAtTime(rate, now, 0.03);
+    };
+    const slide = Math.min(1, car.slide);
+    set('engineOn', 0.7 * v.mix, 0.86 + 0.14 * v.rpm);
+    set('engineOff', 0.55 * (1 - v.mix), 0.8 + 0.35 * v.rpm);
+    set('turbo', 0.2 * v.boost * v.boost, 0.55 + 0.5 * v.boost);
+    set('squeal', 0.5 * slide ** 1.5, 0.92 + 0.12 * slide);
+    set('spin', 0.6 * car.spin, 0.95 + 0.1 * car.spin);
+    v.pan.pan.setTargetAtTime(car.pan, now, 0.1);
+    v.out.gain.setTargetAtTime(car.leaving ? 0.45 : 0.8, now, 0.3);
+    if (car.lifts > v.lifts && v.boost > 0.25) {
+      const shot = (name: DriftSample, gain: number, rate: number, length: number | null = null): void => {
+        const buffer = buffers.get(name);
+        if (!buffer) return;
+        const src = ctx.createBufferSource();
+        src.buffer = buffer;
+        src.playbackRate.value = rate;
+        const g = ctx.createGain();
+        g.gain.value = gain;
+        src.connect(g);
+        g.connect(v.out);
+        src.start(now);
+        if (length === null) return;
+        // Cut after the last chirp it should have, with a short fade instead of a click.
+        const end = now + length / rate;
+        g.gain.setValueAtTime(gain, end - 0.012);
+        g.gain.linearRampToValueAtTime(0, end);
+        src.stop(end + 0.01);
+      };
+      shot('blowOff', 0.35 + 0.55 * v.boost, 0.94 + Math.random() * 0.12);
+      const chirps = 3 + Math.floor(Math.random() * 5);
+      shot('flutter', 0.3 + 0.5 * v.boost, 0.95 + Math.random() * 0.1, chirps * FLUTTER_PERIOD + 0.02);
+    }
+    v.lifts = car.lifts;
+  }
+
+  private loadDrift(ctx: AudioContext): void {
+    this.driftLoading = true;
+    void Promise.all(
+      DRIFT_SAMPLES.map(async (name): Promise<[DriftSample, AudioBuffer]> => {
+        const res = await fetch(`${base}audio/drift/${name}.m4a`);
+        if (!res.ok) throw new Error(`audio/drift/${name}.m4a: ${res.status}`);
+        return [name, await ctx.decodeAudioData(await res.arrayBuffer())];
+      }),
+    ).then(
+      (loaded) => (this.driftBuffers = new Map(loaded)),
+      // Offline before the files were cached: the next drift car tries again.
+      () => (this.driftLoading = false),
+    );
+  }
+
+  private startDrift(ctx: AudioContext, to: AudioNode, buffers: Map<DriftSample, AudioBuffer>, lifts: number): DriftVoice {
+    const pan = ctx.createStereoPanner();
+    pan.connect(to);
+    const out = ctx.createGain();
+    out.gain.value = 0;
+    out.connect(pan);
+    const layers = new Map<DriftSample, { src: AudioBufferSourceNode; gain: GainNode }>();
+    for (const name of DRIFT_SAMPLES) {
+      const buffer = buffers.get(name);
+      if (!buffer || name === 'blowOff' || name === 'flutter') continue;
+      const src = ctx.createBufferSource();
+      src.buffer = buffer;
+      src.loop = true;
+      const gain = ctx.createGain();
+      gain.gain.value = 0;
+      src.connect(gain);
+      gain.connect(out);
+      // Each loop from its own place: the layers never line up the same way twice.
+      src.start(0, Math.random() * buffer.duration);
+      layers.set(name, { src, gain });
+    }
+    return { out, pan, layers, mix: 1, rpm: 0.6, boost: 0, lifts, silent: 0 };
+  }
+
+  private trafficVoices = new Map<number, TrafficVoice>();
+  private trafficBuffers: Map<TrafficSample, AudioBuffer> | null = null;
+  private trafficLoading = false;
+  private road: { src: AudioBufferSourceNode; gain: GainNode } | null = null;
+
+  /** The loudest engines at once; the rest of the ring is the road's bed. */
+  private static readonly trafficVoices = 6;
+  /** How far (world units) an engine carries before it is half as loud. */
+  private static readonly trafficReach = 170;
+
+  /**
+   * The traffic, quietly under everything (Leo, 22.10.2026), called every frame: each of the nearest vehicles
+   * gets an engine loop of its kind (`audio-src/make_traffic_sounds.py`), each car its own pitch, rising with its
+   * speed and with the throttle as it pulls onto the ring, idling where it stands. Under them the tyres roll.
+   */
+  updateTraffic(cars: TrafficSound[], enabled: boolean, delta: number): void {
+    const ctx = this.ctx;
+    const bus = this.traffic;
+    if (!ctx || !bus || ctx.state !== 'running') return;
+    const on = enabled && cars.length > 0;
+    if (on && !this.trafficBuffers) {
+      if (!this.trafficLoading) this.loadTraffic(ctx);
+      return;
+    }
+    const buffers = this.trafficBuffers;
+    if (!buffers) return;
+    const now = ctx.currentTime;
+    const reach = AudioPlayer.trafficReach;
+    const near = (c: TrafficSound): number => 1 / (1 + (c.x * c.x + c.y * c.y) / (reach * reach));
+    const weight: Record<TrafficEngine, number> = { car: 1, sport: 1.15, diesel: 1.05, truck: 1.3, bike: 1.2 };
+    const chosen = on ? [...cars].sort((a, b) => near(b) * weight[b.engine] - near(a) * weight[a.engine]).slice(0, AudioPlayer.trafficVoices) : [];
+    const keep = new Set(chosen.map((c) => c.id));
+    for (const [id, v] of this.trafficVoices) {
+      if (keep.has(id)) continue;
+      v.gain.gain.setTargetAtTime(0, now, 0.08);
+      v.fading += delta;
+      if (v.fading > 0.4) {
+        v.src.stop();
+        v.gain.disconnect();
+        this.trafficVoices.delete(id);
+      }
+    }
+    for (const c of chosen) {
+      let v = this.trafficVoices.get(c.id);
+      if (!v || v.engine !== c.engine) {
+        if (v) v.src.stop();
+        const buffer = buffers.get(c.engine);
+        if (!buffer) continue;
+        const src = ctx.createBufferSource();
+        src.buffer = buffer;
+        src.loop = true;
+        const gain = ctx.createGain();
+        gain.gain.value = 0;
+        const pan = ctx.createStereoPanner();
+        src.connect(gain);
+        gain.connect(pan);
+        pan.connect(bus);
+        src.start(0, Math.random() * buffer.duration);
+        // Every car its own engine note: the same loop, a few percent apart.
+        const pitch = 0.9 + 0.2 * (((c.id * 2654435761) >>> 0) / 4294967296);
+        v = { engine: c.engine, src, gain, pan, pitch, fading: 0 };
+        this.trafficVoices.set(c.id, v);
+      }
+      v.fading = 0;
+      const rate = v.pitch * (0.62 + 0.42 * Math.min(c.speed, 1.3) + 0.06 * c.load);
+      v.src.playbackRate.setTargetAtTime(rate, now, 0.12);
+      v.gain.gain.setTargetAtTime(0.55 * near(c) * (0.55 + 0.45 * c.load + 0.2 * Math.min(c.speed, 1)), now, 0.12);
+      v.pan.pan.setTargetAtTime(Math.max(-0.7, Math.min(0.7, c.x / 320)), now, 0.12);
+    }
+    // The tyres: one bed, as loud as the moving traffic near the ring.
+    const rolling = on ? Math.min(1, cars.reduce((sum, c) => sum + near(c) * Math.min(c.speed, 1), 0) / 4) : 0;
+    const roadBuffer = buffers.get('road');
+    if (!this.road && rolling > 0 && roadBuffer) {
+      const src = ctx.createBufferSource();
+      src.buffer = roadBuffer;
+      src.loop = true;
+      const gain = ctx.createGain();
+      gain.gain.value = 0;
+      src.connect(gain);
+      gain.connect(bus);
+      src.start();
+      this.road = { src, gain };
+    }
+    this.road?.gain.gain.setTargetAtTime(0.35 * rolling, now, 0.3);
+  }
+
+  private loadTraffic(ctx: AudioContext): void {
+    this.trafficLoading = true;
+    void Promise.all(
+      TRAFFIC_SAMPLES.map(async (name): Promise<[TrafficSample, AudioBuffer]> => {
+        const res = await fetch(`${base}audio/traffic/${name}.m4a`);
+        if (!res.ok) throw new Error(`audio/traffic/${name}.m4a: ${res.status}`);
+        return [name, await ctx.decodeAudioData(await res.arrayBuffer())];
+      }),
+    ).then(
+      (loaded) => (this.trafficBuffers = new Map(loaded)),
+      // Offline before the files were cached: the next frame with traffic tries again.
+      () => (this.trafficLoading = false),
+    );
   }
 
   private noiseLoop: AudioBuffer | null = null;

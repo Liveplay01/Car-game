@@ -631,6 +631,8 @@ export default (S: Strings): Words<Strings> => ({
           return '레이서';
         case 'wedding':
           return '결혼식';
+        case 'drift':
+          return '드리프트';
         default:
           return null;
       }

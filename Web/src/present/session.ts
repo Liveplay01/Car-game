@@ -76,6 +76,8 @@ import { Intros, type Intro } from './intros';
 import { News, NEWS_DWELL, type NewsItem } from './news';
 import { textWidth } from './icons';
 import { TyreMarks } from './marks';
+import { DriftFx } from './driftFx';
+import { type DriftSound, type TrafficSound, engineOf } from './feedback';
 import { type ChallengeSpec, challengeOf, challengeConfig, encodeChallenge } from '../core/challenge';
 import { forSeason } from '../core/seasons';
 import { Achievements } from '../core/achievements';
@@ -191,6 +193,7 @@ export class GameSession {
   private explosions: ExplosionEffects;
   private scars = new MapScars();
   private tyreMarks = new TyreMarks();
+  private driftFx = new DriftFx();
   private curtain: SmokeCurtain | null = null;
   private popups: Popup[] = [];
   private popupSerial = 0;
@@ -345,6 +348,28 @@ export class GameSession {
   musicMix: MusicMix = Music.silent;
   /** The sky as heard: rain while the scene is on screen, and a strike for each flash of lightning. */
   weatherSound: WeatherSound = { rain: 0, strikes: 0 };
+
+  /** Every vehicle on the road for the traffic bed (`AudioPlayer.updateTraffic`); empty while a page covers the street. */
+  get trafficSound(): TrafficSound[] {
+    if (this.screen.k === 'page') return [];
+    const world = this.world;
+    const out: TrafficSound[] = [];
+    for (const veh of world.vehicles) {
+      const engine = engineOf(veh.type);
+      if (!engine || veh.isCrashed) continue;
+      const p = veh.phase;
+      const speed = Math.hypot(veh.position.x - veh.prevPosition.x, veh.position.y - veh.prevPosition.y) / STEP / world.config.ringSpeed;
+      // Pulling onto the ring it works hardest; braking it coasts; standing it idles.
+      const load = p.kind === 'merging' ? 1 : (p.kind === 'ring' || p.kind === 'exiting') && !p.drive.isBraking ? 0.4 : p.kind === 'queued' || p.kind === 'waiting' ? 0.15 : 0;
+      out.push({ id: veh.id, engine, speed: Math.min(speed, 1.5), load, x: veh.position.x, y: veh.position.y });
+    }
+    return out;
+  }
+
+  /** The drift car's engine, turbo and tyres; only while a shift is on screen. */
+  get driftSound(): DriftSound | null {
+    return this.screen.k === 'playing' ? this.driftFx.sound(this.world) : null;
+  }
   private flash = { period: 0, index: 0 };
   /** How tense the casino is right now, 0…1: the shell turns it into a riser and a heartbeat. */
   tension = 0;
@@ -1431,6 +1456,7 @@ export class GameSession {
     this.cameraFx.reset();
     this.scars = new MapScars();
     this.tyreMarks.clear();
+    this.driftFx.clear();
     this.popups = [];
     this.pendingSummary = null;
   }
@@ -3228,6 +3254,7 @@ export class GameSession {
     this.explosions.update(delta, gravity(this.world.config));
     this.scars.forget(this.sceneTime);
     this.tyreMarks.update(delta);
+    this.driftFx.update(delta, this.world, this.lowDetail || this.sceneThin);
     if (this.curtain) {
       this.curtain.age += delta;
       if (this.curtain.isDone) this.curtain = null;
@@ -3331,6 +3358,7 @@ export class GameSession {
     WeatherLayer.addGround(list, world, weather);
     this.scars.addGround(list, this.sceneTime, rm ? null : this.sceneTime);
     this.tyreMarks.addGround(list, world.layout, world.config);
+    this.driftFx.addGround(list);
     SceneBuilder.addLaneArrow(list, world);
     this.explosions.addGround(list);
     this.effects.carSkins = career.carSkins;
@@ -3348,6 +3376,7 @@ export class GameSession {
     SceneBuilder.addShadows(list, world, alpha);
     SceneBuilder.addVehicles(list, world, alpha, career.carSkins, career.policeSkin, rm ? null : world.time, rm ? null : world.time, this.lamps);
     SceneBuilder.addTowTrucks(list, world);
+    this.driftFx.addAir(list);
     if (night) {
       NightLayer.addVehicleLights(list, world, alpha, this.lamps, rm ? null : world.time);
     }
