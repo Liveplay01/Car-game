@@ -51,6 +51,14 @@ export const itemCredit = (item: PatchItem): string | null => {
 
 export const PATCH_NOTES: PatchNote[] = [
   {
+    id: '2026-10-23',
+    date: '23 October 2026',
+    title: 'Fixed: the pills above Settings line up again on iPhone',
+    impact: 'fix',
+    summary: ['Fixed: the pills above Settings line up again on iPhone.'],
+    items: ['Fixed: on iPhone the chest and Picture pills above Settings sat a little low and narrow, over the round buttons beside them. They line up again.'],
+  },
+  {
     id: '2026-10-22',
     date: '22 October 2026',
     title: 'A drift car, traffic you can hear, police car skins, a Garage for more skins, crashes that hit harder',

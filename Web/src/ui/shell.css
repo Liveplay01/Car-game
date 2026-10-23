@@ -1266,6 +1266,16 @@ a.row-link {
   min-height: var(--pill-h);
   margin-bottom: 0;
   overflow: visible;
+  /* In, only `pill-in` moves it, like Settings: iOS Safari left a translate/scale transition running beside the animation
+     stuck at its start, the pill shrunk and 10 px low over its neighbour. */
+  transition:
+    opacity 180ms var(--ease-out),
+    transform 200ms var(--ease-out),
+    height 240ms var(--ease-drawer),
+    margin-bottom 240ms var(--ease-drawer),
+    background-color 220ms var(--ease-out),
+    color 220ms var(--ease-out),
+    display 240ms allow-discrete;
 }
 
 /* The touch area is bigger than the pill (Leo, 12.10.2026): it fills the gaps between the pills and reaches toward the road,
