@@ -84,6 +84,7 @@ type Stat = { label: string; value: string };
 /** What a section's list is made of, top to bottom. */
 type Block =
   | { k: 'elite' }
+  | { k: 'odometer' }
   | { k: 'streak' }
   | { k: 'stat'; stat: Stat }
   | { k: 'more'; count: number; open: boolean }
@@ -181,6 +182,15 @@ export const ProgressPage = {
   tourInfoHeight: 88,
   /** Records: this many stats as big tiles, the rest in a list that folds away. */
   highlights: 6,
+  /**
+   * The odometer (Leo, 23.10.2026): every car you let in counts with a whole trip, door to door, about the length of
+   * an average car journey; at the Moon's distance the card says so, quietly, with no notice.
+   */
+  odometerHeight: 100,
+  tripKm: 16,
+  moonKm: 384_400,
+  /** Coming in, the drums roll the last stretch up to the total. */
+  odometerRoll: 100,
 
   /** Every stat the save keeps, the big ones first. */
   stats(save: SaveGame): Stat[] {
@@ -260,6 +270,7 @@ export const ProgressPage = {
       for (const family of FAMILIES) s.row({ k: 'ach', family }, 58);
     } else {
       if (ProgressPage.showsElite(career)) s.row({ k: 'elite' }, 76);
+      if (ProgressPage.odometerKm(career) > 0) s.row({ k: 'odometer' }, ProgressPage.odometerHeight);
       const stats = ProgressPage.stats(save);
       s.grid(
         stats.slice(0, ProgressPage.highlights).map((stat): Block => ({ k: 'stat', stat })),
@@ -462,6 +473,8 @@ export const ProgressPage = {
     switch (b.k) {
       case 'elite':
         return ProgressPage.addEliteCard(list, r, career, o, reduceMotion);
+      case 'odometer':
+        return ProgressPage.addOdometer(list, r, career, reduceMotion ? Infinity : state.age, o);
       case 'streak':
         return ProgressPage.addStreak(list, r, career, today, state.time, reduceMotion, o);
       case 'stat':
@@ -563,6 +576,59 @@ export const ProgressPage = {
     const empty = stat.value === S.progress.none;
     drawText(list, stat.value, v(r.minX + 16, c.y - 8), ShopPage.fitted(stat.value, 22, R.width(r) - 32), empty ? 'muted' : 'primary', { opacity: o, weight: 'bold' });
     drawText(list, stat.label, v(r.minX + 16, c.y + 16), ShopPage.fitted(stat.label, 11, R.width(r) - 32), 'muted', { opacity: o });
+  },
+
+  odometerKm: (c: Career): number => (c.stats.cars ?? 0) * ProgressPage.tripKm,
+
+  /**
+   * A car's odometer: a row of drums in a dark window, the leading zeros faint. Coming in, the last stretch rolls up
+   * like a real one, each drum turning on only as the one to its right passes nine. Past the Moon, a crescent.
+   */
+  addOdometer(list: RenderList, r: Rect, career: Career, age: number, o: number): void {
+    ProgressPage.panel(list, r, o);
+    const km = ProgressPage.odometerKm(career);
+    const moon = km >= ProgressPage.moonKm;
+    const x0 = r.minX + 16;
+    drawText(list, S.progress.odometer, v(x0, r.minY + 20), 13, 'muted', { opacity: o, weight: 'bold' });
+    drawFitted(list, moon ? S.progress.odometerMoon : S.progress.odometerLine, v(x0, r.maxY - 16), 11, R.width(r) - 32, moon ? 'primary' : 'muted', { opacity: o * (moon ? 0.85 : 1) });
+    const roll = Ease.outCubic(Ease.clamp01((age - 0.15) / 1.2));
+    const shown = km - (1 - roll) * Math.min(km, ProgressPage.odometerRoll);
+    const digits = Math.max(7, String(km).length);
+    const cell = v(18, 28);
+    const y = r.minY + 50;
+    const meaningful = String(km).length;
+    for (let i = 0; i < digits; i++) {
+      const place = digits - 1 - i;
+      const box = R.make(x0 + i * (cell.x + 3), y - cell.y / 2, x0 + i * (cell.x + 3) + cell.x, y + cell.y / 2);
+      const centre = R.center(box);
+      list.s(rect(centre, cell, 4), 'background', 0.85 * o);
+      const unit = 10 ** place;
+      const below = shown % unit;
+      const turn = below >= unit - 1 ? below - (unit - 1) : 0;
+      const digit = Math.floor(shown / unit) % 10;
+      const faint = place >= meaningful;
+      const start = list.items.length;
+      for (const [d, dy] of [
+        [digit, -turn],
+        [(digit + 1) % 10, 1 - turn],
+      ] as const) {
+        if (Math.abs(dy) >= 1) continue;
+        drawText(list, String(d), v(centre.x, centre.y + 1 + dy * cell.y), 17, faint ? 'muted' : 'primary', { opacity: o * (faint ? 0.4 : 1), weight: 'bold', align: 'center' });
+      }
+      clipTo(list, start, box);
+      // The drum's curve: the figures dim towards the top and bottom of the window.
+      for (const edge of [-1, 1]) list.s(rect(add(centre, v(0, edge * (cell.y / 2 - 3.5))), v(cell.x, 7), 3), 'background', 0.5 * o);
+    }
+    drawText(list, S.progress.km, v(x0 + digits * (cell.x + 3) + 4, y + 1), 13, 'muted', { opacity: o, weight: 'bold' });
+    if (moon) ProgressPage.addMoon(list, v(r.maxX - 30, r.minY + 34), o);
+  },
+
+  /** A crescent with a faint halo and one star beside it. */
+  addMoon(list: RenderList, at: Vec2, o: number): void {
+    list.s(circle(at, 15), 'headlight', 0.07 * o);
+    list.s(circle(at, 9), 'headlight', 0.95 * o);
+    list.s(circle(add(at, v(4, -3)), 7.6), 'card', o);
+    list.s(circle(add(at, v(-15, 10)), 1.1), 'primary', 0.6 * o);
   },
 
   addMore(list: RenderList, r: Rect, count: number, open: boolean, o: number): void {

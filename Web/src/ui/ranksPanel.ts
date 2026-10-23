@@ -199,7 +199,7 @@ function entryRow(board: BoardId, e: BoardEntry | (Omit<BoardEntry, 'name'> & { 
       h('div', { class: 'row-title board-name' }, h('span', { class: 'plate' }, e.name), e.me ? h('span', { class: 'you-tag' }, S.ranks.you) : null),
       boardSub(board, e) ? h('div', { class: 'row-sub board-title' }, boardSub(board, e)) : null,
     ),
-    h('span', { class: `row-value board-value${board === 'casino' && e.score < 0 ? ' loss' : ''}` }, ...valueOf(board, e, onStar)),
+    h('span', { class: `row-value board-value${board === 'casino' && e.score < 0 ? ' loss' : ''}${board === 'shift-level' ? ' level-value' : ''}` }, ...valueOf(board, e, onStar)),
   );
 }
 

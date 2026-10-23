@@ -290,6 +290,7 @@ on. Newer cloud progress replaces the save by itself when this device has nothin
 shifts and not on a page; when both devices played, the player chooses. With a cloud copy the
 day's login income is booked after that first look. The file export and the
 import of a save file are gone since 01.10.2026.
+**Sign out (23.10.2026):** a device that leaves the cloud (`signOutCloud`) pushes what is unsent, then starts empty (`resetProgress`, local player removed), so no unlinked copy of a cloud save can be played and merged back or put into a second cloud copy (savescumming the Casino, duplicating accounts). Typing a code is a login: the cloud replaces the device, and only a device that is further asks (`connectCloud`). Playing offline on a still-linked device and reloading the cloud afterwards remains possible: the save belongs to the client.
 
 **One page plays at a time:** each page loads the save once and writes all of it, so two pages (two tabs, or the installed app next to a tab) would overwrite each other. `main.ts` takes a Web Lock (`rat-play`) before the game starts; a second page shows "The roundabout is open elsewhere" on the boot screen and starts by itself when the first one is closed. A browser without locks, or a sandboxed frame that refuses them, plays as before.
 

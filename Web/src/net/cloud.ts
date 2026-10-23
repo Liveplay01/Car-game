@@ -87,35 +87,15 @@ let checking = false;
 const listeners = new Set<() => void>();
 
 const STOPPED_KEY = 'carGame.sync.stopped.v1';
-const STOPPED_MAX = 10;
 
-/**
- * Codes this device stopped syncing, with the cloud version they had then. Typing such a code
- * while the cloud copy is still that version would only rewind this device to where it left
- * (a lost all-in undone), so this device's progress wins instead (`connectCloud`).
- */
-function readStopped(): Record<string, number> {
+/** The player left the cloud on this device before: nothing turns it on again by itself. */
+export const cloudStoppedHere = (): boolean => {
   try {
-    return JSON.parse(storage().getItem(STOPPED_KEY) ?? '{}') as Record<string, number>;
+    return storage().getItem(STOPPED_KEY) !== null;
   } catch {
-    return {};
+    return false;
   }
-}
-
-/** The player stopped syncing on this device before: nothing turns it on again by itself. */
-export const cloudStoppedHere = (): boolean => Object.keys(readStopped()).length > 0;
-
-function rememberStopped(code: string, version: number): void {
-  const all = readStopped();
-  delete all[code];
-  all[code] = version;
-  const kept = Object.fromEntries(Object.entries(all).slice(-STOPPED_MAX));
-  try {
-    storage().setItem(STOPPED_KEY, JSON.stringify(kept));
-  } catch {
-    /* private mode: the guard lasts only while the storage works */
-  }
-}
+};
 
 /** A short fingerprint of the save's text: enough to tell "changed" from "same". */
 export function fingerprint(text: string): string {
@@ -410,24 +390,17 @@ export async function createCloud(): Promise<string> {
 }
 
 /**
- * Looks up a typed code and keeps whichever copy has further durable game progress.
+ * Looks up a typed code: the cloud's progress replaces this device's, unless this device is further (the player picks).
  */
 export async function connectCloud(typed: string): Promise<void> {
   const code = typed.trim().toUpperCase();
   const got = await apiRequest<{ save: unknown; updatedAt: number }>('GET', '/v1/sync', { token: code });
   const save = parseImport(JSON.stringify(got.save));
   if (!save) throw new LeaderboardError('invalid_save', S.net.cloudUnreadable);
-  if (deps && readStopped()[code] === got.updatedAt) {
-    // Nobody else changed the copy since this device left: it is only an old snapshot of this device. Keep this device's progress.
-    writeLink({ code, version: got.updatedAt, hash: '' });
-    savedAt = Date.now();
-    set('synced');
-    cloudChanged();
-    return;
-  }
   const found = { code, save, updatedAt: got.updatedAt, account: accountOf(got.save) };
-  if (deps) {
-    await keepFurther(found);
+  // Typing a code is a login: the cloud wins. Only a device that is further asks, so an account is never replaced quietly.
+  if (deps && !localIsFurther(deps.save(), save)) {
+    deps.take(adopt(found));
     return;
   }
   incoming = found;
@@ -469,11 +442,25 @@ export function dismissIncoming(): void {
 /** Stops syncing on this device; the cloud copy stays for the other devices. */
 export function stopCloud(): void {
   window.clearTimeout(timer);
-  if (link) rememberStopped(link.code, link.version);
+  try {
+    storage().setItem(STOPPED_KEY, '1');
+  } catch {
+    /* private mode: the flag lasts this visit only */
+  }
   writeLink(null);
   incoming = null;
   waiting = null;
   set('off');
+}
+
+/**
+ * Signs this device out: what is unsent goes up first, then `stopCloud`. The caller then clears the save, so no
+ * playable copy of the cloud progress stays here to gamble with and merge back or to put into a second cloud copy.
+ */
+export async function signOutCloud(): Promise<void> {
+  await syncNow();
+  if (unsent() || choosing()) throw new LeaderboardError('network', S.net.cloudUnreachable);
+  stopCloud();
 }
 
 /** Removes the cloud copy for every device, and stops syncing here. */

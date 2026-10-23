@@ -43,7 +43,7 @@ export class ShopFlow {
           break;
         }
         if (s.section !== target.section) {
-          this.host.tick();
+          this.host.play(['blinker'], []);
           this.host.closeDetail();
         }
         if (target.section !== 1) this.leaveShelf();

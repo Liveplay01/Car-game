@@ -206,6 +206,24 @@ def shutter():
     return room(out, 0.18, 0.1, 8000)
 
 
+def blinker():
+    # A car's flasher relay (Leo, 23.10.2026: switches and segments tick like an indicator): the contacts
+    # close with a crisp tick and open again a beat later with a softer, duller tack. Its own seed, like the shutter.
+    local = np.random.default_rng(23_10_2026)
+
+    def click(gain, pitch, dull):
+        t = t_axis(0.06)
+        snap = band(local.normal(0, 1, len(t)), 1800 * pitch, 9000, 2) * np.exp(-t / 0.0011)
+        body = sum(a * np.sin(2 * np.pi * f * pitch * t + local.uniform(0, 6.3)) * np.exp(-t / d) for f, a, d in [(2350, 1, 0.009), (4100, 0.45, 0.005), (1150, 0.5, 0.012)])
+        knock = np.sin(2 * np.pi * 310 * pitch * t) * np.exp(-t / 0.008)
+        return lowpass(gain * (0.9 * snap + 0.4 * body + 0.35 * knock), dull)
+
+    out = silence(0.28)
+    place(out, click(1.0, 1.0, 9000), 0)
+    place(out, click(0.6, 0.86, 5200), 0.11)
+    return room(out, 0.12, 0.08, 6000)
+
+
 SOUNDS = {
     'casinoStop': casino_stop,
     'coinClink': coin_clink,
@@ -216,12 +234,16 @@ SOUNDS = {
     'chipsIn': chips_in,
     'shatter': shatter,
     'shutter': shutter,
+    'blinker': blinker,
 }
 
+# Peak level per sound (dBFS) where it is not the usual -3: the blinker ticks quietly, under everything else.
+LEVELS = {'blinker': -14}
 
-def finish(stereo):
-    """Peak at -3 dBFS and a short fade at the end, so no file ends in a click."""
-    stereo = stereo / (np.max(np.abs(stereo)) + 1e-9) * 10 ** (-3 / 20)
+
+def finish(stereo, peak=-3):
+    """Peak at `peak` dBFS and a short fade at the end, so no file ends in a click."""
+    stereo = stereo / (np.max(np.abs(stereo)) + 1e-9) * 10 ** (peak / 20)
     fade = min(len(stereo), int(SR * 0.02))
     stereo[-fade:] *= np.linspace(1, 0, fade)[:, None]
     return stereo.astype(np.float32)
@@ -236,7 +258,7 @@ def main():
             if only and name not in only:
                 continue
             wav = os.path.join(tmp, f'{name}.wav')
-            wavfile.write(wav, SR, finish(make()))
+            wavfile.write(wav, SR, finish(make(), LEVELS.get(name, -3)))
             target = os.path.join(OUT, f'{name}.m4a')
             subprocess.run(['ffmpeg', '-y', '-loglevel', 'error', '-i', wav, '-c:a', 'aac', '-b:a', '128k', '-ar', str(SR), '-ac', '2', target], check=True)
             print(f'{name}.m4a')

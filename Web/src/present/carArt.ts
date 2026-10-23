@@ -170,6 +170,8 @@ export interface CarDraw {
   brake?: number | null;
   brakeGlow?: boolean;
   headlights?: number;
+  /** Turn signals, left and right (0…1); both at once are the hazards. */
+  indicators?: [number, number] | null;
   skin?: ColorToken | null;
   stripe?: ColorToken | null;
   roof?: ColorToken | null;
@@ -502,6 +504,8 @@ export const CarArt = {
     }
     const head = d.headlights ?? 0;
     if (head > 0.01) list.w(rect(worldOf(v(L / 2 + 8, 0), pose), v(16, W * 1.4), 6, pose.heading), 'primary', opacity * 0.28 * head);
+    const signal = d.indicators ?? null;
+    if (signal) CarArt.indicators(list, pose, L, W, signal, opacity, true);
 
     if (effect) SkinEffects.under(list, effect, pose, L, W, d.finishTime ?? null, d.id, opacity);
     if (steer !== null) {
@@ -583,6 +587,7 @@ export const CarArt = {
     if (head > 0.01) {
       for (const side of [1, -1]) CarModels.lamp(list, pose, lamps.head, side, 'primary', opacity * head);
     }
+    if (signal) CarArt.indicators(list, pose, L, W, signal, opacity, false);
 
     const finishTime = d.finishTime ?? null;
     const finish = d.finish ?? null;
@@ -738,6 +743,8 @@ export const CarArt = {
       list.w(rect(worldOf(v(-L / 2 - 2.5, 0), pose), v(9, W * 1.3), 4.5, pose.heading), 'lightRed', 0.16 * brake);
     }
     if (head > 0.01) list.w(rect(worldOf(v(L / 2 + 8, 0), pose), v(16, W * 1.4), 6, pose.heading), 'primary', 0.28 * head);
+    const signal = d.indicators ?? null;
+    if (signal) CarArt.indicators(list, pose, L, W, signal, 1, true);
     const side = rotated(v(-1, 1), -pose.heading).y >= 0 ? 1 : -1;
     const type = d.type;
     const key = `${type}|${CarArt.bodyColor(type, d.id, d.skin ?? null)}|${CarArt.bodyColor(type, 0, d.skin ?? null)}|${d.skin ?? ''}|${d.stripe ?? ''}|${d.roof ?? ''}|${model ?? ''}|${L}|${W}|${side}`;
@@ -762,6 +769,26 @@ export const CarArt = {
     if (head > 0.01) {
       for (const s of [1, -1]) CarModels.lamp(list, pose, lamps.head, s, 'primary', head);
     }
+    if (signal) CarArt.indicators(list, pose, L, W, signal, 1, false);
+  },
+
+  /**
+   * Turn signals (`VehicleLamps`): an amber lamp at the front and rear corner of that side and, under the
+   * body (`glow`), a little of their light on the road beside it, so a signal reads at a glance.
+   */
+  indicators(list: RenderList, pose: Pose, L: number, W: number, lights: [number, number], opacity: number, glow: boolean): void {
+    lights.forEach((light, i) => {
+      if (light <= 0.02) return;
+      const y = (i === 0 ? 1 : -1) * (W / 2 - 0.9);
+      for (const x of [L / 2 - 1.2, -L / 2 + 1.2]) {
+        if (glow) {
+          // A bright core in a faint halo: a wide, dim amber on dark asphalt only reads as brown.
+          list.w(circle(worldOf(v(x, y * 1.2), pose), 4.6), 'indicator', opacity * 0.1 * light);
+          list.w(circle(worldOf(v(x, y * 1.1), pose), 2.4), 'indicator', opacity * 0.35 * light);
+        }
+        else list.w(rect(worldOf(v(x, y), pose), v(2.2, 1.9), 0.7, pose.heading), 'indicator', opacity * light);
+      }
+    });
   },
 
   lightBar(list: RenderList, shape: Shape, center: Vec2, rotation: number, pose: Pose, lights: number | null, opacity: number, c: Config): void {

@@ -45,13 +45,14 @@ export const Headlights = {
   },
 
   /** A road lamp: a wide, graduated warm pool and a small bright bulb at its centre. */
-  addStreetLamp(list: RenderList, at: Vec2, strength: number): void {
+  /** `level` 0…1: how far the lamp is on (`LampWave`); the lamp head stays faintly visible when it is low. */
+  addStreetLamp(list: RenderList, at: Vec2, strength: number, level = 1): void {
     for (const radius of [54, 46, 39, 32, 26, 20, 15, 10, 6]) {
-      list.w(circle(at, radius), 'headlight', strength);
+      list.w(circle(at, radius), 'headlight', strength * level);
     }
-    list.w(circle(at, 4), 'accent', 0.12);
-    list.w(circle(at, 2.2), 'headlight', 0.72);
-    list.w(circle(at, 0.9), 'primary', 0.8);
+    list.w(circle(at, 4), 'accent', 0.12 * level);
+    list.w(circle(at, 2.2), 'headlight', 0.72 * (0.35 + 0.65 * level));
+    list.w(circle(at, 0.9), 'primary', 0.8 * (0.3 + 0.7 * level));
   },
 };
 

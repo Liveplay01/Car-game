@@ -98,7 +98,19 @@ export default (S: Strings): Words<Strings> => ({
         case 'event':
           return 'Stadtereignisse · Tagesschicht';
         case 'criminalHunt':
-          return 'Verdient durch das Fassen von Verbrechern';
+          return 'Meisterschaft Verbrechensbekämpfer: 10 und 75 Festnahmen';
+      }
+    },
+    how(k) {
+      switch (k) {
+        case 'standard':
+          return 'oder Werbung ansehen';
+        case 'premium':
+          return 'oder durch schwere Meisterschaften';
+        case 'diamond':
+          return 'nie ein Common';
+        default:
+          return S.shop.source(k);
       }
     },
     seasonHint: 'Enthält zur Hälfte den Gegenstand dieser Saison, bis du ihn hast.',
@@ -136,7 +148,13 @@ export default (S: Strings): Words<Strings> => ({
     skinsOn: (n, max) => `${n} von ${max} Auto-Skins an · sie mischen sich auf der Straße`,
     skinsFull: (max) => `${max} Auto-Skins sind an. Nimm zuerst einen ab.`,
     section: (i) => ['Truhen', 'Sammlung', 'Casino'][i],
+    saleHeading: 'Im Verkauf',
     earnedHeading: 'Verdient, nicht verkauft',
+    pityTitle: 'Legendär-Garantie',
+    pityLeft: (n) => (n === 1 ? 'noch 1 Truhe' : `noch ${n} Truhen`),
+    short: (amount) => `${amount} fehlen`,
+    noneYet: 'Noch keine',
+    caught: 'GESCHNAPPT',
     newBadge: 'NEU',
     shelf: (i) => ['Autos', 'Karten', 'Verdient', 'Pass'][i],
     group: (g, honours = false) => {
@@ -149,7 +167,6 @@ export default (S: Strings): Words<Strings> => ({
     pityLegendary: (n) => `Ein Legendärer innerhalb von ${n} Truhen.`,
     buyBundle: (n, price) => `${n} für ${price}`,
     legendaryTimes: (n) => `${n}× die Legendär-Chance einer Standard-Truhe.`,
-    pitySoon: (n) => `Legendär in ${n}`,
     duplicate: (m) => `Duplikat · +${money(m)}`,
     ownedHint(item) {
       if (item.kind === 'carSkin') return 'Lackiert die Autos auf der Straße. Mische bis zu acht. Nur Optik, nie ein Vorteil.';

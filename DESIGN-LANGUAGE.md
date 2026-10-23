@@ -24,8 +24,7 @@ Off the road every state speaks one grammar (`--state-*` in `ui/shell.css`, the 
 - **Muted**: what waits or is open.
 
 On the road the Ring Signals keep their own colours (`FOUNDATION.md`, "Der Ring als Signalspur"); green belongs
-to the player there. No feature brings its own status colours (blue, teal, violet): rarity and player colours
-mean rarity and players, nothing else.
+to the player there.
 
 Every progress bar is one part (`present/meter.ts`, `.club-bar`): 6 px, round ends, a track of `controlFill`.
 It glides to where it grew since it was last seen (also across visits), a light runs along it when it is nearly full,

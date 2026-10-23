@@ -123,3 +123,22 @@ aussteigen, entscheidet, welcher Punkt hier als Nächstes dran ist.
 Das Neu-System (`present/news.ts`, Punkt am Tab und Segment, Marker am Element) kennt nur Progress, Shop und Social.
 Neues auf dem Game-Tab (Heat-Pille, neuer Modus), in den Settings oder im Build-Tab hat keinen Platz für den Punkt.
 Erst bauen, wenn eine konkrete Neuerung es braucht: dann steht fest, wo der Punkt hin soll.
+
+## Weitere seltene Momente (Claude, 23.10.2026)
+
+Wie die Entenfamilie (`core/ducks.ts`, etwa eine Schicht von 500): keine Punkte, keine Meldung, nur etwas, das man
+weitererzählt. Was die Straße verändert, gehört in `core/` und darf nur aus dem Seed kommen (nie aus einem Strom, den
+der Verkehr nutzt), damit Replays und Ranglisten gleich bleiben; was nur aussieht, gehört nach `present/`.
+
+- **Der verlorene Ballon:** Ein roter Ballon steigt von einem Dach auf und treibt quer über den Ring aus dem Bild. Nur Optik.
+- **Das Hochzeitsauto ohne Hochzeit:** Ein einzelnes geschmücktes Auto mit Blechdosen hinten dran, das ganz normal
+  mitfährt und hupt. Nur Optik (anders als der Hochzeitskorso).
+- **Der Geburtstag:** Am Geburtstag des Spielers (falls er ihn im Konto angibt) trägt ein Auto in seiner Schlange
+  Luftballons am Dach. Bräuchte ein neues, freiwilliges Feld; nur mit Zustimmung.
+- **Die Katze auf der Insel:** Auf der Mittelinsel liegt eine Katze in der Sonne, steht nach einer Weile auf und geht.
+  Nur Optik, nie bei Nacht.
+- **Der Oldtimer-Korso:** Drei Oldtimer hintereinander, die eine Ehrenrunde drehen. Wie die Enten aus dem Seed, ohne
+  Punkte, aber auf dem Ring: bräuchte dieselbe Absicherung wie der Hochzeitskorso.
+- **Sternschnuppe:** In einer klaren Nacht-Schicht zieht ein Lichtstreif über den Himmel. Nur Optik.
+- **Das Streifenwagen-Eis:** Ein Polizeiauto hält kurz an der Bushaltestelle der Schulweg-Schicht, ein Eiswagen steht
+  daneben. Nur Optik.

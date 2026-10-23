@@ -12,7 +12,7 @@ import { installBackGesture, inSystemGestureZone } from './backGesture';
 import { disablePush, enablePush, pushChoiceOn, pushDelivers, pushState, pushTimers, setPushChoice, syncPush, type PushState, type PushTimer } from '../net/push';
 import { cloudEnabled, cloudLinked, cloudStoppedHere, createCloud, deleteCloud, onCloudChange } from '../net/cloud';
 import { fetchInvite, inviteUrl, readInviteLink, redeemInvite } from '../net/invite';
-import { deleteAccount, describeError, leaderboardEnabled, loadAccount, onAccountChange, onScoresSynced, syncScores } from '../net/leaderboard';
+import { deleteAccount, describeError, leaderboardEnabled, loadAccount, onAccountChange, onScoresSynced, saveAccount, syncScores } from '../net/leaderboard';
 import { collectRewards } from '../net/rewards';
 import { openCrewLink, readCrewLink, watchCrewLaunches } from '../net/crews';
 import { legalDoc } from '../present/legal';
@@ -876,6 +876,7 @@ export class Shell {
       this.chestBtn.style.setProperty('--chest-body', css(paint.body));
       this.chestBtn.style.setProperty('--chest-lid', css(paint.lid));
       this.chestBtn.style.setProperty('--chest-band', css(paint.band));
+      this.chestBtn.querySelector('svg.chest-flat')?.setAttribute('data-kind', first);
     }
     this.leaveBtn.classList.toggle('show', onGame && s.special !== null);
     this.leaveLabel.textContent = s.special?.k === 'trial' ? (s.special.trial.tour ? S.shell.leaveTour : S.shell.leaveTrial) : S.shell.leaveChallenge;
@@ -1243,7 +1244,7 @@ export class Shell {
   private openCloudPage(): void {
     const s = this.session;
     this.pageOpen = true;
-    cloudSheet(this.layers, { current: () => s.save, importSave: (save) => s.importProgress(save), closed: () => this.pageClosed() });
+    cloudSheet(this.layers, { current: () => s.save, importSave: (save) => s.importProgress(save), signedOut: () => { saveAccount(null); s.resetProgress(); }, closed: () => this.pageClosed() });
   }
 
   private accountOpen = false;
@@ -1500,6 +1501,18 @@ export class Shell {
       () => {
         this.audio.unlock();
         this.focusByKeyboard = false;
+      },
+      { capture: true },
+    );
+    // Switches and segments tick like an indicator relay (Leo, 23.10.2026). Caught before the control
+    // handles the click, so a segment already chosen stays silent.
+    document.addEventListener(
+      'click',
+      (e) => {
+        const target = e.target instanceof Element ? e.target : null;
+        const control = target?.closest('[role="switch"], .segmented button');
+        if (!control || control.getAttribute('aria-pressed') === 'true' || !this.session.save.settings.sound) return;
+        this.audio.play('blinker', 1);
       },
       { capture: true },
     );

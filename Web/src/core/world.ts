@@ -45,6 +45,7 @@ import { chargeModules, wreckClearRate, towDepotCovering, detourExit, travelAhea
 import { tempoAt, densityAt, forWeather } from './levels';
 import { type AmbulancePhase, firstAmbulance, updateAmbulance, noteMergeNearAmbulance, ambulanceThrough } from './ambulance';
 import { type LearnerPhase, firstLearner, updateLearner, noteMergeNearLearner, learnerThrough } from './learner';
+import { type DuckFamily, duckDelay, updateDucks } from './ducks';
 import { type OversizePhase, firstOversize, updateOversize, noteMergeNearOversize, oversizeThrough } from './oversize';
 import { type RacePhase, firstRace, updateRace, isLiveRacer, racerStopped } from './racers';
 import { type WeddingPhase, firstWedding, updateWedding, noteMergeNearWedding, weddingThrough } from './wedding';
@@ -214,6 +215,22 @@ export class World {
   scoutVehicle: number | null = null;
   ringSpeed: number;
   targetDensity: number;
+  /** Seconds into the shift when the duck family crosses (`core/ducks.ts`); null in the shifts it does not. */
+  readonly duckDelay: number | null;
+  /** The duck family on its way across, and whether it has been this shift. */
+  ducks: DuckFamily | null = null;
+  ducksDone = false;
+  /** When the family reached the other side: the road takes a moment to flow again. */
+  ducksGone: number | null = null;
+
+  /**
+   * Everyone waits for the ducks: your taps and the cars at the other arms, while the family crosses and until the ring
+   * flows again (`duckSettle` seconds at most).
+   */
+  get waitsForDucks(): boolean {
+    if (this.ducks) return true;
+    return this.ducksGone !== null && this.time - this.ducksGone < this.config.duckSettle && this.isTrafficDisturbed;
+  }
 
   rng: Rng;
   queueRng: Rng;
@@ -281,6 +298,7 @@ export class World {
     }
     this.startShift(startsOnFirstTap);
     this.applyShiftCurves(0);
+    this.duckDelay = duckDelay(this);
     const first = this.criminalRng.range(config.criminalFirst.lo, config.criminalFirst.hi);
     this.criminal = { kind: 'idle', next: this.criminalRng.unit() < config.criminalChance ? first : Infinity };
     this.transporter = {
@@ -411,6 +429,7 @@ export class World {
     updateRace(this, end);
     updateWedding(this, end);
     updateDrift(this, end, dt);
+    updateDucks(this, end, dt);
     updateEscorts(this);
     this.resolveContacts(end);
     this.resolveTrafficContacts(end);
@@ -1484,6 +1503,13 @@ export class World {
   }
 
   private handleQueueTaps(q: PlayerQueue, start: number, end: number): void {
+    // Nobody goes while the ducks cross: every tap is heard and refused.
+    if (this.waitsForDucks) {
+      for (const time of q.pendingTaps) this.events.push({ type: 'tapRejected', time });
+      q.pendingTaps = [];
+      q.heldTap = null;
+      return;
+    }
     if (q.isReady && q.heldTap !== null) {
       q.heldTap = null;
       this.launchFromQueue(end - start, start, q);

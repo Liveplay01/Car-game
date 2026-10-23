@@ -98,7 +98,19 @@ export default (S: Strings): Words<Strings> => ({
         case 'event':
           return '街のイベント · デイリーシフト';
         case 'criminalHunt':
-          return '犯罪者を確保して獲得';
+          return '犯罪ファイターのマスタリー：確保10回と75回';
+      }
+    },
+    how(k) {
+      switch (k) {
+        case 'standard':
+          return 'または広告を見る';
+        case 'premium':
+          return 'または難しいマスタリーで';
+        case 'diamond':
+          return 'コモンは出ません';
+        default:
+          return S.shop.source(k);
       }
     },
     seasonHint: '手に入れるまで、半分の確率でこのシーズンのアイテムが入っています。',
@@ -136,7 +148,13 @@ export default (S: Strings): Words<Strings> => ({
     skinsOn: (n, max) => `車のスキン${max}個中${n}個がオン · 道で混ざって登場`,
     skinsFull: (max) => `車のスキン${max}個がオンです。先に1つ外してください。`,
     section: (i) => ['宝箱', 'コレクション', 'カジノ'][i],
+    saleHeading: '販売中',
     earnedHeading: '売り物ではなく、獲得するもの',
+    pityTitle: 'レジェンダリー確定',
+    pityLeft: (n) => `あと${n}個`,
+    short: (amount) => `${amount}不足`,
+    noneYet: 'まだなし',
+    caught: '確保',
     newBadge: 'NEW',
     shelf: (i) => ['車', 'マップ', '獲得', 'パス'][i],
     group: (g, honours = false) => {
@@ -149,7 +167,6 @@ export default (S: Strings): Words<Strings> => ({
     pityLegendary: (n) => `${n}個以内にレジェンダリー1つ。`,
     buyBundle: (n, price) => `${n}個で${price}`,
     legendaryTimes: (n) => `スタンダード宝箱の${n}倍のレジェンダリー確率。`,
-    pitySoon: (n) => `レジェンダリーまであと${n}`,
     duplicate: (m) => `重複 · +${money(m)}`,
     ownedHint(item) {
       if (item.kind === 'carSkin') return '道を走る車を塗装します。最大8つまで混ぜられます。見た目だけで、有利にはなりません。';

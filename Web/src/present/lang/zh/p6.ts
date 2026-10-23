@@ -98,7 +98,19 @@ export default (S: Strings): Words<Strings> => ({
         case 'event':
           return '城市事件 · 每日班次';
         case 'criminalHunt':
-          return '通过抓获罪犯获得';
+          return '打击犯罪精通：抓获 10 次和 75 次';
+      }
+    },
+    how(k) {
+      switch (k) {
+        case 'standard':
+          return '或看广告获得';
+        case 'premium':
+          return '或通过高难度精通获得';
+        case 'diamond':
+          return '绝不出普通品质';
+        default:
+          return S.shop.source(k);
       }
     },
     seasonHint: '在你拿到之前，有一半几率包含本赛季的物品。',
@@ -136,7 +148,13 @@ export default (S: Strings): Words<Strings> => ({
     skinsOn: (n, max) => `${max} 款车皮肤中开启 ${n} 款 · 它们会在路上混出现`,
     skinsFull: (max) => `已开启 ${max} 款车皮肤。请先关掉一款。`,
     section: (i) => ['宝箱', '收藏', '赌场'][i],
+    saleHeading: '在售',
     earnedHeading: '靠挣得，而非出售',
+    pityTitle: '传奇保底',
+    pityLeft: (n) => `还差 ${n} 个`,
+    short: (amount) => `还差 ${amount}`,
+    noneYet: '暂无',
+    caught: '抓获',
     newBadge: '新',
     shelf: (i) => ['车', '地图', '挣得', '通行证'][i],
     group: (g, honours = false) => {
@@ -149,7 +167,6 @@ export default (S: Strings): Words<Strings> => ({
     pityLegendary: (n) => `${n} 个宝箱内必出一件传说。`,
     buyBundle: (n, price) => `${n} 个 ${price}`,
     legendaryTimes: (n) => `传说几率是标准宝箱的 ${n} 倍。`,
-    pitySoon: (n) => `${n} 个后出传说`,
     duplicate: (m) => `重复 · +${money(m)}`,
     ownedHint(item) {
       if (item.kind === 'carSkin') return '给路上的车涂装。最多混搭八款。只改变外观，绝无优势。';

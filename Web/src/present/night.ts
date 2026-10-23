@@ -8,6 +8,7 @@ import { CarArt, PoliceLights, worldOf } from './carArt';
 import { Headlights } from './headlights';
 import { criminalVehicle } from '../core/specials';
 import { interpolatedPose, type VehicleLamps } from './scene';
+import { LampWave, armRank } from './cityLights';
 
 /**
  * Night shifts (higher levels): the city goes dark over road and cars, and the lights draw
@@ -34,11 +35,11 @@ export const NightLayer = {
   lampStrength: 0.016,
 
   /** The ground and projected beams are painted before cars, so bodies naturally occlude them. */
-  addRoadLights(list: RenderList, world: World, alpha: number, lamps: VehicleLamps | null, time: number | null, layers?: number): void {
+  addRoadLights(list: RenderList, world: World, alpha: number, lamps: VehicleLamps | null, time: number | null, layers?: number, wave: LampWave | null = null): void {
     const vp = list.camera.viewport;
     const blackout = world.config.blackout;
     list.s(rect(mul(vp, 0.5), vp), 'night', blackout ? NightLayer.blackoutDarkness : NightLayer.darkness);
-    if (!blackout) NightLayer.addStreetLamps(list, world);
+    if (!blackout) NightLayer.addStreetLamps(list, world, wave);
     const c = world.config;
     const W = c.carWidth;
     const chase = criminalVehicle(world) !== null;
@@ -122,15 +123,17 @@ export const NightLayer = {
   },
 
   /** One warm lamp beside each arm mouth, on the kerb to the right of the entry lane. */
-  addStreetLamps(list: RenderList, world: World): void {
+  addStreetLamps(list: RenderList, world: World, wave: LampWave | null = null): void {
     const layout = world.layout;
     const lane = layout.laneWidth;
     const from = list.items.length;
+    const steady = wave ? wave.steady : 1;
     for (const arm of layout.arms) {
       const out = fromAngle(arm.angle);
       const at = add(mul(out, layout.ringRadius + lane + 18), mul(left(out), lane + 10));
-      Headlights.addStreetLamp(list, at, NightLayer.lampStrength);
+      Headlights.addStreetLamp(list, at, NightLayer.lampStrength, steady ?? wave?.level(armRank(layout, arm), 0) ?? 1);
+      if (steady === null && wave) LampWave.addFlare(list, at, wave.flare(armRank(layout, arm), 0));
     }
-    list.bake(from, 'nightLamps', `${layout.ringRadius}|${lane}|${layout.arms.map((a) => a.slot).join(',')}`);
+    if (steady !== null) list.bake(from, 'nightLamps', `${layout.ringRadius}|${lane}|${layout.arms.map((a) => a.slot).join(',')}|${steady}`);
   },
 };

@@ -1,7 +1,10 @@
 import type { Layout } from '../core/roundabout';
 import type { Config } from '../core/config';
 import type { MergeRating } from '../core/events';
-import { add, mul, left, fromAngle } from '../core/vec2';
+import type { World } from '../core/world';
+import type { Vehicle } from '../core/vehicle';
+import type { Pose } from '../core/paths';
+import { type Vec2, add, sub, mul, left, fromAngle, wrap } from '../core/vec2';
 import { type RenderList, line, Ease } from './render';
 
 interface Mark {
@@ -71,6 +74,73 @@ export class TyreMarks {
         const taper = Math.sin((Math.PI * (k - 0.5)) / n);
         list.w(line(from, to, TyreMarks.thickness), 'vehicleTire', TyreMarks.strength * opacity * taper);
         from = to;
+      }
+    }
+  }
+}
+
+/**
+ * Brake marks (Leo, 23.10.2026): a Tight Fit leaves a faint streak where the ring car that came
+ * closest had to brake, darker where the tyres bit hardest. They stay for the rest of the shift, so
+ * the road shows afterwards where it got close, and fade once the next shift begins.
+ */
+export class BrakeMarks {
+  static readonly most = 24;
+  static readonly appear = 0.25;
+  static readonly fade = 1.4;
+  static readonly strength = 0.3;
+  static readonly thickness = 1.3;
+  static readonly reach = 1.2;
+  static readonly segments = 8;
+
+  private marks: { tracks: Vec2[][]; age: number; gone: number | null }[] = [];
+
+  /** `veh`: the car that braked, on the ring; the streak runs back along its lane from where it is now. */
+  add(world: World, veh: Vehicle): void {
+    const c = world.config;
+    const p = veh.phase;
+    const ring = world.layout.rings[veh.lane];
+    const behind = (d: number): Pose => (p.kind === 'ring' ? ring.pose(wrap(p.s - d, ring.length)) : { position: sub(veh.position, mul(fromAngle(veh.heading), d)), heading: veh.heading });
+    const length = c.carLength * BrakeMarks.reach;
+    const track = c.carWidth / 2 - 1.5;
+    const tracks = [1, -1].map((side) => {
+      const points: Vec2[] = [];
+      for (let k = 0; k <= BrakeMarks.segments; k++) {
+        const pose = behind(c.carLength * 0.3 + length * (1 - k / BrakeMarks.segments));
+        points.push(add(pose.position, mul(left(fromAngle(pose.heading)), side * track)));
+      }
+      return points;
+    });
+    this.marks.push({ tracks, age: 0, gone: null });
+    if (this.marks.length > BrakeMarks.most) this.marks.shift();
+  }
+
+  /** The next shift has begun: the old marks fade. */
+  fade(): void {
+    for (const m of this.marks) m.gone ??= 0;
+  }
+
+  update(dt: number): void {
+    if (dt <= 0 || this.marks.length === 0) return;
+    for (const m of this.marks) {
+      m.age += dt;
+      if (m.gone !== null) m.gone += dt;
+    }
+    this.marks = this.marks.filter((m) => m.gone === null || m.gone < BrakeMarks.fade);
+  }
+
+  clear(): void {
+    this.marks = [];
+  }
+
+  addGround(list: RenderList): void {
+    const n = BrakeMarks.segments;
+    for (const m of this.marks) {
+      const o = BrakeMarks.strength * Ease.outCubic(m.age / BrakeMarks.appear) * (m.gone === null ? 1 : 1 - Ease.smoothstep(m.gone / BrakeMarks.fade));
+      if (o <= 0.01) continue;
+      for (const points of m.tracks) {
+        // Light where the brakes went on, darkest just before the car let go of them.
+        for (let k = 1; k <= n; k++) list.w(line(points[k - 1], points[k], BrakeMarks.thickness), 'vehicleTire', o * Math.min(1, (k / n) * 1.4) * Math.min(1, (n - k + 1) / 1.5));
       }
     }
   }

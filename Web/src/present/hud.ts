@@ -356,6 +356,8 @@ export interface HudInput {
   money: number;
   best: string | null;
   comboPop: number;
+  /** How much of the island's multiplier and combo shows (0…1): the ducks walk over it (`present/ducks.ts`). */
+  island?: number;
   race: { delta: number; pop: number } | null;
   /** The best in sight (`Goals.record`): the points still missing, below 0 once beaten. It takes the best's column, ahead of `race`. */
   record?: { gap: number; pop: number } | null;
@@ -514,7 +516,10 @@ export const HUD = {
       TopBar.addBrief(list, frame, brief, h.reduceMotion ?? false, h.textScale ?? 1);
     }
     list.tag = undefined;
+    const island = list.items.length;
     HUD.addIsland(list, world, h.comboPop);
+    const shown = h.island ?? 1;
+    if (shown < 1) for (let i = island; i < list.items.length; i++) list.items[i] = moved(list.items[i], v(0, 0), shown);
   },
 
   /** Back after an interruption: the world stands still and counts in. */

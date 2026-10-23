@@ -75,7 +75,7 @@ export class AudioPlayer {
     crash: 3, crashHeavy: 3, thump: 3, explosion: 3, detonation: 3, shiftComplete: 3, shiftFailed: 3,
     crashLight: 2, wanted: 2, alarm: 2, ambulance: 2, oversize: 2, wedding: 2, dispatch: 2, takedown: 2, secured: 2, seized: 2, rushHour: 2, paid: 2, escaped: 2,
     chestBurst: 2, chestBurstRare: 2,
-    toll: 0, uiTick: 0, meterTick: 0, needleTick: 0,
+    toll: 0, uiTick: 0, blinker: 0, meterTick: 0, needleTick: 0,
   };
 
   /** How far the pitch of a sound that comes again and again wanders (fraction of the pitch), so no two hits are identical. */
@@ -90,7 +90,7 @@ export class AudioPlayer {
 
   /** Menus, chests and the casino: their own bus, never ducked, never in the way of the street. */
   private static readonly uiSounds = new Set<SoundID>([
-    'uiTick', 'swoosh', 'purchase', 'build', 'denied', 'chestCharge', 'chestBurst', 'chestBurstRare', 'chestHit', 'casinoStop',
+    'uiTick', 'blinker', 'swoosh', 'purchase', 'build', 'denied', 'chestCharge', 'chestBurst', 'chestBurstRare', 'chestHit', 'casinoStop',
     'coinClink', 'needleTick', 'meterTick', 'coinToss', 'coinLand', 'chipsIn', 'shatter', 'shutter', 'reelSpin', 'reelTick',
     'shimmer', 'reelLand', 'reelLandBig', 'sheetOpen', 'sheetClose', 'barFill',
   ]);

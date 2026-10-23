@@ -24,7 +24,7 @@ import { type RenderList, type Rect, RenderList as List, R, rect, circle, arc, l
 import type { ColorToken } from './theme';
 import { MenuKit } from './menukit';
 import { land } from './hud';
-import { textWidth, moneyTag } from './icons';
+import { textWidth, moneyTag, moneyTagWidth } from './icons';
 import { S, Fmt } from './strings';
 import { CarArt } from './carArt';
 import { Skins, lookFor } from './skins';
@@ -210,9 +210,11 @@ export const ShopPage = {
   detailHeight: 0,
   segmentHeight: 32,
   shelfHeight: 36,
-  /** Chests that are only earned: the cards' height and the heading's room above them. */
-  earnedHeight: 112,
-  earnedHeading: 24,
+  /** The chest list: the guarantee card, the room for a group's heading, a row (it gives way down to `rowMin` on a short screen). */
+  pityHeight: 64,
+  listHeading: 40,
+  rowHeight: 76,
+  rowMin: 60,
   pressDuration: 0.28,
   pressDepth: 0.04,
   slideDuration: 0.45,
@@ -246,8 +248,6 @@ export const ShopPage = {
   },
   /** The prize stays at least this long before a tap can close it. */
   closeAfter: 0.5,
-  /** From how many chests left the card names the Legendary pity. */
-  pitySoon: 10,
   confettiCount: 32,
 
   pressedRect(r: Rect, target: ShopTarget, state: ShopState): Rect {
@@ -276,18 +276,6 @@ export const ShopPage = {
     };
   },
 
-  grid(count: number, columns: number, area: Rect, maxHeight: number): Rect[] {
-    const gap = ShopPage.gap;
-    const rows = Math.max(1, Math.ceil(count / columns));
-    const cw = (R.width(area) - gap * (columns - 1)) / columns;
-    const ch = Math.min(maxHeight, (R.height(area) - gap * (rows - 1)) / rows);
-    return Array.from({ length: count }, (_, i) => {
-      const x = area.minX + (i % columns) * (cw + gap);
-      const y = area.minY + Math.floor(i / columns) * (ch + gap);
-      return R.make(x, y, x + cw, y + ch);
-    });
-  },
-
   /**
    * Whether the chest is on show: one the career holds always is; else the Diamond Chest with the Elite track,
    * the earned ones once what earns them is on the road (Leo, 12.10.2026: only what is reached).
@@ -300,21 +288,41 @@ export const ShopPage = {
     return true;
   },
 
-  /** The chests for sale in a grid, and under their own heading the ones that are only earned (smaller: nothing to buy there). */
-  chestCards: (l: Layout, career: Career): { cards: [ChestKind, Rect][]; headingY: number | null } => {
+  /**
+   * The chests as a grouped list (Leo, 23.10.2026): the Legendary guarantee on a card of its own, then the chests for sale and,
+   * under their own heading, the ones that are only earned. Each row says on its right what a tap there does.
+   */
+  chestList(l: Layout, career: Career): { pity: Rect; groups: { heading: string; r: Rect }[]; rows: { kind: ChestKind; r: Rect; group: number }[] } {
     const P = ShopPage;
     const shown = CHEST_KINDS.filter((k) => P.chestShown(career, k));
-    const sale = shown.filter(isForSale);
-    const earned = shown.filter((k) => !isForSale(k));
+    const lists = [shown.filter(isForSale), shown.filter((k) => !isForSale(k))].filter((g) => g.length > 0);
     const area = l.content;
-    const saleCells = P.grid(sale.length, 2, R.make(area.minX, area.minY, area.maxX, area.maxY - P.earnedHeight - P.earnedHeading - P.gap), 188);
-    // An odd one out takes the whole row: no hole beside it.
-    if (sale.length % 2 === 1) saleCells[sale.length - 1] = R.make(area.minX, saleCells[sale.length - 1].minY, area.maxX, saleCells[sale.length - 1].maxY);
-    const bottom = Math.max(...saleCells.map((r) => r.maxY));
-    const top = bottom + P.gap + P.earnedHeading;
-    const earnedCells = P.grid(earned.length, 2, R.make(area.minX, top, area.maxX, top + P.earnedHeight), P.earnedHeight);
-    if (earned.length % 2 === 1) earnedCells[earned.length - 1] = R.make(area.minX, earnedCells[earned.length - 1].minY, area.maxX, earnedCells[earned.length - 1].maxY);
-    return { cards: [...sale.map((k, i): [ChestKind, Rect] => [k, saleCells[i]]), ...earned.map((k, i): [ChestKind, Rect] => [k, earnedCells[i]])], headingY: earned.length > 0 ? bottom + P.gap + P.earnedHeading / 2 : null };
+    const pity = R.make(area.minX, area.minY, area.maxX, area.minY + P.pityHeight);
+    const height = clamp((R.height(area) - P.pityHeight - lists.length * P.listHeading) / shown.length, P.rowMin, P.rowHeight);
+    const groups: { heading: string; r: Rect }[] = [];
+    const rows: { kind: ChestKind; r: Rect; group: number }[] = [];
+    let y = pity.maxY + P.listHeading;
+    for (const kinds of lists) {
+      groups.push({ heading: isForSale(kinds[0]) ? S.shop.saleHeading : S.shop.earnedHeading, r: R.make(area.minX, y, area.maxX, y + kinds.length * height) });
+      for (const kind of kinds) {
+        rows.push({ kind, r: R.make(area.minX, y, area.maxX, y + height), group: groups.length - 1 });
+        y += height;
+      }
+      y += P.listHeading;
+    }
+    return { pity, groups, rows };
+  },
+
+  /** A row's button: Open for a chest that waits, the price for one for sale; null when the row itself is the only way in (the details). */
+  chestAction(kind: ChestKind, row: Rect, career: Career): { target: ShopTarget; r: Rect; short: number } | null {
+    const y = R.center(row).y;
+    const price = chestPrice(kind, baseConfig);
+    const pill = (w: number, lift = 0): Rect => R.make(row.maxX - 14 - w, y - 17 - lift, row.maxX - 14, y + 17 - lift);
+    if (Careers.count(career, kind) > 0) return { target: { k: 'open', kind }, r: pill(textWidth(S.shop.open, 14) + 36), short: 0 };
+    if (!isForSale(kind) || price === null) return null;
+    const short = Math.max(0, price - career.money);
+    // What is missing goes under the price, so the pill moves up to make room.
+    return { target: { k: 'buy', kind }, r: pill(moneyTagWidth(Fmt.number(price), 13) + 28, short > 0 ? 8 : 0), short };
   },
 
   shelfChips(l: Layout): [Shelf, Rect][] {
@@ -387,7 +395,13 @@ export const ShopPage = {
     const l = ShopPage.layout(viewport, bottomInset, ShopPage.sections(career));
     const out: [ShopTarget, Rect][] = l.segments.map(([section, r]) => [{ k: 'section', section }, r]);
     if (state.section === 0) {
-      out.push(...ShopPage.chestCards(l, career).cards.map(([kind, r]): [ShopTarget, Rect] => [{ k: 'chest', kind }, r]));
+      const { rows } = ShopPage.chestList(l, career);
+      // The buttons first (the first hit wins), a little taller than drawn for a thumb.
+      for (const { kind, r } of rows) {
+        const action = ShopPage.chestAction(kind, r, career);
+        if (action) out.push([action.target, R.inset(action.r, -4, -6)]);
+      }
+      out.push(...rows.map(({ kind, r }): [ShopTarget, Rect] => [{ k: 'chest', kind }, r]));
     } else if (state.section === 1) {
       // The cards answer on the lift (`itemAt`): a press may be the start of a scroll.
       out.push(...ShopPage.shelfChips(l).map(([shelf, r]): [ShopTarget, Rect] => [{ k: 'shelf', shelf }, r]));
@@ -487,45 +501,69 @@ export const ShopPage = {
   // MARK: Chests
 
   addChests(list: RenderList, l: Layout, career: Career, state: ShopState, reduceMotion: boolean, forcedEnter: number | null): void {
-    const { cards, headingY } = ShopPage.chestCards(l, career);
-    if (headingY !== null) drawText(list, S.shop.earnedHeading, v(l.content.minX + 4, headingY), 12, 'muted', { weight: 'bold', opacity: ShopPage.cardRect(cards[cards.length - 1][1], forcedEnter === null ? state.age : 10, cards.length - 1, reduceMotion).enter });
-    cards.forEach(([kind, card], index) => {
-      const placed = ShopPage.cardRect(card, forcedEnter === null ? state.age : 10, index, reduceMotion);
-      const enter = placed.enter;
-      const r = ShopPage.pressedRect(placed.rect, { k: 'chest', kind }, state);
-      const count = Careers.count(career, kind);
+    const P = ShopPage;
+    const age = forcedEnter === null ? state.age : 10;
+    const { pity, groups, rows } = P.chestList(l, career);
+
+    // The Legendary pity, shared by every chest: one card instead of a sliver on each.
+    const top = P.cardRect(pity, age, 0, reduceMotion);
+    const t = top.rect;
+    P.panel(list, t, 'card', top.enter);
+    drawText(list, S.shop.pityTitle, v(t.minX + 16, t.minY + 24), 14, 'primary', { weight: 'bold', opacity: top.enter });
+    drawText(list, S.shop.pityLeft(PITY_LEGENDARY_CHESTS - career.chestsSinceLegendary), v(t.maxX - 16, t.minY + 24), 13, 'coin', { weight: 'bold', align: 'trailing', opacity: top.enter });
+    const bar = v(R.width(t) - 32, 4);
+    const fill = bar.x * Math.min(1, career.chestsSinceLegendary / PITY_LEGENDARY_CHESTS);
+    list.s(rect(v(R.center(t).x, t.maxY - 18), bar, 2), 'muted', 0.25 * top.enter);
+    if (fill > 0) list.s(rect(v(t.minX + 16 + fill / 2, t.maxY - 18), v(fill, bar.y), 2), 'coin', top.enter);
+
+    const placed = groups.map((g, i) => {
+      const card = P.cardRect(g.r, age, i + 1, reduceMotion);
+      P.panel(list, card.rect, 'card', card.enter);
+      drawText(list, g.heading.toUpperCase(), v(g.r.minX + 16, card.rect.minY - 14), 12, 'muted', { weight: 'bold', opacity: card.enter });
+      return { shift: v(0, R.center(card.rect).y - R.center(g.r).y), enter: card.enter };
+    });
+    rows.forEach(({ kind, r: row, group }, index) => {
+      const { shift, enter } = placed[group];
+      const r = R.offset(row, shift);
       const c = R.center(r);
-      if (kind === state.selectedChest) list.s(rect(c, v(R.width(r) + 4, R.height(r) + 4), ShopPage.corner + 2), 'accent', 0.55 * enter);
-      ShopPage.panel(list, r, 'card', enter);
-      const iconAt = v(c.x, r.minY + R.height(r) * 0.36);
-      const available = count > 0 || isForSale(kind);
-      MenuKit.glow(list, iconAt, Math.min(Math.min(R.width(r), R.height(r)) * 0.42, iconAt.y - r.minY - 4), ShopPage.chestColor(kind), (count > 0 ? 0.5 : 0.25) * enter * (available ? 1 : 0.4));
-      ShopPage.addChestIcon(list, kind, iconAt, Math.min(1.2, R.height(r) / 130), enter * (available ? 1 : 0.45));
+      const count = Careers.count(career, kind);
+      const pressed = state.pressed && sameTarget(state.pressed.target, { k: 'chest', kind }) ? 1 - state.pressed.age / P.pressDuration : 0;
+      if (pressed > 0) list.s(rect(c, v(R.width(r) - 4, R.height(r) - 4), P.corner - 2), 'controlFill', 0.8 * pressed * enter);
+      if (index > 0 && rows[index - 1].group === group) list.s(rect(v((r.minX + 80 + r.maxX) / 2, r.minY), v(R.width(r) - 80, 1)), 'separator', enter);
+
+      const tile = v(r.minX + 40, c.y);
+      const size = Math.min(52, R.height(r) - 16);
+      list.s(rect(tile, v(size, size), 12), 'controlFill', enter);
+      P.addChestIcon(list, kind, v(tile.x, tile.y - 1), (0.7 * size) / 52, enter * (count > 0 || isForSale(kind) ? 1 : 0.45));
+
+      const action = P.chestAction(kind, r, career);
       const name = S.shop.chest(kind);
-      drawText(list, name, v(c.x, r.maxY - 36), ShopPage.fitted(name, 14, R.width(r) - 28), 'primary', { weight: 'bold', align: 'center', opacity: enter });
-      // What it costs, in gold where the money reaches it; one that is only earned says how.
-      const price = chestPrice(kind, baseConfig);
-      if (count === 0 && price !== null) {
-        const affordable = career.money >= price;
-        moneyTag(list, Fmt.number(price), v(c.x, r.maxY - 17), 12, 'center', affordable ? 'primary' : 'muted', affordable ? 'coin' : 'muted', enter);
-      } else {
-        const status = count > 0 ? S.shop.waiting(count) : S.shop.source(kind);
-        drawText(list, status, v(c.x, r.maxY - 17), ShopPage.fitted(status, 11, R.width(r) - 28), count > 0 ? 'accent' : 'muted', { align: 'center', opacity: enter });
+      const note = count > 0 ? (isForSale(kind) ? `${S.shop.waiting(count)} · ${S.shop.how(kind)}` : S.shop.waiting(count)) : S.shop.how(kind);
+      // "None yet" only where the line still fits beside it; the chevron alone says the same.
+      const label = !action && textWidth(note, 12, false) <= r.maxX - 44 - textWidth(S.shop.noneYet, 13, false) - (r.minX + 80);
+      const room = (action ? action.r.minX : r.maxX - 36 - (label ? textWidth(S.shop.noneYet, 13, false) + 8 : 0)) - (r.minX + 80) - 8;
+      drawText(list, name, v(r.minX + 80, c.y - 9), P.fitted(name, 15, room), 'primary', { weight: 'bold', opacity: enter });
+      drawText(list, note, v(r.minX + 80, c.y + 11), P.fitted(note, 12, room), 'muted', { opacity: enter });
+
+      if (!action) {
+        // Only earned and none here: the row opens the details, which say how to earn one.
+        if (label) drawText(list, S.shop.noneYet, v(r.maxX - 30, c.y), 13, 'muted', { align: 'trailing', opacity: enter });
+        const tip = v(r.maxX - 17, c.y);
+        for (const y of [-1, 1]) list.s(line(add(tip, v(-4, 5 * y)), tip, 1.6, true), 'muted', enter);
+        return;
       }
-      if (count > 0) {
-        const badge = v(r.maxX - 18, r.minY + 18);
-        list.s(circle(badge, 10), 'accent', enter);
-        drawText(list, String(count), badge, 11, 'accentInk', { weight: 'bold', align: 'center', opacity: enter });
+      const pill = P.pressedRect(action.r, action.target, state);
+      const pc = R.center(pill);
+      if (action.target.k === 'open') {
+        list.s(rect(pc, v(R.width(pill), R.height(pill)), R.height(pill) / 2), 'accent', enter);
+        drawText(list, S.shop.open, pc, 14, 'accentInk', { weight: 'bold', align: 'center', opacity: enter });
+        return;
       }
-      // The Legendary pity, shared by every chest: a gold sliver that fills, and a count once it is close.
-      if (available && career.chestsSinceLegendary > 0) {
-        const w = R.width(r) - 40;
-        const fill = w * Math.min(1, career.chestsSinceLegendary / PITY_LEGENDARY_CHESTS);
-        list.s(rect(v(c.x, r.maxY - 6), v(w, 3), 1.5), 'muted', 0.25 * enter);
-        list.s(rect(v(r.minX + 20 + fill / 2, r.maxY - 6), v(fill, 3), 1.5), 'coin', enter);
-        const left = PITY_LEGENDARY_CHESTS - career.chestsSinceLegendary;
-        if (left <= ShopPage.pitySoon && isForSale(kind)) drawText(list, S.shop.pitySoon(left), v(r.minX + 14, r.minY + 18), 11, 'coin', { weight: 'bold', opacity: enter });
-      }
+      const price = chestPrice(kind, baseConfig) ?? 0;
+      list.s(rect(pc, v(R.width(pill), R.height(pill)), R.height(pill) / 2), 'controlFill', enter);
+      moneyTag(list, Fmt.number(price), pc, 13, 'center', action.short > 0 ? 'muted' : 'primary', action.short > 0 ? 'muted' : 'coin', enter);
+      // Short of money: the price says so in words too, not only in grey.
+      if (action.short > 0) drawText(list, S.shop.short(Fmt.number(action.short)), v(action.r.maxX, action.r.maxY + 15), 11, 'muted', { align: 'trailing', opacity: enter });
     });
   },
 
@@ -548,9 +586,11 @@ export const ShopPage = {
   /**
    * A chest: a body, a rounded lid, two metal bands over both, a band round the seam and a
    * lock plate with its keyhole. `squash` stretches it round its bottom edge (the jelly of
-   * the opening), `lidLift` lifts the lid off the seam.
+   * the opening), `lidLift` lifts the lid off the seam. Each kind keeps its own outline, so it
+   * reads without its colour (Leo, 23.10.2026): the Premium's lid is domed with gold corners,
+   * the Event Chest is a gift with a bow (`bow` turns its loops), the Criminal Hunt's lock is a star badge.
    */
-  addChestIcon(list: RenderList, kind: ChestKind, center: Vec2, scale: number, opacity: number, squash: Vec2 = v(1, 1), lidLift = 0, withLid = true): void {
+  addChestIcon(list: RenderList, kind: ChestKind, center: Vec2, scale: number, opacity: number, squash: Vec2 = v(1, 1), lidLift = 0, withLid = true, bow = 0): void {
     const c = ShopPage.chestPaint(kind);
     const u = scale * 1.05;
     const base = add(center, v(0, 23 * u * (1 - squash.y)));
@@ -561,18 +601,44 @@ export const ShopPage = {
     // Body.
     list.s(rect(at(0, 9), size(52, 28), 5 * u), c.body, opacity);
     list.s(rect(at(0, 3), size(44, 2), 1 * u), 'primary', 0.06 * opacity);
+    if (kind === 'event') {
+      // A gift: one ribbon down the front, a box lid that overhangs it, a bow on top.
+      list.s(rect(at(0, 9), size(8, 28), 0), c.band, 0.9 * opacity);
+      if (!withLid) return;
+      list.s(rect(at(0, -10 + lift), size(58, 11), 2.5 * u), c.lid, opacity);
+      list.s(rect(at(0, -10 + lift), size(8, 11), 0), c.band, 0.9 * opacity);
+      ShopPage.addBow(list, at(0, -17 + lift), u, bow, c.band, opacity);
+      return;
+    }
     for (const x of [-15.5, 15.5]) list.s(rect(at(x, 9), size(5, 28), 0), c.band, 0.75 * opacity);
-    // Lid: rounded on top, square where it meets the body.
+    // Lid: rounded on top (the Premium's a dome), square where it meets the body.
     if (withLid) {
-      list.s(rect(at(0, -14 + lift), size(52, 18), 10 * u), c.lid, opacity);
+      const dome = kind === 'premium' ? 24 : 18;
+      list.s(rect(at(0, -5 - dome / 2 + lift), size(52, dome), (dome / 2 + 1) * u), c.lid, opacity);
       list.s(rect(at(0, -8 + lift), size(52, 6), 0), c.lid, opacity);
-      for (const x of [-15.5, 15.5]) list.s(rect(at(x, -14 + lift), size(5, 18), 0), c.band, 0.75 * opacity);
+      for (const x of [-15.5, 15.5]) list.s(rect(at(x, -5 - dome / 2 + lift), size(5, dome), 0), c.band, 0.75 * opacity);
     }
     // The band round the seam and the lock.
     list.s(rect(at(0, -2.5 + lift * 0.5), size(52, 5), 0), c.band, 0.9 * opacity);
+    if (kind === 'premium') for (const x of [-23.5, 23.5]) for (const y of [-2.5, 20.5]) list.s(rect(at(x, y), size(7, 7), 1.5 * u), c.band, opacity);
     if (!withLid) return;
+    if (kind === 'criminalHunt') {
+      list.s(circle(at(0, -3 + lift * 0.5), 8 * u * Math.min(squash.x, squash.y)), c.band, opacity);
+      ShopPage.addStar(list, at(0, -3 + lift * 0.5), 5.5 * u * Math.min(squash.x, squash.y), c.body, opacity, 5, 0.45);
+      return;
+    }
     list.s(rect(at(0, -3 + lift * 0.5), size(10, 12), 2.5 * u), c.band, opacity);
     list.s(circle(at(0, -3 + lift * 0.5), 2 * u * Math.min(squash.x, squash.y)), c.body, opacity);
+  },
+
+  /** A gift's bow round its `knot`: two loops and the knot; `wiggle` (radians) flaps the loops. */
+  addBow(list: RenderList, knot: Vec2, u: number, wiggle: number, color: ColorToken, opacity: number): void {
+    for (const side of [-1, 1]) {
+      const turn = -side * (0.45 + wiggle * side) - (side < 0 ? Math.PI : 0);
+      list.s(rect(add(knot, mul(fromAngle(turn), 7 * u)), v(14 * u, 9 * u), 4.5 * u, turn), color, opacity);
+    }
+    list.s(circle(knot, 3.8 * u), color, opacity);
+    list.s(circle(knot, 1.6 * u), 'shadow', 0.3 * opacity);
   },
 
   /** The chest the moment it bursts: the lid pops (`addBurstLid`), light pours out of the open body, which fades as shards fly. */
@@ -598,8 +664,10 @@ export const ShopPage = {
     }
   },
 
-  /** The lid of a bursting chest, `spun` seconds after the burst: it pops off the seam and tips back to let the light out, then spins away. */
+  /** The lid of a bursting chest, `spun` seconds after the burst: it pops off the seam and tips back to let the light out, then spins up and out of the picture, clear of the reel. */
   addBurstLid(list: RenderList, chest: ChestKind, center: Vec2, spun: number): void {
+    if (chest === 'premium' || chest === 'criminalHunt') return ShopPage.addHingedLid(list, chest, center, spun);
+    if (chest === 'event') return ShopPage.addGiftLid(list, center, spun);
     const life = 0.8;
     const popTime = 0.16;
     if (spun >= life) return;
@@ -607,13 +675,115 @@ export const ShopPage = {
     const u = 1.6 * (1 + 0.15 * Ease.outCubic(spun / ShopPage.burstOpen)) * 1.05;
     const pop = Ease.outCubic(spun / popTime);
     const t = Ease.clamp01((spun - popTime) / (life - popTime));
-    const at = add(center, v(70 * t, (-14 - 26 * pop) * u - 250 * t + 420 * t * t));
+    const at = add(center, v(70 * t, (-14 - 26 * pop) * u - 300 * t - 700 * t * t));
     const turn = 0.35 * pop + 4 * t;
     const height = 18 * u * (1 - 0.25 * pop);
     const part = (x: number): Vec2 => add(at, v(x * u * Math.cos(turn), x * u * Math.sin(turn)));
-    const opacity = 1 - t * t;
-    list.s(rect(at, v(52 * u, height), 10 * u, turn), paint.lid, opacity);
-    for (const x of [-15.5, 15.5]) list.s(rect(part(x), v(5 * u, height), 0, turn), paint.band, 0.75 * opacity);
+    list.s(rect(at, v(52 * u, height), 10 * u, turn), paint.lid, 1);
+    for (const x of [-15.5, 15.5]) list.s(rect(part(x), v(5 * u, height), 0, turn), paint.band, 0.75);
+  },
+
+  /**
+   * A lid on a hinge: it swings back past upright, so its inside shows above the open chest, then tears off and flies up
+   * out of the picture, clear of the reel (Leo, 23.10.2026). The Premium's opens on a spring, the Criminal Hunt's slams back at once.
+   */
+  addHingedLid(list: RenderList, chest: ChestKind, center: Vec2, spun: number): void {
+    const premium = chest === 'premium';
+    const flight = Math.max(0, spun - (premium ? 0.3 : 0.15));
+    if (flight >= 0.7) return;
+    const paint = ShopPage.chestPaint(chest);
+    const out = Ease.outCubic(spun / ShopPage.burstOpen);
+    const squash = v(1 + 0.1 * out, 1 - 0.08 * out);
+    const u = 1.6 * (1 + 0.15 * out) * 1.05;
+    const hinge = add(center, v(0, (23 * (1 - squash.y) - 5 * squash.y) * u - 200 * flight - 1800 * flight * flight));
+    const turn = Math.PI * 0.62 * Ease.spring(spun / (premium ? 0.38 : 0.12));
+    const front = (premium ? 24 : 18) * u * squash.y * Math.cos(turn);
+    const face = Math.max(1, Math.abs(front));
+    const tilt = (premium ? 2.5 : -3.5) * flight;
+    const middle = v(hinge.x, hinge.y - face / 2);
+    const size = v(52 * u * squash.x, face);
+    const corner = Math.min(10 * u, face / 2);
+    if (front > 0) {
+      list.s(rect(middle, size, corner, tilt), paint.lid, 1);
+      for (const bx of [-15.5, 15.5]) list.s(rect(add(middle, mul(fromAngle(tilt), bx * u * squash.x)), v(5 * u, face), 0, tilt), paint.band, 0.75);
+      return;
+    }
+    // Past upright: the inside, dark, lit from the chest below while it still sits on it.
+    list.s(rect(middle, size, corner, tilt), paint.body, 1);
+    list.s(rect(middle, size, corner, tilt), 'shadow', 0.35);
+    if (flight === 0) list.s(rect(v(middle.x, hinge.y - 2 * u), v(size.x - 6 * u, 3 * u), 1.5 * u), 'primary', 0.5);
+  },
+
+  /** The gift's lid hops off the box and flies up out of the picture, turning a little; the bow's loops fly apart and the knot pops up and away. */
+  addGiftLid(list: RenderList, center: Vec2, spun: number): void {
+    const life = 0.9;
+    if (spun >= life) return;
+    const paint = ShopPage.chestPaint('event');
+    const u = 1.6 * 1.05;
+    const lid = add(center, v(0, -10 * u - 260 * spun - 1500 * spun * spun));
+    const tilt = 0.5 * spun;
+    list.s(rect(lid, v(58 * u, 11 * u), 2.5 * u, tilt), paint.lid, 1);
+    list.s(rect(lid, v(8 * u, 11 * u), 0, tilt), paint.band, 0.9);
+    const knot = add(center, v(0, -17 * u - 380 * spun - 700 * spun * spun));
+    for (const side of [-1, 1]) {
+      const loop = add(knot, v(side * (7 * u + 260 * spun), 120 * spun * spun));
+      list.s(rect(loop, v(14 * u, 9 * u), 4.5 * u, side * (0.45 + 9 * spun)), paint.band, 1);
+    }
+    list.s(circle(knot, 3.8 * u), paint.band, 1);
+  },
+
+  /**
+   * The kind's own moment as the chest bursts, over the reel as it starts (Leo, 23.10.2026): Premium a gold ring and coins
+   * that jump out, Event confetti falling from above, Criminal Hunt a violet shock wave and the stamp. Standard and Diamond
+   * keep the shared burst. `spun` is seconds since the burst.
+   */
+  addBurstFlair(list: RenderList, chest: ChestKind, center: Vec2, spun: number): void {
+    if (chest === 'premium') {
+      const ring = spun / 0.6;
+      if (ring < 1) list.s(arc(center, 36 + 280 * Ease.outCubic(ring), 10 * (1 - ring) + 1.5, 0, TAU), 'coin', 0.9 * (1 - ring));
+      if (spun >= 1.2) return;
+      const fade = 1 - Ease.smoothstep((spun - 0.8) / 0.4);
+      for (let i = 0; i < 16; i++) {
+        const a = -Math.PI / 2 + (unit(i, 90) - 0.5) * 2;
+        const speed = 300 + 280 * unit(i, 91);
+        const coin = v(center.x + Math.cos(a) * speed * spun, center.y - 10 + Math.sin(a) * speed * spun + 820 * spun * spun);
+        // A coin turns as it flies: its width follows the cosine of the spin.
+        const r = 6 + 3 * unit(i, 92);
+        const width = Math.max(1.5, 2 * r * Math.abs(Math.cos(spun * (10 + 8 * unit(i, 93)) + i)));
+        list.s(rect(coin, v(width, 2 * r), Math.min(width, 2 * r) / 2), 'coin', fade);
+        list.s(rect(coin, v(width * 0.55, r), Math.min(width * 0.55, r) / 2), 'coinInk', 0.45 * fade);
+      }
+      return;
+    }
+    if (chest === 'event') {
+      const life = 1.8;
+      if (spun >= life) return;
+      const fade = 1 - Ease.smoothstep((spun - life * 0.6) / (life * 0.4));
+      for (let i = 0; i < 46; i++) {
+        const t = spun - 0.1 - 0.25 * unit(i, 94);
+        if (t <= 0) continue;
+        const spin = (unit(i, 95) - 0.5) * 12;
+        const at = v(center.x + (unit(i, 96) - 0.5) * 340 + Math.sin(t * 6 + i) * 10, center.y - 240 - 80 * unit(i, 97) + 200 * t + 120 * t * t);
+        list.s(rect(at, v(7 + 4 * unit(i, 98), 4), 1, spin * t), JUICE[i % JUICE.length], fade);
+      }
+      return;
+    }
+    if (chest !== 'criminalHunt') return;
+    for (const [delay, reach, color] of [[0, 1, 'rarityEpic'], [0.07, 0.75, 'primary']] as const) {
+      const wave = (spun - delay) / 0.45;
+      if (wave >= 0 && wave < 1) list.s(arc(center, 40 + 360 * reach * Ease.outCubic(wave), 18 * (1 - wave) + 2, 0, TAU), color, 0.85 * (1 - wave));
+    }
+    // The stamp slams down above the reel, holds, and fades as the reel slows.
+    const t = spun - 0.1;
+    if (t < 0 || t >= 1.2) return;
+    const slam = 2 - Ease.outCubic(t / 0.12);
+    const fade = Math.min(1, t / 0.05) * (1 - Ease.smoothstep((t - 0.85) / 0.35));
+    const at = v(center.x, center.y - 112);
+    const size = 30 * slam;
+    const box = v(textWidth(S.shop.caught, size) + 28 * slam, size + 18 * slam);
+    list.s(rect(at, box, 8 * slam), 'rarityEpic', 0.95 * fade);
+    list.s(rect(at, sub(box, v(6, 6)), 6 * slam), 'background', 0.92 * fade);
+    drawText(list, S.shop.caught, at, size, 'rarityEpic', { weight: 'bold', align: 'center', opacity: fade });
   },
 
   // MARK: Collection
@@ -836,6 +1006,7 @@ export const ShopPage = {
         (item, at, scale, opacity) => ShopPage.addPreview(list, item, at, scale, opacity),
       );
       ShopPage.addBurstLid(list, opening.chest, center, spun);
+      ShopPage.addBurstFlair(list, opening.chest, center, spun);
       if (spun < 0.12) list.s(rect(mul(vp, 0.5), vp), 'primary', 0.2 * (1 - spun / 0.12));
       return;
     }
@@ -1004,6 +1175,7 @@ export const ShopPage = {
       if (power > 0) list.s(arc(center, 104, 5 + 2 * jolt, -Math.PI / 2, -Math.PI / 2 + TAU * power), power >= 1 ? 'rarityLegendary' : 'accent', 0.95);
     }
     MenuKit.glow(list, center, 70 + 120 * cracks + 40 * jolt + 60 * duck, 'primary', 0.1 + 0.4 * cracks * cracks + 0.3 * duck);
+    if (!reduceMotion) ShopPage.addChargeBack(list, chest, center, age, cracks, duck);
     if (jolt > 0.05) list.s(rect(mul(vp, 0.5), vp), strong ? 'primary' : 'accent', 0.13 * jolt * jolt);
     const beads = Math.floor(4 + 8 * cracks);
     for (let i = 0; i < beads; i++) {
@@ -1014,7 +1186,9 @@ export const ShopPage = {
     const scale = 1.6 * enter * (1 + 0.06 * cracks + 0.08 * duck + breath + 0.06 * jolt);
     const at = add(center, shake);
     const lid = (2 + 6 * cracks) * jolt + (reduceMotion ? 0 : 1.5 * cracks * (1 + Math.sin(age * 40)));
-    ShopPage.addChestIcon(list, chest, at, scale, 1, squash, lid);
+    // The Event Chest's bow flaps with every tap and trembles as the chest ducks.
+    const bow = chest === 'event' && !reduceMotion ? 0.5 * jolt * Math.sin(hit * 38) + 0.08 * cracks * Math.sin(age * 9) + 0.3 * duck * Math.sin(age * 50) : 0;
+    ShopPage.addChestIcon(list, chest, at, scale, 1, squash, lid, true, bow);
 
     // Cracks, each a jagged run over the chest's front with light behind it; the newest still opens up.
     const u = scale * 1.05;
@@ -1040,6 +1214,7 @@ export const ShopPage = {
         list.s(polygon([from, add(from, mul(fromAngle(out - 0.07), length)), add(from, mul(fromAngle(out + 0.07), length))]), 'primary', 0.12 + 0.3 * cracks);
       }
     }
+    if (!reduceMotion) ShopPage.addChargeFront(list, chest, at, u, squash, lid, age, cracks, duck);
     // A run of strong taps counts up above the chest, popping with every tap.
     if (!reduceMotion && streak >= 2 && hit < 0.6) {
       const pop = 1 + 0.7 * (1 - Ease.outCubic(hit / 0.2));
@@ -1063,6 +1238,38 @@ export const ShopPage = {
     const wave = hit / 0.3;
     if (duck > 0.6) list.s(arc(at, 30 + 260 * Ease.outCubic((duck - 0.6) / 0.4), 9 * (1 - duck) + 2, 0, TAU), 'primary', 0.8 * (1 - duck) + 0.2);
     if (strong && wave < 1) list.s(arc(at, 26 + 90 * Ease.outCubic(wave), 4 * (1 - wave) + 1, 0, TAU), 'primary', 0.55 * (1 - wave));
+  },
+
+  /**
+   * What sets a chest apart while it is tapped, behind it (Leo, 23.10.2026): the Premium's gold glows up with the cracks,
+   * the Criminal Hunt's police lights take turns left and right. The same for every prize; only the kind shows.
+   */
+  addChargeBack(list: RenderList, chest: ChestKind, center: Vec2, age: number, cracks: number, duck: number): void {
+    if (chest === 'premium') MenuKit.glow(list, center, 80 + 110 * cracks + 50 * duck, 'coin', (0.12 + 0.35 * cracks + 0.3 * duck) * (0.85 + 0.15 * Math.sin(age * 6)));
+    if (chest !== 'criminalHunt') return;
+    // Soft and slow enough not to strobe: each side swells about twice a second.
+    const swing = 0.5 + 0.5 * Math.sin(age * TAU * 2.2);
+    const strength = 0.3 + 0.45 * cracks + 0.25 * duck;
+    MenuKit.glow(list, add(center, v(-120, -30)), 130, 'lightRed', strength * swing ** 3);
+    MenuKit.glow(list, add(center, v(120, -30)), 130, 'lightBlue', strength * (1 - swing) ** 3);
+  },
+
+  /** ...and on it: the Premium's gold corners twinkle, the Criminal Hunt wears a light bar on its lid. */
+  addChargeFront(list: RenderList, chest: ChestKind, at: Vec2, u: number, squash: Vec2, lid: number, age: number, cracks: number, duck: number): void {
+    const point = (x: number, y: number): Vec2 => add(at, v(x * squash.x * u, (23 * (1 - squash.y) + y * squash.y) * u));
+    if (chest === 'premium') {
+      [v(-23.5, 20.5), v(23.5, -2.5), v(23.5, 20.5), v(-23.5, -2.5)].forEach((corner, i) => {
+        const shine = Math.sin(Math.PI * ((age * 1.4 + i * 0.25) % 1));
+        ShopPage.addStar(list, point(corner.x, corner.y), (4 + 7 * cracks + 4 * duck) * shine, 'rarityLegendary', shine * (0.35 + 0.65 * Math.max(cracks, duck)));
+      });
+    }
+    if (chest !== 'criminalHunt') return;
+    const swing = 0.5 + 0.5 * Math.sin(age * TAU * 2.2);
+    for (const [side, color, on] of [[-1, 'lightRed', swing ** 3], [1, 'lightBlue', (1 - swing) ** 3]] as const) {
+      const lamp = point(side * 7, -25.5 - lid);
+      list.s(rect(lamp, v(12 * u, 5 * u), 2 * u), color, 0.45 + 0.55 * on);
+      MenuKit.glow(list, lamp, 18 + 30 * on, color, 0.5 * on);
+    }
   },
 
   addRevealCard(list: RenderList, opening: ChestOpening, center: Vec2, tt: number, color: ColorToken, reduceMotion: boolean, pityLeft: number): void {
@@ -1188,9 +1395,8 @@ export const ShopPage = {
     }
   },
 
-  addStar(list: RenderList, center: Vec2, radius: number, color: ColorToken, opacity: number): void {
-    const inner = radius * 0.28;
-    const points = Array.from({ length: 8 }, (_, k) => add(center, mul(fromAngle((k / 8) * TAU - Math.PI / 2), k % 2 === 0 ? radius : inner)));
+  addStar(list: RenderList, center: Vec2, radius: number, color: ColorToken, opacity: number, tips = 4, inner = 0.28): void {
+    const points = Array.from({ length: 2 * tips }, (_, k) => add(center, mul(fromAngle((k / (2 * tips)) * TAU - Math.PI / 2), k % 2 === 0 ? radius : radius * inner)));
     list.s(polygon(points), color, opacity);
   },
 };

@@ -34,7 +34,7 @@ import { MapTheme } from './mapThemes';
 import { Skins } from './skins';
 import { WeatherFade, WeatherLayer } from './weather';
 import { NightLayer } from './night';
-import { CityLights } from './cityLights';
+import { CityLights, LampWave } from './cityLights';
 import { HUD, TopBar, RingSignals, ModeMessage, ModeBanner, ReadyBanner, type TopMessage, ResultBanner, type Popup, type PopupKind, type ShiftSummary, type ConditionIntro, POPUP_LIFETIME, settledPops } from './hud';
 import { inPortal, inPlayStore, isInstalled } from '../storage/device';
 import { Tutorial } from './tutorial';
@@ -75,7 +75,9 @@ import { Details, type Detail } from './detail';
 import { Intros, type Intro } from './intros';
 import { News, NEWS_DWELL, type NewsItem } from './news';
 import { textWidth } from './icons';
-import { TyreMarks } from './marks';
+import { TyreMarks, BrakeMarks } from './marks';
+import { Ducks } from './ducks';
+import { Holidays } from './holidays';
 import { DriftFx } from './driftFx';
 import { type DriftSound, type TrafficSound, engineOf } from './feedback';
 import { type ChallengeSpec, challengeOf, challengeConfig, encodeChallenge } from '../core/challenge';
@@ -133,6 +135,9 @@ export interface Modifier {
   tone: 'heat' | 'bonus' | 'loss';
 }
 
+/** Development only (`?ente`): the duck family crosses in every shift, a few seconds in, so it can be looked at. Not in the production build. */
+const duckDemo = import.meta.env.DEV && typeof location !== 'undefined' && new URLSearchParams(location.search).has('ente');
+
 /**
  * Runs the game for the browser: screens, fixed-step loop, input
  * timestamps, feedback, save game and the render list. The roundabout never stops: every tab
@@ -155,7 +160,7 @@ export class GameSession {
   static readonly lossPullIn = 0.7;
   static readonly flowFade = 0.6;
 
-  readonly config: Config = baseConfig;
+  readonly config: Config = duckDemo ? { ...baseConfig, duckChance: 1, duckDelay: { lo: 2, hi: 4 } } : baseConfig;
   world: World;
   screen: Screen = { k: 'ready' };
   save: SaveGame;
@@ -193,6 +198,8 @@ export class GameSession {
   private explosions: ExplosionEffects;
   private scars = new MapScars();
   private tyreMarks = new TyreMarks();
+  private brakeMarks = new BrakeMarks();
+  private lampWave = new LampWave();
   private driftFx = new DriftFx();
   private curtain: SmokeCurtain | null = null;
   private popups: Popup[] = [];
@@ -942,23 +949,23 @@ export class GameSession {
       case 'toggleSound':
         save.settings.sound = !save.settings.sound;
         this.persist();
-        this.tick();
+        this.blink();
         break;
       case 'toggleHaptics':
         save.settings.haptics = !save.settings.haptics;
         this.persist();
-        this.tick();
+        this.blink();
         break;
       case 'toggleVehicleLabels':
         save.settings.vehicleLabels = !save.settings.vehicleLabels;
         this.persist();
-        this.tick();
+        this.blink();
         break;
       case 'cycleReduceMotion': {
         const all = ['system', 'on', 'off'] as const;
         save.settings.reduceMotion = all[(all.indexOf(save.settings.reduceMotion) + 1) % all.length];
         this.persist();
-        this.tick();
+        this.blink();
         break;
       }
     }
@@ -1456,6 +1463,7 @@ export class GameSession {
     this.cameraFx.reset();
     this.scars = new MapScars();
     this.tyreMarks.clear();
+    this.brakeMarks.clear();
     this.driftFx.clear();
     this.popups = [];
     this.pendingSummary = null;
@@ -1505,7 +1513,12 @@ export class GameSession {
       this.museum.noteSightings();
       this.briefings.advance(simDelta, this.world);
       this.age(simDelta);
+      this.lamps.calm = this.reduceMotion;
       this.lamps.update(this.world, simDelta);
+      const lit = this.world.shift.phase !== 'waiting' && this.world.shift.phase !== 'ended';
+      // A new shift begins: the street lamps come on, and the last shift's brake marks fade.
+      if (lit && !this.lampWave.lit) this.brakeMarks.fade();
+      this.lampWave.update(lit, simDelta, this.reduceMotion);
     }
     if (this.screen.k === 'result') {
       this.resultAge += realDelta;
@@ -2419,7 +2432,7 @@ export class GameSession {
     if (this.isPage('progress')) {
       const next = this.progressPage.section + way;
       if (next < PROGRESS.today || next > PROGRESS.stats) return;
-      this.tick();
+      this.blink();
       this.leaveMuseum();
       this.closeDetail();
       this.progressPage.select(next as ProgressSection);
@@ -2440,7 +2453,7 @@ export class GameSession {
       const sections = SocialPage.sections(this.save.career);
       const next = sections[sections.indexOf(this.socialPage.section) + way];
       if (next === undefined) return;
-      this.tick();
+      this.blink();
       this.socialPage.select(next);
     } else if (BUILD_PAGES.includes(screenTab(this.screen))) {
       const next = BUILD_PAGES[BUILD_PAGES.indexOf(screenTab(this.screen)) + way];
@@ -2644,7 +2657,7 @@ export class GameSession {
     if (this.isPage('social')) {
       const section = SocialPage.sectionAt(point, this.lastViewport, this.save.career);
       if (section !== null && section !== this.socialPage.section) {
-        this.tick();
+        this.blink();
         this.socialPage.select(section);
       } else if (section === null) this.tapAway();
       return true;
@@ -2653,7 +2666,7 @@ export class GameSession {
       const section: ProgressSection | null = ProgressPage.sectionAt(point, this.lastViewport, this.tabInset);
       if (section !== null) {
         if (this.progressPage.section !== section) {
-          this.tick();
+          this.blink();
           this.leaveMuseum();
           this.closeDetail();
         }
@@ -2692,6 +2705,10 @@ export class GameSession {
           }
           // In the snow every merge leaves its tracks, and they stay.
           if (TyreMarks.leavesMark(e.rating) || world.config.weather === 'snow') this.tyreMarks.add(world.config.weather === 'snow');
+          if (e.rating === 'tightFit') {
+            const braked = world.vehicle(e.closest ?? e.vehicle);
+            if (braked) this.brakeMarks.add(world, braked);
+          }
           // The Records keep how early or late the taps come (saved with the shift).
           if (!this.tutorial) noteTap(this.save.career, e.gapAhead, e.gapBehind, this.config);
           break;
@@ -2796,13 +2813,21 @@ export class GameSession {
           break;
         case 'learnerPassed':
           this.rim.signal('wave', 'learnerSign');
+          this.lamps.thank(e.vehicle);
           break;
         case 'ambulanceBlocked':
           this.rim.signal('flush', 'destructive');
           break;
         case 'ambulanceCleared':
           this.rim.signal('wave', 'lightBlue');
+          this.lamps.thank(e.vehicle);
           break;
+        case 'tapRejected': {
+          // Heard, but not now: the front car's brake lights twitch. No text, no sound.
+          const front = world.queue.vehicles[0];
+          if (front !== undefined) this.lamps.refuse(front);
+          break;
+        }
         case 'ambulanceLost':
           this.rim.signal('miss', 'lightBlue');
           break;
@@ -2968,6 +2993,11 @@ export class GameSession {
 
   private tick(): void {
     this.play(['uiTick'], []);
+  }
+
+  /** Switches and segments tick like an indicator relay (Leo, 23.10.2026). */
+  private blink(): void {
+    this.play(['blinker'], []);
   }
 
   /**
@@ -3254,6 +3284,7 @@ export class GameSession {
     this.explosions.update(delta, gravity(this.world.config));
     this.scars.forget(this.sceneTime);
     this.tyreMarks.update(delta);
+    this.brakeMarks.update(delta);
     this.driftFx.update(delta, this.world, this.lowDetail || this.sceneThin);
     if (this.curtain) {
       this.curtain.age += delta;
@@ -3332,6 +3363,7 @@ export class GameSession {
     const mapSkin = this.special?.k === 'trial' && this.special.trial.tour?.map ? this.special.trial.tour.map : career.mapSkin;
     const theme = MapTheme.from(mapSkin);
     const list = new RenderList(camera, MapTheme.ground(theme));
+    const holiday = Holidays.of(new Date());
     list.topLit = this.topLit;
     const notice = this.notices.shown;
     list.topIntro = this.introGrow;
@@ -3343,7 +3375,7 @@ export class GameSession {
     // A device that cannot keep 30 fps leaves out the decoration (`lowDetail`), never the game.
     list.groundGrain = !this.lowDetail;
     if (screen) list.backdrop = GameSession.backdropVeil;
-    else CityLayer.add(list, world, theme, rm ? null : this.sceneTime, rm ? null : this.cityPulse, this.scars.isEmpty ? null : this.scars, this.sceneTime, this.playingMode === 'shift' && !this.special ? this.cityRise : null, !this.lowDetail);
+    else CityLayer.add(list, world, theme, rm ? null : this.sceneTime, rm ? null : this.cityPulse, this.scars.isEmpty ? null : this.scars, this.sceneTime, this.playingMode === 'shift' && !this.special ? this.cityRise : null, !this.lowDetail, holiday);
     // A mode swipe: the road runs on towards the map coming in, from this one and from the next.
     const link = Math.min(1, Math.abs(this.pan.pan) / (camera.viewport.x * 0.25));
     SceneBuilder.addRoad(list, world.layout, world.config, world.layout.player, link, this.pan.pan < 0 ? 0 : Math.PI);
@@ -3354,18 +3386,20 @@ export class GameSession {
     const night = world.config.night || this.nightPreview;
     if (!night) this.addRim(list, world, rm);
     WeatherLayer.addCityEvent(list, world);
+    Ducks.add(list, world, rm);
     const weather = this.weatherFade.mix(world.config.weather, this.sceneTime);
     WeatherLayer.addGround(list, world, weather);
     this.scars.addGround(list, this.sceneTime, rm ? null : this.sceneTime);
     this.tyreMarks.addGround(list, world.layout, world.config);
+    this.brakeMarks.addGround(list);
     this.driftFx.addGround(list);
     SceneBuilder.addLaneArrow(list, world);
     this.explosions.addGround(list);
     this.effects.carSkins = career.carSkins;
     this.effects.addGround(list);
     const thin = this.lowDetail || this.sceneThin;
-    CityLights.add(list, world, alpha, theme, this.lamps, rm ? null : world.time, this.nightPreview, thin);
-    if (night) NightLayer.addRoadLights(list, world, alpha, this.lamps, rm ? null : world.time, thin ? 3 : undefined);
+    CityLights.add(list, world, alpha, theme, this.lamps, rm ? null : world.time, this.nightPreview, thin, this.lampWave);
+    if (night) NightLayer.addRoadLights(list, world, alpha, this.lamps, rm ? null : world.time, thin ? 3 : undefined, this.lampWave);
     if (night) {
       // Keep the ring's glow in the world layer so vehicles and wreckage can occlude it.
       const lit = list.items.length;
@@ -3383,6 +3417,7 @@ export class GameSession {
     if (this.save.settings.vehicleLabels) SceneBuilder.addLabels(list, world, alpha);
     this.effects.addAir(list);
     this.explosions.addAir(list);
+    if (holiday === 'newYear' && !rm) Holidays.addFireworks(list, world, this.sceneTime, thin ? 10 : 18);
     if (!this.sceneThin) WeatherLayer.addAir(list, world, this.sceneTime, rm, weather, this.lowDetail);
     const island = { center: toScreen(camera, v(0, 0)), radius: (world.layout.islandRadius) * camera.scale };
     if (!thin) MapTheme.addAir(list, theme, this.sceneTime, rm, island);
@@ -3455,6 +3490,7 @@ export class GameSession {
         money: Math.round(this.shownMoney),
         best: this.currentBest,
         comboPop: rm ? 0 : Ease.clamp01(this.sinceComboTier / GameSession.comboPop),
+        island: Ducks.island(world),
         mark: this.sinceMark < 2.5 ? S.modes.mark(this.markCars, markReward(this.markCars)) : null,
         race: this.raceDelta === null ? null : { delta: this.raceDelta, pop: rm ? 1 : Ease.clamp01(this.sinceCarSent / 0.35) },
         record: this.recordStage === 'far' ? null : { gap: this.recordBest - Math.round(world.score.points), pop: rm ? 1 : Ease.clamp01(this.sinceRecord / 0.35) },

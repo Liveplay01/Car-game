@@ -51,6 +51,9 @@ const streak = wrap('streak',
 <path class="ck" pathLength="1" d="M9 15.2l2 2 4-4.2"/>`);
 
 const chest = wrap('chest',
+  // Each chest keeps its outline (`ShopPage.addChestIcon`): `data-kind` on the svg picks the parts.
+  `.ai-chest .dome,.ai-chest .gift,.ai-chest .gold,.ai-chest .star,.ai-chest[data-kind=premium] .lid .plain,.ai-chest[data-kind=event] .plain,.ai-chest[data-kind=event] .bands,.ai-chest[data-kind=event] .seam,.ai-chest[data-kind=criminalHunt] .lock .plain{display:none}` +
+  `.ai-chest[data-kind=premium] .dome,.ai-chest[data-kind=premium] .gold,.ai-chest[data-kind=event] .gift,.ai-chest[data-kind=criminalHunt] .star{display:inline}` +
   `.ai-chest .lid{${fb}transform-origin:0 100%}.ai-chest .lock{${fb}transform-origin:50% 0}.ai-chest .body{${fb}transform-origin:50% 100%}.ai-chest .glow,.ai-chest .rays{${fb}transform-origin:50% 100%;opacity:0}` +
   on('chest', '.lid', 'aiChLid', '2.2s', 'cubic-bezier(.3,0,.2,1)') + on('chest', '.lock', 'aiChLock', '2.2s', 'ease-in-out') + on('chest', '.body', 'aiChBody', '2.2s', 'ease-out') +
   on('chest', '.glow', 'aiChGlow', '2.2s', 'ease-out') + on('chest', '.rays', 'aiChRays', '2.2s', 'ease-out') +
@@ -62,9 +65,14 @@ const chest = wrap('chest',
   `<g transform="translate(1 2.6) scale(.423)" stroke="none">
 <ellipse class="glow" cx="26" cy="19" rx="22" ry="11" fill="#FFE08A"/>
 <g class="rays" stroke="#FFE08A" stroke-width="3.4" stroke-linecap="round"><path d="M26 13V1M16 14 10 5M36 14l6-9"/></g>
-<g class="body"><rect y="19" width="52" height="28" rx="5" fill="var(--chest-body,#3B2C55)"/><path d="M8 19h5v28H8zM39 19h5v28h-5z" fill="var(--chest-band,#E3C15A)" fill-opacity=".75"/></g>
-<g class="lid"><path d="M0 19V11A10 10 0 0 1 10 1h32a10 10 0 0 1 10 10v8Z" fill="var(--chest-lid,#4C3A6B)"/><path d="M8 1h5v18H8zM39 1h5v18h-5z" fill="var(--chest-band,#E3C15A)" fill-opacity=".75"/><rect y="17" width="52" height="5" fill="var(--chest-band,#E3C15A)" fill-opacity=".9"/></g>
-<g class="lock"><rect x="21" y="15" width="10" height="12" rx="2.5" fill="var(--chest-band,#E3C15A)"/><circle cx="26" cy="21" r="2" fill="var(--chest-body,#3B2C55)"/></g></g>`);
+<g class="body"><rect y="19" width="52" height="28" rx="5" fill="var(--chest-body,#3B2C55)"/><path class="bands" d="M8 19h5v28H8zM39 19h5v28h-5z" fill="var(--chest-band,#E3C15A)" fill-opacity=".75"/>
+<rect class="gift" x="22" y="19" width="8" height="28" fill="var(--chest-band,#E3C15A)" fill-opacity=".9"/><path class="gold" d="M-1 18h7v7h-7zM46 18h7v7h-7zM-1 41h7v7h-7zM46 41h7v7h-7z" fill="var(--chest-band,#E3C15A)"/></g>
+<g class="lid"><g class="plain"><path d="M0 19V11A10 10 0 0 1 10 1h32a10 10 0 0 1 10 10v8Z" fill="var(--chest-lid,#4C3A6B)"/><path d="M8 1h5v18H8zM39 1h5v18h-5z" fill="var(--chest-band,#E3C15A)" fill-opacity=".75"/></g>
+<g class="dome"><path d="M0 19V8A13 13 0 0 1 13 -5h26a13 13 0 0 1 13 13v11Z" fill="var(--chest-lid,#4C3A6B)"/><path d="M8 -5h5v24H8zM39 -5h5v24h-5z" fill="var(--chest-band,#E3C15A)" fill-opacity=".75"/></g>
+<rect class="seam" y="17" width="52" height="5" fill="var(--chest-band,#E3C15A)" fill-opacity=".9"/>
+<g class="gift"><rect x="-3" y="8.5" width="58" height="11" rx="2.5" fill="var(--chest-lid,#4C3A6B)"/><rect x="22" y="8.5" width="8" height="11" fill="var(--chest-band,#E3C15A)" fill-opacity=".9"/><g fill="var(--chest-band,#E3C15A)"><rect x="25.3" y="-0.55" width="14" height="9" rx="4.5" transform="rotate(-25.8 32.3 3.95)"/><rect x="12.7" y="-0.55" width="14" height="9" rx="4.5" transform="rotate(25.8 19.7 3.95)"/><circle cx="26" cy="7" r="3.8"/></g></g></g>
+<g class="lock"><rect class="plain" x="21" y="15" width="10" height="12" rx="2.5" fill="var(--chest-band,#E3C15A)"/><circle class="plain" cx="26" cy="21" r="2" fill="var(--chest-body,#3B2C55)"/>
+<g class="star"><circle cx="26" cy="21" r="8" fill="var(--chest-band,#E3C15A)"/><path d="M26 15.5L27.45 19L31.23 19.3L28.35 21.76L29.23 25.45L26 23.48L22.77 25.45L23.65 21.76L20.77 19.3L24.55 19Z" fill="var(--chest-body,#3B2C55)"/></g></g></g>`);
 
 const progress = wrap('progress',
   `.ai-progress .cup{${fb}transform-origin:50% 100%}.ai-progress .sp{${fb}transform-origin:center;transform:scale(0)}.ai-progress .shine{opacity:0}` +

@@ -98,7 +98,19 @@ export default (S: Strings): Words<Strings> => ({
         case 'event':
           return 'Événements urbains · Service du jour';
         case 'criminalHunt':
-          return 'Remporté en capturant des criminels';
+          return 'Maîtrise Justicier de la route : 10 et 75 interpellations';
+      }
+    },
+    how(k) {
+      switch (k) {
+        case 'standard':
+          return 'ou via publicités';
+        case 'premium':
+          return 'ou par de rudes maîtrises';
+        case 'diamond':
+          return 'jamais de commun';
+        default:
+          return S.shop.source(k);
       }
     },
     seasonHint: 'Contient à 50 % l’objet de cette saison jusqu’à son obtention.',
@@ -136,7 +148,13 @@ export default (S: Strings): Words<Strings> => ({
     skinsOn: (n, max) => `${n} sur ${max} skins de voiture actifs · ils se mélangent sur l’anneau`,
     skinsFull: (max) => `${max} skins actifs. Retirez-en un d’abord.`,
     section: (i) => ['Coffres', 'Collection', 'Casino'][i],
+    saleHeading: 'En vente',
     earnedHeading: 'Mérité, pas acheté',
+    pityTitle: 'Légendaire garanti',
+    pityLeft: (n) => (n === 1 ? 'Encore 1 coffre' : `Encore ${n} coffres`),
+    short: (amount) => `Il manque ${amount}`,
+    noneYet: 'Aucun pour l’instant',
+    caught: 'ARRÊTÉ',
     newBadge: 'NOUVEAU',
     shelf: (i) => ['Voitures', 'Cartes', 'Mérité', 'Passe'][i],
     group: (g, honours = false) => {
@@ -149,7 +167,6 @@ export default (S: Strings): Words<Strings> => ({
     pityLegendary: (n) => `Un Légendaire garanti sous ${n} coffres.`,
     buyBundle: (n, price) => `${n} pour ${price}`,
     legendaryTimes: (n) => `${n}× la chance de Légendaire d'un coffre standard.`,
-    pitySoon: (n) => `Légendaire dans ${n}`,
     duplicate: (m) => `Doublon · +${money(m)}`,
     ownedHint(item) {
       if (item.kind === 'carSkin') return 'Habille les voitures sur la route. Combinez-en jusqu’à huit. Purement esthétique.';

@@ -3363,6 +3363,18 @@ button.mod:active {
   border-top-color: transparent;
 }
 
+/* Level board: the star has its own column at the left of the value and the level sits at the right edge, so both line up down the list. */
+.board-value.level-value {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  min-width: 14ch;
+}
+
+.level-value .prestige-star {
+  margin-right: auto;
+}
+
 /* The Prestige star (ui/ranksPanel.ts, Leo 22.10.2026): a soft SVG star in its rank's gradient with the rank inside.
    A slow glint runs over it; under the cursor or a finger it pops, tilts and sparkles (`watchIconMoves` plays it). */
 .prestige-star {

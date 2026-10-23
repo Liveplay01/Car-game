@@ -31,6 +31,8 @@ export const COLORS = {
   vehiclePoliceRoof: [242, 244, 247, 1],
   lightRed: [255, 59, 71, 1],
   lightBlue: [79, 163, 255, 1],
+  /** Turn signals and hazards: the amber-orange of a real indicator, warmer than the interface's lamp amber. */
+  indicator: [255, 150, 20, 1],
   headlight: [255, 238, 208, 1],
   syndicate: [24, 25, 29, 1],
   syndicateEscort: [52, 56, 64, 1],

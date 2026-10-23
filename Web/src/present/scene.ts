@@ -21,10 +21,12 @@ export function interpolatedPose(veh: Vehicle, alpha: number): Pose {
   return { position: lerpV(veh.prevPosition, veh.position, alpha), heading: veh.prevHeading + angleDelta(veh.prevHeading, veh.heading) * alpha };
 }
 
-/** Brake lights and headlight flashes by vehicle id. */
+/** Brake lights, headlight flashes, turn signals (left, right: 0…1) and the queue's nod (world units forward) by vehicle id. */
 export interface Lamps {
   brake(id: number): number;
   headlights(id: number): number;
+  indicators(id: number): [number, number] | null;
+  nod(id: number): number;
 }
 
 /** A multiplayer car in its player's colour: a painted roof, a glow, a lunge on the tap. */
@@ -48,19 +50,86 @@ export interface Beam {
   swing: number;
 }
 
+/** A turn signal: the side (1 left, -1 right, 0 both: the hazards), when it began, and when it stops on its own. */
+interface Signal {
+  side: number;
+  since: number;
+  until: number;
+}
+
 /**
  * The lights of the traffic: brake lights come on quickly and fade a
  * little slower; the headlights flash twice when a tap is held for the car rolling up, and their beams
  * follow the car (it rolls up, it speeds, it turns) instead of switching.
+ *
+ * Small things a driver does (Leo, 23.10.2026): a car signals before its exit, so you see the gap coming;
+ * an ambulance or a learner you kept clear for thanks you with two flashes of its hazards on the way out;
+ * a tap that cannot be taken yet twitches the front car's brake lights (no text, no sound); and when the
+ * queue moves up, each car nods into its brakes, front to back.
  */
 export class VehicleLamps {
+  /** About 90 flashes a minute, like a real indicator. */
+  static readonly blinkPeriod = 0.68;
+  /** A car on the ring signals this many seconds before its exit, and keeps on until it is this many car lengths out. */
+  static readonly signalAhead = 1.25;
+  static readonly signalOut = 1.4;
+  static readonly thanks = 2;
+  static readonly twitch = 0.18;
+  /** The queue's nod: how far forward (world units), how quickly it settles, and the lag from one car to the next. */
+  static readonly nodDepth = 1.4;
+  static readonly nodSettle = 0.11;
+  static readonly nodLag = 0.055;
+
+  /** Reduce Motion: the queue does not nod. */
+  calm = false;
   private brakes = new Map<number, number>();
   private beams = new Map<number, Beam>();
   private flash: { vehicle: number; age: number } | null = null;
   private hadHeldTap = false;
+  private clock = 0;
+  private signals = new Map<number, Signal>();
+  private twitches = new Map<number, number>();
+  private nods = new Map<number, number>();
+  private rolling = new Set<number>();
 
   brake(id: number): number {
-    return this.brakes.get(id) ?? 0;
+    const lit = this.brakes.get(id) ?? 0;
+    const age = this.twitches.get(id);
+    if (age === undefined) return lit;
+    const pulse = Math.sin(Math.PI * Math.min(1, age / VehicleLamps.twitch));
+    // Off, it flicks on; already on, it flicks off: either way the eye catches it.
+    return lit > 0.5 ? lit * (1 - 0.85 * pulse) : Math.max(lit, pulse);
+  }
+
+  /** LED-quick on, a touch softer off. */
+  static blink(age: number): number {
+    const P = VehicleLamps.blinkPeriod;
+    const x = age % P;
+    return x < P / 2 ? Math.min(1, x / 0.03) : Math.max(0, 1 - (x - P / 2) / 0.08);
+  }
+
+  indicators(id: number): [number, number] | null {
+    const s = this.signals.get(id);
+    if (!s) return null;
+    const light = VehicleLamps.blink(this.clock - s.since);
+    return [s.side >= 0 ? light : 0, s.side <= 0 ? light : 0];
+  }
+
+  nod(id: number): number {
+    const age = this.nods.get(id);
+    if (age === undefined || age < 0) return 0;
+    return VehicleLamps.nodDepth * Math.exp(-age / VehicleLamps.nodSettle) * Math.sin(age * Math.PI * 2 * 2.6);
+  }
+
+  /** The front car tried to go on a tap it could not take. */
+  refuse(id: number): void {
+    this.twitches.set(id, 0);
+  }
+
+  /** An ambulance or a learner leaves with its road kept clear: two flashes of the hazards. */
+  thank(id: number): void {
+    const P = VehicleLamps.blinkPeriod;
+    this.signals.set(id, { side: 0, since: this.clock, until: this.clock + (VehicleLamps.thanks - 0.5) * P + 0.1 });
   }
 
   /** The car's beam; a car not followed yet is lit when it is not in the queue. */
@@ -92,10 +161,63 @@ export class VehicleLamps {
     }
     this.brakes = next;
     this.beams = beams;
+    this.clock += delta;
+    this.updateSignals(world);
+    for (const [id, age] of this.twitches) {
+      if (age + delta >= VehicleLamps.twitch) this.twitches.delete(id);
+      else this.twitches.set(id, age + delta);
+    }
+    this.updateNods(world, delta);
     const held = world.queue.heldTap !== null;
     if (held && !this.hadHeldTap && world.queue.vehicles.length > 0) this.flash = { vehicle: world.queue.vehicles[0], age: 0 };
     else if (this.flash) this.flash = this.flash.age + delta < 0.3 ? { vehicle: this.flash.vehicle, age: this.flash.age + delta } : null;
     this.hadHeldTap = held;
+  }
+
+  private updateSignals(world: World): void {
+    const next = new Map<number, Signal>();
+    const c = world.config;
+    for (const veh of world.vehicles) {
+      if (veh.isCrashed) continue;
+      const p = veh.phase;
+      const now = this.signals.get(veh.id);
+      // Standing for the ducks (`core/ducks.ts`): hazards on, like a driver warning the cars behind.
+      if (world.ducks && p.kind === 'ring' && (p.drive.speed ?? world.ringSpeed) <= c.standingSpeed) {
+        next.set(veh.id, now?.side === 0 ? now : { side: 0, since: this.clock, until: Infinity });
+        continue;
+      }
+      if (now && now.side === 0 && now.until !== Infinity) {
+        if (this.clock < now.until) next.set(veh.id, now);
+        continue;
+      }
+      const wants =
+        p.kind === 'ring'
+          ? p.distanceToExit <= world.ringSpeed * VehicleLamps.signalAhead && !world.staysOnRing(veh)
+          : p.kind === 'exiting' && now !== undefined && p.s < c.carLength * VehicleLamps.signalOut;
+      if (!wants) continue;
+      // The way out always leads away from the island: whichever side faces out blinks.
+      const side = Math.sign(dot(left(fromAngle(veh.heading)), veh.position)) || -1;
+      next.set(veh.id, now ?? { side, since: this.clock, until: Infinity });
+    }
+    this.signals = next;
+  }
+
+  /** A queued car that just came to rest nods into its brakes, a beat after the car in front of it. */
+  private updateNods(world: World, delta: number): void {
+    const rolling = new Set<number>();
+    for (const q of world.seats) {
+      q.vehicles.forEach((id, slot) => {
+        const veh = world.vehicle(id);
+        if (!veh) return;
+        if (dist(veh.prevPosition, veh.position) > 0.02) rolling.add(id);
+        else if (this.rolling.has(id) && !this.calm) this.nods.set(id, -slot * VehicleLamps.nodLag);
+      });
+    }
+    this.rolling = rolling;
+    for (const [id, age] of this.nods) {
+      if (age + delta > 0.6) this.nods.delete(id);
+      else this.nods.set(id, age + delta);
+    }
   }
 
   /** The beam eases towards what the car does: dim while queued, longer with speed, swung into a turn. */
@@ -387,6 +509,8 @@ export const SceneBuilder = {
       const flashing = chase || veh.phase.kind !== 'queued';
       const mark = marks?.(veh) ?? null;
       let pose = interpolatedPose(veh, alpha);
+      const nod = lamps?.nod(veh.id) ?? 0;
+      if (nod !== 0) pose = { position: add(pose.position, mul(fromAngle(pose.heading), nod)), heading: pose.heading };
       if (mark) {
         if (mark.lunge !== 0) pose = { position: add(pose.position, mul(fromAngle(pose.heading), mark.lunge)), heading: pose.heading };
         // A soft pool of the player's colour under the car: whose it is, even on a busy ring.
@@ -423,6 +547,7 @@ export const SceneBuilder = {
           brake: lamps ? lamps.brake(veh.id) : null,
           brakeGlow: veh.phase.kind !== 'queued' || fronts.has(veh.id),
           headlights: lamps ? lamps.headlights(veh.id) : 0,
+          indicators: lamps?.indicators(veh.id) ?? null,
           skin: look?.paint ?? null,
           stripe: look?.stripe ?? null,
           roof: mark?.roof ? mark.color : (look?.roof ?? null),

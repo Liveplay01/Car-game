@@ -74,7 +74,7 @@ export function updateTraffic(w: World, dt: number): void {
           ? canEnter(w, p.arm, veh.lane, veh.type)
           : canPushIn(w, p.arm, veh.lane, veh.type);
     // Runners crossing the arm (a marathon): everyone waits at the line, the criminal too.
-    if (p.reaction <= 0 && clear && !w.runnersCrossing(p.arm) && !joinsTooClose(w, veh, p.arm) && !joinsClearRoad(w, veh, p.arm)) {
+    if (p.reaction <= 0 && clear && !w.runnersCrossing(p.arm) && !w.waitsForDucks && !joinsTooClose(w, veh, p.arm) && !joinsClearRoad(w, veh, p.arm)) {
       const ordinary = !(isEmergency(veh.type) || veh.type === 'learner' || veh.type === 'oversize' || veh.type === 'racer' || veh.type === 'wedding' || veh.type === 'drift');
       const merge: Merging = {
         kind: 'merging',

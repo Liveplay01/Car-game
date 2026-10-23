@@ -98,7 +98,19 @@ export default (S: Strings): Words<Strings> => ({
         case 'event':
           return 'Eventi cittadini · Turno giornaliero';
         case 'criminalHunt':
-          return 'Ottenuto catturando criminali';
+          return 'Maestria Giustiziere: 10 e 75 arresti';
+      }
+    },
+    how(k) {
+      switch (k) {
+        case 'standard':
+          return 'o tramite video';
+        case 'premium':
+          return 'o con maestrie impegnative';
+        case 'diamond':
+          return 'mai comune';
+        default:
+          return S.shop.source(k);
       }
     },
     seasonHint: 'Contiene al 50 % l’oggetto stagionale finché non lo possiedi.',
@@ -136,7 +148,13 @@ export default (S: Strings): Words<Strings> => ({
     skinsOn: (n, max) => `${n} su ${max} skin auto attive · circolano insieme sulla strada`,
     skinsFull: (max) => `${max} skin attive. Rimuovine prima una.`,
     section: (i) => ['Bauli', 'Collezione', 'Casinò'][i],
+    saleHeading: 'In vendita',
     earnedHeading: 'Guadagnato, non comprato',
+    pityTitle: 'Leggendario garantito',
+    pityLeft: (n) => (n === 1 ? 'Manca 1 forziere' : `Mancano ${n} forzieri`),
+    short: (amount) => `Mancano ${amount}`,
+    noneYet: 'Ancora nessuno',
+    caught: 'PRESO',
     newBadge: 'NUOVO',
     shelf: (i) => ['Auto', 'Mappe', 'Guadagnato', 'Pass'][i],
     group: (g, honours = false) => {
@@ -149,7 +167,6 @@ export default (S: Strings): Words<Strings> => ({
     pityLegendary: (n) => `Un Leggendario garantito entro ${n} bauli.`,
     buyBundle: (n, price) => `${n} per ${price}`,
     legendaryTimes: (n) => `${n}× la probabilità di Leggendario di un baule standard.`,
-    pitySoon: (n) => `Leggendario tra ${n}`,
     duplicate: (m) => `Duplicato · +${money(m)}`,
     ownedHint(item) {
       if (item.kind === 'carSkin') return 'Decora le auto sulla strada. Combina fino a otto skin. Solo estetica.';

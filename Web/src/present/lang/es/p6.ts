@@ -98,7 +98,19 @@ export default (S: Strings): Words<Strings> => ({
         case 'event':
           return 'Eventos de la ciudad · Turno diario';
         case 'criminalHunt':
-          return 'Recompensa por capturar criminales';
+          return 'Maestría Luchador contra el crimen: 10 y 75 capturas';
+      }
+    },
+    how(k) {
+      switch (k) {
+        case 'standard':
+          return 'o viendo anuncios';
+        case 'premium':
+          return 'o mediante maestrías difíciles';
+        case 'diamond':
+          return 'nunca un Común';
+        default:
+          return S.shop.source(k);
       }
     },
     seasonHint: '50 % de probabilidad de contener el objeto de la temporada hasta obtenerlo.',
@@ -136,7 +148,13 @@ export default (S: Strings): Words<Strings> => ({
     skinsOn: (n, max) => `${n} de ${max} aspectos de coche activos · se mezclan en la carretera`,
     skinsFull: (max) => `${max} aspectos activos. Quita uno primero.`,
     section: (i) => ['Cofres', 'Colección', 'Casino'][i],
+    saleHeading: 'En venta',
     earnedHeading: 'Ganado, no comprado',
+    pityTitle: 'Legendario garantizado',
+    pityLeft: (n) => (n === 1 ? 'Falta 1 cofre' : `Faltan ${n} cofres`),
+    short: (amount) => `Faltan ${amount}`,
+    noneYet: 'Ninguno aún',
+    caught: 'ATRAPADO',
     newBadge: 'NUEVO',
     shelf: (i) => ['Coches', 'Mapas', 'Ganado', 'Pase'][i],
     group: (g, honours = false) => {
@@ -149,7 +167,6 @@ export default (S: Strings): Words<Strings> => ({
     pityLegendary: (n) => `Un Legendario dentro de ${n} cofres.`,
     buyBundle: (n, price) => `${n} por ${price}`,
     legendaryTimes: (n) => `${n}× la probabilidad de Legendario de un cofre estándar.`,
-    pitySoon: (n) => `Legendario en ${n}`,
     duplicate: (m) => `Duplicado · +${money(m)}`,
     ownedHint(item) {
       if (item.kind === 'carSkin') return 'Decora los coches en la carretera. Combina hasta ocho. Solo estética, ninguna ventaja.';

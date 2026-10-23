@@ -98,7 +98,19 @@ export default (S: Strings): Words<Strings> => ({
         case 'event':
           return '도시 이벤트 · 일일 시프트';
         case 'criminalHunt':
-          return '범죄자를 체포해서 획득';
+          return '범죄 파이터 마스터리: 체포 10회와 75회';
+      }
+    },
+    how(k) {
+      switch (k) {
+        case 'standard':
+          return '또는 광고 보기';
+        case 'premium':
+          return '또는 어려운 마스터리로';
+        case 'diamond':
+          return '커먼은 나오지 않아요';
+        default:
+          return S.shop.source(k);
       }
     },
     seasonHint: '얻을 때까지 절반의 확률로 이번 시즌 아이템이 들어 있어요.',
@@ -136,7 +148,13 @@ export default (S: Strings): Words<Strings> => ({
     skinsOn: (n, max) => `차 스킨 ${max}개 중 ${n}개 켜짐 · 도로에서 섞여 나와요`,
     skinsFull: (max) => `차 스킨 ${max}개가 켜져 있어요. 먼저 하나를 끄세요.`,
     section: (i) => ['상자', '컬렉션', '카지노'][i],
+    saleHeading: '판매 중',
     earnedHeading: '파는 것이 아니라 얻는 것',
+    pityTitle: '레전더리 보장',
+    pityLeft: (n) => `${n}개 남음`,
+    short: (amount) => `${amount} 부족`,
+    noneYet: '아직 없음',
+    caught: '체포',
     newBadge: 'NEW',
     shelf: (i) => ['차', '맵', '획득', '패스'][i],
     group: (g, honours = false) => {
@@ -149,7 +167,6 @@ export default (S: Strings): Words<Strings> => ({
     pityLegendary: (n) => `상자 ${n}개 안에 레전더리 하나.`,
     buyBundle: (n, price) => `${n}개에 ${price}`,
     legendaryTimes: (n) => `스탠더드 상자의 ${n}배 레전더리 확률.`,
-    pitySoon: (n) => `레전더리까지 ${n}`,
     duplicate: (m) => `중복 · +${money(m)}`,
     ownedHint(item) {
       if (item.kind === 'carSkin') return '도로 위의 차를 칠해 줘요. 최대 여덟 개까지 섞을 수 있어요. 겉모습만 바뀌고, 유리해지지는 않아요.';

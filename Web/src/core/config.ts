@@ -855,6 +855,22 @@ export const baseConfig = {
   marathonPeriod: 14,
   marathonCrossing: 6,
   marathonOffset: 0,
+  /**
+   * A rare moment (Leo, 23.10.2026, `core/ducks.ts`): about one shift in `1 / duckChance` a duck family crosses the
+   * roundabout `duckDelay` seconds into the shift, at `duckPace` (world units a second), the chicks `duckSpacing` apart,
+   * out of a verge `duckVerge` wide. The cars stop `duckRoom` short of it, braking no harder than `duckBrake` g (closer
+   * ones go first); a chick dawdles about `duckDawdle` times a second. No points, no notice.
+   */
+  duckChance: 1 / 500,
+  duckDelay: r(4, 12),
+  duckPace: 32,
+  duckSpacing: 10,
+  duckVerge: 230,
+  duckRoom: 10,
+  duckBrake: 0.3,
+  duckDawdle: 0.12,
+  duckSettle: 6,
+  duckSeen: 90,
 
   // Motivation
   perfectRunPoints: 1500,

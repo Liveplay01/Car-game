@@ -6,6 +6,7 @@ import { type RenderList, rect, circle, arc, unitHash, Ease } from './render';
 import type { ColorToken } from './theme';
 import { MapTheme } from './mapThemes';
 import type { MapScars } from './explosionsFx';
+import { type Holiday, Holidays } from './holidays';
 
 /**
  * The city's breathing (`CityPulse`): trees sway, windows glow up and down, cloud shadows
@@ -132,7 +133,7 @@ export const CityLayer = {
    * The city around the ring. It grows with the level, the arms and the modules; what is new
    * since the last look rises out of the ground (`rise`), one after the other.
    */
-  add(list: RenderList, world: World, theme: MapTheme | null, time: number | null, pulse: CityPulse | null, scars: MapScars | null, now: number, rise: CityRise | null = null, clouds = true): void {
+  add(list: RenderList, world: World, theme: MapTheme | null, time: number | null, pulse: CityPulse | null, scars: MapScars | null, now: number, rise: CityRise | null = null, clouds = true, holiday: Holiday | null = null): void {
     MapTheme.addGround(list, theme, world, time);
     const layout = world.layout;
     const count = CityLayer.count(world.config);
@@ -163,6 +164,7 @@ export const CityLayer = {
         const size = mul(v(26 + 30 * unitHash(candidate, 15), 22 + 26 * unitHash(candidate, 16)), grow);
         CityLayer.addRoof(list, center, size, angle, candidate, fade, MapTheme.roofs(theme));
         scars?.addHouse(list, center, size, angle, candidate, now, time);
+        if (holiday && Holidays.hasLights(candidate)) Holidays.addLights(list, center, size, angle, candidate, fade, time, clouds);
         if (unitHash(candidate, 17) < 0.45) {
           const glow = pulse ? pulse.window(candidate, distance) : CityPulse.windowRest;
           const spot = add(add(center, mul(fromAngle(angle + Math.PI / 2), size.y * 0.18)), mul(fromAngle(angle), size.x * (unitHash(candidate, 18) - 0.5) * 0.4));

@@ -1,5 +1,6 @@
 import type { Shell } from './shell';
 import { joinsClearRoad } from '../core/ambulance';
+import { startDucks } from '../core/ducks';
 import { v } from '../core/vec2';
 import type { InputAction } from '../present/session';
 
@@ -86,6 +87,13 @@ export function installProbe(shell: Shell): void {
       step();
       return state();
     },
+    /** The duck family (`core/ducks.ts`) sets off now, whatever the seed says. */
+    ducks: () => {
+      game.world.ducks = startDucks(game.world);
+      game.world.ducksDone = true;
+      step();
+      return state();
+    },
     /** Puts a notice up at once, as a reply would (the top card on the Game tab grows to carry it). */
     say: (text) => {
       game.showNotice(text);
@@ -150,5 +158,6 @@ export interface Probe {
   wait(seconds: number): Snapshot;
   perform(action: Parameters<Shell['game']['perform']>[0]): Snapshot;
   say(text: string): Snapshot;
+  ducks(): Snapshot;
   perf(frames?: number): { screen: string; items: number; build: Spread; draw: Spread };
 }

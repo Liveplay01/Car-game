@@ -3706,3 +3706,38 @@ test('the Garage upgrade gives one more car skin slot a step, and the save keeps
   assert.equal(writeSave(save), true);
   assert.equal(loadSave().career.carSkins.length, Careers.skinSlots(c));
 });
+
+test('the duck family: about one shift in 500, the cars stop for it, it never walks through a car, nobody crashes for it', async () => {
+  const { duckDelay, duckPose } = await load('/src/core/ducks.ts');
+  let comes = 0;
+  for (let seed = 1; seed <= 50000; seed++) comes += duckDelay({ seed, config: baseConfig, isVersus: false }) === null ? 0 : 1;
+  assert.ok(comes > 50000 / 500 / 1.4 && comes < (50000 / 500) * 1.4, `about one in 500 (${comes} of 50000)`);
+  assert.equal(duckDelay({ seed: 1, config: { ...baseConfig, mayhem: true, duckChance: 1 }, isVersus: false }), null, 'never in Mayhem');
+  assert.equal(duckDelay({ seed: 1, config: { ...baseConfig, duckChance: 1 }, isVersus: true }), null, 'never in a match');
+  const careful = (world) => world.queue.isReady && world.predictedMergeGap(world.layout.player, 0, 40, -Infinity, world.vehicle(world.queue.vehicles[0])?.lane ?? 0) > 0.04;
+  const inside = (w, veh, p) => {
+    const dx = p.x - veh.position.x, dy = p.y - veh.position.y;
+    const x = dx * Math.cos(veh.heading) + dy * Math.sin(veh.heading), y = -dx * Math.sin(veh.heading) + dy * Math.cos(veh.heading);
+    return Math.abs(x) < w.lengthOf(veh.type) / 2 + 2 && Math.abs(y) < w.widthOf(veh.type) / 2 + 2;
+  };
+  let stood = 0;
+  for (const seed of [7934, 15853, 23772, 31691]) {
+    const world = new World({ ...forLevel(baseConfig, 15, seed), duckChance: 1, duckDelay: { lo: 3, hi: 3 } }, seed, { startsOnFirstTap: false });
+    let crossed = false;
+    for (let i = 0; i < 120 * 60 && !(crossed && !world.waitsForDucks); i++) {
+      if (careful(world)) world.tap(world.time);
+      world.step();
+      for (const e of world.takeEvents()) assert.notEqual(e.type, 'crash', `nobody crashes while everyone waits for the ducks (seed ${seed})`);
+      const f = world.ducks;
+      if (!f) continue;
+      crossed = true;
+      for (const d of f.at) {
+        const p = duckPose(f.walk, d).position;
+        for (const veh of world.vehicles) if (veh.phase.kind !== 'queued' && veh.phase.kind !== 'waiting') assert.ok(!inside(world, veh, p), `a duck never walks through a car (seed ${seed})`);
+      }
+      stood += world.vehicles.filter((x) => x.phase.kind === 'ring' && (x.phase.drive.speed ?? 99) < 1).length;
+    }
+    assert.ok(crossed && world.ducksDone && !world.ducks, `the family gets across (seed ${seed})`);
+  }
+  assert.ok(stood > 0, 'cars stood and waited');
+});

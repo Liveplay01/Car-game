@@ -78,14 +78,16 @@ export type SoundID =
   | 'chipsIn'
   | 'shatter'
   /** The photo of a shift (same script). */
-  | 'shutter';
+  | 'shutter'
+  /** Switches and segments: the tick-tack of an indicator relay instead of a click (same script). */
+  | 'blinker';
 
 export const SOUND_IDS: SoundID[] = [
   'merge', 'toll', 'tightFit', 'nearMiss', 'perfect', 'cutOff', 'comboUp', 'crashLight', 'crash', 'crashHeavy', 'rushHour',
   'shiftComplete', 'shiftFailed', 'wanted', 'takedown', 'dispatch', 'escaped', 'paid', 'secured', 'seized', 'screech', 'tow',
   'flowIn', 'go', 'swoosh', 'uiTick', 'purchase', 'build', 'denied', 'chestCharge', 'chestBurst', 'chestBurstRare',
   'explosion', 'detonation', 'alarm', 'ambulance', 'wedding', 'oversize', 'learner', 'clang', 'blocked', 'thump',
-  'casinoStop', 'coinClink', 'needleTick', 'meterTick', 'coinToss', 'coinLand', 'chipsIn', 'shatter', 'shutter',
+  'casinoStop', 'coinClink', 'needleTick', 'meterTick', 'coinToss', 'coinLand', 'chipsIn', 'shatter', 'shutter', 'blinker',
 ];
 
 export type HapticID =

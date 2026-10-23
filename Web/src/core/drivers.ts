@@ -9,6 +9,7 @@ import type { World } from './world';
 import { transporterAhead } from './specials';
 import { approachLimitAt, plannedSpeed } from './modules';
 import { isStalling } from './learner';
+import { duckStop } from './ducks';
 
 /** The nearest thing ahead a driver has to mind. */
 export interface Lead {
@@ -39,7 +40,7 @@ export function updateDrivers(w: World, dt: number): void {
   const quarry = pursuitQuarry(w);
   const zones = Object.keys(w.config.modules).length > 0 || w.roadworks !== null;
   const hesitant = w.learner.kind === 'active' || w.oversize.kind === 'active' || w.vehicles.some((x) => w.owesStop(x) && x.phase.kind === 'ring');
-  if (!w.isTrafficDisturbed && quarry === null && !zones && !hesitant && !hasTransporterOnRing(w)) return;
+  if (!w.isTrafficDisturbed && quarry === null && !zones && !hesitant && !hasTransporterOnRing(w) && !w.ducks?.seen) return;
   const lane = ringLaneOccupants(w, true);
   // A car joining plans with the speeds as they are: it brakes for what it sees, and the traffic behind cannot count on a pace that changes under its tyres.
   const joining = zones ? ringLaneOccupants(w, false) : lane;
@@ -58,12 +59,19 @@ export function updateDrivers(w: World, dt: number): void {
     const p = veh.phase;
     if (p.kind === 'ring') {
       const leads = leadsOnRing(w, p.s, lane, veh.id, veh.lane);
+      // The duck family crossing ahead: roll to a stop at your place in the line before it, harder if you have to.
+      const ducks = w.ducks ? duckStop(w, veh, p.s) : null;
+      if (ducks) {
+        leads.push({ id: -2, gap: ducks.room + w.config.stopGap, speed: 0, length: 0 });
+        leads.sort((a, b) => a.gap - b.gap || a.id - b.id);
+      }
       if (w.owesStop(veh)) busStop(w, veh, p.s, p.drive.speed ?? w.ringSpeed, leads, dt);
       let limit = zones ? approachLimitAt(w, p.s) : undefined;
       // The learner hesitates now and then: it brakes for nothing, and the traffic bunches up.
       if (isStalling(w, veh.id)) limit = Math.min(limit ?? w.ringSpeed, w.ringSpeed * w.config.learnerStallSpeed);
       // The oversize load crawls all the way round; the traffic behind it follows suit.
       if (veh.type === 'oversize') limit = Math.min(limit ?? w.ringSpeed, w.ringSpeed * w.config.oversizeSpeed);
+      if (ducks) limit = Math.min(limit ?? w.ringSpeed, ducks.limit);
       if (quarry !== null && leads[0]?.id === quarry && veh.isPlayerPolice) p.drive = pursue(w, p.drive, dt);
       else p.drive = drive(w, p.drive, leads, veh.id, dt, limit);
     } else if (p.kind === 'exiting') {

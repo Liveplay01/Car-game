@@ -269,7 +269,8 @@ export const S = {
     passwordManager: 'Password manager',
     passwordManagerSub: 'Let your browser remember the code, then it fills it in on a new device.',
     secret: 'Anyone with this code can load or replace your progress. Keep it private.',
-    stop: 'Stop syncing on this device',
+    stop: 'Sign out on this device',
+    stopAgain: 'Tap again: this device starts empty, your progress stays in the cloud',
     delete: 'Delete the cloud copy',
     deleteAgain: 'Tap again to delete it for every device',
     differs: 'The cloud holds different progress than this device. Pick the one to keep; the other one is replaced.',
@@ -1075,6 +1076,11 @@ export const S = {
     allStats: 'All stats',
     statsMore: (n: number): string => `${n} more ›`,
     statsHide: 'Hide',
+    /** The odometer in Stats (Leo, 23.10.2026): every car let in, on its whole trip. Past the Moon it says so, quietly. */
+    odometer: 'Odometer',
+    odometerLine: 'Every car you let in, door to door',
+    odometerMoon: 'All the way to the Moon. Still driving.',
+    km: 'km',
     quests: 'Quests',
     trials: 'Trials',
     mastery: 'Mastery',
@@ -1961,7 +1967,20 @@ export const S = {
         case 'event':
           return 'City events · Daily Shift';
         case 'criminalHunt':
-          return 'Earned by catching criminals';
+          return 'Crime Fighter mastery: 10 and 75 takedowns';
+      }
+    },
+    /** A chest's line in the list under "For sale" (the heading says the rest). */
+    how(k: ChestKind): string {
+      switch (k) {
+        case 'standard':
+          return 'or watch an ad';
+        case 'premium':
+          return 'or by hard masteries';
+        case 'diamond':
+          return 'never a Common';
+        default:
+          return S.shop.source(k);
       }
     },
     seasonHint: "Holds this season's item half the time, until you have it.",
@@ -2001,7 +2020,13 @@ export const S = {
     skinsOn: (n: number, max: number): string => `${n} of ${max} car skins on · they mix on the road`,
     skinsFull: (max: number): string => `${max} car skins are on. Take one off first.`,
     section: (i: number): string => ['Chests', 'Collection', 'Casino'][i],
+    saleHeading: 'For sale',
     earnedHeading: 'Earned, not sold',
+    pityTitle: 'Legendary guarantee',
+    pityLeft: (n: number): string => (n === 1 ? '1 chest to go' : `${n} chests to go`),
+    short: (amount: string): string => `${amount} short`,
+    noneYet: 'None yet',
+    caught: 'CAUGHT',
     newBadge: 'NEW',
     shelf: (i: number): string => ['Cars', 'Maps', 'Earned', 'Pass'][i],
     /** The headings on the Cars shelf (the chest skins by rarity, the vehicles, the season skins) and on the Honours shelf (the cars by rarity, the vehicles, the maps). */
@@ -2013,7 +2038,6 @@ export const S = {
     buy: (price: string): string => `Buy · ${price}`,
     pity: (n: number): string => `Epic or better within ${n} chests. Duplicates pay out ${MONEY_MARK}.`,
     pityLegendary: (n: number): string => `A Legendary within ${n} chests.`,
-    pitySoon: (n: number): string => `Legendary in ${n}`,
     buyBundle: (n: number, price: string): string => `${n} for ${price}`,
     legendaryTimes: (n: number): string => `${n}× the Legendary chance of a Standard Chest.`,
     duplicate: (m: string): string => `Duplicate · +${money(m)}`,

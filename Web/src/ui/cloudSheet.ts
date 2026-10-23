@@ -10,7 +10,7 @@ import {
   dismissIncoming,
   keepThisDevice,
   onCloudChange,
-  stopCloud,
+  signOutCloud,
   syncNow,
   useCloudSave,
 } from '../net/cloud';
@@ -36,6 +36,8 @@ export interface CloudActions {
   current(): SaveGame;
   /** The player took the cloud's progress: it replaces this device's. */
   importSave(save: SaveGame): void;
+  /** The player signed out: this device starts empty. */
+  signedOut(): void;
   closed(): void;
 }
 
@@ -234,7 +236,15 @@ export function cloudSheet(layer: HTMLElement, actions: CloudActions): () => voi
       ...(own ? [h('p', { class: 'section-note' }, S.cloud.linkedIntro), h('div', { class: 'list' }, secretCodeRow(view.code ?? ''))] : []),
       h('div', { class: 'list' }, row(S.cloud.cloudCopy, state, now), row(S.cloud.passwordManager, S.cloud.passwordManagerSub, keep)),
       ...(own ? [h('p', { class: 'section-note' }, S.cloud.secret)] : []),
-      h('button', { class: 'btn block quiet-btn', type: 'button', onclick: () => stopCloud() }, S.cloud.stop),
+      confirmButton(S.cloud.stop, S.cloud.stopAgain, 'btn block quiet-btn', () =>
+        signOutCloud().then(
+          () => {
+            close();
+            actions.signedOut();
+          },
+          (error: unknown) => say(describeError(error)),
+        ),
+      ),
       confirmButton(S.cloud.delete, S.cloud.deleteAgain, 'btn block destructive', () => deleteCloud().catch((error: unknown) => say(describeError(error)))),
     ];
   }
