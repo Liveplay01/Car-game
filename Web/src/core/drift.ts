@@ -47,7 +47,12 @@ export type DriftPhase =
 export function firstDrift(w: World): DriftPhase {
   const c = w.config;
   if (c.mayhem || w.isVersus || c.level < c.driftLevel || c.driftChance <= 0) return { kind: 'done' };
-  return w.driftRng.unit() < c.driftChance ? { kind: 'idle', next: w.driftRng.range(c.driftFirst.lo, c.driftFirst.hi) } : { kind: 'done' };
+  // Pity window: the last `driftWindow` levels of each `driftEvery`-level cycle get a rising chance,
+  // so the slide still feels random but shows up roughly once per cycle instead of drifting off forever.
+  const cycle = (c.level - c.driftLevel) % c.driftEvery;
+  const remaining = c.driftEvery - cycle;
+  if (remaining > c.driftWindow) return { kind: 'done' };
+  return w.driftRng.unit() < 1 / remaining ? { kind: 'idle', next: w.driftRng.range(c.driftFirst.lo, c.driftFirst.hi) } : { kind: 'done' };
 }
 
 /** The drift car is out there: no traffic joins beyond the bots the ring has to keep. */

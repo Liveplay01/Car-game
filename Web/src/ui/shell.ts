@@ -781,6 +781,7 @@ export class Shell {
         ),
       );
       this.mods.classList.toggle('single', single);
+      this.mods.style.setProperty('--n', String(mods.length));
     }
     this.openMod();
   }

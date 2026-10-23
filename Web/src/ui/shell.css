@@ -1249,10 +1249,12 @@ a.row-link {
   overflow: clip;
   border-radius: calc(var(--pill-h) / 2);
   justify-content: flex-start;
+  /* No translate/scale in the stack: iOS Safari kept the exit values after a shift (pills 0.94 small, 10 px low, over
+     their neighbours). The stack folds by height and fades; `pill-in` alone moves a pill in. */
+  translate: none;
+  scale: none;
   transition:
     opacity 200ms var(--ease-exit),
-    translate 240ms var(--ease-exit),
-    scale 240ms var(--ease-exit),
     transform 200ms var(--ease-out),
     height 240ms var(--ease-drawer),
     margin-bottom 240ms var(--ease-drawer),
@@ -2641,7 +2643,11 @@ a.row-link {
    several stand as round icons, and the one tapped open pushes the others aside to show its words. Heat keeps its flame
    colour; a pay bonus has an amber icon, the Family's share a red one. */
 .run-bar .run-mods {
+  /* `--n` icons share the pill's width: too many for full circles, and they shrink but stay round (`Shell.showMods`). */
+  --mod-d: min(var(--pill-h), calc((var(--pill-w) - (var(--n, 1) - 1) * var(--pill-gap)) / var(--n, 1)));
+  --mod-icon: min(22px, calc(var(--mod-d) - 10px));
   display: flex;
+  align-items: center;
   width: var(--pill-w);
   height: 0;
   margin-bottom: calc(-1 * var(--pill-gap) - 2px);
@@ -2663,15 +2669,16 @@ a.row-link {
 }
 
 .mod {
-  flex: 0 1 var(--pill-h);
+  flex: none;
   min-width: 0;
   display: flex;
   align-items: center;
   gap: var(--s2);
-  height: var(--pill-h);
-  max-width: var(--pill-h);
+  width: var(--mod-d);
+  height: var(--mod-d);
+  max-width: var(--mod-d);
   margin-right: var(--pill-gap);
-  padding: 0 calc((var(--pill-h) - 22px) / 2);
+  padding: 0 calc((var(--mod-d) - var(--mod-icon)) / 2);
   overflow: hidden;
   white-space: nowrap;
   border: 0.5px solid var(--separator);
@@ -2685,6 +2692,7 @@ a.row-link {
   font-weight: 600;
   transition:
     max-width 320ms var(--ease-drawer),
+    height 320ms var(--ease-drawer),
     padding 320ms var(--ease-drawer),
     margin 320ms var(--ease-drawer),
     opacity 220ms var(--ease-out),
@@ -2701,8 +2709,8 @@ button.mod:active {
 
 .mod svg {
   flex: none;
-  width: 22px;
-  height: 22px;
+  width: var(--mod-icon);
+  height: var(--mod-icon);
   color: var(--accent);
 }
 
@@ -2734,10 +2742,22 @@ button.mod:active {
 
 .run-mods.single .mod,
 .mod.open {
-  flex: none;
+  --mod-icon: 22px;
   width: var(--pill-w);
   max-width: var(--pill-w);
+  height: var(--pill-h);
   padding: 0 var(--s4) 0 var(--s3);
+}
+
+/* On a phone an open sign is set like the pills above and below it, so "Hitze +40 %" fits. */
+@media (pointer: coarse) and (max-width: 560px), (pointer: coarse) and (max-height: 480px) {
+  .run-mods.single .mod,
+  .mod.open {
+    --mod-icon: 18px;
+    gap: 6px;
+    padding: 0 var(--s2) 0 10px;
+    font-size: 12px;
+  }
 }
 
 .run-mods.single .mod-label,

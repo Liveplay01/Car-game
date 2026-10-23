@@ -773,8 +773,11 @@ export const baseConfig = {
 
   // Drift car (Leo, 22.10.2026, core/drift.ts): very rare, slides round a quiet ring, a show without a task
   driftLevel: 12,
-  /** Chance per shift; 0 turns it off. */
-  driftChance: 0.05,
+  /** Chance per shift once the pity window opens; 0 turns it off. */
+  driftChance: 1,
+  /** Shows up roughly once every this many levels: a rising chance in the last `driftWindow` of each cycle. */
+  driftEvery: 20,
+  driftWindow: 6,
   driftFirst: r(4, 16),
   /** It only comes while at most this many vehicles drive on the ring, and none join beyond the bots the ring keeps while it slides. */
   driftMaxTraffic: 4,

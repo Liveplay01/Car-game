@@ -103,7 +103,7 @@ if (boot && fail && 'locks' in navigator && !(await holdPlay({ ifAvailable: true
 if (import.meta.env.DEV && new URLSearchParams(location.search).has('drift')) {
   const abort = new URLSearchParams(location.search).get('drift') === 'abort';
   Object.assign(baseConfig, {
-    driftLevel: 1, driftChance: 1, driftFirst: { lo: 1, hi: 2 }, driftRepeat: 1.5, driftMaxTraffic: 99, driftAbortTraffic: abort ? baseConfig.driftAbortTraffic : 99,
+    driftLevel: 1, driftChance: 1, driftEvery: 1, driftWindow: 1, driftFirst: { lo: 1, hi: 2 }, driftRepeat: 1.5, driftMaxTraffic: 99, driftAbortTraffic: abort ? baseConfig.driftAbortTraffic : 99,
     criminalChance: 0, militaryChance: 0, militaryLevelChance: 0, ambulanceChance: 0, learnerChance: 0, oversizeChance: 0, racerChance: 0, weddingChance: 0,
     transporterFirst: { lo: 1e9, hi: 1e9 }, cityEventChance: 0,
   });
