@@ -229,6 +229,14 @@ export const CarModels = {
     list.w(l.round ? circle(c, l.h / 2) : rect(c, v(l.w, l.h), 0.5, pose.heading), color, opacity);
   },
 
+  /** Both tail lamps; a brake above 1 (the flare of a new brake, `VehicleLamps.brake`) heats the lens toward yellow. */
+  tails(list: RenderList, pose: Pose, l: Lamp, brake: number, opacity: number): void {
+    for (const side of SIDES) {
+      CarModels.lamp(list, pose, l, side, 'lightRed', opacity * Math.min(brake, 1));
+      if (brake > 1) CarModels.lamp(list, pose, l, side, 'fireCore', opacity * (brake - 1) * 2);
+    }
+  },
+
   /** What makes the model itself: lamp housings, seams, engine, seats, spare wheel. Under the glass, on the intact body. */
   decor(list: RenderList, model: CarModel, pose: Pose, L: number, W: number, body: ColorToken, o: number): void {
     const f = fit(L, W, body);

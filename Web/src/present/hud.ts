@@ -961,6 +961,8 @@ interface RingCutout {
   radius: number;
   thickness: number;
   halfAngle: number;
+  /** How far behind the head the bright tail reaches: the ticks under it stay off. */
+  tail: number;
   signal: number;
   /** 1 while the highlight is at full light, down to 0 as it fades: the gap closes with it instead of popping shut. */
   strength: number;
@@ -978,8 +980,10 @@ export class RingSignals {
   static rim = (world: World): number => world.layout.islandRadius - 14;
 
   /** The glow on the rim in front of an arm a vehicle is about to come from; `phase` runs 0 → 1 and repeats. */
+  static readonly wedgeHalf = 0.35;
+
   static wedge(list: RenderList, rim: number, angle: number, phase: number, color: ColorToken): void {
-    const half = 0.35;
+    const half = RingSignals.wedgeHalf;
     list.w(arc(v(0, 0), rim, 3 + 7 * phase, angle - half, angle + half, true), color, 1 - phase);
     list.w(arc(v(0, 0), rim, 2.5, angle - half, angle + half, true), color);
   }
@@ -1020,6 +1024,9 @@ export class RingSignals {
   debt: number | null = null;
   debtLate = false;
   private clock = 0;
+  /** Arms a vehicle is warned from: the wedge lies on the rim there, so the ticks under it go off (`level` 0 → 1) and come back as it ends. */
+  private warned: { angle: number; level: number }[] = [];
+  private warnTargets: readonly number[] = [];
   /** How long the loan has shown, and how long it has been late: the line fades in and crosses into the late glow. */
   private debtFor = 0;
   private lateFor = 0;
@@ -1036,6 +1043,14 @@ export class RingSignals {
     }
     for (const s of this.signals) s.age += delta;
     this.signals = this.signals.filter((s) => s.age < SIGNAL_DURATION[s.kind]);
+    for (const angle of this.warnTargets) if (!this.warned.some((w) => w.angle === angle)) this.warned.push({ angle, level: 0 });
+    for (const w of this.warned) w.level = Ease.clamp01(w.level + (this.warnTargets.includes(w.angle) ? delta : -delta) / 0.25);
+    this.warned = this.warned.filter((w) => w.level > 0 || this.warnTargets.includes(w.angle));
+  }
+
+  /** The angles of the arms a special vehicle is announced from right now. */
+  static warnedArms(world: World): number[] {
+    return [world.criminal, world.transporter, world.ambulance, world.learner, world.oversize, world.wedding, world.race, world.military].flatMap((s) => (s.kind === 'warning' ? [s.arm.angle] : []));
   }
 
   signal(kind: SignalKind, color: ColorToken, second: ColorToken = color, power = 0): void {
@@ -1064,7 +1079,7 @@ export class RingSignals {
       const late = !this.debtLate ? 0 : reduceMotion ? 1 : Ease.inOutSine(Ease.clamp01(this.lateFor / 0.8));
       RingSignals.loan(list, frame, this.debt, late, this.clock, reduceMotion, appear);
     }
-    this.addAt(list, frame, reduceMotion);
+    this.addAt(list, frame, reduceMotion, RingSignals.warnedArms(world));
   }
 
   /**
@@ -1091,18 +1106,19 @@ export class RingSignals {
     }
   }
 
-  addAt(list: RenderList, { rim, start, outer }: RingFrame, reduceMotion: boolean): void {
+  addAt(list: RenderList, { rim, start, outer }: RingFrame, reduceMotion: boolean, warned: readonly number[] = []): void {
+    this.warnTargets = warned;
     const heads: RingCutout[] = reduceMotion ? [] : this.signals.flatMap((s, signal) => {
       if (s.kind === 'sweep') {
         const x = Ease.clamp01(s.age / SIGNAL_DURATION.sweep);
         const run = Ease.inOutSine(Ease.clamp01(x / 0.8));
         const strength = 1 - Ease.clamp01((x - 0.8) / 0.2);
-        return x < 1 && run > 0.001 ? [{ angle: start + TAU * run, radius: rim, thickness: 4.5, halfAngle: 0.055, signal, strength }] : [];
+        return x < 1 && run > 0.001 ? [{ angle: start + TAU * run, radius: rim, thickness: 4.5, halfAngle: 0.055, tail: 0.7, signal, strength }] : [];
       }
       if (s.kind === 'victory' && s.age < RingSignals.victoryLap + 0.3) {
         const run = Ease.inOutSine(Ease.clamp01(s.age / RingSignals.victoryLap));
         const strength = 1 - Ease.clamp01((s.age - RingSignals.victoryLap) / 0.3);
-        return run > 0.001 ? [{ angle: start + TAU * run, radius: rim, thickness: 5, halfAngle: 0.055, signal, strength }] : [];
+        return run > 0.001 ? [{ angle: start + TAU * run, radius: rim, thickness: 5, halfAngle: 0.055, tail: 1.1, signal, strength }] : [];
       }
       return [];
     });
@@ -1317,18 +1333,29 @@ export class RingSignals {
       let thickness = isLit ? 3 : 2;
       if (isLit && i === sent - 1 && !reduceMotion) thickness *= land(sinceSent / 0.35, 0.8);
       const grow = reduceMotion ? 1 : 0.4 + 0.6 * appear;
-      const hidden = RingSignals.touched(rim, thickness, center, half * grow, cuts);
+      const under = Math.max(0, ...this.warned.filter((w) => Math.abs(Math.atan2(Math.sin(center - w.angle), Math.cos(center - w.angle))) < RingSignals.wedgeHalf + half).map((w) => w.level));
+      const hidden = Math.max(under, RingSignals.touched(rim, thickness, center, cuts));
       RingSignals.ringArc(list, rim, thickness, center - half * grow, center + half * grow, isLit ? lit : 'marking', (isLit ? 0.85 : 0.6) * opacity * appear * (1 - hidden), []);
     }
   }
 
-  /** How strongly a passing light touches the tick at `center` anywhere: the whole tick goes off by that much, never half of it (Leo, 15.10.2026). */
-  static touched(radius: number, thickness: number, center: number, halfAngle: number, cuts: readonly RingCutout[]): number {
+  /** How far ahead of a running light (radians) a tick starts to dim, and how far behind its bright tail it takes to come back. */
+  static readonly lightLead = 0.9;
+  static readonly lightRelease = 0.9;
+
+  /**
+   * How much a running light puts the tick at `center` out, 0 → 1 (Leo, 24.10.2026): only the ticks the light reaches next dim, the
+   * whole tick at once, never half of it; it is off while the bright tail lies on it and comes back once the light has passed.
+   * The light runs unwrapped from the player's arm once round, and so do the ticks.
+   */
+  static touched(radius: number, thickness: number, center: number, cuts: readonly RingCutout[]): number {
     let most = 0;
     for (const cut of cuts) {
       if (Math.abs(radius - cut.radius) > (thickness + cut.thickness) / 2 + 0.5) continue;
-      const apart = Math.abs((((cut.angle - center) % TAU) + TAU + Math.PI) % TAU - Math.PI);
-      if (apart < cut.halfAngle + halfAngle) most = Math.max(most, cut.strength);
+      const past = cut.angle - center;
+      const ahead = Ease.inOutSine(Ease.clamp01(1 + past / RingSignals.lightLead));
+      const behind = 1 - Ease.inOutSine(Ease.clamp01((past - cut.tail) / RingSignals.lightRelease));
+      most = Math.max(most, Math.min(ahead, behind) * cut.strength);
     }
     return most;
   }

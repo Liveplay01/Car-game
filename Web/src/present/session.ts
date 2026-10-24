@@ -373,9 +373,9 @@ export class GameSession {
   /** The sky as heard: rain while the scene is on screen, and a strike for each flash of lightning. */
   weatherSound: WeatherSound = { rain: 0, strikes: 0 };
 
-  /** Every vehicle on the road for the traffic bed (`AudioPlayer.updateTraffic`); empty while a page covers the street. */
+  /** Every vehicle on the road for the traffic bed (`AudioPlayer.updateTraffic`); empty outside a running shift (menus, pages, before the first tap, results). */
   get trafficSound(): TrafficSound[] {
-    if (this.screen.k === 'page') return [];
+    if (this.screen.k !== 'playing') return [];
     const world = this.world;
     const out: TrafficSound[] = [];
     for (const veh of world.vehicles) {
@@ -385,7 +385,7 @@ export class GameSession {
       const speed = Math.hypot(veh.position.x - veh.prevPosition.x, veh.position.y - veh.prevPosition.y) / STEP / world.config.ringSpeed;
       // Pulling onto the ring it works hardest; braking it coasts; standing it idles.
       const load = p.kind === 'merging' ? 1 : (p.kind === 'ring' || p.kind === 'exiting') && !p.drive.isBraking ? 0.4 : p.kind === 'queued' || p.kind === 'waiting' ? 0.15 : 0;
-      out.push({ id: veh.id, engine, speed: Math.min(speed, 1.5), load, x: veh.position.x, y: veh.position.y });
+      out.push({ id: veh.id, engine, speed: Math.min(speed, 1.5), load, ring: p.kind === 'ring' || p.kind === 'exiting', x: veh.position.x, y: veh.position.y });
     }
     return out;
   }
@@ -1615,7 +1615,7 @@ export class GameSession {
       if (this.burst.age >= RewardBurst.duration) this.burst = null;
     }
     const tense = this.screen.k === 'playing' && !this.tutorial;
-    this.cameraFx.update(tense ? tensionOf(this.world, this.playingMode) : 0, realDelta);
+    this.cameraFx.update(tense ? tensionOf(this.world, this.playingMode) : 0, realDelta, this.screen.k === 'ready' || this.screen.k === 'result');
     this.cameraFx.watchFinal(this.world, tense);
     this.sinceFatalCrash += realDelta;
     this.sinceLoss += realDelta;
@@ -2767,6 +2767,7 @@ export class GameSession {
             this.rim.signal('wave', 'coin');
             this.landMerge(0.06, 0.025, e.position);
           } else if (e.rating !== 'clean') this.addPopup({ k: e.rating } as PopupKind, e.position);
+          if (!e.critical && e.rating === 'perfect') this.cameraFx.nod();
           if (!e.critical && e.rating === 'tightFit') this.landMerge(0.03, 0.008, e.position);
           if (e.shave > 0) this.addPopup({ k: 'shave', n: e.shave }, add(e.position, v(0, 22)));
           if (e.tip) this.addPopup({ k: 'earned', n: e.tip }, add(e.position, v(0, 22)));
@@ -3522,7 +3523,7 @@ export class GameSession {
     const alpha = Math.min(1, this.accumulator / STEP);
     // The bar's height even where it is hidden (a shift, the first one): the street view does not jump when it comes and goes.
     const cam = this.cameraRig.camera(perspectiveOf(this.screen), world.layout, viewport, this.lastInset, delta, rm);
-    const shake = add(this.effects.shakeOffset, this.explosions.shakeOffset);
+    const shake = add(add(this.effects.shakeOffset, this.explosions.shakeOffset), this.cameraFx.breathOffset(rm));
     // The words in the island sit on this camera: no shake, punch or pull-back moves them, and their wrapping never changes.
     const steady: Camera = { ...cam, scale: cam.scale * (1 - GameSession.lossPullBack) };
     const pulled = { ...cam, scale: cam.scale * (1 - GameSession.lossPullBack * this.lossPull) * (1 + this.explosions.punch) };
@@ -3536,7 +3537,7 @@ export class GameSession {
     addRecede(list, this.recede, world.layout);
     this.curtain?.add(list, viewport, rm);
     this.explosions.addFlash(list, viewport);
-    list.vignette = this.cameraFx.vignette;
+    list.vignette = Math.min(1, this.cameraFx.vignette + this.cameraFx.pulse(rm));
     list.vignetteAt = list.items.length;
     list.blur = this.motionBlur;
 

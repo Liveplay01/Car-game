@@ -43,7 +43,7 @@ export function updateTraffic(w: World, dt: number): void {
     const free = w.openAIArms.filter((arm) => takesAnother(arm) && !reserved.includes(arm.index));
     if (free.length > 0) {
       spawnWaiting(w, w.rng.pick(free));
-      w.spawnCooldown = w.rng.range(c.aiSpawnDelay.lo, c.aiSpawnDelay.hi);
+      w.spawnCooldown = w.rng.range(c.aiSpawnDelay.lo, c.aiSpawnDelay.hi) * w.habits.delayFactor(w.nextVehicleId);
     }
   }
 
@@ -71,7 +71,7 @@ export function updateTraffic(w: World, dt: number): void {
       : veh.type === 'motorbike'
         ? canSlipIn(w, p.arm, veh.lane)
         : patient
-          ? canEnter(w, p.arm, veh.lane, veh.type)
+          ? canEnter(w, p.arm, veh.lane, veh.type, c.aiSafeGap * w.habits.tune(veh.id, w.time).gap)
           : canPushIn(w, p.arm, veh.lane, veh.type);
     // Runners crossing the arm (a marathon): everyone waits at the line, the criminal too.
     if (p.reaction <= 0 && clear && !w.runnersCrossing(p.arm) && !w.waitsForDucks && !joinsTooClose(w, veh, p.arm) && !joinsClearRoad(w, veh, p.arm)) {
@@ -136,6 +136,7 @@ function spawnWaiting(w: World, arm: Arm): void {
   const veh = new Vehicle(w.makeId(), w.rollTrafficType(), 'ai', waiting, w.approachPose(waiting));
   veh.lane = rollLane(w, veh.type);
   w.vehicles.push(veh);
+  w.habits.welcome(veh.id);
 }
 
 /** Two lanes: some of the ordinary traffic keeps to the inner lane; buses and specials stay outside. */
@@ -277,13 +278,13 @@ function closesSafely(w: World, arm: Arm, lane: number, type: VehicleType): bool
 }
 
 /** True if an AI car launched now at `arm` keeps a safe gap on the ring and on its path. */
-function canEnter(w: World, arm: Arm, lane: 0 | 1 = 0, type: VehicleType = 'car'): boolean {
+function canEnter(w: World, arm: Arm, lane: 0 | 1 = 0, type: VehicleType = 'car', safeGap = w.config.aiSafeGap): boolean {
   if (isDisturbedNear(w, arm) || !closesSafely(w, arm, lane, type)) return false;
   const c = w.config;
   const profile = w.profileFor(arm, lane, type);
   const circumference = w.layout.ring.length;
   const arrival = w.layout.entryS(arm, lane);
-  const minimumArc = c.carLength + c.aiSafeGap * w.ringSpeed;
+  const minimumArc = c.carLength + safeGap * w.ringSpeed;
   for (const other of w.vehicles) {
     if (other.lane !== lane) continue;
     const s = w.virtualRingPosition(other, profile.duration);

@@ -1,5 +1,5 @@
 // Headless balancing check, like `swift run Sim`: plays whole shifts with bots.
-//   node scripts/sim.mjs [shifts] [level] [--mayhem] [--modules=slot:module[:level],…] [--legendary=gridlock|dragnet|heavyLoad|darkStorm|zeroTolerance] [--heat=0..8]
+//   node scripts/sim.mjs [shifts] [level] [--mayhem] [--modules=slot:module[:level],…] [--legendary=gridlock|dragnet|heavyLoad|darkStorm|zeroTolerance] [--heat=0..8] [--adaptive]
 // A careful bot (taps only when the predicted merge gap is safe) must never crash;
 // a random tapper must crash often. Boss levels are every 15th (15 convoy, 30 getaway,
 // 45 armoured, 60 phantom); ambulances come from level 8.
@@ -23,6 +23,7 @@ try {
   const play = (seed, strategy) => {
     const shift = forHeat(forLegendary(forLevel(baseConfig, level, seed), legendary), heat);
     const config = mayhem ? forMayhem(shift) : shift;
+    if (process.argv.includes('--adaptive')) config.adaptive = true;
     for (const [slot, module, moduleLevel = '1'] of built) {
       config.modules[slot] = module;
       config.moduleLevels[slot] = Number(moduleLevel);

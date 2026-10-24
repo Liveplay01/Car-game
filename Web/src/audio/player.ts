@@ -1,4 +1,5 @@
-import { type SoundID, type HapticID, type MusicMix, type MusicLayer, type WeatherSound, type DriftSound, type TrafficSound, type TrafficEngine, TRAFFIC_ENGINES, SOUND_IDS, MUSIC_LAYERS, Music } from '../present/feedback';
+import { trafficFlow, settle } from './trafficFlow';
+import { type SoundID, type HapticID, type MusicMix, type MusicLayer, type WeatherSound, type DriftSound, type TrafficSound, type TrafficEngine, TRAFFIC_ENGINES, SOUND_IDS, MUSIC_LAYERS, Music, Melody, Feedback } from '../present/feedback';
 import { clamp } from '../core/vec2';
 
 declare global {
@@ -64,7 +65,7 @@ interface RainVoice {
 export class AudioPlayer {
   static readonly sfxVolume = 0.8;
   static readonly musicMaster = 0.35;
-  static readonly trafficVolume = 0.3;
+  static readonly trafficVolume = 0.2;
   static readonly fade = 0.8;
 
   private static readonly maxVoices = 14;
@@ -82,6 +83,20 @@ export class AudioPlayer {
   private static readonly spread: Partial<Record<SoundID, number>> = {
     merge: 0.004, tightFit: 0.012, perfect: 0.012, cutOff: 0.015, takedown: 0.012, paid: 0.01, screech: 0.015, clang: 0.012,
   };
+
+  /** Horns and sirens that can sound together, and how loud a later one is while an earlier one still rings (two never beat at full level). */
+  private static readonly noted = new Set<SoundID>(['nearMiss', 'tightFit', 'perfect']);
+  private static readonly horns = new Set<SoundID>(['ambulance', 'wanted', 'alarm', 'escaped', 'dispatch', 'wedding', 'oversize', 'learner']);
+  private static readonly hornOverlap = 0.5;
+
+  /** Rounded-off warnings (Leo, 24.10.2026): [low-pass Hz, level]. They fade in over `softAttack` seconds; the melody steps in front of them. */
+  private static readonly soft: Partial<Record<SoundID, [lowpass: number, level: number]>> = {
+    ambulance: [1500, 0.55], wanted: [1300, 0.6], alarm: [1200, 0.65], escaped: [1300, 0.7], dispatch: [1600, 0.7], screech: [900, 0.6],
+    nearMiss: [2000, 0.5],
+  };
+  private static readonly softAttack = 0.035;
+  /** The siren stem's low-pass (Hz): the criminal's siren in the music loses its edge. */
+  private static readonly sirenStemTone = 1100;
 
   /** The big hits push the music and the weather down for a moment (how far, how long) so they land clean. */
   private static readonly ducks: Partial<Record<SoundID, [depth: number, hold: number]>> = {
@@ -101,7 +116,14 @@ export class AudioPlayer {
   private ambient: GainNode | null = null;
   /** The traffic's bed: quiet, and ducked with the music by the big hits. */
   private traffic: GainNode | null = null;
+  /** Opens with the traffic's pressure: a free gap darkens the bed, a full ring brightens it. */
+  private trafficTone: BiquadFilterNode | null = null;
   private bed: GainNode | null = null;
+  /** Dipped for a moment under a melody note (`makeRoom`): the traffic bed, the music with the siren stem, and the warning horns. */
+  private trafficDuck: GainNode | null = null;
+  private musicDuck: GainNode | null = null;
+  private warn: GainNode | null = null;
+  private hornUntil = 0;
   private muffle: BiquadFilterNode | null = null;
   private lastRing = -Infinity;
   /** The music's clock: when the stems started and how long one loop is (four bars of 120 bpm), so a sound can fall on the beat. */
@@ -114,6 +136,12 @@ export class AudioPlayer {
   private stemBuffers = new Map<MusicLayer, AudioBuffer>();
   private volumes = new Map<MusicLayer, number>();
   private loading: Promise<void> | null = null;
+  /** The merge melody: music on, the combo the last frame saw, the highest phrase played this run, when the phrase now sounding ends, and the notes still ringing. */
+  private melodyOn = false;
+  private comboSeen = 0;
+  private phraseCombo = 0;
+  private melodyEnds = 0;
+  private melodyVoices: { gain: GainNode; end: number }[] = [];
 
   /** Call from a user gesture; later calls only resume a suspended context. */
   unlock(): void {
@@ -159,18 +187,36 @@ export class AudioPlayer {
     const sfx = bus(AudioPlayer.sfxVolume, limiter);
     this.ui = bus(AudioPlayer.sfxVolume, limiter);
     this.ambient = bus(AudioPlayer.sfxVolume, bed);
-    this.traffic = bus(AudioPlayer.trafficVolume, bed);
+    const tone = ctx.createBiquadFilter();
+    tone.type = 'lowpass';
+    tone.frequency.value = AudioPlayer.trafficBright;
+    tone.Q.value = 0.4;
+    this.trafficDuck = bus(1, bed);
+    tone.connect(this.trafficDuck);
+    this.trafficTone = tone;
+    this.traffic = bus(AudioPlayer.trafficVolume, tone);
     this.bed = bed;
     const filter = ctx.createBiquadFilter();
     filter.type = 'lowpass';
     filter.frequency.value = Music.cutoff(0);
     filter.Q.value = 0.7;
-    filter.connect(bed);
+    this.musicDuck = bus(1, bed);
+    filter.connect(this.musicDuck);
+    this.warn = bus(1, sfx);
     const gains = new Map<MusicLayer, GainNode>();
     for (const layer of MUSIC_LAYERS) {
       const g = ctx.createGain();
       g.gain.value = 0;
-      g.connect(filter);
+      if (layer === 'siren') {
+        const round = ctx.createBiquadFilter();
+        round.type = 'lowpass';
+        round.frequency.value = AudioPlayer.sirenStemTone;
+        round.Q.value = 0.4;
+        g.connect(round);
+        round.connect(filter);
+      } else {
+        g.connect(filter);
+      }
       gains.set(layer, g);
     }
     this.ctx = ctx;
@@ -229,6 +275,12 @@ export class AudioPlayer {
     const ctx = this.ctx;
     const out = AudioPlayer.uiSounds.has(id) ? this.ui : this.sfx;
     if (!ctx || !out || ctx.state !== 'running') return;
+    if (id === 'note') {
+      this.melody(pitch);
+      return;
+    }
+    // A good merge is the melody's note; its sample only stands in while the music is off.
+    if (AudioPlayer.noted.has(id) && this.melodyOn) return;
     if (this.synth(id, ctx, out, pan, pitch)) return;
     const buffer = this.buffers.get(id);
     if (!buffer) return;
@@ -243,16 +295,37 @@ export class AudioPlayer {
     src.playbackRate.value = pitch * (1 + (AudioPlayer.spread[id] ?? 0) * (Math.random() * 2 - 1));
     // About one dB either way, so a run of the same sound never repeats exactly.
     const gain = ctx.createGain();
-    gain.gain.value = 1 + 0.12 * (Math.random() * 2 - 1);
+    let level = 1 + 0.12 * (Math.random() * 2 - 1);
+    if (AudioPlayer.horns.has(id)) {
+      if (now < this.hornUntil) level *= AudioPlayer.hornOverlap;
+      this.hornUntil = Math.max(this.hornUntil, now + buffer.duration / pitch);
+    }
+    const soft = AudioPlayer.soft[id];
+    if (soft) {
+      gain.gain.setValueAtTime(0.0001, now);
+      gain.gain.linearRampToValueAtTime(level * soft[1], now + AudioPlayer.softAttack);
+    } else {
+      gain.gain.value = level;
+    }
     src.connect(gain);
+    let tail: AudioNode = gain;
+    if (soft) {
+      const round = ctx.createBiquadFilter();
+      round.type = 'lowpass';
+      round.frequency.value = soft[0];
+      round.Q.value = 0.5;
+      gain.connect(round);
+      tail = round;
+    }
+    const sink = soft ? this.warn ?? out : out;
     // Where it happens on screen: a crash on the left is heard on the left (headphones).
     if (Math.abs(pan) > 0.02 && typeof ctx.createStereoPanner === 'function') {
       const panner = ctx.createStereoPanner();
       panner.pan.value = pan;
-      gain.connect(panner);
-      panner.connect(out);
+      tail.connect(panner);
+      panner.connect(sink);
     } else {
-      gain.connect(out);
+      tail.connect(sink);
     }
     const voice: Voice = { priority, at: now, src, gain };
     src.onended = () => {
@@ -341,7 +414,7 @@ export class AudioPlayer {
     if (!AudioPlayer.synthIds.includes(id)) return false;
     const clock = ctx.currentTime;
     if (clock - (this.lastStart.get(id) ?? -1) < 0.025) return true;
-    const now = clock + (id === 'note' ? this.toGrid(clock, AudioPlayer.magnet) : 0);
+    const now = clock;
     this.lastStart.set(id, clock);
     // Where it happens on screen, as for a sample.
     let dest: AudioNode = out;
@@ -467,11 +540,6 @@ export class AudioPlayer {
         }
         break;
       }
-      case 'note':
-        // A soft bell on the combo's step (`pitch`, the ladder of the merge): D5 at the bottom, a sine with its octave on top, gone in a third of a second.
-        tone('sine', 587.33 * pitch, 587.33 * pitch, 0, 0.34, 0.1);
-        tone('sine', 1174.66 * pitch, 1174.66 * pitch, 0, 0.2, 0.025);
-        break;
       case 'chestHit':
         // A tap on the chest: a knock with a crack on top, brighter with every tap (`pitch` climbs).
         tone('sine', 170 * pitch, 60, 0, 0.14, 0.8);
@@ -528,7 +596,7 @@ export class AudioPlayer {
   }
 
   private static readonly synthIds: SoundID[] = [
-    'critical', 'jackpot', 'notYet', 'departure', 'note', 'chestHit', 'reelSpin', 'reelTick', 'shimmer', 'reelLand', 'reelLandBig', 'heal', 'sheetOpen', 'sheetClose', 'barFill',
+    'critical', 'jackpot', 'notYet', 'departure', 'chestHit', 'reelSpin', 'reelTick', 'shimmer', 'reelLand', 'reelLandBig', 'heal', 'sheetOpen', 'sheetClose', 'barFill',
   ];
 
   /** Once per frame: each stem glides towards its volume, the filter follows the breath. */
@@ -730,6 +798,14 @@ export class AudioPlayer {
   private static readonly trafficVoices = 6;
   /** How far (world units) an engine carries before it is half as loud. */
   private static readonly trafficReach = 170;
+  /** How far the engines settle into a chord when the flow is even (0…1), and how slowly (seconds). */
+  private static readonly chordPull = 0.55;
+  private static readonly chordSettle = 2.5;
+  /** The bed's low-pass (Hz) with a free gap and with a full ring, and how fast it follows (seconds). */
+  private static readonly trafficDull = 3200;
+  private static readonly trafficBright = 12000;
+  private static readonly toneSettle = 0.6;
+  private flow = { evenness: 0, pressure: 1 };
 
   /**
    * The traffic, quietly under everything (Leo, 22.10.2026), called every frame: each of the nearest vehicles
@@ -748,6 +824,15 @@ export class AudioPlayer {
     const buffers = this.trafficBuffers;
     if (!buffers) return;
     const now = ctx.currentTime;
+    const heard = on ? trafficFlow(cars) : { evenness: 0, pressure: 1 };
+    const flow = this.flow;
+    flow.evenness += (heard.evenness - flow.evenness) * (1 - Math.exp(-delta / AudioPlayer.chordSettle));
+    flow.pressure += (heard.pressure - flow.pressure) * (1 - Math.exp(-delta / AudioPlayer.toneSettle));
+    this.trafficTone?.frequency.setTargetAtTime(
+      AudioPlayer.trafficDull * (AudioPlayer.trafficBright / AudioPlayer.trafficDull) ** flow.pressure,
+      now,
+      AudioPlayer.toneSettle,
+    );
     const reach = AudioPlayer.trafficReach;
     const near = (c: TrafficSound): number => 1 / (1 + (c.x * c.x + c.y * c.y) / (reach * reach));
     const weight: Record<TrafficEngine, number> = { car: 1, sport: 1.15, diesel: 1.05, truck: 1.3, bike: 1.2 };
@@ -785,7 +870,7 @@ export class AudioPlayer {
         this.trafficVoices.set(c.id, v);
       }
       v.fading = 0;
-      const rate = v.pitch * (0.62 + 0.42 * Math.min(c.speed, 1.3) + 0.06 * c.load);
+      const rate = settle(v.pitch * (0.62 + 0.42 * Math.min(c.speed, 1.3) + 0.06 * c.load), flow.evenness * AudioPlayer.chordPull);
       v.src.playbackRate.setTargetAtTime(rate, now, 0.12);
       v.gain.gain.setTargetAtTime(0.55 * near(c) * (0.55 + 0.45 * c.load + 0.2 * Math.min(c.speed, 1)), now, 0.12);
       v.pan.pan.setTargetAtTime(Math.max(-0.7, Math.min(0.7, c.x / 320)), now, 0.12);
@@ -947,10 +1032,90 @@ export class AudioPlayer {
     }
   }
 
+  /**
+   * A good merge adds a note to the music: the step of the combo on the ladder, in the music's key and on its grid. Reaching
+   * a phrase's combo (`Melody.phrases`) plays the phrase instead, and the single notes wait until it is over.
+   */
+  private melody(combo: number): void {
+    const ctx = this.ctx;
+    const bed = this.bed;
+    if (!ctx || !bed || !this.melodyOn || ctx.currentTime < this.melodyEnds) return;
+    const due = Melody.phrases.filter((p) => p.combo <= combo && p.combo > this.phraseCombo).pop();
+    const ladder = Feedback.comboLadder;
+    const notes = due?.notes ?? [ladder[clamp(combo - 1, 0, ladder.length - 1)]];
+    const eighth = this.loopLength > 0 ? this.loopLength / 32 : 0.25;
+    const now = ctx.currentTime;
+    const start = now + this.toGrid(now, eighth / 2);
+    const out = ctx.createGain();
+    out.connect(bed);
+    this.makeRoom(start, (notes.length - 1) * eighth + Melody.room.hold);
+    this.melodyVoices = this.melodyVoices.filter((v) => v.end > now);
+    this.melodyVoices.push({ gain: out, end: start + (notes.length - 1) * eighth + Melody.ring });
+    notes.forEach((n, i) => {
+      this.pluck(out, start + i * eighth, n, 1);
+      if (due?.harmony !== undefined) this.pluck(out, start + i * eighth, n + due.harmony, 0.5);
+    });
+    if (due) {
+      this.phraseCombo = due.combo;
+      this.melodyEnds = start + notes.length * eighth;
+    }
+  }
+
+  /** The mids around a melody note step back for `length` seconds (`Melody.room`), so the tune is heard, not shouted over. */
+  private makeRoom(at: number, length: number): void {
+    const ctx = this.ctx;
+    if (!ctx) return;
+    const room = Melody.room;
+    for (const [node, depth] of [[this.trafficDuck, room.traffic], [this.musicDuck, room.music], [this.warn, room.warn]] as const) {
+      if (!node) continue;
+      node.gain.cancelScheduledValues(ctx.currentTime);
+      node.gain.setTargetAtTime(depth, at, room.attack);
+      node.gain.setTargetAtTime(1, at + length, room.release);
+    }
+  }
+
+  /** One soft note, `semitones` above A4: a triangle with its octave over it, ringing out on its own. */
+  private pluck(dest: AudioNode, at: number, semitones: number, level: number): void {
+    const ctx = this.ctx;
+    if (!ctx) return;
+    const hz = Melody.root * Math.pow(2, semitones / 12);
+    const env = ctx.createGain();
+    env.gain.setValueAtTime(0.0001, at);
+    env.gain.exponentialRampToValueAtTime(Melody.level * level, at + 0.008);
+    env.gain.exponentialRampToValueAtTime(0.0001, at + Melody.ring);
+    env.connect(dest);
+    for (const [type, mult, share] of [['triangle', 1, 1], ['sine', 2, 0.25]] as const) {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = type;
+      osc.frequency.value = hz * mult;
+      gain.gain.value = share;
+      osc.connect(gain);
+      gain.connect(env);
+      osc.start(at);
+      osc.stop(at + Melody.ring + 0.02);
+    }
+  }
+
+  /** The combo broke (or the music went off): the notes still ringing fade out softly and the phrases start over. */
+  private breakMelody(): void {
+    const ctx = this.ctx;
+    if (!ctx) return;
+    const now = ctx.currentTime;
+    for (const v of this.melodyVoices) if (v.end > now) v.gain.gain.setTargetAtTime(0, now, Melody.fade);
+    this.melodyVoices = [];
+    this.phraseCombo = 0;
+    this.melodyEnds = 0;
+  }
+
   updateMusic(mix: MusicMix, enabled: boolean, delta: number): void {
     const ctx = this.ctx;
     const music = this.music;
     if (!ctx || !music) return;
+    const combo = enabled ? (mix.combo ?? 0) : 0;
+    this.melodyOn = enabled;
+    if (combo < this.comboSeen) this.breakMelody();
+    this.comboSeen = combo;
     for (const layer of MUSIC_LAYERS) {
       const target = enabled ? (mix.volumes[layer] ?? 0) : 0;
       const current = this.volumes.get(layer) ?? 0;

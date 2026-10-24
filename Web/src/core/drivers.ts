@@ -117,6 +117,7 @@ const JOINING_REACH = 1.5;
 function paceMerge(w: World, p: Merging, occupants: Occupant[], id: number, laneOf: number, dt: number): void {
   const c = w.config;
   const g = gravity(c);
+  const t = w.habits.tune(id, w.time);
   const nominal = w.mergeSpeed({ ...p, pace: 1 });
   const current = nominal * (p.pace ?? 1);
   const s = wrap(w.layout.entryS(p.arm, laneOf) - w.mergeRemaining(p, laneOf), w.layout.ring.length);
@@ -124,16 +125,16 @@ function paceMerge(w: World, p: Merging, occupants: Occupant[], id: number, lane
   let queued = 0;
   for (const lead of leadsOnRing(w, s, occupants, id, laneOf)) {
     if (lead.speed < w.ringSpeed * SLOW_TRAFFIC) {
-      const room = Math.max(0, lead.gap - queued - c.stopGap - c.followMargin * lead.speed);
-      target = Math.min(target, Math.sqrt(lead.speed * lead.speed + 2 * c.driverBrake * g * MERGE_BRAKE_SHARE * room));
+      const room = Math.max(0, lead.gap - queued - c.stopGap - c.followMargin * t.margin * lead.speed);
+      target = Math.min(target, Math.sqrt(lead.speed * lead.speed + 2 * c.driverBrake * t.brake * g * MERGE_BRAKE_SHARE * room));
     }
     queued += lead.length + c.stopGap;
   }
   if (p.pace === undefined && target >= nominal) return;
   // Still at the line it simply pulls away more gently; once rolling it has to brake.
   const atLine = profileDistance(p.profile, p.elapsed) < c.carLength / 2;
-  const braked = atLine ? target : Math.max(target, current - c.driverBrake * g * dt);
-  const next = target < current ? braked : Math.min(target, current + c.driverAcceleration * g * dt);
+  const braked = atLine ? target : Math.max(target, current - c.driverBrake * t.brake * g * dt);
+  const next = target < current ? braked : Math.min(target, current + c.driverAcceleration * t.accel * g * dt);
   if (next >= nominal - 1e-9) {
     p.pace = undefined;
     p.braking = false;
@@ -174,6 +175,7 @@ function drive(w: World, current: Drive, leads: Lead[], id: number, dt: number, 
   const d: Drive = { ...current, isPursuing: false };
   if (!isInFlow(current)) d.outOfFlowTime += dt;
   const g = gravity(c);
+  const t = w.habits.tune(id, w.time);
   const limit = speedLimit ?? w.ringSpeed;
   let speed = d.speed ?? w.ringSpeed;
   const lead = leads[0];
@@ -182,7 +184,7 @@ function drive(w: World, current: Drive, leads: Lead[], id: number, dt: number, 
   let queued = 0;
   for (const ahead of leads) {
     if (speed > ahead.speed) {
-      const room = ahead.gap - queued - c.stopGap - c.followMargin * ahead.speed;
+      const room = ahead.gap - queued - c.stopGap - c.followMargin * t.margin * ahead.speed;
       let brake = room > 0.5 ? (speed * speed - ahead.speed * ahead.speed) / (2 * room) : Infinity;
       if (ahead.speed > c.standingSpeed && brake < c.followBraking * g) brake = 0;
       if (brake > needed) {
@@ -204,7 +206,7 @@ function drive(w: World, current: Drive, leads: Lead[], id: number, dt: number, 
     }
     const queueInFront = before.some((l) => !isWreck(l) && l.speed < speed);
     const surprise = cause !== undefined && isWreck(cause) && !queueInFront;
-    d.reaction = surprise ? reactionTime(w, id) : 0;
+    d.reaction = surprise ? reactionTime(w, id) * t.reaction : 0;
   }
   if (d.reaction !== null && d.reaction > 0) {
     d.reaction = Math.max(0, d.reaction - dt);
@@ -213,11 +215,11 @@ function drive(w: World, current: Drive, leads: Lead[], id: number, dt: number, 
     return d;
   }
   if (alarmed) {
-    speed = Math.max(0, speed - Math.min(needed * 1.1, c.driverBrake * g) * dt);
+    speed = Math.max(0, speed - Math.min(needed * 1.1, c.driverBrake * t.brake * g) * dt);
   } else if (speed > limit) {
-    speed = Math.max(limit, speed - c.driverAcceleration * g * dt);
+    speed = Math.max(limit, speed - c.driverAcceleration * t.accel * g * dt);
   } else if (canSpeedUp(w, speed, lead)) {
-    speed = Math.min(limit, speed + c.driverAcceleration * g * dt);
+    speed = Math.min(limit, speed + c.driverAcceleration * t.accel * g * dt);
   }
   if (Math.abs(speed - w.ringSpeed) < 1e-9 && !alarmed) return newDrive();
   const before = current.speed ?? w.ringSpeed;

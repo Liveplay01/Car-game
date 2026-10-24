@@ -805,7 +805,7 @@ export function settingsSheet(layer: HTMLElement, s: Settings, actions: Settings
   setMotion(s.reduceMotion);
 
   const toggle =
-    (key: 'sound' | 'music' | 'mapSounds' | 'trafficSounds' | 'haptics' | 'vehicleLabels' | 'leftHanded' | 'largeText' | 'batterySaver' | 'lowDetail') =>
+    (key: 'sound' | 'music' | 'mapSounds' | 'engineSounds' | 'haptics' | 'vehicleLabels' | 'leftHanded' | 'largeText' | 'batterySaver' | 'lowDetail') =>
     (on: boolean): void => {
       s[key] = on;
       actions.changed(s);
@@ -891,7 +891,7 @@ export function settingsSheet(layer: HTMLElement, s: Settings, actions: Settings
         switchRow(S.settings.soundEffects, null, s.sound, toggle('sound')),
         switchRow(S.settings.music, null, s.music, toggle('music')),
         switchRow(S.settings.mapSounds, S.settings.mapSoundsSub, s.mapSounds, toggle('mapSounds')),
-        switchRow(S.settings.trafficSounds, S.settings.trafficSoundsSub, s.trafficSounds, toggle('trafficSounds')),
+        switchRow(S.settings.trafficSounds, S.settings.trafficSoundsSub, s.engineSounds, toggle('engineSounds')),
         switchRow(S.settings.haptics, hasVibration ? null : S.settings.hapticsNone, s.haptics, toggle('haptics')),
       ),
       foldGroup(

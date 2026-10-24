@@ -23,6 +23,7 @@ import type { CrashFault, EliminationReason, FailCause, GameEvent, MergeRating, 
 import { ScoreBoard, Scoring } from './scoring';
 import { updateTraffic, prefillRing, spawnRival } from './traffic';
 import { updateDrivers, flowCapacity } from './drivers';
+import { Habits } from './habits';
 import {
   type CriminalPhase,
   type TransporterPhase,
@@ -232,6 +233,8 @@ export class World {
     return this.ducksGone !== null && this.time - this.ducksGone < this.config.duckSettle && this.isTrafficDisturbed;
   }
 
+  /** What the traffic has noticed in this shift (`Config.adaptive`). */
+  readonly habits: Habits;
   rng: Rng;
   queueRng: Rng;
   criminalRng: Rng;
@@ -274,6 +277,7 @@ export class World {
     const stop = config.cityEvent === 'schoolRun' ? this.layout.clearStretch(config.busStopAt, config.busLength + 12) : null;
     this.busStopS = stop && stop.start + stop.arc;
     this.rng = new Rng(seed);
+    this.habits = new Habits(config, seed);
     this.queueRng = substream(seed, 0x51ed2701);
     this.criminalRng = substream(seed, 0xb5ad4ece);
     this.transporterRng = substream(seed, 0x9f314d7c);
@@ -994,6 +998,7 @@ export class World {
       flames: mayhem.flames,
       chain: mayhem.chain,
     });
+    this.habits.noteCrash(this.vehicles, point, now);
     if (takedown) {
       const [criminalId, policeId] = first.type === 'pickup' ? [first.id, second.id] : [second.id, first.id];
       criminalCaught(this, criminalId, policeId, point, now);
@@ -1097,6 +1102,8 @@ export class World {
         this.score.money += this.config.shieldBonus;
       }
       const [rating, merged, combo] = this.scoreMerge(merge.minGap, behind, ahead);
+      const nearest = merge.closest === null ? undefined : this.vehicle(merge.closest);
+      this.habits.noteMerge(merge.minGap, nearest?.owner === 'ai' ? nearest.id : null);
       const critical = this.rollCritical(rating);
       const shave = this.shaveBonus(rating, merge.closest);
       const points = (critical ? merged * Math.max(1, this.config.criticalFactor) : merged) + shave;

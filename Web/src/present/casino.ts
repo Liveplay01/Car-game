@@ -321,7 +321,7 @@ interface TableSizes {
 }
 
 const TABLE_SIZES: TableSizes[] = [
-  { chip: 34, gap: 8, main: 50, stake: 34, boost: 34, auto: 28, bet: 56, stageMin: 140, history: true },
+  { chip: 32, gap: 8, main: 50, stake: 34, boost: 34, auto: 28, bet: 56, stageMin: 140, history: true },
   { chip: 30, gap: 6, main: 44, stake: 30, boost: 30, auto: 24, bet: 48, stageMin: 112, history: true },
   { chip: 28, gap: 5, main: 40, stake: 28, boost: 28, auto: 22, bet: 44, stageMin: 84, history: false },
 ];
@@ -344,8 +344,8 @@ export const CasinoPage = {
 
   place(a: Rect, game: CasinoGame, withBoost: boolean, m: TableSizes): Layout {
     const w = R.width(a);
-    const cw = (w - (CASINO_GAMES.length - 1) * 6) / CASINO_GAMES.length;
-    const chips = CASINO_GAMES.map((g, i): [CasinoGame, Rect] => [g, R.make(a.minX + i * (cw + 6), a.minY, a.minX + i * (cw + 6) + cw, a.minY + m.chip)]);
+    const cw = w / CASINO_GAMES.length;
+    const chips = CASINO_GAMES.map((g, i): [CasinoGame, Rect] => [g, R.make(a.minX + i * cw, a.minY, a.minX + (i + 1) * cw, a.minY + m.chip)]);
     const infoY = a.minY + m.chip + m.gap + 11;
     const odds = R.make(a.maxX - 76, infoY - 12, a.maxX, infoY + 12);
     const history = m.history ? R.make(a.minX, infoY + 18, a.maxX, infoY + 42) : R.make(a.minX, infoY + 12, a.maxX, infoY + 12);
@@ -470,7 +470,7 @@ export const CasinoPage = {
   add(list: RenderList, a: Rect, career: Career, today: number, state: CasinoState, reduceMotion: boolean, age: number): void {
     const enter = reduceMotion ? 1 : Ease.outCubic(age / 0.25);
     const l = CasinoPage.layoutOf(a, state);
-    CasinoPage.addChips(list, l, state, reduceMotion, enter);
+    CasinoPage.addChips(list, l, state, reduceMotion);
     CasinoPage.addInfo(list, l, career, today, state, enter);
     CasinoPage.addBoost(list, l, career, today, state, enter);
     const start = list.items.length;
@@ -670,25 +670,14 @@ export const CasinoPage = {
     CasinoPage.addControls(list, l, career, state, enter);
   },
 
-  addChips(list: RenderList, l: Layout, state: CasinoState, reduceMotion: boolean, enter: number): void {
-    const busy = state.busy;
+  addChips(list: RenderList, l: Layout, state: CasinoState, reduceMotion: boolean): void {
     const slide = state.gameSlide;
     const glide = slide && !reduceMotion ? Ease.settle(slide.age / ShopPage.slideDuration) : 1;
-    for (const [, r] of l.chips) list.s(rect(R.center(r), v(R.width(r), R.height(r)), 10), 'controlFill', enter);
-    const to = l.chips.find(([g]) => g === state.game)?.[1];
-    if (to) {
-      const from = (slide && l.chips.find(([g]) => g === slide.from)?.[1]) || to;
-      list.s(rect(lerpV(R.center(from), R.center(to), glide), v(R.width(to), R.height(to)), 10), 'primary', enter);
-    }
-    for (const [game, chip] of l.chips) {
-      const r = CasinoPage.pressedRect(chip, { k: 'game', game }, state);
-      const on = game === state.game ? glide : slide && game === slide.from ? 1 - glide : 0;
-      const label = S.casino.game(game);
-      const dim = busy && game !== state.game ? 0.4 : 1;
-      const size = ShopPage.fitted(label, 13, R.width(r) - 8);
-      drawText(list, label, R.center(r), size, 'muted', { weight: 'bold', align: 'center', opacity: enter * (1 - on) * dim });
-      if (on > 0) drawText(list, label, R.center(r), size, 'background', { weight: 'bold', align: 'center', opacity: enter * on });
-    }
+    const chosen = CASINO_GAMES.indexOf(state.game);
+    const thumb = slide ? CASINO_GAMES.indexOf(slide.from) + (chosen - CASINO_GAMES.indexOf(slide.from)) * glide : chosen;
+    const first = l.chips[0][1];
+    const all = R.make(first.minX, first.minY, l.chips[l.chips.length - 1][1].maxX, first.maxY);
+    MenuKit.segmented(list, CASINO_GAMES.map(S.casino.game), chosen, thumb, all, CASINO_GAMES.map((g) => state.busy && g !== state.game), true);
   },
 
   /** Today's balance as it is, the odds a tap away, and what the last rounds really gave. */

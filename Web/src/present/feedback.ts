@@ -218,10 +218,9 @@ export const Feedback = {
   pitch(sound: SoundID, combo: number, serial: number): number {
     switch (sound) {
       case 'merge':
-      case 'note': {
-        const step = clamp(combo - 1, 0, Feedback.comboLadder.length - 1);
-        return Math.pow(2, Feedback.comboLadder[step] / 12);
-      }
+      case 'note':
+        // The melody takes the combo itself, not a ratio.
+        return combo;
       case 'toll':
       case 'crashLight':
       case 'crash':
@@ -367,6 +366,8 @@ export const MUSIC_LAYERS: MusicLayer[] = ['base', 'rhythm', 'bass', 'lead', 'si
 export interface MusicMix {
   volumes: Partial<Record<MusicLayer, number>>;
   lowPass: number;
+  /** The combo on the road: when it drops, the merge melody fades out (`Melody`). Left out where there is no combo. */
+  combo?: number;
 }
 
 /** What the sky sounds like: how hard it rains (0…1), and how many flashes of lightning there have been (thunder follows each). */
@@ -412,6 +413,8 @@ export interface TrafficSound {
   engine: TrafficEngine;
   speed: number;
   load: number;
+  /** On the ring (or leaving it), as against waiting, queued or merging. */
+  ring: boolean;
   x: number;
   y: number;
 }
@@ -431,9 +434,31 @@ export const Sky = {
   rain: [0, 0.3, 0.55, 0.8, 1],
 };
 
+/**
+ * The merge melody (`AudioPlayer.melody`): every good merge adds the note of its combo to the music, in A minor pentatonic, the
+ * key of the stems. Pitches are semitones above A4; phrases play on eighths of the music's grid when the combo reaches them.
+ */
+export const Melody = {
+  root: 440,
+  level: 0.15,
+  /** Seconds a note rings, and the time constant of the fade when the combo breaks. */
+  ring: 0.42,
+  fade: 0.12,
+  /** Under a note (a phrase: from its first to its last) the competing mids step back to these shares; seconds to get there, to hold after the last note, to return. */
+  room: { traffic: 0.55, music: 0.8, warn: 0.6, attack: 0.02, hold: 0.25, release: 0.25 },
+  /** `harmony`: a second voice this many semitones away, softer. The 20 answers the 5 and the 10 from below. */
+  phrases: [
+    { combo: 5, notes: [0, 3, 5, 7, 12] },
+    { combo: 10, notes: [7, 10, 12, 10, 15, 19] },
+    { combo: 20, notes: [12, 10, 7, 5, 3, 0], harmony: -12 },
+  ] as { combo: number; notes: number[]; harmony?: number }[],
+};
+
 export const Music = {
   silent: { volumes: {}, lowPass: 0 } as MusicMix,
   breathDepth: 0.85,
+  /** The criminal's siren stem, as a share of its full volume (was 0.7). */
+  sirenStem: 0.4,
 
   /** 20 kHz (open) down to 350 Hz, geometric so the steps are even to the ear. */
   cutoff: (lowPass: number): number => 20000 * Math.pow(350 / 20000, clamp(lowPass, 0, 1)),
@@ -487,7 +512,7 @@ export const Music = {
       rhythm: tier >= 1 || near > 0 ? 1 : 0,
       bass: Math.max(tier >= 2 ? 0.8 : 0, 0.8 * near),
       lead: Math.max(tier >= 3 ? 0.9 : 0, 0.9 * near * near),
-      siren: k === 'warning' || k === 'arriving' || k === 'active' ? 0.7 : 0,
+      siren: k === 'warning' || k === 'arriving' || k === 'active' ? Music.sirenStem : 0,
       rush: world.shift.isRushHour ? 1 : 0,
       flow: clamp(flow, 0, 1) * 0.8,
     };
@@ -496,6 +521,6 @@ export const Music = {
     const rush = world.shift.rushHourSince;
     if (rush !== null) breath = Math.max(breath, Music.breath(world.time - rush));
     if (record?.beatAt != null) breath = Math.max(breath, Music.breath(world.time - record.beatAt));
-    return { volumes, lowPass: breath * Music.breathDepth };
+    return { volumes, lowPass: breath * Music.breathDepth, combo: world.score.combo };
   },
 };

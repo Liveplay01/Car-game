@@ -96,6 +96,13 @@ export class VehicleLamps {
   static readonly thanks = 2;
   static readonly hazardTime = 6;
   static readonly twitch = 0.18;
+  /** A new brake overshoots full brightness by this much, starting `flareDelay` after it comes on and lasting `flareLength` (a few frames). */
+  static readonly flareOvershoot = 0.2;
+  static readonly flareDelay = 0.03;
+  static readonly flareLength = 0.07;
+  /** After a brake shorter than `briefBrake` the lamps linger this much longer; a longer brake lets go as before. */
+  static readonly afterglow = 0.22;
+  static readonly briefBrake = 0.9;
   /** The queue's nod: how far forward (world units), how quickly it settles, and the lag from one car to the next. */
   static readonly nodDepth = 1.4;
   static readonly nodSettle = 0.11;
@@ -143,6 +150,8 @@ export class VehicleLamps {
   /** Reduce Motion: the queue does not nod. */
   calm = false;
   private brakes = new Map<number, number>();
+  private glows = new Map<number, { on: boolean; held: number; age: number; tick: number }>();
+  private tick = 0;
   private beams = new Map<number, Beam>();
   private clock = 0;
   private signals = new Map<number, Signal>();
@@ -157,10 +166,18 @@ export class VehicleLamps {
   brake(id: number): number {
     const lit = this.brakes.get(id) ?? 0;
     const age = this.twitches.get(id);
-    if (age === undefined) return lit;
+    if (age === undefined) return lit + this.flare(id);
     const pulse = Math.sin(Math.PI * Math.min(1, age / VehicleLamps.twitch));
     // Off, it flicks on; already on, it flicks off: either way the eye catches it.
     return lit > 0.5 ? lit * (1 - 0.85 * pulse) : Math.max(lit, pulse);
+  }
+
+  /** The brief overshoot just after a brake comes on. */
+  private flare(id: number): number {
+    const glow = this.glows.get(id);
+    if (!glow?.on || this.calm) return 0;
+    const x = (glow.age - VehicleLamps.flareDelay) / VehicleLamps.flareLength;
+    return x > 0 && x < 1 ? VehicleLamps.flareOvershoot * Math.sin(Math.PI * x) : 0;
   }
 
   /** LED-quick on, a touch softer off. */
@@ -236,11 +253,22 @@ export class VehicleLamps {
       if (veh.isCrashed) continue;
       const target = world.isBraking(veh) ? 1 : 0;
       const current = this.brakes.get(veh.id) ?? target;
-      const time = target > current ? 0.05 : 0.14;
+      const glow = this.glows.get(veh.id) ?? { on: target === 1, held: 0, age: Infinity, tick: 0 };
+      if (target === 1) {
+        if (!glow.on) [glow.held, glow.age] = [0, 0];
+        glow.held += delta;
+      }
+      glow.on = target === 1;
+      glow.age += delta;
+      glow.tick = this.tick;
+      this.glows.set(veh.id, glow);
+      const time = target > current ? 0.05 : 0.14 + VehicleLamps.afterglow * clamp(1 - glow.held / VehicleLamps.briefBrake, 0, 1);
       next.set(veh.id, current + (target - current) * Math.min(1, delta / time));
       beams.set(veh.id, this.followBeam(veh, veh.phase.kind === 'queued' && veh.id !== front, world.config.ringSpeed, delta));
     }
     this.brakes = next;
+    for (const [id, glow] of this.glows) if (glow.tick !== this.tick) this.glows.delete(id);
+    this.tick++;
     this.beams = beams;
     this.clock += delta;
     this.updateSignals(world);

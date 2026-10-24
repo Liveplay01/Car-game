@@ -14,6 +14,7 @@ after(() => server.close());
 const load = (path) => server.ssrLoadModule(path);
 
 const { World } = await load('/src/core/world.ts');
+const { Habits } = await load('/src/core/habits.ts');
 const { detourArmSlot } = await load('/src/core/modules.ts');
 const { CHALLENGES, challengesOf, challengeMet, challengeReward } = await load('/src/core/daily.ts');
 const { baseConfig, BOSS_KINDS } = await load('/src/core/config.ts');
@@ -126,6 +127,63 @@ test('the careful bot never crashes (levels 1, 5, 12)', () => {
       assert.equal(result.crashes, 0, `level ${level}, shift ${s}: ${result.crashes} crashes`);
     }
   }
+});
+
+// MARK: Traffic that remembers
+
+test('adaptive traffic: only career shifts from its level on, never the Daily, Unlimited or a trial', () => {
+  const c = newCareer();
+  c.mastery.shiftsCompleted = 1;
+  for (const level of [1, 2]) {
+    c.level = level;
+    assert.equal(Careers.careerShift(c, baseConfig, 5).adaptive, false, `level ${level}`);
+  }
+  c.level = baseConfig.adaptiveLevel;
+  assert.equal(Careers.careerShift(c, baseConfig, 5).adaptive, true);
+  assert.equal(Careers.shiftConfig(c, 'shift', baseConfig, 5).adaptive, false, 'the Daily goes through shiftConfig');
+  assert.equal(Careers.shiftConfig(c, 'unlimited', baseConfig, 5).adaptive, false);
+  assert.equal(Careers.shiftConfig(c, 'mayhem', baseConfig, 5).adaptive, false);
+  assert.equal(forLevel(baseConfig, 9, 5).adaptive, false);
+});
+
+test('adaptive traffic replays exactly and the careful bot stays safe', () => {
+  for (const level of [5, 12]) {
+    for (let s = 1; s <= 4; s++) {
+      const seed = s * 7919 + level;
+      const config = { ...forLevel(baseConfig, level, seed), adaptive: true };
+      const first = playConfig(config, seed);
+      assert.ok(first.result, `level ${level}, shift ${s} ends`);
+      assert.equal(first.result.crashes, 0, `level ${level}, shift ${s}`);
+      assert.deepEqual(playConfig(config, seed).result, first.result, `level ${level}, shift ${s} replays`);
+    }
+  }
+});
+
+test('adaptive traffic: tight merges make cars careful, crashes frighten for a while, every effect stays within its share', () => {
+  const c = { ...baseConfig, adaptive: true };
+  const h = new Habits(c, 77);
+  assert.deepEqual(h.tune(5, 0), { gap: 1, reaction: 1, brake: 1, accel: 1, margin: 1 }, 'no notes, no change');
+  assert.equal(h.delayFactor(9), 1);
+  for (let i = 0; i < 10; i++) h.noteMerge(0.05, 5);
+  h.welcome(6);
+  const careful6 = h.tune(6, 0);
+  assert.ok(careful6.gap > 1 && careful6.reaction < 1, 'the next car comes careful after a run of tight merges');
+  assert.ok(h.delayFactor(9) > 1, 'and the arrivals space out');
+  const calm = h.tune(5, 0);
+  h.noteCrash([{ id: 5, owner: 'ai', phase: { kind: 'ring' }, position: { x: 0, y: 0 } }], { x: 10, y: 0 }, 100);
+  assert.ok(h.tune(5, 101).brake > calm.brake && h.tune(5, 101).margin > 1);
+  assert.equal(h.tune(5, 100 + c.adaptFearSeconds + 1).brake, 1, 'the fright passes');
+  const wide = new Habits(c, 77);
+  for (let i = 0; i < 10; i++) wide.noteMerge(2, 8);
+  assert.ok(wide.tune(8, 0).accel > 1 && wide.tune(8, 0).gap < 1, 'wide gaps leave a car relaxed');
+  const limit = c.adaptShare + 1e-9;
+  for (const id of [5, 6, 8]) {
+    for (const t of [h.tune(id, 101), wide.tune(id, 0)]) for (const v of Object.values(t)) assert.ok(Math.abs(v - 1) <= limit, `${id}: ${v}`);
+  }
+  for (let id = 1; id < 200; id++) assert.ok(Math.abs(wide.delayFactor(id) - 1) <= limit);
+  const off = new Habits(baseConfig, 77);
+  for (let i = 0; i < 10; i++) off.noteMerge(0.05, 5);
+  assert.equal(off.tune(5, 0).gap, 1, 'off: nothing is noted');
 });
 
 test('a challenge link keeps its shift', () => {
@@ -2923,6 +2981,19 @@ test('the tension camera keeps the stop line in place, and settles still, and st
   assert.deepEqual(fx.apply(cam, stop, false), leaned, 'a settled camera holds still');
   assert.equal(fx.apply(cam, stop, true), cam, 'Reduce Motion: no zoom');
   assert.equal(fx.vignette, 0.8, 'the vignette stays under Reduce Motion');
+  fx.nod();
+  fx.update(0.8, CameraFxTuning.nodRise);
+  const nodded = fx.apply(cam, stop, false);
+  assert.ok(Math.abs(nodded.scale / leaned.scale - 1 - CameraFxTuning.nodZoom) < 1e-9, 'a Perfect nods at full size after its rise');
+  assert.equal(fx.apply(cam, stop, true), cam, 'Reduce Motion: no nod');
+  assert.ok(fx.pulse(true) > 0 && fx.pulse(false) === 0, 'Reduce Motion pulses the vignette instead');
+  fx.update(0.8, CameraFxTuning.nodFall);
+  assert.deepEqual(fx.apply(cam, stop, false), leaned, 'and the nod is gone again');
+  assert.deepEqual(fx.breathOffset(false), { x: 0, y: 0 }, 'no sway during a shift');
+  for (let i = 0; i < 600; i++) fx.update(0, 1 / 60, true);
+  const sway = fx.breathOffset(false);
+  assert.ok(Math.hypot(sway.x, sway.y) > 0 && Math.abs(sway.x) <= CameraFxTuning.breathX && Math.abs(sway.y) <= CameraFxTuning.breathY, 'idle: a few points of sway');
+  assert.deepEqual(fx.breathOffset(true), { x: 0, y: 0 }, 'Reduce Motion: no sway');
   const world = new World(forLevel(baseConfig, 3, 11), 11, { startsOnFirstTap: false });
   world.shift.outcome = 'completed';
   assert.equal(tensionOf(world, 'shift'), 0, 'nothing is at stake once the shift is over');
@@ -3464,12 +3535,17 @@ test('Progress has three sections that each carry a label, and every upgrade sta
   assert.equal(UpgradePage.arrange({ x: 430, y: 900 }, 56, some).headings.length, 1, 'a heading with nothing under it is left out');
 });
 
-test('a light passing over a ring tick switches the whole tick off, not just the part under it', () => {
-  const head = (angle, strength = 1) => ({ angle, radius: 100, thickness: 4.5, halfAngle: 0.055, signal: 0, strength });
-  assert.equal(RingSignals.touched(100, 2, 1, 0.1, [head(1.15)]), 1, 'touching the edge is enough');
-  assert.equal(RingSignals.touched(100, 2, 1, 0.1, [head(1.16)]), 0, 'clear of it');
-  assert.equal(RingSignals.touched(100, 2, 0.02, 0.1, [head(Math.PI * 2 - 0.05, 0.4)]), 0.4, 'across the start of the ring, as strong as the light');
-  assert.equal(RingSignals.touched(130, 2, 1, 0.1, [head(1)]), 0, 'a light on another radius');
+test('a running light dims only the ticks it reaches next, and lets them back once it has passed', () => {
+  const head = (angle, strength = 1) => ({ angle, radius: 100, thickness: 4.5, halfAngle: 0.055, tail: 0.7, signal: 0, strength });
+  const at = (tick, light, strength) => RingSignals.touched(100, 2, tick, [head(light, strength)]);
+  assert.equal(at(3, 1), 0, 'far ahead of the light: untouched');
+  assert.ok(at(3, 2.5) > 0 && at(3, 2.5) < 1, 'close ahead: dimming');
+  assert.ok(at(3, 2.8) > at(3, 2.5), 'the closer, the darker');
+  assert.equal(at(3, 3.3), 1, 'under the bright tail: off');
+  assert.ok(at(3, 4.2) > 0 && at(3, 4.2) < 1, 'past the tail: coming back');
+  assert.equal(at(3, 5.5), 0, 'long passed: on again');
+  assert.equal(at(3, 3, 0.4), 0.4, 'as strong as the light');
+  assert.equal(RingSignals.touched(130, 2, 3, [head(3)]), 0, 'a light on another radius');
 });
 
 test('site data for the website: every file in the index, unique ids, the game art as SVG', () => {
@@ -3818,4 +3894,19 @@ test('more small details (Leo, 24.10.2026): a knock for a tap that cannot be tak
 
   const { Holidays } = await load('/src/present/holidays.ts');
   assert.equal(Holidays.of(new Date(2026, 9, 24, 12)), null, 'no leaves, no autumn holiday');
+});
+
+test('traffic sound: even flow settles into a chord, a free gap eases the pressure', async () => {
+  const { trafficFlow, settle } = await load('/src/audio/trafficFlow.ts');
+  const car = (id, angle, ring, r = 120) => ({ id, engine: 'car', speed: 1, load: ring ? 0.4 : 1, ring, x: r * Math.cos(angle), y: r * Math.sin(angle) });
+  const even = Array.from({ length: 6 }, (_, i) => car(i, (i * Math.PI * 2) / 6, true));
+  const bunched = [0, 0.1, 0.2, 0.3, 0.4, 0.5].map((a, i) => car(i, a, true));
+  assert.ok(trafficFlow(even).evenness > 0.95 && trafficFlow(bunched).evenness < 0.1, 'evenly spaced cars are consonant, bunched ones are not');
+  const entering = car(9, 3, false, 150);
+  const near = trafficFlow([car(1, 2.8, true), entering]).pressure;
+  const free = trafficFlow([car(1, 0.2, true), entering]).pressure;
+  assert.ok(free < near, 'a car far behind the entry leaves a gap, one just behind closes it');
+  assert.equal(trafficFlow([]).pressure, 0);
+  assert.equal(settle(0.75, 1), 0.75);
+  assert.ok(Math.abs(settle(0.8, 1) - 0.75) < 1e-9 && settle(0.8, 0) === 0.8, 'rates move towards the nearest chord note by the given amount');
 });

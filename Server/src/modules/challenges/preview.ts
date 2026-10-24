@@ -4,7 +4,7 @@ import { Raster, type Rgb } from './raster.ts';
  * The picture a challenge's short link shows in a chat (1200 × 630, the size link previews
  * use): a roundabout at night, a car about to merge into a gap, and a motorway message sign
  * that says what to beat. The sign is a 5 × 7 dot font, so no font file is needed.
- * Colours are the game's (`Web/src/present/theme.ts`, `Web/icon/make_icon.py`).
+ * Colours are the game's (`Web/src/present/theme.ts`).
  */
 
 export const PREVIEW_WIDTH = 1200;

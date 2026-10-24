@@ -922,7 +922,7 @@ Car-game/
 │  ├─ src/audio/ storage/ net/ ui/
 │  ├─ public/                     ← Manifest, Icons, og-image, 404.html, .well-known/assetlinks.json,
 │  │                                audio/sounds (44), audio/music (7 Stems)
-│  ├─ icon/                       ← Original des Icons (make_icon.py), Shortcut-Icons (make_shortcut_icons.py)
+│  ├─ icon/                       ← Original des Icons (AppIcon.png, make_pwa_icons.py), Shortcut-Icons (make_shortcut_icons.py)
 │  ├─ audio-src/                  ← Skripte für die Casino-Klänge (make_casino_sounds.py)
 │  └─ scripts/                    ← test.mjs, sim.mjs, career-sim.mjs, versus-sim.mjs, casino-sim.mjs
 └─ Server/                        ← optionaler Ranglisten-Dienst (Node 22, Hono, SQLite)

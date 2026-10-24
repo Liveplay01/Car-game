@@ -88,7 +88,7 @@ export interface Settings {
   /** The sound of the map's weather (rain, thunder), apart from the effects and the music. */
   mapSounds: boolean;
   /** The engines and tyres of the traffic, quietly under everything (Leo, 22.10.2026). */
-  trafficSounds: boolean;
+  engineSounds: boolean;
   haptics: boolean;
   reduceMotion: ReduceMotion;
   vehicleLabels: boolean;
@@ -487,7 +487,7 @@ export const newSave = (): SaveGame => ({
   highscore: 0,
   highscoreSeed: null,
   shiftsPlayed: 0,
-  settings: { sound: true, music: true, mapSounds: true, trafficSounds: true, haptics: true, reduceMotion: 'system', vehicleLabels: false, leftHanded: false, dispatchSize: 2, largeText: false, batterySaver: false, lowDetail: false, motionChosen: false },
+  settings: { sound: true, music: true, mapSounds: true, engineSounds: false, haptics: true, reduceMotion: 'system', vehicleLabels: false, leftHanded: false, dispatchSize: 2, largeText: false, batterySaver: false, lowDetail: false, motionChosen: false },
   career: newCareer(),
   tutorialDone: false,
   hints: [],
@@ -1241,6 +1241,7 @@ export const Careers = {
       if (cfg.weather === 'clear' && c.level >= base.firstWeatherLevel && !met('weather.')) cfg = eased(forWeather(cfg, 'lightRain'));
       if (!cfg.night && c.level >= base.firstNightLevel && !met('dark.')) cfg = eased(forNight(cfg, 'night'));
     }
+    if (c.level + Careers.headStart(c, base) >= base.adaptiveLevel) cfg = { ...cfg, adaptive: true };
     return Mafia.late(c) ? Mafia.withoutLoot(cfg) : cfg;
   },
 

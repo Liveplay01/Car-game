@@ -55,14 +55,21 @@ export const MenuKit = {
   headerChip: (viewport: Vec2, money: string): Vec2 =>
     v(viewport.x - MenuKit.headerInset(viewport) - MenuKit.chipWidth(money) / 2, MenuKit.headerY),
 
-  /** A segmented control: a sunk track and a raised thumb that can slide. */
-  segmented(list: RenderList, labels: string[], chosen: number, thumb: number, r: Rect, locked: boolean[] = []): void {
+  /**
+   * A segmented control: a sunk track and a raised thumb that can slide. The page's own one (`sub` false) is
+   * chrome that stays while pages change; a control inside a page (Casino games, Collection shelves) is drawn
+   * with the page's content and moves with it.
+   */
+  segmented(list: RenderList, labels: string[], chosen: number, thumb: number, r: Rect, locked: boolean[] = [], sub = false): void {
     if (labels.length === 0) return;
     const height = R.height(r);
     const tag = list.tag;
-    list.tag = 'segTrack';
+    const mark = (t: string): void => {
+      if (!sub) list.tag = t;
+    };
+    mark('segTrack');
     list.s(rect(R.center(r), v(R.width(r), height), height / 2), 'controlFill');
-    list.tag = 'segHover';
+    mark('segHover');
     const cell = R.width(r) / labels.length;
     // A mouse over a segment that is not the chosen one: a faint capsule grows under it, as the dock's tab does.
     const over = list.pointer && R.contains(r, list.pointer) ? Math.min(labels.length - 1, Math.floor((list.pointer.x - r.minX) / cell)) : -1;
@@ -78,12 +85,12 @@ export const MenuKit = {
       const size = v((cell - 4) * (0.86 + 0.14 * glow[i]), height - 4);
       list.s(rect(v(r.minX + cell * (i + 0.5), R.center(r).y), size, size.y / 2), 'primary', 0.09 * glow[i]);
     });
-    list.tag = 'segThumb';
+    mark('segThumb');
     const thumbCenter = v(r.minX + cell * (thumb + 0.5), R.center(r).y);
     const thumbSize = v(cell - 4, height - 4);
     list.s(rect(add(thumbCenter, v(0, 1)), thumbSize, thumbSize.y / 2), 'shadow');
     list.s(rect(thumbCenter, thumbSize, thumbSize.y / 2), 'controlThumb');
-    list.tag = 'segLabels';
+    mark('segLabels');
     labels.forEach((label, i) => {
       // A section that opens later stays in its place, faded.
       const at = v(r.minX + cell * (i + 0.5), R.center(r).y);

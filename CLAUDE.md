@@ -171,7 +171,7 @@ docker build -t car-game . ; docker run -p 5050:5050 car-game   # Container wie 
   **Neuer App-Build gesammelt (Leo, 08.10.2026):** Braucht eine Änderung einen neuen Build der Android-Hülle (Wrapper-Option, Name, Icon, Manifest-`shortcuts`, Berechtigung), kommt sie als Punkt in [NEW-PLAYSTORE-BUILD.md](NEW-PLAYSTORE-BUILD.md); Leo baut, wenn genug zusammen ist.
 - **Rechtliches:** Datenschutz und Impressum in `Web/src/present/legal.ts` (Settings → Legal, `/privacy`, `/imprint`). Neuer Dienst, der Daten bekommt (Werbung, Analyse, Server) = Absatz dort und neues `LEGAL_UPDATED`.
 - Vor jedem Commit: `npm test` und `npm run build` müssen grün sein (in `Web/`, und in `Server/` `npm test` und `npm run typecheck`, wenn er berührt wurde).
-- Das Icon-Original liegt in `Web/icon/` (`python Web/icon/make_icon.py`).
+- Das Icon-Original liegt in `Web/icon/` (`python Web/icon/make_pwa_icons.py` erzeugt daraus die PWA-Icons; Quelle: `Marketing/AppIcon-1d.svg`).
 - Die Casino-Klänge entstehen in `Web/audio-src/make_casino_sounds.py` (numpy, scipy, ffmpeg)
   und landen als `.m4a` in `Web/public/audio/sounds/`.
 

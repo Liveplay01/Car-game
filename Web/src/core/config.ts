@@ -347,6 +347,30 @@ export const baseConfig = {
    * sent as a challenge and sets no best time, since a friend could not play the same one.
    */
   assisted: false,
+  /**
+   * Traffic that remembers (Leo, 24.10.2026; `core/habits.ts`): the ring cars keep a few notes through one shift, never into the
+   * next. Merges tight against a car make it (and, once you play tight merge after merge, the cars that come next) a little more
+   * careful: a larger entry gap, an earlier reaction; wide gaps leave it relaxed; a crash near a car scares it for
+   * `adaptFearSeconds` (harder braking, more following distance). Play with wide gaps only shifts the arrival times, evenly.
+   * No effect is larger than `adaptShare` of the value it changes, and none makes the road harder. Set per shift by
+   * `Careers.careerShift` from level `adaptiveLevel` on (the intro levels bring one thing at a time); off for the Daily,
+   * Unlimited, challenges, trials and Versus, whose results are compared.
+   */
+  adaptive: false,
+  adaptiveLevel: 3,
+  adaptShare: 0.1,
+  /** Notes (tight or wide merges against one car) that take an effect to its full share. */
+  adaptSteps: 2,
+  /** The pull of each merge on the shift's style (-1 wide, 1 tight), after at least `adaptMinMerges` of them; only a style beyond `adaptLeanFrom` counts. */
+  adaptMemory: 0.3,
+  adaptMinMerges: 3,
+  adaptLeanFrom: 0.5,
+  /** A merge with more than this many seconds to the nearest car counts as wide. */
+  adaptWideGap: 0.6,
+  /** A relaxed car narrows its entry gap by this share of `adaptShare`. */
+  adaptRelaxedGap: 0.4,
+  adaptFearSeconds: 30,
+  adaptFearRadius: 180,
 
   /**
    * Record in sight (Leo, 19.10.2026): from this share of the best on, a career shift or an Unlimited run counts down the

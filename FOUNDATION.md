@@ -473,7 +473,7 @@ Car-game/
 └─ Web/
    ├─ index.html · vite.config.ts (schreibt auch den Service Worker)
    ├─ nginx.conf
-   ├─ icon/                  Original des Icons (make_icon.py)
+   ├─ icon/                  Original des Icons (AppIcon.png, make_pwa_icons.py)
    ├─ public/                Manifest, Icons, Sounds und Musik (.m4a)
    ├─ scripts/               Balancing- und Casino-Bots, Tests
    └─ src/

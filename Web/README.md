@@ -85,7 +85,7 @@ src/
               PeerJS loads only when a room opens
   ui/         the DOM shell: canvas, native-like tab bar, settings sheet, multiplayer lobby
 public/audio/ sounds (50) and music stems (7) as AAC
-icon/        the icon master (make_icon.py → AppIcon.png)
+icon/        the icon master (AppIcon.png, from Marketing/AppIcon-1d; make_pwa_icons.py → public/icons)
 scripts/sim.mjs   headless balancing bots
 ```
 
@@ -145,7 +145,7 @@ wins. Every value below is in `core/config.ts` (`versus…`).
   perfect 4); a full bar (16) sends a lorry in your colour onto the arm just before a
   rival's lane, once round the ring. Five merges without a cut-off earn a **shield** that
   forgives one light bump (impact ≤ 60).
-- **Type and colour (Leo, 04.10.2026):** the accent is street-lamp amber (`COLORS.accent` in `present/theme.ts` = `--accent` in `ui/shell.css`; the icons come from `icon/make_icon.py` + `make_pwa_icons.py`). Titles and big numbers are Overpass Variable, italic 900, like the website's headings: `@font-face` in `ui/shell.css` (latin italic only, bundled and precached), `FONT_DISPLAY` for the canvas, `main.ts` waits for it up to 1.5 s and `forgetMeasures` re-measures when it arrives.
+- **Type and colour (Leo, 04.10.2026):** the accent is street-lamp amber (`COLORS.accent` in `present/theme.ts` = `--accent` in `ui/shell.css`; the PWA icons come from `icon/AppIcon.png` via `make_pwa_icons.py`). Titles and big numbers are Overpass Variable, italic 900, like the website's headings: `@font-face` in `ui/shell.css` (latin italic only, bundled and precached), `FONT_DISPLAY` for the canvas, `main.ts` waits for it up to 1.5 s and `forgetMeasures` re-measures when it arrives.
 - **Identity:** each lobby slot has a colour (mint, coral, violet, gold; `player1…4` in
   `theme.ts`, never a vehicle colour): the roof and glow of that player's cars, their lane
   line, pill and badge. The top shows clock, phase and one badge per player (cars sent,
@@ -360,7 +360,7 @@ Cloud sync.
 ## PWA
 
 - `public/manifest.webmanifest`: name, portrait, full screen, icons (made from
-  `icon/AppIcon.png`, the maskable one padded to the safe zone).
+  `icon/AppIcon.png`, the maskable one is the master itself, its motif sits in the safe zone).
 - `sw.js` is generated at build time (`vite.config.ts`): it precaches every built file,
   so the game runs offline after the first visit ("Ready to play offline" says so once).
   Navigations go network-first, so a new deploy shows up on the next start; after 3 s, or

@@ -1734,7 +1734,7 @@ export class Shell {
     this.audio.updateMusic(match ? match.music : s.musicMix, s.save.settings.music, Math.min(delta, 0.1));
     this.audio.updateTension(match ? 0 : s.tension, s.save.settings.sound, Math.min(delta, 0.1));
     this.audio.updateDrift(match ? null : s.driftSound, s.save.settings.sound, Math.min(delta, 0.1));
-    this.audio.updateTraffic(match ? [] : s.trafficSound, s.save.settings.trafficSounds, Math.min(delta, 0.1));
+    this.audio.updateTraffic(match ? [] : s.trafficSound, s.save.settings.engineSounds, Math.min(delta, 0.1));
     this.audio.updateWeather(match ? { rain: 0, strikes: s.weatherSound.strikes } : s.weatherSound, s.save.settings.mapSounds);
     this.app.classList.toggle('reduce-motion', s.reduceMotion);
     if (s.reduceMotion !== this.iconsStill) stillIcons((this.iconsStill = s.reduceMotion));

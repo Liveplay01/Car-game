@@ -19,7 +19,7 @@ import {
   PITY_LEGENDARY_CHESTS,
 } from '../core/loot';
 import type { VehicleType } from '../core/vehicle';
-import { type Vec2, v, add, sub, mul, fromAngle, TAU, clamp, lerpV } from '../core/vec2';
+import { type Vec2, v, add, sub, mul, fromAngle, TAU, clamp } from '../core/vec2';
 import { type RenderList, type Rect, RenderList as List, R, rect, circle, arc, line, polygon, Ease, Metrics, moved, pinned, unitHash, drawText } from './render';
 import type { ColorToken } from './theme';
 import { MenuKit } from './menukit';
@@ -209,7 +209,6 @@ export const ShopPage = {
   /** The details live in a sheet (`ui/detailSheet.ts`); the page keeps only a margin at the bottom. */
   detailHeight: 0,
   segmentHeight: 32,
-  shelfHeight: 36,
   /** The chest list: the guarantee card, the room for a group's heading, a row (it gives way down to `rowMin` on a short screen). */
   pityHeight: 64,
   listHeading: 40,
@@ -327,13 +326,12 @@ export const ShopPage = {
 
   shelfChips(l: Layout): [Shelf, Rect][] {
     const area = l.content;
-    const gap = 6;
-    const w = (R.width(area) - gap * (SHELVES.length - 1)) / SHELVES.length;
-    return SHELVES.map((s, i) => [s, R.make(area.minX + i * (w + gap), area.minY, area.minX + i * (w + gap) + w, area.minY + ShopPage.shelfHeight)]);
+    const w = R.width(area) / SHELVES.length;
+    return SHELVES.map((s, i) => [s, R.make(area.minX + i * w, area.minY, area.minX + (i + 1) * w, area.minY + ShopPage.segmentHeight)]);
   },
 
   /** The window the Collection's grid scrolls in: under the shelf chips. */
-  itemsArea: (l: Layout): Rect => ({ ...l.content, minY: l.content.minY + ShopPage.shelfHeight + ShopPage.gap }),
+  itemsArea: (l: Layout): Rect => ({ ...l.content, minY: l.content.minY + ShopPage.segmentHeight + ShopPage.gap }),
 
   /** A shelf's cards, four to a row; the Cars and Honours shelves in groups under their headings. */
   shelfLayout(width: number, shelf: Shelf): ShelfLayout {
@@ -811,43 +809,19 @@ export const ShopPage = {
     clipTo(list, start, R.make(0, area.minY - 4, list.camera.viewport.x, area.maxY));
     const range = Math.max(0, ShopPage.shelfLayout(R.width(area), state.shelf).height - R.height(area) + 8);
     state.items.addIndicator(list, area, range, Math.min(list.camera.viewport.x - 4, area.maxX + 5));
-    ShopPage.addShelfChips(list, l, career, state, enter, glide);
+    ShopPage.addShelfChips(list, l, career, state, glide);
   },
 
-  /** The shelf chips, drawn over the grid on a solid card: what scrolls under them never shows through. */
-  addShelfChips(list: RenderList, l: Layout, career: Career, state: ShopState, enter: number, glide: number): void {
+  /** The shelves as a segmented control, like the page's own; a dot marks a shelf with something new. */
+  addShelfChips(list: RenderList, l: Layout, career: Career, state: ShopState, glide: number): void {
     const chips = ShopPage.shelfChips(l);
     const slide = state.shelfSlide;
+    const chosen = SHELVES.indexOf(state.shelf);
+    const thumb = slide ? SHELVES.indexOf(slide.from) + (chosen - SHELVES.indexOf(slide.from)) * glide : chosen;
+    const all = R.make(chips[0][1].minX, chips[0][1].minY, chips[chips.length - 1][1].maxX, chips[0][1].maxY);
+    MenuKit.segmented(list, SHELVES.map((s) => S.shop.shelf(s)), chosen, thumb, all, [], true);
     for (const [shelf, chip] of chips) {
-      const r = ShopPage.pressedRect(chip, { k: 'shelf', shelf }, state);
-      list.s(rect(R.center(r), v(R.width(r), R.height(r)), R.height(r) / 2), 'card', enter);
-      list.s(rect(R.center(r), v(R.width(r), R.height(r)), R.height(r) / 2), 'controlFill', enter);
-    }
-    const to = chips.find(([s]) => s === state.shelf)?.[1];
-    if (to) {
-      const target = ShopPage.pressedRect(to, { k: 'shelf', shelf: state.shelf }, state);
-      const from = (slide && chips.find(([s]) => s === slide.from)?.[1]) || target;
-      const center = lerpV(R.center(from), R.center(target), glide);
-      const size = lerpV(v(R.width(from), R.height(from)), v(R.width(target), R.height(target)), glide);
-      // The chosen shelf is a white chip, like the earlier web UI; it glides to the next one.
-      list.s(rect(center, size, size.y / 2), 'primary', enter);
-    }
-    for (const [shelf, chip] of chips) {
-      const r = ShopPage.pressedRect(chip, { k: 'shelf', shelf }, state);
-      const c = R.center(r);
-      const items = shelfItems(shelf);
-      const owned = items.filter((i) => Careers.owns(career, i.id)).length;
-      // On the chip's corner, like a badge: inside it would sit on the label.
-      if (items.some((i) => state.wallet.unseen(career.unseen).includes(i.id))) ShopPage.badgeDot(list, v(r.maxX - 3, r.minY + 3), enter);
-      // Over the white chip the labels turn dark as it arrives.
-      const on = shelf === state.shelf ? glide : slide && shelf === slide.from ? 1 - glide : 0;
-      const label = ShopPage.fitted(S.shop.shelf(shelf), 11, R.width(r) - 14);
-      drawText(list, S.shop.shelf(shelf), v(c.x, c.y - 7), label, 'muted', { weight: 'bold', align: 'center', opacity: enter * (1 - on) });
-      drawText(list, `${owned}/${items.length}`, v(c.x, c.y + 8), 10, owned === items.length ? ShopPage.shelfColor(shelf) : 'muted', { align: 'center', opacity: enter * (1 - on) });
-      if (on > 0) {
-        drawText(list, S.shop.shelf(shelf), v(c.x, c.y - 7), label, 'background', { weight: 'bold', align: 'center', opacity: enter * on });
-        drawText(list, `${owned}/${items.length}`, v(c.x, c.y + 8), 10, 'background', { align: 'center', opacity: 0.6 * enter * on });
-      }
+      if (shelfItems(shelf).some((i) => state.wallet.unseen(career.unseen).includes(i.id))) ShopPage.badgeDot(list, v(chip.maxX - 8, chip.minY + 5), 1);
     }
   },
 

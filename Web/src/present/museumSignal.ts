@@ -148,8 +148,9 @@ export class SignalLoop {
     for (let k = 0; k < 10; k++) list.w(arc(v(0, 0), road, 1, (k * TAU) / 10, (k * TAU) / 10 + 0.3), 'primary', 0.2);
 
     const beacon = signal.arm ?? signal.sweep;
-    if (signal.arm && this.clock < SignalLoop.appears) RingSignals.wedge(list, rim, arm, reduceMotion ? 0 : (this.clock * 1.6) % 1, signal.arm.color);
-    this.rimSignals.addAt(list, { rim, start: SignalLoop.start, outer: road + lane / 2 }, reduceMotion);
+    const warning = signal.arm && this.clock < SignalLoop.appears;
+    if (signal.arm && warning) RingSignals.wedge(list, rim, arm, reduceMotion ? 0 : (this.clock * 1.6) % 1, signal.arm.color);
+    this.rimSignals.addAt(list, { rim, start: SignalLoop.start, outer: road + lane / 2 }, reduceMotion, warning ? [arm] : []);
     if (beacon && this.clock >= SignalLoop.appears) this.drawVehicle(list, beacon.color, reduceMotion);
   }
 

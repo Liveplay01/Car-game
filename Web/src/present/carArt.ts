@@ -599,7 +599,7 @@ export const CarArt = {
 
     const lamps = CarModels.lamps(model, L, W);
     if (brake !== null && brake > 0.02) {
-      for (const side of [1, -1]) CarModels.lamp(list, pose, lamps.tail, side, 'lightRed', opacity * Math.min(brake, 1));
+      CarModels.tails(list, pose, lamps.tail, brake, opacity);
     }
     if (head > 0.01) {
       for (const side of [1, -1]) CarModels.lamp(list, pose, lamps.head, side, 'primary', opacity * head);
@@ -782,7 +782,7 @@ export const CarArt = {
     list.w(sprite(art, pose.position, side > 0 ? pose.heading : pose.heading - Math.PI, dive === 0 ? v(1, 1) : v(1 - dive, 1 + dive * 0.5)), 'primary');
     const lamps = CarModels.lamps(model, L, W);
     if (brake !== null && brake > 0.02) {
-      for (const s of [1, -1]) CarModels.lamp(list, pose, lamps.tail, s, 'lightRed', Math.min(brake, 1));
+      CarModels.tails(list, pose, lamps.tail, brake, 1);
     }
     if (head > 0.01) {
       for (const s of [1, -1]) CarModels.lamp(list, pose, lamps.head, s, 'primary', head);
