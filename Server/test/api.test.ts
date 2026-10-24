@@ -384,3 +384,37 @@ test('CLIENT_IP_HEADER and FEEDBACK_IP_SECRET: only a header name and a long eno
   assert.equal(readConfig({ DB_PATH: ':memory:' }).clientIpHeader, null);
   assert.equal(readConfig({ DB_PATH: ':memory:' }).feedbackIpSecret, null);
 });
+
+test('rate limits: a wrong admin token is tried 60 times a minute at most, and every new account counts for everyone', async () => {
+  const { call, clock, db } = setup();
+  let status = 0;
+  for (let n = 0; n < 61; n++) status = (await call('GET', '/v1/admin/players', { token: 'x'.repeat(32), ip: '10.7.7.7' })).status;
+  assert.equal(status, 429);
+  assert.equal((await call('GET', '/v1/admin/players', { token: ADMIN, ip: '10.7.7.7' })).status, 429, 'the right token waits as well');
+  assert.equal((await call('GET', '/v1/admin/players', { token: ADMIN, ip: '10.7.7.8' })).status, 200, 'another address is not affected');
+  clock.now += 61_000;
+  assert.equal((await call('GET', '/v1/admin/players', { token: ADMIN, ip: '10.7.7.7' })).status, 200);
+
+  // Many addresses, one account each: the hourly cap for the whole service stops it.
+  const letters = (n: number): string => `Racer${String.fromCharCode(97 + (n % 26))}${String.fromCharCode(97 + (Math.floor(n / 26) % 26))}${String.fromCharCode(97 + Math.floor(n / 676))}`;
+  let made = 0;
+  for (let n = 0; n < 700; n++) {
+    const r = await call('POST', '/v1/players', { body: { name: letters(n) }, ip: `10.8.${Math.floor(n / 250)}.${n % 250}` });
+    if (r.status === 201) made += 1;
+    else assert.equal(r.status, 429, JSON.stringify(r.json));
+  }
+  assert.equal(made, 600);
+  clock.now += 3_600_001;
+  assert.equal((await call('POST', '/v1/players', { body: { name: 'Latecomer' }, ip: '10.8.9.9' })).status, 201);
+  db.close();
+});
+
+test('rate limits: a flood from one address is answered with 429, the health check never counts', async () => {
+  const { call, db } = setup();
+  let status = 0;
+  for (let n = 0; n < 1201; n++) status = (await call('GET', '/v1/nothing-here', { ip: '10.6.6.6' })).status;
+  assert.equal(status, 429);
+  assert.equal((await call('GET', '/healthz', { ip: '10.6.6.6' })).status, 200);
+  assert.equal((await call('GET', '/v1/nothing-here', { ip: '10.6.6.7' })).status, 404);
+  db.close();
+});

@@ -111,6 +111,8 @@ export function syncModule(): ServerModule {
       // every 10 s and sends 2 s after a change, and a home network shares one address.
       const perAddress = rateLimit<AppEnv>({ max: 120, windowMs: 60_000 }, (c) => c.get('ip'), ctx.now);
       const creating = rateLimit<AppEnv>({ max: 10, windowMs: 3_600_000 }, (c) => c.get('ip'), ctx.now);
+      // Every new copy can be half a megabyte: all addresses together get this many an hour.
+      const creatingAll = rateLimit<AppEnv>({ max: 300, windowMs: 3_600_000 }, () => 'everyone', ctx.now);
       const big = bodyLimit({ maxSize: MAX_SAVE_BYTES + 1024, onError: () => { throw new ApiError(413, 'too_large', 'The save is too large.'); } });
 
       const codeOf = (c: Context): string => {
@@ -131,7 +133,7 @@ export function syncModule(): ServerModule {
       };
       const unknownCode = () => new ApiError(404, 'unknown_code', 'No save belongs to that code.');
 
-      app.post('/sync', perAddress, creating, big, async (c) => {
+      app.post('/sync', perAddress, creating, creatingAll, big, async (c) => {
         const save = saveText((await bodyOf(c)).save);
         const raw = randomCode(CODE_LENGTH);
         const now = ctx.now();

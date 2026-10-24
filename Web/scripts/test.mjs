@@ -3910,3 +3910,19 @@ test('traffic sound: even flow settles into a chord, a free gap eases the pressu
   assert.equal(settle(0.75, 1), 0.75);
   assert.ok(Math.abs(settle(0.8, 1) - 0.75) < 1e-9 && settle(0.8, 0) === 0.8, 'rates move towards the nearest chord note by the given amount');
 });
+
+test('pasted codes: a whole code or a link is found, a word or a number that is not ours never is', async () => {
+  const { syncCodeIn, crewCodeIn, joinCodeIn } = await load('/src/net/pasted.ts');
+  assert.equal(syncCodeIn(' k7m2-9qxa 4tfb \n'), 'K7M29QXA4TFB');
+  assert.equal(syncCodeIn('K7M2-9QXA'), null, 'too short');
+  assert.equal(syncCodeIn('K7M2-9QXA-4TF0'), null, 'a zero is not in the alphabet');
+  assert.equal(crewCodeIn('Join my crew! https://api.example.org/k/K7M29QXA?by=ZZZZ2222 see you'), 'K7M29QXA');
+  assert.equal(crewCodeIn('https://game.example.org/?crew=K7M29QXA&ref=ZZZZ2222'), 'K7M29QXA');
+  assert.equal(crewCodeIn('MARKETER'), null, 'a bare word could pass for a code, so it is only taken when asked for');
+  assert.equal(crewCodeIn('MARKETER', true), 'MARKETER');
+  assert.equal(crewCodeIn('https://example.org/k/K7M29QXAZ'), null, 'a ninth character is not a code');
+  assert.equal(joinCodeIn(' 4821 '), '4821');
+  assert.equal(joinCodeIn('https://game.example.org/#join=4821'), '4821');
+  assert.equal(joinCodeIn('12345'), null);
+  assert.equal(joinCodeIn('call 4821 now'), null);
+});

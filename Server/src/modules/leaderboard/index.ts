@@ -30,9 +30,9 @@ export function leaderboardModule(): ServerModule {
 
       const describe = (b: BoardDef, day?: number) => ({ id: b.id, title: b.title, period: b.period(ctx.now(), day) });
 
-      app.get('/boards', (c) => c.json({ boards: BOARDS.map(describe) }));
+      app.get('/boards', rateLimit<AppEnv>({ max: 120, windowMs: 60_000 }, (c) => c.get('ip'), ctx.now), (c) => c.json({ boards: BOARDS.map(describe) }));
 
-      app.get('/boards/:board', (c) => {
+      app.get('/boards/:board', rateLimit<AppEnv>({ max: 120, windowMs: 60_000 }, (c) => c.get('ip'), ctx.now), (c) => {
         const board = boardById(c.req.param('board'));
         const day = Number.isInteger(Number(c.req.query('day'))) ? Number(c.req.query('day')) : undefined;
         const period = board.period(ctx.now(), day);

@@ -3,7 +3,7 @@ import { displayCode, normalizeCode } from '../../codes.ts';
 import { transaction, type Db } from '../../db.ts';
 import { ApiError } from '../../errors.ts';
 import { readJson } from '../../http.ts';
-import type { ScoreEvent, ServerContext, ServerModule } from '../../module.ts';
+import type { AppEnv, ScoreEvent, ServerContext, ServerModule } from '../../module.ts';
 import { escapeHtml, origin, page, PAGE_HEADERS, withHeaders } from '../../pages.ts';
 import { rateLimit } from '../../rateLimit.ts';
 import { DAY_MS, FeedbackStore, type RewardItem } from '../feedback/store.ts';
@@ -204,7 +204,7 @@ export function referralsModule(): ServerModule {
     },
     pages(app, ctx: ServerContext) {
       // Never a dead end: an unknown or old code still sends people to the game, only without the name.
-      app.get('/i/:code', (c) => {
+      app.get('/i/:code', rateLimit<AppEnv>({ max: 60, windowMs: 60_000 }, (c) => c.get('ip'), ctx.now), (c) => {
         const game = ctx.config.gameUrl;
         withHeaders(c, PAGE_HEADERS);
         if (!game) return c.body(page('Roundabout Timing', '<meta name="robots" content="noindex">', '<p>This invite link is not set up.</p>'), 404);

@@ -164,7 +164,7 @@ export function challengesModule(): ServerModule {
       });
     },
     pages(app, ctx: ServerContext) {
-      app.get('/c/:id', (c) => {
+      app.get('/c/:id', rateLimit<AppEnv>({ max: 60, windowMs: 60_000 }, (c) => c.get('ip'), ctx.now), (c) => {
         const id = normalizeCode(c.req.param('id'), ID_LENGTH);
         const ch = id ? store.get(id, ctx.now()) : null;
         const game = ctx.config.gameUrl;

@@ -1,4 +1,5 @@
 import { confirmButton, h, loadingNote } from './dom';
+import { canPaste, pasteClipboard, peekClipboard } from './clipboard';
 import { fadeIn, openSheet } from './sheets';
 import { copy, flash, share } from './share';
 import type { Career } from '../core/career';
@@ -12,6 +13,7 @@ import {
   type CrewMember,
   type CrewView,
   type GiftItem,
+  adoptCrewText,
   claimGift,
   dropPendingCrew,
   fetchCrew,
@@ -147,11 +149,29 @@ export function crewPanel(host: CrewHost): HTMLElement {
 
   async function noCrewRows(): Promise<HTMLElement[]> {
     const rows: HTMLElement[] = [];
+    // A crew link the player copied is offered without a tap, where the browser lets us look.
+    if (!pendingCrew()) {
+      const copied = await peekClipboard();
+      if (copied) adoptCrewText(copied);
+    }
     const code = pendingCrew();
     if (code) rows.push(...(await invitedRows(code)));
+    else if (canPaste()) rows.push(pasteInviteButton());
     rows.push(h('p', { class: 'section-note' }, S.crew.intro), said() ?? h('span'), label(S.crew.found), foundForm());
     rows.push(...playRows(), ...codeRows());
     return rows;
+  }
+
+  function pasteInviteButton(): HTMLElement {
+    const button = h('button', { class: 'btn block', type: 'button' }, S.crew.pasteInvite);
+    button.addEventListener('click', () => {
+      void pasteClipboard().then((text) => {
+        if (text && adoptCrewText(text, true)) return render();
+        message = { text: S.crew.noInviteCopied, error: true };
+        return render();
+      });
+    });
+    return button;
   }
 
   /** The crew a link brought the player to: join it, or not now. */

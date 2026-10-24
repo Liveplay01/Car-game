@@ -45,6 +45,13 @@ export function maybePlayer(store: PlayerStore): (c: Context) => Player | null {
   };
 }
 
+/** Erases a player: modules tidy what does not cascade (`ctx.onErase`), then the row goes and everything that hangs off it. */
+export function erasePlayer(ctx: ServerContext, store: PlayerStore, id: string): boolean {
+  if (!store.byId(id)) return false;
+  for (const erase of ctx.onErase) erase(id, ctx.now());
+  return store.delete(id);
+}
+
 const publicPlayer = (p: { id: string; name: string }) => ({ id: p.id, name: p.name });
 
 const nameTaken = () => new ApiError(409, 'name_taken', 'Someone already uses that name. Try another one.');
@@ -56,8 +63,10 @@ export function playersModule(): ServerModule {
     routes(app, ctx: ServerContext) {
       const store = new PlayerStore(ctx.db);
 
-      // New accounts per address: a school or a household shares one, so this is generous.
-      app.post('/players', rateLimit<AppEnv>({ max: 20, windowMs: 3_600_000 }, (c) => c.get('ip'), ctx.now), async (c) => {
+      // New accounts per address: a school or a household shares one, so this is generous. The second limit counts everyone
+      // together, so a swarm of addresses cannot fill the database with names.
+      const everyone = rateLimit<AppEnv>({ max: 600, windowMs: 3_600_000 }, () => 'everyone', ctx.now);
+      app.post('/players', rateLimit<AppEnv>({ max: 20, windowMs: 3_600_000 }, (c) => c.get('ip'), ctx.now), everyone, async (c) => {
         const checked = checkName((await readJson(c)).name);
         if (!checked.ok) throw new ApiError(422, checked.code, checked.message);
         try {
@@ -70,6 +79,7 @@ export function playersModule(): ServerModule {
 
       const me = new Hono<PlayerEnv>();
       me.use('*', requirePlayer(store));
+      me.use('*', rateLimit<PlayerEnv>({ max: 120, windowMs: 60_000 }, (c) => c.get('player').id, ctx.now));
       me.get('/', (c) => c.json({ player: publicPlayer(c.get('player')) }));
 
       me.patch('/', async (c) => {
@@ -94,9 +104,9 @@ export function playersModule(): ServerModule {
         return c.json({ title });
       });
 
-      // Right to erasure: the player and everything that hangs off them is gone.
+      // Right to erasure: the player and everything that hangs off them is gone (deleted, not blanked: see README, "Erasing a player").
       me.delete('/', (c) => {
-        store.delete(c.get('player').id);
+        erasePlayer(ctx, store, c.get('player').id);
         return c.body(null, 204);
       });
 

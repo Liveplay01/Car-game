@@ -1,4 +1,5 @@
 import { confirmButton, h } from './dom';
+import { canPaste, pasteClipboard, peekClipboard } from './clipboard';
 import { openSheet, swapView } from './sheets';
 import { copy, flash } from './share';
 import {
@@ -15,6 +16,7 @@ import {
   useCloudSave,
 } from '../net/cloud';
 import { describeError, loadAccount } from '../net/leaderboard';
+import { syncCodeIn } from '../net/pasted';
 import type { SaveGame } from '../core/career';
 import { Fmt, S } from '../present/strings';
 
@@ -165,6 +167,16 @@ export function cloudSheet(layer: HTMLElement, actions: CloudActions): () => voi
     });
     /** The last code sent, so a code that was refused is not sent again until it is changed. */
     let tried = '';
+    // With nothing typed the button pastes the code a friend or another device copied; with a code in the field it loads it.
+    const pasting = (): boolean => canPaste() && input.value === '';
+    const refresh = (): void => void (load.textContent = pasting() ? S.cloud.paste : S.cloud.load);
+    const pasteCode = async (): Promise<void> => {
+      const code = syncCodeIn((await pasteClipboard()) ?? '');
+      if (!code) return say(S.cloud.pasteNone);
+      input.value = tidy(code);
+      refresh();
+      submit();
+    };
     const submit = (): void => {
       if (load.disabled) return;
       if (input.value.replace(/-/g, '').length !== 12) return say(S.cloud.codeShort);
@@ -173,11 +185,21 @@ export function cloudSheet(layer: HTMLElement, actions: CloudActions): () => voi
     };
     input.addEventListener('input', () => {
       input.value = tidy(input.value);
+      refresh();
       say('');
       // A whole code is all it takes: no need to tap Load (Leo, 05.10.2026).
       if (input.value.replace(/-/g, '').length === 12 && input.value !== tried) submit();
     });
     const load = h('button', { class: 'btn', type: 'submit' }, S.cloud.load);
+    refresh();
+    // A code copied before the sheet opened is already in the field (quietly, where the browser lets us look): one tap loads it.
+    void peekClipboard().then((text) => {
+      const code = text && syncCodeIn(text);
+      if (code && input.value === '') {
+        input.value = tidy(code);
+        refresh();
+      }
+    });
     const backup = h('button', { class: 'btn primary block', type: 'button' }, S.cloud.backUp);
     // Right after the code exists the browser is asked to keep it: one tap on its question is all it takes.
     backup.addEventListener('click', () =>
@@ -197,7 +219,8 @@ export function cloudSheet(layer: HTMLElement, actions: CloudActions): () => voi
           novalidate: true,
           onsubmit: (e: Event) => {
             e.preventDefault();
-            submit();
+            if (pasting()) void pasteCode();
+            else submit();
           },
         },
         // The browser pairs a saved password with this name.

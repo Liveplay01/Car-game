@@ -59,11 +59,11 @@ only erasable syntax is allowed (no `enum`, no constructor parameter properties)
 | `GET /v1/push/key` | The public VAPID key the game subscribes with: `{key}`. `404 push_off` without `VAPID_*` |
 | `PUT /v1/push` `{endpoint, p256dh, auth, tz, home?, muted?, timers}` | This device's push subscription (token optional: with one, ranks and rewards reach it). `tz` minutes east of UTC; `home` the path a tap opens (`/` or `/?googleplaystore`); `timers` up to six `{topic: streak \| gift \| pass, at, until?, title, body}`, replacing the ones sent before; `muted` the topics the player turned off (settings), which are never sent. Marks the device as seen. Answers `{timers: [{topic, at}]}`. `422 invalid_subscription` (only Google, Apple, Mozilla and Microsoft push services) / `invalid_timers` / `invalid_muted` / `invalid_tz`; 60 an hour per address |
 | `DELETE /v1/push` `{endpoint}` | Forget this device (`204`) |
-| `GET /v1/ideas` | The Club's ideas (`src/modules/ideas`, Leo, 12.10.2026): `{ideas: [{id, title, text, status: open / funded / built, goal, raised, mine, by}], goal, minGift, maxGift}`. Public; with a token `mine` is what that player gave. Goal 30,000,000 (`IDEA_GOAL`) |
-| `POST /v1/ideas` `{text}` | (token) Suggest an idea, 10 to 500 characters, one a day (`429 once_a_day`). It waits as `pending`; the same queue gets every idea from `POST /v1/feedback` |
+| `GET /v1/ideas` | The Game Fund's ideas (`src/modules/ideas`, Leo, 12.10.2026): `{ideas: [{id, title, text, status: open / funded / building / built, goal, raised, mine, by}], goal, minGift, maxGift}`. Public (the website lists them on timing.love/build, 60 a minute per address); with a token `mine` is what that player gave. Goal 30,000,000 (`IDEA_GOAL`) |
+| `POST /v1/ideas` `{text}` | (token) Suggest an idea, 10 to 500 characters, one a day (`429 once_a_day`). It waits as `pending`. **One system (Leo, 24.10.2026):** every feature idea, from the game and from `POST /v1/feedback` (`kind: idea`, source `feedback`), is a row of `ideas`; `feedback` holds bug reports only |
 | `POST /v1/ideas/:id/gifts` `{amount}` | (token) Give to an open idea, same limits as the City Fund (`DAILY_LIMIT` counts both); `409 idea_funded` once it has its goal |
-| `GET/PATCH/DELETE /v1/admin/ideas` | Moderation: reword (`title` up to 60, `text` up to 600) and set `status` `pending` / `open` (published) / `built` / `rejected`. In `/admin` the violet **Club ideas** button |
-| `GET /admin` | (with `ADMIN_TOKEN`) The inbox page for bug reports and ideas: filter, mark seen / done / won't fix, delete, give a reward by friend code |
+| `GET/PATCH/DELETE /v1/admin/ideas` | Moderation: reword (`title` up to 60, `text` up to 600) and set `status` `pending` / `open` (published) / `built` / `rejected`. In `/admin` the violet **Game Fund ideas** button |
+| `GET /admin` | (with `ADMIN_TOKEN`) The inbox page for bug reports (ideas under **Game Fund ideas**): filter, mark seen / done / won't fix, delete, give a reward by friend code |
 
 The token travels as `Authorization: Bearer <token>`. Errors are `{error: {code, message}}`.
 
@@ -132,8 +132,40 @@ promise: use the admin routes for what slips through.
 `422 invalid_score` (limits in `LIMITS`, `boards.ts`); everything below that is believed. Anyone
 with DevTools can post a believable fake, so look at the lists now and then and remove entries.
 
-**Rate limits** (in memory): 20 new accounts per hour per address, 30 score submissions per minute
-per player, one rename every 10 seconds.
+**Rate limits** (in memory, `src/rateLimit.ts`; a restart only resets the counters; `429 rate_limited` with `Retry-After`):
+
+| What | Limit |
+| --- | --- |
+| Everything (flood guard, `app.ts`; `/healthz` is exempt) | 1,200 a minute per address |
+| New accounts | 20 an hour per address, 600 an hour for all addresses together |
+| `/v1/me` (every route) | 120 a minute per player; a rename every 10 seconds; the worn title 30 a minute |
+| Score submissions | 30 a minute per player |
+| Public reads: `/boards` | 120 a minute per address (`/profiles/:name` 120, `/fund` 60, `/ideas` 60, `/rtc/ice` 30, `/tuning` 30, `/crews/preview` 30) |
+| Link pages `/k/`, `/i/`, `/c/` | 60 a minute per address (the challenge picture draws at most `DRAWS_PER_MINUTE`) |
+| Friends, crews, rewards | 120 / 240 / 60 a minute per player, tighter on the routes that guess codes or give things away (join 10, add a friend 20, gifts 20) |
+| Bug reports and ideas | 10 a minute per address, one of each a day per address (and per friend code for bugs) |
+| Ideas in the game, fund gifts | 10 and 30 a minute per player, one idea a day, 20,000,000 in gifts a day |
+| Cloud sync | 120 a minute per address; 10 new copies an hour per address, 300 an hour for all addresses together |
+| `/v1/admin` (the token is tried at this speed) | 60 a minute per address, right or wrong |
+| Challenges, notifications, invites, crews | 60 an hour per address · 60 an hour per address · 10 an hour per player · 5 new crews an hour per player |
+
+A new route is covered by the flood guard from the first day; give it a tighter limit of its own when it writes, guesses codes or draws.
+
+## Erasing a player
+
+`DELETE /v1/me` (and `DELETE /v1/admin/players/:id`) **deletes** the player, it does not blank the row (Leo, 24.10.2026). `erasePlayer` first asks the modules (`ctx.onErase`) to tidy
+what has no foreign key, then deletes the row; everything else follows the schema:
+
+| Data | What happens |
+| --- | --- |
+| Scores, friends, friend code, rewards, notification devices linked to the player, invites | `ON DELETE CASCADE`: gone |
+| Bug reports, ideas, fund gifts, challenges | `ON DELETE SET NULL`: the text and the amount stay, without the player (a gift still counts towards its idea) |
+| Crew | Out of the crew first (`CrewStore.forget`): the founder's crew passes to the member who joined first, the last one out closes it (open gifts go back, the crew's XP goes), day-by-day XP and taken gifts they sent are deleted; gifts still waiting can still be taken |
+| Cloud copy | Belongs to no player: the game's **Delete account** removes it too (`DELETE /v1/sync`); "Remove me from the leaderboard" leaves it, and an unused copy goes after 200 days |
+
+Why not set every value to `NULL`? `players.name`, `name_key` and `token_hash` are `NOT NULL UNIQUE` (a table rebuild to change that), every list that joins `players` would
+show empty ghost rows, the scores would still point to a person, and an erasure request means the personal data goes. A deleted account also cannot be banned any more; accounts are anonymous, so a ban never held against a new name anyway.
+Two small losses are accepted: an invite does not pay when the inviter erased their account first, and a gift that comes back to an erased sender is not paid out.
 
 ## Adding a feature
 
@@ -204,7 +236,7 @@ curl -X PATCH  -H "$H" -d '{"banned":true}' "$API/v1/admin/players/<id>"    # hi
 curl -X PATCH  -H "$H" -d '{"name":"Player 123"}' "$API/v1/admin/players/<id>" # rename (skips the name filter)
 curl -X DELETE -H "$H" "$API/v1/admin/scores/unlimited/<id>"                # remove one score
 curl -X DELETE -H "$H" "$API/v1/admin/players/<id>"                         # remove player and scores
-curl -H "$H" "$API/v1/admin/feedback?kind=bug&status=new"                   # bug reports (kind=idea: ideas)
+curl -H "$H" "$API/v1/admin/feedback?kind=bug&status=new"                   # bug reports (ideas: /v1/admin/ideas)
 curl -X PATCH  -H "$H" -d '{"status":"done"}' "$API/v1/admin/feedback/<id>" # new · seen · done · wontfix
 curl -X POST   -H "$H" -d '{"friendCode":"K7M2-9QXA","item":"chest:premium"}' "$API/v1/admin/rewards"
 curl -X POST   -H "$H" -d '{"friendCode":"K7M2-9QXA","item":"money","amount":50000}' "$API/v1/admin/rewards"
@@ -235,7 +267,7 @@ Stored per player: the chosen name, a random id, a hash of the secret token, the
 level / cars they came with), the friend code and the friends list, and two timestamps. No e-mail,
 no IP address (rate limits live in memory only). `DELETE /v1/me` removes all of it.
 Invites: one line per invited player (who brought them, when they reached the level); it goes when either player is deleted.
-Bug reports and ideas: the text, the sender when they gave a friend code (deleting the player keeps the text without them), and a hash of the address for up to two days (the once-a-day limit). Rewards hang off the player and go with them.
+Bug reports and ideas: the text, the sender when they gave a friend code or, in the game, their player (deleting the player keeps the text without them), and a hash of the address for up to two days (the once-a-day limit). Rewards hang off the player and go with them.
 Notifications: per device the push address and its two keys, the time zone, the start path, when it was last
 seen and last notified, how many come-back nudges went out, the timers the game sent (with their words) and,
 with a name, the link to the player and their last rank on the all-time boards. `DELETE /v1/push` removes the

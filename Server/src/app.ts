@@ -18,6 +18,7 @@ import { leaderboardModule } from './modules/leaderboard/index.ts';
 import { playersModule } from './modules/players/index.ts';
 import { pushModule } from './modules/push/index.ts';
 import { referralsModule } from './modules/referrals/index.ts';
+import { rateLimit } from './rateLimit.ts';
 import { crewsModule } from './modules/crews/index.ts';
 import { rtcModule } from './modules/rtc/index.ts';
 import { syncModule } from './modules/sync/index.ts';
@@ -57,7 +58,7 @@ export interface AppOptions {
 }
 
 export function createApp(options: AppOptions): Hono<AppEnv> {
-  const ctx: ServerContext = { db: options.db, config: options.config, now: options.now ?? Date.now, onScore: [] };
+  const ctx: ServerContext = { db: options.db, config: options.config, now: options.now ?? Date.now, onScore: [], onErase: [] };
   const list = options.modules ?? modules();
   for (const m of list) migrate(ctx.db, m.name, m.migrations, ctx.now());
 
@@ -83,6 +84,10 @@ export function createApp(options: AppOptions): Hono<AppEnv> {
     c.header('Cache-Control', 'no-store');
     await next();
   });
+  // A flood guard over everything (also routes added later); the routes below have tighter limits of their own.
+  // Generous on purpose: a school or a household shares one address.
+  const flood = rateLimit<AppEnv>({ max: 1200, windowMs: 60_000 }, (c) => c.get('ip'), ctx.now);
+  app.use('*', (c, next) => (c.req.path === '/healthz' ? next() : flood(c, next)));
 
   app.get('/healthz', (c) => {
     ctx.db.prepare('SELECT 1').get();

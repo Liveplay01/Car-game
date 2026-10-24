@@ -213,7 +213,16 @@ export class CrewStore {
       if (this.count(crew.id) > 0) return;
       for (const gift of this.openGifts(crew.id)) this.sendBack(gift, now);
       this.db.prepare('DELETE FROM crews WHERE id = ?').run(crew.id);
+      // No foreign key on the XP: it would outlive the crew. The gifts stay as the ledger of the weekly gift limits.
+      this.db.prepare('DELETE FROM crew_xp WHERE crew_id = ?').run(crew.id);
     });
+  }
+
+  /** A player is being erased: out of the crew, their day-by-day XP and the gifts they sent that were taken (the week's XP they added to the crew stays, unnamed; a gift still waiting can still be taken). */
+  forget(playerId: string, now: number): void {
+    this.leave(playerId, now);
+    this.db.prepare('DELETE FROM crew_xp_days WHERE player_id = ?').run(playerId);
+    this.db.prepare('DELETE FROM crew_gifts WHERE from_id = ? AND claimed_at IS NOT NULL').run(playerId);
   }
 
   // MARK: The week

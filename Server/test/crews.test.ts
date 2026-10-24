@@ -29,7 +29,7 @@ function setup() {
     return { token: made.json.token as string, id: made.json.player.id as string };
   };
   const pending = async (token: string) => ((await call('GET', '/v1/me/rewards', { token })).json.rewards as { item: string; reason: string }[]).map((r) => `${r.item} ${r.reason}`);
-  return { call, clock, join, pending };
+  return { call, clock, join, pending, db };
 }
 
 test('crews: found, invite by link, join, rename once in 30 days, leave', async () => {
@@ -125,6 +125,25 @@ test('crews: gifts to the crew go to whoever is first; gifts to one member only 
 
   for (let i = 0; i < GIFTS_PER_DAY; i++) await call('POST', '/v1/crews/gifts', { token: ben.token, body: { item: 'money:5000', to: null } });
   assert.equal((await call('POST', '/v1/crews/gifts', { token: ben.token, body: { item: 'money:5000', to: null } })).status, 429);
+});
+
+test('erasing a player leaves no crew behind: the founder hands over, the last one out closes it', async () => {
+  const { call, join, db } = setup();
+  const anna = await join('Anna');
+  const ben = await join('Ben');
+  const crew = (await call('POST', '/v1/crews', { token: anna.token, body: { name: 'Night Shift' } })).json.crew;
+  await call('POST', '/v1/crews/join', { token: ben.token, body: { code: crew.code } });
+  assert.equal((await call('POST', '/v1/crews/xp', { token: anna.token, body: { xp: 300 } })).json.taken, 300);
+  assert.equal((await call('POST', '/v1/crews/gifts', { token: ben.token, body: { item: 'money:5000', to: null } })).status, 201);
+  const count = (table: string): number => (db.prepare(`SELECT COUNT(*) AS n FROM ${table}`).get() as { n: number }).n;
+
+  assert.equal((await call('DELETE', '/v1/me', { token: anna.token })).status, 204);
+  const left = (await call('GET', '/v1/crews', { token: ben.token })).json.crew;
+  assert.deepEqual(left.members.map((m: { name: string; owner: boolean }) => [m.name, m.owner]), [['Ben', true]]);
+  assert.equal(count('crew_xp_days'), 0, 'the day-by-day XP of the erased player is gone');
+
+  assert.equal((await call('DELETE', '/v1/me', { token: ben.token })).status, 204);
+  for (const table of ['crews', 'crew_members', 'crew_weeks', 'crew_xp', 'crew_gifts']) assert.equal(count(table), 0, `${table} is empty`);
 });
 
 test('league: computer crews grow over the week, the same for everyone; places move crews', () => {

@@ -11,6 +11,8 @@ import { DAY_MS, FEEDBACK_KINDS, FEEDBACK_MIGRATIONS, FeedbackStore, hashIp, typ
 /**
  * Build with us (Leo, 03.10.2026): bug reports and feature ideas from the website's form.
  * One of each a day per address (and per friend code); a honeypot field catches simple bots.
+ * An idea does not stay here (Leo, 24.10.2026): it becomes a Game Fund idea (`modules/ideas`), the same as one from the game.
+ * Only bug reports are rows of `feedback` from now on.
  * A bug report with a friend code pays the next bug hunter skin (Ladybug, then Goldbug and so on, six in all; and whatever a moderator
  * grants later); the game picks rewards up with its token.
  *
@@ -66,16 +68,21 @@ export function feedbackModule(): ServerModule {
 
         const now = ctx.now();
         const ipHash = hashIp(c.get('ip'), ctx.config.feedbackIpSecret);
-        const last = Math.max(store.lastFrom(ipHash, kind) ?? 0, player ? (store.lastBy(player.id, kind) ?? 0) : 0);
+        const ideas = new IdeaStore(ctx.db);
+        const last = kind === 'idea' ? (ideas.lastFrom(ipHash) ?? 0) : Math.max(store.lastFrom(ipHash, kind) ?? 0, player ? (store.lastBy(player.id, kind) ?? 0) : 0);
         if (now - last < DAY_MS) {
           const wait = Math.ceil((last + DAY_MS - now) / 1000);
           const what = kind === 'bug' ? 'a bug report' : 'an idea';
           throw new ApiError(429, 'once_a_day', `You already sent ${what} today. One a day keeps the list readable: come back tomorrow.`, { 'Retry-After': String(wait) });
         }
 
+        // An idea is a Game Fund idea like those from the game: it waits to be reworded and published (`/admin` → Ideas). No bug-report row.
+        if (kind === 'idea') {
+          const id = ideas.add('feedback', text, null, now, ipHash);
+          notify(ctx.config.feedbackWebhookUrl, kind, text, null);
+          return c.json({ id, reward: null }, 201);
+        }
         const id = store.add(kind, text, player?.id ?? null, ipHash, now);
-        // An idea also waits in the Club's queue until it is reworded and published (`/admin` → Club ideas).
-        if (kind === 'idea') new IdeaStore(ctx.db).add('feedback', text, null, now, id);
         const skin = player ? store.nextBugHunterSkin(player.id) : null;
         const reward = player && skin && store.grant(player.id, skin, 'bug report', now, true) ? skin : null;
         notify(ctx.config.feedbackWebhookUrl, kind, text, player?.name ?? null);
@@ -84,6 +91,7 @@ export function feedbackModule(): ServerModule {
 
       const me = new Hono<PlayerEnv>();
       me.use('*', requirePlayer(players));
+      me.use('*', rateLimit<PlayerEnv>({ max: 60, windowMs: 60_000 }, (c) => c.get('player').id, ctx.now));
       me.get('/', (c) => c.json({ rewards: store.pending(c.get('player').id) }));
       me.post('/claim', async (c) => {
         const { ids } = await readJson(c);

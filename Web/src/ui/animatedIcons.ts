@@ -127,6 +127,11 @@ const lock = wrap('lock',
   `@keyframes aiLkSh{0%,22%{transform:none}34%{transform:translateY(-3.4px) rotate(28deg)}40%{transform:translateY(-3px) rotate(22deg)}66%{transform:translateY(-3px) rotate(22deg)}80%,100%{transform:none}}`,
   `<path class="sh" d="M8 11V8a4 4 0 0 1 8 0v3"/><g class="bd"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M12 15v2"/></g>`);
 
+const help = wrap('help',
+  `.ai-help .lb{${vb}transform-origin:12px 12px}` + on('help', '.lb', 'aiHpTurn', '1.2s', 'cubic-bezier(.3,0,.2,1)') +
+  `@keyframes aiHpTurn{0%{transform:rotate(0)}48%{transform:rotate(104deg)}64%{transform:rotate(86deg)}76%,100%{transform:rotate(90deg)}}`,
+  `<g class="lb"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3.8"/><path d="M5.6 5.6l3.7 3.7M18.4 5.6l-3.7 3.7M5.6 18.4l3.7-3.7M18.4 18.4l-3.7-3.7"/></g>`);
+
 export const ANIMATED_ICONS = {
   coin,
   heat,
@@ -140,6 +145,7 @@ export const ANIMATED_ICONS = {
   gear,
   siren,
   lock,
+  help,
   pause: wrap('pause',
     `.ai-pause .b{${fb}transform-origin:50% 100%}` + on('pause', '.b1', 'aiPaB', '1s') + on('pause', '.b2', 'aiPaB', '1s', 'cubic-bezier(.23,1,.32,1)', '.1s') +
     `@keyframes aiPaB{0%{transform:none}18%{transform:scale(1.15,.6)}42%{transform:scale(.95,1.08)}60%,100%{transform:none}}`,

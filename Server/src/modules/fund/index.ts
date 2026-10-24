@@ -2,7 +2,7 @@ import { Hono } from 'hono';
 import { transaction, type Db } from '../../db.ts';
 import { ApiError } from '../../errors.ts';
 import { integerField, readJson } from '../../http.ts';
-import type { ServerContext, ServerModule } from '../../module.ts';
+import type { AppEnv, ServerContext, ServerModule } from '../../module.ts';
 import { rateLimit } from '../../rateLimit.ts';
 import { PlayerStore, maybePlayer, requirePlayer, type PlayerEnv } from '../players/index.ts';
 
@@ -139,7 +139,7 @@ export function fundModule(): ServerModule {
       const who = maybePlayer(players);
       const view = (playerId: string | null) => ({ projects: fund.projects(playerId), top: fund.top(), minGift: MIN_GIFT, maxGift: MAX_GIFT });
 
-      app.get('/fund', (c) => c.json(view(who(c)?.id ?? null)));
+      app.get('/fund', rateLimit<AppEnv>({ max: 60, windowMs: 60_000 }, (c) => c.get('ip'), ctx.now), (c) => c.json(view(who(c)?.id ?? null)));
 
       const give = new Hono<PlayerEnv>();
       give.use('*', requirePlayer(players));

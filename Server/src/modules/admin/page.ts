@@ -54,11 +54,11 @@ export const ADMIN_PAGE = `<!doctype html>
 <body>
 <main>
   <h1>Build with us · Inbox</h1>
-  <p class="sub">Bug reports and feature ideas from timing.love.</p>
+  <p class="sub">Bug reports from timing.love. Every feature idea (from the game and from timing.love) is a Game Fund idea: see the purple button.</p>
   <form class="bar" id="login">
     <input id="token" type="password" placeholder="Admin token" autocomplete="current-password" style="flex:1;min-width:220px">
     <button class="primary" type="submit">Load</button>
-    <button class="club" type="button" id="clubBtn" aria-pressed="false">Club ideas<span class="badge" id="clubBadge">0</span></button>
+    <button class="club" type="button" id="clubBtn" aria-pressed="false">Game Fund ideas<span class="badge" id="clubBadge">0</span></button>
   </form>
   <div id="clubView" hidden>
     <div class="bar">
@@ -71,7 +71,7 @@ export const ADMIN_PAGE = `<!doctype html>
       </div>
       <span class="counts" id="ideaCounts"></span>
     </div>
-    <p class="sub">Reword an idea so it fits the game, then publish it: players give money to it until it has 30,000,000. Ideas from the Club and from Build with us land here.</p>
+    <p class="sub">Reword an idea so it fits the game, then publish it: players give money to it until it has 30,000,000. Every feature idea lands here, from the game and from timing.love/build, and timing.love/build lists the published ones.</p>
     <details class="card" id="newIdea">
       <summary><strong>Write a new idea</strong></summary>
       <form id="ideaForm" style="margin-top:12px">
@@ -88,7 +88,6 @@ export const ADMIN_PAGE = `<!doctype html>
     <div class="seg" id="kind" role="group" aria-label="Kind">
       <button type="button" data-v="" aria-pressed="true">All</button>
       <button type="button" data-v="bug" aria-pressed="false">Bugs</button>
-      <button type="button" data-v="idea" aria-pressed="false">Ideas</button>
     </div>
     <select id="status" aria-label="Status">
       <option value="">Every status</option><option value="new">New</option><option value="seen">Seen</option><option value="done">Done</option><option value="wontfix">Won't fix</option>
@@ -151,7 +150,7 @@ export const ADMIN_PAGE = `<!doctype html>
           rejected: btn('pending', 'Back to pending'),
         }[i.status];
         return '<article class="card" data-id="' + i.id + '">' +
-          '<div class="meta"><span class="tag club">' + (i.source === 'club' ? 'Club' : i.source === 'team' ? 'Team' : 'Build with us') + '</span><span>' + when(i.createdAt) + '</span>' +
+          '<div class="meta"><span class="tag club">' + (i.source === 'club' ? 'In the game' : i.source === 'team' ? 'Team' : 'timing.love') + '</span><span>' + when(i.createdAt) + '</span>' +
           (i.player ? '<span>' + esc(i.player.name) + (i.player.code ? ' · <code>' + esc(i.player.code.replace(/(.{4})(?=.)/g, '$1-')) + '</code>' : '') + '</span>' : '') +
           (i.status === 'open' || i.status === 'building' || i.status === 'built' ? '<span>' + millions(i.raised) + ' of 30M</span>' : '') + '</div>' +
           '<p class="orig">' + esc(i.original) + '</p>' +
@@ -187,7 +186,7 @@ export const ADMIN_PAGE = `<!doctype html>
     if ($('status').value) q.set('status', $('status').value);
     try {
       const data = await api('GET', '/feedback?' + q);
-      $('counts').textContent = 'Bugs ' + data.counts.bug.new + ' new / ' + data.counts.bug.total + ' · Ideas ' + data.counts.idea.new + ' new / ' + data.counts.idea.total;
+      $('counts').textContent = 'Bugs ' + data.counts.bug.new + ' new / ' + data.counts.bug.total;
       $('list').innerHTML = data.items.length ? data.items.map((f) => '<article class="card" data-id="' + f.id + '">' +
         '<div class="meta"><span class="tag ' + f.kind + '">' + (f.kind === 'bug' ? 'Bug' : 'Idea') + '</span><span>' + when(f.createdAt) + '</span>' +
         '<span class="status-' + f.status + '">' + f.status + '</span>' +

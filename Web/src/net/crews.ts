@@ -1,4 +1,5 @@
 import { storage } from '../storage/store';
+import { crewCodeIn } from './pasted';
 import { S } from '../present/strings';
 import { type BoardId, type BoardView, LeaderboardError, apiRequest, dayQuery, leaderboardEnabled, loadAccount } from './leaderboard';
 
@@ -80,6 +81,8 @@ export interface CrewPreview {
 }
 
 const PENDING_KEY = 'carGame.crewInvite.v1';
+/** The crew the player last turned down or joined: a link to it in the clipboard is not offered again. */
+const SETTLED_KEY = 'carGame.crewInvite.settled.v1';
 const XP_KEY = 'carGame.crewXp.v1';
 /** The crew code's alphabet (`Server/src/codes.ts`). */
 const CODE = /^[ABCDEFGHJKMNPQRSTUVWXYZ23456789]{8}$/;
@@ -117,7 +120,22 @@ export const pendingCrew = (): string | null => {
   return code && CODE.test(code) ? code : null;
 };
 
-export const dropPendingCrew = (): void => write(PENDING_KEY, null);
+export function dropPendingCrew(): void {
+  const code = read(PENDING_KEY);
+  if (code) write(SETTLED_KEY, code);
+  write(PENDING_KEY, null);
+}
+
+/**
+ * A crew's link found in text the player copied (`net/pasted.ts`), kept like one that opened the game. False when there is none.
+ * `asked`: the player tapped Paste, so a bare code counts and an older "not now" does not.
+ */
+export function adoptCrewText(text: string, asked = false): boolean {
+  const code = crewCodeIn(text, asked);
+  if (!code || !leaderboardEnabled || (!asked && code === read(SETTLED_KEY))) return false;
+  write(PENDING_KEY, code);
+  return true;
+}
 
 declare global {
   interface Window {

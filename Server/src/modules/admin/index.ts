@@ -3,7 +3,9 @@ import { Hono } from 'hono';
 import { ApiError } from '../../errors.ts';
 import { readJson } from '../../http.ts';
 import type { AppEnv, ServerContext, ServerModule } from '../../module.ts';
+import { rateLimit } from '../../rateLimit.ts';
 import { checkName } from '../players/names.ts';
+import { erasePlayer } from '../players/index.ts';
 import { NameTaken, PlayerStore } from '../players/store.ts';
 import { boardById } from '../leaderboard/boards.ts';
 import { ScoreStore } from '../leaderboard/store.ts';
@@ -50,6 +52,8 @@ export function adminModule(): ServerModule {
       const tuning = new TuningStore(ctx.db);
 
       const admin = new Hono<AppEnv>();
+      // Every try counts, right or wrong: the token cannot be guessed at this speed.
+      admin.use('*', rateLimit<AppEnv>({ max: 60, windowMs: 60_000 }, (c) => c.get('ip'), ctx.now));
       admin.use('*', async (c, next) => {
         const given = Buffer.from(/^Bearer (\S+)$/.exec(c.req.header('authorization') ?? '')?.[1] ?? '');
         if (given.length !== expected.length || !timingSafeEqual(given, expected)) throw new ApiError(401, 'unauthorized', 'Wrong admin token.');
@@ -79,7 +83,7 @@ export function adminModule(): ServerModule {
       });
 
       admin.delete('/players/:id', (c) => {
-        if (!players.delete(c.req.param('id'))) throw new ApiError(404, 'not_found', 'No such player.');
+        if (!erasePlayer(ctx, players, c.req.param('id'))) throw new ApiError(404, 'not_found', 'No such player.');
         return c.body(null, 204);
       });
 

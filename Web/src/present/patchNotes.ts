@@ -53,15 +53,19 @@ export const PATCH_NOTES: PatchNote[] = [
   {
     id: '2026-10-24',
     date: '24 October 2026',
-    title: 'Cars lean into the brakes, every good merge rings a note, Halloween',
+    title: 'Paste a code and the game finds it, a Support page, every idea in the Game Fund',
     impact: 'minor',
     summary: [
-      'New app icon: the roundabout from above, on green.',
+      'Copied a code or crew link? The game finds it: tap Paste instead of typing.',
+      'Help and support: Settings → About opens answers and a way to write to us.',
+      'Every feature idea is a Game Fund idea now, listed on timing.love/build too.',
       'Good merges add notes to the music, and long combos grow into a short melody.',
-      'Halloween on 31 October: orange and violet lights on the roofs and pumpkins on the doorsteps.',
-      'A calmer mix: softer sirens and horns, and good merges are now just a note of the melody.',
     ],
     items: [
+      'Paste instead of typing. Copy a sync code, a multiplayer room code or a crew invite link, and the game finds it: the Cloud sync and multiplayer fields fill in when you open them, the button says Paste while the field is empty, and Social → Crew offers the crew from a link you copied, or Paste an invite link. Where your browser lets the game look at the clipboard quietly it happens by itself; otherwise one tap on Paste does it. Only a code or a link is ever taken, never other text.',
+      'Help and support. Settings → About links to timing.love/support, with answers on getting your progress back, moving to a new phone, changing your name, joining a crew, deleting your account and playing problems, and how to write to us.',
+      'Every feature idea is a Game Fund idea. An idea sent on timing.love/build now waits in the same list as the ones from the game, and the published ideas are listed on timing.love/build with how far players have funded them.',
+      'Fixed: deleting your account also takes you out of your crew, so a crew never stays behind with nobody in it. The founder\'s crew passes to the member who joined first.',
       'A calmer mix. The ambulance, the wanted siren and the alarm are rounder and quieter, a horn or siren that sounds while another one still rings is half as loud, and the siren in the music is gentler. A near miss, a tight fit and a perfect merge no longer have their own ping or thump while the music is on: each plays only its note of the melody, so the melody stands out. Under each note the traffic and the music dip for a moment.',
       'The app has a new icon: the roundabout from above with a car turning in, on green. The same goes for the home-screen and install icons.',
       'The pickers inside a page (the Casino games, the Collection shelves) look and glide like the Club\'s: one grey track with a thumb that slides to your choice, the same as the page switches above them. The shelves no longer show their owned counts on the tabs; the groups under them still do.',

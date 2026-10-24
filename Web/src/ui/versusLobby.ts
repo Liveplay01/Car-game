@@ -1,4 +1,5 @@
 import { h, animatedIcon } from './dom';
+import { canPaste, pasteClipboard, peekClipboard } from './clipboard';
 import { openSheet, swapView } from './sheets';
 import { share } from './share';
 import { inviteLink } from './crazygames';
@@ -8,6 +9,7 @@ import type { SessionOutput } from '../present/session';
 import { VERSUS_MAX_PLAYERS, VERSUS_MIN_PLAYERS, BEST_OF, isJoinCode, isSeriesOver, newSeries, type Series } from '../core/versus';
 import { loadPlayerName, savePlayerName, seatToken } from '../storage/profile';
 import { loadAccount } from '../net/leaderboard';
+import { joinCodeIn } from '../net/pasted';
 import { S } from '../present/strings';
 
 export interface LobbyEvents {
@@ -78,6 +80,14 @@ export class VersusLobby {
       if (!this.match) this.leave(null);
     });
     this.render();
+    // A room code copied before the sheet opened is already in the field (quietly, where the browser lets us look): one tap joins.
+    void peekClipboard().then((text) => {
+      const code = text && joinCodeIn(text);
+      if (code && this.body && !this.room && this.draft === '') {
+        this.draft = code;
+        this.render();
+      }
+    });
   }
 
   /** `#join=1234`: opens the sheet and joins at once. */
@@ -131,6 +141,18 @@ export class VersusLobby {
     this.room = room;
     for (let i = 1; i < VERSUS_MAX_PLAYERS; i++) room.addBot();
     this.render();
+  }
+
+  /** The Paste button: the room code a friend sent, joined at once. */
+  private async pasteCode(): Promise<void> {
+    const code = joinCodeIn((await pasteClipboard()) ?? '');
+    if (!code) {
+      this.error = S.lobby.pasteNone;
+      this.render();
+      return;
+    }
+    this.draft = code;
+    this.join();
   }
 
   private join(): void {
@@ -320,11 +342,18 @@ export class VersusLobby {
       'aria-label': S.lobby.fourDigit,
       value: this.draft,
     });
-    const joinBtn = h('button', { class: 'btn', type: 'button', disabled: !isJoinCode(this.draft), onclick: () => this.join() }, S.lobby.join);
+    // With nothing typed the button pastes the code a friend sent; with a code in the field it joins.
+    const pasting = (): boolean => canPaste() && this.draft === '';
+    const joinBtn = h('button', { class: 'btn', type: 'button', onclick: () => (pasting() ? void this.pasteCode() : this.join()) });
+    const refresh = (): void => {
+      joinBtn.textContent = pasting() ? S.lobby.paste : S.lobby.join;
+      joinBtn.disabled = !pasting() && !isJoinCode(this.draft);
+    };
+    refresh();
     input.addEventListener('input', () => {
       input.value = input.value.replace(/\D/g, '').slice(0, 4);
       this.draft = input.value;
-      joinBtn.disabled = !isJoinCode(this.draft);
+      refresh();
       // The fourth digit completes the code: no need to tap Join (Leo, 05.10.2026).
       if (isJoinCode(this.draft)) this.join();
     });

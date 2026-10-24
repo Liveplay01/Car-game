@@ -103,8 +103,11 @@ export function crewsModule(): ServerModule {
         };
       };
 
+      ctx.onErase.push((playerId, now) => crews.forget(playerId, now));
+
       const group = new Hono<PlayerEnv>();
       group.use('*', requirePlayer(players));
+      group.use('*', byPlayer({ max: 240, windowMs: 60_000 }));
 
       group.get('/', (c) => {
         c.header('Cache-Control', 'private, no-store');
@@ -242,7 +245,7 @@ export function crewsModule(): ServerModule {
     pages(app, ctx: ServerContext) {
       const crews = new CrewStore(ctx.db);
       // Never a dead end: an unknown code still sends people to the game, only without the crew.
-      app.get('/k/:code', (c) => {
+      app.get('/k/:code', rateLimit<AppEnv>({ max: 60, windowMs: 60_000 }, (c) => c.get('ip'), ctx.now), (c) => {
         const game = ctx.config.gameUrl;
         withHeaders(c, PAGE_HEADERS);
         if (!game) return c.body(page('Roundabout Timing', '<meta name="robots" content="noindex">', '<p>This crew link is not set up.</p>'), 404);

@@ -57,11 +57,13 @@ test('feedback: one bug report and one idea a day, a honeypot, and a bug hunter 
   assert.equal(next.status, 201);
   assert.equal(next.json.reward, 'goldbug');
 
-  // The inbox: two bugs (more below), one idea, the bot's never arrived.
+  // The inbox holds the two bugs (more below). The idea went to the Game Fund queue instead; the bot's never arrived.
   assert.equal((await call('GET', '/v1/admin/feedback')).status, 401);
   const inbox = await call('GET', '/v1/admin/feedback', { token: ADMIN });
-  assert.equal(inbox.json.items.length, 3);
-  assert.deepEqual(inbox.json.counts, { bug: { total: 2, new: 2 }, idea: { total: 1, new: 1 } });
+  assert.equal(inbox.json.items.length, 2);
+  assert.deepEqual(inbox.json.counts, { bug: { total: 2, new: 2 }, idea: { total: 0, new: 0 } });
+  const queued = await call('GET', '/v1/admin/ideas?status=pending', { token: ADMIN });
+  assert.deepEqual(queued.json.items.map((i: { source: string; original: string }) => [i.source, i.original]), [['feedback', 'A night mode with headlights only.']]);
   assert.equal(inbox.json.items[0].player.name, 'Bughunter');
   const id = inbox.json.items[0].id as string;
   assert.equal((await call('PATCH', `/v1/admin/feedback/${id}`, { token: ADMIN, body: { status: 'done' } })).status, 200);
@@ -124,7 +126,7 @@ test('feedback: with FEEDBACK_IP_SECRET the stored address hash cannot be worked
   const send = async () =>
     (await app.request('/v1/feedback', { method: 'POST', headers: { 'content-type': 'application/json', 'x-forwarded-for': '10.0.0.1' }, body: JSON.stringify({ kind: 'idea', text: 'Please add a night mode.' }) })).status;
   assert.equal(await send(), 201);
-  const { ip_hash } = db.prepare('SELECT ip_hash FROM feedback').get() as { ip_hash: string };
+  const { ip_hash } = db.prepare('SELECT ip_hash FROM ideas').get() as { ip_hash: string };
   assert.equal(ip_hash, hashIp('10.0.0.1', secret));
   assert.notEqual(ip_hash, hashIp('10.0.0.1', null), 'not the plain hash anyone could compute');
   assert.notEqual(ip_hash, hashIp('10.0.0.1', 'z'.repeat(32)), 'another secret, another hash');

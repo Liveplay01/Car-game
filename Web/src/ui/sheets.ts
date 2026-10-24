@@ -500,6 +500,9 @@ const crazyGamesRow = (): HTMLElement =>
 const websiteRow = (): HTMLElement =>
   externalRow(WEBSITE_PAGE, '<img src="/icons/icon-192.png" alt="" width="30" height="30" decoding="async" />', S.settings.website.title, S.settings.website.sub);
 
+/** Help and support (Leo, 24.10.2026): timing.love/support, answers first, then the way to a person. */
+const supportRow = (): HTMLElement => tileExternalRow('help', 'blue', S.settings.support.title, S.settings.support.sub, `${WEBSITE_PAGE}support`);
+
 const wikiRow = (): HTMLElement => externalRow(WIKI_PAGE, FANDOM_LOGO, S.settings.wiki.title, S.settings.wiki.sub);
 
 function socialRow(iconPath: string, tone: string, title: string, sub: string, href: string): HTMLAnchorElement {
@@ -929,6 +932,7 @@ export function settingsSheet(layer: HTMLElement, s: Settings, actions: Settings
         linkRow(S.settings.guides, S.settings.guidesSub, () => actions.openGuides()),
         richLinkRow(S.settings.whatsNew, S.settings.whatsNewSub, () => actions.openNotes(), null, actions.notesUnread ? h('span', { class: 'new-pill' }, S.settings.newBadge) : null),
         inPortal ? null : websiteRow(),
+        inPortal ? null : supportRow(),
         wikiRow(),
         inPortal || inItch || inPlayStore ? null : crazyGamesRow(),
       ),

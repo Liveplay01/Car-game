@@ -1,7 +1,7 @@
 import { Hono } from 'hono';
 import { ApiError } from '../../errors.ts';
 import { cleanText, integerField, readJson } from '../../http.ts';
-import type { ServerContext, ServerModule } from '../../module.ts';
+import type { AppEnv, ServerContext, ServerModule } from '../../module.ts';
 import { rateLimit } from '../../rateLimit.ts';
 import { DAY_MS } from '../feedback/store.ts';
 import { FundStore, MAX_GIFT, MIN_GIFT } from '../fund/index.ts';
@@ -29,7 +29,8 @@ export function ideasModule(): ServerModule {
       const who = maybePlayer(players);
       const view = (playerId: string | null) => ({ ideas: ideas.published(playerId), goal: IDEA_GOAL, minGift: MIN_GIFT, maxGift: MAX_GIFT });
 
-      app.get('/ideas', (c) => c.json(view(who(c)?.id ?? null)));
+      // Read by the website too (timing.love/build lists the open ideas), so a visitor may ask now and then.
+      app.get('/ideas', rateLimit<AppEnv>({ max: 60, windowMs: 60_000 }, (c) => c.get('ip'), ctx.now), (c) => c.json(view(who(c)?.id ?? null)));
 
       const named = new Hono<PlayerEnv>();
       named.use('*', requirePlayer(players));

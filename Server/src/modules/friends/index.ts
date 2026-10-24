@@ -87,6 +87,7 @@ export function friendsModule(): ServerModule {
 
       const group = new Hono<PlayerEnv>();
       group.use('*', requirePlayer(players));
+      group.use('*', rateLimit<PlayerEnv>({ max: 120, windowMs: 60_000 }, (c) => c.get('player').id, ctx.now));
 
       group.get('/', (c) => {
         const me = c.get('player');

@@ -13,6 +13,11 @@ export interface ServerContext {
    * progress (an invite that reaches its level) adds itself here instead of the leaderboard knowing it.
    */
   onScore: ((event: ScoreEvent) => void)[];
+  /**
+   * Heard just before a player is erased (their own request or a moderator). A module whose rows do not
+   * cascade from `players(id)` (a crew, XP by day) tidies up here. Each listener runs its own transaction.
+   */
+  onErase: ((playerId: string, now: number) => void)[];
 }
 
 export interface ScoreEvent {

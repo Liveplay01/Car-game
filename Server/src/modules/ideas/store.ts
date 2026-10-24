@@ -32,6 +32,9 @@ export const IDEAS_MIGRATIONS: readonly string[] = [
   // The ideas that came in through "Build with us" before the Club took them: the unread ones join the queue.
   `INSERT INTO ideas (id, source, feedback_id, original, created_at)
    SELECT lower(hex(randomblob(16))), 'feedback', id, text, created_at FROM feedback WHERE kind = 'idea' AND status IN ('new', 'seen')`,
+  // Since 24.10.2026 an idea from the website is an idea like any other (no `feedback` row): the address hash that keeps it to one a day lives here, and goes after two days.
+  'ALTER TABLE ideas ADD COLUMN ip_hash TEXT',
+  'CREATE INDEX ideas_by_ip ON ideas (ip_hash, created_at)',
 ];
 
 export interface IdeaView {
@@ -71,10 +74,17 @@ export class IdeaStore {
     this.db = db;
   }
 
-  add(source: IdeaSource, original: string, playerId: string | null, now: number, feedbackId: string | null = null): string {
+  add(source: IdeaSource, original: string, playerId: string | null, now: number, ipHash: string | null = null): string {
     const id = randomUUID();
-    this.db.prepare('INSERT INTO ideas (id, source, feedback_id, player_id, original, created_at) VALUES (?, ?, ?, ?, ?, ?)').run(id, source, feedbackId, playerId, original, now);
+    this.db.prepare('UPDATE ideas SET ip_hash = NULL WHERE ip_hash IS NOT NULL AND created_at < ?').run(now - 2 * 86_400_000);
+    this.db.prepare('INSERT INTO ideas (id, source, player_id, original, ip_hash, created_at) VALUES (?, ?, ?, ?, ?, ?)').run(id, source, playerId, original, ipHash, now);
     return id;
+  }
+
+  /** When this address last sent an idea from the website, or null (one a day). */
+  lastFrom(ipHash: string): number | null {
+    const row = this.db.prepare("SELECT MAX(created_at) AS at FROM ideas WHERE ip_hash = ? AND source = 'feedback'").get(ipHash) as { at: number | null };
+    return row.at;
   }
 
   /** When this player last suggested one in the Club, or null (one a day). */
