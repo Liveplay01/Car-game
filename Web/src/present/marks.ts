@@ -30,28 +30,50 @@ export class TyreMarks {
   static readonly thickness = 1.1;
   static readonly strength = 0.85;
 
+  /**
+   * The road gets worn (Leo, 24.10.2026): every skilled merge of the shift leaves the turn-in a touch darker and wider than the
+   * one before, up to `wearMost` merges, and it stays that way until the next shift begins. `worn` is the shift's count,
+   * `shown` what the eye has caught up to.
+   */
+  static readonly wearMost = 6;
+  static readonly wearOpacity = 0.07;
+  static readonly wearWidth = 0.12;
+
   private marks: Mark[] = [];
+  private worn = 0;
+  private shown = 0;
 
   static leavesMark(rating: MergeRating): boolean {
     return rating === 'tightFit' || rating === 'nearMiss' || rating === 'perfect';
   }
 
   add(snow = false): void {
+    this.worn = Math.min(TyreMarks.wearMost, this.worn + 1);
     this.marks.push({ age: 0, hold: snow ? 10 : TyreMarks.hold, fade: snow ? 12 : TyreMarks.fade });
   }
 
+  /** A new shift: the road is cleaned, the wear eases away. */
+  fade(): void {
+    this.worn = 0;
+  }
+
   update(dt: number): void {
-    if (dt <= 0 || this.marks.length === 0) return;
+    if (dt <= 0) return;
+    this.shown += (this.worn - this.shown) * Math.min(1, dt * (this.worn > this.shown ? 8 : 1.6));
+    if (Math.abs(this.worn - this.shown) < 0.01) this.shown = this.worn;
+    if (this.marks.length === 0) return;
     for (const m of this.marks) m.age += dt;
     this.marks = this.marks.filter((m) => m.age < m.hold + m.fade);
   }
 
   clear(): void {
     this.marks = [];
+    this.worn = 0;
+    this.shown = 0;
   }
 
   addGround(list: RenderList, layout: Layout, c: Config): void {
-    if (this.marks.length === 0) return;
+    if (this.marks.length === 0 && this.shown <= 0) return;
     // Every player merge turns in on the same curve: one opacity for all marks on it.
     let opacity = 0;
     for (const m of this.marks) {
@@ -59,7 +81,10 @@ export class TyreMarks {
       const fadeOut = 1 - Ease.smoothstep((m.age - m.hold) / m.fade);
       opacity = Math.max(opacity, fadeIn * fadeOut);
     }
+    // What stays of the worn turn-in under the fresh marks: faint, and wider the more has been driven over it.
+    opacity = Math.max(opacity, TyreMarks.wearOpacity * this.shown);
     if (opacity <= 0.01) return;
+    const thickness = TyreMarks.thickness + TyreMarks.wearWidth * this.shown;
     const path = layout.entry(layout.player);
     const track = c.carWidth / 2 - 1.5;
     const n = TyreMarks.segments;
@@ -72,7 +97,7 @@ export class TyreMarks {
         const to = add(pose.position, mul(left(fromAngle(pose.heading)), side * track));
         // Soft ends: the rubber builds up and thins out again.
         const taper = Math.sin((Math.PI * (k - 0.5)) / n);
-        list.w(line(from, to, TyreMarks.thickness), 'vehicleTire', TyreMarks.strength * opacity * taper);
+        list.w(line(from, to, thickness), 'vehicleTire', TyreMarks.strength * opacity * taper);
         from = to;
       }
     }

@@ -21,14 +21,17 @@ export function interpolatedPose(veh: Vehicle, alpha: number): Pose {
   return { position: lerpV(veh.prevPosition, veh.position, alpha), heading: veh.prevHeading + angleDelta(veh.prevHeading, veh.heading) * alpha };
 }
 
-/** Brake lights, headlight flashes, turn signals (left, right: 0…1) and the queue's nod (world units forward) by vehicle id. */
+/** Brake lights, turn signals (left, right: 0…1), the queue's nod (world units forward), the body's pitch and sway by vehicle id. */
 export interface Lamps {
   brake(id: number): number;
-  headlights(id: number): number;
   indicators(id: number): [number, number] | null;
+  /** A headlight flash (0…1): only a multiplayer match flashes them, for its own reasons. */
+  headlights?(id: number): number;
   nod(id: number): number;
   /** The body's dive under the brakes (positive) or squat under the throttle (negative), as a share of its length. */
   pitch(id: number): number;
+  /** How far the body leans out of a turn, sideways, in world units (positive: to its left). */
+  sway(id: number): number;
 }
 
 /** A multiplayer car in its player's colour: a painted roof, a glow, a lunge on the tap. */
@@ -53,6 +56,17 @@ export interface Beam {
 }
 
 /** A turn signal: the side (1 left, -1 right, 0 both: the hazards), when it began, and when it stops on its own. */
+/** A body on its springs: the pitch and the sideways lean, each a position and a speed, and what drives them. */
+interface Body {
+  x: number;
+  swing: number;
+  speed: number;
+  accel: number;
+  lean: number;
+  leanSwing: number;
+  yaw: number;
+}
+
 interface Signal {
   side: number;
   since: number;
@@ -61,7 +75,7 @@ interface Signal {
 
 /**
  * The lights of the traffic: brake lights come on quickly and fade a
- * little slower; the headlights flash twice when a tap is held for the car rolling up, and their beams
+ * little slower; the headlight beams
  * follow the car (it rolls up, it speeds, it turns) instead of switching.
  *
  * Small things a driver does (Leo, 23.10.2026): a car signals before its exit, so you see the gap coming;
@@ -80,6 +94,7 @@ export class VehicleLamps {
   static readonly signalAhead = 1.25;
   static readonly signalOut = 1.4;
   static readonly thanks = 2;
+  static readonly hazardTime = 6;
   static readonly twitch = 0.18;
   /** The queue's nod: how far forward (world units), how quickly it settles, and the lag from one car to the next. */
   static readonly nodDepth = 1.4;
@@ -89,6 +104,22 @@ export class VehicleLamps {
   static readonly waveLength = 0.24;
   static readonly waveLag = 0.07;
   /** How far the body pitches (share of its length at full braking), how fast its spring swings (Hz) and how soon it settles (damping ratio), by kind of vehicle. */
+  /** Seconds before its exit a car starts to signal: a learner early and careful, a lorry in good time, a sports car late and sure. */
+  static signalLead(type: VehicleType): number {
+    if (type === 'learner') return 2.1;
+    if (isHeavy(type)) return 1.6;
+    return type === 'sportsCar' || type === 'racer' || type === 'drift' ? 0.75 : VehicleLamps.signalAhead;
+  }
+
+  /** How far (world units) a body leans out of a full turn. */
+  private static leanOf(type: VehicleType): number {
+    if (isHeavy(type)) return 0.8;
+    if (type === 'bus') return 0.8;
+    if (type === 'motorbike') return 0.03;
+    if (type === 'sportsCar' || type === 'racer' || type === 'drift') return 0.06;
+    return type === 'van' || type === 'ambulance' || type === 'transporter' ? 0.4 : 0.2;
+  }
+
   private static suspension(type: VehicleType): [amount: number, hertz: number, damping: number] {
     if (isHeavy(type)) return [0.05, 1.6, 0.3];
     switch (type) {
@@ -113,15 +144,15 @@ export class VehicleLamps {
   calm = false;
   private brakes = new Map<number, number>();
   private beams = new Map<number, Beam>();
-  private flash: { vehicle: number; age: number } | null = null;
-  private hadHeldTap = false;
   private clock = 0;
   private signals = new Map<number, Signal>();
   private twitches = new Map<number, number>();
   private nods = new Map<number, number>();
   private rolling = new Set<number>();
   private waves = new Map<number, number>();
-  private bodies = new Map<number, { x: number; speed: number; swing: number; accel: number }>();
+  /** Cars in a crash: their hazards blink until this time on the lamps' clock. */
+  private hazards = new Map<number, number>();
+  private bodies = new Map<number, Body>();
 
   brake(id: number): number {
     const lit = this.brakes.get(id) ?? 0;
@@ -142,6 +173,11 @@ export class VehicleLamps {
   indicators(id: number): [number, number] | null {
     const s = this.signals.get(id);
     const wave = this.waves.get(id);
+    const hazard = this.hazards.get(id);
+    if (hazard !== undefined && this.clock < hazard) {
+      const light = VehicleLamps.blink(this.clock);
+      return [light, light];
+    }
     if (!s && wave !== undefined && wave >= 0) {
       const flash = Math.sin(Math.PI * Math.min(1, wave / VehicleLamps.waveLength));
       return [flash, flash];
@@ -161,10 +197,19 @@ export class VehicleLamps {
     return this.bodies.get(id)?.x ?? 0;
   }
 
+  sway(id: number): number {
+    return this.bodies.get(id)?.lean ?? 0;
+  }
+
   /** A run of Perfects tipped the player into the flow: the queue flashes its hazards once, front to back. */
   wave(world: World): void {
     if (this.calm) return;
     for (const q of world.seats) q.vehicles.forEach((id, slot) => this.waves.set(id, -slot * VehicleLamps.waveLag));
+  }
+
+  /** Two cars met: for a few seconds the hazards of both blink, even as wrecks. */
+  crashed(...ids: number[]): void {
+    for (const id of ids) this.hazards.set(id, this.clock + VehicleLamps.hazardTime);
   }
 
   /** The front car tried to go on a tap it could not take. */
@@ -181,16 +226,6 @@ export class VehicleLamps {
   /** The car's beam; a car not followed yet is lit when it is not in the queue. */
   beam(id: number, waiting: boolean): Beam {
     return this.beams.get(id) ?? Headlights.rest(waiting);
-  }
-
-  headlights(id: number): number {
-    if (!this.flash || this.flash.vehicle !== id) return 0;
-    const age = this.flash.age;
-    const pulse = (center: number): number => {
-      const x = (age - center) / 0.055;
-      return Math.abs(x) < 1 ? 0.5 + 0.5 * Math.cos(Math.PI * x) : 0;
-    };
-    return Math.max(pulse(0.055), pulse(0.19));
   }
 
   update(world: World, delta: number): void {
@@ -215,11 +250,8 @@ export class VehicleLamps {
     }
     this.updateNods(world, delta);
     this.updateWaves(delta);
+    for (const [id, until] of this.hazards) if (this.clock >= until) this.hazards.delete(id);
     this.updateBodies(world, delta);
-    const held = world.queue.heldTap !== null;
-    if (held && !this.hadHeldTap && world.queue.vehicles.length > 0) this.flash = { vehicle: world.queue.vehicles[0], age: 0 };
-    else if (this.flash) this.flash = this.flash.age + delta < 0.3 ? { vehicle: this.flash.vehicle, age: this.flash.age + delta } : null;
-    this.hadHeldTap = held;
   }
 
   private updateSignals(world: World): void {
@@ -240,7 +272,7 @@ export class VehicleLamps {
       }
       const wants =
         p.kind === 'ring'
-          ? p.distanceToExit <= world.ringSpeed * VehicleLamps.signalAhead && !world.staysOnRing(veh)
+          ? p.distanceToExit <= world.ringSpeed * VehicleLamps.signalLead(veh.type) && !world.staysOnRing(veh)
           : p.kind === 'exiting' && now !== undefined && p.s < c.carLength * VehicleLamps.signalOut;
       if (!wants) continue;
       // The way out always leads away from the island: whichever side faces out blinks.
@@ -280,22 +312,30 @@ export class VehicleLamps {
    * pushes the nose down, pulling away the tail, and it swings back past rest once or twice before it settles.
    */
   private updateBodies(world: World, delta: number): void {
-    const next = new Map<number, { x: number; speed: number; swing: number; accel: number }>();
+    const next = new Map<number, Body>();
     for (const veh of world.vehicles) {
       if (veh.isCrashed) continue;
       const speed = dist(veh.prevPosition, veh.position) / STEP;
-      const body = this.bodies.get(veh.id) ?? { x: 0, speed, swing: 0, accel: 0 };
+      const body = this.bodies.get(veh.id) ?? { x: 0, speed, swing: 0, accel: 0, lean: 0, leanSwing: 0, yaw: 0 };
       if (delta > 0 && !this.calm) {
         const [amount, hertz, damping] = VehicleLamps.suspension(veh.type);
         body.accel += ((speed - body.speed) / delta - body.accel) * Math.min(1, delta / 0.07);
         const target = -amount * clamp(body.accel / (world.config.ringSpeed * 3.5), -1, 1);
+        // Out of a turn the body leans to its outside and rocks back on the spring: a lorry a good deal, a sports car hardly.
+        body.yaw += (angleDelta(veh.prevHeading, veh.heading) / STEP - body.yaw) * Math.min(1, delta / 0.05);
+        const leanTarget = -VehicleLamps.leanOf(veh.type) * clamp(body.yaw / 1.2, -1, 1);
         const omega = Math.PI * 2 * hertz;
         for (let left = Math.min(delta, 0.1); left > 0; left -= 1 / 120) {
           const h = Math.min(left, 1 / 120);
           body.swing += (omega * omega * (target - body.x) - 2 * damping * omega * body.swing) * h;
           body.x += body.swing * h;
+          body.leanSwing += (omega * omega * (leanTarget - body.lean) - 2 * damping * omega * body.leanSwing) * h;
+          body.lean += body.leanSwing * h;
         }
-      } else body.x = 0;
+      } else {
+        body.x = 0;
+        body.lean = 0;
+      }
       body.speed = speed;
       next.set(veh.id, body);
     }
@@ -594,6 +634,8 @@ export const SceneBuilder = {
       let pose = interpolatedPose(veh, alpha);
       const nod = lamps?.nod(veh.id) ?? 0;
       if (nod !== 0) pose = { position: add(pose.position, mul(fromAngle(pose.heading), nod)), heading: pose.heading };
+      const lean = lamps?.sway(veh.id) ?? 0;
+      if (lean !== 0) pose = { position: add(pose.position, mul(left(fromAngle(pose.heading)), lean)), heading: pose.heading };
       if (mark) {
         if (mark.lunge !== 0) pose = { position: add(pose.position, mul(fromAngle(pose.heading), mark.lunge)), heading: pose.heading };
         // A soft pool of the player's colour under the car: whose it is, even on a busy ring.
@@ -629,7 +671,7 @@ export const SceneBuilder = {
           lights: (veh.type === 'police' && flashing) || isEmergency(veh.type) ? world.time / CarArt.strobeCycle + (veh.id % 7) * 0.37 : null,
           brake: lamps ? lamps.brake(veh.id) : null,
           brakeGlow: veh.phase.kind !== 'queued' || fronts.has(veh.id),
-          headlights: lamps ? lamps.headlights(veh.id) : 0,
+          headlights: lamps?.headlights?.(veh.id) ?? 0,
           indicators: lamps?.indicators(veh.id) ?? null,
           pitch: lamps?.pitch(veh.id) ?? 0,
           regular: veh.id === regular,

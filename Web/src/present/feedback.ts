@@ -58,6 +58,10 @@ export type SoundID =
   /** Made in `audio/player.ts` (no sample): a Critical Merge, a Jackpot paid, and the chest reel. */
   | 'critical'
   | 'jackpot'
+  /** A tap that cannot be taken yet: a short, dull knock. */
+  | 'notYet'
+  /** The last car of a won shift drives off, and the traffic hushes for a moment. */
+  | 'departure'
   /** A soft bell on the combo's note, under every merge that is not a plain one: a run of good merges plays a tune in the music's key. */
   | 'note'
   | 'chestHit'
@@ -197,6 +201,8 @@ export const Feedback = {
         return 'takedown';
       case 'ambulanceBlocked':
         return 'blocked';
+      case 'tapRejected':
+        return 'notYet';
       case 'ambulanceCleared':
       case 'learnerPassed':
       case 'oversizePassed':
@@ -332,6 +338,7 @@ export const Feedback = {
       }
     }
     if (haptics.length > 1) haptics = haptics.filter((h) => h !== 'merge');
+    if (sounds.includes('shiftComplete')) sounds.push('departure');
     const weights: SoundID[] = ['crashLight', 'crash', 'crashHeavy'];
     const heaviest = sounds.filter((s) => weights.includes(s)).sort((a, b) => weights.indexOf(b) - weights.indexOf(a))[0];
     if (heaviest) sounds = sounds.filter((s) => !weights.includes(s) || s === heaviest);

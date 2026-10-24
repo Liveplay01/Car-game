@@ -61,6 +61,8 @@ export class CrashEffects {
   torn = new Map<number, Set<Part>>();
   /** The skins that are on: a wreck keeps the shape of the body it wore. */
   carSkins: string[] = [];
+  /** The hazards of a car in a crash (`VehicleLamps.crashed`). */
+  indicators: (id: number) => [number, number] | null = () => null;
   shakeAge = Infinity;
   private shakeStrength = 0;
   /** Which way the wrecks fly, on screen: the shake kicks along it (research of 08.10.2026), only a little across. */
@@ -276,7 +278,7 @@ export class CrashEffects {
     const fade = 1 - Ease.clamp01((state.elapsed - (c.crashDuration - CrashEffects.wreckFade)) / CrashEffects.wreckFade);
     const fire = this.fires.get(veh.id);
     const char = fire === undefined ? 0.35 : Ease.outCubic(state.elapsed / 0.5);
-    CarArt.add(list, { id: veh.id, type: veh.type, pose, dents: veh.dents, char, opacity: fade, springTime, model: this.modelOf(veh) }, c);
+    CarArt.add(list, { id: veh.id, type: veh.type, pose, dents: veh.dents, char, opacity: fade, springTime, model: this.modelOf(veh), indicators: this.indicators(veh.id) }, c);
     if (fire === undefined) return;
     const heat = fade * (1 - Ease.clamp01((state.elapsed - 0.3) / 1.3));
     if (heat <= 0.02) return;

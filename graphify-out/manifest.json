@@ -1434,9 +1434,9 @@
     "semantic_hash": "ad6fb39b455e8646d559227bb23dc156"
   },
   "Web/src/present/patchNotes.ts": {
-    "mtime": 1792836958.6729462,
-    "seen": 1792837128.2164032,
-    "ast_hash": "112eb538cdf8a6355407f6bd611b70ae",
+    "mtime": 1792837506.1819682,
+    "seen": 1792837886.082134,
+    "ast_hash": "7fd7587795809e91cb1771934fe240f2",
     "semantic_hash": ""
   },
   "Web/src/present/perspective.ts": {
@@ -1752,9 +1752,9 @@
     "semantic_hash": "53323674fd8f20d0c8cb93bc2056907f"
   },
   "Web/src/ui/photo.ts": {
-    "mtime": 1792835711.3671339,
-    "seen": 1792836465.404326,
-    "ast_hash": "9de9dcf8ad5d98e5adc27652ed29058f",
+    "mtime": 1792837457.7639093,
+    "seen": 1792837886.082134,
+    "ast_hash": "a1dd44c644ee36902927297d7baeba23",
     "semantic_hash": ""
   },
   "Web/src/ui/pullRefresh.ts": {

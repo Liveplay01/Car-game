@@ -412,6 +412,61 @@ export class AudioPlayer {
         [880, 1109, 1319, 1760].forEach((f, i) => tone('triangle', f, f, 0.05 + i * 0.065, 0.3, 0.14));
         tone('sine', 98, 55, 0, 0.35, 0.7);
         break;
+      case 'notYet':
+        // Heard, but not now: a short dull knock, lower and quieter than anything the road makes.
+        tone('sine', 150, 78, 0, 0.1, 0.42);
+        tone('triangle', 330, 190, 0, 0.045, 0.07);
+        break;
+      case 'departure': {
+        // The last car of the shift: an engine pulls away to one side, shifts up once, bends down with the distance and is gone;
+        // the traffic bed hushes meanwhile, so for a moment only the city is left.
+        const engine = ctx.createOscillator();
+        const reed = ctx.createOscillator();
+        const lowpass = ctx.createBiquadFilter();
+        const level = ctx.createGain();
+        const away = ctx.createStereoPanner();
+        engine.type = 'sawtooth';
+        reed.type = 'square';
+        const glide = (at: number, hz: number, jump = false): void => {
+          for (const [osc, k] of [[engine, 1], [reed, 0.5]] as const) {
+            if (jump) osc.frequency.setValueAtTime(hz * k, now + at);
+            else osc.frequency.exponentialRampToValueAtTime(hz * k, now + at);
+          }
+        };
+        glide(0.2, 72, true);
+        glide(0.9, 150);
+        glide(1.0, 108);
+        glide(1.7, 185);
+        glide(2.6, 140);
+        lowpass.type = 'lowpass';
+        lowpass.Q.value = 1.2;
+        lowpass.frequency.setValueAtTime(420, now + 0.2);
+        lowpass.frequency.exponentialRampToValueAtTime(1100, now + 1.5);
+        lowpass.frequency.exponentialRampToValueAtTime(260, now + 2.7);
+        level.gain.setValueAtTime(0.0001, now + 0.2);
+        level.gain.exponentialRampToValueAtTime(0.1, now + 0.55);
+        level.gain.exponentialRampToValueAtTime(0.07, now + 1.6);
+        level.gain.exponentialRampToValueAtTime(0.0001, now + 2.7);
+        const side = Math.random() < 0.5 ? -1 : 1;
+        away.pan.setValueAtTime(side * 0.15, now + 0.2);
+        away.pan.linearRampToValueAtTime(side * 0.85, now + 2.7);
+        engine.connect(lowpass);
+        reed.connect(lowpass);
+        lowpass.connect(level);
+        level.connect(away);
+        away.connect(out);
+        for (const osc of [engine, reed]) {
+          osc.start(now + 0.2);
+          osc.stop(now + 2.8);
+        }
+        const bus = this.traffic?.gain;
+        if (bus) {
+          bus.cancelScheduledValues(now);
+          bus.setTargetAtTime(AudioPlayer.trafficVolume * 0.12, now + 0.1, 0.3);
+          bus.setTargetAtTime(AudioPlayer.trafficVolume, now + 2.4, 0.5);
+        }
+        break;
+      }
       case 'note':
         // A soft bell on the combo's step (`pitch`, the ladder of the merge): D5 at the bottom, a sine with its octave on top, gone in a third of a second.
         tone('sine', 587.33 * pitch, 587.33 * pitch, 0, 0.34, 0.1);
@@ -473,7 +528,7 @@ export class AudioPlayer {
   }
 
   private static readonly synthIds: SoundID[] = [
-    'critical', 'jackpot', 'note', 'chestHit', 'reelSpin', 'reelTick', 'shimmer', 'reelLand', 'reelLandBig', 'heal', 'sheetOpen', 'sheetClose', 'barFill',
+    'critical', 'jackpot', 'notYet', 'departure', 'note', 'chestHit', 'reelSpin', 'reelTick', 'shimmer', 'reelLand', 'reelLandBig', 'heal', 'sheetOpen', 'sheetClose', 'barFill',
   ];
 
   /** Once per frame: each stem glides towards its volume, the filter follows the breath. */

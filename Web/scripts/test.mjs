@@ -3789,3 +3789,33 @@ test('small details (Leo, 24.10.2026): holidays by date, a note under every good
   lamps.update(world, STEP);
   for (const veh of world.vehicles) assert.equal(lamps.pitch(veh.id), 0, 'Reduce Motion: the bodies stay level');
 });
+
+test('more small details (Leo, 24.10.2026): a knock for a tap that cannot be taken, the last engine of a won shift, hazards after a crash, who signals when', async () => {
+  const { Feedback } = await load('/src/present/feedback.ts');
+  assert.deepEqual(Feedback.cues([{ type: 'tapRejected', time: 1 }]).sounds, ['notYet']);
+  const ended = (outcome) => ({ type: 'shiftEnded', result: { outcome, detonated: false } });
+  assert.ok(Feedback.cues([ended('completed')]).sounds.includes('departure'), 'a won shift ends with an engine driving off');
+  assert.ok(!Feedback.cues([ended('struckOut')]).sounds.includes('departure'), 'a lost one does not');
+
+  const { VehicleLamps } = await load('/src/present/scene.ts');
+  const lead = VehicleLamps.signalLead;
+  assert.ok(lead('learner') > lead('truck') && lead('truck') > lead('car') && lead('car') > lead('sportsCar'), 'learner early, lorry in good time, sports car late');
+
+  const lamps = new VehicleLamps();
+  const { STEP } = await load('/src/core/world.ts');
+  const world = new World(forLevel(baseConfig, 8, 11), 11, { startsOnFirstTap: false });
+  lamps.update(world, STEP);
+  assert.equal(lamps.indicators(7), null);
+  lamps.crashed(7);
+  const lit = [];
+  for (let i = 0; i < 80; i++) {
+    lamps.update(world, 0.02);
+    lit.push(lamps.indicators(7)?.[0] ?? 0);
+  }
+  assert.ok(Math.max(...lit) > 0.9 && Math.min(...lit) < 0.1, 'the hazards of a car in a crash blink');
+  for (let i = 0; i < 400; i++) lamps.update(world, 0.02);
+  assert.equal(lamps.indicators(7), null, 'and stop after a few seconds');
+
+  const { Holidays } = await load('/src/present/holidays.ts');
+  assert.equal(Holidays.of(new Date(2026, 9, 24, 12)), null, 'no leaves, no autumn holiday');
+});

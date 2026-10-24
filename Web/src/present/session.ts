@@ -1584,7 +1584,10 @@ export class GameSession {
       this.honkIfImpatient(simDelta);
       const lit = this.world.shift.phase !== 'waiting' && this.world.shift.phase !== 'ended';
       // A new shift begins: the street lamps come on, and the last shift's brake marks fade.
-      if (lit && !this.lampWave.lit) this.brakeMarks.fade();
+      if (lit && !this.lampWave.lit) {
+        this.brakeMarks.fade();
+        this.tyreMarks.fade();
+      }
       this.lampWave.update(lit, simDelta, this.reduceMotion);
     }
     if (this.screen.k === 'result') {
@@ -2781,6 +2784,7 @@ export class GameSession {
           if (!this.tutorial) noteTap(this.save.career, e.gapAhead, e.gapBehind, this.config);
           break;
         case 'crash':
+          if (!e.isTakedown) this.lamps.crashed(e.first, e.second);
           // A hard crash blinks the screen and leaves a scorch: both cost nothing the ground has to repaint.
           if (this.effects.spawn(e, world, this.reduceMotion, e.chain, this.lowDetail) >= CrashEffects.fireSeverity && !e.isTakedown) {
             this.scars.add({ point: e.point, kind: 'crash' }, this.sceneTime);
@@ -3467,6 +3471,7 @@ export class GameSession {
     SceneBuilder.addLaneArrow(list, world);
     this.explosions.addGround(list);
     this.effects.carSkins = career.carSkins;
+    this.effects.indicators = (id) => this.lamps.indicators(id);
     this.effects.addGround(list);
     const thin = this.lowDetail || this.sceneThin;
     CityLights.add(list, world, alpha, theme, this.lamps, rm ? null : world.time, this.nightPreview, thin, this.lampWave);

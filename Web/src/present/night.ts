@@ -49,10 +49,9 @@ export const NightLayer = {
       if (veh.role === 'boss' && c.bossKind === 'phantom') continue;
       const pose = interpolatedPose(veh, alpha);
       const L = CarArt.length(veh.type, c);
-      const flash = lamps ? lamps.headlights(veh.id) : 0;
       const waiting = veh.phase.kind === 'queued' && veh.id !== world.queue.vehicles[0];
       const beam = lamps ? lamps.beam(veh.id, waiting) : Headlights.rest(waiting);
-      const intensity = (NightLayer.queueDim + (1 - NightLayer.queueDim) * beam.glow) * (1 + 1.5 * flash);
+      const intensity = (NightLayer.queueDim + (1 - NightLayer.queueDim) * beam.glow);
 
       // Two soft cones that follow the car, brightest near it; the queue behind the front car dims.
       // A waiting car's dimmed beam needs no fine steps.
@@ -83,8 +82,7 @@ export const NightLayer = {
       const brake = lamps ? lamps.brake(veh.id) : 0;
       const waiting = veh.phase.kind === 'queued' && veh.id !== world.queue.vehicles[0];
       const beam = lamps ? lamps.beam(veh.id, waiting) : Headlights.rest(waiting);
-      const flash = lamps ? lamps.headlights(veh.id) : 0;
-      const intensity = (NightLayer.queueDim + (1 - NightLayer.queueDim) * beam.glow) * (1 + 1.5 * flash);
+      const intensity = (NightLayer.queueDim + (1 - NightLayer.queueDim) * beam.glow);
       Headlights.addBulbs(list, pose, L, W, intensity);
       for (const y of [W * 0.3, -W * 0.3]) list.w(rect(worldOf(v(-L / 2 + 0.8, y), pose), v(1.4, W * 0.22), 0.5, pose.heading), 'lightRed', 0.55 + 0.45 * brake);
       if (L > c.carLength || veh.type === 'transporter') {

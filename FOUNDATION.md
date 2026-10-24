@@ -129,7 +129,7 @@ Auf dem Desktop ist ein Tap ein Klick oder die Leertaste.
    Simulationsschritt in sein Einfädeln, sobald zum vorderen eigenen Auto mindestens
    `passClearance` (4) zwischen den Stoßstangen frei ist. Das kann ein paar Millisekunden
    früher oder später sein als bei einem stehenden Auto. Die Autos dahinter rollen weiter
-   (`rollingSpeed`). Bremslichter und eine Lichthupe für den gehaltenen Tap zeichnet
+   (`rollingSpeed`). Bremslichter zeichnet
    `present/scene.ts` (`VehicleLamps`).
 6. Autos im Ring **verlassen ihn nach 1–3 Ausfahrten wieder**. So entstehen
    ständig neue Lücken.

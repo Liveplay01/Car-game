@@ -62,6 +62,11 @@ export const PATCH_NOTES: PatchNote[] = [
       'A driver who waits too long taps the horn, and a regular with a roof box drives by each shift.',
     ],
     items: [
+      'A tap that cannot be taken yet knocks, short and dull, and the front car\'s brake lights twitch. The front lights no longer flash for it: the brake lights say it softer.',
+      'When a won shift ends, the last engine drives off to one side, shifts up once and fades while the traffic steps back; for a moment only the city is left.',
+      'The two cars of a crash switch their hazards on for a few seconds, wrecks too.',
+      'Vehicles have a little character: a learner signals early, a lorry in good time, a sports car late and sure; bodies lean out of a turn and rock back, a lorry a lot and a sports car hardly.',
+      'The turn-in grows worn in a shift: every skilled merge leaves its tyre marks a touch darker and wider, up to six, until the next shift starts.',
       'Fixed: on the photo of a shift the "New record" badge covered a corner of the telemetry row beneath it, and the badge next to "Telemetry" sat on the label\'s last letters. Both have room now.',
       'Cars ride on springs: braking dips the nose, pulling away squats the tail, and the body swings back once or twice before it settles. A lorry is heavy and wobbles, a van soft, a sports car stiff, a motorbike hardly moves. Reduce Motion keeps the bodies level.',
       'When a run of Perfects tips you into the flow, the hazards of your whole queue flash once, front to back, like a wave.',

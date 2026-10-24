@@ -556,7 +556,8 @@ export class VersusMatch {
     SceneBuilder.addShadows(list, w, alpha);
     const lamps = {
       brake: (id: number) => this.lamps.brake(id),
-      headlights: (id: number) => Math.max(this.lamps.headlights(id), this.flashOf(id)),
+      headlights: (id: number) => this.flashOf(id),
+      sway: (id: number) => this.lamps.sway(id),
       indicators: (id: number) => this.lamps.indicators(id),
       nod: (id: number) => this.lamps.nod(id),
       pitch: (id: number) => this.lamps.pitch(id),
