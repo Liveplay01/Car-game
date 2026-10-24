@@ -11,7 +11,7 @@ import { reservedLearnerArm } from './learner';
 import { reservedOversizeArm } from './oversize';
 import { reservedRaceArm } from './racers';
 import { reservedWeddingArm } from './wedding';
-import { driftOn } from './drift';
+import { driftOn, driftDue } from './drift';
 
 /**
  * AI traffic on the other arms (FOUNDATION.md 2.7). It only enters with a safe gap, counts
@@ -21,7 +21,7 @@ export function updateTraffic(w: World, dt: number): void {
   const c = w.config;
   w.spawnCooldown -= dt;
   const waitingNow = w.vehicles.filter((x) => x.phase.kind === 'waiting' && x.phase.approach === 0).length;
-  const regular = !driftOn(w) && w.spawnCooldown <= 0 && densityCount(w) < w.targetDensity && waitingNow < c.maxWaitingAI;
+  const regular = !driftOn(w) && !driftDue(w) && w.spawnCooldown <= 0 && densityCount(w) < w.targetDensity && waitingNow < c.maxWaitingAI;
   if (regular || needsReplacementBot(w)) {
     const queues = new Map<number, Waiting[]>();
     for (const x of w.vehicles) {

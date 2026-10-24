@@ -803,10 +803,10 @@ export const baseConfig = {
   driftEvery: 20,
   driftWindow: 6,
   driftFirst: r(4, 16),
-  /** It only comes while at most this many vehicles drive on the ring, and none join beyond the bots the ring keeps while it slides. */
-  driftMaxTraffic: 4,
-  /** More than this many others on the ring (or a wreck) and it calls the slide off: straight, out at the next exit. */
-  driftAbortTraffic: 6,
+  /** It only comes while at most this many vehicles drive on the ring beyond the `minRingBots` the ring keeps, and none join beyond those bots while it slides. */
+  driftMaxTraffic: 1,
+  /** More than this many others beyond those bots (or a wreck) and it calls the slide off: straight, out at the next exit. */
+  driftAbortTraffic: 3,
   /** Extra laps after its way round: it wants to be seen. */
   driftLaps: 1,
   driftLength: 23,

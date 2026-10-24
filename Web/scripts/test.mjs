@@ -3945,3 +3945,18 @@ test('pasted codes: a whole code or a link is found, a word or a number that is 
   assert.equal(joinCodeIn('12345'), null);
   assert.equal(joinCodeIn('call 4821 now'), null);
 });
+
+test('the drift car shows up on a busy ring: regular traffic holds back until it is quiet', () => {
+  let came = 0;
+  for (let s = 1; s <= 10; s++) {
+    const cfg = { ...forLevel(baseConfig, 40, s), driftLevel: 1, driftEvery: 1, driftWindow: 1, driftFirst: { lo: 1, hi: 2 } };
+    const world = new World(cfg, s, { startsOnFirstTap: false });
+    let seen = false;
+    for (let i = 0; i < 120 * 30 && !seen; i++) {
+      world.step();
+      seen = world.vehicles.some((x) => x.type === 'drift');
+    }
+    if (seen) came++;
+  }
+  assert.ok(came >= 8, `the drift car came in ${came} of 10 shifts`);
+});

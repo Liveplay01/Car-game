@@ -58,6 +58,9 @@ export function firstDrift(w: World): DriftPhase {
 /** The drift car is out there: no traffic joins beyond the bots the ring has to keep. */
 export const driftOn = (w: World): boolean => w.drift.kind === 'on';
 
+/** It is due but waits for a quiet ring: the regular traffic holds back so the ring can run empty. */
+export const driftDue = (w: World): boolean => w.drift.kind === 'idle' && w.time >= w.drift.next;
+
 /** Vehicles driving on or into the ring besides `except`; any wreck counts as a full ring. */
 function traffic(w: World, except: number | null): number {
   let moving = 0;
@@ -77,7 +80,7 @@ export function updateDrift(w: World, now: number, dt: number): void {
       w.drift = { kind: 'done' };
       return;
     }
-    if (now < d.next || weddingOn(w) || traffic(w, null) > c.driftMaxTraffic) return;
+    if (now < d.next || weddingOn(w) || traffic(w, null) > c.minRingBots + c.driftMaxTraffic) return;
     const arms = warningArms(w).filter((arm) => !w.vehicles.some((x) => x.phase.kind === 'waiting' && x.phase.arm.index === arm.index));
     if (arms.length === 0) return;
     const waiting: Waiting = { kind: 'waiting', arm: w.driftRng.pick(arms), reaction: c.driftBurnout, approach: c.aiApproachDistance };
@@ -93,7 +96,7 @@ export function updateDrift(w: World, now: number, dt: number): void {
     return;
   }
   const p = veh.phase;
-  if (d.calming < 0 && p.kind !== 'exiting' && traffic(w, veh.id) > c.driftAbortTraffic) {
+  if (d.calming < 0 && p.kind !== 'exiting' && traffic(w, veh.id) > c.minRingBots + c.driftAbortTraffic) {
     d.calming = 0;
     if (d.throttle && d.sliding >= 0) d.lifts++;
     d.throttle = false;
