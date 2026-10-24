@@ -71,6 +71,15 @@ def wedding():
     return room(out, 0.35, 0.12)
 
 
+def honk():
+    # A tap on a car's twin horn (Leo, 24.10.2026): the driver at the line who has waited too long. Short, a little
+    # polite; other vehicles play it slower or faster (a lorry's is the same note, an octave down).
+    out = silence(0.4)
+    place(out, horn([415, 523], 0.2, attack=0.01, release=0.05, harmonics=12, tilt=0.9, sag=0.012), 0, 0.8)
+    place(out, burst(0.01, 1200, 5000, 0.003), 0, 0.2)
+    return room(out, 0.25, 0.1)
+
+
 def oversize():
     # A truck's air horn: low and wide, a fourth apart, breathing in with a slow attack and a sub underneath.
     length = 0.95
@@ -127,6 +136,7 @@ def thump():
 SOUNDS = {
     'ambulance': ambulance,
     'wedding': wedding,
+    'honk': honk,
     'oversize': oversize,
     'learner': learner,
     'clang': clang,
@@ -135,7 +145,7 @@ SOUNDS = {
 }
 
 # Below the -3 dBFS peak `finish` gives every file: a held horn is far louder than a clang at the same peak.
-LEVEL_DB = {'ambulance': -6.5, 'wedding': -2.5, 'oversize': -1.5, 'learner': -6, 'clang': -1.5, 'blocked': -5, 'thump': -2}
+LEVEL_DB = {'ambulance': -6.5, 'wedding': -2.5, 'honk': -9, 'oversize': -1.5, 'learner': -6, 'clang': -1.5, 'blocked': -5, 'thump': -2}
 
 
 def main():

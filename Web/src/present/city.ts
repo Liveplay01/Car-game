@@ -164,7 +164,8 @@ export const CityLayer = {
         const size = mul(v(26 + 30 * unitHash(candidate, 15), 22 + 26 * unitHash(candidate, 16)), grow);
         CityLayer.addRoof(list, center, size, angle, candidate, fade, MapTheme.roofs(theme));
         scars?.addHouse(list, center, size, angle, candidate, now, time);
-        if (holiday && Holidays.hasLights(candidate)) Holidays.addLights(list, center, size, angle, candidate, fade, time, clouds);
+        if (holiday && Holidays.hasLights(candidate)) Holidays.addLights(list, center, size, angle, candidate, fade, time, clouds, holiday);
+        if (holiday === 'halloween') Holidays.addPumpkins(list, center, size, angle, candidate, fade, time);
         if (unitHash(candidate, 17) < 0.45) {
           const glow = pulse ? pulse.window(candidate, distance) : CityPulse.windowRest;
           const spot = add(add(center, mul(fromAngle(angle + Math.PI / 2), size.y * 0.18)), mul(fromAngle(angle), size.x * (unitHash(candidate, 18) - 0.5) * 0.4));

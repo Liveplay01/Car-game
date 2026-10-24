@@ -1,9 +1,9 @@
 import { type World, STEP } from '../core/world';
-import type { Vehicle } from '../core/vehicle';
+import type { Vehicle, VehicleType } from '../core/vehicle';
 import type { Pose } from '../core/paths';
 import type { Layout, Arm } from '../core/roundabout';
 import { type Config, moduleZone, moduleEntries } from '../core/config';
-import { type Vec2, v, add, sub, mul, dot, dist, left, right, fromAngle, length, normalize, angleDelta, lerpV, TAU } from '../core/vec2';
+import { type Vec2, v, add, sub, mul, dot, dist, left, right, fromAngle, length, normalize, angleDelta, lerpV, clamp, TAU } from '../core/vec2';
 import { type RenderList, rect, circle, arc, line, polygon, text, Ease, Metrics, toScreen } from './render';
 import type { ColorToken } from './theme';
 import { CarArt } from './carArt';
@@ -13,7 +13,7 @@ import { S } from './strings';
 import { towDepotCovering } from '../core/modules';
 import { MODULE_COLORS } from './flow';
 import { criminalVehicle } from '../core/specials';
-import { isCarType, isEmergency } from '../core/vehicle';
+import { isCarType, isEmergency, isHeavy } from '../core/vehicle';
 import { driftSteer } from '../core/drift';
 
 /** Pose between the last two simulation steps. */
@@ -27,6 +27,8 @@ export interface Lamps {
   headlights(id: number): number;
   indicators(id: number): [number, number] | null;
   nod(id: number): number;
+  /** The body's dive under the brakes (positive) or squat under the throttle (negative), as a share of its length. */
+  pitch(id: number): number;
 }
 
 /** A multiplayer car in its player's colour: a painted roof, a glow, a lunge on the tap. */
@@ -66,6 +68,10 @@ interface Signal {
  * an ambulance or a learner you kept clear for thanks you with two flashes of its hazards on the way out;
  * a tap that cannot be taken yet twitches the front car's brake lights (no text, no sound); and when the
  * queue moves up, each car nods into its brakes, front to back.
+ *
+ * More of the same (Leo, 24.10.2026): every body rides on a spring (`bodies`): the nose dives when it brakes and
+ * the tail squats when it pulls away, a lorry heavy and wobbling, a sports car stiff, a bike hardly at all; and a
+ * run of Perfects that tips you into the flow runs a flash of the hazards down the whole queue.
  */
 export class VehicleLamps {
   /** About 90 flashes a minute, like a real indicator. */
@@ -79,6 +85,29 @@ export class VehicleLamps {
   static readonly nodDepth = 1.4;
   static readonly nodSettle = 0.11;
   static readonly nodLag = 0.055;
+  /** The wave down the queue after a run of Perfects: one flash this long, a car every `waveLag` seconds. */
+  static readonly waveLength = 0.24;
+  static readonly waveLag = 0.07;
+  /** How far the body pitches (share of its length at full braking), how fast its spring swings (Hz) and how soon it settles (damping ratio), by kind of vehicle. */
+  private static suspension(type: VehicleType): [amount: number, hertz: number, damping: number] {
+    if (isHeavy(type)) return [0.05, 1.6, 0.3];
+    switch (type) {
+      case 'motorbike':
+        return [0.01, 4, 0.6];
+      case 'sportsCar':
+      case 'racer':
+      case 'drift':
+      case 'police':
+      case 'pickup':
+        return [0.014, 4.4, 0.7];
+      case 'van':
+      case 'ambulance':
+      case 'transporter':
+        return [0.036, 2.2, 0.38];
+      default:
+        return [0.03, 2.6, 0.42];
+    }
+  }
 
   /** Reduce Motion: the queue does not nod. */
   calm = false;
@@ -91,6 +120,8 @@ export class VehicleLamps {
   private twitches = new Map<number, number>();
   private nods = new Map<number, number>();
   private rolling = new Set<number>();
+  private waves = new Map<number, number>();
+  private bodies = new Map<number, { x: number; speed: number; swing: number; accel: number }>();
 
   brake(id: number): number {
     const lit = this.brakes.get(id) ?? 0;
@@ -110,6 +141,11 @@ export class VehicleLamps {
 
   indicators(id: number): [number, number] | null {
     const s = this.signals.get(id);
+    const wave = this.waves.get(id);
+    if (!s && wave !== undefined && wave >= 0) {
+      const flash = Math.sin(Math.PI * Math.min(1, wave / VehicleLamps.waveLength));
+      return [flash, flash];
+    }
     if (!s) return null;
     const light = VehicleLamps.blink(this.clock - s.since);
     return [s.side >= 0 ? light : 0, s.side <= 0 ? light : 0];
@@ -119,6 +155,16 @@ export class VehicleLamps {
     const age = this.nods.get(id);
     if (age === undefined || age < 0) return 0;
     return VehicleLamps.nodDepth * Math.exp(-age / VehicleLamps.nodSettle) * Math.sin(age * Math.PI * 2 * 2.6);
+  }
+
+  pitch(id: number): number {
+    return this.bodies.get(id)?.x ?? 0;
+  }
+
+  /** A run of Perfects tipped the player into the flow: the queue flashes its hazards once, front to back. */
+  wave(world: World): void {
+    if (this.calm) return;
+    for (const q of world.seats) q.vehicles.forEach((id, slot) => this.waves.set(id, -slot * VehicleLamps.waveLag));
   }
 
   /** The front car tried to go on a tap it could not take. */
@@ -168,6 +214,8 @@ export class VehicleLamps {
       else this.twitches.set(id, age + delta);
     }
     this.updateNods(world, delta);
+    this.updateWaves(delta);
+    this.updateBodies(world, delta);
     const held = world.queue.heldTap !== null;
     if (held && !this.hadHeldTap && world.queue.vehicles.length > 0) this.flash = { vehicle: world.queue.vehicles[0], age: 0 };
     else if (this.flash) this.flash = this.flash.age + delta < 0.3 ? { vehicle: this.flash.vehicle, age: this.flash.age + delta } : null;
@@ -218,6 +266,40 @@ export class VehicleLamps {
       if (age + delta > 0.6) this.nods.delete(id);
       else this.nods.set(id, age + delta);
     }
+  }
+
+  private updateWaves(delta: number): void {
+    for (const [id, age] of this.waves) {
+      if (age + delta > VehicleLamps.waveLength) this.waves.delete(id);
+      else this.waves.set(id, age + delta);
+    }
+  }
+
+  /**
+   * Each body is a mass on a spring, pushed by how hard the car speeds up or slows down (read from its steps): braking
+   * pushes the nose down, pulling away the tail, and it swings back past rest once or twice before it settles.
+   */
+  private updateBodies(world: World, delta: number): void {
+    const next = new Map<number, { x: number; speed: number; swing: number; accel: number }>();
+    for (const veh of world.vehicles) {
+      if (veh.isCrashed) continue;
+      const speed = dist(veh.prevPosition, veh.position) / STEP;
+      const body = this.bodies.get(veh.id) ?? { x: 0, speed, swing: 0, accel: 0 };
+      if (delta > 0 && !this.calm) {
+        const [amount, hertz, damping] = VehicleLamps.suspension(veh.type);
+        body.accel += ((speed - body.speed) / delta - body.accel) * Math.min(1, delta / 0.07);
+        const target = -amount * clamp(body.accel / (world.config.ringSpeed * 3.5), -1, 1);
+        const omega = Math.PI * 2 * hertz;
+        for (let left = Math.min(delta, 0.1); left > 0; left -= 1 / 120) {
+          const h = Math.min(left, 1 / 120);
+          body.swing += (omega * omega * (target - body.x) - 2 * damping * omega * body.swing) * h;
+          body.x += body.swing * h;
+        }
+      } else body.x = 0;
+      body.speed = speed;
+      next.set(veh.id, body);
+    }
+    this.bodies = next;
   }
 
   /** The beam eases towards what the car does: dim while queued, longer with speed, swung into a turn. */
@@ -501,6 +583,7 @@ export const SceneBuilder = {
     springTime: number | null,
     lamps: Lamps | null,
     marks: ((veh: Vehicle) => VehicleMark | null) | null = null,
+    regular: number | null = null,
   ): void {
     const chase = criminalVehicle(world) !== null;
     const fronts = new Set(world.seats.map((q) => q.vehicles[0]));
@@ -548,6 +631,8 @@ export const SceneBuilder = {
           brakeGlow: veh.phase.kind !== 'queued' || fronts.has(veh.id),
           headlights: lamps ? lamps.headlights(veh.id) : 0,
           indicators: lamps?.indicators(veh.id) ?? null,
+          pitch: lamps?.pitch(veh.id) ?? 0,
+          regular: veh.id === regular,
           skin: look?.paint ?? null,
           stripe: look?.stripe ?? null,
           roof: mark?.roof ? mark.color : (look?.roof ?? null),

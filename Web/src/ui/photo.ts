@@ -5,6 +5,8 @@ import type { PhotoCard, PatternToken, PerformancePattern } from '../present/pho
 import { css } from '../present/theme';
 import { unitHash } from '../present/render';
 import { S } from '../present/strings';
+import type { SignStyle } from '../present/signs';
+import { currentLanguage } from '../present/i18n';
 
 /**
  * The photo of a finished shift (Leo, 29.09.2026: "like a photo that was just shot"; 18.10.2026: like a speed-camera
@@ -260,6 +262,7 @@ async function makePrint(shot: PhotoShot, invite: Promise<string>): Promise<HTML
   g.fillStyle = css('background');
   g.fillRect(0, 0, W, H);
   photo(g, scene);
+  plate(g, shot.card.plate);
   dataBar(g, shot.card, new Date());
   strip(g, shot.card, code);
   return out;
@@ -364,7 +367,7 @@ function spaced(g: CanvasRenderingContext2D, px: number): void {
 
 const two = (n: number): string => String(n).padStart(2, '0');
 
-/** The data row burnt into the top of the frame, as on a camera's print: when, and where. */
+/** The data row burnt into the top of the frame, as on a camera's print: when, what it measured against the limit, and where. */
 function dataBar(g: CanvasRenderingContext2D, card: PhotoCard, now: Date): void {
   g.fillStyle = 'rgba(0,0,0,0.82)';
   g.fillRect(0, 0, W, BAR_H);
@@ -373,10 +376,89 @@ function dataBar(g: CanvasRenderingContext2D, card: PhotoCard, now: Date): void 
   spaced(g, 2);
   g.fillStyle = css('primary', 0.92);
   g.textAlign = 'left';
-  g.fillText(`${now.getFullYear()}-${two(now.getMonth() + 1)}-${two(now.getDate())}  ${two(now.getHours())}:${two(now.getMinutes())}:${two(now.getSeconds())}`, M, BAR_H / 2 + 1);
+  const clock = `${now.getFullYear()}-${two(now.getMonth() + 1)}-${two(now.getDate())}  ${two(now.getHours())}:${two(now.getMinutes())}:${two(now.getSeconds())}`;
+  g.fillText(clock, M, BAR_H / 2 + 1);
+  const { measured, limit, unit, over } = card.speed;
+  const reading = `${String(measured).padStart(3, '0')}/${String(limit).padStart(3, '0')} ${unit.toUpperCase()}`;
+  const readingX = M + g.measureText(clock).width + 40;
+  g.fillStyle = css(over ? 'destructive' : 'primary', 0.92);
+  g.fillText(reading, readingX, BAR_H / 2 + 1);
+  g.fillStyle = css('primary', 0.92);
   g.textAlign = 'right';
-  g.fillText(card.place.toUpperCase(), W - M, BAR_H / 2 + 1, 440);
+  g.fillText(card.place.toUpperCase(), W - M, BAR_H / 2 + 1, Math.max(120, W - M - (readingX + g.measureText(reading).width + 40)));
   spaced(g, 0);
+}
+
+interface PlateLook {
+  background: string;
+  ink: string;
+  band?: string;
+  header?: string;
+}
+
+const PLATES: Record<SignStyle, PlateLook> = {
+  eu: { background: '#f4f5f7', ink: '#14161a', band: '#1d4fb3' },
+  us: { background: '#f2f4f6', ink: '#1a3a7a', header: 'ROUNDABOUT' },
+  uk: { background: '#f6d54a', ink: '#14161a', band: '#1d4fb3' },
+  jp: { background: '#f4f5f7', ink: '#1c6b3c' },
+  kr: { background: '#f4f5f7', ink: '#14161a' },
+  cn: { background: '#1f4fb5', ink: '#f4f6fa' },
+};
+
+const COUNTRY: Partial<Record<string, string>> = { de: 'D', fr: 'F', it: 'I', es: 'E' };
+
+/**
+ * The number plate of the car in the frame, in the top right corner of the photo: the country's pattern (the signs' own,
+ * `signStyle`), the crew's letters and the last four digits of the score.
+ */
+function plate(g: CanvasRenderingContext2D, card: PhotoCard['plate']): void {
+  const look = PLATES[card.style];
+  const w = 270;
+  const h = 76;
+  const x = W - M - 24 - w;
+  const y = BAR_H + M + 20;
+  const body = (): void => {
+    g.beginPath();
+    if (typeof g.roundRect === 'function') g.roundRect(x, y, w, h, 10);
+    else g.rect(x, y, w, h);
+  };
+  g.save();
+  g.globalAlpha = 0.95;
+  body();
+  g.fillStyle = look.background;
+  g.fill();
+  let inner = x;
+  if (look.band) {
+    const band = 58;
+    g.save();
+    body();
+    g.clip();
+    g.fillStyle = look.band;
+    g.fillRect(x, y, band, h);
+    g.restore();
+    g.fillStyle = '#ffffff';
+    g.font = mono(card.style === 'uk' ? 20 : 26, true);
+    g.textAlign = 'center';
+    g.textBaseline = 'middle';
+    g.fillText(card.style === 'uk' ? 'GB' : (COUNTRY[currentLanguage()] ?? 'EU'), x + band / 2, y + h / 2 + 2);
+    inner = x + band;
+  }
+  body();
+  g.strokeStyle = 'rgba(11,13,16,0.85)';
+  g.lineWidth = 3;
+  g.stroke();
+  g.fillStyle = look.ink;
+  g.textAlign = 'center';
+  g.textBaseline = 'middle';
+  if (look.header) {
+    g.font = mono(13, true);
+    spaced(g, 3);
+    g.fillText(look.header, inner + (x + w - inner) / 2, y + 17);
+    spaced(g, 0);
+  }
+  g.font = mono(40, true);
+  g.fillText(card.text, inner + (x + w - inner) / 2, y + h / 2 + (look.header ? 10 : 2), x + w - inner - 20);
+  g.restore();
 }
 
 /** Under the photo, on black: the measured score, what drove it, the dare, and the invite. */
@@ -408,15 +490,15 @@ function strip(g: CanvasRenderingContext2D, card: PhotoCard, code: boolean[][] |
   if (card.newBest) {
     const w = 200;
     const x = textRight - w;
-    const y = top + 88;
+    const y = top + 78;
     g.fillStyle = css('accent');
-    g.fillRect(x, y, w, 48);
+    g.fillRect(x, y, w, 40);
     g.font = mono(24, true);
     spaced(g, 2);
     g.textAlign = 'center';
     g.textBaseline = 'middle';
     g.fillStyle = css('background');
-    g.fillText(S.photo.newBest, x + w / 2, y + 25);
+    g.fillText(S.photo.newBest, x + w / 2, y + 21, w - 16);
     spaced(g, 0);
     g.textAlign = 'left';
     g.textBaseline = 'alphabetic';
@@ -451,10 +533,11 @@ function drawPerformancePattern(g: CanvasRenderingContext2D, pattern: Performanc
   spaced(g, 2);
   g.fillStyle = css('muted');
   g.fillText(S.photo.telemetry, x, y);
+  // Measured with the letter spacing it was drawn with, or the badge lands on the label's last letters.
+  const labelW = g.measureText(S.photo.telemetry).width;
   spaced(g, 0);
 
   if (pattern.badge) {
-    const labelW = g.measureText(S.photo.telemetry).width;
     const badgeX = x + labelW + 12;
     const badgeW = g.measureText(pattern.badge).width + 16;
     g.fillStyle = pattern.isPerfectRun ? 'rgba(16, 185, 129, 0.25)' : 'rgba(245, 158, 11, 0.25)';

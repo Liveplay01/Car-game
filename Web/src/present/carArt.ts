@@ -186,6 +186,10 @@ export interface CarDraw {
   cache?: boolean;
   /** The drift car: its front wheels against the body (rad), turned out past the wings. */
   steer?: number | null;
+  /** The regular: a plain car with a roof box, the one that is on the road in every shift. */
+  regular?: boolean;
+  /** The body riding on its springs (`VehicleLamps.pitch`): dives (positive) or squats (negative), a share of its length. Only the cached sprite shows it. */
+  pitch?: number;
 }
 
 /** Plain cars as sprites, by what they look like; see `CarArt.art`. */
@@ -547,6 +551,19 @@ export const CarArt = {
       list.w(rect(worldOf(v((from + to) / 2, 0), pose), v(to - from, W * 0.8), 2, pose.heading), d.roof, opacity);
     }
 
+    if (d.regular && isCarType(type) && dents.length === 0 && CarModels.hasRoof(model)) {
+      const front = CarArt.shape('windscreen', type, c, model);
+      const back = CarArt.shape('rearWindow', type, c, model);
+      const from = back.center.x - back.size.x / 2 - 0.5;
+      const to = front.center.x + front.size.x / 2 - 1;
+      const box = v((to - from) * 0.8, W * 0.52);
+      const middle = worldOf(v((from + to) / 2, 0), pose);
+      // Dark with a light edge: it shows on a silver roof and on a graphite one, and it is no colour a vehicle's colour could mean.
+      list.w(rect(middle, add(box, v(1.6, 1.6)), 2.2, pose.heading), 'marking', opacity * 0.6);
+      list.w(rect(middle, box, 1.6, pose.heading), 'vehicleTire', opacity);
+      list.w(line(worldOf(v((from + to) / 2 + box.x * 0.4, 0), pose), worldOf(v((from + to) / 2 - box.x * 0.4, 0), pose), 0.5), 'marking', opacity * 0.5);
+    }
+
     if (model && dents.length === 0) CarModels.decor(list, model, pose, L, W, body, opacity);
 
     for (const part of CarArt.parts(type, model)) {
@@ -747,7 +764,7 @@ export const CarArt = {
     if (signal) CarArt.indicators(list, pose, L, W, signal, 1, true);
     const side = rotated(v(-1, 1), -pose.heading).y >= 0 ? 1 : -1;
     const type = d.type;
-    const key = `${type}|${CarArt.bodyColor(type, d.id, d.skin ?? null)}|${CarArt.bodyColor(type, 0, d.skin ?? null)}|${d.skin ?? ''}|${d.stripe ?? ''}|${d.roof ?? ''}|${model ?? ''}|${L}|${W}|${side}`;
+    const key = `${type}|${CarArt.bodyColor(type, d.id, d.skin ?? null)}|${CarArt.bodyColor(type, 0, d.skin ?? null)}|${d.skin ?? ''}|${d.stripe ?? ''}|${d.roof ?? ''}|${model ?? ''}|${d.regular ? 'regular' : ''}|${L}|${W}|${side}`;
     let art = carArts.get(key);
     if (!art) {
       const heading = side > 0 ? 0 : Math.PI;
@@ -755,13 +772,14 @@ export const CarArt = {
       art = spriteArt(
         key,
         { minX: -halfL, maxX: halfL, minY: -halfW, maxY: halfW },
-        (l) => CarArt.add(l, { id: d.id, type, pose: { position: v(0, 0), heading }, dents: [], skin: d.skin, stripe: d.stripe, roof: d.roof, model: d.model }, c),
+        (l) => CarArt.add(l, { id: d.id, type, pose: { position: v(0, 0), heading }, dents: [], skin: d.skin, stripe: d.stripe, roof: d.roof, model: d.model, regular: d.regular }, c),
         2,
       );
       if (carArts.size >= 160) carArts.clear();
       carArts.set(key, art);
     }
-    list.w(sprite(art, pose.position, side > 0 ? pose.heading : pose.heading - Math.PI, v(1, 1)), 'primary');
+    const dive = d.pitch ?? 0;
+    list.w(sprite(art, pose.position, side > 0 ? pose.heading : pose.heading - Math.PI, dive === 0 ? v(1, 1) : v(1 - dive, 1 + dive * 0.5)), 'primary');
     const lamps = CarModels.lamps(model, L, W);
     if (brake !== null && brake > 0.02) {
       for (const s of [1, -1]) CarModels.lamp(list, pose, lamps.tail, s, 'lightRed', Math.min(brake, 1));

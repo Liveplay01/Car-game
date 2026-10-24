@@ -197,7 +197,14 @@ export const hasCrew = (): boolean => inCrew;
 function remember(view: CrewView): CrewView {
   inCrew = view.crew !== null;
   write(XP_KEY + '.in', inCrew ? '1' : null);
+  write(XP_KEY + '.name', view.crew?.name ?? null);
   return view;
+}
+
+/** The first three letters of the crew's name, for a number plate; null without a crew (or before the name was ever seen on this device). */
+export function crewTag(): string | null {
+  const name = inCrew ? read(XP_KEY + '.name') : null;
+  return name?.replace(/[^\p{L}\p{N}]/gu, '').slice(0, 3).toUpperCase() || null;
 }
 
 let sending = false;

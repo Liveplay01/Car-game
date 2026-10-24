@@ -102,6 +102,11 @@ export class AudioPlayer {
   /** The traffic's bed: quiet, and ducked with the music by the big hits. */
   private traffic: GainNode | null = null;
   private bed: GainNode | null = null;
+  private muffle: BiquadFilterNode | null = null;
+  private lastRing = -Infinity;
+  /** The music's clock: when the stems started and how long one loop is (four bars of 120 bpm), so a sound can fall on the beat. */
+  private loopAt = 0;
+  private loopLength = 0;
   private voices: Voice[] = [];
   private buffers = new Map<SoundID, AudioBuffer>();
   private lastStart = new Map<SoundID, number>();
@@ -143,8 +148,14 @@ export class AudioPlayer {
       g.connect(to);
       return g;
     };
-    // Music and weather share the bed, which the big hits duck.
-    const bed = bus(1, limiter);
+    // Music and weather share the bed, which the big hits duck and, for a moment, muffle (`deafen`).
+    const muffle = ctx.createBiquadFilter();
+    muffle.type = 'lowpass';
+    muffle.frequency.value = 20000;
+    muffle.Q.value = 0.5;
+    muffle.connect(limiter);
+    this.muffle = muffle;
+    const bed = bus(1, muffle);
     const sfx = bus(AudioPlayer.sfxVolume, limiter);
     this.ui = bus(AudioPlayer.sfxVolume, limiter);
     this.ambient = bus(AudioPlayer.sfxVolume, bed);
@@ -203,6 +214,8 @@ export class AudioPlayer {
     if (!ctx || !music || music.started || this.stemBuffers.size === 0) return;
     music.started = true;
     const at = ctx.currentTime + 0.15;
+    this.loopAt = at;
+    this.loopLength = this.stemBuffers.get('base')?.duration ?? 0;
     for (const [layer, buffer] of this.stemBuffers) {
       const src = ctx.createBufferSource();
       src.buffer = buffer;
@@ -248,9 +261,54 @@ export class AudioPlayer {
       this.voices = this.voices.filter((v) => v !== voice);
     };
     this.voices.push(voice);
-    src.start();
+    src.start(now + (id === 'merge' ? this.toGrid(now, AudioPlayer.magnet) : id === 'blinker' ? this.toGrid(now, AudioPlayer.magnetUi) : 0));
     const duck = AudioPlayer.ducks[id];
     if (duck) this.duck(duck[0], duck[1]);
+    if (id === 'crashHeavy') this.deafen(0.6);
+    else if (id === 'explosion') this.deafen(0.8);
+    else if (id === 'detonation') this.deafen(1);
+  }
+
+  /** A merge's sound waits this long at most (seconds) to land on a sixteenth of the music, a tick from a switch a little longer: a sound already on the beat is never moved, one further off is never worth the lag. */
+  private static readonly magnet = 0.04;
+  private static readonly magnetUi = 0.045;
+
+  /** Seconds from `now` to the next sixteenth of the music if it is within `within`, else 0 (also while the music is not playing). */
+  private toGrid(now: number, within: number): number {
+    if (this.loopLength === 0 || (this.volumes.get('base') ?? 0) < 0.3) return 0;
+    const step = this.loopLength / 64;
+    const wait = step - ((now - this.loopAt) % step);
+    return wait <= within ? wait : 0;
+  }
+
+  /**
+   * After a very hard hit the world closes for a moment and a high note rings in the ear: the bed (music, weather, traffic) goes
+   * dull and opens again within about a second, under the fail pause's breath. Not more often than every few seconds.
+   */
+  private deafen(strength: number): void {
+    const ctx = this.ctx;
+    const muffle = this.muffle;
+    const out = this.ui;
+    if (!ctx || !muffle || !out) return;
+    const now = ctx.currentTime;
+    if (now - this.lastRing < 5) return;
+    this.lastRing = now;
+    muffle.frequency.cancelScheduledValues(now);
+    muffle.frequency.setTargetAtTime(450 + 700 * (1 - strength), now, 0.015);
+    muffle.frequency.setTargetAtTime(20000, now + 0.45 + 0.5 * strength, 0.4);
+    const level = 0.008 + 0.014 * strength;
+    for (const hz of [4300, 4312]) {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.frequency.value = hz;
+      gain.gain.setValueAtTime(0.0001, now + 0.05);
+      gain.gain.exponentialRampToValueAtTime(level, now + 0.18);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + 1.9);
+      osc.connect(gain);
+      gain.connect(out);
+      osc.start(now + 0.05);
+      osc.stop(now + 1.95);
+    }
   }
 
   /** Room for one more sample: when all voices are busy the weakest, oldest one goes (a quick fade), unless the new one is weaker still. */
@@ -281,9 +339,18 @@ export class AudioPlayer {
    */
   private synth(id: SoundID, ctx: AudioContext, out: GainNode, pan: number, pitch = 1): boolean {
     if (!AudioPlayer.synthIds.includes(id)) return false;
-    const now = ctx.currentTime;
-    if (now - (this.lastStart.get(id) ?? -1) < 0.025) return true;
-    this.lastStart.set(id, now);
+    const clock = ctx.currentTime;
+    if (clock - (this.lastStart.get(id) ?? -1) < 0.025) return true;
+    const now = clock + (id === 'note' ? this.toGrid(clock, AudioPlayer.magnet) : 0);
+    this.lastStart.set(id, clock);
+    // Where it happens on screen, as for a sample.
+    let dest: AudioNode = out;
+    if (Math.abs(pan) > 0.02 && typeof ctx.createStereoPanner === 'function') {
+      const panner = ctx.createStereoPanner();
+      panner.pan.value = pan;
+      panner.connect(out);
+      dest = panner;
+    }
     const noise = (at: number, length: number, from: number, to: number, level: number, rate = 0): void => {
       const frames = Math.ceil(ctx.sampleRate * length);
       const buffer = ctx.createBuffer(1, frames, ctx.sampleRate);
@@ -315,7 +382,7 @@ export class AudioPlayer {
         lfo.start(now + at);
         lfo.stop(now + at + length + 0.02);
       }
-      gain.connect(out);
+      gain.connect(dest);
       src.start(now + at);
       src.stop(now + at + length + 0.02);
     };
@@ -329,7 +396,7 @@ export class AudioPlayer {
       gain.gain.exponentialRampToValueAtTime(level, now + at + 0.008);
       gain.gain.exponentialRampToValueAtTime(0.0001, now + at + length);
       osc.connect(gain);
-      gain.connect(out);
+      gain.connect(dest);
       osc.start(now + at);
       osc.stop(now + at + length + 0.02);
     };
@@ -344,6 +411,11 @@ export class AudioPlayer {
         this.play('paid', 1, pan);
         [880, 1109, 1319, 1760].forEach((f, i) => tone('triangle', f, f, 0.05 + i * 0.065, 0.3, 0.14));
         tone('sine', 98, 55, 0, 0.35, 0.7);
+        break;
+      case 'note':
+        // A soft bell on the combo's step (`pitch`, the ladder of the merge): D5 at the bottom, a sine with its octave on top, gone in a third of a second.
+        tone('sine', 587.33 * pitch, 587.33 * pitch, 0, 0.34, 0.1);
+        tone('sine', 1174.66 * pitch, 1174.66 * pitch, 0, 0.2, 0.025);
         break;
       case 'chestHit':
         // A tap on the chest: a knock with a crack on top, brighter with every tap (`pitch` climbs).
@@ -401,7 +473,7 @@ export class AudioPlayer {
   }
 
   private static readonly synthIds: SoundID[] = [
-    'critical', 'jackpot', 'chestHit', 'reelSpin', 'reelTick', 'shimmer', 'reelLand', 'reelLandBig', 'heal', 'sheetOpen', 'sheetClose', 'barFill',
+    'critical', 'jackpot', 'note', 'chestHit', 'reelSpin', 'reelTick', 'shimmer', 'reelLand', 'reelLandBig', 'heal', 'sheetOpen', 'sheetClose', 'barFill',
   ];
 
   /** Once per frame: each stem glides towards its volume, the filter follows the breath. */

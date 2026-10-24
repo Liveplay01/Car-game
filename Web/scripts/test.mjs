@@ -3741,3 +3741,51 @@ test('the duck family: about one shift in 500, the cars stop for it, it never wa
   }
   assert.ok(stood > 0, 'cars stood and waited');
 });
+
+test('small details (Leo, 24.10.2026): holidays by date, a note under every good merge, bodies on springs, the queue\'s wave', async () => {
+  const { Holidays } = await load('/src/present/holidays.ts');
+  const day = (m, d, h = 12) => new Date(2026, m - 1, d, h);
+  assert.equal(Holidays.of(day(10, 31)), 'halloween');
+  assert.equal(Holidays.of(day(10, 24)), null);
+  assert.equal(Holidays.of(day(12, 5)), 'december');
+  assert.equal(Holidays.of(day(12, 31)), 'newYear');
+  assert.equal(Holidays.of(day(7, 1)), null);
+
+  const { Feedback } = await load('/src/present/feedback.ts');
+  const merged = (rating) => ({ type: 'merged', rating, critical: false, position: { x: 0, y: 0 }, points: 1, combo: 3 });
+  assert.deepEqual(Feedback.cues([merged('clean')]).sounds, ['merge']);
+  for (const rating of ['perfect', 'tightFit', 'nearMiss']) assert.ok(Feedback.cues([merged(rating)]).sounds.includes('note'), `${rating} rings a note`);
+  assert.ok(!Feedback.cues([merged('cutOff')]).sounds.includes('note'), 'a cut-off is not a step of the tune');
+  assert.ok(!Feedback.cues([{ ...merged('perfect'), critical: true }]).sounds.includes('note'), 'a critical merge has its own chord');
+  for (const combo of [1, 4, 30]) assert.equal(Feedback.pitch('note', combo, 7), Feedback.pitch('merge', combo, 7), 'the note sits on the merge\'s step');
+
+  const { VehicleLamps } = await load('/src/present/scene.ts');
+  const { STEP } = await load('/src/core/world.ts');
+  const world = new World(forLevel(baseConfig, 8, 11), 11, { startsOnFirstTap: false });
+  const lamps = new VehicleLamps();
+  let most = 0;
+  let waved = false;
+  for (let i = 0; i < 120 * 40; i++) {
+    if (world.queue.isReady && world.predictedMergeGap(world.layout.player, 0, 40, -Infinity, world.vehicle(world.queue.vehicles[0])?.lane ?? 0) > 0.04) world.tap(world.time);
+    world.step();
+    world.takeEvents();
+    lamps.update(world, STEP);
+    for (const veh of world.vehicles) most = Math.max(most, Math.abs(lamps.pitch(veh.id)));
+    if (!waved && world.queue.vehicles.length >= 3 && i > 600) {
+      waved = true;
+      lamps.wave(world);
+      const [front, , third] = world.queue.vehicles;
+      lamps.update(world, 0.06);
+      const first = lamps.indicators(front);
+      assert.ok(first && first[0] > 0.3 && first[1] > 0.3, 'the front car flashes both sides first');
+      assert.equal(lamps.indicators(third)?.[0] ?? 0, 0, 'the third car is still waiting for its turn');
+      lamps.update(world, 0.3);
+      assert.equal(lamps.indicators(front)?.[0] ?? 0, 0, 'and the flash is over');
+    }
+  }
+  assert.ok(most > 0.002 && most < 0.07, `the bodies pitch, and never far (${most})`);
+  assert.ok(waved, 'the test saw a queue of three');
+  lamps.calm = true;
+  lamps.update(world, STEP);
+  for (const veh of world.vehicles) assert.equal(lamps.pitch(veh.id), 0, 'Reduce Motion: the bodies stay level');
+});

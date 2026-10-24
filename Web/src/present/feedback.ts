@@ -49,6 +49,8 @@ export type SoundID =
   | 'wedding'
   | 'oversize'
   | 'learner'
+  /** A driver at the line who has waited too long (Leo, 24.10.2026): the same note for every vehicle, played slower for a lorry. */
+  | 'honk'
   | 'clang'
   | 'blocked'
   /** The low body under a hard crash (same script). */
@@ -56,6 +58,8 @@ export type SoundID =
   /** Made in `audio/player.ts` (no sample): a Critical Merge, a Jackpot paid, and the chest reel. */
   | 'critical'
   | 'jackpot'
+  /** A soft bell on the combo's note, under every merge that is not a plain one: a run of good merges plays a tune in the music's key. */
+  | 'note'
   | 'chestHit'
   | 'reelSpin'
   | 'reelTick'
@@ -86,7 +90,7 @@ export const SOUND_IDS: SoundID[] = [
   'merge', 'toll', 'tightFit', 'nearMiss', 'perfect', 'cutOff', 'comboUp', 'crashLight', 'crash', 'crashHeavy', 'rushHour',
   'shiftComplete', 'shiftFailed', 'wanted', 'takedown', 'dispatch', 'escaped', 'paid', 'secured', 'seized', 'screech', 'tow',
   'flowIn', 'go', 'swoosh', 'uiTick', 'purchase', 'build', 'denied', 'chestCharge', 'chestBurst', 'chestBurstRare',
-  'explosion', 'detonation', 'alarm', 'ambulance', 'wedding', 'oversize', 'learner', 'clang', 'blocked', 'thump',
+  'explosion', 'detonation', 'alarm', 'ambulance', 'wedding', 'honk', 'oversize', 'learner', 'clang', 'blocked', 'thump',
   'casinoStop', 'coinClink', 'needleTick', 'meterTick', 'coinToss', 'coinLand', 'chipsIn', 'shatter', 'shutter', 'blinker',
 ];
 
@@ -207,7 +211,8 @@ export const Feedback = {
 
   pitch(sound: SoundID, combo: number, serial: number): number {
     switch (sound) {
-      case 'merge': {
+      case 'merge':
+      case 'note': {
         const step = clamp(combo - 1, 0, Feedback.comboLadder.length - 1);
         return Math.pow(2, Feedback.comboLadder[step] / 12);
       }
@@ -320,6 +325,11 @@ export const Feedback = {
       }
       const h = Feedback.haptic(e);
       if (h && !haptics.includes(h)) haptics.push(h);
+      // A merge that is more than a plain one rings its note too, so every good merge of a run is a step of the tune.
+      if (e.type === 'merged' && !e.critical && (e.rating === 'perfect' || e.rating === 'tightFit' || e.rating === 'nearMiss') && !sounds.includes('note')) {
+        sounds.push('note');
+        origins.set('note', e.position);
+      }
     }
     if (haptics.length > 1) haptics = haptics.filter((h) => h !== 'merge');
     const weights: SoundID[] = ['crashLight', 'crash', 'crashHeavy'];

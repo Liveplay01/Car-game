@@ -2,6 +2,7 @@ import type { ColorToken } from './theme';
 import { ResultBanner, type ShiftSummary } from './hud';
 import { Skins } from './skins';
 import { S, Fmt } from './strings';
+import { type SignStyle, signStyle } from './signs';
 
 export type PatternToken = 'perfect' | 'tight' | 'clean' | 'hazard' | 'strike' | 'revive';
 
@@ -32,10 +33,16 @@ export interface PhotoCard {
   mapColor: ColorToken | null;
   hook: string;
   pattern: PerformancePattern;
+  /** The camera's reading: what it measured against the limit of the country the signs follow. A shift that was lost was speeding. */
+  speed: { measured: number; limit: number; unit: 'km/h' | 'mph'; over: boolean };
+  /** The number plate of the car in the frame: the crew's letters (or RAT) and the score's last four digits, in the country's pattern. */
+  plate: { text: string; style: SignStyle };
 }
 
+const LIMITS: Record<SignStyle, [number, 'km/h' | 'mph']> = { eu: [50, 'km/h'], us: [25, 'mph'], uk: [30, 'mph'], jp: [40, 'km/h'], kr: [50, 'km/h'], cn: [40, 'km/h'] };
+
 export const PhotoCard = {
-  of(summary: ShiftSummary, mapSkin: string | null): PhotoCard {
+  of(summary: ShiftSummary, mapSkin: string | null, crewTag: string | null = null): PhotoCard {
     const r = summary.result;
     const [headline, tint] = ResultBanner.title(summary);
     const mayhem = summary.mode === 'mayhem';
@@ -71,6 +78,10 @@ export const PhotoCard = {
       badge,
     };
 
+    const [limit, unit] = LIMITS[signStyle];
+    const measured = r.outcome !== 'completed' ? limit + 5 + 4 * r.crashes : limit - (r.crashes === 0 ? 1 : 0);
+    const digits = String(Math.abs(Math.round(mayhem ? r.flames : r.score)) % 10000).padStart(4, '0');
+
     return {
       headline,
       tint,
@@ -82,6 +93,8 @@ export const PhotoCard = {
       mapColor: Skins.color(mapSkin),
       hook: mayhem ? S.photo.hookFlames(value) : S.photo.hook(value),
       pattern,
+      speed: { measured, limit, unit, over: measured > limit },
+      plate: { text: `${crewTag ?? 'RAT'} ${digits}`, style: signStyle },
     };
   },
 };

@@ -1,15 +1,17 @@
 import type { World } from '../core/world';
-import { type Vec2, v, add, sub, mul, fromAngle, TAU } from '../core/vec2';
+import { type Vec2, v, add, sub, mul, dot, normalize, fromAngle, TAU } from '../core/vec2';
 import { type RenderList, circle, line, unitHash, Ease } from './render';
 import type { ColorToken } from './theme';
 
-/** What the calendar brings to the city: lights in December, fireworks on New Year's Eve. */
-export type Holiday = 'december' | 'newYear';
+/** What the calendar brings to the city: lights in December, fireworks on New Year's Eve, pumpkins on Halloween. */
+export type Holiday = 'december' | 'newYear' | 'halloween';
 
 /**
  * Holidays without a banner (Leo, 23.10.2026): nothing announces them, the city simply has them.
  * In December a few roofs wear a string of lights; on New Year's Eve (and in the small hours after
- * it) rockets go up at the edge of the city. By the player's own clock.
+ * it) rockets go up at the edge of the city. On Halloween the lights turn orange and violet and a pumpkin
+ * glows on the doorstep of every other house.
+ * By the player's own clock.
  */
 export const Holidays = {
   /** A share of the houses that put lights up. */
@@ -23,6 +25,7 @@ export const Holidays = {
   of(d: Date): Holiday | null {
     const month = d.getMonth();
     if ((month === 11 && d.getDate() === 31) || (month === 0 && d.getDate() === 1 && d.getHours() < 6)) return 'newYear';
+    if (month === 9 && d.getDate() === 31) return 'halloween';
     return month === 11 ? 'december' : null;
   },
 
@@ -32,14 +35,15 @@ export const Holidays = {
    * A string of bulbs round the eaves of house `index`: mostly warm white, now and then coloured.
    * They twinkle out of step; without a clock (`time` null) they simply glow.
    */
-  addLights(list: RenderList, center: Vec2, size: Vec2, angle: number, index: number, fade: number, time: number | null, glow: boolean): void {
+  addLights(list: RenderList, center: Vec2, size: Vec2, angle: number, index: number, fade: number, time: number | null, glow: boolean, holiday: Holiday = 'december'): void {
     const along = fromAngle(angle);
     const across = fromAngle(angle + Math.PI / 2);
     const hx = size.x / 2 - 1.6;
     const hy = size.y / 2 - 1.6;
     const corners = [v(-hx, -hy), v(hx, -hy), v(hx, hy), v(-hx, hy)];
     const coloured = unitHash(index, 34) < 0.35;
-    const colours: ColorToken[] = coloured ? ['lightRed', 'juiceGreen', 'coin', 'lightBlue'] : ['headlight'];
+    const halloween = holiday === 'halloween';
+    const colours: ColorToken[] = halloween ? ['skinSunset', 'skinHolo'] : coloured ? ['lightRed', 'juiceGreen', 'coin', 'lightBlue'] : ['headlight'];
     let n = 0;
     corners.forEach((from, i) => {
       const to = corners[(i + 1) % 4];
@@ -54,6 +58,30 @@ export const Holidays = {
         list.w(circle(at, 0.8), color, twinkle * fade);
       }
     });
+  },
+
+  /**
+   * A jack-o'-lantern on the doorstep of every other house, on the side that faces the road: a ribbed orange body,
+   * a green stem, and a candle inside that flickers (the glow on the ground, out of step with its neighbours).
+   */
+  addPumpkins(list: RenderList, center: Vec2, size: Vec2, angle: number, index: number, fade: number, time: number | null): void {
+    if (unitHash(index, 35) >= 0.5) return;
+    const along = fromAngle(angle);
+    const across = fromAngle(angle + Math.PI / 2);
+    const out = normalize(mul(center, -1));
+    const reach = Math.abs(dot(out, along)) * (size.x / 2) + Math.abs(dot(out, across)) * (size.y / 2);
+    const step = unitHash(index, 36) - 0.5;
+    const at = add(add(center, mul(out, reach + 2.6)), mul(v(-out.y, out.x), step * 9));
+    const flicker = time === null ? 0.8 : 0.7 + 0.3 * Math.sin(time * 9 + index * 2.1) * Math.sin(time * 5.3 + index);
+    list.w(circle(at, 9), 'skinSunset', 0.12 * flicker * fade);
+    list.w(circle(add(at, v(0.7, -0.7)), 3.9), 'shadow', 0.6 * fade);
+    list.w(circle(at, 3.6), 'skinSunset', fade);
+    for (const rib of [-1, 1]) {
+      const side = add(at, mul(across, rib * 1.5));
+      list.w(line(sub(side, mul(along, 2.2)), add(side, mul(along, 2.2)), 0.5), 'skinPlum', 0.55 * fade);
+    }
+    list.w(circle(at, 0.9), 'juiceGreen', 0.9 * fade);
+    list.w(circle(at, 1.5), 'hazard', 0.55 * flicker * fade);
   },
 
   /**

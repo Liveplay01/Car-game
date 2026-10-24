@@ -2,7 +2,7 @@ import { World, STEP } from '../core/world';
 import { baseConfig, gravity, builtArmSlots, weatherSeverity, type Config } from '../core/config';
 import { type SaveGame, type GameMode, type Hint, Careers, newSave } from '../core/career';
 import { Elite } from '../core/elite';
-import { addCrewXp } from '../net/crews';
+import { addCrewXp, crewTag } from '../net/crews';
 import { SeasonPass } from '../core/seasonPass';
 import { Unlocks } from '../core/unlocks';
 import { Mafia } from '../core/mafia';
@@ -23,7 +23,7 @@ import type { Reward } from '../net/rewards';
 import { cloudChanged, cloudEnabled, cloudLinked } from '../net/cloud';
 import { fetchIdeas, ideasEnabled } from '../net/ideas';
 import { Auction } from '../core/auction';
-import { RenderList, R, Ease, toScreen, rect, drawText, type Camera, type Rect } from './render';
+import { RenderList, R, Ease, toScreen, rect, drawText, unitHash, type Camera, type Rect } from './render';
 import type { ColorToken } from './theme';
 import { S, Fmt, money as moneyText } from './strings';
 import { CrashEffects } from './effects';
@@ -77,9 +77,9 @@ import { News, NEWS_DWELL, type NewsItem } from './news';
 import { textWidth } from './icons';
 import { TyreMarks, BrakeMarks } from './marks';
 import { Ducks } from './ducks';
-import { Holidays } from './holidays';
+import { type Holiday, Holidays } from './holidays';
 import { DriftFx } from './driftFx';
-import { type DriftSound, type TrafficSound, engineOf } from './feedback';
+import { type DriftSound, type TrafficSound, type TrafficEngine, engineOf } from './feedback';
 import { type ChallengeSpec, challengeOf, challengeConfig, encodeChallenge } from '../core/challenge';
 import { forSeason } from '../core/seasons';
 import { Achievements } from '../core/achievements';
@@ -221,6 +221,23 @@ export class GameSession {
   /** Where the player's last crash happened: the camera leans towards it if it ends the shift. */
   private lastCrashAt = v(0, 0);
   private lamps = new VehicleLamps();
+  /**
+   * The regular (Leo, 24.10.2026): one plain car with a roof box comes by every dozen cars or so, in every shift. It drives like any
+   * other and counts for nothing; when it is let in, it thanks with its hazards. Its first appearance depends on the day.
+   */
+  private regular: number | null = null;
+  private regularFrom = 0;
+  /** The calendar's holiday by the player's clock, looked up once a minute (not once a frame, not only at start: the game can stay open over midnight). */
+  private holidayAt = 0;
+  private holidayNow: Holiday | null = null;
+  private get holiday(): Holiday | null {
+    const now = Date.now();
+    if (now - this.holidayAt > 60000) {
+      this.holidayAt = now;
+      this.holidayNow = Holidays.of(new Date(now));
+    }
+    return this.holidayNow;
+  }
   private sinceFatalCrash = Infinity;
   private sinceLoss = Infinity;
   private lossPull = 0;
@@ -1456,7 +1473,55 @@ export class GameSession {
     if (this.output && this.save.settings.sound) this.output.sound(sound, pitch, 0);
   }
 
+  /**
+   * The driver at the line who has waited too long (Leo, 24.10.2026) taps the horn: once for that car, and not more than once in
+   * `honkEvery` seconds, so it stays a rare thing. Each vehicle sounds its own pitch. Only sound: nothing changes on the road.
+   */
+  private static readonly impatience = 9;
+  private static readonly honkEvery = 30;
+  private static readonly honkPitch: Record<TrafficEngine, number> = { car: 1, sport: 1.12, diesel: 0.8, truck: 0.55, bike: 1.7 };
+  private frontId = -1;
+  private frontWait = 0;
+  private sinceHonk = Infinity;
+
+  private honkIfImpatient(delta: number): void {
+    const world = this.world;
+    this.sinceHonk += delta;
+    const id = world.queue.vehicles[0];
+    const veh = id === undefined ? undefined : world.vehicle(id);
+    const waiting = veh?.phase.kind === 'queued' && this.screen.k === 'playing' && !this.tutorial && world.shift.phase !== 'waiting' && world.shift.phase !== 'ended';
+    if (!veh || !waiting) {
+      this.frontId = -1;
+      this.frontWait = 0;
+      return;
+    }
+    if (id !== this.frontId) {
+      this.frontId = id;
+      this.frontWait = 0;
+    }
+    this.frontWait += delta;
+    if (this.frontWait < GameSession.impatience || this.sinceHonk < GameSession.honkEvery) return;
+    // Once for this car: it counts up again only when another car stands at the front.
+    this.frontWait = -Infinity;
+    this.sinceHonk = 0;
+    if (!this.save.settings.sound) return;
+    const cam = this.lastCamera;
+    this.output?.sound('honk', GameSession.honkPitch[engineOf(veh.type) ?? 'sport'], cam ? Feedback.pan(toScreen(cam, veh.position).x, cam.viewport.x) : 0);
+  }
+
+  private keepRegular(): void {
+    const world = this.world;
+    if (this.regular !== null) {
+      if (world.vehicles.some((x) => x.id === this.regular)) return;
+      this.regularFrom = this.regular + 9 + Math.floor(unitHash(this.regular, 42) * 9);
+      this.regular = null;
+    }
+    this.regular = world.vehicles.find((x) => x.type === 'car' && x.role === null && !x.isCrashed && x.id >= this.regularFrom)?.id ?? null;
+  }
+
   private resetScene(): void {
+    this.regular = null;
+    this.regularFrom = 6 + Math.floor(unitHash(this.today, 41) * 14);
     this.accumulator = 0;
     this.effects = new CrashEffects(this.world.seed);
     this.explosions = new ExplosionEffects(this.world.seed);
@@ -1515,6 +1580,8 @@ export class GameSession {
       this.age(simDelta);
       this.lamps.calm = this.reduceMotion;
       this.lamps.update(this.world, simDelta);
+      this.keepRegular();
+      this.honkIfImpatient(simDelta);
       const lit = this.world.shift.phase !== 'waiting' && this.world.shift.phase !== 'ended';
       // A new shift begins: the street lamps come on, and the last shift's brake marks fade.
       if (lit && !this.lampWave.lit) this.brakeMarks.fade();
@@ -2691,6 +2758,7 @@ export class GameSession {
         case 'merged':
           // Braked in behind slow traffic: nothing was timed, so it counts for nothing and shows nothing.
           if (e.crept) break;
+          if (e.vehicle === this.regular && e.rating !== 'cutOff') this.lamps.thank(e.vehicle);
           if (e.critical) {
             this.addPopup({ k: 'critical', n: e.points }, e.position);
             this.rim.signal('wave', 'coin');
@@ -2830,6 +2898,9 @@ export class GameSession {
         }
         case 'ambulanceLost':
           this.rim.signal('miss', 'lightBlue');
+          break;
+        case 'flowChanged':
+          if (e.isInFlow) this.lamps.wave(world);
           break;
         case 'heistRecovered':
           this.rim.signal('wave', 'coin');
@@ -3363,7 +3434,7 @@ export class GameSession {
     const mapSkin = this.special?.k === 'trial' && this.special.trial.tour?.map ? this.special.trial.tour.map : career.mapSkin;
     const theme = MapTheme.from(mapSkin);
     const list = new RenderList(camera, MapTheme.ground(theme));
-    const holiday = Holidays.of(new Date());
+    const holiday = this.holiday;
     list.topLit = this.topLit;
     const notice = this.notices.shown;
     list.topIntro = this.introGrow;
@@ -3408,7 +3479,7 @@ export class GameSession {
     }
     this.effects.addWrecks(list, world, alpha, !rm);
     SceneBuilder.addShadows(list, world, alpha);
-    SceneBuilder.addVehicles(list, world, alpha, career.carSkins, career.policeSkin, rm ? null : world.time, rm ? null : world.time, this.lamps);
+    SceneBuilder.addVehicles(list, world, alpha, career.carSkins, career.policeSkin, rm ? null : world.time, rm ? null : world.time, this.lamps, null, this.regular);
     SceneBuilder.addTowTrucks(list, world);
     this.driftFx.addAir(list);
     if (night) {
@@ -3437,7 +3508,7 @@ export class GameSession {
     const scale = Math.min(size.x, size.y) / 2 / reach;
     const camera: Camera = { viewport: size, center: v(0, -reach * 0.12), focus: v(size.x / 2, size.y / 2), scale };
     const list = this.sceneList(camera, Math.min(1, this.accumulator / STEP), this.reduceMotion);
-    return { list, card: PhotoCard.of(s.summary, this.save.career.mapSkin) };
+    return { list, card: PhotoCard.of(s.summary, this.save.career.mapSkin, crewTag()) };
   }
 
   private renderList(viewport: Vec2, delta: number): RenderList {

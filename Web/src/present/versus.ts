@@ -559,6 +559,7 @@ export class VersusMatch {
       headlights: (id: number) => Math.max(this.lamps.headlights(id), this.flashOf(id)),
       indicators: (id: number) => this.lamps.indicators(id),
       nod: (id: number) => this.lamps.nod(id),
+      pitch: (id: number) => this.lamps.pitch(id),
     };
     SceneBuilder.addVehicles(list, w, alpha, [], null, null, null, lamps, (veh) => this.markOf(veh));
     this.effects.addAir(list);

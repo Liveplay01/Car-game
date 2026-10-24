@@ -11,7 +11,8 @@ import { currentLanguage } from './i18n';
  * language (`en-GB`, `zh-SG`) picks the British and Singaporean signs, which are Vienna-style with the blue disc.
  * Colours come from the interface's own roles; what is not earned yet is dimmed.
  */
-type Style = 'eu' | 'us' | 'uk' | 'jp' | 'kr' | 'cn';
+export type SignStyle = 'eu' | 'us' | 'uk' | 'jp' | 'kr' | 'cn';
+type Style = SignStyle;
 
 /** Where traffic keeps to the left and the signs follow the British pattern; Ireland follows the EU. */
 const BRITISH = ['GB', 'SG', 'IN', 'HK'];
@@ -27,6 +28,8 @@ function styleOf(): Style {
 }
 
 const style = styleOf();
+/** The country's pattern the signs, and the number plate on the photo, follow. */
+export const signStyle: SignStyle = style;
 const DIM = 0.4;
 const TURN = Math.PI / 4;
 

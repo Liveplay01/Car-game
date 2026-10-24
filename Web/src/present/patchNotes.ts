@@ -51,6 +51,29 @@ export const itemCredit = (item: PatchItem): string | null => {
 
 export const PATCH_NOTES: PatchNote[] = [
   {
+    id: '2026-10-24',
+    date: '24 October 2026',
+    title: 'Cars lean into the brakes, every good merge rings a note, Halloween',
+    impact: 'minor',
+    summary: [
+      'Cars dip into their brakes and squat as they pull away: a lorry heavy, a sports car stiff.',
+      'Every good merge rings a note in the music\'s key; a run of Perfects flashes the queue\'s hazards.',
+      'Halloween on 31 October: orange and violet lights on the roofs and pumpkins on the doorsteps.',
+      'A driver who waits too long taps the horn, and a regular with a roof box drives by each shift.',
+    ],
+    items: [
+      'Fixed: on the photo of a shift the "New record" badge covered a corner of the telemetry row beneath it, and the badge next to "Telemetry" sat on the label\'s last letters. Both have room now.',
+      'Cars ride on springs: braking dips the nose, pulling away squats the tail, and the body swings back once or twice before it settles. A lorry is heavy and wobbles, a van soft, a sports car stiff, a motorbike hardly moves. Reduce Motion keeps the bodies level.',
+      'When a run of Perfects tips you into the flow, the hazards of your whole queue flash once, front to back, like a wave.',
+      'Every Perfect, Tight Fit and Near Miss now rings a soft bell on the combo\'s step, under the sound it had before. The steps are the music\'s own key, so a run of good merges plays a little tune that climbs with your combo. A merge that lands within a hair of a sixteenth of the music is nudged onto the beat; so are the ticks of switches and segments.',
+      'A driver who has waited at the line for nine seconds taps the horn, once for that car, and not more than once in half a minute. Each vehicle has its own pitch: a lorry low, a motorbike high. It only makes a sound; nothing changes on the road.',
+      'The regular: one plain car with a dark roof box drives by every dozen cars or so, in every shift. It drives like any other and counts for nothing; when you let it in, it thanks you with its hazards.',
+      'After a very hard crash, an explosion or a detonation, the world closes for a moment: the music, weather and traffic go dull and a high note rings in your ear, then everything opens again. Not more than once in five seconds.',
+      'Halloween (31 October): the lights on the roofs turn orange and violet and a pumpkin glows on the doorstep of every other house. By your own clock.',
+      'The photo of a shift is a better speed-camera print: the camera\'s reading stands in the top bar against the limit of your country (red when the shift was lost: you were speeding), and the car in the frame wears a number plate in your country\'s pattern, with your crew\'s letters and the last four digits of your score.',
+    ],
+  },
+  {
     id: '2026-10-23',
     date: '23 October 2026',
     title: 'Cars signal before they leave, every chest opens its own way, and signing out of the cloud clears the device',
