@@ -329,6 +329,8 @@ export interface Career {
   auctionSpent: number;
   /** Everything given to the Game fund (core/fund.ts). */
   fundGiven: number;
+  /** The best place the crew ever finished a week on (1 to 3; 0 = never on the podium). */
+  crewPodium: number;
   /** The newest published idea the player has been told about or seen (ms; 0 = never looked). */
   ideasSeenAt: number;
   /** The Mafia's loan (core/mafia.ts), the loans repaid in time in a row (they make the next one kinder) and the loans taken in all. */
@@ -475,6 +477,7 @@ export const newCareer = (): Career => ({
   auctionWins: 0,
   auctionSpent: 0,
   fundGiven: 0,
+  crewPodium: 0,
   ideasSeenAt: 0,
   loan: null,
   cleanLoans: 0,

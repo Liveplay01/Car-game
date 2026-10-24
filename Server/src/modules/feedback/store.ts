@@ -7,8 +7,8 @@ export const FEEDBACK_KINDS: readonly FeedbackKind[] = ['bug', 'idea'];
 export type FeedbackStatus = 'new' | 'seen' | 'done' | 'wontfix';
 export const FEEDBACK_STATUSES: readonly FeedbackStatus[] = ['new', 'seen', 'done', 'wontfix'];
 
-/** What the server can hand to a player; the game knows how to pay each one. */
-export const REWARD_ITEMS = ['ladybug', 'goldbug', 'scarab', 'bluebottle', 'orchid', 'firefly', 'chest:standard', 'chest:premium', 'chest:diamond', 'chest:event'] as const;
+/** What the server can hand to a player; the game knows how to pay each one. `place:<n>` is a crew's podium finish: it pays nothing itself, the game remembers the best one for the titles. */
+export const REWARD_ITEMS = ['ladybug', 'goldbug', 'scarab', 'bluebottle', 'orchid', 'firefly', 'chest:standard', 'chest:premium', 'chest:diamond', 'chest:event', 'place:1', 'place:2', 'place:3'] as const;
 /** A moderator's gift of money: `money:50000`, up to nine digits. */
 export type MoneyItem = `money:${number}`;
 export type RewardItem = (typeof REWARD_ITEMS)[number] | MoneyItem;

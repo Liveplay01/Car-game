@@ -5,6 +5,8 @@
  * week drawn from the week, the group and the slot, so every member sees the same table.
  */
 
+import type { RewardItem } from '../feedback/store.ts';
+
 export const LEAGUES = ['bronze', 'silver', 'gold', 'platinum', 'diamond'] as const;
 export type League = (typeof LEAGUES)[number];
 
@@ -19,6 +21,20 @@ export const BOT_WEEK_XP: readonly number[] = [700, 1600, 3200, 5600, 9000];
 
 /** The crew's weekly goal: this much Season XP for every member (two at least); reached, it pays every member who helped a Standard Chest. */
 export const GOAL_PER_MEMBER = 150;
+
+/** Beyond the goal: at this many times the goal every member who helped gets these on top of the Standard Chest (Leo, 24.10.2026). Each step reached pays. */
+export const XP_TIERS: readonly { times: number; items: readonly RewardItem[] }[] = [
+  { times: 2, items: ['chest:standard', 'money:10000'] },
+  { times: 4, items: ['chest:premium'] },
+  { times: 8, items: ['chest:premium', 'money:50000'] },
+];
+
+/** Top of the group's table at the week's end (a crew with XP only), for every member who helped; the place also goes to the game as `place:<n>`, which unlocks the titles. */
+export const PODIUM: readonly (readonly RewardItem[])[] = [
+  ['chest:premium', 'money:100000', 'place:1'],
+  ['chest:premium', 'money:50000', 'place:2'],
+  ['money:25000', 'place:3'],
+];
 
 const BOT_NAMES = [
   'Night Owls',

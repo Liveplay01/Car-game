@@ -35,6 +35,10 @@ export default (S: Strings): Words<Strings> => ({
         timeless: 'Zeitlos',
         apex: 'Apex',
         boundless: 'Grenzenlos',
+        crewPodium: 'Podest-Crew',
+        crewChampion: 'Crew-Meister',
+        collector: 'Sammler',
+        completionist: 'Vollender',
         ascended: 'Aufgestiegen',
         eternal: 'Ewig',
         grandmaster: 'Großmeister',
@@ -74,6 +78,12 @@ export default (S: Strings): Words<Strings> => ({
           return `Schalte ${S.shop.item(r.id)} in Unlimited frei`;
         case 'masteries':
           return 'Erreiche Stufe V in jeder Meisterschaft';
+        case 'crew':
+          return r.place === 1 ? 'Beende eine Crew-Woche auf Platz 1 der Liga' : 'Beende eine Crew-Woche in den Top 3 der Liga';
+        case 'collector':
+          return 'Sammle jeden Skin, den es noch gibt';
+        case 'completionist':
+          return 'Verdiene alle anderen Titel';
       }
     },
     earned: (ids) => (ids.length === 1 ? `TITEL · ${S.titles.name(ids[0])}` : `${ids.length} NEUE TITEL · ${ids.map((t) => S.titles.name(t)).join(', ')}`),

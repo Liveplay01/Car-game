@@ -3955,6 +3955,9 @@ export class GameSession {
         if (!Number.isSafeInteger(amount) || amount < 1) continue;
         career.money += amount;
         news.push(S.rewards.crew(reason, moneyText(Fmt.number(amount))) ?? S.rewards.money(amount));
+      } else if (item.startsWith('place:')) {
+        const place = Number(item.slice(6));
+        if (place >= 1 && place <= 3) career.crewPodium = career.crewPodium > 0 ? Math.min(career.crewPodium, place) : place;
       } else if (cosmetic(item)) {
         if (Careers.owns(career, item)) continue;
         Careers.collect(career, item);

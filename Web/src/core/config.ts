@@ -1081,12 +1081,13 @@ export const baseConfig = {
   /** The bidding opens at this share of the estimate and rises in steps of `auctionStep` of it. */
   auctionStartShare: 0.35,
   auctionStep: 0.05,
-  /** Collectors in the room: at least, at most. */
-  auctionBots: [3, 4] as readonly [number, number],
-  /** Each collector's ceiling, as a multiple of the estimate: most are sharks who will pay far over it, the rest pennies. */
-  auctionSharkShare: 0.7,
-  auctionShark: [1.4, 3.6] as readonly [number, number],
-  auctionPenny: [0.5, 1.2] as readonly [number, number],
+  /** Collectors in the room: at least, at most. They are drawn from a field of `auctionField` who all bid differently. */
+  auctionBots: [7, 7] as readonly [number, number],
+  auctionField: 50,
+  /** Each collector's ceiling, as a multiple of the estimate: a few are sharks who will pay far over it, the rest pennies. A room of pennies lets a lot go under the estimate. */
+  auctionSharkShare: 0.3,
+  auctionShark: [1.6, 4.4] as readonly [number, number],
+  auctionPenny: [0.3, 1.1] as readonly [number, number],
   /** A collector who can still afford the next step counters with this chance. */
   auctionNerve: 0.85,
   /** A counter-bid is one to this many steps at once. */

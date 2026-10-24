@@ -626,6 +626,10 @@ export const S = {
           return `UP A LEAGUE · ${what} · ${S.crew.league(rest[0] ?? '')}`;
         case 'goal':
           return `WEEKLY GOAL REACHED · ${what} · thanks to your crew`;
+        case 'xp':
+          return `WEEKLY GOAL ×${rest[0] ?? ''} · ${what} · your crew went big`;
+        case 'top':
+          return `LEAGUE PLACE ${rest[0] ?? ''} · ${what} · your crew finished on top`;
         case 'back':
           return `GIFT RETURNED · ${what} · nobody took it`;
         default:
@@ -724,6 +728,10 @@ export const S = {
         timeless: 'Timeless',
         apex: 'Apex',
         boundless: 'Boundless',
+        crewPodium: 'Podium Crew',
+        crewChampion: 'Crew Champion',
+        collector: 'Collector',
+        completionist: 'Completionist',
         ascended: 'Ascended',
         eternal: 'Eternal',
         grandmaster: 'Grandmaster',
@@ -763,6 +771,12 @@ export const S = {
           return `Unlock ${S.shop.item(r.id)} in Unlimited`;
         case 'masteries':
           return 'Reach tier V in every mastery';
+        case 'crew':
+          return r.place === 1 ? 'Finish a crew week first in the league' : 'Finish a crew week in the top 3 of the league';
+        case 'collector':
+          return 'Collect every skin that can still be had';
+        case 'completionist':
+          return 'Earn every other title';
       }
     },
     earned: (ids: TitleId[]): string => (ids.length === 1 ? `TITLE · ${S.titles.name(ids[0])}` : `${ids.length} NEW TITLES · ${ids.map((t) => S.titles.name(t)).join(', ')}`),

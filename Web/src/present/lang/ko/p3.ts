@@ -35,6 +35,10 @@ export default (S: Strings): Words<Strings> => ({
         timeless: '시간을 넘어선 자',
         apex: '정점',
         boundless: '끝이 없는',
+        crewPodium: '크루 시상대',
+        crewChampion: '크루 챔피언',
+        collector: '수집가',
+        completionist: '완벽주의자',
         ascended: '승천한 자',
         eternal: '영원',
         grandmaster: '그랜드마스터',
@@ -74,6 +78,12 @@ export default (S: Strings): Words<Strings> => ({
           return `언리미티드에서 ${S.shop.item(r.id)} 해금`;
         case 'masteries':
           return '모든 마스터리에서 V단계 달성';
+        case 'crew':
+          return r.place === 1 ? '크루가 한 주를 리그 1위로 마치기' : '크루가 한 주를 리그 상위 3위 안으로 마치기';
+        case 'collector':
+          return '지금도 얻을 수 있는 스킨을 모두 모으기';
+        case 'completionist':
+          return '다른 칭호를 모두 획득하기';
       }
     },
     earned: (ids) => (ids.length === 1 ? `칭호 · ${S.titles.name(ids[0])}` : `새 칭호 ${ids.length}개 · ${ids.map((t) => S.titles.name(t)).join(', ')}`),

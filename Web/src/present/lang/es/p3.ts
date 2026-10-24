@@ -35,6 +35,10 @@ export default (S: Strings): Words<Strings> => ({
         timeless: 'Eterno',
         apex: 'Ápex',
         boundless: 'Ilimitado',
+        crewPodium: 'Crew en el podio',
+        crewChampion: 'Campeón de crew',
+        collector: 'Coleccionista',
+        completionist: 'Completista',
         ascended: 'Ascendido',
         eternal: 'Inmortal',
         grandmaster: 'Gran maestro',
@@ -74,6 +78,12 @@ export default (S: Strings): Words<Strings> => ({
           return `Desbloquea ${S.shop.item(r.id)} en Sin límites`;
         case 'masteries':
           return 'Alcanza el nivel V en todas las maestrías';
+        case 'crew':
+          return r.place === 1 ? 'Termina una semana de crew en primer puesto de la liga' : 'Termina una semana de crew entre los 3 primeros de la liga';
+        case 'collector':
+          return 'Consigue todos los aspectos que aún se pueden obtener';
+        case 'completionist':
+          return 'Consigue todos los demás títulos';
       }
     },
     earned: (ids) => (ids.length === 1 ? `TÍTULO · ${S.titles.name(ids[0])}` : `${ids.length} NUEVOS TÍTULOS · ${ids.map((t) => S.titles.name(t)).join(', ')}`),

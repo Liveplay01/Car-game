@@ -234,6 +234,10 @@ export default (S: Strings): Words<Strings> => ({
           return `晋级 · ${what} · ${S.crew.league(rest[0] ?? '')}`;
         case 'goal':
           return `达成每周目标 · ${what} · 多亏了你的车队`;
+        case 'xp':
+          return `每周目标×${rest[0] ?? ''} · ${what} · 你的车队表现出色`;
+        case 'top':
+          return `联赛第${rest[0] ?? ''}名 · ${what} · 你的车队名列前茅`;
         case 'back':
           return `礼物退回 · ${what} · 没有人领取`;
         default:

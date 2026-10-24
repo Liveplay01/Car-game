@@ -1,7 +1,7 @@
 import { baseConfig, BOSS_KINDS, FIRST_BOSSES, type Config } from './config';
 import { type Career, type MasteryGoal, MASTERY_CLASSIC_TIERS, MASTERY_GOALS, MASTERY_THRESHOLDS } from './career';
 import type { ShiftResult } from './events';
-import { type ChestKind, type Cosmetic, eliteReward } from './loot';
+import { type ChestKind, type Cosmetic, collectableSkins, eliteReward } from './loot';
 
 /**
  * The Elite track (Leo, 29.09.2026): Level 50 opens it, and from then on every shift earns
@@ -54,7 +54,11 @@ export type TitleId =
   | 'sovereign'
   | 'timeless'
   | 'apex'
-  | 'boundless';
+  | 'boundless'
+  | 'crewPodium'
+  | 'crewChampion'
+  | 'collector'
+  | 'completionist';
 
 export const TITLES: TitleId[] = [
   'eliteDriver',
@@ -110,6 +114,11 @@ export const TITLES: TitleId[] = [
   'timeless',
   'apex',
   'boundless',
+  // Leo, 24.10.2026: the crew's podium, then the two that ask for everything else.
+  'crewPodium',
+  'crewChampion',
+  'collector',
+  'completionist',
 ];
 
 /** What earns a title. */
@@ -127,7 +136,13 @@ export type TitleRule =
   /** Everything given to the Game fund adds up to this much. */
   | { k: 'fund'; amount: number }
   /** Every mastery goal at its last tier. */
-  | { k: 'masteries' };
+  | { k: 'masteries' }
+  /** The crew finished a week at this place or better (1 = top of the league). */
+  | { k: 'crew'; place: number }
+  /** Every skin that can still be had. */
+  | { k: 'collector' }
+  /** Every other title. */
+  | { k: 'completionist' };
 
 export const TITLE_RULES: Record<TitleId, TitleRule> = {
   eliteDriver: { k: 'elite', level: 1 },
@@ -174,6 +189,10 @@ export const TITLE_RULES: Record<TitleId, TitleRule> = {
   timeless: { k: 'elite', level: 150 },
   apex: { k: 'elite', level: 175 },
   boundless: { k: 'elite', level: 200 },
+  crewPodium: { k: 'crew', place: 3 },
+  crewChampion: { k: 'crew', place: 1 },
+  collector: { k: 'collector' },
+  completionist: { k: 'completionist' },
 };
 
 
@@ -334,6 +353,12 @@ export const Elite = {
         return c.collection.includes(rule.id);
       case 'masteries':
         return MASTERY_GOALS.every((g) => (c.masteryTiers[g] ?? 0) >= MASTERY_THRESHOLDS[g].length);
+      case 'crew':
+        return c.crewPodium > 0 && c.crewPodium <= rule.place;
+      case 'collector':
+        return collectableSkins().every((x) => c.collection.includes(x.id));
+      case 'completionist':
+        return TITLES.every((t) => t === id || Elite.titleEarned(t, c, config));
     }
   },
 

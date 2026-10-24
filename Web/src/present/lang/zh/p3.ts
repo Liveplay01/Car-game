@@ -35,6 +35,10 @@ export default (S: Strings): Words<Strings> => ({
         timeless: '超越时间',
         apex: '巅峰',
         boundless: '无界',
+        crewPodium: '车队领奖台',
+        crewChampion: '车队冠军',
+        collector: '收藏家',
+        completionist: '全成就者',
         ascended: '飞升者',
         eternal: '永恒',
         grandmaster: '宗师',
@@ -74,6 +78,12 @@ export default (S: Strings): Words<Strings> => ({
           return `在无限模式中解锁${S.shop.item(r.id)}`;
         case 'masteries':
           return '每项精通都达到 V 级';
+        case 'crew':
+          return r.place === 1 ? '车队在一周联赛中夺得第一名' : '车队在一周联赛中进入前三名';
+        case 'collector':
+          return '集齐所有仍可获得的外观';
+        case 'completionist':
+          return '获得所有其他称号';
       }
     },
     earned: (ids) => (ids.length === 1 ? `称号 · ${S.titles.name(ids[0])}` : `${ids.length} 个新称号 · ${ids.map((t) => S.titles.name(t)).join('、')}`),

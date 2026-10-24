@@ -7,8 +7,8 @@ import { Rng } from './rng';
 
 /**
  * The Auction House (Leo, 10.10.2026), a sink for big balances. A few lots a day, one try each: the
- * player bids against computer-controlled collectors, most of them sharks who push the price far
- * over the estimate, and pays the hammer price plus a buyer's premium. Walking away is free; the
+ * player bids against computer-controlled collectors, drawn from a field of fifty who all stop at a different price: a few sharks push the price far
+ * over the estimate, but a room without one lets a lot go under it, and pays the hammer price plus a buyer's premium. Walking away is free; the
  * lot then goes to a collector. Said on screen, with the odds: the share of sharks and how far they go.
  *
  * Fair by construction like the casino: a collector's ceiling is drawn when the auction begins from the
@@ -157,13 +157,18 @@ export const Auction = {
     const start = Auction.start(estimate, config);
     const names = [...NAMES];
     const count = rng.int(config.auctionBots[0], config.auctionBots[1]);
+    const field = Array.from({ length: config.auctionField }, () => {
+      const [lo, hi] = rng.unit() < config.auctionSharkShare ? config.auctionShark : config.auctionPenny;
+      // Rounded down to the grid of the bidding, so a collector stops on a step.
+      return start + Math.floor((estimate * rng.range(lo, hi) - start) / step) * step;
+    });
     const bots: AuctionBot[] = [];
     const reach: number[] = [];
     for (let i = 0; i < count; i++) {
+      const j = rng.int(i, field.length - 1);
+      [field[i], field[j]] = [field[j], field[i]];
       bots.push({ name: names.splice(rng.int(0, names.length - 1), 1)[0], out: false });
-      const [lo, hi] = rng.unit() < config.auctionSharkShare ? config.auctionShark : config.auctionPenny;
-      // Rounded down to the grid of the bidding, so a collector stops on a step.
-      reach.push(start + Math.floor((estimate * rng.range(lo, hi) - start) / step) * step);
+      reach.push(field[i]);
     }
     const run: AuctionRun = { lot, slot, estimate, step, start, price: 0, leader: null, bots, phase: 'bidding', paid: 0 };
     ceilings.set(run, reach);

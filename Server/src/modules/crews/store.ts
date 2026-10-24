@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { randomCode } from '../../codes.ts';
 import { transaction, type Db } from '../../db.ts';
 import { DAY_MS, FeedbackStore, type RewardItem } from '../feedback/store.ts';
-import { GOAL_PER_MEMBER, GROUP_REAL, GROUP_SIZE, LEAGUES, botsOf, moveOf, rank, weekOf, weekStart, type Standing } from './league.ts';
+import { GOAL_PER_MEMBER, GROUP_REAL, GROUP_SIZE, LEAGUES, PODIUM, XP_TIERS, botsOf, moveOf, rank, weekOf, weekStart, type Standing } from './league.ts';
 
 export const CREW_MIGRATIONS: readonly string[] = [
   // The owner has no foreign key: a deleted owner hands the crew to the member who joined first (`ownerOf`).
@@ -270,7 +270,7 @@ export class CrewStore {
     return { week, league, grp, goal };
   }
 
-  /** The week `w` is over: the crew's place, its new league, and the chests for the members who earned XP in it. */
+  /** The week `w` is over: the crew's place, its new league, and the chests, money and podium places for the members who earned XP in it. */
   private settle(crew: Crew, w: { week: number; league: number; grp: number; goal: number }, now: number): number {
     const table = this.table(w.week, w.league, w.grp, now);
     const place = table.findIndex((s) => s.id === crew.id);
@@ -282,6 +282,8 @@ export class CrewStore {
     for (const id of helpers) {
       if (move > 0) this.rewards.grant(id, 'chest:premium', `crew:up:${LEAGUES[league]}`, now, false);
       if (xp >= w.goal) this.rewards.grant(id, 'chest:standard', 'crew:goal', now, false);
+      for (const tier of XP_TIERS) if (xp >= w.goal * tier.times) for (const item of tier.items) this.rewards.grant(id, item, `crew:xp:${tier.times}`, now, false);
+      if (xp > 0) for (const item of PODIUM[place] ?? []) this.rewards.grant(id, item, `crew:top:${place + 1}`, now, false);
     }
     return league;
   }

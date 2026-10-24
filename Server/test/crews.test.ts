@@ -89,10 +89,21 @@ test('crews: the week counts XP within limits, and the league settles it with ch
   const next = (await call('GET', '/v1/crews', { token: anna.token })).json.crew;
   assert.equal(next.last.move, 1);
   assert.equal(next.week.league, 'silver');
-  assert.deepEqual((await pending(anna.token)).sort(), ['chest:premium crew:up:silver', 'chest:standard crew:goal']);
+  assert.deepEqual((await pending(anna.token)).sort(), [
+    'chest:premium crew:top:1',
+    'chest:premium crew:up:silver',
+    'chest:premium crew:xp:4',
+    'chest:premium crew:xp:8',
+    'chest:standard crew:goal',
+    'chest:standard crew:xp:2',
+    'money:10000 crew:xp:2',
+    'money:100000 crew:top:1',
+    'money:50000 crew:xp:8',
+    'place:1 crew:top:1',
+  ]);
   assert.deepEqual(await pending(ben.token), []);
   await call('GET', '/v1/crews', { token: anna.token });
-  assert.equal((await pending(anna.token)).length, 2, 'settled once');
+  assert.equal((await pending(anna.token)).length, 10, 'settled once');
 });
 
 test('crews: gifts to the crew go to whoever is first; gifts to one member only to them; old ones go back', async () => {

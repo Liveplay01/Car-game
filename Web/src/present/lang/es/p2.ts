@@ -234,6 +234,10 @@ export default (S: Strings): Words<Strings> => ({
           return `SUBES DE LIGA · ${what} · ${S.crew.league(rest[0] ?? '')}`;
         case 'goal':
           return `OBJETIVO SEMANAL LOGRADO · ${what} · gracias a tu crew`;
+        case 'xp':
+          return `OBJETIVO SEMANAL ×${rest[0] ?? ''} · ${what} · tu crew fue a por todas`;
+        case 'top':
+          return `PUESTO ${rest[0] ?? ''} EN LA LIGA · ${what} · tu crew terminó arriba`;
         case 'back':
           return `REGALO DEVUELTO · ${what} · nadie lo cogió`;
         default:

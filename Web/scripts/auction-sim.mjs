@@ -39,7 +39,7 @@ try {
   };
 
   const rates = {};
-  for (const limit of [1, 1.5, 2, 3, 4]) {
+  for (const limit of [1, 1.5, 2, 3, 4, 5]) {
     let won = 0;
     let ratio = 0;
     for (let i = 0; i < auctions; i++) {
@@ -52,10 +52,10 @@ try {
     rates[limit] = won / auctions;
     console.log(`     limit ${limit}× the estimate: wins ${(rates[limit] * 100).toFixed(1)} %, a win costs ${won ? (ratio / won).toFixed(2) : '–'}× (premium on top)`);
   }
-  // A bidder who stops at the estimate sometimes gets a bargain, and one who pays up to 4× nearly always wins.
+  // A bidder who stops at the estimate sometimes gets a bargain, and one who pays up to 5× nearly always wins.
   check('a bidder who stops at 1× wins now and then', rates[1], 0.005, 0.25);
   check('a bidder who goes to 2× wins less than half', rates[2], 0.02, 0.5);
-  check('a bidder who goes to 4× nearly always wins', rates[4], 0.95, 1);
+  check('a bidder who goes to 5× nearly always wins', rates[5], 0.95, 1);
 
   // The same seed plays out the same.
   check('same seed, same auction', Number(JSON.stringify(play(2, 12345)) === JSON.stringify(play(2, 12345))), 1, 1);

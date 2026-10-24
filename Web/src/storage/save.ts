@@ -203,6 +203,7 @@ function readCareer(raw: unknown): Career {
     auctionWins: int(raw.auctionWins, 0, 0),
     auctionSpent: int(raw.auctionSpent, 0, 0),
     fundGiven: int(raw.fundGiven, 0, 0),
+    crewPodium: Math.min(3, int(raw.crewPodium, 0, 0)),
     ideasSeenAt: int(raw.ideasSeenAt, 0, 0),
     loan: readLoan(raw.loan),
     cleanLoans: int(raw.cleanLoans, 0, 0),

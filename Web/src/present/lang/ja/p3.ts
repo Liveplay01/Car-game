@@ -35,6 +35,10 @@ export default (S: Strings): Words<Strings> => ({
         timeless: '時を超える者',
         apex: 'アペックス',
         boundless: '無限',
+        crewPodium: 'クルー表彰台',
+        crewChampion: 'クルー王者',
+        collector: 'コレクター',
+        completionist: 'コンプリート王',
         ascended: '昇天者',
         eternal: '永遠',
         grandmaster: 'グランドマスター',
@@ -74,6 +78,12 @@ export default (S: Strings): Words<Strings> => ({
           return `アンリミテッドで${S.shop.item(r.id)}を解放`;
         case 'masteries':
           return 'すべてのマスタリーでレベルVに到達';
+        case 'crew':
+          return r.place === 1 ? 'クルーの週をリーグ1位で終える' : 'クルーの週をリーグ上位3位以内で終える';
+        case 'collector':
+          return '今も入手できるスキンをすべて集める';
+        case 'completionist':
+          return 'ほかの称号をすべて獲得する';
       }
     },
     earned: (ids) => (ids.length === 1 ? `称号 · ${S.titles.name(ids[0])}` : `新しい称号${ids.length}個 · ${ids.map((t) => S.titles.name(t)).join('、')}`),

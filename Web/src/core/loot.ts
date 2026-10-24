@@ -295,6 +295,12 @@ export const isHonour = (item: Cosmetic): boolean =>
   item.source.kind === 'failures' ||
   item.source.kind === 'find';
 
+/** Sources nobody can reach any more: the Hall of Fame and the City Fund (replaced by the Game fund). */
+export const isRetired = (item: Cosmetic): boolean => item.source.kind === 'hall' || item.source.kind === 'fund';
+
+/** Every skin that can still be had; what the Collector title asks for. */
+export const collectableSkins = (): Cosmetic[] => COSMETICS.filter((x) => x.kind !== 'vehicleType' && !isRetired(x));
+
 export const cosmetic = (id: string): Cosmetic | undefined => COSMETICS.find((x) => x.id === id);
 
 export function seasonOf(day: number): Season {

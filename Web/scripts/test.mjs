@@ -20,7 +20,7 @@ const { CHALLENGES, challengesOf, challengeMet, challengeReward } = await load('
 const { baseConfig, BOSS_KINDS } = await load('/src/core/config.ts');
 const { forLevel, upgraded, UPGRADES, upgradeMaxSteps } = await load('/src/core/levels.ts');
 const { Elite, TITLES, TITLE_RULES, ELITE_LAST_MILESTONE } = await load('/src/core/elite.ts');
-const { COSMETICS, rollChest, PITY_LEGENDARY_CHESTS } = await load('/src/core/loot.ts');
+const { COSMETICS, rollChest, PITY_LEGENDARY_CHESTS, collectableSkins } = await load('/src/core/loot.ts');
 const { Goals } = await load('/src/core/goals.ts');
 const { forHeat, heatPay, heatXp } = await load('/src/core/heat.ts');
 const { due: dueBoards } = await load('/src/net/leaderboard.ts');
@@ -3306,6 +3306,25 @@ test('the Auction House: a win pays the hammer price and the premium and hands o
   assert.deepEqual(back.auctionTaken, d.auctionTaken);
   assert.equal(back.auctionSpent, d.auctionSpent);
   assert.equal(Auction.canStart(d, slot, day), false, 'taken');
+});
+
+test('Collector asks for every skin still to be had, Completionist for every other title, the crew titles for a podium', () => {
+  const c = newCareer();
+  const had = (id) => Elite.titleEarned(id, c, baseConfig);
+  assert.ok(!COSMETICS.filter((x) => x.source.kind === 'hall' || x.source.kind === 'fund').some((x) => collectableSkins().includes(x)), 'retired skins do not count');
+  assert.ok(collectableSkins().every((x) => x.kind !== 'vehicleType'));
+  c.collection = collectableSkins().slice(1).map((x) => x.id);
+  assert.ok(!had('collector'), 'one skin short');
+  c.collection = collectableSkins().map((x) => x.id);
+  assert.ok(had('collector'));
+  assert.ok(!had('crewPodium') && !had('crewChampion'));
+  c.crewPodium = 3;
+  assert.ok(had('crewPodium') && !had('crewChampion'));
+  assert.ok(!had('completionist'), 'other titles still missing');
+  c.crewPodium = 1;
+  assert.ok(had('crewChampion'));
+  assert.equal(careerAfterSave(c).crewPodium, 1);
+  assert.ok(TITLES.every((t) => TITLE_RULES[t]), 'every title has a rule');
 });
 
 test('an auction cannot be bid on past the money, and a stored lot is checked', () => {
