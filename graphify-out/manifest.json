@@ -480,9 +480,9 @@
     "semantic_hash": "a12952dd4a980eb25e3b3a29f69565d2"
   },
   "Web/src/core/config.ts": {
-    "mtime": 1792940731.6475139,
-    "seen": 1792941066.6399438,
-    "ast_hash": "b2ce2a705bc009d0c063737f138c190a",
+    "mtime": 1792965604.534801,
+    "seen": 1792965970.6688714,
+    "ast_hash": "674b21a6b59aab05a44ce98adc30a821",
     "semantic_hash": ""
   },
   "Web/src/core/crash.ts": {
@@ -636,9 +636,9 @@
     "semantic_hash": "0b84c39ed2b0ac364ff5fca007d379a2"
   },
   "Web/src/core/specials.ts": {
-    "mtime": 1792941822.8780801,
-    "seen": 1792944203.8388247,
-    "ast_hash": "7abe42b9ff5d98269fb62ede8e369447",
+    "mtime": 1792965604.536289,
+    "seen": 1792965970.6688714,
+    "ast_hash": "7099e23035e882cd02d0f8ca852c9812",
     "semantic_hash": ""
   },
   "Web/src/core/tiers.ts": {
@@ -660,9 +660,9 @@
     "semantic_hash": "7b3683f6eea4b70aec32c7ee06898e76"
   },
   "Web/src/core/traffic.ts": {
-    "mtime": 1792877174.953719,
-    "seen": 1792877351.4743938,
-    "ast_hash": "47c7d99dc22ad2774dc8041f3ad9b7c8",
+    "mtime": 1792965604.5372808,
+    "seen": 1792965970.6688714,
+    "ast_hash": "14226f28187670b899773afaf9a82012",
     "semantic_hash": ""
   },
   "Web/src/core/trials.ts": {
@@ -1428,9 +1428,9 @@
     "semantic_hash": "ad6fb39b455e8646d559227bb23dc156"
   },
   "Web/src/present/patchNotes.ts": {
-    "mtime": 1792942395.3100886,
-    "seen": 1792944203.8396616,
-    "ast_hash": "1968b7d09c7745b16f486029349e96fd",
+    "mtime": 1792965865.3186338,
+    "seen": 1792965970.669426,
+    "ast_hash": "3c7d0aa9c8037c923b2bb0e8db77a7b8",
     "semantic_hash": ""
   },
   "Web/src/present/perspective.ts": {
@@ -2058,9 +2058,9 @@
     "semantic_hash": ""
   },
   ".claude/settings.json": {
-    "mtime": 1792657853.234194,
-    "seen": 1792659884.0933015,
-    "ast_hash": "25003a77f177f78583ba21092a114ceb",
+    "mtime": 1792964911.9528365,
+    "seen": 1792965970.6682956,
+    "ast_hash": "c096f57a631efebbf9d4e130b2b7c52f",
     "semantic_hash": ""
   },
   ".claude/skills/transitions-ui-generation/ui-generation.js": {
@@ -3945,6 +3945,12 @@
     "mtime": 1792941787.9526725,
     "seen": 1792944203.8401592,
     "ast_hash": "4a45ff1d97e7fe4b2101071a9ee26d17",
+    "semantic_hash": ""
+  },
+  ".claude/agents/transitions-motion.md": {
+    "mtime": 1792964919.0830414,
+    "seen": 1792965970.669426,
+    "ast_hash": "a72d9c2b2f6a9dccfd6ca4c351cb5b59",
     "semantic_hash": ""
   }
 }
