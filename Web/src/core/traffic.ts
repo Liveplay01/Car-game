@@ -52,7 +52,9 @@ export function updateTraffic(w: World, dt: number): void {
     const p = veh.phase;
     if (p.kind !== 'waiting') continue;
     // The criminal never waits politely; the ambulance has right of way.
-    const barges = veh.type === 'pickup' || veh.type === 'racer' || veh.type === 'wedding' || isEmergency(veh.type);
+    // The criminal is due and this car still holds its arm: it squeezes in like the criminal would, or a packed ring keeps the boss out for good.
+    const blocksBoss = w.criminal.kind === 'warning' && w.time >= w.criminal.until && p.arm.index === w.criminal.arm.index;
+    const barges = veh.type === 'pickup' || veh.type === 'racer' || veh.type === 'wedding' || isEmergency(veh.type) || blocksBoss;
     if (p.approach > 0) {
       p.approach = approachStep(w, p.approach, dt, c.aiRollingMerge || barges);
       if (p.approach === 0 && (c.aiRollingMerge || barges)) p.reaction = 0;

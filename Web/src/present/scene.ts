@@ -13,6 +13,8 @@ import { S } from './strings';
 import { towDepotCovering } from '../core/modules';
 import { MODULE_COLORS } from './flow';
 import { criminalVehicle } from '../core/specials';
+import { bossInBlackout } from '../core/levels';
+import { Fmt } from './format';
 import { isCarType, isEmergency, isHeavy } from '../core/vehicle';
 import { driftSteer } from '../core/drift';
 
@@ -596,23 +598,39 @@ export const SceneBuilder = {
     }
   },
 
+  /**
+   * The boss's name plate, with its rules as pips: ◈ an escort, ▮ armour, ○ no lights, ? a decoy. Disguised escorts
+   * wear the same plate, so it never gives the decoy away. Under it, while merges grow the loot, what it has gathered.
+   */
+  addBossPlates(list: RenderList, world: World, alpha: number): void {
+    const c = world.config;
+    const loot = world.score.bossLoot;
+    for (const veh of world.vehicles) {
+      if (veh.isCrashed || !(veh.role === 'boss' || (veh.role === 'escort' && c.bossDisguise))) continue;
+      const armour = veh.role === 'boss' ? veh.armour : c.bossArmour;
+      const pips = '◈'.repeat(c.convoyEscorts) + '▮'.repeat(armour) + (bossInBlackout(c.bossKind) ? '○' : '') + (c.bossDisguise ? '?' : '');
+      const at = add(toScreen(list.camera, interpolatedPose(veh, alpha).position), v(0, -30));
+      list.s(text(S.boss.name(c.bossKind).toUpperCase(), at, 10, 'center', 'bold'), 'coin', 0.95);
+      if (pips) list.s(text(pips, add(at, v(0, 11)), 8, 'center'), 'coin', 0.8);
+      if (loot > 0) list.s(text(`+${Fmt.number(loot)}`, add(at, v(0, -12)), 9, 'center', 'bold'), 'coin', 0.9);
+    }
+  },
+
   /** Accessibility labels beside the special vehicles, in screen space so they stay readable. */
   addLabels(list: RenderList, world: World, alpha: number): void {
     for (const veh of world.vehicles) {
-      if (veh.isCrashed) continue;
+      if (veh.isCrashed || veh.role === 'boss') continue;
       const label = S.boss.label(veh.role) ?? S.hud.label(veh.type);
       if (!label) continue;
       const pose = interpolatedPose(veh, alpha);
       const color: ColorToken =
-        veh.role === 'boss'
-          ? 'coin'
-          : veh.role === 'escort'
-            ? 'muted'
-            : veh.type === 'police' || isEmergency(veh.type)
-              ? 'lightBlue'
-              : veh.type === 'pickup'
-                ? 'vehicleCriminal'
-                : 'vehicleCargo';
+        veh.role === 'escort'
+          ? 'muted'
+          : veh.type === 'police' || isEmergency(veh.type)
+            ? 'lightBlue'
+            : veh.type === 'pickup'
+              ? 'vehicleCriminal'
+              : 'vehicleCargo';
       list.s(text(label, add(toScreen(list.camera, pose.position), v(0, -18)), 9, 'center', 'bold'), color, 0.95);
     }
   },
@@ -722,6 +740,8 @@ export const SceneBuilder = {
           springTime,
           cache: true,
           steer: veh.type === 'drift' ? driftSteer(world, veh.id) : null,
+          // The decoy's escorts wear its ring too; the kingpin's light bar is its own.
+          boss: veh.role === 'boss' || (veh.role === 'escort' && world.config.bossKind === 'decoy') ? world.config.bossKind : null,
         },
         world.config,
       );

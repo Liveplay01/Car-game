@@ -258,6 +258,16 @@ function readHints(raw: Record<string, unknown>): Hint[] {
   return [...hints];
 }
 
+function readWaitingSeeds(raw: unknown): SaveGame['waitingSeeds'] {
+  const seeds: SaveGame['waitingSeeds'] = {};
+  if (!isObject(raw)) return seeds;
+  for (const mode of GAME_MODES) {
+    const seed = raw[mode];
+    if (typeof seed === 'number' && Number.isInteger(seed) && seed >= 0 && seed < 2 ** 32) seeds[mode] = seed;
+  }
+  return seeds;
+}
+
 function readSave(raw: unknown): SaveGame {
   const fresh = newSave();
   if (!isObject(raw)) return fresh;
@@ -301,6 +311,7 @@ function readSave(raw: unknown): SaveGame {
     dailyTries: int(raw.dailyTries, 1, 1) > 1 ? 2 : 1,
     firstDay: int(raw.firstDay, -1),
     notesSeen: typeof raw.notesSeen === 'string' ? raw.notesSeen : null,
+    waitingSeeds: readWaitingSeeds(raw.waitingSeeds),
   };
   // Unlimited milestones that came after the save's best run (Leo, 02.10.2026) arrive now, marked new.
   Careers.claimUnlimited(save.career, save.unlimitedBestCars);

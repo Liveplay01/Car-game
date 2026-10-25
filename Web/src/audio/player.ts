@@ -337,6 +337,8 @@ export class AudioPlayer {
     src.start(now + (id === 'merge' ? this.toGrid(now, AudioPlayer.magnet) : id === 'blinker' ? this.toGrid(now, AudioPlayer.magnetUi) : 0));
     const duck = AudioPlayer.ducks[id];
     if (duck) this.duck(duck[0], duck[1]);
+    // A boss announces itself: the street steps back for its sting, the way it does for a melody.
+    if (id.startsWith('sting')) this.makeRoom(now, buffer.duration * 0.6);
     if (id === 'crashHeavy') this.deafen(0.6);
     else if (id === 'explosion') this.deafen(0.8);
     else if (id === 'detonation') this.deafen(1);

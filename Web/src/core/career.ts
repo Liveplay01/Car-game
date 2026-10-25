@@ -382,6 +382,8 @@ export interface SaveGame {
   firstDay: number;
   /** The newest patch notes the player has opened (`present/patchNotes.ts`); null: none yet. */
   notesSeen: string | null;
+  /** The seed of the shift waiting in each mode: closing and reopening the game must not reroll its conditions. Dropped when the shift starts. */
+  waitingSeeds: Partial<Record<GameMode, number>>;
 }
 
 /**
@@ -513,6 +515,7 @@ export const newSave = (): SaveGame => ({
   dailyTries: 1,
   firstDay: -1,
   notesSeen: null,
+  waitingSeeds: {},
 });
 
 export const MINIMUM_ARMS = 4;
@@ -1245,7 +1248,7 @@ export const Careers = {
    * sure once their level is passed. Each marks the shift `assisted`.
    */
   careerShift(c: Career, base: Config, seed: number): Config {
-    let cfg = Careers.shiftConfig(c, 'shift', base, seed);
+    let cfg = { ...Careers.shiftConfig(c, 'shift', base, seed), bossLoot: true };
     const eased = (next: Config): Config => ({ ...next, assisted: true });
     const fresh = c.prestige === 0 && c.mastery.shiftsCompleted === 0;
     if (fresh) cfg = eased({ ...cfg, maxStrikes: cfg.maxStrikes + 1 });

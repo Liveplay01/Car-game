@@ -537,7 +537,7 @@ export const S = {
   },
 
   boss: {
-    incoming: 'SYNDICATE CONVOY',
+    incoming: 'SYNDICATE',
     scoutFirst: 'A scout with an escort: ram it with a police car, in the gap before the escort',
     name: (k: BossKind): string =>
       ({
@@ -552,7 +552,8 @@ export const S = {
       })[k],
     rematch: (k: BossKind): string => `Rematch · ${S.boss.name(k)}`,
     beaten: 'Busted',
-    escaped: 'BOSS ESCAPED',
+    escaped: (k: BossKind): string => `${S.boss.name(k)} got away`.toUpperCase(),
+    caught: (k: BossKind): string => `Boss busted — ${S.boss.name(k)}`.toUpperCase(),
     wanted: (seconds: number): string => `BOSS ${Math.ceil(Math.max(0, seconds))}`,
     busted: (amount: string): string => `Boss busted · ${amount} recovered`,
     label: (role: VehicleRole): string | null => (role === 'boss' ? 'BOSS' : role === 'escort' ? 'ESCORT' : null),

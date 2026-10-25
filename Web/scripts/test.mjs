@@ -802,8 +802,9 @@ test('condition icons: one per condition of the shift, tap targets of 64 points 
 test('everything in the Museum has a briefing short enough for two lines of the top card', () => {
   for (const e of [...shelfEntries(0), ...shelfEntries(1), ...shelfEntries(2)]) {
     const b = briefOf(e);
-    assert.match(b.caption, /^NEW · \S/, museumId(e));
-    assert.match(briefOf(e, true).caption, /^REMEMBER · \S/, museumId(e));
+    // A boss is announced by the syndicate's name, new or not.
+    assert.match(b.caption, e.k === 'boss' ? /^SYNDICATE · \S/ : /^NEW · \S/, museumId(e));
+    assert.match(briefOf(e, true).caption, e.k === 'boss' ? /^SYNDICATE · \S/ : /^REMEMBER · \S/, museumId(e));
     assert.ok(b.text.length > 0 && !/undefined|NaN/.test(b.caption + b.text), museumId(e));
     assert.ok(b.text.length <= 72, `${museumId(e)} is ${b.text.length} characters: ${b.text}`);
   }
@@ -1637,6 +1638,29 @@ test('Eight syndicate bosses take turns; a rematch is its own boss one round on;
   criminalCaught(w, 3, 4, { x: 0, y: 0 }, 20);
   assert.ok(w.score.bossBusted);
   assert.equal(w.events.filter((e) => e.type === 'heistRecovered').length, 1);
+});
+
+test('growing loot: merges while the boss is on the ring add to its catch, capped, and only in a career shift', async () => {
+  const { criminalCaught, growBossLoot, bossLootBase } = await load('/src/core/specials.ts');
+  const { ScoreBoard } = await load('/src/core/scoring.ts');
+  const c = newCareer();
+  c.level = 15;
+  const career = Careers.careerShift(c, baseConfig, 3);
+  assert.ok(career.convoy && career.bossLoot);
+  assert.ok(!Careers.shiftConfig(c, 'daily', baseConfig, 3).bossLoot, 'the Daily stays comparable');
+  const w = { config: career, score: new ScoreBoard(), isScoring: true, events: [], criminal: { kind: 'warning' }, escortsDue: null, criminalRng: { range: (lo) => lo }, vehicle: () => ({ role: 'boss' }), scoreTakedown: () => 1000 };
+  growBossLoot(w, 'perfect');
+  assert.equal(w.score.bossLoot, 0, 'nothing before the boss is on the ring');
+  w.criminal = { kind: 'active', vehicle: 1, deadline: 99 };
+  growBossLoot(w, 'clean');
+  growBossLoot(w, 'tightFit');
+  growBossLoot(w, 'cutOff');
+  assert.equal(w.score.bossLoot, career.bossLootClean + career.bossLootTight);
+  for (let i = 0; i < 20; i++) growBossLoot(w, 'perfect');
+  const base = bossLootBase(career);
+  assert.equal(w.score.bossLoot, Math.round(base * career.bossLootCap));
+  criminalCaught(w, 1, 2, { x: 0, y: 0 }, 10);
+  assert.equal(w.events.find((e) => e.type === 'heistRecovered').amount, base + w.score.bossLoot);
 });
 
 test('the recovered heist is paid only with a completed shift: a boss level cannot be farmed by losing it', () => {

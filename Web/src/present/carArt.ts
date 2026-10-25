@@ -1,4 +1,4 @@
-import type { Config } from '../core/config';
+import type { BossKind, Config } from '../core/config';
 import type { Dent, VehicleType } from '../core/vehicle';
 import { isCarType, isExplosive, isEmergency } from '../core/vehicle';
 import type { Pose } from '../core/paths';
@@ -190,6 +190,8 @@ export interface CarDraw {
   regular?: boolean;
   /** The body riding on its springs (`VehicleLamps.pitch`): dives (positive) or squats (negative), a share of its length. Only the cached sprite shows it. */
   pitch?: number;
+  /** A syndicate car: the marks of its boss over the gold line (`CarArt.syndicate`). */
+  boss?: BossKind | null;
 }
 
 /** Plain cars as sprites, by what they look like; see `CarArt.art`. */
@@ -738,6 +740,7 @@ export const CarArt = {
       const half = L / 2 - 2;
       for (const y of [-1.6, 1.6]) list.w(line(worldOf(v(-half, y), pose), worldOf(v(half, y), pose), 1.3), d.stripe, opacity * 0.9);
     }
+    if (d.boss && dents.length === 0) CarArt.syndicate(list, d.boss, type, pose, L, W, body, c, opacity);
     // Light from the upper left (like the trees and houses): a soft sheen along the side of
     // the body that faces it, whichever way the car drives. A wreck has lost its shine.
     if (dents.length === 0) {
@@ -745,6 +748,69 @@ export const CarArt = {
       list.w(rect(worldOf(v(0, side * W * 0.2), pose), v(L * 0.78, W * 0.3), W * 0.15, pose.heading), 'primary', opacity * 0.07);
     }
     if (effect) SkinEffects.over(list, effect, pose, L, W, d.finishTime ?? null, d.id, opacity);
+  },
+
+  /**
+   * One family, eight bosses: each wears the gold line and a mark of its own, all inside the body, so a
+   * boss reads at a glance without a shape the hitbox does not have.
+   */
+  syndicate(list: RenderList, kind: BossKind, type: VehicleType, pose: Pose, L: number, W: number, body: ColorToken, c: Config, opacity: number): void {
+    const at = (x: number, y: number): Vec2 => worldOf(v(x, y), pose);
+    const cab = CarArt.shape('windscreen', type, c);
+    switch (kind) {
+      case 'convoy':
+        // Two pennants on the tail, flying back: the head of a column.
+        for (const y of [-1, 1]) list.w(polygon([at(-L / 2 + 5, y * (W / 2 - 0.6)), at(-L / 2 + 0.6, y * (W / 2 - 0.6)), at(-L / 2 + 3.4, y * (W / 2 - 2.6))]), 'coin', opacity);
+        break;
+      case 'getaway': {
+        // No roof, two seats in the open, and the heat of the engine shimmering off the tail.
+        const from = cab.center.x - cab.size.x / 2;
+        list.w(rect(at(from - 4, 0), v(7, W * 0.62), 1.5, pose.heading), 'vehicleTire', opacity);
+        for (const y of [-1, 1]) list.w(circle(at(from - 4.5, y * W * 0.15), 1.4), 'vehicleTrim', opacity);
+        for (const y of [-0.22, 0.22]) {
+          const wave = [0, 1, 2, 3].map((i) => at(-L / 2 + 1 + i * 1.5, y * W + (i % 2 ? 0.7 : -0.7)));
+          for (let i = 1; i < wave.length; i++) list.w(line(wave[i - 1], wave[i], 0.6), 'primary', opacity * 0.4);
+        }
+        break;
+      }
+      case 'armoured':
+        // A dark band down the middle and rivets along both sides.
+        list.w(line(at(L / 2 - 2, 0), at(-L / 2 + 2, 0), 1.6), 'vehicleTire', opacity);
+        for (const y of [-1, 1]) for (let x = -L / 2 + 2.5; x < L / 2 - 1; x += 3.2) list.w(circle(at(x, y * (W / 2 - 0.9)), 0.5), 'vehicleTrim', opacity);
+        break;
+      case 'phantom':
+        // Only its edge catches the light: a gold rim round a body you hardly see.
+        for (const [a, b] of [[v(1, 1), v(1, -1)], [v(1, -1), v(-1, -1)], [v(-1, -1), v(-1, 1)], [v(-1, 1), v(1, 1)]]) {
+          list.w(line(at((a.x * L) / 2 - a.x * 0.6, (a.y * W) / 2 - a.y * 0.6), at((b.x * L) / 2 - b.x * 0.6, (b.y * W) / 2 - b.y * 0.6), 0.6), 'coin', opacity * 0.7);
+        }
+        break;
+      case 'twins':
+        // A chevron on the bonnet, one side the mirror of the other.
+        for (const y of [-1, 1]) list.w(line(at(L / 2 - 2, y * (W / 2 - 1.6)), at(L / 2 - 5.5, 0), 1), 'coin', opacity);
+        break;
+      case 'decoy': {
+        // A gold ring on the back: on the boss and on every escort, so the ring tells nobody which.
+        const ring = at(-L * 0.22, 0);
+        list.w(circle(ring, 2.8), 'coin', opacity);
+        list.w(circle(ring, 1.7), body, opacity);
+        break;
+      }
+      case 'smuggler': {
+        // The bed under a tarpaulin, tied down.
+        if (type !== 'pickup') break;
+        const bed = CarArt.shape('bed', type, c);
+        list.w(rect(at(bed.center.x, 0), add(bed.size, v(-0.6, -0.6)), 1.2, pose.heading), 'vehicleTrim', opacity);
+        for (const x of [-0.3, 0, 0.3]) list.w(line(at(bed.center.x + bed.size.x * x, -bed.size.y / 2 + 0.6), at(bed.center.x + bed.size.x * x, bed.size.y / 2 - 0.6), 0.5), 'vehicleTire', opacity);
+        break;
+      }
+      case 'kingpin': {
+        // A gold light bar over the cab, its lamps lit.
+        const x = cab.center.x - cab.size.x / 2 - 2;
+        list.w(rect(at(x, 0), v(2.2, W * 0.8), 1, pose.heading), 'coin', opacity);
+        for (const y of [-1, 1]) list.w(circle(at(x, y * W * 0.24), 0.7), 'primary', opacity);
+        break;
+      }
+    }
   },
 
   /**
@@ -764,7 +830,7 @@ export const CarArt = {
     if (signal) CarArt.indicators(list, pose, L, W, signal, 1, true);
     const side = rotated(v(-1, 1), -pose.heading).y >= 0 ? 1 : -1;
     const type = d.type;
-    const key = `${type}|${CarArt.bodyColor(type, d.id, d.skin ?? null)}|${CarArt.bodyColor(type, 0, d.skin ?? null)}|${d.skin ?? ''}|${d.stripe ?? ''}|${d.roof ?? ''}|${model ?? ''}|${d.regular ? 'regular' : ''}|${L}|${W}|${side}`;
+    const key = `${type}|${CarArt.bodyColor(type, d.id, d.skin ?? null)}|${CarArt.bodyColor(type, 0, d.skin ?? null)}|${d.skin ?? ''}|${d.stripe ?? ''}|${d.roof ?? ''}|${model ?? ''}|${d.regular ? 'regular' : ''}|${d.boss ?? ''}|${L}|${W}|${side}`;
     let art = carArts.get(key);
     if (!art) {
       const heading = side > 0 ? 0 : Math.PI;
@@ -772,7 +838,7 @@ export const CarArt = {
       art = spriteArt(
         key,
         { minX: -halfL, maxX: halfL, minY: -halfW, maxY: halfW },
-        (l) => CarArt.add(l, { id: d.id, type, pose: { position: v(0, 0), heading }, dents: [], skin: d.skin, stripe: d.stripe, roof: d.roof, model: d.model, regular: d.regular }, c),
+        (l) => CarArt.add(l, { id: d.id, type, pose: { position: v(0, 0), heading }, dents: [], skin: d.skin, stripe: d.stripe, roof: d.roof, model: d.model, regular: d.regular, boss: d.boss }, c),
         2,
       );
       if (carArts.size >= 160) carArts.clear();

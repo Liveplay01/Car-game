@@ -45,6 +45,7 @@ export function installProbe(shell: Shell): void {
       revive: game.reviveOffer,
       revived: game.world.revives,
       drift: drift(),
+      boss: world.config.convoy ? { kind: world.config.bossKind, criminal: world.criminal.kind, loot: world.score.bossLoot, grows: world.config.bossLoot } : null,
     };
   };
 
@@ -145,6 +146,8 @@ export interface Snapshot {
   daily: { selected: boolean; streak: number; chests: string[] };
   ask: string | null;
   drift: string | { phase: string; slip: number; steer: number; throttle: boolean; lifts: number; calming: boolean };
+  /** A syndicate shift: which boss, where the criminal is, and the loot grown so far. */
+  boss: { kind: string; criminal: string; loot: number; grows: boolean } | null;
   /** The ad the Game tab's pill offers right now (`GameSession.gameAd`), or null. */
   ad: string | null;
   /** Seconds the offer to keep driving still stands (null: none on screen), and how often this run went on. */

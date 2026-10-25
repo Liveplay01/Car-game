@@ -153,7 +153,7 @@ export default (S: Strings): Words<Strings> => ({
   },
 
   boss: {
-    incoming: 'CONVOI DU SYNDICAT',
+    incoming: 'SYNDICAT',
     scoutFirst: 'Un éclaireur avec escorte : percutez-le avec une voiture de police dans l’intervalle avant l’escorte',
     name: (k) =>
       ({
@@ -168,7 +168,8 @@ export default (S: Strings): Words<Strings> => ({
       })[k],
     rematch: (k) => `Revanche · ${S.boss.name(k)}`,
     beaten: 'Arrêté',
-    escaped: 'LE BOSS S’EST ÉCHAPPÉ',
+    escaped: (k) => `${S.boss.name(k)} ${k === 'twins' ? 'se sont échappés' : 's’est échappé'}`.toUpperCase(),
+    caught: (k) => `Boss arrêté — ${S.boss.name(k)}`.toUpperCase(),
     wanted: (seconds) => `BOSS ${Math.ceil(Math.max(0, seconds))}`,
     busted: (amount) => `Boss arrêté · ${amount} récupérés`,
     label: (role) => (role === 'boss' ? 'BOSS' : role === 'escort' ? 'ESCORTE' : null),

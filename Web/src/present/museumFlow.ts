@@ -67,7 +67,7 @@ export class MuseumFlow {
     }
     const again = this.again.has(id);
     const owed = this.owed.has(id);
-    if (!found && !again && !owed && this.host.save.career.museumSeen.includes(id)) return;
+    if (!found && !again && !owed && e.k !== 'boss' && this.host.save.career.museumSeen.includes(id)) return;
     this.again.delete(id);
     this.owed.delete(id);
     const brief = briefOf(e, again && !found && !owed);

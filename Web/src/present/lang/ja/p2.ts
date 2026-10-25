@@ -153,7 +153,7 @@ export default (S: Strings): Words<Strings> => ({
   },
 
   boss: {
-    incoming: 'シンジケートの車列',
+    incoming: 'シンジケート',
     scoutFirst: '護衛つきの斥候です。護衛の手前の車間に、パトカーで突っ込もう',
     name: (k) =>
       ({
@@ -168,7 +168,8 @@ export default (S: Strings): Words<Strings> => ({
       })[k],
     rematch: (k) => `リベンジ · ${S.boss.name(k)}`,
     beaten: '確保',
-    escaped: 'ボスに逃げられた',
+    escaped: (k) => `${S.boss.name(k)}に逃げられた`,
+    caught: (k) => `ボス確保 — ${S.boss.name(k)}`,
     wanted: (seconds) => `ボス ${Math.ceil(Math.max(0, seconds))}`,
     busted: (amount) => `ボスを確保 · ${amount}を取り戻した`,
     label: (role) => (role === 'boss' ? 'ボス' : role === 'escort' ? '護衛' : null),

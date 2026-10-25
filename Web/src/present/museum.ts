@@ -190,7 +190,7 @@ export const MuseumPage = {
     const c = baseConfig;
     const heading = -0.28;
     const ahead = fromAngle(heading);
-    const cars: { type: VehicleType; at: Vec2; look: Look | null }[] = [];
+    const cars: { type: VehicleType; at: Vec2; look: Look | null; boss: BossKind | null }[] = [];
     let length: number;
     if (entry.k === 'boss') {
       // The boss in front, its escorts behind it along its heading, the whole convoy centred.
@@ -199,16 +199,16 @@ export const MuseumPage = {
       const step = c.carLength * 1.12;
       length = c.carLength + escorts * step;
       const front = mul(ahead, (escorts * step) / 2);
-      cars.push({ type: 'pickup', at: front, look: SYNDICATE_BOSS });
+      cars.push({ type: 'pickup', at: front, look: SYNDICATE_BOSS, boss: entry.kind });
       for (let i = 1; i <= escorts; i++) {
         const at = add(front, mul(ahead, -i * step));
-        if (followers.look === 'twin') cars.push({ type: 'pickup', at, look: SYNDICATE_BOSS });
-        else cars.push({ type: 'van', at, look: followers.look === 'disguised' ? SYNDICATE_BOSS : SYNDICATE_ESCORT });
+        if (followers.look === 'twin') cars.push({ type: 'pickup', at, look: SYNDICATE_BOSS, boss: entry.kind });
+        else cars.push({ type: 'van', at, look: followers.look === 'disguised' ? SYNDICATE_BOSS : SYNDICATE_ESCORT, boss: entry.kind === 'decoy' ? entry.kind : null });
       }
     } else {
       const type = entry.kind as VehicleType;
       length = isHeavy(type) ? Math.max(c.truckLength, CarArt.length(type, c)) : CarArt.length(type, c);
-      cars.push({ type, at: v(0, 0), look: null });
+      cars.push({ type, at: v(0, 0), look: null, boss: null });
     }
     // A car is the same size on every card, unless a convoy or a lorry needs the room.
     const span = length * Math.cos(heading) + c.carWidth;
@@ -230,6 +230,7 @@ export const MuseumPage = {
           roof: car.look?.roof ?? null,
           finish: null,
           finishTime: null,
+          boss: car.boss,
         },
         c,
       );

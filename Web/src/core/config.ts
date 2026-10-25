@@ -587,6 +587,15 @@ export const baseConfig = {
   convoyFirst: r(1.5, 3),
   heistRecoveryBase: 3000,
   heistRecoveryPerLevel: 200,
+  /**
+   * Growing loot (Leo, 25.10.2026), career shifts only (`careerShift` sets `bossLoot`): every merge of yours while the boss is
+   * on the ring adds to what its catch brings back, up to `bossLootCap` of the base. Daily, challenges and trials stay comparable.
+   */
+  bossLoot: false,
+  bossLootClean: 150,
+  bossLootTight: 300,
+  bossLootPerfect: 600,
+  bossLootCap: 0.5,
   /** Which boss this level brings; `forLevel` sets it from the level. */
   bossKind: 'convoy' as BossKind,
   /** Police rams the boss shrugs off before one finishes it. */

@@ -78,6 +78,7 @@ export const GUIDE: GuideEvent[] = [
   { id: 'critical', group: 'score', kind: 'wave', color: 'coin', title: 'Critical Merge', when: 'A tight merge turns critical and pays extra.' },
   { id: 'chain-held', group: 'score', kind: 'wave', color: 'juiceGreen', title: 'Chain held', when: 'The Chain Saver keeps your chain alive through a plain merge.' },
   { id: 'armour-cracked', group: 'score', kind: 'wave', color: 'coin', title: 'Armour cracked', when: 'A police car cracks the armour of the Armoured Boss.' },
+  { id: 'boss-caught', group: 'score', kind: 'flush', color: 'coin', title: 'Boss caught', when: 'A syndicate boss is caught: the ring flashes gold and its loot is yours.' },
   { id: 'jackpot', group: 'score', kind: 'sweep', color: 'coin', title: 'Jackpot transporter', when: 'A golden Jackpot transporter is announced, and again when it pays.' },
   { id: 'rush-hour', group: 'run', kind: 'sweep', color: 'rushHour', title: 'Rush Hour', when: 'The last cars of a shift come faster and score double.' },
   { id: 'unlimited-mark', group: 'run', kind: 'sweep', color: 'coin', title: 'Unlimited milestone', when: 'In Unlimited you reach a milestone of cars sent.' },

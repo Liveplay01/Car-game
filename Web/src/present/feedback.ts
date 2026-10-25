@@ -1,6 +1,7 @@
 import type { GameEvent, CrashReport, VersusPhase } from '../core/events';
 import type { World } from '../core/world';
 import type { VehicleType } from '../core/vehicle';
+import type { BossKind } from '../core/config';
 import { Scoring } from '../core/scoring';
 import type { Vec2 } from '../core/vec2';
 import { Ease, unitHash } from './render';
@@ -88,7 +89,17 @@ export type SoundID =
   /** The photo of a shift (same script). */
   | 'shutter'
   /** Switches and segments: the tick-tack of an indicator relay instead of a click (same script). */
-  | 'blinker';
+  | 'blinker'
+  /** Each syndicate boss's two-note sting, and the sour tone when one gets away (`audio-src/make_boss_sounds.py`). */
+  | 'stingConvoy'
+  | 'stingGetaway'
+  | 'stingArmoured'
+  | 'stingPhantom'
+  | 'stingTwins'
+  | 'stingDecoy'
+  | 'stingSmuggler'
+  | 'stingKingpin'
+  | 'bossEscaped';
 
 export const SOUND_IDS: SoundID[] = [
   'merge', 'toll', 'tightFit', 'nearMiss', 'perfect', 'cutOff', 'comboUp', 'crashLight', 'crash', 'crashHeavy', 'rushHour',
@@ -96,6 +107,8 @@ export const SOUND_IDS: SoundID[] = [
   'flowIn', 'go', 'swoosh', 'uiTick', 'purchase', 'build', 'denied', 'chestCharge', 'chestBurst', 'chestBurstRare',
   'explosion', 'detonation', 'alarm', 'ambulance', 'wedding', 'honk', 'oversize', 'learner', 'clang', 'blocked', 'thump',
   'casinoStop', 'coinClink', 'needleTick', 'meterTick', 'coinToss', 'coinLand', 'chipsIn', 'shatter', 'shutter', 'blinker',
+  'stingConvoy', 'stingGetaway', 'stingArmoured', 'stingPhantom', 'stingTwins', 'stingDecoy', 'stingSmuggler', 'stingKingpin',
+  'bossEscaped',
 ];
 
 export type HapticID =
@@ -159,13 +172,13 @@ export const Feedback = {
         if (e.result.detonated) return null;
         return e.result.outcome === 'completed' ? 'shiftComplete' : e.result.outcome === 'struckOut' || e.result.outcome === 'failed' ? 'shiftFailed' : null;
       case 'criminalWarning':
-        return 'wanted';
+        return e.kind ? Feedback.stings[e.kind] : 'wanted';
       case 'takedown':
         return 'takedown';
       case 'dispatched':
         return 'dispatch';
       case 'criminalEscaped':
-        return 'escaped';
+        return e.boss ? 'bossEscaped' : 'escaped';
       case 'transporterWarning':
         return 'secured';
       case 'transporterSeized':
@@ -232,6 +245,11 @@ export const Feedback = {
         return 1;
     }
   },
+
+  stings: {
+    convoy: 'stingConvoy', getaway: 'stingGetaway', armoured: 'stingArmoured', phantom: 'stingPhantom',
+    twins: 'stingTwins', decoy: 'stingDecoy', smuggler: 'stingSmuggler', kingpin: 'stingKingpin',
+  } satisfies Record<BossKind, SoundID>,
 
   crashSound(r: CrashReport): SoundID {
     const severity = CrashEffects.severity(r);
@@ -359,8 +377,8 @@ export const Feedback = {
   panWidth: 0.6,
 };
 
-export type MusicLayer = 'base' | 'rhythm' | 'bass' | 'lead' | 'siren' | 'rush' | 'flow';
-export const MUSIC_LAYERS: MusicLayer[] = ['base', 'rhythm', 'bass', 'lead', 'siren', 'rush', 'flow'];
+export type MusicLayer = 'base' | 'rhythm' | 'bass' | 'lead' | 'siren' | 'rush' | 'flow' | 'boss';
+export const MUSIC_LAYERS: MusicLayer[] = ['base', 'rhythm', 'bass', 'lead', 'siren', 'rush', 'flow', 'boss'];
 
 /** Which stem plays how loud, and how far the whole music is closed by the low-pass. */
 export interface MusicMix {
@@ -459,6 +477,7 @@ export const Music = {
   breathDepth: 0.85,
   /** The criminal's siren stem, as a share of its full volume (was 0.7). */
   sirenStem: 0.4,
+  bossStem: 0.55,
 
   /** 20 kHz (open) down to 350 Hz, geometric so the steps are even to the ear. */
   cutoff: (lowPass: number): number => 20000 * Math.pow(350 / 20000, clamp(lowPass, 0, 1)),
@@ -505,14 +524,19 @@ export const Music = {
   playing(world: World, flow: number, record: { near: number; beatAt: number | null } | null = null): MusicMix {
     const c = world.config;
     const tier = Scoring.tier(world.score.combo, c);
-    const k = world.criminal.kind;
+    const cr = world.criminal;
+    const k = cr.kind;
+    const chase = k === 'warning' || k === 'arriving' || k === 'active';
+    // A boss brings its own stem; the siren is for ordinary criminals.
+    const boss = cr.kind === 'warning' ? cr.boss : cr.kind !== 'idle' && world.vehicle(cr.vehicle)?.role === 'boss';
     const near = record?.near ?? 0;
     const volumes: Partial<Record<MusicLayer, number>> = {
       base: 1,
       rhythm: tier >= 1 || near > 0 ? 1 : 0,
       bass: Math.max(tier >= 2 ? 0.8 : 0, 0.8 * near),
       lead: Math.max(tier >= 3 ? 0.9 : 0, 0.9 * near * near),
-      siren: k === 'warning' || k === 'arriving' || k === 'active' ? Music.sirenStem : 0,
+      siren: chase && !boss ? Music.sirenStem : 0,
+      boss: chase && boss ? Music.bossStem : 0,
       rush: world.shift.isRushHour ? 1 : 0,
       flow: clamp(flow, 0, 1) * 0.8,
     };

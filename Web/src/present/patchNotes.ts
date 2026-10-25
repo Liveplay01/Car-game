@@ -53,14 +53,20 @@ export const PATCH_NOTES: PatchNote[] = [
   {
     id: '2026-10-25',
     date: '25 October 2026',
-    title: 'Safer sync codes and invites',
-    impact: 'fix',
+    title: 'The syndicate makes an entrance',
+    impact: 'major',
     summary: [
+      'Bosses arrive with their own sound, look and name plate, and their loot grows with every merge.',
+      'Closing and reopening the game no longer rerolls the conditions of the waiting shift.',
       'Typing someone else\'s sync code now asks first and never sends your account into their copy.',
       'Quiet help in career shifts comes a shift sooner if you often stop after a loss; Ranks explains it.',
-      'Roadworks, closures, detours and tow depots now look like their icons; the marathon is in view.',
     ],
     items: [
+      'The syndicate\'s bosses make an entrance. Each of the eight announces itself with a sting of its own, the ring edge turns gold, the camera steps back and the street goes quiet for it. While a boss is on the ring its own music plays instead of the siren, and one that gets away leaves a sour note behind.',
+      'Every boss now has its own look in the family of black and gold: pennants on the convoy, an open top on the getaway car, rivets on the armoured one, only a gold rim on the phantom, a chevron on the twins, a gold ring on the decoy and all its escorts, a tarpaulin on the smuggler and a gold light bar on the kingpin. The Museum shows them too.',
+      'A name plate rides above the boss: its name, a mark for each escort, each armour hit, no lights or a decoy, and the loot it carries. Escorts that join flash gold.',
+      'Growing loot in career shifts: every merge you make while a boss is on the ring adds to what its catch brings, up to half again. Catching it freezes the moment with a gold flash and its name, and the result shows the loot in gold. Daily, challenges and trials stay comparable.',
+      'Fixed: closing and reopening the game no longer rerolls the weather, night and other conditions of the waiting shift. It keeps its conditions until you play it, in every mode.',
       'Fixed: a sync code that belongs to another player is no longer taken without asking. If you already have a name on this device, you see both sides and can only use the cloud copy or wait, so your account is never sent into a copy that is not yours.',
       'Fixed: deleting an invited friend\'s account no longer frees a slot under the invite cap.',
       'Fixed: names that hide a letter behind a look-alike, like a dotless i, are now caught by the name check.',

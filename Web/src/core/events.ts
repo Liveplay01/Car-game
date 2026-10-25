@@ -54,6 +54,8 @@ export interface ShiftResult {
   convoy: boolean;
   /** The syndicate boss was taken down this shift. */
   bossBusted: boolean;
+  /** What the boss's catch brought back and the shift paid out (a completed shift only). */
+  heist: number;
   /** Which boss came (a boss level), else null. */
   bossKind: BossKind | null;
   /** A Legendary Shift's rule, else null. */
@@ -162,13 +164,15 @@ export type GameEvent =
   | { type: 'shiftEnded'; result: ShiftResult }
   | { type: 'tapRejected'; time: number }
   | { type: 'exited'; vehicle: number; arm: Arm }
-  | { type: 'criminalWarning'; arm: Arm; time: number; boss: boolean; scout: boolean }
+  | { type: 'criminalWarning'; arm: Arm; time: number; boss: boolean; scout: boolean; kind: BossKind | null }
   | { type: 'criminalEntered'; vehicle: number; deadline: number; boss: boolean }
   /** The syndicate boss was taken down: the stolen money comes back. */
   | { type: 'heistRecovered'; vehicle: number; point: Vec2; time: number; amount: number }
   /** An armoured boss shrugged off a police ram: the police car is a wreck, the boss drives on. */
   | { type: 'armourHit'; criminal: number; police: number; point: Vec2; time: number; armourLeft: number }
-  | { type: 'criminalEscaped'; vehicle: number; time: number }
+  | { type: 'criminalEscaped'; vehicle: number; time: number; boss: boolean }
+  /** An escort has rolled in behind its boss. */
+  | { type: 'escortJoined'; vehicle: number; time: number }
   | { type: 'criminalWrecked'; vehicle: number; point: Vec2; time: number }
   | { type: 'takedown'; criminal: number; police: number; point: Vec2; time: number; points: number; timeLeft: number }
   | { type: 'transporterWarning'; arm: Arm; time: number; jackpot: boolean }

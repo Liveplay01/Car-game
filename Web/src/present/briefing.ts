@@ -67,7 +67,9 @@ function pendingOf(e: MuseumEntry): ((w: World) => boolean) | null {
 const colorOf = (e: MuseumEntry): ColorToken => (e.k === 'special' && e.kind === 'pickup' ? 'vehicleCriminal' : MuseumPage.color(e));
 
 export function briefOf(e: MuseumEntry, again = false): Brief {
-  return { id: museumId(e), caption: S.brief.caption(e, again), text: S.brief.text(e), color: colorOf(e), pending: pendingOf(e) };
+  // A boss is announced at every encounter, as the syndicate's: the card says whose rule this is.
+  const caption = e.k === 'boss' ? `${S.boss.incoming} · ${S.boss.name(e.kind)}`.toUpperCase() : S.brief.caption(e, again);
+  return { id: museumId(e), caption, text: S.brief.text(e), color: colorOf(e), pending: pendingOf(e) };
 }
 
 export class Briefings {

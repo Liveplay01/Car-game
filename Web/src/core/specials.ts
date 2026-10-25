@@ -2,6 +2,8 @@ import type { Arm } from './roundabout';
 import { Vehicle, type Waiting, mergeProfile } from './vehicle';
 import { type Vec2, sub, dot, fromAngle, wrap } from './vec2';
 import type { World } from './world';
+import type { Config } from './config';
+import type { MergeRating } from './events';
 import type { Lead } from './drivers';
 import { warningArms } from './traffic';
 import { joinsMilitaryZone } from './explosions';
@@ -72,7 +74,7 @@ export function updateCriminals(w: World, now: number): void {
       const scout = !boss && c.scout && !w.scoutSent;
       if (scout) w.scoutSent = true;
       w.criminal = { kind: 'warning', arm, until: now + (boss || scout ? c.convoyWarning : c.criminalWarning), boss, scout };
-      w.events.push({ type: 'criminalWarning', arm, time: now, boss, scout });
+      w.events.push({ type: 'criminalWarning', arm, time: now, boss, scout, kind: boss ? c.bossKind : null });
       return;
     }
     case 'warning': {
@@ -106,7 +108,7 @@ export function updateCriminals(w: World, now: number): void {
     case 'active': {
       if (now < cr.deadline) return;
       w.criminal = { kind: 'leaving', vehicle: cr.vehicle };
-      w.events.push({ type: 'criminalEscaped', vehicle: cr.vehicle, time: now });
+      w.events.push({ type: 'criminalEscaped', vehicle: cr.vehicle, time: now, boss: w.vehicle(cr.vehicle)?.role === 'boss' });
       w.chargeEscape();
       w.endShift('escaped', now, w.config.convoy && !w.score.bossBusted ? 'bossEscape' : 'escape');
       return;
@@ -114,6 +116,16 @@ export function updateCriminals(w: World, now: number): void {
     case 'leaving':
       return;
   }
+}
+
+export const bossLootBase = (c: Config): number => c.heistRecoveryBase + c.heistRecoveryPerLevel * c.level;
+
+/** Growing loot: a merge of yours while the boss is on the ring adds to what its catch brings back. */
+export function growBossLoot(w: World, rating: MergeRating): void {
+  const c = w.config;
+  if (!c.bossLoot || w.criminal.kind !== 'active' || w.vehicle(w.criminal.vehicle)?.role !== 'boss') return;
+  const add = rating === 'perfect' ? c.bossLootPerfect : rating === 'tightFit' || rating === 'nearMiss' ? c.bossLootTight : rating === 'clean' ? c.bossLootClean : 0;
+  w.score.bossLoot = Math.min(Math.round(c.bossLootCap * bossLootBase(c)), w.score.bossLoot + add);
 }
 
 export function criminalCaught(w: World, criminalId: number, policeId: number, point: Vec2, now: number): void {
@@ -129,7 +141,7 @@ export function criminalCaught(w: World, criminalId: number, policeId: number, p
       w.criminal = { kind: 'idle', next: now + w.criminalRng.range(c.twinsGap.lo, c.twinsGap.hi) };
       return;
     }
-    const amount = c.heistRecoveryBase + c.heistRecoveryPerLevel * c.level;
+    const amount = bossLootBase(c) + w.score.bossLoot;
     w.score.money += amount;
     w.score.heistMoney += amount;
     w.score.bossBusted = true;
@@ -157,6 +169,7 @@ export function updateEscorts(w: World): void {
   escort.phase = { ...waiting, approach: 0 };
   escort.place(w.approachPose(escort.phase as Waiting));
   due.left--;
+  w.events.push({ type: 'escortJoined', vehicle: escort.id, time: w.time });
 }
 
 export function criminalWrecked(w: World, criminalId: number, point: Vec2, now: number): void {

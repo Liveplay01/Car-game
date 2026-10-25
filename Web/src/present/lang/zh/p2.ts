@@ -153,7 +153,7 @@ export default (S: Strings): Words<Strings> => ({
   },
 
   boss: {
-    incoming: '辛迪加车队',
+    incoming: '辛迪加',
     scoutFirst: '带护卫的探子：用警车在护卫前面的空隙撞上去',
     name: (k) =>
       ({
@@ -168,7 +168,8 @@ export default (S: Strings): Words<Strings> => ({
       })[k],
     rematch: (k) => `复仇 · ${S.boss.name(k)}`,
     beaten: '已抓获',
-    escaped: '首领逃脱',
+    escaped: (k) => `${S.boss.name(k)}逃脱了`,
+    caught: (k) => `抓获首领 — ${S.boss.name(k)}`,
     wanted: (seconds) => `首领 ${Math.ceil(Math.max(0, seconds))}`,
     busted: (amount) => `抓获首领 · 追回 ${amount}`,
     label: (role) => (role === 'boss' ? '首领' : role === 'escort' ? '护卫' : null),

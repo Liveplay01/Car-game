@@ -35,7 +35,7 @@ import { Skins } from './skins';
 import { WeatherFade, WeatherLayer } from './weather';
 import { NightLayer } from './night';
 import { CityLights, LampWave } from './cityLights';
-import { HUD, TopBar, RingSignals, ModeMessage, ModeBanner, ReadyBanner, type TopMessage, ResultBanner, type Popup, type PopupKind, type ShiftSummary, type ConditionIntro, POPUP_LIFETIME, settledPops } from './hud';
+import { HUD, TopBar, RingSignals, ModeMessage, ModeBanner, ReadyBanner, type TopMessage, ResultBanner, type Popup, type PopupKind, type ShiftSummary, type ConditionIntro, popupLife, settledPops } from './hud';
 import { inPortal, inPlayStore, isInstalled } from '../storage/device';
 import { Tutorial } from './tutorial';
 import { NoticeQueue, TipQueue, type Tip } from './notices';
@@ -313,8 +313,6 @@ export class GameSession {
   private readonly swipe = new SideSwipe();
   private shopPress: ShopTarget | null = null;
   private readonly modeMessage = new ModeMessage();
-  /** The waiting shift each mode was left on: swiping back finds the same sky and city, until that shift is played. */
-  private readonly parked = new Map<GameMode, number>();
   /** The camera's kick as the mode changes: how long ago, and which way the swipe went. */
   private sinceModeKick = Infinity;
   /** Seconds since the last swipe to another mode: the swipe hint waits for a quiet screen after one. */
@@ -788,12 +786,9 @@ export class GameSession {
           this.onChrome?.();
           break;
         }
-        if (!this.special) this.parked.set(this.gameMode, this.world.seed);
-        const parkedSeed = this.parked.get(mode) ?? null;
-        this.parked.delete(mode);
         save.mode = mode;
         this.persist();
-        this.prepareShift(false, parkedSeed, { k: 'ready' });
+        this.prepareShift(false, null, { k: 'ready' });
         break;
       }
       case 'showTab': {
@@ -1105,7 +1100,12 @@ export class GameSession {
     const special = this.special;
     const daily = this.wantsDaily;
     this.dailySelected = daily;
-    const s = special ? GameSession.specialSeed(special) : daily ? dailySeed(this.today) : (seed ?? this.nextSeed());
+    const waiting = this.save.waitingSeeds;
+    const s = special ? GameSession.specialSeed(special) : daily ? dailySeed(this.today) : (seed ?? waiting[this.save.mode] ?? this.nextSeed());
+    if (!special && !daily && waiting[this.save.mode] !== s) {
+      waiting[this.save.mode] = s;
+      this.store();
+    }
     this.playingLevel = special ? (special.k === 'trial' ? special.trial.level : special.spec.level) : this.save.career.level;
     this.playingMode = special?.k === 'challenge' ? special.spec.mode : special ? 'shift' : this.save.mode;
     this.shownFlames = 0;
@@ -2901,6 +2901,7 @@ export class GameSession {
         case 'criminalWarning':
           this.museum.brief(e.boss ? { k: 'boss', kind: world.config.bossKind } : { k: 'special', kind: 'pickup' });
           this.rim.signal('sweep', e.boss ? 'coin' : 'vehicleCriminal');
+          if (e.boss) this.cameraFx.leanTo(v(0, 0), CameraFxTuning.bossPullBack, 1.2);
           if (e.scout && !this.save.hints.includes('scout')) {
             this.save.hints.push('scout');
             this.showNotice(S.boss.scoutFirst);
@@ -2909,6 +2910,11 @@ export class GameSession {
         case 'armourHit':
           this.rim.signal('wave', 'coin');
           break;
+        case 'escortJoined': {
+          const escort = world.vehicle(e.vehicle);
+          if (escort) this.addPopup({ k: 'modulePulse', color: 'coin' }, escort.position);
+          break;
+        }
         case 'ambulanceWarning':
           this.museum.brief({ k: 'special', kind: e.fire ? 'fireTruck' : 'ambulance' });
           this.rim.signal('sweep', 'lightBlue');
@@ -2971,7 +2977,10 @@ export class GameSession {
           if (e.isInFlow) this.lamps.wave(world);
           break;
         case 'heistRecovered':
-          this.rim.signal('wave', 'coin');
+          // The catch: a beat of stillness, a gold flush, the boss's name over the car.
+          this.rim.signal('flush', 'coin');
+          this.landMerge(0.12, 0.05, e.point);
+          this.addPopup({ k: 'bossBusted', boss: world.config.bossKind }, e.point);
           break;
         case 'dispatched':
           this.addPopup({ k: 'dispatch' }, world.layout.stopPose(world.layout.player).position);
@@ -3012,8 +3021,7 @@ export class GameSession {
           break;
         case 'criminalEscaped': {
           // It cost the shift: the next one explains it again.
-          const boss = world.vehicle(e.vehicle)?.role === 'boss';
-          if (this.briefs) this.museum.relearn(museumId(boss ? { k: 'boss', kind: world.config.bossKind } : { k: 'special', kind: 'pickup' }));
+          if (this.briefs) this.museum.relearn(museumId(e.boss ? { k: 'boss', kind: world.config.bossKind } : { k: 'special', kind: 'pickup' }));
           break;
         }
         case 'explosion':
@@ -3067,6 +3075,7 @@ export class GameSession {
 
   private startPlaying(): void {
     this.screen = { k: 'playing' };
+    if (!this.special && !this.playingDaily) delete this.save.waitingSeeds[this.save.mode];
     this.shiftRan = true;
     // The ready screen has told its news: the next one waits for the next ready screen.
     this.museum.ready.shift();
@@ -3422,7 +3431,7 @@ export class GameSession {
 
   private age(delta: number): void {
     for (const p of this.popups) p.age += delta;
-    this.popups = this.popups.filter((p) => p.age < POPUP_LIFETIME);
+    this.popups = this.popups.filter((p) => p.age < popupLife(p.kind));
     this.effects.update(delta, this.world, this.reduceMotion);
     this.explosions.update(delta, gravity(this.world.config));
     this.scars.forget(this.sceneTime);
@@ -3558,6 +3567,7 @@ export class GameSession {
     if (night) {
       NightLayer.addVehicleLights(list, world, alpha, this.lamps, rm ? null : world.time);
     }
+    SceneBuilder.addBossPlates(list, world, alpha);
     if (this.save.settings.vehicleLabels) SceneBuilder.addLabels(list, world, alpha);
     this.effects.addAir(list);
     this.explosions.addAir(list);

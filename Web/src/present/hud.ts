@@ -4,7 +4,7 @@ import type { ShiftResult } from '../core/events';
 import type { GameMode, StreakMilestone } from '../core/career';
 import type { EliteBar } from '../core/elite';
 import type { SwipeMode } from './flow';
-import type { CityEvent } from '../core/config';
+import type { BossKind, CityEvent } from '../core/config';
 import { Scoring } from '../core/scoring';
 import { secureZone } from '../core/specials';
 import { clearZone } from '../core/ambulance';
@@ -266,7 +266,9 @@ export type PopupKind =
   /** A close shave past a motorbike: its bonus points. */
   | { k: 'shave'; n: number }
   /** The Chain Saver left a chain alone. */
-  | { k: 'chainHeld' };
+  | { k: 'chainHeld' }
+  /** A boss taken down: its name, big and gold, over the catch. */
+  | { k: 'bossBusted'; boss: BossKind };
 
 export interface Popup {
   serial: number;
@@ -276,6 +278,8 @@ export interface Popup {
 }
 
 export const POPUP_LIFETIME = 0.9;
+/** A boss's catch is the shift's headline: it stays long enough to read. */
+export const popupLife = (k: PopupKind): number => (k.k === 'bossBusted' ? 1.8 : POPUP_LIFETIME);
 /** The fail icon's size on the result (`FAIL_CHIP_SIZE`); here so the HUD need not import `readyScreen`, which would close an import cycle. */
 export const FAIL_CHIP_SIZE = 46;
 
@@ -839,10 +843,11 @@ export const HUD = {
     const placed: { at: Vec2; height: number }[] = [];
     for (const p of popups) {
       const enter = Ease.outCubic(p.age / 0.2);
-      const exit = Ease.clamp01((p.age - (POPUP_LIFETIME - 0.3)) / 0.3);
+      const life = popupLife(p.kind);
+      const exit = Ease.clamp01((p.age - (life - 0.3)) / 0.3);
       const opacity = Math.min(enter, 1 - exit);
       const scale = reduceMotion ? 1 : 0.9 + 0.1 * enter;
-      const rise = reduceMotion ? 0 : 10 * Ease.outCubic(p.age / POPUP_LIFETIME);
+      const rise = reduceMotion ? 0 : 10 * Ease.outCubic(p.age / life);
       let label = '';
       let color: ColorToken = 'primary';
       let size = Metrics.popupSize;
@@ -881,6 +886,11 @@ export const HUD = {
           label = S.hud.jackpotPaid(Fmt.signed(k.n));
           color = 'coin';
           size = Metrics.popupSize * 1.3 * (reduceMotion ? 1 : land(p.age / 0.35, 0.3));
+          break;
+        case 'bossBusted':
+          label = S.boss.caught(k.boss);
+          color = 'coin';
+          size = Metrics.popupSize * 1.4 * (reduceMotion ? 1 : land(p.age / 0.35, 0.3));
           break;
         case 'earned':
           label = Fmt.signed(k.n);
@@ -1803,7 +1813,7 @@ export const ResultBanner = {
     if (summary.mode === 'unlimited' && r.outcome === 'struckOut') title = S.modes.runOver;
     if (summary.mode === 'mayhem') [title, titleColor] = [S.mayhem.over, 'fireOuter'];
     // On a boss level the criminal that got away was the syndicate's head.
-    if (r.outcome === 'escaped' && r.convoy && !r.bossBusted) title = S.boss.escaped;
+    if (r.outcome === 'escaped' && r.bossKind && !r.bossBusted) title = S.boss.escaped(r.bossKind);
     // A Legendary Shift's rule was broken (Zero Tolerance).
     if (r.outcome === 'failed') [title, titleColor] = [S.legendary.broken, 'destructive'];
     if (summary.run) [title, titleColor] = [summary.run.caption, summary.run.color];
@@ -1892,7 +1902,9 @@ export const ResultBanner = {
             : S.result.retryLevel(nextLevel);
     const detail: [string, ColorToken] | null = run
       ? [run.line, run.lineColor]
-      : r.costs > 0
+      : r.heist > 0
+        ? [S.boss.busted(moneyText(Fmt.number(r.heist))), 'coin']
+        : r.costs > 0
         ? [S.result.loss(Fmt.number(r.costs), r.outcome === 'escaped'), 'destructive']
         : r.covered > 0
           ? [S.result.covered(Fmt.number(r.covered)), 'muted']

@@ -29,6 +29,8 @@ export const CameraFxTuning = {
   /** The lean towards the crash that ends a shift and towards a takedown. */
   crashZoom: 0.08,
   takedownZoom: 0.05,
+  /** A boss's warning: the camera steps back from the ring for a breath, room for what comes. */
+  bossPullBack: -0.04,
   /** The last car of a shift, when another vehicle is this close (centre to centre, car lengths). */
   finalZoom: 0.06,
   finalReach: 1.9,

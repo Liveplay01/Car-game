@@ -40,6 +40,7 @@ import {
   criminalRanInto,
   criminalVehicle,
   updateEscorts,
+  growBossLoot,
 } from './specials';
 import { type MilitaryPhase, updateMilitary, explode, isEscorted, predictedZoneS, gapToZone } from './explosions';
 import { chargeModules, wreckClearRate, towDepotCovering, detourExit, travelAhead } from './modules';
@@ -1102,6 +1103,7 @@ export class World {
         this.score.money += this.config.shieldBonus;
       }
       const [rating, merged, combo] = this.scoreMerge(merge.minGap, behind, ahead);
+      growBossLoot(this, rating);
       const nearest = merge.closest === null ? undefined : this.vehicle(merge.closest);
       this.habits.noteMerge(merge.minGap, nearest?.owner === 'ai' ? nearest.id : null);
       const critical = this.rollCritical(rating);
@@ -1981,6 +1983,7 @@ export class World {
       detonated: this.shift.detonated,
       convoy: this.config.convoy,
       bossBusted: s.bossBusted,
+      heist: outcome === 'completed' ? s.heistMoney : 0,
       bossKind: this.config.convoy ? this.config.bossKind : null,
       legendary: this.config.legendary,
       legendaryExtra: this.config.legendaryExtra,

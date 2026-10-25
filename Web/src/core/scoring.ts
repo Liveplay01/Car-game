@@ -35,6 +35,8 @@ export class ScoreBoard {
   bossesCaught = 0;
   /** The recovered heist, already inside `money`: it only stays when the shift is completed (`World.result`). */
   heistMoney = 0;
+  /** What merges added to the boss's loot while it was on the ring (`bossLoot`), paid on top of the base when it is caught. */
+  bossLoot = 0;
   /** Ambulances that got through with a clear road. */
   ambulances = 0;
   /** Close shaves past a motorbike. */
