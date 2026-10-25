@@ -11,6 +11,7 @@ export interface Limit {
 export class RateLimiter {
   private readonly hits = new Map<string, { count: number; resetAt: number }>();
   private readonly limit: Limit;
+  private nextPrune = 0;
 
   constructor(limit: Limit) {
     this.limit = limit;
@@ -18,7 +19,11 @@ export class RateLimiter {
 
   /** Seconds to wait when the key is over its limit, otherwise 0 (and the hit is counted). */
   take(key: string, now: number): number {
-    if (this.hits.size > 20_000) this.prune(now);
+    // Once per second at most: a flood of fresh keys must not make every request scan them all.
+    if (this.hits.size > 20_000 && now >= this.nextPrune) {
+      this.nextPrune = now + 1_000;
+      this.prune(now);
+    }
     const hit = this.hits.get(key);
     if (!hit || hit.resetAt <= now) {
       this.hits.set(key, { count: 1, resetAt: now + this.limit.windowMs });

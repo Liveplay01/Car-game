@@ -41,7 +41,8 @@ test('bad words are refused, also when disguised', () => {
 });
 
 test('reserved names are refused', () => {
-  for (const name of ['Admin', 'admin', 'ADM1N', 'Moderator', 'Roundabout Timing', 'Car Game']) assert.equal(allowed(name), false, name);
+  for (const name of ['Admin', 'admin', 'ADM1N', 'Admın', 'Admİn', 'Moderator', 'Roundabout Timing', 'Car Game']) assert.equal(allowed(name), false, name);
+  assert.equal(allowed('Fıck'), false);
 });
 
 test('two names that look alike have the same key', () => {

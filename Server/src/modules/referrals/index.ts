@@ -93,9 +93,9 @@ class ReferralStore {
     return rows.map((r) => ({ id: r.id, name: r.name, done: r.completed_at !== null, at: r.completed_at ?? r.created_at }));
   }
 
-  /** How many of this player's friends reached the level (the one just completed counts). */
-  completedCount(inviterId: string): number {
-    return (this.db.prepare('SELECT COUNT(*) AS n FROM referrals WHERE inviter_id = ? AND completed_at IS NOT NULL').get(inviterId) as { n: number }).n;
+  /** How many friends this player was already paid for. Counted from the rewards, not the invites: a friend who erases their account takes the invite row along, but not the payout. */
+  paidCount(inviterId: string): number {
+    return (this.db.prepare("SELECT COUNT(*) AS n FROM rewards WHERE player_id = ? AND reason LIKE 'invite:friend:%'").get(inviterId) as { n: number }).n;
   }
 
   /** The best Shift level score (prestige counts first) of a player who is not blocked, or 0. */
@@ -140,7 +140,7 @@ export function referralsModule(): ServerModule {
           if (!store.complete(inviteeId, now)) return;
           rewards.grant(inviteeId, INVITE_REWARD, `invite:welcome:${row.inviter}`, now, false);
           if (store.isBlocked(row.inviterId)) return;
-          const nth = store.completedCount(row.inviterId);
+          const nth = store.paidCount(row.inviterId) + 1;
           if (nth > MAX_REWARDED_INVITES) return;
           rewards.grant(row.inviterId, INVITE_REWARD, `invite:friend:${invitee.name}`, now, false);
           const milestone = INVITE_MILESTONES.find((m) => m.invites === nth);

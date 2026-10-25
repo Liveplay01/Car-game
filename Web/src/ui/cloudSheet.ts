@@ -295,7 +295,7 @@ export function cloudSheet(layer: HTMLElement, actions: CloudActions): () => voi
       h('p', { class: 'section-note' }, S.cloud.differs),
       h('div', { class: 'list' }, row(S.cloud.thisDevice, summary(actions.current())), row(S.cloud.cloud, cloud ? summary(cloud) : '')),
       take,
-      keep,
+      ...(view.foreign ? [] : [keep]),
       h('button', { class: 'btn block quiet-btn', type: 'button', onclick: () => dismissIncoming() }, S.cloud.later),
     ];
   }

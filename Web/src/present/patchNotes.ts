@@ -51,6 +51,18 @@ export const itemCredit = (item: PatchItem): string | null => {
 
 export const PATCH_NOTES: PatchNote[] = [
   {
+    id: '2026-10-25',
+    date: '25 October 2026',
+    title: 'Safer sync codes and invites',
+    impact: 'fix',
+    summary: ['Typing someone else\'s sync code now asks first and never sends your account into their copy.'],
+    items: [
+      'Fixed: a sync code that belongs to another player is no longer taken without asking. If you already have a name on this device, you see both sides and can only use the cloud copy or wait, so your account is never sent into a copy that is not yours.',
+      'Fixed: deleting an invited friend\'s account no longer frees a slot under the invite cap.',
+      'Fixed: names that hide a letter behind a look-alike, like a dotless i, are now caught by the name check.',
+    ],
+  },
+  {
     id: '2026-10-24',
     date: '24 October 2026',
     title: 'Bigger crew rewards, bargains in the Auction House, Collector and Completionist titles',

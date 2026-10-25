@@ -132,6 +132,22 @@ test('invite: past the cap the friend is still paid, the inviter is not', async 
   assert.equal(standard.length, MAX_REWARDED_INVITES);
 });
 
+test('invite: a friend who erases their account does not free a slot under the cap', async () => {
+  const { call, join, reach, pending } = setup();
+  const anna = await join('Anna');
+  const tokens: string[] = [];
+  for (let i = 0; i < MAX_REWARDED_INVITES + 1; i++) {
+    const friend = await join(`Friend${String.fromCharCode(65 + (i % 26))}${String.fromCharCode(65 + Math.floor(i / 26))}`);
+    await call('POST', '/v1/me/referral', { token: friend.token, body: { code: anna.code } });
+    tokens.push(friend.token);
+    if (i < MAX_REWARDED_INVITES) await reach(friend.token, INVITE_LEVEL);
+  }
+  await call('DELETE', '/v1/me', { token: tokens[0] });
+  await reach(tokens[MAX_REWARDED_INVITES]!, INVITE_LEVEL);
+  const standard = (await pending(anna.token)).filter((r) => r.startsWith('chest:standard'));
+  assert.equal(standard.length, MAX_REWARDED_INVITES);
+});
+
 test('invite: a friend who deletes their account leaves the list and pays nothing', async () => {
   const { call, join, pending } = setup();
   const anna = await join('Anna');

@@ -51,6 +51,8 @@ interface Incoming {
   updatedAt: number;
   /** The leaderboard account the copy carries, if its device had one. */
   account: Account | null;
+  /** This device has a leaderboard account and the copy belongs to another one (or to none). */
+  foreign: boolean;
 }
 
 export type CloudStatus = 'off' | 'synced' | 'saving' | 'offline' | 'choose';
@@ -61,6 +63,8 @@ export interface CloudView {
   /** When this device last sent or checked, for "Saved just now". */
   savedAt: number | null;
   incoming: SaveGame | null;
+  /** The pending copy is somebody else's: this device's account must never be sent into it. */
+  foreign: boolean;
 }
 
 export interface CloudDeps {
@@ -162,7 +166,7 @@ export function onCloudChange(listener: () => void): () => void {
 }
 
 export function cloudView(): CloudView {
-  return { status, code: link?.code ?? null, savedAt, incoming: incoming?.save ?? null };
+  return { status, code: link?.code ?? null, savedAt, incoming: incoming?.save ?? null, foreign: incoming?.foreign ?? false };
 }
 
 const forgetIfGone = (error: unknown): void => {
@@ -278,7 +282,7 @@ async function check(): Promise<void> {
     }
     const save = got.save === undefined ? null : parseImport(JSON.stringify(got.save));
     if (!save) return;
-    arrive({ code, save, updatedAt: got.updatedAt, account: accountOf(got.save) });
+    arrive({ code, save, updatedAt: got.updatedAt, account: accountOf(got.save), foreign: false });
   } catch (error) {
     forgetIfGone(error);
     if (link && !choosing()) set('offline');
@@ -397,9 +401,11 @@ export async function connectCloud(typed: string): Promise<void> {
   const got = await apiRequest<{ save: unknown; updatedAt: number }>('GET', '/v1/sync', { token: code });
   const save = parseImport(JSON.stringify(got.save));
   if (!save) throw new LeaderboardError('invalid_save', S.net.cloudUnreadable);
-  const found = { code, save, updatedAt: got.updatedAt, account: accountOf(got.save) };
-  // Typing a code is a login: the cloud wins. Only a device that is further asks, so an account is never replaced quietly.
-  if (deps && !localIsFurther(deps.save(), save)) {
+  const account = accountOf(got.save);
+  const mine = loadAccount();
+  const found = { code, save, updatedAt: got.updatedAt, account, foreign: !!mine && account?.id !== mine.id };
+  // Typing a code is a login: the cloud wins. Only a device that is further, or one with another account, asks, so an account is never replaced quietly.
+  if (deps && !found.foreign && !localIsFurther(deps.save(), save)) {
     deps.take(adopt(found));
     return;
   }
@@ -414,7 +420,7 @@ export function useCloudSave(): SaveGame | null {
 
 /** The player chose this device's progress: it replaces the cloud copy, knowingly. */
 export async function keepThisDevice(): Promise<void> {
-  if (!incoming || !deps) return;
+  if (!incoming || !deps || incoming.foreign) return;
   const { code, updatedAt } = incoming;
   const save = deps.save();
   const done = await apiRequest<{ updatedAt: number }>('PUT', '/v1/sync', { token: code, body: { save: payload(save), baseUpdatedAt: updatedAt } });

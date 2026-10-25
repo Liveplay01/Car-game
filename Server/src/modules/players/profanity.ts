@@ -21,10 +21,15 @@ const LOOK_ALIKES: Record<string, string> = {
   '+': 't',
 };
 
-/** Lower case, no accents (ä → a, ß → ss), look-alikes folded back to letters. Keeps separators. */
+/** Latin letters that do not break down into a base letter and an accent, so NFKD leaves them alone. */
+const PLAIN_LETTERS: Record<string, string> = { 'ı': 'i', 'ø': 'o', 'đ': 'd', 'ð': 'd', 'ł': 'l', 'ħ': 'h', 'ŧ': 't', 'æ': 'ae', 'œ': 'oe', 'þ': 'th', 'ĸ': 'k' };
+
+/** Lower case, no accents (ä → a, ß → ss, ı → i), look-alikes folded back to letters. Keeps separators. */
 export function fold(text: string): string {
   return text
     .replace(/ß/g, 'ss')
+    .toLowerCase()
+    .replace(/[ıøđðłħŧæœþĸ]/g, (ch) => PLAIN_LETTERS[ch] ?? ch)
     .normalize('NFKD')
     .replace(/\p{M}/gu, '')
     .toLowerCase()
