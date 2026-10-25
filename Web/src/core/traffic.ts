@@ -3,7 +3,7 @@ import type { Arm } from './roundabout';
 import { type Waiting, type Merging, Vehicle, type VehicleType, isInFlow, isEmergency } from './vehicle';
 import { wrap, angleOf } from './vec2';
 import type { World } from './world';
-import { reservedCriminalArm, reservedTransporterArm, joinsTooClose } from './specials';
+import { reservedCriminalArm, criminalDueArm, reservedTransporterArm, joinsTooClose } from './specials';
 import { reservedMilitaryArm, isMilitaryOverdue } from './explosions';
 import { reservedAmbulanceArm, joinsClearRoad, longestExit } from './ambulance';
 import { plannedSpeed } from './modules';
@@ -47,13 +47,14 @@ export function updateTraffic(w: World, dt: number): void {
     }
   }
 
+  const dueArm = criminalDueArm(w);
   for (let i = 0; i < w.vehicles.length; i++) {
     const veh = w.vehicles[i];
     const p = veh.phase;
     if (p.kind !== 'waiting') continue;
     // The criminal never waits politely; the ambulance has right of way.
     // The criminal is due and this car still holds its arm: it squeezes in like the criminal would, or a packed ring keeps the boss out for good.
-    const blocksBoss = w.criminal.kind === 'warning' && w.time >= w.criminal.until && p.arm.index === w.criminal.arm.index;
+    const blocksBoss = p.arm.index === dueArm?.index;
     const barges = veh.type === 'pickup' || veh.type === 'racer' || veh.type === 'wedding' || isEmergency(veh.type) || blocksBoss;
     if (p.approach > 0) {
       p.approach = approachStep(w, p.approach, dt, c.aiRollingMerge || barges);

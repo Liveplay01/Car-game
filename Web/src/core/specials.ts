@@ -26,6 +26,14 @@ export const bossDue = (w: World): boolean => w.config.convoy && !w.score.bossBu
 
 export const reservedCriminalArm = (w: World): Arm | null => (w.criminal.kind === 'warning' ? w.criminal.arm : null);
 
+/** The arm the criminal is due on, or queues on once it has spawned: cars ahead of it there barge in rather than hold it up. */
+export function criminalDueArm(w: World): Arm | null {
+  const cr = w.criminal;
+  if (cr.kind === 'warning') return w.time >= cr.until ? cr.arm : null;
+  const phase = cr.kind === 'arriving' ? w.vehicle(cr.vehicle)?.phase : null;
+  return phase?.kind === 'waiting' ? phase.arm : null;
+}
+
 export const isChased = (w: World, id: number): boolean => w.criminal.kind === 'active' && w.criminal.vehicle === id;
 
 export function criminalVehicle(w: World): number | null {
@@ -78,7 +86,7 @@ export function updateCriminals(w: World, now: number): void {
       return;
     }
     case 'warning': {
-      if (now < cr.until || armOccupied(w, cr.arm)) return;
+      if (now < cr.until || (!cr.boss && armOccupied(w, cr.arm))) return;
       const pickup = spawnSpecial(w, cr.arm, 'pickup');
       if (cr.boss) {
         pickup.role = 'boss';

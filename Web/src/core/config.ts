@@ -205,7 +205,7 @@ export const baseConfig = {
   /** A criminal stays at least one lap of the ring at base speed times this (Leo, 11.10.2026): a big ring or a jam must not let it go before the police can reach it. */
   criminalLapMargin: 1.4,
   takedownPoints: 1000,
-  criminalEntryGap: 0.05,
+  criminalEntryGap: 0.02,
   criminalMass: 2.5,
   dispatchComboFactor: 0.5,
   /** Police cars a shift can dispatch (Leo, 10.10.2026); each Dispatch Radio step adds `dispatchLimitPerStep`. */
