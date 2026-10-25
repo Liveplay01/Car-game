@@ -1,192 +1,439 @@
 ---
 name: security-audit
-description: Security guidance and vulnerability review for codebases, APIs, services, CLI tools, libraries, and daemons. Use for security questions, focused reviews, vulnerability research, security audits, or pen tests. Run the complete workflow only for explicit codebase audit or pen-test requests, full/comprehensive/end-to-end reviews, or requested report artifacts.
+description: "Security audit — save tampering, cheat vectors, network exploits, data exposure, input validation. Before public or multiplayer release."
+argument-hint: "[full | network | save | input | quick]"
+user-invocable: true
+allowed-tools: Read, Glob, Grep, Write, Agent, Bash(bash "*/.claude/skills/security-audit/../../hooks/yaml-helper.sh" resolve_config *)
+model: sonnet
 ---
+
+!`bash "${CLAUDE_SKILL_DIR}/../../hooks/yaml-helper.sh" resolve_config --keys automation,workflow`
+
+**Automation mode**: Resolve `modes.automation` (`project.local.yaml` →
+`project.yaml` → default `collaborative`). Every `AskUserQuestion` call and
+every file write follows `.claude/docs/automation-modes.md`
+(collaborative asks always · guided major-only · autonomous logs and proceeds;
+`automation_always_ask` categories always prompt).
+
+**`workflow`** (resolved above) decides only what Phase 7 tells you about the
+release gate: at `standard` and `full` it requires this report; at `minimal` it
+does not. The audit itself runs the same at every tier.
 
 # Security Audit
 
-Find vulnerabilities that violate a real trust boundary, then give owners the source evidence, safe reproduction, priority, and smallest effective fix. This is a defensive, source-first workflow. A candidate without a concrete affected principal, resource, or security outcome is not a confirmed finding.
+Security is not optional for any shipped game. Even single-player games have
+save tampering vectors. Multiplayer games have cheat surfaces, data exposure
+risks, and denial-of-service potential. This skill systematically audits the
+codebase for the most common game security failures and produces a prioritised
+remediation plan.
+
+**Run this skill:**
+- Before any public release (required for the Polish → Release gate at `workflow: standard` and `full`)
+- Before enabling any online/multiplayer feature
+- After implementing any system that reads from disk or network
+- When a security-related bug is reported
+
+**Output:** `production/security/security-audit-[date]-[scope].md` — the scope
+in the name keeps a same-day `quick` or `save` run from overwriting the `full`
+report the release gate reads.
+
+---
+
+## Phase 1: Parse Arguments and Scope
+
+**Modes:**
+- `full` — all categories (recommended before release)
+- `network` — network/multiplayer only
+- `save` — save file and serialization only
+- `input` — input validation and injection only
+- `quick` — high-severity checks only (fastest, for iterative use)
+- No argument — run `full`
+
+Read `project.yaml` to determine the following, falling back to `.claude/docs/technical-preferences.md` for engine/language/platforms when a key is absent or empty:
+- `engine.name` and `engine.language` — **load-bearing: they select the Phase 3
+  pattern set, and an engine with no sourced set for a category makes that
+  category `NOT ASSESSED`.** If `engine.name` is absent or empty, say so in the
+  report and treat every grep category as `NOT ASSESSED`; do not fall back to
+  the Godot lists because they are the ones written out in full
+- `platform.targets` (affects which attack surfaces apply)
+- `platform.multiplayer` and `platform.online` — whether multiplayer/networking is
+  in scope. `technical-preferences.md` has no equivalent fields, so the legacy
+  fallback cannot supply them.
+
+  > **ABSENT DOES NOT MEAN `false`.** These keys have a reader —
+  > this skill — and **no writer in the setup flow**: neither
+  > `/setup-engine` nor `/start` emits a `platform:` block, and only `/settings`
+  > sets them, when someone runs it, so on most CCGS projects both keys are
+  > absent. Defaulting them to `false` would skip **Category 2 (Network and
+  > Multiplayer Security) on every project, genuinely multiplayer ones
+  > included** — a security category failing open on a value nothing sets.
+  >
+  > When either key is absent or empty: **do not assume single-player, and do not
+  > skip Category 2.** Ask the user whether the game has multiplayer or online
+  > features. If you cannot ask, run Category 2 anyway and mark it
+  > `NOT ASSESSED — multiplayer scope unconfirmed (platform.multiplayer unset —
+  > set it with /settings)`, which makes `CLEAR TO SHIP` unreachable per Phase 5.
+  > While the scope is unconfirmed, rate severity as for a multiplayer game — an
+  > open HIGH is then DO NOT SHIP — and say in the report that the rating assumed
+  > multiplayer, as `security-engineer` does.
+  > Over-scanning a single-player game costs a few minutes; under-scanning a
+  > multiplayer one ships the category unrun.
+  >
+  > Set them explicitly with `/settings platform.multiplayer=true` (they are
+  > project-wide, so `--local` is refused). Recording it in `project.yaml` is the
+  > fix; this rule is the guard for until someone does.
+
+---
+
+## Phase 2: Spawn Security Engineer
+
+Spawn `security-engineer` via `Agent` — the audit is its job, so do not run the
+categories in this session instead. If it cannot be spawned, say why, run the
+scan here, and let the report's **Audited by** line say so.
+
+**Send this fixed brief template.** Fill only the `{…}` slots, from
+`project.yaml` (else technical preferences), the code root resolved per
+`.claude/docs/code-root-resolution.md`, and the Phase 3 text copied as written.
+Add nothing else: no view on the game's type, no expected severity, no opinion
+on any finding — a sentence of your own is where a pre-rating gets in.
+
+```text
+Run a security audit of this project for /security-audit.
+
+Scope: {full | network | save | input | quick}
+Engine: {engine.name} {engine.version}, language {engine.language}
+platform.multiplayer: {true | false | unset}    platform.online: {true | false | unset}    Phase 1 answer: {multiplayer | single-player | not asked}
+Code root: {the resolved code root, or "unresolved"}
+Also scan: {assets/data/ and the config files that exist, or "none"}
+Categories to run, with their checks and grep patterns for this engine:
+{each Phase 3 category this scope runs, copied as written, with the table's row for this engine}
+NOT SOURCEABLE on this engine: {categories, or "none"} — report each NOT ASSESSED; never call it reviewed, verified safe or passed
+Skipped, with reason: {e.g. "Category 2 — platform.multiplayer and platform.online are false", or "none"}
+Report: production/security/security-audit-{date}-{scope}.md — return the report as text; /security-audit writes the file after asking
+
+Severity (rate every finding yourself, against this table only):
+- CRITICAL: Remote code execution, data breach, or trivially-exploitable cheat that breaks multiplayer integrity
+- HIGH: Save tampering that bypasses progression, credential exposure, or server-side authority bypass
+- MEDIUM: Client-side cheat enablement, information disclosure, or input validation gap with limited impact
+- LOW: Defence-in-depth improvement — hardening that reduces attack surface but no direct exploit exists
+Nothing in this brief sets or suggests a severity. The game's type never lowers a rating: a single-player game is rated on the same table. The one adjustment is upward — when the game is multiplayer, or its scope is unconfirmed (unset and not answered), a HIGH counts as CRITICAL; say so where it applies.
+Report each finding as SEC-NNN with category, file:line, description, attack scenario, remediation and effort, grouped by severity.
+```
+
+The template carries the rating rule, so there is nothing to restate: the
+table already rates save tampering that bypasses progression HIGH, the agent
+rates each finding against it, and Phase 5 applies the multiplayer rule to the
+recommendation.
+
+If the code root is unresolved, do not pass a guessed one: every category that
+scans code is `NOT ASSESSED — code root unresolved`, and the report says so. An
+empty code root is the insufficient-implementation case in Phase 5, and each
+category that scans code reads `NOT ASSESSED — no source under <root>`, not zero
+findings. Neither is ever reported clean.
+
+The security-engineer runs the audit across 6 categories (see Phase 3). Collect their full findings before proceeding.
+
+---
+
+## Phase 3: Audit Categories
+
+The security-engineer evaluates each of the following. Skip categories not
+applicable to the project scope, and name each skipped category and why in the
+Executive Summary (`Category 2 — skipped: platform.multiplayer and
+platform.online are false`).
+
+### Engine pattern sets — read this before any Category below
+
+**Every pattern list in Categories 1–3 is written for Godot.** On a Unity or
+Unreal project they match nothing, and a zero-hit scan renders the report clean,
+"the most dangerous possible failure for a security audit". Use the table for
+`engine.name` resolved in Phase 1.
+
+| Category | Godot | Unity | Unreal |
+|---|---|---|---|
+| 1 — Save / serialization | the Godot list below | **NOT SOURCEABLE** | **NOT SOURCEABLE** |
+| 2 — Network / multiplayer | the Godot list below | `ServerRpc`, `ClientRpc`, `NetworkVariable`, `NetworkObject`, `NetworkManager`, `NetworkBehaviour`, `IsServer`, `IsOwner` | `UFUNCTION`, `Server`, `Client`, `NetMulticast`, `Replicated`, `DOREPLIFETIME`, `GetLifetimeReplicatedProps`, `HasAuthority` |
+| 3 — Input | the Godot list below | `InputSystem`, `PlayerInput`, `ReadValue`, `InputValue` | `EnhancedInput`, `UInputAction`, `InputMappingContext`, `BindAction`, `FInputActionValue` |
+| 4 — Data exposure | engine-agnostic — the list below applies to all three | | |
+| 5, 6 | judgement and manifests, not greps — no engine set needed | | |
+
+The Unity and Unreal names above are **sourced from this repo's pinned
+references** (`docs/engine-reference/unity/modules/{networking,input}.md`,
+`docs/engine-reference/unreal/modules/{networking,input}.md`), not from recall.
+Verify them against the pin before use and add what the reference documents that
+this table omits — it is a floor, not a complete set.
+
+> **`NOT SOURCEABLE` is a verdict, not a gap to fill from memory.** Neither
+> reference tree carries a serialization/save module, so the save-API names for
+> Unity and Unreal cannot be confirmed here. **Do not write them from training
+> data.** A confidently wrong pattern list is worse in this skill than in any
+> other: it produces a scan that looks thorough, finds nothing, and reads as a
+> pass. Where the table says NOT SOURCEABLE, that category is **`NOT ASSESSED`**
+> for this engine — see Phase 5. To close it properly, add a save/serialization
+> module, sourced like the others, to `docs/engine-reference/<engine>/modules/`;
+> when one is there, take the category's pattern names from it, cite it in the
+> report, and the category runs.
+
+
+### Category 1: Save File and Serialization Security
+- Are save files validated before loading? (no blind deserialization)
+- Are save file paths constructed from user input? (path traversal risk)
+- Are save files checksummed or signed? (tamper detection)
+- Does the game trust numeric values from save files without bounds checking?
+- Are there any eval() or dynamic code execution calls near save loading?
+
+Grep patterns — **check the pinned engine reference before trusting this list**
+(see the API-name warning below): `FileAccess`, `File.open`, `open(`, `load`,
+`deserialize`, `parse`, `parse_string`, `from_json`, `read_file`, `get_var`,
+`bytes_to_var` — check each for validation.
+
+> **API names are version-specific and this list is a starting point, not a
+> complete set.** `File.open` is **Godot 3.x**; Godot 4 renamed the class to
+> `FileAccess` (`docs/engine-reference/godot/breaking-changes.md`). Before relying
+> on these patterns, read `docs/engine-reference/<engine>/` for the version this
+> project pins and add the names it documents. A grep for a class that no longer
+> exists returns zero hits, and **zero hits in this category renders the report
+> clean** — which is the most dangerous possible failure for a security audit.
+> Searching only `File.open` against a Godot 4 project finds nothing and reports
+> CLEAR TO SHIP on a codebase nobody checked. If you cannot confirm the correct
+> names for the pinned version, say so in the report rather than presenting a
+> zero-hit scan as a pass.
+
+### Category 2: Network and Multiplayer Security (skip if single-player only)
+- Is game state authoritative on the server, or does the client dictate outcomes?
+- Are incoming network packets validated for size, type, and value range?
+- Are player positions and state changes validated server-side?
+- Is there rate limiting on any network calls?
+- Are authentication tokens handled correctly (never sent in plaintext)?
+- Does the game expose any debug endpoints in release builds?
+
+Grep for: `recv`, `receive`, `PacketPeer`, `socket`, `MultiplayerPeer`,
+`ENetMultiplayerPeer`, `NetworkedMultiplayerPeer`, `rpc`, `rpc_id`,
+`@rpc` — check each call site for validation.
+
+> Same version caveat as Category 1. `NetworkedMultiplayerPeer` is **Godot 3.x**;
+> Godot 4 uses `ENetMultiplayerPeer`
+> (`docs/engine-reference/godot/modules/networking.md`). The bare substring
+> `MultiplayerPeer` matches both and is the safer probe.
+
+### Category 3: Input Validation
+- Are any player-supplied strings used in file paths? (path traversal)
+- Are any player-supplied strings logged without sanitization? (log injection)
+- Are numeric inputs (e.g., item quantities, character stats) bounds-checked before use?
+- Are achievement/stat values checked before being written to any backend?
+
+Grep for: `get_input`, `Input.get_`, `input_map`, user-facing text fields — check validation.
+
+### Category 4: Data Exposure
+- Are any API keys, credentials, or secrets hardcoded in the code root or `assets/`?
+- Are debug symbols or verbose error messages included in release builds?
+- Does the game log sensitive player data to disk or console?
+- Are any internal file paths or system information exposed to players?
+
+Grep case-insensitively in release-facing code for: `api[_-]?key`, `secret`,
+`password`, `token`, `private[_-]?key`, `sk_live`, `BEGIN PRIVATE KEY`, `DEBUG`,
+and the engine's print call (`print(` on Godot, `Debug.Log` on Unity, `UE_LOG`
+on Unreal).
+
+### Category 5: Cheat and Anti-Tamper Vectors
+- Are gameplay-critical values stored only in memory, not in easily-editable files?
+- Are any critical game progression flags (e.g., "has paid for DLC") validated server-side?
+- Is there any protection against memory editing tools (Cheat Engine, etc.) for multiplayer?
+- Are leaderboard/score submissions validated before acceptance?
+
+Note: Client-side anti-cheat is largely unenforceable. Focus on server-side validation for anything competitive or monetised.
+
+### Category 6: Dependency and Supply Chain
+- Are any third-party plugins or libraries used? List them.
+- Do any plugins have known CVEs in the version being used?
+- Are plugin sources verified (official marketplace, reviewed repository)?
+
+Glob for: `addons/`, `plugins/`, `third_party/`, `vendor/` — list all external dependencies.
+
+---
+
+## Phase 4: Classify Findings
+
+For each finding, assign:
+
+**Severity:**
+| Level | Definition |
+|-------|-----------|
+| **CRITICAL** | Remote code execution, data breach, or trivially-exploitable cheat that breaks multiplayer integrity |
+| **HIGH** | Save tampering that bypasses progression, credential exposure, or server-side authority bypass |
+| **MEDIUM** | Client-side cheat enablement, information disclosure, or input validation gap with limited impact |
+| **LOW** | Defence-in-depth improvement — hardening that reduces attack surface but no direct exploit exists |
+
+**Status:** Open / Accepted Risk / Out of Scope
+
+---
+
+## Phase 5: Generate Report
+
+```markdown
+# Security Audit Report
+
+**Date**: [date]
+**Scope**: [full | network | save | input | quick]
+**Engine**: [engine + version]
+**Audited by**: [security-engineer via /security-audit | this session — security-engineer not spawned: reason]
+**Files scanned**: [N source files, N config files]
+
+---
+
+## Executive Summary
+
+| Severity | Count | Must Fix Before Release |
+|----------|-------|------------------------|
+| CRITICAL | [N] | Yes — all |
+| HIGH | [N] | Yes — all |
+| MEDIUM | [N] | Recommended |
+| LOW | [N] | Optional |
 
-## Operating modes
+**Release recommendation**: [NOT ASSESSED — INSUFFICIENT IMPLEMENTATION / CLEAR TO SHIP / FIX BEFORE SHIPPING / DO NOT SHIP]
 
-This skill is guidance by default. Loading it does not authorize the complete audit workflow or file creation.
+Choose it by the open findings, first match wins:
+- **DO NOT SHIP** — any open CRITICAL finding (in a multiplayer game, any open HIGH
+  counts as CRITICAL)
+- **FIX BEFORE SHIPPING** — open HIGH findings and no CRITICAL; the Polish → Release
+  gate needs zero open HIGH (at `standard` and `full`)
+- **NOT ASSESSED** — per the rule below, when the scan could not cover the surface.
+  It ranks below both failure values — a known finding is more actionable than an
+  unscanned category, and still has to be fixed — and above CLEAR TO SHIP
+- **CLEAR TO SHIP** — no open CRITICAL or HIGH (MEDIUM and LOW may remain)
 
-- **Guidance mode**: For security questions, focused reviews, methodology, triage, or investigation of specific findings, use only the relevant parts of this skill. Do not automatically run all six phases, create an output directory, or write audit artifacts. You may launch focused agents when useful; they return results to the current task.
-- **Full audit mode**: Use the complete workflow when the user explicitly asks to audit or pen-test a codebase, asks for a full, comprehensive, or end-to-end security review, or requests report artifacts. Run all six phases and write the files defined below.
+> **`NOT ASSESSED` is required when there was not enough implemented surface to
+> audit**, or when the API names for the pinned engine version could not be
+> confirmed — **in place of CLEAR TO SHIP, never of a failure value.** An open
+> CRITICAL or HIGH still decides the recommendation (first match above): a run
+> with an unscanned category and an open HIGH is FIX BEFORE SHIPPING, and names
+> the unscanned category beside it. A zero-finding scan over two files of source is not a clean bill of
+> health, and `CLEAR TO SHIP` must never be reachable by having nothing to look
+> at. Name what was missing and which skill produces it.
+>
+> **The engine axis is part of that rule, not a separate one.** If
+> the Phase 3 table marks a category `NOT SOURCEABLE` for this project's
+> `engine.name`, that category is `NOT ASSESSED` — state it by name in the
+> Executive Summary, and **`CLEAR TO SHIP` is unreachable for the run**. The
+> category reads `NOT ASSESSED — <category> has no sourced pattern set for
+> <engine>`; the release recommendation is still the first match above, so it is
+> NOT ASSESSED only where the run would otherwise have been CLEAR TO SHIP. Never
+> report the category as reviewed by other means: files it covers may still be
+> read for another category, and a finding that read turns up is reported, but
+> the category stays NOT ASSESSED — never "reviewed", "verified safe" or passed.
+> A scan that could not look is not a scan that found nothing, and only the
+> report can tell the reader which of the two happened.
 
-If the request could mean either mode, ask one focused question before creating files or starting the complete workflow.
+---
 
-## Platform terminology
+## CRITICAL Findings
 
-This skill is agent-neutral:
+### SEC-001: [Title]
+**Category**: [Save / Network / Input / Data / Cheat / Dependency]
+**File**: `[path]` line [N]
+**Description**: [What the vulnerability is]
+**Attack scenario**: [How a malicious user would exploit it]
+**Remediation**: [Specific code change or pattern to apply]
+**Effort**: [Low / Medium / High]
 
-- **Parent** is the agent that coordinates the run and owns shared state.
-- **Task tool** is the platform's delegation or sub-agent mechanism.
-- **`research` agent** is a delegated agent for focused source exploration and factual verification.
-- **`general` agent** is a delegated agent for broad investigation and bounded local execution.
-- **`subagent_type:`** in a heading names which of these two delegated agent roles runs that work.
+[repeat per finding]
 
-Use equivalent platform capabilities while preserving role, write-isolation, prompt, and independence boundaries.
+---
 
-## Universal execution safety
+## HIGH Findings
 
-These rules apply in both operating modes. Source inspection is read-only. Run target-controlled builds, tests, processes, browsers, emulators, fuzzers, and fixture processing only inside an OS-enforced sandbox that provides all of these controls:
+[same format]
 
-- no external network; use only an isolated loopback namespace when the check needs local client/server traffic;
-- an empty environment populated from an explicit allowlist with safe values, with scratch-local `HOME`, temporary directories, and caches;
-- a read-only target and toolchain, with the target-controlled process able to write only inside its assigned `scratch/` directory; and
-- explicit low CPU, memory, process, file-size, disk, and wall-clock limits.
+---
 
-The agent, outside the target-controlled process, may make a disposable source copy in an assigned `scratch/` directory when a build must write beside source. In guidance mode, do not retain target-controlled files. In full audit mode, only trusted parent-side code may promote the minimum non-secret result to retained `artifacts/` using the procedure under Write isolation. Never expose a retained output directory (other than the agent's own assigned `scratch/`), another agent's directory, the host home directory, credentials, sockets, or shared services to target code. Do not install dependencies or let builds fetch them. Use only tools and dependencies already available locally. If every control cannot be enforced, do not execute target code: report the missing sandbox capability as a needs-validation blocker and give a safe validation plan.
+## MEDIUM Findings
 
-Use dummy principals, fixtures, and secrets. Do not probe deployed endpoints, external services, shared infrastructure, production identities, other users' data, or live control planes. Do not test availability against a live or shared process, publish artifacts, alter releases, spend paid API quota, or continue beyond the minimum local effect needed to establish a defect. If the decisive fact is outside source or the sandboxed fixture, report it as needing validation.
+[same format]
 
-## Full audit setup
+---
 
-In full audit mode, resolve these values before reconnaissance:
+## LOW Findings
 
-- **Skill directory**: the absolute directory containing this `SKILL.md`.
-- **Target**: the absolute repository root under review.
-- **Repo name**: a stable repository identifier from the directory or local Git remote.
-- **Output directory**: a new writable directory outside the target, defaulting to `~/security-audit-skill/<repo-name>/run-<N>`, where `<N>` is the next unused integer. Use a directory inside the target only when the user explicitly selects it and the parent verifies that version control ignores the whole directory. Otherwise stop and request an external path.
-- **Source ref**: the reviewed commit and whether the worktree is dirty. Do not treat unreviewed generated or modified files as another revision.
+[same format]
 
-### Write isolation
+---
 
-The parent creates and is the only writer of shared run files:
+## Accepted Risk
 
-- `run-metadata.json`
-- `architecture.md`
-- `coverage-ledger.json`
-- `findings.json`
-- `REPORT.md`
-- `FINDINGS-DETAIL.md`
-- `NEEDS-VALIDATION.md`
+[Any findings explicitly accepted by the team with rationale]
 
-Each hunter or verifier receives a unique root under `<output-dir>/agents/<agent-id>/`, with separate `scratch/` and `artifacts/` directories. Canonical agent IDs match `^[a-z0-9][a-z0-9_-]{0,63}$` and must not equal a Windows device name such as `con`, `prn`, `aux`, `nul`, `com1` through `com9`, or `lpt1` through `lpt9`. Lowercase IDs prevent case-fold collisions. The agent and every target-controlled process may write only to `scratch/`; retained `artifacts/` is parent-owned, is never exposed to the sandbox, and is writable only by trusted parent-side promotion code. Agents may not change shared files, target source, retained artifacts, or another agent's directory. Do not use `/tmp` or the host home directory as a writable fallback.
+---
 
-Before execution, the parent opens and retains trusted, non-inheritable directory descriptors for the agent's `scratch/` and `artifacts/` roots, and records an allowlist of expected scratch-relative artifact files plus explicit per-file and cumulative byte limits. Never pass those descriptors to the agent or sandbox. After the sandbox and all its processes terminate, trusted parent-side code promotes each allowlisted file separately:
+## Dependency Inventory
 
-1. Validate the declared relative path: reject absolute, empty, `.`, `..`, or symlinked components.
-2. Walk each parent component from the retained scratch-root descriptor with no-follow directory-relative operations; never reopen by path.
-3. Open the leaf no-follow and nonblocking.
-4. Verify with `fstat` that it is a regular file with link count exactly one and within the recorded per-file and cumulative byte limits.
-5. Enforce those limits again while reading from that descriptor.
-6. Copy exactly the verified size, repeat `fstat`, and reject a changed identity, type, link count, or size.
-7. For the destination, walk every parent component from the retained artifacts-root descriptor with no-follow directory-relative operations; require each existing component to be a real directory, and create any missing directory exclusively before reopening and verifying it no-follow.
-8. Create the leaf exclusively without following links, verify that the opened destination is a regular file with link count exactly one, and copy from the verified source descriptor without reopening either path.
-9. Use equivalent race-safe APIs on non-POSIX systems.
-10. Never recursively copy or glob scratch, extract an archive into artifacts, or open or promote a symlink, FIFO, socket, device, directory, hard-linked file, changing file, or file that exceeds its bound.
-11. If any check is unavailable, cannot be enforced, or fails, discard the scratch entry; if it is decisive evidence, retain `needs_validation` with the exact promotion blocker.
+| Plugin / Library | Version | Source | Known CVEs |
+|-----------------|---------|--------|------------|
+| [name] | [version] | [source] | [none / CVE-XXXX-NNNN] |
 
-[HUNTING.md](HUNTING.md) and [VALIDATION-AND-REPORTING.md](VALIDATION-AND-REPORTING.md) carry this procedure as one identical fenced block for hunter and verifier prompts; it states the same rules in the same order as this list.
+---
 
-For a reproduced check, record the command, exact test input, sandbox limits, and only the allowlisted environment variable names plus safe non-secret values needed to reproduce it. Never capture or copy the ambient environment, inherited variables, credential values, authentication state, or unrelated host paths. Launch from an empty environment rather than trying to redact one after execution.
+## Remediation Priority Order
 
-Before delegation, the parent writes `run-metadata.json` with at least `run_id`, `repo`, `target`, `source_ref`, `profile`, `scope_paths`, `budget` (null if unset), `execution_policy: "sandboxed-source-and-local-only"`, selected companion files, prior-run paths, shared-file owners, and `run_status: "in_progress"`. Update metadata only when those facts change; candidate state belongs in the coverage ledger and `findings.json`.
+1. [SEC-NNN] — [1-line description] — Est. effort: [Low/Medium/High]
+2. ...
 
-## Full audit planning
+---
 
-The coverage, prior-run, profile, and budget requirements in this section apply only in full audit mode.
+## Re-Audit Trigger
 
-### Coverage and prior runs
+Run `/security-audit` again after remediating any CRITICAL or HIGH findings.
+At `workflow: standard` and `full`, the Polish → Release gate requires this report with no open CRITICAL or HIGH items.
+```
 
-No one pass is complete. Build a deterministic coverage plan before hunting and update it after every agent result. [RECONNAISSANCE.md](RECONNAISSANCE.md) defines the stable coverage units and [HUNTING.md](HUNTING.md) defines coverage-critic waves. The parent alone updates the ledger.
+---
 
-If prior runs exist, read every compatible `coverage-ledger.json` and `findings.json` before planning the current run:
+## Phase 6: Write Report
 
-1. Compare the relevant current source with each prior record and unit. A prior source ref alone is not evidence that a path is unchanged.
-2. Carry a prior `confirmed` record into the current candidate set only when its relevant source and conditions are unchanged and its evidence still meets the current contract. Link it to a current ledger unit seeded `planned`, preserve its fingerprint, exclude only that carried root cause from hunters, and send the carried record through the current final verification path; the Phase 3 verifier that re-checks it becomes that unit's assignment owner and moves it to `candidate`.
-3. When relevant source for a prior `confirmed` record changed, create a current planned revalidation unit. Do not put that record on the hunter exclusion list. It remains confirmed only if current independent validation establishes the current path and result.
-4. Make prior `needs_validation`, `deferred`, `blocked`, `out_of_scope`, and any changed-source unit current work. A still-external `needs_validation` record may be carried only after the current source trace is checked and linked by fingerprint to a current `planned` unit whose verifier re-check supplies its owner and evidence; the record keeps the unresolved blocker. These prior states never suppress a current unit.
-5. A prior same-source covered unit may inform priority, but it remains visible in the current ledger. A prior `rejected` record suppresses only the unchanged failed claim, not coverage of its unit; changed evidence creates current work.
-6. Read the prior profile and scope. A prior `quick` or scoped ledger contributes only its recorded evidence and gaps, never an implied "rest is fine."
+Present the report summary (executive summary + CRITICAL/HIGH findings only) in conversation.
 
-If no prior ledger exists, say so in the final coverage statement. Never imply that one run exhausts the target.
+Ask: "May I write the full security audit report to `production/security/security-audit-[date]-[scope].md`?"
 
-### Run profiles and scope
+Write only after approval.
 
-During full audit setup, pick a profile from the user's request or propose one from the target's size and stakes. Record it in `run-metadata.json` (`profile`, `scope_paths`) and state it in the report. The default is `standard`.
+---
 
-- **`quick`** — a bounded pass for small targets, re-runs, or a fast first look. Coarsen ledger units to surface × boundary × attack class (subsystem uses the fixed canonical `profile/quick/all-in-scope-subsystems` identifier), run exactly one hunter wave followed by exactly one final coverage-critic pass, and use one fresh verifier per candidate for both candidate validation and final record verification. Do not launch a follow-up hunter wave: record the critic's accepted discoveries and reassignments as `deferred`.
-- **`standard`** — the workflow as written.
-- **`deep`** — for high-stakes or large targets. Split ledger units per subsystem and lifecycle mode, run critic waves to a clean pass, keep candidate validation and final record verification as separate fresh agents, and give `prior_covered_same_source` units an independent second pass.
+## Phase 7: Gate Integration
 
-A **scoped run** audits a subset: named paths, one subsystem, one companion domain, or the diff between two source refs. Seed ledger units only for in-scope surfaces and record everything else as `out_of_scope` — never as `covered`. A scoped or `quick` run must present itself as partial coverage.
+This report is a required artifact for the **Polish → Release gate** at `workflow: standard` and `full`; the `minimal` gate drops it with everything but smoke and S1 bugs. Say which applies to this project, from the `workflow` resolved above.
 
-Profiles change breadth and redundancy, never the evidence bar. Do not scale away the candidate gate, the source/local execution boundary, `needs_validation` discipline, schema validation, or independent verification of `confirmed` records.
+After remediating findings, re-run: `/security-audit quick` to confirm CRITICAL/HIGH items are resolved before running `/gate-check release`.
 
-#### Cost budget
+Branch on the release recommendation, not on the finding counts alone:
 
-The ledger makes spend countable: one unit is roughly one hunter assignment, and one surviving candidate is one or two verifier assignments depending on profile. When the user sets a budget — or the parent proposes one for a large target — record `budget` in `run-metadata.json` as a maximum number of agent invocations across all phases.
+If it is **DO NOT SHIP** (an open CRITICAL, or an open HIGH in a multiplayer game):
+> "⛔ CRITICAL security findings must be resolved before any public release. Do not proceed to `/launch-checklist` until these are addressed."
 
-Apply the strict budget gate before launching any reconnaissance agent. Reserve the four baseline reconnaissance calls, one final post-wave critic for `quick` or one post-wave plus one distinct final-clean critic for `standard`/`deep`, and at least one verifier call. Add focused reconnaissance only after repeating this gate for each extra call. If the requested budget cannot fund that minimum, launch no agent: ask for a larger budget, narrower scope, or different profile. If the request remains unchanged, set `run_status: "incomplete"` with `incomplete_reason: "budget_cannot_fund_reconnaissance_and_reserves"` and report that no audit pass ran.
+If it is **FIX BEFORE SHIPPING** (open HIGH findings, no CRITICAL, single-player):
+> At `workflow: standard`/`full`: "⚠️ [N] HIGH finding(s) are open. The Polish → Release gate's security audit item requires none — fix them and re-run `/security-audit quick` before `/gate-check release`."
+>
+> At `minimal`: "⚠️ [N] HIGH finding(s) are open — fix them and re-run `/security-audit quick` before you ship. The `minimal` release gate does not read this report; the open HIGH still makes the recommendation FIX BEFORE SHIPPING."
 
-Spend it in this order:
+If it is **NOT ASSESSED**:
+> "Security audit NOT ASSESSED — [each category not assessed, and why]. The report is
+> written. [At `workflow: standard`/`full`:] `/gate-check release` will report its
+> security item NOT ASSESSED until [the missing input] is supplied and the audit
+> re-run. [At `minimal`:] The `minimal` release gate does not read this report,
+> but those categories stay unscanned until [the missing input] is supplied."
+>
+> Name the missing input for each category: `engine.name`, the code root, the
+> multiplayer scope (`/settings platform.multiplayer=…`), or — for a category the
+> Phase 3 table marks NOT SOURCEABLE on this engine, the usual cause on Unity and
+> Unreal — a save/serialization module in `docs/engine-reference/<engine>/modules/`
+> (Phase 3), naming that category.
 
-1. Count reconnaissance, every post-wave critic, and the separate final-clean critic as agent invocations.
-2. **Reserve critics and validation before hunting.** For `quick`, reserve its one post-wave final critic. Before every `standard` or `deep` hunter wave, reserve one immediate post-wave critic plus one distinct final-clean critic. Also reserve verifier cost from the profile (about 1 or 2 agents per expected candidate; when in doubt reserve 30% of the balance after critic reservation). Never assign hunters into either reserve.
-3. Assign hunters to units in priority order until the hunting allowance is spent. Spend the reserved post-wave critic immediately after that wave; keep the final-clean and validation reserves intact.
-4. Before a later wave, reserve its new post-wave critic again. If the remaining budget cannot cover the required critic calls and validation reserve, launch no hunters from that wave, mark its planned units `deferred` with reason `budget_cannot_reserve_critics_and_validation`, and use the retained final-clean critic to record the resulting gap.
+If it is **CLEAR TO SHIP**:
+> "✅ No blocking security findings. Report written to `production/security/`. Include this path when running `/gate-check release`."
 
-Before wave 1, update the pre-recon estimate with seeded units, implied hunter count, mandatory critic calls, validation reserve, and whether the remaining budget covers the plan. If it clearly cannot, say so and propose either a tighter scope or a coarser profile instead of silently thinning evidence. If later facts consume the required final-critic reserve, launch no hunters, mark all planned work deferred, set the run incomplete with reason `critic_budget_exhausted`, and make no complete-coverage claim.
+---
 
-A strict total-agent budget can still be exceeded by an unexpectedly large candidate set or by a material Phase 5 replacement that needs another independent verifier. If the remaining budget cannot validate every candidate, stop hunting, validate candidates in fingerprint order while the budget permits, and set `run_status: "incomplete"` plus `incomplete_reason: "validation_budget_exhausted"`. Keep each unvalidated fingerprint linked to a `candidate` ledger unit with that unresolved reason. Do not put an unvalidated candidate in `findings.json`, relabel it `needs_validation`, or report the run as complete. Phase 6 may produce a partial report only if its first section states that candidate validation is incomplete and lists the affected fingerprints and units. Never exceed a user-set strict budget silently.
+## Collaborative Protocol
 
-## Core principles
-
-### Require a boundary and result
-
-For every candidate, name the lower-trust principal, accepted input or action, intended control, crossed boundary, affected principal or resource, and concrete observed or owner-observable result. Do not elevate a missing best practice, guessed deployment behavior, generic parser crash, or self-impact into a security finding.
-
-### Use bounded local evidence
-
-Static analysis establishes the source path. Sandboxed local tests resolve behavior when all execution controls are available: a minimal function harness, existing unit test, small parser fixture, dummy-tenant integration test, locally rendered configuration, or bounded isolated-loopback client. Stop at a wrong return value, unauthorized dummy record, sanitizer finding, policy difference, or other minimum effect. Do not extend the local check beyond the minimum boundary result or produce persistence, post-fault, or concealment material.
-
-### Respect source visibility
-
-Deployment controls, proxy behavior, provider settings, browser headers, identity policy, broker ACLs, packaging, and topology are real controls. If they are required and absent from the repository, do not assume either presence or absence. Use `needs_validation` with the exact missing fact and a safe owner-observed or local plan.
-
-### Separate priority from certainty
-
-Only `confirmed` records receive severity. Likelihood and impact must reflect the demonstrated conditions and result; overall severity cannot exceed demonstrated impact. `needs_validation` means a specific source-grounded boundary hypothesis is blocked, not a low-confidence confirmed vulnerability, and it has no severity.
-
-Calibrate overall severity with these anchors:
-
-- **critical** — an unauthenticated actor gains code execution, full data-store access, or takeover of arbitrary accounts.
-- **high** — an actor fully defeats an explicit security control with real consequences: authentication bypass, cross-tenant read or write, stored script execution affecting other users, authenticated code execution, or an unauthenticated remote stop of a shared service.
-- **medium** — a real boundary violation with limited blast radius, uncommon preconditions, or consequences confined to a narrow resource set.
-- **low** — disclosure of non-secret internals, or an effect requiring sustained effort for minimal gain.
-- **informational** — a confirmed but minimal-impact observation, useful mainly as a prerequisite inside a larger finding.
-
-The high/medium discriminator: does the demonstrated result fully defeat an explicit control for an action with real consequences, or only weaken it? If you cannot state the concrete damage, the severity is lower than it feels.
-
-### Recommend the smallest effective source fix
-
-For each confirmed finding, identify the invariant the code must enforce and the narrowest source change that enforces it at the last trusted decision point. Prefer specific repository-relative changes and regression tests over generic hardening advice. The audit describes fixes; it does not modify target source.
-
-## Full audit workflow
-
-In full audit mode, follow all six phases in order:
-
-1. **Reconnaissance** — map the source, trust boundaries, local build paths, companion selections, prior evidence, and initial deterministic coverage ledger with [RECONNAISSANCE.md](RECONNAISSANCE.md).
-2. **Coverage-led hunting waves** — assign isolated hunters from the ledger and collect structured candidate results with [HUNTING.md](HUNTING.md), [ATTACK-CLASSES.md](ATTACK-CLASSES.md), and the selected domain companions.
-3. **Candidate validation** — consolidate fingerprints and give every candidate to a fresh source verifier as defined in [VALIDATION-AND-REPORTING.md](VALIDATION-AND-REPORTING.md).
-4. **Structured output** — write all final `confirmed`, `needs_validation`, and `rejected` records to `findings.json`; validate it with `report-schema.json` and `validate-findings.cjs`, and validate the coverage claim with `validate-coverage-ledger.cjs`.
-5. **Independent record verification** — use fresh agents to verify final source claims and reconcile corrections or state changes.
-6. **Target-neutral report** — derive `REPORT.md`, `FINDINGS-DETAIL.md`, and `NEEDS-VALIDATION.md` from the final records, with no live-probe instructions.
-
-Do not end the run before one of exactly two terminal states: (a) all Phase 6 artifacts are written and both validators pass, or (b) `run_status: "incomplete"` is recorded with its exact reason and the gap is disclosed in the report. Never stop mid-phase.
-
-## Anti-patterns
-
-1. Checklist deviations presented as vulnerabilities.
-2. Defense-in-depth advice with no reachable boundary violation.
-3. Live or shared-environment testing where bounded local evidence is insufficient.
-4. Guessing provider, proxy, browser, identity, or deployment behavior not present in source.
-5. Treating intended same-principal authority or self-impact as a cross-boundary result.
-6. Reporting a parser or runtime effect stronger than the observed effect.
-7. Emitting prose-only hunter results that cannot be deduplicated or verified.
-8. Re-reporting carried same-source prior confirmed records or using them as exemplars that anchor the hunt.
-9. Assigning severity to `needs_validation` records.
-10. Writing the report before independent verification or letting prose and JSON disagree.
+- **Never assume a pattern is safe** — flag it and let the user decide
+- **Accepted risk is a valid outcome** — some LOW findings are acceptable trade-offs for a solo team; document the decision
+- **Multiplayer games have a higher bar** — any HIGH finding in a multiplayer context should be treated as CRITICAL
+- **This is not a penetration test** — this audit covers common patterns; a real pentest by a human security professional is recommended before any competitive or monetised multiplayer launch
