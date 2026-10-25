@@ -46,11 +46,11 @@ function serviceWorker(): Plugin {
         '/',
         '/index.html',
         '/manifest.webmanifest',
-        '/icons/icon-192.png',
-        '/icons/icon-512.png',
-        '/icons/icon-maskable-512.png',
-        '/icons/apple-touch-icon.png',
-        '/icons/favicon-32.png',
+        '/icons/icon-192-v2.png',
+        '/icons/icon-512-v2.png',
+        '/icons/icon-maskable-512-v2.png',
+        '/icons/apple-touch-icon-v2.png',
+        '/icons/favicon-32-v2.png',
         ...files.filter((f) => f !== 'index.html').map((f) => `/${f}`),
         ...audioFiles(),
       ];
@@ -138,7 +138,7 @@ self.addEventListener('push', (event) => {
   event.waitUntil(Promise.all([badge, self.registration.showNotification(message.title, {
     body: message.body || '',
     tag: message.tag || 'rat',
-    icon: '/icons/icon-192.png',
+    icon: '/icons/icon-192-v2.png',
     data: { url: message.url || '/', start: message.tag === 'rank' ? 'ranks' : null },
   })]));
 });
@@ -187,7 +187,7 @@ function legalPage(doc: LegalDoc): string {
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>${e(doc.title)} · ${e(GAME_NAME)}</title>
 <meta name="color-scheme" content="dark" />
-<link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32.png" />
+<link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32-v2.png" />
 <style>
   :root { --bg: #0b0d10; --primary: #f4f6f9; --muted: #99a2af; --accent: #ffb703; --separator: rgba(255, 255, 255, 0.08); }
   * { box-sizing: border-box; }

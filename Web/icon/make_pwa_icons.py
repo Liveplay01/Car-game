@@ -29,9 +29,9 @@ def save(name: str, size: int, rounded: bool = False) -> None:
 # Rounded where the icon is shown as it is (tab, notification, Settings, "any" in the manifest). The
 # stores and home screens press the icon into their own shape and need it full bleed, so apple-touch
 # and maskable stay square.
-save('icon-192', 192, rounded=True)
-save('icon-512', 512, rounded=True)
-save('favicon-32', 32, rounded=True)
-save('apple-touch-icon', 180)
-save('icon-maskable-512', 512)
+save('icon-192-v2', 192, rounded=True)
+save('icon-512-v2', 512, rounded=True)
+save('favicon-32-v2', 32, rounded=True)
+save('apple-touch-icon-v2', 180)
+save('icon-maskable-512-v2', 512)
 print('PWA icons written')

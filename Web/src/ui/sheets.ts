@@ -498,7 +498,7 @@ const crazyGamesRow = (): HTMLElement =>
   externalRow(CRAZYGAMES_PAGE, CRAZYGAMES_LOGO, S.settings.crazyGames.title, S.settings.crazyGames.sub);
 
 const websiteRow = (): HTMLElement =>
-  externalRow(WEBSITE_PAGE, '<img src="/icons/icon-192.png" alt="" width="30" height="30" decoding="async" />', S.settings.website.title, S.settings.website.sub);
+  externalRow(WEBSITE_PAGE, '<img src="/icons/icon-192-v2.png" alt="" width="30" height="30" decoding="async" />', S.settings.website.title, S.settings.website.sub);
 
 /** Help and support (Leo, 24.10.2026): timing.love/support, answers first, then the way to a person. */
 const supportRow = (): HTMLElement => tileExternalRow('help', 'blue', S.settings.support.title, S.settings.support.sub, `${WEBSITE_PAGE}support`);

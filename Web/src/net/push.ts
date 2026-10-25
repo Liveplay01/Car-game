@@ -137,7 +137,7 @@ export const pushDelivers = (): boolean => leaderboardEnabled && import.meta.env
 
 /** Shows one notification right now: the answer to turning them on. */
 async function confirm(): Promise<void> {
-  const options = { body: S.push.on, tag: 'rat-on', icon: '/icons/icon-192.png' };
+  const options = { body: S.push.on, tag: 'rat-on', icon: '/icons/icon-192-v2.png' };
   const registration = 'serviceWorker' in navigator ? await navigator.serviceWorker.getRegistration() : undefined;
   if (registration) await registration.showNotification(S.push.confirmTitle, options);
   else new Notification(S.push.confirmTitle, options);
