@@ -34,7 +34,7 @@ export function installProbe(shell: Shell): void {
       tab: screen.k === 'page' ? screen.tab : null,
       level: save.career.level,
       money: save.career.money,
-      shift: { phase: shift.phase, outcome: shift.outcome, cause: shift.failCause, left: shift.carsLeft, sent: shift.carsSent, points: world.score.points, combo: world.score.combo },
+      shift: { phase: shift.phase, outcome: shift.outcome, cause: shift.failCause, left: shift.carsLeft, sent: shift.carsSent, points: world.score.points, combo: world.score.combo, event: world.config.cityEvent },
       result: result && { outcome: result.outcome, score: result.score, crashes: result.crashes, money: result.money },
       notice: game.noticeText,
       ui: document.getElementById('layers')?.innerText.replace(/\s+/g, ' ').trim().slice(0, 400) ?? '',
@@ -136,7 +136,7 @@ export interface Snapshot {
   tab: string | null;
   level: number;
   money: number;
-  shift: { phase: string; outcome: string | null; cause: string | null; left: number | null; sent: number; points: number; combo: number };
+  shift: { phase: string; outcome: string | null; cause: string | null; left: number | null; sent: number; points: number; combo: number; event: string | null };
   result: { outcome: string; score: number; crashes: number; money: number } | null;
   notice: string | null;
   ui: string;

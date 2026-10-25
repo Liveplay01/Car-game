@@ -58,12 +58,15 @@ export const PATCH_NOTES: PatchNote[] = [
     summary: [
       'Typing someone else\'s sync code now asks first and never sends your account into their copy.',
       'Quiet help in career shifts comes a shift sooner if you often stop after a loss; Ranks explains it.',
+      'Roadworks, closures, detours and tow depots now look like their icons; the marathon is in view.',
     ],
     items: [
       'Fixed: a sync code that belongs to another player is no longer taken without asking. If you already have a name on this device, you see both sides and can only use the cloud copy or wait, so your account is never sent into a copy that is not yours.',
       'Fixed: deleting an invited friend\'s account no longer frees a slot under the invite cap.',
       'Fixed: names that hide a letter behind a look-alike, like a dotless i, are now caught by the name check.',
       'Quiet help: if you often stop playing right after a lost career shift, the easier shifts now come one loss sooner. It stays in plain career shifts only and is worked out on your device. A small folded note at the bottom of Ranks explains when shifts get easier.',
+      'On the road, city events and road modules now look like their icons: roadworks are a row of orange and white cones along the ring, a closed road has a red and white barrier where the arm meets the ring, a detour is a green sign with its turning arrow, and the tow depot shows a tow truck with its crane and hook next to a wreck.',
+      'Fixed: on narrow phones the marathon finish line sat off screen. It now lies where the arm meets the ring as a checkered band, and the runners crossing it are drawn larger with an outline.',
     ],
   },
   {

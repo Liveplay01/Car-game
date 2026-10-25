@@ -38,6 +38,9 @@ export class WeatherFade {
 }
 
 /** Weather and city events on screen. Only drawing. */
+/** Distance from the centre to the mouth of an arm, just off the ring: on screen wherever the ring is. */
+const mouth = (world: World): number => world.layout.ringRadius + world.layout.laneWidth / 2 + 6;
+
 export const WeatherLayer = {
   darkness: [0, 0.08, 0.16, 0.24, 0.3],
   streaks: [0, 40, 90, 130, 170],
@@ -251,19 +254,24 @@ export const WeatherLayer = {
 
   addRunners(list: RenderList, world: World, arm: Arm): void {
     const layout = world.layout;
-    const stop = layout.stopPose(arm);
-    const back = fromAngle(stop.heading + Math.PI);
-    const across: Vec2 = fromAngle(stop.heading + Math.PI / 2);
-    const half = layout.laneWidth * 0.7;
-    // The crossing a little up the arm from the stop line: white bars across the way in.
-    const at = add(stop.position, mul(back, 10));
-    for (let k = -3; k <= 3; k++) {
-      const c = add(at, mul(across, (k * half) / 3.5));
-      list.w(line(add(c, mul(back, -4)), add(c, mul(back, 4)), 2.4), 'primary', 0.55);
-    }
+    const out = fromAngle(arm.angle);
+    const across = fromAngle(arm.angle + Math.PI / 2);
+    const half = layout.laneWidth;
+    const at = mul(out, mouth(world));
     const c = world.config;
     const phase = world.marathonPhase();
-    if (phase >= c.marathonCrossing) return;
+    const crossing = phase < c.marathonCrossing;
+    // The finish line where the arm meets the ring, so it stays on screen beside the HUD and on narrow phones (Leo):
+    // two rows of orange and white squares across the whole road, like the icon's flag; bright while the runners pass.
+    const cols = 8;
+    const size = (2 * half) / cols;
+    for (let col = 0; col < cols; col++) {
+      for (const row of [0, 1]) {
+        const p = add(add(at, mul(across, -half + size * (col + 0.5))), mul(out, (row - 0.5) * size));
+        list.w(rect(p, v(size, size), 0, arm.angle), (col + row) % 2 ? 'primary' : 'juiceOrange', crossing ? 0.9 : 0.45);
+      }
+    }
+    if (!crossing) return;
     // Each runner sets off a little after the one before and crosses at its own pace.
     const colors = ['juiceOrange', 'lightBlue', 'juiceGreen', 'rarityEpic', 'juiceYellow', 'primary'] as const;
     for (let i = 0; i < WeatherLayer.runners; i++) {
@@ -271,9 +279,10 @@ export const WeatherLayer = {
       const pace = 0.35 + 0.25 * unitHash(i, 82);
       const x = (phase - start) * pace;
       if (x < 0 || x > 1) continue;
-      const lane = (unitHash(i, 83) - 0.5) * 7;
-      const p = add(add(at, mul(across, -half * 1.4 + 2 * half * 1.4 * x)), mul(back, lane));
-      list.w(circle(p, 2.6), colors[i % colors.length]);
+      const lane = (unitHash(i, 83) - 0.5) * 10;
+      const p = add(add(at, mul(across, -half * 1.3 + 2 * half * 1.3 * x)), mul(out, lane));
+      list.w(circle(p, 3.6), 'accentInk', 0.7);
+      list.w(circle(p, 2.8), colors[i % colors.length]);
     }
   },
 
@@ -293,17 +302,23 @@ export const WeatherLayer = {
     }
     const works = world.roadworks;
     if (works) {
+      // Roadworks, like its icon: an orange and white edge and traffic cones from above along the stretch.
       const { start, arc: arcLen } = works;
-      const radius = layout.ringRadius + layout.laneWidth / 2 - 3;
-      const pieces = Math.max(2, Math.floor(arcLen / 12));
-      for (let piece = 0; piece < pieces; piece += 2) {
-        const from = (start + (arcLen * piece) / pieces) / layout.ringRadius;
-        const to = (start + (arcLen * (piece + 1)) / pieces) / layout.ringRadius;
-        list.w(arc(v(0, 0), radius, 4, from, to), 'hazard', 0.9);
+      const r = layout.ringRadius;
+      const edge = r + layout.laneWidth / 2 - 2;
+      const pieces = Math.max(2, Math.floor(arcLen / 8));
+      for (let piece = 0; piece < pieces; piece++) {
+        const from = (start + (arcLen * piece) / pieces) / r;
+        const to = (start + (arcLen * (piece + 1)) / pieces) / r;
+        list.w(arc(v(0, 0), edge, 2.4, from, to), piece % 2 ? 'primary' : 'juiceOrange', 0.9);
       }
-      for (const share of [0, 0.5, 1]) {
-        const pose = layout.ring.pose(wrap(start + arcLen * share, layout.ring.length));
-        list.w(circle(add(pose.position, mul(normalize(pose.position), layout.laneWidth / 2 + 4)), 3.5), 'hazard');
+      const cones = Math.max(2, Math.round(arcLen / 16));
+      for (let i = 0; i <= cones; i++) {
+        const pose = layout.ring.pose(wrap(start + (arcLen * i) / cones, layout.ring.length));
+        const at = mul(normalize(pose.position), edge - 1);
+        list.w(rect(at, v(6.5, 6.5), 1.2, pose.heading), 'juiceOrange');
+        list.w(circle(at, 2.5), 'primary');
+        list.w(circle(at, 1.4), 'juiceOrange');
       }
     }
     // The marathon: a crossing on the arm's way in, and the runners on it while they pass.
@@ -313,13 +328,16 @@ export const WeatherLayer = {
     const closed = world.config.closedArmSlot;
     const armItem = closed === null ? undefined : layout.arms.find((a) => a.slot === closed);
     if (armItem) {
+      // The closure, like its icon: a white board with red stripes on two feet across the way in, where the arm meets the ring.
       const stop = layout.stopPose(armItem);
+      const inward = fromAngle(stop.heading);
       const across: Vec2 = fromAngle(stop.heading + Math.PI / 2);
-      const half = layout.laneWidth * 0.55;
-      list.w(line(add(stop.position, mul(across, -half)), add(stop.position, mul(across, half)), 5), 'hazard');
-      for (const side of [-0.5, 0, 0.5]) {
-        const at = add(stop.position, mul(across, half * side));
-        list.w(line(add(at, mul(across, -2)), add(at, mul(across, 2)), 5), 'destructive');
+      const at = add(stop.position, mul(inward, layout.stopDistance - mouth(world)));
+      const half = layout.laneWidth * 0.6;
+      for (const side of [-0.7, 0.7]) list.w(rect(add(at, mul(across, half * side)), v(10, 2.4), 1, stop.heading), 'kerb');
+      list.w(rect(at, v(2 * half, 6), 1.5, stop.heading + Math.PI / 2), 'primary');
+      for (let x = -half + 2; x + 3 <= half - 1; x += 6) {
+        list.w(line(add(add(at, mul(across, x)), mul(inward, -2)), add(add(at, mul(across, x + 3)), mul(inward, 2)), 2), 'destructive');
       }
     }
   },

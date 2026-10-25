@@ -561,13 +561,15 @@ export const SceneBuilder = {
         list.w(circle(mast, 0.9), MODULE_COLORS.speedCamera);
         list.w(circle(add(mast, mul(ahead, -2.2)), 0.8), 'lightRed');
       } else if (module === 'detour') {
-        const board = add(pose.position, mul(normalize(pose.position), lane * 1.4));
-        const tail = sub(board, mul(ahead, 3.6));
-        const tip = add(board, mul(ahead, 3.6));
+        const out = normalize(pose.position);
+        const board = add(pose.position, mul(out, lane * 1.4));
+        // The icon's arrow: on along the ring, then bending off it (icon x outward, icon up ahead).
+        const at = (x: number, y: number): Vec2 => add(board, add(mul(ahead, -y * 0.85), mul(out, (x - 1.5) * 0.85)));
         list.w(rect(board, v(13, 13), 1.8, pose.heading), 'primary');
         list.w(rect(board, v(11, 11), 1.2, pose.heading), MODULE_COLORS.detour);
-        list.w(line(tail, tip, 2.2), 'primary');
-        for (const side of [-1, 1]) list.w(line(tip, add(sub(tip, mul(ahead, 2.4)), mul(right(ahead), 2.4 * side)), 1.8), 'primary');
+        list.w(line(at(-4, 5), at(-4, -1.5), 2.2, true), 'primary');
+        list.w(line(at(-4, -1.5), at(1.5, -1.5), 2.2, true), 'primary');
+        list.w(polygon([at(1.5, -5.5), at(7, -1.5), at(1.5, 2.5)]), 'primary');
       } else if (module === 'billboard') {
         const board = add(pose.position, mul(normalize(pose.position), lane * 1.6));
         list.w(rect(board, v(3, 3), 0.5, pose.heading), 'surface');
@@ -581,8 +583,15 @@ export const SceneBuilder = {
         const heading = yardPose.heading;
         list.w(rect(yard, TOW_YARD_SIZE, 4, heading), 'kerb');
         list.w(rect(yard, sub(TOW_YARD_SIZE, v(4, 4)), 3, heading), 'surface');
-        list.w(rect(add(yard, mul(fromAngle(heading), 7)), v(11, 7), 2, heading + 0.3), 'vehicleCarGraphite', 0.8);
-        list.w(rect(sub(yard, mul(fromAngle(heading), 7)), v(12, 7), 2, heading), MODULE_COLORS.towDepot, 0.95);
+        // A tow truck from above, like the icon: cab, bed, the crane over the back with its hook; a wreck beside it.
+        const f = fromAngle(heading);
+        const truck = add(yard, mul(right(f), -5));
+        list.w(rect(add(truck, mul(f, -1)), v(13, 9), 1.5, heading), 'primary', 0.95);
+        list.w(rect(add(truck, mul(f, 9)), v(7, 9), 2, heading), MODULE_COLORS.towDepot);
+        list.w(rect(add(truck, mul(f, 10.5)), v(2, 7), 0.8, heading), 'accentInk', 0.55);
+        list.w(line(add(truck, mul(f, 3)), add(truck, mul(f, -10)), 2, true), 'accentInk');
+        list.w(circle(add(truck, mul(f, -10.5)), 1.8), MODULE_COLORS.towDepot);
+        list.w(rect(add(yard, add(mul(right(f), 6.5), mul(f, -2))), v(11, 7), 2, heading + 0.3), 'vehicleCarGraphite', 0.8);
       }
     }
   },
