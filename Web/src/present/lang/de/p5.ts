@@ -398,6 +398,8 @@ export default (S: Strings): Words<Strings> => ({
     intro: 'Erstelle deinen Spieler, um hier mitzuspielen. Dein Level und dein Unlimited-Rekord stammen aus dem Fortschritt auf diesem Gerät und bleiben von selbst aktuell.',
     save: 'Speichern',
     noSignUp: 'Keine Anmeldung: Nur dieser Name und deine Rekorde werden gesendet.',
+    easeHead: 'Über die leise Hilfe',
+    easeBody: 'Verlierst du auf einem Level ein paar Karriere-Schichten, werden die nächsten etwas leichter: weniger Autos, ruhigerer Verkehr. Hörst du oft direkt nach einer Niederlage auf, kommt die Hilfe eine Schicht früher. Das gibt es nur in Karriere-Schichten, nie im Daily, in Unlimited, Challenges, Trials oder im Multiplayer, und eine erleichterte Schicht setzt keine Bestzeit. Berechnet wird das auf diesem Gerät; gezählt werden nur grobe, anonyme Stufen.',
     yourName: 'Dein Name',
     remove: 'Mich aus der Bestenliste entfernen',
     removeAgain: 'Tippe erneut, um deinen Namen und deine Punkte zu entfernen',

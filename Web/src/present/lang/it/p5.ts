@@ -398,6 +398,8 @@ export default (S: Strings): Words<Strings> => ({
     intro: 'Crea il tuo giocatore per comparire qui. Le tue statistiche derivano da questo dispositivo e si aggiornano da sole.',
     save: 'Salva',
     noSignUp: 'Nessuna registrazione: solo questo nome e i tuoi record vengono inviati.',
+    easeHead: 'Sull’aiuto discreto',
+    easeBody: 'Se perdi alcuni turni di carriera su un livello, i successivi diventano un po’ più facili: meno auto, traffico più calmo. Se smetti spesso subito dopo una sconfitta, l’aiuto arriva un turno prima. Succede solo nei turni di carriera, mai nel Daily, in Unlimited, nelle sfide, nelle prove o nel multigiocatore, e un turno alleggerito non stabilisce alcun miglior tempo. Il calcolo avviene su questo dispositivo; si contano solo passi approssimativi e anonimi.',
     yourName: 'Il tuo nome',
     remove: 'Rimuovimi dalla classifica',
     removeAgain: 'Tocca di nuovo per eliminare nome e punteggi',

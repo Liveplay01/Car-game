@@ -3586,6 +3586,28 @@ button.mod:active {
   margin: 0 var(--s1);
 }
 
+/* The quiet-help note: the smallest line on the page, read only by whoever opens it. */
+.board-ease {
+  margin: 0 var(--s1);
+}
+
+.board-ease .note-more-head {
+  font-size: 12px;
+  font-weight: 400;
+}
+
+.board-ease .note-more-head svg {
+  width: 14px;
+  height: 14px;
+}
+
+.board-ease .note-items {
+  padding: 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
 .skeleton .bone {
   display: block;
   height: 12px;

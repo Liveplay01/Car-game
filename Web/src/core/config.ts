@@ -328,6 +328,14 @@ export const baseConfig = {
   easeTempoStep: 0.05,
   easeSpawnStep: 0.2,
   /**
+   * Stopping after a loss (Leo, 25.10.2026): each visit that ends after a career shift moves `Career.quitLean` by
+   * `easeQuitMemory` toward 1 (ended on a loss) or 0 (ended on a win). From `easeQuitLeaves` such visits on, a lean of
+   * `easeQuitLean` or more brings the quiet help one loss sooner (never sooner than after the first loss).
+   */
+  easeQuitMemory: 0.35,
+  easeQuitLeaves: 2,
+  easeQuitLean: 0.5,
+  /**
    * The first bad weather and the first night come for sure, not only by chance: a plain career shift from this level
    * on brings light rain, or night, if this career has never met one.
    */

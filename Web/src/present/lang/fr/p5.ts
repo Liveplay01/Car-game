@@ -398,6 +398,8 @@ export default (S: Strings): Words<Strings> => ({
     intro: 'Créez votre joueur pour apparaître ici. Vos statistiques proviennent de cet appareil et se mettent à jour automatiquement.',
     save: 'Enregistrer',
     noSignUp: 'Aucune inscription : seuls ce pseudonyme et vos records sont envoyés.',
+    easeHead: 'À propos de l’aide discrète',
+    easeBody: 'Si vous perdez quelques services de carrière sur un niveau, les suivants deviennent un peu plus faciles : moins de voitures, une circulation plus calme. Si vous arrêtez souvent juste après une défaite, l’aide arrive un service plus tôt. Cela ne concerne que les services de carrière, jamais le Daily, Unlimited, les défis, les épreuves ni le multijoueur, et un service allégé ne fixe aucun meilleur temps. Le calcul se fait sur cet appareil ; seules des étapes approximatives et anonymes sont comptées.',
     yourName: 'Votre nom',
     remove: 'Me retirer du classement',
     removeAgain: 'Touchez à nouveau pour effacer votre nom et vos scores',

@@ -474,10 +474,19 @@ export function ranksPanel(actions: RanksActions): HTMLElement {
     renderFooter();
   }
 
-  /** Below the list: your name (the multiplayer name too) and the way off the leaderboard. */
+  // At the very bottom, folded (Leo, 25.10.2026): career shifts can be eased, and the boards say so for whoever looks.
+  const easeNote = (): HTMLElement =>
+    h(
+      'details',
+      { class: 'note-more board-ease' },
+      h('summary', { class: 'note-more-head' }, S.ranks.easeHead, animatedIcon('chevronDown')),
+      h('p', { class: 'note-items' }, S.ranks.easeBody),
+    );
+
+  /** Below the list: your name (the multiplayer name too), the way off the leaderboard and the note on the quiet help. */
   function renderFooter(): void {
     if (!account) {
-      footer.replaceChildren(h('p', { class: 'section-note' }, S.ranks.noSignUp));
+      footer.replaceChildren(h('p', { class: 'section-note' }, S.ranks.noSignUp), easeNote());
       return;
     }
     footer.replaceChildren(
@@ -492,6 +501,7 @@ export function ranksPanel(actions: RanksActions): HTMLElement {
           animatedIcon('chevronRight'),
         ),
       ),
+      easeNote(),
     );
   }
 

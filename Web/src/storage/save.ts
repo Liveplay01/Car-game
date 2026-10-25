@@ -138,6 +138,8 @@ function readCareer(raw: unknown): Career {
     lastLoginDay: int(raw.lastLoginDay, -1),
     giftDay: int(raw.giftDay, -1, -2),
     levelLosses: int(raw.levelLosses, 0, 0),
+    leaves: int(raw.leaves, 0, 0),
+    quitLean: Math.min(1, num(raw.quitLean, 0, 0)),
     dailyStreak: int(raw.dailyStreak, 0, 0),
     streakFreezes: int(raw.streakFreezes, 0, 0),
     // A save from before the starter streak that is past it already has had its reason for day two.

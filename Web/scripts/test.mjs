@@ -2904,6 +2904,25 @@ test('quiet help: a career without a won shift gets a spare crash and eases afte
   assert.equal(Careers.shiftConfig(newCareer(), 'shift', baseConfig, 3).maxStrikes, baseConfig.maxStrikes, 'the Daily and challenges never get it');
 });
 
+test('a player who often stops after a loss gets the quiet help one loss sooner, never before the first', () => {
+  const c = newCareer();
+  c.mastery.shiftsCompleted = 1;
+  c.level = 9;
+  c.museumSeen = ['weather.lightRain', 'dark.night'];
+  Careers.noteShift(c, false);
+  assert.ok([1, 2, 3, 4, 5].every((seed) => !Careers.careerShift(c, baseConfig, seed).assisted), 'one loss: no help yet');
+  Careers.noteLeave(c, true);
+  assert.equal(Careers.quitsOnLoss(c), false, 'one leave is no habit');
+  Careers.noteLeave(c, true);
+  assert.equal(Careers.quitsOnLoss(c), true);
+  assert.ok([1, 2, 3, 4, 5].every((seed) => Careers.careerShift(c, baseConfig, seed).assisted), 'one loss is enough now');
+  Careers.noteShift(c, true);
+  assert.ok([1, 2, 3, 4, 5].every((seed) => !Careers.careerShift(c, baseConfig, seed).assisted), 'never before the first loss');
+  for (let i = 0; i < 4; i++) Careers.noteLeave(c, false);
+  assert.equal(Careers.quitsOnLoss(c), false, 'stopping after wins wears the lean off');
+  assert.ok(c.quitLean >= 0 && c.quitLean <= 1);
+});
+
 test('the first bad weather and the first night come for sure, and such a shift is marked as eased', () => {
   const c = newCareer();
   c.mastery.shiftsCompleted = 1;

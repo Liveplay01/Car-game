@@ -6,7 +6,7 @@ import { addCrewXp, crewTag } from '../net/crews';
 import { SeasonPass } from '../core/seasonPass';
 import { Unlocks } from '../core/unlocks';
 import { Mafia } from '../core/mafia';
-import type { GameEvent, ShiftResult } from '../core/events';
+import type { GameEvent, ShiftOutcome, ShiftResult } from '../core/events';
 import type { Upgrade } from '../core/levels';
 import { ALBUM_REWARD, BIG_SCREEN, CHEST_KINDS, chestPrice, chestBundle, cosmetic, rarityRank, tapPower, strongTaps, type ChestKind } from '../core/loot';
 import { dailySeed, dailyEvent, dayNumber } from '../core/daily';
@@ -136,6 +136,10 @@ export interface Modifier {
 }
 
 /** Development only (`?ente`): the duck family crosses in every shift, a few seconds in, so it can be looked at. Not in the production build. */
+/** Coarse steps for analytics: a count of days, shifts or minutes never goes out exact. */
+const dayBucket = (days: number): string => (days <= 1 ? String(Math.max(0, days)) : days <= 3 ? '2-3' : days <= 7 ? '4-7' : days <= 14 ? '8-14' : days <= 30 ? '15-30' : '31+');
+const countBucket = (n: number): string => (n <= 2 ? String(n) : n <= 5 ? '3-5' : n <= 10 ? '6-10' : n <= 30 ? '11-30' : '31+');
+
 const duckDemo = import.meta.env.DEV && typeof location !== 'undefined' && new URLSearchParams(location.search).has('ente');
 
 /**
@@ -528,11 +532,10 @@ export class GameSession {
     const { save, today } = this;
     const last = save.career.lastLoginDay;
     if (save.firstDay < 0 && last < 0 && save.shiftsPlayed === 0) save.firstDay = today;
-    const bucket = (days: number): string => (days <= 1 ? String(Math.max(0, days)) : days <= 3 ? '2-3' : days <= 7 ? '4-7' : days <= 14 ? '8-14' : days <= 30 ? '15-30' : '31+');
     this.visit = {
       kind: last >= 0 ? 'back' : 'new',
-      since: last >= 0 ? bucket(today - last) : 'new',
-      first: save.firstDay >= 0 ? bucket(today - save.firstDay) : 'old',
+      since: last >= 0 ? dayBucket(today - last) : 'new',
+      first: save.firstDay >= 0 ? dayBucket(today - save.firstDay) : 'old',
       channel: inPlayStore ? 'play' : isInstalled() ? 'app' : 'tab',
       build: latestNote().split('#')[0] ?? '',
     };
@@ -1457,7 +1460,7 @@ export class GameSession {
         this.resultShiftPay = 0;
         this.play(['purchase'], ['paid']);
       },
-      report: (step, reward) => this.onStep?.('ad', { reward, step }),
+      report: (step, reward) => this.noteAd(reward, step),
       celebrate: (burst) => this.celebrate(burst),
     };
   }
@@ -2337,6 +2340,8 @@ export class GameSession {
       watch.age = 0;
     }
     watch.age += dt;
+    const root = name.split('/')[0] ?? name;
+    this.dwell[root] = (this.dwell[root] ?? 0) + dt;
     if (watch.age < 0.5 || watch.told === name) return;
     watch.told = name;
     this.onStep?.('tab', { name });
@@ -2349,16 +2354,74 @@ export class GameSession {
     this.lastAsk = ask;
   }
 
+  private noteAd(reward: string, step: string): void {
+    this.lastAd = `${reward}.${step}`;
+    this.onStep?.('ad', { reward, step, mood: this.mood });
+  }
+
+  /** This visit, for `leaving`: since the game came to the front, shifts and their run, seconds per tab, the last ad step. */
+  private shownAt = Date.now();
   private leftOnce = false;
+  private sinceLeave = 0;
+  private lastShift: { mode: GameMode; outcome: ShiftOutcome; eased: boolean } | null = null;
+  private run = 0;
+  private dwell: Record<string, number> = {};
+  private lastAd = 'none';
+
+  /** The game came back to the front: a new stretch of play for `leaving`. */
+  cameBack(): void {
+    this.shownAt = Date.now();
+    this.dwell = {};
+    this.run = 0;
+  }
 
   /**
-   * The first day's visits (Leo, 16.10.2026): half the new players leave within two minutes, and this says where they
-   * were and what had just come up. Once per visit, on the first day only; no name, no code, nothing of the save but the level.
+   * How the player feels the game right now, as analytics and the leave event name it: new (first shifts), stuck
+   * (the quiet help is due or a run of losses), flow (three wins in a row this visit), else steady.
+   */
+  private get mood(): string {
+    const c = this.save.career;
+    if (this.save.shiftsPlayed < 3) return 'new';
+    if (c.levelLosses >= this.config.easeAfterLosses || this.run <= -2) return 'stuck';
+    return this.run >= 3 ? 'flow' : 'steady';
+  }
+
+  /**
+   * Why players stop (Leo, 16.10.2026, every visit since 25.10.2026): where they were, what had just come up, how the
+   * last shift went and how they felt the game. Once per stretch of play (the first time the game goes away, then only
+   * after a shift); no name, no code, only coarse steps of the save. A visit that ends after a career shift also feeds
+   * the device's own quit profile (`Careers.noteLeave`), which can bring the quiet help a loss sooner.
    */
   leaving(): Record<string, string | number> | null {
-    if (this.leftOnce || this.save.firstDay !== this.today) return null;
+    if (this.leftOnce && this.sinceLeave === 0) return null;
+    const { save, lastShift } = this;
+    const career = save.career;
+    const drive = Object.keys(this.dwell).reduce((a, b) => ((this.dwell[b] ?? 0) > (this.dwell[a] ?? 0) ? b : a), 'game');
+    const leave = {
+      place: this.placeName,
+      screen: this.screen.k,
+      ask: this.lastAsk ?? 'none',
+      level: career.level,
+      first: save.firstDay >= 0 ? dayBucket(this.today - save.firstDay) : 'old',
+      again: this.leftOnce ? 1 : 0,
+      shifts: countBucket(this.sinceLeave),
+      minutes: countBucket(Math.floor((Date.now() - this.shownAt) / 60000)),
+      last: lastShift?.outcome ?? 'none',
+      mode: lastShift?.mode ?? 'none',
+      eased: lastShift?.eased ? 1 : 0,
+      run: Math.min(career.levelLosses, 5),
+      mood: this.mood,
+      lean: Careers.quitsOnLoss(career, this.config) ? 1 : 0,
+      drive,
+      ad: this.lastAd,
+    };
+    if (lastShift?.mode === 'shift' && this.sinceLeave > 0) {
+      Careers.noteLeave(career, lastShift.outcome !== 'completed', this.config);
+      this.persist();
+    }
     this.leftOnce = true;
-    return { place: this.placeName, screen: this.screen.k, shifts: this.save.shiftsPlayed, level: this.save.career.level, ask: this.lastAsk ?? 'none' };
+    this.sinceLeave = 0;
+    return leave;
   }
 
   /** The page and segment the player is on, for what is new there. */
@@ -3199,7 +3262,11 @@ export class GameSession {
       save.tutorialDone = true;
       this.onStep?.('tutorial-done');
     }
-    this.onStep?.('shift', { mode: this.playingMode, level: this.playingLevel, outcome: result.outcome, daily: this.playingDaily ? 1 : 0, nth: Math.min(save.shiftsPlayed + 1, 10), eased: this.world.config.assisted ? 1 : 0, record: this.recordOf(result.score) });
+    const won = result.outcome === 'completed';
+    this.run = won ? Math.max(0, this.run) + 1 : Math.min(0, this.run) - 1;
+    this.sinceLeave++;
+    this.lastShift = { mode: this.playingMode, outcome: result.outcome, eased: this.world.config.assisted === true };
+    this.onStep?.('shift', { mode: this.playingMode, level: this.playingLevel, outcome: result.outcome, daily: this.playingDaily ? 1 : 0, nth: Math.min(save.shiftsPlayed + 1, 10), eased: this.world.config.assisted ? 1 : 0, record: this.recordOf(result.score), mood: this.mood });
     const levelBefore = career.level;
     const booked = bookShift(save, result, {
       mode: this.playingMode,
@@ -3605,7 +3672,7 @@ export class GameSession {
         }
         if (!this.adTold.has('revive')) {
           this.adTold.add('revive');
-          this.onStep?.('ad', { reward: 'revive', step: 'offer' });
+          this.noteAd('revive', 'offer');
         }
         AdPill.add(list, label, at, this.adPillAge, 1, rm, this.adFlow.busy);
         this.adTarget = { reward: 'revive', rect: AdPill.target(label, at) };
@@ -3828,7 +3895,7 @@ export class GameSession {
     }
     if (!this.adTold.has(ad.reward)) {
       this.adTold.add(ad.reward);
-      this.onStep?.('ad', { reward: ad.reward, step: 'offer' });
+      this.noteAd(ad.reward, 'offer');
     }
     const at = v(list.camera.viewport.x / 2, y);
     AdPill.add(list, ad.label, at, this.adPillAge, opacity, this.reduceMotion, this.adFlow.busy);

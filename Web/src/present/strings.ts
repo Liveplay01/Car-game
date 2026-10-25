@@ -1637,6 +1637,8 @@ export const S = {
     intro: 'Create your player to rank here. Your level and your Unlimited record come from the progress on this device and stay up to date by themselves.',
     save: 'Save',
     noSignUp: 'No sign-up: only this name and your records are sent.',
+    easeHead: 'About quiet help',
+    easeBody: 'Lose a few career shifts on one level and the next ones get a little easier: fewer cars, calmer traffic. If you often stop right after a loss, the help comes one shift sooner. It only happens in career shifts, never in the Daily, Unlimited, challenges, trials or multiplayer, and an eased shift sets no best time. It is worked out on this device; only rough, anonymous steps are counted.',
     yourName: 'Your name',
     remove: 'Remove me from the leaderboard',
     removeAgain: 'Tap again to remove your name and scores',

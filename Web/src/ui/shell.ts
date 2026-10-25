@@ -1591,10 +1591,11 @@ export class Shell {
       syncPush(this.pushTimers, document.hidden);
       if (document.hidden) {
         const leaving = this.session.leaving();
-        if (leaving) track('first-leave', leaving);
+        if (leaving) track('leave', leaving);
         away();
       } else {
         back();
+        this.session.cameBack();
         this.collectRewards();
       }
       // CrazyGames: "don't call gameplayStop when the user switches focus"; their page knows the tab is hidden.

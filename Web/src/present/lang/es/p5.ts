@@ -398,6 +398,8 @@ export default (S: Strings): Words<Strings> => ({
     intro: 'Crea tu jugador para aparecer aquí. Tu nivel y récord Sin límites se toman de este dispositivo y se actualizan solos.',
     save: 'Guardar',
     noSignUp: 'Sin registro: solo se envían este nombre y tus récords.',
+    easeHead: 'Sobre la ayuda discreta',
+    easeBody: 'Si pierdes varios turnos de carrera en un nivel, los siguientes se vuelven un poco más fáciles: menos coches, tráfico más tranquilo. Si sueles parar justo después de perder, la ayuda llega un turno antes. Solo ocurre en los turnos de carrera, nunca en el Daily, Unlimited, desafíos, pruebas ni multijugador, y un turno aliviado no fija ningún mejor tiempo. Se calcula en este dispositivo; solo se cuentan pasos aproximados y anónimos.',
     yourName: 'Tu nombre',
     remove: 'Eliminarme de la clasificación',
     removeAgain: 'Toca de nuevo para borrar tu nombre y puntuaciones',

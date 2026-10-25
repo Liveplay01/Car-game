@@ -24,7 +24,7 @@ export const HOSTING = {
   location: 'Germany',
 };
 
-export const LEGAL_UPDATED = '18 October 2026';
+export const LEGAL_UPDATED = '25 October 2026';
 
 export const GAME_NAME = 'Roundabout Timing';
 
@@ -93,7 +93,7 @@ export const LEGAL_DOCS: LegalDoc[] = [
       {
         heading: 'Visit statistics (Umami)',
         paragraphs: [
-          'On game.gustaff.dev (not on CrazyGames or itch.io) the game counts visits with Umami, which we run ourselves at analytics.kestrel.nrw. It sets no cookie and stores nothing on your device. It records the page, the referring site, your browser, system and screen size and your country, and a few game steps: the tutorial done, each shift played with its mode, level and whether it was won, and, on each start, whether you have played before and roughly how many days it has been since your last visit and since your first one (in steps such as 1, 2-3 or 4-7 days, worked out in your browser from your progress; no date is sent), whether the game was opened in a browser tab, as an installed app or in the Play app, the game version, whether you answered the notification offer or installed the game, and, when an ad offer is shown or tapped, which reward it was (free chest, a streak back, a Freeze, doubled pay) and whether the ad was watched, and when you open the Today page of Progress and whether the Daily still waits then. There is no ID, no name and no progress in it, and your IP address is not stored; a visit cannot be tied to you or to another visit.',
+          'On game.gustaff.dev (not on CrazyGames or itch.io) the game counts visits with Umami, which we run ourselves at analytics.kestrel.nrw. It sets no cookie and stores nothing on your device. It records the page, the referring site, your browser, system and screen size and your country, and a few game steps: the tutorial done, each shift played with its mode, level and whether it was won, and, on each start, whether you have played before and roughly how many days it has been since your last visit and since your first one (in steps such as 1, 2-3 or 4-7 days, worked out in your browser from your progress; no date is sent), whether the game was opened in a browser tab, as an installed app or in the Play app, the game version, whether you answered the notification offer or installed the game, and, when an ad offer is shown or tapped, which reward it was (free chest, a streak back, a Freeze, doubled pay) and whether the ad was watched, when you open the Today page of Progress and whether the Daily still waits then, and, when the game goes into the background after a shift, where you were, how the last shift went, how long you played in rough steps (such as 3-5 shifts or 6-10 minutes), the tab you spent most time on, the last ad step and a rough mood worked out in your browser (new, stuck, in a run of wins, or steady). Whether you tend to stop right after a loss is worked out and kept on your device; only a yes or no goes out with that step. There is no ID, no name and no progress in it, and your IP address is not stored; a visit cannot be tied to you or to another visit.',
           'We use it to see where new players give up and to balance the game. Legal basis: Art. 6(1)(f) GDPR (our legitimate interest in improving the game). Nothing is sent when your browser says Do Not Track.',
         ],
       },

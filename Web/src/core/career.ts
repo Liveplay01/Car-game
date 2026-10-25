@@ -244,6 +244,12 @@ export interface Career {
   giftDay: number;
   /** Shifts lost in a row on the level the career is on (`Careers.noteShift`); the level cleared starts it over. */
   levelLosses: number;
+  /**
+   * How this player stops (Leo, 25.10.2026), worked out on the device only: `leaves` counts visits that ended after a
+   * career shift, `quitLean` (0..1) leans toward 1 the more of them ended right after a loss (`Careers.noteLeave`).
+   */
+  leaves: number;
+  quitLean: number;
   dailyStreak: number;
   /** Streak Freezes in stock: each one covers a missed day instead of breaking the streak. */
   streakFreezes: number;
@@ -422,6 +428,8 @@ export const newCareer = (): Career => ({
   lastLoginDay: -1,
   giftDay: -1,
   levelLosses: 0,
+  leaves: 0,
+  quitLean: 0,
   dailyStreak: 0,
   streakFreezes: 0,
   starterChest: false,
@@ -1005,6 +1013,15 @@ export const Careers = {
     c.levelLosses = won ? 0 : c.levelLosses + 1;
   },
 
+  /** A visit ended after a career shift; `afterLoss` when that shift was lost. */
+  noteLeave(c: Career, afterLoss: boolean, config: Config = baseConfig): void {
+    c.leaves++;
+    c.quitLean += ((afterLoss ? 1 : 0) - c.quitLean) * config.easeQuitMemory;
+  },
+
+  /** This player tends to stop after a loss: the quiet help comes one loss sooner. */
+  quitsOnLoss: (c: Career, config: Config = baseConfig): boolean => c.leaves >= config.easeQuitLeaves && c.quitLean >= config.easeQuitLean,
+
   isDailyOpen: (c: Career, day: number): boolean => (c.dailyPlayed !== day || c.dailyRetry) && c.dailyDone !== day,
 
   /** Today's Daily was played and lost, no ad has given it a second try today (Leo, 16.10.2026: once a day). */
@@ -1232,7 +1249,7 @@ export const Careers = {
     const eased = (next: Config): Config => ({ ...next, assisted: true });
     const fresh = c.prestige === 0 && c.mastery.shiftsCompleted === 0;
     if (fresh) cfg = eased({ ...cfg, maxStrikes: cfg.maxStrikes + 1 });
-    const after = fresh ? base.easeAfterLossesNew : base.easeAfterLosses;
+    const after = Math.max(1, (fresh ? base.easeAfterLossesNew : base.easeAfterLosses) - (Careers.quitsOnLoss(c, base) ? 1 : 0));
     if (c.levelLosses >= after) {
       const fewest = shiftCarsRange(cfg.level, base)[0];
       if (cfg.shiftCars > fewest && !cfg.convoy) cfg = eased({ ...cfg, shiftCars: fewest });
