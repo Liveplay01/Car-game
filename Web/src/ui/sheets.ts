@@ -808,7 +808,7 @@ export function settingsSheet(layer: HTMLElement, s: Settings, actions: Settings
   setMotion(s.reduceMotion);
 
   const toggle =
-    (key: 'sound' | 'music' | 'mapSounds' | 'engineSounds' | 'haptics' | 'vehicleLabels' | 'leftHanded' | 'largeText' | 'batterySaver' | 'lowDetail') =>
+    (key: 'sound' | 'music' | 'mapSounds' | 'engineSounds' | 'haptics' | 'vehicleLabels' | 'leftHanded' | 'steadyCamera' | 'largeText' | 'batterySaver' | 'lowDetail') =>
     (on: boolean): void => {
       s[key] = on;
       actions.changed(s);
@@ -880,6 +880,7 @@ export function settingsSheet(layer: HTMLElement, s: Settings, actions: Settings
           h('div', { class: 'row-main' }, h('div', { class: 'row-title' }, S.settings.reduceMotion), h('div', { class: 'row-sub' }, S.settings.reduceMotionSub)),
           motionSeg,
         ),
+        switchRow(S.settings.steadyCamera, S.settings.steadyCameraSub, s.steadyCamera, toggle('steadyCamera')),
         switchRow(S.settings.leftHanded, S.settings.leftHandedSub, s.leftHanded, toggle('leftHanded')),
         actions.dispatch
           ? sliderRow(S.settings.dispatchSize, S.settings.dispatchSizeSub, s.dispatchSize, (size) => {

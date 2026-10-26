@@ -144,6 +144,8 @@ export const S = {
     largerTextSub: 'Notices and cards over the game a step larger.',
     reduceMotion: 'Reduce motion',
     reduceMotionSub: 'No shake, slow-mo or flying parts.',
+    steadyCamera: 'Steady camera',
+    steadyCameraSub: 'No shake, zoom or slow-mo. Menus and effects stay animated.',
     motion: { system: 'System', on: 'On', off: 'Off' },
     leftHanded: 'Left-handed',
     leftHandedSub: 'Puts the buttons over the game on the left.',

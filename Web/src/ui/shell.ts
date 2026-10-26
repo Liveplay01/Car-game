@@ -861,7 +861,7 @@ export class Shell {
     // Only while the game is new to the player, and only where a thumb plays.
     const fresh = touchFirst && !match && s.special === null && s.save.shiftsPlayed < GameSession.tapHintShifts;
     this.tapHint.classList.toggle('show', fresh && screen.k === 'playing');
-    this.dispatchHint.classList.toggle('show', touchFirst && !match && screen.k === 'playing' && s.world.config.dispatchLimit > 0 && s.save.career.level <= baseConfig.policeLevel + 1);
+    this.dispatchHint.classList.toggle('show', touchFirst && !match && !s.save.settings.leftHanded && screen.k === 'playing' && s.world.config.dispatchLimit > 0 && s.save.career.level <= baseConfig.policeLevel + 1);
     const mods = match ? [] : s.modifiers;
     this.showMods(mods);
     this.mods.classList.toggle('show', onGame && mods.length > 0);

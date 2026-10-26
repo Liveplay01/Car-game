@@ -105,6 +105,8 @@ export default (_s: Strings): Words<Strings> => ({
     largerTextSub: 'Avvisi e schede ingranditi di un livello.',
     reduceMotion: 'Riduci movimento',
     reduceMotionSub: 'Niente scosse, rallentatori o frammenti volanti.',
+    steadyCamera: 'Camera stabile',
+    steadyCameraSub: 'Niente scosse, zoom o rallentatori. Menu ed effetti restano animati.',
     motion: { system: 'Sistema', on: 'Attivo', off: 'Disattivo' },
     leftHanded: 'Modalità mancini',
     leftHandedSub: 'Sposta i comandi sulla parte sinistra dello schermo.',

@@ -105,6 +105,8 @@ export default (_s: Strings): Words<Strings> => ({
     largerTextSub: 'Hinweise und Karten über dem Spiel eine Stufe größer.',
     reduceMotion: 'Bewegung reduzieren',
     reduceMotionSub: 'Kein Wackeln, keine Zeitlupe, keine fliegenden Teile.',
+    steadyCamera: 'Ruhige Kamera',
+    steadyCameraSub: 'Kein Wackeln, Zoomen oder Zeitlupe. Menüs und Effekte bleiben animiert.',
     motion: { system: 'System', on: 'An', off: 'Aus' },
     leftHanded: 'Linkshänder',
     leftHandedSub: 'Setzt die Tasten über dem Spiel nach links.',

@@ -183,7 +183,7 @@ export class GameSession {
 
   /** A faint motion blur on the scene while the camera glides between views (Leo, 16.10.2026), in points; never with Reduce Motion or on a slow device. */
   get motionBlur(): number {
-    return this.reduceMotion || this.lowDetail ? 0 : GameSession.glideBlur * this.cameraRig.motion;
+    return this.steadyCam || this.lowDetail ? 0 : GameSession.glideBlur * this.cameraRig.motion;
   }
 
   static readonly glideBlur = 0.35;
@@ -475,6 +475,11 @@ export class GameSession {
     return r === 'system' ? this.systemReduceMotion : r === 'on';
   }
 
+  /** Camera, zoom, shake, slow-mo and flash stand still: Reduce Motion, or the camera's own setting. */
+  get steadyCam(): boolean {
+    return this.reduceMotion || this.save.settings.steadyCamera;
+  }
+
   get isTrackingPointer(): boolean {
     return this.pan.isTracking || this.builderPage.dragging !== null;
   }
@@ -650,11 +655,11 @@ export class GameSession {
 
   /** Simulation speed with the short slow motions of a takedown and of the lost shift. */
   get timeScale(): number {
-    return Math.min(this.takedownSlowMotion, this.fatalSlowMotion, this.hitStop, this.reduceMotion ? 1 : this.cameraFx.finalScale);
+    return Math.min(this.takedownSlowMotion, this.fatalSlowMotion, this.hitStop, this.steadyCam ? 1 : this.cameraFx.finalScale);
   }
 
   private get hitStop(): number {
-    if (this.reduceMotion) return 1;
+    if (this.steadyCam) return 1;
     return this.sinceHitStop < this.hitStopFor ? 0.08 : 1;
   }
 
@@ -680,7 +685,7 @@ export class GameSession {
    */
   private get punch(): number {
     const t = this.sincePunch;
-    if (this.reduceMotion || t >= GameSession.punchIn + GameSession.punchOut) return 0;
+    if (this.steadyCam || t >= GameSession.punchIn + GameSession.punchOut) return 0;
     if (t < GameSession.punchIn) return this.punchSize * Ease.outCubic(t / GameSession.punchIn);
     return this.punchSize * (1 - Ease.inOutSine((t - GameSession.punchIn) / GameSession.punchOut));
   }
@@ -689,7 +694,7 @@ export class GameSession {
   static readonly punchOut = 0.26;
 
   private get fatalSlowMotion(): number {
-    if (this.reduceMotion) return 1;
+    if (this.steadyCam) return 1;
     const hold = 0.45;
     const ease = 0.4;
     const t = this.sinceFatalCrash;
@@ -699,7 +704,7 @@ export class GameSession {
   }
 
   private get takedownSlowMotion(): number {
-    if (this.reduceMotion) return 1;
+    if (this.steadyCam) return 1;
     const hold = 0.3;
     const ease = 0.25;
     const t = this.sinceTakedown;
@@ -2726,7 +2731,7 @@ export class GameSession {
 
   /** A short kick of the camera as the mode changes: a small lean in, and a damped shake the way the swipe went. */
   private kickCamera(direction: number): void {
-    if (this.reduceMotion) return;
+    if (this.steadyCam) return;
     this.sinceModeKick = 0;
     this.modeKickDir = direction < 0 ? -1 : 1;
     this.sincePunch = 0;
@@ -2736,7 +2741,7 @@ export class GameSession {
 
   private get modeKick(): Vec2 {
     const t = this.sinceModeKick;
-    if (this.reduceMotion || t > 0.8) return v(0, 0);
+    if (this.steadyCam || t > 0.8) return v(0, 0);
     const decay = Math.exp(-t * 7);
     return v(this.modeKickDir * 9 * decay * Math.sin(t * 30), 3 * decay * Math.sin(t * 37 + 1));
   }
@@ -2852,7 +2857,7 @@ export class GameSession {
           // A hard crash blinks the screen and leaves a scorch: both cost nothing the ground has to repaint.
           if (this.effects.spawn(e, world, this.reduceMotion, e.chain, this.lowDetail) >= CrashEffects.fireSeverity && !e.isTakedown) {
             this.scars.add({ point: e.point, kind: 'crash' }, this.sceneTime);
-            if (!this.reduceMotion) this.explosions.flash = Math.max(this.explosions.flash, CrashEffects.flash);
+            if (!this.steadyCam) this.explosions.flash = Math.max(this.explosions.flash, CrashEffects.flash);
           }
           if (e.involvesPlayer || e.isStrike) this.lastCrashAt = e.point;
           if (e.flames > 0) {
@@ -3600,11 +3605,12 @@ export class GameSession {
     const alpha = Math.min(1, this.accumulator / STEP);
     // The bar's height even where it is hidden (a shift, the first one): the street view does not jump when it comes and goes.
     const cam = this.cameraRig.camera(perspectiveOf(this.screen), world.layout, viewport, this.lastInset, delta, rm);
-    const shake = add(add(this.effects.shakeOffset, this.explosions.shakeOffset), this.cameraFx.breathOffset(rm));
+    const calm = this.steadyCam;
+    const shake = calm ? v(0, 0) : add(add(this.effects.shakeOffset, this.explosions.shakeOffset), this.cameraFx.breathOffset(rm));
     // The words in the island sit on this camera: no shake, punch or pull-back moves them, and their wrapping never changes.
     const steady: Camera = { ...cam, scale: cam.scale * (1 - GameSession.lossPullBack) };
-    const pulled = { ...cam, scale: cam.scale * (1 - GameSession.lossPullBack * this.lossPull) * (1 + this.explosions.punch) };
-    const leaned = zoomAbout(this.cameraFx.apply(pulled, world.layout.stopPose(world.layout.player).position, rm), this.punchAt, 1 + this.punch);
+    const pulled = { ...cam, scale: cam.scale * (1 - GameSession.lossPullBack * this.lossPull) * (1 + (calm ? 0 : this.explosions.punch)) };
+    const leaned = zoomAbout(this.cameraFx.apply(pulled, world.layout.stopPose(world.layout.player).position, calm), this.punchAt, 1 + this.punch);
     const kick = this.modeKick;
     const camera = { ...leaned, focus: v(leaned.focus.x + shake.x + this.pan.pan + kick.x, leaned.focus.y + shake.y + kick.y) };
     const career = this.save.career;
@@ -3614,7 +3620,7 @@ export class GameSession {
     addRecede(list, this.recede, world.layout);
     this.curtain?.add(list, viewport, rm);
     this.explosions.addFlash(list, viewport);
-    list.vignette = Math.min(1, this.cameraFx.vignette + this.cameraFx.pulse(rm));
+    list.vignette = Math.min(1, this.cameraFx.vignette + this.cameraFx.pulse(calm));
     list.vignetteAt = list.items.length;
     list.blur = this.motionBlur;
 

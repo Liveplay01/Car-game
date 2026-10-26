@@ -105,6 +105,8 @@ export default (_s: Strings): Words<Strings> => ({
     largerTextSub: 'Avisos y tarjetas del juego un paso más grandes.',
     reduceMotion: 'Reducir movimiento',
     reduceMotionSub: 'Sin temblores, sin cámara lenta ni piezas voladoras.',
+    steadyCamera: 'Cámara estable',
+    steadyCameraSub: 'Sin temblores, zoom ni cámara lenta. Menús y efectos siguen animados.',
     motion: { system: 'Sistema', on: 'Activado', off: 'Desactivado' },
     leftHanded: 'Modo zurdo',
     leftHandedSub: 'Mueve los controles a la izquierda de la pantalla.',

@@ -105,6 +105,8 @@ export default (_s: Strings): Words<Strings> => ({
     largerTextSub: '게임 위의 안내와 카드를 한 단계 크게 보여 줘요.',
     reduceMotion: '모션 줄이기',
     reduceMotionSub: '흔들림, 슬로 모션, 날아가는 파편을 없애요.',
+    steadyCamera: '카메라 고정',
+    steadyCameraSub: '흔들림, 줌, 슬로 모션을 없애요. 메뉴와 효과는 그대로 움직여요.',
     motion: { system: '시스템', on: '켜기', off: '끄기' },
     leftHanded: '왼손잡이 모드',
     leftHandedSub: '게임 위의 버튼을 왼쪽으로 옮겨요.',

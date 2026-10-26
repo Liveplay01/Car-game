@@ -105,6 +105,8 @@ export default (_s: Strings): Words<Strings> => ({
     largerTextSub: '把游戏画面上的提示和卡片放大一级。',
     reduceMotion: '减弱动态效果',
     reduceMotionSub: '没有抖动，没有慢动作，没有飞溅的碎片。',
+    steadyCamera: '稳定镜头',
+    steadyCameraSub: '没有抖动、缩放和慢动作。菜单和特效仍保留动画。',
     motion: { system: '跟随系统', on: '开', off: '关' },
     leftHanded: '左手模式',
     leftHandedSub: '把游戏画面上的按钮移到左边。',

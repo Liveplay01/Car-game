@@ -91,6 +91,8 @@ export interface Settings {
   engineSounds: boolean;
   haptics: boolean;
   reduceMotion: ReduceMotion;
+  /** Only the camera and the screen: no shake, zoom, slow-mo or flash, while menus and effects keep moving (players' wish, 26.10.2026). */
+  steadyCamera: boolean;
   vehicleLabels: boolean;
   /** The floating buttons on the other side, for the left thumb. */
   leftHanded: boolean;
@@ -500,7 +502,7 @@ export const newSave = (): SaveGame => ({
   highscore: 0,
   highscoreSeed: null,
   shiftsPlayed: 0,
-  settings: { sound: true, music: true, mapSounds: true, engineSounds: false, haptics: true, reduceMotion: 'system', vehicleLabels: false, leftHanded: false, dispatchSize: 2, largeText: false, batterySaver: false, lowDetail: false, motionChosen: false },
+  settings: { sound: true, music: true, mapSounds: true, engineSounds: false, haptics: true, reduceMotion: 'system', steadyCamera: false, vehicleLabels: false, leftHanded: false, dispatchSize: 2, largeText: false, batterySaver: false, lowDetail: false, motionChosen: false },
   career: newCareer(),
   tutorialDone: false,
   hints: [],

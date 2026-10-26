@@ -105,6 +105,8 @@ export default (_s: Strings): Words<Strings> => ({
     largerTextSub: 'Indices et cartes affichés un cran plus grand.',
     reduceMotion: 'Réduire les mouvements',
     reduceMotionSub: 'Pas de secousses, ni de ralenti, ni d’éclats volants.',
+    steadyCamera: 'Caméra stable',
+    steadyCameraSub: 'Pas de secousses, de zoom ni de ralenti. Menus et effets restent animés.',
     motion: { system: 'Système', on: 'Activé', off: 'Désactivé' },
     leftHanded: 'Mode gaucher',
     leftHandedSub: 'Place les boutons de commande sur la gauche.',

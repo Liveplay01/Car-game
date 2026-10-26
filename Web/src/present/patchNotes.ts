@@ -51,6 +51,20 @@ export const itemCredit = (item: PatchItem): string | null => {
 
 export const PATCH_NOTES: PatchNote[] = [
   {
+    id: '2026-10-26',
+    date: '26 October 2026',
+    title: 'Steady camera',
+    impact: 'minor',
+    summary: [
+      'New setting Steady camera: no shake, zoom or slow-mo, while menus and effects keep moving.',
+      'Left-handed players no longer see the "Other side?" tip over the dispatch button.',
+    ],
+    items: [
+      { text: 'Settings → Steady camera is new and separate from Reduce motion. It stops the camera shake, zoom, slow-motion and screen flashes, while menus, effects and flying parts keep moving. Reduce motion still turns all of it off.', from: null },
+      { text: 'Fixed: with Left-handed on, the tip about switching the dispatch button to the other side kept showing. It is gone for left-handed players.', from: null },
+    ],
+  },
+  {
     id: '2026-10-25',
     date: '25 October 2026',
     title: 'The syndicate makes an entrance',

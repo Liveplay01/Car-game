@@ -105,6 +105,8 @@ export default (_s: Strings): Words<Strings> => ({
     largerTextSub: 'ゲーム上のヒントやカードを1段階大きくします。',
     reduceMotion: 'モーションを減らす',
     reduceMotionSub: '揺れ、スローモーション、飛び散る破片をなくします。',
+    steadyCamera: 'カメラを安定させる',
+    steadyCameraSub: '揺れ、ズーム、スローモーションをなくします。メニューや演出は動いたままです。',
     motion: { system: 'システム', on: 'オン', off: 'オフ' },
     leftHanded: '左利きモード',
     leftHandedSub: 'ゲーム上のボタンを左側に寄せます。',
