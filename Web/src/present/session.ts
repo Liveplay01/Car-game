@@ -9,7 +9,7 @@ import { Mafia } from '../core/mafia';
 import type { GameEvent, ShiftOutcome, ShiftResult } from '../core/events';
 import type { Upgrade } from '../core/levels';
 import { ALBUM_REWARD, BIG_SCREEN, CHEST_KINDS, chestPrice, chestBundle, cosmetic, rarityRank, tapPower, strongTaps, type ChestKind } from '../core/loot';
-import { dailySeed, dailyEvent, dayNumber } from '../core/daily';
+import { dailySeed, dailyEvent, dayNumber, challengesOf, challengeProgress, challengeReward } from '../core/daily';
 import { weekNumber, weeklyTrial } from '../core/weekly';
 import { Goals } from '../core/goals';
 import { noteTap } from '../core/timing';
@@ -35,7 +35,7 @@ import { Skins } from './skins';
 import { WeatherFade, WeatherLayer } from './weather';
 import { NightLayer } from './night';
 import { CityLights, LampWave } from './cityLights';
-import { HUD, TopBar, RingSignals, ModeMessage, ModeBanner, ReadyBanner, type TopMessage, ResultBanner, type Popup, type PopupKind, type ShiftSummary, type ConditionIntro, popupLife, settledPops } from './hud';
+import { HUD, TopBar, RingSignals, ModeMessage, ModeBanner, ReadyBanner, type TopMessage, ResultBanner, type Popup, type PopupKind, type ShiftSummary, type ConditionIntro, type LiveChallenge, popupLife, settledPops } from './hud';
 import { inPortal, inPlayStore, isInstalled } from '../storage/device';
 import { Tutorial } from './tutorial';
 import { NoticeQueue, TipQueue, type Tip } from './notices';
@@ -60,7 +60,7 @@ import type { PageHost } from './pageHost';
 import { type SpecialRun, settleSpecial, runCard, advanceRush, newRush } from './specialRuns';
 import { markPassed, markReward } from '../core/tiers';
 import { forHeat, heatPay } from '../core/heat';
-import { conditionChips, ConditionChips, FailChip, streakEndsIn, addNotice, noticePresence, NoticeIsland } from './readyScreen';
+import { conditionChips, ConditionChips, FailChip, streakEndsIn, hoursToMidnight, addNotice, noticePresence, NoticeIsland } from './readyScreen';
 import { Briefings, type Brief } from './briefing';
 
 export type { SpecialRun } from './specialRuns';
@@ -578,6 +578,7 @@ export class GameSession {
   collectLoginIncome(): void {
     this.noteVisit();
     const career = this.save.career;
+    const playerName = loadPlayerName().trim();
     // Worked out before the login is booked: the last day is overwritten there.
     const away = career.lastLoginDay >= 0 ? this.today - career.lastLoginDay : 0;
     const endedStreak = away > 0 && career.dailyStreak >= 2 && Goals.streak(career, this.today) === 0 ? career.dailyStreak : 0;
@@ -590,10 +591,10 @@ export class GameSession {
     this.persist();
     if (graced) this.announce(S.mafia.notices.grace);
     if (comeback) {
-      this.announce(S.daily.comebackChest(S.shop.chest('premium')));
+      this.announce(S.daily.comebackChest(S.shop.chest('premium'), away, playerName));
       this.noteAwayNews(since);
     }
-    if (income !== null) this.announce(S.daily.welcomeBack(Fmt.number(income)));
+    if (income !== null) this.announce(S.daily.welcomeBack(Fmt.number(income), playerName));
     else if (this.save.tutorialDone && endedStreak > 0) this.announce(S.daily.streakEnded(endedStreak));
     this.announceInvite();
     void this.announceNewIdea();
@@ -3102,10 +3103,12 @@ export class GameSession {
     // The casino opens quietly: until it has, the cards wait in hand without a word.
     if (news?.cards && Unlocks.isOpen(career, 'casino', this.config)) got.push(S.daily.gotCard);
     if (got.length > 0) toasts.push(S.daily.streakReward(career.dailyStreak, got));
+    if (news?.perfectWeek) toasts.push(S.daily.perfectWeekToast(news.perfectWeekPay, news.perfectWeekCards));
     if (news?.item) {
       toasts.push(...this.completeAlbums());
       this.resultBurst = { kind: 'streak', title: S.moments.streak(career.dailyStreak), line: S.daily.gotItem(news.item), color: 'hazard', power: 1.5 };
     } else if (news?.chest) this.resultBurst = { kind: 'streak', title: S.moments.streak(career.dailyStreak), line: S.daily.gotChest(news.chest), color: 'hazard', power: 1.5 };
+    else if (news?.perfectWeek) this.resultBurst = { kind: 'streak', title: S.daily.perfectWeekTitle, line: S.daily.perfectWeekLine(news.perfectWeekPay, news.perfectWeekCards), color: 'coin', power: 1.6 };
     this.persist();
     this.announce(...toasts);
   }
@@ -3295,7 +3298,18 @@ export class GameSession {
     this.persist();
     // The crew's week counts the same XP as the Season Pass (`net/crews.ts` keeps it until the service has it).
     if (save.tutorialDone) addCrewXp(Elite.xpOf(result, this.config));
-    this.resultBurst = this.momentOf(result, levelBefore) ?? this.resultBurst;
+    // A challenge only celebrates when nothing louder happened: the moments, or the streak a Daily began with.
+    const challengeBurst: Burst | null = booked.challenges.length > 0
+      ? {
+          kind: 'challenge',
+          title: S.daily.challengeTitle(booked.challenges.length),
+          line: '',
+          color: 'coin',
+          power: 1.2,
+          count: booked.challenges.reduce((n, ch) => n + challengeReward(ch, Careers.reach(career)), 0),
+        }
+      : null;
+    this.resultBurst = this.momentOf(result, levelBefore) ?? this.resultBurst ?? challengeBurst;
     this.dailyShare =
       this.playingDaily && result.outcome === 'completed'
         ? S.run.dailyShare(Fmt.number(result.score), result.perfects, result.tightFits, career.dailyStreak)
@@ -3599,6 +3613,31 @@ export class GameSession {
     return { list, card: PhotoCard.of(s.summary, this.save.career.mapSkin, crewTag()) };
   }
 
+  /**
+   * Today's challenges that are still open, counted from the live scoreboard. A career shift
+   * (the Daily included) can finish any of them; a special, a match and Mayhem book nothing,
+   * so they do not show the bar.
+   */
+  private liveChallenges(world: World): LiveChallenge[] {
+    if (this.special || this.versusSelected || this.playingMode === 'mayhem' || !(this.tutorial?.isOver ?? true)) return [];
+    const career = this.save.career;
+    const stats = {
+      perfects: world.score.perfects,
+      tightFits: world.score.tightFits,
+      takedowns: world.score.takedowns,
+      transporters: world.score.transporters,
+      bestChain: world.score.bestChain,
+      bestCombo: world.score.bestCombo,
+      cleanMerges: world.score.cleanMerges,
+      nearMisses: world.score.nearMisses,
+      // A perfect run is only a run once it is still clean and has not been revived.
+      isPerfectRun: world.isPerfectSoFar && world.revives === 0 && !world.config.mayhem,
+    };
+    return challengesOf(this.today, Careers.reach(career))
+      .filter((ch) => !Careers.isChallengeDone(career, ch, this.today))
+      .map((ch) => ({ label: S.daily.challengeShort(ch), ...challengeProgress(ch, stats) }));
+  }
+
   private renderList(viewport: Vec2, delta: number): RenderList {
     const world = this.world;
     const rm = this.reduceMotion;
@@ -3642,6 +3681,8 @@ export class GameSession {
       HUD.addRace(list, world, alpha);
       if ((world.config.night || this.nightPreview) && !this.lowDetail) HUD.bloom(list, lit);
       const since = world.shift.rushHourSince;
+      // Today's three challenges join the top card. A revive offer takes the section's spot.
+      const liveGoals = this.liveChallenges(world);
       HUD.add(list, {
         world,
         level: this.playingLevel,
@@ -3667,6 +3708,7 @@ export class GameSession {
         flamePop: rm ? 1 : Ease.clamp01(this.sinceFlames / 0.35),
         tension: this.cameraFx.vignette,
         brief: this.briefings.view,
+        challenges: this.reviveLeft === null ? liveGoals : [],
         reduceMotion: rm,
         textScale: this.textScale,
       });
@@ -3808,6 +3850,9 @@ export class GameSession {
   /** Draws the ready screen; returns where its chrome under the top card ends (`ReadyBanner.add`). */
   private addReadyBanner(list: RenderList, prompt: string | null, drawsCard = true, opacity = 1): void {
     const career = this.save.career;
+    const reach = Careers.reach(career);
+    const todaysChallenges = challengesOf(this.today, reach);
+    const challengesDone = todaysChallenges.filter((ch) => Careers.isChallengeDone(career, ch, this.today)).length;
     const daily = this.dailySelected && !this.versusSelected
       ? {
           event: this.world.config.cityEvent,
@@ -3817,6 +3862,10 @@ export class GameSession {
           bonus: this.shiftRan && Goals.streakBonus(career, this.today, this.config) ? this.config.streakBonusPay : null,
           endsIn: streakEndsIn(career, this.today, this.config),
           freezes: career.streakFreezes,
+          calendar: Careers.streakCalendar(career, this.today),
+          perfect: Careers.perfectWeekProgress(career, this.today, this.config),
+          challenges: { done: challengesDone, total: todaysChallenges.length, reward: todaysChallenges.reduce((n, ch) => n + challengeReward(ch, reach), 0) },
+          midnightIn: hoursToMidnight(),
         }
       : null;
     const run = runCard(this.special, this.world.config, this.playingMode, this.versusSelected, career, this.today);
@@ -3826,6 +3875,7 @@ export class GameSession {
     const chips = opening || this.special?.k === 'trial' || this.versusSelected || (this.tutorial && !this.tutorial.isOver) ? [] : conditionChips(this.world.config, career);
     const adRow = !opening && (daily !== null || this.screen.k === 'result') && this.gameAd !== null;
     const chipsAt = ConditionChips.center(toScreen(list.camera, v(0, 0)), !!run?.line);
+    const chrome = { strip: 0 };
     this.introWant = ReadyBanner.add(list, {
       level: this.playingLevel,
       cars: this.world.carsLeft ?? 0,
@@ -3852,8 +3902,12 @@ export class GameSession {
       ringTop: toScreen(list.camera, v(0, this.world.layout.ringRadius + this.world.layout.laneWidth)).y,
       island: this.world.layout.islandRadius,
       adRow,
+      out: chrome,
     });
-    if (adRow) this.addGameAd(list, TopBar.foot(list) + 18 + (daily ? 31 : 0), opacity);
+    if (adRow) {
+      const below = chrome.strip > 0 ? chrome.strip + 10 : 18 + (daily ? 31 : 0);
+      this.addGameAd(list, TopBar.foot(list) + below, opacity);
+    }
     if (chips.length > 0) {
       ConditionChips.add(list, chips, chipsAt, { time: this.sinceReady - ReadyBanner.introDelay, reduceMotion: this.reduceMotion, opacity, selected: this.conditionShown });
       if (opacity > 0.5 && this.showsChrome) this.conditionTargets = ConditionChips.targets(chips.length, chipsAt).map((rect, i) => ({ id: chips[i].id, rect }));

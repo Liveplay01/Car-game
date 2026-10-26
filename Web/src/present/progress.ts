@@ -172,8 +172,8 @@ class Stack {
 /** The Progress tab: records, today's shifts and quests, the long goals, the Museum. */
 export const ProgressPage = {
   gap: 12,
-  /** The streak card at the top of Records: the tailpipe scene and the days. */
-  streakHeight: 196,
+  /** The streak card at the top of Records: the tailpipe scene, the days and the road of milestones. */
+  streakHeight: 282,
   /** The Season Pass card once it is open: a picture tile of the season, the track and its bar. */
   passHeight: 128,
   /** The running tour's card: a picture tile of its sky and top skin, the stops and the way in. */
@@ -651,8 +651,9 @@ export const ProgressPage = {
   },
 
   /**
-   * The streak, big: a car's tailpipe with a flame that grows with the days (`streakFlame.ts`),
-   * the number beside it, and what the streak is about to give (a free Scratch Card).
+   * The streak, big: a car's tailpipe with a flame that grows with the days (`streakFlame.ts`), the number
+   * beside it, and under them the road of milestones (a post per streak day prize, the reached ones gold,
+   * the next one breathing) so a streak is more than a number.
    */
   addStreak(list: RenderList, r: Rect, career: Career, today: number, clock: number, reduceMotion: boolean, o: number): void {
     const P = S.progress;
@@ -660,7 +661,8 @@ export const ProgressPage = {
     const tier = flameTier(days);
     ProgressPage.panel(list, r, o);
     if (tier >= 3) list.s(rect(R.center(r), v(R.width(r), R.height(r)), ShopPage.corner), 'fireDeep', 0.05 * tier * o);
-    StreakFlame.add(list, r, days, clock, reduceMotion, o);
+    const scene = R.make(r.minX, r.minY, r.maxX, r.minY + 196);
+    StreakFlame.add(list, scene, days, clock, reduceMotion, o);
     drawText(list, '›', v(r.maxX - 14, r.minY + 14), 18, 'muted', { opacity: o, align: 'center' });
     const x = r.minX + R.width(r) * 0.8;
     const hot: ColorToken = tier >= 4 ? 'fireCore' : tier >= 1 ? 'fireOuter' : 'muted';
@@ -668,14 +670,50 @@ export const ProgressPage = {
     const pop = reduceMotion ? 1 : 1 + 0.04 * Math.max(0, Math.sin(clock * 3.1)) * Math.min(1, tier / 3);
     drawText(list, String(days), v(x, r.minY + 66), ShopPage.fitted(String(days), 52, R.width(r) * 0.28) * pop, days > 0 ? 'primary' : 'muted', { opacity: o, weight: 'bold', align: 'center' });
     drawText(list, days === 1 ? P.streakDay : P.streakDays, v(x, r.minY + 98), 12, 'muted', { opacity: o, align: 'center' });
+
+    // The milestones as a road: days under each post, chests a little bigger. The stretch already driven is warm.
+    const next = Careers.nextStreakMilestone(career);
+    const posts = Careers.streakRoad(career);
+    const roadY = r.minY + 214;
+    const rx0 = r.minX + 24;
+    const rx1 = r.maxX - 24;
+    list.s(line(v(r.minX + 16, roadY - 36), v(r.maxX - 16, roadY - 36), 0.5), 'separator', 0.6 * o);
+    list.s(rect(v((rx0 + rx1) / 2, roadY), v(rx1 - rx0 + 8, 6), 3), 'controlFill', o);
+    const segments = Math.max(1, posts.length - 1);
+    let along = 0;
+    if (days > 0 && posts.length > 0) {
+      const last = posts[posts.length - 1].days;
+      if (days >= last) along = 1;
+      else if (days <= posts[0].days) along = days / posts[0].days / segments;
+      else {
+        const k = posts.findIndex((post) => days < post.days);
+        const before = posts[k - 1];
+        along = (k - 1 + (days - before.days) / (posts[k].days - before.days)) / segments;
+      }
+    }
+    if (along > 0) list.s(rect(v(rx0 + (rx1 - rx0) * along * 0.5, roadY), v((rx1 - rx0) * along, 6), 3), 'hazard', 0.4 * o);
+    posts.forEach((post, i) => {
+      const at = v(rx0 + ((rx1 - rx0) * i) / segments, roadY);
+      const isNext = next !== null && next.days === post.days;
+      const radius = post.prize.k === 'chest' ? 5.6 : 4.2;
+      if (isNext && !post.reached) {
+        const pulse = reduceMotion ? 0.5 : 0.5 + 0.5 * Math.sin(clock * 3);
+        list.s(circle(at, radius + 3 + pulse * 1.6), 'accent', (0.25 + 0.25 * pulse) * o);
+      }
+      list.s(circle(at, radius), post.reached ? 'coin' : isNext ? 'accent' : 'controlFill', o);
+      if (post.reached) list.s(circle(at, radius * 0.42), 'background', 0.45 * o);
+      drawText(list, String(post.days), v(at.x, roadY + 14), 8, post.reached ? 'coin' : isNext ? 'accent' : 'muted', { opacity: o, weight: isNext ? 'bold' : 'regular', align: 'center' });
+    });
+
     const open = Careers.isDailyOpen(career, today);
     const wide = R.width(r) - 32;
     const status = days === 0 ? P.streakStart : open ? P.streakKeep : P.streakDone;
     drawText(list, status, v(r.minX + 16, r.maxY - 42), ShopPage.fitted(status, 12, wide), open || days === 0 ? 'accent' : 'muted', { opacity: o, weight: 'bold' });
-    const every = baseConfig.scratchStreakEvery;
-    const toCard = every - (days % every);
+    const perfect = Careers.perfectWeekProgress(career, today, baseConfig);
     const maxHeat = Careers.maxHeat(career, today);
-    const extra = [P.streakCard(toCard), career.streakFreezes > 0 ? S.daily.freezes(career.streakFreezes) : null, maxHeat > 0 ? S.heat.button(maxHeat) : null].filter((x): x is string => x !== null).join(' · ');
+    const perfectText = perfect.paid ? S.daily.perfectWeekDone : S.daily.perfectWeekProgress(perfect.days, baseConfig.perfectWeekDays);
+    const nextText = next ? `${S.daily.prize(next.prize)} ${S.daily.stripRewardIn(next.left)}` : null;
+    const extra = [perfectText, nextText, career.streakFreezes > 0 ? S.daily.freezes(career.streakFreezes) : null, maxHeat > 0 ? S.heat.button(maxHeat) : null].filter((x): x is string => x !== null).join(' · ');
     drawText(list, extra, v(r.minX + 16, r.maxY - 22), ShopPage.fitted(extra, 11, wide), 'muted', { opacity: o });
   },
 

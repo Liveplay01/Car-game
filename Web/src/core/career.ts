@@ -56,15 +56,29 @@ import { Elite, type EliteGain, type EliteStep, type TitleId, TITLES } from './e
 import type { HallEntry } from './seasonPass';
 import { clamp } from './vec2';
 
-/** What counting a day into the Daily streak brought: a milestone item, Freezes used on missed days, a new Freeze. */
+/** One day the streak counted: played, or covered by a Streak Freeze / a brought-back streak. */
+export interface StreakDay {
+  /** The day number (`dayNumber`). */
+  d: number;
+  /** Covered instead of played: a Freeze, or a streak an ad brought back. */
+  f?: boolean;
+}
+
+/** What counting a day into the Daily streak brought: a milestone prize, Freezes used on missed days, a new Freeze. */
 export interface StreakNews {
   item: string | null;
-  /** The starter streak's chest (`starterStreakDays`), the one day it comes. */
+  /** A milestone chest, and the starter streak's chest (`starterStreakDays`). */
   chest: ChestKind | null;
   frozen: number;
   earned: boolean;
   /** Scratch Cards the day brought. */
   cards: number;
+  /** Seven clean days paid their Perfect Week bonus now. */
+  perfectWeek: boolean;
+  /** What the Perfect Week paid (money). */
+  perfectWeekPay: number;
+  /** Scratch Cards the Perfect Week brought. */
+  perfectWeekCards: number;
 }
 
 /** What the streak pays next and in how many days. */
@@ -72,6 +86,22 @@ export interface StreakMilestone {
   days: number;
   prize: { k: 'item'; id: string } | { k: 'chest'; chest: ChestKind };
   left: number;
+}
+
+/** The streak calendar keeps two months; that is more than the sheet and the Perfect Week read. */
+export const STREAK_LOG_MAX = 60;
+
+/** Writes a day into the career's streak log, oldest first, newest last, at most `STREAK_LOG_MAX`. */
+function noteStreakDay(c: Career, day: number, covered: boolean): void {
+  if (day < 0) return;
+  const existing = c.streakLog.find((e) => e.d === day);
+  if (existing) {
+    if (covered) existing.f = true;
+    return;
+  }
+  c.streakLog.push(covered ? { d: day, f: true } : { d: day });
+  c.streakLog.sort((a, b) => a.d - b.d);
+  if (c.streakLog.length > STREAK_LOG_MAX) c.streakLog.splice(0, c.streakLog.length - STREAK_LOG_MAX);
 }
 
 // New modes go at the end: a challenge link stores their positions.
@@ -255,6 +285,16 @@ export interface Career {
   dailyStreak: number;
   /** Streak Freezes in stock: each one covers a missed day instead of breaking the streak. */
   streakFreezes: number;
+  /**
+   * The days the streak counts, newest last (Leo, 26.10.2026): the streak calendar and the Perfect
+   * Week read the last week from here. Kept to 60 entries; older saves get it from `dailyStreak`.
+   */
+  streakLog: StreakDay[];
+  /** Streak milestone days already paid (a skin or a chest, `STREAK_MILESTONES`). */
+  streakMilestones: number[];
+  /** The last day a Perfect Week paid, and how many have paid in all. */
+  perfectWeekDay: number;
+  perfectWeeks: number;
   /** The starter streak's chest was paid (`starterStreakDays`, once in a career). */
   starterChest: boolean;
   /** Scratch Cards in hand (casino, `Casino.scratch`): the streak gives them, the casino sells them. */
@@ -436,6 +476,10 @@ export const newCareer = (): Career => ({
   quitLean: 0,
   dailyStreak: 0,
   streakFreezes: 0,
+  streakLog: [],
+  streakMilestones: [],
+  perfectWeekDay: -1,
+  perfectWeeks: 0,
   starterChest: false,
   scratchCards: 0,
   tailwind: false,
@@ -919,6 +963,8 @@ export const Careers = {
   rewardAdRescue(c: Career, day: number, config: Config = baseConfig): number | null {
     const days = Careers.adRescue(c, day, config);
     if (days === null) return null;
+    // The calendar shows the days the ad brought back as covered, not as missed.
+    for (let d = c.dailyPlayed + 1; d < day; d++) noteStreakDay(c, d, true);
     c.dailyPlayed = day - 1;
     c.adRescueDay = day;
     return days;
@@ -1045,13 +1091,21 @@ export const Careers = {
     // The second try is the same day: the streak counted at the first.
     if (c.dailyRetry) {
       c.dailyRetry = false;
-      return { item: null, chest: null, frozen: 0, earned: false, cards: 0 };
+      return { item: null, chest: null, frozen: 0, earned: false, cards: 0, perfectWeek: false, perfectWeekPay: 0, perfectWeekCards: 0 };
     }
     const news = Careers.advanceStreak(c, day, config);
-    const milestone = STREAK_MILESTONES.find((m) => m.days === c.dailyStreak);
-    if (milestone && !c.collection.includes(milestone.item)) {
-      Careers.collect(c, milestone.item);
-      news.item = milestone.item;
+    // Every milestone the streak has reached pays once; one the save has not recorded yet pays now.
+    for (const m of STREAK_MILESTONES) {
+      if (m.days > c.dailyStreak || c.streakMilestones.includes(m.days)) continue;
+      c.streakMilestones.push(m.days);
+      if (m.prize.k === 'item') {
+        if (c.collection.includes(m.prize.id)) continue;
+        Careers.collect(c, m.prize.id);
+        news.item = m.prize.id;
+      } else {
+        c.chests.push(m.prize.chest);
+        news.chest = m.prize.chest;
+      }
     }
     if (!c.starterChest && c.dailyStreak >= config.starterStreakDays) {
       c.starterChest = true;
@@ -1066,20 +1120,76 @@ export const Careers = {
     const missed = day - c.dailyPlayed - 1;
     const frozen = c.dailyStreak > 0 && missed > 0 && missed <= c.streakFreezes ? missed : 0;
     c.streakFreezes -= frozen;
+    // The calendar keeps what each missed day was: covered by a Freeze, or simply gone.
+    if (frozen > 0) for (let d = day - frozen; d < day; d++) noteStreakDay(c, d, true);
     c.dailyStreak = missed === 0 || frozen > 0 ? c.dailyStreak + 1 : 1;
     c.dailyPlayed = day;
+    noteStreakDay(c, day, false);
     const earned = (c.dailyStreak === config.streakFreezeFirst || c.dailyStreak % config.streakFreezeEvery === 0) && c.streakFreezes < config.streakFreezeMax;
     if (earned) c.streakFreezes++;
     const cards = c.dailyStreak % config.scratchStreakEvery === 0 && c.scratchCards < config.scratchMax ? 1 : 0;
     c.scratchCards += cards;
-    return { item: null, chest: null, frozen, earned, cards };
+    // A Perfect Week: seven clean days (no Freeze among them), paid once a week.
+    const perfectWeek = c.dailyStreak >= config.perfectWeekDays && day - c.perfectWeekDay >= config.perfectWeekDays && Careers.cleanWeek(c, day, config.perfectWeekDays);
+    let perfectWeekPay = 0;
+    let perfectWeekCards = 0;
+    if (perfectWeek) {
+      perfectWeekPay = config.perfectWeekPay;
+      perfectWeekCards = Math.min(config.perfectWeekCards, Math.max(0, config.scratchMax - c.scratchCards));
+      c.money += perfectWeekPay;
+      c.scratchCards += perfectWeekCards;
+      c.perfectWeekDay = day;
+      c.perfectWeeks++;
+    }
+    return { item: null, chest: null, frozen, earned, cards, perfectWeek, perfectWeekPay, perfectWeekCards };
   },
 
-  /** The next thing the streak pays: the starter chest while it waits, else the next milestone skin. */
+  /** The last `span` days all counted, none of them covered by a Freeze. */
+  cleanWeek: (c: Career, day: number, span: number): boolean => {
+    const log = new Map(c.streakLog.map((e) => [e.d, e] as const));
+    for (let d = day - span + 1; d <= day; d++) {
+      const e = log.get(d);
+      if (!e || e.f) return false;
+    }
+    return true;
+  },
+
+  /**
+   * The last `span` days as a calendar: played, covered or missed; today still open when it waits.
+   * Days before the log (an old save) read as missed, which is honest: the game cannot tell.
+   */
+  streakCalendar(c: Career, day: number, span = 7): { day: number; state: 'done' | 'frozen' | 'missed' | 'open' }[] {
+    const log = new Map(c.streakLog.map((e) => [e.d, e] as const));
+    const out: { day: number; state: 'done' | 'frozen' | 'missed' | 'open' }[] = [];
+    for (let d = day - span + 1; d <= day; d++) {
+      const e = log.get(d);
+      out.push({ day: d, state: e ? (e.f ? 'frozen' : 'done') : d === day ? 'open' : 'missed' });
+    }
+    return out;
+  },
+
+  /** How far the Perfect Week is: clean days up to today (today may still be open), and whether one paid this week. */
+  perfectWeekProgress(c: Career, day: number, config: Config = baseConfig): { days: number; perfect: boolean; paid: boolean } {
+    const log = new Map(c.streakLog.map((e) => [e.d, e] as const));
+    let days = 0;
+    for (let i = 0; i < config.perfectWeekDays; i++) {
+      const d = day - i;
+      const e = log.get(d);
+      if (e && !e.f) days++;
+      else if (d !== day) break;
+    }
+    return { days, perfect: days >= config.perfectWeekDays, paid: c.perfectWeekDay >= 0 && day - c.perfectWeekDay < config.perfectWeekDays };
+  },
+
+  /** The milestones as a road: each post and whether the career has been paid it. */
+  streakRoad: (c: Career): { days: number; prize: StreakMilestone['prize']; reached: boolean }[] =>
+    STREAK_MILESTONES.map((m) => ({ days: m.days, prize: m.prize, reached: c.streakMilestones.includes(m.days) })),
+
+  /** The next thing the streak pays: the starter chest while it waits, else the next milestone. */
   nextStreakMilestone(c: Career, config: Config = baseConfig): StreakMilestone | null {
     if (!c.starterChest) return { days: config.starterStreakDays, prize: { k: 'chest', chest: config.starterStreakChest }, left: Math.max(1, config.starterStreakDays - c.dailyStreak) };
-    const m = STREAK_MILESTONES.find((x) => !c.collection.includes(x.item));
-    return m ? { days: m.days, prize: { k: 'item', id: m.item }, left: Math.max(1, m.days - c.dailyStreak) } : null;
+    const m = STREAK_MILESTONES.find((x) => !c.streakMilestones.includes(x.days));
+    return m ? { days: m.days, prize: m.prize, left: Math.max(1, m.days - c.dailyStreak) } : null;
   },
 
   completeDaily(c: Career, day: number, config: Config = baseConfig): number | null {

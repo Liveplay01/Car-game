@@ -1,4 +1,5 @@
 import type { ShiftResult } from './events';
+import type { ChestKind } from './loot';
 import { Rng } from './rng';
 import { baseConfig, DAILY_EVENTS, type CityEvent, type Config } from './config';
 
@@ -35,37 +36,63 @@ export const CHALLENGES: Challenge[] = [
   'twoNearMisses',
 ];
 
-export function challengeMet(c: Challenge, r: ShiftResult): boolean {
+/** What a challenge counts: the live scoreboard has all of it before a shift ends. */
+export interface ChallengeStats {
+  perfects: number;
+  tightFits: number;
+  takedowns: number;
+  transporters: number;
+  bestChain: number;
+  bestCombo: number;
+  cleanMerges: number;
+  nearMisses: number;
+  isPerfectRun?: boolean;
+}
+
+export interface ChallengeProgress {
+  /** Counted so far, never more than `need` (a 4th Perfect Input reads 3/3, not 4/3). */
+  have: number;
+  need: number;
+  met: boolean;
+}
+
+/** The live counter behind a challenge: the same rule `challengeMet` pays. */
+export function challengeProgress(c: Challenge, s: ChallengeStats): ChallengeProgress {
+  const goal = (have: number, need: number): ChallengeProgress => ({ have: Math.min(have, need), need, met: have >= need });
   switch (c) {
     case 'perfectInputs':
-      return r.perfects >= 3;
+      return goal(s.perfects, 3);
     case 'tightFits':
-      return r.tightFits >= 3;
+      return goal(s.tightFits, 3);
     case 'twoTakedowns':
-      return r.takedowns >= 2;
+      return goal(s.takedowns, 2);
     case 'twoTransporters':
-      return r.transporters >= 2;
+      return goal(s.transporters, 2);
     case 'longChain':
-      return r.bestChain >= 8;
+      return goal(s.bestChain, 8);
     case 'bigCombo':
-      return r.bestCombo >= 15;
+      return goal(s.bestCombo, 15);
     case 'perfectRun':
-      return r.isPerfectRun;
+      return goal(s.isPerfectRun ? 1 : 0, 1);
     case 'oneTakedown':
-      return r.takedowns >= 1;
+      return goal(s.takedowns, 1);
     case 'cleanMerges':
-      return r.cleanMerges >= 8;
+      return goal(s.cleanMerges, 8);
     case 'sixTightFits':
-      return r.tightFits >= 6;
+      return goal(s.tightFits, 6);
     case 'fivePerfects':
-      return r.perfects >= 5;
+      return goal(s.perfects, 5);
     case 'chainFive':
-      return r.bestChain >= 5;
+      return goal(s.bestChain, 5);
     case 'hugeCombo':
-      return r.bestCombo >= 25;
+      return goal(s.bestCombo, 25);
     case 'twoNearMisses':
-      return r.nearMisses >= 2;
+      return goal(s.nearMisses, 2);
   }
+}
+
+export function challengeMet(c: Challenge, r: ShiftResult): boolean {
+  return challengeProgress(c, r).met;
 }
 
 /**
@@ -126,10 +153,23 @@ export const dailySeed = (day: number): number => (Math.imul(day, 0xd1b54a32) ^ 
 /** The Daily Shift's city event: every day another one. */
 export const dailyEvent = (day: number): CityEvent => DAILY_EVENTS[((day % DAILY_EVENTS.length) + DAILY_EVENTS.length) % DAILY_EVENTS.length];
 
-export const STREAK_MILESTONES: { days: number; item: string }[] = [
-  { days: 7, item: 'streakBronze' },
-  { days: 14, item: 'streakSilver' },
-  { days: 30, item: 'streakGold' },
+export interface StreakMilestoneDef {
+  days: number;
+  prize: { k: 'item'; id: string } | { k: 'chest'; chest: ChestKind };
+}
+
+/**
+ * What a long streak pays (Leo, 26.10.2026): the three skins, then chests for the months. The
+ * near prizes keep the first week worth coming back to; the far ones are a road, not a wall.
+ */
+export const STREAK_MILESTONES: StreakMilestoneDef[] = [
+  { days: 7, prize: { k: 'item', id: 'streakBronze' } },
+  { days: 14, prize: { k: 'item', id: 'streakSilver' } },
+  { days: 30, prize: { k: 'item', id: 'streakGold' } },
+  { days: 60, prize: { k: 'chest', chest: 'premium' } },
+  { days: 100, prize: { k: 'chest', chest: 'diamond' } },
+  { days: 200, prize: { k: 'chest', chest: 'diamond' } },
+  { days: 365, prize: { k: 'chest', chest: 'diamond' } },
 ];
 
 /** Today as a day number (days since 1970, local time). */

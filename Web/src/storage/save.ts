@@ -1,4 +1,5 @@
-import { type SaveGame, type Career, type Hint, HINTS, newSave, newCareer, roundTimes, GAME_MODES, MASTERY_GOALS, MASTERY_THRESHOLDS, Careers, type GameMode } from '../core/career';
+import { type SaveGame, type Career, type StreakDay, type Hint, HINTS, newSave, newCareer, roundTimes, GAME_MODES, MASTERY_GOALS, MASTERY_THRESHOLDS, Careers, STREAK_LOG_MAX, type GameMode } from '../core/career';
+import { STREAK_MILESTONES } from '../core/daily';
 import { UPGRADES, upgradeMaxSteps } from '../core/levels';
 import { COSMETICS, CHEST_KINDS, type ChestKind, type CosmeticSource, MAX_CAR_SKINS, cosmetic } from '../core/loot';
 import { ROAD_MODULES, MODULE_MAX_LEVEL, type RoadModule, BOSS_KINDS, type BossKind, baseConfig } from '../core/config';
@@ -35,6 +36,27 @@ const num = (x: unknown, fallback: number, min = -Infinity): number => (typeof x
 const int = (x: unknown, fallback: number, min = -Infinity): number => Math.floor(num(x, fallback, min));
 const seasonKey = (x: unknown): string | null => (typeof x === 'string' && /^(winter|spring|summer|autumn)-\d{4}$/.test(x) ? x : null);
 const strings = (x: unknown): string[] => (Array.isArray(x) ? x.filter((s): s is string => typeof s === 'string') : []);
+
+/**
+ * The days the streak counted. A save from before the log gets its current streak written down,
+ * ending at the last Daily played; the game cannot know older history and does not invent it.
+ */
+function readStreakLog(raw: unknown, dailyPlayed: number, dailyStreak: number): StreakDay[] {
+  const log: StreakDay[] = [];
+  if (Array.isArray(raw)) {
+    for (const x of raw) {
+      if (!isObject(x)) continue;
+      const d = int(x.d, -1);
+      if (d < 0 || log.some((e) => e.d === d)) continue;
+      log.push(x.f === true ? { d, f: true } : { d });
+    }
+  }
+  if (log.length === 0 && dailyPlayed >= 0 && dailyStreak > 0) {
+    for (let d = Math.max(0, dailyPlayed - dailyStreak + 1); d <= dailyPlayed; d++) log.push({ d });
+  }
+  log.sort((a, b) => a.d - b.d);
+  return log.slice(-STREAK_LOG_MAX);
+}
 
 function readCareer(raw: unknown): Career {
   const fresh = newCareer();
@@ -97,6 +119,18 @@ function readCareer(raw: unknown): Career {
     ? [...new Set([...strings(raw.museumSeen).filter((id) => MUSEUM_IDS.includes(id)), ...infer(MUSEUM_SHELVES.filter((s) => s >= knownShelves))])]
     : infer();
   const mapSkin = typeof raw.mapSkin === 'string' && collection.includes(raw.mapSkin) && cosmetic(raw.mapSkin)?.kind === 'mapSkin' ? raw.mapSkin : null;
+  // The streak's calendar and milestones. An old save keeps the milestones it has already been paid:
+  // every skin in its collection, and every chest milestone it is past.
+  const dailyPlayed = int(raw.dailyPlayed, int(raw.dailyDone, -1));
+  const dailyStreak = int(raw.dailyStreak, 0, 0);
+  const streakLog = readStreakLog(raw.streakLog, dailyPlayed, dailyStreak);
+  const paidMilestones = new Set(
+    (Array.isArray(raw.streakMilestones) ? raw.streakMilestones : []).filter((d): d is number => Number.isInteger(d) && STREAK_MILESTONES.some((m) => m.days === d)),
+  );
+  for (const m of STREAK_MILESTONES) {
+    if (m.prize.k === 'item' && collection.includes(m.prize.id)) paidMilestones.add(m.days);
+    else if (m.prize.k === 'chest' && dailyStreak >= m.days) paidMilestones.add(m.days);
+  }
   return {
     level: int(raw.level, 1, 1),
     // A contract signed before the Club dropped them: its stake comes back.
@@ -140,8 +174,12 @@ function readCareer(raw: unknown): Career {
     levelLosses: int(raw.levelLosses, 0, 0),
     leaves: int(raw.leaves, 0, 0),
     quitLean: Math.min(1, num(raw.quitLean, 0, 0)),
-    dailyStreak: int(raw.dailyStreak, 0, 0),
+    dailyStreak,
     streakFreezes: int(raw.streakFreezes, 0, 0),
+    streakLog,
+    streakMilestones: [...paidMilestones].sort((a, b) => a - b),
+    perfectWeekDay: int(raw.perfectWeekDay, -1),
+    perfectWeeks: int(raw.perfectWeeks, 0, 0),
     // A save from before the starter streak that is past it already has had its reason for day two.
     starterChest: typeof raw.starterChest === 'boolean' ? raw.starterChest : int(raw.dailyStreak, 0, 0) >= baseConfig.starterStreakDays || strings(raw.collection).includes('streakBronze'),
     scratchCards: Math.min(int(raw.scratchCards, 0, 0), baseConfig.scratchMax),
@@ -150,7 +188,7 @@ function readCareer(raw: unknown): Career {
     heatCleared: int(raw.heatCleared, 0, 0),
     challengeDay: int(raw.challengeDay, -1),
     challengesDone: strings(raw.challengesDone),
-    dailyPlayed: int(raw.dailyPlayed, int(raw.dailyDone, -1)),
+    dailyPlayed,
     albumsDone: strings(raw.albumsDone),
     bestTimes,
     trialsDone: [...new Set(strings(raw.trialsDone).filter(isRunId))],

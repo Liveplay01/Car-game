@@ -16,7 +16,7 @@ const load = (path) => server.ssrLoadModule(path);
 const { World } = await load('/src/core/world.ts');
 const { Habits } = await load('/src/core/habits.ts');
 const { detourArmSlot } = await load('/src/core/modules.ts');
-const { CHALLENGES, challengesOf, challengeMet, challengeReward } = await load('/src/core/daily.ts');
+const { CHALLENGES, challengesOf, challengeMet, challengeProgress, challengeReward } = await load('/src/core/daily.ts');
 const { baseConfig, BOSS_KINDS } = await load('/src/core/config.ts');
 const { forLevel, upgraded, UPGRADES, upgradeMaxSteps } = await load('/src/core/levels.ts');
 const { Elite, TITLES, TITLE_RULES, ELITE_LAST_MILESTONE } = await load('/src/core/elite.ts');
@@ -67,6 +67,7 @@ const { signalOf } = await load('/src/present/museumSignal.ts');
 const { MuseumPage } = await load('/src/present/museum.ts');
 const { RenderList } = await load('/src/present/render.ts');
 const { iconClock, ICON_LOOP } = await load('/src/present/conditionIcons.ts');
+const { heatFlame } = await load('/src/present/icons.ts');
 const { readFileSync } = await import('node:fs');
 const { prestigeReward, BIG_SCREEN } = await load('/src/core/loot.ts');
 const { COLORS } = await load('/src/present/theme.ts');
@@ -483,6 +484,14 @@ test('back after a week or more, a Premium Chest waits; a shorter break or a fir
   assert.equal(c.chests.at(-1), 'premium');
 });
 
+test('a comeback greets the driver by name and still reads clean without one', () => {
+  assert.match(S.daily.welcomeBack('100', 'Leo'), /Leo/);
+  assert.ok(!S.daily.welcomeBack('100').includes('undefined'));
+  assert.match(S.daily.comebackChest('Premium Chest', 7, 'Leo'), /Leo/);
+  assert.match(S.daily.comebackChest('Premium Chest', 7, 'Leo'), /7 days away/);
+  assert.ok(!S.daily.comebackChest('Premium Chest').includes('undefined'));
+});
+
 test('an ad pays a won career shift once more, a few times a day, and the count starts over the next day', () => {
   const c = newCareer();
   const money = c.money;
@@ -782,6 +791,25 @@ test('news: a new player has nothing to catch up on, a returning one sees it unt
   assert.equal(News.read(old, first.tab, first.section), true);
   assert.equal(News.read(old, first.tab, first.section), false, 'seen once');
   assert.equal(News.pending(old).length, NEWS.length - 1);
+});
+
+test('the Ready flame loops through the Heat icon poses and holds still for Reduce Motion', () => {
+  const draw = (time, reduceMotion) => {
+    const list = new RenderList({ viewport: { x: 200, y: 200 }, center: { x: 0, y: 0 }, focus: { x: 100, y: 100 }, scale: 1 }, 'background');
+    heatFlame(list, { x: 100, y: 100 }, 20, 1, time, reduceMotion);
+    return list.items.filter((i) => i.color.startsWith('fire'));
+  };
+  const first = draw(0.2, false);
+  const later = draw(0.9, false);
+  assert.deepEqual(first.map((i) => i.color), ['fireDeep', 'fireOuter', 'fireCore']);
+  assert.equal(first.length, 3);
+  assert.notDeepEqual(first.map((i) => i.p.points), later.map((i) => i.p.points), 'the flame moves');
+  assert.ok(!/null|NaN|Infinity/.test(JSON.stringify(first)), 'the flame has no broken numbers');
+  assert.deepEqual(
+    draw(0.2, true).map((i) => i.p.points),
+    draw(4.4, true).map((i) => i.p.points),
+    'Reduce Motion draws the same still flame at every time',
+  );
 });
 
 test('condition icons: one per condition of the shift, tap targets of 64 points that never overlap', () => {
@@ -1799,6 +1827,19 @@ test('there are plenty of daily quests: three different ones a day, each with a 
   assert.ok(challengeMet('twoNearMisses', { ...none, nearMisses: 2 }));
 });
 
+test("a live challenge shows its short label and the same count that pays it", () => {
+  const none = { perfects: 0, tightFits: 0, takedowns: 0, transporters: 0, bestChain: 0, bestCombo: 0, isPerfectRun: false, cleanMerges: 0, nearMisses: 0 };
+  assert.deepEqual(challengeProgress('tightFits', none), { have: 0, need: 3, met: false });
+  assert.deepEqual(challengeProgress('tightFits', { ...none, tightFits: 2 }), { have: 2, need: 3, met: false });
+  assert.deepEqual(challengeProgress('tightFits', { ...none, tightFits: 4 }), { have: 3, need: 3, met: true }, 'never 4/3');
+  assert.deepEqual(challengeProgress('perfectRun', { ...none, isPerfectRun: true }), { have: 1, need: 1, met: true });
+  for (const q of CHALLENGES) {
+    const short = S.daily.challengeShort(q);
+    assert.ok(short.length > 0, `${q} has a short label`);
+    assert.equal(challengeProgress(q, none).met, challengeMet(q, none), `${q} shows the rule it pays`);
+  }
+});
+
 test('Freight and Quick Recovery pay a little for the busier road, and nothing else about pay changes', async () => {
   const { upgraded } = await load('/src/core/levels.ts');
   const none = upgraded(baseConfig, () => 0);
@@ -2100,6 +2141,92 @@ test('a Streak Freeze is earned on the third day and every seven days after, and
   for (let day = 105; day < 108; day++) Careers.startDaily(c, day, baseConfig);
   assert.equal(c.dailyStreak, 7);
   assert.equal(c.streakFreezes, 1, 'the seventh day earns the next');
+});
+
+test('seven clean days pay a Perfect Week once a week, with money and a free Scratch Card', () => {
+  const c = newCareer();
+  c.money = 0;
+  let news = null;
+  for (let day = 100; day < 106; day++) news = Careers.startDaily(c, day, baseConfig);
+  assert.equal(news.perfectWeek, false, 'six days are not a week yet');
+  assert.equal(c.money, 0);
+  news = Careers.startDaily(c, 106, baseConfig);
+  assert.equal(news.perfectWeek, true);
+  assert.equal(news.perfectWeekPay, baseConfig.perfectWeekPay);
+  assert.equal(news.perfectWeekCards, baseConfig.perfectWeekCards);
+  assert.equal(c.money, baseConfig.perfectWeekPay);
+  assert.equal(c.perfectWeeks, 1);
+  assert.equal(c.perfectWeekDay, 106);
+  assert.deepEqual(Careers.perfectWeekProgress(c, 106, baseConfig), { days: 7, perfect: true, paid: true });
+  const nextDay = Careers.startDaily(c, 107, baseConfig);
+  assert.equal(nextDay.perfectWeek, false, 'not again the next day');
+  assert.equal(c.perfectWeeks, 1);
+  for (let day = 108; day < 113; day++) Careers.startDaily(c, day, baseConfig);
+  const weekTwo = Careers.startDaily(c, 113, baseConfig);
+  assert.equal(weekTwo.perfectWeek, true, 'a new clean week pays again');
+  assert.equal(c.perfectWeeks, 2);
+  assert.equal(c.money, 2 * baseConfig.perfectWeekPay);
+});
+
+test('a Freeze covers the missed day, but a covered day is not a clean day for the Perfect Week', () => {
+  const c = newCareer();
+  for (let day = 200; day < 206; day++) Careers.startDaily(c, day, baseConfig);
+  assert.equal(c.streakFreezes, 1, 'the first Freeze waits');
+  const news = Careers.startDaily(c, 207, baseConfig);
+  assert.equal(news.frozen, 1, 'day 206 is covered');
+  assert.equal(c.dailyStreak, 7);
+  assert.equal(news.perfectWeek, false, 'a covered day breaks the clean week');
+  assert.equal(c.perfectWeeks, 0);
+  assert.equal(c.money, 0);
+  assert.deepEqual(Careers.streakCalendar(c, 207).map((x) => x.state), ['done', 'done', 'done', 'done', 'done', 'frozen', 'done']);
+});
+
+test('the streak calendar tells played, covered, missed and today still open', () => {
+  const c = newCareer();
+  for (let day = 300; day < 303; day++) Careers.startDaily(c, day, baseConfig);
+  assert.deepEqual(Careers.streakCalendar(c, 304).map((x) => x.state), ['missed', 'missed', 'done', 'done', 'done', 'missed', 'open']);
+  assert.deepEqual(Careers.streakCalendar(c, 302).map((x) => x.state), ['missed', 'missed', 'missed', 'missed', 'done', 'done', 'done']);
+});
+
+test('the streak road pays its skins and chests once each, up to a year of days', () => {
+  const c = newCareer();
+  assert.deepEqual(Careers.nextStreakMilestone(c), { days: baseConfig.starterStreakDays, prize: { k: 'chest', chest: baseConfig.starterStreakChest }, left: baseConfig.starterStreakDays });
+  const paid = [];
+  for (let day = 100; day < 160; day++) {
+    const news = Careers.startDaily(c, day, baseConfig);
+    if (news.item) paid.push([c.dailyStreak, news.item]);
+    if (news.chest) paid.push([c.dailyStreak, news.chest]);
+  }
+  assert.deepEqual(paid, [[3, 'premium'], [7, 'streakBronze'], [14, 'streakSilver'], [30, 'streakGold'], [60, 'premium']]);
+  assert.deepEqual(c.streakMilestones, [7, 14, 30, 60]);
+  assert.deepEqual(Careers.streakRoad(c).filter((x) => x.reached).map((x) => x.days), [7, 14, 30, 60]);
+  assert.equal(Careers.nextStreakMilestone(c).days, 100, 'the next post is the hundred');
+  const after = Careers.startDaily(c, 160, baseConfig);
+  assert.equal(after.item, null);
+  assert.equal(after.chest, null, 'the milestone is paid once, not again');
+  assert.equal(c.streakMilestones.filter((d) => d === 60).length, 1);
+});
+
+test('a save keeps the streak calendar, milestones and Perfect Weeks, and an old save gets a week from its streak', () => {
+  const c = newCareer();
+  c.dailyPlayed = 10;
+  c.dailyStreak = 3;
+  c.streakMilestones = [7];
+  c.perfectWeekDay = 10;
+  c.perfectWeeks = 2;
+  fakeStorage({ 'carGame.save.v2': JSON.stringify({ career: c }) });
+  const back = loadSave().career;
+  assert.deepEqual(back.streakLog.map((x) => x.d), [8, 9, 10], 'an empty log is filled from the current streak');
+  assert.deepEqual(back.streakMilestones, [7]);
+  assert.deepEqual([back.perfectWeekDay, back.perfectWeeks], [10, 2]);
+  fakeStorage({ 'carGame.save.v2': JSON.stringify({ career: { level: 3, dailyPlayed: 10, dailyStreak: 3, collection: ['streakSilver'] } }) });
+  const old = loadSave().career;
+  assert.deepEqual(old.streakLog.map((x) => x.d), [8, 9, 10]);
+  assert.deepEqual(old.streakMilestones, [14], 'the skin already in the collection was paid');
+  assert.deepEqual([old.perfectWeekDay, old.perfectWeeks], [-1, 0]);
+  fakeStorage({ 'carGame.save.v2': JSON.stringify({ career: { level: 3, dailyPlayed: 100, dailyStreak: 70, collection: ['streakBronze', 'streakSilver', 'streakGold'] } }) });
+  const long = loadSave().career;
+  assert.deepEqual(long.streakMilestones, [7, 14, 30, 60], 'a chest milestone already passed is not paid twice');
 });
 
 test('every third streak day gives a free Scratch Card; a card is bought at its price, paid before it shows, and a save keeps the hand', () => {

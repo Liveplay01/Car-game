@@ -3,7 +3,7 @@ import { type SaveGame, type GameMode, type Hint, Careers } from '../core/career
 import { Elite, type EliteBar } from '../core/elite';
 import { SeasonPass } from '../core/seasonPass';
 import type { ShiftResult } from '../core/events';
-import { challengeReward } from '../core/daily';
+import { challengeReward, type Challenge } from '../core/daily';
 import { tierOf, UNLIMITED_MARKS } from '../core/tiers';
 import { heatXp } from '../core/heat';
 import { Mafia } from '../core/mafia';
@@ -39,6 +39,8 @@ export interface Booking {
   elite: EliteBar | null;
   /** Hints this shift made due (its level crossed their threshold); the shell decides what to say. */
   due: Hint[];
+  /** The Daily challenges this shift completed (paid already): the result celebrates them. */
+  challenges: Challenge[];
 }
 
 /**
@@ -53,7 +55,7 @@ export function bookShift(save: SaveGame, result: ShiftResult, ctx: ShiftContext
     const isNew = result.flames > previous;
     if (isNew) save.mayhemBest = result.flames;
     save.mayhemBestChain = Math.max(save.mayhemBestChain, result.biggestChain);
-    return { isNew, previous, bank: { before: career.money, after: career.money }, news: [], tips: [], elite: null, due: [] };
+    return { isNew, previous, bank: { before: career.money, after: career.money }, news: [], tips: [], elite: null, due: [], challenges: [] };
   }
   const unlimited = ctx.mode === 'unlimited';
   const previous = unlimited ? save.unlimitedBest : save.highscore;
@@ -142,7 +144,8 @@ export function bookShift(save: SaveGame, result: ShiftResult, ctx: ShiftContext
     const hadBest = Careers.bestTimes(career, ctx.level) !== null;
     if (Careers.recordTimes(career, times, ctx.level) && hadBest) news.push(S.race.newBest);
   }
-  news.push(...Careers.recordChallenges(career, result, ctx.today).map((ch) => S.daily.challengeDone(ch, Fmt.number(challengeReward(ch, Careers.reach(career))))));
+  const completedChallenges = Careers.recordChallenges(career, result, ctx.today);
+  news.push(...completedChallenges.map((ch) => S.daily.challengeDone(ch, Fmt.number(challengeReward(ch, Careers.reach(career))))));
   const completed = Careers.recordMastery(career, result);
   // Each Unlimited mark counts once in a career, like the tier it belongs to.
   const markXp = unlimited ? UNLIMITED_MARKS.filter((m) => m > carsBefore && m <= result.carsSent).length * ctx.config.eliteXpMark : 0;
@@ -164,5 +167,5 @@ export function bookShift(save: SaveGame, result: ShiftResult, ctx: ShiftContext
   if (pass) for (const step of pass.steps) if (step.reward.k !== 'chest') news.push(S.pass.reached(step));
   // A reason to come back tomorrow, from the first shift on: not told, but counted down on the Game tab.
   Careers.promiseGift(career, ctx.today);
-  return { isNew, previous, bank: { before: bankBefore, after: career.money }, news, tips, elite: elite ? Elite.bar(career, xpBefore, ctx.config) : null, due };
+  return { isNew, previous, bank: { before: bankBefore, after: career.money }, news, tips, elite: elite ? Elite.bar(career, xpBefore, ctx.config) : null, due, challenges: completedChallenges };
 }

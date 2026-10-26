@@ -242,8 +242,9 @@ export default (S: Strings): Words<Strings> => ({
     name: '일일 시프트',
     ready: '준비됨',
     perfectRun: '퍼펙트 런',
-    welcomeBack: (m) => `돌아오신 걸 환영해요 · 요금소가 +${money(m)} 벌었어요`,
-    comebackChest: (chest) => `다시 와 줘서 반가워요 · ${chest}이(가) 상점에서 기다려요`,
+    welcomeBack: (m, name = '') => `${name ? `${name}님, ` : ''}돌아오신 걸 환영해요 · 요금소가 +${money(m)} 벌었어요`,
+    comebackChest: (chest, days = 0, name = '') =>
+      `${name ? `${name}님, ` : ''}${days >= 3 ? `${days}일 만이에요 · 다시 와 줘서 반가워요` : '다시 와 줘서 반가워요'} · ${chest}이(가) 상점에서 기다려요`,
     streakEnded: (days) => `${days}일 연속 기록이 끝났어요 · 오늘의 일일 시프트부터 새로 시작해요`,
     done: '완료',
     readyHint: '오늘의 첫 시프트. 기회는 한 번, 모두에게 같은 시프트예요.',
@@ -317,6 +318,38 @@ export default (S: Strings): Words<Strings> => ({
           return '콤보 25';
         case 'twoNearMisses':
           return '한 시프트에 니어 미스 2번';
+      }
+    },
+    challengeShort(c) {
+      switch (c) {
+        case 'perfectInputs':
+          return '퍼펙트';
+        case 'tightFits':
+          return '아슬아슬';
+        case 'twoTakedowns':
+          return '체포';
+        case 'twoTransporters':
+          return '수송차';
+        case 'longChain':
+          return '연쇄';
+        case 'bigCombo':
+          return '콤보';
+        case 'perfectRun':
+          return '퍼펙트 런';
+        case 'oneTakedown':
+          return '체포';
+        case 'cleanMerges':
+          return '깔끔한 합류';
+        case 'sixTightFits':
+          return '아슬아슬';
+        case 'fivePerfects':
+          return '퍼펙트';
+        case 'chainFive':
+          return '연쇄';
+        case 'hugeCombo':
+          return '콤보';
+        case 'twoNearMisses':
+          return '니어 미스';
       }
     },
     challengeDone: (c, reward) => `퀘스트 · ${S.daily.challenge(c)} · +${money(reward)}`,

@@ -991,6 +991,14 @@ export const baseConfig = {
    */
   starterStreakDays: 3,
   starterStreakChest: 'premium' as const,
+  /**
+   * Perfect Week (Leo, 26.10.2026): seven Daily Shifts in a row with no Streak Freeze used pay this
+   * much and a free Scratch Card. A filled-in week is worth more than the single days it is made of,
+   * and losing one day does not make the week worthless.
+   */
+  perfectWeekDays: 7,
+  perfectWeekPay: 1200,
+  perfectWeekCards: 1,
   /** Tailwind: a shift lost within `tailwindMaxLeft` cars of its goal, after `tailwindMinShare` of it, makes the next career shift pay this much more. Once a day, never over a Daily Shift. */
   tailwindPay: 0.25,
   tailwindMaxLeft: 3,

@@ -242,8 +242,9 @@ export default (S: Strings): Words<Strings> => ({
     name: 'Turno giornaliero',
     ready: 'Pronto',
     perfectRun: 'CORSA PERFETTA',
-    welcomeBack: (m) => `Bentornato · i tuoi caselli hanno fruttato +${money(m)}`,
-    comebackChest: (chest) => `Bello rivederti · un ${chest} ti aspetta nel negozio`,
+    welcomeBack: (m, name = '') => `Bentornato${name ? `, ${name}` : ''} · i tuoi caselli hanno fruttato +${money(m)}`,
+    comebackChest: (chest, days = 0, name = '') =>
+      `${name ? `${name}, ` : ''}${days >= 3 ? `${days} giorni via · bello rivederti` : 'Bello rivederti'} · un ${chest} ti aspetta nel negozio`,
     streakEnded: (days) => `La tua serie di ${days} giorni è terminata · ne inizia una nuova con il turno odierno`,
     done: 'Completato',
     readyHint: 'Il tuo primo turno del giorno. Tentativo singolo, identico per tutti.',
@@ -317,6 +318,38 @@ export default (S: Strings): Words<Strings> => ({
           return 'Una combo da 25';
         case 'twoNearMisses':
           return '2 Quasi-schianti in un turno';
+      }
+    },
+    challengeShort(c) {
+      switch (c) {
+        case 'perfectInputs':
+          return 'Inserimenti perfetti';
+        case 'tightFits':
+          return 'Spazi stretti';
+        case 'twoTakedowns':
+          return 'Arresti';
+        case 'twoTransporters':
+          return 'Furgoni';
+        case 'longChain':
+          return 'Catena';
+        case 'bigCombo':
+          return 'Combo';
+        case 'perfectRun':
+          return 'Corsa perfetta';
+        case 'oneTakedown':
+          return 'Arresto';
+        case 'cleanMerges':
+          return 'Inserimenti puliti';
+        case 'sixTightFits':
+          return 'Spazi stretti';
+        case 'fivePerfects':
+          return 'Inserimenti perfetti';
+        case 'chainFive':
+          return 'Catena';
+        case 'hugeCombo':
+          return 'Combo';
+        case 'twoNearMisses':
+          return 'Quasi-schianti';
       }
     },
     challengeDone: (c, reward) => `INCARICO · ${S.daily.challenge(c)} · +${money(reward)}`,

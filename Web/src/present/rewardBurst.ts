@@ -5,7 +5,7 @@ import { MenuKit } from './menukit';
 import { ShopPage, JUICE } from './shop';
 import { Fmt } from './strings';
 
-export type BurstKind = 'rescue' | 'freeze' | 'double' | 'retry' | 'chest' | 'firstWin' | 'levelFive' | 'streak';
+export type BurstKind = 'rescue' | 'freeze' | 'double' | 'retry' | 'chest' | 'firstWin' | 'levelFive' | 'streak' | 'challenge';
 
 /** One celebration: what it says, in which colour, how strong, and a number that counts up under the title. */
 export interface Burst {
@@ -131,6 +131,18 @@ export const RewardBurst = {
     }
     if (b.kind === 'double') {
       drawText(list, '×2', add(c, v(0, -3 * s)), 44 * s * (1 + 0.08 * Math.sin(t * 7)), 'coin', { weight: 'bold', align: 'center', opacity: a });
+      return;
+    }
+    if (b.kind === 'challenge') {
+      // A tick drawn stroke by stroke: down from the left, then up to the right.
+      const p = Math.min(1, t / 0.55);
+      const down = Math.min(1, p * 2);
+      const up = Math.max(0, p * 2 - 1);
+      const a0 = add(c, v(-25 * s, 1 * s));
+      const knee = add(c, v(-7 * s, 19 * s));
+      const tip = add(c, v(26 * s, -19 * s));
+      if (down > 0) list.s(line(a0, add(a0, mul(add(knee, mul(a0, -1)), down)), 8 * s), b.color, a);
+      if (up > 0) list.s(line(knee, add(knee, mul(add(tip, mul(knee, -1)), up)), 8 * s), b.color, a);
       return;
     }
     ShopPage.addStar(list, c, 38 * s * (1 + 0.06 * Math.sin(t * 5)), b.color, a);

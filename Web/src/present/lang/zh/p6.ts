@@ -242,8 +242,9 @@ export default (S: Strings): Words<Strings> => ({
     name: '每日班次',
     ready: '就绪',
     perfectRun: '完美通关',
-    welcomeBack: (m) => `欢迎回来 · 你的收费站赚了 +${money(m)}`,
-    comebackChest: (chest) => `很高兴你回来 · ${chest}在商店里等你`,
+    welcomeBack: (m, name = '') => `${name ? `${name}，` : ''}欢迎回来 · 你的收费站赚了 +${money(m)}`,
+    comebackChest: (chest, days = 0, name = '') =>
+      `${name ? `${name}，` : ''}${days >= 3 ? `已经 ${days} 天没见了 · 很高兴你回来` : '很高兴你回来'} · ${chest}在商店里等你`,
     streakEnded: (days) => `你的 ${days} 天连续记录结束了 · 从今天的每日班次开始新的记录`,
     done: '已完成',
     readyHint: '今天的第一个班次。只有一次机会，所有人相同。',
@@ -317,6 +318,38 @@ export default (S: Strings): Words<Strings> => ({
           return '一次 25 连击';
         case 'twoNearMisses':
           return '一个班次内 2 次擦肩而过';
+      }
+    },
+    challengeShort(c) {
+      switch (c) {
+        case 'perfectInputs':
+          return '完美时机';
+        case 'tightFits':
+          return '险过';
+        case 'twoTakedowns':
+          return '抓捕';
+        case 'twoTransporters':
+          return '运钞车';
+        case 'longChain':
+          return '连锁';
+        case 'bigCombo':
+          return '连击';
+        case 'perfectRun':
+          return '完美通关';
+        case 'oneTakedown':
+          return '抓捕';
+        case 'cleanMerges':
+          return '干净并入';
+        case 'sixTightFits':
+          return '险过';
+        case 'fivePerfects':
+          return '完美时机';
+        case 'chainFive':
+          return '连锁';
+        case 'hugeCombo':
+          return '连击';
+        case 'twoNearMisses':
+          return '擦肩而过';
       }
     },
     challengeDone: (c, reward) => `任务 · ${S.daily.challenge(c)} · +${money(reward)}`,

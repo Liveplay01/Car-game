@@ -61,7 +61,8 @@ export function pushTimers(career: Career, config: Config, now = new Date()): Pu
   const today = dayNumber(now);
   const out: PushTimer[] = [];
   const streak = career.dailyStreak;
-  if (streak >= 2 && (career.dailyPlayed === today || career.dailyPlayed === today - 1)) {
+  // A Freeze in stock already covers a missed day: no reminder needed, and none to nag with.
+  if (streak >= 2 && career.streakFreezes === 0 && (career.dailyPlayed === today || career.dailyPlayed === today - 1)) {
     const playedToday = career.dailyPlayed === today;
     const at = local(now, playedToday ? 1 : 0, 18);
     if (at > now.getTime()) out.push({ topic: 'streak', at, until: local(now, playedToday ? 2 : 1, 0) - 60_000, title: S.push.streakTitle(streak), body: S.push.streakBody });

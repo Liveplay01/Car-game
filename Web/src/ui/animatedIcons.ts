@@ -4,6 +4,8 @@
  * `playIcon` in `dom.ts`). Class, keyframe and clip names are global and carry the icon's id. New icons are drawn the way
  * the existing ones are, see `Car Game Icon Animation/icon-pack/CLAUDE-ICONS.md`.
  */
+import { coreA, coreB, coreC, flameA, flameB, flameC } from '../present/flamePaths';
+
 const wrap = (id: string, style: string, body: string): string =>
   `<svg class="ai ai-${id}" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" overflow="visible" aria-hidden="true"><style>${style}.ai-${id}.loop *{animation-iteration-count:infinite!important}@media (prefers-reduced-motion:reduce){.ai-${id} *{animation:none!important}}</style>${body}</svg>`;
 const on = (id: string, sel: string, name: string, dur: string, ease = 'cubic-bezier(.23,1,.32,1)', delay = '0s'): string =>
@@ -21,12 +23,6 @@ const coin = wrap('coin',
 <g clip-path="url(#aiCoinClip)"><g transform="rotate(25 12 12)"><rect class="shine" x="-7" y="-6" width="3.6" height="36" fill="#FFF8E1"/></g></g></g>
 <path class="spark" stroke="none" fill="#FFF1D0" d="M19.6 1.6l.75 1.85 1.85.75-1.85.75-.75 1.85-.75-1.85L17 4.2l1.85-.75z"/>`);
 
-const flameA = 'M12 2.5C13.2 6.2 18.2 8.6 18.2 14.2C18.2 17.8 15.4 21 12 21C8.6 21 5.8 17.8 5.8 14.2C5.8 11.6 7.2 9.6 8.9 8.3C9.2 10 9.9 11 11 11.5C10.6 8.2 11 5.2 12 2.5Z';
-const flameB = 'M13 2.2C13.6 6 18.6 8.8 18.2 14.4C18 17.9 15.3 21 12 21C8.7 21 5.9 17.9 5.9 14.3C5.9 11.2 7.6 9.2 9.4 7.6C9.6 9.6 10.3 10.7 11.3 11.1C11.1 7.8 11.8 4.8 13 2.2Z';
-const flameC = 'M11.2 2.8C12.6 6.4 17.8 8.4 18.1 14C18.3 17.7 15.5 21 12 21C8.5 21 5.7 17.8 5.7 14.1C5.7 11.8 6.9 10 8.4 8.8C8.9 10.4 9.6 11.3 10.6 11.7C10 8.5 10.2 5.4 11.2 2.8Z';
-const coreA = 'M12 11C13.2 12.8 15.2 14 15.2 16.6C15.2 18.6 13.8 20 12 20C10.2 20 8.8 18.6 8.8 16.6C8.8 14.8 10 13.6 11 12.8C11.2 13.6 11.6 14 12 14.1C11.8 13 11.8 12 12 11Z';
-const coreB = 'M12.6 10.4C13.6 12.6 15.4 14 15.3 16.7C15.2 18.7 13.8 20 12 20C10.2 20 8.7 18.6 8.8 16.5C8.9 14.6 10.2 13.4 11.3 12.5C11.5 13.4 11.9 13.8 12.3 13.9C12.1 12.8 12.2 11.6 12.6 10.4Z';
-const coreC = 'M11.5 11.4C12.8 13 15 14.1 15.1 16.5C15.2 18.6 13.8 20 12 20C10.2 20 8.8 18.6 8.9 16.7C9 15 9.9 14 10.7 13.2C11 14 11.3 14.3 11.7 14.4C11.4 13.3 11.3 12.3 11.5 11.4Z';
 const morph = (vals: string[], dur: string): string => `<animate attributeName="d" dur="${dur}" repeatCount="indefinite" calcMode="spline" keyTimes="0;.33;.66;1" keySplines=".45 0 .55 1;.45 0 .55 1;.45 0 .55 1" values="${vals.join(';')}"/>`;
 const heat = wrap('heat',
   `.ai-heat .fl{${fb}transform-origin:50% 100%}.ai-heat .e{${fb}transform-origin:center;opacity:0;animation:aiHeatEmber 1.9s ease-out infinite}.ai-heat .e2{animation-duration:2.2s;animation-delay:.7s}.ai-heat .e3{animation-duration:1.6s;animation-delay:1.2s}` +

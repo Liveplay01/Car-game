@@ -242,8 +242,9 @@ export default (S: Strings): Words<Strings> => ({
     name: 'Service du jour',
     ready: 'Prêt',
     perfectRun: 'COURSE PARFAITE',
-    welcomeBack: (m) => `Bon retour · vos péages ont rapporté +${money(m)}`,
-    comebackChest: (chest) => `Content de te revoir · un ${chest} t'attend dans la boutique`,
+    welcomeBack: (m, name = '') => `Bon retour${name ? `, ${name}` : ''} · vos péages ont rapporté +${money(m)}`,
+    comebackChest: (chest, days = 0, name = '') =>
+      `${name ? `${name}, ` : ''}${days >= 3 ? `${days} jours d'absence · content de te revoir` : 'Content de te revoir'} · un ${chest} t'attend dans la boutique`,
     streakEnded: (days) => `Votre série de ${days} jours a pris fin · repartez sur une nouvelle avec le service d’aujourd’hui`,
     done: 'Terminé',
     readyHint: 'Votre premier service de la journée. Essai unique, le même pour tous.',
@@ -317,6 +318,38 @@ export default (S: Strings): Words<Strings> => ({
           return 'Un combo de 25';
         case 'twoNearMisses':
           return '2 Frôlements en un service';
+      }
+    },
+    challengeShort(c) {
+      switch (c) {
+        case 'perfectInputs':
+          return 'Insertions parfaites';
+        case 'tightFits':
+          return 'Insertions serrées';
+        case 'twoTakedowns':
+          return 'Interpellations';
+        case 'twoTransporters':
+          return 'Fourgons';
+        case 'longChain':
+          return 'Chaîne';
+        case 'bigCombo':
+          return 'Combo';
+        case 'perfectRun':
+          return 'Tour parfait';
+        case 'oneTakedown':
+          return 'Interpellation';
+        case 'cleanMerges':
+          return 'Insertions propres';
+        case 'sixTightFits':
+          return 'Insertions serrées';
+        case 'fivePerfects':
+          return 'Insertions parfaites';
+        case 'chainFive':
+          return 'Chaîne';
+        case 'hugeCombo':
+          return 'Combo';
+        case 'twoNearMisses':
+          return 'Frôlements';
       }
     },
     challengeDone: (c, reward) => `MISSION · ${S.daily.challenge(c)} · +${money(reward)}`,

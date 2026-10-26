@@ -9,7 +9,7 @@ import { startAds } from './ui/ads';
 import { startAnalytics } from './ui/analytics';
 import { Casino } from './core/casino';
 import { forgetMeasures } from './present/measure';
-import { newSave } from './core/career';
+import { Careers, newSave } from './core/career';
 import { Elite } from './core/elite';
 import { SAVE_KEYS, writeSave } from './storage/save';
 import { storage } from './storage/store';
@@ -218,7 +218,10 @@ if ('serviceWorker' in navigator && import.meta.env.PROD && !inPortal && !inItch
   // Leaving in the last hours of a streak with today's Daily still open: a dot on the installed app's icon says so.
   document.addEventListener('visibilitychange', () => {
     if (!document.hidden || !('setAppBadge' in navigator)) return;
-    if (streakEndsIn(shell.game.save.career, dayNumber(), shell.game.config) !== null) navigator.setAppBadge().catch(() => undefined);
+    const career = shell.game.save.career;
+    const day = dayNumber();
+    if (Careers.isDailyOpen(career, day) && streakEndsIn(career, day, shell.game.config) !== null) navigator.setAppBadge().catch(() => undefined);
+    else clearBadge();
   });
   const register = (): void => {
     navigator.serviceWorker

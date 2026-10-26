@@ -98,12 +98,17 @@ export const FailChip = {
   },
 };
 
+/** Hours until midnight on the player's clock: when the next Daily Shift opens. */
+export function hoursToMidnight(): number {
+  const now = new Date();
+  const midnight = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+  return (midnight.getTime() - now.getTime()) / 3600000;
+}
+
 /** Hours until midnight while yesterday's streak still waits for today's Daily Shift; else null. */
 export function streakEndsIn(career: Career, today: number, config: Config): number | null {
   if (!Goals.streakAtRisk(career, today)) return null;
-  const now = new Date();
-  const midnight = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
-  const hours = (midnight.getTime() - now.getTime()) / 3600000;
+  const hours = hoursToMidnight();
   return hours <= config.streakWarningHours ? hours : null;
 }
 

@@ -2,6 +2,7 @@ import { type Vec2, v, add, TAU } from '../core/vec2';
 import { type RenderList, type Primitive, type Align, type Weight, circle, arc, line, polygon, rect, text, drawText, softPolygon, Ease } from './render';
 import type { ColorToken } from './theme';
 import { measure } from './measure';
+import { coreA, coreB, coreC, flameA, flameB, flameC } from './flamePaths';
 
 /**
  * Small glyphs drawn from the same shapes as everything else: no fonts, no
@@ -142,6 +143,76 @@ export function flame(list: RenderList, center: Vec2, height: number, opacity = 
   };
   list.s(polygon(tongue(1)), 'fireOuter', opacity);
   list.s(polygon(tongue(0.58)), 'fireCore', opacity);
+}
+
+/** The icon pack's flame (`ui/animatedIcons.ts`, Heat), sampled from its SVG curves for the canvas. */
+const FLAME_STEPS = 5;
+const flamePoints = (path: string, scaleX = 1, scaleY = 1, dx = 0, dy = 0): Vec2[] => {
+  const n = path.match(/-?\d*\.?\d+/g)?.map(Number) ?? [];
+  if (n.length < 8) return [];
+  const at = (x: number, y: number): Vec2 => v(x * scaleX + dx, y * scaleY + dy);
+  const out = [at(n[0], n[1])];
+  for (let i = 2; i + 5 < n.length; i += 6) {
+    const px = n[i - 2];
+    const py = n[i - 1];
+    const [x1, y1, x2, y2, x3, y3] = [n[i], n[i + 1], n[i + 2], n[i + 3], n[i + 4], n[i + 5]];
+    for (let s = 1; s <= FLAME_STEPS; s++) {
+      const t = s / FLAME_STEPS;
+      const u = 1 - t;
+      out.push(at(u * u * u * px + 3 * u * u * t * x1 + 3 * u * t * t * x2 + t * t * t * x3, u * u * u * py + 3 * u * u * t * y1 + 3 * u * t * t * y2 + t * t * t * y3));
+    }
+  }
+  return out;
+};
+interface HeatFlameLayer {
+  /** The four shapes the icon's SVG morphs through, in order. */
+  shapes: readonly Vec2[][];
+  color: ColorToken;
+  opacity: number;
+  /** One loop of the SVG's `animate` (`ui/animatedIcons.ts`, Heat). */
+  duration: number;
+}
+
+// The canvas twin of the Heat icon: the same three paths, the same morph order and the same
+// durations as the SVG. The icon only loops its shape, so the flame here does not burst apart.
+const HEAT_FLAME_LAYERS: readonly HeatFlameLayer[] = [
+  {
+    shapes: [
+      flamePoints(flameC, 1.08, 1.04, -0.96, -0.84),
+      flamePoints(flameA, 1.08, 1.04, -0.96, -0.84),
+      flamePoints(flameB, 1.08, 1.04, -0.96, -0.84),
+      flamePoints(flameC, 1.08, 1.04, -0.96, -0.84),
+    ],
+    color: 'fireDeep',
+    opacity: 0.95,
+    duration: 1.5,
+  },
+  { shapes: [flamePoints(flameA), flamePoints(flameB), flamePoints(flameC), flamePoints(flameA)], color: 'fireOuter', opacity: 1, duration: 1.2 },
+  { shapes: [flamePoints(coreA), flamePoints(coreC), flamePoints(coreB), flamePoints(coreA)], color: 'fireCore', opacity: 0.96, duration: 0.9 },
+];
+
+/** One point of a layer at `time`: the SVG's keyTimes 0/.33/.66/1 with its ease-in-out spline. */
+function heatFlameShape(shapes: readonly Vec2[][], duration: number, time: number): Vec2[] {
+  const cycle = ((time / duration) % 1 + 1) % 1;
+  const segment = Math.min(2, Math.floor(cycle * 3));
+  const k = Ease.smoothstep(cycle * 3 - segment);
+  const from = shapes[segment];
+  const to = shapes[segment + 1];
+  return from.map((p, i) => v(p.x + (to[i].x - p.x) * k, p.y + (to[i].y - p.y) * k));
+}
+
+/**
+ * The icon pack's three-layer flame on the canvas, with the same base as `flame`.
+ * `time` and `reduceMotion` let the ready screen loop it exactly like the Heat icon does in the DOM.
+ */
+export function heatFlame(list: RenderList, center: Vec2, height: number, opacity = 1, time = 0, reduceMotion = false): void {
+  if (height <= 0 || opacity <= 0) return;
+  const scale = height / 19;
+  const base = center.y + height * 0.42;
+  for (const layer of HEAT_FLAME_LAYERS) {
+    const shape = reduceMotion ? layer.shapes[0] : heatFlameShape(layer.shapes, layer.duration, time);
+    list.s(polygon(shape.map((p) => v(center.x + (p.x - 12) * scale, base - (21 - p.y) * scale))), layer.color, opacity * layer.opacity);
+  }
 }
 
 export function flameTag(list: RenderList, label: string, position: Vec2, size: number, align: Align, color: ColorToken, opacity = 1, weight: Weight = 'bold'): void {

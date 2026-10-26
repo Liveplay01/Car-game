@@ -12,12 +12,12 @@ import { learnerZone } from '../core/learner';
 import { oversizeZone } from '../core/oversize';
 import { weddingZone } from '../core/wedding';
 import { type Vec2, v, add, sub, mul, fromAngle, TAU, clamp } from '../core/vec2';
-import { type RenderList, type Rect, type Primitive, R, rect, circle, arc, line, polygon, text, Ease, Metrics, toScreen, moved, type Align, type Weight } from './render';
+import { type RenderList, type Rect, type Primitive, R, rect, circle, arc, line, polygon, text, drawText, Ease, Metrics, toScreen, moved, type Align, type Weight } from './render';
 import type { ColorToken } from './theme';
 import { MenuKit } from './menukit';
 import { AdPill } from './adPill';
 import { touchFirst } from '../storage/device';
-import { moneyTag, moneyTagWidth, money, coinSize, flameTag, textWidth, drawFitted, trophy } from './icons';
+import { moneyTag, moneyTagWidth, money, coinSize, flameTag, heatFlame, textWidth, drawFitted, trophy } from './icons';
 import { measure } from './measure';
 import { S, Fmt, money as moneyText, comboMultiplier } from './strings';
 import { interpolatedPose } from './scene';
@@ -73,21 +73,22 @@ export const TopBar = {
   },
 
   /** One smooth fade from the page colour at the very top edge to clear: no steps, nothing below the card's reach. */
-  addScrim(list: RenderList): void {
+  addScrim(list: RenderList, extra = 0): void {
     const { tag, fade } = list;
     list.tag = 'topbarScrim';
     list.fade = true;
-    list.s(rect(v(list.camera.viewport.x / 2, TopBar.scrim / 2), v(list.camera.viewport.x + 80, TopBar.scrim)), list.background, 0.85);
+    const height = TopBar.scrim + extra;
+    list.s(rect(v(list.camera.viewport.x / 2, height / 2), v(list.camera.viewport.x + 80, height)), list.background, 0.85);
     list.tag = tag;
     list.fade = fade;
   },
 
-  /** `brief`: a briefing shows on the card; its colour edges the card and the column lines give way. */
-  addCard(list: RenderList, frame: Rect, opacity = 1, brief: BriefView | null = null): void {
+  /** `brief`: a briefing shows on the card; its colour edges the card and the column lines give way. `reach`: the card grows further for a section of its own (the Daily). */
+  addCard(list: RenderList, frame: Rect, opacity = 1, brief: BriefView | null = null, reach = 0): void {
     const tag = list.tag;
     list.tag = 'topbarCard';
-    const grown = R.make(frame.minX, frame.minY, frame.maxX, frame.maxY + list.topGrow);
-    MenuKit.chromePanel(list, grown, TopBar.corner, opacity, brief ? brief.brief.color : null, brief ? brief.card : 1);
+    const grown = R.make(frame.minX, frame.minY, frame.maxX, frame.maxY + list.topGrow + reach);
+    MenuKit.chromePanel(list, grown, reach > 0 ? TopBar.cardCorner : TopBar.corner, opacity, brief ? brief.brief.color : null, brief ? brief.card : 1);
     // No dividers: one lit capsule (the dock's selected tab) rests on the middle column. Under the mouse it glides to the column
     // there, widening or narrowing on the way, and back; money and the best stand quietly either side of it.
     const cols = TopBar.columns(frame);
@@ -353,6 +354,14 @@ function addOdometer(list: RenderList, odometer: Odometer, value: number, at: Ve
 
 // MARK: HUD
 
+/** One of today's unfinished challenges while a career shift runs. */
+export interface LiveChallenge {
+  label: string;
+  have: number;
+  need: number;
+  met: boolean;
+}
+
 export interface HudInput {
   world: World;
   level: number;
@@ -374,6 +383,8 @@ export interface HudInput {
   tension?: number;
   /** Something new and what to do about it: it takes the top card's place for a while. */
   brief?: BriefView | null;
+  /** Today's unfinished challenges: the top card grows a section of its own for their live counts. */
+  challenges?: readonly LiveChallenge[];
   reduceMotion?: boolean;
   textScale?: number;
 }
@@ -397,7 +408,8 @@ export const HUD = {
     if (h.world.config.endless) {
       const frame = TopBar.frame(list.camera.viewport.x);
       const label = h.mark ?? S.modes.carsSent(h.world.shift.carsSent);
-      const at = v(R.center(frame).x, TopBar.foot(list) + 18);
+      const under = TopBar.foot(list) + (h.challenges && h.challenges.length > 0 ? HUD.challengeHeight : 0) + 18;
+      const at = v(R.center(frame).x, under);
       MenuKit.chromePill(list, at, v(textWidth(label, 12) + 28, 26), 1);
       list.s(text(label, at, 12 * land(h.pops.cars, 0.2), 'center', 'bold'), 'primary');
     }
@@ -409,6 +421,32 @@ export const HUD = {
     const at = v(R.center(frame).x, TopBar.foot(list) + 18);
     MenuKit.chromePill(list, at, v(textWidth(label, 12) + 28, 26), 1, met ? 'accent' : undefined);
     list.s(text(label, at, 12 * land(pop, 0.2), 'center', 'bold'), met ? 'accent' : 'primary');
+  },
+
+  /** The live challenge section growing out of the top card while a career or Unlimited shift runs. */
+  challengeHeight: 38,
+
+  /**
+   * Today's challenges in the top card's own glass, one column each under a hairline, so the three
+   * conditions never hide behind one another. The section is the shift-time sibling of the ready
+   * screen's `DailyStrip`, with the live counts instead of the day's summary.
+   */
+  addChallengeProgress(list: RenderList, goals: readonly LiveChallenge[], frame: Rect, top: number, opacity = 1): void {
+    if (goals.length === 0) return;
+    const left = frame.minX + 12;
+    const width = R.width(frame) - 24;
+    const cell = width / goals.length;
+    list.s(line(v(left, top + 0.5), v(left + width, top + 0.5), 0.5), 'separator', 0.55 * opacity);
+    goals.forEach((g, i) => {
+      if (i > 0) {
+        const x = left + cell * i;
+        list.s(line(v(x, top + 7), v(x, top + HUD.challengeHeight - 7), 0.5), 'separator', 0.55 * opacity);
+      }
+      const cx = left + cell * (i + 0.5);
+      drawFitted(list, g.label, v(cx, top + 13), 9, cell - 12, g.met ? 'accent' : 'muted', { align: 'center', opacity, weight: 'bold' });
+      const count = `${g.have}/${g.need}`;
+      drawText(list, g.met ? `✓ ${count}` : count, v(cx, top + 27), 10, g.met ? 'accent' : 'primary', { align: 'center', opacity, weight: 'bold' });
+    });
   },
 
   activeChain(world: World): number {
@@ -444,10 +482,12 @@ export const HUD = {
   addTopCard(list: RenderList, h: HudInput): void {
     const world = h.world;
     const brief = h.brief ?? null;
-    TopBar.addScrim(list);
+    const challenges = h.challenges ?? [];
+    const challengeReach = challenges.length > 0 ? HUD.challengeHeight : 0;
+    TopBar.addScrim(list, challengeReach);
     const frame = TopBar.frame(list.camera.viewport.x);
     const cols = TopBar.columns(frame);
-    TopBar.addCard(list, frame, 1, brief);
+    TopBar.addCard(list, frame, 1, brief, challengeReach);
     list.tag = 'topbarLabels';
     const numbers = list.items.length;
     TopBar.addMoneyColumn(list, cols.left, 'leading', Fmt.number(h.money), { valueSize: 20 * land(h.pops.money, 0.15), roll: { value: h.money, reduceMotion: h.reduceMotion ?? false } });
@@ -519,6 +559,7 @@ export const HUD = {
       }
       TopBar.addBrief(list, frame, brief, h.reduceMotion ?? false, h.textScale ?? 1);
     }
+    if (challengeReach > 0) HUD.addChallengeProgress(list, challenges, frame, TopBar.foot(list));
     list.tag = undefined;
     const island = list.items.length;
     HUD.addIsland(list, world, h.comboPop);
@@ -1453,6 +1494,14 @@ export interface DailyCard {
   freezes: number;
   next: StreakMilestone | null;
   splash: number | null;
+  /** The last seven days, oldest first (`Careers.streakCalendar`). */
+  calendar: { day: number; state: 'done' | 'frozen' | 'missed' | 'open' }[];
+  /** The Perfect Week: clean days so far, and whether one has paid this week. */
+  perfect: { days: number; perfect: boolean; paid: boolean };
+  /** Today's challenges: done, how many, and what all of them pay. */
+  challenges: { done: number; total: number; reward: number };
+  /** Hours until midnight, the next Daily Shift. */
+  midnightIn: number;
 }
 
 /** What a trial asks for, as the ready screen explains it. */
@@ -1527,6 +1576,130 @@ function islandRow(list: RenderList, s: string | null, radius: number, size: num
   return { lines, size, height: lines.length * size * 1.25 };
 }
 
+/**
+ * The Daily in the ready screen's top card (Leo, 26.10.2026): the card grows by the strip's height and
+ * carries the streak flame with its days, the last seven days, the next prize with its countdown, the
+ * Perfect Week and today's challenges. It is the expanded header, not a second card below it; a short
+ * screen keeps the one-line pill instead.
+ */
+export const DailyStrip = {
+  height: 92,
+  maxWidth: 440,
+
+  /** Fits when the grown card still ends above the prompt and the ring, with the card's own air. */
+  headerFits(width: number, top: number, bottomLimit: number): boolean {
+    return width >= 320 && bottomLimit - (top + DailyStrip.height) >= 0;
+  },
+
+  /** The section itself; the top card has already drawn its glass down to `top + height`. */
+  addAttached(list: RenderList, daily: DailyCard, frame: Rect, top: number, opacity: number, time: number, reduceMotion: boolean): void {
+    const left = frame.minX;
+    const right = frame.maxX - 14;
+    const x0 = left + 14;
+    const w = R.width(frame);
+    // A hairline under the numbers, so the card reads as the bar and its Daily section, not one tall block.
+    list.s(line(v(left + 12, top + 8), v(right, top + 8), 0.5), 'separator', 0.55 * opacity);
+    list.s(line(v(left + 12, top + 53), v(right, top + 53), 0.5), 'separator', 0.7 * opacity);
+
+    DailyStrip.streakBlock(list, daily, x0, top, opacity, reduceMotion, time);
+    const calendarWidth = Math.min(116, w * 0.34);
+    DailyStrip.calendar(list, daily, x0 + 82, top, calendarWidth, opacity, reduceMotion, time);
+    DailyStrip.rewardBlock(list, daily, right, top, Math.min(140, w * 0.4), opacity);
+    DailyStrip.perfectBlock(list, daily, x0, top, opacity, reduceMotion, time);
+    DailyStrip.challengeBlock(list, daily, right, top, opacity);
+  },
+
+  streakBlock(list: RenderList, daily: DailyCard, x: number, top: number, opacity: number, reduceMotion: boolean, time: number): void {
+    const streak = daily.streak;
+    const flameY = top + 25;
+    if (streak > 0) MenuKit.glow(list, v(x + 10, flameY), 30, 'fireOuter', (reduceMotion ? 0.16 : 0.16 + 0.06 * Math.sin(time * 2.6)) * opacity);
+    heatFlame(list, v(x + 10, flameY), streak > 0 ? 22 : 17, opacity * (streak > 0 ? 1 : 0.45), time, reduceMotion);
+    const numX = x + 24;
+    const num = String(streak);
+    drawText(list, num, v(numX, top + 32), 24, streak > 0 ? 'primary' : 'muted', { weight: 'bold', opacity });
+    const numW = textWidth(num, 24, true);
+    drawText(list, streak === 1 ? S.daily.stripDay : S.daily.stripDays, v(numX + numW + 4, top + 32), 10, 'muted', { opacity });
+    drawText(list, streak > 0 ? S.daily.stripInARow : S.daily.stripStart, v(x, top + 45), 9, streak > 0 ? 'muted' : 'accent', { opacity });
+  },
+
+  calendar(list: RenderList, daily: DailyCard, x: number, top: number, width: number, opacity: number, reduceMotion: boolean, time: number): void {
+    const cell = width / 7;
+    daily.calendar.forEach((c, i) => {
+      const cx = x + cell * i + cell / 2;
+      drawText(list, weekdayNarrow(c.day), v(cx, top + 16), 8, 'muted', { align: 'center', opacity });
+      const at = v(cx, top + 28);
+      if (c.state === 'done') {
+        list.s(circle(at, 4.6), 'hazard', opacity);
+        list.s(circle(at, 1.8), 'fireCore', opacity * 0.8);
+      } else if (c.state === 'frozen') {
+        list.s(circle(at, 4.6), 'lightBlue', opacity * 0.85);
+        list.s(circle(at, 2.2), 'background', opacity * 0.9);
+      } else if (c.state === 'open') {
+        const pulse = reduceMotion ? 0.5 : 0.5 + 0.5 * Math.sin(time * 3);
+        list.s(arc(at, 6 + pulse * 1.6, 1.4, 0, TAU), 'hazard', opacity * (0.45 + 0.5 * pulse));
+        list.s(circle(at, 3.4), 'hazard', opacity * 0.45);
+      } else {
+        list.s(circle(at, 3.8), 'controlFill', opacity * 0.75);
+      }
+    });
+  },
+
+  rewardBlock(list: RenderList, daily: DailyCard, right: number, top: number, width: number, opacity: number): void {
+    if (daily.next) {
+      drawFitted(list, S.daily.prize(daily.next.prize), v(right, top + 21), 11, width, 'accent', { weight: 'bold', align: 'trailing', opacity });
+      drawText(list, S.daily.stripRewardIn(daily.next.left), v(right, top + 34), 9, 'muted', { align: 'trailing', opacity });
+    } else {
+      drawText(list, S.daily.allMilestones, v(right, top + 21), 11, 'accent', { weight: 'bold', align: 'trailing', opacity });
+    }
+    if (daily.endsIn !== null) drawText(list, S.daily.stripEndsIn(daily.endsIn), v(right, top + 47), 9, 'hazard', { align: 'trailing', weight: 'bold', opacity });
+    else drawText(list, daily.calendar[6]?.state === 'open' ? S.daily.stripPlayToday : S.daily.stripNextDay(daily.midnightIn), v(right, top + 47), 9, 'muted', { align: 'trailing', opacity });
+  },
+
+  perfectBlock(list: RenderList, daily: DailyCard, x: number, top: number, opacity: number, reduceMotion: boolean, time: number): void {
+    const p = daily.perfect;
+    const done = Math.min(7, p.days);
+    const pulse = p.perfect && !p.paid && !reduceMotion ? 0.5 + 0.5 * Math.sin(time * 3) : 0;
+    for (let i = 0; i < 7; i++) {
+      const at = v(x + i * 8 + 3, top + 70);
+      if (i < done) list.s(rect(at, v(6, 6), 2), p.perfect && !p.paid ? 'accent' : 'hazard', opacity * (0.75 + 0.25 * pulse));
+      else list.s(rect(at, v(6, 6), 2), 'controlFill', opacity * 0.8);
+    }
+    const label = p.paid ? S.daily.perfectWeekDone : S.daily.perfectWeekProgress(done, 7);
+    drawText(list, label, v(x + 7 * 8 + 6, top + 76), 9, p.paid || p.perfect ? 'accent' : 'muted', { opacity, weight: p.perfect && !p.paid ? 'bold' : 'regular' });
+  },
+
+  challengeBlock(list: RenderList, daily: DailyCard, right: number, top: number, opacity: number): void {
+    const c = daily.challenges;
+    if (c.total <= 0) return;
+    const reward = `+${Fmt.number(c.reward)}`;
+    drawText(list, reward, v(right, top + 76), 10, 'accent', { align: 'trailing', weight: 'bold', opacity });
+    const rewardW = textWidth(reward, 10, true);
+    const count = `${c.done}/${c.total}`;
+    drawText(list, count, v(right - rewardW - 6, top + 76), 9, 'muted', { align: 'trailing', opacity });
+    const countW = textWidth(count, 9);
+    const pipsRight = right - rewardW - countW - 10;
+    const all = c.done >= c.total;
+    for (let i = 0; i < c.total; i++) {
+      const at = v(pipsRight - (c.total - 1 - i) * 9, top + 72);
+      if (i < c.done) list.s(circle(at, 3.4), 'hazard', opacity);
+      else list.s(arc(at, 3.4, 1.2, 0, TAU), 'controlFill', opacity * 0.9);
+    }
+    const labelX = pipsRight - c.total * 9 - 5;
+    drawText(list, all ? S.daily.challengesComplete : S.daily.challengesLabel, v(labelX, top + 76), 9, all ? 'accent' : 'muted', { align: 'trailing', opacity, weight: all ? 'bold' : 'regular' });
+  },
+};
+
+/** Monday's M in the player's language, cached: seven of them are drawn on every ready frame. */
+const weekdayNames = new Map<number, string>();
+function weekdayNarrow(day: number): string {
+  const cached = weekdayNames.get(day);
+  if (cached !== undefined) return cached;
+  if (weekdayNames.size > 30) weekdayNames.clear();
+  const name = new Date(day * 86400000).toLocaleDateString(currentLanguage(), { weekday: 'narrow', timeZone: 'UTC' });
+  weekdayNames.set(day, name);
+  return name;
+}
+
 export const ReadyBanner = {
   splashDuration: 3,
   add(
@@ -1570,6 +1743,8 @@ export const ReadyBanner = {
       island: number;
       /** A row for an ad pill (`AdPill`) under the streak pill: the intro makes way for it. */
       adRow?: boolean;
+      /** Filled with the height the Daily section adds to the top card (0 when the pill is shown): the ad row follows the card. */
+      out?: { strip: number };
     },
   ): number {
     const width = list.camera.viewport.x;
@@ -1579,14 +1754,20 @@ export const ReadyBanner = {
     const cols = TopBar.columns(frame);
     const hint = o.message ?? null;
     const hintView: BriefView | null = hint ? { brief: hint.brief, card: Ease.smoothstep(hint.amount), words: 1, used: null } : null;
+    // The Daily is a section of the top card, not a card of its own: work out whether it has room before the card is drawn.
+    const island = toScreen(list.camera, v(0, 0));
+    const bottomLimit = Math.min((o.iconsTop ?? island.y - (run?.line ? 49 : 26)) - 10, (o.ringTop ?? Infinity) - 10);
+    const hasIntro = !!(o.intro && o.intro.length > 0);
+    const stripTop = frame.maxY + list.topGrow;
+    const strip = (o.drawsCard ?? true) && list.topGrow < 1 && o.daily !== null && !run && !hasIntro && DailyStrip.headerFits(width, stripTop, bottomLimit) ? o.daily : null;
     if (o.drawsCard ?? true) {
-      TopBar.addScrim(list);
+      TopBar.addScrim(list, strip ? DailyStrip.height : 0);
       // A new message sends a ripple off the card's edge, so the eye goes there.
       if (hint && hint.pulse < 1 && !o.reduceMotion) {
         const e = Ease.outCubic(hint.pulse);
         list.s(rect(R.center(frame), v(R.width(frame) + 20 * e, R.height(frame) + 20 * e), TopBar.corner + 10 * e), hint.brief.color, 0.4 * (1 - e) * opacity);
       }
-      TopBar.addCard(list, frame, 1, hintView);
+      TopBar.addCard(list, frame, 1, hintView, strip ? DailyStrip.height : 0);
     }
     list.tag = 'topbarLabels';
     const numbers = list.items.length;
@@ -1625,20 +1806,23 @@ export const ReadyBanner = {
     list.tag = undefined;
     // The dots stay with a mode's name on the card: where the player is among the modes is what the name is about.
     if (o.modes && (o.drawsCard ?? true)) TopBar.addModeDots(list, frame, o.modes, opacity);
-    const pillText = run ? run.badge : o.daily ? S.daily.streakPill(o.daily.streak, o.daily.bonus, o.daily.endsIn, o.daily.freezes) : null;
-    if (pillText) {
-      const under = v(width / 2, TopBar.foot(list) + 18);
+    if (strip) {
+      DailyStrip.addAttached(list, strip, frame, stripTop, opacity, o.time, o.reduceMotion);
+      if (o.out) o.out.strip = DailyStrip.height;
+    }
+    const foot = TopBar.foot(list);
+    const pillText = run ? run.badge : o.daily && !strip ? S.daily.streakPill(o.daily.streak, o.daily.bonus, o.daily.endsIn, o.daily.freezes) : null;
+    if (!strip && pillText) {
+      const under = v(width / 2, foot + 18);
       const lineText = pillText;
       MenuKit.chromePill(list, under, v(textWidth(lineText, 12) + 28, 26), opacity);
       // A streak about to break says so in the warning colour.
       list.s(text(lineText, under, 12, 'center'), !run && o.daily?.endsIn != null ? 'hazard' : 'primary', opacity);
     }
-    const island = toScreen(list.camera, v(0, 0));
-    const introBottom = Math.min((o.iconsTop ?? island.y - (run?.line ? 49 : 26)) - 10, (o.ringTop ?? Infinity) - 10);
     // The intro rides in the grown top card, under a notice if one is up; the pills hang under the card.
-    const pills = (pillText ? 31 : 0) + (o.adRow ? AdPill.row : 0);
+    const pills = (strip ? DailyStrip.height + 8 : pillText ? 31 : 0) + (o.adRow ? AdPill.row : 0);
     const introTop = frame.maxY + list.topGrow - list.topIntro;
-    const intro = o.intro && o.intro.length > 0 && o.time >= ReadyBanner.introDelay ? ReadyBanner.introLayout(o.intro, frame, introTop, introBottom - pills, o.textScale ?? 1) : null;
+    const intro = o.intro && o.intro.length > 0 && o.time >= ReadyBanner.introDelay ? ReadyBanner.introLayout(o.intro, frame, introTop, bottomLimit - pills, o.textScale ?? 1) : null;
     const breath = o.reduceMotion ? 1 : 0.7 + 0.3 * (0.5 + 0.5 * Math.cos(o.time * 2.4));
     islandStack(list, o.island, [
       run?.line ? { s: run.line, size: 14, color: run.color, opacity, weight: 'bold' } : null,

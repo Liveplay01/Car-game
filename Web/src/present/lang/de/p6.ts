@@ -242,8 +242,9 @@ export default (S: Strings): Words<Strings> => ({
     name: 'Tagesschicht',
     ready: 'Bereit',
     perfectRun: 'PERFEKTER LAUF',
-    welcomeBack: (m) => `Willkommen zurück · deine Mautstellen haben +${money(m)} eingebracht`,
-    comebackChest: (chest) => `Schön, dass du wieder da bist · eine ${chest} wartet im Shop`,
+    welcomeBack: (m, name = '') => `Willkommen zurück${name ? `, ${name}` : ''} · deine Mautstellen haben +${money(m)} eingebracht`,
+    comebackChest: (chest, days = 0, name = '') =>
+      `${name ? `${name}, ` : ''}${days >= 3 ? `${days} Tage weg · schön, dass du wieder da bist` : 'Schön, dass du wieder da bist'} · eine ${chest} wartet im Shop`,
     streakEnded: (days) => `Deine ${days}-Tage-Serie ist zu Ende · eine neue beginnt mit der heutigen Tagesschicht`,
     done: 'Erledigt',
     readyHint: 'Deine erste Schicht des Tages. Ein Versuch, für alle dieselbe Schicht.',
@@ -260,6 +261,23 @@ export default (S: Strings): Words<Strings> => ({
     },
     freezeLine: (days) => `Noch ${days} ${days === 1 ? 'Tag' : 'Tage'} bis zum Serienschutz`,
     freezes: (n) => `${n}× Serienschutz`,
+    stripDay: 'Tag',
+    stripDays: 'Tage',
+    stripInARow: 'in Folge',
+    stripStart: 'starte heute eine Serie',
+    stripRewardIn: (left) => `in ${left} ${left === 1 ? 'Tag' : 'Tagen'}`,
+    stripPlayToday: 'heute spielen · +1 Tag',
+    stripNextDay: (hours) => `nächster Tag in ${Math.max(1, Math.ceil(hours))} Std.`,
+    stripEndsIn: (hours) => `endet in ${hours < 1 ? 'unter 1 Std.' : `${Math.floor(hours)} Std.`}`,
+    allMilestones: 'Alle Meilensteine',
+    perfectWeekProgress: (days, of) => `Perfekte Woche ${days}/${of}`,
+    perfectWeekDone: 'Perfekte Woche ✓',
+    perfectWeekTitle: 'PERFEKTE WOCHE',
+    perfectWeekLine: (pay, cards) => (cards > 0 ? `+${money(Fmt.number(pay))} und ein Gratis-Rubbellos` : `+${money(Fmt.number(pay))}`),
+    perfectWeekToast: (pay, cards) => (cards > 0 ? `PERFEKTE WOCHE · +${money(Fmt.number(pay))} und ein Gratis-Rubbellos` : `PERFEKTE WOCHE · +${money(Fmt.number(pay))}`),
+    challengesLabel: 'Aufträge',
+    challengesComplete: 'Aufträge erledigt',
+    challengeTitle: (n) => (n === 1 ? 'AUFTRAG GESCHAFFT' : `${n} AUFTRÄGE GESCHAFFT`),
     sheet: {
       title: 'Tagesserie',
       body: (bonusDays, bonusPay, heatDays) => [
@@ -317,6 +335,38 @@ export default (S: Strings): Words<Strings> => ({
           return 'Eine Combo von 25';
         case 'twoNearMisses':
           return '2 Beinahe-Crashs in einer Schicht';
+      }
+    },
+    challengeShort(c) {
+      switch (c) {
+        case 'perfectInputs':
+          return 'Perfekte Einsätze';
+        case 'tightFits':
+          return 'Knappe Lücken';
+        case 'twoTakedowns':
+          return 'Festnahmen';
+        case 'twoTransporters':
+          return 'Transporter';
+        case 'longChain':
+          return 'Kette';
+        case 'bigCombo':
+          return 'Combo';
+        case 'perfectRun':
+          return 'Perfekter Lauf';
+        case 'oneTakedown':
+          return 'Festnahme';
+        case 'cleanMerges':
+          return 'Saubere Einfädler';
+        case 'sixTightFits':
+          return 'Knappe Lücken';
+        case 'fivePerfects':
+          return 'Perfekte Einsätze';
+        case 'chainFive':
+          return 'Kette';
+        case 'hugeCombo':
+          return 'Combo';
+        case 'twoNearMisses':
+          return 'Beinahe-Crashs';
       }
     },
     challengeDone: (c, reward) => `AUFTRAG · ${S.daily.challenge(c)} · +${money(reward)}`,

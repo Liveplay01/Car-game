@@ -242,8 +242,9 @@ export default (S: Strings): Words<Strings> => ({
     name: 'デイリーシフト',
     ready: '準備OK',
     perfectRun: 'パーフェクトラン',
-    welcomeBack: (m) => `おかえりなさい · 料金所が+${money(m)}を稼ぎました`,
-    comebackChest: (chest) => `おかえりなさい · ${chest}がショップで待っています`,
+    welcomeBack: (m, name = '') => `おかえりなさい${name ? `、${name}さん` : ''} · 料金所が+${money(m)}を稼ぎました`,
+    comebackChest: (chest, days = 0, name = '') =>
+      `${name ? `${name}さん、` : ''}${days >= 3 ? `${days}日ぶり · おかえりなさい` : 'おかえりなさい'} · ${chest}がショップで待っています`,
     streakEnded: (days) => `${days}日連続のストリークが終わりました · 今日のデイリーシフトから新しく始まります`,
     done: '完了',
     readyHint: '今日の最初のシフト。挑戦は1回、全員同じシフトです。',
@@ -317,6 +318,38 @@ export default (S: Strings): Words<Strings> => ({
           return 'コンボ25';
         case 'twoNearMisses':
           return '1シフトでニアミス2回';
+      }
+    },
+    challengeShort(c) {
+      switch (c) {
+        case 'perfectInputs':
+          return 'パーフェクト';
+        case 'tightFits':
+          return 'ギリギリ';
+        case 'twoTakedowns':
+          return '確保';
+        case 'twoTransporters':
+          return '輸送車';
+        case 'longChain':
+          return 'チェーン';
+        case 'bigCombo':
+          return 'コンボ';
+        case 'perfectRun':
+          return 'パーフェクトラン';
+        case 'oneTakedown':
+          return '確保';
+        case 'cleanMerges':
+          return 'きれいな合流';
+        case 'sixTightFits':
+          return 'ギリギリ';
+        case 'fivePerfects':
+          return 'パーフェクト';
+        case 'chainFive':
+          return 'チェーン';
+        case 'hugeCombo':
+          return 'コンボ';
+        case 'twoNearMisses':
+          return 'ニアミス';
       }
     },
     challengeDone: (c, reward) => `クエスト · ${S.daily.challenge(c)} · +${money(reward)}`,

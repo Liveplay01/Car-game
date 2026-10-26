@@ -2314,8 +2314,9 @@ export const S = {
     name: 'Daily Shift',
     ready: 'Ready',
     perfectRun: 'PERFECT RUN',
-    welcomeBack: (m: string): string => `Welcome back · your toll booths earned +${money(m)}`,
-    comebackChest: (chest: string): string => `Good to see you again · a ${chest} is waiting in the Shop`,
+    welcomeBack: (m: string, name = ''): string => `Welcome back${name ? `, ${name}` : ''} · your toll booths earned +${money(m)}`,
+    comebackChest: (chest: string, days = 0, name = ''): string =>
+      `${name ? `${name}, ` : ''}${days >= 3 ? `${days} days away · good to see you again` : 'Good to see you again'} · a ${chest} is waiting in the Shop`,
     /** The first visit after a streak ran out (Leo, 09.10.2026): said plainly, with the way to the next one. */
     streakEnded: (days: number): string => `Your ${days}-day streak ended · a new one starts with today's Daily Shift`,
     done: 'Done',
@@ -2338,6 +2339,28 @@ export const S = {
     },
     freezeLine: (days: number): string => `${days} more ${days === 1 ? 'day' : 'days'} for a Streak Freeze`,
     freezes: (n: number): string => `${n} Streak ${n === 1 ? 'Freeze' : 'Freezes'}`,
+    /** The Daily strip on the ready screen: the streak, its week, the next prize and the challenges. */
+    stripDay: 'day',
+    stripDays: 'days',
+    stripInARow: 'in a row',
+    stripStart: 'start a streak today',
+    stripRewardIn: (left: number): string => `in ${left} ${left === 1 ? 'day' : 'days'}`,
+    stripPlayToday: 'play today · +1 day',
+    stripNextDay: (hours: number): string => `next day in ${Math.max(1, Math.ceil(hours))} h`,
+    stripEndsIn: (hours: number): string => `ends in ${hours < 1 ? 'under 1 h' : `${Math.floor(hours)} h`}`,
+    allMilestones: 'All milestones',
+    perfectWeekProgress: (days: number, of: number): string => `Perfect Week ${days}/${of}`,
+    perfectWeekDone: 'Perfect Week ✓',
+    perfectWeekTitle: 'PERFECT WEEK',
+    /** What the Perfect Week brought, under its celebration. */
+    perfectWeekLine: (pay: number, cards: number): string =>
+      cards > 0 ? `+${money(Fmt.number(pay))} and a free Scratch Card` : `+${money(Fmt.number(pay))}`,
+    /** The Perfect Week's celebration (`startPlaying`): its money and, when there was room in the hand, a card. */
+    perfectWeekToast: (pay: number, cards: number): string =>
+      cards > 0 ? `PERFECT WEEK · +${money(Fmt.number(pay))} and a free Scratch Card` : `PERFECT WEEK · +${money(Fmt.number(pay))}`,
+    challengesLabel: 'Goals',
+    challengesComplete: 'Goals done',
+    challengeTitle: (n: number): string => (n === 1 ? 'CHALLENGE DONE' : `${n} CHALLENGES DONE`),
     /** The streak's sheet (tap its card under Progress → Today): what the streak brings, and that Heat lives and dies with it. */
     sheet: {
       title: 'Daily streak',
@@ -2400,6 +2423,39 @@ export const S = {
           return 'A combo of 25';
         case 'twoNearMisses':
           return '2 Near Misses in one shift';
+      }
+    },
+    /** A few words for the live challenge bar during a shift. */
+    challengeShort(c: Challenge): string {
+      switch (c) {
+        case 'perfectInputs':
+          return 'Perfect inputs';
+        case 'tightFits':
+          return 'Tight fits';
+        case 'twoTakedowns':
+          return 'Takedowns';
+        case 'twoTransporters':
+          return 'Transporters';
+        case 'longChain':
+          return 'Chain';
+        case 'bigCombo':
+          return 'Combo';
+        case 'perfectRun':
+          return 'Perfect run';
+        case 'oneTakedown':
+          return 'Takedown';
+        case 'cleanMerges':
+          return 'Clean merges';
+        case 'sixTightFits':
+          return 'Tight fits';
+        case 'fivePerfects':
+          return 'Perfect inputs';
+        case 'chainFive':
+          return 'Chain';
+        case 'hugeCombo':
+          return 'Combo';
+        case 'twoNearMisses':
+          return 'Near misses';
       }
     },
     challengeDone: (c: Challenge, reward: string): string => `CHALLENGE · ${S.daily.challenge(c)} · +${money(reward)}`,
