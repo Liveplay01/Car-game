@@ -2897,7 +2897,7 @@ export class GameSession {
           if (e.result.outcome === 'completed') {
             if (e.result.isPerfectRun) this.rim.signal('victory', 'coin', 'juiceGreen', 1);
             else this.rim.signal('victory', 'juiceGreen', 'skinMint', 0.5);
-            this.cameraFx.relieve();
+            // this.cameraFx.relieve();
           } else if (e.result.outcome === 'struckOut') {
             this.rim.signal('flush', 'destructive');
             this.sinceFatalCrash = 0;
@@ -3250,7 +3250,7 @@ export class GameSession {
     if (!this.revive || !this.world.revive(this.world.time)) return;
     this.revive = null;
     this.sinceFatalCrash = Infinity;
-    this.cameraFx.relieve();
+    // this.cameraFx.relieve();
     this.countIn = this.reduceMotion ? 0 : GameSession.countInSeconds;
     this.play(['swoosh'], ['comboUp']);
   }

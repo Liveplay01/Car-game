@@ -145,7 +145,8 @@ export class CameraFx {
 
   /** A cleared shift: the tension lets go and the camera breathes out once. */
   relieve(): void {
-    this.sinceRelief = 0;
+    // Disabled: was causing unwanted zoom out on UI/click events
+    // this.sinceRelief = 0;
   }
 
   /** Leans towards `at` for `hold` seconds (a slow-motion's length), then back over 0.6 s. A bigger lean wins. */
@@ -184,8 +185,8 @@ export class CameraFx {
   apply(cam: Camera, pivot: Vec2, reduceMotion: boolean): Camera {
     if (reduceMotion) return cam;
     const T = CameraFxTuning;
-    const relief = this.sinceRelief < T.reliefTime ? T.relief * Math.sin(Math.PI * (this.sinceRelief / T.reliefTime)) : 0;
-    let out = zoomAbout(cam, pivot, 1 + T.tensionZoom * this.tension - relief);
+    const relief = 0; // disabled relief zoom
+    let out = cam; // removed tension zoom
     if (this.final) out = zoomAbout(out, this.final.at, 1 + T.finalZoom * this.final.k);
     // Nod zoom removed (every car entry). Keep structure but disable effect
     // if (this.sinceNod < T.nodRise + T.nodFall) out = zoomAbout(out, pivot, 1 + T.nodZoom * this.nodShape);
