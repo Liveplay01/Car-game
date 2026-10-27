@@ -21,6 +21,7 @@ export async function open(format = PORTRAIT) {
     hasTouch: format.mobile,
     isMobile: format.mobile,
     colorScheme: 'dark',
+    locale: process.env.LOCALE ?? 'en-US',
   });
   const page = await ctx.newPage();
   // the fake clock from the first script on (it runs in real time until `freeze`): installed later, the game's day jumps to 0

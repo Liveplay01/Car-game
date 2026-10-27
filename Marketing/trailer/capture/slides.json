@@ -1,0 +1,12 @@
+[
+ {"name":"timing","still":"p-neon-24","title":"Tap. Merge.\nDon't crash.","sub":"One-tap timing at the roundabout.","theme":"amber","tilt":0,"ring":"c"},
+ {"name":"police","still":"p-hunt-38","title":"Outrun\nthe police.","sub":"Near misses, tight saves, wanted levels.","theme":"night","tilt":-4,"dx":30,"ring":"r"},
+ {"name":"bosses","still":"p-boss-06","title":"Take down\nthe bosses.","sub":"Armoured convoys need three cars lined up.","theme":"mint","tilt":4,"dx":-30,"ring":"l"},
+ {"name":"mayhem","still":"p-mayhem-06","title":"Or cause\nmayhem.","sub":"Real crash physics. Nothing scripted.","theme":"violet","tilt":-3,"ring":"c"},
+ {"name":"seasons","still":"p-snow-18","title":"Every season,\nnew roads.","sub":"Snow, sakura, tropics and more.","theme":"amber","tilt":3,"ring":"r"},
+ {"name":"chests","still":"m-chests","title":"Open chests,\nwin skins.","sub":"Odds always shown.","theme":"night","tilt":-4,"ring":"l"},
+ {"name":"collection","still":"m-collection","title":"Collect\nevery ride.","sub":"Skins, maps and more to find.","theme":"mint","tilt":4,"ring":"c"},
+ {"name":"builder","still":"m-builder","title":"Build your\nown streets.","sub":"Toll booths, cameras, detour signs.","theme":"violet","tilt":-3,"ring":"r"},
+ {"name":"upgrades","still":"m-upgrades","title":"Upgrade\nyour patrol.","sub":"Faster radios, more backup.","theme":"amber","tilt":3,"ring":"l"},
+ {"name":"mafia","still":"m-mafia","title":"Borrow from\nthe Family.","sub":"Time the pointer. Pay it back.","theme":"night","tilt":-4,"ring":"c"}
+]

@@ -714,9 +714,9 @@
     "semantic_hash": ""
   },
   "Web/src/main.ts": {
-    "mtime": 1793043739.9734678,
-    "seen": 1793055677.4555767,
-    "ast_hash": "33aa723cd81c36882fa638dad993f084",
+    "mtime": 1793108596.2432442,
+    "seen": 1793108631.038653,
+    "ast_hash": "c4195b218ab19a297b0c4599386d132b",
     "semantic_hash": ""
   },
   "Web/src/net/challengeLink.ts": {
@@ -1020,8 +1020,8 @@
     "semantic_hash": ""
   },
   "Web/src/present/lang/de/p5.ts": {
-    "mtime": 1792937597.782329,
-    "seen": 1792938229.7556095,
+    "mtime": 1793108596.2458076,
+    "seen": 1793108631.038653,
     "ast_hash": "54314efe788f6032c006f9b186c2be19",
     "semantic_hash": ""
   },
@@ -1068,8 +1068,8 @@
     "semantic_hash": ""
   },
   "Web/src/present/lang/es/p5.ts": {
-    "mtime": 1792937597.784589,
-    "seen": 1792938229.7556095,
+    "mtime": 1793108596.2472942,
+    "seen": 1793108631.038653,
     "ast_hash": "cfca9ede02c15e71f6a8e90c8d6af725",
     "semantic_hash": ""
   },
@@ -1116,8 +1116,8 @@
     "semantic_hash": ""
   },
   "Web/src/present/lang/fr/p5.ts": {
-    "mtime": 1792937597.7866082,
-    "seen": 1792938229.7556095,
+    "mtime": 1793108596.2513547,
+    "seen": 1793108631.038653,
     "ast_hash": "580fd35f507926bd39f06370a58704e5",
     "semantic_hash": ""
   },
@@ -1164,8 +1164,8 @@
     "semantic_hash": ""
   },
   "Web/src/present/lang/it/p5.ts": {
-    "mtime": 1792937597.7876604,
-    "seen": 1792938229.7556095,
+    "mtime": 1793108596.253531,
+    "seen": 1793108631.038653,
     "ast_hash": "d0d977a3d66e73114ad4b185a59b5631",
     "semantic_hash": ""
   },
@@ -1212,8 +1212,8 @@
     "semantic_hash": ""
   },
   "Web/src/present/lang/ja/p5.ts": {
-    "mtime": 1792937597.7900033,
-    "seen": 1792938229.7556095,
+    "mtime": 1793108596.2553809,
+    "seen": 1793108631.038653,
     "ast_hash": "7c0f5fc9c719ea3231479238fb40b00d",
     "semantic_hash": ""
   },
@@ -1260,8 +1260,8 @@
     "semantic_hash": ""
   },
   "Web/src/present/lang/ko/p5.ts": {
-    "mtime": 1792937597.7917688,
-    "seen": 1792938229.7561326,
+    "mtime": 1793108596.258015,
+    "seen": 1793108631.038653,
     "ast_hash": "2474ea7007b7b8178165d61736164282",
     "semantic_hash": ""
   },
@@ -1308,8 +1308,8 @@
     "semantic_hash": ""
   },
   "Web/src/present/lang/zh/p5.ts": {
-    "mtime": 1792937597.79359,
-    "seen": 1792938229.7561326,
+    "mtime": 1793108596.260034,
+    "seen": 1793108631.038653,
     "ast_hash": "4c995d4a3e22cc6bbd5f35f6a5454d0b",
     "semantic_hash": ""
   },
@@ -1428,8 +1428,8 @@
     "semantic_hash": "ad6fb39b455e8646d559227bb23dc156"
   },
   "Web/src/present/patchNotes.ts": {
-    "mtime": 1793101691.8914225,
-    "seen": 1793101818.942689,
+    "mtime": 1793108596.2644293,
+    "seen": 1793108631.038653,
     "ast_hash": "8160552908084a5ab7e222a3b84efcbe",
     "semantic_hash": ""
   },
@@ -1482,9 +1482,9 @@
     "semantic_hash": "cc264b7544ca254e6183e42d35daa8e0"
   },
   "Web/src/present/session.ts": {
-    "mtime": 1793095082.094048,
-    "seen": 1793099939.952708,
-    "ast_hash": "d28d3d002124a847fbba63a9f1308c02",
+    "mtime": 1793108596.2691998,
+    "seen": 1793108631.039183,
+    "ast_hash": "d3771fdc290860f44b64bbe6ef42df01",
     "semantic_hash": ""
   },
   "Web/src/present/shop.ts": {
@@ -1548,9 +1548,9 @@
     "semantic_hash": "4694b25587a83e0a5d1b1ba67ccbeff5"
   },
   "Web/src/present/strings.ts": {
-    "mtime": 1793056232.2015455,
-    "seen": 1793061619.7066417,
-    "ast_hash": "e902e65b7018ce548ea35b3acc20b74e",
+    "mtime": 1793108596.2730708,
+    "seen": 1793108631.039183,
+    "ast_hash": "06e05969f1f3f350a17dacab87c146e9",
     "semantic_hash": ""
   },
   "Web/src/present/svg.ts": {
@@ -1782,8 +1782,8 @@
     "semantic_hash": ""
   },
   "Web/src/ui/shell.ts": {
-    "mtime": 1793097318.2804885,
-    "seen": 1793099939.952708,
+    "mtime": 1793108596.2766285,
+    "seen": 1793108631.039183,
     "ast_hash": "5719717071539c3ac157761e4c14dd7a",
     "semantic_hash": ""
   },
@@ -1854,10 +1854,10 @@
     "semantic_hash": "74d058d516e560c73fbc0ebe80e19a8c"
   },
   "Marketing/trailer/capture/lib.mjs": {
-    "mtime": 1791753445.0994585,
-    "seen": 1792654999.814189,
-    "ast_hash": "0d0b1ee84a88a6493ee0ee530d0f8b2c",
-    "semantic_hash": "0d0b1ee84a88a6493ee0ee530d0f8b2c"
+    "mtime": 1793103086.6599674,
+    "seen": 1793108192.7815616,
+    "ast_hash": "7ae9c2501d2570e895e9526529b4f88f",
+    "semantic_hash": ""
   },
   "Marketing/trailer/capture/play.mjs": {
     "mtime": 1791814112.848063,
@@ -2694,8 +2694,8 @@
     "semantic_hash": ""
   },
   "Web/index.html": {
-    "mtime": 1792938786.6063495,
-    "seen": 1792938901.8892868,
+    "mtime": 1793108596.2405193,
+    "seen": 1793108631.0398397,
     "ast_hash": "53f75523013d32dcafb269ec254fd9eb",
     "semantic_hash": ""
   },
@@ -2835,12 +2835,6 @@
     "mtime": 1791464536.9987333,
     "seen": 1792659884.0938137,
     "ast_hash": "224512036f1b04e5f56d6c41f75912e6",
-    "semantic_hash": ""
-  },
-  ".playwright-mcp/page-2026-10-12T19-56-00-834Z.png": {
-    "mtime": 1792787863.5219364,
-    "seen": 1792789922.5301125,
-    "ast_hash": "30d180143fe89dbf2c32f25850413d3b",
     "semantic_hash": ""
   },
   "Marketing/covers-v2/roundabout-timing-feature-graphic-1024x500.png": {
@@ -3987,6 +3981,900 @@
     "mtime": 1793101653.142166,
     "seen": 1793101818.9436944,
     "ast_hash": "67f8bf26c0b16d43f56274a182c4a2e3",
+    "semantic_hash": ""
+  },
+  "Marketing/trailer/capture/stills.mjs": {
+    "mtime": 1793103096.3242135,
+    "seen": 1793108192.7815616,
+    "ast_hash": "829db4e9fee05521e55de0d10b1728e8",
+    "semantic_hash": ""
+  },
+  "Marketing/trailer/stills/m-daily.png": {
+    "mtime": 1793103139.8597093,
+    "seen": 1793108192.7820575,
+    "ast_hash": "f3d45a7320ee81c0482dae3ee0906316",
+    "semantic_hash": ""
+  },
+  "Marketing/trailer/stills/m-goals.png": {
+    "mtime": 1793103163.014688,
+    "seen": 1793108192.7820575,
+    "ast_hash": "700148e12bb954ff4a107ebf317e451f",
+    "semantic_hash": ""
+  },
+  "Marketing/trailer/stills/m-ready.png": {
+    "mtime": 1793103119.0578475,
+    "seen": 1793108192.7820575,
+    "ast_hash": "cc533b8bf0f22b239f11d12a32b45977",
+    "semantic_hash": ""
+  },
+  "Marketing/trailer/capture/compose-stills.mjs": {
+    "mtime": 1793104229.221307,
+    "seen": 1793108192.7815616,
+    "ast_hash": "ba0100d0548746a8485786d868bea8bb",
+    "semantic_hash": ""
+  },
+  "Marketing/trailer/capture/feature-graphic.mjs": {
+    "mtime": 1793104963.2556283,
+    "seen": 1793108192.7815616,
+    "ast_hash": "57118a77a7f9ab6e3bf549379cb2a6d6",
+    "semantic_hash": ""
+  },
+  "Marketing/trailer/capture/sheet.py": {
+    "mtime": 1793103072.7682445,
+    "seen": 1793108192.7815616,
+    "ast_hash": "1b0bdafa7048b870e595397628c86e74",
+    "semantic_hash": ""
+  },
+  "Marketing/trailer/capture/slides.json": {
+    "mtime": 1793104199.127419,
+    "seen": 1793108192.7815616,
+    "ast_hash": "2321ff19177b0d392544a878e940aadb",
+    "semantic_hash": ""
+  },
+  "Marketing/trailer/compose/cuts/promo-play.mjs": {
+    "mtime": 1793105007.6438162,
+    "seen": 1793108192.7815616,
+    "ast_hash": "01cdd43af5b40fd1e689b7598752e19b",
+    "semantic_hash": ""
+  },
+  "Marketing/store-screenshots/roundabout-timing-feature-graphic-1024x500.png": {
+    "mtime": 1793104964.5003557,
+    "seen": 1793108192.7820575,
+    "ast_hash": "719180505e49231b13dced929377faf5",
+    "semantic_hash": ""
+  },
+  "Marketing/store-screenshots/roundabout-timing-store-1-timing.png": {
+    "mtime": 1793104230.6869678,
+    "seen": 1793108192.7820575,
+    "ast_hash": "c5f0571635436ac9842b37873bbbc12d",
+    "semantic_hash": ""
+  },
+  "Marketing/store-screenshots/roundabout-timing-store-10-mafia.png": {
+    "mtime": 1793104232.8485675,
+    "seen": 1793108192.7820575,
+    "ast_hash": "07c7719268709c3961908c0376db705e",
+    "semantic_hash": ""
+  },
+  "Marketing/store-screenshots/roundabout-timing-store-2-police.png": {
+    "mtime": 1793104230.9785903,
+    "seen": 1793108192.7820575,
+    "ast_hash": "a4629c50e4af313939a5586167da0536",
+    "semantic_hash": ""
+  },
+  "Marketing/store-screenshots/roundabout-timing-store-3-bosses.png": {
+    "mtime": 1793104231.262755,
+    "seen": 1793108192.7820575,
+    "ast_hash": "9ff5a15564bc3212c507bc0df04d523b",
+    "semantic_hash": ""
+  },
+  "Marketing/store-screenshots/roundabout-timing-store-4-mayhem.png": {
+    "mtime": 1793104231.5265067,
+    "seen": 1793108192.7820575,
+    "ast_hash": "2cac022e2cdb29381f6451ddffa989ef",
+    "semantic_hash": ""
+  },
+  "Marketing/store-screenshots/roundabout-timing-store-5-seasons.png": {
+    "mtime": 1793104231.7937434,
+    "seen": 1793108192.7820575,
+    "ast_hash": "0fbe8eff26907c628b066afaa1ac319b",
+    "semantic_hash": ""
+  },
+  "Marketing/store-screenshots/roundabout-timing-store-6-chests.png": {
+    "mtime": 1793104231.959163,
+    "seen": 1793108192.7820575,
+    "ast_hash": "ba6d24dccbe3d0941e84f9a605cd6e3f",
+    "semantic_hash": ""
+  },
+  "Marketing/store-screenshots/roundabout-timing-store-7-collection.png": {
+    "mtime": 1793104232.1519852,
+    "seen": 1793108192.7820575,
+    "ast_hash": "395fa12b0fa42d8b474c25f00ea5ee17",
+    "semantic_hash": ""
+  },
+  "Marketing/store-screenshots/roundabout-timing-store-8-builder.png": {
+    "mtime": 1793104232.3681307,
+    "seen": 1793108192.7820575,
+    "ast_hash": "32f98fd545242005b36b0808b5088fb0",
+    "semantic_hash": ""
+  },
+  "Marketing/store-screenshots/roundabout-timing-store-9-upgrades.png": {
+    "mtime": 1793104232.5228379,
+    "seen": 1793108192.7820575,
+    "ast_hash": "77319f1855929ba8c9a28532846ff53f",
+    "semantic_hash": ""
+  },
+  "Marketing/trailer/stills/m-builder.png": {
+    "mtime": 1793103349.2058442,
+    "seen": 1793108192.7820575,
+    "ast_hash": "289fd1035c6f048a320df93c2bb89a1a",
+    "semantic_hash": ""
+  },
+  "Marketing/trailer/stills/m-casino.png": {
+    "mtime": 1793103269.3698003,
+    "seen": 1793108192.7820575,
+    "ast_hash": "7728f6b87d373d051fd961bcefb5e2bd",
+    "semantic_hash": ""
+  },
+  "Marketing/trailer/stills/m-chests.png": {
+    "mtime": 1793103226.4929633,
+    "seen": 1793108192.7820575,
+    "ast_hash": "55932c0d680731ff750b1b7aecd9bc86",
+    "semantic_hash": ""
+  },
+  "Marketing/trailer/stills/m-club.png": {
+    "mtime": 1793103409.8575497,
+    "seen": 1793108192.7820575,
+    "ast_hash": "57bb199983829e0500054c4fd3035d14",
+    "semantic_hash": ""
+  },
+  "Marketing/trailer/stills/m-collection.png": {
+    "mtime": 1793103247.6929417,
+    "seen": 1793108192.7820575,
+    "ast_hash": "4907ca3a9f7339bbee33f1dd40b27c64",
+    "semantic_hash": ""
+  },
+  "Marketing/trailer/stills/m-crew.png": {
+    "mtime": 1793103390.5312924,
+    "seen": 1793108192.7820575,
+    "ast_hash": "092f1f34bd52961261ebf45ddbc8b75f",
+    "semantic_hash": ""
+  },
+  "Marketing/trailer/stills/m-mafia.png": {
+    "mtime": 1793103429.8414207,
+    "seen": 1793108192.7820575,
+    "ast_hash": "e3ba13550756d0ddd03d7e6f97d21d9b",
+    "semantic_hash": ""
+  },
+  "Marketing/trailer/stills/m-museum.png": {
+    "mtime": 1793103205.569619,
+    "seen": 1793108192.7820575,
+    "ast_hash": "a95afd4adce8644cce9a1acad6484800",
+    "semantic_hash": ""
+  },
+  "Marketing/trailer/stills/m-ranks.png": {
+    "mtime": 1793103370.2738533,
+    "seen": 1793108192.7820575,
+    "ast_hash": "c7d21c54bff8d440cec9b6ffdb38b35e",
+    "semantic_hash": ""
+  },
+  "Marketing/trailer/stills/m-stats.png": {
+    "mtime": 1793103184.6868198,
+    "seen": 1793108192.7820575,
+    "ast_hash": "535c102134eb53a34320b05000c4147e",
+    "semantic_hash": ""
+  },
+  "Marketing/trailer/stills/m-upgrades.png": {
+    "mtime": 1793103291.433423,
+    "seen": 1793108192.7820575,
+    "ast_hash": "9cd26fb233d629789fd6c1c18a5df75e",
+    "semantic_hash": ""
+  },
+  "Marketing/trailer/stills/p-boss-02.png": {
+    "mtime": 1793103793.9637198,
+    "seen": 1793108192.7820575,
+    "ast_hash": "9c27d48ff7ca57901208611454168733",
+    "semantic_hash": ""
+  },
+  "Marketing/trailer/stills/p-boss-04.png": {
+    "mtime": 1793103799.4908946,
+    "seen": 1793108192.7820575,
+    "ast_hash": "d197da5fd29e0ca6168f272a6afc6a2f",
+    "semantic_hash": ""
+  },
+  "Marketing/trailer/stills/p-boss-06.png": {
+    "mtime": 1793103806.6906953,
+    "seen": 1793108192.7820575,
+    "ast_hash": "bce29e4ee2d44cd89a19ded305de4080",
+    "semantic_hash": ""
+  },
+  "Marketing/trailer/stills/p-boss-08.png": {
+    "mtime": 1793103813.241232,
+    "seen": 1793108192.7820575,
+    "ast_hash": "2b91c308b64aa0101f8c0843ce475e69",
+    "semantic_hash": ""
+  },
+  "Marketing/trailer/stills/p-boss-10.png": {
+    "mtime": 1793103820.639173,
+    "seen": 1793108192.7820575,
+    "ast_hash": "fee520959930b37e6af75f77e9317ba7",
+    "semantic_hash": ""
+  },
+  "Marketing/trailer/stills/p-boss-12.png": {
+    "mtime": 1793103829.2711728,
+    "seen": 1793108192.7820575,
+    "ast_hash": "ede11abc2ab5f2d84cfd63efe494ef38",
+    "semantic_hash": ""
+  },
+  "Marketing/trailer/stills/p-boss-14.png": {
+    "mtime": 1793103836.5686083,
+    "seen": 1793108192.7820575,
+    "ast_hash": "58cd78c3fdc95d1d77b9975471b5d59c",
+    "semantic_hash": ""
+  },
+  "Marketing/trailer/stills/p-boss-16.png": {
+    "mtime": 1793103842.7301185,
+    "seen": 1793108192.7820575,
+    "ast_hash": "2b3a7a6ffca2a976bb625a4a6bf192e7",
+    "semantic_hash": ""
+  },
+  "Marketing/trailer/stills/p-boss-18.png": {
+    "mtime": 1793103848.9703386,
+    "seen": 1793108192.7820575,
+    "ast_hash": "558ea26cde4ab073a072678a478dcd02",
+    "semantic_hash": ""
+  },
+  "Marketing/trailer/stills/p-boss-20.png": {
+    "mtime": 1793103855.3277366,
+    "seen": 1793108192.7820575,
+    "ast_hash": "e4ebd914e673067f027d3021129c88bc",
+    "semantic_hash": ""
+  },
+  "Marketing/trailer/stills/p-boss-22.png": {
+    "mtime": 1793103861.8649974,
+    "seen": 1793108192.7820575,
+    "ast_hash": "6dd1a585e671061ddf6006bb0d25735d",
+    "semantic_hash": ""
+  },
+  "Marketing/trailer/stills/p-boss-24.png": {
+    "mtime": 1793103867.8022366,
+    "seen": 1793108192.7820575,
+    "ast_hash": "5c54b008380c545e4b56d0abcc4e51db",
+    "semantic_hash": ""
+  },
+  "Marketing/trailer/stills/p-boss-26.png": {
+    "mtime": 1793103872.6805747,
+    "seen": 1793108192.7820575,
+    "ast_hash": "6db4042e8c46da18fbee7edd8cdf63d9",
+    "semantic_hash": ""
+  },
+  "Marketing/trailer/stills/p-boss-28.png": {
+    "mtime": 1793103877.6027713,
+    "seen": 1793108192.7820575,
+    "ast_hash": "754fdee134099dd6892d27bdbf8af677",
+    "semantic_hash": ""
+  },
+  "Marketing/trailer/stills/p-boss-30.png": {
+    "mtime": 1793103882.1513307,
+    "seen": 1793108192.7820575,
+    "ast_hash": "8f35d697e6c72f4adef37d3c1768435e",
+    "semantic_hash": ""
+  },
+  "Marketing/trailer/stills/p-boss-32.png": {
+    "mtime": 1793103887.2844849,
+    "seen": 1793108192.7820575,
+    "ast_hash": "97dbf3554bf8fdad8c944f45bf499a0f",
+    "semantic_hash": ""
+  },
+  "Marketing/trailer/stills/p-boss-34.png": {
+    "mtime": 1793103892.0846198,
+    "seen": 1793108192.7820575,
+    "ast_hash": "c65da264d9a728f1bbc2195495e15883",
+    "semantic_hash": ""
+  },
+  "Marketing/trailer/stills/p-boss-36.png": {
+    "mtime": 1793103896.7257836,
+    "seen": 1793108192.7820575,
+    "ast_hash": "ed3f366571075f356e0dcd86058588cc",
+    "semantic_hash": ""
+  },
+  "Marketing/trailer/stills/p-crash-02.png": {
+    "mtime": 1793103917.1235824,
+    "seen": 1793108192.7820575,
+    "ast_hash": "d0153b1651652edb082c33d40f70bc20",
+    "semantic_hash": ""
+  },
+  "Marketing/trailer/stills/p-crash-04.png": {
+    "mtime": 1793103924.0203059,
+    "seen": 1793108192.7820575,
+    "ast_hash": "2255d423f6cdc08bbf5f9db99423d389",
+    "semantic_hash": ""
+  },
+  "Marketing/trailer/stills/p-crash-06.png": {
+    "mtime": 1793103930.74775,
+    "seen": 1793108192.7820575,
+    "ast_hash": "aaec48f7c4205917737275d61dc4b24b",
+    "semantic_hash": ""
+  },
+  "Marketing/trailer/stills/p-crash-08.png": {
+    "mtime": 1793103936.5664566,
+    "seen": 1793108192.7820575,
+    "ast_hash": "f96567335a79dbdb71e61d60b5b73579",
+    "semantic_hash": ""
+  },
+  "Marketing/trailer/stills/p-crash-10.png": {
+    "mtime": 1793103942.3974988,
+    "seen": 1793108192.7820575,
+    "ast_hash": "1bbf5c9d84be0ec82b16050b34e6ee27",
+    "semantic_hash": ""
+  },
+  "Marketing/trailer/stills/p-crash-12.png": {
+    "mtime": 1793103948.302387,
+    "seen": 1793108192.7820575,
+    "ast_hash": "a25a97b002ca198d6d2b913bbd05cdc5",
+    "semantic_hash": ""
+  },
+  "Marketing/trailer/stills/p-crash-14.png": {
+    "mtime": 1793103954.3059335,
+    "seen": 1793108192.7820575,
+    "ast_hash": "f2f25a4cbe711bf0016b6d1e86932b16",
+    "semantic_hash": ""
+  },
+  "Marketing/trailer/stills/p-crash-16.png": {
+    "mtime": 1793103960.0233676,
+    "seen": 1793108192.7820575,
+    "ast_hash": "58a2649683f7ff0ea850291ca57fe6c1",
+    "semantic_hash": ""
+  },
+  "Marketing/trailer/stills/p-crash-18.png": {
+    "mtime": 1793103963.9148755,
+    "seen": 1793108192.7820575,
+    "ast_hash": "480ae26ba43be78c3a1ce40251480cb3",
+    "semantic_hash": ""
+  },
+  "Marketing/trailer/stills/p-crash-20.png": {
+    "mtime": 1793103967.967638,
+    "seen": 1793108192.7820575,
+    "ast_hash": "cc590659de55c4312cde7ffbed87ea42",
+    "semantic_hash": ""
+  },
+  "Marketing/trailer/stills/p-crash-22.png": {
+    "mtime": 1793103971.8876307,
+    "seen": 1793108192.7820575,
+    "ast_hash": "ea518c4cfc358184ea0d49a7f2f1f873",
+    "semantic_hash": ""
+  },
+  "Marketing/trailer/stills/p-hunt-02.png": {
+    "mtime": 1793103676.1136415,
+    "seen": 1793108192.7820575,
+    "ast_hash": "aea6bf46be0d68528063e7b3525d4978",
+    "semantic_hash": ""
+  },
+  "Marketing/trailer/stills/p-hunt-04.png": {
+    "mtime": 1793103680.9880035,
+    "seen": 1793108192.7820575,
+    "ast_hash": "c58a402327dc6743b0ad9838e1b5cf82",
+    "semantic_hash": ""
+  },
+  "Marketing/trailer/stills/p-hunt-06.png": {
+    "mtime": 1793103685.0584402,
+    "seen": 1793108192.7820575,
+    "ast_hash": "9ef1d5b70c7629272daccce0537ec2ad",
+    "semantic_hash": ""
+  },
+  "Marketing/trailer/stills/p-hunt-08.png": {
+    "mtime": 1793103688.868838,
+    "seen": 1793108192.7820575,
+    "ast_hash": "70ab1b3e37e586e4cdc261cbc4f9987a",
+    "semantic_hash": ""
+  },
+  "Marketing/trailer/stills/p-hunt-10.png": {
+    "mtime": 1793103693.079464,
+    "seen": 1793108192.7820575,
+    "ast_hash": "1d8400dbfb3e957959df7a912c624a71",
+    "semantic_hash": ""
+  },
+  "Marketing/trailer/stills/p-hunt-12.png": {
+    "mtime": 1793103698.9990427,
+    "seen": 1793108192.7820575,
+    "ast_hash": "7af03017a3b124bbf3623fe3bbf4b902",
+    "semantic_hash": ""
+  },
+  "Marketing/trailer/stills/p-hunt-14.png": {
+    "mtime": 1793103703.8178027,
+    "seen": 1793108192.7820575,
+    "ast_hash": "00926735ef8749ec48c534df7c5d5010",
+    "semantic_hash": ""
+  },
+  "Marketing/trailer/stills/p-hunt-16.png": {
+    "mtime": 1793103708.531229,
+    "seen": 1793108192.7820575,
+    "ast_hash": "fb43735e39a05848afac085d72d6723e",
+    "semantic_hash": ""
+  },
+  "Marketing/trailer/stills/p-hunt-18.png": {
+    "mtime": 1793103712.9329576,
+    "seen": 1793108192.7820575,
+    "ast_hash": "5e7dfee3e6621f5cacf95813a6961407",
+    "semantic_hash": ""
+  },
+  "Marketing/trailer/stills/p-hunt-20.png": {
+    "mtime": 1793103717.597332,
+    "seen": 1793108192.7820575,
+    "ast_hash": "1cbd72f95638b6a06cacb32db80b4f86",
+    "semantic_hash": ""
+  },
+  "Marketing/trailer/stills/p-hunt-22.png": {
+    "mtime": 1793103722.116135,
+    "seen": 1793108192.7820575,
+    "ast_hash": "0dc7b148dd5fc0810a8fb62fa0445987",
+    "semantic_hash": ""
+  },
+  "Marketing/trailer/stills/p-hunt-24.png": {
+    "mtime": 1793103726.9572718,
+    "seen": 1793108192.7820575,
+    "ast_hash": "b1f974506b453f1c22f54fbc681b480d",
+    "semantic_hash": ""
+  },
+  "Marketing/trailer/stills/p-hunt-26.png": {
+    "mtime": 1793103732.26946,
+    "seen": 1793108192.7820575,
+    "ast_hash": "d2e34ecf13c60c33847d44dbe1ad22a8",
+    "semantic_hash": ""
+  },
+  "Marketing/trailer/stills/p-hunt-28.png": {
+    "mtime": 1793103736.4850438,
+    "seen": 1793108192.7820575,
+    "ast_hash": "0c4d299aa82d161f7579cad05d04ce2a",
+    "semantic_hash": ""
+  },
+  "Marketing/trailer/stills/p-hunt-30.png": {
+    "mtime": 1793103740.7321048,
+    "seen": 1793108192.7820575,
+    "ast_hash": "a8a0bc78bc67746588fc76ceac772b8c",
+    "semantic_hash": ""
+  },
+  "Marketing/trailer/stills/p-hunt-32.png": {
+    "mtime": 1793103745.020787,
+    "seen": 1793108192.7820575,
+    "ast_hash": "0591041b7770ef3e3804a46babddca5c",
+    "semantic_hash": ""
+  },
+  "Marketing/trailer/stills/p-hunt-34.png": {
+    "mtime": 1793103749.312266,
+    "seen": 1793108192.7820575,
+    "ast_hash": "00dcb73dde13dbf5778da907224bb36e",
+    "semantic_hash": ""
+  },
+  "Marketing/trailer/stills/p-hunt-36.png": {
+    "mtime": 1793103753.5840926,
+    "seen": 1793108192.7820575,
+    "ast_hash": "da2acd5d4dde25fe94e5d699e92a28e2",
+    "semantic_hash": ""
+  },
+  "Marketing/trailer/stills/p-hunt-38.png": {
+    "mtime": 1793103758.2139833,
+    "seen": 1793108192.7820575,
+    "ast_hash": "7919f6dfec84164f2c080a061e841855",
+    "semantic_hash": ""
+  },
+  "Marketing/trailer/stills/p-hunt-40.png": {
+    "mtime": 1793103763.0229292,
+    "seen": 1793108192.7820575,
+    "ast_hash": "4dc7b454fe50caaa4ad76f2955abe4cc",
+    "semantic_hash": ""
+  },
+  "Marketing/trailer/stills/p-hunt-42.png": {
+    "mtime": 1793103767.6935425,
+    "seen": 1793108192.7820575,
+    "ast_hash": "d74dab205fb8ec0fab7953107ef7c060",
+    "semantic_hash": ""
+  },
+  "Marketing/trailer/stills/p-hunt-44.png": {
+    "mtime": 1793103772.2841074,
+    "seen": 1793108192.7820575,
+    "ast_hash": "345eb9626545b71c271c55b2c7e231ba",
+    "semantic_hash": ""
+  },
+  "Marketing/trailer/stills/p-mayhem-02.png": {
+    "mtime": 1793103989.944464,
+    "seen": 1793108192.7820575,
+    "ast_hash": "866e60dc2be427766841d99395868803",
+    "semantic_hash": ""
+  },
+  "Marketing/trailer/stills/p-mayhem-04.png": {
+    "mtime": 1793103993.1459105,
+    "seen": 1793108192.7820575,
+    "ast_hash": "018294764665bcd02e19eeb7075edb73",
+    "semantic_hash": ""
+  },
+  "Marketing/trailer/stills/p-mayhem-06.png": {
+    "mtime": 1793103996.7023442,
+    "seen": 1793108192.7820575,
+    "ast_hash": "f9cdc72f65e8228c391c5e2a0e1c7f8d",
+    "semantic_hash": ""
+  },
+  "Marketing/trailer/stills/p-mayhem-08.png": {
+    "mtime": 1793103999.9909139,
+    "seen": 1793108192.7820575,
+    "ast_hash": "706c717e3f27d70cb712c609bab6113b",
+    "semantic_hash": ""
+  },
+  "Marketing/trailer/stills/p-mayhem-10.png": {
+    "mtime": 1793104003.1620748,
+    "seen": 1793108192.7820575,
+    "ast_hash": "690d0a6c3829238d8b5b998f81b4a6a7",
+    "semantic_hash": ""
+  },
+  "Marketing/trailer/stills/p-mayhem-12.png": {
+    "mtime": 1793104006.2614431,
+    "seen": 1793108192.7820575,
+    "ast_hash": "7e32ff3cb92d7ea2f657bee94f795799",
+    "semantic_hash": ""
+  },
+  "Marketing/trailer/stills/p-mayhem-14.png": {
+    "mtime": 1793104009.7086864,
+    "seen": 1793108192.7820575,
+    "ast_hash": "2549c5f23fd8d94cf65ce3a21b7d00de",
+    "semantic_hash": ""
+  },
+  "Marketing/trailer/stills/p-mayhem-16.png": {
+    "mtime": 1793104013.0849092,
+    "seen": 1793108192.7820575,
+    "ast_hash": "42b04056afed41235288b22c9a004109",
+    "semantic_hash": ""
+  },
+  "Marketing/trailer/stills/p-mayhem-18.png": {
+    "mtime": 1793104018.9562814,
+    "seen": 1793108192.7820575,
+    "ast_hash": "554faad73e0e1958416d83272c9d3f1c",
+    "semantic_hash": ""
+  },
+  "Marketing/trailer/stills/p-mayhem-20.png": {
+    "mtime": 1793104023.0432477,
+    "seen": 1793108192.7820575,
+    "ast_hash": "90b45a614955ab08233e0cc8f2996029",
+    "semantic_hash": ""
+  },
+  "Marketing/trailer/stills/p-mayhem-22.png": {
+    "mtime": 1793104027.0220695,
+    "seen": 1793108192.7820575,
+    "ast_hash": "67ffe943c01ead559958ff3bbc86bf77",
+    "semantic_hash": ""
+  },
+  "Marketing/trailer/stills/p-mayhem-24.png": {
+    "mtime": 1793104030.94795,
+    "seen": 1793108192.7820575,
+    "ast_hash": "4f5b2d83cc4e891ba5529b79f2d434a5",
+    "semantic_hash": ""
+  },
+  "Marketing/trailer/stills/p-mayhem-26.png": {
+    "mtime": 1793104034.9014108,
+    "seen": 1793108192.7820575,
+    "ast_hash": "3425e3537bf0916ea1e2e3550b3dee7c",
+    "semantic_hash": ""
+  },
+  "Marketing/trailer/stills/p-mayhem-28.png": {
+    "mtime": 1793104039.4718072,
+    "seen": 1793108192.7820575,
+    "ast_hash": "4cedc346ee5e6ad5b2544ea794a56ab1",
+    "semantic_hash": ""
+  },
+  "Marketing/trailer/stills/p-mayhem-30.png": {
+    "mtime": 1793104043.354781,
+    "seen": 1793108192.7820575,
+    "ast_hash": "28559a555b561ccab4f002ca56615e64",
+    "semantic_hash": ""
+  },
+  "Marketing/trailer/stills/p-mayhem-32.png": {
+    "mtime": 1793104047.9643548,
+    "seen": 1793108192.7825537,
+    "ast_hash": "410d5df3fec20c83a958503e0cc872d1",
+    "semantic_hash": ""
+  },
+  "Marketing/trailer/stills/p-mayhem-34.png": {
+    "mtime": 1793104051.8478692,
+    "seen": 1793108192.7825537,
+    "ast_hash": "607fc02fb6dae9d0c5de7fb6dabbb7a6",
+    "semantic_hash": ""
+  },
+  "Marketing/trailer/stills/p-neon-02.png": {
+    "mtime": 1793103448.24894,
+    "seen": 1793108192.7825537,
+    "ast_hash": "baf1f05fd35d28fa7f80c56ac1a4f6e3",
+    "semantic_hash": ""
+  },
+  "Marketing/trailer/stills/p-neon-04.png": {
+    "mtime": 1793103451.5038705,
+    "seen": 1793108192.7825537,
+    "ast_hash": "4978c480cda1eb3427221aaafc80777d",
+    "semantic_hash": ""
+  },
+  "Marketing/trailer/stills/p-neon-06.png": {
+    "mtime": 1793103455.1863766,
+    "seen": 1793108192.7825537,
+    "ast_hash": "f55d0b19173eb6cf2f2b85ce6ecfcfd5",
+    "semantic_hash": ""
+  },
+  "Marketing/trailer/stills/p-neon-08.png": {
+    "mtime": 1793103459.5639825,
+    "seen": 1793108192.7825537,
+    "ast_hash": "6b5490123ed192a9678fe77bdfe6926c",
+    "semantic_hash": ""
+  },
+  "Marketing/trailer/stills/p-neon-10.png": {
+    "mtime": 1793103464.8484828,
+    "seen": 1793108192.7825537,
+    "ast_hash": "dea03fdde192791796474c8f91827911",
+    "semantic_hash": ""
+  },
+  "Marketing/trailer/stills/p-neon-12.png": {
+    "mtime": 1793103469.3509872,
+    "seen": 1793108192.7825537,
+    "ast_hash": "5140757b953410925a042a27bde29df6",
+    "semantic_hash": ""
+  },
+  "Marketing/trailer/stills/p-neon-14.png": {
+    "mtime": 1793103473.7576518,
+    "seen": 1793108192.7825537,
+    "ast_hash": "268d621d740299599103b8b45fae0703",
+    "semantic_hash": ""
+  },
+  "Marketing/trailer/stills/p-neon-16.png": {
+    "mtime": 1793103477.6195354,
+    "seen": 1793108192.7825537,
+    "ast_hash": "115b30ae10ec20b24137006394abca1a",
+    "semantic_hash": ""
+  },
+  "Marketing/trailer/stills/p-neon-18.png": {
+    "mtime": 1793103481.363237,
+    "seen": 1793108192.7825537,
+    "ast_hash": "f4059e9158814b632d8a1981689c0e6c",
+    "semantic_hash": ""
+  },
+  "Marketing/trailer/stills/p-neon-20.png": {
+    "mtime": 1793103485.3124554,
+    "seen": 1793108192.7825537,
+    "ast_hash": "868a8d15f714ea8cb79cbb1532b9ceb5",
+    "semantic_hash": ""
+  },
+  "Marketing/trailer/stills/p-neon-22.png": {
+    "mtime": 1793103489.6158814,
+    "seen": 1793108192.7825537,
+    "ast_hash": "e4b89de721c39584f31e613623b35ef8",
+    "semantic_hash": ""
+  },
+  "Marketing/trailer/stills/p-neon-24.png": {
+    "mtime": 1793103494.0061636,
+    "seen": 1793108192.7825537,
+    "ast_hash": "8ba3161a5d7983e13301745595607998",
+    "semantic_hash": ""
+  },
+  "Marketing/trailer/stills/p-neon-26.png": {
+    "mtime": 1793103499.0970814,
+    "seen": 1793108192.7825537,
+    "ast_hash": "611303e90c072b3334f22e6c9ccd16ff",
+    "semantic_hash": ""
+  },
+  "Marketing/trailer/stills/p-sakura-02.png": {
+    "mtime": 1793103520.6815348,
+    "seen": 1793108192.7825537,
+    "ast_hash": "58137ff32559c9f9484f85e84bf4f592",
+    "semantic_hash": ""
+  },
+  "Marketing/trailer/stills/p-sakura-04.png": {
+    "mtime": 1793103526.949795,
+    "seen": 1793108192.7825537,
+    "ast_hash": "c5326ffb95e99b768a01615d5e374e16",
+    "semantic_hash": ""
+  },
+  "Marketing/trailer/stills/p-sakura-06.png": {
+    "mtime": 1793103533.4451442,
+    "seen": 1793108192.7825537,
+    "ast_hash": "94996ebfe4eb55e52c38b680ad5c5437",
+    "semantic_hash": ""
+  },
+  "Marketing/trailer/stills/p-sakura-08.png": {
+    "mtime": 1793103540.094601,
+    "seen": 1793108192.7825537,
+    "ast_hash": "89e24b590a180f0d9412168a7dc43ab2",
+    "semantic_hash": ""
+  },
+  "Marketing/trailer/stills/p-sakura-10.png": {
+    "mtime": 1793103547.1538484,
+    "seen": 1793108192.7825537,
+    "ast_hash": "62a31a5ad297b3bde0e632bef35ee5f8",
+    "semantic_hash": ""
+  },
+  "Marketing/trailer/stills/p-sakura-12.png": {
+    "mtime": 1793103553.769438,
+    "seen": 1793108192.7825537,
+    "ast_hash": "f9799ccea38e160ce75ea5596db36386",
+    "semantic_hash": ""
+  },
+  "Marketing/trailer/stills/p-sakura-14.png": {
+    "mtime": 1793103560.8235981,
+    "seen": 1793108192.7825537,
+    "ast_hash": "ec07b8ce0ed817b1482d2e7477ed456f",
+    "semantic_hash": ""
+  },
+  "Marketing/trailer/stills/p-sakura-16.png": {
+    "mtime": 1793103567.696237,
+    "seen": 1793108192.7825537,
+    "ast_hash": "786c8cd0298d49e899e4e75d70ebb138",
+    "semantic_hash": ""
+  },
+  "Marketing/trailer/stills/p-sakura-18.png": {
+    "mtime": 1793103574.5986676,
+    "seen": 1793108192.7825537,
+    "ast_hash": "c1c305502478bf181fb58f02a7ffcac9",
+    "semantic_hash": ""
+  },
+  "Marketing/trailer/stills/p-sakura-20.png": {
+    "mtime": 1793103581.0348935,
+    "seen": 1793108192.7825537,
+    "ast_hash": "94e8487cf18dcd9290e611126f095767",
+    "semantic_hash": ""
+  },
+  "Marketing/trailer/stills/p-sakura-22.png": {
+    "mtime": 1793103585.1355016,
+    "seen": 1793108192.7825537,
+    "ast_hash": "9f4c3a616410caf7d2d22cb1d0eaea1b",
+    "semantic_hash": ""
+  },
+  "Marketing/trailer/stills/p-sakura-24.png": {
+    "mtime": 1793103589.5434391,
+    "seen": 1793108192.7825537,
+    "ast_hash": "5942d4000e9396848faab8b9abfe94a5",
+    "semantic_hash": ""
+  },
+  "Marketing/trailer/stills/p-snow-02.png": {
+    "mtime": 1793103608.9504085,
+    "seen": 1793108192.7825537,
+    "ast_hash": "653a70c60c13d3b771aa34779e210e5f",
+    "semantic_hash": ""
+  },
+  "Marketing/trailer/stills/p-snow-04.png": {
+    "mtime": 1793103612.345662,
+    "seen": 1793108192.7825537,
+    "ast_hash": "49cebd31bb1651d657ad97f2933a1e63",
+    "semantic_hash": ""
+  },
+  "Marketing/trailer/stills/p-snow-06.png": {
+    "mtime": 1793103615.6395023,
+    "seen": 1793108192.7825537,
+    "ast_hash": "f52176255dd97c3cb1aa7e38dedb07b9",
+    "semantic_hash": ""
+  },
+  "Marketing/trailer/stills/p-snow-08.png": {
+    "mtime": 1793103619.3830154,
+    "seen": 1793108192.7825537,
+    "ast_hash": "9a5c10f76d1b4e4f8a56f246a82cbf8e",
+    "semantic_hash": ""
+  },
+  "Marketing/trailer/stills/p-snow-10.png": {
+    "mtime": 1793103624.3954067,
+    "seen": 1793108192.7825537,
+    "ast_hash": "148af539c46a043b5f241744be892524",
+    "semantic_hash": ""
+  },
+  "Marketing/trailer/stills/p-snow-12.png": {
+    "mtime": 1793103629.272194,
+    "seen": 1793108192.7825537,
+    "ast_hash": "d445d279b2d2ff87b7985110b01ff134",
+    "semantic_hash": ""
+  },
+  "Marketing/trailer/stills/p-snow-14.png": {
+    "mtime": 1793103633.5021715,
+    "seen": 1793108192.7825537,
+    "ast_hash": "c3b26b4d5d06cca0544c8701f37457bd",
+    "semantic_hash": ""
+  },
+  "Marketing/trailer/stills/p-snow-16.png": {
+    "mtime": 1793103637.794069,
+    "seen": 1793108192.7825537,
+    "ast_hash": "ee7479f003e6d205ca00915b62fed47a",
+    "semantic_hash": ""
+  },
+  "Marketing/trailer/stills/p-snow-18.png": {
+    "mtime": 1793103641.9879801,
+    "seen": 1793108192.7825537,
+    "ast_hash": "4dc3c32ca7280a106f4ff9c7d35e7234",
+    "semantic_hash": ""
+  },
+  "Marketing/trailer/stills/p-snow-20.png": {
+    "mtime": 1793103646.4253154,
+    "seen": 1793108192.7825537,
+    "ast_hash": "37466edec3f1e2d114213eca314cc2e1",
+    "semantic_hash": ""
+  },
+  "Marketing/trailer/stills/p-snow-22.png": {
+    "mtime": 1793103651.0125308,
+    "seen": 1793108192.7825537,
+    "ast_hash": "5c4f24bb373ca945a4fe53306b79858e",
+    "semantic_hash": ""
+  },
+  "Marketing/trailer/stills/p-snow-24.png": {
+    "mtime": 1793103655.6375,
+    "seen": 1793108192.7825537,
+    "ast_hash": "4548906dc0e1d643adefe854490eb45a",
+    "semantic_hash": ""
+  },
+  "Marketing/trailer/stills/p-tropic-02.png": {
+    "mtime": 1793104070.8057346,
+    "seen": 1793108192.7825537,
+    "ast_hash": "4f9bddca71b0200dd35584aa41500fbe",
+    "semantic_hash": ""
+  },
+  "Marketing/trailer/stills/p-tropic-04.png": {
+    "mtime": 1793104074.4636564,
+    "seen": 1793108192.7825537,
+    "ast_hash": "f5fb99e4447c1d7122400f348dba8746",
+    "semantic_hash": ""
+  },
+  "Marketing/trailer/stills/p-tropic-06.png": {
+    "mtime": 1793104078.1601026,
+    "seen": 1793108192.7825537,
+    "ast_hash": "5ac2ea355dd1d990b3aabf4243c413c3",
+    "semantic_hash": ""
+  },
+  "Marketing/trailer/stills/p-tropic-08.png": {
+    "mtime": 1793104082.7755723,
+    "seen": 1793108192.7825537,
+    "ast_hash": "68b2f1d42fee5aca4facb949fd53604f",
+    "semantic_hash": ""
+  },
+  "Marketing/trailer/stills/p-tropic-10.png": {
+    "mtime": 1793104087.9657993,
+    "seen": 1793108192.7825537,
+    "ast_hash": "4347316b3e5500b7177e14e0e1b32f10",
+    "semantic_hash": ""
+  },
+  "Marketing/trailer/stills/p-tropic-12.png": {
+    "mtime": 1793104092.4653833,
+    "seen": 1793108192.7825537,
+    "ast_hash": "477aa2f2e4569553c5d843483c9307b1",
+    "semantic_hash": ""
+  },
+  "Marketing/trailer/stills/p-tropic-14.png": {
+    "mtime": 1793104096.8392265,
+    "seen": 1793108192.7825537,
+    "ast_hash": "ec456963e33a9a50970c05d7161a502a",
+    "semantic_hash": ""
+  },
+  "Marketing/trailer/stills/p-tropic-16.png": {
+    "mtime": 1793104101.089359,
+    "seen": 1793108192.7825537,
+    "ast_hash": "572b2b3df53cc4f4e9bf603e17f58d37",
+    "semantic_hash": ""
+  },
+  "Marketing/trailer/stills/p-tropic-18.png": {
+    "mtime": 1793104105.3701813,
+    "seen": 1793108192.7825537,
+    "ast_hash": "02eb341080899796b461d0f9d977d5c2",
+    "semantic_hash": ""
+  },
+  "Marketing/trailer/stills/p-tropic-20.png": {
+    "mtime": 1793104109.5725765,
+    "seen": 1793108192.7825537,
+    "ast_hash": "cf7329e5ba35aa7b25c76af623e67863",
+    "semantic_hash": ""
+  },
+  "Marketing/trailer/stills/p-tropic-22.png": {
+    "mtime": 1793104113.8436496,
+    "seen": 1793108192.7825537,
+    "ast_hash": "747027983377fac98792484d838bbf2c",
+    "semantic_hash": ""
+  },
+  "Marketing/trailer/stills/p-tropic-24.png": {
+    "mtime": 1793104118.3417487,
+    "seen": 1793108192.7825537,
+    "ast_hash": "35af2c34e4e81a226f428acaa469566b",
+    "semantic_hash": ""
+  },
+  "Marketing/videos/roundabout-timing-promo-play-landscape-20s.mp4": {
+    "mtime": 1793105204.2136943,
+    "seen": 1793108192.7825537,
+    "ast_hash": "02221b2c8134efd09a47a4da046ae35f",
     "semantic_hash": ""
   }
 }

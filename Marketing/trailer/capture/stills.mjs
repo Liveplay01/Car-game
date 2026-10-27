@@ -6,9 +6,14 @@ import { join } from 'node:path';
 
 const OUT = join(ROOT, 'stills');
 
+const extras = (save, mods, a) => {
+  if (a.armSlots) save.career.armSlots = a.armSlots;
+  if (a.upgrades) save.career.upgrades = a.upgrades;
+};
+
 const session = async (args, { mode = 'shift', bot = false } = {}) => {
   const s = await open(PORTRAIT);
-  await boot(s, stage, args, { mode });
+  await boot(s, [stage, extras], args, { mode });
   if (bot) await installBot(s);
   await freeze(s);
   const clip = { x: 0, y: 0, width: PORTRAIT.w, height: PORTRAIT.h, scale: PORTRAIT.dpr };
@@ -30,7 +35,23 @@ const MENUS = {
   collection: { level: 52, go: ({ s }) => perform(s, { k: 'showShop', section: 1 }) },
   casino: { level: 25, go: ({ s }) => perform(s, { k: 'showShop', section: 2 }) },
   upgrades: { level: 25, go: ({ s }) => perform(s, { k: 'showTab', tab: 'upgrades' }) },
-  builder: { level: 52, go: ({ s }) => perform(s, { k: 'showTab', tab: 'streetBuilder' }) },
+  builder: {
+    level: 52,
+    armSlots: [0, 4, 8, 12],
+    upgrades: {},
+    go: async ({ s, adv }) => {
+      await perform(s, { k: 'showTab', tab: 'streetBuilder' });
+      await adv(1.4);
+      for (const [part, slot] of [['arm', 2], ['arm', 6], ['arm', 10], ['tollBooth', 0], ['speedCamera', 4], ['billboard', 8]]) {
+        await perform(s, { k: 'pickUpPart', part });
+        await adv(0.5);
+        await perform(s, { k: 'placePart', slot });
+        await adv(0.7);
+        await perform(s, { k: 'buildPart' });
+        await adv(1.4);
+      }
+    },
+  },
   ranks: { level: 52, go: ({ s }) => perform(s, { k: 'showSocial', section: 0 }) },
   crew: { level: 52, go: ({ s }) => perform(s, { k: 'showSocial', section: 1 }) },
   club: { level: 52, go: ({ s }) => perform(s, { k: 'showSocial', section: 2 }) },
@@ -52,7 +73,7 @@ const PLAYS = [
 const what = process.argv[2] ?? 'all';
 if (what === 'menus' || what === 'all') {
   for (const [name, m] of Object.entries(MENUS)) {
-    const k = await session({ level: m.level, map: m.map ?? null });
+    const k = await session({ level: m.level, map: m.map ?? null, armSlots: m.armSlots, upgrades: m.upgrades });
     await k.adv(1);
     await m.go(k);
     await k.adv(2);
