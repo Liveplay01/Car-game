@@ -24,7 +24,7 @@ export const HOSTING = {
   location: 'Germany',
 };
 
-export const LEGAL_UPDATED = '25 October 2026';
+export const LEGAL_UPDATED = '27 October 2026';
 
 export const GAME_NAME = 'Roundabout Timing';
 
@@ -93,7 +93,7 @@ export const LEGAL_DOCS: LegalDoc[] = [
       {
         heading: 'Visit statistics (Umami)',
         paragraphs: [
-          'On game.gustaff.dev (not on CrazyGames or itch.io) the game counts visits with Umami, which we run ourselves at analytics.kestrel.nrw. It sets no cookie and stores nothing on your device. It records the page, the referring site, your browser, system and screen size and your country, and a few game steps: the tutorial done, each shift played with its mode, level and whether it was won, and, on each start, whether you have played before and roughly how many days it has been since your last visit and since your first one (in steps such as 1, 2-3 or 4-7 days, worked out in your browser from your progress; no date is sent), whether the game was opened in a browser tab, as an installed app or in the Play app, the game version, whether you answered the notification offer or installed the game, and, when an ad offer is shown or tapped, which reward it was (free chest, a streak back, a Freeze, doubled pay) and whether the ad was watched, when you open the Today page of Progress and whether the Daily still waits then, and, when the game goes into the background after a shift, where you were, how the last shift went, how long you played in rough steps (such as 3-5 shifts or 6-10 minutes), the tab you spent most time on, the last ad step and a rough mood worked out in your browser (new, stuck, in a run of wins, or steady). Whether you tend to stop right after a loss is worked out and kept on your device; only a yes or no goes out with that step. There is no ID, no name and no progress in it, and your IP address is not stored; a visit cannot be tied to you or to another visit.',
+          'On game.timing.love (not on CrazyGames or itch.io) the game counts visits with Umami, which we run ourselves at analytics.kestrel.nrw. It sets no cookie and stores nothing on your device. It records the page, the referring site, your browser, system and screen size and your country, and a few game steps: the tutorial done, each shift played with its mode, level and whether it was won, and, on each start, whether you have played before and roughly how many days it has been since your last visit and since your first one (in steps such as 1, 2-3 or 4-7 days, worked out in your browser from your progress; no date is sent), whether the game was opened in a browser tab, as an installed app or in the Play app, the game version, whether you answered the notification offer or installed the game, and, when an ad offer is shown or tapped, which reward it was (free chest, a streak back, a Freeze, doubled pay) and whether the ad was watched, when you open the Today page of Progress and whether the Daily still waits then, and, when the game goes into the background after a shift, where you were, how the last shift went, how long you played in rough steps (such as 3-5 shifts or 6-10 minutes), the tab you spent most time on, the last ad step and a rough mood worked out in your browser (new, stuck, in a run of wins, or steady). Whether you tend to stop right after a loss is worked out and kept on your device; only a yes or no goes out with that step. There is no ID, no name and no progress in it, and your IP address is not stored; a visit cannot be tied to you or to another visit.',
           'We use it to see where new players give up and to balance the game. Legal basis: Art. 6(1)(f) GDPR (our legitimate interest in improving the game). Nothing is sent when your browser says Do Not Track.',
         ],
       },
@@ -188,7 +188,7 @@ export const LEGAL_DOCS: LegalDoc[] = [
       {
         heading: 'Ads (Google AdSense)',
         paragraphs: [
-          'On game.gustaff.dev (not on CrazyGames) Google AdSense may show ads. For that, your browser loads scripts from Google and sends it your IP address, your browser and device data and the page you are on. Google, and the advertisers it works with, may set or read cookies and similar identifiers on your device to choose and measure ads, to prevent fraud and, with your consent, to personalise ads. Google may process data in the USA; Google is certified under the EU-US Data Privacy Framework.',
+          'On game.timing.love (not on CrazyGames) Google AdSense may show ads. For that, your browser loads scripts from Google and sends it your IP address, your browser and device data and the page you are on. Google, and the advertisers it works with, may set or read cookies and similar identifiers on your device to choose and measure ads, to prevent fraud and, with your consent, to personalise ads. Google may process data in the USA; Google is certified under the EU-US Data Privacy Framework.',
           'The ads are voluntary. The game shows an ad only when you tap "Watch ad" for a reward you can see before you tap: a free chest, a free upgrade step or a boost on the Skin Upgrade. Nothing plays by itself, and nothing in the game depends on watching one. You get the reward only when the ad was watched to the end. Not on CrazyGames.',
           'If you are in the European Economic Area or the United Kingdom, a consent message from Google asks you first. Without your consent, only the ads that need no personal data are possible, or none at all. Legal basis: your consent, Art. 6(1)(a) GDPR and § 25(1) TDDDG. You can change your choice at any time with the privacy settings link of the consent message, or by clearing the site data in your browser.',
         ],
@@ -198,14 +198,14 @@ export const LEGAL_DOCS: LegalDoc[] = [
       {
         heading: 'The Google Play app',
         paragraphs: [
-          'The app from Google Play opens this same game at game.gustaff.dev in Chrome (or another browser on your phone), full screen. Everything in this policy applies to it the same way, including the ads; the app itself collects nothing more. Google (Google Ireland Limited) delivers the app and its updates; its privacy policy applies to Google Play.',
+          'The app from Google Play opens this same game at game.timing.love in Chrome (or another browser on your phone), full screen. Everything in this policy applies to it the same way, including the ads; the app itself collects nothing more. Google (Google Ireland Limited) delivers the app and its updates; its privacy policy applies to Google Play.',
         ],
         link: ['Google Privacy Policy', 'https://policies.google.com/privacy'],
       },
       {
         heading: 'Deleting your data',
         paragraphs: [
-          "You have no account with us: your progress lives on your device. Deleting the game's data in your browser, or uninstalling the app and clearing Chrome's data for game.gustaff.dev, removes it from your device.",
+          "You have no account with us: your progress lives on your device. Deleting the game's data in your browser, or uninstalling the app and clearing Chrome's data for game.timing.love, removes it from your device.",
           'What our server keeps exists only if you chose it, and you can delete it yourself in the game at any time: everything at once with Settings → Account → Delete account; your notifications with Settings → Notifications; or your name, scores, friend code and crew membership with Settings → Account → Your player → Remove me from the leaderboard; your cloud copy with Settings → Account → Cloud sync → Delete the cloud copy. Both are gone for good at once. If you can no longer open the game, write to the email address above with your name on the leaderboard or your sync code, and we delete it within 30 days.',
         ],
       },

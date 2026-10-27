@@ -1,7 +1,7 @@
 # Neuer Play-Store-Build
 
 Sammelliste für den nächsten Build der Android-App (Trusted Web Activity, Paket
-`dev.gustaff.roundabout`). Die App ist nur eine Hülle um `https://game.gustaff.dev/?googleplaystore`:
+`dev.gustaff.roundabout`). Die App ist nur eine Hülle um `https://game.timing.love/?googleplaystore`:
 **jedes Web-Deployment ist sofort in der App**, ohne neuen Build. Einen neuen Build braucht es nur, wenn
 sich die Hülle ändert. Solche Punkte sammeln sich hier, gebaut wird, wenn genug zusammengekommen ist.
 
@@ -32,7 +32,7 @@ sie nur an, wenn der Wrapper sie an Android weiterreicht.
 
 ### 2. Crew-Links öffnen die App (seit 18.10.2026)
 
-Der Einladungslink einer Crew liegt auf der Adresse des Spiels (`https://game.gustaff.dev/k/CODE?by=…`), damit
+Der Einladungslink einer Crew liegt auf der Adresse des Spiels (`https://game.timing.love/k/CODE?by=…`), damit
 Android ihn der App gibt statt dem Browser. Der Wrapper verknüpft den ganzen Host (`assetlinks.json`); trotzdem prüfen:
 
 - [ ] Im Wrapper (Manifest der Android-App): der Intent-Filter mit `autoVerify` deckt den Pfad `/k/` ab (`pathPrefix="/"`,
@@ -60,6 +60,20 @@ Shortcuts per Langdruck als Icon auf den Homescreen ziehen.
 - [ ] Beim Bauen: PWABuilder liest das Manifest neu (Web vorher deployt), bei Bubblewrap `bubblewrap update`
       mit frischem Manifest, damit der vierte Eintrag in der App landet.
 - [ ] Testen: Langdruck auf das App-Icon zeigt vier Einträge, „Ranks“ öffnet Social → Ranks.
+
+### 5. Neue Adresse game.timing.love (seit 27.10.2026)
+
+Die App öffnet ab diesem Build `https://game.timing.love/?googleplaystore` statt `game.gustaff.dev`. `assetlinks.json`
+liegt dort schon (gleiche Fingerabdrücke). Folgen, die kein Code lösen kann:
+
+- **Spielstand liegt pro Adresse.** Wer die alte App-Version mit Fortschritt hat, startet nach dem Update bei null.
+  Vorher in der alten App Cloud-Sync einschalten und den Sync-Code notieren, dann in der neuen App „Restore“.
+- Push-Abos hängen an der Adresse: Notifications müssen einmal neu eingeschaltet werden.
+- Coolify, Server-Dienst: `CORS_ORIGINS` und `GAME_URL` um `https://game.timing.love` ergänzen (die alte Adresse
+  vorerst behalten), sonst blockt der Browser die Ranglisten-Anfragen und Einladungslinks zeigen auf die alte Adresse.
+- AdSense: `timing.love` unter Sites eintragen, `https://timing.love/ads.txt` muss die Publisher-Zeile haben.
+- Umami: Website-Domain prüfen, falls dort eine Domain eingetragen ist.
+- Die alte Adresse nicht abschalten, sondern auf `game.timing.love` weiterleiten (Pfad und Query behalten).
 
 ### Texte für den Release (Vorschlag)
 
@@ -91,7 +105,7 @@ Made to be played by everyone: Reduce Motion (follows your system setting), Larg
 
 ### Mit PWABuilder
 
-1. https://www.pwabuilder.com öffnen, `https://game.gustaff.dev` eingeben, *Package for stores* → **Android**.
+1. https://www.pwabuilder.com öffnen, `https://game.timing.love` eingeben, *Package for stores* → **Android**.
 2. Optionen prüfen bzw. setzen:
    - Package ID: `dev.gustaff.roundabout` (nie ändern)
    - App name / Short name: Roundabout Timing / RAT

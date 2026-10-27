@@ -1,5 +1,5 @@
 /**
- * Umami (self-hosted at analytics.kestrel.nrw) for `game.gustaff.dev`: page views and a few
+ * Umami (self-hosted at analytics.kestrel.nrw) for `game.timing.love`: page views and a few
  * funnel events, with no cookie, no ID and no personal data. Like the ads it loads once the game
  * is on screen, only in the production build on the normal address (also the Google Play app),
  * never on a portal and never when the browser says Do Not Track. The game runs the same without

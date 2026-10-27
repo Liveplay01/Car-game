@@ -1,5 +1,5 @@
 /**
- * Google AdSense for `game.gustaff.dev`. The tag loads once the game is on screen, so it never
+ * Google AdSense for `game.timing.love`. The tag loads once the game is on screen, so it never
  * delays the first tap, and only in the production build on the normal address (also the Google
  * Play app, which opens it): never on CrazyGames (`?crazygames`, they run their own ads) and never
  * while developing. The consent message for the EEA and the UK is the one published in AdSense

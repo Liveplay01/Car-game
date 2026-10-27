@@ -455,7 +455,7 @@ Test locally: `npm run build`, serve `dist/` without the CSP and open `/?crazyga
 ## itch.io
 
 The itch.io page holds one file: `itch/index.html`, a full-screen iframe on
-`https://game.gustaff.dev/?itch`. No separate build: every deploy reaches itch.io at once.
+`https://game.timing.love/?itch`. No separate build: every deploy reaches itch.io at once.
 `npm run itch` packs it into `itch/roundabout-timing-itch.zip` (only needed if the address or the
 iframe changes). Upload it as *Kind of project: HTML*, tick *This file will be played in the
 browser*, a portrait viewport (e.g. 480 × 854) and *Fullscreen button*.
@@ -470,7 +470,7 @@ nested frame (partitioned per itch.io; Safari may clear it), which is what cloud
 ## Google Play
 
 The Play Store app is a Trusted Web Activity (made with PWABuilder or Bubblewrap): a small
-Android wrapper that opens `https://game.gustaff.dev/?googleplaystore` in Chrome, full screen.
+Android wrapper that opens `https://game.timing.love/?googleplaystore` in Chrome, full screen.
 No separate build: every deploy reaches the app at once, and it shares save, offline mode and
 service worker with the browser game. `inPlayStore` (`src/storage/device.ts`) recognises the app
 by the query or Chrome's `android-app://` referrer and keeps that for the tab; the app shows no
@@ -483,7 +483,7 @@ The query gets the default Content-Security-Policy.
   the upload key. Without it the app shows an address bar. nginx answers a missing file with a 404,
   never `index.html`. After a deploy, check with Google's Statement List tester; Cloudflare's bot
   protection must let Google's fetcher through.
-- **Deleting data** (Data safety form): `https://game.gustaff.dev/privacy` → "Deleting your data".
+- **Deleting data** (Data safety form): `https://game.timing.love/privacy` → "Deleting your data".
 - `iarc_rating_id` goes into the manifest once Play has issued the rating.
 - **A new wrapper build** (wrapper options, name, icon, manifest `shortcuts`, a permission) is collected
   in [NEW-PLAYSTORE-BUILD.md](../NEW-PLAYSTORE-BUILD.md), with the steps to build and release it. First on
@@ -523,8 +523,8 @@ manifest shortcuts copied at build time) still require a new Play Store build. S
 never on `?crazygames`. `index.html` carries the `google-adsense-account` meta tag (site
 verification, sends nothing). The default Content-Security-Policy in `nginx.conf` lets the tag,
 the ad frames and the consent message through; the CrazyGames policy stays closed to them.
-`ads.txt` belongs on the root domain (`https://gustaff.dev/ads.txt`, the portfolio's project),
-not in this repo; it covers `game.gustaff.dev`. The consent message (EEA/UK) is set up in
+`ads.txt` belongs on the root domain (`https://timing.love/ads.txt`, the website's project),
+not in this repo; it covers `game.timing.love`. The site must also be in AdSense → Sites. The consent message (EEA/UK) is set up in
 AdSense under Privacy & messaging. Auto ads (and which formats) are also set there: no anchor
 or full-screen formats on this site, a tap on the scene must never hit an ad.
 

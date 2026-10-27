@@ -2067,7 +2067,7 @@ test('a save keeps its Boss Rush record and the landmark, and drops what it does
 });
 
 test('the lobby QR code encodes the invite link in a proper square', () => {
-  const link = 'https://game.gustaff.dev/#join=4821';
+  const link = 'https://game.timing.love/#join=4821';
   const qr = qrcode(0, 'M');
   qr.addData(link);
   qr.make();
