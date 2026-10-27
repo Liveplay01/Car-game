@@ -38,14 +38,14 @@ const sameItem = (a: RenderItem, b: RenderItem): boolean => a.color === b.color 
  * The scene underneath never moves, and neither does what both screens share.
  */
 export class ScreenTransition {
-  static readonly duration = 0.42;
-  static readonly fadeIn = 0.2;
-  static readonly fadeOut = 0.16;
+  static readonly duration = 0.38;
+  static readonly fadeIn = 0.18;
+  static readonly fadeOut = 0.14;
   /** Starting a shift: the waiting screen leaves slower and evenly, with the buttons beside it (Leo, 12.10.2026). */
-  static readonly startFadeOut = 0.32;
-  static readonly tabSlide = 28;
-  static readonly tabSlideOut = 16;
-  static readonly rise = 16;
+  static readonly startFadeOut = 0.28;
+  static readonly tabSlide = 26;
+  static readonly tabSlideOut = 14;
+  static readonly rise = 14;
 
   outgoing: RenderItem[];
   age = 0;

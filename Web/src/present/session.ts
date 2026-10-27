@@ -62,6 +62,7 @@ import { markPassed, markReward } from '../core/tiers';
 import { forHeat, heatPay } from '../core/heat';
 import { conditionChips, ConditionChips, FailChip, streakEndsIn, hoursToMidnight, addNotice, noticePresence, NoticeIsland } from './readyScreen';
 import { Briefings, type Brief } from './briefing';
+import { newPlayerMoment } from './moments';
 
 export type { SpecialRun } from './specialRuns';
 import { ProgressPage, ProgressState, type ProgressTarget } from './progress';
@@ -3328,7 +3329,7 @@ export class GameSession {
           count: booked.challenges.reduce((n, ch) => n + challengeReward(ch, Careers.reach(career)), 0),
         }
       : null;
-    this.resultBurst = this.momentOf(result, levelBefore) ?? this.resultBurst ?? museumBurst ?? challengeBurst;
+    this.resultBurst = newPlayerMoment(career, this.playingMode, this.playingDaily, result.outcome, levelBefore, this.config) ?? this.resultBurst ?? museumBurst ?? challengeBurst;
     this.dailyShare =
       this.playingDaily && result.outcome === 'completed'
         ? S.run.dailyShare(Fmt.number(result.score), result.perfects, result.tightFits, career.dailyStreak)
@@ -3362,19 +3363,6 @@ export class GameSession {
     }
     const names = shelves.map((shelf) => S.museum.shelf(shelf)).join(' · ');
     return { kind: 'museum', title: S.museum.shelfDoneTitle, line: S.museum.shelfDoneLine(names), color: 'coin', power: 1.4 };
-  }
-
-  /**
-   * The few moments the game is about (Leo, 16.10.2026) get the loudest celebration: the first shift won, Level 5 cleared
-   * and a streak milestone (set when the Daily starts, `startPlaying`). Nothing else gets one, or none would stand out.
-   */
-  private momentOf(result: ShiftResult, levelBefore: number): Burst | null {
-    if (this.playingMode !== 'shift' || this.playingDaily || result.outcome !== 'completed') return null;
-    const level = this.save.career.level;
-    if (levelBefore < this.config.welcomeChestLevel && level >= this.config.welcomeChestLevel) return { kind: 'firstWin', title: S.moments.firstWin, line: S.moments.firstWinLine, color: 'accent', power: 1.4 };
-    const cap = this.config.modeHintAfterLevel;
-    if (levelBefore <= cap && level > cap) return { kind: 'levelFive', title: S.moments.levelFive(cap), line: S.moments.levelFiveLine, color: 'coin', power: 1.5 };
-    return null;
   }
 
   /** A lost shift puts the way it was lost on show in the Museum; the last one missing pays the Failures skin. */

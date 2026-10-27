@@ -134,11 +134,11 @@ export const MenuKit = {
     }
   },
 
-  /** 0 → 1 for the `index`-th item coming in: 40 ms apart, 250 ms each, ease-out. */
-  stagger: (age: number, index: number): number => Ease.outCubic((age - 0.04 * index) / 0.25),
-  staggerSpring: (age: number, index: number): number => Ease.settle((age - 0.04 * index) / 0.45),
-  /** Offset and scale of a card coming in: 14 points below, 94 %. */
-  cardEnter: (spring: number): { rise: number; scale: number } => ({ rise: (1 - spring) * 14, scale: 0.94 + 0.06 * spring }),
+  /** 0 → 1 for the `index`-th item coming in: 32 ms apart, 220 ms each, ease-out. */
+  stagger: (age: number, index: number): number => Ease.outCubic((age - 0.032 * index) / 0.22),
+  staggerSpring: (age: number, index: number): number => Ease.settle((age - 0.032 * index) / 0.4),
+  /** Offset and scale of a card coming in: 12 points below, 95 %. */
+  cardEnter: (spring: number): { rise: number; scale: number } => ({ rise: (1 - spring) * 12, scale: 0.95 + 0.05 * spring }),
 
   chromePill(list: RenderList, center: Vec2, size: Vec2, opacity: number, tint: ColorToken | null = null): void {
     MenuKit.chromePanel(list, R.make(center.x - size.x / 2, center.y - size.y / 2, center.x + size.x / 2, center.y + size.y / 2), size.y / 2, opacity, tint);

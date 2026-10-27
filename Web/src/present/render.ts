@@ -402,7 +402,13 @@ export const Ease = {
   spring(x: number): number {
     if (x <= 0) return 0;
     if (x >= 1) return 1;
-    return 1 - Math.exp(-6 * x) * Math.cos(x * 10);
+    return 1 - Math.exp(-7 * x) * Math.cos(x * 9);
+  },
+  /** A snappier spring with a touch of bounce for playful UI. */
+  springy(x: number): number {
+    if (x <= 0) return 0;
+    if (x >= 1) return 1;
+    return 1 - Math.exp(-8 * x) * Math.cos(x * 7.5) * 0.9;
   },
   /** A critically damped spring (Apple's default): glides into place, no overshoot. */
   settle(x: number): number {

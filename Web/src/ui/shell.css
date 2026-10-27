@@ -205,6 +205,13 @@ button {
   height: 100%;
   display: block;
   touch-action: none;
+  will-change: transform;
+  transform-origin: center center;
+  transition: transform 90ms var(--ease-out);
+}
+
+.scene.pressed {
+  transform: scale(0.97);
 }
 
 /* The whole play field is the tap zone (FOUNDATION.md: buttons excluded). */
@@ -242,11 +249,12 @@ button {
   border-radius: 50%;
   display: grid;
   place-items: center;
-  transition: transform 160ms var(--ease-out), background-color 160ms ease;
+  transition: transform 140ms var(--ease-out), background-color 140ms ease;
 }
 
 .icon-btn:active {
   transform: scale(0.94);
+  transition-duration: 70ms;
 }
 
 .icon-btn svg {
@@ -713,13 +721,13 @@ a.row-link {
   background: var(--surface-3);
   color: var(--primary);
   box-shadow: var(--edge);
-  transition: transform 340ms var(--ease-back), background-color 160ms ease, opacity 160ms ease;
+  transition: transform 280ms var(--ease-back), background-color 140ms ease, opacity 140ms ease;
   font-variant-numeric: tabular-nums;
 }
 
 .btn:active:not(:disabled) {
-  transform: translateY(1px) scale(0.965);
-  transition-duration: 70ms, 160ms, 160ms;
+  transform: translateY(1px) scale(0.97);
+  transition-duration: 70ms, 120ms, 120ms;
   transition-timing-function: var(--ease-out), ease, ease;
 }
 

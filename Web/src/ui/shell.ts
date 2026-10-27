@@ -595,7 +595,6 @@ export class Shell {
       last = now;
       for (const k of ['x', 'y'] as const) {
         const a = 1 - Math.exp(-stiffness * dt);
-        const b = 1 - Math.exp(-damping * dt);
         speed[k] = speed[k] * Math.exp(-damping * dt) + (goal[k] - at[k]) * a * (stiffness / Math.max(1e-6, damping));
         at[k] += speed[k] * dt;
       }
@@ -879,7 +878,7 @@ export class Shell {
     // Only while the game is new to the player, and only where a thumb plays.
     const fresh = touchFirst && !match && s.special === null && s.save.shiftsPlayed < GameSession.tapHintShifts;
     this.tapHint.classList.toggle('show', fresh && screen.k === 'playing');
-    this.dispatchHint.classList.toggle('show', touchFirst && !match && !s.save.settings.leftHanded && screen.k === 'playing' && s.world.config.dispatchLimit > 0 && s.save.career.level <= baseConfig.policeLevel + 1);
+    this.dispatchHint.classList.toggle('show', touchFirst && !match && !s.save.settings.leftHanded && screen.k === 'playing' && s.world.config.dispatchLimit > 0 && s.save.career.prestige === 0 && s.save.career.level <= baseConfig.policeLevel + 1);
     const mods = match ? [] : s.modifiers;
     this.showMods(mods);
     this.mods.classList.toggle('show', onGame && mods.length > 0);
@@ -1475,12 +1474,15 @@ export class Shell {
       if (isSheetOpen() || this.photo.isOpen) return;
       if (this.versus.match) {
         e.preventDefault();
+        canvas.classList.add('pressed');
+        window.setTimeout(() => canvas.classList.remove('pressed'), 140);
         this.versus.match.tap();
         return;
       }
       if (this.pointerId !== null) return;
       if (inSystemGestureZone(e)) return;
       e.preventDefault();
+      canvas.classList.add('pressed');
       this.pointerId = e.pointerId;
       try {
         canvas.setPointerCapture(e.pointerId);
@@ -1500,10 +1502,16 @@ export class Shell {
     const up = (e: PointerEvent): void => {
       if (e.pointerId !== this.pointerId) return;
       this.pointerId = null;
+      canvas.classList.remove('pressed');
       this.push({ k: 'pointerUp', p: this.toViewport(e) });
     };
     canvas.addEventListener('pointerup', up);
-    canvas.addEventListener('pointercancel', up);
+    canvas.addEventListener('pointercancel', (e) => {
+      if (e.pointerId !== this.pointerId) return;
+      this.pointerId = null;
+      canvas.classList.remove('pressed');
+      this.push({ k: 'pointerUp', p: this.toViewport(e) });
+    });
     canvas.addEventListener('contextmenu', (e) => e.preventDefault());
     canvas.addEventListener(
       'wheel',

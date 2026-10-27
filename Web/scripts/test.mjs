@@ -38,6 +38,7 @@ const { Briefings, briefOf } = await load('/src/present/briefing.ts');
 const { Details } = await load('/src/present/detail.ts');
 const { conditionChips, ConditionChips } = await load('/src/present/readyScreen.ts');
 const { bookShift } = await load('/src/present/booking.ts');
+const { newPlayerMoment } = await load('/src/present/moments.ts');
 const { S, Fmt } = await load('/src/present/strings.ts');
 const { Unlocks } = await load('/src/core/unlocks.ts');
 const { sightings, shelfEntries, museumId, shelfComplete, completedShelves } = await load('/src/core/museum.ts');
@@ -437,6 +438,21 @@ test('the first level cleared gives one welcome chest, and only then', () => {
   assert.ok(!welcome(1, 0, 1));
   assert.ok(!welcome(2, 1, 1));
   assert.ok(!bookShift(save, completed(2), context(2)).news.some((n) => /chest/i.test(n)), 'a chest found is not announced');
+});
+
+test('a Prestige never brings the new-player moments back', () => {
+  const moment = (level, levelBefore, prestige = 0, mode = 'shift', daily = false, outcome = 'completed') => {
+    const c = newCareer();
+    Object.assign(c, { level, prestige });
+    return newPlayerMoment(c, mode, daily, outcome, levelBefore, baseConfig)?.kind ?? null;
+  };
+  assert.equal(moment(2, 1), 'firstWin');
+  assert.equal(moment(7, 6), 'levelFive');
+  assert.equal(moment(2, 1, 1), null, 'not the first-shift moment again');
+  assert.equal(moment(7, 6, 1), null, 'not the Level 6 moment again');
+  assert.equal(moment(2, 1, 0, 'unlimited'), null, 'moments only on career shifts');
+  assert.equal(moment(2, 1, 0, 'shift', true), null, 'not on the Daily');
+  assert.equal(moment(2, 1, 0, 'shift', false, 'struckOut'), null, 'only after a win');
 });
 
 test('the first Perfect Run says what it is, later ones leave it to the ring', () => {
