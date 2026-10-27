@@ -650,6 +650,8 @@ Katalog von **30 Einträgen**: 4 Bosse, 11 Spezialfahrzeuge (Police Car, Crimina
 
 **Das Museum wächst mit:** Der Katalog folgt den Inhaltslisten (`BOSS_KINDS`, Fahrzeugtypen, `WEATHERS`, `CITY_EVENTS`, Dunkelheit); der Build bricht ab, bis Level (`core/museum.ts`), Text (`present/museumText.ts`) und Bild/Farbe (`present/museum.ts`) eingetragen sind. Ein gewöhnlicher Fahrzeugtyp kommt in `ORDINARY`. Alte Spielstände erhalten automatisch, was sie schon gesehen haben müssen.
 
+**Belohnung (Leo, 27.10.2026):** Ein neuer Eintrag glüht gold und trägt ein goldenes NEW, bis er geöffnet wurde; das Ergebnis nennt zusätzlich die Zahl der neuen Exponate. Ein volles Regal bekommt nach der Schicht einen Museum-Burst (`museum` in `rewardBurst.ts`) und behält danach ein goldenes Häkchen neben seinem Zähler. `shelfComplete` und `completedShelves` in `core/museum.ts` sagen, welches Regal voll ist; `GameSession.museumBurst` baut die Feier, ohne die Priorität von Momenten und Daily zu übernehmen.
+
 ---
 
 ### Endgame-Erweiterung (02.10.2026)

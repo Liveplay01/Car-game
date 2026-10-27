@@ -754,7 +754,7 @@
   border-radius: 999px;
   background: linear-gradient(90deg, var(--brass-lo), var(--brass-hi));
   transform-origin: 0 50%;
-  transition: transform 900ms linear;
+  transition: transform 1000ms linear;
 }
 
 .mafia-count {
@@ -1141,7 +1141,7 @@
   }
 
   .mafia-stop.arming {
-    animation: mafia-arm var(--arm, 450ms) linear both;
+    animation: mafia-arm var(--arm, 450ms) var(--ease-out) both;
   }
 
   .mafia-zone {

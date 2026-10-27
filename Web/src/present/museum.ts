@@ -121,13 +121,19 @@ export const MuseumPage = {
   addEntry(list: RenderList, entry: MuseumEntry, r: Rect, career: Career, state: MuseumState, time: number, o: number, reduceMotion = false): void {
     const id = museumId(entry);
     const c = R.center(r);
+    const fresh = career.museumNew.includes(id);
     if (state.selected === id) list.s(rect(c, v(R.width(r) + 4, R.height(r) + 4), ShopPage.corner + 2), 'accent', 0.9 * o);
+    // A new entry has earned its place: it sits in a warm glow until it has been seen.
+    if (fresh) {
+      const pulse = reduceMotion ? 1 : 0.84 + 0.16 * Math.sin(time * 2.4);
+      MenuKit.glow(list, c, Math.min(R.width(r), R.height(r)) * 0.52, 'coin', 0.16 * pulse * o);
+    }
     ShopPage.panel(list, r, 'card', o);
     if (entry.k === 'boss') MuseumPage.addBossRow(list, entry.kind, r, career, time, o);
     else MuseumPage.addCard(list, entry, r, career, time, o, reduceMotion);
-    if (career.museumNew.includes(id)) {
+    if (fresh) {
       const at = v(r.minX + 22, r.minY + 12);
-      list.s(rect(at, v(30, 15), 7.5), 'accent', o);
+      list.s(rect(at, v(30, 15), 7.5), 'coin', o);
       drawText(list, S.museum.newBadge, at, 9, 'accentInk', { opacity: o, weight: 'bold', align: 'center' });
     }
   },

@@ -137,8 +137,16 @@ export function firstPlace(e: MuseumEntry, c: Config): { rank: number; level: nu
   return rank > 0 ? { rank, level: 1 } : { rank: 0, level: firstLevel(e, c) };
 }
 
+/** Every entry on a shelf has been met: the shelf is complete. */
+export const shelfComplete = (seen: readonly string[], shelf: MuseumShelf): boolean =>
+  shelfEntries(shelf).every((e) => seen.includes(museumId(e)));
+
+/** The shelves whose every entry is on show. */
+export const completedShelves = (seen: readonly string[]): MuseumShelf[] =>
+  MUSEUM_SHELVES.filter((shelf) => shelfComplete(seen, shelf));
+
 /** Every way to lose a shift has happened to this career: the Failures shelf is full. */
-export const failuresComplete = (seen: readonly string[]): boolean => FAIL_CAUSES.every((kind) => seen.includes(museumId({ k: 'fail', kind })));
+export const failuresComplete = (seen: readonly string[]): boolean => shelfComplete(seen, 3);
 
 /** A condition of a shift: the sky, the dark or a city event (the Museum's third shelf). */
 export type ConditionEntry = Extract<MuseumEntry, { k: 'weather' | 'dark' | 'event' | 'road' }>;

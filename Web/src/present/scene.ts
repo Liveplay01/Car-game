@@ -352,7 +352,7 @@ export class VehicleLamps {
         body.accel += ((speed - body.speed) / delta - body.accel) * Math.min(1, delta / 0.07);
         const target = -amount * clamp(body.accel / (world.config.ringSpeed * 3.5), -1, 1);
         // Out of a turn the body leans to its outside and rocks back on the spring: a lorry a good deal, a sports car hardly.
-        body.yaw += (angleDelta(veh.prevHeading, veh.heading) / STEP - body.yaw) * Math.min(1, delta / 0.05);
+        body.yaw += (angleDelta(veh.prevHeading, veh.heading) / STEP - body.yaw) * (1 - Math.exp(-delta / 0.05));
         const leanTarget = -VehicleLamps.leanOf(veh.type) * clamp(body.yaw / 1.2, -1, 1);
         const omega = Math.PI * 2 * hertz;
         for (let left = Math.min(delta, 0.1); left > 0; left -= 1 / 120) {

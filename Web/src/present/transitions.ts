@@ -224,13 +224,17 @@ export class ModePan {
     if (this.drag) {
       const canGo = this.drag.offset < 0 ? index < count - 1 : index > 0;
       const pan = canGo ? this.drag.offset : this.drag.offset / 3;
-      if (delta > 0) this.velocity = 0.5 * this.velocity + (0.5 * (pan - this.pan)) / delta;
+      if (delta > 0) {
+        const estimate = (pan - this.pan) / delta;
+        const a = 1 - Math.exp(-delta / 0.03);
+        this.velocity += (estimate - this.velocity) * a;
+      }
       this.pan = pan;
       return null;
     }
     const target = this.travel ? -this.travel.direction * width * 1.3 : 0;
     const omega = ModePan.frequency;
-    const steps = 4;
+    const steps = Math.max(4, Math.min(8, Math.ceil(delta / (1 / 240))));
     const dt = delta / steps;
     for (let i = 0; i < steps; i++) {
       const acceleration = -omega * omega * (this.pan - target) - 2 * ModePan.damping * omega * this.velocity;

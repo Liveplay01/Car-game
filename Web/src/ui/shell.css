@@ -1020,11 +1020,11 @@ a.row-link {
 
 @media (prefers-reduced-motion: reduce) {
   .view-slide {
-    animation: fade-in 120ms linear backwards;
+    animation: fade-in 120ms var(--ease-out) backwards;
   }
 
   .view-ghost.slide {
-    animation: view-out 120ms linear forwards;
+    animation: view-out 120ms var(--ease-out) forwards;
   }
 }
 

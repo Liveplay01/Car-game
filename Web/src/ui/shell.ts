@@ -194,6 +194,8 @@ export class Shell {
   private pointerId: number | null = null;
   private installPrompt: InstallPromptEvent | null = null;
   private chromeKey = '';
+  /** Reused while the chrome's change key is built every frame (`syncChrome`). */
+  private readonly badgeParts: string[] = [];
   private closeSettings: (() => void) | null = null;
   private readonly detail: DetailSheet;
   private readonly versus: VersusLobby;
@@ -592,7 +594,9 @@ export class Shell {
       const dt = Math.min(0.032, (now - last) / 1000 || 0.016);
       last = now;
       for (const k of ['x', 'y'] as const) {
-        speed[k] += ((goal[k] - at[k]) * stiffness - speed[k] * damping) * dt;
+        const a = 1 - Math.exp(-stiffness * dt);
+        const b = 1 - Math.exp(-damping * dt);
+        speed[k] = speed[k] * Math.exp(-damping * dt) + (goal[k] - at[k]) * a * (stiffness / Math.max(1e-6, damping));
         at[k] += speed[k] * dt;
       }
       nav.style.setProperty('--pull-x', `${at.x.toFixed(2)}px`);
@@ -807,10 +811,24 @@ export class Shell {
     const versusKey = match
       ? `${match.isOver},${match.isOut},${match.canRevenge},${lobby.canReady},${lobby.isReady},${lobby.enoughForNext},${lobby.nextLabel},${lobby.isHost}`
       : '';
-    let badgeKey = '';
-    for (const b of badges) badgeKey += b === null ? '-' : b === 'dot' ? '.' : `${b.count};`;
+    const badgeParts = this.badgeParts;
+    badgeParts.length = 0;
+    for (let i = 0; i < badges.length; i++) {
+      const b = badges[i];
+      if (b === null) badgeParts.push('-');
+      else if (b === 'dot') badgeParts.push('.');
+      else badgeParts.push(`${b.count};`);
+    }
+    const badgeKey = badgeParts.join('');
     const onSocial = screen.k === 'page' && screen.tab === 'social' && s.showsChrome && !match;
-    const key = `${screen.k}|${selected}|${onSocial ? s.socialPage.section : -1}|${this.size.x}|${badgeKey}|${s.world.shift.phase}|${s.playingMode}|${s.special?.k ?? ''}|${s.shareable ? 1 : 0}|${match ? 1 : 0}|${versusKey}|${s.save.settings.leftHanded}|${s.save.settings.dispatchSize}|${s.notesUnread}|${s.showsChrome}|${s.chestOffer}|${s.save.career.chests[0] ?? ''}|${s.world.dispatchesLeft}|${s.modifiers.map((m) => m.label).join(',')}`;
+    // Build modifier labels without creating intermediate array copies in hot path
+    const modList = s.modifiers;
+    let modsStr = '';
+    for (let i = 0; i < modList.length; i++) {
+      if (i > 0) modsStr += ',';
+      modsStr += modList[i].label;
+    }
+    const key = `${screen.k}|${selected}|${onSocial ? s.socialPage.section : -1}|${this.size.x}|${badgeKey}|${s.world.shift.phase}|${s.playingMode}|${s.special?.k ?? ''}|${s.shareable ? 1 : 0}|${match ? 1 : 0}|${versusKey}|${s.save.settings.leftHanded}|${s.save.settings.dispatchSize}|${s.notesUnread}|${s.showsChrome}|${s.chestOffer}|${s.save.career.chests[0] ?? ''}|${s.world.dispatchesLeft}|${modsStr}`;
     if (!force && key === this.chromeKey) return;
     this.chromeKey = key;
     this.social.sync(onSocial, s.socialPage.section, SocialPage.column(this.size));

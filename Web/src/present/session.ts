@@ -67,7 +67,7 @@ export type { SpecialRun } from './specialRuns';
 import { ProgressPage, ProgressState, type ProgressTarget } from './progress';
 import { Meter } from './meter';
 import { MuseumFlow, type MuseumHost } from './museumFlow';
-import { museumEntry, museumId, FAIL_SKIN } from '../core/museum';
+import { museumEntry, museumId, FAIL_SKIN, MUSEUM_SHELVES, completedShelves, shelfComplete, type MuseumShelf } from '../core/museum';
 import { UpgradePage, UpgradeState } from './upgrades';
 import { StreetBuilderPage, BuilderState } from './builder';
 import { Feedback, Music, Sky, type MusicMix, type WeatherSound, type SoundID, type HapticID } from './feedback';
@@ -258,6 +258,8 @@ export class GameSession {
   /** The celebration on screen (`rewardBurst.ts`), and a moment the next result celebrates when it shows. */
   private burst: { burst: Burst; age: number } | null = null;
   private resultBurst: Burst | null = null;
+  /** The Museum as it stood when the shift began: what it found or completed is the result's news. */
+  private museumBefore: Set<string> | null = null;
   /** A doubled pay joins the result's money as the celebration counts it up. */
   private pendingBank: number | null = null;
   /** The won career shift's own pay on the result, booked with it: an ad can pay it once more (0: none, or already paid). */
@@ -1647,7 +1649,7 @@ export class GameSession {
     this.lossPull = pullTarget + (change + carry) * damp;
     this.sinceFlames += realDelta;
     const flames = this.world.score.flames;
-    this.shownFlames = this.reduceMotion || Math.abs(flames - this.shownFlames) < 1 ? flames : this.shownFlames + (flames - this.shownFlames) * Math.min(1, realDelta / GameSession.scoreCatchUp);
+    this.shownFlames = this.reduceMotion || Math.abs(flames - this.shownFlames) < 1 ? flames : this.shownFlames + (flames - this.shownFlames) * (1 - Math.exp(-realDelta / GameSession.scoreCatchUp));
     this.sinceComboTier += realDelta;
     this.sinceCarSent += realDelta;
     this.sinceMark += realDelta;
@@ -1690,17 +1692,17 @@ export class GameSession {
     }
     this.seen = counts;
     const flowTarget = this.screen.k === 'playing' && this.world.isInFlow ? 1 : 0;
-    this.flowLevel += (flowTarget - this.flowLevel) * Math.min(1, realDelta / GameSession.flowFade);
+    this.flowLevel += (flowTarget - this.flowLevel) * (1 - Math.exp(-realDelta / GameSession.flowFade));
     this.followRim();
     this.rim.age(realDelta);
     this.cityPulse.advance(runs ? simDelta : 0, CityPulse.energyOf(this.world, this.flowLevel));
     const recedeTarget = this.isPage('upgrades') ? 1 : 0;
-    this.recede += (recedeTarget - this.recede) * Math.min(1, realDelta / 0.25);
+    this.recede += (recedeTarget - this.recede) * (1 - Math.exp(-realDelta / 0.25));
     const money = Math.max(0, this.shiftStartMoney + this.world.score.money);
     if (money > this.shownMoney + 0.5) this.sinceMoney = Math.min(this.sinceMoney, 0);
     this.sinceMoney += realDelta;
     if (Math.abs(money - this.shownMoney) < 1 || this.reduceMotion) this.shownMoney = money;
-    else this.shownMoney += (money - this.shownMoney) * Math.min(1, realDelta / GameSession.scoreCatchUp);
+    else this.shownMoney += (money - this.shownMoney) * (1 - Math.exp(-realDelta / GameSession.scoreCatchUp));
     this.sinceReady = this.screen.k === 'ready' ? this.sinceReady + realDelta : 0;
     this.watchCity(realDelta);
     this.watchIntro(realDelta);
@@ -1709,7 +1711,15 @@ export class GameSession {
     const cardFree = this.screen.k === 'ready' && this.takesModeSwipe && !this.versusSelected;
     this.tips.advance(realDelta, cardFree, cardFree && this.notices.isEmpty && this.modeHint < 0.05 && this.modeMessage.view(0) === null, this.reduceMotion);
     const hintTarget = this.showsModeHint ? 1 : 0;
-    this.modeHint = this.reduceMotion ? hintTarget : Math.max(0, Math.min(1, this.modeHint + (hintTarget ? 1 : -1) * (realDelta / 0.35)));
+    if (this.reduceMotion) {
+      this.modeHint = hintTarget;
+    } else if (hintTarget !== 0 && this.modeHint >= hintTarget) {
+      this.modeHint = hintTarget;
+    } else if (hintTarget === 0) {
+      this.modeHint = Math.max(0, this.modeHint - realDelta / 0.22);
+    } else {
+      this.modeHint = Math.min(1, this.modeHint + (1 - Math.exp(-realDelta / 0.14)));
+    }
     const dotGoal = SWIPE_MODES.indexOf(this.swipeMode);
     this.modeDotAt = this.reduceMotion || !this.showsModeDots ? dotGoal : this.modeDotAt + (dotGoal - this.modeDotAt) * (1 - Math.exp(-realDelta * 14));
     this.tutorial?.advance(realDelta);
@@ -3090,6 +3100,7 @@ export class GameSession {
     this.sinceMoney = Infinity;
     this.dailySplash = null;
     this.resultBurst = null;
+    this.museumBefore = new Set(this.save.career.museumSeen);
     this.dailyLost = false;
     this.play(['go'], []);
     this.onChrome?.();
@@ -3296,9 +3307,17 @@ export class GameSession {
     });
     this.bookFailure(result);
     this.persist();
+    // The Museum's shift: what went on show for the first time, and a shelf that is now full.
+    const museumBefore = this.museumBefore ? [...this.museumBefore] : null;
+    this.museumBefore = null;
+    const museumNew = museumBefore ? career.museumSeen.filter((id) => !museumBefore.includes(id)) : [];
+    const shelvesDone = museumBefore
+      ? completedShelves(career.museumSeen).filter((shelf) => !shelfComplete(museumBefore, shelf))
+      : [];
+    const museumBurst = this.museumBurst(shelvesDone, career.museumSeen);
     // The crew's week counts the same XP as the Season Pass (`net/crews.ts` keeps it until the service has it).
     if (save.tutorialDone) addCrewXp(Elite.xpOf(result, this.config));
-    // A challenge only celebrates when nothing louder happened: the moments, or the streak a Daily began with.
+    // A challenge only celebrates when nothing louder happened: the moments, the streak a Daily began with, or a full shelf.
     const challengeBurst: Burst | null = booked.challenges.length > 0
       ? {
           kind: 'challenge',
@@ -3309,7 +3328,7 @@ export class GameSession {
           count: booked.challenges.reduce((n, ch) => n + challengeReward(ch, Careers.reach(career)), 0),
         }
       : null;
-    this.resultBurst = this.momentOf(result, levelBefore) ?? this.resultBurst ?? challengeBurst;
+    this.resultBurst = this.momentOf(result, levelBefore) ?? this.resultBurst ?? museumBurst ?? challengeBurst;
     this.dailyShare =
       this.playingDaily && result.outcome === 'completed'
         ? S.run.dailyShare(Fmt.number(result.score), result.perfects, result.tightFits, career.dailyStreak)
@@ -3319,7 +3338,7 @@ export class GameSession {
     this.resultBank = booked.bank;
     const careerWin = result.outcome === 'completed' && this.playingMode === 'shift' && !this.playingDaily && !this.special && !this.versusSelected && !this.tutorial;
     this.resultShiftPay = careerWin && save.firstDay !== this.today ? this.world.config.shiftPay : 0;
-    this.notices.announce(...GameSession.budget(booked.news));
+    this.notices.announce(...GameSession.budget([...booked.news, ...(museumNew.length > 0 ? [S.museum.newFinds(museumNew.length)] : [])]));
     this.tips.add(...booked.tips);
     for (const hint of booked.due) this.onHint?.(hint);
     if (save.shiftsPlayed >= GameSession.tightFitTipShifts) this.teachTightFit();
@@ -3333,6 +3352,16 @@ export class GameSession {
     }
     this.pendingSummary = { result, level: this.playingLevel, isNewHighscore: isNew, previousHighscore: previous, mode: this.playingMode, closeCall: this.closeCall(result, previous), elite: booked.elite };
     this.resultCountdown = this.resultDelayFor(result);
+  }
+
+  /** A shelf filled on this shift: the collection itself is the reward, so it gets the result's celebration. */
+  private museumBurst(shelves: MuseumShelf[], seen: readonly string[]): Burst | null {
+    if (shelves.length === 0) return null;
+    if (completedShelves(seen).length === MUSEUM_SHELVES.length) {
+      return { kind: 'museum', title: S.museum.museumDoneTitle, line: S.museum.museumDoneLine, color: 'coin', power: 1.6 };
+    }
+    const names = shelves.map((shelf) => S.museum.shelf(shelf)).join(' · ');
+    return { kind: 'museum', title: S.museum.shelfDoneTitle, line: S.museum.shelfDoneLine(names), color: 'coin', power: 1.4 };
   }
 
   /**

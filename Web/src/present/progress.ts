@@ -89,7 +89,7 @@ type Block =
   | { k: 'stat'; stat: Stat }
   | { k: 'more'; count: number; open: boolean }
   | { k: 'stats'; stats: Stat[] }
-  | { k: 'heading'; label: string; count: string | null; full: boolean; dot: boolean }
+  | { k: 'heading'; label: string; count: string | null; full: boolean; dot: boolean; seal: boolean }
   | { k: 'title'; label: string }
   | { k: 'note'; text: string }
   | { k: 'daily' }
@@ -150,9 +150,9 @@ class Stack {
   }
 
   /** A quiet heading over a group, with a little more air above it than between cards. */
-  heading(label: string, count: string | null = null, full = false, dot = false): void {
+  heading(label: string, count: string | null = null, full = false, dot = false, seal = false): void {
     if (this.y > 0) this.y += 8;
-    this.out.push({ b: { k: 'heading', label, count, full, dot }, r: R.make(0, this.y, this.width, this.y + HEADING) });
+    this.out.push({ b: { k: 'heading', label, count, full, dot, seal }, r: R.make(0, this.y, this.width, this.y + HEADING) });
     this.y += HEADING + 4;
   }
 
@@ -288,7 +288,7 @@ export const ProgressPage = {
         const { shown, all } = MuseumPage.count(career, shelf);
         const entries = shelfEntries(shelf);
         const fresh = entries.some((e) => career.museumNew.includes(museumId(e))) || (shelf === 3 && News.has(save, 'failures'));
-        s.heading(S.museum.shelf(shelf), `${shown}/${all}`, shown === all, fresh);
+        s.heading(S.museum.shelf(shelf), `${shown}/${all}`, shown === all, fresh, shown === all);
         s.grid(
           entries.map((entry): Block => ({ k: 'museum', entry })),
           MuseumPage.columns(shelf),
@@ -568,6 +568,13 @@ export const ProgressPage = {
     drawText(list, b.label, v(r.minX + 4, y), 13, 'muted', { opacity: o, weight: 'bold' });
     if (b.dot) ShopPage.badgeDot(list, v(r.minX + 4 + textWidth(b.label, 13) + 8, y - 4), o);
     if (b.count) drawText(list, b.count, v(r.maxX - 4, y), 12, b.full ? 'coin' : 'muted', { opacity: o, align: 'trailing' });
+    if (b.seal) {
+      // A full shelf keeps its medal: a small gold tick beside the count.
+      const at = v(r.maxX - 4 - (b.count ? textWidth(b.count, 12) + 13 : 0), y - 2);
+      list.s(circle(at, 6), 'coin', o);
+      list.s(line(add(at, v(-3, 0)), add(at, v(-1, 2.5)), 1.6), 'accentInk', o);
+      list.s(line(add(at, v(-1, 2.5)), add(at, v(3.5, -3)), 1.6), 'accentInk', o);
+    }
   },
 
   addStat(list: RenderList, r: Rect, stat: Stat, o: number): void {

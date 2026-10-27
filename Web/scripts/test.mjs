@@ -40,7 +40,7 @@ const { conditionChips, ConditionChips } = await load('/src/present/readyScreen.
 const { bookShift } = await load('/src/present/booking.ts');
 const { S, Fmt } = await load('/src/present/strings.ts');
 const { Unlocks } = await load('/src/core/unlocks.ts');
-const { sightings, shelfEntries, museumId } = await load('/src/core/museum.ts');
+const { sightings, shelfEntries, museumId, shelfComplete, completedShelves } = await load('/src/core/museum.ts');
 const { FAIL_CAUSES } = await load('/src/core/events.ts');
 const { tapOffset, noteTap, averageOffset } = await load('/src/core/timing.ts');
 const { forLegendary } = await load('/src/core/levels.ts');
@@ -723,6 +723,24 @@ test('every way to lose goes on show once it happened, and the last one pays the
   });
   assert.ok(Careers.owns(career, 'crashTest'));
   assert.ok(!Careers.noteFailure(career, 'bomb'), 'the skin is paid once');
+});
+
+test('a museum shelf is complete only when every entry has been seen', () => {
+  const career = newCareer();
+  for (const shelf of [0, 1, 2, 3]) assert.equal(shelfComplete(career.museumSeen, shelf), false, `shelf ${shelf}`);
+  assert.deepEqual(completedShelves(career.museumSeen), []);
+
+  const entries = shelfEntries(2);
+  for (const e of entries.slice(0, -1)) career.museumSeen.push(museumId(e));
+  assert.equal(shelfComplete(career.museumSeen, 2), false, 'one entry still missing');
+  career.museumSeen.push(museumId(entries[entries.length - 1]));
+  assert.equal(shelfComplete(career.museumSeen, 2), true);
+  assert.deepEqual(completedShelves(career.museumSeen), [2], 'only the shelf that is full');
+
+  for (const shelf of [0, 1, 3]) {
+    for (const e of shelfEntries(shelf)) career.museumSeen.push(museumId(e));
+  }
+  assert.deepEqual(completedShelves(career.museumSeen), [0, 1, 2, 3], 'all four');
 });
 
 test('a lost shift says how it was lost, a won one does not', () => {

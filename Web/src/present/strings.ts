@@ -1183,6 +1183,13 @@ export const S = {
     kind: (e: MuseumEntry): string => ({ boss: 'Syndicate boss', special: 'Special vehicle', weather: 'Weather', dark: 'Darkness', event: 'City event', road: 'Road', fail: 'Way to lose' })[e.k],
     /** Every way to lose a shift found: the Failures shelf pays its skin (`GameSession.bookFailure`). */
     failuresDone: (skin: string): string => `Every way to lose, found: the ${skin} skin is yours`,
+    /** Entries met for the first time on a shift: the result says how many went on show. */
+    newFinds: (n: number): string => (n === 1 ? '1 new exhibit in the Museum' : `${n} new exhibits in the Museum`),
+    /** A Museum shelf filled on this shift (`GameSession.museumBurst`). */
+    shelfDoneTitle: 'Shelf complete',
+    shelfDoneLine: (shelf: string): string => `${shelf} · every entry on show`,
+    museumDoneTitle: 'Museum complete',
+    museumDoneLine: 'Every exhibit is on show',
     met: 'Met, still at large',
     onRing: 'On the ring',
     signalArrive: (arm: string | null, sweep: string | null): string =>

@@ -2,7 +2,7 @@ import { type Config, gravity, moduleZone } from './config';
 import { Layout, type Arm } from './roundabout';
 import { type Pose } from './paths';
 import { Rng, substream } from './rng';
-import { capsule, contact, contactPoint, type Capsule, type Contact } from './collision';
+import { capsule, contactPoint, contactInto, gap, makeContact, type Capsule, type Contact, type ContactSlot } from './collision';
 import { collide, skid, unitInertia, type RigidBody } from './crash';
 import { type Vec2, add, sub, mul, dot, fromAngle, left, normalize, angleDelta, wrap, lengthSq, v, length, clamp } from './vec2';
 import {
@@ -68,6 +68,21 @@ const PASS_CATCH_UP = 4;
 const PASS_FASTEST = 1.5;
 /** Room between the bumpers of your own two cars when one rolls through on a held tap. */
 const PASS_CLEARANCE = 4;
+
+/**
+ * Puts `event` at `at`, keeping the list's order: the entries after it were pushed by the scoring call that ran
+ * before. Same result as `splice(at, 0, event)`, without the array splice() hands back.
+ */
+function insertEvent(events: GameEvent[], at: number, event: GameEvent): void {
+  const n = events.length;
+  if (at >= n) {
+    events.push(event);
+    return;
+  }
+  events.push(event);
+  for (let i = n; i > at; i--) events[i] = events[i - 1];
+  events[at] = event;
+}
 
 function rollPass(p: Pass, slots: number, lockstep: number): void {
   const target = Math.min(1 + Math.max(0, lockstep - p.position) * PASS_CATCH_UP, PASS_FASTEST);
@@ -171,7 +186,7 @@ export class ShiftState {
 interface Hit {
   i: number;
   j: number;
-  contact: Contact;
+  contact: ContactSlot;
 }
 
 /** 0…1 from an id, the same every time. */
@@ -440,7 +455,16 @@ export class World {
     this.resolveTrafficContacts(end);
     this.rateMerges(end);
     this.updateShift(end);
-    this.vehicles = this.vehicles.filter((veh) => !veh.retired);
+    // Compact in-place to avoid allocating new array
+    let w = 0;
+    for (let vi = 0; vi < this.vehicles.length; vi++) {
+      const v = this.vehicles[vi];
+      if (!v.retired) {
+        if (w !== vi) this.vehicles[w] = v;
+        w++;
+      }
+    }
+    if (w < this.vehicles.length) this.vehicles.length = w;
     this.stepCount++;
   }
 
@@ -745,14 +769,20 @@ export class World {
 
   /** Wrecks that slide into each other bounce off. */
   resolveWreckContacts(): void {
-    const wrecks = this.vehicles.filter((veh) => veh.isCrashed);
-    if (wrecks.length < 2) return;
-    for (let k = 0; k < wrecks.length; k++) {
-      for (let m = k + 1; m < wrecks.length; m++) {
-        const a = wrecks[k];
-        const b = wrecks[m];
+    const vehicles = this.vehicles;
+    const n = vehicles.length;
+    let wrecks = 0;
+    for (let i = 0; i < n; i++) if (vehicles[i].isCrashed) wrecks++;
+    if (wrecks < 2) return;
+    const c = this._wreckContact;
+    for (let k = 0; k < n; k++) {
+      const a = vehicles[k];
+      if (!a.isCrashed) continue;
+      for (let m = k + 1; m < n; m++) {
+        const b = vehicles[m];
+        if (!b.isCrashed) continue;
         if (lengthSq(sub(a.position, b.position)) > 60 * 60) continue;
-        const c = contact(this.hitboxOf(a), this.hitboxOf(b));
+        contactInto(c, this.hitboxOf(a), this.hitboxOf(b));
         if (c.gap >= 0) continue;
         const normal = this.contactNormal(c, a, b);
         const ba = this.bodyOf(a);
@@ -790,24 +820,51 @@ export class World {
     return veh.phase.kind === 'exiting';
   }
 
+  private _hitboxes: Array<Capsule | null> = [];
+  private _hits: Hit[] = [];
+  private _hitPool: Hit[] = [];
+  private _wreckContact = makeContact();
+
+  /** A pooled hit slot, so a frame's contacts are not made anew each frame. */
+  private hitSlot(index: number): Hit {
+    const pool = this._hitPool;
+    if (index < pool.length) return pool[index];
+    const slot: Hit = { i: -1, j: -1, contact: makeContact() };
+    pool.push(slot);
+    return slot;
+  }
+
   resolveContacts(now: number): void {
-    const hitboxes = this.vehicles.map((veh) => (veh.isCollidable || this.isObstacle(veh) ? this.hitboxOf(veh) : null));
-    const hits: Hit[] = [];
-    for (let i = 0; i < this.vehicles.length; i++) {
-      if (!this.vehicles[i].activeMerge) continue;
-      const a = hitboxes[i];
+    const vehicles = this.vehicles;
+    const n = vehicles.length;
+    if (this._hitboxes.length < n) {
+      for (let k = this._hitboxes.length; k < n; k++) this._hitboxes.push(null);
+    }
+    for (let i = 0; i < n; i++) {
+      const veh = vehicles[i];
+      this._hitboxes[i] = veh.isCollidable || this.isObstacle(veh) ? this.hitboxOf(veh) : null;
+    }
+    const hits = this._hits;
+    hits.length = 0;
+    for (let i = 0; i < n; i++) {
+      if (!vehicles[i].activeMerge) continue;
+      const a = this._hitboxes[i];
       if (!a) continue;
-      for (let j = 0; j < this.vehicles.length; j++) {
+      for (let j = 0; j < n; j++) {
         if (j === i) continue;
-        const b = hitboxes[j];
+        const b = this._hitboxes[j];
         if (!b) continue;
-        const otherIsMerging = this.vehicles[j].activeMerge !== null;
+        const otherIsMerging = vehicles[j].activeMerge !== null;
         if (otherIsMerging && j < i) continue;
-        const c = contact(a, b);
-        const ownPair = this.vehicles[i].owner === 'player' && this.vehicles[j].owner === 'player';
-        if (!this.vehicles[j].isCrashed && !ownPair) this.noteGap(c.gap, this.vehicles[i], this.vehicles[j].id);
-        if (otherIsMerging && !ownPair) this.noteGap(c.gap, this.vehicles[j], this.vehicles[i].id);
-        if (c.gap <= 0) hits.push({ i, j, contact: c });
+        const hit = this.hitSlot(hits.length);
+        hit.i = i;
+        hit.j = j;
+        contactInto(hit.contact, a, b);
+        const c = hit.contact;
+        const ownPair = vehicles[i].owner === 'player' && vehicles[j].owner === 'player';
+        if (!vehicles[j].isCrashed && !ownPair) this.noteGap(c.gap, vehicles[i], vehicles[j].id);
+        if (otherIsMerging && !ownPair) this.noteGap(c.gap, vehicles[j], vehicles[i].id);
+        if (c.gap <= 0) hits.push(hit);
       }
     }
     this.resolve(hits, now);
@@ -852,16 +909,18 @@ export class World {
     if (p.kind !== 'ring') return true;
     const speed = p.drive.speed ?? this.ringSpeed;
     const horizon = (p.distanceToExit + this.layout.exit(p.exitArm, 1).length * 0.6) / Math.max(speed, 1);
-    const others = this.vehicles.filter((x) => x.id !== veh.id && x.lane === 0 && (x.isCollidable || this.isObstacle(x)));
     const clearance = this.config.aiSafeGap * this.ringSpeed * 0.5;
     for (let k = 0; k <= 24; k++) {
       const t = (horizon * k) / 24;
       const me = this.predictedPose(veh, t);
       if (!me) continue;
       const box = this.hitbox(me, veh.type);
-      for (const other of others) {
+      const vehicles = this.vehicles;
+      for (let m = 0; m < vehicles.length; m++) {
+        const other = vehicles[m];
+        if (other.id === veh.id || other.lane !== 0 || !(other.isCollidable || this.isObstacle(other))) continue;
         const pose = this.predictedPose(other, t);
-        if (pose && contact(box, this.hitbox(pose, other.type)).gap < clearance) return false;
+        if (pose && gap(box, this.hitbox(pose, other.type)) < clearance) return false;
       }
     }
     return true;
@@ -870,7 +929,8 @@ export class World {
   resolveTrafficContacts(now: number): void {
     if (!this.isTrafficDisturbed) return;
     const reach = this.config.truckLength + 2;
-    const hits: Hit[] = [];
+    const hits = this._hits;
+    hits.length = 0;
     for (let i = 0; i < this.vehicles.length; i++) {
       const a = this.vehicles[i];
       if (!this.isLiveTraffic(a)) continue;
@@ -879,8 +939,11 @@ export class World {
         const other = this.vehicles[j];
         if (!(this.isObstacle(other) || (this.isLiveTraffic(other) && j > i))) continue;
         if (lengthSq(sub(a.position, other.position)) >= reach * reach) continue;
-        const c = contact(this.hitboxOf(a), this.hitboxOf(other));
-        if (c.gap <= 0) hits.push({ i, j, contact: c });
+        const hit = this.hitSlot(hits.length);
+        hit.i = i;
+        hit.j = j;
+        contactInto(hit.contact, this.hitboxOf(a), this.hitboxOf(other));
+        if (hit.contact.gap <= 0) hits.push(hit);
       }
     }
     this.resolve(hits, now);
@@ -888,8 +951,11 @@ export class World {
 
   private resolve(hits: Hit[], now: number): void {
     const crashedNow = new Set<number>();
-    hits.sort((x, y) => x.contact.gap - y.contact.gap || x.i - y.i || x.j - y.j);
-    for (const hit of hits) {
+    if (hits.length > 1) {
+      hits.sort((x, y) => x.contact.gap - y.contact.gap || x.i - y.i || x.j - y.j);
+    }
+    for (let h = 0; h < hits.length; h++) {
+      const hit = hits[h];
       const first = this.vehicles[hit.i];
       const second = this.vehicles[hit.j];
       if (!first || !second) continue;
@@ -979,7 +1045,7 @@ export class World {
       penalty = this.scoreCrash(byPolice, now);
       cost = this.chargeCrash(impact);
     }
-    this.events.splice(comboEvents, 0, {
+    insertEvent(this.events, comboEvents, {
       type: 'crash',
       first: first.id,
       second: second.id,
@@ -1120,7 +1186,7 @@ export class World {
       noteMergeNearLearner(this, veh, s, now);
       noteMergeNearOversize(this, veh, s, now);
       noteMergeNearWedding(this, veh, s, now);
-      this.events.splice(at, 0, {
+      insertEvent(this.events, at, {
         type: 'merged',
         vehicle: veh.id,
         minGap: merge.minGap,
@@ -1175,7 +1241,7 @@ export class World {
     noteMergeNearLearner(this, veh, s, now);
     noteMergeNearOversize(this, veh, s, now);
     noteMergeNearWedding(this, veh, s, now);
-    this.events.splice(at, 0, {
+    insertEvent(this.events, at, {
       type: 'merged',
       vehicle: veh.id,
       minGap: merge.minGap,
@@ -1328,15 +1394,17 @@ export class World {
   predictedMergeGap(arm: Arm, launchDelay = 0, samples = 60, stopBelow = -Infinity, lane = 0, type: VehicleType = 'car'): number {
     const path = this.layout.entry(arm, lane);
     const profile = this.profileFor(arm, lane, type);
-    const others = this.vehicles.filter((x) => x.isCollidable || this.isObstacle(x));
+    const vehicles = this.vehicles;
     let smallest = Infinity;
     for (let k = 0; k <= samples; k++) {
       const t = (profile.duration * k) / samples;
       const me = this.hitbox(path.pose(profileDistance(profile, t)), type);
-      for (const other of others) {
+      for (let m = 0; m < vehicles.length; m++) {
+        const other = vehicles[m];
+        if (!(other.isCollidable || this.isObstacle(other))) continue;
         const pose = this.predictedPose(other, launchDelay + t);
         if (!pose) continue;
-        const g = contact(me, this.hitbox(pose, other.type)).gap / this.ringSpeed;
+        const g = gap(me, this.hitbox(pose, other.type)) / this.ringSpeed;
         if (g < smallest) smallest = g;
         if (smallest < stopBelow) return smallest;
       }

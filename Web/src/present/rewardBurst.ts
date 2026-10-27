@@ -5,7 +5,7 @@ import { MenuKit } from './menukit';
 import { ShopPage, JUICE } from './shop';
 import { Fmt } from './strings';
 
-export type BurstKind = 'rescue' | 'freeze' | 'double' | 'retry' | 'chest' | 'firstWin' | 'levelFive' | 'streak' | 'challenge';
+export type BurstKind = 'rescue' | 'freeze' | 'double' | 'retry' | 'chest' | 'firstWin' | 'levelFive' | 'streak' | 'challenge' | 'museum';
 
 /** One celebration: what it says, in which colour, how strong, and a number that counts up under the title. */
 export interface Burst {
@@ -21,7 +21,8 @@ const unit = (index: number, salt: number): number => unitHash(index, salt + 733
 
 /**
  * The big moments (Leo, 16.10.2026: "übermäßig animiert"): a streak brought back, a Freeze, the pay
- * doubled and the three moments the game is about (the first shift won, Level 5, a streak milestone).
+ * doubled, a full Museum shelf and the three moments the game is about (the first shift won, Level 5,
+ * a streak milestone).
  * Light, rays, shock rings, confetti, a medallion that springs in with orbiting stars; a doubled pay
  * rains coins and counts up. Over the scene, never blocking: a tap goes through. A pure function of
  * the age, like the chest opening; with Reduce Motion only the medallion and its words fade in and out.
@@ -131,6 +132,18 @@ export const RewardBurst = {
     }
     if (b.kind === 'double') {
       drawText(list, '×2', add(c, v(0, -3 * s)), 44 * s * (1 + 0.08 * Math.sin(t * 7)), 'coin', { weight: 'bold', align: 'center', opacity: a });
+      return;
+    }
+    if (b.kind === 'museum') {
+      // A museum front: pediment, four columns and the steps.
+      list.s(polygon([add(c, v(-30 * s, -10 * s)), add(c, v(0, -34 * s)), add(c, v(30 * s, -10 * s))]), b.color, a);
+      list.s(rect(add(c, v(0, -6 * s)), v(50 * s, 6 * s)), 'primary', a);
+      for (let i = 0; i < 4; i++) {
+        list.s(rect(add(c, v((-18 + i * 12) * s, 10 * s)), v(5 * s, 26 * s)), 'primary', a);
+      }
+      list.s(rect(add(c, v(0, 25 * s)), v(60 * s, 5 * s)), b.color, a);
+      list.s(rect(add(c, v(0, 31 * s)), v(68 * s, 4 * s)), b.color, 0.8 * a);
+      ShopPage.addStar(list, add(c, v(0, -18 * s)), 6 * s, 'primary', a);
       return;
     }
     if (b.kind === 'challenge') {

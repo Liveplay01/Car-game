@@ -51,6 +51,21 @@ export const itemCredit = (item: PatchItem): string | null => {
 
 export const PATCH_NOTES: PatchNote[] = [
   {
+    id: '2026-10-27',
+    date: '27 October 2026',
+    title: 'A shelf worth showing',
+    impact: 'minor',
+    summary: [
+      'A new Museum exhibit glows gold until you have opened it.',
+      'A full shelf now gets a celebration and keeps a gold tick.',
+    ],
+    items: [
+      'A new Museum exhibit now glows gold, with a gold NEW badge, until you have opened it. The result also says how many new exhibits went on show.',
+      'A Museum shelf filled on a shift now gets its own moment on the result, with a museum glyph and a gold tick beside its count in the Museum.',
+      'Filling all four shelves gets a bigger celebration. Every shelf keeps its tick afterwards.',
+    ],
+  },
+  {
     id: '2026-10-26',
     date: '26 October 2026',
     title: 'The perfect week',
