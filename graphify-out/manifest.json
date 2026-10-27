@@ -396,9 +396,9 @@
     "semantic_hash": ""
   },
   "Web/scripts/test.mjs": {
-    "mtime": 1793095099.1027699,
-    "seen": 1793099939.952708,
-    "ast_hash": "196f2b5af560a58afdc2fd8fdb5a40d9",
+    "mtime": 1793102414.229079,
+    "seen": 1793102547.6064365,
+    "ast_hash": "ef687bbb59a646b0f1f0447920658b27",
     "semantic_hash": ""
   },
   "Web/scripts/tour-sim.mjs": {
@@ -1320,9 +1320,9 @@
     "semantic_hash": ""
   },
   "Web/src/present/legal.ts": {
-    "mtime": 1792937630.6364691,
-    "seen": 1792938229.7561326,
-    "ast_hash": "b195dc4684e6b5dce3de56071953e855",
+    "mtime": 1793102424.4152591,
+    "seen": 1793102547.6069405,
+    "ast_hash": "b8b6c39fc27c320bbd61e24c8a6ddd0a",
     "semantic_hash": ""
   },
   "Web/src/present/licenses.ts": {
@@ -1650,16 +1650,16 @@
     "semantic_hash": ""
   },
   "Web/src/ui/ads.ts": {
-    "mtime": 1792152129.0633457,
-    "seen": 1792653511.304651,
-    "ast_hash": "c1206fee844ab1744f20b95d189d701e",
-    "semantic_hash": "c1206fee844ab1744f20b95d189d701e"
+    "mtime": 1793102414.2445753,
+    "seen": 1793102547.6069405,
+    "ast_hash": "b242b3e29e0962c91d39915b7ac10931",
+    "semantic_hash": ""
   },
   "Web/src/ui/analytics.ts": {
-    "mtime": 1792168854.8133485,
-    "seen": 1792653511.304651,
-    "ast_hash": "11abac65ddc596e737d82eecab8168dc",
-    "semantic_hash": "11abac65ddc596e737d82eecab8168dc"
+    "mtime": 1793102414.251652,
+    "seen": 1793102547.6069405,
+    "ast_hash": "cbf8c68bb7a389df8b7d163f5e6cf054",
+    "semantic_hash": ""
   },
   "Web/src/ui/animatedIcons.ts": {
     "mtime": 1793045502.662781,
@@ -1836,9 +1836,9 @@
     "semantic_hash": "b93e7e3e1eb7be7cf9dcab3e49c05d5f"
   },
   "Web/README.md": {
-    "mtime": 1793101672.2173676,
-    "seen": 1793101818.9436944,
-    "ast_hash": "9b6d5e0874feff85ac09b23b0d0cd410",
+    "mtime": 1793102423.4999237,
+    "seen": 1793102547.6074471,
+    "ast_hash": "6ec02f1705d35a9dc4f010a99e55bbce",
     "semantic_hash": ""
   },
   "Web/design-tests/README.md": {
@@ -2004,9 +2004,9 @@
     "semantic_hash": "568b7bc8ac4073d50b1ad4189d28a0c5"
   },
   "Spiel.md": {
-    "mtime": 1793056485.084663,
-    "seen": 1793061619.7066417,
-    "ast_hash": "df5c5b85f4ede3de894a18c8b353ee9b",
+    "mtime": 1793102414.2101145,
+    "seen": 1793102547.6069405,
+    "ast_hash": "17d6e1c461c36a4458ffbae66199c486",
     "semantic_hash": ""
   },
   "CLAUDE.md": {
@@ -2040,9 +2040,9 @@
     "semantic_hash": ""
   },
   "NEW-PLAYSTORE-BUILD.md": {
-    "mtime": 1793101692.8723762,
-    "seen": 1793101818.9436944,
-    "ast_hash": "512dc1d14e5e772703c45e129240d7a4",
+    "mtime": 1793102425.2166715,
+    "seen": 1793102547.6069405,
+    "ast_hash": "538e562a97fd827e0a1ac0b94aeabf5b",
     "semantic_hash": ""
   },
   "Marketing/VIDEO.md": {
@@ -2700,9 +2700,9 @@
     "semantic_hash": ""
   },
   "Web/itch/index.html": {
-    "mtime": 1791228876.1676297,
-    "seen": 1792659884.0938137,
-    "ast_hash": "1ca81a32d1c75c11b791af3c5cb9582f",
+    "mtime": 1793102414.2214472,
+    "seen": 1793102547.6074471,
+    "ast_hash": "0c1e9b2bd1d34177ceb7c4d198c58624",
     "semantic_hash": ""
   },
   "Web/maps-preview.html": {
