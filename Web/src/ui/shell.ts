@@ -1474,15 +1474,12 @@ export class Shell {
       if (isSheetOpen() || this.photo.isOpen) return;
       if (this.versus.match) {
         e.preventDefault();
-        canvas.classList.add('pressed');
-        window.setTimeout(() => canvas.classList.remove('pressed'), 140);
         this.versus.match.tap();
         return;
       }
       if (this.pointerId !== null) return;
       if (inSystemGestureZone(e)) return;
       e.preventDefault();
-      canvas.classList.add('pressed');
       this.pointerId = e.pointerId;
       try {
         canvas.setPointerCapture(e.pointerId);
@@ -1502,14 +1499,12 @@ export class Shell {
     const up = (e: PointerEvent): void => {
       if (e.pointerId !== this.pointerId) return;
       this.pointerId = null;
-      canvas.classList.remove('pressed');
       this.push({ k: 'pointerUp', p: this.toViewport(e) });
     };
     canvas.addEventListener('pointerup', up);
     canvas.addEventListener('pointercancel', (e) => {
       if (e.pointerId !== this.pointerId) return;
       this.pointerId = null;
-      canvas.classList.remove('pressed');
       this.push({ k: 'pointerUp', p: this.toViewport(e) });
     });
     canvas.addEventListener('contextmenu', (e) => e.preventDefault());
