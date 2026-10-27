@@ -616,7 +616,6 @@ export default (S: Strings): Words<Strings> => ({
     bootTitle: 'ラウンドアバウトが起動しませんでした。',
     bootBody: 'ゲームを読み込めませんでした。接続を確認してもう一度お試しください。進行状況はこの端末で安全です。',
     bootRetry: 'もう一度試す',
-    bootLoading: '街を読み込み中…',
     /** The first visit's boot screen (index.html): the game in three steps while it loads. */
     learn: {
       waitTitle: 'すき間を待とう',

@@ -616,7 +616,6 @@ export default (S: Strings): Words<Strings> => ({
     bootTitle: 'La rotonda no arrancó.',
     bootBody: 'Algo impidió que el juego se cargara. Comprueba tu conexión e inténtalo de nuevo; tu progreso está seguro en este dispositivo.',
     bootRetry: 'Intentar de nuevo',
-    bootLoading: 'Cargando tu ciudad…',
     /** The first visit's boot screen (index.html): the game in three steps while it loads. */
     learn: {
       waitTitle: 'Espera un hueco',

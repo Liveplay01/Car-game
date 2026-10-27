@@ -1,9 +1,9 @@
-import { Shell, TAB_HEIGHT } from './ui/shell';
+import { Shell } from './ui/shell';
 import { inItch, inPortal } from './storage/device';
 import { gameLoaded, startCrazyGames } from './ui/crazygames';
 import { startCloud } from './net/cloud';
 import { startTuning } from './net/tuning';
-import { S, Fmt } from './present/strings';
+import { S } from './present/strings';
 import { currentLanguage } from './present/i18n';
 import { startAds } from './ui/ads';
 import { startAnalytics } from './ui/analytics';
@@ -18,8 +18,6 @@ import type { Probe } from './ui/devProbe';
 import { streakEndsIn } from './present/readyScreen';
 import { dayNumber } from './core/daily';
 import { baseConfig } from './core/config';
-import { BootZoom } from './present/bootZoom';
-import { MapTheme } from './present/mapThemes';
 
 declare global {
   interface Window {
@@ -43,12 +41,7 @@ const layers = document.getElementById('layers')!;
 
 // The boot screen (index.html) turns into its "did not start" message at once if the start throws.
 const boot = document.getElementById('boot');
-let zoom: BootZoom | null = null;
 const bootFailed = (): void => {
-  if (zoom) {
-    zoom.fail(S.shell.bootTitle, S.shell.bootBody, S.shell.bootRetry);
-    return;
-  }
   const car = boot?.querySelector<SVGGElement>('.boot-car');
   if (!boot || !car || boot.classList.contains('failed')) return;
   // Drive on from where the car is, a lap further if it is already past the blockade.
@@ -154,11 +147,6 @@ const hasSave = (): boolean => {
   }
 };
 const firstVisit = (!inPortal && !hasSave()) || bootDemo === 'learn';
-// The camera flies down onto the roundabout while the game loads, then lands on the real scene (`present/bootZoom.ts`).
-if (boot) {
-  zoom = new BootZoom(boot, { tabInset: TAB_HEIGHT, caption: firstVisit ? '' : S.shell.bootLoading });
-  boot.classList.add('zoom');
-}
 const learn = boot?.querySelector('.boot-learn');
 if (boot && learn && firstVisit) {
   const L = S.shell.learn;
@@ -179,11 +167,8 @@ if (boot && learn && firstVisit) {
 document.fonts?.addEventListener('loadingdone', forgetMeasures);
 await Promise.race([document.fonts?.load('italic 900 30px "Overpass Variable"'), new Promise((resolve) => window.setTimeout(resolve, 1500))]).catch(() => undefined);
 
-zoom?.progress(0.3);
 startTuning();
 const shell = new Shell(app, canvas, layers);
-zoom?.progress(0.55);
-zoom?.follow(() => shell.game.camera);
 // Ads and visit statistics load while the boot screen stands too, so nothing arrives once the game shows (Leo, 22.10.2026).
 startAds();
 startAnalytics();
@@ -197,7 +182,6 @@ const tapped = new Promise<void>((resolve) => {
 });
 if (firstVisit) void pause(LEARN_MS).then(() => boot?.classList.add('late'));
 await Promise.race([Promise.all([shell.preload(), firstVisit ? pause(LEARN_MS) : null]), tapped, pause(firstVisit ? LEARN_MS + BOOT_WAIT_MS : BOOT_WAIT_MS)]);
-zoom?.progress(1);
 gameLoaded();
 // The game is on screen: the boot screen fades away, and later errors are the game's own business.
 window.removeEventListener('error', bootErrored);
@@ -205,19 +189,8 @@ window.removeEventListener('unhandledrejection', bootRejected);
 if (bootDemo === 'fail') bootFailed();
 // Hidden, not removed: should the game stop later, the shell shows it again with a reload (`Shell.stalled`).
 if (boot && (bootDemo === null || bootDemo === 'learn')) {
-  if (zoom && boot.classList.contains('zoom') && !boot.classList.contains('failed')) {
-    boot.classList.add('ready');
-    const { config, save } = shell.game;
-    await zoom.ready({ night: config.night, theme: MapTheme.from(save.career.mapSkin), money: Fmt.number(save.career.money) });
-  }
   boot.classList.add('gone');
-  window.setTimeout(() => {
-    boot.hidden = true;
-    // The plain ring and message are back for `Shell.stalled`.
-    boot.classList.remove('zoom');
-    zoom?.destroy();
-    zoom = null;
-  }, 450);
+  window.setTimeout(() => (boot.hidden = true), 450);
 }
 // The probe once the game shows: a test starts where a player would.
 if (import.meta.env.DEV) {

@@ -79,7 +79,7 @@ function signatureOf(list: RenderList): number {
 const MOD_ICON: Record<Modifier['id'], AnimatedIconId> = { heat: 'heat', tailwind: 'wind', afterWork: 'sunset', streak: 'streak', family: 'hat' };
 
 /** The room the floating dock claims above the safe area (`--tabbar-h`). */
-export const TAB_HEIGHT = 64;
+const TAB_HEIGHT = 64;
 /** The photo's scene in points (drawn at twice the pixels): the square on the print. */
 const PHOTO_SCENE = v(492, 492);
 

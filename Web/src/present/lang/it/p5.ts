@@ -616,7 +616,6 @@ export default (S: Strings): Words<Strings> => ({
     bootTitle: 'La rotatoria non è partita.',
     bootBody: 'Qualcosa ha impedito il caricamento del gioco. Controlla la connessione e riprova; i tuoi progressi sono al sicuro su questo dispositivo.',
     bootRetry: 'Riprova',
-    bootLoading: 'Caricamento della tua città…',
     /** The first visit's boot screen (index.html): the game in three steps while it loads. */
     learn: {
       waitTitle: 'Aspetta un varco',

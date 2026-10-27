@@ -616,7 +616,6 @@ export default (S: Strings): Words<Strings> => ({
     bootTitle: '로터리가 시작되지 않았어요.',
     bootBody: '게임을 불러오지 못했어요. 연결을 확인하고 다시 시도하세요. 진행 상황은 이 기기에서 안전해요.',
     bootRetry: '다시 시도',
-    bootLoading: '도시를 불러오는 중…',
     /** The first visit's boot screen (index.html): the game in three steps while it loads. */
     learn: {
       waitTitle: '빈틈을 기다려요',

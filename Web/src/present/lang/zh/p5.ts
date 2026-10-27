@@ -616,7 +616,6 @@ export default (S: Strings): Words<Strings> => ({
     bootTitle: '环岛没有启动。',
     bootBody: '有什么阻止了游戏加载。请检查网络后再试一次；你的进度在这台设备上是安全的。',
     bootRetry: '再试一次',
-    bootLoading: '正在加载你的城市…',
     /** The first visit's boot screen (index.html): the game in three steps while it loads. */
     learn: {
       waitTitle: '等待空隙',

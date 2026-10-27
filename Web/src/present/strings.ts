@@ -1875,8 +1875,6 @@ export const S = {
     bootTitle: 'The roundabout did not start.',
     bootBody: 'Something kept the game from loading. Check your connection and try again; your progress is safe on this device.',
     bootRetry: 'Try again',
-    /** The boot zoom's one line while the camera sinks onto your roundabout. */
-    bootLoading: 'Loading your city…',
     /** The first visit's boot screen (index.html): the game in three steps while it loads. */
     learn: {
       waitTitle: 'Wait for a gap',

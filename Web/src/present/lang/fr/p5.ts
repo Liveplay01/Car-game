@@ -616,7 +616,6 @@ export default (S: Strings): Words<Strings> => ({
     bootTitle: 'Le rond-point n’a pas démarré.',
     bootBody: 'Quelque chose a empêché le jeu de se charger. Vérifiez votre connexion et réessayez ; votre progression est en sécurité sur cet appareil.',
     bootRetry: 'Réessayer',
-    bootLoading: 'Chargement de ta ville…',
     /** The first visit's boot screen (index.html): the game in three steps while it loads. */
     learn: {
       waitTitle: 'Attends un créneau',

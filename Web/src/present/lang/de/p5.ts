@@ -616,7 +616,6 @@ export default (S: Strings): Words<Strings> => ({
     bootTitle: 'Der Kreisverkehr ist nicht gestartet.',
     bootBody: 'Etwas hat das Spiel am Laden gehindert. Prüfe deine Verbindung und versuche es erneut; dein Fortschritt ist auf diesem Gerät sicher.',
     bootRetry: 'Erneut versuchen',
-    bootLoading: 'Deine Stadt lädt…',
     /** The first visit's boot screen (index.html): the game in three steps while it loads. */
     learn: {
       waitTitle: 'Warte auf eine Lücke',
