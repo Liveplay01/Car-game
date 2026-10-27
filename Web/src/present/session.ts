@@ -2847,7 +2847,7 @@ export class GameSession {
             this.rim.signal('wave', 'coin');
             this.landMerge(0.06, 0.025, e.position);
           } else if (e.rating !== 'clean') this.addPopup({ k: e.rating } as PopupKind, e.position);
-          // Removed camera zoom/nod on perfect merges to reduce zoom on every car entry; keep for tight/critical
+          if (!e.critical && e.rating === 'perfect') this.cameraFx.nod();
           if (!e.critical && e.rating === 'tightFit') this.landMerge(0.03, 0.008, e.position);
           if (e.shave > 0) this.addPopup({ k: 'shave', n: e.shave }, add(e.position, v(0, 22)));
           if (e.tip) this.addPopup({ k: 'earned', n: e.tip }, add(e.position, v(0, 22)));
@@ -2897,7 +2897,7 @@ export class GameSession {
           if (e.result.outcome === 'completed') {
             if (e.result.isPerfectRun) this.rim.signal('victory', 'coin', 'juiceGreen', 1);
             else this.rim.signal('victory', 'juiceGreen', 'skinMint', 0.5);
-            // this.cameraFx.relieve();
+            this.cameraFx.relieve();
           } else if (e.result.outcome === 'struckOut') {
             this.rim.signal('flush', 'destructive');
             this.sinceFatalCrash = 0;
@@ -3250,7 +3250,7 @@ export class GameSession {
     if (!this.revive || !this.world.revive(this.world.time)) return;
     this.revive = null;
     this.sinceFatalCrash = Infinity;
-    // this.cameraFx.relieve();
+    this.cameraFx.relieve();
     this.countIn = this.reduceMotion ? 0 : GameSession.countInSeconds;
     this.play(['swoosh'], ['comboUp']);
   }
@@ -3666,7 +3666,7 @@ export class GameSession {
     // The words in the island sit on this camera: no shake, punch or pull-back moves them, and their wrapping never changes.
     const steady: Camera = { ...cam, scale: cam.scale * (1 - GameSession.lossPullBack) };
     const pulled = { ...cam, scale: cam.scale * (1 - GameSession.lossPullBack * this.lossPull) * (1 + (calm ? 0 : this.explosions.punch)) };
-    const leaned = zoomAbout(this.cameraFx.apply(pulled, calm), this.punchAt, 1 + this.punch);
+    const leaned = zoomAbout(this.cameraFx.apply(pulled, world.layout.stopPose(world.layout.player).position, calm), this.punchAt, 1 + this.punch);
     const kick = this.modeKick;
     const camera = { ...leaned, focus: v(leaned.focus.x + shake.x + this.pan.pan + kick.x, leaned.focus.y + shake.y + kick.y) };
     const career = this.save.career;

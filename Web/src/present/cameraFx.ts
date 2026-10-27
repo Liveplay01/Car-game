@@ -120,8 +120,7 @@ export class CameraFx {
 
   /** A Perfect Input: one quick nod towards the stop line. */
   nod(): void {
-    // Disabled by user request: remove zoom on every car entry; keep nod only if explicitly needed elsewhere
-    // this.sinceNod = 0;
+    this.sinceNod = 0;
   }
 
   private get nodShape(): number {
@@ -145,8 +144,7 @@ export class CameraFx {
 
   /** A cleared shift: the tension lets go and the camera breathes out once. */
   relieve(): void {
-    // Disabled: was causing unwanted zoom out on UI/click events
-    // this.sinceRelief = 0;
+    this.sinceRelief = 0;
   }
 
   /** Leans towards `at` for `hold` seconds (a slow-motion's length), then back over 0.6 s. A bigger lean wins. */
@@ -181,14 +179,14 @@ export class CameraFx {
     return this.finalActive ? CameraFxTuning.finalSlow : 1;
   }
 
-  /** The remaining camera effects: the last car's look and event-specific leans. */
-  apply(cam: Camera, reduceMotion: boolean): Camera {
+  /** The camera with tension, relief, lean and the last car's look; `pivot` is the stop line. */
+  apply(cam: Camera, pivot: Vec2, reduceMotion: boolean): Camera {
     if (reduceMotion) return cam;
     const T = CameraFxTuning;
-    let out = cam; // removed tension zoom
+    const relief = this.sinceRelief < T.reliefTime ? T.relief * Math.sin(Math.PI * (this.sinceRelief / T.reliefTime)) : 0;
+    let out = zoomAbout(cam, pivot, 1 + T.tensionZoom * this.tension - relief);
     if (this.final) out = zoomAbout(out, this.final.at, 1 + T.finalZoom * this.final.k);
-    // Nod zoom removed (every car entry). Keep structure but disable effect
-    // if (this.sinceNod < T.nodRise + T.nodFall) out = zoomAbout(out, pivot, 1 + T.nodZoom * this.nodShape);
+    if (this.sinceNod < T.nodRise + T.nodFall) out = zoomAbout(out, pivot, 1 + T.nodZoom * this.nodShape);
     if (this.lean) out = zoomAbout(out, this.lean.at, 1 + this.lean.size * this.leanShape(this.lean));
     return out;
   }
