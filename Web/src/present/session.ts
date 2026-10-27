@@ -3666,7 +3666,7 @@ export class GameSession {
     // The words in the island sit on this camera: no shake, punch or pull-back moves them, and their wrapping never changes.
     const steady: Camera = { ...cam, scale: cam.scale * (1 - GameSession.lossPullBack) };
     const pulled = { ...cam, scale: cam.scale * (1 - GameSession.lossPullBack * this.lossPull) * (1 + (calm ? 0 : this.explosions.punch)) };
-    const leaned = zoomAbout(this.cameraFx.apply(pulled, world.layout.stopPose(world.layout.player).position, calm), this.punchAt, 1 + this.punch);
+    const leaned = zoomAbout(this.cameraFx.apply(pulled, calm), this.punchAt, 1 + this.punch);
     const kick = this.modeKick;
     const camera = { ...leaned, focus: v(leaned.focus.x + shake.x + this.pan.pan + kick.x, leaned.focus.y + shake.y + kick.y) };
     const career = this.save.career;

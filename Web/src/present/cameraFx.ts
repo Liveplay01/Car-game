@@ -181,11 +181,10 @@ export class CameraFx {
     return this.finalActive ? CameraFxTuning.finalSlow : 1;
   }
 
-  /** The camera with tension, relief, lean and the last car's look; `pivot` is the stop line. */
-  apply(cam: Camera, pivot: Vec2, reduceMotion: boolean): Camera {
+  /** The remaining camera effects: the last car's look and event-specific leans. */
+  apply(cam: Camera, reduceMotion: boolean): Camera {
     if (reduceMotion) return cam;
     const T = CameraFxTuning;
-    const relief = 0; // disabled relief zoom
     let out = cam; // removed tension zoom
     if (this.final) out = zoomAbout(out, this.final.at, 1 + T.finalZoom * this.final.k);
     // Nod zoom removed (every car entry). Keep structure but disable effect
