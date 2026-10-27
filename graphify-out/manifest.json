@@ -330,10 +330,10 @@
     "semantic_hash": ""
   },
   "Web/icon/make_shortcut_icons.py": {
-    "mtime": 1791133317.8606608,
-    "seen": 1792653511.3041549,
-    "ast_hash": "3a62c81702d3048109244c3564578c5d",
-    "semantic_hash": "3a62c81702d3048109244c3564578c5d"
+    "mtime": 1793101652.485273,
+    "seen": 1793101818.942689,
+    "ast_hash": "c432c1cf156fb0e83876ea81aa2f10cc",
+    "semantic_hash": ""
   },
   "Web/package.json": {
     "mtime": 1792069284.2152085,
@@ -396,9 +396,9 @@
     "semantic_hash": ""
   },
   "Web/scripts/test.mjs": {
-    "mtime": 1793056273.9582117,
-    "seen": 1793061619.7061393,
-    "ast_hash": "28f0877a5ea1dcdc68c7a0067c1c8f45",
+    "mtime": 1793095099.1027699,
+    "seen": 1793099939.952708,
+    "ast_hash": "196f2b5af560a58afdc2fd8fdb5a40d9",
     "semantic_hash": ""
   },
   "Web/scripts/tour-sim.mjs": {
@@ -1362,9 +1362,9 @@
     "semantic_hash": "7eb7acfb7f40d6a9f57994e4c9a0b2dd"
   },
   "Web/src/present/menukit.ts": {
-    "mtime": 1792852455.9321587,
-    "seen": 1792853632.3705204,
-    "ast_hash": "393a79a07353baf15ef15e831b9e898f",
+    "mtime": 1793097386.8671188,
+    "seen": 1793099939.952708,
+    "ast_hash": "e923ada8c4ec8720f02e204bbf44c64f",
     "semantic_hash": ""
   },
   "Web/src/present/meter.ts": {
@@ -1428,9 +1428,9 @@
     "semantic_hash": "ad6fb39b455e8646d559227bb23dc156"
   },
   "Web/src/present/patchNotes.ts": {
-    "mtime": 1793056481.3720708,
-    "seen": 1793061619.7066417,
-    "ast_hash": "9a94b6ec72ca803cabd6c4e6eb68f42d",
+    "mtime": 1793101691.8914225,
+    "seen": 1793101818.942689,
+    "ast_hash": "8160552908084a5ab7e222a3b84efcbe",
     "semantic_hash": ""
   },
   "Web/src/present/perspective.ts": {
@@ -1458,9 +1458,9 @@
     "semantic_hash": ""
   },
   "Web/src/present/render.ts": {
-    "mtime": 1793057043.4737184,
-    "seen": 1793061619.7066417,
-    "ast_hash": "13d2519bc2bceccb346ef81f39ce4e1b",
+    "mtime": 1793097364.0206857,
+    "seen": 1793099939.952708,
+    "ast_hash": "9cbc887378d18af24d6b9e3707be4f92",
     "semantic_hash": ""
   },
   "Web/src/present/rewardBurst.ts": {
@@ -1482,9 +1482,9 @@
     "semantic_hash": "cc264b7544ca254e6183e42d35daa8e0"
   },
   "Web/src/present/session.ts": {
-    "mtime": 1793061457.1470244,
-    "seen": 1793061619.7066417,
-    "ast_hash": "596d798236f0ff0795f374c7a8e192ac",
+    "mtime": 1793095082.094048,
+    "seen": 1793099939.952708,
+    "ast_hash": "d28d3d002124a847fbba63a9f1308c02",
     "semantic_hash": ""
   },
   "Web/src/present/shop.ts": {
@@ -1578,9 +1578,9 @@
     "semantic_hash": "c91d286257132eb0a6d0f3566f41d8ac"
   },
   "Web/src/present/transitions.ts": {
-    "mtime": 1793061408.2167592,
-    "seen": 1793061619.7066417,
-    "ast_hash": "6cb5f202cdff399b232696ceb8289fed",
+    "mtime": 1793097372.6003444,
+    "seen": 1793099939.952708,
+    "ast_hash": "93036b6f7c9d1b8d53c78515e1743ae6",
     "semantic_hash": ""
   },
   "Web/src/present/tutorial.ts": {
@@ -1782,9 +1782,9 @@
     "semantic_hash": ""
   },
   "Web/src/ui/shell.ts": {
-    "mtime": 1793061419.0868714,
-    "seen": 1793061619.7066417,
-    "ast_hash": "593ecff72fa1f0ab64d419bb548e395c",
+    "mtime": 1793097318.2804885,
+    "seen": 1793099939.952708,
+    "ast_hash": "5719717071539c3ac157761e4c14dd7a",
     "semantic_hash": ""
   },
   "Web/src/ui/socialPage.ts": {
@@ -1836,9 +1836,9 @@
     "semantic_hash": "b93e7e3e1eb7be7cf9dcab3e49c05d5f"
   },
   "Web/README.md": {
-    "mtime": 1792852157.3322456,
-    "seen": 1792853632.3939745,
-    "ast_hash": "f413e1e8bf068fa8e739ed4d765bfa09",
+    "mtime": 1793101672.2173676,
+    "seen": 1793101818.9436944,
+    "ast_hash": "9b6d5e0874feff85ac09b23b0d0cd410",
     "semantic_hash": ""
   },
   "Web/design-tests/README.md": {
@@ -2040,9 +2040,9 @@
     "semantic_hash": ""
   },
   "NEW-PLAYSTORE-BUILD.md": {
-    "mtime": 1792657853.2431989,
-    "seen": 1792659884.0938137,
-    "ast_hash": "12497089acdb787806fad07059b5f38a",
+    "mtime": 1793101692.8723762,
+    "seen": 1793101818.9436944,
+    "ast_hash": "512dc1d14e5e772703c45e129240d7a4",
     "semantic_hash": ""
   },
   "Marketing/VIDEO.md": {
@@ -2964,38 +2964,38 @@
     "semantic_hash": ""
   },
   "Web/public/icons/shortcut-daily-192.png": {
-    "mtime": 1791133325.3024385,
-    "seen": 1792659884.0938137,
+    "mtime": 1793101653.0378995,
+    "seen": 1793101818.9436944,
     "ast_hash": "cd05aba9d5e416282f0f511e4a00ffb1",
     "semantic_hash": ""
   },
   "Web/public/icons/shortcut-daily-96.png": {
-    "mtime": 1791133325.2812543,
-    "seen": 1792659884.0938137,
+    "mtime": 1793101653.0181563,
+    "seen": 1793101818.9436944,
     "ast_hash": "ba154c80a09e6608cb6d19c3d29f7fbe",
     "semantic_hash": ""
   },
   "Web/public/icons/shortcut-multiplayer-192.png": {
-    "mtime": 1791133325.3873158,
-    "seen": 1792659884.0938137,
+    "mtime": 1793101653.1237946,
+    "seen": 1793101818.9436944,
     "ast_hash": "2eec3c3d3ffb2a502a8002657bfbb9a5",
     "semantic_hash": ""
   },
   "Web/public/icons/shortcut-multiplayer-96.png": {
-    "mtime": 1791133325.3677018,
-    "seen": 1792659884.0938137,
+    "mtime": 1793101653.1038787,
+    "seen": 1793101818.9436944,
     "ast_hash": "744c7cdf8df44fad9ab5069e52bd7680",
     "semantic_hash": ""
   },
   "Web/public/icons/shortcut-unlimited-192.png": {
-    "mtime": 1791133325.3491619,
-    "seen": 1792659884.0938137,
+    "mtime": 1793101653.0858734,
+    "seen": 1793101818.9436944,
     "ast_hash": "5dadf38fc1361d2313cd4cb826fcfff9",
     "semantic_hash": ""
   },
   "Web/public/icons/shortcut-unlimited-96.png": {
-    "mtime": 1791133325.329296,
-    "seen": 1792659884.0938137,
+    "mtime": 1793101653.0653558,
+    "seen": 1793101818.9436944,
     "ast_hash": "1bf1f09ff1889011c4d17fdc1301236f",
     "semantic_hash": ""
   },
@@ -3969,6 +3969,24 @@
     "mtime": 1793027133.540268,
     "seen": 1793055677.4566374,
     "ast_hash": "50ee3fe4aa3f77091fcda4668b352f64",
+    "semantic_hash": ""
+  },
+  "Web/src/present/moments.ts": {
+    "mtime": 1793095074.617493,
+    "seen": 1793099939.952708,
+    "ast_hash": "1ccaa0658e18c6761a23c271a71c484e",
+    "semantic_hash": ""
+  },
+  "Web/public/icons/shortcut-ranks-192.png": {
+    "mtime": 1793101653.1615224,
+    "seen": 1793101818.9436944,
+    "ast_hash": "c7bbb9c4ac0383401620f331ab68aaf6",
+    "semantic_hash": ""
+  },
+  "Web/public/icons/shortcut-ranks-96.png": {
+    "mtime": 1793101653.142166,
+    "seen": 1793101818.9436944,
+    "ast_hash": "67f8bf26c0b16d43f56274a182c4a2e3",
     "semantic_hash": ""
   }
 }
