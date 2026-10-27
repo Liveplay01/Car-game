@@ -120,7 +120,8 @@ export class CameraFx {
 
   /** A Perfect Input: one quick nod towards the stop line. */
   nod(): void {
-    this.sinceNod = 0;
+    // Disabled by user request: remove zoom on every car entry; keep nod only if explicitly needed elsewhere
+    // this.sinceNod = 0;
   }
 
   private get nodShape(): number {
@@ -186,7 +187,8 @@ export class CameraFx {
     const relief = this.sinceRelief < T.reliefTime ? T.relief * Math.sin(Math.PI * (this.sinceRelief / T.reliefTime)) : 0;
     let out = zoomAbout(cam, pivot, 1 + T.tensionZoom * this.tension - relief);
     if (this.final) out = zoomAbout(out, this.final.at, 1 + T.finalZoom * this.final.k);
-    if (this.sinceNod < T.nodRise + T.nodFall) out = zoomAbout(out, pivot, 1 + T.nodZoom * this.nodShape);
+    // Nod zoom removed (every car entry). Keep structure but disable effect
+    // if (this.sinceNod < T.nodRise + T.nodFall) out = zoomAbout(out, pivot, 1 + T.nodZoom * this.nodShape);
     if (this.lean) out = zoomAbout(out, this.lean.at, 1 + this.lean.size * this.leanShape(this.lean));
     return out;
   }
