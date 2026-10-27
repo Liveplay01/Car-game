@@ -2847,7 +2847,7 @@ export class GameSession {
             this.rim.signal('wave', 'coin');
             this.landMerge(0.06, 0.025, e.position);
           } else if (e.rating !== 'clean') this.addPopup({ k: e.rating } as PopupKind, e.position);
-          if (!e.critical && e.rating === 'perfect') this.cameraFx.nod();
+          // Removed camera zoom/nod on perfect merges to reduce zoom on every car entry; keep for tight/critical
           if (!e.critical && e.rating === 'tightFit') this.landMerge(0.03, 0.008, e.position);
           if (e.shave > 0) this.addPopup({ k: 'shave', n: e.shave }, add(e.position, v(0, 22)));
           if (e.tip) this.addPopup({ k: 'earned', n: e.tip }, add(e.position, v(0, 22)));
