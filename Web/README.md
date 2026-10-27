@@ -374,8 +374,9 @@ Cloud sync.
 - iOS: Safari → Share → "Add to Home Screen". Android/Chrome: Settings → Install.
 - **App shortcuts** (a long press on the app icon; manifest `shortcuts`, icons from
   `icon/make_shortcut_icons.py`): Daily Shift (`/?start=shift`, the Shift page, which brings the
-  Daily Shift when it is open), Unlimited (`/?start=unlimited`) and Multiplayer
-  (`/?start=multiplayer`, opens the lobby). `ui/shell.ts` (`readStartLink`) reads `start` once and
+  Daily Shift when it is open), Unlimited (`/?start=unlimited`), Multiplayer
+  (`/?start=multiplayer`, opens the lobby) and Ranks (`/?start=ranks`, the Social ranking; Android
+  allows four shortcuts, so the list is full). `ui/shell.ts` (`readStartLink`) reads `start` once and
   takes it out of the address; before the tutorial is done it is ignored. Installed PWAs pick
   them up from the manifest; the Play app only with its next wrapper build (Google Play below).
 - Link previews (`index.html`, Open Graph): `public/og-image.jpg`, the CrazyGames landscape
@@ -490,7 +491,8 @@ The query gets the default Content-Security-Policy.
 - **App shortcuts** come from the manifest's `shortcuts` when the wrapper is built (PWABuilder or
   Bubblewrap): a change there needs a new wrapper build and release. Home-screen widgets would be
   native Android code in the wrapper and could not read the game's save (it lives in Chrome's
-  storage): not planned.
+  storage): not planned (Leo, 27.10.2026). Instead the four shortcuts can be dragged onto the home
+  screen as icons.
 
 ## iOS and App Store decision
 

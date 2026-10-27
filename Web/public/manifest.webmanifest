@@ -50,6 +50,16 @@
         { "src": "/icons/shortcut-multiplayer-96.png", "sizes": "96x96", "type": "image/png" },
         { "src": "/icons/shortcut-multiplayer-192.png", "sizes": "192x192", "type": "image/png" }
       ]
+    },
+    {
+      "name": "Ranks",
+      "short_name": "Ranks",
+      "description": "Where you stand among players and friends",
+      "url": "/?start=ranks",
+      "icons": [
+        { "src": "/icons/shortcut-ranks-96.png", "sizes": "96x96", "type": "image/png" },
+        { "src": "/icons/shortcut-ranks-192.png", "sizes": "192x192", "type": "image/png" }
+      ]
     }
   ]
 }

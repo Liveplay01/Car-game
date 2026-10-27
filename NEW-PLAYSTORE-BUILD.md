@@ -51,6 +51,35 @@ Die Tester fanden die Screenshots zu schlicht („basic mobile screenshots“).
 - [ ] Barrierefreiheit in der Beschreibung nennen: Reduce Motion (folgt dem System), Large Text, Linkshänder-Modus,
       Fahrzeug-Beschriftungen, Haptik abschaltbar, Tastatursteuerung, Farbe nie das einzige Signal.
 
+### 4. Viertes Shortcut: Ranks (seit 27.10.2026)
+
+`Web/public/manifest.webmanifest` hat jetzt vier `shortcuts` (Daily, Unlimited, Multiplayer, Ranks; mehr erlaubt Android nicht).
+Der Wrapper übernimmt sie nur beim Bauen. Widgets gibt es nicht (Entscheidung Leo, 27.10.2026): stattdessen lassen sich die
+Shortcuts per Langdruck als Icon auf den Homescreen ziehen.
+
+- [ ] Beim Bauen: PWABuilder liest das Manifest neu (Web vorher deployt), bei Bubblewrap `bubblewrap update`
+      mit frischem Manifest, damit der vierte Eintrag in der App landet.
+- [ ] Testen: Langdruck auf das App-Icon zeigt vier Einträge, „Ranks“ öffnet Social → Ranks.
+
+### Texte für den Release (Vorschlag)
+
+Versionshinweise (Play Console, kurz):
+
+```
+<de-DE>
+Neu: Ranks als viertes App-Shortcut (Langdruck auf das Icon), Benachrichtigungen, Crew-Links öffnen direkt die App, Museum-Regale mit Feier, viele Verbesserungen.
+</de-DE>
+<en-US>
+New: Ranks as a fourth app shortcut (long-press the icon), notifications, crew links open the app directly, Museum shelves with a celebration, many improvements.
+</en-US>
+```
+
+Barrierefreiheit (Absatz für die Store-Beschreibung, Englisch):
+
+```
+Made to be played by everyone: Reduce Motion (follows your system setting), Large Text, a left-handed mode, text labels on every vehicle, haptics you can switch off, full keyboard control, and colour is never the only signal.
+```
+
 ## So geht der Build
 
 ### Vorbereitung

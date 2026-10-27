@@ -59,12 +59,14 @@ export const PATCH_NOTES: PatchNote[] = [
       'A new Museum exhibit glows gold until you have opened it.',
       'A full shelf now gets a celebration and keeps a gold tick.',
       'After a Prestige, the first-shift celebration and the left-handed hint stay away.',
+      'A fourth app shortcut opens the Ranks straight from the app icon.',
     ],
     items: [
       'A Prestige now starts at Level 1 without the new-player moments again: the first-shift celebration, the Level 6 moment and the left-handed hint stay away.',
       'A new Museum exhibit now glows gold, with a gold NEW badge, until you have opened it. The result also says how many new exhibits went on show.',
       'A Museum shelf filled on a shift now gets its own moment on the result, with a museum glyph and a gold tick beside its count in the Museum.',
       'Filling all four shelves gets a bigger celebration. Every shelf keeps its tick afterwards.',
+      'A long press on the app icon now also offers Ranks, next to Daily Shift, Unlimited and Multiplayer. You can drag any of them onto the home screen. In the Play Store app it arrives with the next app update.',
     ],
   },
   {

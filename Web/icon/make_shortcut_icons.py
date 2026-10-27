@@ -1,4 +1,4 @@
-"""The icons of the app shortcuts (long press on the app icon): Daily Shift, Unlimited, Multiplayer.
+"""The icons of the app shortcuts (long press on the app icon): Daily Shift, Unlimited, Multiplayer, Ranks.
 
     python Web/icon/make_shortcut_icons.py
 
@@ -72,9 +72,18 @@ def multiplayer():
     return img
 
 
+def ranks():
+    """A podium: three outlined steps, the middle one highest."""
+    img, d = canvas()
+    base = S * 0.70
+    for left, top in ((S * 0.25, S * 0.50), (S * 0.44, S * 0.34), (S * 0.63, S * 0.57)):
+        d.rounded_rectangle((left, top, left + S * 0.12, base), radius=S * 0.03, outline=ACCENT, width=LINE)
+    return img
+
+
 def main():
     os.makedirs(OUT, exist_ok=True)
-    for name, draw in (("daily", daily), ("unlimited", unlimited), ("multiplayer", multiplayer)):
+    for name, draw in (("daily", daily), ("unlimited", unlimited), ("multiplayer", multiplayer), ("ranks", ranks)):
         big = draw()
         for size in (96, 192):
             big.resize((size, size), Image.LANCZOS).save(os.path.join(OUT, f"shortcut-{name}-{size}.png"), optimize=True)
