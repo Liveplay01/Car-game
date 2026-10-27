@@ -69,6 +69,15 @@
       .boot-block { opacity: 0; animation: boot-fade 300ms ease-out 19.7s forwards; }
       /* Folded away while loading, so the ring sits centred (auto margins, which never cut off the top
          on a short screen); it unfolds under the ring, which glides up. */
+      /* main.ts adds `zoom`: the boot zoom canvas (present/bootZoom.ts) stands in for the ring and the message. On the first
+         visit the lesson sits over it, dimmed, and fades once the game is ready (`ready`). */
+      .boot.zoom { padding: 0; overflow: hidden; }
+      .boot-zoom { transition: opacity 600ms cubic-bezier(0.23, 1, 0.32, 1); }
+      .boot.learn:not(.ready) .boot-zoom { opacity: 0.4; }
+      .boot.zoom.learn:not(.failed) { padding: calc(16px + env(safe-area-inset-top, 0px)) 24px calc(24px + env(safe-area-inset-bottom, 0px)); }
+      .boot.zoom .boot-learn { position: relative; transition: opacity 350ms cubic-bezier(0.23, 1, 0.32, 1); }
+      .boot.ready .boot-learn { opacity: 0; pointer-events: none; }
+      .boot.zoom > svg, .boot.zoom .boot-fail { display: none; }
       .boot-fail {
         flex: none;
         max-width: 34ch;

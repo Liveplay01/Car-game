@@ -351,6 +351,10 @@ export class GameSession {
   private frameDelta = 0;
   /** The camera of the last frame: places sounds left or right. */
   private lastCamera: Camera | null = null;
+  /** The camera of the last frame (null before the first): the boot zoom lands exactly on it. */
+  get camera(): Camera | null {
+    return this.lastCamera;
+  }
   private lastInset = 0;
   private readonly notices = new NoticeQueue();
   private readonly tips = new TipQueue();
