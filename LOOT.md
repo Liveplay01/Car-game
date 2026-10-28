@@ -58,7 +58,7 @@ unverändert. Der Wurf kommt als letzter aus dem Seed, alle anderen Ergebnisse b
 Er ist das einzige Honour, das Glück ist, und in keiner anderen Truhe. Die Chance steht im
 Chest-Sheet bei den anderen Odds (`chestFinds`, Quelle `{ kind: 'find' }` in `core/loot.ts`).
 
-Innerhalb einer Seltenheit ist jedes Item gleich wahrscheinlich.
+Innerhalb einer Seltenheit bekommen fehlende Truhen-Items einen kleinen Bonus: pro bereits gesammeltem Skin steigt ihr Auswahlgewicht um 0,1 %, bis höchstens 10 %. Die Seltenheits-Chancen der Truhen bleiben unverändert.
 
 **Die Diamond Chest hat kein Common.** Beim Aufklopfen wachsen die Chancen über der untersten (hier Rare) wie bei jeder Truhe, die unterste zahlt (`tappedOdds`); Pity und Duplikate-Geld gelten wie immer. Legendary bleibt unter 15 %, auch bei voller Klopfkraft (13 % × 1,1 = 14,3 %).
 

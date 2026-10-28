@@ -431,7 +431,19 @@ export function rollChest(
   else if (chestsSinceEpic >= PITY_CHESTS - 1 && rarityRank(rarity) < 2) rarity = 'epic';
   const since = rarityRank(rarity) >= 2 ? 0 : chestsSinceEpic + 1;
   const pool = COSMETICS.filter((x) => x.rarity === rarity && x.source.kind === 'chest');
-  let item = rng.pick(pool);
+  // A small collection-size bonus makes chest drops a little more likely to
+  // add something new, without changing the published rarity odds.
+  const newSkinBonus = Math.min(0.1, collection.length * 0.001);
+  const totalWeight = pool.reduce((sum, candidate) => sum + (collection.includes(candidate.id) ? 1 : 1 + newSkinBonus), 0);
+  let draw = rng.unit() * totalWeight;
+  let item = pool[pool.length - 1];
+  for (const candidate of pool) {
+    draw -= collection.includes(candidate.id) ? 1 : 1 + newSkinBonus;
+    if (draw < 0) {
+      item = candidate;
+      break;
+    }
+  }
   if (kind === 'event' && day !== null && !guaranteed && rng.unit() < 0.5) {
     const seasonal = seasonItems(seasonOf(day)).find((x) => !collection.includes(x.id));
     if (seasonal) item = seasonal;

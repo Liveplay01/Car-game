@@ -3665,6 +3665,9 @@ export class GameSession {
     const shake = calm ? v(0, 0) : add(add(this.effects.shakeOffset, this.explosions.shakeOffset), this.cameraFx.breathOffset(rm));
     // The words in the island sit on this camera: no shake, punch or pull-back moves them, and their wrapping never changes.
     const steady: Camera = { ...cam, scale: cam.scale * (1 - GameSession.lossPullBack) };
+    // Ready-screen words and condition icons belong to the island. Keep them clear of camera effects,
+    // while letting the mode swipe carry them with the roundabout.
+    const steadyWithModePan: Camera = { ...steady, focus: v(steady.focus.x + this.pan.pan, steady.focus.y) };
     const pulled = { ...cam, scale: cam.scale * (1 - GameSession.lossPullBack * this.lossPull) * (1 + (calm ? 0 : this.explosions.punch)) };
     const leaned = zoomAbout(this.cameraFx.apply(pulled, world.layout.stopPose(world.layout.player).position, calm), this.punchAt, 1 + this.punch);
     const kick = this.modeKick;
@@ -3754,7 +3757,7 @@ export class GameSession {
         drawText(list, S.ads.reviveSkip, v(viewport.x / 2, at.y + AdPill.hit / 2 + 10), 12, 'muted', { align: 'center' });
       }
     } else if (s.k === 'result') {
-      list.camera = steady;
+      list.camera = steadyWithModePan;
       const { chip: chipAt, grow } = ResultBanner.add(list, s.summary, this.playingLevel, this.resultBank, this.resultAge, rm, this.giftLine, world.layout.islandRadius);
       this.introWant = grow;
       if (chipAt) this.addFailChip(list, s.summary, chipAt);
@@ -3764,7 +3767,7 @@ export class GameSession {
       this.tutorial?.add(list, world, alpha, this.sceneTime, rm);
       if (arriving <= 0) this.addGameAd(list, TopBar.foot(list) + 18, 1);
     } else if (s.k === 'ready') {
-      list.camera = steady;
+      list.camera = steadyWithModePan;
       this.addReadyBanner(list, this.tutorial && !this.tutorial.isOver ? Tutorial.readyPrompt : this.versusSelected ? S.ready.tapForFriends : S.ready.tapToStart);
       list.camera = camera;
       this.tutorial?.add(list, world, alpha, this.sceneTime, rm);
