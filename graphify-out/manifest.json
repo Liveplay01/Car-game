@@ -894,9 +894,9 @@
     "semantic_hash": "ed2a6565dd6f475456320f62b966ce18"
   },
   "Web/src/present/city.ts": {
-    "mtime": 1793116785.8348155,
-    "seen": 1793267481.6449134,
-    "ast_hash": "450bd067a0cd24d4ac3c651ad4222246",
+    "mtime": 1793306043.7260277,
+    "seen": 1793306203.9166393,
+    "ast_hash": "97eb3cd1d07d0ae7fd050f249f2da44b",
     "semantic_hash": ""
   },
   "Web/src/present/cityLights.ts": {
@@ -1428,9 +1428,9 @@
     "semantic_hash": "ad6fb39b455e8646d559227bb23dc156"
   },
   "Web/src/present/patchNotes.ts": {
-    "mtime": 1793287949.0233176,
-    "seen": 1793288472.196194,
-    "ast_hash": "5d9522ce248badcd8777cda30df6fa45",
+    "mtime": 1793306101.9063852,
+    "seen": 1793306203.9171615,
+    "ast_hash": "c70d60d04ffa8e6ba4d3acc23b5808b8",
     "semantic_hash": ""
   },
   "Web/src/present/perspective.ts": {
@@ -1482,9 +1482,9 @@
     "semantic_hash": "cc264b7544ca254e6183e42d35daa8e0"
   },
   "Web/src/present/session.ts": {
-    "mtime": 1793287942.8225696,
-    "seen": 1793288472.196194,
-    "ast_hash": "b9fa6e3e275669c831a3b1c8d68f2361",
+    "mtime": 1793306043.7290032,
+    "seen": 1793306203.9171615,
+    "ast_hash": "4a60054890261e353eb1e3c186a10276",
     "semantic_hash": ""
   },
   "Web/src/present/shop.ts": {
@@ -2658,9 +2658,9 @@
     "semantic_hash": ""
   },
   "Marketing/trailer/compose/stage.html": {
-    "mtime": 1793289128.2981586,
-    "seen": 1793289435.2951467,
-    "ast_hash": "ed9f38f859e8bc9c458bf94d40be419a",
+    "mtime": 1793291428.353335,
+    "seen": 1793292021.1248546,
+    "ast_hash": "46254f946dec3ab0524939dfda7cd4e4",
     "semantic_hash": ""
   },
   "Research.md": {
@@ -4917,6 +4917,18 @@
     "mtime": 1793288456.8388126,
     "seen": 1793288472.1966982,
     "ast_hash": "8fceb4d3512512c6797f51227c4723b9",
+    "semantic_hash": ""
+  },
+  "Marketing/trailer/compose/cuts/store-preview.mjs": {
+    "mtime": 1793291183.026381,
+    "seen": 1793292021.122897,
+    "ast_hash": "214217cfdd9b0415ee7194829e8ddf47",
+    "semantic_hash": ""
+  },
+  "Marketing/videos/roundabout-timing-store-preview-portrait.mp4": {
+    "mtime": 1793291766.7103746,
+    "seen": 1793292021.1253505,
+    "ast_hash": "298420bf987faabac180b2af03d11835",
     "semantic_hash": ""
   }
 }
