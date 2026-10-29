@@ -101,7 +101,7 @@ export const Details = {
         ? []
         : [{ label: affordable ? S.detail.buy(money(Fmt.number(price))) : S.upgrades.missing(money(Fmt.number(price - career.money))), action: { k: 'buy', upgrade: u }, prominent: true, enabled: affordable }];
     // Today's pick (Leo, 05.10.2026): one free step for a watched ad. The player's choice, the buy button stays.
-    // Only while an ad can play: no network, an ad blocker or no AdSense yet leave nothing to offer.
+    // Only while an ad can play: no network, an ad blocker or no ad provider leave nothing to offer.
     const free = ads.offers && ads.ready && Careers.adUpgradeOffer(career, today, config) === u;
     if (free) {
       notes.push({ text: S.ads.freeStepHint, color: 'accent' });

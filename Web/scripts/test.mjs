@@ -2390,7 +2390,7 @@ test('a second try goes to the Daily board with its score, one try says nothing'
   assert.deepEqual(dueBoards({ ...r, dailyTries: 1 }).find(([board]) => board === 'daily')[1], { score: 3000, day: 20000 });
 });
 
-test('with no ad ready (no network, a blocker, no AdSense yet) the ad offers are not shown at all', () => {
+test('with no ad ready (no network, a blocker, no ad provider) the ad offers are not shown at all', () => {
   const c = newCareer();
   c.level = 12;
   const none = { offers: true, ready: false };

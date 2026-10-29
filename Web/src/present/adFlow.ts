@@ -21,8 +21,8 @@ export interface AdOffer {
  * free chest, a free step of one upgrade a day, and +10 % on the Skin Upgrade; since 16.10.2026 also
  * a broken Daily streak back, a Streak Freeze before it breaks, and the Daily's pay doubled. The reward is paid
  * only when the ad was watched; a closed ad, no ad and an ad blocker pay nothing. The ad itself
- * comes from the host (`rewardedAd`: the portal's, or Google's on the normal site and the Play
- * app); where none is on, nothing is paid. Only the chest is also offered on a portal
+ * comes from the host (`rewardedAd`: the portal's; the normal site and the Play app have none yet);
+ * where none is on, nothing is paid. Only the chest is also offered on a portal
  * (`host.adOffers` is off there for the other two).
  */
 export class AdFlow {

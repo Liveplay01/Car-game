@@ -5,8 +5,8 @@ import { startCloud } from './net/cloud';
 import { startTuning } from './net/tuning';
 import { S } from './present/strings';
 import { currentLanguage } from './present/i18n';
-import { startAds } from './ui/ads';
 import { startAnalytics } from './ui/analytics';
+import { consentAnswered } from './ui/consent';
 import { Casino } from './core/casino';
 import { forgetMeasures } from './present/measure';
 import { Careers, newSave } from './core/career';
@@ -151,6 +151,8 @@ const hasSave = (): boolean => {
   }
 };
 const firstVisit = (!inPortal && !hasSave()) || bootDemo === 'learn';
+// The lesson starts only once the consent message is answered (Leo, 29.10.2026).
+const lessonStart = firstVisit ? consentAnswered() : Promise.resolve();
 const learn = boot?.querySelector('.boot-learn');
 if (boot && learn && firstVisit) {
   const L = S.shell.learn;
@@ -162,7 +164,7 @@ if (boot && learn && firstVisit) {
   learn.querySelector('.learn-wait > span')!.textContent = L.loading;
   learn.querySelector('.learn-late p')!.textContent = L.skipNote;
   learn.querySelector('.learn-late button')!.textContent = L.skip;
-  boot.classList.add('learn');
+  void lessonStart.then(() => boot.classList.add('learn'));
 }
 
 // The heading face (Overpass, `ui/shell.css`) is measured and drawn by the canvas. Nothing waits for it: the way in
@@ -176,8 +178,7 @@ const shell = new Shell(app, canvas, layers);
 // In the frame the canvas first draws (its loop asked first), so the sky in index.html and the canvas's own never
 // show together or not at all. The first visit's lesson stays in front; the scene hovers behind it.
 if (!firstVisit) requestAnimationFrame(() => boot?.classList.add('live'));
-// Ads and visit statistics load while the boot screen stands too, so nothing arrives once the game shows (Leo, 22.10.2026).
-startAds();
+// Visit statistics load while the boot screen stands too, so nothing arrives once the game shows (Leo, 22.10.2026).
 startAnalytics();
 // The boot screen stands until the sounds are in, while the scene already draws behind it, so the first seconds of
 // play do not stutter (Leo, 22.10.2026). The first visit's lesson plays once through (then a skip button, until the game is ready); a tap
@@ -187,8 +188,12 @@ const tapped = new Promise<void>((resolve) => {
   if (firstVisit) boot?.querySelector('.learn-late button')?.addEventListener('click', () => resolve(), { once: true });
   else boot?.addEventListener('pointerdown', () => resolve(), { once: true });
 });
-if (firstVisit) void pause(LEARN_MS).then(() => boot?.classList.add('late'));
-await Promise.race([Promise.all([shell.preload(), firstVisit ? pause(LEARN_MS) : null]), tapped, pause(firstVisit ? LEARN_MS + BOOT_WAIT_MS : BOOT_WAIT_MS)]);
+if (firstVisit) void lessonStart.then(() => pause(LEARN_MS)).then(() => boot?.classList.add('late'));
+await Promise.race([
+  Promise.all([shell.preload(), firstVisit ? lessonStart.then(() => pause(LEARN_MS)) : null]),
+  tapped,
+  firstVisit ? lessonStart.then(() => pause(LEARN_MS + BOOT_WAIT_MS)) : pause(BOOT_WAIT_MS),
+]);
 gameLoaded();
 // The game is on screen: the boot screen fades away, and later errors are the game's own business.
 window.removeEventListener('error', bootErrored);

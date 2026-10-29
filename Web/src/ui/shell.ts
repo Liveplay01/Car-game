@@ -19,7 +19,6 @@ import { legalDoc } from '../present/legal';
 import { PATCH_NOTES } from '../present/patchNotes';
 import { PhotoView } from './photo';
 import { celebrate, invitedRoom, offerLogin, onAdAudio, reportGameplay, reportProgress, rewardedAd, rewardedAdsReady } from './crazygames';
-import { adReady, onRewardedAudio, rewardedAdsense } from './ads';
 import { track } from './analytics';
 import { inItch, inPlayStore, inPortal, isInstalled, isIos, isIpad, keepStorage, renewStorage, touchFirst } from '../storage/device';
 import type { Hint } from '../core/career';
@@ -226,16 +225,14 @@ export class Shell {
       sound: (id, pitch, pan) => this.audio.play(id, pitch, pan),
       haptic: (id, softness) => this.haptics.play(id, softness),
       celebrate: () => celebrate(),
-      // On CrazyGames their ad; on the normal site and in the Play app Google's; otherwise none, and no reward.
-      rewardedAd: (done) => rewardedAd(done) || rewardedAdsense(done),
-      adReady: () => rewardedAdsReady() || adReady(),
+      rewardedAd,
+      adReady: rewardedAdsReady,
       // A free upgrade step and the Skin Upgrade's boost are for the normal site and the Play app, not CrazyGames or itch.io.
       adOffers: !inPortal && !inItch,
       feelsHaptics: this.haptics.supported,
     };
     const quietForAd = (on: boolean): void => this.audio.setSuspended(on || document.hidden);
     onAdAudio(quietForAd);
-    onRewardedAudio(quietForAd);
     this.session = new GameSession(output);
     this.readBrowserText();
     this.session.nightPreview = import.meta.env.DEV && new URLSearchParams(location.search).has('night-preview');
