@@ -73,6 +73,7 @@ export const PATCH_NOTES: PatchNote[] = [
       'With Reduce Transparency on in your system settings, glass panels turn solid.',
       'A tap during the short pause after a lost shift now gives a haptic buzz and FAIL shakes its head, so it does not feel ignored on phones that cannot vibrate. With Reduce Motion it blinks instead.',
       'While the game loads, the view comes down from above the clouds onto your last map, on the game itself. Once everything is in, the menus fade in and the first cars drive onto the ring. A slow load is a longer flight; with Reduce Motion it starts on the street.',
+      'From up high the map is no longer bare: the roads run on to the horizon and houses and trees fill the land around the city.',
       'When the game cannot start, the view still lands, and the message shows over the map, with its own words when you are offline.',
     ],
   },

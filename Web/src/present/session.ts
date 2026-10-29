@@ -3598,7 +3598,10 @@ export class GameSession {
     // A device that cannot keep 30 fps leaves out the decoration (`lowDetail`), never the game.
     list.groundGrain = !this.lowDetail;
     if (screen) list.backdrop = GameSession.backdropVeil;
-    else CityLayer.add(list, world, theme, rm ? null : this.sceneTime, rm ? null : this.cityPulse, this.scars.isEmpty ? null : this.scars, this.sceneTime, this.playingMode === 'shift' && !this.special ? this.cityRise : null, !this.lowDetail, holiday);
+    else {
+      CityLayer.add(list, world, theme, rm ? null : this.sceneTime, rm ? null : this.cityPulse, this.scars.isEmpty ? null : this.scars, this.sceneTime, this.playingMode === 'shift' && !this.special ? this.cityRise : null, !this.lowDetail, holiday);
+      if (this.boot) CityLayer.addOutskirts(list, world, theme);
+    }
     // A mode swipe: the road runs on towards the map coming in, from this one and from the next.
     const link = Math.min(1, Math.abs(this.pan.pan) / (camera.viewport.x * 0.25));
     SceneBuilder.addRoad(list, world.layout, world.config, world.layout.player, link, this.pan.pan < 0 ? 0 : Math.PI);

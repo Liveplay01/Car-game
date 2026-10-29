@@ -1,8 +1,8 @@
 import type { World } from '../core/world';
 import { builtArmSlots, type Config } from '../core/config';
 import type { Album } from '../core/loot';
-import { type Vec2, v, add, mul, right, fromAngle, wrap, TAU } from '../core/vec2';
-import { type RenderList, rect, circle, arc, unitHash, Ease } from './render';
+import { type Vec2, v, add, mul, right, fromAngle, wrap, dot, length, TAU } from '../core/vec2';
+import { type RenderList, rect, circle, arc, line, toScreen, unitHash, Ease } from './render';
 import type { ColorToken } from './theme';
 import { MapTheme } from './mapThemes';
 import type { MapScars } from './explosionsFx';
@@ -176,6 +176,63 @@ export const CityLayer = {
     }
     MapTheme.addAvenues(list, theme, world);
     if (pulse && clouds) CityLayer.addCloudShadows(list, pulse);
+  },
+
+  /** The way in looks past the city: houses and trees come in cells of this size, the arms' far road ends at `outskirtsRoad`. */
+  outskirtsCell: 150,
+  outskirtsRoad: 690,
+
+  /**
+   * The map seen from the top of the way in (`BootDescent`, Leo, 29.10.2026): the arms run on to the edge of the picture
+   * and houses and trees fill the rest. Made per cell and only where it is in view; none of it reaches the street view.
+   */
+  addOutskirts(list: RenderList, world: World, theme: MapTheme | null): void {
+    const cam = list.camera;
+    const layout = world.layout;
+    const lane = layout.laneWidth;
+    const cell = CityLayer.outskirtsCell;
+    const hx = cam.viewport.x / cam.scale;
+    const hy = cam.viewport.y / cam.scale;
+    const armDirs = layout.arms.map((a) => fromAngle(a.angle));
+    const keepOut = layout.ringRadius + 330;
+    const roofs = MapTheme.roofs(theme);
+    const x0 = Math.floor((cam.center.x - hx) / cell);
+    const x1 = Math.ceil((cam.center.x + hx) / cell);
+    const y0 = Math.floor((cam.center.y - hy) / cell);
+    const y1 = Math.ceil((cam.center.y + hy) / cell);
+    for (let ix = x0; ix < x1; ix++) {
+      for (let iy = y0; iy < y1; iy++) {
+        const id = (Math.imul(ix, 73856093) ^ Math.imul(iy, 19349663)) >>> 0;
+        const pick = unitHash(id, 31);
+        if (pick > 0.5) continue;
+        const center = v((ix + unitHash(id, 32)) * cell, (iy + unitHash(id, 33)) * cell);
+        if (length(center) < keepOut) continue;
+        const at = toScreen(cam, center);
+        const margin = 80 * cam.scale;
+        if (at.x < -margin || at.y < -margin || at.x > cam.viewport.x + margin || at.y > cam.viewport.y + margin) continue;
+        if (armDirs.some((d) => dot(center, d) > 0 && Math.abs(center.x * d.y - center.y * d.x) < lane * 2 + 60)) continue;
+        if (MapTheme.keepsClear(theme, center, layout)) continue;
+        if (pick < 0.3) {
+          const angle = unitHash(id, 34) * TAU;
+          const size = v(26 + 30 * unitHash(id, 35), 22 + 26 * unitHash(id, 36));
+          CityLayer.addRoof(list, center, size, angle, id, 1, roofs);
+        } else {
+          MapTheme.addPlant(list, theme, center, 7 + 5 * unitHash(id, 37), id);
+        }
+      }
+    }
+    const inner = CityLayer.outskirtsRoad;
+    const reach = length(cam.center) + Math.hypot(hx, hy);
+    const grain = list.grain;
+    list.grain = 'asphalt';
+    const spans = layout.arms.map((a, k) => ({ angle: a.angle, out: armDirs[k], centre: mul(armDirs[k], (inner + reach) / 2) }));
+    for (const r of spans) list.w(rect(r.centre, v(reach - inner, lane * 2 + 7), 0, r.angle), 'kerb');
+    for (const r of spans) list.w(rect(r.centre, v(reach - inner, lane * 2), 0, r.angle), 'surface');
+    const first = layout.ringRadius + lane / 2 + 10;
+    for (const r of spans) {
+      for (let d = first + 28 * Math.ceil((inner - first) / 28); d < reach; d += 28) list.w(line(mul(r.out, d), mul(r.out, d + 16), 3), 'marking', 0.8);
+    }
+    list.grain = grain;
   },
 
   /**
