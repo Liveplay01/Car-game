@@ -5,6 +5,7 @@
  * `skipped`, `manuallyEnded`); a closed or failed ad pays nothing.
  */
 import type { RewardedOutcome } from '../present/session';
+import { testAds } from '../storage/device';
 
 const APP_KEY = '0ca177c2-647d-497c-9b78-e8ec43e345b6';
 const PLAYER_ID = 'applixir-player';
@@ -44,6 +45,7 @@ export function applixirRewardedAd(done: (outcome: RewardedOutcome) => void): bo
     apiKey: APP_KEY,
     injectionElementId: PLAYER_ID,
     adStatusCallbackFn: ({ type }) => {
+      if (testAds) console.info('Applixir status', type);
       if (type === 'complete') rewarded = true;
       if (ENDED.includes(type)) settle(rewarded ? 'watched' : 'dismissed');
     },

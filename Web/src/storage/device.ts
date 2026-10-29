@@ -10,6 +10,8 @@
  * their SDK keeps the save (`ui/crazygames.ts`). Every other visit is the plain browser game.
  */
 export const inPortal = typeof location !== 'undefined' && new URLSearchParams(location.search).has('crazygames');
+/** `?werbung`: logs each Applixir ad step to the console, to test the ad process on the live site. */
+export const testAds = typeof location !== 'undefined' && new URLSearchParams(location.search).has('werbung');
 
 /**
  * Opened from itch.io (Leo, 05.10.2026): the page there is a one-file wrapper (`itch/index.html`)
