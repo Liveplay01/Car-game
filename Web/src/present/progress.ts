@@ -18,6 +18,7 @@ import { MenuKit } from './menukit';
 import type { ColorToken } from './theme';
 import { StreakFlame, flameTier } from './streakFlame';
 import { moneyTag, textWidth, drawFitted } from './icons';
+import { wrapText } from './upgrades';
 import { S, Fmt } from './strings';
 import { ShopPage } from './shop';
 import { PassArt, SEASON_TINT } from './passArt';
@@ -174,6 +175,8 @@ export const ProgressPage = {
   gap: 12,
   /** The streak card at the top of Records: the tailpipe scene, the days and the road of milestones. */
   streakHeight: 282,
+  /** Extra room under the streak card's road when its call to play needs a second line. */
+  streakLine: 16,
   /** The Season Pass card once it is open: a picture tile of the season, the track and its bar. */
   passHeight: 128,
   /** The running tour's card: a picture tile of its sky and top skin, the stops and the way in. */
@@ -245,7 +248,8 @@ export const ProgressPage = {
     if (section === PROGRESS.today) {
       if (Unlocks.isOpen(career, 'daily')) {
         s.row({ k: 'daily' }, 64);
-        s.row({ k: 'streak' }, ProgressPage.streakHeight);
+        const twoLines = ProgressPage.streakStatus(career, today, width).length > 1 ? ProgressPage.streakLine : 0;
+        s.row({ k: 'streak' }, ProgressPage.streakHeight + twoLines);
       }
       // The weekly shift is a level-20 trial and the tours open at their level: a new player does not see them yet.
       if (Unlocks.isKnown(career, 'trials') || career.weeklyDone >= 0) s.row({ k: 'weekly' }, 64);
@@ -488,7 +492,7 @@ export const ProgressPage = {
       case 'title':
         return drawText(list, b.label, v(r.minX + 4, R.center(r).y + 2), 20, 'primary', { opacity: o, weight: 'bold' });
       case 'note':
-        return drawText(list, b.text, v(r.minX + 4, R.center(r).y), ShopPage.fitted(b.text, 11, R.width(r) - 8), 'muted', { opacity: o });
+        return drawFitted(list, b.text, v(r.minX + 4, R.center(r).y), 11, R.width(r) - 8, 'muted', { opacity: o });
       case 'daily':
         return ProgressPage.addDaily(list, r, career, today, o);
       case 'weekly':
@@ -582,7 +586,7 @@ export const ProgressPage = {
     const c = R.center(r);
     const empty = stat.value === S.progress.none;
     drawText(list, stat.value, v(r.minX + 16, c.y - 8), ShopPage.fitted(stat.value, 22, R.width(r) - 32), empty ? 'muted' : 'primary', { opacity: o, weight: 'bold' });
-    drawText(list, stat.label, v(r.minX + 16, c.y + 16), ShopPage.fitted(stat.label, 11, R.width(r) - 32), 'muted', { opacity: o });
+    drawFitted(list, stat.label, v(r.minX + 16, c.y + 16), 11, R.width(r) - 32, 'muted', { opacity: o });
   },
 
   odometerKm: (c: Career): number => (c.stats.cars ?? 0) * ProgressPage.tripKm,
@@ -652,7 +656,7 @@ export const ProgressPage = {
       const y = r.minY + i * STAT_ROW + STAT_ROW / 2;
       if (i > 0) list.s(line(v(r.minX + 16, y - STAT_ROW / 2), v(r.maxX, y - STAT_ROW / 2), 0.5), 'separator', o);
       const valueWidth = textWidth(stat.value, 13) + 8;
-      drawText(list, stat.label, v(r.minX + 16, y), ShopPage.fitted(stat.label, 13, R.width(r) - 32 - valueWidth), 'muted', { opacity: o });
+      drawFitted(list, stat.label, v(r.minX + 16, y), 13, R.width(r) - 32 - valueWidth, 'muted', { opacity: o });
       drawText(list, stat.value, v(r.maxX - 16, y), 13, 'primary', { opacity: o, weight: 'bold', align: 'trailing' });
     });
   },
@@ -662,6 +666,14 @@ export const ProgressPage = {
    * beside it, and under them the road of milestones (a post per streak day prize, the reached ones gold,
    * the next one breathing) so a streak is more than a number.
    */
+  /** The streak card's call to play, at most two lines (the card grows for the second). */
+  streakStatus(career: Career, today: number, width: number): string[] {
+    const P = S.progress;
+    const status = career.dailyStreak === 0 ? P.streakStart : Careers.isDailyOpen(career, today) ? P.streakKeep : P.streakDone;
+    const lines = wrapText(status, width - 32, 12, true);
+    return lines.length > 2 ? [lines[0], lines.slice(1).join(' ')] : lines;
+  },
+
   addStreak(list: RenderList, r: Rect, career: Career, today: number, clock: number, reduceMotion: boolean, o: number): void {
     const P = S.progress;
     const days = career.dailyStreak;
@@ -714,14 +726,14 @@ export const ProgressPage = {
 
     const open = Careers.isDailyOpen(career, today);
     const wide = R.width(r) - 32;
-    const status = days === 0 ? P.streakStart : open ? P.streakKeep : P.streakDone;
-    drawText(list, status, v(r.minX + 16, r.maxY - 42), ShopPage.fitted(status, 12, wide), open || days === 0 ? 'accent' : 'muted', { opacity: o, weight: 'bold' });
+    const status = ProgressPage.streakStatus(career, today, R.width(r));
+    status.forEach((lineText, i) => drawFitted(list, lineText, v(r.minX + 16, r.maxY - 42 - (status.length - 1 - i) * ProgressPage.streakLine), 12, wide, open || days === 0 ? 'accent' : 'muted', { opacity: o, weight: 'bold' }));
     const perfect = Careers.perfectWeekProgress(career, today, baseConfig);
     const maxHeat = Careers.maxHeat(career, today);
     const perfectText = perfect.paid ? S.daily.perfectWeekDone : S.daily.perfectWeekProgress(perfect.days, baseConfig.perfectWeekDays);
     const nextText = next ? `${S.daily.prize(next.prize)} ${S.daily.stripRewardIn(next.left)}` : null;
     const extra = [perfectText, nextText, career.streakFreezes > 0 ? S.daily.freezes(career.streakFreezes) : null, maxHeat > 0 ? S.heat.button(maxHeat) : null].filter((x): x is string => x !== null).join(' · ');
-    drawText(list, extra, v(r.minX + 16, r.maxY - 22), ShopPage.fitted(extra, 11, wide), 'muted', { opacity: o });
+    drawFitted(list, extra, v(r.minX + 16, r.maxY - 22), 11, wide, 'muted', { opacity: o });
   },
 
   addDaily(list: RenderList, r: Rect, career: Career, today: number, o: number): void {
@@ -1016,7 +1028,7 @@ export const ProgressPage = {
     const bottom = card.minY + 60;
     if (!open) {
       const hint = S.elite.locked(baseConfig.prestigeLevel);
-      drawText(list, hint, v(card.minX + 16, bottom), ShopPage.fitted(hint, 11, barWidth), 'muted', { opacity: o });
+      drawFitted(list, hint, v(card.minX + 16, bottom), 11, barWidth, 'muted', { opacity: o });
       return;
     }
     const xp = S.elite.xp(into, need);
@@ -1025,7 +1037,7 @@ export const ProgressPage = {
     const lineText = next ? S.elite.next(next) : null;
     if (lineText) {
       const room = barWidth - textWidth(xp, 11) - 16;
-      drawText(list, lineText, v(card.maxX - 16, bottom), ShopPage.fitted(lineText, 11, room), 'muted', { opacity: o, align: 'trailing' });
+      drawFitted(list, lineText, v(card.maxX - 16, bottom), 11, room, 'muted', { opacity: o, align: 'trailing' });
     }
   },
 
@@ -1059,10 +1071,10 @@ export const ProgressPage = {
     const right = complete ? S.feats.done : S.feats.have(have, need);
     const rightWidth = textWidth(right, 12) + 4;
     const name = S.shop.item(feat.id);
-    drawText(list, name, v(x, top), ShopPage.fitted(name, 14, r.maxX - 16 - rightWidth - x - 8), complete ? 'coin' : 'primary', { opacity: o, weight: 'bold' });
+    drawFitted(list, name, v(x, top), 14, r.maxX - 16 - rightWidth - x - 8, complete ? 'coin' : 'primary', { opacity: o, weight: 'bold' });
     drawText(list, right, v(r.maxX - 16, top), 12, complete ? 'coin' : 'muted', { opacity: o, weight: 'bold', align: 'trailing' });
     const goal = feat.title ? `${S.feats.goal(feat.goal)} · ${S.feats.withTitle(S.titles.name(feat.title))}` : S.feats.goal(feat.goal);
-    drawText(list, goal, v(x, c.y + R.height(r) * 0.02), ShopPage.fitted(goal, 11, r.maxX - 16 - x), 'muted', { opacity: o });
+    drawFitted(list, goal, v(x, c.y + R.height(r) * 0.02), 11, r.maxX - 16 - x, 'muted', { opacity: o });
     const barY = c.y + R.height(r) * 0.27;
     Meter.add(list, `feat:${feat.id}`, R.make(x, barY - Meter.height / 2, r.maxX - 16, barY + Meter.height / 2), have / need, 0, o, reduceMotion);
   },

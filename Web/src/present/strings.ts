@@ -141,7 +141,7 @@ export const S = {
     language: 'Language',
     gameFeel: 'Display & controls',
     largerText: 'Larger text',
-    largerTextSub: 'Notices and cards over the game a step larger.',
+    largerTextSub: 'All text a step larger, in menus and over the game.',
     reduceMotion: 'Reduce motion',
     reduceMotionSub: 'No shake, slow-mo or flying parts.',
     steadyCamera: 'Steady camera',

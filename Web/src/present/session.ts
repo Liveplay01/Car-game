@@ -220,6 +220,8 @@ export class GameSession {
   /** The camera's punch on the best merges: how long ago, how far it leans in (a share of the scale) and towards which car. */
   private sincePunch = Infinity;
   private punchSize = 0;
+  /** How long ago the lost shift's breather swallowed a tap: FAIL shakes its head, for the phones that cannot buzz. */
+  private sinceDenied = Infinity;
   private punchAt = v(0, 0);
   /** Tension, relief and the leans towards a crash, a takedown or a last car that only just fits. */
   private cameraFx = new CameraFx();
@@ -1612,6 +1614,7 @@ export class GameSession {
     this.sinceTakedown += realDelta;
     this.sinceHitStop += realDelta;
     this.sincePunch += realDelta;
+    this.sinceDenied += realDelta;
     this.adPillAge += realDelta;
     // Whether anyone finds the Today page, and whether the Daily still waits when they do (Leo, 16.10.2026).
     const onToday = this.isPage('progress') && this.progressPage.section === PROGRESS.today;
@@ -1896,6 +1899,10 @@ export class GameSession {
                 return;
               }
               this.startOrCatchUp(a.ago, simDelta);
+            } else if (this.resultAge >= ResultBanner.inputLock && this.resultAge < this.resultLock) {
+              // The breather swallows the tap: say so.
+              this.play([], ['denied']);
+              this.sinceDenied = 0;
             }
             break;
           case 'page':
@@ -3736,7 +3743,7 @@ export class GameSession {
       // A trial that counts (Perfects, Tight Fits): how far it is, while it runs.
       const progress = this.special?.k === 'trial' ? trialProgress(this.special.trial, world.score) : null;
       if (progress && this.special?.k === 'trial') {
-        HUD.addGoalPill(list, S.trials.progress(this.special.trial, progress.have, progress.need), progress.have >= progress.need, rm ? 1 : Ease.clamp01(this.sinceCarSent / 0.35));
+        HUD.addGoalPill(list, S.trials.progress(this.special.trial, progress.have, progress.need), progress.have >= progress.need, rm ? 1 : Ease.clamp01(this.sinceCarSent / 0.35), this.textScale);
       }
       HUD.addPopups(list, this.popups, rm);
       if (this.countIn > 0 || this.isInterrupted) HUD.addCountIn(list, this.isInterrupted ? GameSession.countInSeconds : this.countIn);
@@ -3758,7 +3765,7 @@ export class GameSession {
       }
     } else if (s.k === 'result') {
       list.camera = steadyWithModePan;
-      const { chip: chipAt, grow } = ResultBanner.add(list, s.summary, this.playingLevel, this.resultBank, this.resultAge, rm, this.giftLine, world.layout.islandRadius);
+      const { chip: chipAt, grow } = ResultBanner.add(list, s.summary, this.playingLevel, this.resultBank, this.resultAge, rm, this.giftLine, world.layout.islandRadius, this.sinceDenied);
       this.introWant = grow;
       if (chipAt) this.addFailChip(list, s.summary, chipAt);
       const arriving = ResultBanner.arriving(this.resultAge);
@@ -4069,9 +4076,12 @@ export class GameSession {
     this.persist();
   }
 
-  /** How much larger notices and cards over the scene are drawn (Settings → Larger text). */
+  /** The browser's own text size against its default of 16 px (`ui/shell.ts`), so the canvas follows it like the menus do. */
+  browserText = 1;
+
+  /** How much larger notices and cards over the scene are drawn (Settings → Larger text, or a larger browser text size). 1.2 is the most the cards are laid out for. */
   get textScale(): number {
-    return this.save.settings.largeText ? 1.2 : 1;
+    return this.save.settings.largeText ? 1.2 : Math.min(1.2, Math.max(1, this.browserText));
   }
 
   /** Patch notes newer than the last ones read (Settings → What's new). */

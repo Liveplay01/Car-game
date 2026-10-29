@@ -741,7 +741,7 @@ export const CasinoGames = {
       list.s(rect(R.center(r), v(R.width(r), R.height(r)), 10), 'cardRaised', enter);
       ShopPage.addPreview(list, item, v(R.center(r).x, R.center(r).y - 4), R.width(r) / 80, enter);
       if (Careers.isWorn(career, item.id)) drawText(list, S.shop.worn, v(r.maxX - 6, r.minY + 9), 9, 'accent', { weight: 'bold', align: 'trailing', opacity: enter });
-      drawText(list, S.shop.item(item.id), v(R.center(r).x, r.maxY - 8), ShopPage.fitted(S.shop.item(item.id), 9, R.width(r) - 6), 'muted', { align: 'center', opacity: enter });
+      drawFitted(list, S.shop.item(item.id), v(R.center(r).x, r.maxY - 8), 9, R.width(r) - 6, 'muted', { align: 'center', opacity: enter });
       if (chosen) {
         const at = v(r.minX + 9, r.minY + 9);
         list.s(circle(at, 7), 'accent', enter);

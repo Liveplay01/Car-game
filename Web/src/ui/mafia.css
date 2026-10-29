@@ -228,7 +228,7 @@
 .mafia-title {
   margin: 0;
   font-family: 'Brush Script MT', 'Segoe Script', 'Snell Roundhand', 'Apple Chancery', cursive;
-  font-size: 38px;
+  font-size: 2.375rem;
   font-weight: 400;
   line-height: 1.05;
   letter-spacing: 0.02em;
@@ -239,7 +239,7 @@
 .mafia-tagline {
   margin: 4px 0 0;
   font-family: Georgia, 'Times New Roman', serif;
-  font-size: 12px;
+  font-size: 0.75rem;
   font-variant: small-caps;
   letter-spacing: 0.08em;
   line-height: 1.4;
@@ -259,7 +259,7 @@
 .mafia-hint {
   margin: 0;
   font-family: Georgia, 'Times New Roman', serif;
-  font-size: 14px;
+  font-size: 0.875rem;
   line-height: 1.45;
   color: #d9c9a4;
 }
@@ -297,7 +297,7 @@
   box-shadow: 0 6px 0 rgba(0, 0, 0, 0.55), 0 12px 18px rgba(0, 0, 0, 0.5), inset 0 0 0 3px rgba(0, 0, 0, 0.25);
   color: #fff;
   font: inherit;
-  font-size: 13px;
+  font-size: 0.8125rem;
   font-weight: 800;
   font-variant-numeric: tabular-nums;
   cursor: pointer;
@@ -467,13 +467,13 @@
   align-items: center;
   justify-content: space-between;
   gap: var(--s3);
-  font-size: 12px;
+  font-size: 0.75rem;
   color: #b9a982;
 }
 
 .mafia-offer span {
   font-family: Georgia, 'Times New Roman', serif;
-  font-size: 15px;
+  font-size: 0.9375rem;
   font-weight: 700;
   color: var(--brass-hi);
 }
@@ -487,7 +487,7 @@
 
 .mafia-speed i {
   display: inline-flex;
-  font-size: 15px;
+  font-size: 0.9375rem;
   color: rgba(255, 255, 255, 0.2);
 }
 
@@ -506,7 +506,7 @@
 
 .mafia-waiting {
   text-align: center;
-  font-size: 11px;
+  font-size: 0.75rem;
   font-weight: 800;
   letter-spacing: 0.22em;
   text-transform: uppercase;
@@ -521,7 +521,7 @@
 .mafia-amount {
   text-align: center;
   font-family: Georgia, 'Times New Roman', serif;
-  font-size: 38px;
+  font-size: 2.375rem;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
   color: var(--brass-hi);
@@ -556,7 +556,7 @@
 
 .mafia-stop {
   padding: 18px;
-  font-size: 20px;
+  font-size: 1.25rem;
   letter-spacing: 0.3em;
 }
 
@@ -580,7 +580,7 @@
 .mafia-grade {
   text-align: center;
   font-family: Georgia, 'Times New Roman', serif;
-  font-size: 40px;
+  font-size: 2.5rem;
   font-weight: 900;
   letter-spacing: 0.12em;
   text-shadow: 0 3px 0 rgba(0, 0, 0, 0.7);
@@ -613,7 +613,7 @@
   gap: 2px;
   min-width: 0;
   font-family: Georgia, 'Times New Roman', serif;
-  font-size: 16px;
+  font-size: 1rem;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
   color: #f1e6c8;
@@ -621,7 +621,7 @@
 
 .mafia-sums > div > span:first-child {
   font-family: var(--font);
-  font-size: 10px;
+  font-size: 0.75rem;
   font-weight: 700;
   letter-spacing: 0.14em;
   text-transform: uppercase;
@@ -629,7 +629,7 @@
 }
 
 .mafia-sums b {
-  font-size: 12px;
+  font-size: 0.75rem;
 }
 
 /* MARK: The ledger */
@@ -651,7 +651,7 @@
 }
 
 .mafia-label {
-  font-size: 11px;
+  font-size: 0.75rem;
   font-weight: 800;
   letter-spacing: 0.2em;
   text-transform: uppercase;
@@ -663,7 +663,7 @@
   border: 3px double var(--destructive);
   border-radius: 6px;
   font-family: Georgia, 'Times New Roman', serif;
-  font-size: 15px;
+  font-size: 0.9375rem;
   font-weight: 900;
   letter-spacing: 0.22em;
   color: var(--destructive);
@@ -708,14 +708,14 @@
 
 .mafia-alert b {
   font-family: Georgia, 'Times New Roman', serif;
-  font-size: 20px;
+  font-size: 1.25rem;
   letter-spacing: 0.34em;
   color: #fff;
   text-shadow: 0 0 12px var(--neon);
 }
 
 .mafia-alert span {
-  font-size: 12px;
+  font-size: 0.75rem;
   color: #ffc6ca;
 }
 
@@ -723,7 +723,7 @@
   display: flex;
   align-items: baseline;
   justify-content: space-between;
-  font-size: 11px;
+  font-size: 0.75rem;
   font-weight: 800;
   letter-spacing: 0.2em;
   text-transform: uppercase;
@@ -732,7 +732,7 @@
 
 .mafia-owed .cash {
   font-family: Georgia, 'Times New Roman', serif;
-  font-size: 40px;
+  font-size: 2.5rem;
   font-weight: 700;
   letter-spacing: 0;
   font-variant-numeric: tabular-nums;
@@ -760,7 +760,7 @@
 .mafia-count {
   text-align: center;
   font-family: Georgia, 'Times New Roman', serif;
-  font-size: 18px;
+  font-size: 1.125rem;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
   color: var(--brass-hi);
@@ -815,7 +815,7 @@
   padding: 8px 10px;
   border: 1px dashed rgba(201, 162, 74, 0.3);
   border-radius: 8px;
-  font-size: 12px;
+  font-size: 0.75rem;
   line-height: 1.25;
   color: #a89c7e;
 }
@@ -896,7 +896,7 @@
   width: 32px;
   height: 32px;
   border-radius: 50%;
-  font-size: 12px;
+  font-size: 0.75rem;
   color: rgba(0, 0, 0, 0.35);
   background: radial-gradient(circle at 35% 30%, #ff6b6b, #a3121f 55%, #5a0710);
   box-shadow: 0 3px 6px rgba(0, 0, 0, 0.5), inset 0 0 0 2px rgba(0, 0, 0, 0.18);
@@ -918,7 +918,7 @@
   right: 18px;
   padding: 0 7px;
   border: 2px solid #b3202f;
-  font: 700 11px/1.7 'Courier New', Courier, monospace;
+  font: 700 0.75rem/1.7 'Courier New', Courier, monospace;
   letter-spacing: 0.18em;
   color: #b3202f;
   opacity: 0.8;
@@ -928,7 +928,7 @@
 .mafia-from {
   display: flex;
   justify-content: space-between;
-  font: 700 11px/1 'Courier New', Courier, monospace;
+  font: 700 0.75rem/1 'Courier New', Courier, monospace;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   opacity: 0.7;
@@ -937,7 +937,7 @@
 .mafia-letter p {
   margin: 8px 0 0;
   font-family: 'Courier New', Courier, monospace;
-  font-size: 13.5px;
+  font-size: 0.8438rem;
   line-height: 1.55;
 }
 
@@ -946,7 +946,7 @@
   display: block;
   margin-top: 10px;
   font-family: 'Brush Script MT', 'Segoe Script', 'Snell Roundhand', cursive;
-  font-size: 20px;
+  font-size: 1.25rem;
   text-align: right;
   opacity: 0.85;
 }
@@ -969,12 +969,12 @@
 
 .mafia-assist b {
   font-family: Georgia, 'Times New Roman', serif;
-  font-size: 14px;
+  font-size: 0.875rem;
   color: var(--brass-hi);
 }
 
 .mafia-assist span {
-  font-size: 12px;
+  font-size: 0.75rem;
 }
 
 .mafia-assist.on {
@@ -1047,7 +1047,7 @@
   border: 6px double var(--deal);
   border-radius: 10px;
   font-family: Georgia, 'Times New Roman', serif;
-  font-size: 56px;
+  font-size: 3.5rem;
   font-weight: 900;
   letter-spacing: 0.14em;
   color: var(--deal);

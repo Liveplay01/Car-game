@@ -6,7 +6,7 @@ import { type Vec2, v, add, mul, fromAngle, TAU, lerpV } from '../core/vec2';
 import { type RenderList, type Rect, R, rect, circle, arc, line, polygon, Ease, moved, drawText } from './render';
 import type { ColorToken } from './theme';
 import { MenuKit } from './menukit';
-import { textWidth } from './icons';
+import { textWidth, drawFitted } from './icons';
 import { S, Fmt, money, percent } from './strings';
 import { ShopPage } from './shop';
 import { CasinoGames } from './casinoGames';
@@ -553,7 +553,7 @@ export const CasinoPage = {
     if (!reduceMotion) MenuKit.glow(list, center, size.x * 0.6, color, 0.4 * fade);
     list.s(rect(center, add(size, v(6, 6)), 11, tilt), color, 0.95 * fade);
     list.s(rect(center, size, 8, tilt), 'card', fade);
-    drawText(list, label, center, ShopPage.fitted(label, [0, 0, 22, 26, 30][tier] * scale, size.x - 24), color, { weight: 'bold', align: 'center', opacity: fade });
+    drawFitted(list, label, center, [0, 0, 22, 26, 30][tier] * scale, size.x - 24, color, { weight: 'bold', align: 'center', opacity: fade });
   },
 
   /** Coins pour down the whole display, turning as they fall: the big wins. */
@@ -735,7 +735,7 @@ export const CasinoPage = {
     const label = on ? S.ads.boostOn(p) : left <= 0 ? S.ads.noBoosts : !state.ad.ready ? S.ads.unavailable : S.ads.boostWatch(p);
     const detail = on || left <= 0 || !state.ad.ready ? '' : S.ads.boostLeft(left);
     const room = size.x - 24 - (detail ? textWidth(detail, 11) + 10 : 0);
-    drawText(list, label, v(r.minX + 12, c.y), ShopPage.fitted(label, 13, room), on ? 'accent' : usable ? 'primary' : 'muted', { weight: 'bold', opacity: enter * (usable || on ? 1 : 0.7) });
+    drawFitted(list, label, v(r.minX + 12, c.y), 13, room, on ? 'accent' : usable ? 'primary' : 'muted', { weight: 'bold', opacity: enter * (usable || on ? 1 : 0.7) });
     if (detail) drawText(list, detail, v(r.maxX - 12, c.y), 11, 'muted', { align: 'trailing', opacity: enter });
   },
 
@@ -767,7 +767,7 @@ export const CasinoPage = {
       const o = enter * (busy ? 0.45 : 1);
       list.s(rect(R.center(r), v(R.width(r), R.height(r)), 9), chosen ? 'primary' : 'controlFill', o);
       const label = i === stakes.length - 1 ? S.casino.allIn : S.casino.stakeShort(stakes[i]);
-      drawText(list, label, R.center(r), ShopPage.fitted(label, 12, R.width(r) - 6), chosen ? 'background' : affordable ? 'primary' : 'muted', { weight: 'bold', align: 'center', opacity: o * (affordable || chosen ? 1 : 0.6) });
+      drawFitted(list, label, R.center(r), 12, R.width(r) - 6, chosen ? 'background' : affordable ? 'primary' : 'muted', { weight: 'bold', align: 'center', opacity: o * (affordable || chosen ? 1 : 0.6) });
     });
     if (l.autos.length > 0) {
       const label = v(l.stage.minX + 2, R.center(l.autos[0]).y);
@@ -787,11 +787,11 @@ export const CasinoPage = {
       const size = v(R.width(p), R.height(p));
       if (prominent) {
         list.s(rect(c, size, 14), tint, enter * (enabled ? 1 : 0.35));
-        drawText(list, label, c, ShopPage.fitted(label, 16, size.x - 20), 'accentInk', { weight: 'bold', align: 'center', opacity: enter * (enabled ? 1 : 0.6) });
+        drawFitted(list, label, c, 16, size.x - 20, 'accentInk', { weight: 'bold', align: 'center', opacity: enter * (enabled ? 1 : 0.6) });
       } else {
         list.s(rect(c, size, 14), tint, enter * (enabled ? 1 : 0.35));
         list.s(rect(c, v(size.x - 3, size.y - 3), 12.5), 'cardRaised', enter);
-        drawText(list, label, c, ShopPage.fitted(label, 15, size.x - 20), enabled ? 'primary' : 'muted', { weight: 'bold', align: 'center', opacity: enter });
+        drawFitted(list, label, c, 15, size.x - 20, enabled ? 'primary' : 'muted', { weight: 'bold', align: 'center', opacity: enter });
       }
     };
     l.bets.forEach(([symbol, cell]) => {

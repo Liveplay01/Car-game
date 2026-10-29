@@ -102,7 +102,7 @@ export default (_s: Strings): Words<Strings> => ({
     language: 'Langue',
     gameFeel: 'Affichage et commandes',
     largerText: 'Texte plus grand',
-    largerTextSub: 'Indices et cartes affichés un cran plus grand.',
+    largerTextSub: 'Tout le texte un cran plus grand, menus et jeu compris.',
     reduceMotion: 'Réduire les mouvements',
     reduceMotionSub: 'Pas de secousses, ni de ralenti, ni d’éclats volants.',
     steadyCamera: 'Caméra stable',

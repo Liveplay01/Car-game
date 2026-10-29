@@ -237,6 +237,7 @@ export class Shell {
     onAdAudio(quietForAd);
     onRewardedAudio(quietForAd);
     this.session = new GameSession(output);
+    this.readBrowserText();
     this.session.nightPreview = import.meta.env.DEV && new URLSearchParams(location.search).has('night-preview');
     this.session.systemReduceMotion = this.motionQuery.matches;
     this.motionQuery.addEventListener('change', () => (this.session.systemReduceMotion = this.motionQuery.matches));
@@ -280,7 +281,7 @@ export class Shell {
       animatedIcon('camera'),
       h('span', {}, S.photo.button),
     );
-    this.chestLabel = h('span', {}, S.run.openChest(1));
+    this.chestLabel = h('span', { class: 'chest-label' }, S.run.openChest(1));
     const chest = animatedIcon('chest');
     chest.classList.add('chest-flat');
     this.chestBtn = h('button', { class: 'btn glass run-btn primary-run', type: 'button', onclick: () => this.push({ k: 'perform', action: { k: 'showShop', section: 0 } }) }, chest, this.chestLabel);
@@ -513,6 +514,12 @@ export class Shell {
       if (state === 'blocked') this.session.announce(S.push.denied);
       return state;
     });
+  }
+
+  /** The browser's own text size for the canvas, without the 112.5 % of `large-text` (shell.css). */
+  private readBrowserText(): void {
+    const root = document.documentElement;
+    this.session.browserText = parseFloat(getComputedStyle(root).fontSize) / (root.classList.contains('large-text') ? 18 : 16) || 1;
   }
 
   /** CrazyGames hears how far the career is: the levels up to Prestige, all of it after one. */
@@ -827,7 +834,7 @@ export class Shell {
       if (i > 0) modsStr += ',';
       modsStr += modList[i].label;
     }
-    const key = `${screen.k}|${selected}|${onSocial ? s.socialPage.section : -1}|${this.size.x}|${badgeKey}|${s.world.shift.phase}|${s.playingMode}|${s.special?.k ?? ''}|${s.shareable ? 1 : 0}|${match ? 1 : 0}|${versusKey}|${s.save.settings.leftHanded}|${s.save.settings.dispatchSize}|${s.notesUnread}|${s.showsChrome}|${s.chestOffer}|${s.save.career.chests[0] ?? ''}|${s.world.dispatchesLeft}|${modsStr}`;
+    const key = `${screen.k}|${selected}|${onSocial ? s.socialPage.section : -1}|${this.size.x}|${badgeKey}|${s.world.shift.phase}|${s.playingMode}|${s.special?.k ?? ''}|${s.shareable ? 1 : 0}|${match ? 1 : 0}|${versusKey}|${s.save.settings.leftHanded}|${s.save.settings.dispatchSize}|${s.save.settings.largeText}|${s.notesUnread}|${s.showsChrome}|${s.chestOffer}|${s.save.career.chests[0] ?? ''}|${s.world.dispatchesLeft}|${modsStr}`;
     if (!force && key === this.chromeKey) return;
     this.chromeKey = key;
     this.social.sync(onSocial, s.socialPage.section, SocialPage.column(this.size));
@@ -835,6 +842,7 @@ export class Shell {
     this.app.dataset.versus = match ? 'on' : 'off';
     this.app.dataset.hand = s.save.settings.leftHanded ? 'left' : 'right';
     this.app.dataset.dispatch = String(s.save.settings.dispatchSize);
+    document.documentElement.classList.toggle('large-text', s.save.settings.largeText);
     this.settingsBtn.classList.toggle('has-news', s.notesUnread);
     const ready = lobby.isReady;
     this.againBtn.classList.toggle('show', lobby.canReady);
@@ -1616,6 +1624,8 @@ export class Shell {
         away();
       } else {
         back();
+        // Text size is changed in the browser's or phone's settings, away from the game.
+        this.readBrowserText();
         this.session.cameBack();
         this.collectRewards();
       }

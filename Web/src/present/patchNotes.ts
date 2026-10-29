@@ -51,6 +51,28 @@ export const itemCredit = (item: PatchItem): string | null => {
 
 export const PATCH_NOTES: PatchNote[] = [
   {
+    id: '2026-10-29',
+    date: '29 October 2026',
+    title: 'Easier to read',
+    impact: 'minor',
+    summary: [
+      'Larger text in Settings now makes menus bigger too, not only the game.',
+      'The text size of your browser or phone now carries into the menus and the game.',
+      'No text in the menus is smaller than 12 points any more.',
+      'A tap during the pause after a lost shift now buzzes and shakes FAIL, so you know.',
+    ],
+    items: [
+      'Settings → Larger text now makes every text a step larger: menus, sheets and the tab bar as well as the game.',
+      'Menu text follows the text size you set in your browser or phone, and pinch zoom now works in menus and sheets. Cards and notices over the road follow it too, up to the size of Larger text.',
+      'The smallest labels in menus, the Mafia and the Auction House grew from 10 and 11 to 12 points.',
+      'The task line over the road, the goal pill and the endless pill now grow with Larger text instead of stopping at a fixed size.',
+      'Long names and notes in the Shop, Casino, Museum and Progress pages are cut with an ellipsis instead of shrinking to a tiny size. Numbers still shrink, so they are never cut.',
+      'The chest button on the road and the call to play on the streak card take a second line when they are too long, instead of cutting the words off.',
+      'With Reduce Transparency on in your system settings, glass panels turn solid.',
+      'A tap during the short pause after a lost shift now gives a haptic buzz and FAIL shakes its head, so it does not feel ignored on phones that cannot vibrate. With Reduce Motion it blinks instead.',
+    ],
+  },
+  {
     id: '2026-10-27',
     date: '27 October 2026',
     title: 'A shelf worth showing',

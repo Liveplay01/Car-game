@@ -102,7 +102,7 @@ export default (_s: Strings): Words<Strings> => ({
     language: '言語',
     gameFeel: '表示と操作',
     largerText: '大きな文字',
-    largerTextSub: 'ゲーム上のヒントやカードを1段階大きくします。',
+    largerTextSub: 'メニューとゲーム上のすべての文字を1段階大きくします。',
     reduceMotion: 'モーションを減らす',
     reduceMotionSub: '揺れ、スローモーション、飛び散る破片をなくします。',
     steadyCamera: 'カメラを安定させる',

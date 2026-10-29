@@ -37,13 +37,13 @@ export function textWidth(s: string, size: number, bold = true, display = false)
 
 /**
  * `s` for a space `width` wide: at `size` if it fits, else shrunk to at most 80 % of it (never
- * under 9 points), else cut with an ellipsis. Pills, rows and cards use it so no label runs out
+ * under 12 points, the smallest readable size), else cut with an ellipsis. Pills, rows and cards use it so no label runs out
  * of its box on a narrow screen.
  */
 export function fitText(s: string, size: number, width: number, bold = true): { text: string; size: number } {
   const natural = textWidth(s, size, bold);
   if (natural <= width) return { text: s, size };
-  const fitted = Math.max(9, size * 0.8, Math.min(size, (size * width) / natural));
+  const fitted = Math.max(Math.min(size, 12), size * 0.8, Math.min(size, (size * width) / natural));
   if (textWidth(s, fitted, bold) <= width) return { text: s, size: fitted };
   let cut = s;
   while (cut.length > 1 && textWidth(`${cut}…`, fitted, bold) > width) cut = cut.slice(0, -1);

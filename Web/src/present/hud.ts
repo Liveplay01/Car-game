@@ -194,11 +194,11 @@ export const TopBar = {
     list.s(circle(v(x(0) + modes.at * gap, y), 2.4), modes.color, alpha);
   },
 
-  /** The briefing's size: one line up to 15 points; else two lines, 13 points or smaller. */
+  /** The briefing's size: one line up to 15 points; else two lines, 13 points or smaller (both × `textScale`; two at 1.2 still fit the 56-point card). */
   fitBrief(s: string, width: number, textScale = 1): { size: number; lines: string[] } {
-    const single = Math.min(16, 15 * textScale);
+    const single = 15 * textScale;
     if (textWidth(s, single) <= width) return { size: single, lines: [s] };
-    for (let size = 13; size >= 10.5; size -= 0.5) {
+    for (let size = 13 * textScale; size >= 10.5; size -= 0.5) {
       const lines = wrapText(s, width, size, true);
       if (lines.length <= 2) return { size, lines };
     }
@@ -409,18 +409,20 @@ export const HUD = {
       const frame = TopBar.frame(list.camera.viewport.x);
       const label = h.mark ?? S.modes.carsSent(h.world.shift.carsSent);
       const under = TopBar.foot(list) + (h.challenges && h.challenges.length > 0 ? HUD.challengeHeight : 0) + 18;
+      const size = 12 * (h.textScale ?? 1);
       const at = v(R.center(frame).x, under);
-      MenuKit.chromePill(list, at, v(textWidth(label, 12) + 28, 26), 1);
-      list.s(text(label, at, 12 * land(h.pops.cars, 0.2), 'center', 'bold'), 'primary');
+      MenuKit.chromePill(list, at, v(textWidth(label, size) + 28, size + 14), 1);
+      list.s(text(label, at, size * land(h.pops.cars, 0.2), 'center', 'bold'), 'primary');
     }
   },
 
   /** A trial's counting goal under the top card, live ("Tight Fits or better 3/5"); accent once met. */
-  addGoalPill(list: RenderList, label: string, met: boolean, pop: number): void {
+  addGoalPill(list: RenderList, label: string, met: boolean, pop: number, textScale: number): void {
     const frame = TopBar.frame(list.camera.viewport.x);
+    const size = 12 * textScale;
     const at = v(R.center(frame).x, TopBar.foot(list) + 18);
-    MenuKit.chromePill(list, at, v(textWidth(label, 12) + 28, 26), 1, met ? 'accent' : undefined);
-    list.s(text(label, at, 12 * land(pop, 0.2), 'center', 'bold'), met ? 'accent' : 'primary');
+    MenuKit.chromePill(list, at, v(textWidth(label, size) + 28, size + 14), 1, met ? 'accent' : undefined);
+    list.s(text(label, at, size * land(pop, 0.2), 'center', 'bold'), met ? 'accent' : 'primary');
   },
 
   /** The live challenge section growing out of the top card while a career or Unlimited shift runs. */
@@ -1968,6 +1970,8 @@ export const ResultBanner = {
   /** How long the result ignores taps. */
   lock: (s: ShiftSummary): number => (ResultBanner.breathes(s) ? ResultBanner.breath : ResultBanner.inputLock),
   /** 1 while the breather holds, then 0 over its last moment: FAIL and the reason make way for the usual result. */
+  /** How long FAIL shakes when the breather swallows a tap. */
+  denied: 0.4,
   mourning: (age: number): number => 1 - Ease.smoothstep((age - (ResultBanner.breath - 0.3)) / 0.3),
   enter: 0.25,
   countDelay: 0.35,
@@ -2032,7 +2036,7 @@ export const ResultBanner = {
     list.tag = undefined;
   },
 
-  add(list: RenderList, summary: ShiftSummary, nextLevel: number, bank: { before: number; after: number }, age: number, reduceMotion: boolean, gift: string | null, islandRadius: number): { chip: Vec2 | null; grow: number } {
+  add(list: RenderList, summary: ShiftSummary, nextLevel: number, bank: { before: number; after: number }, age: number, reduceMotion: boolean, gift: string | null, islandRadius: number, sinceDenied = Infinity): { chip: Vec2 | null; grow: number } {
     const r = summary.result;
     const frame = TopBar.frame(list.camera.viewport.x);
     const cols = TopBar.columns(frame);
@@ -2055,7 +2059,11 @@ export const ResultBanner = {
         list.s(text(title, v(R.center(cols.center).x, cols.center.minY + TopBar.captionRow), 10, 'center', 'bold'), titleColor, shown);
         flameTag(list, Fmt.number(r.flames), v(R.center(cols.center).x, cols.center.minY + TopBar.valueRow), Metrics.timerSize * pop, 'center', 'primary', shown);
       } else if (mourning > 0) {
-        TopBar.addColumn(list, cols.center, 'center', title, S.result.fail, { captionColor: titleColor, valueColor: 'destructive', valueSize: Metrics.timerSize, opacity: shown, valueOpacity: shown * Ease.clamp01(mourning * 2 - 1) });
+        // A swallowed tap: FAIL shakes its head like a wrong passcode; under Reduce Motion it blinks instead.
+        const denied = 1 - Ease.clamp01(sinceDenied / ResultBanner.denied);
+        const shake = reduceMotion ? 0 : 6 * denied * Math.sin((1 - denied) * 6 * Math.PI);
+        const blink = reduceMotion ? 1 - 0.5 * Math.sin(denied * Math.PI) : 1;
+        TopBar.addColumn(list, R.offset(cols.center, v(shake, 0)), 'center', title, S.result.fail, { captionColor: titleColor, valueColor: 'destructive', valueSize: Metrics.timerSize, opacity: shown, valueOpacity: shown * blink * Ease.clamp01(mourning * 2 - 1) });
         if (mourning < 1) TopBar.addColumn(list, cols.center, 'center', title, Fmt.number(r.score), { captionColor: titleColor, valueSize: Metrics.timerSize, opacity: 0, valueOpacity: shown * Ease.clamp01(1 - mourning * 2) });
       } else {
         TopBar.addColumn(list, cols.center, 'center', title, Fmt.number(r.score), { captionColor: titleColor, valueSize: Metrics.timerSize * pop, opacity: shown });

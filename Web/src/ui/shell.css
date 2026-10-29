@@ -151,11 +151,16 @@ body {
   background: var(--bg);
   color: var(--primary);
   font-family: var(--font);
-  font-size: 16px;
+  font-size: 1rem;
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
   -webkit-text-size-adjust: 100%;
   overscroll-behavior: none;
+}
+
+/* Every size is in rem, so the browser's text size and Settings → Larger text (ui/shell.ts) carry through. */
+html.large-text {
+  font-size: 112.5%;
 }
 
 body {
@@ -236,6 +241,20 @@ button {
   backdrop-filter: none;
 }
 
+/* Reduce Transparency (system setting): every glass solid, no blur behind it. */
+@media (prefers-reduced-transparency: reduce) {
+  :root {
+    --glass: rgb(20, 23, 28);
+    --glass-solid: rgb(20, 23, 28);
+    --glass-blur: 0px;
+  }
+
+  .photo-scrim {
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+}
+
 .icon-btn {
   width: var(--touch-min);
   height: var(--touch-min);
@@ -273,7 +292,7 @@ button {
   min-width: 96px;
   height: 32px;
   padding: 0 12px;
-  font-size: 14px;
+  font-size: 0.875rem;
   font-weight: 600;
   color: var(--muted);
   border-radius: 999px;
@@ -415,7 +434,7 @@ button {
   font-family: var(--font-round);
   font-style: italic;
   font-weight: 900;
-  font-size: 15px;
+  font-size: 0.9375rem;
   letter-spacing: 0.01em;
   line-height: 1;
   text-transform: uppercase;
@@ -454,7 +473,7 @@ button {
 /* A narrow phone: the open tab's name must still fit ("FORTSCHRITT" is the longest). First the name a size smaller, then the dock closes up. */
 @media (max-width: 380px) {
   .tab > span:not(.badge-dot) {
-    font-size: 13px;
+    font-size: 0.8125rem;
   }
 }
 
@@ -474,7 +493,7 @@ button {
   }
 
   .tab > span:not(.badge-dot) {
-    font-size: 11.5px;
+    font-size: 0.75rem;
   }
 
   .tab[aria-current='page'] > span:not(.badge-dot) {
@@ -533,7 +552,7 @@ button {
   /* Something waits for a tap: amber, never the red of danger (DESIGN-LANGUAGE.md, colour roles). */
   background: var(--accent);
   color: var(--accent-ink);
-  font-size: 11px;
+  font-size: 0.75rem;
   font-weight: 700;
   line-height: 16px;
   text-align: center;
@@ -636,14 +655,14 @@ a.row-link {
 /* Privacy Policy, Imprint, Licenses: plain reading text. */
 .legal {
   padding-bottom: var(--s5);
-  font-size: 15px;
+  font-size: 0.9375rem;
   line-height: 1.55;
   text-wrap: pretty;
 }
 
 .legal h3 {
   margin: var(--s5) 0 var(--s2);
-  font-size: 17px;
+  font-size: 1.0625rem;
   line-height: 1.3;
 }
 
@@ -669,7 +688,7 @@ a.row-link {
   border-radius: var(--r-row);
   background: var(--surface-1);
   color: var(--muted);
-  font-size: 12px;
+  font-size: 0.75rem;
   line-height: 1.5;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
@@ -677,12 +696,12 @@ a.row-link {
 
 .row-title {
   font-weight: 600;
-  font-size: 16px;
+  font-size: 1rem;
   line-height: 1.35;
 }
 
 .row-sub {
-  font-size: 13px;
+  font-size: 0.8125rem;
   color: var(--muted);
   line-height: 1.4;
   margin-top: 2px;
@@ -709,7 +728,7 @@ a.row-link {
   padding: 0 var(--s4);
   border-radius: var(--r-btn);
   font-weight: 700;
-  font-size: 15px;
+  font-size: 0.9375rem;
   white-space: nowrap;
   background: var(--surface-3);
   color: var(--primary);
@@ -749,7 +768,7 @@ a.row-link {
 .btn.block {
   width: 100%;
   min-height: var(--btn-l);
-  font-size: 16px;
+  font-size: 1rem;
 }
 
 .btn:disabled {
@@ -896,7 +915,7 @@ a.row-link {
   margin: calc(var(--s1) * -1) 0 0 calc(var(--s2) * -1);
   padding: 0 var(--s2);
   color: var(--accent);
-  font-size: 16px;
+  font-size: 1rem;
   font-weight: 600;
   transition: transform 160ms var(--ease-out);
 }
@@ -913,7 +932,7 @@ a.row-link {
 .sheet-title {
   margin: 0;
   font-family: var(--font-round);
-  font-size: 22px;
+  font-size: 1.375rem;
   font-weight: 900;
   font-style: italic;
   text-transform: uppercase;
@@ -1143,7 +1162,7 @@ a.row-link {
   padding: 0 var(--s4) 0 var(--s3);
   height: var(--pill-h);
   border-radius: calc(var(--pill-h) / 2);
-  font-size: 14px;
+  font-size: 0.875rem;
   font-weight: 600;
   /* The dock's and the top card's side margin: the pills stand on the same edge. */
   left: calc(var(--safe-left) + var(--s3));
@@ -1231,7 +1250,7 @@ a.row-link {
   min-height: 44px;
   padding: 0 var(--s4) 0 var(--s3);
   border-radius: 22px;
-  font-size: 14px;
+  font-size: 0.875rem;
   font-weight: 600;
   background: var(--glass);
   display: none;
@@ -1331,7 +1350,7 @@ a.row-link {
 
   .settings-btn,
   .run-bar .run-btn {
-    font-size: 13px;
+    font-size: 0.8125rem;
     padding: 0 var(--s3);
   }
 
@@ -1368,7 +1387,7 @@ a.row-link {
   .run-bar .run-btn {
     gap: 6px;
     padding: 0 var(--s2) 0 10px;
-    font-size: 12px;
+    font-size: 0.75rem;
   }
 
   .app[data-hand='left'] .settings-btn,
@@ -1413,7 +1432,7 @@ a.row-link {
 }
 
 .section-note {
-  font-size: 13px;
+  font-size: 0.8125rem;
   line-height: 1.45;
   color: var(--muted);
 }
@@ -1453,7 +1472,7 @@ a.row-link {
   border-radius: 999px;
   background: var(--accent-soft);
   color: var(--accent);
-  font-size: 12px;
+  font-size: 0.75rem;
   font-weight: 700;
 }
 
@@ -1477,7 +1496,7 @@ a.row-link {
 }
 
 .note-date {
-  font-size: 12px;
+  font-size: 0.75rem;
   font-weight: 600;
   color: var(--muted);
 }
@@ -1486,7 +1505,7 @@ a.row-link {
 .impact {
   padding: 1px 8px;
   border-radius: 999px;
-  font-size: 11px;
+  font-size: 0.75rem;
   font-weight: 700;
   line-height: 18px;
 }
@@ -1508,7 +1527,7 @@ a.row-link {
 
 .note-title {
   margin: 2px 0 0;
-  font-size: 18px;
+  font-size: 1.125rem;
   font-weight: 700;
   line-height: 1.25;
   text-wrap: balance;
@@ -1520,7 +1539,7 @@ a.row-link {
   padding: 0 0 0 20px;
   display: grid;
   gap: var(--s2);
-  font-size: 15px;
+  font-size: 0.9375rem;
   line-height: 1.5;
   text-wrap: pretty;
 }
@@ -1553,7 +1572,7 @@ a.row-link {
   cursor: pointer;
   list-style: none;
   color: var(--muted);
-  font-size: 14px;
+  font-size: 0.875rem;
   font-weight: 600;
   -webkit-tap-highlight-color: transparent;
 }
@@ -1627,7 +1646,7 @@ a.row-link {
 
 .guide-body {
   padding-bottom: var(--s3);
-  font-size: 15px;
+  font-size: 0.9375rem;
   line-height: 1.55;
   color: var(--muted);
   text-wrap: pretty;
@@ -1654,7 +1673,7 @@ a.row-link {
   border-radius: 999px;
   background: var(--accent-soft, rgba(158, 230, 207, 0.12));
   color: var(--accent);
-  font-size: 12px;
+  font-size: 0.75rem;
   font-weight: 700;
   line-height: 18px;
   white-space: nowrap;
@@ -1735,13 +1754,13 @@ a.row-link {
   display: flex;
   flex-direction: column;
   min-width: 0;
-  font-size: 12px;
+  font-size: 0.75rem;
   line-height: 1.3;
   color: var(--muted);
 }
 
 .tap-hint-text b {
-  font-size: 13px;
+  font-size: 0.8125rem;
   color: var(--primary);
 }
 
@@ -1776,7 +1795,7 @@ a.row-link {
   bottom: calc(var(--safe-bottom) + var(--s5) + 60px + var(--s2));
   max-width: 200px;
   padding: var(--s1) var(--s3);
-  font-size: 12px;
+  font-size: 0.75rem;
   line-height: 1.3;
   color: var(--primary);
   text-align: right;
@@ -1840,7 +1859,7 @@ a.row-link {
   border-radius: 10px;
   background: var(--accent);
   color: #111;
-  font-size: 12px;
+  font-size: 0.75rem;
   font-weight: 700;
   line-height: 20px;
   text-align: center;
@@ -1882,7 +1901,7 @@ a.row-link {
     background: var(--surface-3);
     border: 0.5px solid rgba(255, 255, 255, 0.14);
     box-shadow: 0 1px 0 rgba(0, 0, 0, 0.5);
-    font: 600 11px/1 var(--font);
+    font: 600 0.75rem/1 var(--font);
     color: var(--muted);
     letter-spacing: 0.01em;
   }
@@ -2028,7 +2047,7 @@ a.row-link {
 }
 
 .detail-eyebrow {
-  font-size: 14px;
+  font-size: 0.875rem;
   font-weight: 700;
   line-height: 1.3;
 }
@@ -2036,14 +2055,14 @@ a.row-link {
 .detail-title {
   margin: 2px 0 4px;
   font-family: var(--font-round);
-  font-size: 24px;
+  font-size: 1.5rem;
   font-weight: 800;
   line-height: 1.15;
   text-wrap: balance;
 }
 
 .detail-price {
-  font-size: 17px;
+  font-size: 1.0625rem;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
 }
@@ -2090,7 +2109,7 @@ a.row-link {
 .detail-text {
   margin: 0 0 var(--s4);
   max-width: 62ch;
-  font-size: 16px;
+  font-size: 1rem;
   line-height: 1.55;
   color: #d5dae1;
   text-wrap: pretty;
@@ -2114,7 +2133,7 @@ a.row-link {
 }
 
 .detail-signal-label {
-  font-size: 12px;
+  font-size: 0.75rem;
   font-weight: 700;
   letter-spacing: 0.04em;
   text-transform: uppercase;
@@ -2123,7 +2142,7 @@ a.row-link {
 
 .detail-signal-text {
   margin: var(--s1) 0 0;
-  font-size: 15px;
+  font-size: 0.9375rem;
   line-height: 1.45;
   color: #d5dae1;
   text-wrap: pretty;
@@ -2139,7 +2158,7 @@ a.row-link {
   display: flex;
   gap: var(--s3);
   margin-top: var(--s2);
-  font-size: 15px;
+  font-size: 0.9375rem;
   line-height: 1.45;
   color: #d5dae1;
   text-wrap: pretty;
@@ -2168,7 +2187,7 @@ a.row-link {
   min-height: 46px;
   padding: var(--s2) var(--s4);
   justify-content: space-between;
-  font-size: 15px;
+  font-size: 0.9375rem;
 }
 
 .detail-rows .row-title {
@@ -2192,7 +2211,7 @@ a.row-link {
   background: none;
   color: inherit;
   font: inherit;
-  font-size: 15px;
+  font-size: 0.9375rem;
   text-align: left;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
@@ -2209,7 +2228,7 @@ a.row-link {
 
 .detail-section {
   margin: var(--s2) 0 var(--s2) var(--s4);
-  font-size: 13px;
+  font-size: 0.8125rem;
   font-weight: 600;
   letter-spacing: 0.02em;
   text-transform: uppercase;
@@ -2218,7 +2237,7 @@ a.row-link {
 
 .detail-note {
   margin: 0 0 var(--s3);
-  font-size: 14px;
+  font-size: 0.875rem;
   line-height: 1.45;
 }
 
@@ -2242,7 +2261,7 @@ a.row-link {
 .detail-actions .btn {
   flex: 1 1 0;
   min-height: var(--btn-l);
-  font-size: 16px;
+  font-size: 1rem;
 }
 
 /* Long labels (Prestige, the Hall of Fame's price): one full-width button per row, the text may wrap. */
@@ -2322,6 +2341,16 @@ a.row-link {
   color: var(--accent-ink);
 }
 
+/* "2 Truhen bereit" is too wide for a phone pill: the label takes a second line inside the pill instead of an ellipsis. */
+.run-btn .chest-label {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  white-space: normal;
+  line-height: 1.1;
+  text-align: start;
+}
+
 .versus-sheet {
   display: grid;
   /* minmax(0, …): the code field may shrink; a grid track would otherwise grow to fit it. */
@@ -2344,7 +2373,7 @@ a.row-link {
   align-items: center;
   gap: var(--s3);
   color: var(--faint);
-  font-size: 13px;
+  font-size: 0.8125rem;
 }
 
 .versus-divider::before,
@@ -2376,7 +2405,7 @@ a.row-link {
   border-radius: 14px;
   background: var(--surface-2);
   color: var(--primary);
-  font: 700 24px/1 var(--font-round);
+  font: 700 1.5rem/1 var(--font-round);
   letter-spacing: 0.4em;
   font-variant-numeric: tabular-nums;
   transition: border-color 160ms ease;
@@ -2394,7 +2423,7 @@ a.row-link {
 .versus-error {
   margin: 0 var(--s1);
   color: var(--destructive);
-  font-size: 14px;
+  font-size: 0.875rem;
   line-height: 1.45;
 }
 
@@ -2402,7 +2431,7 @@ a.row-link {
   margin: 0;
   text-align: center;
   color: var(--muted);
-  font-size: 15px;
+  font-size: 0.9375rem;
 }
 
 .join-code-card {
@@ -2414,7 +2443,7 @@ a.row-link {
 
 .join-code-label {
   color: var(--muted);
-  font-size: 13px;
+  font-size: 0.8125rem;
 }
 
 .join-code {
@@ -2429,7 +2458,7 @@ a.row-link {
   height: 64px;
   border-radius: 14px;
   background: var(--surface-2);
-  font: 700 34px/1 var(--font-round);
+  font: 700 2.125rem/1 var(--font-round);
   font-variant-numeric: tabular-nums;
   color: var(--primary);
 }
@@ -2447,7 +2476,7 @@ a.row-link {
   border-radius: 50%;
   background: var(--surface-3);
   color: var(--primary);
-  font-size: 13px;
+  font-size: 0.8125rem;
   font-weight: 700;
 }
 
@@ -2461,7 +2490,7 @@ a.row-link {
   border-radius: 8px;
   background: var(--accent-soft);
   color: var(--accent);
-  font-size: 12px;
+  font-size: 0.75rem;
   font-weight: 700;
 }
 
@@ -2505,7 +2534,7 @@ a.row-link {
   border: 0;
   background: transparent;
   color: var(--primary);
-  font: 500 16px/1.35 var(--font);
+  font: 500 1rem/1.35 var(--font);
   text-align: right;
 }
 
@@ -2543,7 +2572,7 @@ a.row-link {
 
 .versus-status.small {
   min-height: 1.45em;
-  font-size: 13px;
+  font-size: 0.8125rem;
   color: var(--accent);
 }
 
@@ -2552,7 +2581,7 @@ a.row-link {
 }
 
 .practice-title {
-  font: 700 22px/1.2 var(--font-round);
+  font: 700 1.375rem/1.2 var(--font-round);
   color: var(--primary);
 }
 
@@ -2575,7 +2604,7 @@ a.row-link {
 
 .join-qr-label {
   color: var(--muted);
-  font-size: 13px;
+  font-size: 0.8125rem;
 }
 
 .invite-btn {
@@ -2600,7 +2629,7 @@ a.row-link {
   min-height: var(--btn-s);
   padding: 0 var(--s3) 0 var(--s2);
   gap: var(--s1);
-  font-size: 14px;
+  font-size: 0.875rem;
 }
 
 /* 36 px drawn, 44 px to touch. */
@@ -2689,7 +2718,7 @@ a.row-link {
   backdrop-filter: blur(var(--glass-blur));
   color: var(--primary);
   font: inherit;
-  font-size: 14px;
+  font-size: 0.875rem;
   font-weight: 600;
   transition:
     max-width 320ms var(--ease-drawer),
@@ -2757,7 +2786,7 @@ button.mod:active {
     --mod-icon: 18px;
     gap: 6px;
     padding: 0 var(--s2) 0 10px;
-    font-size: 12px;
+    font-size: 0.75rem;
   }
 }
 
@@ -2842,7 +2871,7 @@ button.mod:active {
   border-radius: 50%;
   background: var(--glass);
   border: 1px solid var(--glass-edge);
-  font-size: 22px;
+  font-size: 1.375rem;
   line-height: 1;
   transition: transform 140ms var(--ease-out);
 }
@@ -2858,7 +2887,7 @@ button.mod:active {
 @media (max-width: 380px) {
   .versus-bar .run-btn {
     padding: 0 var(--s3) 0 var(--s2);
-    font-size: 13px;
+    font-size: 0.8125rem;
   }
   .react-bar .revenge-btn span {
     display: none;
@@ -2952,7 +2981,7 @@ button.mod:active {
 .photo-btn {
   flex: 1;
   min-height: var(--btn-l);
-  font-size: 16px;
+  font-size: 1rem;
 }
 
 .photo-btn svg {
@@ -3019,7 +3048,7 @@ button.mod:active {
 .install-title {
   margin: 0;
   font-family: var(--font-round);
-  font-size: 26px;
+  font-size: 1.625rem;
   font-weight: 900;
   font-style: italic;
   text-transform: uppercase;
@@ -3030,7 +3059,7 @@ button.mod:active {
 .install-why {
   margin: 0;
   color: var(--muted);
-  font-size: 16px;
+  font-size: 1rem;
   line-height: 1.5;
 }
 
@@ -3053,7 +3082,7 @@ button.mod:active {
   align-items: center;
   gap: var(--s3);
   min-height: 44px;
-  font-size: 15px;
+  font-size: 0.9375rem;
   line-height: 1.35;
 }
 
@@ -3064,7 +3093,7 @@ button.mod:active {
   display: grid;
   place-items: center;
   background: var(--surface-3);
-  font-size: 13px;
+  font-size: 0.8125rem;
   font-weight: 700;
 }
 
@@ -3132,7 +3161,7 @@ button.mod:active {
   border-radius: var(--r-btn);
   background: var(--surface-3);
   color: var(--muted);
-  font-size: 14px;
+  font-size: 0.875rem;
   font-weight: 600;
   transition: transform 160ms var(--ease-out), background-color 160ms ease, color 160ms ease;
 }
@@ -3148,12 +3177,12 @@ button.mod:active {
 
 @media (max-width: 480px) {
   .board-tabs button {
-    font-size: 12.5px;
+    font-size: 0.7813rem;
   }
 
   /* The display face is wider than the system one: five boards on 360 px need it a size smaller. */
   .board-tabs button[aria-pressed='true'] {
-    font-size: 11px;
+    font-size: 0.75rem;
     letter-spacing: 0;
   }
 }
@@ -3169,7 +3198,7 @@ button.mod:active {
   background: var(--surface-2);
   color: var(--primary);
   /* 16 px or more: iOS Safari does not zoom into the field. */
-  font: 600 17px/1.2 var(--font);
+  font: 600 1.0625rem/1.2 var(--font);
   transition: border-color 160ms ease;
 }
 
@@ -3202,7 +3231,7 @@ button.mod:active {
 
 .field-help {
   margin: var(--s2) var(--s1) 0;
-  font-size: 13px;
+  font-size: 0.8125rem;
   line-height: 1.45;
   color: var(--muted);
 }
@@ -3233,7 +3262,7 @@ button.mod:active {
 .board-rank {
   flex: none;
   min-width: 3ch;
-  font-size: 15px;
+  font-size: 0.9375rem;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
   color: var(--muted);
@@ -3271,7 +3300,7 @@ button.mod:active {
   border-radius: 6px;
   background: var(--surface-3);
   font-family: var(--font-round);
-  font-size: 14px;
+  font-size: 0.875rem;
   font-weight: 800;
   letter-spacing: 0.04em;
   text-transform: uppercase;
@@ -3342,7 +3371,7 @@ button.mod:active {
 .sheet .board-value,
 .social-page .board-value {
   color: var(--primary);
-  font-size: 15px;
+  font-size: 0.9375rem;
 }
 
 .sheet .board-value.loss,
@@ -3593,7 +3622,7 @@ button.mod:active {
 }
 
 .board-ease .note-more-head {
-  font-size: 12px;
+  font-size: 0.75rem;
   font-weight: 400;
 }
 
@@ -3605,7 +3634,7 @@ button.mod:active {
 .board-ease .note-items {
   padding: 0;
   color: var(--muted);
-  font-size: 12px;
+  font-size: 0.75rem;
   line-height: 1.5;
 }
 
@@ -3660,7 +3689,7 @@ button.mod:active {
 
 .sync-code {
   font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
-  font-size: 22px;
+  font-size: 1.375rem;
   font-weight: 600;
   letter-spacing: 0.08em;
   color: var(--primary);
@@ -3690,7 +3719,7 @@ button.mod:active {
 
 .settings-code {
   margin-top: 2px;
-  font-size: 20px;
+  font-size: 1.25rem;
 }
 
 .friends-panel {
@@ -3739,7 +3768,7 @@ button.mod:active {
 }
 
 .intro-title {
-  font-size: 22px;
+  font-size: 1.375rem;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -3757,7 +3786,7 @@ button.mod:active {
 
 .settings-header {
   margin: 0 var(--s4) var(--s2);
-  font-size: 13px;
+  font-size: 0.8125rem;
   font-weight: 600;
   line-height: 1.3;
   color: var(--muted);
@@ -3996,7 +4025,7 @@ button.mod:active {
 /* Delete account: what goes, then the explicit button and the safe one. */
 .delete-lede {
   margin: 0 0 var(--s4);
-  font-size: 16px;
+  font-size: 1rem;
   line-height: 1.5;
 }
 
@@ -4025,12 +4054,12 @@ button.mod:active {
 }
 
 .delete-list strong {
-  font-size: 16px;
+  font-size: 1rem;
   font-weight: 600;
 }
 
 .delete-list span {
-  font-size: 13px;
+  font-size: 0.8125rem;
   line-height: 1.45;
   color: var(--muted);
 }
@@ -4163,7 +4192,7 @@ button.mod:active {
   padding: 8px 16px;
   border-radius: 999px;
   transform: translateX(-50%);
-  font-size: 14px;
+  font-size: 0.875rem;
   font-weight: 600;
   line-height: 1.25;
   text-align: center;
@@ -4188,7 +4217,7 @@ button.mod:active {
 }
 
 .club-price {
-  font-size: 28px;
+  font-size: 1.75rem;
   font-weight: 800;
   line-height: 1.15;
   font-variant-numeric: tabular-nums;
@@ -4206,7 +4235,7 @@ button.mod:active {
   padding: 4px 10px;
   border-radius: 999px;
   background: var(--surface-2);
-  font-size: 12px;
+  font-size: 0.75rem;
   font-weight: 600;
   color: var(--primary);
 }
@@ -4222,7 +4251,7 @@ button.mod:active {
   padding: var(--s3) var(--s4);
   border-radius: var(--r-row);
   background: var(--surface-1);
-  font-size: 13px;
+  font-size: 0.8125rem;
   line-height: 1.4;
   color: var(--muted);
 }
@@ -4270,21 +4299,21 @@ button.mod:active {
   gap: 6px;
   padding: 3px 8px;
   border-radius: 999px;
-  font-size: 11px;
+  font-size: 0.75rem;
   font-weight: 800;
   letter-spacing: 0.05em;
   text-transform: uppercase;
 }
 
 .auction-status-title {
-  font-size: 15px;
+  font-size: 0.9375rem;
   font-weight: 700;
   color: var(--primary);
   margin: 0;
 }
 
 .auction-status-desc {
-  font-size: 12px;
+  font-size: 0.75rem;
   color: var(--muted);
   margin: 0;
   line-height: 1.35;
@@ -4310,7 +4339,7 @@ button.mod:active {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  font-size: 13px;
+  font-size: 0.8125rem;
 }
 
 .auction-timer-stage {
@@ -4329,7 +4358,7 @@ button.mod:active {
 .auction-timer-digits {
   font-weight: 800;
   font-variant-numeric: tabular-nums;
-  font-size: 15px;
+  font-size: 0.9375rem;
   color: var(--state-live);
 }
 
@@ -4382,7 +4411,7 @@ button.mod:active {
   background: color-mix(in srgb, var(--state) 20%, transparent);
   color: var(--state);
   display: inline-block;
-  font-size: 10px;
+  font-size: 0.75rem;
   font-weight: 800;
   letter-spacing: 0.04em;
   padding: 1px 6px;
@@ -4408,7 +4437,7 @@ button.mod:active {
   border-radius: var(--r-row);
   background: rgba(255, 255, 255, 0.03);
   border: 1px dashed var(--separator);
-  font-size: 12px;
+  font-size: 0.75rem;
   line-height: 1.45;
   color: var(--muted);
 }
@@ -4521,7 +4550,7 @@ button.mod:active {
 
 .fund-thanks-label {
   margin: 0;
-  font-size: 13px;
+  font-size: 0.8125rem;
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -4531,7 +4560,7 @@ button.mod:active {
 .fund-thanks-amount {
   margin: var(--s1) 0 var(--s4);
   font-family: var(--font-round);
-  font-size: 40px;
+  font-size: 2.5rem;
   font-weight: 900;
   font-variant-numeric: tabular-nums;
   color: var(--money);
@@ -4578,7 +4607,7 @@ button.mod:active {
 
 /* Social → Crew (Leo, 18.10.2026): the crew's name a step above a row title. */
 .crew-name {
-  font-size: 20px;
+  font-size: 1.25rem;
   font-weight: 700;
   line-height: 1.2;
 }

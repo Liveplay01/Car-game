@@ -102,7 +102,7 @@ export default (_s: Strings): Words<Strings> => ({
     language: '语言',
     gameFeel: '显示与操作',
     largerText: '更大的文字',
-    largerTextSub: '把游戏画面上的提示和卡片放大一级。',
+    largerTextSub: '把菜单和游戏中的所有文字放大一级。',
     reduceMotion: '减弱动态效果',
     reduceMotionSub: '没有抖动，没有慢动作，没有飞溅的碎片。',
     steadyCamera: '稳定镜头',

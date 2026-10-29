@@ -24,7 +24,7 @@ import { type RenderList, type Rect, RenderList as List, R, rect, circle, arc, l
 import type { ColorToken } from './theme';
 import { MenuKit } from './menukit';
 import { land } from './hud';
-import { textWidth, moneyTag, moneyTagWidth } from './icons';
+import { textWidth, moneyTag, moneyTagWidth, drawFitted } from './icons';
 import { S, Fmt } from './strings';
 import { CarArt } from './carArt';
 import { Skins, lookFor } from './skins';
@@ -460,6 +460,7 @@ export const ShopPage = {
     }
   },
 
+  /** The size that fits a number into `width`: numbers shrink, never get cut. Words use `drawFitted`. */
   fitted(s: string, size: number, width: number): number {
     const natural = textWidth(s, size);
     return natural <= width ? size : Math.max(9, (size * width) / natural);
@@ -540,8 +541,8 @@ export const ShopPage = {
       // "None yet" only where the line still fits beside it; the chevron alone says the same.
       const label = !action && textWidth(note, 12, false) <= r.maxX - 44 - textWidth(S.shop.noneYet, 13, false) - (r.minX + 80);
       const room = (action ? action.r.minX : r.maxX - 36 - (label ? textWidth(S.shop.noneYet, 13, false) + 8 : 0)) - (r.minX + 80) - 8;
-      drawText(list, name, v(r.minX + 80, c.y - 9), P.fitted(name, 15, room), 'primary', { weight: 'bold', opacity: enter });
-      drawText(list, note, v(r.minX + 80, c.y + 11), P.fitted(note, 12, room), 'muted', { opacity: enter });
+      drawFitted(list, name, v(r.minX + 80, c.y - 9), 15, room, 'primary', { weight: 'bold', opacity: enter });
+      drawFitted(list, note, v(r.minX + 80, c.y + 11), 12, room, 'muted', { opacity: enter });
 
       if (!action) {
         // Only earned and none here: the row opens the details, which say how to earn one.
@@ -847,7 +848,7 @@ export const ShopPage = {
       ShopPage.panel(list, r, 'card', enter);
       ShopPage.addPreview(list, item, v(c.x, r.minY + R.height(r) * 0.4), Math.min(1, R.height(r) / 110), opacity);
       const name = owned ? S.shop.item(item.id) : S.shop.locked;
-      drawText(list, name, v(c.x, r.maxY - 14), ShopPage.fitted(name, 11, R.width(r) - 12), owned ? 'primary' : 'muted', { weight: 'bold', align: 'center', opacity: enter });
+      drawFitted(list, name, v(c.x, r.maxY - 14), 11, R.width(r) - 12, owned ? 'primary' : 'muted', { weight: 'bold', align: 'center', opacity: enter });
       if (Careers.isWorn(career, item.id)) drawText(list, S.shop.worn, v(r.maxX - 10, r.minY + 12), 10, 'accent', { weight: 'bold', align: 'trailing', opacity: enter });
       if (career.unseen.includes(item.id)) {
         const at = v(r.minX + 22, r.minY + 12);
